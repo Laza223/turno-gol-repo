@@ -1,15 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { Download, Loader2 } from 'lucide-react'
+import { Download } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { toast } from '@/hooks/use-toast'
+import { cn } from '@/lib/utils'
 
 type ExportCsvButtonProps = {
   from: string
   to: string
+  className?: string
 }
 
-export function ExportCsvButton({ from, to }: ExportCsvButtonProps) {
+export function ExportCsvButton({ from, to, className }: ExportCsvButtonProps) {
   const [downloading, setDownloading] = useState(false)
 
   const handleDownload = async () => {
@@ -57,18 +60,15 @@ export function ExportCsvButton({ from, to }: ExportCsvButtonProps) {
   }
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="outline"
+      size="sm"
       onClick={handleDownload}
-      disabled={downloading}
-      className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground shadow-xs hover:bg-accent disabled:opacity-50"
+      isLoading={downloading}
+      className={cn('gap-1.5', className)}
     >
-      {downloading ? (
-        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-      ) : (
-        <Download className="h-4 w-4" aria-hidden="true" />
-      )}
+      {!downloading && <Download className="h-4 w-4" aria-hidden="true" />}
       Exportar CSV
-    </button>
+    </Button>
   )
 }

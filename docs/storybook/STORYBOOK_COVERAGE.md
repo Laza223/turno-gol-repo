@@ -53,7 +53,7 @@ SIN story real:         0
 |---|---:|---|
 | **Story directa** | 223 | Componente visual con contrato de props. Tiene story propia. |
 | **Requirió extracción presentacional** | 21 | Mezclaba fetch/autorización con presentación. Se extrajo la vista tipada a un componente hermano; la page quedó como shell que inyecta la Server Action. |
-| **Story completada fuera del plan original** | 5 | Los huecos que destapó el segundo review: `/jugadores` (×2, hubo que extraerlas), `PushNotificationManager`, `MetricsDashboardLoader`, `SuccessRedirect`. |
+| **Story completada fuera del plan original** | 5 | Los huecos que destapó el segundo review: `/jugadores` (×2, hubo que extraerlas), `PushNotificationManager`, `MetricsDashboardLoader`, `SuccessRedirect`. (`MetricsDashboardLoader` se borró el 2026-09-26 con el rediseño de Métricas: la carga diferida de recharts dejó de existir.) |
 | **Cubierto por la story del padre** | 6 | Sub-componente sin estados propios que solo existe dentro de su padre, que sí tiene story. Incluye dos casos que NO son sub-componentes y conviene aclarar: `SiteNav.tsx` es un re-export de 4 líneas de `PortalHeader` (que tiene story), y `toaster.tsx` lo monta `preview.tsx` en **todas** las stories — 13 archivos disparan toasts contra él. |
 | **Server wrapper — no aplica** | 34 | Server Component que solo fetchea y compone (page/layout). No se fabrica una vista artificial para tener una story: la composición a nivel página la cubren los specs de Playwright. Se storyean las hojas. |
 | **No visual** | 11 | Provider, hook, reporter o generador de imágenes (Satori/ImageResponse). No hay DOM que renderizar. |
@@ -70,14 +70,13 @@ SIN story real:         0
 | dashboard | 3 | 2 | 1 |
 | design-system | 27 | 25 | 2 |
 | layout-nav | 21 | 14 | 7 |
-| metricas | 3 | 2 | 1 |
+| metricas | 8 | 3 | 5 |
 | misc | 9 | 4 | 5 |
 | onboarding | 11 | 9 | 2 |
 | payments-caja | 9 | 9 | 0 |
 | player-facing | 74 | 65 | 9 |
 | players | 2 | 2 | 0 |
 | public-marketing | 33 | 23 | 10 |
-| reportes | 4 | 4 | 0 |
 | reservas | 10 | 10 | 0 |
 | staff-settings | 22 | 16 | 6 |
 | super-admin | 27 | 24 | 3 |
@@ -101,7 +100,7 @@ Toda exclusión lleva un motivo concreto. "No aplica" no es un motivo.
 | `src/app/(admin)/dashboard/page.tsx` | Server Component que fetchea (getDashboardData/getChecklistState) y compone componentes ya existentes fuera de esta área (PageHeader, OnboardingChecklist, MetricCard, UpcomingBookings); el único cálculo propio es un formateador de fecha (todayMediumArt) sin markup relevante propio. |
 | `src/app/(admin)/grilla/page.tsx` | Server Component: auth + query cruda de bookings vía Drizzle (select/leftJoin/where con sql``) y mapeo a GridBooking[]; delega toda la presentación a BookingGrid, que vive fuera de esta área (src/components/booking). |
 | `src/app/(admin)/layout.tsx` | Server Component: resuelve impersonación (resolveImpersonatedStaffContext), auth, kill-switch y suscripción, y compone AdminLayoutShell + ImpersonationBanner + PushNotificationManager (todos fuera de esta área); sin markup propio. |
-| `src/app/(admin)/metricas/page.tsx` | Server Component: auth + getStaffRole (para canSeeSystem) y renderiza PageHeader + MetricsDashboardLoader; sin markup propio. |
+| `src/app/(admin)/metricas/page.tsx` | redirect('/analiticas') puro, sin renderizar nada. |
 | `src/app/(admin)/settings/facturacion/page.tsx` | Server Component: auth + getSubscriptionState (con fallback null en catch) y renderiza 2 secciones simples (resumen de suscripción + estado de conexión MercadoPago) en dl/markup corto; sin componentes inline con múltiples ramas de estado como caja/reportes. |
 | `src/app/(admin)/settings/horarios/page.tsx` | Server Component: auth + composición de HorariosForm/AddClosedDateForm/RemoveClosedDateForm (ya storyables); el único bloque propio es un filter/sort/map corto de closedDates con formato de fecha inline, delgado comparado con caja/reportes. |
 | `src/app/(admin)/settings/layout.tsx` | Server Component guard puro (requireAdminStaff) que retorna <>{children}</> — cero markup propio. |
@@ -147,11 +146,13 @@ Toda exclusión lleva un motivo concreto. "No aplica" no es un motivo.
 | `src/components/site/PortalSessionProvider.tsx` | Es un React Context Provider puro (createContext/useContext) que hidrata la sesión vía fetch a /api/player/session — no renderiza ningún markup propio más allá de pasar children; se consume como decorator/wrapper en las stories de los componentes que sí usan usePortalSession (AccountMenu, PortalHeader, PortalFrame, FavoriteButton), no tiene story propia. |
 | `src/components/theme/ThemeProvider.tsx` | Es un wrapper delgado sobre next-themes' ThemeProvider (pone/saca la clase .dark en <html>) — no renderiza markup propio visible, solo configura contexto. Se usa como decorator global de Storybook (ya cubierto por el theming del proyecto), no tiene estados propios que mostrar en una story. |
 
-### Cubierto por la story del padre (8)
+### Cubierto por la story del padre (10)
 
 | Archivo | Motivo |
 |---|---|
-| `src/app/(admin)/metricas/MetricsDashboardLoader.tsx` | Envoltorio trivial de React.lazy+Suspense sobre MetricsDashboard; su único contenido visual propio es el esqueleto de carga (DashboardSkeleton, divs animate-pulse sin estados propios), ya cubierto por la story de MetricsDashboard con datos reales. |
+| `src/app/(admin)/analiticas/ExportCsvButton.tsx` | Botón sin variantes visuales propias en reposo: `Analiticas.stories` lo renderiza (barra y pie del teléfono) y `SinDatos` verifica que no aparece. La descarga real y el toast de error los cubren los e2e TG-HP-220 y `reportes.spec.ts`, no Storybook. |
+| `src/app/(admin)/analiticas/MonthBoard.tsx` | `MonthBoard`, `MethodSummary` y `MonthEmpty` solo existen dentro de `AnaliticasView`; las cinco stories de `Admin/Metricas/Analiticas` recorren sus estados (mes en curso vs cerrado, "En todo {mes}" vs "N% vs {mes}", ajustes sí/no, doce canchas ordenadas por plata, "Otro" en Por dónde entró, los dos vacíos). |
+| `src/app/(admin)/analiticas/MonthStepper.tsx` | Dos links y un label. `Analiticas.stories` lo monta en la barra y en el teléfono; `MesEnCurso` verifica que "Mes siguiente" queda `aria-disabled` en el mes en curso. |
 | `src/app/(auth)/verify/SuccessRedirect.tsx` | Solo un párrafo con cuenta regresiva (aria-live) que dispara window.location.assign(next) por setTimeout; no tiene variantes visuales propias más allá del número — se cubre dentro de la story del estado 'success' de VerifyPage. |
 | `src/app/(public)/explorar/components/ExplorarMapLoader.tsx` | wrapper trivial de next/dynamic(() => import('./ExplorarMap'), {ssr:false}); sin estados propios más allá del fallback pulse — la story real es la de ExplorarMap (Storybook ya renderiza client-side, el ssr:false es redundante ahí). |
 | `src/app/(public)/explorar/components/PitchLines.tsx` | re-export vacío (`export { default } from '@/components/public/PitchLines'`); el componente real vive fuera de esta área y no hay contenido propio que storyar aquí. |

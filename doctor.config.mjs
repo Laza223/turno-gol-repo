@@ -244,7 +244,7 @@ export default {
       //  · rerender-* → React 18 ya batchea, o el estado sí driva render.
       // BACKLOG genuino (documentado en PROGRESS, suprimido por riesgo/no-verificable en
       // unit): data-export async-parallel (4 SELECTs ARCO → Promise.all, getSql pooled),
-      // prefer-dynamic-import de charts recharts (MetricsDashboard/ReportCharts), PricingGrid
+      // PricingGrid
       // anchor useState→useRef. Verificado por 51 investigadores.
       {
         files: [
@@ -323,10 +323,6 @@ export default {
         rules: ['react-doctor/rerender-lazy-ref-init'],
       },
       { files: ['**/layout.tsx'], rules: ['react-doctor/jsx-no-jsx-as-prop'] },
-      {
-        files: ['**/MetricsDashboard.tsx', '**/ReportCharts.tsx'],
-        rules: ['react-doctor/prefer-dynamic-import'],
-      },
       {
         files: ['**/para-complejos/page.tsx', 'src/components/site/BusinessHeader.tsx'],
         rules: ['react-doctor/no-large-animated-blur'],

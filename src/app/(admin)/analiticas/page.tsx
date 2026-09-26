@@ -1,40 +1,15 @@
-import type { ReactNode } from 'react'
-import { CalendarCheck, ChartLine, SlidersHorizontal, TrendingUp, Wallet } from 'lucide-react'
-import { PageHeader } from '@/components/admin/PageHeader'
-import { StatCard } from '@/components/admin/StatCard'
-import { ResponsiveList } from '@/components/ui/responsive-list'
-import { Th, Td, Tr } from '@/components/ui/table'
 import { requireAdminStaff } from '@/modules/staff/guards'
 import { resolveSystemAdmin } from '@/modules/auth/system-admin.guards'
-import { MetricsDashboardLoader } from '@/app/(admin)/analiticas/MetricsDashboardLoader'
 import { getRevenueReport } from '@/modules/reports/report.service'
 import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
 import {
-  computeDelta,
-  formatMethodLabel,
   getMonthBounds,
   prevMonthStr,
   nextMonthStr,
   formatMonthLabel,
   isReportEmpty,
 } from '@/modules/reports/report.utils'
-import { formatArs, formatPct } from '@/lib/format'
-import { ExportCsvButton } from './ExportCsvButton'
-import { GhostKpis } from './GhostKpis'
-import { OccupancyChart, TrendChart } from './ReportCharts'
-
-/** Formato con signo (§2.5/§8.2): negativos en `−$ X` + rojo destructive. */
-function signedArs(cents: number): ReactNode {
-  if (cents < 0) {
-    return (
-      <span className="text-red-700 dark:text-red-300">
-        {'−'}
-        {formatArs(-cents)}
-      </span>
-    )
-  }
-  return formatArs(cents)
-}
+import { AnaliticasView } from './AnaliticasView'
 
 /**
  * Mes actual EN DÍA OPERATIVO del complejo.
@@ -53,9 +28,12 @@ function isValidMonth(s: string): boolean {
 }
 
 /**
- * Dashboard de analíticas (/analiticas). Absorbe /metricas (arriba) + el
- * reporte mensual de /reportes (abajo, con navegación mes a mes y export CSV
- * acotado al mes seleccionado).
+ * Métricas (/analiticas): el mes que se elige con las flechas de la barra, en
+ * una sola página (variante "Canchas primero", elegida por el dueño el
+ * 2026-09-26). Arriba cuánto entró y cada cancha de la que más cobró a la que
+ * menos; abajo por dónde entró y, solo en el mes en curso, los últimos 30 días
+ * (horarios y ausencias), que salen de otra consulta y se refrescan solos.
+ * Antes eran dos mitades con ventanas distintas y "Ingresos" dos veces (H032).
  *
  * Zona sensible (ingresos visibles), SOLO DEL DUEÑO (2026-09-19): el guard es el
  * `requireAdminStaff()` de ESTA página (más abajo), no algo del layout de
@@ -82,9 +60,10 @@ export default async function AnaliticasPage(props: {
   const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
   const thisMonth = currentMonthStr(cutoffMins)
   const rawMonth = typeof searchParams.month === 'string' ? searchParams.month : ''
-  const month = isValidMonth(rawMonth) ? rawMonth : thisMonth
-  const prev = prevMonthStr(month)
-  const next = nextMonthStr(month)
+  // Un mes futuro escrito a mano cae al mes en curso, igual que uno inválido:
+  // mostrado como mes cerrado decía "no hubo cobros" de algo que no pasó.
+  const month = isValidMonth(rawMonth) && rawMonth <= thisMonth ? rawMonth : thisMonth
+  const isCurrent = month === thisMonth
   const bounds = getMonthBounds(month, cutoffMins)
 
   const report = await getRevenueReport(
@@ -104,236 +83,21 @@ export default async function AnaliticasPage(props: {
     .toISOString()
     .slice(0, 10)
 
-  const incomeDelta = report.prevPeriod
-    ? computeDelta(report.income, report.prevPeriod.income)
-    : null
-  const balanceDelta = report.prevPeriod
-    ? computeDelta(report.balance, report.prevPeriod.balance)
-    : null
+  const stepper = {
+    label: formatMonthLabel(month),
+    prevHref: `/analiticas?month=${prevMonthStr(month)}`,
+    nextHref: isCurrent ? null : `/analiticas?month=${nextMonthStr(month)}`,
+  }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Métricas"
-        subtitle="Actividad del complejo en tiempo real y reporte mensual de ingresos."
-        icon={<ChartLine className="h-6 w-6" aria-hidden="true" />}
-      />
-
-      <div className="card-entrance" style={{ animationDelay: '80ms' }}>
-        <MetricsDashboardLoader canSeeSystem={canSeeSystem} />
-      </div>
-
-      <div className="space-y-6">
-        {/* Reporte mensual: header + navegación mes a mes */}
-        <div
-          className="card-entrance flex flex-wrap items-center justify-between gap-3"
-          style={{ animationDelay: '160ms' }}
-        >
-          <h2 className="text-lg font-semibold text-foreground">Reporte mensual</h2>
-          <div className="flex items-center gap-2">
-            <form method="get" action="/analiticas">
-              <input type="hidden" name="month" value={prev} />
-              <button
-                type="submit"
-                className="rounded-md border border-border px-3 py-1.5 min-h-11 md:min-h-9 text-sm text-muted-foreground hover:bg-accent"
-                aria-label="Mes anterior"
-              >
-                ←
-              </button>
-            </form>
-
-            <span className="min-w-44 text-center text-sm font-medium text-foreground">
-              {formatMonthLabel(month)}
-            </span>
-
-            <form method="get" action="/analiticas">
-              <input type="hidden" name="month" value={next} />
-              <button
-                type="submit"
-                disabled={next > thisMonth}
-                className="rounded-md border border-border px-3 py-1.5 min-h-11 md:min-h-9 text-sm text-muted-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label="Mes siguiente"
-              >
-                →
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {isEmpty ? (
-          <GhostKpis />
-        ) : (
-          <>
-            {/* KPI cards */}
-            <div
-              className="card-entrance grid grid-cols-2 gap-4 sm:grid-cols-4"
-              style={{ animationDelay: '200ms' }}
-            >
-              <StatCard
-                label="Ingresos"
-                value={formatArs(report.income)}
-                // H032: esta tarjeta y la de arriba (MetricsDashboard →
-                // RevenueChart, últimos 30 días corridos) se llaman igual —
-                // cada una rotula su propia ventana en vez de depender de la
-                // vecina (el selector de mes de acá arriba).
-                sub={formatMonthLabel(month)}
-                icon={<TrendingUp className="h-4 w-4" aria-hidden="true" />}
-                accent="emerald"
-                delta={incomeDelta ?? undefined}
-              />
-              <StatCard
-                label="Ajustes"
-                value={signedArs(report.adjustment)}
-                icon={<SlidersHorizontal className="h-4 w-4" aria-hidden="true" />}
-                accent="slate"
-              />
-              <StatCard
-                label="Saldo"
-                value={signedArs(report.balance)}
-                icon={<Wallet className="h-4 w-4" aria-hidden="true" />}
-                accent={report.balance >= 0 ? 'emerald' : 'red'}
-                delta={balanceDelta ?? undefined}
-                className={report.balance >= 0 ? 'ring-1 ring-emerald-600/20' : undefined}
-              />
-              <StatCard
-                label="Reservas"
-                value={report.bookingCount.toLocaleString('es-AR')}
-                icon={<CalendarCheck className="h-4 w-4" aria-hidden="true" />}
-                accent="slate"
-              />
-            </div>
-
-            {/* Escritorio: de a dos. Ambos bloques son condicionales — un hijo solo
-                ocupa las dos columnas (`only-child`) y sin hijos la fila desaparece
-                (`empty:hidden`), así el `space-y-6` no deja un hueco de 24px. */}
-            <div className="grid grid-cols-1 gap-6 empty:hidden lg:grid-cols-2 lg:[&>:only-child]:col-span-2">
-              {/* Tendencia mensual */}
-              {report.prevPeriod && (
-                <TrendChart
-                  current={{ income: report.income, balance: report.balance }}
-                  prev={report.prevPeriod}
-                />
-              )}
-
-              {/* Ocupación por cancha */}
-              {report.byCourt.length > 0 && <OccupancyChart byCourt={report.byCourt} />}
-            </div>
-
-            {/* `xl` y no `lg`: la tabla "Por cancha" pide 520px (`min-w`) y a media
-                columna recién los tiene desde ~1200px de viewport. */}
-            <div className="grid grid-cols-1 gap-6 empty:hidden xl:grid-cols-2 xl:items-start xl:[&>:only-child]:col-span-2">
-              {/* By court */}
-              {report.byCourt.length > 0 && (
-                <ResponsiveList
-                  className="overflow-hidden shadow-xs"
-                  header={
-                    <div className="border-b border-border px-6 py-4">
-                      <h2 className="text-sm font-semibold text-foreground">Por cancha</h2>
-                    </div>
-                  }
-                  cards={
-                    <ul className="divide-y divide-border">
-                      {report.byCourt.map((c) => (
-                        <li
-                          key={c.courtId}
-                          className="flex items-center justify-between gap-3 px-4 py-3"
-                        >
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-foreground">
-                              {c.courtName}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {c.bookingCount} reservas · {formatPct(c.occupancyPct)} ocupación
-                            </p>
-                          </div>
-                          <p className="shrink-0 text-sm font-medium tabular-nums text-foreground">
-                            {formatArs(c.income)}
-                          </p>
-                        </li>
-                      ))}
-                    </ul>
-                  }
-                  table={
-                    <table className="w-full min-w-[520px] text-sm">
-                      <thead>
-                        <tr className="border-b border-border">
-                          <Th className="px-6">Cancha</Th>
-                          <Th className="px-6" align="right">
-                            Ingresos
-                          </Th>
-                          <Th className="px-6" align="right">
-                            Reservas
-                          </Th>
-                          <Th className="px-6" align="right">
-                            Ocupación
-                          </Th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {report.byCourt.map((c) => (
-                          <Tr key={c.courtId}>
-                            <Td className="px-6 text-foreground">{c.courtName}</Td>
-                            <Td className="px-6" numeric>
-                              {formatArs(c.income)}
-                            </Td>
-                            <Td className="px-6" numeric>
-                              {c.bookingCount}
-                            </Td>
-                            <Td className="px-6" numeric>
-                              {formatPct(c.occupancyPct)}
-                            </Td>
-                          </Tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  }
-                />
-              )}
-
-              {/* By payment method */}
-              {report.byMethod.length > 0 && (
-                <div
-                  className="card-entrance overflow-hidden rounded-lg border border-border bg-card shadow-xs"
-                  style={{ animationDelay: '360ms' }}
-                >
-                  <div className="border-b border-border px-6 py-4">
-                    <h2 className="text-sm font-semibold text-foreground">Por método de pago</h2>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border">
-                          <Th className="px-6">Método</Th>
-                          <Th className="px-6" align="right">
-                            Total
-                          </Th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {report.byMethod.map((m) => (
-                          <Tr key={m.method}>
-                            <Td className="px-6 text-foreground">{formatMethodLabel(m.method)}</Td>
-                            <Td className="px-6" numeric>
-                              {formatArs(m.total)}
-                            </Td>
-                          </Tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* CSV export — pointless on an empty month, so hidden with the empty state */}
-        {!isEmpty && (
-          <div className="flex justify-end">
-            <ExportCsvButton from={csvFrom} to={csvTo} />
-          </div>
-        )}
-      </div>
-    </div>
+    <AnaliticasView
+      report={report}
+      month={month}
+      isCurrent={isCurrent}
+      isEmpty={isEmpty}
+      canSeeSystem={canSeeSystem}
+      stepper={stepper}
+      csv={{ from: csvFrom, to: csvTo }}
+    />
   )
 }

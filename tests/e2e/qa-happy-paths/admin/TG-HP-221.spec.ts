@@ -13,8 +13,14 @@ import { suppressPushPrompt } from '../_qa/session'
 /**
  * TG-HP-221 — Métricas (sesión ADMIN, ve negocio + sistema).
  * `/metricas` fue reubicado a `/analiticas` (redirect permanente,
- * src/app/(admin)/analiticas/page.tsx es ahora solo el stub de redirect) — el
- * contenido real (MetricsDashboard) se embebe ahí vía MetricsDashboardLoader.
+ * src/app/(admin)/metricas/page.tsx). UI llevada al rediseño "Canchas
+ * primero" del 2026-09-26 (AnaliticasView.tsx): el `<h1>Métricas` quedó
+ * `sr-only`, arriba va el board del mes (MonthBoard) y "Últimos 30 días"
+ * (MetricsDashboard, cliente) quedó solo con horarios más pedidos y
+ * ausencias — los gráficos (Reservas por día, Ingresos con toggle
+ * Día/Semana/Mes, Top 5 horarios, Tasa de ausencias) se sacaron de la UI,
+ * aunque `getTenantMetrics` sigue calculando esos mismos campos para el
+ * chequeo de API de abajo.
  * Rol: Admin — el panel "Estado del sistema" está reservado únicamente para SuperAdmin
  * de plataforma (`resolveSystemAdmin`, `analiticas/page.tsx`), por lo que un admin estándar no lo ve.
  * NOTA: `GET /api/admin/metrics` usa `withRole('admin')` desde 2026-09-19 (antes
@@ -24,10 +30,10 @@ import { suppressPushPrompt } from '../_qa/session'
  * `completed` + 1 cash_flow `income` con fecha/hora de HOY en ART) para no
  * depender de residuos de otros specs de la corrida QA.
  * Evidence anchors: src/app/(admin)/analiticas/page.tsx,
- *   src/app/(admin)/analiticas/MetricsDashboardLoader.tsx,
- *   src/app/(admin)/analiticas/MetricsDashboard.tsx:231-349,
- *   src/app/api/admin/metrics/route.ts:1-28,
- *   src/modules/metrics/metrics.service.ts:115-278.
+ *   src/app/(admin)/analiticas/AnaliticasView.tsx,
+ *   src/app/(admin)/analiticas/MetricsDashboard.tsx,
+ *   src/app/api/admin/metrics/route.ts,
+ *   src/modules/metrics/metrics.service.ts.
  */
 
 /** Today in ART (Argentina = UTC-3, sin DST) — mismo cálculo que artTodayStr() en metrics.service.ts. */
@@ -36,7 +42,7 @@ function artTodayIso(): string {
 }
 
 test.describe('TG-HP-221 — Métricas admin (negocio + sistema)', () => {
-  test('admin ve gráficos de negocio + panel de sistema, con actividad sembrada del día', async ({
+  test('admin ve el board del mes + últimos 30 días + panel de sistema, con actividad sembrada del día', async ({
     browser,
     adminStorageState,
   }) => {
@@ -86,44 +92,24 @@ test.describe('TG-HP-221 — Métricas admin (negocio + sistema)', () => {
       })
       expect(cashflowErr).toBeNull()
 
-      // ── UI: header + subtítulo (/analiticas, destino real de /metricas) ──
+      // ── UI: board del mes (/analiticas, destino real de /metricas). El
+      // `<h1>Métricas` quedó `sr-only` en el rediseño "Canchas primero"
+      // (2026-09-26) — el título visible en contenido es el `<h2>` del mes.
       await page.goto('/analiticas')
-      await expect(page.getByRole('heading', { name: 'Métricas', level: 1 })).toBeVisible({
+      await expect(page.getByRole('heading', { name: /^Entró en/ })).toBeVisible({
         timeout: 15_000,
       })
-      await expect(
-        page.getByText('Actividad del complejo en tiempo real y reporte mensual de ingresos.'),
-      ).toBeVisible()
 
-      // Esperar a que resuelva el primer fetch (spinner → contenido real, no el banner de error).
-      await expect(page.getByRole('heading', { name: 'Reservas por día' })).toBeVisible({
+      // Esperar a que resuelva el primer fetch de "Últimos 30 días" (spinner →
+      // contenido real, no el banner de error): horarios más pedidos y ausencias.
+      await expect(page.getByRole('heading', { name: 'Últimos 30 días' })).toBeVisible({
         timeout: 20_000,
       })
-      await expect(page.getByText(/Últimos \d+ días/)).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Horarios más pedidos' })).toBeVisible()
 
-      // Tasa de ausencias.
-      await expect(page.getByRole('heading', { name: 'Tasa de ausencias' })).toBeVisible()
-      await expect(page.getByText(/ausencias sobre \d+ turnos terminados/)).toBeVisible()
-
-      // Ingresos (StatCard, H032): label + toggle Día/Semana/Mes + monto no-cero
-      // (nuestra siembra). Scopeado a la card del gráfico (via el toggle, único
-      // en la página): el reporte mensual de abajo tiene su PROPIA card "Ingresos".
-      const granularityGroup = page.getByRole('group', { name: 'Agrupar ingresos por' })
-      const revenueCard = page.locator('.card-premium', { has: granularityGroup })
-      await expect(revenueCard.getByText('Ingresos', { exact: true })).toBeVisible()
-      await expect(granularityGroup.getByRole('button', { name: 'Día' })).toHaveAttribute(
-        'aria-pressed',
-        'true',
-      )
-      await expect(granularityGroup.getByRole('button', { name: 'Semana' })).toBeVisible()
-      await expect(granularityGroup.getByRole('button', { name: 'Mes' })).toBeVisible()
-      await expect(revenueCard.getByText(/Ventana de \d+ días/)).toBeVisible()
-      await expect(revenueCard.getByText(/\$\s?[\d.,]+/)).toBeVisible()
-
-      // Top 5 horarios.
-      await expect(
-        page.getByRole('heading', { name: 'Top 5 horarios más reservados' }),
-      ).toBeVisible()
+      // Ausencias — nuestro booking `completed` cuenta como turno terminado.
+      await expect(page.getByRole('heading', { name: 'Ausencias' })).toBeVisible()
+      await expect(page.getByText(/% · \d+ de \d+ turnos terminados/)).toBeVisible()
 
       // Estado del sistema (solo SuperAdmin — admin estándar NO lo ve).
       await expect(page.getByText('Estado del sistema')).not.toBeVisible()

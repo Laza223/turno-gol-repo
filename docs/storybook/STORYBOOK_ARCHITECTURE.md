@@ -156,9 +156,10 @@ en falla de lint**, no en convención: importar `postgres`, `drizzle-orm`, `@/sh
    `.skeleton`). Son selectores **descendientes**, así que el wrapper alcanza — y es lo que permite
    que Docs mode muestre una story clara y una oscura en el mismo iframe.
 
-2. **El contexto de next-themes.** `src/components/admin/useChartTheme.ts` llama `useTheme()` y
-   devuelve colores **HEX** que recharts recibe como props inline. Una clase CSS no le llega. Sin el
-   provider, los gráficos quedan en tema claro aunque todo lo demás esté oscuro.
+2. **El contexto de next-themes.** Los componentes que leen `useTheme()` (`AdminThemeMenu`,
+   `ThemeToggle`, `PricingGrid`) deciden con el valor del contexto, no con la clase CSS. Sin el
+   provider muestran el tema claro aunque todo lo demás esté oscuro. (Antes lo necesitaba también
+   `useChartTheme` para los gráficos de Métricas; recharts salió del proyecto el 2026-09-26.)
 
 ---
 
@@ -210,7 +211,6 @@ de `vitest`**, no `sb.mock()` — que es un no-op (ver el recuadro más arriba).
   integración 1 de cada 7 corridas.)
 - **Reduced motion**: `globals.css` ya trae un bloque `@media (prefers-reduced-motion: reduce)` que
   mata las animaciones CSS. El toggle de la toolbar lo espeja con `.sb-reduce-motion`.
-  **No cubre recharts**, que anima en JS → `isAnimationActive={false}`.
 - **IDs**: Radix emite ids tipo `:r0:`. Irrelevante para píxeles, pero **nada de snapshots de DOM**
   en los `play`.
 

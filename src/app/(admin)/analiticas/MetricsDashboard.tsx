@@ -1,303 +1,138 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
-import { ArrowDownRight, ArrowUpRight, TrendingUp } from 'lucide-react'
-import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
-import { StatCard } from '@/components/admin/StatCard'
+import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import type { TenantMetrics } from '@/modules/metrics/metrics.service'
 import type { SystemStatus } from '@/app/api/admin/system-status/route'
-import { useChartTheme } from '@/components/admin/useChartTheme'
 import { rejectionMessage } from '@/shared/lib/rejection-message'
-import { relativeTimeEs } from '@/lib/format'
-import {
-  dayLabel,
-  formatARS,
-  groupRevenue,
-  noShowTrend,
-  type RevenueGranularity,
-} from './dashboard-helpers'
+import { formatPct, relativeTimeEs } from '@/lib/format'
+import { noShowTrend } from './dashboard-helpers'
 
 const REFRESH_INTERVAL_MS = 60_000
 
 const GENERIC_LOAD_ERROR = 'No pudimos cargar las métricas. Probá de nuevo en unos segundos.'
 
-const GRANULARITY_LABELS: Record<RevenueGranularity, string> = {
-  day: 'Día',
-  week: 'Semana',
-  month: 'Mes',
-}
-
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="card-premium rounded-lg p-4">
+    <section aria-label={title} className="card-premium p-4 sm:p-5">
       <h2 className="text-sm font-semibold text-foreground">{title}</h2>
       <div className="mt-3">{children}</div>
-    </div>
+    </section>
   )
 }
 
-/** Barras fantasma genéricas para series temporales sin datos (H033: Ingresos, Reservas por día). */
-function GhostBars() {
-  const heights = [35, 62, 48, 80, 58, 70, 42, 55, 38, 66]
-  return (
-    <div className="flex h-64 items-end gap-1.5 px-1" aria-hidden="true">
-      {heights.map((h, i) => (
-        <span
-          key={i}
-          className="flex-1 rounded-t-sm bg-emerald-500 opacity-30"
-          style={{ height: `${h}%` }}
-        />
-      ))}
-    </div>
-  )
-}
+const pts = (n: number) => String(Math.abs(n)).replace('.', ',')
 
 /**
- * Card "Tasa de ausencias": tasa actual + tendencia vs los 30 días previos.
- * Debajo de MIN_FINISHED_FOR_TREND turnos terminados (cualquiera de las dos
- * ventanas) la comparación se oculta — ver noShowTrend (H174).
+ * Tasa de ausencias + tendencia contra los 30 días anteriores. Debajo de
+ * MIN_FINISHED_FOR_TREND turnos terminados (en cualquiera de las dos ventanas)
+ * la comparación se oculta — ver noShowTrend (H174).
  */
-function NoShowCard({ metrics }: { metrics: TenantMetrics }) {
-  // H033: sin turnos terminados todavía, "0,0% — 0 sobre 0" no dice nada —
-  // mismo espíritu "primera vez espectral" que TopSlots/GhostKpis (MASTER §1).
+function NoShow({ metrics }: { metrics: TenantMetrics }) {
   if (metrics.noShow.finished === 0) {
-    return (
-      <Card title="Tasa de ausencias">
-        <p className="text-3xl font-semibold tabular-nums text-muted-foreground" aria-hidden="true">
-          3,2%
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground" aria-hidden="true">
-          2 ausencias sobre 62 turnos terminados
-        </p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Así se va a ver cuando termines tus primeros turnos.
-        </p>
-      </Card>
-    )
+    return <p className="text-sm text-muted-foreground">Todavía no hay turnos terminados.</p>
   }
-
   const trend = noShowTrend(metrics.noShow, metrics.noShowPrev)
-  const ratePct = (metrics.noShow.rate * 100).toFixed(1).replace('.', ',')
-
   return (
-    <Card title="Tasa de ausencias">
-      <p className="text-3xl font-semibold tabular-nums text-foreground">{ratePct}%</p>
-      <p className="mt-1 text-xs text-muted-foreground">
-        {metrics.noShow.noShow} ausencias sobre {metrics.noShow.finished} turnos terminados
+    <div>
+      <p className="text-sm text-muted-foreground">
+        <span className="font-display text-xl font-bold tabular-nums text-foreground">
+          {formatPct(Math.round(metrics.noShow.rate * 1000) / 10)}
+        </span>{' '}
+        · {metrics.noShow.noShow} de {metrics.noShow.finished} turnos terminados
       </p>
-      <div className="mt-2 text-xs">
-        {trend.kind === 'no_prev' && (
-          <span className="text-muted-foreground">sin datos previos</span>
-        )}
+      <p className="mt-0.5 text-xs text-muted-foreground">
+        {trend.kind === 'no_prev' && 'Sin datos de los 30 días anteriores.'}
         {/* H174: muestra chica en cualquiera de las dos ventanas — el valor de
          * arriba sigue siendo real, pero comparar sobre pocas decenas de
-         * turnos es ruido. Sin flecha ni color, línea sobria. */}
-        {trend.kind === 'low_sample' && (
-          <span className="text-muted-foreground">
-            Todavía no hay datos suficientes para comparar.
-          </span>
-        )}
-        {trend.kind === 'flat' && (
-          <span className="text-muted-foreground">sin cambios vs período anterior</span>
-        )}
+         * turnos es ruido. Sin flecha ni color. */}
+        {trend.kind === 'low_sample' && 'Todavía no hay datos suficientes para comparar.'}
+        {trend.kind === 'flat' && 'Igual que los 30 días anteriores.'}
         {trend.kind === 'up' && (
-          <span className="inline-flex items-center gap-1 font-medium text-red-600 dark:text-red-400">
-            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />+
-            {String(trend.deltaPts).replace('.', ',')} pts vs período anterior
+          <span className="inline-flex items-center gap-0.5 font-medium text-red-700 dark:text-red-300">
+            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />+{pts(trend.deltaPts)} pts vs
+            los 30 días anteriores
           </span>
         )}
         {trend.kind === 'down' && (
-          <span className="inline-flex items-center gap-1 font-medium text-emerald-700 dark:text-emerald-400">
-            <ArrowDownRight className="h-3.5 w-3.5" aria-hidden="true" />
-            {String(trend.deltaPts).replace('.', ',')} pts vs período anterior
+          <span className="inline-flex items-center gap-0.5 font-medium text-emerald-700 dark:text-emerald-400">
+            <ArrowDownRight className="h-3.5 w-3.5" aria-hidden="true" />−{pts(trend.deltaPts)} pts
+            vs los 30 días anteriores
           </span>
         )}
-      </div>
-    </Card>
+      </p>
+    </div>
   )
 }
 
-/** BarChart de ingresos con toggle día/semana/mes (agregación client-side). */
-function RevenueChart({
-  metrics,
-  isAnimationActive,
-}: {
-  metrics: TenantMetrics
-  isAnimationActive: boolean
-}) {
-  const [granularity, setGranularity] = useState<RevenueGranularity>('day')
-  const data = groupRevenue(metrics.revenuePerDay, granularity)
-  const chart = useChartTheme()
-
+/** Los 5 horarios de inicio más pedidos, con la barra de "Lo que más salió". */
+function TopSlots({ metrics }: { metrics: TenantMetrics }) {
+  const max = Math.max(1, ...metrics.topSlots.map((s) => s.count))
   return (
-    <div className="card-premium rounded-lg p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        {/* H032: mismo StatCard que el reporte mensual (AP-18), con SU PROPIA
-         * ventana rotulada en el sub — acá son 30 días corridos, no el mes
-         * calendario del reporte de abajo. Card anidada a propósito: `.card-premium`
-         * (globals.css) es CSS sin capa, gana cualquier utility `shadow-none`/
-         * `border-0` que se le agregue acá — no vale la pena pelear la cascada
-         * por un detalle visual. */}
-        <StatCard
-          label="Ingresos"
-          value={formatARS(metrics.revenue.totalCents)}
-          sub={`Ventana de ${metrics.windowDays} días`}
-          icon={<TrendingUp className="h-4 w-4" aria-hidden="true" />}
-          className="min-w-40 flex-1"
-        />
-        <div className="flex gap-1" role="group" aria-label="Agrupar ingresos por">
-          {(Object.keys(GRANULARITY_LABELS) as RevenueGranularity[]).map((g) => (
-            <button
-              key={g}
-              type="button"
-              onClick={() => setGranularity(g)}
-              aria-pressed={granularity === g}
-              className={
-                'rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ' +
-                (granularity === g
-                  ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                  : 'border-border text-muted-foreground hover:bg-accent')
-              }
-            >
-              {GRANULARITY_LABELS[g]}
-            </button>
-          ))}
-        </div>
-      </div>
-      {metrics.revenue.totalCents === 0 ? (
-        <div className="mt-3">
-          <GhostBars />
-          <p className="mt-3 text-sm text-muted-foreground">
-            Así se van a ver tus ingresos por período.
-          </p>
-        </div>
-      ) : (
-        <div className="mt-3 h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 11, fill: chart.axis }}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: chart.axis }}
-                tickFormatter={(v: number) => formatARS(v)}
-                width={90}
-              />
-              <Tooltip
-                formatter={(value) => [formatARS(Number(value)), 'Ingresos']}
-                labelStyle={chart.tooltip.labelStyle}
-                contentStyle={chart.tooltip.contentStyle}
-                itemStyle={chart.tooltip.itemStyle}
-              />
-              <Bar
-                dataKey="amountCents"
-                fill={chart.primary}
-                radius={[3, 3, 0, 0]}
-                isAnimationActive={isAnimationActive}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-    </div>
+    <ol className="space-y-3">
+      {metrics.topSlots.map((slot) => (
+        <li key={slot.time} className="text-sm">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="font-medium tabular-nums text-foreground">{slot.time}</span>
+            <span className="tabular-nums text-muted-foreground">
+              {slot.count} {slot.count === 1 ? 'turno' : 'turnos'}
+            </span>
+          </div>
+          <div aria-hidden="true" className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary/70"
+              style={{ width: `${Math.max((slot.count / max) * 100, 1)}%` }}
+            />
+          </div>
+        </li>
+      ))}
+    </ol>
   )
 }
 
 /**
- * "Primera-vez espectral" (§7.2 MASTER) del ranking de horarios: mismo espíritu
- * que GhostKpis en reportes/page.tsx (barras/valores fantasma + aria-hidden,
- * con el CTA real debajo), replicado acá en chico en vez de extraído a
- * compartido — el pedido explícitamente evita ese refactor.
- *
- * Diferencia deliberada con GhostKpis: acá NO se usa `opacity-50` sobre el
- * texto. `text-foreground` (slate-950) al 50% de opacidad compone ~3.79:1
- * contra el fondo blanco — bajo el mínimo AA 4.5:1 (axe lo marca real
- * violation, no "incomplete"). El look "fantasma" sale de usar colores
- * naturalmente atenuados (`text-muted-foreground`, ya AA en el resto de la
- * app) y opacidad solo en el relleno de la barra (decorativo, sin texto).
+ * Lo que solo existe en ventana corrida de 30 días: qué horarios se piden y
+ * cuántos faltan. Con un complejo que todavía no jugó nada no se muestra: el
+ * vacío del mes ya lo dice.
  */
-function GhostTopSlots() {
-  const ghosts = [
-    { time: '20:00', pct: 100 },
-    { time: '19:00', pct: 82 },
-    { time: '21:00', pct: 68 },
-    { time: '18:00', pct: 45 },
-    { time: '22:00', pct: 30 },
-  ]
+function Recent({ metrics, staleError }: { metrics: TenantMetrics; staleError: string | null }) {
+  if (metrics.topSlots.length === 0 && metrics.noShow.finished === 0) return null
   return (
-    <div>
-      <ul className="space-y-2 select-none" aria-hidden="true">
-        {ghosts.map((g) => (
-          <li key={g.time} className="flex items-center gap-3 text-sm">
-            <span className="w-12 shrink-0 font-medium tabular-nums text-muted-foreground">
-              {g.time}
-            </span>
-            <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
-              <span
-                className="block h-full rounded-full bg-emerald-500 opacity-40"
-                style={{ width: `${g.pct}%` }}
-              />
-            </span>
-            <span className="w-8 shrink-0 text-right tabular-nums text-muted-foreground">-</span>
-          </li>
-        ))}
-      </ul>
-      <p className="mt-3 text-sm text-muted-foreground">
-        Así se van a ver tus horarios más reservados.
-      </p>
-      <Link
-        href="/grilla"
-        className="mt-1 inline-block text-sm font-semibold text-emerald-700 hover:underline dark:text-emerald-400"
-      >
-        Cargá tu primera reserva desde la grilla
-      </Link>
-    </div>
+    <section aria-labelledby="ultimos-30" className="card-premium space-y-4 p-4 sm:p-5">
+      <h2 id="ultimos-30" className="text-sm font-semibold text-foreground">
+        Últimos 30 días
+      </h2>
+      {staleError && (
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+          {staleError} Estás viendo datos anteriores.
+        </p>
+      )}
+      {metrics.topSlots.length > 0 && (
+        <div>
+          <h3 className="mb-2 text-xs font-medium text-muted-foreground">Horarios más pedidos</h3>
+          <TopSlots metrics={metrics} />
+        </div>
+      )}
+      <div className={metrics.topSlots.length > 0 ? 'border-t border-border pt-4' : undefined}>
+        <h3 className="mb-1 text-xs font-medium text-muted-foreground">Ausencias</h3>
+        <NoShow metrics={metrics} />
+      </div>
+    </section>
   )
 }
 
-/** Top 5 horarios de inicio más reservados, como barras horizontales simples. */
-function TopSlots({ metrics }: { metrics: TenantMetrics }) {
-  const max = Math.max(1, ...metrics.topSlots.map((s) => s.count))
+function RecentSkeleton() {
   return (
-    <Card title="Top 5 horarios más reservados">
-      {metrics.topSlots.length === 0 ? (
-        <GhostTopSlots />
-      ) : (
-        <ul className="space-y-2">
-          {metrics.topSlots.map((slot) => (
-            <li key={slot.time} className="flex items-center gap-3 text-sm">
-              <span className="w-12 shrink-0 font-medium tabular-nums text-foreground">
-                {slot.time}
-              </span>
-              <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
-                <span
-                  className="block h-full rounded-full bg-emerald-500"
-                  style={{ width: `${Math.round((slot.count / max) * 100)}%` }}
-                />
-              </span>
-              <span className="w-8 shrink-0 text-right tabular-nums text-muted-foreground">
-                {slot.count}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Card>
+    <div className="card-premium space-y-4 p-4 sm:p-5" role="status" aria-label="Cargando métricas">
+      <Skeleton className="h-4 w-28" />
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="space-y-1.5">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-1.5 w-full" />
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -364,30 +199,39 @@ function SystemPanel({ status, nowMs }: { status: SystemStatus | null; nowMs: nu
   )
 }
 
+/**
+ * La parte de Métricas que vive en el cliente y se refresca cada minuto: los
+ * últimos 30 días (horarios y ausencias) y, solo para el superadmin de la
+ * plataforma, el estado del sistema.
+ *
+ * `showRecent` es falso en los meses cerrados: los 30 días corridos son de
+ * "ahora" y al lado de agosto no dicen nada (eran la mitad de las "dos páginas
+ * pegadas"). Ahí ni se piden.
+ */
 export default function MetricsDashboard({
   canSeeSystem,
-  isAnimationActive = true,
+  showRecent,
 }: {
   canSeeSystem: boolean
-  /** recharts anima en JS (prefers-reduced-motion no lo frena). Default true: no cambia el comportamiento de la app. */
-  isAnimationActive?: boolean
+  showRecent: boolean
 }) {
   const [metrics, setMetrics] = useState<TenantMetrics | null>(null)
   const [system, setSystem] = useState<SystemStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [nowMs, setNowMs] = useState(() => Date.now())
-  const chart = useChartTheme()
 
   const load = useCallback(async () => {
-    try {
-      const res = await fetch('/api/admin/metrics', { cache: 'no-store' })
-      if (!res.ok) throw new Error(await rejectionMessage(res, GENERIC_LOAD_ERROR))
-      const json = (await res.json()) as { data: TenantMetrics }
-      setMetrics(json.data)
-      setError(null)
-    } catch (err) {
-      // Conservamos los últimos datos buenos; el banner avisa solo si nunca cargó.
-      setError(err instanceof Error ? err.message : GENERIC_LOAD_ERROR)
+    if (showRecent) {
+      try {
+        const res = await fetch('/api/admin/metrics', { cache: 'no-store' })
+        if (!res.ok) throw new Error(await rejectionMessage(res, GENERIC_LOAD_ERROR))
+        const json = (await res.json()) as { data: TenantMetrics }
+        setMetrics(json.data)
+        setError(null)
+      } catch (err) {
+        // Conservamos los últimos datos buenos; el aviso dice que son viejos.
+        setError(err instanceof Error ? err.message : GENERIC_LOAD_ERROR)
+      }
     }
     if (canSeeSystem) {
       try {
@@ -402,7 +246,7 @@ export default function MetricsDashboard({
     // Sello de "cuándo se cargaron estos números", que la UI muestra como
     // "actualizado hace X": el instante del fetch, no el del render.
     setNowMs(Date.now())
-  }, [canSeeSystem])
+  }, [canSeeSystem, showRecent])
 
   useEffect(() => {
     // `load` es asincrónica y escribe estado recién después de sus `await`
@@ -415,101 +259,28 @@ export default function MetricsDashboard({
     return () => clearInterval(id)
   }, [load])
 
-  if (!metrics && error) {
-    return (
-      <div className="rounded-lg border border-red-200 dark:border-red-500/30 bg-red-50 dark:bg-red-500/10 p-4 text-sm text-red-700 dark:text-red-400">
-        {error}
-      </div>
-    )
+  let recent: React.ReactNode = null
+  if (showRecent) {
+    if (metrics) {
+      recent = <Recent metrics={metrics} staleError={error} />
+    } else if (error) {
+      recent = (
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300"
+        >
+          {error}
+        </div>
+      )
+    } else {
+      recent = <RecentSkeleton />
+    }
   }
-
-  if (!metrics) {
-    return (
-      <div
-        className="flex min-h-[40vh] items-center justify-center"
-        role="status"
-        aria-label="Cargando métricas"
-      >
-        {/* aria-hidden: el wrapper ya anuncia la carga — un role="status"
-            anidado duplica el anuncio en lectores de pantalla. */}
-        <TgBallSpinner size="lg" text="Cargando métricas…" aria-hidden />
-      </div>
-    )
-  }
-
-  const bookingsData = metrics.bookingsPerDay.map((d) => ({
-    label: dayLabel(d.date),
-    count: d.count,
-  }))
-  // H033: sin una sola reserva en la ventana, el LineChart quedaba en blanco
-  // sin avisar — mismo patrón "primera vez espectral" que TopSlots/Ingresos.
-  const bookingsEmpty = metrics.bookingsPerDay.every((d) => d.count === 0)
 
   return (
-    <div className="space-y-4">
-      {error && (
-        <div className="rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-4 py-2 text-xs text-amber-700 dark:text-amber-300">
-          {error} Estás viendo datos anteriores.
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <div className="card-premium rounded-lg p-4">
-            <h2 className="text-sm font-semibold text-foreground">Reservas por día</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Últimos {metrics.windowDays} días</p>
-            {bookingsEmpty ? (
-              <div className="mt-3">
-                <GhostBars />
-                <p className="mt-3 text-sm text-muted-foreground">
-                  Así se van a ver tus reservas por día.
-                </p>
-              </div>
-            ) : (
-              <div className="mt-3 h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={bookingsData} margin={{ top: 4, right: 8, left: 8, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} vertical={false} />
-                    <XAxis
-                      dataKey="label"
-                      tick={{ fontSize: 11, fill: chart.axis }}
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis
-                      allowDecimals={false}
-                      tick={{ fontSize: 11, fill: chart.axis }}
-                      width={32}
-                    />
-                    <Tooltip
-                      formatter={(value) => [String(value), 'Reservas']}
-                      labelStyle={chart.tooltip.labelStyle}
-                      contentStyle={chart.tooltip.contentStyle}
-                      itemStyle={chart.tooltip.itemStyle}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="count"
-                      stroke={chart.primary}
-                      strokeWidth={2}
-                      dot={false}
-                      activeDot={{ r: 4 }}
-                      isAnimationActive={isAnimationActive}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </div>
-        </div>
-        <NoShowCard metrics={metrics} />
-      </div>
-
-      <RevenueChart metrics={metrics} isAnimationActive={isAnimationActive} />
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <TopSlots metrics={metrics} />
-        {canSeeSystem && <SystemPanel status={system} nowMs={nowMs} />}
-      </div>
-    </div>
+    <>
+      {recent}
+      {canSeeSystem && <SystemPanel status={system} nowMs={nowMs} />}
+    </>
   )
 }

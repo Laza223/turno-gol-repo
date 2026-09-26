@@ -11,6 +11,8 @@
  *              `<button aria-disabled="true">` (no `disabled`).
  *   #4  Edge — CSV export: "Exportar CSV" es un `<button>` (fetch + blob), no un link
  *              con `href` — el download event sigue disparando igual.
+ *   #5  Edge — mes futuro en la URL (?month=2099-01): cae al mes en curso, igual que
+ *              uno inválido. Antes se mostraba como un mes cerrado vacío.
  *
  * ISOLATION: Test #1 seeds rows with a unique description marker and cleans them in `finally`.
  */
@@ -171,5 +173,21 @@ test.describe('Reportes', () => {
     } finally {
       await supabase.from('cash_flows').delete().eq('id', cashflowId)
     }
+  })
+
+  test('#5 edge — a future month in the URL falls back to the current month', async ({
+    page,
+    adminStorageState,
+  }) => {
+    await page.context().addCookies(JSON.parse(adminStorageState).cookies)
+    await page.goto('/analiticas?month=2099-01')
+
+    await expect(page.getByRole('button', { name: 'Mes siguiente' })).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    )
+    // Ni el nombre del mes futuro ni su vacío de mes cerrado.
+    await expect(page.getByText(/2099/)).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'En enero no hubo cobros' })).toHaveCount(0)
   })
 })

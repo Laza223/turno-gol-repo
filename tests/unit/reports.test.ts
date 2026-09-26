@@ -6,6 +6,7 @@ import {
   formatMonthLabel,
   calcAvailableMinutes,
   calcOccupancyPct,
+  occupancyEndDate,
   toCsv,
   aggregateByMethod,
   isReportEmpty,
@@ -134,6 +135,46 @@ describe('calcAvailableMinutes', () => {
     // Sin el flag el cierre de madrugada es un rango inválido: 0, y está bien
     // que lo sea — es el mismo criterio que usan los generadores de slots.
     expect(calcAvailableMinutes('2026-05-04', '2026-05-05', madrugada, 1, null, false)).toBe(0)
+  })
+})
+
+describe('occupancyEndDate', () => {
+  const SEP = getMonthBounds('2026-09')
+
+  it('mes en curso: corta mañana (hoy entra entero)', () => {
+    expect(occupancyEndDate(SEP, '2026-09-05')).toBe('2026-09-06')
+  })
+
+  it('primer día del mes: ya cuenta ese día', () => {
+    expect(occupancyEndDate(SEP, '2026-09-01')).toBe('2026-09-02')
+  })
+
+  it('último día del mes: el mes entero', () => {
+    expect(occupancyEndDate(SEP, '2026-09-30')).toBe('2026-10-01')
+  })
+
+  it('mes pasado: el mes entero', () => {
+    expect(occupancyEndDate(SEP, '2026-11-15')).toBe('2026-10-01')
+  })
+
+  it('mes futuro: tramo vacío', () => {
+    expect(occupancyEndDate(SEP, '2026-08-20')).toBe('2026-09-01')
+  })
+
+  it('cruza de año en diciembre', () => {
+    expect(occupancyEndDate(getMonthBounds('2026-12'), '2026-12-31')).toBe('2027-01-01')
+  })
+
+  it('REGRESIÓN: el día 5, una cancha llena los 5 días marca 100%, no ~17%', () => {
+    // Antes el denominador era el mes entero: 5 días llenos / 30 días = 16,7%.
+    const booked = 5 * 960
+    const end = occupancyEndDate(SEP, '2026-09-05')
+    expect(
+      calcOccupancyPct(booked, calcAvailableMinutes(SEP.fromDate, end, ALL_DAY_HOURS, 1)),
+    ).toBe(100)
+    expect(
+      calcOccupancyPct(booked, calcAvailableMinutes(SEP.fromDate, SEP.toDate, ALL_DAY_HOURS, 1)),
+    ).toBe(16.7)
   })
 })
 

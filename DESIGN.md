@@ -408,6 +408,10 @@ Lo semanal de la cantina (`/caja/productos`), rehecho el 2026-09-26 con el mismo
 - **Catálogo y lo que más salió:** desde `lg`, lado a lado (3 a 2). El catálogo es una fila por producto con el precio y el stock en palabras ("Stock 252 · mín 100", "Quedan 55" en ámbar, "Agotado" en rojo, "No lleva stock", "Pausado") y Reponer, Editar y "⋯" sin borde; en el teléfono esos dos pasan al menú. "Lo que más salió" son los 8 que más plata hicieron, con una barra `primary` sobre `muted`, "48 u · $336.000", el total arriba y los chips de 7 y 30 días; el resto, detrás de "Ver los otros N".
 - **Movimientos de stock:** plegado, una tarjeta más al pie.
 
+### Métricas
+
+- **Ocupación por cancha:** minutos reservados sobre minutos que la cancha estuvo abierta, en el mismo tramo. En el mes en curso el tramo va del 1 a hoy inclusive (día operativo del complejo): un turno de mañana todavía no suma, y los días que faltan tampoco cuentan en el total. Un mes cerrado cuenta entero; uno que no empezó marca 0%.
+
 ## Do's and Don'ts
 
 ### Do:

@@ -195,6 +195,27 @@ export function calcAvailableMinutes(
   return totalPerCourt * courtCount
 }
 
+/**
+ * Fin EXCLUSIVO ('YYYY-MM-DD') del tramo del mes que cuenta para la ocupación.
+ *
+ * Con el mes en curso, medir contra el mes entero hacía que el día 5 una cancha
+ * casi llena marcara ~15%: el denominador ya traía los 25 días que faltan. El
+ * corte es "hasta hoy inclusive" en día operativo, y el mismo recorte vale para
+ * el numerador — los turnos de mañana en adelante no suman todavía. Hoy entra
+ * entero: los turnos de esta noche ya reservados cuentan, igual que sus minutos.
+ *
+ * Mes pasado ⇒ `toDate` (el mes entero). Mes futuro ⇒ `fromDate` (tramo vacío,
+ * 0 minutos disponibles, 0%).
+ */
+export function occupancyEndDate(bounds: MonthBounds, todayOperatingDate: string): string {
+  const next = new Date(`${todayOperatingDate}T12:00:00Z`)
+  next.setUTCDate(next.getUTCDate() + 1)
+  const tomorrow = next.toISOString().slice(0, 10)
+  if (tomorrow < bounds.fromDate) return bounds.fromDate
+  if (tomorrow > bounds.toDate) return bounds.toDate
+  return tomorrow
+}
+
 /** Returns occupancy as a 0–100 number rounded to 1 decimal. Returns 0 if availableMinutes is 0. */
 export function calcOccupancyPct(bookedMinutes: number, availableMinutes: number): number {
   if (availableMinutes === 0) return 0

@@ -51,7 +51,7 @@ Request de staff: `withTenant()` → `extractAuthUser` (JWT `app_metadata`) → 
 
 **Guards.** `src/modules/staff/guards.ts`: `requireAdminStaff()` (pages, redirige), `requireOperatorStaff()` / `requireAdminStaffAction()` (Server Actions, devuelven `{ok:false}`). `src/modules/auth/system-admin.guards.ts`: triple check (JWT `is_system_admin` + fila activa en `system_admins` + allowlist `SYSTEM_ADMIN_EMAILS`). `middleware.ts` raíz (edge): Fetch-Metadata anti-CSRF + rate-limit + request-id en rutas públicas/de dinero.
 
-**Background jobs.** Entrypoint standalone (desacoplado de Next.js): `src/shared/jobs/run-workers.ts` (deploy vía `Dockerfile.worker` / `railway.toml`). 17 workers en `src/shared/jobs/workers/index.ts`; colas y retry-config en `definitions.ts` / `queue-names.ts`. OJO: los crons registrados sin `SendOptions` corren con `retryLimit=0` real — el "retry" es el próximo tick del cron, no pg-boss.
+**Background jobs.** Entrypoint standalone (desacoplado de Next.js): `src/shared/jobs/run-workers.ts` (deploy vía `Dockerfile.worker` / `railway.toml`). 18 workers en `src/shared/jobs/workers/index.ts`; colas y retry-config en `definitions.ts` / `queue-names.ts`. OJO: los crons registrados sin `SendOptions` corren con `retryLimit=0` real — el "retry" es el próximo tick del cron, no pg-boss.
 
 **Migraciones.** SQL a mano en `src/shared/db/migrations/NNN_*.sql` (incluyen RLS, triggers y grants que drizzle-kit no genera), con espejo timestamped en `supabase/migrations/`. `db:push`, `db:migrate` y `db:sync-supabase` están **DENEGADOS** por `.claude/settings.json` (los corre Lazar). Costo fijo de una tabla tenant-aislada nueva y flujo completo: skill `convenciones-stack`.
 

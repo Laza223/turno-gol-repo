@@ -19,6 +19,7 @@ export const ALL_QUEUES: readonly string[] = [
   'send-email',
   'expire-trials',
   'auto-complete-bookings',
+  'auto-credit-unpaid',
   'dunning-retry',
   'data-retention-cleanup',
   'expire-pending-booking',

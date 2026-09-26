@@ -90,6 +90,7 @@ export function StockLedgerList({
     <div className="space-y-3">
       <ResponsiveList
         flat
+        scrollLabel="Movimientos de stock"
         cards={
           <ul className="divide-y divide-border border-b border-border">
             {entries.map((e) => (

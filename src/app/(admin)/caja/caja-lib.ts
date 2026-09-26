@@ -10,10 +10,10 @@ import { startLabelFromMins } from '@/shared/time/operating-day'
 
 // ── Métodos de pago ──────────────────────────────────────────────────────────
 // Fuente canónica: @/lib/payment-method (la necesitan componentes fuera de
-// app/, ver BookingPopover). Re-exportadas acá para no tocar los consumidores
-// existentes de caja-lib.
+// app/, ver BookingPopover). El tipo se re-exporta acá para no tocar los
+// consumidores existentes de caja-lib; los labels se importan de la fuente.
 
-export { METHOD_LABELS, type MethodKey }
+export { type MethodKey }
 
 // Orden fijo de arqueo: el efectivo (lo que se cuenta) primero.
 const METHOD_ORDER: MethodKey[] = ['cash', 'transfer', 'mercadopago', 'other']
@@ -87,11 +87,29 @@ function isLowStock(p: { stock: number | null; minStock: number | null }): boole
   return badge?.tone === 'low' || badge?.tone === 'out'
 }
 
+/** Los productos activos que piden reposición, en el orden en que llegan. Ver `isLowStock`. */
+export function productsToRestock<
+  T extends { stock: number | null; minStock: number | null; isActive: boolean },
+>(products: T[]): T[] {
+  return products.filter((p) => p.isActive && isLowStock(p))
+}
+
 /** Cuántos productos activos piden reposición. Ver `isLowStock`. */
 export function countLowStock(
   products: { stock: number | null; minStock: number | null; isActive: boolean }[],
 ): number {
-  return products.filter((p) => p.isActive && isLowStock(p)).length
+  return productsToRestock(products).length
+}
+
+/**
+ * Para cuántas noches alcanza el stock al ritmo de los últimos 7 días (lo
+ * vendido en la semana, repartido en siete noches). `null` cuando no hay ritmo
+ * que medir: el producto no lleva stock o no se vendió en la semana. 0 = no
+ * alcanza para una noche entera.
+ */
+export function nightsOfStockLeft(stock: number | null, unitsLast7Days: number): number | null {
+  if (stock == null || unitsLast7Days <= 0) return null
+  return Math.max(Math.floor((stock * 7) / unitsLast7Days), 0)
 }
 
 // ── Categorías ───────────────────────────────────────────────────────────────

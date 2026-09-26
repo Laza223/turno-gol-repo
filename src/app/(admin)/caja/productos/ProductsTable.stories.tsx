@@ -1,19 +1,31 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
-import { canteenProduct, canteenProductsWithInactive } from '@/test/fixtures'
+import { canteenProduct, canteenProductsWithInactive, salesRanking } from '@/test/fixtures'
 import { uid } from '@/test/fixtures/ids'
 import { ProductsTable } from './ProductsTable'
+import { TopSellers } from './TopSellers'
 import type { ProductActionResult, StockActionResult } from './actions'
 
 const PRODUCTS = canteenProductsWithInactive()
 
-/** Vive suelto sobre `bg-background` en caja/productos/page.tsx (define su propia superficie `bg-card`). */
+/**
+ * Ventas de la semana del fixture: el Gatorade (2 en stock, mínimo 5) vendió 10
+ * → alcanza 1 noche; la IPA está agotada.
+ */
+const UNITS_LAST_7_DAYS: Record<string, number> = {
+  [uid(801)]: 18,
+  [uid(803)]: 10,
+  [uid(804)]: 12,
+}
+
+/** Vive sobre `bg-background` en caja/productos/page.tsx: cada bloque es su propia tarjeta. */
 const meta = {
   title: 'Admin/Caja/Productos/ProductsTable',
   component: ProductsTable,
   parameters: { layout: 'padded' },
   args: {
     products: PRODUCTS,
+    unitsLast7Days: UNITS_LAST_7_DAYS,
     canEditCatalog: true,
     createProductAction: fn(async (): Promise<ProductActionResult> => ({ success: true })),
     updateProductAction: fn(async (): Promise<ProductActionResult> => ({ success: true })),
@@ -30,10 +42,65 @@ type Story = StoryObj<typeof meta>
 export const ComoAdmin: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    const catalog = within(canvas.getByRole('region', { name: /Catálogo/ }))
     for (const p of PRODUCTS) {
-      await expect(canvas.getAllByText(p.name).length).toBeGreaterThan(0)
+      await expect(catalog.getByText(p.name)).toBeVisible()
     }
     await expect(canvas.getByRole('button', { name: /agregar producto/i })).toBeVisible()
+  },
+}
+
+/**
+ * Lo primero de la página: lo que hay que reponer, lo más urgente arriba y con
+ * para cuántas noches alcanza al ritmo de la semana. Su botón abre la misma
+ * reposición que la fila del catálogo.
+ */
+export const ParaReponer: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const body = within(canvasElement.ownerDocument.body)
+    const card = canvas.getByRole('region', { name: /Para reponer/ })
+    await expect(card).toHaveTextContent('Para reponer · 2')
+
+    const items = within(card).getAllByRole('listitem')
+    // El agotado va primero: no alcanza para ninguna noche.
+    await expect(items[0]).toHaveTextContent(
+      'Cerveza IPA lata agotado · esta semana se vendieron 12',
+    )
+    await expect(items[1]).toHaveTextContent(
+      'Gatorade 500ml quedan 2 (mínimo 5) · al ritmo de esta semana alcanza 1 noche',
+    )
+    // El pausado nunca pide reposición, aunque su stock esté bajo.
+    await expect(within(card).queryByText(/Sanguchito/)).toBeNull()
+
+    await userEvent.click(within(card).getByRole('button', { name: 'Reponer Gatorade 500ml' }))
+    const dialogEl = await body.findByRole('dialog')
+    await waitFor(() => expect(dialogEl).toBeVisible())
+    await expect(dialogEl).toHaveTextContent('Gatorade 500ml')
+  },
+}
+
+/**
+ * Un agotado va primero aunque no se haya vendido en la semana: no hay ritmo que
+ * medir, pero no queda nada.
+ */
+export const AgotadoSinVentasVaPrimero: Story = {
+  args: { unitsLast7Days: { [uid(803)]: 10 } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const card = canvas.getByRole('region', { name: /Para reponer/ })
+    const items = within(card).getAllByRole('listitem')
+    await expect(items[0]).toHaveTextContent('Cerveza IPA lata agotado · no se vendió esta semana')
+    await expect(items[1]).toHaveTextContent('Gatorade 500ml')
+  },
+}
+
+/** Sin nada bajo el mínimo no hay tarjeta: un "todo bien" sería ruido. */
+export const NadaParaReponer: Story = {
+  args: { products: [canteenProduct()] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.queryByRole('region', { name: /Para reponer/ })).toBeNull()
   },
 }
 
@@ -83,12 +150,33 @@ export const AccionesALaVista: Story = {
 }
 
 /**
- * Catálogo de 30: de a 25 por página, con el total y la página 2 a un clic. El
+ * En el teléfono Reponer y Editar no entran al lado del nombre: la fila queda
+ * con nombre, stock, precio y "⋯", y las dos acciones pasan arriba del menú.
+ */
+export const EnElTelefono: Story = {
+  parameters: { viewport: { defaultViewport: 'mobile-primary' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const body = within(canvasElement.ownerDocument.body)
+    await expect(canvas.queryByRole('button', { name: 'Reponer' })).toBeNull()
+    await expect(canvas.queryByRole('button', { name: 'Editar' })).toBeNull()
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Opciones para Agua mineral 500ml' }))
+    await waitFor(async () => {
+      await expect(await body.findByRole('menuitem', { name: 'Reponer' })).toBeVisible()
+    })
+    await expect(body.getByRole('menuitem', { name: 'Editar' })).toBeVisible()
+    await expect(body.getByRole('menuitem', { name: 'Salida de stock' })).toBeVisible()
+  },
+}
+
+/**
+ * Catálogo de 45: de a 40 por página, con el total y la página 2 a un clic. El
  * pausado va último aunque sea el primero de la lista.
  */
 export const CatalogoLargo: Story = {
   args: {
-    products: Array.from({ length: 30 }, (_, i) =>
+    products: Array.from({ length: 45 }, (_, i) =>
       canteenProduct({
         id: uid(900 + i),
         name: `Producto ${String(i + 1).padStart(2, '0')}`,
@@ -98,16 +186,18 @@ export const CatalogoLargo: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const table = within(canvas.getByRole('table'))
+    // La primera lista de la tarjeta son los productos; el paginador trae la suya.
+    const catalog = within(canvas.getByRole('region', { name: /Catálogo/ }))
+    const list = within(catalog.getAllByRole('list')[0]!)
     const pager = within(canvas.getByRole('navigation', { name: 'Paginación del catálogo' }))
-    await expect(pager.getByRole('status')).toHaveTextContent('1–25 de 30')
-    await expect(table.getByText('Producto 02')).toBeVisible()
-    await expect(table.queryByText('Producto 01')).toBeNull()
+    await expect(pager.getByRole('status')).toHaveTextContent('1–40 de 45')
+    await expect(list.getByText('Producto 02')).toBeVisible()
+    await expect(list.queryByText('Producto 01')).toBeNull()
 
     await userEvent.click(pager.getByRole('button', { name: 'Página 2' }))
-    await expect(pager.getByRole('status')).toHaveTextContent('26–30 de 30')
-    await expect(table.getByText('Producto 01')).toBeVisible()
-    await expect(table.queryByText('Producto 02')).toBeNull()
+    await expect(pager.getByRole('status')).toHaveTextContent('41–45 de 45')
+    await expect(list.getByText('Producto 01')).toBeVisible()
+    await expect(list.queryByText('Producto 02')).toBeNull()
   },
 }
 
@@ -133,5 +223,16 @@ export const AbreReposicion: Story = {
     // carrera bajo la suite completa y lee opacity 0.
     const dialogEl = await body.findByRole('dialog')
     await waitFor(() => expect(dialogEl).toBeVisible())
+  },
+}
+
+/** La página entera: "Lo que más salió" al lado del catálogo desde `lg`. */
+export const ConLoQueMasSalio: Story = {
+  parameters: { layout: 'fullscreen' },
+  args: { aside: <TopSellers range={7} ranking={salesRanking()} /> },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('region', { name: /Lo que más salió/ })).toBeVisible()
+    await expect(canvas.getByRole('region', { name: /Catálogo/ })).toBeVisible()
   },
 }

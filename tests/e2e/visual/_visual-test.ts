@@ -62,7 +62,7 @@ export async function assertDevOverlayHookExists(page: Page): Promise<void> {
  * el nodo destino exista, o sea que necesita la hidratación.
  *
  * Sin esta espera la foto de la Grilla sale con la barra vacía —sin el segmento
- * Grilla|Reservas, sin la semana y sin el chip de lo pendiente— porque el
+ * Grilla|Agenda, sin la fecha y sin el chip de lo pendiente— porque el
  * contenido del servidor (los turnos) ya está visible y el test dispara la
  * captura antes de que el cliente monte. Pasó en la primera regeneración después
  * del rediseño: el escritorio salió pelado y el teléfono completo, que es
@@ -76,7 +76,9 @@ export async function waitForHeaderSlot(page: Page): Promise<void> {
   await expect(page.getByRole('navigation', { name: 'Vistas de la grilla' })).toBeVisible({
     timeout: 15_000,
   })
-  await expect(page.getByRole('button', { name: 'Semana anterior' })).toBeVisible({
+  // La fecha centrada de la barra (rediseño "Entra entera", 2026-09-25). La
+  // semana ya no vive en la barra sino en el popover de esta fecha.
+  await expect(page.getByRole('button', { name: /Elegir otra fecha$/ })).toBeVisible({
     timeout: 15_000,
   })
 }

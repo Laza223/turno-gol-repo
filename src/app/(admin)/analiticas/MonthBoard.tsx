@@ -99,9 +99,8 @@ function Adjustments({ report }: { report: RevenueReport }) {
  * notebook entran doce canchas.
  *
  * La barra compara la plata de cada cancha contra la que más cobró, como "Lo que
- * más salió" en Caja › Productos. La ocupación va en texto: se calcula sobre las
- * horas de TODO el mes, así que con el mes en curso queda baja (registrado en
- * 10-aprendizajes, 2026-09-26).
+ * más salió" en Caja › Productos. La ocupación va en texto; en el mes en curso
+ * cuenta del 1 a hoy (`occupancyEndDate`, report.utils).
  */
 export function MonthBoard({
   report,

@@ -25,7 +25,8 @@ Además, medido sobre el código:
   "↓ 83%" en rojo aunque el complejo viniera bien. "Tendencia mensual" dibujaba lo mismo en barras.
 - "Saldo" es ingresos + ajustes y no resta los gastos de Caja. Con cero ajustes (en el Vagón hubo cero en
   diez noches) "Ajustes" decía $ 0 y "Saldo" repetía "Ingresos".
-- La ocupación se calcula sobre las horas de todo el mes, también con el mes en curso.
+- La ocupación se calculaba sobre las horas de todo el mes, también con el mes en curso (arreglado
+  aparte en #391).
 - Los vacíos mostraban números de ejemplo (`GhostKpis` con $ 85.000, barras fantasma, "3,2%" de
   ausencias).
 - Usaba `PageHeader` en vez del hueco de la barra superior.
@@ -49,8 +50,9 @@ caso que describe el dueño; si se usa o no, se mide aparte.
    del mes anterior pediría una consulta nueva y no se hizo.
 3. **"Con ajustes" en lugar de "Saldo", y solo si hubo ajustes.** El número no cambia: sigue siendo
    ingresos + ajustes.
-4. **La ocupación queda como está y se registra** (`10-aprendizajes.md`, 2026-09-26). Arreglarla es contar
-   las horas disponibles hasta hoy en el mes en curso, en `report.service.ts`.
+4. **La ocupación no se toca en este cambio y se registra** (`10-aprendizajes.md`, 2026-09-26). El dueño la
+   arregló aparte el mismo día (#391, `occupancyEndDate` en `report.utils.ts`): en el mes en curso cuenta
+   del 1 a hoy inclusive.
 5. **Se resta**: los cuatro gráficos (Reservas por día, Ingresos de 30 días con Día/Semana/Mes, Tendencia
    mensual y Ocupación), la tabla por cancha duplicada, los vacíos con números de ejemplo, "Ajustes" y
    "Saldo" en cero y el `PageHeader`. Sin gráficos, `recharts` y `useChartTheme` salen del proyecto.

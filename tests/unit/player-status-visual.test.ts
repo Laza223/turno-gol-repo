@@ -74,6 +74,22 @@ describe('el "No cobrado" de la caja no llega al jugador', () => {
   })
 })
 
+describe('`ended` es aditivo: el portal no lo pasa y no cambia', () => {
+  it('confirmada con saldo, sin `ended`, sigue sin marcar "No cobrado" (mismo comportamiento de siempre)', () => {
+    const conPending = bookingBadgeVisual({
+      status: 'confirmed',
+      type: 'spontaneous',
+      pending: 150000,
+      totalPaid: 0,
+    })
+    expect(conPending.unpaid).toBe(false)
+    expect(conPending.label).toBe('Confirmada')
+    // El portal llama `playerBookingVisual`, que SIEMPRE null-ea la plata: el
+    // mismo estado, con o sin datos de pending/ended.
+    expect(playerBookingVisual('confirmed').label).toBe(conPending.label)
+  })
+})
+
 describe('un turno fijo no dice dos veces que es fijo', () => {
   it('el badge de estado no se convierte en "Abonado"', () => {
     // La tarjeta ya tiene su chip "Turno fijo" al lado. En la grilla `fixed`

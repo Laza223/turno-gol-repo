@@ -3,7 +3,8 @@
 import React from 'react'
 import { Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { gridSlotVisual, slotPendingCents } from '@/lib/booking/slot-visual'
+import { gridMoneyVisual } from '@/lib/booking/slot-visual'
+import { TONE_BORDER, TONE_TEXT, TONE_TINT } from '@/lib/status-tone'
 import { holdExpiresAtIso, holdRemainingLabel } from '@/lib/booking/hold'
 import { formatArs } from '@/lib/format'
 import { useNowMsAfterHydration } from '@/hooks/use-now'
@@ -23,7 +24,7 @@ type BookingCardProps = {
   /** Fila de arranque de los slots en el CSS Grid: 2 sin banda de colapso, 3 con ella. */
   rowOffset?: number
   /**
-   * El chip "No cobrados hoy" está encendido y este turno es de los que deben
+   * El chip "N sin cobrar" está encendido y este turno es de los que deben
    * plata: se le pone un anillo para encontrarlo en una matriz llena. No es un
    * estado del turno — es el foco de la pantalla.
    *
@@ -34,6 +35,13 @@ type BookingCardProps = {
   spotlighted?: boolean
   /** Pulso de atención (MASTER §5.3): la reserva acaba de entrar por Realtime. */
   isNew?: boolean
+  /**
+   * ¿Ya terminó este turno? (`hasBookingEnded`, GridScroller). Solo cambia algo
+   * para `confirmed`: con `pending>0` y `ended`, la celda pasa a "No cobrado"
+   * aunque el auto-complete todavía no lo pasó a `completed` (tarda ~30 min).
+   * Default `false`: un slot libre no tiene turno que terminar.
+   */
+  ended?: boolean
   courtId?: string
   courtName: string
   onSlotClick?: (courtId: string, slotTime: string) => void
@@ -48,12 +56,11 @@ function placement(col: number, row: number, span: number, rowOffset: number): R
 }
 
 /**
- * El mapa canónico de estados vive en `@/lib/booking/slot-visual` desde Fase 3
- * — compartido con la leyenda de la grilla y con el listado de /reservas, que
- * antes tenían cada uno su copia a mano (y ya habían divergido en los tintes).
- *
- * La regla de lectura no cambió (pages/grilla.md §2, MASTER §2.6): el COLOR
- * comunica el estado de la plata, el ÍCONO + label comunican qué es.
+ * El mapa de estados de esta celda (`gridMoneyVisual`) vive en
+ * `@/lib/booking/slot-visual` — compartido con `GridLegend`. Variante "Entra
+ * entera" (decisión del dueño, 2026-09-25): el COLOR es SOLO de la plata
+ * (rojo lo jugado y no cobrado, verde lo pagado entero, el resto sin color);
+ * el ÍCONO + label comunican qué es.
  */
 
 /**
@@ -131,6 +138,7 @@ function BookingCardComponent({
   rowOffset = 2,
   spotlighted = false,
   isNew = false,
+  ended = false,
   courtId,
   courtName,
   onSlotClick,
@@ -142,20 +150,25 @@ function BookingCardComponent({
 
     if (!interactive) {
       // Pasado: transparente, el eje ya marca la hora. Cancha pausada: gris
-      // neutro no clickeable.
+      // neutro no clickeable. Solo las líneas de la hoja (variante "Entra
+      // entera"): la celda libre dejó de ser una cajita con borde propio.
       return (
         <div
           aria-hidden
           style={placement(col, row, span, rowOffset)}
-          className={cn('m-0.5 rounded-md', isPast ? 'bg-transparent' : 'bg-muted/40')}
+          className={cn(
+            'border-b border-l border-border/60',
+            isPast ? 'bg-transparent' : 'bg-muted/20',
+          )}
         />
       )
     }
 
-    // Libre: superficie card con borde (visible, no lavado emerald) + Plus
-    // SIEMPRE visible al 40% — en touch no hay hover y la affordance no se
-    // adivina (pages/grilla.md §2, desvío documentado de §2.6). El click abre
-    // DIRECTO el modal de alta (§3bis): no hay superficie intermedia.
+    // Libre: SOLO las líneas de la hoja + Plus SIEMPRE visible al 40% — en
+    // touch no hay hover y la affordance no se adivina (pages/grilla.md §2,
+    // desvío documentado de §2.6). El click abre DIRECTO el modal de alta
+    // (§3bis): no hay superficie intermedia. Sin margen ni card propia: toda
+    // la celda es el botón (44px tocable en el teléfono, MASTER §10).
     return (
       <button
         type="button"
@@ -165,10 +178,9 @@ function BookingCardComponent({
         onClick={() => onSlotClick?.(courtId!, timeStart)}
         aria-label={`Reservar turno ${timeStart} en ${courtName}`}
         className={cn(
-          'group m-0.5 flex cursor-pointer items-center justify-center rounded-md',
-          'border border-border/60 bg-card',
-          'hover:border-emerald-500 hover:bg-emerald-500/5 dark:hover:border-emerald-400',
-          'transition-colors duration-150',
+          'group flex h-full w-full cursor-pointer items-center justify-center',
+          'border-b border-l border-border/60',
+          'transition-colors duration-150 hover:bg-primary/5',
           'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
         )}
       >
@@ -184,10 +196,29 @@ function BookingCardComponent({
     )
   }
 
-  const visual = gridSlotVisual(booking)
-  const pendingCents = slotPendingCents(booking)
+  // El color es de la plata (variante "Entra entera", decisión del dueño
+  // 2026-09-25): `gridMoneyVisual`, NO `gridSlotVisual` (esa sigue viva para
+  // el modal de cobro de Hoy). `started` = `isPast` de la fila propia del
+  // turno: como el turno solo renderiza UNA celda (en su slot de inicio),
+  // `isPast` de ESTE render es exactamente "¿ya empezó?".
+  const visual = gridMoneyVisual({ ...booking, ended, started: isPast })
   const displayName = bookingDisplayName(booking)
   const StateIcon = visual.icon
+  const hasAmount = visual.amountCents !== null
+  // Corto = monto pelado siempre; largo agrega "Falta" solo si hubo pago
+  // parcial (los estados sin monto usan el propio label en las dos
+  // variantes, ej. "Bloqueado", "Pagado").
+  const money = hasAmount
+    ? {
+        short: formatArs(visual.amountCents!),
+        long: visual.partial
+          ? `Falta ${formatArs(visual.amountCents!)}`
+          : formatArs(visual.amountCents!),
+      }
+    : { short: visual.label, long: visual.label }
+  // Tinte + borde de color solo en rojo/verde/ámbar; lo neutral usa la receta
+  // fija de la hoja (DESIGN.md §Grilla de turnos).
+  const colored = visual.tone !== 'neutral'
 
   // Click/tap/Enter abre el panel lateral (Fase 3) con el detalle Y las
   // acciones. Antes esto abría un popover de sólo-lectura por hover: se sacó
@@ -206,14 +237,17 @@ function BookingCardComponent({
       onClick={() => onDetailChange?.(booking.id)}
       aria-haspopup="dialog"
       aria-expanded={detailOpen}
-      aria-label={`${courtName} ${timeStart}–${booking.timeEnd}: ${displayName ? `${displayName}, ${visual.label}` : visual.label}${pendingCents !== null ? `, falta cobrar ${formatArs(pendingCents)}` : ''}`}
+      // El sufijo "falta cobrar" se mantiene literal (no `money.long`, que
+      // solo dice "Falta" con pago parcial): un lector de pantalla necesita
+      // el verbo, no solo el número.
+      aria-label={`${courtName} ${timeStart}–${booking.timeEnd}: ${displayName ? `${displayName}, ${visual.label || 'confirmada'}` : visual.label || 'confirmada'}${hasAmount ? `, falta cobrar ${formatArs(visual.amountCents!)}` : ''}`}
       className={cn(
-        'm-0.5 flex cursor-pointer overflow-hidden rounded-md border-l-[3px] text-left',
-        visual.cell,
-        visual.borderL,
-        // "No cobrado" NO se atenúa con isPast: es pasado por definición, y
-        // desaturarlo le borraría el rojo que dice que falta la plata.
-        isPast && !visual.pendingCharge && 'opacity-90 saturate-50',
+        // `bg-card` abajo y el tinte en el `<span>` de adentro: los tintes son
+        // translúcidos, y sobre la grilla la línea de "ahora" (que pasa por
+        // DEBAJO de las tarjetas) se veía a través de ellas tachando nombres.
+        'relative m-[3px] flex min-w-0 cursor-pointer overflow-hidden rounded-md border-l-[3px] bg-card text-left',
+        'transition-shadow hover:shadow-md',
+        colored ? TONE_BORDER[visual.tone] : 'border-l-slate-400 dark:border-l-slate-500',
         isNew && 'animate-slot-pulse',
         // Anillo rojo sólido, el tono de "No cobrado": el chip que lo enciende
         // es rojo y lo que marca es plata pendiente. Sin `/N`: el token está
@@ -222,46 +256,47 @@ function BookingCardComponent({
         'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
       )}
     >
-      {/* DOS líneas, nunca tres. El saldo era una tercera línea que en una fila
-          de 52 px se recortaba; ahora va al costado del nombre, en el color del
-          estado y en negrita — que es lo que se busca de lejos en una matriz de
-          7 canchas. */}
-      {/* Dos renglones, nunca tres, en los dos tamaños. Lo que cambia con el
-          ancho es QUÉ va en el segundo: en escritorio el monto entra al lado del
-          nombre y abajo queda el rótulo del estado; en la columna de 44 px del
-          teléfono el monto no entra arriba, así que baja y desplaza al rótulo —
-          que el color y el ícono ya comunican. El ancho se resuelve por CSS y no
-          por un hook de viewport: así no hay un cuadro con la tipografía del
-          tamaño equivocado antes de que el hook responda. */}
-      <span className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-1 py-1 lg:px-2 lg:py-1.5">
-        <span className="flex min-w-0 flex-col gap-1.5 lg:flex-row lg:items-baseline lg:justify-between">
-          <span className="truncate text-[11px] font-semibold leading-tight text-foreground lg:text-[13px]">
-            {displayName ?? ' '}
-          </span>
-          {pendingCents !== null && (
-            <span
-              className={cn(
-                'hidden shrink-0 whitespace-nowrap text-[13px] font-bold leading-tight tabular-nums lg:inline',
-                visual.labelText,
-              )}
-            >
-              {formatArs(pendingCents)}
-            </span>
-          )}
+      {/* El contenedor de la consulta por ancho es este `<span>` y no el
+          `<button>`: sobre un botón Chrome no aplica `container-type`. */}
+      <span
+        className={cn(
+          '@container flex min-w-0 flex-1 flex-col justify-between px-1 py-[3px] lg:px-1.5 lg:py-1',
+          visual.striped && 'slot-blocked-stripes',
+          colored ? TONE_TINT[visual.tone] : 'bg-secondary/50 dark:bg-secondary',
+        )}
+      >
+        <span
+          lang="es"
+          className="truncate text-xs leading-[1.2] font-semibold text-foreground @min-[3.5rem]:line-clamp-2 @min-[3.5rem]:whitespace-normal @min-[3.5rem]:hyphens-auto @min-[8.5rem]:text-sm"
+        >
+          {displayName ?? ' '}
         </span>
+        {/* Un bloqueo de 2 h no es un evento: ya lo dice el rayado. */}
+        {span > 1 && booking.type !== 'block' && (
+          <span className="hidden text-xs text-muted-foreground @min-[4.5rem]:block">
+            Evento · {span} h
+          </span>
+        )}
         <span
           className={cn(
-            'flex min-w-0 items-center gap-1 text-[10px] font-semibold leading-tight lg:text-[11px]',
-            visual.labelText,
+            'flex min-w-0 items-center gap-1 text-xs font-semibold tabular-nums',
+            colored ? TONE_TEXT[visual.tone] : 'text-muted-foreground',
           )}
         >
-          <StateIcon aria-hidden className="h-3 w-3 shrink-0" />
-          {pendingCents !== null && (
-            <span className="truncate tabular-nums lg:hidden">{formatArs(pendingCents)}</span>
+          {/* Angosta: si hay plata, la plata (en su color) le gana el lugar al ícono. */}
+          {StateIcon && (
+            <StateIcon
+              aria-hidden
+              className={cn(
+                'h-3.5 w-3.5 shrink-0',
+                hasAmount && '@min-[3.75rem]:hidden @min-[7rem]:block',
+              )}
+            />
           )}
-          <span className={cn('truncate', pendingCents !== null && 'hidden lg:inline')}>
-            {visual.label}
+          <span className="hidden truncate @min-[3.75rem]:inline @min-[7rem]:hidden">
+            {money.short}
           </span>
+          <span className="hidden truncate @min-[7rem]:inline">{money.long}</span>
           {booking.status === 'pending_payment' && booking.createdAt && (
             <HoldCountdown createdAt={booking.createdAt} />
           )}

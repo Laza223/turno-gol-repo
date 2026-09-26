@@ -72,9 +72,10 @@ export interface NavItem {
  * uso — no por el schema. Configuración vive aparte, al pie: está fuera del
  * flujo diario.
  *
- * Fase 4 fusionó a nivel de navegación: "Reservas" es la pestaña Lista de
- * Grilla y "Turnos fijos" es una pestaña de Clientes. Las URLs no cambiaron —
- * ninguna ruta se movió, sólo dejaron de ser ítems de primer nivel.
+ * Fase 4 fusionó a nivel de navegación: "Agenda" (ex-"Reservas") es la
+ * pestaña Lista de Grilla y "Turnos fijos" es una pestaña de Clientes. Las
+ * URLs no cambiaron — ninguna ruta se movió, sólo dejaron de ser ítems de
+ * primer nivel.
  */
 const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Hoy' },

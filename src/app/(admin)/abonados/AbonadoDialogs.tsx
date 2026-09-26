@@ -123,7 +123,7 @@ export function AbonadoDialogs({
             </p>
             <ol className="list-decimal list-inside space-y-1.5 text-xs text-foreground bg-muted/40 p-3 rounded-xl border border-border">
               <li>
-                Ingresá a la <strong>Grilla</strong> o a la lista de <strong>Reservas</strong>.
+                Ingresá a la <strong>Grilla</strong> o a la <strong>Agenda</strong>.
               </li>
               <li>Buscá la fecha del día que avisaron que no asistirán.</li>
               <li>

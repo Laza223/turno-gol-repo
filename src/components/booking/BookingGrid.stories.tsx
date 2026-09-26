@@ -2,11 +2,13 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, mocked, userEvent, waitFor, within } from 'storybook/test'
 import { vi } from 'vitest'
 import { useBookingRealtime } from '@/hooks/use-booking-realtime'
-import { courts } from '@/test/fixtures/court'
+import { court, courts } from '@/test/fixtures/court'
 import { openingHours, tenant } from '@/test/fixtures/tenant'
 import { booking, saturdayAfternoonGridBookings } from '@/test/fixtures/booking'
+import { uid } from '@/test/fixtures/ids'
 import { abonado } from '@/test/fixtures/abonado'
 import { ADMIN_HEADER_SLOT_ID } from '@/components/layout/admin-header-slot'
+import type { GridBooking } from '@/lib/booking/grid-cells'
 import { BookingGrid } from './BookingGrid'
 
 /**
@@ -179,11 +181,11 @@ export const PrimeraReserva: Story = {
  * "No cobrado" en rojo (`destructive`, decisión del dueño 2026-09-25 — revierte
  * el ámbar del refinamiento 2026-09-24): un turno jugado con saldo y otro
  * confirmado con saldo. La celda jugada dice "No cobrado" sin anillo — es lo
- * normal de la media hora que sigue al partido —, y el chip "No cobrados hoy"
+ * normal de la media hora que sigue al partido —, y el chip "N sin cobrar"
  * (rojo) le pone un anillo rojo a los dos al encenderse.
  */
 export const PorCobrarHoy: Story = {
-  name: 'Chip "No cobrados hoy" encendido → anillo rojo en los que deben',
+  name: 'Chip "N sin cobrar" encendido → anillo rojo en los que deben',
   beforeEach: () => {
     const [played, upcoming, ...rest] = saturdayAfternoonGridBookings().map((b) => ({
       ...b,
@@ -205,7 +207,7 @@ export const PorCobrarHoy: Story = {
     // Sin chip: ningún anillo. El que respiraba ya no existe.
     await expect(cell.className).not.toMatch(/ring-warning|ring-destructive|slot-alarm/)
 
-    const chip = await canvas.findByRole('button', { name: /^No cobrados hoy/ })
+    const chip = await canvas.findByRole('button', { name: /sin cobrar/ })
     await userEvent.click(chip)
     await expect(chip).toHaveAttribute('aria-pressed', 'true')
     await waitFor(() => expect(cell.className).toMatch(/ring-destructive/))
@@ -232,5 +234,153 @@ export const DetalleDeReserva: Story = {
     // El popover va portaled a document.body (ui/popover.tsx): fuera del subárbol de canvasElement.
     const body = within(canvasElement.ownerDocument.body)
     await expect(await body.findByRole('dialog')).toBeInTheDocument()
+  },
+}
+
+// ─── Día lleno, muchas canchas (variante "Entra entera", 2026-09-25) ───────
+
+/** N canchas alternando F5/F7 — el mismo criterio que `datos.ts` de la variante. */
+function fullGridCourts(n: number) {
+  return Array.from({ length: n }, (_, i) =>
+    court({ id: uid(210 + i), name: `Cancha ${i + 1}`, format: i < Math.ceil(n / 2) ? 5 : 7 }),
+  )
+}
+
+/**
+ * Un día lleno "visto a las 15:30" — el reloj de Storybook está congelado en
+ * FROZEN_NOW (no a las 20:10 de la lámina, que no se puede simular sin
+ * mockear `Date.now()` por story): jugado pagado (verde), jugado sin cobrar
+ * (rojo), uno a medias (rojo, "Falta $X"), uno en juego (15:00–16:00, cruza
+ * las 15:30), próximos, un evento de 3h, una escuelita a $0, un bloqueo y un
+ * "Esperando seña". Cicla sobre las canchas disponibles (`% courtIds.length`)
+ * para que la misma lista sirva para 5 y para 12 canchas sin pisarse — los
+ * horarios están elegidos para que dos turnos en la misma cancha reciclada
+ * nunca se superpongan.
+ */
+function fullDayBookings(courtIds: string[]): GridBooking[] {
+  const at = (i: number) => courtIds[i % courtIds.length]!
+  const base = (
+    over: Partial<GridBooking> & Pick<GridBooking, 'id' | 'courtId' | 'timeStart' | 'timeEnd'>,
+  ): GridBooking => ({
+    date: '2026-03-14',
+    status: 'confirmed',
+    type: 'spontaneous',
+    guestName: null,
+    playerFirstName: null,
+    playerLastName: null,
+    priceSnapshot: 1500000,
+    ...over,
+  })
+  return [
+    base({
+      id: 'full-1',
+      courtId: at(0),
+      timeStart: '11:00',
+      timeEnd: '12:00',
+      status: 'completed',
+      guestName: 'Martín Gómez',
+      totalPaid: 1500000,
+      pending: 0,
+    }),
+    base({
+      id: 'full-2',
+      courtId: at(1),
+      timeStart: '14:00',
+      timeEnd: '15:00',
+      status: 'completed',
+      guestName: 'Fede Ramírez',
+      totalPaid: 0,
+      pending: 1500000,
+    }),
+    base({
+      id: 'full-3',
+      courtId: at(2),
+      timeStart: '14:00',
+      timeEnd: '15:00',
+      status: 'completed',
+      guestName: 'Diego Fernández',
+      totalPaid: 750000,
+      pending: 750000,
+    }),
+    base({
+      id: 'full-4',
+      courtId: at(3),
+      timeStart: '15:00',
+      timeEnd: '16:00',
+      guestName: 'Nicolás Pereyra',
+      pending: 1500000,
+      totalPaid: 0,
+    }),
+    base({
+      id: 'full-5',
+      courtId: at(4),
+      timeStart: '17:00',
+      timeEnd: '18:00',
+      guestName: 'Pablo Acosta',
+      pending: 1500000,
+      totalPaid: 0,
+    }),
+    base({
+      id: 'full-6',
+      courtId: at(5),
+      timeStart: '18:00',
+      timeEnd: '21:00',
+      guestName: 'Cumple de Tobías',
+      priceSnapshot: 4500000,
+      pending: 4500000,
+      totalPaid: 0,
+    }),
+    base({
+      id: 'full-7',
+      courtId: at(6),
+      timeStart: '16:00',
+      timeEnd: '17:00',
+      guestName: 'Escuelita Pequeños Cracks',
+      priceSnapshot: 0,
+      pending: 0,
+      totalPaid: 0,
+    }),
+    base({
+      id: 'full-8',
+      courtId: at(7),
+      timeStart: '13:00',
+      timeEnd: '14:00',
+      type: 'block',
+      guestName: 'Cambio de red',
+      priceSnapshot: 0,
+    }),
+    base({
+      id: 'full-9',
+      courtId: at(8),
+      timeStart: '20:00',
+      timeEnd: '21:00',
+      status: 'pending_payment',
+      guestName: 'Tomás Herrera',
+      createdAt: new Date('2026-03-14T18:28:00.000Z'), // 2 min antes de FROZEN_NOW
+    }),
+  ]
+}
+
+export const DoceCanchas: Story = {
+  name: '12 canchas — día lleno (variante "Entra entera")',
+  args: { courts: fullGridCourts(12) },
+  beforeEach: () => {
+    mocked(useBookingRealtime).mockReturnValue({
+      bookings: fullDayBookings(fullGridCourts(12).map((c) => c.id)),
+      status: 'SUBSCRIBED',
+      refetch: fn(async () => {}),
+    })
+  },
+}
+
+export const CincoCanchas: Story = {
+  name: '5 canchas — día lleno (variante "Entra entera")',
+  args: { courts: fullGridCourts(5) },
+  beforeEach: () => {
+    mocked(useBookingRealtime).mockReturnValue({
+      bookings: fullDayBookings(fullGridCourts(5).map((c) => c.id)),
+      status: 'SUBSCRIBED',
+      refetch: fn(async () => {}),
+    })
   },
 }

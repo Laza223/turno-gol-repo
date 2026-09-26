@@ -189,7 +189,7 @@ export function HoyChargeModal({
     hasCanteen: Boolean(renderCanteenDialog),
   })
   const gates = { ...baseGates, canMarkNoShow: baseGates.canMarkNoShow && allowNoShow }
-  const visual = gridSlotVisual(booking)
+  const visual = gridSlotVisual({ ...booking, ended: hasEnded })
   const name = rowDisplayName(booking)
   // Un ausente nunca "Cobrado ✓": la seña capturada no es "se cobró todo", es
   // el único costo real de un no-show (veto de producto, CLAUDE.md).

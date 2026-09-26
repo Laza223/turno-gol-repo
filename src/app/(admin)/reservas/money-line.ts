@@ -1,54 +1,55 @@
 import { formatArs } from '@/lib/format'
-import { PENDING_CHARGE_BADGE } from '@/lib/booking/slot-visual'
-import { reservaStatusVisual } from './status-visual'
+import type { StatusTone } from '@/lib/status-tone'
 import type { ReservaListRow } from './queries'
 
 /**
- * Qué dice la fila sobre la plata REAL del turno (no sobre la seña).
- * Aditivo: `depositText` de arriba no se toca — "Sin seña" sigue siendo
- * cierto, esto agrega el dato que faltaba al lado.
+ * La plata de una fila de la Agenda, en UNA sola lectura (a diferencia del
+ * listado viejo: sin precio + badge de estado + píldora "No cobrado"
+ * apilados — "Nada de columnas de 'Seña'/badges apilados", decisión del
+ * dueño). Reusa los mismos hechos que `reservaHasEnded` (pending,
+ * totalPaid, ended): no reinventa CUÁNDO algo está pendiente o terminado,
+ * solo cómo se redacta en un solo texto.
+ *
+ * Orden de prioridad — el primero que matchea gana:
+ * cancelada/expirada/ausente/esperando seña (el `status` manda) → sin cargo
+ * (bloqueo, evento gratis) → jugado y no cobrado (rojo) → por jugar (gris).
  */
-export function moneyLine(
+export function agendaMoneyCell(
   b: Pick<
     ReservaListRow,
-    'pending' | 'totalPaid' | 'status' | 'priceSnapshot' | 'type' | 'depositStatus'
+    'pending' | 'totalPaid' | 'status' | 'priceSnapshot' | 'type' | 'depositAmount'
   >,
-): { text: string; tone: 'pending' | 'paid' } | null {
-  // Reservas que no se van a jugar: la seña se resuelve aparte (devuelta o
-  // retenida como penalidad) y el resto del precio nunca se cobra.
-  // `summarizeBookingCharges` no sabe esto — solo cuenta seña `paid`/`captured`
-  // como cobrada — así que sin este corte `pending` queda > 0 y "Falta $X"
-  // afirmaría una deuda que no existe al lado de "Seña devuelta"/"pagada".
-  // `no_show` entra en el mismo corte por otro motivo (veto "No-show NO es
-  // deuda"): lo que queda sin cobrar en un no-show no es cobrable, así que
-  // "Falta $X" tampoco puede afirmarse ahí.
-  if (
-    b.status === 'canceled_refunded' ||
-    b.status === 'canceled_no_refund' ||
-    b.status === 'expired' ||
-    b.status === 'no_show'
-  ) {
-    return null
+  ended: boolean,
+): { text: string; tone: StatusTone } {
+  if (b.status === 'canceled_refunded' || b.status === 'canceled_no_refund') {
+    return { text: 'Cancelada', tone: 'neutral' }
   }
-  if (typeof b.pending !== 'number') return null
-  if (b.pending > 0) {
-    // Arriba de esta línea la fila ya muestra el precio del turno. Si no se
-    // cobró NADA, `pending` es ese mismo número: repetirlo apila "$ 40.000" y
-    // "Falta $ 40.000" uno debajo del otro y hay que leer los dos para entender
-    // que son lo mismo. El monto solo aporta cuando hubo un cobro parcial.
-    if (b.pending >= b.priceSnapshot) {
-      // ...y cuando el turno ya se jugó, la píldora al lado del badge dice
-      // EXACTAMENTE estas dos palabras (`RESERVA_UNPAID_VISUAL`, label
-      // 'No cobrado'). Escribirlas otra vez acá abajo deja la fila diciendo
-      // "No cobrado" dos veces —y el aria-label del Link, también—, que es el
-      // mismo ruido que este renglón vino a sacar. Es el mismo hecho con la
-      // misma palabra: si la píldora cambia, esto cambia con ella.
-      return reservaStatusVisual(b).unpaid
-        ? null
-        : { text: PENDING_CHARGE_BADGE.label, tone: 'pending' }
-    }
-    return { text: `Falta ${formatArs(b.pending)}`, tone: 'pending' }
+  if (b.status === 'expired') return { text: 'Expirada', tone: 'neutral' }
+  // Veto "No-show NO es deuda": un ausente nunca es plata pendiente, aunque
+  // `pending` venga > 0 — por eso gris, no rojo.
+  if (b.status === 'no_show') return { text: 'Ausente', tone: 'neutral' }
+  if (b.status === 'pending_payment') return { text: 'Esperando seña', tone: 'warning' }
+  // Un bloqueo no es un turno de nadie: no se dice nada de plata (el ícono y
+  // "Bloqueo" ya lo explican). Un evento a $0 (escuelita, cortesía) sí es un
+  // turno, y ahí "Sin cargo" responde "¿cuánto se cobra?".
+  if (b.type === 'block') return { text: '', tone: 'neutral' }
+  if (b.priceSnapshot === 0) return { text: 'Sin cargo', tone: 'neutral' }
+  if (typeof b.pending !== 'number') return { text: formatArs(b.priceSnapshot), tone: 'neutral' }
+  if (b.pending <= 0) {
+    return (b.totalPaid ?? 0) > 0
+      ? { text: 'Pagado', tone: 'success' }
+      : { text: 'Sin costo', tone: 'neutral' }
   }
-  if ((b.totalPaid ?? 0) > 0) return { text: 'Cobrado', tone: 'paid' }
-  return null
+  if (ended) {
+    // Nada cobrado todavía: el monto completo. Cobro parcial (seña o mostrador):
+    // "Falta $X" es más preciso que repetir "No cobrado" sobre plata que sí entró.
+    return (b.totalPaid ?? 0) > 0
+      ? { text: `Falta ${formatArs(b.pending)}`, tone: 'destructive' }
+      : { text: `No cobrado · ${formatArs(b.pending)}`, tone: 'destructive' }
+  }
+  // Todavía no se juega (o se está jugando): sin nada cobrado se ve el precio
+  // entero; con una seña ya paga, lo que falta.
+  return b.pending < b.priceSnapshot
+    ? { text: `Falta ${formatArs(b.pending)}`, tone: 'neutral' }
+    : { text: formatArs(b.priceSnapshot), tone: 'neutral' }
 }

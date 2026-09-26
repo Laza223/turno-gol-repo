@@ -34,7 +34,7 @@ export const ConTotal: Story = {
       page={5}
       total={312}
       pageSize={25}
-      hrefFor={(p) => `/reservas?dia=historial&pagina=${p + 1}`}
+      hrefFor={(p) => `/reservas?dia=pasados&pagina=${p + 1}`}
     />
   ),
   play: async ({ canvasElement }) => {
@@ -45,13 +45,13 @@ export const ConTotal: Story = {
     await expect(nav.getByText('6')).toHaveAttribute('aria-current', 'page')
     await expect(nav.getByRole('link', { name: 'Página 1' })).toHaveAttribute(
       'href',
-      '/reservas?dia=historial&pagina=1',
+      '/reservas?dia=pasados&pagina=1',
     )
     await expect(nav.getByRole('link', { name: 'Página 13' })).toBeVisible()
     await expect(nav.getByRole('link', { name: /Anteriores/ })).toHaveAttribute('rel', 'prev')
     await expect(nav.getByRole('link', { name: /Siguientes/ })).toHaveAttribute(
       'href',
-      '/reservas?dia=historial&pagina=7',
+      '/reservas?dia=pasados&pagina=7',
     )
   },
 }

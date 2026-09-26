@@ -3,17 +3,28 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   GRID_LEGEND_ITEMS,
+  GRID_MONEY_LEGEND_ITEMS,
   PENDING_CHARGE_BADGE,
   bookingBadgeVisual,
+  gridMoneyVisual,
   gridSlotVisual,
   slotPendingCents,
   slotStateKey,
+  type GridMoneyFacts,
   type SlotFacts,
 } from '@/lib/booking/slot-visual'
 import { TONE_ACCENT } from '@/lib/status-tone'
 
 const base: SlotFacts = { status: 'confirmed', type: 'spontaneous' }
 const facts = (o: Partial<SlotFacts>): SlotFacts => ({ ...base, ...o })
+
+const moneyBase: GridMoneyFacts = {
+  status: 'confirmed',
+  type: 'spontaneous',
+  priceSnapshot: 2000000,
+  started: false,
+}
+const moneyFacts = (o: Partial<GridMoneyFacts>): GridMoneyFacts => ({ ...moneyBase, ...o })
 
 describe('slotStateKey — prioridad y derivación', () => {
   it('torneo gana sobre cualquier estado, incluido no_show', () => {
@@ -106,6 +117,32 @@ describe('"No cobrado" — el turno jugado al que le falta plata', () => {
   })
 })
 
+describe('"No cobrado" con `ended` — el confirmado que el auto-complete todavía no alcanzó', () => {
+  it('confirmado + terminado + saldo pendiente queda por cobrar', () => {
+    expect(
+      slotStateKey(facts({ status: 'confirmed', pending: 24000, totalPaid: 0, ended: true })),
+    ).toBe('pending_charge')
+  })
+
+  it('confirmado sin terminar NUNCA queda por cobrar, aunque tenga saldo', () => {
+    expect(
+      slotStateKey(facts({ status: 'confirmed', pending: 24000, totalPaid: 0, ended: false })),
+    ).toBe('confirmed')
+  })
+
+  it('sin pasar `ended` el comportamiento es IDÉNTICO al de antes de esta bandera', () => {
+    expect(slotStateKey(facts({ status: 'confirmed', pending: 24000, totalPaid: 0 }))).toBe(
+      'confirmed',
+    )
+  })
+
+  it('un no-show terminado con saldo NUNCA queda por cobrar (veto "No-show NO es deuda")', () => {
+    expect(
+      slotStateKey(facts({ status: 'no_show', pending: 24000, totalPaid: 0, ended: true })),
+    ).toBe('no_show')
+  })
+})
+
 describe('gridSlotVisual — la celda', () => {
   it('marca pendingCharge solo en el turno por cobrar', () => {
     expect(
@@ -129,7 +166,7 @@ describe('gridSlotVisual — la celda', () => {
   })
 
   // Una sola fila en la tabla: la celda, la píldora de Reservas, la fila de Hoy
-  // y el chip "No cobrados hoy" de la Grilla dicen lo mismo del mismo hecho.
+  // y el chip "N sin cobrar" de la Grilla dicen lo mismo del mismo hecho.
   it('la celda y PENDING_CHARGE_BADGE salen de la misma fila', () => {
     const v = gridSlotVisual(facts({ status: 'completed', pending: 100, totalPaid: 0 }))
     expect(PENDING_CHARGE_BADGE).toEqual({ label: v.label, icon: v.icon, tone: v.tone })
@@ -311,6 +348,125 @@ describe('leyenda derivada', () => {
     expect(keys).not.toContain('canceled')
     expect(keys).not.toContain('expired')
     expect(keys).not.toContain('unknown')
+  })
+})
+
+describe('gridMoneyVisual — celda de la Grilla, variante "Entra entera" (el color es de la plata)', () => {
+  it('torneo gana sobre cualquier otro dato, incluso con saldo pendiente', () => {
+    const v = gridMoneyVisual(moneyFacts({ type: 'tournament', pending: 999, totalPaid: 0 }))
+    expect(v.key).toBe('tournament')
+    expect(v.label).toBe('Torneo')
+    expect(v.tone).toBe('warning')
+    expect(v.striped).toBe(true)
+    expect(v.amountCents).toBeNull()
+  })
+
+  it('bloqueo: neutral, rayado, "Bloqueado", nunca carga plata', () => {
+    const v = gridMoneyVisual(moneyFacts({ type: 'block', priceSnapshot: 0 }))
+    expect(v.key).toBe('block')
+    expect(v.label).toBe('Bloqueado')
+    expect(v.tone).toBe('neutral')
+    expect(v.striped).toBe(true)
+    expect(v.amountCents).toBeNull()
+  })
+
+  it('esperando seña: ámbar, sin monto (esa línea la ocupa el contador del hold)', () => {
+    const v = gridMoneyVisual(moneyFacts({ status: 'pending_payment', pending: 500000 }))
+    expect(v.key).toBe('pending_payment')
+    expect(v.label).toBe('Esperando seña')
+    expect(v.tone).toBe('warning')
+    expect(v.amountCents).toBeNull()
+  })
+
+  it('ausente: neutral, "Ausente", nunca muestra saldo (veto "No-show NO es deuda")', () => {
+    const v = gridMoneyVisual(moneyFacts({ status: 'no_show', pending: 800000, totalPaid: 0 }))
+    expect(v.key).toBe('no_show')
+    expect(v.label).toBe('Ausente')
+    expect(v.tone).toBe('neutral')
+    expect(v.amountCents).toBeNull()
+  })
+
+  it('precio 0 (escuelita, torneo interno): neutral, "Sin cargo"', () => {
+    const v = gridMoneyVisual(moneyFacts({ priceSnapshot: 0 }))
+    expect(v.key).toBe('free_event')
+    expect(v.label).toBe('Sin cargo')
+    expect(v.tone).toBe('neutral')
+    expect(v.amountCents).toBeNull()
+  })
+
+  it('sin dato de plata (Realtime crudo): neutral, sin monto, no inventa un label', () => {
+    const v = gridMoneyVisual(moneyFacts({ pending: undefined }))
+    expect(v.key).toBe('no_data')
+    expect(v.label).toBe('')
+    expect(v.tone).toBe('neutral')
+    expect(v.amountCents).toBeNull()
+  })
+
+  it('saldo cero: verde, "Pagado", sin monto (el label ya lo dice)', () => {
+    const v = gridMoneyVisual(moneyFacts({ pending: 0, totalPaid: 2000000 }))
+    expect(v.key).toBe('paid')
+    expect(v.label).toBe('Pagado')
+    expect(v.tone).toBe('success')
+    expect(v.amountCents).toBeNull()
+  })
+
+  it('terminado con saldo: rojo, "No cobrado", monto = pending', () => {
+    const v = gridMoneyVisual(moneyFacts({ status: 'completed', pending: 800000, totalPaid: 0 }))
+    expect(v.key).toBe('pending_charge')
+    expect(v.label).toBe('No cobrado')
+    expect(v.tone).toBe('destructive')
+    expect(v.amountCents).toBe(800000)
+    expect(v.partial).toBe(false)
+  })
+
+  it('terminado con saldo y pago parcial: partial=true ("Falta $X" lo arma la celda)', () => {
+    const v = gridMoneyVisual(
+      moneyFacts({ status: 'completed', pending: 500000, totalPaid: 300000 }),
+    )
+    expect(v.key).toBe('pending_charge')
+    expect(v.partial).toBe(true)
+  })
+
+  it('un `confirmed` con saldo usa la MISMA regla unificada que `gridSlotVisual`: sin `ended`, no queda por cobrar', () => {
+    const v = gridMoneyVisual(
+      moneyFacts({ status: 'confirmed', pending: 500000, totalPaid: 0, started: true }),
+    )
+    expect(v.key).not.toBe('pending_charge')
+  })
+
+  it('un `confirmed` terminado (`ended: true`) SÍ queda por cobrar, igual que en el modal de cobro de Hoy', () => {
+    const v = gridMoneyVisual(
+      moneyFacts({ status: 'confirmed', pending: 500000, totalPaid: 0, ended: true }),
+    )
+    expect(v.key).toBe('pending_charge')
+  })
+
+  it('el resto, turno fijo con saldo: "Turno fijo" aunque ya haya empezado', () => {
+    const v = gridMoneyVisual(
+      moneyFacts({ type: 'fixed', pending: 500000, totalPaid: 0, started: true }),
+    )
+    expect(v.key).toBe('fixed')
+    expect(v.label).toBe('Turno fijo')
+    expect(v.tone).toBe('neutral')
+    expect(v.amountCents).toBe(500000)
+  })
+
+  it('el resto, empezó y no terminó: "Se juega"', () => {
+    const v = gridMoneyVisual(moneyFacts({ pending: 500000, totalPaid: 0, started: true }))
+    expect(v.key).toBe('live')
+    expect(v.label).toBe('Se juega')
+  })
+
+  it('el resto, todavía no empezó: vacío (el color ya no dice nada, el monto sigue a la vista)', () => {
+    const v = gridMoneyVisual(moneyFacts({ pending: 500000, totalPaid: 0, started: false }))
+    expect(v.key).toBe('upcoming')
+    expect(v.label).toBe('')
+    expect(v.amountCents).toBe(500000)
+  })
+
+  it('leyenda: solo los 5 estados que el dueño eligió explicar', () => {
+    const keys = GRID_MONEY_LEGEND_ITEMS.map((i) => i.key)
+    expect(keys).toEqual(['pending_charge', 'paid', 'pending_payment', 'upcoming', 'block'])
   })
 })
 

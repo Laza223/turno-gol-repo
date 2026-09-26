@@ -76,7 +76,7 @@ Todo lo que sigue sale de 8 días de producción (14 al 22 de septiembre de 2026
 - Ley 25.326: nunca texto libre sobre personas. Las etiquetas son un enum cerrado de 5.
 - Vetos de producto que están en `CLAUDE.md`: sin Falta Uno, sin billetera, sin saldo a favor de abonados, el no-show no es deuda, sin recordatorio de 24 h, el jugador no tiene Realtime y no hay AFIP.
 - Feature freeze hasta el 2026-11-01 (D4). El refinamiento sobre el estilo actual del panel queda afuera del freeze por decisión del dueño (2026-09-23).
-- Vocabulario de pantalla: Hoy, Grilla, Reservas, Caja, Cantina, Cuentas, Jugadores, Turnos fijos, turno, evento, bloqueo, seña, fiado, cancha (F5/F7).
+- Vocabulario de pantalla: Hoy, Grilla, Agenda (la vista de turnos; la URL sigue siendo `/reservas`), Caja, Cantina, Cuentas, Jugadores, Turnos fijos, turno, evento, bloqueo, seña, fiado, cancha (F5/F7).
 
 **Sin decidir:**
 

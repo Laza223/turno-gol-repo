@@ -72,38 +72,59 @@ export type ReservaListRow = {
    */
   pending?: number | null
   totalPaid?: number | null
+  /**
+   * `COALESCE(guest_name teléfono, jugador teléfono)`, texto plano (ninguno
+   * cifrado) — mismo par de columnas que ya usa `searchCond` para buscar por
+   * teléfono. Solo para MOSTRAR en la fila de la Agenda.
+   */
+  phone?: string | null
 }
 
-/** Rango temporal de la lista, relativo al día ART actual. */
-export type ReservaScope = 'hoy' | 'proximas' | 'historial'
+/**
+ * Rango de la Agenda, por INSTANTE FÍSICO (`ends_at`), no por día operativo:
+ * un turno que arrancó y todavía se está jugando es "próximo" (se sigue
+ * viendo hasta que termina), y uno que ya terminó hoy es "pasado" aunque sea
+ * el mismo día operativo que "hoy" — la pregunta que resuelve la Agenda es
+ * "¿qué viene?"/"¿qué pasó?", no "¿qué día es?". Reemplaza al viejo scope de
+ * tres pestañas por día calendario (`hoy`/`proximas`/`historial`, Fase 4).
+ */
+export type ReservaScope = 'proximos' | 'pasados'
 
 export type ReservaListFilters = {
   scope: ReservaScope
-  /** Día actual en ART (YYYY-MM-DD) — el server lo calcula una sola vez. */
-  today: string
-  /** booking_status puntual, o 'canceladas' que agrupa ambos enums canceled_*. */
+  /** Instante físico "ahora" — parámetro (no `Date.now()` adentro) para poder testear el corte sin depender del reloj real. */
+  now: Date
+  /** booking_status puntual, o 'canceladas' que agrupa ambos enums canceled_* + expired. */
   status?: string
-  /** Búsqueda por nombre del cliente o prefijo del número de reserva (UUID). */
+  /** Búsqueda por nombre del cliente, teléfono o prefijo del número de reserva (UUID). */
   q?: string
   /** H110 — filtra por cancha (courts.id). La page valida contra las canchas reales del tenant antes de llegar acá. */
   courtId?: string
 }
 
-function scopeCond(scope: ReservaScope, today: string): SQL {
-  if (scope === 'hoy') return sql`AND b.date = ${today}::date`
-  if (scope === 'proximas') return sql`AND b.date > ${today}::date`
-  return sql`AND b.date < ${today}::date`
+function scopeCond(scope: ReservaScope, now: Date): SQL {
+  // ISO string, no el `Date` pelado: `tx.execute(sql\`\`)` bypassea el mapeo de
+  // tipos de Drizzle (mismo gotcha que la LECTURA de timestamptz, al revés) —
+  // un `Date` como parámetro revienta con "argument must be of type string...
+  // Received an instance of Date". El resto del archivo (`streetMoneyCutoffDate`)
+  // ya pasa string por el mismo motivo.
+  const iso = now.toISOString()
+  if (scope === 'proximos') return sql`AND b.ends_at > ${iso}::timestamptz`
+  return sql`AND b.ends_at <= ${iso}::timestamptz`
 }
 
+/**
+ * `''` ("Todos") deja AFUERA cancelados y expirados: una cancelada mezclada
+ * entre los próximos se lee como un turno tomado. 'canceladas' es el único
+ * filtro que los muestra, y agrupa los dos enums `canceled_*` MÁS `expired`
+ * (mismo destino de producto: la reserva no se jugó).
+ */
 function statusCond(status: string | undefined): SQL {
-  if (!status) return sql``
-  if (status === 'canceladas') {
-    return sql`AND b.status IN ('canceled_refunded', 'canceled_no_refund')`
+  if (!status) {
+    return sql`AND b.status NOT IN ('canceled_refunded', 'canceled_no_refund', 'expired')`
   }
-  if (status === 'confirmed') {
-    // H075 — un bloqueo manual (type='block') queda en status='confirmed' sin
-    // ser una reserva de cliente; no cuenta como "Confirmada" para el filtro.
-    return sql`AND b.status = 'confirmed'::booking_status AND b.type <> 'block'`
+  if (status === 'canceladas') {
+    return sql`AND b.status IN ('canceled_refunded', 'canceled_no_refund', 'expired')`
   }
   return sql`AND b.status = ${status}::booking_status`
 }
@@ -160,7 +181,10 @@ function bookingSelectColumns(): SQL {
            b.payment_method AS "paymentMethod", b.starts_at AS "startsAt", b.ends_at AS "endsAt",
            c.name AS "courtName",
            CASE WHEN p.id IS NULL THEN NULL ELSE (p.first_name || ' ' || p.last_name) END AS "playerName",
-           b.guest_name AS "guestName"`
+           b.guest_name AS "guestName",
+           -- Teléfono para la fila de la Agenda (mismas dos columnas que ya
+           -- usa searchCond para buscar por teléfono).
+           COALESCE(b.guest_phone, p.phone) AS phone`
 }
 
 /** Cuántas reservas entran en una página de la lista. */
@@ -173,21 +197,21 @@ export type ReservaListPage = {
 }
 
 /**
- * Una página de la lista de reservas.
+ * Una página de la Agenda (lista de reservas).
  *
  * B10 — antes esto era un `LIMIT 200` pelado, y el defecto no era el techo sino
  * el SILENCIO: `countTenantBookingsByStatus` cuenta sin techo, así que la
  * píldora podía decir "Completadas (740)" mientras la lista mostraba 200, sin
  * nada en pantalla que dijera que faltaban 540 ni forma de llegar a ellas. En
- * el scope `historial`, que crece para siempre, eso es la vista normal de
+ * el scope `pasados`, que crece para siempre, eso es la vista normal de
  * cualquier complejo con unos meses de uso.
  *
  * Paginación por OFFSET y no keyset, a sabiendas: el orden cambia según el
- * scope (tres `ORDER BY` distintos), y un cursor por scope serían tres
- * codificadores de cursor con tres oportunidades de perder una fila en un
+ * scope (dos `ORDER BY` distintos), y un cursor por scope serían dos
+ * codificadores de cursor con dos oportunidades de perder una fila en un
  * empate. Sobre el historial de UN complejo el offset no es un problema de
  * performance, y "página 3" es además el modelo mental correcto para revisar
- * historial. El costo real del offset —que una reserva creada entre dos páginas
+ * lo pasado. El costo real del offset —que una reserva creada entre dos páginas
  * corra el borde— es intrascendente en una lista que se scrollea, no se procesa.
  *
  * `LIMIT n+1` en vez de un `COUNT` extra: alcanza para saber si hay otra página
@@ -199,23 +223,18 @@ export async function listTenantBookings(
   tx: DbTx,
   page = 0,
 ): Promise<ReservaListPage> {
-  // c.created_at (no c.name): mismo criterio de orden de canchas que la Grilla
-  // (`listCourts`, court.service.ts) — si no, "Cancha 10" sale antes que
-  // "Cancha 2" (orden alfabético de texto) y las dos pantallas discrepan.
   // b.starts_at (no b.time_start): en un complejo `closes_next_day` el turno de
   // 00:00 se guarda con la hora de pared más chica pero es FÍSICAMENTE
   // posterior al de las 23:00 de la misma cancha; `starts_at` es el instante
-  // real. Hoy: agrupable por cancha con horarios ascendentes. Próximas: lo más
-  // cercano primero. Historial: lo más reciente primero. `b.id` desempata: una
-  // reserva cancelada y la que reocupó su lugar comparten cancha, día y hora, y
-  // sin un orden total el OFFSET puede repetir una entre dos páginas y saltear
-  // la otra.
+  // real. Próximos: lo más cercano primero (lo que se juega ahora, primero de
+  // todos). Pasados: lo más reciente primero. `c.created_at` y `b.id` desempatan:
+  // dos turnos a la misma hora en canchas distintas, o una reserva cancelada y
+  // la que reocupó su lugar, comparten `starts_at`, y sin un orden total el
+  // OFFSET puede repetir una fila entre dos páginas y saltear otra.
   const orderBy =
-    filters.scope === 'hoy'
-      ? sql`ORDER BY c.created_at ASC, b.starts_at ASC, b.id ASC`
-      : filters.scope === 'proximas'
-        ? sql`ORDER BY b.date ASC, b.starts_at ASC, c.created_at ASC, b.id ASC`
-        : sql`ORDER BY b.date DESC, b.starts_at DESC, c.created_at ASC, b.id ASC`
+    filters.scope === 'proximos'
+      ? sql`ORDER BY b.starts_at ASC, c.created_at ASC, b.id ASC`
+      : sql`ORDER BY b.starts_at DESC, c.created_at ASC, b.id ASC`
   const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 0
   const rows = await tx.execute(sql`
     SELECT ${bookingSelectColumns()}
@@ -223,7 +242,7 @@ export async function listTenantBookings(
     JOIN courts c ON c.id = b.court_id
     LEFT JOIN players p ON p.id = b.player_id
     WHERE b.tenant_id = ${tenantId}
-      ${scopeCond(filters.scope, filters.today)}
+      ${scopeCond(filters.scope, filters.now)}
       ${statusCond(filters.status)}
       ${searchCond(filters.q)}
       ${courtCond(filters.courtId)}
@@ -237,8 +256,10 @@ export async function listTenantBookings(
 
 /**
  * Contadores por estado para el scope/búsqueda actuales, SIN aplicar el filtro
- * de estado: las píldoras muestran "Confirmadas (12)" aunque estés parado en
- * "Pendientes" — si no, los números desaparecerían al filtrar.
+ * de estado: los chips muestran "Ausentes (12)" aunque estés parado en
+ * "Cancelados" — si no, los números desaparecerían al filtrar. Sin techo por
+ * `canceled_*`/`expired`: el chip "Cancelados" los necesita, y "Todos" los
+ * resta en `countFor` (reservas-filters.ts), no acá.
  */
 export async function countTenantBookingsByStatus(
   tenantId: string,
@@ -249,13 +270,13 @@ export async function countTenantBookingsByStatus(
     SELECT
       -- H075: un bloqueo manual (type='block') va a su propio balde 'block' en
       -- vez de mezclarse con el status real ('confirmed' casi siempre) — si no,
-      -- la píldora "Confirmadas" contaba mantenimiento como si fuera un cliente.
+      -- un chip de estado contaba mantenimiento como si fuera un cliente.
       CASE WHEN b.type = 'block' THEN 'block' ELSE b.status::text END AS status,
       count(*)::int AS count
     FROM bookings b
     LEFT JOIN players p ON p.id = b.player_id
     WHERE b.tenant_id = ${tenantId}
-      ${scopeCond(filters.scope, filters.today)}
+      ${scopeCond(filters.scope, filters.now)}
       ${searchCond(filters.q)}
       ${courtCond(filters.courtId)}
     GROUP BY 1

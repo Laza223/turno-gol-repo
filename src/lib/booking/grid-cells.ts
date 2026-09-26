@@ -223,32 +223,52 @@ export function computeCells(
 // ---------------------------------------------------------------------------
 
 /**
+ * ¿Este turno de la grilla ya terminó? Mismo criterio físico que `hasEndedAt`
+ * (dashboard/today-board.ts): el instante `ends_at`, nunca la hora de pared
+ * (`time_end='24:00'` y los slots de madrugada de un `closes_next_day` la
+ * arruinan). Sin `endsAtMs` (Realtime crudo, fixtures viejas) degrada al
+ * `status` — el comportamiento previo a esta bandera.
+ */
+export function hasBookingEnded(b: GridBooking, nowMs: number): boolean {
+  // `nowMs <= 0` = todavía no hidrató (`useNowMsAfterHydration`): sin hora, el
+  // único "terminó" que se puede afirmar es el que ya dice la DB.
+  if (nowMs <= 0 || b.endsAtMs == null) return b.status === 'completed'
+  return b.endsAtMs <= nowMs
+}
+
+/**
  * Lo que falta cobrar de los turnos visibles del día. Suma `pending` de los
- * turnos de cliente que YA son un compromiso: `confirmed` (todavía por jugar) y
- * `completed` (jugado y con saldo). Deja afuera `no_show` — el veto del repo es
- * que un no-show NO es deuda — y `pending_payment`, que es un hold de 6 min que
- * se libera solo. Un torneo tiene price_snapshot 0, así que nunca suma solo con
- * eso; un `block` se excluye por TIPO, explícitamente: el schema ya blinda que
- * un bloqueo no cargue plata (rediseño 2026-09-14), pero esta suma no depende
- * de esa garantía para no mentir si algún día deja de cumplirse. Ignora los
+ * turnos de cliente que YA se jugaron: `completed`, y `confirmed` solo si ya
+ * TERMINÓ (`hasBookingEnded`) — el auto-complete tarda ~30 min en pasarlo a
+ * `completed`, y hasta el 2026-09-25 un `confirmed` todavía por jugar sumaba
+ * acá igual, así que el chip "N sin cobrar" contaba turnos que ni se
+ * habían jugado. Deja afuera `no_show` — el veto del repo es que un no-show NO
+ * es deuda — y `pending_payment`, que es un hold de 6 min que se libera solo.
+ * Un torneo tiene price_snapshot 0, así que nunca suma solo con eso; un
+ * `block` se excluye por TIPO, explícitamente: el schema ya blinda que un
+ * bloqueo no cargue plata (rediseño 2026-09-14), pero esta suma no depende de
+ * esa garantía para no mentir si algún día deja de cumplirse. Ignora los
  * turnos sin dato de plata (Realtime crudo antes del reconcile) en vez de
  * contarlos como cero: el número baja un instante, nunca miente hacia arriba.
  */
-/** Un turno cuenta para "No cobrados hoy": mismo criterio que {@link sumPendingCents}. */
-export function isPendingCollection(b: GridBooking): boolean {
+/** Un turno cuenta para "N sin cobrar": mismo criterio que {@link sumPendingCents}. */
+export function isPendingCollection(b: GridBooking, nowMs: number): boolean {
   return (
     typeof b.pending === 'number' &&
     b.pending > 0 &&
     b.type !== 'block' &&
-    (b.status === 'confirmed' || b.status === 'completed')
+    (b.status === 'completed' || (b.status === 'confirmed' && hasBookingEnded(b, nowMs)))
   )
 }
 
-export function sumPendingCents(bookings: GridBooking[]): { totalCents: number; count: number } {
+export function sumPendingCents(
+  bookings: GridBooking[],
+  nowMs: number,
+): { totalCents: number; count: number } {
   let totalCents = 0
   let count = 0
   for (const b of bookings) {
-    if (isPendingCollection(b)) {
+    if (isPendingCollection(b, nowMs)) {
       totalCents += b.pending!
       count++
     }

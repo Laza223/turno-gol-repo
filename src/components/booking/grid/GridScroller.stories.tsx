@@ -10,6 +10,7 @@ import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { CourtRow } from '@/modules/courts/court.types'
 import { courts, courtFutbol5, courtFutbol7 } from '@/test/fixtures/court'
 import { saturdayAfternoonGridBookings } from '@/test/fixtures/booking'
+import { FROZEN_NOW } from '@/test/fixtures/clock'
 import { GridScroller } from './GridScroller'
 
 /**
@@ -36,10 +37,15 @@ function buildLayout(opts: {
   const visibleSlots = collapsedCount > 0 ? slots.slice(collapsedCount) : slots
   const hasBand = collapsedCount > 0
   const rowOffset = hasBand ? 3 : 2
-  // Fila fija: la grilla dejó de tener densidad configurable (useGridLayout).
-  const rowHeightRem = 4
+  // Alto MÍNIMO de fila (variante "Entra entera"): la fila real la reparte
+  // `minmax(rowHeightRem, 1fr)` en GridScroller.
+  const rowHeightRem = 3.5
 
-  let nowTopRem: number | null = null
+  // Fila (índice en `visibleSlots`) y fracción de la línea de "ahora": la
+  // MISMA cuenta que useNowLine, sin el auto-scroll (acá no hay DOM real que
+  // medir; nowLineRef queda sin usar en las stories).
+  let nowRowIndex: number | null = null
+  let nowFraction = 0
   const first = visibleSlots[0]
   if (opts.nowTime && first) {
     const [nH, nM] = opts.nowTime.split(':').map(Number)
@@ -47,10 +53,12 @@ function buildLayout(opts: {
     const nowMins = (nH ?? 0) * 60 + (nM ?? 0)
     const firstMins = (fH ?? 0) * 60 + (fM ?? 0)
     if (nowMins >= firstMins) {
-      const headerRem = 2.75 + (hasBand ? 2.75 : 0)
-      const top = headerRem + ((nowMins - firstMins) / 60) * rowHeightRem
-      const maxTop = headerRem + visibleSlots.length * rowHeightRem
-      nowTopRem = top <= maxTop ? top : null
+      const elapsed = nowMins - firstMins
+      const idx = Math.floor(elapsed / 60)
+      if (idx < visibleSlots.length) {
+        nowRowIndex = idx
+        nowFraction = (elapsed % 60) / 60
+      }
     }
   }
 
@@ -63,7 +71,8 @@ function buildLayout(opts: {
     rowOffset,
     rowHeightRem,
     isSlotPast,
-    nowTopRem,
+    nowRowIndex,
+    nowFraction,
   }
 }
 
@@ -86,8 +95,14 @@ const meta = {
     hasBand: saturday.hasBand,
     rowOffset: saturday.rowOffset,
     rowHeightRem: saturday.rowHeightRem,
-    nowTopRem: saturday.nowTopRem,
+    nowRowIndex: saturday.nowRowIndex,
+    nowFraction: saturday.nowFraction,
+    nowLineRef: { current: null },
     isNavPending: false,
+    // FROZEN_NOW = mismo "ahora" (15:30 ART) que usa `saturday` arriba. Los
+    // fixtures de `saturdayAfternoonGridBookings` no traen `pending`, así que
+    // esto no cambia ninguna celda — solo completa la firma nueva de `nowMs`.
+    nowMs: FROZEN_NOW.getTime(),
     gridScrollRef: { current: null },
     ariaLabel: 'Grilla de turnos del Sáb 14 de marzo',
     isSlotPast: saturday.isSlotPast,
@@ -114,17 +129,17 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {}
 
 /**
- * Teléfono: la MISMA matriz, con columnas de 44 px y el eje de horas en dos
- * dígitos. Reemplazó a la lista por hora con carrusel de canchas, donde leer una
- * sola hora obligaba a recorrer fichas de a una.
+ * Teléfono: la MISMA matriz, con columnas de 48 px (44 tocables) y el eje de
+ * horas en dos dígitos. Reemplazó a la lista por hora con carrusel de
+ * canchas, donde leer una sola hora obligaba a recorrer fichas de a una.
  */
 export const EnTelefono: Story = {
-  name: 'Teléfono (columnas de 44px)',
+  name: 'Teléfono (columnas de 48px)',
   parameters: { viewport: { defaultViewport: 'mobile-primary' } },
 }
 
 /**
- * Chip "No cobrados hoy" encendido: los turnos con saldo llevan un anillo
+ * Chip "N sin cobrar" encendido: los turnos con saldo llevan un anillo
  * rojo, así se encuentran de un vistazo en una matriz llena.
  */
 export const ResaltandoLoPendiente: Story = {
@@ -150,13 +165,15 @@ export const ConBandaDeMadrugada: Story = {
       collapsedCount: dawn.collapsedCount,
       hasBand: dawn.hasBand,
       rowOffset: dawn.rowOffset,
-      nowTopRem: dawn.nowTopRem,
+      rowHeightRem: dawn.rowHeightRem,
+      nowRowIndex: dawn.nowRowIndex,
+      nowFraction: dawn.nowFraction,
       isSlotPast: dawn.isSlotPast,
     }
   })(),
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const band = canvas.getByRole('button', { name: /Mostrar horarios sin actividad/ })
+    const band = canvas.getByRole('button', { name: /Mostrar horarios sin turnos/ })
     await expect(band).toBeInTheDocument()
     await userEvent.click(band)
     await expect(args.onExpandMorning).toHaveBeenCalledOnce()
@@ -184,7 +201,9 @@ export const GrillaVacia: Story = {
       collapsedCount: empty.collapsedCount,
       hasBand: empty.hasBand,
       rowOffset: empty.rowOffset,
-      nowTopRem: empty.nowTopRem,
+      rowHeightRem: empty.rowHeightRem,
+      nowRowIndex: empty.nowRowIndex,
+      nowFraction: empty.nowFraction,
       isSlotPast: empty.isSlotPast,
     }
   })(),
@@ -192,5 +211,5 @@ export const GrillaVacia: Story = {
 
 export const SinLineaDeAhora: Story = {
   name: 'Día distinto de hoy (sin línea de "ahora")',
-  args: { nowTopRem: null, isSlotPast: () => false },
+  args: { nowRowIndex: null, isSlotPast: () => false },
 }

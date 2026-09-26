@@ -466,7 +466,7 @@ export async function getPlayerBookingHistory(
     -- "b.id" como desempate: dos turnos del mismo día y hora no deberían
     -- existir, pero el orden tiene que ser determinista igual — si no, una
     -- fila puede saltar de página al pasar de la 1 a la 2.
-    ORDER BY b.date DESC, b.time_start DESC, b.id DESC
+    ORDER BY b.date DESC, b.starts_at DESC, b.id DESC
     LIMIT ${limit} OFFSET ${offset}
   `)
   const list = rows as unknown as Array<Omit<PlayerBookingRow, 'pending' | 'totalPaid'>>

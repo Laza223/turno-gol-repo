@@ -21,10 +21,11 @@ import { chargeDebtAction } from './actions'
 import { settleTabAction } from '../cantina/actions'
 import { registerInscriptionPaymentAction } from '../../torneos/actions'
 
+/** Qué se cobra. Un turno es "no cobrado", nunca "deuda" (DESIGN.md). */
 const ORIGIN_LABEL: Record<StreetMoneyRow['origin'], string> = {
-  booking: 'turno',
-  canteen_tab: 'fiado',
-  tournament: 'inscripción',
+  booking: 'Turno no cobrado',
+  canteen_tab: 'Fiado sin cobrar',
+  tournament: 'Inscripción sin cobrar',
 }
 
 // Fiados no admiten 'other' (canteen.types.ts: CanteenSaleMethod excluye 'other').
@@ -192,7 +193,7 @@ export function StreetMoneyChargeDialog({
         )}
         <div className="space-y-4" hidden={retry !== null}>
           <p className="text-sm text-muted-foreground">
-            Deuda de {ORIGIN_LABEL[row.origin]} · pendiente{' '}
+            {ORIGIN_LABEL[row.origin]} · pendiente{' '}
             <span className="font-semibold text-foreground">{formatArs(row.pendingCents)}</span>
           </p>
 

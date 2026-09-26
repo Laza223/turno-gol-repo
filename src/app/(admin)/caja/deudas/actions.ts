@@ -74,7 +74,7 @@ export async function chargeDebtAction(input: ChargeDebtInput): Promise<ChargeDe
     if (booking.status !== 'completed') {
       return {
         success: false as const,
-        error: 'Solo se pueden saldar deudas de reservas completadas.',
+        error: 'Este turno cambió de estado y ya no se cobra desde acá. Actualizá la página.',
       }
     }
 

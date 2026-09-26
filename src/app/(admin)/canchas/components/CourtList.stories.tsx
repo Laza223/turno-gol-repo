@@ -1,12 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
-import { courtFutbol5, courtOffline, courts, openingHours } from '@/test/fixtures'
+import { court, courtFutbol5, courtOffline, courts, openingHours } from '@/test/fixtures'
 import { CourtList } from './CourtList'
 import type { CourtActionResult, CourtDeactivationImpactResult } from '../actions'
 
 /**
  * Las 7 Server Actions llegan por prop (ver el comentario en CourtList.tsx).
- * canchas/page.tsx envuelve en `<main className="max-w-4xl mx-auto px-4 py-8">`.
+ * El decorator replica el `<main>` de AdminLayoutShell (tope de 1600 px).
  */
 const meta = {
   title: 'Admin/Canchas/CourtList',
@@ -14,7 +14,7 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <main className="max-w-4xl mx-auto px-4 py-8">
+      <main className="mx-auto w-full max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8">
         <Story />
       </main>
     ),
@@ -54,15 +54,53 @@ export const ConCanchas: Story = {
 }
 
 /**
- * Las canchas del fixture no tienen foto: el aviso de arriba y la marca en cada
- * cancha son la única señal de que en el perfil público salen como un fondo verde
- * vacío (nada bloquea crearlas así).
+ * Las canchas del fixture no tienen foto: en el lugar de la miniatura queda un
+ * hueco "Sin foto" que abre el editor directo en Fotos (nada bloquea crearlas así).
  */
 export const SinFotos: Story = {
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getAllByRole('button', { name: /^Agregar foto a / })).toHaveLength(4)
+    await userEvent.click(
+      canvas.getByRole('button', { name: `Agregar foto a ${args.initialCourts[0]!.name}` }),
+    )
+    await expect(
+      await canvas.findByRole('heading', { name: 'Fotos' }, { timeout: 15_000 }),
+    ).toBeInTheDocument()
+  },
+}
+
+/** El precio se lee en la fila y un toque sobre él abre el editor de esa cancha. */
+export const PrecioEnLaFila: Story = {
+  args: { initialCourts: [courtFutbol5()] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/Ninguna de tus canchas tiene foto\./)).toBeVisible()
-    await expect(canvas.getAllByRole('button', { name: /Sin foto · agregar/ })).toHaveLength(4)
+    const price = canvas.getByRole('button', { name: 'Cambiar el precio de Cancha 1' })
+    await expect(price).toHaveTextContent(/9\.000/)
+    await expect(price).toHaveTextContent(/desde las 18:00/)
+    await userEvent.click(price)
+    await expect(
+      await canvas.findByRole('heading', { name: 'Cancha 1' }, { timeout: 15_000 }),
+    ).toBeVisible()
+  },
+}
+
+/** Ocho canchas: la tabla entera entra en una pantalla de PC. */
+export const OchoCanchas: Story = {
+  args: {
+    initialCourts: Array.from({ length: 8 }, (_, i) =>
+      court({
+        id: `00000000-0000-4000-8000-0000000002${String(i).padStart(2, '0')}`,
+        name: `Cancha ${i + 1}`,
+        format: i < 5 ? 5 : 7,
+        status: i === 7 ? 'offline' : 'online',
+      }),
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getAllByRole('listitem')).toHaveLength(8)
+    await expect(canvas.getByText('8 canchas · Complejo Fénix')).toBeVisible()
   },
 }
 
@@ -103,9 +141,8 @@ export const VistaManager: Story = {
 
     await expect(canvas.getAllByText(/solo el dueño puede/i).length).toBeGreaterThan(0)
 
-    await expect(
-      canvas.getAllByRole('button', { name: /desactivar|activar/i }).length,
-    ).toBeGreaterThan(0)
+    // Pausar y reactivar SÍ son del encargado.
+    await expect(canvas.getAllByRole('button', { name: /^(Pausar|Reactivar)$/ }).length).toBe(4)
   },
 }
 
@@ -124,8 +161,8 @@ export const FormularioAbierto: Story = {
   },
 }
 
-/** Desactivar consulta el impacto (reservas futuras / abonados activos) antes de confirmar. */
-export const DesactivarConImpacto: Story = {
+/** Pausar consulta el impacto (turnos por delante / turnos fijos) antes de confirmar. */
+export const PausarConImpacto: Story = {
   args: {
     initialCourts: [courtFutbol5()],
     getDeactivationImpactAction: fn(async (): Promise<CourtDeactivationImpactResult> => ({
@@ -137,15 +174,20 @@ export const DesactivarConImpacto: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
-    await userEvent.click(canvas.getByRole('button', { name: 'Desactivar' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Pausar' }))
 
     // ConfirmDialog entra por next/dynamic (CourtList.tsx): timeout largo para
     // no flakear bajo carga.
     const dialog = within(await body.findByRole('dialog', {}, { timeout: 15_000 }))
     // Radix anima la entrada (fade-in ~200ms): esperar a que asiente antes de
     // chequear visibilidad, si no toBeVisible() puede pescar opacity en 0.
-    await waitFor(() => expect(dialog.getByText(/4 reserva\(s\) futura\(s\)/i)).toBeVisible())
-    await expect(dialog.getByText(/2 turno\(s\) fijo\(s\) activo\(s\)/i)).toBeVisible()
+    await waitFor(() =>
+      expect(
+        dialog.getByText('Tiene 4 turnos por delante. Siguen en pie hasta que los canceles.'),
+      ).toBeVisible(),
+    )
+    await expect(dialog.getByText('Tiene 2 turnos fijos activos.')).toBeVisible()
+    await expect(dialog.getByText(/los jugadores no la ven en tu perfil/)).toBeVisible()
 
     // Sin cerrar acá, el portal del ConfirmDialog queda montado y contamina
     // la story siguiente del archivo (Error Al Verificar Impacto). Con
@@ -169,7 +211,7 @@ export const ErrorAlVerificarImpacto: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
-    await userEvent.click(canvas.getByRole('button', { name: 'Desactivar' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Pausar' }))
 
     // El Toaster no usa Portal (renderiza inline junto a la story).
     const toastText = await canvas.findByText('No se pudo verificar el impacto')
@@ -219,7 +261,7 @@ export const ActivarCanchaSubeLaCuota: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Activar' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Reactivar' }))
     const dialog = await within(canvasElement.ownerDocument.body).findByRole(
       'dialog',
       {},
@@ -229,7 +271,7 @@ export const ActivarCanchaSubeLaCuota: Story = {
     await expect(dialog).toHaveTextContent(/137\.000/)
     await expect(dialog).toHaveTextContent(/167\.000/)
 
-    // Mismo motivo que en DesactivarConImpacto: un portal abierto contamina la
+    // Mismo motivo que en PausarConImpacto: un portal abierto contamina la
     // story siguiente del archivo.
     await userEvent.keyboard('{Escape}')
     await waitFor(() =>
@@ -240,12 +282,12 @@ export const ActivarCanchaSubeLaCuota: Story = {
   },
 }
 
-/** Activar una cancha offline: sin diálogo de confirmación, un solo click. */
+/** Reactivar una cancha pausada: sin diálogo de confirmación, un solo click. */
 export const ActivarCancha: Story = {
   args: { initialCourts: [courtOffline()] },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Activar' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Reactivar' }))
     await expect(args.toggleStatusAction).toHaveBeenCalledWith(courtOffline().id, 'online')
   },
 }

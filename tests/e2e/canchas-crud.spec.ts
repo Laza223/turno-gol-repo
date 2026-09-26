@@ -3,16 +3,16 @@
  *
  * Happy path + 3 edge cases for the admin canchas UI:
  *   #1  Happy — create court: /canchas → "+ Nueva cancha" → fill name/surface/capacity →
- *              quick template "Un precio" → Aplicar → submit → new court appears with Online badge.
+ *              precio del turno (aplica al instante) → submit → new court appears with Online badge.
  *   #2  Edge — deactivate with future bookings (staged): service-role INSERT court + future booking →
- *              /canchas → "Desactivar" → dialog shows "Hay 1 reserva(s) futura(s)" → confirm →
- *              badge becomes Offline.
- *   #3  Edge — pricing coverage gap: apply template → fine-tune grid → empty one cell →
- *              submit → client-side gate "No se puede guardar: falta 1 horario sin precio".
+ *              /canchas → "Pausar" → dialog shows "Tiene 1 turno por delante" → confirm →
+ *              badge becomes Pausada.
+ *   #3  Edge — pricing coverage gap: cargar el precio del turno → fine-tune grid → empty one cell →
+ *              submit → client-side gate "No se puede guardar: falta 1 hora sin precio".
  *   #4  Edge — optimistic rollback on activate failure: service-role INSERT an offline court, then
  *              mock the Server Action response via network intercept so toggleCourtStatusAction
- *              returns an error → "Activar" click → UI briefly goes Online then rolls back to Offline
- *              + shows toast "No se pudo activar".
+ *              returns an error → "Reactivar" click → UI briefly goes Online then rolls back to Offline
+ *              + shows toast "No se pudo reactivar".
  *              CHOICE RATIONALE: Plan-limit edge (option a) is unreliable because the seeded E2E
  *              tenant has no tenant_subscriptions row → maxCourts = null → no limit enforced.
  *              The optimistic-rollback path (option b) is exercised entirely in the client by mocking
@@ -150,11 +150,10 @@ test.describe('canchas — happy: create court', () => {
       await page.getByPlaceholder('Ej: Cancha 1').fill(courtName)
 
       // Keep default surface (Césped sintético) and capacity.
-      // Prices: a new court starts EMPTY (no more fake DEFAULT_RULES). Use the
-      // quick template — "Un precio" is the default mode — and apply it to the
-      // whole week so every operative hour is covered.
-      await page.getByLabel('Precio por turno').fill('10000')
-      await page.getByRole('button', { name: 'Aplicar a toda la semana' }).click()
+      // Prices: a new court starts EMPTY (no more fake DEFAULT_RULES). El
+      // MoneyInput "Precio del turno" aplica al instante: sin botón, ya queda
+      // la semana entera cargada al tipear.
+      await page.getByLabel('Precio del turno').fill('10000')
 
       // Submit.
       await page.getByRole('button', { name: 'Crear cancha' }).click()
@@ -167,10 +166,10 @@ test.describe('canchas — happy: create court', () => {
       // The new court card should appear with the correct name and Online badge.
       await expect(page.getByText(courtName)).toBeVisible({ timeout: 10_000 })
       // Inline badge next to the court name should say "Online".
-      // Anchor on the card's own outer class — using a bare `locator('div')`
+      // Anchor on the row's own `<li>` — using a bare `locator('div')`
       // matches every ancestor (incl. the page container that has every card),
       // so getByText('Activa') would match all status badges.
-      const courtCard = page.locator('div.rounded-lg').filter({ hasText: courtName })
+      const courtCard = page.getByRole('listitem').filter({ hasText: courtName })
       await expect(courtCard.getByText('Activa')).toBeVisible()
 
       // Capture the created court id for cleanup by finding it via the DB.
@@ -192,7 +191,7 @@ test.describe('canchas — happy: create court', () => {
 // TEST 2 — Edge: deactivate court with future bookings (impact warning shown)
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('canchas — edge: deactivate with future bookings', () => {
-  test('service-role court + future booking → "Desactivar" → dialog shows future-booking warning → confirm → badge Offline', async ({
+  test('service-role court + future booking → "Pausar" → dialog shows future-booking warning → confirm → badge Offline', async ({
     browser,
     adminStorageState,
   }) => {
@@ -223,27 +222,30 @@ test.describe('canchas — edge: deactivate with future bookings', () => {
         timeout: 15_000,
       })
 
-      // Find the court card and click "Desactivar".
-      // Anchor on the card's class (rounded-lg) — bare locator('div') matches
-      // every ancestor and would match every Desactivar button on the page.
-      const courtCard = page.locator('div.rounded-lg').filter({ hasText: courtName })
+      // Find the court row and click "Pausar".
+      // Anchor on the row's `<li>` — bare locator('div') matches every
+      // ancestor and would match every Pausar button on the page.
+      const courtCard = page.getByRole('listitem').filter({ hasText: courtName })
       await expect(courtCard).toBeVisible({ timeout: 10_000 })
-      await courtCard.getByRole('button', { name: 'Desactivar' }).click()
+      await courtCard.getByRole('button', { name: 'Pausar' }).click()
 
-      // ConfirmDialog opens with title "Desactivar {courtName}".
-      await expect(page.getByRole('dialog')).toBeVisible()
-      await expect(page.getByText(`Desactivar ${courtName}`)).toBeVisible()
+      // ConfirmDialog opens with title "Pausar {courtName}".
+      const dialog = page.getByRole('dialog')
+      await expect(dialog).toBeVisible()
+      await expect(page.getByText(`Pausar ${courtName}`)).toBeVisible()
 
       // The impact warning must mention the future booking count.
-      await expect(page.getByText(/Hay 1 reserva\(s\) futura\(s\)/i)).toBeVisible({
+      await expect(
+        page.getByText(/Tiene 1 turno por delante\. Sigue en pie hasta que lo canceles\./i),
+      ).toBeVisible({
         timeout: 10_000,
       })
 
-      // Confirm deactivation.
-      await page.getByRole('button', { name: 'Desactivar' }).last().click()
+      // Confirm the pause, scoped to the dialog (the row also has a "Pausar" button).
+      await dialog.getByRole('button', { name: 'Pausar' }).click()
 
       // Dialog closes and the badge updates to Offline.
-      await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 10_000 })
+      await expect(dialog).not.toBeVisible({ timeout: 10_000 })
       await expect(courtCard.getByText('Pausada')).toBeVisible({ timeout: 10_000 })
     } finally {
       await context.close()
@@ -279,14 +281,13 @@ test.describe('canchas — edge: pricing coverage gap', () => {
       // Fill a unique name.
       await page.getByPlaceholder('Ej: Cancha 1').fill(`E2E Gap ${randomUUID().slice(0, 8)}`)
 
-      // Cover the whole week with the quick template first…
-      await page.getByLabel('Precio por turno').fill('10000')
-      await page.getByRole('button', { name: 'Aplicar a toda la semana' }).click()
+      // El MoneyInput "Precio del turno" cubre la semana entera al instante…
+      await page.getByLabel('Precio del turno').fill('10000')
 
       // …then open the fine-tune grid and empty one operative cell (Mon 22:00)
       // to leave a coverage gap: click it to open the inline editor, clear the
       // value, commit with Enter.
-      await page.getByRole('button', { name: 'Ajustar por hora' }).click()
+      await page.getByRole('button', { name: /Ajustar hora por hora/ }).click()
       await page.getByRole('button', { name: /^Lun 22:00/ }).click()
       const cellEditor = page.getByLabel('Precio Lun 22:00')
       await cellEditor.fill('')
@@ -296,7 +297,7 @@ test.describe('canchas — edge: pricing coverage gap', () => {
       // gate (spec §3.3); validatePricingRulesCoverage stays as server backstop.
       await page.getByRole('button', { name: 'Crear cancha' }).click()
 
-      // The gate error is shown ("No se puede guardar: falta 1 horario sin precio…").
+      // The gate error is shown ("No se puede guardar: falta 1 hora sin precio…").
       await expect(page.getByText(/No se puede guardar/i)).toBeVisible({ timeout: 10_000 })
 
       // The form stays open (no redirect to court list).
@@ -316,7 +317,7 @@ test.describe('canchas — edge: pricing coverage gap', () => {
 //   CourtCard.activate() only rolls back on a returned { success:false } (no try/catch),
 //   so a throw would NOT trigger the rollback — testing it that way would be a false test.
 // HOW: insert an offline court, load the page (the card now lives in client React state),
-//   then DELETE the court via service-role. Clicking "Activar" runs the optimistic update
+//   then DELETE the court via service-role. Clicking "Reactivar" runs the optimistic update
 //   (Online) and calls toggleCourtStatusAction, which can't find the row → returns
 //   { success:false, error:'Cancha no encontrada' } → activate() rolls back to Offline + toast.
 //   The card stays rendered because its state is independent of the DB row, and the failed
@@ -325,7 +326,7 @@ test.describe('canchas — edge: pricing coverage gap', () => {
 //   tenant_subscriptions row → maxCourts = null → the limit check never fires.)
 // ════════════════════════════════════════════════════════════════════════════
 test.describe('canchas — edge: optimistic rollback on activate failure', () => {
-  test('offline court deleted under the UI → "Activar" → optimistic Online then rolls back to Offline + toast', async ({
+  test('offline court deleted under the UI → "Reactivar" → optimistic Online then rolls back to Offline + toast', async ({
     browser,
     adminStorageState,
   }) => {
@@ -335,7 +336,7 @@ test.describe('canchas — edge: optimistic rollback on activate failure', () =>
 
     const context = await browser.newContext()
     try {
-      // Insert an offline court so the "Activar" button is shown.
+      // Insert an offline court so the "Reactivar" button is shown.
       await insertCourt(supabase, { id: courtId, name: courtName, status: 'offline' })
 
       await context.addCookies(JSON.parse(adminStorageState).cookies)
@@ -346,26 +347,26 @@ test.describe('canchas — edge: optimistic rollback on activate failure', () =>
         timeout: 15_000,
       })
 
-      // Locate the court card; it shows Offline before activation.
-      // Anchor on the card's class (rounded-lg) to avoid resolving to the
-      // page container which holds every other card too.
-      const courtCard = page.locator('div.rounded-lg').filter({ hasText: courtName })
+      // Locate the court row; it shows Offline before activation.
+      // Anchor on the row's `<li>` to avoid resolving to the page container
+      // which holds every other row too.
+      const courtCard = page.getByRole('listitem').filter({ hasText: courtName })
       await expect(courtCard).toBeVisible({ timeout: 10_000 })
       await expect(courtCard.getByText('Pausada')).toBeVisible()
 
       // Delete the row out from under the UI so the next toggle fails gracefully.
       await deleteCourt(supabase, courtId)
 
-      // Click "Activar": optimistic Online, then the action returns { success:false }
+      // Click "Reactivar": optimistic Online, then the action returns { success:false }
       // ('Cancha no encontrada') → rollback to Offline + destructive toast.
-      await courtCard.getByRole('button', { name: 'Activar' }).click()
+      await courtCard.getByRole('button', { name: 'Reactivar' }).click()
 
       // Badge must revert to Offline and the failure toast must appear.
       // exact:true — the aria-live announcement renders
-      // "Notification No se pudo activarCancha no encontrada" which
+      // "Notification No se pudo reactivarCancha no encontrada" which
       // substring-matches and trips strict mode.
       await expect(courtCard.getByText('Pausada')).toBeVisible({ timeout: 10_000 })
-      await expect(page.getByText('No se pudo activar', { exact: true })).toBeVisible({
+      await expect(page.getByText('No se pudo reactivar', { exact: true })).toBeVisible({
         timeout: 10_000,
       })
     } finally {
@@ -398,8 +399,8 @@ test.describe('canchas — smoke: edit court photos section', () => {
         timeout: 15_000,
       })
 
-      // Find the court card and open the edit form by clicking "Editar".
-      const courtCard = page.locator('div.rounded-lg').filter({ hasText: courtName })
+      // Find the court row and open the edit form by clicking "Editar".
+      const courtCard = page.getByRole('listitem').filter({ hasText: courtName })
       await expect(courtCard).toBeVisible({ timeout: 10_000 })
       await courtCard.getByRole('button', { name: /editar/i }).click()
 

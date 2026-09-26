@@ -7,8 +7,8 @@ const HOURS = openingHours()
 
 /**
  * Las 5 Server Actions llegan por prop (ver el comentario en CourtForm.tsx):
- * '../actions' es `'use server'`. Vive dentro de `<div className="space-y-6">`
- * en CourtList.tsx, pero define su propia superficie `bg-card` con borde.
+ * '../actions' es `'use server'`. Reemplaza a la lista entera mientras está
+ * abierto (CourtList.tsx): es una página propia, con volver a "Canchas".
  */
 const meta = {
   title: 'Admin/Canchas/CourtForm',
@@ -38,14 +38,12 @@ export const NuevaCancha: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('heading', { name: 'Nueva cancha' })).toBeVisible()
-    await expect(
-      canvas.getByText('Sin precios todavía. Empezá por la plantilla rápida.'),
-    ).toBeVisible()
-    await expect(canvas.getByText('Fotos')).toBeVisible()
+    await expect(canvas.getByLabelText('Precio del turno')).toBeVisible()
+    await expect(canvas.getByRole('heading', { name: 'Fotos' })).toBeVisible()
     await expect(canvas.getByRole('button', { name: 'Agregar foto' })).toBeVisible()
-    // Vista previa: cómo sale la cancha en el perfil público sin foto y con foto.
-    await expect(canvas.getByText('Así lo ve el jugador en tu perfil')).toBeVisible()
-    await expect(canvas.getByText('Elegí una foto para ver cómo queda')).toBeVisible()
+    // Sin foto, el aviso dice cómo sale y la vista previa lo muestra.
+    await expect(canvas.getByText(/sale como un fondo verde/)).toBeVisible()
+    await expect(canvas.getByText('Así la ve el jugador')).toBeVisible()
   },
 }
 
@@ -54,13 +52,14 @@ export const EditarCancha: Story = {
   args: { court: court() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('heading', { name: 'Editar cancha' })).toBeVisible()
+    await expect(canvas.getByRole('heading', { name: 'Cancha 1' })).toBeVisible()
     await expect(canvas.getByDisplayValue('Cancha 1')).toBeVisible()
-    await expect(canvas.getByText('Fotos')).toBeVisible()
+    await expect(canvas.getByRole('heading', { name: 'Fotos' })).toBeVisible()
+    await expect(canvas.getByRole('button', { name: 'Guardar cambios' })).toBeVisible()
   },
 }
 
-/** "Copiar precios de otra cancha" aparece cuando el complejo tiene más de una. */
+/** "Igual que…" aparece cuando el complejo tiene otra cancha con precio. */
 export const ConOtrasCanchasParaCopiar: Story = {
   args: {
     court: court(),
@@ -70,7 +69,12 @@ export const ConOtrasCanchasParaCopiar: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Copiar precios de otra cancha:')).toBeVisible()
+    await expect(canvas.getByText('¿Cobra lo mismo que otra cancha?')).toBeVisible()
+    // Mismo precio que la que se edita: la opción ya sale marcada.
+    await expect(canvas.getByRole('button', { name: /Igual que Cancha 2/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
   },
 }
 
@@ -81,7 +85,9 @@ export const ErrorHorariosSinPrecio: Story = {
     await userEvent.type(canvas.getByLabelText(/nombre/i), 'Cancha nueva')
     await userEvent.click(canvas.getByRole('button', { name: 'Crear cancha' }))
 
-    await expect(await canvas.findByRole('alert')).toHaveTextContent(/no se puede guardar/i)
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      'No se puede guardar: falta el precio del turno.',
+    )
     await expect(args.createAction).not.toHaveBeenCalled()
   },
 }

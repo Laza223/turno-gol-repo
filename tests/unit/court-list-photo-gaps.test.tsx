@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
 //
-// Aviso de canchas sin foto en /canchas (CourtList.tsx). Nada bloquea crear una
-// cancha sin foto y en el perfil público sale como un fondo verde vacío: sin este
-// aviso el dueño no se entera.
+// Miniatura "Agregar foto a {cancha}" en /canchas (CourtList.tsx). Nada bloquea
+// crear una cancha sin foto y en el perfil público sale como un fondo verde
+// vacío: sin esta miniatura el dueño no se entera de cuáles le faltan.
 import '@testing-library/jest-dom/vitest'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -47,64 +47,59 @@ function renderList(
 
 afterEach(cleanup)
 
-describe('CourtList — canchas sin foto', () => {
-  it('ninguna con foto: avisa arriba y marca cada cancha', () => {
+describe('CourtList — miniatura de canchas sin foto', () => {
+  it('ninguna con foto: cada cancha tiene su botón para agregar', () => {
     renderList([court({ id: 'c1', name: 'Cancha 1' }), court({ id: 'c2', name: 'Cancha 2' })])
 
-    expect(screen.getByText(/Ninguna de tus canchas tiene foto\./)).toBeVisible()
-    expect(screen.getAllByRole('button', { name: /Sin foto · agregar/ })).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'Agregar foto a Cancha 1' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Agregar foto a Cancha 2' })).toBeVisible()
   })
 
-  it('una sola cancha sin foto: habla en singular', () => {
-    renderList([court({ id: 'c1', name: 'Cancha 1' })])
-
-    expect(screen.getByText(/Tu cancha no tiene foto\./)).toBeVisible()
-  })
-
-  it('algunas con foto: cuenta cuántas faltan y marca solo esas', () => {
+  it('algunas con foto: el botón sale solo en las que faltan', () => {
     renderList([
       court({ id: 'c1', name: 'Cancha 1', photos: [PHOTO] }),
       court({ id: 'c2', name: 'Cancha 2' }),
     ])
 
-    expect(screen.getByText(/1 de 2 canchas sin foto\./)).toBeVisible()
-    expect(screen.getAllByRole('button', { name: /Sin foto · agregar/ })).toHaveLength(1)
+    expect(
+      screen.queryByRole('button', { name: 'Agregar foto a Cancha 1' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Agregar foto a Cancha 2' })).toBeVisible()
   })
 
-  it('todas con foto: no avisa nada', () => {
+  it('todas con foto: no hay ningún botón para agregar', () => {
     renderList([court({ id: 'c1', name: 'Cancha 1', photos: [PHOTO] })])
 
-    expect(screen.queryByText(/sin foto|no tiene foto|tiene foto/)).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Sin foto · agregar/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Agregar foto a/ })).not.toBeInTheDocument()
   })
 
-  it('el manager no lo ve: no puede editar la cancha', () => {
+  it('el manager no lo ve como botón: es un texto, no puede editar', () => {
     renderList([court({ id: 'c1', name: 'Cancha 1' })], false)
 
-    expect(screen.queryByText(/no tiene foto/)).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Sin foto · agregar/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Agregar foto a/ })).not.toBeInTheDocument()
+    expect(screen.getByText('Sin foto')).toBeVisible()
   })
 
-  it('"Sin foto · agregar" abre el editor de esa cancha', async () => {
+  it('"Agregar foto a X" abre el editor de esa cancha', async () => {
     renderList([court({ id: 'c1', name: 'Cancha 1' })])
 
-    fireEvent.click(screen.getByRole('button', { name: /Sin foto · agregar/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Agregar foto a Cancha 1' }))
 
     expect(
-      await screen.findByRole('heading', { name: 'Editar cancha' }, { timeout: 10_000 }),
+      await screen.findByRole('heading', { name: 'Cancha 1' }, { timeout: 10_000 }),
     ).toBeVisible()
   })
 
   // La foto se guarda en la DB apenas se elige. Si "Cancelar" dejara `courts` como
   // estaba, la lista seguiría marcando "sin foto" con la foto ya subida.
-  it('subir una foto y cerrar con "Cancelar" ya no deja la cancha marcada sin foto', async () => {
+  it('subir una foto y cerrar con "Cancelar" ya no muestra el botón de agregar', async () => {
     renderList(
       [court({ id: 'c1', name: 'Cancha 1' })],
       true,
       vi.fn(async () => ({ success: true as const, photos: [PHOTO] })),
     )
-    fireEvent.click(screen.getByRole('button', { name: /Sin foto · agregar/ }))
-    await screen.findByRole('heading', { name: 'Editar cancha' }, { timeout: 10_000 })
+    fireEvent.click(screen.getByRole('button', { name: 'Agregar foto a Cancha 1' }))
+    await screen.findByRole('heading', { name: 'Cancha 1' }, { timeout: 10_000 })
 
     fireEvent.change(screen.getByLabelText('Agregar foto'), {
       target: { files: [new File(['x'], 'foto.png', { type: 'image/png' })] },
@@ -112,7 +107,8 @@ describe('CourtList — canchas sin foto', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Quitar imagen' })).toBeVisible())
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
 
-    expect(screen.queryByText(/no tiene foto/)).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Sin foto · agregar/ })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Agregar foto a Cancha 1' }),
+    ).not.toBeInTheDocument()
   })
 })

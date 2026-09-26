@@ -207,3 +207,69 @@ describe('getRevenueReport — byCourt no mezcla cantina con el turno', () => {
     expect(report.income).toBe(590000)
   })
 })
+
+/**
+ * Ocupación del mes en curso: numerador y denominador cortan en el mismo día
+ * operativo (hoy inclusive). Antes el denominador era el mes entero y el
+ * numerador contaba los turnos futuros ya reservados: el día 5 una cancha casi
+ * llena marcaba ~15%.
+ */
+describe('getRevenueReport — ocupación del mes en curso corta en hoy', () => {
+  const JUL = '2026-07'
+  let courtId: string
+
+  beforeAll(async () => {
+    const sql = getSql()
+    const courtRows = await sql<{ id: string }[]>`
+      SELECT id FROM courts WHERE tenant_id = ${tenantId} LIMIT 1
+    `
+    courtId = courtRows[0]!.id
+
+    // Un turno de 2 h cada día del 1 al 5, más uno futuro el 20 (confirmed).
+    const days = ['01', '02', '03', '04', '05', '20']
+    for (const d of days) {
+      const status = d === '20' ? 'confirmed' : 'completed'
+      const rows = await sql<{ id: string }[]>`
+        INSERT INTO bookings (
+          tenant_id, court_id, date, time_start, time_end, starts_at, ends_at,
+          price_snapshot, deposit_amount, deposit_status, status, guest_name
+        ) VALUES (
+          ${tenantId}, ${courtId}, ${`2026-07-${d}`}::date, '18:00'::time, '20:00'::time,
+          ${`2026-07-${d}T21:00:00Z`}, ${`2026-07-${d}T23:00:00Z`},
+          ${1000000}, 0, 'not_required', ${status}, 'Invitado Ocupación'
+        ) RETURNING id
+      `
+      if (d === '01') {
+        // byCourt sale de los cobros: sin uno la cancha no aparece en el reporte.
+        await sql`
+          INSERT INTO cash_flows
+            (tenant_id, type, category, amount, method, description, registered_by, occurred_at, booking_id)
+          VALUES
+            (${tenantId}, 'income', 'booking', ${1000000}, 'cash', ${'Turno'}, ${staffId}, ${'2026-07-01T21:30:00Z'}, ${rows[0]!.id})
+        `
+      }
+    }
+  })
+
+  const occupancyAt = async (now: string) => {
+    const report = await getRevenueReport(tenantId, JUL, OPENING_HOURS, null, false, new Date(now))
+    return report.byCourt.find((c) => c.courtId === courtId)!.occupancyPct
+  }
+
+  it('el 5 a mediodía: 5 turnos de 2 h sobre 5 días de 16 h = 12,5%, el del 20 no cuenta', async () => {
+    // Antes: (6 × 120) / (31 × 960) = 2,4%.
+    expect(await occupancyAt('2026-07-05T15:00:00Z')).toBe(12.5)
+  })
+
+  it('el 5 a las 23:00 ART sigue siendo el 5 (el corte es día operativo, no UTC)', async () => {
+    expect(await occupancyAt('2026-07-06T02:00:00Z')).toBe(12.5)
+  })
+
+  it('con el mes cerrado cuenta el mes entero, futuros incluidos', async () => {
+    expect(await occupancyAt('2026-08-10T15:00:00Z')).toBe(2.4)
+  })
+
+  it('un mes que todavía no empezó marca 0%', async () => {
+    expect(await occupancyAt('2026-06-20T15:00:00Z')).toBe(0)
+  })
+})

@@ -418,7 +418,8 @@ Lo semanal de la cantina (`/caja/productos`), rehecho el 2026-09-26 con el mismo
 - **Últimos 30 días:** solo en el mes en curso, al lado de "Por dónde entró" desde `lg`. Los cinco horarios más pedidos con barra y las ausencias con su tendencia, sin flecha ni color con menos de 30 turnos terminados. Se refresca solo cada minuto. En un mes cerrado no aparece, porque los 30 días corridos son de ahora.
 - **Vacío:** uno solo y honesto, `EmptyState` "Todavía no hay cobros en septiembre" con "Ir a la Grilla" ("En agosto no hubo cobros" en un mes pasado). Nada de números de ejemplo: se fueron los KPI fantasma, las barras fantasma y el "3,2%".
 - **Sin librería de gráficos:** una barra horizontal hecha con un `div` alcanza para comparar, y recharts se sacó del proyecto con este cambio.
-- La ocupación se calcula sobre las horas de todo el mes, así que con el mes en curso queda baja. Está registrado en `10-aprendizajes.md` y no se arregló. El estado del sistema, que solo ve el superadmin de la plataforma, sigue al pie.
+- **Ocupación por cancha:** minutos reservados sobre minutos que la cancha estuvo abierta, en el mismo tramo. En el mes en curso el tramo va del 1 a hoy inclusive (día operativo del complejo): un turno de mañana todavía no suma, y los días que faltan tampoco cuentan en el total. Un mes cerrado cuenta entero; uno que no empezó marca 0%.
+- El estado del sistema, que solo ve el superadmin de la plataforma, sigue al pie.
 
 ## Do's and Don'ts
 

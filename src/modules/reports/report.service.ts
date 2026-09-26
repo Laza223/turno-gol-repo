@@ -14,6 +14,7 @@ import {
   calcAvailableMinutes,
   calcOccupancyPct,
   getMonthBounds,
+  occupancyEndDate,
   prevMonthStr,
   type MonthBounds,
 } from './report.utils'
@@ -44,7 +45,11 @@ type PeriodAgg = {
  * operativo. Antes esto hacía `from.toISOString().split('T')[0]`, que en ART
  * corre el día para todo lo que caiga después de las 21:00.
  */
-async function fetchPeriodAgg(tenantId: string, bounds: MonthBounds): Promise<PeriodAgg> {
+async function fetchPeriodAgg(
+  tenantId: string,
+  bounds: MonthBounds,
+  occupancyToDate: string,
+): Promise<PeriodAgg> {
   const { fromUtc: from, toUtc: to, fromDate: fromStr, toDate: toStr } = bounds
 
   return withTenantContext(tenantId, async (tx) => {
@@ -93,7 +98,8 @@ async function fetchPeriodAgg(tenantId: string, bounds: MonthBounds): Promise<Pe
           .groupBy(courts.id, courts.name),
 
         // Q2b: booked minutes per court — queried from bookings directly to avoid
-        // double-counting when a booking has multiple cash flows
+        // double-counting when a booking has multiple cash flows. Corta en
+        // `occupancyToDate`, el mismo fin que el denominador (ver occupancyEndDate).
         tx
           .select({
             courtId: bookings.courtId,
@@ -106,7 +112,7 @@ async function fetchPeriodAgg(tenantId: string, bounds: MonthBounds): Promise<Pe
           .where(
             and(
               eq(bookings.tenantId, tenantId),
-              sql`${bookings.date} >= ${fromStr}::date AND ${bookings.date} < ${toStr}::date`,
+              sql`${bookings.date} >= ${fromStr}::date AND ${bookings.date} < ${occupancyToDate}::date`,
               inArray(bookings.status, ACTIVE_STATUSES),
             ),
           )
@@ -174,6 +180,7 @@ export async function getRevenueReport(
   openingHours: OpeningHours,
   closedDates?: string[] | null,
   closesNextDay = false,
+  now: Date = new Date(),
 ): Promise<RevenueReport> {
   // El período se resuelve ACÁ, no en el caller. Antes la firma pedía cuatro
   // `Date` sueltos (from/to/prevFrom/prevTo) y el caller los armaba con
@@ -182,15 +189,17 @@ export async function getRevenueReport(
   const cutoffMins = nightCutoffMins(openingHours, closesNextDay)
   const bounds = getMonthBounds(month, cutoffMins)
   const prevBounds = getMonthBounds(prevMonthStr(month), cutoffMins)
+  const occupancyToDate = occupancyEndDate(bounds, operatingDateOf(now, cutoffMins))
 
   const [current, prev] = await Promise.all([
-    fetchPeriodAgg(tenantId, bounds),
-    fetchPeriodAgg(tenantId, prevBounds),
+    fetchPeriodAgg(tenantId, bounds, occupancyToDate),
+    // Del mes anterior solo se usan los totales de plata: la ocupación no se compara.
+    fetchPeriodAgg(tenantId, prevBounds, prevBounds.toDate),
   ])
 
   const totalAvailable = calcAvailableMinutes(
     bounds.fromDate,
-    bounds.toDate,
+    occupancyToDate,
     openingHours,
     current.courtCount,
     closedDates,

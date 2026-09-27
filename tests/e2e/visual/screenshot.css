@@ -59,3 +59,22 @@ nextjs-portal,
 [data-nextjs-devtools-panel-overlay] {
   display: none !important;
 }
+
+/*
+ * El rail del panel, cerrado en 72 px. En el Chromium headless del CI se despliega
+ * solo al cargar (hover fantasma, sin cursor real) y queda tapando el contenido
+ * entre x=72 y x=224, pero no siempre: el 2026-09-26 salieron así `admin-canchas`
+ * y `admin-settings-reservas`, y la grilla no. Los e2e lo fijan igual desde
+ * `tests/e2e/fixtures.ts`, que los specs visuales no importan. El despliegue se
+ * prueba en las stories de `admin-sidebar`, no acá.
+ */
+aside[class~='group/rail'] {
+  width: 72px !important;
+  box-shadow: none !important;
+  transition: none !important;
+}
+aside[class~='group/rail'] [class*='group-hover/rail:max-w'] {
+  max-width: 0 !important;
+  opacity: 0 !important;
+  transition: none !important;
+}

@@ -32,11 +32,21 @@ Son 15 minutos, voy yo para allá.
 
 ### 1c. Con referido (usar SIEMPRE que exista)
 
+Abrí con lo que dijo el referidor, con sus palabras. No abras con la seña ni con las reservas online: en el piloto hubo 0 reservas online, y el valor medido está en el mostrador y la caja ([`docs/decisions/2026-09-26-referidos.md`](../decisions/2026-09-26-referidos.md) R6).
+
 ```
-Hola [nombre]! Me pasó tu contacto [referente], de [complejo del referente].
-Le armé el sistema de reservas con seña por MercadoPago y me dijo que a vos
-te podía servir. ¿Tenés 15 minutos esta semana? Me acerco al complejo
-y te lo muestro andando.
+Hola [nombre]! Soy Lazar, de TurnoGol. [Referente], de [complejo del
+referente], me pasó tu contacto. Lo usa hace [N] semanas para [lo que dijo
+él, con sus palabras]. ¿Te muestro en 10 minutos cómo queda con tus canchas?
+Te lo cargo yo antes, así lo ves con tus precios.
+```
+
+Si el que escribe primero es él ("vengo de parte de X"):
+
+```
+¡Buenísimo, [nombre]! Gracias a [Referente] por pasarte el dato. ¿Cuántas
+canchas tenés? Así te lo cargo con las tuyas y te lo muestro andando, en
+el complejo o por videollamada, como te quede mejor.
 ```
 
 ## 2. Instagram DM (cuando no hay teléfono)
@@ -128,18 +138,51 @@ a [dueño referente] cómo le está yendo. ¿Retomamos?
 con tus canchas así lo ves andando. Nos vemos ahí.
 ```
 
-## 8. Pedido de referido (SIEMPRE tras el pago; también tras piloto exitoso)
+## 8. Pedido de referido (SIEMPRE tras el pago; también en un piloto que funciona)
+
+Reglas del premio: [`docs/decisions/2026-09-26-referidos.md`](../decisions/2026-09-26-referidos.md). Por cada complejo que se registra de su parte hasta el **31/10** y paga su primer mes, 1 mes bonificado, con tope de 12 por año. Al referido no se le promete nada extra: tiene los 30 días de siempre.
+
+**En persona, un día tranquilo, 5 minutos.** El orden importa: primero das, después pedís, y el premio va al final para que no suene a compra.
+
+1. **Dar:** "Te traje tus números de estas semanas: [N] turnos y [N] ventas de cantina anotadas, y [N] turnos jugados que te marcó sin cobro registrado. ¿Qué es lo que más te sirvió?" → anotá sus palabras textuales, que son el corazón del mensaje de §8b.
+2. **Permiso:** "¿Me dejás contar que lo usás vos? Con números, sin números o con los que vos elijas."
+3. **Pedido chico, con salida fácil:** "No te pido que lo vendas. Te armo un mensaje cortito con lo que me acabás de decir: lo leés, lo cambiás y, si te cierra, lo mandás al grupo de dueños. Si no, cero drama."
+4. **Premio:** "Y por cada complejo que arranque de tu parte hasta el 31/10 y pague su primer mes, te bonifico un mes tuyo."
+5. **Plan B si le da cosa el grupo:** "Pasame dos dueños que conozcas y les escribo yo, diciendo que vengo de tu parte" → §1c.
+6. **Registrar:** `grupo_wa`, `reenvio` y `referido_por` en el CRM, y una línea en [`10-aprendizajes.md`](ejecucion/10-aprendizajes.md).
+
+## 8b. Mensaje para el grupo de dueños (en la voz del referidor)
+
+Lo que va entre `[ ]` entra solo si es verdad para él. Él lo edita, y lo manda él.
 
 ```
-[nombre], una última cosa: ¿conocés algún otro dueño de complejo al que
-lo estén volviendo loco los ausentes o el WhatsApp? Con que me pases el
-nombre y me dejes decir que venís de tu parte, me alcanza. A cambio,
-[incentivo — REQUIERE INPUT: ej. un mes bonificado por referido que se
-convierte en pago].
+Muchachos, les paso algo que uso en [complejo] hace [N] semanas: TurnoGol.
+[Lo que más le sirvió, con sus palabras.] En el mostrador se anota cada
+turno y cada venta de la cantina, y ves qué se cobró y qué no [sin estar
+ahí]. Lo hizo Lazar, un pibe de acá de Luján: te lo deja andando él con
+tus canchas y tus precios, y lo probás 30 días gratis, sin tarjeta.
+Escribile: [link wa.me con "Hola Lazar, vengo de parte de [complejo]"]
 ```
+
+Cuando exista su link `/r/<código>`, se suma al final. Nunca pongas números suyos que él no aprobó.
 
 ## 9. Respuestas rápidas (guardarlas en WhatsApp Business)
 
-- **"¿Cuánto sale?"** → "Depende de las canchas: 1 o 2, $55.000/mes + IVA; de 3 a 5, $85.000 + IVA; 6 o más, $115.000 + IVA. Sin comisión por reserva: es un fijo, te cuelguen el turno o no. El primer mes es gratis para probarlo. ¿Cuántas canchas tenés?" *(actualizar montos si cambia el pricing — fuente: tabla `plans` / `plans-data.ts`, página `/precios`)*
+- **"¿Cuánto sale?"** → "Depende de las canchas: $47.000 por mes la primera y $30.000 cada una más. Con 4 canchas son $137.000, con 5 $167.000 y con 6 $197.000. Sin comisión por reserva: es un fijo, te cuelguen el turno o no. Los primeros 30 días son gratis y sin tarjeta. ¿Cuántas canchas tenés?" *(fuente: `src/modules/billing/pricing.ts`, [`2026-09-17-precio-por-cancha.md`](../decisions/2026-09-17-precio-por-cancha.md). No decir "+IVA" ni "precio final" hasta resolver D9.)*
 - **"¿Es una app que tienen que bajar?"** → "No, es un link. Lo abrís del navegador como una página. Tus clientes no bajan nada."
 - **"Mandame info"** → "Te mando un video de 1 minuto que lo muestra andando [link]. Pero te soy sincero: en 15 minutos en el complejo lo ves con TUS canchas y decidís mejor. ¿Cuándo estás?"
+
+## 10. Palancas de venta, en su versión verdadera
+
+Regla: **se potencia el encuadre, nunca el número** ([`2026-09-26-referidos.md`](../decisions/2026-09-26-referidos.md) R6). Los ejemplos son para 5 canchas; con cada prospecto se recalculan con sus canchas y su precio de turno.
+
+| Palanca | Lo que decimos (es verdad) | Lo que no |
+|---|---|---|
+| Aversión a la pérdida | "¿Cuántos turnos se jugaron anoche que nadie anotó como cobrados? Acá los ves en rojo." Con el OK de un cliente: "a [complejo] le marcó [N] en dos semanas". | "Perdías un millón": no sabemos si esa plata se perdió. Tampoco insinuar que el encargado se la queda. |
+| Anclaje | "Unos $1.100 por cancha por día" ($167.000 / 5 canchas / 30 días). "Lo que cobrás por 3 o 4 turnos en el mes." "Menos que 20 horas de un encargado" (a $8.600-9.200 la hora con cargas). | Compararnos con ATC: con 4-6 canchas somos más caros. |
+| Prueba social | Un cliente con nombre y con su permiso, y "preguntale a él cómo le va". | Cantidad de clientes o testimonios inventados. |
+| Reciprocidad | "Te lo cargo yo con tus canchas, precios y fijos antes de que pagues un peso." | — |
+| Riesgo cero | "30 días gratis y sin tarjeta. Si no te sirve, no pagás nada y no tenés que dar de baja nada." | "Exportás tus datos": la función no existe. |
+| Autoridad | "Hecho en Luján, solo para complejos de fútbol." | Premios, prensa, "expertos". |
+| Urgencia | Una fecha real: el premio del referidor vale para las altas hasta el 31/10. "[Complejo] ya lo usa." | Cupos inventados: no hay un límite real. |
+| Compromiso | Un sí chiquito primero: "¿Te muestro en 10 minutos cómo queda con tus canchas?" | — |

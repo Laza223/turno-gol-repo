@@ -500,6 +500,30 @@ function isPendingNeverCharged(state: GatewaySubscriptionState | null, tenantId:
 }
 
 /**
+ * ¿El `mp_subscription_id` de un complejo en prueba NO es un débito vivo? O
+ * sea: un checkout que el dueño nunca pagó, o uno que MP ya dio por cancelado.
+ *
+ * Tener un preapproval creado no es tener la tarjeta cargada. "Activar plan"
+ * crea el preapproval ANTES del checkout, así que un dueño que abrió el link y
+ * no pagó quedaba con el id guardado y la pantalla lo trataba como suscripto:
+ * sin botón para pagar, y el aviso "ya hay una suscripción creada". Caso real:
+ * El Vagón (preapproval `pending` desde 2026-09-07, sin cobros), que así no
+ * tenía forma de cargar la tarjeta antes de que venciera su prueba.
+ *
+ * Si MP no responde devuelve `false`: la pantalla se queda como estaba, sin
+ * ofrecer un segundo checkout sobre un débito que podría estar vivo.
+ */
+export async function isTrialCheckoutUnpaid(
+  tenantId: string,
+  preapprovalId: string,
+  gateway: PaymentGateway,
+): Promise<boolean> {
+  const state = await readSubscriptionState(preapprovalId, gateway)
+  if (state === null || state.externalReference !== tenantId) return false
+  return isPendingNeverCharged(state, tenantId) || state.status === 'cancelled'
+}
+
+/**
  * `billed_courts` nunca puede quedar por debajo de las canchas PRENDIDAS.
  *
  * Con bandas, el gate impedia elegir un plan cuyo techo fuera menor a las

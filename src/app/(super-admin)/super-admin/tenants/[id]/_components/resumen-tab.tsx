@@ -1,4 +1,5 @@
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
+import { absoluteUrl } from '@/lib/seo/metadata'
 import type { TenantDetail } from '@/modules/super-admin/tenants.service'
 import { CourtStatusBadge } from '@/app/(admin)/canchas/components/status-visual'
 import { formatDateArt, formatDateTimeArt } from '../../_components/format'
@@ -8,6 +9,7 @@ import {
   MarketplaceVisibilityToggle,
   type UpdateMarketplaceVisibilityAction,
 } from './marketplace-visibility-toggle'
+import { ReferralLinkPanel, type GenerateReferralLinkAction } from './referral-link-panel'
 
 /**
  * Tab "Resumen" del detalle de tenant: soporte (impersonar), datos del
@@ -18,10 +20,12 @@ export function ResumenTab({
   detail,
   impersonateAction,
   updateMarketplaceVisibilityAction,
+  generateReferralLinkAction,
 }: {
   detail: TenantDetail
   impersonateAction: StartImpersonationAction
   updateMarketplaceVisibilityAction: UpdateMarketplaceVisibilityAction
+  generateReferralLinkAction: GenerateReferralLinkAction
 }) {
   const { tenant, courts, staff } = detail
   const s = tenant.settings
@@ -54,6 +58,13 @@ export function ResumenTab({
               tenantId={tenant.id}
               initialVisible={tenant.marketplaceVisible}
               action={updateMarketplaceVisibilityAction}
+            />
+          </Dt>
+          <Dt label="Link de referidos">
+            <ReferralLinkPanel
+              tenantId={tenant.id}
+              initialUrl={tenant.referralCode ? absoluteUrl(`/r/${tenant.referralCode}`) : null}
+              action={generateReferralLinkAction}
             />
           </Dt>
           {tenant.scheduledDeletionAt && (

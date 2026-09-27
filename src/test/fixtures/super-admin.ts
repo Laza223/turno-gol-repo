@@ -354,6 +354,8 @@ export type SaTenantDetail = {
     createdAt: Date
     /** Shape completo real: `tenantSettings()` de `./tenant` (mismo `TenantSettings` que usa el admin). */
     settings: ReturnType<typeof tenantSettings>
+    /** Programa de referidos (migr. 094). `null` = todavía no lo generó nadie. */
+    referralCode: string | null
   }
   subscription: {
     status: SaSubscriptionStatus
@@ -436,6 +438,7 @@ const tenantDefault = (): SaTenantDetail['tenant'] => ({
   mpConnectedAt: daysFromNow(-180),
   createdAt: daysFromNow(-200),
   settings: tenantSettings(),
+  referralCode: null,
 })
 
 /** Tenant activo, con suscripción al día, canchas y staff cargados. */

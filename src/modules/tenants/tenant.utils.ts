@@ -67,6 +67,8 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   'super-admin',
   // prefijo de link público
   'c',
+  // (business) — landing pública de un código de referido, /r/<CODE>
+  'r',
 ])
 
 export function generateSlug(name: string): string {

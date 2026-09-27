@@ -53,6 +53,10 @@ export default function robots(): MetadataRoute.Robots {
           // No va `/auth/`: `(auth)` también es route group y el callback vive
           // en `/api/auth/...`, ya cubierto por la regla `/api/` de arriba.
           '/mock-mp',
+          // Landing de referidos (B1): nombra a UN complejo puntual, sin valor
+          // SEO propio — la página también manda `noindex` (defensa en
+          // profundidad, no redundancia inútil).
+          '/r/',
         ],
       },
     ],

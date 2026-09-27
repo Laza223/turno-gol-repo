@@ -60,6 +60,14 @@ const ALLOWLIST: Record<string, string> = {
   'src/app/(player)/mis-reservas/RefundContactPanel.stories.tsx':
     'El link de wa.me se deja INERTE, igual que en ShareActions: la story lee el atributo ' +
     'href para comprobar que el número quedó normalizado, y nunca lo clickea.',
+  'src/app/(super-admin)/super-admin/tenants/[id]/_components/referral-link-panel.stories.tsx':
+    'La URL de referidos se muestra en un <code> de texto plano y solo alimenta ' +
+    '`navigator.clipboard.writeText()` (ver referral-link-panel.tsx) — igual que ' +
+    'onboarding-checklist y ShareButton, nunca se fetchea ni se renderiza como recurso.',
+  'src/app/(super-admin)/super-admin/tenants/[id]/_components/resumen-tab.stories.tsx':
+    'El `action` mockeado de ReferralLinkPanel devuelve esa URL, que solo se usa como ' +
+    'texto plano / clipboard (mismo motivo que referral-link-panel.stories.tsx) — nunca ' +
+    'se fetchea ni se renderiza como recurso.',
 }
 
 /** http(s) fuera de `data:`/`blob:` y de localhost/127.0.0.1. */

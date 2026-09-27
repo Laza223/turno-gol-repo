@@ -9,6 +9,7 @@ import {
   text,
   timestamp,
   uuid,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core'
 import { jsonb } from '../jsonb'
 import { tenantStatusEnum } from './enums'
@@ -135,6 +136,17 @@ export const tenants = pgTable(
       withTimezone: true,
       mode: 'date',
     }),
+
+    // Programa de referidos, fase B1 (migr. 094). Código que ESTE complejo
+    // reparte (`referral_code`) vs. quién lo trajo A ÉL y el estado de su
+    // recompensa (`referred_by_tenant_id` + `referral_reward_*`) — las dos
+    // puntas viven en filas distintas, ver el comentario de la migración.
+    referralCode: text('referral_code').unique(),
+    referredByTenantId: uuid('referred_by_tenant_id').references((): AnyPgColumn => tenants.id, {
+      onDelete: 'set null',
+    }),
+    referralRewardStatus: text('referral_reward_status'),
+    referralRewardAt: timestamp('referral_reward_at', { withTimezone: true, mode: 'date' }),
 
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),

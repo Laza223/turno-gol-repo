@@ -443,6 +443,12 @@ export async function wipeTenant(
           mp_nickname = NULL,
           mp_connected_at = NULL,
           scheduled_deletion_at = NULL,
+          -- Programa de referidos (migr. 094): el CÓDIGO que este complejo
+          -- repartía es suyo y se limpia como el resto de sus datos públicos.
+          -- referred_by_tenant_id y referral_reward_* NO se tocan: son
+          -- historia del REFERIDOR (quién trajo a este complejo), no un dato
+          -- personal de este tenant.
+          referral_code = NULL,
           updated_at = NOW()
       WHERE id = ${tenantId}
     `)

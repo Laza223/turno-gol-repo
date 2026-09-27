@@ -231,6 +231,8 @@ export type TenantDetail = {
     mpConnectedAt: Date | null
     createdAt: Date
     settings: TenantSettings
+    /** Programa de referidos (migr. 094). `null` = todavía no lo generó nadie. */
+    referralCode: string | null
   }
   subscription: {
     status: SubscriptionStatus
@@ -300,6 +302,7 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
       mpConnectedAt: tenants.mpConnectedAt,
       createdAt: tenants.createdAt,
       settings: tenants.settings,
+      referralCode: tenants.referralCode,
     })
     .from(tenants)
     .where(eq(tenants.id, tenantId))

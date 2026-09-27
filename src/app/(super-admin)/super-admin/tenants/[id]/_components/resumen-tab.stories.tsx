@@ -21,6 +21,10 @@ const meta = {
     detail: tenantDetail(),
     impersonateAction: fn(async () => ({ success: true as const })),
     updateMarketplaceVisibilityAction: fn(async () => ({ success: true as const })),
+    generateReferralLinkAction: fn(async () => ({
+      success: true as const,
+      url: 'https://turnogol.app/r/AH2K9MZP',
+    })),
   },
 } satisfies Meta<typeof ResumenTab>
 

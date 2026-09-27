@@ -25,6 +25,7 @@ import {
   changeBilledCourtsAction,
   extendTrialAction,
   forceTenantStatusAction,
+  generateReferralLinkAction,
   reactivateTenantAction,
   resetStaffPasswordAction,
   startImpersonationAction,
@@ -123,6 +124,7 @@ export default async function SuperAdminTenantDetailPage(props: {
           detail={detail}
           impersonateAction={startImpersonationAction}
           updateMarketplaceVisibilityAction={updateTenantMarketplaceVisibilityAction}
+          generateReferralLinkAction={generateReferralLinkAction}
         />
       )}
       {tab === 'suscripcion' && <SuscripcionTab detail={detail} />}

@@ -8,8 +8,8 @@ Cada PR declara su efecto sobre El Vagón y espera el OK del dueño antes de mer
 
 | Paso | Qué | Estado |
 |---|---|---|
-| A4 | Decisión, guiones, nota en el freeze de `CLAUDE.md`, H3 y aprendizajes | PR abierto |
-| B1 | Migración + módulo `referrals` + landing `/r/[code]` + "Generar link" en el super-admin | pendiente |
+| A4 | Decisión, guiones, nota en el freeze de `CLAUDE.md`, H3 y aprendizajes | mergeado (#395) |
+| B1 | Migración + módulo `referrals` + landing `/r/[code]` + "Generar link" en el super-admin | PR abierto: verificado (revisión adversarial, UX de la landing, integración en Postgres descartable) |
 | B2 | Atribución en el alta + "Asignar referidor" en el super-admin | pendiente |
 | B3 | Premio ganado en el primer pago real + sweep + aprobación y aplicación en el super-admin | pendiente |
 | B4 | Panel del dueño `/settings/invitar` | pendiente |
@@ -41,6 +41,10 @@ Cada PR declara su efecto sobre El Vagón y espera el OK del dueño antes de mer
   - Es automático solo si el referidor está en `trialing` con `mp_subscription_id IS NULL`, y en ese caso suma 30 días de prueba.
   - Cualquier otro caso queda "pendiente manual" con aviso. El gateway no puede pausar ni reprogramar un cobro, cancelar es terminal, y `resolveFirstChargeAt` (`billing.service.ts:276-283`) ya fijó la fecha en MP.
 
+## Verificación sin tocar la base compartida
+
+La base local compartida (`:54322`) iba atrasada de migraciones y la usan otras sesiones. La integración de B1 se corrió en un Postgres descartable (`postgres:15-alpine` en `:54329`, con las 94 migraciones aplicadas desde cero y la 094 re-ejecutada), pasando `DATABASE_URL` explícito en el comando. Receta: memoria `validacion-aislada-postgres-descartable`.
+
 ## Tests que no pueden faltar
 
 - Si soporte fuerza `active`, no hay premio.
@@ -60,3 +64,6 @@ Cada PR declara su efecto sobre El Vagón y espera el OK del dueño antes de mer
 | 2026-09-26 | Explore (sonnet) | Mapa del cobro del SaaS con MP | ~202k tok | El gateway no puede saltear un cobro. No hay descuentos ni créditos. |
 | 2026-09-26 | Explore (sonnet) | Panel admin y convenciones de DB | ~141k tok | Ajustes por carpetas, última migración 093, `tenants` global sin RLS. |
 | 2026-09-26 | Plan (sonnet) | Revisar y completar el diseño | s/d | 8 correcciones incorporadas. Una refutada: `dunning.service.ts` no lee `last_payment_at` antes de activar, así que la señal pasó a ser el UPDATE idempotente. |
+| 2026-09-26 | sonnet-implementer | B1: migración, módulo, landing, super-admin | ~331k tok | Implementado; juez verde. No corrió integración: la base local compartida estaba en la migración 089. |
+| 2026-09-26 | sonnet-adversarial-reviewer | Verificación fresca de B1 | ~178k tok | Aprobado con reservas: la landing usaba el parser de teléfonos de complejos en vez de `contactWhatsappUrl` 🟡, y la migración no era re-ejecutable 🟢. Los dos se arreglaron. |
+| 2026-09-26 | sonnet-ux-verifier | Landing `/r/[code]` corriendo la app + stories | ~212k tok | La landing pasa todo: redirects 307, no filtra UUID ni estado, 375 px sin scroll. La story `GenerarYCopiar` no mockeaba el portapapeles y habría roto "Stories (BLOCKING)": arreglada. |

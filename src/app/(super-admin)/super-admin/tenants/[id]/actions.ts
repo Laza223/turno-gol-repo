@@ -50,6 +50,9 @@ import {
   updateTenantSettingsForSupport,
 } from '@/modules/super-admin/support.service'
 import { getTenantSummary } from '@/modules/super-admin/tenants.service'
+import { ensureReferralCode } from '@/modules/referrals/referral.service'
+import { absoluteUrl } from '@/lib/seo/metadata'
+import type { ActionResult } from '@/shared/types/action-result'
 
 /**
  * Server Actions de soporte del detalle de tenant (panel SuperAdmin).
@@ -406,6 +409,49 @@ export async function updateTenantMarketplaceVisibilityAction(
     message: visible
       ? 'El complejo ahora es visible en el marketplace.'
       : 'El complejo fue ocultado del marketplace.',
+  }
+}
+
+// ─── Link de referidos (B1) ───────────────────────────────────────────────────
+
+export type GenerateReferralLinkResult = ActionResult<{ url: string }>
+
+/**
+ * "Link de referidos": genera (o devuelve, si ya existía) el código de
+ * referido del complejo y arma la URL absoluta de su landing pública
+ * (`/r/<CODE>`). `ensureReferralCode` es idempotente — nunca pisa un código
+ * ya emitido. Audita `support.tenant.referral_code_generated`.
+ */
+export async function generateReferralLinkAction(
+  tenantId: string,
+): Promise<GenerateReferralLinkResult> {
+  const auth = await requireSystemAdminAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+
+  const parsed = uuid.safeParse(tenantId)
+  if (!parsed.success) return { success: false, error: 'Tenant inválido.' }
+  const id = parsed.data
+
+  const summary = await getTenantSummary(id)
+  if (!summary) return { success: false, error: 'Complejo no encontrado.' }
+
+  try {
+    const code = await ensureReferralCode(id)
+    await withTenantContext(id, (tx) =>
+      insertAuditLog(tx, {
+        tenantId: id,
+        actorId: auth.admin.id,
+        actorType: 'system',
+        action: 'support.tenant.referral_code_generated',
+        resourceType: 'tenant',
+        resourceId: id,
+        metadata: { referral_code: code },
+      }),
+    )
+    revalidateTenantPaths(id)
+    return { success: true, url: absoluteUrl(`/r/${code}`) }
+  } catch {
+    return { success: false, error: 'No se pudo generar el link de referidos. Probá de nuevo.' }
   }
 }
 

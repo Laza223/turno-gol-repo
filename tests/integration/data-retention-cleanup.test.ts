@@ -72,6 +72,11 @@ describe('data-retention-cleanup', () => {
     const { tenantId, playerId } = await setupTenant({ scheduleDaysAgo: 1 })
     const sql = getSql()
 
+    // Programa de referidos (migr. 094): sin setearlo acá, NULL→NULL no
+    // probaría nada (setupTenant no lo puebla — mismo criterio que el resto
+    // de esta seed, ver el comentario de setupTenant en retention.ts).
+    await sql`UPDATE tenants SET referral_code = 'AH2K9MZP' WHERE id = ${tenantId}`
+
     expect(await countChildren(sql, tenantId)).toEqual(FULL)
 
     await runDataRetentionCleanup()
@@ -99,11 +104,13 @@ describe('data-retention-cleanup', () => {
         mp_nickname: string | null
         mp_connected_at: Date | null
         scheduled_deletion_at: Date | null
+        referral_code: string | null
       }>
     >`
       SELECT status, name, email, address, phone, description, logo_url, cover_url,
              whatsapp, latitude, longitude, mp_access_token, mp_refresh_token,
-             mp_user_id, mp_public_key, mp_nickname, mp_connected_at, scheduled_deletion_at
+             mp_user_id, mp_public_key, mp_nickname, mp_connected_at, scheduled_deletion_at,
+             referral_code
       FROM tenants WHERE id = ${tenantId}
     `
     expect(tenant.status).toBe('deleted')
@@ -129,6 +136,10 @@ describe('data-retention-cleanup', () => {
     // después del borrado, que es justo lo que /terminos promete que no pasa.
     expect(tenant.mp_nickname).toBeNull()
     expect(tenant.mp_connected_at).toBeNull()
+    // El código que este complejo repartía es suyo — se limpia igual que el
+    // resto de sus datos públicos (referred_by_tenant_id/referral_reward_*
+    // NO se tocan: son historia del referidor, no un dato de este tenant).
+    expect(tenant.referral_code).toBeNull()
 
     // Player record itself NOT deleted (cross-tenant, Ley 25.326).
     const [playerRow] = await sql<{ id: string }[]>`

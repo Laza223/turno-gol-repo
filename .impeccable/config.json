@@ -15,6 +15,15 @@
         "value": "inter",
         "createdAt": "2026-09-24T03:05:20.607Z",
         "reason": "Lazar (2026-09-23, user confirmed): Inter es la letra actual del panel y el refinamiento la conserva"
+      },
+      {
+        "rule": "gray-on-color",
+        "value": "*",
+        "files": [
+          "src/app/(business)/r/[code]/page.tsx"
+        ],
+        "createdAt": "2026-09-27T01:58:29.938Z",
+        "reason": "Agent: idéntico al CTA primario ya shipeado en (business)/para-complejos/page.tsx L178 — slate-950 es casi negro sobre emerald-500 brillante, alto contraste real, no gris lavado"
       }
     ]
   }

@@ -53,15 +53,18 @@ function priceIcon(t: Located, active = false): L.DivIcon {
   })
 }
 
+const SINGLE_POINT_ZOOM = 14
+const FIT_PADDING: [number, number] = [48, 48]
+
 function FitBounds({ points }: { points: [number, number][] }) {
   const map = useMap()
   useEffect(() => {
     if (points.length === 0) return
     if (points.length === 1) {
-      map.setView(points[0], 14)
+      map.setView(points[0], SINGLE_POINT_ZOOM)
       return
     }
-    map.fitBounds(points, { padding: [48, 48] })
+    map.fitBounds(points, { padding: FIT_PADDING })
   }, [map, points])
   return null
 }
@@ -90,15 +93,22 @@ export default function ExplorarMap({
     )
   }
 
-  // Centro inicial = primer punto (FitBounds ajusta el encuadre apenas monta).
-  const center: [number, number] = points[0]
+  // La vista inicial ES el encuadre de FitBounds, así su primera corrida no cambia el
+  // zoom. Si cambiara (antes: zoom 13 fijo), Leaflet animaría el zoom con un setTimeout
+  // de 250 ms que `map.remove()` no cancela: desmontar el mapa en esa ventana tira
+  // "reading '_leaflet_pos'" suelto (se veía en cada corrida de las stories).
+  // FitBounds sigue animando el reencuadre cuando cambian los resultados.
+  const initialView =
+    points.length === 1
+      ? { center: points[0], zoom: SINGLE_POINT_ZOOM }
+      : { bounds: points, boundsOptions: { padding: FIT_PADDING } }
 
   return (
     // isolate: los panes internos de Leaflet usan z-index 400+; sin un stacking
     // context propio taparían cualquier dropdown de la página (p. ej. el combobox
     // de localidad, que el <select> nativo anterior no sufría por ser popup del OS).
     <div className="isolate h-[70vh] overflow-hidden rounded-2xl border border-border shadow-xs">
-      <MapContainer center={center} zoom={13} scrollWheelZoom className="h-full w-full">
+      <MapContainer {...initialView} scrollWheelZoom className="h-full w-full">
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

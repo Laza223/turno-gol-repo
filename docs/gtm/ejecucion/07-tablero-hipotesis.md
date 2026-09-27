@@ -42,11 +42,11 @@
 | | |
 |---|---|
 | Estado | ABIERTA |
-| Evidencia a favor | (2026-09-01, founder) "se conocen, tienen grupos, coordinan precios" — HYPOTHESIS (sin registro) |
+| Evidencia a favor | (2026-09-01, founder) "se conocen, tienen grupos, coordinan precios" — HYPOTHESIS (sin registro) · (2026-09-26, founder) el dueño del piloto está en un grupo de WhatsApp de dueños; todavía no se sabe si reenviaría — SIGNAL |
 | Evidencia en contra | — |
 | Umbral confirma | ≥1 grupo identificado + ≥1 reenvío hecho + ≥1 contacto "me lo pasó X" en 30 días |
 | Umbral mata | P1 y ≥5 discovery dicen que no están en ningún grupo / no reenviarían |
-| Quién decide | Lazar, 2026-10-02; define si referidos (D8) se opera o pasa a accesorio |
+| Quién decide | Lazar, 2026-10-02. Desde el 2026-09-26 el programa se opera y se construye igual ([`2026-09-26-referidos.md`](../../decisions/2026-09-26-referidos.md), supera D8): H3 ya no decide si se hace, decide si es el loop principal o un accesorio |
 
 ## H4 — El ICP 4-6 tiene masa en el corredor
 

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, screen, userEvent, within } from 'storybook/test'
+import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test'
 import { MercadoPagoSenaSection } from './MercadoPagoSenaSection'
 
 /**
@@ -45,7 +45,10 @@ export const DesconectarAbierto: Story = {
 
     await userEvent.click(canvas.getByRole('button', { name: 'Desconectar' }))
     const dialog = await screen.findByRole('dialog')
-    await expect(within(dialog).getByText('¿Desconectar MercadoPago?')).toBeVisible()
+    // waitFor: recién montado, el fade-in-0 de Radix puede dejar opacity:0 en
+    // el primer tick (reduced-motion acorta la animación, no saltea ese frame) y
+    // toBeVisible() lo agarra en falso negativo. Mismo idiom que FiadosList.
+    await waitFor(() => expect(within(dialog).getByText('¿Desconectar MercadoPago?')).toBeVisible())
     await expect(within(dialog).getByText(/ELVAGON\.FUTBOL/)).toBeVisible()
     // Abrir el diálogo no desconecta nada: hace falta el tercer toque.
     await expect(args.disconnectAction).not.toHaveBeenCalled()

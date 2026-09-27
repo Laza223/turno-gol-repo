@@ -5,6 +5,7 @@ import { withTenantContext } from '@/shared/db/client'
 import {
   getBillingPayerEmail,
   getSubscriptionState,
+  isTrialCheckoutUnpaid,
   listActivePlans,
   listInvoices,
 } from '@/modules/billing/billing.service'
@@ -112,8 +113,18 @@ export default async function FacturacionPage() {
   const activePlans = sub ? await withTenantContext(tenant.id, (tx) => listActivePlans(tx)) : []
   const pricing = firstCuotaPricing(activePlans)
 
-  // `trialing` SIN preapproval todavía es la primera activación (checkout de
-  // MP). Con preapproval ya creado —o con la suscripción activa— cambiar la
+  // En prueba, un preapproval guardado puede ser un checkout que nunca se
+  // pagó: eso no es un débito, y el dueño tiene que poder activar el plan como
+  // cualquier otro (`isTrialCheckoutUnpaid`). `subscribe()` ya sabe qué hacer
+  // con ese checkout viejo: lo reusa si sirve tal cual o arma uno nuevo.
+  const trialCheckoutUnpaid =
+    sub?.status === 'trialing' && sub.mpSubscriptionId
+      ? await isTrialCheckoutUnpaid(tenant.id, sub.mpSubscriptionId, getBillingGateway())
+      : false
+  const liveMpSubscriptionId = trialCheckoutUnpaid ? null : (sub?.mpSubscriptionId ?? null)
+
+  // `trialing` SIN débito todavía es la primera activación (checkout de
+  // MP). Con débito ya cargado —o con la suscripción activa— cambiar la
   // cantidad es mover el monto de uno que ya existe, y eso nunca cobra en el
   // momento (decisión P4). En `past_due` no se ofrece tocar nada: lo que
   // corresponde es regularizar el pago, y el service lo rechaza igual.
@@ -121,7 +132,7 @@ export default async function FacturacionPage() {
     !sub || !pricing
       ? null
       : sub.status === 'trialing'
-        ? sub.mpSubscriptionId
+        ? liveMpSubscriptionId
           ? 'manage'
           : 'activate'
         : sub.status === 'active'
@@ -249,7 +260,7 @@ export default async function FacturacionPage() {
               : undefined
           }
         >
-          {sub?.mpSubscriptionId && (
+          {liveMpSubscriptionId && (
             <p className="flex items-start gap-2 text-sm text-muted-foreground">
               <CreditCard className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
               <span>
@@ -290,7 +301,7 @@ export default async function FacturacionPage() {
                     activada hay un preapproval que MercadoPago cobra ese día, y en
                     `trialing` no se puede cancelar desde la app (`CANCELABLE`). */}
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {sub.mpSubscriptionId
+                  {liveMpSubscriptionId
                     ? `Para darte de baja antes del primer cobro, escribinos a ${SUPPORT_EMAIL}.`
                     : `Estás en la prueba gratis hasta el ${formatDate(tenant.trialEndsAt)}. Si no activás la cuota, no se te cobra nada: ese día se cortan el panel y la reserva por internet.`}
                 </p>

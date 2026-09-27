@@ -79,6 +79,9 @@ vi.mock('@/modules/billing/billing.service', () => ({
   // tests de este archivo pasarían igual sin haber tocado nunca la rama con
   // datos (hallazgo de la verificación adversarial, 2026-08-27).
   listInvoices: vi.fn(async () => []),
+  // En prueba con preapproval, la página le pregunta a MP si es un débito
+  // vivo o un checkout que nunca se pagó. Default: débito vivo (lo de siempre).
+  isTrialCheckoutUnpaid: vi.fn(async () => false),
 }))
 // getBillingGateway() construye el gateway REAL de MP (SDK + circuit breaker).
 // La page lo pasa a `listInvoices`, que acá está mockeado y nunca lo toca —
@@ -89,7 +92,11 @@ vi.mock('@/modules/billing/billing.gateway', () => ({
 
 import FacturacionPage from '@/app/(admin)/settings/facturacion/page'
 import { requireAdminStaff } from '@/modules/staff/guards'
-import { getSubscriptionState, listInvoices } from '@/modules/billing/billing.service'
+import {
+  getSubscriptionState,
+  isTrialCheckoutUnpaid,
+  listInvoices,
+} from '@/modules/billing/billing.service'
 
 const STAFF_USER = {
   type: 'staff',
@@ -270,5 +277,44 @@ describe('/settings/facturacion — aviso de suscripción de MercadoPago ya crea
     expect(
       screen.queryByText(/Ya hay una suscripción de MercadoPago creada para este plan/),
     ).toBeNull()
+  })
+})
+
+// Tener un preapproval guardado no es tener la tarjeta cargada. El Vagón (prod,
+// 2026-09-27) tocó "Activar plan", nunca pagó el checkout, y la pantalla lo
+// trataba como suscripto: sin botón para pagar y con el aviso de "ya hay una
+// suscripción creada". Así no tenía cómo cargar la tarjeta antes de que
+// venciera la prueba.
+describe('/settings/facturacion — checkout creado pero nunca pagado', () => {
+  it('en prueba con un checkout sin pagar: ofrece Activar y no dice que ya hay suscripción', async () => {
+    vi.mocked(getSubscriptionState).mockResolvedValue(sub('trialing') as never)
+    vi.mocked(isTrialCheckoutUnpaid).mockResolvedValueOnce(true)
+
+    render(await FacturacionPage())
+
+    const cuotaSection = screen.getByRole('heading', { name: 'Tu cuota' }).closest('section')
+    expect(
+      within(cuotaSection as HTMLElement).getByRole('button', { name: /^Activar — / }),
+    ).toBeTruthy()
+    expect(screen.queryByText(/Ya hay una suscripción de MercadoPago creada/)).toBeNull()
+    expect(screen.queryByText(/Para darte de baja antes del primer cobro/)).toBeNull()
+    expect(vi.mocked(isTrialCheckoutUnpaid)).toHaveBeenCalledWith('t-1', 'mp-1', expect.anything())
+  })
+
+  it('en prueba con el débito ya cargado: sigue sin ofrecer Activar', async () => {
+    vi.mocked(getSubscriptionState).mockResolvedValue(sub('trialing') as never)
+
+    render(await FacturacionPage())
+
+    expect(screen.queryByRole('button', { name: /^Activar — / })).toBeNull()
+    expect(screen.getByText(/Ya hay una suscripción de MercadoPago creada/)).toBeTruthy()
+  })
+
+  it('con la suscripción activa no le pregunta nada a MP', async () => {
+    vi.mocked(getSubscriptionState).mockResolvedValue(sub('active') as never)
+
+    render(await FacturacionPage())
+
+    expect(vi.mocked(isTrialCheckoutUnpaid)).not.toHaveBeenCalled()
   })
 })

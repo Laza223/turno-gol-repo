@@ -1,5 +1,6 @@
 import type { EmailContent } from './index'
 import { escapeHtml } from './html-escape'
+import { appLink } from './app-link'
 
 export type TrialExpiredData = {
   ownerName: string
@@ -23,11 +24,11 @@ export function renderTrialExpired(data: TrialExpiredData): EmailContent {
   <p>Hola ${escapeHtml(data.ownerName)},</p>
   <p>El período de prueba de <strong>${escapeHtml(data.tenantName)}</strong> en TurnoGol terminó. Suscribite para seguir usando TurnoGol.</p>
   <p style="text-align:center;margin:24px 0">
-    <a href="https://app.turnogol.app/settings/facturacion" style="background:#0369a1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Suscribirme →</a>
+    <a href="${appLink('/settings/facturacion')}" style="background:#0369a1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Suscribirme →</a>
   </p>
   <p style="color:#64748b;font-size:14px">— El equipo de TurnoGol</p>
 </body>
 </html>`
-  const text = `Tu prueba gratuita terminó\n\nHola ${data.ownerName},\n\nEl período de prueba de ${data.tenantName} en TurnoGol terminó. Suscribite para seguir usando TurnoGol: https://app.turnogol.app/settings/facturacion\n\n— El equipo de TurnoGol`
+  const text = `Tu prueba gratuita terminó\n\nHola ${data.ownerName},\n\nEl período de prueba de ${data.tenantName} en TurnoGol terminó. Suscribite para seguir usando TurnoGol: ${appLink('/settings/facturacion')}\n\n— El equipo de TurnoGol`
   return { subject, html, text }
 }

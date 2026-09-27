@@ -1218,3 +1218,118 @@ describe('con qué cuenta de MercadoPago paga el complejo', () => {
     expect(asAppRows[0]!.previous).toBeNull()
   })
 })
+
+// ─── Hasta cuándo queda pagado después de un cobro ──────────────────────────
+//
+// `current_period_end` de un complejo en prueba queda en la fecha del alta:
+// extender la prueba mueve `tenants.trial_ends_at` y no esta columna. Sumarle
+// un mes a ese valor viejo daba un período que vencía antes de cobrarse
+// (El Vagón en prod: fin guardado 7/10, primer cobro 6/12 → "pagado hasta el
+// 7/11"). La renovación de todos los meses no tiene que cambiar.
+
+const DAY = 24 * 60 * 60 * 1000
+
+function plusOneMonth(d: Date): string {
+  const r = new Date(d)
+  r.setUTCMonth(r.getUTCMonth() + 1)
+  return r.toISOString()
+}
+
+async function fetchPeriodEnd(tenantId: string): Promise<string> {
+  const rows = await asApp(
+    tenantId,
+    (tx) =>
+      tx<{ current_period_end: Date | string }[]>`
+      SELECT current_period_end FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
+    `,
+  )
+  return new Date(rows[0]!.current_period_end as unknown as string).toISOString()
+}
+
+async function seedTenantInStatus(
+  sql: Sql,
+  status: string,
+  currentPeriodEnd: Date,
+): Promise<string> {
+  const tenant = await createTestTenant(sql)
+  const staff = await createTestStaffUser(sql)
+  await linkStaffToTenant(sql, tenant.id, staff.id)
+  await seedSubscription(sql, tenant.id, status, {
+    currentPeriodStart: new Date(currentPeriodEnd.getTime() - 30 * DAY),
+    currentPeriodEnd,
+    mpSubscriptionId: `mp-preapp-test-${tenant.id}`,
+  })
+  return tenant.id
+}
+
+async function approve(tenantId: string, eventId: string, paidAt: Date): Promise<void> {
+  await withTenantContext(tenantId, (tx) =>
+    onPaymentApproved(tenantId, eventId, 'payment', { id: eventId }, paidAt, tx),
+  )
+}
+
+describe('período después de un cobro', () => {
+  it('primer cobro de una prueba extendida: el mes se cuenta desde el pago, no desde el fin viejo', async () => {
+    const sql = getSql()
+    const paidAt = new Date()
+    const tenantId = await seedTenantInStatus(
+      sql,
+      'trialing',
+      new Date(paidAt.getTime() - 60 * DAY),
+    )
+
+    await approve(tenantId, `evt-trial-extendido-${tenantId}`, paidAt)
+
+    expect(await fetchSubStatus(tenantId)).toBe('active')
+    expect(await fetchPeriodEnd(tenantId)).toBe(plusOneMonth(paidAt))
+  })
+
+  it('primer cobro al terminar una prueba NO extendida: el mes sale del fin de la prueba', async () => {
+    const sql = getSql()
+    const trialEnd = new Date()
+    // MP cobra unos minutos antes del fin guardado.
+    const paidAt = new Date(trialEnd.getTime() - 5 * 60 * 1000)
+    const tenantId = await seedTenantInStatus(sql, 'trialing', trialEnd)
+
+    await approve(tenantId, `evt-trial-normal-${tenantId}`, paidAt)
+
+    expect(await fetchPeriodEnd(tenantId)).toBe(plusOneMonth(trialEnd))
+  })
+
+  it('bloqueado que paga semanas después: el mes se cuenta desde el pago', async () => {
+    const sql = getSql()
+    const paidAt = new Date()
+    const tenantId = await seedTenantInStatus(sql, 'blocked', new Date(paidAt.getTime() - 20 * DAY))
+
+    await approve(tenantId, `evt-blocked-${tenantId}`, paidAt)
+
+    expect(await fetchSubStatus(tenantId)).toBe('active')
+    expect(await fetchPeriodEnd(tenantId)).toBe(plusOneMonth(paidAt))
+  })
+
+  it('renovación del mes con el complejo activo: suma un mes al fin guardado', async () => {
+    const sql = getSql()
+    const periodEnd = new Date()
+    // Cobro que llega unas horas DESPUÉS del fin: la renovación sigue la
+    // cadencia de MP, no se corre al instante del pago.
+    const paidAt = new Date(periodEnd.getTime() + 6 * 60 * 60 * 1000)
+    const tenantId = await seedTenantInStatus(sql, 'active', periodEnd)
+
+    await approve(tenantId, `evt-renovacion-${tenantId}`, paidAt)
+
+    expect(await fetchSubStatus(tenantId)).toBe('active')
+    expect(await fetchPeriodEnd(tenantId)).toBe(plusOneMonth(periodEnd))
+  })
+
+  it('cancelado que reactiva con días pagos por delante: los conserva y suma un mes', async () => {
+    const sql = getSql()
+    const paidAt = new Date()
+    const periodEnd = new Date(paidAt.getTime() + 20 * DAY)
+    const tenantId = await seedTenantInStatus(sql, 'canceled', periodEnd)
+
+    await approve(tenantId, `evt-reactiva-${tenantId}`, paidAt)
+
+    expect(await fetchSubStatus(tenantId)).toBe('active')
+    expect(await fetchPeriodEnd(tenantId)).toBe(plusOneMonth(periodEnd))
+  })
+})

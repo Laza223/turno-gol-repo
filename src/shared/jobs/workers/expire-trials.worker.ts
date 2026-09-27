@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm'
 import { getWorkerDb, getWorkerSql } from '@/shared/db/client'
 import { insertSystemAuditLog } from '@/shared/db/audit'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
-import { TRIAL_ENDING_WARNING_DAYS } from '@/shared/constants'
+import { SUBSCRIBED_TRIAL_GRACE_DAYS, TRIAL_ENDING_WARNING_DAYS } from '@/shared/constants'
 import { CRON_WORK_OPTIONS, QUEUE_EXPIRE_TRIALS } from '../definitions'
 import { logger } from '@/shared/lib/logger'
 
@@ -148,9 +148,18 @@ export async function runExpireTrials(): Promise<void> {
   const readSql = getWorkerSql()
   // `owner_name` por LATERAL, igual que en `warnEndingTrials`: evita un SELECT
   // por tenant dentro de cada transacción de bloqueo.
+  //
+  // Un complejo con `mp_subscription_id` ya tocó "Activar plan": su primer
+  // cobro sale el día en que vence la prueba, a la hora que MP disponga, y MP
+  // reintenta si la tarjeta rebota. Se le dan `SUBSCRIBED_TRIAL_GRACE_DAYS`
+  // antes de apagarlo; si el cobro entra en el medio, `onPaymentApproved` lo
+  // pasa a `active` y deja de ser candidato. El id no distingue un débito
+  // autorizado de un checkout que nunca se pagó: ese segundo caso recibe el
+  // mismo margen y después se bloquea igual.
   const candidates = await readSql<{ id: string; name: string; owner_name: string | null }[]>`
     SELECT t.id, t.name, o.first_name AS owner_name
     FROM tenants t
+    LEFT JOIN tenant_subscriptions ts ON ts.tenant_id = t.id
     LEFT JOIN LATERAL (
       SELECT su.first_name
       FROM tenant_staff_members tsm
@@ -161,6 +170,10 @@ export async function runExpireTrials(): Promise<void> {
     WHERE t.status = 'trialing'
       AND t.trial_ends_at IS NOT NULL
       AND t.trial_ends_at < NOW()
+      AND (
+        ts.mp_subscription_id IS NULL
+        OR t.trial_ends_at < NOW() - (${SUBSCRIBED_TRIAL_GRACE_DAYS} || ' days')::interval
+      )
   `
 
   if (candidates.length === 0) return

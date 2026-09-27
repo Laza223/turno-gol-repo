@@ -35,6 +35,7 @@ async function seedTrialingTenant(
   sql: Sql,
   planId: string,
   trialEndsAt: Date,
+  mpSubscriptionId: string | null = null,
 ): Promise<{ id: string }> {
   const tenant = await createTestTenant(sql)
   await sql`
@@ -45,14 +46,27 @@ async function seedTrialingTenant(
   await sql`
     INSERT INTO tenant_subscriptions (
       tenant_id, plan_id, billing_cycle, status,
-      current_period_start, current_period_end
+      current_period_start, current_period_end, mp_subscription_id
     ) VALUES (
       ${tenant.id}, ${planId}, 'monthly'::billing_cycle, 'trialing'::subscription_status,
-      NOW() - INTERVAL '14 days', ${trialEndsAt.toISOString()}::timestamptz
+      NOW() - INTERVAL '14 days', ${trialEndsAt.toISOString()}::timestamptz, ${mpSubscriptionId}
     )
   `
   return { id: tenant.id }
 }
+
+async function statusOf(sql: Sql, tenantId: string): Promise<{ tenant: string; sub: string }> {
+  const rows = await sql<{ tenant: string; sub: string }[]>`
+    SELECT t.status AS tenant, ts.status AS sub
+    FROM tenants t JOIN tenant_subscriptions ts ON ts.tenant_id = t.id
+    WHERE t.id = ${tenantId}
+  `
+  return rows[0]
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000
+/** Hash de 32 hex, el formato real de un preapproval de MercadoPago. */
+const PREAPPROVAL_ID = '5c6294a93fe04f309344f654479e633b'
 
 let planId: string
 
@@ -171,5 +185,55 @@ describe('runExpireTrials', () => {
       WHERE action = 'tenant.trial_expired' AND resource_id = ${tenantB.id}
     `
     expect(auditBRows).toHaveLength(1)
+  })
+})
+
+// El primer cobro de un complejo que ya activó el plan sale el mismo día en que
+// vence la prueba, a la hora que MP disponga. Sin margen, el barrido de las
+// 08:00 lo apagaba antes de que el cobro llegara.
+describe('runExpireTrials — margen para el que ya activó el plan', () => {
+  it('con débito pedido y la prueba vencida hace 1 día: NO lo bloquea ni le avisa', async () => {
+    const s = getSql()
+    const tenant = await seedTrialingTenant(
+      s,
+      planId,
+      new Date(Date.now() - DAY_MS),
+      PREAPPROVAL_ID,
+    )
+
+    await runExpireTrials()
+
+    expect(await statusOf(s, tenant.id)).toEqual({ tenant: 'trialing', sub: 'trialing' })
+    const auditRows = await s<{ id: string }[]>`
+      SELECT id FROM audit_logs
+      WHERE action = 'tenant.trial_expired' AND resource_id = ${tenant.id}
+    `
+    expect(auditRows).toHaveLength(0)
+  })
+
+  it('con débito pedido y el margen de 3 días ya pasado: lo bloquea igual', async () => {
+    const s = getSql()
+    const tenant = await seedTrialingTenant(
+      s,
+      planId,
+      new Date(Date.now() - 3 * DAY_MS - 60 * 60 * 1000),
+      PREAPPROVAL_ID,
+    )
+
+    await runExpireTrials()
+
+    expect(await statusOf(s, tenant.id)).toEqual({ tenant: 'blocked', sub: 'blocked' })
+  })
+
+  it('en la misma corrida, el que nunca activó el plan se bloquea y el que sí espera', async () => {
+    const s = getSql()
+    const vencio = new Date(Date.now() - DAY_MS)
+    const sinPlan = await seedTrialingTenant(s, planId, vencio)
+    const conPlan = await seedTrialingTenant(s, planId, vencio, PREAPPROVAL_ID)
+
+    await runExpireTrials()
+
+    expect(await statusOf(s, sinPlan.id)).toEqual({ tenant: 'blocked', sub: 'blocked' })
+    expect(await statusOf(s, conPlan.id)).toEqual({ tenant: 'trialing', sub: 'trialing' })
   })
 })

@@ -389,7 +389,21 @@ export async function onPaymentApproved(
     return { alreadyProcessed: false }
   }
 
-  const newPeriodEnd = extendPeriod(toDate(sub.current_period_end), sub.billing_cycle)
+  // Renovación (`active`, `past_due`): el ciclo se suma desde el fin guardado,
+  // que sigue la cadencia de cobro de MP aunque el pago llegue unos días tarde.
+  //
+  // Primer cobro o vuelta (el resto de los estados): si el fin guardado ya
+  // pasó, se cuenta desde el pago. Sin esto el período vencía antes de
+  // cobrarse. Pasa siempre en el primer cobro de un complejo al que soporte le
+  // extendió la prueba: `extendTrial` mueve `tenants.trial_ends_at` pero no
+  // `current_period_end`, que queda en la fecha del alta (El Vagón: fin
+  // guardado 7/10, primer cobro 6/12 → quedaba "pagado hasta el 7/11"). Igual
+  // con un `blocked`/`suspended` que paga semanas después. Un `canceled` que
+  // reactiva con días pagos por delante sigue sumando desde ese fin.
+  const currentEnd = toDate(sub.current_period_end)
+  const isRenewal = sub.status === 'active' || sub.status === 'past_due'
+  const periodBase = isRenewal || currentEnd > paidAt ? currentEnd : paidAt
+  const newPeriodEnd = extendPeriod(periodBase, sub.billing_cycle)
 
   let template: 'subscription_activated' | 'subscription_renewed' | null = null
 

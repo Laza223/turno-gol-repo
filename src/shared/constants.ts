@@ -55,6 +55,18 @@ export const TRIAL_DAYS = 30
 export const TRIAL_ENDING_WARNING_DAYS = [1, 7] as const
 
 /**
+ * Días de margen que `expire-trials` le da a un complejo que ya tocó "Activar
+ * plan" antes de apagarlo por prueba vencida (decisión del dueño, 2026-09-26).
+ *
+ * El primer cobro de MercadoPago sale el mismo día en que termina la prueba
+ * (`start_date` = `tenants.trial_ends_at`), pero no a una hora fija, y si la
+ * tarjeta rebota MP reintenta durante los días siguientes. Sin margen, el
+ * barrido de las 08:00 lo bloqueaba antes de que el cobro llegara, y el dueño
+ * recibía "tu prueba venció" con el débito ya cargado.
+ */
+export const SUBSCRIBED_TRIAL_GRACE_DAYS = 3
+
+/**
  * Canales oficiales de soporte de TurnoGol (B9).
  */
 export const SUPPORT_EMAIL = 'turnogol@gmail.com'

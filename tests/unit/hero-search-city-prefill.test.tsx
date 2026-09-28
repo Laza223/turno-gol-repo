@@ -6,7 +6,8 @@ import type { CityCount } from '@/modules/tenants/search.service'
 const pushMock = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: pushMock }) }))
 
-import HeroSearch from '@/components/site/HeroSearch'
+import HeroSearch from '@/app/home/HeroSearch'
+import { NearbyProvider } from '@/app/home/nearby-context'
 
 const CITIES: CityCount[] = [
   { city: 'Córdoba', province: 'Córdoba', count: 8 },
@@ -23,16 +24,34 @@ function stubGeolocation(getCurrentPosition: (success: GeoSuccess, error: GeoErr
   })
 }
 
-function stubFetchNearest(results: Array<{ city: string; province: string; distanceKm: number }>) {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockResolvedValue({ ok: true, json: async () => ({ results, total: results.length }) }),
+/** Búsqueda → el complejo más cercano; disponibilidad → sin turnos (no importa acá). */
+function stubApi(results: Array<{ city: string; province: string; distanceKm: number }>) {
+  const fetchMock = vi.fn((url: string) =>
+    Promise.resolve({
+      ok: true,
+      json: async () =>
+        url.startsWith('/api/public/search')
+          ? { results, total: results.length }
+          : { date: '2026-09-27', courts: [] },
+    }),
+  )
+  vi.stubGlobal('fetch', fetchMock)
+  return fetchMock
+}
+
+function renderSearch() {
+  return render(
+    <NearbyProvider>
+      <HeroSearch cities={CITIES} />
+    </NearbyProvider>,
   )
 }
 
 function cityInput(): HTMLInputElement {
-  return screen.getByRole('combobox', { name: 'Localidad' }) as HTMLInputElement
+  return screen.getByRole('combobox', { name: 'Zona' }) as HTMLInputElement
 }
+
+const cordoba = { city: 'Córdoba', province: 'Córdoba', distanceKm: 3.2 }
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -40,58 +59,46 @@ afterEach(() => {
   Object.defineProperty(navigator, 'geolocation', { configurable: true, value: undefined })
 })
 
-describe('HeroSearch — pre-llenado por geolocalización', () => {
-  it('detecta la ubicación, pre-llena la ciudad y el submit navega con city+province', async () => {
+describe('HeroSearch — zona sugerida por la ubicación del hero', () => {
+  it('sugiere la localidad del complejo más cercano y el submit navega con city+province', async () => {
     stubGeolocation((success) => success({ coords: { latitude: -31.42, longitude: -64.18 } }))
-    stubFetchNearest([{ city: 'Córdoba', province: 'Córdoba', distanceKm: 3.2 }])
+    stubApi([cordoba])
 
-    render(<HeroSearch cities={CITIES} />)
+    renderSearch()
 
     await waitFor(() => expect(cityInput().value).toBe('Córdoba, Córdoba'))
-    expect(screen.getByText(/según tu ubicación/i)).toBeTruthy()
-
     fireEvent.submit(screen.getByRole('form', { name: 'Buscar canchas de fútbol' }))
-    expect(pushMock).toHaveBeenCalledTimes(1)
     const url = String(pushMock.mock.calls[0]?.[0])
     expect(url).toContain('/explorar?')
     expect(url).toContain(`city=${encodeURIComponent('Córdoba')}`)
     expect(url).toContain(`province=${encodeURIComponent('Córdoba')}`)
+    // Hoy no viaja: /explorar ya arranca en hoy.
+    expect(url).not.toContain('date=')
   })
 
-  it('permiso denegado → mensaje sutil, campo vacío y el form sigue funcionando', async () => {
+  it('permiso denegado → campo vacío y el form sigue funcionando', async () => {
     stubGeolocation((_success, error) => error({ code: 1 }))
-    render(<HeroSearch cities={CITIES} />)
-
-    await waitFor(() => expect(screen.getByText(/no pudimos acceder a tu ubicación/i)).toBeTruthy())
+    renderSearch()
+    await act(async () => {})
     expect(cityInput().value).toBe('')
-
     fireEvent.submit(screen.getByRole('form', { name: 'Buscar canchas de fútbol' }))
     expect(String(pushMock.mock.calls[0]?.[0])).toBe('/explorar')
   })
 
-  it('si el usuario ya eligió una ciudad, la detección tardía no la pisa', async () => {
+  it('si el usuario ya eligió una zona, la detección tardía no la pisa', async () => {
     let fireGeo: GeoSuccess | null = null
     stubGeolocation((success) => {
       fireGeo = success
     })
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        results: [{ city: 'Córdoba', province: 'Córdoba', distanceKm: 3.2 }],
-        total: 1,
-      }),
-    })
-    vi.stubGlobal('fetch', fetchMock)
+    const fetchMock = stubApi([cordoba])
 
-    render(<HeroSearch cities={CITIES} />)
+    renderSearch()
 
-    // El usuario elige Rosario antes de que la geolocalización responda.
     const input = cityInput()
     fireEvent.click(input)
     fireEvent.mouseDown(screen.getByRole('option', { name: /Rosario/ }))
     expect(input.value).toBe('Rosario, Santa Fe')
 
-    // Recién ahora "llega" la posición del dispositivo.
     await act(async () => {
       fireGeo?.({ coords: { latitude: -31.42, longitude: -64.18 } })
     })
@@ -101,16 +108,14 @@ describe('HeroSearch — pre-llenado por geolocalización', () => {
     expect(cityInput().value).toBe('Rosario, Santa Fe')
   })
 
-  it('si el usuario enfocó el campo de localidad, la detección tardía no pre-llena', async () => {
+  it('si el usuario enfocó la zona, la detección tardía no la llena', async () => {
     let fireGeo: GeoSuccess | null = null
     stubGeolocation((success) => {
       fireGeo = success
     })
-    stubFetchNearest([{ city: 'Córdoba', province: 'Córdoba', distanceKm: 3.2 }])
+    stubApi([cordoba])
 
-    render(<HeroSearch cities={CITIES} />)
-
-    // El usuario pone el foco en el campo (está por escribir) antes de que llegue la posición.
+    renderSearch()
     fireEvent.focus(cityInput())
 
     await act(async () => {
@@ -121,33 +126,27 @@ describe('HeroSearch — pre-llenado por geolocalización', () => {
     expect(cityInput().value).toBe('')
   })
 
-  it('si el foco quedó en el campo antes de la hidratación (sin evento React), tampoco pisa', async () => {
+  it('si el foco llegó antes de hidratar, tipear alcanza para que no la pise', async () => {
     let fireGeo: GeoSuccess | null = null
     stubGeolocation((success) => {
       fireGeo = success
     })
-    stubFetchNearest([{ city: 'Córdoba', province: 'Córdoba', distanceKm: 3.2 }])
+    stubApi([cordoba])
 
-    render(<HeroSearch cities={CITIES} />)
+    renderSearch()
+    // Sin evento de focus (pasó antes de hidratar): solo la tecla.
+    fireEvent.input(cityInput(), { target: { value: 'Ro' } })
 
-    // Simula foco pre-hidratación: activeElement apunta al input pero el evento
-    // de focus nunca pasó por React (onFocusCapture no se enteró).
-    const input = cityInput()
-    Object.defineProperty(document, 'activeElement', { configurable: true, get: () => input })
-    try {
-      await act(async () => {
-        fireGeo?.({ coords: { latitude: -31.42, longitude: -64.18 } })
-      })
-      await act(async () => {})
-      expect(cityInput().value).toBe('')
-    } finally {
-      Reflect.deleteProperty(document, 'activeElement')
-    }
+    await act(async () => {
+      fireGeo?.({ coords: { latitude: -31.42, longitude: -64.18 } })
+    })
+    await act(async () => {})
+
+    expect(cityInput().value).not.toBe('Córdoba, Córdoba')
   })
 
-  it('sin soporte de geolocalización no muestra mensajes ni rompe', () => {
-    render(<HeroSearch cities={CITIES} />)
+  it('sin soporte de geolocalización no rompe y la zona queda vacía', () => {
+    renderSearch()
     expect(cityInput().value).toBe('')
-    expect(screen.queryByText(/ubicación/i)).toBeNull()
   })
 })

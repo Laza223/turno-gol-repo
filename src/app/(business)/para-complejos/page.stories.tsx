@@ -30,12 +30,24 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent(
-      /tu complejo, siempre lleno/i,
+      /chau, reserva de palabra\./i,
     )
-    // "Empezar gratis" se repite en header/hero/CTA final/footer — todas deben ir a /register.
-    const ctas = canvas.getAllByRole('link', { name: /empezar gratis/i })
-    await expect(ctas.length).toBeGreaterThan(1)
-    for (const cta of ctas) await expect(cta).toHaveAttribute('href', '/register')
-    await expect(canvas.getByText('Reservas online 24/7')).toBeInTheDocument()
+    // "Probalo 30 días" está en el hero y en el cierre: los dos van a /register.
+    const trials = canvas.getAllByRole('link', { name: /probalo 30 días/i })
+    await expect(trials).toHaveLength(2)
+    for (const cta of trials) await expect(cta).toHaveAttribute('href', '/register')
+    // El CTA de WhatsApp abre el chat comercial en otra pestaña, con el mensaje cargado.
+    for (const wa of canvas.getAllByRole('link', { name: /escribinos por whatsapp/i })) {
+      await expect(wa).toHaveAttribute(
+        'href',
+        expect.stringMatching(/^https:\/\/wa\.me\/\d+\?text=/),
+      )
+      await expect(wa).toHaveAttribute('target', '_blank')
+    }
+    await expect(canvas.getByRole('heading', { name: 'Así viaja una seña.' })).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: /ver precios/i })).toHaveAttribute(
+      'href',
+      '/precios',
+    )
   },
 }

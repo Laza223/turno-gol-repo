@@ -24,6 +24,15 @@
         ],
         "createdAt": "2026-09-27T01:58:29.938Z",
         "reason": "Agent: idéntico al CTA primario ya shipeado en (business)/para-complejos/page.tsx L178 — slate-950 es casi negro sobre emerald-500 brillante, alto contraste real, no gris lavado"
+      },
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "src/app/globals.css"
+        ],
+        "createdAt": "2026-09-28T04:58:09.995Z",
+        "reason": "DESIGN.md (Typography > Display): .hero-accent-text es la receta del acento del titular del portal; el dueño eligió 'Menos brillo, más producto', que conserva ese único acento (2026-09-27)"
       }
     ]
   }

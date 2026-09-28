@@ -132,6 +132,12 @@ test.describe('visual — admin', () => {
     })
     // Formulario denso (switches, inputs numéricos, help text, botón sticky):
     // representa a todos los formularios del producto.
-    await expect(page).toHaveScreenshot('admin-settings-reservas.png')
+    await expect(page).toHaveScreenshot('admin-settings-reservas.png', {
+      // "El jugador ve turnos hasta el <hoy + anticipación>" se calcula con el
+      // día de HOY en ART: la baseline del 26/9 decía "vie 2 de octubre" y la
+      // del 28/9 "dom 4 de octubre". Mismo remedio que la landing: máscara, no
+      // reloj congelado.
+      mask: [page.getByText('El jugador ve turnos hasta el')],
+    })
   })
 })

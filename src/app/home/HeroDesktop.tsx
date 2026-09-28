@@ -90,7 +90,7 @@ export function HeroDesktop({ cities }: { cities: CityCount[] }) {
         </div>
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5">
-          {['Reservá al instante', 'Pago seguro con MercadoPago', 'Confirmación inmediata'].map(
+          {['Reservá al instante', 'Sin descargar ninguna app', 'Confirmación inmediata'].map(
             (t) => (
               <span
                 key={t}

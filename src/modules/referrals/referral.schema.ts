@@ -19,3 +19,17 @@ const REFERRAL_CODE_RE = /^[A-HJKMNP-Z2-9]{8}$/
 
 /** Formato del código público de la landing `/r/<CODE>` (mayúsculas, 8 caracteres). */
 export const referralCodeSchema = z.string().regex(REFERRAL_CODE_RE, 'Código de referido inválido')
+
+/**
+ * Normaliza lo que el super-admin pega en "Asignar referidor" (B2): el código
+ * pelado o la URL completa de la landing pública (`https://turnogol.app/r/<CODE>`,
+ * con o sin protocolo, con o sin barra final). `null` si el resultado no pasa
+ * `referralCodeSchema` — nunca tira, el caller decide el mensaje de error.
+ */
+export function extractReferralCode(raw: string): string | null {
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  const lastSegment = trimmed.split('/').filter(Boolean).pop() ?? trimmed
+  const candidate = lastSegment.toUpperCase()
+  return referralCodeSchema.safeParse(candidate).success ? candidate : null
+}

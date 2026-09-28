@@ -25,7 +25,14 @@ vi.mock('@/modules/tenants/tenant.service', () => ({
 // doc10 §2: el wizard deriva phone/email de la cuenta staff, no del form.
 vi.mock('@/modules/staff/staff.service', () => ({
   getStaffContact: vi.fn(async () => ({ email: 'complejo@test.com', phone: '+54 11 2233-4455' })),
+  getStaffSignupReferral: vi.fn(async () => null),
 }))
+// B2: sin código de referido en este suite — cubierto por
+// onboarding-create-tenant-referral.test.ts.
+vi.mock('@/modules/referrals/referral.service', () => ({
+  resolveSignupReferrer: vi.fn(async () => null),
+}))
+vi.mock('@/lib/sentry', () => ({ captureMessage: vi.fn() }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('next/navigation', () => ({
   redirect: vi.fn(() => {

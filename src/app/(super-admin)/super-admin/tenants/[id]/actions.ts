@@ -50,7 +50,7 @@ import {
   updateTenantSettingsForSupport,
 } from '@/modules/super-admin/support.service'
 import { getTenantSummary } from '@/modules/super-admin/tenants.service'
-import { ensureReferralCode } from '@/modules/referrals/referral.service'
+import { assignReferrer, ensureReferralCode } from '@/modules/referrals/referral.service'
 import { absoluteUrl } from '@/lib/seo/metadata'
 import type { ActionResult } from '@/shared/types/action-result'
 
@@ -453,6 +453,71 @@ export async function generateReferralLinkAction(
   } catch {
     return { success: false, error: 'No se pudo generar el link de referidos. Probá de nuevo.' }
   }
+}
+
+// ─── Asignar referidor (B2) ───────────────────────────────────────────────────
+
+const assignReferrerInputSchema = z.object({
+  tenantId: uuid,
+  code: z.string().trim().min(1, 'Ingresá un código o un link.'),
+})
+
+export type AssignReferrerResult = ActionResult<{ referrerName: string }>
+
+const ASSIGN_REFERRER_ERRORS: Record<'invalid_code' | 'self' | 'not_eligible', string> = {
+  invalid_code: 'Ese código o link no es válido, o no pertenece a ningún complejo.',
+  self: 'Un complejo no puede ser su propio referidor.',
+  not_eligible:
+    'No se pudo asignar: el complejo ya tiene referidor, ya tiene un premio en curso, o se creó después del corte de la promo.',
+}
+
+/**
+ * "Asignar referidor": para el complejo que llegó por WhatsApp, sin pasar por
+ * `/r/<CODE>`. Delgada a propósito — toda la regla de negocio (incluido el
+ * UPDATE condicional que evita la carrera entre validar y escribir) vive en
+ * `assignReferrer` del módulo. Audita `support.tenant.referrer_assigned`.
+ */
+export async function assignReferrerAction(input: unknown): Promise<AssignReferrerResult> {
+  const auth = await requireSystemAdminAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+
+  const parsed = assignReferrerInputSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+  const { tenantId, code } = parsed.data
+
+  const summary = await getTenantSummary(tenantId)
+  if (!summary) return { success: false, error: 'Complejo no encontrado.' }
+
+  const result = await assignReferrer(tenantId, code)
+  if (!result.ok) {
+    return { success: false, error: ASSIGN_REFERRER_ERRORS[result.reason] }
+  }
+
+  try {
+    await withTenantContext(tenantId, (tx) =>
+      insertAuditLog(tx, {
+        tenantId,
+        actorId: auth.admin.id,
+        actorType: 'system',
+        action: 'support.tenant.referrer_assigned',
+        resourceType: 'tenant',
+        resourceId: tenantId,
+        metadata: { referral_code: code, system_admin_email: auth.admin.email },
+      }),
+    )
+  } catch (err) {
+    // mapKnownError devuelve `SupportActionResult` (su rama success trae
+    // `message?`, no `referrerName`) — en la práctica nunca vuelve con
+    // `success:true` acá (o mapea a un error conocido, o tira), pero el tipo
+    // exige el fallback para que compile sin volver a acoplar los dos shapes.
+    const mapped = mapKnownError(err)
+    return mapped.success ? { success: false, error: 'No se pudo completar la acción.' } : mapped
+  }
+
+  revalidateTenantPaths(tenantId)
+  return { success: true, referrerName: result.referrerName }
 }
 
 // ─── Impersonación (spec §6) ─────────────────────────────────────────────────

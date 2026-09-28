@@ -12,6 +12,7 @@ import { enforce } from '@/shared/rate-limit/apply'
 import { parseClientIp } from '@/shared/rate-limit/key'
 import { echoFields } from '@/shared/forms/echo'
 import { phone } from '@/shared/validation/primitives'
+import { referralCodeSchema } from '@/modules/referrals/referral.schema'
 
 const schema = z
   .object({
@@ -104,6 +105,16 @@ export async function registerAction(
     // continúa con el alta
   }
 
+  // Programa de referidos (B2): `?ref=` o el localStorage de la landing viajan
+  // en un input hidden del form (ver RegisterCard.tsx). Formato inválido se
+  // descarta en silencio acá y nunca llega a user_metadata — nunca bloquea el
+  // alta. La resolución a un tenant es de `createTenantAction`, no acá.
+  const rawReferralCode = formData.get('referralCode')
+  const referralCode =
+    typeof rawReferralCode === 'string' && referralCodeSchema.safeParse(rawReferralCode).success
+      ? rawReferralCode
+      : null
+
   const origin = (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? ''
   const result = await signUpStaff(
     {
@@ -112,6 +123,7 @@ export async function registerAction(
       firstName: parsed.data.firstName,
       lastName: parsed.data.lastName,
       phone: parsed.data.phone,
+      referralCode,
     },
     // El `?next=` es ignorado por la rama staff del callback (provisionAndRouteStaff
     // calcula el path), pero es OBLIGATORIO: da el `?` separador para que

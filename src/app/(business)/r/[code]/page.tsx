@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import { resolveReferralCode } from '@/modules/referrals/referral.service'
 import { contactWhatsappUrl } from '@/lib/contact'
+import { PersistReferralCode } from './PersistReferralCode'
 
 // Landing de referidos (B1): nunca indexable — el `name` que muestra es el de
 // UN complejo puntual, sin valor SEO propio, y el mismo patrón de
@@ -36,10 +37,11 @@ export default async function ReferralLandingPage({
 
   // El WhatsApp COMERCIAL de TurnoGol sale de su fuente única (`contact.ts`),
   // no del parser de teléfonos de complejos (`whatsapp.ts`).
-  const whatsappUrl = contactWhatsappUrl(`Hola Lazar, vengo de parte de ${referral.name}`)
+  const whatsappUrl = contactWhatsappUrl(`Hola, vengo de parte de ${referral.name}`)
 
   return (
     <section className="relative flex min-h-[70vh] items-center overflow-hidden px-4 py-24 sm:px-6">
+      <PersistReferralCode code={code} />
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 z-0"

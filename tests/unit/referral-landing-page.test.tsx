@@ -41,7 +41,7 @@ describe('/r/[code] — landing de referidos', () => {
     const whatsappLink = screen.getByRole('link', { name: /whatsapp/i })
     expect(whatsappLink.getAttribute('href')).toContain('wa.me/5492323346976')
     expect(whatsappLink.getAttribute('href')).toContain(
-      encodeURIComponent('Hola Lazar, vengo de parte de Canchas del Sur'),
+      encodeURIComponent('Hola, vengo de parte de Canchas del Sur'),
     )
 
     const registerLink = screen.getByRole('link', { name: /crear mi cuenta/i })

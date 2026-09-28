@@ -32,9 +32,11 @@ import {
 import { stepPath, WIZARD_STEPS } from '@/modules/onboarding/onboarding.steps'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { requireAdminStaff, requireAdminStaffAction } from '@/modules/staff/guards'
-import { getStaffContact } from '@/modules/staff/staff.service'
+import { getStaffContact, getStaffSignupReferral } from '@/modules/staff/staff.service'
 import { getCourtCountAndBilled } from '@/modules/courts/court.service'
 import { track } from '@/shared/observability/breadcrumbs'
+import { resolveSignupReferrer } from '@/modules/referrals/referral.service'
+import { captureMessage } from '@/lib/sentry'
 
 /** slug de WIZARD_STEPS por número, para el `stepName` de los eventos de analytics. */
 function stepSlug(n: number): string | undefined {
@@ -112,9 +114,34 @@ export async function createTenantAction(
     return { success: false, error }
   }
 
+  // Programa de referidos (B2): resuelto ANTES del insert para poder pasarle
+  // el UUID nuevo a `resolveSignupReferrer` (chequeo real de autoreferencia,
+  // no solo el CHECK de la DB). Un error acá NUNCA frena el alta — se loguea
+  // y el complejo se crea igual, sin referidor.
+  const newTenantId = crypto.randomUUID()
+  let referredByTenantId: string | null = null
+  try {
+    const signup = await getStaffSignupReferral(user.staffUserId)
+    referredByTenantId = await resolveSignupReferrer({
+      code: signup?.signupReferralCode ?? null,
+      staffCreatedAt: signup?.createdAt ?? new Date(),
+      excludeTenantId: newTenantId,
+    })
+  } catch (err) {
+    captureMessage('createTenantAction: no se pudo resolver el referidor', {
+      level: 'warning',
+      extra: {
+        staffUserId: user.staffUserId,
+        error: err instanceof Error ? err.message : String(err),
+      },
+    })
+  }
+
   const tenant = await createTenantWithTrial({
     ...parsed.data,
+    id: newTenantId,
     staffUserId: user.staffUserId,
+    referredByTenantId,
   })
   track.onboarding('onboarding.step.completed', {
     tenantId: tenant.id,

@@ -146,3 +146,43 @@ describe('markChecklistDismissedAction', () => {
     expect(vi.mocked(withTenantContext)).not.toHaveBeenCalled()
   })
 })
+
+describe('markReferralBannerDismissedAction', () => {
+  it('returns success:false surfacing the rate-limit message when limited', async () => {
+    vi.mocked(adminRateLimited).mockResolvedValueOnce('Demasiados intentos. Esperá un momento.')
+    const { markReferralBannerDismissedAction } = await import('@/app/(admin)/dashboard/actions')
+    const res = await markReferralBannerDismissedAction()
+    expect(res.success).toBe(false)
+    if (!res.success) expect(res.error).toBe('Demasiados intentos. Esperá un momento.')
+  })
+
+  it('returns success:true on the happy path (not rate limited)', async () => {
+    vi.mocked(adminRateLimited).mockResolvedValueOnce(null)
+    const { markReferralBannerDismissedAction } = await import('@/app/(admin)/dashboard/actions')
+    const res = await markReferralBannerDismissedAction()
+    expect(res.success).toBe(true)
+  })
+
+  it('manager (Encargado) NO puede descartar el aviso para todo el complejo (solo admin)', async () => {
+    vi.mocked(getStaffRole).mockResolvedValueOnce('manager')
+    const { markReferralBannerDismissedAction } = await import('@/app/(admin)/dashboard/actions')
+
+    const res = await markReferralBannerDismissedAction()
+
+    expect(res).toEqual({
+      success: false,
+      error: 'Solo el administrador puede modificar la configuración.',
+    })
+    expect(vi.mocked(withTenantContext)).not.toHaveBeenCalled()
+  })
+
+  it('tenant suspended: rebota con ok:false y NO muta (misma clase que Fix 3)', async () => {
+    vi.mocked(getStaffTenant).mockResolvedValueOnce(tenant('suspended') as never)
+    const { markReferralBannerDismissedAction } = await import('@/app/(admin)/dashboard/actions')
+
+    const res = await markReferralBannerDismissedAction()
+
+    expect(res).toEqual({ success: false, error: 'El complejo está bloqueado por falta de pago.' })
+    expect(vi.mocked(withTenantContext)).not.toHaveBeenCalled()
+  })
+})

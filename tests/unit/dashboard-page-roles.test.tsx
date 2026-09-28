@@ -23,6 +23,7 @@ const state = vi.hoisted(() => ({
     cancellation_policy: { hours_before: 12, penalty_type: 'deposit', penalty_amount: null },
   } as Record<string, unknown>,
   getChecklistState: vi.fn(),
+  getTenantReferralCode: vi.fn(),
 }))
 
 vi.mock('@/modules/staff/guards', () => ({
@@ -76,11 +77,15 @@ vi.mock('@/app/(admin)/reservas/queries', () => ({
   listDayGridBookings: async () => [],
   listUnpaidGridBookingsBefore: async () => ({ bookings: [], count: 0, pendingCents: 0 }),
 }))
-vi.mock('@/app/(admin)/dashboard/queries', () => ({ getChecklistState: state.getChecklistState }))
+vi.mock('@/app/(admin)/dashboard/queries', () => ({
+  getChecklistState: state.getChecklistState,
+  getTenantReferralCode: state.getTenantReferralCode,
+}))
 vi.mock('@/app/(admin)/dashboard/actions', () => ({
   markPublicLinkSharedAction: vi.fn(),
   markTourSeenAction: vi.fn(),
   markChecklistDismissedAction: vi.fn(),
+  markReferralBannerDismissedAction: vi.fn(),
 }))
 vi.mock('@/app/(admin)/reservas/actions', () => ({
   addBookingChargeAction: vi.fn(),
@@ -148,6 +153,10 @@ beforeEach(() => {
   }
   state.getChecklistState.mockReset()
   state.getChecklistState.mockResolvedValue({ courts: false, hours: false })
+  // Sin código de referido: el aviso no tiene nada que mostrar y no participa
+  // de este test (que es sobre checklist/tour, no sobre referidos).
+  state.getTenantReferralCode.mockReset()
+  state.getTenantReferralCode.mockResolvedValue(null)
 })
 
 afterEach(cleanup)

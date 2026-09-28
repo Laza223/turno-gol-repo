@@ -41,18 +41,13 @@ test.describe('visual — público', () => {
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
     // viewport-only (el default de toHaveScreenshot): la landing es larguísima y
     // un cambio abajo de todo no debería romper la foto del hero.
-    await expect(page).toHaveScreenshot('landing.png', {
-      // El campo FECHA arranca prellenado con HOY (ART), así que caduca solo:
-      // la baseline de julio traía "29/07/2026" y en agosto decía otra cosa.
-      //
-      // El intento anterior fue `page.clock.setFixedTime(FROZEN_NOW)`, y ese
-      // remedio era peor: congela el reloj del BROWSER y no el del servidor, o
-      // sea que garantizaba un "Hydration failed … text didn't match" en cada
-      // corrida y fotografiaba un árbol REGENERADO en el cliente. Peor todavía,
-      // ese error tapaba en el log cualquier mismatch de verdad. Se enmascara el
-      // control y listo: la foto deja de depender del día sin mentirle a React.
-      mask: [page.locator('#hero-date')],
-    })
+    // El buscador del hero ya no muestra la fecha ("Hoy", no "29/07/2026"), así
+    // que la foto no caduca con el día y no hace falta máscara. NO congelar el
+    // reloj con `page.clock.setFixedTime`: congela el del BROWSER y no el del
+    // servidor, y garantiza un "Hydration failed … text didn't match" que tapa
+    // cualquier mismatch de verdad. Sin permiso de geolocalización, la tarjeta
+    // de al lado muestra las zonas del seed: determinista.
+    await expect(page).toHaveScreenshot('landing.png')
   })
 
   test('ficha pública del complejo @visual', async ({ page }) => {

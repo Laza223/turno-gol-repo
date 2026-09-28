@@ -233,6 +233,11 @@ export type TenantDetail = {
     settings: TenantSettings
     /** Programa de referidos (migr. 094). `null` = todavía no lo generó nadie. */
     referralCode: string | null
+    /** Nombre del complejo que trajo a ESTE (B2). `null` = sin referidor
+     *  todavía — el panel ofrece "Asignar referidor" en ese caso. Se resuelve
+     *  con una segunda query proyectada (`tenants` es global sin RLS): nunca
+     *  se expone el `referred_by_tenant_id` crudo. */
+    referrerName: string | null
   }
   subscription: {
     status: SubscriptionStatus
@@ -303,12 +308,24 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
       createdAt: tenants.createdAt,
       settings: tenants.settings,
       referralCode: tenants.referralCode,
+      referredByTenantId: tenants.referredByTenantId,
     })
     .from(tenants)
     .where(eq(tenants.id, tenantId))
     .limit(1)
   const t = tenantRows[0]
   if (!t) return null
+
+  const { referredByTenantId, ...tenantRest } = t
+  let referrerName: string | null = null
+  if (referredByTenantId) {
+    const referrerRows = await db
+      .select({ name: tenants.name })
+      .from(tenants)
+      .where(eq(tenants.id, referredByTenantId))
+      .limit(1)
+    referrerName = referrerRows[0]?.name ?? null
+  }
 
   // tenant_subscriptions tiene RLS+FORCE (caza-bugs #10) — pool de servicio,
   // no el `db` de arriba (restringido, sin contexto de tenant seteado acá).
@@ -374,7 +391,7 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
   }))
 
   return {
-    tenant: { ...t, settings: t.settings as TenantSettings },
+    tenant: { ...tenantRest, settings: tenantRest.settings as TenantSettings, referrerName },
     subscription: subRows[0] ?? null,
     courts: courtRows,
     staff: staffRows,

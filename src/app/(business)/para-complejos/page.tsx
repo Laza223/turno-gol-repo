@@ -1,670 +1,269 @@
 import Link from 'next/link'
-import {
-  ArrowRight,
-  Bell,
-  Calendar,
-  CheckCircle2,
-  CreditCard,
-  LineChart,
-  Shield,
-  Users,
-  Wallet,
-} from 'lucide-react'
+import type { ReactNode } from 'react'
+import { ArrowRight, MessageCircle } from 'lucide-react'
 import { buildMetadata } from '@/lib/seo/metadata'
-import Reveal from '@/components/site/Reveal'
+import { buttonVariants } from '@/components/ui/button'
+import { contactWhatsappUrl } from '@/lib/contact'
+import { HOLD_TTL_SECONDS } from '@/lib/booking/hold'
+import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
+import { TRIAL_DAYS } from '@/shared/constants'
+import { cn } from '@/lib/utils'
+import HoldClock from './HoldClock'
+import { GridFragment, MoneyFragment, PageLinkFragment, SenaPhone } from './fragments'
 
 export const metadata = buildMetadata({
-  title: 'TurnoGol para complejos — Reservas online y señas por MercadoPago',
-  description:
-    'Sistema de gestión para complejos de fútbol. Reservas online 24/7 por link, señas por MercadoPago directo a tu cuenta, grilla en tiempo real y caja completa. 30 días gratis.',
+  title: 'TurnoGol para complejos — El sistema de señas para canchas de fútbol',
+  titleAbsolute: true,
+  description: `El jugador reserva desde la página de tu complejo y paga la seña por MercadoPago, directo a tu cuenta. Si no paga, el turno se libera solo. ${TRIAL_DAYS} días de prueba sin tarjeta.`,
   path: '/para-complejos',
 })
 
-const FEATURE_BG =
-  'https://images.unsplash.com/photo-1486286701208-1d58e9338013?q=80&w=2000&auto=format&fit=crop'
+const HOLD_MINUTES = HOLD_TTL_SECONDS / 60
+const WHATSAPP_URL = contactWhatsappUrl('Hola, quiero probar TurnoGol en mi complejo')
 
-const features = [
-  {
-    icon: Calendar,
-    title: 'Reservas online 24/7',
-    description:
-      'Tus canchas reciben reservas las 24 horas, los 7 días. Tu complejo genera ingresos incluso mientras dormís.',
-  },
-  {
-    icon: CreditCard,
-    title: 'Señas por MercadoPago, directo a tu cuenta',
-    description:
-      'El jugador paga la seña al reservar y la plata va a TU MercadoPago: TurnoGol no la toca. Si no paga en minutos, el turno se libera solo.',
-  },
-  {
-    icon: LineChart,
-    title: 'Métricas en tiempo real',
-    description:
-      'Facturación, ocupación y reservas del día en una sola vista. Tomá decisiones basadas en datos reales.',
-  },
-  {
-    icon: Bell,
-    title: 'Avisos al instante',
-    description:
-      'Notificación instantánea con cada nueva reserva. Las reservas nocturnas se notifican a las 8 AM para no interrumpir tu descanso.',
-  },
-  {
-    icon: Wallet,
-    title: 'Caja unificada',
-    description:
-      'Reservas, cantina y abonados unificados en un solo cierre diario. Olvidate de las planillas.',
-  },
-  {
-    icon: Users,
-    title: 'Abonados y partidos fijos',
-    description:
-      'Turnos fijos que se repiten solos cada semana. Registrás quién pagó cada sesión y tus clientes recurrentes nunca pierden su horario.',
-  },
-]
+const primaryCta = cn(
+  buttonVariants({ size: 'lg' }),
+  'group h-12 gap-2 rounded-xl px-7 text-base font-semibold',
+)
+const secondaryCta = cn(
+  buttonVariants({ variant: 'outline', size: 'lg' }),
+  'h-12 gap-2 rounded-xl px-6 text-base font-semibold',
+)
 
-const stats = [
-  { value: '100%', label: 'De la seña va a tu MercadoPago' },
-  { value: '24/7', label: 'Reservas online por link' },
-  { value: '20 min', label: 'De configuración y estás andando' },
-  { value: '30 días', label: 'Gratis, sin tarjeta' },
-]
+function Ctas() {
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <Link href="/register" className={primaryCta}>
+        Probalo {TRIAL_DAYS} días
+        <ArrowRight
+          className="h-[18px] w-[18px] transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:group-hover:translate-x-0"
+          aria-hidden
+        />
+      </Link>
+      <a href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer" className={secondaryCta}>
+        <MessageCircle className="h-[18px] w-[18px] text-emerald-400" aria-hidden />
+        Escribinos por WhatsApp
+      </a>
+    </div>
+  )
+}
 
 export default function ParaComplejosPage() {
+  // `.dark-surface`: la página es siempre oscura (layout de (business)) y usa
+  // los tokens semánticos y la BookingCard del panel; ver globals.css.
   return (
-    <>
+    <div className="dark-surface">
       <Hero />
-      <Features />
-      <StatsBar />
-      <ShowcaseStrip />
-      <FinalCta />
-    </>
+      <Recorrido />
+      <SiNoPaga />
+      <ElResto />
+      <Cierre />
+    </div>
   )
 }
 
 function Hero() {
   return (
-    <section className="relative flex min-h-[84vh] items-center overflow-hidden px-4 pt-[110px] pb-16 sm:px-6 sm:pt-[130px] sm:pb-[84px]">
-      {/* KIT-HEROBG */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-0 opacity-25 sm:opacity-30"
-        style={{
-          backgroundImage: "url('/hero-bg.png')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center 30%',
-          transform: 'scale(1.05)',
-          maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 100%)',
-          WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 50%, rgba(0,0,0,0) 100%)',
-        }}
-      />
-      {/* Dark gradient overlay for superior text and button contrast */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-[#020617]/85 via-[#020617]/65 to-[#020617]"
-      />
-      {/* KIT-GLOW-R */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute right-[-6%] top-[-10%] z-0 h-[760px] w-[760px] animate-tg-drift rounded-full blur-sm motion-reduce:animate-none"
-        style={{
-          background: 'radial-gradient(closest-side, rgba(16,185,129,.28), transparent 70%)',
-        }}
-      />
-      {/* KIT-GLOW-L */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute bottom-[-20%] left-[-10%] z-0 h-[620px] w-[620px] rounded-full"
-        style={{
-          background: 'radial-gradient(closest-side, rgba(5,150,105,.12), transparent 72%)',
-        }}
-      />
-      {/* KIT-PARTICLE x2 — solo en desktop para no colisionar con texto en mobile */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute left-[8%] top-[24%] z-0 hidden h-[6px] w-[6px] animate-tg-float rounded-full bg-emerald-400 motion-reduce:hidden lg:block"
-        style={{ boxShadow: '0 0 16px 4px rgba(52,211,153,.6)' }}
-      />
-      <span
-        aria-hidden
-        className="pointer-events-none absolute bottom-[18%] right-[40%] z-0 hidden h-[5px] w-[5px] rounded-full bg-emerald-300 motion-reduce:hidden lg:block"
-        style={{
-          boxShadow: '0 0 14px 3px rgba(110,231,183,.55)',
-          animation: 'tg-float 10s ease-in-out infinite 0.8s',
-        }}
-      />
-
-      <div className="relative z-10 mx-auto w-full max-w-[1240px] grid grid-cols-1 items-center gap-14 lg:grid-cols-[1.04fr_0.96fr]">
+    <section className="relative overflow-hidden px-4 pb-12 pt-[120px] sm:px-6 sm:pb-16 sm:pt-[150px]">
+      <div className="mx-auto grid w-full max-w-[1240px] grid-cols-1 items-center gap-14 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-10">
         <div className="min-w-0">
-          <h1
-            className="mt-[22px] font-display font-black italic text-[#f8fafc]"
-            style={{
-              fontSize: 'clamp(38px, 5.2vw, 74px)',
-              lineHeight: '0.96',
-              letterSpacing: '-0.035em',
-              textShadow: '0 12px 60px rgba(0,0,0,.5)',
-            }}
-          >
-            Tu complejo, siempre lleno.
-            <br />
-            <span
-              style={{
-                background: 'linear-gradient(100deg, #6ee7b7, #34d399 45%, #10b981)',
-                WebkitBackgroundClip: 'text',
-                backgroundClip: 'text',
-                color: 'transparent',
-                paddingRight: '0.15em',
-                boxDecorationBreak: 'clone',
-                WebkitBoxDecorationBreak: 'clone',
-              }}
-            >
-              Reservas que no paran.
-            </span>
+          <h1 className="font-display text-[clamp(48px,13vw,72px)] font-black italic leading-[0.94] tracking-[-0.035em] text-foreground lg:text-[clamp(64px,6.6vw,96px)]">
+            <span className="block">Chau, reserva</span>{' '}
+            <span className="hero-accent-text block">de palabra.</span>
           </h1>
-
-          <p
-            className="mt-6 max-w-[540px] text-slate-300"
-            style={{ fontSize: 'clamp(15px, 1.5vw, 20px)', lineHeight: '1.6' }}
-          >
-            El que reserva deja una seña por MercadoPago: si te clavan, la seña queda para vos.
-            Reservas online por link, grilla en tiempo real y la caja del día en un solo lugar.{' '}
-            <span className="font-semibold text-white">
-              Hecho específicamente para complejos de fútbol en Argentina.
-            </span>
+          <p className="mt-6 max-w-[34rem] text-pretty text-lg leading-[1.55] text-muted-foreground lg:text-xl">
+            TurnoGol es el sistema de señas para canchas de fútbol. El jugador reserva desde la
+            página de tu complejo y paga la seña por MercadoPago:{' '}
+            <span className="font-semibold text-foreground">
+              la plata entra directo a tu cuenta.
+            </span>{' '}
+            Vos elegís si la pedís y de cuánto.
           </p>
-
-          <div className="mt-8 sm:mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Link
-              href="/register"
-              className="group inline-flex h-12 items-center justify-center gap-2 rounded-full bg-emerald-500 px-6 text-sm font-bold text-slate-950 shadow-[0_0_24px_rgba(16,185,129,0.35)] transition-[background-color,box-shadow,transform] duration-200 hover:bg-emerald-400 hover:shadow-[0_0_32px_rgba(16,185,129,0.5)] active:scale-[0.98] sm:px-8"
-            >
-              Empezar gratis
-              <ArrowRight
-                className="h-[18px] w-[18px] transition-transform duration-300 group-hover:translate-x-1 motion-reduce:group-hover:translate-x-0"
-                aria-hidden
-              />
-            </Link>
-            <Link
-              href="/login"
-              className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 bg-slate-900/80 backdrop-blur-md px-7 text-sm font-semibold text-white transition-[background-color,border-color,transform] hover:bg-white/10 hover:border-white/25 active:scale-[0.98]"
-            >
-              Ingresar
-            </Link>
+          <div className="mt-8">
+            <Ctas />
           </div>
-
-          <ul className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3 text-[13px] text-slate-300">
-            {['Sin tarjeta de crédito', 'Configurado en 20 minutos', 'Soporte dedicado'].map(
-              (t) => (
-                <li key={t} className="flex items-center gap-2 font-medium">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" aria-hidden />
-                  {t}
-                </li>
-              ),
-            )}
-          </ul>
+          <p className="mt-4 text-sm text-muted-foreground">
+            Sin tarjeta. Si no te sirve, lo dejás.
+          </p>
         </div>
-
-        <PanelMockup />
+        <SenaPhone />
       </div>
     </section>
   )
 }
 
-const PANEL_SLOTS = [
-  { time: '18', state: 'occupied' },
-  { time: '19', state: 'free' },
-  { time: '20', state: 'occupied' },
-  { time: '21', state: 'new' },
-  { time: '22', state: 'occupied' },
-  { time: '23', state: 'free' },
-] as const
-
-function PanelMockup() {
+function Step({
+  n,
+  title,
+  children,
+  fragment,
+}: {
+  n: number
+  title: string
+  children: ReactNode
+  fragment: ReactNode
+}) {
   return (
-    <div className="relative hidden min-w-0 lg:block" aria-hidden>
-      {/* Glow detrás */}
-      <div
-        className="pointer-events-none absolute inset-[6%_8%] rounded-[28px] blur-[30px]"
-        style={{
-          background: 'radial-gradient(closest-side, rgba(16,185,129,.3), transparent 75%)',
-        }}
-      />
-      {/* Card */}
-      <div
-        className="relative overflow-hidden animate-[tg-float_9s_ease-in-out_infinite] motion-reduce:animate-none"
-        style={{
-          borderRadius: '24px',
-          background: 'linear-gradient(180deg, rgba(15,23,42,.86), rgba(2,6,23,.92))',
-          border: '1px solid rgba(255,255,255,.1)',
-          boxShadow: '0 0 70px rgba(16,185,129,.21), 0 50px 90px -40px rgba(0,0,0,.95)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-        }}
-      >
-        {/* Header del panel */}
-        <div className="flex items-center justify-between border-b border-white/8 px-[22px] py-[16px]">
-          <div>
-            <div className="font-logo text-[11px] uppercase tracking-[.06em] text-slate-500">
-              Panel · Hoy
-            </div>
-            <div className="font-display font-bold text-[18px] text-[#f8fafc]">Grilla en vivo</div>
-          </div>
-          <div
-            className="inline-flex items-center gap-[7px] rounded-full px-3 py-[6px] text-[11px] font-bold uppercase tracking-[.08em] text-[#6ee7b7]"
-            style={{ background: 'rgba(2,6,23,.6)', border: '1px solid rgba(16,185,129,.45)' }}
-          >
-            <span className="relative flex h-[7px] w-[7px]">
-              <span className="absolute inline-flex h-full w-full animate-ping motion-reduce:animate-none rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-[7px] w-[7px] rounded-full bg-emerald-400" />
-            </span>
-            En vivo
-          </div>
-        </div>
-
-        <div className="p-[22px]">
-          {/* Slots */}
-          <div className="mb-[10px] flex items-center justify-between">
-            <span className="font-logo text-[12px] font-bold uppercase tracking-[.06em] text-slate-500">
-              Cancha 1 · Turnos
-            </span>
-            <span className="text-[12px] font-semibold text-emerald-400">2 libres</span>
-          </div>
-          <div className="grid grid-cols-3 gap-[9px]">
-            {PANEL_SLOTS.map(({ time, state }) => (
-              <div
-                key={time}
-                className="flex flex-col items-center gap-[2px] rounded-[12px] px-1 py-[11px]"
-                style={
-                  state === 'new'
-                    ? {
-                        background: 'linear-gradient(160deg, #10b981, #059669)',
-                        border: '1px solid #34d399',
-                        boxShadow:
-                          '0 0 22px rgba(16,185,129,.55), inset 0 1px 0 rgba(255,255,255,.3)',
-                      }
-                    : state === 'free'
-                      ? {
-                          background: 'rgba(16,185,129,.08)',
-                          border: '1px solid rgba(16,185,129,.32)',
-                        }
-                      : {
-                          background: 'rgba(255,255,255,.03)',
-                          border: '1px solid rgba(255,255,255,.06)',
-                          opacity: '0.55',
-                        }
-                }
-              >
-                <span
-                  className={`font-logo font-bold text-[15px] ${
-                    state === 'new'
-                      ? 'text-white'
-                      : state === 'free'
-                        ? 'text-[#6ee7b7]'
-                        : 'text-slate-500'
-                  }`}
-                >
-                  {time}:00
-                </span>
-                <span
-                  className={`text-[10px] uppercase tracking-[.04em] ${
-                    state === 'new'
-                      ? 'text-[#d1fae5]'
-                      : state === 'free'
-                        ? 'text-emerald-400'
-                        : 'text-slate-600'
-                  }`}
-                >
-                  {state === 'new' ? 'Nueva' : state === 'free' ? 'Libre' : 'Ocupado'}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          {/* Fila caja del día */}
-          <div className="mt-[18px] flex items-center justify-between gap-3 border-t border-white/8 pt-[16px]">
-            <div>
-              <div className="font-logo text-[11px] uppercase tracking-wider text-slate-500">
-                Caja del día
-              </div>
-              <div className="font-display font-bold text-[20px] text-[#f8fafc]">$ 184.500</div>
-            </div>
-            <div
-              className="inline-flex items-center gap-2 rounded-xl px-4 py-[10px] text-[13px] font-semibold text-[#6ee7b7]"
-              style={{
-                background: 'rgba(16,185,129,.12)',
-                border: '1px solid rgba(16,185,129,.3)',
-              }}
-            >
-              9 reservas hoy
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Toast "Nueva reserva online" */}
-      <div
-        className="absolute left-[-26px] bottom-9 inline-flex items-center gap-[9px] rounded-[14px] p-[10px_14px] animate-[tg-float_7s_ease-in-out_infinite_1.4s] motion-reduce:animate-none"
-        style={{
-          background: 'rgba(8,15,32,.88)',
-          border: '1px solid rgba(255,255,255,.12)',
-          boxShadow: '0 18px 40px -18px rgba(0,0,0,.9)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
-        }}
-      >
+    <li className="grid grid-cols-1 items-center gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16">
+      <div className="flex gap-4 sm:gap-5">
         <span
-          className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full text-emerald-400"
-          style={{ background: 'rgba(16,185,129,.18)' }}
+          aria-hidden
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-[1.5px] border-emerald-400 font-display text-lg font-bold tabular-nums text-emerald-300"
         >
-          <Bell className="h-4 w-4" aria-hidden />
+          {n}
         </span>
-        <div>
-          <div className="text-[13px] font-bold text-[#f1f5f9]">Nueva reserva online</div>
-          <div className="text-[11px] text-slate-500">hace 1 minuto</div>
+        <div className="min-w-0 pt-1">
+          <h3 className="font-display text-[26px] font-black italic leading-tight tracking-[-0.02em] text-foreground sm:text-[30px]">
+            {title}
+          </h3>
+          <p className="mt-3 max-w-[30rem] text-pretty text-lg leading-[1.55] text-muted-foreground">
+            {children}
+          </p>
         </div>
       </div>
-    </div>
+      <div className="min-w-0">{fragment}</div>
+    </li>
   )
 }
 
-function Features() {
+function Recorrido() {
   return (
-    <section id="features" className="relative z-10 py-20 sm:py-28">
-      <div className="mx-auto max-w-[1240px] px-6">
-        <Reveal>
-          <div className="mx-auto mb-12 max-w-[640px] text-center">
-            <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400 whitespace-nowrap">
-              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-              Funcionalidades que generan resultados
-              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-            </div>
-            <h2
-              className="mt-[14px] font-display font-black italic text-[#f8fafc]"
-              style={{
-                fontSize: 'clamp(32px, 4vw, 50px)',
-                lineHeight: '1.02',
-                letterSpacing: '-0.025em',
-              }}
-            >
-              Cada función está diseñada para aumentar tu ocupación.
-            </h2>
-            <p className="mt-[14px] text-base leading-[1.55] text-slate-400">
-              Herramientas pensadas para la operación diaria de complejos como el tuyo. Todo lo que
-              necesitás, nada que sobre.
+    <section
+      id="como-funciona"
+      aria-labelledby="recorrido-title"
+      className="px-4 py-16 sm:px-6 sm:py-20"
+    >
+      <div className="mx-auto max-w-[1240px]">
+        <h2
+          id="recorrido-title"
+          className="max-w-[46rem] font-display text-[clamp(36px,8vw,56px)] font-black italic leading-[1] tracking-[-0.03em] text-foreground"
+        >
+          Así viaja una seña.
+        </h2>
+        <p className="mt-4 max-w-[36rem] text-pretty text-lg leading-[1.55] text-muted-foreground lg:text-xl">
+          Del celular del que reserva a tu cuenta de MercadoPago, sin que atiendas el teléfono.
+        </p>
+        <ol className="mt-12 space-y-14 sm:mt-16 sm:space-y-20">
+          <Step n={1} title="Elige el turno en tu página" fragment={<PageLinkFragment />}>
+            Tu complejo tiene su propia página con las canchas, los precios y los horarios libres.
+            La compartís por WhatsApp o la ponés en tu Instagram.
+          </Step>
+          <Step n={2} title={`Paga la seña en ${HOLD_MINUTES} minutos`} fragment={<HoldClock />}>
+            Mientras paga, nadie más puede tomar ese turno. Si no paga a tiempo, se libera solo.
+          </Step>
+          <Step n={3} title="La plata entra a tu MercadoPago" fragment={<MoneyFragment />}>
+            Conectás tu cuenta una vez y cada seña va directo ahí. TurnoGol no toca la plata.
+          </Step>
+          <Step n={4} title="Aparece en tu grilla" fragment={<GridFragment />}>
+            Con la seña marcada y lo que falta cobrar en la cancha. Si reservan de noche, el aviso
+            te llega a las 8.
+          </Step>
+        </ol>
+      </div>
+    </section>
+  )
+}
+
+function SiNoPaga() {
+  return (
+    <section aria-labelledby="si-no-paga-title" className="px-4 pb-16 sm:px-6 sm:pb-20">
+      <div className="mx-auto max-w-[1240px] border-t border-border pt-16 sm:pt-20">
+        <h2
+          id="si-no-paga-title"
+          className="max-w-[46rem] font-display text-[clamp(36px,8vw,56px)] font-black italic leading-[1] tracking-[-0.03em] text-foreground"
+        >
+          ¿Y si no paga, o no viene?
+        </h2>
+        <div className="mt-12 grid grid-cols-1 gap-10 md:grid-cols-2 md:gap-16">
+          <div>
+            <h3 className="text-xl font-semibold text-foreground">No paga la seña</h3>
+            <p className="mt-3 max-w-[30rem] text-pretty text-lg leading-[1.55] text-muted-foreground">
+              A los {HOLD_MINUTES} minutos el turno se libera solo y queda libre para otro.
             </p>
           </div>
-        </Reveal>
-        <div className="grid grid-cols-1 gap-[22px] sm:grid-cols-2 lg:grid-cols-3">
-          {features.map((f, i) => (
-            <Reveal key={f.title} delay={i * 60} className="h-full">
-              <div
-                className="group relative h-full overflow-hidden border border-white/9 p-7 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/40"
-                style={{
-                  borderRadius: '20px',
-                  background: 'linear-gradient(180deg, rgba(15,23,42,.6), rgba(2,6,23,.7))',
-                }}
-              >
-                <div
-                  className="relative inline-flex h-[52px] w-[52px] items-center justify-center text-emerald-400"
-                  style={{
-                    borderRadius: '14px',
-                    background: 'rgba(16,185,129,.12)',
-                    border: '1px solid rgba(16,185,129,.3)',
-                    boxShadow: 'inset 0 0 20px rgba(16,185,129,.15)',
-                  }}
-                >
-                  <f.icon className="h-6 w-6" aria-hidden />
-                </div>
-                <h3 className="relative mt-5 font-display font-bold text-xl text-[#f8fafc]">
-                  {f.title}
-                </h3>
-                <p className="relative mt-2.5 text-[14.5px] leading-[1.6] text-slate-400">
-                  {f.description}
-                </p>
-              </div>
-            </Reveal>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function StatsBar() {
-  return (
-    <section className="relative z-10 py-6">
-      <div className="mx-auto max-w-[1240px] px-6">
-        <div
-          className="relative overflow-hidden rounded-3xl border border-emerald-500/22 p-7 sm:p-11"
-          style={{
-            background:
-              'linear-gradient(120deg, rgba(6,78,59,.55), rgba(2,6,23,.35) 55%, rgba(6,78,59,.4))',
-            boxShadow: '0 0 70px rgba(16,185,129,.165), inset 0 1px 0 rgba(255,255,255,.06)',
-          }}
-        >
-          <div
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 top-[-40%] h-[400px] w-[700px] -translate-x-1/2 rounded-full blur-[20px]"
-            style={{
-              background: 'radial-gradient(closest-side, rgba(16,185,129,.3), transparent 72%)',
-            }}
-          />
-          <div className="relative grid grid-cols-2 gap-6 sm:grid-cols-4">
-            {stats.map((s, i) => (
-              <div
-                key={s.label}
-                className={`text-center ${i > 0 ? 'border-l border-white/10' : ''}`}
-              >
-                <div
-                  className="font-display font-black italic leading-none"
-                  style={{
-                    fontSize: 'clamp(36px, 4.6vw, 56px)',
-                    background: 'linear-gradient(180deg, #ffffff, #6ee7b7)',
-                    WebkitBackgroundClip: 'text',
-                    backgroundClip: 'text',
-                    color: 'transparent',
-                  }}
-                >
-                  {s.value}
-                </div>
-                <div className="mt-[10px] font-logo text-[12.5px] font-bold uppercase tracking-[.08em] text-slate-400">
-                  {s.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function ShowcaseStrip() {
-  const steps = [
-    {
-      n: '01',
-      t: 'Creá tu cuenta',
-      d: 'Email, nombre y contraseña. Confirmación por email y estás dentro.',
-    },
-    {
-      n: '02',
-      t: 'Registrá tus canchas',
-      d: 'Nombre, tipo de superficie y capacidad. En menos de un minuto.',
-    },
-    {
-      n: '03',
-      t: 'Definí horarios y tarifas',
-      d: 'Personalizá por franja horaria, por día o como mejor se adapte a tu operación.',
-    },
-    {
-      n: '04',
-      t: 'Conectá MercadoPago',
-      d: 'Integración en un click. Empezá a recibir señas online en tu cuenta.',
-    },
-  ]
-  return (
-    <section className="relative z-10 overflow-hidden py-20 sm:py-28">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-[-1] opacity-[0.10] mix-blend-luminosity"
-        style={{
-          backgroundImage: `url('${FEATURE_BG}')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          maskImage: 'linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent)',
-          WebkitMaskImage:
-            'linear-gradient(to bottom, transparent, #000 20%, #000 80%, transparent)',
-        }}
-      />
-      <div className="relative mx-auto grid max-w-[1240px] gap-12 px-6 lg:grid-cols-2 lg:items-center">
-        <Reveal>
           <div>
-            <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400">
-              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-              Configuración express
-            </div>
-            <h2
-              className="mt-[14px] font-display font-black italic text-[#f8fafc]"
-              style={{
-                fontSize: 'clamp(30px, 3.4vw, 44px)',
-                lineHeight: '1.02',
-                letterSpacing: '-0.025em',
-              }}
-            >
-              En 4 pasos tu complejo empieza a recibir reservas online.
-            </h2>
-            <ol className="mt-10 space-y-5">
-              {steps.map((step) => (
-                <li key={step.n} className="flex gap-4">
-                  <span
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] font-logo text-sm font-bold text-emerald-400"
-                    style={{
-                      background: 'rgba(16,185,129,.12)',
-                      border: '1px solid rgba(16,185,129,.3)',
-                      boxShadow: 'inset 0 0 16px rgba(16,185,129,.15)',
-                    }}
-                  >
-                    {step.n}
-                  </span>
-                  <div>
-                    <h3 className="font-display text-base font-bold text-[#f8fafc]">{step.t}</h3>
-                    <p className="mt-1 text-sm leading-relaxed text-slate-400">{step.d}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
+            <h3 className="text-xl font-semibold text-foreground">Reserva y no viene</h3>
+            <p className="mt-3 max-w-[30rem] text-pretty text-lg leading-[1.55] text-muted-foreground">
+              {NO_SHOW_CONSEQUENCES[0]} {NO_SHOW_CONSEQUENCES[1]}
+            </p>
           </div>
-        </Reveal>
-
-        <Reveal delay={120}>
-          <div
-            className="relative overflow-hidden p-6"
-            style={{
-              borderRadius: '20px',
-              background: 'linear-gradient(180deg, rgba(15,23,42,.78), rgba(2,6,23,.9))',
-              border: '1px solid rgba(255,255,255,.1)',
-              boxShadow: '0 0 60px rgba(16,185,129,.16), 0 40px 80px -40px rgba(0,0,0,.9)',
-            }}
-          >
-            <div className="flex items-center gap-2 border-b border-white/10 pb-3 text-xs text-slate-400">
-              <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
-              <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80" />
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80" />
-              <span className="ml-auto font-mono text-[11px] text-slate-500">
-                app.turnogol.app/grilla
-              </span>
-            </div>
-            <div className="mt-4 grid grid-cols-4 gap-2 text-xs">
-              {[...Array(20)].map((_, i) => {
-                const filled = [1, 2, 5, 7, 8, 11, 14, 17, 18].includes(i)
-                const next = [3, 9, 15].includes(i)
-                return (
-                  <div
-                    key={i}
-                    className={[
-                      'flex h-12 items-center justify-center rounded-md font-logo font-medium tabular-nums',
-                      filled
-                        ? 'bg-emerald-500/30 text-emerald-100 ring-1 ring-inset ring-emerald-400/40'
-                        : next
-                          ? 'bg-amber-400/15 text-amber-200 ring-1 ring-inset ring-amber-300/30'
-                          : 'bg-white/3 text-slate-500 ring-1 ring-inset ring-white/5',
-                    ].join(' ')}
-                  >
-                    {(18 + Math.floor(i / 4)).toString().padStart(2, '0')}:
-                    {((i % 4) * 15).toString().padStart(2, '0')}
-                  </div>
-                )
-              })}
-            </div>
-            <div className="mt-4 flex items-center justify-between text-xs">
-              <span className="text-slate-400">9 reservas confirmadas hoy</span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-400 ring-1 ring-inset ring-emerald-400/30">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
-                En vivo
-              </span>
-            </div>
-          </div>
-        </Reveal>
+        </div>
+        <p className="mt-12 max-w-[40rem] text-pretty text-lg leading-[1.55] text-muted-foreground">
+          <span className="font-semibold text-foreground">¿No querés pedir seña?</span> Se reserva
+          igual online y se paga en la cancha.
+        </p>
       </div>
     </section>
   )
 }
 
-function FinalCta() {
+const RESTO = [
+  {
+    title: 'Turnos fijos',
+    body: 'Se repiten solos cada semana y marcás quién pagó cada vez.',
+  },
+  {
+    title: 'La caja de la noche',
+    body: 'Reservas, cantina y lo que falta cobrar, en un solo cierre.',
+  },
+  {
+    title: 'Tu encargado',
+    body: 'Entra con su usuario a Hoy, la grilla, las reservas y la caja. Configuración y Métricas quedan para vos.',
+  },
+  {
+    title: 'Métricas',
+    body: 'Cómo te fue en el mes y qué cancha rinde más.',
+  },
+]
+
+function ElResto() {
   return (
-    <section className="relative z-10 overflow-hidden py-20 sm:py-28">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-[-1]"
-        style={{
-          background: 'radial-gradient(ellipse at top, rgba(16,185,129,.20), transparent 60%)',
-        }}
-      />
-      <div className="relative mx-auto max-w-[900px] px-6 text-center">
-        <Reveal>
-          <div
-            className="mx-auto mb-6 inline-flex h-14 w-14 items-center justify-center text-emerald-400"
-            style={{
-              borderRadius: '16px',
-              background: 'rgba(16,185,129,.14)',
-              border: '1px solid rgba(16,185,129,.35)',
-              boxShadow: 'inset 0 0 24px rgba(16,185,129,.2)',
-            }}
-          >
-            <Shield className="h-7 w-7" aria-hidden />
-          </div>
-          <h2
-            className="font-display font-black italic text-[#f8fafc]"
-            style={{
-              fontSize: 'clamp(32px, 4vw, 52px)',
-              lineHeight: '1.02',
-              letterSpacing: '-0.025em',
-            }}
-          >
-            Tu complejo merece funcionar al máximo.
-          </h2>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-400">
-            Probá TurnoGol durante 30 días sin costo. Sin tarjeta de crédito, sin compromiso. Si no
-            ves resultados, lo dejás.
-          </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              href="/register"
-              className="group inline-flex h-12 items-center justify-center gap-2 rounded-full border border-emerald-400/60 bg-emerald-500/5 px-6 text-xs font-bold text-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.15)] transition-all duration-300 hover:bg-emerald-500/15 hover:border-emerald-400 hover:shadow-[0_0_24px_rgba(16,185,129,0.3)] active:scale-[0.97] sm:px-8 sm:text-sm whitespace-nowrap"
-            >
-              Empezar gratis
-              <ArrowRight
-                className="h-[18px] w-[18px] transition-transform duration-300 group-hover:translate-x-1 motion-reduce:group-hover:translate-x-0"
-                aria-hidden
-              />
-            </Link>
-            <Link
-              href="/precios"
-              className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 bg-white/5 px-8 text-sm font-semibold text-white transition-colors hover:bg-white/10"
-            >
-              Ver planes y precios
-            </Link>
-          </div>
-        </Reveal>
+    <section id="features" aria-labelledby="resto-title" className="px-4 pb-16 sm:px-6 sm:pb-20">
+      <div className="mx-auto grid max-w-[1240px] grid-cols-1 gap-12 border-t border-border pt-16 sm:pt-20 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16">
+        <h2
+          id="resto-title"
+          className="font-display text-[clamp(36px,8vw,56px)] font-black italic leading-[1] tracking-[-0.03em] text-foreground"
+        >
+          Y el resto de la noche, en el mismo panel.
+        </h2>
+        <dl className="grid grid-cols-1 gap-x-10 gap-y-9 sm:grid-cols-2">
+          {RESTO.map((r) => (
+            <div key={r.title}>
+              <dt className="text-xl font-semibold text-foreground">{r.title}</dt>
+              <dd className="mt-2 text-pretty text-lg leading-[1.55] text-muted-foreground">
+                {r.body}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+    </section>
+  )
+}
+
+function Cierre() {
+  return (
+    <section aria-labelledby="cierre-title" className="px-4 pb-24 pt-8 sm:px-6 sm:pb-32">
+      <div className="card-premium mx-auto max-w-[1240px] rounded-2xl px-6 py-12 sm:px-12 sm:py-16">
+        <h2
+          id="cierre-title"
+          className="max-w-[40rem] font-display text-[clamp(36px,8vw,56px)] font-black italic leading-[1] tracking-[-0.03em] text-foreground"
+        >
+          Probalo {TRIAL_DAYS} días en tu complejo.
+        </h2>
+        <p className="mt-5 max-w-[38rem] text-pretty text-lg leading-[1.55] text-muted-foreground lg:text-xl">
+          Sin tarjeta. Te ayudamos a configurarlo por WhatsApp: canchas, precios y horarios. Si no
+          te sirve, lo dejás.
+        </p>
+        <div className="mt-8">
+          <Ctas />
+        </div>
+        <Link
+          href="/precios"
+          className="mt-6 inline-flex items-center gap-1.5 text-base font-semibold text-emerald-400 underline-offset-4 hover:underline"
+        >
+          Ver precios <ArrowRight className="h-4 w-4" aria-hidden />
+        </Link>
       </div>
     </section>
   )

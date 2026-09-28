@@ -1,9 +1,15 @@
 import { randomInt } from 'node:crypto'
-import { and, eq, isNull, notInArray } from 'drizzle-orm'
+import { and, eq, isNull, lte, notInArray } from 'drizzle-orm'
 import { getDb } from '@/shared/db/client'
 import { tenants } from '@/shared/db/schema'
 import { isUniqueViolation } from '@/shared/db/pg-errors'
-import { REFERRAL_CODE_ALPHABET, REFERRAL_CODE_LENGTH, referralCodeSchema } from './referral.schema'
+import { REFERRAL_PROMO_ENDS_AT } from '@/shared/constants'
+import {
+  extractReferralCode,
+  REFERRAL_CODE_ALPHABET,
+  REFERRAL_CODE_LENGTH,
+  referralCodeSchema,
+} from './referral.schema'
 
 const MAX_GENERATION_ATTEMPTS = 5
 
@@ -96,4 +102,84 @@ export async function resolveReferralCode(code: string): Promise<ResolvedReferra
   const row = rows[0]
   if (!row) return null
   return { tenantId: row.id, name: row.name }
+}
+
+export type ResolveSignupReferrerInput = {
+  /** `staff_users.signup_referral_code`, crudo y sin validar todavía. */
+  code: string | null
+  /** `staff_users.created_at` — la promo se mide contra cuándo se creó la
+   *  CUENTA de staff, no contra cuándo termina el onboarding (que puede caer
+   *  después del corte sin invalidar el referido). */
+  staffCreatedAt: Date
+  /** Defensa en profundidad contra que un tenant se auto-refiera: el CHECK
+   *  `tenants_referred_by_not_self` (migr. 094) es la barrera real en la DB,
+   *  pero pasar acá el id que se le va a asignar (si ya se conoce) evita
+   *  incluso intentar el INSERT. */
+  excludeTenantId?: string
+}
+
+/**
+ * Resuelve el tenant referidor de una alta de staff nueva (B2), o `null` si
+ * no corresponde atribuir ninguno. Un código ausente, con formato inválido,
+ * inexistente, `deleted`/`churned`, vencido o auto-referido son todos casos
+ * válidos de "sin referidor" — nunca tira por eso. `createTenantAction` es el
+ * único responsable de decidir que un error de INFRA (DB caída) tampoco frene
+ * el alta.
+ */
+export async function resolveSignupReferrer({
+  code,
+  staffCreatedAt,
+  excludeTenantId,
+}: ResolveSignupReferrerInput): Promise<string | null> {
+  if (!code) return null
+  if (staffCreatedAt.getTime() > REFERRAL_PROMO_ENDS_AT.getTime()) return null
+
+  const referral = await resolveReferralCode(code)
+  if (!referral) return null
+  if (excludeTenantId && referral.tenantId === excludeTenantId) return null
+
+  return referral.tenantId
+}
+
+export type AssignReferrerResult =
+  | { ok: true; referrerName: string }
+  | { ok: false; reason: 'invalid_code' | 'self' | 'not_eligible' }
+
+/**
+ * "Asignar referidor" manual (B2, panel SuperAdmin): para el complejo que
+ * llegó por WhatsApp sin pasar por `/r/<CODE>`. Mismas reglas de negocio que
+ * `resolveSignupReferrer`, pero la ventana de promo se mide contra
+ * `tenants.created_at` (acá no hay `staff_users` de por medio) y se suman las
+ * dos condiciones de "todavía elegible": sin referidor propio y sin premio en
+ * curso. Van en el WHERE del UPDATE, no en un SELECT previo — así no hay
+ * ventana de carrera entre validar y escribir, mismo criterio que
+ * `ensureReferralCode`.
+ */
+export async function assignReferrer(
+  tenantId: string,
+  rawCode: string,
+): Promise<AssignReferrerResult> {
+  const code = extractReferralCode(rawCode)
+  if (!code) return { ok: false, reason: 'invalid_code' }
+
+  const referral = await resolveReferralCode(code)
+  if (!referral) return { ok: false, reason: 'invalid_code' }
+  if (referral.tenantId === tenantId) return { ok: false, reason: 'self' }
+
+  const db = getDb()
+  const updated = await db
+    .update(tenants)
+    .set({ referredByTenantId: referral.tenantId, updatedAt: new Date() })
+    .where(
+      and(
+        eq(tenants.id, tenantId),
+        isNull(tenants.referredByTenantId),
+        isNull(tenants.referralRewardStatus),
+        lte(tenants.createdAt, REFERRAL_PROMO_ENDS_AT),
+      ),
+    )
+    .returning({ id: tenants.id })
+
+  if (updated.length === 0) return { ok: false, reason: 'not_eligible' }
+  return { ok: true, referrerName: referral.name }
 }

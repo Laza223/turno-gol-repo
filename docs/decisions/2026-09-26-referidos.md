@@ -16,12 +16,15 @@ Plan de ejecución y estado: [`docs/planning/2026-09-26-referidos-ledger.md`](..
 
 ## R1 — El premio: un mes por cada complejo que traés y paga
 
-- **Decisión:** por cada complejo referido que **paga su primer mes**, el que lo trajo gana **1 mes bonificado** de su suscripción. El tope es **12 meses por año** por complejo.
+- **Decisión:** por cada complejo referido que **paga su primer mes**, el que lo trajo gana **1 mes bonificado** de su suscripción. El tope es **6 meses** por complejo (el dueño lo bajó de 12 a 6 el 2026-09-28). A partir del séptimo referido, el que llega arranca igual con sus 30 días de siempre, pero el referidor ya no suma meses (`referral_reward_status = over_cap`).
+- **Cómo se anuncia (2026-09-28):** "Obtené hasta 6 meses gratis de TurnoGol". Las condiciones (que el mes se acredita cuando el referido paga su primera mensualidad, el tope y la fecha) van detrás de "Ver condiciones", que lleva a `/terminos#referidos` (punto 7 de los Términos y Condiciones, donde está el reglamento completo), no en el texto principal.
 - **El referido** arranca con los 30 días de prueba de siempre, más la configuración hecha por el founder. **No recibe nada extra**, y los 30 días **no se anuncian como regalo por venir referido**: los tiene cualquiera que se registra.
 - **Por qué el premio va atado al pago y no al alta:**
   - El mes se regala recién después de cobrar al menos un mes del referido, así que el programa siempre deja plata.
   - Pagar es activación real; un alta no lo es.
 - **Confianza:** baja (0 clientes pagos, H3 sin evidencia).
+
+- **Reglamento público (2026-09-28):** el punto 7 de `/terminos` (`#referidos`) tiene el reglamento completo. El dueño confirmó tres cláusulas: (1) los meses bonificados no tienen valor en dinero, no se transfieren y solo se aplican mientras la cuenta del referidor esté vigente; (2) TurnoGol puede modificar o terminar el programa, respetando los meses ya ganados; (3) un segundo complejo del mismo titular **sí** cuenta como referido si paga su propia suscripción; lo único que no vale es referirse a sí mismo.
 
 ## R2 — La promo tiene fecha real: altas hasta el 31/10
 

@@ -47,6 +47,8 @@ export type TenantSettings = {
   admin_tour_seen_at?: string
   /** ISO timestamp: cuándo el admin descartó manualmente la checklist de onboarding. */
   checklist_dismissed_at?: string
+  /** ISO timestamp: cuándo el admin cerró el aviso de referidos de Hoy. Descarte persistente, no vuelve a mostrarse. */
+  referral_banner_dismissed_at?: string
   /** D8 (Fase 2, resumen diario): opt-in explícito, default false — el push
    *  al admin con PWA es el default gratis, el email tiene costo por tenant×día. */
   daily_summary_email_opt_in?: boolean
@@ -70,6 +72,14 @@ export type CreateTenantInput = {
    *  self-signup — el wizard de onboarding NO lo pasa y no debe pasarlo.
    *  Solo el alta asistida del super-admin fija un valor distinto (pilotos). */
   trialDays?: number
+  /** UUID pre-generado por el caller (B2): permite resolver `referredByTenantId`
+   *  ANTES del insert, para el chequeo real de "no autoreferirse" (además del
+   *  CHECK `tenants_referred_by_not_self` de la DB). Omitido = la DB genera uno
+   *  con `defaultRandom()`, como siempre. */
+  id?: string
+  /** Referidor del programa de referidos (B2), ya resuelto y validado por
+   *  `resolveSignupReferrer`. `null`/omitido = alta sin referido. */
+  referredByTenantId?: string | null
 }
 
 export type UpdateTenantInput = Partial<{

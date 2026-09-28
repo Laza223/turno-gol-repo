@@ -12,6 +12,10 @@ import { OnboardingChecklist } from '@/components/dashboard/onboarding-checklist
 import { DashboardTour } from '@/components/dashboard/dashboard-tour'
 import { WhileYouWereAway } from '@/components/dashboard/WhileYouWereAway'
 import { NeedsAttention } from '@/components/dashboard/NeedsAttention'
+import { ReferralShareBanner } from '@/components/dashboard/ReferralShareBanner'
+import { shouldShowReferralBanner } from '@/lib/dashboard/referral-banner'
+import { absoluteUrl } from '@/lib/seo/metadata'
+import { REFERRAL_PROMO_ENDS_AT } from '@/shared/constants'
 import { listDayGridBookings, listUnpaidGridBookingsBefore } from '@/app/(admin)/reservas/queries'
 import { mediumDateLabel } from '@/app/(admin)/caja/caja-lib'
 import {
@@ -32,11 +36,12 @@ import { createTabAction, sellTicketAction } from '@/app/(admin)/caja/cantina/ac
 import { HoyHeaderSlot } from './HoyHeaderSlot'
 import { HoyShell } from './_components/HoyShell'
 import { VenderProvider } from './_components/VenderProvider'
-import { getChecklistState } from './queries'
+import { getChecklistState, getTenantReferralCode } from './queries'
 import {
   markPublicLinkSharedAction,
   markTourSeenAction,
   markChecklistDismissedAction,
+  markReferralBannerDismissedAction,
 } from './actions'
 
 /** Fecha de hoy formato medio §8.3, "mié 2 de julio", y corta, "mié 2 jul", para
@@ -88,50 +93,62 @@ export default async function DashboardPage() {
   const now = new Date()
   const date = operatingDateOf(now, cutoffMins)
 
-  const [{ data, courts, dayBookings, earlierUnpaid, products, ranking }, checklistState] =
-    await Promise.all([
-      withTenantContext(tenant.id, async (tx) => {
-        // La cola de cobro sale del MISMO loader que la Grilla (`listDayGridBookings`):
-        // el "falta cobrar" de cada fila es el número de la Grilla, del detalle y de Caja.
-        const [hoy, courtRows, bookingRows, earlierRows, productRows, rankingRows] =
-          await Promise.all([
-            getHoyData(tenant.id, tx, {
-              date,
-              cutoffMins,
-              openingHours: tenant.openingHours,
-              closedDates: tenant.closedDates,
-              closesNextDay: tenant.closesNextDay,
-            }),
-            listCourts(tenant.id, tx),
-            listDayGridBookings(tenant.id, date, tx),
-            // Lo que se jugó en días anteriores y nadie cobró, con el mismo saldo que
-            // Caja › Cuentas: Hoy lo muestra debajo de "Cobrar ahora".
-            listUnpaidGridBookingsBefore(tenant.id, date, tx, { limit: EARLIER_UNPAID_LIMIT }),
-            // El catálogo del modal de "Vender": el mismo de /caja.
-            listProducts(tenant.id, tx),
-            // "Más vendidos" del modal: la misma cuenta que el reporte de Caja › Productos,
-            // sobre los últimos 30 días operativos.
-            getSalesRanking(
-              tenant.id,
-              tx,
-              { from: addDays(date, -(TOP_SELLERS_DAYS - 1)), to: date },
-              cutoffMins,
-            ),
-          ])
-        return {
-          data: hoy,
-          courts: courtRows,
-          dayBookings: bookingRows,
-          earlierUnpaid: earlierRows,
-          products: productRows,
-          ranking: rankingRows,
-        }
-      }),
-      // El checklist de arranque es solo del dueño: al Encargado no se le pagan sus queries.
-      // Y si el dueño ya lo descartó tampoco: Hoy se refresca cada minuto y no tiene
-      // sentido consultar siete pasos para no dibujarlos.
-      wantsChecklist ? getChecklistState(tenant, tenant.settings, !!tenant.mpConnectedAt) : null,
-    ])
+  // El código de referido se pide solo cuando podría mostrarse: rol, descarte
+  // y fecha ya se saben sin ir a la base (mismo criterio que `wantsChecklist`),
+  // así que solo falta el código para decidir del todo.
+  const wantsReferralCode =
+    isAdmin &&
+    !tenant.settings.referral_banner_dismissed_at &&
+    now.getTime() <= REFERRAL_PROMO_ENDS_AT.getTime()
+
+  const [
+    { data, courts, dayBookings, earlierUnpaid, products, ranking },
+    checklistState,
+    referralCode,
+  ] = await Promise.all([
+    withTenantContext(tenant.id, async (tx) => {
+      // La cola de cobro sale del MISMO loader que la Grilla (`listDayGridBookings`):
+      // el "falta cobrar" de cada fila es el número de la Grilla, del detalle y de Caja.
+      const [hoy, courtRows, bookingRows, earlierRows, productRows, rankingRows] =
+        await Promise.all([
+          getHoyData(tenant.id, tx, {
+            date,
+            cutoffMins,
+            openingHours: tenant.openingHours,
+            closedDates: tenant.closedDates,
+            closesNextDay: tenant.closesNextDay,
+          }),
+          listCourts(tenant.id, tx),
+          listDayGridBookings(tenant.id, date, tx),
+          // Lo que se jugó en días anteriores y nadie cobró, con el mismo saldo que
+          // Caja › Cuentas: Hoy lo muestra debajo de "Cobrar ahora".
+          listUnpaidGridBookingsBefore(tenant.id, date, tx, { limit: EARLIER_UNPAID_LIMIT }),
+          // El catálogo del modal de "Vender": el mismo de /caja.
+          listProducts(tenant.id, tx),
+          // "Más vendidos" del modal: la misma cuenta que el reporte de Caja › Productos,
+          // sobre los últimos 30 días operativos.
+          getSalesRanking(
+            tenant.id,
+            tx,
+            { from: addDays(date, -(TOP_SELLERS_DAYS - 1)), to: date },
+            cutoffMins,
+          ),
+        ])
+      return {
+        data: hoy,
+        courts: courtRows,
+        dayBookings: bookingRows,
+        earlierUnpaid: earlierRows,
+        products: productRows,
+        ranking: rankingRows,
+      }
+    }),
+    // El checklist de arranque es solo del dueño: al Encargado no se le pagan sus queries.
+    // Y si el dueño ya lo descartó tampoco: Hoy se refresca cada minuto y no tiene
+    // sentido consultar siete pasos para no dibujarlos.
+    wantsChecklist ? getChecklistState(tenant, tenant.settings, !!tenant.mpConnectedAt) : null,
+    wantsReferralCode ? getTenantReferralCode(tenant.id) : null,
+  ])
 
   // Todos los pasos de la checklist, no solo 2 de 7 (bug: antes el complejo
   // podía dar "por terminado" el onboarding con canchas/horarios sin cargar).
@@ -139,6 +156,12 @@ export default async function DashboardPage() {
   const showChecklist = wantsChecklist && !allDone
   const showTour =
     isAdmin && tenant.settings.onboarding_completed === true && !tenant.settings.admin_tour_seen_at
+  const showReferralBanner = shouldShowReferralBanner({
+    role,
+    referralCode,
+    dismissedAt: tenant.settings.referral_banner_dismissed_at,
+    now,
+  })
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
   const { whileYouWereAway, needsAttention } = data
@@ -214,6 +237,19 @@ export default async function DashboardPage() {
         {needsAttention.length > 0 && (
           <div className="card-entrance">
             <NeedsAttention items={needsAttention} nowMs={now.getTime()} />
+          </div>
+        )}
+
+        {/* Aviso de referidos (R1/R2, docs/decisions/2026-09-26-referidos.md): discreto,
+          nunca más prominente que NeedsAttention ni "Cobrar ahora" — por eso va DESPUÉS
+          de lo urgente y no desplaza el tablero. */}
+        {showReferralBanner && referralCode && (
+          <div className="card-entrance">
+            <ReferralShareBanner
+              url={absoluteUrl(`/r/${referralCode}`)}
+              tenantName={tenant.name}
+              dismissAction={markReferralBannerDismissedAction}
+            />
           </div>
         )}
 

@@ -246,27 +246,26 @@ Fixtures usadas: Tenant Demo `e2e-complejo-demo` (`requires_deposit:false`, `dep
 - **Prerrequisitos:** Ninguno.
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/para-complejos`.
-  2. Esperar el render del h1 "Tu complejo, siempre lleno." (`src/app/(business)/para-complejos/page.tsx:145-160`).
-  3. Verificar la pill "Para dueños y encargados" (`para-complejos/page.tsx:128-134`).
-  4. Click en el CTA "Empezar gratis" del hero → navega a `/register` (`para-complejos/page.tsx:169-176`).
-  5. (Alternativa) Click en "Ingresar" del hero → navega a `/login` (`para-complejos/page.tsx:177-182`).
-  6. Scroll a la sección "Funcionalidades..." y verificar el h2 "Cada función está diseñada para aumentar tu ocupación." (`para-complejos/page.tsx:339-344`).
-  7. Scroll al final y click en el CTA final "Empezar gratis" → `/register` (`para-complejos/page.tsx:551-558`), o "Ver planes y precios" → `/precios` (`para-complejos/page.tsx:559-564`).
+  2. Esperar el render del h1 "Chau, reserva de palabra." (`src/app/(business)/para-complejos/page.tsx:71-72`).
+  3. Verificar que "Escribinos por WhatsApp" apunta a `wa.me` con el mensaje cargado y abre en pestaña nueva (`para-complejos/page.tsx:43-45`). No se navega: es externo.
+  4. Click en el CTA "Probalo 30 días" del hero → navega a `/register` (`para-complejos/page.tsx:36-37`).
+  5. Scroll al recorrido y verificar el h2 "Así viaja una seña." (`para-complejos/page.tsx:141`).
+  6. Verificar que existe el ancla `#features` a la que apunta "Funciones" del header (`para-complejos/page.tsx:221`).
+  7. Scroll al final y click en "Ver precios" → `/precios` (`para-complejos/page.tsx:262-265`). El "Probalo 30 días" del cierre va al mismo `/register` del paso 4.
 - **Comportamiento de componentes:**
   - Loading: no aplica — página 100% estática (`export default function ParaComplejosPage()`, sin fetch/DB, sin `loading.tsx` propio en `(business)/para-complejos/`).
   - Anti-doble-submit: no aplica — los CTAs son `<Link>` de navegación, no forms.
-  - Feedback: sin toast; el resultado es la navegación del browser a `/register` o `/login` o `/precios`.
+  - Feedback: sin toast; el resultado es la navegación del browser a `/register` o `/precios`.
 - **Validación de datos:**
   - DB: ninguna.
   - API/Action: ninguna.
   - Externos: ninguno.
   - UI-sin-reload: no aplica (navegación completa a otra ruta).
 - **Evidencia (path:línea):**
-  - `src/app/(business)/para-complejos/page.tsx:145` — h1 "Tu complejo, siempre lleno.".
-  - `src/app/(business)/para-complejos/page.tsx:174` — texto del CTA "Empezar gratis".
-  - `src/app/(business)/para-complejos/page.tsx:170` — `<Link href="/register" ...>`.
-  - `src/app/(business)/para-complejos/page.tsx:178,181` — `<Link href="/login" ...>` texto "Ingresar".
-  - `src/app/(business)/para-complejos/page.tsx:559-564` — `<Link href="/precios" ...>` texto "Ver planes y precios".
+  - `src/app/(business)/para-complejos/page.tsx:71-72` — h1 "Chau, reserva de palabra.".
+  - `src/app/(business)/para-complejos/page.tsx:36-37` — `<Link href="/register" ...>` texto "Probalo {TRIAL_DAYS} días".
+  - `src/app/(business)/para-complejos/page.tsx:43-45` — `<a href={WHATSAPP_URL} target="_blank">` texto "Escribinos por WhatsApp".
+  - `src/app/(business)/para-complejos/page.tsx:262-265` — `<Link href="/precios" ...>` texto "Ver precios".
 
 ---
 

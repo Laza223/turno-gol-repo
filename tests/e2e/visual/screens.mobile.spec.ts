@@ -33,6 +33,12 @@ test.describe('visual mobile — admin', () => {
     await page.clock.setFixedTime(FROZEN_NOW)
     await page.goto(`/grilla?date=${VISUAL_DATE}`)
     await expect(page.getByText('Martina Sosa')).toBeVisible()
+    // El segmento Grilla|Agenda llega por portal después de hidratar (ver
+    // `waitForHeaderSlot`): sin esperarlo, dos regeneraciones seguidas del
+    // 2026-09-28 salieron una con el segmento y otra sin.
+    await expect(page.getByRole('navigation', { name: 'Vistas de la grilla' })).toBeVisible({
+      timeout: 15_000,
+    })
     await expect(page).toHaveScreenshot('admin-grilla-mobile.png')
   })
 })

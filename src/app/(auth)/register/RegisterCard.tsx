@@ -7,6 +7,7 @@ import { CheckCircle2, Mail } from 'lucide-react'
 import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 import type { RegisterState } from './actions'
 import { PhoneInput } from '@/components/ui/phone-input'
+import { readStoredReferralCode, storeReferralCode } from '@/lib/referral-storage'
 
 const initial: RegisterState = { status: 'idle' }
 
@@ -52,9 +53,13 @@ function readPendingEmail(): string | null {
 export function RegisterCard({
   action,
   pending = false,
+  refCode = null,
 }: {
   action: RegisterAction
   pending?: boolean
+  /** Programa de referidos (B2): `?ref=` ya validado por el Server Component
+   *  (`page.tsx`). Prioridad sobre el código persistido en localStorage. */
+  refCode?: string | null
 }) {
   const [state, formAction] = useActionState(action, initial)
 
@@ -63,6 +68,20 @@ export function RegisterCard({
   // así que no hay mismatch de hidratación ni un `setState` dentro de un efecto
   // (que la regla `react-hooks/set-state-in-effect` prohíbe, con razón).
   const storedEmail = useSyncExternalStore(subscribeNever, readPendingEmail, () => null)
+
+  // Mismo idiom para el código persistido por una visita previa a `/register`
+  // o a la landing `/r/<CODE>` (`PersistReferralCode`). `refCode` (la URL de
+  // ESTA visita) gana si vino; si no, cae al valor guardado.
+  const storedReferralCode = useSyncExternalStore(
+    subscribeNever,
+    readStoredReferralCode,
+    () => null,
+  )
+  const referralCode = refCode ?? storedReferralCode
+
+  useEffect(() => {
+    if (refCode) storeReferralCode(refCode)
+  }, [refCode])
 
   const confirmed = state.status === 'confirm'
   const confirmedEmail = state.status === 'confirm' ? state.email : null
@@ -84,15 +103,17 @@ export function RegisterCard({
   if (state.status === 'confirm') return <ConfirmState email={state.email} />
   if (state.status === 'existing') return <ExistingState email={state.email} />
   if (pending && state.status === 'idle') return <ConfirmState email={storedEmail} />
-  return <FormCard state={state} formAction={formAction} />
+  return <FormCard state={state} formAction={formAction} referralCode={referralCode} />
 }
 
 function FormCard({
   state,
   formAction,
+  referralCode,
 }: {
   state: RegisterState
   formAction: (formData: FormData) => void
+  referralCode: string | null
 }) {
   const errs = state.status === 'error' ? state.fieldErrors : {}
   // Sin esto, cualquier error de validación le borra al dueño los 7 campos.
@@ -108,6 +129,7 @@ function FormCard({
       </header>
 
       <form action={formAction} className="space-y-4" noValidate>
+        {referralCode && <input type="hidden" name="referralCode" value={referralCode} />}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field
             id="firstName"

@@ -52,6 +52,24 @@ export async function getStaffContact(
 }
 
 /**
+ * Código de referido con el que se registró esta cuenta + cuándo se creó, para
+ * `createTenantAction` (B2: `resolveSignupReferrer`). Mismo patrón de acceso
+ * que `getStaffContact` — se llama en el mismo instante, antes de que exista
+ * `app.current_tenant_id`, así que el pool bypass-capable es obligatorio.
+ */
+export async function getStaffSignupReferral(
+  staffUserId: string,
+): Promise<{ signupReferralCode: string | null; createdAt: Date } | null> {
+  const db = getWorkerDb()
+  const rows = await db
+    .select({ signupReferralCode: staffUsers.signupReferralCode, createdAt: staffUsers.createdAt })
+    .from(staffUsers)
+    .where(eq(staffUsers.id, staffUserId))
+    .limit(1)
+  return rows[0] ?? null
+}
+
+/**
  * Rol del miembro ACTIVO en un tenant, leído de la DB (no del JWT: el claim
  * `role` queda viejo si un admin cambia el rol después del login). Se llama
  * SIEMPRE antes de `withTenantContext` (guards.ts, with-tenant.ts,

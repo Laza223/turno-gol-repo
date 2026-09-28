@@ -107,6 +107,7 @@ export async function createTenantWithTrial(
   const [tenant] = await db
     .insert(tenants)
     .values({
+      ...(input.id ? { id: input.id } : {}),
       slug,
       name: input.name,
       address: input.address,
@@ -119,6 +120,8 @@ export async function createTenantWithTrial(
       status: 'trialing',
       trialEndsAt,
       settings: DEFAULT_SETTINGS as unknown as Record<string, unknown>,
+      // Programa de referidos (B2), ya resuelto por el caller.
+      referredByTenantId: input.referredByTenantId ?? null,
     })
     .returning({ id: tenants.id, slug: tenants.slug })
 

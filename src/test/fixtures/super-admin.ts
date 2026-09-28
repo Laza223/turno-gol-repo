@@ -356,6 +356,8 @@ export type SaTenantDetail = {
     settings: ReturnType<typeof tenantSettings>
     /** Programa de referidos (migr. 094). `null` = todavía no lo generó nadie. */
     referralCode: string | null
+    /** Nombre del complejo que trajo a ESTE (B2). `null` = sin referidor todavía. */
+    referrerName: string | null
   }
   subscription: {
     status: SaSubscriptionStatus
@@ -439,6 +441,7 @@ const tenantDefault = (): SaTenantDetail['tenant'] => ({
   createdAt: daysFromNow(-200),
   settings: tenantSettings(),
   referralCode: null,
+  referrerName: null,
 })
 
 /** Tenant activo, con suscripción al día, canchas y staff cargados. */

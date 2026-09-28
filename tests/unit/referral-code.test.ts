@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  extractReferralCode,
   REFERRAL_CODE_ALPHABET,
   REFERRAL_CODE_LENGTH,
   referralCodeSchema,
@@ -61,6 +62,30 @@ describe('referralCodeSchema', () => {
 
   it('acepta un código válido de ejemplo', () => {
     expect(referralCodeSchema.safeParse('AH2K9MZP').success).toBe(true)
+  })
+})
+
+describe('extractReferralCode (B2: "Asignar referidor" del super-admin)', () => {
+  it('código pelado en minúsculas → normalizado a mayúsculas', () => {
+    expect(extractReferralCode('ah2k9mzp')).toBe('AH2K9MZP')
+  })
+
+  it('link completo de la landing → extrae el código', () => {
+    expect(extractReferralCode('https://turnogol.app/r/AH2K9MZP')).toBe('AH2K9MZP')
+  })
+
+  it('link con barra final → extrae el código igual', () => {
+    expect(extractReferralCode('https://turnogol.app/r/AH2K9MZP/')).toBe('AH2K9MZP')
+  })
+
+  it('link sin protocolo → extrae el código igual', () => {
+    expect(extractReferralCode('turnogol.app/r/AH2K9MZP')).toBe('AH2K9MZP')
+  })
+
+  it('texto vacío o que no matchea ningún formato → null', () => {
+    expect(extractReferralCode('')).toBeNull()
+    expect(extractReferralCode('   ')).toBeNull()
+    expect(extractReferralCode('no es un código')).toBeNull()
   })
 })
 

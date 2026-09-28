@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { REFERRAL_REWARD_CAP } from '@/shared/constants'
 
 export const metadata: Metadata = {
   title: 'Términos y Condiciones',
@@ -14,7 +15,7 @@ export default function TerminosPage() {
           Términos y Condiciones
         </h1>
         <p className="text-sm text-muted-foreground">
-          Última actualización: 17 de septiembre de 2026.
+          Última actualización: 28 de septiembre de 2026.
         </p>
       </header>
 
@@ -155,8 +156,77 @@ export default function TerminosPage() {
         </p>
       </section>
 
+      {/* `id="referidos"`: el aviso de referidos de Hoy enlaza acá (`/terminos#referidos`).
+          Reglas: docs/decisions/2026-09-26-referidos.md. */}
+      <section id="referidos" className="mt-10 scroll-mt-24 space-y-4 text-foreground">
+        <h2 className="text-xl font-semibold text-foreground">
+          7. Programa de referidos (clientes B2B)
+        </h2>
+        <p>
+          Los complejos clientes pueden recomendar TurnoGol a otros complejos y obtener{' '}
+          <strong>hasta {REFERRAL_REWARD_CAP} meses de suscripción bonificados</strong>. Este punto
+          explica cómo funciona.
+        </p>
+        <ul className="list-disc space-y-2 pl-6">
+          <li>
+            <strong>Quién participa.</strong> Los complejos con cuenta en TurnoGol a los que se les
+            habilitó un link de referidos (turnogol.app/r/…). El complejo que comparte el link es el{' '}
+            <em>referidor</em>; el complejo nuevo que llega por ese link es el <em>referido</em>.
+          </li>
+          <li>
+            <strong>Cómo se registra un referido.</strong> El referido tiene que crear su cuenta
+            desde el link del referidor o, si nos contacta directamente, indicar en ese primer
+            contacto de parte de qué complejo viene. Un complejo no puede referirse a sí mismo. Si
+            el titular de un complejo abre otro complejo con su propio link, ese complejo cuenta
+            como referido siempre que pague su propia suscripción.
+          </li>
+          <li>
+            <strong>Beneficio.</strong> Por cada complejo referido que{' '}
+            <strong>pague su primera mensualidad</strong> a través de MercadoPago, el referidor
+            obtiene <strong>un mes de su suscripción bonificado</strong>, con un máximo de{' '}
+            {REFERRAL_REWARD_CAP} meses por referidor. Los referidos que se sumen después de
+            alcanzado ese máximo se dan de alta normalmente, pero ya no generan meses para el
+            referidor.
+          </li>
+          <li>
+            <strong>Cuándo se acredita.</strong> El mes se acredita una vez que el pago de la
+            primera mensualidad del referido queda aprobado. Registrarse, usar el período de prueba
+            o tener la cuenta activada sin un pago no genera el beneficio.
+          </li>
+          <li>
+            <strong>Cómo se aplica.</strong> Si el referidor todavía está en su período de prueba,
+            el mes se suma a esa prueba. Si ya paga su suscripción, se bonifica el importe de una
+            mensualidad sobre sus próximos cobros; TurnoGol le informa cómo y cuándo se aplica en
+            cada caso.
+          </li>
+          <li>
+            <strong>Vigencia.</strong> Participan los complejos referidos que creen su cuenta{' '}
+            <strong>hasta el 31 de octubre de 2026 a las 23:59</strong> (hora de Argentina). El pago
+            de la primera mensualidad puede ocurrir después de esa fecha.
+          </li>
+          <li>
+            <strong>El referido.</strong> El complejo referido arranca con el mismo período de
+            prueba gratuito que cualquier complejo nuevo y paga el mismo importe de suscripción.
+          </li>
+          <li>
+            <strong>Verificación.</strong> TurnoGol revisa cada referido antes de acreditar el
+            beneficio y puede rechazarlo si detecta cuentas duplicadas, complejos inexistentes,
+            pagos revertidos o cualquier uso abusivo del programa.
+          </li>
+          <li>
+            <strong>Carácter del beneficio.</strong> Los meses bonificados no tienen valor en
+            dinero, no se pueden canjear ni transferir a otra cuenta, y solo se aplican mientras la
+            cuenta del referidor esté vigente.
+          </li>
+          <li>
+            <strong>Cambios.</strong> TurnoGol puede modificar o finalizar el programa. Los meses ya
+            ganados antes del cambio se respetan.
+          </li>
+        </ul>
+      </section>
+
       <section className="mt-10 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">7. Suspensión y baja de cuenta</h2>
+        <h2 className="text-xl font-semibold text-foreground">8. Suspensión y baja de cuenta</h2>
         <p>TurnoGol puede suspender o dar de baja una cuenta de jugador en los siguientes casos:</p>
         <ul className="list-disc space-y-1 pl-6">
           <li>Fraude o uso indebido de medios de pago.</li>
@@ -183,7 +253,7 @@ export default function TerminosPage() {
       </section>
 
       <section className="mt-10 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">8. Limitación de responsabilidad</h2>
+        <h2 className="text-xl font-semibold text-foreground">9. Limitación de responsabilidad</h2>
         <p>
           Sin perjuicio del derecho del consumidor aplicable conforme a la ley argentina, TurnoGol{' '}
           <strong>no responde por</strong>:
@@ -214,7 +284,7 @@ export default function TerminosPage() {
       </section>
 
       <section className="mt-10 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">9. Ley aplicable y jurisdicción</h2>
+        <h2 className="text-xl font-semibold text-foreground">10. Ley aplicable y jurisdicción</h2>
         <p>
           Estos Términos se rigen por las leyes de la <strong>República Argentina</strong>.
           Cualquier controversia que no pueda resolverse de buena fe será sometida a los tribunales
@@ -225,7 +295,7 @@ export default function TerminosPage() {
       </section>
 
       <section className="mt-10 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">10. Cambios en estos términos</h2>
+        <h2 className="text-xl font-semibold text-foreground">11. Cambios en estos términos</h2>
         <p>
           Si modificamos los Términos y Condiciones te lo informaremos por email (al menos 30 días
           antes para cambios sustanciales). La nueva versión tiene efecto a partir de la fecha de

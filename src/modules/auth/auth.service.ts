@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getWorkerSql } from '@/shared/db/client'
 import { track } from '@/shared/observability'
+import { referralCodeSchema } from '@/modules/referrals/referral.schema'
 
 export type SignInResult = { ok: true } | { ok: false; error: string }
 
@@ -145,7 +146,18 @@ export async function signInWithPassword(
  * que el flujo OTP previo y lo persiste `getOrCreateStaffUser` en el callback.
  */
 export async function signUpStaff(
-  params: { email: string; password: string; firstName: string; lastName: string; phone: string },
+  params: {
+    email: string
+    password: string
+    firstName: string
+    lastName: string
+    phone: string
+    /** Código de referido (B2), ya validado por el caller con `referralCodeSchema`.
+     *  `null`/omitido = alta sin referido. Viaja en `user_metadata` porque
+     *  `provisionAndRouteStaff` corre recién en el callback de confirmación,
+     *  no en este `signUp`. */
+    referralCode?: string | null
+  },
   emailRedirectTo: string,
 ): Promise<{ ok: true } | { ok: false; error: string; code?: string }> {
   const supabase = await createClient()
@@ -158,6 +170,7 @@ export async function signUpStaff(
         first_name: params.firstName,
         last_name: params.lastName,
         phone: params.phone,
+        ...(params.referralCode ? { referral_code: params.referralCode } : {}),
       },
     },
   })
@@ -217,6 +230,10 @@ async function getOrCreateStaffUser(
   firstName: string,
   lastName: string,
   phone: string | null = null,
+  // Programa de referidos (B2): código CRUDO capturado en el alta, solo se
+  // escribe en el INSERT — un login/confirmación posterior de una fila YA
+  // existente (rama `existing.length > 0`) nunca lo toca.
+  signupReferralCode: string | null = null,
 ): Promise<{ id: string }> {
   // Runs before any tenant_id is known (that's what it's resolving) — RLS on
   // staff_users/tenant_staff_members requires app.current_tenant_id, which
@@ -229,8 +246,8 @@ async function getOrCreateStaffUser(
   `
   if (existing.length > 0) return existing[0]
   const created = await sql<{ id: string }[]>`
-    INSERT INTO staff_users (email, first_name, last_name, phone)
-    VALUES (${lower}, ${firstName}, ${lastName}, ${phone})
+    INSERT INTO staff_users (email, first_name, last_name, phone, signup_referral_code)
+    VALUES (${lower}, ${firstName}, ${lastName}, ${phone}, ${signupReferralCode})
     RETURNING id
   `
   return created[0]
@@ -297,6 +314,17 @@ export async function provisionAndRouteStaff(user: User): Promise<{ path: string
   const firstName = firstNameMeta ?? givenName ?? email.split('@')[0]
   const lastName = lastNameMeta ?? familyName ?? ''
 
+  // Programa de referidos (B2): revalidado acá aunque `registerAction` ya lo
+  // validó antes de mandarlo — `user_metadata` no es de confiar sin repreguntar,
+  // es el mismo principio que aplica en cualquier otro borde de servidor. Un
+  // valor roto se descarta en silencio, nunca bloquea el alta.
+  const referralCodeMetaRaw =
+    typeof userMeta.referral_code === 'string' ? userMeta.referral_code : null
+  const signupReferralCode =
+    referralCodeMetaRaw && referralCodeSchema.safeParse(referralCodeMetaRaw).success
+      ? referralCodeMetaRaw
+      : null
+
   // Resolución robusta: si el JWT ya trae `staff_user_id` (login/confirmación
   // previa), resolver por ESE id en vez de por email. Un cambio de email
   // confirmado (`type=email_change`) llega acá con `user.email` YA actualizado
@@ -313,7 +341,7 @@ export async function provisionAndRouteStaff(user: User): Promise<{ path: string
     }
     ourStaff = existing
   } else {
-    ourStaff = await getOrCreateStaffUser(email, firstName, lastName, phoneMeta)
+    ourStaff = await getOrCreateStaffUser(email, firstName, lastName, phoneMeta, signupReferralCode)
   }
 
   // F-024 (QA prod 2026-08-17): única señal de "esta invitación se completó

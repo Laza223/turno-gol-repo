@@ -10,6 +10,7 @@ import {
   type UpdateMarketplaceVisibilityAction,
 } from './marketplace-visibility-toggle'
 import { ReferralLinkPanel, type GenerateReferralLinkAction } from './referral-link-panel'
+import { AssignReferrerPanel, type AssignReferrerAction } from './assign-referrer-panel'
 
 /**
  * Tab "Resumen" del detalle de tenant: soporte (impersonar), datos del
@@ -21,11 +22,13 @@ export function ResumenTab({
   impersonateAction,
   updateMarketplaceVisibilityAction,
   generateReferralLinkAction,
+  assignReferrerAction,
 }: {
   detail: TenantDetail
   impersonateAction: StartImpersonationAction
   updateMarketplaceVisibilityAction: UpdateMarketplaceVisibilityAction
   generateReferralLinkAction: GenerateReferralLinkAction
+  assignReferrerAction: AssignReferrerAction
 }) {
   const { tenant, courts, staff } = detail
   const s = tenant.settings
@@ -65,6 +68,13 @@ export function ResumenTab({
               tenantId={tenant.id}
               initialUrl={tenant.referralCode ? absoluteUrl(`/r/${tenant.referralCode}`) : null}
               action={generateReferralLinkAction}
+            />
+          </Dt>
+          <Dt label="Referido por">
+            <AssignReferrerPanel
+              tenantId={tenant.id}
+              initialReferrerName={tenant.referrerName}
+              action={assignReferrerAction}
             />
           </Dt>
           {tenant.scheduledDeletionAt && (

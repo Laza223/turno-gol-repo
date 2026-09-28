@@ -25,6 +25,10 @@ const meta = {
       success: true as const,
       url: 'https://turnogol.app/r/AH2K9MZP',
     })),
+    assignReferrerAction: fn(async () => ({
+      success: true as const,
+      referrerName: 'Canchas del Sur',
+    })),
   },
 } satisfies Meta<typeof ResumenTab>
 

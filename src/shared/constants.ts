@@ -72,3 +72,18 @@ export const SUBSCRIBED_TRIAL_GRACE_DAYS = 3
 export const SUPPORT_EMAIL = 'turnogol@gmail.com'
 export const SUPPORT_WHATSAPP_NUMBER = CONTACT_WHATSAPP_DISPLAY
 export const SUPPORT_WHATSAPP_URL = contactWhatsappUrl()
+
+/**
+ * Cierre del programa de referidos (R1/R2, docs/decisions/2026-09-26-referidos.md):
+ * vale para los complejos que arranquen a pagar hasta el 31/10 ART. Ya
+ * convertido a UTC (2026-10-31 23:59:59 ART = 2026-11-01T02:59:59.999Z) para
+ * comparar directo contra `Date.now()` sin reimplementar la conversión ART acá.
+ */
+export const REFERRAL_PROMO_ENDS_AT = new Date('2026-11-01T02:59:59.999Z')
+
+/**
+ * Tope de meses bonificados por complejo referidor (docs/decisions/2026-09-26-referidos.md,
+ * bajado de 12 a 6 el 2026-09-28). A partir del séptimo referido que paga, el
+ * referidor ya no suma meses (`referral_reward_status = over_cap`).
+ */
+export const REFERRAL_REWARD_CAP = 6

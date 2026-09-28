@@ -116,3 +116,39 @@ export async function markChecklistDismissedAction(): Promise<MarkChecklistDismi
   revalidatePath('/dashboard')
   return { success: true }
 }
+
+export type MarkReferralBannerDismissedResult =
+  { success: true } | { success: false; error: string }
+
+/**
+ * Persiste `referral_banner_dismissed_at`: el admin cerró el aviso de
+ * referidos de Hoy. A nivel TENANT, no por-usuario — mismo criterio que
+ * `markChecklistDismissedAction`. Solo admin (requireAdminStaffAction): el
+ * link de referidos es una decisión del dueño, el manager no lo descarta
+ * para todo el complejo.
+ */
+export async function markReferralBannerDismissedAction(): Promise<MarkReferralBannerDismissedResult> {
+  const auth = await requireAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) {
+    return { success: false, error: limited }
+  }
+
+  const patch = { referral_banner_dismissed_at: new Date().toISOString() }
+
+  await withTenantContext(tenant.id, async (tx) => {
+    await tx
+      .update(tenants)
+      .set({
+        settings: sql`settings || ${patch}::jsonb`,
+        updatedAt: new Date(),
+      })
+      .where(eq(tenants.id, tenant.id))
+  })
+
+  revalidatePath('/dashboard')
+  return { success: true }
+}

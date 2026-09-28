@@ -140,7 +140,7 @@ con tus canchas así lo ves andando. Nos vemos ahí.
 
 ## 8. Pedido de referido (SIEMPRE tras el pago; también en un piloto que funciona)
 
-Reglas del premio: [`docs/decisions/2026-09-26-referidos.md`](../decisions/2026-09-26-referidos.md). Por cada complejo que se registra de su parte hasta el **31/10** y paga su primer mes, 1 mes bonificado, con tope de 12 por año. Al referido no se le promete nada extra: tiene los 30 días de siempre.
+Reglas del premio: [`docs/decisions/2026-09-26-referidos.md`](../decisions/2026-09-26-referidos.md). Por cada complejo que se registra de su parte hasta el **31/10** y paga su primer mes, 1 mes bonificado, hasta 6 meses. Se vende como "Obtené hasta 6 meses gratis de TurnoGol". Al referido no se le promete nada extra: tiene los 30 días de siempre.
 
 **En persona, un día tranquilo, 5 minutos.** El orden importa: primero das, después pedís, y el premio va al final para que no suene a compra.
 

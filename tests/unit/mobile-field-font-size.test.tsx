@@ -106,15 +106,16 @@ describe('Piso de 16px en campos — constantes compartidas', () => {
     })
   }
 
-  it('HeroSearch: la clase de fecha no baja de 16px ni se deriva por .replace()', () => {
-    const file = read('src/components/site/HeroSearch.tsx')
+  it('HeroSearch: los campos del buscador no bajan de 16px en el teléfono', () => {
+    const file = read('src/app/home/HeroSearch.tsx')
     const code = stripComments(file)
-    // Era `text-[15px]`, bajado a propósito para ganar ancho. 15 < 16 → zoom.
+    // La fecha vieja llegó a tener `text-[15px]`, bajado a propósito para ganar
+    // ancho. 15 < 16 → iOS hace zoom al enfocar.
     expect(code).not.toMatch(/text-\[15px\]/)
-    // Derivarla con .replace() sobre un literal de clases fallaba en silencio
-    // si alguien reordenaba `fieldClass`: devolvía el original sin error.
+    // Derivar una clase con .replace() sobre un literal fallaba en silencio si
+    // alguien reordenaba `fieldClass`: devolvía el original sin error.
     expect(code).not.toMatch(/fieldClass\.replace\(/)
-    expect(code).toMatch(/const dateFieldClass\s*=\s*\n?\s*'[^']*\btext-base\b/)
+    expect(code).toMatch(/const fieldClass\s*=\s*\n?\s*'[^']*\btext-base\b/)
   })
 })
 

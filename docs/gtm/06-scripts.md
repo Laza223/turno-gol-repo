@@ -161,7 +161,7 @@ Muchachos, les paso algo que uso en [complejo] hace [N] semanas: TurnoGol.
 turno y cada venta de la cantina, y ves qué se cobró y qué no [sin estar
 ahí]. Lo hizo Lazar, un pibe de acá de Luján: te lo deja andando él con
 tus canchas y tus precios, y lo probás 30 días gratis, sin tarjeta.
-Escribile: [link wa.me con "Hola Lazar, vengo de parte de [complejo]"]
+Escribile: [link wa.me con "Hola, vengo de parte de [complejo]"]
 ```
 
 Cuando exista su link `/r/<código>`, se suma al final. Nunca pongas números suyos que él no aprobó.

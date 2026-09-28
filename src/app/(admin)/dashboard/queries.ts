@@ -1,6 +1,6 @@
 import { and, count, eq, isNull } from 'drizzle-orm'
-import { withTenantContext } from '@/shared/db/client'
-import { bookings, courts } from '@/shared/db/schema'
+import { getDb, withTenantContext } from '@/shared/db/client'
+import { bookings, courts, tenants } from '@/shared/db/schema'
 import { hasOperableDay } from '@/shared/time/operating-day'
 import type { TenantRow, TenantSettings } from '@/modules/tenants/tenant.types'
 
@@ -65,4 +65,23 @@ export async function getChecklistState(
       firstBookingReceived: firstBooking !== null,
     }
   })
+}
+
+/**
+ * Código de referido del tenant, o `null` si el super-admin todavía no lo
+ * generó. `TenantRow` (el que arma `getStaffTenant` para el guard) no trae
+ * `referral_code`: sumarlo ahí tocaría el mapper que también usan
+ * `getTenantById` y toda la impersonación, para un dato que solo lee el
+ * aviso de Hoy. Proyección explícita de columnas: `tenants` es global y sin
+ * RLS (`.claude/rules/tablas-y-rls.md`), así que la proyección es la única
+ * barrera contra devolver de más.
+ */
+export async function getTenantReferralCode(tenantId: string): Promise<string | null> {
+  const db = getDb()
+  const rows = await db
+    .select({ referralCode: tenants.referralCode })
+    .from(tenants)
+    .where(eq(tenants.id, tenantId))
+    .limit(1)
+  return rows[0]?.referralCode ?? null
 }

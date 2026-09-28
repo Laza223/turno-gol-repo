@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import { resolveReferralCode } from '@/modules/referrals/referral.service'
 import { contactWhatsappUrl } from '@/lib/contact'
+import { PersistReferralCode } from './PersistReferralCode'
 
 // Landing de referidos (B1): nunca indexable — el `name` que muestra es el de
 // UN complejo puntual, sin valor SEO propio, y el mismo patrón de
@@ -40,6 +41,7 @@ export default async function ReferralLandingPage({
 
   return (
     <section className="relative flex min-h-[70vh] items-center overflow-hidden px-4 py-24 sm:px-6">
+      <PersistReferralCode code={code} />
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 z-0"

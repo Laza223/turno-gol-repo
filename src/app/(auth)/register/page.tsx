@@ -4,6 +4,7 @@ import { ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { registerAction } from './actions'
 import { RegisterCard } from './RegisterCard'
 import { Logo } from '@/components/ui/logo'
+import { referralCodeSchema } from '@/modules/referrals/referral.schema'
 
 const HERO_IMG =
   'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=2000&auto=format&fit=crop'
@@ -11,17 +12,24 @@ const HERO_IMG =
 export default async function RegisterPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ pending?: string }>
+  searchParams?: Promise<{ pending?: string; ref?: string }>
 }) {
+  const sp = await searchParams
   // F-025: marca de "ya te registraste, revisá el mail" que sobrevive un F5.
   // Solo el flag viaja por la URL — el email queda en sessionStorage (dato
   // personal, ver el comentario en RegisterCard).
-  const pending = (await searchParams)?.pending === '1'
+  const pending = sp?.pending === '1'
+
+  // Programa de referidos (B2): `?ref=` de la landing `/r/<CODE>` o de un link
+  // compartido directo. Formato inválido se descarta en silencio acá —
+  // RegisterCard igual cae al código guardado en localStorage, si hay.
+  const refParsed = typeof sp?.ref === 'string' ? referralCodeSchema.safeParse(sp.ref) : null
+  const refCode = refParsed?.success ? refParsed.data : null
 
   return (
     <div className="grid min-h-dvh lg:grid-cols-2">
       <ImagePane />
-      <FormPane pending={pending} />
+      <FormPane pending={pending} refCode={refCode} />
     </div>
   )
 }
@@ -76,7 +84,7 @@ function ImagePane() {
   )
 }
 
-function FormPane({ pending }: { pending: boolean }) {
+function FormPane({ pending, refCode }: { pending: boolean; refCode: string | null }) {
   return (
     <div className="relative flex items-center justify-center bg-linear-to-br from-slate-50 via-white to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/40 px-4 py-12 sm:px-6 lg:px-8">
       <Link
@@ -92,7 +100,7 @@ function FormPane({ pending }: { pending: boolean }) {
           <Logo variant="vertical" className="w-32" />
         </div>
 
-        <RegisterCard action={registerAction} pending={pending} />
+        <RegisterCard action={registerAction} pending={pending} refCode={refCode} />
       </div>
     </div>
   )

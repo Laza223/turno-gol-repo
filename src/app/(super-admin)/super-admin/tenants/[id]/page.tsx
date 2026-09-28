@@ -21,6 +21,7 @@ import { ResumenTab } from './_components/resumen-tab'
 import { SuscripcionTab } from './_components/suscripcion-tab'
 import { ActividadTab } from './_components/actividad-tab'
 import {
+  assignReferrerAction,
   cancelSubscriptionAction,
   changeBilledCourtsAction,
   extendTrialAction,
@@ -125,6 +126,7 @@ export default async function SuperAdminTenantDetailPage(props: {
           impersonateAction={startImpersonationAction}
           updateMarketplaceVisibilityAction={updateTenantMarketplaceVisibilityAction}
           generateReferralLinkAction={generateReferralLinkAction}
+          assignReferrerAction={assignReferrerAction}
         />
       )}
       {tab === 'suscripcion' && <SuscripcionTab detail={detail} />}

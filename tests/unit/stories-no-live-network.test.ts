@@ -68,6 +68,15 @@ const ALLOWLIST: Record<string, string> = {
     'El `action` mockeado de ReferralLinkPanel devuelve esa URL, que solo se usa como ' +
     'texto plano / clipboard (mismo motivo que referral-link-panel.stories.tsx) — nunca ' +
     'se fetchea ni se renderiza como recurso.',
+  'src/components/dashboard/ReferralShareBanner.stories.tsx':
+    'El link de wa.me se deja INERTE, igual que ShareActions/RefundContactPanel: la story ' +
+    '`HrefDeWhatsapp` solo lee el atributo href para comprobar el mensaje armado, nunca lo ' +
+    'clickea. La URL de referidos (`https://turnogol.app/r/...`) solo alimenta ' +
+    '`navigator.clipboard.writeText()`, igual que referral-link-panel.stories.tsx.',
+  'src/app/(super-admin)/super-admin/tenants/[id]/_components/assign-referrer-panel.stories.tsx':
+    'La URL se tipea en un <input> de texto y se verifica con `toHaveBeenCalledWith` sobre ' +
+    'el `action` mockeado — nunca se fetchea ni se renderiza como recurso, mismo motivo que ' +
+    'referral-link-panel.stories.tsx.',
 }
 
 /** http(s) fuera de `data:`/`blob:` y de localhost/127.0.0.1. */

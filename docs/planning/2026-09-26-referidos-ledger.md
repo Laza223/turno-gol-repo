@@ -9,8 +9,9 @@ Cada PR declara su efecto sobre El Vagón y espera el OK del dueño antes de mer
 | Paso | Qué | Estado |
 |---|---|---|
 | A4 | Decisión, guiones, nota en el freeze de `CLAUDE.md`, H3 y aprendizajes | mergeado (#395) |
-| B1 | Migración + módulo `referrals` + landing `/r/[code]` + "Generar link" en el super-admin | PR abierto: verificado (revisión adversarial, UX de la landing, integración en Postgres descartable) |
-| B2 | Atribución en el alta + "Asignar referidor" en el super-admin | pendiente |
+| B1 | Migración + módulo `referrals` + landing `/r/[code]` + "Generar link" en el super-admin | mergeado (#398) |
+| B2 | Atribución en el alta + "Asignar referidor" en el super-admin. Va en el mismo PR que el aviso de Hoy y el §7 de `/terminos` (rama `feat/referidos-aviso-hoy`) | implementado y verificado (revisión adversarial); falta el e2e de onboarding |
+| Aviso | Franja "Obtené hasta 6 meses gratis" en Hoy (solo admin, descartable) + reglamento en `/terminos#referidos` + tope bajado a 6 (2026-09-28) | implementado, sale con B2 |
 | B3 | Premio ganado en el primer pago real + sweep + aprobación y aplicación en el super-admin | pendiente |
 | B4 | Panel del dueño `/settings/invitar` | pendiente |
 | Spike | Sandbox de MP: cómo saltear un cobro de una suscripción activa (necesario antes del primer premio manual; El Vagón cobra el 2026-12-06) | pendiente |
@@ -31,7 +32,7 @@ Cada PR declara su efecto sobre El Vagón y espera el OK del dueño antes de mer
   4. `createTenantAction` lo lee igual que el teléfono (`getStaffContact`, `src/app/onboarding/actions.ts:85`).
 
   `extractAuthUser` solo lee `app_metadata`, así que `createTenantAction` no ve `user_metadata`.
-  Reglas: el código tiene que existir, el alta tiene que ser hasta el 2026-10-31 23:59 ART, y el que se registra no puede ser staff del referidor. Un código inválido nunca frena un alta. El staff no se registra con Google.
+  Reglas: el código tiene que existir, el alta tiene que ser hasta el 2026-10-31 23:59 ART, y el complejo nuevo no puede ser el mismo referidor. Que el que se registra sea staff del referidor NO invalida el referido (decisión del dueño 2026-09-28: un segundo complejo del mismo titular cuenta si paga su suscripción). Un código inválido nunca frena un alta. El staff no se registra con Google.
 - **Premio ganado:**
   - Se marca con un `UPDATE … WHERE referral_reward_status IS NULL`, idempotente, en los dos caminos de plata real: `onPaymentApproved` (`src/modules/billing/dunning.service.ts:266`) y `reconcile-subscriptions.worker.ts:426,432`.
   - Nunca va en `lifecycle.service.ts`: soporte (`support.service.ts:267,269,316`) usa esas mismas funciones sin que haya un pago.
@@ -67,3 +68,6 @@ La base local compartida (`:54322`) iba atrasada de migraciones y la usan otras 
 | 2026-09-26 | sonnet-implementer | B1: migración, módulo, landing, super-admin | ~331k tok | Implementado; juez verde. No corrió integración: la base local compartida estaba en la migración 089. |
 | 2026-09-26 | sonnet-adversarial-reviewer | Verificación fresca de B1 | ~178k tok | Aprobado con reservas: la landing usaba el parser de teléfonos de complejos en vez de `contactWhatsappUrl` 🟡, y la migración no era re-ejecutable 🟢. Los dos se arreglaron. |
 | 2026-09-26 | sonnet-ux-verifier | Landing `/r/[code]` corriendo la app + stories | ~212k tok | La landing pasa todo: redirects 307, no filtra UUID ni estado, 375 px sin scroll. La story `GenerarYCopiar` no mockeaba el portapapeles y habría roto "Stories (BLOCKING)": arreglada. |
+| 2026-09-28 | sonnet-implementer | Aviso de referidos en Hoy | ~200k tok | Implementado; juez verde. En 375 px el texto quedaba de una palabra por renglón: lo arregló la sesión principal. El popover de condiciones se cambió después por un link a `/terminos#referidos`. |
+| 2026-09-28 | sonnet-implementer | B2: atribución en el alta + "Asignar referidor" | ~361k tok | Implementado; juez verde, `pnpm test` 443 archivos, integración B1+B2 12/12 en Postgres descartable (:54330). No existe camino de anonimización de `staff_users`, así que `signup_referral_code` no se limpia en ningún lado. |
+| 2026-09-28 | sonnet-adversarial-reviewer | Verificación fresca de B2 + aviso + términos | ~157k tok | Aprobado con reservas. Única reserva 🟡: la bajada del aviso dice "que empiece a usarlo" y el premio es recién con el primer pago. Es copy que eligió el dueño el 2026-09-28, con la condición detrás de "Ver condiciones" → `/terminos#referidos`: queda así. Verificó sin hallazgos: el alta sin código no cambia, grants, fecha en UTC, aviso solo admin, validación server-side del código y el UPDATE atómico de "Asignar referidor". |

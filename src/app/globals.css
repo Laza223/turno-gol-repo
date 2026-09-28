@@ -849,27 +849,6 @@ html {
     linear-gradient(135deg, #064e3b, #022c22);
 }
 
-/* Banda de stats (prueba social). Light = emerald claro elevado; dark = slab. */
-.stats-band {
-  background: linear-gradient(120deg, #d1fae5, #ecfdf5 55%, #d1fae5);
-  border: 1px solid rgba(5, 150, 105, 0.25);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.8),
-    0 24px 50px -30px rgba(16, 185, 129, 0.35);
-}
-.dark .stats-band {
-  background: linear-gradient(
-    120deg,
-    rgba(6, 78, 59, 0.55),
-    rgba(2, 6, 23, 0.35) 55%,
-    rgba(6, 78, 59, 0.4)
-  );
-  border: 1px solid rgba(16, 185, 129, 0.22);
-  box-shadow:
-    0 0 70px rgba(16, 185, 129, 0.165),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-
 /* Banda CTA (banner dueños). Light = blanca elevada con tinte; dark = slab. */
 .cta-band {
   background:

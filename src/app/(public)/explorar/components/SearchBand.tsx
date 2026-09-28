@@ -30,7 +30,7 @@ export default function SearchBand({ cities }: { cities: CityCount[] }) {
             aria-hidden
             className="inline-flex h-[8px] w-[8px] rounded-full bg-emerald-500 dark:bg-emerald-400"
           />
-          Disponibilidad en tiempo real
+          Horarios libres a la vista
         </div>
         <h1
           className="mt-[14px] font-display font-black italic text-foreground"
@@ -39,8 +39,8 @@ export default function SearchBand({ cities }: { cities: CityCount[] }) {
           Encontrá tu cancha <span className="hero-accent-text">ideal</span>
         </h1>
         <p className="mt-3 max-w-xl text-[15px] leading-relaxed text-muted-foreground">
-          Filtrá por formato, superficie, servicios y precio. Consultá disponibilidad en tiempo real
-          y reservá al instante.
+          Filtrá por formato, superficie, servicios y precio. Mirá qué horarios quedan libres y
+          reservá al instante.
         </p>
       </div>
 

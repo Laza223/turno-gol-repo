@@ -82,7 +82,7 @@ export function HeroMobile({ cities }: { cities: CityCount[] }) {
             className="mt-4 max-w-[540px] text-muted-foreground"
             style={{ fontSize: 'clamp(16px, 1.5vw, 20px)', lineHeight: '1.55' }}
           >
-            Explorá complejos verificados, compará horarios en tiempo real y{' '}
+            Explorá complejos de tu zona, mirá qué horarios quedan libres y{' '}
             <span className="font-semibold text-foreground">asegurá tu cancha</span> con
             confirmación inmediata.
           </p>

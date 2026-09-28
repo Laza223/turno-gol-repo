@@ -28,7 +28,7 @@ export default function OpenGraphImage() {
         La plataforma de reservas del fútbol argentino
       </div>
       <div style={{ fontSize: 24, fontWeight: 400, marginTop: 12, opacity: 0.85 }}>
-        Complejos verificados · Reserva online · Disponibilidad en tiempo real
+        Complejos de tu zona · Reserva online · Horarios libres a la vista
       </div>
     </div>,
     size,

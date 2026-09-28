@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'TurnoGol',
     short_name: 'TurnoGol',
     description:
-      'La plataforma de reservas y gestión para complejos de fútbol en Argentina. Disponibilidad en tiempo real, reserva al instante.',
+      'La plataforma de reservas y gestión para complejos de fútbol en Argentina. Horarios libres a la vista, reserva al instante.',
     start_url: '/',
     scope: '/',
     display: 'standalone',

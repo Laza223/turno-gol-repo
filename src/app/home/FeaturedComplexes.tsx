@@ -18,7 +18,7 @@ export function FeaturedComplexes({ complexes }: { complexes: PublicTenantCard[]
             <div>
               <div className="inline-flex items-center gap-[9px] whitespace-nowrap font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-800 dark:text-emerald-400">
                 <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-700 dark:bg-emerald-400" />
-                Complejos verificados
+                Reseñas de jugadores
               </div>
               <h2
                 className="mt-[14px] font-display font-black italic text-foreground"
@@ -31,8 +31,7 @@ export function FeaturedComplexes({ complexes }: { complexes: PublicTenantCard[]
                 Los mejor valorados
               </h2>
               <p className="mt-[14px] max-w-[540px] text-base leading-[1.55] text-muted-foreground">
-                Complejos con las mejores reseñas y disponibilidad en tiempo real. Elegí, reservá y
-                jugá.
+                Complejos con las mejores reseñas de los jugadores. Elegí, reservá y jugá.
               </p>
             </div>
             <Link

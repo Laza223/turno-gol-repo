@@ -15,13 +15,12 @@ import {
 import { Hero } from './home/Hero'
 import { FeaturedComplexes } from './home/FeaturedComplexes'
 import { HowItWorks } from './home/HowItWorks'
-import { StatsBar } from './home/StatsBar'
 import { OwnerBanner } from './home/OwnerBanner'
 
 export const metadata = buildMetadata({
   title: 'TurnoGol — Reservá tu cancha de fútbol al instante',
   description:
-    'Explorá complejos de fútbol en tu ciudad, compará disponibilidad en tiempo real y reservá tu cancha online. Confirmación inmediata, pago seguro con MercadoPago.',
+    'Explorá complejos de fútbol en tu ciudad, mirá qué horarios quedan libres y reservá tu cancha online. Confirmación inmediata, sin descargar nada.',
   path: '/',
   titleAbsolute: true,
 })
@@ -65,7 +64,6 @@ export default async function HomePage() {
         <Hero cities={cities} />
         {featured.length > 0 && <FeaturedComplexes complexes={featured} />}
         <HowItWorks />
-        <StatsBar />
         <OwnerBanner />
       </main>
       <SiteFooter />

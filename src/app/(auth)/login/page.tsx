@@ -44,11 +44,11 @@ function ImagePane() {
         <div className="max-w-md">
           <Sparkles className="mb-4 h-6 w-6 text-emerald-300" aria-hidden />
           <p className="text-2xl font-semibold leading-snug text-white">
-            “En tres meses subimos la facturación 40% sin contratar a nadie.”
+            “Al principio no me acostumbraba a no tocar tanto el celu. A veces extraño contestar
+            mensajes, imaginate. Ahora siento que me sobra el tiempo.”
           </p>
-          <p className="mt-4 text-sm text-slate-300">
-            Marcelo Pérez · Complejo San Martín, Mendoza
-          </p>
+          {/* Testimonio real y autorizado sin nombre: docs/gtm/ejecucion/11-testimonios.md */}
+          <p className="mt-4 text-sm text-slate-300">Dueño de un complejo de fútbol</p>
         </div>
       </div>
     </div>

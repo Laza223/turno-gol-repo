@@ -43,7 +43,7 @@ import { buildBreadcrumbList } from '@/lib/seo/structured-data'
 export const metadata = buildMetadata({
   title: 'Complejos de fútbol con reserva online',
   description:
-    'Descubrí complejos de fútbol en tu ciudad con disponibilidad en tiempo real. Filtrá por superficie, formato y precio. Reservá al instante.',
+    'Descubrí complejos de fútbol en tu ciudad con los horarios libres a la vista. Filtrá por superficie, formato y precio. Reservá al instante.',
   path: '/explorar',
 })
 

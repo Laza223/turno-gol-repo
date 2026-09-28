@@ -12,16 +12,16 @@ const howItWorks = [
   {
     n: '02',
     icon: CalendarDays,
-    title: 'Compará disponibilidad',
+    title: 'Mirá qué queda libre',
     description:
-      'Visualizá la disponibilidad actualizada en tiempo real y elegí el horario que más te convenga. Sin intermediarios.',
+      'Ves los horarios libres de cada cancha y elegís el que te sirve. Sin llamar ni esperar que te contesten.',
   },
   {
     n: '03',
     icon: CheckCircle2,
-    title: 'Confirmá y jugá',
+    title: 'Reservá y jugá',
     description:
-      'Reservá con pago seguro a través de MercadoPago y tu cancha queda asegurada. Solo queda la pelota.',
+      'Reservás online en el momento. Si el complejo pide seña, la pagás con MercadoPago; si no, pagás en la cancha.',
   },
 ]
 

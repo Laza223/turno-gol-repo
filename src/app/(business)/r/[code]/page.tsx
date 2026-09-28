@@ -36,7 +36,7 @@ export default async function ReferralLandingPage({
 
   // El WhatsApp COMERCIAL de TurnoGol sale de su fuente única (`contact.ts`),
   // no del parser de teléfonos de complejos (`whatsapp.ts`).
-  const whatsappUrl = contactWhatsappUrl(`Hola Lazar, vengo de parte de ${referral.name}`)
+  const whatsappUrl = contactWhatsappUrl(`Hola, vengo de parte de ${referral.name}`)
 
   return (
     <section className="relative flex min-h-[70vh] items-center overflow-hidden px-4 py-24 sm:px-6">

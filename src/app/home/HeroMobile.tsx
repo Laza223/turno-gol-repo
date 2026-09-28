@@ -94,7 +94,7 @@ export function HeroMobile({ cities }: { cities: CityCount[] }) {
 
           {/* Pills de confianza */}
           <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2.5">
-            {['Reservá al instante', 'Pago seguro con MercadoPago', 'Confirmación inmediata'].map(
+            {['Reservá al instante', 'Sin descargar ninguna app', 'Confirmación inmediata'].map(
               (t) => (
                 <span
                   key={t}

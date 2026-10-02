@@ -293,3 +293,67 @@ exit 0
 ```
 
 Los cuatro casos de sesión GoTrue omitidos son la condición existente sin API de Auth, igual que en CI. Los escenarios de precio, migration 095, checkout y aislamiento corrieron. El juez se ejecutó en secuencia sobre el estado final; no se ampliaron timeouts ni se desactivaron pruebas. No hubo merge posterior ni cambios de fuente tras el juez: solo se completó este ledger.
+## Seguimiento autorizado: CI en verde
+
+El dueño pidió «fijate de que pase en verde porfa» después de recibir los dos bloqueos. Autoriza completar las dos stories y resolver las dependencias necesarias para el check; la estimación pasa a 39 archivos totales (dos stories, package.json y lockfile adicionales), sin ampliar reglas de negocio. Objetivo: todos los checks ejecutados del PR verdes, conservando los umbrales y scripts existentes.
+
+- Corregir expectativas 5/6 canchas y fixture 4/5: 150/180 mil y 120/150 mil. Grep de la clase en todas las stories.
+- Next.js: 16.3.4 → 16.3.8; brace-expansion overrides con pisos 1.1.20 y 5.0.11. Parches de seguridad publicados; no actualización mayor ni codemods. Las alertas se reprodujeron en la base exacta.
+- Instalar dependencias propias del worktree: retirar únicamente su junction antes de instalar, preservando node_modules y cambios del checkout principal.
+- Juez: los cuatro comandos obligatorios, unitarias, stories afectadas claro/oscuro, auditoría prod/high y CI completo. Tras cambiar Next, verificar navegación real y build. Integración/aislamiento se ejecutan nuevamente en CI sobre el estado final.
+- Recuperación: si el parche de dependencias rompe el juez, restaurar solo package.json/pnpm-lock.yaml desde b121b092 y reinstalar frozen; conservar el cambio de precios. No hay cambios de schema ni producción en este seguimiento. Revisión adversarial y gate final independientes.
+
+CI b121b092: Unit Tests, Lint & Types e Integration & Isolation pasaron; Stories shard1 falló en ambos temas por expectativas legacy en BilledCourtsSection. El resto de shards pasó. pnpm-audit: 1 critical, 2 high, 4 moderate; misma salida en baseline. No hubo diff de package/lock en ese commit.
+Resoluciones finales: Next16.3.8 (release de seguridad del 30/09), brace-expansion1.1.21/5.0.12 con pisos de overrides^1.1.20/^5.0.11. El resolvedor inicial rotó transitivas ajenas; se conservó el lock anterior y se copiaron únicamente doce bloques de integridad del lock generado por pnpm. Rangos del package real de Next comprobados con semver; frozen install pasó sin resolución. Las otras package resolutions son idénticas a b121b092. La copia del lock amplio y el helper de composición quedan solo en scratch privado.
+
+`pnpm test:storybook:ci` para BilledCourtsSection/CourtList → `Test Files 2 passed (2)`, `Tests 17 passed (17)` sobre dependencias propias antes del parche. Primer intento con junction falló en setup antes de colectar tests; separación de dependencias resolvió el entorno sin cambiar configuración del juez. Typecheck previo y posterior al parche pasaron exit0.
+
+Revisión independiente pricing_ci_review: APROBADO, diff de doce packages exclusivamente objetivo, resto preservado; formato de las dos stories y gitdiffcheck exit0. Auditoría exacta independiente `pnpm audit --prod --audit-level=high` → exit0, `3 vulnerabilities found / Severity: 3 moderate`. Una auditoría adicional de desarrollo detecta high/critical en versiones idénticas a la base; no se oculta ni se confunde con el check de producción, y no se amplía silenciosamente a actualizar todo el tooling.
+
+`pnpm build` con Next16.3.8 → exit0: `Compiled successfully in 31.9s`, TypeScript39.9s, `Generating static pages (62/62)`. Avisos Sentry navigation hook y Edge Runtime ya observados en la base. Next regeneró únicamente las rutas de next-env.d.ts entre build/dev; no forman parte del cambio.
+
+| Delegación seguimiento | Finalidad | Costo estimado | Resultado |
+| --- | --- | ---: | --- |
+| pricing_ci_review | Diff fresco, advisories y consistencia del lock acotado | 4k tokens | APROBADO; audit prod exit0; doce packages objetivo |
+| pricing_ci_ux | Navegación real tras parche de Next | 4k tokens | FUNCIONA: Chromium61checks/0issues; arranque env ficticio solo proceso; own4000 cerrado |
+| pricing_ci_release | Juez final independiente del seguimiento y lectura de CI final | 5k tokens | GO local; resultados de CI final se registran en PR408 |
+
+La revisión automática impidió una escritura de este ledger durante un límite temporal de uso; no fue un rechazo de seguridad. El usuario indicó «sigue» y el entorno volvió a aceptar la ejecución. No se eludió el mecanismo de aprobación.
+Seguimiento UX independiente sobre Next16.3.8: pnpm dev --port4000 y ux-verify.cjs exit0; 61 registros, issues[]. HTTP200 precios/register en 1440/375 claro/oscuro, montos1/3/5/8/12 y anual correctos, home→para-complejos→precios, CTA/register/back. Sin hidratación, consola, requests ni overflow. Arranque inicial env incompleto falló; placeholders válidos solo proceso resolvieron instrumentation. No se enviaron forms ni realizaron DB/MP writes. Serverown detenido; 4000 sin listener. Warnings Sentry/Edge ya documentados.
+
+Gate local independiente sobre el estado final del seguimiento:
+
+```text
+pnpm format:check
+All matched files use Prettier code style!
+exit 0
+
+bash scripts/audit-verify.sh
+TypeCheck pasó / Lint pasó
+Test Files 446 passed | 1 skipped (447)
+Tests 4708 passed | 1 todo (4709)
+Duration 77.52s
+VERIFICACIÓN COMPLETA: Todos los checks pasaron
+exit 0
+
+pnpm knip
+Configuration hints (1): .mdx knip.jsonc
+exit 0
+
+pnpm audit --prod --audit-level=high
+3 vulnerabilities found
+Severity: 3 moderate
+exit 0
+
+pnpm test:storybook:ci <BilledCourtsSection/CourtList>
+Test Files 2 passed (2)
+Tests 17 passed (17)
+exit 0
+
+pnpm test:storybook:dark <BilledCourtsSection/CourtList>
+Test Files 2 passed (2)
+Tests 17 passed (17)
+exit 0
+```
+
+La corrección y el lock definitivo quedan en seis archivos adicionales al commit b121b092, dos de ellos documentos ya incluidos: 39 archivos totales del PR. No hay cambios de umbrales, scripts del juez, configuración de CI ni skips nuevos. La descripción del [PR408](https://github.com/Laza223/turno-gol-repo/pull/408) registra el estado final de CI sobre el commit publicado y sus outputs. El GO técnico no habilita merge/aplicación real: esos gates siguen siendo los del runbook.

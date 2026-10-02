@@ -36,8 +36,8 @@ import type { Sql } from 'postgres'
 
 /**
  * Montos de referencia del precio LINEAL POR CANCHA
- * (`docs/decisions/2026-09-17-precio-por-cancha.md` P1/P2): $47.000 la primera
- * cancha + $30.000 por cada extra, anual 10% off.
+ * (`docs/decisions/2026-10-02-precio-uniforme-por-cancha.md`): $30.000 por cada
+ * cancha, anual 10% off.
  *
  * Escritos a mano, no derivados de `pricing.ts`: si el test recalculara con la
  * misma función que ejercita, un cambio de parámetros lo dejaría verde igual.
@@ -45,12 +45,12 @@ import type { Sql } from 'postgres'
  * acá los números están para que se vea QUÉ monto viaja a MercadoPago en cada
  * camino.
  */
-const MONTHLY_3 = 10_700_000
-const MONTHLY_5 = 16_700_000
+const MONTHLY_3 = 9_000_000
+const MONTHLY_5 = 15_000_000
 /** Anual = equivalente mensual con 10% off, × 12 (el preapproval anual cobra 1 vez). */
-const ANNUAL_1 = 50_760_000 // $42.300 × 12
-const ANNUAL_3 = 115_560_000 // $96.300 × 12
-const ANNUAL_5 = 180_360_000 // $150.300 × 12
+const ANNUAL_1 = 32_400_000 // $27.000 × 12
+const ANNUAL_3 = 97_200_000 // $81.000 × 12
+const ANNUAL_5 = 162_000_000 // $135.000 × 12
 
 /**
  * Desde la migr. 091 `plans` tiene UNA sola fila activa. El fixture dejó de ser
@@ -993,8 +993,8 @@ describe('billing cycle anual', () => {
     })
     expect(result.checkoutUrl).toContain('mp.test')
     // Una cancha, anual: el preapproval anual cobra UNA vez, así que el monto
-    // es el equivalente mensual con 10% off ($42.300) × 12 = $507.600. NO el
-    // mensual de lista ($47.000) ni el equivalente mensual a pelo.
+    // es el equivalente mensual con 10% off ($27.000) × 12 = $507.600. NO el
+    // mensual de lista ($30.000) ni el equivalente mensual a pelo.
     expect(mockGateway.preapprovalCalls).toHaveLength(1)
     expect(mockGateway.preapprovalCalls[0]!.amount).toBe(ANNUAL_1)
     expect(mockGateway.preapprovalCalls[0]!.frequency).toBe('annual')
@@ -1031,7 +1031,7 @@ describe('billing cycle anual', () => {
     expect(periodEnd.toISOString()).toBe('2028-05-01T00:00:00.000Z')
   })
 
-  it('subscribe anual por 5 canchas: $150.300 por mes → $1.803.600 al año', async () => {
+  it('subscribe anual por 5 canchas: $135.000 por mes → $1.620.000 al año', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)

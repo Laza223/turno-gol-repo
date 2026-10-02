@@ -17,7 +17,8 @@
 
 **La regla completa cabe en una línea:**
 
-> **$47.000 la primera cancha + $30.000 por cada cancha extra, por mes. Anual: 10% off.**
+> **$30.000 por cancha, incluida la primera, por mes. Anual: 10% off.**
+> Decisión vigente: [2026-10-02](../decisions/2026-10-02-precio-uniforme-por-cancha.md), nuevas y existentes desde el próximo cobro, respetando pruebas y períodos pagados.
 > Sin bandas, sin techo, sin descuento por volumen.
 
 **Por qué una suscripción por cantidad de canchas y no otra cosa:**
@@ -31,8 +32,8 @@
 las bandas regalan margen **por construcción**, porque el que está arriba de una banda paga lo
 mismo que el que está abajo. Medido contra la facturación real de un complejo en producción
 (ticket promedio de Luján, ~$3,2M por cancha por mes): las bandas dejaban la cuota en 0,50-0,77%
-de lo que factura el complejo según dónde cayera, y la lista lineal la deja en **1,0-1,1% en todos
-los tamaños**. Detalle en el board del precio, §8.3.
+de lo que factura el complejo según dónde cayera, y la lista lineal del 17/09 la dejaba en **1,0-1,1% en todos
+los tamaños**. Es evidencia histórica del 17/09; la lista nueva es la decisión del 02/10. Detalle en el board del precio, §8.3.
 
 ---
 
@@ -45,12 +46,12 @@ facturadas. Esta tabla es ilustrativa, no es la fuente — la fuente es
 
 | Canchas | Mensual | Anual (por mes, 10% off) | Anual (cobro único) | Ahorro en el año |
 |---|---|---|---|---|
-| 1 | $47.000 | $42.300 | $507.600 | $56.400 |
-| 3 | $107.000 | $96.300 | $1.155.600 | $128.400 |
-| 4 | $137.000 | $123.300 | $1.479.600 | $164.400 |
-| 5 | $167.000 | $150.300 | $1.803.600 | $200.400 |
-| 6 | $197.000 | $177.300 | $2.127.600 | $236.400 |
-| 8 | $257.000 | $231.300 | $2.775.600 | $308.400 |
+| 1 | $30.000 | $27.000 | $324.000 | $36.000 |
+| 3 | $90.000 | $81.000 | $972.000 | $108.000 |
+| 4 | $120.000 | $108.000 | $1.296.000 | $144.000 |
+| 5 | $150.000 | $135.000 | $1.620.000 | $180.000 |
+| 6 | $180.000 | $162.000 | $1.944.000 | $216.000 |
+| 8 | $240.000 | $216.000 | $2.592.000 | $288.000 |
 
 > [!IMPORTANT]
 > **El ciclo anual cobra UNA vez por año**, y el monto que se le manda a MercadoPago es el
@@ -71,7 +72,7 @@ facturadas. Esta tabla es ilustrativa, no es la fuente — la fuente es
 >
 > **La comparación con ATC cambia de signo y está asumido.** ATC cobra $71.000 / $111.000 /
 > $145.000 ARS/mes para 1-3 / 4-6 / 7+ (navegado por el founder desde IP argentina, 2026-08-07).
-> Con la lista lineal, TurnoGol queda **más barato con 1 cancha y más caro de 3 para arriba**: en
+> Con la lista histórica del 17/09, TurnoGol quedaba **más barato con 1 cancha y más caro de 3 para arriba**: en
 > el ICP (4-6 canchas) pasa de estar 11% abajo de ATC a estar entre 23% y 77% arriba (board §7).
 > El trigger de reversión es explícito: 3 o más ventas perdidas por precio puro en 8 ofertas
 > escritas o menos → fallback a la misma estructura con $35.000 + $16.000.
@@ -96,11 +97,9 @@ facturadas. Esta tabla es ilustrativa, no es la fuente — la fuente es
 > implementado.
 
 > [!NOTE]
-> **La web pública `/precios` sigue mostrando los tres planes viejos, a propósito** (decisión P6).
-> El panel del cliente y el cobro real pasan a precio por cancha ahora; la comunicación comercial
-> se decide aparte. `src/app/(business)/precios/plans-data.ts` quedó como snapshot de marketing
-> congelado, desacoplado del catálogo real. Riesgo asumido: un prospecto puede ver un precio y
-> recibir otra cotización — hoy esa página no tiene tráfico de conversión.
+> **La web pública `/precios` publica la misma lista de $30.000 por cancha y anual 10%.**
+> La decisión del 02/10 supera P6. `plans-data.ts` usa las funciones puras de billing y el test
+> `pricing-sync.test.ts` compara sus parámetros contra el catálogo aplicado.
 
 **Trial**: 30 días gratis, sin tarjeta requerida al inicio.
 **Sin costos de instalación, capacitación ni mantenimiento** (igual que ATC, ya es expectativa del mercado).
@@ -582,7 +581,7 @@ decisión de producto a tomar explícitamente, no algo que este doc deba dar por
 > **Regla de diseño para el único límite que queda** (el piso de §6: no se factura por menos
 > canchas de las que están prendidas): el sistema NUNCA muestra un error crudo. Muestra qué pasa,
 > por qué, y la salida concreta. Ejemplo: "Estás facturando 4 canchas y tenés 5 prendidas. Apagá
-> una cancha o subí el cobro a 5 canchas ($167.000/mes desde el próximo cobro)."
+> una cancha o subí el cobro a 5 canchas ($150.000/mes desde el próximo cobro)."
 
 ---
 
@@ -639,7 +638,8 @@ decisión de producto a tomar explícitamente, no algo que este doc deba dar por
 > No es un documento contable. Es para entender qué escala necesitamos para ser viables.
 
 > [!NOTE]
-> **Recalculado el 2026-09-17 con la lista lineal.** La versión anterior arrastraba los precios
+> **Proyección histórica recalculada el 2026-09-17 con la lista lineal de entonces.**
+> No representa la lista vigente del 02/10: se conserva como antecedente, sin inventar métricas reales nuevas. La versión anterior arrastraba los precios
 > PRE-migr. 071 ($55.000/$85.000/$115.000) sin recalcular. Los números de abajo usan
 > $47.000 + $30.000/cancha extra, 100% ciclo mensual. **El mix de tamaños es un supuesto, no una
 > medición**: no hay clientes pagos (0 al 2026-09-17), así que la distribución de canchas por
@@ -717,7 +717,7 @@ TenantSubscription
 
 Plan (global, una sola fila activa)
   ├── slug = 'turnogol' · max_courts = NULL (sin techo)
-  ├── price_first_court_cents  = 4700000   ($47.000)
+  ├── price_first_court_cents  = 3000000   ($30.000)
   ├── price_extra_court_cents  = 3000000   ($30.000)
   ├── annual_discount_bps      = 1000      (10%)
   └── price_monthly / price_annual: REFERENCIA heredada del modelo de bandas.

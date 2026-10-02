@@ -6,6 +6,10 @@ paths:
 
 # Precio del SaaS
 
-**Lineal por cancha** (decisión 2026-09-17). $47.000 la primera cancha + $30.000 por cada extra, por mes, **sin techo**; anual = 10% off. `plans` tiene **una sola fila activa** (`slug='turnogol'`, `max_courts` NULL) con `price_first_court_cents`/`price_extra_court_cents`/`annual_discount_bps`; las 3 filas viejas quedan `is_active=false`. El monto NO sale de una columna: lo calcula `src/modules/billing/pricing.ts` sobre `tenant_subscriptions.billed_courts`, que es la cantidad de canchas cargada en el preapproval de MP (no "las canchas que tiene hoy"). No hay techo de canchas: sumar una cancha se confirma y se cobra **desde el próximo mes**, nunca prorrateado. La página pública `/precios` sigue **congelada** con los 3 planes viejos a propósito (`plans-data.ts` es un snapshot de marketing, NO se sincroniza con la tabla).
+**$30.000 por cancha por mes, incluida la primera**, sin techo ni bandas. Anual: 10% de descuento, $27.000 por cancha como equivalente mensual y $324.000 por cancha por cobro anual. Decisión escrita: `docs/decisions/2026-10-02-precio-uniforme-por-cancha.md`; supera P1/P5/P6 del 17/09 para esta baja.
 
-Cualquier cambio de precio no cubierto por `docs/decisions/2026-09-17-precio-por-cancha.md` necesita decisión escrita del dueño: devolver "REQUIERE INPUT".
+`plans` conserva una sola fila activa (`slug='turnogol'`, `max_courts` NULL), con primera y extra en 3.000.000 centavos y `annual_discount_bps=1000`; las tres filas viejas siguen inactivas. El importe lo calcula `src/modules/billing/pricing.ts` sobre `tenant_subscriptions.billed_courts`, nunca sobre el conteo actual de canchas online. Los cambios de cantidad son desde el próximo período, sin prorrateo. `/precios` publica la misma lista y descuento; el test `pricing-sync.test.ts` verifica sus parámetros contra DB.
+
+Nuevas y existentes usan la baja desde el próximo cobro, respetando trial y períodos pagados. El script operativo prepara y verifica los preapprovals; la migración 095 exige auditoría vigente antes de cambiar el catálogo. Merge y aplicación requieren completar `docs/operations/2026-10-02-baja-precio-saas.md`.
+
+Otros cambios de precio necesitan decisión escrita del dueño: devolver "REQUIERE INPUT".

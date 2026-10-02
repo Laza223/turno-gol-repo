@@ -357,3 +357,32 @@ exit 0
 ```
 
 La corrección y el lock definitivo quedan en seis archivos adicionales al commit b121b092, dos de ellos documentos ya incluidos: 39 archivos totales del PR. No hay cambios de umbrales, scripts del juez, configuración de CI ni skips nuevos. La descripción del [PR408](https://github.com/Laza223/turno-gol-repo/pull/408) registra el estado final de CI sobre el commit publicado y sus outputs. El GO técnico no habilita merge/aplicación real: esos gates siguen siendo los del runbook.
+
+## Integración con main antes del CI final
+
+El PR quedó en conflicto tras el merge de #407 en main (28cea326). Se integró esa base con merge explícito: Hero y el test de tema del celular conservados íntegros; el ledger de aprendizajes mantiene las dos entradas; package.json y lock mantienen Next16.3.8 y ambos parches de brace-expansion. El helper comparó estructuralmente todas las otras package resolutions contra main y comprobó igualdad. `pnpm install --frozen-lockfile` devolvió `Already up to date`, exit0; no quedan archivos unmerged ni marcadores.
+
+Los verdes anteriores a esta integración no acreditan el estado final: se repite el juez independiente, la revisión de conflictos, el flujo real y los checks remotos. La integración de main en esta rama no implica merge del PR ni habilita producción.
+
+| Delegación integración | Finalidad | Costo estimado | Resultado |
+| --- | --- | ---: | --- |
+| pricing_ci_review (nueva invocación) | Revisar resolución del merge desde diff | 2k tokens | APROBADO: Hero/theme exactos de main, GTM sin pérdidas, manifest y snapshots ajenos preservados |
+| pricing_ci_release (continuación) | Repetir juez después del merge y leer CI final | 5k tokens | En curso |
+| pricing_ci_ux (nueva invocación) | Navegación y precios sobre integración final | 3k tokens | En curso; resultado final se registra en PR408 |
+Evidencia independiente posterior al merge (pricing_ci_release):
+
+```text
+pnpm format:check
+All matched files use Prettier code style!
+exit 0
+
+bash scripts/audit-verify.sh
+TypeCheck pasó / Lint pasó
+Test Files 446 passed | 1 skipped (447)
+Tests 4708 passed | 1 todo (4709)
+Duration 80.01s
+VERIFICACIÓN COMPLETA: Todos los checks pasaron
+exit 0
+```
+
+pnpm knip posterior al merge: exit0; único hint existente .mdx. Los cuatro comandos obligatorios y las unitarias pasaron. El gate definitivo todavía requiere las stories afectadas, el flujo real nuevamente y todos los checks remotos del commit publicado. La integración y ambos aislamientos se acreditan con las nuevas ejecuciones y logs de CI sobre base limpia, sin reutilizar el verde anterior al merge. Los resultados finales se registran en la descripción del PR para no generar un nuevo commit que invalide los checks solo por actualizar evidencia.

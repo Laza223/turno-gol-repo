@@ -70,11 +70,11 @@ export const PerdidaMenorAlPlan: Story = {
     const canvas = within(canvasElement)
     const input = canvas.getByLabelText(/a cuánto está tu turno/i)
     await userEvent.clear(input)
-    await userEvent.type(input, '10000')
+    await userEvent.type(input, '5000')
     await userEvent.click(canvas.getByRole('button', { name: 'Un ausente menos por semana' }))
-    // "$ 40.000" también es uno de los presets de turno: acotamos al resultado (role "status" del <output>).
+    // Acotamos al resultado (role "status" del <output>).
     const resultado = within(canvas.getByRole('status'))
-    await expect(resultado.getByText(money(`$${nbsp}40.000`))).toBeInTheDocument()
+    await expect(resultado.getByText(money(`$${nbsp}20.000`))).toBeInTheDocument()
     await expect(
       canvas.queryByText(/menos que lo que te llevan los turnos colgados/i),
     ).not.toBeInTheDocument()

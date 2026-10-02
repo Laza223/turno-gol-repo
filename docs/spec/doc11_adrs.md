@@ -399,7 +399,7 @@ TurnoGol procesa pagos en dos contextos completamente separados:
 
 1. **Señas de reservas (B2C)**: El jugador paga un porcentaje (default 30%) al reservar una cancha. Son pagos únicos, de montos variables (~$10.500-19.500 ARS por seña típica: 30% de un turno de $35.000-65.000 en 2026). Necesitan checkout rápido, mobile-first.
 
-2. **Suscripciones SaaS (B2B)**: El dueño del complejo paga por usar TurnoGol — desde el 2026-09-17, $47.000/mes la primera cancha + $30.000 por cada extra, sin techo (migr. 090/091; antes eran tres bandas de $63.000-129.000, migr. 071). Son cobros recurrentes, automáticos, con necesidad de reintentos, dunning y cancelación.
+2. **Suscripciones SaaS (B2B)**: El dueño del complejo paga por usar TurnoGol — desde la decisión del 2026-10-02, $30.000/mes por cancha, incluida la primera, sin techo (migr. 095; antes eran tres bandas de $63.000-129.000, migr. 071). Son cobros recurrentes, automáticos, con necesidad de reintentos, dunning y cancelación.
 
 El Doc 5 establece: timeout de 8 segundos en llamadas a MP, webhooks idempotentes, y modo fallback "sin seña digital" si MP está caído.
 

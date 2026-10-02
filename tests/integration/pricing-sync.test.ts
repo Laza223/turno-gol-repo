@@ -6,30 +6,12 @@ import {
   computeSubscriptionAmount,
   monthlyListAmount,
 } from '@/modules/billing/pricing'
-import { PLANS } from '@/app/(business)/precios/plans-data'
+import { PLANS, planForCourts, UNIFORM_PRICING } from '@/app/(business)/precios/plans-data'
 
-/**
- * Candado anti-drift del catálogo de precios. Reemplaza a
- * `plans-data-sync.test.ts`, cuyas DOS premisas murieron el 2026-09-17
- * (`docs/decisions/2026-09-17-precio-por-cancha.md`):
- *
- *   1. "la tabla `plans` y `/precios` muestran los mismos planes" — ahora
- *      divergen A PROPÓSITO (P6, ver el último `it` de este archivo);
- *   2. "el anual es 20% off" — pasó a 10% (P2).
- *
- * Lo que queda por vigilar es otra cosa, y es más chica y más importante: que
- * la FÓRMULA del código y los PARÁMETROS de la base sigan dando los montos que
- * el dueño decidió. Los montos van escritos a mano abajo: un test que los
- * recalcula con la misma fórmula que está probando no prueba nada — se pone
- * verde igual si alguien cambia $30.000 por $3.000 en la migración Y en el
- * código.
- *
- * Corre en integración y no en unit a propósito: la mitad del contrato
- * (`price_first_court_cents`, `price_extra_court_cents`,
- * `annual_discount_bps`) vive en la tabla real, con las migraciones aplicadas
- * en orden.
+/** Catálogo real y web: precio uniforme decidido el 02/10.
+ * Importes escritos a mano para detectar drift conjunto de código/migración.
+ * Catálogo global: lectura cross-tenant deliberada, sin contexto de tenant.
  */
-
 beforeAll(async () => {
   await ensureRoles()
 }, 30_000)
@@ -106,13 +88,15 @@ describe('catálogo de precios: una sola fila activa, lineal y sin techo', () =>
 })
 
 describe('la fórmula del código sobre los parámetros de la base da los montos decididos', () => {
-  // Escritos a mano desde la decisión P1, NO derivados de la fórmula:
-  // $47.000 la primera cancha + $30.000 por cada extra, por mes.
+  // Escritos a mano desde la decisión 2026-10-02, NO derivados de la fórmula:
+  // $30.000 por cancha, incluida la primera, por mes.
   it.each([
-    { billedCourts: 1, monthlyCents: 4_700_000 },
-    { billedCourts: 4, monthlyCents: 13_700_000 },
-    { billedCourts: 6, monthlyCents: 19_700_000 },
-    { billedCourts: 8, monthlyCents: 25_700_000 },
+    { billedCourts: 1, monthlyCents: 3_000_000 },
+    { billedCourts: 2, monthlyCents: 6_000_000 },
+    { billedCourts: 3, monthlyCents: 9_000_000 },
+    { billedCourts: 5, monthlyCents: 15_000_000 },
+    { billedCourts: 12, monthlyCents: 36_000_000 },
+    { billedCourts: 8, monthlyCents: 24_000_000 },
   ])(
     '$billedCourts cancha(s) → $monthlyCents centavos por mes',
     async ({ billedCourts, monthlyCents }) => {
@@ -142,7 +126,7 @@ describe('la fórmula del código sobre los parámetros de la base da los montos
 
     // Y el valor concreto de hoy, para que un cambio de bps no pase mudo.
     expect(params.annualDiscountBps).toBe(1000)
-    expect(annualMonthlyEquivalent(1, params)).toBe(4_230_000) // $42.300
+    expect(annualMonthlyEquivalent(1, params)).toBe(2_700_000) // $27.000
   })
 
   it('el cobro anual del preapproval es el equivalente mensual × 12', async () => {
@@ -158,44 +142,37 @@ describe('la fórmula del código sobre los parámetros de la base da los montos
       ).toBe(annualMonthlyEquivalent(billedCourts, params) * 12)
     }
 
-    // Una cancha, a mano: $42.300 × 12 = $507.600 al año.
+    // Una cancha, a mano: $27.000 × 12 = $324.000 al año.
     expect(computeSubscriptionAmount({ billedCourts: 1, cycle: 'annual', ...params })).toBe(
-      50_760_000,
+      32_400_000,
     )
   })
 })
 
-describe('/precios sigue mostrando los 3 planes VIEJOS, a propósito', () => {
-  it('plans-data.ts NO está sincronizado con la tabla, y eso es la decisión P6', async () => {
-    // ⚠️ ESTO NO ES UN BUG DE SINCRONIZACIÓN. Decisión del dueño,
-    // `docs/decisions/2026-09-17-precio-por-cancha.md` P6: el cobro real y el
-    // panel del complejo ya pasaron a precio por cancha, pero la web comercial
-    // pública sigue con la lista vieja hasta que él decida comunicarla.
-    //
-    // Este test está escrito al revés que el candado que reemplaza: AFIRMA la
-    // divergencia para que nadie la "corrija" pensando que quedó colgada. Si
-    // se cae, la pregunta correcta es "¿el dueño ya dio la orden de comunicar
-    // la lista nueva?", no "¿qué archivo toco para que vuelva a pasar?".
-    expect(PLANS.map((p) => p.slug)).toEqual(['predio', 'complejo', 'estadio'])
-    expect(PLANS.map((p) => p.priceMonthly)).toEqual([6_300_000, 9_900_000, 12_900_000])
-    // Y con el 20% off anual viejo, que en la base ya es 10%.
-    for (const plan of PLANS) {
-      expect(plan.priceAnnual, `anual de '${plan.slug}'`).toBe(Math.round(plan.priceMonthly * 0.8))
-    }
-
-    // El control que hace que este test signifique algo: ninguno de esos 3
-    // slugs está activo en la base. Sin esto, el bloque de arriba se pondría
-    // verde también en el mundo donde nada cambió.
-    const activas = await loadActivePlanRows()
-    // `Set<string>` explícito: `activas[n].slug` sale de la tabla real y hoy
-    // incluye 'turnogol' (migr. 091), que `PlanCard['slug']` (plans-data.ts)
-    // NO tiene a propósito (P6, snapshot congelado). Ensanchar el Set local
-    // es lo mínimo — ensanchar `PlanCard['slug']` para que matchee rompería
-    // esa divergencia deliberada.
-    const publicos = new Set<string>(PLANS.map((p) => p.slug))
-    expect(
-      activas.filter((p) => publicos.has(p.slug)),
-      'ningún plan de /precios debería estar activo en la tabla después de la migr. 091',
-    ).toEqual([])
+describe('/precios publica la lista uniforme del catálogo', () => {
+  it('un solo plan sin techo y mismos parámetros que DB', async () => {
+    expect(PLANS.map((p) => p.slug)).toEqual(['turnogol'])
+    expect(PLANS[0]!.maxCourts).toBeNull()
+    expect(UNIFORM_PRICING).toEqual(await pricingParamsFromDb())
   })
+  it.each([
+    [1, 3_000_000, 2_700_000],
+    [3, 9_000_000, 8_100_000],
+    [5, 15_000_000, 13_500_000],
+    [12, 36_000_000, 32_400_000],
+  ])(
+    '%i canchas: mensual y equivalente anual públicos coinciden',
+    async (courts, monthly, annual) => {
+      const plan = planForCourts(courts)
+      expect(plan.priceMonthly).toBe(monthly)
+      expect(plan.priceAnnual).toBe(annual)
+      expect(
+        computeSubscriptionAmount({
+          billedCourts: courts,
+          cycle: 'annual',
+          ...(await pricingParamsFromDb()),
+        }),
+      ).toBe(annual * 12)
+    },
+  )
 })

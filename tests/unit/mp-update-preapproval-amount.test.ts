@@ -101,6 +101,31 @@ describe('MercadoPagoGateway.updatePreapprovalAmount — no rompe la prueba grat
     })
   })
 
+  it.each([
+    [1, 167000, 15_000_000, 150000],
+    [12, 1803600, 162_000_000, 1620000],
+  ])(
+    'baja de tarifa con frecuencia %i preserva moneda e inicio/fin',
+    async (frequency, previous, amount, pesos) => {
+      const endDate = '2027-12-06T12:00:00.000-03:00'
+      getSpy.mockResolvedValue(
+        trialPreapproval({ frequency, transaction_amount: previous, end_date: endDate }),
+      )
+      await new MercadoPagoGateway('token', { plaintextToken: true }).updatePreapprovalAmount(
+        PREAPPROVAL_ID,
+        amount,
+      )
+      expect(sentAutoRecurring()).toEqual({
+        frequency,
+        frequency_type: 'months',
+        transaction_amount: pesos,
+        currency_id: 'ARS',
+        start_date: START_DATE,
+        end_date: endDate,
+      })
+    },
+  )
+
   it('manda el reason nuevo cuando se lo pasan', async () => {
     getSpy.mockResolvedValue(trialPreapproval())
 

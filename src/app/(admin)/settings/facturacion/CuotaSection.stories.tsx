@@ -3,13 +3,13 @@ import { expect, userEvent, within } from 'storybook/test'
 import { CuotaSection } from './CuotaSection'
 
 /**
- * La cuota del complejo con precio por cancha (decisión 2026-09-17): $47.000
- * la primera + $30.000 cada extra, anual 10% off. Los parámetros llegan por
+ * La cuota del complejo con precio por cancha (decisión 2026-10-02): $30.000
+ * cada cancha, anual 10% off. Los parámetros llegan por
  * prop desde la fila activa de `plans`; acá se fijan a mano con los valores
  * vigentes para que un cambio accidental en el cálculo se vea en el número.
  */
 const pricing = {
-  priceFirstCourtCents: 4_700_000,
+  priceFirstCourtCents: 3_000_000,
   priceExtraCourtCents: 3_000_000,
   annualDiscountBps: 1000,
 }
@@ -33,34 +33,34 @@ type Story = StoryObj<typeof meta>
 export const ActivarUnaCancha: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getAllByText(/47\.000/).length).toBeGreaterThan(0)
+    await expect(canvas.getAllByText(/30\.000/).length).toBeGreaterThan(0)
   },
 }
 
-/** 5 canchas: $47.000 + 4 × $30.000 = $167.000 por mes. */
+/** 5 canchas: $30.000 × 5 = $150.000 por mes. */
 export const ActivarCincoCanchas: Story = {
   args: { onlineCourts: 5, billedCourts: 5 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getAllByText(/167\.000/).length).toBeGreaterThan(0)
+    await expect(canvas.getAllByText(/150\.000/).length).toBeGreaterThan(0)
   },
 }
 
-/** Anual con 5 canchas: 10% off sobre $167.000 = $150.300 por mes, cobrado una vez por año. */
+/** Anual con 5 canchas: 10% off sobre $150.000 = $135.000 por mes, cobrado una vez por año. */
 export const ActivarCincoCanchasAnual: Story = {
   args: { onlineCourts: 5, billedCourts: 5, billingCycle: 'annual' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getAllByText(/150\.300/).length).toBeGreaterThan(0)
+    await expect(canvas.getAllByText(/135\.000/).length).toBeGreaterThan(0)
   },
 }
 
-/** Sin techo: 12 canchas = $47.000 + 11 × $30.000 = $377.000 por mes. */
+/** Sin techo: 12 canchas = $30.000 × 12 = $360.000 por mes. */
 export const ActivarDoceCanchas: Story = {
   args: { onlineCourts: 12, billedCourts: 12 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getAllByText(/377\.000/).length).toBeGreaterThan(0)
+    await expect(canvas.getAllByText(/360\.000/).length).toBeGreaterThan(0)
   },
 }
 
@@ -70,7 +70,7 @@ export const NoBajaDeLasCanchasPrendidas: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Quitar una cancha' }))
-    await expect(canvas.getAllByText(/167\.000/).length).toBeGreaterThan(0)
+    await expect(canvas.getAllByText(/150\.000/).length).toBeGreaterThan(0)
   },
 }
 
@@ -86,6 +86,6 @@ export const GestionarConCambioAgendado: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getAllByText(/197\.000/).length).toBeGreaterThan(0)
+    await expect(canvas.getAllByText(/180\.000/).length).toBeGreaterThan(0)
   },
 }

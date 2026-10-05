@@ -4,17 +4,20 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import { formatArs } from '@/lib/format'
-import { Input } from '@/components/ui/input'
-import { annualSavings, planForCourts, type BillingCycle, type PlanCard } from './plans-data'
+import { PLANS, annualSavings, planForCourts, type BillingCycle, type PlanCard } from './plans-data'
 
-/** Accesos rápidos; el campo permite cualquier cantidad exacta. */
+/** 8 representa "8 o más" (sigue siendo Estadio, ilimitado). */
 const COURT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8] as const
 
-/** Selector de cantidad exacta de canchas y ciclo de facturación. */
+/**
+ * Selector de plan por cantidad de canchas + toggle mensual/anual.
+ * El plan no se "elige": lo define el tamaño del complejo — el selector
+ * ilumina el que corresponde y elimina la comparación de letra chica.
+ * Estado inicial determinista (3 canchas → Complejo): hidratación limpia.
+ */
 export default function PlanSelector() {
   const [courts, setCourts] = useState(3)
-  const [courtInput, setCourtInput] = useState('3')
-  const [cycle, setCycle] = useState<BillingCycle>('monthly')
+  const [cycle, setCycle] = useState<BillingCycle>('annual')
   const active = planForCourts(courts)
 
   return (
@@ -41,34 +44,18 @@ export default function PlanSelector() {
                   type="button"
                   role="radio"
                   aria-checked={selected}
-                  onClick={() => {
-                    setCourts(n)
-                    setCourtInput(String(n))
-                  }}
+                  onClick={() => setCourts(n)}
                   className={`h-11 w-11 rounded-full text-sm font-bold tabular-nums transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
                     selected
                       ? 'bg-emerald-500 text-slate-950 shadow-[0_0_20px_rgba(16,185,129,.45)]'
                       : 'text-slate-400 hover:bg-white/[.07] hover:text-white'
                   }`}
                 >
-                  {n}
+                  {n === 8 ? '8+' : n}
                 </button>
               )
             })}
           </div>
-          <Input
-            type="number"
-            min={1}
-            step={1}
-            value={courtInput}
-            aria-label="Cantidad exacta de canchas"
-            onChange={(event) => {
-              setCourtInput(event.target.value)
-              const count = event.target.valueAsNumber
-              if (Number.isInteger(count) && count >= 1) setCourts(count)
-            }}
-            className="w-28 rounded-full border-white/10 bg-white/4 text-center text-white"
-          />
         </div>
 
         <div
@@ -103,7 +90,7 @@ export default function PlanSelector() {
                         : 'bg-emerald-500/15 text-emerald-400'
                     }`}
                   >
-                    −10%
+                    −20%
                   </span>
                 )}
               </button>
@@ -113,14 +100,21 @@ export default function PlanSelector() {
 
         {/* Anuncio del plan resultante (refuerzo + screen readers) */}
         <p aria-live="polite" className="text-center text-[15px] text-slate-400">
-          Para {courts} {courts === 1 ? 'cancha' : 'canchas'}, tu plan es{' '}
+          Para {courts === 8 ? '8 o más' : courts} {courts === 1 ? 'cancha' : 'canchas'}, tu plan es{' '}
           <span className="font-semibold text-[#6ee7b7]">{active.name}</span>.
         </p>
       </div>
 
       {/* Cards */}
-      <div className="mx-auto mt-10 max-w-[560px]">
-        <PlanCardView plan={active} cycle={cycle} isActive />
+      <div className="mt-10 grid grid-cols-1 gap-[22px] md:grid-cols-3">
+        {PLANS.map((plan) => (
+          <PlanCardView
+            key={plan.slug}
+            plan={plan}
+            cycle={cycle}
+            isActive={plan.slug === active.slug}
+          />
+        ))}
       </div>
 
       {/* Anti-miedo a elegir mal: no hay funciones recortadas */}
@@ -131,7 +125,7 @@ export default function PlanSelector() {
         >
           <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" aria-hidden />
           <span>
-            <span className="font-semibold text-white">Todas las canchas tienen todo.</span> Pagás
+            <span className="font-semibold text-white">Todos los planes tienen todo.</span> Pagás
             por cantidad de canchas, no por funcionalidades.
           </span>
         </p>

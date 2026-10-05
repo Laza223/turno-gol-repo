@@ -32,23 +32,23 @@ const OLD_PREAPPROVAL = 'mp-pending-1'
 const REASON_MENSUAL = 'TurnoGol — 2 canchas (mensual)'
 const REASON_REACTIVACION = 'TurnoGol — 2 canchas (mensual) — reactivación'
 const REASON_REACTIVACION_ANUAL = 'TurnoGol — 2 canchas (anual) — reactivación'
-// $30.000 × 2 canchas = $60.000/mes; anual = $54.000 (10% off) × 12.
-const MONTHLY_AMOUNT = 6_000_000
-const ANNUAL_AMOUNT = 64_800_000
+// $47.000 + 1 × $30.000 (2 canchas) = $77.000/mes; anual = $69.300 (10% off) × 12.
+const MONTHLY_AMOUNT = 7_700_000
+const ANNUAL_AMOUNT = 83_160_000
 
 /**
- * La fila ÚNICA de `plans` con la lista uniforme de la migr. 095 (`slug = 'turnogol'`,
+ * La fila ÚNICA de `plans` desde la migr. 091 (`slug = 'turnogol'`,
  * `max_courts = NULL`). Mismos valores que `billing-subscribe-billed-courts-floor.test.ts`
- * ($30.000 cada cancha, 10% off anual).
+ * ($47.000 la primera + $30.000 cada extra, 10% off anual).
  */
 const planRow = {
   id: PLAN_ID,
   slug: 'turnogol',
   name: 'TurnoGol',
   max_courts: null,
-  price_monthly: 3_000_000,
-  price_annual: 2_700_000,
-  price_first_court_cents: 3_000_000,
+  price_monthly: 4_700_000,
+  price_annual: 4_230_000,
+  price_first_court_cents: 4_700_000,
   price_extra_court_cents: 3_000_000,
   annual_discount_bps: 1_000,
 }
@@ -224,7 +224,7 @@ describe('subscribe — reusa el checkout pendiente en vez de cancelar + crear',
   it('el monto no coincide (otro plan, o el precio cambió desde el intento anterior) → NO reusa Y NO cancela: sigue pending sin cobros de este tenant', async () => {
     const tx = makeSubscribeTx(makeSubscribeSubRow(), { reused: false })
     const gateway = new MockGateway()
-    gateway.subscriptionState = pendingState({ amountCents: 7_700_000 })
+    gateway.subscriptionState = pendingState({ amountCents: MONTHLY_AMOUNT - 1 })
 
     await subscribe(TENANT_ID, BILLED_COURTS, 'monthly', gateway, tx)
 

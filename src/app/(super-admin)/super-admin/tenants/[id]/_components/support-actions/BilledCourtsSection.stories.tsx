@@ -47,12 +47,12 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** 5 canchas mensuales = $150.000/mes, visible antes de tocar nada. */
+/** 5 canchas mensuales = $167.000/mes, visible antes de tocar nada. */
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByLabelText('Canchas facturadas')).toHaveValue(5)
-    await expect(canvas.getByText(/150\.000/)).toBeInTheDocument()
+    await expect(canvas.getByText(/167\.000/)).toBeInTheDocument()
     // Sin cambio no hay nada que confirmar.
     await expect(canvas.getByRole('button', { name: 'Corregir canchas' })).toBeDisabled()
   },
@@ -84,15 +84,15 @@ export const MuestraElMontoNuevo: Story = {
     // tipear deja el cursor donde React lo reposiciona y el valor sale mezclado.
     const input = canvas.getByLabelText('Canchas facturadas')
     await fireEvent.change(input, { target: { value: '6' } })
-    // 6 canchas = 6 × 3.000.000 = 18.000.000 centavos.
-    await expect(canvas.getByText(/180\.000/)).toBeInTheDocument()
+    // 6 canchas = 4.700.000 + 5 × 3.000.000 = 19.700.000 centavos.
+    await expect(canvas.getByText(/197\.000/)).toBeInTheDocument()
 
     await userEvent.click(canvas.getByRole('button', { name: 'Corregir canchas' }))
     await expect(args.action).not.toHaveBeenCalled()
 
     const body = within(canvasElement.ownerDocument.body)
     await expect(
-      await body.findByText(/de 5 canchas .*150\.000.* a 6 canchas .*180\.000/i),
+      await body.findByText(/de 5 canchas .*167\.000.* a 6 canchas .*197\.000/i),
     ).toBeInTheDocument()
     await userEvent.click(body.getByRole('button', { name: 'Confirmar cambio' }))
     await expect(

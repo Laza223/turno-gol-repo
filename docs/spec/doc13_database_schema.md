@@ -446,7 +446,7 @@ CREATE TABLE plans (
   price_annual    INTEGER NOT NULL,              -- Centavos ARS (mensualizado)
 
   -- Precio LINEAL POR CANCHA (migr. 090). Nullable: solo la fila 'turnogol' los usa.
-  price_first_court_cents INTEGER,               -- 3000000 = $30.000/mes la 1ª cancha, migr. 095
+  price_first_court_cents INTEGER,               -- 4700000 = $47.000/mes la 1ª cancha
   price_extra_court_cents INTEGER,               -- 3000000 = $30.000/mes por cada extra
   annual_discount_bps     INTEGER,               -- 1000 = 10% off en el ciclo anual
 
@@ -466,14 +466,14 @@ COMMENT ON COLUMN plans.annual_discount_bps IS 'Descuento del ciclo anual en bas
 
 > [!IMPORTANT]
 > **Desde la migr. 091 hay UNA sola fila activa** (`slug = 'turnogol'`, `max_courts = NULL`) y el
-> precio es uniforme por cancha: $30.000 cada una incluida la primera, anual 10% off (decisión 2026-10-02, migr. 095)
+> precio es lineal por cancha: $47.000 la primera + $30.000 por cada extra, anual 10% off
 > (decisión [`2026-09-17-precio-por-cancha.md`](../decisions/2026-09-17-precio-por-cancha.md),
 > detalle en doc4 §1). Las tres filas de bandas (`predio`/`complejo`/`estadio`) quedan con
 > `is_active = false` y **no se borraron**: `price_versions` tiene FK a su `id` y
 > `audit_logs.metadata` las referencia como texto.
 >
 > `price_monthly` y `price_annual` siguen siendo `NOT NULL` por herencia del modelo de bandas y
-> quedaron como **valor de referencia**: en la fila `turnogol` valen $30.000 y $27.000 (el caso de
+> quedaron como **valor de referencia**: en la fila `turnogol` valen $47.000 y $42.300 (el caso de
 > una cancha), pero ningún cobro sale de ahí. Se dropean en una migración de contracción
 > posterior, junto con `tenant_subscriptions.pending_plan_change` (anotado en `docs/tech-debt.md`).
 
@@ -1802,9 +1802,9 @@ CREATE TRIGGER enforce_booking_invariants
 -- SEED: Planes de suscripción (datos globales del sistema)
 -- Precios basados en Doc 4 — Monetización
 -- ============================================================
--- Estado vigente desde la migr. 095 (decisión 2026-10-02): UNA sola fila activa, precio
+-- Estado vigente desde la migr. 091 (2026-09-17): UNA sola fila activa, precio
 -- LINEAL por cancha, sin techo. Este seed es ilustrativo: el estado real sale de
--- 007 + las migraciones de precios posteriores (043, 071, 090, 091, 095).
+-- 007 + las migraciones de precios posteriores (043, 071, 090, 091).
 INSERT INTO plans (
   name, slug, max_courts,
   price_monthly, price_annual,
@@ -1813,9 +1813,9 @@ INSERT INTO plans (
 ) VALUES (
   'TurnoGol', 'turnogol',
   NULL,      -- sin techo: agregar una cancha no se bloquea, cuesta $30.000 más
-  3000000,   -- price_monthly: REFERENCIA (el caso de una cancha). No se usa para cobrar.
-  2700000,   -- price_annual: REFERENCIA, equivalente mensual con 10% off ($27.000).
-  3000000,   -- $30.000 la primera cancha
+  4700000,   -- price_monthly: REFERENCIA (el caso de una cancha). No se usa para cobrar.
+  4230000,   -- price_annual: REFERENCIA, equivalente mensual con 10% off ($42.300).
+  4700000,   -- $47.000 la primera cancha
   3000000,   -- $30.000 por cada cancha extra
   1000,      -- 10% off en el ciclo anual
   true, 0,
@@ -1835,8 +1835,8 @@ INSERT INTO price_versions (
 SELECT
   id, price_monthly, price_annual,
   price_first_court_cents, price_extra_court_cents, annual_discount_bps,
-  (CURRENT_TIMESTAMP AT TIME ZONE 'America/Argentina/Buenos_Aires')::date,
-  'Precio uniforme: $30.000 por cancha, sin techo, anual 10% off (decisión 2026-10-02).'
+  '2026-09-17',
+  'Precio lineal por cancha: $47.000 la primera + $30.000 por cada extra, sin techo, anual 10% off.'
 FROM plans WHERE slug = 'turnogol';
 ```
 

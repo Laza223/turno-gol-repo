@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
 import type { PriceBreakdown as Breakdown } from '@/modules/billing/pricing'
 
 /**
- * De dónde sale el número grande: "1ª cancha $30.000 + 4 canchas más ×
+ * De dónde sale el número grande: "1ª cancha $47.000 + 4 canchas más ×
  * $30.000". Es la única explicación del precio que ve el dueño, así que no
  * calcula NADA: todos los números llegan ya resueltos por
  * `buildPriceBreakdown`, para que la pantalla y el cobro no puedan divergir.

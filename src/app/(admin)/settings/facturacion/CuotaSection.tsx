@@ -17,8 +17,8 @@ import { PriceBreakdown } from './PriceBreakdown'
  *
  * Reemplaza a `ActivatePlanSection` (elegir entre Predio/Complejo/Estadio) y a
  * `ChangePlanSection` (grilla de "pasar a" / "bajar a"). Desde la decisión
- * 2026-10-02 hay una cuenta —$30.000 por cada cancha,
- * incluida la primera— y una sola pregunta, por cuántas canchas se
+ * 2026-09-17 no hay planes: hay una cuenta —$47.000 la primera cancha +
+ * $30.000 cada cancha extra— y una sola pregunta, por cuántas canchas se
  * factura. Por eso la pantalla es UN control y UN número, y la palabra "plan"
  * no aparece.
  *

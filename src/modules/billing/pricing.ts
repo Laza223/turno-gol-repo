@@ -3,10 +3,10 @@ import type { BillingCycle } from './billing.types'
 /**
  * Motor de precio del SaaS — precio LINEAL POR CANCHA, sin techo.
  *
- * Regla vigente desde el 2026-10-02 (`docs/decisions/2026-10-02-precio-uniforme-por-cancha.md`,
+ * Regla vigente desde el 2026-09-17 (`docs/decisions/2026-09-17-precio-por-cancha.md`,
  * supera a D3 de `2026-09-02-experimento-30-dias.md`):
  *
- *   $30.000 por cancha, incluida la primera, por mes.
+ *   $47.000 la primera cancha + $30.000 por cada cancha extra, por mes.
  *   Anual: 10% off. Sin bandas, sin techo, sin descuento por volumen.
  *
  * Reemplaza a `planAmount()` (bandas Predio/Complejo/Estadio), donde el monto
@@ -67,7 +67,7 @@ export function monthlyListAmount(
 /**
  * Equivalente MENSUAL del ciclo anual, ya con el descuento aplicado. Centavos.
  *
- * Existe como concepto propio porque es lo que la UI muestra ("$135.000 por
+ * Existe como concepto propio porque es lo que la UI muestra ("$150.300 por
  * mes pagando el año") y porque `plans.price_annual` guardaba históricamente
  * ese mismo equivalente mensual, no el total del año.
  */
@@ -93,7 +93,7 @@ export function computeSubscriptionAmount(input: ComputeAmountInput): number {
 }
 
 /**
- * Desglose para mostrarle al dueño: "1ª cancha $30.000 + 4 × $30.000".
+ * Desglose para mostrarle al dueño: "1ª cancha $47.000 + 4 × $30.000".
  *
  * La UI NO recalcula estos números por su cuenta — los pide acá, para que la
  * pantalla y el cobro no puedan divergir.

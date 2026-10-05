@@ -488,8 +488,8 @@ describe('changeBilledCourtsForSupport', () => {
     expect(mockGateway.saasUpgradePreferenceCalls).toHaveLength(0)
     expect(mockGateway.updatePreapprovalCalls).toHaveLength(1)
     expect(mockGateway.updatePreapprovalCalls[0]!.preapprovalId).toBe('mp-preapp-test-1')
-    // $30.000 × 3 = $90.000 (tabla de la decisión, no recalculado).
-    expect(mockGateway.updatePreapprovalCalls[0]!.amount).toBe(9_000_000)
+    // $47.000 + 2 × $30.000 = $107.000 (tabla de la decisión, no recalculado).
+    expect(mockGateway.updatePreapprovalCalls[0]!.amount).toBe(10_700_000)
 
     const audits = await fetchSupportAudits(sql, tenantId)
     expect(audits).toHaveLength(1)
@@ -513,8 +513,8 @@ describe('changeBilledCourtsForSupport', () => {
     await changeBilledCourtsForSupport(tenantId, 3, systemAdminId, mockGateway)
 
     expect(mockGateway.updatePreapprovalCalls).toHaveLength(1)
-    // $81.000 por mes (10% off de $90.000) × 12 = $972.000.
-    expect(mockGateway.updatePreapprovalCalls[0]!.amount).toBe(97_200_000)
+    // $96.300 por mes (10% off de $107.000) × 12 = $1.155.600.
+    expect(mockGateway.updatePreapprovalCalls[0]!.amount).toBe(115_560_000)
   })
 
   it('bloquea bajar la cantidad de canchas por debajo de las que están ONLINE', async () => {

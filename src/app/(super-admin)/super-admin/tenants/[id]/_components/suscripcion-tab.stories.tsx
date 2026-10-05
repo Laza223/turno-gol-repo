@@ -22,12 +22,12 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** 5 canchas mensuales: $30.000 × 5 = $150.000/mes. */
+/** 5 canchas mensuales: $47.000 la primera + 4 × $30.000 = $167.000/mes. */
 export const SuscripcionActiva: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Canchas facturadas')).toBeInTheDocument()
-    await expect(canvas.getByText(/150\.000/)).toBeInTheDocument()
+    await expect(canvas.getByText(/167\.000/)).toBeInTheDocument()
   },
 }
 

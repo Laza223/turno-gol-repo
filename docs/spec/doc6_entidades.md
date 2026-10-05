@@ -718,7 +718,7 @@ id                    UUID          PK
 name                  string        'TurnoGol' (nombre para mostrar; NO el slug)
 slug                  string        Único. 'turnogol'; legacy inactivos: 'predio' | 'complejo' | 'estadio'
 max_courts            integer?      NULL en la fila activa = SIN TECHO. Agregar una cancha no se bloquea, cuesta más
-price_first_court_cents integer?    Centavos ARS/mes de la primera cancha (3000000 = $30.000, migr. 095)
+price_first_court_cents integer?    Centavos ARS/mes de la primera cancha (4700000 = $47.000)
 price_extra_court_cents integer?    Centavos ARS/mes por cada cancha extra (3000000 = $30.000)
 annual_discount_bps     integer?    Descuento del ciclo anual en basis points (1000 = 10%)
 price_monthly         integer       LEGACY del modelo de bandas. Valor de referencia, ningún cobro sale de acá

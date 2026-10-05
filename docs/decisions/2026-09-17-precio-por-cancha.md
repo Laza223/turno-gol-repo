@@ -1,7 +1,5 @@
 # Decisión: precio por cancha, lineal y sin techo
 
-> Histórica: P1/P5/P6 quedan superadas para la baja y comunicación pública por [la decisión del 2026-10-02](2026-10-02-precio-uniforme-por-cancha.md). Se preserva el texto original como antecedente.
-
 **Fecha:** 2026-09-17 · **Decide:** Lazar (founder) · **Insumos:** [board del precio](../gtm/board/2026-09-15-precio-por-cancha.md) §7 y §8, medición de facturación real de un complejo en producción (2026-09-17), [teardown competitivo v2](../gtm/research/2026-09-01-competidores-v2.md).
 
 **Supera a D3** de [`2026-09-02-experimento-30-dias.md`](2026-09-02-experimento-30-dias.md) ("Pricing: mensual por defecto, lista sin cambios"). **Acota D4**: el feature freeze sigue vigente para todo lo demás; lo único que se libera es el circuito de cobro del SaaS, que además entra por la excepción "circuitos de plata".

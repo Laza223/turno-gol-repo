@@ -19,61 +19,67 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Estado inicial: tres canchas, mensual a $90.000. */
+/**
+ * Estado inicial: 3 canchas → plan **Predio** activo, ciclo mensual.
+ *
+ * Desde la migr. 071 el corte de Predio es 1-3 canchas (era 1-2), alineado con
+ * los tramos de ATC. Este assert antes buscaba `heading: 'Complejo'` y **pasaba
+ * igual con el plan activo cambiado**, porque las tres cards renderizan su
+ * heading siempre: verificaba que el plan EXISTA, no que esté activo. Ahora usa
+ * el mismo marcador que PlanPredio/PlanEstadio ("tu plan es X"), que sí depende
+ * de `planForCourts`.
+ */
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('radio', { name: '3', checked: true })).toBeInTheDocument()
     await expect(canvas.getByText('Para tus canchas')).toBeInTheDocument()
-    await expect(canvas.getByRole('radio', { name: 'Mensual', checked: true })).toBeInTheDocument()
-    await expect(canvas.getByText(/\$\s90\.000$/)).toBeInTheDocument()
-    await expect(canvas.getByText(/tu plan es/i)).toHaveTextContent('TurnoGol')
+    await expect(canvas.getByText(/tu plan es/i)).toHaveTextContent('Predio')
   },
 }
 
-/** Cuatro canchas: $120.000, sin bandas. */
-export const CuatroCanchas: Story = {
+/** 4-6 canchas → Complejo. */
+export const PlanComplejo: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('radio', { name: '4' }))
-    await expect(canvas.getByText(/\$\s120\.000$/)).toBeInTheDocument()
+    await expect(canvas.getByText(/tu plan es/i)).toHaveTextContent('Complejo')
   },
 }
 
-/** Una cancha: $30.000. */
-export const UnaCancha: Story = {
+/** 1 cancha → Predio (borde inferior del mismo tramo que el default). */
+export const PlanPredio: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('radio', { name: '1' }))
-    await expect(canvas.getByText(/\$\s30\.000$/)).toBeInTheDocument()
-    await expect(canvas.getByText(/tu plan es/i)).toHaveTextContent('TurnoGol')
+    await expect(canvas.getByText(/tu plan es/i)).toHaveTextContent('Predio')
   },
 }
 
-/** Ocho canchas exactas: $240.000. */
-export const OchoCanchas: Story = {
+/** 8+ canchas → Estadio (canchas ilimitadas). */
+export const PlanEstadio: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('radio', { name: '8' }))
-    await expect(canvas.getByText(/\$\s240\.000$/)).toBeInTheDocument()
+    await userEvent.click(canvas.getByRole('radio', { name: '8+' }))
+    await expect(canvas.getByText(/tu plan es/i)).toHaveTextContent('Estadio')
   },
 }
 
-/** Tres canchas en anual: $81.000 por mes, ahorro de $108.000 al año. */
+/**
+ * Ciclo anual: precio tachado + "Ahorrás $X al año".
+ *
+ * El "Ahorrás" se renderiza en las TRES cards, no solo en la activa — el
+ * comentario anterior decía "en la card activa" y eso nunca fue cierto. El
+ * assert apunta al de Predio, el plan activo con las 3 canchas del default:
+ * ($63.000 − $50.400) × 12 = $151.200.
+ *
+ * `formatArs` separa "$" del monto con un espacio NO-BREAK (U+00A0) — `\s` en
+ * el regex lo cubre, un espacio literal no.
+ */
 export const CicloAnual: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('radio', { name: /anual/i }))
-    await expect(canvas.getByText(/ahorrás \$\s?108\.000 al año/i)).toBeInTheDocument()
-  },
-}
-
-export const DoceCanchas: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    const input = canvas.getByRole('spinbutton', { name: /cantidad exacta de canchas/i })
-    await userEvent.clear(input)
-    await userEvent.type(input, '12')
-    await expect(canvas.getByText(/\$\s360\.000$/)).toBeInTheDocument()
+    await expect(canvas.getByText(/ahorrás \$\s?151\.200 al año/i)).toBeInTheDocument()
   },
 }

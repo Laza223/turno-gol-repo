@@ -64,5 +64,19 @@
       "PowerShell(*git *push*)", "PowerShell(*git *commit*)",
       "mcp__ce74ad28-ac8e-4a12-b977-914d209079ec__execute_sql"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ ! -f \"$HOME/.claude/hooks/hook-convenciones-inject.mjs\" ] || node \"$HOME/.claude/hooks/hook-convenciones-inject.mjs\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
   }
 }

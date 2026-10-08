@@ -1,0 +1,269 @@
+{
+ "regions": [
+  {
+   "id": "nav",
+   "kind": "chrome",
+   "box": {
+    "x": 0.0625,
+    "y": 0.0195,
+    "w": 0.875,
+    "h": 0.0684
+   },
+   "note": "existing floating glass SiteNav: TURNOGOL wordmark, Explorar, Para complejos, Ingresar pill"
+  },
+  {
+   "id": "kicker",
+   "kind": "text",
+   "box": {
+    "x": 0.0612,
+    "y": 0.1582,
+    "w": 0.1725,
+    "h": 0.0254
+   },
+   "note": "emerald map-pin icon + uppercase label CANCHAS CERCA DE VOS"
+  },
+  {
+   "id": "headline",
+   "kind": "text",
+   "box": {
+    "x": 0.0612,
+    "y": 0.1953,
+    "w": 0.362,
+    "h": 0.2324
+   },
+   "note": "three-line heavy italic headline Tu próxima cancha está a 4 km. with 'a 4 km.' in emerald"
+  },
+  {
+   "id": "subtitle",
+   "kind": "text",
+   "box": {
+    "x": 0.0612,
+    "y": 0.4443,
+    "w": 0.3529,
+    "h": 0.0293
+   },
+   "note": "muted one-line subtitle Mirá los turnos libres de hoy y reservá sin llamar a nadie."
+  },
+  {
+   "id": "search-card",
+   "kind": "chrome",
+   "box": {
+    "x": 0.0625,
+    "y": 0.4912,
+    "w": 0.3548,
+    "h": 0.3721
+   },
+   "container": true,
+   "note": "glass card holding the three stacked search fields and the Buscar canchas button"
+  },
+  {
+   "id": "field-zona",
+   "kind": "control",
+   "box": {
+    "x": 0.0794,
+    "y": 0.5166,
+    "w": 0.321,
+    "h": 0.0693
+   },
+   "note": "glass select row: pin icon, small label Zona, value Luján, chevron"
+  },
+  {
+   "id": "field-dia",
+   "kind": "control",
+   "box": {
+    "x": 0.0794,
+    "y": 0.6025,
+    "w": 0.321,
+    "h": 0.0693
+   },
+   "note": "glass select row: calendar icon, small label Día, value Hoy, chevron"
+  },
+  {
+   "id": "field-hora",
+   "kind": "control",
+   "box": {
+    "x": 0.0794,
+    "y": 0.6885,
+    "w": 0.321,
+    "h": 0.0703
+   },
+   "note": "glass select row: clock icon, small label Hora, value Cualquiera, chevron"
+  },
+  {
+   "id": "cta-buscar",
+   "kind": "control",
+   "box": {
+    "x": 0.0794,
+    "y": 0.7842,
+    "w": 0.3216,
+    "h": 0.0527
+   },
+   "note": "full-width solid emerald button with dark text Buscar canchas"
+  },
+  {
+   "id": "nearest-card",
+   "kind": "chrome",
+   "box": {
+    "x": 0.4603,
+    "y": 0.1523,
+    "w": 0.4779,
+    "h": 0.5117
+   },
+   "container": true,
+   "note": "large glass card of the nearest complex"
+  },
+  {
+   "id": "nearest-photo",
+   "kind": "image",
+   "box": {
+    "x": 0.4655,
+    "y": 0.1592,
+    "w": 0.4681,
+    "h": 0.2676
+   },
+   "note": "night photo of the nearest complex's synthetic 5-a-side pitch with floodlights (runtime R2 cover photo)",
+   "bleed": true,
+   "plate": ".impeccable/build/plates/nearest-photo.png"
+  },
+  {
+   "id": "nearest-name",
+   "kind": "text",
+   "box": {
+    "x": 0.4792,
+    "y": 0.4443,
+    "w": 0.276,
+    "h": 0.041
+   },
+   "note": "complex name Complejo San Martín in heavy white italic"
+  },
+  {
+   "id": "nearest-meta",
+   "kind": "text",
+   "box": {
+    "x": 0.4792,
+    "y": 0.498,
+    "w": 0.2161,
+    "h": 0.0273
+   },
+   "note": "pin icon + meta line Luján · a 4,2 km · Fútbol 5 y 7"
+  },
+  {
+   "id": "nearest-price",
+   "kind": "text",
+   "box": {
+    "x": 0.4792,
+    "y": 0.54,
+    "w": 0.1471,
+    "h": 0.0273
+   },
+   "note": "Turno desde $ 60.000 with the amount in bold white"
+  },
+  {
+   "id": "nearest-slots",
+   "kind": "control",
+   "box": {
+    "x": 0.4792,
+    "y": 0.5918,
+    "w": 0.3724,
+    "h": 0.0469
+   },
+   "note": "emerald label Libre hoy + four glass time pills with emerald border 19:00 20:00 22:00 23:00"
+  },
+  {
+   "id": "row1",
+   "kind": "chrome",
+   "box": {
+    "x": 0.4603,
+    "y": 0.6836,
+    "w": 0.4779,
+    "h": 0.1123
+   },
+   "container": true,
+   "note": "slim glass row for the second closest complex"
+  },
+  {
+   "id": "row1-thumb",
+   "kind": "image",
+   "box": {
+    "x": 0.4746,
+    "y": 0.6953,
+    "w": 0.0846,
+    "h": 0.0898
+   },
+   "note": "square-ish thumbnail night pitch photo (runtime R2 cover)",
+   "bleed": true,
+   "plate": ".impeccable/build/plates/row1-thumb.png"
+  },
+  {
+   "id": "row1-text",
+   "kind": "text",
+   "box": {
+    "x": 0.5755,
+    "y": 0.709,
+    "w": 0.1237,
+    "h": 0.0586
+   },
+   "note": "name La Cortada F5 in heavy white italic + pin a 7,8 km"
+  },
+  {
+   "id": "row1-slot",
+   "kind": "text",
+   "box": {
+    "x": 0.8242,
+    "y": 0.7158,
+    "w": 0.0417,
+    "h": 0.0508
+   },
+   "note": "emerald Libre over white 21:00, with a thin divider at left"
+  },
+  {
+   "id": "row2",
+   "kind": "chrome",
+   "box": {
+    "x": 0.4603,
+    "y": 0.8115,
+    "w": 0.4779,
+    "h": 0.1123
+   },
+   "container": true,
+   "note": "slim glass row for the third closest complex"
+  },
+  {
+   "id": "row2-thumb",
+   "kind": "image",
+   "box": {
+    "x": 0.4746,
+    "y": 0.8232,
+    "w": 0.0846,
+    "h": 0.0898
+   },
+   "note": "square-ish thumbnail night pitch photo (runtime R2 cover)",
+   "bleed": true,
+   "plate": ".impeccable/build/plates/row2-thumb.png"
+  },
+  {
+   "id": "row2-text",
+   "kind": "text",
+   "box": {
+    "x": 0.5755,
+    "y": 0.8369,
+    "w": 0.1237,
+    "h": 0.0605
+   },
+   "note": "name Club Estación in heavy white italic + pin a 11 km"
+  },
+  {
+   "id": "row2-slot",
+   "kind": "text",
+   "box": {
+    "x": 0.8242,
+    "y": 0.8438,
+    "w": 0.0417,
+    "h": 0.0508
+   },
+   "note": "emerald Libre over white 21:00, with a thin divider at left"
+  }
+ ],
+ "allowUncovered": true,
+ "uncoveredNote": "B1 A2 E2 A3 E3 J3 A4 E4: only the faint background ground (emerald glow blobs and very faint pitch-line drawing), drawn by the existing landing-hero recipes"
+}

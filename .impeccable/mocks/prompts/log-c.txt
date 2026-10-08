@@ -1,0 +1,2 @@
+IMAGE: .impeccable/mocks/hero-c.png (1536x1024, high, gpt-image-2.5-flare, billed to your OpenAI key); prompt embedded + sidecar at .impeccable/mocks/hero-c.png.json
+exit c: 0

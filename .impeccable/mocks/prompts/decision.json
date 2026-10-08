@@ -1,0 +1,37 @@
+{
+  "title": "Hero de la home · Tu cancha más cercana",
+  "question": "Tres composiciones de la misma idea. Nombres, distancias y horarios de los comps son ilustrativos: en la home salen de datos reales (tu ubicación, la foto del complejo en R2 y sus turnos libres de hoy). Elegí una, o escribí qué combinar o cambiar.",
+  "options": [
+    {
+      "id": "hero-a",
+      "label": "A · La cancha llena la pantalla",
+      "thesis": "La foto real del complejo más cercano es el hero; su nombre es el titular y sus turnos libres de hoy son los botones.",
+      "palette": ["#020617", "#10b981", "#34d399", "#f8fafc"],
+      "materials": ["foto real del complejo (R2)", "barra de vidrio abajo"],
+      "viewport": "Foto a sangre; abajo a la izquierda 'La más cerca de vos · a 4,2 km', el nombre en Archivo negra itálica, precio y 'Libre hoy' con los horarios; al pie, '¿Otra zona u horario?' con el buscador en una línea.",
+      "risk": "Depende de la calidad de la foto del complejo, y el titular es un nombre, no la oferta: el que llega por primera vez entiende por la foto y los horarios.",
+      "comp": ".impeccable/mocks/hero-a.png"
+    },
+    {
+      "id": "hero-b",
+      "label": "B · Oferta a la izquierda, tu cancha a la derecha",
+      "thesis": "El titular dice la oferta con un dato real ('Tu próxima cancha está a 4 km.') y la tarjeta de la cancha más cercana la prueba al lado.",
+      "palette": ["#020617", "#10b981", "#34d399", "#f8fafc"],
+      "materials": ["tarjeta de vidrio con foto", "buscador apilado"],
+      "viewport": "Dos columnas: titular + buscador de 3 filas (Zona, Día, Hora) y 'Buscar canchas'; a la derecha la tarjeta grande de la más cercana con turnos libres y debajo las dos que siguen.",
+      "risk": "Es la más conocida (hero partido en dos) y el titular depende de tener tu ubicación: sin ella necesita otra frase.",
+      "comp": ".impeccable/mocks/hero-b.png"
+    },
+    {
+      "id": "hero-c",
+      "label": "C · Tu zona es el título",
+      "thesis": "'Canchas en Luján' con la zona tocable para cambiarla, y abajo las tres canchas más cercanas con sus turnos libres de hoy.",
+      "palette": ["#020617", "#10b981", "#34d399", "#f8fafc"],
+      "materials": ["tres fotos reales en fila", "chips de día y hora"],
+      "viewport": "Arriba 'Tu zona' y el titular 'Canchas en Luján ›' con 'Hoy' y 'Cualquier hora' al lado; abajo tres tarjetas-foto (la primera más ancha) con distancia, nombre, formato y horarios libres.",
+      "risk": "Tres fotos juntas muestran la peor, y con una o dos canchas en la zona la fila queda corta: hay que diseñar esos casos.",
+      "comp": ".impeccable/mocks/hero-c.png"
+    }
+  ],
+  "steer": true
+}

@@ -117,7 +117,7 @@ describe('inviteStaffAction — usuario ya registrado (#47)', () => {
 
     const res = await inviteStaffAction(makeForm('new@x.com'))
 
-    expect(res.success).toBe(true)
+    expect(res).toEqual({ success: true, existingAccount: true })
     expect(h.updateUserById).toHaveBeenCalledTimes(1)
     expect(h.updateUserById).toHaveBeenCalledWith('auth-existing', {
       app_metadata: { tenant_id: 'other-tenant', role: 'admin', staff_user_id: 'staff-new' },
@@ -129,7 +129,7 @@ describe('inviteStaffAction — usuario ya registrado (#47)', () => {
 
     const res = await inviteStaffAction(makeForm('fresh@x.com'))
 
-    expect(res.success).toBe(true)
+    expect(res).toEqual({ success: true })
     expect(h.listUsers).not.toHaveBeenCalled()
     // El form de makeForm no manda rol → default Encargado (manager).
     // force_password_change: true porque GoTrue crea el usuario invitado sin

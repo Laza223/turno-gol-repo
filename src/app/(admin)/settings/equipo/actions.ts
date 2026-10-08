@@ -79,7 +79,10 @@ async function findAuthUserByEmail(
   return null
 }
 
-export type StaffActionResult = { success: true } | { success: false; error: string }
+// `existingAccount`: el email ya tenía cuenta en Supabase Auth, así que GoTrue
+// no manda mail de invitación — la UI tiene que decirlo en vez de prometer uno.
+export type StaffActionResult =
+  { success: true; existingAccount?: true } | { success: false; error: string }
 
 /**
  * Estados de tenant que bloquean la gestión de staff (Fase 3 #14).
@@ -238,7 +241,7 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
   // Si el envío de la invitación falla, se lanza InviteDeliveryError (en vez
   // de un `return` de negocio) para que Drizzle haga rollback del upsert de
   // tenant_staff_members — ver comentario del hallazgo en InviteDeliveryError.
-  let result: { success: true } | { success: false; error: string }
+  let result: StaffActionResult
   try {
     result = await withTenantContext(tenant.id, async (tx) => {
       await tx
@@ -295,7 +298,9 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
         }
       }
 
-      return { success: true as const }
+      return inviteError
+        ? { success: true as const, existingAccount: true as const }
+        : { success: true as const }
     })
   } catch (err) {
     if (err instanceof InviteDeliveryError) {

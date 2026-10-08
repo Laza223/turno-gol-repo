@@ -1,0 +1,1189 @@
+{
+  "tool": "comp-spec",
+  "version": 1,
+  "createdAt": "2026-09-27T19:17:12.984Z",
+  "comp": ".impeccable/mocks/hero-b.png",
+  "warnings": [
+    "region search-card: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)",
+    "region nearest-card: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)",
+    "region nearest-photo: \"bleed\": true set in the regions file (the clipped-artwork refusal is overridden: the page crops it there)",
+    "region row1: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)",
+    "region row1-thumb: \"bleed\": true set in the regions file (the clipped-artwork refusal is overridden: the page crops it there)",
+    "region row2: \"container\": true set in the regions file (the region-size refusal is overridden: one undivided element)",
+    "region row2-thumb: \"bleed\": true set in the regions file (the clipped-artwork refusal is overridden: the page crops it there)"
+  ],
+  "uncoveredInkCells": [
+    "B1",
+    "A2",
+    "E2",
+    "A3",
+    "E3",
+    "J3",
+    "A4",
+    "E4"
+  ],
+  "compSize": {
+    "width": 1536,
+    "height": 1024
+  },
+  "aspect": 1.5,
+  "orientation": "landscape",
+  "palette": [
+    {
+      "hex": "#08111a",
+      "coverage": 0.8907
+    },
+    {
+      "hex": "#f7f7f7",
+      "coverage": 0.0344
+    },
+    {
+      "hex": "#112d2b",
+      "coverage": 0.0324
+    },
+    {
+      "hex": "#20d194",
+      "coverage": 0.0222
+    },
+    {
+      "hex": "#305531",
+      "coverage": 0.0204
+    }
+  ],
+  "bands": [
+    {
+      "y": 0.0471,
+      "strength": 0.2793
+    },
+    {
+      "y": 0.2235,
+      "strength": 0.3443
+    },
+    {
+      "y": 0.2588,
+      "strength": 0.3766
+    },
+    {
+      "y": 0.2941,
+      "strength": 0.6813
+    },
+    {
+      "y": 0.3412,
+      "strength": 0.7522
+    },
+    {
+      "y": 0.4235,
+      "strength": 0.4086
+    },
+    {
+      "y": 0.4588,
+      "strength": 0.5985
+    },
+    {
+      "y": 0.4824,
+      "strength": 0.4596
+    },
+    {
+      "y": 0.7882,
+      "strength": 0.4128
+    },
+    {
+      "y": 0.8353,
+      "strength": 0.3558
+    },
+    {
+      "y": 0.8588,
+      "strength": 0.2617
+    }
+  ],
+  "regions": [
+    {
+      "id": "nav",
+      "kind": "chrome",
+      "note": "existing floating glass SiteNav: TURNOGOL wordmark, Explorar, Para complejos, Ingresar pill",
+      "grid": null,
+      "box": {
+        "x": 0.0625,
+        "y": 0.0195,
+        "w": 0.875,
+        "h": 0.0684
+      },
+      "px": {
+        "x": 96,
+        "y": 20,
+        "w": 1344,
+        "h": 70
+      },
+      "aspect": 19.2,
+      "palette": [
+        {
+          "hex": "#091121",
+          "coverage": 0.8788
+        },
+        {
+          "hex": "#26384e",
+          "coverage": 0.0823
+        },
+        {
+          "hex": "#435d75",
+          "coverage": 0.0205
+        },
+        {
+          "hex": "#f5f5f5",
+          "coverage": 0.0137
+        },
+        {
+          "hex": "#08e69d",
+          "coverage": 0.0047
+        }
+      ],
+      "detail": {
+        "energy": 17.2635
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "kicker",
+      "kind": "text",
+      "note": "emerald map-pin icon + uppercase label CANCHAS CERCA DE VOS",
+      "grid": null,
+      "box": {
+        "x": 0.0612,
+        "y": 0.1582,
+        "w": 0.1725,
+        "h": 0.0254
+      },
+      "px": {
+        "x": 94,
+        "y": 162,
+        "w": 265,
+        "h": 26
+      },
+      "aspect": 10.1923,
+      "palette": [
+        {
+          "hex": "#080a16",
+          "coverage": 0.745
+        },
+        {
+          "hex": "#08edab",
+          "coverage": 0.1415
+        },
+        {
+          "hex": "#08c28d",
+          "coverage": 0.0467
+        },
+        {
+          "hex": "#082e20",
+          "coverage": 0.0374
+        },
+        {
+          "hex": "#08785a",
+          "coverage": 0.0294
+        }
+      ],
+      "detail": {
+        "energy": 75.373
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "headline",
+      "kind": "text",
+      "note": "three-line heavy italic headline Tu próxima cancha está a 4 km. with 'a 4 km.' in emerald",
+      "grid": null,
+      "box": {
+        "x": 0.0612,
+        "y": 0.1953,
+        "w": 0.362,
+        "h": 0.2324
+      },
+      "px": {
+        "x": 94,
+        "y": 200,
+        "w": 556,
+        "h": 238
+      },
+      "aspect": 2.3361,
+      "palette": [
+        {
+          "hex": "#080c16",
+          "coverage": 0.6319
+        },
+        {
+          "hex": "#f8f8f8",
+          "coverage": 0.2758
+        },
+        {
+          "hex": "#3ad097",
+          "coverage": 0.0756
+        },
+        {
+          "hex": "#888d94",
+          "coverage": 0.0086
+        },
+        {
+          "hex": "#c7c9cc",
+          "coverage": 0.0081
+        }
+      ],
+      "detail": {
+        "energy": 57.0228
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "subtitle",
+      "kind": "text",
+      "note": "muted one-line subtitle Mirá los turnos libres de hoy y reservá sin llamar a nadie.",
+      "grid": null,
+      "box": {
+        "x": 0.0612,
+        "y": 0.4443,
+        "w": 0.3529,
+        "h": 0.0293
+      },
+      "px": {
+        "x": 94,
+        "y": 455,
+        "w": 542,
+        "h": 30
+      },
+      "aspect": 18.0667,
+      "palette": [
+        {
+          "hex": "#080c17",
+          "coverage": 0.7727
+        },
+        {
+          "hex": "#94aac3",
+          "coverage": 0.0904
+        },
+        {
+          "hex": "#5f7288",
+          "coverage": 0.0837
+        },
+        {
+          "hex": "#253749",
+          "coverage": 0.0482
+        },
+        {
+          "hex": "#1c1d3d",
+          "coverage": 0.005
+        }
+      ],
+      "detail": {
+        "energy": 54.5439
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "search-card",
+      "kind": "chrome",
+      "note": "glass card holding the three stacked search fields and the Buscar canchas button",
+      "grid": null,
+      "container": true,
+      "box": {
+        "x": 0.0625,
+        "y": 0.4912,
+        "w": 0.3548,
+        "h": 0.3721
+      },
+      "px": {
+        "x": 96,
+        "y": 503,
+        "w": 545,
+        "h": 381
+      },
+      "aspect": 1.4304,
+      "palette": [
+        {
+          "hex": "#08141e",
+          "coverage": 0.7765
+        },
+        {
+          "hex": "#19d192",
+          "coverage": 0.1238
+        },
+        {
+          "hex": "#082827",
+          "coverage": 0.0623
+        },
+        {
+          "hex": "#263748",
+          "coverage": 0.0248
+        },
+        {
+          "hex": "#2c5d64",
+          "coverage": 0.0126
+        }
+      ],
+      "detail": {
+        "energy": 13.15
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "field-zona",
+      "kind": "control",
+      "note": "glass select row: pin icon, small label Zona, value Luján, chevron",
+      "grid": null,
+      "box": {
+        "x": 0.0794,
+        "y": 0.5166,
+        "w": 0.321,
+        "h": 0.0693
+      },
+      "px": {
+        "x": 122,
+        "y": 529,
+        "w": 493,
+        "h": 71
+      },
+      "aspect": 6.9437,
+      "palette": [
+        {
+          "hex": "#08151c",
+          "coverage": 0.9352
+        },
+        {
+          "hex": "#283849",
+          "coverage": 0.0502
+        },
+        {
+          "hex": "#080929",
+          "coverage": 0.0067
+        },
+        {
+          "hex": "#08e4a2",
+          "coverage": 0.0044
+        },
+        {
+          "hex": "#f6f6f6",
+          "coverage": 0.0036
+        }
+      ],
+      "detail": {
+        "energy": 12.8383
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "field-dia",
+      "kind": "control",
+      "note": "glass select row: calendar icon, small label Día, value Hoy, chevron",
+      "grid": null,
+      "box": {
+        "x": 0.0794,
+        "y": 0.6025,
+        "w": 0.321,
+        "h": 0.0693
+      },
+      "px": {
+        "x": 122,
+        "y": 617,
+        "w": 493,
+        "h": 71
+      },
+      "aspect": 6.9437,
+      "palette": [
+        {
+          "hex": "#08121b",
+          "coverage": 0.9386
+        },
+        {
+          "hex": "#293949",
+          "coverage": 0.0496
+        },
+        {
+          "hex": "#080828",
+          "coverage": 0.0046
+        },
+        {
+          "hex": "#efeff3",
+          "coverage": 0.0036
+        },
+        {
+          "hex": "#088363",
+          "coverage": 0.0036
+        }
+      ],
+      "detail": {
+        "energy": 11.4248
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "field-hora",
+      "kind": "control",
+      "note": "glass select row: clock icon, small label Hora, value Cualquiera, chevron",
+      "grid": null,
+      "box": {
+        "x": 0.0794,
+        "y": 0.6885,
+        "w": 0.321,
+        "h": 0.0703
+      },
+      "px": {
+        "x": 122,
+        "y": 705,
+        "w": 493,
+        "h": 72
+      },
+      "aspect": 6.8472,
+      "palette": [
+        {
+          "hex": "#08111a",
+          "coverage": 0.9226
+        },
+        {
+          "hex": "#293949",
+          "coverage": 0.0537
+        },
+        {
+          "hex": "#080828",
+          "coverage": 0.0098
+        },
+        {
+          "hex": "#616d83",
+          "coverage": 0.007
+        },
+        {
+          "hex": "#f7f7f7",
+          "coverage": 0.007
+        }
+      ],
+      "detail": {
+        "energy": 16.5574
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "cta-buscar",
+      "kind": "control",
+      "note": "full-width solid emerald button with dark text Buscar canchas",
+      "grid": null,
+      "box": {
+        "x": 0.0794,
+        "y": 0.7842,
+        "w": 0.3216,
+        "h": 0.0527
+      },
+      "px": {
+        "x": 122,
+        "y": 803,
+        "w": 494,
+        "h": 54
+      },
+      "aspect": 9.1481,
+      "palette": [
+        {
+          "hex": "#19d192",
+          "coverage": 0.9493
+        },
+        {
+          "hex": "#080d0e",
+          "coverage": 0.0259
+        },
+        {
+          "hex": "#0fa479",
+          "coverage": 0.0099
+        },
+        {
+          "hex": "#085946",
+          "coverage": 0.0089
+        },
+        {
+          "hex": "#083133",
+          "coverage": 0.0061
+        }
+      ],
+      "detail": {
+        "energy": 15.2188
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "nearest-card",
+      "kind": "chrome",
+      "note": "large glass card of the nearest complex",
+      "grid": null,
+      "container": true,
+      "box": {
+        "x": 0.4603,
+        "y": 0.1523,
+        "w": 0.4779,
+        "h": 0.5117
+      },
+      "px": {
+        "x": 707,
+        "y": 156,
+        "w": 734,
+        "h": 524
+      },
+      "aspect": 1.4008,
+      "palette": [
+        {
+          "hex": "#09111c",
+          "coverage": 0.7992
+        },
+        {
+          "hex": "#315730",
+          "coverage": 0.0766
+        },
+        {
+          "hex": "#1f352e",
+          "coverage": 0.0529
+        },
+        {
+          "hex": "#0d1737",
+          "coverage": 0.0378
+        },
+        {
+          "hex": "#53824e",
+          "coverage": 0.0335
+        }
+      ],
+      "detail": {
+        "energy": 25.2065
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "nearest-photo",
+      "kind": "image",
+      "note": "night photo of the nearest complex's synthetic 5-a-side pitch with floodlights (runtime R2 cover photo)",
+      "grid": null,
+      "bleed": true,
+      "box": {
+        "x": 0.4655,
+        "y": 0.1592,
+        "w": 0.4681,
+        "h": 0.2676
+      },
+      "px": {
+        "x": 715,
+        "y": 163,
+        "w": 719,
+        "h": 274
+      },
+      "aspect": 2.6241,
+      "palette": [
+        {
+          "hex": "#0a1320",
+          "coverage": 0.5977
+        },
+        {
+          "hex": "#355d35",
+          "coverage": 0.1761
+        },
+        {
+          "hex": "#203134",
+          "coverage": 0.0989
+        },
+        {
+          "hex": "#0d1939",
+          "coverage": 0.0703
+        },
+        {
+          "hex": "#1b3624",
+          "coverage": 0.057
+        }
+      ],
+      "detail": {
+        "energy": 20.8465
+      },
+      "medium": "raster",
+      "plate": ".impeccable/build/plates/nearest-photo.png",
+      "text": null
+    },
+    {
+      "id": "nearest-name",
+      "kind": "text",
+      "note": "complex name Complejo San Martín in heavy white italic",
+      "grid": null,
+      "box": {
+        "x": 0.4792,
+        "y": 0.4443,
+        "w": 0.276,
+        "h": 0.041
+      },
+      "px": {
+        "x": 736,
+        "y": 455,
+        "w": 424,
+        "h": 42
+      },
+      "aspect": 10.0952,
+      "palette": [
+        {
+          "hex": "#080c18",
+          "coverage": 0.5773
+        },
+        {
+          "hex": "#f7f7f8",
+          "coverage": 0.3672
+        },
+        {
+          "hex": "#515663",
+          "coverage": 0.0228
+        },
+        {
+          "hex": "#c7c8cf",
+          "coverage": 0.0202
+        },
+        {
+          "hex": "#979ba1",
+          "coverage": 0.0124
+        }
+      ],
+      "detail": {
+        "energy": 106.2875
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "nearest-meta",
+      "kind": "text",
+      "note": "pin icon + meta line Luján · a 4,2 km · Fútbol 5 y 7",
+      "grid": null,
+      "box": {
+        "x": 0.4792,
+        "y": 0.498,
+        "w": 0.2161,
+        "h": 0.0273
+      },
+      "px": {
+        "x": 736,
+        "y": 510,
+        "w": 332,
+        "h": 28
+      },
+      "aspect": 11.8571,
+      "palette": [
+        {
+          "hex": "#080a19",
+          "coverage": 0.8767
+        },
+        {
+          "hex": "#a6bad1",
+          "coverage": 0.0497
+        },
+        {
+          "hex": "#697d90",
+          "coverage": 0.0363
+        },
+        {
+          "hex": "#33a98b",
+          "coverage": 0.0191
+        },
+        {
+          "hex": "#40e0b8",
+          "coverage": 0.0182
+        }
+      ],
+      "detail": {
+        "energy": 54.8003
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "nearest-price",
+      "kind": "text",
+      "note": "Turno desde $ 60.000 with the amount in bold white",
+      "grid": null,
+      "box": {
+        "x": 0.4792,
+        "y": 0.54,
+        "w": 0.1471,
+        "h": 0.0273
+      },
+      "px": {
+        "x": 736,
+        "y": 553,
+        "w": 226,
+        "h": 28
+      },
+      "aspect": 8.0714,
+      "palette": [
+        {
+          "hex": "#090c1a",
+          "coverage": 0.7989
+        },
+        {
+          "hex": "#f5f5f5",
+          "coverage": 0.093
+        },
+        {
+          "hex": "#a4b6ce",
+          "coverage": 0.0369
+        },
+        {
+          "hex": "#596a7d",
+          "coverage": 0.0369
+        },
+        {
+          "hex": "#7b89a1",
+          "coverage": 0.0342
+        }
+      ],
+      "detail": {
+        "energy": 65.1512
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "nearest-slots",
+      "kind": "control",
+      "note": "emerald label Libre hoy + four glass time pills with emerald border 19:00 20:00 22:00 23:00",
+      "grid": null,
+      "box": {
+        "x": 0.4792,
+        "y": 0.5918,
+        "w": 0.3724,
+        "h": 0.0469
+      },
+      "px": {
+        "x": 736,
+        "y": 606,
+        "w": 572,
+        "h": 48
+      },
+      "aspect": 11.9167,
+      "palette": [
+        {
+          "hex": "#080a17",
+          "coverage": 0.9407
+        },
+        {
+          "hex": "#09e4ad",
+          "coverage": 0.0215
+        },
+        {
+          "hex": "#182e36",
+          "coverage": 0.0159
+        },
+        {
+          "hex": "#080828",
+          "coverage": 0.011
+        },
+        {
+          "hex": "#08bb8b",
+          "coverage": 0.011
+        }
+      ],
+      "detail": {
+        "energy": 45.9183
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "row1",
+      "kind": "chrome",
+      "note": "slim glass row for the second closest complex",
+      "grid": null,
+      "container": true,
+      "box": {
+        "x": 0.4603,
+        "y": 0.6836,
+        "w": 0.4779,
+        "h": 0.1123
+      },
+      "px": {
+        "x": 707,
+        "y": 700,
+        "w": 734,
+        "h": 115
+      },
+      "aspect": 6.3826,
+      "palette": [
+        {
+          "hex": "#08141d",
+          "coverage": 0.8709
+        },
+        {
+          "hex": "#274854",
+          "coverage": 0.0632
+        },
+        {
+          "hex": "#27472a",
+          "coverage": 0.0243
+        },
+        {
+          "hex": "#3d6634",
+          "coverage": 0.0223
+        },
+        {
+          "hex": "#f7f7f7",
+          "coverage": 0.0193
+        }
+      ],
+      "detail": {
+        "energy": 23.1719
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "row1-thumb",
+      "kind": "image",
+      "note": "square-ish thumbnail night pitch photo (runtime R2 cover)",
+      "grid": null,
+      "bleed": true,
+      "box": {
+        "x": 0.4746,
+        "y": 0.6953,
+        "w": 0.0846,
+        "h": 0.0898
+      },
+      "px": {
+        "x": 729,
+        "y": 712,
+        "w": 130,
+        "h": 92
+      },
+      "aspect": 1.413,
+      "palette": [
+        {
+          "hex": "#09101d",
+          "coverage": 0.3666
+        },
+        {
+          "hex": "#29482c",
+          "coverage": 0.2117
+        },
+        {
+          "hex": "#21303a",
+          "coverage": 0.1855
+        },
+        {
+          "hex": "#3b6333",
+          "coverage": 0.1619
+        },
+        {
+          "hex": "#5b8a48",
+          "coverage": 0.0744
+        }
+      ],
+      "detail": {
+        "energy": 12.7427
+      },
+      "medium": "raster",
+      "plate": ".impeccable/build/plates/row1-thumb.png",
+      "text": null
+    },
+    {
+      "id": "row1-text",
+      "kind": "text",
+      "note": "name La Cortada F5 in heavy white italic + pin a 7,8 km",
+      "grid": null,
+      "box": {
+        "x": 0.5755,
+        "y": 0.709,
+        "w": 0.1237,
+        "h": 0.0586
+      },
+      "px": {
+        "x": 884,
+        "y": 726,
+        "w": 190,
+        "h": 60
+      },
+      "aspect": 3.1667,
+      "palette": [
+        {
+          "hex": "#080e1b",
+          "coverage": 0.7877
+        },
+        {
+          "hex": "#f5f5f5",
+          "coverage": 0.141
+        },
+        {
+          "hex": "#a1b1cb",
+          "coverage": 0.0248
+        },
+        {
+          "hex": "#7b8997",
+          "coverage": 0.024
+        },
+        {
+          "hex": "#49515e",
+          "coverage": 0.0224
+        }
+      ],
+      "detail": {
+        "energy": 39.9391
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "row1-slot",
+      "kind": "text",
+      "note": "emerald Libre over white 21:00, with a thin divider at left",
+      "grid": null,
+      "box": {
+        "x": 0.8242,
+        "y": 0.7158,
+        "w": 0.0417,
+        "h": 0.0508
+      },
+      "px": {
+        "x": 1266,
+        "y": 733,
+        "w": 64,
+        "h": 52
+      },
+      "aspect": 1.2308,
+      "palette": [
+        {
+          "hex": "#09151d",
+          "coverage": 0.8187
+        },
+        {
+          "hex": "#f3f3f3",
+          "coverage": 0.0797
+        },
+        {
+          "hex": "#08e4a7",
+          "coverage": 0.0412
+        },
+        {
+          "hex": "#5e6976",
+          "coverage": 0.0357
+        },
+        {
+          "hex": "#9da1ac",
+          "coverage": 0.0247
+        }
+      ],
+      "detail": {
+        "energy": 18.6912
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "row2",
+      "kind": "chrome",
+      "note": "slim glass row for the third closest complex",
+      "grid": null,
+      "container": true,
+      "box": {
+        "x": 0.4603,
+        "y": 0.8115,
+        "w": 0.4779,
+        "h": 0.1123
+      },
+      "px": {
+        "x": 707,
+        "y": 831,
+        "w": 734,
+        "h": 115
+      },
+      "aspect": 6.3826,
+      "palette": [
+        {
+          "hex": "#09151d",
+          "coverage": 0.8668
+        },
+        {
+          "hex": "#23424d",
+          "coverage": 0.0613
+        },
+        {
+          "hex": "#3b563a",
+          "coverage": 0.0324
+        },
+        {
+          "hex": "#f6f6f7",
+          "coverage": 0.0257
+        },
+        {
+          "hex": "#5e7f52",
+          "coverage": 0.0138
+        }
+      ],
+      "detail": {
+        "energy": 23.2347
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "row2-thumb",
+      "kind": "image",
+      "note": "square-ish thumbnail night pitch photo (runtime R2 cover)",
+      "grid": null,
+      "bleed": true,
+      "box": {
+        "x": 0.4746,
+        "y": 0.8232,
+        "w": 0.0846,
+        "h": 0.0898
+      },
+      "px": {
+        "x": 729,
+        "y": 843,
+        "w": 130,
+        "h": 92
+      },
+      "aspect": 1.413,
+      "palette": [
+        {
+          "hex": "#0f1626",
+          "coverage": 0.4393
+        },
+        {
+          "hex": "#2a3b33",
+          "coverage": 0.1975
+        },
+        {
+          "hex": "#3d5a3b",
+          "coverage": 0.1918
+        },
+        {
+          "hex": "#5e7f52",
+          "coverage": 0.0975
+        },
+        {
+          "hex": "#2f384f",
+          "coverage": 0.0738
+        }
+      ],
+      "detail": {
+        "energy": 12.087
+      },
+      "medium": "raster",
+      "plate": ".impeccable/build/plates/row2-thumb.png",
+      "text": null
+    },
+    {
+      "id": "row2-text",
+      "kind": "text",
+      "note": "name Club Estación in heavy white italic + pin a 11 km",
+      "grid": null,
+      "box": {
+        "x": 0.5755,
+        "y": 0.8369,
+        "w": 0.1237,
+        "h": 0.0605
+      },
+      "px": {
+        "x": 884,
+        "y": 857,
+        "w": 190,
+        "h": 62
+      },
+      "aspect": 3.0645,
+      "palette": [
+        {
+          "hex": "#08101a",
+          "coverage": 0.7728
+        },
+        {
+          "hex": "#f6f7f7",
+          "coverage": 0.1504
+        },
+        {
+          "hex": "#717b87",
+          "coverage": 0.0269
+        },
+        {
+          "hex": "#3d4453",
+          "coverage": 0.0269
+        },
+        {
+          "hex": "#d1d9e5",
+          "coverage": 0.023
+        }
+      ],
+      "detail": {
+        "energy": 42.1635
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    },
+    {
+      "id": "row2-slot",
+      "kind": "text",
+      "note": "emerald Libre over white 21:00, with a thin divider at left",
+      "grid": null,
+      "box": {
+        "x": 0.8242,
+        "y": 0.8438,
+        "w": 0.0417,
+        "h": 0.0508
+      },
+      "px": {
+        "x": 1266,
+        "y": 864,
+        "w": 64,
+        "h": 52
+      },
+      "aspect": 1.2308,
+      "palette": [
+        {
+          "hex": "#09151c",
+          "coverage": 0.8366
+        },
+        {
+          "hex": "#f4f4f7",
+          "coverage": 0.0704
+        },
+        {
+          "hex": "#bfc3cd",
+          "coverage": 0.0394
+        },
+        {
+          "hex": "#08e0ad",
+          "coverage": 0.0282
+        },
+        {
+          "hex": "#2f3644",
+          "coverage": 0.0254
+        }
+      ],
+      "detail": {
+        "energy": 18.6518
+      },
+      "medium": "semantic",
+      "plate": null,
+      "text": null
+    }
+  ]
+}

@@ -1,0 +1,887 @@
+{
+  "tool": "comp-diff",
+  "version": 1,
+  "createdAt": "2026-09-27T19:45:14.550Z",
+  "label": "hero-repro",
+  "comp": ".impeccable/mocks/hero-b.png",
+  "build": ".impeccable/review/hero-repro.png",
+  "spec": ".impeccable/build/spec.json",
+  "compSize": "1536x1024",
+  "buildSize": "1536x1024",
+  "align": "top",
+  "overall": 0.7498,
+  "verdict": "drift",
+  "scores": {
+    "overall": 0.7498,
+    "structure": 0.6486,
+    "color": 0.7904,
+    "colorIntersection": 0.6406,
+    "paletteMatch": 0.871,
+    "detail": 0.7007,
+    "detailRaw": 0.7371,
+    "detailAdded": 0.0729,
+    "bands": 1
+  },
+  "palette": {
+    "comp": [
+      {
+        "hex": "#08111a",
+        "coverage": 0.8744
+      },
+      {
+        "hex": "#f7f7f7",
+        "coverage": 0.0337
+      },
+      {
+        "hex": "#112d2b",
+        "coverage": 0.0318
+      },
+      {
+        "hex": "#20d194",
+        "coverage": 0.0218
+      },
+      {
+        "hex": "#305531",
+        "coverage": 0.02
+      },
+      {
+        "hex": "#25394a",
+        "coverage": 0.0183
+      }
+    ],
+    "build": [
+      {
+        "hex": "#090d1a",
+        "coverage": 0.9027
+      },
+      {
+        "hex": "#0f2b28",
+        "coverage": 0.0318
+      },
+      {
+        "hex": "#f7f7f7",
+        "coverage": 0.024
+      },
+      {
+        "hex": "#1fba7c",
+        "coverage": 0.0187
+      },
+      {
+        "hex": "#2a4e2b",
+        "coverage": 0.0114
+      },
+      {
+        "hex": "#5b7c46",
+        "coverage": 0.0113
+      }
+    ]
+  },
+  "regions": [
+    {
+      "id": "nav",
+      "x": 0.0625,
+      "y": 0.0195,
+      "w": 0.875,
+      "h": 0.0684,
+      "kind": "chrome",
+      "score": {
+        "overall": 0.6167,
+        "structure": 0.828,
+        "color": 0.684,
+        "colorIntersection": 0.4422,
+        "paletteMatch": 0.8142,
+        "detail": 0.4235,
+        "detailRaw": 0.46,
+        "detailAdded": 0.0729,
+        "bands": 0.3333
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 31,
+          "y": 0,
+          "w": 1294,
+          "h": 70
+        },
+        "build": {
+          "x": 80,
+          "y": 11,
+          "w": 1197,
+          "h": 44
+        }
+      }
+    },
+    {
+      "id": "kicker",
+      "x": 0.0612,
+      "y": 0.1582,
+      "w": 0.1725,
+      "h": 0.0254,
+      "kind": "text",
+      "score": {
+        "overall": 0.4943,
+        "structure": 0.5774,
+        "color": 0.6587,
+        "colorIntersection": 0.5448,
+        "paletteMatch": 0.72,
+        "detail": 0.006,
+        "detailRaw": 0.006,
+        "detailAdded": 0,
+        "bands": 0.4
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 4,
+          "y": 12,
+          "w": 257,
+          "h": 22
+        },
+        "build": null
+      }
+    },
+    {
+      "id": "headline",
+      "x": 0.0612,
+      "y": 0.1953,
+      "w": 0.362,
+      "h": 0.2324,
+      "kind": "text",
+      "score": {
+        "overall": 0.5125,
+        "structure": 0.2304,
+        "color": 0.8556,
+        "colorIntersection": 0.7256,
+        "paletteMatch": 0.9256,
+        "detail": 0.6359,
+        "detailRaw": 0.6411,
+        "detailAdded": 0.0104,
+        "bands": 0.88
+      },
+      "verdict": "contradicted",
+      "inkBox": {
+        "comp": {
+          "x": 1,
+          "y": 4,
+          "w": 551,
+          "h": 229
+        },
+        "build": {
+          "x": 58,
+          "y": 21,
+          "w": 484,
+          "h": 204
+        }
+      }
+    },
+    {
+      "id": "subtitle",
+      "x": 0.0612,
+      "y": 0.4443,
+      "w": 0.3529,
+      "h": 0.0293,
+      "kind": "text",
+      "score": {
+        "overall": 0.7301,
+        "structure": 0.7319,
+        "color": 0.761,
+        "colorIntersection": 0.6219,
+        "paletteMatch": 0.8359,
+        "detail": 0.6928,
+        "detailRaw": 0.7084,
+        "detailAdded": 0.0313,
+        "bands": 0.7
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 3,
+          "y": 15,
+          "w": 536,
+          "h": 20
+        },
+        "build": {
+          "x": 55,
+          "y": 15,
+          "w": 481,
+          "h": 18
+        }
+      }
+    },
+    {
+      "id": "search-card",
+      "x": 0.0625,
+      "y": 0.4912,
+      "w": 0.3548,
+      "h": 0.3721,
+      "kind": "chrome",
+      "score": {
+        "overall": 0.6516,
+        "structure": 0.7241,
+        "color": 0.6915,
+        "colorIntersection": 0.5268,
+        "paletteMatch": 0.7801,
+        "detail": 0.4613,
+        "detailRaw": 0.4925,
+        "detailAdded": 0.0625,
+        "bands": 0.7333
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 0,
+          "w": 545,
+          "h": 381
+        },
+        "build": {
+          "x": 79,
+          "y": 49,
+          "w": 448,
+          "h": 305
+        }
+      }
+    },
+    {
+      "id": "field-zona",
+      "x": 0.0794,
+      "y": 0.5166,
+      "w": 0.321,
+      "h": 0.0693,
+      "kind": "control",
+      "score": {
+        "overall": 0.5714,
+        "structure": 0.7693,
+        "color": 0.5107,
+        "colorIntersection": 0.2128,
+        "paletteMatch": 0.6711,
+        "detail": 0.2321,
+        "detailRaw": 0.2894,
+        "detailAdded": 0.1146,
+        "bands": 0.4
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 16,
+          "w": 477,
+          "h": 55
+        },
+        "build": {
+          "x": 72,
+          "y": 23,
+          "w": 409,
+          "h": 42
+        }
+      }
+    },
+    {
+      "id": "field-dia",
+      "x": 0.0794,
+      "y": 0.6025,
+      "w": 0.321,
+      "h": 0.0693,
+      "kind": "control",
+      "score": {
+        "overall": 0.6329,
+        "structure": 0.7836,
+        "color": 0.5642,
+        "colorIntersection": 0.2708,
+        "paletteMatch": 0.7222,
+        "detail": 0.4141,
+        "detailRaw": 0.4297,
+        "detailAdded": 0.0313,
+        "bands": 0.4
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 15,
+          "w": 485,
+          "h": 56
+        },
+        "build": {
+          "x": 71,
+          "y": 21,
+          "w": 410,
+          "h": 41
+        }
+      }
+    },
+    {
+      "id": "field-hora",
+      "x": 0.0794,
+      "y": 0.6885,
+      "w": 0.321,
+      "h": 0.0703,
+      "kind": "control",
+      "score": {
+        "overall": 0.6264,
+        "structure": 0.7531,
+        "color": 0.575,
+        "colorIntersection": 0.2975,
+        "paletteMatch": 0.7244,
+        "detail": 0.4315,
+        "detailRaw": 0.4627,
+        "detailAdded": 0.0625,
+        "bands": 0.4
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 3,
+          "w": 476,
+          "h": 67
+        },
+        "build": {
+          "x": 70,
+          "y": 19,
+          "w": 411,
+          "h": 41
+        }
+      }
+    },
+    {
+      "id": "cta-buscar",
+      "x": 0.0794,
+      "y": 0.7842,
+      "w": 0.3216,
+      "h": 0.0527,
+      "kind": "control",
+      "score": {
+        "overall": 0.6087,
+        "structure": 0.8458,
+        "color": 0.4128,
+        "colorIntersection": 0.0166,
+        "paletteMatch": 0.6261,
+        "detail": 0.4179,
+        "detailRaw": 0.47,
+        "detailAdded": 0.1042,
+        "bands": 0.7
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 0,
+          "w": 494,
+          "h": 54
+        },
+        "build": {
+          "x": 0,
+          "y": 0,
+          "w": 494,
+          "h": 54
+        }
+      }
+    },
+    {
+      "id": "nearest-card",
+      "x": 0.4603,
+      "y": 0.1523,
+      "w": 0.4779,
+      "h": 0.5117,
+      "kind": "chrome",
+      "score": {
+        "overall": 0.6259,
+        "structure": 0.4568,
+        "color": 0.7896,
+        "colorIntersection": 0.6657,
+        "paletteMatch": 0.8562,
+        "detail": 0.6335,
+        "detailRaw": 0.6803,
+        "detailAdded": 0.0938,
+        "bands": 0.7354
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 0,
+          "w": 734,
+          "h": 524
+        },
+        "build": {
+          "x": 12,
+          "y": 6,
+          "w": 659,
+          "h": 478
+        }
+      }
+    },
+    {
+      "id": "nearest-photo",
+      "x": 0.4655,
+      "y": 0.1592,
+      "w": 0.4681,
+      "h": 0.2676,
+      "kind": "image",
+      "score": {
+        "overall": 0.4241,
+        "structure": 0.3792,
+        "color": 0.5975,
+        "colorIntersection": 0.4705,
+        "paletteMatch": 0.6659,
+        "detail": 0.4196,
+        "detailRaw": 0.5238,
+        "detailAdded": 0.2083,
+        "bands": 0
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 24,
+          "w": 719,
+          "h": 250
+        },
+        "build": {
+          "x": 4,
+          "y": 0,
+          "w": 659,
+          "h": 273
+        }
+      }
+    },
+    {
+      "id": "nearest-name",
+      "x": 0.4792,
+      "y": 0.4443,
+      "w": 0.276,
+      "h": 0.041,
+      "kind": "text",
+      "score": {
+        "overall": 0.8057,
+        "structure": 0.7461,
+        "color": 0.8094,
+        "colorIntersection": 0.659,
+        "paletteMatch": 0.8904,
+        "detail": 0.8688,
+        "detailRaw": 0.874,
+        "detailAdded": 0.0104,
+        "bands": 1
+      },
+      "verdict": "match",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 8,
+          "w": 422,
+          "h": 39
+        },
+        "build": {
+          "x": 7,
+          "y": 9,
+          "w": 417,
+          "h": 38
+        }
+      }
+    },
+    {
+      "id": "nearest-meta",
+      "x": 0.4792,
+      "y": 0.498,
+      "w": 0.2161,
+      "h": 0.0273,
+      "kind": "text",
+      "score": {
+        "overall": 0.7139,
+        "structure": 0.6771,
+        "color": 0.8699,
+        "colorIntersection": 0.7555,
+        "paletteMatch": 0.9315,
+        "detail": 0.4526,
+        "detailRaw": 0.4943,
+        "detailAdded": 0.0833,
+        "bands": 0.9
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 2,
+          "y": 12,
+          "w": 327,
+          "h": 23
+        },
+        "build": {
+          "x": 5,
+          "y": 15,
+          "w": 271,
+          "h": 17
+        }
+      }
+    },
+    {
+      "id": "nearest-price",
+      "x": 0.4792,
+      "y": 0.54,
+      "w": 0.1471,
+      "h": 0.0273,
+      "kind": "text",
+      "score": {
+        "overall": 0.5944,
+        "structure": 0.641,
+        "color": 0.8477,
+        "colorIntersection": 0.7389,
+        "paletteMatch": 0.9063,
+        "detail": 0.2133,
+        "detailRaw": 0.3122,
+        "detailAdded": 0.1979,
+        "bands": 0.3
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 1,
+          "y": 13,
+          "w": 223,
+          "h": 20
+        },
+        "build": {
+          "x": 3,
+          "y": 5,
+          "w": 202,
+          "h": 18
+        }
+      }
+    },
+    {
+      "id": "nearest-slots",
+      "x": 0.4792,
+      "y": 0.5918,
+      "w": 0.3724,
+      "h": 0.0469,
+      "kind": "control",
+      "score": {
+        "overall": 0.5819,
+        "structure": 0.5956,
+        "color": 0.7715,
+        "colorIntersection": 0.6879,
+        "paletteMatch": 0.8165,
+        "detail": 0.2191,
+        "detailRaw": 0.3025,
+        "detailAdded": 0.1667,
+        "bands": 0.3733
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 1,
+          "y": 1,
+          "w": 570,
+          "h": 47
+        },
+        "build": {
+          "x": 4,
+          "y": 0,
+          "w": 548,
+          "h": 34
+        }
+      }
+    },
+    {
+      "id": "row1",
+      "x": 0.4603,
+      "y": 0.6836,
+      "w": 0.4779,
+      "h": 0.1123,
+      "kind": "chrome",
+      "score": {
+        "overall": 0.5848,
+        "structure": 0.6398,
+        "color": 0.7853,
+        "colorIntersection": 0.6901,
+        "paletteMatch": 0.8365,
+        "detail": 0.4353,
+        "detailRaw": 0.5031,
+        "detailAdded": 0.1354,
+        "bands": 0.3714
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 1,
+          "y": 0,
+          "w": 733,
+          "h": 115
+        },
+        "build": {
+          "x": 26,
+          "y": 3,
+          "w": 569,
+          "h": 88
+        }
+      }
+    },
+    {
+      "id": "row1-thumb",
+      "x": 0.4746,
+      "y": 0.6953,
+      "w": 0.0846,
+      "h": 0.0898,
+      "kind": "image",
+      "score": {
+        "overall": 0.41,
+        "structure": 0.3789,
+        "color": 0.5574,
+        "colorIntersection": 0.4264,
+        "paletteMatch": 0.6279,
+        "detail": 0.3725,
+        "detailRaw": 0.5079,
+        "detailAdded": 0.2708,
+        "bands": 0.35
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 13,
+          "w": 130,
+          "h": 79
+        },
+        "build": {
+          "x": 4,
+          "y": 0,
+          "w": 126,
+          "h": 77
+        }
+      }
+    },
+    {
+      "id": "row1-text",
+      "x": 0.5755,
+      "y": 0.709,
+      "w": 0.1237,
+      "h": 0.0586,
+      "kind": "text",
+      "score": {
+        "overall": 0.6572,
+        "structure": 0.6427,
+        "color": 0.7902,
+        "colorIntersection": 0.6182,
+        "paletteMatch": 0.8828,
+        "detail": 0.4889,
+        "detailRaw": 0.567,
+        "detailAdded": 0.1563,
+        "bands": 0.65
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 3,
+          "w": 187,
+          "h": 57
+        },
+        "build": {
+          "x": 4,
+          "y": 0,
+          "w": 186,
+          "h": 54
+        }
+      }
+    },
+    {
+      "id": "row1-slot",
+      "x": 0.8242,
+      "y": 0.7158,
+      "w": 0.0417,
+      "h": 0.0508,
+      "kind": "text",
+      "score": {
+        "overall": 0.3706,
+        "structure": 0.3883,
+        "color": 0.5368,
+        "colorIntersection": 0.2921,
+        "paletteMatch": 0.6686,
+        "detail": 0.0815,
+        "detailRaw": 0.1544,
+        "detailAdded": 0.1458,
+        "bands": 0.3
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 6,
+          "y": 5,
+          "w": 55,
+          "h": 41
+        },
+        "build": {
+          "x": 0,
+          "y": 0,
+          "w": 36,
+          "h": 37
+        }
+      }
+    },
+    {
+      "id": "row2",
+      "x": 0.4603,
+      "y": 0.8115,
+      "w": 0.4779,
+      "h": 0.1123,
+      "kind": "chrome",
+      "score": {
+        "overall": 0.6008,
+        "structure": 0.6513,
+        "color": 0.6649,
+        "colorIntersection": 0.5033,
+        "paletteMatch": 0.7519,
+        "detail": 0.5638,
+        "detailRaw": 0.6055,
+        "detailAdded": 0.0833,
+        "bands": 0.4381
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 1,
+          "y": 0,
+          "w": 733,
+          "h": 115
+        },
+        "build": {
+          "x": 43,
+          "y": 32,
+          "w": 552,
+          "h": 59
+        }
+      }
+    },
+    {
+      "id": "row2-thumb",
+      "x": 0.4746,
+      "y": 0.8232,
+      "w": 0.0846,
+      "h": 0.0898,
+      "kind": "image",
+      "score": {
+        "overall": 0.3057,
+        "structure": 0.3133,
+        "color": 0.3411,
+        "colorIntersection": 0.1672,
+        "paletteMatch": 0.4347,
+        "detail": 0.2783,
+        "detailRaw": 0.3877,
+        "detailAdded": 0.2188,
+        "bands": 0.4
+      },
+      "verdict": "missing",
+      "inkBox": {
+        "comp": {
+          "x": 0,
+          "y": 0,
+          "w": 130,
+          "h": 92
+        },
+        "build": {
+          "x": 21,
+          "y": 24,
+          "w": 96,
+          "h": 57
+        }
+      }
+    },
+    {
+      "id": "row2-text",
+      "x": 0.5755,
+      "y": 0.8369,
+      "w": 0.1237,
+      "h": 0.0605,
+      "kind": "text",
+      "score": {
+        "overall": 0.6847,
+        "structure": 0.6637,
+        "color": 0.6974,
+        "colorIntersection": 0.4788,
+        "paletteMatch": 0.8152,
+        "detail": 0.6476,
+        "detailRaw": 0.7205,
+        "detailAdded": 0.1458,
+        "bands": 0.8136
+      },
+      "verdict": "drift",
+      "inkBox": {
+        "comp": {
+          "x": 1,
+          "y": 3,
+          "w": 185,
+          "h": 57
+        },
+        "build": {
+          "x": 5,
+          "y": 6,
+          "w": 185,
+          "h": 55
+        }
+      }
+    },
+    {
+      "id": "row2-slot",
+      "x": 0.8242,
+      "y": 0.8438,
+      "w": 0.0417,
+      "h": 0.0508,
+      "kind": "text",
+      "score": {
+        "overall": 0.4425,
+        "structure": 0.4208,
+        "color": 0.4962,
+        "colorIntersection": 0.1442,
+        "paletteMatch": 0.6857,
+        "detail": 0.254,
+        "detailRaw": 0.2957,
+        "detailAdded": 0.0833,
+        "bands": 0.7
+      },
+      "verdict": "contradicted",
+      "inkBox": {
+        "comp": {
+          "x": 6,
+          "y": 5,
+          "w": 55,
+          "h": 41
+        },
+        "build": {
+          "x": 0,
+          "y": 5,
+          "w": 36,
+          "h": 40
+        }
+      }
+    }
+  ],
+  "files": {
+    "sideBySide": "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/side-by-side.png",
+    "heatmap": "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/heatmap.png",
+    "regionFiles": [
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/nav.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/kicker.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/headline.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/subtitle.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/search-card.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/field-zona.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/field-dia.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/field-hora.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/cta-buscar.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/nearest-card.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/nearest-photo.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/nearest-name.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/nearest-meta.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/nearest-price.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/nearest-slots.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/row1.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/row1-thumb.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/row1-text.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/row1-slot.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/row2.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/row2-thumb.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/row2-text.png",
+      "C:/Users/Lazar/Documents/github/TurnoGol/.impeccable/review/diff/final/regions/row2-slot.png"
+    ]
+  }
+}

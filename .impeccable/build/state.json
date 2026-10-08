@@ -1,0 +1,126 @@
+{
+  "tool": "build-phase",
+  "version": 2,
+  "startedAt": "2026-09-27T18:46:30.459Z",
+  "comp": ".impeccable/mocks/hero-b.png",
+  "direction": "0583d9a8",
+  "breakpoint": "1536x1024",
+  "artifact": null,
+  "phase": "hero",
+  "phases": {
+    "comps": {
+      "status": "closed",
+      "openedAt": "2026-09-27T18:46:30.459Z",
+      "closedAt": "2026-09-27T19:02:21.736Z",
+      "attempts": 1,
+      "notes": [],
+      "gate": {
+        "ok": true,
+        "reasons": [],
+        "summary": "3 comps, 1 approved",
+        "approved": ".impeccable/mocks/hero-b.png",
+        "at": "2026-09-27T19:02:21.736Z"
+      },
+      "forced": null
+    },
+    "spec": {
+      "status": "closed",
+      "openedAt": "2026-09-27T19:02:21.771Z",
+      "closedAt": "2026-09-27T19:16:36.852Z",
+      "attempts": 2,
+      "notes": [],
+      "gate": {
+        "ok": true,
+        "reasons": [],
+        "summary": "23 regions, 3 plates, 10 text regions measured",
+        "at": "2026-09-27T19:16:36.852Z"
+      },
+      "forced": null
+    },
+    "plates": {
+      "status": "closed",
+      "openedAt": "2026-09-27T19:16:36.852Z",
+      "closedAt": "2026-09-27T19:17:33.908Z",
+      "attempts": 2,
+      "notes": [],
+      "gate": {
+        "ok": true,
+        "reasons": [],
+        "summary": "3/3 plates",
+        "at": "2026-09-27T19:17:33.908Z"
+      },
+      "forced": null
+    },
+    "hero": {
+      "status": "open",
+      "openedAt": "2026-09-27T19:17:33.908Z",
+      "closedAt": null,
+      "attempts": 3,
+      "notes": [],
+      "gate": {
+        "ok": false,
+        "reasons": [
+          "plate .impeccable/build/plates/nearest-photo.png (region nearest-photo) is not referenced by any source file this scan can see: the page draws that region in code while the produced plate sits unused. Place the plate (an <img>, a background-image, or an inlined data URI named for it) and recapture. If the plate IS referenced from a file the scan missed (your page is not index.html, or the reference lives in a stylesheet outside the project walk), re-run with --artifact <your page>: its linked stylesheets are followed exactly.",
+          "plate .impeccable/build/plates/row1-thumb.png (region row1-thumb) is not referenced by any source file this scan can see: the page draws that region in code while the produced plate sits unused. Place the plate (an <img>, a background-image, or an inlined data URI named for it) and recapture. If the plate IS referenced from a file the scan missed (your page is not index.html, or the reference lives in a stylesheet outside the project walk), re-run with --artifact <your page>: its linked stylesheets are followed exactly.",
+          "plate .impeccable/build/plates/row2-thumb.png (region row2-thumb) is not referenced by any source file this scan can see: the page draws that region in code while the produced plate sits unused. Place the plate (an <img>, a background-image, or an inlined data URI named for it) and recapture. If the plate IS referenced from a file the scan missed (your page is not index.html, or the reference lives in a stylesheet outside the project walk), re-run with --artifact <your page>: its linked stylesheets are followed exactly."
+        ],
+        "at": "2026-09-27T19:47:26.152Z"
+      },
+      "forced": null
+    },
+    "sections": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "motion": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "responsive": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    },
+    "review": {
+      "status": "pending",
+      "openedAt": null,
+      "closedAt": null,
+      "attempts": 0,
+      "notes": [],
+      "gate": null,
+      "forced": null
+    }
+  },
+  "finish": null,
+  "plates": {
+    "nearest-photo": {
+      "status": "ok",
+      "score": 0.4739,
+      "size": "1440x549"
+    },
+    "row1-thumb": {
+      "status": "ok",
+      "score": 0.5914,
+      "size": "390x276"
+    },
+    "row2-thumb": {
+      "status": "ok",
+      "score": 0.5987,
+      "size": "390x276"
+    }
+  }
+}

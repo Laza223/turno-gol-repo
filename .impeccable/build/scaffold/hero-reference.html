@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Scaffold reference: hero-b.png</title>
+  <link rel="stylesheet" href="layout.css">
+  <style>html,body{margin:0}body{background:#08111a}.region{box-sizing:border-box}.region.text p{white-space:pre-wrap}</style>
+</head>
+<body>
+<!-- Reference only. Every region sits at its measured box inside a comp-aspect frame. Take the boxes (layout.css), keep your own semantic structure. -->
+<main class="comp-frame" style="max-width:1536px">
+  <div class="r-nav region chrome" data-region="nav"><!-- existing floating glass SiteNav: TURNOGOL wordmark, Explorar, Para complejos, Ingresar pill --></div>
+  <div class="r-kicker region text" data-region="kicker"><!-- emerald map-pin icon + uppercase label CANCHAS CERCA DE VOS --><p style="line-height:1.05;margin:0">kicker</p></div>
+  <div class="r-headline region text" data-region="headline"><!-- three-line heavy italic headline Tu próxima cancha está a 4 km. with 'a 4 km.' in emerald --><p style="line-height:1.05;margin:0">headline</p></div>
+  <div class="r-subtitle region text" data-region="subtitle"><!-- muted one-line subtitle Mirá los turnos libres de hoy y reservá sin llamar a nadie. --><p style="line-height:1.05;margin:0">subtitle</p></div>
+  <div class="r-search-card region chrome" data-region="search-card"><!-- glass card holding the three stacked search fields and the Buscar canchas button --></div>
+  <div class="r-field-zona region control" data-region="field-zona"><!-- glass select row: pin icon, small label Zona, value Luján, chevron: rebuild the control's chrome from the crop (comp-spec.mjs --crop field-zona); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-field-dia region control" data-region="field-dia"><!-- glass select row: calendar icon, small label Día, value Hoy, chevron: rebuild the control's chrome from the crop (comp-spec.mjs --crop field-dia); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-field-hora region control" data-region="field-hora"><!-- glass select row: clock icon, small label Hora, value Cualquiera, chevron: rebuild the control's chrome from the crop (comp-spec.mjs --crop field-hora); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-cta-buscar region control" data-region="cta-buscar"><!-- full-width solid emerald button with dark text Buscar canchas: rebuild the control's chrome from the crop (comp-spec.mjs --crop cta-buscar); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-nearest-card region chrome" data-region="nearest-card"><!-- large glass card of the nearest complex --></div>
+  <figure class="r-nearest-photo region plate" data-region="nearest-photo"><img src="../plates/nearest-photo.png" alt="" style="width:100%;height:100%;object-fit:contain;object-position:center"></figure>
+  <div class="r-nearest-name region text" data-region="nearest-name"><!-- complex name Complejo San Martín in heavy white italic --><p style="line-height:1.05;margin:0">nearest-name</p></div>
+  <div class="r-nearest-meta region text" data-region="nearest-meta"><!-- pin icon + meta line Luján · a 4,2 km · Fútbol 5 y 7 --><p style="line-height:1.05;margin:0">nearest-meta</p></div>
+  <div class="r-nearest-price region text" data-region="nearest-price"><!-- Turno desde $ 60.000 with the amount in bold white --><p style="line-height:1.05;margin:0">nearest-price</p></div>
+  <div class="r-nearest-slots region control" data-region="nearest-slots"><!-- emerald label Libre hoy + four glass time pills with emerald border 19:00 20:00 22:00 23:00: rebuild the control's chrome from the crop (comp-spec.mjs --crop nearest-slots); its ink box, border, fill, radius, and label size are the comp's --></div>
+  <div class="r-row1 region chrome" data-region="row1"><!-- slim glass row for the second closest complex --></div>
+  <figure class="r-row1-thumb region plate" data-region="row1-thumb"><img src="../plates/row1-thumb.png" alt="" style="width:100%;height:100%;object-fit:contain;object-position:center"></figure>
+  <div class="r-row1-text region text" data-region="row1-text"><!-- name La Cortada F5 in heavy white italic + pin a 7,8 km --><p style="line-height:1.05;margin:0">row1-text</p></div>
+  <div class="r-row1-slot region text" data-region="row1-slot"><!-- emerald Libre over white 21:00, with a thin divider at left --><p style="line-height:1.05;margin:0">row1-slot</p></div>
+  <div class="r-row2 region chrome" data-region="row2"><!-- slim glass row for the third closest complex --></div>
+  <figure class="r-row2-thumb region plate" data-region="row2-thumb"><img src="../plates/row2-thumb.png" alt="" style="width:100%;height:100%;object-fit:contain;object-position:center"></figure>
+  <div class="r-row2-text region text" data-region="row2-text"><!-- name Club Estación in heavy white italic + pin a 11 km --><p style="line-height:1.05;margin:0">row2-text</p></div>
+  <div class="r-row2-slot region text" data-region="row2-slot"><!-- emerald Libre over white 21:00, with a thin divider at left --><p style="line-height:1.05;margin:0">row2-slot</p></div>
+</main>
+</body>
+</html>

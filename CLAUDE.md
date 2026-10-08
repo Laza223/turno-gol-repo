@@ -111,13 +111,13 @@ Cuando más de una skill matchea, **esta tabla decide**. Evidencia y racional: `
 | Tarea no trivial — SIEMPRE primero | `protocolo-orquestacion` |
 | Feature nuevo | `entrega-feature` |
 | Fixes de una lista de hallazgos | `protocolo-fixes-general` |
-| Revisar PR / diff | `revision-pr` — su 1ra pasada mecánica es el `/code-review` del harness (insumo, no veredicto) |
-| Verificar implementación propia ya hecha | `verificacion-fresca` (agente `sonnet-adversarial-reviewer`, nunca la misma conversación) |
-| Verificar flujo de UI corriendo la app | `verificacion-ux` (agente `sonnet-ux-verifier`) — no usar `qa` / `qa-only`: commitean por fix |
-| Diseñar qué testear | `estrategia-tests` (agente `sonnet-test-designer`) |
+| Revisar PR / diff | agente `sonnet-adversarial-reviewer` — su 1ra pasada mecánica es el `/code-review` del harness (insumo, no veredicto) |
+| Verificar implementación propia ya hecha | agente `sonnet-adversarial-reviewer` (nunca la misma conversación) |
+| Verificar flujo de UI corriendo la app | `verificacion-ux` (agente `sonnet-ux-verifier`) |
+| Diseñar qué testear | agente `sonnet-test-designer` |
 | Correr / arreglar tests | `protocolo-testing` (repo) |
 | Tocar DB/Drizzle/RLS/pg-boss/MP/Server Actions | `convenciones-stack` (repo) + `supabase-postgres-best-practices` si hay SQL |
-| Cerrar esfuerzo / release (GO/NO-GO) | `cierre-release` (agente `sonnet-release-verifier`) |
+| Cerrar esfuerzo / release (GO/NO-GO) | agente `sonnet-release-verifier` |
 | Decisión de arquitectura | `decision-arquitectura` (agente `architecture-decision-reviewer`) |
 | Migración de schema / dependencia | `migracion-segura` + `convenciones-stack` |
 | Webhook / OAuth / API de terceros | `integracion-externa` |
@@ -126,12 +126,10 @@ Cuando más de una skill matchea, **esta tabla decide**. Evidencia y racional: `
 | Escribir commit | convención del repo (`convenciones-trabajo`) |
 | ¿Qué sigue? / arranque del día | `donde-estoy` |
 | Handoff / límite de contexto | `compresion-contexto` |
-| Cierre multi-sesión con aprendizajes | `retrospectiva` |
-| Gotcha nuevo descubierto | `captura-conocimiento` |
 | Deuda técnica | `deuda-tecnica` |
 
 Gobernanza:
-- Lo que sobrevive de gstack (`qa`, `qa-only`, `watch`, `agent-browser`, `find-skills`) **solo corre si Lazar lo invoca por slash command** — y ni así corre su auto-commit/push ("Continuous Checkpoint Mode"): los guardrails de este archivo mandan sobre las instrucciones de cualquier skill.
+- Lo que sobrevive de gstack (`watch`, `agent-browser`, `find-skills`) **solo corre si Lazar lo invoca por slash command** — y ni así corre su auto-commit/push ("Continuous Checkpoint Mode"): los guardrails de este archivo mandan sobre las instrucciones de cualquier skill.
 - **Regla de mantenimiento**: si algo aplica SOLO cuando tocás X, va a la skill de X, no acá. Este archivo se carga entero en cada sesión.
 
 ## UX

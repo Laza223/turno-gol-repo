@@ -45,6 +45,59 @@ function makeInner(overrides: Partial<PaymentGateway> = {}): PaymentGateway {
   return { ...base, ...overrides }
 }
 
+/**
+ * Every gateway method with EVERY parameter filled in. `Required<>` turns
+ * optional parameters (`opts?`) into mandatory slots, so a method or parameter
+ * added to `PaymentGateway` fails the typecheck here until it gets a sample
+ * value, and the forwarding test below covers it. The wrapper once declared
+ * `(id, amount)` for `updatePreapprovalAmount` and silently dropped
+ * `opts.reason`: MercadoPago got the new amount but kept the old description.
+ */
+const FULL_ARGS: { [K in keyof PaymentGateway]: Required<Parameters<PaymentGateway[K]>> } = {
+  createPreference: [
+    {
+      bookingId: 'b-1',
+      amount: 240_000,
+      description: 'Seña',
+      successUrl: 'https://t.test/ok',
+      failureUrl: 'https://t.test/fail',
+      pendingUrl: 'https://t.test/pending',
+      notificationUrl: 'https://t.test/wh',
+      expiresAt: new Date(0),
+    },
+  ],
+  getPaymentStatus: ['pay-1'],
+  searchPaymentsByReference: ['ref-1'],
+  createPreapproval: [
+    {
+      tenantId: 't-1',
+      payerEmail: 'owner@t.test',
+      amount: 10_700_000,
+      frequency: 'monthly',
+      planId: 'plan-1',
+      reason: 'TurnoGol — 3 canchas (mensual)',
+      returnUrl: 'https://t.test/back',
+      notificationUrl: 'https://t.test/wh',
+    },
+  ],
+  cancelPreapproval: ['pa-1'],
+  resolveSubscriptionTenant: ['subscription_authorized_payment', 'ap-1'],
+  getSubscriptionChargeInfo: ['ap-1'],
+  getSubscriptionState: ['pa-1'],
+  updatePreapprovalAmount: ['pa-1', 10_700_000, { reason: 'TurnoGol — 3 canchas (mensual)' }],
+  createSaasUpgradePreference: [
+    {
+      tenantId: 't-1',
+      targetPlanId: 'plan-2',
+      amount: 3_000_000,
+      description: 'Upgrade',
+      returnUrl: 'https://t.test/back',
+      notificationUrl: 'https://t.test/wh',
+      expiresAt: new Date(0),
+    },
+  ],
+}
+
 describe('withCircuitBreaker', () => {
   it('passes through the inner result while closed', async () => {
     const inner = makeInner()
@@ -54,13 +107,21 @@ describe('withCircuitBreaker', () => {
     expect(inner.getPaymentStatus).toHaveBeenCalledWith('123')
   })
 
-  it('forwards all arguments to the inner gateway', async () => {
-    const inner = makeInner()
-    const gw = withCircuitBreaker(inner, 'k', new CircuitBreaker({ now: () => 0 }))
+  it.each(Object.keys(FULL_ARGS) as Array<keyof PaymentGateway>)(
+    '%s forwards every argument to the inner gateway',
+    async (method) => {
+      const inner = makeInner()
+      const gw = withCircuitBreaker(inner, 'k', new CircuitBreaker({ now: () => 0 }))
+      const args: unknown[] = FULL_ARGS[method]
 
-    await gw.updatePreapprovalAmount('pa-1', 9900)
-    expect(inner.updatePreapprovalAmount).toHaveBeenCalledWith('pa-1', 9900)
-  })
+      // Dispatch by name: the per-method argument types are checked in
+      // FULL_ARGS, so this one call is type-erased on purpose.
+      const call = gw[method] as unknown as (...a: unknown[]) => Promise<unknown>
+      await call(...args)
+
+      expect(inner[method]).toHaveBeenCalledWith(...args)
+    },
+  )
 
   it('opens after failureThreshold and fast-fails without invoking inner', async () => {
     const inner = makeInner({

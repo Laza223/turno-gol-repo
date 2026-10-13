@@ -8,6 +8,7 @@ import {
   signInWithPassword,
   OrphanedStaffSessionError,
 } from '@/modules/auth/auth.service'
+import { isPlayerAccount } from '@/modules/auth/account-kind'
 import { MIN_PASSWORD_LENGTH } from '@/modules/auth/password'
 import { enforce } from '@/shared/rate-limit/apply'
 import { echoFields } from '@/shared/forms/echo'
@@ -74,9 +75,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   // entrar por acá. provisionAndRouteStaff no chequea is_player: sin este
   // corte crearía una fila espuria en staff_users (audit_report.md 3-10).
   // Mismo criterio que extractRealAuthUser (auth.middleware.ts).
-  const meta = result.user.app_metadata ?? {}
-  const userMeta = result.user.user_metadata ?? {}
-  if (meta.is_player === true || userMeta.is_player === true) {
+  if (isPlayerAccount(result.user)) {
     await (await createClient()).auth.signOut()
     return { status: 'error', message: GENERIC, email }
   }

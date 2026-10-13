@@ -9,6 +9,7 @@ import {
   syncStaffUserEmail,
   OrphanedStaffSessionError,
 } from '@/modules/auth/auth.service'
+import { hasStaffOrAdminClaims, isPlayerAccount } from '@/modules/auth/account-kind'
 import { getOrCreatePlayer } from '@/modules/players/player.service'
 import { sanitizeNext } from '@/lib/safe-redirect'
 import { playerSuccessIntent, successVerifyPath } from '@/lib/auth-success'
@@ -69,7 +70,7 @@ async function provisionPlayerAndRedirect(
   // reclasificada `type:'player'` para SIEMPRE, incluso en su próximo login
   // normal con password. Sin flujo de autoservicio para revertirlo. Cierra
   // sesión y explica en vez de mergear un rol encima del otro.
-  if (meta.tenant_id || meta.staff_user_id || meta.is_system_admin === true) {
+  if (hasStaffOrAdminClaims(meta)) {
     logger.warn('Cuenta staff/system_admin intentó loguearse como jugador', {
       module: 'auth-callback',
       authUserId: user.id,
@@ -206,7 +207,9 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
 
   const meta: Record<string, unknown> = user.app_metadata ?? {}
   const userMeta: Record<string, unknown> = user.user_metadata ?? {}
-  const isPlayer = meta.is_player === true || userMeta.is_player === true
+  // `user_metadata.is_player` (options.data del magic link) solo cuenta mientras
+  // la cuenta no tenga claims de staff/superadmin — ver isPlayerAccount.
+  const isPlayer = isPlayerAccount(user)
 
   if (isPlayer) {
     const agreedTerms = userMeta.agreed_terms === true || meta.agreed_terms === true

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { isPlayerAccount } from '@/modules/auth/account-kind'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext, type DbTx } from '@/shared/db/client'
@@ -19,7 +20,12 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { captureException } from '@/lib/sentry'
 
-type AuthUserLite = { id: string; email?: string; app_metadata?: Record<string, unknown> }
+type AuthUserLite = {
+  id: string
+  email?: string
+  app_metadata?: Record<string, unknown>
+  user_metadata?: Record<string, unknown>
+}
 
 /**
  * Hallazgo 03-invite-staff-rollback: el envío real de la invitación
@@ -56,6 +62,22 @@ function mapInviteDeliveryError(code: string | undefined): string {
   }
   return 'No pudimos enviar la invitación por email. Verificá que el email esté bien escrito y probá de nuevo en unos minutos.'
 }
+
+/**
+ * El email ya es una cuenta de jugador. Grabarle `staff_user_id` no la vuelve
+ * staff (la sesión sigue siendo de jugador, ver isPlayerAccount) y encima le
+ * rompe el lado jugador: el callback la echa con `account_conflict` en el
+ * próximo ingreso. Unificar identidades se descartó (migr. 078), así que se
+ * rechaza. Se lanza, igual que InviteDeliveryError, para deshacer el alta en
+ * tenant_staff_members; el upsert de staff_users (Fase 2) queda sin membresía,
+ * y es global e idempotente.
+ */
+class InvitePlayerAccountError extends Error {
+  name = 'InvitePlayerAccountError'
+}
+
+const PLAYER_ACCOUNT_ERROR =
+  'Ese email ya tiene una cuenta de jugador en TurnoGol. Invitá a esa persona con otro email.'
 
 /**
  * Busca un auth user por email. supabase-js no expone lookup por email, así que
@@ -288,6 +310,9 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
         // sincronizamos SOLO staff_user_id, preservando su tenant_id/role actuales
         // para no pisar la sesión de otros complejos (#47).
         const existingAuth = await findAuthUserByEmail(adminClient, lowerEmail)
+        if (existingAuth && isPlayerAccount(existingAuth)) {
+          throw new InvitePlayerAccountError(PLAYER_ACCOUNT_ERROR)
+        }
         if (existingAuth) {
           await adminClient.auth.admin.updateUserById(existingAuth.id, {
             app_metadata: { ...(existingAuth.app_metadata ?? {}), staff_user_id: staffUser.id },
@@ -298,6 +323,9 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
       return { success: true as const }
     })
   } catch (err) {
+    if (err instanceof InvitePlayerAccountError) {
+      return { success: false, error: PLAYER_ACCOUNT_ERROR }
+    }
     if (err instanceof InviteDeliveryError) {
       captureException(err)
       return { success: false, error: mapInviteDeliveryError(err.code) }

@@ -28,6 +28,13 @@ const mpBreaker = new CircuitBreaker()
  *
  * `breaker` is a test seam — production callers use the shared per-process
  * instance.
+ *
+ * Every method forwards `...args` instead of naming its parameters: the
+ * parameter types come from `PaymentGateway`, so a parameter added there flows
+ * through without touching this file. Named parameters let an arrow with fewer
+ * of them still satisfy the interface, which silently dropped
+ * `updatePreapprovalAmount`'s `opts.reason` — MP got the new amount and kept
+ * the old plan description.
  */
 export function withCircuitBreaker(
   inner: PaymentGateway,
@@ -35,20 +42,21 @@ export function withCircuitBreaker(
   breaker: CircuitBreaker = mpBreaker,
 ): PaymentGateway {
   return {
-    createPreference: (input) => breaker.execute(key, () => inner.createPreference(input)),
-    getPaymentStatus: (id) => breaker.execute(key, () => inner.getPaymentStatus(id)),
-    searchPaymentsByReference: (ref) =>
-      breaker.execute(key, () => inner.searchPaymentsByReference(ref)),
-    createPreapproval: (input) => breaker.execute(key, () => inner.createPreapproval(input)),
-    cancelPreapproval: (id) => breaker.execute(key, () => inner.cancelPreapproval(id)),
-    resolveSubscriptionTenant: (eventType, dataId) =>
-      breaker.execute(key, () => inner.resolveSubscriptionTenant(eventType, dataId)),
-    getSubscriptionChargeInfo: (id) =>
-      breaker.execute(key, () => inner.getSubscriptionChargeInfo(id)),
-    getSubscriptionState: (id) => breaker.execute(key, () => inner.getSubscriptionState(id)),
-    updatePreapprovalAmount: (id, amount) =>
-      breaker.execute(key, () => inner.updatePreapprovalAmount(id, amount)),
-    createSaasUpgradePreference: (input) =>
-      breaker.execute(key, () => inner.createSaasUpgradePreference(input)),
+    createPreference: (...args) => breaker.execute(key, () => inner.createPreference(...args)),
+    getPaymentStatus: (...args) => breaker.execute(key, () => inner.getPaymentStatus(...args)),
+    searchPaymentsByReference: (...args) =>
+      breaker.execute(key, () => inner.searchPaymentsByReference(...args)),
+    createPreapproval: (...args) => breaker.execute(key, () => inner.createPreapproval(...args)),
+    cancelPreapproval: (...args) => breaker.execute(key, () => inner.cancelPreapproval(...args)),
+    resolveSubscriptionTenant: (...args) =>
+      breaker.execute(key, () => inner.resolveSubscriptionTenant(...args)),
+    getSubscriptionChargeInfo: (...args) =>
+      breaker.execute(key, () => inner.getSubscriptionChargeInfo(...args)),
+    getSubscriptionState: (...args) =>
+      breaker.execute(key, () => inner.getSubscriptionState(...args)),
+    updatePreapprovalAmount: (...args) =>
+      breaker.execute(key, () => inner.updatePreapprovalAmount(...args)),
+    createSaasUpgradePreference: (...args) =>
+      breaker.execute(key, () => inner.createSaasUpgradePreference(...args)),
   }
 }

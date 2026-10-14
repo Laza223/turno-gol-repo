@@ -166,6 +166,32 @@ describe('inviteStaffAction — usuario ya registrado (#47)', () => {
   })
 })
 
+describe('inviteStaffAction — falla al grabar los claims', () => {
+  it('usuario nuevo: si updateUserById falla, devuelve error y deshace el alta', async () => {
+    h.inviteUserByEmail.mockResolvedValue({ data: { user: { id: 'auth-new' } }, error: null })
+    h.updateUserById.mockResolvedValue({ data: null, error: { message: 'boom' } })
+
+    const res = await inviteStaffAction(makeForm('fresh@x.com'))
+
+    expect(res.success).toBe(false)
+    expect(h.rolledBack).toHaveBeenCalledTimes(1)
+  })
+
+  it('usuario ya registrado: si updateUserById falla, devuelve error y deshace el alta', async () => {
+    h.inviteUserByEmail.mockResolvedValue(ALREADY)
+    h.listUsers.mockResolvedValue({
+      data: { users: [{ id: 'auth-existing', email: 'new@x.com', app_metadata: {} }] },
+      error: null,
+    })
+    h.updateUserById.mockResolvedValue({ data: null, error: { message: 'boom' } })
+
+    const res = await inviteStaffAction(makeForm('new@x.com'))
+
+    expect(res.success).toBe(false)
+    expect(h.rolledBack).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('inviteStaffAction — el email ya es una cuenta de jugador', () => {
   it('rechaza con mensaje claro, no toca la cuenta y deshace el alta en tenant_staff_members', async () => {
     h.inviteUserByEmail.mockResolvedValue(ALREADY)

@@ -296,14 +296,21 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
         // force_password_change: el invite de GoTrue crea el usuario SIN
         // contraseña — sin este flag entra directo a /dashboard y queda sin
         // forma de volver a loguearse una vez que cierra sesión.
-        await adminClient.auth.admin.updateUserById(inviteData.user.id, {
-          app_metadata: {
-            staff_user_id: staffUser.id,
-            tenant_id: tenant.id,
-            role,
-            force_password_change: true,
+        // Sin los claims grabados, la invitación llega igual pero el invitado
+        // no entra como staff (y si alguna vez empezó un alta de jugador, el
+        // callback lo trata como jugador): se lanza para deshacer el alta.
+        const { error: claimError } = await adminClient.auth.admin.updateUserById(
+          inviteData.user.id,
+          {
+            app_metadata: {
+              staff_user_id: staffUser.id,
+              tenant_id: tenant.id,
+              role,
+              force_password_change: true,
+            },
           },
-        })
+        )
+        if (claimError) throw new InviteDeliveryError(claimError.message, claimError.code)
       } else if (inviteError) {
         // 'already been registered': el usuario ya existe en auth (p. ej. admin de
         // otro complejo). inviteUserByEmail no devuelve su id, así que lo buscamos y
@@ -314,9 +321,13 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
           throw new InvitePlayerAccountError(PLAYER_ACCOUNT_ERROR)
         }
         if (existingAuth) {
-          await adminClient.auth.admin.updateUserById(existingAuth.id, {
-            app_metadata: { ...(existingAuth.app_metadata ?? {}), staff_user_id: staffUser.id },
-          })
+          const { error: claimError } = await adminClient.auth.admin.updateUserById(
+            existingAuth.id,
+            {
+              app_metadata: { ...(existingAuth.app_metadata ?? {}), staff_user_id: staffUser.id },
+            },
+          )
+          if (claimError) throw new InviteDeliveryError(claimError.message, claimError.code)
         }
       }
 

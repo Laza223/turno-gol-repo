@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { signInWithPassword, provisionAndRouteStaff } = vi.hoisted(() => ({
+const { signInWithPassword, provisionAndRouteStaff, signOut } = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
   provisionAndRouteStaff: vi.fn(async () => ({ path: '/dashboard' })),
+  signOut: vi.fn(async () => ({ error: null })),
 }))
 
 vi.mock('@/modules/auth/auth.service', () => ({
@@ -10,7 +11,9 @@ vi.mock('@/modules/auth/auth.service', () => ({
   provisionAndRouteStaff,
   signInWithExistingPlayerMagicLink: vi.fn(async () => ({ ok: true })),
 }))
-vi.mock('@/lib/supabase/server', () => ({ createClient: () => ({ auth: { resend: vi.fn() } }) }))
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: () => ({ auth: { resend: vi.fn(), signOut } }),
+}))
 vi.mock('next/headers', () => ({ headers: () => new Headers({ origin: 'http://localhost:3000' }) }))
 // El rate limiter fail-closea sin Upstash y NODE_ENV='test' no dispara el bypass
 // de enforce → sin este mock, cada acción devuelve "Demasiados intentos". El
@@ -79,5 +82,30 @@ describe('loginAction (email + password)', () => {
     const res = await loginAction({ status: 'idle' }, fd())
     expect(res).toEqual({ status: 'success', path: '/reset-password' })
     expect(provisionAndRouteStaff).not.toHaveBeenCalled()
+  })
+
+  it('jugador (is_player en app_metadata) → cierra sesión y error genérico, sin provisionar', async () => {
+    signInWithPassword.mockResolvedValueOnce({
+      ok: true,
+      user: { id: 'u1', app_metadata: { is_player: true, player_id: 'p1' }, user_metadata: {} },
+    })
+    const res = await loginAction({ status: 'idle' }, fd())
+    expect(res.status).toBe('error')
+    expect(signOut).toHaveBeenCalledTimes(1)
+    expect(provisionAndRouteStaff).not.toHaveBeenCalled()
+  })
+
+  it('staff con is_player adulterado en user_metadata → entra igual', async () => {
+    signInWithPassword.mockResolvedValueOnce({
+      ok: true,
+      user: {
+        id: 'u1',
+        app_metadata: { staff_user_id: 's1', tenant_id: 't1' },
+        user_metadata: { is_player: true },
+      },
+    })
+    const res = await loginAction({ status: 'idle' }, fd())
+    expect(res).toEqual({ status: 'success', path: '/dashboard' })
+    expect(signOut).not.toHaveBeenCalled()
   })
 })

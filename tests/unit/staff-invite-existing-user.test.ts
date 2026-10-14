@@ -27,6 +27,9 @@ const h = vi.hoisted(() => {
     inviteUserByEmail: vi.fn(),
     updateUserById: vi.fn(),
     listUsers: vi.fn(),
+    // withTenantContext solo hace rollback si el callback LANZA: registrarlo
+    // permite verificar que un rechazo deshace el alta en tenant_staff_members.
+    rolledBack: vi.fn(),
     txLimit,
     actorLimit,
     tsmInsert,
@@ -46,7 +49,14 @@ vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: h.extractAut
 vi.mock('@/modules/tenants/tenant.service', () => ({ getStaffTenant: h.getStaffTenant }))
 vi.mock('@/shared/rate-limit/server-action', () => ({ adminRateLimited: h.adminRateLimited }))
 vi.mock('@/shared/db/client', () => ({
-  withTenantContext: (_t: string, fn: (tx: unknown) => unknown) => fn(h.tx),
+  withTenantContext: async (_t: string, fn: (tx: unknown) => unknown) => {
+    try {
+      return await fn(h.tx)
+    } catch (err) {
+      h.rolledBack()
+      throw err
+    }
+  },
   getWorkerDb: () => h.workerDb,
 }))
 vi.mock('@/lib/supabase/admin', () => ({
@@ -153,5 +163,59 @@ describe('inviteStaffAction — usuario ya registrado (#47)', () => {
 
     expect(res.success).toBe(true)
     expect(h.updateUserById).not.toHaveBeenCalled()
+  })
+})
+
+describe('inviteStaffAction — el email ya es una cuenta de jugador', () => {
+  it('rechaza con mensaje claro, no toca la cuenta y deshace el alta en tenant_staff_members', async () => {
+    h.inviteUserByEmail.mockResolvedValue(ALREADY)
+    h.listUsers.mockResolvedValue({
+      data: {
+        users: [
+          {
+            id: 'auth-player',
+            email: 'new@x.com',
+            app_metadata: { is_player: true, player_id: 'player-1' },
+          },
+        ],
+      },
+      error: null,
+    })
+
+    const res = await inviteStaffAction(makeForm('new@x.com'))
+
+    expect(res).toEqual({
+      success: false,
+      error:
+        'Ese email ya tiene una cuenta de jugador en TurnoGol. Invitá a esa persona con otro email.',
+    })
+    // Grabarle staff_user_id la dejaba afuera como jugador en su próximo
+    // ingreso (account_conflict en el callback), sin volverla staff.
+    expect(h.updateUserById).not.toHaveBeenCalled()
+    expect(h.rolledBack).toHaveBeenCalledTimes(1)
+  })
+
+  it('staff de otro complejo con is_player adulterado en user_metadata: se sincroniza igual', async () => {
+    h.inviteUserByEmail.mockResolvedValue(ALREADY)
+    h.listUsers.mockResolvedValue({
+      data: {
+        users: [
+          {
+            id: 'auth-existing',
+            email: 'new@x.com',
+            app_metadata: { tenant_id: 'other-tenant', role: 'admin' },
+            user_metadata: { is_player: true },
+          },
+        ],
+      },
+      error: null,
+    })
+
+    const res = await inviteStaffAction(makeForm('new@x.com'))
+
+    expect(res.success).toBe(true)
+    expect(h.updateUserById).toHaveBeenCalledWith('auth-existing', {
+      app_metadata: { tenant_id: 'other-tenant', role: 'admin', staff_user_id: 'staff-new' },
+    })
   })
 })

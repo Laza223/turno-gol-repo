@@ -505,6 +505,7 @@ Login → Selector de complejo (si tiene múltiples)
 
 **Diferencia crítica:** El JWT del jugador **NO tiene `tenant_id`**. El jugador es cross-tenant — puede reservar en cualquier complejo. El filtrado se hace por `player_id`, no por `tenant_id`.
 **Corrección (drift 2026-08-27):** no hay un claim `type` en la raíz — `extractRealAuthUser()` (`src/modules/auth/auth.middleware.ts`) deriva el tipo de sesión leyendo `app_metadata.is_player` (y `is_system_admin` para super-admin); si ninguno está, cae por default a `staff`. `is_player` es, entonces, el campo que de verdad importa acá.
+**`user_metadata.is_player` (2026-10-13):** lo manda el magic link de alta en `options.data` y lo puede editar el propio usuario, así que solo cuenta mientras `app_metadata` no tenga claims de staff o superadmin (`isPlayerAccount`, `src/modules/auth/account-kind.ts`). Lo usan el middleware, el login del staff y el callback.
 
 ### 5.3 "JWT del Sistema" (background jobs, cron) — identidad conceptual, no un JWT real
 

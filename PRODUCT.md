@@ -74,8 +74,8 @@ Todo lo que sigue sale de 8 días de producción (14 al 22 de septiembre de 2026
 - Roles: `admin` (todo) y `manager` (Hoy, grilla, reservas, caja y jugadores; sin Configuración, Equipo ni Métricas).
 - Montos en centavos de ARS. Horas en UTC en la base, que se muestran en hora argentina. Día operativo: el turno de las 23 y los de la madrugada pertenecen al día en que arrancó la jornada.
 - Ley 25.326: nunca texto libre sobre personas. Las etiquetas son un enum cerrado de 5.
-- Vetos de producto que están en `CLAUDE.md`: sin Falta Uno, sin billetera, sin saldo a favor de abonados, el no-show no es deuda, sin recordatorio de 24 h, el jugador no tiene Realtime y no hay AFIP.
-- Feature freeze hasta el 2026-11-01 (D4). El refinamiento sobre el estilo actual del panel queda afuera del freeze por decisión del dueño (2026-09-23).
+- Vetos de producto que están en `CLAUDE.md`: sin billetera, sin saldo a favor de abonados, el no-show no es deuda, sin recordatorio de 24 h, el jugador no tiene Realtime y no hay AFIP. Falta Uno vuelve como RIVAL v1, diseñado de cero (`docs/decisions/2026-10-14-foco-jugador-rival.md`).
+- Feature freeze hasta el 2026-11-01 (D4). Desde el 2026-10-14 el panel queda en mantenimiento y se liberan el rediseño del portal público y del jugador y RIVAL v1 (`docs/decisions/2026-10-14-foco-jugador-rival.md`).
 - Vocabulario de pantalla: Hoy, Grilla, Agenda (la vista de turnos; la URL sigue siendo `/reservas`), Caja, Cantina, Cuentas, Jugadores, Turnos fijos, turno, evento, bloqueo, seña, fiado, cancha (F5/F7).
 
 **Sin decidir:**

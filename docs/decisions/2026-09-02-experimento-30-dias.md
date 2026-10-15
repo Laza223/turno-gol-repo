@@ -38,6 +38,8 @@ Escala de confianza: **alta** = respaldada por hechos observados y por el propio
 
 ## D4 — Feature freeze hasta 2026-11-01
 
+> **ACOTADA el 2026-10-14** por [`2026-10-14-foco-jugador-rival.md`](2026-10-14-foco-jugador-rival.md): Falta Uno sale de "No permitido" (vuelve como RIVAL v1, F4) y se libera el rediseño del portal público y del jugador (F3). De la kill list de abajo salen solo Falta Uno, el perfil mínimo del jugador que usa RIVAL y los cambios a la home y a `/explorar` que pida el rediseño. El resto del freeze sigue vigente.
+
 - **Decisión:** no se construyen features especulativas. **Permitido:** bugs · seguridad · circuitos de plata · blockers observados en usuarios/clientes reales · fricción de adopción observada · instrumentación necesaria para medir · mejoras pequeñas justificadas directamente por uso real. **No permitido:** features especulativas · features copiadas de competidores sin evidencia · North Star · rankings · Cam · Falta Uno · profesores · marketplace · nuevas expansiones de producto.
 - **Evidencia:** 90/10 producto/ventas (FACT declarado por el founder); Board unánime §4.4; teardown: la superficie del producto ya está en paridad o por encima en tabla-stakes.
 - **Confianza:** alta.
@@ -86,7 +88,7 @@ Escala de confianza: **alta** = respaldada por hechos observados y por el propio
 
 ## Lo que esta decisión NO habilita (kill list vigente)
 
-Ads pagos · reels/IG viral/avatares · WhatsApp Business API · cobro automático de abonados · billetera del jugador · Falta Uno · lista de espera · profesores/escuelitas · torneos (flag off) · Cam · rankings · perfil público del jugador · red social · marketplace como promesa · mejoras a `/explorar` · app nativa · importador ATC · read-only del día 31 (build) · IVA en código · precio fundador · pausa estacional · tarjeta al alta · expansión fuera del corredor · nuevas secciones de la web · cambios de seña, lifecycle, referidos o instrumentación **hasta tener evidencia del caso cero** (el default anual y el pricing salieron de esta lista el 2026-09-17, ver [`2026-09-17-precio-por-cancha.md`](2026-09-17-precio-por-cancha.md)).
+Ads pagos · reels/IG viral/avatares · WhatsApp Business API · cobro automático de abonados · billetera del jugador · Falta Uno · lista de espera · profesores/escuelitas · torneos (flag off) · Cam · rankings · perfil público del jugador · red social · marketplace como promesa · mejoras a `/explorar` · app nativa · importador ATC · read-only del día 31 (build) · IVA en código · precio fundador · pausa estacional · tarjeta al alta · expansión fuera del corredor · nuevas secciones de la web · cambios de seña, lifecycle, referidos o instrumentación **hasta tener evidencia del caso cero** (el default anual y el pricing salieron de esta lista el 2026-09-17, ver [`2026-09-17-precio-por-cancha.md`](2026-09-17-precio-por-cancha.md); Falta Uno, el perfil mínimo del jugador que usa RIVAL y los cambios a la home y a `/explorar` que pida el rediseño salieron el 2026-10-14, ver [`2026-10-14-foco-jugador-rival.md`](2026-10-14-foco-jugador-rival.md)).
 
 ## Docs superados parcialmente por esta decisión
 

@@ -65,7 +65,7 @@ async function main(): Promise<void> {
   // Y el pool RESTRINGIDO, que es el que se rompio el 2026-08-25 mientras el de
   // arriba daba verde: son DSN distintos y solo uno se estaba mirando.
   await assertAppDbReachable()
-  const boss = await getBoss()
+  const boss = await getBoss('worker')
   await registerAllWorkers(boss)
 
   // Despues de registrar las colas: un healthcheck que contesta 200 con las

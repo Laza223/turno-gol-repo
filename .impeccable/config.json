@@ -35,5 +35,6 @@
         "reason": "DESIGN.md (Typography > Display): .hero-accent-text es la receta del acento del titular del portal; el dueño eligió 'Menos brillo, más producto', que conserva ese único acento (2026-09-27)"
       }
     ]
-  }
+  },
+  "buildPath": "code"
 }

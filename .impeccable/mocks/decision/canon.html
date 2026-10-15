@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>El Vagón Deportivo · TurnoGol</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@1,900&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+:root{--ink:#111827;--gray:#6B7280;--line:#E5E7EB;--soft:#F9FAFB;--green:#047857;--tint:#ECFDF5;--red:#B91C1C;--amber:#92400E;--warn:#FEF3C7}
+*{box-sizing:border-box;margin:0;padding:0}
+html{overflow:auto;background:#F3F4F6}
+body{position:relative;width:390px;height:844px;overflow:hidden;background:#fff;color:var(--ink);font:400 14px/20px Inter,system-ui,sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+::selection{background:var(--tint);color:var(--green)}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:3px solid var(--green);outline-offset:2px}
+.ic{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* Marco TurnoGol */
+.top{display:flex;align-items:center;justify-content:space-between;height:52px;padding:0 16px;border-bottom:1px solid var(--line)}
+.logo{display:flex;align-items:center;min-height:44px;font:italic 900 22px/1 Archivo,Inter,sans-serif;letter-spacing:-.02em}
+.logo b{color:var(--green);font-weight:900}
+.login{display:flex;align-items:center;justify-content:flex-end;min-width:44px;min-height:44px;font-size:15px;font-weight:600;color:var(--green)}
+main{padding:8px 16px 0}
+
+/* Cancha vista desde arriba */
+.pitch{position:relative;height:148px;border-radius:16px;overflow:hidden;background:repeating-linear-gradient(90deg,#2F7D4A 0 10%,#29703F 10% 20%)}
+.pitch i{position:absolute;border:2px solid rgba(255,255,255,.92)}
+.field{inset:14px 44px}
+.mid{left:50%;top:14px;bottom:14px;margin-left:-1px;border-width:0 0 0 2px}
+.circ{left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%}
+.circ::after{content:"";position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px;border-radius:50%;background:#fff}
+.area{top:50%;width:46px;height:78px;margin-top:-39px}
+.area.l{left:44px;border-left:0}
+.area.r{right:44px;border-right:0}
+.goal{top:50%;width:8px;height:30px;margin-top:-15px}
+.goal.l{left:36px;border-right:0}
+.goal.r{right:36px;border-left:0}
+
+/* Complejo */
+h1{margin-top:12px;font-size:24px;line-height:30px;font-weight:700;letter-spacing:-.02em}
+.addr{display:flex;justify-content:space-between;align-items:center;margin-top:2px;color:var(--gray)}
+.open{display:flex;align-items:center;gap:6px;font-weight:600;color:var(--green)}
+.open::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.chips{display:flex;gap:6px;margin-top:10px;list-style:none}
+.chips li{display:flex;align-items:center;height:28px;padding:0 10px;border:1px solid var(--line);border-radius:14px;background:var(--soft);font-size:13px;font-weight:500;white-space:nowrap}
+.links{display:flex;gap:20px}
+.links a{display:flex;align-items:center;gap:6px;min-height:44px;font-size:13px;font-weight:600;color:var(--green)}
+
+/* Día, hora, cancha */
+.days{display:flex;gap:8px;margin:0 -16px;padding:4px 16px;overflow-x:auto;scrollbar-width:none}
+.d{flex:1 0 auto;height:44px;padding:0 12px;border:1px solid var(--line);border-radius:22px;font-size:14px;font-weight:500;white-space:nowrap}
+.hours{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
+.h{display:flex;flex-direction:column;align-items:center;justify-content:center;height:50px;border:1px solid var(--line);border-radius:14px}
+.h b{font-size:16px;line-height:20px;font-weight:600}
+.h small{font-size:12px;line-height:16px;font-weight:500;color:var(--gray)}
+.full{background:var(--soft);cursor:not-allowed}
+.full b{color:var(--gray);text-decoration:line-through}
+.full small{color:var(--red);font-weight:600}
+.last{background:var(--warn)}
+.last small{color:var(--amber);font-weight:600}
+h2{margin-top:18px;font-size:16px;line-height:22px;font-weight:700;letter-spacing:-.01em}
+.courts{display:grid;gap:6px;margin-top:8px}
+.c{display:flex;align-items:center;gap:12px;height:46px;padding:0 14px;border:1px solid var(--line);border-radius:12px;text-align:left}
+.c b{font-size:15px;font-weight:600}
+.c span{margin-left:auto;color:var(--gray)}
+.rad{display:grid;place-items:center;width:20px;height:20px;border:2px solid var(--gray);border-radius:50%}
+.rad .ic{width:12px;height:12px;stroke-width:3.5}
+button:not([aria-pressed=true],[aria-checked=true],:disabled):hover{border-color:var(--gray)}
+[aria-pressed=true],[aria-checked=true]{background:var(--tint);border:2px solid var(--green)}
+[aria-pressed=true]{font-weight:700}
+[aria-pressed=true] b{font-weight:700}
+[aria-pressed=true] small{color:var(--green);font-weight:600}
+[aria-checked=true] .rad{background:var(--green);border-color:var(--green);color:#fff}
+[aria-checked=true] span{color:var(--ink)}
+
+/* Barra de acción */
+.bar{position:absolute;left:0;right:0;bottom:0;padding:10px 16px 14px;background:#fff;border-top:1px solid var(--line);box-shadow:0 -2px 12px rgba(17,24,39,.06)}
+.pay{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px;line-height:18px;color:var(--gray)}
+.pay b{font-weight:600;color:var(--ink)}
+.pay span{display:flex;align-items:center;gap:6px}
+.pay .ic{width:16px;height:16px}
+.go{width:100%;height:52px;border-radius:14px;background:var(--green);color:#fff;font-size:16px;font-weight:600}
+.go:hover{background:#065F46}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></symbol>
+<symbol id="chat" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></symbol>
+<symbol id="cash" viewBox="0 0 24 24"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></symbol>
+<symbol id="ok" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+</svg>
+
+<header class="top">
+  <a class="logo" href="#" aria-label="TurnoGol">TURNO<b>GOL</b></a>
+  <a class="login" href="#">Ingresar</a>
+</header>
+
+<main>
+  <div class="pitch" role="img" aria-label="Vista aérea de una cancha de fútbol"><i class="field"></i><i class="mid"></i><i class="circ"></i><i class="area l"></i><i class="area r"></i><i class="goal l"></i><i class="goal r"></i></div>
+  <h1>El Vagón Deportivo</h1>
+  <p class="addr">Luján · Almafuerte 2156<span class="open">Abierto</span></p>
+  <ul class="chips"><li>5 canchas</li><li>Fútbol 5 y 7</li><li>Hasta la 01:00</li></ul>
+  <nav class="links" aria-label="Contacto">
+    <a href="#"><svg class="ic"><use href="#pin"/></svg>Cómo llegar</a>
+    <a href="#"><svg class="ic"><use href="#chat"/></svg>WhatsApp</a>
+  </nav>
+
+  <div class="days" role="group" aria-label="Día">
+    <button class="d" aria-pressed="true">Hoy jue 15</button><button class="d">Vie 16</button><button class="d">Sáb 17</button><button class="d">Dom 18</button>
+  </div>
+  <div class="hours" role="group" aria-label="Hora">
+    <button class="h"><b>18:00</b><small>2 libres</small></button>
+    <button class="h full" disabled><b>19:00</b><small>Completo</small></button>
+    <button class="h last"><b>20:00</b><small>Queda 1</small></button>
+    <button class="h" aria-pressed="true"><b>21:00</b><small>3 libres</small></button>
+    <button class="h"><b>22:00</b><small>4 libres</small></button>
+    <button class="h"><b>23:00</b><small>5 libres</small></button>
+    <button class="h"><b>00:00</b><small>5 libres</small></button>
+  </div>
+
+  <h2>Canchas libres a las 21:00</h2>
+  <div class="courts" role="radiogroup" aria-label="Cancha">
+    <button class="c" role="radio" aria-checked="true"><i class="rad"><svg class="ic"><use href="#ok"/></svg></i><b>Cancha 2</b><span>Fútbol 5</span></button>
+    <button class="c" role="radio" aria-checked="false"><i class="rad"></i><b>Cancha 4</b><span>Fútbol 7</span></button>
+    <button class="c" role="radio" aria-checked="false"><i class="rad"></i><b>Cancha 5</b><span>Fútbol 7</span></button>
+  </div>
+</main>
+
+<footer class="bar">
+  <p class="pay"><b>Jue 15 · Fútbol 5</b><span><svg class="ic"><use href="#cash"/></svg>Pagás en el complejo</span></p>
+  <button class="go">Reservar · 21:00 · Cancha 2</button>
+</footer>
+</body>
+</html>

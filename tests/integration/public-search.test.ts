@@ -44,6 +44,42 @@ describe('searchPublicTenants', () => {
   })
 })
 
+describe('searchPublicTenants — precios ocultos (settings.hide_public_prices)', () => {
+  const HIDE = `${TAG}hide`
+
+  beforeAll(async () => {
+    const sql = getSql()
+    // from_price_cents lo mantiene un trigger de courts; acá se setea directo
+    // porque lo que se prueba es la lectura, no el recálculo.
+    await sql`
+      INSERT INTO tenants (slug, name, address, city, province, phone, email, status, settings, from_price_cents, from_price_per_player_cents)
+      VALUES
+        (${`${HIDE}-oculto`}, ${`${HIDE} Oculto`}, 'x', 'Salta', 'Salta', '1', ${`${HIDE}o@t.local`}, 'active', '{"onboarding_completed": true, "hide_public_prices": true}'::jsonb, 1000000, 100000),
+        (${`${HIDE}-visible`}, ${`${HIDE} Visible`}, 'x', 'Salta', 'Salta', '1', ${`${HIDE}v@t.local`}, 'active', '{"onboarding_completed": true}'::jsonb, 1000000, 100000)
+    `
+  })
+
+  it('el complejo que oculta precios sale en la búsqueda, pero sin precio', async () => {
+    const { results } = await searchPublicTenants({ q: HIDE })
+    const oculto = results.find((r) => r.slug === `${HIDE}-oculto`)
+    const visible = results.find((r) => r.slug === `${HIDE}-visible`)
+    expect(oculto).toBeDefined()
+    expect(oculto!.fromPriceCents).toBeNull()
+    expect(oculto!.fromPricePerPlayerCents).toBeNull()
+    // Control: el mismo precio en un complejo que no lo oculta sí viaja.
+    expect(visible!.fromPriceCents).toBe(1000000)
+  })
+
+  it('un filtro de rango de precio no lo encuentra (si no, el rango delataría el precio)', async () => {
+    const { results } = await searchPublicTenants({
+      q: HIDE,
+      minPriceCents: 900000,
+      maxPriceCents: 1100000,
+    })
+    expect(results.map((r) => r.slug)).toEqual([`${HIDE}-visible`])
+  })
+})
+
 describe('listPublicCities', () => {
   it('groups visible tenants by city (excludes suspended)', async () => {
     const cities = await listPublicCities()

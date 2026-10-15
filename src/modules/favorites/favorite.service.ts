@@ -1,6 +1,7 @@
 import { and, desc, eq } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
 import { playerFavorites, tenants } from '@/shared/db/schema'
+import { visibleFromPriceCentsSql } from '@/modules/tenants/search.service'
 import type { FavoriteCard, ToggleFavoriteResult } from './favorite.types'
 
 // Todas las funciones corren dentro de withPlayerContext (RLS app.current_player_id).
@@ -49,7 +50,7 @@ export async function getFavorites(playerId: string, tx: DbTx): Promise<Favorite
       province: tenants.province,
       logoUrl: tenants.logoUrl,
       coverUrl: tenants.coverUrl,
-      fromPriceCents: tenants.fromPriceCents,
+      fromPriceCents: visibleFromPriceCentsSql,
       createdAt: playerFavorites.createdAt,
     })
     .from(playerFavorites)

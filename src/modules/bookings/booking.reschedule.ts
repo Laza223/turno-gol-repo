@@ -202,9 +202,13 @@ async function loadEmailNames(
   courtId: string,
   playerId: string,
   tx: DbTx,
-): Promise<{ courtName: string; tenantName: string; playerFirstName: string } | undefined> {
+): Promise<
+  | { courtName: string; tenantName: string; playerFirstName: string; hidePrices: boolean }
+  | undefined
+> {
   const rows = await tx.execute(sql`
-    SELECT c.name AS court_name, t.name AS tenant_name, p.first_name AS player_first_name
+    SELECT c.name AS court_name, t.name AS tenant_name, p.first_name AS player_first_name,
+           COALESCE((t.settings ->> 'hide_public_prices')::boolean, false) AS hide_prices
     FROM courts c, tenants t, players p
     WHERE c.id = ${courtId} AND t.id = ${tenantId} AND p.id = ${playerId}
   `)
@@ -213,6 +217,7 @@ async function loadEmailNames(
       court_name: string
       tenant_name: string
       player_first_name: string
+      hide_prices: boolean
     }>
   )[0]
   if (!row) return undefined
@@ -220,6 +225,7 @@ async function loadEmailNames(
     courtName: row.court_name,
     tenantName: row.tenant_name,
     playerFirstName: row.player_first_name,
+    hidePrices: row.hide_prices,
   }
 }
 
@@ -443,7 +449,8 @@ export async function rescheduleBooking(
               toDate: formatDateArs(bookingRow.date),
               toTimeStart: bookingRow.timeStart.slice(0, 5),
               toTimeEnd: bookingRow.timeEnd.slice(0, 5),
-              price: formatArs(priceSnapshot),
+              // Complejo con precios ocultos: el mail no lleva el monto.
+              price: names.hidePrices ? null : formatArs(priceSnapshot),
               priceChanged,
             },
             triggerEvent: 'booking.rescheduled',

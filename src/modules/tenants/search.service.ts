@@ -6,6 +6,20 @@ import type { TenantSettings } from './tenant.types'
 
 export type SortOption = 'name' | 'price' | 'rating' | 'distance'
 
+/**
+ * Precio "desde" tal como lo puede ver el jugador: NULL si el complejo oculta
+ * sus precios (`settings.hide_public_prices`). Se usa en el SELECT, en los
+ * filtros de rango y en el orden por precio: si solo se ocultara en la tarjeta,
+ * filtrar por rango alcanzaría para deducirlo.
+ */
+const PRICES_HIDDEN_SQL = sql`COALESCE((${tenants.settings} ->> 'hide_public_prices')::boolean, false)`
+export const visibleFromPriceCentsSql = sql<
+  number | null
+>`CASE WHEN ${PRICES_HIDDEN_SQL} THEN NULL ELSE ${tenants.fromPriceCents} END`
+const visibleFromPricePerPlayerCentsSql = sql<
+  number | null
+>`CASE WHEN ${PRICES_HIDDEN_SQL} THEN NULL ELSE ${tenants.fromPricePerPlayerCents} END`
+
 export type PublicTenantCard = {
   id: string
   slug: string
@@ -153,10 +167,10 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
 
   // Rango de precio sobre el mínimo denormalizado (excluye NULL = sin canchas online).
   if (typeof params.minPriceCents === 'number') {
-    conds.push(sql`${tenants.fromPriceCents} >= ${params.minPriceCents}`)
+    conds.push(sql`${visibleFromPriceCentsSql} >= ${params.minPriceCents}`)
   }
   if (typeof params.maxPriceCents === 'number') {
-    conds.push(sql`${tenants.fromPriceCents} <= ${params.maxPriceCents}`)
+    conds.push(sql`${visibleFromPriceCentsSql} <= ${params.maxPriceCents}`)
   }
 
   const where = and(...conds)
@@ -189,7 +203,7 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
   let orderBy: SQL
   switch (params.sort) {
     case 'price':
-      orderBy = sql`${tenants.fromPriceCents} ASC NULLS LAST`
+      orderBy = sql`${visibleFromPriceCentsSql} ASC NULLS LAST`
       break
     case 'rating':
       orderBy = sql`${ratings.avg} DESC NULLS LAST, ${ratings.cnt} DESC NULLS LAST`
@@ -213,8 +227,8 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
         logoUrl: tenants.logoUrl,
         coverUrl: tenants.coverUrl,
         settings: tenants.settings,
-        fromPriceCents: tenants.fromPriceCents,
-        fromPricePerPlayerCents: tenants.fromPricePerPlayerCents,
+        fromPriceCents: visibleFromPriceCentsSql,
+        fromPricePerPlayerCents: visibleFromPricePerPlayerCentsSql,
         amenities: tenants.amenities,
         latitude: tenants.latitude,
         longitude: tenants.longitude,

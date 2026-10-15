@@ -19,6 +19,7 @@ type BookingRow = {
   depositAmount: number
   depositStatus: string
   priceSnapshot: number
+  hidePrices: boolean
   courtName: string
   tenantName: string
   tenantSlug: string
@@ -47,7 +48,8 @@ async function loadBooking(bookingId: string, playerId: string): Promise<Booking
              t.address AS "address",
              t.city AS "city",
              t.latitude AS "latitude",
-             t.longitude AS "longitude"
+             t.longitude AS "longitude",
+             COALESCE((t.settings ->> 'hide_public_prices')::boolean, false) AS "hidePrices"
       FROM bookings b
       JOIN courts c ON c.id = b.court_id
       JOIN tenants t ON t.id = b.tenant_id
@@ -119,6 +121,7 @@ export default async function ReservaExitoPage(props: Props) {
           priceSnapshot: booking.priceSnapshot,
           depositAmount: booking.depositAmount,
           depositStatus: booking.depositStatus,
+          hidePrices: booking.hidePrices,
         }}
       />
     </ReservaDarkShell>

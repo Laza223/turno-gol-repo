@@ -25,7 +25,8 @@ export type MisReservasBookingRow = {
   time_end: string
   type: string
   status: string
-  price_snapshot: number
+  /** null = el complejo oculta sus precios. */
+  price_snapshot: number | null
   court_name: string
   tenant_name: string
   tenant_slug: string
@@ -275,9 +276,11 @@ export function MisReservasView({
                         <p className="text-sm text-foreground tabular-nums">
                           {b.time_start.slice(0, 5)}–{b.time_end.slice(0, 5)}
                         </p>
-                        <p className="font-display text-base font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">
-                          {formatArs(b.price_snapshot)}
-                        </p>
+                        {b.price_snapshot != null && (
+                          <p className="font-display text-base font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">
+                            {formatArs(b.price_snapshot)}
+                          </p>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-2">

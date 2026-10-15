@@ -16,6 +16,8 @@ export type BookingReceiptData = {
   priceSnapshot: number
   depositAmount: number
   depositStatus: string
+  /** El complejo oculta sus precios: el comprobante dice cómo se paga, sin montos. */
+  hidePrices?: boolean
   /** URL pública que codifica el QR. */
   verifyUrl: string
 }
@@ -62,8 +64,19 @@ export default function BookingReceipt(props: BookingReceiptData) {
           label="Horario"
           value={`${props.timeStart.slice(0, 5)}–${props.timeEnd.slice(0, 5)}`}
         />
-        <Row label="Precio del turno" value={`$${fmtArs(props.priceSnapshot)}`} />
-        {withDeposit ? (
+        {props.hidePrices ? (
+          <Row
+            label="Pago"
+            value={
+              withDeposit
+                ? 'Seña pagada · el resto se abona en el complejo'
+                : 'Se abona en el complejo'
+            }
+          />
+        ) : (
+          <Row label="Precio del turno" value={`$${fmtArs(props.priceSnapshot)}`} />
+        )}
+        {props.hidePrices ? null : withDeposit ? (
           <>
             <Row label="Seña pagada" value={`$${fmtArs(props.depositAmount)}`} />
             <Row label="Resta abonar en el complejo" value={`$${fmtArs(remaining)}`} />

@@ -31,6 +31,7 @@ type RawMisReservasRow = {
   type: string
   status: string
   price_snapshot: number
+  hide_prices: boolean
   court_name: string
   tenant_name: string
   tenant_slug: string
@@ -137,6 +138,7 @@ export default async function MisReservasPage(props: {
              c.name AS court_name, t.name AS tenant_name, t.slug AS tenant_slug,
              t.phone AS tenant_phone, t.whatsapp AS tenant_whatsapp, t.email AS tenant_email,
              COALESCE((t.settings->'cancellation_policy'->>'hours_before')::int, 24) AS cancellation_policy_hours,
+             COALESCE((t.settings->>'hide_public_prices')::boolean, false) AS hide_prices,
              EXISTS (SELECT 1 FROM reviews r WHERE r.booking_id = b.id) AS has_review,
              -- Estado REAL de la devolución. deposit_status no sirve: dice
              -- 'refunded' desde la transacción que cancela, antes de que la
@@ -225,7 +227,8 @@ export default async function MisReservasPage(props: {
       time_end: r.time_end,
       type: r.type,
       status: r.status,
-      price_snapshot: r.price_snapshot,
+      // El complejo oculta sus precios: el monto no viaja al browser.
+      price_snapshot: r.hide_prices ? null : r.price_snapshot,
       court_name: r.court_name,
       tenant_name: r.tenant_name,
       tenant_slug: r.tenant_slug,

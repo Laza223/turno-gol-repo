@@ -6,7 +6,7 @@ import type { createBookingAndCheckout } from '../actions'
 import PaymentMethodSelector, { type PayMethod } from './PaymentMethodSelector'
 import { Button } from '@/components/ui/button'
 
-function Inner({ depositAmount }: { depositAmount: number }) {
+function Inner({ withDeposit }: { withDeposit: boolean }) {
   const { pending } = useFormStatus()
   return (
     <Button
@@ -22,7 +22,7 @@ function Inner({ depositAmount }: { depositAmount: number }) {
       ) : (
         <>
           <ShieldCheck className="h-4 w-4" aria-hidden />{' '}
-          {depositAmount > 0 ? 'Pagar seña y reservar' : 'Confirmar reserva'}
+          {withDeposit ? 'Pagar seña y reservar' : 'Confirmar reserva'}
         </>
       )}
     </Button>
@@ -35,7 +35,8 @@ export default function ConfirmBookingButton(props: {
   date: string
   time: string
   dur: number
-  depositAmount: number
+  /** Solo si hay seña: el monto no viaja al browser (puede estar oculto). */
+  withDeposit: boolean
   payMethods: PayMethod[]
   action: typeof createBookingAndCheckout
 }) {
@@ -49,7 +50,7 @@ export default function ConfirmBookingButton(props: {
 
       <PaymentMethodSelector methods={props.payMethods} />
 
-      <Inner depositAmount={props.depositAmount} />
+      <Inner withDeposit={props.withDeposit} />
     </form>
   )
 }

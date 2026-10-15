@@ -532,7 +532,7 @@ export function ReservasPolicyForm({
         </section>
 
         <div className="space-y-3">
-          <SubmitButton className="w-full sm:w-auto px-8 h-12 bg-primary hover:bg-emerald-500 text-base font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98] transition-all duration-200">
+          <SubmitButton className="w-full sm:w-auto px-8 h-12 bg-primary hover:bg-primary/90 text-base font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98] transition-all duration-200">
             Guardar cambios
           </SubmitButton>
 

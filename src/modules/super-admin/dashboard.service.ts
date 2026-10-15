@@ -1,5 +1,5 @@
 import { and, asc, count, desc, eq, gte, lte, sql } from 'drizzle-orm'
-import { getDb, getWorkerDb } from '@/shared/db/client'
+import { getDb, withDisposableWorkerDb, type Db } from '@/shared/db/client'
 import { plans, processedWebhooks, tenants, tenantSubscriptions } from '@/shared/db/schema'
 import { tenantStatusEnum } from '@/shared/db/schema/enums'
 import { ALL_QUEUES } from '@/shared/jobs/dlq'
@@ -15,7 +15,7 @@ import { WIZARD_STEPS } from '@/modules/onboarding/onboarding.steps'
  * lectura directa con `getDb()`. `tenant_subscriptions` NO es global (caza-bugs
  * #9): tiene `tenant_id` + RLS+FORCE (ver CLAUDE.md "Tablas aisladas"), así que
  * `getMrrCents` (la única función acá que la toca) necesita el pool de
- * servicio (`getWorkerDb`) para el scan cross-tenant — con `getDb()` el rol
+ * servicio (rol worker, vía `withDisposableWorkerDb`) para el scan cross-tenant — con `getDb()` el rol
  * restringido `turnogol_app` ve 0 filas fuera de `withTenantContext` y el MRR
  * mostrado siempre da $0.
  */
@@ -69,8 +69,11 @@ export type DashboardData = {
    * así que los fallidos nunca persisten acá. Se listan los recientes.
    */
   recentWebhooks: RecentWebhook[]
-  /** Embudo del wizard de onboarding, últimos 30 días (Fase 7 del plan de refactor). */
-  onboardingFunnel: OnboardingFunnelData
+  /**
+   * Embudo del wizard de onboarding, últimos 30 días (Fase 7 del plan de refactor).
+   * `null` = no se pudo leer a tiempo, igual que `mrrCents`.
+   */
+  onboardingFunnel: OnboardingFunnelData | null
 }
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
@@ -99,8 +102,7 @@ export type OnboardingFunnelData = {
  * por tenant) — un scan cross-tenant como este necesita el pool de servicio,
  * igual que `getMrrCents` de acá arriba.
  */
-async function getOnboardingFunnel(): Promise<OnboardingFunnelData> {
-  const db = getWorkerDb()
+async function getOnboardingFunnel(db: Db): Promise<OnboardingFunnelData> {
   // Ventana fija de 30 días: interpolada como INTERVAL literal, no como
   // parámetro — Postgres no castea un `$1::text` a `interval` en esa posición.
   const windowInterval = sql.raw(`interval '${FUNNEL_WINDOW_DAYS} days'`)
@@ -179,8 +181,7 @@ async function getOnboardingFunnel(): Promise<OnboardingFunnelData> {
  * — traerse las filas para sumarlas en memoria sería peor. El equivalente puro
  * (misma fórmula, para una suscripción) vive en `@/modules/billing/pricing`.
  */
-async function getMrrCents(): Promise<number> {
-  const db = getWorkerDb()
+async function getMrrCents(db: Db): Promise<number> {
   const monthlyList = sql`(${plans.priceFirstCourtCents} + (${tenantSubscriptions.billedCourts} - 1) * ${plans.priceExtraCourtCents})`
   const rows = await db
     .select({
@@ -213,9 +214,9 @@ async function getMrrCents(): Promise<number> {
 /** Tope del MRR: un dato más del dashboard no puede dejarlo cargando. */
 const MRR_TIMEOUT_MS = 5_000
 
-async function getMrrCentsSafe(): Promise<number | null> {
+async function getMrrCentsSafe(db: Db): Promise<number | null> {
   try {
-    return await withTimeout(getMrrCents(), MRR_TIMEOUT_MS)
+    return await withTimeout(getMrrCents(db), MRR_TIMEOUT_MS)
   } catch (err) {
     logger.warn('super-admin.dashboard_mrr_unavailable', {
       module: 'super-admin',
@@ -314,10 +315,10 @@ const QUEUE_DEPTH_TIMEOUT_MS = 4_000
  * hace el worker). Si la lectura falla o tarda más que el tope, el dashboard
  * degrada a "no disponible" en vez de romper o colgar el render completo.
  */
-async function getQueueDepthsSafe(): Promise<QueueDepthEntry[]> {
+async function getQueueDepthsSafe(db: Db): Promise<QueueDepthEntry[]> {
   try {
     const rows = await withTimeout(
-      getWorkerDb().execute(sql`
+      db.execute(sql`
         SELECT name, COUNT(*)::int AS depth
         FROM pgboss.job
         WHERE state < 'active'
@@ -338,25 +339,48 @@ async function getQueueDepthsSafe(): Promise<QueueDepthEntry[]> {
   }
 }
 
+/** Tope del embudo: igual que el MRR, un dato del dashboard no puede dejarlo cargando. */
+const FUNNEL_TIMEOUT_MS = 8_000
+
+async function getOnboardingFunnelSafe(db: Db): Promise<OnboardingFunnelData | null> {
+  try {
+    return await withTimeout(getOnboardingFunnel(db), FUNNEL_TIMEOUT_MS)
+  } catch (err) {
+    logger.warn('super-admin.dashboard_funnel_unavailable', {
+      module: 'super-admin',
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return null
+  }
+}
+
+/**
+ * Respaldo del cliente worker del dashboard: los tres `*Safe` ya tienen su
+ * propio tope (el mayor, 8 s) y nunca rechazan; este solo cierra el cliente si
+ * algo escapara igual. Queda debajo de los 15 s de la page.
+ */
+const WORKER_READS_TIMEOUT_MS = 10_000
+
 /** Carga todas las métricas del dashboard global en paralelo. */
 export async function getDashboardData(): Promise<DashboardData> {
   const now = new Date()
   const [
-    mrrCents,
+    [mrrCents, queues, onboardingFunnel],
     tenantsByStatus,
     expiringTrials,
     signups,
-    queues,
     recentWebhooks,
-    onboardingFunnel,
   ] = await Promise.all([
-    getMrrCentsSafe(),
+    // Las lecturas cross-tenant van por un cliente worker propio que se cierra
+    // al terminar: una query colgada muere con él y no le come el pool
+    // compartido al resto de la instancia (ver `withDisposableWorkerDb`).
+    withDisposableWorkerDb(WORKER_READS_TIMEOUT_MS, (db) =>
+      Promise.all([getMrrCentsSafe(db), getQueueDepthsSafe(db), getOnboardingFunnelSafe(db)]),
+    ),
     getTenantsByStatus(),
     getExpiringTrials(now),
     getRecentSignups(now),
-    getQueueDepthsSafe(),
     getRecentWebhooks(),
-    getOnboardingFunnel(),
   ])
 
   return {

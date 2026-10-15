@@ -4,6 +4,19 @@
  * derivan el intent y arman esa URL. Puros y testeables (sin I/O).
  */
 
+/**
+ * Vía por la que un JUGADOR pidió entrar. La marca el emisor (auth.service) como
+ * `via=` en el `redirectTo`, el callback la lee para saber que el enlace es de
+ * jugador (las altas e invitaciones de staff no la llevan) y `/verify` la usa
+ * para ofrecer el reintento correcto.
+ */
+export type PlayerVia = 'email' | 'google'
+
+/** Valida el `via` de la URL; cualquier otro valor (o ausencia) → `null`, sin marca. */
+export function parseVia(raw: string | null | undefined): PlayerVia | null {
+  return raw === 'email' || raw === 'google' ? raw : null
+}
+
 export type SuccessIntent = 'booking' | 'booking_returning' | 'login' | 'signup'
 
 const VALID_INTENTS = new Set<SuccessIntent>(['booking', 'booking_returning', 'login', 'signup'])

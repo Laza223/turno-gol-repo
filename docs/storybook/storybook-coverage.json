@@ -1,6 +1,6 @@
 {
   "generatedFrom": "auditoría de 6 agentes sobre src/** + regeneración tras las extracciones presentacionales y el merge de contenido SEO + fase 4 de Torneos (portal público y cobro de inscripción)",
-  "total": 336,
+  "total": 338,
   "components": [
     {
       "path": "src/app/(admin)/abonados/AbonadoDialogs.tsx",
@@ -1779,31 +1779,40 @@
       "isolationNotes": "useFormState/useFormStatus (react-dom) atados a resetPasswordAction real."
     },
     {
+      "path": "src/app/(auth)/verify/GoogleRetryButton.tsx",
+      "name": "GoogleRetryButton",
+      "domain": "auth",
+      "rendering": "client",
+      "role": "form",
+      "isolationDifficulty": "easy",
+      "classification": "COVERED_BY_PARENT_STORY",
+      "exclusionReason": "Submit con useFormStatus (disabled + aria-busy mientras pending) que solo existe dentro del <form action={googleAction}> de VerifyView. La story ConflictoGoogle de VerifyPage lo renderiza en reposo; el click y el payload que manda (select_account=1 + next) los cubre tests/unit/verify-page-errors.test.tsx.",
+      "relevantStates": [],
+      "proposedStoryTitle": "",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": ["form"],
+      "isolationNotes": ""
+    },
+    {
       "path": "src/app/(auth)/verify/page.tsx",
       "name": "VerifyPage",
       "domain": "auth",
       "rendering": "server",
       "role": "page",
-      "isolationDifficulty": "trivial",
-      "classification": "DIRECT_STORY_REQUIRED",
+      "isolationDifficulty": "medium",
+      "classification": "PRESENTATIONAL_EXTRACTION_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": [
-        "loading (verificando tu enlace)",
-        "success intent=booking",
-        "success intent=login",
-        "success intent=signup",
-        "error=expired",
-        "error=used",
-        "error=invalid",
-        "error=exchange_failed"
-      ],
-      "proposedStoryTitle": "Auth/VerifyPage",
+      "relevantStates": [],
+      "proposedStoryTitle": "Auth/VerifyPage (vía VerifyView)",
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
-      "usesServerAction": false,
+      "usesServerAction": true,
       "providers": [],
-      "isolationNotes": "No fetchea nada — toda la lógica sale de `searchParams`, es 100% presentacional pese a ser page.tsx. Renderiza <SuccessRedirect/> (client) en el estado success."
+      "isolationNotes": "Cascarón async: resuelve la Promise de searchParams, importa la Server Action startGoogleLoginFromIngresar y se la pasa por prop a VerifyView, que tiene story. Una story no puede montar esta page (async) ni importar la action como valor: arrastra postgres al bundle del browser."
     },
     {
       "path": "src/app/(auth)/verify/SuccessRedirect.tsx",
@@ -1822,6 +1831,34 @@
       "usesServerAction": false,
       "providers": [],
       "isolationNotes": "Story propia (2): estado inicial y decremento del contador. No se espera a que la cuenta llegue a 0: a los 5s dispara window.location.assign, que en el runner navegaría el iframe y se llevaría puesta la corrida. Location es [LegacyUnforgeable]: no hay stub posible."
+    },
+    {
+      "path": "src/app/(auth)/verify/VerifyView.tsx",
+      "name": "VerifyView",
+      "domain": "auth",
+      "rendering": "server",
+      "role": "page",
+      "isolationDifficulty": "easy",
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "loading (verificando tu enlace)",
+        "success intent=booking",
+        "success intent=login",
+        "success intent=signup",
+        "error=expired sin via (puede ser un link de staff: primero Iniciar sesión → /login)",
+        "error=expired con via=email (jugador: Pedir un enlace nuevo → /ingresar)",
+        "error=invalid (un código desconocido cae acá)",
+        "error=account_conflict via=google (Usar otra cuenta de Google + Entrar con mi email)",
+        "error=account_conflict via=email (Usar otro email)"
+      ],
+      "proposedStoryTitle": "Auth/VerifyPage",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": true,
+      "providers": [],
+      "isolationNotes": "Vista extraída de page.tsx (async). No fetchea nada: toda la lógica sale de `searchParams`. La Server Action de Google entra por la prop `googleAction` (la story pasa fn()): importarla como valor rompe el bundle de Storybook (postgres → Buffer is not defined). Renderiza <SuccessRedirect/> (client) en success y <GoogleRetryButton/> en account_conflict con via=google. Los códigos solo de jugador (provision_failed, oauth_cancelled, oauth_failed) y orphaned_session no tienen story: los cubre tests/unit/verify-page-errors.test.tsx."
     },
     {
       "path": "src/app/(business)/alternativas-alquila-tu-cancha/page.tsx",

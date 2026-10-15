@@ -32,4 +32,10 @@ describe('sanitizeNext', () => {
   it('strips a harmless embedded TAB from an otherwise-safe path', () => {
     expect(sanitizeNext('/mis-reservas\t?x=1')).toBe('/mis-reservas?x=1')
   })
+  it('falls back on a non-string: Next hands over string[] when ?next= is repeated', () => {
+    expect(sanitizeNext(['/a', '/b'])).toBe('/mis-reservas')
+    expect(sanitizeNext(['/a'], '/explorar')).toBe('/explorar')
+    expect(sanitizeNext(42)).toBe('/mis-reservas')
+    expect(sanitizeNext({})).toBe('/mis-reservas')
+  })
 })

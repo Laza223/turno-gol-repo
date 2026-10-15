@@ -16,7 +16,7 @@ import { makeServiceClient, E2E_PLAYER_ID, E2E_PLAYER_EMAIL } from '../../_helpe
  *
  * Evidence anchors: ingresar/page.tsx:100, IngresarForm.tsx:81-84,92-105,150,
  * ingresar/actions.ts:20-45, api/auth/callback/route.ts:73-100,
- * lib/auth-success.ts:21-23, verify/page.tsx:21-24.
+ * lib/auth-success.ts:43-49, verify/VerifyView.tsx:120-124.
  */
 
 const INBUCKET_URL = process.env.INBUCKET_URL ?? 'http://127.0.0.1:54324'

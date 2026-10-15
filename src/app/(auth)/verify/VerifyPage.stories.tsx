@@ -1,17 +1,17 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, within } from 'storybook/test'
-import { VerifyView } from './page'
+import { expect, fn, within } from 'storybook/test'
+import { VerifyView } from './VerifyView'
 
 /**
  * Monta `VerifyView`, no el `export default` de page.tsx: en Next 16
  * `searchParams` es una Promise, así que la page es async — y un componente
  * async no se puede montar en el cliente ("Only Server Components can be async
  * at the moment"). La page resuelve la Promise y delega en `VerifyView`, que es
- * sincrónico y es lo que se testea acá.
+ * sincrónico y es lo que se testea acá. La Server Action de Google entra por
+ * prop (`googleAction`): importarla como valor rompe el bundle de Storybook.
  *
- * 100% presentacional pese a vivir en `page.tsx`: toda la lógica sale de
- * `searchParams`, sin fetch ni auth (ver isolationNotes en
- * docs/storybook/storybook-coverage.json). El estado `success` monta
+ * 100% presentacional: toda la lógica sale de `searchParams`, sin fetch ni auth
+ * (ver isolationNotes en docs/storybook/storybook-coverage.json). El estado `success` monta
  * <SuccessRedirect/> (client), que agenda un `window.location.assign(next)`
  * real a los 5s. No se stubea: `assign`/`replace`/`reload` son [Unforgeable]
  * en Location (own-property no configurable) — en un browser real (Playwright,
@@ -23,6 +23,7 @@ import { VerifyView } from './page'
 const meta = {
   title: 'Auth/VerifyPage',
   component: VerifyView,
+  args: { googleAction: fn(async () => {}) },
   parameters: { layout: 'fullscreen' },
 } satisfies Meta<typeof VerifyView>
 
@@ -64,13 +65,36 @@ export const ExitoBooking: Story = {
   },
 }
 
+/** Sin `via` no sabemos si es un jugador o un link de staff (alta, invitación…): primero el panel. */
 export const ErrorExpirado: Story = {
   args: { searchParams: { error: 'expired' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(
-      canvas.getByText('Este enlace expiró. Generá uno nuevo desde Iniciar sesión.'),
-    ).toBeInTheDocument()
+    await expect(canvas.getByRole('heading', { name: 'Este enlace venció' })).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: 'Iniciar sesión' })).toHaveAttribute(
+      'href',
+      '/login',
+    )
+    await expect(canvas.getByRole('link', { name: 'Ingresá acá' })).toHaveAttribute(
+      'href',
+      '/ingresar',
+    )
+  },
+}
+
+/** Con `via` lo pidió un jugador: el reintento es el suyo. */
+export const ErrorExpiradoJugador: Story = {
+  args: { searchParams: { error: 'expired', via: 'email' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('link', { name: 'Pedir un enlace nuevo' })).toHaveAttribute(
+      'href',
+      '/ingresar',
+    )
+    await expect(canvas.getByRole('link', { name: 'Entrá al panel' })).toHaveAttribute(
+      'href',
+      '/login',
+    )
   },
 }
 
@@ -80,7 +104,42 @@ export const ErrorInvalido: Story = {
     const canvas = within(canvasElement)
     // Código sin entrada en ERROR_COPY: cae al copy de 'invalid' (fallback).
     await expect(
-      canvas.getByText('No pudimos verificar el enlace. Probá de nuevo.'),
+      canvas.getByRole('heading', { name: 'No pudimos leer el enlace' }),
     ).toBeInTheDocument()
+  },
+}
+
+/** Las cuentas de jugador y de complejo están separadas: se explica y se ofrece otra. */
+export const ConflictoGoogle: Story = {
+  args: {
+    searchParams: { error: 'account_conflict', via: 'google', next: '/complejo-fenix/reservar' },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      canvas.getByRole('heading', { name: 'Esta cuenta de Google ya la usa un complejo' }),
+    ).toBeInTheDocument()
+    await expect(
+      canvas.getByRole('button', { name: 'Usar otra cuenta de Google' }),
+    ).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: 'Entrar con mi email' })).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: 'Entrá al panel' })).toHaveAttribute(
+      'href',
+      '/login',
+    )
+  },
+}
+
+export const ConflictoEmail: Story = {
+  args: { searchParams: { error: 'account_conflict', via: 'email' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      canvas.getByRole('heading', { name: 'Este email ya lo usa un complejo' }),
+    ).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: 'Usar otro email' })).toHaveAttribute(
+      'href',
+      '/ingresar',
+    )
   },
 }

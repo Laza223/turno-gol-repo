@@ -76,7 +76,8 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   // corte crearía una fila espuria en staff_users (audit_report.md 3-10).
   // Mismo criterio que extractRealAuthUser (auth.middleware.ts).
   if (isPlayerAccount(result.user)) {
-    await (await createClient()).auth.signOut()
+    // `local`: cierra solo la sesión de este intento, no las del jugador en otros dispositivos.
+    await (await createClient()).auth.signOut({ scope: 'local' })
     return { status: 'error', message: GENERIC, email }
   }
 
@@ -103,7 +104,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     ;({ path } = await provisionAndRouteStaff(result.user))
   } catch (err) {
     if (err instanceof OrphanedStaffSessionError) {
-      await (await createClient()).auth.signOut()
+      await (await createClient()).auth.signOut({ scope: 'local' })
       return { status: 'error', message: 'Tu sesión expiró, volvé a iniciar sesión.', email }
     }
     throw err
@@ -132,7 +133,12 @@ export async function resendConfirmationAction(
   await supabase.auth.resend({
     type: 'signup',
     email: email.data,
-    options: { emailRedirectTo: `${await callbackOrigin()}/api/auth/callback` },
+    // El `?next=` es ignorado por la rama staff del callback, pero es OBLIGATORIO: da
+    // el `?` separador para que confirmation.html concatene `&token_hash=…` sobre
+    // `{{ .RedirectTo }}`. Mismo valor y mismo motivo que el alta (register/actions.ts).
+    options: {
+      emailRedirectTo: `${await callbackOrigin()}/api/auth/callback?next=${encodeURIComponent('/onboarding')}`,
+    },
   })
   // Respuesta genérica: confirma siempre, exista o no la cuenta.
   return { status: 'sent' }

@@ -19,7 +19,7 @@ import { tomorrowDateIsoArt } from '../../_helpers/booking-seed'
  *
  * Evidence anchors: reservar/page.tsx:118-131, LoginGate.tsx:41-42,50-51,68-71,
  * reservar/actions.ts:49-80, api/auth/callback/route.ts:54,71-100,
- * player.service.ts:24-65, verify/page.tsx:16-19,117-121,
+ * player.service.ts:24-65, verify/VerifyView.tsx:107-111,218-245,
  * verify/SuccessRedirect.tsx:5,19-21,32-34.
  */
 

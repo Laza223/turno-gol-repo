@@ -25,6 +25,7 @@ vi.mock('@/modules/cashflow/cashflow.service', async (importOriginal) => ({
 vi.mock('@/modules/bookings/booking.service', () => ({
   createManualBooking: vi.fn(),
   completeBooking: vi.fn(),
+  findCompletionReplay: vi.fn().mockResolvedValue(null),
   getAvailableSlots: vi.fn(),
 }))
 vi.mock('@/modules/bookings/booking.concurrency', () => ({

@@ -10,6 +10,7 @@ import { SubmitButton } from '@/components/ui/submit-button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { formatArs } from '@/lib/format'
 import { addDays, artTodayStr } from '@/shared/dates/art'
+import { DEFAULT_CANCELLATION_HOURS_BEFORE } from '@/shared/constants'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 import type { PolicyActionResult } from './actions'
 
@@ -130,7 +131,7 @@ export function ReservasPolicyForm({
   )
 
   // Cancellation hours states
-  const initialHours = s.cancellation_policy?.hours_before ?? 12
+  const initialHours = s.cancellation_policy?.hours_before ?? DEFAULT_CANCELLATION_HOURS_BEFORE
   const isPresetHours = [0, 2, 6, 12, 24].includes(initialHours)
   const [selectedHours, setSelectedHours] = useState<number | 'other'>(
     isPresetHours ? initialHours : 'other',

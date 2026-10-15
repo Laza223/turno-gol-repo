@@ -29,9 +29,9 @@ export class BookingNotInConfirmedError extends Error {
 }
 
 /**
- * `cancelByPlayer` sobre una reserva ya no `confirmed` que no es un replay del
- * propio jugador. Lleva el estado real para decirle QUÉ pasó. Subclase a propósito:
- * los `instanceof BookingNotInConfirmedError` del panel siguen valiendo.
+ * `cancelByPlayer`/`cancelByAdmin` sobre una reserva ya no `confirmed` que no es un
+ * replay del mismo actor. Lleva el estado real para decir QUÉ pasó. Subclase a
+ * propósito: los `instanceof BookingNotInConfirmedError` del panel siguen valiendo.
  */
 export class BookingNotCancelableError extends BookingNotInConfirmedError {
   constructor(

@@ -15,7 +15,7 @@ import { NeedsAttention } from '@/components/dashboard/NeedsAttention'
 import { ReferralShareBanner } from '@/components/dashboard/ReferralShareBanner'
 import { shouldShowReferralBanner } from '@/lib/dashboard/referral-banner'
 import { absoluteUrl } from '@/lib/seo/metadata'
-import { REFERRAL_PROMO_ENDS_AT } from '@/shared/constants'
+import { DEFAULT_CANCELLATION_HOURS_BEFORE, REFERRAL_PROMO_ENDS_AT } from '@/shared/constants'
 import { listDayGridBookings, listUnpaidGridBookingsBefore } from '@/app/(admin)/reservas/queries'
 import { mediumDateLabel } from '@/app/(admin)/caja/caja-lib'
 import {
@@ -269,7 +269,9 @@ export default async function DashboardPage() {
             // Solo el dueño puede activar canchas (Configuración es suya).
             canManageCourts={isAdmin}
             serverNowMs={now.getTime()}
-            cancellationPolicyHours={tenant.settings.cancellation_policy.hours_before}
+            cancellationPolicyHours={
+              tenant.settings.cancellation_policy?.hours_before ?? DEFAULT_CANCELLATION_HOURS_BEFORE
+            }
             actions={{
               chargeDebtAction,
               completeAndChargeBookingAction,

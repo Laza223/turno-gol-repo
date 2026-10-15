@@ -11,10 +11,9 @@ export const SLOT_DURATION_MINUTES = 60
 
 /**
  * Default de `settings.cancellation_policy.hours_before`. Lo usan los settings de
- * un complejo nuevo (`tenant.service.ts`) y, cuando no hay política guardada, el
- * lado del jugador: `cancelByPlayer` y /mis-reservas, para que decidan con el
- * mismo número. El panel todavía NO lo usa: `ReservasPolicyForm`,
- * `reservas/queries.ts` y `cancelByAdmin` tienen su propio default (o ninguno).
+ * un complejo nuevo (`tenant.service.ts`) y, cuando no hay política guardada,
+ * todo el que decide o muestra con ella: `cancelByPlayer`, `cancelByAdmin`, el
+ * detalle de /reservas y `ReservasPolicyForm`, para que decidan con el mismo número.
  */
 export const DEFAULT_CANCELLATION_HOURS_BEFORE = 12
 

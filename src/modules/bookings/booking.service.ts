@@ -752,6 +752,34 @@ export async function completeBooking(
 }
 
 /**
+ * Reintento de "completar" del mismo staff (respuesta lenta o perdida, doble
+ * click). Lockea la fila (FOR UPDATE) antes que `completeBooking`, así dos pedidos
+ * concurrentes se serializan acá: el segundo ve `completed` y, si la completó este
+ * staff (`completed_by_staff`), recibe la reserva tal cual, sin escribir nada.
+ * `null` = no es replay; el caller sigue con `completeBooking`, que valida y tira
+ * sus errores de siempre.
+ *
+ * `revertNoShow` también escribe `completed_by_staff`: si ese mismo staff deshizo
+ * un "No vino" y después toca "Completar", recibe éxito. Es aceptado: el turno
+ * queda exactamente como lo pidió y no se escribe nada.
+ */
+export async function findCompletionReplay(
+  bookingId: string,
+  staffUserId: string,
+  tx: DbTx,
+): Promise<BookingRow | null> {
+  const rows = await tx
+    .select()
+    .from(bookings)
+    .where(eq(bookings.id, bookingId))
+    .limit(1)
+    .for('update')
+  const row = rows[0]
+  if (!row || row.status !== 'completed' || row.completedByStaff !== staffUserId) return null
+  return rowToBookingRow(row)
+}
+
+/**
  * Advisory-lock key for the auto-complete cron. Hashed via `hashtext` into the
  * advisory-lock space (same convention as refresh-mp-tokens.worker).
  */

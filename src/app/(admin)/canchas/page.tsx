@@ -10,7 +10,10 @@ import {
   uploadCourtPhotoAction,
   removeCourtPhotoAction,
   reorderCourtPhotosAction,
+  setPublicPricesVisibilityAction,
 } from '@/app/(admin)/canchas/actions'
+import { PublicPricesToggle } from '@/app/(admin)/canchas/components/PublicPricesToggle'
+import { arePublicPricesHidden } from '@/modules/tenants/tenant.utils'
 
 export default async function CanchasPage() {
   // Canchas salió de Configuración el 2026-09-10 y es un espacio propio del
@@ -38,6 +41,12 @@ export default async function CanchasPage() {
           uploadPhotoAction={uploadCourtPhotoAction}
           removePhotoAction={removeCourtPhotoAction}
           reorderPhotosAction={reorderCourtPhotosAction}
+          publicPricesControl={
+            <PublicPricesToggle
+              initialVisible={!arePublicPricesHidden(tenant.settings)}
+              action={setPublicPricesVisibilityAction}
+            />
+          }
         />
       </div>
     </div>

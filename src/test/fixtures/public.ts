@@ -50,6 +50,7 @@ export type PublicTenantFixture = {
   allowOnlineBooking: boolean
   requiresDeposit: boolean
   depositPercentage: number
+  hidePrices: boolean
   acceptsCash: boolean
   acceptsTransfer: boolean
   bookingAdvanceDays: number
@@ -81,6 +82,7 @@ export const publicTenant = (
   allowOnlineBooking: true,
   requiresDeposit: true,
   depositPercentage: 30,
+  hidePrices: false,
   acceptsCash: true,
   acceptsTransfer: true,
   bookingAdvanceDays: 6,

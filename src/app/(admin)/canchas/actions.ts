@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { revalidatePublicListings } from '@/shared/cache/public-listings'
+import type { ActionResult } from '@/shared/types/action-result'
+import { updateTenantSettings } from '@/modules/tenants/tenant.service'
 import { and, eq, inArray, sql as dsql } from 'drizzle-orm'
 import { requireAdminStaffAction } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
@@ -524,4 +526,32 @@ export async function reorderCourtPhotosAction(
       error: 'No pudimos reordenar las fotos. Probá de nuevo en un momento.',
     }
   }
+}
+
+/**
+ * Muestra u oculta los precios en la página pública del complejo
+ * (`settings.hide_public_prices`). Pedido del piloto (2026-10-14): el dueño
+ * del predio que alquila controla cuánto cobra. Solo cambia lo que ve el
+ * jugador; el precio y la seña se siguen calculando igual.
+ */
+export async function setPublicPricesVisibilityAction(visible: boolean): Promise<ActionResult> {
+  const auth = await requireAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  try {
+    await updateTenantSettings(tenant.id, { hide_public_prices: !visible })
+  } catch (e) {
+    captureException(e)
+    return { success: false, error: 'No pudimos guardar el cambio. Probá de nuevo en un momento.' }
+  }
+  // El perfil es ISR y explorar/home salen de una caché: sin esto el cambio
+  // tardaría hasta 5 minutos en verse.
+  revalidatePath('/canchas')
+  revalidatePath(`/${tenant.slug}`)
+  revalidatePublicListings()
+  return { success: true }
 }

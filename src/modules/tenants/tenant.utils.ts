@@ -1,3 +1,5 @@
+import type { TenantSettings } from './tenant.types'
+
 /**
  * Segmentos de primer nivel del App Router (los route groups no aportan path,
  * así que sus hijos también son top-level). Un tenant con uno de estos slugs
@@ -11,6 +13,17 @@
  * el árbol de `src/app`: agregar una ruta top-level sin reservarla pone ese
  * test en rojo, en vez de esperar a que un complejo se llame así.
  */
+/**
+ * ¿El complejo oculta sus precios al jugador? (`settings.hide_public_prices`,
+ * pedido del piloto 2026-10-14). Default false: un complejo que nunca tocó la
+ * opción los muestra. Único punto de lectura de la key.
+ */
+export function arePublicPricesHidden(
+  settings: Pick<TenantSettings, 'hide_public_prices'>,
+): boolean {
+  return settings.hide_public_prices ?? false
+}
+
 export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   // raíz
   'api',

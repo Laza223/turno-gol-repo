@@ -37,6 +37,7 @@ const FIXTURE_TENANT: PublicTenant = {
   allowOnlineBooking: true,
   requiresDeposit: false,
   depositPercentage: 30,
+  hidePrices: false,
   acceptsCash: true,
   acceptsTransfer: true,
   bookingAdvanceDays: 6,

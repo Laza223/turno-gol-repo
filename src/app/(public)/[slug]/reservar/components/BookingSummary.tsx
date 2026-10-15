@@ -10,6 +10,8 @@ export type BookingSummaryData = {
   timeEnd: string
   price: number
   depositAmount: number
+  /** El complejo oculta sus precios: se dice CÓMO se paga, sin montos. */
+  hidePrices?: boolean
 }
 
 /**
@@ -41,30 +43,38 @@ export default function BookingSummary({ data }: { data: BookingSummaryData }) {
           </span>
         </div>
       </div>
-      <div className="space-y-1.5 border-t border-border pt-4 text-sm dark:border-white/10">
-        <div className="flex justify-between text-muted-foreground">
-          <span>Precio del turno</span>
-          <span className="tabular-nums text-foreground">{formatArs(data.price)}</span>
+      {data.hidePrices ? (
+        <p className="border-t border-border pt-4 text-sm text-muted-foreground dark:border-white/10">
+          {data.depositAmount > 0
+            ? 'Para confirmar pagás una seña online con MercadoPago. El resto, en el complejo.'
+            : 'Pagás en el complejo.'}
+        </p>
+      ) : (
+        <div className="space-y-1.5 border-t border-border pt-4 text-sm dark:border-white/10">
+          <div className="flex justify-between text-muted-foreground">
+            <span>Precio del turno</span>
+            <span className="tabular-nums text-foreground">{formatArs(data.price)}</span>
+          </div>
+          {data.depositAmount > 0 ? (
+            <>
+              <div className="flex items-baseline justify-between pt-0.5">
+                <span className="font-semibold text-foreground">Seña a pagar ahora</span>
+                <span className="font-display text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+                  {formatArs(data.depositAmount)}
+                </span>
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Resto en el complejo</span>
+                <span className="tabular-nums">{formatArs(rest)}</span>
+              </div>
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Este complejo no requiere seña. Pagás el total en el complejo.
+            </p>
+          )}
         </div>
-        {data.depositAmount > 0 ? (
-          <>
-            <div className="flex items-baseline justify-between pt-0.5">
-              <span className="font-semibold text-foreground">Seña a pagar ahora</span>
-              <span className="font-display text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
-                {formatArs(data.depositAmount)}
-              </span>
-            </div>
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Resto en el complejo</span>
-              <span className="tabular-nums">{formatArs(rest)}</span>
-            </div>
-          </>
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            Este complejo no requiere seña. Pagás el total en el complejo.
-          </p>
-        )}
-      </div>
+      )}
     </div>
   )
 }

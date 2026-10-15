@@ -45,6 +45,16 @@ describe('BookingReceipt', () => {
     expect(screen.queryByText(/Seña pagada/)).toBeNull()
   })
 
+  it('complejo con precios ocultos: ningún monto, solo cómo se paga', () => {
+    const { container, rerender } = render(<BookingReceipt {...data} hidePrices />)
+    expect(container.textContent).not.toContain('$')
+    expect(screen.getByText('Seña pagada · el resto se abona en el complejo')).toBeTruthy()
+
+    rerender(<BookingReceipt {...data} hidePrices depositAmount={0} depositStatus="not_required" />)
+    expect(container.textContent).not.toContain('$')
+    expect(screen.getByText('Se abona en el complejo')).toBeTruthy()
+  })
+
   it('usa el id que las reglas @media print de globals.css esperan', () => {
     const { container } = render(<BookingReceipt {...data} />)
     expect(container.querySelector('#booking-receipt')).toBeTruthy()

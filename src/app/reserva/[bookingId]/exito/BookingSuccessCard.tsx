@@ -22,6 +22,8 @@ export type ConfirmedBooking = {
   priceSnapshot: number
   depositAmount: number
   depositStatus: string
+  /** El complejo oculta sus precios (`settings.hide_public_prices`): sin montos. */
+  hidePrices: boolean
 }
 
 /**
@@ -59,7 +61,13 @@ export function BookingSuccessCard({
         {formatDateLong(booking.date)} · {booking.timeStart.slice(0, 5)}–
         {booking.timeEnd.slice(0, 5)}
       </p>
-      {booking.depositStatus === 'not_required' ? (
+      {booking.hidePrices ? (
+        <p className="mt-4 text-sm text-muted-foreground">
+          {booking.depositStatus === 'not_required'
+            ? 'Pagás al llegar al complejo.'
+            : 'Seña pagada. El resto lo abonás en el complejo.'}
+        </p>
+      ) : booking.depositStatus === 'not_required' ? (
         <p className="mt-4 text-sm text-muted-foreground tabular-nums">
           Pagás{' '}
           <span className="font-semibold text-foreground">{formatArs(booking.priceSnapshot)}</span>{' '}
@@ -106,6 +114,7 @@ export function BookingSuccessCard({
         priceSnapshot={booking.priceSnapshot}
         depositAmount={booking.depositAmount}
         depositStatus={booking.depositStatus}
+        hidePrices={booking.hidePrices}
         verifyUrl={verifyUrl}
       />
 

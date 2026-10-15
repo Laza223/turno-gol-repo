@@ -588,6 +588,17 @@ describe('renderBookingRescheduled', () => {
     expect(out.subject).toBeTruthy()
     expect(out.html).toContain('Tu turno se movió')
   })
+
+  it('complejo con precios ocultos: el mail no menciona el precio, ni si cambió', () => {
+    for (const priceChanged of [false, true]) {
+      const { html, text } = renderBookingRescheduled({ ...DATA, price: null, priceChanged })
+      for (const body of [html, text!]) {
+        expect(body).not.toMatch(/precio/i)
+        expect(body).not.toContain('$')
+        expect(body).toContain('Cancha 3')
+      }
+    }
+  })
 })
 
 describe('renderOnboardingAbandoned', () => {

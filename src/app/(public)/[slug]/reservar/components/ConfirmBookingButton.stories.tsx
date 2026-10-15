@@ -45,7 +45,7 @@ type Story = StoryObj<typeof meta>
  * `PaymentMethodSelector`.
  */
 export const ConSena: Story = {
-  args: { depositAmount: 450000, payMethods: ['mercadopago'], action: fn(async () => undefined) },
+  args: { withDeposit: true, payMethods: ['mercadopago'], action: fn(async () => undefined) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('button', { name: /pagar seña y reservar/i })).toBeInTheDocument()
@@ -64,7 +64,7 @@ export const ConSena: Story = {
  * descripciones de cada método en `PaymentMethodSelector`.
  */
 export const SinSena: Story = {
-  args: { depositAmount: 0, payMethods: ['cash', 'transfer'], action: fn(async () => undefined) },
+  args: { withDeposit: false, payMethods: ['cash', 'transfer'], action: fn(async () => undefined) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('button', { name: /^confirmar reserva$/i })).toBeInTheDocument()
@@ -78,7 +78,7 @@ const enviando = pendingAction<void>(undefined)
 /** Submit dispara la Server Action inyectada; mientras está pendiente el botón muestra spinner. */
 export const Enviando: Story = {
   args: {
-    depositAmount: 450000,
+    withDeposit: true,
     payMethods: ['mercadopago'],
     action: fn(enviando.action),
   },

@@ -81,7 +81,9 @@ export default async function ReservarPage(props: Props) {
     )
   }
 
-  const availability = await getPublicAvailability(tenant, date)
+  // keepPrices: la seña se calcula con el precio real aunque el complejo los
+  // oculte; con `hidePrices` el monto no se muestra (BookingSummary).
+  const availability = await getPublicAvailability(tenant, date, { keepPrices: true })
   const courtData = availability.courts.find((c) => c.id === court)
   const slot = courtData?.slots.find((s) => s.time === time)
   if (!courtData || !slot) {
@@ -173,6 +175,7 @@ export default async function ReservarPage(props: Props) {
             timeEnd,
             price,
             depositAmount,
+            hidePrices: tenant.hidePrices,
           }}
         />
 
@@ -183,7 +186,7 @@ export default async function ReservarPage(props: Props) {
             date={date}
             time={time}
             dur={durNum}
-            depositAmount={depositAmount}
+            withDeposit={depositAmount > 0}
             payMethods={payMethods}
             action={createBookingAndCheckout}
           />

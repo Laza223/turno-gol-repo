@@ -23,6 +23,7 @@ const base: ConfirmedBooking = {
   priceSnapshot: 1500000,
   depositAmount: 450000,
   depositStatus: 'paid',
+  hidePrices: false,
 }
 
 /**

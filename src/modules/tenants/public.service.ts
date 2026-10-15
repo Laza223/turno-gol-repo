@@ -7,6 +7,7 @@ import { track, withSpan } from '@/shared/observability'
 import { effectiveCloseMins, normalizeRangeToOpenDay } from '@/shared/time/operating-day'
 import { holdExpiresAtIso } from '@/lib/booking/hold'
 import { publicBookingAdvanceDays } from './tenant.lifecycle'
+import { arePublicPricesHidden } from './tenant.utils'
 import type { OpeningHours, TenantSettings } from './tenant.types'
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -38,6 +39,13 @@ export type PublicTenant = {
   allowOnlineBooking: boolean
   requiresDeposit: boolean
   depositPercentage: number
+  /**
+   * El complejo oculta sus precios al jugador (`settings.hide_public_prices`).
+   * Las superficies públicas ya reciben los precios en `null` desde este
+   * service; las que necesitan el monto real (checkout) lo usan solo para
+   * decidir el flujo y no lo muestran.
+   */
+  hidePrices: boolean
   // Métodos de pago presencial que el complejo declara aceptar (settings).
   acceptsCash: boolean
   acceptsTransfer: boolean
@@ -125,13 +133,13 @@ export type PublicSlot = {
   /** Solo en `held`: ver comentario de `Slot.heldUntil`. */
   heldUntil?: string
 }
-function toPublicSlots(slots: Slot[]): PublicSlot[] {
+function toPublicSlots(slots: Slot[], hidePrices: boolean): PublicSlot[] {
   return slots.map((s) => ({
     time: s.time,
     duration: s.duration,
     status:
       s.status === 'free' || s.status === 'past' || s.status === 'held' ? s.status : 'occupied',
-    price: s.price,
+    price: hidePrices ? null : s.price,
     ...(s.status === 'held' && s.heldUntil ? { heldUntil: s.heldUntil } : {}),
   }))
 }
@@ -398,6 +406,7 @@ async function _getPublicTenant(slug: string): Promise<PublicTenant | null> {
     allowOnlineBooking: s.allow_online_booking ?? true,
     requiresDeposit: s.requires_deposit ?? false,
     depositPercentage: s.deposit_percentage ?? 30,
+    hidePrices: arePublicPricesHidden(s),
     acceptsCash: s.accepts_cash ?? true,
     acceptsTransfer: s.accepts_transfer ?? true,
     bookingAdvanceDays: publicBookingAdvanceDays(
@@ -451,22 +460,30 @@ export async function getPublicCourtCards(tenant: PublicTenant): Promise<PublicC
     format: c.format,
     capacity: c.capacity,
     photos: (c.photos ?? []) as string[],
-    fromPriceCents: minPriceFromPricing(c.pricing as CourtPricingData),
+    fromPriceCents: tenant.hidePrices ? null : minPriceFromPricing(c.pricing as CourtPricingData),
   }))
 }
 
+/**
+ * Con `tenant.hidePrices` los slots salen con `price: null`. `keepPrices` es
+ * solo para el checkout, que necesita el precio real para calcular la seña y
+ * elegir el flujo de pago, pero no lo muestra ni lo manda al browser.
+ */
 export async function getPublicAvailability(
   tenant: PublicTenant,
   dateStr: string, // YYYY-MM-DD
+  opts: { keepPrices?: boolean } = {},
 ): Promise<AvailabilityResponse> {
+  const hidePrices = tenant.hidePrices && !opts.keepPrices
   return withSpan('availability.public', 'http.server.availability', () =>
-    getPublicAvailabilityImpl(tenant, dateStr),
+    getPublicAvailabilityImpl(tenant, dateStr, hidePrices),
   )
 }
 
 async function getPublicAvailabilityImpl(
   tenant: PublicTenant,
   dateStr: string, // YYYY-MM-DD
+  hidePrices: boolean,
 ): Promise<AvailabilityResponse> {
   track.availability('availability.public.query', { tenantId: tenant.id, date: dateStr })
   // Current time in ART. Argentina = UTC-3, no DST.
@@ -553,6 +570,7 @@ async function getPublicAvailabilityImpl(
         nowDateStr,
         nowMins,
       }),
+      hidePrices,
     ),
   }))
 
@@ -667,6 +685,7 @@ export async function getPublicWeeklyAvailability(
           nowDateStr,
           nowMins,
         }),
+        tenant.hidePrices,
       ),
     }))
     return { date: dateStr, courts: dayCourts }

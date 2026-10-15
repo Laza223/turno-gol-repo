@@ -77,9 +77,11 @@ export function ConfirmDialog({
         // #17: si onConfirm lanza (ej. error DB inesperado, re-throw), sin este
         // catch la transicion quedaba rechazada y el modal colgado en
         // "Procesando…". Reportamos a Sentry y mostramos error inline sin cerrar.
+        // El texto NO manda a reintentar a ciegas: si lo que se perdió fue la
+        // respuesta, la acción pudo haberse hecho igual.
         Sentry.captureException(err)
         startTransition(() =>
-          setError('No se pudo completar la acción. Revisá tu conexión e intentá de nuevo.'),
+          setError('No pudimos confirmar si se hizo. Revisá antes de volver a intentar.'),
         )
       }
     })

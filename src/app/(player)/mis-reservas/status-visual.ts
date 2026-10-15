@@ -38,13 +38,14 @@ const TONO_DEL_JUGADOR: Partial<Record<string, StatusTone>> = {
 /**
  * El complejo lee las dos cancelaciones como una sola ("Cancelada"): para su
  * caja el turno se liberó y punto. Para el jugador la diferencia es su plata,
- * así que acá se dice cuál de las dos fue.
+ * así que acá se dice cuál de las dos fue — pero solo si había plata: "sin
+ * reembolso" sobre una reserva que nunca tuvo seña paga le hace creer que perdió
+ * algo que nunca puso. `paid` es la seña cobrada; `captured`, la cobrada que el
+ * complejo se quedó (cancelación fuera de plazo o ausencia).
  */
-const LABEL_DEL_JUGADOR: Partial<Record<string, string>> = {
-  canceled_no_refund: 'Cancelada (sin reembolso)',
-}
+const PAID_DEPOSIT_STATUSES: ReadonlySet<string> = new Set(['paid', 'captured'])
 
-export function playerBookingVisual(status: string): StatusBadgeVisual {
+export function playerBookingVisual(status: string, depositStatus: string): StatusBadgeVisual {
   const base = bookingBadgeVisual({
     status,
     // Tipo neutralizado a propósito: en la grilla `fixed` PISA al estado porque
@@ -57,9 +58,10 @@ export function playerBookingVisual(status: string): StatusBadgeVisual {
     pending: null,
     totalPaid: null,
   })
+  const lostDeposit = status === 'canceled_no_refund' && PAID_DEPOSIT_STATUSES.has(depositStatus)
   return {
     icon: base.icon,
-    label: LABEL_DEL_JUGADOR[status] ?? base.label,
+    label: lostDeposit ? 'Cancelada (sin reembolso)' : base.label,
     tone: TONO_DEL_JUGADOR[status] ?? base.tone,
   }
 }

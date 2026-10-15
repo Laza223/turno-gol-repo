@@ -38,6 +38,8 @@ export type MisReservasBookingRow = {
   cancellation_outcome: 'no_deposit' | 'refund' | 'no_refund'
   /** Monto de la seña en centavos — solo relevante si cancellation_outcome !== 'no_deposit'. */
   deposit_amount: number
+  /** `deposit_status` de la reserva: decide si "Cancelada" lleva "(sin reembolso)". */
+  deposit_status: string
   /**
    * Devolución de seña en juego, si la hay. Sale de la fila `payments`, no de
    * `deposit_status` — ver `refundContactFor` en page.tsx.
@@ -223,7 +225,7 @@ export function MisReservasView({
         <ul className="space-y-3">
           {bookings.map((b) => {
             const dp = dateParts(b.date)
-            const visual = playerBookingVisual(b.status)
+            const visual = playerBookingVisual(b.status, b.deposit_status)
             const blockClass = dateBlockClass(visual.tone)
             return (
               <li

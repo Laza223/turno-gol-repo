@@ -166,7 +166,7 @@ export const ErrorInesperado: Story = {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(await body.findByRole('button', { name: 'Confirmar' }))
     await expect(await body.findByRole('alert')).toHaveTextContent(
-      /no se pudo completar la acción/i,
+      /no pudimos confirmar si se hizo/i,
     )
   },
 }

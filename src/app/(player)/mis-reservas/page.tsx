@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { getCancellationPreview } from '@/modules/bookings/cancellation-preview'
+import { DEFAULT_CANCELLATION_HOURS_BEFORE } from '@/shared/constants'
 import { bookingCode } from '@/lib/booking-code'
 import { MisReservasView, type MisReservasBookingRow } from './MisReservasView'
 import { cancelMyBookingAction, type RefundContactInfo } from './actions'
@@ -137,7 +138,7 @@ export default async function MisReservasPage(props: {
              b.deposit_status, b.deposit_amount, b.starts_at,
              c.name AS court_name, t.name AS tenant_name, t.slug AS tenant_slug,
              t.phone AS tenant_phone, t.whatsapp AS tenant_whatsapp, t.email AS tenant_email,
-             COALESCE((t.settings->'cancellation_policy'->>'hours_before')::int, 24) AS cancellation_policy_hours,
+             COALESCE((t.settings->'cancellation_policy'->>'hours_before')::int, ${DEFAULT_CANCELLATION_HOURS_BEFORE}::int) AS cancellation_policy_hours,
              COALESCE((t.settings->>'hide_public_prices')::boolean, false) AS hide_prices,
              EXISTS (SELECT 1 FROM reviews r WHERE r.booking_id = b.id) AS has_review,
              -- Estado REAL de la devolución. deposit_status no sirve: dice
@@ -235,6 +236,7 @@ export default async function MisReservasPage(props: {
       has_review: r.has_review,
       cancellation_outcome: preview.kind,
       deposit_amount: preview.kind === 'no_deposit' ? 0 : preview.amountCents,
+      deposit_status: r.deposit_status,
       refund: refundContactFor(r),
     }
   })

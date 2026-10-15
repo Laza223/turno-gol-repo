@@ -1,6 +1,21 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
 import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test'
 import { CancelBookingButton } from './CancelBookingButton'
+
+/**
+ * El toast destructivo persiste y anima: se espera a que no quede ninguna
+ * animación corriendo antes de que axe escanee (mismo motivo y mismo selector que
+ * en LeaveReviewButton.stories).
+ */
+async function settleToasts() {
+  await waitFor(() => {
+    const region = document.querySelector('[aria-label="Notifications (F8)"]')
+    const running =
+      region?.getAnimations({ subtree: true }).filter((a) => a.playState === 'running') ?? []
+    if (running.length > 0) throw new Error('toast todavía animando')
+  })
+}
 
 /**
  * La Server Action entra por prop (ver el comentario en CancelBookingButton.tsx).
@@ -97,11 +112,12 @@ export const AbiertoFueraDePlazo: Story = {
   },
 }
 
+/** Error transitorio (rate limit, complejo no disponible): queda inline y el diálogo sigue abierto. */
 export const ErrorAlCancelar: Story = {
   args: {
     action: fn(async () => ({
       success: false as const,
-      error: 'La reserva no está en estado confirmado.',
+      error: 'Demasiadas solicitudes. Esperá un momento.',
     })),
   },
   play: async ({ canvasElement }) => {
@@ -110,8 +126,64 @@ export const ErrorAlCancelar: Story = {
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Sí, cancelar' }))
     await expect(await screen.findByRole('alert')).toHaveTextContent(
-      'La reserva no está en estado confirmado.',
+      'Demasiadas solicitudes. Esperá un momento.',
     )
+    await expect(screen.getByRole('dialog')).toBeInTheDocument()
+  },
+}
+
+/**
+ * La action LANZA (se perdió la respuesta): la reserva pudo haberse cancelado
+ * igual. Se refresca la lista y el aviso dice la verdad (en vez del "Revisá tu
+ * conexión e intentá de nuevo" que mandaba a reintentar a ciegas), en el Toaster y
+ * con el diálogo cerrado: con el `router.refresh()` en vuelo un mensaje inline no
+ * se pinta, y el `refresh` de este mock es sincrónico, así que NO lo reproduce
+ * (ese caso lo cubre `tests/unit/cancel-booking-button.test.tsx`, con un router
+ * que suspende la transición como el real).
+ */
+export const ErrorDeRed: Story = {
+  args: {
+    action: fn(async () => {
+      throw new Error('Failed to fetch')
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Sí, cancelar' }))
+    await expect(
+      await screen.findByText(/No pudimos confirmar si se canceló.*si sigue, probá de nuevo/),
+    ).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await expect(getRouter().refresh).toHaveBeenCalled()
+    await settleToasts()
+  },
+}
+
+/**
+ * Error de ESTADO (`stale`): la reserva ya no está viva. Reintentar no sirve, así
+ * que el aviso va al Toaster global y el diálogo se cierra (la revalidación pudo
+ * haber sacado la tarjeta, y el diálogo con ella).
+ */
+export const YaCanceladaPorElComplejo: Story = {
+  args: {
+    action: fn(async () => ({
+      success: false as const,
+      error: 'El complejo ya canceló esta reserva.',
+      stale: true as const,
+    })),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Sí, cancelar' }))
+    await expect(
+      await screen.findByText('El complejo ya canceló esta reserva.'),
+    ).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    await settleToasts()
   },
 }
 

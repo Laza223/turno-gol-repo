@@ -368,9 +368,14 @@ export async function updateUserEmailAction(newEmail: string): Promise<UpdateEma
   const origin =
     (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
 
+  // El `?next=` lo ignora la rama staff del callback, pero da el `?` separador si la
+  // plantilla de email_change arma el link como `{{ .RedirectTo }}&token_hash=…`
+  // (así lo hacen confirmation.html e invite.html; sin él el link sale roto).
   const { error } = await supabase.auth.updateUser(
     { email: parsed.data },
-    { emailRedirectTo: `${origin}/api/auth/callback` },
+    {
+      emailRedirectTo: `${origin}/api/auth/callback?next=${encodeURIComponent('/settings/perfil')}`,
+    },
   )
 
   if (error) {

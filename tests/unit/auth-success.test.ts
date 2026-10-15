@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { parseIntent, playerSuccessIntent, successVerifyPath } from '@/lib/auth-success'
+import { parseIntent, parseVia, playerSuccessIntent, successVerifyPath } from '@/lib/auth-success'
+
+describe('parseVia', () => {
+  it('acepta las dos vías del jugador', () => {
+    expect(parseVia('email')).toBe('email')
+    expect(parseVia('google')).toBe('google')
+  })
+  it('cualquier otro valor (o ausencia) es "sin marca"', () => {
+    expect(parseVia('hacker')).toBeNull()
+    expect(parseVia('')).toBeNull()
+    expect(parseVia(null)).toBeNull()
+    expect(parseVia(undefined)).toBeNull()
+  })
+})
 
 describe('parseIntent', () => {
   it('acepta los 3 intents válidos', () => {

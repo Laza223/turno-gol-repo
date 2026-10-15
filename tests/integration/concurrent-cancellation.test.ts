@@ -407,11 +407,16 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
       withTenantContext(tenantId, (tx) => expirePendingBooking(bookingId, tx)),
     ])
 
-    // Ningún cancel puede actuar sobre un booking no-confirmado.
+    // El admin no puede actuar sobre un booking no-confirmado.
     expect(adminRes.status).toBe('rejected')
-    expect(playerRes.status).toBe('rejected')
     expect((adminRes as PromiseRejectedResult).reason).toBeInstanceOf(BookingNotInConfirmedError)
-    expect((playerRes as PromiseRejectedResult).reason).toBeInstanceOf(BookingNotInConfirmedError)
+    // El jugador SÍ puede reintentar: es el mismo que ya canceló, así que su
+    // reintento es idempotente — éxito marcado como replay, sin ningún efecto.
+    expect(playerRes.status).toBe('fulfilled')
+    if (playerRes.status === 'fulfilled') {
+      expect(playerRes.value.replayed).toBe(true)
+      expect(playerRes.value.notificationIds).toEqual([])
+    }
     expect(expiryRes.status).toBe('fulfilled')
     if (expiryRes.status === 'fulfilled') {
       expect(expiryRes.value).toEqual({ won: false })
@@ -523,14 +528,18 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
       withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, 'click 2', tx)),
     ])
 
-    // Exactamente uno gana; el doble-click duplicado ve un booking no-confirmado.
-    const results = [click1, click2]
-    const fulfilled = results.filter(
+    // Las DOS terminan bien: una cancela de verdad y la otra, que esperó el lock,
+    // es el reintento idempotente del mismo jugador (`replayed`). Antes el segundo
+    // click rebotaba con BookingNotInConfirmedError y el jugador veía un error en
+    // una reserva que SÍ había cancelado.
+    const fulfilled = [click1, click2].filter(
       (r): r is PromiseFulfilledResult<CancellationOutcome> => r.status === 'fulfilled',
     )
-    expect(fulfilled).toHaveLength(1)
-    const loser = results.find((r) => r.status === 'rejected') as PromiseRejectedResult
-    expect(loser.reason).toBeInstanceOf(BookingNotInConfirmedError)
+    expect(fulfilled).toHaveLength(2)
+    const replays = fulfilled.filter((r) => r.value.replayed)
+    expect(replays, 'exactamente una de las dos es el replay').toHaveLength(1)
+    expect(replays[0]!.value.notificationIds, 'el replay no encola mails').toEqual([])
+    expect(replays[0]!.value.booking.status).toBe('canceled_refunded')
 
     // Un único estado terminal coherente, con un solo efecto colateral de cada tipo.
     const booking = await getBooking(bookingId)

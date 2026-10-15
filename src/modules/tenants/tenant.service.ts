@@ -3,7 +3,7 @@ import { and, eq, like, ne, or, sql } from 'drizzle-orm'
 import { getDb, getSql, getWorkerDb, withTenantContext, type DbTx } from '@/shared/db/client'
 import { plans, tenants, tenantStaffMembers, tenantSubscriptions } from '@/shared/db/schema'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
-import { TRIAL_DAYS } from '@/shared/constants'
+import { DEFAULT_CANCELLATION_HOURS_BEFORE, TRIAL_DAYS } from '@/shared/constants'
 import { generateSlug, RESERVED_SLUGS } from './tenant.utils'
 import type {
   CreateTenantInput,
@@ -43,7 +43,11 @@ const DEFAULT_SETTINGS: TenantSettings = {
   // sin forma de cobrarla.)
   requires_deposit: false,
   deposit_percentage: 30,
-  cancellation_policy: { hours_before: 12, penalty_type: 'deposit', penalty_amount: null },
+  cancellation_policy: {
+    hours_before: DEFAULT_CANCELLATION_HOURS_BEFORE,
+    penalty_type: 'deposit',
+    penalty_amount: null,
+  },
   accepts_cash: true,
   accepts_transfer: true,
   accepts_mercadopago: true,

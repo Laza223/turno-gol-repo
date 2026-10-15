@@ -102,7 +102,8 @@ describe('ConfirmDialog', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Confirmar' }))
 
     await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toContain('No se pudo completar')
+      // No manda a reintentar a ciegas: la acción pudo haberse hecho igual.
+      expect(screen.getByRole('alert').textContent).toContain('No pudimos confirmar si se hizo')
     })
     expect(vi.mocked(Sentry.captureException)).toHaveBeenCalledTimes(1)
     expect(onOpenChange).not.toHaveBeenCalledWith(false)

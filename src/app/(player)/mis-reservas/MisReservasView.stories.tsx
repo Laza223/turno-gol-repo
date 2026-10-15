@@ -26,6 +26,7 @@ const row = (overrides: Partial<MisReservasBookingRow> = {}): MisReservasBooking
   has_review: false,
   cancellation_outcome: 'no_deposit',
   deposit_amount: 0,
+  deposit_status: 'not_required',
   ...overrides,
 })
 
@@ -130,6 +131,7 @@ export const HistorialTodosLosEstados: Story = {
       row({
         id: 'h-canceled-no-refund',
         status: 'canceled_no_refund',
+        deposit_status: 'captured',
         date: artDateString(daysFromNow(-6)),
       }),
       row({ id: 'h-expired', status: 'expired', date: artDateString(daysFromNow(-7)) }),
@@ -165,6 +167,7 @@ export const BadgeLargoNoAngostaElNombre: Story = {
       row({
         id: 'h-badge-largo',
         status: 'canceled_no_refund',
+        deposit_status: 'captured',
         date: artDateString(daysFromNow(-1)),
         court_name: 'Cancha E2E 3',
         tenant_name: 'E2E Complejo Demo',
@@ -189,6 +192,31 @@ export const BadgeLargoNoAngostaElNombre: Story = {
     // Línea distinta (wrap real), no compartiendo fila con el badge largo.
     const gap = Math.abs(name.getBoundingClientRect().top - badge.getBoundingClientRect().top)
     await expect(gap).toBeGreaterThan(4)
+  },
+}
+
+/**
+ * Reserva `canceled_no_refund` que NUNCA tuvo seña paga (se canceló fuera de plazo
+ * pero no había nada que perder): el badge dice "Cancelada" a secas. "(sin
+ * reembolso)" sobre una reserva sin seña le haría creer al jugador que perdió plata.
+ */
+export const CanceladaSinSena: Story = {
+  args: {
+    tab: 'historial',
+    upcomingCount: 0,
+    bookings: [
+      row({
+        id: 'h-cancelada-sin-sena',
+        status: 'canceled_no_refund',
+        deposit_status: 'not_required',
+        date: artDateString(daysFromNow(-2)),
+      }),
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Cancelada', { exact: true })).toBeInTheDocument()
+    await expect(canvas.queryByText(/sin reembolso/i)).not.toBeInTheDocument()
   },
 }
 

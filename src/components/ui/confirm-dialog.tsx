@@ -124,7 +124,7 @@ export function ConfirmDialog({
               // F-008 (QA prod 2026-08-17): text-base md:text-sm, no text-sm plano — el piso de
               // 16px de globals.css ya lo cubre en producción, pero el primitivo no debe mentir
               // sobre su tamaño (mismo criterio que ui/input.tsx).
-              className="h-11 md:h-10 w-full rounded-md border border-border bg-card text-foreground px-3 text-base md:text-sm focus:border-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-11 md:h-10 w-full rounded-md border border-input bg-card text-foreground px-3 text-base md:text-sm focus:border-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
         ) : null}

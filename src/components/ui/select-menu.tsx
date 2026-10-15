@@ -62,7 +62,7 @@ export function SelectMenu({
           disabled={disabled}
           aria-label={ariaLabel}
           className={cn(
-            'relative h-12 w-full rounded-xl border border-border bg-background text-base md:text-sm text-foreground shadow-xs transition-colors flex items-center justify-between text-left focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60',
+            'relative h-12 w-full rounded-xl border border-input bg-background text-base md:text-sm text-foreground shadow-xs transition-colors flex items-center justify-between text-left focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60',
             icon ? 'pl-10' : 'pl-3.5',
             'pr-10',
             className,

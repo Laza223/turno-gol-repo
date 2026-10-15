@@ -184,7 +184,7 @@ export const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(fu
           {...aria}
           aria-describedby={describedBy}
           className={cn(
-            'flex h-11 w-full rounded-lg border border-border bg-card py-2 pl-7 pr-3.5 text-base tabular-nums text-foreground ring-offset-background transition-colors placeholder:text-muted-foreground/60 hover:border-border/80 focus-visible:border-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:h-10 md:text-sm',
+            'flex h-11 w-full rounded-lg border border-input bg-card py-2 pl-7 pr-3.5 text-base tabular-nums text-foreground ring-offset-background transition-colors placeholder:text-muted-foreground/60 hover:border-input/80 focus-visible:border-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:h-10 md:text-sm',
             className,
           )}
         />

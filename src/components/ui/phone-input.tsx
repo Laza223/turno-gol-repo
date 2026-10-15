@@ -199,7 +199,7 @@ export function PhoneInput({
               disabled={disabled}
               aria-label={`Seleccionar código de país. Actual: ${country.name} (${country.dialCode})`}
               className={cn(
-                'flex items-center gap-1.5 rounded-l-lg border border-r-0 border-border bg-muted/40 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/80 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:z-10 disabled:cursor-not-allowed disabled:opacity-50 h-11 md:h-10 select-none',
+                'flex items-center gap-1.5 rounded-l-lg border border-r-0 border-input bg-muted/40 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/80 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:z-10 disabled:cursor-not-allowed disabled:opacity-50 h-11 md:h-10 select-none',
                 error && 'border-red-500 dark:border-red-400',
               )}
             >
@@ -229,7 +229,7 @@ export function PhoneInput({
             onChange={handleNumberChange}
             className={cn(
               // text-base en mobile: < 16px dispara el zoom de iOS al enfocar.
-              'flex h-11 md:h-10 w-full rounded-r-lg border border-border bg-card px-3.5 py-2 text-base md:text-sm text-foreground ring-offset-background transition-colors placeholder:text-muted-foreground hover:border-border/80 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-primary focus-visible:z-10 disabled:cursor-not-allowed disabled:opacity-50',
+              'flex h-11 md:h-10 w-full rounded-r-lg border border-input bg-card px-3.5 py-2 text-base md:text-sm text-foreground ring-offset-background transition-colors placeholder:text-muted-foreground hover:border-input/80 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:border-primary focus-visible:z-10 disabled:cursor-not-allowed disabled:opacity-50',
               error &&
                 'border-red-500 dark:border-red-400 focus-visible:ring-red-500 dark:focus-visible:ring-red-400',
               inputClassName,
@@ -265,7 +265,7 @@ export function PhoneInput({
                   onChange={(e) => setSearchQuery(e.target.value)}
                   // text-base en mobile: este buscador estaba en text-xs (12px) —
                   // el zoom de iOS acá era el más agresivo, y encima dentro de un popover.
-                  className="h-11 md:h-9 w-full rounded-md border border-border bg-background pl-8 pr-3 text-base md:text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-hidden focus:ring-1 focus:ring-ring"
+                  className="h-11 md:h-9 w-full rounded-md border border-input bg-background pl-8 pr-3 text-base md:text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-hidden focus:ring-1 focus:ring-ring"
                 />
               </div>
             </div>

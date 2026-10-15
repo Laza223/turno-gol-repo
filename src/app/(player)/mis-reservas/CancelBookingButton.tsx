@@ -1,7 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import * as Sentry from '@sentry/nextjs'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import { useRefundDialog } from './RefundDialogProvider'
 import type { PlayerBookingActionResult } from './actions'
@@ -45,6 +48,9 @@ function depositPreviewText(outcome: CancellationOutcome, amountCents: number): 
   return `Perdés la seña de ${formatArs(amountCents)}.`
 }
 
+const LOST_RESPONSE_ERROR =
+  'No pudimos confirmar si se canceló. Fijate si la reserva sigue en Próximos; si sigue, probá de nuevo.'
+
 export function CancelBookingButton({
   bookingId,
   courtName,
@@ -54,6 +60,7 @@ export function CancelBookingButton({
   depositAmountCents,
   action,
 }: Props) {
+  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('')
   // El diálogo de la devolución NO se renderiza acá: la Server Action revalida
@@ -63,9 +70,30 @@ export function CancelBookingButton({
   const showRefundDialog = useRefundDialog()
 
   async function handleConfirm() {
-    const result = await action(bookingId, reason.trim() || undefined)
+    let result: PlayerBookingActionResult
+    try {
+      result = await action(bookingId, reason.trim() || undefined)
+    } catch (err) {
+      // La action LANZA cuando la respuesta no vuelve (4G que se corta): la reserva
+      // pudo haberse cancelado igual. Se refresca la lista y se dice la verdad;
+      // reintentar es seguro porque `cancelByPlayer` es idempotente.
+      //
+      // El aviso va al Toaster y el diálogo se cierra, NO queda inline: `router.refresh()`
+      // entra en el carril de la acción y suspende la transición, así que el `setError`
+      // de ConfirmDialog (envuelto en `startTransition`) esperaría al RSC y el diálogo
+      // se quedaba en "Procesando…" con "Volver" deshabilitado (convenciones-stack,
+      // "Server Actions y forms"). El store del toast no pasa por React: pinta ya.
+      Sentry.captureException(err)
+      toast({ title: LOST_RESPONSE_ERROR, variant: 'destructive' })
+      router.refresh()
+      return { success: true as const }
+    }
     if (!result.success) {
-      return { success: false as const, error: result.error }
+      if (!result.stale) return { success: false as const, error: result.error }
+      // Error de estado: la revalidación ya puede haber sacado esta tarjeta (y este
+      // diálogo con ella), así que el aviso va al Toaster global y se cierra.
+      toast({ title: result.error, variant: 'destructive' })
+      return { success: true as const }
     }
     // Se avisa hacia arriba y se termina: no hace falta `router.refresh()`
     // porque la propia Server Action ya hizo `revalidatePath('/mis-reservas')`.

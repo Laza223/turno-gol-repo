@@ -12,13 +12,15 @@ import { invalidateAvailSearch } from '@/shared/cache/slots-cache'
 import { rowToBookingRow } from './booking.mappers'
 import { enqueueNotification } from '@/modules/notifications/notification.service'
 import { captureMessage } from '@/lib/sentry'
+import { DEFAULT_CANCELLATION_HOURS_BEFORE } from '@/shared/constants'
 import {
   BookingAlreadyEndedError,
+  BookingNotCancelableError,
   BookingNotInConfirmedError,
   BookingNotOwnedByPlayerError,
   TenantInactiveError,
 } from './booking.errors'
-import type { BookingRow, DepositStatus } from './booking.types'
+import type { BookingRow, BookingStatus, CancellationActor, DepositStatus } from './booking.types'
 import { track } from '@/shared/observability'
 
 // `decideAdminRefund`/`AdminCancellationType` viven en `refund-policy.ts`
@@ -34,7 +36,8 @@ type LockedBooking = {
   tenant_id: string
   court_id: string
   player_id: string | null
-  status: string
+  status: BookingStatus
+  canceled_by: CancellationActor | null
   deposit_status: string
   deposit_amount: number
   payment_id: string | null
@@ -53,6 +56,7 @@ async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking |
       court_id,
       player_id,
       status,
+      canceled_by,
       deposit_status,
       deposit_amount,
       payment_id,
@@ -201,6 +205,8 @@ export type CancellationOutcome = {
    * mismo patrón que `admin_late_payment` en payment.service.ts.
    */
   notificationIds: string[]
+  /** `true` solo en `cancelByPlayer`: reintento de una cancelación ya hecha, no se escribió nada. */
+  replayed?: boolean
 }
 
 export async function cancelByPlayer(
@@ -209,12 +215,28 @@ export async function cancelByPlayer(
   reason: string | undefined,
   tx: DbTx,
 ): Promise<CancellationOutcome> {
-  track.booking('booking.cancel.by_player', { bookingId, playerId })
-
   const b = await lockBooking(bookingId, tx)
   if (!b) throw new BookingNotInConfirmedError(bookingId)
+  // El dueño se chequea ANTES del replay: una reserva ajena ya cancelada sigue
+  // dando "no es tuya" y nunca un éxito que confirme que existe y está cancelada.
   if (b.player_id !== playerId) throw new BookingNotOwnedByPlayerError(bookingId, playerId)
-  if (b.status !== 'confirmed') throw new BookingNotInConfirmedError(bookingId)
+
+  // Idempotencia: si ESTE jugador ya la canceló, el reintento (respuesta perdida,
+  // doble click) no es un error, lo que quería ya está hecho. Devuelve el estado
+  // actual sin escribir NADA: ni update, audit, devolución, mails ni `track`.
+  // Cancelada por el complejo (o sin `canceled_by`) no es replay: se le explica.
+  if (
+    (b.status === 'canceled_refunded' || b.status === 'canceled_no_refund') &&
+    b.canceled_by === 'player'
+  ) {
+    const current = await tx.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1)
+    return { booking: rowToBookingRow(current[0]!), notificationIds: [], replayed: true }
+  }
+  if (b.status !== 'confirmed') {
+    throw new BookingNotCancelableError(bookingId, b.status, b.canceled_by)
+  }
+
+  track.booking('booking.cancel.by_player', { bookingId, playerId })
 
   // 07-cancelbyplayer-noshow-guard: mismo criterio temporal que
   // `decideAdminRefund` (bookingEndUtcMs) — un turno cuyo ends_at ya pasó no
@@ -241,7 +263,9 @@ export async function cancelByPlayer(
 
   const settings = await loadSettings(b.tenant_id, tx)
   const bookingStartUtc = new Date(b.starts_at)
-  const policyHours = settings.cancellation_policy.hours_before
+  // Sin política guardada, el mismo default que /mis-reservas le muestra al jugador.
+  const policyHours =
+    settings.cancellation_policy?.hours_before ?? DEFAULT_CANCELLATION_HOURS_BEFORE
   const inPolicy = Date.now() < bookingStartUtc.getTime() - policyHours * 3_600_000
 
   // Bug: 'canceled_refunded' solo tiene sentido si había una seña PAGADA para

@@ -216,7 +216,9 @@ describe('updateUserEmailAction', () => {
     expect(res.success).toBe(true)
     expect(updateUser).toHaveBeenCalledWith(
       { email: 'nuevo@complejo.com' },
-      expect.objectContaining({ emailRedirectTo: expect.stringContaining('/api/auth/callback') }),
+      expect.objectContaining({
+        emailRedirectTo: expect.stringContaining('/api/auth/callback?next=%2Fsettings%2Fperfil'),
+      }),
     )
     expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/settings/perfil')
   })

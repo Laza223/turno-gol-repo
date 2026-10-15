@@ -8,9 +8,14 @@
  * *anywhere* in the string before parsing, so `/\t/evil.com` passes every
  * `startsWith` check unchanged here but normalizes to the protocol-relative
  * `//evil.com` once the browser's own URL parser sees it.
+ *
+ * Takes `unknown` because the `?next` it receives comes straight from
+ * `searchParams`: Next types it as `string` but hands over a `string[]` when the
+ * param is repeated (`?next=a&next=b`), and `.replace` on that threw a TypeError
+ * (/verify, /aceptar-terminos). Anything that is not a string gets the fallback.
  */
-export function sanitizeNext(next: string | null | undefined, fallback = '/mis-reservas'): string {
-  if (!next) return fallback
+export function sanitizeNext(next: unknown, fallback = '/mis-reservas'): string {
+  if (typeof next !== 'string' || !next) return fallback
   const stripped = next.replace(/[\t\n\r]/g, '')
   if (!stripped.startsWith('/')) return fallback
   if (stripped.startsWith('//')) return fallback

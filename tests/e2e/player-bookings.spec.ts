@@ -168,7 +168,7 @@ test.describe('Player bookings', () => {
       }
 
       await page.goto('/mis-reservas')
-      await expect(page.getByText('No tenés reservas próximas.')).toBeVisible()
+      await expect(page.getByText('Todavía no tenés reservas')).toBeVisible()
     } finally {
       await ctx.close()
     }

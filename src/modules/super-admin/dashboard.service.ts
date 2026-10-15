@@ -307,10 +307,11 @@ const QUEUE_DEPTH_TIMEOUT_MS = 4_000
  * el pool worker — la misma cuenta que `boss.getQueueSize` (`state < 'active'`
  * = creado o en reintento), sin instanciar pg-boss.
  *
- * `getBoss()` NO va acá: su `start()` arranca en el proceso web el supervisor,
- * el cron y sus `setInterval`/pollers, y esperarlo dejó `/super-admin`
- * cargando hasta el timeout de 300 s de Vercel (2026-09-20, "Ir a mi panel"
- * no entraba). Si la lectura falla o tarda más que el tope, el dashboard
+ * `getBoss()` NO va acá: en frío abre un pool y chequea/migra el schema
+ * `pgboss` antes de poder leer, y esperarlo dejó `/super-admin` cargando hasta
+ * el timeout de 300 s de Vercel (2026-09-20, "Ir a mi panel" no entraba; ese
+ * día su `start()` además arrancaba supervisor y cron en la web — hoy solo lo
+ * hace el worker). Si la lectura falla o tarda más que el tope, el dashboard
  * degrada a "no disponible" en vez de romper o colgar el render completo.
  */
 async function getQueueDepthsSafe(): Promise<QueueDepthEntry[]> {

@@ -1,3 +1,5 @@
+import type { BookingStatus, CancellationActor } from './booking.types'
+
 export class CourtOfflineError extends Error {
   constructor(courtId: string) {
     super(`Court ${courtId} is not online`)
@@ -23,6 +25,22 @@ export class BookingNotInConfirmedError extends Error {
   constructor(bookingId: string) {
     super(`Booking ${bookingId} is not in 'confirmed' status`)
     this.name = 'BookingNotInConfirmedError'
+  }
+}
+
+/**
+ * `cancelByPlayer` sobre una reserva ya no `confirmed` que no es un replay del
+ * propio jugador. Lleva el estado real para decirle QUÉ pasó. Subclase a propósito:
+ * los `instanceof BookingNotInConfirmedError` del panel siguen valiendo.
+ */
+export class BookingNotCancelableError extends BookingNotInConfirmedError {
+  constructor(
+    bookingId: string,
+    public readonly status: BookingStatus,
+    public readonly canceledBy: CancellationActor | null,
+  ) {
+    super(bookingId)
+    this.name = 'BookingNotCancelableError'
   }
 }
 

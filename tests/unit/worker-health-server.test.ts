@@ -101,6 +101,16 @@ describe('el arranque del worker', () => {
     expect(src).toContain('await assertAppDbReachable()')
   })
 
+  it('pide el rol worker, y ese es el PRIMER getBoss() del archivo', () => {
+    // `getBoss()` a secas es productor (sin supervisor ni cron): el worker arrancaría,
+    // /health daría 200 y los crons registrados no se dispararían nunca.
+    expect(src).toContain("await getBoss('worker')")
+    expect(
+      src.indexOf('getBoss('),
+      "el primer `getBoss(` de run-workers.ts tiene que ser getBoss('worker') (cuenta también un comentario)",
+    ).toBe(src.indexOf("getBoss('worker')"))
+  })
+
   it('levanta el healthcheck DESPUÉS de registrar las colas', () => {
     // Un 200 con las colas sin consumidor certificaría justo lo que no
     // queremos: un worker que responde y no trabaja.

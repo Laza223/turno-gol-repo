@@ -11,6 +11,12 @@ export type BookingConfirmedData = {
   tenantAddress: string
 }
 
+// Sin app ni plazo fijo: el jugador cancela hasta que termina el turno y las horas del
+// complejo (configurables) solo deciden si se devuelve la seña. Un número acá mentiría
+// en cuanto el complejo cambie su política.
+const CANCEL_HINT =
+  '¿No podés ir? Cancelala desde «Mis reservas» en TurnoGol, así el complejo puede ofrecer la cancha. Si pagaste seña, que te la devuelvan depende de con cuánta anticipación canceles.'
+
 export function renderBookingConfirmed(data: BookingConfirmedData): EmailContent {
   const subject = `Reserva confirmada — ${data.courtName}, ${data.date} ${data.timeStart}`
   const html = `
@@ -27,10 +33,10 @@ export function renderBookingConfirmed(data: BookingConfirmedData): EmailContent
     <tr><td style="padding:8px 0;border-bottom:1px solid #e2e8f0;font-weight:600">Horario</td><td style="padding:8px 0;border-bottom:1px solid #e2e8f0">${data.timeStart} – ${data.timeEnd}</td></tr>
     <tr><td style="padding:8px 0;font-weight:600">Dirección</td><td style="padding:8px 0">${escapeHtml(data.tenantAddress)}</td></tr>
   </table>
-  <p style="color:#64748b;font-size:14px">Si necesitás cancelar tu reserva, podés hacerlo desde la app hasta 12 horas antes.</p>
+  <p style="color:#64748b;font-size:14px">${CANCEL_HINT}</p>
   <p style="color:#64748b;font-size:14px">— TurnoGol</p>
 </body>
 </html>`
-  const text = `¡Tu reserva está confirmada!\n\nHola ${data.playerFirstName},\n\nComplejo: ${data.tenantName}\nCancha: ${data.courtName}\nFecha: ${data.date}\nHorario: ${data.timeStart} – ${data.timeEnd}\nDirección: ${data.tenantAddress}\n\n— TurnoGol`
+  const text = `¡Tu reserva está confirmada!\n\nHola ${data.playerFirstName},\n\nComplejo: ${data.tenantName}\nCancha: ${data.courtName}\nFecha: ${data.date}\nHorario: ${data.timeStart} – ${data.timeEnd}\nDirección: ${data.tenantAddress}\n\n${CANCEL_HINT}\n\n— TurnoGol`
   return { subject, html, text }
 }

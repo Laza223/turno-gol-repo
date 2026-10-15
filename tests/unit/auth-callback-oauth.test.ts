@@ -35,6 +35,7 @@ vi.mock('next/headers', () => ({
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getOrCreatePlayer } from '@/modules/players/player.service'
+import { logger } from '@/shared/lib/logger'
 import { GET } from '@/app/api/auth/callback/route'
 
 const mockCreateClient = vi.mocked(createClient)
@@ -165,13 +166,20 @@ describe('GET /api/auth/callback — rama code (Google OAuth)', () => {
       error: null,
     })
 
-    const res = await GET(makeRequest({ code: 'good-code', next: '/mis-reservas' }))
+    const res = await GET(
+      makeRequest({ code: 'good-code', next: '/club-x/reservar?court=1', via: 'google' }),
+    )
 
     expect(mockGetOrCreatePlayer).not.toHaveBeenCalled()
+    // Local: el rechazo no puede cerrar el panel que esa cuenta tenga abierto en otro dispositivo.
     expect(mockSignOut).toHaveBeenCalledTimes(1)
-    const location = res.headers.get('location')
-    expect(location).toContain('/verify')
-    expect(new URL(location!).searchParams.get('error')).toBe('account_conflict')
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' })
+    const location = new URL(res.headers.get('location')!)
+    expect(location.pathname).toBe('/verify')
+    expect(location.searchParams.get('error')).toBe('account_conflict')
+    // La vía y el destino viajan a /verify para ofrecer el reintento correcto.
+    expect(location.searchParams.get('via')).toBe('google')
+    expect(location.searchParams.get('next')).toBe('/club-x/reservar?court=1')
   })
 
   it('cuenta YA es system_admin -> rechaza igual, NO mergea is_player', async () => {
@@ -184,6 +192,7 @@ describe('GET /api/auth/callback — rama code (Google OAuth)', () => {
 
     expect(mockGetOrCreatePlayer).not.toHaveBeenCalled()
     expect(mockSignOut).toHaveBeenCalledTimes(1)
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' })
     const location = res.headers.get('location')
     expect(new URL(location!).searchParams.get('error')).toBe('account_conflict')
   })
@@ -201,5 +210,79 @@ describe('GET /api/auth/callback — rama code (Google OAuth)', () => {
     const location = res.headers.get('location')
     expect(location).not.toContain('/aceptar-terminos')
     expect(new URL(location!).searchParams.get('status')).toBe('success')
+  })
+})
+
+// Antes: getOrCreatePlayer sin try/catch daba un 500 crudo, y un updateUserById
+// fallido seguía de largo dejando la sesión SIN player_id (extractRealAuthUser cae
+// al id de auth, que no es el de `players`: la sesión queda rota). Ahora todo
+// termina en /verify con su código, el error en el log y la sesión de este
+// intento cerrada (local).
+describe('GET /api/auth/callback — robustez', () => {
+  const updateFails = { auth: { admin: { updateUserById: vi.fn() } } }
+
+  it('getOrCreatePlayer tira -> /verify?error=provision_failed, log y sesión local cerrada', async () => {
+    mockExchange({ data: { user: GOOGLE_USER }, error: null })
+    mockGetOrCreatePlayer.mockRejectedValue(new Error('db caída'))
+
+    const res = await GET(makeRequest({ code: 'good-code', next: '/mis-reservas', via: 'google' }))
+
+    const location = new URL(res.headers.get('location')!)
+    expect(location.pathname).toBe('/verify')
+    expect(location.searchParams.get('error')).toBe('provision_failed')
+    expect(location.searchParams.get('via')).toBe('google')
+    expect(logger.error).toHaveBeenCalledTimes(1)
+    expect(mockSignOut).toHaveBeenCalledTimes(1)
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' })
+  })
+
+  it('updateUserById devuelve error -> mismo corte: no se deja una sesión sin player_id', async () => {
+    mockExchange({ data: { user: GOOGLE_USER }, error: null })
+    mockGetOrCreatePlayer.mockResolvedValue({ id: 'p1', wasCreated: true, hasAgreedTerms: true })
+    updateFails.auth.admin.updateUserById.mockResolvedValue({ error: { message: 'boom' } })
+    mockCreateAdminClient.mockReturnValue(updateFails as never)
+
+    const res = await GET(makeRequest({ code: 'good-code', next: '/mis-reservas' }))
+
+    expect(new URL(res.headers.get('location')!).searchParams.get('error')).toBe('provision_failed')
+    expect(logger.error).toHaveBeenCalledTimes(1)
+    expect(mockSignOut).toHaveBeenCalledTimes(1)
+    expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' })
+  })
+
+  it.each([
+    ['el usuario canceló (access_denied sin error_code)', 'access_denied', '', 'oauth_cancelled'],
+    // Un enlace de email vencido que pasó por GoTrue: no es una falla de Google.
+    ['enlace de email vencido (error_code=otp_expired)', 'access_denied', 'otp_expired', 'expired'],
+    [
+      'rechazo de Supabase (access_denied con otro error_code)',
+      'access_denied',
+      'bad_oauth_callback',
+      'oauth_failed',
+    ],
+    ['falla del proveedor (server_error)', 'server_error', 'unexpected_failure', 'oauth_failed'],
+  ])('error devuelto al callback: %s', async (_name, error, errorCode, expected) => {
+    const exchange = vi.fn()
+    mockCreateClient.mockResolvedValue({ auth: { exchangeCodeForSession: exchange } } as never)
+
+    const res = await GET(
+      makeRequest({
+        error,
+        error_description: 'detalle del proveedor',
+        next: '/mis-reservas',
+        via: 'google',
+        ...(errorCode ? { error_code: errorCode } : {}),
+      }),
+    )
+
+    const location = new URL(res.headers.get('location')!)
+    expect(location.searchParams.get('error')).toBe(expected)
+    expect(location.searchParams.get('via')).toBe('google')
+    expect(exchange).not.toHaveBeenCalled()
+    // Cancelar o un enlace vencido no son fallas nuestras: avisan en warn y no van a Sentry.
+    const [logged, notLogged] =
+      expected === 'oauth_failed' ? [logger.error, logger.warn] : [logger.warn, logger.error]
+    expect(logged).toHaveBeenCalledTimes(1)
+    expect(notLogged).not.toHaveBeenCalled()
   })
 })

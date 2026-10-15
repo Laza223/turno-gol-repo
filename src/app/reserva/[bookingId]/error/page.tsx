@@ -31,7 +31,7 @@ export default async function ReservaErrorPage(props: Props) {
 
   // Guard de formato antes del SQL crudo: un id no-UUID rompía el cast en
   // Postgres y tumbaba la página con "Algo salió mal". Mismo patrón que
-  // verificar/page.tsx.
+  // exito/page.tsx.
   const booking = isUuid(params.bookingId)
     ? await loadBooking(params.bookingId, user.playerId)
     : null

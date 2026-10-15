@@ -1,6 +1,6 @@
 {
   "generatedFrom": "auditoría de 6 agentes sobre src/** + regeneración tras las extracciones presentacionales y el merge de contenido SEO + fase 4 de Torneos (portal público y cobro de inscripción)",
-  "total": 338,
+  "total": 335,
   "components": [
     {
       "path": "src/app/(admin)/abonados/AbonadoDialogs.tsx",
@@ -4491,7 +4491,7 @@
       "role": "page",
       "isolationDifficulty": "hard",
       "classification": "PRESENTATIONAL_EXTRACTION_REQUIRED",
-      "exclusionReason": "Server Component que mezcla extractAuthUser()+redirect(), una query SQL cruda vía withPlayerContext y headers() (para verifyUrl) con una vista de éxito tipada embebida inline: badge de celebración + monto de seña/resto + card de comprobante con QR + CTAs; vale la pena extraer un componente presentacional BookingSuccessCard(props: booking, verifyUrl) para storyar variantes por deposit_status (paid/captured/not_required) y por booking.status!=='confirmed'.",
+      "exclusionReason": "Server Component que mezcla extractAuthUser()+redirect(), una query SQL cruda vía withPlayerContext con una vista de éxito tipada embebida inline: badge de celebración + monto de seña/resto + card de comprobante con código de reserva + CTAs; vale la pena extraer un componente presentacional BookingSuccessCard(props: booking) para storyar variantes por deposit_status (paid/captured/not_required) y por booking.status!=='confirmed'.",
       "relevantStates": [
         "booking no encontrado",
         "status!=='confirmed' (delega a PaymentStatusWatcher, fuera de esta área)",
@@ -4504,7 +4504,7 @@
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "extractAuthUser()+redirect; withPlayerContext(sql crudo, mismo gotcha de Date-como-string); headers() de next/headers para derivar verifyUrl; compone BookingQR/BookingReceipt/BookingSuccessExtras/DownloadReceiptButton/PaymentStatusWatcher, todos fuera de esta área (@/components/booking)."
+      "isolationNotes": "extractAuthUser()+redirect; withPlayerContext(sql crudo, mismo gotcha de Date-como-string); compone BookingReceipt/BookingSuccessExtras/DownloadReceiptButton/PaymentStatusWatcher, todos fuera de esta área (@/components/booking)."
     },
     {
       "path": "src/app/reserva/[bookingId]/pendiente/loading.tsx",
@@ -4541,52 +4541,6 @@
       "usesServerAction": false,
       "providers": [],
       "isolationNotes": "extractAuthUser()+redirect; withPlayerContext(sql crudo); delega a PaymentStatusWatcher(bookingId, initialStatus, expiresAt)."
-    },
-    {
-      "path": "src/app/reserva/[bookingId]/verificar/page.tsx",
-      "name": "VerificarReservaPage",
-      "domain": "player-facing",
-      "rendering": "server",
-      "role": "page",
-      "isolationDifficulty": "medium",
-      "classification": "PRESENTATIONAL_EXTRACTION_REQUIRED",
-      "exclusionReason": "Server Component público (sin auth, capability-token por UUID) que mezcla loadVerification (SQL crudo vía getWorkerDb + isTenantPubliclyVisible) con una vista tipada muy clara: verdictFor(status)→{tone,title,detail} + TONE_STYLES + card con dl de booking; extraer un componente VerificationCard(props: verdict, tone, booking) permitiría storyar las 7 variantes de estado real más 'desconocido' y 'no encontrado' sin pegarle a la DB.",
-      "relevantStates": [
-        "confirmed",
-        "completed",
-        "pending_payment",
-        "canceled_refunded",
-        "canceled_no_refund",
-        "expired",
-        "no_show",
-        "estado desconocido (default)",
-        "UUID inválido / no encontrado / tenant no visible públicamente"
-      ],
-      "proposedStoryTitle": "Player/BookingResult/VerificarPage (post-extracción → VerificationCard)",
-      "usesNetwork": true,
-      "usesSession": false,
-      "usesRouter": false,
-      "usesServerAction": false,
-      "providers": [],
-      "isolationNotes": "getWorkerDb() (pool worker bypass-capable, SQL crudo) + isTenantPubliclyVisible (@/modules/tenants/tenant-status); sin auth — UUID_RE valida formato antes de la query; robots noindex."
-    },
-    {
-      "path": "src/app/reserva/[bookingId]/verificar/VerificationCard.tsx",
-      "name": "VerificationCard",
-      "domain": "public-marketing",
-      "rendering": "server",
-      "role": "presentational",
-      "providers": ["ninguno"],
-      "usesNetwork": false,
-      "usesSession": false,
-      "usesRouter": false,
-      "usesServerAction": false,
-      "isolationDifficulty": "easy",
-      "isolationNotes": "",
-      "relevantStates": [],
-      "classification": "DIRECT_STORY_REQUIRED",
-      "exclusionReason": "",
-      "proposedStoryTitle": ""
     },
     {
       "path": "src/app/reserva/layout.tsx",
@@ -4860,27 +4814,6 @@
       "isolationNotes": "Ninguno relevante — es el contenido puro del Popover (el portal/posicionamiento vive en ui/popover.tsx desde BookingCard); reexporta bookingDisplayName de BookingCard.tsx."
     },
     {
-      "path": "src/components/booking/BookingQR.tsx",
-      "name": "BookingQR",
-      "domain": "player-facing",
-      "rendering": "server",
-      "role": "presentational",
-      "isolationDifficulty": "trivial",
-      "classification": "DIRECT_STORY_REQUIRED",
-      "exclusionReason": "",
-      "relevantStates": [
-        "value/label distintos (largo de URL)",
-        "size custom (176 default vs 132 en el comprobante)"
-      ],
-      "proposedStoryTitle": "Player/BookingSuccess/BookingQR",
-      "usesNetwork": false,
-      "usesSession": false,
-      "usesRouter": false,
-      "usesServerAction": false,
-      "providers": [],
-      "isolationNotes": "Ninguno — sin estado, genera un SVG puro con la lib uqr (encode), corre igual en Server Components y en tests unitarios."
-    },
-    {
       "path": "src/components/booking/BookingReceipt.tsx",
       "name": "BookingReceipt",
       "domain": "player-facing",
@@ -4899,7 +4832,7 @@
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "Ninguno — Server Component puro, oculto por defecto y solo visible al imprimir (#booking-receipt en globals.css); compone BookingQR."
+      "isolationNotes": "Ninguno — Server Component puro, oculto por defecto y solo visible al imprimir (#booking-receipt en globals.css)."
     },
     {
       "path": "src/components/booking/BookingSuccessExtras.tsx",

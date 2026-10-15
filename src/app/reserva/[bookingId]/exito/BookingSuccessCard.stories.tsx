@@ -39,7 +39,6 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   args: {
     bookingId: uid(1001),
-    verifyUrl: 'https://turnogol.app/reserva/00000000-0000-4000-8000-000000001001/verificar',
   },
   decorators: [
     (Story) => (
@@ -66,6 +65,11 @@ export const ConSena: Story = {
     // formatArs separa "$" del monto con NBSP; getByText normaliza a espacio común.
     await expect(canvas.getByText('$ 4.500')).toBeInTheDocument()
     await expect(canvas.getByText('$ 10.500')).toBeInTheDocument()
+    // El código corto de la reserva ocupa el lugar del viejo QR. Se acota a la
+    // tarjeta: el comprobante imprimible (oculto) repite el código en el DOM.
+    const card = within(canvas.getByLabelText('Comprobante para mostrar en el complejo'))
+    await expect(card.getByText('00000000')).toBeInTheDocument()
+    await expect(canvas.queryByRole('img', { name: /QR/i })).not.toBeInTheDocument()
   },
 }
 

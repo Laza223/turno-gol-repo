@@ -19,7 +19,6 @@ const data: BookingReceiptData = {
   priceSnapshot: 2_000_000, // $20.000,00
   depositAmount: 600_000, // $6.000,00
   depositStatus: 'paid',
-  verifyUrl: 'https://turnogol.app/reserva/0b8f4a2e-1c3d-4e5f-8a9b-0c1d2e3f4a5b/verificar',
 }
 
 describe('BookingReceipt', () => {
@@ -34,9 +33,9 @@ describe('BookingReceipt', () => {
     expect(screen.getByText('$6.000,00')).toBeTruthy()
     expect(screen.getByText('$14.000,00')).toBeTruthy()
     expect(screen.getByText('0B8F4A2E')).toBeTruthy()
-    // QR embebido apuntando a la URL de verificación.
-    expect(container.querySelector('svg[role="img"]')).toBeTruthy()
-    expect(screen.getByText(data.verifyUrl)).toBeTruthy()
+    // Sin QR ni URL de verificación (se sacaron el 2026-10-15).
+    expect(container.querySelector('svg')).toBeNull()
+    expect(container.textContent).not.toContain('/verificar')
   })
 
   it('sin seña muestra que el total se abona en el complejo', () => {

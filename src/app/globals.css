@@ -730,7 +730,7 @@ html {
   box-shadow: 0 0 50px rgba(16, 185, 129, 0.45);
 }
 
-/* Tarjeta-comprobante (QR). Light = card blanca con elevación + tinte emerald;
+/* Tarjeta-comprobante (código de reserva + descarga). Light = card blanca con elevación + tinte emerald;
    dark = slab translúcido oscuro con glow. */
 .reserva-receipt-card {
   background: linear-gradient(180deg, #ffffff, #f0fdf4);

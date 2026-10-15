@@ -8,7 +8,7 @@
  * jugador puede pasarle al complejo, no un adorno.
  *
  * Se centraliza acá porque lo usan tres superficies con públicos distintos (el
- * comprobante, la pantalla de verificación y el mensaje de WhatsApp al
+ * comprobante, la pantalla de reserva confirmada y el mensaje de WhatsApp al
  * complejo) y tienen que coincidir carácter por carácter para que sirva de algo.
  */
 export function bookingCode(bookingId: string): string {

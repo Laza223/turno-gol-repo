@@ -44,13 +44,6 @@ const ALLOWLIST: Record<string, string> = {
     '`CompartirPorWhatsApp` intercepta `window.open` con spyOn+mockImplementation antes ' +
     'de clickear — nunca navega de verdad; `ComoLlegar` solo lee el atributo href de ' +
     'Google Maps sin clickear.',
-  'src/app/reserva/[bookingId]/exito/BookingSuccessCard.stories.tsx':
-    'verifyUrl llega a BookingQR, que genera el SVG local con `uqr` (sin canvas ni red).',
-  'src/components/booking/BookingQR.stories.tsx':
-    'value llega a `uqr`, que genera el SVG local — sin canvas ni red (ver BookingQR.tsx).',
-  'src/components/booking/BookingReceipt.stories.tsx':
-    'verifyUrl llega a BookingQR (SVG local, `uqr`) y a un <span> de texto plano — nunca ' +
-    'se fetchea.',
   'src/components/dashboard/onboarding-checklist.stories.tsx':
     'appUrl solo alimenta `navigator.clipboard.writeText()` — nunca se fetchea ni se ' +
     'renderiza como recurso.',

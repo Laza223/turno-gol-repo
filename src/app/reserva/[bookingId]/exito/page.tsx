@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation'
-import { headers } from 'next/headers'
 import { sql } from 'drizzle-orm'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
@@ -95,18 +94,10 @@ export default async function ReservaExitoPage(props: Props) {
     )
   }
 
-  // URL pública de verificación que codifica el QR: el complejo la escanea y
-  // ve el estado real del turno (sin datos del jugador). Base desde env con
-  // fallback al host del request (dev / previews).
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ?? `https://${(await headers()).get('host') ?? 'turnogol.app'}`
-  const verifyUrl = `${appUrl}/reserva/${params.bookingId}/verificar`
-
   return (
     <ReservaDarkShell>
       <BookingSuccessCard
         bookingId={params.bookingId}
-        verifyUrl={verifyUrl}
         booking={{
           tenantName: booking.tenantName,
           tenantSlug: booking.tenantSlug,

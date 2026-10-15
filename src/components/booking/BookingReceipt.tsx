@@ -1,4 +1,3 @@
-import BookingQR from './BookingQR'
 import { bookingCode } from '@/lib/booking-code'
 
 export type BookingReceiptData = {
@@ -18,8 +17,6 @@ export type BookingReceiptData = {
   depositStatus: string
   /** El complejo oculta sus precios: el comprobante dice cómo se paga, sin montos. */
   hidePrices?: boolean
-  /** URL pública que codifica el QR. */
-  verifyUrl: string
 }
 
 function fmtArs(cents: number): string {
@@ -42,7 +39,7 @@ function Row({ label, value }: { label: string; value: string }) {
  * Comprobante imprimible de la reserva. Vive oculto en la página de éxito
  * (#booking-receipt, ver globals.css): al imprimir es lo único visible y el
  * navegador lo exporta a PDF. Solo bordes y texto oscuro — los fondos no se
- * imprimen por defecto (print-color-adjust); el QR es SVG con fill, que sí.
+ * imprimen por defecto (print-color-adjust).
  */
 export default function BookingReceipt(props: BookingReceiptData) {
   const remaining = props.priceSnapshot - props.depositAmount
@@ -86,19 +83,6 @@ export default function BookingReceipt(props: BookingReceiptData) {
         )}
         <Row label="Código de reserva" value={bookingCode(props.bookingId)} />
       </dl>
-
-      <div className="mt-5 flex items-center gap-4">
-        <BookingQR
-          value={props.verifyUrl}
-          label="Código QR de verificación de la reserva"
-          size={132}
-        />
-        <p className="text-xs leading-5 text-slate-500">
-          Escaneá este código para verificar el estado de la reserva en tiempo real, o entrá a:
-          <br />
-          <span className="break-all text-slate-700">{props.verifyUrl}</span>
-        </p>
-      </div>
 
       <footer className="mt-5 border-t border-slate-200 pt-2 text-[10px] text-slate-500">
         Reserva {props.bookingId} · Emitido por TurnoGol — este comprobante no es una factura.

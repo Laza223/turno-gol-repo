@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { CheckCircle2 } from 'lucide-react'
 import { formatArs, formatDateLong } from '@/lib/format'
-import BookingQR from '@/components/booking/BookingQR'
+import { bookingCode } from '@/lib/booking-code'
 import BookingReceipt from '@/components/booking/BookingReceipt'
 import BookingSuccessExtras from '@/components/booking/BookingSuccessExtras'
 import DownloadReceiptButton from '@/components/booking/DownloadReceiptButton'
@@ -35,11 +35,9 @@ export type ConfirmedBooking = {
 export function BookingSuccessCard({
   bookingId,
   booking,
-  verifyUrl,
 }: {
   bookingId: string
   booking: ConfirmedBooking
-  verifyUrl: string
 }) {
   const remainingAmount = booking.priceSnapshot - booking.depositAmount
 
@@ -91,13 +89,12 @@ export function BookingSuccessCard({
         aria-label="Comprobante para mostrar en el complejo"
         className="reserva-receipt-card mt-7 w-full overflow-hidden rounded-2xl p-5"
       >
-        <div className="flex justify-center">
-          <div className="rounded-xl bg-white p-3 shadow-lg">
-            <BookingQR value={verifyUrl} label="Código QR de verificación de la reserva" />
-          </div>
-        </div>
-        <p className="mt-3 text-xs text-muted-foreground">
-          Mostrá este código al llegar: el complejo lo escanea y verifica tu reserva al instante.
+        <p className="text-xs text-muted-foreground">Código de reserva</p>
+        <p className="mt-1 font-mono text-2xl font-bold tracking-widest text-foreground">
+          {bookingCode(bookingId)}
+        </p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Si el complejo te lo pide, con este código encuentra tu reserva.
         </p>
         <DownloadReceiptButton fileName={`comprobante-${booking.tenantSlug}-${booking.date}`} />
       </section>
@@ -115,7 +112,6 @@ export function BookingSuccessCard({
         depositAmount={booking.depositAmount}
         depositStatus={booking.depositStatus}
         hidePrices={booking.hidePrices}
-        verifyUrl={verifyUrl}
       />
 
       <BookingSuccessExtras

@@ -15,7 +15,7 @@
 | Día 30 | Charlas registradas no inducidas | ≥10 | Extender 2 semanas antes de decidir D2; no decidir con <8 |
 | Día 30 | H1 | 6/10 D+B+C o 3/5 A | Ver reglas del tablero; si empate, seguir 10 más |
 | Día 30 | Demo → piloto | ≥40% | Oferta u objeción sin respuesta: revisar contrato de aprendizaje y objeción `confianza-continuidad` |
-| Día 30 | A2 en P1 | ≥1 | Diagnóstico, no fracaso: ¿circuló el link? ¿`profile.viewed` sin reserva? ¿seña? Registrar; no programar |
+| Día 30 | A2 en P1 | ≥1 | Diagnóstico, no fracaso: ¿circuló el link? ¿`profile.viewed` sin reserva? (serie nueva desde el PR 2.3a, 2026-10-16: ahora cuenta visitas a la ficha, no a la vista semanal; no comparable con la anterior) ¿seña? Registrar; no programar |
 | Día 30 | Referido | ≥1 contacto "me lo pasó X" | D8 pasa a accesorio; no diseñar incentivo |
 | Día 30 | Caso | 1 con números (anonimizado o con permiso) | Sin caso no se toca el copy de la web |
 | Día 60 | P1 continuidad | "sí a $X" o condiciones concretas | Registrar motivo; revisar D3 si es precio puro ×3 casos |

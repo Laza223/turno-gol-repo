@@ -38,6 +38,10 @@ colors:
   portal-border: 'hsl(214.3 31.8% 91.4%)'
   portal-input: 'hsl(215.4 16.3% 46.9%)'
   portal-input-dark: 'hsl(215.4 16.3% 50%)'
+  portal-last-fill: '#fffbeb'
+  portal-last-border: '#fcd34d'
+  portal-last-text: '#92400e'
+  portal-last-text-dark: '#fcd34d'
 typography:
   display:
     fontFamily: 'Archivo, ui-sans-serif, system-ui, sans-serif'
@@ -95,6 +99,23 @@ typography:
     fontSize: '1rem'
     fontWeight: 500
     lineHeight: 1.5
+  portal-section:
+    fontFamily: 'Archivo, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '1.25rem'
+    fontWeight: 800
+    lineHeight: '28px'
+    letterSpacing: '-0.01em'
+  portal-hour:
+    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '1rem'
+    fontWeight: 600
+    lineHeight: '20px'
+    fontFeature: 'tnum'
+  portal-note:
+    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '13px'
+    fontWeight: 400
+    lineHeight: '16px'
 rounded:
   sm: '4px'
   md: '6px'
@@ -216,6 +237,47 @@ components:
     rounded: '{rounded.xl}'
     padding: '8px 14px'
     height: '48px'
+  chip-portal:
+    backgroundColor: '{colors.card}'
+    textColor: '{colors.foreground}'
+    typography: '{typography.label}'
+    rounded: '{rounded.full}'
+    padding: '0 16px'
+    height: '44px'
+  chip-portal-selected:
+    backgroundColor: '{colors.primary}'
+    textColor: '{colors.primary-foreground}'
+    rounded: '{rounded.full}'
+  hour-slot:
+    backgroundColor: '{colors.card}'
+    textColor: '{colors.foreground}'
+    typography: '{typography.portal-hour}'
+    rounded: '{rounded.xl}'
+    padding: '4px'
+    height: '50px'
+  hour-slot-selected:
+    backgroundColor: '{colors.primary}'
+    textColor: '{colors.primary-foreground}'
+  hour-slot-last:
+    backgroundColor: '{colors.portal-last-fill}'
+    textColor: '{colors.portal-last-text}'
+  hour-slot-held:
+    backgroundColor: '{colors.card}'
+    textColor: '{colors.foreground}'
+  hour-slot-full:
+    backgroundColor: '{colors.portal-surface}'
+    textColor: '{colors.portal-muted-foreground}'
+  court-row:
+    backgroundColor: '{colors.card}'
+    textColor: '{colors.foreground}'
+    rounded: '{rounded.xl}'
+    padding: '8px 16px'
+    height: '64px'
+  notice-portal:
+    backgroundColor: '{colors.portal-surface}'
+    textColor: '{colors.foreground}'
+    rounded: '{rounded.xl}'
+    padding: '16px'
 ---
 
 # Design System: TurnoGol
@@ -230,7 +292,7 @@ El mundo del panel es césped de noche sobre slate. En claro, tarjetas blancas q
 
 Este documento describe el estilo tal como está en el código al 2026-09-23 y es la única autoridad de diseño del repo. El panel se **refina** sobre este estilo; no se reemplaza. Donde los documentos anteriores (hoy en `docs/archive/design-system/`) y el código no coincidían, ganó el código. Rechazo confirmado por el dueño el 2026-09-23: cambiar este mundo por uno austero de papel y tinta, sin fondos ni sombras (la dirección "Tablero de partidas"). Ese rechazo es del panel; el portal plano es otra decisión del dueño (2026-10-15) y no lo reabre.
 
-**La Reserva reemplaza a "La Previa"** (la vidriera con resplandores, vidrio, fotos de fondo y titulares en negra itálica) y se migra página por página. Hoy están en el mundo nuevo `/ingresar`, `/aceptar-terminos` y los estados de jugador de `/verify` (PR 2.1), y el cromo de todo el portal (PR 2.2): la barra, el pie, la barra inferior y el menú de cuenta. El cromo usa solo tokens semánticos y se ve igual con los del panel y con los del mundo, porque `PortalWorld` todavía se monta por página y no en el cascarón. La barra `overlay` de la home (el vidrio sobre el hero) sigue en La Previa hasta el 2.5. El resto del portal conserva el aspecto saliente hasta su PR: la página del complejo y la reserva (2.3), las páginas del jugador (2.4), la home (2.5) y Explorar (2.6). **El aspecto saliente no se extiende a nada nuevo**: una superficie o pieza nueva del portal se construye en La Reserva aunque la página que la rodea todavía no haya migrado. Las recetas de La Previa que siguen en el código (`PlayerHeroBand`, `.hero-accent-text`, la losa nocturna, el vidrio y los resplandores del portal) se describen acá solo como saliente, no como reglas.
+**La Reserva reemplaza a "La Previa"** (la vidriera con resplandores, vidrio, fotos de fondo y titulares en negra itálica) y se migra página por página. Hoy están en el mundo nuevo `/ingresar`, `/aceptar-terminos` y los estados de jugador de `/verify` (PR 2.1), el cromo de todo el portal (PR 2.2; la barra, el pie, la barra inferior y el menú de cuenta) y la página pública del complejo `/[slug]` con su reserva de horas (PR 2.3a). El cromo usa solo tokens semánticos y se ve igual con los del panel y con los del mundo, porque `PortalWorld` todavía se monta por página y no en el cascarón (la ficha lo monta en el layout de `(perfil)`). La barra `overlay` de la home (el vidrio sobre el hero) sigue en La Previa hasta el 2.5. El resto del portal conserva el aspecto saliente hasta su PR: confirmar la reserva y la vuelta de la reserva (`reservar` y `src/app/reserva/[bookingId]`, 2.3b), las páginas del jugador (2.4), la home (2.5) y Explorar (2.6). Las páginas de torneos (`/[slug]/torneos/*`) quedan afuera de `PortalWorld` a propósito. **El aspecto saliente no se extiende a nada nuevo**: una superficie o pieza nueva del portal se construye en La Reserva aunque la página que la rodea todavía no haya migrado. Las recetas de La Previa que siguen en el código (`PlayerHeroBand`, `.hero-accent-text`, la losa nocturna, el vidrio y los resplandores del portal) se describen acá solo como saliente, no como reglas.
 
 **Key Characteristics:**
 
@@ -272,6 +334,7 @@ El portal redeclara solo lo que cambia; `primary`, `foreground`, `card`, `destru
 - **Texto secundario** (`portal-muted-foreground`, slate-600 #475569, en claro): 7,6:1 sobre blanco y 6,9:1 sobre slate-100.
 - **Línea de superficie** (`portal-border`, slate-200 #E2E8F0, en claro): separa superficies (divisores, bordes de tarjeta y de aviso). Con 1,2:1 sobre blanco no delimita un control.
 - **Borde de campo** (`portal-input`, slate-500 #64748B, en claro · `portal-input-dark` #6B7C94 en oscuro): el borde de los campos, de la casilla y del botón `outline`. Llega a 3:1 contra el fondo (WCAG 1.4.11): 4,8:1 sobre blanco; en oscuro, 4,7:1 sobre el fondo, 4,3:1 sobre la tarjeta y 3,2:1 en hover (`border-input/80`). En el panel `input` vale lo mismo que `border`; en el portal son dos tokens distintos.
+- **Ámbar de "Queda 1"** (`portal-last-fill` #FFFBEB, `portal-last-border` #FCD34D y `portal-last-text` #92400E en claro; en oscuro, ámbar al 10 % con borde al 40 % y texto #FCD34D): son las escalas amber 50, 300 y 800 de `globals.css`, escritas como clases de Tailwind en `HourGrid` y no por `status-tone.ts`. Solo la hora a la que queda una cancha; ver The Scarcity Amber Rule.
 - **Foco** (`ring` = `primary`): emerald-700 en claro (5,6:1 sobre blanco; el emerald-500 del panel da 2,6:1) y emerald-500 en oscuro (7,8:1 sobre el fondo).
 - **Selección de texto:** tinte `primary` al 25 % con el texto en `foreground`, en todo el mundo, puesto una vez en `PortalWorld` y no campo por campo.
 
@@ -294,6 +357,8 @@ Los rótulos sobre un tinte de estado usan la escala 800 en claro y 300 en oscur
 
 **The Component Border Rule.** En el portal, lo que delimita un control que se toca o se tipea (campo, casilla, botón `outline`) lleva `border-input` (3:1 o más contra el fondo); `border-border` es solo para separar superficies.
 
+**The Scarcity Amber Rule.** En la reserva del portal, el ámbar es solo de "Queda 1": la única escasez que es un dato real. No se usa para "Señando" (es una espera y va con borde punteado), ni para avisos, ni para decorar. Va únicamente sobre la hora sin elegir: la elegida es verde.
+
 **The Measured Contrast Rule.** Las escalas emerald, red y amber están fijadas en hex (valores de Tailwind 3) dentro del `@theme` de `globals.css`, porque las de Tailwind 4 en OKLCH rompían AA. Texto esmeralda: 700 sobre tarjeta clara, 800 sobre el fondo de página, 400 en oscuro. Nunca emerald-500 (2,5:1) ni emerald-600 (3,8:1) como texto sobre claro, ni texto blanco de 14 px sobre emerald-600 o amber-600 (3,8:1 y 3,2:1).
 
 ## Typography
@@ -312,6 +377,8 @@ Los rótulos sobre un tinte de estado usan la escala 800 en claro y 300 en oscur
 - **Title** (Inter 600, 18 px, interlineado 1): título de diálogo y de sheet. Los títulos de sección (`SectionHeader`) van en Inter 600 de 16 px.
 - **Body** (Inter 400, 14 px): el mínimo del panel. En el portal el cuerpo es `portal-body` (Inter 400, 16 px) y las ayudas van en 14 px; nada baja de 13 px.
 - **Portal label** (Inter 500, 16 px): botones y rótulos de campo del portal.
+- **Portal section** (Archivo 800 recta, 20 px, interlineado 28 px, -0.01em; `PORTAL_SECTION_TITLE`): el título de cada bloque de una página del portal (Canchas libres a las 20:00, Canchas, Fotos, Horarios, Servicios, Reseñas). El conteo que lo acompaña ("Canchas (5)") va en Inter 400 de 13 px, tabular y `muted-foreground`.
+- **Portal hour** (Inter 600, 16 px, interlineado 20 px, tabular): la hora dentro de su botón; el estado va debajo en 13 px (interlineado 16 px). El nombre de una cancha y su precio van en 16 px semibold (el precio, tabular y con `formatArs`); el formato y los datos de apoyo, en 13 px.
 - **Label** (Inter 500, 14 px): botones, rótulos de formulario, ítems de menú.
 - **Caption** (Inter 500, 12 px): badges, ayudas debajo de un campo, encabezados de tabla (en mayúsculas con `tracking-wide`).
 - **Microlabel** (Inter 600, 12 px, mayúsculas, 0.06em): el nombre del complejo en la barra superior. El rótulo del riel de navegación va en 10 px semibold.
@@ -330,6 +397,8 @@ Los rótulos sobre un tinte de estado usan la escala 800 en claro y 300 en oscur
 
 El panel es un marco fijo con el contenido en el medio. En `lg` (1024 px) aparece el **riel** de 72 px a la izquierda; arriba va la **barra superior** de 60 px (más el safe-area de iOS) con el nombre del complejo, el **hueco de vista** (`AdminHeaderSlot`) y el menú de tema; debajo de `lg`, el riel se va y aparece la **barra inferior** con tres accesos directos y "Más".
 
+- **Portal (La Reserva), la ficha del complejo (`ProfileLayout`):** en el DOM el orden es portada y datos, reserva y después canchas con foto, fotos, horarios, torneos y reseñas (orden de lectura y de tab: la reserva sube antes que las fotos). Contenedor `max-w-6xl`, margen de 16 px (24 px desde `sm`) y 16 px de aire arriba (32 px desde `lg`). **Desde `lg` (1024 px) son dos columnas:** el complejo a la izquierda (`minmax(0,1fr)`) y la reserva a la derecha en una columna fija de 24 rem (384 px), separadas 40 px. La reserva es pegajosa debajo de la barra (`top-14`, los 56 px de la barra), con tope de alto `100dvh − 3.5rem` y scroll interno si no entra; su relleno de 4 px, con margen negativo para no bajar la columna, deja lugar al anillo de foco que ese scroll recortaría. Debajo de `lg` es una sola columna, con 24 px entre el complejo y la reserva y 40 px entre bloques.
+- **Columnas por contenedor (portal):** las horas y el esqueleto de la reserva eligen sus columnas según el ancho del CONTENEDOR (`@container`), no del viewport, porque la reserva mide 384 px en escritorio y el ancho de la pantalla en el celular: 3 columnas bajo 20,5 rem (328 px, un celular de 360 menos el margen), 4 desde ahí y 6 desde 40 rem (640 px). La constante es `HOUR_COLUMNS` en `HourGrid.tsx` y la comparten grilla y esqueleto. En la columna lateral de escritorio son siempre 4. Los bloques de debajo usan breakpoints de viewport: canchas con foto en 2 columnas y 3 desde `sm`; torneos en 1 y 2 desde `sm`.
 - **Contenedor de página:** lo pone `admin-layout-shell.tsx` y la página no agrega margen propio: `mx-auto w-full px-4 sm:px-6 lg:px-8`, tope de 1600 px (`max-w-[1600px]`) y `pt-8`. `/grilla` y `/reservas` son de ancho completo, con alto de pantalla y scroll interno. Un `max-w-*` en la página solo se justifica en un formulario o una lectura angosta.
 - **Hueco de vista:** las vistas del mostrador (Hoy, Grilla, Agenda, Caja y Configuración) y Métricas cuelgan ahí sus controles (segmentos, filtros, búsqueda, las flechas de día o de mes) en vez de abrir filas de encabezado propias. Lo que va al hueco es el control, no el título: el `<h1>` queda en el contenido, `sr-only`. Lo portalizado existe recién después de hidratar: un test o una foto de regresión tiene que esperarlo. Clientes, Turnos fijos, Canchas, Torneos y el super admin todavía abren con `PageHeader`.
 - **Medidas por CSS, superficies por hook:** un cambio de disposición se resuelve con clases responsive o `@container`. Un hook de viewport (`useIsDesktop`) solo se justifica cuando el contenido se portaliza fuera del subárbol que el CSS oculta (un popover de Radix), y nunca para el estado inicial. "Escritorio" es `lg` (1024 px) en el CSS y en el hook.
@@ -345,7 +414,7 @@ El panel es un marco fijo con el contenido en el medio. En `lg` (1024 px) aparec
 
 Híbrido y adaptativo. En claro la profundidad es **elevación**: sombras suaves en capas y un borde superior esmeralda tenue; las superficies de trabajo son opacas. En oscuro es **vidrio**: relleno blanco al 3 %, `backdrop-filter: blur(12px)`, sombra honda y, al pasar el mouse por algo clickeable, un resplandor esmeralda. Los fondos del marco (`.shell-bg`, `.content-area-gradient`) llevan degradés slate con resplandores esmeralda muy bajos y, en el marco, una retícula de 60 px que evoca una cancha.
 
-El portal (La Reserva) no tiene profundidad: superficies planas, sin sombras, sin levante, sin vidrio y sin resplandores, en los dos temas. Las superficies se separan con `portal-border` o con `portal-surface`. Las sombras del portal que siguen en las páginas no migradas son aspecto saliente.
+El portal (La Reserva) no tiene profundidad: superficies planas, sin sombras, sin levante, sin vidrio y sin resplandores, en los dos temas. Las superficies se separan con `portal-border` o con `portal-surface`. Las sombras del portal que siguen en las páginas no migradas son aspecto saliente. La ficha del complejo no usa ninguna: los botones de acción pisan la sombra del primitivo (`shadow-none`), la portada no lleva velo ni degradé y la jerarquía sale del borde de 1 px, del relleno verde de lo elegido y del tipo.
 
 ### Shadow Vocabulary
 
@@ -364,7 +433,7 @@ El portal (La Reserva) no tiene profundidad: superficies planas, sin sombras, si
 
 ## Shapes
 
-Los escalones chicos salen del radio base `--radius: 0.5rem`: `sm` 4 px, `md` 6 px (ítems chicos, skeleton, tooltip) y `lg` 8 px (botones, campos, chips de opción). `xl` 12 px (tarjetas destacadas, popovers, menús, estados vacíos) y `2xl` 16 px (diálogos, la banda del `PageHeader`, la esquina superior de la hoja inferior) son los de Tailwind y no se mueven si cambia `--radius`; `.card-premium` calcula sus 12 px como `--radius` + 4 px. Pastillas y avatares van en `rounded-full`. Los ítems del riel usan 10 px. En el portal `--radius` pasa a 12 px (`0.75rem`), así que `lg` mide 12, `md` 10 y `sm` 8: botones, campos y horas van en 12 px.
+Los escalones chicos salen del radio base `--radius: 0.5rem`: `sm` 4 px, `md` 6 px (ítems chicos, skeleton, tooltip) y `lg` 8 px (botones, campos, chips de opción). `xl` 12 px (tarjetas destacadas, popovers, menús, estados vacíos) y `2xl` 16 px (diálogos, la banda del `PageHeader`, la esquina superior de la hoja inferior) son los de Tailwind y no se mueven si cambia `--radius`; `.card-premium` calcula sus 12 px como `--radius` + 4 px. Pastillas y avatares van en `rounded-full`. Los ítems del riel usan 10 px. En la ficha del portal, la portada va en `2xl` (16 px); las horas, las filas de cancha, las fotos, los avisos y las listas, en `xl` (12 px); y los chips de día, de formato y de servicio, en `full`. En el portal `--radius` pasa a 12 px (`0.75rem`), así que `lg` mide 12, `md` 10 y `sm` 8: botones, campos y horas van en 12 px.
 
 El borde es de 1 px en `border-border` y lo aplica `globals.css` a todo. Tres firmas de forma se repiten: el **borde izquierdo de 3 px** que identifica el estado de un turno en la grilla (legible en densidad alta y para daltónicos, porque la posición no cambia), el **rayado diagonal** (135°, cada 6 px sobre `muted`) de lo bloqueado a propósito, y el **anillo inset** de 1 px de los badges.
 
@@ -398,8 +467,36 @@ Primero en el ingreso del jugador (`PortalAuthFrame`, `IngresarForm`, `AceptarTe
 - **Pie (`SiteFooter`):** plano, con borde superior de 1 px `border`, el mismo fondo que la barra y 24 px de margen vertical. Logo horizontal en 14 px y "© año · Argentina" en 14 px `muted-foreground`; Explorar, Ingresar, Privacidad y Términos en 14 px `muted-foreground` (hover `foreground`), de 44 px de alto en todos los anchos, y los canales de contacto en cuadrados de 44×44 px. Desde `sm` va en una fila; debajo, el logo arriba y después dos filas, los links juntos y los canales aparte, para que "Términos" no quede huérfano junto a los íconos.
 - **Barra inferior (`PlayerBottomNav`, con sesión de jugador, debajo de `md`):** fija abajo (`z-40`), con borde superior de 1 px, el mismo fondo que la barra y el safe-area. Tres ítems a partes iguales de 56 px de alto mínimo: ícono de 20 px y rótulo de 13 px sin cortar. El inactivo va en `muted-foreground` medium; el activo no se dice solo con color: va en `text-emerald-700 dark:text-emerald-400`, semibold y con una marca `primary` de 2×40 px arriba del ícono (más `aria-current`). El cascarón (`PortalFrame`) reserva exactamente ese alto: 56 px + 1 px de borde + safe-area.
 
+#### La ficha del complejo y su reserva (PR 2.3a)
+
+`/[slug]`, en `src/app/(public)/[slug]/(perfil)/` y `components/`. `PortalWorld` se monta en `(perfil)/layout.tsx`, que cubre la página, su `loading.tsx` y el aviso de complejo no disponible, y también en `not-found.tsx`; `torneos/*` y `reservar` quedan afuera (aspecto saliente hasta su PR). Todo lo que depende del visitante (qué día es, si está abierto, qué horas quedan) se hidrata en el cliente porque la página es ISR (`revalidate = 300`): hasta entonces se ve el esqueleto, con la misma silueta, y nada salta.
+
+- **Portada y datos (`ComplexHero`):** portada de 160 px de alto a todo el ancho con esquina de 16 px (sin portada no hay bloque). Nombre del complejo con `PORTAL_TITLE` (28 px) hasta tres líneas con `text-balance`; debajo, dirección y ciudad y una línea apagada de datos ("5 canchas · Fútbol 5 y 7") en 14 px `muted-foreground`; sin dato no se pinta. Después el estado de apertura y, si hay reseñas, la valoración. Los accesos son botones `outline` de 44 px: "Cómo llegar" (siempre) y "WhatsApp" o, si no hay, "Llamar"; el ícono se guarda debajo de 400 px porque el texto ya dice qué hace. Compartir y guardar van a la derecha, solo ícono de 44×44, transparentes, sin sombra, vidrio ni levante.
+- **Estado de apertura (`OpenStatus`):** una línea de 14 px, siempre en palabras: "Abierto · hasta la 01:00" en verde semibold (`text-emerald-700 dark:text-emerald-400`), "Cerrado · abre a las 18:00", "Cerrado hoy" o "Cerró por hoy · abre mañana a las 09:00" en `muted-foreground`. Antes de hidratar deja una línea vacía del mismo alto (`min-h-5`). Los cálculos (cierre pasada la medianoche incluido) salen de `src/lib/schedule/open-status.ts`. `OpeningHoursList` repite los horarios por día en una lista con borde; hoy va en fondo `muted`, semibold, con la palabra "hoy" y `aria-current="date"`, y el cierre a medianoche se dice "00:00".
+- **Reserva (`ReserveSection`):** una sección "Reservá tu turno" con orden fijo: días, formato (solo si el complejo tiene más de un formato), horas y, al elegir una, las canchas libres. Elegir un día borra la hora; elegir un formato filtra del lado del cliente. Lo elegido vive en la URL (`?date=&formato=&hora=`, con `replaceState`, que conserva el resto de los parámetros): el link compartido y "Volver" lo guardan. Al elegir una hora la lista de canchas se acerca lo justo con scroll suave (sin animar con reduce-motion) y sin mover el foco. Una línea de 13 px dice la ventana ("Reservás hasta 6 días antes" o "Reservás solo para hoy").
+- **`data-state` de la sección:** el `<section aria-label="Reservá tu turno">` lleva `data-state` con `loading` (esqueleto, hasta que el primer estado se resolvió o mientras se busca el próximo día), `ready`, `closed` o `error`; `aria-busy` es verdadero solo en `loading`. Es el gancho de los tests y de las capturas y no cambia el aspecto. Un `<p role="status" class="sr-only">` anuncia el cambio ("20:00: 3 canchas libres" o "Jueves 15: 9 horarios con lugar").
+- **Chips de día y de formato (`ChipGroups`):** grupos de opción única con `RadioGroup` de Radix (flechas del teclado, un solo tab stop). Pastilla de 44 px de alto, `full`, borde `border`, fondo `card`, 14 px medium, 16 px de margen lateral. **La elegida** va con relleno `primary`, texto `primary-foreground`, semibold y un tilde de 16 px: nunca solo color. El día se rotula "Hoy jue 15" y "Vie 16"; **un día cerrado se ve, deshabilitado** (fondo `muted`, texto `muted-foreground`), con "Cerrado" en 13 px debajo. Los formatos van con palabras, "Todos · Fútbol 5 · Fútbol 7", y el grupo no se pinta con un solo formato. En el celular es una fila que se desplaza y se corta en el borde para avisar que hay más (la elegida se trae a la vista); desde `lg` el grupo de días pasa a varias filas si son 8 o menos. El foco necesita lugar: la fila lleva 4 px de relleno con margen negativo, y quien la monta separa con `gap` y no con `space-y`.
+- **Grilla de horas (`HourGrid`):** `RadioGroup` de botones de 50 px de alto mínimo, esquina de 12 px, borde `border`, fondo `card`, con la hora arriba (portal hour) y el estado debajo (13 px); columnas por contenedor (ver Layout). Solo aparecen las horas que todavía no pasaron y, con `closes_next_day`, la madrugada va al final del mismo día operativo. Cinco estados, cada uno con palabra:
+  - **"N libres"** (dos o más canchas): neutro, con la cuenta en `muted-foreground`.
+  - **"Queda 1"** (una sola libre de varias): fondo ámbar 50, borde ámbar 300 y texto ámbar 800 semibold (en oscuro, ámbar al 10 %, borde al 40 % y texto ámbar 300). Es la única escasez real y el único ámbar de la reserva.
+  - **"Libre"** (el filtro deja una sola cancha y está libre): neutro. No es escasez, es la única que hay, así que no se pinta de ámbar.
+  - **"Señando"**: ninguna libre pero alguien está pagando la seña y puede liberarse (decisión v2 D1). Borde punteado `muted-foreground` sobre `card`, texto en `foreground`, deshabilitada. No es una alerta: es una espera. Se explica con una ayuda visible de 13 px debajo de la grilla (enlazada con `aria-describedby`, no un `title`) y el día se refresca solo cada 30 s mientras haya una hora así y la pestaña esté a la vista.
+  - **"Completo"**: fondo `muted`, hora tachada y en `muted-foreground`, deshabilitada, pero a la vista y dicha.
+  - **La elegida** va con relleno `primary`, texto `primary-foreground`, un tilde de 16 px antes de la hora y el estado en semibold. El color de estado (ámbar) se aplica solo a la hora sin elegir (`data-[state=unchecked]`): en oscuro la variante `dark:` le ganaba al relleno verde y dejaba texto oscuro sobre ámbar (1,1:1). Al hover el borde pasa a `input`, sin levante.
+- **Filas de cancha (`CourtRows`):** el título es "Canchas libres a las 20:00" (Portal section). Una lista de filas tocables de 64 px de alto mínimo, borde `border`, fondo `card` y esquina de 12 px: el nombre en 16 px semibold (una línea, con corte) y debajo el formato en 13 px `muted-foreground`; a la derecha el precio tabular en semibold y un chevron de 20 px. Tocar una fila lleva a confirmar (`/reservar?court&date&time&dur`). Con `hidePrices` el servidor manda `null` y el componente lo vuelve a chequear: la fila no deja hueco. Sin reserva online la fila abre WhatsApp con el pedido escrito y muestra "WhatsApp" en verde de texto, o "Llamar" si solo hay teléfono; sin ninguno queda apagada y sin acción.
+- **Vacíos y errores por causa (`DayEmptyState`):** un aviso `bg-muted` con borde `border`, esquina de 12 px y 16 px de relleno, con el título en 16 px semibold y la ayuda en 14 px `muted-foreground`. Siempre dice qué pasó y deja una salida arriba del pliegue, con botones `outline` de 48 px (a todo el ancho en el celular, del ancho del texto desde `sm`). La fila de acciones reserva 44 px de alto, para que "Buscando…" y el botón no muevan la página. Una causa, un texto:
+  - `closed`: "Cerrado el jueves 15", con "Ver el viernes 16" (el próximo día abierto dentro de la ventana) o "No hay otros días abiertos para reservar".
+  - `none` y `full`: "No quedan horarios el jueves 15", con el botón al próximo día con lugar (una sola consulta a la semana que sigue) o "No hay lugar en los próximos N días". Con el día lleno y otro día al que ir, la grilla de "Completo" se oculta y la reemplaza el botón; con el día lleno y nada que ofrecer, la grilla queda debajo.
+  - `noCourts`: "Este complejo todavía no tiene canchas para reservar", con "Consultar por WhatsApp" o "Llamar al complejo".
+  - `error`, por causa (`role="alert"`): la red ("No pudimos cargar los horarios del jueves 15"), el servidor ("Falló algo de nuestro lado"), el límite de pedidos ("Hubo demasiadas consultas seguidas") y el complejo que ya no existe ("Este complejo ya no está disponible", con "Buscar otro complejo" en vez de reintentar). Las tres primeras traen "Reintentar" y la frase "Tu elección sigue guardada".
+- **Canchas con foto (`CourtTile`):** foto 4:3 de esquina 12 px sobre `muted`, nombre en 16 px semibold, "Fútbol 5 · Sintético" en 13 px y, si el precio se ve, "Desde $ 60.000" con la cifra en semibold tabular. Plana: sin tarjeta, sombra ni levante; la foto manda. Una cancha sin foto no se pinta en este bloque, y una foto que ya se vio en una cancha no se repite en la galería.
+- **Detalles, servicios, torneos y reseñas:** la descripción en 16 px con tope de ancho de lectura; los servicios son pastillas de 32 px con ícono de 16 px, borde `border` y 13 px medium; los torneos, filas de 64 px como las de cancha (máximo 4 y el enlace "Ver los N torneos"); las reseñas, una lista con divisores de 1 px (no una tarjeta), el texto en 16 px, la fecha en 13 px tabular y "Ver más reseñas" como botón `outline`. Cada bloque desaparece sin dejar hueco cuando no hay dato; sin reseñas no se monta ni un vacío.
+- **Redirección:** `/[slug]/disponibilidad` (la vista semanal y su modal) ya no existe: `next.config.ts` la redirige con un 308 a `/[slug]`, y la query (`?date=`) llega sola a la ficha. `profile.viewed` pasó a emitirse desde `ReserveSection`, una vez por pestaña y complejo, cuando el primer estado queda resuelto (horas cargadas o día cerrado; un error no cuenta).
+- **Deuda conocida:** `CourtCard` sigue siendo la tarjeta de cancha del panel (la vista previa "Así la ve el jugador" del editor de Canchas) y del onboarding, con el aspecto viejo (tarjeta con borde y sombra); la ficha pública ya no la usa, usa `CourtTile`. Hasta que se decida unificarlas, esa vista previa no es lo que el jugador ve.
+
 ### Chips
 
+- **Alcance:** lo que sigue es del Mostrador. Los chips de la reserva del portal están en Components › La ficha del complejo y su reserva.
 - **Style:** el badge de estado (`StatusBadge`) es una pastilla con tinte del tono al 10 % (15 % en oscuro), rótulo 800/300, anillo inset al 25 % (40 % en oscuro) e ícono de 12 px. El ícono, el rótulo y el tono de cada estado salen de una tabla única por dominio: `src/lib/booking/slot-visual.ts` para los turnos (grilla, reservas y detalle) y un `status-visual.tsx` por módulo para canchas, turnos fijos y equipo. Así el panel y el portal dicen lo mismo, y un badge nuevo no inventa su propio mapa de colores.
 - **State:** las opciones elegibles (`RadioChip`) son tarjetas de 44 px de alto con borde `border`; la elegida pasa a borde `primary` y fondo `primary` al 5 % (10 % en oscuro).
 
@@ -533,6 +630,11 @@ Lo semanal de la cantina (`/caja/productos`), rehecho el 2026-09-26 con el mismo
 - **Do** colgar los tokens del portal de `html:has([data-world='portal'])` (`portal-world.css` + `PortalWorld`), para que alcancen a los portales de Radix en `body` (diálogos, Toaster). Un token del portal nunca se escribe en `:root`, `.dark`, `.dark-surface` ni `src/components/ui/*`.
 - **Do** mantener las compuertas del portal en verde: `tests/unit/portal-world-tokens.test.ts` hashea los tokens del panel (cambiarlos a propósito actualiza el hash en el mismo PR) y la story de `PortalWorld` mide 9 tokens en claro y en oscuro.
 - **Do** marcar el error en el campo o la casilla que falló, con el mensaje debajo.
+- **Do** decir lo elegido en la reserva con relleno verde y tilde (chips de día y de formato, horas): nunca solo color. Es la excepción a The One Voice Rule que fija el brief de la ficha (2026-10-15): lo elegido es un estado, no una acción. Cada estado de una hora se dice con palabra ("N libres", "Queda 1", "Libre", "Señando", "Completo") y lo que no se puede elegir se ve y se explica en vez de desaparecer.
+- **Do** resolver las columnas de una pieza que vive en una columna angosta con `@container`, no con un breakpoint de viewport.
+- **Do** darle a cada vacío o error del portal su causa, qué hacer y una salida (reintentar, otro día, hablar con el complejo) arriba del pliegue.
+- **Do** dejar el estado que depende del reloj del visitante (hoy, abierto o cerrado, qué horas quedan) en una isla de cliente con un esqueleto del mismo alto, y marcar la sección de reserva con `data-state`.
+- **Do** montar `PortalWorld` en el layout de la ruta que migra (`(perfil)`) y en su `not-found`. Solo ahí la regla `html:has([data-world='portal']) .player-shell-bg` de `globals.css` apaga el fondo de cancha de La Previa y pinta `--color-background`; sin el marcador el cascarón conserva su fondo.
 
 ### Don't:
 
@@ -544,7 +646,11 @@ Lo semanal de la cantina (`/caja/productos`), rehecho el 2026-09-26 con el mismo
 - **Don't** extender La Previa: nada nuevo del portal con resplandores, vidrio, fotos de fondo, sombras de color, levante al hover, titulares en negra itálica ni disfraz temático.
 - **Don't** deshabilitar un botón del portal con opacidad ni dejarlo deshabilitado sin explicación.
 - **Don't** delimitar un campo, una casilla o un `outline` del portal con `border-border`: con 1,2:1 no llega a los 3:1 de WCAG 1.4.11.
-- **Don't** poner dos acciones verdes en una pantalla del portal.
+- **Don't** poner dos acciones verdes en una pantalla del portal. La hora o el chip elegidos son estado y no cuentan; el botón verde de confirmar vive en `reservar`.
+- **Don't** usar ámbar en la reserva del portal para otra cosa que "Queda 1": ni "Señando", ni "Libre", ni un aviso, ni la hora elegida.
+- **Don't** esconder las horas completas ni los días cerrados: se ven, deshabilitados y dichos ("Completo" tachado, "Cerrado").
+- **Don't** usar `CourtCard` en una página del portal: es la tarjeta del panel y del onboarding; la ficha usa `CourtTile`.
+- **Don't** elegir las columnas de las horas con `md:grid-cols-*`: la reserva mide 384 px en escritorio y seis columnas no entran.
 - **Don't** agregar librerías de animación (la única excepción es `/onboarding`, con `motion` en `LazyMotion`) ni loops infinitos fuera del skeleton, de la web comercial y del punto de "Cobrar $X" en Hoy.
 - **Don't** usar el placeholder como rótulo, emojis como íconos estructurales ni fechas ISO o anglicismos de dashboard ("Revenue", "Booking") frente al usuario.
 - **Don't** mostrar un número verificable que no salga de datos reales (prueba social, escasez, contadores): lo trucho descubierto destruye la confianza para pagar la seña y es publicidad engañosa (Ley 24.240).

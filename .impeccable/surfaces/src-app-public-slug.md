@@ -46,18 +46,18 @@ Relevado el 2026-10-15 en el celular, sobre un complejo de F5 y F7 de Moreno, po
 
 - Canchas: no hay techo; se diseña y se prueba con 1, 3, 5, 10 y 16. Formatos de Fútbol 4 a 11, mezclados en el mismo complejo. El formato va en cada cancha, en el resumen, en el éxito y en el mensaje al grupo: hoy `PublicCourt` no lo trae y se suma el campo a la lectura (`public.service.ts:147-153`).
 - Días: día cerrado o feriado del complejo, visible y deshabilitado con "Cerrado". Día sin turnos libres: "No quedan horarios el jueves 15" y un botón al próximo día con lugar.
-- Horas: las de hoy que ya pasaron no se muestran. Con `closes_next_day`, las de la madrugada van al final del mismo día operativo, como hoy. Por hora: "N libres", "Queda 1" (dato real), "Completo" tachado y deshabilitado. Si lo único que queda está retenido por alguien que paga la seña, se respeta la decisión v2 D1: "Señando", que puede liberarse.
+- Horas: las de hoy que ya pasaron no se muestran. Con `closes_next_day`, las de la madrugada van al final del mismo día operativo, como hoy. Por hora: "N libres", "Queda 1" (dato real), "Completo" tachado y deshabilitado. Si el formato elegido deja una sola cancha, la hora libre dice "Libre", sin ámbar: con una cancha, "Queda 1" sería urgencia falsa. Si lo único que queda está retenido por alguien que paga la seña, se respeta la decisión v2 D1: "Señando", que puede liberarse.
 - Precios visibles: en cada cancha y en el resumen. Ocultos (`hidePrices`): ningún monto en ninguna pantalla; con seña, "Para confirmar pagás una seña online con MercadoPago. El resto, en el complejo."
 - Pago: sin seña, "Pagás en el complejo" (elegir efectivo o transferencia solo si acepta los dos); con seña, MercadoPago (pendiente, aprobada, rechazada).
 - Sin reserva online: se ven las horas y tocar una cancha abre WhatsApp con el pedido escrito (teléfono si no hay WhatsApp).
-- Sin portada, fotos, reseñas, WhatsApp o coordenadas: cada bloque desaparece sin dejar hueco. Nombre largo: hasta dos líneas.
+- Sin portada, fotos, reseñas, WhatsApp o coordenadas: cada bloque desaparece sin dejar hueco. Nombre largo: pasados ~28 caracteres baja a 24 px para entrar en dos líneas; tres líneas como tope.
 - Errores: no cargan las horas (reintentar); se ocupó el turno; el pago falló o se canceló; la cuenta es de un complejo (el mensaje de F5).
 - Claro y oscuro de primera, con el tema del sistema.
 
 ## Interacción y layout
 
-- Celular primero: margen de 16 px; las horas entran en la primera pantalla con al menos dos filas a la vista; grilla de 4 horas por fila (3 por debajo de 360 px); filas de cancha de 64 px o más; botón fijo de 52 px con el área segura del iPhone.
-- Desde 768 px, 6 horas por fila. Desde 1024 px, dos columnas: el complejo a la izquierda y la reserva fija a la derecha. Confirmar y el éxito van en una columna de ~560 px.
+- Celular primero: margen de 16 px; las horas entran en la primera pantalla con al menos dos filas a la vista; grilla de horas que cuenta columnas por el ancho de su contenedor (3 por debajo de 328 px, 4 desde ahí y 6 desde 640 px); filas de cancha de 64 px o más; botón fijo de 52 px con el área segura del iPhone.
+- Desde 1024 px, dos columnas: el complejo a la izquierda y la reserva fija a la derecha. Confirmar y el éxito van en una columna de ~560 px.
 - Semántica: días, formatos y horas como grupos de opción única con teclado; el cambio de lista se anuncia; foco visible; nada depende del hover.
 - La elección vive en la URL (día, formato, hora): el link compartido y "Volver" la conservan.
 

@@ -543,6 +543,66 @@
           "#cbd5e1",
           "#f1f5f9"
         ]
+      },
+      "portal-last-fill": {
+        "role": "status",
+        "displayName": "Fondo de \"Queda 1\" (portal, claro)",
+        "canonical": "#fffbeb",
+        "tonalRamp": [
+          "#451a03",
+          "#78350f",
+          "#b45309",
+          "#d97706",
+          "#f59e0b",
+          "#fbbf24",
+          "#fde68a",
+          "#fffbeb"
+        ]
+      },
+      "portal-last-border": {
+        "role": "status",
+        "displayName": "Borde de \"Queda 1\" (portal, claro)",
+        "canonical": "#fcd34d",
+        "tonalRamp": [
+          "#451a03",
+          "#78350f",
+          "#b45309",
+          "#d97706",
+          "#f59e0b",
+          "#fbbf24",
+          "#fde68a",
+          "#fffbeb"
+        ]
+      },
+      "portal-last-text": {
+        "role": "status",
+        "displayName": "Texto de \"Queda 1\" (portal, claro)",
+        "canonical": "#92400e",
+        "tonalRamp": [
+          "#451a03",
+          "#78350f",
+          "#b45309",
+          "#d97706",
+          "#f59e0b",
+          "#fbbf24",
+          "#fde68a",
+          "#fffbeb"
+        ]
+      },
+      "portal-last-text-dark": {
+        "role": "status",
+        "displayName": "Texto de \"Queda 1\" (portal, oscuro)",
+        "canonical": "#fcd34d",
+        "tonalRamp": [
+          "#451a03",
+          "#78350f",
+          "#b45309",
+          "#d97706",
+          "#f59e0b",
+          "#fbbf24",
+          "#fde68a",
+          "#fffbeb"
+        ]
       }
     },
     "typographyMeta": {
@@ -585,6 +645,18 @@
       "portal-label": {
         "displayName": "Portal label",
         "purpose": "Botones y rótulos de campo del portal."
+      },
+      "portal-section": {
+        "displayName": "Portal section",
+        "purpose": "Título de cada bloque de una página del portal (Canchas libres, Fotos, Horarios, Reseñas), Archivo 800 recta de 20 px."
+      },
+      "portal-hour": {
+        "displayName": "Portal hour",
+        "purpose": "La hora dentro de su botón en la reserva: Inter 600 de 16 px, tabular; el estado va debajo en 13 px."
+      },
+      "portal-note": {
+        "displayName": "Portal note",
+        "purpose": "Estado de una hora, formato de una cancha, ayudas y conteos de la ficha: 13 px, el mínimo del portal."
       }
     },
     "shadows": [
@@ -675,6 +747,18 @@
       {
         "name": "content-max",
         "value": "1600px"
+      },
+      {
+        "name": "container-hours-4",
+        "value": "328px (20.5rem, contenedor de la reserva)"
+      },
+      {
+        "name": "container-hours-6",
+        "value": "640px (40rem, contenedor de la reserva)"
+      },
+      {
+        "name": "reserve-column",
+        "value": "384px (24rem) desde lg, pegajosa bajo la barra de 56 px"
       }
     ]
   },
@@ -782,11 +866,43 @@
       "description": "48 px, borde input (slate-500) a 3:1, esquina de 12 px; el error va sobre el campo, con el mensaje debajo.",
       "html": "<label class=\"ds-pfield\"><span>Email</span><input class=\"ds-pinput\" type=\"email\" placeholder=\"vos@email.com\" /><small>Sin contraseña: te mandamos un enlace para entrar.</small></label>",
       "css": ".ds-pfield { display:grid; gap:8px; max-width:384px; font:500 16px/1.5 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; color:hsl(var(--foreground, 224 71% 4%)); } .ds-pfield small { font:400 14px/1.43 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; color:hsl(var(--muted-foreground, 215.3 19.3% 34.5%)); } .ds-pinput { height:48px; padding:8px 14px; border:1px solid hsl(var(--input, 215.4 16.3% 46.9%)); border-radius:12px; background:hsl(var(--card, 0 0% 100%)); color:hsl(var(--foreground, 224 71% 4%)); font:400 16px/1.5 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; } .ds-pinput::selection { background:hsl(var(--primary, 163 94% 24%) / .25); } .ds-pinput::placeholder { color:hsl(var(--muted-foreground, 215.3 19.3% 34.5%) / .6); } .ds-pinput:focus-visible { outline:none; border-color:hsl(var(--primary, 163 94% 24%)); box-shadow:0 0 0 2px hsl(var(--background, 0 0% 100%)), 0 0 0 4px hsl(var(--primary, 163 94% 24%)); } .ds-pinput[aria-invalid=\"true\"] { border-color:hsl(var(--destructive, 0 72% 51%)); }"
+    },
+    {
+      "name": "Chips de día y de formato (portal)",
+      "kind": "chip",
+      "refersTo": "chip-portal",
+      "description": "Opción única en pastilla de 44 px. La elegida lleva relleno verde y tilde; un día cerrado se ve deshabilitado y dice \"Cerrado\". El de formato solo aparece con más de un formato.",
+      "html": "<div class=\"ds-chips\" role=\"radiogroup\" aria-label=\"Día\"><button class=\"ds-chip is-on\" role=\"radio\" aria-checked=\"true\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"/></svg>Hoy jue 15</button><button class=\"ds-chip\" role=\"radio\" aria-checked=\"false\">Vie 16</button><button class=\"ds-chip\" role=\"radio\" aria-checked=\"false\" disabled><span>Sáb 17</span><small>Cerrado</small></button></div>",
+      "css": ".ds-chips { display:flex; gap:8px; padding:4px; } .ds-chip { display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:0; min-height:44px; padding:0 16px; border:1px solid hsl(var(--border, 214.3 31.8% 91.4%)); border-radius:9999px; background:hsl(var(--card, 0 0% 100%)); color:hsl(var(--foreground, 224 71% 4%)); font:500 14px/1.43 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; white-space:nowrap; } .ds-chip.is-on { border-color:hsl(var(--primary, 163 94% 24%)); background:hsl(var(--primary, 163 94% 24%)); color:hsl(var(--primary-foreground, 0 0% 100%)); font-weight:600; } .ds-chip.is-on svg { display:inline-block; vertical-align:-3px; margin-right:4px; } .ds-chip:disabled { background:hsl(var(--muted, 210 40% 96.1%)); color:hsl(var(--muted-foreground, 215.3 19.3% 34.5%)); } .ds-chip small { font:400 13px/16px var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; }"
+    },
+    {
+      "name": "Grilla de horas (portal)",
+      "kind": "custom",
+      "refersTo": "hour-slot",
+      "description": "Cinco estados con palabra: \"N libres\", \"Queda 1\" (único ámbar), \"Libre\", \"Señando\" (borde punteado) y \"Completo\" (tachado). La elegida lleva relleno verde y tilde. Columnas por contenedor: 3, 4 y 6.",
+      "html": "<div class=\"ds-hours\"><button class=\"ds-hour\"><b>18:00</b><span>3 libres</span></button><button class=\"ds-hour is-last\"><b>19:00</b><span>Queda 1</span></button><button class=\"ds-hour is-on\"><svg width=\"16\" height=\"16\" style=\"vertical-align:-3px\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"/></svg><b>20:00</b><span>2 libres</span></button><button class=\"ds-hour is-held\" disabled><b>21:00</b><span>Señando</span></button><button class=\"ds-hour is-full\" disabled><b><s>22:00</s></b><span>Completo</span></button><button class=\"ds-hour\"><b>23:00</b><span>Libre</span></button></div>",
+      "css": ".ds-hours { display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; max-width:376px; padding:4px; container-type:inline-size; } .ds-hour { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:50px; padding:4px; border:1px solid hsl(var(--border, 214.3 31.8% 91.4%)); border-radius:12px; background:hsl(var(--card, 0 0% 100%)); color:hsl(var(--foreground, 224 71% 4%)); font:inherit; } .ds-hour b { font:600 16px/20px var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; font-variant-numeric:tabular-nums; } .ds-hour span { font:400 13px/16px var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; color:hsl(var(--muted-foreground, 215.3 19.3% 34.5%)); } .ds-hour.is-last { border-color:#fcd34d; background:#fffbeb; } .ds-hour.is-last span { color:#92400e; font-weight:600; } .ds-hour.is-held { border-style:dotted; border-color:hsl(var(--muted-foreground, 215.3 19.3% 34.5%)); } .ds-hour.is-held span { color:hsl(var(--foreground, 224 71% 4%)); font-weight:600; } .ds-hour.is-full { background:hsl(var(--muted, 210 40% 96.1%)); } .ds-hour.is-full b { color:hsl(var(--muted-foreground, 215.3 19.3% 34.5%)); } .ds-hour.is-on { border-color:hsl(var(--primary, 163 94% 24%)); background:hsl(var(--primary, 163 94% 24%)); color:hsl(var(--primary-foreground, 0 0% 100%)); } .ds-hour.is-on span { color:hsl(var(--primary-foreground, 0 0% 100%)); font-weight:600; }"
+    },
+    {
+      "name": "Fila de cancha (portal)",
+      "kind": "card",
+      "refersTo": "court-row",
+      "description": "Cancha libre a la hora elegida: nombre, formato como línea de apoyo, precio tabular si se ve y chevron. Toda la fila lleva a confirmar; 64 px o más.",
+      "html": "<a class=\"ds-court\" href=\"#\"><span class=\"ds-court-body\"><strong>Cancha 2</strong><small>Fútbol 7</small></span><b>$&nbsp;84.000</b><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m9 18 6-6-6-6\"/></svg></a>",
+      "css": ".ds-court { display:flex; align-items:center; gap:12px; min-height:64px; max-width:376px; padding:8px 16px; border:1px solid hsl(var(--border, 214.3 31.8% 91.4%)); border-radius:12px; background:hsl(var(--card, 0 0% 100%)); color:hsl(var(--foreground, 224 71% 4%)); text-decoration:none; font-family:var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; } .ds-court-body { flex:1; min-width:0; } .ds-court-body strong { display:block; font:600 16px/1.5 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; } .ds-court-body small { display:block; font:400 13px/20px var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; color:hsl(var(--muted-foreground, 215.3 19.3% 34.5%)); } .ds-court b { font:600 16px/1.5 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; font-variant-numeric:tabular-nums; } .ds-court svg { color:hsl(var(--muted-foreground, 215.3 19.3% 34.5%)); }"
+    },
+    {
+      "name": "Vacío o error del día (portal)",
+      "kind": "card",
+      "refersTo": "notice-portal",
+      "description": "Aviso plano que dice qué pasó y deja una salida arriba del pliegue: reintentar, el próximo día con lugar o hablar con el complejo. Una causa, un texto.",
+      "html": "<div class=\"ds-notice\"><p class=\"ds-notice-title\">No quedan horarios el jueves 15</p><p class=\"ds-notice-hint\">Hay lugar otro día.</p><button class=\"ds-notice-btn\">Ver el viernes 16</button></div>",
+      "css": ".ds-notice { max-width:376px; padding:16px; border:1px solid hsl(var(--border, 214.3 31.8% 91.4%)); border-radius:12px; background:hsl(var(--muted, 210 40% 96.1%)); font-family:var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; color:hsl(var(--foreground, 224 71% 4%)); } .ds-notice-title { margin:0; font:600 16px/1.5 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; } .ds-notice-hint { margin:4px 0 0; font:400 14px/1.43 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; color:hsl(var(--muted-foreground, 215.3 19.3% 34.5%)); } .ds-notice-btn { margin-top:12px; width:100%; min-height:48px; padding:12px 16px; border:1px solid hsl(var(--input, 215.4 16.3% 46.9%)); border-radius:12px; background:hsl(var(--card, 0 0% 100%)); color:hsl(var(--foreground, 224 71% 4%)); font:500 16px/1.5 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; }"
     }
   ],
   "narrative": {
     "northStar": "El Mostrador y La Reserva",
-    "overview": "TurnoGol es un solo sistema con dos personalidades. Comparten el verde de marca, las tipografías, el logo y las primitivas de `src/components/ui/`; cada una tiene su mundo. **El Mostrador** es el panel del complejo: una herramienta que el encargado usa toda la noche en una notebook con mouse, mientras atiende gente y contesta el WhatsApp. Es denso pero obvio, con los datos primero, un solo verde que grita por vista y movimiento corto. **La Reserva** es el portal del jugador: el estándar de las apps de reservas de canchas, con el flujo de ATC y una terminación más linda y moderna, sin perder accesibilidad (compromiso de marca de `PRODUCT.md`). Es plano: fondo blanco en claro, bordes de 1 px, un solo verde para lo elegido y la acción principal, títulos en Archivo 800 recta. Sin mundo temático, sin resplandores y sin vidrio.\n\nEl mundo del panel es césped de noche sobre slate. En claro, tarjetas blancas que flotan con sombras en capas sobre un fondo slate frío; en oscuro, losas slate-950 con superficies de vidrio (relleno blanco al 3 %, desenfoque y un resplandor esmeralda). Los dos temas son de primera: ninguna vista se diseña para uno y \"después se verá\" el otro; arranca el del sistema (`next-themes`, `defaultTheme=\"system\"`). El estado nunca se comunica solo con color: siempre va color, ícono y texto, y lo resuelve una sola tabla de tonos.\n\nEste documento describe el estilo tal como está en el código al 2026-09-23 y es la única autoridad de diseño del repo. El panel se **refina** sobre este estilo; no se reemplaza. Donde los documentos anteriores (hoy en `docs/archive/design-system/`) y el código no coincidían, ganó el código. Rechazo confirmado por el dueño el 2026-09-23: cambiar este mundo por uno austero de papel y tinta, sin fondos ni sombras (la dirección \"Tablero de partidas\"). Ese rechazo es del panel; el portal plano es otra decisión del dueño (2026-10-15) y no lo reabre.\n\n**La Reserva reemplaza a \"La Previa\"** (la vidriera con resplandores, vidrio, fotos de fondo y titulares en negra itálica) y se migra página por página. Hoy están en el mundo nuevo `/ingresar`, `/aceptar-terminos` y los estados de jugador de `/verify` (PR 2.1), y el cromo de todo el portal (PR 2.2): la barra, el pie, la barra inferior y el menú de cuenta. El cromo usa solo tokens semánticos y se ve igual con los del panel y con los del mundo, porque `PortalWorld` todavía se monta por página y no en el cascarón. La barra `overlay` de la home (el vidrio sobre el hero) sigue en La Previa hasta el 2.5. El resto del portal conserva el aspecto saliente hasta su PR: la página del complejo y la reserva (2.3), las páginas del jugador (2.4), la home (2.5) y Explorar (2.6). **El aspecto saliente no se extiende a nada nuevo**: una superficie o pieza nueva del portal se construye en La Reserva aunque la página que la rodea todavía no haya migrado. Las recetas de La Previa que siguen en el código (`PlayerHeroBand`, `.hero-accent-text`, la losa nocturna, el vidrio y los resplandores del portal) se describen acá solo como saliente, no como reglas.",
+    "overview": "TurnoGol es un solo sistema con dos personalidades. Comparten el verde de marca, las tipografías, el logo y las primitivas de `src/components/ui/`; cada una tiene su mundo. **El Mostrador** es el panel del complejo: una herramienta que el encargado usa toda la noche en una notebook con mouse, mientras atiende gente y contesta el WhatsApp. Es denso pero obvio, con los datos primero, un solo verde que grita por vista y movimiento corto. **La Reserva** es el portal del jugador: el estándar de las apps de reservas de canchas, con el flujo de ATC y una terminación más linda y moderna, sin perder accesibilidad (compromiso de marca de `PRODUCT.md`). Es plano: fondo blanco en claro, bordes de 1 px, un solo verde para lo elegido y la acción principal, títulos en Archivo 800 recta. Sin mundo temático, sin resplandores y sin vidrio.\n\nEl mundo del panel es césped de noche sobre slate. En claro, tarjetas blancas que flotan con sombras en capas sobre un fondo slate frío; en oscuro, losas slate-950 con superficies de vidrio (relleno blanco al 3 %, desenfoque y un resplandor esmeralda). Los dos temas son de primera: ninguna vista se diseña para uno y \"después se verá\" el otro; arranca el del sistema (`next-themes`, `defaultTheme=\"system\"`). El estado nunca se comunica solo con color: siempre va color, ícono y texto, y lo resuelve una sola tabla de tonos.\n\nEste documento describe el estilo tal como está en el código al 2026-09-23 y es la única autoridad de diseño del repo. El panel se **refina** sobre este estilo; no se reemplaza. Donde los documentos anteriores (hoy en `docs/archive/design-system/`) y el código no coincidían, ganó el código. Rechazo confirmado por el dueño el 2026-09-23: cambiar este mundo por uno austero de papel y tinta, sin fondos ni sombras (la dirección \"Tablero de partidas\"). Ese rechazo es del panel; el portal plano es otra decisión del dueño (2026-10-15) y no lo reabre.\n\n**La Reserva reemplaza a \"La Previa\"** (la vidriera con resplandores, vidrio, fotos de fondo y titulares en negra itálica) y se migra página por página. Hoy están en el mundo nuevo `/ingresar`, `/aceptar-terminos` y los estados de jugador de `/verify` (PR 2.1), el cromo de todo el portal (PR 2.2; la barra, el pie, la barra inferior y el menú de cuenta) y la página pública del complejo `/[slug]` con su reserva de horas (PR 2.3a). El cromo usa solo tokens semánticos y se ve igual con los del panel y con los del mundo, porque `PortalWorld` todavía se monta por página y no en el cascarón (la ficha lo monta en el layout de `(perfil)`). La barra `overlay` de la home (el vidrio sobre el hero) sigue en La Previa hasta el 2.5. El resto del portal conserva el aspecto saliente hasta su PR: confirmar la reserva y la vuelta de la reserva (`reservar` y `src/app/reserva/[bookingId]`, 2.3b), las páginas del jugador (2.4), la home (2.5) y Explorar (2.6). Las páginas de torneos (`/[slug]/torneos/*`) quedan afuera de `PortalWorld` a propósito. **El aspecto saliente no se extiende a nada nuevo**: una superficie o pieza nueva del portal se construye en La Reserva aunque la página que la rodea todavía no haya migrado. Las recetas de La Previa que siguen en el código (`PlayerHeroBand`, `.hero-accent-text`, la losa nocturna, el vidrio y los resplandores del portal) se describen acá solo como saliente, no como reglas.",
     "keyCharacteristics": [
       "Esmeralda sobre slate, con claro y oscuro como temas de primera.",
       "Panel: claro = elevación (sombras en capas), oscuro = vidrio (blanco al 3 % + blur + resplandor). Portal: plano en los dos temas.",
@@ -794,7 +910,8 @@
       "Estado = color + ícono + texto, siempre desde `src/lib/status-tone.ts`.",
       "Panel denso y movimiento corto (200 ms en los controles). Lo único largo es un pulso de 600 ms, una sola vez: el turno que entra a la grilla o la reserva recién confirmada.",
       "Un solo primario por vista.",
-      "El portal se pinta con tokens propios, colgados de `html` cuando hay un `[data-world='portal']` en la página; el panel no cambia."
+      "El portal se pinta con tokens propios, colgados de `html` cuando hay un `[data-world='portal']` en la página; el panel no cambia.",
+      "La reserva de la ficha dice lo elegido con relleno verde y tilde, y cada hora con palabra: \"N libres\", \"Queda 1\" (el único ámbar), \"Libre\", \"Señando\" (borde punteado) y \"Completo\" (tachado)."
     ],
     "rules": [
       {
@@ -810,6 +927,11 @@
       {
         "name": "The Component Border Rule",
         "body": "En el portal, lo que delimita un control que se toca o se tipea (campo, casilla, botón `outline`) lleva `border-input` (3:1 o más contra el fondo); `border-border` es solo para separar superficies.",
+        "section": "colors"
+      },
+      {
+        "name": "The Scarcity Amber Rule",
+        "body": "En la reserva del portal, el ámbar es solo de \"Queda 1\": la única escasez que es un dato real. No se usa para \"Señando\" (es una espera y va con borde punteado), ni para avisos, ni para decorar. Va únicamente sobre la hora sin elegir: la elegida es verde.",
         "section": "colors"
       },
       {
@@ -859,7 +981,12 @@
       "**Do** construir todo lo nuevo del portal en La Reserva, aunque la página que lo rodea todavía no haya migrado: superficies planas, fondo `background`, bordes de 1 px, botones planos de 48 px y una sola acción verde por pantalla.",
       "**Do** colgar los tokens del portal de `html:has([data-world='portal'])` (`portal-world.css` + `PortalWorld`), para que alcancen a los portales de Radix en `body` (diálogos, Toaster). Un token del portal nunca se escribe en `:root`, `.dark`, `.dark-surface` ni `src/components/ui/*`.",
       "**Do** mantener las compuertas del portal en verde: `tests/unit/portal-world-tokens.test.ts` hashea los tokens del panel (cambiarlos a propósito actualiza el hash en el mismo PR) y la story de `PortalWorld` mide 9 tokens en claro y en oscuro.",
-      "**Do** marcar el error en el campo o la casilla que falló, con el mensaje debajo."
+      "**Do** marcar el error en el campo o la casilla que falló, con el mensaje debajo.",
+      "**Do** decir lo elegido en la reserva con relleno verde y tilde (chips de día y de formato, horas): nunca solo color. Es la excepción a The One Voice Rule que fija el brief de la ficha (2026-10-15): lo elegido es un estado, no una acción. Cada estado de una hora se dice con palabra (\"N libres\", \"Queda 1\", \"Libre\", \"Señando\", \"Completo\") y lo que no se puede elegir se ve y se explica en vez de desaparecer.",
+      "**Do** resolver las columnas de una pieza que vive en una columna angosta con `@container`, no con un breakpoint de viewport.",
+      "**Do** darle a cada vacío o error del portal su causa, qué hacer y una salida (reintentar, otro día, hablar con el complejo) arriba del pliegue.",
+      "**Do** dejar el estado que depende del reloj del visitante (hoy, abierto o cerrado, qué horas quedan) en una isla de cliente con un esqueleto del mismo alto, y marcar la sección de reserva con `data-state` (`loading`, `ready`, `closed`, `error`).",
+      "**Do** montar `PortalWorld` en el layout de la ruta que migra (`(perfil)`) y en su `not-found`. Solo ahí la regla `html:has([data-world='portal']) .player-shell-bg` de `globals.css` apaga el fondo de cancha de La Previa y pinta `--color-background`; sin el marcador el cascarón conserva su fondo."
     ],
     "donts": [
       "**Don't** reemplazar este mundo por uno austero de papel y tinta, sin fondos ni sombras (la dirección \"Tablero de partidas\", descartada por el dueño el 2026-09-23).",
@@ -873,7 +1000,11 @@
       "**Don't** extender La Previa: nada nuevo del portal con resplandores, vidrio, fotos de fondo, sombras de color, levante al hover, titulares en negra itálica ni disfraz temático.",
       "**Don't** deshabilitar un botón del portal con opacidad ni dejarlo deshabilitado sin explicación.",
       "**Don't** delimitar un campo, una casilla o un `outline` del portal con `border-border`: con 1,2:1 no llega a los 3:1 de WCAG 1.4.11.",
-      "**Don't** poner dos acciones verdes en una pantalla del portal."
+      "**Don't** poner dos acciones verdes en una pantalla del portal. La hora o el chip elegidos son estado y no cuentan; el botón verde de confirmar vive en `reservar`.",
+      "**Don't** usar ámbar en la reserva del portal para otra cosa que \"Queda 1\": ni \"Señando\", ni \"Libre\", ni un aviso, ni la hora elegida.",
+      "**Don't** esconder las horas completas ni los días cerrados: se ven, deshabilitados y dichos (\"Completo\" tachado, \"Cerrado\").",
+      "**Don't** usar `CourtCard` en una página del portal: es la tarjeta del panel y del onboarding; la ficha usa `CourtTile`.",
+      "**Don't** elegir las columnas de las horas con `md:grid-cols-*`: la reserva mide 384 px en escritorio y seis columnas no entran."
     ]
   }
 }

@@ -32,13 +32,19 @@ colors:
   brand-text-dark: '#34d399'
   brand-label-dark: '#6ee7b7'
   night-slab: '#020617'
+  portal-background: 'hsl(0 0% 100%)'
+  portal-surface: 'hsl(210 40% 96.1%)'
+  portal-muted-foreground: 'hsl(215.3 19.3% 34.5%)'
+  portal-border: 'hsl(214.3 31.8% 91.4%)'
+  portal-input: 'hsl(215.4 16.3% 46.9%)'
+  portal-input-dark: 'hsl(215.4 16.3% 50%)'
 typography:
   display:
     fontFamily: 'Archivo, ui-sans-serif, system-ui, sans-serif'
-    fontSize: 'clamp(26px, 6vw, 36px)'
-    fontWeight: 900
-    lineHeight: 1
-    letterSpacing: '-0.03em'
+    fontSize: '28px'
+    fontWeight: 800
+    lineHeight: '36px'
+    letterSpacing: '-0.01em'
   headline:
     fontFamily: 'Archivo, ui-sans-serif, system-ui, sans-serif'
     fontSize: '1.5rem'
@@ -79,6 +85,16 @@ typography:
     fontWeight: 600
     lineHeight: 1
     letterSpacing: '0.06em'
+  portal-body:
+    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '1rem'
+    fontWeight: 400
+    lineHeight: 1.5
+  portal-label:
+    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '1rem'
+    fontWeight: 500
+    lineHeight: 1.5
 rounded:
   sm: '4px'
   md: '6px'
@@ -165,28 +181,57 @@ components:
   grid-slot:
     rounded: '{rounded.md}'
     padding: '6px 8px'
+  button-portal-primary:
+    backgroundColor: '{colors.primary}'
+    textColor: '{colors.primary-foreground}'
+    typography: '{typography.portal-label}'
+    rounded: '{rounded.xl}'
+    padding: '12px 16px'
+    height: '48px'
+    width: '100%'
+  button-portal-outline:
+    backgroundColor: '{colors.card}'
+    textColor: '{colors.foreground}'
+    typography: '{typography.portal-label}'
+    rounded: '{rounded.xl}'
+    padding: '12px 16px'
+    height: '48px'
+    width: '100%'
+  button-portal-outline-disabled:
+    backgroundColor: '{colors.card}'
+    textColor: '{colors.portal-muted-foreground}'
+  input-portal:
+    backgroundColor: '{colors.card}'
+    textColor: '{colors.foreground}'
+    typography: '{typography.portal-body}'
+    rounded: '{rounded.xl}'
+    padding: '8px 14px'
+    height: '48px'
 ---
 
 # Design System: TurnoGol
 
 ## Overview
 
-**Creative North Star: "El Mostrador y La Previa"**
+**Creative North Star: "El Mostrador y La Reserva"**
 
-TurnoGol es un solo sistema con dos personalidades. Comparten paleta, tipografías y primitivas; cambia cuánta expresión se permite cada una. **El Mostrador** es el panel del complejo: una herramienta que el encargado usa toda la noche en una notebook con mouse, mientras atiende gente y contesta el WhatsApp. Es denso pero obvio, con los datos primero, un solo verde que grita por vista y movimiento corto. **La Previa** es el portal del jugador y la web: una vidriera con checkout, una idea por pantalla, el verde usado como deseo (resplandores, cifras de precio, el CTA de reservar) y titulares en Archivo negra e itálica.
+TurnoGol es un solo sistema con dos personalidades. Comparten el verde de marca, las tipografías, el logo y las primitivas de `src/components/ui/`; cada una tiene su mundo. **El Mostrador** es el panel del complejo: una herramienta que el encargado usa toda la noche en una notebook con mouse, mientras atiende gente y contesta el WhatsApp. Es denso pero obvio, con los datos primero, un solo verde que grita por vista y movimiento corto. **La Reserva** es el portal del jugador: el estándar de las apps de reservas de canchas, con el flujo de ATC y una terminación más linda y moderna, sin perder accesibilidad (compromiso de marca de `PRODUCT.md`). Es plano: fondo blanco en claro, bordes de 1 px, un solo verde para lo elegido y la acción principal, títulos en Archivo 800 recta. Sin mundo temático, sin resplandores y sin vidrio.
 
-El mundo es césped de noche sobre slate. En claro, tarjetas blancas que flotan con sombras en capas sobre un fondo slate frío; en oscuro, losas slate-950 con superficies de vidrio (relleno blanco al 3 %, desenfoque y un resplandor esmeralda). Los dos temas son de primera: ninguna vista se diseña para uno y "después se verá" el otro; arranca el del sistema (`next-themes`, `defaultTheme="system"`). El estado nunca se comunica solo con color: siempre va color, ícono y texto, y lo resuelve una sola tabla de tonos.
+El mundo del panel es césped de noche sobre slate. En claro, tarjetas blancas que flotan con sombras en capas sobre un fondo slate frío; en oscuro, losas slate-950 con superficies de vidrio (relleno blanco al 3 %, desenfoque y un resplandor esmeralda). Los dos temas son de primera: ninguna vista se diseña para uno y "después se verá" el otro; arranca el del sistema (`next-themes`, `defaultTheme="system"`). El estado nunca se comunica solo con color: siempre va color, ícono y texto, y lo resuelve una sola tabla de tonos.
 
-Este documento describe el estilo tal como está en el código al 2026-09-23 y es la única autoridad de diseño del repo. El panel se **refina** sobre este estilo; no se reemplaza. Donde los documentos anteriores (hoy en `docs/archive/design-system/`) y el código no coincidían, ganó el código. Rechazo confirmado por el dueño el 2026-09-23: cambiar este mundo por uno austero de papel y tinta, sin fondos ni sombras (la dirección "Tablero de partidas").
+Este documento describe el estilo tal como está en el código al 2026-09-23 y es la única autoridad de diseño del repo. El panel se **refina** sobre este estilo; no se reemplaza. Donde los documentos anteriores (hoy en `docs/archive/design-system/`) y el código no coincidían, ganó el código. Rechazo confirmado por el dueño el 2026-09-23: cambiar este mundo por uno austero de papel y tinta, sin fondos ni sombras (la dirección "Tablero de partidas"). Ese rechazo es del panel; el portal plano es otra decisión del dueño (2026-10-15) y no lo reabre.
+
+**La Reserva reemplaza a "La Previa"** (la vidriera con resplandores, vidrio, fotos de fondo y titulares en negra itálica) y se migra página por página. Hoy están en el mundo nuevo `/ingresar`, `/aceptar-terminos` y los estados de jugador de `/verify` (PR 2.1). El resto del portal conserva el aspecto saliente hasta su PR: la barra y el pie (2.2), la página del complejo y la reserva (2.3), las páginas del jugador (2.4), la home (2.5) y Explorar (2.6). **El aspecto saliente no se extiende a nada nuevo**: una superficie o pieza nueva del portal se construye en La Reserva aunque la página que la rodea todavía no haya migrado. Las recetas de La Previa que siguen en el código (`PlayerHeroBand`, `.hero-accent-text`, la losa nocturna, el vidrio y los resplandores del portal) se describen acá solo como saliente, no como reglas.
 
 **Key Characteristics:**
 
 - Esmeralda sobre slate, con claro y oscuro como temas de primera.
-- Claro = elevación (sombras en capas). Oscuro = vidrio (blanco al 3 % + blur + resplandor).
+- Panel: claro = elevación (sombras en capas), oscuro = vidrio (blanco al 3 % + blur + resplandor). Portal: plano en los dos temas.
 - Inter trabaja; Archivo titula, pone las cifras clave y firma el logo. Toda cifra es tabular.
 - Estado = color + ícono + texto, siempre desde `src/lib/status-tone.ts`.
 - Panel denso y movimiento corto (200 ms en los controles). Lo único largo es un pulso de 600 ms, una sola vez: el turno que entra a la grilla o la reserva recién confirmada.
 - Un solo primario por vista.
+- El portal se pinta con tokens propios, colgados de `html` cuando hay un `[data-world='portal']` en la página; el panel no cambia.
 
 ## Colors
 
@@ -206,8 +251,22 @@ Esmeralda de cancha sobre slate frío: un solo protagonista verde, neutros que c
 - **Slate anidado** (`secondary`: hsl(214 32% 85%), el mismo valor que `muted` y `accent` en claro · `secondary-dark`: hsl(217 33% 14%), `accent-dark`: hsl(217 33% 17%)): hover de menús, superficies anidadas, base del skeleton.
 - **Texto secundario** (`muted-foreground`: hsl(215 20% 36%) · `muted-foreground-dark`: hsl(215 20% 65%) = slate-400): subtítulos, ayudas, rótulos inactivos. Está en 36 % y no en 40 % a propósito: con 40 % no llegaba a 4,5:1 sobre `bg-muted`.
 - **Línea** (`border`: hsl(214 32% 83%), igual que `input` · `border-dark`: hsl(217 33% 17%)): todos los bordes. `globals.css` la aplica por defecto a todo elemento.
-- **Losa nocturna** (`night-slab` #020617): el fondo de las superficies siempre oscuras del portal y la landing en tema oscuro.
+- **Losa nocturna** (`night-slab` #020617): el fondo de las superficies siempre oscuras de la web comercial (`(business)`) y de las pantallas del staff en `(auth)`. En el portal es aspecto saliente de La Previa: queda en las páginas que todavía no migraron y no se usa en nada nuevo. El fondo oscuro del portal es el `background-dark` del panel.
 - **Superficie siempre oscura** (`.dark-surface`, en `globals.css`): una página que es oscura aunque el sitio esté en claro (hoy `/para-complejos`) envuelve su contenido en esta clase. La clase `.dark` sola no alcanza: Tailwind v4 resuelve los `--color-*` una vez en `:root`, y `text-foreground`, `bg-card` y compañía seguirían saliendo en claro. `.dark-surface` los vuelve a declarar.
+
+### Portal (La Reserva)
+
+El portal redeclara solo lo que cambia; `primary`, `foreground`, `card`, `destructive` y los tonos de estado se heredan del panel. Los valores viven en `src/components/world/portal-world.css`.
+
+- **Blanco de página** (`portal-background`, en claro): el fondo del portal es blanco; en oscuro es el `background-dark` del panel. Se pinta con `bg-background`, nunca con `bg-white`.
+- **Slate de superficie** (`portal-surface`, slate-100 #F1F5F9, en claro): superficies anidadas, avisos (`bg-muted`) y hover (`secondary`, `muted` y `accent` valen lo mismo).
+- **Texto secundario** (`portal-muted-foreground`, slate-600 #475569, en claro): 7,6:1 sobre blanco y 6,9:1 sobre slate-100.
+- **Línea de superficie** (`portal-border`, slate-200 #E2E8F0, en claro): separa superficies (divisores, bordes de tarjeta y de aviso). Con 1,2:1 sobre blanco no delimita un control.
+- **Borde de campo** (`portal-input`, slate-500 #64748B, en claro · `portal-input-dark` #6B7C94 en oscuro): el borde de los campos, de la casilla y del botón `outline`. Llega a 3:1 contra el fondo (WCAG 1.4.11): 4,8:1 sobre blanco; en oscuro, 4,7:1 sobre el fondo, 4,3:1 sobre la tarjeta y 3,2:1 en hover (`border-input/80`). En el panel `input` vale lo mismo que `border`; en el portal son dos tokens distintos.
+- **Foco** (`ring` = `primary`): emerald-700 en claro (5,6:1 sobre blanco; el emerald-500 del panel da 2,6:1) y emerald-500 en oscuro (7,8:1 sobre el fondo).
+- **Selección de texto:** tinte `primary` al 25 % con el texto en `foreground`, en todo el mundo, puesto una vez en `PortalWorld` y no campo por campo.
+
+En el oscuro el resto de los tokens es el del panel: el portal oscuro y el panel oscuro comparten fondo, tarjeta, línea y texto secundario.
 
 ### Status
 
@@ -224,6 +283,8 @@ Los rótulos sobre un tinte de estado usan la escala 800 en claro y 300 en oscur
 
 **The Reserved Hues Rule.** `success`, `warning`, `info` y `destructive` son estado, no decoración. Lo que entra va en verde y lo que sale en rojo, siempre con signo y rótulo. La excepción es el libro de Caja › Cuentas, donde casi todo entra y cuarenta montos verdes por noche eran ruido: ahí el ingreso va en el color del texto con "+" y solo lo que sale va en rojo con "−" (decisión del dueño del 2026-09-25).
 
+**The Component Border Rule.** En el portal, lo que delimita un control que se toca o se tipea (campo, casilla, botón `outline`) lleva `border-input` (3:1 o más contra el fondo); `border-border` es solo para separar superficies.
+
 **The Measured Contrast Rule.** Las escalas emerald, red y amber están fijadas en hex (valores de Tailwind 3) dentro del `@theme` de `globals.css`, porque las de Tailwind 4 en OKLCH rompían AA. Texto esmeralda: 700 sobre tarjeta clara, 800 sobre el fondo de página, 400 en oscuro. Nunca emerald-500 (2,5:1) ni emerald-600 (3,8:1) como texto sobre claro, ni texto blanco de 14 px sobre emerald-600 o amber-600 (3,8:1 y 3,2:1).
 
 ## Typography
@@ -232,15 +293,16 @@ Los rótulos sobre un tinte de estado usan la escala 800 en claro y 300 en oscur
 **Body Font:** Inter (variable, `font-sans`, el default del `<body>`)
 **Label/Mono Font:** Sora (`font-logo`), solo en microrrótulos de la web comercial y del login. La monoespaciada es la del sistema (`font-mono`, sin fuente propia) y solo muestra códigos que se copian o se tipean: la frase de `ConfirmDialog`, el código de referencia de `ErrorState`, el código de una reserva.
 
-**Character:** Inter hace el trabajo: tablas, formularios, rótulos, montos dentro de una fila. Archivo habla: títulos de página, cifras clave, el logo en negra itálica mayúscula y los titulares del portal en negra itálica. Las tres se cargan con `next/font` en `src/app/layout.tsx`.
+**Character:** Inter hace el trabajo: tablas, formularios, rótulos, montos dentro de una fila. Archivo habla: títulos de página, cifras clave, el logo en negra itálica mayúscula y los títulos del portal en 800 recta. Las tres se cargan con `next/font` en `src/app/layout.tsx`.
 
 ### Hierarchy
 
-- **Display** (Archivo 900 itálica, clamp(26px, 6vw, 36px), interlineado 1, -0.03em): titulares del portal del jugador (`PlayerHeroBand`, `/explorar`), uno por pantalla. La palabra de acento puede llevar `.hero-accent-text`.
+- **Display** (Archivo 800 recta, 28 px, interlineado 36 px, -0.01em): el título de cada pantalla del portal, uno por pantalla (`PORTAL_TITLE` en `src/components/world/PortalAuthFrame.tsx`; el nombre del complejo usa la misma voz). El logo es lo único del portal que sigue en negra itálica. Saliente: los titulares en Archivo 900 itálica con `.hero-accent-text` (`PlayerHeroBand`, `/explorar`) quedan hasta que migre su página y no se usan en nada nuevo.
 - **Headline** (Archivo 700, 24 px y 30 px desde 640 px, -0.025em): el título de página del panel (`PageHeader`).
 - **Numeral** (Archivo 700, 30 px, tabular, -0.025em): la cifra de un KPI (`StatCard`) y los totales destacados.
 - **Title** (Inter 600, 18 px, interlineado 1): título de diálogo y de sheet. Los títulos de sección (`SectionHeader`) van en Inter 600 de 16 px.
-- **Body** (Inter 400, 14 px): el mínimo del panel. En los flujos de lectura del portal puede subir a 16 px.
+- **Body** (Inter 400, 14 px): el mínimo del panel. En el portal el cuerpo es `portal-body` (Inter 400, 16 px) y las ayudas van en 14 px; nada baja de 13 px.
+- **Portal label** (Inter 500, 16 px): botones y rótulos de campo del portal.
 - **Label** (Inter 500, 14 px): botones, rótulos de formulario, ítems de menú.
 - **Caption** (Inter 500, 12 px): badges, ayudas debajo de un campo, encabezados de tabla (en mayúsculas con `tracking-wide`).
 - **Microlabel** (Inter 600, 12 px, mayúsculas, 0.06em): el nombre del complejo en la barra superior. El rótulo del riel de navegación va en 10 px semibold.
@@ -249,7 +311,9 @@ Los rótulos sobre un tinte de estado usan la escala 800 en claro y 300 en oscur
 
 **The Tabular Rule.** Toda cifra que se compara o cambia (plata, horas, contadores, columnas) lleva `tabular-nums`. La plata se muestra `$ 12.500`, sin decimales, siempre con `formatArs` de `src/lib/format.ts` (el espacio después del `$` es uno duro, U+00A0; nada de formateadores propios con `Intl.NumberFormat` o `toLocaleString`); la hora, en 24 h (`18:00`); los rangos, con raya y sin espacios (`17:00–18:00`). Nada de fechas ISO frente al usuario: "vie 3 jul", "mié 1 de julio".
 
-**The Display Discipline Rule.** `font-display` solo en títulos, cifras clave, el logo y los titulares del portal. Nunca en párrafos, tablas ni formularios.
+**The Display Discipline Rule.** `font-display` solo en títulos, cifras clave, el logo y los títulos del portal. Nunca en párrafos, tablas ni formularios.
+
+**The Upright Title Rule.** En el portal el título es Archivo 800 recta de 28 px con -0.01em. La itálica es del logo; un título nuevo del portal en negra itálica es aspecto saliente. Las cifras que cuentan hacia atrás ("Reenviar en 42 s") y las horas y precios del portal van tabulares (The Tabular Rule).
 
 **The 16px Field Rule.** Todo campo donde se tipea mide 16 px por debajo de 768 px y 14 px desde ahí (`text-base md:text-sm`); si no, iOS hace zoom al enfocar. No hay escape hacia abajo; hacia arriba existe `.field-lg` (18 px). `globals.css` tiene una red de seguridad fuera de `@layer`, que no reemplaza escribir la clase.
 
@@ -272,6 +336,8 @@ El panel es un marco fijo con el contenido en el medio. En `lg` (1024 px) aparec
 
 Híbrido y adaptativo. En claro la profundidad es **elevación**: sombras suaves en capas y un borde superior esmeralda tenue; las superficies de trabajo son opacas. En oscuro es **vidrio**: relleno blanco al 3 %, `backdrop-filter: blur(12px)`, sombra honda y, al pasar el mouse por algo clickeable, un resplandor esmeralda. Los fondos del marco (`.shell-bg`, `.content-area-gradient`) llevan degradés slate con resplandores esmeralda muy bajos y, en el marco, una retícula de 60 px que evoca una cancha.
 
+El portal (La Reserva) no tiene profundidad: superficies planas, sin sombras, sin levante, sin vidrio y sin resplandores, en los dos temas. Las superficies se separan con `portal-border` o con `portal-surface`. Las sombras del portal que siguen en las páginas no migradas son aspecto saliente.
+
 ### Shadow Vocabulary
 
 - **Tarjeta en claro** (`box-shadow: 0 1px 2px rgba(2,6,23,.05), 0 4px 12px -4px rgba(2,6,23,.08), 0 12px 32px -12px rgba(2,6,23,.12)`, más `border-top: 2px solid rgba(5,150,105,.2)`): `.card-premium`, la superficie destacada por defecto.
@@ -289,7 +355,7 @@ Híbrido y adaptativo. En claro la profundidad es **elevación**: sombras suaves
 
 ## Shapes
 
-Los escalones chicos salen del radio base `--radius: 0.5rem`: `sm` 4 px, `md` 6 px (ítems chicos, skeleton, tooltip) y `lg` 8 px (botones, campos, chips de opción). `xl` 12 px (tarjetas destacadas, popovers, menús, estados vacíos) y `2xl` 16 px (diálogos, la banda del `PageHeader`, la esquina superior de la hoja inferior) son los de Tailwind y no se mueven si cambia `--radius`; `.card-premium` calcula sus 12 px como `--radius` + 4 px. Pastillas y avatares van en `rounded-full`. Los ítems del riel usan 10 px.
+Los escalones chicos salen del radio base `--radius: 0.5rem`: `sm` 4 px, `md` 6 px (ítems chicos, skeleton, tooltip) y `lg` 8 px (botones, campos, chips de opción). `xl` 12 px (tarjetas destacadas, popovers, menús, estados vacíos) y `2xl` 16 px (diálogos, la banda del `PageHeader`, la esquina superior de la hoja inferior) son los de Tailwind y no se mueven si cambia `--radius`; `.card-premium` calcula sus 12 px como `--radius` + 4 px. Pastillas y avatares van en `rounded-full`. Los ítems del riel usan 10 px. En el portal `--radius` pasa a 12 px (`0.75rem`), así que `lg` mide 12, `md` 10 y `sm` 8: botones, campos y horas van en 12 px.
 
 El borde es de 1 px en `border-border` y lo aplica `globals.css` a todo. Tres firmas de forma se repiten: el **borde izquierdo de 3 px** que identifica el estado de un turno en la grilla (legible en densidad alta y para daltónicos, porque la posición no cambia), el **rayado diagonal** (135°, cada 6 px sobre `muted`) de lo bloqueado a propósito, y el **anillo inset** de 1 px de los badges.
 
@@ -303,6 +369,20 @@ Todas las primitivas viven en `src/components/ui/` y consumen solo tokens semán
 - **Primary:** relleno `primary` con texto `primary-foreground`, 14 px en peso 500, alto de 44 px en el teléfono y 40 px desde 768 px (`h-11 md:h-10`), `px-4`. Uno por vista; si hay dos acciones importantes, la segunda es `outline`. Un botón que mueve plata es siempre `<Button>` (o `bg-primary text-primary-foreground`) y su rótulo dice el efecto y el monto: "Cobrar $ 12.500", no "Confirmar". `bg-emerald-600` está bloqueado por ESLint (con texto blanco no llega a AA).
 - **Hover / Focus:** el primario baja al 90 %, sube 2 px y agranda la sombra; al apretar se achica al 97 %. El foco es un anillo de 2 px en `ring` con 2 px de separación, que aparece sin transición. Los asíncronos usan `isLoading`: pelotita `TgBallSpinner` de 16 px más `disabled`, nunca un doble envío silencioso.
 - **Secondary / Ghost / Tertiary:** `outline` (borde `input`, fondo `card`, hover `accent`), `secondary`, `ghost` (solo hover `accent`), `destructive` (rojo, se separa del cancelar) y `link` (`text-emerald-700 dark:text-emerald-400`, subrayado al hover). Un botón que es solo ícono (`size="icon"`, 44/40 px) lleva `aria-label` y `Tooltip`.
+
+### Portal (La Reserva)
+
+Primero en el ingreso del jugador (`PortalAuthFrame`, `IngresarForm`, `AceptarTerminosForm` y la rama de jugador de `VerifyView`). Las primitivas del panel no se tocan: el portal pasa sus clases por `className` (`PORTAL_BUTTON`, `PORTAL_TITLE`) y tailwind-merge las deja ganar.
+
+- **Marco (`PortalAuthFrame`):** monta `PortalWorld` y pinta `bg-background`. Una columna centrada de 384 px (`max-w-sm`) con margen de 16 px; arriba, el logo horizontal en una franja de 56 px (link a la home con blanco táctil de 44 px); el contenido arranca 24 px abajo (48 px desde 640 px). Sin tarjeta, sin foto de fondo, sin halos ni vidrio. Ícono de estado (32 px) arriba del título cuando la pantalla es un resultado. `PortalWorld` se monta por página: `(auth)` mezcla staff y jugador, y en `/verify` solo lo lleva el público jugador.
+- **Botones (`PORTAL_BUTTON`):** planos, de 48 px de alto mínimo a todo el ancho, 16 px en peso 500 y esquina de 12 px. Sin sombra, sin levante al hover y sin achicarse al apretar. Una sola acción verde (`primary`) por pantalla; la alternativa es `outline` (borde `input`) y la terciaria, `ghost`. El rótulo puede ir en dos líneas antes que cortarse.
+- **Deshabilitado y pendiente:** sin opacidad. El `outline` deshabilitado (por ejemplo, "Reenviar en 42 s") lleva texto `muted-foreground` y borde `border`; el primario pendiente ("Enviando…") conserva su relleno y su etiqueta a contraste pleno. Nada queda deshabilitado sin decir por qué: la espera se dice en el rótulo.
+- **Campos:** 48 px de alto, borde `input` (`portal-input`), fondo `card`, esquina de 12 px; 16 px de texto debajo de 768 px y 14 px desde ahí (The 16px Field Rule). Rótulo visible en 16 px y ayuda debajo en 14 px `muted-foreground`.
+- **Casilla:** 24 px, borde de 2 px `input`, esquina de 6 px; marcada, relleno `primary` con tilde `primary-foreground`. La fila entera (48 px) es el blanco táctil.
+- **Foco:** anillo de 2 px en `ring` (= `primary`) separado 2 px con el color del fondo (`ring-offset-background`), sin la banda blanca del `ring-offset` por defecto en oscuro.
+- **Errores:** sobre el campo o la casilla que falló: borde `destructive` (`aria-invalid`) y el mensaje pegado debajo en 14 px `destructive` con `role="alert"`. El formulario no se deshabilita para evitar el error; se deja tocar y se marca.
+- **Avisos:** `bg-muted` con borde `border`, esquina de 12 px e ícono con su tono; texto en `foreground` y `muted-foreground`.
+- **Links:** `text-emerald-700 dark:text-emerald-400`, siempre subrayados, con 44 px de blanco táctil aunque vayan en línea.
 
 ### Chips
 
@@ -330,7 +410,7 @@ Todas las primitivas viven en `src/components/ui/` y consumen solo tokens semán
 
 ### Inputs / Fields
 
-- **Style:** borde de 1 px `border`, fondo `card`, esquina de 8 px, 44/40 px de alto, `px-3.5`, placeholder en `muted-foreground` al 60 %.
+- **Style:** borde de 1 px `input` (en el panel vale lo mismo que `border`; en el portal es el borde de 3:1), fondo `card`, esquina de 8 px, 44/40 px de alto, `px-3.5`, placeholder en `muted-foreground` al 60 %.
 - **Focus:** anillo de 2 px en `ring` con separación y el borde pasa a `primary`.
 - **Error / Disabled:** el error va debajo del campo en 12 px `destructive` con `role="alert"`; deshabilitado baja al 50 %. El rótulo es siempre visible (el placeholder es un ejemplo, "Ej: …", y tiene que entrar completo).
 - **Plata:** todo campo de pesos es `MoneyInput`, que trabaja en centavos (controlado con `valueCents`/`onValueChange`, o no controlado con `defaultValueCents` + `name`, que viaja en un `<input type="hidden">`). Nunca `type="number"` ni `parseFloat` para plata; lo que no es plata (goles, stock, días, porcentajes, minutos) sigue con `type="number"`.
@@ -434,6 +514,10 @@ Lo semanal de la cantina (`/caja/productos`), rehecho el 2026-09-26 con el mismo
 - **Do** colgar los controles de una vista en el hueco de la barra superior (`AdminHeaderSlot`) en vez de sumar filas de encabezado.
 - **Do** reservar 44 px de blanco táctil debajo de 768 px (`h-11 md:h-10`) y dejar la fila entera clickeable cuando abre un detalle.
 - **Do** escribir en voseo, en sentence case y con el vocabulario de pantalla de `PRODUCT.md`; mayúsculas solo en microrrótulos de una o dos palabras con `tracking`.
+- **Do** construir todo lo nuevo del portal en La Reserva, aunque la página que lo rodea todavía no haya migrado: superficies planas, fondo `background`, bordes de 1 px, botones planos de 48 px y una sola acción verde por pantalla.
+- **Do** colgar los tokens del portal de `html:has([data-world='portal'])` (`portal-world.css` + `PortalWorld`), para que alcancen a los portales de Radix en `body` (diálogos, Toaster). Un token del portal nunca se escribe en `:root`, `.dark`, `.dark-surface` ni `src/components/ui/*`.
+- **Do** mantener las compuertas del portal en verde: `tests/unit/portal-world-tokens.test.ts` hashea los tokens del panel (cambiarlos a propósito actualiza el hash en el mismo PR) y la story de `PortalWorld` mide 9 tokens en claro y en oscuro.
+- **Do** marcar el error en el campo o la casilla que falló, con el mensaje debajo.
 
 ### Don't:
 
@@ -441,7 +525,11 @@ Lo semanal de la cantina (`/caja/productos`), rehecho el 2026-09-26 con el mismo
 - **Don't** llamar "deuda" a un turno no cobrado, ni pintar de rojo un turno que todavía se está jugando: el rojo es de lo jugado y no cobrado (principio 3 de `PRODUCT.md`). La urgencia se dice con color y texto; el único movimiento es el punto que late en el botón "Cobrar $X" de Hoy (pedido del dueño, 2026-09-25). El anillo que respiraba alrededor de toda la celda de la Grilla (`.slot-alarm-ring`) se eliminó el 2026-09-24 y no vuelve.
 - **Don't** usar emerald-500 o emerald-600 como texto sobre claro, ni texto blanco de 14 px sobre emerald-600 o amber-600.
 - **Don't** escribir hex inline en JSX, ni sombras, degradés o vidrio inline; tampoco `dark:` sueltos para arreglar una primitiva: se arregla el token.
-- **Don't** poner `bg-white` como fondo de página, ni `text-black`/`bg-black`.
+- **Don't** poner `bg-white` como fondo de página, ni `text-black`/`bg-black`. El blanco del portal sale del token (`bg-background` bajo `PortalWorld`), no de la clase.
+- **Don't** extender La Previa: nada nuevo del portal con resplandores, vidrio, fotos de fondo, sombras de color, levante al hover, titulares en negra itálica ni disfraz temático.
+- **Don't** deshabilitar un botón del portal con opacidad ni dejarlo deshabilitado sin explicación.
+- **Don't** delimitar un campo, una casilla o un `outline` del portal con `border-border`: con 1,2:1 no llega a los 3:1 de WCAG 1.4.11.
+- **Don't** poner dos acciones verdes en una pantalla del portal.
 - **Don't** agregar librerías de animación (la única excepción es `/onboarding`, con `motion` en `LazyMotion`) ni loops infinitos fuera del skeleton, de la web comercial y del punto de "Cobrar $X" en Hoy.
 - **Don't** usar el placeholder como rótulo, emojis como íconos estructurales ni fechas ISO o anglicismos de dashboard ("Revenue", "Booking") frente al usuario.
 - **Don't** mostrar un número verificable que no salga de datos reales (prueba social, escasez, contadores): lo trucho descubierto destruye la confianza para pagar la seña y es publicidad engañosa (Ley 24.240).

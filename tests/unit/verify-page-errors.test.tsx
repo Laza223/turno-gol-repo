@@ -118,6 +118,53 @@ describe('VerifyView — errores solo de jugador', () => {
     expect(screen.getByRole('link', { name: 'Entrá al panel' }).getAttribute('href')).toBe('/login')
   })
 
+  it('account_conflict con Google: mientras la action corre avisa "Abriendo Google…" y no admite otro toque', async () => {
+    let release!: () => void
+    googleAction.mockClear()
+    googleAction.mockImplementationOnce(() => new Promise<void>((resolve) => (release = resolve)))
+    renderView({ error: 'account_conflict', via: 'google' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Usar otra cuenta de Google' }))
+    try {
+      // Sin señal el jugador no sabe si el toque entró y toca de nuevo.
+      const pending = (await screen.findByRole('button', {
+        name: 'Abriendo Google…',
+      })) as HTMLButtonElement
+      expect(pending.disabled).toBe(true)
+      expect(pending.getAttribute('aria-busy')).toBe('true')
+      // Otro toque arrancaría otro OAuth y pisaría el verifier PKCE del primero.
+      fireEvent.click(pending)
+      expect(googleAction).toHaveBeenCalledTimes(1)
+    } finally {
+      release()
+    }
+    const retry = await screen.findByRole('button', { name: 'Usar otra cuenta de Google' })
+    expect((retry as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('oauth_cancelled no es una falla: ícono neutro y no el rojo de los errores', () => {
+    renderView({ error: 'oauth_cancelled' })
+
+    const icon = screen.getByRole('heading', { level: 1 }).previousElementSibling!
+    expect(icon.getAttribute('class')).toContain('lucide-info')
+    expect(icon.getAttribute('class')).toContain('text-muted-foreground')
+    expect(icon.getAttribute('class')).not.toContain('text-red')
+  })
+
+  it.each([
+    ['oauth_failed', {}],
+    ['provision_failed', {}],
+    ['account_conflict', { via: 'email' }],
+    ['account_conflict', { via: 'google' }],
+    ['exchange_failed', { via: 'google' }],
+  ])('%s %o sí es una falla: sigue en rojo', (error, extra) => {
+    renderView({ error, ...extra })
+
+    const icon = screen.getByRole('heading', { level: 1 }).previousElementSibling!
+    expect(icon.getAttribute('class')).toContain('text-red-700')
+    expect(icon.getAttribute('class')).not.toContain('lucide-info')
+  })
+
   it.each([
     ['con email', { error: 'account_conflict', via: 'email' }],
     ['sin vía', { error: 'account_conflict' }],

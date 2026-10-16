@@ -14,9 +14,9 @@ import { makeServiceClient, E2E_PLAYER_ID, E2E_PLAYER_EMAIL } from '../../_helpe
  * contexto fresco debería correr este spec primero y tratar la parte de
  * Inbucket como no probada hasta confirmarlo en runtime.
  *
- * Evidence anchors: ingresar/page.tsx:100, IngresarForm.tsx:81-84,92-105,150,
- * ingresar/actions.ts:20-45, api/auth/callback/route.ts:73-100,
- * lib/auth-success.ts:43-49, verify/VerifyView.tsx:120-124.
+ * Evidence anchors: ingresar/page.tsx:10-18, IngresarForm.tsx:266-268,292,353-356,
+ * ingresar/actions.ts:25-56, api/auth/callback/route.ts:62-148,279-283,
+ * lib/auth-success.ts:43-49, verify/VerifyView.tsx:127-131,335-358.
  */
 
 const INBUCKET_URL = process.env.INBUCKET_URL ?? 'http://127.0.0.1:54324'
@@ -80,14 +80,14 @@ test.describe('TG-HP-102 — Login jugador existente /ingresar', () => {
       await page.locator('#email').fill(E2E_PLAYER_EMAIL)
 
       const sinceMs = Date.now()
-      await page.getByRole('button', { name: 'Enviarme el enlace' }).click()
-      // Anti-doble-submit: disabled={pending} vía useFormStatus (IngresarForm.tsx:136-154).
+      await page.getByRole('button', { name: 'Mandame el enlace' }).click()
+      // Anti-doble-submit: disabled={pending} vía useFormStatus (submit-button.tsx:28-37; botón en IngresarForm.tsx:266-268).
 
       await expect(page.getByRole('heading', { name: 'Revisá tu email', level: 1 })).toBeVisible({
         timeout: 10_000,
       })
       await expect(
-        page.getByText(`Te enviamos un enlace de acceso a ${E2E_PLAYER_EMAIL}.`),
+        page.getByText(`Si ${E2E_PLAYER_EMAIL} tiene cuenta, te enviamos un enlace para entrar.`),
       ).toBeVisible()
 
       const link = await fetchMagicLinkFromInbucket(E2E_PLAYER_EMAIL, sinceMs)

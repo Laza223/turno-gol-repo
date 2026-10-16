@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { sanitizeNext } from '@/lib/safe-redirect'
+import { PortalAuthFrame } from '@/components/world/PortalAuthFrame'
 import { acceptTermsAction } from './actions'
 import { AceptarTerminosForm } from './AceptarTerminosForm'
 
@@ -19,13 +20,8 @@ export default async function AceptarTerminosPage({ searchParams }: Props) {
   const safeNext = sanitizeNext(next ?? null)
 
   return (
-    <div
-      className="flex min-h-dvh items-center justify-center px-4 py-12"
-      style={{ background: '#020617' }}
-    >
-      <div className="w-full max-w-md">
-        <AceptarTerminosForm action={acceptTermsAction} next={safeNext} />
-      </div>
-    </div>
+    <PortalAuthFrame>
+      <AceptarTerminosForm action={acceptTermsAction} next={safeNext} />
+    </PortalAuthFrame>
   )
 }

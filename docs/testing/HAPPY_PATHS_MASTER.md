@@ -381,45 +381,45 @@ Fixtures usadas: Tenant Demo `e2e-complejo-demo` (`requires_deposit:false`, `dep
 ### Caso A — Link expirado (sin `via` y con `via`)
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/verify?error=expired` (sin `via`: `expired` también lo emiten los links de staff — alta, invitación, recovery — y sin la marca no se sabe quién es, así que va primero el panel).
-  2. Esperar el h1 "Este enlace venció" (`src/app/(auth)/verify/VerifyView.tsx:44,296-298`).
-  3. Verificar el mensaje "Los enlaces de acceso sirven una sola vez y por un rato. Pedí uno nuevo para entrar." (`VerifyView.tsx:45,301-303`).
-  4. Click en "Iniciar sesión" → navega a `/login` (`VerifyView.tsx:27,287,318-320`). Debajo queda el link chico "¿Sos jugador? Ingresá acá" → `/ingresar` (`VerifyView.tsx:325-333`).
-  5. Navegar a `http://localhost:3000/verify?error=expired&via=email` (con `via`: lo pidió un jugador): mismo h1 y mensaje, pero el botón es "Pedir un enlace nuevo" → `/ingresar` y el link chico pasa a "¿Sos del complejo? Entrá al panel" → `/login` (`VerifyView.tsx:46,318-333`).
+  2. Esperar el h1 "Este enlace venció" (`src/app/(auth)/verify/VerifyView.tsx:50`; sin `via` lo pinta el `ErrorState` del staff, la card oscura de siempre: `VerifyView.tsx:303-305`).
+  3. Verificar el mensaje "Los enlaces de acceso sirven una sola vez y por un rato. Pedí uno nuevo para entrar." (`VerifyView.tsx:51,308-310`).
+  4. Click en "Iniciar sesión" → navega a `/login` (`VerifyView.tsx:33,311-313`). Debajo queda el link chico "¿Sos jugador? Ingresá acá" → `/ingresar` (`VerifyView.tsx:317-325`).
+  5. Navegar a `http://localhost:3000/verify?error=expired&via=email` (con `via`: lo pidió un jugador): mismo h1 y mensaje, pero ahora en el mundo del portal (`PortalAuthFrame`, `VerifyView.tsx:193-203`, `PlayerError` 360-422), con el botón "Pedir un enlace nuevo" → `/ingresar` y el link chico "¿Sos del complejo? Entrá al panel" → `/login` (`VerifyView.tsx:52,404-406,411-419`).
 - **Comportamiento de componentes:**
-  - Loading: sin `error`/`status` en la URL, la vista cae en `LoadingState` con `TgBallSpinner` animado y texto "Verificando tu enlace…" (`VerifyView.tsx:257-269`) — no aplica a este caso porque `error=expired` fuerza `ErrorState` directo.
-  - Anti-doble-submit: no aplica — no hay forms, es un `<Link>` (única excepción: `account_conflict` con `via=google` trae un form con `GoogleRetryButton`, deshabilitado mientras `pending`).
-  - Feedback: mensaje de error inline (no toast, `role="alert"`), ícono `AlertCircle` sobre fondo rojo (`VerifyView.tsx:293-295,301-303`).
+  - Loading: sin `error`/`status` en la URL, la vista cae en `LoadingState` con `TgBallSpinner` animado y texto "Verificando tu enlace…" (`VerifyView.tsx:282-294`) — no aplica a este caso porque `error=expired` fuerza `ErrorState` directo.
+  - Anti-doble-submit: no aplica — no hay forms, es un `<Link>` (única excepción: `account_conflict` con `via=google` trae un form (`VerifyView.tsx:389-395`) cuyo `SubmitButton` queda deshabilitado y dice "Abriendo Google…" mientras la action corre; lo cubre `tests/unit/verify-page-errors.test.tsx`).
+  - Feedback: mensaje de error inline (no toast, `role="alert"`). Sin `via` (staff) el ícono `AlertCircle` va en un círculo rojo (`VerifyView.tsx:300-302,308-310`); con `via` (jugador) va suelto, en rojo de token (`text-red-700` / `dark:text-red-300`) y sin círculo (`VerifyView.tsx:377,381-383`), salvo `oauth_cancelled`, que no es una falla: ícono `Info` neutro en `text-muted-foreground` (`VerifyView.tsx:375`).
 - **Validación de datos:** DB/API/Externos: ninguno (la página solo interpreta `searchParams`, no hace fetch; `via` pasa por `parseVia` y cualquier valor distinto de `email`/`google` cuenta como "sin `via`"). UI-sin-reload: no aplica.
 - **Evidencia (path:línea):**
   - `src/app/(auth)/verify/page.tsx` — cascarón async: resuelve `searchParams` y delega en `VerifyView` (la story y los tests montan `VerifyView`).
-  - `src/app/(auth)/verify/VerifyView.tsx:43-47` — `expired: { title: 'Este enlace venció', message: 'Los enlaces de acceso sirven una sola vez y por un rato. Pedí uno nuevo para entrar.', cta: 'Pedir un enlace nuevo' }`.
-  - `src/app/(auth)/verify/VerifyView.tsx:27,287,318-320` — sin `via` el error compartido es de staff: `<Link href="/login">Iniciar sesión</Link>`; con `via`: `<Link href="/ingresar">Pedir un enlace nuevo</Link>`.
-  - `src/app/(auth)/verify/VerifyView.tsx:325-333` — la otra puerta: "¿Sos jugador? Ingresá acá" → `/ingresar` / "¿Sos del complejo? Entrá al panel" → `/login`.
+  - `src/app/(auth)/verify/VerifyView.tsx:49-53` — `expired: { title: 'Este enlace venció', message: 'Los enlaces de acceso sirven una sola vez y por un rato. Pedí uno nuevo para entrar.', cta: 'Pedir un enlace nuevo' }`.
+  - `src/app/(auth)/verify/VerifyView.tsx:33,311-313,404-406` — sin `via` el error compartido es de staff: `<Link href="/login">Iniciar sesión</Link>`; con `via`: `<Link href="/ingresar">Pedir un enlace nuevo</Link>`.
+  - `src/app/(auth)/verify/VerifyView.tsx:317-325,411-419` — la otra puerta: "¿Sos jugador? Ingresá acá" → `/ingresar` / "¿Sos del complejo? Entrá al panel" → `/login`.
   - `tests/e2e/qa-happy-paths/publico/TG-HP-010.spec.ts` — Caso A (sin `via` → `/login`) y Caso A' (`via=email` → `/ingresar`).
 
 ### Caso B — Éxito (login)
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/verify?status=success&intent=login&next=%2Fmis-reservas`.
-  2. Esperar el h1 "¡Listo!" (intent `login`, `VerifyView.tsx:120-124,239-241`).
-  3. Verificar el subtítulo "Iniciaste sesión correctamente." (`VerifyView.tsx:122,242`).
-  4. Verificar el contador `aria-live="polite"` "Te llevamos automáticamente en 5s…" decreciendo (`src/app/(auth)/verify/SuccessRedirect.tsx:32-34`).
-  5. Click en el CTA "Ir a mis reservas" antes de que expire el auto-redirect → navega a `next` saneado (`VerifyView.tsx:123,243-245`).
-  6. (Alternativa, sin click) Esperar 5s y verificar el redirect automático vía `window.location.assign(next)` (`SuccessRedirect.tsx:19-21`).
+  2. Esperar el h1 "¡Listo!" (intent `login`, `VerifyView.tsx:127-131,344`; lo pinta `PlayerSuccess`, en el mundo del portal).
+  3. Verificar el subtítulo "Iniciaste sesión correctamente." (`VerifyView.tsx:129,345`).
+  4. Verificar el contador `aria-live="polite"` "Te llevamos automáticamente en 5s…" decreciendo (`src/app/(auth)/verify/SuccessRedirect.tsx:35-37`).
+  5. Click en el CTA "Ir a mis reservas" antes de que expire el auto-redirect → navega a `next` saneado (`VerifyView.tsx:130,346-348`).
+  6. (Alternativa, sin click) Esperar 5s y verificar el redirect automático vía `window.location.assign(next)` (`SuccessRedirect.tsx:22-24`).
 - **Comportamiento de componentes:**
   - Loading: no aplica a este sub-caso (ya resuelto en `status=success`).
   - Anti-doble-submit: no aplica — CTA es un `<Link>`, no un form.
-  - Feedback: sin toast; ícono `CheckCircle2` con pulso `animate-ping` (`VerifyView.tsx:223-238`).
+  - Feedback: sin toast; ícono `CheckCircle2` en verde de token (`text-emerald-700` / `dark:text-emerald-400`) sobre el título, sin círculo ni pulso (`PlayerSuccess`, `VerifyView.tsx:340-343`). El pulso `animate-ping` y el círculo con resplandor quedan solo en el éxito de alta del staff (`intent=signup`, `SuccessState`, `VerifyView.tsx:248-263`).
 - **Validación de datos:**
   - DB: ninguna en esta página (la sesión ya fue establecida por el callback de auth antes de llegar acá).
-  - API/Action: ninguna en `/verify` — el `next` viaja saneado por `sanitizeNext()` (`src/lib/safe-redirect.ts`, importado en `VerifyView.tsx:5`).
+  - API/Action: ninguna en `/verify` — el `next` viaja saneado por `sanitizeNext()` (`src/lib/safe-redirect.ts`, importado en `VerifyView.tsx:8`).
   - Externos: ninguno.
-  - UI-sin-reload: el auto-redirect usa `window.location.assign(next)` (full navigation, NO `router.push`/`router.refresh`) — `SuccessRedirect.tsx:20`.
+  - UI-sin-reload: el auto-redirect usa `window.location.assign(next)` (full navigation, NO `router.push`/`router.refresh`) — `SuccessRedirect.tsx:23`.
 - **Evidencia (path:línea):**
-  - `src/app/(auth)/verify/VerifyView.tsx:120-124` — `SUCCESS_COPY.login = { title: '¡Listo!', subtitle: 'Iniciaste sesión correctamente.', cta: 'Ir a mis reservas' }`.
-  - `src/app/(auth)/verify/VerifyView.tsx:4` — importa `parseIntent` desde `@/lib/auth-success`; `src/lib/auth-success.ts:25-27` — `parseIntent`: cualquier `intent` inválido cae a `'login'` (`VALID_INTENTS`).
+  - `src/app/(auth)/verify/VerifyView.tsx:127-131` — `SUCCESS_COPY.login = { title: '¡Listo!', subtitle: 'Iniciaste sesión correctamente.', cta: 'Ir a mis reservas' }`.
+  - `src/app/(auth)/verify/VerifyView.tsx:7` — importa `parseIntent` desde `@/lib/auth-success`; `src/lib/auth-success.ts:25-27` — `parseIntent`: cualquier `intent` inválido cae a `'login'` (`VALID_INTENTS`).
   - `src/lib/auth-success.ts:52-54` — `successVerifyPath(next, intent)` arma `/verify?status=success&next=...&intent=...` (usado por el callback real).
-  - `src/app/(auth)/verify/SuccessRedirect.tsx:33` — texto "Te llevamos automáticamente en {remaining}s…".
-  - `src/app/(auth)/verify/SuccessRedirect.tsx:20` — `window.location.assign(next)`.
+  - `src/app/(auth)/verify/SuccessRedirect.tsx:36` — texto "Te llevamos automáticamente en {remaining}s…".
+  - `src/app/(auth)/verify/SuccessRedirect.tsx:23` — `window.location.assign(next)`.
 
 ---
 
@@ -427,7 +427,7 @@ Fixtures usadas: Tenant Demo `e2e-complejo-demo` (`requires_deposit:false`, `dep
 
 - **TG-HP-002**: el contrato pide "listá los filtros reales que existen" — están listados en el caso, pero el filtro "Formato" completo (Fútbol 4 a 11) no se ejercita paso a paso en el flujo (solo se cubren los quick-chips 5/7/11); un sub-agente que quiera cubrir Fútbol 4/6/8/9/10 debe abrir el drawer y usar los botones de `ExplorarFilters.tsx:145-167` directamente.
 - **TG-HP-003 / TG-HP-004**: no hay una constante compartida de "hoy en ART" entre ambas vistas — el perfil calcula `today` client-side (`AvailabilityGrid.tsx:44-47`, `Date.now() - 3h`) y la semanal lo hace server-side con la misma fórmula (`disponibilidad/page.tsx:17-19`); no es un GAP funcional, pero un sub-agente que compare fechas entre ambas vistas en el borde de medianoche ART puede ver desincronía de 1 día si corre el test justo en el corte — no vale la pena un caso aparte, se deja documentado.
-- **TG-HP-010**: no se ubicó una página o mock que dispare el estado `LoadingState` (spinner "Verificando tu enlace…") de forma determinística sin backend real — ese estado solo ocurre en el instante entre el mount y el redirect del callback de Supabase (no hay un query param que lo fuerce, ver `verify/VerifyView.tsx:200-211`: sin `status=success` y sin `error` cae ahí, pero eso es exactamente "ningún param" — se puede navegar a `/verify` a secas para verlo, pero es una vista transitoria real, no un estado controlable por query param como los otros dos).
+- **TG-HP-010**: no se ubicó una página o mock que dispare el estado `LoadingState` (spinner "Verificando tu enlace…") de forma determinística sin backend real — ese estado solo ocurre en el instante entre el mount y el redirect del callback de Supabase (no hay un query param que lo fuerce, ver `verify/VerifyView.tsx:229-237`: sin `status=success` y sin `error` cae ahí, pero eso es exactamente "ningún param" — se puede navegar a `/verify` a secas para verlo, pero es una vista transitoria real, no un estado controlable por query param como los otros dos).
 - No se redactó ningún caso para `/reservar` (formulario de reserva, checkout con/sin seña) — está fuera de los 10 IDs pedidos (TG-HP-001 a TG-HP-010 son estrictamente los listados en el contrato); si el bloque de reserva/checkout es un lote aparte, no está cubierto acá.
 
 
@@ -457,12 +457,12 @@ Fixtures usados en todos los casos (ver contrato):
   6. Esperar el estado `sent`: card con h2 `"Revisá tu email"` y texto `"Te enviamos un enlace a <email>. Hacé click para confirmar tu reserva."` (LoginGate.tsx:41-42).
   7. Abrir Inbucket (`http://127.0.0.1:54324`), abrir el mensaje enviado a `e2e-player@turnogol.test`, click en el link del magic link (apunta a `/api/auth/callback?token_hash=...&type=email&next=/e2e-complejo-demo/reservar?...`).
   8. El callback (`src/app/api/auth/callback/route.ts:54,73-100`) verifica el OTP, crea el jugador si no existe, y redirige a `/verify?status=success&next=<next>&intent=booking`.
-  9. En `/verify`, esperar h1 `"¡Cuenta confirmada!"` con subtítulo `"Volvé para terminar tu reserva."` y botón `"Continuar con mi reserva"` (src/app/(auth)/verify/VerifyView.tsx:107-111,218-245). Auto-redirect a los 5s (SuccessRedirect.tsx:5,32-34) o click manual en el botón.
+  9. En `/verify`, esperar h1 `"¡Cuenta confirmada!"` con subtítulo `"Volvé para terminar tu reserva."` y botón `"Continuar con mi reserva"` (src/app/(auth)/verify/VerifyView.tsx:114-118,335-358). Auto-redirect a los 5s (SuccessRedirect.tsx:5,35-37) o click manual en el botón.
   10. Aterriza de nuevo en `/e2e-complejo-demo/reservar?...`, ahora con sesión (`isPlayer=true`) → renderiza `ConfirmBookingButton` en vez de `LoginGate` (page.tsx:118-128).
 - **Comportamiento de componentes:**
   - Loading: botón `Submit` de LoginGate deshabilitado vía `useFormStatus().pending`, texto cambia a `"Enviando…"` con spinner `Loader2` (LoginGate.tsx:16-22).
   - Anti-doble-submit: `disabled={pending}` en el mismo botón (LoginGate.tsx:19), estado gestionado por `useActionState` (LoginGate.tsx:3,33).
-  - Feedback: no hay toast — la propia `GateState` cambia a `{status:'sent'}` y re-renderiza el card de confirmación in-place (LoginGate.tsx:35-45); luego redirect real vía `NextResponse.redirect` del callback (route.ts:100) y auto-redirect client-side de `/verify` (SuccessRedirect.tsx:19-21).
+  - Feedback: no hay toast — la propia `GateState` cambia a `{status:'sent'}` y re-renderiza el card de confirmación in-place (LoginGate.tsx:35-45); luego redirect real vía `NextResponse.redirect` del callback (route.ts:100) y auto-redirect client-side de `/verify` (SuccessRedirect.tsx:22-24).
 - **Validación de datos:**
   - DB: fila nueva en `players` (email lower-cased, `first_name`, `last_name`, `agreed_to_terms_at=NOW()`, `terms_version`) — `INSERT INTO players ... ON CONFLICT (email) DO UPDATE` (src/modules/players/player.service.ts:24,52-63).
   - API/Action: `sendPlayerMagicLink` (src/app/(public)/[slug]/reservar/actions.ts:49) → `{status:'sent'}` en éxito (actions.ts:79). `GET /api/auth/callback` → 302 a `/verify?...` (route.ts:100).
@@ -474,8 +474,8 @@ Fixtures usados en todos los casos (ver contrato):
   - `src/app/(public)/[slug]/reservar/actions.ts:49-80` — `sendPlayerMagicLink`.
   - `src/app/api/auth/callback/route.ts:54,71-100` — verifyOtp + `getOrCreatePlayer` + redirect a `/verify`.
   - `src/modules/players/player.service.ts:24-65` — `getOrCreatePlayer` (INSERT/UPDATE de `players`).
-  - `src/app/(auth)/verify/VerifyView.tsx:107-111,218-245` — copy de éxito intent=booking.
-  - `src/app/(auth)/verify/SuccessRedirect.tsx:5,19-21,32-34` — auto-redirect 5s.
+  - `src/app/(auth)/verify/VerifyView.tsx:114-118,335-358` — copy de éxito intent=booking.
+  - `src/app/(auth)/verify/SuccessRedirect.tsx:5,22-24,35-37` — auto-redirect 5s.
 
 ---
 
@@ -484,30 +484,31 @@ Fixtures usados en todos los casos (ver contrato):
 - **Prerrequisitos:** Sin sesión activa (expirada/cerrada). Jugador ya existe en `players` (`e2e-player@turnogol.test`, `player_id=...020`).
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/ingresar`.
-  2. Ver h1 `"Accedé a tu cuenta"` (IngresarForm.stories aparte; texto real en `src/app/(auth)/ingresar/IngresarForm.tsx:92-104`, "cuenta" con gradient span).
+  2. Ver h1 `"Accedé a tu cuenta"` (`src/app/(auth)/ingresar/IngresarForm.tsx:292`; título plano con `PORTAL_TITLE`, sin gradient span). Primero va "Continuar con Google" y después el form de email; en el navegador interno de una app (Instagram, Facebook, TikTok, LinkedIn, LINE, Snapchat, Pinterest o cualquier WebView de Android) va primero el email, porque Google rechaza los WebViews (`page.tsx:10` lee el User-Agent con `isInAppBrowser`, `src/lib/in-app-browser.ts`).
   3. Rellenar el input `id="email"` `name="email"` con `"e2e-player@turnogol.test"`.
-  4. Click en el botón `"Enviarme el enlace"` (IngresarForm.tsx:150).
-  5. Esperar el estado `sent`: h1 `"Revisá tu email"`, texto `"Te enviamos un enlace de acceso a <email>."` (IngresarForm.tsx:81-84).
+  4. Click en el botón `"Mandame el enlace"` (IngresarForm.tsx:266-268).
+  5. Esperar el estado `sent`: h1 `"Revisá tu email"`, texto `"Si <email> tiene cuenta, te enviamos un enlace para entrar."` (IngresarForm.tsx:353-356; la action contesta `sent` aunque ese email no tenga cuenta, por eso el texto no afirma que el mail salió), botón `"Reenviar en 60 s"` deshabilitado, `"Usar otro email"` y, abajo, el bloque de primera vez, con el link a `/explorar` (IngresarForm.tsx:366-389).
   6. Abrir Inbucket `:54324`, abrir el mail a `e2e-player@turnogol.test`, click en el link.
-  7. Callback (`route.ts:54,73-100`) reconoce `is_player=true` (ya en `app_metadata`/`user_metadata` de logins previos), NO reescribe `agreed_terms` (no se le pasa perfil — `signInWithExistingPlayerMagicLink`, actions.ts:40), redirige a `/verify?status=success&next=/mis-reservas&intent=login` (default `next` si no vino uno, actions.ts:38: `sanitizeNext(..., '/mis-reservas')`).
-  8. En `/verify` ver h1 `"¡Listo!"`, subtítulo `"Iniciaste sesión correctamente."`, botón `"Ir a mis reservas"` (verify/VerifyView.tsx:120-124). Auto-redirect a los 5s o click manual.
+  7. Callback (`route.ts:228-231` verifyOtp; `route.ts:262,279-283` rama `isPlayer` → `provisionPlayerAndRedirect`, `route.ts:62-148`) reconoce `is_player=true` (ya en `app_metadata`/`user_metadata` de logins previos), NO reescribe `agreed_terms` (no se le pasa perfil — `signInWithExistingPlayerMagicLink`, actions.ts:47) y, con el consentimiento ya resuelto, redirige a `/verify?status=success&next=/mis-reservas&intent=login` (`route.ts:146-147`; default `next` si no vino uno, actions.ts:45: `sanitizeNext(..., '/mis-reservas')`). Un jugador sin consentimiento pasa antes por `/aceptar-terminos` (`route.ts:140-144`).
+  8. En `/verify` ver h1 `"¡Listo!"`, subtítulo `"Iniciaste sesión correctamente."`, botón `"Ir a mis reservas"` (verify/VerifyView.tsx:127-131,335-358). Auto-redirect a los 5s o click manual.
   9. Aterriza en `/mis-reservas` con sesión de jugador activa.
 - **Comportamiento de componentes:**
-  - Loading: `SubmitButton` deshabilitado vía `useFormStatus().pending`, texto `"Enviando…"` + `Loader2` (IngresarForm.tsx:136-154).
-  - Anti-doble-submit: `disabled={pending}` (IngresarForm.tsx:141).
-  - Feedback: `useActionState` cambia el card in-place a estado `sent` (IngresarForm.tsx:61,65-86); no hay toast.
+  - Loading: `SubmitButton` deshabilitado vía `useFormStatus().pending`, texto `"Enviando…"` + spinner (IngresarForm.tsx:266; submit-button.tsx:28-39).
+  - Anti-doble-submit: `disabled={pending || disabled}` (submit-button.tsx:37); cubierto por `tests/unit/ingresar-resend.test.tsx`.
+  - Feedback: `useActionState` cambia el card in-place a estado `sent` (IngresarForm.tsx:202-205,219-231 → `SentPanel`, 323-392); no hay toast. "Reenviar" corre la misma action y espera 60 s después de cada respuesta del servidor, medidos contra el reloj y no contando ticks (`ResendForm`, IngresarForm.tsx:394-450); al reenviar avisa "Listo: si ese email tiene cuenta, te llega otro enlace. Usá el del último correo." (IngresarForm.tsx:443-447).
+  - Sin conexión: la action rechaza y `callLogin` lo atrapa (IngresarForm.tsx:81-110): "No pudimos enviar el enlace. Revisá tu conexión e intentá de nuevo.", con el email conservado; un corte de red deja un breadcrumb de Sentry y no un evento, y cualquier otro rechazo va a `captureException`. Una pestaña de antes de un deploy (`UnrecognizedActionError`) pide "La página quedó desactualizada. Recargala y probá de nuevo.", y un `redirect()` de la action se re-lanza (`unstable_rethrow`). Sin esto la página caía en `(auth)/error.tsx`.
 - **Validación de datos:**
-  - DB: NO inserta jugador nuevo — `getOrCreatePlayer` toma la rama `existing.length>0` y solo actualiza `last_login_at` (player.service.ts:38,47).
-  - API/Action: `playerLoginAction` (src/app/(auth)/ingresar/actions.ts:20) → `{status:'sent', email}` (actions.ts:44).
-  - Externos: Resend vía `signInWithExistingPlayerMagicLink` (auth.service.ts:49-60) — visible en Inbucket.
+  - DB: NO inserta jugador nuevo — `getOrCreatePlayer` toma la rama `existing.length>0` y solo actualiza `last_login_at` (player.service.ts:40,50).
+  - API/Action: `playerLoginAction` (src/app/(auth)/ingresar/actions.ts:25) → `{status:'sent', email}` (actions.ts:55).
+  - Externos: Resend vía `signInWithExistingPlayerMagicLink` (auth.service.ts:85-111) — visible en Inbucket.
   - UI-sin-reload: no aplica (navegación real).
 - **Evidencia (path:línea):**
-  - `src/app/(auth)/ingresar/page.tsx:100` — `IngresarForm action={playerLoginAction}`.
-  - `src/app/(auth)/ingresar/IngresarForm.tsx:81-84,92-105,150` — copy exacto.
-  - `src/app/(auth)/ingresar/actions.ts:20-45` — `playerLoginAction`, `next` default `/mis-reservas` (línea 38).
-  - `src/app/api/auth/callback/route.ts:73-100` — misma rama `isPlayer` que TG-HP-101, sin perfil nuevo.
+  - `src/app/(auth)/ingresar/page.tsx:14-18` — `IngresarForm action={playerLoginAction}`.
+  - `src/app/(auth)/ingresar/IngresarForm.tsx:266-268,292,353-356,366-389` — copy exacto.
+  - `src/app/(auth)/ingresar/actions.ts:25-56` — `playerLoginAction`, `next` default `/mis-reservas` (línea 45).
+  - `src/app/api/auth/callback/route.ts:279-283` — misma rama `isPlayer` que TG-HP-101, sin perfil nuevo; `route.ts:62-148` (`provisionPlayerAndRedirect`).
   - `src/lib/auth-success.ts:43-49` — `playerSuccessIntent` clasifica `next` no-booking como `'login'`.
-  - `src/app/(auth)/verify/VerifyView.tsx:120-124` — copy `intent='login'`.
+  - `src/app/(auth)/verify/VerifyView.tsx:127-131` — copy `intent='login'`.
 
 ---
 

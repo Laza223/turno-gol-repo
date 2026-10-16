@@ -80,10 +80,8 @@ describe('Piso de 16px en campos — constantes compartidas', () => {
       what: 'nombre/apellido/email en el flujo de reserva',
     },
     {
-      file: 'src/app/(auth)/ingresar/IngresarForm.tsx',
-      // Sin `export`: B5 le sacó el export (solo se usa dentro del archivo).
-      // Lo que este test cuida es el piso de 16px, no la visibilidad del símbolo.
-      needle: 'const inputClass',
+      file: 'src/components/world/PortalAuthFrame.tsx',
+      needle: 'export const PORTAL_INPUT',
       what: 'email del login de jugador',
     },
     {

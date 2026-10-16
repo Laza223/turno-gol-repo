@@ -5,7 +5,7 @@ import { writeEvidence } from '../_qa/evidence'
  * TG-HP-010 — Verify estados /verify (link expirado y éxito).
  * Rol: Visitante (no auth) — llega desde un magic-link de email o el callback de auth.
  * Prereq: ninguno — ambos estados se disparan por query params, sin token real de Supabase.
- * Evidence anchors: verify/VerifyView.tsx (ERROR_COPY, ErrorState, SuccessState), SuccessRedirect.tsx:12-36,
+ * Evidence anchors: verify/VerifyView.tsx (ERROR_COPY, ErrorState, SuccessState), SuccessRedirect.tsx:15-39,
  * safe-redirect.ts (sanitizeNext), auth-success.ts (parseIntent).
  *
  * Un solo test con dos fases (Caso A, con y sin `via` / Caso B) para escribir una única
@@ -38,7 +38,7 @@ test.describe('TG-HP-010 — Verify estados', () => {
     await page.goto('/verify?status=success&intent=login&next=%2Fmis-reservas')
     await expect(page.getByRole('heading', { level: 1, name: '¡Listo!' })).toBeVisible()
     await expect(page.getByText('Iniciaste sesión correctamente.')).toBeVisible()
-    // Contador aria-live decreciendo (SuccessRedirect.tsx:32-34)
+    // Contador aria-live decreciendo (SuccessRedirect.tsx:35-37)
     await expect(page.getByText(/Te llevamos automáticamente en \d+s…/)).toBeVisible()
 
     // Click en el CTA antes de que expire el auto-redirect (5s) → navega a `next` saneado.

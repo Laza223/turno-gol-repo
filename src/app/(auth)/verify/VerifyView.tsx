@@ -1,11 +1,15 @@
 import Link from 'next/link'
-import { AlertCircle, CheckCircle2 } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Info } from 'lucide-react'
+import { buttonVariants } from '@/components/ui/button'
+import { SubmitButton } from '@/components/ui/submit-button'
 import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
+import { PORTAL_BUTTON, PORTAL_TITLE, PortalAuthFrame } from '@/components/world/PortalAuthFrame'
 import { parseIntent, parseVia, type PlayerVia, type SuccessIntent } from '@/lib/auth-success'
 import { sanitizeNext } from '@/lib/safe-redirect'
+import { TONE_TEXT } from '@/lib/status-tone'
+import { cn } from '@/lib/utils'
 import { Logo } from '@/components/ui/logo'
 import SuccessRedirect from '@/app/(auth)/verify/SuccessRedirect'
-import { GoogleRetryButton } from '@/app/(auth)/verify/GoogleRetryButton'
 import type { StartGoogleLoginFromIngresar } from '@/app/(auth)/ingresar/IngresarForm'
 
 type ErrorCopy = {
@@ -21,6 +25,8 @@ type ErrorCopy = {
    */
   audience?: 'player' | 'staff'
   google?: true
+  /** No es una falla sino una decisión del jugador: ícono neutro en vez del rojo de los errores. */
+  neutral?: true
 }
 
 /** Botón principal cuando el error es del staff: el reintento es el login del panel. */
@@ -68,6 +74,7 @@ const ERROR_COPY: Record<string, ErrorCopy> = {
     message: 'No pasó nada, no se hizo ningún cambio. Probá de nuevo o entrá con tu email.',
     cta: 'Volver a intentar',
     audience: 'player',
+    neutral: true,
   },
   oauth_failed: {
     title: 'Google no pudo completar el ingreso',
@@ -135,12 +142,9 @@ const cardStyle = {
   boxShadow: '0 0 60px rgba(16,185,129,.12), 0 40px 80px -42px rgba(0,0,0,.9)',
 } as const
 
+// Solo lo usan los estados del staff (marco oscuro de siempre); el jugador usa PORTAL_BUTTON.
 const ctaClass =
   'mt-6 inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-emerald-600/35 motion-reduce:hover:translate-y-0'
-
-// Mismo vidrio que el botón de Google de /ingresar, para el reintento secundario.
-const secondaryCtaClass =
-  'mt-3 inline-flex h-12 items-center justify-center rounded-xl border border-white/10 bg-white/4 px-6 text-sm font-semibold text-white transition-colors hover:bg-white/8'
 
 export type VerifySearchParams = {
   error?: string
@@ -148,6 +152,17 @@ export type VerifySearchParams = {
   next?: string
   intent?: string
   via?: string
+}
+
+/** Qué texto corresponde a un código de error y a quién le toca (jugador o staff). */
+function resolveError(code: string, via: PlayerVia | null) {
+  const googleKey = `${code}_google`
+  const key = via === 'google' && Object.hasOwn(ERROR_COPY, googleKey) ? googleKey : code
+  // hasOwn: un `?error=constructor` no puede heredar una entrada de Object.prototype.
+  const copy = ERROR_COPY[Object.hasOwn(ERROR_COPY, key) ? key : 'invalid']
+  // Código compartido sin `via`: no sabemos si es un jugador o un link de staff.
+  const toStaff = (copy.audience ?? (via ? 'player' : 'staff')) === 'staff'
+  return { copy, toStaff }
 }
 
 /**
@@ -170,7 +185,22 @@ export function VerifyView({
 }) {
   const isSuccess = searchParams.status === 'success'
   const errCode = searchParams.error
-  const isError = Boolean(errCode)
+  const intent = parseIntent(searchParams.intent)
+  const error = !isSuccess && errCode ? resolveError(errCode, parseVia(searchParams.via)) : null
+
+  // De quién es el estado. El jugador vive en el mundo del portal; el staff, y la pantalla sin
+  // parámetros (que no sabe de quién es), siguen con el marco oscuro de siempre.
+  if (isSuccess ? intent !== 'signup' : error && !error.toStaff) {
+    return (
+      <PortalAuthFrame>
+        {error ? (
+          <PlayerError copy={error.copy} next={searchParams.next} googleAction={googleAction} />
+        ) : (
+          <PlayerSuccess next={searchParams.next} intent={intent} />
+        )}
+      </PortalAuthFrame>
+    )
+  }
 
   return (
     <div
@@ -198,14 +228,9 @@ export function VerifyView({
 
         <div className="rounded-2xl p-8 text-center" style={cardStyle}>
           {isSuccess ? (
-            <SuccessState next={searchParams.next} intent={parseIntent(searchParams.intent)} />
-          ) : isError ? (
-            <ErrorState
-              code={errCode!}
-              via={parseVia(searchParams.via)}
-              next={searchParams.next}
-              googleAction={googleAction}
-            />
+            <SuccessState next={searchParams.next} intent={intent} />
+          ) : error ? (
+            <ErrorState copy={error.copy} />
           ) : (
             <LoadingState />
           )}
@@ -268,26 +293,8 @@ function LoadingState() {
   )
 }
 
-function ErrorState({
-  code,
-  via,
-  next,
-  googleAction,
-}: {
-  code: string
-  via: PlayerVia | null
-  next: string | undefined
-  googleAction: StartGoogleLoginFromIngresar
-}) {
-  const googleKey = `${code}_google`
-  const key = via === 'google' && Object.hasOwn(ERROR_COPY, googleKey) ? googleKey : code
-  // hasOwn: un `?error=constructor` no puede heredar una entrada de Object.prototype.
-  const copy = ERROR_COPY[Object.hasOwn(ERROR_COPY, key) ? key : 'invalid']
-  // Código compartido sin `via`: no sabemos si es un jugador o un link de staff.
-  const toStaff = (copy.audience ?? (via ? 'player' : 'staff')) === 'staff'
-  const safeNext = sanitizeNext(next)
-  // El destino original sobrevive al reintento solo si el callback lo mandó.
-  const ingresarHref = next ? `/ingresar?next=${encodeURIComponent(safeNext)}` : '/ingresar'
+/** Estado de error del staff (marco oscuro): el reintento es el login del panel. */
+function ErrorState({ copy }: { copy: ErrorCopy }) {
   return (
     <>
       <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/15 ring-8 ring-red-500/10">
@@ -301,34 +308,113 @@ function ErrorState({
       <p role="alert" className="mt-3 text-sm text-slate-400">
         {copy.message}
       </p>
-      {copy.google ? (
-        <>
-          {/* Reusa la action de Google de /ingresar; `select_account` abre el selector de
-              cuentas para poder elegir otra distinta de la del complejo. */}
-          <form action={googleAction}>
-            <input type="hidden" name="next" value={safeNext} />
-            <input type="hidden" name="select_account" value="1" />
-            <GoogleRetryButton className={ctaClass}>{copy.cta}</GoogleRetryButton>
-          </form>
-          <Link href={ingresarHref} className={secondaryCtaClass}>
-            Entrar con mi email
-          </Link>
-        </>
-      ) : (
-        <Link href={toStaff ? '/login' : ingresarHref} className={ctaClass}>
-          {toStaff ? STAFF_CTA : copy.cta}
-        </Link>
-      )}
-      {/* La otra puerta: el error de un jugador ofrece el panel; el de un panel, al jugador.
+      <Link href="/login" className={ctaClass}>
+        {STAFF_CTA}
+      </Link>
+      {/* La otra puerta: el error de un panel ofrece al jugador (el de un jugador, el panel).
           Subrayado siempre (contra el texto vecino el color solo da 1,7:1) y con el área
           táctil llevada a 44 px por padding que el margen negativo saca del layout. */}
       <p className="mt-4 text-xs text-slate-400">
-        {toStaff ? '¿Sos jugador?' : '¿Sos del complejo?'}{' '}
+        ¿Sos jugador?{' '}
         <Link
-          href={toStaff ? '/ingresar' : '/login'}
+          href="/ingresar"
           className="-my-3.5 inline-block py-3.5 font-medium text-emerald-300 underline underline-offset-2 hover:text-emerald-200"
         >
-          {toStaff ? 'Ingresá acá' : 'Entrá al panel'}
+          Ingresá acá
+        </Link>
+      </p>
+    </>
+  )
+}
+
+// ─── Jugador: el mundo del portal (PortalAuthFrame), sin card ni resplandores ───
+
+/** Ícono de estado (color + ícono + texto) sobre el título, alineado a la izquierda como el resto. */
+const playerIconClass = 'size-8'
+
+function PlayerSuccess({ next, intent }: { next: string | undefined; intent: SuccessIntent }) {
+  const safeNext = sanitizeNext(next)
+  const copy = SUCCESS_COPY[intent]
+  return (
+    <>
+      <CheckCircle2
+        className={cn(playerIconClass, 'text-emerald-700 dark:text-emerald-400')}
+        aria-hidden
+      />
+      <h1 className={cn(PORTAL_TITLE, 'mt-4')}>{copy.title}</h1>
+      <p className="mt-2 text-base text-muted-foreground">{copy.subtitle}</p>
+      <Link href={safeNext} className={cn(buttonVariants(), PORTAL_BUTTON, 'mt-8')}>
+        {copy.cta}
+      </Link>
+      <p className="mt-6 text-sm text-muted-foreground">
+        ¿Abriste el enlace en otro dispositivo? Volvé a la pantalla donde empezaste para seguir.
+      </p>
+      <SuccessRedirect
+        next={safeNext}
+        className="mt-2 text-sm tabular-nums text-muted-foreground"
+      />
+    </>
+  )
+}
+
+function PlayerError({
+  copy,
+  next,
+  googleAction,
+}: {
+  copy: ErrorCopy
+  next: string | undefined
+  googleAction: StartGoogleLoginFromIngresar
+}) {
+  const safeNext = sanitizeNext(next)
+  // El destino original sobrevive al reintento solo si el callback lo mandó.
+  const ingresarHref = next ? `/ingresar?next=${encodeURIComponent(safeNext)}` : '/ingresar'
+  return (
+    <>
+      {copy.neutral ? (
+        <Info className={cn(playerIconClass, TONE_TEXT.neutral)} aria-hidden />
+      ) : (
+        <AlertCircle className={cn(playerIconClass, TONE_TEXT.destructive)} aria-hidden />
+      )}
+      <h1 className={cn(PORTAL_TITLE, 'mt-4')}>{copy.title}</h1>
+      {/* role="alert" para que el lector de pantalla anuncie el motivo del fallo. */}
+      <p role="alert" className="mt-2 text-base text-muted-foreground">
+        {copy.message}
+      </p>
+      <div className="mt-8 space-y-3">
+        {copy.google ? (
+          <>
+            {/* Reusa la action de Google de /ingresar; `select_account` abre el selector de
+                cuentas para poder elegir otra distinta de la del complejo. */}
+            <form action={googleAction}>
+              <input type="hidden" name="next" value={safeNext} />
+              <input type="hidden" name="select_account" value="1" />
+              <SubmitButton className={PORTAL_BUTTON} pendingLabel="Abriendo Google…">
+                {copy.cta}
+              </SubmitButton>
+            </form>
+            <Link
+              href={ingresarHref}
+              className={cn(buttonVariants({ variant: 'outline' }), PORTAL_BUTTON)}
+            >
+              Entrar con mi email
+            </Link>
+          </>
+        ) : (
+          <Link href={ingresarHref} className={cn(buttonVariants(), PORTAL_BUTTON)}>
+            {copy.cta}
+          </Link>
+        )}
+      </div>
+      {/* La otra puerta: el error de un jugador ofrece el panel. Subrayado siempre y con el
+          área táctil llevada a 44 px por padding que el margen negativo saca del layout. */}
+      <p className="mt-6 text-sm text-muted-foreground">
+        ¿Sos del complejo?{' '}
+        <Link
+          href="/login"
+          className="-my-3.5 inline-block py-3.5 font-medium text-emerald-700 underline underline-offset-4 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"
+        >
+          Entrá al panel
         </Link>
       </p>
     </>

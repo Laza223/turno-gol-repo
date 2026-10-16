@@ -1,5 +1,5 @@
 import { and, count, desc, eq, ilike, or, type SQL } from 'drizzle-orm'
-import { getDb, getWorkerDb, withTenantContext } from '@/shared/db/client'
+import { getDb, withDisposableWorkerDb, withTenantContext, type Db } from '@/shared/db/client'
 import {
   auditLogs,
   bookings,
@@ -26,7 +26,7 @@ import type { TenantSettings } from '@/modules/tenants/tenant.types'
  * - `tenant_subscriptions` NO es global (caza-bugs #10): tiene `tenant_id` +
  *   RLS+FORCE (ver CLAUDE.md "Tablas aisladas"). El super admin la lee
  *   cross-tenant a propósito (spec: "puede ver todos los tenants"), así que
- *   usa `getWorkerDb()` (pool de servicio) en vez de `withTenantContext` —
+ *   usa el rol de servicio (`withDisposableWorkerDb`) en vez de `withTenantContext` —
  *   con `getDb()` el rol restringido `turnogol_app` ve 0 filas fuera de
  *   `withTenantContext`, dejando plan/estado de suscripción NULL para todos.
  * - `courts`, `tenant_staff_members`, `audit_logs` y `bookings` son tablas RLS:
@@ -118,8 +118,18 @@ function monthlyEquivalentCents(
     : monthlyListAmount(billedCourts, params)
 }
 
+/**
+ * Tope de cada lectura cross-tenant del panel: si el pooler cuelga la query,
+ * la page cae a su `error.tsx` (dentro del shell) en vez de quedar cargando
+ * hasta los 300 s de Vercel. Ver `withDisposableWorkerDb`.
+ */
+const WORKER_READ_TIMEOUT_MS = 10_000
+
 export async function listTenants(filters: TenantListFilters): Promise<TenantList> {
-  const db = getWorkerDb()
+  return withDisposableWorkerDb(WORKER_READ_TIMEOUT_MS, (db) => listTenantsWith(db, filters))
+}
+
+async function listTenantsWith(db: Db, filters: TenantListFilters): Promise<TenantList> {
   const conditions: SQL[] = []
   const q = filters.q?.trim()
   if (q) {
@@ -329,32 +339,33 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
 
   // tenant_subscriptions tiene RLS+FORCE (caza-bugs #10) — pool de servicio,
   // no el `db` de arriba (restringido, sin contexto de tenant seteado acá).
-  const workerDb = getWorkerDb()
-  const subRows = await workerDb
-    .select({
-      status: tenantSubscriptions.status,
-      planId: tenantSubscriptions.planId,
-      billedCourts: tenantSubscriptions.billedCourts,
-      pendingBilledCourts: tenantSubscriptions.pendingBilledCourts,
-      priceFirstCourtCents: plans.priceFirstCourtCents,
-      priceExtraCourtCents: plans.priceExtraCourtCents,
-      annualDiscountBps: plans.annualDiscountBps,
-      billingCycle: tenantSubscriptions.billingCycle,
-      currentPeriodStart: tenantSubscriptions.currentPeriodStart,
-      currentPeriodEnd: tenantSubscriptions.currentPeriodEnd,
-      mpSubscriptionId: tenantSubscriptions.mpSubscriptionId,
-      pendingChangeAt: tenantSubscriptions.pendingChangeAt,
-      canceledAt: tenantSubscriptions.canceledAt,
-      cancellationReason: tenantSubscriptions.cancellationReason,
-      scheduledDeletionAt: tenantSubscriptions.scheduledDeletionAt,
-      dunningStartedAt: tenantSubscriptions.dunningStartedAt,
-      lastPaymentAt: tenantSubscriptions.lastPaymentAt,
-      lastPaymentFailedAt: tenantSubscriptions.lastPaymentFailedAt,
-    })
-    .from(tenantSubscriptions)
-    .leftJoin(plans, eq(plans.id, tenantSubscriptions.planId))
-    .where(eq(tenantSubscriptions.tenantId, tenantId))
-    .limit(1)
+  const subRows = await withDisposableWorkerDb(WORKER_READ_TIMEOUT_MS, (workerDb) =>
+    workerDb
+      .select({
+        status: tenantSubscriptions.status,
+        planId: tenantSubscriptions.planId,
+        billedCourts: tenantSubscriptions.billedCourts,
+        pendingBilledCourts: tenantSubscriptions.pendingBilledCourts,
+        priceFirstCourtCents: plans.priceFirstCourtCents,
+        priceExtraCourtCents: plans.priceExtraCourtCents,
+        annualDiscountBps: plans.annualDiscountBps,
+        billingCycle: tenantSubscriptions.billingCycle,
+        currentPeriodStart: tenantSubscriptions.currentPeriodStart,
+        currentPeriodEnd: tenantSubscriptions.currentPeriodEnd,
+        mpSubscriptionId: tenantSubscriptions.mpSubscriptionId,
+        pendingChangeAt: tenantSubscriptions.pendingChangeAt,
+        canceledAt: tenantSubscriptions.canceledAt,
+        cancellationReason: tenantSubscriptions.cancellationReason,
+        scheduledDeletionAt: tenantSubscriptions.scheduledDeletionAt,
+        dunningStartedAt: tenantSubscriptions.dunningStartedAt,
+        lastPaymentAt: tenantSubscriptions.lastPaymentAt,
+        lastPaymentFailedAt: tenantSubscriptions.lastPaymentFailedAt,
+      })
+      .from(tenantSubscriptions)
+      .leftJoin(plans, eq(plans.id, tenantSubscriptions.planId))
+      .where(eq(tenantSubscriptions.tenantId, tenantId))
+      .limit(1),
+  )
 
   // courts es tabla RLS → lectura dentro del contexto del tenant (spec §4).
   // staff_users/tenant_staff_members se leen vía listStaffRoster: es global

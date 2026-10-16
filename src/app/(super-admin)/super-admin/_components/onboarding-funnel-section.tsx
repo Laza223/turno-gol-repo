@@ -9,8 +9,8 @@ import type { OnboardingFunnelData } from '@/modules/super-admin/dashboard.servi
  * `analytics_events` era write-only hasta acá: ni un solo `SELECT` fuera de la
  * purga de retención. Esta es la primera vista que LEE la tabla.
  */
-export function OnboardingFunnelSection({ data }: { data: OnboardingFunnelData }) {
-  const step1 = data.stepCompleted[0]?.tenants ?? 0
+export function OnboardingFunnelSection({ data }: { data: OnboardingFunnelData | null }) {
+  const step1 = data?.stepCompleted[0]?.tenants ?? 0
 
   return (
     <section className="rounded-lg border border-border bg-card shadow-xs">
@@ -19,13 +19,19 @@ export function OnboardingFunnelSection({ data }: { data: OnboardingFunnelData }
           <TrendingUp className="h-4 w-4" aria-hidden="true" />
         </span>
         Embudo de onboarding
-        <span className="text-xs font-normal text-muted-foreground">
-          (últimos {data.windowDays} días)
-        </span>
+        {data && (
+          <span className="text-xs font-normal text-muted-foreground">
+            (últimos {data.windowDays} días)
+          </span>
+        )}
       </h2>
 
       <div className="px-6 py-4">
-        {step1 === 0 ? (
+        {!data ? (
+          <p className="py-2 text-sm text-muted-foreground">
+            No se pudo leer ahora, recargá en un rato.
+          </p>
+        ) : step1 === 0 ? (
           <p className="py-2 text-sm text-muted-foreground">
             Sin actividad de onboarding en la ventana. {data.startedViews} vista(s) del paso 1 sin
             tenant creado todavía.
@@ -54,41 +60,43 @@ export function OnboardingFunnelSection({ data }: { data: OnboardingFunnelData }
           </div>
         )}
 
-        <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-border pt-4 text-sm sm:grid-cols-3">
-          <div>
-            <dt className="text-xs text-muted-foreground">Vistas paso 1 (sin tenant)</dt>
-            <dd className="font-medium tabular-nums text-foreground">{data.startedViews}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Completaron el wizard</dt>
-            <dd className="font-medium tabular-nums text-foreground">{data.completedTenants}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Cargaron turno en el wizard</dt>
-            <dd className="font-medium tabular-nums text-foreground">
-              {data.firstBookingInWizard}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Compartieron el link</dt>
-            <dd className="font-medium tabular-nums text-foreground">{data.linkShared}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Conectaron MercadoPago</dt>
-            <dd className="font-medium tabular-nums text-foreground">{data.mpConnected}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Activaciones (1ª reserva online)</dt>
-            <dd className="font-medium tabular-nums text-foreground">
-              {data.activationEvents}
-              {data.medianDaysToActivation != null && (
-                <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                  · mediana {data.medianDaysToActivation.toFixed(1)}d
-                </span>
-              )}
-            </dd>
-          </div>
-        </dl>
+        {data && (
+          <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-border pt-4 text-sm sm:grid-cols-3">
+            <div>
+              <dt className="text-xs text-muted-foreground">Vistas paso 1 (sin tenant)</dt>
+              <dd className="font-medium tabular-nums text-foreground">{data.startedViews}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Completaron el wizard</dt>
+              <dd className="font-medium tabular-nums text-foreground">{data.completedTenants}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Cargaron turno en el wizard</dt>
+              <dd className="font-medium tabular-nums text-foreground">
+                {data.firstBookingInWizard}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Compartieron el link</dt>
+              <dd className="font-medium tabular-nums text-foreground">{data.linkShared}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Conectaron MercadoPago</dt>
+              <dd className="font-medium tabular-nums text-foreground">{data.mpConnected}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Activaciones (1ª reserva online)</dt>
+              <dd className="font-medium tabular-nums text-foreground">
+                {data.activationEvents}
+                {data.medianDaysToActivation != null && (
+                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                    · mediana {data.medianDaysToActivation.toFixed(1)}d
+                  </span>
+                )}
+              </dd>
+            </div>
+          </dl>
+        )}
       </div>
     </section>
   )

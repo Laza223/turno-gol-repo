@@ -20,7 +20,16 @@ const h = vi.hoisted(() => ({
   workerExecute: vi.fn(),
 }))
 
-vi.mock('@/shared/db/client', () => ({ getDb: h.getDb, getWorkerDb: h.getWorkerDb }))
+// `withDisposableWorkerDb` abre su propio cliente worker: acá entrega el fake de
+// `h.getWorkerDb`. El tope del cliente se respeta para que un cuelgue se vea.
+vi.mock('@/shared/db/client', () => ({
+  getDb: h.getDb,
+  withDisposableWorkerDb: (timeoutMs: number, fn: (db: unknown) => Promise<unknown>) =>
+    Promise.race([
+      fn(h.getWorkerDb()),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs)),
+    ]),
+}))
 vi.mock('@/shared/jobs/dlq', () => ({ ALL_QUEUES: ['send-email', 'push-send'] }))
 vi.mock('@/shared/jobs/queue-stats', () => ({ getQueueDepths: h.getQueueDepths }))
 
@@ -154,6 +163,33 @@ describe('getDashboardData — MRR', () => {
 
     // Nunca $0: un MRR que no se pudo leer no puede mostrarse como cero.
     expect(data.mrrCents).toBeNull()
+    expect(data.queues).toEqual([
+      { queue: 'send-email', depth: 3 },
+      { queue: 'push-send', depth: 0 },
+    ])
+  })
+})
+
+describe('getDashboardData — embudo de onboarding', () => {
+  // 2026-10-15: el embudo era la única lectura del pool worker sin tope. Con el
+  // pool de la instancia comido por queries colgadas, no volvía nunca y la page
+  // caía a los 15 s — "/super-admin queda cargando".
+  it('si las queries del embudo no vuelven nunca, el dashboard carga igual con el embudo en null', async () => {
+    vi.useFakeTimers()
+    h.workerExecute.mockImplementation((query: unknown) =>
+      isQueueQuery(query)
+        ? Promise.resolve([{ name: 'send-email', depth: 3 }])
+        : new Promise<never>(() => {}),
+    )
+    const { getDashboardData } = await import('@/modules/super-admin/dashboard.service')
+
+    const pending = getDashboardData()
+    await vi.advanceTimersByTimeAsync(8_100)
+    const data = await pending
+
+    // Nunca un embudo en cero inventado: no leído = null, y la vista lo dice.
+    expect(data.onboardingFunnel).toBeNull()
+    expect(data.mrrCents).toBe(0)
     expect(data.queues).toEqual([
       { queue: 'send-email', depth: 3 },
       { queue: 'push-send', depth: 0 },

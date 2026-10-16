@@ -55,10 +55,16 @@ describe('dbSslOptions', () => {
 describe('los pools de client.ts fijan ssl explícitamente', () => {
   const source = readFileSync(join(process.cwd(), 'src/shared/db/client.ts'), 'utf8')
 
-  it('cada llamada a postgres() pasa ssl: dbSslOptions(url)', () => {
+  // Desde el corte de queries colgadas la opción llega envuelta en
+  // `dbConnectionOptions` (que en la web negocia ese mismo TLS en su fábrica de
+  // sockets; ver stalled-query-guard-wiring.test.ts), pero la decisión sigue
+  // siendo `dbSslOptions(url)` en cada pool.
+  it('cada llamada a postgres() decide el ssl con dbSslOptions(url)', () => {
     const calls = source.match(/postgres\(url, \{/g) ?? []
     expect(calls.length).toBeGreaterThanOrEqual(2)
-    expect(source.match(/ssl: dbSslOptions\(url\)/g) ?? []).toHaveLength(calls.length)
+    expect(
+      source.match(/\.\.\.dbConnectionOptions\('[a-z-]+', dbSslOptions\(url\)\)/g) ?? [],
+    ).toHaveLength(calls.length)
   })
 })
 

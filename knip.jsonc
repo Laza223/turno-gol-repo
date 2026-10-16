@@ -74,7 +74,9 @@
   "ignoreBinaries": [
     // Builtin de Windows que `scripts/storybook-qa.mjs` usa para ubicar
     // ejecutables; no es un paquete de npm.
-    "where"
+    "where",
+    // Genera el certificado del proxy TLS en tests/integration/db-stalled-query.test.ts.
+    "openssl"
   ],
 
   "ignoreExportsUsedInFile": false,

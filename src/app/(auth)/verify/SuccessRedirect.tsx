@@ -8,8 +8,11 @@ const SECONDS = 5
  * Auto-redirect a `next` a los 5s con cuenta regresiva visible. El botón
  * Continuar de la página es el fallback inmediato y no-JS; este island solo
  * agrega la conveniencia del redirect automático. `next` ya viene sanitizado.
+ *
+ * `className` pisa el estilo por defecto, pensado para la card siempre oscura del staff: el
+ * jugador vive en el mundo del portal (claro y oscuro) y pasa un color de token.
  */
-export default function SuccessRedirect({ next }: { next: string }) {
+export default function SuccessRedirect({ next, className }: { next: string; className?: string }) {
   const [remaining, setRemaining] = useState(SECONDS)
 
   useEffect(() => {
@@ -29,7 +32,7 @@ export default function SuccessRedirect({ next }: { next: string }) {
     // slate-500 (#64748b) sobre la card de /verify daba 3.91:1 — abajo del 4.5 que pide
     // AA para 12px. Es un gris del medio: no llega ni contra fondo claro ni contra
     // oscuro. slate-400 sobre esta card (siempre oscura) da 7.33:1.
-    <p className="mt-4 text-xs text-slate-400" aria-live="polite">
+    <p className={className ?? 'mt-4 text-xs text-slate-400'} aria-live="polite">
       Te llevamos automáticamente en {remaining}s…
     </p>
   )

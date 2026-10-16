@@ -156,3 +156,56 @@ export const Tokens: Story = {
     emulation.remove()
   },
 }
+
+/**
+ * Fondo del cascarón: `PortalFrame` pinta `.player-shell-bg` (La Previa, la cancha) en todo el
+ * portal. Con el marcador en la página, una regla de globals.css lo cambia por el fondo liso del
+ * mundo; sin él, la cancha sigue. Se mide el fondo que resuelve el navegador (imagen, anclaje y
+ * color), no el texto del CSS. La forma de la regla la cuida `portal-shell-bg.test.ts`.
+ */
+const shell = (world: boolean) => (
+  <div data-testid="shell" className="player-shell-bg min-h-40 p-4">
+    {world ? (
+      <PortalWorld>
+        <p>Reservar</p>
+      </PortalWorld>
+    ) : (
+      <p>Mis reservas</p>
+    )}
+  </div>
+)
+
+export const ShellBackground: Story = {
+  args: { children: null },
+  render: () => shell(true),
+  play: async ({ canvasElement, globals }) => {
+    const dark = globals['theme'] === 'dark'
+    const doc = canvasElement.ownerDocument
+    const el = within(canvasElement).getByTestId('shell')
+    await waitFor(async () => {
+      await expect(doc.documentElement.classList.contains('dark')).toBe(dark)
+      const style = getComputedStyle(el)
+      await expect(style.backgroundImage).toBe('none')
+      await expect(style.backgroundAttachment).toBe('scroll')
+      await expect(style.backgroundColor).toBe(dark ? 'rgb(3, 7, 17)' : 'rgb(255, 255, 255)')
+    })
+  },
+}
+
+export const ShellBackgroundWithoutWorld: Story = {
+  args: { children: null },
+  render: () => shell(false),
+  play: async ({ canvasElement, globals }) => {
+    const dark = globals['theme'] === 'dark'
+    const doc = canvasElement.ownerDocument
+    const el = within(canvasElement).getByTestId('shell')
+    await waitFor(async () => {
+      await expect(doc.documentElement.classList.contains('dark')).toBe(dark)
+      const style = getComputedStyle(el)
+      await expect(style.backgroundImage).not.toBe('none')
+      // Una entrada por capa de imagen ("fixed, fixed").
+      await expect(style.backgroundAttachment).toContain('fixed')
+      await expect(style.backgroundColor).toBe(dark ? 'rgb(2, 6, 23)' : 'rgb(236, 253, 245)')
+    })
+  },
+}

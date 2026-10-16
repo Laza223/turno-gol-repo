@@ -198,7 +198,7 @@ export const slot = (overrides: Partial<SlotFixture> = {}): SlotFixture => ({
   ...overrides,
 })
 
-/** Hoy en ART (FROZEN_NOW), formato YYYY-MM-DD — coincide con el "hoy" que calcula AvailabilityGrid. */
+/** Hoy en ART (FROZEN_NOW), formato YYYY-MM-DD — coincide con el "hoy" que calcula `useArtNow` (la reserva de la ficha). */
 export const todayArt = (): string => artDateString()
 
 type PublicCourtSlotsFixture = {
@@ -207,6 +207,7 @@ type PublicCourtSlotsFixture = {
   surfaceType: string
   isCovered: boolean
   hasLighting: boolean
+  format: number
   slots: SlotFixture[]
 }
 
@@ -236,6 +237,7 @@ export const availabilityResponse = (
       surfaceType: 'synthetic_grass',
       isCovered: false,
       hasLighting: true,
+      format: 5,
       slots: sampleSlots(),
     },
     {
@@ -244,6 +246,7 @@ export const availabilityResponse = (
       surfaceType: 'synthetic_grass',
       isCovered: true,
       hasLighting: true,
+      format: 7,
       slots: sampleSlots(),
     },
   ],
@@ -267,6 +270,7 @@ export const availabilityResponseWithHold = (): AvailabilityResponseFixture =>
         surfaceType: 'synthetic_grass',
         isCovered: false,
         hasLighting: true,
+        format: 5,
         slots: [
           slot({ time: '10:00', status: 'free', price: 900000 }),
           slot({
@@ -300,9 +304,53 @@ export const availabilityResponseNoSlots = (): AvailabilityResponseFixture =>
         surfaceType: 'synthetic_grass',
         isCovered: false,
         hasLighting: true,
+        format: 5,
         slots: [],
       },
     ],
+  })
+
+/**
+ * Horas de una cancha de complejo que cierra pasada la medianoche (la de las 00:00 va al final,
+ * orden del servidor). Con el reloj congelado a las 15:30 todas son futuras.
+ */
+const EVENING_HOURS = [
+  '16:00',
+  '17:00',
+  '18:00',
+  '19:00',
+  '20:00',
+  '21:00',
+  '22:00',
+  '23:00',
+  '00:00',
+]
+
+/**
+ * `count` canchas (de 1 a 16, formatos rotando entre `formats`) con la misma noche: a las 19:00
+ * no queda ninguna ("Completo"), a las 20:00 queda solo la primera ("Queda 1") y el resto está
+ * libre. `price: null` simula un complejo que oculta los precios.
+ */
+export const availabilityResponseCourts = (
+  count: number,
+  { formats = [5], price = 1500000 }: { formats?: number[]; price?: number | null } = {},
+): AvailabilityResponseFixture =>
+  availabilityResponse({
+    courts: Array.from({ length: count }, (_, i) => ({
+      id: uid(200 + i),
+      name: `Cancha ${i + 1}`,
+      surfaceType: 'synthetic_grass',
+      isCovered: i % 2 === 1,
+      hasLighting: true,
+      format: formats[i % formats.length]!,
+      slots: EVENING_HOURS.map((time) =>
+        slot({
+          time,
+          price,
+          status: time === '19:00' || (time === '20:00' && i > 0) ? 'occupied' : 'free',
+        }),
+      ),
+    })),
   })
 
 export type WeeklyAvailabilityResponseFixture = {
@@ -310,8 +358,10 @@ export type WeeklyAvailabilityResponseFixture = {
   days: { date: string; courts: PublicCourtSlotsFixture[] }[]
 }
 
-export const weeklyAvailabilityResponse = (): WeeklyAvailabilityResponseFixture => {
-  const start = todayArt()
+/** `start`: primer día de la semana (la ruta real arranca en el día que se pide). */
+export const weeklyAvailabilityResponse = (
+  start: string = todayArt(),
+): WeeklyAvailabilityResponseFixture => {
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(`${start}T00:00:00Z`)
     d.setUTCDate(d.getUTCDate() + i)
@@ -327,6 +377,7 @@ export const weeklyAvailabilityResponse = (): WeeklyAvailabilityResponseFixture 
                 surfaceType: 'synthetic_grass',
                 isCovered: false,
                 hasLighting: true,
+                format: 5,
                 slots: [],
               },
             ]
@@ -337,6 +388,7 @@ export const weeklyAvailabilityResponse = (): WeeklyAvailabilityResponseFixture 
                 surfaceType: 'synthetic_grass',
                 isCovered: false,
                 hasLighting: true,
+                format: 5,
                 slots: sampleSlots(),
               },
               {
@@ -345,6 +397,7 @@ export const weeklyAvailabilityResponse = (): WeeklyAvailabilityResponseFixture 
                 surfaceType: 'synthetic_grass',
                 isCovered: true,
                 hasLighting: true,
+                format: 7,
                 slots: sampleSlots(),
               },
             ],

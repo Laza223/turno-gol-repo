@@ -84,8 +84,8 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
       // <body>, asi que getByText('E2E Complejo Seña') tambien lo matchea.
       await expect(page.getByRole('heading', { name: 'E2E Complejo Seña' })).toBeVisible()
 
-      // Navigate directly to the reservar page — the slug→grid→slot link flow is
-      // covered by availability.spec.ts (F6). F7 new coverage starts at form→MP.
+      // Navigate directly to the reservar page — the slug→hora→cancha link flow is
+      // covered by TG-HP-003. F7 new coverage starts at form→MP.
       await page.goto(reservarUrl(DEPOSIT_TENANT_SLUG, DEPOSIT_COURT_ID, date, '14:00'))
       await expect(page.getByRole('heading', { name: /confirmá tu reserva/i })).toBeVisible()
 

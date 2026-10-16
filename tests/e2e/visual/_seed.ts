@@ -37,7 +37,8 @@ const VISUAL_PLAYER_ID = '00000000-0000-4000-8000-000000000020'
  * (src/hooks/use-now-line.ts:28), o sea que la línea roja de "ahora" —el
  * elemento más móvil de la pantalla— desaparece sola, sin trucos ni máscaras.
  *
- * Lunes porque el seed abre 08:00–23:00 de lunes a viernes.
+ * Lunes porque el seed abre los siete días (08:00–23:00 de lunes a viernes, 09:00–23:00 sábado
+ * y domingo): cualquiera serviría, y el lunes es un día de grilla completa.
  *
  * CADUCA EN 2030: cuando esa fecha sea pasado hay que moverla y regenerar las
  * baselines. Si esta pieza sigue viva para entonces, ya se ganó el derecho.

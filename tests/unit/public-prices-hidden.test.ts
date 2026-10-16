@@ -15,6 +15,7 @@ import {
   getPublicWeeklyAvailability,
   type PublicTenant,
 } from '@/modules/tenants/public.service'
+import { artTodayStr } from '@/shared/dates/art'
 import { publicTenant } from '@/test/fixtures/public'
 
 const PRICING = {
@@ -76,7 +77,8 @@ describe('settings.hide_public_prices — lo que sale del service público', () 
 
   it('disponibilidad semanal: price null en todos los días', async () => {
     db.result = { courtsData: [COURT], bookingsByDate: new Map() }
-    const res = await getPublicWeeklyAvailability(tenant(true), DATE)
+    // Arranca hoy: el semanal solo devuelve días dentro de la ventana de reserva.
+    const res = await getPublicWeeklyAvailability(tenant(true), artTodayStr())
     const all = res.days.flatMap((d) => prices(d.courts))
     expect(all.length).toBeGreaterThan(0)
     expect(all.every((p) => p === null)).toBe(true)

@@ -25,7 +25,6 @@ const PUBLIC_ROUTES = [
   '/explorar',
   '/explorar?q=demo',
   '/e2e-complejo-demo',
-  '/e2e-complejo-demo/disponibilidad',
   '/login',
   '/ingresar',
   '/register',

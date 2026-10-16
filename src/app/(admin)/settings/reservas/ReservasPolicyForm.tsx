@@ -30,8 +30,8 @@ const chipClass = (active: boolean) =>
 
 const INITIAL_STATE: PolicyActionResult = { success: true }
 
-/** "YYYY-MM-DD" → "mié 17 de septiembre". Parseo a mediodía UTC (mismo idiom
- * que WeeklyAvailability.tsx) para no depender del huso horario del browser. */
+/** "YYYY-MM-DD" → "mié 17 de septiembre". Parseo a mediodía UTC para no depender
+ * del huso horario del browser. */
 const DOW_FORMATTER = new Intl.DateTimeFormat('es-AR', { weekday: 'short', timeZone: 'UTC' })
 const DAY_MONTH_FORMATTER = new Intl.DateTimeFormat('es-AR', {
   day: 'numeric',

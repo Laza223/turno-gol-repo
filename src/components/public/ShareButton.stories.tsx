@@ -18,6 +18,16 @@ type Story = StoryObj<typeof meta>
 
 export const Default: Story = {}
 
+/** Solo el ícono (la ficha del complejo): sin texto a la vista, pero el nombre accesible sigue siendo "Compartir". */
+export const SoloIcono: Story = {
+  args: { iconOnly: true, className: 'size-11 justify-center px-0' },
+  play: async ({ canvasElement }) => {
+    const button = within(canvasElement).getByRole('button', { name: 'Compartir' })
+    await expect(button).toHaveTextContent('Compartir')
+    await expect(button.querySelector('.sr-only')).not.toBeNull()
+  },
+}
+
 export const MenuAbierto: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

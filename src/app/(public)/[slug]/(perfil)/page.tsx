@@ -1,9 +1,6 @@
-import Image from 'next/image'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
-import { Trophy } from 'lucide-react'
 import {
   getPublicTenant,
   getPublicCourtCards,
@@ -12,15 +9,13 @@ import {
 import { isPublicPortalIndexable, isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
 import { getAverageRating, getReviewsByTenant } from '@/modules/reviews/review.service'
 import { listPublicTournaments } from '@/modules/tournaments/tournament-public.service'
-import { STATUS_LABELS } from '@/lib/tournaments/status-visual'
-import { formatDateRange } from '@/app/(admin)/torneos/torneos-lib'
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
-import TenantHeader from '../components/TenantHeader'
-import TenantGallery from '../components/TenantGallery'
-import CourtCard from '../components/CourtCard'
-import ReviewsSection from '../components/ReviewsSection'
-import AvailabilityGrid from '../components/AvailabilityGrid'
-import { Skeleton } from '@/components/ui/skeleton'
+import { PORTAL_TITLE } from '@/components/world/PortalAuthFrame'
+import { trackProfileViewedAction } from './actions'
+import ComplexHero from '../components/ComplexHero'
+import ProfileLayout from '../components/ProfileLayout'
+import ProfileRest from '../components/ProfileRest'
+import ReserveSection, { ReserveSkeleton } from '../components/ReserveSection'
 import JsonLd from '@/components/seo/JsonLd'
 import { buildLocalBusiness, buildBreadcrumbList } from '@/lib/seo/structured-data'
 
@@ -28,9 +23,9 @@ type Props = { params: Promise<{ slug: string }> }
 
 // ISR: el perfil del complejo se regenera cada 5 min. Todo lo estático (nombre,
 // fotos, canchas, reseñas, metadata y JSON-LD) sale del HTML cacheado; lo que
-// depende del visitante (disponibilidad, ?date=, favorito, sesión) se hidrata
-// client-side. Nada en este árbol puede leer cookies()/headers()/searchParams,
-// si no la ruta vuelve a ser dynamic.
+// depende del visitante (disponibilidad, ?date=, favorito, sesión, si está
+// abierto ahora) se hidrata client-side. Nada en este árbol puede leer
+// cookies()/headers()/searchParams, si no la ruta vuelve a ser dynamic.
 export const revalidate = 300
 
 // Pre-genera en build los perfiles de los complejos más activos; el resto se
@@ -50,9 +45,9 @@ export default async function PublicComplexPage(props: Props) {
   if (!isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd)) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <div className="max-w-md space-y-3 text-center">
-          <h1 className="text-xl font-semibold text-foreground">{tenant.name}</h1>
-          <p className="text-sm text-muted-foreground">
+        <div className="max-w-md space-y-3">
+          <h1 className={PORTAL_TITLE}>{tenant.name}</h1>
+          <p className="text-base text-muted-foreground">
             Este complejo no está disponible temporalmente.
           </p>
         </div>
@@ -61,7 +56,7 @@ export default async function PublicComplexPage(props: Props) {
   }
 
   // Datos complementarios (rating, canchas, reseñas, torneos). Resilientes: si
-  // fallan, la página igual renderiza con la grilla y el header.
+  // fallan, la página igual renderiza con la reserva y la cabecera.
   const [summary, courtCards, reviewsPage, tournaments] = await Promise.all([
     getAverageRating(tenant.id).catch(() => ({ average: 0, count: 0 })),
     getPublicCourtCards(tenant).catch(() => []),
@@ -71,12 +66,10 @@ export default async function PublicComplexPage(props: Props) {
     listPublicTournaments(tenant.id).catch(() => []),
   ])
 
-  const courtPhotos = Array.from(
-    new Set(courtCards.flatMap((c) => c.photos).filter(Boolean)),
-  ) as string[]
+  const formats = [...new Set(courtCards.map((c) => c.format))].sort((a, b) => a - b)
 
   return (
-    <div className="mx-auto w-full max-w-[1400px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+    <>
       <JsonLd
         data={[
           buildLocalBusiness(tenant),
@@ -87,117 +80,41 @@ export default async function PublicComplexPage(props: Props) {
           ]),
         ]}
       />
-
-      {/* Clean sheet — structured, premium, deep soft shadow */}
-      <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-[0_24px_70px_-38px_rgba(2,6,23,.4)]">
-        {tenant.coverUrl && (
-          <div className="relative h-48 w-full overflow-hidden bg-muted sm:h-64 md:h-72 lg:h-80">
-            <Image
-              src={tenant.coverUrl}
-              alt={`Portada de ${tenant.name}`}
-              fill
-              priority
-              sizes="(max-width: 1400px) 100vw, 1400px"
-              className="object-cover"
-            />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-card via-black/25 to-transparent" />
-          </div>
-        )}
-
-        <div className="space-y-7 p-4 sm:p-6 lg:p-8">
-          <TenantHeader
+      <ProfileLayout
+        hero={
+          <ComplexHero
             tenant={tenant}
+            courtCount={courtCards.length}
+            formats={formats}
             avgRating={summary.average}
             reviewCount={summary.count}
-            hasCover={Boolean(tenant.coverUrl)}
           />
-
-          {courtPhotos.length > 0 && (
-            <section aria-label="Fotos del complejo" className="space-y-3.5">
-              <h2 className="font-display text-xl font-bold tracking-tight text-foreground">
-                Fotos{' '}
-                <span className="font-sans text-sm font-normal text-muted-foreground">
-                  ({courtPhotos.length})
-                </span>
-              </h2>
-              <TenantGallery photos={courtPhotos} name={tenant.name} />
-            </section>
-          )}
-
-          {courtCards.length > 0 && (
-            <section aria-label="Canchas" className="space-y-3.5">
-              <h2 className="font-display text-xl font-bold tracking-tight text-foreground">
-                Canchas{' '}
-                <span className="font-sans text-sm font-normal text-muted-foreground">
-                  ({courtCards.length})
-                </span>
-              </h2>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {courtCards.map((court) => (
-                  <CourtCard key={court.id} court={court} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {tournaments.length > 0 && (
-            <section aria-label="Torneos" className="space-y-3.5">
-              <h2 className="font-display text-xl font-bold tracking-tight text-foreground">
-                Torneos{' '}
-                <span className="font-sans text-sm font-normal text-muted-foreground">
-                  ({tournaments.length})
-                </span>
-              </h2>
-              <ul className="grid gap-2.5 sm:grid-cols-2">
-                {tournaments.slice(0, 4).map((t) => (
-                  <li key={t.slug}>
-                    <Link
-                      href={`/${tenant.slug}/torneos/${t.slug}`}
-                      className="flex items-center gap-3 rounded-xl border border-border bg-card p-3.5 transition-colors hover:bg-accent/50"
-                    >
-                      <Trophy
-                        className="h-5 w-5 shrink-0 text-muted-foreground"
-                        aria-hidden="true"
-                      />
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium text-foreground">
-                          {t.name}
-                        </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {STATUS_LABELS[t.status]} · {formatDateRange(t.startsOn, t.endsOn)}
-                        </span>
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-              {tournaments.length > 4 && (
-                <Link
-                  href={`/${tenant.slug}/torneos`}
-                  className="inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
-                >
-                  Ver los {tournaments.length} torneos
-                </Link>
-              )}
-            </section>
-          )}
-
-          {/* La grilla es 100% client-side (fetch a /api/public/availability): el
-            Suspense es obligatorio porque AvailabilityGrid usa useSearchParams()
-            dentro de una ruta prerenderada estáticamente. */}
-          <Suspense fallback={<Skeleton className="h-64 rounded-lg" />}>
-            <AvailabilityGrid tenant={tenant} />
+        }
+        reserve={
+          // Es 100% client-side (fetch a /api/public/availability): el Suspense es obligatorio
+          // porque ReserveSection usa useSearchParams() dentro de una ruta prerenderada.
+          <Suspense fallback={<ReserveSkeleton />}>
+            <ReserveSection
+              tenant={tenant}
+              formats={formats}
+              trackViewed={trackProfileViewedAction}
+            />
           </Suspense>
-
-          <ReviewsSection
-            tenantId={tenant.id}
-            initial={reviewsPage.reviews}
-            total={reviewsPage.total}
-            average={summary.average}
+        }
+        rest={
+          <ProfileRest
+            tenant={tenant}
+            courts={courtCards}
+            tournaments={tournaments}
+            reviews={{
+              initial: reviewsPage.reviews,
+              total: reviewsPage.total,
+              average: summary.average,
+            }}
           />
-        </div>
-      </div>
-    </div>
+        }
+      />
+    </>
   )
 }
 

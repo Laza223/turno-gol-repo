@@ -228,10 +228,6 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await expect(anonPage.getByText('E2E Complejo Demo').first()).toBeVisible()
     await takeShot(anonPage, 'public', 'pagina_complejo')
 
-    // Weekly Availability (/[slug]/disponibilidad)
-    await anonPage.goto('/e2e-complejo-demo/disponibilidad')
-    await takeShot(anonPage, 'public', 'disponibilidad_semanal')
-
     // Booking flow - no deposit selection
     const demoTime = isMobile ? '19:00' : '15:00'
     await playerPage.goto(

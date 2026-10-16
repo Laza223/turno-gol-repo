@@ -125,7 +125,7 @@ export type Slot = {
  * tomada — así que por ahora la fuga que sí se cierra es solo `fixed`/`blocked`.
  */
 export type PublicSlotStatus = 'free' | 'occupied' | 'held' | 'past'
-export type PublicSlot = {
+type PublicSlot = {
   time: string
   duration: number
   status: PublicSlotStatus
@@ -150,6 +150,8 @@ type PublicCourt = {
   surfaceType: string
   isCovered: boolean
   hasLighting: boolean
+  /** `courts.format`: jugadores por lado (Fútbol 5, 7…). Va en la fila de cancha y en el pedido. */
+  format: number
   slots: PublicSlot[]
 }
 
@@ -333,7 +335,7 @@ export async function listTopPublicTenantSlugs(limit = 50): Promise<string[]> {
 // Envuelto en `cache()` de React: dentro de un mismo render el slug se resuelve
 // una sola vez por más que lo pidan el layout, `generateMetadata` y la page (que
 // ya lo pedían dos veces antes de que existiera el layout). Todos los callers son
-// request-scoped (pages y route handlers), así que no hay uso fuera de un render.
+// request-scoped (pages, route handlers y la Server Action `trackProfileViewedAction`).
 export const getPublicTenant = cache(_getPublicTenant)
 
 async function _getPublicTenant(slug: string): Promise<PublicTenant | null> {
@@ -509,6 +511,7 @@ async function getPublicAvailabilityImpl(
         surfaceType: courts.surfaceType,
         isCovered: courts.isCovered,
         hasLighting: courts.hasLighting,
+        format: courts.format,
         pricing: courts.pricing,
       })
       .from(courts)
@@ -555,6 +558,7 @@ async function getPublicAvailabilityImpl(
     surfaceType: court.surfaceType,
     isCovered: court.isCovered,
     hasLighting: court.hasLighting,
+    format: court.format,
     slots: toPublicSlots(
       generateSlots({
         courtId: court.id,
@@ -597,7 +601,13 @@ export async function getPublicWeeklyAvailability(
   const nowDateStr = artNow.toISOString().slice(0, 10)
   const nowMins = artNow.getUTCHours() * 60 + artNow.getUTCMinutes()
 
-  const dates = Array.from({ length: 7 }, (_, i) => addDaysStr(startDateStr, i))
+  // Solo la ventana reservable: la ruta valida `start`, pero los 6 días que le siguen
+  // pueden caer más allá de `hoy + bookingAdvanceDays`, que no se pueden reservar.
+  const lastBookable = addDaysStr(nowDateStr, tenant.bookingAdvanceDays)
+  const dates = Array.from({ length: 7 }, (_, i) => addDaysStr(startDateStr, i)).filter(
+    (d) => d <= lastBookable,
+  )
+  if (dates.length === 0) return { startDate: startDateStr, days: [] }
   const endDateStr = dates[dates.length - 1]!
   const durationMins = SLOT_DURATION_MINUTES
   const closedDatesSet = new Set(tenant.closedDates)
@@ -610,6 +620,7 @@ export async function getPublicWeeklyAvailability(
         surfaceType: courts.surfaceType,
         isCovered: courts.isCovered,
         hasLighting: courts.hasLighting,
+        format: courts.format,
         pricing: courts.pricing,
       })
       .from(courts)
@@ -670,6 +681,7 @@ export async function getPublicWeeklyAvailability(
       surfaceType: court.surfaceType,
       isCovered: court.isCovered,
       hasLighting: court.hasLighting,
+      format: court.format,
       slots: toPublicSlots(
         generateSlots({
           courtId: court.id,

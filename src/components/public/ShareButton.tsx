@@ -18,11 +18,19 @@ type Props = {
   /** Texto para el mensaje de WhatsApp. */
   message?: string
   label?: string
+  /** Solo el ícono: `label` queda como nombre accesible (para quien lo monta con `className` cuadrado). */
+  iconOnly?: boolean
   className?: string
 }
 
 /** Botón "Compartir": copiar enlace o enviar por WhatsApp. */
-export default function ShareButton({ url, message, label = 'Compartir', className }: Props) {
+export default function ShareButton({
+  url,
+  message,
+  label = 'Compartir',
+  iconOnly = false,
+  className,
+}: Props) {
   const { toast } = useToast()
   const [copied, setCopied] = useState(false)
 
@@ -64,7 +72,7 @@ export default function ShareButton({ url, message, label = 'Compartir', classNa
             className="h-4 w-4 transition-transform duration-200 group-hover:scale-110"
             aria-hidden
           />
-          {label}
+          {iconOnly ? <span className="sr-only">{label}</span> : label}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">

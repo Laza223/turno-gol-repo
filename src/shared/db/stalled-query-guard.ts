@@ -44,7 +44,7 @@ import type { DbSslOptions } from './ssl'
  *     tipos del arranque, que con un `close` a secas reconectaría en loop) y la
  *     conexión vuelve al pool; la próxima query abre otra.
  */
-const STALLED_QUERY_CUTOFF_MS = 30_000
+const STALLED_QUERY_CUTOFF_MS = 20_000
 
 /** Segunda etapa del corte: deja que el event loop lea lo que ya llegó. */
 const CONFIRM_GRACE_MS = 2_000
@@ -129,7 +129,7 @@ class MessageFramer {
  * cada query con parámetros, que no lleva Sync.
  *
  * Límite: un cursor (`PortalSuspended`) o un COPY IN dejan la conexión `busy`
- * mientras el que tarda es el CLIENTE, y se cortarían a los 30 s. Hoy no hay
+ * mientras el que tarda es el CLIENTE, y se cortarían a los 20 s. Hoy no hay
  * `.cursor(`/`.copy`/`.writable(` en `src/`; si aparece uno, revisar esto.
  */
 export class PendingReplies {

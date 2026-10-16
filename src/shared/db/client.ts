@@ -1,5 +1,6 @@
 import postgres, { type Sql, type TransactionSql } from 'postgres'
 import { dbSslOptions } from './ssl'
+import { dbConnectionOptions } from './stalled-query-guard'
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { sql as drizzleSql } from 'drizzle-orm'
 import * as schema from './schema'
@@ -102,7 +103,8 @@ export function getSql(): Sql {
     // Explícito a propósito: el `?sslmode=` del DSN NO decide esto. Ver el
     // comentario largo en `./ssl` — `no-verify` (que pg-boss necesita) le llega
     // a porsager como string desconocido y tira abajo todo `withTenantContext`.
-    ssl: dbSslOptions(url),
+    // En la web el TLS lo negocia el corte de queries colgadas (ver ahí).
+    ...dbConnectionOptions('app', dbSslOptions(url)),
     max: resolvePoolMax(),
     idle_timeout: IDLE_TIMEOUT_SECONDS,
     max_lifetime: MAX_LIFETIME_SECONDS,
@@ -204,7 +206,7 @@ export function getWorkerSql(): Sql {
   }
   const url = process.env.WORKER_DATABASE_URL ?? process.env.DATABASE_URL ?? DEFAULT_URL
   _workerSql = postgres(url, {
-    ssl: dbSslOptions(url),
+    ...dbConnectionOptions('worker', dbSslOptions(url)),
     max: resolvePoolMax(),
     idle_timeout: IDLE_TIMEOUT_SECONDS,
     max_lifetime: MAX_LIFETIME_SECONDS,
@@ -249,7 +251,7 @@ export async function withDisposableWorkerDb<T>(
 ): Promise<T> {
   const url = process.env.WORKER_DATABASE_URL ?? process.env.DATABASE_URL ?? DEFAULT_URL
   const client = postgres(url, {
-    ssl: dbSslOptions(url),
+    ...dbConnectionOptions('super-admin', dbSslOptions(url)),
     max: DEFAULT_POOL_MAX,
     connect_timeout: DISPOSABLE_CONNECT_TIMEOUT_SECONDS,
     prepare: false,

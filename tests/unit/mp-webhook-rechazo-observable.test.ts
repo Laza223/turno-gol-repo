@@ -10,7 +10,7 @@
  * Lo que se loguea es FORMA, no contenido: tipo de evento y formato del id.
  * Nunca el payload entero, y nada que identifique a una persona.
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createHmac } from 'node:crypto'
 
 const SECRET = 'secreto-de-prueba'
@@ -69,6 +69,15 @@ describe('webhook de MercadoPago — todo rechazo queda explicado en el log', ()
   const env = process.env as Record<string, string | undefined>
   const secretOriginal = env['MP_WEBHOOK_SECRET']
   const checkoutOriginal = env['MP_WEBHOOK_SECRET_CHECKOUT']
+
+  // El primer `import()` del route compila y evalúa su grafo entero (~2 s sin
+  // carga, más de 10 s con la máquina ocupada): hecho dentro de un `it` se come
+  // el `testTimeout` y el primer caso caía por timeout. Acá corre bajo el
+  // `hookTimeout`, y los casos encuentran el módulo ya en caché.
+  beforeAll(async () => {
+    await import('@/app/api/webhooks/mercadopago/route')
+    await import('next/server')
+  })
 
   beforeEach(() => {
     // Sin `vi.resetModules()` a propósito: `verifyWebhookSignature` lee

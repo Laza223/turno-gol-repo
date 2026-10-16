@@ -30,6 +30,9 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
+// Solo los estados del jugador montan el mundo del portal; los del staff siguen con su marco oscuro.
+const inPortalWorld = (root: HTMLElement) => root.querySelector('[data-world="portal"]') !== null
+
 export const Cargando: Story = {
   args: { searchParams: {} },
 }
@@ -43,6 +46,7 @@ export const ExitoLogin: Story = {
       'href',
       '/mis-reservas',
     )
+    await expect(inPortalWorld(canvasElement)).toBe(true)
   },
 }
 
@@ -51,6 +55,7 @@ export const ExitoSignup: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('¡Bienvenido a TurnoGol!')).toBeInTheDocument()
+    await expect(inPortalWorld(canvasElement)).toBe(false)
   },
 }
 
@@ -79,6 +84,7 @@ export const ErrorExpirado: Story = {
       'href',
       '/ingresar',
     )
+    await expect(inPortalWorld(canvasElement)).toBe(false)
   },
 }
 
@@ -95,6 +101,26 @@ export const ErrorExpiradoJugador: Story = {
       'href',
       '/login',
     )
+    await expect(inPortalWorld(canvasElement)).toBe(true)
+  },
+}
+
+/** Google cancelado: el reintento vuelve a /ingresar conservando el destino. */
+export const GoogleCancelado: Story = {
+  args: {
+    searchParams: { error: 'oauth_cancelled', via: 'google', next: '/complejo-fenix/reservar' },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      canvas.getByRole('heading', { name: 'Cancelaste el ingreso con Google' }),
+    ).toBeInTheDocument()
+    await expect(canvas.getByRole('alert')).toHaveTextContent('No pasó nada')
+    await expect(canvas.getByRole('link', { name: 'Volver a intentar' })).toHaveAttribute(
+      'href',
+      '/ingresar?next=%2Fcomplejo-fenix%2Freservar',
+    )
+    await expect(inPortalWorld(canvasElement)).toBe(true)
   },
 }
 

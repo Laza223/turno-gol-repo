@@ -1,6 +1,6 @@
 {
   "generatedFrom": "auditoría de 6 agentes sobre src/** + regeneración tras las extracciones presentacionales y el merge de contenido SEO + fase 4 de Torneos (portal público y cobro de inscripción)",
-  "total": 335,
+  "total": 334,
   "components": [
     {
       "path": "src/app/(admin)/abonados/AbonadoDialogs.tsx",
@@ -1779,24 +1779,6 @@
       "isolationNotes": "useFormState/useFormStatus (react-dom) atados a resetPasswordAction real."
     },
     {
-      "path": "src/app/(auth)/verify/GoogleRetryButton.tsx",
-      "name": "GoogleRetryButton",
-      "domain": "auth",
-      "rendering": "client",
-      "role": "form",
-      "isolationDifficulty": "easy",
-      "classification": "COVERED_BY_PARENT_STORY",
-      "exclusionReason": "Submit con useFormStatus (disabled + aria-busy mientras pending) que solo existe dentro del <form action={googleAction}> de VerifyView. La story ConflictoGoogle de VerifyPage lo renderiza en reposo; el click y el payload que manda (select_account=1 + next) los cubre tests/unit/verify-page-errors.test.tsx.",
-      "relevantStates": [],
-      "proposedStoryTitle": "",
-      "usesNetwork": false,
-      "usesSession": false,
-      "usesRouter": false,
-      "usesServerAction": false,
-      "providers": ["form"],
-      "isolationNotes": ""
-    },
-    {
       "path": "src/app/(auth)/verify/page.tsx",
       "name": "VerifyPage",
       "domain": "auth",
@@ -1858,7 +1840,7 @@
       "usesRouter": false,
       "usesServerAction": true,
       "providers": [],
-      "isolationNotes": "Vista extraída de page.tsx (async). No fetchea nada: toda la lógica sale de `searchParams`. La Server Action de Google entra por la prop `googleAction` (la story pasa fn()): importarla como valor rompe el bundle de Storybook (postgres → Buffer is not defined). Renderiza <SuccessRedirect/> (client) en success y <GoogleRetryButton/> en account_conflict con via=google. Los códigos solo de jugador (provision_failed, oauth_cancelled, oauth_failed) y orphaned_session no tienen story: los cubre tests/unit/verify-page-errors.test.tsx."
+      "isolationNotes": "Vista extraída de page.tsx (async). No fetchea nada: toda la lógica sale de `searchParams`. La Server Action de Google entra por la prop `googleAction` (la story pasa fn()): importarla como valor rompe el bundle de Storybook (postgres → Buffer is not defined). Renderiza <SuccessRedirect/> (client) en success y el <SubmitButton/> de Google (con pendingLabel) en account_conflict con via=google. Los códigos solo de jugador (provision_failed, oauth_cancelled, oauth_failed) y orphaned_session no tienen story: los cubre tests/unit/verify-page-errors.test.tsx."
     },
     {
       "path": "src/app/(business)/alternativas-alquila-tu-cancha/page.tsx",

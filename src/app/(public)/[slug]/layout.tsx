@@ -12,7 +12,8 @@ import { getPublicTenant } from '@/modules/tenants/public.service'
  *
  *   /{slug-inexistente}                 → 200  (tiene loading.tsx)
  *   /{slug-inexistente}/disponibilidad  → 200  (tiene loading.tsx; force-dynamic,
- *                                               así que no era la caché de ISR)
+ *                                               así que no era la caché de ISR. Esa ruta
+ *                                               ya no existe: la reserva vive en `/{slug}`)
  *   /blog/{slug-inexistente}            → 404  (sin loading.tsx en su cadena)
  *   /para-complejos/foo/bar             → 404  (no matchea ninguna ruta)
  *

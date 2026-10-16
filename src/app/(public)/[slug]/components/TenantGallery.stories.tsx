@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, within } from 'storybook/test'
+import { PortalWorld } from '@/components/world/PortalWorld'
 import TenantGallery from './TenantGallery'
 
 // 6 fotos: 1 principal + 4 thumbnails + la 6ta se resume en el badge "+1" del último thumbnail.
@@ -12,7 +13,7 @@ const PHOTOS = [
   '/bg-hero-desktop.png',
 ]
 
-/** En el perfil vive dentro de la card blanca principal (`page.tsx`, `space-y-7`), primer bloque. */
+/** En el perfil va plana, en la columna del complejo (`page.tsx`), debajo de las canchas. */
 const meta = {
   title: 'Player/TenantProfile/TenantGallery',
   component: TenantGallery,
@@ -20,9 +21,11 @@ const meta = {
   args: { name: 'Complejo Fénix' },
   decorators: [
     (Story) => (
-      <div className="max-w-2xl rounded-3xl border border-border bg-card p-4 shadow-xs sm:p-6">
-        <Story />
-      </div>
+      <PortalWorld>
+        <div className="max-w-2xl bg-background p-4">
+          <Story />
+        </div>
+      </PortalWorld>
     ),
   ],
 } satisfies Meta<typeof TenantGallery>
@@ -44,12 +47,26 @@ export const UnaFoto: Story = {
   },
 }
 
+/** 2 fotos: lado a lado en todos los anchos (apiladas en el celular quedaban dos tiras finas). */
+export const DosFotos: Story = {
+  args: { photos: PHOTOS.slice(0, 2) },
+  play: async ({ canvasElement }) => {
+    const [first, second] = within(canvasElement).getAllByRole('button')
+    const a = first!.getBoundingClientRect()
+    const b = second!.getBoundingClientRect()
+    await expect(b.top).toBe(a.top)
+    await expect(b.left).toBeGreaterThan(a.right)
+  },
+}
+
 /** Varias fotos: foto principal + thumbnails, badge "+N" en la última. */
 export const VariasFotos: Story = {
   args: { photos: PHOTOS },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('+1')).toBeInTheDocument()
+    // En el celular las miniaturas no entran: este botón (solo bajo 640 px, oculto acá) avisa y abre la galería.
+    await expect(canvas.getByText('Ver 6 fotos')).toBeInTheDocument()
   },
 }
 

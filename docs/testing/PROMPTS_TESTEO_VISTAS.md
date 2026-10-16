@@ -39,7 +39,7 @@ Sprint 2 — P1 (6–8 sesiones):
   S9  settings/facturacion
   S10 reservas/[id] + reservas (listado)
   S11 mis-reservas
-  S12 /[slug] + disponibilidad
+  S12 /[slug] (perfil + reserva)
   S13 abonados/nuevo + register
 Sprint 3 — P2 (4–5 sesiones agrupadas):
   S14 canchas + abonados
@@ -537,30 +537,31 @@ Ejecutá las 7 fases. Foco:
 FASE 6: docs/testing/reports/mis-reservas.md.
 ```
 
-## S12 · Perfil público + Disponibilidad (`/[slug]`, `/[slug]/disponibilidad`)
+## S12 · Perfil público + reserva (`/[slug]`)
 
 **Coverage existente:** `tests/e2e/public-seo.spec.ts`, `tests/e2e/availability.spec.ts`.
 
 ```text
 [Pegá el BLOQUE GLOBAL arriba primero]
 
-VISTAS ASIGNADAS: /{slug} (perfil público) y /{slug}/disponibilidad (grilla semanal).
+VISTAS ASIGNADAS: /{slug} (perfil público con la reserva: día, formato, hora, cancha). /{slug}/disponibilidad ya no existe: redirige a /{slug}?date=.
 PRIORIDAD: P1. SPECS EXISTENTES (extender): public-seo.spec.ts, availability.spec.ts.
 Usá slug "e2e-complejo-demo". SIN autenticación (vistas públicas).
 
 Ejecutá las 7 fases. Foco:
   PERFIL:
    - Datos del complejo (nombre, dirección, teléfono, fotos), canchas, reviews (promedio+listado).
-   - AvailabilityGrid carga en Suspense (skeleton → contenido).
-   - Botón "Reservar" → /{slug}/disponibilidad o /reservar.
+   - La reserva (ReserveSection) carga en Suspense (skeleton → días y horas).
+   - Elegir hora → canchas libres a esa hora → tocar una lleva a /{slug}/reservar?court&date&time&dur.
    - Tenant suspended/blocked/canceled/churned/deleted → página UNAVAILABLE.
    - Slug inexistente → 404.
    - SEO: <title>, meta description, JSON-LD LocalBusiness + BreadcrumbList (cross-check public-seo).
-  DISPONIBILIDAD:
-   - Grilla semanal; slot libre clickeable → /reservar?...; ocupado no clickeable.
-   - Navegación semana ant/sig. Slots fuera de horario no aparecen. Fechas cerradas bloqueadas.
+  RESERVA:
+   - Chips de día (hoy + días de anticipación), formato si hay más de uno, horas con "N libres" / "Queda 1" / "Completo".
+   - Hora completa no elegible. Horas pasadas y fuera de horario no aparecen. Días cerrados deshabilitados con "Cerrado".
+   - Estado en la URL (?date=&formato=&hora=); /{slug}/disponibilidad?date= redirige a /{slug}?date=.
    - A11y: project axe-audit (tests/e2e/a11y/public.spec.ts ya cubre público; extendé si hace falta).
-FASE 6: docs/testing/reports/perfil-disponibilidad.md.
+FASE 6: docs/testing/reports/perfil-reserva.md.
 ```
 
 ## S13 · Nuevo abonado + Registro (`/abonados/nuevo`, `/register`)

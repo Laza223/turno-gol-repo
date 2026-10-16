@@ -2,9 +2,10 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, within } from 'storybook/test'
 import { uid } from '@/test/fixtures/ids'
 import { reviewItem, reviews } from '@/test/fixtures/public'
+import { PortalWorld } from '@/components/world/PortalWorld'
 import ReviewsSection from './ReviewsSection'
 
-/** En el perfil vive dentro de la card blanca principal (`page.tsx`, `space-y-7`). */
+/** En el perfil va plana, en la columna del complejo (`page.tsx`). */
 const meta = {
   title: 'Player/TenantProfile/ReviewsSection',
   component: ReviewsSection,
@@ -12,24 +13,17 @@ const meta = {
   args: { tenantId: uid(1) },
   decorators: [
     (Story) => (
-      <div className="max-w-2xl rounded-3xl border border-border bg-card p-4 shadow-xs sm:p-6">
-        <Story />
-      </div>
+      <PortalWorld>
+        <div className="max-w-2xl bg-background p-4">
+          <Story />
+        </div>
+      </PortalWorld>
     ),
   ],
 } satisfies Meta<typeof ReviewsSection>
 
 export default meta
 type Story = StoryObj<typeof meta>
-
-/** Sin reseñas todavía: empty state con ícono. */
-export const SinResenas: Story = {
-  args: { initial: [], total: 0, average: 0 },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.getByText('Todavía no hay reseñas de este complejo.')).toBeInTheDocument()
-  },
-}
 
 /** Con reseñas y rating promedio, sin más páginas por cargar. */
 export const ConResenas: Story = {

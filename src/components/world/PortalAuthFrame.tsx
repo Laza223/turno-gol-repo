@@ -10,6 +10,10 @@ import { PortalWorld } from './PortalWorld'
 export const PORTAL_TITLE =
   'font-display text-[28px] font-extrabold leading-9 tracking-[-0.01em] text-foreground'
 
+/** Título de sección de las páginas del portal (Fotos, Horarios, Reseñas…): el mismo Archivo 800, a 20 px. */
+export const PORTAL_SECTION_TITLE =
+  'font-display text-xl font-extrabold leading-7 tracking-[-0.01em] text-foreground'
+
 /**
  * Botón de las pantallas de ingreso: 48 px a todo el ancho, plano (sin sombra ni levante al
  * hover ni al apretar) y con el foco separado por el color del fondo, sin la banda blanca del

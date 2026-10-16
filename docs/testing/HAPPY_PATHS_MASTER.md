@@ -183,61 +183,46 @@ Fixtures usadas: Tenant Demo `e2e-complejo-demo` (`requires_deposit:false`, `dep
 - **Prerrequisitos:** Tenant `e2e-complejo-sena` seedeado, status público (no `suspended/blocked/canceled/churned/deleted`).
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/e2e-complejo-sena`.
-  2. Esperar el render del h1 con el nombre del tenant (`src/app/(public)/[slug]/components/TenantHeader.tsx:59-61`).
-  3. Verificar la sección "Canchas (N)" con las `CourtCard` (`src/app/(public)/[slug]/page.tsx:97-104`).
-  4. Click en el chip "Cómo llegar" (`src/app/(public)/[slug]/components/TenantHeader.tsx:87-90`) — abre Google Maps en tab nueva.
-  5. Click en el chip de teléfono (`tel:`) (`TenantHeader.tsx:91-94`).
-  6. Click en el chip "Ver semana completa" → navega a `/e2e-complejo-sena/disponibilidad` (`TenantHeader.tsx:106-109`).
-  7. Volver al perfil. En la sección "Disponibilidad" (h2, `src/app/(public)/[slug]/components/AvailabilityGrid.tsx:258`), esperar el fetch inicial a `/api/public/availability?slug=e2e-complejo-sena&date=<hoy>` (`AvailabilityGrid.tsx:190`).
-  8. Click en el botón "Día siguiente" (aria-label, `AvailabilityGrid.tsx:297-305`) y esperar el refetch.
-  9. Click en un slot libre (label "Reservar", precio en centavos formateado) para un turno futuro; navega a `/e2e-complejo-sena/reservar?court=...&date=...&time=...&dur=...` (`AvailabilityGrid.tsx:145-153`).
+  2. Esperar el h1 con el nombre del tenant (`ComplexHero.tsx`, `PORTAL_TITLE`).
+  3. Verificar la línea de datos "N cancha(s) · Fútbol N" de la cabecera y el link "Cómo llegar" (`target=_blank` a Google Maps).
+  4. Verificar el link de contacto: "WhatsApp" (`wa.me`) o "Llamar" (`tel:`), según `resolveTenantContact`. Solo `href`, sin click.
+  5. En la región "Reservá tu turno" (`ReserveSection.tsx`), esperar el fetch inicial a `/api/public/availability?slug=e2e-complejo-sena&date=<hoy>`.
+  6. Elegir el chip del día siguiente (grupo "Día") y esperar el refetch.
+  7. Elegir la primera hora libre (grupo "Hora"): debajo aparece "Canchas libres a las HH:MM".
+  8. Tocar la primera cancha de la lista; navega a `/e2e-complejo-sena/reservar?court=...&date=...&time=...&dur=...` (`CourtRows.tsx`, `buildReservarHref`).
 - **Comportamiento de componentes:**
-  - Loading: `src/app/(public)/[slug]/loading.tsx:1-31` (skeleton de header + galería + grilla) para la navegación inicial (ISR); dentro de la página, `<Suspense fallback={<Skeleton className="h-64 rounded-lg" />}>` envuelve `AvailabilityGrid` porque usa `useSearchParams()` (`src/app/(public)/[slug]/page.tsx:108-113`). Dentro de `AvailabilityGrid`, el fetch inicial y cada cambio de día muestran `<Skeleton className="h-48 rounded-lg" />` (`AvailabilityGrid.tsx:310`).
-  - Anti-doble-submit: los botones "Día anterior"/"Día siguiente" se deshabilitan mientras `loading===true` o fuera de rango (`disabled={!date || !today || date <= today || loading}` y `disabled={!date || !maxDate || date >= maxDate || loading}`, `AvailabilityGrid.tsx:263,300`).
-  - Feedback: si el fetch de un cambio de día falla, aparece `role="alert"` con el texto "No pudimos cargar la disponibilidad de ese día. Revisá tu conexión e intentá de nuevo." y la grilla se queda en el día previo — comentario explícito "la grilla sigue mostrando el dia previo" (`AvailabilityGrid.tsx:209-234` catch de `loadDate`, `AvailabilityGrid.tsx:312-321` markup del alert).
+  - Loading: `src/app/(public)/[slug]/(perfil)/loading.tsx` (silueta plana: portada, nombre, chips, links y reserva) para la navegación inicial; dentro de la página, `<Suspense fallback={<ReserveSkeleton />}>` envuelve `ReserveSection` porque usa `useSearchParams()` (`(perfil)/page.tsx`). Mientras `useArtNow` no hidrató, `ReserveSection` muestra el mismo esqueleto.
+  - Anti-doble-submit: no aplica — días, formato y horas son `RadioGroup` locales; las filas de cancha son `<Link>` de navegación.
+  - Feedback: si el pedido de un día falla, aparece `role="alert"` "No pudimos cargar los horarios del <día>" con "Reintentar" y el día elegido se conserva. Día cerrado: "Cerrado el <día>" con salida al próximo día abierto. Sin lugar: "No quedan horarios el <día>" con salida al próximo día con lugar (`DayEmptyState.tsx`).
 - **Validación de datos:**
-  - DB: ninguna escritura. Lecturas server-side: `getPublicTenant(slug)`, `getAverageRating`, `getPublicCourtCards`, `getReviewsByTenant` (`src/app/(public)/[slug]/page.tsx:46,66-70`).
-  - API/Action: `GET /api/public/availability?slug=<slug>&date=<YYYY-MM-DD>` → 200 con `AvailabilityResponse` (`src/app/api/public/availability/route.ts:25-57`); 404 `{error:'not_found'}` si el tenant no es públicamente visible; 400 `{error:'date_out_of_range'}` fuera de `[hoy, hoy+bookingAdvanceDays]`.
+  - DB: ninguna escritura. Lecturas server-side: `getPublicTenant(slug)`, `getAverageRating`, `getPublicCourtCards`, `getReviewsByTenant` (`(perfil)/page.tsx`).
+  - API/Action: `GET /api/public/availability?slug=<slug>&date=<YYYY-MM-DD>` → 200 con `AvailabilityResponse` (`src/app/api/public/availability/route.ts`); 404 `{error:'not_found'}` si el tenant no es públicamente visible; 400 `{error:'date_out_of_range'}` fuera de `[hoy, hoy+bookingAdvanceDays]`. `trackProfileViewedAction` (`profile.viewed`) tras la primera carga de horas, una vez por pestaña y complejo.
   - Externos: ninguno (el pago de la seña ocurre recién en `/reservar`, fuera de este caso).
-  - UI-sin-reload: SÍ, `fetch()` client-side desde un Client Component (`'use client'`, `AvailabilityGrid.tsx:1,190,215-216`) — no hay `router.refresh()` ni `revalidatePath` acá.
-- **Evidencia (path:línea):**
-  - `src/app/(public)/[slug]/components/TenantHeader.tsx:59` — h1 `{tenant.name}`.
-  - `src/app/(public)/[slug]/components/TenantHeader.tsx:89,93,108` — textos "Cómo llegar" / `{tenant.phone}` / "Ver semana completa".
-  - `src/app/(public)/[slug]/page.tsx:97-99` — h2 "Canchas (N)".
-  - `src/app/(public)/[slug]/components/AvailabilityGrid.tsx:258` — h2 "Disponibilidad".
-  - `src/app/(public)/[slug]/components/AvailabilityGrid.tsx:190` — `fetch(\`/api/public/availability?slug=${...}&date=${initialDate}\`)`.
-  - `src/app/(public)/[slug]/components/AvailabilityGrid.tsx:150` — label "Reservar" en el `<Link>` a `/reservar`.
-  - `src/app/(public)/[slug]/components/AvailabilityGrid.tsx:312` — comentario "la grilla sigue mostrando el dia previo"; `319-320` — texto de error de fetch.
-  - `src/app/api/public/availability/route.ts:42,47` — respuestas `not_found` (404) / `date_out_of_range` (400).
-  - `src/app/(public)/[slug]/loading.tsx:1` — skeleton ISR de la página.
+  - UI-sin-reload: SÍ, `fetch()` client-side desde un Client Component (`reserve-data.ts`) — no hay `router.refresh()` ni `revalidatePath` acá. La elección vive en la URL (`?date=&formato=&hora=`, `history.replaceState`).
+- **Evidencia:**
+  - `ComplexHero.tsx` — h1 `{tenant.name}`, links "Cómo llegar" / "WhatsApp" o "Llamar".
+  - `ReserveSection.tsx` — región `aria-label="Reservá tu turno"`, grupos "Día" / "Formato" / "Hora".
+  - `CourtRows.tsx` — h2 "Canchas libres a las HH:MM" y `<Link>` a `/reservar`.
+  - `reserve-data.ts` — `fetch('/api/public/availability?slug=…&date=…')`.
+  - `src/app/api/public/availability/route.ts` — respuestas `not_found` (404) / `date_out_of_range` (400).
+  - `(perfil)/loading.tsx` — skeleton ISR de la página.
 
 ---
 
-## TG-HP-004 — Disponibilidad semanal `/e2e-complejo-sena/disponibilidad`
+## TG-HP-004 — Redirect `/e2e-complejo-sena/disponibilidad` → ficha del complejo
 - **Rol:** Visitante (no autenticado)
 - **Prerrequisitos:** Tenant `e2e-complejo-sena` seedeado, status público.
+- **Contexto:** la vista semanal se sacó en el PR 2.3a (decisión del dueño, 2026-10-15). Los días y las horas viven en la ficha (`/e2e-complejo-sena`); el link viejo sigue andando por un redirect permanente.
 - **Flujo de navegación (UI steps):**
-  1. Navegar a `http://localhost:3000/e2e-complejo-sena/disponibilidad`.
-  2. Esperar el render del link de vuelta "{tenant.name}" con ícono `ChevronLeft` (`src/app/(public)/[slug]/disponibilidad/page.tsx:37-39`).
-  3. Verificar el h1 "Disponibilidad semanal" (`disponibilidad/page.tsx:40`).
-  4. En la fila de tabs de días (`aria-pressed`), click en el segundo tab (mañana) (`src/app/(public)/[slug]/disponibilidad/components/WeeklyAvailability.tsx:33-46`).
-  5. Dentro de la cancha listada, click en un slot libre (ej. `18:00`, con precio ARS debajo) para navegar a `/e2e-complejo-sena/reservar?court=...&date=...&time=18:00&dur=...` (`WeeklyAvailability.tsx:62-72`).
-- **Comportamiento de componentes:**
-  - Loading: `src/app/(public)/[slug]/disponibilidad/loading.tsx:1-27` (skeleton de back-link + heading + 7 filas de día × 8 chips) — se activa porque la página es `export const dynamic = 'force-dynamic'` (`disponibilidad/page.tsx:11`) y hace `await getPublicWeeklyAvailability(...)` server-side antes de renderizar (sin Suspense interno: el loading.tsx de Next cubre toda la carga inicial).
-  - Anti-doble-submit: no aplica — los tabs de día son botones locales (`setActive(i)`, sin red) y los slots son `<Link>` de navegación, no forms (`WeeklyAvailability.tsx:33-46,63-71`).
-  - Feedback: sin toast. Día sin canchas → "Sin canchas disponibles este día." (`WeeklyAvailability.tsx:50`); cancha sin turnos libres → "Sin turnos libres." (`WeeklyAvailability.tsx:59`).
+  1. Navegar a `http://localhost:3000/e2e-complejo-sena/disponibilidad` (con o sin `?date=`).
+  2. La URL termina en `/e2e-complejo-sena` (la query se conserva).
+  3. Verificar el h1 con el nombre del tenant.
 - **Validación de datos:**
-  - DB: ninguna escritura. Lectura server-side `getPublicWeeklyAvailability(tenant, getArtToday())` (`disponibilidad/page.tsx:26`).
-  - API/Action: NO hay fetch a `/api/public/*` en esta vista — a diferencia del perfil (`TG-HP-003`), la semana se resuelve 100% server-side en el Server Component antes del render (`disponibilidad/page.tsx:21-26`); el cambio de tab activo es solo estado local del array `week.days` ya cargado (`WeeklyAvailability.tsx:22-24`).
-  - Externos: ninguno.
-  - UI-sin-reload: cambiar de tab de día NO dispara red (estado `useState` local); solo el click en un slot navega (Next `<Link>`) a `/reservar`.
+  - DB: ninguna escritura ni lectura propia.
+  - Redirect: `next.config.ts` → `redirects()`, `{ source: '/:slug/disponibilidad', destination: '/:slug', permanent: true }` (308). `tests/e2e/availability.spec.ts` mira el 308 y la query sin seguirlo.
 - **Evidencia (path:línea):**
-  - `src/app/(public)/[slug]/disponibilidad/page.tsx:11` — `export const dynamic = 'force-dynamic'`.
-  - `src/app/(public)/[slug]/disponibilidad/page.tsx:40` — h1 "Disponibilidad semanal".
-  - `src/app/(public)/[slug]/disponibilidad/components/WeeklyAvailability.tsx:22-24` — `const day = week.days[active]!` (estado local, sin fetch).
-  - `src/app/(public)/[slug]/disponibilidad/components/WeeklyAvailability.tsx:50,59` — textos "Sin canchas disponibles este día." / "Sin turnos libres.".
-  - `src/app/(public)/[slug]/disponibilidad/components/WeeklyAvailability.tsx:65` — `href={\`/${slug}/reservar?court=${court.id}&date=${day.date}&time=${s.time}&dur=${s.duration}\`}`.
-  - `src/app/(public)/[slug]/disponibilidad/loading.tsx:1` — skeleton dedicado.
+  - `next.config.ts` — entrada `/:slug/disponibilidad` en `redirects()`.
+  - `tests/e2e/qa-happy-paths/publico/TG-HP-004.spec.ts` — recorrido en el navegador.
 
 ---
 
@@ -426,7 +411,7 @@ Fixtures usadas: Tenant Demo `e2e-complejo-demo` (`requires_deposit:false`, `dep
 ## GAPS
 
 - **TG-HP-002**: el contrato pide "listá los filtros reales que existen" — están listados en el caso, pero el filtro "Formato" completo (Fútbol 4 a 11) no se ejercita paso a paso en el flujo (solo se cubren los quick-chips 5/7/11); un sub-agente que quiera cubrir Fútbol 4/6/8/9/10 debe abrir el drawer y usar los botones de `ExplorarFilters.tsx:145-167` directamente.
-- **TG-HP-003 / TG-HP-004**: no hay una constante compartida de "hoy en ART" entre ambas vistas — el perfil calcula `today` client-side (`AvailabilityGrid.tsx:44-47`, `Date.now() - 3h`) y la semanal lo hace server-side con la misma fórmula (`disponibilidad/page.tsx:17-19`); no es un GAP funcional, pero un sub-agente que compare fechas entre ambas vistas en el borde de medianoche ART puede ver desincronía de 1 día si corre el test justo en el corte — no vale la pena un caso aparte, se deja documentado.
+- **TG-HP-003**: el perfil calcula `today` client-side (`useArtNow`, `Date.now() - 3h`). TG-HP-004 ya no es una vista aparte (la semanal se sacó; es un redirect), así que la comparación de fechas entre dos vistas dejó de aplicar.
 - **TG-HP-010**: no se ubicó una página o mock que dispare el estado `LoadingState` (spinner "Verificando tu enlace…") de forma determinística sin backend real — ese estado solo ocurre en el instante entre el mount y el redirect del callback de Supabase (no hay un query param que lo fuerce, ver `verify/VerifyView.tsx:229-237`: sin `status=success` y sin `error` cae ahí, pero eso es exactamente "ningún param" — se puede navegar a `/verify` a secas para verlo, pero es una vista transitoria real, no un estado controlable por query param como los otros dos).
 - No se redactó ningún caso para `/reservar` (formulario de reserva, checkout con/sin seña) — está fuera de los 10 IDs pedidos (TG-HP-001 a TG-HP-010 son estrictamente los listados en el contrato); si el bloque de reserva/checkout es un lote aparte, no está cubierto acá.
 

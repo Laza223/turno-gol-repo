@@ -101,8 +101,8 @@ Ejecutar este checklist en cada uno de los 5 browsers target la primera vez ante
 1. Abrir `https://turnogol.app` en Safari
 2. Navegar `/explorar` → search funcional, no horizontal scroll
 3. Tap complejo de prueba → portal `/c/{slug}` carga
-4. Tap "Ver disponibilidad" → `/[slug]/disponibilidad` carga con grid
-5. Tap slot → form de reserva visible, keyboard tel correcto en celular
+4. En la misma ficha, tap un día → las horas cargan en el lugar (`/[slug]/disponibilidad` ya no existe: redirige a la ficha)
+5. Tap una hora → debajo aparecen las canchas libres; tap una cancha → form de reserva visible, keyboard tel correcto en celular
 6. **PWA install** (para test push):
    - Tap Compartir (icono cuadrado con flecha)
    - "Añadir a inicio"

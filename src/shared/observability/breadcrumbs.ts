@@ -113,8 +113,15 @@ type AuthCtx = {
  *   Las dos salidas, cuando haga falta: (a) emitirlo desde el cliente contra un
  *   endpoint, que es infraestructura que la Fase 5 probablemente necesite
  *   igual; (b) sacarle el ISR a la portada, si el dato vale más que 300s de
- *   cache. Las otras dos páginas del embudo son `force-dynamic`, así que sus
- *   eventos sí cuentan visitas reales.
+ *   cache.
+ *
+ * `profile.viewed` tomó la salida (a): la ficha del complejo (`(perfil)/page.tsx`) también es
+ * ISR, así que lo emite el cliente con la Server Action `trackProfileViewedAction`
+ * (`(perfil)/actions.ts`), una vez por pestaña cuando el primer día termina de cargar. Hasta el PR 2.3a
+ * salía de `/disponibilidad` (`force-dynamic`, ya eliminada) y contaba visitas a la vista
+ * semanal: la serie cambia de escala, no se compara hacia atrás (nota en
+ * `docs/gtm/ejecucion/06-metricas-activacion.md`). `checkout.viewed` sí sigue saliendo de una
+ * página `force-dynamic`, así que cuenta visitas reales.
  */
 type FunnelEvent = 'portal.viewed' | 'profile.viewed' | 'checkout.viewed'
 

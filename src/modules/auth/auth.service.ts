@@ -104,6 +104,17 @@ export async function signInWithExistingPlayerMagicLink(
       track.auth('magiclink.sent', { flow: 'reaccess_unknown_email' })
       return { ok: true }
     }
+    // Límite de envío por dirección de Supabase (por defecto 60 s entre mails).
+    // Solo lo alcanza un email EXISTENTE — el inexistente corta antes en
+    // `otp_disabled` —, así que contestar error acá revelaba que la cuenta existe.
+    // Nuestro `enforce('authMagicLink')` (5/min) deja pasar el segundo pedido, no
+    // lo tapa. No se manda mail nuevo: el enlace anterior sigue valiendo.
+    // Queda la diferencia de tiempos (un envío real tarda más que estas dos
+    // salidas tempranas); es conocida y no se intenta igualar.
+    if (error.code === 'over_email_send_rate_limit') {
+      track.auth('magiclink.sent', { flow: 'reaccess_rate_limited' })
+      return { ok: true }
+    }
     return { ok: false, error: error.message }
   }
   track.auth('magiclink.sent', { flow: 'reaccess' })

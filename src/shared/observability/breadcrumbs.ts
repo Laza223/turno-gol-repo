@@ -87,8 +87,10 @@ type AuthCtx = {
    * `reaccess_unknown_email`: se pidió re-acceso para un email no registrado —
    * al caller se le responde igual que a un envío real (no filtramos qué emails
    * existen), así que este es el único rastro de que no se mandó ningún mail.
+   * `reaccess_rate_limited`: email existente que volvió a pedir dentro del mínimo
+   * de Supabase — mismo `ok: true`, sin mail nuevo (vale el enlace anterior).
    */
-  flow?: 'signup' | 'reaccess' | 'reaccess_unknown_email'
+  flow?: 'signup' | 'reaccess' | 'reaccess_unknown_email' | 'reaccess_rate_limited'
   /** magiclink.clicked: si el intercambio del código terminó en sesión. */
   ok?: boolean
 }

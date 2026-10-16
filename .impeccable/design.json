@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-24T03:35:53Z",
+  "generatedAt": "2026-10-15T00:00:00Z",
   "title": "Design System: TurnoGol",
   "extensions": {
     "colorMeta": {
@@ -441,8 +441,98 @@
       },
       "night-slab": {
         "role": "neutral",
-        "displayName": "Losa nocturna",
+        "displayName": "Losa nocturna (web comercial y staff; saliente en el portal)",
         "canonical": "#020617",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "portal-background": {
+        "role": "neutral",
+        "displayName": "Blanco de página (portal, claro)",
+        "canonical": "hsl(0 0% 100%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "portal-surface": {
+        "role": "neutral",
+        "displayName": "Slate de superficie (portal, claro)",
+        "canonical": "hsl(210 40% 96.1%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "portal-muted-foreground": {
+        "role": "neutral",
+        "displayName": "Texto secundario (portal, claro)",
+        "canonical": "hsl(215.3 19.3% 34.5%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "portal-border": {
+        "role": "neutral",
+        "displayName": "Línea de superficie (portal, claro)",
+        "canonical": "hsl(214.3 31.8% 91.4%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "portal-input": {
+        "role": "neutral",
+        "displayName": "Borde de campo (portal, claro)",
+        "canonical": "hsl(215.4 16.3% 46.9%)",
+        "tonalRamp": [
+          "#020617",
+          "#0f172a",
+          "#1e293b",
+          "#475569",
+          "#64748b",
+          "#94a3b8",
+          "#cbd5e1",
+          "#f1f5f9"
+        ]
+      },
+      "portal-input-dark": {
+        "role": "neutral",
+        "displayName": "Borde de campo (portal, oscuro)",
+        "canonical": "hsl(215.4 16.3% 50%)",
         "tonalRamp": [
           "#020617",
           "#0f172a",
@@ -458,7 +548,7 @@
     "typographyMeta": {
       "display": {
         "displayName": "Display",
-        "purpose": "Titulares del portal del jugador, en itálica. Uno por pantalla."
+        "purpose": "Título de cada pantalla del portal, Archivo 800 recta. Uno por pantalla."
       },
       "headline": {
         "displayName": "Headline",
@@ -487,6 +577,14 @@
       "microlabel": {
         "displayName": "Microlabel",
         "purpose": "Rótulo en mayúsculas de una o dos palabras (nombre del complejo en la barra)."
+      },
+      "portal-body": {
+        "displayName": "Portal body",
+        "purpose": "Cuerpo del portal, 16 px."
+      },
+      "portal-label": {
+        "displayName": "Portal label",
+        "purpose": "Botones y rótulos de campo del portal."
       }
     },
     "shadows": [
@@ -644,18 +742,43 @@
       "description": "Firma del panel: borde izquierdo de 3 px del tono del estado + tinte suave; el ícono y el rótulo dicen qué es.",
       "html": "<div class=\"ds-slot-grid\"><button class=\"ds-slot is-paid\"><strong>20:00</strong><span>Copados FC · Jugada</span></button><button class=\"ds-slot is-pending\"><strong>21:00</strong><span>Los Pibes · Esperando seña</span></button><button class=\"ds-slot-free\" aria-label=\"Cargar turno a las 22:00\">+</button></div>",
       "css": ".ds-slot-grid { display:grid; gap:4px; max-width:240px; } .ds-slot { display:flex; flex-direction:column; align-items:flex-start; gap:2px; padding:6px 8px; border:0; border-left:3px solid; border-radius:6px; font:600 11px/1.2 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; color:hsl(var(--foreground, 224 71% 4%)); text-align:left; cursor:pointer; } .ds-slot strong { font:700 13px/1.2 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; font-variant-numeric:tabular-nums; } .ds-slot.is-paid { border-left-color:hsl(var(--success, 142 72% 29%)); background:hsl(var(--success, 142 72% 29%) / .15); } .ds-slot.is-pending { border-left-color:hsl(var(--warning, 32 95% 44%)); background:hsl(var(--warning, 32 95% 44%) / .1); } .ds-slot-free { height:36px; border:1px solid hsl(var(--border, 214 32% 83%) / .6); border-radius:6px; background:hsl(var(--card, 0 0% 100%)); color:hsl(var(--muted-foreground, 215 20% 36%) / .4); font:600 14px/1 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; cursor:pointer; transition:border-color 150ms, color 150ms; } .ds-slot-free:hover { border-color:#10b981; color:#059669; background:rgba(16,185,129,.05); } .ds-slot:focus-visible, .ds-slot-free:focus-visible { outline:none; box-shadow:inset 0 0 0 2px hsl(var(--ring, 160 84% 39%)); }"
+    },
+    {
+      "name": "Botón primario del portal",
+      "kind": "button",
+      "refersTo": "button-portal-primary",
+      "description": "La única acción verde de la pantalla: plano, 48 px, a todo el ancho. Pendiente conserva relleno y etiqueta.",
+      "html": "<button class=\"ds-pbtn ds-pbtn-primary\">Mandame el enlace</button>",
+      "css": ".ds-pbtn { display:flex; align-items:center; justify-content:center; width:100%; min-height:48px; padding:12px 16px; border-radius:12px; font:500 16px/1.5 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; cursor:pointer; transition:background-color 200ms, color 200ms, border-color 200ms; } .ds-pbtn-primary { border:0; background:hsl(var(--primary, 163 94% 24%)); color:hsl(var(--primary-foreground, 0 0% 100%)); } .ds-pbtn-primary:hover { background:hsl(var(--primary, 163 94% 24%) / .9); } .ds-pbtn:focus-visible { outline:none; box-shadow:0 0 0 2px hsl(var(--background, 0 0% 100%)), 0 0 0 4px hsl(var(--primary, 163 94% 24%)); }"
+    },
+    {
+      "name": "Botón outline del portal",
+      "kind": "button",
+      "refersTo": "button-portal-outline",
+      "description": "La alternativa (Continuar con Google, Reenviar): borde input a 3:1. Deshabilitado sin opacidad: texto muted y borde border.",
+      "html": "<div style=\"display:grid;gap:12px;max-width:384px\"><button class=\"ds-pbtn ds-pbtn-outline\">Continuar con Google</button><button class=\"ds-pbtn ds-pbtn-outline\" disabled>Reenviar en 42 s</button></div>",
+      "css": ".ds-pbtn { display:flex; align-items:center; justify-content:center; width:100%; min-height:48px; padding:12px 16px; border-radius:12px; font:500 16px/1.5 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; cursor:pointer; transition:background-color 200ms, color 200ms, border-color 200ms; } .ds-pbtn-outline { border:1px solid hsl(var(--input, 215.4 16.3% 46.9%)); background:hsl(var(--card, 0 0% 100%)); color:hsl(var(--foreground, 224 71% 4%)); } .ds-pbtn-outline:hover { background:hsl(var(--accent, 210 40% 96.1%)); } .ds-pbtn-outline:disabled { cursor:not-allowed; border-color:hsl(var(--border, 214.3 31.8% 91.4%)); color:hsl(var(--muted-foreground, 215.3 19.3% 34.5%)); background:hsl(var(--card, 0 0% 100%)); font-variant-numeric:tabular-nums; } .ds-pbtn:focus-visible { outline:none; box-shadow:0 0 0 2px hsl(var(--background, 0 0% 100%)), 0 0 0 4px hsl(var(--primary, 163 94% 24%)); }"
+    },
+    {
+      "name": "Campo del portal",
+      "kind": "input",
+      "refersTo": "input-portal",
+      "description": "48 px, borde input (slate-500) a 3:1, esquina de 12 px; el error va sobre el campo, con el mensaje debajo.",
+      "html": "<label class=\"ds-pfield\"><span>Email</span><input class=\"ds-pinput\" type=\"email\" placeholder=\"vos@email.com\" /><small>Sin contraseña: te mandamos un enlace para entrar.</small></label>",
+      "css": ".ds-pfield { display:grid; gap:8px; max-width:384px; font:500 16px/1.5 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; color:hsl(var(--foreground, 224 71% 4%)); } .ds-pfield small { font:400 14px/1.43 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; color:hsl(var(--muted-foreground, 215.3 19.3% 34.5%)); } .ds-pinput { height:48px; padding:8px 14px; border:1px solid hsl(var(--input, 215.4 16.3% 46.9%)); border-radius:12px; background:hsl(var(--card, 0 0% 100%)); color:hsl(var(--foreground, 224 71% 4%)); font:400 16px/1.5 var(--font-inter, Inter), ui-sans-serif, system-ui, sans-serif; } .ds-pinput::selection { background:hsl(var(--primary, 163 94% 24%) / .25); } .ds-pinput::placeholder { color:hsl(var(--muted-foreground, 215.3 19.3% 34.5%) / .6); } .ds-pinput:focus-visible { outline:none; border-color:hsl(var(--primary, 163 94% 24%)); box-shadow:0 0 0 2px hsl(var(--background, 0 0% 100%)), 0 0 0 4px hsl(var(--primary, 163 94% 24%)); } .ds-pinput[aria-invalid=\"true\"] { border-color:hsl(var(--destructive, 0 72% 51%)); }"
     }
   ],
   "narrative": {
-    "northStar": "El Mostrador y La Previa",
-    "overview": "TurnoGol es un solo sistema con dos personalidades. Comparten paleta, tipografías y primitivas; cambia cuánta expresión se permite cada una. **El Mostrador** es el panel del complejo: una herramienta que el encargado usa toda la noche en una notebook con mouse, mientras atiende gente y contesta el WhatsApp. Es denso pero obvio, con los datos primero, un solo verde que grita por vista y movimiento corto. **La Previa** es el portal del jugador y la web: una vidriera con checkout, una idea por pantalla, el verde usado como deseo (resplandores, cifras de precio, el CTA de reservar) y titulares en Archivo negra e itálica.\n\nEl mundo es césped de noche sobre slate. En claro, tarjetas blancas que flotan con sombras en capas sobre un fondo slate frío; en oscuro, losas slate-950 con superficies de vidrio (relleno blanco al 3 %, desenfoque y un resplandor esmeralda). Los dos temas son de primera: ninguna vista se diseña para uno y \"después se verá\" el otro; arranca el del sistema (`next-themes`, `defaultTheme=\"system\"`). El estado nunca se comunica solo con color: siempre va color, ícono y texto, y lo resuelve una sola tabla de tonos.\n\nEste documento describe el estilo tal como está en el código al 2026-09-23 y es la única autoridad de diseño del repo. El panel se **refina** sobre este estilo; no se reemplaza. Donde los documentos anteriores (hoy en `docs/archive/design-system/`) y el código no coincidían, ganó el código. Rechazo confirmado por el dueño el 2026-09-23: cambiar este mundo por uno austero de papel y tinta, sin fondos ni sombras (la dirección \"Tablero de partidas\").",
+    "northStar": "El Mostrador y La Reserva",
+    "overview": "TurnoGol es un solo sistema con dos personalidades. Comparten el verde de marca, las tipografías, el logo y las primitivas de `src/components/ui/`; cada una tiene su mundo. **El Mostrador** es el panel del complejo: una herramienta que el encargado usa toda la noche en una notebook con mouse, mientras atiende gente y contesta el WhatsApp. Es denso pero obvio, con los datos primero, un solo verde que grita por vista y movimiento corto. **La Reserva** es el portal del jugador: el estándar de las apps de reservas de canchas, con el flujo de ATC y una terminación más linda y moderna, sin perder accesibilidad (compromiso de marca de `PRODUCT.md`). Es plano: fondo blanco en claro, bordes de 1 px, un solo verde para lo elegido y la acción principal, títulos en Archivo 800 recta. Sin mundo temático, sin resplandores y sin vidrio.\n\nEl mundo del panel es césped de noche sobre slate. En claro, tarjetas blancas que flotan con sombras en capas sobre un fondo slate frío; en oscuro, losas slate-950 con superficies de vidrio (relleno blanco al 3 %, desenfoque y un resplandor esmeralda). Los dos temas son de primera: ninguna vista se diseña para uno y \"después se verá\" el otro; arranca el del sistema (`next-themes`, `defaultTheme=\"system\"`). El estado nunca se comunica solo con color: siempre va color, ícono y texto, y lo resuelve una sola tabla de tonos.\n\nEste documento describe el estilo tal como está en el código al 2026-09-23 y es la única autoridad de diseño del repo. El panel se **refina** sobre este estilo; no se reemplaza. Donde los documentos anteriores (hoy en `docs/archive/design-system/`) y el código no coincidían, ganó el código. Rechazo confirmado por el dueño el 2026-09-23: cambiar este mundo por uno austero de papel y tinta, sin fondos ni sombras (la dirección \"Tablero de partidas\"). Ese rechazo es del panel; el portal plano es otra decisión del dueño (2026-10-15) y no lo reabre.\n\n**La Reserva reemplaza a \"La Previa\"** (la vidriera con resplandores, vidrio, fotos de fondo y titulares en negra itálica) y se migra página por página. Hoy están en el mundo nuevo `/ingresar`, `/aceptar-terminos` y los estados de jugador de `/verify` (PR 2.1). El resto del portal conserva el aspecto saliente hasta su PR: la barra y el pie (2.2), la página del complejo y la reserva (2.3), las páginas del jugador (2.4), la home (2.5) y Explorar (2.6). **El aspecto saliente no se extiende a nada nuevo**: una superficie o pieza nueva del portal se construye en La Reserva aunque la página que la rodea todavía no haya migrado. Las recetas de La Previa que siguen en el código (`PlayerHeroBand`, `.hero-accent-text`, la losa nocturna, el vidrio y los resplandores del portal) se describen acá solo como saliente, no como reglas.",
     "keyCharacteristics": [
       "Esmeralda sobre slate, con claro y oscuro como temas de primera.",
-      "Claro = elevación (sombras en capas). Oscuro = vidrio (blanco al 3 % + blur + resplandor).",
+      "Panel: claro = elevación (sombras en capas), oscuro = vidrio (blanco al 3 % + blur + resplandor). Portal: plano en los dos temas.",
       "Inter trabaja; Archivo titula, pone las cifras clave y firma el logo. Toda cifra es tabular.",
       "Estado = color + ícono + texto, siempre desde `src/lib/status-tone.ts`.",
       "Panel denso y movimiento corto (200 ms en los controles). Lo único largo es un pulso de 600 ms, una sola vez: el turno que entra a la grilla o la reserva recién confirmada.",
-      "Un solo primario por vista."
+      "Un solo primario por vista.",
+      "El portal se pinta con tokens propios, colgados de `html` cuando hay un `[data-world='portal']` en la página; el panel no cambia."
     ],
     "rules": [
       {
@@ -666,6 +789,11 @@
       {
         "name": "The Reserved Hues Rule",
         "body": "`success`, `warning`, `info` y `destructive` son estado, no decoración. Lo que entra va en verde y lo que sale en rojo, siempre con signo y rótulo.",
+        "section": "colors"
+      },
+      {
+        "name": "The Component Border Rule",
+        "body": "En el portal, lo que delimita un control que se toca o se tipea (campo, casilla, botón `outline`) lleva `border-input` (3:1 o más contra el fondo); `border-border` es solo para separar superficies.",
         "section": "colors"
       },
       {
@@ -680,12 +808,17 @@
       },
       {
         "name": "The Display Discipline Rule",
-        "body": "`font-display` solo en títulos, cifras clave, el logo y los titulares del portal. Nunca en párrafos, tablas ni formularios.",
+        "body": "`font-display` solo en títulos, cifras clave, el logo y los títulos del portal. Nunca en párrafos, tablas ni formularios.",
         "section": "typography"
       },
       {
         "name": "The 16px Field Rule",
         "body": "Todo campo donde se tipea mide 16 px por debajo de 768 px y 14 px desde ahí (`text-base md:text-sm`); si no, iOS hace zoom al enfocar. No hay escape hacia abajo; hacia arriba existe `.field-lg` (18 px). `globals.css` tiene una red de seguridad fuera de `@layer`, que no reemplaza escribir la clase.",
+        "section": "typography"
+      },
+      {
+        "name": "The Upright Title Rule",
+        "body": "En el portal el título es Archivo 800 recta de 28 px con -0.01em. La itálica es del logo; un título nuevo del portal en negra itálica es aspecto saliente. Las cifras que cuentan hacia atrás (\"Reenviar en 42 s\") y las horas y precios del portal van tabulares (The Tabular Rule).",
         "section": "typography"
       },
       {
@@ -706,17 +839,25 @@
       "**Do** mantener el movimiento de los controles del panel en 200 ms o menos, animando transform, opacidad, color o sombra, nunca ancho, alto ni posición. Las excepciones de hoy: la sheet al abrir (300 ms), el levante de `.card-premium-interactive` (250 ms) y el pulso de un turno nuevo (600 ms, una vez). `prefers-reduced-motion` congela todo desde `globals.css`: una animación nueva tiene que verse bien congelada.",
       "**Do** colgar los controles de una vista en el hueco de la barra superior (`AdminHeaderSlot`) en vez de sumar filas de encabezado.",
       "**Do** reservar 44 px de blanco táctil debajo de 768 px (`h-11 md:h-10`) y dejar la fila entera clickeable cuando abre un detalle.",
-      "**Do** escribir en voseo, en sentence case y con el vocabulario de pantalla de `PRODUCT.md`; mayúsculas solo en microrrótulos de una o dos palabras con `tracking`."
+      "**Do** escribir en voseo, en sentence case y con el vocabulario de pantalla de `PRODUCT.md`; mayúsculas solo en microrrótulos de una o dos palabras con `tracking`.",
+      "**Do** construir todo lo nuevo del portal en La Reserva, aunque la página que lo rodea todavía no haya migrado: superficies planas, fondo `background`, bordes de 1 px, botones planos de 48 px y una sola acción verde por pantalla.",
+      "**Do** colgar los tokens del portal de `html:has([data-world='portal'])` (`portal-world.css` + `PortalWorld`), para que alcancen a los portales de Radix en `body` (diálogos, Toaster). Un token del portal nunca se escribe en `:root`, `.dark`, `.dark-surface` ni `src/components/ui/*`.",
+      "**Do** mantener las compuertas del portal en verde: `tests/unit/portal-world-tokens.test.ts` hashea los tokens del panel (cambiarlos a propósito actualiza el hash en el mismo PR) y la story de `PortalWorld` mide 9 tokens en claro y en oscuro.",
+      "**Do** marcar el error en el campo o la casilla que falló, con el mensaje debajo."
     ],
     "donts": [
       "**Don't** reemplazar este mundo por uno austero de papel y tinta, sin fondos ni sombras (la dirección \"Tablero de partidas\", descartada por el dueño el 2026-09-23).",
       "**Don't** mostrar el turno terminado y sin cobrar como alarma ni como deuda: es \"por cobrar\" (principio 3 de `PRODUCT.md`). El anillo rojo actual (`.slot-alarm-ring`) es lo primero que corrige el refinamiento.",
       "**Don't** usar emerald-500 o emerald-600 como texto sobre claro, ni texto blanco de 14 px sobre emerald-600 o amber-600.",
       "**Don't** escribir hex inline en JSX, ni sombras, degradés o vidrio inline; tampoco `dark:` sueltos para arreglar una primitiva: se arregla el token.",
-      "**Don't** poner `bg-white` como fondo de página, ni `text-black`/`bg-black`.",
+      "**Don't** poner `bg-white` como fondo de página, ni `text-black`/`bg-black`. El blanco del portal sale del token (`bg-background` bajo `PortalWorld`), no de la clase.",
       "**Don't** agregar librerías de animación (la única excepción es `/onboarding`, con `motion` en `LazyMotion`) ni loops infinitos fuera del skeleton y de la web comercial.",
       "**Don't** usar el placeholder como rótulo, emojis como íconos estructurales ni fechas ISO o anglicismos de dashboard (\"Revenue\", \"Booking\") frente al usuario.",
-      "**Don't** mostrar un número verificable que no salga de datos reales (prueba social, escasez, contadores): lo trucho descubierto destruye la confianza para pagar la seña y es publicidad engañosa (Ley 24.240)."
+      "**Don't** mostrar un número verificable que no salga de datos reales (prueba social, escasez, contadores): lo trucho descubierto destruye la confianza para pagar la seña y es publicidad engañosa (Ley 24.240).",
+      "**Don't** extender La Previa: nada nuevo del portal con resplandores, vidrio, fotos de fondo, sombras de color, levante al hover, titulares en negra itálica ni disfraz temático.",
+      "**Don't** deshabilitar un botón del portal con opacidad ni dejarlo deshabilitado sin explicación.",
+      "**Don't** delimitar un campo, una casilla o un `outline` del portal con `border-border`: con 1,2:1 no llega a los 3:1 de WCAG 1.4.11.",
+      "**Don't** poner dos acciones verdes en una pantalla del portal."
     ]
   }
 }

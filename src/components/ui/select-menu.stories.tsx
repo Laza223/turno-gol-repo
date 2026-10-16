@@ -81,7 +81,12 @@ export const ElegirOpcion: Story = {
     const hiddenInput = canvasElement.querySelector('input[name="surfaceType"]')
     await expect(hiddenInput).toHaveValue('cement')
 
-    // Reabrir: la opción elegida tiene que quedar marcada.
+    // Reabrir: la opción elegida tiene que quedar marcada. Antes, esperar que el
+    // menú anterior se desmonte: mientras sigue montado con `data-state=closed`,
+    // el pointerdown sobre el trigger a veces abre y cierra enseguida, o se pierde.
+    await waitFor(() =>
+      expect(canvasElement.ownerDocument.querySelector('[role="menu"]')).toBeNull(),
+    )
     await userEvent.click(canvas.getByLabelText('Superficie'))
     await waitFor(() => expect(body.getByRole('menu')).toBeVisible())
     await expect(body.getByRole('menuitemradio', { name: 'Cemento' })).toHaveAttribute(

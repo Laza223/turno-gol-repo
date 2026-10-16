@@ -66,3 +66,37 @@ describe('signInWithGooglePlayer — selectAccount', () => {
     expect(signInWithOAuth.mock.calls[0]![0].options).not.toHaveProperty('queryParams')
   })
 })
+
+// Re-acceso por email (/ingresar): la respuesta no puede depender de si la cuenta
+// existe. `otp_disabled` = email inexistente; `over_email_send_rate_limit` = email
+// existente que volvió a pedir dentro del mínimo de Supabase. Los dos son "enviado".
+describe('signInWithExistingPlayerMagicLink — no revela qué emails existen', () => {
+  it('otp_disabled (email inexistente) responde ok', async () => {
+    signInWithOtp.mockResolvedValue({
+      error: { code: 'otp_disabled', message: 'Signups not allowed for otp' },
+    })
+    await expect(signInWithExistingPlayerMagicLink('nadie@example.com', REDIRECT)).resolves.toEqual(
+      { ok: true },
+    )
+  })
+
+  it('over_email_send_rate_limit (cuenta existente, reenvío) responde ok', async () => {
+    signInWithOtp.mockResolvedValue({
+      error: {
+        code: 'over_email_send_rate_limit',
+        message: 'For security purposes, you can only request this after 42 seconds.',
+      },
+    })
+    await expect(signInWithExistingPlayerMagicLink('ana@example.com', REDIRECT)).resolves.toEqual({
+      ok: true,
+    })
+  })
+
+  it('un error real sigue saliendo como error', async () => {
+    signInWithOtp.mockResolvedValue({ error: { code: 'unexpected_failure', message: 'boom' } })
+    await expect(signInWithExistingPlayerMagicLink('ana@example.com', REDIRECT)).resolves.toEqual({
+      ok: false,
+      error: 'boom',
+    })
+  })
+})

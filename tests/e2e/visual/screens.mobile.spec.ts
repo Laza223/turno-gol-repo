@@ -26,8 +26,14 @@ test('ficha pública mobile @visual', async ({ page }) => {
     /^(ready|closed|error)$/,
   )
   await expect(page).toHaveScreenshot('perfil-publico-mobile.png', {
-    // Ver el spec de escritorio: la reserva y el estado de apertura son "ahora"-relativos por diseño.
-    mask: [page.getByRole('region', { name: 'Reservá tu turno' }), page.getByTestId('open-status')],
+    // Ver el spec de escritorio: la reserva, el estado de apertura, la tira de días (sangra fuera
+    // de la región) y la fila de hoy en Horarios son "ahora"-relativos por diseño.
+    mask: [
+      page.getByRole('region', { name: 'Reservá tu turno' }),
+      page.getByTestId('open-status'),
+      page.getByRole('radiogroup', { name: 'Día' }),
+      page.getByTestId('opening-hours'),
+    ],
   })
 })
 

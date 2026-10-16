@@ -20,7 +20,10 @@ export default function OpeningHoursList({
   const today = date ? dayKeyOf(date) : null
 
   return (
-    <dl className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+    <dl
+      data-testid="opening-hours"
+      className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card"
+    >
       {DAY_KEYS.filter((key) => openingHours[key]).map((key) => {
         const day = openingHours[key]
         const isToday = key === today

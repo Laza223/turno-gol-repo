@@ -1,6 +1,16 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+
+// next/image necesita config de runtime (Invalid URL en happy-dom si ningún test previo del
+// worker fijó la URL de la página): se simplifica a un <img>.
+vi.mock('next/image', () => ({
+  default: (props: Record<string, unknown>) => {
+    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+    return <img {...(props as Record<string, never>)} />
+  },
+}))
+
 import TenantGallery from '@/app/(public)/[slug]/components/TenantGallery'
 
 afterEach(() => cleanup())

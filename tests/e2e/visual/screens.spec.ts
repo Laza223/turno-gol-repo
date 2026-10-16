@@ -76,6 +76,10 @@ test.describe('visual — público', () => {
         // isla del estado: se rompe ruidosamente si alguien le saca la accesibilidad.
         page.getByRole('region', { name: 'Reservá tu turno' }),
         page.getByTestId('open-status'),
+        // La tira de días sangra 4 px (`-m-1`) fuera de la región, y ahí asoma el chip
+        // que sigue, que cambia con el día. Horarios resalta la fila de hoy.
+        page.getByRole('radiogroup', { name: 'Día' }),
+        page.getByTestId('opening-hours'),
       ],
     })
   })

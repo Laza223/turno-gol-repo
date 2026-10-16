@@ -1,11 +1,14 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
+import { PortalWorld } from '@/components/world/PortalWorld'
 import { PlayerBottomNav } from './PlayerBottomNav'
 
 /**
  * `fixed inset-x-0 bottom-0` + `md:hidden`: viewport mobile fijo, contenido
  * en una caja con containing block propio para no tapar el canvas. `usePathname`
  * viene del mock estándar de next/navigation (parameters.nextjs.navigation).
+ * Plana: el ítem activo va en verde, semibold y con una marca `primary` de 2 px arriba del
+ * ícono; los tres ítems miden 56 px o más. `RutaExplorarMundo` la mira con los tokens del portal.
  */
 const meta = {
   title: 'Player/PlayerBottomNav',
@@ -29,6 +32,22 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
+/** Solo el ítem activo lleva la marca y el semibold; el resto no, y todos dan 56 px de blanco táctil. */
+async function expectActivo(canvasElement: HTMLElement, activo: string) {
+  const links = within(canvasElement).getAllByRole('link')
+  await expect(links).toHaveLength(3)
+  for (const link of links) {
+    const esActivo = link.textContent === activo
+    await expect(link.querySelector('span[aria-hidden="true"].bg-primary') !== null).toBe(esActivo)
+    await expect(getComputedStyle(link).fontWeight === '600').toBe(esActivo)
+    await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(56)
+    // Piso tipográfico del portal: nada baja de 13 px.
+    await expect(
+      parseFloat(getComputedStyle(link.querySelector('span:not([aria-hidden])')!).fontSize),
+    ).toBeGreaterThanOrEqual(13)
+  }
+}
+
 export const RutaExplorar: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/explorar' } } },
   play: async ({ canvasElement }) => {
@@ -37,7 +56,19 @@ export const RutaExplorar: Story = {
       'aria-current',
       'page',
     )
+    await expectActivo(canvasElement, 'Explorar')
   },
+}
+
+export const RutaExplorarMundo: Story = {
+  ...RutaExplorar,
+  decorators: [
+    (Story) => (
+      <PortalWorld>
+        <Story />
+      </PortalWorld>
+    ),
+  ],
 }
 
 export const RutaMisReservas: Story = {
@@ -48,6 +79,7 @@ export const RutaMisReservas: Story = {
       'aria-current',
       'page',
     )
+    await expectActivo(canvasElement, 'Reservas')
   },
 }
 
@@ -59,5 +91,6 @@ export const RutaConfiguracion: Story = {
       'aria-current',
       'page',
     )
+    await expectActivo(canvasElement, 'Cuenta')
   },
 }

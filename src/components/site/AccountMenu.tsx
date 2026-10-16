@@ -22,10 +22,11 @@ type Props = {
   signOutAction: () => Promise<void>
 }
 
-// Touch-target 44px en mobile (WCAG 2.5.5), 36px en desktop. `group` habilita
-// el desplazamiento del ícono/label en hover.
+// Ítems planos de 44px en todos los anchos (WCAG 2.5.5): hover y foco cambian el
+// fondo, nada se desplaza. El anillo de foco va adentro para que no lo recorte el panel.
 const itemClass =
-  'group relative flex min-h-11 w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-hidden transition-all duration-200 md:min-h-9 focus-visible:bg-accent focus-visible:text-accent-foreground'
+  'flex min-h-11 w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-hidden transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary'
+const itemIconClass = 'h-4 w-4 text-muted-foreground'
 
 /**
  * Chip de avatar + nombre con panel desplegable de cuenta (estilo ecommerce).
@@ -44,10 +45,13 @@ export function AccountMenu({
   variant = 'solid',
   signOutAction,
 }: Props) {
+  // `solid` es plano: sin ring, sombra ni fondo en reposo; el hover pinta `accent` y el
+  // foco es el anillo de la barra (separado con el color de la barra). `-mr-3 pr-2`: el
+  // chevron termina a ras del margen, igual que "Ingresar", y el borde no salta al ingresar.
   const chip =
     variant === 'overlay'
-      ? 'bg-foreground/6 hover:bg-foreground/10 ring-border text-foreground dark:bg-white/15 dark:hover:bg-white/25 dark:ring-white/25 dark:text-white'
-      : 'bg-card hover:bg-accent ring-border text-foreground'
+      ? 'ring-1 bg-foreground/6 hover:bg-foreground/10 ring-border text-foreground dark:bg-white/15 dark:hover:bg-white/25 dark:ring-white/25 dark:text-white focus-visible:ring-emerald-500 focus-visible:ring-offset-2'
+      : '-mr-3 pr-2 md:h-11 text-foreground hover:bg-accent focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-card dark:focus-visible:ring-offset-background'
 
   return (
     <Popover>
@@ -56,7 +60,7 @@ export function AccountMenu({
           type="button"
           aria-label={`Cuenta de ${firstName}`}
           className={cn(
-            'inline-flex h-11 items-center gap-2 rounded-full py-1 pl-1 pr-3 ring-1 transition-colors md:h-10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2',
+            'inline-flex h-11 items-center gap-2 rounded-full py-1 pl-1 pr-3 transition-colors md:h-10 focus-visible:outline-hidden focus-visible:ring-2',
             chip,
           )}
         >
@@ -64,11 +68,20 @@ export function AccountMenu({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
           ) : (
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
               {initials(firstName, lastName)}
             </span>
           )}
-          <span className="max-w-32 truncate text-sm font-medium">{firstName}</span>
+          {/* En `solid`, debajo de sm queda el avatar solo (el nombre sigue en el aria-label): con el
+              nombre, a 375 px la barra no entra o lo corta con "…". */}
+          <span
+            className={cn(
+              'max-w-32 truncate text-sm font-medium',
+              variant === 'solid' && 'hidden sm:block',
+            )}
+          >
+            {firstName}
+          </span>
           <ChevronDown className="h-4 w-4 opacity-70" aria-hidden />
         </button>
       </PopoverTrigger>
@@ -79,16 +92,12 @@ export function AccountMenu({
         aria-label={`Menú de cuenta de ${firstName}`}
         className="w-72 p-2"
       >
-        <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-muted/20 border border-border/40 mb-1.5">
+        <div className="flex items-center gap-3 px-2.5 py-2.5">
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={avatarUrl}
-              alt=""
-              className="h-10 w-10 rounded-full object-cover ring-2 ring-emerald-500/10"
-            />
+            <img src={avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
           ) : (
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-emerald-500 to-teal-600 text-sm font-bold text-white shadow-xs">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
               {initials(firstName, lastName)}
             </span>
           )}
@@ -96,48 +105,32 @@ export function AccountMenu({
             <p className="truncate text-sm font-semibold text-foreground leading-none mb-1">
               {firstName} {lastName}
             </p>
-            <p className="truncate text-xs text-muted-foreground leading-none">{email}</p>
+            <p className="truncate text-[13px] text-muted-foreground leading-none">{email}</p>
           </div>
         </div>
+        <div className="my-1.5 h-px bg-border" />
 
         <Link href="/mis-reservas" className={itemClass}>
-          <Calendar
-            className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500 group-focus:text-emerald-500 transition-colors"
-            aria-hidden
-          />
-          <span className="group-hover:translate-x-0.5 transition-transform duration-200">
-            Mis reservas
-          </span>
+          <Calendar className={itemIconClass} aria-hidden />
+          Mis reservas
         </Link>
         <Link href="/configuracion" className={itemClass}>
-          <Settings
-            className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500 group-focus:text-emerald-500 transition-colors"
-            aria-hidden
-          />
-          <span className="group-hover:translate-x-0.5 transition-transform duration-200">
-            Cuenta
-          </span>
+          <Settings className={itemIconClass} aria-hidden />
+          Cuenta
         </Link>
 
         <div className="my-1.5 h-px bg-border" />
         <div className="px-2 py-1.5">
-          <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Tema
-          </p>
-          <ThemeToggle />
+          <p className="mb-2 text-sm text-muted-foreground">Tema</p>
+          <ThemeToggle variant="portal" />
         </div>
 
         <div className="my-1.5 h-px bg-border" />
 
         <form action={signOutAction}>
           <button type="submit" className={cn(itemClass, 'text-left')}>
-            <LogOut
-              className="h-4 w-4 text-muted-foreground group-hover:text-emerald-500 group-focus:text-emerald-500 transition-colors"
-              aria-hidden
-            />
-            <span className="group-hover:translate-x-0.5 transition-transform duration-200">
-              Salir
-            </span>
+            <LogOut className={itemIconClass} aria-hidden />
+            Salir
           </button>
         </form>
       </PopoverContent>

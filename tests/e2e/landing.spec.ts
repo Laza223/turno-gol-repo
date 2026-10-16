@@ -10,11 +10,12 @@ test.describe('landing page', () => {
     page,
   }) => {
     await page.goto('/')
-    // La home usa PortalHeader overlay: el CTA logged-out es "Ingresar" → /ingresar.
+    // La home usa PortalHeader overlay: el CTA logged-out es "Ingresar" → /ingresar, con
+    // `next` = la página actual para volver ahí (la home es `/`, codificada %2F).
     // No hay CTA "Comenzá gratis" en la home; ese CTA vive en /para-complejos (BusinessHeader).
     const ingresarLink = page.getByRole('link', { name: 'Ingresar' }).first()
     await expect(ingresarLink).toBeVisible()
-    await expect(ingresarLink).toHaveAttribute('href', '/ingresar')
+    await expect(ingresarLink).toHaveAttribute('href', '/ingresar?next=%2F')
 
     const paraComplejosLink = page.getByRole('link', { name: /para complejos/i }).first()
     await expect(paraComplejosLink).toBeVisible()

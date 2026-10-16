@@ -29,6 +29,24 @@ describe('PlayerBottomNav a11y', () => {
     const inactive = screen.getByRole('link', { name: /explorar/i })
     expect(inactive.getAttribute('aria-current')).toBeNull()
   })
+
+  // El activo no se dice solo con color: verde, semibold y una marca `primary` arriba del
+  // ícono. La marca es decorativa (aria-hidden): el lector ya tiene aria-current.
+  it.each([
+    ['/explorar', 'Explorar'],
+    ['/mis-reservas', 'Reservas'],
+    ['/configuracion', 'Cuenta'],
+  ])('en %s solo %s lleva la marca primary y el semibold', (pathname, activo) => {
+    vi.mocked(usePathname).mockReturnValue(pathname)
+    render(<PlayerBottomNav />)
+    const links = screen.getAllByRole('link')
+    expect(links).toHaveLength(3)
+    for (const link of links) {
+      const esActivo = link.textContent === activo
+      expect(link.querySelector('span[aria-hidden="true"].bg-primary') !== null).toBe(esActivo)
+      expect(link.className.includes('font-semibold')).toBe(esActivo)
+    }
+  })
 })
 
 describe('AdminSidebar a11y', () => {

@@ -108,7 +108,7 @@ Fixtures usadas: Tenant Demo `e2e-complejo-demo` (`requires_deposit:false`, `dep
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/`.
   2. Esperar a que renderice el h1 "Reservá tu cancha al instante." (`src/app/home/Hero.tsx:64-67`).
-  3. Verificar la nav flotante con el link "Explorar" y el CTA "Ingresar" (`src/components/site/PortalHeader.tsx:40-45,64-69`).
+  3. Verificar la nav flotante con el link "Explorar" y el CTA "Ingresar" (`src/components/site/PortalHeader.tsx:63-69,95`).
   4. En el formulario "Buscá disponibilidad ahora" (`src/components/site/HeroSearch.tsx:120`), completar el campo "Complejo" (id `hero-q-v`) con `demo` (`src/components/site/HeroSearch.tsx:125-141`).
   5. Click en el combobox "Localidad" (id `hero-city-v`) y elegir una opción de la lista (`src/components/site/HeroSearch.tsx:146-169`).
   6. Click en el botón "Buscar canchas" (`src/components/site/HeroSearch.tsx:227-233`).
@@ -131,8 +131,8 @@ Fixtures usadas: Tenant Demo `e2e-complejo-demo` (`requires_deposit:false`, `dep
   - `src/components/site/HeroSearch.tsx:146-148` — label "Localidad", combobox `id="hero-city-v"`.
   - `src/components/site/HeroSearch.tsx:232` — texto del botón "Buscar canchas".
   - `src/components/site/HeroSearch.tsx:89` — `router.push(qs ? \`/explorar?${qs}\` : '/explorar')`.
-  - `src/components/site/PortalHeader.tsx:44` — link "Explorar".
-  - `src/components/site/PortalHeader.tsx:68` — link "Ingresar" (deslogueado).
+  - `src/components/site/PortalHeader.tsx:63-69` — link "Explorar".
+  - `src/components/site/PortalHeader.tsx:95` — link "Ingresar" (deslogueado), a `/ingresar?next=<página actual>`.
   - `src/app/home/FeaturedComplexes.tsx:31` — h2 "Los mejor valorados" (solo si `featured.length > 0`, `src/app/page.tsx:60`).
   - `src/app/home/HowItWorks.tsx:8,15,22` — pasos "Explorá complejos" / "Compará disponibilidad" / "Confirmá y jugá".
 

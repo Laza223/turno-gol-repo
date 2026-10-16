@@ -24,7 +24,9 @@ export default function PortalFrame({ header, footer, children }: Props) {
     <div
       className={cn(
         'flex min-h-dvh flex-col player-shell-bg',
-        session && 'pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0',
+        // Alto real de la barra inferior: 56 px de ítems + 1 px de borde (+ safe-area). Con más
+        // padding queda una franja de `player-shell-bg` entre el pie y la barra.
+        session && 'pb-[calc(3.5rem+1px+env(safe-area-inset-bottom))] md:pb-0',
       )}
     >
       {header}

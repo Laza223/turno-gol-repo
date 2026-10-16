@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
+import { PortalWorld } from '@/components/world/PortalWorld'
 import SiteFooter from './SiteFooter'
 import {
   CONTACT_EMAIL,
@@ -10,7 +11,11 @@ import {
   contactWhatsappUrl,
 } from '@/lib/contact'
 
-/** Footer del portal del jugador — theme-adaptive vía tokens, estático. */
+/**
+ * Footer del portal del jugador — plano, theme-adaptive vía tokens, estático. "Ingresar" vuelve
+ * a la página actual (`parameters.nextjs.navigation`). Solo usa tokens semánticos: `ConMundo` lo
+ * mira con los del portal además de con los del panel.
+ */
 const meta = {
   title: 'Player/SiteFooter',
   component: SiteFooter,
@@ -26,8 +31,22 @@ type Story = StoryObj<typeof meta>
  * si mañana cambia el número, la story no tiene que enterarse.
  */
 export const Default: Story = {
+  parameters: {
+    nextjs: {
+      appDirectory: true,
+      navigation: { pathname: '/explorar', query: { city: 'rosario' } },
+    },
+  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    await expect(canvas.getByRole('link', { name: 'Ingresar' })).toHaveAttribute(
+      'href',
+      '/ingresar?next=%2Fexplorar%3Fcity%3Drosario',
+    )
+    // Navegación real, no texto corrido: 44 px de alto en todos los links y canales.
+    for (const link of canvas.getAllByRole('link')) {
+      await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
+    }
     await expect(
       canvas.getByRole('link', { name: `WhatsApp ${CONTACT_WHATSAPP_DISPLAY}` }),
     ).toHaveAttribute('href', contactWhatsappUrl())
@@ -41,4 +60,15 @@ export const Default: Story = {
     // El link viejo se fue: si vuelve, es que alguien deshizo el grupo.
     await expect(canvas.queryByRole('link', { name: 'Contacto' })).toBeNull()
   },
+}
+
+export const ConMundo: Story = {
+  ...Default,
+  decorators: [
+    (Story) => (
+      <PortalWorld>
+        <Story />
+      </PortalWorld>
+    ),
+  ],
 }

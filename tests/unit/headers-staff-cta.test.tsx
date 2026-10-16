@@ -10,14 +10,23 @@ vi.mock('next/image', () => ({
   },
 }))
 
-vi.mock('next/navigation', () => ({ usePathname: () => '/' }))
+// La página donde "está" el visitante: PortalHeader arma `/ingresar?next=` con esto.
+const nav = vi.hoisted(() => ({ pathname: '/', search: '' }))
+vi.mock('next/navigation', () => ({
+  usePathname: () => nav.pathname,
+  useSearchParams: () => new URLSearchParams(nav.search),
+}))
 
 import BusinessHeader from '@/components/site/BusinessHeader'
 import PortalHeader from '@/components/site/PortalHeader'
 import { PortalSessionProvider } from '@/components/site/PortalSessionProvider'
 import type { PortalSession } from '@/modules/players/portal-session'
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  nav.pathname = '/'
+  nav.search = ''
+})
 
 const PLAYER: PortalSession = {
   playerId: 'p1',
@@ -103,7 +112,7 @@ describe('PortalHeader — acceso al panel', () => {
   )
 
   it.each(['overlay', 'solid'] as const)(
-    'variante %s: sin sesión queda igual que antes, Ingresar → /ingresar',
+    'variante %s: sin sesión, Ingresar → /ingresar y vuelve a la home (next=%2F)',
     (variant) => {
       render(
         withSession(<PortalHeader variant={variant} signOutAction={signOutAction} />, {
@@ -111,10 +120,42 @@ describe('PortalHeader — acceso al panel', () => {
           staffPanelPath: null,
         }),
       )
-      expect(screen.getByRole('link', { name: 'Ingresar' }).getAttribute('href')).toBe('/ingresar')
+      expect(screen.getByRole('link', { name: 'Ingresar' }).getAttribute('href')).toBe(
+        '/ingresar?next=%2F',
+      )
       expect(screen.queryByRole('link', { name: 'Ir a mi panel' })).toBeNull()
     },
   )
+
+  it.each(['overlay', 'solid'] as const)(
+    'variante %s: Ingresar lleva la página actual con su query para volver ahí',
+    (variant) => {
+      nav.pathname = '/explorar'
+      nav.search = 'city=Rosario&q=palermo'
+      render(
+        withSession(<PortalHeader variant={variant} signOutAction={signOutAction} />, {
+          session: null,
+          staffPanelPath: null,
+        }),
+      )
+      expect(screen.getByRole('link', { name: 'Ingresar' }).getAttribute('href')).toBe(
+        '/ingresar?next=%2Fexplorar%3Fcity%3DRosario%26q%3Dpalermo',
+      )
+    },
+  )
+
+  it.each(['overlay', 'solid'] as const)('variante %s: Ir a mi panel no lleva next', (variant) => {
+    nav.pathname = '/explorar'
+    render(
+      withSession(<PortalHeader variant={variant} signOutAction={signOutAction} />, {
+        session: null,
+        staffPanelPath: '/dashboard',
+      }),
+    )
+    expect(screen.getByRole('link', { name: 'Ir a mi panel' }).getAttribute('href')).toBe(
+      '/dashboard',
+    )
+  })
 
   it('el jugador gana sobre el complejo: se muestra su menú de cuenta', () => {
     render(

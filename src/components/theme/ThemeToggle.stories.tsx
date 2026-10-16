@@ -69,3 +69,47 @@ export const SeleccionaSistema: Story = {
     )
   },
 }
+
+/**
+ * Variante del portal (La Reserva): segmentos de 44 px y 14 px, planos. La elegida se marca con
+ * relleno `accent` + semibold, sin borde verde; el verde (anillo `primary` de 2 px) es solo del
+ * foco, así que elegida y enfocada nunca se ven iguales. El panel sigue con la de siempre.
+ */
+export const Portal: Story = {
+  args: { variant: 'portal' },
+  decorators: [
+    (Story) => (
+      <div className="w-72">
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const radios = within(canvasElement).getAllByRole('radio')
+    const relleno = (r: HTMLElement) => getComputedStyle(r).backgroundColor !== 'rgba(0, 0, 0, 0)'
+    const anillo = (r: HTMLElement) => getComputedStyle(r).boxShadow !== 'none'
+    for (const radio of radios) {
+      await expect(radio.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
+      await expect(getComputedStyle(radio).fontSize).toBe('14px')
+    }
+    await userEvent.click(within(canvasElement).getByRole('radio', { name: 'Oscuro' }))
+    const marcados = radios.filter((r) => r.getAttribute('aria-checked') === 'true')
+    await expect(marcados).toHaveLength(1)
+    // Visualmente activo = relleno + semibold + borde sin color: exactamente la elegida.
+    const seVenActivos = radios.filter(
+      (r) =>
+        relleno(r) &&
+        getComputedStyle(r).fontWeight === '600' &&
+        getComputedStyle(r).borderTopColor === 'rgba(0, 0, 0, 0)',
+    )
+    await expect(seVenActivos).toEqual(marcados)
+    // Con el foco en OTRO segmento: el enfocado lleva anillo y sin relleno, la elegida no lleva anillo.
+    const otro = radios.find((r) => !marcados.includes(r))!
+    await userEvent.tab()
+    otro.focus({ focusVisible: true } as FocusOptions)
+    await expect(anillo(otro)).toBe(true)
+    await expect(relleno(otro)).toBe(false)
+    await expect(anillo(marcados[0]!)).toBe(false)
+    await expect(relleno(marcados[0]!)).toBe(true)
+  },
+}

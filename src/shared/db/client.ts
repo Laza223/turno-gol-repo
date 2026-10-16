@@ -4,7 +4,6 @@ import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { sql as drizzleSql } from 'drizzle-orm'
 import * as schema from './schema'
 import { withTimeout } from '@/shared/utils/async'
-import { silentConnectionOptions } from './silent-connection'
 
 const DEFAULT_URL = 'postgres://postgres:postgres@127.0.0.1:54322/postgres'
 
@@ -53,9 +52,7 @@ function resolvePoolMax(): number {
 // instancias tibias y el worker de Railway se agota el `pool_size` de
 // Supavisor (hoy 15) y la siguiente request de staff se queda sin slot
 // (EMAXCONNSESSION), tirando abajo la resolución de tenant. Valores en
-// segundos (unidades de la lib `postgres`). `IDLE_TIMEOUT_SECONDS` tiene que
-// quedar DEBAJO del corte de `./silent-connection` (30 s): si no, una conexión
-// ociosa se cortaría como muda y dispararía una alerta falsa.
+// segundos (unidades de la lib `postgres`).
 const IDLE_TIMEOUT_SECONDS = 20
 const MAX_LIFETIME_SECONDS = 30 * 60
 
@@ -111,8 +108,6 @@ export function getSql(): Sql {
     max_lifetime: MAX_LIFETIME_SECONDS,
     prepare: false,
     onnotice: () => {},
-    // Corta la conexión si queda muda en medio de un uso (ver `./silent-connection`).
-    ...silentConnectionOptions('app'),
   })
   if (process.env.NODE_ENV !== 'production') {
     globalForDb.__turnogolSql = _sql
@@ -215,7 +210,6 @@ export function getWorkerSql(): Sql {
     max_lifetime: MAX_LIFETIME_SECONDS,
     prepare: false,
     onnotice: () => {},
-    ...silentConnectionOptions('worker'),
   })
   if (process.env.NODE_ENV !== 'production') {
     globalForWorkerDb.__turnogolWorkerSql = _workerSql
@@ -260,7 +254,6 @@ export async function withDisposableWorkerDb<T>(
     connect_timeout: DISPOSABLE_CONNECT_TIMEOUT_SECONDS,
     prepare: false,
     onnotice: () => {},
-    ...silentConnectionOptions('super-admin'),
   })
   const db = drizzle(client, { schema })
   restoreJsonSerializers(client)

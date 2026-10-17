@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import PortalFrame from '@/components/site/PortalFrame'
 import PortalHeader from '@/components/site/PortalHeader'
 import { PortalSessionProvider } from '@/components/site/PortalSessionProvider'
@@ -115,6 +115,70 @@ export const ElVagonConSesion: Story = {
     await userEvent.click(canvas.getByText('Transferencia'))
     await expect(canvas.getByRole('radio', { name: /transferencia/i })).toBeChecked()
     await expect(canvas.getByRole('button', { name: 'Confirmar reserva' })).toBeEnabled()
+  },
+}
+
+/**
+ * Vuelve del ingreso con el vínculo verificado (sin seña): el form se envía solo, una vez, con el
+ * vínculo en un campo oculto, y el botón queda visible. La action es un mock: acá se ve el envío.
+ * El "Confirmando…" entra en un lugar que ya estaba reservado (nada se mueve) y el selector de pago
+ * se bloquea: un cambio ahí ya no se aplicaría.
+ */
+export const ConfirmaSola: Story = {
+  args: { autoConfirmToken: 'eyJzbHVnIjoiY2x1Yi14In0.firma-de-ejemplo-0123456789abcdefghij' },
+  render: (args) => <Screen {...args} summary={{ ...summary, hidePrices: true }} />,
+  decorators: [
+    (Story) => {
+      // La marca de "ya se envió" vive en sessionStorage y sobrevive a una nueva corrida en la misma
+      // pestaña: se limpia ANTES de montar, o el re-run no enviaría nada. (En este runner `beforeEach`
+      // corre después del primer render.)
+      for (const key of Object.keys(window.sessionStorage)) {
+        if (key.startsWith('tg-auto-confirm:')) window.sessionStorage.removeItem(key)
+      }
+      return <Story />
+    },
+  ],
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await waitFor(() => expect(args.createAction).toHaveBeenCalledTimes(1))
+    await expect(canvas.getByRole('button', { name: /Confirmar reserva|Procesando/ })).toBeVisible()
+    const form = canvasElement.querySelector('form')!
+    await expect(form.querySelector('input[type="hidden"][name="booking_intent"]')).toHaveValue(
+      args.autoConfirmToken,
+    )
+    await expect(canvas.getByRole('radio', { name: /efectivo/i })).toBeDisabled()
+    await expect(canvas.getByRole('radio', { name: /transferencia/i })).toBeDisabled()
+
+    // Sin salto de layout: el mismo nodo vacío, como llega del servidor, mide lo mismo que con el
+    // texto puesto, y ese alto es el reservado (1,5 rem = la línea de 16 px).
+    const status = canvas.getByRole('status')
+    await waitFor(() => expect(status).toHaveTextContent('Confirmando tu reserva…'))
+    const empty = status.cloneNode(false) as HTMLElement
+    status.after(empty)
+    const emptyHeight = empty.getBoundingClientRect().height
+    empty.remove()
+    await expect(status.getBoundingClientRect().height).toBe(emptyHeight)
+    await expect(emptyHeight).toBe(parseFloat(getComputedStyle(status).minHeight))
+    await expect(getComputedStyle(status).fontSize).toBe('16px')
+  },
+}
+
+/**
+ * Volvió con un vínculo que no valió (vencido, de otro email o de otro turno), sin seña: la pantalla
+ * normal, con una línea corta que pide tocar el botón. Nada se envía solo y el selector queda libre.
+ */
+export const VinculoQueNoValio: Story = {
+  args: { intentDegraded: true },
+  render: (args) => <Screen {...args} summary={{ ...summary, hidePrices: true }} />,
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    const line = canvas.getByText('Tocá Confirmar reserva para terminar.')
+    await expect(line).toBeVisible()
+    await expect(getComputedStyle(line).fontSize).toBe('16px')
+    await expect(canvas.queryByRole('status')).not.toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: 'Confirmar reserva' })).toBeEnabled()
+    await expect(canvas.getByRole('radio', { name: /efectivo/i })).toBeEnabled()
+    await expect(args.createAction).not.toHaveBeenCalled()
   },
 }
 

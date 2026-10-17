@@ -439,25 +439,25 @@ Fixtures usados en todos los casos (ver contrato):
   3. Rellenar `Nombre` (`name="firstName"`) con `"Juan"` y `Email` (`name="email"`, type=email) con `"e2e-player@turnogol.test"`. Desde el PR 2.3b1 no hay Apellido.
   4. Tildar el checkbox `name="terms"` ("Soy mayor de 18 años y acepto los términos y condiciones de uso (declaración jurada)." — LoginGate.tsx:304). Sin la casilla nada se deshabilita: el error sale en la casilla.
   5. Click en el botón `"Continuar con mi email"` (LoginGate.tsx:242-243).
-  6. Esperar el estado `sent`: título `"Revisá tu email"` (con foco) y texto `"Te mandamos un enlace a <email>."` + `"Cuando lo toques, volvés a esta pantalla con tu cuenta y ahí confirmás la reserva."`, con "Reenviar enlace" y "Usar otro email" (LoginGate.tsx:348-382).
-  7. Abrir Inbucket (`http://127.0.0.1:54324`), abrir el mensaje enviado a `e2e-player@turnogol.test`, click en el link del magic link (apunta a `/api/auth/callback?token_hash=...&type=email&next=/e2e-complejo-demo/reservar?...`).
-  8. El callback (`src/app/api/auth/callback/route.ts:54,73-100`) verifica el OTP, crea el jugador si no existe, y redirige a `/verify?status=success&next=<next>&intent=booking`.
-  9. En `/verify`, esperar h1 `"¡Cuenta confirmada!"` con subtítulo `"Volvé para terminar tu reserva."` y botón `"Continuar con mi reserva"` (src/app/(auth)/verify/VerifyView.tsx:114-118,335-358). Auto-redirect a los 5s (SuccessRedirect.tsx:5,35-37) o click manual en el botón.
-  10. Aterriza de nuevo en `/e2e-complejo-demo/reservar?...`, ahora con sesión (`isPlayer=true`) → renderiza `ConfirmBookingButton` en vez de `LoginGate` (page.tsx:118-128).
+  6. Esperar el estado `sent`: título `"Revisá tu email"` (con foco) y texto `"Te mandamos un enlace a <email>."` + `"Cuando lo toques, tu reserva queda confirmada."` (complejo sin seña; con seña dice `"…volvés a esta pantalla con tu cuenta y ahí pagás la seña."`), con "Reenviar enlace" y "Usar otro email" (LoginGate.tsx).
+  7. Abrir Inbucket (`http://127.0.0.1:54324`, helper `tests/e2e/_helpers/inbucket.ts`), abrir el mensaje enviado a `e2e-player@turnogol.test`, click en el link del magic link (apunta a `/api/auth/callback?token_hash=...&type=email&next=/e2e-complejo-demo/reservar?...%26booking_intent%3D<vínculo firmado>`).
+  8. El callback (`src/app/api/auth/callback/route.ts`) verifica el OTP, crea el jugador si no existe y, como `next` es una reserva (`isBookingPath`), redirige directo a `next`, sin `/verify` (desde el PR 2.3b2).
+  9. En `/e2e-complejo-demo/reservar?...` con sesión, la page verifica el vínculo (`src/shared/security/booking-intent.ts`: firma, mismo email, mismo turno, 60 min) y, sin seña, `AutoConfirm` envía el form de confirmar una sola vez ("Confirmando tu reserva…") y saca el vínculo de la URL.
+  10. Aterriza en `/reserva/<id>/exito` con "¡Reserva confirmada!" (redirect con `replace`). Si el vínculo no vale, queda la pantalla normal con "Tocá Confirmar reserva para terminar." y el botón.
 - **Comportamiento de componentes:**
   - Loading: `SubmitButton` del email deshabilitado mientras corre la action, con `"Enviando…"` (LoginGate.tsx:242).
   - Anti-doble-submit: el mismo `SubmitButton`; estado en dos `useActionState`, email y Google (LoginGate.tsx:93-98).
-  - Feedback: no hay toast — la propia `GateState` cambia a `{status:'sent'}` y re-renderiza el panel "Revisá tu email" en el lugar (LoginGate.tsx:348-382); luego redirect real vía `NextResponse.redirect` del callback (route.ts:100) y auto-redirect client-side de `/verify` (SuccessRedirect.tsx:22-24).
+  - Feedback: no hay toast — la propia `GateState` cambia a `{status:'sent'}` y re-renderiza el panel "Revisá tu email" en el lugar (LoginGate.tsx:348-382); luego redirect real vía `NextResponse.redirect` del callback directo a la reserva y envío automático del form (`AutoConfirm`) (antes: auto-redirect client-side de `/verify`, SuccessRedirect.tsx:22-24).
 - **Validación de datos:**
   - DB: fila nueva en `players` (email lower-cased, `first_name`, `last_name`, `agreed_to_terms_at=NOW()`, `terms_version`) — `INSERT INTO players ... ON CONFLICT (email) DO UPDATE` (src/modules/players/player.service.ts:24,52-63).
-  - API/Action: `sendPlayerMagicLink` (src/app/(public)/[slug]/reservar/actions.ts:75) → `{status:'sent'}` en éxito (actions.ts:123). `GET /api/auth/callback` → 302 a `/verify?...` (route.ts:100).
+  - API/Action: `sendPlayerMagicLink` (src/app/(public)/[slug]/reservar/actions.ts:75) → `{status:'sent'}` en éxito (actions.ts:123). `GET /api/auth/callback` → 302 directo a `next` (la reserva).
   - Externos: Resend envía el magic link vía `supabase.auth.signInWithOtp` (src/modules/auth/auth.service.ts:27-39) — visible en Inbucket `:54324`, `user_metadata` lleva `is_player`, `first_name`, `last_name`, `agreed_terms`, `terms_version` (auth.service.ts:31-37).
   - UI-sin-reload: no aplica (son navegaciones reales / redirects de servidor, no revalidatePath).
 - **Evidencia (path:línea):**
   - `src/app/(public)/[slug]/reservar/page.tsx:118-131` — render condicional LoginGate vs ConfirmBookingButton según sesión.
   - `src/app/(public)/[slug]/reservar/components/LoginGate.tsx:242-243,304,348-382` — copy exacto del form y del estado "sent".
   - `src/app/(public)/[slug]/reservar/actions.ts:75-124` — `sendPlayerMagicLink`.
-  - `src/app/api/auth/callback/route.ts:54,71-100` — verifyOtp + `getOrCreatePlayer` + redirect a `/verify`.
+  - `src/app/api/auth/callback/route.ts` — verifyOtp + `getOrCreatePlayer` + redirect directo a la reserva (`isBookingPath`).
   - `src/modules/players/player.service.ts:24-65` — `getOrCreatePlayer` (INSERT/UPDATE de `players`).
   - `src/app/(auth)/verify/VerifyView.tsx:114-118,335-358` — copy de éxito intent=booking.
   - `src/app/(auth)/verify/SuccessRedirect.tsx:5,22-24,35-37` — auto-redirect 5s.
@@ -492,7 +492,7 @@ Fixtures usados en todos los casos (ver contrato):
   - `src/app/(auth)/ingresar/IngresarForm.tsx:266-268,292,353-356,366-389` — copy exacto.
   - `src/app/(auth)/ingresar/actions.ts:25-56` — `playerLoginAction`, `next` default `/mis-reservas` (línea 45).
   - `src/app/api/auth/callback/route.ts:279-283` — misma rama `isPlayer` que TG-HP-101, sin perfil nuevo; `route.ts:62-148` (`provisionPlayerAndRedirect`).
-  - `src/lib/auth-success.ts:43-49` — `playerSuccessIntent` clasifica `next` no-booking como `'login'`.
+  - `src/lib/auth-success.ts` — `isBookingPath`: un `next` que no es una reserva sigue a `/verify` con `intent='login'` (route.ts, `successVerifyPath`).
   - `src/app/(auth)/verify/VerifyView.tsx:127-131` — copy `intent='login'`.
 
 ---

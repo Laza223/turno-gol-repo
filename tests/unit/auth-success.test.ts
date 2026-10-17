@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseIntent, parseVia, playerSuccessIntent, successVerifyPath } from '@/lib/auth-success'
+import { isBookingPath, parseIntent, parseVia, successVerifyPath } from '@/lib/auth-success'
 
 describe('parseVia', () => {
   it('acepta las dos vías del jugador', () => {
@@ -28,25 +28,36 @@ describe('parseIntent', () => {
   })
 })
 
-describe('playerSuccessIntent', () => {
-  it('booking cuando next es una ruta de reserva (jugador nuevo, default)', () => {
-    expect(playerSuccessIntent('/club-norte/reservar')).toBe('booking')
-    expect(playerSuccessIntent('/club-norte/reservar?court=1&date=2026-06-25&time=20:00')).toBe(
-      'booking',
-    )
+describe('isBookingPath', () => {
+  it('true para la pantalla de confirmar de un complejo, con o sin query', () => {
+    expect(isBookingPath('/club-norte/reservar')).toBe(true)
+    expect(isBookingPath('/club-norte/reservar?court=1&date=2026-06-25&time=20:00')).toBe(true)
   })
-  it('login para cualquier otro destino', () => {
-    expect(playerSuccessIntent('/mis-reservas')).toBe('login')
-    expect(playerSuccessIntent('/club-norte')).toBe('login')
-    expect(playerSuccessIntent('/club-norte/reservartrampa')).toBe('login')
+  it('false para cualquier otro destino', () => {
+    expect(isBookingPath('/mis-reservas')).toBe(false)
+    expect(isBookingPath('/club-norte')).toBe(false)
+    expect(isBookingPath('/club-norte/reservartrampa')).toBe(false)
+    expect(isBookingPath('/reserva/abc/exito')).toBe(false)
+    expect(isBookingPath('/')).toBe(false)
+    expect(isBookingPath('')).toBe(false)
   })
-  it('booking_returning cuando el jugador YA existía (re-acceso, no alta)', () => {
-    // Regresión QA: un re-login con next de reserva mostraba "¡Cuenta
-    // confirmada!" (copy de alta) para una cuenta que ya existía.
-    expect(playerSuccessIntent('/club-norte/reservar', false)).toBe('booking_returning')
+  it('la pantalla no tiene subrutas: tras "reservar" solo puede venir "?" o el fin', () => {
+    expect(isBookingPath('/club-norte/reservar/')).toBe(false)
+    expect(isBookingPath('/club/reservar/extra')).toBe(false)
+    expect(isBookingPath('/club/reservar/../../admin')).toBe(false)
+    expect(isBookingPath('/club/reservar#frag')).toBe(false)
   })
-  it('login (no booking_returning) para un jugador existente sin ruta de reserva', () => {
-    expect(playerSuccessIntent('/mis-reservas', false)).toBe('login')
+  it('el primer segmento es un slug: ni "?" ni "#" lo parten', () => {
+    // `/x?a=/reservar?b=1` es el path `/x` con una query que casualmente contiene `/reservar`.
+    expect(isBookingPath('/x?a=/reservar?b=1')).toBe(false)
+    expect(isBookingPath('/mis-reservas?next=/reservar/')).toBe(false)
+    expect(isBookingPath('/x#a/reservar')).toBe(false)
+  })
+  it('false si no es un path del sitio: nunca manda a otro origen', () => {
+    expect(isBookingPath('//evil.com/club/reservar')).toBe(false)
+    expect(isBookingPath('https://evil.com/club/reservar')).toBe(false)
+    // El navegador lee `\` como `/`: `/\evil.com/reservar` terminaría en //evil.com/reservar.
+    expect(isBookingPath('/\\evil.com/reservar')).toBe(false)
   })
 })
 

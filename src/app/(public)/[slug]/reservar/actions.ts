@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 import { headers, cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
+import { redirect, RedirectType } from 'next/navigation'
 import { eq, sql } from 'drizzle-orm'
 import { signInWithPlayerMagicLink, signInWithGooglePlayer } from '@/modules/auth/auth.service'
 import {
@@ -10,13 +10,25 @@ import {
   GOOGLE_TERMS_COOKIE_NAME,
   GOOGLE_TERMS_COOKIE_TTL_MS,
 } from '@/shared/security/google-terms-cookie'
+import {
+  BOOKING_INTENT_COOKIE_NAME,
+  BOOKING_INTENT_COOKIE_TTL_MS,
+  checkBookingIntent,
+  signCookieBookingIntent,
+  signEmailBookingIntent,
+  type BookingIntentFields,
+} from '@/shared/security/booking-intent'
+import { isBookingPath } from '@/lib/auth-success'
 import { sanitizeNext } from '@/lib/safe-redirect'
+import { track } from '@/shared/observability'
 import { captureMessage } from '@/lib/sentry'
 import { getDb, withPlayerContext, withTenantContext } from '@/shared/db/client'
 import { tenants, tenantSubscriptions } from '@/shared/db/schema'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { enforce, parseClientIp } from '@/shared/rate-limit'
 import { createOnlineBooking } from '@/modules/bookings/booking.service'
+import { findOwnLiveBookingOrNull } from './own-booking'
+import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { endLabelFromMins } from '@/shared/time/operating-day'
 import { createDepositPayment } from '@/modules/payments/payment.service'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
@@ -32,13 +44,89 @@ import {
 import { isPublicPortalOpen, publicBookingAdvanceDays } from '@/modules/tenants/tenant.lifecycle'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
+import { hhmm, isUuid, slug as slugSchema } from '@/shared/validation/primitives'
 import { CURRENT_TERMS_VERSION, TERMS_REQUIRED_MESSAGE } from '@/shared/terms'
 import { echoFields } from '@/shared/forms/echo'
 import { FORMAT_OPTIONS } from '@/components/public/courtFacets'
-import { PAY_METHODS, buildReservarHref, parseFormato, parsePay } from '@/lib/booking/reserve-url'
+import {
+  BOOKING_INTENT_PARAM,
+  PAY_METHODS,
+  buildReservaHref,
+  buildReservarHref,
+  parseFormato,
+  parsePay,
+} from '@/lib/booking/reserve-url'
 import { holdAllowsRetry } from '@/lib/booking/hold'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * De un `next` ya saneado a lo que se va a reservar, o `null` si no es una reserva completa y
+ * válida (complejo, cancha UUID, día real, HH:MM, duración del turno). Es lo que se FIRMA en el
+ * vínculo de intención y con lo que se REARMA el `next`: lo que sobre en la URL (utm, un
+ * `booking_intent` forjado, un formato inventado) no viaja. Nunca lanza.
+ */
+function parseBookingNext(
+  next: string,
+): { fields: BookingIntentFields; formato: number | null } | null {
+  if (!isBookingPath(next)) return null
+  let url: URL
+  try {
+    url = new URL(next, 'http://localhost')
+  } catch {
+    return null
+  }
+  const slug = url.pathname.split('/')[1] ?? ''
+  const q = url.searchParams
+  const court = q.get('court') ?? ''
+  const date = q.get('date') ?? ''
+  const time = q.get('time') ?? ''
+  const dur = Number(q.get('dur'))
+  if (
+    !slugSchema.safeParse(slug).success ||
+    !isUuid(court) ||
+    !isValidCalendarDate(date) ||
+    !hhmm.safeParse(time).success ||
+    dur !== SLOT_DURATION_MINUTES
+  ) {
+    return null
+  }
+  return {
+    fields: { slug, court, date, time, dur, pay: parsePay(q.get('pay'), PAY_METHODS) },
+    formato: parseFormato(q.get('formato'), FORMAT_OPTIONS),
+  }
+}
+
+/**
+ * El `next` del magic link con el vínculo de intención, ligado al email que se escribió. Si no es
+ * una reserva válida, o no se puede firmar (sin secreto, y se avisa), el `next` va como siempre y
+ * el jugador confirma a mano: degradar, nunca romper el ingreso.
+ */
+function nextWithBookingIntent(safeNext: string, email: string): string {
+  const target = parseBookingNext(safeNext)
+  if (!target) return safeNext
+  try {
+    const token = signEmailBookingIntent(target.fields, email)
+    const { slug, court, date, time, pay } = target.fields
+    const rebuilt = buildReservarHref(slug, {
+      courtId: court,
+      date,
+      time,
+      formato: target.formato,
+      pay,
+    })
+    return `${rebuilt}&${BOOKING_INTENT_PARAM}=${encodeURIComponent(token)}`
+  } catch {
+    // Sin secreto la confirmación sola se apaga entera y la pantalla sigue prometiéndola: que se vea.
+    captureMessage('reservar: no se pudo firmar el vínculo de la reserva', 'warning')
+    return safeNext
+  }
+}
+
+/** Atajo de las salidas de `createBookingAndCheckout`: ninguna deja esta pantalla en el historial. */
+function replaceTo(url: string): never {
+  return redirect(url, RedirectType.replace)
+}
 
 // Las claves van en el orden de la pantalla (casilla, nombre, email): `issues[0]` es el primer
 // campo inválido que el jugador ve, y a ese se le marca el error y se le lleva el foco.
@@ -111,7 +199,10 @@ export async function sendPlayerMagicLink(
 
   const origin = (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
   const safeNext = sanitizeNext(parsed.data.next, '/mis-reservas')
-  const redirectTo = `${origin}/api/auth/callback?next=${encodeURIComponent(safeNext)}`
+  // Una reserva en curso viaja con su vínculo firmado: al tocar el enlace vuelve con la reserva
+  // hecha. No mira si el complejo tiene seña: eso lo decide la pantalla al volver.
+  const nextForLink = nextWithBookingIntent(safeNext, parsed.data.email)
+  const redirectTo = `${origin}/api/auth/callback?next=${encodeURIComponent(nextForLink)}`
 
   const result = await signInWithPlayerMagicLink(parsed.data.email, redirectTo, {
     firstName: parsed.data.firstName,
@@ -155,6 +246,7 @@ export async function startGoogleLoginFromReservar(
   const cookieStore = await cookies()
   if (formData.get('terms') !== 'on') {
     cookieStore.delete(GOOGLE_TERMS_COOKIE_NAME)
+    cookieStore.delete(BOOKING_INTENT_COOKIE_NAME)
     return {
       status: 'error',
       message: TERMS_REQUIRED_MESSAGE,
@@ -162,15 +254,32 @@ export async function startGoogleLoginFromReservar(
       values: echoFields(formData, GATE_ECHO),
     }
   }
-  cookieStore.set({
-    name: GOOGLE_TERMS_COOKIE_NAME,
-    value: buildGoogleTermsCookie(CURRENT_TERMS_VERSION),
+  const cookieBase = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: Math.floor(GOOGLE_TERMS_COOKIE_TTL_MS / 1000),
     path: '/',
+  } as const
+  cookieStore.set({
+    ...cookieBase,
+    name: GOOGLE_TERMS_COOKIE_NAME,
+    value: buildGoogleTermsCookie(CURRENT_TERMS_VERSION),
+    maxAge: Math.floor(GOOGLE_TERMS_COOKIE_TTL_MS / 1000),
   })
+  // El vínculo de la reserva en curso viaja en una cookie (Google vuelve en el MISMO navegador y el
+  // `next` pasa por una URL externa). Una cookie vieja de un intento anterior no sobrevive: o se
+  // pisa con la de este turno o se borra.
+  const intent = parseBookingNext(safeNext)
+  if (intent) {
+    cookieStore.set({
+      ...cookieBase,
+      name: BOOKING_INTENT_COOKIE_NAME,
+      value: signCookieBookingIntent(intent.fields),
+      maxAge: Math.floor(BOOKING_INTENT_COOKIE_TTL_MS / 1000),
+    })
+  } else {
+    cookieStore.delete(BOOKING_INTENT_COOKIE_NAME)
+  }
 
   const origin = (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
   const redirectTo = `${origin}/api/auth/callback?next=${encodeURIComponent(safeNext)}`
@@ -206,10 +315,10 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
 
   // Basic format guard: the form should always send a valid date, but protect
   // against direct FormData manipulation before reaching the service validation.
-  if (!isValidCalendarDate(date)) redirect(`${backTo}&error=invalid_date`)
+  if (!isValidCalendarDate(date)) replaceTo(`${backTo}&error=invalid_date`)
 
   const user = await extractAuthUser()
-  if (!user || user.type !== 'player') redirect(backTo)
+  if (!user || user.type !== 'player') replaceTo(backTo)
 
   // publicBookingCreate (5/60s por ip+tenant): defensa de Denial-of-Inventory —
   // cubre el caso de múltiples cuentas de jugador desde el mismo origen contra
@@ -218,13 +327,13 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
   // misma IP. INV-ABUSE-001 (hardening post security-review).
   const ip = parseClientIp(await headers())
   const ipRl = await enforce('publicBookingCreate', `${ip}:${slug}`)
-  if (!ipRl.ok) redirect(`${backTo}&error=rate_limited`)
+  if (!ipRl.ok) replaceTo(`${backTo}&error=rate_limited`)
 
   // playerBooking (20/60s per player): caps online-booking + MP-preference spam
   // from a single authenticated player (the public booking path, separate from
   // the /api/player/bookings route which is already guarded).
   const rl = await enforce('playerBooking', user!.playerId)
-  if (!rl.ok) redirect(`${backTo}&error=rate_limited`)
+  if (!rl.ok) replaceTo(`${backTo}&error=rate_limited`)
 
   const db = getDb()
   const tRows = await db
@@ -238,7 +347,7 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
     .where(eq(tenants.slug, slug))
     .limit(1)
   const tenant = tRows[0]
-  if (!tenant) redirect(`/${slug}`)
+  if (!tenant) replaceTo(`/${slug}`)
 
   // El portal público sigue abierto durante la baja voluntaria hasta el fin del
   // período ya pagado (doc4 §2, "acceso jugador: completo hasta fin período"),
@@ -256,7 +365,7 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
             .then((r) => r[0]?.currentPeriodEnd ?? null),
         )
       : null
-  if (!isPublicPortalOpen(tenant!.status, canceledPeriodEnd)) redirect(`/${slug}`)
+  if (!isPublicPortalOpen(tenant!.status, canceledPeriodEnd)) replaceTo(`/${slug}`)
 
   const settings = tenant!.settings as TenantSettings
   const timeEnd = addMins(time, dur)
@@ -290,6 +399,40 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
         ? 'transfer'
         : undefined
 
+  // Vínculo de intención: el de este envío viene en el form (enlace del mail) y/o en la cookie
+  // (Google). Se RE-verifica acá contra lo que se va a reservar y la sesión; la page ya lo miró,
+  // pero el camino de escritura no confía en lo que decidió ella. Válido y sin seña = la reserva
+  // se confirmó sola. Con seña o inválido sigue IGUAL que un envío manual (el jugador puede estar
+  // tocando el botón él mismo): solo se deja la señal. La cookie se gasta al usarla.
+  const cookieStore = await cookies()
+  const cookieToken = cookieStore.get(BOOKING_INTENT_COOKIE_NAME)?.value
+  // Un auto-envío SIEMPRE lleva el campo oculto del vínculo (con la cookie de Google, el marcador),
+  // y con seña nunca se manda solo: el jugador toca "Pagar la seña", y ese form no lleva el campo.
+  // Se mira la PRESENCIA del campo, no su validez, para no trabar ese toque legítimo. Defensa en
+  // profundidad: la page ya no arma el auto-envío con seña.
+  if (withDeposit && formData.has(BOOKING_INTENT_PARAM)) {
+    if (cookieToken) cookieStore.delete(BOOKING_INTENT_COOKIE_NAME)
+    track.funnel('checkout.intent_degraded', { tenantId: tenant!.id, reason: 'deposit' })
+    replaceTo(backTo)
+  }
+  const linkToken = formData.get(BOOKING_INTENT_PARAM)
+  const intent = checkBookingIntent(
+    {
+      linkToken: typeof linkToken === 'string' ? linkToken : null,
+      cookieToken,
+      email: user!.email,
+    },
+    { slug, court, date, time, dur, pay: parsePay(payRaw, PAY_METHODS) },
+  )
+  if (cookieToken) cookieStore.delete(BOOKING_INTENT_COOKIE_NAME)
+  const intentValid = intent?.ok === true && !withDeposit
+  if (intent && !intentValid) {
+    track.funnel('checkout.intent_degraded', {
+      tenantId: tenant!.id,
+      reason: intent.ok ? 'deposit' : intent.reason,
+    })
+  }
+
   let redirectTo: string
   try {
     const booking = await withPlayerContext(user!.playerId, async (tx) => {
@@ -320,12 +463,13 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
         tx,
       )
     })
+    if (intentValid) track.funnel('checkout.intent_confirmed', { tenantId: tenant!.id })
 
     if (booking.status === 'confirmed') {
-      redirectTo = `/reserva/${booking.id}/exito`
+      redirectTo = buildReservaHref(booking.id, 'exito')
     } else {
       if (!tenant!.mpAccessToken) {
-        redirectTo = `/reserva/${booking.id}/pendiente`
+        redirectTo = buildReservaHref(booking.id, 'pendiente')
       } else {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
         const gateway = resolveTenantGateway(tenant!.id, tenant!.mpAccessToken)
@@ -334,18 +478,26 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
       }
     }
   } catch (err) {
-    if (err instanceof BookingValidationError) redirect(`${backTo}&error=unavailable`)
-    if (err instanceof BookingDateOutOfRangeError) redirect(`${backTo}&error=date_out_of_range`)
-    // Sin código de error propio (decisión del dueño, 2026-08-14): el rebote vuelve
-    // al checkout pelado y el guard de disponibilidad de `page.tsx` muestra "Ese
-    // turno ya no está disponible. Elegí otro horario." con su CTA. El mensaje
-    // específico "acaba de ser tomado" era inalcanzable en la práctica porque ese
-    // guard se dispara siempre primero (🟡 QA 2026-08-13), así que se elimina el
-    // código entero en vez de dejar un cartel sin camino que lo alcance. En la
-    // carrera rara en que el slot vuelve a quedar libre antes del re-render, el
-    // jugador cae en un checkout normal y puede reintentar — que es la acción
-    // correcta si el turno está libre de nuevo.
-    if (err instanceof SlotTakenError) redirect(backTo)
+    if (err instanceof BookingValidationError) replaceTo(`${backTo}&error=unavailable`)
+    if (err instanceof BookingDateOutOfRangeError) replaceTo(`${backTo}&error=date_out_of_range`)
+    // El turno ocupado puede ser el PROPIO: el doble envío o la recarga chocan con la reserva que
+    // acaba de crear el primer envío, y decirle "ya no está disponible" a quien lo acaba de
+    // reservar es mentirle. Si es suyo, va a su pantalla (idempotente). Si es de otra persona:
+    // sin código de error propio (decisión del dueño, 2026-08-14) el rebote vuelve al checkout
+    // pelado y el guard de disponibilidad de `page.tsx` muestra "Ese turno ya no está
+    // disponible"; con un vínculo válido (entró para confirmar y alguien se adelantó) lleva
+    // `taken_on_return` y la page le dice que se ocupó mientras entraba.
+    if (err instanceof SlotTakenError) {
+      const own = await findOwnLiveBookingOrNull(user!.playerId, {
+        courtId: court,
+        date,
+        timeStart: time,
+      })
+      if (own) {
+        replaceTo(buildReservaHref(own.id, own.status === 'confirmed' ? 'exito' : 'pendiente'))
+      }
+      replaceTo(intentValid ? `${backTo}&error=taken_on_return` : backTo)
+    }
     if (err instanceof PlayerBannedError) {
       const untilParam = err.until ? `&until=${encodeURIComponent(err.until.toISOString())}` : ''
       // R3-5: el `reason` YA NO viaja por la URL (antes permitía fabricar
@@ -354,15 +506,15 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
       // query param solo lleva el flag; `page.tsx` relee el motivo real de
       // DB server-side vía `getActiveBanReason` cuando hay sesión de jugador
       // válida (ver CheckoutStates.tsx).
-      redirect(`${backTo}&error=banned${untilParam}`)
+      replaceTo(`${backTo}&error=banned${untilParam}`)
     }
-    if (err instanceof TooManyActiveHoldsError) redirect(`${backTo}&error=too_many_holds`)
+    if (err instanceof TooManyActiveHoldsError) replaceTo(`${backTo}&error=too_many_holds`)
     if (err instanceof CourtOfflineError || err instanceof PriceUnavailableError)
-      redirect(`${backTo}&error=unavailable`)
+      replaceTo(`${backTo}&error=unavailable`)
     throw err
   }
 
-  redirect(redirectTo)
+  replaceTo(redirectTo)
 }
 
 export async function retryDepositPaymentAction(formData: FormData): Promise<void> {

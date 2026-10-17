@@ -1,11 +1,17 @@
 import type { Metadata } from 'next'
-import { headers } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect, RedirectType } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { PORTAL_LINK, PORTAL_TITLE } from '@/components/world/PortalAuthFrame'
 import { buildMetadata } from '@/lib/seo/metadata'
-import { buildFichaHref, parseFormato, parsePay, type PayMethod } from '@/lib/booking/reserve-url'
+import {
+  buildFichaHref,
+  buildReservaHref,
+  parseFormato,
+  parsePay,
+  type PayMethod,
+} from '@/lib/booking/reserve-url'
 import { isInAppBrowser } from '@/lib/in-app-browser'
 import { cn } from '@/lib/utils'
 import { getPublicAvailability, getPublicTenant } from '@/modules/tenants/public.service'
@@ -15,6 +21,7 @@ import { endLabelFromMins } from '@/shared/time/operating-day'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { getActiveBanReason } from '@/modules/bans/ban.service'
+import { BOOKING_INTENT_COOKIE_NAME, checkBookingIntent } from '@/shared/security/booking-intent'
 import BookingSummary from './components/BookingSummary'
 import CheckoutFlow from './components/CheckoutFlow'
 import {
@@ -24,11 +31,15 @@ import {
 } from './actions'
 import { CheckoutErrorBanner, CheckoutInvalidState, RESERVAR_COLUMN } from './CheckoutStates'
 import { track } from '@/shared/observability'
+import { findOwnLiveBookingOrNull } from './own-booking'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 
 export const dynamic = 'force-dynamic'
 
 const TIME_RE = /^\d{2}:\d{2}$/
+
+/** Lo que viaja en el campo `booking_intent` del form cuando el vínculo está en la cookie de Google. */
+const COOKIE_MARKER = 'cookie'
 
 type Props = {
   params: Promise<{ slug: string }>
@@ -43,6 +54,8 @@ type Props = {
     pay?: string
     error?: string
     until?: string
+    /** Vínculo firmado del magic link: con él, la reserva se confirma sola al volver del ingreso. */
+    booking_intent?: string
   }>
 }
 
@@ -93,30 +106,12 @@ export default async function ReservarPage(props: Props) {
   if (!courtData || !slot) {
     return <CheckoutInvalidState slug={params.slug} kind="not-found" turnHref={turnHref} />
   }
-  if (slot.status !== 'free') {
-    // Único mensaje para "el turno ya no está libre": el código `slot_taken` se
-    // eliminó (decisión del dueño 2026-08-14) porque este guard se dispara siempre
-    // antes que su banner. Este camino trae el CTA "Elegir otro turno".
-    return <CheckoutInvalidState slug={params.slug} kind="taken" turnHref={turnHref} />
-  }
-
   const price = slot.price ?? 0
   const depositAmount =
     tenant.requiresDeposit && tenant.depositPercentage > 0
       ? Math.round((price * tenant.depositPercentage) / 100)
       : 0
   const timeEnd = addMinsToHHMM(time, durNum)
-
-  // El paso más caro del embudo: el jugador ya eligió cancha y horario y está
-  // por pagar. Va DESPUÉS de los early-returns de arriba a propósito — un slot
-  // ya tomado o inexistente no es un checkout visto, y contarlo inflaría el
-  // denominador de la conversión con gente que nunca vio un precio.
-  // `withDeposit` separa los dos flujos, que no son comparables entre sí: con
-  // seña el jugador se va a MercadoPago, sin seña confirma en el momento.
-  track.funnel('checkout.viewed', {
-    tenantId: tenant.id,
-    withDeposit: depositAmount > 0,
-  })
 
   // Con seña la única vía es MercadoPago (regla de negocio: la seña online es
   // obligatoria). Sin seña, métodos presenciales según config del complejo.
@@ -131,7 +126,91 @@ export default async function ReservarPage(props: Props) {
   const pay = parsePay(searchParams.pay, payMethods) ?? payMethods[0] ?? null
 
   const user = await extractAuthUser()
-  const isPlayer = user?.type === 'player'
+  const player = user?.type === 'player' ? user : null
+  const isPlayer = player !== null
+
+  // El vínculo de intención (ver `booking-intent.ts`): el del enlace del mail y/o la cookie de
+  // Google. Solo cuenta con sesión de jugador, y se compara con lo que ESTA pantalla va a reservar.
+  // `null` = no vino ninguno (una visita normal): ahí no se registra nada.
+  const linkToken = searchParams.booking_intent
+  const cookieToken = player ? (await cookies()).get(BOOKING_INTENT_COOKIE_NAME)?.value : undefined
+  const intent = player
+    ? checkBookingIntent(
+        { linkToken, cookieToken, email: player.email },
+        { slug: params.slug, court, date, time, dur: durNum, pay },
+      )
+    : null
+
+  if (slot.status !== 'free') {
+    // El turno ocupado puede ser el PROPIO (Atrás, recarga o un doble envío después de reservar):
+    // va a su pantalla, reemplazando la entrada del historial, y no le dice que "ya no está".
+    if (player) {
+      const own = await findOwnLiveBookingOrNull(player.playerId, {
+        courtId: court,
+        date,
+        timeStart: time,
+      })
+      if (own) {
+        redirect(
+          buildReservaHref(own.id, own.status === 'confirmed' ? 'exito' : 'pendiente'),
+          RedirectType.replace,
+        )
+      }
+    }
+    if (intent) {
+      track.funnel('checkout.intent_degraded', {
+        tenantId: tenant.id,
+        reason: intent.ok ? 'taken' : intent.reason,
+      })
+    }
+    // Entró para confirmar (vínculo válido, o la action ya rebotó con `taken_on_return`) y alguien
+    // se adelantó: se lo dice, con la salida al mismo día (sin la hora que ya no está).
+    if (intent?.ok || searchParams.error === 'taken_on_return') {
+      return (
+        <CheckoutInvalidState
+          slug={params.slug}
+          kind="taken-on-return"
+          turnHref={buildFichaHref(params.slug, { date, formato })}
+          date={date}
+        />
+      )
+    }
+    // Único mensaje para "el turno ya no está libre": el código `slot_taken` se
+    // eliminó (decisión del dueño 2026-08-14) porque este guard se dispara siempre
+    // antes que su banner. Este camino trae el CTA "Elegir otro turno".
+    return <CheckoutInvalidState slug={params.slug} kind="taken" turnHref={turnHref} />
+  }
+
+  // El paso más caro del embudo: el jugador ya eligió cancha y horario y está
+  // por pagar. Va DESPUÉS de los early-returns de arriba a propósito — un slot
+  // ya tomado o inexistente no es un checkout visto, y contarlo inflaría el
+  // denominador de la conversión con gente que nunca vio un precio.
+  // `withDeposit` separa los dos flujos, que no son comparables entre sí: con
+  // seña el jugador se va a MercadoPago, sin seña confirma en el momento.
+  track.funnel('checkout.viewed', {
+    tenantId: tenant.id,
+    withDeposit: depositAmount > 0,
+  })
+
+  // Se confirma sola SOLO con un vínculo válido Y sin seña. Con seña, o con un vínculo que no vale
+  // (otro email, vencido, otro turno), la pantalla es la normal con el botón: degradar, nunca romper.
+  // La razón se registra solo si VINO un vínculo, no en cada visita. Un vínculo que no valió (y sin
+  // seña) deja una línea que pide tocar el botón: la promesa de "queda confirmada" no se cumplió.
+  let autoConfirmToken: string | undefined
+  let intentDegraded = false
+  if (intent) {
+    if (!intent.ok) {
+      track.funnel('checkout.intent_degraded', { tenantId: tenant.id, reason: intent.reason })
+      intentDegraded = depositAmount === 0
+    } else if (depositAmount > 0) {
+      track.funnel('checkout.intent_degraded', { tenantId: tenant.id, reason: 'deposit' })
+    } else {
+      // El token del mail ya está en la URL; la cookie HttpOnly NUNCA se copia al HTML ni al RSC: el
+      // form lleva un marcador y la action la lee y la verifica ella misma.
+      autoConfirmToken = linkToken || COOKIE_MARKER
+    }
+  }
+
   const inAppBrowser = isInAppBrowser((await headers()).get('user-agent'))
 
   // R3-5: el `reason` del ban NUNCA viaja por query string (fabricable por
@@ -142,8 +221,8 @@ export default async function ReservarPage(props: Props) {
   // importar el tenant — mismas policies que ya usa `checkPlayerBanned`.
   const banReason =
     searchParams.error === 'banned' && isPlayer
-      ? await withPlayerContext(user!.playerId, (tx) =>
-          getActiveBanReason(user!.playerId, tenant.id, tx),
+      ? await withPlayerContext(player.playerId, (tx) =>
+          getActiveBanReason(player.playerId, tenant.id, tx),
         )
       : null
 
@@ -200,6 +279,8 @@ export default async function ReservarPage(props: Props) {
           hidePrices={tenant.hidePrices}
           cancellationHours={tenant.cancellationHoursBefore}
           isPlayer={isPlayer}
+          autoConfirmToken={autoConfirmToken}
+          intentDegraded={intentDegraded}
           inAppBrowser={inAppBrowser}
           createAction={createBookingAndCheckout}
           sendLinkAction={sendPlayerMagicLink}

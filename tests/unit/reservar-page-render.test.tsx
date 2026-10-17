@@ -22,6 +22,11 @@ vi.mock('@/modules/tenants/public.service', () => ({
 vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: mocks.extractAuthUser }))
 vi.mock('next/headers', () => ({
   headers: async () => new Headers({ 'user-agent': mocks.userAgent.current }),
+  cookies: async () => ({ get: () => undefined }),
+}))
+// "¿este turno ya es mío?" tiene su propio test (reservar-page-intent); acá nunca lo es.
+vi.mock('@/modules/bookings/booking.own', () => ({
+  findOwnLiveBooking: async () => null,
 }))
 // Solo `notFound` se reemplaza; `unstable_rethrow` (la real) la usa el ingreso.
 vi.mock('next/navigation', async (importOriginal) => ({

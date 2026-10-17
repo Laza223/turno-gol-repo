@@ -43,12 +43,15 @@ export default function PaymentMethodSelector({
   value,
   onChange,
   hidePrices = false,
+  disabled = false,
   children,
 }: {
   methods: PayMethod[]
   value: PayMethod | null
   onChange: (method: PayMethod) => void
   hidePrices?: boolean
+  /** Bloquea la elección (la confirmación sola ya envió el método que estaba). */
+  disabled?: boolean
   children?: ReactNode
 }) {
   const note = children ? <p className="mt-2 text-sm text-muted-foreground">{children}</p> : null
@@ -100,7 +103,7 @@ export default function PaymentMethodSelector({
           return (
             <label
               key={method}
-              className="flex min-h-12 cursor-pointer items-start gap-3 rounded-xl border border-input bg-card px-4 py-3 transition-colors hover:bg-accent has-checked:border-primary has-checked:bg-muted"
+              className="flex min-h-12 cursor-pointer items-start gap-3 rounded-xl border border-input bg-card px-4 py-3 transition-colors hover:bg-accent has-checked:border-primary has-checked:bg-muted has-disabled:cursor-default has-disabled:opacity-60 has-disabled:hover:bg-card"
             >
               <span className="relative mt-0.5 size-6 shrink-0">
                 <input
@@ -108,6 +111,7 @@ export default function PaymentMethodSelector({
                   name="pay"
                   value={method}
                   checked={value === method}
+                  disabled={disabled}
                   onChange={() => onChange(method)}
                   className="peer size-6 cursor-pointer appearance-none rounded-full border-2 border-input bg-background transition-colors checked:border-primary checked:bg-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 />

@@ -123,7 +123,15 @@ type AuthCtx = {
  * `docs/gtm/ejecucion/06-metricas-activacion.md`). `checkout.viewed` sí sigue saliendo de una
  * página `force-dynamic`, así que cuenta visitas reales.
  */
-type FunnelEvent = 'portal.viewed' | 'profile.viewed' | 'checkout.viewed'
+type FunnelEvent =
+  | 'portal.viewed'
+  | 'profile.viewed'
+  | 'checkout.viewed'
+  // La reserva que se confirma sola al volver del ingreso (vínculo firmado, `booking-intent.ts`):
+  // `confirmed` cuando la action la creó con un vínculo válido; `degraded` cuando VINO un vínculo
+  // y no alcanzó (el jugador cae en la pantalla normal con el botón). Sin PII: ni email ni token.
+  | 'checkout.intent_confirmed'
+  | 'checkout.intent_degraded'
 
 type FunnelCtx = {
   tenantId?: string
@@ -131,6 +139,8 @@ type FunnelCtx = {
   withDate?: boolean
   /** checkout.viewed: si el turno exige seña (cambia el flujo que sigue). */
   withDeposit?: boolean
+  /** checkout.intent_degraded: por qué el vínculo no confirmó solo. */
+  reason?: 'deposit' | 'invalid' | 'expired' | 'email_mismatch' | 'fields_mismatch' | 'taken'
 }
 
 type AvailabilityEvent = 'availability.public.query'

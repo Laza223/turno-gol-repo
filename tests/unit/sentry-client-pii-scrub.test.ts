@@ -33,6 +33,12 @@ describe('paridad del tapado de datos personales entre los tres entrypoints', ()
     expect(src).toContain('scrubEvent(event)')
   })
 
+  it.each(ENTRYPOINTS)('%s tapa también las transacciones (beforeSendTransaction)', (rel) => {
+    const src = leer(rel)
+    expect(src).toContain('beforeSendTransaction(event)')
+    expect(src).toContain('scrubTransaction(event)')
+  })
+
   it.each(ENTRYPOINTS)('%s no vuelve a tapar por su cuenta', (rel) => {
     const src = leer(rel)
     // Las tres copias inline arrancaban con estas líneas. Que reaparezcan es la

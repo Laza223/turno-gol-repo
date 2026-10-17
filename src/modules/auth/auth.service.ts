@@ -295,6 +295,11 @@ async function getStaffUserById(id: string): Promise<{ id: string } | null> {
   return rows[0] ?? null
 }
 
+/** Marca "ya entró": saca al invitado del estado "Invitación pendiente" en Equipo. */
+export async function touchStaffLastLogin(staffUserId: string): Promise<void> {
+  await getWorkerSql()`UPDATE staff_users SET last_login_at = NOW() WHERE id = ${staffUserId}`
+}
+
 /**
  * ¿El email ya pertenece a OTRO staff_user? Lo usa `updateUserEmailAction`
  * ANTES de pedirle el cambio a Supabase Auth — `staff_users.email` tiene
@@ -384,7 +389,11 @@ export async function provisionAndRouteStaff(user: User): Promise<{ path: string
   // `getOrCreatePlayer` en player.service.ts. Se corre en TODO login/alta de
   // staff (esta función es la única invocada por el callback y por
   // `loginAction`), así que también cubre la aceptación de la invitación.
-  await getWorkerSql()`UPDATE staff_users SET last_login_at = NOW() WHERE id = ${ourStaff.id}`
+  //
+  // Con `force_password_change` (invitado que recién abrió el link, o reset del
+  // SuperAdmin) todavía NO terminó: la marca la pone `resetPasswordAction` al
+  // fijar la contraseña. Sin esto figuraba "Activo" sin tener contraseña.
+  if (meta.force_password_change !== true) await touchStaffLastLogin(ourStaff.id)
 
   const tenants = await resolveStaffTenants(ourStaff.id)
 

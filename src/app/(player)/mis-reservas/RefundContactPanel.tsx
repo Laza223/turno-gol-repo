@@ -71,7 +71,11 @@ export function RefundContactPanel({ refund }: { refund: RefundContactInfo }) {
   )
 
   const linkClass =
-    'inline-flex h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-[color,background-color,scale] active:scale-[0.98]'
+    'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
+
+  // Los tres canales son del mismo peso y planos: borde de control (`input`) sobre `card`, así se
+  // despegan del aviso `muted` donde viven. El verde sólido es del CTA de la pantalla.
+  const outlineClass = `${linkClass} border border-input bg-card text-foreground hover:bg-accent`
 
   return (
     <div className="space-y-3">
@@ -100,7 +104,7 @@ export function RefundContactPanel({ refund }: { refund: RefundContactInfo }) {
         )}
       </p>
 
-      <p className="text-xs text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         Código de tu reserva: <span className="font-mono font-semibold">{refund.bookingCode}</span>
       </p>
 
@@ -113,30 +117,20 @@ export function RefundContactPanel({ refund }: { refund: RefundContactInfo }) {
             href={contact.whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            // Verde claro con texto verde oscuro, no verde sólido con texto
-            // blanco: en Tailwind 4 (OKLCH) green-600/700 sobre blanco cae por
-            // debajo del contraste AA y axe lo marca. Mismo par que ya usa el
-            // chip de WhatsApp del perfil público.
-            className={`${linkClass} border border-green-300 bg-green-50 text-green-800 hover:bg-green-100 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-300`}
+            className={outlineClass}
           >
             <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
             Escribir por WhatsApp
           </a>
         )}
         {contact.telHref && (
-          <a
-            href={contact.telHref}
-            className={`${linkClass} border border-border text-foreground hover:bg-muted`}
-          >
+          <a href={contact.telHref} className={outlineClass}>
             <Phone className="h-4 w-4 shrink-0" aria-hidden />
             {contact.phoneLabel}
           </a>
         )}
         {contact.mailto && (
-          <a
-            href={contact.mailto}
-            className={`${linkClass} border border-border text-foreground hover:bg-muted`}
-          >
+          <a href={contact.mailto} className={outlineClass}>
             <Mail className="h-4 w-4 shrink-0" aria-hidden />
             Email
           </a>

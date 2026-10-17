@@ -245,13 +245,13 @@ describe('cancelMyBookingAction — TenantInactiveError (#31)', () => {
       timeEnd: '11:00',
       depositStatus: 'refunded',
       depositAmount: 150000,
-      priceSnapshot: 500000,
       canceledReason: 'no puedo ir',
       canceledAt: fullBooking.canceledAt,
     })
     expect(result.booking).not.toHaveProperty('notesInternal')
     expect(result.booking).not.toHaveProperty('createdByStaff')
     expect(result.booking).not.toHaveProperty('completedByStaff')
+    expect(result.booking).not.toHaveProperty('priceSnapshot')
     expect(result.booking).not.toHaveProperty('paymentId')
     expect(result.booking).not.toHaveProperty('guestName')
     expect(result.booking).not.toHaveProperty('guestPhone')

@@ -131,7 +131,7 @@ export function ConfirmDialog({
         {/* red-700/red-300 (idiom de `status-tone.ts`), no `text-destructive`: el
             token es red-600 en los DOS temas y sobre la superficie oscura da 3.87:1. */}
         {error ? (
-          <p role="alert" className="text-xs text-red-700 dark:text-red-300">
+          <p role="alert" className="text-[13px] text-red-700 dark:text-red-300">
             {error}
           </p>
         ) : null}

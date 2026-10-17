@@ -74,6 +74,20 @@ describe('lo que el jugador ve distinto, a propósito', () => {
   })
 })
 
+describe('La Reserva: ni ámbar ni rojo de alarma en los estados del jugador', () => {
+  it('"Ausente" y "Esperando seña" van en neutro: se explican en el texto de la tarjeta', () => {
+    // En el complejo el ausente es rojo (plata que no entró) y la espera es ámbar. En el portal el
+    // ámbar es solo de "Queda 1" y al jugador no se le grita.
+    expect(soloEstado('no_show').tone).toBe('destructive')
+    expect(sinSena('no_show').tone).toBe('neutral')
+    expect(sinSena('pending_payment').tone).toBe('neutral')
+  })
+
+  it('ningún estado del jugador usa warning', () => {
+    for (const status of ESTADOS) expect(sinSena(status).tone, status).not.toBe('warning')
+  })
+})
+
 describe('el "No cobrado" de la caja no llega al jugador', () => {
   it('ningún estado le muestra "No cobrado"', () => {
     for (const status of ESTADOS) {

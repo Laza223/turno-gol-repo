@@ -26,6 +26,7 @@ const ConfirmDialog = dynamic(
 
 /** Firmas de deactivateStaffAction/resendInviteAction/updateStaffRoleAction — DI, ver ReservasPolicyForm.tsx. */
 export type DeactivateStaffAction = (staffMemberId: string) => Promise<StaffActionResult>
+export type ReactivateStaffAction = (staffMemberId: string) => Promise<StaffActionResult>
 export type ResendInviteAction = (email: string) => Promise<StaffActionResult>
 export type UpdateStaffRoleAction = (
   staffMemberId: string,
@@ -82,6 +83,7 @@ interface StaffActionsProps {
   currentUserStaffId: string
   activeAdminCount: number
   deactivateAction: DeactivateStaffAction
+  reactivateAction: ReactivateStaffAction
   resendInviteAction: ResendInviteAction
   updateRoleAction: UpdateStaffRoleAction
 }
@@ -91,6 +93,7 @@ export function StaffActions({
   currentUserStaffId: _currentUserStaffId,
   activeAdminCount,
   deactivateAction,
+  reactivateAction,
   resendInviteAction,
   updateRoleAction,
 }: StaffActionsProps) {
@@ -100,8 +103,8 @@ export function StaffActions({
   const isLastActiveAdmin = member.role === 'admin' && activeAdminCount <= 1
   const otherRoles = STAFF_ROLES.filter((role) => role !== member.role)
   // F-024: invitado que nunca aceptó (isActive=true desde que se crea la
-  // invitación, no desde que se acepta) — también necesita "Reenviar
-  // invitación", no solo el miembro desactivado a propósito.
+  // invitación, no desde que se acepta) — necesita "Reenviar invitación".
+  // El desactivado a propósito, en cambio, ofrece "Reactivar": ya aceptó una vez.
   const isPendingInvite = member.isActive && !member.lastLoginAt
 
   async function handleChangeRole(role: StaffRole) {
@@ -126,6 +129,18 @@ export function StaffActions({
       variant: 'success',
     })
     return { success: true }
+  }
+
+  async function handleReactivate() {
+    const res = await reactivateAction(member.memberId)
+    if (res.success) {
+      toast({
+        title: `${member.firstName} ${member.lastName} fue reactivado/a.`,
+        variant: 'success',
+      })
+    } else {
+      toast({ title: res.error ?? 'No se pudo reactivar al miembro.', variant: 'destructive' })
+    }
   }
 
   async function handleResendInvite() {
@@ -189,7 +204,17 @@ export function StaffActions({
               </DropdownMenuItem>
             </>
           )}
-          {(!member.isActive || isPendingInvite) && (
+          {!member.isActive && (
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onSelect={() => {
+                void handleReactivate()
+              }}
+            >
+              Reactivar
+            </DropdownMenuItem>
+          )}
+          {isPendingInvite && (
             <DropdownMenuItem
               className="cursor-pointer"
               onSelect={() => {

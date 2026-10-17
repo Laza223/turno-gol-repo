@@ -417,6 +417,36 @@ export async function deactivateStaffAction(staffMemberId: string): Promise<Staf
   return result
 }
 
+export async function reactivateStaffAction(staffMemberId: string): Promise<StaffActionResult> {
+  const { user, tenant } = await requireStaffTenant()
+  if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+
+  const guard = await guardStaffMutation(tenant)
+  if (guard) return guard
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const result = await withTenantContext(tenant.id, async (tx) => {
+    const denied = await assertActorIsAdmin(tx, tenant.id, user.staffUserId)
+    if (denied) return denied
+
+    const [updated] = await tx
+      .update(tenantStaffMembers)
+      .set({ isActive: true })
+      .where(
+        and(eq(tenantStaffMembers.id, staffMemberId), eq(tenantStaffMembers.tenantId, tenant.id)),
+      )
+      .returning({ id: tenantStaffMembers.id })
+
+    if (!updated) return { success: false as const, error: 'Miembro no encontrado.' }
+    return { success: true as const }
+  })
+
+  if (result.success) revalidatePath('/settings/equipo')
+  return result
+}
+
 const updateRoleSchema = z.enum(STAFF_ROLES, { error: 'Rol inválido' })
 
 export async function updateStaffRoleAction(

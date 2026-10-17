@@ -31,6 +31,7 @@ const meta = {
     tournamentsEnabled: false,
     inviteAction: fn(async () => ({ success: true as const })),
     deactivateAction: fn(async () => ({ success: true as const })),
+    reactivateAction: fn(async () => ({ success: true as const })),
     resendInviteAction: fn(async () => ({ success: true as const })),
     updateRoleAction: fn(async () => ({ success: true as const })),
   },

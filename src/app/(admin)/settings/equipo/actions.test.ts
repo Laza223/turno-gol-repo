@@ -29,6 +29,7 @@ vi.mock('next/navigation', () => ({ redirect: vi.fn() }))
 
 import {
   deactivateStaffAction,
+  reactivateStaffAction,
   inviteStaffAction,
   resendInviteAction,
 } from '@/app/(admin)/settings/equipo/actions'
@@ -176,6 +177,21 @@ describe('resendInviteAction — verificacion de membership (#12)', () => {
     resetPasswordForEmail.mockResolvedValue({ error: { message: 'smtp' } })
     const res = await resendInviteAction('miembro@test.local')
     expect(res.success).toBe(false)
+  })
+})
+
+describe('reactivateStaffAction', () => {
+  it('rechaza tenant bloqueado', async () => {
+    vi.mocked(getStaffTenant).mockResolvedValue(mockTenant('blocked') as never)
+    const res = await reactivateStaffAction('member-1')
+    expect(res).toEqual({ success: false, error: 'El complejo no está activo.' })
+  })
+
+  it('un actor admin reactiva al miembro', async () => {
+    vi.mocked(withTenantContext).mockResolvedValue({ success: true })
+    const res = await reactivateStaffAction('member-1')
+    expect(res).toEqual({ success: true })
+    expect(adminRateLimited).toHaveBeenCalledWith('tenant-1')
   })
 })
 

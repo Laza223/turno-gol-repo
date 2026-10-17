@@ -1,34 +1,43 @@
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { AlertTriangle } from 'lucide-react'
-import ReservaShell from '@/components/booking/ReservaDarkShell'
+import { buttonVariants } from '@/components/ui/button'
+import { PORTAL_BUTTON, PORTAL_LINK, PORTAL_TITLE } from '@/components/world/PortalAuthFrame'
+import { buildFichaHref } from '@/lib/booking/reserve-url'
+import { TONE_TEXT } from '@/lib/status-tone'
+import { cn } from '@/lib/utils'
 
-// Banners de error del checkout — badge dual §6.5 (tinte + texto legible en
-// ambos temas), severidad destructive o warning según el caso.
-// `(public)/[slug]/reservar` es superficie CLARA (ReservaDarkShell acá es
-// theme-adaptive, no forzado a dark). El fill light tiene que ser OPACO:
-// `bg-destructive/10`/`bg-warning/10` (translúcido) compone contra lo que
-// haya detrás — con el fondo real del portal daba 3.34:1 / 3.68:1. `bg-red-50`
-// / `bg-amber-50` (igual que los badges de MisReservasView) fijan el
-// contraste sin importar el fondo.
-const alertDestructive =
-  'rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 ring-1 ring-inset ring-destructive/25 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/30'
-const alertWarning =
-  'rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700 ring-1 ring-inset ring-warning/30 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30'
+/** La columna de la pantalla de confirmar y de su carga: ~560 px en el celular y en escritorio. */
+export const RESERVAR_COLUMN = 'mx-auto w-full max-w-[35rem] px-4 pt-4'
 
 export type CheckoutErrorCode =
   'banned' | 'too_many_holds' | 'rate_limited' | 'unavailable' | 'date_out_of_range'
 
-// MEJORA-UX QA: los 4 banners inline eran solo texto, sin salida — a
-// diferencia de `CheckoutInvalidState`, que siempre ofrece "Elegir otro
-// turno". Mismo link, mismo estilo, reusado en los 4 `if` de abajo.
-function ElegirOtroTurnoLink({ slug }: { slug: string }) {
+const NOTICE_LINK = cn(
+  PORTAL_LINK,
+  'inline-flex min-h-11 items-center text-sm font-semibold text-emerald-700 underline underline-offset-4 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300',
+)
+
+/**
+ * Aviso de La Reserva: `bg-muted` con borde `border`, esquina de 12 px y el ícono en `destructive`.
+ * Todo lo que se avisa acá frena la reserva, así que es un error y no una advertencia: el ámbar es
+ * de la escasez ("Queda 1") y de nada más. Dice qué pasó y deja una salida (un aviso sin salida
+ * obliga a usar el "atrás" del navegador).
+ */
+function Notice({ href, action, children }: { href: string; action: string; children: ReactNode }) {
   return (
-    <Link
-      href={`/${slug}`}
-      className="mt-2 inline-flex text-sm font-semibold underline underline-offset-2 hover:no-underline"
+    <div
+      role="alert"
+      className="flex items-start gap-3 rounded-xl border border-border bg-muted p-4"
     >
-      Elegir otro turno
-    </Link>
+      <AlertTriangle className={cn('mt-0.5 size-5 shrink-0', TONE_TEXT.destructive)} aria-hidden />
+      <div>
+        <p className="text-base text-foreground">{children}</p>
+        <Link href={href} className={NOTICE_LINK}>
+          {action}
+        </Link>
+      </div>
+    </div>
   )
 }
 
@@ -48,13 +57,16 @@ function formatBannedUntilArt(iso: string): string | null {
  * Sin `error` (o un código desconocido) no renderiza nada.
  */
 export function CheckoutErrorBanner({
-  slug,
+  turnHref,
   error,
   until,
   reason,
 }: {
-  /** Para el link de recuperación "Elegir otro turno" de los 4 banners. */
-  slug: string
+  /**
+   * La salida de "Elegir otro turno": la misma ficha que el "Volver" de la página, con el día, la
+   * hora y el formato que eligió (a esa hora puede haber otra cancha libre). La arma la page.
+   */
+  turnHref: string
   error: CheckoutErrorCode | string | undefined
   /** ISO — solo aplica a `error=banned`, cuándo termina el softban. */
   until?: string
@@ -71,84 +83,105 @@ export function CheckoutErrorBanner({
 }) {
   if (error === 'banned') {
     const untilLabel = until ? formatBannedUntilArt(until) : null
-    const untilSuffix = untilLabel ? ` Volvés a poder reservar el ${untilLabel}.` : ''
+    // El bloqueo es del complejo, no de TurnoGol: lo dice como tal, con el motivo si hay uno.
+    const sentence = untilLabel
+      ? `No podés reservar en este complejo hasta el ${untilLabel}.`
+      : 'No podés reservar en este complejo.'
     return (
-      <div role="alert" className={alertDestructive}>
-        <p>
-          {reason
-            ? `El complejo restringió tu cuenta: ${reason.replace(/\.$/, '')}.${untilSuffix}`
-            : untilLabel
-              ? `Te bloqueamos temporalmente. Volvés a poder reservar el ${untilLabel}.`
-              : 'No podés reservar en este complejo actualmente.'}
-        </p>
-        <ElegirOtroTurnoLink slug={slug} />
-      </div>
+      // Reservar en OTRO turno de este complejo daría el mismo error: la salida es otro complejo.
+      <Notice href="/explorar" action="Buscar otro complejo">
+        {reason ? `${sentence} Motivo: ${reason.replace(/\.$/, '')}.` : sentence}
+      </Notice>
     )
   }
   if (error === 'too_many_holds') {
     return (
-      <div role="alert" className={alertWarning}>
-        <p>
-          Ya tenés reservas pendientes de pago en este complejo. Completá o esperá a que venzan
-          antes de reservar otra.
-        </p>
-        <ElegirOtroTurnoLink slug={slug} />
-      </div>
+      <Notice href={turnHref} action="Elegir otro turno">
+        Tenés reservas esperando el pago de la seña en este complejo. Si no las pagás, se liberan
+        solas en unos minutos; después podés reservar otra.
+      </Notice>
     )
   }
   if (error === 'rate_limited') {
     return (
-      <div role="alert" className={alertWarning}>
-        <p>Estás yendo muy rápido. Esperá unos segundos e intentá de nuevo.</p>
-        <ElegirOtroTurnoLink slug={slug} />
-      </div>
+      <Notice href={turnHref} action="Elegir otro turno">
+        Estás yendo muy rápido. Esperá unos segundos e intentá de nuevo.
+      </Notice>
     )
   }
   if (error === 'unavailable') {
     return (
-      <div role="alert" className={alertDestructive}>
-        <p>
-          No pudimos procesar la reserva: la cancha no está disponible o no tiene precio configurado
-          para ese horario.
-        </p>
-        <ElegirOtroTurnoLink slug={slug} />
-      </div>
+      <Notice href={turnHref} action="Elegir otro turno">
+        No pudimos reservar este turno. Probá con otro horario o con otra cancha.
+      </Notice>
     )
   }
   if (error === 'date_out_of_range') {
     return (
-      <div role="alert" className={alertDestructive}>
-        <p>
-          Ese turno ya no se puede reservar: quedó fuera de la fecha disponible para reservar
-          online. Elegí otro turno.
-        </p>
-        <ElegirOtroTurnoLink slug={slug} />
-      </div>
+      <Notice href={turnHref} action="Elegir otro turno">
+        Ese turno ya no se puede reservar: quedó fuera de la fecha disponible para reservar online.
+        Elegí otro turno.
+      </Notice>
     )
   }
   return null
 }
 
+/** Por qué no se puede mostrar la pantalla de confirmar. Cada uno dice qué pasó y adónde seguir. */
+export type CheckoutInvalidKind = 'no-online' | 'missing' | 'not-found' | 'taken'
+
+const INVALID: Record<CheckoutInvalidKind, { title: string; message: string; cta: string }> = {
+  'no-online': {
+    title: 'Este complejo no toma reservas online por ahora',
+    message: 'Consultá con el complejo para reservar tu turno.',
+    cta: 'Ver el complejo',
+  },
+  missing: {
+    title: 'No pudimos abrir este turno',
+    message: 'Falta el día, la hora o la cancha. Elegilos de nuevo desde la página del complejo.',
+    cta: 'Elegir un turno',
+  },
+  'not-found': {
+    title: 'No encontramos ese turno',
+    message: 'Puede que la cancha o el horario hayan cambiado. Elegí otro turno.',
+    cta: 'Elegir otro turno',
+  },
+  taken: {
+    title: 'Ese turno ya no está disponible',
+    message: 'Otra persona lo reservó o ya pasó la hora. Elegí otro horario.',
+    cta: 'Elegir otro turno',
+  },
+}
+
 /**
- * Estado inválido del checkout (slug sin reservas online, query params
- * faltantes/inconsistentes, turno inexistente o ya no libre) — `ReservarPage`
- * lo usa 4 veces con distinto `message` antes de llegar a validar el slot.
+ * Estado inválido de la pantalla de confirmar (complejo sin reservas online, datos faltantes,
+ * turno inexistente o ya no libre). `ReservarPage` lo usa antes de validar el slot. La salida de
+ * "no encontramos" y "ya no está" es la misma ficha que el "Volver" (`turnHref`): con el día, la
+ * hora y el formato que eligió, no la ficha pelada.
  */
-export function CheckoutInvalidState({ slug, message }: { slug: string; message: string }) {
+export function CheckoutInvalidState({
+  slug,
+  kind,
+  turnHref,
+}: {
+  slug: string
+  kind: CheckoutInvalidKind
+  /** Solo se usa en los estados donde el turno ya se validó (`not-found` y `taken`). */
+  turnHref?: string
+}) {
+  const { title, message, cta } = INVALID[kind]
+  const href =
+    (kind === 'not-found' || kind === 'taken' ? turnHref : undefined) ?? buildFichaHref(slug, {})
   return (
-    <ReservaShell>
-      <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 text-center">
-        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-warning/10 text-amber-700 ring-1 ring-inset ring-warning/35 dark:bg-amber-500/12 dark:text-amber-300 dark:ring-amber-500/35">
-          <AlertTriangle className="h-8 w-8" aria-hidden />
-        </div>
-        <p className="text-sm text-muted-foreground">{message}</p>
-        <Link
-          href={`/${slug}`}
-          className="mt-7 inline-flex h-12 items-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25"
-        >
-          Elegir otro turno
+    <div className={cn(RESERVAR_COLUMN, 'pb-12')}>
+      <div className="flex min-h-[50dvh] flex-col justify-center">
+        <AlertTriangle className="size-8 text-muted-foreground" aria-hidden />
+        <h1 className={cn(PORTAL_TITLE, 'mt-4 text-balance')}>{title}</h1>
+        <p className="mt-2 text-pretty text-base text-muted-foreground">{message}</p>
+        <Link href={href} className={cn(buttonVariants(), PORTAL_BUTTON, 'mt-8')}>
+          {cta}
         </Link>
       </div>
-    </ReservaShell>
+    </div>
   )
 }

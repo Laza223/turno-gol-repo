@@ -183,9 +183,11 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
   // Google OAuth (jugador, alcance ADR-002/2026-08-14): rama `code` separada de
   // la de OTP de abajo — exchangeCodeForSession en vez de verifyOtp, sin `type`.
   // El consentimiento viaja por la cookie firmada de google-terms-cookie.ts, NO
-  // por un query param — solo LoginGate la setea (ahí el checkbox ya es
-  // obligatorio antes del click); /ingresar nunca la setea y cae en el gate de
-  // `hasAgreedTerms` de provisionPlayerAndRedirect.
+  // por un query param — solo la setea `startGoogleLoginFromReservar` (el
+  // checkout), y únicamente si la casilla llegó tildada: LoginGate la ataja en el
+  // cliente antes de enviar y la action la vuelve a exigir en el servidor.
+  // /ingresar nunca la setea y cae en el gate de `hasAgreedTerms` de
+  // provisionPlayerAndRedirect.
   const code = params.get('code')
   if (code) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)

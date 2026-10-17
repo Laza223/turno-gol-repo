@@ -7,7 +7,7 @@ import { usePortalSession } from '@/components/site/PortalSessionProvider'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useArtNow } from '@/hooks/use-art-now'
 import { summarizeHours } from '@/lib/booking/hour-summary'
-import { parseReserveState, writeReserveParams, type ReserveState } from '@/lib/booking/reserve-url'
+import { parseReserveState, replaceReserveUrl, type ReserveState } from '@/lib/booking/reserve-url'
 import { capitalizeFirst } from '@/lib/format'
 import { isDayClosed, nextOpenDay } from '@/lib/schedule/open-status'
 import { resolveTenantContact } from '@/lib/tenant-contact'
@@ -93,7 +93,7 @@ export default function ReserveSection({
   const live = stale ? { hora: null, formato: null } : picked
   const state = fromUrl && { ...fromUrl, ...live }
   useEffect(() => {
-    if (stale) writeUrl({ date: today, hora: null, formato: null })
+    if (stale) replaceReserveUrl({ date: today, hora: null, formato: null })
   }, [stale, today])
 
   const closed = state ? isDayClosed(state.date, tenant) : false
@@ -126,7 +126,7 @@ export default function ReserveSection({
 
   function pickDay(date: string) {
     setPicked((p) => ({ ...p, date, hora: null }))
-    writeUrl({ date, hora: null })
+    replaceReserveUrl({ date, hora: null })
   }
 
   // Salida del día sin lugar: el próximo día abierto (sin pedir nada) o, con el día lleno, el
@@ -249,7 +249,7 @@ export default function ReserveSection({
           value={state.formato}
           onChange={(formato) => {
             setPicked((p) => ({ ...(isStale(p) ? {} : p), formato }))
-            writeUrl({ formato })
+            replaceReserveUrl({ formato })
           }}
         />
       )}
@@ -274,7 +274,7 @@ export default function ReserveSection({
           onChange={(hora) => {
             scrollToList.current = true
             setPicked((p) => ({ ...(isStale(p) ? {} : p), hora }))
-            writeUrl({ hora })
+            replaceReserveUrl({ hora })
             // Con el día vencido (120 s) se vuelve a pedir: la hora puede haberse ocupado.
             day.revalidate()
           }}
@@ -293,6 +293,7 @@ export default function ReserveSection({
           tenant={tenant}
           row={selected}
           date={state.date}
+          formato={state.formato}
           className={
             session
               ? 'scroll-mb-[calc(4.5rem+env(safe-area-inset-bottom))] md:scroll-mb-4'
@@ -305,15 +306,5 @@ export default function ReserveSection({
         {announcement}
       </p>
     </section>
-  )
-}
-
-/** `replaceState` y no `push`: elegir días no llena el historial. Conserva los demás params (utm, ref…). */
-function writeUrl(patch: Partial<ReserveState>) {
-  const query = writeReserveParams(window.location.search, patch).toString()
-  window.history.replaceState(
-    null,
-    '',
-    `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`,
   )
 }

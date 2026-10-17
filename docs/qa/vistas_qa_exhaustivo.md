@@ -144,8 +144,8 @@ En cada vista, solo se documentan tests de auth/permisos/a11y **específicos y �
 - [ ] **[Render]** El campo 'Precio del turno' siempre muestra el precio completo sin importar depósito.
 - [ ] **[Render]** La hora de fin se calcula correctamente: duracion=60min suma 60 a la hora inicio; duracion=120min suma 120.
 - [ ] **[Happy path - No deposit]** Usuario autenticado, complejo sin depósito: clic en 'Confirmar reserva' redirige a /reserva/{bookingId}/exito (status=confirmed en DB).
-- [ ] **[Happy path - With deposit]** Usuario autenticado, complejo CON depósito: clic en 'Pagar seña y reservar' redirige a checkout MercadoPago con monto=depositAmount.
-- [ ] **[Happy path - LoginGate]** Usuario NO autenticado: se muestra formulario LoginGate con campos nombre, apellido, email, checkbox términos, botón 'Continuar con email'. Submit envía magic link y muestra 'Revisá tu email'.
+- [ ] **[Happy path - With deposit]** Usuario autenticado, complejo CON depósito: clic en 'Pagar la seña' redirige a checkout MercadoPago con monto=depositAmount.
+- [ ] **[Happy path - LoginGate]** Usuario NO autenticado: se muestra LoginGate con casilla de términos, 'Continuar con Google' y los campos nombre y email (sin apellido) con 'Continuar con mi email'. Submit envía magic link y muestra 'Revisá tu email'.
 - [ ] **[LoginGate - Validacion]** Si email está vacío, se muestra error 'Ingresá un email válido' y NO se envía magic link.
 - [ ] **[LoginGate - Validacion]** Si nombre está vacío, se muestra error 'Ingresá tu nombre' y NO se envía magic link.
 - [ ] **[LoginGate - Validacion]** Si email es inválido (sin @, formato malformado), se muestra error 'Ingresá un email válido'.
@@ -154,7 +154,7 @@ En cada vista, solo se documentan tests de auth/permisos/a11y **específicos y �
 - [ ] **[LoginGate - Validacion]** Apellido es opcional, máximo 80 caracteres, puede estar vacío.
 - [ ] **[LoginGate - Validacion]** Email se normaliza (trim, lowercase) antes de validar.
 - [ ] **[LoginGate - Rate limit]** Enviar 6 magic links al mismo email en 60 segundos: el 6to muestra 'Demasiados intentos. Esperá un minuto y probá de nuevo.' (authMagicLink: 5/60s).
-- [ ] **[LoginGate - Estado 'sent']** Tras envío exitoso, se reemplaza formulario con card 'Revisá tu email' + icono Mail verde + texto 'Te enviamos un enlace a {email}. Hacé click para confirmar tu reserva.'
+- [ ] **[LoginGate - Estado 'sent']** Tras envío exitoso, se reemplaza el formulario por 'Revisá tu email' + 'Te mandamos un enlace a {email}.' + 'Cuando lo toques, volvés a esta pantalla con tu cuenta y ahí confirmás la reserva.', con 'Reenviar enlace' y 'Usar otro email'.
 - [ ] **[LoginGate - Submit disabled]** Mientras se procesa el envío, botón muestra spinner + 'Enviando…' y está disabled.
 - [ ] **[Error slot_taken]** Si entre que el jugador vio la disponibilidad y confirma, otro jugador toma el slot, redirige a reservar?court=...&error=slot_taken + muestra alert rojo 'Ese turno acaba de ser tomado. Elegí otro horario.'
 - [ ] **[Error banned]** Si el jugador está globalmente baneado (player.status='banned') o baneado en ese tenant, redirige a reservar?court=...&error=banned + muestra alert rojo 'No podés reservar en este complejo actualmente.'
@@ -179,7 +179,7 @@ En cada vista, solo se documentan tests de auth/permisos/a11y **específicos y �
 - [ ] **[Tenant unavailable - churned]** tenant.status='churned': se muestra InvalidState.
 - [ ] **[Tenant unavailable - deleted]** tenant.status='deleted': se muestra InvalidState.
 - [ ] **[Tenant unavailable - allowOnlineBooking=false]** tenant.status='active' pero allowOnlineBooking=false: se muestra InvalidState.
-- [ ] **[Doble submit]** Usuario autenticado hace doble clic en 'Pagar seña y reservar' en corto tiempo: rate limit playerBooking (20/60s) bloquea el 2do intento, redirige a reservar?error=rate_limited.
+- [ ] **[Doble submit]** Usuario autenticado hace doble clic en 'Pagar la seña' en corto tiempo: rate limit playerBooking (20/60s) bloquea el 2do intento, redirige a reservar?error=rate_limited.
 - [ ] **[Navegación atras]** Jugador en la página de confirmación, navega atrás con el botón del navegador: vuelve a disponibilidad sin crear booking.
 - [ ] **[Navegación adelante]** Jugador cancela reserva, navega adelante: el navegador puede intentar reenviar el form pero la acción es idempotente (crea otro booking), o el servidor bloquea con rate limit.
 - [ ] **[Persistencia - Reload]** Jugador completa la acción, antes de redireccionarse hace reload de la página: la acción ya ocurrió (server side), redirige normalmente tras reload.

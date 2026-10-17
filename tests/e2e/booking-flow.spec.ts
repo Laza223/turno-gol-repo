@@ -90,7 +90,7 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
       await expect(page.getByRole('heading', { name: /confirmá tu reserva/i })).toBeVisible()
 
       // Click the deposit confirm button
-      await page.getByRole('button', { name: 'Pagar seña y reservar' }).click()
+      await page.getByRole('button', { name: 'Pagar la seña' }).click()
 
       // Should be on mock MP checkout
       await expect(page).toHaveURL(/\/mock-mp\/checkout/, { timeout: 15_000 })
@@ -139,7 +139,7 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
       await page.goto(reservarUrl(DEPOSIT_TENANT_SLUG, DEPOSIT_COURT_ID, date, '16:00'))
       await expect(page.getByRole('heading', { name: /confirmá tu reserva/i })).toBeVisible()
 
-      await page.getByRole('button', { name: 'Pagar seña y reservar' }).click()
+      await page.getByRole('button', { name: 'Pagar la seña' }).click()
       await expect(page).toHaveURL(/\/mock-mp\/checkout/, { timeout: 15_000 })
 
       const bookingId = extractBookingId(page.url())
@@ -209,7 +209,7 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
       await page.goto(reservarUrl(DEPOSIT_TENANT_SLUG, DEPOSIT_COURT_ID, date, '18:00'))
       await expect(page.getByRole('heading', { name: /confirmá tu reserva/i })).toBeVisible()
 
-      await page.getByRole('button', { name: 'Pagar seña y reservar' }).click()
+      await page.getByRole('button', { name: 'Pagar la seña' }).click()
       await expect(page).toHaveURL(/\/mock-mp\/checkout/, { timeout: 15_000 })
 
       const bookingId = extractBookingId(page.url())

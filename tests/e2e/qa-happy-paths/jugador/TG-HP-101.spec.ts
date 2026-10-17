@@ -17,8 +17,9 @@ import { tomorrowDateIsoArt } from '../../_helpers/booking-seed'
  * spec primero y tratar la parte de Inbucket como no probada hasta
  * confirmarlo en runtime.
  *
- * Evidence anchors: reservar/page.tsx:118-131, LoginGate.tsx:41-42,50-51,68-71,
- * reservar/actions.ts:49-80, api/auth/callback/route.ts:54,71-100,
+ * Evidence anchors: reservar/page.tsx:150-208, LoginGate.tsx (gate de email: nombre + email, sin
+ * apellido; "Revisá tu email" con foco), reservar/actions.ts (sendPlayerMagicLink),
+ * api/auth/callback/route.ts:54,71-100,
  * player.service.ts:24-65, verify/VerifyView.tsx:114-118,335-358,
  * verify/SuccessRedirect.tsx:5,22-24,35-37.
  */
@@ -89,26 +90,25 @@ test.describe('TG-HP-101 — Alta jugador nuevo al reservar', () => {
       await page.goto(reservarUrl(date))
       await expect(page.getByRole('heading', { name: 'Confirmá tu reserva' })).toBeVisible()
 
-      // Sin sesión → LoginGate (no ConfirmBookingButton).
-      await expect(page.getByRole('heading', { name: 'Confirmá con tu email' })).toBeVisible()
+      // Sin sesión → LoginGate (no ConfirmBookingButton). Nombre y email, sin apellido.
+      await expect(page.getByRole('heading', { name: 'Entrá para reservar' })).toBeVisible()
+      await expect(page.getByLabel('Apellido')).toHaveCount(0)
 
-      await page.locator('input[name="firstName"]').fill('Juan')
-      await page.locator('input[name="lastName"]').fill('Pérez')
-      await page.locator('input[name="email"]').fill(newEmail)
-      await page.locator('input[name="terms"]').check()
+      await page.getByLabel('Nombre').fill('Juan')
+      await page.getByLabel('Email').fill(newEmail)
+      await page.getByRole('checkbox').check()
 
       const sinceMs = Date.now()
-      await page.getByRole('button', { name: 'Continuar con email' }).click()
-      // Anti-doble-submit: disabled={pending} vía useFormStatus (LoginGate.tsx:16-22).
+      await page.getByRole('button', { name: 'Continuar con mi email' }).click()
+      // Anti-doble-submit: SubmitButton deshabilita el botón mientras corre la action.
 
-      await expect(page.getByRole('heading', { name: 'Revisá tu email', level: 2 })).toBeVisible({
-        timeout: 10_000,
-      })
-      await expect(
-        page.getByText(
-          `Te enviamos un enlace a ${newEmail}. Hacé click para confirmar tu reserva.`,
-        ),
-      ).toBeVisible()
+      const sentTitle = page.getByRole('heading', { name: 'Revisá tu email', level: 2 })
+      await expect(sentTitle).toBeVisible({ timeout: 10_000 })
+      // El foco pasa al título (el formulario desapareció).
+      await expect(sentTitle).toBeFocused()
+      await expect(page.getByText(`Te mandamos un enlace a ${newEmail}.`)).toBeVisible()
+      // Todavía no se confirma sola (llega en el 2.3b2): al tocar el enlace vuelve acá y confirma.
+      await expect(page.getByText(/volvés a esta pantalla con tu cuenta/)).toBeVisible()
 
       const link = await fetchMagicLinkFromInbucket(newEmail, sinceMs)
       await page.goto(link)
@@ -124,9 +124,9 @@ test.describe('TG-HP-101 — Alta jugador nuevo al reservar', () => {
       // Aterriza de nuevo en /reservar, ahora con sesión → ConfirmBookingButton en vez de LoginGate.
       await page.waitForURL(new RegExp(`/${TENANT_SLUG}/reservar`), { timeout: 10_000 })
       await expect(
-        page.getByRole('button', { name: /Confirmar reserva|Pagar seña y reservar/ }),
+        page.getByRole('button', { name: /Confirmar reserva|Pagar la seña/ }),
       ).toBeVisible({ timeout: 10_000 })
-      await expect(page.getByRole('heading', { name: 'Confirmá con tu email' })).not.toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Entrá para reservar' })).not.toBeVisible()
 
       // DB: fila NUEVA en players (email lower-cased, nombre, declaración jurada).
       const sb = makeServiceClient()
@@ -139,7 +139,8 @@ test.describe('TG-HP-101 — Alta jugador nuevo al reservar', () => {
       expect(error).toBeNull()
       expect(player?.email).toBe(newEmail.toLowerCase())
       expect(player?.first_name).toBe('Juan')
-      expect(player?.last_name).toBe('Pérez')
+      // Sin apellido en la pantalla: el servidor lo recibe vacío.
+      expect(player?.last_name ?? '').toBe('')
       expect(player?.agreed_to_terms_at).toBeTruthy()
       expect(player?.terms_version).toBeTruthy()
       expect(player?.status).toBe('active')

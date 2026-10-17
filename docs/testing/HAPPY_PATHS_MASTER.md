@@ -436,27 +436,27 @@ Fixtures usados en todos los casos (ver contrato):
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/e2e-complejo-demo/reservar?court=00000000-0000-4000-8000-000000000010&date=<YYYY-MM-DD>&time=<HH:MM>&dur=60` (URL armada por la grilla pública; para el caso de test se puede navegar directo).
   2. Como no hay sesión de jugador, la page renderiza `LoginGate` (src/app/(public)/[slug]/reservar/page.tsx:118-131).
-  3. Rellenar `firstName` con `"Juan"`, `lastName` con `"Pérez"`, `email` con `"e2e-player@turnogol.test"` (input `name="email"` type=email).
-  4. Tildar el checkbox `name="terms"` ("Soy mayor de 18 años y acepto los términos y condiciones de uso (declaración jurada)." — LoginGate.tsx:70).
-  5. Click en el botón `"Continuar con email"` (LoginGate.tsx:20-21).
-  6. Esperar el estado `sent`: card con h2 `"Revisá tu email"` y texto `"Te enviamos un enlace a <email>. Hacé click para confirmar tu reserva."` (LoginGate.tsx:41-42).
+  3. Rellenar `Nombre` (`name="firstName"`) con `"Juan"` y `Email` (`name="email"`, type=email) con `"e2e-player@turnogol.test"`. Desde el PR 2.3b1 no hay Apellido.
+  4. Tildar el checkbox `name="terms"` ("Soy mayor de 18 años y acepto los términos y condiciones de uso (declaración jurada)." — LoginGate.tsx:304). Sin la casilla nada se deshabilita: el error sale en la casilla.
+  5. Click en el botón `"Continuar con mi email"` (LoginGate.tsx:242-243).
+  6. Esperar el estado `sent`: título `"Revisá tu email"` (con foco) y texto `"Te mandamos un enlace a <email>."` + `"Cuando lo toques, volvés a esta pantalla con tu cuenta y ahí confirmás la reserva."`, con "Reenviar enlace" y "Usar otro email" (LoginGate.tsx:348-382).
   7. Abrir Inbucket (`http://127.0.0.1:54324`), abrir el mensaje enviado a `e2e-player@turnogol.test`, click en el link del magic link (apunta a `/api/auth/callback?token_hash=...&type=email&next=/e2e-complejo-demo/reservar?...`).
   8. El callback (`src/app/api/auth/callback/route.ts:54,73-100`) verifica el OTP, crea el jugador si no existe, y redirige a `/verify?status=success&next=<next>&intent=booking`.
   9. En `/verify`, esperar h1 `"¡Cuenta confirmada!"` con subtítulo `"Volvé para terminar tu reserva."` y botón `"Continuar con mi reserva"` (src/app/(auth)/verify/VerifyView.tsx:114-118,335-358). Auto-redirect a los 5s (SuccessRedirect.tsx:5,35-37) o click manual en el botón.
   10. Aterriza de nuevo en `/e2e-complejo-demo/reservar?...`, ahora con sesión (`isPlayer=true`) → renderiza `ConfirmBookingButton` en vez de `LoginGate` (page.tsx:118-128).
 - **Comportamiento de componentes:**
-  - Loading: botón `Submit` de LoginGate deshabilitado vía `useFormStatus().pending`, texto cambia a `"Enviando…"` con spinner `Loader2` (LoginGate.tsx:16-22).
-  - Anti-doble-submit: `disabled={pending}` en el mismo botón (LoginGate.tsx:19), estado gestionado por `useActionState` (LoginGate.tsx:3,33).
-  - Feedback: no hay toast — la propia `GateState` cambia a `{status:'sent'}` y re-renderiza el card de confirmación in-place (LoginGate.tsx:35-45); luego redirect real vía `NextResponse.redirect` del callback (route.ts:100) y auto-redirect client-side de `/verify` (SuccessRedirect.tsx:22-24).
+  - Loading: `SubmitButton` del email deshabilitado mientras corre la action, con `"Enviando…"` (LoginGate.tsx:242).
+  - Anti-doble-submit: el mismo `SubmitButton`; estado en dos `useActionState`, email y Google (LoginGate.tsx:93-98).
+  - Feedback: no hay toast — la propia `GateState` cambia a `{status:'sent'}` y re-renderiza el panel "Revisá tu email" en el lugar (LoginGate.tsx:348-382); luego redirect real vía `NextResponse.redirect` del callback (route.ts:100) y auto-redirect client-side de `/verify` (SuccessRedirect.tsx:22-24).
 - **Validación de datos:**
   - DB: fila nueva en `players` (email lower-cased, `first_name`, `last_name`, `agreed_to_terms_at=NOW()`, `terms_version`) — `INSERT INTO players ... ON CONFLICT (email) DO UPDATE` (src/modules/players/player.service.ts:24,52-63).
-  - API/Action: `sendPlayerMagicLink` (src/app/(public)/[slug]/reservar/actions.ts:49) → `{status:'sent'}` en éxito (actions.ts:79). `GET /api/auth/callback` → 302 a `/verify?...` (route.ts:100).
+  - API/Action: `sendPlayerMagicLink` (src/app/(public)/[slug]/reservar/actions.ts:75) → `{status:'sent'}` en éxito (actions.ts:123). `GET /api/auth/callback` → 302 a `/verify?...` (route.ts:100).
   - Externos: Resend envía el magic link vía `supabase.auth.signInWithOtp` (src/modules/auth/auth.service.ts:27-39) — visible en Inbucket `:54324`, `user_metadata` lleva `is_player`, `first_name`, `last_name`, `agreed_terms`, `terms_version` (auth.service.ts:31-37).
   - UI-sin-reload: no aplica (son navegaciones reales / redirects de servidor, no revalidatePath).
 - **Evidencia (path:línea):**
   - `src/app/(public)/[slug]/reservar/page.tsx:118-131` — render condicional LoginGate vs ConfirmBookingButton según sesión.
-  - `src/app/(public)/[slug]/reservar/components/LoginGate.tsx:41-42,50-51,68-71` — copy exacto del form y del estado "sent".
-  - `src/app/(public)/[slug]/reservar/actions.ts:49-80` — `sendPlayerMagicLink`.
+  - `src/app/(public)/[slug]/reservar/components/LoginGate.tsx:242-243,304,348-382` — copy exacto del form y del estado "sent".
+  - `src/app/(public)/[slug]/reservar/actions.ts:75-124` — `sendPlayerMagicLink`.
   - `src/app/api/auth/callback/route.ts:54,71-100` — verifyOtp + `getOrCreatePlayer` + redirect a `/verify`.
   - `src/modules/players/player.service.ts:24-65` — `getOrCreatePlayer` (INSERT/UPDATE de `players`).
   - `src/app/(auth)/verify/VerifyView.tsx:114-118,335-358` — copy de éxito intent=booking.
@@ -505,12 +505,12 @@ Fixtures usados en todos los casos (ver contrato):
   2. Ver h1 `"Confirmá tu reserva"` (page.tsx:101).
   3. Ver `BookingSummary` con precio del slot, sin bloque de seña (`depositAmount=0` porque `tenant.requiresDeposit=false`, page.tsx:68-70).
   4. Como hay sesión, se renderiza `ConfirmBookingButton` con `payMethods` presenciales (cash/transfer según config, `depositAmount>0` sería solo MP — page.tsx:75-81).
-  5. Click en el botón `"Confirmar reserva"` (texto condicional `depositAmount>0 ? 'Pagar seña y reservar' : 'Confirmar reserva'`, ConfirmBookingButton.tsx:13).
+  5. Click en el botón `"Confirmar reserva"` (texto condicional `withDeposit ? 'Pagar la seña' : 'Confirmar reserva'`, ConfirmBookingButton.tsx:52).
   6. `createBookingAndCheckout` inserta el booking con `status:'confirmed'` de una (booking.service.ts:433,436: `withDeposit` es `false`) y redirige a `/reserva/<bookingId>/exito` (reservar/actions.ts:169-170).
   7. En `/reserva/<id>/exito` ver h1 `"¡Reserva confirmada!"` (BookingSuccessCard.tsx:52-54), texto `"Pagás <precio> al llegar al complejo."` (depositStatus='not_required', BookingSuccessCard.tsx:60-63), QR de verificación y botón `"Ver mis reservas"`.
 - **Comportamiento de componentes:**
-  - Loading: botón `Inner` de ConfirmBookingButton deshabilitado vía `useFormStatus().pending`, texto `"Procesando…"` + spinner (ConfirmBookingButton.tsx:8-16).
-  - Anti-doble-submit: `disabled={pending}` (ConfirmBookingButton.tsx:11).
+  - Loading: `SubmitButton` de ConfirmBookingButton deshabilitado mientras corre la action, con `"Procesando…"` (ConfirmBookingButton.tsx:51).
+  - Anti-doble-submit: el mismo `SubmitButton` (ConfirmBookingButton.tsx:51).
   - Feedback: no hay toast; es un `redirect()` real de servidor (Server Action `createBookingAndCheckout` sin retorno, actions.ts:92,200).
 - **Validación de datos:**
   - DB: `bookings.status='confirmed'`, `deposit_status='not_required'`, `deposit_amount=0`, `payment_method` = `cash`/`transfer` si el jugador lo eligió (booking.service.ts:433,436-437).
@@ -519,7 +519,7 @@ Fixtures usados en todos los casos (ver contrato):
   - UI-sin-reload: no aplica — navegación real vía `redirect()`.
 - **Evidencia (path:línea):**
   - `src/app/(public)/[slug]/reservar/page.tsx:67-70,75-81,101,118-131` — h1, cálculo de `depositAmount=0`, `payMethods`, render `ConfirmBookingButton`.
-  - `src/app/(public)/[slug]/reservar/components/ConfirmBookingButton.tsx:8-16,39-42` — label del botón y hint.
+  - `src/app/(public)/[slug]/reservar/components/ConfirmBookingButton.tsx:45-53` — barra fija y label del botón.
   - `src/app/(public)/[slug]/reservar/actions.ts:92,138,169-170` — `withDeposit` false → `status:'confirmed'` → redirect a `/exito`.
   - `src/modules/bookings/booking.service.ts:415-437` — inserción `status: withDeposit ? 'pending_payment' : 'confirmed'`.
   - `src/app/reserva/[bookingId]/exito/BookingSuccessCard.tsx:52-54,60-63` — h1 y copy "sin seña".
@@ -533,15 +533,15 @@ Fixtures usados en todos los casos (ver contrato):
   1. Navegar a `http://localhost:3000/e2e-complejo-sena/reservar?court=00000000-0000-4000-8000-000000000031&date=<YYYY-MM-DD>&time=<HH:MM>&dur=60`.
   2. Ver h1 `"Confirmá tu reserva"` y `BookingSummary` con seña calculada (`depositAmount = round(price*50/100)`, page.tsx:68-70).
   3. `payMethods` es solo `['mercadopago']` (depositAmount>0, page.tsx:75-77) — `PaymentMethodSelector` no ofrece cash/transfer.
-  4. Click en el botón `"Pagar seña y reservar"` (ConfirmBookingButton.tsx:13, `depositAmount>0`).
+  4. Click en el botón `"Pagar la seña"` (ConfirmBookingButton.tsx:52, `withDeposit`).
   5. `createBookingAndCheckout` inserta `status:'pending_payment'`, `deposit_status:'pending'` (booking.service.ts:433,436), llama `createDepositPayment` y redirige al `initPoint` de MP (reservar/actions.ts:169-179) → en mock, aterriza en `/mock-mp/checkout?booking=<id>&pref=...`.
   6. En el mock, ver banner `"Entorno de prueba (MOCK)"` y h1 `"Pago de seña"` (MockCheckoutView.tsx:35-45), con el resumen (complejo/cancha/fecha/horario/seña).
   7. Click en `"Pagar (aprobado)"` (MockCheckoutView.tsx:80-86).
   8. `mockPay` dispara el webhook interno a `/api/webhooks/mercadopago` con `type:'payment', status implícito approved` y redirige a `/reserva/<id>/exito` (mock-mp/checkout/actions.ts:43-98).
   9. En `/reserva/<id>/exito`, si el webhook ya procesó, ver directo `BookingSuccessCard` con h1 `"¡Reserva confirmada!"`, `"Seña pagada: <monto>"` y `"Resta abonar en el complejo: <resto>"` (BookingSuccessCard.tsx:65-68); si aún no, se monta `PaymentStatusWatcher` que muestra el mismo h1 al llegar a `status='confirmed'` vía polling (exito/page.tsx:75-91; PaymentStatusWatcher.tsx:116-123).
 - **Comportamiento de componentes:**
-  - Loading: mismo botón `Inner` de ConfirmBookingButton con `"Procesando…"` (ConfirmBookingButton.tsx:12).
-  - Anti-doble-submit: `disabled={pending}` (ConfirmBookingButton.tsx:11); en el mock checkout no hay `useFormStatus` (los 3 botones son `formAction` distintos del mismo `<form>`, MockCheckoutView.tsx:76-105 — sin estado pending visible).
+  - Loading: mismo `SubmitButton` de ConfirmBookingButton con `"Procesando…"` (ConfirmBookingButton.tsx:51).
+  - Anti-doble-submit: el mismo `SubmitButton` (ConfirmBookingButton.tsx:51); en el mock checkout no hay `useFormStatus` (los 3 botones son `formAction` distintos del mismo `<form>`, MockCheckoutView.tsx:76-105 — sin estado pending visible).
   - Feedback: sin toast; redirect real del webhook mock a `/exito`, y `PaymentStatusWatcher` hace polling a `/api/player/bookings/<id>/status` cada 3s con backoff hasta 30s (PaymentStatusWatcher.tsx:67-114) y renderiza el h1 de confirmado al detectar `status==='confirmed'` (`aria-live="polite"`, línea 118).
 - **Validación de datos:**
   - DB: `bookings.status='confirmed'`, `deposit_status='paid'` (transitionFromPendingPayment, booking.concurrency.ts:33-35), 1 fila en `payments` con `status='approved'` (`upsertPaymentRow`, payment.service.ts:294).

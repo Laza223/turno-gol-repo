@@ -73,13 +73,6 @@ describe('Piso de 16px en campos — constantes compartidas', () => {
       what: 'campos de los 4 pasos del wizard',
     },
     {
-      file: 'src/app/(public)/[slug]/reservar/components/LoginGate.tsx',
-      // Sin `export`: B5 le sacó el export (solo se usa dentro del archivo).
-      // Lo que este test cuida es el piso de 16px, no la visibilidad del símbolo.
-      needle: 'const inputClass',
-      what: 'nombre/apellido/email en el flujo de reserva',
-    },
-    {
       file: 'src/components/world/PortalAuthFrame.tsx',
       needle: 'export const PORTAL_INPUT',
       what: 'email del login de jugador',
@@ -103,6 +96,14 @@ describe('Piso de 16px en campos — constantes compartidas', () => {
       )
     })
   }
+
+  it('LoginGate (reservar): nombre y email usan PORTAL_INPUT, que ya arranca en 16px', () => {
+    const code = stripComments(read('src/app/(public)/[slug]/reservar/components/LoginGate.tsx'))
+    // Los dos campos de texto (nombre y email) llevan la constante: una clase propia en un campo
+    // nuevo es justo donde se cuela el `text-sm` de 14px.
+    expect(code.match(/className=\{PORTAL_INPUT\}/g)).toHaveLength(2)
+    expect(code.match(/<Input\s/g)).toHaveLength(2)
+  })
 
   it('HeroSearch: los campos del buscador no bajan de 16px en el teléfono', () => {
     const file = read('src/app/home/HeroSearch.tsx')

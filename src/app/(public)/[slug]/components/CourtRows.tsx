@@ -25,12 +25,15 @@ export default function CourtRows({
   tenant,
   row,
   date,
+  formato = null,
   ref,
   className,
 }: {
   tenant: Pick<PublicTenant, 'slug' | 'allowOnlineBooking' | 'hidePrices' | 'phone' | 'whatsapp'>
   row: HourRow
   date: string
+  /** El filtro de formato de la ficha: viaja a confirmar para que "Volver" lo conserve. */
+  formato?: number | null
   ref?: Ref<HTMLElement>
   className?: string
 }) {
@@ -72,6 +75,7 @@ export default function CourtRows({
                     courtId: court.id,
                     date,
                     time: row.time,
+                    formato,
                   })}
                   className={ROW}
                 >

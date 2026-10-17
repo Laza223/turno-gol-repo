@@ -31,6 +31,17 @@ describe('countUpcomingPlayable (ENS-1)', () => {
     expect(countUpcomingPlayable(bookings, '2026-07-14')).toBe(0)
   })
 
+  it('con el instante físico manda `ends_at`: el turno en juego de día operativo de ayer cuenta y el de hoy ya terminado no', () => {
+    const now = Date.parse('2026-07-15T03:30:00Z') // 00:30 ART del 15
+    const bookings = [
+      // closes_next_day: día operativo 14, se juega el 15 de 00:00 a 01:00 ART.
+      { date: '2026-07-14', status: 'confirmed', ends_at: '2026-07-15T04:00:00Z' },
+      // Hoy (15) de 00:00 a 00:15 ART: ya terminó.
+      { date: '2026-07-15', status: 'confirmed', ends_at: '2026-07-15T03:15:00Z' },
+    ]
+    expect(countUpcomingPlayable(bookings, '2026-07-15', now)).toBe(1)
+  })
+
   it('incluye hoy mismo (>=)', () => {
     const bookings = [{ date: '2026-07-14', status: 'confirmed' }]
     expect(countUpcomingPlayable(bookings, '2026-07-14')).toBe(1)

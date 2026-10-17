@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { CalendarPlus, Navigation, Ticket } from 'lucide-react'
+import { buildDirectionsHref } from '@/lib/booking/directions'
 import { cn } from '@/lib/utils'
 import { icsEscapeText } from './ics-escape'
 
@@ -49,11 +50,7 @@ export default function BookingSuccessExtras(props: Props) {
   const { tenantName, courtName, slug, date, timeStart, timeEnd, address, city } = props
   const t1 = timeStart.slice(0, 5)
 
-  const hasGeo = props.latitude != null && props.longitude != null
-  const mapsQuery = hasGeo
-    ? `${props.latitude},${props.longitude}`
-    : encodeURIComponent(`${address}, ${city}`)
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`
+  const mapsUrl = buildDirectionsHref(props)
 
   function addToCalendar() {
     const dtStamp = new Date()
@@ -89,7 +86,7 @@ export default function BookingSuccessExtras(props: Props) {
 
   return (
     <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-      {(hasGeo || address.trim() !== '') && (
+      {mapsUrl && (
         <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className={ROW}>
           <Navigation className={ROW_ICON} aria-hidden />
           Cómo llegar

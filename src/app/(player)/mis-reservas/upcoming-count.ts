@@ -16,9 +16,21 @@ export const UPCOMING_PLAYABLE_STATUSES = ['confirmed', 'pending_payment'] as co
 
 const PLAYABLE_SET: ReadonlySet<string> = new Set(UPCOMING_PLAYABLE_STATUSES)
 
+/**
+ * Con `nowMs` y `ends_at` manda el instante físico: cuenta lo que todavía no terminó, también el
+ * turno de 00:00 de `closes_next_day` cuyo día operativo ya es ayer, y no cuenta un turno de hoy que
+ * ya terminó. Sin `ends_at` (o sin `nowMs`) se filtra solo por día, como siempre.
+ */
 export function countUpcomingPlayable(
-  bookings: Array<{ date: string; status: string }>,
+  bookings: Array<{ date: string; status: string; ends_at?: string | Date }>,
   today: string,
+  nowMs?: number,
 ): number {
-  return bookings.filter((b) => b.date >= today && PLAYABLE_SET.has(b.status)).length
+  return bookings.filter(
+    (b) =>
+      PLAYABLE_SET.has(b.status) &&
+      (nowMs === undefined || b.ends_at === undefined
+        ? b.date >= today
+        : new Date(b.ends_at).getTime() > nowMs),
+  ).length
 }

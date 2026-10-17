@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
 import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test'
+import { PortalWorld } from '@/components/world/PortalWorld'
 import { CancelBookingButton } from './CancelBookingButton'
 
 /**
@@ -37,16 +38,19 @@ const meta = {
   args: {
     bookingId: 'booking-1',
     courtName: 'Cancha 1',
-    dateLabel: 'sáb, 14 mar',
-    timeLabel: '18:00–19:00',
+    dateLabel: 'sáb 14 mar',
+    timeLabel: '18:00 a 19:00',
     cancellationOutcome: 'refund',
     depositAmountCents: 150_000,
   },
   decorators: [
+    // En La Reserva: el mundo tiñe `<html>` por `:has()` y alcanza al diálogo, que monta en <body>.
     (Story) => (
-      <div className="rounded-2xl border border-border bg-card p-4 shadow-xs">
-        <Story />
-      </div>
+      <PortalWorld>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <Story />
+        </div>
+      </PortalWorld>
     ),
   ],
 } satisfies Meta<typeof CancelBookingButton>
@@ -76,7 +80,13 @@ export const Abierto: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
     await expect(await screen.findByText('¿Cancelar esta reserva?')).toBeInTheDocument()
-    await expect(screen.getByLabelText(/motivo \(opcional\)/i)).toBeInTheDocument()
+    const field = screen.getByLabelText(/motivo \(opcional\)/i)
+    await expect(field).toBeInTheDocument()
+    // El diálogo vive en <body>: lo cubre el mundo (radio de La Reserva) y el campo es de 16 px.
+    await expect(
+      getComputedStyle(document.documentElement).getPropertyValue('--radius').trim(),
+    ).toBe('0.75rem')
+    await expect(field).toHaveClass('text-base')
     // ENS-2: la consecuencia concreta de cancelar AHORA (no más "en el plazo/fuera del plazo" en abstracto).
     await expect(
       screen.getByText(hasText('Se te devuelve la seña de $ 1.500.')),
@@ -125,9 +135,9 @@ export const ErrorAlCancelar: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Sí, cancelar' }))
-    await expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Demasiadas solicitudes. Esperá un momento.',
-    )
+    const alert = await screen.findByRole('alert')
+    await expect(alert).toHaveTextContent('Demasiadas solicitudes. Esperá un momento.')
+    await expect(parseFloat(getComputedStyle(alert).fontSize)).toBeGreaterThanOrEqual(13)
     await expect(screen.getByRole('dialog')).toBeInTheDocument()
   },
 }

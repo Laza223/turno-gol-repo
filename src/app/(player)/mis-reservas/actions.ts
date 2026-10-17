@@ -35,6 +35,10 @@ const cancelSchema = z.object({
  * una Server Action en el payload RSC (visible en el Network tab del
  * jugador), sin importar si el componente cliente los lee. Este tipo
  * reducido es lo único que el jugador puede ver de SU PROPIA reserva.
+ *
+ * Sin `priceSnapshot` a propósito: un complejo con `hide_public_prices` no muestra el monto del
+ * turno, y la respuesta de la action viaja al browser aunque ningún componente la lea. La seña
+ * propia sí va (`depositAmount`).
  */
 type PlayerBookingRow = Pick<
   BookingRow,
@@ -45,7 +49,6 @@ type PlayerBookingRow = Pick<
   | 'timeEnd'
   | 'depositStatus'
   | 'depositAmount'
-  | 'priceSnapshot'
   | 'canceledReason'
   | 'canceledAt'
 >
@@ -59,7 +62,6 @@ function toPlayerBookingRow(booking: BookingRow): PlayerBookingRow {
     timeEnd: booking.timeEnd,
     depositStatus: booking.depositStatus,
     depositAmount: booking.depositAmount,
-    priceSnapshot: booking.priceSnapshot,
     canceledReason: booking.canceledReason,
     canceledAt: booking.canceledAt,
   }

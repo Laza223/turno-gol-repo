@@ -33,6 +33,9 @@ import type { StatusTone } from '@/lib/status-tone'
  */
 const TONO_DEL_JUGADOR: Partial<Record<string, StatusTone>> = {
   confirmed: 'success',
+  // El rojo de "Ausente" es del complejo (plata que no entró). Al jugador no se le grita: se le
+  // explica qué pasó en la tarjeta, sin tono de alarma.
+  no_show: 'neutral',
 }
 
 /**
@@ -44,6 +47,11 @@ const TONO_DEL_JUGADOR: Partial<Record<string, StatusTone>> = {
  * complejo se quedó (cancelación fuera de plazo o ausencia).
  */
 const PAID_DEPOSIT_STATUSES: ReadonlySet<string> = new Set(['paid', 'captured'])
+
+/** ¿La reserva tiene una seña cobrada? Es lo que la tarjeta marca como "Señada". */
+export function isDepositPaid(depositStatus: string): boolean {
+  return PAID_DEPOSIT_STATUSES.has(depositStatus)
+}
 
 export function playerBookingVisual(status: string, depositStatus: string): StatusBadgeVisual {
   const base = bookingBadgeVisual({
@@ -58,10 +66,12 @@ export function playerBookingVisual(status: string, depositStatus: string): Stat
     pending: null,
     totalPaid: null,
   })
-  const lostDeposit = status === 'canceled_no_refund' && PAID_DEPOSIT_STATUSES.has(depositStatus)
+  const lostDeposit = status === 'canceled_no_refund' && isDepositPaid(depositStatus)
   return {
     icon: base.icon,
     label: lostDeposit ? 'Cancelada (sin reembolso)' : base.label,
-    tone: TONO_DEL_JUGADOR[status] ?? base.tone,
+    // El ámbar del portal es solo de "Queda 1" (DESIGN.md, The Scarcity Amber Rule): la espera de la
+    // seña se dice con el texto de la tarjeta, no con un tono de aviso.
+    tone: status === 'pending_payment' ? 'neutral' : (TONO_DEL_JUGADOR[status] ?? base.tone),
   }
 }

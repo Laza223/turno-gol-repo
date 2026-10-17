@@ -4,9 +4,12 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { getCancellationPreview } from '@/modules/bookings/cancellation-preview'
 import { DEFAULT_CANCELLATION_HOURS_BEFORE } from '@/shared/constants'
-import { bookingCode } from '@/lib/booking-code'
+import { absoluteUrl } from '@/lib/seo/metadata'
+import { buildDirectionsHref } from '@/lib/booking/directions'
+import { buildGroupShareHref, buildGroupShareText } from '@/lib/booking/group-share'
 import { MisReservasView, type MisReservasBookingRow } from './MisReservasView'
-import { cancelMyBookingAction, type RefundContactInfo } from './actions'
+import { cancelMyBookingAction } from './actions'
+import { refundContactFor } from './refund-contact'
 import { UPCOMING_PLAYABLE_STATUSES } from './upcoming-count'
 import { RefundDialogProvider } from './RefundDialogProvider'
 
@@ -43,6 +46,15 @@ type RawMisReservasRow = {
   deposit_status: string
   deposit_amount: number
   starts_at: string
+  /** Día calendario ART en que arranca el turno (≠ `date` si el complejo cierra pasada la medianoche). */
+  starts_on: string
+  ends_at: string
+  canceled_by: 'player' | 'admin' | 'system' | null
+  court_format: number
+  tenant_address: string
+  tenant_city: string
+  tenant_latitude: string | null
+  tenant_longitude: string | null
   cancellation_policy_hours: number
   /** `null` = no hay devolución en juego. Ver `refundContactFor`. */
   refund_status: 'approved' | 'pending' | null
@@ -64,33 +76,6 @@ export const MIS_RESERVAS_PAGE_SIZE = 20
 function parsePage(raw: string | undefined): number {
   const n = Number.parseInt(raw ?? '', 10)
   return Number.isFinite(n) && n > 1 ? n - 1 : 0
-}
-
-/**
- * Recordatorio de devolución de una reserva ya cancelada.
- *
- * Solo existe mientras la fila de `payments` diga que la plata no se movió. En
- * cuanto alguien la salda —el complejo tildando, o MercadoPago avisando por
- * webhook que devolvió— la tarjeta pasa a decir que está confirmada.
- */
-function refundContactFor(r: RawMisReservasRow): RefundContactInfo | undefined {
-  if (!r.refund_status) return undefined
-  return {
-    amountCents: r.deposit_amount,
-    state: r.refund_status === 'approved' ? 'settled' : 'pending',
-    settledMethod: r.refund_status === 'approved' ? r.refund_method : null,
-    settledAt:
-      r.refund_status === 'approved' && r.refund_processed_at
-        ? new Date(r.refund_processed_at).toISOString()
-        : null,
-    bookingCode: bookingCode(r.id),
-    dateLabel: r.date.slice(0, 10).split('-').reverse().slice(0, 2).join('/'),
-    timeLabel: r.time_start.slice(0, 5),
-    tenantName: r.tenant_name,
-    tenantWhatsapp: r.tenant_whatsapp,
-    tenantPhone: r.tenant_phone,
-    tenantEmail: r.tenant_email,
-  }
 }
 
 export default async function MisReservasPage(props: {
@@ -128,15 +113,29 @@ export default async function MisReservasPage(props: {
   )
   const tabCond =
     tab === 'proximos'
-      ? sql`AND b.date >= ${today}::date AND b.status IN (${playableStatuses})`
-      : sql`AND (b.date < ${today}::date OR b.status NOT IN (${playableStatuses}))`
+      ? // `OR b.ends_at > now()`: con `closes_next_day`, el turno de 00:00 del día operativo de ayer
+        // se está jugando ahora y sigue siendo de Próximos aunque `date` ya sea ayer.
+        sql`AND (b.date >= ${today}::date OR b.ends_at > now()) AND b.status IN (${playableStatuses})`
+      : sql`AND ((b.date < ${today}::date AND b.ends_at <= now()) OR b.status NOT IN (${playableStatuses}))`
+
+  // Próximos: la que se juega primero arriba (la próxima, la que el jugador viene a ver). Un turno
+  // de hoy que ya terminó va al final: no es "la próxima", solo sigue ahí hasta que cambie el día.
+  // Historial: la más reciente arriba.
+  const orderBy =
+    tab === 'proximos'
+      ? sql`ORDER BY (b.ends_at <= now()) ASC, b.date ASC, b.starts_at ASC, b.id ASC`
+      : sql`ORDER BY b.date DESC, b.starts_at DESC, b.id ASC`
 
   const { rows, upcoming } = await withPlayerContext(user.playerId, async (tx) => {
     const paged = await tx.execute(sql`
       SELECT b.id, b.date::text, b.time_start::text, b.time_end::text,
              b.type, b.status, b.price_snapshot,
-             b.deposit_status, b.deposit_amount, b.starts_at,
-             c.name AS court_name, t.name AS tenant_name, t.slug AS tenant_slug,
+             b.deposit_status, b.deposit_amount, b.starts_at, b.ends_at,
+             (b.starts_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date::text AS starts_on,
+             b.canceled_by::text AS canceled_by,
+             c.name AS court_name, c.format AS court_format, t.name AS tenant_name, t.slug AS tenant_slug,
+             t.address AS tenant_address, t.city AS tenant_city,
+             t.latitude AS tenant_latitude, t.longitude AS tenant_longitude,
              t.phone AS tenant_phone, t.whatsapp AS tenant_whatsapp, t.email AS tenant_email,
              COALESCE((t.settings->'cancellation_policy'->>'hours_before')::int, ${DEFAULT_CANCELLATION_HOURS_BEFORE}::int) AS cancellation_policy_hours,
              COALESCE((t.settings->>'hide_public_prices')::boolean, false) AS hide_prices,
@@ -179,7 +178,7 @@ export default async function MisReservasPage(props: {
       -- id como desempate: dos reservas con el mismo date+starts_at (dos
       -- canchas del mismo complejo, por ejemplo) sin un orden estable movían
       -- filas entre páginas contiguas.
-      ORDER BY b.date DESC, b.starts_at DESC, b.id ASC
+      ${orderBy}
       LIMIT ${MIS_RESERVAS_PAGE_SIZE} OFFSET ${page * MIS_RESERVAS_PAGE_SIZE}
     `)
     // "Tenés N turnos por jugar" ya no se puede derivar de las filas en
@@ -192,7 +191,7 @@ export default async function MisReservasPage(props: {
       SELECT COUNT(*) AS n
       FROM bookings b
       WHERE b.player_id = ${user.playerId}
-        AND b.date >= ${today}::date
+        AND b.ends_at > now()
         AND b.status IN (${sql.join(
           UPCOMING_PLAYABLE_STATUSES.map((s) => sql`${s}::booking_status`),
           sql`, `,
@@ -221,9 +220,16 @@ export default async function MisReservasPage(props: {
       policyHours: r.cancellation_policy_hours,
       nowMs: now,
     })
+    // Instante físico (`ends_at`), no la fecha: un turno de hoy que ya terminó no se cancela.
+    const ended = new Date(r.ends_at).getTime() <= now
+    const address = [r.tenant_address, r.tenant_city]
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join(', ')
     return {
       id: r.id,
       date: r.date,
+      starts_on: r.starts_on,
       time_start: r.time_start,
       time_end: r.time_end,
       type: r.type,
@@ -231,8 +237,37 @@ export default async function MisReservasPage(props: {
       // El complejo oculta sus precios: el monto no viaja al browser.
       price_snapshot: r.hide_prices ? null : r.price_snapshot,
       court_name: r.court_name,
+      court_format: r.court_format,
       tenant_name: r.tenant_name,
       tenant_slug: r.tenant_slug,
+      address,
+      directions_href: buildDirectionsHref({
+        address: r.tenant_address,
+        city: r.tenant_city,
+        latitude: r.tenant_latitude == null ? null : Number(r.tenant_latitude),
+        longitude: r.tenant_longitude == null ? null : Number(r.tenant_longitude),
+      }),
+      // El mismo mensaje de la vuelta de la reserva (sin montos). Solo de un turno confirmado
+      // que todavía no terminó: avisarle al grupo de un turno pasado no sirve.
+      share_href:
+        r.status === 'confirmed' && !ended
+          ? buildGroupShareHref(
+              buildGroupShareText({
+                tenantName: r.tenant_name,
+                courtName: r.court_name,
+                courtFormat: r.court_format,
+                // Día físico: el mensaje del grupo dice cuándo se juega, no el día operativo del complejo.
+                date: r.starts_on,
+                timeStart: r.time_start,
+                timeEnd: r.time_end,
+                address: r.tenant_address,
+                city: r.tenant_city,
+                complexUrl: absoluteUrl(`/${r.tenant_slug}`),
+              }),
+            )
+          : null,
+      ended,
+      canceled_by: r.canceled_by,
       has_review: r.has_review,
       cancellation_outcome: preview.kind,
       deposit_amount: preview.kind === 'no_deposit' ? 0 : preview.amountCents,
@@ -249,6 +284,7 @@ export default async function MisReservasPage(props: {
       <MisReservasView
         bookings={pageBookings}
         tab={tab}
+        today={today}
         page={page}
         total={total}
         pageSize={MIS_RESERVAS_PAGE_SIZE}

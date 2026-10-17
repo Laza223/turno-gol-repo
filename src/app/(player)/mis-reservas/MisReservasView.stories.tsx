@@ -3,6 +3,9 @@ import { expect, fn, within } from 'storybook/test'
 import { artDateString, daysFromNow } from '@/test/fixtures/clock'
 import { courtFutbol5, courtFutbol7, courtFutbol11 } from '@/test/fixtures/court'
 import { tenant, tenantAlt } from '@/test/fixtures/tenant'
+import { paintedContrast } from '@/test/contrast'
+import { PortalWorld } from '@/components/world/PortalWorld'
+import MisReservasLoading from './loading'
 import { MisReservasView, type MisReservasBookingRow } from './MisReservasView'
 
 /**
@@ -12,25 +15,37 @@ import { MisReservasView, type MisReservasBookingRow } from './MisReservasView'
  * court.ts/tenant.ts/clock.ts para mantener fechas/nombres consistentes con
  * el resto de las stories.
  */
-const row = (overrides: Partial<MisReservasBookingRow> = {}): MisReservasBookingRow => ({
-  id: 'booking-1',
-  date: artDateString(daysFromNow(2)),
-  time_start: '18:00',
-  time_end: '19:00',
-  type: 'spontaneous',
-  status: 'confirmed',
-  price_snapshot: 1500000,
-  court_name: courtFutbol5().name,
-  tenant_name: tenant().name,
-  tenant_slug: tenant().slug,
-  has_review: false,
-  cancellation_outcome: 'no_deposit',
-  deposit_amount: 0,
-  deposit_status: 'not_required',
-  ...overrides,
-})
+/** Hoy en ART según el reloj congelado de las stories (2026-03-14). */
+const TODAY = artDateString(daysFromNow(0))
 
-/** Reproduce `.player-shell-bg` (fondo del portal, ver ConfiguracionView.stories.tsx). */
+const row = (overrides: Partial<MisReservasBookingRow> = {}): MisReservasBookingRow => {
+  const date = overrides.date ?? artDateString(daysFromNow(2))
+  return {
+    id: 'booking-1',
+    date,
+    starts_on: date,
+    time_start: '18:00',
+    time_end: '19:00',
+    type: 'spontaneous',
+    status: 'confirmed',
+    price_snapshot: 1500000,
+    court_name: courtFutbol5().name,
+    court_format: courtFutbol5().format,
+    tenant_name: tenant().name,
+    tenant_slug: tenant().slug,
+    address: 'Av. Pellegrini 1500, Rosario',
+    directions_href: '/mapa-de-la-story',
+    share_href: '/aviso-de-la-story',
+    ended: false,
+    canceled_by: null,
+    has_review: false,
+    cancellation_outcome: 'no_deposit',
+    deposit_amount: 0,
+    deposit_status: 'not_required',
+    ...overrides,
+  }
+}
+
 const meta = {
   title: 'Player/MisReservas/MisReservasView',
   component: MisReservasView,
@@ -39,6 +54,7 @@ const meta = {
     nextjs: { appDirectory: true, navigation: { pathname: '/mis-reservas' } },
   },
   args: {
+    today: TODAY,
     cancelAction: fn(async () => ({
       success: true as const,
       booking: {} as never,
@@ -52,9 +68,11 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="player-shell-bg min-h-dvh py-6">
-        <Story />
-      </div>
+      <PortalWorld>
+        <div className="min-h-dvh bg-background">
+          <Story />
+        </div>
+      </PortalWorld>
     ),
   ],
 } satisfies Meta<typeof MisReservasView>
@@ -186,7 +204,7 @@ export const BadgeLargoNoAngostaElNombre: Story = {
   ],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const name = canvas.getByText('Cancha E2E 3')
+    const name = canvas.getByText(/Cancha E2E 3/)
     const badge = canvas.getByText('Cancelada (sin reembolso)')
     await expect(name).toHaveTextContent('Cancha E2E 3')
     // Línea distinta (wrap real), no compartiendo fila con el badge largo.
@@ -302,5 +320,387 @@ export const SinPaginador: Story = {
       canvas.queryByRole('navigation', { name: 'Paginación de reservas' }),
     ).not.toBeInTheDocument()
     await expect(canvas.getByText('Tenés 3 turnos por jugar.')).toBeInTheDocument()
+  },
+}
+
+const refund = (state: 'pending' | 'settled'): MisReservasBookingRow['refund'] => ({
+  amountCents: 500000,
+  state,
+  settledMethod: state === 'settled' ? 'transfer' : null,
+  settledAt: state === 'settled' ? '2026-03-10T15:00:00.000Z' : null,
+  bookingCode: 'K7M2QX',
+  dateLabel: '10/03',
+  timeLabel: '18:00',
+  tenantName: tenant().name,
+  tenantWhatsapp: '+54 9 341 555 0100',
+  tenantPhone: '3415550100',
+  tenantEmail: 'hola@complejo.test',
+})
+
+/** Una sola reserva: es "la próxima", completa y señada, con el grupo y cómo llegar a un toque. */
+export const UnaReserva: Story = {
+  args: {
+    tab: 'proximos',
+    upcomingCount: 1,
+    bookings: [
+      row({
+        id: 'b-1',
+        date: TODAY,
+        status: 'confirmed',
+        deposit_status: 'paid',
+        deposit_amount: 500000,
+        cancellation_outcome: 'refund',
+      }),
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('heading', { level: 1, name: 'Mis reservas' })).toBeVisible()
+    await expect(canvas.getByText('Hoy')).toBeVisible()
+    await expect(canvas.getByText('18:00 a 19:00')).toBeVisible()
+    await expect(canvas.getByText(/Señada, \$\s5\.000/)).toBeVisible()
+    await expect(canvas.getByRole('link', { name: 'Avisarle al grupo' })).toBeVisible()
+    await expect(canvas.getByRole('link', { name: 'Cómo llegar' })).toBeVisible()
+    await expect(canvas.getByRole('link', { name: /18:00 a 19:00/ })).toHaveAttribute(
+      'href',
+      '/reserva/b-1/exito',
+    )
+  },
+}
+
+/** Los estados de un turno por jugar: señada, sin seña, esperando seña, ya terminado y turno fijo. */
+export const ProximosTodosLosEstados: Story = {
+  args: {
+    tab: 'proximos',
+    upcomingCount: 5,
+    bookings: [
+      row({
+        id: 'p-sena',
+        date: TODAY,
+        time_start: '21:00',
+        time_end: '22:00',
+        deposit_status: 'paid',
+        deposit_amount: 500000,
+        cancellation_outcome: 'refund',
+      }),
+      row({ id: 'p-sin-sena', date: artDateString(daysFromNow(1)) }),
+      row({
+        id: 'p-pendiente',
+        status: 'pending_payment',
+        share_href: null,
+        date: artDateString(daysFromNow(2)),
+        deposit_status: 'pending',
+      }),
+      row({ id: 'p-fijo', type: 'fixed', date: artDateString(daysFromNow(4)) }),
+      row({
+        id: 'p-terminado',
+        date: TODAY,
+        time_start: '09:00',
+        time_end: '10:00',
+        ended: true,
+        share_href: null,
+      }),
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText(/Señada, \$\s5\.000/)).toBeVisible()
+    await expect(canvas.getAllByText(/Pagás en el complejo/).length).toBeGreaterThan(0)
+    await expect(canvas.getByText(/el turno se libera/)).toBeVisible()
+    await expect(canvas.getByText('Este turno ya terminó.')).toBeVisible()
+    // El turno ya terminado no se cancela; los otros tres confirmados sí.
+    await expect(canvas.getAllByRole('button', { name: 'Cancelar' })).toHaveLength(3)
+  },
+}
+
+/** 20 en la página, la 1 de 3: solo la primera es "la próxima" y el paginador va debajo. */
+export const VeintePorPagina: Story = {
+  args: {
+    tab: 'proximos',
+    upcomingCount: 45,
+    page: 0,
+    total: 45,
+    bookings: Array.from({ length: 20 }, (_, i) =>
+      row({
+        id: `v-${i}`,
+        date: artDateString(daysFromNow(i + 1)),
+        time_start: `${String(10 + (i % 10)).padStart(2, '0')}:00`,
+        time_end: `${String(11 + (i % 10)).padStart(2, '0')}:00`,
+      }),
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // El paginador también arma una lista: se cuentan solo las tarjetas.
+    await expect(canvas.getAllByRole('list')[0]!.querySelectorAll(':scope > li')).toHaveLength(20)
+    await expect(canvas.getAllByRole('link', { name: 'Avisarle al grupo' })).toHaveLength(1)
+    const pager = canvas.getByRole('navigation', { name: 'Paginación de reservas' })
+    await expect(within(pager).getByRole('link', { name: /Siguientes/ })).toHaveAttribute(
+      'href',
+      '/mis-reservas?pagina=2',
+    )
+  },
+}
+
+/** El complejo oculta sus precios: ningún monto del turno; la seña propia y la devolución, sí. */
+export const PreciosOcultos: Story = {
+  args: {
+    tab: 'proximos',
+    upcomingCount: 2,
+    bookings: [
+      row({
+        id: 'o-1',
+        price_snapshot: null,
+        date: artDateString(daysFromNow(1)),
+        deposit_status: 'paid',
+        deposit_amount: 500000,
+        cancellation_outcome: 'refund',
+      }),
+      row({
+        id: 'o-2',
+        price_snapshot: null,
+        status: 'canceled_refunded',
+        canceled_by: 'player',
+        deposit_status: 'refunded',
+        deposit_amount: 500000,
+        date: artDateString(daysFromNow(3)),
+        refund: refund('pending'),
+      }),
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.queryByText(/Turno \$/)).toBeNull()
+    await expect(canvas.queryByText(/15\.000/)).toBeNull()
+    await expect(canvas.getByText(/Señada, \$\s5\.000/)).toBeVisible()
+    await expect(canvas.getByText('Devolución pendiente')).toBeVisible()
+  },
+}
+
+/** Nombres largos de complejo y de cancha, a 320 px: nada se corta ni desborda. */
+export const NombresLargos: Story = {
+  args: {
+    tab: 'proximos',
+    upcomingCount: 2,
+    bookings: [
+      row({
+        id: 'n-1',
+        date: artDateString(daysFromNow(1)),
+        court_name: 'Cancha Techada Número Uno con Césped Sintético de Última Generación',
+        tenant_name: 'Complejo Deportivo Club Atlético Sociedad de Fomento Barrio Parque Norte',
+        address:
+          'Avenida General José de San Martín y Bartolomé Mitre 12345, Villa Gobernador Gálvez',
+      }),
+      row({
+        id: 'n-2',
+        status: 'canceled_no_refund',
+        deposit_status: 'captured',
+        canceled_by: 'admin',
+        date: artDateString(daysFromNow(2)),
+        court_name: 'Cancha Techada Número Uno con Césped Sintético de Última Generación',
+        tenant_name: 'Complejo Deportivo Club Atlético Sociedad de Fomento Barrio Parque Norte',
+      }),
+    ],
+  },
+  decorators: [
+    (Story) => (
+      <div style={{ width: 320 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    // Nada se sale de su tarjeta: ni el nombre de la cancha, ni el del complejo, ni la dirección.
+    for (const li of canvasElement.querySelectorAll('li')) {
+      const card = li.getBoundingClientRect()
+      await expect(card.width).toBeLessThanOrEqual(320)
+      for (const el of li.querySelectorAll('*')) {
+        await expect(el.getBoundingClientRect().right).toBeLessThanOrEqual(card.right + 1)
+        await expect(el.scrollWidth).toBeLessThanOrEqual(el.clientWidth + 1)
+      }
+    }
+  },
+}
+
+/** Canceladas (las tres formas de decir quién) con la devolución pendiente y ya saldada. */
+export const CanceladasYDevoluciones: Story = {
+  args: {
+    tab: 'historial',
+    upcomingCount: 0,
+    bookings: [
+      row({
+        id: 'c-jugador',
+        status: 'canceled_refunded',
+        canceled_by: 'player',
+        deposit_status: 'refunded',
+        deposit_amount: 500000,
+        date: artDateString(daysFromNow(-1)),
+        refund: refund('pending'),
+      }),
+      row({
+        id: 'c-complejo',
+        status: 'canceled_refunded',
+        canceled_by: 'admin',
+        deposit_status: 'refunded',
+        deposit_amount: 500000,
+        date: artDateString(daysFromNow(-2)),
+        refund: refund('settled'),
+      }),
+      row({
+        id: 'c-sin-dato',
+        status: 'canceled_no_refund',
+        date: artDateString(daysFromNow(-3)),
+      }),
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('La cancelaste vos.')).toBeVisible()
+    await expect(canvas.getByText('La canceló el complejo.')).toBeVisible()
+    await expect(canvas.getByText('Devolución pendiente')).toBeVisible()
+    await expect(canvas.getByText('Devolución confirmada')).toBeVisible()
+    await expect(canvas.getAllByRole('link', { name: 'Reservar de nuevo' })).toHaveLength(3)
+  },
+}
+
+/** Ausente y expirada: dicen qué pasó, sin alarma. */
+export const AusenteYExpirada: Story = {
+  args: {
+    tab: 'historial',
+    upcomingCount: 0,
+    bookings: [
+      row({ id: 'a-1', status: 'no_show', date: artDateString(daysFromNow(-1)) }),
+      row({ id: 'e-1', status: 'expired', date: artDateString(daysFromNow(-2)) }),
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText(/No te presentaste a este turno/)).toBeVisible()
+    await expect(canvas.getByText(/No se pagó la seña a tiempo/)).toBeVisible()
+  },
+}
+
+/**
+ * Contraste MEDIDO (lo que se pinta: texto contra fondo, con el tema del runner) de lo que esta
+ * pantalla agrega: notas, seña, pestaña inactiva, "Cancelar", acciones, badge de ausente y el
+ * aviso de devolución. Corre en claro y en oscuro (`STORYBOOK_THEME=dark`).
+ */
+export const ContrasteMedido: Story = {
+  args: {
+    tab: 'proximos',
+    upcomingCount: 2,
+    bookings: [
+      row({
+        id: 'm-1',
+        date: TODAY,
+        deposit_status: 'paid',
+        deposit_amount: 500000,
+        cancellation_outcome: 'refund',
+      }),
+      row({ id: 'm-2', status: 'pending_payment', share_href: null, deposit_status: 'pending' }),
+      row({ id: 'm-3', status: 'no_show', date: artDateString(daysFromNow(-1)) }),
+      row({
+        id: 'm-4',
+        status: 'canceled_refunded',
+        canceled_by: 'player',
+        deposit_status: 'refunded',
+        date: artDateString(daysFromNow(-2)),
+        refund: refund('pending'),
+      }),
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const medidos: Array<[string, HTMLElement]> = [
+      ['seña', canvas.getByText(/Señada, \$\s5\.000/)],
+      ['esperando seña', canvas.getByText(/el turno se libera/)],
+      ['ausente (texto)', canvas.getByText(/No te presentaste/)],
+      ['ausente (badge)', canvas.getByText('Ausente')],
+      ['quién canceló', canvas.getByText('La cancelaste vos.')],
+      ['pestaña inactiva', canvas.getByRole('link', { name: 'Historial' })],
+      ['cancelar', canvas.getByRole('button', { name: 'Cancelar' })],
+      ['avisar al grupo', canvas.getByRole('link', { name: 'Avisarle al grupo' })],
+      ['cómo llegar', canvas.getByRole('link', { name: 'Cómo llegar' })],
+      ['reservar de nuevo', canvas.getAllByRole('link', { name: 'Reservar de nuevo' })[0]!],
+      ['devolución', canvas.getByText('Devolución pendiente')],
+      ['devolución (texto)', canvas.getByText(/te tiene que devolver/)],
+    ]
+    for (const [nombre, el] of medidos) {
+      const ratio = await paintedContrast(el)
+      await expect(ratio, nombre).toBeGreaterThanOrEqual(4.5)
+    }
+  },
+}
+
+/**
+ * Un turno de hoy ya terminado no es "la próxima": la page lo manda al final y la vista destaca
+ * la primera confirmada que todavía se juega.
+ */
+export const TerminadoDeHoyNoEsLaProxima: Story = {
+  args: {
+    tab: 'proximos',
+    upcomingCount: 1,
+    bookings: [
+      row({
+        id: 'terminado',
+        date: TODAY,
+        time_start: '09:00',
+        time_end: '10:00',
+        ended: true,
+        share_href: null,
+      }),
+      row({
+        id: 'futuro',
+        date: artDateString(daysFromNow(1)),
+        deposit_status: 'paid',
+        deposit_amount: 500000,
+      }),
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getAllByRole('link', { name: 'Avisarle al grupo' })).toHaveLength(1)
+    // Aunque el terminado venga primero en la lista, la destacada es la que todavía se juega.
+    const items = canvas.getAllByRole('listitem')
+    await expect(within(items[0]!).getByText('Este turno ya terminó.')).toBeVisible()
+    await expect(within(items[1]!).getByRole('link', { name: 'Avisarle al grupo' })).toBeVisible()
+  },
+}
+
+/**
+ * El esqueleto de `loading.tsx` mide lo que mide la tarjeta real, para que al llegar los datos
+ * nada se mueva: la destacada (con seña, la más alta) y una compacta.
+ */
+export const AlturaDelEsqueleto: Story = {
+  args: {
+    tab: 'proximos',
+    upcomingCount: 2,
+    bookings: [
+      row({
+        id: 'proxima',
+        date: artDateString(daysFromNow(1)),
+        deposit_status: 'paid',
+        deposit_amount: 500000,
+      }),
+      row({ id: 'compacta', date: artDateString(daysFromNow(2)) }),
+    ],
+  },
+  render: (args) => (
+    <>
+      <div id="real">
+        <MisReservasView {...args} />
+      </div>
+      <div id="esqueleto">
+        <MisReservasLoading />
+      </div>
+    </>
+  ),
+  play: async ({ canvasElement }) => {
+    const real = canvasElement.querySelectorAll('#real li')
+    const esqueleto = canvasElement.querySelectorAll('#esqueleto .rounded-xl')
+    // [0] son las pestañas; [1] la próxima; [2] una compacta.
+    const alto = (el: Element | undefined) => el!.getBoundingClientRect().height
+    await expect(Math.abs(alto(esqueleto[1]) - alto(real[0]))).toBeLessThanOrEqual(8)
+    await expect(Math.abs(alto(esqueleto[2]) - alto(real[1]))).toBeLessThanOrEqual(8)
   },
 }

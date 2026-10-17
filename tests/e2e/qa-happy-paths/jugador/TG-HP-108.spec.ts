@@ -51,7 +51,7 @@ test.describe('TG-HP-108 — Cancelar reserva dentro de plazo → reembolso', ()
 
       // Escopamos a la card de ESTE booking por el rango horario (puede haber
       // otras reservas vivas de otros casos de plata en Próximos).
-      const card = page.locator('li').filter({ hasText: `${TIME_START}–${TIME_END}` })
+      const card = page.locator('li').filter({ hasText: `${TIME_START} a ${TIME_END}` })
       await expect(card).toBeVisible()
       await expect(card.getByText('Confirmada')).toBeVisible()
 
@@ -98,7 +98,7 @@ test.describe('TG-HP-108 — Cancelar reserva dentro de plazo → reembolso', ()
       await expect(card).not.toBeVisible({ timeout: 8_000 })
 
       await page.getByText('Historial', { exact: true }).first().click()
-      const historyCard = page.locator('li').filter({ hasText: `${TIME_START}–${TIME_END}` })
+      const historyCard = page.locator('li').filter({ hasText: `${TIME_START} a ${TIME_END}` })
       // El badge dice "Cancelada" a secas: "con reembolso" prometía plata que
       // en este punto todavía no se movió. Quién debe qué lo cuenta el panel
       // de devolución de la tarjeta, que es el recordatorio que sigue estando

@@ -13,10 +13,15 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
 
-type Props = { bookingId: string; tenantName: string }
+type Props = {
+  bookingId: string
+  tenantName: string
+  /** Ids del contexto de la tarjeta (cuándo y dónde): el botón sigue llamándose "Dejar reseña" a secas. */
+  describedBy?: string
+}
 
 /** Deja una reseña post-partido (solo para reservas 'completed'). */
-export function LeaveReviewButton({ bookingId, tenantName }: Props) {
+export function LeaveReviewButton({ bookingId, tenantName, describedBy }: Props) {
   const router = useRouter()
   const { toast } = useToast()
   const [open, setOpen] = useState(false)
@@ -61,7 +66,9 @@ export function LeaveReviewButton({ bookingId, tenantName }: Props) {
       <DialogTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-11 items-center gap-1.5 rounded-md px-3 text-xs font-medium text-emerald-700 dark:text-emerald-400 transition-[background-color,scale] hover:bg-emerald-50 dark:hover:bg-emerald-500/10 active:scale-[0.98] motion-reduce:active:scale-100"
+          aria-describedby={describedBy}
+          data-ghost
+          className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-emerald-700 transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring dark:text-emerald-400"
         >
           <Star className="h-4 w-4" aria-hidden />
           Dejar reseña
@@ -88,12 +95,12 @@ export function LeaveReviewButton({ bookingId, tenantName }: Props) {
                 aria-label={`${n} estrella${n === 1 ? '' : 's'}`}
                 onClick={() => setRating(n)}
                 onMouseEnter={() => setHover(n)}
-                className="rounded p-1 transition-transform hover:scale-110 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 motion-reduce:hover:scale-100"
+                className="flex size-11 items-center justify-center rounded-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <Star
                   className={cn(
                     'h-8 w-8',
-                    n <= shown ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground',
+                    n <= shown ? 'fill-primary text-primary' : 'text-muted-foreground',
                   )}
                   aria-hidden
                 />
@@ -112,9 +119,9 @@ export function LeaveReviewButton({ bookingId, tenantName }: Props) {
               maxLength={500}
               rows={3}
               placeholder="¿Qué te pareció la cancha, el lugar, la atención?"
-              className="w-full resize-none rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
+              className="w-full resize-none rounded-md border border-input bg-card px-3 py-2 text-base text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
             />
-            <p className="text-right text-xs text-muted-foreground tabular-nums">
+            <p className="text-right text-sm text-muted-foreground tabular-nums">
               {comment.length}/500
             </p>
           </div>
@@ -123,7 +130,7 @@ export function LeaveReviewButton({ bookingId, tenantName }: Props) {
             type="button"
             onClick={submit}
             disabled={pending}
-            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-xs transition-[background-color,scale] hover:bg-primary/90 active:scale-[0.98] disabled:opacity-60 motion-reduce:active:scale-100"
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-100"
           >
             {pending ? 'Enviando…' : 'Publicar reseña'}
           </button>

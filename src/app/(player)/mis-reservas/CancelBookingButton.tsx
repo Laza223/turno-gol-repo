@@ -30,6 +30,8 @@ type Props = {
   cancellationOutcome: CancellationOutcome
   /** Monto de la seña en centavos — solo relevante si cancellationOutcome !== 'no_deposit'. */
   depositAmountCents: number
+  /** Ids del contexto de la tarjeta (cuándo y dónde): el botón sigue llamándose "Cancelar" a secas. */
+  describedBy?: string
   /**
    * La action llega por PROP, no por import: './actions' es `'use server'` y
    * arrastra drizzle/postgres + `node:async_hooks` (vía request-context), lo
@@ -58,6 +60,7 @@ export function CancelBookingButton({
   timeLabel,
   cancellationOutcome,
   depositAmountCents,
+  describedBy,
   action,
 }: Props) {
   const router = useRouter()
@@ -106,7 +109,9 @@ export function CancelBookingButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-xs font-medium text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-[color,background-color,scale] h-11 px-3 rounded-md hover:bg-red-50 dark:hover:bg-red-500/10 active:scale-[0.98]"
+        aria-describedby={describedBy}
+        data-ghost
+        className="inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-red-700 transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring dark:text-red-300"
       >
         Cancelar
       </button>
@@ -117,8 +122,8 @@ export function CancelBookingButton({
         title="¿Cancelar esta reserva?"
         description={
           <>
-            Reserva en <strong>{courtName}</strong> el <strong>{dateLabel}</strong> a las{' '}
-            <strong>{timeLabel}</strong>.
+            Reserva en <strong>{courtName}</strong> el <strong>{dateLabel}</strong>, de{' '}
+            <strong className="tabular-nums">{timeLabel}</strong>.
             <br />
             <br />
             {depositPreviewText(cancellationOutcome, depositAmountCents)}
@@ -130,7 +135,7 @@ export function CancelBookingButton({
         onConfirm={handleConfirm}
       >
         <div className="space-y-1">
-          <label htmlFor="cancel-reason" className="text-xs font-medium text-foreground">
+          <label htmlFor="cancel-reason" className="text-sm font-medium text-foreground">
             Motivo (opcional)
           </label>
           <textarea
@@ -140,7 +145,7 @@ export function CancelBookingButton({
             maxLength={500}
             rows={2}
             placeholder="Ej: no puedo ir, lluvia, equivocación de horario..."
-            className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 resize-none"
+            className="w-full resize-none rounded-md border border-input bg-card px-3 py-2 text-base text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
           />
         </div>
       </ConfirmDialog>

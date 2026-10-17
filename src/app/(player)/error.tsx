@@ -5,7 +5,7 @@ import { CalendarDays } from 'lucide-react'
 import * as Sentry from '@sentry/nextjs'
 import { ErrorState } from '@/components/ui/error-state'
 
-/** Player-facing error boundary (mis reservas, reserva flows). */
+/** Player-facing error boundary del grupo (Cuenta, Perfil…). Mis reservas tiene el suyo. */
 export default function PlayerError({
   error,
   reset,
@@ -20,7 +20,7 @@ export default function PlayerError({
   return (
     <ErrorState
       variant="full"
-      title="No pudimos cargar tus reservas"
+      title="No pudimos cargar esta página"
       description="Se nos escapó un error de nuestro lado, ya lo tenemos en la mira. Probá de nuevo en un toque."
       digest={error.digest}
       onRetry={reset}

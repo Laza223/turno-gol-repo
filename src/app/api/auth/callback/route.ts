@@ -12,7 +12,7 @@ import {
 import { hasStaffOrAdminClaims, isPlayerAccount } from '@/modules/auth/account-kind'
 import { getOrCreatePlayer } from '@/modules/players/player.service'
 import { sanitizeNext } from '@/lib/safe-redirect'
-import { parseVia, playerSuccessIntent, successVerifyPath } from '@/lib/auth-success'
+import { isBookingPath, parseVia, successVerifyPath } from '@/lib/auth-success'
 import { logger } from '@/shared/lib/logger'
 import { track, withSpan } from '@/shared/observability'
 import { CURRENT_TERMS_VERSION } from '@/shared/terms'
@@ -143,8 +143,10 @@ async function provisionPlayerAndRedirect(
     return NextResponse.redirect(url)
   }
 
-  const intent = playerSuccessIntent(next, player.wasCreated)
-  return NextResponse.redirect(new URL(successVerifyPath(next, intent), req.url))
+  // Una reserva en curso vuelve DIRECTO a confirmar: ya tocó "Continuar" una vez y /verify sería
+  // otra pantalla y otro toque. El resto de los destinos sigue por /verify.
+  if (isBookingPath(next)) return NextResponse.redirect(new URL(next, req.url))
+  return NextResponse.redirect(new URL(successVerifyPath(next, 'login'), req.url))
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {

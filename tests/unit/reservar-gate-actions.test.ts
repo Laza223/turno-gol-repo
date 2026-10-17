@@ -36,9 +36,9 @@ vi.mock('@/modules/auth/auth.service', () => ({
 vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: user }))
 vi.mock('next/headers', () => ({
   headers: async () => new Headers({ origin: 'http://localhost:3000' }),
-  cookies: async () => ({ set: cookieSet, delete: cookieDelete }),
+  cookies: async () => ({ get: () => undefined, set: cookieSet, delete: cookieDelete }),
 }))
-vi.mock('next/navigation', () => ({ redirect }))
+vi.mock('next/navigation', () => ({ redirect, RedirectType: { push: 'push', replace: 'replace' } }))
 vi.mock('@/shared/rate-limit', () => ({
   enforce: vi.fn(async () => ({ ok: true })),
   parseClientIp: () => '1.1.1.1',
@@ -224,7 +224,8 @@ describe('createBookingAndCheckout — formato y pay sobreviven al rebote', () =
     await expect(
       createBookingAndCheckout(fd({ ...turno, date: '2099-01-02', formato: '99', pay: 'bitcoin' })),
     ).rejects.toThrow(`NEXT_REDIRECT:${base}`)
-    expect(redirect).toHaveBeenLastCalledWith(base)
+    // Y la salida de esta action reemplaza la entrada del historial: Atrás no vuelve a la pantalla.
+    expect(redirect).toHaveBeenLastCalledWith(base, 'replace')
   })
 })
 

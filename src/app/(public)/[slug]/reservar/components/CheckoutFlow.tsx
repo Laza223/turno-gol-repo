@@ -43,6 +43,8 @@ export default function CheckoutFlow({
   hidePrices = false,
   cancellationHours,
   isPlayer,
+  autoConfirmToken,
+  intentDegraded = false,
   inAppBrowser,
   createAction,
   sendLinkAction,
@@ -61,12 +63,18 @@ export default function CheckoutFlow({
   hidePrices?: boolean
   cancellationHours: number
   isPlayer: boolean
+  /** Vínculo ya verificado por la page: el form de confirmar se envía solo, una vez. */
+  autoConfirmToken?: string
+  /** Vino un vínculo y no valió (vencido, de otro email, de otro turno): la pantalla lo dice. */
+  intentDegraded?: boolean
   inAppBrowser: boolean
   createAction: typeof createBookingAndCheckout
   sendLinkAction: typeof sendPlayerMagicLink
   googleAction: StartGoogleLoginFromReservar
 }) {
   const [pay, setPay] = useState(initialPay)
+  // Ya arrancó la confirmación sola: el `pay` que viajó es el definitivo, cambiarlo ahora no aplica.
+  const [confirming, setConfirming] = useState(false)
   const choose = (method: PayMethod) => {
     setPay(method)
     replaceReserveUrl({ pay: method })
@@ -79,6 +87,7 @@ export default function CheckoutFlow({
         value={pay}
         onChange={choose}
         hidePrices={hidePrices}
+        disabled={confirming}
       >
         {cancellationNote(cancellationHours, withDeposit)}
       </PaymentMethodSelector>
@@ -92,6 +101,9 @@ export default function CheckoutFlow({
           formato={formato}
           pay={pay}
           withDeposit={withDeposit}
+          autoConfirmToken={autoConfirmToken}
+          onAutoConfirm={() => setConfirming(true)}
+          intentDegraded={intentDegraded}
           action={createAction}
         />
       ) : (
@@ -100,6 +112,7 @@ export default function CheckoutFlow({
           action={sendLinkAction}
           googleAction={googleAction}
           inAppBrowser={inAppBrowser}
+          withDeposit={withDeposit}
         />
       )}
     </>

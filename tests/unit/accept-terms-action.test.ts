@@ -68,8 +68,41 @@ describe('acceptTermsAction', () => {
 
     await expect(
       acceptTermsAction({ status: 'idle' }, formData({ terms: 'on', next: '/mis-reservas' })),
-    ).rejects.toThrow(/^REDIRECT:\/verify\?status=success/)
+    ).rejects.toThrow('REDIRECT:/verify?status=success&next=%2Fmis-reservas&intent=login')
 
     expect(mockAcceptPlayerTerms).toHaveBeenCalledWith('player-1', expect.any(String))
+  })
+
+  // Misma regla que el callback: una reserva en curso vuelve directo a confirmar, sin /verify.
+  it('una reserva en curso vuelve directo a confirmar, con su query', async () => {
+    mockExtractAuthUser.mockResolvedValue({
+      type: 'player',
+      id: 'auth-1',
+      playerId: 'player-1',
+      email: 'jugador@example.com',
+    })
+    mockAcceptPlayerTerms.mockResolvedValue(undefined)
+    const next = '/club-x/reservar?court=c1&date=2099-01-02&time=21:00&dur=60&booking_intent=t.s'
+
+    await expect(
+      acceptTermsAction({ status: 'idle' }, formData({ terms: 'on', next })),
+    ).rejects.toThrow(`REDIRECT:${next}`)
+  })
+
+  it('un next hostil que parece de reserva no saca al jugador del sitio', async () => {
+    mockExtractAuthUser.mockResolvedValue({
+      type: 'player',
+      id: 'auth-1',
+      playerId: 'player-1',
+      email: 'jugador@example.com',
+    })
+    mockAcceptPlayerTerms.mockResolvedValue(undefined)
+
+    await expect(
+      acceptTermsAction(
+        { status: 'idle' },
+        formData({ terms: 'on', next: '//evil.com/x/reservar' }),
+      ),
+    ).rejects.toThrow('REDIRECT:/verify?status=success&next=%2Fmis-reservas&intent=login')
   })
 })

@@ -110,6 +110,14 @@ export function buildFichaHref(slug: string, state: Partial<ReserveState>): stri
 }
 
 /**
+ * El vínculo firmado que confirma la reserva sola (`@/shared/security/booking-intent`) viaja con
+ * este nombre en el `next` del magic link y en el form de confirmar. Distinto del `intent` que usa
+ * `/verify`. Vive acá, y no junto a la firma, porque el cliente lo lee para sacarlo de la URL y
+ * `booking-intent.ts` importa `node:crypto`.
+ */
+export const BOOKING_INTENT_PARAM = 'booking_intent'
+
+/**
  * Link a confirmar: el contrato de `reservar/page.tsx` (cancha, día, hora y duración del turno).
  * `formato` (el filtro de la ficha) y `pay` (cómo paga) viajan para sobrevivir al ingreso y a los
  * reintentos: el `next` del ingreso y el `backTo` de la action salen TODOS de acá.

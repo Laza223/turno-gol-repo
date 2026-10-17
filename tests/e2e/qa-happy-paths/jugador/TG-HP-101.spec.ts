@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto'
 import { test, expect } from '@playwright/test'
 import { writeEvidence, runSql } from '../_qa/evidence'
 import { makeServiceClient, E2E_COURT_ID } from '../../_helpers/player-seed'
-import { tomorrowDateIsoArt } from '../../_helpers/booking-seed'
+import { cleanupBookingsByIds, tomorrowDateIsoArt } from '../../_helpers/booking-seed'
+import { fetchMagicLinkFromInbucket } from '../../_helpers/inbucket'
 
 /**
  * TG-HP-101 — Alta jugador NUEVO al reservar.
@@ -10,67 +11,20 @@ import { tomorrowDateIsoArt } from '../../_helpers/booking-seed'
  * libre tenant Demo cancha ...010.
  *
  * Página anónima. Flujo REAL de magic link vía Inbucket (:54324) — ver
- * fetchMagicLinkFromInbucket más abajo: primer uso AUTOMATIZADO de la REST
- * API de Inbucket en este repo (hasta ahora solo se había verificado a
- * mano/MCP browser, ver docs/planning/protocolo-lanzamiento/AUDIT_01_public.md
- * y AUDIT_02_auth.md). Un verificador con contexto fresco debería correr este
- * spec primero y tratar la parte de Inbucket como no probada hasta
- * confirmarlo en runtime.
+ * `_helpers/inbucket.ts`. Desde el PR 2.3b2 el enlace del mail vuelve DIRECTO a la
+ * pantalla de confirmar y, sin seña, la reserva se confirma sola: aterriza en
+ * `/reserva/{id}/exito` (sin pasar por `/verify`). El caso fino de esa confirmación
+ * (otro navegador, vínculo adulterado, recarga) está en `player-intent-confirm.spec.ts`.
  *
- * Evidence anchors: reservar/page.tsx:150-208, LoginGate.tsx (gate de email: nombre + email, sin
- * apellido; "Revisá tu email" con foco), reservar/actions.ts (sendPlayerMagicLink),
- * api/auth/callback/route.ts:54,71-100,
- * player.service.ts:24-65, verify/VerifyView.tsx:114-118,335-358,
- * verify/SuccessRedirect.tsx:5,22-24,35-37.
+ * Evidence anchors: reservar/page.tsx (vínculo de intención), LoginGate.tsx (gate de email:
+ * nombre + email, sin apellido; "Revisá tu email" con foco), reservar/actions.ts
+ * (sendPlayerMagicLink, createBookingAndCheckout), api/auth/callback/route.ts
+ * (provisionPlayerAndRedirect), reservar/components/AutoConfirm.tsx,
+ * player.service.ts:24-65.
  */
 
 const TENANT_SLUG = 'e2e-complejo-demo'
 const TIME = '12:00'
-const INBUCKET_URL = process.env.INBUCKET_URL ?? 'http://127.0.0.1:54324'
-
-type InboxListEntry = { id: string; date: string }
-type InboxMessage = { body?: { text?: string; html?: string } }
-
-function mailboxOf(email: string): string {
-  return email.split('@')[0]!.toLowerCase()
-}
-
-/**
- * Lee el mail más reciente llegado a `mailbox` después de `sinceMs` vía la
- * REST API v1 de Inbucket (bundlada con `supabase start`) y devuelve la URL
- * del magic link (`.../api/auth/callback?...&token_hash=...`).
- */
-async function fetchMagicLinkFromInbucket(email: string, sinceMs: number): Promise<string> {
-  const mailbox = mailboxOf(email)
-  const deadline = Date.now() + 20_000
-  let lastErr: unknown
-
-  while (Date.now() < deadline) {
-    try {
-      const listRes = await fetch(`${INBUCKET_URL}/api/v1/mailbox/${mailbox}`)
-      if (listRes.ok) {
-        const messages = (await listRes.json()) as InboxListEntry[]
-        const fresh = messages.filter((m) => new Date(m.date).getTime() >= sinceMs - 2000)
-        const latest = fresh[fresh.length - 1]
-        if (latest) {
-          const msgRes = await fetch(`${INBUCKET_URL}/api/v1/mailbox/${mailbox}/${latest.id}`)
-          if (msgRes.ok) {
-            const msg = (await msgRes.json()) as InboxMessage
-            const raw = msg.body?.text || msg.body?.html || ''
-            const match = /https?:\/\/[^\s"<]+\/api\/auth\/callback\?[^\s"<]+/.exec(raw)
-            if (match) return match[0].replace(/&amp;/g, '&')
-          }
-        }
-      }
-    } catch (err) {
-      lastErr = err
-    }
-    await new Promise((r) => setTimeout(r, 1000))
-  }
-  throw new Error(
-    `fetchMagicLinkFromInbucket: no llegó mail a ${email} (mailbox=${mailbox}) en 20s. Último error: ${String(lastErr)}`,
-  )
-}
 
 function reservarUrl(date: string): string {
   return `/${TENANT_SLUG}/reservar?court=${E2E_COURT_ID}&date=${date}&time=${TIME}&dur=60`
@@ -85,6 +39,7 @@ test.describe('TG-HP-101 — Alta jugador nuevo al reservar', () => {
     const date = tomorrowDateIsoArt()
     const ctx = await browser.newContext()
     const page = await ctx.newPage()
+    let bookingId: string | undefined
 
     try {
       await page.goto(reservarUrl(date))
@@ -107,26 +62,20 @@ test.describe('TG-HP-101 — Alta jugador nuevo al reservar', () => {
       // El foco pasa al título (el formulario desapareció).
       await expect(sentTitle).toBeFocused()
       await expect(page.getByText(`Te mandamos un enlace a ${newEmail}.`)).toBeVisible()
-      // Todavía no se confirma sola (llega en el 2.3b2): al tocar el enlace vuelve acá y confirma.
-      await expect(page.getByText(/volvés a esta pantalla con tu cuenta/)).toBeVisible()
+      // Sin seña: al tocar el enlace la reserva queda confirmada (no hay que volver a tocar nada).
+      await expect(page.getByText('Cuando lo toques, tu reserva queda confirmada.')).toBeVisible()
 
       const link = await fetchMagicLinkFromInbucket(newEmail, sinceMs)
       await page.goto(link)
 
-      // Callback: verifyOtp + getOrCreatePlayer (INSERT nuevo) + redirect a /verify?intent=booking.
-      await expect(page.getByRole('heading', { name: '¡Cuenta confirmada!' })).toBeVisible({
+      // Callback: verifyOtp + getOrCreatePlayer (INSERT nuevo) + redirect DIRECTO a /reservar con el
+      // vínculo firmado → confirma sola → /exito. Ya no hay "¡Cuenta confirmada!" en el medio.
+      await expect(page).toHaveURL(/\/reserva\/[0-9a-f-]{36}\/exito/, { timeout: 20_000 })
+      await expect(page.getByRole('heading', { name: '¡Reserva confirmada!' })).toBeVisible({
         timeout: 10_000,
       })
-      await expect(page.getByText('Volvé para terminar tu reserva.')).toBeVisible()
-
-      await page.getByRole('link', { name: 'Continuar con mi reserva' }).click()
-
-      // Aterriza de nuevo en /reservar, ahora con sesión → ConfirmBookingButton en vez de LoginGate.
-      await page.waitForURL(new RegExp(`/${TENANT_SLUG}/reservar`), { timeout: 10_000 })
-      await expect(
-        page.getByRole('button', { name: /Confirmar reserva|Pagar la seña/ }),
-      ).toBeVisible({ timeout: 10_000 })
-      await expect(page.getByRole('heading', { name: 'Entrá para reservar' })).not.toBeVisible()
+      await expect(page.getByRole('heading', { name: '¡Cuenta confirmada!' })).toHaveCount(0)
+      bookingId = /\/reserva\/([0-9a-f-]{36})\/exito/.exec(page.url())?.[1]
 
       // DB: fila NUEVA en players (email lower-cased, nombre, declaración jurada).
       const sb = makeServiceClient()
@@ -157,8 +106,10 @@ test.describe('TG-HP-101 — Alta jugador nuevo al reservar', () => {
       })
     } finally {
       await ctx.close()
-      // Limpieza: no es caso de plata — el email es sintético por corrida, se borra siempre.
+      // Limpieza: no es caso de plata — el email es sintético por corrida, se borra siempre. La
+      // reserva primero: `bookings.player_id` apunta a la fila de `players`.
       const sb = makeServiceClient()
+      if (bookingId) await cleanupBookingsByIds(sb, [bookingId])
       await sb.from('players').delete().eq('email', newEmail.toLowerCase())
       const authRows = await runSql<{ id: string }>('SELECT id FROM auth.users WHERE email = $1', [
         newEmail.toLowerCase(),

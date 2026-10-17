@@ -32,6 +32,7 @@ const meta = {
     next: '/complejo-fenix/reservar?court=101&date=2026-03-14&time=18:00&dur=60&formato=5&pay=cash',
     action: fn(idle),
     googleAction: fn(idle),
+    withDeposit: false,
   },
   decorators: [
     (Story) => (
@@ -69,6 +70,8 @@ export const Reposo: Story = {
     await expect(canvas.getByLabelText('Email')).toBeRequired()
     await expect(canvas.queryByLabelText(/apellido/i)).not.toBeInTheDocument()
     await expect(canvas.getByRole('checkbox')).not.toBeChecked()
+    // Sin seña, una línea de apoyo antes de los botones: entrar deja la reserva confirmada.
+    await expect(canvas.getByText('Entrás y la reserva queda confirmada.')).toBeVisible()
     // El link va FUERA del rótulo de la casilla: tocarlo no la tilda.
     const terms = canvas.getByRole('link', { name: /términos y condiciones/i })
     await expect(terms).toHaveAttribute('href', '/terminos')
@@ -139,7 +142,42 @@ export const ErrorDeEmail: Story = {
   },
 }
 
-/** Mail enviado: título con foco, a qué dirección, la verdad de hoy, reenviar y cambiar de email. */
+/** Con seña no hay confirmación sola: la línea de apoyo que promete confirmar no está. */
+export const ConSena: Story = {
+  args: { withDeposit: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      canvas.queryByText('Entrás y la reserva queda confirmada.'),
+    ).not.toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: 'Continuar con mi email' })).toBeEnabled()
+  },
+}
+
+/**
+ * Mail enviado, con seña: no promete que quede confirmada (no lo hace sola), dice que vuelve a la
+ * pantalla con su cuenta y ahí confirma la reserva.
+ */
+export const EnviadoConSena: Story = {
+  args: { withDeposit: true, action: fn(sent) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.type(canvas.getByLabelText('Nombre'), 'Tomás')
+    await userEvent.type(canvas.getByLabelText('Email'), 'tomas.ibanez@example.com')
+    await userEvent.click(canvas.getByRole('checkbox'))
+    await userEvent.click(canvas.getByRole('button', { name: 'Continuar con mi email' }))
+
+    await canvas.findByRole('heading', { level: 2, name: 'Revisá tu email' })
+    await expect(
+      canvas.getByText(
+        'Cuando lo toques, volvés a esta pantalla con tu cuenta y ahí pagás la seña.',
+      ),
+    ).toBeVisible()
+    await expect(canvas.queryByText(/queda confirmada/)).not.toBeInTheDocument()
+  },
+}
+
+/** Mail enviado, sin seña: título con foco, a qué dirección, que al tocar el enlace queda confirmada. */
 export const Enviado: Story = {
   args: { action: fn(sent) },
   play: async ({ canvasElement }) => {
@@ -155,7 +193,7 @@ export const Enviado: Story = {
     await expect(canvas.getByText('tomas.ibanez@example.com').closest('p')).toHaveTextContent(
       'Te mandamos un enlace a tomas.ibanez@example.com.',
     )
-    await expect(canvas.getByText(/ahí confirmás la reserva/)).toBeVisible()
+    await expect(canvas.getByText('Cuando lo toques, tu reserva queda confirmada.')).toBeVisible()
     const resend = canvas.getByRole('button', { name: /^Reenviar en \d+ s$/ })
     await expect(resend).toBeDisabled()
     // Deshabilitado no es ilegible: axe no mide los controles deshabilitados, esto sí.

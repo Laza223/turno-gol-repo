@@ -2,9 +2,10 @@
 
 import { SubmitButton } from '@/components/ui/submit-button'
 import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
-import type { PayMethod } from '@/lib/booking/reserve-url'
+import { BOOKING_INTENT_PARAM, type PayMethod } from '@/lib/booking/reserve-url'
 import { cn } from '@/lib/utils'
 import type { createBookingAndCheckout } from '../actions'
+import AutoConfirm from './AutoConfirm'
 
 /**
  * El botón de confirmar, con sesión. En el celular va fijo abajo (52 px) y SIEMPRE por encima de la
@@ -29,6 +30,15 @@ export default function ConfirmBookingButton(props: {
   pay: PayMethod | null
   /** Solo si hay seña: el monto no viaja al browser (puede estar oculto). */
   withDeposit: boolean
+  /**
+   * El vínculo firmado que la page ya verificó (vuelve del ingreso, sin seña): viaja en el form y
+   * `AutoConfirm` lo envía una vez. Sin él, el botón es el de siempre.
+   */
+  autoConfirmToken?: string
+  /** Avisa que la confirmación sola arrancó (CheckoutFlow bloquea lo que ya no se puede cambiar). */
+  onAutoConfirm?: () => void
+  /** Vino un vínculo y no valió: una línea pide tocar el botón. Excluyente con `autoConfirmToken`. */
+  intentDegraded?: boolean
   action: typeof createBookingAndCheckout
 }) {
   return (
@@ -40,6 +50,23 @@ export default function ConfirmBookingButton(props: {
       <input type="hidden" name="dur" value={props.dur} />
       {props.formato && <input type="hidden" name="formato" value={props.formato} />}
       {props.pay && <input type="hidden" name="pay" value={props.pay} />}
+      {props.autoConfirmToken && (
+        <>
+          <input type="hidden" name={BOOKING_INTENT_PARAM} value={props.autoConfirmToken} />
+          <AutoConfirm
+            slug={props.slug}
+            court={props.court}
+            date={props.date}
+            time={props.time}
+            onConfirming={props.onAutoConfirm}
+          />
+        </>
+      )}
+      {props.intentDegraded && (
+        <p className="mb-3 text-base text-muted-foreground">
+          Tocá Confirmar reserva para terminar.
+        </p>
+      )}
 
       <div
         data-fixed-cta

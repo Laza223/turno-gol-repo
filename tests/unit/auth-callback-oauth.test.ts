@@ -112,10 +112,8 @@ describe('GET /api/auth/callback — rama code (Google OAuth)', () => {
     )
     // Single-use: se borra se haya podido usar o no.
     expect(mockCookieDelete).toHaveBeenCalledWith(GOOGLE_TERMS_COOKIE_NAME)
-    const location = res.headers.get('location')
-    expect(location).toContain('/verify')
-    expect(location).not.toContain('/aceptar-terminos')
-    expect(new URL(location!).searchParams.get('status')).toBe('success')
+    // Una reserva en curso vuelve DIRECTO a confirmar: ya tocó "Continuar", no hay /verify en el medio.
+    expect(res.headers.get('location')).toBe('http://localhost/complejo-x/reservar')
   })
 
   it('cookie de términos forjada (firma inválida) -> tratada como ausente, NO agreedTerms', async () => {
@@ -210,6 +208,70 @@ describe('GET /api/auth/callback — rama code (Google OAuth)', () => {
     const location = res.headers.get('location')
     expect(location).not.toContain('/aceptar-terminos')
     expect(new URL(location!).searchParams.get('status')).toBe('success')
+  })
+})
+
+// La vuelta directa: una reserva en curso no pasa por /verify (otra pantalla y otro toque);
+// cualquier otro destino sí, y los errores siguen yendo a /verify?error=.
+describe('GET /api/auth/callback — la vuelta de una reserva en curso', () => {
+  const BOOKING_NEXT =
+    '/complejo-x/reservar?court=c1&date=2099-01-02&time=21:00&dur=60&booking_intent=tok.sig'
+
+  function playerLoggedIn(over: { wasCreated: boolean; hasAgreedTerms: boolean }) {
+    mockExchange({ data: { user: GOOGLE_USER }, error: null })
+    mockGetOrCreatePlayer.mockResolvedValue({ id: 'player-b', ...over })
+  }
+
+  it.each([
+    ['alta nueva', { wasCreated: true, hasAgreedTerms: true }],
+    ['jugador que ya existía', { wasCreated: false, hasAgreedTerms: true }],
+  ])('%s: redirect directo al next, con su query (booking_intent incluido)', async (_n, over) => {
+    playerLoggedIn(over)
+
+    const res = await GET(makeRequest({ code: 'good-code', next: BOOKING_NEXT }))
+
+    expect(res.headers.get('location')).toBe(`http://localhost${BOOKING_NEXT}`)
+  })
+
+  it('cualquier otro destino sigue por /verify con intent=login', async () => {
+    playerLoggedIn({ wasCreated: true, hasAgreedTerms: true })
+
+    const res = await GET(makeRequest({ code: 'good-code', next: '/mis-reservas' }))
+
+    expect(res.headers.get('location')).toBe(
+      'http://localhost/verify?status=success&next=%2Fmis-reservas&intent=login',
+    )
+  })
+
+  it('sin términos aceptados: primero /aceptar-terminos, con el next completo', async () => {
+    playerLoggedIn({ wasCreated: true, hasAgreedTerms: false })
+
+    const res = await GET(makeRequest({ code: 'good-code', next: BOOKING_NEXT }))
+
+    const location = new URL(res.headers.get('location')!)
+    expect(location.pathname).toBe('/aceptar-terminos')
+    expect(location.searchParams.get('next')).toBe(BOOKING_NEXT)
+  })
+
+  it('un next hostil no saca al jugador del sitio: cae al default y pasa por /verify', async () => {
+    playerLoggedIn({ wasCreated: true, hasAgreedTerms: true })
+
+    const res = await GET(makeRequest({ code: 'good-code', next: '//evil.com/x/reservar' }))
+
+    const location = new URL(res.headers.get('location')!)
+    expect(location.origin).toBe('http://localhost')
+    expect(location.pathname).toBe('/verify')
+    expect(location.searchParams.get('next')).toBe('/mis-reservas')
+  })
+
+  it('los errores siguen por /verify?error=, también con una reserva en curso', async () => {
+    mockExchange({ data: { user: null }, error: { message: 'boom' } })
+
+    const res = await GET(makeRequest({ code: 'bad', next: BOOKING_NEXT, via: 'google' }))
+
+    const location = new URL(res.headers.get('location')!)
+    expect(location.pathname).toBe('/verify')
+    expect(location.searchParams.get('error')).toBe('exchange_failed')
   })
 })
 

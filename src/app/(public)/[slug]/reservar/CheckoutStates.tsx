@@ -9,6 +9,7 @@ import {
   PORTAL_TITLE,
 } from '@/components/world/PortalAuthFrame'
 import { buildFichaHref } from '@/lib/booking/reserve-url'
+import { formatDayHeader } from '@/lib/format'
 import { TONE_TEXT } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
 
@@ -133,9 +134,10 @@ export function CheckoutErrorBanner({
 }
 
 /** Por qué no se puede mostrar la pantalla de confirmar. Cada uno dice qué pasó y adónde seguir. */
-export type CheckoutInvalidKind = 'no-online' | 'missing' | 'not-found' | 'taken'
+export type CheckoutInvalidKind =
+  'no-online' | 'missing' | 'not-found' | 'taken' | 'taken-on-return'
 
-const INVALID: Record<CheckoutInvalidKind, { title: string; message: string; cta: string }> = {
+const INVALID: Record<CheckoutInvalidKind, { title: string; message?: string; cta: string }> = {
   'no-online': {
     title: 'Este complejo no toma reservas online por ahora',
     message: 'Consultá con el complejo para reservar tu turno.',
@@ -156,35 +158,49 @@ const INVALID: Record<CheckoutInvalidKind, { title: string; message: string; cta
     message: 'Otra persona lo reservó o ya pasó la hora. Elegí otro horario.',
     cta: 'Elegir otro turno',
   },
+  // El jugador entró para confirmar (tocó "Continuar" y volvió del ingreso) y alguien se adelantó.
+  // Sin mensaje: el título lo dice todo; la salida es el mismo día, sin la hora que ya no está.
+  'taken-on-return': {
+    title: 'Ese turno se ocupó mientras entrabas',
+    cta: 'Ver otras horas',
+  },
 }
 
 /**
  * Estado inválido de la pantalla de confirmar (complejo sin reservas online, datos faltantes,
  * turno inexistente o ya no libre). `ReservarPage` lo usa antes de validar el slot. La salida de
  * "no encontramos" y "ya no está" es la misma ficha que el "Volver" (`turnHref`): con el día, la
- * hora y el formato que eligió, no la ficha pelada.
+ * hora y el formato que eligió, no la ficha pelada. La de "se ocupó mientras entrabas" es la ficha
+ * de ese día SIN la hora (`turnHref` la arma la page) y lo dice con el día: "Ver otras horas del
+ * sábado 14 de marzo".
  */
 export function CheckoutInvalidState({
   slug,
   kind,
   turnHref,
+  date,
 }: {
   slug: string
   kind: CheckoutInvalidKind
-  /** Solo se usa en los estados donde el turno ya se validó (`not-found` y `taken`). */
+  /** Solo se usa en los estados donde el turno ya se validó (`not-found`, `taken` y `taken-on-return`). */
   turnHref?: string
+  /** YYYY-MM-DD: el día que nombra la salida de `taken-on-return`. */
+  date?: string
 }) {
   const { title, message, cta } = INVALID[kind]
   const href =
-    (kind === 'not-found' || kind === 'taken' ? turnHref : undefined) ?? buildFichaHref(slug, {})
+    (kind === 'not-found' || kind === 'taken' || kind === 'taken-on-return'
+      ? turnHref
+      : undefined) ?? buildFichaHref(slug, {})
+  const label = kind === 'taken-on-return' && date ? `${cta} del ${formatDayHeader(date)}` : cta
   return (
     <div className={cn(RESERVAR_COLUMN, 'pb-12')}>
       <div className="flex min-h-[50dvh] flex-col justify-center">
         <AlertTriangle className="size-8 text-muted-foreground" aria-hidden />
         <h1 className={cn(PORTAL_TITLE, 'mt-4 text-balance')}>{title}</h1>
-        <p className="mt-2 text-pretty text-base text-muted-foreground">{message}</p>
+        {message && <p className="mt-2 text-pretty text-base text-muted-foreground">{message}</p>}
         <Link href={href} className={cn(buttonVariants(), PORTAL_BUTTON, 'mt-8')}>
-          {cta}
+          {label}
         </Link>
       </div>
     </div>

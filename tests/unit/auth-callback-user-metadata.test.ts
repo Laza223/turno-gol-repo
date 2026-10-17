@@ -162,6 +162,21 @@ describe('GET /api/auth/callback — marca de vía del jugador (token_hash)', ()
     expect(new URL(res.headers.get('location')!).searchParams.get('status')).toBe('success')
   })
 
+  // El magic link de una reserva en curso vuelve DIRECTO a confirmar, con el vínculo en la query.
+  it('con via=email y una reserva en curso, el jugador vuelve directo al next (sin /verify)', async () => {
+    verifyOtpUser({
+      id: 'auth-5b',
+      email: 'jugador@example.com',
+      app_metadata: {},
+      user_metadata: { is_player: true, agreed_terms: true },
+    })
+    const next = '/club-x/reservar?court=c1&date=2099-01-02&time=21:00&dur=60&booking_intent=t.s'
+
+    const res = await GET(makeRequest({ token_hash: 'tok-123', type: 'email', via: 'email', next }))
+
+    expect(res.headers.get('location')).toBe(`http://localhost${next}`)
+  })
+
   it.each(['signup', 'invite', 'email_change'])(
     'SIN marca, type=%s sigue el camino de staff (mismo super admin que arriba)',
     async (type) => {

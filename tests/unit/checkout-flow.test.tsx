@@ -182,3 +182,95 @@ describe('pay y formato sobreviven', () => {
     ).toBe('cash')
   })
 })
+
+describe('confirmación sola (el vínculo ya lo verificó la page)', () => {
+  const TOKEN = 'eyJzbHVnIjoiY2x1Yi14In0.firma-de-ejemplo-0123456789abcdefghij'
+  const hidden = (root: HTMLElement) =>
+    root.querySelector<HTMLInputElement>('form input[type="hidden"][name="booking_intent"]')
+
+  beforeEach(() => window.sessionStorage.clear())
+
+  it('con el token: va en el form de confirmar, se envía una vez y el botón sigue ahí', () => {
+    const props = flowProps({ autoConfirmToken: TOKEN })
+    const { container } = render(<CheckoutFlow {...props} />)
+
+    expect(hidden(container)?.value).toBe(TOKEN)
+    expect(screen.getByRole('status').textContent).toBe('Confirmando tu reserva…')
+    // Visible siempre; mientras envía dice "Procesando…" (el estado de envío que ya tiene).
+    expect(screen.getByRole('button', { name: /Confirmar reserva|Procesando/ })).toBeTruthy()
+    expect(props.createAction).toHaveBeenCalledTimes(1)
+  })
+
+  it('mientras confirma, el selector de pago se bloquea (un cambio ahí ya no se aplicaría)', () => {
+    const { container } = render(<CheckoutFlow {...flowProps({ autoConfirmToken: TOKEN })} />)
+
+    const radios = screen.getAllByRole('radio') as HTMLInputElement[]
+    expect(radios).toHaveLength(2)
+    expect(radios.every((r) => r.disabled)).toBe(true)
+    // Lo que se envió es lo que estaba elegido.
+    expect(
+      (container.querySelector('input[type="hidden"][name="pay"]') as HTMLInputElement).value,
+    ).toBe('cash')
+  })
+
+  it('sin confirmación sola el selector queda libre', () => {
+    render(<CheckoutFlow {...flowProps()} />)
+    const radios = screen.getAllByRole('radio') as HTMLInputElement[]
+    expect(radios.every((r) => !r.disabled)).toBe(true)
+  })
+
+  it('con un vínculo que no valió: una línea corta pide tocar el botón, y nada se envía solo', () => {
+    const props = flowProps({ intentDegraded: true })
+    const { container } = render(<CheckoutFlow {...props} />)
+
+    expect(screen.getByText('Tocá Confirmar reserva para terminar.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Confirmar reserva' })).toBeTruthy()
+    expect(hidden(container)).toBeNull()
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(props.createAction).not.toHaveBeenCalled()
+    expect((screen.getAllByRole('radio') as HTMLInputElement[]).every((r) => !r.disabled)).toBe(
+      true,
+    )
+  })
+
+  it('sin vínculo fallido no hay línea de ayuda', () => {
+    render(<CheckoutFlow {...flowProps()} />)
+    expect(screen.queryByText('Tocá Confirmar reserva para terminar.')).toBeNull()
+  })
+
+  it('sin token: el form es el de siempre, no se envía nada solo', () => {
+    const props = flowProps()
+    const { container } = render(<CheckoutFlow {...props} />)
+
+    expect(hidden(container)).toBeNull()
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(props.createAction).not.toHaveBeenCalled()
+  })
+
+  it('sin sesión el token no hace nada: se ve el ingreso', () => {
+    const props = flowProps({ isPlayer: false, autoConfirmToken: TOKEN })
+    const { container } = render(<CheckoutFlow {...props} />)
+
+    expect(hidden(container)).toBeNull()
+    expect(props.createAction).not.toHaveBeenCalled()
+    expect(screen.getByRole('heading', { name: 'Entrá para reservar' })).toBeTruthy()
+  })
+
+  it('el ingreso sin seña promete confirmar; con seña, no', () => {
+    const sinSena = render(<CheckoutFlow {...flowProps({ isPlayer: false })} />)
+    expect(screen.getByText('Entrás y la reserva queda confirmada.')).toBeTruthy()
+    sinSena.unmount()
+
+    render(
+      <CheckoutFlow
+        {...flowProps({
+          isPlayer: false,
+          withDeposit: true,
+          methods: ['mercadopago'],
+          initialPay: 'mercadopago',
+        })}
+      />,
+    )
+    expect(screen.queryByText('Entrás y la reserva queda confirmada.')).toBeNull()
+  })
+})

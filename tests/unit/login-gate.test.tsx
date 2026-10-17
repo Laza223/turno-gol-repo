@@ -37,7 +37,12 @@ afterEach(() => {
 })
 
 function renderGate(
-  props: { action?: Action; googleAction?: Action; inAppBrowser?: boolean } = {},
+  props: {
+    action?: Action
+    googleAction?: Action
+    inAppBrowser?: boolean
+    withDeposit?: boolean
+  } = {},
 ) {
   const action = vi.fn<Action>(props.action ?? (async () => ({ status: 'idle' })))
   const googleAction = vi.fn<Action>(props.googleAction ?? (async () => ({ status: 'idle' })))
@@ -47,6 +52,7 @@ function renderGate(
       action={action}
       googleAction={googleAction}
       inAppBrowser={props.inAppBrowser}
+      withDeposit={props.withDeposit ?? false}
     />,
   )
   return { action, googleAction }
@@ -133,6 +139,26 @@ describe('LoginGate — la casilla del +18', () => {
     fireEvent.click(checkbox())
     expect(screen.queryByRole('alert')).toBeNull()
     expect(checkbox().getAttribute('aria-invalid')).toBeNull()
+  })
+})
+
+describe('LoginGate — qué pasa al entrar', () => {
+  const PROMESA = 'Entrás y la reserva queda confirmada.'
+
+  it('sin seña lo dice en una línea cerca de los botones, sin competir con ellos', () => {
+    renderGate()
+    const line = screen.getByText(PROMESA)
+    // Es texto de apoyo: no es un botón ni un título, y va antes de los botones que lo cumplen.
+    expect(line.tagName).toBe('P')
+    expect(line.className).toContain('text-muted-foreground')
+    expect(line.className).toMatch(/text-(sm|base)(\s|$)/)
+    const google = button('Continuar con Google')
+    expect(line.compareDocumentPosition(google) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('con seña no promete nada nuevo', () => {
+    renderGate({ withDeposit: true })
+    expect(screen.queryByText(PROMESA)).toBeNull()
   })
 })
 
@@ -303,7 +329,7 @@ describe('LoginGate — la request no vuelve', () => {
 describe('LoginGate — enviado', () => {
   const fakeCountdown = () => vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
 
-  it('título con foco, a qué email, y la verdad de hoy: vuelve a esta pantalla y ahí confirma', async () => {
+  it('título con foco, a qué email, y sin seña: al tocar el enlace la reserva queda confirmada', async () => {
     renderGate({ action: async () => sent() })
     await click('Continuar con mi email')
 
@@ -312,11 +338,21 @@ describe('LoginGate — enviado', () => {
     expect(screen.getByText('tomas@example.com').closest('p')?.textContent).toBe(
       'Te mandamos un enlace a tomas@example.com.',
     )
-    expect(
-      screen.getByText(/volvés a esta pantalla con tu cuenta y ahí confirmás la reserva/),
-    ).toBeTruthy()
+    expect(screen.getByText('Cuando lo toques, tu reserva queda confirmada.')).toBeTruthy()
+    expect(screen.queryByText(/volvés a esta pantalla/)).toBeNull()
     // La action crea la cuenta: no es el "si tiene cuenta" de /ingresar.
     expect(screen.queryByText(/tiene cuenta/)).toBeNull()
+  })
+
+  it('con seña no promete confirmar: vuelve a esta pantalla y ahí paga la seña', async () => {
+    renderGate({ action: async () => sent(), withDeposit: true })
+    await click('Continuar con mi email')
+
+    await screen.findByRole('heading', { level: 2, name: 'Revisá tu email' })
+    expect(
+      screen.getByText(/volvés a esta pantalla con tu cuenta y ahí pagás la seña/),
+    ).toBeTruthy()
+    expect(screen.queryByText(/queda confirmada/)).toBeNull()
   })
 
   it('Reenviar corre la misma action con nombre, email, next y la casilla, tras la espera de 60 s', async () => {

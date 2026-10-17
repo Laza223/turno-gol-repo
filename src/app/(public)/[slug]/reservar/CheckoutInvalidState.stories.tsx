@@ -69,3 +69,21 @@ export const TurnoYaNoDisponible: Story = {
     )
   },
 }
+
+/** Entró para confirmar y alguien se adelantó: lo dice, y la salida es el mismo día (sin la hora). */
+export const SeOcupoMientrasEntrabas: Story = {
+  args: {
+    kind: 'taken-on-return',
+    turnHref: '/complejo-fenix?date=2026-03-14&formato=5',
+    date: '2026-03-14',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      canvas.getByRole('heading', { level: 1, name: 'Ese turno se ocupó mientras entrabas' }),
+    ).toBeVisible()
+    await expect(
+      canvas.getByRole('link', { name: 'Ver otras horas del sábado 14 de marzo' }),
+    ).toHaveAttribute('href', '/complejo-fenix?date=2026-03-14&formato=5')
+  },
+}

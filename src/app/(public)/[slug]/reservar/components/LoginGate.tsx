@@ -65,17 +65,23 @@ const linkClass = cn(
  *
  * `inAppBrowser` lo resuelve el servidor (page.tsx) con el User-Agent: en el navegador interno de
  * Instagram, Facebook o TikTok va primero el email, porque Google puede no abrir.
+ *
+ * `withDeposit` decide qué se promete: sin seña, entrar deja la reserva confirmada (vuelve del
+ * ingreso con la reserva hecha); con seña vuelve a esta pantalla y el jugador paga. Requerido a
+ * propósito: un olvido prometería una confirmación que un complejo con seña no da.
  */
 export default function LoginGate({
   next,
   action,
   googleAction,
   inAppBrowser = false,
+  withDeposit,
 }: {
   next: string
   action: SendPlayerMagicLink
   googleAction: StartGoogleLoginFromReservar
   inAppBrowser?: boolean
+  withDeposit: boolean
 }) {
   const calls = useRef(0)
   const run =
@@ -134,6 +140,7 @@ export default function LoginGate({
         firstName={emailState.firstName}
         sentAt={emailState.at}
         next={next}
+        withDeposit={withDeposit}
         action={action}
         onChangeEmail={() => setDiscarded(emailState)}
       />
@@ -322,6 +329,11 @@ export default function LoginGate({
           <span className="sr-only"> (se abre en otra pestaña)</span>
         </Link>
       </div>
+      {!withDeposit && (
+        <p className="text-pretty text-base text-muted-foreground">
+          Entrás y la reserva queda confirmada.
+        </p>
+      )}
       {inAppBrowser ? (
         <>
           {emailForm}
@@ -341,15 +353,16 @@ export default function LoginGate({
 
 /**
  * "Enviado": el foco pasa al título (el formulario, y el botón que lo tenía, desaparecieron). Dice
- * la verdad de hoy: tocar el enlace trae de vuelta a esta pantalla con la cuenta, y ahí se
- * confirma. A diferencia de /ingresar, acá la action SÍ crea la cuenta, así que no hay "si tiene
- * cuenta".
+ * la verdad de hoy: sin seña, tocar el enlace deja la reserva confirmada; con seña trae de vuelta
+ * a esta pantalla con la cuenta, y ahí se paga. A diferencia de /ingresar, acá la action SÍ crea
+ * la cuenta, así que no hay "si tiene cuenta".
  */
 function SentPanel({
   email,
   firstName,
   sentAt,
   next,
+  withDeposit,
   action,
   onChangeEmail,
 }: {
@@ -357,6 +370,7 @@ function SentPanel({
   firstName: string
   sentAt: number
   next: string
+  withDeposit: boolean
   action: SendPlayerMagicLink
   onChangeEmail: () => void
 }) {
@@ -379,7 +393,9 @@ function SentPanel({
         Te mandamos un enlace a <strong className="font-semibold">{email}</strong>.
       </p>
       <p className="mt-2 text-pretty text-base text-muted-foreground">
-        Cuando lo toques, volvés a esta pantalla con tu cuenta y ahí confirmás la reserva.
+        {withDeposit
+          ? 'Cuando lo toques, volvés a esta pantalla con tu cuenta y ahí pagás la seña.'
+          : 'Cuando lo toques, tu reserva queda confirmada.'}
       </p>
       <p className="mt-2 text-pretty text-sm text-muted-foreground">
         ¿No llegó? Revisá la carpeta de correo no deseado o que el email esté bien escrito.

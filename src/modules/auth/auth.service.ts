@@ -247,6 +247,25 @@ export async function resolveStaffTenants(staffUserId: string): Promise<StaffTen
   return rows
 }
 
+/**
+ * ¿Tuvo acceso a algún complejo que ya no está activo para él (lo desactivaron)?
+ * Distingue "dueño nuevo sin complejo" (→ onboarding) de "lo sacaron del equipo"
+ * (→ /sin-acceso): mandar a un encargado desactivado a crear un complejo propio
+ * no tiene sentido. Complejos `deleted` no cuentan (ya no existen).
+ */
+async function hasInactiveStaffMembership(staffUserId: string): Promise<boolean> {
+  const rows = await getWorkerSql()`
+    SELECT 1
+    FROM tenant_staff_members tsm
+    JOIN tenants t ON t.id = tsm.tenant_id
+    WHERE tsm.staff_user_id = ${staffUserId}
+      AND tsm.is_active = false
+      AND t.status != 'deleted'
+    LIMIT 1
+  `
+  return rows.length > 0
+}
+
 export async function setStaffTenantClaim(
   authUserId: string,
   tenantId: string,
@@ -400,6 +419,9 @@ export async function provisionAndRouteStaff(user: User): Promise<{ path: string
   const supabase = await createClient()
 
   if (tenants.length === 0) {
+    // Lo desactivaron de un complejo: no es un dueño nuevo, no va a onboarding.
+    if (await hasInactiveStaffMembership(ourStaff.id)) return { path: '/sin-acceso' }
+
     // Set staff_user_id so they pass the layout checks, even without a tenant.
     const adminClient = createAdminClient()
     await adminClient.auth.admin.updateUserById(user.id, {

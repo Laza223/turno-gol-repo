@@ -12,6 +12,7 @@ import {
   ResendInviteButton,
   StaffActions,
   type DeactivateStaffAction,
+  type ReactivateStaffAction,
   type ResendInviteAction,
   type UpdateStaffRoleAction,
 } from './StaffActions'
@@ -40,6 +41,7 @@ type Props = {
   tournamentsEnabled: boolean
   inviteAction: InviteStaffAction
   deactivateAction: DeactivateStaffAction
+  reactivateAction: ReactivateStaffAction
   resendInviteAction: ResendInviteAction
   updateRoleAction: UpdateStaffRoleAction
 }
@@ -115,6 +117,7 @@ export function StaffRosterView({
   tournamentsEnabled,
   inviteAction,
   deactivateAction,
+  reactivateAction,
   resendInviteAction,
   updateRoleAction,
 }: Props) {
@@ -174,6 +177,7 @@ export function StaffRosterView({
                         currentUserStaffId={staffUserId}
                         activeAdminCount={activeAdminCount}
                         deactivateAction={deactivateAction}
+                        reactivateAction={reactivateAction}
                         resendInviteAction={resendInviteAction}
                         updateRoleAction={updateRoleAction}
                       />
@@ -241,6 +245,7 @@ export function StaffRosterView({
                             currentUserStaffId={staffUserId}
                             activeAdminCount={activeAdminCount}
                             deactivateAction={deactivateAction}
+                            reactivateAction={reactivateAction}
                             resendInviteAction={resendInviteAction}
                             updateRoleAction={updateRoleAction}
                           />

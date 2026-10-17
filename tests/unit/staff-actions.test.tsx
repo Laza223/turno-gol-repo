@@ -47,6 +47,7 @@ type MemberProp = Parameters<typeof StaffActions>[0]['member']
 // Las Server Actions entran por prop (ver ReservasPolicyForm.tsx) — mocks
 // locales en vez de vi.mock('.../staff/actions').
 let deactivateAction: ReturnType<typeof vi.fn>
+let reactivateAction: ReturnType<typeof vi.fn>
 let resendInviteActionMock: ReturnType<typeof vi.fn>
 let updateRoleAction: ReturnType<typeof vi.fn>
 
@@ -58,6 +59,7 @@ async function openDropdown(member: MemberProp, activeAdminCount = 3) {
       currentUserStaffId={CURRENT_USER_STAFF_ID}
       activeAdminCount={activeAdminCount}
       deactivateAction={deactivateAction}
+      reactivateAction={reactivateAction}
       resendInviteAction={resendInviteActionMock}
       updateRoleAction={updateRoleAction}
     />,
@@ -76,6 +78,7 @@ async function openDropdown(member: MemberProp, activeAdminCount = 3) {
 beforeEach(() => {
   vi.clearAllMocks()
   deactivateAction = vi.fn()
+  reactivateAction = vi.fn()
   resendInviteActionMock = vi.fn()
   updateRoleAction = vi.fn()
 })
@@ -92,6 +95,7 @@ describe('StaffActions — dropdown rendering', () => {
         currentUserStaffId={CURRENT_USER_STAFF_ID}
         activeAdminCount={3}
         deactivateAction={deactivateAction}
+        reactivateAction={reactivateAction}
         resendInviteAction={resendInviteActionMock}
         updateRoleAction={updateRoleAction}
       />,
@@ -104,9 +108,10 @@ describe('StaffActions — dropdown rendering', () => {
     expect(body.getByRole('menuitem', { name: 'Desactivar' })).toBeTruthy()
   })
 
-  it('inactive member shows "Reenviar invitación" in dropdown', async () => {
+  it('inactive member shows "Reactivar" (not "Reenviar invitación") in dropdown', async () => {
     const body = await openDropdown(INACTIVE_MEMBER)
-    expect(body.getByRole('menuitem', { name: 'Reenviar invitación' })).toBeTruthy()
+    expect(body.getByRole('menuitem', { name: 'Reactivar' })).toBeTruthy()
+    expect(body.queryByRole('menuitem', { name: 'Reenviar invitación' })).toBeNull()
   })
 
   it('active member with lastLoginAt does NOT offer "Reenviar invitación"', async () => {
@@ -250,11 +255,11 @@ describe('StaffActions — resend invite', () => {
   it('clicking "Reenviar invitación" calls resendInviteAction and shows success toast', async () => {
     resendInviteActionMock.mockResolvedValue({ success: true })
 
-    const body = await openDropdown(INACTIVE_MEMBER)
+    const body = await openDropdown(PENDING_INVITE_MEMBER)
     fireEvent.click(body.getByRole('menuitem', { name: 'Reenviar invitación' }))
 
     await waitFor(() => {
-      expect(resendInviteActionMock).toHaveBeenCalledWith(INACTIVE_MEMBER.email)
+      expect(resendInviteActionMock).toHaveBeenCalledWith(PENDING_INVITE_MEMBER.email)
     })
 
     await waitFor(() => {
@@ -268,8 +273,37 @@ describe('StaffActions — resend invite', () => {
       error: 'Error reenviando invitación: usuario no encontrado.',
     })
 
-    const body = await openDropdown(INACTIVE_MEMBER)
+    const body = await openDropdown(PENDING_INVITE_MEMBER)
     fireEvent.click(body.getByRole('menuitem', { name: 'Reenviar invitación' }))
+
+    await waitFor(() => {
+      expect(vi.mocked(toast)).toHaveBeenCalledWith(
+        expect.objectContaining({ variant: 'destructive' }),
+      )
+    })
+  })
+})
+
+describe('StaffActions — reactivar', () => {
+  it('clicking "Reactivar" calls reactivateAction with the member id and shows success toast', async () => {
+    reactivateAction.mockResolvedValue({ success: true })
+
+    const body = await openDropdown(INACTIVE_MEMBER)
+    fireEvent.click(body.getByRole('menuitem', { name: 'Reactivar' }))
+
+    await waitFor(() => {
+      expect(reactivateAction).toHaveBeenCalledWith(INACTIVE_MEMBER.memberId)
+    })
+    await waitFor(() => {
+      expect(vi.mocked(toast)).toHaveBeenCalledWith(expect.objectContaining({ variant: 'success' }))
+    })
+  })
+
+  it('reactivar con error muestra toast destructivo', async () => {
+    reactivateAction.mockResolvedValue({ success: false, error: 'Miembro no encontrado.' })
+
+    const body = await openDropdown(INACTIVE_MEMBER)
+    fireEvent.click(body.getByRole('menuitem', { name: 'Reactivar' }))
 
     await waitFor(() => {
       expect(vi.mocked(toast)).toHaveBeenCalledWith(

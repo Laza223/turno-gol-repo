@@ -9,6 +9,7 @@ import { InviteStaffButton } from '@/app/(admin)/settings/equipo/InviteStaffButt
 import {
   deactivateStaffAction,
   inviteStaffAction,
+  reactivateStaffAction,
   resendInviteAction,
   updateStaffRoleAction,
 } from '@/app/(admin)/settings/equipo/actions'
@@ -65,6 +66,7 @@ export default async function SettingsEquipoPage() {
         tournamentsEnabled={tournamentsEnabled}
         inviteAction={inviteStaffAction}
         deactivateAction={deactivateStaffAction}
+        reactivateAction={reactivateStaffAction}
         resendInviteAction={resendInviteAction}
         updateRoleAction={updateStaffRoleAction}
       />

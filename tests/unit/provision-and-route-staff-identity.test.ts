@@ -124,3 +124,41 @@ describe('provisionAndRouteStaff — resolución de identidad', () => {
     expect(calls.some((c) => /INSERT INTO staff_users/.test(c))).toBe(false)
   })
 })
+
+describe('provisionAndRouteStaff — sin complejos activos', () => {
+  const user = {
+    id: 'auth-1',
+    email: 'encargado@complejo.com',
+    app_metadata: { staff_user_id: 'staff-1' },
+    user_metadata: {},
+  }
+
+  it('si lo desactivaron de un complejo, va a /sin-acceso y NO a onboarding', async () => {
+    const { sql } = makeSqlRouter([
+      { match: /SELECT id FROM staff_users WHERE id/, rows: [{ id: 'staff-1' }] },
+      { match: /UPDATE staff_users SET last_login_at/, rows: [] },
+      { match: /is_active = false/, rows: [{ '?column?': 1 }] },
+      { match: /FROM tenant_staff_members/, rows: [] },
+    ])
+    mockGetWorkerSql.mockReturnValue(sql as unknown as ReturnType<typeof getWorkerSql>)
+
+    const result = await provisionAndRouteStaff(user as never)
+
+    expect(result).toEqual({ path: '/sin-acceso' })
+    expect(updateUserById).not.toHaveBeenCalled()
+  })
+
+  it('sin ninguna membresía (dueño nuevo) sigue yendo a /onboarding', async () => {
+    const { sql } = makeSqlRouter([
+      { match: /SELECT id FROM staff_users WHERE id/, rows: [{ id: 'staff-1' }] },
+      { match: /UPDATE staff_users SET last_login_at/, rows: [] },
+      { match: /is_active = false/, rows: [] },
+      { match: /FROM tenant_staff_members/, rows: [] },
+    ])
+    mockGetWorkerSql.mockReturnValue(sql as unknown as ReturnType<typeof getWorkerSql>)
+
+    const result = await provisionAndRouteStaff(user as never)
+
+    expect(result).toEqual({ path: '/onboarding' })
+  })
+})

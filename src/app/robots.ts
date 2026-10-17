@@ -35,6 +35,7 @@ export default function robots(): MetadataRoute.Robots {
           '/reportes',
           '/deudas',
           '/select-tenant',
+          '/sin-acceso',
           // Área del jugador. `(player)` también es route group.
           '/mis-reservas',
           '/perfil',

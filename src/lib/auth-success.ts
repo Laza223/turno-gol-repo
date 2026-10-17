@@ -17,9 +17,9 @@ export function parseVia(raw: string | null | undefined): PlayerVia | null {
   return raw === 'email' || raw === 'google' ? raw : null
 }
 
-export type SuccessIntent = 'booking' | 'booking_returning' | 'login' | 'signup'
+export type SuccessIntent = 'login' | 'signup'
 
-const VALID_INTENTS = new Set<SuccessIntent>(['booking', 'booking_returning', 'login', 'signup'])
+const VALID_INTENTS = new Set<SuccessIntent>(['login', 'signup'])
 
 /** Valida el `intent` de la URL; cualquier valor fuera del set → `login`. */
 export function parseIntent(raw: string | null | undefined): SuccessIntent {

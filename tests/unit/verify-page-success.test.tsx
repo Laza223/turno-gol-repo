@@ -21,14 +21,6 @@ async function renderPage(searchParams: Record<string, string>) {
 }
 
 describe('VerifyPage — estado de éxito', () => {
-  it('intent booking: copy de reserva + botón al next', async () => {
-    await renderPage({ status: 'success', next: '/club-norte/reservar?court=1', intent: 'booking' })
-    expect(screen.getByText(/cuenta confirmada/i)).toBeTruthy()
-    expect(screen.getByText(/terminar tu reserva/i)).toBeTruthy()
-    const link = screen.getByRole('link', { name: /continuar con mi reserva/i })
-    expect(link.getAttribute('href')).toBe('/club-norte/reservar?court=1')
-  })
-
   it('intent login: copy genérico + botón a mis reservas', async () => {
     await renderPage({ status: 'success', next: '/mis-reservas', intent: 'login' })
     expect(screen.getByText(/iniciaste sesión/i)).toBeTruthy()
@@ -61,10 +53,19 @@ describe('VerifyPage — estado de éxito', () => {
     )
   })
 
-  it('intent inválido cae a login', async () => {
-    await renderPage({ status: 'success', next: '/mis-reservas', intent: 'hacker' })
-    expect(screen.getByText(/iniciaste sesión/i)).toBeTruthy()
-  })
+  it.each(['hacker', 'booking', 'booking_returning'])(
+    'intent %s (inválido o retirado) cae al camino genérico de login, sin copy de reserva',
+    async (intent) => {
+      await renderPage({ status: 'success', next: '/club-norte/reservar?court=1', intent })
+      expect(screen.getByText(/iniciaste sesión/i)).toBeTruthy()
+      expect(screen.queryByText(/cuenta confirmada/i)).toBeNull()
+      expect(screen.queryByText(/terminar tu reserva/i)).toBeNull()
+      // El destino se respeta aunque el intent no se reconozca.
+      expect(screen.getByTestId('redirect').getAttribute('data-next')).toBe(
+        '/club-norte/reservar?court=1',
+      )
+    },
+  )
 
   it('muestra la pista cross-device', async () => {
     await renderPage({ status: 'success', next: '/mis-reservas', intent: 'login' })

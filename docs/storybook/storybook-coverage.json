@@ -2702,11 +2702,14 @@
       "usesRouter": false,
       "usesServerAction": false,
       "isolationDifficulty": "easy",
-      "isolationNotes": "",
-      "relevantStates": [],
+      "isolationNotes": "Mundo del portal: la story lo monta con PortalWorld + RESERVAR_COLUMN. Exporta CheckoutErrorBanner (stories 'Player/Checkout/CheckoutErrorBanner') y CheckoutInvalidState ('Player/Checkout/CheckoutInvalidState').",
+      "relevantStates": [
+        "CheckoutErrorBanner: sin error, baneado (con fecha, sin fecha, con motivo), demasiados holds, rate limited, no disponible, fuera de fecha",
+        "CheckoutInvalidState: turno ya no disponible y no encontrado (vuelven a /{slug}?date=), faltan datos, complejo sin reserva online"
+      ],
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "proposedStoryTitle": ""
+      "proposedStoryTitle": "Player/Checkout/CheckoutErrorBanner"
     },
     {
       "path": "src/app/(public)/[slug]/reservar/components/BookingSummary.tsx",
@@ -2718,8 +2721,11 @@
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
       "relevantStates": [
-        "con seña (depositAmount>0, muestra resto)",
-        "sin seña (depositAmount=0, 'pagás el total en el complejo')"
+        "con precios (turno, seña a pagar ahora, resto en el complejo)",
+        "con precios y sin seña (solo 'Precio del turno')",
+        "hidePrices sin seña ('Pagás en el complejo.', ningún monto en el DOM)",
+        "hidePrices con seña (una frase sobre la seña online, ningún monto)",
+        "textos largos (nombre, dirección y cancha a 320 px)"
       ],
       "proposedStoryTitle": "Player/Checkout/BookingSummary",
       "usesNetwork": false,
@@ -2727,7 +2733,7 @@
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "ninguno; puramente controlado por la prop `data`."
+      "isolationNotes": "ninguno; puramente controlado por la prop `data`. Las stories lo montan dentro de PortalWorld."
     },
     {
       "path": "src/app/(public)/[slug]/reservar/components/ConfirmBookingButton.tsx",
@@ -2739,9 +2745,11 @@
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
       "relevantStates": [
-        "idle con seña ('Pagar seña y reservar')",
+        "idle con seña ('Pagar la seña')",
         "idle sin seña ('Confirmar reserva')",
-        "pending (useFormStatus, spinner 'Procesando…')"
+        "qué viaja en el FormData (turno, formato, pay)",
+        "pending (useFormStatus, 'Procesando…' y deshabilitado)",
+        "con barra inferior del jugador (la barra fija queda por encima de PlayerBottomNav)"
       ],
       "proposedStoryTitle": "Player/Checkout/ConfirmBookingButton",
       "usesNetwork": false,
@@ -2749,7 +2757,7 @@
       "usesRouter": false,
       "usesServerAction": true,
       "providers": ["form"],
-      "isolationNotes": "useFormStatus (react-dom) exige un <form action> real o mock (ver gotcha useformstate-vitest-mock); action={createBookingAndCheckout} es Server Action de ../actions, hay que mockearla en la story."
+      "isolationNotes": "useFormStatus (react-dom) exige un <form action> real o mock (ver gotcha useformstate-vitest-mock); la Server Action entra por la prop `action` (importar ../actions como valor arrastra node:async_hooks al browser), la story le pasa un fn()."
     },
     {
       "path": "src/app/(public)/[slug]/reservar/components/LoginGate.tsx",
@@ -2761,10 +2769,12 @@
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
       "relevantStates": [
-        "form inicial (nombre/apellido/email/checkbox +18)",
-        "estado 'sent' (revisá tu email)",
-        "estado 'error' (mensaje de validación)",
-        "pending (useFormStatus)"
+        "reposo (casilla +18, Google y email del mismo peso, nada deshabilitado)",
+        "error en la casilla (Google sin tildar: aria-invalid, foco en la casilla)",
+        "error de email (junto al campo, foco ahí, lo tipeado se conserva)",
+        "estado 'sent' ('Revisá tu email', reenviar, usar otro email)",
+        "navegador interno (email primero, aclaración de Google)",
+        "red caída (mensaje en el formulario, sin error boundary)"
       ],
       "proposedStoryTitle": "Player/Checkout/LoginGate",
       "usesNetwork": false,
@@ -2772,7 +2782,7 @@
       "usesRouter": false,
       "usesServerAction": true,
       "providers": ["form"],
-      "isolationNotes": "useFormState + useFormStatus (react-dom, undefined en Vitest sin mock, ver gotcha useformstate-vitest-mock); action=sendPlayerMagicLink (Server Action de ../actions)."
+      "isolationNotes": "useActionState + useFormStatus; las dos Server Actions (sendPlayerMagicLink, startGoogleLoginFromReservar) entran por props `action` y `googleAction`. El reenvío y la red caída vienen de src/components/world/MagicLinkSent.tsx."
     },
     {
       "path": "src/app/(public)/[slug]/reservar/components/PaymentMethodSelector.tsx",
@@ -2784,9 +2794,10 @@
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
       "relevantStates": [
-        "methods vacío (retorna null)",
-        "1 método = mercadopago (depositOnly, texto aclaratorio)",
-        "2-3 métodos (mercadopago/cash/transfer) lado a lado"
+        "methods vacío (no renderiza nada)",
+        "con seña (una línea: MercadoPago, 'La cancha es tuya cuando empezás a señar.')",
+        "un solo método en el complejo (una línea, sin radio)",
+        "efectivo y transferencia (radio nativo, estado levantado)"
       ],
       "proposedStoryTitle": "Player/Checkout/PaymentMethodSelector",
       "usesNetwork": false,
@@ -2794,7 +2805,32 @@
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "ninguno; radios nativos controlados por la prop `methods`."
+      "isolationNotes": "ninguno; controlado por `methods`, `value` y `onChange` (el estado vive en CheckoutFlow)."
+    },
+    {
+      "path": "src/app/(public)/[slug]/reservar/components/CheckoutFlow.tsx",
+      "name": "CheckoutFlow",
+      "domain": "player-facing",
+      "rendering": "client",
+      "role": "form",
+      "isolationDifficulty": "medium",
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "relevantStates": [
+        "El Vagón con sesión (precios ocultos, sin seña, efectivo o transferencia)",
+        "El Vagón sin sesión (ingreso en lugar del botón)",
+        "con seña y precios visibles (MercadoPago, regla de cancelación)",
+        "con seña, precios ocultos, sin sesión, navegador interno",
+        "celular de 390 px con sesión: la barra fija no tapa el pie al final del scroll (PortalFrame reserva su alto)",
+        "desde md el botón está en el flujo y el marco no reserva nada"
+      ],
+      "proposedStoryTitle": "Player/Checkout/CheckoutFlow",
+      "usesNetwork": false,
+      "usesSession": true,
+      "usesRouter": false,
+      "usesServerAction": true,
+      "providers": ["PortalSessionProvider"],
+      "isolationNotes": "Las tres Server Actions entran por props; usePortalSession decide la barra del botón. Guarda `pay` en estado y lo escribe en la URL con replaceState."
     },
     {
       "path": "src/app/(public)/[slug]/reservar/loading.tsx",
@@ -2805,14 +2841,14 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": ["skeleton fijo del checkout"],
+      "relevantStates": ["skeleton fijo del checkout, misma silueta que la pantalla de confirmar"],
       "proposedStoryTitle": "Player/Checkout/CheckoutLoading",
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "envuelve en ReservaShell (@/components/booking/ReservaDarkShell, fuera de esta área — dependencia de layout)."
+      "isolationNotes": "ninguno; la story lo monta dentro de PortalWorld (el layout de reservar hace lo mismo)."
     },
     {
       "path": "src/app/(public)/[slug]/reservar/page.tsx",

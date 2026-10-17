@@ -245,7 +245,7 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await takeShot(playerPage, 'public', 'reserva_formulario_con_sena')
 
     // Click to go to MercadoPago checkout mock
-    await playerPage.getByRole('button', { name: /pagar seña/i }).click()
+    await playerPage.getByRole('button', { name: /pagar la seña/i }).click()
     await expect(playerPage).toHaveURL(/\/mock-mp\/checkout/, { timeout: 15000 })
     await takeShot(playerPage, 'public', 'reserva_checkout_mp')
 

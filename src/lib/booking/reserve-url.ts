@@ -30,6 +30,27 @@ type ParseContext = {
 const HORA = /^([01]\d|2[0-3]):[0-5]\d$/
 
 /**
+ * `formato` de la URL: `String(n) === raw` descarta "05", "5.0" y " 5": solo la forma canónica
+ * cuenta, y solo si es uno de los formatos de la lista. Lo inválido es `null`, nunca tira.
+ */
+export function parseFormato(
+  raw: string | null | undefined,
+  formats: readonly number[],
+): number | null {
+  const n = raw == null ? NaN : Number(raw)
+  return String(n) === raw && formats.includes(n) ? n : null
+}
+
+/** Cómo paga el jugador. Con seña la única vía es MercadoPago; sin seña, lo que el complejo acepta. */
+export const PAY_METHODS = ['mercadopago', 'cash', 'transfer'] as const
+export type PayMethod = (typeof PAY_METHODS)[number]
+
+/** `pay` de la URL: un método de los que ESTE complejo ofrece, o `null` (cae al primero). */
+export function parsePay(raw: unknown, allowed: readonly PayMethod[]): PayMethod | null {
+  return allowed.find((m) => m === raw) ?? null
+}
+
+/**
  * Lee el estado de la URL. Todo lo inválido cae al valor neutro, nunca tira: la URL la edita
  * cualquiera. Una fecha fuera de la ventana de reserva (o inexistente) vuelve a hoy, igual que
  * lo hacía la grilla anterior.
@@ -45,14 +66,11 @@ export function parseReserveState(
     rawDate >= today &&
     rawDate <= addDays(today, advanceDays)
 
-  // `String(n) === raw` descarta "05", "5.0" y " 5": solo la forma canónica cuenta.
-  const rawFormato = params.get('formato')
-  const formato = rawFormato === null ? NaN : Number(rawFormato)
   const rawHora = params.get('hora')
 
   return {
     date: inWindow ? rawDate : today,
-    formato: String(formato) === rawFormato && formats.includes(formato) ? formato : null,
+    formato: parseFormato(params.get('formato'), formats),
     hora: rawHora !== null && HORA.test(rawHora) ? rawHora : null,
   }
 }
@@ -64,7 +82,7 @@ export function parseReserveState(
  */
 export function writeReserveParams(
   current: URLSearchParams | string,
-  next: Partial<ReserveState>,
+  next: Partial<ReserveState & { pay: PayMethod }>,
 ): URLSearchParams {
   const params = new URLSearchParams(current)
   for (const [key, value] of Object.entries(next)) {
@@ -75,12 +93,45 @@ export function writeReserveParams(
   return params
 }
 
-/** Link a confirmar: el contrato de `reservar/page.tsx` (cancha, día, hora y duración del turno). */
+/** `replaceState` y no `push`: elegir días no llena el historial. Conserva los demás params (utm, ref…). */
+export function replaceReserveUrl(patch: Partial<ReserveState & { pay: PayMethod }>): void {
+  const query = writeReserveParams(window.location.search, patch).toString()
+  window.history.replaceState(
+    null,
+    '',
+    `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`,
+  )
+}
+
+/** La ficha del complejo con lo que el jugador había elegido: el "Volver" y el "Elegir otro turno". */
+export function buildFichaHref(slug: string, state: Partial<ReserveState>): string {
+  const query = writeReserveParams('', state).toString()
+  return `/${slug}${query ? `?${query}` : ''}`
+}
+
+/**
+ * Link a confirmar: el contrato de `reservar/page.tsx` (cancha, día, hora y duración del turno).
+ * `formato` (el filtro de la ficha) y `pay` (cómo paga) viajan para sobrevivir al ingreso y a los
+ * reintentos: el `next` del ingreso y el `backTo` de la action salen TODOS de acá.
+ */
 export function buildReservarHref(
   slug: string,
-  { courtId, date, time }: { courtId: string; date: string; time: string },
+  {
+    courtId,
+    date,
+    time,
+    formato,
+    pay,
+  }: {
+    courtId: string
+    date: string
+    time: string
+    formato?: number | null
+    pay?: PayMethod | null
+  },
 ): string {
-  return `/${slug}/reservar?court=${courtId}&date=${date}&time=${time}&dur=${SLOT_DURATION_MINUTES}`
+  const base = `/${slug}/reservar?court=${courtId}&date=${date}&time=${time}&dur=${SLOT_DURATION_MINUTES}`
+  return `${base}${formato ? `&formato=${formato}` : ''}${pay ? `&pay=${pay}` : ''}`
 }
 
 export type ReserveRequest = {

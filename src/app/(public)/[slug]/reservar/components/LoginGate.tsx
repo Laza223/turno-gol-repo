@@ -1,171 +1,401 @@
 'use client'
 
-import { useActionState, useState } from 'react'
-import { useFormStatus } from 'react-dom'
-import { Mail } from 'lucide-react'
-import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
+import { useActionState, useEffect, useRef, useState, type FormEvent } from 'react'
+import Link from 'next/link'
+import { Check } from 'lucide-react'
 import { GoogleIcon } from '@/components/icons/GoogleIcon'
-import type { sendPlayerMagicLink, startGoogleLoginFromReservar, GateState } from '../actions'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { SubmitButton } from '@/components/ui/submit-button'
+import {
+  MAIL_ERROR_CLASS,
+  ResendLinkForm,
+  callMailAction,
+  type MailState,
+} from '@/components/world/MagicLinkSent'
+import {
+  PORTAL_BUTTON,
+  PORTAL_BUTTON_OUTLINE,
+  PORTAL_INPUT,
+  PORTAL_LINK,
+  PORTAL_SECTION_TITLE,
+} from '@/components/world/PortalAuthFrame'
+import { echoFields } from '@/shared/forms/echo'
+import { TERMS_REQUIRED_MESSAGE } from '@/shared/terms'
+import { cn } from '@/lib/utils'
+import type { GateState, sendPlayerMagicLink } from '../actions'
 
-const initial: GateState = { status: 'idle' }
-
-/** Firma de la Server Action que consume el form (ver ../actions#sendPlayerMagicLink). */
+/** Firma de las Server Actions que consume el gate (ver ../actions). */
 export type SendPlayerMagicLink = typeof sendPlayerMagicLink
-export type StartGoogleLoginFromReservar = typeof startGoogleLoginFromReservar
+/**
+ * Lo que el gate le pide a la action de Google: `(prev, formData)`. La action real acepta además la
+ * firma de antes del deploy, `(formData)`, y por eso su tipo es más ancho que este.
+ */
+export type StartGoogleLoginFromReservar = (
+  prev: GateState,
+  formData: FormData,
+) => Promise<GateState>
 
-// text-base en mobile: < 16px hace que iOS zoomee al enfocar. Está en el flujo
-// de reserva, así que el zoom pega justo antes del pago.
-const inputClass =
-  'h-11 w-full rounded-lg border border-border bg-background px-3 text-base md:text-sm text-foreground placeholder:text-muted-foreground/70 transition-colors focus-visible:border-emerald-500 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-white/10 dark:bg-white/4'
+/** Lo tipeado que se conserva si la request no llegó (los errores del servidor ya lo traen). */
+type GateEcho = { values: { email?: string; firstName?: string } }
+/** `n`: cuál fue la última respuesta entre las dos actions (un corte no mueve el reloj `at`). */
+type State = MailState<GateState, GateEcho> & { n: number }
 
-function Submit() {
-  const { pending } = useFormStatus()
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-4 text-sm font-bold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_30px_rgba(16,185,129,0.3)] transition-all duration-200 hover:brightness-105 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_12px_36px_rgba(16,185,129,0.4)] active:scale-[0.97] disabled:scale-100 disabled:opacity-60 whitespace-nowrap"
-    >
-      {pending ? (
-        <>
-          <TgBallSpinner size="xs" className="mr-2" aria-hidden /> Enviando…
-        </>
-      ) : (
-        'Continuar con email'
-      )}
-    </button>
-  )
-}
+const initial: State = { status: 'idle', at: 0, n: 0 }
+const echo = (fd: FormData): GateEcho => ({
+  values: echoFields(fd, ['email', 'firstName'] as const),
+})
 
+const GOOGLE_OFFLINE_MESSAGE = 'No pudimos abrir Google. Revisá tu conexión y probá de nuevo.'
+
+const linkClass = cn(
+  PORTAL_LINK,
+  'font-semibold text-emerald-700 underline underline-offset-4 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300',
+)
+
+/**
+ * El ingreso de la pantalla de confirmar (sin sesión): la declaración de +18 (ADR-012), Google y el
+ * email, uno debajo del otro y del mismo alto; el verde, uno solo, en el envío del email. Dos
+ * formularios porque son dos actions, y la casilla es de los dos: vive afuera, controlada, y viaja
+ * en un campo oculto `terms` de cada uno. Nada se deshabilita por la casilla: si falta, el error
+ * sale EN la casilla y el foco va a ella (lo mismo con nombre y email). Google ataja la casilla
+ * sin tildar en el cliente, sin vuelta al servidor; el servidor la exige igual. Las actions entran
+ * por PROP (ver CheckoutFlow).
+ *
+ * `inAppBrowser` lo resuelve el servidor (page.tsx) con el User-Agent: en el navegador interno de
+ * Instagram, Facebook o TikTok va primero el email, porque Google puede no abrir.
+ */
 export default function LoginGate({
   next,
   action,
   googleAction,
+  inAppBrowser = false,
 }: {
   next: string
-  /** Server Action inyectada por la page (../actions#sendPlayerMagicLink). */
   action: SendPlayerMagicLink
-  /** Server Action inyectada por la page (../actions#startGoogleLoginFromReservar). */
   googleAction: StartGoogleLoginFromReservar
+  inAppBrowser?: boolean
 }) {
-  const [state, formAction] = useActionState(action, initial)
-  // Repone lo tipeado tras un error: los inputs son NO controlados y el form
-  // usa noValidate, así que toda validación pasa por el servidor.
-  const vals = state.status === 'error' ? (state.values ?? {}) : {}
-  // Controla el checkbox (a diferencia del resto del form, no controlado) para
-  // poder deshabilitar el botón de Google hasta que esté tildado — mismo gate
-  // que ya exige el submit de email, server-side, vía gateSchema.terms.
-  const [termsChecked, setTermsChecked] = useState(vals.terms ?? false)
+  const calls = useRef(0)
+  const run =
+    (
+      send: (prev: GateState, formData: FormData) => Promise<GateState>,
+      options: { echo?: typeof echo; offlineMessage?: string },
+    ) =>
+    async (prev: State, formData: FormData): Promise<State> => {
+      const n = ++calls.current
+      return {
+        ...(await callMailAction(send, prev, formData, { scope: 'reservar', ...options })),
+        n,
+      }
+    }
+  const [emailState, emailDispatch] = useActionState<State, FormData>(
+    run(action, { echo }),
+    initial,
+  )
+  // Google no echa lo tipeado (su formulario no lo tiene) y un corte de red dice lo de Google.
+  const [googleState, googleDispatch] = useActionState<State, FormData>(
+    run(googleAction, { offlineMessage: GOOGLE_OFFLINE_MESSAGE }),
+    initial,
+  )
+  // Google sin la casilla: la falta se ataja acá, antes de salir, y cuenta como una respuesta más.
+  const [blocked, setBlocked] = useState<State | null>(null)
+  // La respuesta más reciente manda para el error y el foco; los valores del formulario del
+  // email, en cambio, salen SOLO de lo que contestó el email (ver `values`).
+  const state = [googleState, blocked].reduce<State>(
+    (latest, s) => (s && s.n > latest.n ? s : latest),
+    emailState,
+  )
+  const [terms, setTerms] = useState(false)
+  // "Usar otro email": useActionState no se puede reiniciar, así que se descarta ese envío.
+  const [discarded, setDiscarded] = useState<State | null>(null)
+  const termsRef = useRef<HTMLInputElement>(null)
+  const nameRef = useRef<HTMLInputElement>(null)
+  const emailRef = useRef<HTMLInputElement>(null)
 
-  if (state.status === 'sent') {
+  // El foco va al primer campo inválido (cada respuesta es un estado nuevo, aunque sea el mismo campo).
+  useEffect(() => {
+    if (state.status !== 'error' || !state.field) return
+    ;({ terms: termsRef, firstName: nameRef, email: emailRef })[state.field].current?.focus()
+  }, [state])
+
+  // Al volver al formulario el foco va al email, seleccionado.
+  useEffect(() => {
+    if (!discarded) return
+    emailRef.current?.focus()
+    emailRef.current?.select()
+  }, [discarded])
+
+  if (emailState.status === 'sent' && emailState !== discarded) {
     return (
-      <div className="reserva-receipt-card rounded-2xl p-6 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-emerald-700 ring-1 ring-inset ring-emerald-600/30 dark:bg-emerald-500/[.14] dark:text-emerald-300 dark:ring-emerald-500/35">
-          <Mail className="h-5 w-5" aria-hidden />
-        </div>
-        <h2 className="font-display text-base font-bold text-foreground">Revisá tu email</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Te enviamos un enlace a <strong className="text-foreground">{state.email}</strong>. Hacé
-          click para confirmar tu reserva.
-        </p>
-      </div>
+      <SentPanel
+        email={emailState.email}
+        firstName={emailState.firstName}
+        sentAt={emailState.at}
+        next={next}
+        action={action}
+        onChangeEmail={() => setDiscarded(emailState)}
+      />
     )
   }
 
-  return (
-    <form action={formAction} className="reserva-receipt-card space-y-4 rounded-2xl p-6" noValidate>
-      <div>
-        <h2 className="font-display text-base font-bold text-foreground">Confirmá con tu email</h2>
-        <p className="text-sm text-muted-foreground">
-          Sin contraseñas. Te mandamos un enlace mágico para entrar y reservar.
-        </p>
-      </div>
+  // Una respuesta de Google no puede vaciar Nombre y Email: al cambiar el `defaultValue` React
+  // vacía los campos que el jugador no tocó desde que se limpió el formulario.
+  const values =
+    emailState.status === 'sent'
+      ? { email: emailState.email, firstName: emailState.firstName }
+      : emailState.status === 'error' || emailState.status === 'unreached'
+        ? (emailState.values ?? {})
+        : {}
+  const fieldError = (field: 'terms' | 'firstName' | 'email') =>
+    // Con la casilla ya tildada, el error de la casilla es de un intento anterior.
+    state.status === 'error' && state.field === field && !(field === 'terms' && terms)
+      ? state.message
+      : null
+  const termsError = fieldError('terms')
+  const nameError = fieldError('firstName')
+  const emailError = fieldError('email')
+  // El error que no es de un campo va junto al botón que lo causó.
+  const sendError =
+    state.status === 'unreached' || (state.status === 'error' && !state.field)
+      ? state.message
+      : null
+  const googleSendError = state === googleState ? sendError : null
+  const emailSendError = state === googleState ? null : sendError
+
+  // Google sin la casilla tildada: error y foco al instante; el servidor la exige igual.
+  const blockGoogleWithoutTerms = (event: FormEvent<HTMLFormElement>) => {
+    if (terms) return
+    event.preventDefault()
+    setBlocked({
+      status: 'error',
+      message: TERMS_REQUIRED_MESSAGE,
+      field: 'terms',
+      at: 0,
+      n: ++calls.current,
+    })
+  }
+
+  const hidden = (
+    <>
       <input type="hidden" name="next" value={next} />
-      <div className="grid grid-cols-2 gap-3">
-        <label className="space-y-1 text-sm">
-          <span className="font-medium text-foreground/90">Nombre</span>
-          <input
-            name="firstName"
-            required
-            maxLength={80}
-            defaultValue={vals.firstName}
-            className={inputClass}
-          />
-        </label>
-        <label className="space-y-1 text-sm">
-          <span className="font-medium text-foreground/90">Apellido</span>
-          <input
-            name="lastName"
-            maxLength={80}
-            defaultValue={vals.lastName}
-            className={inputClass}
-          />
-        </label>
+      <input type="hidden" name="terms" value={terms ? 'on' : ''} />
+    </>
+  )
+
+  const emailForm = (
+    <form action={emailDispatch} className="space-y-4" noValidate>
+      {hidden}
+      <div className="space-y-2">
+        <Label htmlFor="gate-first-name" className="text-base">
+          Nombre
+        </Label>
+        <Input
+          ref={nameRef}
+          id="gate-first-name"
+          name="firstName"
+          autoComplete="given-name"
+          maxLength={80}
+          required
+          defaultValue={values.firstName}
+          aria-invalid={nameError ? 'true' : undefined}
+          aria-describedby={nameError ? 'gate-first-name-error' : undefined}
+          className={PORTAL_INPUT}
+        />
+        {nameError && (
+          <p id="gate-first-name-error" role="alert" className={MAIL_ERROR_CLASS}>
+            {nameError}
+          </p>
+        )}
       </div>
-      <label className="block space-y-1 text-sm">
-        <span className="font-medium text-foreground/90">Email</span>
-        <input
+      <div className="space-y-2">
+        <Label htmlFor="gate-email" className="text-base">
+          Email
+        </Label>
+        <Input
+          ref={emailRef}
+          id="gate-email"
           name="email"
           type="email"
           autoComplete="email"
+          autoCapitalize="none"
+          spellCheck={false}
           required
-          defaultValue={vals.email}
           placeholder="vos@email.com"
-          className={inputClass}
+          defaultValue={values.email}
+          aria-invalid={emailError ? 'true' : undefined}
+          aria-describedby={emailError ? 'gate-email-error' : undefined}
+          className={PORTAL_INPUT}
         />
-      </label>
-      <label className="flex items-start gap-2 text-xs text-muted-foreground">
-        <input
-          type="checkbox"
-          name="terms"
-          required
-          checked={termsChecked}
-          onChange={(e) => setTermsChecked(e.target.checked)}
-          className="mt-0.5 h-4 w-4 rounded border-border bg-background text-emerald-600 focus-visible:ring-emerald-500 dark:border-white/20 dark:bg-white/4"
-        />
-        <span>
-          Soy mayor de 18 años y acepto los términos y condiciones de uso (declaración jurada).
-        </span>
-      </label>
-      {state.status === 'error' && (
-        <p role="alert" className="text-xs text-destructive dark:text-red-300">
-          {state.message}
+        {emailError && (
+          <p id="gate-email-error" role="alert" className={MAIL_ERROR_CLASS}>
+            {emailError}
+          </p>
+        )}
+      </div>
+      {emailSendError && (
+        <p role="alert" className={MAIL_ERROR_CLASS}>
+          {emailSendError}
         </p>
       )}
-      <Submit />
-      <div className="flex items-center gap-3 text-xs text-muted-foreground" aria-hidden>
-        <div className="h-px flex-1 bg-border dark:bg-white/10" />
-        o
-        <div className="h-px flex-1 bg-border dark:bg-white/10" />
-      </div>
-      <GoogleSubmit formAction={googleAction} agreed={termsChecked} />
+      <SubmitButton className={PORTAL_BUTTON} pendingLabel="Enviando…">
+        Continuar con mi email
+      </SubmitButton>
     </form>
+  )
+
+  const googleBlock = (
+    <div className="space-y-3">
+      <form action={googleDispatch} onSubmit={blockGoogleWithoutTerms}>
+        {hidden}
+        <SubmitButton
+          variant="outline"
+          className={PORTAL_BUTTON_OUTLINE}
+          pendingLabel="Abriendo Google…"
+        >
+          <GoogleIcon className="mr-2 size-5" />
+          Continuar con Google
+        </SubmitButton>
+      </form>
+      {googleSendError && (
+        <p role="alert" className={MAIL_ERROR_CLASS}>
+          {googleSendError}
+        </p>
+      )}
+      {inAppBrowser && (
+        <p className="text-pretty text-sm text-muted-foreground">
+          Google puede no abrirse desde este navegador. Con tu email entrás igual.
+        </p>
+      )}
+    </div>
+  )
+
+  const divider = (
+    <div aria-hidden className="flex items-center gap-3 text-sm text-muted-foreground">
+      <div className="h-px flex-1 bg-border" />o<div className="h-px flex-1 bg-border" />
+    </div>
+  )
+
+  return (
+    <section aria-labelledby="gate-title" className="space-y-6">
+      <div>
+        <h2 id="gate-title" className={cn(PORTAL_SECTION_TITLE, 'mb-3')}>
+          Entrá para reservar
+        </h2>
+        <label className="flex min-h-12 cursor-pointer items-start gap-3">
+          <span className="relative mt-0.5 size-6 shrink-0">
+            <input
+              ref={termsRef}
+              type="checkbox"
+              checked={terms}
+              onChange={(e) => setTerms(e.target.checked)}
+              aria-invalid={termsError ? 'true' : undefined}
+              aria-describedby={termsError ? 'gate-terms-error' : undefined}
+              className="peer size-6 cursor-pointer appearance-none rounded-[6px] border-2 border-input bg-background transition-colors checked:border-primary checked:bg-primary aria-invalid:border-destructive focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            />
+            <Check
+              aria-hidden
+              strokeWidth={3}
+              className="pointer-events-none absolute inset-0 m-auto size-4 text-primary-foreground opacity-0 peer-checked:opacity-100"
+            />
+          </span>
+          <span className="text-base text-foreground">
+            Soy mayor de 18 años y acepto los términos y condiciones de uso (declaración jurada).
+          </span>
+        </label>
+        {termsError && (
+          <p id="gate-terms-error" role="alert" className={cn('mt-1 ml-9', MAIL_ERROR_CLASS)}>
+            {termsError}
+          </p>
+        )}
+        {/* Fuera del rótulo: adentro, tocar cerca del link navegaba en vez de tildar la casilla. En
+            otra pestaña, para no perder lo que se tipeó. Alineado con el texto del rótulo (casilla
+            de 24 px + hueco de 12 px) y de 44 px de alto. */}
+        <Link
+          href="/terminos"
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn('ml-9 flex min-h-11 w-fit items-center text-sm', linkClass)}
+        >
+          Leer los términos y condiciones
+          <span className="sr-only"> (se abre en otra pestaña)</span>
+        </Link>
+      </div>
+      {inAppBrowser ? (
+        <>
+          {emailForm}
+          {divider}
+          {googleBlock}
+        </>
+      ) : (
+        <>
+          {googleBlock}
+          {divider}
+          {emailForm}
+        </>
+      )}
+    </section>
   )
 }
 
-function GoogleSubmit({
-  formAction,
-  agreed,
+/**
+ * "Enviado": el foco pasa al título (el formulario, y el botón que lo tenía, desaparecieron). Dice
+ * la verdad de hoy: tocar el enlace trae de vuelta a esta pantalla con la cuenta, y ahí se
+ * confirma. A diferencia de /ingresar, acá la action SÍ crea la cuenta, así que no hay "si tiene
+ * cuenta".
+ */
+function SentPanel({
+  email,
+  firstName,
+  sentAt,
+  next,
+  action,
+  onChangeEmail,
 }: {
-  formAction: StartGoogleLoginFromReservar
-  agreed: boolean
+  email: string
+  firstName: string
+  sentAt: number
+  next: string
+  action: SendPlayerMagicLink
+  onChangeEmail: () => void
 }) {
-  // Mismo <form> (no puede haber un <form> anidado): un segundo submit button
-  // con su propio `formAction` manda ESTE formData — el hidden `next` de arriba
-  // ya viaja, checkbox de términos incluido, sin disparar el submit principal.
+  const heading = useRef<HTMLHeadingElement>(null)
+  useEffect(() => {
+    heading.current?.focus()
+  }, [])
+
   return (
-    <>
-      <input type="hidden" name="agreed" value={agreed ? '1' : '0'} />
-      <button
-        type="submit"
-        formAction={formAction}
-        disabled={!agreed}
-        title={!agreed ? 'Tildá los términos para continuar' : undefined}
-        className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-semibold text-foreground shadow-xs transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-white/4"
+    <section aria-labelledby="gate-sent-title">
+      <h2
+        id="gate-sent-title"
+        ref={heading}
+        tabIndex={-1}
+        className={cn(PORTAL_SECTION_TITLE, 'outline-hidden')}
       >
-        <GoogleIcon className="h-4 w-4" />
-        Continuar con Google
-      </button>
-    </>
+        Revisá tu email
+      </h2>
+      <p className="mt-3 break-words text-base text-foreground">
+        Te mandamos un enlace a <strong className="font-semibold">{email}</strong>.
+      </p>
+      <p className="mt-2 text-pretty text-base text-muted-foreground">
+        Cuando lo toques, volvés a esta pantalla con tu cuenta y ahí confirmás la reserva.
+      </p>
+      <p className="mt-2 text-pretty text-sm text-muted-foreground">
+        ¿No llegó? Revisá la carpeta de correo no deseado o que el email esté bien escrito.
+      </p>
+      <div className="mt-6 space-y-3">
+        <ResendLinkForm
+          action={action}
+          fields={{ email, firstName, next, terms: 'on' }}
+          sentAt={sentAt}
+          scope="reservar"
+          resentNotice="Listo: te mandamos otro enlace. Usá el del último correo."
+        />
+        <Button type="button" variant="ghost" className={PORTAL_BUTTON} onClick={onChangeEmail}>
+          Usar otro email
+        </Button>
+      </div>
+    </section>
   )
 }

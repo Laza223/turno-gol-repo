@@ -1,33 +1,40 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
-import ReservaDarkShell from '@/components/booking/ReservaDarkShell'
+import { PlayerBottomNav } from '@/components/site/PlayerBottomNav'
+import { PortalSessionProvider } from '@/components/site/PortalSessionProvider'
+import { PortalWorld } from '@/components/world/PortalWorld'
 import { pendingAction } from '@/test/pending-action'
 import ConfirmBookingButton from './ConfirmBookingButton'
 
 /**
- * `action` entra por prop (ver el comentario en el componente). `../actions` es
- * `'use server'` y arrastra `request-context` → `node:async_hooks`, que Vite
- * externaliza en el browser y rompe la story si se importa como valor.
+ * `action` entra por prop (ver el comentario en CheckoutFlow). `../actions` es `'use server'` y
+ * arrastra `request-context` → `node:async_hooks`, que Vite externaliza en el browser y rompe la
+ * story si se importa como valor. Debajo de `md` el botón es una barra fija abajo: se ve de verdad
+ * en un viewport de celular (las capturas a 320, 375 y 390).
  */
 const meta = {
   title: 'Player/Checkout/ConfirmBookingButton',
   component: ConfirmBookingButton,
-  parameters: { layout: 'padded' },
+  parameters: { layout: 'fullscreen' },
   args: {
     slug: 'complejo-fenix',
     court: '00000000-0000-4000-8000-000000000101',
     date: '2026-03-14',
     time: '18:00',
     dur: 60,
-    payMethods: ['mercadopago'],
+    formato: 5,
+    pay: 'cash',
+    withDeposit: false,
   },
   decorators: [
     (Story) => (
-      <ReservaDarkShell>
-        <div className="mx-auto max-w-md px-4 py-6">
-          <Story />
+      <PortalWorld>
+        <div className="min-h-dvh bg-background px-4 py-4 text-foreground">
+          <div className="mx-auto max-w-[35rem]">
+            <Story />
+          </div>
         </div>
-      </ReservaDarkShell>
+      </PortalWorld>
     ),
   ],
 } satisfies Meta<typeof ConfirmBookingButton>
@@ -35,60 +42,96 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/**
- * Con seña: el CTA pide pagarla vía MercadoPago antes de confirmar. La copy
- * `/te llevamos a mercadopago/i` de esta story nunca existió en
- * `ConfirmBookingButton`/`PaymentMethodSelector` (confirmado con `git log -S`:
- * ese texto solo aparece en `StepPayments.tsx`, el wizard de onboarding del
- * ADMIN conectando su cuenta de MP — un flujo distinto). El hint real para
- * `depositOnly` (un solo método = mercadopago) es el que arma
- * `PaymentMethodSelector`.
- */
-export const ConSena: Story = {
-  args: { withDeposit: true, payMethods: ['mercadopago'], action: fn(async () => undefined) },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: /pagar seña y reservar/i })).toBeInTheDocument()
-    await expect(
-      canvas.getByText('Este complejo pide seña online para confirmar la reserva.'),
-    ).toBeInTheDocument()
-    await expect(canvas.getByText('Pagás la seña online ahora')).toBeInTheDocument()
-  },
-}
-
-/**
- * Sin seña: el complejo acepta efectivo/transferencia, la reserva queda
- * confirmada al instante. Mismo caso que `ConSena`: `/queda confirmado al
- * instante/i` no existe en ningún lado del árbol de este componente — no hay
- * copy de "instantáneo" en la app. La señal real de "sin pago online" son las
- * descripciones de cada método en `PaymentMethodSelector`.
- */
+/** Sin seña: la reserva queda confirmada al instante y se paga en el complejo. */
 export const SinSena: Story = {
-  args: { withDeposit: false, payMethods: ['cash', 'transfer'], action: fn(async () => undefined) },
+  args: { action: fn(async () => undefined) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: /^confirmar reserva$/i })).toBeInTheDocument()
-    await expect(canvas.getByText('Pagás al llegar al complejo')).toBeInTheDocument()
-    await expect(canvas.getByText('Coordinás los datos con el complejo')).toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: 'Confirmar reserva' })).toBeEnabled()
   },
 }
 
-const enviando = pendingAction<void>(undefined)
-
-/** Submit dispara la Server Action inyectada; mientras está pendiente el botón muestra spinner. */
-export const Enviando: Story = {
-  args: {
-    withDeposit: true,
-    payMethods: ['mercadopago'],
-    action: fn(enviando.action),
-  },
+/** Con seña: el botón dice lo que hace, pagar la seña (antes "Pagar seña y reservar"). */
+export const ConSena: Story = {
+  args: { withDeposit: true, pay: 'mercadopago', action: fn(async () => undefined) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const button = canvas.getByRole('button', { name: /pagar seña y reservar/i })
-    await userEvent.click(button)
-    const procesando = await canvas.findByRole('button', { name: /procesando/i })
-    await expect(procesando).toBeDisabled()
-    // Última story del archivo: hoy es segura por posición, no por diseño.
-    await enviando.release(procesando)
+    await expect(canvas.getByRole('button', { name: 'Pagar la seña' })).toBeEnabled()
+  },
+}
+
+/** Los datos que viajan al servidor: el turno, el filtro de formato y cómo paga. */
+export const QueViaja: Story = {
+  args: { pay: 'transfer', action: fn(async () => undefined) },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Confirmar reserva' }))
+    const sent = (args.action as ReturnType<typeof fn>).mock.calls[0]![0] as FormData
+    await expect(Object.fromEntries(sent.entries())).toEqual({
+      slug: 'complejo-fenix',
+      court: '00000000-0000-4000-8000-000000000101',
+      date: '2026-03-14',
+      time: '18:00',
+      dur: '60',
+      formato: '5',
+      pay: 'transfer',
+    })
+  },
+}
+
+const procesando = pendingAction<void>(undefined)
+
+/** Pendiente: "Procesando…" y deshabilitado, un solo envío. */
+export const Pendiente: Story = {
+  args: { withDeposit: true, pay: 'mercadopago', action: fn(procesando.action) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Pagar la seña' }))
+    const pending = await canvas.findByRole('button', { name: /procesando/i })
+    await expect(pending).toBeDisabled()
+    // Última story que usa `procesando`: se libera para no dejar viva la transición.
+    await procesando.release(pending)
+  },
+}
+
+/**
+ * Con sesión del jugador hay barra inferior en el celular: el botón fijo se sube por encima de
+ * ella (misma medida que reserva `PortalFrame`) y las dos quedan a la vista.
+ */
+export const ConBarraInferior: Story = {
+  args: { action: fn(async () => undefined) },
+  parameters: {
+    nextjs: { appDirectory: true, navigation: { pathname: '/complejo-fenix/reservar' } },
+  },
+  decorators: [
+    (Story) => (
+      <PortalSessionProvider
+        initialValue={{
+          session: {
+            playerId: 'p1',
+            firstName: 'Tomás',
+            lastName: 'Ibáñez',
+            avatarUrl: null,
+            email: 'tomas@example.com',
+          },
+          favoriteTenantIds: new Set(),
+          staffPanelPath: null,
+        }}
+      >
+        <Story />
+        <PlayerBottomNav />
+      </PortalSessionProvider>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const doc = canvasElement.ownerDocument
+    const button = within(canvasElement).getByRole('button', { name: 'Confirmar reserva' })
+    const nav = doc.querySelector('nav[aria-label="Navegación del jugador"]')
+    await expect(nav).not.toBeNull()
+    // Solo tiene sentido medir el apilado donde la barra inferior existe (debajo de md).
+    if (getComputedStyle(nav!).display === 'none') return
+    const b = button.getBoundingClientRect()
+    const n = nav!.getBoundingClientRect()
+    await expect(b.bottom).toBeLessThanOrEqual(n.top)
   },
 }

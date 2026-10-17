@@ -353,6 +353,32 @@ describe('ReserveSection: hora → cancha', () => {
     await waitFor(() => expect(hourButtons()).toHaveLength(2))
   })
 
+  it('con el filtro elegido, el link de cada cancha a confirmar lleva el formato; con "Todos", no', async () => {
+    mockApi((date) =>
+      dayOf(date, [
+        court('c1', 'Cancha 1', [slot('19:00')], 7),
+        court('c2', 'Cancha 2', [slot('19:00')], 5),
+      ]),
+    )
+    render(<ReserveSection tenant={tenantWith()} formats={[5, 7]} trackViewed={trackMock} />)
+    await screen.findByRole('radio', { name: /^19:00/ })
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Fútbol 7' }))
+    fireEvent.click(await screen.findByRole('radio', { name: /^19:00/ }))
+    const region = () => screen.getByRole('region', { name: 'Canchas libres a las 19:00' })
+    const links = () =>
+      within(region())
+        .getAllByRole('link')
+        .map((a) => a.getAttribute('href')!)
+    await waitFor(() => expect(links()).toHaveLength(1))
+    expect(links()[0]).toContain('/reservar?court=c1')
+    expect(links()[0]).toContain('formato=7')
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Todos' }))
+    await waitFor(() => expect(links()).toHaveLength(2))
+    for (const href of links()) expect(href).not.toContain('formato')
+  })
+
   it('con un solo formato no hay filtro de formato', async () => {
     mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]))
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)

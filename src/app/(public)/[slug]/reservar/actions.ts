@@ -32,12 +32,18 @@ import {
 import { isPublicPortalOpen, publicBookingAdvanceDays } from '@/modules/tenants/tenant.lifecycle'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
-import { CURRENT_TERMS_VERSION } from '@/shared/terms'
-import { echoFields, echoChecked } from '@/shared/forms/echo'
+import { CURRENT_TERMS_VERSION, TERMS_REQUIRED_MESSAGE } from '@/shared/terms'
+import { echoFields } from '@/shared/forms/echo'
+import { FORMAT_OPTIONS } from '@/components/public/courtFacets'
+import { PAY_METHODS, buildReservarHref, parseFormato, parsePay } from '@/lib/booking/reserve-url'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
+// Las claves van en el orden de la pantalla (casilla, nombre, email): `issues[0]` es el primer
+// campo inválido que el jugador ve, y a ese se le marca el error y se le lleva el foco.
 const gateSchema = z.object({
+  terms: z.literal('on', { error: TERMS_REQUIRED_MESSAGE }),
+  firstName: z.string().trim().min(1, 'Ingresá tu nombre').max(80, 'Máximo 80 caracteres'),
   // Zod 4: los validadores de formato son top-level (`z.email()`), y encadenarlos
   // DESPUÉS de las transformaciones invierte el orden — `z.email().trim()` valida
   // el formato ANTES de trimear, así que un email con un espacio de más falla.
@@ -47,41 +53,46 @@ const gateSchema = z.object({
     .trim()
     .toLowerCase()
     .pipe(z.email({ message: 'Ingresá un email válido' })),
-  firstName: z.string().trim().min(1, 'Ingresá tu nombre').max(80, 'Máximo 80 caracteres'),
+  // La pantalla ya no lo pide; sigue acá para las pestañas abiertas de antes del deploy.
   lastName: z.string().trim().max(80, 'Máximo 80 caracteres').optional().default(''),
-  terms: z.literal('on', { error: 'Tenés que aceptar los términos.' }),
   next: z.string(),
 })
 
 /** Lo tipeado vuelve al form en cada error; sin esto se pierde (no hay defaultValue). */
-const GATE_ECHO = ['email', 'firstName', 'lastName'] as const
-type GateValues = Partial<Record<(typeof GATE_ECHO)[number], string>> & { terms?: boolean }
+const GATE_ECHO = ['email', 'firstName'] as const
+type GateValues = Partial<Record<(typeof GATE_ECHO)[number], string>>
+
+/** Los campos que un error puede marcar. */
+type GateField = 'terms' | 'firstName' | 'email'
+const isGateField = (path: unknown): path is GateField =>
+  path === 'terms' || path === 'firstName' || path === 'email'
 
 export type GateState =
   | { status: 'idle' }
-  | { status: 'sent'; email: string }
-  | { status: 'error'; message: string; values?: GateValues }
+  | { status: 'sent'; email: string; firstName: string }
+  | { status: 'error'; message: string; field?: GateField; values?: GateValues }
 
 export async function sendPlayerMagicLink(
   _prev: GateState,
   formData: FormData,
 ): Promise<GateState> {
-  // El jugador que se olvida de tildar el +18 perdía nombre, apellido y email.
-  const values: GateValues = {
-    ...echoFields(formData, GATE_ECHO),
-    terms: echoChecked(formData, 'terms'),
-  }
+  // El jugador que se equivoca en un campo perdía nombre y email.
+  const values: GateValues = echoFields(formData, GATE_ECHO)
   const parsed = gateSchema.safeParse({
     email: formData.get('email'),
     firstName: formData.get('firstName'),
-    lastName: formData.get('lastName'),
+    // Ausente (la pantalla ya no lo manda): `null` no pasa por `.optional()`, `undefined` sí.
+    lastName: formData.get('lastName') ?? undefined,
     terms: formData.get('terms'),
     next: formData.get('next'),
   })
   if (!parsed.success) {
+    const issue = parsed.error.issues[0]
+    const field = issue?.path[0]
     return {
       status: 'error',
-      message: parsed.error.issues[0]?.message ?? 'Datos inválidos.',
+      message: issue?.message ?? 'Datos inválidos.',
+      ...(isGateField(field) ? { field } : {}),
       values,
     }
   }
@@ -109,18 +120,17 @@ export async function sendPlayerMagicLink(
   })
   if (!result.ok)
     return { status: 'error', message: 'No pudimos enviar el email. Probá de nuevo.', values }
-  return { status: 'sent', email: parsed.data.email }
+  return { status: 'sent', email: parsed.data.email, firstName: parsed.data.firstName }
 }
 
 /**
- * Google desde el checkout: el checkbox de términos vive en el MISMO form que
- * el submit de email (`terms`, ver LoginGate) — si venía tildado, se setea una
- * cookie firmada de corta duración (`google-terms-cookie.ts`) ANTES de mandar
- * a Google, así el alta nueva por Google entra con el consentimiento ya
- * resuelto y no ve la pantalla de `/aceptar-terminos`. Sin checkbox no
- * bloqueamos el redirect client-side es la UX (el botón está disabled) — este
- * chequeo server-side es defensa en profundidad, no la única barrera: la real
- * es `hasAgreedTerms` en el callback.
+ * Google desde el checkout: la casilla de términos vive en la MISMA pantalla que el ingreso por
+ * email (`terms`, ver LoginGate). El botón de Google no se deshabilita: si falta la casilla, ESTA
+ * action lo dice (el error va en la casilla) y no redirige. Con la casilla se setea una cookie
+ * firmada de corta duración (`google-terms-cookie.ts`) ANTES de mandar a Google, así el alta nueva
+ * por Google entra con el consentimiento ya resuelto y no ve la pantalla de `/aceptar-terminos`.
+ * Este chequeo es la UX y también defensa en profundidad, no la única barrera: la real es
+ * `hasAgreedTerms` en el callback.
  *
  * La cookie (no un query param en `redirectTo`) es a propósito: revisión
  * adversarial 2026-08-14 encontró que un query param reenviado por Supabase
@@ -128,26 +138,38 @@ export async function sendPlayerMagicLink(
  * `agreed=1` sin haber tildado nada. Se borra siempre antes de decidir, para
  * que una cookie vieja de un intento anterior (tildado, abandonado, y vuelto
  * a intentar SIN tildar) no aplique a este envío.
+ *
+ * Acepta las dos firmas: `(prev, formData)` (la actual, con `useActionState`) y `(formData)` (la de
+ * antes del deploy). Una pestaña abierta antes lo llama con la vieja y, sin esto, `formData.get`
+ * reventaba con un 500.
  */
-export async function startGoogleLoginFromReservar(formData: FormData): Promise<void> {
+export async function startGoogleLoginFromReservar(
+  prev: GateState | FormData,
+  maybeFormData?: FormData,
+): Promise<GateState> {
+  const formData = prev instanceof FormData ? prev : maybeFormData!
   const nextRaw = formData.get('next')
   const safeNext = sanitizeNext(typeof nextRaw === 'string' ? nextRaw : null)
-  const agreed = formData.get('agreed') === '1'
 
   const cookieStore = await cookies()
-  if (agreed) {
-    cookieStore.set({
-      name: GOOGLE_TERMS_COOKIE_NAME,
-      value: buildGoogleTermsCookie(CURRENT_TERMS_VERSION),
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: Math.floor(GOOGLE_TERMS_COOKIE_TTL_MS / 1000),
-      path: '/',
-    })
-  } else {
+  if (formData.get('terms') !== 'on') {
     cookieStore.delete(GOOGLE_TERMS_COOKIE_NAME)
+    return {
+      status: 'error',
+      message: TERMS_REQUIRED_MESSAGE,
+      field: 'terms',
+      values: echoFields(formData, GATE_ECHO),
+    }
   }
+  cookieStore.set({
+    name: GOOGLE_TERMS_COOKIE_NAME,
+    value: buildGoogleTermsCookie(CURRENT_TERMS_VERSION),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: Math.floor(GOOGLE_TERMS_COOKIE_TTL_MS / 1000),
+    path: '/',
+  })
 
   const origin = (await headers()).get('origin') ?? process.env.NEXT_PUBLIC_APP_URL ?? ''
   const redirectTo = `${origin}/api/auth/callback?next=${encodeURIComponent(safeNext)}`
@@ -171,15 +193,22 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
   const date = String(formData.get('date') ?? '')
   const time = String(formData.get('time') ?? '')
   const dur = Number(formData.get('dur') ?? '60') as 60 | 120
-  const backTo = `/${slug}/reservar?court=${court}&date=${date}&time=${time}&dur=${dur}`
+  const payRaw = String(formData.get('pay') ?? '')
+  // Lo que el jugador había elegido (filtro de formato y forma de pago) vuelve en cada rebote.
+  const backTo = buildReservarHref(slug, {
+    courtId: court,
+    date,
+    time,
+    formato: parseFormato(String(formData.get('formato') ?? ''), FORMAT_OPTIONS),
+    pay: parsePay(payRaw, PAY_METHODS),
+  })
 
   // Basic format guard: the form should always send a valid date, but protect
   // against direct FormData manipulation before reaching the service validation.
   if (!isValidCalendarDate(date)) redirect(`${backTo}&error=invalid_date`)
 
   const user = await extractAuthUser()
-  if (!user || user.type !== 'player')
-    redirect(`/${slug}/reservar?court=${court}&date=${date}&time=${time}&dur=${dur}`)
+  if (!user || user.type !== 'player') redirect(backTo)
 
   // publicBookingCreate (5/60s por ip+tenant): defensa de Denial-of-Inventory —
   // cubre el caso de múltiples cuentas de jugador desde el mismo origen contra
@@ -252,7 +281,6 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
   }
   const withDeposit =
     settings.requires_deposit && !depositUnpayable && settings.deposit_percentage > 0
-  const payRaw = String(formData.get('pay') ?? '')
   const paymentMethod: 'cash' | 'transfer' | undefined = withDeposit
     ? undefined
     : payRaw === 'cash' && (settings.accepts_cash ?? true)

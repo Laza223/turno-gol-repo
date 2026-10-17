@@ -53,6 +53,7 @@ export type PublicTenantFixture = {
   hidePrices: boolean
   acceptsCash: boolean
   acceptsTransfer: boolean
+  cancellationHoursBefore: number
   bookingAdvanceDays: number
   amenities: Record<string, boolean>
   latitude: number | null
@@ -85,6 +86,7 @@ export const publicTenant = (
   hidePrices: false,
   acceptsCash: true,
   acceptsTransfer: true,
+  cancellationHoursBefore: 12,
   bookingAdvanceDays: 6,
   amenities: {
     techado: true,

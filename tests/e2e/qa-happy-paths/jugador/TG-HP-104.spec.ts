@@ -13,7 +13,7 @@ import { tomorrowDateIsoArt } from '../../_helpers/booking-seed'
  * CASO DE PLATA: la fila de bookings/payments queda VIVA a propósito (no se
  * limpia en finally) para que los verificadores la inspeccionen.
  *
- * Evidence anchors: reservar/page.tsx:67-70,75-77, reservar/actions.ts:169,172-179,
+ * Evidence anchors: reservar/page.tsx:62-80, reservar/actions.ts:185-206,
  * mock-mp/checkout/MockCheckoutView.tsx:35-45,80-86, mock-mp/checkout/actions.ts:43-98,
  * payment.service.ts:224-241,280-315, booking.concurrency.ts:21-57,
  * BookingSuccessCard.tsx:52-54,65-68, PaymentStatusWatcher.tsx:67-114,116-123.
@@ -39,8 +39,8 @@ async function runFlow(page: Page, date: string): Promise<void> {
   await page.goto(reservarUrl(date))
   await expect(page.getByRole('heading', { name: 'Confirmá tu reserva' })).toBeVisible()
 
-  // Con seña: único método MP, botón "Pagar seña y reservar".
-  const confirmBtn = page.getByRole('button', { name: 'Pagar seña y reservar' })
+  // Con seña: único método MP, botón "Pagar la seña".
+  const confirmBtn = page.getByRole('button', { name: 'Pagar la seña' })
   await expect(confirmBtn).toBeVisible()
   await confirmBtn.click()
 

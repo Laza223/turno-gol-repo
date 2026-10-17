@@ -2,7 +2,7 @@ import { cache } from 'react'
 import { and, eq, notInArray, sql } from 'drizzle-orm'
 import { getDb, withTenantContext } from '@/shared/db/client'
 import { bookings, courts, tenantSubscriptions } from '@/shared/db/schema'
-import { SLOT_DURATION_MINUTES } from '@/shared/constants'
+import { DEFAULT_CANCELLATION_HOURS_BEFORE, SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { track, withSpan } from '@/shared/observability'
 import { effectiveCloseMins, normalizeRangeToOpenDay } from '@/shared/time/operating-day'
 import { holdExpiresAtIso } from '@/lib/booking/hold'
@@ -49,6 +49,12 @@ export type PublicTenant = {
   // Métodos de pago presencial que el complejo declara aceptar (settings).
   acceptsCash: boolean
   acceptsTransfer: boolean
+  /**
+   * Horas de anticipación con las que una cancelación todavía devuelve la seña
+   * (`settings.cancellation_policy.hours_before`, o el default si el complejo no la fijó).
+   * Es la misma regla que aplica `booking.cancellation.ts`; acá solo se dice, no se decide.
+   */
+  cancellationHoursBefore: number
   /**
    * Anticipación EFECTIVA, no la cruda de `settings`: un complejo `canceled`
    * la trae recortada para no vender turnos posteriores a su período pago
@@ -411,6 +417,8 @@ async function _getPublicTenant(slug: string): Promise<PublicTenant | null> {
     hidePrices: arePublicPricesHidden(s),
     acceptsCash: s.accepts_cash ?? true,
     acceptsTransfer: s.accepts_transfer ?? true,
+    cancellationHoursBefore:
+      s.cancellation_policy?.hours_before ?? DEFAULT_CANCELLATION_HOURS_BEFORE,
     bookingAdvanceDays: publicBookingAdvanceDays(
       s.booking_advance_days ?? 6,
       row.status,

@@ -547,6 +547,22 @@ html:has([data-world='portal']) .player-shell-bg {
   background: var(--color-background);
 }
 
+/* El botón fijo de confirmar (`[data-fixed-cta]`, ConfirmBookingButton) tapa el borde de abajo en el
+   celular. Sin esto, tabular a un radio o un link que quedó detrás de la barra no lo trae a la vista:
+   el navegador lo da por visible porque está dentro del viewport (WCAG 2.4.11, foco no oculto).
+   `scroll-padding-bottom` en `html` reserva el mismo alto que el relleno de `PortalFrame`: barra
+   inferior (3.5rem + 1 px) + área segura + 77 px de la barra fija. Desde `md` el botón está en el
+   flujo y no hay barra inferior. Si cambia uno de los dos números, cambia el otro.
+   Compuerta: story `FocoNoQuedaTapadoPorLaBarra` (CheckoutFlow). */
+html:has([data-fixed-cta]) {
+  scroll-padding-bottom: calc(3.5rem + 1px + env(safe-area-inset-bottom) + 77px);
+}
+@media (width >= 48rem) {
+  html:has([data-fixed-cta]) {
+    scroll-padding-bottom: 0;
+  }
+}
+
 /* Gradiente del área de contenido — gradiente más visible con tinte emerald
    suave que separa visualmente del shell. El contenido "flota" sobre el fondo. */
 .content-area-gradient {

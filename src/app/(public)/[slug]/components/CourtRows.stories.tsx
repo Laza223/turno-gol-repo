@@ -54,6 +54,18 @@ export const ConPrecios: Story = {
   },
 }
 
+/** El filtro de formato de la ficha viaja a confirmar: "Volver" lo conserva. Sin filtro, no se inventa uno. */
+export const ConFormatoElegido: Story = {
+  args: { formato: 7 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getAllByRole('link')[0]).toHaveAttribute(
+      'href',
+      '/complejo-fenix/reservar?court=00000000-0000-4000-8000-000000000200&date=2026-03-14&time=21:00&dur=60&formato=7',
+    )
+  },
+}
+
 /** `hidePrices`: aunque el slot traiga el precio, no se muestra ningún monto. */
 export const PreciosOcultos: Story = {
   args: { tenant: publicTenant({ hidePrices: true }) },

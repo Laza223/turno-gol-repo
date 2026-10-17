@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildFichaHref,
   buildReserveRequest,
   buildReservarHref,
+  parseFormato,
+  parsePay,
   parseReserveState,
   writeReserveParams,
 } from '@/lib/booking/reserve-url'
@@ -106,10 +109,57 @@ describe('writeReserveParams', () => {
 })
 
 describe('buildReservarHref', () => {
+  const turno = { courtId: 'c-1', date: '2026-10-16', time: '21:00' }
+
   it('es el contrato de reservar/page.tsx: court, date, time y dur=60', () => {
-    expect(
-      buildReservarHref('complejo-fenix', { courtId: 'c-1', date: '2026-10-16', time: '21:00' }),
-    ).toBe('/complejo-fenix/reservar?court=c-1&date=2026-10-16&time=21:00&dur=60')
+    expect(buildReservarHref('complejo-fenix', turno)).toBe(
+      '/complejo-fenix/reservar?court=c-1&date=2026-10-16&time=21:00&dur=60',
+    )
+  })
+
+  it('suma formato y pay cuando vienen, y nada cuando no', () => {
+    expect(buildReservarHref('x', { ...turno, formato: 7, pay: 'transfer' })).toBe(
+      '/x/reservar?court=c-1&date=2026-10-16&time=21:00&dur=60&formato=7&pay=transfer',
+    )
+    expect(buildReservarHref('x', { ...turno, formato: null, pay: null })).toBe(
+      buildReservarHref('x', turno),
+    )
+  })
+})
+
+describe('buildFichaHref — el "Volver" y el "Elegir otro turno"', () => {
+  it('vuelve a la ficha con día y hora, y con el formato solo si había uno', () => {
+    expect(buildFichaHref('x', { date: '2026-10-16', hora: '21:00' })).toBe(
+      '/x?date=2026-10-16&hora=21%3A00',
+    )
+    expect(buildFichaHref('x', { date: '2026-10-16', hora: '21:00', formato: 5 })).toBe(
+      '/x?date=2026-10-16&hora=21%3A00&formato=5',
+    )
+  })
+
+  it('sin nada que conservar es la ficha pelada', () => {
+    expect(buildFichaHref('x', {})).toBe('/x')
+  })
+})
+
+describe('parseFormato / parsePay — lo que viaja en la URL', () => {
+  it('formato: solo la forma canónica de uno de los formatos de la lista', () => {
+    expect(parseFormato('7', [5, 7])).toBe(7)
+    for (const raw of ['9', '07', '7.0', ' 7', 'siete', '', null, undefined]) {
+      expect(parseFormato(raw, [5, 7]), String(raw)).toBeNull()
+    }
+  })
+
+  it('pay: solo un método de los que el complejo ofrece; si no, null (cae al default)', () => {
+    expect(parsePay('cash', ['cash', 'transfer'])).toBe('cash')
+    expect(parsePay('transfer', ['cash', 'transfer'])).toBe('transfer')
+    expect(parsePay('mercadopago', ['mercadopago'])).toBe('mercadopago')
+    // Un método válido pero que este complejo no ofrece (o no con seña) no pasa.
+    expect(parsePay('mercadopago', ['cash', 'transfer'])).toBeNull()
+    expect(parsePay('cash', ['mercadopago'])).toBeNull()
+    for (const raw of ['efectivo', 'CASH', '', null, undefined, 5]) {
+      expect(parsePay(raw, ['cash', 'transfer']), String(raw)).toBeNull()
+    }
   })
 })
 

@@ -35,6 +35,14 @@ export const PORTAL_BUTTON =
 export const PORTAL_BUTTON_OUTLINE = `${PORTAL_BUTTON} disabled:border-border disabled:text-muted-foreground`
 
 /**
+ * El foco de un link del portal: el anillo del mundo (2 px en `ring`, separado 2 px con el color
+ * del fondo) en lugar del contorno por defecto del navegador. Solo el foco: el color, el subrayado
+ * y el blanco táctil de 44 px los pone cada link. `/ingresar` conserva el suyo (decisión del 2.1).
+ */
+export const PORTAL_LINK =
+  'rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background'
+
+/**
  * Campo de texto de las pantallas de ingreso: 48 px, y `text-base` en mobile porque < 16 px dispara
  * el zoom de iOS al enfocar (MASTER §3.x). El placeholder va con el color pleno del token: el `/60`
  * de ui/input.tsx medía 2,87:1 en claro y 3,35:1 en oscuro, y es el ejemplo del formato del email.

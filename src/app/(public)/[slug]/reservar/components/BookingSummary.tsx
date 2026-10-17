@@ -1,10 +1,16 @@
-import { CalendarDays, Clock, MapPin } from 'lucide-react'
+import { CalendarDays, Clock, Goal, MapPin } from 'lucide-react'
+import { formatLabel } from '@/components/public/courtFacets'
+import { PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
 import { formatArs, formatDateLong } from '@/lib/format'
 
 export type BookingSummaryData = {
   tenantName: string
+  /** Si el complejo no la cargó, se dice solo la ciudad. */
+  address?: string
   city: string
   courtName: string
+  /** Jugadores por lado de la cancha (`courts.format`): "Cancha 2 · Fútbol 5". */
+  courtFormat?: number
   date: string
   timeStart: string
   timeEnd: string
@@ -14,67 +20,65 @@ export type BookingSummaryData = {
   hidePrices?: boolean
 }
 
+const ROW = 'flex items-start gap-3'
+const ICON = 'mt-0.5 size-5 shrink-0 text-muted-foreground'
+
 /**
- * Resumen del turno en el checkout — misma receta que el comprobante del
- * éxito (`.reserva-receipt-card`): light = card blanca elevada con tinte
- * emerald, dark = slab glass. Chunking §9: QUIÉN / CUÁNDO / PLATA.
+ * Resumen del turno en la pantalla de confirmar: QUIÉN, CUÁNDO, DÓNDE y, si el complejo los
+ * muestra, la plata. Plano, sin sombra: borde de 1 px sobre `card`. Con `hidePrices` no sale
+ * ningún monto, en ningún texto ni atributo, y tampoco dice cómo se paga: eso lo dice la sección
+ * de pago, que siempre está debajo.
  */
 export default function BookingSummary({ data }: { data: BookingSummaryData }) {
   const rest = Math.max(data.price - data.depositAmount, 0)
+  const where = [data.address, data.city].filter(Boolean).join(', ')
   return (
-    <div className="reserva-receipt-card relative space-y-4 overflow-hidden rounded-2xl p-5">
-      <div>
-        <h2 className="font-display text-lg font-bold text-foreground">{data.tenantName}</h2>
-        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <MapPin className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" aria-hidden />{' '}
-          {data.city}
-        </p>
-      </div>
+    <section aria-label="Tu turno" className="rounded-xl border border-border bg-card p-4">
+      <h2 className={PORTAL_SECTION_TITLE}>{data.tenantName}</h2>
+      <p className="mt-1 flex items-start gap-2 text-sm text-muted-foreground">
+        <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden />
+        <span>{where}</span>
+      </p>
       {/* <div>, no <dl>: son filas ícono+texto, no pares término/definición (axe definition-list). */}
-      <div className="space-y-2.5 border-t border-border pt-4 text-sm dark:border-white/10">
-        <div className="flex items-center gap-2 text-foreground/90">
-          <CalendarDays className="h-4 w-4 text-emerald-700 dark:text-emerald-400" aria-hidden />
+      <div className="mt-4 space-y-3 border-t border-border pt-4 text-base text-foreground">
+        <div className={ROW}>
+          <CalendarDays className={ICON} aria-hidden />
           <span>{formatDateLong(data.date)}</span>
         </div>
-        <div className="flex items-center gap-2 text-foreground/90">
-          <Clock className="h-4 w-4 text-emerald-700 dark:text-emerald-400" aria-hidden />
+        <div className={ROW}>
+          <Clock className={ICON} aria-hidden />
           <span className="tabular-nums">
-            {data.timeStart}–{data.timeEnd} · {data.courtName}
+            {data.timeStart} a {data.timeEnd}
+          </span>
+        </div>
+        <div className={ROW}>
+          <Goal className={ICON} aria-hidden />
+          <span>
+            {data.courtName}
+            {data.courtFormat ? ` · ${formatLabel(data.courtFormat)}` : ''}
           </span>
         </div>
       </div>
-      {data.hidePrices ? (
-        <p className="border-t border-border pt-4 text-sm text-muted-foreground dark:border-white/10">
-          {data.depositAmount > 0
-            ? 'Para confirmar pagás una seña online con MercadoPago. El resto, en el complejo.'
-            : 'Pagás en el complejo.'}
-        </p>
-      ) : (
-        <div className="space-y-1.5 border-t border-border pt-4 text-sm dark:border-white/10">
-          <div className="flex justify-between text-muted-foreground">
+      {!data.hidePrices && (
+        <div className="mt-4 space-y-2 border-t border-border pt-4 text-base">
+          <div className="flex justify-between gap-4 text-muted-foreground">
             <span>Precio del turno</span>
             <span className="tabular-nums text-foreground">{formatArs(data.price)}</span>
           </div>
-          {data.depositAmount > 0 ? (
+          {data.depositAmount > 0 && (
             <>
-              <div className="flex items-baseline justify-between pt-0.5">
-                <span className="font-semibold text-foreground">Seña a pagar ahora</span>
-                <span className="font-display text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
-                  {formatArs(data.depositAmount)}
-                </span>
+              <div className="flex justify-between gap-4 font-semibold text-foreground">
+                <span>Seña a pagar ahora</span>
+                <span className="tabular-nums">{formatArs(data.depositAmount)}</span>
               </div>
-              <div className="flex justify-between text-xs text-muted-foreground">
+              <div className="flex justify-between gap-4 text-sm text-muted-foreground">
                 <span>Resto en el complejo</span>
                 <span className="tabular-nums">{formatArs(rest)}</span>
               </div>
             </>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              Este complejo no requiere seña. Pagás el total en el complejo.
-            </p>
           )}
         </div>
       )}
-    </div>
+    </section>
   )
 }

@@ -19,18 +19,23 @@ const data: BookingSummaryData = {
 }
 
 describe('BookingSummary — precios ocultos (settings.hide_public_prices)', () => {
-  it('con seña: dice que se paga una seña online, sin ningún monto', () => {
+  // El resumen no dice cómo se paga: lo dice la sección de pago, que siempre está debajo
+  // (ver checkout-flow.test.tsx). Acá solo importa que no haya ni un monto.
+  it('con seña: ningún monto en el texto ni en un atributo, y tampoco cómo se paga', () => {
     const { container } = render(<BookingSummary data={{ ...data, hidePrices: true }} />)
-    expect(container.textContent).not.toContain('$')
-    expect(screen.getByText(/pagás una seña online con MercadoPago/)).toBeTruthy()
+    expect(container.innerHTML).not.toContain('$')
+    expect(container.textContent).not.toMatch(/pag[aá]s|MercadoPago|se[ñn]a/i)
   })
 
-  it('sin seña: dice que se paga en el complejo, sin ningún monto', () => {
+  it('sin seña: ningún monto en el texto ni en un atributo, y tampoco cómo se paga', () => {
     const { container } = render(
       <BookingSummary data={{ ...data, depositAmount: 0, hidePrices: true }} />,
     )
-    expect(container.textContent).not.toContain('$')
-    expect(screen.getByText('Pagás en el complejo.')).toBeTruthy()
+    expect(container.innerHTML).not.toContain('$')
+    expect(container.textContent).not.toMatch(/pag[aá]s|complejo\./i)
+    // Lo del turno sí está: quién, cuándo y dónde.
+    expect(screen.getByText('El Potrero')).toBeTruthy()
+    expect(screen.getByText('Cancha 1')).toBeTruthy()
   })
 
   it('control: con precios visibles muestra el precio y la seña', () => {

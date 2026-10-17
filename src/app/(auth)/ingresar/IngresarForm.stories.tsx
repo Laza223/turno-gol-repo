@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { PortalAuthFrame } from '@/components/world/PortalAuthFrame'
 import { paintedContrast } from '@/test/contrast'
 import { pendingAction } from '@/test/pending-action'
@@ -150,7 +150,8 @@ export const Enviado: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Mandame el enlace' }))
     const title = await canvas.findByRole('heading', { level: 1, name: 'Revisá tu email' })
-    await expect(title).toHaveFocus()
+    // El foco se pone en un efecto posterior al pintado del título: se espera, no se asume.
+    await waitFor(() => expect(title).toHaveFocus())
     await expect(canvas.getByText('tomas.ibanez@example.com').closest('p')).toHaveTextContent(
       'Si tomas.ibanez@example.com tiene cuenta, te enviamos un enlace para entrar.',
     )
@@ -238,7 +239,7 @@ export const UsarOtroEmail: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Mandame el enlace' }))
     await userEvent.click(await canvas.findByRole('button', { name: 'Usar otro email' }))
     const email = canvas.getByLabelText('Email')
-    await expect(email).toHaveFocus()
+    await waitFor(() => expect(email).toHaveFocus())
     await expect(email).toHaveValue('tomas.ibanez@example.com')
   },
 }

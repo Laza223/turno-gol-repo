@@ -4,17 +4,18 @@ import { useState, useTransition } from 'react'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Building2, LayoutDashboard, LogOut, Menu, ShieldCheck, X } from 'lucide-react'
+import { Activity, Building2, LogOut, Menu, ShieldCheck, Users, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { TONE_BADGE } from '@/lib/status-tone'
 import { Button } from '@/components/ui/button'
 import { Logo } from '@/components/ui/logo'
 import { AdminThemeMenu } from '@/components/admin/AdminThemeMenu'
 
 /**
  * Shell del panel SuperAdmin — calcado estructural de `admin-layout-shell`
- * (sidebar fija lg+, drawer mobile, header fijo) pero con piel propia:
- * sidebar slate-900 con acento violeta (violet-600) para que siempre sea
- * obvio en qué sombrero estás (spec 2026-06-12 §4).
+ * (sidebar fija lg+, drawer mobile, header fijo). La identidad es la misma
+ * esmeralda del resto del producto (DESIGN.md); lo que marca el sombrero es el
+ * identificador "SuperAdmin" del header y del sidebar.
  */
 
 interface SuperAdminLayoutShellProps {
@@ -31,8 +32,9 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/super-admin', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/super-admin/tenants', icon: Building2, label: 'Tenants' },
+  { href: '/super-admin', icon: Activity, label: 'Pulso' },
+  { href: '/super-admin/tenants', icon: Building2, label: 'Complejos' },
+  { href: '/super-admin/jugadores', icon: Users, label: 'Jugadores' },
 ]
 
 function SidebarContent({
@@ -55,7 +57,7 @@ function SidebarContent({
             <Logo variant="horizontal" textClassName="text-foreground" />
           </Link>
           <div className="mt-1">
-            <p className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-violet-600 dark:text-violet-400">
+            <p className="flex items-center gap-1 text-xs font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
               <ShieldCheck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               TurnoGol — SuperAdmin
             </p>
@@ -93,21 +95,15 @@ function SidebarContent({
               className={cn(
                 'group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
                 isActive
-                  ? 'bg-violet-500/10 text-violet-700 shadow-xs dark:bg-violet-500/15 dark:text-violet-300 dark:shadow-violet-950/30'
+                  ? 'bg-primary/10 text-emerald-800 dark:text-emerald-300'
                   : 'text-muted-foreground hover:bg-accent hover:text-foreground',
               )}
             >
-              {isActive && (
-                <span
-                  className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-violet-500"
-                  aria-hidden
-                />
-              )}
               <Icon
                 className={cn(
                   'h-4 w-4 shrink-0 transition-colors',
                   isActive
-                    ? 'text-violet-600 dark:text-violet-400'
+                    ? 'text-emerald-700 dark:text-emerald-400'
                     : 'text-muted-foreground/70 group-hover:text-foreground',
                 )}
               />
@@ -147,7 +143,7 @@ export function SuperAdminLayoutShell({
         />
       )}
 
-      {/* Sidebar desktop — dark shell con acento violeta */}
+      {/* Sidebar desktop */}
       <aside className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-60 flex-col border-r border-border bg-card/95 backdrop-blur-xl shadow-xl shadow-black/4 dark:bg-card/80 dark:shadow-black/30">
         <SidebarContent adminName={adminName} pathname={pathname} />
       </aside>
@@ -181,7 +177,12 @@ export function SuperAdminLayoutShell({
         </Button>
 
         {/* Identificador de modo — visible también en mobile */}
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700 ring-1 ring-inset ring-violet-600/20 dark:bg-violet-500/10 dark:text-violet-300 dark:ring-violet-500/30">
+        <span
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium',
+            TONE_BADGE.brand,
+          )}
+        >
           <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
           SuperAdmin
         </span>

@@ -40,13 +40,13 @@ export const TodosLosEstados: Story = {
     // que ser distinguible SIN mirar el color. Si alguien vuelve a pintar dos
     // estados del mismo tono, las etiquetas los siguen separando.
     for (const label of [
-      'Trial',
+      'Prueba',
       'Activo',
       'Pago vencido',
       'Suspendido',
       'Bloqueado',
       'Cancelado',
-      'Churned',
+      'Perdido',
       'Eliminado',
     ]) {
       await expect(canvas.getByText(label)).toBeVisible()

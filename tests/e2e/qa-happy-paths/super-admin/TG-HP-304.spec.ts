@@ -63,39 +63,37 @@ test.describe('TG-HP-304 — Detalle tenant: 4 tabs', () => {
       await expect(page.getByRole('heading', { name: tenant.name, exact: false })).toBeVisible({
         timeout: 15_000,
       })
-      await expect(page.getByText(`${tenant.slug} · ${tenant.email}`)).toBeVisible()
+      await expect(page.getByText(tenant.email, { exact: true }).first()).toBeVisible()
 
       await expect(page.getByRole('heading', { name: 'Soporte' })).toBeVisible()
       await expect(page.getByRole('button', { name: 'Entrar como este complejo' })).toBeVisible()
       await expect(page.getByRole('heading', { name: 'Datos del complejo' })).toBeVisible()
-      await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Ajustes de reservas' })).toBeVisible()
       await expect(
         page.getByText(
           'Softban por reincidencia: 2ª ausencia en 90 días bloquea 14 días para reservar online',
         ),
       ).toBeVisible()
       await expect(page.getByRole('heading', { name: `Canchas (${courtsCount})` })).toBeVisible()
-      await expect(page.getByRole('heading', { name: `Staff (${staffCount})` })).toBeVisible()
+      await expect(page.getByRole('heading', { name: `Equipo (${staffCount})` })).toBeVisible()
 
       // ── Tab Suscripción ──────────────────────────────────────────────────
       await page.goto(`/super-admin/tenants/${E2E_TENANT_ID}?tab=suscripcion`)
       if (subscription === null) {
         await expect(
-          page.getByText(
-            'El complejo no tiene fila en tenant_subscriptions (todavía no inició la suscripción SaaS).',
-          ),
+          page.getByText('El complejo todavía no inició la suscripción a TurnoGol.'),
         ).toBeVisible({ timeout: 15_000 })
       } else {
         await expect(page.getByRole('heading', { name: 'Estado de la suscripción' })).toBeVisible({
           timeout: 15_000,
         })
         await expect(page.getByText(subscription.plan_name, { exact: false })).toBeVisible()
-        await expect(page.getByRole('heading', { name: 'Dunning y pagos' })).toBeVisible()
+        await expect(page.getByRole('heading', { name: 'Cobros y reintentos' })).toBeVisible()
       }
 
       // ── Tab Actividad ────────────────────────────────────────────────────
       await page.goto(`/super-admin/tenants/${E2E_TENANT_ID}?tab=actividad`)
-      await expect(page.getByRole('heading', { name: `Audit trail (${auditCount})` })).toBeVisible({
+      await expect(page.getByRole('heading', { name: `Historial (${auditCount})` })).toBeVisible({
         timeout: 15_000,
       })
       await expect(page.getByRole('heading', { name: 'Últimas 10 reservas' })).toBeVisible()

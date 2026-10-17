@@ -30,7 +30,7 @@ test.describe('TG-HP-301 — Login super-admin + triple guard', () => {
 
       // Triple guard OK → layout renderiza SuperAdminLayoutShell (badge +
       // email del system admin) + el dashboard global.
-      await expect(saPage.getByRole('heading', { name: 'Dashboard global' })).toBeVisible({
+      await expect(saPage.getByRole('heading', { name: 'Pulso' })).toBeVisible({
         timeout: 15_000,
       })
       await expect(saPage.getByText('SuperAdmin', { exact: true })).toBeVisible()

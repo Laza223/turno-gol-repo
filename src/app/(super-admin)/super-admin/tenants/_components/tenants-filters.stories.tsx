@@ -3,13 +3,13 @@ import { expect, within } from 'storybook/test'
 import { TenantsFilters } from './tenants-filters'
 
 /**
- * Filtros GET de la lista de tenants — form `method="get"` sin JS, submitea
+ * Filtros GET de la lista de complejos — form `method="get"` sin JS, submitea
  * por navegación normal (sin client state que storear). El filtro por plan se
  * eliminó con el precio por cancha (2026-09-17): con una sola fila activa en
  * `plans` filtraba todo o nada.
  */
 const meta = {
-  title: 'SuperAdmin/Tenants/TenantsFilters',
+  title: 'SuperAdmin/Complejos/TenantsFilters',
   component: TenantsFilters,
   parameters: { layout: 'padded' },
 } satisfies Meta<typeof TenantsFilters>

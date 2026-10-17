@@ -36,7 +36,7 @@ export const SinSuscripcion: Story = {
   args: { detail: tenantDetailTrialing() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/todavía no inició la/i)).toBeInTheDocument()
+    await expect(canvas.getByText(/todavía no inició la suscripción/i)).toBeInTheDocument()
   },
 }
 

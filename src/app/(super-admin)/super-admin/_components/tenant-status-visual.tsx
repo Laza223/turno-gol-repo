@@ -35,13 +35,13 @@ import type { TenantStatus } from '@/modules/billing/billing.types'
  * atención (warning) → terminal (destructive) → inerte (neutral).
  */
 const TENANT_STATUS_VISUALS: Record<TenantStatus, StatusBadgeVisual> = {
-  trialing: { icon: Clock, label: 'Trial', tone: 'info' },
+  trialing: { icon: Clock, label: 'Prueba', tone: 'info' },
   active: { icon: CheckCircle2, label: 'Activo', tone: 'success' },
   past_due: { icon: AlertCircle, label: 'Pago vencido', tone: 'warning' },
   suspended: { icon: PauseCircle, label: 'Suspendido', tone: 'warning' },
   blocked: { icon: Ban, label: 'Bloqueado', tone: 'destructive' },
   canceled: { icon: XCircle, label: 'Cancelado', tone: 'neutral' },
-  churned: { icon: TrendingDown, label: 'Churned', tone: 'destructive' },
+  churned: { icon: TrendingDown, label: 'Perdido', tone: 'destructive' },
   deleted: { icon: Trash2, label: 'Eliminado', tone: 'neutral' },
 }
 

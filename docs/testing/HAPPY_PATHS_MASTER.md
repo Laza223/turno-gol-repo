@@ -459,7 +459,6 @@ Fixtures usados en todos los casos (ver contrato):
   - `src/app/(public)/[slug]/reservar/actions.ts:75-124` — `sendPlayerMagicLink`.
   - `src/app/api/auth/callback/route.ts` — verifyOtp + `getOrCreatePlayer` + redirect directo a la reserva (`isBookingPath`).
   - `src/modules/players/player.service.ts:24-65` — `getOrCreatePlayer` (INSERT/UPDATE de `players`).
-  - `src/app/(auth)/verify/VerifyView.tsx:114-118,335-358` — copy de éxito intent=booking.
   - `src/app/(auth)/verify/SuccessRedirect.tsx:5,22-24,35-37` — auto-redirect 5s.
 
 ---

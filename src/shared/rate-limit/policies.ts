@@ -20,6 +20,14 @@ export const POLICIES = {
   // Fail closed: ante outage de Upstash, frenar el alta automatizada.
   authRegister: { limit: 5, window: '10 m', keyBy: 'ip', failMode: 'closed' },
   publicAvailability: { limit: 30, window: '60 s', keyBy: 'ip', failMode: 'open' },
+  // Placa 9:16 de turnos libres (`/api/public/story`): cada request renderiza un
+  // PNG (~1 s de CPU en la función), no lee un JSON. El diálogo de la Grilla pide
+  // una por cada día que el dueño mira (hasta 7 chips seguidos), y varios dueños
+  // pueden salir por la misma IP de datos móviles: de ahí 20/60s por IP. El
+  // middleware corre antes del CDN, así que cuenta también los hits cacheados
+  // (s-maxage=30). Balde propio porque el de `publicAvailability` (30/60s) lee un
+  // JSON barato, no rasteriza. Fail open: es lectura pública sin efectos.
+  publicStory: { limit: 20, window: '60 s', keyBy: 'ip', failMode: 'open' },
   adminCrud: { limit: 100, window: '60 s', keyBy: 'tenant', failMode: 'open' },
   playerBooking: { limit: 20, window: '60 s', keyBy: 'player', failMode: 'open' },
   // Polling endpoint for deposit payment confirmation (every ~3s = 20 req/min).

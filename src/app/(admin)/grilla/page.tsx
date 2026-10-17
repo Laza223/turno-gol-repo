@@ -11,6 +11,7 @@ import { safeDateParam } from '@/shared/validation/calendar-date'
 import type { GridBooking } from '@/components/booking/BookingGrid'
 import { GrillaView } from './GrillaView'
 import { GrillaTabs } from './GrillaTabs'
+import { trackStoryExportAction } from './actions'
 import { SettingsAccessNotice } from '@/app/(admin)/settings/SettingsAccessNotice'
 import {
   createBookingAction,
@@ -104,6 +105,11 @@ export default async function GrillaPage(props: {
           releaseBlockAction,
           editBookingAction,
           getBookingEditDetailAction,
+        }}
+        storyShare={{
+          slug: tenant.slug,
+          bookingAdvanceDays: tenant.settings.booking_advance_days ?? 6,
+          trackAction: trackStoryExportAction,
         }}
         canteen={{
           listCatalogAction: listCanteenForBookingAction,

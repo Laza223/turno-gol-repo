@@ -58,7 +58,9 @@ test.describe('TG-HP-103 — Reserva online SIN seña → confirma instantáneo'
       await expect(page.getByRole('heading', { name: '¡Reserva confirmada!' })).toBeVisible({
         timeout: 10_000,
       })
-      await expect(page.getByText(/pagás.*al llegar al complejo/i)).toBeVisible()
+      await expect(
+        page.getByRole('region', { name: 'Tu turno' }).getByText('Pagás en el complejo'),
+      ).toBeVisible()
       await expect(page.getByRole('link', { name: 'Ver mis reservas' })).toBeVisible()
 
       // DB: estado EXACTO — confirmed de una, sin seña, montos en centavos.

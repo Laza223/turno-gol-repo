@@ -47,10 +47,13 @@ describe('BookingReceipt', () => {
   it('complejo con precios ocultos: ningún monto, solo cómo se paga', () => {
     const { container, rerender } = render(<BookingReceipt {...data} hidePrices />)
     expect(container.textContent).not.toContain('$')
+    // Ni en un atributo (aria-label, title, data-*): ningún monto en el DOM.
+    expect(container.innerHTML).not.toMatch(/\$|20\.000|6\.000|2000000|600000/)
     expect(screen.getByText('Seña pagada · el resto se abona en el complejo')).toBeTruthy()
 
     rerender(<BookingReceipt {...data} hidePrices depositAmount={0} depositStatus="not_required" />)
     expect(container.textContent).not.toContain('$')
+    expect(container.innerHTML).not.toMatch(/\$|20\.000|2000000/)
     expect(screen.getByText('Se abona en el complejo')).toBeTruthy()
   })
 

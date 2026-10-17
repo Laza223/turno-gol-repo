@@ -507,7 +507,7 @@ Fixtures usados en todos los casos (ver contrato):
   4. Como hay sesión, se renderiza `ConfirmBookingButton` con `payMethods` presenciales (cash/transfer según config, `depositAmount>0` sería solo MP — page.tsx:75-81).
   5. Click en el botón `"Confirmar reserva"` (texto condicional `withDeposit ? 'Pagar la seña' : 'Confirmar reserva'`, ConfirmBookingButton.tsx:52).
   6. `createBookingAndCheckout` inserta el booking con `status:'confirmed'` de una (booking.service.ts:433,436: `withDeposit` es `false`) y redirige a `/reserva/<bookingId>/exito` (reservar/actions.ts:169-170).
-  7. En `/reserva/<id>/exito` ver h1 `"¡Reserva confirmada!"` (BookingSuccessCard.tsx:52-54), texto `"Pagás <precio> al llegar al complejo."` (depositStatus='not_required', BookingSuccessCard.tsx:60-63), QR de verificación y botón `"Ver mis reservas"`.
+  7. En `/reserva/<id>/exito` ver h1 `"¡Reserva confirmada!"` (BookingSuccessCard.tsx), el resumen del turno con la fila `"Pagás en el complejo"` (depositStatus='not_required': `payNote` de `BookingSummary`), la acción principal `"Avisarle al grupo"` (link `https://wa.me/?text=…`, sin montos), la lista `"Cómo llegar"` / `"Agregar al calendario"` / `"Ver mis reservas"` y, abajo, el código de la reserva con `"Descargar comprobante"`.
 - **Comportamiento de componentes:**
   - Loading: `SubmitButton` de ConfirmBookingButton deshabilitado mientras corre la action, con `"Procesando…"` (ConfirmBookingButton.tsx:51).
   - Anti-doble-submit: el mismo `SubmitButton` (ConfirmBookingButton.tsx:51).
@@ -522,7 +522,7 @@ Fixtures usados en todos los casos (ver contrato):
   - `src/app/(public)/[slug]/reservar/components/ConfirmBookingButton.tsx:45-53` — barra fija y label del botón.
   - `src/app/(public)/[slug]/reservar/actions.ts:92,138,169-170` — `withDeposit` false → `status:'confirmed'` → redirect a `/exito`.
   - `src/modules/bookings/booking.service.ts:415-437` — inserción `status: withDeposit ? 'pending_payment' : 'confirmed'`.
-  - `src/app/reserva/[bookingId]/exito/BookingSuccessCard.tsx:52-54,60-63` — h1 y copy "sin seña".
+  - `src/app/reserva/[bookingId]/exito/BookingSuccessCard.tsx` — h1, resumen con la fila "Pagás en el complejo" y "Avisarle al grupo".
 
 ---
 
@@ -538,11 +538,11 @@ Fixtures usados en todos los casos (ver contrato):
   6. En el mock, ver banner `"Entorno de prueba (MOCK)"` y h1 `"Pago de seña"` (MockCheckoutView.tsx:35-45), con el resumen (complejo/cancha/fecha/horario/seña).
   7. Click en `"Pagar (aprobado)"` (MockCheckoutView.tsx:80-86).
   8. `mockPay` dispara el webhook interno a `/api/webhooks/mercadopago` con `type:'payment', status implícito approved` y redirige a `/reserva/<id>/exito` (mock-mp/checkout/actions.ts:43-98).
-  9. En `/reserva/<id>/exito`, si el webhook ya procesó, ver directo `BookingSuccessCard` con h1 `"¡Reserva confirmada!"`, `"Seña pagada: <monto>"` y `"Resta abonar en el complejo: <resto>"` (BookingSuccessCard.tsx:65-68); si aún no, se monta `PaymentStatusWatcher` que muestra el mismo h1 al llegar a `status='confirmed'` vía polling (exito/page.tsx:75-91; PaymentStatusWatcher.tsx:116-123).
+  9. En `/reserva/<id>/exito`, si el webhook ya procesó, ver directo `BookingSuccessCard` con h1 `"¡Reserva confirmada!"` y, en el resumen, `"Seña pagada"` y `"Resto en el complejo"` con sus montos (o la fila `"Seña pagada, el resto en el complejo"` si el complejo oculta los precios); si aún no, se monta `PaymentStatusWatcher` ("Confirmando tu pago…") que, al llegar a `status='confirmed'` vía polling, hace `router.refresh()` (ya está en `/exito`) y la page vuelve a leer la reserva y muestra la tarjeta (exito/page.tsx; PaymentStatusWatcher.tsx).
 - **Comportamiento de componentes:**
   - Loading: mismo `SubmitButton` de ConfirmBookingButton con `"Procesando…"` (ConfirmBookingButton.tsx:51).
   - Anti-doble-submit: el mismo `SubmitButton` (ConfirmBookingButton.tsx:51); en el mock checkout no hay `useFormStatus` (los 3 botones son `formAction` distintos del mismo `<form>`, MockCheckoutView.tsx:76-105 — sin estado pending visible).
-  - Feedback: sin toast; redirect real del webhook mock a `/exito`, y `PaymentStatusWatcher` hace polling a `/api/player/bookings/<id>/status` cada 3s con backoff hasta 30s (PaymentStatusWatcher.tsx:67-114) y renderiza el h1 de confirmado al detectar `status==='confirmed'` (`aria-live="polite"`, línea 118).
+  - Feedback: sin toast; redirect real del webhook mock a `/exito`, y `PaymentStatusWatcher` hace polling a `/api/player/bookings/<id>/status` cada 3s con backoff hasta 30s y, al detectar `status==='confirmed'`, pide a la page que se vuelva a leer (`router.refresh()`; si estuviera en `/pendiente`, `router.replace` a `/exito`). Una sola navegación (`navigatedRef`).
 - **Validación de datos:**
   - DB: `bookings.status='confirmed'`, `deposit_status='paid'` (transitionFromPendingPayment, booking.concurrency.ts:33-35), 1 fila en `payments` con `status='approved'` (`upsertPaymentRow`, payment.service.ts:294).
   - API/Action: `createBookingAndCheckout` (actions.ts:92) → redirect a MP/mock; webhook `POST /api/webhooks/mercadopago` procesado inline en mock (`dispatchPaymentInfo`, payment.service.ts:219-241 rama `info.status==='approved'` → `handleApproved`, línea 280).
@@ -555,8 +555,8 @@ Fixtures usados en todos los casos (ver contrato):
   - `src/app/mock-mp/checkout/actions.ts:43-98` — `mockPay` webhook + redirect a `/exito`.
   - `src/modules/payments/payment.service.ts:224-241,280-315` — `dispatchPaymentInfo`/`handleApproved`, `upsertPaymentRow` status `approved`.
   - `src/modules/bookings/booking.concurrency.ts:21-57` — `transitionFromPendingPayment('confirmed')` seta `depositStatus:'paid'`.
-  - `src/app/reserva/[bookingId]/exito/BookingSuccessCard.tsx:52-54,65-68` — copy con seña.
-  - `src/components/booking/PaymentStatusWatcher.tsx:67-114,116-123` — polling + h1 confirmado.
+  - `src/app/reserva/[bookingId]/exito/BookingSuccessCard.tsx` — resumen con seña pagada y resto.
+  - `src/components/booking/PaymentStatusWatcher.tsx` — polling + navegación a `/exito` al confirmarse.
 
 ---
 
@@ -566,13 +566,13 @@ Fixtures usados en todos los casos (ver contrato):
 - **Flujo de navegación (UI steps):**
   1. En `/mock-mp/checkout?booking=<id>`, click en `"Pago rechazado"` (MockCheckoutView.tsx:89-95).
   2. `mockReject` dispara el webhook con `status` rechazado (`buildMockPaymentId('rejected', bookingId)`, actions.ts:110-114) y redirige a `/reserva/<id>/error` (actions.ts:143).
-  3. En `/reserva/<id>/error`, ver h1 `"El pago no se procesó."`, texto `"El pago fue rechazado o cancelado. Podés intentar de nuevo con otro medio."` (BookingErrorCard.tsx:44-47).
-  4. Dentro de la ventana de hold (`DEFAULT_EXPIRY_SECONDS`=360s desde `created_at`), el botón visible es `"Reintentar pago"` (BookingErrorCard.tsx:49-55; `withinWindow`, error/page.tsx:48-50).
+  3. En `/reserva/<id>/error`, ver h1 `"El pago no se procesó"` (sin punto final), texto `"El pago fue rechazado o cancelado."`, `"Tu turno sigue guardado por poco tiempo. Podés intentar de nuevo con otro medio de pago."` y una línea con el turno guardado (día, hora y cancha), sin cuenta regresiva (BookingErrorCard.tsx).
+  4. Dentro de la ventana de hold (`DEFAULT_EXPIRY_SECONDS`=360s desde `created_at`, solo con `status='pending_payment'` y con más de 90 s por delante, `holdAllowsRetry`), el botón visible es `"Reintentar pago"` (BookingErrorCard.tsx; `withinWindow`, error/page.tsx). Con 90 s o menos, la preferencia nueva se comería el margen de 60 s del webhook (con menos de 30 s, sobreviviría al hold): ni la página ofrece reintentar ni la action abre la preferencia.
   5. Esperar (o simular con reloj adelantado en test) a que pasen los ~6 minutos sin reintentar: el worker/cron de expiración transiciona el booking a `expired` (expire-pending-booking.worker.ts:19-38 → `expirePendingBookingWithPolicy`, booking.expiry.ts:134-283) y libera el slot.
-  6. Volviendo a cargar `/reserva/<id>/error` después de expirar, `withinWindow` es `false` → CTA cambia a `"Reservar de nuevo"` que linkea a `/e2e-complejo-sena` (BookingErrorCard.tsx:56-59).
+  6. Volviendo a cargar `/reserva/<id>/error` después de expirar, `withinWindow` es `false` → se lee `"El pago no se completó a tiempo y el turno ya no está guardado."` y el CTA cambia a `"Reservar de nuevo"`, que linkea a la ficha del complejo en el día de la reserva (`/e2e-complejo-sena?date=<YYYY-MM-DD>`, BookingErrorCard.tsx).
 - **Comportamiento de componentes:**
   - Loading: no hay spinner en `/error` (server component estático); el form de reintento es un submit normal sin `useFormStatus` visible en `BookingErrorCard`.
-  - Anti-doble-submit: no implementado explícitamente en `BookingErrorCard` (sin `disabled` en el botón de reintento, BookingErrorCard.tsx:52).
+  - Anti-doble-submit: el botón de reintento es un `SubmitButton` (deshabilitado mientras corre la action, "Reintentando…", BookingErrorCard.tsx).
   - Feedback: sin toast; todo son `redirect()`/navegación real de servidor.
 - **Validación de datos:**
   - DB inmediato tras rechazo: `bookings.status` SIGUE `'pending_payment'` (el webhook `rejected` solo hace `upsertPaymentRow(..., 'rejected', tx)`, NO transiciona el booking — payment.service.ts:247-254); fila en `payments` con `status='rejected'`.
@@ -584,7 +584,7 @@ Fixtures usados en todos los casos (ver contrato):
   - `src/app/mock-mp/checkout/MockCheckoutView.tsx:89-95` — botón "Pago rechazado".
   - `src/app/mock-mp/checkout/actions.ts:101-144` — `mockReject`.
   - `src/app/reserva/[bookingId]/error/page.tsx:44-58` — `withinWindow` con `DEFAULT_EXPIRY_SECONDS`.
-  - `src/app/reserva/[bookingId]/error/BookingErrorCard.tsx:44-59` — copy y CTAs condicionales.
+  - `src/app/reserva/[bookingId]/error/BookingErrorCard.tsx` — copy y CTAs condicionales (reintentar, turno liberado, cancelada, ya pasó).
   - `src/modules/payments/payment.service.ts:247-254` — rama `rejected` no toca `bookings.status`.
   - `src/shared/jobs/definitions.ts:33` — `DEFAULT_EXPIRY_SECONDS = 6*60`.
   - `src/shared/jobs/workers/expire-pending-booking.worker.ts:19-38` — consumer + sweep cada 5 min.
@@ -599,23 +599,23 @@ Fixtures usados en todos los casos (ver contrato):
 - **Prerrequisitos:** Booking con `status='pending_payment'` recién creado (tenant Seña), sin resolver aún (ni aprobado ni rechazado) — p.ej. tras `createBookingAndCheckout` antes de completar el mock, o transferencia `in_process`.
 - **Flujo de navegación (UI steps):**
   1. Navegar (o ser redirigido) a `http://localhost:3000/reserva/<bookingId>/pendiente`.
-  2. La page carga el booking server-side y calcula `expiresAt = createdAt + 360s`; monta `PaymentStatusWatcher` con `initialStatus='pending_payment'` (pendiente/page.tsx:24-59).
-  3. Ver h2 `"Confirmando tu pago…"`, texto `"Esto puede tardar unos segundos."` y contador `"Te queda <mm:ss> para completar el pago."` vía `ExpiryCountdown` (PaymentStatusWatcher.tsx:197-210).
-  4. A los 30s sin resolver, aparece `"¿Tarda? Te avisamos por email apenas se confirme."` (PaymentStatusWatcher.tsx:211-215, `showDelayNote`).
+  2. La page carga el booking server-side y calcula `expiresAt = createdAt + 360s`; monta `PaymentStatusWatcher` con `initialStatus='pending_payment'` (pendiente/page.tsx).
+  3. Ver h1 `"Confirmando tu pago…"` y el texto `"Esto puede tardar unos segundos."`. No hay contador: quien llega ya pasó por MercadoPago (PaymentStatusWatcher.tsx, `PaymentStatusView`).
+  4. A los 30s sin resolver, aparece `"¿Tarda? Si se confirma, te llega un email. También lo ves en Mis reservas."` (`showDelayNote`).
   5. El componente hace polling a `GET /api/player/bookings/<id>/status` cada 3s con backoff exponencial hasta 30s (PaymentStatusWatcher.tsx:67-114).
-  6. Cuando el status responde `'confirmed'`, re-renderiza a h1 `"¡Reserva confirmada!"` (línea 116-131); si `expiresAt` se cumple sin transición, pasa a `stalled='expired'` → h1 `"Se acabó el tiempo"` (líneas 51-60, 172-193).
+  6. Cuando el status responde `'confirmed'`, navega a `/reserva/<id>/exito` con `router.replace`; si `expiresAt` se cumple sin transición, pasa a `stalled='expired'` → h1 `"Se acabó el tiempo"` con `"No recibimos la confirmación de MercadoPago a tiempo. En Mis reservas ves si el turno quedó confirmado. Si pagaste y no aparece, escribile al complejo."` y el botón `"Ver mis reservas"`.
 - **Comportamiento de componentes:**
-  - Loading: ícono `Loader2` animado mientras `status` no es terminal (PaymentStatusWatcher.tsx:199-201).
+  - Loading: ícono `Loader2` animado (quieto con reduce-motion) mientras `status` no es terminal.
   - Anti-doble-submit: no aplica (no hay form, es polling read-only).
-  - Feedback: sin toast; todo es re-render in-place por `aria-live="polite"` (líneas 118,136,155,174,198) — no hay `router.refresh()` ni `revalidatePath`, el estado se actualiza vía `setStatus` local tras cada fetch (línea 94).
+  - Feedback: sin toast; los cambios de estado son re-render in-place anunciados por `aria-live="polite"` (`PortalResult`); al confirmarse, navega a `/exito`. El estado se actualiza vía `setStatus` local tras cada fetch.
 - **Validación de datos:**
   - DB: lectura de `bookings.status`/`deposit_status`/`created_at` bajo `withPlayerContext` (RLS) — `GET /api/player/bookings/[id]/status` (route.ts:20-25,41-45).
   - API/Action: `GET /api/player/bookings/<id>/status` → `{data:{status, depositStatus, expiresAt}}` (route.ts:41-45); 404 si la RLS oculta el booking de otro jugador (route.ts:31-34).
   - Externos: ninguno directo en este caso (solo polling interno).
-  - UI-sin-reload: confirmado — `PaymentStatusWatcher` actualiza sin recargar la página ni `router.refresh()` (setState + fetch loop, líneas 27-114).
+  - UI-sin-reload: los estados de espera, expirada, cancelada y tiempo agotado se actualizan sin recargar (setState + fetch loop); solo `confirmed` navega a `/exito`.
 - **Evidencia (path:línea):**
-  - `src/app/reserva/[bookingId]/pendiente/page.tsx:24-59` — carga booking + `expiresAt` + monta watcher.
-  - `src/components/booking/PaymentStatusWatcher.tsx:37-60,67-114,196-217` — delay note, stall, polling, UI "Confirmando tu pago…".
+  - `src/app/reserva/[bookingId]/pendiente/page.tsx` — carga booking + `expiresAt` + monta watcher.
+  - `src/components/booking/PaymentStatusWatcher.tsx` — delay note, stall, polling, UI "Confirmando tu pago…".
   - `src/app/api/player/bookings/[id]/status/route.ts:12-46` — endpoint de polling.
 
 ---

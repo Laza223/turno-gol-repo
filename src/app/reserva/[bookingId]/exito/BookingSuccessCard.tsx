@@ -1,7 +1,11 @@
-import Link from 'next/link'
-import { CheckCircle2 } from 'lucide-react'
-import { formatArs, formatDateLong } from '@/lib/format'
+import { CheckCircle2, MessageCircle } from 'lucide-react'
+import { buttonVariants } from '@/components/ui/button'
+import { PORTAL_BUTTON, PORTAL_COLUMN, PORTAL_TITLE } from '@/components/world/PortalAuthFrame'
 import { bookingCode } from '@/lib/booking-code'
+import { buildGroupShareHref, buildGroupShareText } from '@/lib/booking/group-share'
+import { TONE_TEXT } from '@/lib/status-tone'
+import { cn } from '@/lib/utils'
+import BookingSummary from '@/app/(public)/[slug]/reservar/components/BookingSummary'
 import BookingReceipt from '@/components/booking/BookingReceipt'
 import BookingSuccessExtras from '@/components/booking/BookingSuccessExtras'
 import DownloadReceiptButton from '@/components/booking/DownloadReceiptButton'
@@ -10,6 +14,8 @@ export type ConfirmedBooking = {
   tenantName: string
   tenantSlug: string
   courtName: string
+  /** Jugadores por lado de la cancha (`courts.format`). */
+  courtFormat: number
   address: string
   city: string
   latitude: number | null
@@ -27,73 +33,110 @@ export type ConfirmedBooking = {
 }
 
 /**
- * Card de éxito para un booking ya `confirmed` — variantes por `depositStatus`
- * (con seña / sin seña). El caso `status!=='confirmed'` (jugador vuelto de MP
- * antes del webhook) lo maneja `PaymentStatusWatcher`, fuera de esta área
- * (`@/components/booking`, WP-BOOK).
+ * La reserva confirmada, en La Reserva. Una sola acción principal, "Avisarle al grupo" (un link a
+ * WhatsApp con el turno escrito, sin montos); debajo, las secundarias en una lista plana y, al
+ * pie y más chicos, el código y el comprobante. Con los precios ocultos no hay ningún monto en el
+ * DOM, tampoco en el link de WhatsApp ni en el comprobante.
+ *
+ * El caso `status !== 'confirmed'` (jugador vuelto de MP antes del webhook) lo maneja
+ * `PaymentStatusWatcher`. `complexUrl` lo arma la page con el origen de la app.
  */
 export function BookingSuccessCard({
   bookingId,
   booking,
+  complexUrl,
 }: {
   bookingId: string
   booking: ConfirmedBooking
+  /** El link absoluto del complejo, para el mensaje al grupo. */
+  complexUrl: string
 }) {
-  const remainingAmount = booking.priceSnapshot - booking.depositAmount
+  const timeStart = booking.timeStart.slice(0, 5)
+  const timeEnd = booking.timeEnd.slice(0, 5)
+  const withDeposit = booking.depositStatus !== 'not_required'
+  // Con los precios a la vista, la seña y el resto ya los dice el resumen; la fila de "cómo se
+  // paga" solo hace falta cuando no hay montos que lo digan.
+  const payNote = !withDeposit
+    ? 'Pagás en el complejo'
+    : booking.hidePrices
+      ? 'Seña pagada, el resto en el complejo'
+      : undefined
+  const shareHref = buildGroupShareHref(
+    buildGroupShareText({
+      tenantName: booking.tenantName,
+      courtName: booking.courtName,
+      courtFormat: booking.courtFormat,
+      date: booking.date,
+      timeStart,
+      timeEnd,
+      address: booking.address,
+      city: booking.city,
+      complexUrl,
+    }),
+  )
 
   return (
-    <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
-      {/* Celebración peak-end §5.3: un solo ring que se disipa (600ms, una vez) — sin loops. */}
-      <div className="relative mb-6 flex h-20 w-20 items-center justify-center">
-        <span className="reserva-success-badge relative flex h-20 w-20 animate-slot-pulse items-center justify-center rounded-full text-emerald-600 dark:text-emerald-400 motion-reduce:animate-none">
-          <CheckCircle2 className="h-10 w-10" aria-hidden />
-        </span>
+    <div className={cn(PORTAL_COLUMN, 'pb-12 pt-6 sm:pt-12')}>
+      <CheckCircle2 className={cn('size-8', TONE_TEXT.success)} aria-hidden />
+      <h1 className={cn(PORTAL_TITLE, 'mt-4 text-balance')}>¡Reserva confirmada!</h1>
+
+      <div className="mt-6">
+        <BookingSummary
+          data={{
+            tenantName: booking.tenantName,
+            address: booking.address,
+            city: booking.city,
+            courtName: booking.courtName,
+            courtFormat: booking.courtFormat,
+            date: booking.date,
+            timeStart,
+            timeEnd,
+            price: booking.priceSnapshot,
+            depositAmount: booking.depositAmount,
+            hidePrices: booking.hidePrices,
+            depositPaid: true,
+            payNote,
+          }}
+        />
       </div>
-      <h1 className="font-display text-3xl font-black italic tracking-tight text-foreground">
-        ¡Reserva <span className="hero-accent-text">confirmada!</span>
-      </h1>
-      <p className="mt-3 text-sm text-muted-foreground tabular-nums">
-        <span className="font-semibold text-foreground">{booking.tenantName}</span> ·{' '}
-        {booking.courtName}
-        <br />
-        {formatDateLong(booking.date)} · {booking.timeStart.slice(0, 5)}–
-        {booking.timeEnd.slice(0, 5)}
-      </p>
-      {booking.hidePrices ? (
-        <p className="mt-4 text-sm text-muted-foreground">
-          {booking.depositStatus === 'not_required'
-            ? 'Pagás al llegar al complejo.'
-            : 'Seña pagada. El resto lo abonás en el complejo.'}
+
+      <div className="mt-8">
+        <a
+          href={shareHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-describedby="share-hint"
+          className={cn(buttonVariants(), PORTAL_BUTTON, 'gap-2')}
+        >
+          <MessageCircle className="size-5 shrink-0" aria-hidden />
+          Avisarle al grupo
+        </a>
+        <p id="share-hint" className="mt-2 text-sm text-muted-foreground">
+          Se abre WhatsApp con el turno escrito, para que lo mandes a tu grupo.
         </p>
-      ) : booking.depositStatus === 'not_required' ? (
-        <p className="mt-4 text-sm text-muted-foreground tabular-nums">
-          Pagás{' '}
-          <span className="font-semibold text-foreground">{formatArs(booking.priceSnapshot)}</span>{' '}
-          al llegar al complejo.
-        </p>
-      ) : (
-        <div className="mt-4 space-y-1 text-sm text-muted-foreground tabular-nums">
-          <p>
-            Seña pagada:{' '}
-            <span className="font-semibold text-emerald-700 dark:text-emerald-400">
-              {formatArs(booking.depositAmount)}
-            </span>
-          </p>
-          <p>
-            Resta abonar en el complejo:{' '}
-            <span className="text-foreground">{formatArs(remainingAmount)}</span>
-          </p>
-        </div>
-      )}
-      <section
-        aria-label="Comprobante para mostrar en el complejo"
-        className="reserva-receipt-card mt-7 w-full overflow-hidden rounded-2xl p-5"
-      >
-        <p className="text-xs text-muted-foreground">Código de reserva</p>
-        <p className="mt-1 font-mono text-2xl font-bold tracking-widest text-foreground">
+      </div>
+
+      <div className="mt-8">
+        <BookingSuccessExtras
+          tenantName={booking.tenantName}
+          courtName={booking.courtName}
+          slug={booking.tenantSlug}
+          date={booking.date}
+          timeStart={booking.timeStart}
+          timeEnd={booking.timeEnd}
+          address={booking.address}
+          city={booking.city}
+          latitude={booking.latitude}
+          longitude={booking.longitude}
+        />
+      </div>
+
+      <section aria-label="Código de la reserva" className="mt-8 border-t border-border pt-6">
+        <p className="text-sm text-muted-foreground">Código de reserva</p>
+        <p className="mt-1 font-mono text-xl font-semibold tracking-widest text-foreground">
           {bookingCode(bookingId)}
         </p>
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground">
           Si el complejo te lo pide, con este código encuentra tu reserva.
         </p>
         <DownloadReceiptButton fileName={`comprobante-${booking.tenantSlug}-${booking.date}`} />
@@ -113,47 +156,6 @@ export function BookingSuccessCard({
         depositStatus={booking.depositStatus}
         hidePrices={booking.hidePrices}
       />
-
-      <BookingSuccessExtras
-        tenantName={booking.tenantName}
-        courtName={booking.courtName}
-        slug={booking.tenantSlug}
-        date={booking.date}
-        timeStart={booking.timeStart}
-        timeEnd={booking.timeEnd}
-        address={booking.address}
-        city={booking.city}
-        latitude={booking.latitude}
-        longitude={booking.longitude}
-      />
-
-      <Link
-        href="/mis-reservas"
-        className="mt-7 inline-flex h-12 items-center rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-7 text-sm font-bold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_30px_rgba(16,185,129,0.3)] transition-all duration-200 hover:brightness-105 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_12px_36px_rgba(16,185,129,0.4)] active:scale-[0.97] whitespace-nowrap"
-      >
-        Ver mis reservas
-      </Link>
-      <Link
-        href="/explorar"
-        className="mt-3 inline-flex h-11 items-center rounded-full px-6 text-sm font-semibold text-emerald-700 transition-colors hover:bg-primary/10 hover:text-emerald-800 dark:text-emerald-400 dark:hover:bg-white/5 dark:hover:text-emerald-300"
-      >
-        Seguir explorando
-      </Link>
-    </div>
-  )
-}
-
-/** Sin reserva encontrada (inexistente, purgada, o de otro jugador via RLS). */
-export function BookingSuccessNotFound() {
-  return (
-    <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
-      <p className="text-sm text-muted-foreground">No encontramos tu reserva.</p>
-      <Link
-        href="/mis-reservas"
-        className="mt-8 inline-flex h-12 items-center rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 text-sm font-bold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_30px_rgba(16,185,129,0.3)] transition-all duration-200 hover:brightness-105 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_12px_36px_rgba(16,185,129,0.4)] active:scale-[0.97] whitespace-nowrap"
-      >
-        Ver mis reservas
-      </Link>
     </div>
   )
 }

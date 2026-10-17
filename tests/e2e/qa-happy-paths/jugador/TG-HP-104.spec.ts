@@ -16,7 +16,8 @@ import { tomorrowDateIsoArt } from '../../_helpers/booking-seed'
  * Evidence anchors: reservar/page.tsx:62-80, reservar/actions.ts:190-226,
  * mock-mp/checkout/MockCheckoutView.tsx:35-45,80-86, mock-mp/checkout/actions.ts:43-98,
  * payment.service.ts:224-241,280-315, booking.concurrency.ts:21-57,
- * BookingSuccessCard.tsx:52-54,65-68, PaymentStatusWatcher.tsx:67-114,116-123.
+ * BookingSuccessCard.tsx (resumen con "Seña pagada" y "Resto en el complejo"),
+ * PaymentStatusWatcher.tsx (navega a /exito al confirmarse).
  */
 
 const SENA_TENANT_ID = '00000000-0000-4000-8000-000000000030'
@@ -59,9 +60,13 @@ async function runFlow(page: Page, date: string): Promise<void> {
   await expect(page.getByRole('heading', { name: '¡Reserva confirmada!' })).toBeVisible({
     timeout: 10_000,
   })
-  // Copy con seña: "Seña pagada: $50" + "Resta abonar en el complejo: $50".
-  await expect(page.getByText(/seña pagada:/i)).toBeVisible()
-  await expect(page.getByText(/resta abonar en el complejo:/i)).toBeVisible()
+  // Copy con seña, en el resumen: "Seña pagada $ 50" + "Resto en el complejo $ 50". Se acota al
+  // resumen: el comprobante imprimible (oculto) repite "Seña pagada" en el DOM.
+  const summary = page.getByRole('region', { name: 'Tu turno' })
+  await expect(summary.getByText('Seña pagada')).toBeVisible()
+  await expect(summary.getByText('Resto en el complejo')).toBeVisible()
+  // La acción principal de la pantalla: avisarle al grupo.
+  await expect(page.getByRole('link', { name: 'Avisarle al grupo' })).toBeVisible()
 
   // DB: estado EXACTO — confirmed + deposit_status=paid + payments.status=approved,
   // montos en centavos (deposit = 50% de 10000 = 5000).

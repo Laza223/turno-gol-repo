@@ -3,9 +3,8 @@ import { useEffect } from 'react'
 import L from 'leaflet'
 
 /**
- * Los 5 archivos de stories que montan un mapa (`ExplorarMap`, `BookingMiniMap`
- * y lo que los envuelve: `ExplorarSplitView`, `BookingSuccessCard`,
- * `BookingSuccessExtras`) pedían tiles reales a `{s}.tile.openstreetmap.org` —
+ * Las stories que montan un mapa (`ExplorarMap` y lo que lo envuelve,
+ * `ExplorarSplitView`) pedían tiles reales a `{s}.tile.openstreetmap.org` —
  * tráfico saliente de verdad desde el runner de CI, sujeto al rate limiter de
  * un tercero. Una suite cuyo tiempo depende de eso es no-determinística por
  * construcción, y quedaba sin cazar porque el mock de `withFetch` intercepta

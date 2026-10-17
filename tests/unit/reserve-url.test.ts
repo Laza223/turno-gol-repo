@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import { sanitizeNext } from '@/lib/safe-redirect'
 import {
   buildFichaHref,
+  buildIngresarForReservaHref,
+  buildReserveAgainHref,
   buildReserveRequest,
+  buildReservaHref,
   buildReservarHref,
   parseFormato,
   parsePay,
@@ -205,5 +209,34 @@ describe('buildReserveRequest', () => {
     expect(
       buildReserveRequest({ whatsapp: null, phone: '' }, court, '2026-10-15', '21:00'),
     ).toBeNull()
+  })
+})
+
+describe('vuelta de la reserva — links', () => {
+  const ID = '0b8f4a2e-1c3d-4e5f-8a9b-0c1d2e3f4a5b'
+
+  it('arma la ruta de cada pantalla de vuelta', () => {
+    expect(buildReservaHref(ID, 'exito')).toBe(`/reserva/${ID}/exito`)
+    expect(buildReservaHref(ID, 'pendiente')).toBe(`/reserva/${ID}/pendiente`)
+    expect(buildReservaHref(ID, 'error')).toBe(`/reserva/${ID}/error`)
+  })
+
+  it('sin sesión, ingresar lleva `next` con la pantalla de vuelta y sanitizeNext la acepta', () => {
+    for (const view of ['exito', 'pendiente', 'error'] as const) {
+      const href = buildIngresarForReservaHref(ID, view)
+      const next = new URL(href, 'https://turnogol.test').searchParams.get('next')
+      expect(next, view).toBe(`/reserva/${ID}/${view}`)
+      // Si sanitizeNext la rechazara, el jugador caería en /mis-reservas y se perdería el destino.
+      expect(sanitizeNext(next), view).toBe(`/reserva/${ID}/${view}`)
+    }
+  })
+
+  it('"reservar de nuevo" lleva a la ficha en el día de la reserva, no a la home', () => {
+    expect(buildReserveAgainHref('club-norte', '2026-10-17')).toBe('/club-norte?date=2026-10-17')
+    expect(buildReserveAgainHref('club-norte', null)).toBe('/club-norte')
+  })
+
+  it('sin complejo conocido cae al buscador', () => {
+    expect(buildReserveAgainHref(null, '2026-10-17')).toBe('/explorar')
   })
 })

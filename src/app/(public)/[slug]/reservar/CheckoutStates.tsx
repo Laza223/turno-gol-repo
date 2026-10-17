@@ -2,13 +2,18 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { AlertTriangle } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
-import { PORTAL_BUTTON, PORTAL_LINK, PORTAL_TITLE } from '@/components/world/PortalAuthFrame'
+import {
+  PORTAL_BUTTON,
+  PORTAL_COLUMN,
+  PORTAL_LINK,
+  PORTAL_TITLE,
+} from '@/components/world/PortalAuthFrame'
 import { buildFichaHref } from '@/lib/booking/reserve-url'
 import { TONE_TEXT } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
 
 /** La columna de la pantalla de confirmar y de su carga: ~560 px en el celular y en escritorio. */
-export const RESERVAR_COLUMN = 'mx-auto w-full max-w-[35rem] px-4 pt-4'
+export const RESERVAR_COLUMN = PORTAL_COLUMN
 
 export type CheckoutErrorCode =
   'banned' | 'too_many_holds' | 'rate_limited' | 'unavailable' | 'date_out_of_range'

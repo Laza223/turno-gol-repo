@@ -77,7 +77,7 @@ export const Ausente: Story = {
 1. **Datos: siempre de `@/test/fixtures/*`.** Nunca literales gigantes dentro de la story, nunca
    `faker`. Si te falta un caso, agregá una función a la fixture que corresponda.
 2. **Reproducí el contenedor real.** Andá al `page.tsx` que usa tu componente y mirá en qué lo
-   envuelve (`.card-premium`, `PortalShell`, `ReservaDarkShell`, un ancho máximo). Reproducilo en un
+   envuelve (`.card-premium`, `PortalShell`, `PortalWorld`, un ancho máximo). Reproducilo en un
    `decorators` del meta. **Una story sin su contenedor miente** sobre el layout *y* sobre el
    contraste: axe mide contra el fondo que le ponés, así que un fondo falso da un veredicto falso en
    las dos direcciones.
@@ -164,7 +164,7 @@ story y con un comentario que explique por qué.
 > **1.75:1** en una superficie clara: ilegible. El idiom correcto es
 > `text-emerald-700 dark:text-emerald-400` (4.99 light / 8.31 dark, ambos pasan AA).
 > **Pero** en superficies **siempre oscuras** (`(business)/para-complejos` tiene `#020617`
-> hardcodeado, `ReservaDarkShell`, `.player-hero-band`) `emerald-400` es **correcto**.
+> hardcodeado, `.player-hero-band`) `emerald-400` es **correcto**.
 > Medí antes de cambiar; nada de sweeps ciegos.
 
 ---

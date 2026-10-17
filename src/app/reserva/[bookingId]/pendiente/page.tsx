@@ -1,11 +1,12 @@
-import { redirect } from 'next/navigation'
+import { redirect, RedirectType } from 'next/navigation'
 import { sql } from 'drizzle-orm'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { isUuid } from '@/shared/validation/primitives'
 import { holdExpiresAtIso } from '@/lib/booking/hold'
+import { buildIngresarForReservaHref, buildReservaHref } from '@/lib/booking/reserve-url'
 import PaymentStatusWatcher from '@/components/booking/PaymentStatusWatcher'
-import ReservaDarkShell from '@/components/booking/ReservaDarkShell'
+import { ReservaNotFound } from '../ReservaNotFound'
 
 type Props = { params: Promise<{ bookingId: string }> }
 
@@ -14,10 +15,16 @@ export const dynamic = 'force-dynamic'
 async function loadBooking(bookingId: string, playerId: string) {
   return withPlayerContext(playerId, async (tx) => {
     const rows = (await tx.execute(sql`
-      SELECT b.status, b.created_at AS "createdAt"
+      SELECT b.status, b.created_at AS "createdAt", b.date::text AS date, t.slug AS "tenantSlug"
       FROM bookings b
+      JOIN tenants t ON t.id = b.tenant_id
       WHERE b.id = ${bookingId} LIMIT 1
-    `)) as unknown as Array<{ status: string; createdAt: string }>
+    `)) as unknown as Array<{
+      status: string
+      createdAt: string
+      date: string
+      tenantSlug: string | null
+    }>
     return rows[0] ?? null
   })
 }
@@ -25,7 +32,15 @@ async function loadBooking(bookingId: string, playerId: string) {
 export default async function ReservaPendientePage(props: Props) {
   const params = await props.params
   const user = await extractAuthUser()
-  if (!user || user.type !== 'player') redirect('/ingresar')
+  // Sin sesión (MercadoPago puede devolver al jugador en otro navegador): ingresar y volver acá.
+  // Con un id que no es UUID no hay a dónde volver: ingresar a secas.
+  if (!user || user.type !== 'player') {
+    redirect(
+      isUuid(params.bookingId)
+        ? buildIngresarForReservaHref(params.bookingId, 'pendiente')
+        : '/ingresar',
+    )
+  }
 
   // Guard de formato antes del SQL crudo: un id no-UUID rompía el cast en
   // Postgres y tumbaba la página con "Algo salió mal" en vez del estado
@@ -34,34 +49,22 @@ export default async function ReservaPendientePage(props: Props) {
     ? await loadBooking(params.bookingId, user.playerId)
     : null
 
-  if (!booking) {
-    return (
-      <ReservaDarkShell>
-        <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            No encontramos tu reserva. Revisá tus reservas en el panel.
-          </p>
-        </div>
-      </ReservaDarkShell>
-    )
+  if (!booking) return <ReservaNotFound />
+
+  // Ya confirmada (el webhook llegó antes de abrir esta pantalla): no hay nada que esperar.
+  if (booking.status === 'confirmed') {
+    redirect(buildReservaHref(params.bookingId, 'exito'), RedirectType.replace)
   }
 
-  // caza-bugs #12: el hold real vence a los 6 min, no a los 15 que este
-  // contador mostraba antes — el jugador confiaba en un margen que ya no
-  // existía y perdía el slot sin darse cuenta. La cuenta vive en un solo lugar
-  // (`modules/bookings/hold`) justamente para que no vuelva a divergir.
-  const expiresAt = holdExpiresAtIso(booking.createdAt)
-
+  // El vencimiento del hold se calcula en un solo lugar (`lib/booking/hold`): el watcher lo usa
+  // para cortar la espera, no para mostrar cuánto queda.
   return (
-    <ReservaDarkShell>
-      <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
-        <span className="sr-only">Reserva {params.bookingId}</span>
-        <PaymentStatusWatcher
-          bookingId={params.bookingId}
-          initialStatus={booking.status}
-          expiresAt={expiresAt}
-        />
-      </div>
-    </ReservaDarkShell>
+    <PaymentStatusWatcher
+      bookingId={params.bookingId}
+      initialStatus={booking.status}
+      expiresAt={holdExpiresAtIso(booking.createdAt)}
+      tenantSlug={booking.tenantSlug}
+      date={booking.date}
+    />
   )
 }

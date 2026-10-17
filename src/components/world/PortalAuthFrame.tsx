@@ -14,6 +14,9 @@ export const PORTAL_TITLE =
 export const PORTAL_SECTION_TITLE =
   'font-display text-xl font-extrabold leading-7 tracking-[-0.01em] text-foreground'
 
+/** La columna de las pantallas de una sola tarea (confirmar, la vuelta de la reserva): ~560 px, igual en el celular y en escritorio. */
+export const PORTAL_COLUMN = 'mx-auto w-full max-w-[35rem] px-4 pt-4'
+
 /**
  * Botón de las pantallas de ingreso: 48 px a todo el ancho, plano (sin sombra ni levante al
  * hover ni al apretar) y con el foco separado por el color del fondo, sin la banda blanca del

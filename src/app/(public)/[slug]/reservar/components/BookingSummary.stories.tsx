@@ -49,7 +49,9 @@ export const ConPrecios: Story = {
     ).toBeVisible()
     await expect(canvas.getByText('18:00 a 19:00')).toBeVisible()
     // El formato sale de la cancha: "Cancha 2 · Fútbol 5".
-    await expect(canvas.getByText('Cancha 2 · Fútbol 5')).toBeVisible()
+    const court = canvas.getByText(/^Cancha 2/)
+    await expect(court).toBeVisible()
+    await expect(court).toHaveTextContent('Cancha 2 · Fútbol 5')
     await expect(canvas.getByText('Precio del turno')).toBeVisible()
     await expect(canvas.queryByText('Seña a pagar ahora')).not.toBeInTheDocument()
   },
@@ -77,7 +79,9 @@ export const PreciosOcultos: Story = {
   args: { data: { ...base, hidePrices: true } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Cancha 2 · Fútbol 5')).toBeVisible()
+    const court = canvas.getByText(/^Cancha 2/)
+    await expect(court).toBeVisible()
+    await expect(court).toHaveTextContent('Cancha 2 · Fútbol 5')
     await expect(canvasElement.textContent).not.toContain('$')
     await expect(canvas.queryByText(/pagás/i)).not.toBeInTheDocument()
   },

@@ -77,3 +77,18 @@ export function holdRemainingLabel(
   const seconds = totalSeconds % 60
   return { expired: false, label: `${minutes}:${String(seconds).padStart(2, '0')}` }
 }
+
+/**
+ * Lo mínimo que tiene que quedarle al hold para ofrecer "Reintentar pago". Es el margen de 60 s más
+ * el piso de 30 s de la preferencia de MercadoPago (`MP_PREFERENCE_SAFETY_BUFFER_SECONDS` y
+ * `MP_PREFERENCE_MIN_WINDOW_SECONDS`, en `payment.service.ts`): con menos, la preferencia nueva se
+ * come el margen de 60 s del webhook (y con menos de 30 s vence DESPUÉS del hold). Un pago que
+ * entra tarde no confirma la reserva y la seña la tiene que devolver el complejo. Si cambian esas
+ * dos constantes, esta cambia con ellas.
+ */
+const RETRY_MIN_REMAINING_SECONDS = 90
+
+/** ¿Queda hold suficiente para reintentar el pago con el margen de la preferencia intacto? */
+export function holdAllowsRetry(createdAt: Date | string, nowMs: number): boolean {
+  return holdExpiresAtMs(createdAt) - nowMs > RETRY_MIN_REMAINING_SECONDS * 1000
+}

@@ -3,6 +3,7 @@
 import type { ActionResult } from '@/shared/types/action-result'
 import { useState } from 'react'
 import { LogIn } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import type { SupportActionResult } from '../actions'
 
@@ -43,14 +44,10 @@ export function ImpersonateButton({
 
   return (
     <div className="space-y-2">
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-md bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
-      >
+      <Button type="button" variant="outline" onClick={() => setOpen(true)} className="gap-2">
         <LogIn className="h-4 w-4" aria-hidden="true" />
         Entrar como este complejo
-      </button>
+      </Button>
       <p className="text-xs text-muted-foreground">
         Abre el panel del complejo como soporte. Un banner rojo te recordará que estás impersonando;
         toda acción se audita como super admin.

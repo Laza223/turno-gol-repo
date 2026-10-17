@@ -27,9 +27,9 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const RutaDashboard: Story = {}
+export const RutaPulso: Story = {}
 
-export const RutaTenants: Story = {
+export const RutaComplejos: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/super-admin/tenants' } } },
 }
 

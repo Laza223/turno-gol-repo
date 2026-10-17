@@ -223,7 +223,14 @@ export const dashboardDataQueuesDown = (): SaDashboardData =>
 
 // ─── Lista de tenants (tenants.service.ts → TenantList) ─────────────────────
 
-export type SaTenantListRow = {
+export type SaTenantPulse = {
+  lastBookingAt: Date | null
+  bookings7d: number
+  onlineBookings7d: number
+  playersCount: number
+}
+
+export type SaTenantListRow = SaTenantPulse & {
   id: string
   name: string
   slug: string
@@ -278,6 +285,10 @@ export const tenantListRow = (overrides: Partial<SaTenantListRow> = {}): SaTenan
   subscriptionStatus: 'active',
   // 5 canchas mensual: 4.700.000 + 4 × 3.000.000 (centavos ARS).
   mrrCents: 16_700_000,
+  lastBookingAt: hoursFromNow(-3),
+  bookings7d: 42,
+  onlineBookings7d: 9,
+  playersCount: 118,
   ...overrides,
 })
 
@@ -296,6 +307,10 @@ export const tenantListRows = (): SaTenantListRow[] => [
     billingCycle: 'monthly',
     subscriptionStatus: 'trialing',
     mrrCents: 0,
+    lastBookingAt: daysFromNow(-1),
+    bookings7d: 6,
+    onlineBookings7d: 0,
+    playersCount: 3,
   }),
   tenantListRow({
     id: uid(7022),
@@ -320,6 +335,10 @@ export const tenantListRows = (): SaTenantListRow[] => [
     billingCycle: null,
     subscriptionStatus: 'canceled',
     mrrCents: 0,
+    lastBookingAt: null,
+    bookings7d: 0,
+    onlineBookings7d: 0,
+    playersCount: 0,
   }),
 ]
 
@@ -359,6 +378,7 @@ export type SaTenantDetail = {
     /** Nombre del complejo que trajo a ESTE (B2). `null` = sin referidor todavía. */
     referrerName: string | null
   }
+  pulse: SaTenantPulse
   subscription: {
     status: SaSubscriptionStatus
     planId: string
@@ -447,6 +467,12 @@ const tenantDefault = (): SaTenantDetail['tenant'] => ({
 /** Tenant activo, con suscripción al día, canchas y staff cargados. */
 export const tenantDetail = (overrides: Partial<SaTenantDetail> = {}): SaTenantDetail => ({
   tenant: tenantDefault(),
+  pulse: {
+    lastBookingAt: hoursFromNow(-3),
+    bookings7d: 42,
+    onlineBookings7d: 9,
+    playersCount: 118,
+  },
   subscription: subscriptionDefault(),
   courts: [court(), courtFutbol7()].map((c) => ({
     id: c.id,
@@ -474,6 +500,7 @@ export const tenantDetailTrialing = (): SaTenantDetail =>
       createdAt: daysFromNow(-5),
       settings: tenantSettings({ onboarding_completed: false, onboarding_step: 2 }),
     },
+    pulse: { lastBookingAt: null, bookings7d: 0, onlineBookings7d: 0, playersCount: 0 },
     subscription: null,
     courts: [],
     staff: [staffMember({ id: uid(7031), staffUserId: uid(7031) })],
@@ -548,6 +575,9 @@ export type SaRecentBookingRow = {
   courtName: string | null
   priceSnapshot: number
   createdAt: Date
+  type: string
+  depositStatus: string
+  origin: 'online' | 'staff'
 }
 
 export type SaTenantActivity = {
@@ -607,6 +637,9 @@ export const tenantActivity = (overrides: Partial<SaTenantActivity> = {}): SaTen
       courtName: 'Cancha 1',
       priceSnapshot: 1_300_000,
       createdAt: daysFromNow(-3),
+      type: 'spontaneous',
+      depositStatus: 'not_required',
+      origin: 'staff',
     },
     {
       id: uid(1002),
@@ -617,6 +650,9 @@ export const tenantActivity = (overrides: Partial<SaTenantActivity> = {}): SaTen
       courtName: 'Cancha 2',
       priceSnapshot: 1_500_000,
       createdAt: hoursFromNow(-4),
+      type: 'spontaneous',
+      depositStatus: 'paid',
+      origin: 'online',
     },
   ],
   ...overrides,

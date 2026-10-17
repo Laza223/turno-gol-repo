@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, lte, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm'
 import { getDb, withDisposableWorkerDb, type Db } from '@/shared/db/client'
 import { plans, processedWebhooks, tenants, tenantSubscriptions } from '@/shared/db/schema'
 import { tenantStatusEnum } from '@/shared/db/schema/enums'
@@ -37,6 +37,12 @@ type RecentSignup = {
   createdAt: Date
 }
 
+type TroubledTenant = {
+  id: string
+  name: string
+  status: TenantStatus
+}
+
 type RecentWebhook = {
   id: string
   mpEventId: string
@@ -60,8 +66,15 @@ export type DashboardData = {
   recentSignups: RecentSignup[]
   /** Total de signups de los últimos 7 días (puede superar los 10 listados). */
   signupsLast7Days: number
+  /** Complejos con el cobro trabado: pago vencido, suspendidos o bloqueados. */
+  troubledTenants: TroubledTenant[]
   /** Profundidad de cada cola pg-boss (null = no disponible). */
   queues: QueueDepthEntry[]
+  /**
+   * Jobs que terminaron en `failed` en las últimas 24 h, por cola (solo las que
+   * tienen alguno). `null` = no se pudo leer a tiempo.
+   */
+  failedJobs24h: { queue: string; failed: number }[] | null
   /**
    * Últimos 10 webhooks MP registrados en `processed_webhooks`.
    * NOTA: la tabla no tiene columna de estado — un webhook que falla hace
@@ -286,6 +299,18 @@ async function getRecentSignups(now: Date): Promise<{ list: RecentSignup[]; tota
   return { list, total: totals[0]?.total ?? 0 }
 }
 
+/** Estados en los que el complejo no está pagando y alguien tiene que mirar. */
+const TROUBLED_STATUSES = ['past_due', 'suspended', 'blocked'] as const
+
+async function getTroubledTenants(): Promise<TroubledTenant[]> {
+  const db = getDb()
+  return db
+    .select({ id: tenants.id, name: tenants.name, status: tenants.status })
+    .from(tenants)
+    .where(inArray(tenants.status, [...TROUBLED_STATUSES]))
+    .orderBy(asc(tenants.name))
+}
+
 async function getRecentWebhooks(): Promise<RecentWebhook[]> {
   const db = getDb()
   return db
@@ -339,6 +364,38 @@ async function getQueueDepthsSafe(db: Db): Promise<QueueDepthEntry[]> {
   }
 }
 
+/**
+ * Jobs fallidos de las últimas 24 h. Sin parámetros (un solo envío, ver el
+ * comentario de `getMrrCents`). pg-boss 9 pasa lo terminado a
+ * `pgboss.archive` a las pocas horas, así que se miran las dos tablas
+ * (`completedon`: pg-boss crea las columnas sin comillas, en minúscula).
+ */
+async function getFailedJobsSafe(db: Db): Promise<{ queue: string; failed: number }[] | null> {
+  try {
+    const rows = await withTimeout(
+      db.execute(sql`
+        SELECT name, COUNT(*)::int AS failed
+        FROM (
+          SELECT name FROM pgboss.job
+          WHERE state = 'failed' AND completedon >= now() - interval '24 hours'
+          UNION ALL
+          SELECT name FROM pgboss.archive
+          WHERE state = 'failed' AND completedon >= now() - interval '24 hours'
+        ) f
+        GROUP BY name
+        ORDER BY failed DESC
+      `),
+      QUEUE_DEPTH_TIMEOUT_MS,
+    )
+    return (rows as unknown as Array<{ name: string; failed: number }>).map((r) => ({
+      queue: r.name,
+      failed: r.failed,
+    }))
+  } catch {
+    return null
+  }
+}
+
 /** Tope del embudo: igual que el MRR, un dato del dashboard no puede dejarlo cargando. */
 const FUNNEL_TIMEOUT_MS = 8_000
 
@@ -365,22 +422,29 @@ const WORKER_READS_TIMEOUT_MS = 10_000
 export async function getDashboardData(): Promise<DashboardData> {
   const now = new Date()
   const [
-    [mrrCents, queues, onboardingFunnel],
+    [mrrCents, queues, onboardingFunnel, failedJobs24h],
     tenantsByStatus,
     expiringTrials,
     signups,
     recentWebhooks,
+    troubledTenants,
   ] = await Promise.all([
     // Las lecturas cross-tenant van por un cliente worker propio que se cierra
     // al terminar: una query colgada muere con él y no le come el pool
     // compartido al resto de la instancia (ver `withDisposableWorkerDb`).
     withDisposableWorkerDb(WORKER_READS_TIMEOUT_MS, (db) =>
-      Promise.all([getMrrCentsSafe(db), getQueueDepthsSafe(db), getOnboardingFunnelSafe(db)]),
+      Promise.all([
+        getMrrCentsSafe(db),
+        getQueueDepthsSafe(db),
+        getOnboardingFunnelSafe(db),
+        getFailedJobsSafe(db),
+      ]),
     ),
     getTenantsByStatus(),
     getExpiringTrials(now),
     getRecentSignups(now),
     getRecentWebhooks(),
+    getTroubledTenants(),
   ])
 
   return {
@@ -389,7 +453,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     expiringTrials,
     recentSignups: signups.list,
     signupsLast7Days: signups.total,
+    troubledTenants,
     queues,
+    failedJobs24h,
     recentWebhooks,
     onboardingFunnel,
   }

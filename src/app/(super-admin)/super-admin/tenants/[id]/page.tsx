@@ -1,5 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { ArrowLeft, Building2 } from 'lucide-react'
+import { PageHeader } from '@/components/admin/PageHeader'
+import { ScrollTabs } from '@/components/ui/scroll-tabs'
 import { requireSystemAdmin } from '@/modules/auth/system-admin.guards'
 import {
   getTenantActivity,
@@ -44,11 +47,16 @@ type Tab = (typeof TABS)[number]
 const TAB_LABELS: Record<Tab, string> = {
   resumen: 'Resumen',
   suscripcion: 'Suscripción',
-  actividad: 'Actividad',
+  actividad: 'Historial',
   acciones: 'Acciones',
 }
 
 const ACTIVITY_PAGE_SIZE = 25
+
+// Fuera del componente: el lint de pureza no deja llamar a Date.now() en el render.
+function currentMs(): number {
+  return Date.now()
+}
 
 function parseTab(raw: string | undefined): Tab {
   return (TABS as readonly string[]).includes(raw ?? '') ? (raw as Tab) : 'resumen'
@@ -85,40 +93,36 @@ export default async function SuperAdminTenantDetailPage(props: {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+      <PageHeader
+        variant="plain"
+        back={
           <Link
             href="/super-admin/tenants"
-            className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline"
           >
-            ← Volver a tenants
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Complejos
           </Link>
-          <h1 className="mt-1 flex items-center gap-3 text-2xl font-semibold text-foreground">
-            {tenant.name}
-            <TenantStatusBadge status={tenant.status} />
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {tenant.slug} · {tenant.email}
-          </p>
-        </div>
-      </div>
+        }
+        icon={
+          <Building2
+            className="h-6 w-6 text-emerald-700 dark:text-emerald-400"
+            aria-hidden="true"
+          />
+        }
+        title={tenant.name}
+        subtitle={tenant.email}
+        actions={<TenantStatusBadge status={tenant.status} />}
+      />
 
-      <nav aria-label="Secciones del tenant" className="flex gap-1 border-b border-border">
-        {TABS.map((t) => (
-          <Link
-            key={t}
-            href={`/super-admin/tenants/${tenant.id}?tab=${t}`}
-            aria-current={tab === t ? 'page' : undefined}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors duration-150 ${
-              tab === t
-                ? 'border-emerald-600 text-emerald-700 dark:text-emerald-400'
-                : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'
-            }`}
-          >
-            {TAB_LABELS[t]}
-          </Link>
-        ))}
-      </nav>
+      <ScrollTabs
+        ariaLabel="Secciones del complejo"
+        activeHref={`/super-admin/tenants/${tenant.id}?tab=${tab}`}
+        tabs={TABS.map((t) => ({
+          href: `/super-admin/tenants/${tenant.id}?tab=${t}`,
+          label: TAB_LABELS[t],
+        }))}
+      />
 
       {tab === 'resumen' && (
         <ResumenTab
@@ -127,6 +131,7 @@ export default async function SuperAdminTenantDetailPage(props: {
           updateMarketplaceVisibilityAction={updateTenantMarketplaceVisibilityAction}
           generateReferralLinkAction={generateReferralLinkAction}
           assignReferrerAction={assignReferrerAction}
+          nowMs={currentMs()}
         />
       )}
       {tab === 'suscripcion' && <SuscripcionTab detail={detail} />}

@@ -110,10 +110,15 @@ const nextConfig: NextConfig = {
   // redirigieron: caían al catch-all `[slug]`, que las interpretaba como slug de
   // complejo y devolvía "Complejo no encontrado" — encima con 200 (🟢 QA
   // 2026-08-14). Cualquier link o bookmark viejo queda apuntando bien.
+  //
+  // `/:slug/disponibilidad` (la vista semanal) se sacó con el rediseño de la ficha: los días y
+  // las horas viven ahora en `/:slug`. Next pasa la query sola, así que `?date=` llega a la
+  // ficha. Es la única ruta `disponibilidad` del árbol: el patrón no captura nada del panel.
   async redirects() {
     return [
       { source: '/privacy', destination: '/privacidad', permanent: true },
       { source: '/terms', destination: '/terminos', permanent: true },
+      { source: '/:slug/disponibilidad', destination: '/:slug', permanent: true },
     ]
   },
   async headers() {

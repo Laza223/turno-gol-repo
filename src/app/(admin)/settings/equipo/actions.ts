@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { isPlayerAccount } from '@/modules/auth/account-kind'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext, type DbTx } from '@/shared/db/client'
@@ -19,7 +20,12 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { captureException } from '@/lib/sentry'
 
-type AuthUserLite = { id: string; email?: string; app_metadata?: Record<string, unknown> }
+type AuthUserLite = {
+  id: string
+  email?: string
+  app_metadata?: Record<string, unknown>
+  user_metadata?: Record<string, unknown>
+}
 
 /**
  * Hallazgo 03-invite-staff-rollback: el envío real de la invitación
@@ -58,6 +64,22 @@ function mapInviteDeliveryError(code: string | undefined): string {
 }
 
 /**
+ * El email ya es una cuenta de jugador. Grabarle `staff_user_id` no la vuelve
+ * staff (la sesión sigue siendo de jugador, ver isPlayerAccount) y encima le
+ * rompe el lado jugador: el callback la echa con `account_conflict` en el
+ * próximo ingreso. Unificar identidades se descartó (migr. 078), así que se
+ * rechaza. Se lanza, igual que InviteDeliveryError, para deshacer el alta en
+ * tenant_staff_members; el upsert de staff_users (Fase 2) queda sin membresía,
+ * y es global e idempotente.
+ */
+class InvitePlayerAccountError extends Error {
+  name = 'InvitePlayerAccountError'
+}
+
+const PLAYER_ACCOUNT_ERROR =
+  'Ese email ya tiene una cuenta de jugador en TurnoGol. Invitá a esa persona con otro email.'
+
+/**
  * Busca un auth user por email. supabase-js no expone lookup por email, así que
  * paginamos listUsers de forma acotada. Best-effort: si no se ubica, el callback
  * de login sincroniza staff_user_id igual (#47).
@@ -79,7 +101,10 @@ async function findAuthUserByEmail(
   return null
 }
 
-export type StaffActionResult = { success: true } | { success: false; error: string }
+// `existingAccount`: el email ya tenía cuenta en Supabase Auth, así que GoTrue
+// no manda mail de invitación — la UI tiene que decirlo en vez de prometer uno.
+export type StaffActionResult =
+  { success: true; existingAccount?: true } | { success: false; error: string }
 
 /**
  * Estados de tenant que bloquean la gestión de staff (Fase 3 #14).
@@ -238,7 +263,7 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
   // Si el envío de la invitación falla, se lanza InviteDeliveryError (en vez
   // de un `return` de negocio) para que Drizzle haga rollback del upsert de
   // tenant_staff_members — ver comentario del hallazgo en InviteDeliveryError.
-  let result: { success: true } | { success: false; error: string }
+  let result: StaffActionResult
   try {
     result = await withTenantContext(tenant.id, async (tx) => {
       await tx
@@ -280,6 +305,8 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
             tenant_id: tenant.id,
             role,
             force_password_change: true,
+            // Solo cambia el copy de /reset-password ("Creá tu contraseña").
+            staff_invited: true,
           },
         })
       } else if (inviteError) {
@@ -288,6 +315,9 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
         // sincronizamos SOLO staff_user_id, preservando su tenant_id/role actuales
         // para no pisar la sesión de otros complejos (#47).
         const existingAuth = await findAuthUserByEmail(adminClient, lowerEmail)
+        if (existingAuth && isPlayerAccount(existingAuth)) {
+          throw new InvitePlayerAccountError(PLAYER_ACCOUNT_ERROR)
+        }
         if (existingAuth) {
           await adminClient.auth.admin.updateUserById(existingAuth.id, {
             app_metadata: { ...(existingAuth.app_metadata ?? {}), staff_user_id: staffUser.id },
@@ -295,9 +325,14 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
         }
       }
 
-      return { success: true as const }
+      return inviteError
+        ? { success: true as const, existingAccount: true as const }
+        : { success: true as const }
     })
   } catch (err) {
+    if (err instanceof InvitePlayerAccountError) {
+      return { success: false, error: PLAYER_ACCOUNT_ERROR }
+    }
     if (err instanceof InviteDeliveryError) {
       captureException(err)
       return { success: false, error: mapInviteDeliveryError(err.code) }
@@ -474,9 +509,21 @@ export async function resendInviteAction(email: string): Promise<StaffActionResu
   }
 
   const adminClient = createAdminClient()
-  const { error } = await adminClient.auth.admin.inviteUserByEmail(normalizedEmail, {
+  let { error } = await adminClient.auth.admin.inviteUserByEmail(normalizedEmail, {
     redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback?next=${encodeURIComponent('/dashboard')}`,
   })
+
+  // GoTrue solo reenvía la invitación mientras el invitado NO confirmó su email.
+  // Si ya abrió el link (o tiene cuenta de antes) responde email_exists: en ese
+  // caso mandamos el mail de recuperación, que lo deja fijar contraseña igual.
+  if (
+    error &&
+    (error.code === 'email_exists' || error.message.includes('already been registered'))
+  ) {
+    ;({ error } = await adminClient.auth.resetPasswordForEmail(normalizedEmail, {
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`,
+    }))
+  }
 
   if (error) {
     captureException(error)

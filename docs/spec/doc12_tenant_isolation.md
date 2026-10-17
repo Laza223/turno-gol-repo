@@ -424,10 +424,20 @@ Request HTTP al panel de super-admin
 
 Algunos requests del jugador operan **dentro de un complejo puntual**: crear un booking en el complejo del `slug` validado, o verificar un ban propio antes de reservar. Estos requests necesitan setear **a la vez** `app.current_player_id` (para las policies de jugador) y `app.current_tenant_id` (para insertar/leer las filas del tenant). Hasta ahora esto se resolvió con parches ad-hoc repartidos por endpoint (Fix #5 §2, Fix #7 §7.4, Fix B06 + B07 §7.3).
 
-**Decisión de auditoría 2026-07-21**: formalizar un helper único, reusable y testeado — `withPlayerInTenantContext(playerId, tenantId, cb)` — que abre la transacción y ejecuta ambos `SET LOCAL` (`app.current_player_id` + `app.current_tenant_id`) antes de correr el callback. Es el **patrón de primera clase** para el modo jugador-en-complejo y reemplaza los `SET LOCAL` sueltos por-endpoint.
+**Decisión de auditoría 2026-07-21**: formalizar un helper único, reusable y testeado — `withPlayerInTenantContext(playerId, tenantId, cb)` — que abre la transacción y ejecuta ambos `SET LOCAL` (`app.current_player_id` + `app.current_tenant_id`) antes de correr el callback. Es el **patrón de primera clase** previsto para el modo jugador-en-complejo y reemplazaría los `SET LOCAL` sueltos por-endpoint.
+
+> [!WARNING]
+> **Estado real (verificado 2026-10-13): `withPlayerInTenantContext` NO existe en `src/`.** Hoy el modo
+> jugador-en-complejo se arma a mano: se abre `withPlayerContext(playerId, cb)` (`src/shared/db/client.ts`,
+> setea `app.current_player_id`) y adentro del callback se ejecuta
+> `SELECT set_config('app.current_tenant_id', <id>, true)` sobre el mismo `tx` — ambos transaction-local,
+> equivalentes a `SET LOCAL`. El caso vivo es `createBookingAndCheckout` en
+> `src/app/(public)/[slug]/reservar/actions.ts`, con el `tenant.id` resuelto server-side desde el `slug`.
+> `withContext({ playerId, tenantId })` del mismo `client.ts` sí setea las dos variables, pero sobre el
+> cliente `postgres` crudo y hoy solo lo usan los tests. El bloque de abajo es el diseño objetivo, no código existente.
 
 ```typescript
-// Patrón de primera clase (reemplaza los parches por-endpoint)
+// Diseño objetivo — el helper todavía no existe (ver WARNING arriba)
 await withPlayerInTenantContext(playerId, tenantId, async (tx) => {
   // Ambas variables seteadas: policies de jugador (por player_id) Y de tenant (por tenant_id)
   // Ej.: verificar el ban propio + crear el booking en el mismo contexto atómico
@@ -480,7 +490,7 @@ Login → Selector de complejo (si tiene múltiples)
 
 ```json
 {
-  "sub": "player-uuid",
+  "sub": "auth-user-uuid",
   "iat": 1713390000,
   "exp": 1713393600,
   "email": "agustin@gmail.com",
@@ -491,8 +501,11 @@ Login → Selector de complejo (si tiene múltiples)
 }
 ```
 
+**`sub` ≠ `player_id` (corregido drift 2026-10-13):** `sub` es `auth.users.id`; `players.id` sale del default de la tabla (`getOrCreatePlayer` en `src/modules/players/player.service.ts` no pasa `id` en el `INSERT`), así que son UUIDs distintos. El vínculo es `app_metadata.player_id`, que graba `provisionPlayerAndRedirect` (`src/app/api/auth/callback/route.ts`); `extractRealAuthUser()` lo lee de ahí y solo cae a `user.id` como fallback. Las policies de jugador keyean por `players.id` vía `current_setting('app.current_player_id')` (migr. 006 / 052), nunca por `sub` ni `auth.uid()`.
+
 **Diferencia crítica:** El JWT del jugador **NO tiene `tenant_id`**. El jugador es cross-tenant — puede reservar en cualquier complejo. El filtrado se hace por `player_id`, no por `tenant_id`.
 **Corrección (drift 2026-08-27):** no hay un claim `type` en la raíz — `extractRealAuthUser()` (`src/modules/auth/auth.middleware.ts`) deriva el tipo de sesión leyendo `app_metadata.is_player` (y `is_system_admin` para super-admin); si ninguno está, cae por default a `staff`. `is_player` es, entonces, el campo que de verdad importa acá.
+**`user_metadata.is_player` (2026-10-13):** lo manda el magic link de alta en `options.data` y lo puede editar el propio usuario, así que solo cuenta mientras `app_metadata` no tenga claims de staff o superadmin (`isPlayerAccount`, `src/modules/auth/account-kind.ts`). Lo usan el middleware, el login del staff y el callback.
 
 ### 5.3 "JWT del Sistema" (background jobs, cron) — identidad conceptual, no un JWT real
 

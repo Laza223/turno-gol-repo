@@ -15,6 +15,12 @@ import { test as base, expect, type Page } from '@playwright/test'
 
 export const ADMIN_STORAGE_STATE = 'tests/e2e/.auth/admin.json'
 
+/**
+ * El jugador del seed visual: `global-setup.ts` lo escribe como `player.json` y es el MISMO jugador
+ * (`…0020`) dueño de la reserva de `_seed.ts` que se fotografía, así que no hace falta otra sesión.
+ */
+export const PLAYER_STORAGE_STATE = 'tests/e2e/.auth/player.json'
+
 export const test = base
 
 export { expect }
@@ -79,6 +85,19 @@ export async function waitForHeaderSlot(page: Page): Promise<void> {
   // La fecha centrada de la barra (rediseño "Entra entera", 2026-09-25). La
   // semana ya no vive en la barra sino en el popover de esta fecha.
   await expect(page.getByRole('button', { name: /Elegir otra fecha$/ })).toBeVisible({
+    timeout: 15_000,
+  })
+}
+
+/**
+ * El cromo del portal no se entera de la sesión del jugador en el servidor: la ficha y el resto
+ * son estáticos, y el menú de cuenta (y la barra inferior del celular) llegan recién cuando
+ * `PortalSessionProvider` termina de pedir `/api/player/session`. Sin esta espera la foto sale con
+ * "Ingresar" en vez del avatar, o con la barra inferior a medio aparecer: la misma carrera que
+ * `waitForHeaderSlot` en el panel.
+ */
+export async function waitForPlayerSession(page: Page): Promise<void> {
+  await expect(page.getByRole('button', { name: /^Cuenta de / })).toBeVisible({
     timeout: 15_000,
   })
 }

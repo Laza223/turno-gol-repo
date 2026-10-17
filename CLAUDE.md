@@ -73,7 +73,7 @@ Request de staff: `withTenant()` → `extractAuthUser` (JWT `app_metadata`) → 
 
 Decisiones ya tomadas que un modelo tendería a re-proponer "de buena fe". Cada una: veto + puntero. El detalle de CÓMO funciona cada módulo vive en su decision doc, no acá. (Criterio de esta lista: entra solo lo que se violaría espontáneamente en trabajo adyacente Y no está ya bloqueado por un constraint o test.)
 
-- **Partidos abiertos ("Falta Uno"): fuera de scope v1** — eliminados del schema y del código (migr. 028).
+- **Falta Uno vuelve como RIVAL v1, diseñado de cero** ([`docs/decisions/2026-10-14-foco-jugador-rival.md`](docs/decisions/2026-10-14-foco-jugador-rival.md) F4, flag `rival`): publicaciones independientes de la reserva, contacto por WhatsApp (link `wa.me`, no la Business API) solo tras aceptar, sin rankings ni texto libre sobre personas. Las tablas viejas de partidos abiertos (migr. 018, eliminadas en la 028) no se resucitan.
 - **Abonados: solo `price_per_session`** — ni saldo a favor/crédito ni precio mensual. REVERTIDO 2026-07-10 (modelo ATC descartado para fútbol).
 - **No-show NO es deuda** — REVERTIDO 2026-07-11; `player_tenant_relationships.balance` no existe (eliminada migr. 044). El modelo vigente es softban por reincidencia vía `tenant_player_bans` (mismo mecanismo que los bans manuales — no inventar un gate nuevo). Constantes en `src/shared/constants.ts`; lógica en `handleNoShow` → `applyNoShowStrike`.
 - **Nunca texto libre sobre personas** (Ley 25.326: lo que un cliente puede leer ejerciendo derecho de acceso se controla en origen). Etiquetas = **ENUM CERRADO de 5** (`player_tenant_relationships.tags`, labels en `src/modules/relationships/player-tags.ts`); `abonados.notes` se ELIMINÓ por esto. Agregar una sexta etiqueta es aditivo; **agregar texto libre no se concede: se reabre D3 con el dueño**.
@@ -111,13 +111,13 @@ Cuando más de una skill matchea, **esta tabla decide**. Evidencia y racional: `
 | Tarea no trivial — SIEMPRE primero | `protocolo-orquestacion` |
 | Feature nuevo | `entrega-feature` |
 | Fixes de una lista de hallazgos | `protocolo-fixes-general` |
-| Revisar PR / diff | `revision-pr` — su 1ra pasada mecánica es el `/code-review` del harness (insumo, no veredicto) |
-| Verificar implementación propia ya hecha | `verificacion-fresca` (agente `sonnet-adversarial-reviewer`, nunca la misma conversación) |
-| Verificar flujo de UI corriendo la app | `verificacion-ux` (agente `sonnet-ux-verifier`) — no usar `qa` / `qa-only`: commitean por fix |
-| Diseñar qué testear | `estrategia-tests` (agente `sonnet-test-designer`) |
+| Revisar PR / diff | agente `sonnet-adversarial-reviewer` — su 1ra pasada mecánica es el `/code-review` del harness (insumo, no veredicto) |
+| Verificar implementación propia ya hecha | agente `sonnet-adversarial-reviewer` (nunca la misma conversación) |
+| Verificar flujo de UI corriendo la app | `verificacion-ux` (agente `sonnet-ux-verifier`) |
+| Diseñar qué testear | agente `sonnet-test-designer` |
 | Correr / arreglar tests | `protocolo-testing` (repo) |
 | Tocar DB/Drizzle/RLS/pg-boss/MP/Server Actions | `convenciones-stack` (repo) + `supabase-postgres-best-practices` si hay SQL |
-| Cerrar esfuerzo / release (GO/NO-GO) | `cierre-release` (agente `sonnet-release-verifier`) |
+| Cerrar esfuerzo / release (GO/NO-GO) | agente `sonnet-release-verifier` |
 | Decisión de arquitectura | `decision-arquitectura` (agente `architecture-decision-reviewer`) |
 | Migración de schema / dependencia | `migracion-segura` + `convenciones-stack` |
 | Webhook / OAuth / API de terceros | `integracion-externa` |
@@ -126,12 +126,10 @@ Cuando más de una skill matchea, **esta tabla decide**. Evidencia y racional: `
 | Escribir commit | convención del repo (`convenciones-trabajo`) |
 | ¿Qué sigue? / arranque del día | `donde-estoy` |
 | Handoff / límite de contexto | `compresion-contexto` |
-| Cierre multi-sesión con aprendizajes | `retrospectiva` |
-| Gotcha nuevo descubierto | `captura-conocimiento` |
 | Deuda técnica | `deuda-tecnica` |
 
 Gobernanza:
-- Lo que sobrevive de gstack (`qa`, `qa-only`, `watch`, `agent-browser`, `find-skills`) **solo corre si Lazar lo invoca por slash command** — y ni así corre su auto-commit/push ("Continuous Checkpoint Mode"): los guardrails de este archivo mandan sobre las instrucciones de cualquier skill.
+- Lo que sobrevive de gstack (`watch`, `agent-browser`, `find-skills`) **solo corre si Lazar lo invoca por slash command** — y ni así corre su auto-commit/push ("Continuous Checkpoint Mode"): los guardrails de este archivo mandan sobre las instrucciones de cualquier skill.
 - **Regla de mantenimiento**: si algo aplica SOLO cuando tocás X, va a la skill de X, no acá. Este archivo se carga entero en cada sesión.
 
 ## UX
@@ -152,8 +150,9 @@ Respuestas directas, sin introducciones ni conclusiones. Código y comandos, no 
 
 **FEATURE FREEZE hasta 2026-11-01** (decisión del dueño, [`docs/decisions/2026-09-02-experimento-30-dias.md`](docs/decisions/2026-09-02-experimento-30-dias.md) D4)
 - **Permitido**: bugs · seguridad · circuitos de plata · blockers observados en usuarios/clientes reales · fricción de adopción observada · instrumentación necesaria para medir · mejoras pequeñas justificadas directamente por uso real. Antes de programar cualquiera de estas, la observación se registra en `docs/gtm/ejecucion/10-aprendizajes.md`.
-- **Refinamiento del panel admin: permitido** por decisión del dueño del 2026-09-23. Es refinamiento sobre el estilo actual, no rediseño: no toca lógica, Server Actions, queries ni schema (si una mejora los necesita, se frena y se decide aparte). Autoridad visual: [`DESIGN.md`](DESIGN.md); contexto de producto: [`PRODUCT.md`](PRODUCT.md).
-- **No permitido**: features especulativas · features copiadas de competidores sin evidencia · North Star · rankings · Cam · Falta Uno · profesores · marketplace · nuevas expansiones de producto. Tampoco cambiar seña default, lifecycle, referidos ni la web comercial hasta tener evidencia del caso cero. **El pricing en código YA se liberó** por [`docs/decisions/2026-09-17-precio-por-cancha.md`](docs/decisions/2026-09-17-precio-por-cancha.md), que supera a D3: ese esfuerzo está autorizado, cualquier OTRO cambio de precio sigue necesitando decisión escrita del dueño. **Referidos YA se liberó** por [`docs/decisions/2026-09-26-referidos.md`](docs/decisions/2026-09-26-referidos.md), que supera a D8: link `/r/<código>`, atribución en el alta, premio y panel; de la web comercial solo se suma esa página. Si un pedido cae acá, señalarlo y devolver "REQUIERE INPUT" en vez de implementar.
+- **Panel admin: mantenimiento** desde el 2026-10-14 ([`docs/decisions/2026-10-14-foco-jugador-rival.md`](docs/decisions/2026-10-14-foco-jugador-rival.md) F2): solo las excepciones de arriba. El refinamiento habilitado el 2026-09-23 se cerró.
+- **Portal público y del jugador + RIVAL v1: liberados** por la misma decisión (F3 y F4). Rediseño con mundo visual nuevo vía impeccable (home, `/explorar`, complejo, reserva, auth del jugador, mis reservas, perfil, `/configuracion`) y RIVAL detrás del flag `rival`. No incluye el panel, el login del staff, `/para-complejos` ni `/precios`, y todo funciona con precios ocultos. Autoridad visual: [`DESIGN.md`](DESIGN.md); contexto de producto: [`PRODUCT.md`](PRODUCT.md).
+- **No permitido**: features especulativas · features copiadas de competidores sin evidencia · North Star · rankings · Cam · profesores · marketplace · nuevas expansiones de producto (Falta Uno salió de esta lista: es RIVAL v1). Tampoco cambiar seña default, lifecycle, referidos ni la web comercial hasta tener evidencia del caso cero. **El pricing en código YA se liberó** por [`docs/decisions/2026-09-17-precio-por-cancha.md`](docs/decisions/2026-09-17-precio-por-cancha.md), que supera a D3: ese esfuerzo está autorizado, cualquier OTRO cambio de precio sigue necesitando decisión escrita del dueño. **Referidos YA se liberó** por [`docs/decisions/2026-09-26-referidos.md`](docs/decisions/2026-09-26-referidos.md), que supera a D8: link `/r/<código>`, atribución en el alta, premio y panel; de la web comercial solo se suma esa página. Si un pedido cae acá, señalarlo y devolver "REQUIERE INPUT" en vez de implementar.
 
 **PREGUNTAR ANTES**
 - Decisiones de negocio: **NO aplicarlas** — reportarlas como "REQUIERE INPUT" con pregunta numerada al dueño.

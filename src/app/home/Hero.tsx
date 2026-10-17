@@ -7,11 +7,11 @@ import { NearbyProvider } from './nearby-context'
 
 /**
  * Hero de la home: el futbolero ve la cancha real que le queda cerca y sus
- * turnos libres de hoy, y si no le sirve, busca por zona, día y hora.
+ * turnos libres de hoy y busca por zona, día y hora.
  *
  * Un solo árbol para todos los anchos (nada de árboles hermanos gateados por
  * CSS: duplicaban el <h1> y pedían la ubicación dos veces). El orden cambia
- * solo con CSS: en el teléfono va titular → cancha → buscador; desde `lg`, el
+ * solo con CSS: en el teléfono va titular → buscador → cancha; desde `lg`, el
  * titular y el buscador a la izquierda, centrados contra la cancha de la derecha
  * (las filas 1fr de arriba y abajo los centran).
  */
@@ -40,10 +40,10 @@ export function Hero({ cities }: { cities: CityCount[] }) {
           <div className="min-w-0 lg:col-start-1 lg:row-start-2">
             <HeroHeadline />
           </div>
-          <div className="order-3 min-w-0 lg:order-none lg:col-start-1 lg:row-start-3 lg:mt-7">
+          <div className="min-w-0 lg:col-start-1 lg:row-start-3 lg:mt-7">
             <HeroSearch cities={cities} />
           </div>
-          <div className="order-2 min-w-0 lg:order-none lg:col-start-2 lg:row-span-4 lg:row-start-1">
+          <div className="min-w-0 lg:col-start-2 lg:row-span-4 lg:row-start-1">
             <NearbyPanel cities={cities} />
           </div>
         </div>

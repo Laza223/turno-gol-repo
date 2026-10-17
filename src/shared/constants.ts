@@ -10,6 +10,14 @@ import { CONTACT_WHATSAPP_DISPLAY, contactWhatsappUrl } from '@/lib/contact'
 export const SLOT_DURATION_MINUTES = 60
 
 /**
+ * Default de `settings.cancellation_policy.hours_before`. Lo usan los settings de
+ * un complejo nuevo (`tenant.service.ts`) y, cuando no hay política guardada,
+ * todo el que decide o muestra con ella: `cancelByPlayer`, `cancelByAdmin`, el
+ * detalle de /reservas y `ReservasPolicyForm`, para que decidan con el mismo número.
+ */
+export const DEFAULT_CANCELLATION_HOURS_BEFORE = 12
+
+/**
  * INV-ABUSE-001 (Denial of Inventory): tope duro de bookings `pending_payment`
  * (holds sin pagar) que un mismo jugador puede tener a la vez en el mismo
  * tenant. Defensa de negocio, complementaria al rate-limit por IP/player —

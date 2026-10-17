@@ -33,18 +33,27 @@ import type { StatusTone } from '@/lib/status-tone'
  */
 const TONO_DEL_JUGADOR: Partial<Record<string, StatusTone>> = {
   confirmed: 'success',
+  // El rojo de "Ausente" es del complejo (plata que no entró). Al jugador no se le grita: se le
+  // explica qué pasó en la tarjeta, sin tono de alarma.
+  no_show: 'neutral',
 }
 
 /**
  * El complejo lee las dos cancelaciones como una sola ("Cancelada"): para su
  * caja el turno se liberó y punto. Para el jugador la diferencia es su plata,
- * así que acá se dice cuál de las dos fue.
+ * así que acá se dice cuál de las dos fue — pero solo si había plata: "sin
+ * reembolso" sobre una reserva que nunca tuvo seña paga le hace creer que perdió
+ * algo que nunca puso. `paid` es la seña cobrada; `captured`, la cobrada que el
+ * complejo se quedó (cancelación fuera de plazo o ausencia).
  */
-const LABEL_DEL_JUGADOR: Partial<Record<string, string>> = {
-  canceled_no_refund: 'Cancelada (sin reembolso)',
+const PAID_DEPOSIT_STATUSES: ReadonlySet<string> = new Set(['paid', 'captured'])
+
+/** ¿La reserva tiene una seña cobrada? Es lo que la tarjeta marca como "Señada". */
+export function isDepositPaid(depositStatus: string): boolean {
+  return PAID_DEPOSIT_STATUSES.has(depositStatus)
 }
 
-export function playerBookingVisual(status: string): StatusBadgeVisual {
+export function playerBookingVisual(status: string, depositStatus: string): StatusBadgeVisual {
   const base = bookingBadgeVisual({
     status,
     // Tipo neutralizado a propósito: en la grilla `fixed` PISA al estado porque
@@ -57,9 +66,12 @@ export function playerBookingVisual(status: string): StatusBadgeVisual {
     pending: null,
     totalPaid: null,
   })
+  const lostDeposit = status === 'canceled_no_refund' && isDepositPaid(depositStatus)
   return {
     icon: base.icon,
-    label: LABEL_DEL_JUGADOR[status] ?? base.label,
-    tone: TONO_DEL_JUGADOR[status] ?? base.tone,
+    label: lostDeposit ? 'Cancelada (sin reembolso)' : base.label,
+    // El ámbar del portal es solo de "Queda 1" (DESIGN.md, The Scarcity Amber Rule): la espera de la
+    // seña se dice con el texto de la tarjeta, no con un tono de aviso.
+    tone: status === 'pending_payment' ? 'neutral' : (TONO_DEL_JUGADOR[status] ?? base.tone),
   }
 }

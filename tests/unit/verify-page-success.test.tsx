@@ -7,6 +7,8 @@ import { cleanup, render, screen } from '@testing-library/react'
 vi.mock('@/app/(auth)/verify/SuccessRedirect', () => ({
   default: ({ next }: { next: string }) => <div data-testid="redirect" data-next={next} />,
 }))
+// La page importa la Server Action de Google de /ingresar (arrastra supabase/db).
+vi.mock('@/app/(auth)/ingresar/actions', () => ({ startGoogleLoginFromIngresar: vi.fn() }))
 
 import VerifyPage from '@/app/(auth)/verify/page'
 
@@ -19,14 +21,6 @@ async function renderPage(searchParams: Record<string, string>) {
 }
 
 describe('VerifyPage — estado de éxito', () => {
-  it('intent booking: copy de reserva + botón al next', async () => {
-    await renderPage({ status: 'success', next: '/club-norte/reservar?court=1', intent: 'booking' })
-    expect(screen.getByText(/cuenta confirmada/i)).toBeTruthy()
-    expect(screen.getByText(/terminar tu reserva/i)).toBeTruthy()
-    const link = screen.getByRole('link', { name: /continuar con mi reserva/i })
-    expect(link.getAttribute('href')).toBe('/club-norte/reservar?court=1')
-  })
-
   it('intent login: copy genérico + botón a mis reservas', async () => {
     await renderPage({ status: 'success', next: '/mis-reservas', intent: 'login' })
     expect(screen.getByText(/iniciaste sesión/i)).toBeTruthy()
@@ -51,10 +45,27 @@ describe('VerifyPage — estado de éxito', () => {
     expect(screen.getByTestId('redirect').getAttribute('data-next')).toBe('/mis-reservas')
   })
 
-  it('intent inválido cae a login', async () => {
-    await renderPage({ status: 'success', next: '/mis-reservas', intent: 'hacker' })
-    expect(screen.getByText(/iniciaste sesión/i)).toBeTruthy()
+  it('un next repetido (Next lo entrega como string[]) cae al fallback sin romper', async () => {
+    // `?next=a&next=b` llega como array aunque el tipo diga string: `.replace` tiraba TypeError.
+    await renderPage({ status: 'success', next: ['/a', '/b'], intent: 'login' } as never)
+    expect(screen.getByRole('link', { name: /ir a mis reservas/i }).getAttribute('href')).toBe(
+      '/mis-reservas',
+    )
   })
+
+  it.each(['hacker', 'booking', 'booking_returning'])(
+    'intent %s (inválido o retirado) cae al camino genérico de login, sin copy de reserva',
+    async (intent) => {
+      await renderPage({ status: 'success', next: '/club-norte/reservar?court=1', intent })
+      expect(screen.getByText(/iniciaste sesión/i)).toBeTruthy()
+      expect(screen.queryByText(/cuenta confirmada/i)).toBeNull()
+      expect(screen.queryByText(/terminar tu reserva/i)).toBeNull()
+      // El destino se respeta aunque el intent no se reconozca.
+      expect(screen.getByTestId('redirect').getAttribute('data-next')).toBe(
+        '/club-norte/reservar?court=1',
+      )
+    },
+  )
 
   it('muestra la pista cross-device', async () => {
     await renderPage({ status: 'success', next: '/mis-reservas', intent: 'login' })
@@ -63,6 +74,6 @@ describe('VerifyPage — estado de éxito', () => {
 
   it('con ?error sigue mostrando el estado de error', async () => {
     await renderPage({ error: 'expired' })
-    expect(screen.getByText(/no pudimos verificar tu enlace/i)).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 1, name: 'Este enlace venció' })).toBeTruthy()
   })
 })

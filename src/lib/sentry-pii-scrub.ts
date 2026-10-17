@@ -21,6 +21,9 @@ export const PII_KEYS: ReadonlySet<string> = new Set([
   // fuente y no se pierda cobertura al unificar.
   'token',
   'authorization',
+  // Vínculo firmado que confirma la reserva sola (`@/shared/security/booking-intent`): viaja en el
+  // `next` del magic link y vale por un turno y un email, así que no se reporta.
+  'booking_intent',
 ])
 
 export function scrubObject(obj: unknown, depth = 0): unknown {
@@ -30,7 +33,9 @@ export function scrubObject(obj: unknown, depth = 0): unknown {
   // claves inocentes (`error`, `message`, `value`) que ninguna lista de nombres
   // va a atrapar. El logger ya lo recorta en origen; esto cubre los eventos que
   // no pasan por él, como los `captureException` directos.
-  if (typeof obj === 'string') return redactQueryParams(obj)
+  // Y las URLs que viajan como texto (migas de navegación y de fetch, `extra`): una clave de
+  // PII_KEYS en su query string se tapa igual que en `request.query_string`.
+  if (typeof obj === 'string') return scrubQueryString(redactQueryParams(obj))
   if (Array.isArray(obj)) return obj.map((item) => scrubObject(item, depth + 1))
   if (typeof obj === 'object') {
     const out: Record<string, unknown> = {}
@@ -57,12 +62,30 @@ function escapeRegExp(s: string): string {
 }
 
 const PII_QUERY_PATTERN = new RegExp(
-  `([?&])(${[...PII_KEYS].map(escapeRegExp).join('|')})=[^&]*`,
+  // `\s` corta el valor: ahora este patrón también pasa por textos que no son una URL (mensajes,
+  // stacks, `context_line`) y sin el corte se comía todo hasta el próximo `&` o el final.
+  `([?&])(${[...PII_KEYS].map(escapeRegExp).join('|')})=[^&\\s]*`,
   'gi',
 )
 
+// Dentro de un `next=` (el callback del magic link) el vínculo de la reserva viaja codificado
+// (`%26booking_intent%3D<token>`), y doble codificado en el `redirect_to` que `@supabase/auth-js`
+// manda al pedir el enlace (`%2526booking_intent%253D<token>`). El patrón de arriba, que busca
+// `?k=` / `&k=`, no ve ninguno de los dos. El token es base64url más un punto: corta en el primer
+// carácter fuera de ese set.
+const ENCODED_BOOKING_INTENT = /booking_intent(%3D|%253D)[\w.-]*/gi
+
 export function scrubQueryString(qs: string): string {
-  return qs.replace(PII_QUERY_PATTERN, '$1$2=[REDACTED]')
+  return qs
+    .replace(PII_QUERY_PATTERN, '$1$2=[REDACTED]')
+    .replace(ENCODED_BOOKING_INTENT, 'booking_intent$1[REDACTED]')
+}
+
+// Un query string SIN el `?` inicial (`token=abc&x=1`: así llega `request.query_string` y los
+// atributos `url.query`/`http.query`) no lo ve `scrubQueryString`, que exige `[?&]` delante: si la
+// clave sensible va primera se escapaba. Se antepone el `?` para pasar por la misma función.
+function scrubBareQueryString(qs: string): string {
+  return scrubQueryString(`?${qs}`).slice(1)
 }
 
 /**
@@ -83,6 +106,7 @@ type ScrubbableEvent = {
     data?: unknown
     headers?: Record<string, string>
     query_string?: unknown
+    url?: unknown
   }
   extra?: Record<string, unknown>
   contexts?: Record<string, unknown>
@@ -100,9 +124,15 @@ export function scrubEvent(event: ScrubbableEvent): void {
       delete h.Cookie
       delete h.authorization
       delete h.Authorization
+      // El Referer de un pedido hecho desde `/reservar` lleva la URL con el vínculo de la reserva.
+      if (h.referer) h.referer = scrubQueryString(h.referer)
+      if (h.Referer) h.Referer = scrubQueryString(h.Referer)
     }
     if (typeof event.request.query_string === 'string') {
-      event.request.query_string = scrubQueryString(event.request.query_string)
+      event.request.query_string = scrubBareQueryString(event.request.query_string)
+    }
+    if (typeof event.request.url === 'string') {
+      event.request.url = scrubQueryString(event.request.url)
     }
   }
   if (event.extra) event.extra = scrubObject(event.extra) as typeof event.extra
@@ -111,4 +141,45 @@ export function scrubEvent(event: ScrubbableEvent): void {
   if (event.exception) event.exception = scrubObject(event.exception)
   // Se conserva el id para poder rastrear; se van correo, nombre de usuario e IP.
   if (event.user) event.user = { id: event.user.id }
+}
+
+/**
+ * Tapado de una TRANSACCIÓN (traza de rendimiento) antes de mandarla.
+ *
+ * `beforeSend` no ve transacciones: sin esto, el GET a `/<slug>/reservar?...&booking_intent=...`,
+ * a `/verify?token=...` o con `?email=` salía con la URL entera en el nombre de la transacción y
+ * en los atributos de los spans (`url.full`, `http.url`, `http.target`, `url.query`).
+ *
+ * No hay `beforeSendSpan` aparte a propósito: en este modo los spans hijos viajan DENTRO de la
+ * transacción, y esta función los recorre. Una segunda pasada duplicaría la lógica.
+ */
+type ScrubbableSpan = { description?: unknown; data?: unknown }
+type ScrubbableTransaction = ScrubbableEvent & { transaction?: unknown; spans?: ScrubbableSpan[] }
+
+// Atributos de span que traen solo la query, sin `?` (ver `scrubBareQueryString`).
+const QUERY_ONLY_ATTRIBUTES: ReadonlySet<string> = new Set(['url.query', 'http.query'])
+
+function scrubSpanData(data: unknown): unknown {
+  const scrubbed = scrubObject(data)
+  if (scrubbed === null || typeof scrubbed !== 'object' || Array.isArray(scrubbed)) return scrubbed
+  const out = scrubbed as Record<string, unknown>
+  for (const key of QUERY_ONLY_ATTRIBUTES) {
+    const value = (data as Record<string, unknown>)[key]
+    if (typeof value === 'string') out[key] = scrubBareQueryString(value)
+  }
+  return out
+}
+
+export function scrubTransaction(event: ScrubbableTransaction): void {
+  scrubEvent(event)
+  if (typeof event.transaction === 'string') {
+    event.transaction = scrubQueryString(event.transaction)
+  }
+  if (Array.isArray(event.spans)) {
+    for (const span of event.spans) {
+      if (typeof span.description === 'string')
+        span.description = scrubQueryString(span.description)
+      if (span.data) span.data = scrubSpanData(span.data)
+    }
+  }
 }

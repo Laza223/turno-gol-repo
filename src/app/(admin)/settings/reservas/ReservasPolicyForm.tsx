@@ -10,6 +10,7 @@ import { SubmitButton } from '@/components/ui/submit-button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { formatArs } from '@/lib/format'
 import { addDays, artTodayStr } from '@/shared/dates/art'
+import { DEFAULT_CANCELLATION_HOURS_BEFORE } from '@/shared/constants'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 import type { PolicyActionResult } from './actions'
 
@@ -29,8 +30,8 @@ const chipClass = (active: boolean) =>
 
 const INITIAL_STATE: PolicyActionResult = { success: true }
 
-/** "YYYY-MM-DD" → "mié 17 de septiembre". Parseo a mediodía UTC (mismo idiom
- * que WeeklyAvailability.tsx) para no depender del huso horario del browser. */
+/** "YYYY-MM-DD" → "mié 17 de septiembre". Parseo a mediodía UTC para no depender
+ * del huso horario del browser. */
 const DOW_FORMATTER = new Intl.DateTimeFormat('es-AR', { weekday: 'short', timeZone: 'UTC' })
 const DAY_MONTH_FORMATTER = new Intl.DateTimeFormat('es-AR', {
   day: 'numeric',
@@ -130,7 +131,7 @@ export function ReservasPolicyForm({
   )
 
   // Cancellation hours states
-  const initialHours = s.cancellation_policy?.hours_before ?? 12
+  const initialHours = s.cancellation_policy?.hours_before ?? DEFAULT_CANCELLATION_HOURS_BEFORE
   const isPresetHours = [0, 2, 6, 12, 24].includes(initialHours)
   const [selectedHours, setSelectedHours] = useState<number | 'other'>(
     isPresetHours ? initialHours : 'other',
@@ -532,7 +533,7 @@ export function ReservasPolicyForm({
         </section>
 
         <div className="space-y-3">
-          <SubmitButton className="w-full sm:w-auto px-8 h-12 bg-primary hover:bg-emerald-500 text-base font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98] transition-all duration-200">
+          <SubmitButton className="w-full sm:w-auto px-8 h-12 bg-primary hover:bg-primary/90 text-base font-semibold shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/30 active:scale-[0.98] transition-all duration-200">
             Guardar cambios
           </SubmitButton>
 

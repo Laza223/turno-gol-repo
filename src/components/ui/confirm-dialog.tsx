@@ -77,9 +77,11 @@ export function ConfirmDialog({
         // #17: si onConfirm lanza (ej. error DB inesperado, re-throw), sin este
         // catch la transicion quedaba rechazada y el modal colgado en
         // "Procesando…". Reportamos a Sentry y mostramos error inline sin cerrar.
+        // El texto NO manda a reintentar a ciegas: si lo que se perdió fue la
+        // respuesta, la acción pudo haberse hecho igual.
         Sentry.captureException(err)
         startTransition(() =>
-          setError('No se pudo completar la acción. Revisá tu conexión e intentá de nuevo.'),
+          setError('No pudimos confirmar si se hizo. Revisá antes de volver a intentar.'),
         )
       }
     })
@@ -122,14 +124,14 @@ export function ConfirmDialog({
               // F-008 (QA prod 2026-08-17): text-base md:text-sm, no text-sm plano — el piso de
               // 16px de globals.css ya lo cubre en producción, pero el primitivo no debe mentir
               // sobre su tamaño (mismo criterio que ui/input.tsx).
-              className="h-11 md:h-10 w-full rounded-md border border-border bg-card text-foreground px-3 text-base md:text-sm focus:border-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              className="h-11 md:h-10 w-full rounded-md border border-input bg-card text-foreground px-3 text-base md:text-sm focus:border-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
         ) : null}
         {/* red-700/red-300 (idiom de `status-tone.ts`), no `text-destructive`: el
             token es red-600 en los DOS temas y sobre la superficie oscura da 3.87:1. */}
         {error ? (
-          <p role="alert" className="text-xs text-red-700 dark:text-red-300">
+          <p role="alert" className="text-[13px] text-red-700 dark:text-red-300">
             {error}
           </p>
         ) : null}

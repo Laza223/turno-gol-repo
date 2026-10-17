@@ -87,8 +87,10 @@ type AuthCtx = {
    * `reaccess_unknown_email`: se pidió re-acceso para un email no registrado —
    * al caller se le responde igual que a un envío real (no filtramos qué emails
    * existen), así que este es el único rastro de que no se mandó ningún mail.
+   * `reaccess_rate_limited`: email existente que volvió a pedir dentro del mínimo
+   * de Supabase — mismo `ok: true`, sin mail nuevo (vale el enlace anterior).
    */
-  flow?: 'signup' | 'reaccess' | 'reaccess_unknown_email'
+  flow?: 'signup' | 'reaccess' | 'reaccess_unknown_email' | 'reaccess_rate_limited'
   /** magiclink.clicked: si el intercambio del código terminó en sesión. */
   ok?: boolean
 }
@@ -111,10 +113,25 @@ type AuthCtx = {
  *   Las dos salidas, cuando haga falta: (a) emitirlo desde el cliente contra un
  *   endpoint, que es infraestructura que la Fase 5 probablemente necesite
  *   igual; (b) sacarle el ISR a la portada, si el dato vale más que 300s de
- *   cache. Las otras dos páginas del embudo son `force-dynamic`, así que sus
- *   eventos sí cuentan visitas reales.
+ *   cache.
+ *
+ * `profile.viewed` tomó la salida (a): la ficha del complejo (`(perfil)/page.tsx`) también es
+ * ISR, así que lo emite el cliente con la Server Action `trackProfileViewedAction`
+ * (`(perfil)/actions.ts`), una vez por pestaña cuando el primer día termina de cargar. Hasta el PR 2.3a
+ * salía de `/disponibilidad` (`force-dynamic`, ya eliminada) y contaba visitas a la vista
+ * semanal: la serie cambia de escala, no se compara hacia atrás (nota en
+ * `docs/gtm/ejecucion/06-metricas-activacion.md`). `checkout.viewed` sí sigue saliendo de una
+ * página `force-dynamic`, así que cuenta visitas reales.
  */
-type FunnelEvent = 'portal.viewed' | 'profile.viewed' | 'checkout.viewed'
+type FunnelEvent =
+  | 'portal.viewed'
+  | 'profile.viewed'
+  | 'checkout.viewed'
+  // La reserva que se confirma sola al volver del ingreso (vínculo firmado, `booking-intent.ts`):
+  // `confirmed` cuando la action la creó con un vínculo válido; `degraded` cuando VINO un vínculo
+  // y no alcanzó (el jugador cae en la pantalla normal con el botón). Sin PII: ni email ni token.
+  | 'checkout.intent_confirmed'
+  | 'checkout.intent_degraded'
 
 type FunnelCtx = {
   tenantId?: string
@@ -122,6 +139,8 @@ type FunnelCtx = {
   withDate?: boolean
   /** checkout.viewed: si el turno exige seña (cambia el flujo que sigue). */
   withDeposit?: boolean
+  /** checkout.intent_degraded: por qué el vínculo no confirmó solo. */
+  reason?: 'deposit' | 'invalid' | 'expired' | 'email_mismatch' | 'fields_mismatch' | 'taken'
 }
 
 type AvailabilityEvent = 'availability.public.query'

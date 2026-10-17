@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
-type Accent = 'emerald' | 'violet' | 'amber' | 'sky' | 'red' | 'slate'
+type Accent = 'emerald' | 'amber' | 'sky' | 'red' | 'slate'
 
 interface DeltaProps {
   label: string
@@ -18,7 +18,7 @@ interface StatCardProps {
   sub?: string
   /** Variación vs período previo, con color semántico (up=emerald, down=red). */
   delta?: DeltaProps
-  /** Acento del icon-halo. emerald=admin (default), violet=super-admin. */
+  /** Acento del icon-halo. emerald por default (admin y super-admin). */
   accent?: Accent
   /**
    * Detalle que descompone el `value`, dentro de la misma card. La pregunta y
@@ -37,7 +37,7 @@ interface StatCardProps {
  * (H084 — MASTER §2.5 semáforo financiero + §9 von Restorff: "el estado que
  * exige acción es el distinto"). Antes el accent solo teñía el ícono de 36px;
  * la cifra —lo que el dueño realmente lee— quedaba en el mismo negro que
- * cualquier otro dato neutro. emerald/violet/sky/slate no llevan tono propio:
+ * cualquier otro dato neutro. emerald/sky/slate no llevan tono propio:
  * no son alertas de plata, así que el `value` sigue en `text-foreground`.
  */
 const VALUE_TONE: Partial<Record<Accent, string>> = {
@@ -50,8 +50,6 @@ const VALUE_TONE: Partial<Record<Accent, string>> = {
 const ACCENT: Record<Accent, string> = {
   emerald:
     'bg-emerald-500/10 text-emerald-600 ring-emerald-500/20 dark:bg-emerald-500/15 dark:text-emerald-400 dark:ring-emerald-500/25',
-  violet:
-    'bg-violet-500/10 text-violet-600 ring-violet-500/20 dark:bg-violet-500/15 dark:text-violet-400 dark:ring-violet-500/25',
   amber:
     'bg-amber-500/10 text-amber-600 ring-amber-500/20 dark:bg-amber-500/15 dark:text-amber-400 dark:ring-amber-500/25',
   sky: 'bg-sky-500/10 text-sky-600 ring-sky-500/20 dark:bg-sky-500/15 dark:text-sky-400 dark:ring-sky-500/25',
@@ -81,7 +79,7 @@ const DELTA_GLYPH: Record<DeltaProps['direction'], string> = {
 /**
  * KPI card premium theme-adaptive (light=elevación, dark=glass) con icon-halo,
  * valor `font-display tabular-nums`, delta semántico y hover-lift. Primitiva
- * canónica: `MetricCard` (admin) y `SaMetricCard` (super-admin) delegan acá.
+ * canónica del panel y del super-admin.
  */
 export function StatCard({
   label,

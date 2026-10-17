@@ -2,6 +2,7 @@ import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { tagSession } from '@/shared/middleware/observability'
 import { resolveImpersonatedStaffContextFor } from '@/modules/auth/impersonation.server'
+import { isPlayerAccount } from './account-kind'
 import type { AuthUser } from './types'
 
 /**
@@ -19,10 +20,9 @@ export const extractRealAuthUser = cache(async (): Promise<AuthUser | null> => {
   const user = data.user
 
   const meta: Record<string, unknown> = user.app_metadata ?? {}
-  const userMeta: Record<string, unknown> = user.user_metadata ?? {}
   const email = user.email ?? ''
 
-  if (meta.is_player === true || userMeta.is_player === true) {
+  if (isPlayerAccount(user)) {
     const playerId = typeof meta.player_id === 'string' ? meta.player_id : user.id
     tagSession(null, playerId, 'player')
     return { type: 'player', id: user.id, playerId, email }

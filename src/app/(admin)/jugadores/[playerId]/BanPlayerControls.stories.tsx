@@ -26,6 +26,17 @@ const meta = {
   title: 'Admin/Jugadores/BanPlayerControls',
   component: BanPlayerControls,
   parameters: { layout: 'padded' },
+  // El puntero REAL de Chromium no entra a esta story (misma clase que `ExplorarSplitView`): uno
+  // anterior del shard lo deja sobre "Bloquear jugador" y axe mide el hover (`hover:bg-red-50`, 4,41:1)
+  // en vez del reposo. Los clicks de `userEvent` son sintéticos y no pasan por el hit-testing; el
+  // diálogo monta en `<body>`, fuera de este envoltorio.
+  decorators: [
+    (Story) => (
+      <div className="pointer-events-none">
+        <Story />
+      </div>
+    ),
+  ],
   args: {
     playerId: PLAYER_ID,
     ban: NOT_BANNED,
@@ -36,6 +47,9 @@ const meta = {
 
 export default meta
 type Story = StoryObj<typeof meta>
+
+/** Los disparadores viven bajo el decorador sin puntero real: user-event no puede chequear su CSS. */
+const SINTETICO = { pointerEventsCheck: 0 } as const
 
 /** Jugador sin bloqueo: solo aparece "Bloquear jugador". */
 export const SinBloqueo: Story = {
@@ -70,7 +84,7 @@ export const BloquearValidaMotivo: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
-    await userEvent.click(canvas.getByRole('button', { name: 'Bloquear jugador' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Bloquear jugador' }), SINTETICO)
 
     const dialog = within(await body.findByRole('dialog'))
     await userEvent.click(dialog.getByRole('button', { name: 'Bloquear jugador' }))
@@ -85,7 +99,7 @@ export const BloquearJugadorCompleto: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
-    await userEvent.click(canvas.getByRole('button', { name: 'Bloquear jugador' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Bloquear jugador' }), SINTETICO)
 
     const dialogEl = await body.findByRole('dialog')
     const dialog = within(dialogEl)
@@ -114,7 +128,7 @@ export const LevantarBloqueo: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
-    await userEvent.click(canvas.getByRole('button', { name: 'Levantar bloqueo' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Levantar bloqueo' }), SINTETICO)
 
     const dialogEl = await body.findByRole('dialog')
     const dialog = within(dialogEl)

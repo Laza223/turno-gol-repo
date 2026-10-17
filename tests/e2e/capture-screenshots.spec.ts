@@ -228,10 +228,6 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await expect(anonPage.getByText('E2E Complejo Demo').first()).toBeVisible()
     await takeShot(anonPage, 'public', 'pagina_complejo')
 
-    // Weekly Availability (/[slug]/disponibilidad)
-    await anonPage.goto('/e2e-complejo-demo/disponibilidad')
-    await takeShot(anonPage, 'public', 'disponibilidad_semanal')
-
     // Booking flow - no deposit selection
     const demoTime = isMobile ? '19:00' : '15:00'
     await playerPage.goto(
@@ -249,7 +245,7 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await takeShot(playerPage, 'public', 'reserva_formulario_con_sena')
 
     // Click to go to MercadoPago checkout mock
-    await playerPage.getByRole('button', { name: /pagar seña/i }).click()
+    await playerPage.getByRole('button', { name: /pagar la seña/i }).click()
     await expect(playerPage).toHaveURL(/\/mock-mp\/checkout/, { timeout: 15000 })
     await takeShot(playerPage, 'public', 'reserva_checkout_mp')
 
@@ -261,11 +257,17 @@ test.describe('UX Audit Screenshot Capturer', () => {
     })
     await takeShot(playerPage, 'public', 'reserva_exito')
 
-    // Go to error route for the confirmed booking (since booking is no longer pending, it acts as expired)
+    // /error sobre una reserva confirmada redirige a /exito: para ver la pantalla de "el turno se
+    // liberó" la reserva tiene que estar expirada de verdad (la transición la hace el worker en
+    // producción; acá no corre, así que se fuerza por la API de servicio).
+    const { error: expireError } = await supabase
+      .from('bookings')
+      .update({ status: 'expired' })
+      .eq('id', bookingId)
+    expect(expireError).toBeNull()
     await playerPage.goto(`/reserva/${bookingId}/error`)
-    await expect(
-      playerPage.getByRole('heading', { name: /el pago no se procesó|reservar de nuevo/i }),
-    ).toBeVisible()
+    await expect(playerPage.getByRole('heading', { name: 'El pago no se procesó' })).toBeVisible()
+    await expect(playerPage.getByRole('link', { name: 'Reservar de nuevo' })).toBeVisible()
     await takeShot(playerPage, 'public', 'reserva_expirada')
 
     // ───────────────────────────────────────────────────────────────────────

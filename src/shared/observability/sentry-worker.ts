@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
-import { scrubEvent } from '@/lib/sentry-pii-scrub'
+import { scrubEvent, scrubTransaction } from '@/lib/sentry-pii-scrub'
 import { isValidDsn, isDroppableDomainError } from '@/lib/sentry-event-filter'
 import { logger } from '@/shared/lib/logger'
 import { registerSentryErrorSink } from './error-sink'
@@ -47,6 +47,11 @@ export function initWorkerSentry(): boolean {
         // `extra` sin pensarlo, y son los que corren el cron que renueva las
         // credenciales de MercadoPago (H-7).
         scrubEvent(event)
+        return event
+      },
+      beforeSendTransaction(event) {
+        if (process.env.NODE_ENV !== 'production') return null
+        scrubTransaction(event)
         return event
       },
     })

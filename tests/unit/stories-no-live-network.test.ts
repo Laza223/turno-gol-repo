@@ -41,16 +41,11 @@ const ALLOWLIST: Record<string, string> = {
     'El link de wa.me se deja INERTE a propósito (comentario en el archivo): la story ' +
     'solo lee el atributo href, nunca lo clickea.',
   'src/components/booking/BookingSuccessExtras.stories.tsx':
-    '`CompartirPorWhatsApp` intercepta `window.open` con spyOn+mockImplementation antes ' +
-    'de clickear — nunca navega de verdad; `ComoLlegar` solo lee el atributo href de ' +
-    'Google Maps sin clickear.',
+    '`ComoLlegar` solo lee el atributo href del link a Google Maps, sin clickearlo — nunca ' +
+    'navega ni se renderiza como recurso.',
   'src/app/reserva/[bookingId]/exito/BookingSuccessCard.stories.tsx':
-    'verifyUrl llega a BookingQR, que genera el SVG local con `uqr` (sin canvas ni red).',
-  'src/components/booking/BookingQR.stories.tsx':
-    'value llega a `uqr`, que genera el SVG local — sin canvas ni red (ver BookingQR.tsx).',
-  'src/components/booking/BookingReceipt.stories.tsx':
-    'verifyUrl llega a BookingQR (SVG local, `uqr`) y a un <span> de texto plano — nunca ' +
-    'se fetchea.',
+    '`complexUrl` solo se arma dentro del texto del href de "Avisarle al grupo" (un wa.me que la ' +
+    'story lee, nunca clickea); el link de Google Maps de "Cómo llegar" tampoco se sigue.',
   'src/components/dashboard/onboarding-checklist.stories.tsx':
     'appUrl solo alimenta `navigator.clipboard.writeText()` — nunca se fetchea ni se ' +
     'renderiza como recurso.',

@@ -49,6 +49,7 @@ const STAFF_USER = {
 const mockTenant = (status: string) => ({ id: 'tenant-1', status, settings: {} })
 
 const inviteUserByEmail = vi.fn()
+const resetPasswordForEmail = vi.fn()
 
 function inviteForm() {
   const fd = new FormData()
@@ -64,9 +65,11 @@ beforeEach(() => {
   vi.mocked(getStaffTenant).mockResolvedValue(mockTenant('active') as never)
   vi.mocked(adminRateLimited).mockResolvedValue(null)
   inviteUserByEmail.mockResolvedValue({ data: { user: { id: 'auth-1' } }, error: null })
+  resetPasswordForEmail.mockResolvedValue({ error: null })
   vi.mocked(createAdminClient).mockReturnValue({
     auth: {
       admin: { inviteUserByEmail, updateUserById: vi.fn().mockResolvedValue({}) },
+      resetPasswordForEmail,
     },
   } as never)
 })
@@ -146,6 +149,33 @@ describe('resendInviteAction — verificacion de membership (#12)', () => {
     expect(res).toEqual({ success: true })
     expect(isStaffMemberOfTenant).toHaveBeenCalledWith('tenant-1', 'miembro@test.local')
     expect(inviteUserByEmail).toHaveBeenCalledWith('miembro@test.local', expect.any(Object))
+  })
+
+  it('si el invitado ya confirmó (email_exists), manda el mail de recuperación en vez de fallar', async () => {
+    actorIsAdmin()
+    vi.mocked(isStaffMemberOfTenant).mockResolvedValue(true)
+    inviteUserByEmail.mockResolvedValue({
+      data: { user: null },
+      error: {
+        code: 'email_exists',
+        message: 'A user with this email address has already been registered',
+      },
+    })
+    const res = await resendInviteAction('miembro@test.local')
+    expect(res).toEqual({ success: true })
+    expect(resetPasswordForEmail).toHaveBeenCalledWith('miembro@test.local', expect.any(Object))
+  })
+
+  it('si falla también el mail de recuperación, devuelve el error', async () => {
+    actorIsAdmin()
+    vi.mocked(isStaffMemberOfTenant).mockResolvedValue(true)
+    inviteUserByEmail.mockResolvedValue({
+      data: { user: null },
+      error: { code: 'email_exists', message: 'already been registered' },
+    })
+    resetPasswordForEmail.mockResolvedValue({ error: { message: 'smtp' } })
+    const res = await resendInviteAction('miembro@test.local')
+    expect(res.success).toBe(false)
   })
 })
 

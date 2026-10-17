@@ -61,12 +61,6 @@ export const Accents: Story = {
         icon={<Banknote className="h-5 w-5" aria-hidden="true" />}
       />
       <StatCard
-        label="Violet"
-        value="42"
-        accent="violet"
-        icon={<Banknote className="h-5 w-5" aria-hidden="true" />}
-      />
-      <StatCard
         label="Amber"
         value="42"
         accent="amber"

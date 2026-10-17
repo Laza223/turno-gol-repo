@@ -7,6 +7,7 @@ import { enqueueNotification } from '@/modules/notifications/notification.servic
 import { calculatePrice } from '@/modules/courts/court.service'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 import { addDays, artTodayStr } from '@/shared/dates/art'
+import { formatArtDate } from '@/shared/time/art-date'
 import { physicalRange } from '@/shared/time/physical-range'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 import { formatArs } from '@/lib/format'
@@ -90,6 +91,7 @@ type LockedBooking = {
   deposit_amount: number
   deposit_status: string
   date: string
+  starts_at: Date | string
   time_start: string
   time_end: string
 }
@@ -98,7 +100,8 @@ async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking |
   const rows = await tx.execute(sql`
     SELECT id, tenant_id, court_id, player_id, status, type, price_snapshot,
            deposit_amount, deposit_status,
-           date::text AS date, time_start::text AS time_start, time_end::text AS time_end
+           date::text AS date, starts_at, time_start::text AS time_start,
+           time_end::text AS time_end
     FROM bookings
     WHERE id = ${bookingId}
     FOR UPDATE
@@ -179,32 +182,18 @@ function assertDateWindow(date: string, maxAdvanceDays: number | undefined): voi
   }
 }
 
-/** Date (columna DATE, sin componente horario) → "DD/MM/YYYY". */
-function formatDateArs(d: Date): string {
-  const dd = String(d.getUTCDate()).padStart(2, '0')
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
-  return `${dd}/${mm}/${d.getUTCFullYear()}`
-}
-
-/**
- * "YYYY-MM-DD" → "DD/MM/YYYY". La fecha de ORIGEN llega como string (la query
- * de lock la trae con `date::text`) y la de DESTINO como Date: sin esto el
- * email mostraba las dos fechas del mismo mensaje en formatos distintos
- * ("se movió del 2026-08-04 al 05/08/2026").
- */
-function formatDateStrArs(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-')
-  return `${d}/${m}/${y}`
-}
-
 async function loadEmailNames(
   tenantId: string,
   courtId: string,
   playerId: string,
   tx: DbTx,
-): Promise<{ courtName: string; tenantName: string; playerFirstName: string } | undefined> {
+): Promise<
+  | { courtName: string; tenantName: string; playerFirstName: string; hidePrices: boolean }
+  | undefined
+> {
   const rows = await tx.execute(sql`
-    SELECT c.name AS court_name, t.name AS tenant_name, p.first_name AS player_first_name
+    SELECT c.name AS court_name, t.name AS tenant_name, p.first_name AS player_first_name,
+           COALESCE((t.settings ->> 'hide_public_prices')::boolean, false) AS hide_prices
     FROM courts c, tenants t, players p
     WHERE c.id = ${courtId} AND t.id = ${tenantId} AND p.id = ${playerId}
   `)
@@ -213,6 +202,7 @@ async function loadEmailNames(
       court_name: string
       tenant_name: string
       player_first_name: string
+      hide_prices: boolean
     }>
   )[0]
   if (!row) return undefined
@@ -220,6 +210,7 @@ async function loadEmailNames(
     courtName: row.court_name,
     tenantName: row.tenant_name,
     playerFirstName: row.player_first_name,
+    hidePrices: row.hide_prices,
   }
 }
 
@@ -436,14 +427,16 @@ export async function rescheduleBooking(
               playerFirstName: names.playerFirstName,
               tenantName: names.tenantName,
               fromCourtName: from.courtName,
-              fromDate: formatDateStrArs(from.date),
+              // Origen y destino: día físico (`starts_at`), mismo formato en las dos fechas del mail.
+              fromDate: formatArtDate(new Date(booking.starts_at)),
               fromTimeStart: from.timeStart,
               fromTimeEnd: from.timeEnd,
               toCourtName: names.courtName,
-              toDate: formatDateArs(bookingRow.date),
+              toDate: formatArtDate(bookingRow.startsAt),
               toTimeStart: bookingRow.timeStart.slice(0, 5),
               toTimeEnd: bookingRow.timeEnd.slice(0, 5),
-              price: formatArs(priceSnapshot),
+              // Complejo con precios ocultos: el mail no lleva el monto.
+              price: names.hidePrices ? null : formatArs(priceSnapshot),
               priceChanged,
             },
             triggerEvent: 'booking.rescheduled',

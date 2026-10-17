@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
 import { redirect } from 'next/navigation'
 import { bookingCode } from '@/lib/booking-code'
 import { sql } from 'drizzle-orm'
@@ -13,12 +14,14 @@ import { dispatchEmail } from '@/modules/notifications/notification.service'
 import { cancelByPlayer, type CancellationOutcome } from '@/modules/bookings/booking.cancellation'
 import {
   BookingAlreadyEndedError,
+  BookingNotCancelableError,
   BookingNotInConfirmedError,
   BookingNotOwnedByPlayerError,
   TenantInactiveError,
 } from '@/modules/bookings/booking.errors'
-import type { BookingRow } from '@/modules/bookings/booking.types'
+import type { BookingRow, BookingStatus, CancellationActor } from '@/modules/bookings/booking.types'
 import { captureMessage } from '@/lib/sentry'
+import { withTimeout } from '@/shared/utils/async'
 
 const cancelSchema = z.object({
   bookingId: uuid,
@@ -32,6 +35,10 @@ const cancelSchema = z.object({
  * una Server Action en el payload RSC (visible en el Network tab del
  * jugador), sin importar si el componente cliente los lee. Este tipo
  * reducido es lo único que el jugador puede ver de SU PROPIA reserva.
+ *
+ * Sin `priceSnapshot` a propósito: un complejo con `hide_public_prices` no muestra el monto del
+ * turno, y la respuesta de la action viaja al browser aunque ningún componente la lea. La seña
+ * propia sí va (`depositAmount`).
  */
 type PlayerBookingRow = Pick<
   BookingRow,
@@ -42,7 +49,6 @@ type PlayerBookingRow = Pick<
   | 'timeEnd'
   | 'depositStatus'
   | 'depositAmount'
-  | 'priceSnapshot'
   | 'canceledReason'
   | 'canceledAt'
 >
@@ -56,7 +62,6 @@ function toPlayerBookingRow(booking: BookingRow): PlayerBookingRow {
     timeEnd: booking.timeEnd,
     depositStatus: booking.depositStatus,
     depositAmount: booking.depositAmount,
-    priceSnapshot: booking.priceSnapshot,
     canceledReason: booking.canceledReason,
     canceledAt: booking.canceledAt,
   }
@@ -105,12 +110,52 @@ export type RefundContactInfo = {
 
 export type PlayerBookingActionResult =
   | { success: true; booking: PlayerBookingRow; refund?: RefundContactInfo }
-  | { success: false; error: string }
+  | {
+      success: false
+      error: string
+      /**
+       * Error de ESTADO (cancelada, jugada, vencida): reintentar no sirve. La UI lo
+       * avisa con un toast y cierra el diálogo; sin esto queda inline.
+       */
+      stale?: true
+    }
 
 async function requirePlayer() {
   const user = await extractAuthUser()
   if (!user || user.type !== 'player') redirect('/ingresar')
   return user
+}
+
+/** Tope del despacho del mail; pasado esto se loguea y lo levanta el cron de send-email. */
+const EMAIL_DISPATCH_TIMEOUT_MS = 15_000
+
+const NOT_CANCELABLE_DEFAULT =
+  'Esta reserva ya no se puede cancelar desde acá. Escribile al complejo.'
+
+/** Qué le pasó a la reserva (todo `booking_status` menos `confirmed`). `canceledBy: 'player'` no llega: es su replay. */
+function notCancelableCopy(status: BookingStatus, canceledBy: CancellationActor | null): string {
+  switch (status) {
+    case 'canceled_refunded':
+    case 'canceled_no_refund':
+      return canceledBy === 'admin' || canceledBy === 'system'
+        ? 'El complejo ya canceló esta reserva.'
+        : 'Esta reserva ya está cancelada.'
+    case 'completed':
+      return 'Este turno ya se jugó.'
+    case 'no_show':
+      return 'Este turno ya pasó.'
+    case 'expired':
+      return 'Esta reserva venció.'
+    case 'pending_payment':
+    case 'confirmed':
+      return NOT_CANCELABLE_DEFAULT
+  }
+}
+
+/** Error de estado: refresca la lista (la tarjeta quedó vieja) y lo marca `stale`. */
+function staleError(error: string): PlayerBookingActionResult {
+  revalidatePath('/mis-reservas')
+  return { success: false, error, stale: true }
 }
 
 export async function cancelMyBookingAction(
@@ -169,12 +214,16 @@ export async function cancelMyBookingAction(
       return { success: false, error: 'No tenés permiso para cancelar esta reserva.' }
     }
     if (err instanceof BookingNotInConfirmedError) {
-      return { success: false, error: 'La reserva no está en estado confirmado.' }
+      return staleError(
+        err instanceof BookingNotCancelableError
+          ? notCancelableCopy(err.status, err.canceledBy)
+          : NOT_CANCELABLE_DEFAULT,
+      )
     }
     // 07-cancelbyplayer-noshow-guard: el turno ya terminó — no es una
     // cancelación, es una ausencia; se resuelve con el complejo.
     if (err instanceof BookingAlreadyEndedError) {
-      return { success: false, error: 'El turno ya terminó. Contactá al complejo.' }
+      return staleError('El turno ya terminó. Contactá al complejo.')
     }
     // #31: el complejo en estado blocked/deleted hace que cancelByPlayer lance
     // TenantInactiveError. Sin este catch se propagaba como error no controlado
@@ -187,25 +236,41 @@ export async function cancelMyBookingAction(
 
   revalidatePath('/mis-reservas')
 
-  // doc7 Flujo 4: booking_canceled encolado dentro de la tx (cancelByPlayer)
-  // se despacha recién ahora que commiteó. Si el dispatch falla, la cancelación
-  // ya es válida —no hay rollback— y el sweep por cron de send-email levanta la
-  // notificación 'queued' igual; nunca convertir esto en error para el usuario.
-  try {
-    await Promise.all(outcome.notificationIds.map((id) => dispatchEmail(id)))
-  } catch (err) {
-    captureMessage('email dispatch failed after player cancellation', {
-      level: 'warning',
-      extra: {
-        bookingId: parsed.data.bookingId,
-        tenantId: pre.tenant_id,
-        notificationIds: outcome.notificationIds,
-        error: err instanceof Error ? err.message : String(err),
-      },
+  const booking = toPlayerBookingRow(outcome.booking)
+  // Reintento de una cancelación ya hecha: la misma respuesta de éxito, sin mail
+  // ni aviso de devolución (la lista ya muestra el estado real de la devolución).
+  if (outcome.replayed) return { success: true, booking }
+
+  // doc7 Flujo 4: el mail se despacha ya commiteada la tx, y en `after()`:
+  // `dispatchEmail` arranca pg-boss en frío (`getBoss` → `boss.start()`) y esperarlo
+  // dejó al jugador sin respuesta en 4G (2026-10-14). Si falla o vence, la
+  // cancelación sigue válida y el cron de send-email levanta la 'queued'.
+  const { notificationIds } = outcome
+  if (notificationIds.length > 0) {
+    after(async () => {
+      try {
+        await withTimeout(
+          Promise.all(notificationIds.map((id) => dispatchEmail(id))),
+          EMAIL_DISPATCH_TIMEOUT_MS,
+          `dispatchEmail no terminó en ${EMAIL_DISPATCH_TIMEOUT_MS} ms`,
+        )
+      } catch (err) {
+        // `captureMessage` de `@/lib/sentry` y no `logger.error`: el sink del logger solo
+        // existe si Sentry ya se inicializó en esta invocación y no hace flush, y Vercel
+        // congela la función apenas termina este callback (el evento se pierde). Éste
+        // inicializa, captura y agenda el flush con un `after()` anidado, que Next permite.
+        captureMessage('email dispatch failed after player cancellation', {
+          level: 'warning',
+          extra: {
+            bookingId: parsed.data.bookingId,
+            tenantId: pre.tenant_id,
+            notificationIds,
+            error: err instanceof Error ? err.message : String(err),
+          },
+        })
+      }
     })
   }
-
-  const booking = toPlayerBookingRow(outcome.booking)
 
   // `canceled_refunded` es exactamente "corresponde devolver la seña": lo fija
   // `cancelByPlayer` solo cuando la cancelación entró en política Y había seña

@@ -8,16 +8,66 @@
  * El project `visual-mobile` matchea por `*.mobile.spec.ts`.
  */
 
-import { test, expect, suppressPushBanner, ADMIN_STORAGE_STATE } from './_visual-test'
-import { FROZEN_NOW, VISUAL_DATE, VISUAL_TENANT_SLUG, seedVisualData } from './_seed'
+import {
+  test,
+  expect,
+  suppressPushBanner,
+  waitForPlayerSession,
+  ADMIN_STORAGE_STATE,
+  PLAYER_STORAGE_STATE,
+} from './_visual-test'
+import { tomorrowDateIsoArt } from '../_helpers/booking-seed'
+import {
+  FROZEN_NOW,
+  VISUAL_DATE,
+  VISUAL_PLAYER_BOOKING_ID,
+  VISUAL_TENANT_SLUG,
+  seedVisualData,
+} from './_seed'
 
 test('ficha pública mobile @visual', async ({ page }) => {
   await suppressPushBanner(page)
-  await page.goto(`/${VISUAL_TENANT_SLUG}`)
+  // Mañana, no hoy: hoy puede no tener horas (ya pasaron) y eso cambia la altura de la reserva y
+  // dónde cae el resto de la ficha (ver el spec de escritorio).
+  await page.goto(`/${VISUAL_TENANT_SLUG}?date=${tomorrowDateIsoArt()}`)
   await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
+  // La altura de la reserva decide dónde cae el resto de la ficha: se espera a que su primer estado
+  // quede resuelto (horas, día cerrado o error: `data-state`), no a un texto que un día cerrado
+  // o un error nunca tienen.
+  await expect(page.getByRole('region', { name: 'Reservá tu turno' })).toHaveAttribute(
+    'data-state',
+    /^(ready|closed|error)$/,
+  )
   await expect(page).toHaveScreenshot('perfil-publico-mobile.png', {
-    // Ver el spec de escritorio: la disponibilidad es "ahora"-relativa por diseño.
-    mask: [page.getByRole('region', { name: 'Grilla de disponibilidad' })],
+    // Ver el spec de escritorio: la reserva, el estado de apertura, la tira de días (sangra fuera
+    // de la región) y la fila de hoy en Horarios son "ahora"-relativos por diseño.
+    mask: [
+      page.getByRole('region', { name: 'Reservá tu turno' }),
+      page.getByTestId('open-status'),
+      page.getByRole('radiogroup', { name: 'Día' }),
+      page.getByTestId('opening-hours'),
+    ],
+  })
+})
+
+test.describe('visual mobile — jugador', () => {
+  test.use({ storageState: PLAYER_STORAGE_STATE })
+
+  test.beforeAll(async () => {
+    await seedVisualData()
+  })
+
+  test('reserva confirmada mobile @visual', async ({ page }) => {
+    // Misma reserva `…0903` que el spec de escritorio (ver ahí): día fijo, jugador `…0020`.
+    await page.goto(`/reserva/${VISUAL_PLAYER_BOOKING_ID}/exito`)
+    await expect(page.getByRole('heading', { name: '¡Reserva confirmada!' })).toBeVisible()
+    // En el celular la barra inferior del jugador llega con la sesión: sin esperarla, la foto
+    // sale con el pie sin su relleno o con la barra a medio aparecer.
+    await waitForPlayerSession(page)
+    await expect(page.getByRole('navigation', { name: 'Navegación del jugador' })).toBeVisible()
+    await expect(page).toHaveScreenshot('reserva-confirmada-mobile.png', {
+      mask: [page.getByRole('region', { name: 'Código de la reserva' }).locator('.font-mono')],
+    })
   })
 })
 

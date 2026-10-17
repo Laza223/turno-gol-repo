@@ -55,12 +55,14 @@ import {
 } from '@/modules/bookings/booking.cancellation'
 import {
   BookingAlreadyEndedError,
+  BookingNotCancelableError,
   BookingNotInConfirmedError,
   BookingNotInNoShowError,
   BookingNotOwnedByPlayerError,
   NoShowRevertWindowExpiredError,
   TenantInactiveError,
 } from '@/modules/bookings/booking.errors'
+import { track } from '@/shared/observability'
 
 // Dinámica (hoy + 500 días): con fecha fija el test 4A se volvía out-of-policy
 // cuando la fecha quedaba a menos de 9999h. Con +500 días, la policy de 9999h
@@ -1396,7 +1398,10 @@ describe('cancelByPlayer — ownership guard (IDOR)', () => {
 // Sólo se testeaba el guard de estado terminal por el lado admin. El lado
 // jugador (cancelByPlayer) tenía el mismo guard sin cobertura.
 describe('cancelByPlayer — state guard', () => {
-  it('rechaza cancelar un booking ya cancelado (no-confirmado)', async () => {
+  // Una cancelada SIN `canceled_by` (acá, un UPDATE directo) no es un replay: no hay
+  // constancia de que la haya cancelado ESTE jugador, así que se rechaza. El doble
+  // click del mismo jugador, con `canceled_by='player'`, es éxito: ver "idempotencia".
+  it('rechaza cancelar un booking ya cancelado sin canceled_by (no es replay)', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
@@ -1415,7 +1420,7 @@ describe('cancelByPlayer — state guard', () => {
     await sql`UPDATE bookings SET status = 'canceled_no_refund' WHERE id = ${bookingId}`
 
     await expect(
-      withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, 'doble click', tx)),
+      withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, 'sin actor', tx)),
     ).rejects.toBeInstanceOf(BookingNotInConfirmedError)
 
     // Estado terminal preservado (sin re-escritura a otro canceled_*).
@@ -1431,6 +1436,151 @@ describe('cancelByPlayer — state guard', () => {
     await expect(
       withTenantContext(tenant.id, (tx) => cancelByPlayer(ghostId, player.id, undefined, tx)),
     ).rejects.toBeInstanceOf(BookingNotInConfirmedError)
+  })
+})
+
+// ─── Idempotencia: el reintento del MISMO jugador no es un error ────────────
+// Producción 2026-10-14: la respuesta de la cancelación se perdió en la red, el
+// jugador reintentó y chocó con "no está confirmada" sobre una reserva que SÍ
+// había cancelado.
+describe('cancelByPlayer — idempotencia del reintento', () => {
+  for (const [label, hoursBefore, status] of [
+    ['dentro de plazo', 9999, 'canceled_refunded'],
+    ['fuera de plazo', 20000, 'canceled_no_refund'],
+  ] as const) {
+    it(`${label}: el mismo jugador recibe éxito con replayed:true y no se escribe NADA`, async () => {
+      const sql = getSql()
+      const tenant = await createTestTenant(sql)
+      const player = await createTestPlayer(sql)
+      const courtId = await insertCourt(tenant.id)
+      await setTenantPolicy(tenant.id, hoursBefore)
+      const bookingId = await insertConfirmedBooking({
+        tenantId: tenant.id,
+        courtId,
+        playerId: player.id,
+        date: FUTURE_DATE,
+        timeStart: '03:00',
+        timeEnd: '04:00',
+        depositStatus: 'paid',
+        depositAmount: 240_000,
+      })
+      const paymentId = await insertApprovedPayment({
+        tenantId: tenant.id,
+        bookingId,
+        playerId: player.id,
+        amount: 240_000,
+        mpPaymentId: `mp-pay-replay-${bookingId.slice(0, 8)}`,
+      })
+      await linkPaymentToBooking(bookingId, paymentId)
+
+      const first = await withTenantContext(tenant.id, (tx) =>
+        cancelByPlayer(bookingId, player.id, 'primero', tx),
+      )
+      expect(first.replayed).toBeUndefined()
+
+      // Todo lo que una cancelación escribe, para comparar antes/después.
+      const writes = async () => ({
+        booking: (
+          await sql`SELECT status, deposit_status, canceled_reason, canceled_at, updated_at
+                    FROM bookings WHERE id = ${bookingId}`
+        )[0],
+        audits: (await getAuditLogs(bookingId)).length,
+        refunds: await countPaymentsByType(bookingId, 'refund'),
+        mails: (await getNotificationsByTemplate(tenant.id, 'booking_canceled')).length,
+      })
+      const before = await writes()
+      expect(before).toMatchObject({ audits: 1, mails: 1, booking: { status } })
+
+      const trackSpy = vi.spyOn(track, 'booking')
+      try {
+        const replay = await withTenantContext(tenant.id, (tx) =>
+          cancelByPlayer(bookingId, player.id, 'reintento', tx),
+        )
+        expect(replay.replayed).toBe(true)
+        expect(replay.notificationIds).toEqual([])
+        expect(replay.booking).toMatchObject({ id: bookingId, status, canceledReason: 'primero' })
+        expect(trackSpy).not.toHaveBeenCalled()
+      } finally {
+        trackSpy.mockRestore()
+      }
+      // Ni update (updated_at/canceled_reason intactos), ni audit, ni devolución, ni mail.
+      expect(await writes()).toEqual(before)
+    })
+  }
+
+  it('cancelada por el complejo: el jugador recibe BookingNotCancelableError con el estado real', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+    const bookingId = await insertConfirmedBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '04:00',
+      timeEnd: '05:00',
+    })
+    await withTenantContext(tenant.id, (tx) =>
+      cancelByAdmin(bookingId, staff.id, 'lluvia', 'complejo', tx),
+    )
+    const auditsBefore = (await getAuditLogs(bookingId)).length
+
+    const err = await withTenantContext(tenant.id, (tx) =>
+      cancelByPlayer(bookingId, player.id, undefined, tx),
+    ).catch((e: unknown) => e)
+
+    expect(err).toBeInstanceOf(BookingNotCancelableError)
+    // Subclase: los `instanceof BookingNotInConfirmedError` del panel siguen valiendo.
+    expect(err).toBeInstanceOf(BookingNotInConfirmedError)
+    expect(err).toMatchObject({ status: 'canceled_no_refund', canceledBy: 'admin' })
+    expect((await getAuditLogs(bookingId)).length).toBe(auditsBefore)
+  })
+
+  it('reserva AJENA ya cancelada: sigue dando BookingNotOwnedByPlayerError (el replay no es un oráculo)', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const owner = await createTestPlayer(sql)
+    const stranger = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    const bookingId = await insertConfirmedBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: owner.id,
+      date: FUTURE_DATE,
+      timeStart: '05:00',
+      timeEnd: '06:00',
+    })
+    await withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, owner.id, undefined, tx))
+
+    await expect(
+      withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, stranger.id, undefined, tx)),
+    ).rejects.toBeInstanceOf(BookingNotOwnedByPlayerError)
+  })
+
+  it('complejo sin política de cancelación guardada: decide con el default en vez de romper', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    await sql`UPDATE tenants SET settings = settings - 'cancellation_policy' WHERE id = ${tenant.id}`
+    const bookingId = await insertConfirmedBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE, // +500 días: muy adentro del plazo por defecto
+      timeStart: '06:00',
+      timeEnd: '07:00',
+      depositStatus: 'paid',
+      depositAmount: 240_000,
+    })
+
+    const outcome = await withTenantContext(tenant.id, (tx) =>
+      cancelByPlayer(bookingId, player.id, undefined, tx),
+    )
+    expect(outcome.booking.status).toBe('canceled_refunded')
   })
 })
 

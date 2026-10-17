@@ -28,7 +28,7 @@ export const ConDigest: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('No pudimos cargar tus reservas')).toBeInTheDocument()
+    await expect(canvas.getByText('No pudimos cargar esta página')).toBeInTheDocument()
     await expect(canvas.getByText('3f9a21bc')).toBeInTheDocument()
     await expect(canvas.getByRole('link', { name: 'Mis reservas' })).toHaveAttribute(
       'href',

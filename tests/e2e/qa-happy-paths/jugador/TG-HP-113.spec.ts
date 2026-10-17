@@ -38,7 +38,7 @@ test.describe('TG-HP-113 — Reseña post-partido', () => {
       await page.goto('/mis-reservas?tab=historial')
       await expect(page.getByRole('heading', { name: 'Mis reservas', level: 1 })).toBeVisible()
 
-      const card = page.locator('li').filter({ hasText: `${TIME_START}–${TIME_END}` })
+      const card = page.locator('li').filter({ hasText: `${TIME_START} a ${TIME_END}` })
       await expect(card).toBeVisible()
       await expect(card.getByText('Jugada')).toBeVisible()
 

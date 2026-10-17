@@ -7,7 +7,7 @@ description: Audita una capa específica del codebase siguiendo el Método Karpa
 
 ## Instrucciones
 1. Leé `docs/audit/PROGRESS.md` para saber en qué capa estás
-2. Leé `CLAUDE.md` sección "Modo Auditoría" para los criterios de calidad
+2. Leé `CLAUDE.md` § Guardrails (la línea "En auditoría: citar archivo + línea…") para los criterios de calidad
 3. Ejecutá la capa indicada siguiendo las reglas de acciones (SIEMPRE/PREGUNTAR/NUNCA)
 4. Para cada hallazgo:
    - Si es fix obvio → arreglalo, corré `bash scripts/audit-verify.sh`, registrá en PROGRESS.md

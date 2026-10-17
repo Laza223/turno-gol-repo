@@ -85,6 +85,7 @@ params: <params>`, ver `node_modules/drizzle-orm/errors.js`). Loguear `err.messa
 ## pg-boss
 
 - Workers en `src/shared/jobs/workers/`, nombres de cola en `src/shared/jobs/queue-names.ts`, proceso con `pnpm jobs:start`.
+- **`getBoss()` sin argumentos es productor (sin supervisor ni cron); todo entrypoint que procese jobs pide `getBoss('worker')` primero** — si no, `/health` da 200 y los crons no se disparan nunca, sin ningún error. La guarda de `run-workers.ts` está en `tests/unit/worker-health-server.test.ts`.
 - Todo job debe ser idempotente (webhooks deduplican vía `processed_webhooks` / idempotency keys en cash_flows).
 - Efectos con horario (push en madrugada 00–08): patrón `startAfter` de `src/modules/notifications/push-quiet-hours.ts`, nunca sleep.
 - **Un estado intermedio que sólo se sale dentro de la misma invocación del worker es una fila que se puede clavar para siempre.** Si el proceso muere en el medio (deploy de Railway, OOM), el barrido —que filtra por el estado de entrada— no la vuelve a ver nunca: falla en silencio, sin reintento ni alerta. Todo estado así necesita su marca de tiempo propia y un rescate al inicio del barrido. (pasó: 2026-09-07, AUD-15 — `notifications` en `'sending'`; el rescate está en `reclaimStalledSendingNotifications`.)

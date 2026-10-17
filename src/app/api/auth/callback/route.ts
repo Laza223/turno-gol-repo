@@ -9,9 +9,10 @@ import {
   syncStaffUserEmail,
   OrphanedStaffSessionError,
 } from '@/modules/auth/auth.service'
+import { hasStaffOrAdminClaims, isPlayerAccount } from '@/modules/auth/account-kind'
 import { getOrCreatePlayer } from '@/modules/players/player.service'
 import { sanitizeNext } from '@/lib/safe-redirect'
-import { playerSuccessIntent, successVerifyPath } from '@/lib/auth-success'
+import { isBookingPath, parseVia, successVerifyPath } from '@/lib/auth-success'
 import { logger } from '@/shared/lib/logger'
 import { track, withSpan } from '@/shared/observability'
 import { CURRENT_TERMS_VERSION } from '@/shared/terms'
@@ -34,8 +35,17 @@ const ALLOWED_OTP_TYPES = new Set<EmailOtpType>([
 ])
 
 function redirectVerifyError(req: NextRequest, code: string): NextResponse {
+  const params = new URL(req.url).searchParams
   const url = new URL('/verify', req.url)
   url.searchParams.set('error', code)
+  // Con marca de jugador, /verify necesita la vía (reintento con Google o con email)
+  // y el destino original para no perderlo al reintentar.
+  const via = parseVia(params.get('via'))
+  if (via) {
+    url.searchParams.set('via', via)
+    const next = params.get('next')
+    if (next) url.searchParams.set('next', sanitizeNext(next))
+  }
   return NextResponse.redirect(url)
 }
 
@@ -69,12 +79,14 @@ async function provisionPlayerAndRedirect(
   // reclasificada `type:'player'` para SIEMPRE, incluso en su próximo login
   // normal con password. Sin flujo de autoservicio para revertirlo. Cierra
   // sesión y explica en vez de mergear un rol encima del otro.
-  if (meta.tenant_id || meta.staff_user_id || meta.is_system_admin === true) {
+  if (hasStaffOrAdminClaims(meta)) {
     logger.warn('Cuenta staff/system_admin intentó loguearse como jugador', {
       module: 'auth-callback',
       authUserId: user.id,
     })
-    await supabase.auth.signOut()
+    // `local`: el default es global y cerraría también el panel que esta cuenta
+    // tenga abierto en otro dispositivo; el rechazo es solo de ESTE intento.
+    await supabase.auth.signOut({ scope: 'local' })
     return redirectVerifyError(req, 'account_conflict')
   }
 
@@ -95,17 +107,31 @@ async function provisionPlayerAndRedirect(
   const firstName = firstNameMeta || givenName || fullFirst || email.split('@')[0] || 'Jugador'
   const lastName = lastNameMeta ?? familyName ?? fullRest.join(' ')
 
-  const player = await getOrCreatePlayer(email, firstName, lastName, {
-    agreedToTerms: opts.agreedTerms,
-    termsVersion: opts.termsVersion,
-  })
-
-  if (meta.player_id !== player.id || meta.is_player !== true) {
-    const adminClient = createAdminClient()
-    await adminClient.auth.admin.updateUserById(user.id, {
-      app_metadata: { ...meta, is_player: true, player_id: player.id },
+  let player: Awaited<ReturnType<typeof getOrCreatePlayer>>
+  try {
+    player = await getOrCreatePlayer(email, firstName, lastName, {
+      agreedToTerms: opts.agreedTerms,
+      termsVersion: opts.termsVersion,
     })
-    await supabase.auth.refreshSession()
+
+    if (meta.player_id !== player.id || meta.is_player !== true) {
+      const { error } = await createAdminClient().auth.admin.updateUserById(user.id, {
+        app_metadata: { ...meta, is_player: true, player_id: player.id },
+      })
+      // Sin `is_player`/`player_id` la sesión queda rota: extractRealAuthUser cae al
+      // id de auth, que no es el de `players`. No se sigue de largo con esa sesión.
+      if (error) throw error
+      await supabase.auth.refreshSession()
+    }
+  } catch (err) {
+    logger.error('No se pudo provisionar al jugador en el callback', {
+      module: 'auth-callback',
+      authUserId: user.id,
+      error: err instanceof Error ? err.message : String(err),
+    })
+    // Sin cerrar la sesión de este intento quedaría un usuario logueado sin jugador.
+    await supabase.auth.signOut({ scope: 'local' })
+    return redirectVerifyError(req, 'provision_failed')
   }
 
   track.auth('player.login', { playerId: player.id })
@@ -117,8 +143,10 @@ async function provisionPlayerAndRedirect(
     return NextResponse.redirect(url)
   }
 
-  const intent = playerSuccessIntent(next, player.wasCreated)
-  return NextResponse.redirect(new URL(successVerifyPath(next, intent), req.url))
+  // Una reserva en curso vuelve DIRECTO a confirmar: ya tocó "Continuar" una vez y /verify sería
+  // otra pantalla y otro toque. El resto de los destinos sigue por /verify.
+  if (isBookingPath(next)) return NextResponse.redirect(new URL(next, req.url))
+  return NextResponse.redirect(new URL(successVerifyPath(next, 'login'), req.url))
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -127,14 +155,41 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
 async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
   const params = new URL(req.url).searchParams
+
+  // Google o Supabase vuelven con `error` cuando el ingreso no se completó (p. ej.
+  // `access_denied` si el usuario cancela en Google). Sin esto caían en `invalid`.
+  // Cancelar o un enlace de email vencido (`error_code=otp_expired`, que GoTrue
+  // devuelve igual como `access_denied`) son hechos del usuario, no fallas nuestras:
+  // van en warn, no a Sentry.
+  const providerError = params.get('error')
+  if (providerError) {
+    const errorCode = params.get('error_code')
+    const code =
+      errorCode === 'otp_expired'
+        ? 'expired'
+        : providerError === 'access_denied' && !errorCode
+          ? 'oauth_cancelled'
+          : 'oauth_failed'
+    const log = code === 'oauth_failed' ? logger.error : logger.warn
+    log('OAuth devolvió un error al callback', {
+      module: 'auth-callback',
+      error: providerError,
+      errorCode,
+      description: params.get('error_description')?.slice(0, 200),
+    })
+    return redirectVerifyError(req, code)
+  }
+
   const supabase = await createClient()
 
   // Google OAuth (jugador, alcance ADR-002/2026-08-14): rama `code` separada de
   // la de OTP de abajo — exchangeCodeForSession en vez de verifyOtp, sin `type`.
   // El consentimiento viaja por la cookie firmada de google-terms-cookie.ts, NO
-  // por un query param — solo LoginGate la setea (ahí el checkbox ya es
-  // obligatorio antes del click); /ingresar nunca la setea y cae en el gate de
-  // `hasAgreedTerms` de provisionPlayerAndRedirect.
+  // por un query param — solo la setea `startGoogleLoginFromReservar` (el
+  // checkout), y únicamente si la casilla llegó tildada: LoginGate la ataja en el
+  // cliente antes de enviar y la action la vuelve a exigir en el servidor.
+  // /ingresar nunca la setea y cae en el gate de `hasAgreedTerms` de
+  // provisionPlayerAndRedirect.
   const code = params.get('code')
   if (code) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
@@ -206,7 +261,24 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
 
   const meta: Record<string, unknown> = user.app_metadata ?? {}
   const userMeta: Record<string, unknown> = user.user_metadata ?? {}
-  const isPlayer = meta.is_player === true || userMeta.is_player === true
+  // `user_metadata.is_player` (options.data del magic link) solo cuenta mientras
+  // la cuenta no tenga claims de staff/superadmin — ver isPlayerAccount.
+  const isPlayer = isPlayerAccount(user)
+
+  // El enlace lo pidió un jugador (llega con `via`, que solo ponen los emisores del
+  // jugador) pero la cuenta es de un complejo o del super admin: se rechaza ANTES de
+  // provisionAndRouteStaff, que le crearía una fila `staff_users` espuria y la
+  // mandaría a /onboarding. Va después de verifyOtp: sin un token válido no se
+  // revela qué emails son de staff. Sin marca (alta, invitación, email_change) no
+  // cambia nada.
+  if (parseVia(params.get('via')) && !isPlayer) {
+    logger.warn('Cuenta de complejo/super admin pidió un enlace de jugador', {
+      module: 'auth-callback',
+      authUserId: user.id,
+    })
+    await supabase.auth.signOut({ scope: 'local' })
+    return redirectVerifyError(req, 'account_conflict')
+  }
 
   if (isPlayer) {
     const agreedTerms = userMeta.agreed_terms === true || meta.agreed_terms === true
@@ -240,7 +312,7 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
     ;({ path } = await provisionAndRouteStaff(user))
   } catch (err) {
     if (err instanceof OrphanedStaffSessionError) {
-      await supabase.auth.signOut()
+      await supabase.auth.signOut({ scope: 'local' })
       return redirectVerifyError(req, 'orphaned_session')
     }
     throw err

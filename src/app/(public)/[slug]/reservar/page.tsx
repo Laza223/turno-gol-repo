@@ -1,6 +1,19 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { cookies, headers } from 'next/headers'
+import Link from 'next/link'
+import { notFound, redirect, RedirectType } from 'next/navigation'
+import { ArrowLeft } from 'lucide-react'
+import { PORTAL_LINK, PORTAL_TITLE } from '@/components/world/PortalAuthFrame'
 import { buildMetadata } from '@/lib/seo/metadata'
+import {
+  buildFichaHref,
+  buildReservaHref,
+  parseFormato,
+  parsePay,
+  type PayMethod,
+} from '@/lib/booking/reserve-url'
+import { isInAppBrowser } from '@/lib/in-app-browser'
+import { cn } from '@/lib/utils'
 import { getPublicAvailability, getPublicTenant } from '@/modules/tenants/public.service'
 import { isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
@@ -8,23 +21,25 @@ import { endLabelFromMins } from '@/shared/time/operating-day'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { getActiveBanReason } from '@/modules/bans/ban.service'
-import ReservaShell from '@/components/booking/ReservaDarkShell'
+import { BOOKING_INTENT_COOKIE_NAME, checkBookingIntent } from '@/shared/security/booking-intent'
 import BookingSummary from './components/BookingSummary'
-import LoginGate from './components/LoginGate'
-import ConfirmBookingButton from './components/ConfirmBookingButton'
-import type { PayMethod } from './components/PaymentMethodSelector'
+import CheckoutFlow from './components/CheckoutFlow'
 import {
   createBookingAndCheckout,
   sendPlayerMagicLink,
   startGoogleLoginFromReservar,
 } from './actions'
-import { CheckoutErrorBanner, CheckoutInvalidState } from './CheckoutStates'
+import { CheckoutErrorBanner, CheckoutInvalidState, RESERVAR_COLUMN } from './CheckoutStates'
 import { track } from '@/shared/observability'
+import { findOwnLiveBookingOrNull } from './own-booking'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 
 export const dynamic = 'force-dynamic'
 
 const TIME_RE = /^\d{2}:\d{2}$/
+
+/** Lo que viaja en el campo `booking_intent` del form cuando el vínculo está en la cookie de Google. */
+const COOKIE_MARKER = 'cookie'
 
 type Props = {
   params: Promise<{ slug: string }>
@@ -33,8 +48,14 @@ type Props = {
     date?: string
     time?: string
     dur?: string
+    /** Filtro de formato de la ficha: vuelve en "Volver" y sobrevive al ingreso. */
+    formato?: string
+    /** Cómo paga: `cash` | `transfer` | `mercadopago`. Inválido = el default del complejo. */
+    pay?: string
     error?: string
     until?: string
+    /** Vínculo firmado del magic link: con él, la reserva se confirma sola al volver del ingreso. */
+    booking_intent?: string
   }>
 }
 
@@ -52,12 +73,7 @@ export default async function ReservarPage(props: Props) {
   const tenant = await getPublicTenant(params.slug)
   if (!tenant) notFound()
   if (!isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd) || !tenant.allowOnlineBooking) {
-    return (
-      <CheckoutInvalidState
-        slug={params.slug}
-        message="Este complejo no acepta reservas online por el momento."
-      />
-    )
+    return <CheckoutInvalidState slug={params.slug} kind="no-online" />
   }
 
   const { court, date, time, dur } = searchParams
@@ -73,43 +89,97 @@ export default async function ReservarPage(props: Props) {
     !TIME_RE.test(time) ||
     durNum !== SLOT_DURATION_MINUTES
   ) {
-    return (
-      <CheckoutInvalidState
-        slug={params.slug}
-        message="Faltan datos del turno. Elegí un horario desde la grilla."
-      />
-    )
+    return <CheckoutInvalidState slug={params.slug} kind="missing" />
   }
 
-  const availability = await getPublicAvailability(tenant, date)
+  // keepPrices: la seña se calcula con el precio real aunque el complejo los
+  // oculte; con `hidePrices` el monto no se muestra (BookingSummary).
+  const availability = await getPublicAvailability(tenant, date, { keepPrices: true })
+  // Lo que eligió en la ficha vive en la URL; inválido = el default (sin filtro).
+  const formato = parseFormato(searchParams.formato, [
+    ...new Set(availability.courts.map((c) => c.format)),
+  ])
+  // La ficha con lo que había elegido: la salida del "Volver" y de cada "Elegir otro turno".
+  const turnHref = buildFichaHref(params.slug, { date, hora: time, formato })
   const courtData = availability.courts.find((c) => c.id === court)
   const slot = courtData?.slots.find((s) => s.time === time)
   if (!courtData || !slot) {
-    return (
-      <CheckoutInvalidState
-        slug={params.slug}
-        message="No encontramos ese turno. Puede que haya cambiado la disponibilidad."
-      />
-    )
+    return <CheckoutInvalidState slug={params.slug} kind="not-found" turnHref={turnHref} />
   }
-  if (slot.status !== 'free') {
-    // Único mensaje para "el turno ya no está libre": el código `slot_taken` se
-    // eliminó (decisión del dueño 2026-08-14) porque este guard se dispara siempre
-    // antes que su banner. Este camino trae el CTA "Elegir otro turno".
-    return (
-      <CheckoutInvalidState
-        slug={params.slug}
-        message="Ese turno ya no está disponible. Elegí otro horario."
-      />
-    )
-  }
-
   const price = slot.price ?? 0
   const depositAmount =
     tenant.requiresDeposit && tenant.depositPercentage > 0
       ? Math.round((price * tenant.depositPercentage) / 100)
       : 0
   const timeEnd = addMinsToHHMM(time, durNum)
+
+  // Con seña la única vía es MercadoPago (regla de negocio: la seña online es
+  // obligatoria). Sin seña, métodos presenciales según config del complejo.
+  const payMethods: PayMethod[] =
+    depositAmount > 0
+      ? ['mercadopago']
+      : [
+          ...(tenant.acceptsCash ? (['cash'] as const) : []),
+          ...(tenant.acceptsTransfer ? (['transfer'] as const) : []),
+        ]
+  // Cómo paga también vive en la URL; inválido = el primero que acepta el complejo.
+  const pay = parsePay(searchParams.pay, payMethods) ?? payMethods[0] ?? null
+
+  const user = await extractAuthUser()
+  const player = user?.type === 'player' ? user : null
+  const isPlayer = player !== null
+
+  // El vínculo de intención (ver `booking-intent.ts`): el del enlace del mail y/o la cookie de
+  // Google. Solo cuenta con sesión de jugador, y se compara con lo que ESTA pantalla va a reservar.
+  // `null` = no vino ninguno (una visita normal): ahí no se registra nada.
+  const linkToken = searchParams.booking_intent
+  const cookieToken = player ? (await cookies()).get(BOOKING_INTENT_COOKIE_NAME)?.value : undefined
+  const intent = player
+    ? checkBookingIntent(
+        { linkToken, cookieToken, email: player.email },
+        { slug: params.slug, court, date, time, dur: durNum, pay },
+      )
+    : null
+
+  if (slot.status !== 'free') {
+    // El turno ocupado puede ser el PROPIO (Atrás, recarga o un doble envío después de reservar):
+    // va a su pantalla, reemplazando la entrada del historial, y no le dice que "ya no está".
+    if (player) {
+      const own = await findOwnLiveBookingOrNull(player.playerId, {
+        courtId: court,
+        date,
+        timeStart: time,
+      })
+      if (own) {
+        redirect(
+          buildReservaHref(own.id, own.status === 'confirmed' ? 'exito' : 'pendiente'),
+          RedirectType.replace,
+        )
+      }
+    }
+    if (intent) {
+      track.funnel('checkout.intent_degraded', {
+        tenantId: tenant.id,
+        reason: intent.ok ? 'taken' : intent.reason,
+      })
+    }
+    // Entró para confirmar (vínculo válido, o la action ya rebotó con `taken_on_return`) y alguien
+    // se adelantó: se lo dice, con la salida al mismo día (sin la hora que ya no está).
+    if (intent?.ok || searchParams.error === 'taken_on_return') {
+      return (
+        <CheckoutInvalidState
+          slug={params.slug}
+          kind="taken-on-return"
+          turnHref={buildFichaHref(params.slug, { date, formato })}
+          date={date}
+        />
+      )
+    }
+    // Único mensaje para "el turno ya no está libre": el código `slot_taken` se
+    // eliminó (decisión del dueño 2026-08-14) porque este guard se dispara siempre
+    // antes que su banner. Este camino trae el CTA "Elegir otro turno".
+    return <CheckoutInvalidState slug={params.slug} kind="taken" turnHref={turnHref} />
+  }
 
   // El paso más caro del embudo: el jugador ya eligió cancha y horario y está
   // por pagar. Va DESPUÉS de los early-returns de arriba a propósito — un slot
@@ -122,19 +192,26 @@ export default async function ReservarPage(props: Props) {
     withDeposit: depositAmount > 0,
   })
 
-  // Con seña la única vía es MercadoPago (regla de negocio: la seña online es
-  // obligatoria). Sin seña, métodos presenciales según config del complejo.
-  const payMethods: PayMethod[] =
-    depositAmount > 0
-      ? ['mercadopago']
-      : [
-          ...(tenant.acceptsCash ? (['cash'] as const) : []),
-          ...(tenant.acceptsTransfer ? (['transfer'] as const) : []),
-        ]
+  // Se confirma sola SOLO con un vínculo válido Y sin seña. Con seña, o con un vínculo que no vale
+  // (otro email, vencido, otro turno), la pantalla es la normal con el botón: degradar, nunca romper.
+  // La razón se registra solo si VINO un vínculo, no en cada visita. Un vínculo que no valió (y sin
+  // seña) deja una línea que pide tocar el botón: la promesa de "queda confirmada" no se cumplió.
+  let autoConfirmToken: string | undefined
+  let intentDegraded = false
+  if (intent) {
+    if (!intent.ok) {
+      track.funnel('checkout.intent_degraded', { tenantId: tenant.id, reason: intent.reason })
+      intentDegraded = depositAmount === 0
+    } else if (depositAmount > 0) {
+      track.funnel('checkout.intent_degraded', { tenantId: tenant.id, reason: 'deposit' })
+    } else {
+      // El token del mail ya está en la URL; la cookie HttpOnly NUNCA se copia al HTML ni al RSC: el
+      // form lleva un marcador y la action la lee y la verifica ella misma.
+      autoConfirmToken = linkToken || COOKIE_MARKER
+    }
+  }
 
-  const user = await extractAuthUser()
-  const isPlayer = user?.type === 'player'
-  const nextUrl = `/${params.slug}/reservar?court=${court}&date=${date}&time=${time}&dur=${durNum}`
+  const inAppBrowser = isInAppBrowser((await headers()).get('user-agent'))
 
   // R3-5: el `reason` del ban NUNCA viaja por query string (fabricable por
   // URL + se filtra a logs/analytics/referrers) — se relee acá server-side.
@@ -144,20 +221,30 @@ export default async function ReservarPage(props: Props) {
   // importar el tenant — mismas policies que ya usa `checkPlayerBanned`.
   const banReason =
     searchParams.error === 'banned' && isPlayer
-      ? await withPlayerContext(user!.playerId, (tx) =>
-          getActiveBanReason(user!.playerId, tenant.id, tx),
+      ? await withPlayerContext(player.playerId, (tx) =>
+          getActiveBanReason(player.playerId, tenant.id, tx),
         )
       : null
 
   return (
-    <ReservaShell>
-      <div className="mx-auto max-w-md space-y-5 px-4 py-10 sm:px-6">
-        <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">
-          Confirmá tu reserva
-        </h1>
+    // Con sesión, el botón de confirmar es una barra fija abajo en el celular: `PortalFrame` suma su
+    // alto a su relleno inferior (ver `data-fixed-cta`), así que la columna no lleva nada extra.
+    <div className={cn(RESERVAR_COLUMN, 'pb-12')}>
+      <Link
+        href={turnHref}
+        className={cn(
+          PORTAL_LINK,
+          '-ml-1 inline-flex min-h-11 items-center gap-1 rounded-md px-1 text-base font-semibold text-emerald-700 underline underline-offset-4 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300',
+        )}
+      >
+        <ArrowLeft className="size-4" aria-hidden />
+        Volver
+      </Link>
+      <h1 className={cn(PORTAL_TITLE, 'mt-2')}>Confirmá tu reserva</h1>
 
+      <div className="mt-6 space-y-8">
         <CheckoutErrorBanner
-          slug={params.slug}
+          turnHref={turnHref}
           error={searchParams.error}
           until={searchParams.until}
           reason={banReason ?? undefined}
@@ -166,36 +253,41 @@ export default async function ReservarPage(props: Props) {
         <BookingSummary
           data={{
             tenantName: tenant.name,
+            address: tenant.address,
             city: tenant.city,
             courtName: courtData.name,
+            courtFormat: courtData.format,
             date,
             timeStart: time,
             timeEnd,
             price,
             depositAmount,
+            hidePrices: tenant.hidePrices,
           }}
         />
 
-        {isPlayer ? (
-          <ConfirmBookingButton
-            slug={params.slug}
-            court={court}
-            date={date}
-            time={time}
-            dur={durNum}
-            depositAmount={depositAmount}
-            payMethods={payMethods}
-            action={createBookingAndCheckout}
-          />
-        ) : (
-          <LoginGate
-            next={nextUrl}
-            action={sendPlayerMagicLink}
-            googleAction={startGoogleLoginFromReservar}
-          />
-        )}
+        <CheckoutFlow
+          slug={params.slug}
+          court={court}
+          date={date}
+          time={time}
+          dur={durNum}
+          formato={formato}
+          methods={payMethods}
+          initialPay={pay}
+          withDeposit={depositAmount > 0}
+          hidePrices={tenant.hidePrices}
+          cancellationHours={tenant.cancellationHoursBefore}
+          isPlayer={isPlayer}
+          autoConfirmToken={autoConfirmToken}
+          intentDegraded={intentDegraded}
+          inAppBrowser={inAppBrowser}
+          createAction={createBookingAndCheckout}
+          sendLinkAction={sendPlayerMagicLink}
+          googleAction={startGoogleLoginFromReservar}
+        />
       </div>
-    </ReservaShell>
+    </div>
   )
 }
 

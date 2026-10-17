@@ -48,6 +48,20 @@ describe('renderBookingConfirmed', () => {
     expect(text).toContain('Tomás')
     expect(text).toContain('10:00')
   })
+
+  /**
+   * El mail decía "desde la app hasta 12 horas antes": no hay app, y el jugador cancela
+   * hasta que termina el turno; las horas del complejo (configurables) solo deciden si
+   * se devuelve la seña. Y la versión de texto ni lo mencionaba.
+   */
+  it('dice cómo cancelar sin prometer una app ni un plazo fijo, en html y en texto', () => {
+    const { html, text } = renderBookingConfirmed(CONFIRMED_DATA)
+    for (const body of [html, text]) {
+      expect(body).toContain('«Mis reservas»')
+      expect(body).toContain('con cuánta anticipación canceles')
+      expect(body).not.toMatch(/desde la app|12 horas/)
+    }
+  })
 })
 
 describe('renderBookingCanceled', () => {
@@ -587,6 +601,17 @@ describe('renderBookingRescheduled', () => {
     const out = renderTemplate('booking_rescheduled', DATA)
     expect(out.subject).toBeTruthy()
     expect(out.html).toContain('Tu turno se movió')
+  })
+
+  it('complejo con precios ocultos: el mail no menciona el precio, ni si cambió', () => {
+    for (const priceChanged of [false, true]) {
+      const { html, text } = renderBookingRescheduled({ ...DATA, price: null, priceChanged })
+      for (const body of [html, text!]) {
+        expect(body).not.toMatch(/precio/i)
+        expect(body).not.toContain('$')
+        expect(body).toContain('Cancha 3')
+      }
+    }
   })
 })
 

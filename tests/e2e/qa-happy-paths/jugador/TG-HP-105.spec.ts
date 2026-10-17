@@ -24,7 +24,7 @@ import { tomorrowDateIsoArt } from '../../_helpers/booking-seed'
  * workers activos.
  *
  * Evidence anchors: MockCheckoutView.tsx:89-95, mock-mp/checkout/actions.ts:101-144,
- * error/page.tsx:44-58, BookingErrorCard.tsx:44-59, payment.service.ts:247-254,
+ * error/page.tsx, BookingErrorCard.tsx, payment.service.ts:247-254,
  * definitions.ts:33 (DEFAULT_EXPIRY_SECONDS=360).
  */
 
@@ -47,7 +47,7 @@ async function runFlow(page: Page, date: string): Promise<void> {
   await page.goto(reservarUrl(date))
   await expect(page.getByRole('heading', { name: 'Confirmá tu reserva' })).toBeVisible()
 
-  const confirmBtn = page.getByRole('button', { name: 'Pagar seña y reservar' })
+  const confirmBtn = page.getByRole('button', { name: 'Pagar la seña' })
   await confirmBtn.click()
   await expect(page).toHaveURL(/\/mock-mp\/checkout/, { timeout: 15_000 })
 
@@ -57,10 +57,10 @@ async function runFlow(page: Page, date: string): Promise<void> {
   await page.getByRole('button', { name: 'Pago rechazado' }).click()
   await expect(page).toHaveURL(new RegExp(`/reserva/${bookingId}/error`), { timeout: 15_000 })
 
-  await expect(page.getByRole('heading', { name: 'El pago no se procesó.' })).toBeVisible()
-  await expect(
-    page.getByText('El pago fue rechazado o cancelado. Podés intentar de nuevo con otro medio.'),
-  ).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'El pago no se procesó' })).toBeVisible()
+  // Dice qué pasó con el pago Y con el turno: sigue guardado por poco tiempo, sin cuenta regresiva.
+  await expect(page.getByText('El pago fue rechazado o cancelado.')).toBeVisible()
+  await expect(page.getByText(/Tu turno sigue guardado por poco tiempo/)).toBeVisible()
 
   // Dentro de la ventana de hold: CTA = "Reintentar pago".
   const retryBtn = page.getByRole('button', { name: 'Reintentar pago' })
@@ -94,8 +94,13 @@ async function runFlow(page: Page, date: string): Promise<void> {
   )
 
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'El pago no se procesó.' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Reservar de nuevo' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'El pago no se procesó' })).toBeVisible()
+  // Fuera de la ventana el turno ya no está guardado: "Reservar de nuevo" abre la ficha en el día de la reserva.
+  await expect(page.getByText(/el turno ya no está guardado/)).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Reservar de nuevo' })).toHaveAttribute(
+    'href',
+    new RegExp(`^/${SENA_TENANT_SLUG}\\?date=\\d{4}-\\d{2}-\\d{2}$`),
+  )
   await expect(page.getByRole('button', { name: 'Reintentar pago' })).not.toBeVisible()
 
   await writeEvidence('TG-HP-105', {

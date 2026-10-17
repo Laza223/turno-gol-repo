@@ -60,13 +60,18 @@ export async function playerLoginAction(
  * (no hay checkbox en esta pantalla). Un jugador genuinamente nuevo que entra por
  * esta vía cae en el gate de `/aceptar-terminos` del callback (ver
  * provisionPlayerAndRedirect) — uno que ya existe pasa directo, sin fricción.
+ *
+ * También la usa el botón "Usar otra cuenta de Google" de /verify, que manda el
+ * campo oculto `select_account=1` para abrir el selector de cuentas de Google.
  */
 export async function startGoogleLoginFromIngresar(formData: FormData): Promise<void> {
   const nextRaw = formData.get('next')
   const safeNext = sanitizeNext(typeof nextRaw === 'string' ? nextRaw : null)
   const redirectTo = `${await callbackOrigin()}/api/auth/callback?next=${encodeURIComponent(safeNext)}`
 
-  const result = await signInWithGooglePlayer(redirectTo)
+  const result = await signInWithGooglePlayer(redirectTo, {
+    selectAccount: formData.get('select_account') === '1',
+  })
   if (!result.url) redirect('/ingresar')
   redirect(result.url)
 }

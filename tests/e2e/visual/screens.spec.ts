@@ -17,9 +17,18 @@ import {
   assertDevOverlayHookExists,
   waitForHeaderSlot,
   suppressPushBanner,
+  waitForPlayerSession,
   ADMIN_STORAGE_STATE,
+  PLAYER_STORAGE_STATE,
 } from './_visual-test'
-import { FROZEN_NOW, VISUAL_DATE, VISUAL_TENANT_SLUG, seedVisualData } from './_seed'
+import { tomorrowDateIsoArt } from '../_helpers/booking-seed'
+import {
+  FROZEN_NOW,
+  VISUAL_DATE,
+  VISUAL_PLAYER_BOOKING_ID,
+  VISUAL_TENANT_SLUG,
+  seedVisualData,
+} from './_seed'
 
 test.describe('visual — público', () => {
   test('login @visual', async ({ page }) => {
@@ -52,21 +61,56 @@ test.describe('visual — público', () => {
 
   test('ficha pública del complejo @visual', async ({ page }) => {
     await suppressPushBanner(page)
-    await page.goto(`/${VISUAL_TENANT_SLUG}`)
+    // Mañana, no hoy: hoy puede no tener horas (ya pasaron) y eso cambia la altura de la reserva y
+    // dónde cae el resto de la ficha. Mañana nunca tiene horas pasadas (como TG-HP-003).
+    await page.goto(`/${VISUAL_TENANT_SLUG}?date=${tomorrowDateIsoArt()}`)
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
+    // La altura de la reserva decide dónde cae el resto de la ficha: se espera a que su primer estado
+    // quede resuelto (horas, día cerrado o error: `data-state`), no a un texto que un día cerrado
+    // o un error nunca tienen.
+    await expect(page.getByRole('region', { name: 'Reservá tu turno' })).toHaveAttribute(
+      'data-state',
+      /^(ready|closed|error)$/,
+    )
     await expect(page).toHaveScreenshot('perfil-publico.png', {
       mask: [
-        // La grilla de disponibilidad se clampea a [hoy, hoy + anticipación] en
-        // el cliente Y en el servidor: es "ahora"-relativa por diseño y no hay
-        // fecha fija que la estabilice. Se enmascara ese bloque; el resto de la
-        // ficha (hero, canchas, precios, info) sí es determinista y es lo que
-        // esta foto vigila.
+        // La reserva (días y horas) es "ahora"-relativa por diseño: hoy, las horas que
+        // quedan y el estado de cada una dependen del reloj, y no hay fecha fija que la
+        // estabilice. Lo mismo vale para "Abierto · hasta…", que sale de `useArtNow`. Se
+        // enmascaran los dos; el resto de la ficha (cabecera, canchas, info) sí es
+        // determinista y es lo que esta foto vigila.
         //
-        // Anclado al aria-label que el componente YA tiene, no a un data-testid
-        // nuevo: no obliga a tocar el componente, y se rompe ruidosamente si
-        // alguien le saca la accesibilidad a ese bloque.
-        page.getByRole('region', { name: 'Grilla de disponibilidad' }),
+        // Anclado al aria-label que el componente YA tiene y a un data-testid de la
+        // isla del estado: se rompe ruidosamente si alguien le saca la accesibilidad.
+        page.getByRole('region', { name: 'Reservá tu turno' }),
+        page.getByTestId('open-status'),
+        // La tira de días sangra 4 px (`-m-1`) fuera de la región, y ahí asoma el chip
+        // que sigue, que cambia con el día. Horarios resalta la fila de hoy.
+        page.getByRole('radiogroup', { name: 'Día' }),
+        page.getByTestId('opening-hours'),
       ],
+    })
+  })
+})
+
+test.describe('visual — jugador', () => {
+  test.use({ storageState: PLAYER_STORAGE_STATE })
+
+  test.beforeAll(async () => {
+    await seedVisualData()
+  })
+
+  test('reserva confirmada @visual', async ({ page }) => {
+    // La reserva `…0903` del seed: confirmada, con seña pagada, en un día FIJO (`VISUAL_DATE`) —
+    // el resumen, el mensaje al grupo y el comprobante salen de la fila, no del reloj. Del jugador
+    // `…0020`, el mismo de `player.json`.
+    await page.goto(`/reserva/${VISUAL_PLAYER_BOOKING_ID}/exito`)
+    await expect(page.getByRole('heading', { name: '¡Reserva confirmada!' })).toBeVisible()
+    await waitForPlayerSession(page)
+    await expect(page).toHaveScreenshot('reserva-confirmada.png', {
+      // El código sale del id de la reserva: si el seed cambia de id, cambia la foto. Se enmascara
+      // solo el código (no la sección, que lleva el link de "Descargar comprobante").
+      mask: [page.getByRole('region', { name: 'Código de la reserva' }).locator('.font-mono')],
     })
   })
 })
@@ -80,8 +124,8 @@ test.describe('visual — admin', () => {
 
   test('grilla del día @visual', async ({ page }) => {
     await suppressPushBanner(page)
-    // Congela el reloj del BROWSER: afecta useArtNow y ExpiryCountdown, que sí
-    // leen Date.now() en el cliente. NO afecta lo que renderiza el servidor —
+    // Congela el reloj del BROWSER: afecta useArtNow, que sí
+    // lee Date.now() en el cliente. NO afecta lo que renderiza el servidor —
     // para eso está VISUAL_DATE en la URL.
     await page.clock.setFixedTime(FROZEN_NOW)
 

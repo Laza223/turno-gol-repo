@@ -22,6 +22,8 @@
 
 **Lectura:** si A2 no ocurre en 30 días en P1, **no invalida el North Star**; es diagnóstico: ¿el link circuló? ¿hubo `profile.viewed` / `checkout.viewed` sin reserva? ¿la seña frenó?
 
+**Discontinuidad de la serie `profile.viewed`:** hasta el PR 2.3a contaba visitas a la vista semanal (`/disponibilidad`, hoy redirigida a la ficha). Desde ese PR (corte: su deploy a producción, 2026-10-16) cuenta, una vez por pestaña, cada visita a la ficha del complejo en cuanto el día elegido termina de cargar, con horas o cerrado (`trackProfileViewedAction`). Es otra escala: no se compara con lo registrado antes del corte.
+
 ## A3 — Activación de red
 
 **Definición:** un jugador que entró al ecosistema por un complejo usa TurnoGol para descubrir y reservar en **otro** complejo sin que ese complejo original ni el segundo le hayan mandado el link. Es el inicio real de distribución.

@@ -108,7 +108,7 @@ Fixtures usadas: Tenant Demo `e2e-complejo-demo` (`requires_deposit:false`, `dep
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/`.
   2. Esperar a que renderice el h1 "Reservá tu cancha al instante." (`src/app/home/Hero.tsx:64-67`).
-  3. Verificar la nav flotante con el link "Explorar" y el CTA "Ingresar" (`src/components/site/PortalHeader.tsx:40-45,64-69`).
+  3. Verificar la nav flotante con el link "Explorar" y el CTA "Ingresar" (`src/components/site/PortalHeader.tsx:63-69,95`).
   4. En el formulario "Buscá disponibilidad ahora" (`src/components/site/HeroSearch.tsx:120`), completar el campo "Complejo" (id `hero-q-v`) con `demo` (`src/components/site/HeroSearch.tsx:125-141`).
   5. Click en el combobox "Localidad" (id `hero-city-v`) y elegir una opción de la lista (`src/components/site/HeroSearch.tsx:146-169`).
   6. Click en el botón "Buscar canchas" (`src/components/site/HeroSearch.tsx:227-233`).
@@ -131,8 +131,8 @@ Fixtures usadas: Tenant Demo `e2e-complejo-demo` (`requires_deposit:false`, `dep
   - `src/components/site/HeroSearch.tsx:146-148` — label "Localidad", combobox `id="hero-city-v"`.
   - `src/components/site/HeroSearch.tsx:232` — texto del botón "Buscar canchas".
   - `src/components/site/HeroSearch.tsx:89` — `router.push(qs ? \`/explorar?${qs}\` : '/explorar')`.
-  - `src/components/site/PortalHeader.tsx:44` — link "Explorar".
-  - `src/components/site/PortalHeader.tsx:68` — link "Ingresar" (deslogueado).
+  - `src/components/site/PortalHeader.tsx:63-69` — link "Explorar".
+  - `src/components/site/PortalHeader.tsx:95` — link "Ingresar" (deslogueado), a `/ingresar?next=<página actual>`.
   - `src/app/home/FeaturedComplexes.tsx:31` — h2 "Los mejor valorados" (solo si `featured.length > 0`, `src/app/page.tsx:60`).
   - `src/app/home/HowItWorks.tsx:8,15,22` — pasos "Explorá complejos" / "Compará disponibilidad" / "Confirmá y jugá".
 
@@ -183,61 +183,46 @@ Fixtures usadas: Tenant Demo `e2e-complejo-demo` (`requires_deposit:false`, `dep
 - **Prerrequisitos:** Tenant `e2e-complejo-sena` seedeado, status público (no `suspended/blocked/canceled/churned/deleted`).
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/e2e-complejo-sena`.
-  2. Esperar el render del h1 con el nombre del tenant (`src/app/(public)/[slug]/components/TenantHeader.tsx:59-61`).
-  3. Verificar la sección "Canchas (N)" con las `CourtCard` (`src/app/(public)/[slug]/page.tsx:97-104`).
-  4. Click en el chip "Cómo llegar" (`src/app/(public)/[slug]/components/TenantHeader.tsx:87-90`) — abre Google Maps en tab nueva.
-  5. Click en el chip de teléfono (`tel:`) (`TenantHeader.tsx:91-94`).
-  6. Click en el chip "Ver semana completa" → navega a `/e2e-complejo-sena/disponibilidad` (`TenantHeader.tsx:106-109`).
-  7. Volver al perfil. En la sección "Disponibilidad" (h2, `src/app/(public)/[slug]/components/AvailabilityGrid.tsx:258`), esperar el fetch inicial a `/api/public/availability?slug=e2e-complejo-sena&date=<hoy>` (`AvailabilityGrid.tsx:190`).
-  8. Click en el botón "Día siguiente" (aria-label, `AvailabilityGrid.tsx:297-305`) y esperar el refetch.
-  9. Click en un slot libre (label "Reservar", precio en centavos formateado) para un turno futuro; navega a `/e2e-complejo-sena/reservar?court=...&date=...&time=...&dur=...` (`AvailabilityGrid.tsx:145-153`).
+  2. Esperar el h1 con el nombre del tenant (`ComplexHero.tsx`, `PORTAL_TITLE`).
+  3. Verificar la línea de datos "N cancha(s) · Fútbol N" de la cabecera y el link "Cómo llegar" (`target=_blank` a Google Maps).
+  4. Verificar el link de contacto: "WhatsApp" (`wa.me`) o "Llamar" (`tel:`), según `resolveTenantContact`. Solo `href`, sin click.
+  5. En la región "Reservá tu turno" (`ReserveSection.tsx`), esperar el fetch inicial a `/api/public/availability?slug=e2e-complejo-sena&date=<hoy>`.
+  6. Elegir el chip del día siguiente (grupo "Día") y esperar el refetch.
+  7. Elegir la primera hora libre (grupo "Hora"): debajo aparece "Canchas libres a las HH:MM".
+  8. Tocar la primera cancha de la lista; navega a `/e2e-complejo-sena/reservar?court=...&date=...&time=...&dur=...` (`CourtRows.tsx`, `buildReservarHref`).
 - **Comportamiento de componentes:**
-  - Loading: `src/app/(public)/[slug]/loading.tsx:1-31` (skeleton de header + galería + grilla) para la navegación inicial (ISR); dentro de la página, `<Suspense fallback={<Skeleton className="h-64 rounded-lg" />}>` envuelve `AvailabilityGrid` porque usa `useSearchParams()` (`src/app/(public)/[slug]/page.tsx:108-113`). Dentro de `AvailabilityGrid`, el fetch inicial y cada cambio de día muestran `<Skeleton className="h-48 rounded-lg" />` (`AvailabilityGrid.tsx:310`).
-  - Anti-doble-submit: los botones "Día anterior"/"Día siguiente" se deshabilitan mientras `loading===true` o fuera de rango (`disabled={!date || !today || date <= today || loading}` y `disabled={!date || !maxDate || date >= maxDate || loading}`, `AvailabilityGrid.tsx:263,300`).
-  - Feedback: si el fetch de un cambio de día falla, aparece `role="alert"` con el texto "No pudimos cargar la disponibilidad de ese día. Revisá tu conexión e intentá de nuevo." y la grilla se queda en el día previo — comentario explícito "la grilla sigue mostrando el dia previo" (`AvailabilityGrid.tsx:209-234` catch de `loadDate`, `AvailabilityGrid.tsx:312-321` markup del alert).
+  - Loading: `src/app/(public)/[slug]/(perfil)/loading.tsx` (silueta plana: portada, nombre, chips, links y reserva) para la navegación inicial; dentro de la página, `<Suspense fallback={<ReserveSkeleton />}>` envuelve `ReserveSection` porque usa `useSearchParams()` (`(perfil)/page.tsx`). Mientras `useArtNow` no hidrató, `ReserveSection` muestra el mismo esqueleto.
+  - Anti-doble-submit: no aplica — días, formato y horas son `RadioGroup` locales; las filas de cancha son `<Link>` de navegación.
+  - Feedback: si el pedido de un día falla, aparece `role="alert"` "No pudimos cargar los horarios del <día>" con "Reintentar" y el día elegido se conserva. Día cerrado: "Cerrado el <día>" con salida al próximo día abierto. Sin lugar: "No quedan horarios el <día>" con salida al próximo día con lugar (`DayEmptyState.tsx`).
 - **Validación de datos:**
-  - DB: ninguna escritura. Lecturas server-side: `getPublicTenant(slug)`, `getAverageRating`, `getPublicCourtCards`, `getReviewsByTenant` (`src/app/(public)/[slug]/page.tsx:46,66-70`).
-  - API/Action: `GET /api/public/availability?slug=<slug>&date=<YYYY-MM-DD>` → 200 con `AvailabilityResponse` (`src/app/api/public/availability/route.ts:25-57`); 404 `{error:'not_found'}` si el tenant no es públicamente visible; 400 `{error:'date_out_of_range'}` fuera de `[hoy, hoy+bookingAdvanceDays]`.
+  - DB: ninguna escritura. Lecturas server-side: `getPublicTenant(slug)`, `getAverageRating`, `getPublicCourtCards`, `getReviewsByTenant` (`(perfil)/page.tsx`).
+  - API/Action: `GET /api/public/availability?slug=<slug>&date=<YYYY-MM-DD>` → 200 con `AvailabilityResponse` (`src/app/api/public/availability/route.ts`); 404 `{error:'not_found'}` si el tenant no es públicamente visible; 400 `{error:'date_out_of_range'}` fuera de `[hoy, hoy+bookingAdvanceDays]`. `trackProfileViewedAction` (`profile.viewed`) tras la primera carga de horas, una vez por pestaña y complejo.
   - Externos: ninguno (el pago de la seña ocurre recién en `/reservar`, fuera de este caso).
-  - UI-sin-reload: SÍ, `fetch()` client-side desde un Client Component (`'use client'`, `AvailabilityGrid.tsx:1,190,215-216`) — no hay `router.refresh()` ni `revalidatePath` acá.
-- **Evidencia (path:línea):**
-  - `src/app/(public)/[slug]/components/TenantHeader.tsx:59` — h1 `{tenant.name}`.
-  - `src/app/(public)/[slug]/components/TenantHeader.tsx:89,93,108` — textos "Cómo llegar" / `{tenant.phone}` / "Ver semana completa".
-  - `src/app/(public)/[slug]/page.tsx:97-99` — h2 "Canchas (N)".
-  - `src/app/(public)/[slug]/components/AvailabilityGrid.tsx:258` — h2 "Disponibilidad".
-  - `src/app/(public)/[slug]/components/AvailabilityGrid.tsx:190` — `fetch(\`/api/public/availability?slug=${...}&date=${initialDate}\`)`.
-  - `src/app/(public)/[slug]/components/AvailabilityGrid.tsx:150` — label "Reservar" en el `<Link>` a `/reservar`.
-  - `src/app/(public)/[slug]/components/AvailabilityGrid.tsx:312` — comentario "la grilla sigue mostrando el dia previo"; `319-320` — texto de error de fetch.
-  - `src/app/api/public/availability/route.ts:42,47` — respuestas `not_found` (404) / `date_out_of_range` (400).
-  - `src/app/(public)/[slug]/loading.tsx:1` — skeleton ISR de la página.
+  - UI-sin-reload: SÍ, `fetch()` client-side desde un Client Component (`reserve-data.ts`) — no hay `router.refresh()` ni `revalidatePath` acá. La elección vive en la URL (`?date=&formato=&hora=`, `history.replaceState`).
+- **Evidencia:**
+  - `ComplexHero.tsx` — h1 `{tenant.name}`, links "Cómo llegar" / "WhatsApp" o "Llamar".
+  - `ReserveSection.tsx` — región `aria-label="Reservá tu turno"`, grupos "Día" / "Formato" / "Hora".
+  - `CourtRows.tsx` — h2 "Canchas libres a las HH:MM" y `<Link>` a `/reservar`.
+  - `reserve-data.ts` — `fetch('/api/public/availability?slug=…&date=…')`.
+  - `src/app/api/public/availability/route.ts` — respuestas `not_found` (404) / `date_out_of_range` (400).
+  - `(perfil)/loading.tsx` — skeleton ISR de la página.
 
 ---
 
-## TG-HP-004 — Disponibilidad semanal `/e2e-complejo-sena/disponibilidad`
+## TG-HP-004 — Redirect `/e2e-complejo-sena/disponibilidad` → ficha del complejo
 - **Rol:** Visitante (no autenticado)
 - **Prerrequisitos:** Tenant `e2e-complejo-sena` seedeado, status público.
+- **Contexto:** la vista semanal se sacó en el PR 2.3a (decisión del dueño, 2026-10-15). Los días y las horas viven en la ficha (`/e2e-complejo-sena`); el link viejo sigue andando por un redirect permanente.
 - **Flujo de navegación (UI steps):**
-  1. Navegar a `http://localhost:3000/e2e-complejo-sena/disponibilidad`.
-  2. Esperar el render del link de vuelta "{tenant.name}" con ícono `ChevronLeft` (`src/app/(public)/[slug]/disponibilidad/page.tsx:37-39`).
-  3. Verificar el h1 "Disponibilidad semanal" (`disponibilidad/page.tsx:40`).
-  4. En la fila de tabs de días (`aria-pressed`), click en el segundo tab (mañana) (`src/app/(public)/[slug]/disponibilidad/components/WeeklyAvailability.tsx:33-46`).
-  5. Dentro de la cancha listada, click en un slot libre (ej. `18:00`, con precio ARS debajo) para navegar a `/e2e-complejo-sena/reservar?court=...&date=...&time=18:00&dur=...` (`WeeklyAvailability.tsx:62-72`).
-- **Comportamiento de componentes:**
-  - Loading: `src/app/(public)/[slug]/disponibilidad/loading.tsx:1-27` (skeleton de back-link + heading + 7 filas de día × 8 chips) — se activa porque la página es `export const dynamic = 'force-dynamic'` (`disponibilidad/page.tsx:11`) y hace `await getPublicWeeklyAvailability(...)` server-side antes de renderizar (sin Suspense interno: el loading.tsx de Next cubre toda la carga inicial).
-  - Anti-doble-submit: no aplica — los tabs de día son botones locales (`setActive(i)`, sin red) y los slots son `<Link>` de navegación, no forms (`WeeklyAvailability.tsx:33-46,63-71`).
-  - Feedback: sin toast. Día sin canchas → "Sin canchas disponibles este día." (`WeeklyAvailability.tsx:50`); cancha sin turnos libres → "Sin turnos libres." (`WeeklyAvailability.tsx:59`).
+  1. Navegar a `http://localhost:3000/e2e-complejo-sena/disponibilidad` (con o sin `?date=`).
+  2. La URL termina en `/e2e-complejo-sena` (la query se conserva).
+  3. Verificar el h1 con el nombre del tenant.
 - **Validación de datos:**
-  - DB: ninguna escritura. Lectura server-side `getPublicWeeklyAvailability(tenant, getArtToday())` (`disponibilidad/page.tsx:26`).
-  - API/Action: NO hay fetch a `/api/public/*` en esta vista — a diferencia del perfil (`TG-HP-003`), la semana se resuelve 100% server-side en el Server Component antes del render (`disponibilidad/page.tsx:21-26`); el cambio de tab activo es solo estado local del array `week.days` ya cargado (`WeeklyAvailability.tsx:22-24`).
-  - Externos: ninguno.
-  - UI-sin-reload: cambiar de tab de día NO dispara red (estado `useState` local); solo el click en un slot navega (Next `<Link>`) a `/reservar`.
+  - DB: ninguna escritura ni lectura propia.
+  - Redirect: `next.config.ts` → `redirects()`, `{ source: '/:slug/disponibilidad', destination: '/:slug', permanent: true }` (308). `tests/e2e/availability.spec.ts` mira el 308 y la query sin seguirlo.
 - **Evidencia (path:línea):**
-  - `src/app/(public)/[slug]/disponibilidad/page.tsx:11` — `export const dynamic = 'force-dynamic'`.
-  - `src/app/(public)/[slug]/disponibilidad/page.tsx:40` — h1 "Disponibilidad semanal".
-  - `src/app/(public)/[slug]/disponibilidad/components/WeeklyAvailability.tsx:22-24` — `const day = week.days[active]!` (estado local, sin fetch).
-  - `src/app/(public)/[slug]/disponibilidad/components/WeeklyAvailability.tsx:50,59` — textos "Sin canchas disponibles este día." / "Sin turnos libres.".
-  - `src/app/(public)/[slug]/disponibilidad/components/WeeklyAvailability.tsx:65` — `href={\`/${slug}/reservar?court=${court.id}&date=${day.date}&time=${s.time}&dur=${s.duration}\`}`.
-  - `src/app/(public)/[slug]/disponibilidad/loading.tsx:1` — skeleton dedicado.
+  - `next.config.ts` — entrada `/:slug/disponibilidad` en `redirects()`.
+  - `tests/e2e/qa-happy-paths/publico/TG-HP-004.spec.ts` — recorrido en el navegador.
 
 ---
 
@@ -378,53 +363,56 @@ Fixtures usadas: Tenant Demo `e2e-complejo-demo` (`requires_deposit:false`, `dep
 - **Rol:** Visitante (no autenticado) — llega desde un magic-link de email (jugador) o desde el callback de auth.
 - **Prerrequisitos:** Ninguno (los estados se disparan por query params, sin necesitar un token real de Supabase para el happy-path de UI).
 
-### Caso A — Link expirado
+### Caso A — Link expirado (sin `via` y con `via`)
 - **Flujo de navegación (UI steps):**
-  1. Navegar a `http://localhost:3000/verify?error=expired`.
-  2. Esperar el h1 "No pudimos verificar tu enlace" (`src/app/(auth)/verify/page.tsx:154-156`).
-  3. Verificar el mensaje "Este enlace expiró. Generá uno nuevo desde Iniciar sesión." (`verify/page.tsx:9,157`).
-  4. Click en "Volver a intentar" → navega a `/login` (`verify/page.tsx:158-160`).
+  1. Navegar a `http://localhost:3000/verify?error=expired` (sin `via`: `expired` también lo emiten los links de staff — alta, invitación, recovery — y sin la marca no se sabe quién es, así que va primero el panel).
+  2. Esperar el h1 "Este enlace venció" (`src/app/(auth)/verify/VerifyView.tsx:50`; sin `via` lo pinta el `ErrorState` del staff, la card oscura de siempre: `VerifyView.tsx:303-305`).
+  3. Verificar el mensaje "Los enlaces de acceso sirven una sola vez y por un rato. Pedí uno nuevo para entrar." (`VerifyView.tsx:51,308-310`).
+  4. Click en "Iniciar sesión" → navega a `/login` (`VerifyView.tsx:33,311-313`). Debajo queda el link chico "¿Sos jugador? Ingresá acá" → `/ingresar` (`VerifyView.tsx:317-325`).
+  5. Navegar a `http://localhost:3000/verify?error=expired&via=email` (con `via`: lo pidió un jugador): mismo h1 y mensaje, pero ahora en el mundo del portal (`PortalAuthFrame`, `VerifyView.tsx:193-203`, `PlayerError` 360-422), con el botón "Pedir un enlace nuevo" → `/ingresar` y el link chico "¿Sos del complejo? Entrá al panel" → `/login` (`VerifyView.tsx:52,404-406,411-419`).
 - **Comportamiento de componentes:**
-  - Loading: sin `error`/`status` en la URL, la vista cae en `LoadingState` con spinner `Loader2` animado y texto "Verificando tu enlace…" (`verify/page.tsx:133-145`) — no aplica a este caso porque `error=expired` fuerza `ErrorState` directo.
-  - Anti-doble-submit: no aplica — no hay forms, es un `<Link>`.
-  - Feedback: mensaje de error inline (no toast), ícono `AlertCircle` sobre fondo rojo (`verify/page.tsx:151-153`).
-- **Validación de datos:** DB/API/Externos: ninguno (la página solo interpreta `searchParams`, no hace fetch). UI-sin-reload: no aplica.
+  - Loading: sin `error`/`status` en la URL, la vista cae en `LoadingState` con `TgBallSpinner` animado y texto "Verificando tu enlace…" (`VerifyView.tsx:282-294`) — no aplica a este caso porque `error=expired` fuerza `ErrorState` directo.
+  - Anti-doble-submit: no aplica — no hay forms, es un `<Link>` (única excepción: `account_conflict` con `via=google` trae un form (`VerifyView.tsx:389-395`) cuyo `SubmitButton` queda deshabilitado y dice "Abriendo Google…" mientras la action corre; lo cubre `tests/unit/verify-page-errors.test.tsx`).
+  - Feedback: mensaje de error inline (no toast, `role="alert"`). Sin `via` (staff) el ícono `AlertCircle` va en un círculo rojo (`VerifyView.tsx:300-302,308-310`); con `via` (jugador) va suelto, en rojo de token (`text-red-700` / `dark:text-red-300`) y sin círculo (`VerifyView.tsx:377,381-383`), salvo `oauth_cancelled`, que no es una falla: ícono `Info` neutro en `text-muted-foreground` (`VerifyView.tsx:375`).
+- **Validación de datos:** DB/API/Externos: ninguno (la página solo interpreta `searchParams`, no hace fetch; `via` pasa por `parseVia` y cualquier valor distinto de `email`/`google` cuenta como "sin `via`"). UI-sin-reload: no aplica.
 - **Evidencia (path:línea):**
-  - `src/app/(auth)/verify/page.tsx:9` — `expired: 'Este enlace expiró. Generá uno nuevo desde Iniciar sesión.'`.
-  - `src/app/(auth)/verify/page.tsx:154-156` — h1 "No pudimos verificar tu enlace".
-  - `src/app/(auth)/verify/page.tsx:158-160` — `<Link href="/login">Volver a intentar</Link>`.
+  - `src/app/(auth)/verify/page.tsx` — cascarón async: resuelve `searchParams` y delega en `VerifyView` (la story y los tests montan `VerifyView`).
+  - `src/app/(auth)/verify/VerifyView.tsx:49-53` — `expired: { title: 'Este enlace venció', message: 'Los enlaces de acceso sirven una sola vez y por un rato. Pedí uno nuevo para entrar.', cta: 'Pedir un enlace nuevo' }`.
+  - `src/app/(auth)/verify/VerifyView.tsx:33,311-313,404-406` — sin `via` el error compartido es de staff: `<Link href="/login">Iniciar sesión</Link>`; con `via`: `<Link href="/ingresar">Pedir un enlace nuevo</Link>`.
+  - `src/app/(auth)/verify/VerifyView.tsx:317-325,411-419` — la otra puerta: "¿Sos jugador? Ingresá acá" → `/ingresar` / "¿Sos del complejo? Entrá al panel" → `/login`.
+  - `tests/e2e/qa-happy-paths/publico/TG-HP-010.spec.ts` — Caso A (sin `via` → `/login`) y Caso A' (`via=email` → `/ingresar`).
 
 ### Caso B — Éxito (login)
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/verify?status=success&intent=login&next=%2Fmis-reservas`.
-  2. Esperar el h1 "¡Listo!" (intent `login`, `verify/page.tsx:21-25,117`).
-  3. Verificar el subtítulo "Iniciaste sesión correctamente." (`verify/page.tsx:23`).
-  4. Verificar el contador `aria-live="polite"` "Te llevamos automáticamente en 5s…" decreciendo (`src/app/(auth)/verify/SuccessRedirect.tsx:32-34`).
-  5. Click en el CTA "Ir a mis reservas" antes de que expire el auto-redirect → navega a `next` saneado (`verify/page.tsx:24,119-121`).
-  6. (Alternativa, sin click) Esperar 5s y verificar el redirect automático vía `window.location.assign(next)` (`SuccessRedirect.tsx:19-21`).
+  2. Esperar el h1 "¡Listo!" (intent `login`, `VerifyView.tsx:127-131,344`; lo pinta `PlayerSuccess`, en el mundo del portal).
+  3. Verificar el subtítulo "Iniciaste sesión correctamente." (`VerifyView.tsx:129,345`).
+  4. Verificar el contador `aria-live="polite"` "Te llevamos automáticamente en 5s…" decreciendo (`src/app/(auth)/verify/SuccessRedirect.tsx:35-37`).
+  5. Click en el CTA "Ir a mis reservas" antes de que expire el auto-redirect → navega a `next` saneado (`VerifyView.tsx:130,346-348`).
+  6. (Alternativa, sin click) Esperar 5s y verificar el redirect automático vía `window.location.assign(next)` (`SuccessRedirect.tsx:22-24`).
 - **Comportamiento de componentes:**
   - Loading: no aplica a este sub-caso (ya resuelto en `status=success`).
   - Anti-doble-submit: no aplica — CTA es un `<Link>`, no un form.
-  - Feedback: sin toast; ícono `CheckCircle2` con pulso `animate-ping` (`verify/page.tsx:104-115`).
+  - Feedback: sin toast; ícono `CheckCircle2` en verde de token (`text-emerald-700` / `dark:text-emerald-400`) sobre el título, sin círculo ni pulso (`PlayerSuccess`, `VerifyView.tsx:340-343`). El pulso `animate-ping` y el círculo con resplandor quedan solo en el éxito de alta del staff (`intent=signup`, `SuccessState`, `VerifyView.tsx:248-263`).
 - **Validación de datos:**
   - DB: ninguna en esta página (la sesión ya fue establecida por el callback de auth antes de llegar acá).
-  - API/Action: ninguna en `/verify` — el `next` viaja saneado por `sanitizeNext()` (`src/lib/safe-redirect.ts`, importado en `verify/page.tsx:4`).
+  - API/Action: ninguna en `/verify` — el `next` viaja saneado por `sanitizeNext()` (`src/lib/safe-redirect.ts`, importado en `VerifyView.tsx:8`).
   - Externos: ninguno.
-  - UI-sin-reload: el auto-redirect usa `window.location.assign(next)` (full navigation, NO `router.push`/`router.refresh`) — `SuccessRedirect.tsx:20`.
+  - UI-sin-reload: el auto-redirect usa `window.location.assign(next)` (full navigation, NO `router.push`/`router.refresh`) — `SuccessRedirect.tsx:23`.
 - **Evidencia (path:línea):**
-  - `src/app/(auth)/verify/page.tsx:21-25` — `SUCCESS_COPY.login = { title: '¡Listo!', subtitle: 'Iniciaste sesión correctamente.', cta: 'Ir a mis reservas' }`.
-  - `src/app/(auth)/verify/page.tsx:3` — importa `parseIntent` desde `@/lib/auth-success`; `src/lib/auth-success.ts:12-13` — `parseIntent`: cualquier `intent` inválido cae a `'login'` (`ERROR_COPY`/`VALID_INTENTS`).
-  - `src/lib/auth-success.ts:26-28` — `successVerifyPath(next, intent)` arma `/verify?status=success&next=...&intent=...` (usado por el callback real).
-  - `src/app/(auth)/verify/SuccessRedirect.tsx:33` — texto "Te llevamos automáticamente en {remaining}s…".
-  - `src/app/(auth)/verify/SuccessRedirect.tsx:20` — `window.location.assign(next)`.
+  - `src/app/(auth)/verify/VerifyView.tsx:127-131` — `SUCCESS_COPY.login = { title: '¡Listo!', subtitle: 'Iniciaste sesión correctamente.', cta: 'Ir a mis reservas' }`.
+  - `src/app/(auth)/verify/VerifyView.tsx:7` — importa `parseIntent` desde `@/lib/auth-success`; `src/lib/auth-success.ts:25-27` — `parseIntent`: cualquier `intent` inválido cae a `'login'` (`VALID_INTENTS`).
+  - `src/lib/auth-success.ts:52-54` — `successVerifyPath(next, intent)` arma `/verify?status=success&next=...&intent=...` (usado por el callback real).
+  - `src/app/(auth)/verify/SuccessRedirect.tsx:36` — texto "Te llevamos automáticamente en {remaining}s…".
+  - `src/app/(auth)/verify/SuccessRedirect.tsx:23` — `window.location.assign(next)`.
 
 ---
 
 ## GAPS
 
 - **TG-HP-002**: el contrato pide "listá los filtros reales que existen" — están listados en el caso, pero el filtro "Formato" completo (Fútbol 4 a 11) no se ejercita paso a paso en el flujo (solo se cubren los quick-chips 5/7/11); un sub-agente que quiera cubrir Fútbol 4/6/8/9/10 debe abrir el drawer y usar los botones de `ExplorarFilters.tsx:145-167` directamente.
-- **TG-HP-003 / TG-HP-004**: no hay una constante compartida de "hoy en ART" entre ambas vistas — el perfil calcula `today` client-side (`AvailabilityGrid.tsx:44-47`, `Date.now() - 3h`) y la semanal lo hace server-side con la misma fórmula (`disponibilidad/page.tsx:17-19`); no es un GAP funcional, pero un sub-agente que compare fechas entre ambas vistas en el borde de medianoche ART puede ver desincronía de 1 día si corre el test justo en el corte — no vale la pena un caso aparte, se deja documentado.
-- **TG-HP-010**: no se ubicó una página o mock que dispare el estado `LoadingState` (spinner "Verificando tu enlace…") de forma determinística sin backend real — ese estado solo ocurre en el instante entre el mount y el redirect del callback de Supabase (no hay un query param que lo fuerce, ver `verify/page.tsx:57-60`: sin `status=success` y sin `error` cae ahí, pero eso es exactamente "ningún param" — se puede navegar a `/verify` a secas para verlo, pero es una vista transitoria real, no un estado controlable por query param como los otros dos).
+- **TG-HP-003**: el perfil calcula `today` client-side (`useArtNow`, `Date.now() - 3h`). TG-HP-004 ya no es una vista aparte (la semanal se sacó; es un redirect), así que la comparación de fechas entre dos vistas dejó de aplicar.
+- **TG-HP-010**: no se ubicó una página o mock que dispare el estado `LoadingState` (spinner "Verificando tu enlace…") de forma determinística sin backend real — ese estado solo ocurre en el instante entre el mount y el redirect del callback de Supabase (no hay un query param que lo fuerce, ver `verify/VerifyView.tsx:229-237`: sin `status=success` y sin `error` cae ahí, pero eso es exactamente "ningún param" — se puede navegar a `/verify` a secas para verlo, pero es una vista transitoria real, no un estado controlable por query param como los otros dos).
 - No se redactó ningún caso para `/reservar` (formulario de reserva, checkout con/sin seña) — está fuera de los 10 IDs pedidos (TG-HP-001 a TG-HP-010 son estrictamente los listados en el contrato); si el bloque de reserva/checkout es un lote aparte, no está cubierto acá.
 
 
@@ -448,31 +436,30 @@ Fixtures usados en todos los casos (ver contrato):
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/e2e-complejo-demo/reservar?court=00000000-0000-4000-8000-000000000010&date=<YYYY-MM-DD>&time=<HH:MM>&dur=60` (URL armada por la grilla pública; para el caso de test se puede navegar directo).
   2. Como no hay sesión de jugador, la page renderiza `LoginGate` (src/app/(public)/[slug]/reservar/page.tsx:118-131).
-  3. Rellenar `firstName` con `"Juan"`, `lastName` con `"Pérez"`, `email` con `"e2e-player@turnogol.test"` (input `name="email"` type=email).
-  4. Tildar el checkbox `name="terms"` ("Soy mayor de 18 años y acepto los términos y condiciones de uso (declaración jurada)." — LoginGate.tsx:70).
-  5. Click en el botón `"Continuar con email"` (LoginGate.tsx:20-21).
-  6. Esperar el estado `sent`: card con h2 `"Revisá tu email"` y texto `"Te enviamos un enlace a <email>. Hacé click para confirmar tu reserva."` (LoginGate.tsx:41-42).
-  7. Abrir Inbucket (`http://127.0.0.1:54324`), abrir el mensaje enviado a `e2e-player@turnogol.test`, click en el link del magic link (apunta a `/api/auth/callback?token_hash=...&type=email&next=/e2e-complejo-demo/reservar?...`).
-  8. El callback (`src/app/api/auth/callback/route.ts:54,73-100`) verifica el OTP, crea el jugador si no existe, y redirige a `/verify?status=success&next=<next>&intent=booking`.
-  9. En `/verify`, esperar h1 `"¡Cuenta confirmada!"` con subtítulo `"Volvé para terminar tu reserva."` y botón `"Continuar con mi reserva"` (src/app/(auth)/verify/page.tsx:16-19,117-121). Auto-redirect a los 5s (SuccessRedirect.tsx:5,32-34) o click manual en el botón.
-  10. Aterriza de nuevo en `/e2e-complejo-demo/reservar?...`, ahora con sesión (`isPlayer=true`) → renderiza `ConfirmBookingButton` en vez de `LoginGate` (page.tsx:118-128).
+  3. Rellenar `Nombre` (`name="firstName"`) con `"Juan"` y `Email` (`name="email"`, type=email) con `"e2e-player@turnogol.test"`. Desde el PR 2.3b1 no hay Apellido.
+  4. Tildar el checkbox `name="terms"` ("Soy mayor de 18 años y acepto los términos y condiciones de uso (declaración jurada)." — LoginGate.tsx:304). Sin la casilla nada se deshabilita: el error sale en la casilla.
+  5. Click en el botón `"Continuar con mi email"` (LoginGate.tsx:242-243).
+  6. Esperar el estado `sent`: título `"Revisá tu email"` (con foco) y texto `"Te mandamos un enlace a <email>."` + `"Cuando lo toques, tu reserva queda confirmada."` (complejo sin seña; con seña dice `"…volvés a esta pantalla con tu cuenta y ahí pagás la seña."`), con "Reenviar enlace" y "Usar otro email" (LoginGate.tsx).
+  7. Abrir Inbucket (`http://127.0.0.1:54324`, helper `tests/e2e/_helpers/inbucket.ts`), abrir el mensaje enviado a `e2e-player@turnogol.test`, click en el link del magic link (apunta a `/api/auth/callback?token_hash=...&type=email&next=/e2e-complejo-demo/reservar?...%26booking_intent%3D<vínculo firmado>`).
+  8. El callback (`src/app/api/auth/callback/route.ts`) verifica el OTP, crea el jugador si no existe y, como `next` es una reserva (`isBookingPath`), redirige directo a `next`, sin `/verify` (desde el PR 2.3b2).
+  9. En `/e2e-complejo-demo/reservar?...` con sesión, la page verifica el vínculo (`src/shared/security/booking-intent.ts`: firma, mismo email, mismo turno, 60 min) y, sin seña, `AutoConfirm` envía el form de confirmar una sola vez ("Confirmando tu reserva…") y saca el vínculo de la URL.
+  10. Aterriza en `/reserva/<id>/exito` con "¡Reserva confirmada!" (redirect con `replace`). Si el vínculo no vale, queda la pantalla normal con "Tocá Confirmar reserva para terminar." y el botón.
 - **Comportamiento de componentes:**
-  - Loading: botón `Submit` de LoginGate deshabilitado vía `useFormStatus().pending`, texto cambia a `"Enviando…"` con spinner `Loader2` (LoginGate.tsx:16-22).
-  - Anti-doble-submit: `disabled={pending}` en el mismo botón (LoginGate.tsx:19), estado gestionado por `useActionState` (LoginGate.tsx:3,33).
-  - Feedback: no hay toast — la propia `GateState` cambia a `{status:'sent'}` y re-renderiza el card de confirmación in-place (LoginGate.tsx:35-45); luego redirect real vía `NextResponse.redirect` del callback (route.ts:100) y auto-redirect client-side de `/verify` (SuccessRedirect.tsx:19-21).
+  - Loading: `SubmitButton` del email deshabilitado mientras corre la action, con `"Enviando…"` (LoginGate.tsx:242).
+  - Anti-doble-submit: el mismo `SubmitButton`; estado en dos `useActionState`, email y Google (LoginGate.tsx:93-98).
+  - Feedback: no hay toast — la propia `GateState` cambia a `{status:'sent'}` y re-renderiza el panel "Revisá tu email" en el lugar (LoginGate.tsx:348-382); luego redirect real vía `NextResponse.redirect` del callback directo a la reserva y envío automático del form (`AutoConfirm`) (antes: auto-redirect client-side de `/verify`, SuccessRedirect.tsx:22-24).
 - **Validación de datos:**
   - DB: fila nueva en `players` (email lower-cased, `first_name`, `last_name`, `agreed_to_terms_at=NOW()`, `terms_version`) — `INSERT INTO players ... ON CONFLICT (email) DO UPDATE` (src/modules/players/player.service.ts:24,52-63).
-  - API/Action: `sendPlayerMagicLink` (src/app/(public)/[slug]/reservar/actions.ts:49) → `{status:'sent'}` en éxito (actions.ts:79). `GET /api/auth/callback` → 302 a `/verify?...` (route.ts:100).
+  - API/Action: `sendPlayerMagicLink` (src/app/(public)/[slug]/reservar/actions.ts:75) → `{status:'sent'}` en éxito (actions.ts:123). `GET /api/auth/callback` → 302 directo a `next` (la reserva).
   - Externos: Resend envía el magic link vía `supabase.auth.signInWithOtp` (src/modules/auth/auth.service.ts:27-39) — visible en Inbucket `:54324`, `user_metadata` lleva `is_player`, `first_name`, `last_name`, `agreed_terms`, `terms_version` (auth.service.ts:31-37).
   - UI-sin-reload: no aplica (son navegaciones reales / redirects de servidor, no revalidatePath).
 - **Evidencia (path:línea):**
   - `src/app/(public)/[slug]/reservar/page.tsx:118-131` — render condicional LoginGate vs ConfirmBookingButton según sesión.
-  - `src/app/(public)/[slug]/reservar/components/LoginGate.tsx:41-42,50-51,68-71` — copy exacto del form y del estado "sent".
-  - `src/app/(public)/[slug]/reservar/actions.ts:49-80` — `sendPlayerMagicLink`.
-  - `src/app/api/auth/callback/route.ts:54,71-100` — verifyOtp + `getOrCreatePlayer` + redirect a `/verify`.
+  - `src/app/(public)/[slug]/reservar/components/LoginGate.tsx:242-243,304,348-382` — copy exacto del form y del estado "sent".
+  - `src/app/(public)/[slug]/reservar/actions.ts:75-124` — `sendPlayerMagicLink`.
+  - `src/app/api/auth/callback/route.ts` — verifyOtp + `getOrCreatePlayer` + redirect directo a la reserva (`isBookingPath`).
   - `src/modules/players/player.service.ts:24-65` — `getOrCreatePlayer` (INSERT/UPDATE de `players`).
-  - `src/app/(auth)/verify/page.tsx:16-19,117-121` — copy de éxito intent=booking.
-  - `src/app/(auth)/verify/SuccessRedirect.tsx:5,19-21,32-34` — auto-redirect 5s.
+  - `src/app/(auth)/verify/SuccessRedirect.tsx:5,22-24,35-37` — auto-redirect 5s.
 
 ---
 
@@ -481,30 +468,31 @@ Fixtures usados en todos los casos (ver contrato):
 - **Prerrequisitos:** Sin sesión activa (expirada/cerrada). Jugador ya existe en `players` (`e2e-player@turnogol.test`, `player_id=...020`).
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/ingresar`.
-  2. Ver h1 `"Accedé a tu cuenta"` (IngresarForm.stories aparte; texto real en `src/app/(auth)/ingresar/IngresarForm.tsx:92-104`, "cuenta" con gradient span).
+  2. Ver h1 `"Accedé a tu cuenta"` (`src/app/(auth)/ingresar/IngresarForm.tsx:292`; título plano con `PORTAL_TITLE`, sin gradient span). Primero va "Continuar con Google" y después el form de email; en el navegador interno de una app (Instagram, Facebook, TikTok, LinkedIn, LINE, Snapchat, Pinterest o cualquier WebView de Android) va primero el email, porque Google rechaza los WebViews (`page.tsx:10` lee el User-Agent con `isInAppBrowser`, `src/lib/in-app-browser.ts`).
   3. Rellenar el input `id="email"` `name="email"` con `"e2e-player@turnogol.test"`.
-  4. Click en el botón `"Enviarme el enlace"` (IngresarForm.tsx:150).
-  5. Esperar el estado `sent`: h1 `"Revisá tu email"`, texto `"Te enviamos un enlace de acceso a <email>."` (IngresarForm.tsx:81-84).
+  4. Click en el botón `"Mandame el enlace"` (IngresarForm.tsx:266-268).
+  5. Esperar el estado `sent`: h1 `"Revisá tu email"`, texto `"Si <email> tiene cuenta, te enviamos un enlace para entrar."` (IngresarForm.tsx:353-356; la action contesta `sent` aunque ese email no tenga cuenta, por eso el texto no afirma que el mail salió), botón `"Reenviar en 60 s"` deshabilitado, `"Usar otro email"` y, abajo, el bloque de primera vez, con el link a `/explorar` (IngresarForm.tsx:366-389).
   6. Abrir Inbucket `:54324`, abrir el mail a `e2e-player@turnogol.test`, click en el link.
-  7. Callback (`route.ts:54,73-100`) reconoce `is_player=true` (ya en `app_metadata`/`user_metadata` de logins previos), NO reescribe `agreed_terms` (no se le pasa perfil — `signInWithExistingPlayerMagicLink`, actions.ts:40), redirige a `/verify?status=success&next=/mis-reservas&intent=login` (default `next` si no vino uno, actions.ts:38: `sanitizeNext(..., '/mis-reservas')`).
-  8. En `/verify` ver h1 `"¡Listo!"`, subtítulo `"Iniciaste sesión correctamente."`, botón `"Ir a mis reservas"` (verify/page.tsx:21-24). Auto-redirect a los 5s o click manual.
+  7. Callback (`route.ts:228-231` verifyOtp; `route.ts:262,279-283` rama `isPlayer` → `provisionPlayerAndRedirect`, `route.ts:62-148`) reconoce `is_player=true` (ya en `app_metadata`/`user_metadata` de logins previos), NO reescribe `agreed_terms` (no se le pasa perfil — `signInWithExistingPlayerMagicLink`, actions.ts:47) y, con el consentimiento ya resuelto, redirige a `/verify?status=success&next=/mis-reservas&intent=login` (`route.ts:146-147`; default `next` si no vino uno, actions.ts:45: `sanitizeNext(..., '/mis-reservas')`). Un jugador sin consentimiento pasa antes por `/aceptar-terminos` (`route.ts:140-144`).
+  8. En `/verify` ver h1 `"¡Listo!"`, subtítulo `"Iniciaste sesión correctamente."`, botón `"Ir a mis reservas"` (verify/VerifyView.tsx:127-131,335-358). Auto-redirect a los 5s o click manual.
   9. Aterriza en `/mis-reservas` con sesión de jugador activa.
 - **Comportamiento de componentes:**
-  - Loading: `SubmitButton` deshabilitado vía `useFormStatus().pending`, texto `"Enviando…"` + `Loader2` (IngresarForm.tsx:136-154).
-  - Anti-doble-submit: `disabled={pending}` (IngresarForm.tsx:141).
-  - Feedback: `useActionState` cambia el card in-place a estado `sent` (IngresarForm.tsx:61,65-86); no hay toast.
+  - Loading: `SubmitButton` deshabilitado vía `useFormStatus().pending`, texto `"Enviando…"` + spinner (IngresarForm.tsx:266; submit-button.tsx:28-39).
+  - Anti-doble-submit: `disabled={pending || disabled}` (submit-button.tsx:37); cubierto por `tests/unit/ingresar-resend.test.tsx`.
+  - Feedback: `useActionState` cambia el card in-place a estado `sent` (IngresarForm.tsx:202-205,219-231 → `SentPanel`, 323-392); no hay toast. "Reenviar" corre la misma action y espera 60 s después de cada respuesta del servidor, medidos contra el reloj y no contando ticks (`ResendForm`, IngresarForm.tsx:394-450); al reenviar avisa "Listo: si ese email tiene cuenta, te llega otro enlace. Usá el del último correo." (IngresarForm.tsx:443-447).
+  - Sin conexión: la action rechaza y `callLogin` lo atrapa (IngresarForm.tsx:81-110): "No pudimos enviar el enlace. Revisá tu conexión e intentá de nuevo.", con el email conservado; un corte de red deja un breadcrumb de Sentry y no un evento, y cualquier otro rechazo va a `captureException`. Una pestaña de antes de un deploy (`UnrecognizedActionError`) pide "La página quedó desactualizada. Recargala y probá de nuevo.", y un `redirect()` de la action se re-lanza (`unstable_rethrow`). Sin esto la página caía en `(auth)/error.tsx`.
 - **Validación de datos:**
-  - DB: NO inserta jugador nuevo — `getOrCreatePlayer` toma la rama `existing.length>0` y solo actualiza `last_login_at` (player.service.ts:38,47).
-  - API/Action: `playerLoginAction` (src/app/(auth)/ingresar/actions.ts:20) → `{status:'sent', email}` (actions.ts:44).
-  - Externos: Resend vía `signInWithExistingPlayerMagicLink` (auth.service.ts:49-60) — visible en Inbucket.
+  - DB: NO inserta jugador nuevo — `getOrCreatePlayer` toma la rama `existing.length>0` y solo actualiza `last_login_at` (player.service.ts:40,50).
+  - API/Action: `playerLoginAction` (src/app/(auth)/ingresar/actions.ts:25) → `{status:'sent', email}` (actions.ts:55).
+  - Externos: Resend vía `signInWithExistingPlayerMagicLink` (auth.service.ts:85-111) — visible en Inbucket.
   - UI-sin-reload: no aplica (navegación real).
 - **Evidencia (path:línea):**
-  - `src/app/(auth)/ingresar/page.tsx:100` — `IngresarForm action={playerLoginAction}`.
-  - `src/app/(auth)/ingresar/IngresarForm.tsx:81-84,92-105,150` — copy exacto.
-  - `src/app/(auth)/ingresar/actions.ts:20-45` — `playerLoginAction`, `next` default `/mis-reservas` (línea 38).
-  - `src/app/api/auth/callback/route.ts:73-100` — misma rama `isPlayer` que TG-HP-101, sin perfil nuevo.
-  - `src/lib/auth-success.ts:21-23` — `playerSuccessIntent` clasifica `next` no-booking como `'login'`.
-  - `src/app/(auth)/verify/page.tsx:21-24` — copy `intent='login'`.
+  - `src/app/(auth)/ingresar/page.tsx:14-18` — `IngresarForm action={playerLoginAction}`.
+  - `src/app/(auth)/ingresar/IngresarForm.tsx:266-268,292,353-356,366-389` — copy exacto.
+  - `src/app/(auth)/ingresar/actions.ts:25-56` — `playerLoginAction`, `next` default `/mis-reservas` (línea 45).
+  - `src/app/api/auth/callback/route.ts:279-283` — misma rama `isPlayer` que TG-HP-101, sin perfil nuevo; `route.ts:62-148` (`provisionPlayerAndRedirect`).
+  - `src/lib/auth-success.ts` — `isBookingPath`: un `next` que no es una reserva sigue a `/verify` con `intent='login'` (route.ts, `successVerifyPath`).
+  - `src/app/(auth)/verify/VerifyView.tsx:127-131` — copy `intent='login'`.
 
 ---
 
@@ -516,12 +504,12 @@ Fixtures usados en todos los casos (ver contrato):
   2. Ver h1 `"Confirmá tu reserva"` (page.tsx:101).
   3. Ver `BookingSummary` con precio del slot, sin bloque de seña (`depositAmount=0` porque `tenant.requiresDeposit=false`, page.tsx:68-70).
   4. Como hay sesión, se renderiza `ConfirmBookingButton` con `payMethods` presenciales (cash/transfer según config, `depositAmount>0` sería solo MP — page.tsx:75-81).
-  5. Click en el botón `"Confirmar reserva"` (texto condicional `depositAmount>0 ? 'Pagar seña y reservar' : 'Confirmar reserva'`, ConfirmBookingButton.tsx:13).
+  5. Click en el botón `"Confirmar reserva"` (texto condicional `withDeposit ? 'Pagar la seña' : 'Confirmar reserva'`, ConfirmBookingButton.tsx:52).
   6. `createBookingAndCheckout` inserta el booking con `status:'confirmed'` de una (booking.service.ts:433,436: `withDeposit` es `false`) y redirige a `/reserva/<bookingId>/exito` (reservar/actions.ts:169-170).
-  7. En `/reserva/<id>/exito` ver h1 `"¡Reserva confirmada!"` (BookingSuccessCard.tsx:52-54), texto `"Pagás <precio> al llegar al complejo."` (depositStatus='not_required', BookingSuccessCard.tsx:60-63), QR de verificación y botón `"Ver mis reservas"`.
+  7. En `/reserva/<id>/exito` ver h1 `"¡Reserva confirmada!"` (BookingSuccessCard.tsx), el resumen del turno con la fila `"Pagás en el complejo"` (depositStatus='not_required': `payNote` de `BookingSummary`), la acción principal `"Avisarle al grupo"` (link `https://wa.me/?text=…`, sin montos), la lista `"Cómo llegar"` / `"Agregar al calendario"` / `"Ver mis reservas"` y, abajo, el código de la reserva con `"Descargar comprobante"`.
 - **Comportamiento de componentes:**
-  - Loading: botón `Inner` de ConfirmBookingButton deshabilitado vía `useFormStatus().pending`, texto `"Procesando…"` + spinner (ConfirmBookingButton.tsx:8-16).
-  - Anti-doble-submit: `disabled={pending}` (ConfirmBookingButton.tsx:11).
+  - Loading: `SubmitButton` de ConfirmBookingButton deshabilitado mientras corre la action, con `"Procesando…"` (ConfirmBookingButton.tsx:51).
+  - Anti-doble-submit: el mismo `SubmitButton` (ConfirmBookingButton.tsx:51).
   - Feedback: no hay toast; es un `redirect()` real de servidor (Server Action `createBookingAndCheckout` sin retorno, actions.ts:92,200).
 - **Validación de datos:**
   - DB: `bookings.status='confirmed'`, `deposit_status='not_required'`, `deposit_amount=0`, `payment_method` = `cash`/`transfer` si el jugador lo eligió (booking.service.ts:433,436-437).
@@ -530,10 +518,10 @@ Fixtures usados en todos los casos (ver contrato):
   - UI-sin-reload: no aplica — navegación real vía `redirect()`.
 - **Evidencia (path:línea):**
   - `src/app/(public)/[slug]/reservar/page.tsx:67-70,75-81,101,118-131` — h1, cálculo de `depositAmount=0`, `payMethods`, render `ConfirmBookingButton`.
-  - `src/app/(public)/[slug]/reservar/components/ConfirmBookingButton.tsx:8-16,39-42` — label del botón y hint.
+  - `src/app/(public)/[slug]/reservar/components/ConfirmBookingButton.tsx:45-53` — barra fija y label del botón.
   - `src/app/(public)/[slug]/reservar/actions.ts:92,138,169-170` — `withDeposit` false → `status:'confirmed'` → redirect a `/exito`.
   - `src/modules/bookings/booking.service.ts:415-437` — inserción `status: withDeposit ? 'pending_payment' : 'confirmed'`.
-  - `src/app/reserva/[bookingId]/exito/BookingSuccessCard.tsx:52-54,60-63` — h1 y copy "sin seña".
+  - `src/app/reserva/[bookingId]/exito/BookingSuccessCard.tsx` — h1, resumen con la fila "Pagás en el complejo" y "Avisarle al grupo".
 
 ---
 
@@ -544,16 +532,16 @@ Fixtures usados en todos los casos (ver contrato):
   1. Navegar a `http://localhost:3000/e2e-complejo-sena/reservar?court=00000000-0000-4000-8000-000000000031&date=<YYYY-MM-DD>&time=<HH:MM>&dur=60`.
   2. Ver h1 `"Confirmá tu reserva"` y `BookingSummary` con seña calculada (`depositAmount = round(price*50/100)`, page.tsx:68-70).
   3. `payMethods` es solo `['mercadopago']` (depositAmount>0, page.tsx:75-77) — `PaymentMethodSelector` no ofrece cash/transfer.
-  4. Click en el botón `"Pagar seña y reservar"` (ConfirmBookingButton.tsx:13, `depositAmount>0`).
+  4. Click en el botón `"Pagar la seña"` (ConfirmBookingButton.tsx:52, `withDeposit`).
   5. `createBookingAndCheckout` inserta `status:'pending_payment'`, `deposit_status:'pending'` (booking.service.ts:433,436), llama `createDepositPayment` y redirige al `initPoint` de MP (reservar/actions.ts:169-179) → en mock, aterriza en `/mock-mp/checkout?booking=<id>&pref=...`.
   6. En el mock, ver banner `"Entorno de prueba (MOCK)"` y h1 `"Pago de seña"` (MockCheckoutView.tsx:35-45), con el resumen (complejo/cancha/fecha/horario/seña).
   7. Click en `"Pagar (aprobado)"` (MockCheckoutView.tsx:80-86).
   8. `mockPay` dispara el webhook interno a `/api/webhooks/mercadopago` con `type:'payment', status implícito approved` y redirige a `/reserva/<id>/exito` (mock-mp/checkout/actions.ts:43-98).
-  9. En `/reserva/<id>/exito`, si el webhook ya procesó, ver directo `BookingSuccessCard` con h1 `"¡Reserva confirmada!"`, `"Seña pagada: <monto>"` y `"Resta abonar en el complejo: <resto>"` (BookingSuccessCard.tsx:65-68); si aún no, se monta `PaymentStatusWatcher` que muestra el mismo h1 al llegar a `status='confirmed'` vía polling (exito/page.tsx:75-91; PaymentStatusWatcher.tsx:116-123).
+  9. En `/reserva/<id>/exito`, si el webhook ya procesó, ver directo `BookingSuccessCard` con h1 `"¡Reserva confirmada!"` y, en el resumen, `"Seña pagada"` y `"Resto en el complejo"` con sus montos (o la fila `"Seña pagada, el resto en el complejo"` si el complejo oculta los precios); si aún no, se monta `PaymentStatusWatcher` ("Confirmando tu pago…") que, al llegar a `status='confirmed'` vía polling, hace `router.refresh()` (ya está en `/exito`) y la page vuelve a leer la reserva y muestra la tarjeta (exito/page.tsx; PaymentStatusWatcher.tsx).
 - **Comportamiento de componentes:**
-  - Loading: mismo botón `Inner` de ConfirmBookingButton con `"Procesando…"` (ConfirmBookingButton.tsx:12).
-  - Anti-doble-submit: `disabled={pending}` (ConfirmBookingButton.tsx:11); en el mock checkout no hay `useFormStatus` (los 3 botones son `formAction` distintos del mismo `<form>`, MockCheckoutView.tsx:76-105 — sin estado pending visible).
-  - Feedback: sin toast; redirect real del webhook mock a `/exito`, y `PaymentStatusWatcher` hace polling a `/api/player/bookings/<id>/status` cada 3s con backoff hasta 30s (PaymentStatusWatcher.tsx:67-114) y renderiza el h1 de confirmado al detectar `status==='confirmed'` (`aria-live="polite"`, línea 118).
+  - Loading: mismo `SubmitButton` de ConfirmBookingButton con `"Procesando…"` (ConfirmBookingButton.tsx:51).
+  - Anti-doble-submit: el mismo `SubmitButton` (ConfirmBookingButton.tsx:51); en el mock checkout no hay `useFormStatus` (los 3 botones son `formAction` distintos del mismo `<form>`, MockCheckoutView.tsx:76-105 — sin estado pending visible).
+  - Feedback: sin toast; redirect real del webhook mock a `/exito`, y `PaymentStatusWatcher` hace polling a `/api/player/bookings/<id>/status` cada 3s con backoff hasta 30s y, al detectar `status==='confirmed'`, pide a la page que se vuelva a leer (`router.refresh()`; si estuviera en `/pendiente`, `router.replace` a `/exito`). Una sola navegación (`navigatedRef`).
 - **Validación de datos:**
   - DB: `bookings.status='confirmed'`, `deposit_status='paid'` (transitionFromPendingPayment, booking.concurrency.ts:33-35), 1 fila en `payments` con `status='approved'` (`upsertPaymentRow`, payment.service.ts:294).
   - API/Action: `createBookingAndCheckout` (actions.ts:92) → redirect a MP/mock; webhook `POST /api/webhooks/mercadopago` procesado inline en mock (`dispatchPaymentInfo`, payment.service.ts:219-241 rama `info.status==='approved'` → `handleApproved`, línea 280).
@@ -566,8 +554,8 @@ Fixtures usados en todos los casos (ver contrato):
   - `src/app/mock-mp/checkout/actions.ts:43-98` — `mockPay` webhook + redirect a `/exito`.
   - `src/modules/payments/payment.service.ts:224-241,280-315` — `dispatchPaymentInfo`/`handleApproved`, `upsertPaymentRow` status `approved`.
   - `src/modules/bookings/booking.concurrency.ts:21-57` — `transitionFromPendingPayment('confirmed')` seta `depositStatus:'paid'`.
-  - `src/app/reserva/[bookingId]/exito/BookingSuccessCard.tsx:52-54,65-68` — copy con seña.
-  - `src/components/booking/PaymentStatusWatcher.tsx:67-114,116-123` — polling + h1 confirmado.
+  - `src/app/reserva/[bookingId]/exito/BookingSuccessCard.tsx` — resumen con seña pagada y resto.
+  - `src/components/booking/PaymentStatusWatcher.tsx` — polling + navegación a `/exito` al confirmarse.
 
 ---
 
@@ -577,13 +565,13 @@ Fixtures usados en todos los casos (ver contrato):
 - **Flujo de navegación (UI steps):**
   1. En `/mock-mp/checkout?booking=<id>`, click en `"Pago rechazado"` (MockCheckoutView.tsx:89-95).
   2. `mockReject` dispara el webhook con `status` rechazado (`buildMockPaymentId('rejected', bookingId)`, actions.ts:110-114) y redirige a `/reserva/<id>/error` (actions.ts:143).
-  3. En `/reserva/<id>/error`, ver h1 `"El pago no se procesó."`, texto `"El pago fue rechazado o cancelado. Podés intentar de nuevo con otro medio."` (BookingErrorCard.tsx:44-47).
-  4. Dentro de la ventana de hold (`DEFAULT_EXPIRY_SECONDS`=360s desde `created_at`), el botón visible es `"Reintentar pago"` (BookingErrorCard.tsx:49-55; `withinWindow`, error/page.tsx:48-50).
+  3. En `/reserva/<id>/error`, ver h1 `"El pago no se procesó"` (sin punto final), texto `"El pago fue rechazado o cancelado."`, `"Tu turno sigue guardado por poco tiempo. Podés intentar de nuevo con otro medio de pago."` y una línea con el turno guardado (día, hora y cancha), sin cuenta regresiva (BookingErrorCard.tsx).
+  4. Dentro de la ventana de hold (`DEFAULT_EXPIRY_SECONDS`=360s desde `created_at`, solo con `status='pending_payment'` y con más de 90 s por delante, `holdAllowsRetry`), el botón visible es `"Reintentar pago"` (BookingErrorCard.tsx; `withinWindow`, error/page.tsx). Con 90 s o menos, la preferencia nueva se comería el margen de 60 s del webhook (con menos de 30 s, sobreviviría al hold): ni la página ofrece reintentar ni la action abre la preferencia.
   5. Esperar (o simular con reloj adelantado en test) a que pasen los ~6 minutos sin reintentar: el worker/cron de expiración transiciona el booking a `expired` (expire-pending-booking.worker.ts:19-38 → `expirePendingBookingWithPolicy`, booking.expiry.ts:134-283) y libera el slot.
-  6. Volviendo a cargar `/reserva/<id>/error` después de expirar, `withinWindow` es `false` → CTA cambia a `"Reservar de nuevo"` que linkea a `/e2e-complejo-sena` (BookingErrorCard.tsx:56-59).
+  6. Volviendo a cargar `/reserva/<id>/error` después de expirar, `withinWindow` es `false` → se lee `"El pago no se completó a tiempo y el turno ya no está guardado."` y el CTA cambia a `"Reservar de nuevo"`, que linkea a la ficha del complejo en el día de la reserva (`/e2e-complejo-sena?date=<YYYY-MM-DD>`, BookingErrorCard.tsx).
 - **Comportamiento de componentes:**
   - Loading: no hay spinner en `/error` (server component estático); el form de reintento es un submit normal sin `useFormStatus` visible en `BookingErrorCard`.
-  - Anti-doble-submit: no implementado explícitamente en `BookingErrorCard` (sin `disabled` en el botón de reintento, BookingErrorCard.tsx:52).
+  - Anti-doble-submit: el botón de reintento es un `SubmitButton` (deshabilitado mientras corre la action, "Reintentando…", BookingErrorCard.tsx).
   - Feedback: sin toast; todo son `redirect()`/navegación real de servidor.
 - **Validación de datos:**
   - DB inmediato tras rechazo: `bookings.status` SIGUE `'pending_payment'` (el webhook `rejected` solo hace `upsertPaymentRow(..., 'rejected', tx)`, NO transiciona el booking — payment.service.ts:247-254); fila en `payments` con `status='rejected'`.
@@ -595,7 +583,7 @@ Fixtures usados en todos los casos (ver contrato):
   - `src/app/mock-mp/checkout/MockCheckoutView.tsx:89-95` — botón "Pago rechazado".
   - `src/app/mock-mp/checkout/actions.ts:101-144` — `mockReject`.
   - `src/app/reserva/[bookingId]/error/page.tsx:44-58` — `withinWindow` con `DEFAULT_EXPIRY_SECONDS`.
-  - `src/app/reserva/[bookingId]/error/BookingErrorCard.tsx:44-59` — copy y CTAs condicionales.
+  - `src/app/reserva/[bookingId]/error/BookingErrorCard.tsx` — copy y CTAs condicionales (reintentar, turno liberado, cancelada, ya pasó).
   - `src/modules/payments/payment.service.ts:247-254` — rama `rejected` no toca `bookings.status`.
   - `src/shared/jobs/definitions.ts:33` — `DEFAULT_EXPIRY_SECONDS = 6*60`.
   - `src/shared/jobs/workers/expire-pending-booking.worker.ts:19-38` — consumer + sweep cada 5 min.
@@ -610,23 +598,23 @@ Fixtures usados en todos los casos (ver contrato):
 - **Prerrequisitos:** Booking con `status='pending_payment'` recién creado (tenant Seña), sin resolver aún (ni aprobado ni rechazado) — p.ej. tras `createBookingAndCheckout` antes de completar el mock, o transferencia `in_process`.
 - **Flujo de navegación (UI steps):**
   1. Navegar (o ser redirigido) a `http://localhost:3000/reserva/<bookingId>/pendiente`.
-  2. La page carga el booking server-side y calcula `expiresAt = createdAt + 360s`; monta `PaymentStatusWatcher` con `initialStatus='pending_payment'` (pendiente/page.tsx:24-59).
-  3. Ver h2 `"Confirmando tu pago…"`, texto `"Esto puede tardar unos segundos."` y contador `"Te queda <mm:ss> para completar el pago."` vía `ExpiryCountdown` (PaymentStatusWatcher.tsx:197-210).
-  4. A los 30s sin resolver, aparece `"¿Tarda? Te avisamos por email apenas se confirme."` (PaymentStatusWatcher.tsx:211-215, `showDelayNote`).
+  2. La page carga el booking server-side y calcula `expiresAt = createdAt + 360s`; monta `PaymentStatusWatcher` con `initialStatus='pending_payment'` (pendiente/page.tsx).
+  3. Ver h1 `"Confirmando tu pago…"` y el texto `"Esto puede tardar unos segundos."`. No hay contador: quien llega ya pasó por MercadoPago (PaymentStatusWatcher.tsx, `PaymentStatusView`).
+  4. A los 30s sin resolver, aparece `"¿Tarda? Si se confirma, te llega un email. También lo ves en Mis reservas."` (`showDelayNote`).
   5. El componente hace polling a `GET /api/player/bookings/<id>/status` cada 3s con backoff exponencial hasta 30s (PaymentStatusWatcher.tsx:67-114).
-  6. Cuando el status responde `'confirmed'`, re-renderiza a h1 `"¡Reserva confirmada!"` (línea 116-131); si `expiresAt` se cumple sin transición, pasa a `stalled='expired'` → h1 `"Se acabó el tiempo"` (líneas 51-60, 172-193).
+  6. Cuando el status responde `'confirmed'`, navega a `/reserva/<id>/exito` con `router.replace`; si `expiresAt` se cumple sin transición, pasa a `stalled='expired'` → h1 `"Se acabó el tiempo"` con `"No recibimos la confirmación de MercadoPago a tiempo. En Mis reservas ves si el turno quedó confirmado. Si pagaste y no aparece, escribile al complejo."` y el botón `"Ver mis reservas"`.
 - **Comportamiento de componentes:**
-  - Loading: ícono `Loader2` animado mientras `status` no es terminal (PaymentStatusWatcher.tsx:199-201).
+  - Loading: ícono `Loader2` animado (quieto con reduce-motion) mientras `status` no es terminal.
   - Anti-doble-submit: no aplica (no hay form, es polling read-only).
-  - Feedback: sin toast; todo es re-render in-place por `aria-live="polite"` (líneas 118,136,155,174,198) — no hay `router.refresh()` ni `revalidatePath`, el estado se actualiza vía `setStatus` local tras cada fetch (línea 94).
+  - Feedback: sin toast; los cambios de estado son re-render in-place anunciados por `aria-live="polite"` (`PortalResult`); al confirmarse, navega a `/exito`. El estado se actualiza vía `setStatus` local tras cada fetch.
 - **Validación de datos:**
   - DB: lectura de `bookings.status`/`deposit_status`/`created_at` bajo `withPlayerContext` (RLS) — `GET /api/player/bookings/[id]/status` (route.ts:20-25,41-45).
   - API/Action: `GET /api/player/bookings/<id>/status` → `{data:{status, depositStatus, expiresAt}}` (route.ts:41-45); 404 si la RLS oculta el booking de otro jugador (route.ts:31-34).
   - Externos: ninguno directo en este caso (solo polling interno).
-  - UI-sin-reload: confirmado — `PaymentStatusWatcher` actualiza sin recargar la página ni `router.refresh()` (setState + fetch loop, líneas 27-114).
+  - UI-sin-reload: los estados de espera, expirada, cancelada y tiempo agotado se actualizan sin recargar (setState + fetch loop); solo `confirmed` navega a `/exito`.
 - **Evidencia (path:línea):**
-  - `src/app/reserva/[bookingId]/pendiente/page.tsx:24-59` — carga booking + `expiresAt` + monta watcher.
-  - `src/components/booking/PaymentStatusWatcher.tsx:37-60,67-114,196-217` — delay note, stall, polling, UI "Confirmando tu pago…".
+  - `src/app/reserva/[bookingId]/pendiente/page.tsx` — carga booking + `expiresAt` + monta watcher.
+  - `src/components/booking/PaymentStatusWatcher.tsx` — delay note, stall, polling, UI "Confirmando tu pago…".
   - `src/app/api/player/bookings/[id]/status/route.ts:12-46` — endpoint de polling.
 
 ---
@@ -636,13 +624,13 @@ Fixtures usados en todos los casos (ver contrato):
 - **Prerrequisitos:** Sesión activa. Al menos 1 booking con `date >= hoy` (para Próximos) y 1 con `date < hoy` (para Historial), en cualquier tenant vinculado.
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/mis-reservas`.
-  2. Ver h1 `"Mis reservas"` dentro de la banda hero (MisReservasView.tsx:148-153).
-  3. Tab por defecto `"Próximos"` activo (`/mis-reservas?tab=proximos`, MisReservasView.tsx:163-165; page.tsx:52 default `'proximos'`).
-  4. Click en el tab `"Historial"` (`/mis-reservas?tab=historial`, MisReservasView.tsx:166-168) → navega y refiltra server-side (`b.date < today`, page.tsx:105-107).
-  5. Cada card muestra cancha, complejo, badge de estado (`STATUS_LABELS`: `Confirmado`/`Pago pendiente`/`Jugada`/`Cancelado (con reembolso)`/`Cancelado (sin reembolso)`/`Ausente`/`Expirado`, MisReservasView.tsx:66-74), horario y precio.
+  2. Ver h1 `"Mis reservas"`, sin banda hero, en el mundo del portal (`mis-reservas/layout.tsx` monta `PortalWorld`).
+  3. Tab por defecto `"Próximos"` activo (`/mis-reservas?tab=proximos`), dentro de un `<nav aria-label="Tus reservas">` con `aria-current="page"`.
+  4. Click en el tab `"Historial"` (`/mis-reservas?tab=historial`) → navega y refiltra en SQL (`page.tsx`, `tabCond`): Próximos = `confirmed`/`pending_payment` con `date >= hoy` o `ends_at > now()` (un turno en juego pasada la medianoche sigue en Próximos), de la más cercana a la más lejana y con los terminados de hoy al final; Historial, el resto, de la más nueva a la más vieja.
+  5. Cada card es un `<li>` con día ("Hoy", "Mañana" o "vie 13 mar", por el día calendario de `starts_at`), rango `"20:00 a 21:00"`, cancha con formato, complejo, badge (`Confirmada`, `Esperando seña`, `Jugada`, `Cancelada`, `Cancelada (sin reembolso)`, `Ausente`, `Expirada`) y la línea de seña o pago (con precios ocultos, sin monto del turno). La primera de Próximos (la próxima confirmada que no terminó) suma dirección, "Avisarle al grupo" y "Cómo llegar"; las confirmadas abren `/reserva/{id}/exito`.
   6. Si `bookings.length===0`: empty state con h2 `"Todavía no tenés reservas"` (tab proximos) o `"Historial vacío"` (tab historial) + botón `"Explorar complejos"` (MisReservasView.tsx:172-194).
 - **Comportamiento de componentes:**
-  - Loading: no hay skeleton visible en el snippet leído — la page es Server Component (`page.tsx`), la navegación entre tabs es un `<Link>` real (no client fetch).
+  - Loading: `mis-reservas/loading.tsx` (esqueleto con las alturas de las tarjetas reales); error propio en `mis-reservas/error.tsx`.
   - Anti-doble-submit: no aplica (navegación por link).
   - Feedback: ninguno (SSR puro por query param `tab`).
 - **Validación de datos:**

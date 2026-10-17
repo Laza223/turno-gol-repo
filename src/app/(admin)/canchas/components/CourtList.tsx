@@ -1,7 +1,7 @@
 'use client'
 
 import type { ActionResult } from '@/shared/types/action-result'
-import { useState, useTransition } from 'react'
+import { useState, useTransition, type ReactNode } from 'react'
 import dynamic from 'next/dynamic'
 import Image from 'next/image'
 import { ImagePlus, LayoutGrid, Lock } from 'lucide-react'
@@ -93,6 +93,8 @@ type Props = {
   uploadPhotoAction: UploadCourtPhotoAction
   removePhotoAction: RemoveCourtPhotoAction
   reorderPhotosAction: ReorderCourtPhotosAction
+  /** Debajo de la lista (no en el formulario): "Mostrar precios en tu página". */
+  publicPricesControl?: ReactNode
 }
 
 type Editing = { court: CourtRow | null; section?: 'photos' }
@@ -128,6 +130,7 @@ export function CourtList({
   uploadPhotoAction,
   removePhotoAction,
   reorderPhotosAction,
+  publicPricesControl,
 }: Props) {
   const [courts, setCourts] = useState<CourtRow[]>(initialCourts)
   const [editing, setEditing] = useState<Editing | null>(null)
@@ -236,6 +239,7 @@ export function CourtList({
           </ul>
         </div>
       )}
+      {publicPricesControl}
     </div>
   )
 }

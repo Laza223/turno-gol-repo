@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   HOLD_TTL_SECONDS,
+  holdAllowsRetry,
   holdExpiresAtIso,
   holdExpiresAtMs,
   holdIsExpired,
@@ -73,5 +74,23 @@ describe('holdRemainingLabel', () => {
 
   it('una fecha basura cae a expirado en vez de renderizar NaN', () => {
     expect(holdRemainingLabel('no-es-una-fecha', T0)).toEqual({ expired: true })
+  })
+})
+
+describe('holdAllowsRetry', () => {
+  // La preferencia nueva vence 60 s antes del hold, con un piso de 30 s desde ahora: con 90 s o
+  // menos de hold, vencería después y el pago llegaría tarde.
+  const created = new Date(T0)
+  const expires = T0 + HOLD_TTL_SECONDS * 1000
+
+  it('con más de 90 s de hold se puede reintentar', () => {
+    expect(holdAllowsRetry(created, expires - 91_000)).toBe(true)
+    expect(holdAllowsRetry(created, T0)).toBe(true)
+  })
+
+  it('con 90 s o menos ya no: la preferencia sobreviviría al hold', () => {
+    expect(holdAllowsRetry(created, expires - 90_000)).toBe(false)
+    expect(holdAllowsRetry(created, expires - 10_000)).toBe(false)
+    expect(holdAllowsRetry(created, expires + 1)).toBe(false)
   })
 })

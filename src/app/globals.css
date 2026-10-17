@@ -537,6 +537,32 @@ html {
   background-attachment: fixed;
 }
 
+/* Las páginas del portal que montan `PortalWorld` (La Reserva) van sobre el fondo liso del
+   mundo, sin la cancha de La Previa; el resto del portal conserva las dos reglas de arriba.
+   El shorthand resetea imagen, tamaño, posición y `background-attachment`. Va acá y no en
+   portal-world.css: ese archivo solo admite custom properties (portal-world-tokens.test.ts).
+   Especificidad (0,2,1): le gana a `.dark .player-shell-bg` (0,2,0) sin importar el orden.
+   Compuerta: tests/unit/portal-shell-bg.test.ts. */
+html:has([data-world='portal']) .player-shell-bg {
+  background: var(--color-background);
+}
+
+/* El botón fijo de confirmar (`[data-fixed-cta]`, ConfirmBookingButton) tapa el borde de abajo en el
+   celular. Sin esto, tabular a un radio o un link que quedó detrás de la barra no lo trae a la vista:
+   el navegador lo da por visible porque está dentro del viewport (WCAG 2.4.11, foco no oculto).
+   `scroll-padding-bottom` en `html` reserva el mismo alto que el relleno de `PortalFrame`: barra
+   inferior (3.5rem + 1 px) + área segura + 77 px de la barra fija. Desde `md` el botón está en el
+   flujo y no hay barra inferior. Si cambia uno de los dos números, cambia el otro.
+   Compuerta: story `FocoNoQuedaTapadoPorLaBarra` (CheckoutFlow). */
+html:has([data-fixed-cta]) {
+  scroll-padding-bottom: calc(3.5rem + 1px + env(safe-area-inset-bottom) + 77px);
+}
+@media (width >= 48rem) {
+  html:has([data-fixed-cta]) {
+    scroll-padding-bottom: 0;
+  }
+}
+
 /* Gradiente del área de contenido — gradiente más visible con tinte emerald
    suave que separa visualmente del shell. El contenido "flota" sobre el fondo. */
 .content-area-gradient {
@@ -708,30 +734,8 @@ html {
   background: radial-gradient(closest-side, rgba(16, 185, 129, 0.28), rgba(2, 6, 23, 0.4));
 }
 
-/* ─── Flujo /reserva (éxito / pendiente / error) theme-adaptive ─────────────
-   El shell se vuelve transparente en light (deja ver el campo del portal,
-   consistente con /mis-reservas) y slab #020617 en dark. */
-.reserva-shell {
-  background: transparent;
-}
-.dark .reserva-shell {
-  background: #020617;
-}
-
-/* Badge del ícono de éxito (glow esmeralda). */
-.reserva-success-badge {
-  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.2), rgba(255, 255, 255, 0.55));
-  border: 1px solid rgba(16, 185, 129, 0.35);
-  box-shadow: 0 0 40px rgba(16, 185, 129, 0.3);
-}
-.dark .reserva-success-badge {
-  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.28), rgba(2, 6, 23, 0.4));
-  border: 1px solid rgba(16, 185, 129, 0.4);
-  box-shadow: 0 0 50px rgba(16, 185, 129, 0.45);
-}
-
-/* Tarjeta-comprobante (QR). Light = card blanca con elevación + tinte emerald;
-   dark = slab translúcido oscuro con glow. */
+/* Tarjeta de la política de reservas del panel (`ReservasPolicyForm`). Light = card blanca con elevación + tinte emerald;
+   dark = slab translúcido oscuro con glow. (La reserva confirmada del portal ya no la usa.) */
 .reserva-receipt-card {
   background: linear-gradient(180deg, #ffffff, #f0fdf4);
   border: 1px solid rgba(16, 185, 129, 0.18);
@@ -754,18 +758,6 @@ html {
 }
 .dark .hero-glow-blob {
   background: radial-gradient(closest-side, rgba(16, 185, 129, 0.26), transparent 70%);
-}
-.reserva-glow-top {
-  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.38), transparent 70%);
-}
-.dark .reserva-glow-top {
-  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.22), transparent 70%);
-}
-.reserva-glow-bottom {
-  background: radial-gradient(closest-side, rgba(5, 150, 105, 0.22), transparent 72%);
-}
-.dark .reserva-glow-bottom {
-  background: radial-gradient(closest-side, rgba(5, 150, 105, 0.12), transparent 72%);
 }
 
 /* ─── Landing "La Previa" (theme-adaptive) ─────────────────────────────────

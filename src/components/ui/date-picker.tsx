@@ -131,7 +131,7 @@ export default function DatePicker({
             type="button"
             id={id}
             className={cn(
-              'h-12 w-full rounded-xl border border-border bg-background text-sm text-foreground shadow-xs text-left flex items-center justify-between transition-colors focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring',
+              'h-12 w-full rounded-xl border border-input bg-background text-sm text-foreground shadow-xs text-left flex items-center justify-between transition-colors focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring',
               className,
               // Paddings de íconos: pr-8 (no 10) para que "dd/mm/aaaa" quepa en
               // columnas angostas de mobile sin truncar (§13.5).

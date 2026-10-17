@@ -1,33 +1,29 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
 import { expect, waitFor, within } from 'storybook/test'
+import { PortalWorld } from '@/components/world/PortalWorld'
 import { minutesFromNow } from '@/test/fixtures/clock'
-import ReservaDarkShell from './ReservaDarkShell'
-import PaymentStatusWatcher from './PaymentStatusWatcher'
+import PaymentStatusWatcher, { PaymentStatusView } from './PaymentStatusWatcher'
 
 const bookingId = 'b1a2c3d4-0001-4000-8000-000000000001'
 
 /**
- * Vive en `reserva/[bookingId]/exito/page.tsx` cuando el jugador vuelve de MP
- * antes de que llegue el webhook — siempre dentro de ReservaDarkShell + el
- * mismo `max-w-md ... text-center` que la página de éxito.
+ * Vive en `reserva/[bookingId]/pendiente/page.tsx` (y en `/exito`, cuando el jugador vuelve de MP
+ * antes de que llegue el webhook), dentro del mundo del portal: una columna de ~560 px, plana. Sin
+ * cuenta regresiva: todo el que llega ya pasó por MercadoPago.
  *
- * Los estados TERMINALES (confirmed/expired/canceled_*) cortan los 3 `useEffect`
- * en la primera línea (`if (TERMINAL_STATUSES.has(status)) return`), así que
- * ninguno agenda un fetch — no hace falta `fetchMock` para esas stories. El
- * estado por defecto (pending) sí agenda un poll real a los 3s: se le da una
- * ruta mockeada igual, para no pisar la consola con "fetch no mockeado" si
- * alguien deja la story abierta.
- *
- * `stalled='error'` (5 fallos de polling con backoff 3s→30s) no se ejerce acá:
- * el camino real tarda ~75s de timers reales de principio a fin, impracticable
- * en un `play`. `stalled='expired'` sí es demostrable (el efecto de expiración
- * corre sync cuando `expiresAt` ya pasó, sin esperar el timer del poll).
+ * `Confirmando` y las dos de `confirmado` corren el watcher de verdad (polling a los 3 s contra un
+ * `fetchMock`). Los estados terminales cortan los `useEffect` en la primera línea, así que
+ * tampoco agendan nada. La nota de los 30 s y el corte por red caída (~75 s de backoff) no se
+ * pueden esperar en un `play`: esas stories muestran `PaymentStatusView`, la misma vista con el
+ * estado ya puesto.
  */
 const meta = {
   title: 'Player/BookingSuccess/PaymentStatusWatcher',
   component: PaymentStatusWatcher,
   parameters: {
     layout: 'fullscreen',
+    nextjs: { appDirectory: true, navigation: { pathname: `/reserva/${bookingId}/pendiente` } },
     fetchMock: [
       {
         match: `/api/player/bookings/${bookingId}/status`,
@@ -45,14 +41,16 @@ const meta = {
     bookingId,
     initialStatus: 'pending_payment',
     expiresAt: minutesFromNow(6).toISOString(),
+    tenantSlug: 'complejo-fenix',
+    date: '2026-03-14',
   },
   decorators: [
     (Story) => (
-      <ReservaDarkShell>
-        <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
+      <PortalWorld>
+        <div className="min-h-dvh bg-background text-foreground">
           <Story />
         </div>
-      </ReservaDarkShell>
+      </PortalWorld>
     ),
   ],
 } satisfies Meta<typeof PaymentStatusWatcher>
@@ -60,21 +58,120 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Default: pending_payment — spinner + ExpiryCountdown, sin aviso de demora todavía. */
-export const Confirmando: Story = {}
-
-export const Confirmada: Story = {
-  args: { initialStatus: 'confirmed' },
+/** Default: pending_payment. "Confirmando…" sin cuenta regresiva ni nota de demora todavía. */
+export const Confirmando: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('heading', { name: 'Confirmando tu pago…' })).toBeInTheDocument()
+    await expect(canvas.getByText('Esto puede tardar unos segundos.')).toBeInTheDocument()
+    await expect(canvas.queryByText(/te queda/i)).not.toBeInTheDocument()
+    await expect(canvasElement.textContent).not.toMatch(/\d:\d\d/)
+    await expect(canvas.queryByText(/¿Tarda\?/)).not.toBeInTheDocument()
+  },
 }
 
+/** Pasados 30 s sin novedades suma la nota: el email llega si se confirma, y se ve en Mis reservas. */
+export const NotaDeDemora: StoryObj<typeof PaymentStatusView> = {
+  render: () => (
+    <PaymentStatusView
+      status="pending_payment"
+      stalled={null}
+      showDelayNote
+      tenantSlug="complejo-fenix"
+      date="2026-03-14"
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Esto puede tardar unos segundos.')).toBeInTheDocument()
+    await expect(
+      canvas.getByText(
+        '¿Tarda? Si se confirma, te llega un email. También lo ves en Mis reservas.',
+      ),
+    ).toBeInTheDocument()
+  },
+}
+
+/**
+ * Llega el webhook mientras mira la espera: el watcher navega a /exito con `replace` (sin una
+ * pantalla intermedia propia). Dura lo que el primer poll: 3 s.
+ */
+export const ConfirmadoNavega: Story = {
+  parameters: {
+    fetchMock: [
+      {
+        match: `/api/player/bookings/${bookingId}/status`,
+        json: {
+          data: {
+            status: 'confirmed',
+            depositStatus: 'paid',
+            expiresAt: minutesFromNow(6).toISOString(),
+          },
+        },
+      },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    getRouter().replace.mockClear()
+    await waitFor(() =>
+      expect(getRouter().replace).toHaveBeenCalledWith(`/reserva/${bookingId}/exito`),
+    )
+    // Mientras navega sigue la espera: no aparece un "¡Reserva confirmada!" propio.
+    await expect(canvas.queryByText('¡Reserva confirmada!')).not.toBeInTheDocument()
+  },
+}
+
+/** Ya en /exito (la page monta el watcher si la reserva todavía no estaba confirmada): relee la página. */
+export const ConfirmadoEnExito: Story = {
+  parameters: {
+    ...ConfirmadoNavega.parameters,
+    nextjs: { appDirectory: true, navigation: { pathname: `/reserva/${bookingId}/exito` } },
+  },
+  play: async () => {
+    getRouter().refresh.mockClear()
+    getRouter().replace.mockClear()
+    await waitFor(() => expect(getRouter().refresh).toHaveBeenCalledTimes(1))
+    await expect(getRouter().replace).not.toHaveBeenCalled()
+  },
+}
+
+/** `expired`: el turno se liberó; "Reservar de nuevo" abre la ficha del complejo en ese día. */
 export const Expirada: Story = {
   name: 'expired — el turno quedó liberado',
   args: { initialStatus: 'expired' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('heading', { name: 'La reserva expiró' })).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: 'Reservar de nuevo' })).toHaveAttribute(
+      'href',
+      '/complejo-fenix?date=2026-03-14',
+    )
+  },
 }
 
 /** canceled_refunded y canceled_no_refund renderizan el mismo bloque. */
 export const Cancelada: Story = {
   args: { initialStatus: 'canceled_refunded' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('heading', { name: 'Reserva cancelada' })).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: 'Ver mis reservas' })).toHaveAttribute(
+      'href',
+      '/mis-reservas',
+    )
+  },
+}
+
+/** `completed` y `no_show`: ya se jugó, no hay nada que confirmar (antes caían en el spinner). */
+export const YaPaso: Story = {
+  args: { initialStatus: 'completed' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('heading', { name: 'Esta reserva ya pasó' })).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: 'Ver mis reservas' })).toBeInTheDocument()
+    await expect(canvas.queryByText('Confirmando tu pago…')).not.toBeInTheDocument()
+  },
 }
 
 export const TiempoAgotado: Story = {
@@ -83,5 +180,32 @@ export const TiempoAgotado: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await waitFor(() => expect(canvas.getByText('Se acabó el tiempo')).toBeInTheDocument())
+    // No promete mail ni reembolso: dice dónde mirar y a quién escribir.
+    await expect(canvas.getByText(/En Mis reservas ves si el turno quedó confirmado/)).toBeVisible()
+    await expect(canvas.getByText(/escribile al complejo/)).toBeVisible()
+    await expect(canvasElement.textContent).not.toMatch(/email|te avisamos|acredite/i)
+    await expect(canvas.getByRole('link', { name: 'Ver mis reservas' })).toBeInTheDocument()
+  },
+}
+
+/** Sin conexión: el polling falló 5 veces (~75 s de backoff). Rojo, porque es un error. */
+export const SinConexion: StoryObj<typeof PaymentStatusView> = {
+  render: () => (
+    <PaymentStatusView
+      status="pending_payment"
+      stalled="error"
+      showDelayNote
+      tenantSlug="complejo-fenix"
+      date="2026-03-14"
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      canvas.getByRole('heading', { name: 'No pudimos verificar tu pago' }),
+    ).toBeInTheDocument()
+    await expect(canvas.getByText(/escribile al complejo/)).toBeVisible()
+    await expect(canvasElement.textContent).not.toMatch(/email|te avisamos|acredite/i)
+    await expect(canvas.getByRole('link', { name: 'Ver mis reservas' })).toBeInTheDocument()
   },
 }

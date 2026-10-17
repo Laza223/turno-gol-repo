@@ -1,8 +1,10 @@
 import postgres, { type Sql, type TransactionSql } from 'postgres'
 import { dbSslOptions } from './ssl'
+import { dbConnectionOptions } from './stalled-query-guard'
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import { sql as drizzleSql } from 'drizzle-orm'
 import * as schema from './schema'
+import { withTimeout } from '@/shared/utils/async'
 
 const DEFAULT_URL = 'postgres://postgres:postgres@127.0.0.1:54322/postgres'
 
@@ -101,7 +103,8 @@ export function getSql(): Sql {
     // Explícito a propósito: el `?sslmode=` del DSN NO decide esto. Ver el
     // comentario largo en `./ssl` — `no-verify` (que pg-boss necesita) le llega
     // a porsager como string desconocido y tira abajo todo `withTenantContext`.
-    ssl: dbSslOptions(url),
+    // En la web el TLS lo negocia el corte de queries colgadas (ver ahí).
+    ...dbConnectionOptions('app', dbSslOptions(url)),
     max: resolvePoolMax(),
     idle_timeout: IDLE_TIMEOUT_SECONDS,
     max_lifetime: MAX_LIFETIME_SECONDS,
@@ -203,7 +206,7 @@ export function getWorkerSql(): Sql {
   }
   const url = process.env.WORKER_DATABASE_URL ?? process.env.DATABASE_URL ?? DEFAULT_URL
   _workerSql = postgres(url, {
-    ssl: dbSslOptions(url),
+    ...dbConnectionOptions('worker', dbSslOptions(url)),
     max: resolvePoolMax(),
     idle_timeout: IDLE_TIMEOUT_SECONDS,
     max_lifetime: MAX_LIFETIME_SECONDS,
@@ -224,6 +227,43 @@ export function getWorkerDb(): Db {
   _workerDb = drizzle(client, { schema })
   restoreJsonSerializers(client)
   return _workerDb
+}
+
+const DISPOSABLE_CONNECT_TIMEOUT_SECONDS = 10
+
+/**
+ * Lecturas cross-tenant del panel super-admin sobre un cliente worker PROPIO,
+ * que se cierra al terminar — no el pool compartido de `getWorkerDb()`.
+ *
+ * Una query del pool worker puede quedar colgada en el pooler: el backend queda
+ * `active`/`ClientRead` y la promesa no resuelve nunca (prod 2026-09-21 con el
+ * MRR; 2026-10-15 con la lista de `/super-admin/tenants`, 2 backends colgados
+ * más de 7 min). En el pool compartido esa conexión no se suelta: con 3 por
+ * instancia, dos cuelgues dejan al dashboard sin lugar y además le comen el
+ * pool a `getStaffRole`, que lo usa en cada request del panel de los
+ * complejos. Acá, si `fn` no termina en `timeoutMs`, se rechaza con
+ * `TimeoutError` y `end({ timeout: 0 })` corta los sockets: el cuelgue muere
+ * con este cliente y no envenena a nadie más.
+ */
+export async function withDisposableWorkerDb<T>(
+  timeoutMs: number,
+  fn: (db: Db) => Promise<T>,
+): Promise<T> {
+  const url = process.env.WORKER_DATABASE_URL ?? process.env.DATABASE_URL ?? DEFAULT_URL
+  const client = postgres(url, {
+    ...dbConnectionOptions('super-admin', dbSslOptions(url)),
+    max: DEFAULT_POOL_MAX,
+    connect_timeout: DISPOSABLE_CONNECT_TIMEOUT_SECONDS,
+    prepare: false,
+    onnotice: () => {},
+  })
+  const db = drizzle(client, { schema })
+  restoreJsonSerializers(client)
+  try {
+    return await withTimeout(fn(db), timeoutMs, `withDisposableWorkerDb exceeded ${timeoutMs}ms`)
+  } finally {
+    void client.end({ timeout: 0 }).catch(() => {})
+  }
 }
 
 /**

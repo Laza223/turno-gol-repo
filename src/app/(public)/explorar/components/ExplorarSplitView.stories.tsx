@@ -25,7 +25,7 @@ import './ExplorarMap'
  * El mapa (`ExplorarMapLoader` → `ExplorarMap`, react-leaflet) entra por
  * `next/dynamic({ ssr: false })`: el pin de precio tarda un tick en aparecer,
  * de ahí los `findBy*` en vez de `getBy*` (mismo enfoque que
- * `ExplorarMap.stories.tsx` y `BookingMiniMap.stories.tsx`). Los tiles salen
+ * `ExplorarMap.stories.tsx`). Los tiles salen
  * offline vía el decorator global `withOfflineTiles` (`.storybook/preview.tsx`).
  *
  * No tiene un toggle propio (el botón Lista/Mapa vive en `ExplorarToolbar`, ya
@@ -37,6 +37,20 @@ const meta = {
   title: 'Player/Explorar/ExplorarSplitView',
   component: ExplorarSplitView,
   parameters: { layout: 'fullscreen' },
+  // El puntero REAL de Chromium no entra a estas stories. Es uno solo para toda la página del
+  // runner: si un archivo anterior lo deja sobre una fila de la lista, el `mouseenter` real setea
+  // `activeId` y Leaflet reemplaza los íconos, así que el pin queda resaltado y el nodo que trajo
+  // un `findBy*` sale del documento. Medido con una sonda: con el hover real el pin de Fénix pasa a
+  // `rgb(6, 95, 70)` y con este envoltorio queda en reposo. Los eventos de `userEvent` son
+  // sintéticos y no pasan por el hit-testing, así que el hover del test sigue andando (con
+  // `pointerEventsCheck: 0`, que solo apaga el chequeo de CSS de user-event).
+  decorators: [
+    (Story) => (
+      <div className="pointer-events-none">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof ExplorarSplitView>
 
 export default meta
@@ -110,6 +124,9 @@ export const Composicion: Story = {
  * vuelve al color por defecto. Verifica la ÚNICA lógica de estado propia de este
  * componente (el resto es paso de props).
  */
+/** La lista no recibe el puntero real (ver el decorador de `meta`): user-event no la puede chequear. */
+const SINTETICO = { pointerEventsCheck: 0 } as const
+
 export const HoverResaltaPinEnMapa: Story = {
   args: { results: [complejoFenix, complejoBelgrano], favoritedIds: [] },
   play: async ({ canvasElement }) => {
@@ -141,8 +158,8 @@ export const HoverResaltaPinEnMapa: Story = {
     // `userEvent` despacha eventos sintéticos, así que estacionar el mouse en otro
     // lado no dispara el `mouseleave` que la fila necesita para soltar `activeId`.
     const soltarHoverDeLaLista = async () => {
-      await userEvent.unhover(fila)
-      await userEvent.unhover(filaBelgrano)
+      await userEvent.unhover(fila, SINTETICO)
+      await userEvent.unhover(filaBelgrano, SINTETICO)
     }
 
     // Reposo: ambos pines en el color por defecto (emerald-700, #047857).
@@ -172,13 +189,13 @@ export const HoverResaltaPinEnMapa: Story = {
     })
 
     // El pin de Fénix se resalta; el de Belgrano queda sin cambios.
-    await userEvent.hover(fila)
+    await userEvent.hover(fila, SINTETICO)
     await waitFor(async () => {
       await expect(bg('$ 900/jug')).toBe(ACTIVO)
       await expect(bg('$ 1.100/jug')).toBe(INACTIVO)
     })
 
-    await userEvent.unhover(fila)
+    await userEvent.unhover(fila, SINTETICO)
     await soltarHoverDeLaLista()
     await waitFor(async () => {
       await expect(bg('$ 900/jug')).toBe(INACTIVO)

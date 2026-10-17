@@ -8,6 +8,7 @@ import {
   signInWithPassword,
   OrphanedStaffSessionError,
 } from '@/modules/auth/auth.service'
+import { isPlayerAccount } from '@/modules/auth/account-kind'
 import { MIN_PASSWORD_LENGTH } from '@/modules/auth/password'
 import { enforce } from '@/shared/rate-limit/apply'
 import { echoFields } from '@/shared/forms/echo'
@@ -74,10 +75,9 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   // entrar por acá. provisionAndRouteStaff no chequea is_player: sin este
   // corte crearía una fila espuria en staff_users (audit_report.md 3-10).
   // Mismo criterio que extractRealAuthUser (auth.middleware.ts).
-  const meta = result.user.app_metadata ?? {}
-  const userMeta = result.user.user_metadata ?? {}
-  if (meta.is_player === true || userMeta.is_player === true) {
-    await (await createClient()).auth.signOut()
+  if (isPlayerAccount(result.user)) {
+    // `local`: cierra solo la sesión de este intento, no las del jugador en otros dispositivos.
+    await (await createClient()).auth.signOut({ scope: 'local' })
     return { status: 'error', message: GENERIC, email }
   }
 
@@ -104,7 +104,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     ;({ path } = await provisionAndRouteStaff(result.user))
   } catch (err) {
     if (err instanceof OrphanedStaffSessionError) {
-      await (await createClient()).auth.signOut()
+      await (await createClient()).auth.signOut({ scope: 'local' })
       return { status: 'error', message: 'Tu sesión expiró, volvé a iniciar sesión.', email }
     }
     throw err
@@ -133,7 +133,12 @@ export async function resendConfirmationAction(
   await supabase.auth.resend({
     type: 'signup',
     email: email.data,
-    options: { emailRedirectTo: `${await callbackOrigin()}/api/auth/callback` },
+    // El `?next=` es ignorado por la rama staff del callback, pero es OBLIGATORIO: da
+    // el `?` separador para que confirmation.html concatene `&token_hash=…` sobre
+    // `{{ .RedirectTo }}`. Mismo valor y mismo motivo que el alta (register/actions.ts).
+    options: {
+      emailRedirectTo: `${await callbackOrigin()}/api/auth/callback?next=${encodeURIComponent('/onboarding')}`,
+    },
   })
   // Respuesta genérica: confirma siempre, exista o no la cuenta.
   return { status: 'sent' }

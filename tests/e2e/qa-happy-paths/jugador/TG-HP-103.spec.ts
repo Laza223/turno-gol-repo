@@ -7,8 +7,8 @@ import { cleanupBookingsByIds, tomorrowDateIsoArt } from '../../_helpers/booking
  * TG-HP-103 — Reserva online SIN seña (tenant Demo) → confirma instantáneo.
  * Rol: Jugador logueado (playerStorageState). Prereq: tenant Demo
  * (requires_deposit=false), slot libre cancha ...010, 13:00 mañana.
- * Evidence anchors: reservar/page.tsx:67-70,75-81,101,118-131,
- * ConfirmBookingButton.tsx:8-16,39-42, reservar/actions.ts:92,138,169-170,
+ * Evidence anchors: reservar/page.tsx:62-80,84-102,123-135 (validación, slot, métodos y pay),
+ * ConfirmBookingButton.tsx:44-54, reservar/actions.ts:190-226,284-290,
  * booking.service.ts:415-437, BookingSuccessCard.tsx:52-54,60-63.
  */
 
@@ -39,7 +39,8 @@ test.describe('TG-HP-103 — Reserva online SIN seña → confirma instantáneo'
       await expect(confirmBtn).toBeVisible()
       await expect(confirmBtn).toBeEnabled()
 
-      // Anti-doble-submit: disabled={pending} en Inner (ConfirmBookingButton.tsx:8-16) —
+      // Anti-doble-submit: el SubmitButton de ConfirmBookingButton se deshabilita mientras el
+      // form está pendiente (`useFormStatus`, ui/submit-button.tsx) y dice "Procesando…" —
       // no se asertea el estado transitorio "Procesando…" en vivo: es un redirect() de
       // servidor real, y el resto de la suite (booking-flow.spec.ts) tampoco lo intenta
       // por lo rápido/inestable que es en dev. El comportamiento queda citado por código.
@@ -57,7 +58,9 @@ test.describe('TG-HP-103 — Reserva online SIN seña → confirma instantáneo'
       await expect(page.getByRole('heading', { name: '¡Reserva confirmada!' })).toBeVisible({
         timeout: 10_000,
       })
-      await expect(page.getByText(/pagás.*al llegar al complejo/i)).toBeVisible()
+      await expect(
+        page.getByRole('region', { name: 'Tu turno' }).getByText('Pagás en el complejo'),
+      ).toBeVisible()
       await expect(page.getByRole('link', { name: 'Ver mis reservas' })).toBeVisible()
 
       // DB: estado EXACTO — confirmed de una, sin seña, montos en centavos.

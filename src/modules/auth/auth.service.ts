@@ -1,11 +1,23 @@
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import type { PlayerVia } from '@/lib/auth-success'
 import { getWorkerSql } from '@/shared/db/client'
 import { track } from '@/shared/observability'
 import { referralCodeSchema } from '@/modules/referrals/referral.schema'
 
 export type SignInResult = { ok: true } | { ok: false; error: string }
+
+/**
+ * Marca el `redirectTo` con la vía del jugador. El callback la lee para saber que
+ * el enlace lo pidió un jugador: las altas e invitaciones de staff no la llevan y
+ * conservan su camino. Sobrevive porque GoTrue arma el enlace del mail con
+ * `{{ .RedirectTo }}&token_hash=…` y le agrega `code` al `redirect_to` de Google
+ * sin tocar el resto de la query — igual que ya viaja `next`.
+ */
+function withVia(redirectTo: string, via: PlayerVia): string {
+  return `${redirectTo}${redirectTo.includes('?') ? '&' : '?'}via=${via}`
+}
 
 /**
  * El JWT trae `app_metadata.staff_user_id` pero esa fila ya no existe en
@@ -43,7 +55,7 @@ export async function signInWithPlayerMagicLink(
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: redirectTo,
+      emailRedirectTo: withVia(redirectTo, 'email'),
       data: {
         is_player: true,
         first_name: profile.firstName,
@@ -78,7 +90,7 @@ export async function signInWithExistingPlayerMagicLink(
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: redirectTo,
+      emailRedirectTo: withVia(redirectTo, 'email'),
       shouldCreateUser: false,
       data: { is_player: true },
     },
@@ -90,6 +102,17 @@ export async function signInWithExistingPlayerMagicLink(
     // que signInWithPassword). No se manda ningún email en este caso.
     if (error.code === 'otp_disabled') {
       track.auth('magiclink.sent', { flow: 'reaccess_unknown_email' })
+      return { ok: true }
+    }
+    // Límite de envío por dirección de Supabase (por defecto 60 s entre mails).
+    // Solo lo alcanza un email EXISTENTE — el inexistente corta antes en
+    // `otp_disabled` —, así que contestar error acá revelaba que la cuenta existe.
+    // Nuestro `enforce('authMagicLink')` (5/min) deja pasar el segundo pedido, no
+    // lo tapa. No se manda mail nuevo: el enlace anterior sigue valiendo.
+    // Queda la diferencia de tiempos (un envío real tarda más que estas dos
+    // salidas tempranas); es conocida y no se intenta igualar.
+    if (error.code === 'over_email_send_rate_limit') {
+      track.auth('magiclink.sent', { flow: 'reaccess_rate_limited' })
       return { ok: true }
     }
     return { ok: false, error: error.message }
@@ -106,12 +129,23 @@ export type OAuthSignInResult = { url: string; error?: undefined } | { url: null
  * — a diferencia del magic link no hay forma de inyectar perfil/consentimiento
  * en el mismo viaje, por eso `redirectTo` es la única vía para llevar `next`
  * (y, desde LoginGate, `agreed`/`tv`) hasta el callback.
+ *
+ * `selectAccount` fuerza el selector de cuentas de Google (`prompt=select_account`):
+ * sin él, quien entró con la cuenta equivocada (la de un complejo) vuelve a entrar
+ * con la misma sin poder elegir otra. Lo pide SOLO el reintento de `/verify`; el
+ * login normal con Google no cambia.
  */
-export async function signInWithGooglePlayer(redirectTo: string): Promise<OAuthSignInResult> {
+export async function signInWithGooglePlayer(
+  redirectTo: string,
+  opts: { selectAccount?: boolean } = {},
+): Promise<OAuthSignInResult> {
   const supabase = await createClient()
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo },
+    options: {
+      redirectTo: withVia(redirectTo, 'google'),
+      ...(opts.selectAccount ? { queryParams: { prompt: 'select_account' } } : {}),
+    },
   })
   if (error || !data?.url) return { url: null, error: error?.message ?? 'no_url' }
   return { url: data.url }
@@ -261,6 +295,11 @@ async function getStaffUserById(id: string): Promise<{ id: string } | null> {
   return rows[0] ?? null
 }
 
+/** Marca "ya entró": saca al invitado del estado "Invitación pendiente" en Equipo. */
+export async function touchStaffLastLogin(staffUserId: string): Promise<void> {
+  await getWorkerSql()`UPDATE staff_users SET last_login_at = NOW() WHERE id = ${staffUserId}`
+}
+
 /**
  * ¿El email ya pertenece a OTRO staff_user? Lo usa `updateUserEmailAction`
  * ANTES de pedirle el cambio a Supabase Auth — `staff_users.email` tiene
@@ -350,7 +389,11 @@ export async function provisionAndRouteStaff(user: User): Promise<{ path: string
   // `getOrCreatePlayer` en player.service.ts. Se corre en TODO login/alta de
   // staff (esta función es la única invocada por el callback y por
   // `loginAction`), así que también cubre la aceptación de la invitación.
-  await getWorkerSql()`UPDATE staff_users SET last_login_at = NOW() WHERE id = ${ourStaff.id}`
+  //
+  // Con `force_password_change` (invitado que recién abrió el link, o reset del
+  // SuperAdmin) todavía NO terminó: la marca la pone `resetPasswordAction` al
+  // fijar la contraseña. Sin esto figuraba "Activo" sin tener contraseña.
+  if (meta.force_password_change !== true) await touchStaffLastLogin(ourStaff.id)
 
   const tenants = await resolveStaffTenants(ourStaff.id)
 

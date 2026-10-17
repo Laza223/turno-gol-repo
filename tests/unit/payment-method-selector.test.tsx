@@ -1,61 +1,117 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import PaymentMethodSelector from '@/app/(public)/[slug]/reservar/components/PaymentMethodSelector'
+import type { PayMethod } from '@/lib/booking/reserve-url'
 
 afterEach(() => cleanup())
 
-function radios(): HTMLInputElement[] {
-  return screen.queryAllByRole('radio') as HTMLInputElement[]
-}
+const noop = () => {}
+const renderSelector = (methods: PayMethod[], value: PayMethod | null = methods[0] ?? null) =>
+  render(<PaymentMethodSelector methods={methods} value={value} onChange={noop} />)
 
-describe('PaymentMethodSelector', () => {
-  it('renderiza solo los métodos habilitados por el tenant (cash + transfer)', () => {
-    render(<PaymentMethodSelector methods={['cash', 'transfer']} />)
-    expect(screen.getByText('Efectivo')).toBeTruthy()
-    expect(screen.getByText('Transferencia')).toBeTruthy()
-    expect(screen.queryByText('MercadoPago')).toBeNull()
-    expect(radios()).toHaveLength(2)
+const radios = () => screen.queryAllByRole('radio') as HTMLInputElement[]
+
+describe('PaymentMethodSelector — sin seña', () => {
+  it('solo si el complejo acepta efectivo Y transferencia se elige entre los dos', () => {
+    renderSelector(['cash', 'transfer'])
+
+    expect(screen.getByRole('group', { name: 'Cómo pagás en el complejo' })).toBeTruthy()
+    expect(radios().map((r) => r.value)).toEqual(['cash', 'transfer'])
+    expect(radios().map((r) => r.name)).toEqual(['pay', 'pay'])
+    expect(screen.getByRole('radio', { name: /Efectivo/ })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: /Transferencia/ })).toBeTruthy()
   })
 
-  it('con solo efectivo habilitado no muestra transferencia', () => {
-    render(<PaymentMethodSelector methods={['cash']} />)
-    expect(screen.getByText('Efectivo')).toBeTruthy()
-    expect(screen.queryByText('Transferencia')).toBeNull()
-    expect(radios()).toHaveLength(1)
+  it('el radio marcado es el del estado de quien lo monta, no una copia propia', () => {
+    const { rerender } = renderSelector(['cash', 'transfer'], 'transfer')
+    expect(radios().map((r) => r.checked)).toEqual([false, true])
+
+    rerender(<PaymentMethodSelector methods={['cash', 'transfer']} value="cash" onChange={noop} />)
+    expect(radios().map((r) => r.checked)).toEqual([true, false])
   })
 
-  it('con solo transferencia habilitada no muestra efectivo', () => {
-    render(<PaymentMethodSelector methods={['transfer']} />)
-    expect(screen.getByText('Transferencia')).toBeTruthy()
-    expect(screen.queryByText('Efectivo')).toBeNull()
+  it('elegir el otro avisa cuál es', () => {
+    const onChange = vi.fn()
+    render(
+      <PaymentMethodSelector methods={['cash', 'transfer']} value="cash" onChange={onChange} />,
+    )
+
+    fireEvent.click(screen.getByRole('radio', { name: /Transferencia/ }))
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('transfer')
   })
 
-  it('los radios viajan como campo "pay" con el primer método pre-seleccionado', () => {
-    render(<PaymentMethodSelector methods={['cash', 'transfer']} />)
-    const inputs = radios()
-    expect(inputs.map((r) => r.name)).toEqual(['pay', 'pay'])
-    expect(inputs.map((r) => r.value)).toEqual(['cash', 'transfer'])
-    expect(inputs[0]!.checked).toBe(true)
-    expect(inputs[1]!.checked).toBe(false)
+  it.each([
+    ['cash', 'Pagás en el complejo, en efectivo.'],
+    ['transfer', 'Pagás en el complejo, por transferencia.'],
+  ] as const)('con un solo método (%s) es una línea, sin tarjetas ni radios', (method, line) => {
+    const { container } = renderSelector([method])
+
+    expect(screen.getByText(line)).toBeTruthy()
+    expect(radios()).toHaveLength(0)
+    expect(container.querySelector('fieldset')).toBeNull()
   })
 
-  it('con seña (solo MercadoPago) muestra la card MP seleccionada y la nota de seña obligatoria', () => {
-    render(<PaymentMethodSelector methods={['mercadopago']} />)
-    expect(screen.getByText('MercadoPago')).toBeTruthy()
-    expect(screen.queryByText('Efectivo')).toBeNull()
-    expect(radios()[0]!.checked).toBe(true)
-    expect(screen.getByText(/pide seña online/)).toBeTruthy()
+  it('sin métodos (ni efectivo ni transferencia) es una línea que dice dónde se paga, sin elegir', () => {
+    const { container } = renderSelector([])
+
+    expect(screen.getByText('Pagás en el complejo.')).toBeTruthy()
+    expect(radios()).toHaveLength(0)
+    expect(container.querySelector('fieldset')).toBeNull()
+  })
+})
+
+describe('PaymentMethodSelector — con seña', () => {
+  it('es la línea de MercadoPago y la promesa de la decisión v2 D1, sin nada que elegir', () => {
+    renderSelector(['mercadopago'])
+
+    expect(screen.getByText('Pagás la seña online con MercadoPago.')).toBeTruthy()
+    expect(screen.getByText('La cancha es tuya cuando empezás a señar.')).toBeTruthy()
+    expect(radios()).toHaveLength(0)
+  })
+})
+
+describe('PaymentMethodSelector — lo que sigue a cómo se paga', () => {
+  it('la regla va adentro de la sección, al final, en las cuatro formas de la sección', () => {
+    const nota = 'Podés cancelar desde Mis reservas.'
+    for (const methods of [['cash', 'transfer'], ['cash'], ['mercadopago'], []] as PayMethod[][]) {
+      const { unmount } = render(
+        <PaymentMethodSelector methods={methods} value={methods[0] ?? null} onChange={noop}>
+          {nota}
+        </PaymentMethodSelector>,
+      )
+      const seccion = screen.getByText(nota).closest('section, fieldset')!
+      expect(seccion.lastElementChild).toBe(screen.getByText(nota))
+      unmount()
+    }
   })
 
-  it('sin métodos no renderiza nada', () => {
-    const { container } = render(<PaymentMethodSelector methods={[]} />)
-    expect(container.innerHTML).toBe('')
+  it('sin métodos dice igual "Pagás en el complejo.", sin elegir, y la regla sigue adentro', () => {
+    render(
+      <PaymentMethodSelector methods={[]} value={null} onChange={noop}>
+        Podés cancelar desde Mis reservas.
+      </PaymentMethodSelector>,
+    )
+    expect(screen.getByRole('heading', { name: 'Cómo pagás' })).toBeTruthy()
+    expect(screen.getByText('Pagás en el complejo.')).toBeTruthy()
+    expect(screen.queryByRole('radio')).toBeNull()
+    expect(screen.getByText('Podés cancelar desde Mis reservas.')).toBeTruthy()
   })
 
-  it('los iconos son SVGs inline, no imágenes externas', () => {
-    const { container } = render(<PaymentMethodSelector methods={['cash', 'transfer']} />)
-    expect(container.querySelectorAll('svg').length).toBe(2)
-    expect(container.querySelectorAll('img')).toHaveLength(0)
+  it('con seña y precios ocultos la línea dice también que el resto es en el complejo', () => {
+    render(
+      <PaymentMethodSelector
+        methods={['mercadopago']}
+        value="mercadopago"
+        onChange={noop}
+        hidePrices
+      />,
+    )
+    expect(
+      screen.getByText(
+        'Para confirmar pagás una seña online con MercadoPago. El resto, en el complejo.',
+      ),
+    ).toBeTruthy()
+    expect(screen.queryByText('Pagás la seña online con MercadoPago.')).toBeNull()
   })
 })

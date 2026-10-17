@@ -34,6 +34,7 @@ import { chargeDebtAction } from '@/app/(admin)/caja/deudas/actions'
 import { listCanteenForBookingAction, sellTicketAction } from '@/app/(admin)/caja/cantina/actions'
 import { listDayGridBookings } from '@/app/(admin)/reservas/queries'
 import { artTodayStr } from '@/shared/dates/art'
+import { DEFAULT_CANCELLATION_HOURS_BEFORE } from '@/shared/constants'
 
 export default async function GrillaPage(props: {
   searchParams: Promise<{ date?: string; notice?: string }>
@@ -87,7 +88,9 @@ export default async function GrillaPage(props: {
         openingHours={tenant.openingHours}
         closedDates={tenant.closedDates ?? []}
         closesNextDay={tenant.closesNextDay}
-        cancellationPolicyHours={tenant.settings.cancellation_policy.hours_before}
+        cancellationPolicyHours={
+          tenant.settings.cancellation_policy?.hours_before ?? DEFAULT_CANCELLATION_HOURS_BEFORE
+        }
         action={createBookingAction}
         createAbonadoAction={createAbonadoAction}
         checkAvailabilityAction={checkSlotAvailabilityAction}

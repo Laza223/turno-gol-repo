@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { after } from 'next/server'
 import { sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { uuid, dateStr, hhmm, moneyCents, boundedText } from '@/shared/validation/primitives'
@@ -13,11 +14,13 @@ import { paidPeriodErrorMessage } from '@/modules/bookings/paid-period.guard'
 import {
   createManualBooking,
   completeBooking,
+  findCompletionReplay,
   getAvailableSlots,
   releaseBlockBooking,
 } from '@/modules/bookings/booking.service'
 import {
   cancelByAdmin,
+  findNoShowReplay,
   handleNoShow,
   handleNoShowRevert,
   type AdminCancellationType,
@@ -58,6 +61,7 @@ import { slotHasPassed } from '@/shared/time/operating-day'
 // `shared/time/week-days` arranca en lunes y NO sirve para indexar.
 import { DAY_KEYS } from '@/lib/booking/grid-cells'
 import { formatArs } from '@/lib/format'
+import { withTimeout } from '@/shared/utils/async'
 import { getBookingCharges } from './queries'
 import {
   SlotTakenError,
@@ -262,6 +266,47 @@ function revalidateBooking(bookingId: string): void {
   revalidatePath('/grilla')
 }
 
+/** Tope del despacho del mail; pasado esto se loguea y lo levanta el cron de send-email. */
+const EMAIL_DISPATCH_TIMEOUT_MS = 15_000
+
+/**
+ * Despacha, DESPUÉS de responder, los mails que el service encoló dentro de la tx
+ * ya commiteada. `dispatchEmail` arranca pg-boss en frío (`getBoss` → `boss.start()`)
+ * y esperarlo dentro de la respuesta dejó al usuario sin respuesta (2026-10-14,
+ * mismo arreglo que /mis-reservas). Si falla o vence, la operación sigue válida y
+ * el cron de send-email levanta la notificación 'queued': nunca es un error para
+ * el usuario.
+ */
+function dispatchEmailsAfterResponse(
+  notificationIds: string[],
+  failureMessage: string,
+  extra: Record<string, unknown>,
+): void {
+  if (notificationIds.length === 0) return
+  after(async () => {
+    try {
+      await withTimeout(
+        Promise.all(notificationIds.map((id) => dispatchEmail(id))),
+        EMAIL_DISPATCH_TIMEOUT_MS,
+        `dispatchEmail no terminó en ${EMAIL_DISPATCH_TIMEOUT_MS} ms`,
+      )
+    } catch (err) {
+      // `captureMessage` de `@/lib/sentry` y no `logger.error`: el sink del logger solo
+      // existe si Sentry ya se inicializó en esta invocación y no hace flush, y Vercel
+      // congela la función apenas termina este callback (el evento se pierde). Éste
+      // inicializa, captura y agenda el flush con un `after()` anidado, que Next permite.
+      captureMessage(failureMessage, {
+        level: 'warning',
+        extra: {
+          ...extra,
+          notificationIds,
+          error: err instanceof Error ? err.message : String(err),
+        },
+      })
+    }
+  })
+}
+
 const confirmDepositPaymentSchema = z.object({
   method: z.enum(['cash', 'transfer', 'other']),
 })
@@ -308,25 +353,13 @@ export async function confirmDepositPaymentAction(
   validateApiOutput(bookingResponseSchema, { data: outcome.booking }, 'confirmDepositPaymentAction')
   revalidateBooking(bookingId)
 
-  // Mismo patrón que otros dispatches post-commit en este archivo (ej.
-  // dispatchEmail en cancelBookingAction): confirmManualDepositPayment puede
-  // encolar notificaciones DENTRO de la tx — se despachan recién ahora que
-  // commiteó. La confirmación del booking ya es válida sin importar si esto falla.
-  if (outcome.notificationIds.length > 0) {
-    try {
-      await Promise.all(outcome.notificationIds.map((id) => dispatchEmail(id)))
-    } catch (err) {
-      captureMessage('email dispatch failed after manual deposit confirmation', {
-        level: 'warning',
-        extra: {
-          bookingId,
-          tenantId: tenant.id,
-          notificationIds: outcome.notificationIds,
-          error: err instanceof Error ? err.message : String(err),
-        },
-      })
-    }
-  }
+  // confirmManualDepositPayment puede encolar notificaciones DENTRO de la tx; se
+  // despachan después de responder. La confirmación ya es válida pase lo que pase.
+  dispatchEmailsAfterResponse(
+    outcome.notificationIds,
+    'email dispatch failed after manual deposit confirmation',
+    { bookingId, tenantId: tenant.id },
+  )
 
   return { success: true, booking: outcome.booking }
 }
@@ -342,6 +375,10 @@ export async function completeBookingAction(bookingId: string): Promise<BookingA
   let booking: BookingRow
   try {
     booking = await withTenantContext(tenant.id, async (tx) => {
+      // Reintento de una completación de este mismo staff: el estado actual, sin
+      // un segundo audit.
+      const replay = await findCompletionReplay(bookingId, user.staffUserId, tx)
+      if (replay) return replay
       const completed = await completeBooking(bookingId, 'admin', tx, user.staffUserId)
       await insertAuditLog(tx, {
         tenantId: tenant.id,
@@ -384,7 +421,14 @@ export async function markNoShowAction(bookingId: string): Promise<BookingAction
 
   let booking: BookingRow
   try {
-    booking = await withTenantContext(tenant.id, (tx) => handleNoShow(bookingId, staffUserId, tx))
+    // Reintento de un "No vino" de este mismo staff: el estado actual, sin un
+    // segundo audit ni un segundo strike de ausencia.
+    booking = await withTenantContext(
+      tenant.id,
+      async (tx) =>
+        (await findNoShowReplay(bookingId, staffUserId, tx)) ??
+        handleNoShow(bookingId, staffUserId, tx),
+    )
   } catch (err) {
     if (err instanceof BookingNotInConfirmedError) {
       return { success: false, error: 'La reserva no está en estado confirmado.' }
@@ -488,24 +532,14 @@ export async function cancelBookingAction(
   validateApiOutput(bookingResponseSchema, { data: outcome.booking }, 'cancelBookingAction')
   revalidateBooking(bookingId)
 
-  // doc7 Flujo 4: booking_canceled / booking_canceled_by_complex encolados
-  // dentro de la tx (cancelByAdmin) se despachan recién ahora que commiteó. Si
-  // el dispatch falla, la cancelación ya es válida —no hay rollback— y el sweep
-  // por cron de send-email levanta la notificación 'queued' igual; nunca
-  // convertir esto en error para el usuario.
-  try {
-    await Promise.all(outcome.notificationIds.map((id) => dispatchEmail(id)))
-  } catch (err) {
-    captureMessage('email dispatch failed after admin cancellation', {
-      level: 'warning',
-      extra: {
-        bookingId,
-        tenantId: tenant.id,
-        notificationIds: outcome.notificationIds,
-        error: err instanceof Error ? err.message : String(err),
-      },
-    })
-  }
+  // doc7 Flujo 4: booking_canceled / booking_canceled_by_complex encolados dentro
+  // de la tx (cancelByAdmin) se despachan después de responder. Un replay no
+  // encoló nada (`notificationIds` vacío): el mail ya salió con el primer pedido.
+  dispatchEmailsAfterResponse(
+    outcome.notificationIds,
+    'email dispatch failed after admin cancellation',
+    { bookingId, tenantId: tenant.id },
+  )
 
   return { success: true, booking: outcome.booking }
 }
@@ -730,22 +764,12 @@ export async function rescheduleBookingAction(
   validateApiOutput(bookingResponseSchema, { data: outcome.booking }, 'rescheduleBookingAction')
   revalidateBooking(parsed.data.bookingId)
 
-  // El aviso al jugador se encoló dentro de la tx y se despacha recién ahora.
-  // Si falla, el turno YA se movió: nunca convertirlo en error para el usuario
-  // (el sweep de send-email levanta la notificación 'queued' igual).
-  try {
-    await Promise.all(outcome.notificationIds.map((id) => dispatchEmail(id)))
-  } catch (err) {
-    captureMessage('email dispatch failed after reschedule', {
-      level: 'warning',
-      extra: {
-        bookingId: parsed.data.bookingId,
-        tenantId: tenant.id,
-        notificationIds: outcome.notificationIds,
-        error: err instanceof Error ? err.message : String(err),
-      },
-    })
-  }
+  // El aviso al jugador se encoló dentro de la tx y se despacha después de
+  // responder. Si falla, el turno YA se movió.
+  dispatchEmailsAfterResponse(outcome.notificationIds, 'email dispatch failed after reschedule', {
+    bookingId: parsed.data.bookingId,
+    tenantId: tenant.id,
+  })
 
   return { success: true, booking: outcome.booking, priceChanged: outcome.priceChanged }
 }
@@ -982,6 +1006,32 @@ export async function completeAndChargeBookingAction(
   let booking: BookingRow
   try {
     booking = await withTenantContext(tenant.id, async (tx) => {
+      // 0. Reintento de este mismo staff (respuesta lenta o perdida): el turno ya
+      // quedó completado y los cobros, si los había, registrados con la misma key.
+      // Devuelve el estado actual sin escribir nada. Si trae algún cobro que NO
+      // está registrado (otra key, o sin key) no es el mismo pedido: error de
+      // estado, como siempre, y no se cobra sobre un turno ya cerrado.
+      const replay = await findCompletionReplay(bookingId, user.staffUserId, tx)
+      if (replay) {
+        // La nota de deuda también es parte del pedido: si viene y no quedó
+        // guardada, el turno se completó por otro camino y esto no es replay.
+        const debtLine = debtNote?.trim() ? `[Deuda] ${debtNote.trim()}` : undefined
+        if (debtLine && !(replay.notesInternal ?? '').split('\n').includes(debtLine)) {
+          throw new BookingNotInConfirmedError(bookingId)
+        }
+        if (charges.length > 0) {
+          const idempotent = await resolveIdempotentCharges(
+            tenant.id,
+            charges.map((c) => ({ amount: c.amount, method: c.method, bookingTeam: c.team })),
+            clientIdempotencyKey,
+            tx,
+          )
+          if (!idempotent.ok) throw new BookingValidationError(idempotent.error)
+          if (idempotent.newChargingCents > 0) throw new BookingNotInConfirmedError(bookingId)
+        }
+        return replay
+      }
+
       // 1. Complete the booking (validates ends_at, status). La nota de deuda
       // viaja EN el mismo UPDATE: como segunda sentencia chocaba contra
       // enforce_booking_invariants_fn (el booking ya está en estado terminal),

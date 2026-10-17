@@ -94,7 +94,7 @@ export function MockCheckoutView({
             // 4.5:1 de AA): la vista no fuerza tema, así que el par correcto es el
             // del design system (`text-primary-foreground`, 7.9:1 — MASTER §2.4).
             // 🟡 QA 2026-08-14.
-            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-emerald-700"
+            className="inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
           >
             Pagar (aprobado)
           </button>

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
 // Fase 0 🔴 §4.6: el callback mandaba SIEMPRE 'exchange_failed' a /verify sin
-// importar la causa real — el copy 'expired' de verify/page.tsx quedaba muerto
+// importar la causa real — el copy 'expired' de verify/VerifyView.tsx quedaba muerto
 // (nunca se emitía). Fix: inspeccionar error.code de verifyOtp, igual que
 // reset-password/actions.ts hace con 'same_password'.
 

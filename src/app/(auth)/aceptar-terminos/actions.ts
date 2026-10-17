@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { acceptPlayerTerms } from '@/modules/players/player.service'
 import { sanitizeNext } from '@/lib/safe-redirect'
-import { playerSuccessIntent, successVerifyPath } from '@/lib/auth-success'
+import { isBookingPath, successVerifyPath } from '@/lib/auth-success'
 import { CURRENT_TERMS_VERSION } from '@/shared/terms'
 
 export type AcceptTermsState = { status: 'idle' } | { status: 'error'; message: string }
@@ -39,6 +39,6 @@ export async function acceptTermsAction(
 
   await acceptPlayerTerms(user.playerId, CURRENT_TERMS_VERSION)
 
-  const intent = playerSuccessIntent(safeNext, true)
-  redirect(successVerifyPath(safeNext, intent))
+  // Misma regla que el callback: una reserva en curso vuelve directo a confirmar.
+  redirect(isBookingPath(safeNext) ? safeNext : successVerifyPath(safeNext, 'login'))
 }

@@ -4,7 +4,9 @@
  * emerald/teal. 0 KB de red (inline, sin imagen), theme-adaptive vía currentColor,
  * y estático a propósito — el fondo no compite con el form.
  *
- * Login/register/ingresar/verify NO lo usan: tienen su propio diseño (foto + glows).
+ * Login y register NO lo usan: tienen su propio diseño (foto + glows). Ingresar, aceptar-terminos
+ * y los estados de jugador de verify tampoco: viven en el mundo del portal (PortalAuthFrame),
+ * plano, sin foto ni glows.
  */
 export function AuthBackdrop() {
   return (

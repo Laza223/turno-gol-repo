@@ -1,6 +1,6 @@
 # Regresión visual
 
-8 fotos de pantalla completa que vigilan una sola clase de bug: **un cambio en
+10 fotos de pantalla completa que vigilan una sola clase de bug: **un cambio en
 `globals.css`, en un token de Tailwind o en una fuente que rompe el layout de una
 pantalla que no abriste en tres semanas.** Nada más.
 
@@ -29,7 +29,7 @@ ninguno lo hizo:
 caso no es aflojar el umbral — es que la pieza no se ganó el lugar. Ver el ADR:
 `docs/decisions/2026-07-29-regresion-visual.md`.
 
-## Las 8 fotos
+## Las 10 fotos
 
 | Project | Foto | Auth | Por qué esta |
 |---|---|---|---|
@@ -41,6 +41,13 @@ caso no es aflojar el umbral — es que la pieza no se ganó el lugar. Ver el AD
 | `visual` | `admin-settings-reservas.png` | admin | Formulario denso — representa todos los formularios |
 | `visual-mobile` | `perfil-publico-mobile.png` | — | El 70% del tráfico público es mobile |
 | `visual-mobile` | `admin-grilla-mobile.png` | admin | Layout propio (GridScroller, banda de madrugada): la que más se rompe y la que menos se mira |
+| `visual` | `reserva-confirmada.png` | jugador | La pantalla de cierre del portal (PR 2.3c): resumen, "Avisarle al grupo" y secundarias en La Reserva |
+| `visual-mobile` | `reserva-confirmada-mobile.png` | jugador | La misma, en el celular: donde el jugador la ve de verdad |
+
+Las dos últimas (PR 2.3c) usan la sesión del jugador `…0020` (`tests/e2e/.auth/player.json`, la que escribe
+`global-setup.ts`): es el mismo jugador dueño de la reserva `…0903` del seed visual, que está `confirmed`, con
+seña pagada y en el `VISUAL_DATE` fijo. Se enmascara solo el código de la reserva. Las baselines de estas dos
+las genera `visual-baseline.yml` en CI, como las demás.
 
 **Fuera de alcance a propósito**: `/caja` y `/reportes` (dependen fuerte de "hoy"
 y de agregaciones — el seed fijo cuesta más de lo que aportan) y `/dashboard`
@@ -59,7 +66,7 @@ El project `visual` lista **9** tests y no 8: el noveno es
 |---|---|
 | Las fechas se renderizan en **Server Components** | `page.clock` NO alcanza (solo intercepta el browser). Se pinnea la fecha por URL: `/grilla?date=2030-06-17` |
 | La línea roja de "ahora" se mueve | Sale gratis: `useNowLine` devuelve `null` cuando `artNow.date !== date` (`src/hooks/use-now-line.ts:28`). Con la fecha pinneada a una distinta de hoy, no se dibuja |
-| `useArtNow` / `ExpiryCountdown` leen `Date.now()` en el cliente | `page.clock.setFixedTime(FROZEN_NOW)`. Misma constante que Storybook |
+| `useArtNow` lee `Date.now()` en el cliente | `page.clock.setFixedTime(FROZEN_NOW)`. Misma constante que Storybook |
 | Los seeds funcionales usan fechas relativas | Seed propio (`tests/e2e/visual/_seed.ts`) con UUIDs, horarios y fecha **absolutos**, idempotente |
 | Animaciones | `reducedMotion: 'reduce'` engancha el `@media` que ya existe en `globals.css`. Cero CSS nuevo, y de paso se fotografía el camino accesible |
 | Banner de push (`fixed bottom-left z-40`) | `addInitScript` + `localStorage` antes del primer `goto` |
@@ -187,10 +194,10 @@ seguirían "pasando" con los defaults de Playwright. Por eso el `stylePath` va e
 `expect` de arriba y no en los projects.
 
 **Descartado: correr las fotos contra `next build` + `next start`.** Es el fix de
-raíz (no hay overlay en producción), pero el `webServer` es **uno** para las 8
+raíz (no hay overlay en producción), pero el `webServer` es **uno** para las 10
 suites de e2e y el mock de MercadoPago se apaga con `NODE_ENV=production`
 (`computeMpMockEnabled` en `mock-mp.ts`) — ver el comentario del step de e2e en
-`ci.yml`. Cambiarlo por estas 8 fotos rompería los flujos de checkout de todos los
+`ci.yml`. Cambiarlo por estas 10 fotos rompería los flujos de checkout de todos los
 demás specs.
 
 **Descartado: aflojar `maxDiffPixelRatio`.** Tapa el síntoma y baja la

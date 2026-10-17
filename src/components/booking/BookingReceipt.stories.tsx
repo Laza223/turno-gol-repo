@@ -32,7 +32,6 @@ const meta = {
     priceSnapshot: b.priceSnapshot,
     depositAmount: b.depositAmount,
     depositStatus: b.depositStatus,
-    verifyUrl: `https://turnogol.app/reserva/${b.id}/verificar`,
   },
   decorators: [
     (Story) => (

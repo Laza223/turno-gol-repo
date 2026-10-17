@@ -1,20 +1,17 @@
 'use client'
 
-import dynamic from 'next/dynamic'
-import { CalendarPlus, MessageCircle, Navigation } from 'lucide-react'
-import { icsEscapeText } from './ics-escape'
-
-const BookingMiniMap = dynamic(() => import('./BookingMiniMap'), {
-  ssr: false,
-  loading: () => <div className="h-44 w-full animate-pulse bg-muted" aria-hidden />,
-})
+import Link from 'next/link'
+import { CalendarPlus, Navigation, Ticket } from 'lucide-react'
+import { buildDirectionsHref } from '@/lib/booking/directions'
+import { cn } from '@/lib/utils'
+import { buildBookingIcs } from './booking-ics'
 
 type Props = {
   tenantName: string
   courtName: string
   slug: string
-  /** "YYYY-MM-DD" */
-  date: string
+  /** "YYYY-MM-DD", día calendario en que se juega (no el operativo). */
+  startsOn: string
   /** "HH:MM:SS" o "HH:MM" */
   timeStart: string
   timeEnd: string
@@ -24,119 +21,69 @@ type Props = {
   longitude: number | null
 }
 
-const dateLabel = new Intl.DateTimeFormat('es-AR', {
-  weekday: 'long',
-  day: 'numeric',
-  month: 'long',
-})
+/**
+ * Fila de la lista de secundarias: 48 px, plana, el foco adentro (el contenedor recorta). Cada
+ * fila dice su acción; ninguna compite con "Avisarle al grupo".
+ */
+const ROW = cn(
+  'flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-base font-semibold text-foreground',
+  'hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+)
+const ROW_ICON = 'size-5 shrink-0 text-muted-foreground'
 
-function parseDateOnly(d: string): Date {
-  const [y, m, day] = d.split('-').map(Number)
-  return new Date(y ?? 1970, (m ?? 1) - 1, day ?? 1)
-}
-
-// ART (UTC-3) → UTC en formato ICS: YYYYMMDDTHHMMSSZ
-function toIcsUtc(date: string, time: string): string {
-  const [y, mo, d] = date.split('-').map(Number)
-  const [hh, mm] = time.split(':').map(Number)
-  const dt = new Date(Date.UTC(y!, (mo ?? 1) - 1, d ?? 1, (hh ?? 0) + 3, mm ?? 0, 0))
-  return dt
-    .toISOString()
-    .replace(/[-:]/g, '')
-    .replace(/\.\d{3}/, '')
-}
-
+/**
+ * Las acciones secundarias de la reserva confirmada: Cómo llegar (si hay dirección o
+ * coordenadas), Agregar al calendario (un `.ics` armado en el navegador) y Ver mis reservas.
+ */
 export default function BookingSuccessExtras(props: Props) {
-  const { tenantName, courtName, slug, date, timeStart, timeEnd, address, city } = props
-  const t1 = timeStart.slice(0, 5)
+  const { tenantName, courtName, slug, startsOn, timeStart, timeEnd, address, city } = props
 
-  const mapsQuery =
-    props.latitude != null && props.longitude != null
-      ? `${props.latitude},${props.longitude}`
-      : encodeURIComponent(`${address}, ${city}`)
-  const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`
-
-  function shareWhatsApp() {
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
-    const text = `¡Reservé una cancha en ${tenantName}! ⚽ ${dateLabel.format(
-      parseDateOnly(date),
-    )} a las ${t1}. ¿Te sumás? ${origin}/${slug}`
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank', 'noopener')
-  }
+  const mapsUrl = buildDirectionsHref(props)
 
   function addToCalendar() {
     const dtStamp = new Date()
       .toISOString()
       .replace(/[-:]/g, '')
       .replace(/\.\d{3}/, '')
-    const ics = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//TurnoGol//Reservas//ES',
-      'BEGIN:VEVENT',
-      `UID:${slug}-${date}-${t1}@turnogol`,
-      `DTSTAMP:${dtStamp}`,
-      `DTSTART:${toIcsUtc(date, timeStart)}`,
-      `DTEND:${toIcsUtc(date, timeEnd)}`,
-      `SUMMARY:Fútbol en ${icsEscapeText(tenantName)} (${icsEscapeText(courtName)})`,
-      `LOCATION:${icsEscapeText(address)}\\, ${icsEscapeText(city)}`,
-      `DESCRIPTION:Reserva de cancha en ${icsEscapeText(tenantName)}.`,
-      'END:VEVENT',
-      'END:VCALENDAR',
-    ].join('\r\n')
+    const ics = buildBookingIcs({
+      slug,
+      tenantName,
+      courtName,
+      address,
+      city,
+      startsOn,
+      timeStart,
+      timeEnd,
+      dtStamp,
+    })
 
     const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `reserva-${slug}-${date}.ics`
+    a.download = `reserva-${slug}-${startsOn}.ics`
     document.body.appendChild(a)
     a.click()
     a.remove()
     URL.revokeObjectURL(url)
   }
 
-  const hasGeo = props.latitude != null && props.longitude != null
-
   return (
-    <div className="mt-6 w-full space-y-3">
-      {hasGeo && (
-        <div className="overflow-hidden rounded-xl border border-border shadow-xs">
-          <BookingMiniMap lat={props.latitude!} lng={props.longitude!} label={tenantName} />
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        {/* Sin `dark:bg-green-600`: el verde más claro de dark dejaba el texto
-            blanco en 3.21:1 (AA pide 4.5). green-700 con blanco da 4.95:1 y en
-            oscuro se sigue leyendo perfecto — el mismo botón que ya se ve en
-            claro. */}
-        <button
-          type="button"
-          onClick={shareWhatsApp}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-green-700 px-4 text-sm font-semibold text-white shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:bg-green-800 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
-        >
-          <MessageCircle className="h-4 w-4" aria-hidden />
-          Compartir
-        </button>
-        <button
-          type="button"
-          onClick={addToCalendar}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent dark:bg-white/4 dark:hover:bg-white/8"
-        >
-          <CalendarPlus className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
-          Calendario
-        </button>
-        <a
-          href={mapsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent dark:bg-white/4 dark:hover:bg-white/8"
-        >
-          <Navigation className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden />
+    <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+      {mapsUrl && (
+        <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className={ROW}>
+          <Navigation className={ROW_ICON} aria-hidden />
           Cómo llegar
         </a>
-      </div>
+      )}
+      <button type="button" onClick={addToCalendar} className={ROW}>
+        <CalendarPlus className={ROW_ICON} aria-hidden />
+        Agregar al calendario
+      </button>
+      <Link href="/mis-reservas" className={ROW}>
+        <Ticket className={ROW_ICON} aria-hidden />
+        Ver mis reservas
+      </Link>
     </div>
   )
 }

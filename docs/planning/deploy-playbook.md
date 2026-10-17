@@ -206,7 +206,7 @@ supabase migration list   # verifica qué quedó registrado en supabase_migratio
 ## 5. Checklist post-deploy (primeras 48 h)
 
 - [ ] **Crear complejo de prueba + onboarding completo**: `/register` con un mail real → magic link → wizard de onboarding → conectar MercadoPago (recorre `/api/mp/oauth-start` → consentimiento MP → `/api/mp/callback` → `/dashboard`). Verifica OAuth, encriptación de tokens y claims de tenant en un solo flujo.
-- [ ] **Reservar como jugador y verificar email + QR**: `https://<dominio>/<slug>/reservar` → magic link de jugador → confirmar reserva → debe llegar el email (Resend Dashboard → Emails → Delivered) y la página de éxito `/reserva/<bookingId>/exito` debe mostrar el QR (`src/components/booking/BookingQR.tsx`) que resuelve a `/reserva/<bookingId>/verificar` (`src/app/reserva/[bookingId]/verificar/page.tsx`).
+- [ ] **Reservar como jugador y verificar email + comprobante**: `https://<dominio>/<slug>/reservar` → magic link de jugador → confirmar reserva → debe llegar el email (Resend Dashboard → Emails → Delivered) y la página de éxito `/reserva/<bookingId>/exito` debe mostrar el código de reserva y el botón para descargar el comprobante (`src/app/reserva/[bookingId]/exito/BookingSuccessCard.tsx`). El QR de verificación se sacó el 2026-10-15.
 - [ ] **Pago MP + webhook**: el mock está hard-bloqueado en prod (`mock-mp.ts:20-24`), así que usar el flujo real con el tenant piloto (cuenta de prueba MP o seña mínima real). Verificar el ciclo completo:
   ```sql
   SELECT mp_event_id, event_type, processed_at FROM processed_webhooks ORDER BY processed_at DESC LIMIT 5;

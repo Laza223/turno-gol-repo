@@ -1,15 +1,19 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
-import { CheckCircle2, XCircle } from 'lucide-react'
-import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
-import ExpiryCountdown from './ExpiryCountdown'
+import { usePathname, useRouter } from 'next/navigation'
+import { AlertTriangle, CalendarCheck, Clock, Loader2, XCircle } from 'lucide-react'
+import { PortalResult, PortalResultLink } from '@/components/world/PortalResult'
+import { buildReservaHref, buildReserveAgainHref } from '@/lib/booking/reserve-url'
 
 type Props = {
   bookingId: string
   initialStatus: string
   expiresAt: string
+  /** Para "Reservar de nuevo": la ficha del complejo en el día de la reserva. */
+  tenantSlug: string | null
+  /** "YYYY-MM-DD" */
+  date: string | null
 }
 
 const TERMINAL_STATUSES = new Set([
@@ -25,7 +29,13 @@ type StatusResponse = {
   data: { status: string; depositStatus: string; expiresAt: string }
 }
 
-export default function PaymentStatusWatcher({ bookingId, initialStatus, expiresAt }: Props) {
+export default function PaymentStatusWatcher({
+  bookingId,
+  initialStatus,
+  expiresAt,
+  tenantSlug,
+  date,
+}: Props) {
   const [status, setStatus] = useState(initialStatus)
   const [showDelayNote, setShowDelayNote] = useState(false)
   // `stalled` corta el spinner indefinido: 'expired' = se agotó el tiempo sin
@@ -41,6 +51,19 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
   useEffect(() => {
     mountTimeRef.current ??= Date.now()
   }, [])
+
+  // Confirmado: se va a la pantalla de éxito, sin una intermedia propia. Si ya estamos en
+  // /exito (la page monta este watcher cuando la reserva todavía no estaba confirmada), basta con
+  // pedirle al servidor que la vuelva a leer. Mientras tanto se sigue viendo "Confirmando…".
+  const router = useRouter()
+  const pathname = usePathname()
+  const navigatedRef = useRef(false)
+  useEffect(() => {
+    if (status !== 'confirmed' || navigatedRef.current) return
+    navigatedRef.current = true
+    if (pathname.endsWith('/exito')) router.refresh()
+    else router.replace(buildReservaHref(bookingId, 'exito'))
+  }, [status, pathname, router, bookingId])
 
   // Delay note: show after 30s still pending
   useEffect(() => {
@@ -127,114 +150,113 @@ export default function PaymentStatusWatcher({ bookingId, initialStatus, expires
     }
   }, [bookingId, status, stalled])
 
-  if (status === 'confirmed') {
-    return (
-      <div className="flex flex-col items-center text-center" aria-live="polite">
-        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 ring-8 ring-emerald-500/10">
-          <CheckCircle2 className="h-8 w-8 text-emerald-600 dark:text-emerald-400" aria-hidden />
-        </div>
-        <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">
-          ¡Reserva confirmada!
-        </h1>
-        <p className="mt-3 text-sm text-muted-foreground">Tu pago fue acreditado.</p>
-        <Link
-          href="/mis-reservas"
-          className="mt-8 inline-flex h-12 items-center rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 px-6 text-sm font-bold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_30px_rgba(16,185,129,0.3)] transition-all duration-200 hover:brightness-105 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_12px_36px_rgba(16,185,129,0.4)] active:scale-[0.97] whitespace-nowrap"
-        >
-          Ver mis reservas
-        </Link>
-      </div>
-    )
-  }
+  return (
+    <PaymentStatusView
+      status={status}
+      stalled={stalled}
+      showDelayNote={showDelayNote}
+      tenantSlug={tenantSlug}
+      date={date}
+    />
+  )
+}
+
+/**
+ * Lo que se ve en cada estado de la espera. Aparte del watcher para poder mostrar cada uno sin
+ * esperar los timers de verdad (la nota de los 30 s, el corte por red caída a los ~75 s).
+ */
+export function PaymentStatusView({
+  status,
+  stalled,
+  showDelayNote,
+  tenantSlug,
+  date,
+}: {
+  status: string
+  stalled: null | 'expired' | 'error'
+  showDelayNote: boolean
+  tenantSlug: string | null
+  date: string | null
+}) {
+  const reserveAgainHref = buildReserveAgainHref(tenantSlug, date)
 
   if (status === 'expired') {
     return (
-      <div className="flex flex-col items-center text-center" aria-live="polite">
-        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-slate-500/15 ring-8 ring-slate-500/10">
-          <XCircle className="h-8 w-8 text-muted-foreground" aria-hidden />
-        </div>
-        <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">
-          La reserva expiró
-        </h1>
-        <p className="mt-3 text-sm text-muted-foreground">
-          No se completó el pago a tiempo. El turno quedó liberado.
+      <PortalResult
+        icon={XCircle}
+        title="La reserva expiró"
+        actions={<PortalResultLink href={reserveAgainHref}>Reservar de nuevo</PortalResultLink>}
+      >
+        <p>
+          No se completó el pago a tiempo y el turno quedó liberado. Si llegaste a pagar, escribile
+          al complejo.
         </p>
-        <Link
-          href="/"
-          className="mt-8 inline-flex h-12 items-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25"
-        >
-          Reservar de nuevo
-        </Link>
-      </div>
+      </PortalResult>
     )
   }
 
   if (status === 'canceled_refunded' || status === 'canceled_no_refund') {
     return (
-      <div className="flex flex-col items-center text-center" aria-live="polite">
-        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/15 ring-8 ring-red-500/10">
-          <XCircle className="h-8 w-8 text-red-600 dark:text-red-300" aria-hidden />
-        </div>
-        <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">
-          Reserva cancelada
-        </h1>
-        <Link
-          href="/mis-reservas"
-          className="mt-8 inline-flex h-12 items-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25"
-        >
-          Ver mis reservas
-        </Link>
-      </div>
+      <PortalResult
+        icon={XCircle}
+        title="Reserva cancelada"
+        actions={
+          <>
+            <PortalResultLink href="/mis-reservas">Ver mis reservas</PortalResultLink>
+            <PortalResultLink href={reserveAgainHref} variant="outline">
+              Reservar de nuevo
+            </PortalResultLink>
+          </>
+        }
+      >
+        <p>Esta reserva ya no está activa. El detalle lo ves en Mis reservas.</p>
+      </PortalResult>
+    )
+  }
+
+  // Un turno que ya se jugó (o al que no se fue): no hay nada que confirmar ni pagar.
+  if (status === 'completed' || status === 'no_show') {
+    return (
+      <PortalResult
+        icon={CalendarCheck}
+        title="Esta reserva ya pasó"
+        actions={<PortalResultLink href="/mis-reservas">Ver mis reservas</PortalResultLink>}
+      >
+        <p>Ya no hay nada para confirmar ni para pagar.</p>
+      </PortalResult>
     )
   }
 
   // Tiempo agotado o polling caído: cortamos el spinner y damos una salida (#45/#46/#48)
   if (stalled) {
+    const failed = stalled === 'error'
     return (
-      <div className="flex flex-col items-center text-center" aria-live="polite" role="status">
-        <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-slate-500/15 ring-8 ring-slate-500/10">
-          <XCircle className="h-8 w-8 text-muted-foreground" aria-hidden />
-        </div>
-        <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">
-          {stalled === 'error' ? 'No pudimos verificar tu pago' : 'Se acabó el tiempo'}
-        </h1>
-        <p className="mt-3 text-sm text-muted-foreground">
-          {stalled === 'error'
-            ? 'Tuvimos problemas para verificar el estado de tu pago. Si lo completaste, te confirmamos por email apenas se acredite.'
-            : 'No recibimos la confirmación a tiempo. Si pagaste, te avisamos por email apenas se acredite; si no, el turno quedó liberado.'}
+      <PortalResult
+        icon={failed ? AlertTriangle : Clock}
+        tone={failed ? 'destructive' : 'neutral'}
+        title={failed ? 'No pudimos verificar tu pago' : 'Se acabó el tiempo'}
+        actions={<PortalResultLink href="/mis-reservas">Ver mis reservas</PortalResultLink>}
+      >
+        <p>
+          {failed
+            ? 'No pudimos consultar el estado de tu pago. En Mis reservas ves si el turno quedó confirmado. Si pagaste y no aparece, escribile al complejo.'
+            : 'No recibimos la confirmación de MercadoPago a tiempo. En Mis reservas ves si el turno quedó confirmado. Si pagaste y no aparece, escribile al complejo.'}
         </p>
-        <Link
-          href="/mis-reservas"
-          className="mt-8 inline-flex h-12 items-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25"
-        >
-          Ver mis reservas
-        </Link>
-      </div>
+      </PortalResult>
     )
   }
 
-  // Default: pending_payment / anything else
+  // Default: pending_payment (y confirmed, mientras navega a /exito). Todo el que llega acá ya
+  // pasó por MercadoPago, así que no se le muestra cuánto le queda: el corte por tiempo
+  // (`stalled`) sigue andando por dentro.
   return (
-    <div className="flex flex-col items-center text-center" aria-live="polite">
-      {/* aria-hidden: el wrapper ya es región live — un role="status" anidado
-          duplica el anuncio en lectores de pantalla. */}
-      <TgBallSpinner size="lg" aria-hidden />
-      <h2 className="font-display text-2xl font-black italic tracking-tight text-foreground">
-        Confirmando tu pago…
-      </h2>
-      <p className="mt-3 text-sm text-muted-foreground">Esto puede tardar unos segundos.</p>
-      <p className="mt-4 text-sm text-muted-foreground">
-        Te queda{' '}
-        <strong>
-          <ExpiryCountdown expiresAt={expiresAt} />
-        </strong>{' '}
-        para completar el pago.
-      </p>
+    <PortalResult icon={Loader2} spin title="Confirmando tu pago…">
+      <p>Esto puede tardar unos segundos.</p>
       {showDelayNote && (
-        <p className="mt-3 text-xs text-muted-foreground">
-          ¿Tarda? Te avisamos por email apenas se confirme.
+        <p className="text-sm">
+          ¿Tarda? Si se confirma, te llega un email. También lo ves en Mis reservas.
         </p>
       )}
-    </div>
+    </PortalResult>
   )
 }

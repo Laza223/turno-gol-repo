@@ -16,9 +16,11 @@ const h = vi.hoisted(() => ({
   getWorkerDb: vi.fn(),
 }))
 
+// `withDisposableWorkerDb` abre su propio cliente worker: acá entrega el mismo
+// fake de `h.getWorkerDb` para que el cableado (qué pool lee qué) siga a la vista.
 vi.mock('@/shared/db/client', () => ({
   getDb: h.getDb,
-  getWorkerDb: h.getWorkerDb,
+  withDisposableWorkerDb: (_timeoutMs: number, fn: (db: unknown) => unknown) => fn(h.getWorkerDb()),
   withTenantContext: vi.fn(async (_id: string, cb: (tx: unknown) => unknown) => cb(makeChain([]))),
 }))
 

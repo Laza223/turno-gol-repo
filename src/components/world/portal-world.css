@@ -1,0 +1,45 @@
+/* Mundo del portal del jugador: superficies planas, blanco con bordes de 1 px en claro.
+   Redeclara SOLO lo que cambia respecto de globals.css. --primary, --foreground,
+   --destructive y el resto se heredan: es el mismo verde de marca.
+
+   Se cuelga de <html> (`html:has([data-world="portal"])`) y no del marcador: los `--color-*`
+   de @theme se resuelven UNA vez en :root (ver `.dark-surface` en globals.css), así que un
+   token redeclarado en un div no llegaría a `bg-background` ni a `border-border`. Parado en
+   <html> se recalculan con los valores nuevos y alcanza también lo que Radix monta en <body>
+   (diálogos, Toaster). Sin marcador no aplica nada: el panel no cambia.
+   Va sin @layer: el CSS sin capa le gana al de `@layer base` (donde viven :root y .dark)
+   sin importar el orden en que Next cargue los archivos.
+   Compuerta: tests/unit/portal-world-tokens.test.ts. Contrastes: WCAG 2.x. */
+
+/* Los dos temas. */
+html:has([data-world='portal']) {
+  --radius: 0.75rem; /* 12 px: rounded-lg 12, rounded-md 10, rounded-sm 8 */
+}
+
+html:not(.dark):has([data-world='portal']) {
+  --background: 0 0% 100%; /* blanco #FFFFFF — --foreground encima 20,2:1 */
+
+  /* Superficies anidadas y hover: slate-100 #F1F5F9. Texto encima: --foreground 18,4:1,
+     --muted-foreground 6,9:1 */
+  --secondary: 210 40% 96.1%;
+  --muted: 210 40% 96.1%;
+  --accent: 210 40% 96.1%;
+
+  --muted-foreground: 215.3 19.3% 34.5%; /* slate-600 #475569 — 7,6:1 sobre blanco, 6,9:1 sobre slate-100 */
+  --border: 214.3 31.8% 91.4%; /* slate-200 #E2E8F0 — 1,2:1 sobre blanco: separa superficies, no delimita un control */
+  --input: 215.4 16.3% 46.9%; /* slate-500 #64748B — 4,8:1 sobre blanco: borde de campo, WCAG 1.4.11 pide 3:1 */
+
+  /* Anillo de foco = --primary (emerald-700 ≈ #047857): 5,6:1 sobre blanco; el emerald-500
+     del panel da 2,6:1. */
+  --ring: var(--primary);
+}
+
+/* Oscuro: hereda los tokens .dark del panel, menos --input. El del panel (#1D283A) da 1,4:1
+   sobre el fondo y 1,2:1 sobre la tarjeta: el borde de un campo no llega a los 3:1 de
+   WCAG 1.4.11. Va el slate-500 de claro aclarado (#6B7C94): 4,3:1 sobre la tarjeta y 4,7:1
+   sobre el fondo en reposo, y 3,2:1 con hover, donde el borde queda al 80 %
+   (hover:border-input/80); con el slate-500 puro (#64748B) el hover daba 2,9:1.
+   --ring sigue siendo el emerald-500 del panel: 7,8:1 sobre el fondo. */
+html.dark:has([data-world='portal']) {
+  --input: 215.4 16.3% 50%; /* #6B7C94 */
+}

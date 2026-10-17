@@ -2,11 +2,12 @@ import { cache } from 'react'
 import { and, eq, notInArray, sql } from 'drizzle-orm'
 import { getDb, withTenantContext } from '@/shared/db/client'
 import { bookings, courts, tenantSubscriptions } from '@/shared/db/schema'
-import { SLOT_DURATION_MINUTES } from '@/shared/constants'
+import { DEFAULT_CANCELLATION_HOURS_BEFORE, SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { track, withSpan } from '@/shared/observability'
 import { effectiveCloseMins, normalizeRangeToOpenDay } from '@/shared/time/operating-day'
 import { holdExpiresAtIso } from '@/lib/booking/hold'
 import { publicBookingAdvanceDays } from './tenant.lifecycle'
+import { arePublicPricesHidden } from './tenant.utils'
 import type { OpeningHours, TenantSettings } from './tenant.types'
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -38,9 +39,22 @@ export type PublicTenant = {
   allowOnlineBooking: boolean
   requiresDeposit: boolean
   depositPercentage: number
+  /**
+   * El complejo oculta sus precios al jugador (`settings.hide_public_prices`).
+   * Las superficies públicas ya reciben los precios en `null` desde este
+   * service; las que necesitan el monto real (checkout) lo usan solo para
+   * decidir el flujo y no lo muestran.
+   */
+  hidePrices: boolean
   // Métodos de pago presencial que el complejo declara aceptar (settings).
   acceptsCash: boolean
   acceptsTransfer: boolean
+  /**
+   * Horas de anticipación con las que una cancelación todavía devuelve la seña
+   * (`settings.cancellation_policy.hours_before`, o el default si el complejo no la fijó).
+   * Es la misma regla que aplica `booking.cancellation.ts`; acá solo se dice, no se decide.
+   */
+  cancellationHoursBefore: number
   /**
    * Anticipación EFECTIVA, no la cruda de `settings`: un complejo `canceled`
    * la trae recortada para no vender turnos posteriores a su período pago
@@ -117,7 +131,7 @@ export type Slot = {
  * tomada — así que por ahora la fuga que sí se cierra es solo `fixed`/`blocked`.
  */
 export type PublicSlotStatus = 'free' | 'occupied' | 'held' | 'past'
-export type PublicSlot = {
+type PublicSlot = {
   time: string
   duration: number
   status: PublicSlotStatus
@@ -125,13 +139,13 @@ export type PublicSlot = {
   /** Solo en `held`: ver comentario de `Slot.heldUntil`. */
   heldUntil?: string
 }
-function toPublicSlots(slots: Slot[]): PublicSlot[] {
+function toPublicSlots(slots: Slot[], hidePrices: boolean): PublicSlot[] {
   return slots.map((s) => ({
     time: s.time,
     duration: s.duration,
     status:
       s.status === 'free' || s.status === 'past' || s.status === 'held' ? s.status : 'occupied',
-    price: s.price,
+    price: hidePrices ? null : s.price,
     ...(s.status === 'held' && s.heldUntil ? { heldUntil: s.heldUntil } : {}),
   }))
 }
@@ -142,6 +156,8 @@ type PublicCourt = {
   surfaceType: string
   isCovered: boolean
   hasLighting: boolean
+  /** `courts.format`: jugadores por lado (Fútbol 5, 7…). Va en la fila de cancha y en el pedido. */
+  format: number
   slots: PublicSlot[]
 }
 
@@ -325,7 +341,7 @@ export async function listTopPublicTenantSlugs(limit = 50): Promise<string[]> {
 // Envuelto en `cache()` de React: dentro de un mismo render el slug se resuelve
 // una sola vez por más que lo pidan el layout, `generateMetadata` y la page (que
 // ya lo pedían dos veces antes de que existiera el layout). Todos los callers son
-// request-scoped (pages y route handlers), así que no hay uso fuera de un render.
+// request-scoped (pages, route handlers y la Server Action `trackProfileViewedAction`).
 export const getPublicTenant = cache(_getPublicTenant)
 
 async function _getPublicTenant(slug: string): Promise<PublicTenant | null> {
@@ -398,8 +414,11 @@ async function _getPublicTenant(slug: string): Promise<PublicTenant | null> {
     allowOnlineBooking: s.allow_online_booking ?? true,
     requiresDeposit: s.requires_deposit ?? false,
     depositPercentage: s.deposit_percentage ?? 30,
+    hidePrices: arePublicPricesHidden(s),
     acceptsCash: s.accepts_cash ?? true,
     acceptsTransfer: s.accepts_transfer ?? true,
+    cancellationHoursBefore:
+      s.cancellation_policy?.hours_before ?? DEFAULT_CANCELLATION_HOURS_BEFORE,
     bookingAdvanceDays: publicBookingAdvanceDays(
       s.booking_advance_days ?? 6,
       row.status,
@@ -451,22 +470,30 @@ export async function getPublicCourtCards(tenant: PublicTenant): Promise<PublicC
     format: c.format,
     capacity: c.capacity,
     photos: (c.photos ?? []) as string[],
-    fromPriceCents: minPriceFromPricing(c.pricing as CourtPricingData),
+    fromPriceCents: tenant.hidePrices ? null : minPriceFromPricing(c.pricing as CourtPricingData),
   }))
 }
 
+/**
+ * Con `tenant.hidePrices` los slots salen con `price: null`. `keepPrices` es
+ * solo para el checkout, que necesita el precio real para calcular la seña y
+ * elegir el flujo de pago, pero no lo muestra ni lo manda al browser.
+ */
 export async function getPublicAvailability(
   tenant: PublicTenant,
   dateStr: string, // YYYY-MM-DD
+  opts: { keepPrices?: boolean } = {},
 ): Promise<AvailabilityResponse> {
+  const hidePrices = tenant.hidePrices && !opts.keepPrices
   return withSpan('availability.public', 'http.server.availability', () =>
-    getPublicAvailabilityImpl(tenant, dateStr),
+    getPublicAvailabilityImpl(tenant, dateStr, hidePrices),
   )
 }
 
 async function getPublicAvailabilityImpl(
   tenant: PublicTenant,
   dateStr: string, // YYYY-MM-DD
+  hidePrices: boolean,
 ): Promise<AvailabilityResponse> {
   track.availability('availability.public.query', { tenantId: tenant.id, date: dateStr })
   // Current time in ART. Argentina = UTC-3, no DST.
@@ -492,6 +519,7 @@ async function getPublicAvailabilityImpl(
         surfaceType: courts.surfaceType,
         isCovered: courts.isCovered,
         hasLighting: courts.hasLighting,
+        format: courts.format,
         pricing: courts.pricing,
       })
       .from(courts)
@@ -538,6 +566,7 @@ async function getPublicAvailabilityImpl(
     surfaceType: court.surfaceType,
     isCovered: court.isCovered,
     hasLighting: court.hasLighting,
+    format: court.format,
     slots: toPublicSlots(
       generateSlots({
         courtId: court.id,
@@ -553,6 +582,7 @@ async function getPublicAvailabilityImpl(
         nowDateStr,
         nowMins,
       }),
+      hidePrices,
     ),
   }))
 
@@ -579,7 +609,13 @@ export async function getPublicWeeklyAvailability(
   const nowDateStr = artNow.toISOString().slice(0, 10)
   const nowMins = artNow.getUTCHours() * 60 + artNow.getUTCMinutes()
 
-  const dates = Array.from({ length: 7 }, (_, i) => addDaysStr(startDateStr, i))
+  // Solo la ventana reservable: la ruta valida `start`, pero los 6 días que le siguen
+  // pueden caer más allá de `hoy + bookingAdvanceDays`, que no se pueden reservar.
+  const lastBookable = addDaysStr(nowDateStr, tenant.bookingAdvanceDays)
+  const dates = Array.from({ length: 7 }, (_, i) => addDaysStr(startDateStr, i)).filter(
+    (d) => d <= lastBookable,
+  )
+  if (dates.length === 0) return { startDate: startDateStr, days: [] }
   const endDateStr = dates[dates.length - 1]!
   const durationMins = SLOT_DURATION_MINUTES
   const closedDatesSet = new Set(tenant.closedDates)
@@ -592,6 +628,7 @@ export async function getPublicWeeklyAvailability(
         surfaceType: courts.surfaceType,
         isCovered: courts.isCovered,
         hasLighting: courts.hasLighting,
+        format: courts.format,
         pricing: courts.pricing,
       })
       .from(courts)
@@ -652,6 +689,7 @@ export async function getPublicWeeklyAvailability(
       surfaceType: court.surfaceType,
       isCovered: court.isCovered,
       hasLighting: court.hasLighting,
+      format: court.format,
       slots: toPublicSlots(
         generateSlots({
           courtId: court.id,
@@ -667,6 +705,7 @@ export async function getPublicWeeklyAvailability(
           nowDateStr,
           nowMins,
         }),
+        tenant.hidePrices,
       ),
     }))
     return { date: dateStr, courts: dayCourts }

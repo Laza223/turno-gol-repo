@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
+import { PortalWorld } from '@/components/world/PortalWorld'
 import { AccountMenu } from './AccountMenu'
 
 /**
@@ -45,7 +46,10 @@ export const ConAvatar: Story = {
 export const MenuAbierto: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Cuenta de Tomás' }))
+    // El disparador `solid` es plano (sin ring ni fondo) y de 44 px de alto.
+    const disparador = canvas.getByRole('button', { name: 'Cuenta de Tomás' })
+    await expect(disparador.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
+    await userEvent.click(disparador)
     const body = within(canvasElement.ownerDocument.body)
     // Popover (no DropdownMenu): los items son links/botones normales, no
     // `menuitem` — ver el comentario en AccountMenu.tsx. `waitFor` porque el
@@ -53,5 +57,33 @@ export const MenuAbierto: Story = {
     await waitFor(() => expect(body.getByRole('link', { name: /mis reservas/i })).toBeVisible())
     await expect(body.getByRole('link', { name: /cuenta/i })).toBeVisible()
     await expect(body.getByText('Tema')).toBeVisible()
+    // El ThemeToggle del menú es el del portal: segmentos de 44 px; "Tema" sin mayúsculas y el correo en 13 px o más.
+    for (const radio of body.getAllByRole('radio')) {
+      await expect(radio.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
+    }
+    await expect(getComputedStyle(body.getByText('Tema')).textTransform).toBe('none')
+    await expect(
+      parseFloat(getComputedStyle(body.getByText('tomas.ibanez@example.com')).fontSize),
+    ).toBeGreaterThanOrEqual(13)
+    // Cada ítem mide 44 px y los destinos son los de siempre.
+    for (const item of [
+      body.getByRole('link', { name: /mis reservas/i }),
+      body.getByRole('link', { name: /cuenta/i }),
+      body.getByRole('button', { name: 'Salir' }),
+    ]) {
+      await expect(item.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
+    }
   },
+}
+
+/** El mismo menú bajo los tokens del portal (fondo, línea y hover del mundo). */
+export const MenuAbiertoMundo: Story = {
+  ...MenuAbierto,
+  decorators: [
+    (Story) => (
+      <PortalWorld>
+        <Story />
+      </PortalWorld>
+    ),
+  ],
 }

@@ -17,6 +17,7 @@ import {
   DEFAULT_STREET_MONEY_WINDOW,
   streetMoneyCutoffDate,
 } from '@/modules/cashflow/street-money-window'
+import { DEFAULT_CANCELLATION_HOURS_BEFORE } from '@/shared/constants'
 import type { RefundState } from './deposit-display'
 
 export type ReservaListRow = {
@@ -345,7 +346,7 @@ export async function getBookingDetail(
            b.payment_method AS "paymentMethod", b.notes_player AS "notesPlayer",
            b.notes_internal AS "notesInternal", b.guest_name AS "guestName", b.guest_phone AS "guestPhone",
            b.canceled_reason AS "canceledReason",
-           COALESCE((t.settings->'cancellation_policy'->>'hours_before')::int, 24) AS "cancellationPolicyHours",
+           COALESCE((t.settings->'cancellation_policy'->>'hours_before')::int, ${DEFAULT_CANCELLATION_HOURS_BEFORE}::int) AS "cancellationPolicyHours",
            b.abonado_id AS "abonadoId",
            b.starts_at AS "startsAt", b.ends_at AS "endsAt", b.updated_at AS "updatedAt",
            c.name AS "courtName",

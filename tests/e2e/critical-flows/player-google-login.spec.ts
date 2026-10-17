@@ -8,7 +8,8 @@ import { dateIsoArtIn } from '../_helpers/booking-seed'
  * todavía — ver plan) y CI/local no tienen forma confiable de completar un
  * login real de Google sin romper por anti-automatización. Este smoke cubre
  * lo que SÍ es estable sin esas credenciales: el botón existe, y en el
- * checkout queda atado al mismo checkbox de términos que el submit de email.
+ * checkout la casilla de términos se exige (el cliente la ataja al instante y el
+ * servidor la vuelve a exigir; el botón no se deshabilita).
  */
 
 const DEMO_TENANT_SLUG = 'e2e-complejo-demo'
@@ -33,7 +34,7 @@ test.describe('Google login (botón, sin completar el flujo externo)', () => {
     }
   })
 
-  test('checkout: "Continuar con Google" queda deshabilitado hasta tildar los términos @critical', async ({
+  test('checkout: "Continuar con Google" no se deshabilita; sin la casilla el error sale EN la casilla @critical', async ({
     browser,
   }) => {
     const ctx = await browser.newContext()
@@ -43,13 +44,26 @@ test.describe('Google login (botón, sin completar el flujo externo)', () => {
 
       const googleButton = page.getByRole('button', { name: /continuar con google/i })
       await expect(googleButton).toBeVisible()
-      await expect(googleButton).toBeDisabled()
-
-      await page.getByRole('checkbox').check()
       await expect(googleButton).toBeEnabled()
 
-      await page.getByRole('checkbox').uncheck()
-      await expect(googleButton).toBeDisabled()
+      // Sin la casilla el cliente ataja el envío: el error sale al instante y no se va a Google
+      // (el servidor lo exige igual, ver tests/unit/reservar-gate-actions.test.ts).
+      // OJO: getByRole('alert') a secas también matchea el anunciador de rutas de Next
+      // (`#__next-route-announcer__`, siempre presente): se filtra por el texto del error.
+      const checkbox = page.getByRole('checkbox')
+      const termsAlert = page
+        .getByRole('alert')
+        .filter({ hasText: 'Tenés que aceptar los términos.' })
+      await googleButton.click()
+      await expect(termsAlert).toBeVisible()
+      await expect(checkbox).toHaveAttribute('aria-invalid', 'true')
+      await expect(checkbox).toBeFocused()
+      await expect(page).toHaveURL(/\/reservar\?/)
+
+      // Tildarla saca el error y el botón sigue habilitado.
+      await checkbox.check()
+      await expect(termsAlert).toHaveCount(0)
+      await expect(googleButton).toBeEnabled()
     } finally {
       await ctx.close()
     }

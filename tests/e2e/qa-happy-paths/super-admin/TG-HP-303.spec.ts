@@ -30,11 +30,11 @@ test.describe('TG-HP-303 — Listado tenants + filtros + paginación', () => {
       const demo = demoRows[0]!
 
       await page.goto('/super-admin/tenants')
-      await expect(page.getByRole('heading', { name: 'Tenants' })).toBeVisible({ timeout: 15_000 })
+      await expect(page.getByRole('heading', { name: 'Complejos' })).toBeVisible({
+        timeout: 15_000,
+      })
       await expect(
-        page.getByText(
-          `${totalTenants} complejo${totalTenants === 1 ? '' : 's'} — vista global de soporte`,
-        ),
+        page.getByText(`${totalTenants} complejo${totalTenants === 1 ? '' : 's'}`),
       ).toBeVisible()
 
       // ── Filtro Buscar (q) ────────────────────────────────────────────────
@@ -60,7 +60,7 @@ test.describe('TG-HP-303 — Listado tenants + filtros + paginación', () => {
       // 2026-09-17): `plans` quedó con una sola fila activa, así que filtraba
       // todo o nada. La columna "Plan" de la tabla pasó a ser "Canchas".
       await expect(page.locator('#plan')).toHaveCount(0)
-      await expect(page.getByRole('columnheader', { name: 'Canchas' })).toBeVisible()
+      await expect(page.getByRole('columnheader', { name: 'Canchas facturadas' })).toBeVisible()
 
       // ── Navegación a detalle ─────────────────────────────────────────────
       await page.goto('/super-admin/tenants')

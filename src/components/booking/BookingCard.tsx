@@ -76,7 +76,7 @@ function placement(col: number, row: number, span: number, rowOffset: number): R
  * del que llama por esa cancha o hacerlo esperar.
  */
 function HoldCountdown({ createdAt }: { createdAt: string | Date }) {
-  // `0` hasta hidratar, igual que `ExpiryCountdown`. Antes arrancaba con
+  // `0` hasta hidratar. Antes arrancaba con
   // `useState(() => Date.now())`: el servidor pintaba mm:ss con SU reloj y el
   // cliente hidrataba con el suyo, así que el texto casi nunca coincidía y
   // React tiraba "Hydration failed" y regeneraba la grilla ENTERA en el

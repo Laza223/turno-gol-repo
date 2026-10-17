@@ -6,7 +6,7 @@ import { MapContainer, Marker, TileLayer, useMap, useMapEvents } from 'react-lea
 import L, { type Map as LeafletMap } from 'leaflet'
 
 // divIcon en vez del ícono por defecto: el de Leaflet rompe con bundlers
-// (busca sus PNG por ruta relativa). Mismo criterio que `BookingMiniMap`.
+// (busca sus PNG por ruta relativa). Mismo criterio que `ExplorarMap`.
 // Verde 700 y no 600: es el mismo pin que ya usa el mapa de resultados.
 const pinIcon = L.divIcon({
   className: '',
@@ -98,7 +98,7 @@ export default function LocationPicker({
   // `MapContainer` solo reenvía className/id/style al div: el resto de las
   // props viajan como MapOptions de Leaflet, que las ignora en silencio. Sin
   // esto el contenedor queda focuseable (Leaflet le pone tabindex=0) pero sin
-  // nombre accesible. Mismo arreglo que en `BookingMiniMap`.
+  // nombre accesible.
   const attachMap = useCallback(
     (map: LeafletMap | null) => {
       map
@@ -128,9 +128,8 @@ export default function LocationPicker({
       <FlyToTarget target={flyTo} />
       <ClickToPlace onPick={onPick} />
       {hasPoint && (
-        // Este pin SÍ es interactivo (se arrastra), así que a diferencia del de
-        // `BookingMiniMap` no lleva `keyboard={false}` — pero por eso mismo
-        // necesita nombre accesible, o queda un botón sin nombre para lectores.
+        // Este pin SÍ es interactivo (se arrastra), así que necesita nombre
+        // accesible, o queda un botón sin nombre para lectores.
         <Marker
           position={[latitude, longitude]}
           icon={pinIcon}

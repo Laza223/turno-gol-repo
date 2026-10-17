@@ -12,14 +12,17 @@ import { invalidateAvailSearch } from '@/shared/cache/slots-cache'
 import { rowToBookingRow } from './booking.mappers'
 import { enqueueNotification } from '@/modules/notifications/notification.service'
 import { captureMessage } from '@/lib/sentry'
+import { DEFAULT_CANCELLATION_HOURS_BEFORE } from '@/shared/constants'
 import {
   BookingAlreadyEndedError,
+  BookingNotCancelableError,
   BookingNotInConfirmedError,
   BookingNotOwnedByPlayerError,
   TenantInactiveError,
 } from './booking.errors'
-import type { BookingRow, DepositStatus } from './booking.types'
+import type { BookingRow, BookingStatus, CancellationActor, DepositStatus } from './booking.types'
 import { track } from '@/shared/observability'
+import { formatArtDate } from '@/shared/time/art-date'
 
 // `decideAdminRefund`/`AdminCancellationType` viven en `refund-policy.ts`
 // (mismo código, sin cambios de comportamiento) para que se puedan importar
@@ -34,7 +37,8 @@ type LockedBooking = {
   tenant_id: string
   court_id: string
   player_id: string | null
-  status: string
+  status: BookingStatus
+  canceled_by: CancellationActor | null
   deposit_status: string
   deposit_amount: number
   payment_id: string | null
@@ -53,6 +57,7 @@ async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking |
       court_id,
       player_id,
       status,
+      canceled_by,
       deposit_status,
       deposit_amount,
       payment_id,
@@ -139,13 +144,6 @@ async function loadSettings(tenantId: string, tx: DbTx): Promise<TenantSettings>
   return rows[0]!.settings as TenantSettings
 }
 
-/** Date (columna DATE, sin componente horario) → "DD/MM/YYYY". */
-function formatDateArs(d: Date): string {
-  const dd = String(d.getUTCDate()).padStart(2, '0')
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
-  return `${dd}/${mm}/${d.getUTCFullYear()}`
-}
-
 async function loadCancelEmailNames(
   tenantId: string,
   courtId: string,
@@ -201,6 +199,58 @@ export type CancellationOutcome = {
    * mismo patrón que `admin_late_payment` en payment.service.ts.
    */
   notificationIds: string[]
+  /** `true`: reintento de una cancelación ya hecha por el mismo actor, no se escribió nada. */
+  replayed?: boolean
+}
+
+/**
+ * ¿La última vez que se registró `action` sobre esta reserva la hizo este staff
+ * con estos mismos datos? Distingue el reintento de un pedido ya aplicado (la
+ * respuesta se perdió o tardó) de otra persona, u otro pedido, que llegó tarde.
+ * Se llama con la fila ya lockeada: el audit del primer pedido commiteó en la
+ * misma tx que la transición, así que si el estado cambió, la fila está.
+ *
+ * Bajo impersonación el audit queda a nombre del super admin y no matchea: el
+ * reintento recibe el error de estado de siempre, que es lo que pasaba antes.
+ */
+async function lastAuditBy(
+  bookingId: string,
+  tenantId: string,
+  action: string,
+  staffUserId: string,
+  metadata: Record<string, string>,
+  tx: DbTx,
+): Promise<boolean> {
+  const rows = await tx.execute(sql`
+    SELECT actor_id, metadata
+    FROM audit_logs
+    WHERE tenant_id = ${tenantId}
+      AND resource_type = 'booking'
+      AND resource_id = ${bookingId}
+      AND action = ${action}
+    ORDER BY created_at DESC
+    LIMIT 1
+  `)
+  const row = (rows as unknown as Array<{ actor_id: string; metadata: unknown }>)[0]
+  if (!row || row.actor_id !== staffUserId) return false
+  // Filas viejas pueden tener el jsonb DOBLE-codificado (un string con el JSON
+  // adentro, ver `parseAuditMetadata` en super-admin): se parsea si llega así.
+  let stored: unknown = row.metadata
+  if (typeof stored === 'string') {
+    try {
+      stored = JSON.parse(stored)
+    } catch {
+      return false
+    }
+  }
+  if (typeof stored !== 'object' || stored === null) return Object.keys(metadata).length === 0
+  const fields = stored as Record<string, unknown>
+  return Object.entries(metadata).every(([key, value]) => fields[key] === value)
+}
+
+async function currentBookingRow(bookingId: string, tx: DbTx): Promise<BookingRow> {
+  const current = await tx.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1)
+  return rowToBookingRow(current[0]!)
 }
 
 export async function cancelByPlayer(
@@ -209,12 +259,28 @@ export async function cancelByPlayer(
   reason: string | undefined,
   tx: DbTx,
 ): Promise<CancellationOutcome> {
-  track.booking('booking.cancel.by_player', { bookingId, playerId })
-
   const b = await lockBooking(bookingId, tx)
   if (!b) throw new BookingNotInConfirmedError(bookingId)
+  // El dueño se chequea ANTES del replay: una reserva ajena ya cancelada sigue
+  // dando "no es tuya" y nunca un éxito que confirme que existe y está cancelada.
   if (b.player_id !== playerId) throw new BookingNotOwnedByPlayerError(bookingId, playerId)
-  if (b.status !== 'confirmed') throw new BookingNotInConfirmedError(bookingId)
+
+  // Idempotencia: si ESTE jugador ya la canceló, el reintento (respuesta perdida,
+  // doble click) no es un error, lo que quería ya está hecho. Devuelve el estado
+  // actual sin escribir NADA: ni update, audit, devolución, mails ni `track`.
+  // Cancelada por el complejo (o sin `canceled_by`) no es replay: se le explica.
+  if (
+    (b.status === 'canceled_refunded' || b.status === 'canceled_no_refund') &&
+    b.canceled_by === 'player'
+  ) {
+    const current = await tx.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1)
+    return { booking: rowToBookingRow(current[0]!), notificationIds: [], replayed: true }
+  }
+  if (b.status !== 'confirmed') {
+    throw new BookingNotCancelableError(bookingId, b.status, b.canceled_by)
+  }
+
+  track.booking('booking.cancel.by_player', { bookingId, playerId })
 
   // 07-cancelbyplayer-noshow-guard: mismo criterio temporal que
   // `decideAdminRefund` (bookingEndUtcMs) — un turno cuyo ends_at ya pasó no
@@ -241,7 +307,9 @@ export async function cancelByPlayer(
 
   const settings = await loadSettings(b.tenant_id, tx)
   const bookingStartUtc = new Date(b.starts_at)
-  const policyHours = settings.cancellation_policy.hours_before
+  // Sin política guardada, el mismo default que /mis-reservas le muestra al jugador.
+  const policyHours =
+    settings.cancellation_policy?.hours_before ?? DEFAULT_CANCELLATION_HOURS_BEFORE
   const inPolicy = Date.now() < bookingStartUtc.getTime() - policyHours * 3_600_000
 
   // Bug: 'canceled_refunded' solo tiene sentido si había una seña PAGADA para
@@ -304,7 +372,7 @@ export async function cancelByPlayer(
         content: {
           playerFirstName: names.playerFirstName,
           courtName: names.courtName,
-          date: formatDateArs(bookingRow.date),
+          date: formatArtDate(bookingRow.startsAt),
           timeStart: bookingRow.timeStart.slice(0, 5),
           timeEnd: bookingRow.timeEnd.slice(0, 5),
           tenantName: names.tenantName,
@@ -349,7 +417,29 @@ export async function cancelByAdmin(
 ): Promise<CancellationOutcome> {
   const b = await lockBooking(bookingId, tx)
   if (!b) throw new BookingNotInConfirmedError(bookingId)
-  if (b.status !== 'confirmed') throw new BookingNotInConfirmedError(bookingId)
+
+  // Idempotencia (mismo patrón que `cancelByPlayer`): si ESTE staff ya la canceló
+  // con el mismo motivo y tipo, el reintento (respuesta lenta o perdida, doble
+  // click) devuelve el estado actual sin escribir NADA: ni update, audit,
+  // devolución, mails ni `track`. Otro staff, otro motivo o una cancelación del
+  // jugador o del sistema no es replay: sigue siendo un error de estado.
+  if (
+    (b.status === 'canceled_refunded' || b.status === 'canceled_no_refund') &&
+    b.canceled_by === 'admin' &&
+    (await lastAuditBy(
+      bookingId,
+      b.tenant_id,
+      'booking.canceled_by_admin',
+      staffUserId,
+      { reason, cancellationType },
+      tx,
+    ))
+  ) {
+    return { booking: await currentBookingRow(bookingId, tx), notificationIds: [], replayed: true }
+  }
+  if (b.status !== 'confirmed') {
+    throw new BookingNotCancelableError(bookingId, b.status, b.canceled_by)
+  }
 
   // Hallazgo 8 (paridad con cancelByPlayer): rechazar cancelación cuando el
   // complejo está en estado terminal/inactivo. Sin este guard, el admin podría
@@ -371,7 +461,9 @@ export async function cancelByAdmin(
   const settings = await loadSettings(b.tenant_id, tx)
   const bookingStartUtc = new Date(b.starts_at)
   const bookingEndUtc = new Date(b.ends_at)
-  const policyHours = settings.cancellation_policy.hours_before
+  // Sin política guardada, el mismo default que muestra el detalle de /reservas.
+  const policyHours =
+    settings.cancellation_policy?.hours_before ?? DEFAULT_CANCELLATION_HOURS_BEFORE
   const { shouldRefund, inPolicy } = decideAdminRefund({
     cancellationType,
     bookingStartUtcMs: bookingStartUtc.getTime(),
@@ -443,7 +535,7 @@ export async function cancelByAdmin(
                 content: {
                   playerFirstName: names.playerFirstName,
                   courtName: names.courtName,
-                  date: formatDateArs(bookingRow.date),
+                  date: formatArtDate(bookingRow.startsAt),
                   timeStart: bookingRow.timeStart.slice(0, 5),
                   timeEnd: bookingRow.timeEnd.slice(0, 5),
                   tenantName: names.tenantName,
@@ -466,7 +558,7 @@ export async function cancelByAdmin(
                 content: {
                   playerFirstName: names.playerFirstName,
                   courtName: names.courtName,
-                  date: formatDateArs(bookingRow.date),
+                  date: formatArtDate(bookingRow.startsAt),
                   timeStart: bookingRow.timeStart.slice(0, 5),
                   timeEnd: bookingRow.timeEnd.slice(0, 5),
                   tenantName: names.tenantName,
@@ -493,6 +585,31 @@ export async function cancelByAdmin(
   }
 
   return { booking: bookingRow, notificationIds }
+}
+
+/**
+ * Reintento de "No vino" del mismo staff (respuesta lenta o perdida, doble click).
+ * Lockea la fila ANTES que `markNoShow` (que lee sin lock y actualiza con
+ * `WHERE status`), así dos pedidos concurrentes se serializan acá: el segundo ve
+ * `no_show` y, si lo marcó este staff, recibe la reserva tal cual. `null` = no es
+ * replay; el caller sigue con `handleNoShow`, que valida y tira sus errores.
+ */
+export async function findNoShowReplay(
+  bookingId: string,
+  staffUserId: string,
+  tx: DbTx,
+): Promise<BookingRow | null> {
+  const b = await lockBooking(bookingId, tx)
+  if (!b || b.status !== 'no_show') return null
+  const mine = await lastAuditBy(
+    bookingId,
+    b.tenant_id,
+    'booking.marked_no_show',
+    staffUserId,
+    {},
+    tx,
+  )
+  return mine ? currentBookingRow(bookingId, tx) : null
 }
 
 /**

@@ -9,7 +9,10 @@ vi.mock('@/modules/staff/guards', () => ({ requireOperatorStaff: vi.fn() }))
 vi.mock('@/shared/rate-limit/server-action', () => ({ adminRateLimited: vi.fn() }))
 vi.mock('@/shared/db/client', () => ({ withTenantContext: vi.fn() }))
 vi.mock('@/shared/db/audit', () => ({ insertAuditLog: vi.fn() }))
-vi.mock('@/modules/bookings/booking.service', () => ({ completeBooking: vi.fn() }))
+vi.mock('@/modules/bookings/booking.service', () => ({
+  completeBooking: vi.fn(),
+  findCompletionReplay: vi.fn().mockResolvedValue(null),
+}))
 
 import { completeBookingAction } from '@/app/(admin)/reservas/actions'
 import { requireOperatorStaff } from '@/modules/staff/guards'

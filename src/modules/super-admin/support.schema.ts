@@ -95,6 +95,7 @@ export const settingsPatchSchema = z
     accepts_transfer: z.boolean().optional(),
     accepts_mercadopago: z.boolean().optional(),
     allow_online_booking: z.boolean().optional(),
+    hide_public_prices: z.boolean().optional(),
     booking_advance_days: z
       .number()
       .int()

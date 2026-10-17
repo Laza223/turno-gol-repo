@@ -33,11 +33,11 @@ describe('StatCard', () => {
     expect(delta.textContent).toContain('↓')
   })
 
-  it('accent violet aplica el ring violeta al halo del icono', () => {
+  it('accent amber tiñe el halo del icono de ámbar', () => {
     const { container } = render(
-      <StatCard label="x" value="1" accent="violet" icon={<svg data-testid="i" />} />,
+      <StatCard label="x" value="1" accent="amber" icon={<svg data-testid="i" />} />,
     )
     const halo = container.querySelector('span.ring-1')
-    expect(halo?.className).toContain('text-violet-600')
+    expect(halo?.className).toContain('text-amber-600')
   })
 })

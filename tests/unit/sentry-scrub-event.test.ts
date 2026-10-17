@@ -60,6 +60,13 @@ describe('scrubEvent', () => {
     expect(JSON.stringify(evento)).toContain('DrizzleQueryError')
   })
 
+  it('tapa la clave sensible aunque sea la PRIMERA de query_string (llega sin "?")', () => {
+    const evento = { request: { query_string: 'token=abc&foo=1' } }
+    scrubEvent(evento)
+
+    expect(evento.request.query_string).toBe('token=[REDACTED]&foo=1')
+  })
+
   it('conserva lo que ya hacía: extras, contextos, usuario, cabeceras y consulta de la URL', () => {
     const evento = {
       request: {
@@ -86,5 +93,62 @@ describe('scrubEvent', () => {
   it('un evento vacío no explota', () => {
     const evento = {}
     expect(() => scrubEvent(evento)).not.toThrow()
+  })
+})
+
+// El vínculo que confirma la reserva sola (`booking_intent`) puede viajar en la URL del request y en
+// las migas de navegación (el `replaceState` de `AutoConfirm`) o de fetch (el pedido del enlace).
+describe('scrubEvent: el vínculo de la reserva no sale en URLs del evento', () => {
+  const token = 'eyJzbHVnIjoiY2x1Yi14In0-_Q.Zm9v-YmFy_YmF6'
+
+  it('tapa request.url y las URLs de las migas', () => {
+    const event = {
+      request: { url: `https://turnogol.com/club-x/reservar?court=c1&booking_intent=${token}` },
+      breadcrumbs: [
+        {
+          category: 'navigation',
+          data: { from: `/club-x/reservar?booking_intent=${token}`, to: '/club-x/reservar' },
+        },
+        {
+          category: 'fetch',
+          data: {
+            url: `https://x.supabase.co/auth/v1/otp?redirect_to=%2Fcb%3Fnext%3D%252Fx%2526booking_intent%253D${token}`,
+          },
+        },
+      ],
+    }
+    scrubEvent(event)
+    expect(JSON.stringify(event)).not.toContain(token)
+    expect(event.request.url).toBe(
+      'https://turnogol.com/club-x/reservar?court=c1&booking_intent=[REDACTED]',
+    )
+  })
+})
+
+describe('scrubEvent: el tapado de query strings en textos que no son una URL', () => {
+  it('corta en el espacio: tapa el valor y deja el resto del mensaje', () => {
+    const salida = scrubObject({
+      message: 'GET /api/x?token=secreto failed with 500 after 3 retries',
+    }) as { message: string }
+    expect(salida.message).toBe('GET /api/x?token=[REDACTED] failed with 500 after 3 retries')
+  })
+
+  it('un valor con eses se tapa entero (la clase es espacio, no la letra s)', () => {
+    expect(scrubObject({ u: '/x?token=sss-ssss&y=1' })).toEqual({ u: '/x?token=[REDACTED]&y=1' })
+  })
+
+  it('tapa el vínculo en el Referer', () => {
+    const token = 'eyJzbHVnIjoiY2x1Yi14In0-_Q.Zm9v-YmFy_YmF6'
+    const event = {
+      request: {
+        headers: {
+          referer: `https://turnogol.com/club-x/reservar?court=c1&booking_intent=${token}`,
+        },
+      },
+    }
+    scrubEvent(event)
+    expect(event.request.headers.referer).toBe(
+      'https://turnogol.com/club-x/reservar?court=c1&booking_intent=[REDACTED]',
+    )
   })
 })

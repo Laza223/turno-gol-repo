@@ -84,13 +84,13 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
       // <body>, asi que getByText('E2E Complejo Seña') tambien lo matchea.
       await expect(page.getByRole('heading', { name: 'E2E Complejo Seña' })).toBeVisible()
 
-      // Navigate directly to the reservar page — the slug→grid→slot link flow is
-      // covered by availability.spec.ts (F6). F7 new coverage starts at form→MP.
+      // Navigate directly to the reservar page — the slug→hora→cancha link flow is
+      // covered by TG-HP-003. F7 new coverage starts at form→MP.
       await page.goto(reservarUrl(DEPOSIT_TENANT_SLUG, DEPOSIT_COURT_ID, date, '14:00'))
       await expect(page.getByRole('heading', { name: /confirmá tu reserva/i })).toBeVisible()
 
       // Click the deposit confirm button
-      await page.getByRole('button', { name: 'Pagar seña y reservar' }).click()
+      await page.getByRole('button', { name: 'Pagar la seña' }).click()
 
       // Should be on mock MP checkout
       await expect(page).toHaveURL(/\/mock-mp\/checkout/, { timeout: 15_000 })
@@ -139,7 +139,7 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
       await page.goto(reservarUrl(DEPOSIT_TENANT_SLUG, DEPOSIT_COURT_ID, date, '16:00'))
       await expect(page.getByRole('heading', { name: /confirmá tu reserva/i })).toBeVisible()
 
-      await page.getByRole('button', { name: 'Pagar seña y reservar' }).click()
+      await page.getByRole('button', { name: 'Pagar la seña' }).click()
       await expect(page).toHaveURL(/\/mock-mp\/checkout/, { timeout: 15_000 })
 
       const bookingId = extractBookingId(page.url())
@@ -209,7 +209,7 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
       await page.goto(reservarUrl(DEPOSIT_TENANT_SLUG, DEPOSIT_COURT_ID, date, '18:00'))
       await expect(page.getByRole('heading', { name: /confirmá tu reserva/i })).toBeVisible()
 
-      await page.getByRole('button', { name: 'Pagar seña y reservar' }).click()
+      await page.getByRole('button', { name: 'Pagar la seña' }).click()
       await expect(page).toHaveURL(/\/mock-mp\/checkout/, { timeout: 15_000 })
 
       const bookingId = extractBookingId(page.url())
@@ -221,8 +221,9 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
 
       // Watcher spinner must be visible
       await expect(page.getByText('Confirmando tu pago…')).toBeVisible({ timeout: 10_000 })
-      // Countdown timer must also be visible (ExpiryCountdown renders "M:SS" format)
-      await expect(page.getByText(/\d:\d\d/).first()).toBeVisible({ timeout: 5_000 })
+      // Todo el que llega a /pendiente ya pasó por MercadoPago: sin cuenta regresiva.
+      await expect(page.getByText('Esto puede tardar unos segundos.')).toBeVisible()
+      await expect(page.getByText(/te queda/i)).toHaveCount(0)
 
       // DB: booking is still pending_payment
       const supabase = makeSupabase()
@@ -257,6 +258,8 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
       // test fallaba aunque la UI SÍ flipeaba sola. La tolerancia tiene que cubrir al
       // menos un ciclo de backoff del watcher, si no estamos midiendo la velocidad de
       // compilación del dev server y no el polling.
+      // El watcher navega solo a /exito (router.replace), sin pantalla intermedia.
+      await expect(page).toHaveURL(new RegExp(`/reserva/${bookingId}/exito`), { timeout: 30_000 })
       await expect(page.getByRole('heading', { name: '¡Reserva confirmada!' })).toBeVisible({
         timeout: 30_000,
       })
@@ -306,7 +309,9 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
       await expect(page.getByRole('heading', { name: '¡Reserva confirmada!' })).toBeVisible({
         timeout: 10_000,
       })
-      await expect(page.getByText(/pagás.*al llegar al complejo/i)).toBeVisible()
+      await expect(
+        page.getByRole('region', { name: 'Tu turno' }).getByText('Pagás en el complejo'),
+      ).toBeVisible()
 
       // DB assertions
       const supabase = makeSupabase()

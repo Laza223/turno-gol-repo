@@ -14,8 +14,9 @@ export type BookingRescheduledData = {
   toDate: string
   toTimeStart: string
   toTimeEnd: string
-  /** Precio del turno ya recalculado a la franja destino, formateado en ARS. */
-  price: string
+  /** Precio del turno ya recalculado a la franja destino, formateado en ARS.
+   *  null = el complejo oculta sus precios: el mail no lo menciona. */
+  price: string | null
   /** True si el precio cambió al mover: se destaca para que no sea una sorpresa. */
   priceChanged: boolean
 }
@@ -31,9 +32,12 @@ export type BookingRescheduledData = {
  */
 export function renderBookingRescheduled(data: BookingRescheduledData): EmailContent {
   const subject = `Turno reprogramado — ${data.toCourtName}, ${data.toDate} ${data.toTimeStart}`
-  const priceLine = data.priceChanged
-    ? `<p style="margin:16px 0;padding:12px;background:#fffbeb;border-left:3px solid #d97706;font-size:14px"><strong>El precio del turno cambió:</strong> ahora es ${data.price} (la franja nueva tiene otra tarifa).</p>`
-    : `<p style="color:#64748b;font-size:14px">Precio del turno: ${data.price}</p>`
+  const priceLine =
+    data.price === null
+      ? ''
+      : data.priceChanged
+        ? `<p style="margin:16px 0;padding:12px;background:#fffbeb;border-left:3px solid #d97706;font-size:14px"><strong>El precio del turno cambió:</strong> ahora es ${data.price} (la franja nueva tiene otra tarifa).</p>`
+        : `<p style="color:#64748b;font-size:14px">Precio del turno: ${data.price}</p>`
   const html = `
 <!DOCTYPE html>
 <html lang="es">
@@ -54,6 +58,6 @@ export function renderBookingRescheduled(data: BookingRescheduledData): EmailCon
   <p style="color:#64748b;font-size:14px">— TurnoGol</p>
 </body>
 </html>`
-  const text = `Tu turno se movió\n\nHola ${data.playerFirstName},\n\nTu reserva en ${data.tenantName} quedó reprogramada.\n\nAntes: ${data.fromCourtName} · ${data.fromDate} · ${data.fromTimeStart} – ${data.fromTimeEnd}\n\nAhora:\nCancha: ${data.toCourtName}\nFecha: ${data.toDate}\nHorario: ${data.toTimeStart} – ${data.toTimeEnd}\n${data.priceChanged ? `\nEl precio del turno cambió: ahora es ${data.price} (la franja nueva tiene otra tarifa).` : `Precio del turno: ${data.price}`}\n\nSi el horario nuevo no te sirve, contactá al complejo.\n\n— TurnoGol`
+  const text = `Tu turno se movió\n\nHola ${data.playerFirstName},\n\nTu reserva en ${data.tenantName} quedó reprogramada.\n\nAntes: ${data.fromCourtName} · ${data.fromDate} · ${data.fromTimeStart} – ${data.fromTimeEnd}\n\nAhora:\nCancha: ${data.toCourtName}\nFecha: ${data.toDate}\nHorario: ${data.toTimeStart} – ${data.toTimeEnd}\n${data.price === null ? '\n' : data.priceChanged ? `\nEl precio del turno cambió: ahora es ${data.price} (la franja nueva tiene otra tarifa).\n\n` : `Precio del turno: ${data.price}\n\n`}Si el horario nuevo no te sirve, contactá al complejo.\n\n— TurnoGol`
   return { subject, html, text }
 }

@@ -1071,8 +1071,8 @@ const securityHeaders = [
 | Ruta | Rendering | Justificación |
 |---|---|---|
 | Landing page | SSG | Estática, no cambia entre requests |
-| `/[slug]` (complejo público) | SSR + ISR (60s) | SEO + datos relativamente estáticos |
-| `/[slug]/disponibilidad` | SSR | Datos en tiempo real, no cacheables |
+| `/[slug]` (complejo público) | ISR (300s) | SEO + datos estáticos; la reserva (días y horas) se pide en el cliente a `/api/public/availability` |
+| `/[slug]/disponibilidad` | Redirect 308 → `/[slug]` | Vista retirada: la disponibilidad vive en la ficha (query conservada) |
 | `/[slug]/reservar` | Client-side | Flujo interactivo con estado local |
 | `/login`, `/register` | SSR | Formularios simples |
 | `/dashboard` | Client-side + SWR | Data fetching con revalidación |

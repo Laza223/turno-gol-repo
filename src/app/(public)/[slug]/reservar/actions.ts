@@ -43,6 +43,7 @@ import {
 } from '@/modules/bookings/booking.errors'
 import { isPublicPortalOpen, publicBookingAdvanceDays } from '@/modules/tenants/tenant.lifecycle'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
+import { bookingMinAdvanceHours } from '@/modules/tenants/tenant.utils'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 import { hhmm, isUuid, slug as slugSchema } from '@/shared/validation/primitives'
 import { CURRENT_TERMS_VERSION, TERMS_REQUIRED_MESSAGE } from '@/shared/terms'
@@ -460,6 +461,7 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
             tenant!.status,
             canceledPeriodEnd,
           ),
+          minLeadMinutes: bookingMinAdvanceHours(settings) * 60,
           ...(paymentMethod ? { paymentMethod } : {}),
         },
         tx,
@@ -481,7 +483,9 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
     }
   } catch (err) {
     if (err instanceof BookingValidationError) replaceTo(`${backTo}&error=unavailable`)
-    if (err instanceof BookingDateOutOfRangeError) replaceTo(`${backTo}&error=date_out_of_range`)
+    if (err instanceof BookingDateOutOfRangeError) {
+      replaceTo(`${backTo}&error=${err.reason === 'lead_time' ? 'too_soon' : 'date_out_of_range'}`)
+    }
     // El turno ocupado puede ser el PROPIO: el doble envío o la recarga chocan con la reserva que
     // acaba de crear el primer envío, y decirle "ya no está disponible" a quien lo acaba de
     // reservar es mentirle. Si es suyo, va a su pantalla (idempotente). Si es de otra persona:

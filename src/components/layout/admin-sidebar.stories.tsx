@@ -99,7 +99,7 @@ export const AbonadosEnciendeClientes: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/abonados' } } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getAllByRole('link', { name: 'Clientes' })[0]).toHaveAttribute(
+    await expect(canvas.getAllByRole('link', { name: 'Clientes y Fijos' })[0]).toHaveAttribute(
       'aria-current',
       'page',
     )

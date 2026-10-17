@@ -171,7 +171,7 @@ test.describe('Admin mobile smoke', () => {
     const drawer = page.getByRole('dialog')
     await expect(drawer).toBeVisible()
     await expect(drawer.getByRole('link', { name: 'Caja' })).toBeVisible()
-    await expect(drawer.getByRole('link', { name: 'Clientes' })).toBeVisible()
+    await expect(drawer.getByRole('link', { name: 'Clientes y Fijos' })).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(drawer).toBeHidden()
 

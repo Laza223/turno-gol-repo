@@ -52,11 +52,6 @@ export function distanceLabel(km: number): string {
   return km < 1 ? 'a menos de 1 km' : `a ${kmWithComma(km)} km`
 }
 
-/** La cifra del titular va entera: "a 4 km". */
-export function headlineDistance(km: number): string {
-  return km < 1 ? 'a menos de 1 km' : `a ${Math.round(km)} km`
-}
-
 /** [5, 7] → "Fútbol 5 y 7" · [5, 7, 11] → "Fútbol 5, 7 y 11". */
 export function formatsLabel(formats: number[]): string | null {
   const f = [...new Set(formats)].sort((a, b) => a - b)

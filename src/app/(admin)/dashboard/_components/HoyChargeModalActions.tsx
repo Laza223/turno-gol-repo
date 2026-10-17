@@ -1,4 +1,4 @@
-import { CupSoda, Trash2, UserX } from 'lucide-react'
+import { CupSoda, Trash2, UserX, XCircle } from 'lucide-react'
 import type { SlotGates } from '@/components/booking/slot-panel/slot-gates'
 import { cn } from '@/lib/utils'
 
@@ -7,7 +7,8 @@ const ACTION_BUTTON =
 
 /**
  * Las acciones secundarias del modal de cobro de Hoy: cantina, marcar
- * ausente, liberar bloqueo, deshacer ausencia. Extraído de `HoyChargeModal`.
+ * ausente, cancelar reserva, liberar bloqueo, deshacer ausencia. Extraído de
+ * `HoyChargeModal`.
  */
 export function HoyChargeModalActions({
   gates,
@@ -15,16 +16,21 @@ export function HoyChargeModalActions({
   error,
   onOpenCanteen,
   onOpenNoShow,
+  onOpenCancel,
   onOpenReleaseBlock,
   onRevertNoShow,
 }: {
-  gates: Pick<SlotGates, 'canSellCanteen' | 'canMarkNoShow' | 'canReleaseBlock' | 'canRevertNoShow'>
+  gates: Pick<
+    SlotGates,
+    'canSellCanteen' | 'canMarkNoShow' | 'canCancel' | 'canReleaseBlock' | 'canRevertNoShow'
+  >
   locked: boolean
   /** En `no_show` no hay sección de cobro que pinte `error`: es el único lugar
    * del modal que lo muestra (mismo criterio que `SlotActionButtons.tsx`). */
   error: string | null
   onOpenCanteen: () => void
   onOpenNoShow: () => void
+  onOpenCancel: () => void
   onOpenReleaseBlock: () => void
   onRevertNoShow: () => void
 }) {
@@ -59,6 +65,26 @@ export function HoyChargeModalActions({
               Marcar ausente
             </button>
           )}
+        </div>
+      )}
+
+      {/* A la vista y no en el menú ⋯: escondido ahí, el mostrador no lo
+          encontraba. Renglón propio para que entre al lado de cantina/ausente
+          en el teléfono. El motivo obligatorio lo pide `SlotCancelDialog`. */}
+      {gates.canCancel && (
+        <div className={cn(!hasActions && 'border-t border-border pt-4')}>
+          <button
+            type="button"
+            onClick={onOpenCancel}
+            disabled={locked}
+            className={cn(
+              ACTION_BUTTON,
+              'w-full border-red-200 bg-card text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10',
+            )}
+          >
+            <XCircle aria-hidden className="h-4 w-4" />
+            Cancelar reserva
+          </button>
         </div>
       )}
 

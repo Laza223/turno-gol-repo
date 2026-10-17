@@ -162,8 +162,12 @@ export class BookingDateOutOfRangeError extends Error {
      * condición del COMPLEJO, no de la ventana de anticipación, así que no se
      * mezcla con `advance_exceeded`: el mensaje al admin tiene que decir la
      * fecha de corte, no "excede la anticipación". Ver `paid-period.guard.ts`.
+     *
+     * `lead_time` (2026-10-17): el turno empieza antes de la anticipación
+     * mínima del complejo (`booking_min_advance_hours`). Solo reserva online.
      */
-    public readonly reason: 'past_date' | 'past_slot' | 'advance_exceeded' | 'after_period_end',
+    public readonly reason:
+      'past_date' | 'past_slot' | 'advance_exceeded' | 'after_period_end' | 'lead_time',
     /**
      * Sólo con `after_period_end`: el último día operativo pago ('YYYY-MM-DD'
      * ART). Viaja en el error porque el mensaje útil para el admin es la FECHA

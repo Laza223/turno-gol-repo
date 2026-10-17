@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { PublicTenantCard } from '@/modules/tenants/search.service'
 import { publicTenantCard } from '@/test/fixtures/tenant'
 import { availabilityResponse, slot } from '@/test/fixtures/public'
-import { distanceLabel, formatsLabel, freeSlots, headlineDistance, pickNearby } from './nearby'
+import { distanceLabel, formatsLabel, freeSlots, pickNearby } from './nearby'
 
 const at = (id: string, km: number | null, over: Partial<PublicTenantCard> = {}) =>
   publicTenantCard({
@@ -70,11 +70,6 @@ describe('etiquetas', () => {
     expect(distanceLabel(4)).toBe('a 4 km')
     expect(distanceLabel(11.4)).toBe('a 11 km')
     expect(distanceLabel(0.4)).toBe('a menos de 1 km')
-  })
-
-  it('el titular redondea al km', () => {
-    expect(headlineDistance(4.24)).toBe('a 4 km')
-    expect(headlineDistance(0.6)).toBe('a menos de 1 km')
   })
 
   it('formatos ordenados y sin repetir', () => {

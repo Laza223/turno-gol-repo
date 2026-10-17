@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, waitFor, within } from 'storybook/test'
+import { expect, within } from 'storybook/test'
 import { withGeolocation } from '@/test/storybook/with-geolocation'
 import { cityCounts, publicTenantCard } from '@/test/fixtures/tenant'
 import { availabilityResponse, slot, todayArt } from '@/test/fixtures/public'
@@ -96,8 +96,8 @@ export const CanchasCerca: Story = {
   parameters: { fetchMock: foundRoutes },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await waitFor(() =>
-      expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent('a 4 km.'),
+    await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent(
+      /Tu partido\s*empieza en\s*TurnoGol/,
     )
     const pill = await canvas.findByRole('link', { name: 'Reservar hoy a las 19:00' })
     await expect(pill.getAttribute('href')).toContain('/complejo-san-martin/reservar?court=')
@@ -112,7 +112,9 @@ export const BuscandoUbicacion: Story = {
   decorators: [withGeolocation('pending')],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent('a un toque.')
+    await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent(
+      /Tu partido\s*empieza en\s*TurnoGol/,
+    )
     await expect(canvas.getByRole('button', { name: 'Usar mi ubicación' })).toBeInTheDocument()
   },
 }

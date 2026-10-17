@@ -29,6 +29,7 @@ const CODES: CheckoutErrorCode[] = [
   'rate_limited',
   'unavailable',
   'date_out_of_range',
+  'too_soon',
 ]
 
 afterEach(() => cleanup())

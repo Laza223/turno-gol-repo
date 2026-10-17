@@ -7,7 +7,7 @@ import { track, withSpan } from '@/shared/observability'
 import { effectiveCloseMins, normalizeRangeToOpenDay } from '@/shared/time/operating-day'
 import { holdExpiresAtIso } from '@/lib/booking/hold'
 import { publicBookingAdvanceDays } from './tenant.lifecycle'
-import { arePublicPricesHidden } from './tenant.utils'
+import { arePublicPricesHidden, bookingMinAdvanceHours } from './tenant.utils'
 import type { OpeningHours, TenantSettings } from './tenant.types'
 
 // ─── Public types ─────────────────────────────────────────────────────────────
@@ -63,6 +63,9 @@ export type PublicTenant = {
    * tope se aplica una vez y vale para todas.
    */
   bookingAdvanceDays: number
+  /** Horas mínimas entre ahora y el inicio del turno (`bookingMinAdvanceHours`).
+   *  0 = sin límite. Los turnos más cercanos salen `past` en todas las superficies. */
+  bookingMinAdvanceHours: number
   // Interfaz pública estilo ATC: amenities + coordenadas (ya en la fila tenants).
   amenities: Record<string, boolean>
   latitude: number | null
@@ -204,6 +207,13 @@ export type GenerateSlotsParams = {
   date: string // YYYY-MM-DD
   nowDateStr: string // YYYY-MM-DD in ART
   nowMins: number // minutes from midnight in ART
+  /** Anticipación mínima para reservar (`bookingMinAdvanceHours` × 60). Default 0. */
+  minLeadMins?: number
+}
+
+/** Días enteros de `from` a `to` (ambos 'YYYY-MM-DD'). */
+function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000)
 }
 
 // ─── Pure helpers (exported for testing) ─────────────────────────────────────
@@ -257,7 +267,11 @@ export function generateSlots(p: GenerateSlotsParams): Slot[] {
 
   const lastStart = closeMins - p.durationMins
   const isPastDate = p.date < p.nowDateStr
-  const isToday = p.date === p.nowDateStr
+  // Todo en minutos desde la medianoche de HOY: un slot de mañana suma 1440. Así
+  // la anticipación mínima cruza la medianoche (22:30 + 3 h tapa el 00:00 y el
+  // 01:00 del día siguiente) y lead 0 deja el corte exacto de siempre en `start < nowMins`.
+  const dayOffsetMins = isPastDate ? 0 : daysBetween(p.nowDateStr, p.date) * 24 * 60
+  const cutoffMins = p.nowMins + (p.minLeadMins ?? 0)
 
   const slots: Slot[] = []
   for (let start = openMins; start <= lastStart; start += p.durationMins) {
@@ -269,7 +283,7 @@ export function generateSlots(p: GenerateSlotsParams): Slot[] {
     // start está en el eje continuo: un slot de madrugada (start ≥ 1440) supera
     // a nowMins de hoy, así que NO se marca pasado aunque su hora de pared ya
     // pasó (ocurre físicamente mañana, mismo día operativo).
-    if (isPastDate || (isToday && start < p.nowMins)) {
+    if (isPastDate || dayOffsetMins + start < cutoffMins) {
       status = 'past'
     } else {
       const overlapping = courtBookings.find(
@@ -424,6 +438,7 @@ async function _getPublicTenant(slug: string): Promise<PublicTenant | null> {
       row.status,
       canceledPeriodEnd,
     ),
+    bookingMinAdvanceHours: bookingMinAdvanceHours(s),
     amenities: (row.amenities ?? {}) as Record<string, boolean>,
     latitude: row.latitude == null ? null : Number(row.latitude),
     longitude: row.longitude == null ? null : Number(row.longitude),
@@ -581,6 +596,7 @@ async function getPublicAvailabilityImpl(
         date: dateStr,
         nowDateStr,
         nowMins,
+        minLeadMins: tenant.bookingMinAdvanceHours * 60,
       }),
       hidePrices,
     ),
@@ -704,6 +720,7 @@ export async function getPublicWeeklyAvailability(
           date: dateStr,
           nowDateStr,
           nowMins,
+          minLeadMins: tenant.bookingMinAdvanceHours * 60,
         }),
         tenant.hidePrices,
       ),

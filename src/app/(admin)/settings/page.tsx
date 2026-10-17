@@ -20,6 +20,7 @@ import { getSubscriptionState, listActivePlans } from '@/modules/billing/billing
 import { buildPriceBreakdown } from '@/modules/billing/pricing'
 import { listStaffRoster } from '@/modules/staff/staff.service'
 import { getProfileGaps } from '@/modules/tenants/setup-gaps'
+import { bookingMinAdvanceHours } from '@/modules/tenants/tenant.utils'
 import { deriveScheduleView, type LooseOpeningHours } from '@/lib/schedule/schedule-view'
 import { formatArs } from '@/lib/format'
 import type { StatusTone } from '@/lib/status-tone'
@@ -67,7 +68,13 @@ export default async function SettingsPage() {
           label: 'Reservas por internet',
           effect: 'Si puede reservar solo y con cuánta anticipación.',
           value:
-            s.allow_online_booking !== false ? `Sí · ${s.booking_advance_days ?? 6} días` : 'No',
+            s.allow_online_booking !== false
+              ? `Sí · ${s.booking_advance_days ?? 6} días${
+                  bookingMinAdvanceHours(s) > 0
+                    ? ` · mín. ${bookingMinAdvanceHours(s)} h antes`
+                    : ''
+                }`
+              : 'No',
           icon: Globe,
           tone: s.allow_online_booking !== false ? 'success' : 'neutral',
           href: '/settings/reservas',

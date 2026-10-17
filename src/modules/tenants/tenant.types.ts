@@ -30,6 +30,11 @@ export type TenantSettings = {
   accepts_mercadopago: boolean
   allow_online_booking: boolean
   booking_advance_days: number
+  /** Horas mínimas entre "ahora" y el inicio del turno para reservar online
+   *  (0–48). Ausente = 0, sin límite. Solo el jugador: el staff carga desde la
+   *  Grilla sin este tope. Pedido de El Vagón (2026-10-17): le reservaban a
+   *  último momento. Leer con `bookingMinAdvanceHours`, nunca directo. */
+  booking_min_advance_hours?: number
   auto_complete_minutes: number
   onboarding_step?: number
   onboarding_completed?: boolean
@@ -120,6 +125,7 @@ export type UpdateTenantSettingsInput = Partial<
     | 'accepts_mercadopago'
     | 'allow_online_booking'
     | 'booking_advance_days'
+    | 'booking_min_advance_hours'
     | 'auto_complete_minutes'
     | 'daily_summary_email_opt_in'
     | 'hide_public_prices'

@@ -99,3 +99,25 @@ describe('updateReservasPolicyAction — deposit_percentage', () => {
     expect(lastPatch).toMatchObject({ requires_deposit: true, deposit_percentage: 100 })
   })
 })
+
+describe('updateReservasPolicyAction — booking_min_advance_hours', () => {
+  it('persiste las horas mínimas de anticipación', async () => {
+    const result = await updateReservasPolicyAction(
+      { success: true },
+      formData({ ...BASE_FIELDS, requiresDeposit: 'false', bookingMinAdvanceHours: '3' }),
+    )
+
+    expect(result).toEqual({ success: true })
+    expect(lastPatch).toMatchObject({ booking_min_advance_hours: 3 })
+  })
+
+  it('rechaza más de 48 horas sin tocar settings', async () => {
+    const result = await updateReservasPolicyAction(
+      { success: true },
+      formData({ ...BASE_FIELDS, requiresDeposit: 'false', bookingMinAdvanceHours: '49' }),
+    )
+
+    expect(result.success).toBe(false)
+    expect(lastPatch).toBeNull()
+  })
+})

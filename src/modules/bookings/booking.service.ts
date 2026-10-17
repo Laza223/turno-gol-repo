@@ -562,6 +562,12 @@ async function createOnlineBookingImpl(
     physicallyNextDay,
   })
 
+  // Anticipación mínima del complejo, contra el instante físico: el portal ya
+  // oculta esos turnos, esto es el backstop (link viejo, pestaña abierta).
+  if (input.minLeadMinutes && startsAt.getTime() - Date.now() < input.minLeadMinutes * 60_000) {
+    throw new BookingDateOutOfRangeError('lead_time')
+  }
+
   await checkOverlapOrThrow(input.courtId, startsAt, endsAt, tx)
 
   const withDeposit = input.requiresDeposit && input.depositPercentage > 0

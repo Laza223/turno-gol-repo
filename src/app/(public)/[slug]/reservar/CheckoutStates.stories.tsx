@@ -127,3 +127,12 @@ export const FueraDeFecha: Story = {
     await expect(canvas.getByRole('alert')).toHaveTextContent(/ya no se puede reservar/i)
   },
 }
+
+/** El turno empieza antes de la anticipación mínima del complejo (`booking_min_advance_hours`). */
+export const MuyPronto: Story = {
+  args: { error: 'too_soon' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('alert')).toHaveTextContent(/más anticipación/i)
+  },
+}

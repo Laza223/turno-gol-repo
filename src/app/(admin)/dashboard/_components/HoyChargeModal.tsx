@@ -203,7 +203,7 @@ export function HoyChargeModal({
   // Grilla) no se muestra el renglón — no se inventa una hora relativa.
   const when = whenLabel(booking, hasEnded, nowMs)
 
-  const hasMenu = gates.canEdit || gates.canReschedule || gates.canCancel
+  const hasMenu = gates.canEdit || gates.canReschedule
   // "Cobrar seña $X" (paso 3, docs/decisions/2026-09-24-navegacion-panel.md):
   // única puerta a `confirmDepositPaymentAction` desde que se retiran los
   // botones de las filas de /reservas.
@@ -293,7 +293,6 @@ export function HoyChargeModal({
               isPending={isPending}
               onEdit={() => setEditOpen(true)}
               onReschedule={() => setRescheduleOpen(true)}
-              onCancel={() => setCancelOpen(true)}
             />
           )}
 
@@ -335,6 +334,7 @@ export function HoyChargeModal({
               error={error}
               onOpenCanteen={() => setCanteenOpen(true)}
               onOpenNoShow={() => setNoShowOpen(true)}
+              onOpenCancel={() => setCancelOpen(true)}
               onOpenReleaseBlock={() => setReleaseBlockOpen(true)}
               onRevertNoShow={revertNoShow}
             />

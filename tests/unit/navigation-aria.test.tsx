@@ -113,11 +113,11 @@ describe('AdminSidebar — los 6 espacios', () => {
     expect(screen.queryByRole('link', { name: 'Reservas' })).toBeNull()
   })
 
-  it('/abonados (pestaña Turnos fijos) enciende el espacio Clientes', () => {
+  it('/abonados (pestaña Turnos fijos) enciende el espacio Clientes y Fijos', () => {
     renderSidebar('/abonados')
-    expect(screen.getAllByRole('link', { name: 'Clientes' })[0]!.getAttribute('aria-current')).toBe(
-      'page',
-    )
+    expect(
+      screen.getAllByRole('link', { name: 'Clientes y Fijos' })[0]!.getAttribute('aria-current'),
+    ).toBe('page')
     expect(screen.queryByRole('link', { name: 'Turnos fijos' })).toBeNull()
   })
 

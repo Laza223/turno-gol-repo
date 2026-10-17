@@ -21,7 +21,7 @@ export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
 export const STAFF_ROLE_DESCRIPTIONS: Record<StaffRole, string> = {
   admin: 'Entra a todo, también a Ajustes.',
   manager:
-    'Hoy, Grilla, Agenda, Caja, Clientes y Torneos. No entra a Ajustes, Canchas ni Métricas.',
+    'Hoy, Grilla, Agenda, Caja, Clientes y Fijos, y Torneos. No entra a Ajustes, Canchas ni Métricas.',
 }
 
 // Al invitar, el rol arranca en Encargado: sumar un admin con acceso total
@@ -58,7 +58,7 @@ export const STAFF_ROLE_SPACES: StaffRoleSpace[] = [
   { label: 'Hoy', adminOnly: false },
   { label: 'Grilla', adminOnly: false },
   { label: 'Caja', adminOnly: false },
-  { label: 'Clientes', adminOnly: false },
+  { label: 'Clientes y Fijos', adminOnly: false },
   { label: 'Canchas', adminOnly: true },
   { label: 'Torneos', adminOnly: false, requiresTournaments: true },
   { label: 'Métricas', adminOnly: true },

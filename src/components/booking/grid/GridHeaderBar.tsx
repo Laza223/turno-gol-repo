@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { CalendarDays, ChevronLeft, ChevronRight, Ellipsis } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, Ellipsis, Share2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatArs } from '@/lib/format'
 import { PENDING_CHARGE_BADGE } from '@/lib/booking/slot-visual'
@@ -26,6 +26,8 @@ type Props = {
   /** Resaltar sólo los turnos que deben plata. Lo enciende el chip. */
   highlightPending: boolean
   onToggleHighlight: () => void
+  /** Abre la placa de turnos libres para historias. Sin esto el botón no se dibuja (stories, tests). */
+  onOpenStory?: () => void
 }
 
 /**
@@ -155,6 +157,7 @@ export function GridHeaderBar({
   pendingSummary,
   highlightPending,
   onToggleHighlight,
+  onOpenStory,
 }: Props) {
   const isToday = todayArt !== '' && date === todayArt
   const hasPending = !!pendingSummary && pendingSummary.count > 0
@@ -191,6 +194,41 @@ export function GridHeaderBar({
           el texto pierde contraste (axe). */}
       <span className="tabular-nums">{pendingSummary.count} sin cobrar</span>
       <span className="font-medium tabular-nums">· {formatArs(pendingSummary.totalCents)}</span>
+    </button>
+  ) : null
+
+  const storyLabel = 'Compartir turnos libres en una historia'
+
+  // Escritorio: un ícono más en la barra, junto a "⋯". Sin etiqueta: con el chip
+  // de "sin cobrar" y la fecha centrada, la barra no tiene ancho de sobra.
+  const storyButton = onOpenStory ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          onClick={onOpenStory}
+          aria-label={storyLabel}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <Share2 aria-hidden className="h-4 w-4" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent>Compartir turnos libres</TooltipContent>
+    </Tooltip>
+  ) : null
+
+  // Teléfono: no entra en la fila de la fecha (a 375 px el rótulo del día ya
+  // quedaba justo), así que va en la de abajo. Con el chip al lado alcanza el
+  // ícono; solo, lleva el rótulo para que se entienda qué es.
+  const storyButtonPhone = onOpenStory ? (
+    <button
+      type="button"
+      onClick={onOpenStory}
+      aria-label={storyLabel}
+      className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-card px-3 text-sm font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <Share2 aria-hidden className="h-4 w-4" />
+      {!hasPending && <span>Compartir turnos</span>}
     </button>
   ) : null
 
@@ -278,6 +316,7 @@ export function GridHeaderBar({
             {todayButton}
           </div>
           {pendingChip}
+          {storyButton}
           {moreMenu}
         </div>
       </AdminHeaderSlot>
@@ -326,7 +365,12 @@ export function GridHeaderBar({
           {!isToday && todayButton}
         </div>
 
-        {hasPending && <div className="mt-1 flex justify-center">{pendingChip}</div>}
+        {(hasPending || onOpenStory) && (
+          <div className="mt-1 flex items-center justify-center gap-2">
+            {pendingChip}
+            {storyButtonPhone}
+          </div>
+        )}
       </div>
     </>
   )

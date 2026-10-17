@@ -151,6 +151,22 @@ type AvailabilityCtx = {
   courts?: number
 }
 
+/**
+ * Placa 9:16 de turnos libres para historias (`/api/public/story`). Se emite
+ * desde la Server Action del panel cuando el dueño la comparte o la descarga,
+ * NO desde la ruta que la renderiza: esa la puede pedir cualquiera (un bot, un
+ * <img> embebido) y contaminaría el único número que importa — cuántos
+ * complejos distintos la usan de verdad.
+ */
+type StoryEvent = 'story.exported'
+
+type StoryCtx = {
+  tenantId?: string
+  method?: 'share' | 'download' | 'link'
+  /** Cuántos días adelante de hoy era la placa (0 = hoy). */
+  daysAhead?: number
+}
+
 type SearchEvent = 'search.public.query' | 'search.availability.query' | 'search.availability.pills'
 
 type SearchCtx = {
@@ -393,6 +409,7 @@ export const track = {
   webhook: (ev: WebhookEvent, ctx: WebhookCtx) => emit('webhook', ev, ctx),
   auth: (ev: AuthEvent, ctx: AuthCtx) => emit('auth', ev, ctx),
   availability: (ev: AvailabilityEvent, ctx: AvailabilityCtx) => emit('availability', ev, ctx),
+  story: (ev: StoryEvent, ctx: StoryCtx) => emit('story', ev, ctx),
   search: (ev: SearchEvent, ctx: SearchCtx) => emit('search', ev, ctx),
   notification: (ev: NotificationEvent, ctx: NotificationCtx) => emit('notification', ev, ctx),
   cashflow: (ev: CashflowEvent, ctx: CashflowCtx) => emit('cashflow', ev, ctx),

@@ -140,8 +140,9 @@ export async function middleware(req: NextRequest): Promise<NextResponse | Respo
     return res
   }
 
-  let policy: 'publicAvailability' | 'authVerify' | null = null
-  if (path.startsWith('/api/public/')) policy = 'publicAvailability'
+  let policy: 'publicAvailability' | 'publicStory' | 'authVerify' | null = null
+  if (path === '/api/public/story') policy = 'publicStory'
+  else if (path.startsWith('/api/public/')) policy = 'publicAvailability'
   else if (path.startsWith('/api/auth/') || path === '/verify') policy = 'authVerify'
 
   if (policy) {

@@ -4,6 +4,7 @@ import type { ComponentProps } from 'react'
 import dynamic from 'next/dynamic'
 import { BookingGrid } from '@/components/booking/BookingGrid'
 import type { ListCanteenCatalog, SellTicketForBooking } from './_components/BookingCanteenDialog'
+import type { TrackStoryExport } from './_components/StoryShareDialog'
 
 /**
  * Capa mínima entre la página (server) y la grilla (client) cuya razón de
@@ -24,6 +25,11 @@ const BookingCanteenDialog = dynamic(
   { ssr: false },
 )
 
+const StoryShareDialog = dynamic(
+  () => import('./_components/StoryShareDialog').then((m) => m.StoryShareDialog),
+  { ssr: false },
+)
+
 const HoyChargeModal = dynamic(
   () => import('@/app/(admin)/dashboard/_components/HoyChargeModal').then((m) => m.HoyChargeModal),
   { ssr: false },
@@ -31,7 +37,7 @@ const HoyChargeModal = dynamic(
 
 type Props = Omit<
   ComponentProps<typeof BookingGrid>,
-  'renderCanteenDialog' | 'renderChargeModal'
+  'renderCanteenDialog' | 'renderChargeModal' | 'renderStoryDialog'
 > & {
   /** Sin esto la grilla funciona igual, sólo que el panel no ofrece cantina. */
   canteen?: {
@@ -40,12 +46,30 @@ type Props = Omit<
   }
   /** Horas de anticipación de la política de cancelación, para el aviso de seña del modal. */
   cancellationPolicyHours: number
+  /** La placa de turnos libres para historias. Sin esto la barra no ofrece el botón. */
+  storyShare?: {
+    slug: string
+    bookingAdvanceDays: number
+    trackAction: TrackStoryExport
+  }
 }
 
-export function GrillaView({ canteen, cancellationPolicyHours, ...gridProps }: Props) {
+export function GrillaView({ canteen, cancellationPolicyHours, storyShare, ...gridProps }: Props) {
   return (
     <BookingGrid
       {...gridProps}
+      renderStoryDialog={
+        storyShare
+          ? ({ onClose }) => (
+              <StoryShareDialog
+                slug={storyShare.slug}
+                bookingAdvanceDays={storyShare.bookingAdvanceDays}
+                trackAction={storyShare.trackAction}
+                onClose={onClose}
+              />
+            )
+          : undefined
+      }
       renderCanteenDialog={
         canteen
           ? (args) => (

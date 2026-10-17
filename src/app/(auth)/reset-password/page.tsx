@@ -16,6 +16,8 @@ export default async function ResetPasswordPage() {
   const supabase = await createClient()
   const { data } = await supabase.auth.getUser()
   const hasSession = !!data?.user
+  // Encargado recién invitado: elige SU contraseña de acceso (no es un reset).
+  const isInvite = data?.user?.app_metadata?.staff_invited === true
 
   return (
     <div className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden bg-linear-to-br from-slate-50 via-white to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/40 px-4 py-12 sm:px-6 lg:px-8">
@@ -30,10 +32,12 @@ export default async function ResetPasswordPage() {
             <>
               <header className="mb-6 space-y-1">
                 <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
-                  Nueva contraseña
+                  {isInvite ? 'Creá tu contraseña' : 'Nueva contraseña'}
                 </h1>
                 <p className="text-sm text-muted-foreground">
-                  Elegí una contraseña de al menos 8 caracteres.
+                  {isInvite
+                    ? 'Con esta contraseña vas a entrar al panel del complejo. Mínimo 8 caracteres.'
+                    : 'Elegí una contraseña de al menos 8 caracteres.'}
                 </p>
               </header>
               <ResetForm action={resetPasswordAction} />

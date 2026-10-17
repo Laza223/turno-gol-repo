@@ -79,7 +79,7 @@ export async function resetPasswordAction(
   if (user.app_metadata?.force_password_change === true) {
     const admin = createAdminClient()
     await admin.auth.admin.updateUserById(user.id, {
-      app_metadata: { ...user.app_metadata, force_password_change: null },
+      app_metadata: { ...user.app_metadata, force_password_change: null, staff_invited: null },
     })
     await supabase.auth.refreshSession()
   }

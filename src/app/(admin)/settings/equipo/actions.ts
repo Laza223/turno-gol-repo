@@ -305,6 +305,8 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
             tenant_id: tenant.id,
             role,
             force_password_change: true,
+            // Solo cambia el copy de /reset-password ("Creá tu contraseña").
+            staff_invited: true,
           },
         })
       } else if (inviteError) {

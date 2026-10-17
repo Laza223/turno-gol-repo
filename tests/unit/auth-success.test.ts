@@ -15,13 +15,15 @@ describe('parseVia', () => {
 })
 
 describe('parseIntent', () => {
-  it('acepta los 3 intents válidos', () => {
-    expect(parseIntent('booking')).toBe('booking')
+  it('acepta los 2 intents válidos', () => {
     expect(parseIntent('login')).toBe('login')
     expect(parseIntent('signup')).toBe('signup')
   })
   it('cae a login ante valor desconocido, vacío o null', () => {
     expect(parseIntent('hacker')).toBe('login')
+    // Intents retirados (ya nadie los emite): un link viejo cae al camino genérico.
+    expect(parseIntent('booking')).toBe('login')
+    expect(parseIntent('booking_returning')).toBe('login')
     expect(parseIntent('')).toBe('login')
     expect(parseIntent(null)).toBe('login')
     expect(parseIntent(undefined)).toBe('login')
@@ -68,9 +70,9 @@ describe('successVerifyPath', () => {
     )
   })
   it('encodea query params del next', () => {
-    const out = successVerifyPath('/club-norte/reservar?court=1&time=20:00', 'booking')
+    const out = successVerifyPath('/club-norte/reservar?court=1&time=20:00', 'login')
     expect(out).toBe(
-      '/verify?status=success&next=%2Fclub-norte%2Freservar%3Fcourt%3D1%26time%3D20%3A00&intent=booking',
+      '/verify?status=success&next=%2Fclub-norte%2Freservar%3Fcourt%3D1%26time%3D20%3A00&intent=login',
     )
   })
 })

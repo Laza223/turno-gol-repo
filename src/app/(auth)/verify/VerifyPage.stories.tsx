@@ -59,17 +59,6 @@ export const ExitoSignup: Story = {
   },
 }
 
-export const ExitoBooking: Story = {
-  args: {
-    searchParams: { status: 'success', intent: 'booking', next: '/complejo-fenix/reservar' },
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.getByText('¡Cuenta confirmada!')).toBeInTheDocument()
-    await expect(canvas.getByRole('link', { name: 'Continuar con mi reserva' })).toBeInTheDocument()
-  },
-}
-
 /** Sin `via` no sabemos si es un jugador o un link de staff (alta, invitación…): primero el panel. */
 export const ErrorExpirado: Story = {
   args: { searchParams: { error: 'expired' } },

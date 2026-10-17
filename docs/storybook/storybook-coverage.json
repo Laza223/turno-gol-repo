@@ -1825,7 +1825,6 @@
       "exclusionReason": "",
       "relevantStates": [
         "loading (verificando tu enlace)",
-        "success intent=booking",
         "success intent=login",
         "success intent=signup",
         "error=expired sin via (puede ser un link de staff: primero Iniciar sesión → /login)",

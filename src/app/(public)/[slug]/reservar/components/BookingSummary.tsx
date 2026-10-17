@@ -1,4 +1,4 @@
-import { CalendarDays, Clock, Goal, MapPin } from 'lucide-react'
+import { CalendarDays, Clock, Goal, MapPin, Wallet } from 'lucide-react'
 import { formatLabel } from '@/components/public/courtFacets'
 import { PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
 import { formatArs, formatDateLong } from '@/lib/format'
@@ -18,6 +18,10 @@ export type BookingSummaryData = {
   depositAmount: number
   /** El complejo oculta sus precios: se dice CÓMO se paga, sin montos. */
   hidePrices?: boolean
+  /** Ya se pagó la seña (pantalla de reserva confirmada): "Seña pagada" en vez de "Seña a pagar ahora". */
+  depositPaid?: boolean
+  /** Cómo se paga, en palabras, como una fila más (reserva confirmada); va aunque los precios estén ocultos. */
+  payNote?: string
 }
 
 const ROW = 'flex items-start gap-3'
@@ -55,9 +59,21 @@ export default function BookingSummary({ data }: { data: BookingSummaryData }) {
           <Goal className={ICON} aria-hidden />
           <span>
             {data.courtName}
-            {data.courtFormat ? ` · ${formatLabel(data.courtFormat)}` : ''}
+            {data.courtFormat ? (
+              <>
+                {' · '}
+                {/* "Fútbol 11" no se parte en dos renglones ("Fútbol / 11") en pantallas angostas. */}
+                <span className="whitespace-nowrap">{formatLabel(data.courtFormat)}</span>
+              </>
+            ) : null}
           </span>
         </div>
+        {data.payNote && (
+          <div className={ROW}>
+            <Wallet className={ICON} aria-hidden />
+            <span>{data.payNote}</span>
+          </div>
+        )}
       </div>
       {!data.hidePrices && (
         <div className="mt-4 space-y-2 border-t border-border pt-4 text-base">
@@ -68,7 +84,7 @@ export default function BookingSummary({ data }: { data: BookingSummaryData }) {
           {data.depositAmount > 0 && (
             <>
               <div className="flex justify-between gap-4 font-semibold text-foreground">
-                <span>Seña a pagar ahora</span>
+                <span>{data.depositPaid ? 'Seña pagada' : 'Seña a pagar ahora'}</span>
                 <span className="tabular-nums">{formatArs(data.depositAmount)}</span>
               </div>
               <div className="flex justify-between gap-4 text-sm text-muted-foreground">

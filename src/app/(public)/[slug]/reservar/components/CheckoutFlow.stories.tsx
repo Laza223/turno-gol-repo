@@ -108,7 +108,9 @@ export const ElVagonConSesion: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvasElement.textContent).not.toContain('$')
-    await expect(canvas.getByText('Cancha 2 · Fútbol 5')).toBeVisible()
+    const court = canvas.getByText(/^Cancha 2/)
+    await expect(court).toBeVisible()
+    await expect(court).toHaveTextContent('Cancha 2 · Fútbol 5')
     await expect(canvas.getByText('Podés cancelar desde Mis reservas.')).toBeVisible()
     await userEvent.click(canvas.getByText('Transferencia'))
     await expect(canvas.getByRole('radio', { name: /transferencia/i })).toBeChecked()

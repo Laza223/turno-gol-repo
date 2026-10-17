@@ -1,18 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, spyOn, userEvent, within } from 'storybook/test'
+import { expect, within } from 'storybook/test'
 import { tenant } from '@/test/fixtures/tenant'
-import ReservaDarkShell from './ReservaDarkShell'
+import { PortalWorld } from '@/components/world/PortalWorld'
+import { PORTAL_COLUMN } from '@/components/world/PortalAuthFrame'
 import BookingSuccessExtras from './BookingSuccessExtras'
 
 const t = tenant()
 
 /**
- * Vive al final de la página de éxito, dentro de ReservaDarkShell. `hasGeo`
- * decide si se monta el mini-mapa (dynamic import, ssr:false, react-leaflet) —
- * el decorator global `withOfflineTiles` (`.storybook/preview.tsx`) pisa la URL
- * de tiles por una embebida, así que `ConUbicacion` no pega a un tercero real
- * desde CI. `MapContainer` y su `aria-label` se montan igual, representativo
- * del layout real.
+ * Las secundarias de la reserva confirmada: una lista plana de filas de 48 px (Cómo llegar, Agregar
+ * al calendario, Ver mis reservas), debajo de "Avisarle al grupo". Cada fila dice su acción;
+ * ninguna compite con la principal.
  */
 const meta = {
   title: 'Player/BookingSuccess/BookingSuccessExtras',
@@ -32,11 +30,13 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <ReservaDarkShell>
-        <div className="mx-auto flex max-w-md flex-col items-center px-4 py-12">
-          <Story />
+      <PortalWorld>
+        <div className="min-h-dvh bg-background text-foreground">
+          <div className={PORTAL_COLUMN}>
+            <Story />
+          </div>
         </div>
-      </ReservaDarkShell>
+      </PortalWorld>
     ),
   ],
 } satisfies Meta<typeof BookingSuccessExtras>
@@ -44,29 +44,31 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** hasGeo=false: solo los 3 botones, sin mini-mapa. */
-export const SinUbicacion: Story = {}
-
-/** hasGeo=true: agrega el mini-mapa arriba de los botones. */
-export const ConUbicacion: Story = {
-  args: { latitude: -34.6083, longitude: -58.4386 },
-}
-
-export const CompartirPorWhatsApp: Story = {
-  name: 'Compartir abre wa.me con el mensaje armado',
+/** Con dirección y sin coordenadas: "Cómo llegar" busca la dirección escrita. */
+export const ConDireccion: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const openSpy = spyOn(window, 'open').mockImplementation(() => null)
-    await userEvent.click(canvas.getByRole('button', { name: 'Compartir' }))
-    await expect(openSpy).toHaveBeenCalledOnce()
-    const [url] = openSpy.mock.calls[0]!
-    await expect(String(url)).toContain('https://wa.me/?text=')
-    openSpy.mockRestore()
+    await expect(canvas.getByRole('link', { name: 'Cómo llegar' })).toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: 'Agregar al calendario' })).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: 'Ver mis reservas' })).toHaveAttribute(
+      'href',
+      '/mis-reservas',
+    )
+  },
+}
+
+/** Sin dirección ni coordenadas no hay "Cómo llegar": quedan el calendario y Mis reservas. */
+export const SinUbicacion: Story = {
+  args: { address: '', latitude: null, longitude: null },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.queryByRole('link', { name: 'Cómo llegar' })).not.toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: 'Agregar al calendario' })).toBeInTheDocument()
   },
 }
 
 export const ComoLlegar: Story = {
-  name: 'El link "Cómo llegar" apunta a Google Maps',
+  name: 'El link "Cómo llegar" apunta a Google Maps con las coordenadas',
   args: { latitude: -34.6083, longitude: -58.4386 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

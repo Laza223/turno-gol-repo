@@ -1,33 +1,35 @@
-import Link from 'next/link'
-import { XCircle } from 'lucide-react'
+import { AlertTriangle, CalendarCheck, XCircle } from 'lucide-react'
 import { SubmitButton } from '@/components/ui/submit-button'
+import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
+import { PortalResult, PortalResultLink } from '@/components/world/PortalResult'
+import { formatDateLong } from '@/lib/format'
+import { buildReserveAgainHref } from '@/lib/booking/reserve-url'
 import type { retryDepositPaymentAction } from '@/app/(public)/[slug]/reservar/actions'
 
-// md:h-12 explícito: sin esto, el `size="default"` de <Button> (vía SubmitButton)
-// deja un `md:h-10` que gana en desktop por especificidad de breakpoint —
-// twMerge no lo deduplica al no compartir el mismo prefijo responsive.
-// bg-primary/text-primary-foreground (no un gradiente emerald crudo): "Reintentar
-// pago" es una acción de plata real y debe vivir en la jerarquía única (§2 de
-// gramatica-interaccion.md), igual que "Ver mis reservas"/"Reservar de nuevo".
-const ctaClass =
-  'inline-flex h-12 md:h-12 items-center rounded-xl bg-primary px-6 text-sm font-bold text-primary-foreground shadow-md shadow-primary/20 transition-all duration-200 hover:bg-primary/90 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/30 active:scale-[0.97] whitespace-nowrap'
+/**
+ * Qué pasó con el turno cuando el pago no salió:
+ * - `retry`: el pago no se procesó pero el turno sigue guardado (queda hold para reintentar).
+ * - `released`: el pago no se completó a tiempo y el turno ya no está guardado (la fila puede
+ *   seguir en `pending_payment` hasta que la barra el worker: no decimos "se liberó").
+ * - `canceled`: la reserva está cancelada.
+ * - `past`: la reserva ya se jugó (o no se fue): no hay pago que reintentar.
+ */
+export type ErrorView = 'retry' | 'released' | 'canceled' | 'past'
 
-/** Sin reserva (inexistente, purgada, o de otro jugador via RLS): estado neutro, sin afirmar que el pago falló. */
-export function BookingErrorNotFound() {
-  return (
-    <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
-      <p className="text-sm text-muted-foreground">No encontramos tu reserva.</p>
-      <Link href="/mis-reservas" className={`mt-8 ${ctaClass}`}>
-        Ver mis reservas
-      </Link>
-    </div>
-  )
+/**
+ * `withinWindow` = `pending_payment` dentro del hold (`holdExpiresAtMs`). Una reserva confirmada
+ * no llega acá: la page la manda a /exito.
+ */
+export function errorViewFor(status: string, withinWindow: boolean): ErrorView {
+  if (status === 'canceled_refunded' || status === 'canceled_no_refund') return 'canceled'
+  if (status === 'completed' || status === 'no_show') return 'past'
+  return withinWindow ? 'retry' : 'released'
 }
 
 /**
- * Card de pago rechazado/cancelado. `withinWindow` decide el CTA: dentro del
- * hold real (`DEFAULT_EXPIRY_SECONDS`) ofrece reintentar el mismo booking;
- * fuera de ventana manda a reservar de nuevo (el worker ya liberó el slot).
+ * Pago rechazado o cancelado: dice qué pasó con el pago Y con el turno, y qué hacer. Dentro del
+ * hold real (`DEFAULT_EXPIRY_SECONDS`) ofrece reintentar el mismo booking, sin cuenta regresiva;
+ * fuera de la ventana el worker ya liberó el turno y manda a la ficha del complejo en ese día.
  *
  * `retryAction` entra por prop: `.../reservar/actions` es `'use server'` y
  * arrastra `node:async_hooks` si se importa como valor.
@@ -35,38 +37,97 @@ export function BookingErrorNotFound() {
 export function BookingErrorCard({
   bookingId,
   tenantSlug,
-  withinWindow,
+  date,
+  turn,
+  view,
   retryAction,
 }: {
   bookingId: string
   tenantSlug: string | null
-  withinWindow: boolean
+  /** "YYYY-MM-DD", el día de la reserva: "Reservar de nuevo" abre la ficha en ese día. */
+  date: string | null
+  /** Hora y cancha del turno que quedó guardado: se muestra al ofrecer reintentar. */
+  turn: { courtName: string; timeStart: string; timeEnd: string } | null
+  view: ErrorView
   retryAction: typeof retryDepositPaymentAction
 }) {
+  const reserveAgainHref = buildReserveAgainHref(tenantSlug, date)
+
+  if (view === 'canceled') {
+    return (
+      <PortalResult
+        icon={XCircle}
+        title="Reserva cancelada"
+        actions={
+          <>
+            <PortalResultLink href="/mis-reservas">Ver mis reservas</PortalResultLink>
+            <PortalResultLink href={reserveAgainHref} variant="outline">
+              Reservar de nuevo
+            </PortalResultLink>
+          </>
+        }
+      >
+        <p>Esta reserva ya no está activa, así que no hay un pago para reintentar.</p>
+      </PortalResult>
+    )
+  }
+
+  if (view === 'past') {
+    return (
+      <PortalResult
+        icon={CalendarCheck}
+        title="Esta reserva ya pasó"
+        actions={<PortalResultLink href="/mis-reservas">Ver mis reservas</PortalResultLink>}
+      >
+        <p>Ya no hay un pago para reintentar.</p>
+      </PortalResult>
+    )
+  }
+
+  if (view === 'released') {
+    return (
+      <PortalResult
+        icon={AlertTriangle}
+        tone="destructive"
+        title="El pago no se procesó"
+        actions={<PortalResultLink href={reserveAgainHref}>Reservar de nuevo</PortalResultLink>}
+      >
+        <p>El pago no se completó a tiempo y el turno ya no está guardado.</p>
+        <p>Elegí un horario de nuevo.</p>
+      </PortalResult>
+    )
+  }
+
   return (
-    <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center px-4 py-12 text-center">
-      <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-50 ring-8 ring-red-100 dark:bg-red-500/15 dark:ring-red-500/10">
-        <XCircle className="h-8 w-8 text-red-700 dark:text-red-300" aria-hidden />
-      </div>
-      <h1 className="font-display text-2xl font-black italic tracking-tight text-foreground">
-        El pago no se procesó.
-      </h1>
-      <p className="mt-3 text-sm text-muted-foreground">
-        El pago fue rechazado o cancelado. Podés intentar de nuevo con otro medio.
-      </p>
-      <span className="sr-only">Reserva {bookingId}</span>
-      {withinWindow ? (
-        <form action={retryAction} className="mt-8">
+    <PortalResult
+      icon={AlertTriangle}
+      tone="destructive"
+      title="El pago no se procesó"
+      actions={
+        <form action={retryAction}>
           <input type="hidden" name="bookingId" value={bookingId} />
-          <SubmitButton className={ctaClass} pendingLabel="Reintentando…">
+          <SubmitButton className={PORTAL_BUTTON} pendingLabel="Reintentando…">
             Reintentar pago
           </SubmitButton>
         </form>
-      ) : (
-        <Link href={tenantSlug ? `/${tenantSlug}` : '/'} className={`mt-8 ${ctaClass}`}>
-          Reservar de nuevo
-        </Link>
+      }
+    >
+      <p>El pago fue rechazado o cancelado.</p>
+      <p>
+        Tu turno sigue guardado por poco tiempo. Podés intentar de nuevo con otro medio de pago.
+      </p>
+      {date && turn && (
+        <p className="font-medium text-foreground">
+          {/* Dos renglones, cuándo y dónde: sin puntos sueltos al empezar una línea ni "Cancha / E2E 1". */}
+          <span className="block">
+            {formatDateLong(date)} ·{' '}
+            <span className="whitespace-nowrap">
+              {turn.timeStart.slice(0, 5)} a {turn.timeEnd.slice(0, 5)}
+            </span>
+          </span>{' '}
+          <span className="block">{turn.courtName}</span>
+        </p>
       )}
-    </div>
+    </PortalResult>
   )
 }

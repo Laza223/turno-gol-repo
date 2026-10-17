@@ -5,7 +5,7 @@ import { uid } from '@/test/fixtures/ids'
 import ExplorarMap from './ExplorarMap'
 
 /**
- * react-leaflet: mismo enfoque que `BookingMiniMap.stories.tsx` (`src/components/booking/`).
+ * react-leaflet.
  * Monta un `MapContainer` real (siempre vía `next/dynamic({ ssr: false })` desde
  * `ExplorarMapLoader`) y pide tiles a `{s}.tile.openstreetmap.org`; el decorator global
  * `withOfflineTiles` (`.storybook/preview.tsx`) pisa esa URL por un tile en blanco

@@ -8,9 +8,22 @@
  * El project `visual-mobile` matchea por `*.mobile.spec.ts`.
  */
 
-import { test, expect, suppressPushBanner, ADMIN_STORAGE_STATE } from './_visual-test'
+import {
+  test,
+  expect,
+  suppressPushBanner,
+  waitForPlayerSession,
+  ADMIN_STORAGE_STATE,
+  PLAYER_STORAGE_STATE,
+} from './_visual-test'
 import { tomorrowDateIsoArt } from '../_helpers/booking-seed'
-import { FROZEN_NOW, VISUAL_DATE, VISUAL_TENANT_SLUG, seedVisualData } from './_seed'
+import {
+  FROZEN_NOW,
+  VISUAL_DATE,
+  VISUAL_PLAYER_BOOKING_ID,
+  VISUAL_TENANT_SLUG,
+  seedVisualData,
+} from './_seed'
 
 test('ficha pública mobile @visual', async ({ page }) => {
   await suppressPushBanner(page)
@@ -34,6 +47,27 @@ test('ficha pública mobile @visual', async ({ page }) => {
       page.getByRole('radiogroup', { name: 'Día' }),
       page.getByTestId('opening-hours'),
     ],
+  })
+})
+
+test.describe('visual mobile — jugador', () => {
+  test.use({ storageState: PLAYER_STORAGE_STATE })
+
+  test.beforeAll(async () => {
+    await seedVisualData()
+  })
+
+  test('reserva confirmada mobile @visual', async ({ page }) => {
+    // Misma reserva `…0903` que el spec de escritorio (ver ahí): día fijo, jugador `…0020`.
+    await page.goto(`/reserva/${VISUAL_PLAYER_BOOKING_ID}/exito`)
+    await expect(page.getByRole('heading', { name: '¡Reserva confirmada!' })).toBeVisible()
+    // En el celular la barra inferior del jugador llega con la sesión: sin esperarla, la foto
+    // sale con el pie sin su relleno o con la barra a medio aparecer.
+    await waitForPlayerSession(page)
+    await expect(page.getByRole('navigation', { name: 'Navegación del jugador' })).toBeVisible()
+    await expect(page).toHaveScreenshot('reserva-confirmada-mobile.png', {
+      mask: [page.getByRole('region', { name: 'Código de la reserva' }).locator('.font-mono')],
+    })
   })
 })
 

@@ -32,7 +32,7 @@ configure({ asyncUtilTimeout: 15_000 })
  * Se congelan SOLO `Date.now()` y `new Date()` sin argumentos. `new Date(iso)` y
  * todos los timers quedan reales, así que:
  *   - useArtNow()/computeArtNow() devuelven un instante estable (isSlotPast en la grilla)
- *   - ExpiryCountdown renderiza siempre lo mismo
+ *   - BookingCard renderiza siempre la misma cuenta regresiva
  *   - waitFor() de testing-library usa setTimeout real para su deadline, no
  *     Date.now() → los `play` no se cuelgan
  */

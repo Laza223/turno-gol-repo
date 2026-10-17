@@ -25,7 +25,7 @@ import './ExplorarMap'
  * El mapa (`ExplorarMapLoader` → `ExplorarMap`, react-leaflet) entra por
  * `next/dynamic({ ssr: false })`: el pin de precio tarda un tick en aparecer,
  * de ahí los `findBy*` en vez de `getBy*` (mismo enfoque que
- * `ExplorarMap.stories.tsx` y `BookingMiniMap.stories.tsx`). Los tiles salen
+ * `ExplorarMap.stories.tsx`). Los tiles salen
  * offline vía el decorator global `withOfflineTiles` (`.storybook/preview.tsx`).
  *
  * No tiene un toggle propio (el botón Lista/Mapa vive en `ExplorarToolbar`, ya

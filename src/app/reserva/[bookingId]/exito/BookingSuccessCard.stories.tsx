@@ -1,22 +1,18 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
-import ReservaDarkShell from '@/components/booking/ReservaDarkShell'
+import { PortalWorld } from '@/components/world/PortalWorld'
 import { uid } from '@/test/fixtures/ids'
-import {
-  BookingSuccessCard,
-  BookingSuccessNotFound,
-  type ConfirmedBooking,
-} from './BookingSuccessCard'
+import { BookingSuccessCard, type ConfirmedBooking } from './BookingSuccessCard'
 
 const base: ConfirmedBooking = {
   tenantName: 'Complejo Fénix',
   tenantSlug: 'complejo-fenix',
   courtName: 'Cancha 1',
+  courtFormat: 5,
   address: 'Av. Rivadavia 4820',
   city: 'Ciudad Autónoma de Buenos Aires',
-  // Sin geo: BookingSuccessExtras no monta el mapa (react-leaflet), evita red externa en la story.
-  latitude: null,
-  longitude: null,
+  latitude: -34.6083,
+  longitude: -58.4386,
   date: '2026-03-14',
   timeStart: '18:00',
   timeEnd: '19:00',
@@ -27,11 +23,9 @@ const base: ConfirmedBooking = {
 }
 
 /**
- * `exito/page.tsx` vive dentro de `src/app/reserva/layout.tsx` → `PortalShell`
- * → `.player-shell-bg` (mint claro / `#020617` oscuro), con `<ReservaDarkShell>`
- * adentro. Sin el fondo del portal, "Seguir explorando" (emerald-700) cae
- * directo sobre `bg-background` (#e2e7ee) y da 4.41:1 — bajo AA (4.5). Con
- * `.player-shell-bg` (mint #ecfdf5) el mismo texto pasa.
+ * La reserva confirmada vive en `reserva/[bookingId]/exito/page.tsx`, dentro de `PortalShell` y del
+ * mundo del portal (`reserva/layout.tsx`): una columna de ~560 px, plana, con una sola acción verde
+ * ("Avisarle al grupo"). Las stories la montan en `PortalWorld`.
  */
 const meta = {
   title: 'Player/BookingResult/BookingSuccessCard',
@@ -39,14 +33,16 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   args: {
     bookingId: uid(1001),
+    complexUrl: 'https://turnogol.test/complejo-fenix',
+    booking: base,
   },
   decorators: [
     (Story) => (
-      <div className="player-shell-bg min-h-dvh">
-        <ReservaDarkShell>
+      <PortalWorld>
+        <div className="min-h-dvh bg-background text-foreground">
           <Story />
-        </ReservaDarkShell>
-      </div>
+        </div>
+      </PortalWorld>
     ),
   ],
 } satisfies Meta<typeof BookingSuccessCard>
@@ -54,22 +50,48 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Con seña pagada: muestra el monto de la seña + lo que resta abonar en el complejo. */
+/** El texto que recibe el grupo: lo que lleva el `href` de "Avisarle al grupo", ya decodificado. */
+function sharedText(canvas: ReturnType<typeof within>): string {
+  const link = canvas.getByRole('link', { name: 'Avisarle al grupo' })
+  const href = link.getAttribute('href')!
+  return decodeURIComponent(href.slice(href.indexOf('?text=') + '?text='.length))
+}
+
+/** Con seña pagada: el resumen muestra la seña y lo que resta abonar en el complejo. */
 export const ConSena: Story = {
-  args: { booking: base },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('heading', { name: /reserva confirmada/i })).toBeInTheDocument()
-    // "$ 4.500" (seña) y "$ 10.500" (resto) son el textContent EXACTO de un <span>
-    // propio, sin hijos — un match exacto no ambigua con ningún ancestro.
+    await expect(canvas.getByRole('heading', { name: '¡Reserva confirmada!' })).toBeInTheDocument()
+    const summary = within(canvas.getByRole('region', { name: 'Tu turno' }))
+    await expect(summary.getByText('Complejo Fénix')).toBeInTheDocument()
+    await expect(summary.getByText('18:00 a 19:00')).toBeInTheDocument()
+    await expect(summary.getByText(/^Cancha 1/)).toHaveTextContent('Cancha 1 · Fútbol 5')
     // formatArs separa "$" del monto con NBSP; getByText normaliza a espacio común.
-    await expect(canvas.getByText('$ 4.500')).toBeInTheDocument()
-    await expect(canvas.getByText('$ 10.500')).toBeInTheDocument()
-    // El código corto de la reserva ocupa el lugar del viejo QR. Se acota a la
-    // tarjeta: el comprobante imprimible (oculto) repite el código en el DOM.
-    const card = within(canvas.getByLabelText('Comprobante para mostrar en el complejo'))
-    await expect(card.getByText('00000000')).toBeInTheDocument()
+    await expect(summary.getByText('Seña pagada')).toBeInTheDocument()
+    await expect(summary.getByText('$ 4.500')).toBeInTheDocument()
+    await expect(summary.getByText('$ 10.500')).toBeInTheDocument()
+    // El código corto de la reserva va abajo, como terciario. Se acota a su sección: el
+    // comprobante imprimible (oculto) repite el código en el DOM.
+    const code = within(canvas.getByRole('region', { name: 'Código de la reserva' }))
+    await expect(code.getByText('00000000')).toBeInTheDocument()
     await expect(canvas.queryByRole('img', { name: /QR/i })).not.toBeInTheDocument()
+  },
+}
+
+/** La única acción principal: un link a WhatsApp con el turno escrito, sin montos y sin window.open. */
+export const AvisarleAlGrupo: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const link = canvas.getByRole('link', { name: 'Avisarle al grupo' })
+    await expect(link.getAttribute('href')).toMatch(/^https:\/\/wa\.me\/\?text=/)
+    const text = sharedText(canvas)
+    await expect(text).toContain('Cancha 1 · Fútbol 5')
+    await expect(text).toContain('Av. Rivadavia 4820')
+    await expect(text).toContain('de 18:00 a 19:00')
+    await expect(text.split('\n').at(-1)).toBe('https://turnogol.test/complejo-fenix')
+    await expect(text).not.toContain('$')
+    // Una sola acción principal: el resto son filas de la lista, no botones verdes.
+    await expect(canvas.getAllByRole('link', { name: 'Avisarle al grupo' })).toHaveLength(1)
   },
 }
 
@@ -78,16 +100,70 @@ export const SinSena: Story = {
   args: { booking: { ...base, depositAmount: 0, depositStatus: 'not_required' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/al llegar al complejo/i)).toBeInTheDocument()
-    await expect(canvas.queryByText('$ 4.500')).not.toBeInTheDocument()
+    const summary = within(canvas.getByRole('region', { name: 'Tu turno' }))
+    await expect(summary.getByText('Pagás en el complejo')).toBeInTheDocument()
+    await expect(summary.getByText('$ 15.000')).toBeInTheDocument()
+    await expect(summary.queryByText('Seña pagada')).not.toBeInTheDocument()
   },
 }
 
-/** Sin reserva encontrada (inexistente, purgada, o de otro jugador via RLS). */
-export const NoEncontrada: StoryObj<typeof BookingSuccessNotFound> = {
-  render: () => <BookingSuccessNotFound />,
+/** Precios ocultos con seña: ningún monto en el texto, en los atributos ni en el mensaje al grupo. */
+export const PreciosOcultosConSena: Story = {
+  args: { booking: { ...base, hidePrices: true } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('No encontramos tu reserva.')).toBeInTheDocument()
+    const summary = within(canvas.getByRole('region', { name: 'Tu turno' }))
+    await expect(summary.getByText('Seña pagada, el resto en el complejo')).toBeInTheDocument()
+    await expect(canvasElement.innerHTML).not.toMatch(/\$|4\.500|10\.500|15\.000|450000|1500000/)
+    await expect(sharedText(canvas)).not.toContain('$')
+  },
+}
+
+/** Precios ocultos sin seña: solo dice que se paga en el complejo. */
+export const PreciosOcultosSinSena: Story = {
+  args: {
+    booking: { ...base, hidePrices: true, depositAmount: 0, depositStatus: 'not_required' },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Pagás en el complejo')).toBeInTheDocument()
+    await expect(canvasElement.innerHTML).not.toMatch(/\$|15\.000|1500000/)
+  },
+}
+
+/** Sin coordenadas: "Cómo llegar" busca la dirección escrita en Google Maps. */
+export const SinCoordenadas: Story = {
+  args: { booking: { ...base, latitude: null, longitude: null } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const href = canvas.getByRole('link', { name: 'Cómo llegar' }).getAttribute('href')!
+    await expect(href).toContain('query=Av.%20Rivadavia%204820')
+  },
+}
+
+/** Ni dirección ni coordenadas: no hay a dónde mandarlo, así que no hay "Cómo llegar". */
+export const SinUbicacion: Story = {
+  args: { booking: { ...base, address: '', latitude: null, longitude: null } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.queryByRole('link', { name: 'Cómo llegar' })).not.toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: 'Agregar al calendario' })).toBeInTheDocument()
+  },
+}
+
+/** Nombres largos: se parten en líneas, nada se sale de la columna. */
+export const NombreLargo: Story = {
+  args: {
+    booking: {
+      ...base,
+      tenantName: 'Complejo Deportivo Los Cuatro Hermanos del Norte Sociedad Civil',
+      courtName: 'Cancha Principal Techada Sintética Premium 2',
+      address: 'Av. Presidente Doctor Don Hipólito Yrigoyen y Rivadavia 4820, piso 3, local 12',
+    },
+  },
+  play: async () => {
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
+      document.documentElement.clientWidth,
+    )
   },
 }

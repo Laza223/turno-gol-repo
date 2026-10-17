@@ -17,10 +17,18 @@ import {
   assertDevOverlayHookExists,
   waitForHeaderSlot,
   suppressPushBanner,
+  waitForPlayerSession,
   ADMIN_STORAGE_STATE,
+  PLAYER_STORAGE_STATE,
 } from './_visual-test'
 import { tomorrowDateIsoArt } from '../_helpers/booking-seed'
-import { FROZEN_NOW, VISUAL_DATE, VISUAL_TENANT_SLUG, seedVisualData } from './_seed'
+import {
+  FROZEN_NOW,
+  VISUAL_DATE,
+  VISUAL_PLAYER_BOOKING_ID,
+  VISUAL_TENANT_SLUG,
+  seedVisualData,
+} from './_seed'
 
 test.describe('visual — público', () => {
   test('login @visual', async ({ page }) => {
@@ -85,6 +93,28 @@ test.describe('visual — público', () => {
   })
 })
 
+test.describe('visual — jugador', () => {
+  test.use({ storageState: PLAYER_STORAGE_STATE })
+
+  test.beforeAll(async () => {
+    await seedVisualData()
+  })
+
+  test('reserva confirmada @visual', async ({ page }) => {
+    // La reserva `…0903` del seed: confirmada, con seña pagada, en un día FIJO (`VISUAL_DATE`) —
+    // el resumen, el mensaje al grupo y el comprobante salen de la fila, no del reloj. Del jugador
+    // `…0020`, el mismo de `player.json`.
+    await page.goto(`/reserva/${VISUAL_PLAYER_BOOKING_ID}/exito`)
+    await expect(page.getByRole('heading', { name: '¡Reserva confirmada!' })).toBeVisible()
+    await waitForPlayerSession(page)
+    await expect(page).toHaveScreenshot('reserva-confirmada.png', {
+      // El código sale del id de la reserva: si el seed cambia de id, cambia la foto. Se enmascara
+      // solo el código (no la sección, que lleva el link de "Descargar comprobante").
+      mask: [page.getByRole('region', { name: 'Código de la reserva' }).locator('.font-mono')],
+    })
+  })
+})
+
 test.describe('visual — admin', () => {
   test.use({ storageState: ADMIN_STORAGE_STATE })
 
@@ -94,8 +124,8 @@ test.describe('visual — admin', () => {
 
   test('grilla del día @visual', async ({ page }) => {
     await suppressPushBanner(page)
-    // Congela el reloj del BROWSER: afecta useArtNow y ExpiryCountdown, que sí
-    // leen Date.now() en el cliente. NO afecta lo que renderiza el servidor —
+    // Congela el reloj del BROWSER: afecta useArtNow, que sí
+    // lee Date.now() en el cliente. NO afecta lo que renderiza el servidor —
     // para eso está VISUAL_DATE en la URL.
     await page.clock.setFixedTime(FROZEN_NOW)
 

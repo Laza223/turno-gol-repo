@@ -36,6 +36,7 @@ import { CURRENT_TERMS_VERSION, TERMS_REQUIRED_MESSAGE } from '@/shared/terms'
 import { echoFields } from '@/shared/forms/echo'
 import { FORMAT_OPTIONS } from '@/components/public/courtFacets'
 import { PAY_METHODS, buildReservarHref, parseFormato, parsePay } from '@/lib/booking/reserve-url'
+import { holdAllowsRetry } from '@/lib/booking/hold'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -377,10 +378,16 @@ export async function retryDepositPaymentAction(formData: FormData): Promise<voi
   // Load booking player-scoped to verify ownership
   const bookingRow = await withPlayerContext(user.playerId, async (tx) => {
     const rows = (await tx.execute(sql`
-      SELECT b.status, b.player_id AS "playerId", b.tenant_id AS "tenantId"
+      SELECT b.status, b.player_id AS "playerId", b.tenant_id AS "tenantId",
+             b.created_at AS "createdAt"
       FROM bookings b
       WHERE b.id = ${bookingId} LIMIT 1
-    `)) as unknown as Array<{ status: string; playerId: string | null; tenantId: string }>
+    `)) as unknown as Array<{
+      status: string
+      playerId: string | null
+      tenantId: string
+      createdAt: string
+    }>
     return rows[0] ?? null
   })
 
@@ -389,6 +396,13 @@ export async function retryDepositPaymentAction(formData: FormData): Promise<voi
   if (bookingRow.status !== 'pending_payment') {
     // Already resolved (webhook landed while player was on error page)
     redirect(`/reserva/${bookingId}/exito`)
+  }
+
+  // La página de error se cargó con hold de sobra y el jugador tocó tarde (sin cuenta regresiva
+  // no ve cuánto queda): la preferencia nueva se comería el margen del webhook o sobreviviría al
+  // hold, y el pago entraría tarde. Vuelve al error, que ya muestra que el turno no está guardado.
+  if (!holdAllowsRetry(bookingRow.createdAt, Date.now())) {
+    redirect(`/reserva/${bookingId}/error`)
   }
 
   const tenantId = bookingRow.tenantId

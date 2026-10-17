@@ -1,6 +1,6 @@
 {
   "generatedFrom": "auditoría de 6 agentes sobre src/** + regeneración tras las extracciones presentacionales y el merge de contenido SEO + fase 4 de Torneos (portal público y cobro de inscripción)",
-  "total": 335,
+  "total": 334,
   "components": [
     {
       "path": "src/app/(admin)/abonados/AbonadoDialogs.tsx",
@@ -4473,7 +4473,7 @@
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "envuelve en ReservaDarkShell (@/components/booking/ReservaDarkShell, fuera de esta área)."
+      "isolationNotes": "Plano, sin cascarón: la story lo monta en PortalWorld (el layout de reserva hace lo mismo)."
     },
     {
       "path": "src/app/reserva/[bookingId]/error/page.tsx",
@@ -4524,14 +4524,14 @@
       "isolationDifficulty": "trivial",
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
-      "relevantStates": ["skeleton fijo (badge+título+card de recibo)"],
+      "relevantStates": ["skeleton fijo (ícono+título+resumen+botón+lista)"],
       "proposedStoryTitle": "Player/BookingResult/ExitoLoading",
       "usesNetwork": false,
       "usesSession": false,
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "envuelve en ReservaDarkShell."
+      "isolationNotes": "Plano, sin cascarón: la story lo monta en PortalWorld (el layout de reserva hace lo mismo)."
     },
     {
       "path": "src/app/reserva/[bookingId]/exito/page.tsx",
@@ -4572,7 +4572,7 @@
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "envuelve en ReservaDarkShell."
+      "isolationNotes": "Plano, sin cascarón: la story lo monta en PortalWorld (el layout de reserva hace lo mismo)."
     },
     {
       "path": "src/app/reserva/[bookingId]/pendiente/page.tsx",
@@ -4593,6 +4593,42 @@
       "isolationNotes": "extractAuthUser()+redirect; withPlayerContext(sql crudo); delega a PaymentStatusWatcher(bookingId, initialStatus, expiresAt)."
     },
     {
+      "path": "src/app/reserva/[bookingId]/ReservaNotFound.tsx",
+      "name": "ReservaNotFound",
+      "domain": "player-facing",
+      "rendering": "server",
+      "role": "presentational",
+      "isolationDifficulty": "trivial",
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "relevantStates": ["reserva inexistente, purgada o de otro jugador (RLS)"],
+      "proposedStoryTitle": "Player/BookingResult/ReservaNotFound",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "Ninguno — lo comparten las tres pantallas de vuelta; la story lo monta en PortalWorld."
+    },
+    {
+      "path": "src/app/reserva/error.tsx",
+      "name": "ReservaError",
+      "domain": "player-facing",
+      "rendering": "client",
+      "role": "error-boundary",
+      "isolationDifficulty": "easy",
+      "classification": "DIRECT_STORY_REQUIRED",
+      "exclusionReason": "",
+      "relevantStates": ["error boundary con y sin digest ('No pudimos cargar esta página')"],
+      "proposedStoryTitle": "Player/BookingResult/ReservaError",
+      "usesNetwork": false,
+      "usesSession": false,
+      "usesRouter": false,
+      "usesServerAction": false,
+      "providers": [],
+      "isolationNotes": "Sentry.captureException en useEffect (no-op sin DSN en Storybook); el mundo de La Reserva lo pone reserva/layout.tsx, la story lo monta con un decorator."
+    },
+    {
       "path": "src/app/reserva/layout.tsx",
       "name": "ReservaLayout",
       "domain": "player-facing",
@@ -4600,7 +4636,7 @@
       "role": "layout",
       "isolationDifficulty": "trivial",
       "classification": "SERVER_WRAPPER_NOT_SUITABLE",
-      "exclusionReason": "layout.tsx que solo envuelve children en PortalShell (@/components/site/PortalShell, fuera de esta área); cero lógica visual propia, mismo patrón que (public)/layout.tsx.",
+      "exclusionReason": "layout.tsx que solo envuelve children en PortalShell (@/components/site/PortalShell, fuera de esta área) y en PortalWorld (el mundo de La Reserva); cero lógica visual propia, mismo patrón que (public)/layout.tsx.",
       "relevantStates": [],
       "proposedStoryTitle": "",
       "usesNetwork": false,
@@ -4823,24 +4859,6 @@
       "isolationNotes": "useRouter (next/navigation), useBookingRealtime → canal de Supabase Realtime + polling de respaldo, useArtNow/useGridLayout/useNowLine/useRealtimePulse/usePersistedDensity/useDismissibleHint, dynamic import de BookingFormModal (que a su vez importa un Server Action)."
     },
     {
-      "path": "src/components/booking/BookingMiniMap.tsx",
-      "name": "BookingMiniMap",
-      "domain": "player-facing",
-      "rendering": "client",
-      "role": "presentational",
-      "isolationDifficulty": "medium",
-      "classification": "DIRECT_STORY_REQUIRED",
-      "exclusionReason": "",
-      "relevantStates": ["ubicación válida (lat/lng) renderizando pin + tiles"],
-      "proposedStoryTitle": "Player/BookingSuccess/BookingMiniMap",
-      "usesNetwork": true,
-      "usesSession": false,
-      "usesRouter": false,
-      "usesServerAction": false,
-      "providers": [],
-      "isolationNotes": "react-leaflet (MapContainer/Marker/TileLayer) + leaflet: requiere DOM real y hace requests reales a {s}.tile.openstreetmap.org para los tiles (red externa); se usa hoy vía next/dynamic con ssr:false en BookingSuccessExtras, la story debe tratarlo igual (sin SSR)."
-    },
-    {
       "path": "src/components/booking/BookingPopover.tsx",
       "name": "BookingPopover",
       "domain": "booking-grid",
@@ -4894,8 +4912,9 @@
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
       "relevantStates": [
-        "hasGeo=true (con mini-mapa) vs hasGeo=false (sin mapa, solo 3 botones)",
-        "acciones: Compartir (WhatsApp), Calendario (descarga .ics), Cómo llegar (Google Maps link)"
+        "con dirección o coordenadas: Cómo llegar (Google Maps link) en la lista",
+        "sin dirección ni coordenadas: sin Cómo llegar",
+        "acciones: Agregar al calendario (descarga .ics) y Ver mis reservas"
       ],
       "proposedStoryTitle": "Player/BookingSuccess/BookingSuccessExtras",
       "usesNetwork": false,
@@ -4903,7 +4922,7 @@
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "dynamic import de BookingMiniMap con ssr:false (react-leaflet); window.open para compartir por WhatsApp, Blob+URL.createObjectURL+<a download> para el .ics, window.location.origin — todo browser-only, requiere entorno de navegador real de Storybook (no SSR)."
+      "isolationNotes": "Blob+URL.createObjectURL+<a download> para el .ics (browser-only); next/link para Ver mis reservas. Sin mapa ni window.open desde el PR 2.3c."
     },
     {
       "path": "src/components/booking/DownloadReceiptButton.tsx",
@@ -4924,27 +4943,6 @@
       "usesServerAction": false,
       "providers": [],
       "isolationNotes": "window.print() + mutación temporal de document.title; efecto secundario de navegador, fácil de mockear en un play function."
-    },
-    {
-      "path": "src/components/booking/ExpiryCountdown.tsx",
-      "name": "ExpiryCountdown",
-      "domain": "player-facing",
-      "rendering": "client",
-      "role": "presentational",
-      "isolationDifficulty": "easy",
-      "classification": "DIRECT_STORY_REQUIRED",
-      "exclusionReason": "",
-      "relevantStates": [
-        "cuenta regresiva en curso (mm:ss > 0)",
-        "expiresAt ya pasado (00:00, remaining negativo clampeado por formatRemaining)"
-      ],
-      "proposedStoryTitle": "Player/BookingSuccess/ExpiryCountdown",
-      "usesNetwork": false,
-      "usesSession": false,
-      "usesRouter": false,
-      "usesServerAction": false,
-      "providers": [],
-      "isolationNotes": "setInterval(1000) con Date.now() real — la story/tests deben usar fake timers (vi.useFakeTimers) para controlar el conteo; importa formatRemaining de ./format-remaining.ts (no-tsx, no forma parte de este inventario)."
     },
     {
       "path": "src/components/booking/grid/FirstBookingHint.tsx",
@@ -5060,12 +5058,13 @@
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
       "relevantStates": [
-        "status='confirmed' (check verde, 'Reserva confirmada')",
-        "status='expired' (X gris, 'La reserva expiró')",
-        "status='canceled_refunded'/'canceled_no_refund' (X roja, 'Reserva cancelada')",
-        "stalled='expired' (tiempo agotado sin transición terminal, ícono gris)",
+        "status='confirmed' (navega a /exito con router.replace; en /exito, router.refresh)",
+        "status='expired' ('La reserva expiró' + Reservar de nuevo a la ficha en ese día)",
+        "status='canceled_refunded'/'canceled_no_refund' ('Reserva cancelada')",
+        "status='completed'/'no_show' ('Esta reserva ya pasó')",
+        "stalled='expired' (tiempo agotado sin transición terminal)",
         "stalled='error' (5 fallos consecutivos de polling, 'No pudimos verificar tu pago')",
-        "default pending_payment (spinner 'Confirmando tu pago…' + ExpiryCountdown + nota de demora tras 30s)"
+        "default pending_payment ('Confirmando tu pago…', sin cuenta regresiva, nota de demora tras 30s)"
       ],
       "proposedStoryTitle": "Player/BookingSuccess/PaymentStatusWatcher",
       "usesNetwork": true,
@@ -5073,25 +5072,7 @@
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "Polling recursivo con setTimeout + backoff exponencial (3s→30s) a fetch('/api/player/bookings/{id}/status'), 3 useEffect basados en Date.now()/setTimeout que necesitan fake timers para exercitar 'showDelayNote' (30s) y 'stalled=expired' (expiresAt+5s); requiere mock de fetch (MSW) para simular las 6 transiciones."
-    },
-    {
-      "path": "src/components/booking/ReservaDarkShell.tsx",
-      "name": "ReservaDarkShell",
-      "domain": "player-facing",
-      "rendering": "server",
-      "role": "presentational",
-      "isolationDifficulty": "trivial",
-      "classification": "DIRECT_STORY_REQUIRED",
-      "exclusionReason": "",
-      "relevantStates": ["único estado (cascarón con glows, theme-adaptive light/dark vía CSS)"],
-      "proposedStoryTitle": "Player/BookingSuccess/ReservaDarkShell",
-      "usesNetwork": false,
-      "usesSession": false,
-      "usesRouter": false,
-      "usesServerAction": false,
-      "providers": [],
-      "isolationNotes": "Ninguno — Server Component puro (children: ReactNode); compartido por éxito/pendiente/error y sus loading.tsx, la story debería mostrar light y dark del theming CSS (.reserva-shell/.reserva-glow-top/.reserva-glow-bottom en globals.css)."
+      "isolationNotes": "Polling recursivo con setTimeout + backoff exponencial (3s→30s) a fetch('/api/player/bookings/{id}/status'), useRouter/usePathname (next/navigation) para navegar al confirmarse; 3 useEffect basados en Date.now()/setTimeout: la nota de 30s y el corte por red caída (~75s) se muestran con PaymentStatusView (la misma vista con el estado puesto); las transiciones por polling, con el fetchMock de las stories."
     },
     {
       "path": "src/components/booking/WeekStrip.tsx",

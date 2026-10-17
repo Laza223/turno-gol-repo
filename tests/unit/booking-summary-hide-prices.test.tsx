@@ -44,3 +44,12 @@ describe('BookingSummary — precios ocultos (settings.hide_public_prices)', () 
     expect(screen.getByText('Precio del turno')).toBeTruthy()
   })
 })
+
+describe('BookingSummary — el formato de la cancha', () => {
+  it('"Fútbol 11" va en un tramo que no se parte: en pantallas angostas no queda "Fútbol / 11"', () => {
+    render(<BookingSummary data={{ ...data, courtFormat: 11 }} />)
+    const format = screen.getByText('Fútbol 11')
+    expect(format.className).toContain('whitespace-nowrap')
+    expect(format.parentElement?.textContent).toBe('Cancha 1 · Fútbol 11')
+  })
+})

@@ -13,8 +13,8 @@ import { cleanupBookingsByIds, tomorrowDateIsoArt } from '../../_helpers/booking
  * llega a pending_payment (ya cubierto por TG-HP-104/105) — el manual mismo
  * dice "Navegar (o ser redirigido)".
  *
- * Evidence anchors: pendiente/page.tsx:24-59, PaymentStatusWatcher.tsx:37-60,
- * 67-114,196-217, api/player/bookings/[id]/status/route.ts:12-46.
+ * Evidence anchors: pendiente/page.tsx, PaymentStatusWatcher.tsx (efecto de confirmado y
+ * PaymentStatusView), api/player/bookings/[id]/status/route.ts:12-46.
  */
 
 const SENA_TENANT_ID = '00000000-0000-4000-8000-000000000030'
@@ -48,12 +48,12 @@ test.describe('TG-HP-106 — Pago PENDIENTE → watcher', () => {
     try {
       await page.goto(`/reserva/${bookingId}/pendiente`)
 
-      // h2 "Confirmando tu pago…" + texto + countdown mm:ss.
+      // "Confirmando tu pago…" + texto. Sin cuenta regresiva: todo el que llega acá ya pasó por MP.
       await expect(page.getByRole('heading', { name: 'Confirmando tu pago…' })).toBeVisible({
         timeout: 10_000,
       })
       await expect(page.getByText('Esto puede tardar unos segundos.')).toBeVisible()
-      await expect(page.getByText(/\d:\d\d/).first()).toBeVisible({ timeout: 5_000 })
+      await expect(page.getByText(/te queda/i)).toHaveCount(0)
 
       // DB: sigue pending_payment hasta que llegue el webhook.
       const { data: pendingBooking, error: pendingErr } = await sb
@@ -78,7 +78,8 @@ test.describe('TG-HP-106 — Pago PENDIENTE → watcher', () => {
       expect(webhookResp.ok()).toBeTruthy()
 
       // UI-sin-reload: el watcher hace polling cada 3s (backoff hasta 30s) y
-      // debe flipear SOLO, sin que el test recargue la página.
+      // debe pasar SOLO a /exito (router.replace), sin que el test recargue la página.
+      await expect(page).toHaveURL(new RegExp(`/reserva/${bookingId}/exito`), { timeout: 30_000 })
       await expect(page.getByRole('heading', { name: '¡Reserva confirmada!' })).toBeVisible({
         timeout: 30_000,
       })
@@ -100,7 +101,7 @@ test.describe('TG-HP-106 — Pago PENDIENTE → watcher', () => {
         db_after_webhook: confirmedBooking,
         finalUrl: page.url(),
         notes:
-          'Watcher flipeó a confirmado vía polling (sin router.refresh() ni reload manual) ' +
+          'Watcher pasó a /exito vía polling + router.replace (sin reload manual) ' +
           'tras un webhook fuera de banda — misma técnica que booking-flow.spec.ts S3.',
       })
     } finally {

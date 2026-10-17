@@ -47,7 +47,7 @@ export const VISUAL_DATE = '2030-06-17'
 
 /**
  * El "ahora" congelado del browser, para los widgets que SÍ leen Date.now() en
- * el cliente (useArtNow, ExpiryCountdown). Es la misma constante que usa
+ * el cliente (useArtNow). Es la misma constante que usa
  * Storybook (.storybook/preview.tsx) — una sola verdad de "ahora congelado".
  */
 export const FROZEN_NOW = new Date('2026-03-14T18:30:00.000Z')
@@ -59,6 +59,12 @@ const VISUAL_BOOKING_IDS = [
   '00000000-0000-4000-8000-000000000903',
   '00000000-0000-4000-8000-000000000904',
 ] as const
+
+/**
+ * La reserva del jugador (`confirmed`, con seña pagada, 20:00 del `VISUAL_DATE`): la que se
+ * fotografía en `/reserva/{id}/exito`. Es la que tiene `player_id` en `VISUAL_BOOKINGS`.
+ */
+export const VISUAL_PLAYER_BOOKING_ID = VISUAL_BOOKING_IDS[2]
 
 const STAFF_USER_ID = '00000000-0000-4000-8000-000000000003'
 

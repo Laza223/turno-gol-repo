@@ -156,3 +156,29 @@ export function buildReserveRequest(
   if (contact.whatsappUrl) return { channel: 'whatsapp', href: contact.whatsappUrl }
   return contact.telHref ? { channel: 'tel', href: contact.telHref } : null
 }
+
+/** Las tres pantallas de vuelta de una reserva: `/reserva/{id}/{view}`. */
+export type ReservaView = 'exito' | 'pendiente' | 'error'
+
+export function buildReservaHref(bookingId: string, view: ReservaView): string {
+  return `/reserva/${bookingId}/${view}`
+}
+
+/**
+ * Sin sesión, las pantallas de vuelta mandan a ingresar y VUELVEN a donde iba el jugador:
+ * MercadoPago puede devolverlo en otro navegador, sin la cookie. `sanitizeNext` valida el destino.
+ */
+export function buildIngresarForReservaHref(bookingId: string, view: ReservaView): string {
+  return `/ingresar?next=${encodeURIComponent(buildReservaHref(bookingId, view))}`
+}
+
+/**
+ * "Reservar de nuevo": la ficha del complejo en el día de la reserva que no salió. Sin complejo
+ * conocido (defensivo: la reserva siempre tiene uno), el buscador.
+ */
+export function buildReserveAgainHref(
+  slug: string | null | undefined,
+  date: string | null | undefined,
+): string {
+  return slug ? buildFichaHref(slug, date ? { date } : {}) : '/explorar'
+}

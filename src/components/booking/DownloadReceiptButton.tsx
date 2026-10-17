@@ -1,6 +1,8 @@
 'use client'
 
 import { FileDown } from 'lucide-react'
+import { PORTAL_LINK } from '@/components/world/PortalAuthFrame'
+import { cn } from '@/lib/utils'
 
 /**
  * Dispara window.print(): por las reglas de #booking-receipt en globals.css
@@ -24,9 +26,12 @@ export default function DownloadReceiptButton({ fileName }: { fileName: string }
     <button
       type="button"
       onClick={handlePrint}
-      className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-card px-4 text-sm font-semibold text-emerald-700 transition-colors hover:bg-emerald-50 dark:border-white/10 dark:bg-white/4 dark:text-emerald-400 dark:hover:bg-white/8"
+      className={cn(
+        PORTAL_LINK,
+        'mt-2 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-emerald-700 underline underline-offset-4 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300',
+      )}
     >
-      <FileDown className="h-4 w-4" aria-hidden />
+      <FileDown className="size-4" aria-hidden />
       Descargar comprobante
     </button>
   )

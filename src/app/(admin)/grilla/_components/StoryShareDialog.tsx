@@ -29,7 +29,7 @@ type Props = {
 }
 
 type Loaded =
-  | { key: string; ok: true; url: string; file: File }
+  | { key: string; ok: true; url: string; file: File; canShare: boolean }
   | { key: string; ok: false; message: string; retryable: boolean }
 
 // Una historia se arma para hoy o para los próximos días: con ventanas de reserva
@@ -46,6 +46,18 @@ function dayChipLabel(daysAhead: number, date: string): string {
     day: 'numeric',
     timeZone: TIME_ZONE,
   })
+}
+
+// Compartir el archivo solo es lo natural en el celular (menú del sistema →
+// Instagram / WhatsApp). En escritorio el share sheet estorba: ahí se descarga.
+// Se evalúa cuando llega la imagen (dentro del efecto), nunca durante el render.
+function canShareFile(file: File): boolean {
+  return (
+    typeof navigator.canShare === 'function' &&
+    typeof navigator.share === 'function' &&
+    (window.matchMedia?.('(pointer: coarse)').matches ?? false) &&
+    navigator.canShare({ files: [file] })
+  )
 }
 
 /**
@@ -87,6 +99,7 @@ export function StoryShareDialog({ slug, bookingAdvanceDays, trackAction, onClos
             res.status === 429
               ? 'Pediste muchas placas seguidas. Probá de nuevo en un minuto.'
               : await rejectionMessage(res, 'No se pudo generar la imagen. Probá de nuevo.')
+          if (controller.signal.aborted) return
           // Un 4xx (sin turnos libres, día cerrado…) no se arregla reintentando: se cambia de día.
           setLoaded({ key, ok: false, message, retryable: res.status >= 500 || res.status === 429 })
           return
@@ -97,7 +110,7 @@ export function StoryShareDialog({ slug, bookingAdvanceDays, trackAction, onClos
         if (controller.signal.aborted) return
         objectUrl = URL.createObjectURL(blob)
         const file = new File([blob], `turnos-${slug}-${date}.png`, { type: 'image/png' })
-        setLoaded({ key, ok: true, url: objectUrl, file })
+        setLoaded({ key, ok: true, url: objectUrl, file, canShare: canShareFile(file) })
       })
       .catch(() => {
         if (controller.signal.aborted) return
@@ -127,14 +140,7 @@ export function StoryShareDialog({ slug, bookingAdvanceDays, trackAction, onClos
   const image = current?.ok ? current : null
   const failure = current && !current.ok ? current : null
 
-  // Compartir el archivo solo es lo natural en el celular (menú del sistema →
-  // Instagram / WhatsApp). En escritorio el share sheet estorba: ahí se descarga.
-  const canShareFile =
-    image !== null &&
-    typeof navigator.canShare === 'function' &&
-    typeof navigator.share === 'function' &&
-    (window.matchMedia?.('(pointer: coarse)').matches ?? false) &&
-    navigator.canShare({ files: [image.file] })
+  const canShare = image?.canShare ?? false
 
   // Best-effort: la imagen ya salió, si la medición falla el dueño no se entera.
   function track(method: StoryExportMethod) {
@@ -242,7 +248,7 @@ export function StoryShareDialog({ slug, bookingAdvanceDays, trackAction, onClos
         </div>
 
         <div className="space-y-2">
-          {canShareFile ? (
+          {canShare ? (
             <Button className="w-full" onClick={share}>
               <Share2 className="mr-2 h-4 w-4" aria-hidden="true" />
               Compartir imagen
@@ -253,8 +259,8 @@ export function StoryShareDialog({ slug, bookingAdvanceDays, trackAction, onClos
               Descargar imagen
             </Button>
           )}
-          <div className={cn('grid gap-2', canShareFile ? 'grid-cols-2' : 'grid-cols-1')}>
-            {canShareFile && (
+          <div className={cn('grid gap-2', canShare ? 'grid-cols-2' : 'grid-cols-1')}>
+            {canShare && (
               <Button variant="outline" onClick={download}>
                 <Download className="mr-2 h-4 w-4" aria-hidden="true" />
                 Descargar

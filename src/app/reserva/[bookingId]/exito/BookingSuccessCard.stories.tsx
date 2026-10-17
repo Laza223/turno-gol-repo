@@ -13,7 +13,7 @@ const base: ConfirmedBooking = {
   city: 'Ciudad Autónoma de Buenos Aires',
   latitude: -34.6083,
   longitude: -58.4386,
-  date: '2026-03-14',
+  startsOn: '2026-03-14',
   timeStart: '18:00',
   timeEnd: '19:00',
   priceSnapshot: 1500000,

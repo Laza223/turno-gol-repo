@@ -6,7 +6,7 @@ export type BookingReceiptData = {
   address: string
   city: string
   courtName: string
-  /** "YYYY-MM-DD" */
+  /** "YYYY-MM-DD": el día calendario en que se juega (físico), no el operativo. */
   date: string
   /** "HH:MM:SS" o "HH:MM" */
   timeStart: string

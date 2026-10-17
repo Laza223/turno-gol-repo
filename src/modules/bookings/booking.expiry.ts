@@ -15,6 +15,7 @@ import { notifyAdminBookingConfirmed } from '@/modules/notifications/push.servic
 import { track } from '@/shared/observability'
 import { expirePendingBooking } from './booking.service'
 import { logger } from '@/shared/lib/logger'
+import { formatArtDate } from '@/shared/time/art-date'
 import { captureMessage } from '@/lib/sentry'
 
 /**
@@ -39,7 +40,7 @@ type ExpiryState = {
   createdAt: Date
   tenantId: string
   playerId: string | null
-  date: string
+  startsAt: Date | string
   timeStart: string
   courtName: string
   tenantName: string
@@ -59,7 +60,7 @@ async function loadExpiryState(bookingId: string): Promise<ExpiryState | null> {
       createdAt: Date
       tenantId: string
       playerId: string | null
-      date: string
+      startsAt: Date | string
       timeStart: string
       courtName: string
       tenantName: string
@@ -74,7 +75,7 @@ async function loadExpiryState(bookingId: string): Promise<ExpiryState | null> {
       b.created_at AS "createdAt",
       b.tenant_id  AS "tenantId",
       b.player_id  AS "playerId",
-      b.date::text AS date,
+      b.starts_at AS "startsAt",
       b.time_start::text AS "timeStart",
       c.name AS "courtName",
       t.name AS "tenantName",
@@ -98,10 +99,6 @@ async function loadExpiryState(bookingId: string): Promise<ExpiryState | null> {
     LIMIT 1
   `
   return rows[0] ?? null
-}
-
-function fmtDate(date: string): string {
-  return date.slice(0, 10).split('-').reverse().join('/')
 }
 
 /**
@@ -222,7 +219,8 @@ export async function expirePendingBookingWithPolicy(bookingId: string): Promise
     }
   }
 
-  const dateFmt = fmtDate(state.date)
+  // Lo lee el jugador: día físico (`starts_at`), no el operativo (`bookings.date`).
+  const dateFmt = formatArtDate(new Date(state.startsAt))
   const timeStartFmt = state.timeStart.slice(0, 5)
   const notifIds: string[] = []
 

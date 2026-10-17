@@ -20,7 +20,7 @@ const meta = {
     tenantName: t.name,
     courtName: 'Cancha 1',
     slug: t.slug,
-    date: '2026-03-14',
+    startsOn: '2026-03-14',
     timeStart: '16:00',
     timeEnd: '17:00',
     address: t.address,

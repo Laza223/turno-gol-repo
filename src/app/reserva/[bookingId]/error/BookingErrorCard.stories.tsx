@@ -18,6 +18,7 @@ const meta = {
     bookingId: uid(1002),
     tenantSlug: 'complejo-fenix',
     date: '2026-03-14',
+    startsOn: '2026-03-14',
     turn: { courtName: 'Cancha 2', timeStart: '21:00:00', timeEnd: '22:00:00' },
     view: 'retry',
     retryAction: fn(async () => undefined),

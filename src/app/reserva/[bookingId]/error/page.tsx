@@ -17,6 +17,7 @@ async function loadBooking(bookingId: string, playerId: string) {
   return withPlayerContext(playerId, async (tx) => {
     const rows = (await tx.execute(sql`
       SELECT b.status, b.created_at AS "createdAt", b.date::text AS date,
+             (b.starts_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date::text AS "startsOn",
              b.time_start::text AS "timeStart", b.time_end::text AS "timeEnd",
              c.name AS "courtName", t.slug AS "tenantSlug"
       FROM bookings b
@@ -27,6 +28,7 @@ async function loadBooking(bookingId: string, playerId: string) {
       status: string
       createdAt: string
       date: string
+      startsOn: string
       timeStart: string
       timeEnd: string
       courtName: string
@@ -84,6 +86,7 @@ export default async function ReservaErrorPage(props: Props) {
       bookingId={params.bookingId}
       tenantSlug={booking.tenantSlug}
       date={booking.date}
+      startsOn={booking.startsOn}
       turn={{
         courtName: booking.courtName,
         timeStart: booking.timeStart,

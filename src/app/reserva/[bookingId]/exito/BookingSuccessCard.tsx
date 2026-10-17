@@ -20,8 +20,8 @@ export type ConfirmedBooking = {
   city: string
   latitude: number | null
   longitude: number | null
-  /** "YYYY-MM-DD" */
-  date: string
+  /** "YYYY-MM-DD": día CALENDARIO en que se juega (de `starts_at`, ART), no el operativo. */
+  startsOn: string
   /** "HH:MM:SS" o "HH:MM" */
   timeStart: string
   timeEnd: string
@@ -66,7 +66,7 @@ export function BookingSuccessCard({
       tenantName: booking.tenantName,
       courtName: booking.courtName,
       courtFormat: booking.courtFormat,
-      date: booking.date,
+      date: booking.startsOn,
       timeStart,
       timeEnd,
       address: booking.address,
@@ -88,7 +88,7 @@ export function BookingSuccessCard({
             city: booking.city,
             courtName: booking.courtName,
             courtFormat: booking.courtFormat,
-            date: booking.date,
+            date: booking.startsOn,
             timeStart,
             timeEnd,
             price: booking.priceSnapshot,
@@ -121,7 +121,7 @@ export function BookingSuccessCard({
           tenantName={booking.tenantName}
           courtName={booking.courtName}
           slug={booking.tenantSlug}
-          date={booking.date}
+          startsOn={booking.startsOn}
           timeStart={booking.timeStart}
           timeEnd={booking.timeEnd}
           address={booking.address}
@@ -139,7 +139,7 @@ export function BookingSuccessCard({
         <p className="mt-1 text-sm text-muted-foreground">
           Si el complejo te lo pide, con este código encuentra tu reserva.
         </p>
-        <DownloadReceiptButton fileName={`comprobante-${booking.tenantSlug}-${booking.date}`} />
+        <DownloadReceiptButton fileName={`comprobante-${booking.tenantSlug}-${booking.startsOn}`} />
       </section>
 
       <BookingReceipt
@@ -148,7 +148,7 @@ export function BookingSuccessCard({
         address={booking.address}
         city={booking.city}
         courtName={booking.courtName}
-        date={booking.date}
+        date={booking.startsOn}
         timeStart={booking.timeStart}
         timeEnd={booking.timeEnd}
         priceSnapshot={booking.priceSnapshot}

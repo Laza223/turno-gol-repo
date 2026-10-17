@@ -51,6 +51,8 @@ const row = (status: string, createdAt: Date) => [
     status,
     createdAt,
     date: '2030-06-17',
+    // El turno de 00:00 del lunes 17 operativo (closes_next_day) se juega el martes 18.
+    startsOn: '2030-06-18',
     timeStart: '20:00:00',
     timeEnd: '21:00:00',
     courtName: 'Cancha 2',
@@ -117,8 +119,8 @@ describe('ReservaErrorPage — qué pasó con el turno', () => {
     // Rojo: el pago falló.
     expect(container.querySelector('svg')?.getAttribute('class')).toContain(TONE_TEXT.destructive)
     // Dice qué turno quedó guardado (día, hora y cancha) sin mostrar cuánto falta para que venza.
-    expect(screen.getByText(/^Lunes, 17 de junio ·/).closest('p')?.textContent).toBe(
-      'Lunes, 17 de junio · 20:00 a 21:00 Cancha 2',
+    expect(screen.getByText(/^Martes, 18 de junio ·/).closest('p')?.textContent).toBe(
+      'Martes, 18 de junio · 20:00 a 21:00 Cancha 2',
     )
     expect(container.textContent!.match(/\d{1,2}:\d\d/g)).toEqual(['20:00', '21:00'])
     expect(container.textContent).not.toMatch(/\d+ minutos/)

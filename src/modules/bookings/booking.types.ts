@@ -27,6 +27,8 @@ export type BookingRow = {
   tournamentId: string | null
   createdByStaff: string | null
   date: Date
+  /** Instante físico de inicio (TIMESTAMPTZ): fuente del día calendario que lee el jugador. */
+  startsAt: Date
   timeStart: string
   timeEnd: string
   type: BookingType

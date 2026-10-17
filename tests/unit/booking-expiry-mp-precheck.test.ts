@@ -51,7 +51,7 @@ vi.mock('@/lib/sentry', () => ({
 }))
 
 import { getWorkerSql, withTenantContext } from '@/shared/db/client'
-import { dispatchEmail } from '@/modules/notifications/notification.service'
+import { dispatchEmail, enqueueNotification } from '@/modules/notifications/notification.service'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import {
   reconcileApprovedPaymentForBooking,
@@ -84,7 +84,7 @@ function baseRow(overrides: Record<string, unknown> = {}) {
     createdAt: new Date(Date.now() - 20 * 60 * 1000),
     tenantId: TENANT_ID,
     playerId: null,
-    date: '2099-08-10',
+    startsAt: new Date('2099-08-10T13:00:00Z'),
     timeStart: '10:00:00',
     courtName: 'Cancha 1',
     tenantName: 'Complejo X',
@@ -229,5 +229,31 @@ describe('expirePendingBookingWithPolicy — precheck MP (ENS-16)', () => {
       }),
     })
     expect(opts.extra.elapsedMs).toBeGreaterThan(60 * 60 * 1000)
+  })
+})
+
+// El mail `deposit_expired` lo lee el jugador: dice el día en que se juega (de `starts_at`), no
+// el operativo. Con `closes_next_day`, el turno 00:00 del sábado 17 (operativo) se juega el domingo 18.
+describe('expirePendingBookingWithPolicy — día del mail deposit_expired', () => {
+  const mockEnqueue = enqueueNotification as ReturnType<typeof vi.fn>
+
+  async function expireAndReadMailDate(startsAt: Date): Promise<string> {
+    mockLoadExpiryState([
+      baseRow({ startsAt, playerId: 'player-1', playerFirstName: 'Ana', hasMpCheckout: false }),
+    ])
+    mockExpireTx(true)
+    mockEnqueue.mockResolvedValue('notif-1')
+    await expirePendingBookingWithPolicy(BOOKING_ID)
+    const call = mockEnqueue.mock.calls.find(([arg]) => arg.templateName === 'deposit_expired')
+    return call![0].content.date as string
+  }
+
+  it('turno de 00:00 de closes_next_day → el día calendario siguiente', async () => {
+    // Operativo sáb 17/10, 00:00 ART = dom 18/10 03:00Z.
+    expect(await expireAndReadMailDate(new Date('2026-10-18T03:00:00Z'))).toBe('18/10/2026')
+  })
+
+  it('control negativo: turno de 20:00 (mismo día operativo y calendario) → sin cambio', async () => {
+    expect(await expireAndReadMailDate(new Date('2026-10-17T23:00:00Z'))).toBe('17/10/2026')
   })
 })

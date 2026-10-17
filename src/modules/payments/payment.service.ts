@@ -29,6 +29,7 @@ import {
   enqueueTenantOwnerNotification,
 } from '@/modules/notifications/notification.service'
 import { track } from '@/shared/observability'
+import { formatArtDate } from '@/shared/time/art-date'
 import { captureMessage } from '@/lib/sentry'
 
 const TERMINAL_BOOKING_STATUSES = [
@@ -549,7 +550,7 @@ async function handleApproved(
             content: {
               playerFirstName: ctx.player_first_name,
               courtName: ctx.court_name,
-              date: formatDateArs(result.row.date),
+              date: formatArtDate(result.row.startsAt),
               timeStart: result.row.timeStart.slice(0, 5),
               timeEnd: result.row.timeEnd.slice(0, 5),
               tenantName: ctx.tenant_name,
@@ -571,6 +572,7 @@ async function handleApproved(
   // is upserted regardless to preserve the audit trail.
   const cur = await tx.execute(sql`
     SELECT b.status, c.name AS court_name, b.date::text AS date,
+           b.starts_at AS starts_at,
            b.time_start::text AS time_start,
            b.player_id AS player_id,
            p.first_name AS player_first_name,
@@ -586,6 +588,7 @@ async function handleApproved(
       status: string
       court_name: string
       date: string
+      starts_at: Date | string
       time_start: string
       player_id: string | null
       player_first_name: string | null
@@ -671,7 +674,8 @@ async function handleApproved(
           content: {
             playerFirstName: row.player_first_name ?? '',
             courtName: row.court_name,
-            date: row.date.slice(0, 10).split('-').reverse().join('/'),
+            // Lo lee el jugador: día físico, no el operativo (el del mail al admin, arriba).
+            date: formatArtDate(new Date(row.starts_at)),
             timeStart: row.time_start.slice(0, 5),
             tenantName: row.tenant_name,
             amountArs: formatArs(preparedRefund.refundAmount),
@@ -941,13 +945,6 @@ export function formatArs(cents: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })
-}
-
-/** Date (columna DATE, sin componente horario) → "DD/MM/YYYY". */
-function formatDateArs(d: Date): string {
-  const dd = String(d.getUTCDate()).padStart(2, '0')
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
-  return `${dd}/${mm}/${d.getUTCFullYear()}`
 }
 
 /**

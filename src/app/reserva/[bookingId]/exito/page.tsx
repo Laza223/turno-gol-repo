@@ -32,6 +32,7 @@ type BookingRow = {
   timeStart: string
   timeEnd: string
   date: string
+  startsOn: string
 }
 
 async function loadBooking(bookingId: string, playerId: string): Promise<BookingRow | null> {
@@ -42,6 +43,7 @@ async function loadBooking(bookingId: string, playerId: string): Promise<Booking
              b.deposit_status AS "depositStatus",
              b.price_snapshot AS "priceSnapshot",
              b.date::text AS date,
+             (b.starts_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date::text AS "startsOn",
              b.time_start::text AS "timeStart",
              b.time_end::text AS "timeEnd",
              c.name AS "courtName",
@@ -110,7 +112,7 @@ export default async function ReservaExitoPage(props: Props) {
         city: booking.city,
         latitude: booking.latitude == null ? null : Number(booking.latitude),
         longitude: booking.longitude == null ? null : Number(booking.longitude),
-        date: booking.date,
+        startsOn: booking.startsOn,
         timeStart: booking.timeStart,
         timeEnd: booking.timeEnd,
         priceSnapshot: booking.priceSnapshot,

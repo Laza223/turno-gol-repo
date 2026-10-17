@@ -624,13 +624,13 @@ Fixtures usados en todos los casos (ver contrato):
 - **Prerrequisitos:** Sesión activa. Al menos 1 booking con `date >= hoy` (para Próximos) y 1 con `date < hoy` (para Historial), en cualquier tenant vinculado.
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/mis-reservas`.
-  2. Ver h1 `"Mis reservas"` dentro de la banda hero (MisReservasView.tsx:148-153).
-  3. Tab por defecto `"Próximos"` activo (`/mis-reservas?tab=proximos`, MisReservasView.tsx:163-165; page.tsx:52 default `'proximos'`).
-  4. Click en el tab `"Historial"` (`/mis-reservas?tab=historial`, MisReservasView.tsx:166-168) → navega y refiltra server-side (`b.date < today`, page.tsx:105-107).
-  5. Cada card muestra cancha, complejo, badge de estado (`STATUS_LABELS`: `Confirmado`/`Pago pendiente`/`Jugada`/`Cancelado (con reembolso)`/`Cancelado (sin reembolso)`/`Ausente`/`Expirado`, MisReservasView.tsx:66-74), horario y precio.
+  2. Ver h1 `"Mis reservas"`, sin banda hero, en el mundo del portal (`mis-reservas/layout.tsx` monta `PortalWorld`).
+  3. Tab por defecto `"Próximos"` activo (`/mis-reservas?tab=proximos`), dentro de un `<nav aria-label="Tus reservas">` con `aria-current="page"`.
+  4. Click en el tab `"Historial"` (`/mis-reservas?tab=historial`) → navega y refiltra en SQL (`page.tsx`, `tabCond`): Próximos = `confirmed`/`pending_payment` con `date >= hoy` o `ends_at > now()` (un turno en juego pasada la medianoche sigue en Próximos), de la más cercana a la más lejana y con los terminados de hoy al final; Historial, el resto, de la más nueva a la más vieja.
+  5. Cada card es un `<li>` con día ("Hoy", "Mañana" o "vie 13 mar", por el día calendario de `starts_at`), rango `"20:00 a 21:00"`, cancha con formato, complejo, badge (`Confirmada`, `Esperando seña`, `Jugada`, `Cancelada`, `Cancelada (sin reembolso)`, `Ausente`, `Expirada`) y la línea de seña o pago (con precios ocultos, sin monto del turno). La primera de Próximos (la próxima confirmada que no terminó) suma dirección, "Avisarle al grupo" y "Cómo llegar"; las confirmadas abren `/reserva/{id}/exito`.
   6. Si `bookings.length===0`: empty state con h2 `"Todavía no tenés reservas"` (tab proximos) o `"Historial vacío"` (tab historial) + botón `"Explorar complejos"` (MisReservasView.tsx:172-194).
 - **Comportamiento de componentes:**
-  - Loading: no hay skeleton visible en el snippet leído — la page es Server Component (`page.tsx`), la navegación entre tabs es un `<Link>` real (no client fetch).
+  - Loading: `mis-reservas/loading.tsx` (esqueleto con las alturas de las tarjetas reales); error propio en `mis-reservas/error.tsx`.
   - Anti-doble-submit: no aplica (navegación por link).
   - Feedback: ninguno (SSR puro por query param `tab`).
 - **Validación de datos:**

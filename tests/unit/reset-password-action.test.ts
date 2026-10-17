@@ -83,7 +83,7 @@ describe('resetPasswordAction', () => {
     expect(adminUpdateUserById).toHaveBeenCalledWith(
       'u1',
       expect.objectContaining({
-        app_metadata: expect.objectContaining({ force_password_change: null }),
+        app_metadata: expect.objectContaining({ force_password_change: null, staff_invited: null }),
       }),
     )
     expect(refreshSession).toHaveBeenCalled()

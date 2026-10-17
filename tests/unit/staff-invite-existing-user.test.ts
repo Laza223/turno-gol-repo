@@ -151,6 +151,7 @@ describe('inviteStaffAction — usuario ya registrado (#47)', () => {
         tenant_id: 'tenant-1',
         role: 'manager',
         force_password_change: true,
+        staff_invited: true,
       },
     })
   })

@@ -1,13 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import type {
-  AvailabilityResponse,
-  PublicSlot,
-  PublicSlotStatus,
-} from '@/modules/tenants/public.service'
+import type { AvailabilityResponse, PublicSlotStatus } from '@/modules/tenants/public.service'
 import { buildStoryModel, STORY_FAILURE_MESSAGES } from '@/modules/tenants/story-summary'
 import { MAX_HOURS } from '@/lib/story-image/model'
 
 type Court = AvailabilityResponse['courts'][number]
+type PublicSlot = Court['slots'][number]
 
 const TODAY = '2026-09-29' // martes
 const PORTAL = 'https://turnogol.app/m10'
@@ -23,6 +20,7 @@ function court(id: string, slots: PublicSlot[]): Court {
     surfaceType: 'synthetic',
     isCovered: false,
     hasLighting: true,
+    format: 5,
     slots,
   }
 }

@@ -132,6 +132,7 @@ describe('renderStoryPng', () => {
               surfaceType: 'synthetic',
               isCovered: false,
               hasLighting: true,
+              format: 5,
               slots: [{ time: '21:00', duration: 60, status: 'free', price: 2500000 }],
             },
           ],

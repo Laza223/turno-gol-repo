@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 import { addDays, artTodayStr } from '@/shared/dates/art'
-import type { AvailabilityResponse, PublicSlot } from '@/modules/tenants/public.service'
+import type { AvailabilityResponse } from '@/modules/tenants/public.service'
+
+type PublicSlot = AvailabilityResponse['courts'][number]['slots'][number]
 
 vi.mock('@/modules/tenants/public.service', () => ({
   getPublicTenant: vi.fn(),
@@ -46,6 +48,7 @@ function availability(slots: PublicSlot[], date = TODAY): AvailabilityResponse {
         surfaceType: 'synthetic',
         isCovered: false,
         hasLighting: true,
+        format: 5,
         slots,
       },
     ],

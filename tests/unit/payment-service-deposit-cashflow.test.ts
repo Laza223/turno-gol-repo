@@ -64,6 +64,7 @@ function wonBookingRow(): BookingRow {
     createdByStaff: null,
     completedByStaff: null,
     date: new Date('2027-01-01T00:00:00Z'),
+    startsAt: new Date('2027-01-01T19:00:00Z'),
     timeStart: '10:00',
     timeEnd: '11:00',
     type: 'spontaneous',

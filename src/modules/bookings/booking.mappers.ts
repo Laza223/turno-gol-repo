@@ -21,6 +21,7 @@ export function rowToBookingRow(row: BookingDbRow): BookingRow {
     tournamentId: row.tournamentId ?? null,
     createdByStaff: row.createdByStaff ?? null,
     date: row.date as Date,
+    startsAt: row.startsAt,
     timeStart: row.timeStart,
     timeEnd: row.timeEnd,
     type: row.type as BookingType,
@@ -58,6 +59,7 @@ export type BookingRawRow = {
   tournament_id: string | null
   created_by_staff: string | null
   date: string
+  starts_at: string
   time_start: string
   time_end: string
   type: string
@@ -89,6 +91,7 @@ export function rawRowToBookingRow(row: BookingRawRow): BookingRow {
     tournamentId: row.tournament_id,
     createdByStaff: row.created_by_staff,
     date: new Date(row.date),
+    startsAt: new Date(row.starts_at),
     timeStart: row.time_start,
     timeEnd: row.time_end,
     type: row.type as BookingType,

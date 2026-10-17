@@ -4,14 +4,14 @@ import Link from 'next/link'
 import { CalendarPlus, Navigation, Ticket } from 'lucide-react'
 import { buildDirectionsHref } from '@/lib/booking/directions'
 import { cn } from '@/lib/utils'
-import { icsEscapeText } from './ics-escape'
+import { buildBookingIcs } from './booking-ics'
 
 type Props = {
   tenantName: string
   courtName: string
   slug: string
-  /** "YYYY-MM-DD" */
-  date: string
+  /** "YYYY-MM-DD", día calendario en que se juega (no el operativo). */
+  startsOn: string
   /** "HH:MM:SS" o "HH:MM" */
   timeStart: string
   timeEnd: string
@@ -19,17 +19,6 @@ type Props = {
   city: string
   latitude: number | null
   longitude: number | null
-}
-
-// ART (UTC-3) → UTC en formato ICS: YYYYMMDDTHHMMSSZ
-function toIcsUtc(date: string, time: string): string {
-  const [y, mo, d] = date.split('-').map(Number)
-  const [hh, mm] = time.split(':').map(Number)
-  const dt = new Date(Date.UTC(y!, (mo ?? 1) - 1, d ?? 1, (hh ?? 0) + 3, mm ?? 0, 0))
-  return dt
-    .toISOString()
-    .replace(/[-:]/g, '')
-    .replace(/\.\d{3}/, '')
 }
 
 /**
@@ -47,8 +36,7 @@ const ROW_ICON = 'size-5 shrink-0 text-muted-foreground'
  * coordenadas), Agregar al calendario (un `.ics` armado en el navegador) y Ver mis reservas.
  */
 export default function BookingSuccessExtras(props: Props) {
-  const { tenantName, courtName, slug, date, timeStart, timeEnd, address, city } = props
-  const t1 = timeStart.slice(0, 5)
+  const { tenantName, courtName, slug, startsOn, timeStart, timeEnd, address, city } = props
 
   const mapsUrl = buildDirectionsHref(props)
 
@@ -57,27 +45,23 @@ export default function BookingSuccessExtras(props: Props) {
       .toISOString()
       .replace(/[-:]/g, '')
       .replace(/\.\d{3}/, '')
-    const ics = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//TurnoGol//Reservas//ES',
-      'BEGIN:VEVENT',
-      `UID:${slug}-${date}-${t1}@turnogol`,
-      `DTSTAMP:${dtStamp}`,
-      `DTSTART:${toIcsUtc(date, timeStart)}`,
-      `DTEND:${toIcsUtc(date, timeEnd)}`,
-      `SUMMARY:Fútbol en ${icsEscapeText(tenantName)} (${icsEscapeText(courtName)})`,
-      `LOCATION:${icsEscapeText(address)}\\, ${icsEscapeText(city)}`,
-      `DESCRIPTION:Reserva de cancha en ${icsEscapeText(tenantName)}.`,
-      'END:VEVENT',
-      'END:VCALENDAR',
-    ].join('\r\n')
+    const ics = buildBookingIcs({
+      slug,
+      tenantName,
+      courtName,
+      address,
+      city,
+      startsOn,
+      timeStart,
+      timeEnd,
+      dtStamp,
+    })
 
     const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `reserva-${slug}-${date}.ics`
+    a.download = `reserva-${slug}-${startsOn}.ics`
     document.body.appendChild(a)
     a.click()
     a.remove()

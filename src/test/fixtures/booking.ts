@@ -25,6 +25,8 @@ export const booking = (overrides: Partial<BookingRow> = {}): BookingRow => ({
   createdByStaff: null,
   completedByStaff: null,
   date: dateAt(0),
+  // 16:00 ART del día operativo (UTC-3): el instante físico que lee el jugador.
+  startsAt: new Date(dateAt(0).getTime() + 19 * 3600_000),
   timeStart: '16:00',
   timeEnd: '17:00',
   type: 'spontaneous',

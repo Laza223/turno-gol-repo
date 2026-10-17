@@ -55,6 +55,8 @@ const confirmedRow = {
   timeStart: '20:00:00',
   timeEnd: '21:00:00',
   date: '2030-06-17',
+  // Día operativo lunes 17; el turno se juega el martes 18 (closes_next_day): lo que lee el jugador.
+  startsOn: '2030-06-18',
 }
 
 describe('sin sesión: las pantallas de vuelta no pierden a dónde iba el jugador', () => {
@@ -100,6 +102,8 @@ describe('exito', () => {
     const share = screen.getByRole('link', { name: 'Avisarle al grupo' })
     const text = decodeURIComponent(share.getAttribute('href')!.split('?text=')[1]!)
     expect(text).toContain('Cancha 2 · Fútbol 7')
+    expect(text).toContain('martes 18 de junio')
+    expect(text).not.toContain('17 de junio')
     expect(text).toContain('Av. Siempreviva 742, Rosario')
     // El link del complejo sale del origen de la app (acá, el de la env del test), no de un
     // dominio hardcodeado.

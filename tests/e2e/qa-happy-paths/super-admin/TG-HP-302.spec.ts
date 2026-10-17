@@ -3,7 +3,7 @@ import { writeEvidence, runSql } from '../_qa/evidence'
 import { newAuthedContext, QA_EMAILS } from '../_qa/session'
 
 /**
- * TG-HP-302 — Dashboard global `/super-admin`.
+ * TG-HP-302 — Pulso `/super-admin`.
  * Rol: Super-admin (system_admin). Prereq: sesión super-admin activa. No
  * requiere tenant_subscriptions (MRR puede dar $0 sin datos — Hallazgo #4).
  * Ground truth vía runSql (COUNT/SUM directos, mismas tablas y filtros que
@@ -13,16 +13,16 @@ import { newAuthedContext, QA_EMAILS } from '../_qa/session'
  * src/app/(super-admin)/super-admin/_components/dashboard-view.tsx:64-216,
  * src/modules/super-admin/dashboard.service.ts:73-203.
  */
-test.describe('TG-HP-302 — Dashboard global', () => {
-  test('4 KPIs + secciones renderizan con datos reales de DB', async ({ browser }) => {
+test.describe('TG-HP-302 — Pulso', () => {
+  test('4 números + secciones renderizan con datos reales de DB', async ({ browser }) => {
     const ctx = await newAuthedContext(browser, QA_EMAILS.superadmin)
     try {
       const page = await ctx.newPage()
       await page.goto('/super-admin')
-      await expect(page.getByRole('heading', { name: 'Dashboard global' })).toBeVisible({
+      await expect(page.getByRole('heading', { name: 'Pulso' })).toBeVisible({
         timeout: 15_000,
       })
-      await expect(page.getByText('Métricas cross-tenant de la plataforma')).toBeVisible()
+      await expect(page.getByText('Cómo viene la plataforma hoy y esta semana.')).toBeVisible()
 
       // ── Ground truth ────────────────────────────────────────────────────
       const totalRows = await runSql<{ n: string }>('SELECT COUNT(*)::text AS n FROM tenants')
@@ -42,37 +42,33 @@ test.describe('TG-HP-302 — Dashboard global', () => {
       })
       const expectedMrrText = arsFormatter.format(Math.round(mrrCents) / 100)
 
-      // ── KPI cards (StatCard, contenedor .card-premium) ──────────────────
-      const mrrCard = page.locator('.card-premium').filter({ hasText: 'MRR' })
-      await expect(mrrCard).toContainText(expectedMrrText)
-
-      const tenantsCard = page.locator('.card-premium').filter({ hasText: 'Tenants' })
-      await expect(tenantsCard).toContainText(String(totalTenants))
-
-      await expect(
-        page.locator('.card-premium').filter({ hasText: 'Trials por vencer' }),
-      ).toBeVisible()
-      await expect(
-        page.locator('.card-premium').filter({ hasText: /Signups \(7 días\)/ }),
-      ).toBeVisible()
+      // ── Los 4 números (StatCard, contenedor .card-premium) ──────────────
+      for (const label of [
+        'Jugadores nuevos',
+        'Reservas online',
+        'Cargadas por el complejo',
+        'Complejos con movimiento',
+      ]) {
+        await expect(page.locator('.card-premium').filter({ hasText: label })).toBeVisible({
+          timeout: 15_000,
+        })
+      }
 
       // ── Secciones ────────────────────────────────────────────────────────
-      await expect(page.getByRole('heading', { name: 'Tenants por estado' })).toBeVisible()
-      await expect(
-        page.getByRole('heading', { name: /Trials por vencer \(≤7 días\)/ }),
-      ).toBeVisible()
-      await expect(
-        page.getByRole('heading', { name: /Signups recientes \(7 días\)/ }),
-      ).toBeVisible()
-      await expect(page.getByRole('heading', { name: 'Colas de jobs (pg-boss)' })).toBeVisible()
-      await expect(page.getByRole('heading', { name: 'Webhooks MP recientes' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Últimos 14 días' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Reservas online' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Jugadores nuevos' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Plata' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Altas de la semana' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: /Alta de complejos/ })).toBeVisible()
+      await expect(page.getByText('Salud técnica')).toBeVisible()
 
-      // Tenants por estado: la suma de los badges por status = total (misma
-      // fuente que la KPI "Tenants" — getTenantsByStatus() agrupa `tenants`).
-      const statusSection = page
+      // Plata: ingreso mensual y total de complejos contra el ground truth.
+      const moneySection = page
         .locator('section')
-        .filter({ has: page.getByRole('heading', { name: 'Tenants por estado' }) })
-      await expect(statusSection).toBeVisible()
+        .filter({ has: page.getByRole('heading', { name: 'Plata' }) })
+      await expect(moneySection).toContainText(expectedMrrText)
+      await expect(moneySection).toContainText(`Complejos: ${totalTenants} en total`)
 
       await writeEvidence('TG-HP-302', {
         status: 'pass',

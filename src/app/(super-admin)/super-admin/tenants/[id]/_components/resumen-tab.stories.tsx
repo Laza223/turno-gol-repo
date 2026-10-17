@@ -19,6 +19,7 @@ const meta = {
   parameters: { layout: 'padded' },
   args: {
     detail: tenantDetail(),
+    nowMs: Date.now(),
     impersonateAction: fn(async () => ({ success: true as const })),
     updateMarketplaceVisibilityAction: fn(async () => ({ success: true as const })),
     generateReferralLinkAction: fn(async () => ({

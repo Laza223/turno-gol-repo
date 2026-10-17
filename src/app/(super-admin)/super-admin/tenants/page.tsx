@@ -15,6 +15,11 @@ type SearchParams = {
   page?: string
 }
 
+// Fuera del componente: el lint de pureza no deja llamar a Date.now() en el render.
+function currentMs(): number {
+  return Date.now()
+}
+
 function parsePage(raw: string | undefined): number {
   const n = Number(raw)
   return Number.isInteger(n) && n > 0 ? n : 1
@@ -55,10 +60,13 @@ export default async function SuperAdminTenantsPage(props: {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Tenants"
-        subtitle={`${result.total} complejo${result.total === 1 ? '' : 's'} — vista global de soporte`}
+        title="Complejos"
+        subtitle={`${result.total} complejo${result.total === 1 ? '' : 's'}`}
         icon={
-          <Building2 className="h-6 w-6 text-violet-600 dark:text-violet-400" aria-hidden="true" />
+          <Building2
+            className="h-6 w-6 text-emerald-700 dark:text-emerald-400"
+            aria-hidden="true"
+          />
         }
       />
 
@@ -70,6 +78,7 @@ export default async function SuperAdminTenantsPage(props: {
         total={result.total}
         pageSize={PAGE_SIZE}
         hrefFor={tenantsHref}
+        nowMs={currentMs()}
       />
     </div>
   )

@@ -1,4 +1,4 @@
-import { and, count, desc, eq, ilike, or, type SQL } from 'drizzle-orm'
+import { and, count, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm'
 import { getDb, withDisposableWorkerDb, withTenantContext, type Db } from '@/shared/db/client'
 import {
   auditLogs,
@@ -8,6 +8,9 @@ import {
   tenants,
   tenantSubscriptions,
 } from '@/shared/db/schema'
+import { pgTs } from '@/modules/super-admin/activity.service'
+import { addDays } from '@/shared/dates/art'
+import { artDateOf, artDayRangeUtc } from '@/shared/time/art-date'
 import { listStaffRoster } from '@/modules/staff/staff.service'
 import { annualMonthlyEquivalent, monthlyListAmount } from '@/modules/billing/pricing'
 import { TENANT_STATUSES, isTenantStatus } from '@/modules/billing/billing.types'
@@ -46,7 +49,86 @@ export type TenantListFilters = {
   pageSize: number
 }
 
-type TenantListRow = {
+/**
+ * Pulso de un complejo: qué tan vivo está. Las reservas cuentan por fecha de
+ * CREACIÓN (cuándo se cargaron), no por el día del turno; los bloqueos no son
+ * reservas y quedan afuera.
+ */
+type TenantPulse = {
+  lastBookingAt: Date | null
+  /** Reservas creadas en los últimos 7 días ART (hoy y los seis anteriores). */
+  bookings7d: number
+  /** De esas, las que hizo un jugador desde el portal. */
+  onlineBookings7d: number
+  playersCount: number
+}
+
+const EMPTY_PULSE: TenantPulse = {
+  lastBookingAt: null,
+  bookings7d: 0,
+  onlineBookings7d: 0,
+  playersCount: 0,
+}
+
+/**
+ * Pulso de varios complejos con dos queries agregadas (no una por fila). Lee
+ * `bookings` y `player_tenant_relationships` cross-tenant: va por el rol worker,
+ * así que `db` tiene que venir de `withDisposableWorkerDb`. Mismo predicado de
+ * "reserva online" que `activity.service.ts`.
+ */
+async function pulseByTenant(db: Db, tenantIds: string[]): Promise<Map<string, TenantPulse>> {
+  const result = new Map<string, TenantPulse>()
+  if (tenantIds.length === 0) return result
+  const ids = sql.join(
+    tenantIds.map((id) => sql`${id}`),
+    sql`, `,
+  )
+  const today = artDateOf(new Date())
+  const { fromUtc } = artDayRangeUtc(addDays(today, -6), today)
+
+  const [bookingRows, playerRows] = await Promise.all([
+    db.execute(sql`
+      SELECT
+        b.tenant_id::text AS tenant_id,
+        MAX(b.created_at) AS last_booking_at,
+        COUNT(*) FILTER (WHERE b.created_at >= ${pgTs(fromUtc)})::int AS bookings_7d,
+        COUNT(*) FILTER (
+          WHERE b.created_at >= ${pgTs(fromUtc)}
+            AND b.type = 'spontaneous' AND b.created_by_staff IS NULL
+            AND b.player_id IS NOT NULL AND b.status <> 'expired'
+        )::int AS online_7d
+      FROM bookings b
+      WHERE b.tenant_id IN (${ids}) AND b.type <> 'block' AND b.status <> 'expired'
+      GROUP BY b.tenant_id
+    `),
+    db.execute(sql`
+      SELECT r.tenant_id::text AS tenant_id, COUNT(*)::int AS n
+      FROM player_tenant_relationships r
+      WHERE r.tenant_id IN (${ids})
+      GROUP BY r.tenant_id
+    `),
+  ])
+
+  for (const r of bookingRows as unknown as Array<{
+    tenant_id: string
+    last_booking_at: Date | string | null
+    bookings_7d: number
+    online_7d: number
+  }>) {
+    result.set(r.tenant_id, {
+      ...EMPTY_PULSE,
+      lastBookingAt: r.last_booking_at ? new Date(r.last_booking_at) : null,
+      bookings7d: r.bookings_7d,
+      onlineBookings7d: r.online_7d,
+    })
+  }
+  for (const r of playerRows as unknown as Array<{ tenant_id: string; n: number }>) {
+    result.set(r.tenant_id, { ...(result.get(r.tenant_id) ?? EMPTY_PULSE), playersCount: r.n })
+  }
+  return result
+}
+
+type TenantListRow = TenantPulse & {
   id: string
   name: string
   slug: string
@@ -178,8 +260,14 @@ async function listTenantsWith(db: Db, filters: TenantListFilters): Promise<Tena
     .leftJoin(plans, eq(plans.id, tenantSubscriptions.planId))
     .where(where)
 
+  const pulse = await pulseByTenant(
+    db,
+    rows.map((r) => r.id),
+  )
+
   return {
     rows: rows.map((r) => ({
+      ...(pulse.get(r.id) ?? EMPTY_PULSE),
       id: r.id,
       name: r.name,
       slug: r.slug,
@@ -249,6 +337,7 @@ export type TenantDetail = {
      *  se expone el `referred_by_tenant_id` crudo. */
     referrerName: string | null
   }
+  pulse: TenantPulse
   subscription: {
     status: SubscriptionStatus
     planId: string
@@ -339,32 +428,35 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
 
   // tenant_subscriptions tiene RLS+FORCE (caza-bugs #10) — pool de servicio,
   // no el `db` de arriba (restringido, sin contexto de tenant seteado acá).
-  const subRows = await withDisposableWorkerDb(WORKER_READ_TIMEOUT_MS, (workerDb) =>
-    workerDb
-      .select({
-        status: tenantSubscriptions.status,
-        planId: tenantSubscriptions.planId,
-        billedCourts: tenantSubscriptions.billedCourts,
-        pendingBilledCourts: tenantSubscriptions.pendingBilledCourts,
-        priceFirstCourtCents: plans.priceFirstCourtCents,
-        priceExtraCourtCents: plans.priceExtraCourtCents,
-        annualDiscountBps: plans.annualDiscountBps,
-        billingCycle: tenantSubscriptions.billingCycle,
-        currentPeriodStart: tenantSubscriptions.currentPeriodStart,
-        currentPeriodEnd: tenantSubscriptions.currentPeriodEnd,
-        mpSubscriptionId: tenantSubscriptions.mpSubscriptionId,
-        pendingChangeAt: tenantSubscriptions.pendingChangeAt,
-        canceledAt: tenantSubscriptions.canceledAt,
-        cancellationReason: tenantSubscriptions.cancellationReason,
-        scheduledDeletionAt: tenantSubscriptions.scheduledDeletionAt,
-        dunningStartedAt: tenantSubscriptions.dunningStartedAt,
-        lastPaymentAt: tenantSubscriptions.lastPaymentAt,
-        lastPaymentFailedAt: tenantSubscriptions.lastPaymentFailedAt,
-      })
-      .from(tenantSubscriptions)
-      .leftJoin(plans, eq(plans.id, tenantSubscriptions.planId))
-      .where(eq(tenantSubscriptions.tenantId, tenantId))
-      .limit(1),
+  const [subRows, pulse] = await withDisposableWorkerDb(WORKER_READ_TIMEOUT_MS, (workerDb) =>
+    Promise.all([
+      workerDb
+        .select({
+          status: tenantSubscriptions.status,
+          planId: tenantSubscriptions.planId,
+          billedCourts: tenantSubscriptions.billedCourts,
+          pendingBilledCourts: tenantSubscriptions.pendingBilledCourts,
+          priceFirstCourtCents: plans.priceFirstCourtCents,
+          priceExtraCourtCents: plans.priceExtraCourtCents,
+          annualDiscountBps: plans.annualDiscountBps,
+          billingCycle: tenantSubscriptions.billingCycle,
+          currentPeriodStart: tenantSubscriptions.currentPeriodStart,
+          currentPeriodEnd: tenantSubscriptions.currentPeriodEnd,
+          mpSubscriptionId: tenantSubscriptions.mpSubscriptionId,
+          pendingChangeAt: tenantSubscriptions.pendingChangeAt,
+          canceledAt: tenantSubscriptions.canceledAt,
+          cancellationReason: tenantSubscriptions.cancellationReason,
+          scheduledDeletionAt: tenantSubscriptions.scheduledDeletionAt,
+          dunningStartedAt: tenantSubscriptions.dunningStartedAt,
+          lastPaymentAt: tenantSubscriptions.lastPaymentAt,
+          lastPaymentFailedAt: tenantSubscriptions.lastPaymentFailedAt,
+        })
+        .from(tenantSubscriptions)
+        .leftJoin(plans, eq(plans.id, tenantSubscriptions.planId))
+        .where(eq(tenantSubscriptions.tenantId, tenantId))
+        .limit(1),
+      pulseByTenant(workerDb, [tenantId]),
+    ]),
   )
 
   // courts es tabla RLS → lectura dentro del contexto del tenant (spec §4).
@@ -403,6 +495,7 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
 
   return {
     tenant: { ...tenantRest, settings: tenantRest.settings as TenantSettings, referrerName },
+    pulse: pulse.get(tenantId) ?? EMPTY_PULSE,
     subscription: subRows[0] ?? null,
     courts: courtRows,
     staff: staffRows,
@@ -431,6 +524,10 @@ type RecentBookingRow = {
   courtName: string | null
   priceSnapshot: number
   createdAt: Date
+  type: string
+  depositStatus: string
+  /** `online` = la hizo un jugador desde el portal; `staff` = la cargó el complejo. */
+  origin: 'online' | 'staff'
 }
 
 export type TenantActivity = {
@@ -498,6 +595,10 @@ export async function getTenantActivity(
         courtName: courts.name,
         priceSnapshot: bookings.priceSnapshot,
         createdAt: bookings.createdAt,
+        type: bookings.type,
+        depositStatus: bookings.depositStatus,
+        createdByStaff: bookings.createdByStaff,
+        playerId: bookings.playerId,
       })
       .from(bookings)
       .leftJoin(courts, eq(courts.id, bookings.courtId))
@@ -513,7 +614,13 @@ export async function getTenantActivity(
       totalLogs: totalRows[0]?.total ?? 0,
       page: opts.page,
       pageSize: opts.pageSize,
-      recentBookings,
+      recentBookings: recentBookings.map(({ createdByStaff, playerId, ...b }) => ({
+        ...b,
+        origin:
+          b.type === 'spontaneous' && createdByStaff === null && playerId !== null
+            ? ('online' as const)
+            : ('staff' as const),
+      })),
     }
   })
 }

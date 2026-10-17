@@ -10,7 +10,7 @@ import { TenantsTable } from './tenants-table'
  * importa el tipo directamente (`tenants.service.ts` es server-only).
  */
 const meta = {
-  title: 'SuperAdmin/Tenants/TenantsTable',
+  title: 'SuperAdmin/Complejos/TenantsTable',
   component: TenantsTable,
   parameters: { layout: 'padded' },
   args: {
@@ -19,22 +19,21 @@ const meta = {
     total: tenantListRows().length,
     pageSize: 20,
     hrefFor: (p: number) => `/super-admin/tenants?page=${p + 1}`,
+    nowMs: Date.now(),
   },
 } satisfies Meta<typeof TenantsTable>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Activo, trial, moroso y cancelado uno al lado del otro — cubre badge + MRR "—" vs con monto. */
+/** Activo, prueba, moroso y cancelado uno al lado del otro — cubre badge + MRR "—" vs con monto. */
 export const Default: Story = {}
 
 export const SinResultados: Story = {
   args: { rows: tenantListEmpty().rows, total: 0 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(
-      canvas.getByText('No hay tenants que coincidan con los filtros.'),
-    ).toBeInTheDocument()
+    await expect(canvas.getByText('No hay complejos que coincidan')).toBeInTheDocument()
   },
 }
 
@@ -53,7 +52,7 @@ export const PaginaFueraDeRango: Story = {
       '/super-admin/tenants?page=1',
     )
     await expect(canvas.queryByRole('navigation')).toBeNull()
-    await expect(canvas.queryByText('No hay tenants que coincidan con los filtros.')).toBeNull()
+    await expect(canvas.queryByText('No hay complejos que coincidan')).toBeNull()
   },
 }
 

@@ -2,12 +2,13 @@ import { formatArs } from '@/lib/format'
 import { buildPriceBreakdown } from '@/modules/billing/pricing'
 import type { TenantDetail } from '@/modules/super-admin/tenants.service'
 import { TenantStatusBadge } from '../../../_components/tenant-status-visual'
-import { formatDateArt, formatDateTimeArt } from '../../_components/format'
+import { TONE_TEXT } from '@/lib/status-tone'
+import { formatDateWithYear, formatShortDateTime } from '../../../_components/sa-format'
 import { Card, Dt } from './detail-primitives'
 
 /**
- * Tab "Suscripción" del detalle de tenant: estado de la suscripción SaaS +
- * dunning/pagos. Presentacional puro.
+ * Tab "Suscripción" del detalle de complejo: estado de la suscripción +
+ * cobros y reintentos. Presentacional puro.
  *
  * Desde el precio por cancha (decisión 2026-09-17) el dato útil ya no es el
  * nombre del plan — hay uno solo — sino por cuántas canchas se factura y
@@ -21,7 +22,7 @@ export function SuscripcionTab({ detail }: { detail: TenantDetail }) {
     return (
       <Card title="Suscripción">
         <p className="text-sm text-muted-foreground">
-          El complejo no tiene fila en tenant_subscriptions (todavía no inició la suscripción SaaS).
+          El complejo todavía no inició la suscripción a TurnoGol.
         </p>
       </Card>
     )
@@ -66,7 +67,7 @@ export function SuscripcionTab({ detail }: { detail: TenantDetail }) {
             <TenantStatusBadge status={sub.status} />
           </Dt>
           <Dt label="Canchas facturadas">
-            {sub.billedCourts}
+            <span className="tabular-nums">{sub.billedCourts}</span>
             {breakdown && breakdown.extraCourts > 0 && (
               <span className="text-muted-foreground">
                 {' '}
@@ -94,29 +95,30 @@ export function SuscripcionTab({ detail }: { detail: TenantDetail }) {
           </Dt>
           <Dt label="Ciclo">{sub.billingCycle === 'annual' ? 'Anual' : 'Mensual'}</Dt>
           <Dt label="Período actual">
-            {formatDateArt(sub.currentPeriodStart)} → {formatDateArt(sub.currentPeriodEnd)}
+            {formatDateWithYear(sub.currentPeriodStart)} →{' '}
+            {formatDateWithYear(sub.currentPeriodEnd)}
           </Dt>
-          <Dt label="Preapproval MP">{sub.mpSubscriptionId ?? '—'}</Dt>
+          <Dt label="Suscripción de MercadoPago">{sub.mpSubscriptionId ?? '—'}</Dt>
           {sub.pendingBilledCourts !== null && (
             <Dt label="Cambio pendiente">
               Pasa a {sub.pendingBilledCourts} cancha{sub.pendingBilledCourts === 1 ? '' : 's'}
               {pending && ` (${formatArs(pending.monthlyEffectiveCents)}/mes)`}
               {sub.pendingChangeAt
-                ? ` el ${formatDateArt(sub.pendingChangeAt)}`
+                ? ` el ${formatDateWithYear(sub.pendingChangeAt)}`
                 : ' al cierre del período'}
             </Dt>
           )}
         </dl>
       </Card>
 
-      <Card title="Dunning y pagos">
+      <Card title="Cobros y reintentos">
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Dt label="Último pago">{formatDateTimeArt(sub.lastPaymentAt)}</Dt>
-          <Dt label="Último pago fallido">{formatDateTimeArt(sub.lastPaymentFailedAt)}</Dt>
-          <Dt label="Dunning iniciado">{formatDateTimeArt(sub.dunningStartedAt)}</Dt>
+          <Dt label="Último pago">{formatShortDateTime(sub.lastPaymentAt)}</Dt>
+          <Dt label="Último cobro fallido">{formatShortDateTime(sub.lastPaymentFailedAt)}</Dt>
+          <Dt label="Reintentos desde">{formatShortDateTime(sub.dunningStartedAt)}</Dt>
           {sub.canceledAt && (
             <Dt label="Cancelada">
-              {formatDateTimeArt(sub.canceledAt)}
+              {formatShortDateTime(sub.canceledAt)}
               {sub.cancellationReason && (
                 <span className="text-muted-foreground"> — “{sub.cancellationReason}”</span>
               )}
@@ -124,16 +126,16 @@ export function SuscripcionTab({ detail }: { detail: TenantDetail }) {
           )}
           {sub.scheduledDeletionAt && (
             <Dt label="Eliminación programada">
-              <span className="text-red-600 dark:text-red-400">
-                {formatDateTimeArt(sub.scheduledDeletionAt)}
+              <span className={TONE_TEXT.destructive}>
+                {formatShortDateTime(sub.scheduledDeletionAt)}
               </span>
             </Dt>
           )}
         </dl>
         <p className="mt-4 text-xs text-muted-foreground">
-          No existe tabla de pagos SaaS en v1: el historial se reduce a los anclajes de la
-          suscripción (último pago / fallo / dunning). Los eventos completos están en la pestaña
-          Actividad (audit trail).
+          Por ahora no se guarda un listado de pagos: se muestran el último pago, el último cobro
+          fallido y desde cuándo se reintenta. Los movimientos completos están en la pestaña
+          Historial.
         </p>
       </Card>
     </div>

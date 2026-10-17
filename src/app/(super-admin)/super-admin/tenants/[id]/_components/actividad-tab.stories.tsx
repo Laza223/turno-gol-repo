@@ -8,7 +8,7 @@ import {
 import { ActividadTab } from './actividad-tab'
 
 /**
- * Tab "Actividad": audit trail paginado (GET, sin JS) + últimas 10 reservas.
+ * Pestaña "Historial": eventos paginados (GET, sin JS) + últimas 10 reservas.
  * `activity` es un fixture estructuralmente compatible con `TenantActivity`
  * real (ver el comentario en resumen-tab.stories.tsx sobre por qué no se
  * importa el tipo directamente).
@@ -38,13 +38,13 @@ export const SinActividad: Story = {
   args: { activity: tenantActivityEmpty() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Sin eventos de auditoría.')).toBeInTheDocument()
+    await expect(canvas.getByText('Todavía no hay movimientos.')).toBeInTheDocument()
     await expect(canvas.getByText('Sin reservas.')).toBeInTheDocument()
   },
 }
 
 /**
- * `?actPage=99` con eventos: la tarjeta no puede decir "Audit trail (N)" y
+ * `?actPage=99` con eventos: la tarjeta no puede decir "Historial (N)" y
  * "Sin eventos" a la vez. Dice que la página no existe y no dibuja paginador.
  */
 export const PaginaFueraDeRango: Story = {
@@ -58,9 +58,7 @@ export const PaginaFueraDeRango: Story = {
       'href',
       expect.stringContaining('actPage=1'),
     )
-    await expect(
-      canvas.queryByRole('navigation', { name: 'Paginación del audit trail' }),
-    ).toBeNull()
+    await expect(canvas.queryByRole('navigation', { name: 'Paginación del historial' })).toBeNull()
   },
 }
 

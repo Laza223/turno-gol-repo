@@ -71,6 +71,13 @@ export async function resetPasswordAction(
     if (error.code === 'same_password') {
       return { status: 'error', message: 'Esa ya es tu contraseña actual. Elegí una diferente.' }
     }
+    if (error.code === 'weak_password') {
+      return {
+        status: 'error',
+        message:
+          'Esa contraseña es fácil de adivinar o está en una base de datos de filtraciones conocidas. Probá con otra.',
+      }
+    }
     captureException(error)
     return { status: 'error', message: 'No pudimos actualizar la contraseña. Probá de nuevo.' }
   }

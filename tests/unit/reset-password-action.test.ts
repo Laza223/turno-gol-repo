@@ -62,6 +62,13 @@ describe('resetPasswordAction', () => {
     expect(adminUpdateUserById).not.toHaveBeenCalled()
   })
 
+  it('Supabase rechaza la contraseña por débil/filtrada → mensaje que dice por qué', async () => {
+    updateUser.mockResolvedValueOnce({ error: { code: 'weak_password' } } as never)
+    const res = await resetPasswordAction({ status: 'idle' }, fd())
+    expect(res.status).toBe('error')
+    if (res.status === 'error') expect(res.message).toMatch(/filtraciones/i)
+  })
+
   it('bajo impersonación de SuperAdmin, rechaza SIN llamar a Supabase Auth (evitaría cambiar la contraseña del SuperAdmin real)', async () => {
     // supabase.auth.updateUser() actúa sobre la sesión de cookies, que durante
     // una impersonación es la del SuperAdmin — alcanzable escribiendo la URL

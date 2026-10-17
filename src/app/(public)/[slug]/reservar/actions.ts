@@ -254,14 +254,13 @@ export async function startGoogleLoginFromReservar(
       values: echoFields(formData, GATE_ECHO),
     }
   }
-  const cookieBase = {
+  // Los flags van escritos en cada `.set` (no en un objeto compartido): `cookie-flags.test.ts` los
+  // exige literales en el bloque.
+  cookieStore.set({
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-  } as const
-  cookieStore.set({
-    ...cookieBase,
     name: GOOGLE_TERMS_COOKIE_NAME,
     value: buildGoogleTermsCookie(CURRENT_TERMS_VERSION),
     maxAge: Math.floor(GOOGLE_TERMS_COOKIE_TTL_MS / 1000),
@@ -272,7 +271,10 @@ export async function startGoogleLoginFromReservar(
   const intent = parseBookingNext(safeNext)
   if (intent) {
     cookieStore.set({
-      ...cookieBase,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
       name: BOOKING_INTENT_COOKIE_NAME,
       value: signCookieBookingIntent(intent.fields),
       maxAge: Math.floor(BOOKING_INTENT_COOKIE_TTL_MS / 1000),

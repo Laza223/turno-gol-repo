@@ -13,7 +13,7 @@ import { tomorrowDateIsoArt } from '../../_helpers/booking-seed'
  * CASO DE PLATA: la fila de bookings/payments queda VIVA a propósito (no se
  * limpia en finally) para que los verificadores la inspeccionen.
  *
- * Evidence anchors: reservar/page.tsx:62-80, reservar/actions.ts:185-206,
+ * Evidence anchors: reservar/page.tsx:62-80, reservar/actions.ts:190-226,
  * mock-mp/checkout/MockCheckoutView.tsx:35-45,80-86, mock-mp/checkout/actions.ts:43-98,
  * payment.service.ts:224-241,280-315, booking.concurrency.ts:21-57,
  * BookingSuccessCard.tsx:52-54,65-68, PaymentStatusWatcher.tsx:67-114,116-123.

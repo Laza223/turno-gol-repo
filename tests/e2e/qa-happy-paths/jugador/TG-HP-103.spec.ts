@@ -8,7 +8,7 @@ import { cleanupBookingsByIds, tomorrowDateIsoArt } from '../../_helpers/booking
  * Rol: Jugador logueado (playerStorageState). Prereq: tenant Demo
  * (requires_deposit=false), slot libre cancha ...010, 13:00 mañana.
  * Evidence anchors: reservar/page.tsx:62-80,84-102,123-135 (validación, slot, métodos y pay),
- * ConfirmBookingButton.tsx:44-54, reservar/actions.ts:185-206,220,279-286,
+ * ConfirmBookingButton.tsx:44-54, reservar/actions.ts:190-226,284-290,
  * booking.service.ts:415-437, BookingSuccessCard.tsx:52-54,60-63.
  */
 

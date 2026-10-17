@@ -60,6 +60,13 @@ describe('scrubEvent', () => {
     expect(JSON.stringify(evento)).toContain('DrizzleQueryError')
   })
 
+  it('tapa la clave sensible aunque sea la PRIMERA de query_string (llega sin "?")', () => {
+    const evento = { request: { query_string: 'token=abc&foo=1' } }
+    scrubEvent(evento)
+
+    expect(evento.request.query_string).toBe('token=[REDACTED]&foo=1')
+  })
+
   it('conserva lo que ya hacía: extras, contextos, usuario, cabeceras y consulta de la URL', () => {
     const evento = {
       request: {

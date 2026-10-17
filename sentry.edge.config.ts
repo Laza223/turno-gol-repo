@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 import { isValidDsn, isDroppableDomainError } from '@/lib/sentry-event-filter'
-import { scrubEvent } from '@/lib/sentry-pii-scrub'
+import { scrubEvent, scrubTransaction } from '@/lib/sentry-pii-scrub'
 
 const dsn = process.env.SENTRY_DSN
 
@@ -28,6 +28,10 @@ if (isValidDsn(dsn)) {
       // El cuarto entrypoint del reporte de errores, y el único que no tapaba
       // NADA (AUD-14). Misma función que el navegador, el web y los workers.
       scrubEvent(event)
+      return event
+    },
+    beforeSendTransaction(event) {
+      scrubTransaction(event)
       return event
     },
   })

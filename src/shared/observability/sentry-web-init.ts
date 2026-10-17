@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
-import { scrubEvent } from '@/lib/sentry-pii-scrub'
+import { scrubEvent, scrubTransaction } from '@/lib/sentry-pii-scrub'
 import { isValidDsn, isDroppableDomainError } from '@/lib/sentry-event-filter'
 import { registerSentryErrorSink } from './error-sink'
 
@@ -99,6 +99,12 @@ export function ensureWebSentry(): boolean {
       // `scrubEvent` y no acá para que el web y los workers no tapen distinto:
       // los dos venían dejando afuera las migas y la excepción (H-8).
       scrubEvent(event)
+      return event
+    },
+    beforeSendTransaction(event) {
+      if (process.env.NODE_ENV !== 'production') return null
+      // Las trazas llevan la URL completa (nombre y spans): mismo tapado que los errores.
+      scrubTransaction(event)
       return event
     },
   })

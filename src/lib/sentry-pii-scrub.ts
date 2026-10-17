@@ -81,6 +81,13 @@ export function scrubQueryString(qs: string): string {
     .replace(ENCODED_BOOKING_INTENT, 'booking_intent$1[REDACTED]')
 }
 
+// Un query string SIN el `?` inicial (`token=abc&x=1`: así llega `request.query_string` y los
+// atributos `url.query`/`http.query`) no lo ve `scrubQueryString`, que exige `[?&]` delante: si la
+// clave sensible va primera se escapaba. Se antepone el `?` para pasar por la misma función.
+function scrubBareQueryString(qs: string): string {
+  return scrubQueryString(`?${qs}`).slice(1)
+}
+
 /**
  * Tapado completo de un evento antes de mandarlo al reporte de errores.
  *
@@ -122,7 +129,7 @@ export function scrubEvent(event: ScrubbableEvent): void {
       if (h.Referer) h.Referer = scrubQueryString(h.Referer)
     }
     if (typeof event.request.query_string === 'string') {
-      event.request.query_string = scrubQueryString(event.request.query_string)
+      event.request.query_string = scrubBareQueryString(event.request.query_string)
     }
     if (typeof event.request.url === 'string') {
       event.request.url = scrubQueryString(event.request.url)
@@ -134,4 +141,45 @@ export function scrubEvent(event: ScrubbableEvent): void {
   if (event.exception) event.exception = scrubObject(event.exception)
   // Se conserva el id para poder rastrear; se van correo, nombre de usuario e IP.
   if (event.user) event.user = { id: event.user.id }
+}
+
+/**
+ * Tapado de una TRANSACCIÓN (traza de rendimiento) antes de mandarla.
+ *
+ * `beforeSend` no ve transacciones: sin esto, el GET a `/<slug>/reservar?...&booking_intent=...`,
+ * a `/verify?token=...` o con `?email=` salía con la URL entera en el nombre de la transacción y
+ * en los atributos de los spans (`url.full`, `http.url`, `http.target`, `url.query`).
+ *
+ * No hay `beforeSendSpan` aparte a propósito: en este modo los spans hijos viajan DENTRO de la
+ * transacción, y esta función los recorre. Una segunda pasada duplicaría la lógica.
+ */
+type ScrubbableSpan = { description?: unknown; data?: unknown }
+type ScrubbableTransaction = ScrubbableEvent & { transaction?: unknown; spans?: ScrubbableSpan[] }
+
+// Atributos de span que traen solo la query, sin `?` (ver `scrubBareQueryString`).
+const QUERY_ONLY_ATTRIBUTES: ReadonlySet<string> = new Set(['url.query', 'http.query'])
+
+function scrubSpanData(data: unknown): unknown {
+  const scrubbed = scrubObject(data)
+  if (scrubbed === null || typeof scrubbed !== 'object' || Array.isArray(scrubbed)) return scrubbed
+  const out = scrubbed as Record<string, unknown>
+  for (const key of QUERY_ONLY_ATTRIBUTES) {
+    const value = (data as Record<string, unknown>)[key]
+    if (typeof value === 'string') out[key] = scrubBareQueryString(value)
+  }
+  return out
+}
+
+export function scrubTransaction(event: ScrubbableTransaction): void {
+  scrubEvent(event)
+  if (typeof event.transaction === 'string') {
+    event.transaction = scrubQueryString(event.transaction)
+  }
+  if (Array.isArray(event.spans)) {
+    for (const span of event.spans) {
+      if (typeof span.description === 'string')
+        span.description = scrubQueryString(span.description)
+      if (span.data) span.data = scrubSpanData(span.data)
+    }
+  }
 }

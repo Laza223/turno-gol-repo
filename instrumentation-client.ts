@@ -1,5 +1,5 @@
 import { isValidDsn, isDroppableDomainError } from '@/lib/sentry-event-filter'
-import { scrubEvent } from '@/lib/sentry-pii-scrub'
+import { scrubEvent, scrubTransaction } from '@/lib/sentry-pii-scrub'
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN
 
@@ -57,6 +57,12 @@ function initSentry(): void {
         scrubEvent(event)
         return event
       },
+      beforeSendTransaction(event) {
+        if (process.env.NODE_ENV !== 'production') return null
+        // Las trazas llevan la URL completa (nombre y spans): mismo tapado que los errores.
+        scrubTransaction(event)
+        return event
+      },
       beforeBreadcrumb(breadcrumb) {
         if (breadcrumb.category === 'ui.click') return null
         return breadcrumb
@@ -73,8 +79,7 @@ function initSentry(): void {
 // errores de consola. Preview de Vercel corre con NODE_ENV=production, asi que
 // sigue reportando.
 if (isValidDsn(dsn) && process.env.NODE_ENV === 'production') {
-  const ric = (globalThis as { requestIdleCallback?: (cb: () => void) => void })
-    .requestIdleCallback
+  const ric = (globalThis as { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback
   if (typeof ric === 'function') {
     ric(initSentry)
   } else {

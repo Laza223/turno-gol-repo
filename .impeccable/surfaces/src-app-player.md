@@ -34,7 +34,7 @@ Mundo: La Reserva (DESIGN.md, sección del portal), igual que la página del com
 Bloques en este orden. En el celular es una columna; en escritorio, la misma columna centrada.
 
 1. **Quién sos:** nombre y email, sin banda hero.
-2. **Tus datos:** nombre (obligatorio), apellido (opcional), teléfono y zona. El email no se edita. Los errores van al lado de su campo y "Guardado" desaparece si se vuelve a editar.
+2. **Tus datos:** nombre (obligatorio), apellido (opcional), teléfono y zona. El email no se edita (se muestra en "Quién sos"). Los errores van al lado de su campo y "Guardado" desaparece si se vuelve a editar.
 3. **Favoritos:** los complejos guardados, cada uno a un toque de su página. Si no hay, una salida a Explorar.
 4. **Tu actividad:** partidos jugados, complejos y racha. Sin puntajes ni rankings. Con cero, una salida a reservar.
 5. **Tema** (el `ThemeToggle` en su variante del portal) y **Salir**.
@@ -43,10 +43,10 @@ Bloques en este orden. En el celular es una columna; en escritorio, la misma col
 
 ## Eliminar la cuenta (`/eliminar-cuenta`), PR 2.4b
 
-- Una sola explicación de qué se borra y qué queda, en palabras simples: reservas y pagos quedan sin tu nombre para el complejo. La ley se nombra una sola vez, al final.
+- Una sola explicación de qué se borra y qué queda, en palabras simples: reservas y pagos quedan sin tu nombre para el complejo. La ley se nombra una sola vez, al pie de esa explicación.
 - Si hay reservas confirmadas por jugar, avisa cuántas, con la concordancia bien, y ofrece verlas antes.
 - "Descargar mis datos" está ahí mismo, sin ir a Cuenta y volver.
-- El confirmar compara el email sin distinguir mayúsculas ni espacios y con `autoCapitalize="none"`. El botón destructivo no ocupa todo el ancho apenas termina el texto.
+- El confirmar compara el email sin distinguir mayúsculas ni espacios en los bordes y con `autoCapitalize="none"`. En la página, el botón destructivo no ocupa todo el ancho apenas termina el texto; en el diálogo, debajo de `sm`, los dos botones se apilan a todo el ancho (rojo arriba).
 - Un solo color de alarma, el del botón final. No se apilan tarjetas roja, naranja y ámbar.
 
 ## Contratos que se conservan o cambian a propósito

@@ -50,7 +50,7 @@ El pedido original traía supuestos de arquitectura genérica. Verificados uno p
 | Premisa | Realidad en código |
 |---|---|
 | Storage = Cloudflare R2 | **Correcta.** `src/shared/storage/r2.ts` (AWS S3 SDK → endpoint R2). CLAUDE.md dice "Supabase Storage" y es engañoso: Supabase es **solo Auth**. |
-| Avatar de jugador subible | **No existe.** `(player)/perfil` es texto puro. Los uploads R2 son: logo tenant, portada tenant, fotos de cancha (Server Actions, sin presigned URLs). |
+| Avatar de jugador subible | **No existe.** `(player)/configuracion` (la Cuenta) es texto puro. Los uploads R2 son: logo tenant, portada tenant, fotos de cancha (Server Actions, sin presigned URLs). |
 | Estado cliente = Zustand | **Falsa.** RSC + Server Actions + `useActionState`/`useFormStatus`. |
 | Multi-tenant por subdominios | **Falsa.** Portal público por `/[slug]` + claim JWT `tenant_id` para staff. Cero código de subdominio. |
 | Jugador con registro/login tradicional | **Falsa.** Jugador = Magic Link passwordless; alta al reservar (LoginGate). `/register` es para dueños (staff email+password). |
@@ -673,110 +673,95 @@ Fixtures usados en todos los casos (ver contrato):
 
 ---
 
-## TG-HP-109 — Editar perfil `/perfil` (nombre/apellido/teléfono/zona)
+## TG-HP-109 — Editar tus datos en `/configuracion` (nombre/apellido/teléfono/zona)
 - **Rol:** Jugador
-- **Prerrequisitos:** Sesión activa.
+- **Prerrequisitos:** Sesión activa. Desde el 2.4b la Cuenta es una sola página; `/perfil` redirige a `/configuracion` (con `?tab=datos`, a `#tus-datos`).
 - **Flujo de navegación (UI steps):**
-  1. Navegar a `http://localhost:3000/perfil` (tab default `"datos"`, page.tsx:68-70).
-  2. Ver header con avatar (imagen real si `avatarUrl` no es null, o fallback de iniciales — NO hay control de upload, ver GAPS) y nombre/email (ProfileHeaderNav.tsx:38-56).
-  3. Rellenar `id="first_name"`, `id="last_name"` (requeridos), `PhoneInput` `id="phone"`, `id="preferred_area"` (placeholder `"Ej: Palermo, Villa Crespo..."`) — el campo `email` está deshabilitado/solo lectura con nota `"El email no puede modificarse."` (ProfileForm.tsx:111-117).
-  4. Click en `"Guardar cambios"` (ProfileForm.tsx:44).
-  5. Esperar mensaje `role="status"` `"Perfil actualizado"` debajo del form (ProfileForm.tsx:126-130).
+  1. Navegar a `http://localhost:3000/configuracion`. h1 `"Mi cuenta"`.
+  2. Ver el bloque "Quién sos" (nombre completo, email y la nota `"El email no se puede cambiar."`). No hay control de foto.
+  3. En "Tus datos", rellenar `id="first_name"` (obligatorio), `id="last_name"` (opcional), `PhoneInput` `id="phone"`, `id="preferred_area"` (placeholder `"Ej: Palermo, Villa Crespo"`). El email no es un campo.
+  4. Click en `"Guardar cambios"`.
+  5. Esperar mensaje `role="status"` `"Guardado"` junto al botón; desaparece si se vuelve a editar un campo.
 - **Comportamiento de componentes:**
-  - Loading: botón deshabilitado vía `useFormStatus().pending`, texto `"Guardando…"` (ProfileForm.tsx:36-47).
-  - Anti-doble-submit: `disabled={pending}` (línea 41-42).
-  - Feedback: NO hay toast — mensaje `role="status"` inline `"Perfil actualizado"` solo tras `didSubmit && state.success` (líneas 126-130); errores en `role="alert"` (líneas 121-125).
+  - Loading: botón deshabilitado (`pending` de `useActionState`), texto `"Guardando…"`. La action se llama a mano desde `onSubmit`, no con `<form action>`: así React no resetea los campos si hay error.
+  - Feedback: NO hay toast. Errores de validación en `role="alert"` pegados a su campo (`aria-invalid` + `aria-describedby`); un error que no es de un campo va debajo del botón.
 - **Validación de datos:**
-  - DB: `UPDATE players SET first_name, last_name, phone, preferred_area WHERE id=<playerId>` bajo `withPlayerContext` (perfil/actions.ts:44-59).
-  - API/Action: `updateProfileAction` (perfil/actions.ts:21) → `{success:true}` (línea 68) o `{success:false, error}` (líneas 37,58,64).
+  - DB: `UPDATE players SET first_name, last_name, phone, preferred_area WHERE id=<playerId>` bajo `withPlayerContext`. Apellido vacío se guarda como `''` (`last_name` es NOT NULL; igual que el checkout).
+  - API/Action: `updateProfileAction` (`configuracion/actions.ts`) → `{success:true}` o `{success:false, error, field?}`.
   - Externos: ninguno.
-  - UI-sin-reload: `revalidatePath('/perfil')` (perfil/actions.ts:67).
-- **Evidencia (path:línea):**
-  - `src/app/(player)/perfil/page.tsx:98-121` — tab "datos" con `ProfileForm`.
-  - `src/app/(player)/perfil/ProfileForm.tsx:36-47,90-117,121-130` — labels, botón, feedback inline.
-  - `src/app/(player)/perfil/actions.ts:12-69` — `updateProfileAction`, `revalidatePath`.
-  - `src/app/(player)/perfil/ProfileHeaderNav.tsx:5-10,21-58` — tabs `PROFILE_TABS` y avatar/fallback (confirma que NO hay upload, solo display).
+  - UI-sin-reload: `revalidatePath('/configuracion')`.
+- **Evidencia:**
+  - `src/app/(player)/configuracion/ConfiguracionView.tsx` — bloques en orden, "Quién sos", "Tus datos".
+  - `src/app/(player)/configuracion/ProfileForm.tsx` — campos, errores por campo, "Guardado".
+  - `src/app/(player)/configuracion/actions.ts` — `updateProfileAction`, `revalidatePath`.
 
 ---
 
-## TG-HP-110 — Preferencias de notificación
+## TG-HP-110 — Sin interruptores de avisos (`/perfil?tab=notificaciones`)
 - **Rol:** Jugador
 - **Prerrequisitos:** Sesión activa.
+- **Cambió de propósito en el 2.4b.** Los interruptores `notify_email`/`notify_push` no gobernaban ningún envío (ni el jugador tiene push) y se sacaron, junto con `updateNotificationPrefAction`. Las columnas quedan en la base sin tocar.
 - **Flujo de navegación (UI steps):**
-  1. Navegar a `http://localhost:3000/perfil?tab=notificaciones` (o click en el tab `"Avisos"` — el label del tab es `"Avisos"`, no `"Notificaciones"`, ProfileHeaderNav.tsx:9).
-  2. Ver dos filas switch: `"Novedades por email"` (descripción `"Recibí novedades de tus reservas por email. Los emails de confirmación y cancelación se envían siempre."`) y `"Notificaciones push"` (`"Avisos en este dispositivo cuando haya novedades de tus reservas."`) (NotificationPrefs.tsx:21-34).
-  3. Click en el switch `role="switch"` de `"Novedades por email"` (aria-label = el label, línea 100).
-  4. El switch cambia de estado optimistamente al toque (`setPrefs` antes del await, líneas 64-66) y persiste vía `updateNotificationPrefAction('email', <bool>)`.
-  5. Si falla, revierte el switch y muestra `role="alert"` con el mensaje de error (líneas 69-72, 118-122).
-- **Comportamiento de componentes:**
-  - Loading: no hay spinner — es optimista (`startTransition`, línea 61,67).
-  - Anti-doble-submit: no hay `disabled` explícito en el botón switch mientras está pendiente (revisar: no se lee `pending` de `useTransition` para deshabilitar el botón, solo se usa para envolver el await).
-  - Feedback: sin toast; revert visual + `role="alert"` inline en caso de error (líneas 118-122); sin mensaje de éxito visible.
+  1. Navegar a `http://localhost:3000/perfil?tab=notificaciones`.
+  2. El servidor redirige a `/configuracion` (sin hash).
+  3. La página no tiene ningún `role="switch"`. En "Tus datos" hay una línea: `"Te mandamos siempre un mail cuando se confirma o se cancela una reserva, cuando cambia el horario y cuando se vence la seña."`
 - **Validación de datos:**
-  - DB: `UPDATE players SET notify_email=<bool>` o `notify_push=<bool> WHERE id=<playerId>` (perfil/actions.ts:83-119).
-  - API/Action: `updateNotificationPrefAction(pref, enabled)` (perfil/actions.ts:83) → `{success:true}` (línea 118) o `{success:false, error}`.
-  - Externos: ninguno directo (el comentario de UI aclara que "Los emails de confirmación y cancelación se envían siempre" independientemente de este toggle, NotificationPrefs.tsx:25).
-  - UI-sin-reload: `revalidatePath('/perfil')` en la action (perfil/actions.ts:117); el switch en sí no depende de eso — es estado local optimista.
-- **Evidencia (path:línea):**
-  - `src/app/(player)/perfil/ProfileHeaderNav.tsx:9` — label del tab `"Avisos"`.
-  - `src/app/(player)/perfil/NotificationPrefs.tsx:15-34,47-74,96-113,117-122` — copy, toggle handler, switch, error inline.
-  - `src/app/(player)/perfil/actions.ts:71-119` — `updateNotificationPrefAction`.
-  - `src/app/(player)/perfil/page.tsx:139-145` — render condicional tab `"notificaciones"`.
+  - DB: no se escribe nada.
+  - UI: `page.getByRole('switch')` con count 0; textos `"Novedades por email"` y `"Notificaciones push"` ausentes.
+- **Evidencia:**
+  - `src/app/(player)/perfil/page.tsx` — `redirect()` por `?tab=` (datos → `#tus-datos`, favoritos → `#favoritos`, actividad → `#actividad`, notificaciones o sin tab → `/configuracion`).
+  - `src/app/(player)/configuracion/ConfiguracionView.tsx` — la línea de los mails.
 
 ---
 
-## TG-HP-111 — Exportar datos ARCO `/configuracion`
+## TG-HP-111 — Descargar tus datos `/configuracion`
 - **Rol:** Jugador
 - **Prerrequisitos:** Sesión activa.
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/configuracion`.
-  2. Ver card `"Tus datos personales"` con texto ARCO y botón `"Descargar mis datos"` (ConfiguracionView.tsx:56-71, DataExportButton.tsx:63).
+  2. Ver el bloque `"Tus datos personales"` con el botón `"Descargar mis datos"` (`outline`) y, al final, una línea chica con la ley (`DataExportButton.tsx`). El mismo botón está en `/eliminar-cuenta`.
   3. Click en `"Descargar mis datos"`.
-  4. Botón cambia a `"Generando..."` mientras `status==='loading'` (DataExportButton.tsx:63).
-  5. `fetch('/api/player/data-export')` descarga un JSON y dispara la descarga del navegador (`anchor.click()`, líneas 40-45) con nombre `turnogol-mis-datos-<YYYY-MM-DD>.json` (línea 34-36).
-  6. Si falla, `role="alert"` con `"No se pudo generar la exportación. Intentá de nuevo en unos minutos."` (líneas 17-19,29-31,49-52,65-69).
+  4. Botón `"Generando…"` (un solo carácter de puntos suspensivos) y, en una región `role="status"` con `aria-live="polite"`, `"Estamos armando tu archivo."`.
+  5. `fetch('/api/player/data-export')` descarga un JSON y dispara la descarga del navegador (`anchor.click()`) con nombre `turnogol-mis-datos-<YYYY-MM-DD>.json`.
+  6. Al terminar, la región viva dice `"Listo, se descargó turnogol-mis-datos-<fecha>.json."`.
+  7. Si falla, `role="alert"` (13 px) con `"No se pudo generar la exportación. Intentá de nuevo en unos minutos."`.
 - **Comportamiento de componentes:**
-  - Loading: `disabled={status==='loading'}` en el botón, texto `"Generando..."` (DataExportButton.tsx:60,63).
-  - Anti-doble-submit: mismo `disabled` (línea 60) — no es un `<form>`/`useFormStatus`, es `useState` local.
-  - Feedback: sin toast — mensaje de error inline `role="alert"`; en éxito no hay mensaje visible, solo la descarga del archivo (comportamiento del browser).
+  - Loading y anti-doble-submit: `disabled={status==='loading'}`; es `useState` local, no un `<form>`.
+  - Feedback: sin toast; estados `idle | loading | done | error`.
 - **Validación de datos:**
-  - DB/API: `GET /api/player/data-export` → 200 con `{data:{...}}` que incluye `profile`, `consents`, `bookings` (últimos 12 meses), `payments` (últimos 5 años), `tenant_relationships`, `bans` (route.ts:30-129).
+  - DB/API: `GET /api/player/data-export` → 200 con `{data:{...}}` que incluye `profile`, `consents`, `bookings` (últimos 12 meses), `payments` (últimos 5 años), `tenant_relationships`, `bans` (route.ts:30-129). El formato del JSON no cambió.
   - Externos: `captureMessage('arco.data_exported', ...)` a Sentry como registro de auditoría (no hay fila en `audit_logs` porque esa tabla exige `tenant_id NOT NULL`, route.ts:122-127).
-  - UI-sin-reload: no aplica (descarga de archivo, no hay revalidación de la página).
-- **Evidencia (path:línea):**
-  - `src/app/(player)/configuracion/ConfiguracionView.tsx:56-71` — card y copy ARCO.
-  - `src/app/(player)/configuracion/DataExportButton.tsx:9-53,55-71` — fetch, blob, descarga, estados.
+- **Evidencia:**
+  - `src/app/(player)/configuracion/ConfiguracionView.tsx` — bloque y copy.
+  - `src/app/(player)/configuracion/DataExportButton.tsx` — fetch, blob, descarga, estados, región viva.
   - `src/app/api/player/data-export/route.ts:11-29,89-130` — shape del bundle exportado y `captureMessage`.
 
 ---
 
-## TG-HP-112 — Favoritos (`player_favorites` / FavoritesList)
+## TG-HP-112 — Favoritos (`player_favorites` / FavoritesList en `/configuracion`)
 - **Rol:** Jugador
 - **Prerrequisitos:** Sesión activa. Al menos 1 tenant público visible en `/explorar`.
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/explorar`.
   2. En una `TenantCard`, click en el botón corazón (overlay, sin texto, `aria-label="Guardar en favoritos"` cuando no está marcado — FavoriteButton.tsx:67,94-110).
   3. El botón togglea optimistamente (`fill-current` cuando `fav=true`) y llama `POST /api/player/favorites/toggle` con `{tenantId}` (FavoriteButton.tsx:37-58).
-  4. Si el jugador no tiene sesión, un 401 redirige a `/ingresar?next=<path>` (líneas 51-54) — no aplica acá porque ya hay sesión.
-  5. Navegar a `http://localhost:3000/perfil?tab=favoritos` (tab `"Favoritos"`, ProfileHeaderNav.tsx:7).
-  6. Ver el tenant recién marcado listado en la grilla, renderizado con la misma `TenantCard` (`initialFavorited` true, FavoritesList.tsx:43-55).
-  7. Click de nuevo en el corazón (ahora `aria-label="Quitar de favoritos"`) para destogglear — la card desaparece de la lista al refrescar `/perfil?tab=favoritos`.
-  8. Si no hay favoritos: empty state h2 `"Sin favoritos todavía"` + botón `"Explorar complejos"` (FavoritesList.tsx:25-38).
+  4. Navegar a `http://localhost:3000/perfil?tab=favoritos`: redirige a `/configuracion#favoritos`.
+  5. En la sección `"Favoritos"` ver el complejo como una fila compacta (nombre y localidad, link a `/{slug}`; sin precios ni tarjeta) con un botón `"Quitar"` (`aria-label="Quitar <nombre> de favoritos"`).
+  6. Click en `"Quitar"`: hace el mismo `POST` y la fila desaparece al instante; una región `role="status"` dice `"Quitaste <nombre> de tus favoritos."` y el foco vuelve al título de la sección.
+  7. Si no quedan favoritos: `"Todavía no guardaste ningún complejo."` + link `"Explorar complejos"`.
 - **Comportamiento de componentes:**
-  - Loading: `disabled={pending}` en el botón mientras se resuelve el toggle (FavoriteButton.tsx:34,74,98).
-  - Anti-doble-submit: mismo `disabled={pending}` (líneas 74,98); no hay `useFormStatus` (no es un `<form>`, es `onClick` con `useState`).
-  - Feedback: sin toast en éxito; en error revierte el estado y muestra toast `"No pudimos actualizar tus favoritos."` variant `destructive` (FavoriteButton.tsx:59-61).
+  - Loading: los botones `"Quitar"` se deshabilitan mientras se resuelve un toggle.
+  - Feedback: en error la fila se queda y un `role="alert"` dice `"No pudimos quitarlo de tus favoritos. Probá de nuevo."`.
 - **Validación de datos:**
-  - DB: tabla `player_favorites` (RLS por `app.current_player_id`) vía `toggleFavorite` (src/modules/favorites/favorite.service.ts — no leído línea a línea, invocado en toggle/route.ts:43).
+  - DB: tabla `player_favorites` (RLS por `app.current_player_id`) vía `toggleFavorite`.
   - API/Action: `POST /api/player/favorites/toggle` → `{data:{tenantId, favorited}}` (toggle/route.ts:16-49).
-  - Externos: ninguno.
-  - UI-sin-reload: confirmado — el toggle en `/explorar` es optimista sin reload; en `/perfil?tab=favoritos` la lista se recalcula server-side en cada navegación (`loadFavorites`, perfil/page.tsx:42-57) — no hay `revalidatePath` explícito citado, la actualización se ve al re-navegar/recargar el tab.
-- **Evidencia (path:línea):**
-  - `src/components/public/FavoriteButton.tsx:22-111` — componente completo (toggle, labels, error toast).
+  - La lista sale de `loadFavorites` (`configuracion/page.tsx`): ids de `player_favorites` + datos públicos de `searchPublicTenants` (no lista un complejo que ya no es visible). Tope de 50.
+- **Evidencia:**
+  - `src/components/public/FavoriteButton.tsx:22-111` — corazón de `/explorar`.
   - `src/app/api/player/favorites/toggle/route.ts:16-49` — endpoint.
-  - `src/app/(player)/perfil/FavoritesList.tsx:11-56` — lista + empty state.
-  - `src/app/(player)/perfil/page.tsx:42-57,79,124-129` — `loadFavorites`, tab `"favoritos"`.
-  - `src/app/(player)/perfil/ProfileHeaderNav.tsx:7` — label del tab `"Favoritos"`.
+  - `src/app/(player)/configuracion/FavoritesList.tsx` — filas, quitar, vacío.
+  - `src/app/(player)/configuracion/page.tsx` — `loadFavorites`.
+  - `src/app/(player)/perfil/page.tsx` — redirect de `?tab=favoritos`.
 
 ---
 
@@ -813,11 +798,10 @@ Fixtures usados en todos los casos (ver contrato):
 
 ## GAPS
 
-- **Avatar de jugador — confirmado inexistente.** `players.avatarUrl` existe en el schema y se RENDERIZA en `ProfileHeaderNav.tsx:38-49` (imagen real si no-null, fallback de iniciales si null), pero no hay ningún componente de upload/cambio de avatar en `ProfileForm.tsx` ni acción asociada (`perfil/actions.ts` solo tiene `updateProfileAction` para nombre/apellido/teléfono/zona y `updateNotificationPrefAction`). No armar un caso de "cambiar foto de perfil".
+- **Avatar de jugador — confirmado inexistente.** `players.avatarUrl` existe en el schema pero no se escribe en ningún lado, y desde el PR 2.4b Mi cuenta (`configuracion/ProfileForm.tsx`, `updateProfileAction`: nombre/apellido/teléfono/zona) no tiene upload ni cambio de avatar. No armar un caso de "cambiar foto de perfil".
 - **`POST /api/player/reviews` no se inspeccionó en detalle** (validación Zod exacta, código de status en éxito, si valida que el booking sea `completed`/propio del jugador). El caso TG-HP-113 documenta el contrato observado desde `LeaveReviewButton.tsx` (200/201 en éxito implícito por `res.ok`, 409 explícito) — un sub-agente de test debería tratar el 200/201 exacto como a confirmar en runtime, no como dato citado de código.
 - **`toggleFavorite` (favorite.service.ts) no se leyó línea a línea** — se citó solo el route handler que lo invoca. El nombre de la tabla `player_favorites` viene del CLAUDE.md del repo (sección Multi-tenancy), no de una lectura directa del schema en esta sesión.
 - **No existe copia visible del texto exacto del email `booking_confirmed`/`booking_canceled` en Resend/Inbucket** — se citó solo el `templateName` y el `content` pasado a `enqueueNotification`; el sub-agente de test debe verificar el asunto/cuerpo real renderizado en Inbucket en runtime, no asumirlo de este documento.
-- **NotificationPrefs no deshabilita el switch mientras está pendiente** (`useTransition` sin exponer `isPending` al botón, `NotificationPrefs.tsx:47-74`) — esto es una observación de comportamiento, no una feature inexistente; no hay `disabled` visible en el botón switch durante el guardado.
 
 
 ---

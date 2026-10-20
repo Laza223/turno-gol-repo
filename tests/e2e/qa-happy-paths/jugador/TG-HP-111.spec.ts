@@ -7,7 +7,7 @@ import { E2E_PLAYER_EMAIL } from '../../_helpers/player-seed'
  * TG-HP-111 — Exportar datos ARCO /configuracion.
  * Rol: Jugador logueado.
  *
- * Evidence anchors: ConfiguracionView.tsx:56-71, DataExportButton.tsx:9-53,55-71,
+ * Evidence anchors: ConfiguracionView.tsx (bloque "Tus datos personales"), DataExportButton.tsx,
  * api/player/data-export/route.ts:11-29,89-130.
  */
 
@@ -35,7 +35,7 @@ test.describe('TG-HP-111 — Exportar datos ARCO', () => {
       await page.waitForLoadState('networkidle')
 
       const [download] = await Promise.all([page.waitForEvent('download'), downloadBtn.click()])
-      // Anti-doble-submit: disabled={status==='loading'}, texto "Generando..." —
+      // Anti-doble-submit: disabled={status==='loading'}, texto "Generando…" —
       // ventana muy corta en dev para asertear en vivo de forma no-flaky.
 
       expect(download.suggestedFilename()).toMatch(/^turnogol-mis-datos-\d{4}-\d{2}-\d{2}\.json$/)

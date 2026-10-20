@@ -1,7 +1,7 @@
 import { test } from '../fixtures'
 import { expectNoAxeViolations } from './_helpers'
 
-const ROUTES = ['/mis-reservas', '/perfil', '/configuracion']
+const ROUTES = ['/mis-reservas', '/configuracion', '/eliminar-cuenta']
 
 test.describe('Player routes a11y', () => {
   for (const route of ROUTES) {

@@ -57,4 +57,50 @@ describe('DataExportButton (#18)', () => {
     })
     expect(screen.queryByRole('alert')).toBeNull()
   })
+
+  it('avisa cuando la descarga terminó, en una región viva', async () => {
+    mockFetch({ data: { hola: 'mundo' } })
+    render(<DataExportButton />)
+    // La región viva ya está montada antes de que haya algo que anunciar.
+    const estado = screen.getByRole('status')
+    expect(estado.getAttribute('aria-live')).toBe('polite')
+    expect(estado.textContent).toBe('')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Descargar mis datos' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('status').textContent).toMatch(
+        /^Listo, se descargó turnogol-mis-datos-\d{4}-\d{2}-\d{2}\.json\.$/,
+      )
+    })
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('mientras genera dice "Generando…" con un solo carácter de puntos suspensivos', async () => {
+    let release: () => void = () => {}
+    global.fetch = vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          release = () => resolve(new Response(JSON.stringify({ data: {} })))
+        }),
+    ) as unknown as typeof global.fetch
+    render(<DataExportButton />)
+    fireEvent.click(screen.getByRole('button', { name: 'Descargar mis datos' }))
+
+    const boton = await screen.findByRole('button', { name: 'Generando…' })
+    expect((boton as HTMLButtonElement).disabled).toBe(true)
+    expect(boton.textContent).not.toContain('...')
+    expect(screen.getByRole('status').textContent).toBe('Estamos armando tu archivo.')
+    release()
+    await waitFor(() => expect(screen.getByRole('status').textContent).toMatch(/^Listo/))
+  })
+
+  it('el error se pinta en 13 px o más, sin los 12 px de text-xs', async () => {
+    mockFetch({}, false)
+    render(<DataExportButton />)
+    fireEvent.click(screen.getByRole('button', { name: 'Descargar mis datos' }))
+    const alerta = await screen.findByRole('alert')
+    expect(alerta.className).not.toContain('text-xs')
+    expect(alerta.className).toContain('text-[13px]')
+  })
 })

@@ -21,7 +21,7 @@ export const players = pgTable(
     avatarUrl: text('avatar_url'),
     preferredArea: text('preferred_area'),
 
-    // Preferencias de notificación (toggles en /perfil). notify_email solo
+    // Preferencias de notificación (sin toggles desde el PR 2.4b; columnas sin uso en la UI). notify_email solo
     // gobierna emails opcionales (recordatorios); los transaccionales se
     // envían siempre. notify_push: pipeline de push al jugador pendiente.
     notifyEmail: boolean('notify_email').notNull().default(true),

@@ -30,7 +30,7 @@ test.describe('Toggle de tema', () => {
       await expect(page.locator('html')).not.toHaveClass(/dark/)
 
       // Superficie toggleable cambió a light
-      await page.goto('/perfil')
+      await page.goto('/eliminar-cuenta')
       await expect(page.locator('html')).not.toHaveClass(/dark/)
 
       // Página theme-adaptive (/explorar): ya no es always-dark, respeta el tema activo (Claro)

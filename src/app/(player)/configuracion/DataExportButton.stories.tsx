@@ -1,14 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, spyOn, userEvent, within } from 'storybook/test'
+import { PortalWorld } from '@/components/world/PortalWorld'
 import { DataExportButton } from './DataExportButton'
 
 /**
  * Sin Server Action: hace `fetch('/api/player/data-export')` directo. Se
  * mockea con `parameters.fetchMock` (decorator `withFetch`, ver
  * .storybook/decorators/with-fetch.tsx) — no hay MSW en este repo.
- * El contenedor reproduce la card `bg-card` de configuracion/page.tsx donde
- * vive de verdad (el botón usa `text-primary-foreground` sobre `bg-primary`,
- * pensado para esa superficie).
+ * El botón es `outline`: la única acción verde de Mi cuenta es "Guardar cambios".
  */
 const meta = {
   title: 'Player/Configuracion/DataExportButton',
@@ -16,9 +15,11 @@ const meta = {
   parameters: { layout: 'padded' },
   decorators: [
     (Story) => (
-      <div className="max-w-sm rounded-2xl border border-border bg-card p-5 shadow-xs">
-        <Story />
-      </div>
+      <PortalWorld>
+        <div className="max-w-sm bg-background p-4 text-foreground">
+          <Story />
+        </div>
+      </PortalWorld>
     ),
   ],
 } satisfies Meta<typeof DataExportButton>
@@ -48,10 +49,31 @@ export const Cargando: Story = {
     try {
       const canvas = within(canvasElement)
       await userEvent.click(canvas.getByRole('button', { name: 'Descargar mis datos' }))
-      await expect(await canvas.findByRole('button', { name: 'Generando...' })).toBeDisabled()
+      await expect(await canvas.findByRole('button', { name: 'Generando…' })).toBeDisabled()
+      await expect(canvas.getByRole('status')).toHaveTextContent('Estamos armando tu archivo.')
     } finally {
       releaseFetch()
     }
+  },
+}
+
+/** La descarga termina: el estado lo anuncia una región viva (sin mover el foco). */
+export const Listo: Story = {
+  parameters: {
+    fetchMock: [
+      { match: '/api/player/data-export', json: { data: { profile: { email: 'a@b.c' } } } },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    spyOn(URL, 'createObjectURL').mockReturnValue('blob:story')
+    spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Descargar mis datos' }))
+    const estado = canvas.getByRole('status')
+    await expect(estado).toHaveAttribute('aria-live', 'polite')
+    await expect(
+      await canvas.findByText(/Listo, se descargó turnogol-mis-datos-/),
+    ).toBeInTheDocument()
   },
 }
 

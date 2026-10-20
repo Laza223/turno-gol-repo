@@ -3,18 +3,18 @@ import { writeEvidence } from '../_qa/evidence'
 import { makeServiceClient, E2E_PLAYER_ID, E2E_TENANT_ID } from '../../_helpers/player-seed'
 
 /**
- * TG-HP-112 — Favoritos (player_favorites / FavoritesList).
+ * TG-HP-112 — Favoritos (player_favorites / FavoritesList en /configuracion).
  * Rol: Jugador logueado. Prereq: al menos 1 tenant público visible en
  * /explorar (tenant Demo, "E2E Complejo Demo").
  *
- * Evidence anchors: FavoriteButton.tsx:22-111, api/player/favorites/toggle/route.ts:16-49,
- * FavoritesList.tsx:11-56, perfil/page.tsx:42-57,79,124-129, ProfileHeaderNav.tsx:7.
+ * Evidence anchors: FavoriteButton.tsx, api/player/favorites/toggle/route.ts,
+ * configuracion/FavoritesList.tsx, configuracion/page.tsx (loadFavorites), perfil/page.tsx (redirect).
  */
 
 const TENANT_NAME = 'E2E Complejo Demo'
 
 test.describe('TG-HP-112 — Favoritos', () => {
-  test('marcar/desmarcar favorito desde /explorar se refleja en /perfil?tab=favoritos', async ({
+  test('marcar en /explorar se ve en /configuracion; quitar saca la fila', async ({
     browser,
     playerStorageState,
   }) => {
@@ -38,9 +38,9 @@ test.describe('TG-HP-112 — Favoritos', () => {
 
       const heartBtn = card.getByRole('button', { name: 'Guardar en favoritos' })
       await expect(heartBtn).toBeVisible()
-      // FavoriteButton es OPTIMISTA: togglea la UI ANTES de que resuelva el fetch
-      // (FavoriteButton.tsx:44). Esperar la respuesta REAL del POST antes de leer la
-      // DB — si no, el SELECT corre en carrera con el insert server-side en vuelo.
+      // FavoriteButton es OPTIMISTA: togglea la UI ANTES de que resuelva el fetch.
+      // Esperar la respuesta REAL del POST antes de leer la DB — si no, el SELECT
+      // corre en carrera con el insert server-side en vuelo.
       const [toggleRes] = await Promise.all([
         page.waitForResponse(
           (r) =>
@@ -63,28 +63,26 @@ test.describe('TG-HP-112 — Favoritos', () => {
       expect(favErr).toBeNull()
       expect(favRow).toBeTruthy()
 
-      // /perfil?tab=favoritos lista el tenant recién marcado.
+      // /perfil?tab=favoritos redirige a la sección Favoritos de la Cuenta, que lista el tenant.
       await page.goto('/perfil?tab=favoritos')
-      await expect(page.getByRole('heading', { name: 'Mi perfil', level: 1 })).toBeVisible()
-      await expect(page.getByRole('link', { name: 'Favoritos' })).toHaveAttribute(
-        'aria-current',
-        'page',
-      )
-      const profileCard = page.locator('article').filter({ hasText: TENANT_NAME })
-      await expect(profileCard.getByRole('heading', { name: TENANT_NAME })).toBeVisible()
+      await expect(page).toHaveURL(/\/configuracion#favoritos$/)
+      await expect(page.getByRole('heading', { name: 'Mi cuenta', level: 1 })).toBeVisible()
+      const favorites = page.locator('section#favoritos')
+      await expect(favorites.getByRole('link', { name: new RegExp(TENANT_NAME) })).toBeVisible()
+      // Fila compacta: sin tarjeta ni precios.
+      await expect(favorites.locator('article')).toHaveCount(0)
 
-      // Destogglear desde /perfil?tab=favoritos (mismo patrón optimista → esperar POST).
+      // Quitar desde la Cuenta: la fila desaparece al instante (sin recargar).
       const [untoggleRes] = await Promise.all([
         page.waitForResponse(
           (r) =>
             r.url().includes('/api/player/favorites/toggle') && r.request().method() === 'POST',
         ),
-        profileCard.getByRole('button', { name: 'Quitar de favoritos' }).click(),
+        favorites.getByRole('button', { name: `Quitar ${TENANT_NAME} de favoritos` }).click(),
       ])
       expect(untoggleRes.ok()).toBeTruthy()
-      await expect(profileCard.getByRole('button', { name: 'Guardar en favoritos' })).toBeVisible({
-        timeout: 5_000,
-      })
+      await expect(favorites.getByRole('link', { name: new RegExp(TENANT_NAME) })).toHaveCount(0)
+      await expect(favorites.getByText('Todavía no guardaste ningún complejo.')).toBeVisible()
 
       const { data: favRowAfter, error: favErrAfter } = await sb
         .from('player_favorites')
@@ -95,12 +93,9 @@ test.describe('TG-HP-112 — Favoritos', () => {
       expect(favErrAfter).toBeNull()
       expect(favRowAfter).toBeNull()
 
-      // El destoggle es optimista en la card, pero la LISTA server-rendered de
-      // /perfil solo refleja el cambio en la próxima navegación (no hay
-      // revalidatePath explícito, per manual) — recargamos para verlo.
+      // Recargar confirma que la lista server-rendered ya no lo trae.
       await page.reload()
-      await expect(page.getByText('Sin favoritos todavía')).toBeVisible()
-      await expect(page.getByRole('heading', { name: TENANT_NAME })).not.toBeVisible()
+      await expect(page.getByText('Todavía no guardaste ningún complejo.')).toBeVisible()
 
       await writeEvidence('TG-HP-112', {
         status: 'pass',
@@ -108,8 +103,8 @@ test.describe('TG-HP-112 — Favoritos', () => {
         db_after_unfavorite: favRowAfter,
         notes:
           'Toggle real vía POST /api/player/favorites/toggle; player_favorites RLS por ' +
-          'app.current_player_id. Round-trip completo: marcar en /explorar, ver en /perfil, ' +
-          'desmarcar en /perfil, desaparece tras reload.',
+          'app.current_player_id. Round-trip completo: marcar en /explorar, ver en /configuracion, ' +
+          'quitar en /configuracion (la fila desaparece al instante), sigue vacío tras reload.',
       })
     } finally {
       await ctx.close()

@@ -1,30 +1,43 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
-import ActivityStats from '@/app/(player)/perfil/ActivityStats'
+import ActivityStats from '@/app/(player)/configuracion/ActivityStats'
 import { computeStreakWeeks, isoMondayOf } from '@/modules/players/activity.service'
 
 afterEach(() => cleanup())
 
 describe('ActivityStats', () => {
-  it('un jugador con 10 partidos completados ve "10 partidos jugados"', () => {
+  it('un jugador con 10 partidos completados ve "10" junto a "Partidos jugados"', () => {
     render(<ActivityStats played={10} venues={4} streakWeeks={2} />)
-    expect(screen.getByLabelText('10 partidos jugados')).toBeTruthy()
-    expect(screen.getByText('10')).toBeTruthy()
-    expect(screen.getByText('Partidos jugados')).toBeTruthy()
+    expect(screen.getByText('Partidos jugados').nextElementSibling?.textContent).toBe('10')
+    expect(screen.getByText('Complejos visitados').nextElementSibling?.textContent).toBe('4')
+    expect(screen.getByText('Racha').nextElementSibling?.textContent).toBe('2 semanas')
   })
 
-  it('muestra complejos visitados y racha con unidad correcta (plural/singular)', () => {
+  it('la racha usa la unidad correcta (singular)', () => {
     render(<ActivityStats played={10} venues={4} streakWeeks={1} />)
-    expect(screen.getByLabelText('4 complejos visitados')).toBeTruthy()
-    expect(screen.getByLabelText('1 semana de racha actual')).toBeTruthy()
-    expect(screen.getByText('semana')).toBeTruthy()
+    expect(screen.getByText('1 semana')).toBeTruthy()
   })
 
-  it('sin partidos muestra los ceros y el hint de primera vez', () => {
+  it('con partidos no hay salida a reservar: ya reservó', () => {
+    render(<ActivityStats played={3} venues={1} streakWeeks={0} />)
+    expect(screen.queryByRole('link')).toBeNull()
+  })
+
+  it('sin partidos muestra los ceros y una salida a reservar', () => {
     render(<ActivityStats played={0} venues={0} streakWeeks={0} />)
-    expect(screen.getAllByText('0')).toHaveLength(3)
+    expect(screen.getByText('Partidos jugados').nextElementSibling?.textContent).toBe('0')
     expect(screen.getByText(/tu primer partido/i)).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Reservar una cancha' }).getAttribute('href')).toBe(
+      '/explorar',
+    )
+  })
+
+  it('es neutro: sin puntajes ni rankings, y tiene su ancla y su encabezado', () => {
+    const { container } = render(<ActivityStats played={10} venues={4} streakWeeks={2} />)
+    expect(container.querySelector('section#actividad')).not.toBeNull()
+    expect(screen.getByRole('heading', { level: 2, name: 'Tu actividad' })).toBeTruthy()
+    expect(container.textContent).not.toMatch(/puntos|ranking|nivel/i)
   })
 })
 

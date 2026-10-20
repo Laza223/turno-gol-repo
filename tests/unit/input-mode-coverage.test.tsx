@@ -36,7 +36,7 @@ describe('inputMode coverage (regression guard)', () => {
 
   it('ProfileForm uses PhoneInput component', () => {
     const file = readFileSync(
-      path.join(projectRoot, 'src/app/(player)/perfil/ProfileForm.tsx'),
+      path.join(projectRoot, 'src/app/(player)/configuracion/ProfileForm.tsx'),
       'utf8',
     )
     expect(file).toMatch(/<PhoneInput/)

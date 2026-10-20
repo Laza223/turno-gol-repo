@@ -10,17 +10,26 @@ import { players } from '@/shared/db/schema'
 import { captureException } from '@/lib/sentry'
 
 const profileSchema = z.object({
-  // `.trim()` ANTES del `.min(1)`: sin eso, un apellido de 5 espacios tenía
-  // length 5, pasaba la validación y se guardaba tal cual — la UI decía "Perfil
-  // actualizado" y el avatar de iniciales quedaba con una sola letra
-  // (🟡 QA 2026-08-14).
+  // `.trim()` ANTES del `.min(1)`: sin eso, un nombre de 5 espacios tenía length 5, pasaba la
+  // validación y se guardaba tal cual — la UI decía "Guardado" y el avatar de iniciales quedaba
+  // vacío (🟡 QA 2026-08-14).
   first_name: z.string().trim().min(1, 'Nombre requerido').max(100, 'Máximo 100 caracteres'),
-  last_name: z.string().trim().min(1, 'Apellido requerido').max(100, 'Máximo 100 caracteres'),
+  // Apellido opcional, como en la reserva (`reservar/actions.ts`): vacío se guarda como '' porque
+  // `players.last_name` es NOT NULL y el checkout también usa ''. El trim evita guardar espacios.
+  last_name: z.string().trim().max(100, 'Máximo 100 caracteres'),
   phone: z.string().min(6, 'Teléfono muy corto').max(30, 'Máximo 30 caracteres').optional(),
   preferred_area: z.string().max(100, 'Máximo 100 caracteres').optional(),
 })
 
-export type UpdateProfileResult = { success: true } | { success: false; error: string }
+type ProfileField = keyof z.infer<typeof profileSchema>
+
+/** `field` solo viaja en los errores de validación: dice junto a qué campo se pinta el mensaje. */
+export type UpdateProfileResult =
+  { success: true } | { success: false; error: string; field?: ProfileField }
+
+function isProfileField(key: unknown): key is ProfileField {
+  return typeof key === 'string' && key in profileSchema.shape
+}
 
 export async function updateProfileAction(
   _prevState: UpdateProfileResult,
@@ -30,15 +39,21 @@ export async function updateProfileAction(
   if (!user || user.type !== 'player') redirect('/ingresar')
 
   const raw = {
-    first_name: formData.get('first_name') as string,
-    last_name: formData.get('last_name') as string,
+    first_name: (formData.get('first_name') as string | null) ?? '',
+    last_name: (formData.get('last_name') as string | null) ?? '',
     phone: (formData.get('phone') as string) || undefined,
     preferred_area: (formData.get('preferred_area') as string) || undefined,
   }
 
   const parsed = profileSchema.safeParse(raw)
   if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+    const issue = parsed.error.issues[0]
+    const field = issue?.path[0]
+    return {
+      success: false,
+      error: issue?.message ?? 'Datos inválidos.',
+      ...(isProfileField(field) ? { field } : {}),
+    }
   }
 
   // #37: sin try/catch, un fallo de DB (timeout/conexion perdida) se propagaba
@@ -68,56 +83,6 @@ export async function updateProfileAction(
     return { success: false, error: 'No encontramos tu perfil.' }
   }
 
-  revalidatePath('/perfil')
-  return { success: true }
-}
-
-const prefSchema = z.object({
-  pref: z.enum(['email', 'push']),
-  enabled: z.boolean(),
-})
-
-export type UpdatePrefResult = { success: true } | { success: false; error: string }
-
-/**
- * Persiste un toggle de notificación del jugador (players.notify_email /
- * notify_push). Server Action directa — sin endpoint — llamada desde los
- * switches de /perfil?tab=notificaciones.
- */
-export async function updateNotificationPrefAction(
-  pref: 'email' | 'push',
-  enabled: boolean,
-): Promise<UpdatePrefResult> {
-  const user = await extractAuthUser()
-  if (!user || user.type !== 'player') redirect('/ingresar')
-
-  const parsed = prefSchema.safeParse({ pref, enabled })
-  if (!parsed.success) {
-    return { success: false, error: 'Preferencia inválida.' }
-  }
-
-  let updated: { id: string }[]
-  try {
-    updated = await withPlayerContext(user.playerId, (tx) =>
-      tx
-        .update(players)
-        .set(
-          parsed.data.pref === 'email'
-            ? { notifyEmail: parsed.data.enabled }
-            : { notifyPush: parsed.data.enabled },
-        )
-        .where(eq(players.id, user.playerId))
-        .returning({ id: players.id }),
-    )
-  } catch (err) {
-    captureException(err)
-    return { success: false, error: 'No pudimos guardar tu preferencia. Intentá de nuevo.' }
-  }
-
-  if (updated.length === 0) {
-    return { success: false, error: 'No encontramos tu perfil.' }
-  }
-
-  revalidatePath('/perfil')
+  revalidatePath('/configuracion')
   return { success: true }
 }

@@ -14,7 +14,7 @@ vi.mock('next/navigation', () => ({
 
 import { captureException } from '@/lib/sentry'
 import { withPlayerContext } from '@/shared/db/client'
-import { updateProfileAction } from '@/app/(player)/perfil/actions'
+import { updateProfileAction } from '@/app/(player)/configuracion/actions'
 
 function validForm(): FormData {
   const fd = new FormData()

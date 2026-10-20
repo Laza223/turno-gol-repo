@@ -1,104 +1,153 @@
+import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { ChevronRight, Download, Palette, Trash2, User } from 'lucide-react'
-import PlayerHeroBand from '@/components/site/PlayerHeroBand'
-import { DataExportButton } from './DataExportButton'
+import { LogOut } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import {
+  PORTAL_COLUMN,
+  PORTAL_LINK,
+  PORTAL_SECTION_TITLE,
+  PORTAL_TITLE,
+} from '@/components/world/PortalAuthFrame'
 import ThemeToggle from '@/components/theme/ThemeToggle'
+import { cn } from '@/lib/utils'
+import ActivityStats from './ActivityStats'
+import { DataExportButton } from './DataExportButton'
+import FavoritesList, { type FavoriteRow } from './FavoritesList'
+import { ProfileForm } from './ProfileForm'
+import type { UpdateProfileResult } from './actions'
+
+type ProfileValues = {
+  firstName: string
+  lastName: string
+  phone: string
+  preferredArea: string
+}
+
+/** Un bloque de la página: filete arriba y aire. */
+function Block({ children }: { children: ReactNode }) {
+  return <div className="mt-8 border-t border-border pt-8">{children}</div>
+}
 
 /**
- * Vista presentacional de /configuracion: banda hero + las 4 cards (Mi
- * perfil / Apariencia / Tus datos / Eliminar cuenta). Extraída de page.tsx
- * (que solo aporta auth + el fetch de `firstName`) para poder aislarla en
- * Storybook.
+ * Vista presentacional de /configuracion: la Cuenta del jugador en una sola página, en el orden en
+ * que se usa (quién sos, tus datos, favoritos, actividad, tema y salir, descargar tus datos y
+ * darte de baja). Extraída de page.tsx (que solo aporta auth y las consultas) para poder aislarla
+ * en Storybook; las dos Server Actions entran por PROP por la misma razón que en `ProfileForm`.
  */
-export function ConfiguracionView({ firstName }: { firstName: string | null }) {
+export function ConfiguracionView({
+  profile,
+  email,
+  favorites,
+  activity,
+  updateProfileAction,
+  signOutAction,
+}: {
+  profile: ProfileValues
+  email: string
+  favorites: FavoriteRow[]
+  activity: { played: number; venues: number; streakWeeks: number }
+  updateProfileAction: (
+    prevState: UpdateProfileResult,
+    formData: FormData,
+  ) => Promise<UpdateProfileResult>
+  signOutAction: () => Promise<void>
+}) {
+  const fullName = `${profile.firstName} ${profile.lastName}`.trim()
+
   return (
-    <div className="mx-auto max-w-lg space-y-5 px-4 py-6">
-      <PlayerHeroBand
-        eyebrow="Ajustes"
-        title="Mi"
-        accent="cuenta"
-        subtitle={`${firstName ? `Hola ${firstName}, gestioná` : 'Gestioná'} tu perfil y tus datos.`}
-      />
+    <div className={cn(PORTAL_COLUMN, 'pb-12 pt-6')}>
+      <h1 className={PORTAL_TITLE}>Mi cuenta</h1>
 
-      {/* Card 0: Mi perfil */}
-      <Link
-        href="/perfil"
-        className="group flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/10 active:scale-[0.99] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100"
-      >
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20">
-            <User className="h-5 w-5" aria-hidden />
-          </span>
-          <div>
-            <h2 className="font-display text-base font-bold tracking-tight text-foreground">
-              Mi perfil
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Editá tu nombre, teléfono y zona preferida.
-            </p>
-          </div>
-        </div>
-        <ChevronRight
-          className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-emerald-600"
-          aria-hidden
-        />
-      </Link>
+      <section aria-labelledby="quien-sos-titulo" className="mt-4 min-w-0">
+        <h2 id="quien-sos-titulo" className="sr-only">
+          Quién sos
+        </h2>
+        <p className="break-words text-lg font-semibold text-foreground">{fullName}</p>
+        <p className="break-all text-base text-muted-foreground">{email}</p>
+        <p className="mt-1 text-sm text-muted-foreground">El email no se puede cambiar.</p>
+      </section>
 
-      {/* Card Apariencia */}
-      <div className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-xs">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20">
-            <Palette className="h-5 w-5" aria-hidden />
-          </span>
-          <h2 className="font-display text-base font-bold tracking-tight text-foreground">
-            Apariencia
+      <Block>
+        <section id="tus-datos" aria-labelledby="tus-datos-titulo" className="scroll-mt-20">
+          <h2 id="tus-datos-titulo" className={PORTAL_SECTION_TITLE}>
+            Tus datos
           </h2>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Elegí el tema de la aplicación: seguí la preferencia de tu dispositivo, o forzá claro u
-          oscuro.
-        </p>
-        <ThemeToggle />
-      </div>
+          <div className="mt-4">
+            <ProfileForm defaultValues={profile} action={updateProfileAction} />
+          </div>
+          <p className="mt-4 text-sm text-muted-foreground">
+            Te mandamos siempre un mail cuando se confirma o se cancela una reserva, cuando cambia
+            el horario y cuando se vence la seña.
+          </p>
+        </section>
+      </Block>
 
-      {/* Card 1: Tus datos */}
-      <div className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-xs">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600 ring-1 ring-inset ring-sky-600/15 dark:bg-sky-500/10 dark:text-sky-300">
-            <Download className="h-5 w-5" aria-hidden />
-          </span>
-          <h2 className="font-display text-base font-bold tracking-tight text-foreground">
+      <Block>
+        <FavoritesList favorites={favorites} />
+      </Block>
+
+      <Block>
+        <ActivityStats {...activity} />
+      </Block>
+
+      <Block>
+        <section aria-labelledby="tema-titulo">
+          <h2 id="tema-titulo" className={PORTAL_SECTION_TITLE}>
+            Tema y sesión
+          </h2>
+          <div className="mt-3">
+            <ThemeToggle variant="portal" />
+          </div>
+          <form action={signOutAction} className="mt-4">
+            <Button
+              type="submit"
+              variant="outline"
+              className="h-auto min-h-11 w-full gap-2 shadow-none hover:translate-y-0 hover:shadow-none active:scale-100 focus-visible:ring-offset-background sm:w-auto md:h-auto"
+            >
+              <LogOut className="size-4" aria-hidden />
+              Salir
+            </Button>
+          </form>
+        </section>
+      </Block>
+
+      <Block>
+        <section id="mis-datos" aria-labelledby="mis-datos-titulo" className="scroll-mt-20">
+          <h2 id="mis-datos-titulo" className={PORTAL_SECTION_TITLE}>
             Tus datos personales
           </h2>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          Descargá una copia de todos tus datos guardados en TurnoGol (perfil, reservas, pagos,
-          complejos con los que jugaste). Tu derecho de acceso según la Ley 25.326 (ARCO).
-        </p>
-        <DataExportButton />
-      </div>
+          <p className="mt-2 text-base text-muted-foreground">
+            Bajá una copia de lo que guardamos de vos en TurnoGol: tu perfil, tus reservas y tus
+            pagos.
+          </p>
+          <div className="mt-4">
+            <DataExportButton />
+          </div>
+          <p className="mt-3 text-sm text-muted-foreground">
+            Es tu derecho de acceso, según la Ley 25.326.
+          </p>
+        </section>
+      </Block>
 
-      {/* Card 2: Eliminar cuenta */}
-      <div className="space-y-3 rounded-2xl border border-red-200 bg-red-50 p-5 dark:border-red-400/20 dark:bg-red-500/10">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100 text-red-600 ring-1 ring-inset ring-red-600/15 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20">
-            <Trash2 className="h-5 w-5" aria-hidden />
-          </span>
-          <h2 className="font-display text-base font-bold tracking-tight text-red-900 dark:text-red-300">
-            Eliminar mi cuenta
+      <Block>
+        <section aria-labelledby="baja-titulo">
+          <h2 id="baja-titulo" className={PORTAL_SECTION_TITLE}>
+            Darte de baja
           </h2>
-        </div>
-        <p className="text-sm text-red-800 dark:text-red-200">
-          Eliminá permanentemente tu cuenta. Tu perfil se anonimiza, pero el historial financiero de
-          los complejos se conserva por requisitos legales. Acción irreversible.
-        </p>
-        <Link
-          href="/eliminar-cuenta"
-          className="inline-flex h-11 items-center justify-center rounded-xl border border-red-300 bg-card px-4 text-sm font-semibold text-red-700 transition-[background-color,scale] hover:bg-red-100 active:scale-[0.98] dark:border-red-400/30 dark:bg-red-500/10 dark:text-red-300 dark:hover:bg-red-500/20"
-        >
-          Iniciar eliminación
-        </Link>
-      </div>
+          <p className="mt-2 text-base text-muted-foreground">
+            Si ya no vas a usar TurnoGol, podés borrar tu cuenta.
+          </p>
+          <Link
+            href="/eliminar-cuenta"
+            className={cn(
+              PORTAL_LINK,
+              '-mx-2 mt-2 inline-flex min-h-11 items-center px-2 text-base font-medium text-foreground underline underline-offset-4',
+            )}
+          >
+            Eliminar la cuenta
+          </Link>
+        </section>
+      </Block>
     </div>
   )
 }

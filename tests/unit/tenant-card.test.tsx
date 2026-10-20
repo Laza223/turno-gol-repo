@@ -16,6 +16,7 @@ vi.mock('next/image', () => ({
 vi.mock('@/components/public/FavoriteButton', () => ({ default: () => null }))
 
 import TenantCard from '@/app/(public)/explorar/components/TenantCard'
+import { buildReservarHref } from '@/lib/booking/reserve-url'
 
 afterEach(() => cleanup())
 
@@ -210,4 +211,88 @@ describe('TenantCard — variante compact', () => {
     expect(screen.getByText('por jugador')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Foto siguiente' })).toBeNull()
   })
+})
+
+describe('TenantCard — links', () => {
+  it('el link de cada horario sale de buildReservarHref (no se concatena a mano)', () => {
+    render(
+      <TenantCard
+        tenant={baseTenant}
+        slotPills={{
+          date: '2026-06-15',
+          slots: [{ time: '18:00', courtId: 'c9', durationMins: 60 }],
+        }}
+      />,
+    )
+    const href = screen.getByRole('link', { name: 'Reservar a las 18:00' }).getAttribute('href')
+    expect(href).toBe(
+      buildReservarHref('el-potrero', { courtId: 'c9', date: '2026-06-15', time: '18:00' }),
+    )
+    // La misma URL que se concatenaba a mano: pasar al helper no cambia ningún link.
+    expect(href).toBe('/el-potrero/reservar?court=c9&date=2026-06-15&time=18:00&dur=60')
+  })
+
+  it('con día buscado, el título lleva ?date= a la ficha; sin día, va pelado', () => {
+    const { rerender } = render(<TenantCard tenant={baseTenant} date="2026-06-15" />)
+    expect(screen.getByRole('link', { name: 'El Potrero' }).getAttribute('href')).toBe(
+      '/el-potrero?date=2026-06-15',
+    )
+    rerender(<TenantCard tenant={baseTenant} />)
+    expect(screen.getByRole('link', { name: 'El Potrero' }).getAttribute('href')).toBe(
+      '/el-potrero',
+    )
+  })
+
+  it('con día buscado, el carrusel también lleva a la ficha de ese día', () => {
+    const { container } = render(
+      <TenantCard tenant={{ ...baseTenant, coverUrl: '/c.jpg' }} date="2026-06-15" />,
+    )
+    expect(container.querySelector('a[aria-hidden]')?.getAttribute('href')).toBe(
+      '/el-potrero?date=2026-06-15',
+    )
+  })
+})
+
+describe('TenantCard — precios ocultos (hide_public_prices)', () => {
+  const hidden = { ...baseTenant, fromPriceCents: null, fromPricePerPlayerCents: null }
+  const slotPills = {
+    date: '2026-06-15',
+    slots: [{ time: '18:00', courtId: 'c9', durationMins: 60 }],
+  }
+
+  /** Todo el texto del DOM y el valor de todo atributo de accesibilidad / texto alternativo. */
+  function domText(container: HTMLElement): string {
+    const attrs = Array.from(container.querySelectorAll('*')).flatMap((el) =>
+      ['aria-label', 'title', 'alt'].map((a) => el.getAttribute(a) ?? ''),
+    )
+    return `${container.textContent}\n${attrs.join('\n')}`
+  }
+
+  it.each(['grid', 'compact'] as const)(
+    'variante %s: sin precio no hay "$" en ningún lado',
+    (variant) => {
+      const { container } = render(
+        <TenantCard
+          tenant={hidden}
+          variant={variant}
+          slotPills={variant === 'grid' ? slotPills : undefined}
+        />,
+      )
+      expect(domText(container)).not.toContain('$')
+      expect(screen.queryByText(/por jugador|\/turno|el turno/)).toBeNull()
+    },
+  )
+
+  it.each(['grid', 'compact'] as const)(
+    'variante %s (control): con precio sí aparece',
+    (variant) => {
+      const { container } = render(
+        <TenantCard
+          tenant={{ ...baseTenant, fromPriceCents: 1200000, fromPricePerPlayerCents: 120000 }}
+          variant={variant}
+        />,
+      )
+      expect(domText(container)).toContain('$')
+    },
+  )
 })

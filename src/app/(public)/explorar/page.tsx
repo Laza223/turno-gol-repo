@@ -261,6 +261,7 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
                       tenant={t}
                       initialFavorited={favoriteIds.has(t.id)}
                       photos={photosByTenant[t.id] ?? []}
+                      date={avail?.date}
                       slotPills={
                         avail && pills?.length ? { date: avail.date, slots: pills } : undefined
                       }

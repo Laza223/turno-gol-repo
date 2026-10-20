@@ -328,6 +328,8 @@ components:
 
 **Creative North Star: "El Mostrador y La Reserva"**
 
+> La Reserva está en revisión por [`docs/decisions/2026-10-20-portal-con-taste.md`](docs/decisions/2026-10-20-portal-con-taste.md).
+
 TurnoGol es un solo sistema con dos personalidades. Comparten el verde de marca, las tipografías, el logo y las primitivas de `src/components/ui/`; cada una tiene su mundo. **El Mostrador** es el panel del complejo: una herramienta que el encargado usa toda la noche en una notebook con mouse, mientras atiende gente y contesta el WhatsApp. Es denso pero obvio, con los datos primero, un solo verde que grita por vista y movimiento corto. **La Reserva** es el portal del jugador: el estándar de las apps de reservas de canchas, con el flujo de ATC y una terminación más linda y moderna, sin perder accesibilidad (compromiso de marca de `PRODUCT.md`). Es plano: fondo blanco en claro, bordes de 1 px, un solo verde para lo elegido y la acción principal, títulos en Archivo 800 recta. Sin mundo temático, sin resplandores y sin vidrio.
 
 El mundo del panel es césped de noche sobre slate. En claro, tarjetas blancas que flotan con sombras en capas sobre un fondo slate frío; en oscuro, losas slate-950 con superficies de vidrio (relleno blanco al 3 %, desenfoque y un resplandor esmeralda). Los dos temas son de primera: ninguna vista se diseña para uno y "después se verá" el otro; arranca el del sistema (`next-themes`, `defaultTheme="system"`). El estado nunca se comunica solo con color: siempre va color, ícono y texto, y lo resuelve una sola tabla de tonos.

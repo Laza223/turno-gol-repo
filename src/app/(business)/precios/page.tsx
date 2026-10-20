@@ -7,12 +7,10 @@ import CalculadoraClavo from './CalculadoraClavo'
 import PlanSelector from './PlanSelector'
 import { PLANS } from './plans-data'
 
-// El "desde" sale de PLANS y no escrito a mano: estaba hardcodeado en "$55.000"
-// y quedó viejo apenas cambiaron los precios (migr. 071). Es el mismo patrón
-// que ya usa CalculadoraClavo.
+// La base pública sale del mismo catálogo que la calculadora.
 export const metadata = buildMetadata({
   title: 'Precios — TurnoGol para complejos de fútbol',
-  description: `Un precio fijo por mes según cuántas canchas tenés: desde ${formatArs(PLANS[0]!.priceMonthly)}. Sin comisión por reserva, sin permanencia. 30 días gratis, sin tarjeta.`,
+  description: `Un precio de ${formatArs(PLANS[0]!.priceMonthly)} por cancha al mes. Sin comisión por reserva, sin permanencia. 30 días gratis, sin tarjeta.`,
   path: '/precios',
 })
 
@@ -254,11 +252,10 @@ function TodoIncluido() {
                 letterSpacing: '-0.025em',
               }}
             >
-              Todo esto, en todos los planes.
+              Todo esto, para todas tus canchas.
             </h2>
             <p className="mt-[14px] text-base leading-[1.55] text-slate-400">
-              Ninguna función está recortada. La única diferencia entre planes es la cantidad de
-              canchas.
+              Todas las funciones incluidas. Pagás por la cantidad exacta de canchas.
             </p>
           </div>
         </Reveal>

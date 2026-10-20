@@ -95,8 +95,8 @@ function groups({
       items: [
         {
           label: 'Cuota y pagos',
-          effect: '$ 47.000 la primera cancha y $ 30.000 cada una de las demás.',
-          value: problems ? 'Te diste de baja' : '$ 167.000 por mes',
+          effect: '$ 30.000 por cancha por mes.',
+          value: problems ? 'Te diste de baja' : '$ 150.000 por mes',
           icon: Receipt,
           tone: problems ? 'destructive' : 'success',
           href: '/settings/facturacion',

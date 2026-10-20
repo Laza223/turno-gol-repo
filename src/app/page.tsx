@@ -2,25 +2,17 @@ import * as Sentry from '@sentry/nextjs'
 import { buildMetadata } from '@/lib/seo/metadata'
 import JsonLd from '@/components/seo/JsonLd'
 import { buildOrganization, buildWebSite } from '@/lib/seo/structured-data'
-import SiteNav from '@/components/site/SiteNav'
-import { PortalSessionProvider } from '@/components/site/PortalSessionProvider'
+import PortalShell from '@/components/site/PortalShell'
+import { PortalWorld } from '@/components/world/PortalWorld'
 import { signOutAction } from '@/modules/auth/sign-out.action'
-import SiteFooter from '@/components/site/SiteFooter'
-import {
-  listPublicCities,
-  searchPublicTenants,
-  type CityCount,
-  type PublicTenantCard,
-} from '@/modules/tenants/search.service'
+import { listPublicCities, type CityCount } from '@/modules/tenants/search.service'
 import { Hero } from './home/Hero'
-import { FeaturedComplexes } from './home/FeaturedComplexes'
-import { HowItWorks } from './home/HowItWorks'
-import { OwnerBanner } from './home/OwnerBanner'
+import { OwnersStrip } from './home/OwnersStrip'
 
 export const metadata = buildMetadata({
   title: 'TurnoGol — Reservá tu cancha de fútbol al instante',
   description:
-    'Explorá complejos de fútbol en tu ciudad, mirá qué horarios quedan libres y reservá tu cancha online. Confirmación inmediata, sin descargar nada.',
+    'Mirá los turnos libres de hoy y reservá tu cancha de fútbol online, sin llamar a nadie.',
   path: '/',
   titleAbsolute: true,
 })
@@ -36,37 +28,19 @@ async function loadCities(): Promise<CityCount[]> {
   }
 }
 
-async function loadFeatured(): Promise<PublicTenantCard[]> {
-  try {
-    const { results } = await searchPublicTenants({ sort: 'rating', limit: 6 })
-    return results
-  } catch (err) {
-    Sentry.captureException(err, { tags: { section: 'landing.featured' } })
-    return []
-  }
-}
-
 export default async function HomePage() {
-  const [cities, featured] = await Promise.all([loadCities(), loadFeatured()])
+  const cities = await loadCities()
 
+  // La home no cuelga de `(public)/layout.tsx` (vive en la raíz de `app/`), así que monta el mismo
+  // cromo: `PortalShell` pone la barra, el pie, la barra inferior del jugador y el único
+  // `<main id="main-content">` que el skip link del layout raíz necesita (WCAG 2.4.1).
   return (
-    <div className="landing-hero min-h-dvh text-foreground">
+    <PortalWorld>
       <JsonLd data={[buildOrganization(), buildWebSite()]} />
-      <PortalSessionProvider>
-        <SiteNav variant="overlay" signOutAction={signOutAction} />
-      </PortalSessionProvider>
-      {/* La home no pasa por ninguno de los layouts que definen `id="main-content"`
-          (auth, business, admin, portal), así que el skip link del layout raíz
-          apuntaba a un ancla inexistente: Tab + Enter no movía el foco ni el
-          scroll. Es la página de más tráfico del sitio (🟡 QA 2026-08-14,
-          WCAG 2.4.1 Bypass Blocks). */}
-      <main id="main-content" tabIndex={-1}>
+      <PortalShell signOutAction={signOutAction}>
         <Hero cities={cities} />
-        {featured.length > 0 && <FeaturedComplexes complexes={featured} />}
-        <HowItWorks />
-        <OwnerBanner />
-      </main>
-      <SiteFooter />
-    </div>
+        <OwnersStrip />
+      </PortalShell>
+    </PortalWorld>
   )
 }

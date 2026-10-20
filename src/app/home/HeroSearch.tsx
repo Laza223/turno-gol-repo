@@ -5,6 +5,7 @@ import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
 import { CalendarDays, ChevronDown, Clock, MapPin } from 'lucide-react'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import { Button } from '@/components/ui/button'
+import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +33,18 @@ function cityOptionsFrom(cities: CityCount[]): ComboboxOption[] {
   }))
 }
 
+/** El del botón: corta, para que entre en media columna ("Mié 22"). El menú usa `dayLabel`. */
+function shortDayLabel(date: string, today: string): string {
+  if (date === today) return 'Hoy'
+  if (date === addDays(today, 1)) return 'Mañana'
+  const [y, m, d] = date.split('-').map(Number)
+  const short = new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1).toLocaleDateString('es-AR', {
+    weekday: 'short',
+    day: 'numeric',
+  })
+  return capitalizeFirst(short.replace(/\./g, '').replace(',', ''))
+}
+
 function dayLabel(date: string, today: string): string {
   if (date === today) return 'Hoy'
   if (date === addDays(today, 1)) return 'Mañana'
@@ -39,12 +52,11 @@ function dayLabel(date: string, today: string): string {
 }
 
 const fieldClass =
-  'h-[70px] w-full rounded-xl border border-border bg-background/60 pl-12 pr-10 pt-[22px] text-left text-base text-foreground transition-colors hover:border-emerald-600/40 focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring dark:bg-white/[.03] dark:hover:border-emerald-400/40 lg:text-lg'
+  'h-12 w-full rounded-xl border border-input bg-card pl-10 pr-9 text-left text-base md:text-base text-foreground transition-colors hover:border-input/80 focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring'
 
 /**
- * Un renglón del buscador: ícono, rótulo chico arriba y el valor abajo, todo
- * dentro del mismo campo. El `<label>` es real (htmlFor) y no intercepta el
- * clic: el campo entero es el blanco.
+ * Un renglón del buscador: rótulo arriba y, abajo, el campo con su ícono. El `<label>` es
+ * real (htmlFor).
  */
 function Field({
   htmlFor,
@@ -58,26 +70,25 @@ function Field({
   children: ReactNode
 }) {
   return (
-    <div className="relative">
-      {icon}
-      <label
-        htmlFor={htmlFor}
-        className="pointer-events-none absolute left-12 top-[11px] z-10 text-[13px] font-medium text-muted-foreground"
-      >
+    <div>
+      <label htmlFor={htmlFor} className="mb-1.5 block text-base font-medium text-foreground">
         {label}
       </label>
-      {children}
+      <div className="relative">
+        {icon}
+        {children}
+      </div>
     </div>
   )
 }
 
 const iconClass =
-  'pointer-events-none absolute left-4 top-1/2 z-10 h-[22px] w-[22px] -translate-y-1/2 text-emerald-700 dark:text-emerald-400'
+  'pointer-events-none absolute left-3 top-1/2 z-10 size-5 -translate-y-1/2 text-muted-foreground'
 const chevronClass =
-  'pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground'
+  'pointer-events-none absolute right-3 top-1/2 size-5 -translate-y-1/2 text-muted-foreground'
 
 /**
- * Buscador rápido del hero: zona, día y hora → /explorar con los filtros como
+ * Buscador rápido de la home: zona, día y hora → /explorar con los filtros como
  * query params. Solo fútbol, así que no hay selector de deporte; buscar un club
  * por nombre vive en /explorar.
  *
@@ -132,9 +143,9 @@ export default function HeroSearch({ cities }: Props) {
     <form
       onSubmit={onSubmit}
       aria-label="Buscar canchas de fútbol"
-      className="search-card relative rounded-2xl p-4 sm:p-[26px]"
+      className="lg:rounded-xl lg:border lg:border-border lg:bg-card lg:p-6"
     >
-      <div className="flex flex-col gap-3 sm:gap-4">
+      <div className="flex flex-col gap-4">
         {/* Tipear también cuenta como tocar: si el foco llegó antes de hidratar,
             React no vio ese focus, pero sí ve cada tecla. */}
         <div
@@ -164,66 +175,71 @@ export default function HeroSearch({ cities }: Props) {
           </Field>
         </div>
 
-        {/* modal={false}: selector liviano dentro de un form, no un diálogo. Con
-            el default, Radix aria-hidea el resto del form (incluido "Buscar
-            canchas") mientras el menú está abierto o cerrándose. */}
-        <Field
-          htmlFor="hero-day"
-          label="Día"
-          icon={<CalendarDays className={iconClass} aria-hidden />}
-        >
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <button type="button" id="hero-day" className={fieldClass}>
-                <span className="block truncate">{dayLabel(effectiveDate, today)}</span>
-                <ChevronDown className={chevronClass} aria-hidden />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="w-[var(--radix-dropdown-menu-trigger-width)]"
-            >
-              {days.map((d) => (
-                <DropdownMenuItem key={d} onSelect={() => setDate(d)} className="cursor-pointer">
-                  {dayLabel(d, today)}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </Field>
+        {/* Día y Hora en dos columnas desde 375 px: el primer horario de "Libre hoy" tiene que
+            quedar arriba del pliegue de un celular. */}
+        <div className="grid grid-cols-1 gap-4 min-[375px]:grid-cols-2">
+          {/* modal={false}: selector liviano dentro de un form, no un diálogo. Con
+              el default, Radix aria-hidea el resto del form (incluido "Buscar
+              canchas") mientras el menú está abierto o cerrándose. */}
+          <Field
+            htmlFor="hero-day"
+            label="Día"
+            icon={<CalendarDays className={iconClass} aria-hidden />}
+          >
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <button type="button" id="hero-day" className={fieldClass}>
+                  <span className="block truncate">{shortDayLabel(effectiveDate, today)}</span>
+                  <ChevronDown className={chevronClass} aria-hidden />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="w-[var(--radix-dropdown-menu-trigger-width)]"
+              >
+                {days.map((d) => (
+                  <DropdownMenuItem key={d} onSelect={() => setDate(d)} className="cursor-pointer">
+                    {dayLabel(d, today)}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Field>
 
-        <Field htmlFor="hero-time" label="Hora" icon={<Clock className={iconClass} aria-hidden />}>
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <button type="button" id="hero-time" className={fieldClass}>
-                <span className="block truncate tabular-nums">{time || 'Cualquiera'}</span>
-                <ChevronDown className={chevronClass} aria-hidden />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="start"
-              className="max-h-60 w-[var(--radix-dropdown-menu-trigger-width)] overflow-y-auto"
-            >
-              <DropdownMenuItem onSelect={() => setTime('')} className="cursor-pointer">
-                Cualquier horario
-              </DropdownMenuItem>
-              {HOURS.map((h) => (
-                <DropdownMenuItem
-                  key={h}
-                  onSelect={() => setTime(h)}
-                  className="cursor-pointer tabular-nums"
-                >
-                  {h}
+          <Field
+            htmlFor="hero-time"
+            label="Hora"
+            icon={<Clock className={iconClass} aria-hidden />}
+          >
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <button type="button" id="hero-time" className={fieldClass}>
+                  <span className="block truncate tabular-nums">{time || 'Cualquiera'}</span>
+                  <ChevronDown className={chevronClass} aria-hidden />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                className="max-h-60 w-[var(--radix-dropdown-menu-trigger-width)] overflow-y-auto"
+              >
+                <DropdownMenuItem onSelect={() => setTime('')} className="cursor-pointer">
+                  Cualquier horario
                 </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </Field>
+                {HOURS.map((h) => (
+                  <DropdownMenuItem
+                    key={h}
+                    onSelect={() => setTime(h)}
+                    className="cursor-pointer tabular-nums"
+                  >
+                    {h}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </Field>
+        </div>
 
-        <Button
-          type="submit"
-          className="mt-2 h-[54px] w-full rounded-xl text-base font-semibold md:h-[54px]"
-        >
+        <Button type="submit" className={`${PORTAL_BUTTON} rounded-xl font-semibold`}>
           Buscar canchas
         </Button>
       </div>

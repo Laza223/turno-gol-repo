@@ -87,10 +87,7 @@ const meta = {
           }}
         >
           {/* El marco real: es quien reserva el alto de la barra inferior y de la barra fija. */}
-          <PortalFrame
-            header={<PortalHeader variant="solid" signOutAction={signOut} />}
-            footer={<SiteFooter />}
-          >
+          <PortalFrame header={<PortalHeader signOutAction={signOut} />} footer={<SiteFooter />}>
             <Story />
           </PortalFrame>
         </PortalSessionProvider>

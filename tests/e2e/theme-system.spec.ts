@@ -23,9 +23,14 @@ test.describe('Tema del celular en la home', () => {
         await page.emulateMedia({ colorScheme: opposite })
         await expect(html).toHaveClass(new RegExp(`\\b${opposite}\\b`))
         await expect(html).toHaveCSS('color-scheme', opposite)
-        await expect(page.locator('.landing-hero')).toHaveCSS(
-          'background-image',
-          opposite === 'dark' ? 'none' : /linear-gradient/,
+        // El fondo de la página es el del mundo del portal: blanco en claro, el del panel en oscuro.
+        const pageBg = page.locator('.player-shell-bg')
+        // Claro: blanco (portal-world.css). Oscuro: --background de `.dark` en globals.css,
+        // 224 71% 4% = #030711. El selector `html:has([data-world='portal']) .player-shell-bg`
+        // (globals.css) es el que fija `background: var(--color-background)`.
+        await expect(pageBg).toHaveCSS(
+          'background-color',
+          opposite === 'dark' ? 'rgb(3, 7, 17)' : 'rgb(255, 255, 255)',
         )
 
         await page.reload()

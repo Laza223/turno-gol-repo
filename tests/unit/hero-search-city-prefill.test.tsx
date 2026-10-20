@@ -60,6 +60,14 @@ afterEach(() => {
 })
 
 describe('HeroSearch — zona sugerida por la ubicación del hero', () => {
+  it('el valor de Zona no baja de 16 px en ningún ancho (el combobox trae `md:text-sm`)', () => {
+    renderSearch()
+    // tailwind-merge deja sobrevivir el `md:text-sm` del combobox si fieldClass no lo pisa:
+    // a 14 px desde `md` iOS zoomea al enfocar.
+    expect(cityInput().className).toContain('md:text-base')
+    expect(cityInput().className).not.toContain('md:text-sm')
+  })
+
   it('sugiere la localidad del complejo más cercano y el submit navega con city+province', async () => {
     stubGeolocation((success) => success({ coords: { latitude: -31.42, longitude: -64.18 } }))
     stubApi([cordoba])

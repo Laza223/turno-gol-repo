@@ -4,7 +4,13 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, LocateFixed, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  PORTAL_BUTTON_OUTLINE,
+  PORTAL_LINK,
+  PORTAL_SECTION_TITLE,
+} from '@/components/world/PortalAuthFrame'
 import { formatArs } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import type { CityCount } from '@/modules/tenants/search.service'
 import { useNearby, type NearbyComplex, type NearbyState } from './nearby-context'
 import { distanceLabel, formatsLabel, HERO_COUNT, RADIUS_STEPS_KM } from './nearby'
@@ -13,9 +19,19 @@ const MAX_KM = RADIUS_STEPS_KM[RADIUS_STEPS_KM.length - 1]
 /** El tope que pide la búsqueda: con esa cantidad en zona, "N" dejaría de ser exacto. */
 const SEARCH_LIMIT = 30
 
+const CARD = 'relative rounded-xl border border-border bg-card'
+/** Blanco táctil de 44 px: el link de texto no es una palabra suelta dentro de un párrafo. */
+const TEXT_LINK = cn(
+  'inline-flex min-h-11 items-center font-semibold text-emerald-700 underline underline-offset-4 dark:text-emerald-400',
+  PORTAL_LINK,
+)
+/** El link que cubre toda la tarjeta: el nombre del complejo. */
+const CARD_LINK =
+  'rounded-sm after:absolute after:inset-0 after:rounded-xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
+
 function Cover({ t, sizes, className }: { t: NearbyComplex; sizes: string; className: string }) {
   return (
-    <div className={`relative overflow-hidden bg-muted ${className}`}>
+    <div className={cn('relative overflow-hidden bg-muted', className)}>
       {t.coverUrl ? (
         <Image
           src={t.coverUrl}
@@ -27,7 +43,7 @@ function Cover({ t, sizes, className }: { t: NearbyComplex; sizes: string; class
       ) : (
         <div
           aria-hidden
-          className="mockup-cover flex h-full w-full items-center justify-center font-display text-3xl font-black italic text-emerald-800/50 dark:text-emerald-200/60"
+          className="flex h-full w-full items-center justify-center font-display text-2xl font-extrabold text-muted-foreground"
         >
           {t.name.slice(0, 2).toUpperCase()}
         </div>
@@ -36,37 +52,83 @@ function Cover({ t, sizes, className }: { t: NearbyComplex; sizes: string; class
   )
 }
 
-const pillClass =
-  'relative z-10 inline-flex h-11 min-w-[66px] items-center justify-center rounded-full border-[1.5px] border-emerald-600 px-3 text-[15px] sm:h-12 sm:min-w-[100px] sm:px-5 sm:text-base font-semibold tabular-nums text-foreground transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:border-emerald-400 dark:bg-white/[.03]'
+const pillClass = cn(
+  'relative z-10 inline-flex min-h-11 min-w-0 items-center justify-center rounded-xl border border-input bg-card px-1 text-base min-[375px]:min-w-[4.5rem] min-[375px]:px-3 font-semibold tabular-nums text-foreground transition-colors hover:bg-accent',
+  PORTAL_LINK,
+)
+
+/** Los horarios: cuatro en una fila (grilla) debajo de 375 px; desde ahí, fluyen y se envuelven. */
+const SLOTS_ROW = 'grid grid-cols-4 gap-2 min-[375px]:flex min-[375px]:flex-wrap'
+
+/** Cuatro horarios en esqueleto: lo que ocupa "Libre hoy" mientras carga o se espera la ubicación. */
+function SlotsSkeleton() {
+  return (
+    <div className={cn(SLOTS_ROW, 'mt-4')} aria-hidden>
+      {[0, 1, 2, 3].map((i) => (
+        <span key={i} className="skeleton h-11 min-[375px]:w-[4.5rem] rounded-xl" />
+      ))}
+    </div>
+  )
+}
+
+function Slots({ t }: { t: NearbyComplex }) {
+  if (t.slots === undefined) return <SlotsSkeleton />
+  // `null` = la disponibilidad no cargó: NO es "no hay turnos", y la salida es la ficha.
+  if (t.slots === null) {
+    return (
+      <div className="relative z-10 mt-4 text-sm text-muted-foreground">
+        <p>No pudimos cargar los horarios.</p>
+        <Link href={`/${t.slug}`} className={TEXT_LINK}>
+          Ver el complejo
+        </Link>
+      </div>
+    )
+  }
+  if (t.slots.length === 0) {
+    return (
+      <div className="relative z-10 mt-4 text-sm text-muted-foreground">
+        <p>Hoy no le quedan turnos libres.</p>
+        <Link href={`/${t.slug}`} className={TEXT_LINK}>
+          Ver otros días
+        </Link>
+      </div>
+    )
+  }
+  return (
+    <div className="mt-4" role="group" aria-label={`Turnos libres hoy en ${t.name}`}>
+      <p className="text-sm font-semibold text-foreground">Libre hoy</p>
+      <div className={cn(SLOTS_ROW, 'mt-2')}>
+        {t.slots.map((s) => (
+          <Link
+            key={s.time}
+            href={s.href}
+            className={pillClass}
+            aria-label={`Reservar hoy a las ${s.time}`}
+          >
+            {s.time}
+          </Link>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 function MainCard({ t }: { t: NearbyComplex }) {
   const formats = formatsLabel(t.courtFormats)
   return (
-    <article className="mockup-card relative rounded-2xl p-2 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 motion-reduce:animate-none">
-      <Cover
-        t={t}
-        sizes="(min-width: 1024px) 680px, 100vw"
-        className="aspect-[2.2/1] rounded-xl lg:aspect-auto lg:h-[274px]"
-      />
-      <div className="px-3 pb-4 pt-4 sm:px-5 sm:pb-5">
-        <h2 className="font-display text-[28px] font-black italic leading-tight tracking-[-0.02em] text-foreground sm:text-[40px]">
-          <Link
-            href={`/${t.slug}`}
-            className="rounded-sm after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-          >
+    <article className={cn(CARD, 'p-3 sm:p-4')}>
+      <Cover t={t} sizes="(min-width: 1024px) 640px, 100vw" className="aspect-[3/1] rounded-lg" />
+      <div className="pt-4">
+        <h2 className={PORTAL_SECTION_TITLE}>
+          <Link href={`/${t.slug}`} className={CARD_LINK}>
             {t.name}
           </Link>
         </h2>
-        <p className="mt-2 flex flex-wrap items-center gap-x-2 text-[15px] text-muted-foreground sm:text-[17px]">
-          <MapPin
-            className="h-[18px] w-[18px] shrink-0 text-emerald-700 dark:text-emerald-400"
-            aria-hidden
-          />
+        <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+          <MapPin className="size-4 shrink-0" aria-hidden />
           <span>{t.city}</span>
           <span aria-hidden>·</span>
-          <span className="font-medium text-emerald-800 dark:text-emerald-400">
-            {distanceLabel(t.distanceKm)}
-          </span>
+          <span className="font-medium text-foreground">{distanceLabel(t.distanceKm)}</span>
           {formats && (
             <>
               <span aria-hidden>·</span>
@@ -75,9 +137,9 @@ function MainCard({ t }: { t: NearbyComplex }) {
           )}
         </p>
         {t.fromPriceCents != null && (
-          <p className="mt-2 text-[16px] text-muted-foreground sm:text-[19px]">
+          <p className="mt-1 text-sm text-muted-foreground">
             Turno desde{' '}
-            <span className="font-bold tabular-nums text-foreground">
+            <span className="font-semibold tabular-nums text-foreground">
               {formatArs(t.fromPriceCents)}
             </span>
           </p>
@@ -88,99 +150,39 @@ function MainCard({ t }: { t: NearbyComplex }) {
   )
 }
 
-function Slots({ t }: { t: NearbyComplex }) {
-  if (t.slots === undefined) {
-    return (
-      <div className="mt-5 flex flex-wrap items-center gap-3" aria-hidden>
-        <span className="skeleton h-5 w-20 rounded" />
-        {[0, 1, 2, 3].map((i) => (
-          <span key={i} className="skeleton h-11 w-[66px] rounded-full sm:h-12 sm:w-[100px]" />
-        ))}
-      </div>
-    )
-  }
-  if (t.slots.length === 0) {
-    return (
-      <p className="relative z-10 mt-5 text-[15px] text-muted-foreground">
-        Hoy no le quedan turnos libres.{' '}
-        <Link
-          href={`/${t.slug}`}
-          className="font-semibold text-emerald-800 underline-offset-4 hover:underline dark:text-emerald-400"
-        >
-          Ver otros días
-        </Link>
-      </p>
-    )
-  }
-  return (
-    <div
-      className="mt-5 flex flex-wrap items-center gap-2 sm:gap-3"
-      role="group"
-      aria-label={`Turnos libres hoy en ${t.name}`}
-    >
-      <span className="w-full text-[17px] font-semibold text-emerald-800 sm:text-[19px] xl:mr-4 xl:w-auto dark:text-emerald-400">
-        Libre hoy
-      </span>
-      {t.slots.map((s) => (
-        <Link
-          key={s.time}
-          href={s.href}
-          className={pillClass}
-          aria-label={`Reservar hoy a las ${s.time}`}
-        >
-          {s.time}
-        </Link>
-      ))}
-    </div>
-  )
-}
-
 function Row({ t }: { t: NearbyComplex }) {
   const next = t.slots?.[0]
   return (
-    <article className="card-premium card-premium-interactive relative grid grid-cols-[88px_minmax(0,1fr)_auto] items-center gap-4 rounded-2xl p-3 sm:grid-cols-[130px_minmax(0,1fr)_176px] sm:gap-6 sm:py-3 sm:pl-[22px] sm:pr-0 lg:grid-cols-[104px_minmax(0,1fr)_auto] lg:gap-4 lg:pr-5 xl:grid-cols-[130px_minmax(0,1fr)_176px] xl:gap-6 xl:pr-0 animate-in fade-in-0 slide-in-from-bottom-2 duration-300 motion-reduce:animate-none">
-      <Cover
-        t={t}
-        sizes="130px"
-        className="h-[68px] rounded-lg sm:h-[92px] lg:h-[78px] xl:h-[92px]"
-      />
-      <div className="min-w-0">
-        <h3 className="truncate font-display text-[19px] font-black italic tracking-[-0.02em] text-foreground sm:text-[26px] lg:text-[22px] xl:text-[26px]">
-          <Link
-            href={`/${t.slug}`}
-            className="rounded-sm after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-          >
+    <article className={cn(CARD, 'flex flex-wrap items-center gap-x-3 gap-y-1 p-3')}>
+      <Cover t={t} sizes="72px" className="h-16 w-[72px] shrink-0 rounded-lg" />
+      <div className="min-w-0 flex-1">
+        <h3 className="line-clamp-2 text-base font-semibold text-foreground">
+          <Link href={`/${t.slug}`} className={CARD_LINK}>
             {t.name}
           </Link>
         </h3>
-        <p className="mt-1 flex items-center gap-2 text-[15px] text-muted-foreground sm:text-[17px]">
-          <MapPin
-            className="h-[18px] w-[18px] shrink-0 text-emerald-700 dark:text-emerald-400"
-            aria-hidden
-          />
+        <p className="mt-0.5 flex items-center gap-1.5 text-sm text-muted-foreground">
+          <MapPin className="size-4 shrink-0" aria-hidden />
           {distanceLabel(t.distanceKm)}
         </p>
       </div>
-      <div className="flex h-14 flex-col justify-center border-l border-border pl-4 sm:pl-7 dark:border-white/10">
-        {t.slots === undefined ? (
-          <span className="skeleton h-9 w-14 rounded" aria-hidden />
-        ) : next ? (
-          <Link
-            href={next.href}
-            className="relative z-10 rounded-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label={`Reservar hoy a las ${next.time} en ${t.name}`}
-          >
-            <span className="block text-[14px] font-semibold text-emerald-800 dark:text-emerald-400 sm:text-[16px]">
-              Libre
-            </span>
-            <span className="block text-[19px] font-bold tabular-nums text-foreground sm:text-[22px]">
-              {next.time}
-            </span>
-          </Link>
-        ) : (
-          <span className="text-[14px] text-muted-foreground">Sin turnos hoy</span>
-        )}
-      </div>
+      {t.slots === undefined ? (
+        <span className="skeleton h-11 w-16 shrink-0 rounded-xl" aria-hidden />
+      ) : next ? (
+        <Link
+          href={next.href}
+          className={cn(pillClass, 'min-w-[4.5rem] px-3')}
+          aria-label={`Reservar hoy a las ${next.time} en ${t.name}`}
+        >
+          {next.time}
+        </Link>
+      ) : t.slots !== null ? (
+        <span className="shrink-0 text-sm text-muted-foreground">Sin turnos hoy</span>
+      ) : null}
+      {/* La fila entera ya lleva a la ficha (el link del nombre cubre la tarjeta). */}
+      {t.slots === null && (
+        <p className="w-full text-sm text-muted-foreground">No pudimos cargar los horarios.</p>
+      )}
     </article>
   )
 }
@@ -191,9 +193,9 @@ function ZoneChips({ cities }: { cities: CityCount[] }) {
     return (
       <Link
         href="/explorar"
-        className="mt-4 inline-flex items-center gap-1.5 font-semibold text-emerald-800 underline-offset-4 hover:underline dark:text-emerald-400"
+        className={cn('mt-4 inline-flex min-h-11 items-center gap-1.5', TEXT_LINK)}
       >
-        Ver todas las canchas <ArrowRight className="h-4 w-4" aria-hidden />
+        Ver todas las canchas <ArrowRight className="size-4" aria-hidden />
       </Link>
     )
   }
@@ -203,10 +205,13 @@ function ZoneChips({ cities }: { cities: CityCount[] }) {
         <li key={`${c.city}||${c.province}`}>
           <Link
             href={`/explorar?${new URLSearchParams({ city: c.city, province: c.province })}`}
-            className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:border-primary hover:text-emerald-800 dark:border-white/15 dark:bg-white/[.04] dark:hover:text-emerald-400"
+            className={cn(
+              'inline-flex min-h-11 items-center gap-2 rounded-full border border-input bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent',
+              PORTAL_LINK,
+            )}
           >
             {c.city}
-            <span className="tabular-nums text-muted-foreground">{c.count}</span>
+            <span className="font-normal tabular-nums text-muted-foreground">{c.count}</span>
           </Link>
         </li>
       ))}
@@ -250,39 +255,40 @@ function FallbackCard({
   const { locate } = useNearby()
   const copy = FALLBACK_COPY[status]
   return (
-    <div className="mockup-card rounded-2xl p-2">
-      <div className="relative hidden h-[274px] overflow-hidden rounded-xl sm:block">
-        <Image
-          src="/bg-hero-desktop.png"
-          alt=""
-          fill
-          priority
-          sizes="(min-width: 1024px) 680px, 100vw"
-          className="object-cover object-[center_35%]"
-        />
-      </div>
-      <div className="px-3 pb-4 pt-4 sm:px-5 sm:pb-5" aria-live="polite">
-        <h2 className="font-display text-[24px] font-black italic leading-tight tracking-[-0.02em] text-foreground sm:text-[32px]">
-          {copy.title}
-        </h2>
-        <p className="mt-2 text-[16px] text-muted-foreground sm:text-[17px]">{copy.body}</p>
-        {status === 'locating' ? (
-          <Button type="button" variant="outline" className="mt-4 rounded-full" onClick={locate}>
-            <LocateFixed className="mr-2 h-4 w-4" aria-hidden />
+    <div
+      className={cn(CARD, status === 'locating' ? 'p-3 sm:p-4' : 'p-4 sm:p-6')}
+      aria-live="polite"
+    >
+      {/* Mientras se espera la ubicación, la silueta de la tarjeta principal (portada y cuatro
+          horarios): así no hay salto de alto cuando llegan las canchas. */}
+      {status === 'locating' && (
+        <div aria-hidden className="skeleton mb-4 aspect-[3/1] w-full rounded-lg" />
+      )}
+      <h2 className={PORTAL_SECTION_TITLE}>{copy.title}</h2>
+      <p className="mt-2 text-base text-muted-foreground">{copy.body}</p>
+      {status === 'locating' ? (
+        <>
+          <SlotsSkeleton />
+          <Button
+            type="button"
+            variant="outline"
+            className={cn(PORTAL_BUTTON_OUTLINE, 'mt-4 rounded-xl sm:w-auto sm:px-6')}
+            onClick={locate}
+          >
+            <LocateFixed className="mr-2 size-4" aria-hidden />
             Usar mi ubicación
           </Button>
-        ) : (
-          <ZoneChips cities={cities} />
-        )}
-      </div>
+        </>
+      ) : (
+        <ZoneChips cities={cities} />
+      )}
     </div>
   )
 }
 
 /**
- * La prueba del hero: la cancha real que te queda cerca, con sus turnos libres
- * de hoy como botones de reserva, y las dos que siguen. Qué canchas y en qué
- * orden: `nearby.ts`.
+ * La prueba de la home: la cancha real que te queda cerca, con sus turnos libres de hoy como
+ * links de reserva, y las dos que siguen. Qué canchas y en qué orden: `nearby.ts`.
  */
 export function NearbyPanel({ cities }: { cities: CityCount[] }) {
   const { state } = useNearby()
@@ -291,7 +297,7 @@ export function NearbyPanel({ cities }: { cities: CityCount[] }) {
   const [main, ...rest] = state.complexes
   const { lat, lng } = state.coords
   return (
-    <div className="flex flex-col gap-4 sm:gap-5">
+    <div className="flex flex-col gap-3">
       {main && <MainCard t={main} />}
       {rest.map((t) => (
         <Row key={t.id} t={t} />
@@ -299,12 +305,15 @@ export function NearbyPanel({ cities }: { cities: CityCount[] }) {
       {state.inZone > HERO_COUNT && (
         <Link
           href={`/explorar?${new URLSearchParams({ sort: 'distance', lat: String(lat), lng: String(lng) })}`}
-          className="inline-flex items-center gap-1.5 self-center text-[15px] font-semibold text-foreground underline-offset-4 hover:underline"
+          className={cn(
+            'inline-flex min-h-11 items-center gap-1.5 self-center text-base font-semibold text-emerald-700 underline underline-offset-4 dark:text-emerald-400',
+            PORTAL_LINK,
+          )}
         >
           {state.inZone >= SEARCH_LIMIT
             ? 'Ver todas las canchas cerca tuyo'
             : `Ver las ${state.inZone} canchas cerca tuyo`}
-          <ArrowRight className="h-4 w-4" aria-hidden />
+          <ArrowRight className="size-4" aria-hidden />
         </Link>
       )}
     </div>

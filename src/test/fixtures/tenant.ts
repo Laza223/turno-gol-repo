@@ -217,7 +217,7 @@ export const publicTenantCardSinReservaOnline = (): PublicTenantCardFixture =>
     distanceKm: null,
   })
 
-/** Seis complejos destacados (tope real de `searchPublicTenants({ sort: 'rating', limit: 6 })`). */
+/** Seis complejos de ejemplo para listas de tarjetas públicas (`/explorar`). */
 export const publicTenantCards = (): PublicTenantCardFixture[] => [
   publicTenantCard(),
   publicTenantCard({

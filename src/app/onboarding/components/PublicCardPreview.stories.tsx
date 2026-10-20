@@ -3,7 +3,7 @@ import { expect, within } from 'storybook/test'
 import { PublicCardPreview } from './PublicCardPreview'
 
 /**
- * Vista previa del paso 1. NO es `FeaturedComplexCard` (esa pide datos que no
+ * Vista previa del paso 1. NO es la tarjeta completa de `/explorar` (esa pide datos que no
  * existen todavía: precio, amenities, rating, foto) — ver el comentario del
  * componente.
  */

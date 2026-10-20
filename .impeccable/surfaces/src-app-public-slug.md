@@ -39,7 +39,7 @@ Relevado el 2026-10-15 en el celular, sobre un complejo de F5 y F7 de Moreno, po
   - A, nuevo con Google: de 5 toques a 4 (hora, cancha, casilla, Google). Con seña se suma "Pagar la seña": son 5.
   - B, nuevo con email: de 6 toques y 3 campos a 5 y 2 (hora, cancha, casilla, "Continuar", el enlace del mail). Con seña se suma "Pagar la seña": son 6.
   - D, vuelve sin sesión: de 5 a 4.
-  - C, vuelve con sesión: de 2 a 3 (hora, cancha, confirmar). Es el costo de elegir hora y después cancha; a cambio, la página entra en el celular con cualquier cantidad de canchas y el formato se ve antes de reservar. "Tu próximo turno" y "Repetir" en la home (PR 2.5) lo compensan.
+  - C, vuelve con sesión: de 2 a 3 (hora, cancha, confirmar). Es el costo de elegir hora y después cancha; a cambio, la página entra en el celular con cualquier cantidad de canchas y el formato se ve antes de reservar. La barra inferior deja "Reservas" y "Reservar de nuevo" a un toque; "Tu próximo turno" en la home quedó fuera del 2.5 hasta que el uso lo pida.
 - Cada error dice qué pasó y qué hacer (la línea base inventaría 70 textos; 40 fallan hoy).
 
 ## Estados y rangos

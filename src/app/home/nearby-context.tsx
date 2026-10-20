@@ -15,8 +15,11 @@ const MAIN_CARD_SLOTS = 4
 
 export type NearbyComplex = PublicTenantCard & {
   distanceKm: number
-  /** `undefined` mientras carga; `[]` si hoy no le quedan turnos libres. */
-  slots?: FreeSlot[]
+  /**
+   * `undefined` mientras carga; `[]` si cargó y hoy no le quedan turnos libres; `null` si NO
+   * cargó (429, 4xx, 5xx o red): no es lo mismo que "no hay", y la tarjeta lo dice distinto.
+   */
+  slots?: FreeSlot[] | null
 }
 
 export type NearbyState =
@@ -52,10 +55,15 @@ export function useNearby(): NearbyContextValue {
 const readGeolocationSupported = (): boolean =>
   typeof navigator === 'undefined' ? true : Boolean(navigator.geolocation)
 
-async function loadSlots(slug: string, date: string, max: number): Promise<FreeSlot[]> {
-  const res = await fetch(`/api/public/availability?${new URLSearchParams({ slug, date })}`)
-  if (!res.ok) return []
-  return freeSlots(slug, (await res.json()) as AvailabilityResponse, max)
+/** `null` = la disponibilidad no cargó; `[]` = cargó y no hay turnos libres. */
+async function loadSlots(slug: string, date: string, max: number): Promise<FreeSlot[] | null> {
+  try {
+    const res = await fetch(`/api/public/availability?${new URLSearchParams({ slug, date })}`)
+    if (!res.ok) return null
+    return freeSlots(slug, (await res.json()) as AvailabilityResponse, max)
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -106,9 +114,7 @@ export function NearbyProvider({ children }: { children: ReactNode }) {
 
         const date = todayART()
         const slots = await Promise.all(
-          picked.map((t, i) =>
-            loadSlots(t.slug, date, i === 0 ? MAIN_CARD_SLOTS : 1).catch(() => []),
-          ),
+          picked.map((t, i) => loadSlots(t.slug, date, i === 0 ? MAIN_CARD_SLOTS : 1)),
         )
         set({
           status: 'found',

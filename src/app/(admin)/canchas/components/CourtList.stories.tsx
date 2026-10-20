@@ -253,8 +253,8 @@ export const ActivarCanchaSubeLaCuota: Story = {
       requiresBillingConfirmation: {
         currentBilledCourts: 4,
         nextBilledCourts: 5,
-        currentMonthlyCents: 13_700_000,
-        nextMonthlyCents: 16_700_000,
+        currentMonthlyCents: 12_000_000,
+        nextMonthlyCents: 15_000_000,
         isTrialing: false,
       },
     })),
@@ -268,8 +268,8 @@ export const ActivarCanchaSubeLaCuota: Story = {
       { timeout: 15_000 },
     )
     await expect(dialog).toHaveTextContent('Esto suma tu 5ª cancha')
-    await expect(dialog).toHaveTextContent(/137\.000/)
-    await expect(dialog).toHaveTextContent(/167\.000/)
+    await expect(dialog).toHaveTextContent(/120\.000/)
+    await expect(dialog).toHaveTextContent(/150\.000/)
 
     // Mismo motivo que en PausarConImpacto: un portal abierto contamina la
     // story siguiente del archivo.

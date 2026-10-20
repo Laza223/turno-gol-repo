@@ -9,8 +9,9 @@ import { writeEvidence } from '../_qa/evidence'
  * ExplorarFilters.tsx:117-246, ExplorarToolbar.tsx:10-15,87-106.
  *
  * NOTA: hay DOS instancias de ExplorarFilters montadas a la vez en viewport desktop (sidebar
- * `aside` siempre visible + drawer del Sheet al abrirlo) — comparten ids/labels (min-price,
- * Techado, Césped natural...). Los checks del drawer se escopean al `role=dialog` (Radix
+ * `aside` siempre visible + drawer del Sheet al abrirlo) — comparten labels (Techado, Césped
+ * natural...). Los ids de precio son únicos: el drawer conserva `#min-price`/`#max-price` y el
+ * sidebar usa `idPrefix="sidebar-"`. Los checks del drawer se escopean al `role=dialog` (Radix
  * Dialog.Content) para no ambigüar contra el sidebar. El chip "Fútbol 5" también choca con el
  * botón homónimo del fieldset Formato del sidebar → se usa `.first()` (QuickFilters precede al
  * aside en el DOM, page.tsx:209-226).

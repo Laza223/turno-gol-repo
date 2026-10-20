@@ -962,9 +962,9 @@ html:has([data-fixed-cta]) {
   }
 }
 
-/* ─── Leaflet dark-mode overrides ────────────────────────────────────────
-   leaflet/dist/leaflet.css hardcodes white popup backgrounds. On always-dark
-   /explorar we override them via the .dark wrapper. */
+/* ─── Leaflet: overrides del popup ───────────────────────────────────────
+   leaflet/dist/leaflet.css hardcodes white popup backgrounds. En modo oscuro
+   (clase .dark, no una página always-dark) las pisamos acá. */
 .dark .leaflet-popup-content-wrapper {
   background: hsl(var(--card));
   color: hsl(var(--foreground));
@@ -973,8 +973,13 @@ html:has([data-fixed-cta]) {
 .dark .leaflet-popup-tip {
   background: hsl(var(--card));
 }
-.dark .leaflet-popup-content-wrapper a {
-  color: hsl(var(--primary));
+/* El único link del popup es el botón "Ver complejo" (bg-primary). leaflet.css le
+   pone color a todo `.leaflet-container a` y, al ir sin @layer, le gana a las
+   utilidades de Tailwind v4: sin esto queda azul sobre verde en claro. Va para los
+   dos temas (el texto del botón primario es blanco en claro y slate-950 en oscuro) y
+   con un selector más específico que el de Leaflet, sin !important. */
+.leaflet-container .leaflet-popup-content-wrapper a {
+  color: hsl(var(--primary-foreground));
 }
 
 /* ─── Comprobante de reserva imprimible ───────────────────────────────────

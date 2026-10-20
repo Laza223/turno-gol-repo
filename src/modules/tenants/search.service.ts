@@ -7,6 +7,19 @@ import type { TenantSettings } from './tenant.types'
 export type SortOption = 'name' | 'price' | 'rating' | 'distance'
 
 /**
+ * El orden que `searchPublicTenants` aplica de verdad: `distance` sin lat Y lng
+ * (hasGeo, más abajo) cae a nombre. La UI muestra ESTE valor, no el del param.
+ */
+export function effectiveSort(
+  sort: SortOption | undefined,
+  lat: number | undefined,
+  lng: number | undefined,
+): SortOption {
+  if (sort === 'distance' && (typeof lat !== 'number' || typeof lng !== 'number')) return 'name'
+  return sort ?? 'name'
+}
+
+/**
  * Precio "desde" tal como lo puede ver el jugador: NULL si el complejo oculta
  * sus precios (`settings.hide_public_prices`). Se usa en el SELECT, en los
  * filtros de rango y en el orden por precio: si solo se ocultara en la tarjeta,

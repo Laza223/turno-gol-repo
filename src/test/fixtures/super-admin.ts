@@ -253,8 +253,8 @@ export type SaTenantList = {
 }
 
 /**
- * Parámetros del precio LINEAL POR CANCHA vigente (decisión 2026-09-17,
- * migr. 090/091): $47.000 la primera + $30.000 cada extra, anual 10% off.
+ * Parámetros del precio LINEAL POR CANCHA vigente (decisión 2026-10-20,
+ * migr. 095): $30.000 cada cancha, anual 10% off.
  * Reemplaza a `planSummaries()` — ya no hay bandas que listar.
  */
 export type SaBilledCourtsPricing = {
@@ -266,7 +266,7 @@ export type SaBilledCourtsPricing = {
 export const billedCourtsPricing = (
   overrides: Partial<SaBilledCourtsPricing> = {},
 ): SaBilledCourtsPricing => ({
-  priceFirstCourtCents: 4_700_000,
+  priceFirstCourtCents: 3_000_000,
   priceExtraCourtCents: 3_000_000,
   annualDiscountBps: 1000,
   ...overrides,
@@ -283,8 +283,8 @@ export const tenantListRow = (overrides: Partial<SaTenantListRow> = {}): SaTenan
   billedCourts: 5,
   billingCycle: 'monthly',
   subscriptionStatus: 'active',
-  // 5 canchas mensual: 4.700.000 + 4 × 3.000.000 (centavos ARS).
-  mrrCents: 16_700_000,
+  // 5 canchas mensual: 5 × 3.000.000 (centavos ARS).
+  mrrCents: 15_000_000,
   lastBookingAt: hoursFromNow(-3),
   bookings7d: 42,
   onlineBookings7d: 9,

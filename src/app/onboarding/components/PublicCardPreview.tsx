@@ -13,7 +13,7 @@ type Props = {
  * Vista previa del paso 1: la tarjeta pública tal como la va a ver un jugador
  * en `/explorar`, armándose en vivo mientras el dueño escribe.
  *
- * NO es `FeaturedComplexCard` (esa pide `PublicTenantCard` completo: precio
+ * NO es la tarjeta completa de `/explorar` (esa pide `PublicTenantCard` completo: precio
  * "desde", amenities, rating, foto de portada — nada de eso existe todavía en
  * el paso 1, y fabricarlo sería mentir sobre el producto real). Reusa su MISMO
  * lenguaje visual (`card-premium`, `mockup-cover`, iniciales fantasma) para que

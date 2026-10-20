@@ -6,7 +6,7 @@ import { writeEvidence } from '../_qa/evidence'
  * Rol: Visitante (no auth). Prereq: ninguno (página pública ISR).
  * Reference spec for the QA run — copy this shape (anon page, 3-layer asserts,
  * writeEvidence at the end). No DB write; UI-sin-reload = router.push a /explorar.
- * Evidence anchors: src/app/home/HeroHeadline.tsx, src/app/home/HeroSearch.tsx.
+ * Evidence anchors: src/app/home/HeroHeadline.tsx, src/app/home/HeroSearch.tsx, src/components/site/PortalHeader.tsx.
  */
 test.describe('TG-HP-001 — Home + buscador', () => {
   test('home renders hero + search navigates to /explorar with query params', async ({ page }) => {
@@ -16,7 +16,7 @@ test.describe('TG-HP-001 — Home + buscador', () => {
       page.getByRole('heading', { level: 1, name: /Tu partido empieza en TurnoGol/i }),
     ).toBeVisible()
 
-    // Step 3: floating nav — Explorar link + Ingresar CTA (deslogueado)
+    // Step 3: barra del portal — Explorar link + Ingresar CTA (deslogueado)
     await expect(page.getByRole('link', { name: 'Explorar' }).first()).toBeVisible()
     await expect(page.getByRole('link', { name: 'Ingresar' }).first()).toBeVisible()
 

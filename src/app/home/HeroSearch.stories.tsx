@@ -3,6 +3,7 @@ import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { NearbyProvider } from './nearby-context'
 import { withGeolocation } from '@/test/storybook/with-geolocation'
 import { cityCounts, publicTenantCard } from '@/test/fixtures/tenant'
+import { PortalWorld } from '@/components/world/PortalWorld'
 import HeroSearch from './HeroSearch'
 
 const meta = {
@@ -15,9 +16,11 @@ const meta = {
   args: { cities: cityCounts() },
   decorators: [
     (Story) => (
-      <div className="max-w-[545px]">
-        <Story />
-      </div>
+      <PortalWorld>
+        <div className="max-w-[24rem] bg-background">
+          <Story />
+        </div>
+      </PortalWorld>
     ),
   ],
 } satisfies Meta<typeof HeroSearch>
@@ -80,6 +83,22 @@ export const SeleccionaHora: Story = {
     await userEvent.click(await body.findByRole('menuitem', { name: '19:00' }))
     await waitFor(() =>
       expect(canvas.getByRole('button', { name: 'Hora' })).toHaveTextContent('19:00'),
+    )
+  },
+}
+
+/** El día elegido se muestra corto ("Lun 16"): la forma larga del menú no entra en media columna. */
+export const DiaElegidoCorto: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Día' }))
+    const body = within(canvasElement.ownerDocument.body)
+    const items = await body.findAllByRole('menuitem')
+    await userEvent.click(items[3]!)
+    await waitFor(() =>
+      expect(canvas.getByRole('button', { name: 'Día' })).toHaveTextContent(
+        /^[A-ZÁÉÍÓÚ][a-záéíóú]{2} \d{1,2}$/,
+      ),
     )
   },
 }

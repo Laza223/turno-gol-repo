@@ -3,14 +3,12 @@ import { expect, within } from 'storybook/test'
 import { withGeolocation } from '@/test/storybook/with-geolocation'
 import { cityCounts, publicTenantCard } from '@/test/fixtures/tenant'
 import { availabilityResponse, slot, todayArt } from '@/test/fixtures/public'
+import { PortalWorld } from '@/components/world/PortalWorld'
 import { Hero } from './Hero'
 
 /**
- * `page.tsx` (HomePage) envuelve todas las secciones de la landing en
- * `<div className="landing-hero min-h-dvh text-foreground">` — esa clase es la
- * que pinta el fondo claro / el navy #020617 oscuro. Reproducirlo acá no es
- * decoración: sin él el hero se ve sobre `bg-background` y el contraste medido
- * no es el real.
+ * `page.tsx` (HomePage) monta la home dentro de `PortalWorld` (los tokens planos de La Reserva);
+ * acá se reproduce eso, o el contraste medido no es el real.
  *
  * Datos de demo (sintéticos): nombres, distancias y turnos son de mentira, y
  * las fotos son fondos de `public/` haciendo de la portada de cada complejo.
@@ -80,9 +78,11 @@ const meta = {
   args: { cities: cityCounts() },
   decorators: [
     (Story) => (
-      <div className="landing-hero min-h-dvh text-foreground">
-        <Story />
-      </div>
+      <PortalWorld>
+        <div className="min-h-dvh bg-background text-foreground">
+          <Story />
+        </div>
+      </PortalWorld>
     ),
   ],
 } satisfies Meta<typeof Hero>
@@ -163,5 +163,55 @@ export const UnaSinTurnos: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await canvas.findByText(/Hoy no le quedan turnos libres/)
+  },
+}
+
+/** La disponibilidad no cargó (429 y 500): NO dice "no hay turnos"; ofrece la ficha del complejo. */
+export const HorariosNoCargaron: Story = {
+  decorators: [withGeolocation('found')],
+  parameters: {
+    fetchMock: [
+      { match: '/api/public/search', json: { results: [sanMartin, laCortada], total: 2 } },
+      { match: 'slug=complejo-san-martin', json: { error: 'rate_limited' }, status: 429 },
+      { match: 'slug=la-cortada-f5', json: { error: 'boom' }, status: 500 },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await canvas.findAllByText(/No pudimos cargar los horarios/)
+    await expect(canvas.queryByText(/no le quedan turnos/i)).toBeNull()
+    // La tarjeta ofrece "Ver el complejo"; la fila no repite el link (el nombre ya cubre la fila).
+    await expect(canvas.getByRole('link', { name: 'Ver el complejo' })).toHaveAttribute(
+      'href',
+      '/complejo-san-martin',
+    )
+    await expect(canvas.getAllByText(/No pudimos cargar los horarios/)).toHaveLength(2)
+  },
+}
+
+/** Complejos que ocultan precios: llega `fromPriceCents: null` y no hay ningún `$` en pantalla. */
+export const PreciosOcultos: Story = {
+  decorators: [withGeolocation('found')],
+  parameters: {
+    fetchMock: [
+      {
+        match: '/api/public/search',
+        json: {
+          results: [
+            { ...sanMartin, fromPriceCents: null },
+            { ...laCortada, fromPriceCents: null },
+          ],
+          total: 2,
+        },
+      },
+      { match: 'slug=complejo-san-martin', json: dayOf(['19:00', '20:00']) },
+      { match: 'slug=la-cortada-f5', json: dayOf(['21:00']) },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await canvas.findByRole('link', { name: 'Reservar hoy a las 19:00' })
+    await expect(canvasElement.textContent).not.toContain('$')
+    await expect(canvas.queryByText(/Turno desde/)).toBeNull()
   },
 }

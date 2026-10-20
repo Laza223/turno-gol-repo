@@ -114,4 +114,57 @@ describe('NearbyProvider', () => {
     const { result } = renderHook(() => useNearby(), { wrapper })
     await waitFor(() => expect(result.current.state.status).toBe('error'))
   })
+
+  describe('disponibilidad que no cargó ≠ "no hay turnos"', () => {
+    const tenants = [publicTenantCard({ id: 'a', slug: 'a', distanceKm: 4.2, coverUrl: '/x.png' })]
+
+    /** La búsqueda anda; la disponibilidad responde `availability`. */
+    function stubAvailability(availability: () => Promise<unknown>) {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn((url: string) =>
+          url.startsWith('/api/public/search')
+            ? Promise.resolve({
+                ok: true,
+                json: async () => ({ results: tenants, total: tenants.length }),
+              })
+            : availability(),
+        ),
+      )
+    }
+
+    async function slotsOfMain() {
+      const { result } = renderHook(() => useNearby(), { wrapper })
+      await waitFor(() => {
+        const s = result.current.state
+        expect(s.status === 'found' && s.complexes[0]?.slots !== undefined).toBe(true)
+      })
+      const s = result.current.state
+      if (s.status !== 'found') throw new Error('esperaba found')
+      return s.complexes[0]?.slots
+    }
+
+    it.each([429, 404, 500])('HTTP %i → slots null (no cargó)', async (status) => {
+      stubGeolocation(located)
+      stubAvailability(() => Promise.resolve({ ok: false, status, json: async () => ({}) }))
+      expect(await slotsOfMain()).toBeNull()
+    })
+
+    it('fallo de red → slots null (no cargó)', async () => {
+      stubGeolocation(located)
+      stubAvailability(() => Promise.reject(new Error('network down')))
+      expect(await slotsOfMain()).toBeNull()
+    })
+
+    it('cargó pero sin horarios libres → [] (control: acá SÍ es "no hay turnos")', async () => {
+      stubGeolocation(located)
+      stubAvailability(() =>
+        Promise.resolve({
+          ok: true,
+          json: async () => availabilityResponse({ date: '2026-09-27', courts: [] }),
+        }),
+      )
+      expect(await slotsOfMain()).toEqual([])
+    })
+  })
 })

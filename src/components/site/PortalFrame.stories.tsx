@@ -31,7 +31,7 @@ const meta = {
     nextjs: { appDirectory: true, navigation: { pathname: '/explorar' } },
   },
   args: {
-    header: <PortalHeader variant="solid" signOutAction={fn(async () => {})} />,
+    header: <PortalHeader signOutAction={fn(async () => {})} />,
     footer: <SiteFooter />,
     children: <div className="p-6 text-sm text-foreground">Contenido de la página</div>,
   },

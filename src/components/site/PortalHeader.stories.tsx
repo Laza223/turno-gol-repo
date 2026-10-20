@@ -67,31 +67,8 @@ const NEXT_EXPLORAR = '/ingresar?next=%2Fexplorar%3Fcity%3Drosario'
 /** Alto del blanco táctil: WCAG 2.5.5 pide 44 px en todos los anchos del cromo. */
 const alto = (el: HTMLElement) => el.getBoundingClientRect().height
 
-export const OverlayDeslogueado: Story = {
-  args: { variant: 'overlay' },
-  decorators: withSession(null),
-  parameters: EN_EXPLORAR,
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.getByRole('link', { name: 'Ingresar' })).toHaveAttribute(
-      'href',
-      NEXT_EXPLORAR,
-    )
-  },
-}
-
-export const OverlayLogueado: Story = {
-  args: { variant: 'overlay' },
-  decorators: withSession(SESSION),
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: 'Cuenta de Tomás' })).toBeInTheDocument()
-  },
-}
-
 /** El cromo plano: 56 px, línea de 1 px abajo, "Ingresar" verde que vuelve a esta página. */
 export const SolidDeslogueado: Story = {
-  args: { variant: 'solid' },
   decorators: withSession(null),
   parameters: EN_EXPLORAR,
   play: async ({ canvasElement }) => {
@@ -110,7 +87,6 @@ export const SolidDeslogueadoMundo: Story = {
 }
 
 export const SolidLogueado: Story = {
-  args: { variant: 'solid' },
   decorators: withSession(SESSION),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -126,22 +102,7 @@ export const SolidLogueadoMundo: Story = {
   decorators: withSession(SESSION, null, true),
 }
 
-/**
- * Un COMPLEJO con la sesión abierta que cae en una página pública. Antes veía
- * "Ingresar", entraba, y el login lo devolvía acá mismo. Ahora tiene el camino
- * directo a su panel.
- */
-export const OverlayComplejoLogueado: Story = {
-  args: { variant: 'overlay' },
-  decorators: withSession(null, '/dashboard'),
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.getByRole('link', { name: 'Ir a mi panel' })).toBeInTheDocument()
-  },
-}
-
 export const SolidComplejoLogueado: Story = {
-  args: { variant: 'solid' },
   decorators: withSession(null, '/dashboard'),
   parameters: EN_EXPLORAR,
   play: async ({ canvasElement }) => {

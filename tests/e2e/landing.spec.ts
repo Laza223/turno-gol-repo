@@ -6,11 +6,17 @@ test.describe('landing page', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   })
 
+  test('un solo <main id="main-content"> (el del cromo del portal)', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.locator('main#main-content')).toHaveCount(1)
+    await expect(page.locator('main')).toHaveCount(1)
+  })
+
   test('header logged-out muestra Ingresar → /ingresar y Para complejos → /para-complejos', async ({
     page,
   }) => {
     await page.goto('/')
-    // La home usa PortalHeader overlay: el CTA logged-out es "Ingresar" → /ingresar, con
+    // La home usa el cromo del portal (PortalHeader): el CTA logged-out es "Ingresar" → /ingresar, con
     // `next` = la página actual para volver ahí (la home es `/`, codificada %2F).
     // No hay CTA "Comenzá gratis" en la home; ese CTA vive en /para-complejos (BusinessHeader).
     const ingresarLink = page.getByRole('link', { name: 'Ingresar' }).first()

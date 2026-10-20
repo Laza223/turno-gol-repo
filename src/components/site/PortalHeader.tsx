@@ -8,12 +8,11 @@ import { usePortalSession } from './PortalSessionProvider'
 import { Search, Building2, Calendar } from 'lucide-react'
 
 type Props = {
-  variant?: 'overlay' | 'solid'
   /** Threaded a AccountMenu — ver el comentario de la prop homónima ahí. */
   signOutAction: () => Promise<void>
 }
 
-// Cromo `solid`. El anillo de foco se separa con el color de la barra (card en claro,
+// El anillo de foco se separa con el color de la barra (card en claro,
 // background en oscuro): con `ring-offset-background` pelado, sobre las páginas del panel
 // quedaba un aro slate dentro de una barra blanca.
 const focusCls =
@@ -30,76 +29,16 @@ const ctaLinkCls = `-mr-1 inline-flex min-h-11 min-w-11 items-center justify-end
  * La sesión llega del PortalSessionProvider (hidratación client-side): el HTML
  * server-rendered es siempre el estado anónimo (habilita ISR) y el chip del
  * jugador aparece tras montar, ocupando el mismo slot derecho de la nav.
- * `variant="overlay"` se usa sobre el hero de la landing (markup preservado).
- * `variant="solid"` es el cromo plano de La Reserva: solo tokens semánticos, así se ve
- * igual con los del panel (páginas sin migrar) y con los del mundo del portal.
+ * Es el cromo plano de La Reserva: solo tokens semánticos, así se ve igual con los del
+ * panel (páginas sin migrar) y con los del mundo del portal.
  */
-export default function PortalHeader({ variant = 'solid', signOutAction }: Props) {
+export default function PortalHeader({ signOutAction }: Props) {
   const { session, staffPanelPath } = usePortalSession()
 
   // Precedencia: el jugador gana siempre. En la práctica son cookies
   // mutuamente excluyentes (un solo auth user por navegador), pero el orden lo
   // deja determinístico. `staffPanelPath` es el acceso del COMPLEJO logueado
   // que llega a una página pública: antes veía "Ingresar" y volvía al login.
-  const panelLinkClass =
-    'inline-flex h-11 items-center rounded-full border border-border bg-card px-3.5 text-xs font-semibold text-foreground transition-[background-color,scale] hover:bg-accent active:scale-95 sm:px-6 sm:text-sm dark:border-white/20 dark:bg-white/5 dark:hover:bg-white/10 whitespace-nowrap'
-
-  if (variant === 'overlay') {
-    // Pill flotante theme-adaptive (receta .overlay-nav). Paddings/gaps con
-    // cascada mobile-first: a 375px el CTA "Ingresar" no debe desbordar
-    // (deuda MASTER §13.5).
-    return (
-      <header className="fixed top-0 z-50 w-full px-3 pt-3.5 sm:px-6 sm:pt-[18px]">
-        <div className="mx-auto max-w-[1240px]">
-          <div className="overlay-nav flex items-center justify-between gap-2 rounded-full py-2 pl-4 pr-2 sm:gap-6 sm:py-3 sm:pl-6 sm:pr-3.5">
-            <Link
-              href="/"
-              aria-label="TurnoGol — inicio"
-              className="inline-flex min-h-11 shrink-0 items-center transition-opacity hover:opacity-90 md:min-h-0"
-            >
-              <Logo variant="horizontal" textClassName="text-foreground" />
-            </Link>
-            <div className="flex items-center gap-1 sm:gap-1.5">
-              <Link
-                href="/explorar"
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 py-2 text-xs md:min-h-0 font-semibold text-muted-foreground transition-all duration-150 hover:bg-foreground/5 hover:text-foreground sm:px-4 sm:py-[9px] sm:text-sm"
-              >
-                <Search className="h-[15px] w-[15px] sm:h-[17px] sm:w-[17px]" aria-hidden />
-                Explorar
-              </Link>
-              <Link
-                href="/para-complejos"
-                className="hidden items-center gap-2 rounded-full px-4 py-[9px] text-sm font-semibold text-muted-foreground transition-all duration-150 hover:bg-foreground/5 hover:text-foreground sm:inline-flex"
-              >
-                <Building2 className="h-[17px] w-[17px]" aria-hidden />
-                Para complejos
-              </Link>
-              <span
-                aria-hidden
-                className="mx-1 hidden h-[22px] w-px bg-border sm:mx-1.5 sm:block dark:bg-white/10"
-              />
-              {session ? (
-                <AccountMenu
-                  firstName={session.firstName}
-                  lastName={session.lastName}
-                  email={session.email}
-                  avatarUrl={session.avatarUrl}
-                  variant="overlay"
-                  signOutAction={signOutAction}
-                />
-              ) : staffPanelPath ? (
-                <Link href={staffPanelPath} className={panelLinkClass}>
-                  Ir a mi panel
-                </Link>
-              ) : (
-                <IngresarLink className={panelLinkClass}>Ingresar</IngresarLink>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-    )
-  }
 
   return (
     <header className="sticky top-0 z-50 h-14 w-full border-b border-border bg-card dark:bg-background">
@@ -132,7 +71,6 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
                 lastName={session.lastName}
                 email={session.email}
                 avatarUrl={session.avatarUrl}
-                variant="solid"
                 signOutAction={signOutAction}
               />
             </>

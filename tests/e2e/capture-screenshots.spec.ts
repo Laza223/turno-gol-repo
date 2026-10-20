@@ -506,11 +506,7 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await pPage.goto('/mis-reservas')
     await takeShot(pPage, 'player', 'mis_reservas')
 
-    // Perfil
-    await pPage.goto('/perfil')
-    await takeShot(pPage, 'player', 'perfil')
-
-    // Configuración
+    // Mi cuenta (antes /perfil y /configuracion: ahora una sola página; /perfil redirige)
     await pPage.goto('/configuracion')
     await takeShot(pPage, 'player', 'configuracion')
 

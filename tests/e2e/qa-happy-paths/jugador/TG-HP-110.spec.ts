@@ -1,84 +1,48 @@
 import { test, expect } from '../../fixtures'
 import { writeEvidence } from '../_qa/evidence'
-import { makeServiceClient, E2E_PLAYER_ID } from '../../_helpers/player-seed'
 
 /**
- * TG-HP-110 — Preferencias de notificación (/perfil?tab=notificaciones).
+ * TG-HP-110 — Sin interruptores de avisos (antes: preferencias de notificación).
  * Rol: Jugador logueado.
  *
- * Evidence anchors: ProfileHeaderNav.tsx:9, NotificationPrefs.tsx:15-34,47-74,
- * 96-113,117-122, perfil/actions.ts:71-119, perfil/page.tsx:139-145.
+ * Cambia de propósito en el 2.4b: los interruptores `notify_email`/`notify_push` no gobernaban
+ * ningún envío y se sacaron. `/perfil?tab=notificaciones` redirige a `/configuracion`, que no
+ * tiene interruptores y dice qué mails llegan siempre. Las columnas quedan en la base sin tocar.
+ *
+ * Evidence anchors: perfil/page.tsx (redirect), configuracion/ConfiguracionView.tsx.
  */
 
-test.describe('TG-HP-110 — Preferencias de notificación', () => {
-  test('togglea "Novedades por email" optimista → persiste notify_email en DB', async ({
+test.describe('TG-HP-110 — Sin interruptores de avisos', () => {
+  test('/perfil?tab=notificaciones redirige a /configuracion, sin interruptores', async ({
     browser,
     playerStorageState,
   }) => {
-    const sb = makeServiceClient()
     const ctx = await browser.newContext()
     await ctx.addCookies(JSON.parse(playerStorageState).cookies)
     const page = await ctx.newPage()
 
     try {
       await page.goto('/perfil?tab=notificaciones')
+      await expect(page).toHaveURL(/\/configuracion$/)
+      await expect(page.getByRole('heading', { name: 'Mi cuenta', level: 1 })).toBeVisible()
 
-      const emailSwitch = page.getByRole('switch', { name: 'Novedades por email' })
-      const pushSwitch = page.getByRole('switch', { name: 'Notificaciones push' })
-      await expect(emailSwitch).toBeVisible()
-      await expect(pushSwitch).toBeVisible()
+      // Ni interruptores ni los textos de los viejos avisos.
+      await expect(page.getByRole('switch')).toHaveCount(0)
+      await expect(page.getByText('Novedades por email')).toHaveCount(0)
+      await expect(page.getByText('Notificaciones push')).toHaveCount(0)
+
+      // En su lugar, una línea con los mails que llegan siempre.
       await expect(
-        page.getByText(/emails de confirmación y cancelación se envían siempre/i),
+        page.getByText(/Te mandamos siempre un mail cuando se confirma o se cancela una reserva/),
       ).toBeVisible()
-
-      // Estado inicial (resetPlayer no toca notify_*, pero el seed original = true).
-      await expect(emailSwitch).toHaveAttribute('aria-checked', 'true')
-
-      // Toggle optimista: cambia de estado al toque (antes de que resuelva la Server Action).
-      await emailSwitch.click()
-      await expect(emailSwitch).toHaveAttribute('aria-checked', 'false')
-
-      // UI-sin-reload: sin toast, sin revalidatePath visible al cliente — el
-      // switch en sí es estado local optimista; verificamos que NO aparezca
-      // el mensaje de error (que revertiría el switch).
-      await page.waitForTimeout(500)
-      // OJO: getByRole('alert') matchea el <div id="__next-route-announcer__">
-      // de Next (siempre presente, vacío) → falso positivo. Scopear a un alert
-      // REAL con contenido: si la Server Action fallara, revertiría el switch.
-      await expect(page.locator('[role="alert"]:not(#__next-route-announcer__)')).toHaveCount(0)
-      await expect(emailSwitch).toHaveAttribute('aria-checked', 'false')
-
-      const { data: row, error } = await sb
-        .from('players')
-        .select('notify_email, notify_push')
-        .eq('id', E2E_PLAYER_ID)
-        .single()
-
-      expect(error).toBeNull()
-      expect(row?.notify_email).toBe(false)
-      expect(row?.notify_push).toBe(true) // no lo tocamos
-
-      // Reload confirma persistencia server-side (no es solo estado local del switch).
-      await page.reload()
-      await expect(page.getByRole('switch', { name: 'Novedades por email' })).toHaveAttribute(
-        'aria-checked',
-        'false',
-      )
 
       await writeEvidence('TG-HP-110', {
         status: 'pass',
-        db: row,
         notes:
-          'Toggle optimista confirmado consistente con DB tras el round-trip; NotificationPrefs ' +
-          'no deshabilita el switch mientras pending (GAP conocido del manual, no se afirma disabled).',
+          'Redirect de servidor desde ?tab=notificaciones; la página no tiene role=switch y trae la línea de los mails que llegan siempre.',
       })
     } finally {
       await ctx.close()
-      // notify_email/notify_push NO los toca resetPlayer() — restaurar a mano (default true).
-      await sb
-        .from('players')
-        .update({ notify_email: true, notify_push: true })
-        .eq('id', E2E_PLAYER_ID)
     }
   })
 })

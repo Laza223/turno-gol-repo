@@ -1,11 +1,17 @@
 'use client'
 
 import { useEffect } from 'react'
-import { CalendarDays } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import * as Sentry from '@sentry/nextjs'
-import { ErrorState } from '@/components/ui/error-state'
+import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
+import { PortalResult, PortalResultLink } from '@/components/world/PortalResult'
+import { Button } from '@/components/ui/button'
 
-/** Player-facing error boundary del grupo (Cuenta, Perfil…). Mis reservas tiene el suyo. */
+/**
+ * Error boundary del grupo (Mi cuenta, Eliminar la cuenta), en el mundo de La Reserva. Mis
+ * reservas tiene el suyo. `PortalResult` pinta el <h1> y la columna dentro del <main> del
+ * cascarón: no abre un <main> propio.
+ */
 export default function PlayerError({
   error,
   reset,
@@ -18,15 +24,27 @@ export default function PlayerError({
   }, [error])
 
   return (
-    <ErrorState
-      variant="full"
-      title="No pudimos cargar esta página"
-      description="Se nos escapó un error de nuestro lado, ya lo tenemos en la mira. Probá de nuevo en un toque."
-      digest={error.digest}
-      onRetry={reset}
-      secondaryHref="/mis-reservas"
-      secondaryLabel="Mis reservas"
-      secondaryIcon={CalendarDays}
-    />
+    <PortalResult
+      icon={AlertTriangle}
+      tone="destructive"
+      title="No pudimos cargar tu cuenta"
+      actions={
+        <>
+          <Button type="button" onClick={reset} className={PORTAL_BUTTON}>
+            Reintentar
+          </Button>
+          <PortalResultLink href="/mis-reservas" variant="outline">
+            Mis reservas
+          </PortalResultLink>
+        </>
+      }
+    >
+      <p>Fue un error de nuestro lado, ya lo tenemos en la mira. Probá de nuevo en un toque.</p>
+      {error.digest && (
+        <p className="text-sm">
+          Código de referencia: <span className="font-mono tabular-nums">{error.digest}</span>
+        </p>
+      )}
+    </PortalResult>
   )
 }

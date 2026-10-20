@@ -36,6 +36,8 @@ describe('PlayerBottomNav a11y', () => {
     ['/explorar', 'Explorar'],
     ['/mis-reservas', 'Reservas'],
     ['/configuracion', 'Cuenta'],
+    ['/perfil', 'Cuenta'],
+    ['/eliminar-cuenta', 'Cuenta'],
   ])('en %s solo %s lleva la marca primary y el semibold', (pathname, activo) => {
     vi.mocked(usePathname).mockReturnValue(pathname)
     render(<PlayerBottomNav />)

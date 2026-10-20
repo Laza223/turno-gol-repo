@@ -1,13 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 import { rejectionMessage } from '@/shared/lib/rejection-message'
 
 const EXPORT_ERROR_FALLBACK = 'No se pudo generar la exportación. Intentá de nuevo en unos minutos.'
 
 export function DataExportButton() {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [status, setStatus] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
   const [error, setError] = useState<string | null>(null)
+  const [filename, setFilename] = useState<string | null>(null)
 
   async function handleDownload() {
     setStatus('loading')
@@ -34,7 +36,7 @@ export function DataExportButton() {
         return
       }
 
-      const filename = `turnogol-mis-datos-${new Date().toLocaleDateString('en-CA', {
+      const name = `turnogol-mis-datos-${new Date().toLocaleDateString('en-CA', {
         timeZone: 'America/Argentina/Buenos_Aires',
       })}.json`
 
@@ -42,13 +44,14 @@ export function DataExportButton() {
       const url = URL.createObjectURL(blob)
       const anchor = document.createElement('a')
       anchor.href = url
-      anchor.download = filename
+      anchor.download = name
       document.body.appendChild(anchor)
       anchor.click()
       document.body.removeChild(anchor)
       URL.revokeObjectURL(url)
 
-      setStatus('idle')
+      setFilename(name)
+      setStatus('done')
     } catch {
       setStatus('error')
       setError(EXPORT_ERROR_FALLBACK)
@@ -57,16 +60,22 @@ export function DataExportButton() {
 
   return (
     <div className="space-y-2">
-      <button
+      <Button
         type="button"
+        variant="outline"
         onClick={handleDownload}
         disabled={status === 'loading'}
-        className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-md shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-lg hover:shadow-emerald-600/30 active:scale-[0.98] disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:hover:translate-y-0 dark:shadow-emerald-500/25"
+        className="h-auto min-h-11 w-full shadow-none hover:translate-y-0 hover:shadow-none active:scale-100 focus-visible:ring-offset-background disabled:opacity-100 disabled:text-muted-foreground sm:w-auto md:h-auto"
       >
-        {status === 'loading' ? 'Generando...' : 'Descargar mis datos'}
-      </button>
+        {status === 'loading' ? 'Generando…' : 'Descargar mis datos'}
+      </Button>
+      {/* Región viva siempre montada: "Generando…" y "Listo" se anuncian sin mover el foco. */}
+      <p aria-live="polite" role="status" className="text-sm text-muted-foreground">
+        {status === 'loading' && 'Estamos armando tu archivo.'}
+        {status === 'done' && `Listo, se descargó ${filename}.`}
+      </p>
       {status === 'error' && error && (
-        <p role="alert" className="text-xs text-red-600 dark:text-red-300">
+        <p role="alert" className="text-[13px] leading-5 text-red-700 dark:text-red-300">
           {error}
         </p>
       )}

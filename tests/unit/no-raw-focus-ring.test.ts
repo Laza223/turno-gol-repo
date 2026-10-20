@@ -10,7 +10,7 @@ const FILES = [
   'src/app/(admin)/canchas/components/CourtForm.tsx',
   'src/app/(admin)/reservas/[id]/BookingActions.tsx',
   'src/app/(player)/mis-reservas/CancelBookingButton.tsx',
-  'src/app/(player)/perfil/ProfileForm.tsx',
+  'src/app/(player)/configuracion/ProfileForm.tsx',
   'src/app/(public)/explorar/components/SearchBar.tsx',
   'src/app/(public)/[slug]/reservar/components/LoginGate.tsx',
   'src/app/onboarding/components/StepIdentity.tsx',

@@ -95,6 +95,9 @@ export interface PhoneInputProps {
   className?: string
   inputClassName?: string
   autoComplete?: string
+  /** Error dibujado por el consumidor: marca el input y lo asocia al mensaje. */
+  'aria-invalid'?: boolean
+  'aria-describedby'?: string
 }
 
 export function PhoneInput({
@@ -112,6 +115,8 @@ export function PhoneInput({
   className,
   inputClassName,
   autoComplete = 'tel-national',
+  'aria-invalid': ariaInvalid,
+  'aria-describedby': ariaDescribedBy,
 }: PhoneInputProps) {
   const generatedId = useId()
   const inputId = explicitId || `phone-input-${generatedId}`
@@ -225,6 +230,8 @@ export function PhoneInput({
             autoComplete={autoComplete}
             disabled={disabled}
             placeholder={placeholder}
+            aria-invalid={ariaInvalid}
+            aria-describedby={ariaDescribedBy}
             value={nationalNumber}
             onChange={handleNumberChange}
             className={cn(

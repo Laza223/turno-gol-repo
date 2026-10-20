@@ -1,10 +1,10 @@
 /**
- * E2E — Player profile (audit T4, fase F8)
+ * E2E — Cuenta del jugador: tus datos (audit T4, fase F8; migrado a /configuracion en el 2.4b)
  *
- * Covers /perfil player area:
- *   #1  Edit first name → Guardar cambios → "Perfil actualizado" toast →
- *       reload → value persists → DB assert.
- *   #2  Email field is read-only (rendered as a div, not an input).
+ * Covers /configuracion player area (antes /perfil, que ahora redirige):
+ *   #1  Edit first name → Guardar cambios → "Guardado" → reload → value persists → DB assert.
+ *   #2  Email is read-only (shown as text, not an input).
+ *   #3  /perfil?tab=… redirects to the matching block of /configuracion.
  *
  * resetPlayer in beforeEach/afterEach restores known-good state for order independence.
  */
@@ -33,11 +33,11 @@ test.describe('Player profile', () => {
     const page = await ctx.newPage()
 
     try {
-      await page.goto('/perfil')
+      await page.goto('/configuracion')
 
       // Anchor on the heading first — the Nombre input is rendered in a
       // client component and can be briefly absent during hydration.
-      await expect(page.getByRole('heading', { name: 'Mi Perfil' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Mi cuenta', exact: true })).toBeVisible()
 
       // The label is "Nombre" (htmlFor="first_name")
       await expect(page.getByLabel('Nombre')).toBeVisible()
@@ -45,11 +45,9 @@ test.describe('Player profile', () => {
       await page.getByRole('button', { name: 'Guardar cambios' }).click()
 
       // Wait for the server re-render triggered by revalidatePath — the
-      // avatar header is server-rendered from the players row, so when the
+      // "Quién sos" block is server-rendered from the players row, so when the
       // name appears there we know the action committed AND the page
-      // re-fetched. (The inline "Perfil actualizado" status is gated on
-      // useState didSubmit which doesn't survive useFormState's transition
-      // reliably across the action round-trip in Next 14.)
+      // re-fetched.
       await expect(page.getByText('NombreNuevo Player')).toBeVisible({ timeout: 10_000 })
 
       // DB assertion
@@ -78,24 +76,41 @@ test.describe('Player profile', () => {
     const page = await ctx.newPage()
 
     try {
-      await page.goto('/perfil')
+      await page.goto('/configuracion')
 
-      // Wait for the form to render (hydration can briefly delay the inline
-      // <p> hint below the email field — anchor on the page heading first so
-      // the visibility check for the hint runs on a stable DOM).
-      await expect(page.getByRole('heading', { name: 'Mi Perfil' })).toBeVisible()
+      // Anchor on the page heading first so the checks below run on a stable DOM.
+      await expect(page.getByRole('heading', { name: 'Mi cuenta', exact: true })).toBeVisible()
 
-      // The hint text confirming email cannot be changed
-      await expect(page.getByText('El email no puede modificarse.')).toBeVisible()
+      // The hint confirming the email cannot be changed
+      await expect(page.getByText('El email no se puede cambiar.')).toBeVisible()
 
-      // Email is displayed as a div (not an editable input).
-      // The email also appears in the avatar header — use .last() to target
-      // the form field specifically (strict mode otherwise).
-      await expect(page.getByText(E2E_PLAYER_EMAIL).last()).toBeVisible()
-
-      // Assert there is no <input> element with the email value
+      // Email is displayed as plain text (not an editable input).
+      await expect(page.getByText(E2E_PLAYER_EMAIL)).toBeVisible()
       const emailInput = page.locator(`input[value="${E2E_PLAYER_EMAIL}"]`)
       await expect(emailInput).not.toBeVisible()
+    } finally {
+      await ctx.close()
+    }
+  })
+
+  test('/perfil redirects to the matching block of /configuracion', async ({
+    browser,
+    playerStorageState,
+  }) => {
+    const ctx = await browser.newContext({ storageState: JSON.parse(playerStorageState) })
+    const page = await ctx.newPage()
+
+    try {
+      await page.goto('/perfil?tab=favoritos')
+      await expect(page).toHaveURL(/\/configuracion#favoritos$/)
+      await expect(page.getByRole('heading', { name: 'Favoritos', exact: true })).toBeVisible()
+
+      await page.goto('/perfil?tab=datos')
+      await expect(page).toHaveURL(/\/configuracion#tus-datos$/)
+
+      await page.goto('/perfil')
+      await expect(page).toHaveURL(/\/configuracion$/)
+      await expect(page.getByRole('heading', { name: 'Mi cuenta', exact: true })).toBeVisible()
     } finally {
       await ctx.close()
     }

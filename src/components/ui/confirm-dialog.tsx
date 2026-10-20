@@ -22,6 +22,8 @@ export type ConfirmDialogProps = {
   variant?: 'default' | 'destructive'
   /** Type-to-confirm: si está seteado, confirmar queda deshabilitado hasta que se escriba exactamente esta frase. */
   confirmationPhrase?: string
+  /** Cómo se compara lo escrito: 'exact' (default, tal cual) o 'email' (sin mayúsculas ni espacios de más; el campo se arma para tipear un email). */
+  phraseMatch?: 'exact' | 'email'
   /** Handler async. Devolvé `{ success:false, error }` para mantener el diálogo
    *  abierto y mostrar el error; `void` o `{ success:true }` cierra. El tipo es
    *  la unión discriminada compartida a propósito: con la versión laxa
@@ -42,13 +44,19 @@ export function ConfirmDialog({
   cancelLabel = 'Cancelar',
   variant = 'default',
   confirmationPhrase,
+  phraseMatch = 'exact',
   onConfirm,
 }: ConfirmDialogProps) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [typed, setTyped] = useState('')
 
-  const phraseOk = !confirmationPhrase || typed.trim() === confirmationPhrase
+  const isEmailMatch = phraseMatch === 'email'
+  const phraseOk =
+    !confirmationPhrase ||
+    (isEmailMatch
+      ? typed.trim().toLowerCase() === confirmationPhrase.trim().toLowerCase()
+      : typed.trim() === confirmationPhrase)
   const confirmDisabled = isPending || !phraseOk
 
   function handleOpenChange(next: boolean) {
@@ -91,6 +99,10 @@ export function ConfirmDialog({
     variant === 'destructive'
       ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
       : 'bg-primary hover:bg-primary/90 text-primary-foreground'
+  // Modo email (portal): deshabilitado no se desvanece (el 50 % medía < 4,5:1); lo dice el cursor y el texto de ayuda.
+  const disabledClasses = isEmailMatch
+    ? `disabled:cursor-not-allowed disabled:opacity-100 w-full sm:w-auto ${variant === 'destructive' ? 'disabled:hover:bg-destructive' : 'disabled:hover:bg-primary'}`
+    : 'disabled:cursor-not-allowed disabled:opacity-50'
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -111,14 +123,29 @@ export function ConfirmDialog({
         {children}
         {confirmationPhrase ? (
           <div className="space-y-1">
-            <label htmlFor="confirm-phrase" className="text-xs font-medium text-foreground">
-              Escribí <span className="font-mono font-semibold">{confirmationPhrase}</span> para
-              confirmar
+            <label
+              htmlFor="confirm-phrase"
+              className={`${isEmailMatch ? 'text-sm' : 'text-xs'} font-medium text-foreground`}
+            >
+              Escribí{' '}
+              <span className={`font-mono font-semibold${isEmailMatch ? ' break-all' : ''}`}>
+                {confirmationPhrase}
+              </span>{' '}
+              para confirmar
             </label>
             <input
               id="confirm-phrase"
               type="text"
               autoComplete="off"
+              {...(isEmailMatch
+                ? {
+                    inputMode: 'email' as const,
+                    autoCapitalize: 'none',
+                    autoCorrect: 'off',
+                    spellCheck: false,
+                  }
+                : {})}
+              {...(isEmailMatch && !phraseOk ? { 'aria-describedby': 'confirm-phrase-help' } : {})}
               value={typed}
               onChange={(e) => setTyped(e.target.value)}
               // F-008 (QA prod 2026-08-17): text-base md:text-sm, no text-sm plano — el piso de
@@ -128,6 +155,11 @@ export function ConfirmDialog({
             />
           </div>
         ) : null}
+        {isEmailMatch && confirmationPhrase && !phraseOk ? (
+          <p id="confirm-phrase-help" className="text-sm text-muted-foreground">
+            El botón se activa cuando escribís el email completo.
+          </p>
+        ) : null}
         {/* red-700/red-300 (idiom de `status-tone.ts`), no `text-destructive`: el
             token es red-600 en los DOS temas y sobre la superficie oscura da 3.87:1. */}
         {error ? (
@@ -135,12 +167,18 @@ export function ConfirmDialog({
             {error}
           </p>
         ) : null}
-        <div className="flex justify-end gap-2 pt-2">
+        <div
+          className={
+            isEmailMatch
+              ? 'flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end'
+              : 'flex justify-end gap-2 pt-2'
+          }
+        >
           <button
             type="button"
             disabled={isPending}
             onClick={() => handleOpenChange(false)}
-            className="h-11 md:h-10 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            className={`h-11 md:h-10 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-60 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2${isEmailMatch ? ' w-full sm:w-auto' : ''}`}
           >
             {cancelLabel}
           </button>
@@ -148,7 +186,7 @@ export function ConfirmDialog({
             type="button"
             disabled={confirmDisabled}
             onClick={handleConfirm}
-            className={`inline-flex h-11 md:h-10 items-center justify-center rounded-md px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${confirmClasses}`}
+            className={`inline-flex h-11 md:h-10 items-center justify-center rounded-md px-4 text-sm font-semibold transition-colors ${disabledClasses} focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${confirmClasses}`}
           >
             {isPending ? 'Procesando…' : confirmLabel}
           </button>

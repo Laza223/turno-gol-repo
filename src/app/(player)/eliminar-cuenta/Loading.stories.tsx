@@ -1,16 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { PortalWorld } from '@/components/world/PortalWorld'
 import Loading from './loading'
 
-/** Skeleton único de /eliminar-cuenta. Reproduce el fondo `.player-shell-bg` del portal. */
+/** Esqueleto de /eliminar-cuenta, en la columna y el mundo de La Reserva. */
 const meta = {
   title: 'Player/EliminarCuenta/LoadingSkeleton',
   component: Loading,
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <div className="player-shell-bg min-h-dvh py-6">
-        <Story />
-      </div>
+      <PortalWorld>
+        <div className="min-h-dvh bg-background">
+          <Story />
+        </div>
+      </PortalWorld>
     ),
   ],
 } satisfies Meta<typeof Loading>

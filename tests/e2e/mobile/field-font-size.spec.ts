@@ -45,7 +45,7 @@ const ADMIN_ROUTES = [
   '/settings/reservas',
 ]
 
-const PLAYER_ROUTES = ['/mis-reservas', '/perfil']
+const PLAYER_ROUTES = ['/mis-reservas', '/configuracion']
 
 test.describe('campos ≥16px — rutas públicas', () => {
   for (const route of PUBLIC_ROUTES) {

@@ -107,6 +107,30 @@ export const ConFraseDeConfirmacion: Story = {
   },
 }
 
+/** `phraseMatch="email"`: compara sin mayúsculas ni espacios de más, y el campo se arma para tipear un email. */
+export const ConFraseDeEmail: Story = {
+  render: () => (
+    <ConfirmDialogDemo
+      title="Eliminar cuenta"
+      variant="destructive"
+      confirmationPhrase="ana@example.com"
+      phraseMatch="email"
+      onConfirm={fn(async () => ({ success: true as const }))}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body)
+    const confirmButton = await body.findByRole('button', { name: 'Confirmar' })
+    await expect(confirmButton).toBeDisabled()
+
+    const campo = body.getByLabelText(/Escribí/)
+    await expect(campo).toHaveAttribute('autocapitalize', 'none')
+    await expect(campo).toHaveAttribute('inputmode', 'email')
+    await userEvent.type(campo, '  Ana@Example.com ')
+    await expect(confirmButton).toBeEnabled()
+  },
+}
+
 const procesando = pendingAction<{ success: true }>({ success: true })
 
 /** `onConfirm` queda en vuelo: el modal muestra "Procesando…" con los botones deshabilitados. */

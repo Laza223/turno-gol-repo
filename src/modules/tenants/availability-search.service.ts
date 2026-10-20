@@ -8,7 +8,7 @@ import { SEARCHABLE_TENANT_STATUSES } from './search.service'
 import type { OpeningHours, TenantSettings } from './tenant.types'
 import { bookingMinAdvanceHours } from './tenant.utils'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
-import { addDays } from '@/shared/dates/art'
+import { addDays, artTodayStr } from '@/shared/dates/art'
 import { hhmmToMins, normalizeRangeToOpenDay } from '@/shared/time/operating-day'
 import { dateStr, hhmm } from '@/shared/validation/primitives'
 
@@ -77,15 +77,19 @@ export function tenantMatchesRequestedSlot(
 
 /**
  * Valida el par fecha+hora que llega por URL a /explorar. Devuelve null (filtro
- * apagado) si falta alguno o si no validan — params de URL son input de usuario
+ * apagado) si falta la hora o si no validan — params de URL son input de usuario
  * y un link viejo/malformado no debe romper la página.
+ *
+ * Una hora sin día es "hoy" (calendario ART): la home omite `date` cuando el día
+ * elegido es hoy (HeroSearch.tsx) y el buscador de /explorar también puede
+ * mandar solo la hora. Un `date` presente pero inválido NO se reemplaza por hoy.
  */
 export function parseAvailabilitySearchParams(sp: {
   date?: string
   time?: string
 }): { date: string; time: string } | null {
-  if (!sp.date || !sp.time) return null
-  const date = dateStr.safeParse(sp.date)
+  if (!sp.time) return null
+  const date = dateStr.safeParse(sp.date || artTodayStr())
   const time = hhmm.safeParse(sp.time)
   if (!date.success || !time.success) return null
   return { date: date.data, time: time.data }

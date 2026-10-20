@@ -3,9 +3,14 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import { List, Map as MapIcon } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import type { SortOption } from '@/modules/tenants/search.service'
 import { buildExplorarUrl } from './url'
 
-type Props = { total: number }
+type Props = {
+  total: number
+  /** El orden que el servidor aplicó de verdad (`effectiveSort`), no el del param de la URL. */
+  sort: SortOption
+}
 
 const SORTS = [
   { value: 'name', label: 'Nombre (A-Z)' },
@@ -15,13 +20,12 @@ const SORTS = [
 ]
 
 /** Barra de herramientas: contador, orden y toggle lista/mapa. */
-export default function ExplorarToolbar({ total }: Props) {
+export default function ExplorarToolbar({ total, sort }: Props) {
   const router = useRouter()
   const params = useSearchParams()
   const { toast } = useToast()
 
   const view = params.get('view') === 'map' ? 'map' : 'list'
-  const sort = params.get('sort') ?? 'name'
 
   function setView(next: 'list' | 'map') {
     router.push(

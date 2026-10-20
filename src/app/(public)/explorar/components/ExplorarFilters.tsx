@@ -14,6 +14,12 @@ const SERVICE_KEYS = AMENITY_ORDER.filter((k) => k !== 'techado')
 type Props = {
   /** Callback al aplicar (lo usa el drawer mobile para cerrarse). */
   onApplied?: () => void
+  /**
+   * Prefijo de los `id` de los campos. El sidebar y el drawer están montados a la vez, así
+   * que el sidebar pasa uno propio; el drawer queda con los ids planos (`#min-price`,
+   * `#max-price`) que fija TG-HP-002.
+   */
+  idPrefix?: string
 }
 
 /**
@@ -21,7 +27,7 @@ type Props = {
  * "Aplicar" que escribe a la URL (evita un re-fetch por cada checkbox).
  * Reutilizable en el sidebar (desktop) y en el drawer (mobile).
  */
-export default function ExplorarFilters({ onApplied }: Props) {
+export default function ExplorarFilters({ onApplied, idPrefix = '' }: Props) {
   const router = useRouter()
   const params = useSearchParams()
 
@@ -212,11 +218,11 @@ export default function ExplorarFilters({ onApplied }: Props) {
         </legend>
         <div className="flex items-center gap-2">
           <div className="flex-1">
-            <label htmlFor="min-price" className="sr-only">
+            <label htmlFor={`${idPrefix}min-price`} className="sr-only">
               Precio mínimo
             </label>
             <MoneyInput
-              id="min-price"
+              id={`${idPrefix}min-price`}
               valueCents={minPriceCents}
               onValueChange={setMinPriceCents}
               minCents={0}
@@ -225,11 +231,11 @@ export default function ExplorarFilters({ onApplied }: Props) {
           </div>
           <span className="text-muted-foreground">–</span>
           <div className="flex-1">
-            <label htmlFor="max-price" className="sr-only">
+            <label htmlFor={`${idPrefix}max-price`} className="sr-only">
               Precio máximo
             </label>
             <MoneyInput
-              id="max-price"
+              id={`${idPrefix}max-price`}
               valueCents={maxPriceCents}
               onValueChange={setMaxPriceCents}
               minCents={0}

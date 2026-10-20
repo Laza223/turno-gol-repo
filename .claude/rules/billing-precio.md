@@ -10,6 +10,6 @@ paths:
 
 `plans` conserva una sola fila activa (`slug='turnogol'`, `max_courts` NULL), con primera y extra en 3.000.000 centavos y `annual_discount_bps=1000`; las tres filas viejas siguen inactivas. El importe lo calcula `src/modules/billing/pricing.ts` sobre `tenant_subscriptions.billed_courts`, nunca sobre el conteo actual de canchas online. Los cambios de cantidad son desde el próximo período, sin prorrateo. `/precios` publica la misma lista y descuento; el test `pricing-sync.test.ts` verifica sus parámetros contra DB.
 
-Nuevas y existentes usan la baja desde el próximo cobro, respetando trial y períodos pagados. El script operativo prepara y verifica los preapprovals; la migración 095 exige auditoría vigente antes de cambiar el catálogo. Merge y aplicación requieren completar `docs/operations/2026-10-20-baja-precio-saas.md`.
+Nuevas y existentes usan la baja desde el próximo cobro, respetando trial y períodos pagados. La migración 095 cambia solo el catálogo y no toca preapprovals: un débito ya autorizado sigue con su monto hasta bajarlo con `scripts/billing/reprice-subscriptions.ts` (el reconciliador lo marca como `subscription.amount_drift`). Detalle: `docs/operations/2026-10-20-baja-precio-saas.md`.
 
 Otros cambios de precio necesitan decisión escrita del dueño: devolver "REQUIERE INPUT".

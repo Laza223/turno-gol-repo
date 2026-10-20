@@ -21,9 +21,11 @@ Supera P1, P5 y P6 de [precio por cancha del 2026-09-17](2026-09-17-precio-por-c
 
 ## Implementación
 
-Se conserva la fórmula parametrizada de `pricing.ts`, que lee el catálogo. La migración 095 iguala primera y extra en 3.000.000 centavos, conserva 1000 basis points, cierra la versión vigente de `price_versions` y abre una nueva; no toca filas de suscripciones. Aborta si alguna suscripción local viva con `mp_subscription_id` no tiene una auditoría `subscription.price_repriced` vigente. `/precios` comparte las funciones puras de billing y `pricing-sync.test.ts` lo compara contra el catálogo aplicado.
+Se conserva la fórmula parametrizada de `pricing.ts`, que lee el catálogo. La migración 095 iguala primera y extra en 3.000.000 centavos, conserva 1000 basis points, cierra la versión vigente de `price_versions` y abre una nueva; no toca filas de suscripciones ni preapprovals. **No aborta por preapprovals vivos**: ese guard de #408 era el que trababa producción, y el dueño decidió sacarlo (ver abajo). Sí aborta si el catálogo no es el esperado. `/precios` comparte las funciones puras de billing y `pricing-sync.test.ts` lo compara contra el catálogo aplicado.
 
-`scripts/billing/reprice-subscriptions.ts` inventaría en solo lectura y aplica la baja en MercadoPago (aplicación master de Suscripciones) con snapshots antes y después de cada PUT.
+`scripts/billing/reprice-subscriptions.ts` inventaría en solo lectura y aplica la baja en MercadoPago (aplicación master de Suscripciones) con snapshots antes y después de cada PUT. Queda como herramienta para bajar un débito ya autorizado si aparece alguno; no es requisito del merge.
+
+**Guard sacado (decisión del dueño, 2026-10-20).** La base no registra si un preapproval fue autorizado (el webhook `subscription_preapproval` es no-op), así que el guard no podía distinguir el link muerto de El Vagón de un débito real y frenaba siempre. Consecuencia aceptada: un débito ya autorizado a precio viejo sigue cobrando lo mismo que hoy (nadie paga más) hasta que se lo baje con el script; el reconciliador lo marca como `subscription.amount_drift`. Hoy no se conoce ninguno en producción.
 
 ## Efecto sobre El Vagón (único cliente real)
 
@@ -32,9 +34,9 @@ Estado medido en prod el 2026-09-27 (re-verificar en el inventario): preapproval
 - **Hoy**, si toca "Activar plan", se crea un preapproval nuevo de $167.000/mes (5 canchas: $47.000 + 4 × $30.000) con primer cobro el 2026-12-06.
 - **Con este cambio aplicado**, el mismo paso crea uno de **$150.000/mes** ($1.620.000 si elige anual), también con primer cobro el 2026-12-06. Paga $17.000 menos por mes.
 - **Cuándo cambia**: recién cuando la 095 se aplica en producción, o sea al mergear. Nada se le cobra antes del 2026-12-06.
-- **Reprice**: no aplica a su preapproval actual. El script lo rechaza (su `start_date` es anterior al fin de la prueba y $99.000 es menor que el objetivo: sería un aumento), y ese link no se debe pagar nunca porque cobraría en el acto.
-- **Bloquea el merge**: su suscripción local tiene `mp_subscription_id`, no está terminada y no tiene auditoría de la baja, así que la 095 abortaría igual que el 2026-10-02. Resolverlo es un paso manual de Lazar (runbook, "Gate El Vagón"); no se resuelve en código ni se relaja el guard.
+- **Reprice**: no hace falta. Su preapproval viejo es pending y no cobra nada; no se reusa porque el monto no coincide, así que su alta nace a $150.000. Riesgo previo a este PR, que no cambia: si alguien pagara ese link viejo ANTES de "Activar plan", cobraría $99.000 en el acto (su `start_date` ya pasó). Después de activar, `onPaymentApproved` lo trata como huérfano y lo cancela. No mandarle nunca ese link.
+- **No hace falta ningún paso manual antes del merge.** Lo único que tiene que hacer El Vagón es lo mismo que hoy: tocar "Activar plan" y pagar antes de que termine la prueba.
 
 ## Autorización
 
-Implementar, verificar y abrir PR. Merge, despliegue y cualquier cambio real en MercadoPago o en la base de producción quedan pendientes del [runbook](../operations/2026-10-20-baja-precio-saas.md) y del OK de Lazar.
+Lazar (2026-10-20): "trata de cambiar sin perjudicar lo que hoy está en producción y que el vagón cuando termine la prueba gratuita tenga que pagar 150k"; aprobó sacar el guard. El merge queda a su OK. Qué verificar después: [runbook](../operations/2026-10-20-baja-precio-saas.md).

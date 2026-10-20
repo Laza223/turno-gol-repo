@@ -1,7 +1,12 @@
 -- Precio SaaS uniforme: $30.000 por cancha, anual 10% off.
 -- Decisión: docs/decisions/2026-10-20-precio-uniforme-por-cancha.md
--- MP se ajusta ANTES del flip; cada id vivo requiere evidencia verificada.
--- No modifica suscripciones, pruebas, períodos, pendientes ni pagos previos.
+-- Solo cambia el catálogo. No modifica suscripciones, pruebas, períodos,
+-- pendientes, pagos previos ni preapprovals de MP: un débito ya autorizado
+-- sigue cobrando su monto actual (nadie paga más que hoy) hasta que se lo
+-- baje con scripts/billing/reprice-subscriptions.ts; el reconciliador lo
+-- marca como subscription.amount_drift mientras tanto. Un preapproval
+-- pending (El Vagón) no cobra nada: su alta nueva nace al precio nuevo.
+-- El guard de preapprovals vivos se sacó por decisión del dueño (2026-10-20).
 BEGIN;
 LOCK TABLE plans IN SHARE ROW EXCLUSIVE MODE;
 DO $$
@@ -34,26 +39,6 @@ BEGIN
   IF (SELECT COUNT(*) FROM price_versions WHERE plan_id = catalog.id AND valid_until IS NULL) <> 1
      OR EXISTS (SELECT 1 FROM price_versions WHERE plan_id = catalog.id AND valid_from >= effective_date) THEN
     RAISE EXCEPTION 'ABORT 095: vigencia historica inesperada';
-  END IF;
-  IF EXISTS (
-    SELECT 1 FROM tenant_subscriptions ts
-    WHERE ts.mp_subscription_id IS NOT NULL AND ts.status NOT IN ('canceled', 'churned')
-    AND NOT EXISTS (
-      SELECT 1 FROM audit_logs a
-      WHERE a.tenant_id = ts.tenant_id AND a.action = 'subscription.price_repriced'
-        AND a.metadata->>'mpSubscriptionId' = ts.mp_subscription_id
-        AND a.metadata->>'billedCourts' = ts.billed_courts::text
-        AND a.metadata->>'billingCycle' = ts.billing_cycle::text
-        AND a.metadata->>'amountCents' = (
-          CASE WHEN ts.billing_cycle = 'annual'
-          THEN ROUND(ts.billed_courts * 3000000 * 0.9) * 12
-          ELSE ts.billed_courts * 3000000 END
-        )::bigint::text
-        AND (a.metadata->>'localUpdatedAt')::timestamptz = ts.updated_at
-        AND a.created_at >= ts.updated_at
-    )
-  ) THEN
-    RAISE EXCEPTION 'ABORT 095: preapproval vivo sin verificacion de la baja; ejecutar inventario/MP antes del flip';
   END IF;
   UPDATE price_versions SET valid_until = effective_date
   WHERE plan_id = catalog.id AND valid_until IS NULL;

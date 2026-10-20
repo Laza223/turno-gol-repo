@@ -48,7 +48,7 @@ async function confirmMp(tx: TransactionSql) {
         'amountCents', CASE WHEN billing_cycle = 'annual' THEN 97200000 ELSE 15000000 END)
     FROM tenant_subscriptions WHERE tenant_id IN ${tx(tenantIds)}`
 }
-describe('095 precio uniforme — guard, historial, idempotencia y suscripciones intactas', () => {
+describe('095 precio uniforme — catálogo, historial, idempotencia y suscripciones intactas', () => {
   it('aplica luego de MP confirmado, conserva snapshots y no duplica la versión al repetir', async () => {
     await expect(
       adminSql().begin(async (tx) => {
@@ -81,42 +81,33 @@ describe('095 precio uniforme — guard, historial, idempotencia y suscripciones
       }),
     ).rejects.toBe(rollback)
   })
-  it('aborta si un preapproval vivo no tiene confirmación', async () => {
+  // Caso El Vagón: preapproval vivo sin repreciar. El catálogo baja igual y la
+  // suscripción (con su preapproval) queda exactamente como estaba.
+  it('con preapprovals vivos sin repreciar, baja el catálogo y no toca las suscripciones', async () => {
     await expect(
       adminSql().begin(async (tx) => {
         await oldCatalog(tx)
         await seedSubscriptions(tx)
+        const before =
+          await tx`SELECT row_to_json(s) AS row FROM tenant_subscriptions s ORDER BY tenant_id`
         await tx.unsafe(migration)
-        throw rollback
-      }),
-    ).rejects.toThrow('preapproval vivo sin verificacion')
-  })
-  // Salida 1 del gate El Vagón (runbook): el pending viejo se desvincula en vez de repreciarse.
-  it('una suscripción en prueba sin preapproval vinculado no bloquea el flip', async () => {
-    await expect(
-      adminSql().begin(async (tx) => {
-        await oldCatalog(tx)
-        await seedSubscriptions(tx)
-        await tx`UPDATE tenant_subscriptions SET mp_subscription_id = NULL WHERE tenant_id IN ${tx(tenantIds)}`
-        await tx.unsafe(migration)
+        expect(
+          await tx`SELECT row_to_json(s) AS row FROM tenant_subscriptions s ORDER BY tenant_id`,
+        ).toEqual(before)
         const [plan] = await tx`SELECT price_first_court_cents FROM plans WHERE is_active`
         expect(plan).toEqual({ price_first_court_cents: 3000000 })
         throw rollback
       }),
     ).rejects.toBe(rollback)
   })
-  it('una confirmación vieja no sirve después de un cambio de la suscripción', async () => {
+  it('aborta si el catálogo no es el que se espera', async () => {
     await expect(
       adminSql().begin(async (tx) => {
         await oldCatalog(tx)
-        await seedSubscriptions(tx)
-        await confirmMp(tx)
-        await tx`ALTER TABLE tenant_subscriptions DISABLE TRIGGER set_updated_at`
-        await tx`UPDATE tenant_subscriptions SET updated_at = updated_at + INTERVAL '1 microsecond' WHERE tenant_id = ${tenantIds[0]!}`
-        await tx`ALTER TABLE tenant_subscriptions ENABLE TRIGGER set_updated_at`
+        await tx`UPDATE plans SET price_first_court_cents = 5000000 WHERE slug = 'turnogol'`
         await tx.unsafe(migration)
         throw rollback
       }),
-    ).rejects.toThrow('preapproval vivo sin verificacion')
+    ).rejects.toThrow('precio anterior inesperado')
   })
 })

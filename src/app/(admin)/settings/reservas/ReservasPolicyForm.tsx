@@ -130,6 +130,12 @@ export function ReservasPolicyForm({
     String(s.booking_advance_days ?? 6),
   )
 
+  // Anticipación mínima (pedido de El Vagón: le reservaban a último momento).
+  // Controlado por la misma razón que los días: la vista previa lo lee en vivo.
+  const [minAdvanceHoursInput, setMinAdvanceHoursInput] = useState<string>(
+    String(s.booking_min_advance_hours ?? 0),
+  )
+
   // Cancellation hours states
   const initialHours = s.cancellation_policy?.hours_before ?? DEFAULT_CANCELLATION_HOURS_BEFORE
   const isPresetHours = [0, 2, 6, 12, 24].includes(initialHours)
@@ -145,6 +151,12 @@ export function ReservasPolicyForm({
   const advanceDaysNum = Number(advanceDaysInput)
   const validAdvanceDays =
     Number.isFinite(advanceDaysNum) && advanceDaysNum > 0 ? advanceDaysNum : null
+
+  const minAdvanceHoursNum = Number(minAdvanceHoursInput)
+  const validMinAdvanceHours =
+    Number.isInteger(minAdvanceHoursNum) && minAdvanceHoursNum >= 0 && minAdvanceHoursNum <= 48
+      ? minAdvanceHoursNum
+      : null
 
   const cancelHoursNum = selectedHours === 'other' ? Number(customHours) : selectedHours
   const validCancelHours = Number.isFinite(cancelHoursNum) ? cancelHoursNum : null
@@ -235,6 +247,12 @@ export function ReservasPolicyForm({
             {validAdvanceDays != null
               ? `Podés reservar hasta ${validAdvanceDays} días adelante`
               : 'Anticipación según tu política'}
+            {validMinAdvanceHours != null && validMinAdvanceHours > 0 && (
+              <>
+                {' · '}
+                {`Con al menos ${validMinAdvanceHours} h de anticipación`}
+              </>
+            )}
           </p>
         </div>
       </div>
@@ -314,6 +332,44 @@ export function ReservasPolicyForm({
                   El jugador ve turnos hasta el{' '}
                   {formatShortDate(addDays(artTodayStr(), validAdvanceDays))}. Vos podés cargar
                   reservas más adelante desde la Grilla.
+                </span>
+              </p>
+            )}
+          </div>
+
+          {/* ANTICIPACIÓN MÍNIMA */}
+          <div className="space-y-3">
+            <Label
+              htmlFor="bookingMinAdvanceHours"
+              className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90"
+            >
+              Con cuánta anticipación mínima
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="bookingMinAdvanceHours"
+                name="bookingMinAdvanceHours"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={48}
+                value={minAdvanceHoursInput}
+                onChange={(e) => setMinAdvanceHoursInput(e.target.value)}
+                className="w-24 h-11 md:h-10 rounded-xl bg-background border-border"
+                required
+              />
+              <span className="text-sm text-muted-foreground">horas antes</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Entre 0 y 48 horas. 0 = hasta último momento
+            </p>
+            {validMinAdvanceHours != null && validMinAdvanceHours > 0 && (
+              <p className="flex items-start gap-1.5 text-xs text-muted-foreground max-w-md">
+                <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                <span>
+                  El jugador no ve los turnos que empiezan en menos de {validMinAdvanceHours}{' '}
+                  {validMinAdvanceHours === 1 ? 'hora' : 'horas'}. Vos podés cargarlos igual desde
+                  la Grilla.
                 </span>
               </p>
             )}

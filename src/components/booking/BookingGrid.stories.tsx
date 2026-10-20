@@ -215,6 +215,36 @@ export const PorCobrarHoy: Story = {
   },
 }
 
+/**
+ * El botón de la barra abre el diálogo de la placa para historias, que se
+ * inyecta como `renderStoryDialog` (el real vive bajo `@/app`). Acá basta un
+ * doble: lo que importa es que se monte al abrir y se desmonte al cerrar.
+ */
+export const CompartirTurnos: Story = {
+  name: 'Botón "Compartir turnos libres" abre y cierra el diálogo de la placa',
+  args: {
+    renderStoryDialog: ({ onClose }) => (
+      <div role="dialog" aria-label="Placa para historias">
+        <button type="button" onClick={onClose}>
+          Cerrar placa
+        </button>
+      </div>
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.queryByRole('dialog', { name: 'Placa para historias' })).toBeNull()
+
+    await userEvent.click(await canvas.findByRole('button', { name: /Compartir turnos libres/ }))
+    const dialog = await canvas.findByRole('dialog', { name: 'Placa para historias' })
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cerrar placa' }))
+    await waitFor(() =>
+      expect(canvas.queryByRole('dialog', { name: 'Placa para historias' })).toBeNull(),
+    )
+  },
+}
+
 export const DetalleDeReserva: Story = {
   name: 'Click en una reserva abre su popover de detalle',
   // Los fixtures caen en el día de hoy y la story mira el 2026-03-14: la grilla

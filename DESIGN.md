@@ -727,6 +727,18 @@ Lo semanal de la cantina (`/caja/productos`), rehecho el 2026-09-26 con el mismo
 - **Ocupación por cancha:** minutos reservados sobre minutos que la cancha estuvo abierta, en el mismo tramo. En el mes en curso el tramo va del 1 a hoy inclusive (día operativo del complejo): un turno de mañana todavía no suma, y los días que faltan tampoco cuentan en el total. Un mes cerrado cuenta entero; uno que no empezó marca 0%.
 - El estado del sistema, que solo ve el superadmin de la plataforma, sigue al pie.
 
+### Placa para historias (turnos libres del día)
+
+Una imagen 9:16 (1080×1920, PNG) que el dueño sube a una historia de Instagram o a un estado de WhatsApp. Sale del botón de compartir de la barra de la Grilla (un ícono con tooltip en escritorio; en el teléfono va en la fila de abajo, con el rótulo "Compartir turnos" cuando no hay chip de "sin cobrar") y la dibuja `GET /api/public/story` (`src/lib/story-image/`). Lo hacían a mano con ChatGPT; acá sale con los datos reales y la paleta de la marca. No es una pantalla del panel: es una pieza de marketing con su propio mundo visual, siempre oscura (azul noche `#020617` con haces esmeralda y una cancha vertical en trazo finísimo), sin importar el tema del panel. De arriba a abajo:
+
+- **Fecha → titular → complejo:** "HOY · MARTES", el titular "HOY SE JUEGA." (el día cambia: "MAÑANA SE JUEGA.", "SÁBADO SE JUEGA."; el punto va en esmeralda), el nombre del complejo y la pastilla "TURNOS DISPONIBLES". Archivo 900 itálica para los números y el titular, Inter 600 para el resto.
+- **Horarios:** hasta cuatro, cada uno con la hora y "N canchas" libres. Con más de cuatro se muestran los primeros y una línea "y N horarios más": la tipografía **no se achica** para meterlos todos (una historia se lee a un tercio de su tamaño).
+- **Llamado y URL:** "RESERVÁ TU CANCHA" ("MIRÁ LOS HORARIOS" si el complejo no toma reservas online) y la URL real del portal, sin esquema. El logo de TurnoGol (`logo_principal.png`, el de fondos oscuros del manual de marca) es la única marca de agua, chico, al pie.
+- **Margen seguro:** 250 px arriba y abajo, donde la interfaz de Instagram tapa la imagen. Todo lo que se lee vive en el medio; el fondo sale a sangre.
+- **Ni hora de actualización, ni WhatsApp, ni "con TurnoGol":** el pedido del dueño los sacó a los tres. Nada que no venga de los datos del complejo.
+- **Excepción a "nada de hex inline":** satori (el motor de `next/og`) no lee variables CSS ni tokens de Tailwind, así que los colores de marca se repiten en `render.tsx`, en un solo lugar. Si cambia un token de marca, hay que cambiarlo ahí también.
+- **El enlace dibujado no se toca:** por eso el diálogo ofrece "Copiar link" aparte (para el sticker "Link" de Instagram o el mensaje de WhatsApp).
+
 ### Superadmin (Pulso, Complejos y Jugadores)
 
 `/super-admin`, solo para el dueño de la plataforma. Se rehizo el 2026-10-16, el día en que El Vagón publicó su link de reservas y el panel no mostró ni uno de los 10 jugadores ni de las 9 reservas online. Contesta "¿cómo viene la plataforma hoy y esta semana?" antes que "¿cuánto factura?". Va en el mismo mundo que el panel del complejo (esmeralda sobre slate): el violeta propio se eliminó y "SuperAdmin" en la barra alcanza para saber dónde estás. La navegación tiene tres entradas: Pulso, Complejos y Jugadores.

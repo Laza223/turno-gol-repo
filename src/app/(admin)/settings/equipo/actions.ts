@@ -305,6 +305,8 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
             tenant_id: tenant.id,
             role,
             force_password_change: true,
+            // Solo cambia el copy de /reset-password ("Creá tu contraseña").
+            staff_invited: true,
           },
         })
       } else if (inviteError) {
@@ -507,9 +509,21 @@ export async function resendInviteAction(email: string): Promise<StaffActionResu
   }
 
   const adminClient = createAdminClient()
-  const { error } = await adminClient.auth.admin.inviteUserByEmail(normalizedEmail, {
+  let { error } = await adminClient.auth.admin.inviteUserByEmail(normalizedEmail, {
     redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback?next=${encodeURIComponent('/dashboard')}`,
   })
+
+  // GoTrue solo reenvía la invitación mientras el invitado NO confirmó su email.
+  // Si ya abrió el link (o tiene cuenta de antes) responde email_exists: en ese
+  // caso mandamos el mail de recuperación, que lo deja fijar contraseña igual.
+  if (
+    error &&
+    (error.code === 'email_exists' || error.message.includes('already been registered'))
+  ) {
+    ;({ error } = await adminClient.auth.resetPasswordForEmail(normalizedEmail, {
+      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`,
+    }))
+  }
 
   if (error) {
     captureException(error)

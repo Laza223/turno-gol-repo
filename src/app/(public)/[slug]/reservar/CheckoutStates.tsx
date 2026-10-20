@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils'
 export const RESERVAR_COLUMN = PORTAL_COLUMN
 
 export type CheckoutErrorCode =
-  'banned' | 'too_many_holds' | 'rate_limited' | 'unavailable' | 'date_out_of_range'
+  'banned' | 'too_many_holds' | 'rate_limited' | 'unavailable' | 'date_out_of_range' | 'too_soon'
 
 const NOTICE_LINK = cn(
   PORTAL_LINK,
@@ -127,6 +127,14 @@ export function CheckoutErrorBanner({
       <Notice href={turnHref} action="Elegir otro turno">
         Ese turno ya no se puede reservar: quedó fuera de la fecha disponible para reservar online.
         Elegí otro turno.
+      </Notice>
+    )
+  }
+  if (error === 'too_soon') {
+    return (
+      <Notice href={turnHref} action="Elegir otro turno">
+        Ese turno empieza muy pronto: este complejo pide reservar con más anticipación. Elegí otro
+        turno.
       </Notice>
     )
   }

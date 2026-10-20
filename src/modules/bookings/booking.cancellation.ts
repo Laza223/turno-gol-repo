@@ -22,6 +22,7 @@ import {
 } from './booking.errors'
 import type { BookingRow, BookingStatus, CancellationActor, DepositStatus } from './booking.types'
 import { track } from '@/shared/observability'
+import { formatArtDate } from '@/shared/time/art-date'
 
 // `decideAdminRefund`/`AdminCancellationType` viven en `refund-policy.ts`
 // (mismo código, sin cambios de comportamiento) para que se puedan importar
@@ -141,13 +142,6 @@ async function loadSettings(tenantId: string, tx: DbTx): Promise<TenantSettings>
     .where(eq(tenants.id, tenantId))
     .limit(1)
   return rows[0]!.settings as TenantSettings
-}
-
-/** Date (columna DATE, sin componente horario) → "DD/MM/YYYY". */
-function formatDateArs(d: Date): string {
-  const dd = String(d.getUTCDate()).padStart(2, '0')
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
-  return `${dd}/${mm}/${d.getUTCFullYear()}`
 }
 
 async function loadCancelEmailNames(
@@ -378,7 +372,7 @@ export async function cancelByPlayer(
         content: {
           playerFirstName: names.playerFirstName,
           courtName: names.courtName,
-          date: formatDateArs(bookingRow.date),
+          date: formatArtDate(bookingRow.startsAt),
           timeStart: bookingRow.timeStart.slice(0, 5),
           timeEnd: bookingRow.timeEnd.slice(0, 5),
           tenantName: names.tenantName,
@@ -541,7 +535,7 @@ export async function cancelByAdmin(
                 content: {
                   playerFirstName: names.playerFirstName,
                   courtName: names.courtName,
-                  date: formatDateArs(bookingRow.date),
+                  date: formatArtDate(bookingRow.startsAt),
                   timeStart: bookingRow.timeStart.slice(0, 5),
                   timeEnd: bookingRow.timeEnd.slice(0, 5),
                   tenantName: names.tenantName,
@@ -564,7 +558,7 @@ export async function cancelByAdmin(
                 content: {
                   playerFirstName: names.playerFirstName,
                   courtName: names.courtName,
-                  date: formatDateArs(bookingRow.date),
+                  date: formatArtDate(bookingRow.startsAt),
                   timeStart: bookingRow.timeStart.slice(0, 5),
                   timeEnd: bookingRow.timeEnd.slice(0, 5),
                   tenantName: names.tenantName,

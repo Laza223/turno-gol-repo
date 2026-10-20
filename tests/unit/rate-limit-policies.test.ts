@@ -21,6 +21,13 @@ describe('rate-limit policies (doc15 §9)', () => {
       keyBy: 'ip',
       failMode: 'open',
     })
+    // Placa de turnos libres: el diálogo pide una por chip de día (hasta 7 seguidas).
+    expect(POLICIES.publicStory).toEqual({
+      limit: 20,
+      window: '60 s',
+      keyBy: 'ip',
+      failMode: 'open',
+    })
     expect(POLICIES.adminCrud).toEqual({
       limit: 100,
       window: '60 s',

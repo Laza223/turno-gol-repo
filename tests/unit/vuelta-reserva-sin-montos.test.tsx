@@ -28,7 +28,7 @@ const booking: ConfirmedBooking = {
   city: 'Rosario',
   latitude: -32.9442,
   longitude: -60.6505,
-  date: '2030-06-17',
+  startsOn: '2030-06-17',
   timeStart: '20:00:00',
   timeEnd: '21:00:00',
   priceSnapshot: PRICE,

@@ -36,6 +36,7 @@ import {
   endLabelFromMins,
   normalizeRangeToOpenDay,
 } from '@/shared/time/operating-day'
+import { formatArtDate } from '@/shared/time/art-date'
 import { physicalRange } from '@/shared/time/physical-range'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 import { rawRowToBookingRow, rowToBookingRow, type BookingRawRow } from './booking.mappers'
@@ -561,6 +562,12 @@ async function createOnlineBookingImpl(
     physicallyNextDay,
   })
 
+  // Anticipación mínima del complejo, contra el instante físico: el portal ya
+  // oculta esos turnos, esto es el backstop (link viejo, pestaña abierta).
+  if (input.minLeadMinutes && startsAt.getTime() - Date.now() < input.minLeadMinutes * 60_000) {
+    throw new BookingDateOutOfRangeError('lead_time')
+  }
+
   await checkOverlapOrThrow(input.courtId, startsAt, endsAt, tx)
 
   const withDeposit = input.requiresDeposit && input.depositPercentage > 0
@@ -604,7 +611,9 @@ async function createOnlineBookingImpl(
     const tenantName = tenantRows[0]?.name ?? ''
     const tenantAddress = tenantRows[0]?.address ?? ''
 
+    // Operativo (`input.date`) para el aviso al admin; el jugador lee el día físico del turno.
     const dateFormatted = input.date.split('-').reverse().join('/')
+    const playerDateFormatted = formatArtDate(startsAt)
     const timeStart = input.timeStart.slice(0, 5)
     const timeEnd = input.timeEnd.slice(0, 5)
 
@@ -618,7 +627,7 @@ async function createOnlineBookingImpl(
           content: {
             playerFirstName,
             courtName: court.name,
-            date: dateFormatted,
+            date: playerDateFormatted,
             timeStart,
             timeEnd,
             tenantName,

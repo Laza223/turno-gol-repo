@@ -1,15 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { getUser, updateUser, refreshSession, adminUpdateUserById, getImpersonationSession } =
-  vi.hoisted(() => ({
-    getUser: vi.fn(),
-    updateUser: vi.fn(async () => ({ error: null })),
-    refreshSession: vi.fn(async () => ({ error: null })),
-    adminUpdateUserById: vi.fn(async () => ({ error: null })),
-    // Sin implementación acá: `async () => null` le fija el tipo a Promise<null>
-    // y el caso de impersonación activa no compila. El default va en beforeEach.
-    getImpersonationSession: vi.fn(),
-  }))
+const {
+  getUser,
+  updateUser,
+  refreshSession,
+  adminUpdateUserById,
+  getImpersonationSession,
+  touchStaffLastLogin,
+} = vi.hoisted(() => ({
+  touchStaffLastLogin: vi.fn(async () => undefined),
+  getUser: vi.fn(),
+  updateUser: vi.fn(async () => ({ error: null })),
+  refreshSession: vi.fn(async () => ({ error: null })),
+  adminUpdateUserById: vi.fn(async () => ({ error: null })),
+  // Sin implementación acá: `async () => null` le fija el tipo a Promise<null>
+  // y el caso de impersonación activa no compila. El default va en beforeEach.
+  getImpersonationSession: vi.fn(),
+}))
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: () => ({ auth: { getUser, updateUser, refreshSession } }),
@@ -18,6 +25,7 @@ vi.mock('@/lib/supabase/admin', () => ({
   createAdminClient: () => ({ auth: { admin: { updateUserById: adminUpdateUserById } } }),
 }))
 vi.mock('@/modules/auth/impersonation.server', () => ({ getImpersonationSession }))
+vi.mock('@/modules/auth/auth.service', () => ({ touchStaffLastLogin }))
 
 import { resetPasswordAction } from '@/app/(auth)/reset-password/actions'
 
@@ -75,7 +83,12 @@ describe('resetPasswordAction', () => {
 
   it('cambio forzado → limpia force_password_change y refresca la sesión', async () => {
     getUser.mockResolvedValueOnce({
-      data: { user: { id: 'u1', app_metadata: { force_password_change: true, tenant_id: 't1' } } },
+      data: {
+        user: {
+          id: 'u1',
+          app_metadata: { force_password_change: true, tenant_id: 't1', staff_user_id: 'su1' },
+        },
+      },
       error: null,
     })
     const res = await resetPasswordAction({ status: 'idle' }, fd())
@@ -83,9 +96,16 @@ describe('resetPasswordAction', () => {
     expect(adminUpdateUserById).toHaveBeenCalledWith(
       'u1',
       expect.objectContaining({
-        app_metadata: expect.objectContaining({ force_password_change: null }),
+        app_metadata: expect.objectContaining({ force_password_change: null, staff_invited: null }),
       }),
     )
     expect(refreshSession).toHaveBeenCalled()
+    // Recién al fijar la contraseña el invitado deja de figurar pendiente.
+    expect(touchStaffLastLogin).toHaveBeenCalledWith('su1')
+  })
+
+  it('recovery normal NO marca último login', async () => {
+    await resetPasswordAction({ status: 'idle' }, fd())
+    expect(touchStaffLastLogin).not.toHaveBeenCalled()
   })
 })

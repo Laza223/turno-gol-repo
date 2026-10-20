@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState, type KeyboardEvent } from 'react'
+import { useCallback, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useArtNow } from '@/hooks/use-art-now'
 import { useNowMs, useNowMsAfterHydration } from '@/hooks/use-now'
 import { useBookingRealtime } from '@/hooks/use-booking-realtime'
@@ -78,6 +78,12 @@ type Props = {
   renderCanteenDialog?: RenderCanteenDialog
   /** El modal de cobro de Hoy (paso 3) — ver `RenderChargeModal`. Sin esto, tocar un turno no abre nada. */
   renderChargeModal?: RenderChargeModal
+  /**
+   * El diálogo de la placa para historias. Se inyecta (como los dos anteriores)
+   * porque vive bajo `@/app`; se monta solo mientras está abierto. Sin esto el
+   * botón de la barra no aparece.
+   */
+  renderStoryDialog?: (args: { onClose: () => void }) => ReactNode
   actions?: React.ReactNode
 }
 
@@ -96,6 +102,7 @@ export function BookingGrid({
   slotPanelActions,
   renderCanteenDialog,
   renderChargeModal,
+  renderStoryDialog,
   actions,
 }: Props) {
   // #29: artNow se auto-refresca cada minuto para que isSlotPast no quede
@@ -129,6 +136,7 @@ export function BookingGrid({
   // por 14 horas ya no se encuentran solo por el color. Es el ÚNICO anillo de
   // la grilla: la celda "No cobrado" no lo lleva sola.
   const [highlightPending, setHighlightPending] = useState(false)
+  const [storyOpen, setStoryOpen] = useState(false)
 
   const showOfflineBanner = useOfflineBannerDelay(status)
 
@@ -219,6 +227,7 @@ export function BookingGrid({
         pendingSummary={pendingSummary}
         highlightPending={highlightPending}
         onToggleHighlight={() => setHighlightPending((v) => !v)}
+        onOpenStory={renderStoryDialog ? () => setStoryOpen(true) : undefined}
       />
 
       {actions}
@@ -283,6 +292,8 @@ export function BookingGrid({
         nowMs={nowMs}
         renderChargeModal={renderChargeModal}
       />
+
+      {storyOpen && renderStoryDialog?.({ onClose: () => setStoryOpen(false) })}
     </div>
   )
 }

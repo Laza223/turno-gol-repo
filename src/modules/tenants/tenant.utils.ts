@@ -24,6 +24,18 @@ export function arePublicPricesHidden(
   return settings.hide_public_prices ?? false
 }
 
+/**
+ * Horas mínimas de anticipación para reservar online
+ * (`settings.booking_min_advance_hours`, pedido de El Vagón 2026-10-17).
+ * Ausente o fuera de rango = 0, sin límite. Único punto de lectura de la key.
+ */
+export function bookingMinAdvanceHours(
+  settings: Pick<TenantSettings, 'booking_min_advance_hours'>,
+): number {
+  const h = settings.booking_min_advance_hours
+  return typeof h === 'number' && Number.isInteger(h) && h > 0 && h <= 48 ? h : 0
+}
+
 export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   // raíz
   'api',

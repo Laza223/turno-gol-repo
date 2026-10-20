@@ -140,6 +140,68 @@ describe('generateSlots', () => {
 })
 
 /**
+ * Anticipación mínima (`booking_min_advance_hours`, pedido de El Vagón): los
+ * turnos que empiezan antes de ahora + lead salen `past` y el jugador no los ve.
+ */
+describe('generateSlots — anticipación mínima (minLeadMins)', () => {
+  it('hoy: oculta los turnos que empiezan antes de ahora + lead', () => {
+    // 07:30 + 1 h = 08:30 → el 08:00 queda adentro del lead, el 09:00 no.
+    const slots = generateSlots({
+      ...BASE_PARAMS,
+      date: '2026-04-27',
+      nowMins: 7 * 60 + 30,
+      minLeadMins: 60,
+    })
+    expect(slots.map((s) => s.status)).toEqual(['past', 'free'])
+  })
+
+  it('el borde exacto es reservable: empieza justo a ahora + lead', () => {
+    const slots = generateSlots({
+      ...BASE_PARAMS,
+      date: '2026-04-27',
+      nowMins: 6 * 60,
+      minLeadMins: 2 * 60,
+    })
+    expect(slots.map((s) => s.status)).toEqual(['free', 'free'])
+  })
+
+  it('cruza la medianoche: 22:30 + 10 h tapa el 08:00 de mañana pero no el 09:00', () => {
+    const slots = generateSlots({
+      ...BASE_PARAMS,
+      date: '2026-04-28',
+      nowDateStr: '2026-04-27',
+      nowMins: 22 * 60 + 30,
+      minLeadMins: 10 * 60,
+    })
+    expect(slots.map((s) => s.status)).toEqual(['past', 'free'])
+  })
+
+  it('closesNextDay: la madrugada del día operativo de hoy cuenta como mañana', () => {
+    // Abre 22:00, cierra 02:00 → 22, 23, 00 (1440), 01 (1500). Ahora 22:30 + 2 h = 00:30.
+    const slots = generateSlots({
+      ...BASE_PARAMS,
+      openHhmm: '22:00',
+      closeHhmm: '02:00',
+      closesNextDay: true,
+      date: '2026-04-27',
+      nowMins: 22 * 60 + 30,
+      minLeadMins: 2 * 60,
+    })
+    expect(slots.map((s) => [s.time, s.status])).toEqual([
+      ['22:00', 'past'],
+      ['23:00', 'past'],
+      ['00:00', 'past'],
+      ['01:00', 'free'],
+    ])
+  })
+
+  it('sin lead (0 u omitido) un día futuro queda todo libre, como siempre', () => {
+    const slots = generateSlots({ ...BASE_PARAMS, nowMins: 23 * 60 + 59, minLeadMins: 0 })
+    expect(slots.map((s) => s.status)).toEqual(['free', 'free'])
+  })
+})
+
+/**
  * B15 — el agujero que quema inventario.
  *
  * Un `pending_payment` de OTRO jugador caía en el `else` final de la derivación

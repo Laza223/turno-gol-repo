@@ -10,10 +10,10 @@ import { writeEvidence } from '../_qa/evidence'
  */
 test.describe('TG-HP-001 — Home + buscador', () => {
   test('home renders hero + search navigates to /explorar with query params', async ({ page }) => {
-    // Step 1-2: home + h1 (sin permiso de ubicación: "Tu próxima cancha está a un toque.")
+    // Step 1-2: home + h1 ("Tu partido empieza en TurnoGol", fijo)
     await page.goto('/')
     await expect(
-      page.getByRole('heading', { level: 1, name: /Tu próxima cancha está/i }),
+      page.getByRole('heading', { level: 1, name: /Tu partido empieza en TurnoGol/i }),
     ).toBeVisible()
 
     // Step 3: floating nav — Explorar link + Ingresar CTA (deslogueado)

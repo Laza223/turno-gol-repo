@@ -97,6 +97,22 @@ describe('middleware raíz', () => {
     expect(refreshSessionCookies).toHaveBeenCalledTimes(1)
   })
 
+  it('la placa de historias tiene su propio balde de rate limit; el resto de /api/public/ conserva el suyo', async () => {
+    await middleware(
+      req('/api/public/story?slug=m10&date=2026-09-29', {
+        headers: { 'x-forwarded-for': '9.9.9.9' },
+      }),
+    )
+    expect(enforce).toHaveBeenLastCalledWith('publicStory', expect.any(String))
+
+    await middleware(
+      req('/api/public/availability?slug=m10&date=2026-09-29', {
+        headers: { 'x-forwarded-for': '9.9.9.9' },
+      }),
+    )
+    expect(enforce).toHaveBeenLastCalledWith('publicAvailability', expect.any(String))
+  })
+
   it('la respuesta lleva el x-request-id incluso cuando el refresco rehizo la respuesta', async () => {
     // Regresión del ORDEN: `refreshSessionCookies` rehace la respuesta dentro
     // de su `setAll`, así que un header seteado antes se perdería.

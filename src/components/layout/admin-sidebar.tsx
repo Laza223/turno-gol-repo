@@ -97,7 +97,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     href: '/jugadores',
     icon: Contact,
-    label: 'Clientes',
+    label: 'Clientes y Fijos',
     match: (p) => p.startsWith('/jugadores') || p.startsWith('/abonados'),
   },
   // Canchas salió de Configuración el 2026-09-10, a pedido del dueño: define el

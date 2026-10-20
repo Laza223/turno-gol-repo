@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { passwordSchema } from '@/modules/auth/password'
+import { touchStaffLastLogin } from '@/modules/auth/auth.service'
 import { captureException } from '@/lib/sentry'
 import { getImpersonationSession } from '@/modules/auth/impersonation.server'
 
@@ -79,9 +80,12 @@ export async function resetPasswordAction(
   if (user.app_metadata?.force_password_change === true) {
     const admin = createAdminClient()
     await admin.auth.admin.updateUserById(user.id, {
-      app_metadata: { ...user.app_metadata, force_password_change: null },
+      app_metadata: { ...user.app_metadata, force_password_change: null, staff_invited: null },
     })
     await supabase.auth.refreshSession()
+    // Recién ahora el invitado terminó el alta: deja de figurar "pendiente".
+    const staffUserId = user.app_metadata?.staff_user_id
+    if (typeof staffUserId === 'string') await touchStaffLastLogin(staffUserId)
   }
 
   return { status: 'success', path: '/dashboard' }

@@ -6,7 +6,7 @@ export type GroupShareData = {
   courtName: string
   /** Jugadores por lado de la cancha (`courts.format`). */
   courtFormat: number
-  /** "YYYY-MM-DD" */
+  /** "YYYY-MM-DD": el día calendario en que se juega (físico), no el operativo. */
   date: string
   /** "HH:MM:SS" o "HH:MM" */
   timeStart: string

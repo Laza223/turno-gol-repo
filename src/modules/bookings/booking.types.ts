@@ -27,6 +27,8 @@ export type BookingRow = {
   tournamentId: string | null
   createdByStaff: string | null
   date: Date
+  /** Instante físico de inicio (TIMESTAMPTZ): fuente del día calendario que lee el jugador. */
+  startsAt: Date
   timeStart: string
   timeEnd: string
   type: BookingType
@@ -59,6 +61,9 @@ export type CreateOnlineBookingInput = {
   notesPlayer?: string
   /** When set, rejects dates beyond today+maxAdvanceDays (ART). Omit in e2e/seed routes. */
   maxAdvanceDays?: number
+  /** Minutos mínimos entre ahora y el inicio físico del turno
+   *  (`bookingMinAdvanceHours` × 60). Omitido o 0 = sin límite. */
+  minLeadMinutes?: number
   /**
    * Método presencial elegido por el jugador (selector de /reservar). Solo se
    * persiste en reservas sin seña: con seña queda null hasta que el webhook

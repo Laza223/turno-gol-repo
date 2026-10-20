@@ -6,6 +6,7 @@ import { track, withSpan } from '@/shared/observability'
 import { generateSlots } from './public.service'
 import { SEARCHABLE_TENANT_STATUSES } from './search.service'
 import type { OpeningHours, TenantSettings } from './tenant.types'
+import { bookingMinAdvanceHours } from './tenant.utils'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { addDays } from '@/shared/dates/art'
 import { hhmmToMins, normalizeRangeToOpenDay } from '@/shared/time/operating-day'
@@ -26,6 +27,8 @@ export type TenantSlotConfig = {
   closesNextDay: boolean
   durationMins: number
   bookingAdvanceDays: number
+  /** `bookingMinAdvanceHours` × 60: los turnos más cercanos no matchean. Default 0. */
+  minLeadMins?: number
 }
 
 export type NowRef = { nowDateStr: string; nowMins: number }
@@ -66,6 +69,7 @@ export function tenantMatchesRequestedSlot(
     date,
     nowDateStr: now.nowDateStr,
     nowMins: now.nowMins,
+    minLeadMins: cfg.minLeadMins,
   })
 
   return slots.some((s) => s.time === time && s.status === 'free')
@@ -179,6 +183,7 @@ async function loadAvailableTenantIds({
         closesNextDay: row.closesNextDay ?? false,
         durationMins,
         bookingAdvanceDays: s.booking_advance_days ?? 6,
+        minLeadMins: bookingMinAdvanceHours(s) * 60,
       },
       date,
       time,
@@ -379,6 +384,7 @@ async function loadFreeSlotPillsByTenant({
       date,
       nowDateStr: now.nowDateStr,
       nowMins: now.nowMins,
+      minLeadMins: bookingMinAdvanceHours(s) * 60,
     })
     const times = freeTimesFrom(
       slots,

@@ -55,6 +55,7 @@ export type PublicTenantFixture = {
   acceptsTransfer: boolean
   cancellationHoursBefore: number
   bookingAdvanceDays: number
+  bookingMinAdvanceHours: number
   amenities: Record<string, boolean>
   latitude: number | null
   longitude: number | null
@@ -88,6 +89,7 @@ export const publicTenant = (
   acceptsTransfer: true,
   cancellationHoursBefore: 12,
   bookingAdvanceDays: 6,
+  bookingMinAdvanceHours: 0,
   amenities: {
     techado: true,
     estacionamiento: true,

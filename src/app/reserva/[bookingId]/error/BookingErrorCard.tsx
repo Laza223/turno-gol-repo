@@ -38,6 +38,7 @@ export function BookingErrorCard({
   bookingId,
   tenantSlug,
   date,
+  startsOn,
   turn,
   view,
   retryAction,
@@ -46,6 +47,8 @@ export function BookingErrorCard({
   tenantSlug: string | null
   /** "YYYY-MM-DD", el día de la reserva: "Reservar de nuevo" abre la ficha en ese día. */
   date: string | null
+  /** "YYYY-MM-DD", el día CALENDARIO en que se juega (de `starts_at`): lo que lee el jugador. */
+  startsOn: string | null
   /** Hora y cancha del turno que quedó guardado: se muestra al ofrecer reintentar. */
   turn: { courtName: string; timeStart: string; timeEnd: string } | null
   view: ErrorView
@@ -116,11 +119,11 @@ export function BookingErrorCard({
       <p>
         Tu turno sigue guardado por poco tiempo. Podés intentar de nuevo con otro medio de pago.
       </p>
-      {date && turn && (
+      {startsOn && turn && (
         <p className="font-medium text-foreground">
           {/* Dos renglones, cuándo y dónde: sin puntos sueltos al empezar una línea ni "Cancha / E2E 1". */}
           <span className="block">
-            {formatDateLong(date)} ·{' '}
+            {formatDateLong(startsOn)} ·{' '}
             <span className="whitespace-nowrap">
               {turn.timeStart.slice(0, 5)} a {turn.timeEnd.slice(0, 5)}
             </span>

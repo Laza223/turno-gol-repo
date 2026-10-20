@@ -102,6 +102,12 @@ export const settingsPatchSchema = z
       .min(1, 'La anticipación de reserva debe ser de al menos 1 día.')
       .max(60, 'La anticipación de reserva no puede superar 60 días.')
       .optional(),
+    booking_min_advance_hours: z
+      .number()
+      .int()
+      .min(0, 'La anticipación mínima no puede ser negativa.')
+      .max(48, 'La anticipación mínima no puede superar 48 horas.')
+      .optional(),
     auto_complete_minutes: z
       .number()
       .int()

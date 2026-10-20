@@ -5,6 +5,15 @@ export function artDateOf(ts: Date): string {
   return new Date(ts.getTime() - ART_OFFSET_MS).toISOString().slice(0, 10)
 }
 
+/**
+ * Día calendario ART en que se juega un turno, "DD/MM/YYYY", a partir del instante físico
+ * (`bookings.starts_at`). Es lo que lee el JUGADOR: con `closes_next_day` el turno de 00:00 del día
+ * operativo D se juega el D+1, y `bookings.date` (operativo) diría el día anterior.
+ */
+export function formatArtDate(startsAt: Date): string {
+  return artDateOf(startsAt).split('-').reverse().join('/')
+}
+
 export function todayART(): string {
   return artDateOf(new Date())
 }

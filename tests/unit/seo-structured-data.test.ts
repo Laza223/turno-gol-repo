@@ -42,6 +42,7 @@ const FIXTURE_TENANT: PublicTenant = {
   acceptsTransfer: true,
   cancellationHoursBefore: 12,
   bookingAdvanceDays: 6,
+  bookingMinAdvanceHours: 0,
   amenities: { techado: true, estacionamiento: true },
   latitude: -34.5703,
   longitude: -59.105,

@@ -8,22 +8,21 @@ import {
 import type { SlotGates } from '@/components/booking/slot-panel/slot-gates'
 
 /**
- * Menú "más acciones" del modal de cobro de Hoy: editar, reprogramar,
- * cancelar. Extraído de `HoyChargeModal` — solo se monta si hay al menos una
- * de las tres (`hasMenu` en el caller).
+ * Menú "más acciones" del modal de cobro de Hoy: editar y reprogramar.
+ * Extraído de `HoyChargeModal` — solo se monta si hay al menos una de las dos
+ * (`hasMenu` en el caller). "Cancelar reserva" es un botón a la vista en
+ * `HoyChargeModalActions`: escondido acá, el mostrador no lo encontraba.
  */
 export function HoyChargeModalMenu({
   gates,
   isPending,
   onEdit,
   onReschedule,
-  onCancel,
 }: {
-  gates: Pick<SlotGates, 'canEdit' | 'canReschedule' | 'canCancel'>
+  gates: Pick<SlotGates, 'canEdit' | 'canReschedule'>
   isPending: boolean
   onEdit: () => void
   onReschedule: () => void
-  onCancel: () => void
 }) {
   return (
     // A la izquierda del ✕ del diálogo (right-4). `modal={false}` por el mismo
@@ -41,14 +40,6 @@ export function HoyChargeModalMenu({
         {gates.canEdit && <DropdownMenuItem onSelect={onEdit}>Editar</DropdownMenuItem>}
         {gates.canReschedule && (
           <DropdownMenuItem onSelect={onReschedule}>Reprogramar</DropdownMenuItem>
-        )}
-        {gates.canCancel && (
-          <DropdownMenuItem
-            onSelect={onCancel}
-            className="text-red-700 focus:text-red-800 dark:text-red-300"
-          >
-            Cancelar reserva
-          </DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

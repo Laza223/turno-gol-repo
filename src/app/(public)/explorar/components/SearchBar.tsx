@@ -37,6 +37,11 @@ function cityValueFrom(params: { get(name: string): string | null }): string {
   return province ? `${city}||${province}` : city
 }
 
+/** El día que muestra el buscador: el de la URL o, con hora sin día, hoy (así lo resuelve la página). */
+function dateFrom(params: { get(name: string): string | null }, today: string): string {
+  return params.get('date') ?? (params.get('time') ? today : '')
+}
+
 /**
  * Barra de búsqueda estructurada de /explorar: texto + Localidad + Fecha + Hora.
  * Navega actualizando la URL y preserva el resto de los filtros activos.
@@ -51,7 +56,7 @@ export default function SearchBar({ cities }: Props) {
 
   const [q, setQ] = useState(params.get('q') ?? '')
   const [city, setCity] = useState(() => cityValueFrom(params))
-  const [date, setDate] = useState(params.get('date') ?? '')
+  const [date, setDate] = useState(() => dateFrom(params, today))
   const [time, setTime] = useState(params.get('time') ?? '')
 
   // Si la URL trae una ciudad que ya no está en la lista (link viejo, tenant
@@ -81,7 +86,7 @@ export default function SearchBar({ cities }: Props) {
     setLastParamsKey(paramsKey)
     setQ(params.get('q') ?? '')
     setCity(cityValueFrom(params))
-    setDate(params.get('date') ?? '')
+    setDate(dateFrom(params, today))
     setTime(params.get('time') ?? '')
   }
 
@@ -95,7 +100,8 @@ export default function SearchBar({ cities }: Props) {
         q: q.trim() || undefined,
         city: cityPart || undefined,
         province: provincePart || undefined,
-        date: date || undefined,
+        // Una hora sin día es hoy: la página lo resuelve igual, pero acá se escribe en la URL.
+        date: date || (time ? today : undefined),
         time: time || undefined,
       }),
     )

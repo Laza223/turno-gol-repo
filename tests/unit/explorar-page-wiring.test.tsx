@@ -1,12 +1,14 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
+import type { PublicTenantCard } from '@/modules/tenants/search.service'
+import { publicTenantCard } from '@/test/fixtures/tenant'
 
 // El cableado de /explorar: la página es quien le pasa a los hijos el día (hora sin día = hoy
 // ART), el orden realmente aplicado y el prefijo de ids del sidebar. Los hijos tienen sus
 // propios tests; acá se renderiza la página con lo de afuera mockeado.
 const findAvailableTenantIds = vi.fn(async (_p: { date: string; time: string }) => [] as string[])
-const searchPublicTenants = vi.fn(async () => ({ results: [], total: 0 }))
+const searchPublicTenants = vi.fn(async () => ({ results: [] as PublicTenantCard[], total: 0 }))
 
 vi.mock('next/cache', () => ({ unstable_cache: <T,>(fn: T) => fn }))
 vi.mock('next/navigation', () => ({
@@ -49,6 +51,17 @@ describe('ExplorarPage: cableado', () => {
   it('hora sin día filtra por disponibilidad de hoy (ART)', async () => {
     await renderPage({ time: '20:00' })
     expect(findAvailableTenantIds).toHaveBeenCalledWith({ date: '2026-06-10', time: '20:00' })
+  })
+
+  it('hora sin día: el link de la card abre la ficha en el día buscado', async () => {
+    searchPublicTenants.mockResolvedValueOnce({
+      results: [publicTenantCard({ id: 't1', slug: 'el-potrero', name: 'El Potrero' })],
+      total: 1,
+    })
+    await renderPage({ time: '20:00' })
+    expect(screen.getByRole('link', { name: 'El Potrero' }).getAttribute('href')).toBe(
+      '/el-potrero?date=2026-06-10',
+    )
   })
 
   it('sin hora no filtra por disponibilidad', async () => {

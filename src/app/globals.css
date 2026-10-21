@@ -711,7 +711,7 @@ html:has([data-fixed-cta]) {
 /* Texto con degradé esmeralda (titulares). Light = esmeraldas oscuros (contraste
    sobre crema); dark = esmeraldas claros (brillo sobre slate-950). */
 .hero-accent-text {
-  background: linear-gradient(100deg, #059669, #10b981 50%, #047857);
+  background: linear-gradient(100deg, #047857, #059669 50%, #065f46);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

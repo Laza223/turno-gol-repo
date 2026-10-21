@@ -2647,7 +2647,7 @@
       "usesRouter": false,
       "usesServerAction": false,
       "isolationDifficulty": "easy",
-      "isolationNotes": "Mundo del portal: la story lo monta con PortalWorld + RESERVAR_COLUMN. Exporta CheckoutErrorBanner (stories 'Player/Checkout/CheckoutErrorBanner') y CheckoutInvalidState ('Player/Checkout/CheckoutInvalidState').",
+      "isolationNotes": "La Previa: la story lo monta sobre `bg-background` con RESERVAR_COLUMN (sin PortalWorld). Exporta CheckoutErrorBanner (stories 'Player/Checkout/CheckoutErrorBanner') y CheckoutInvalidState ('Player/Checkout/CheckoutInvalidState').",
       "relevantStates": [
         "CheckoutErrorBanner: sin error, baneado (con fecha, sin fecha, con motivo), demasiados holds, rate limited, no disponible, fuera de fecha",
         "CheckoutInvalidState: turno ya no disponible y no encontrado (vuelven a /{slug}?date=), faltan datos, complejo sin reserva online"
@@ -2678,7 +2678,7 @@
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "ninguno; puramente controlado por la prop `data`. Las stories lo montan dentro de PortalWorld."
+      "isolationNotes": "ninguno; puramente controlado por la prop `data`. Las stories lo montan en una columna (RESERVAR_COLUMN) sobre `bg-background`, sin PortalWorld."
     },
     {
       "path": "src/app/(public)/[slug]/reservar/components/ConfirmBookingButton.tsx",
@@ -2714,8 +2714,7 @@
       "classification": "DIRECT_STORY_REQUIRED",
       "exclusionReason": "",
       "relevantStates": [
-        "reposo (casilla +18, Google y email del mismo peso, nada deshabilitado)",
-        "error en la casilla (Google sin tildar: aria-invalid, foco en la casilla)",
+        "reposo (modal oscuro, frase del +18 sin casilla, Google y email del mismo peso, nada deshabilitado)",
         "error de email (junto al campo, foco ahí, lo tipeado se conserva)",
         "estado 'sent' ('Revisá tu email', reenviar, usar otro email)",
         "navegador interno (email primero, aclaración de Google)",
@@ -2770,7 +2769,7 @@
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "ninguno; la story lo monta dentro de PortalWorld (el layout de reservar hace lo mismo)."
+      "isolationNotes": "ninguno; la story lo monta sobre `bg-background` (La Previa: el layout de reservar no monta PortalWorld)."
     },
     {
       "path": "src/app/(public)/[slug]/reservar/page.tsx",
@@ -4395,7 +4394,7 @@
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "Plano, sin cascarón: la story lo monta en PortalWorld (el layout de reserva hace lo mismo)."
+      "isolationNotes": "Sin cascarón: la story lo monta sobre `bg-background`; la vuelta de la reserva pone su propio `ReservaDarkShell` (La Previa)."
     },
     {
       "path": "src/app/reserva/[bookingId]/error/page.tsx",
@@ -4453,7 +4452,7 @@
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "Plano, sin cascarón: la story lo monta en PortalWorld (el layout de reserva hace lo mismo)."
+      "isolationNotes": "Sin cascarón: la story lo monta sobre `bg-background`; la vuelta de la reserva pone su propio `ReservaDarkShell` (La Previa)."
     },
     {
       "path": "src/app/reserva/[bookingId]/exito/page.tsx",
@@ -4494,7 +4493,7 @@
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "Plano, sin cascarón: la story lo monta en PortalWorld (el layout de reserva hace lo mismo)."
+      "isolationNotes": "Sin cascarón: la story lo monta sobre `bg-background`; la vuelta de la reserva pone su propio `ReservaDarkShell` (La Previa)."
     },
     {
       "path": "src/app/reserva/[bookingId]/pendiente/page.tsx",
@@ -4530,7 +4529,7 @@
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "Ninguno — lo comparten las tres pantallas de vuelta; la story lo monta en PortalWorld."
+      "isolationNotes": "Ninguno — lo comparten las tres pantallas de vuelta; la story lo monta sobre `bg-background`."
     },
     {
       "path": "src/app/reserva/error.tsx",
@@ -4548,7 +4547,7 @@
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "Sentry.captureException en useEffect (no-op sin DSN en Storybook); el mundo de La Reserva lo pone reserva/layout.tsx, la story lo monta con un decorator."
+      "isolationNotes": "Sentry.captureException en useEffect (no-op sin DSN en Storybook); el cascarón de La Previa (`ReservaDarkShell`) lo pone cada página de la vuelta; la story lo monta con un decorator."
     },
     {
       "path": "src/app/reserva/layout.tsx",
@@ -4558,7 +4557,7 @@
       "role": "layout",
       "isolationDifficulty": "trivial",
       "classification": "SERVER_WRAPPER_NOT_SUITABLE",
-      "exclusionReason": "layout.tsx que solo envuelve children en PortalShell (@/components/site/PortalShell, fuera de esta área) y en PortalWorld (el mundo de La Reserva); cero lógica visual propia, mismo patrón que (public)/layout.tsx.",
+      "exclusionReason": "layout.tsx que solo envuelve children en PortalShell (@/components/site/PortalShell, fuera de esta área) y nada más (PortalWorld es solo de la ficha y no se monta acá); cero lógica visual propia, mismo patrón que (public)/layout.tsx.",
       "relevantStates": [],
       "proposedStoryTitle": "",
       "usesNetwork": false,

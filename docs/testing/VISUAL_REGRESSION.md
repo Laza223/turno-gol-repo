@@ -41,7 +41,7 @@ caso no es aflojar el umbral — es que la pieza no se ganó el lugar. Ver el AD
 | `visual` | `admin-settings-reservas.png` | admin | Formulario denso — representa todos los formularios |
 | `visual-mobile` | `perfil-publico-mobile.png` | — | El 70% del tráfico público es mobile |
 | `visual-mobile` | `admin-grilla-mobile.png` | admin | Layout propio (GridScroller, banda de madrugada): la que más se rompe y la que menos se mira |
-| `visual` | `reserva-confirmada.png` | jugador | La pantalla de cierre del portal (PR 2.3c): resumen, "Avisarle al grupo" y secundarias en La Reserva |
+| `visual` | `reserva-confirmada.png` | jugador | La pantalla de cierre del portal (La Previa, `ReservaDarkShell`): resumen, "Avisarle al grupo" y secundarias |
 | `visual-mobile` | `reserva-confirmada-mobile.png` | jugador | La misma, en el celular: donde el jugador la ve de verdad |
 
 Las dos últimas (PR 2.3c) usan la sesión del jugador `…0020` (`tests/e2e/.auth/player.json`, la que escribe

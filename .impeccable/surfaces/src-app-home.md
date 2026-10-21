@@ -7,41 +7,26 @@ related_targets: ["src/app/page.tsx"]
 
 # Home (src/app/page.tsx y src/app/home/)
 
-Modo: Persuade, con la sobriedad de Operate. El visitante es el futbolero que quiere jugar, casi siempre desde el celular, a veces ya con sesión. Su trabajo es ver que hay cancha cerca y cuándo está libre hoy, y reservar un turno sin llamar a nadie; si no, buscar por zona, día y hora. El complejo tiene su página (`/para-complejos`, que no se toca): en la home le queda una franja al pie.
+Modo: Persuade, con la sobriedad de Operate. El visitante es el futbolero que quiere jugar, casi siempre desde el celular, a veces ya con sesión. Su trabajo es buscar canchas por zona, día y hora y reservar un turno sin llamar a nadie. El complejo tiene su página (`/para-complejos`, que no se toca): en la home le queda el link de la barra.
 
-Mundo: La Reserva (DESIGN.md, sección del portal), el mismo de la página del complejo, la reserva y la cuenta. Este brief reemplaza al de La Previa del 2026-09-27. Salen de la home el resplandor, los blobs, `PitchLines`, el texto con gradiente, la negra itálica, el vidrio, las fotos de fondo y la barra `overlay`.
+Mundo: La Previa (DESIGN.md, sección del portal), re-aplicada el 2026-10-20 ([`docs/decisions/2026-10-20-vuelve-la-previa.md`](../../docs/decisions/2026-10-20-vuelve-la-previa.md)). Este brief reemplaza al de La Reserva del 2026-10-20. Vuelven a la home el resplandor, la foto de fondo (solo en oscuro), `PitchLines` en claro, el titular en negra itálica con `.hero-accent-text` y la barra `overlay`.
 
 ## Decisiones del dueño
 
-**2026-09-27 (siguen vigentes):**
-- Solo entran complejos con reserva online.
-- El orden pone primero el perfil completo y después la distancia; nunca un orden pagado.
-- El radio crece de 5 a 40 km.
-- No hay datos inventados.
+**2026-09-27:** las reglas de "cerca tuyo" (solo complejos con reserva online, orden por perfil completo y distancia, radio de 5 a 40 km) quedaron sin pantalla con el hero de agosto. **Sigue vigente: no hay datos inventados.**
 
-**2026-10-20:**
-- **Sale "Los mejor valorados".** Ordenaba por rating sin mínimo de reseñas.
-- **Sale "Cómo funciona".** Prometía filtro por precio y confirmación inmediata, que no siempre son ciertos.
-- **El banner de dueños pasa a una franja sobria al pie:** una línea y un link a `/para-complejos`, sin foto ni gradiente.
+**2026-10-20 (La Previa):**
+- **La home queda en solo el hero de agosto** (#129): titular, subtítulo y buscador. No vuelven "cerca tuyo" (`NearbyPanel`), "Los mejor valorados", "Cómo funciona" ni la franja de dueños (`OwnersStrip`). "Para complejos" sigue en la barra.
+- Se conservan el titular "Tu partido empieza en TurnoGol", el subtítulo "Mirá los turnos libres de hoy y reservá sin llamar a nadie." y la ausencia de "confirmación inmediata".
 
 ## Qué tiene la página, en orden
 
-1. **El cromo del portal.** Es la misma barra sólida, el pie y la barra inferior del jugador con sesión que en el resto del portal (`PortalShell` / `PortalFrame`); "Para complejos" sigue en la barra. Hay un solo `<main id="main-content">` y un solo skip link.
-2. **Primer viewport.**
-   - El h1 queda como está: "Tu partido empieza en TurnoGol", sin acento de gradiente. El subtítulo se conserva.
-   - El buscador (Zona, Día, Hora y "Buscar canchas") va antes de las canchas en el celular.
-   - **Canchas cerca:** la más cercana con sus horarios libres de hoy, que se tocan y van a reservar, y dos filas más.
-   - En escritorio, buscador a la izquierda y canchas a la derecha.
-3. **Estados de "cerca tuyo", cada uno con salida:**
-   - buscando: "Usar mi ubicación";
-   - sin permiso, sin soporte o con error: chips de zona;
-   - nada a 40 km: un vacío honesto;
-   - **disponibilidad que no cargó** (429, 4xx o red): dice "No pudimos cargar los horarios" y ofrece la página del complejo. **No** dice "no hay turnos".
-4. **La franja de dueños**, al final, antes del pie.
-
-## Precios
-
-"Turno desde" aparece solo si el valor no es `null` (`hide_public_prices`). Ningún `$` en el DOM ni en un `aria-label` cuando el complejo oculta precios.
+1. **El cromo del portal.** La barra `overlay` de `PortalHeader` (pastilla `.overlay-nav` flotante sobre el hero), el pie y la barra inferior del celular, que se ve también sin sesión (Explorar, Reservas, Cuenta). La home vive en la raíz de `app/` y arma su propio cromo en `src/app/page.tsx`. Hay un solo `<main id="main-content">` y un solo skip link.
+2. **El hero**, sobre `.landing-hero`, dos árboles hermanos gateados por CSS: `HeroMobile` (< `lg`) y `HeroDesktop` (`lg` en adelante).
+   - El h1 vive en `HeroDesktop`: "Tu partido empieza en **TurnoGol**" en negra itálica, con "TurnoGol" en `.hero-accent-text`; `HeroMobile` usa un `<p role="heading">` para no duplicarlo. Debajo, el subtítulo.
+   - El buscador `HeroSearch` (Zona, Día, Hora y "Buscar canchas") y "Sin descargar ninguna app".
+   - Ambiente: foto de estadio solo en oscuro (con el velo `.hero-desktop-scrim` en escritorio), líneas de cal en claro, resplandores `.hero-glow-blob` y partículas solo en oscuro.
+3. **El pie.**
 
 ## Contratos que se conservan o cambian a propósito
 
@@ -57,16 +42,11 @@ Mundo: La Reserva (DESIGN.md, sección del portal), el mismo de la página del c
 - `formatsLabel`, importado por `[slug]/components/ComplexHero.tsx`.
 
 **Cambian en el mismo PR:**
-- `theme-system.spec.ts` (`.landing-hero` desaparece);
-- `landing.spec.ts`, si cambia algo de la barra;
-- la baseline `landing.png`;
 - las stories de la home y de `PortalHeader` `Overlay*`;
-- `HAPPY_PATHS_MASTER` TG-HP-001 (ya estaba desactualizado);
-- `DESIGN.md` y `design.json`.
+- `HAPPY_PATHS_MASTER` TG-HP-001.
 
 ## Fuera de alcance
 
-- "Tu próximo turno" y "Repetir" en la home: la barra inferior ya deja "Reservas" a un toque y la ISR obliga a pedirlo desde el cliente. Queda para cuando haya uso que lo pida.
-- `/explorar` (2.6), `/para-complejos`, `/precios`, la OG image y `llms.txt`.
-- La lógica de `pickNearby` y del radio.
-- Las clases de `globals.css` que comparten otras páginas (`.search-card`, `.hero-glow-blob`, `.hero-accent-text`, `.mockup-*`, `.player-hero-grid`, `.card-premium`).
+- "Tu próximo turno" y "Repetir" en la home: la barra inferior ya deja "Reservas" a un toque. Queda para cuando haya uso que lo pida.
+- `/explorar` (nunca migró: siempre estuvo en La Previa), `/para-complejos`, `/precios`, la OG image y `llms.txt`.
+- `src/app/home/nearby.ts`: de la lógica de "cerca tuyo" solo queda `formatsLabel`, que usa la ficha (`ComplexHero`).

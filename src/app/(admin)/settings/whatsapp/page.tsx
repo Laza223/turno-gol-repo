@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { PlusBadge } from '@/components/ui/plus-badge'
 import { requireAdminStaff } from '@/modules/staff/guards'
 import { getWhatsappConnection } from '@/modules/whatsapp-bot/whatsapp-bot.connection'
 import { SettingsHeader } from '../SettingsHeader'
@@ -18,7 +19,11 @@ export default async function WhatsappSettingsPage() {
     <div className="space-y-6">
       <SettingsHeader title="Asistente de WhatsApp" />
 
-      <div className="card-premium space-y-4 rounded-lg p-6">
+      <div className="card-premium card-plus space-y-4 rounded-lg p-6">
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold text-foreground">TurnoGol Plus</h2>
+          <PlusBadge />
+        </div>
         <div className="space-y-1 text-sm text-muted-foreground">
           <p>
             Contesta los mensajes de {connection.displayPhoneNumber ?? 'tu WhatsApp'}, muestra los

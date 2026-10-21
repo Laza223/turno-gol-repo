@@ -401,7 +401,14 @@ Esmeralda de cancha sobre slate frío: un solo protagonista verde, neutros que c
 - **Informativo** (`info`: hsl(221 83% 53%) = blue-600 · `info-dark`: hsl(217 91% 60%) = blue-500): en proceso (MercadoPago), confirmado a cobrar, avisos neutros. El azul de MercadoPago se permite solo dentro del contexto de pago.
 - **Peligro** (`destructive`: hsl(0 72% 51%) = red-600, igual en los dos temas): borrar, ausente, egreso, error y el turno jugado y no cobrado ("No cobrado", decisión del dueño del 2026-09-25: es plata que no entró).
 
-Los rótulos sobre un tinte de estado usan la escala 800 en claro y 300 en oscuro (rojo: 700 y 300). Esas clases, los tintes al 10/15 % y el borde izquierdo de la grilla salen de `TONE_BADGE`, `TONE_TEXT`, `TONE_TINT` y `TONE_BORDER` en `src/lib/status-tone.ts`, con seis tonos: `success`, `warning`, `info`, `destructive`, `neutral` y `brand`.
+Los rótulos sobre un tinte de estado usan la escala 800 en claro y 300 en oscuro (rojo: 700 y 300). Esas clases, los tintes al 10/15 % y el borde izquierdo de la grilla salen de `TONE_BADGE`, `TONE_TEXT`, `TONE_TINT` y `TONE_BORDER` en `src/lib/status-tone.ts`, con siete tonos: `success`, `warning`, `info`, `destructive`, `neutral`, `brand` y `plus` (este último no es un estado: ver TurnoGol Plus).
+
+### TurnoGol Plus
+
+- **Violeta = lo pago con IA, y nada más.** Hoy es el asistente de WhatsApp (flag `whatsapp_bot`). Token `--plus`: violet-600 hsl(262 83% 58%) en claro y violet-500 hsl(258 90% 66%) en oscuro; está también en `.dark-surface`. Texto sobre tinte: violet-700 en claro (6,1:1) y violet-300 en oscuro (8,5:1); botón sólido con texto blanco en claro (5,7:1) y slate-950 en oscuro (4,8:1). Medido, no estimado.
+- **Nunca es un estado.** Lo que anda, falta o falló sigue siendo `success`, `warning` o `destructive`; el violeta solo marca de qué paquete es el renglón. Un renglón Plus lleva `PlusBadge` y la pastilla de estado va al lado, en su tono.
+- **Dónde se usa:** ítem y página de Ajustes del asistente, y su botón de prender (variante `plus` de `Button`). Nada del resto del panel ni del portal; el asistente de alta del onboarding no es Plus.
+- **Distinto del violeta del super-admin**, que se eliminó (ver Superadmin): aquel identificaba un panel, este identifica un producto pago.
 
 ### Named Rules
 
@@ -720,7 +727,7 @@ Una imagen 9:16 (1080×1920, PNG) que el dueño sube a una historia de Instagram
 
 ### Superadmin (Pulso, Complejos y Jugadores)
 
-`/super-admin`, solo para el dueño de la plataforma. Se rehizo el 2026-10-16, el día en que El Vagón publicó su link de reservas y el panel no mostró ni uno de los 10 jugadores ni de las 9 reservas online. Contesta "¿cómo viene la plataforma hoy y esta semana?" antes que "¿cuánto factura?". Va en el mismo mundo que el panel del complejo (esmeralda sobre slate): el violeta propio se eliminó y "SuperAdmin" en la barra alcanza para saber dónde estás. La navegación tiene tres entradas: Pulso, Complejos y Jugadores.
+`/super-admin`, solo para el dueño de la plataforma. Se rehizo el 2026-10-16, el día en que El Vagón publicó su link de reservas y el panel no mostró ni uno de los 10 jugadores ni de las 9 reservas online. Contesta "¿cómo viene la plataforma hoy y esta semana?" antes que "¿cuánto factura?". Va en el mismo mundo que el panel del complejo (esmeralda sobre slate): el violeta propio del super-admin se eliminó ("SuperAdmin" en la barra alcanza para saber dónde estás). No confundir con el violeta de TurnoGol Plus (ver Colors), que es otro uso y no identifica al panel. La navegación tiene tres entradas: Pulso, Complejos y Jugadores.
 
 - **Pulso (portada):** "Hoy · 7 días · 30 días" en el encabezado (links, la ventana va en la URL). De arriba a abajo: cuatro `StatCard` (jugadores nuevos, reservas online, cargadas por el complejo, complejos con movimiento) con la ventana anterior como referencia en el subtítulo, sin porcentaje (mismo criterio que Métricas); los últimos 14 días en dos barras diarias (`DailyBars`); "Pide atención" solo si hay algo (pruebas que vencen, cobro trabado, tareas fallidas); "Lo último" (reservas online y jugadores nuevos, con link a cada uno); después Plata, Alta de complejos y la salud técnica plegada.
 - **Cada bloque carga solo:** la actividad y el resto son dos lecturas con su propio `Suspense`, tope y aviso "No se pudo leer a tiempo". Una lectura lenta no tira la página.

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { ChevronRight, type LucideIcon } from 'lucide-react'
 import { SetupAlertDot } from '@/components/layout/setup-alert-dot'
+import { PlusBadge } from '@/components/ui/plus-badge'
 import { TONE_BADGE, type StatusTone } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
 
@@ -16,6 +17,8 @@ type SettingsIndexItem = {
   plainValue?: boolean
   /** Hay algo por completar: punto rojo, mismo aviso que el del riel. */
   alert?: boolean
+  /** Es del paquete pago con IA: ícono violeta y marca "Plus" (DESIGN.md). */
+  plus?: boolean
   icon: LucideIcon
   href: string
 }
@@ -65,12 +68,20 @@ export function SettingsIndex({ groups }: { groups: SettingsIndexGroup[] }) {
                 >
                   <span
                     aria-hidden
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-emerald-700 dark:text-emerald-400"
+                    className={cn(
+                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+                      item.plus
+                        ? 'bg-plus/10 text-violet-700 dark:text-violet-300'
+                        : 'bg-primary/10 text-emerald-700 dark:text-emerald-400',
+                    )}
                   >
                     <item.icon className="h-5 w-5" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium text-foreground">{item.label}</span>
+                    <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+                      {item.label}
+                      {item.plus && <PlusBadge />}
+                    </span>
                     <span className="hidden truncate text-xs text-muted-foreground sm:block">
                       {item.effect}
                     </span>

@@ -70,6 +70,7 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   'login',
   'register',
   'reset-password',
+  'sin-acceso',
   'verify',
   // (business)
   'alternativas-alquila-tu-cancha',

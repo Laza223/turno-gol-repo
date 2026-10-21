@@ -50,14 +50,14 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
             <div className="flex items-center gap-1 sm:gap-1.5">
               <Link
                 href="/explorar"
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 py-2 text-xs font-semibold text-muted-foreground transition-all duration-150 hover:bg-foreground/5 hover:text-foreground sm:px-4 sm:py-[9px] sm:text-sm"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 py-2 text-xs font-semibold text-muted-foreground transition-colors duration-150 hover:bg-foreground/5 hover:text-foreground sm:px-4 sm:py-[9px] sm:text-sm"
               >
                 <Search className="h-[15px] w-[15px] sm:h-[17px] sm:w-[17px]" aria-hidden />
                 Explorar
               </Link>
               <Link
                 href="/para-complejos"
-                className="hidden min-h-11 items-center gap-2 rounded-full px-4 py-[9px] text-sm font-semibold text-muted-foreground transition-all duration-150 hover:bg-foreground/5 hover:text-foreground sm:inline-flex"
+                className="hidden min-h-11 items-center gap-2 rounded-full px-4 py-[9px] text-sm font-semibold text-muted-foreground transition-colors duration-150 hover:bg-foreground/5 hover:text-foreground sm:inline-flex"
               >
                 <Building2 className="h-[17px] w-[17px]" aria-hidden />
                 Para complejos
@@ -106,7 +106,7 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
         <nav className="flex items-center gap-1 sm:gap-2">
           <Link
             href="/explorar"
-            className="flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground md:text-sm"
+            className="flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground md:text-sm"
           >
             <Search className="h-4 w-4" />
             <span>Explorar</span>
@@ -115,7 +115,7 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
             <>
               <Link
                 href="/mis-reservas"
-                className="hidden min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground md:text-sm sm:inline-flex"
+                className="hidden min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground md:text-sm sm:inline-flex"
               >
                 <Calendar className="h-4 w-4" />
                 <span>Mis reservas</span>
@@ -133,7 +133,7 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
             <>
               <Link
                 href="/para-complejos"
-                className="hidden min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground md:text-sm sm:inline-flex"
+                className="hidden min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground md:text-sm sm:inline-flex"
               >
                 <Building2 className="h-4 w-4" />
                 <span>Para complejos</span>

@@ -216,8 +216,8 @@ describe('reservar — tenant, chat y teléfono salen SIEMPRE del contexto', () 
     )
     expect(JSON.parse(out as string)).toMatchObject({
       estado: 'confirmada',
-      pago: 'en el complejo',
     })
+    expect(JSON.parse(out as string)).not.toHaveProperty('pago')
   })
 
   it('el nombre se recorta (trim) antes de llegar a la reserva', async () => {

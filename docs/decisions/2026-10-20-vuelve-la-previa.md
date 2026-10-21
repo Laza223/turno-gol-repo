@@ -26,3 +26,26 @@ Un PR por fase. R1 (este): home, cromo y barra inferior. R2 ingreso, R3 ficha, R
 ## Consecuencia asumida
 
 La barra inferior sin sesión suma una barra fija a las pantallas públicas del celular. El botón fijo de confirmar (`[data-fixed-cta]`) ya se ubica por encima de la barra; su alto (56 px + 1 px de borde + área segura) está reservado en `PortalFrame`, el `scroll-padding-bottom` de `globals.css` y `ConfirmBookingButton`.
+
+## Ejecución (2026-10-21)
+
+Un PR por fase, sobre `main`:
+
+| Fase | PR | Qué quedó |
+|---|---|---|
+| R1 | #454 | Home = solo el hero de agosto con foto y buscador; cromo de La Previa (barra, pie, menú de cuenta); barra inferior Explorar · Reservas · Cuenta visible también sin sesión. |
+| R2 | #455 | `/ingresar`, `/aceptar-terminos` y `/verify` (estados de jugador) con foto, resplandores y card de vidrio, siempre oscuros, vía `PortalAuthFrame`. |
+| R3 | #456 | **Descartada: se cerró sin mergear.** |
+| R4 | #457 | Confirmar y la vuelta de la reserva en La Previa (`ReservaDarkShell`, `.reserva-*`), con los cambios de flujo de [`2026-10-21-confirmar-sin-casilla-y-modal.md`](2026-10-21-confirmar-sin-casilla-y-modal.md): sin "Cómo pagás", un botón ("Pagar seña · $X" o "Reservar"), ingreso en modal, solo email con nombre derivado y +18 por clickwrap sin casilla. |
+| R5 | #459 | Mis reservas, Mi cuenta y Eliminar la cuenta con `PlayerHeroBand`, píldoras, tarjetas con ícono y avisos de colores; el marcador `data-portal-fields` en `(player)/layout.tsx` sube `--input` y `--ring` a 3:1. |
+| R6 | este PR | Cierre: contraste de `PlayerHeroBand` y de `.hero-accent-text` en claro, y reescritura de `DESIGN.md`, `PRODUCT.md`, los briefs de `.impeccable/surfaces/` y los docs de testing y Storybook. |
+
+`/explorar` nunca migró: siempre estuvo en La Previa.
+
+### Excepción del dueño (2026-10-21): la ficha del complejo no se toca
+
+Después de ver R3, el dueño decidió que la ficha del complejo `/[slug]` (logo, portada, elegir hora y después cancha) **se queda como estaba en `main`, con el look de La Reserva**. R3 se cerró sin mergear.
+
+**Corrección a la sección Fases.** Ahí dice "R6 limpieza (`PortalWorld`, `portal-world.css`)". Eso ya no aplica: `PortalWorld`, `portal-world.css`, `tests/unit/portal-world-tokens.test.ts`, `tests/unit/portal-shell-bg.test.ts` y la regla `html:has([data-world='portal']) .player-shell-bg` de `globals.css` **siguen**, acotados a la ficha (`(public)/[slug]/(perfil)/layout.tsx` y `[slug]/not-found.tsx`). No se borra nada de eso. Si el dueño decide más adelante pasar la ficha a La Previa, esa limpieza vuelve a ser una fase.
+
+Consecuencia para los documentos: `DESIGN.md` describe La Previa como regla del portal y La Reserva como excepción de la ficha; `PRODUCT.md` lo recoge en Brand Commitments; el brief `.impeccable/surfaces/src-app-public-slug.md` sigue vigente solo para la ficha.

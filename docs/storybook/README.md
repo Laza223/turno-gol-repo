@@ -77,7 +77,7 @@ export const Ausente: Story = {
 1. **Datos: siempre de `@/test/fixtures/*`.** Nunca literales gigantes dentro de la story, nunca
    `faker`. Si te falta un caso, agregá una función a la fixture que corresponda.
 2. **Reproducí el contenedor real.** Andá al `page.tsx` que usa tu componente y mirá en qué lo
-   envuelve (`.card-premium`, `PortalShell`, `PortalWorld`, un ancho máximo). Reproducilo en un
+   envuelve (`.card-premium`, `PortalShell`, `PortalWorld` en la ficha, un ancho máximo). Reproducilo en un
    `decorators` del meta. **Una story sin su contenedor miente** sobre el layout *y* sobre el
    contraste: axe mide contra el fondo que le ponés, así que un fondo falso da un veredicto falso en
    las dos direcciones.

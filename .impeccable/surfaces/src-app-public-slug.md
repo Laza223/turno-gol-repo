@@ -9,7 +9,15 @@ related_targets: ["src/app/reserva/[bookingId]"]
 
 Modo: Operate. Visitante: el jugador amateur que llega por el link de su complejo (redes, WhatsApp) o desde la home y Explorar; casi siempre en el celular y muchas veces dentro del navegador de Instagram o de WhatsApp. No conoce TurnoGol. Trabajo: reservar un turno sin escribirle a nadie, entrar con su cuenta en el camino y avisarle al grupo.
 
-Alcance: página del complejo (`(perfil)`, `disponibilidad` y el modal de la semana), reservar (`reservar`, con el ingreso adentro), la vuelta de la reserva (`src/app/reserva/[bookingId]/{exito,pendiente,error}`) y la vista previa del link en WhatsApp (`generateMetadata`). Home, Explorar, Mis reservas, Perfil, el cromo (barra, pie, "Ingresar" con `next`) y el ingreso suelto (`/ingresar`, `/verify`, `/aceptar-terminos`) van en sus PRs y heredan este mundo.
+Alcance: página del complejo (`(perfil)`, `disponibilidad` y el modal de la semana), reservar (`reservar`, con el ingreso adentro), la vuelta de la reserva (`src/app/reserva/[bookingId]/{exito,pendiente,error}`) y la vista previa del link en WhatsApp (`generateMetadata`).
+
+## Estado vigente (2026-10-21): este mundo quedó solo en la ficha
+
+El portal volvió a La Previa ([`docs/decisions/2026-10-20-vuelve-la-previa.md`](../../docs/decisions/2026-10-20-vuelve-la-previa.md)). **Excepción del dueño del 2026-10-21: la página del complejo `/[slug]` (logo, portada, elegir hora y después cancha) se queda COMO ESTABA, en La Reserva** (R3 se cerró sin mergear). Por eso este brief **sigue vigente para la ficha** (`(perfil)`, `not-found`, con `PortalWorld` y los tokens `portal-*`) y **ya no rige** para lo demás de su alcance original:
+
+- **Confirmar** (`reservar`) y **la vuelta de la reserva** (`src/app/reserva/[bookingId]/*`) están en La Previa (`ReservaDarkShell`, `.reserva-*`, `.hero-accent-text`), con los cambios de flujo de [`docs/decisions/2026-10-21-confirmar-sin-casilla-y-modal.md`](../../docs/decisions/2026-10-21-confirmar-sin-casilla-y-modal.md): sin "Cómo pagás", un solo botón ("Pagar seña · $X" o "Reservar"), ingreso en un modal, solo email con nombre derivado y +18 por clickwrap sin casilla. Donde este brief dice "cómo se paga", "casilla del +18" o "Nombre y Email", vale esa decisión. Siguen: el estado en la URL, la confirmación sola al volver (`booking-intent.ts`), "Avisarle al grupo", los precios ocultos y la ausencia de cuenta regresiva.
+- `/disponibilidad` y el modal de la semana se sacaron (redirige a la ficha).
+- Home, Explorar, Mis reservas, Cuenta, el cromo y el ingreso suelto tienen su propio brief y están en La Previa.
 
 ## Decisiones del dueño (2026-10-15)
 

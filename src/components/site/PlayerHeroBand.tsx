@@ -35,7 +35,7 @@ export default function PlayerHeroBand({
           maskImage: 'radial-gradient(85% 120% at 100% 0%, #000, transparent 62%)',
         }}
       />
-      <div className="font-logo text-[12px] font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
+      <div className="font-logo text-[12px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
         {eyebrow}
       </div>
       {title && (

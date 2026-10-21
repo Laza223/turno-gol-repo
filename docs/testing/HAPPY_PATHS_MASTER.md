@@ -107,33 +107,27 @@ Fixtures usadas: Tenant Demo `e2e-complejo-demo` (`requires_deposit:false`, `dep
 - **Prerrequisitos:** Ninguno (página pública, ISR `revalidate=300`, sin cookies de sesión requeridas).
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/`.
-  2. Esperar a que renderice el h1 "Tu partido empieza en TurnoGol" (`src/app/home/HeroHeadline.tsx:9-11`).
-  3. Verificar la barra del portal con el link "Explorar" y el CTA "Ingresar" (`src/components/site/PortalHeader.tsx:58-61,88`); "Para complejos" está en la misma barra (desde `sm`).
-  4. En el formulario "Buscar canchas de fútbol" (`src/app/home/HeroSearch.tsx:131-134`), abrir el selector "Hora" (id `hero-time`, `HeroSearch.tsx:194`) y elegir `20:00`. "Zona" (combobox `hero-city`) y "Día" (selector `hero-day`) son opcionales: el día arranca en "Hoy".
-  5. Click en el botón "Buscar canchas" (`src/app/home/HeroSearch.tsx:222-223`).
+  2. Esperar a que renderice el h1 "Tu partido empieza en TurnoGol" (`src/app/home/HeroDesktop.tsx`; en el celular, `HeroMobile` usa un `<p role="heading">` y el h1 real queda en el árbol de escritorio).
+  3. Verificar la barra del portal (variante `overlay`, la pastilla flotante) con el link "Explorar" y el CTA "Ingresar" (`src/components/site/PortalHeader.tsx`); "Para complejos" está en la misma barra (desde `sm`).
+  4. En el formulario "Buscar canchas de fútbol" (`src/components/site/HeroSearch.tsx`, `aria-label` en las dos orientaciones), abrir el selector "Hora" (id `hero-time` más el sufijo de la orientación) y elegir `20:00`. "Zona" (combobox `hero-city…`) y "Día" (selector `hero-date…`) son opcionales: el día arranca en "Hoy".
+  5. Click en el botón "Buscar canchas".
   6. Esperar la navegación a `/explorar?...` con los query params que se hayan elegido (`city`/`province`, `date` si no es hoy, `time`).
 - **Comportamiento de componentes:**
-  - Loading: la home NO tiene `loading.tsx` propio — es un Server Component (`export default async function HomePage`, `src/app/page.tsx:31`). Las canchas de "cerca tuyo" (`NearbyPanel`) se resuelven en el cliente: primero el estado "Buscamos la cancha más cerca tuyo" con el botón "Usar mi ubicación", y con permiso, la cancha más cercana con sus horarios libres de hoy (esqueleto mientras cargan).
-  - Anti-doble-submit: no aplica — el submit del buscador es un `router.push` client-side (`HeroSearch.tsx:127`), sin estado de loading.
+  - Loading: la home NO tiene `loading.tsx` propio — es un Server Component (`export default async function HomePage`, `src/app/page.tsx`). Es solo el hero (titular, subtítulo, buscador): no hay "cerca tuyo", ni "Los mejor valorados", ni "Cómo funciona", ni franja de dueños (decisión del 2026-10-20).
+  - Anti-doble-submit: no aplica — el submit del buscador es un `router.push` client-side, sin estado de loading.
   - Feedback: no hay toast; el resultado es una navegación a `/explorar?...`.
-  - Si la disponibilidad de una cancha no carga (429, 4xx, 5xx o red), la tarjeta dice "No pudimos cargar los horarios" y ofrece "Ver el complejo" (`/{slug}`); NO dice "no hay turnos" (`src/app/home/nearby-context.tsx`, `loadSlots`).
-  - Precios: "Turno desde" solo aparece si el complejo no los oculta (`fromPriceCents` distinto de `null`).
+  - La barra inferior del celular (Explorar · Reservas · Cuenta) se ve también sin sesión.
 - **Validación de datos:**
-  - DB: ninguna escritura. Lectura server-side de `listPublicCities()` (`src/app/page.tsx:20-26`).
-  - API/Action: ninguna Server Action. El cliente consulta `/api/public/search` y `/api/public/availability` para "cerca tuyo".
-  - Externos: geolocalización del navegador (opcional).
+  - DB: ninguna escritura. Lectura server-side de `listPublicCities()` (`src/app/page.tsx`).
+  - API/Action: ninguna Server Action.
+  - Externos: ninguno.
   - UI-sin-reload: el submit del buscador es `router.push` (Next Client Router), no un fetch a route handler.
-- **Evidencia (path:línea):**
-  - `src/app/page.tsx:31` — Server Component `HomePage`, sin `'use client'`; monta `PortalWorld` + `PortalShell` (único `<main id="main-content">`).
-  - `src/app/home/HeroHeadline.tsx:9-11` — h1 "Tu partido empieza en TurnoGol".
-  - `src/app/home/Hero.tsx:19-27` — titular, buscador y canchas en un solo árbol (el buscador antes que las canchas en el celular).
-  - `src/app/home/HeroSearch.tsx:133` — `aria-label="Buscar canchas de fútbol"`.
-  - `src/app/home/HeroSearch.tsx:145,171,194` — rótulos "Zona", "Día", "Hora".
-  - `src/app/home/HeroSearch.tsx:223` — texto del botón "Buscar canchas".
-  - `src/app/home/HeroSearch.tsx:127` — `router.push(qs ? \`/explorar?${qs}\` : '/explorar')`.
-  - `src/components/site/PortalHeader.tsx:58-61` — link "Explorar".
-  - `src/components/site/PortalHeader.tsx:88` — link "Ingresar" (deslogueado), a `/ingresar?next=<página actual>`.
-  - `src/app/home/OwnersStrip.tsx` — franja de dueños al pie, con el link a `/para-complejos`.
+- **Evidencia (archivo):**
+  - `src/app/page.tsx` — Server Component `HomePage`, sin `'use client'`; arma su cromo (`SiteNav variant="overlay"`, `SiteFooter`, `PlayerBottomNav`) y el único `<main id="main-content">`, sobre `.landing-hero`. No monta `PortalWorld`.
+  - `src/app/home/Hero.tsx` — `HeroMobile` (< `lg`) y `HeroDesktop` (`lg` en adelante), dos árboles gateados por CSS.
+  - `src/app/home/HeroDesktop.tsx` — h1 "Tu partido empieza en TurnoGol" (con "TurnoGol" en `.hero-accent-text`).
+  - `src/components/site/HeroSearch.tsx` — `aria-label="Buscar canchas de fútbol"`, rótulos "Zona", "Día", "Hora", botón "Buscar canchas" y el `router.push` a `/explorar?${qs}`.
+  - `src/components/site/PortalHeader.tsx` — links "Explorar" e "Ingresar" (deslogueado), este último a `/ingresar?next=<página actual>` (`IngresarLink`).
 
 ---
 
@@ -368,7 +362,7 @@ Fixtures usadas: Tenant Demo `e2e-complejo-demo` (`requires_deposit:false`, `dep
   2. Esperar el h1 "Este enlace venció" (`src/app/(auth)/verify/VerifyView.tsx:50`; sin `via` lo pinta el `ErrorState` del staff, la card oscura de siempre: `VerifyView.tsx:303-305`).
   3. Verificar el mensaje "Los enlaces de acceso sirven una sola vez y por un rato. Pedí uno nuevo para entrar." (`VerifyView.tsx:51,308-310`).
   4. Click en "Iniciar sesión" → navega a `/login` (`VerifyView.tsx:33,311-313`). Debajo queda el link chico "¿Sos jugador? Ingresá acá" → `/ingresar` (`VerifyView.tsx:317-325`).
-  5. Navegar a `http://localhost:3000/verify?error=expired&via=email` (con `via`: lo pidió un jugador): mismo h1 y mensaje, pero ahora en el mundo del portal (`PortalAuthFrame`, `VerifyView.tsx:193-203`, `PlayerError` 360-422), con el botón "Pedir un enlace nuevo" → `/ingresar` y el link chico "¿Sos del complejo? Entrá al panel" → `/login` (`VerifyView.tsx:52,404-406,411-419`).
+  5. Navegar a `http://localhost:3000/verify?error=expired&via=email` (con `via`: lo pidió un jugador): mismo h1 y mensaje, pero ahora en el marco oscuro de La Previa (`PortalAuthFrame` y `PlayerError` en `VerifyView.tsx`), con el botón "Pedir un enlace nuevo" → `/ingresar` y el link chico "¿Sos del complejo? Entrá al panel" → `/login` (`VerifyView.tsx:52,404-406,411-419`).
 - **Comportamiento de componentes:**
   - Loading: sin `error`/`status` en la URL, la vista cae en `LoadingState` con `TgBallSpinner` animado y texto "Verificando tu enlace…" (`VerifyView.tsx:282-294`) — no aplica a este caso porque `error=expired` fuerza `ErrorState` directo.
   - Anti-doble-submit: no aplica — no hay forms, es un `<Link>` (única excepción: `account_conflict` con `via=google` trae un form (`VerifyView.tsx:389-395`) cuyo `SubmitButton` queda deshabilitado y dice "Abriendo Google…" mientras la action corre; lo cubre `tests/unit/verify-page-errors.test.tsx`).
@@ -434,27 +428,27 @@ Fixtures usados en todos los casos (ver contrato):
 - **Prerrequisitos:** Sin sesión (cookies limpias). Jugador con email nuevo (no existe fila en `players`). Slot libre en tenant Demo (cancha `...010`, cualquier fecha/hora dentro de `booking_advance_days`).
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/e2e-complejo-demo/reservar?court=00000000-0000-4000-8000-000000000010&date=<YYYY-MM-DD>&time=<HH:MM>&dur=60` (URL armada por la grilla pública; para el caso de test se puede navegar directo).
-  2. Como no hay sesión de jugador, la page renderiza `LoginGate` (src/app/(public)/[slug]/reservar/page.tsx:118-131).
-  3. Rellenar `Nombre` (`name="firstName"`) con `"Juan"` y `Email` (`name="email"`, type=email) con `"e2e-player@turnogol.test"`. Desde el PR 2.3b1 no hay Apellido.
-  4. Tildar el checkbox `name="terms"` ("Soy mayor de 18 años y acepto los términos y condiciones de uso (declaración jurada)." — LoginGate.tsx:304). Sin la casilla nada se deshabilita: el error sale en la casilla.
-  5. Click en el botón `"Continuar con mi email"` (LoginGate.tsx:242-243).
+  2. Ver h1 `"Confirmá tu reserva"` y el resumen. Como no hay sesión de jugador, el botón de acción (`"Reservar"`, o `"Pagar seña"` si el complejo cobra seña) abre el diálogo de ingreso `LoginGate` (un modal oscuro con título `"Entrá para reservar"`; en el celular sube desde abajo).
+  3. Rellenar solo `Email` (`name="email"`, type=email) con `"e2e-player@turnogol.test"`. Ya no hay campo Nombre ni Apellido: el nombre se deriva en el servidor de la parte local del email (decisión del 2026-10-21).
+  4. No hay casilla de +18: debajo de los botones dice `"Al continuar declarás que sos mayor de 18 años y aceptás los Términos y condiciones"`, con el link a `/terminos`. Tocar el botón es la declaración; el form manda `terms=on` en un campo oculto y el servidor lo exige y lo registra.
+  5. Click en el botón `"Continuar con mi email"` (`LoginGate.tsx`).
   6. Esperar el estado `sent`: título `"Revisá tu email"` (con foco) y texto `"Te mandamos un enlace a <email>."` + `"Cuando lo toques, tu reserva queda confirmada."` (complejo sin seña; con seña dice `"…volvés a esta pantalla con tu cuenta y ahí pagás la seña."`), con "Reenviar enlace" y "Usar otro email" (LoginGate.tsx).
   7. Abrir Inbucket (`http://127.0.0.1:54324`, helper `tests/e2e/_helpers/inbucket.ts`), abrir el mensaje enviado a `e2e-player@turnogol.test`, click en el link del magic link (apunta a `/api/auth/callback?token_hash=...&type=email&next=/e2e-complejo-demo/reservar?...%26booking_intent%3D<vínculo firmado>`).
   8. El callback (`src/app/api/auth/callback/route.ts`) verifica el OTP, crea el jugador si no existe y, como `next` es una reserva (`isBookingPath`), redirige directo a `next`, sin `/verify` (desde el PR 2.3b2).
   9. En `/e2e-complejo-demo/reservar?...` con sesión, la page verifica el vínculo (`src/shared/security/booking-intent.ts`: firma, mismo email, mismo turno, 60 min) y, sin seña, `AutoConfirm` envía el form de confirmar una sola vez ("Confirmando tu reserva…") y saca el vínculo de la URL.
-  10. Aterriza en `/reserva/<id>/exito` con "¡Reserva confirmada!" (redirect con `replace`). Si el vínculo no vale, queda la pantalla normal con "Tocá Confirmar reserva para terminar." y el botón.
+  10. Aterriza en `/reserva/<id>/exito` con "¡Reserva confirmada!" (redirect con `replace`). Si el vínculo no vale, queda la pantalla normal con "Tocá Reservar (o Pagar seña) para terminar." y el botón.
 - **Comportamiento de componentes:**
-  - Loading: `SubmitButton` del email deshabilitado mientras corre la action, con `"Enviando…"` (LoginGate.tsx:242).
-  - Anti-doble-submit: el mismo `SubmitButton`; estado en dos `useActionState`, email y Google (LoginGate.tsx:93-98).
-  - Feedback: no hay toast — la propia `GateState` cambia a `{status:'sent'}` y re-renderiza el panel "Revisá tu email" en el lugar (LoginGate.tsx:348-382); luego redirect real vía `NextResponse.redirect` del callback directo a la reserva y envío automático del form (`AutoConfirm`) (antes: auto-redirect client-side de `/verify`, SuccessRedirect.tsx:22-24).
+  - Loading: `SubmitButton` del email deshabilitado mientras corre la action, con `"Enviando…"` (`LoginGate.tsx`).
+  - Anti-doble-submit: el mismo `SubmitButton`; estado en dos `useActionState`, email y Google (`LoginGate.tsx`).
+  - Feedback: no hay toast — la propia `GateState` cambia a `{status:'sent'}` y re-renderiza el diálogo con "Revisá tu email" en el lugar (`LoginGate.tsx`); luego redirect real vía `NextResponse.redirect` del callback directo a la reserva y envío automático del form (`AutoConfirm`) (antes: auto-redirect client-side de `/verify`, SuccessRedirect.tsx:22-24).
 - **Validación de datos:**
-  - DB: fila nueva en `players` (email lower-cased, `first_name`, `last_name`, `agreed_to_terms_at=NOW()`, `terms_version`) — `INSERT INTO players ... ON CONFLICT (email) DO UPDATE` (src/modules/players/player.service.ts:24,52-63).
+  - DB: fila nueva en `players` (email lower-cased, `first_name` derivado del email, `agreed_to_terms_at=NOW()`, `terms_version`) — `INSERT INTO players ... ON CONFLICT (email) DO UPDATE` (src/modules/players/player.service.ts:24,52-63).
   - API/Action: `sendPlayerMagicLink` (src/app/(public)/[slug]/reservar/actions.ts:75) → `{status:'sent'}` en éxito (actions.ts:123). `GET /api/auth/callback` → 302 directo a `next` (la reserva).
   - Externos: Resend envía el magic link vía `supabase.auth.signInWithOtp` (src/modules/auth/auth.service.ts:27-39) — visible en Inbucket `:54324`, `user_metadata` lleva `is_player`, `first_name`, `last_name`, `agreed_terms`, `terms_version` (auth.service.ts:31-37).
   - UI-sin-reload: no aplica (son navegaciones reales / redirects de servidor, no revalidatePath).
 - **Evidencia (path:línea):**
-  - `src/app/(public)/[slug]/reservar/page.tsx:118-131` — render condicional LoginGate vs ConfirmBookingButton según sesión.
-  - `src/app/(public)/[slug]/reservar/components/LoginGate.tsx:242-243,304,348-382` — copy exacto del form y del estado "sent".
+  - `src/app/(public)/[slug]/reservar/components/CheckoutFlow.tsx` — el mismo botón: `ConfirmBookingButton` con sesión, abre `LoginGate` sin ella.
+  - `src/app/(public)/[slug]/reservar/components/LoginGate.tsx` — copy exacto del modal, la frase del +18 y el estado "sent".
   - `src/app/(public)/[slug]/reservar/actions.ts:75-124` — `sendPlayerMagicLink`.
   - `src/app/api/auth/callback/route.ts` — verifyOtp + `getOrCreatePlayer` + redirect directo a la reserva (`isBookingPath`).
   - `src/modules/players/player.service.ts:24-65` — `getOrCreatePlayer` (INSERT/UPDATE de `players`).
@@ -467,7 +461,7 @@ Fixtures usados en todos los casos (ver contrato):
 - **Prerrequisitos:** Sin sesión activa (expirada/cerrada). Jugador ya existe en `players` (`e2e-player@turnogol.test`, `player_id=...020`).
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/ingresar`.
-  2. Ver h1 `"Accedé a tu cuenta"` (`src/app/(auth)/ingresar/IngresarForm.tsx:292`; título plano con `PORTAL_TITLE`, sin gradient span). Primero va "Continuar con Google" y después el form de email; en el navegador interno de una app (Instagram, Facebook, TikTok, LinkedIn, LINE, Snapchat, Pinterest o cualquier WebView de Android) va primero el email, porque Google rechaza los WebViews (`page.tsx:10` lee el User-Agent con `isInAppBrowser`, `src/lib/in-app-browser.ts`).
+  2. Ver h1 `"Accedé a tu cuenta"` (`src/app/(auth)/ingresar/IngresarForm.tsx`; título en negra itálica con `AUTH_TITLE` y el tramo "cuenta" en degradé esmeralda (`AUTH_ACCENT_STYLE`), sobre el marco oscuro de `PortalAuthFrame`). Primero va "Continuar con Google" y después el form de email; en el navegador interno de una app (Instagram, Facebook, TikTok, LinkedIn, LINE, Snapchat, Pinterest o cualquier WebView de Android) va primero el email, porque Google rechaza los WebViews (`page.tsx:10` lee el User-Agent con `isInAppBrowser`, `src/lib/in-app-browser.ts`).
   3. Rellenar el input `id="email"` `name="email"` con `"e2e-player@turnogol.test"`.
   4. Click en el botón `"Mandame el enlace"` (IngresarForm.tsx:266-268).
   5. Esperar el estado `sent`: h1 `"Revisá tu email"`, texto `"Si <email> tiene cuenta, te enviamos un enlace para entrar."` (IngresarForm.tsx:353-356; la action contesta `sent` aunque ese email no tenga cuenta, por eso el texto no afirma que el mail salió), botón `"Reenviar en 60 s"` deshabilitado, `"Usar otro email"` y, abajo, el bloque de primera vez, con el link a `/explorar` (IngresarForm.tsx:366-389).
@@ -500,10 +494,10 @@ Fixtures usados en todos los casos (ver contrato):
 - **Prerrequisitos:** Sesión de jugador activa (`e2e-player@turnogol.test`). Tenant Demo (`e2e-complejo-demo`, `requires_deposit:false`). Slot libre cancha `...010`.
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/e2e-complejo-demo/reservar?court=00000000-0000-4000-8000-000000000010&date=<YYYY-MM-DD>&time=<HH:MM>&dur=60`.
-  2. Ver h1 `"Confirmá tu reserva"` (page.tsx:101).
-  3. Ver `BookingSummary` con precio del slot, sin bloque de seña (`depositAmount=0` porque `tenant.requiresDeposit=false`, page.tsx:68-70).
-  4. Como hay sesión, se renderiza `ConfirmBookingButton` con `payMethods` presenciales (cash/transfer según config, `depositAmount>0` sería solo MP — page.tsx:75-81).
-  5. Click en el botón `"Confirmar reserva"` (texto condicional `withDeposit ? 'Pagar la seña' : 'Confirmar reserva'`, ConfirmBookingButton.tsx:52).
+  2. Ver h1 `"Confirmá tu reserva"` (con "reserva" en `.hero-accent-text`).
+  3. Ver `BookingSummary` con precio del slot, sin bloque de seña (`depositAmount=0` porque `tenant.requiresDeposit=false`).
+  4. Como hay sesión, se renderiza `ConfirmBookingButton` con el rótulo `"Reservar"`. No hay selector "Cómo pagás" (`PaymentMethodSelector` se eliminó): la reserva sin seña se crea sin método presencial. Debajo del botón, la regla de cancelación (`"Podés cancelar desde Mis reservas."`).
+  5. Click en el botón `"Reservar"` (texto condicional `withDeposit ? 'Pagar seña' : 'Reservar'`, `CheckoutFlow.tsx`).
   6. `createBookingAndCheckout` inserta el booking con `status:'confirmed'` de una (booking.service.ts:433,436: `withDeposit` es `false`) y redirige a `/reserva/<bookingId>/exito` (reservar/actions.ts:169-170).
   7. En `/reserva/<id>/exito` ver h1 `"¡Reserva confirmada!"` (BookingSuccessCard.tsx), el resumen del turno con la fila `"Pagás en el complejo"` (depositStatus='not_required': `payNote` de `BookingSummary`), la acción principal `"Avisarle al grupo"` (link `https://wa.me/?text=…`, sin montos), la lista `"Cómo llegar"` / `"Agregar al calendario"` / `"Ver mis reservas"` y, abajo, el código de la reserva con `"Descargar comprobante"`.
 - **Comportamiento de componentes:**
@@ -530,8 +524,8 @@ Fixtures usados en todos los casos (ver contrato):
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/e2e-complejo-sena/reservar?court=00000000-0000-4000-8000-000000000031&date=<YYYY-MM-DD>&time=<HH:MM>&dur=60`.
   2. Ver h1 `"Confirmá tu reserva"` y `BookingSummary` con seña calculada (`depositAmount = round(price*50/100)`, page.tsx:68-70).
-  3. `payMethods` es solo `['mercadopago']` (depositAmount>0, page.tsx:75-77) — `PaymentMethodSelector` no ofrece cash/transfer.
-  4. Click en el botón `"Pagar la seña"` (ConfirmBookingButton.tsx:52, `withDeposit`).
+  3. No hay selector de cómo se paga: con seña el único camino es MercadoPago. Debajo del botón, la regla de cancelación del complejo.
+  4. Click en el botón `"Pagar seña · $ <monto>"` (`"Pagar seña"` a secas si el complejo oculta precios; `CheckoutFlow.tsx`).
   5. `createBookingAndCheckout` inserta `status:'pending_payment'`, `deposit_status:'pending'` (booking.service.ts:433,436), llama `createDepositPayment` y redirige al `initPoint` de MP (reservar/actions.ts:169-179) → en mock, aterriza en `/mock-mp/checkout?booking=<id>&pref=...`.
   6. En el mock, ver banner `"Entorno de prueba (MOCK)"` y h1 `"Pago de seña"` (MockCheckoutView.tsx:35-45), con el resumen (complejo/cancha/fecha/horario/seña).
   7. Click en `"Pagar (aprobado)"` (MockCheckoutView.tsx:80-86).
@@ -547,7 +541,7 @@ Fixtures usados en todos los casos (ver contrato):
   - Externos: MP mock — `buildMockPaymentId`/`buildMockEventId` (mock-mp/checkout/actions.ts:7,52-56); Resend encola `booking_confirmed` a `notifications` y lo despacha (`enqueueNotification`, payment.service.ts:339-357; tabla `notifications`, src/modules/notifications/notification.service.ts:2,50).
   - UI-sin-reload: no aplica en `/exito` (SSR + polling propio, no `revalidatePath`); `router.refresh()` no se usa en este flujo.
 - **Evidencia (path:línea):**
-  - `src/app/(public)/[slug]/reservar/page.tsx:67-70,75-77` — cálculo de seña y `payMethods=['mercadopago']`.
+  - `src/app/(public)/[slug]/reservar/page.tsx` — cálculo de seña y `CheckoutFlow` con `withDeposit`.
   - `src/app/(public)/[slug]/reservar/actions.ts:169,172-179` — rama `pending_payment` → `createDepositPayment` → redirect a `initPoint`.
   - `src/app/mock-mp/checkout/MockCheckoutView.tsx:35-45,80-86` — banner mock, h1, botón aprobado.
   - `src/app/mock-mp/checkout/actions.ts:43-98` — `mockPay` webhook + redirect a `/exito`.
@@ -623,7 +617,7 @@ Fixtures usados en todos los casos (ver contrato):
 - **Prerrequisitos:** Sesión activa. Al menos 1 booking con `date >= hoy` (para Próximos) y 1 con `date < hoy` (para Historial), en cualquier tenant vinculado.
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/mis-reservas`.
-  2. Ver h1 `"Mis reservas"`, sin banda hero, en el mundo del portal (`mis-reservas/layout.tsx` monta `PortalWorld`).
+  2. Ver la banda hero (`PlayerHeroBand`, eyebrow "Tu actividad") con el h1 `"Mis reservas"` ("reservas" en `.hero-accent-text`), en La Previa (`(player)/layout.tsx` monta `PortalShell` y `data-portal-fields`; no `PortalWorld`).
   3. Tab por defecto `"Próximos"` activo (`/mis-reservas?tab=proximos`), dentro de un `<nav aria-label="Tus reservas">` con `aria-current="page"`.
   4. Click en el tab `"Historial"` (`/mis-reservas?tab=historial`) → navega y refiltra en SQL (`page.tsx`, `tabCond`): Próximos = `confirmed`/`pending_payment` con `date >= hoy` o `ends_at > now()` (un turno en juego pasada la medianoche sigue en Próximos), de la más cercana a la más lejana y con los terminados de hoy al final; Historial, el resto, de la más nueva a la más vieja.
   5. Cada card es un `<li>` con día ("Hoy", "Mañana" o "vie 13 mar", por el día calendario de `starts_at`), rango `"20:00 a 21:00"`, cancha con formato, complejo, badge (`Confirmada`, `Esperando seña`, `Jugada`, `Cancelada`, `Cancelada (sin reembolso)`, `Ausente`, `Expirada`) y la línea de seña o pago (con precios ocultos, sin monto del turno). La primera de Próximos (la próxima confirmada que no terminó) suma dirección, "Avisarle al grupo" y "Cómo llegar"; las confirmadas abren `/reserva/{id}/exito`.

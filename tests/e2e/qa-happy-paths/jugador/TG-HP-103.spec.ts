@@ -34,8 +34,8 @@ test.describe('TG-HP-103 — Reserva online SIN seña → confirma instantáneo'
       await page.goto(reservarUrl(date))
       await expect(page.getByRole('heading', { name: 'Confirmá tu reserva' })).toBeVisible()
 
-      // Sin seña (depositAmount=0): payMethods presenciales, botón "Confirmar reserva".
-      const confirmBtn = page.getByRole('button', { name: 'Confirmar reserva' })
+      // Sin seña (depositAmount=0): un solo botón "Reservar" (ya no hay selector de cómo se paga).
+      const confirmBtn = page.getByRole('button', { name: 'Reservar' })
       await expect(confirmBtn).toBeVisible()
       await expect(confirmBtn).toBeEnabled()
 

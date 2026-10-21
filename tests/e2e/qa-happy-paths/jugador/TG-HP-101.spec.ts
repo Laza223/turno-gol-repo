@@ -45,13 +45,15 @@ test.describe('TG-HP-101 — Alta jugador nuevo al reservar', () => {
       await page.goto(reservarUrl(date))
       await expect(page.getByRole('heading', { name: 'Confirmá tu reserva' })).toBeVisible()
 
-      // Sin sesión → LoginGate (no ConfirmBookingButton). Nombre y email, sin apellido.
+      // Sin sesión → el botón de acción abre LoginGate (modal). Solo email: el nombre se deriva
+      // del email en el servidor y el +18 es una frase (clickwrap), sin casilla.
+      await page.getByRole('button', { name: 'Reservar' }).click()
       await expect(page.getByRole('heading', { name: 'Entrá para reservar' })).toBeVisible()
+      await expect(page.getByLabel('Nombre')).toHaveCount(0)
       await expect(page.getByLabel('Apellido')).toHaveCount(0)
+      await expect(page.getByRole('checkbox')).toHaveCount(0)
 
-      await page.getByLabel('Nombre').fill('Juan')
       await page.getByLabel('Email').fill(newEmail)
-      await page.getByRole('checkbox').check()
 
       const sinceMs = Date.now()
       await page.getByRole('button', { name: 'Continuar con mi email' }).click()
@@ -87,7 +89,9 @@ test.describe('TG-HP-101 — Alta jugador nuevo al reservar', () => {
 
       expect(error).toBeNull()
       expect(player?.email).toBe(newEmail.toLowerCase())
-      expect(player?.first_name).toBe('Juan')
+      // Sin campo de nombre: el servidor lo deriva del email (`e2e-qa-newplayer-ab12cd34` →
+      // 'Ee Qa Newplayer Abcd': corta en `-`, sin dígitos, cada palabra capitalizada).
+      expect(player?.first_name).toMatch(/^Ee Qa Newplayer( [A-Z][a-z]*)?$/)
       // Sin apellido en la pantalla: el servidor lo recibe vacío.
       expect(player?.last_name ?? '').toBe('')
       expect(player?.agreed_to_terms_at).toBeTruthy()

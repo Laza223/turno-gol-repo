@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
 //
-// El ingreso de /reservar con React REAL y las actions como mocks: nada se deshabilita por la
-// casilla, el error sale EN el campo y el foco va ahí (Google ataja la casilla sin tildar en el
-// cliente, sin vuelta al servidor), lo tipeado se conserva, un corte de red no tira la página y lo
-// dice con las palabras del botón que lo causó, y el "enviado" dice la verdad de hoy.
+// El ingreso de /reservar (un modal) con React REAL y las actions como mocks: sin casilla de +18
+// (tocar un botón es aceptar, los dos forms mandan terms=on), solo email (el nombre lo deriva el
+// servidor), el error sale EN el campo del email y el foco va ahí, lo tipeado se conserva, un corte
+// de red no tira la página y lo dice con las palabras del botón que lo causó, el "enviado" dice la
+// verdad de hoy y el modal se cierra con Esc y, reabierto, recuerda que ya se mandó el enlace.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { UnrecognizedActionError } from 'next/dist/client/components/unrecognized-action-error'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -20,11 +21,6 @@ const OFFLINE = 'No pudimos enviar el enlace. Revisá tu conexión e intentá de
 const GOOGLE_OFFLINE = 'No pudimos abrir Google. Revisá tu conexión y probá de nuevo.'
 
 type Action = (prev: GateState, formData: FormData) => Promise<GateState>
-const termsError = (): GateState => ({
-  status: 'error',
-  message: 'Tenés que aceptar los términos.',
-  field: 'terms',
-})
 const sent = (): GateState => ({ status: 'sent', email: 'tomas@example.com', firstName: 'Tomás' })
 
 beforeEach(() => {
@@ -46,16 +42,20 @@ function renderGate(
 ) {
   const action = vi.fn<Action>(props.action ?? (async () => ({ status: 'idle' })))
   const googleAction = vi.fn<Action>(props.googleAction ?? (async () => ({ status: 'idle' })))
-  render(
+  const onOpenChange = vi.fn()
+  const gate = (open: boolean) => (
     <LoginGate
+      open={open}
+      onOpenChange={onOpenChange}
       next={NEXT}
       action={action}
       googleAction={googleAction}
       inAppBrowser={props.inAppBrowser}
       withDeposit={props.withDeposit ?? false}
-    />,
+    />
   )
-  return { action, googleAction }
+  const { rerender } = render(gate(true))
+  return { action, googleAction, onOpenChange, setOpen: (open: boolean) => rerender(gate(open)) }
 }
 
 const button = (name: string | RegExp) => screen.getByRole('button', { name }) as HTMLButtonElement
@@ -65,80 +65,98 @@ const click = (name: string | RegExp) =>
   })
 const type = (label: string, value: string) =>
   fireEvent.change(screen.getByLabelText(label), { target: { value } })
-const checkbox = () => screen.getByRole('checkbox') as HTMLInputElement
 
-describe('LoginGate — la casilla del +18', () => {
-  it('nada se deshabilita por la casilla: los dos botones se pueden tocar sin tildarla', () => {
+describe('LoginGate — el +18 sin casilla (clickwrap)', () => {
+  it('no hay casilla ni campo de nombre: solo el email', () => {
+    renderGate()
+    expect(screen.queryByRole('checkbox')).toBeNull()
+    expect(screen.queryByLabelText(/Nombre|Apellido/)).toBeNull()
+    expect(screen.getByLabelText('Email')).toBeTruthy()
+  })
+
+  it('los dos botones se pueden tocar de entrada', () => {
     renderGate()
     expect(button('Continuar con Google').disabled).toBe(false)
     expect(button('Continuar con mi email').disabled).toBe(false)
   })
 
-  it('Google sin la casilla: el error y el foco salen al instante, sin vuelta al servidor', async () => {
-    const { googleAction } = renderGate({ googleAction: async () => termsError() })
-    await click('Continuar con Google')
-
-    const box = checkbox()
-    expect(box).toHaveFocus()
-    expect(box.getAttribute('aria-invalid')).toBe('true')
-    const alert = screen.getByRole('alert')
-    expect(alert.textContent).toBe('Tenés que aceptar los términos.')
-    expect(box.getAttribute('aria-describedby')).toBe(alert.id)
-    // La action no se llamó: el cliente atajó la casilla (el servidor la exige igual, ver
-    // reservar-gate-actions.test.ts).
-    expect(googleAction).not.toHaveBeenCalled()
-    // Y el botón no quedó en "Abriendo Google…": no hubo envío.
-    expect(button('Continuar con Google').disabled).toBe(false)
-  })
-
-  it('Google sin la casilla, otra vez: el foco vuelve a la casilla aunque lo hayan movido', async () => {
+  it('debajo de los botones dice que continuar es declarar +18 y aceptar los términos', () => {
     renderGate()
-    await click('Continuar con Google')
-    screen.getByLabelText('Nombre').focus()
-    await click('Continuar con Google')
-
-    expect(checkbox()).toHaveFocus()
-    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    const text = screen.getByText(/Al continuar declarás que sos mayor de 18 años y aceptás los/)
+    expect(text.textContent).toContain('Términos y condiciones')
+    const google = button('Continuar con Google')
+    expect(google.compareDocumentPosition(text) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
-  it('con la casilla tildada la action de Google SÍ se llama, con terms=on y el next (formato y pay)', async () => {
-    const { googleAction } = renderGate()
-    fireEvent.click(checkbox())
+  it('Google y el email mandan terms=on y el next (formato y pay) sin que nadie tilde nada', async () => {
+    const { googleAction, action } = renderGate()
     await click('Continuar con Google')
+    await click('Continuar con mi email')
 
     expect(googleAction).toHaveBeenCalledTimes(1)
     expect(googleAction.mock.calls[0]![1].get('terms')).toBe('on')
     expect(googleAction.mock.calls[0]![1].get('next')).toBe(NEXT)
+    expect(action.mock.calls[0]![1].get('terms')).toBe('on')
+    expect(action.mock.calls[0]![1].get('next')).toBe(NEXT)
   })
 
-  it('con la casilla tildada viaja terms=on a Google y al email', async () => {
-    const { googleAction, action } = renderGate()
-    fireEvent.click(checkbox())
-    await click('Continuar con Google')
+  it('el email no manda nombre: lo deriva el servidor', async () => {
+    const { action } = renderGate()
+    type('Email', 'lazaro.feijoo2004@gmail.com')
     await click('Continuar con mi email')
 
-    expect(googleAction.mock.calls[0]![1].get('terms')).toBe('on')
-    expect(action.mock.calls[0]![1].get('terms')).toBe('on')
+    expect(action.mock.calls[0]![1].get('firstName')).toBeNull()
+    expect(action.mock.calls[0]![1].get('email')).toBe('lazaro.feijoo2004@gmail.com')
   })
 
-  it('el link a los términos está FUERA del rótulo: tocarlo no tilda la casilla', () => {
+  it('el link a los términos va en otra pestaña, con 44 px de alto táctil y foco visible', () => {
     renderGate()
-    const link = screen.getByRole('link', { name: /Leer los términos y condiciones/ })
+    const link = screen.getByRole('link', { name: /Términos y condiciones/ })
     expect(link.getAttribute('href')).toBe('/terminos')
-    expect(link.closest('label')).toBeNull()
-    // El foco es el anillo del mundo, no el contorno por defecto del navegador.
+    expect(link.getAttribute('target')).toBe('_blank')
+    expect(link.getAttribute('rel')).toContain('noopener')
+    expect(link.className).toContain('min-h-11')
     expect(link.className).toContain('focus-visible:ring-2')
     expect(link.className).toContain('focus-visible:outline-hidden')
+    expect(link.textContent).toContain('se abre en otra pestaña')
+  })
+})
+
+describe('LoginGate — el modal', () => {
+  it('es un diálogo con nombre accesible y se cierra con Esc', () => {
+    const { onOpenChange } = renderGate()
+    const dialog = screen.getByRole('dialog', { name: 'Entrá para reservar' })
+    expect(dialog).toBeTruthy()
+
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
-  it('el error de la casilla se va cuando se tilda', async () => {
-    renderGate()
-    await click('Continuar con Google')
-    screen.getByRole('alert')
+  it('cerrado no pinta nada', () => {
+    const { setOpen } = renderGate()
+    setOpen(false)
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
 
-    fireEvent.click(checkbox())
-    expect(screen.queryByRole('alert')).toBeNull()
-    expect(checkbox().getAttribute('aria-invalid')).toBeNull()
+  it('el botón de cerrar mide 44 px', () => {
+    renderGate()
+    // El primitivo trae una X de 24 px: el panel la agranda con una variante sobre su hijo directo.
+    const close = screen.getByRole('button', { name: 'Cerrar' })
+    expect(close.parentElement).toBe(screen.getByRole('dialog'))
+    expect(screen.getByRole('dialog').className).toContain('[&>button]:size-11')
+  })
+
+  it('si se cerró después de mandar el enlace, al reabrirlo sigue el "Revisá tu email"', async () => {
+    const { setOpen } = renderGate({ action: async () => sent() })
+    await click('Continuar con mi email')
+    await screen.findByRole('heading', { name: 'Revisá tu email' })
+
+    setOpen(false)
+    expect(screen.queryByRole('dialog')).toBeNull()
+    setOpen(true)
+
+    expect(screen.getByRole('dialog', { name: 'Revisá tu email' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Continuar con mi email' })).toBeNull()
   })
 })
 
@@ -162,60 +180,39 @@ describe('LoginGate — qué pasa al entrar', () => {
   })
 })
 
-describe('LoginGate — los valores del email no los vacía Google', () => {
-  const emailError = (): GateState => ({
-    status: 'error',
-    message: 'Ingresá un email válido',
-    field: 'email',
-    values: { firstName: 'Tomás', email: 'tomas@' },
-  })
-
-  async function conErrorDeEmail(googleAction?: Action) {
-    const gate = renderGate({ action: async () => emailError(), googleAction })
-    type('Nombre', 'Tomás')
-    type('Email', 'tomas@')
-    fireEvent.click(checkbox())
-    await click('Continuar con mi email')
-    await screen.findByText('Ingresá un email válido')
-    return gate
-  }
-
-  const valores = () => [
-    (screen.getByLabelText('Nombre') as HTMLInputElement).value,
-    (screen.getByLabelText('Email') as HTMLInputElement).value,
-  ]
-
-  it('email con error y después Google con la red caída: Nombre y Email intactos', async () => {
-    await conErrorDeEmail(vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
-    expect(valores()).toEqual(['Tomás', 'tomas@'])
-
-    await click('Continuar con Google')
-    await screen.findByText(GOOGLE_OFFLINE)
-
-    expect(valores()).toEqual(['Tomás', 'tomas@'])
-  })
-
-  it('email con error y después Google sin la casilla: Nombre y Email intactos', async () => {
-    await conErrorDeEmail()
-    fireEvent.click(checkbox()) // la destilda: ahora Google se ataja en el cliente
-    await click('Continuar con Google')
-    await screen.findByText('Tenés que aceptar los términos.')
-
-    expect(valores()).toEqual(['Tomás', 'tomas@'])
-  })
-})
-
-describe('LoginGate — nombre y email', () => {
-  it('error de un campo: junto a su campo, aria-invalid, foco ahí y lo tipeado se conserva', async () => {
+describe('LoginGate — el email no lo vacía Google', () => {
+  it('email con error y después Google con la red caída: el Email queda intacto', async () => {
     renderGate({
       action: async () => ({
         status: 'error',
         message: 'Ingresá un email válido',
         field: 'email',
-        values: { firstName: 'Tomás', email: 'tomas@' },
+        values: { email: 'tomas@' },
+      }),
+      googleAction: vi.fn().mockRejectedValue(new TypeError('Failed to fetch')),
+    })
+    type('Email', 'tomas@')
+    await click('Continuar con mi email')
+    await screen.findByText('Ingresá un email válido')
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('tomas@')
+
+    await click('Continuar con Google')
+    await screen.findByText(GOOGLE_OFFLINE)
+
+    expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('tomas@')
+  })
+})
+
+describe('LoginGate — el email', () => {
+  it('error del campo: junto al campo, aria-invalid, foco ahí y lo tipeado se conserva', async () => {
+    renderGate({
+      action: async () => ({
+        status: 'error',
+        message: 'Ingresá un email válido',
+        field: 'email',
+        values: { email: 'tomas@' },
       }),
     })
-    type('Nombre', 'Tomás')
     type('Email', 'tomas@')
     await click('Continuar con mi email')
 
@@ -225,14 +222,6 @@ describe('LoginGate — nombre y email', () => {
     expect(screen.getByRole('alert').textContent).toBe('Ingresá un email válido')
     expect(email.getAttribute('aria-describedby')).toBe(screen.getByRole('alert').id)
     expect(email.value).toBe('tomas@')
-    expect((screen.getByLabelText('Nombre') as HTMLInputElement).value).toBe('Tomás')
-    expect(screen.getByLabelText('Nombre').getAttribute('aria-invalid')).toBeNull()
-  })
-
-  it('no pide apellido', () => {
-    renderGate()
-    expect(screen.queryByLabelText(/Apellido/)).toBeNull()
-    expect(screen.getByLabelText('Nombre')).toBeTruthy()
   })
 
   it('un error sin campo (límite de pedidos, mail que falló) sale arriba del botón y no marca nada', async () => {
@@ -246,10 +235,28 @@ describe('LoginGate — nombre y email', () => {
     )
     expect(document.querySelector('[aria-invalid="true"]')).toBeNull()
   })
+
+  it('un error de otro campo (un nombre forjado muy largo) sale junto al botón, sin campo que marcar', async () => {
+    renderGate({
+      action: async () => ({
+        status: 'error',
+        message: 'Máximo 80 caracteres',
+        field: 'firstName',
+      }),
+    })
+    await click('Continuar con mi email')
+
+    expect((await screen.findByRole('alert')).textContent).toBe('Máximo 80 caracteres')
+    expect(document.querySelector('[aria-invalid="true"]')).toBeNull()
+  })
 })
 
 describe('LoginGate — orden según el navegador', () => {
-  const order = () => screen.getAllByRole('button').map((b) => b.textContent)
+  const order = () =>
+    screen
+      .getAllByRole('button')
+      .map((b) => b.textContent)
+      .filter((text) => text !== 'Cerrar')
 
   it('navegador común: primero Google, después el email', () => {
     renderGate()
@@ -267,13 +274,11 @@ describe('LoginGate — orden según el navegador', () => {
 describe('LoginGate — la request no vuelve', () => {
   it('sin red: mensaje, lo tipeado intacto y un breadcrumb, no un evento de Sentry', async () => {
     renderGate({ action: vi.fn().mockRejectedValue(new TypeError('Failed to fetch')) })
-    type('Nombre', 'Tomás')
     type('Email', 'tomas@example.com')
     await click('Continuar con mi email')
 
     expect((await screen.findByRole('alert')).textContent).toBe(OFFLINE)
     expect((screen.getByLabelText('Email') as HTMLInputElement).value).toBe('tomas@example.com')
-    expect((screen.getByLabelText('Nombre') as HTMLInputElement).value).toBe('Tomás')
     expect(Sentry.addBreadcrumb).toHaveBeenCalledTimes(1)
     expect(Sentry.captureException).not.toHaveBeenCalled()
     expect(button('Continuar con mi email').disabled).toBe(false)
@@ -281,7 +286,6 @@ describe('LoginGate — la request no vuelve', () => {
 
   it('sin red en Google: dice lo de Google, debajo de su botón, no lo del enlace del email', async () => {
     renderGate({ googleAction: vi.fn().mockRejectedValue(new TypeError('Failed to fetch')) })
-    fireEvent.click(checkbox())
     await click('Continuar con Google')
 
     const alert = await screen.findByRole('alert')
@@ -307,7 +311,6 @@ describe('LoginGate — la request no vuelve', () => {
   it('otro rechazo es una falla real: va a Sentry', async () => {
     const boom = new Error('boom')
     renderGate({ googleAction: vi.fn().mockRejectedValue(boom) })
-    fireEvent.click(checkbox())
     await click('Continuar con Google')
 
     expect((await screen.findByRole('alert')).textContent).toBe(GOOGLE_OFFLINE)
@@ -333,7 +336,7 @@ describe('LoginGate — enviado', () => {
     renderGate({ action: async () => sent() })
     await click('Continuar con mi email')
 
-    const title = await screen.findByRole('heading', { level: 2, name: 'Revisá tu email' })
+    const title = await screen.findByRole('heading', { name: 'Revisá tu email' })
     await waitFor(() => expect(title).toHaveFocus())
     expect(screen.getByText('tomas@example.com').closest('p')?.textContent).toBe(
       'Te mandamos un enlace a tomas@example.com.',
@@ -348,14 +351,14 @@ describe('LoginGate — enviado', () => {
     renderGate({ action: async () => sent(), withDeposit: true })
     await click('Continuar con mi email')
 
-    await screen.findByRole('heading', { level: 2, name: 'Revisá tu email' })
+    await screen.findByRole('heading', { name: 'Revisá tu email' })
     expect(
       screen.getByText(/volvés a esta pantalla con tu cuenta y ahí pagás la seña/),
     ).toBeTruthy()
     expect(screen.queryByText(/queda confirmada/)).toBeNull()
   })
 
-  it('Reenviar corre la misma action con nombre, email, next y la casilla, tras la espera de 60 s', async () => {
+  it('Reenviar corre la misma action con email, next, terms y el nombre que devolvió el servidor, tras 60 s', async () => {
     fakeCountdown()
     const { action } = renderGate({ action: async () => sent() })
     await click('Continuar con mi email')
@@ -380,7 +383,7 @@ describe('LoginGate — enviado', () => {
     )
   })
 
-  it('Usar otro email vuelve al formulario con el email seleccionado y el nombre conservado', async () => {
+  it('Usar otro email vuelve al formulario con el email seleccionado', async () => {
     const select = vi.spyOn(HTMLInputElement.prototype, 'select')
     renderGate({ action: async () => sent() })
     await click('Continuar con mi email')
@@ -388,9 +391,8 @@ describe('LoginGate — enviado', () => {
 
     const email = screen.getByLabelText('Email') as HTMLInputElement
     await waitFor(() => expect(email).toHaveFocus())
-    expect(email.value).toBe('tomas@example.com')
     // happy-dom no expone la selección de un input email: se mira que se pida.
     expect(select).toHaveBeenCalled()
-    expect((screen.getByLabelText('Nombre') as HTMLInputElement).value).toBe('Tomás')
+    expect(email.value).toBe('tomas@example.com')
   })
 })

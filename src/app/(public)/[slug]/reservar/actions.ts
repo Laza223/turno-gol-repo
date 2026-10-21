@@ -48,6 +48,7 @@ import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 import { hhmm, isUuid, slug as slugSchema } from '@/shared/validation/primitives'
 import { CURRENT_TERMS_VERSION, TERMS_REQUIRED_MESSAGE } from '@/shared/terms'
 import { echoFields } from '@/shared/forms/echo'
+import { nameFromEmail } from '@/shared/forms/name-from-email'
 import { FORMAT_OPTIONS } from '@/components/public/courtFacets'
 import {
   BOOKING_INTENT_PARAM,
@@ -129,11 +130,12 @@ function replaceTo(url: string): never {
   return redirect(url, RedirectType.replace)
 }
 
-// Las claves van en el orden de la pantalla (casilla, nombre, email): `issues[0]` es el primer
-// campo inválido que el jugador ve, y a ese se le marca el error y se le lleva el foco.
+// Las claves van en el orden de la pantalla (nombre, email): `issues[0]` es el primer campo inválido.
+// `terms` lo manda el ingreso (tocar un botón es aceptar: ver LoginGate) y el servidor lo exige igual.
 const gateSchema = z.object({
   terms: z.literal('on', { error: TERMS_REQUIRED_MESSAGE }),
-  firstName: z.string().trim().min(1, 'Ingresá tu nombre').max(80, 'Máximo 80 caracteres'),
+  // La pantalla ya no lo pide: si no viene, sale del email (`nameFromEmail`). Uno explícito gana.
+  firstName: z.string().trim().max(80, 'Máximo 80 caracteres').optional().default(''),
   // Zod 4: los validadores de formato son top-level (`z.email()`), y encadenarlos
   // DESPUÉS de las transformaciones invierte el orden — `z.email().trim()` valida
   // el formato ANTES de trimear, así que un email con un espacio de más falla.
@@ -170,7 +172,7 @@ export async function sendPlayerMagicLink(
   const values: GateValues = echoFields(formData, GATE_ECHO)
   const parsed = gateSchema.safeParse({
     email: formData.get('email'),
-    firstName: formData.get('firstName'),
+    firstName: formData.get('firstName') ?? undefined,
     // Ausente (la pantalla ya no lo manda): `null` no pasa por `.optional()`, `undefined` sí.
     lastName: formData.get('lastName') ?? undefined,
     terms: formData.get('terms'),
@@ -205,21 +207,21 @@ export async function sendPlayerMagicLink(
   const nextForLink = nextWithBookingIntent(safeNext, parsed.data.email)
   const redirectTo = `${origin}/api/auth/callback?next=${encodeURIComponent(nextForLink)}`
 
+  const firstName = parsed.data.firstName || nameFromEmail(parsed.data.email)
   const result = await signInWithPlayerMagicLink(parsed.data.email, redirectTo, {
-    firstName: parsed.data.firstName,
+    firstName,
     lastName: parsed.data.lastName,
     agreedTerms: true,
     termsVersion: CURRENT_TERMS_VERSION,
   })
   if (!result.ok)
     return { status: 'error', message: 'No pudimos enviar el email. Probá de nuevo.', values }
-  return { status: 'sent', email: parsed.data.email, firstName: parsed.data.firstName }
+  return { status: 'sent', email: parsed.data.email, firstName }
 }
 
 /**
- * Google desde el checkout: la casilla de términos vive en la MISMA pantalla que el ingreso por
- * email (`terms`, ver LoginGate). El botón de Google no se deshabilita: si falta la casilla, ESTA
- * action lo dice (el error va en la casilla) y no redirige. Con la casilla se setea una cookie
+ * Google desde el checkout: tocar el botón es aceptar los términos (clickwrap, ver LoginGate) y el
+ * form manda `terms=on`. Si falta, ESTA action lo dice y no redirige. Con la casilla se setea una cookie
  * firmada de corta duración (`google-terms-cookie.ts`) ANTES de mandar a Google, así el alta nueva
  * por Google entra con el consentimiento ya resuelto y no ve la pantalla de `/aceptar-terminos`.
  * Este chequeo es la UX y también defensa en profundidad, no la única barrera: la real es

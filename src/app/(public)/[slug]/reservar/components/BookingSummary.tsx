@@ -1,6 +1,5 @@
 import { CalendarDays, Clock, Goal, MapPin, Wallet } from 'lucide-react'
 import { formatLabel } from '@/components/public/courtFacets'
-import { PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
 import { formatArs, formatDateLong } from '@/lib/format'
 
 export type BookingSummaryData = {
@@ -25,26 +24,35 @@ export type BookingSummaryData = {
 }
 
 const ROW = 'flex items-start gap-3'
-const ICON = 'mt-0.5 size-5 shrink-0 text-muted-foreground'
+const ICON = 'mt-0.5 size-5 shrink-0 text-emerald-700 dark:text-emerald-400'
 
 /**
- * Resumen del turno en la pantalla de confirmar: QUIÉN, CUÁNDO, DÓNDE y, si el complejo los
- * muestra, la plata. Plano, sin sombra: borde de 1 px sobre `card`. Con `hidePrices` no sale
- * ningún monto, en ningún texto ni atributo, y tampoco dice cómo se paga: eso lo dice la sección
- * de pago, que siempre está debajo.
+ * Resumen del turno en la pantalla de confirmar y en la reserva confirmada: QUIÉN, CUÁNDO, DÓNDE y,
+ * si el complejo los muestra, la plata. Misma receta que el comprobante (`.reserva-receipt-card`):
+ * en claro, tarjeta blanca elevada con tinte esmeralda; en oscuro, vidrio con resplandor. Con
+ * `hidePrices` no sale ningún monto, en ningún texto ni atributo, y tampoco dice cómo se paga: eso
+ * lo dice la nota que va junto al botón de reservar.
  */
 export default function BookingSummary({ data }: { data: BookingSummaryData }) {
   const rest = Math.max(data.price - data.depositAmount, 0)
   const where = [data.address, data.city].filter(Boolean).join(', ')
   return (
-    <section aria-label="Tu turno" className="rounded-xl border border-border bg-card p-4">
-      <h2 className={PORTAL_SECTION_TITLE}>{data.tenantName}</h2>
+    <section
+      aria-label="Tu turno"
+      className="reserva-receipt-card relative overflow-hidden rounded-2xl p-5"
+    >
+      <h2 className="font-display text-xl font-bold leading-7 text-foreground">
+        {data.tenantName}
+      </h2>
       <p className="mt-1 flex items-start gap-2 text-sm text-muted-foreground">
-        <MapPin className="mt-0.5 size-4 shrink-0" aria-hidden />
+        <MapPin
+          className="mt-0.5 size-4 shrink-0 text-emerald-700 dark:text-emerald-400"
+          aria-hidden
+        />
         <span>{where}</span>
       </p>
       {/* <div>, no <dl>: son filas ícono+texto, no pares término/definición (axe definition-list). */}
-      <div className="mt-4 space-y-3 border-t border-border pt-4 text-base text-foreground">
+      <div className="mt-4 space-y-3 border-t border-border pt-4 text-base text-foreground dark:border-white/10">
         <div className={ROW}>
           <CalendarDays className={ICON} aria-hidden />
           <span>{formatDateLong(data.date)}</span>
@@ -76,16 +84,18 @@ export default function BookingSummary({ data }: { data: BookingSummaryData }) {
         )}
       </div>
       {!data.hidePrices && (
-        <div className="mt-4 space-y-2 border-t border-border pt-4 text-base">
+        <div className="mt-4 space-y-2 border-t border-border pt-4 text-base dark:border-white/10">
           <div className="flex justify-between gap-4 text-muted-foreground">
             <span>Precio del turno</span>
             <span className="tabular-nums text-foreground">{formatArs(data.price)}</span>
           </div>
           {data.depositAmount > 0 && (
             <>
-              <div className="flex justify-between gap-4 font-semibold text-foreground">
+              <div className="flex items-baseline justify-between gap-4 font-semibold text-foreground">
                 <span>{data.depositPaid ? 'Seña pagada' : 'Seña a pagar ahora'}</span>
-                <span className="tabular-nums">{formatArs(data.depositAmount)}</span>
+                <span className="font-display text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+                  {formatArs(data.depositAmount)}
+                </span>
               </div>
               <div className="flex justify-between gap-4 text-sm text-muted-foreground">
                 <span>Resto en el complejo</span>

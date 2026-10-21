@@ -1,23 +1,30 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
+import ReservaShell from '@/components/booking/ReservaDarkShell'
 import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TONE_TEXT, type StatusTone } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
-import {
-  PORTAL_BUTTON,
-  PORTAL_BUTTON_OUTLINE,
-  PORTAL_COLUMN,
-  PORTAL_TITLE,
-} from './PortalAuthFrame'
+import { PORTAL_BUTTON, PORTAL_BUTTON_OUTLINE, PORTAL_COLUMN } from './PortalAuthFrame'
+
+/** El círculo del ícono de estado: un tinte del tono con un aro de 8 px (el éxito lleva el resplandor esmeralda). */
+const BADGE = {
+  neutral: 'bg-slate-500/15 ring-8 ring-slate-500/10',
+  destructive: 'bg-red-500/15 ring-8 ring-red-500/10',
+  success: 'reserva-success-badge',
+} as const
+
+/** Título de La Previa: Archivo negra itálica. */
+const RESULT_TITLE =
+  'text-balance font-display text-3xl font-black italic leading-tight tracking-tight text-foreground'
 
 /**
  * Una pantalla de resultado del portal (el pago se está confirmando, no se procesó, la reserva ya
- * pasó…): ícono de estado de 32 px, el título del mundo, qué pasó en una o dos líneas y la salida.
- * La misma columna que confirmar, centrada en el alto. Plana y sin tarjeta. El tono pinta solo el
- * ícono: rojo (`destructive`) es de los errores, gris (`neutral`) de lo que no es una falla, y el
- * ámbar no existe acá (es de "Queda 1").
+ * pasó…): ícono de estado en un círculo de 64 px, el título de La Previa, qué pasó en una o dos
+ * líneas y la salida, sobre el cascarón con resplandor esmeralda. La misma columna que confirmar,
+ * centrada en el alto. El tono pinta el círculo y el ícono: rojo (`destructive`) es de los errores,
+ * gris (`neutral`) de lo que no es una falla, y el ámbar no existe acá (es de "Queda 1").
  */
 export function PortalResult({
   icon: Icon,
@@ -37,26 +44,33 @@ export function PortalResult({
   actions?: ReactNode
 }) {
   return (
-    <div className={cn(PORTAL_COLUMN, 'pb-12')}>
-      {/* Un cambio de estado (esperando → confirmado → expirado) se anuncia sin mover el foco. */}
-      <div aria-live="polite" className="flex min-h-[50dvh] flex-col justify-center">
-        <Icon
-          className={cn(
-            'size-8',
-            TONE_TEXT[tone],
-            spin && 'animate-spin motion-reduce:animate-none',
-          )}
-          aria-hidden
-        />
-        <h1 className={cn(PORTAL_TITLE, 'mt-4 text-balance')}>{title}</h1>
-        {children && (
-          <div className="mt-2 space-y-2 text-pretty text-base text-muted-foreground">
-            {children}
+    <ReservaShell>
+      <div className={cn(PORTAL_COLUMN, 'pb-12')}>
+        {/* Un cambio de estado (esperando → confirmado → expirado) se anuncia sin mover el foco. */}
+        <div
+          aria-live="polite"
+          className="flex min-h-[50dvh] flex-col items-center justify-center text-center"
+        >
+          <div className={cn('flex size-16 items-center justify-center rounded-full', BADGE[tone])}>
+            <Icon
+              className={cn(
+                'size-8',
+                TONE_TEXT[tone],
+                spin && 'animate-spin motion-reduce:animate-none',
+              )}
+              aria-hidden
+            />
           </div>
-        )}
-        {actions && <div className="mt-8 space-y-3">{actions}</div>}
+          <h1 className={cn(RESULT_TITLE, 'mt-5')}>{title}</h1>
+          {children && (
+            <div className="mt-3 space-y-2 text-pretty text-base text-muted-foreground">
+              {children}
+            </div>
+          )}
+          {actions && <div className="mt-8 w-full space-y-3">{actions}</div>}
+        </div>
       </div>
-    </div>
+    </ReservaShell>
   )
 }
 
@@ -84,16 +98,18 @@ export function PortalResultLink({
   )
 }
 
-/** La silueta de `PortalResult` mientras carga: el mismo ícono, título y dos líneas, en la misma columna. */
+/** La silueta de `PortalResult` mientras carga: el mismo círculo, título y dos líneas, en la misma columna. */
 export function PortalResultSkeleton() {
   return (
-    <div className={cn(PORTAL_COLUMN, 'pb-12')} role="status" aria-label="Cargando…">
-      <div className="flex min-h-[50dvh] flex-col justify-center">
-        <Skeleton aria-hidden className="size-8 rounded-full" />
-        <Skeleton aria-hidden className="mt-4 h-9 w-3/4" />
-        <Skeleton aria-hidden className="mt-2 h-6 w-full" />
-        <Skeleton aria-hidden className="mt-2 h-6 w-2/3" />
+    <ReservaShell>
+      <div className={cn(PORTAL_COLUMN, 'pb-12')} role="status" aria-label="Cargando…">
+        <div className="flex min-h-[50dvh] flex-col items-center justify-center">
+          <Skeleton aria-hidden className="size-16 rounded-full" />
+          <Skeleton aria-hidden className="mt-5 h-10 w-3/4" />
+          <Skeleton aria-hidden className="mt-3 h-6 w-full" />
+          <Skeleton aria-hidden className="mt-2 h-6 w-2/3" />
+        </div>
       </div>
-    </div>
+    </ReservaShell>
   )
 }

@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
 import { PlayerBottomNav } from '@/components/site/PlayerBottomNav'
 import { PortalSessionProvider } from '@/components/site/PortalSessionProvider'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { pendingAction } from '@/test/pending-action'
 import ConfirmBookingButton from './ConfirmBookingButton'
 
@@ -23,18 +22,16 @@ const meta = {
     time: '18:00',
     dur: 60,
     formato: 5,
-    pay: 'cash',
-    withDeposit: false,
+    pay: null,
+    label: 'Reservar',
   },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="min-h-dvh bg-background px-4 py-4 text-foreground">
-          <div className="mx-auto max-w-[35rem]">
-            <Story />
-          </div>
+      <div className="min-h-dvh bg-background px-4 py-4 text-foreground">
+        <div className="mx-auto max-w-[35rem]">
+          <Story />
         </div>
-      </PortalWorld>
+      </div>
     ),
   ],
 } satisfies Meta<typeof ConfirmBookingButton>
@@ -42,30 +39,30 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Sin seña: la reserva queda confirmada al instante y se paga en el complejo. */
+/** Sin seña: "Reservar", y la reserva queda confirmada al instante. */
 export const SinSena: Story = {
   args: { action: fn(async () => undefined) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: 'Confirmar reserva' })).toBeEnabled()
+    await expect(canvas.getByRole('button', { name: 'Reservar' })).toBeEnabled()
   },
 }
 
-/** Con seña: el botón dice lo que hace, pagar la seña (antes "Pagar seña y reservar"). */
+/** Con seña: el botón dice lo que hace, "Pagar seña" (con el monto si el complejo muestra precios). */
 export const ConSena: Story = {
-  args: { withDeposit: true, pay: 'mercadopago', action: fn(async () => undefined) },
+  args: { label: 'Pagar seña · $ 6.000', action: fn(async () => undefined) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: 'Pagar la seña' })).toBeEnabled()
+    await expect(canvas.getByRole('button', { name: /^Pagar seña/ })).toBeEnabled()
   },
 }
 
-/** Los datos que viajan al servidor: el turno, el filtro de formato y cómo paga. */
+/** Los datos que viajan al servidor: el turno, el filtro de formato y el `pay` de un link viejo. */
 export const QueViaja: Story = {
   args: { pay: 'transfer', action: fn(async () => undefined) },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Confirmar reserva' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Reservar' }))
     const sent = (args.action as ReturnType<typeof fn>).mock.calls[0]![0] as FormData
     await expect(Object.fromEntries(sent.entries())).toEqual({
       slug: 'complejo-fenix',
@@ -83,10 +80,10 @@ const procesando = pendingAction<void>(undefined)
 
 /** Pendiente: "Procesando…" y deshabilitado, un solo envío. */
 export const Pendiente: Story = {
-  args: { withDeposit: true, pay: 'mercadopago', action: fn(procesando.action) },
+  args: { label: 'Pagar seña', action: fn(procesando.action) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Pagar la seña' }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Pagar seña/ }))
     const pending = await canvas.findByRole('button', { name: /procesando/i })
     await expect(pending).toBeDisabled()
     // Última story que usa `procesando`: se libera para no dejar viva la transición.
@@ -125,7 +122,7 @@ export const ConBarraInferior: Story = {
   ],
   play: async ({ canvasElement }) => {
     const doc = canvasElement.ownerDocument
-    const button = within(canvasElement).getByRole('button', { name: 'Confirmar reserva' })
+    const button = within(canvasElement).getByRole('button', { name: 'Reservar' })
     const nav = doc.querySelector('nav[aria-label="Navegación del jugador"]')
     await expect(nav).not.toBeNull()
     // Solo tiene sentido medir el apilado donde la barra inferior existe (debajo de md).

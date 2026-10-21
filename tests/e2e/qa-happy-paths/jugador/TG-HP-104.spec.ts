@@ -40,8 +40,8 @@ async function runFlow(page: Page, date: string): Promise<void> {
   await page.goto(reservarUrl(date))
   await expect(page.getByRole('heading', { name: 'Confirmá tu reserva' })).toBeVisible()
 
-  // Con seña: único método MP, botón "Pagar la seña".
-  const confirmBtn = page.getByRole('button', { name: 'Pagar la seña' })
+  // Con seña: único método MP, botón "Pagar seña".
+  const confirmBtn = page.getByRole('button', { name: /^Pagar seña/ })
   await expect(confirmBtn).toBeVisible()
   await confirmBtn.click()
 

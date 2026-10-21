@@ -726,8 +726,9 @@ html:has([data-fixed-cta]) {
   color: transparent;
 }
 
-/* Tarjeta de la política de reservas del panel (`ReservasPolicyForm`). Light = card blanca con elevación + tinte emerald;
-   dark = slab translúcido oscuro con glow. (La reserva confirmada del portal ya no la usa.) */
+/* Tarjeta-comprobante: resumen del turno, código de reserva y política de reservas del panel
+   (`ReservasPolicyForm`). Light = card blanca con elevación + tinte emerald;
+   dark = slab translúcido oscuro con glow. */
 .reserva-receipt-card {
   background: linear-gradient(180deg, #ffffff, #f0fdf4);
   border: 1px solid rgba(16, 185, 129, 0.18);
@@ -750,6 +751,41 @@ html:has([data-fixed-cta]) {
 }
 .dark .hero-glow-blob {
   background: radial-gradient(closest-side, rgba(16, 185, 129, 0.26), transparent 70%);
+}
+
+/* ─── Flujo /reserva (éxito / pendiente / error) theme-adaptive ─────────────
+   El shell se vuelve transparente en light (deja ver el campo del portal,
+   consistente con /mis-reservas) y slab #020617 en dark. */
+.reserva-shell {
+  background: transparent;
+}
+.dark .reserva-shell {
+  background: #020617;
+}
+
+/* Badge del ícono de éxito (glow esmeralda). */
+.reserva-success-badge {
+  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.2), rgba(255, 255, 255, 0.55));
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  box-shadow: 0 0 40px rgba(16, 185, 129, 0.3);
+}
+.dark .reserva-success-badge {
+  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.28), rgba(2, 6, 23, 0.4));
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  box-shadow: 0 0 50px rgba(16, 185, 129, 0.45);
+}
+
+.reserva-glow-top {
+  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.38), transparent 70%);
+}
+.dark .reserva-glow-top {
+  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.22), transparent 70%);
+}
+.reserva-glow-bottom {
+  background: radial-gradient(closest-side, rgba(5, 150, 105, 0.22), transparent 72%);
+}
+.dark .reserva-glow-bottom {
+  background: radial-gradient(closest-side, rgba(5, 150, 105, 0.12), transparent 72%);
 }
 
 /* ─── Landing "La Previa" (theme-adaptive) ─────────────────────────────────

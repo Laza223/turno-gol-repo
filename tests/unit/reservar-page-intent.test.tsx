@@ -5,7 +5,7 @@
 // dispara el cliente con un envío del form y la action re-verifica. Cada degradación deja la
 // pantalla normal con el botón visible y la razón en `checkout.intent_degraded`.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { availabilityResponse, publicTenant } from '@/test/fixtures/public'
 import {
   BOOKING_INTENT_COOKIE_NAME,
@@ -86,14 +86,14 @@ async function renderPage(query: Record<string, string> = {}) {
   return render(ui)
 }
 
-// Lo que la page va a reservar con la fixture: efectivo es el método por defecto del complejo.
+// Lo que la page va a reservar con la fixture: sin `?pay=` en la URL no hay método (ya no se elige).
 const fields = (over: Partial<BookingIntentFields> = {}): BookingIntentFields => ({
   slug: SLUG,
   court: cancha1!.id,
   date: DATE,
   time: '20:00',
   dur: 60,
-  pay: 'cash',
+  pay: null,
   ...over,
 })
 const emailToken = (over: Partial<BookingIntentFields> = {}, email = EMAIL, now = Date.now()) =>
@@ -101,7 +101,7 @@ const emailToken = (over: Partial<BookingIntentFields> = {}, email = EMAIL, now 
 const hiddenIntent = (root: HTMLElement) =>
   root.querySelector<HTMLInputElement>('form input[type="hidden"][name="booking_intent"]')?.value
 const confirmando = () => screen.queryByText('Confirmando tu reserva…')
-const HINT = 'Tocá Confirmar reserva para terminar.'
+const HINT = 'Tocá Reservar para terminar.'
 const hint = () => screen.queryByText(HINT)
 /** Todo lo que la page le pasa al cliente (props de los elementos), sin las claves internas de React. */
 const clientProps = (ui: unknown) => {
@@ -142,7 +142,7 @@ describe('ReservarPage — confirmación sola', () => {
 
     expect(hiddenIntent(container)).toBe(token)
     await waitFor(() => expect(confirmando()?.getAttribute('role')).toBe('status'))
-    expect(screen.getByRole('button', { name: /Confirmar reserva|Procesando/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Reservar|Procesando/ })).toBeTruthy()
     await waitFor(() => expect(createBookingAndCheckout).toHaveBeenCalledTimes(1))
     expect(degraded()).toEqual([])
     expect(hint()).toBeNull()
@@ -219,7 +219,11 @@ describe('ReservarPage — confirmación sola', () => {
 
 describe('ReservarPage — degrada a la pantalla normal, con el botón, y deja la razón', () => {
   // Con un vínculo que no valió la pantalla pide tocar el botón; con seña no dice nada nuevo.
-  const expectNormal = (container: HTMLElement, button = 'Confirmar reserva', withHint = true) => {
+  const expectNormal = (
+    container: HTMLElement,
+    button: string | RegExp = 'Reservar',
+    withHint = true,
+  ) => {
     expect(hiddenIntent(container)).toBeUndefined()
     expect(confirmando()).toBeNull()
     expect(hint() !== null).toBe(withHint)
@@ -227,12 +231,12 @@ describe('ReservarPage — degrada a la pantalla normal, con el botón, y deja l
     expect(createBookingAndCheckout).not.toHaveBeenCalled()
   }
 
-  it('con seña: el jugador toca "Pagar la seña" (un toque)', async () => {
+  it('con seña: el jugador toca "Pagar seña" (un toque)', async () => {
     mocks.getPublicTenant.mockResolvedValue(
       publicTenant({ requiresDeposit: true, depositPercentage: 30 }),
     )
-    const { container } = await renderPage({ booking_intent: emailToken({ pay: 'mercadopago' }) })
-    expectNormal(container, 'Pagar la seña', false)
+    const { container } = await renderPage({ booking_intent: emailToken() })
+    expectNormal(container, /^Pagar seña/, false)
     expect(degraded()).toEqual(reason('deposit'))
   })
 
@@ -241,7 +245,7 @@ describe('ReservarPage — degrada a la pantalla normal, con el botón, y deja l
       publicTenant({ requiresDeposit: true, depositPercentage: 30 }),
     )
     const { container } = await renderPage({ booking_intent: 'basura' })
-    expectNormal(container, 'Pagar la seña', false)
+    expectNormal(container, /^Pagar seña/, false)
     expect(degraded()).toEqual(reason('invalid'))
   })
 
@@ -298,7 +302,8 @@ describe('ReservarPage — degrada a la pantalla normal, con el botón, y deja l
   it('sin sesión: el ingreso de siempre, sin señal ni confirmación', async () => {
     mocks.extractAuthUser.mockResolvedValue(null)
     await renderPage({ booking_intent: emailToken() })
-    expect(screen.getByRole('heading', { name: 'Entrá para reservar' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Reservar' }))
+    expect(await screen.findByRole('heading', { name: 'Entrá para reservar' })).toBeTruthy()
     expect(confirmando()).toBeNull()
     expect(degraded()).toEqual([])
   })
@@ -381,7 +386,7 @@ describe('ReservarPage — el turno ocupado', () => {
 
   it('taken_on_return con el turno libre otra vez: la pantalla normal, para reintentar', async () => {
     const { container } = await renderPage({ error: 'taken_on_return' })
-    expect(screen.getByRole('button', { name: 'Confirmar reserva' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Reservar' })).toBeTruthy()
     expect(hiddenIntent(container)).toBeUndefined()
   })
 })

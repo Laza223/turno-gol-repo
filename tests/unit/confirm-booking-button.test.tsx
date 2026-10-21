@@ -14,7 +14,7 @@ const props = {
   dur: 60,
   formato: 5,
   pay: 'cash' as const,
-  withDeposit: false,
+  label: 'Reservar',
   action: vi.fn(async () => {}),
 }
 
@@ -86,12 +86,12 @@ describe('ConfirmBookingButton — lo que viaja y lo que dice', () => {
     expect(Object.keys(fields())).toEqual(['slug', 'court', 'date', 'time', 'dur'])
   })
 
-  it('el rótulo dice el efecto: "Confirmar reserva" o, con seña, "Pagar la seña" (sin monto)', () => {
+  it('el rótulo es el que le pasan: "Reservar" o, con seña, "Pagar seña" (sin monto si está oculto)', () => {
     const { rerender } = render(<ConfirmBookingButton {...props} />)
-    expect(screen.getByRole('button', { name: 'Confirmar reserva' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Reservar' })).toBeTruthy()
 
-    rerender(<ConfirmBookingButton {...props} withDeposit />)
-    expect(screen.getByRole('button', { name: 'Pagar la seña' })).toBeTruthy()
+    rerender(<ConfirmBookingButton {...props} label="Pagar seña" />)
+    expect(screen.getByRole('button', { name: 'Pagar seña' })).toBeTruthy()
     expect(document.body.textContent).not.toContain('$')
   })
 })

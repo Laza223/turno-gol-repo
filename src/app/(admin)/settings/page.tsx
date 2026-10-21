@@ -55,7 +55,7 @@ export default async function SettingsPage() {
     : null
   const activeStaff = (await listStaffRoster(tenant.id)).filter((m) => m.isActive).length
   // Extra pago: el renglón solo aparece en los complejos que lo tienen.
-  const whatsapp = await withTenantContext(tenant.id, (tx) => getWhatsappConnection(tenant.id, tx))
+  const whatsapp = await getWhatsappConnection(tenant.id)
 
   const mpConnected = !!tenant.mpConnectedAt
   const deposit = mpConnected && s.requires_deposit !== false

@@ -20,6 +20,8 @@ const messageSchema = z
   .object({
     id: z.string().min(1),
     type: z.string(),
+    /** Epoch en segundos. La doc dice string; un número no puede invalidar el evento. */
+    timestamp: z.union([z.string(), z.number()]).optional(),
     from: z.string().optional(),
     to: z.string().optional(),
     text: z.object({ body: z.string() }).loose().optional(),
@@ -86,13 +88,25 @@ const onlyDigits = (s: string) => s.replace(/\D/g, '')
 /** Mismo rango que el CHECK de `whatsapp_chats.wa_phone`: fuera de eso, el INSERT tira. */
 const validPhone = (digits: string) => digits.length >= 8 && digits.length <= 15
 
+/**
+ * Un entrante más viejo que esto no se contesta: es un reenvío tardío o un
+ * mensaje sincronizado sin la marca `history_sync`, y el jugador ya no espera
+ * respuesta del bot. Lo sigue viendo el dueño en su app.
+ */
+const STALE_INBOUND_MS = 15 * 60_000
+
+function isStale(timestamp: string | number | undefined, now: number): boolean {
+  const seconds = Number(timestamp)
+  return Number.isFinite(seconds) && seconds > 0 && now - seconds * 1000 > STALE_INBOUND_MS
+}
+
 function kindOf(type: string): WhatsappMessageKind {
   if (type === 'text' || type === 'audio' || type === 'image' || type === 'interactive') return type
   if (type === 'voice') return 'audio'
   return 'other'
 }
 
-function normalizeOne(raw: unknown): NormalizedWhatsappEvent {
+function normalizeOne(raw: unknown, now: number): NormalizedWhatsappEvent {
   const parsed = eventSchema.safeParse(raw)
   if (!parsed.success) return { kind: 'ignored', reason: 'shape' }
   const { message, phone_number_id: phoneNumberId, conversation } = parsed.data
@@ -113,6 +127,7 @@ function normalizeOne(raw: unknown): NormalizedWhatsappEvent {
     if (!validPhone(from)) return { kind: 'ignored', reason: 'no_from' }
     // Una reacción (👍) no es un mensaje que haya que contestar.
     if (message.type === 'reaction') return { kind: 'ignored', reason: 'reaction' }
+    if (isStale(message.timestamp, now)) return { kind: 'ignored', reason: 'stale' }
     return {
       kind: 'inbound',
       phoneNumberId,
@@ -128,6 +143,8 @@ function normalizeOne(raw: unknown): NormalizedWhatsappEvent {
   // nuestros (`cloud_api`), el historial que sincroniza Meta al conectar
   // (`history_sync`) y cualquier otro origen se ignoran.
   if (direction === 'outbound' && origin === 'business_app') {
+    // Una reacción del dueño no es contestar el chat: no calla al bot.
+    if (message.type === 'reaction') return { kind: 'ignored', reason: 'owner_reaction' }
     const to = onlyDigits(message.to ?? conversation?.phone_number ?? '')
     if (!validPhone(to)) return { kind: 'ignored', reason: 'no_to' }
     return { kind: 'owner', phoneNumberId, waMessageId: message.id, to, text }
@@ -137,8 +154,11 @@ function normalizeOne(raw: unknown): NormalizedWhatsappEvent {
 }
 
 /** Acepta un evento suelto o el sobre de lote (`batch: true`). */
-export function normalizeKapsoPayload(body: unknown): NormalizedWhatsappEvent[] {
+export function normalizeKapsoPayload(
+  body: unknown,
+  now: number = Date.now(),
+): NormalizedWhatsappEvent[] {
   const batch = batchSchema.safeParse(body)
-  if (batch.success) return batch.data.data.map(normalizeOne)
-  return [normalizeOne(body)]
+  if (batch.success) return batch.data.data.map((raw) => normalizeOne(raw, now))
+  return [normalizeOne(body, now)]
 }

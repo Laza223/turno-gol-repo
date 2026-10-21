@@ -25,12 +25,11 @@ export async function setWhatsappBotEnabledAction(
   const parsed = z.enum(['true', 'false']).safeParse(formData.get('enabled'))
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
   const enabled = parsed.data === 'true'
-  const saved = await withTenantContext(tenant.id, async (tx) => {
-    // Con el flag apagado para el complejo la sección no existe: tampoco se
-    // puede prender por un POST armado a mano.
-    if (!(await getWhatsappConnection(tenant.id, tx))) return false
-    return setWhatsappBotEnabled(tenant.id, enabled, tx)
-  })
+  // Con el flag apagado para el complejo la sección no existe: tampoco se
+  // puede prender por un POST armado a mano.
+  const saved =
+    (await getWhatsappConnection(tenant.id)) !== null &&
+    (await withTenantContext(tenant.id, (tx) => setWhatsappBotEnabled(tenant.id, enabled, tx)))
   if (!saved) return { success: false, error: 'Tu complejo no tiene el asistente de WhatsApp.' }
 
   revalidatePath('/settings/whatsapp')

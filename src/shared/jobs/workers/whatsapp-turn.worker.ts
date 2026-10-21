@@ -9,6 +9,7 @@ import {
 } from '../definitions'
 import { processWhatsappTurn } from '@/modules/whatsapp-bot/whatsapp-bot.turn'
 import { enqueueWhatsappTurns } from '@/modules/whatsapp-bot/whatsapp-bot.queue'
+import { captureMessage } from '@/lib/sentry'
 import { logger } from '@/shared/lib/logger'
 
 /**
@@ -42,13 +43,29 @@ async function findStalledWhatsappChats(): Promise<WhatsappTurnJobData[]> {
   return rows
 }
 
+/** Sin el modelo o sin Kapso el turno podría reservar y no poder avisarlo. */
+const REQUIRED_KEYS = ['ANTHROPIC_API_KEY', 'KAPSO_API_KEY'] as const
+
 export async function registerWhatsappTurnWorker(boss: PgBoss): Promise<void> {
+  const missingKeys = REQUIRED_KEYS.filter((key) => !process.env[key])
+  if (missingKeys.length > 0) {
+    // Los entrantes quedan sin procesar y el rescate los retoma cuando el
+    // worker vuelva a arrancar con las claves (hasta 6 h): el dueño los ve
+    // igual en su app.
+    captureMessage('whatsapp-turn: faltan claves, el bot no contesta', 'error')
+    logger.error('whatsapp-turn: faltan claves, el bot no contesta', {
+      module: 'whatsapp-bot',
+      missingKeys,
+    })
+  }
+
   await boss.work<WhatsappTurnJobData>(
     QUEUE_WHATSAPP_TURN,
     // `teamRefill`: sin esto pg-boss espera a que termine el lote ENTERO antes
     // de buscar más, y un turno lento retiene las otras plazas.
     { teamSize: 4, teamConcurrency: 4, teamRefill: true, enforceSingletonQueueActiveLimit: true },
     async (job) => {
+      if (missingKeys.length > 0) return
       const data = (Array.isArray(job) ? job[0]?.data : job.data) as WhatsappTurnJobData
       const outcome = await processWhatsappTurn(data)
       logger.info('whatsapp-turn: turno procesado', {

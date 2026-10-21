@@ -110,6 +110,51 @@ describe('normalizeKapsoPayload — mensajes entrantes (jugador)', () => {
     expect(ev).toEqual({ kind: 'ignored', reason: 'reaction' })
   })
 
+  // Un reenvío tardío o un mensaje sincronizado sin la marca `history_sync`
+  // no puede despertar al bot en una charla de hace días.
+  describe('antigüedad', () => {
+    const NOW = Date.UTC(2026, 9, 21, 22, 0, 0)
+    const secondsAgo = (s: number) => Math.floor(NOW / 1000) - s
+
+    it('un entrante de hace más de 15 min se ignora (stale)', () => {
+      const [ev] = normalizeKapsoPayload(
+        inboundText('hola', { message: { timestamp: String(secondsAgo(16 * 60)) } }),
+        NOW,
+      )
+      expect(ev).toEqual({ kind: 'ignored', reason: 'stale' })
+    })
+
+    it('un entrante reciente se contesta, venga el timestamp como string o como número', () => {
+      const [comoString, comoNumero] = normalizeKapsoPayload(
+        {
+          batch: true,
+          data: [
+            inboundText('hola', { message: { id: 'a', timestamp: String(secondsAgo(60)) } }),
+            inboundText('hola', { message: { id: 'b', timestamp: secondsAgo(60) } }),
+          ],
+        },
+        NOW,
+      )
+      expect(comoString).toMatchObject({ kind: 'inbound' })
+      expect(comoNumero).toMatchObject({ kind: 'inbound' })
+    })
+
+    it('sin timestamp o con uno ilegible: se contesta (no se descarta por las dudas)', () => {
+      const [sinTs, ilegible] = normalizeKapsoPayload(
+        {
+          batch: true,
+          data: [
+            inboundText('hola', { message: { id: 'a' } }),
+            inboundText('hola', { message: { id: 'b', timestamp: 'ayer' } }),
+          ],
+        },
+        NOW,
+      )
+      expect(sinTs).toMatchObject({ kind: 'inbound' })
+      expect(ilegible).toMatchObject({ kind: 'inbound' })
+    })
+  })
+
   it('sin conversación: el nombre de contacto queda en null', () => {
     const [ev] = normalizeKapsoPayload(inboundText('hola', { conversation: null }))
     expect(ev).toMatchObject({ kind: 'inbound', contactName: null })
@@ -277,6 +322,13 @@ describe('normalizeKapsoPayload — mensajes salientes', () => {
       event('outbound', 'business_app', { message: { id: 'a' }, conversation: null }),
     )
     expect(ev).toEqual({ kind: 'ignored', reason: 'no_to' })
+  })
+
+  it('una reacción del dueño desde su app no calla al bot', () => {
+    const [ev] = normalizeKapsoPayload(
+      event('outbound', 'business_app', { message: { type: 'reaction', to: PLAYER_PHONE } }),
+    )
+    expect(ev).toEqual({ kind: 'ignored', reason: 'owner_reaction' })
   })
 
   it('owner con un audio o una imagen: texto null (el dueño no puso texto)', () => {

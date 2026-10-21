@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation'
 import { requireAdminStaff } from '@/modules/staff/guards'
-import { withTenantContext } from '@/shared/db/client'
 import { getWhatsappConnection } from '@/modules/whatsapp-bot/whatsapp-bot.connection'
 import { SettingsHeader } from '../SettingsHeader'
 import { WhatsappBotToggle } from './WhatsappBotToggle'
@@ -12,9 +11,7 @@ import { setWhatsappBotEnabledAction } from './actions'
  */
 export default async function WhatsappSettingsPage() {
   const { tenant } = await requireAdminStaff()
-  const connection = await withTenantContext(tenant.id, (tx) =>
-    getWhatsappConnection(tenant.id, tx),
-  )
+  const connection = await getWhatsappConnection(tenant.id)
   if (!connection) notFound()
 
   return (

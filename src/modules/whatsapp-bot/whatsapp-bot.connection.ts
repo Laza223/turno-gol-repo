@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { whatsappConnections } from '@/shared/db/schema'
-import type { DbTx } from '@/shared/db/client'
+import { withTenantContext, type DbTx } from '@/shared/db/client'
 import { isFeatureEnabled } from '@/shared/feature-flags'
 
 /** Flag global en `false` (migración 096); se prende por complejo con un override. */
@@ -16,21 +16,25 @@ export type WhatsappConnectionView = {
  * La conexión de WhatsApp del complejo, o null si no tiene el asistente: sin
  * fila (nunca se conectó) o con el flag `whatsapp_bot` apagado para él. El
  * panel solo muestra la sección cuando esto no es null.
+ *
+ * El flag se lee ANTES de abrir la transacción: su loader abre otra, y anidadas
+ * cada render retiene dos conexiones de un pool web de 3.
  */
 export async function getWhatsappConnection(
   tenantId: string,
-  tx: DbTx,
 ): Promise<WhatsappConnectionView | null> {
   if (!(await isFeatureEnabled(BOT_FEATURE_FLAG, tenantId))) return null
-  const [row] = await tx
-    .select({
-      displayPhoneNumber: whatsappConnections.displayPhoneNumber,
-      status: whatsappConnections.status,
-      enabled: whatsappConnections.enabled,
-    })
-    .from(whatsappConnections)
-    .where(eq(whatsappConnections.tenantId, tenantId))
-    .limit(1)
+  const [row] = await withTenantContext(tenantId, (tx) =>
+    tx
+      .select({
+        displayPhoneNumber: whatsappConnections.displayPhoneNumber,
+        status: whatsappConnections.status,
+        enabled: whatsappConnections.enabled,
+      })
+      .from(whatsappConnections)
+      .where(eq(whatsappConnections.tenantId, tenantId))
+      .limit(1),
+  )
   if (!row) return null
   return {
     displayPhoneNumber: row.displayPhoneNumber,

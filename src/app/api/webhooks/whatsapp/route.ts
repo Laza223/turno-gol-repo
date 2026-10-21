@@ -29,6 +29,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return rechazar('invalid signature', 401)
   }
 
+  // Los eventos de conversación y de contacto no traen mensaje: si el webhook
+  // quedó suscrito a todo, sin este corte cada uno caería como "forma
+  // desconocida" y taparía en Sentry la señal real de un cambio de payload.
+  const eventName = req.headers.get('x-webhook-event')
+  if (eventName && !eventName.startsWith('whatsapp.message.')) {
+    return NextResponse.json({ ok: true })
+  }
+
   let body: unknown
   try {
     body = JSON.parse(raw)

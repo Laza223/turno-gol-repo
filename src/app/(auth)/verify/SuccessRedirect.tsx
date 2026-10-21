@@ -10,7 +10,7 @@ const SECONDS = 5
  * agrega la conveniencia del redirect automático. `next` ya viene sanitizado.
  *
  * `className` pisa el estilo por defecto, pensado para la card siempre oscura del staff: el
- * jugador vive en el mundo del portal (claro y oscuro) y pasa un color de token.
+ * jugador vive en el marco oscuro de La Previa y pasa un color de token.
  */
 export default function SuccessRedirect({ next, className }: { next: string; className?: string }) {
   const [remaining, setRemaining] = useState(SECONDS)

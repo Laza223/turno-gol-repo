@@ -44,6 +44,22 @@ describe('IngresarPage — acceso jugador', () => {
     expect(screen.getByRole('button', { name: /mandame el enlace/i })).toBeTruthy()
   })
 
+  it('monta el look de La Previa: marco oscuro y título en Archivo negra itálica', async () => {
+    const { container } = await renderPage()
+    const frame = container.querySelector('[data-auth-frame]')
+    expect(frame?.classList.contains('dark')).toBe(true)
+    expect(container.querySelector('[data-world]')).toBeNull()
+    const title = screen.getByRole('heading', { level: 1, name: 'Accedé a tu cuenta' })
+    expect(title.className).toMatch(/\bfont-black\b/)
+    expect(title.className).toMatch(/\bitalic\b/)
+    // 48 px y 16 px en el celular aunque el fondo sea de vidrio; el borde sigue siendo `border-input`
+    // (3:1) del primitivo: la receta vieja de `border-white/10` no pasaba AA.
+    const email = screen.getByLabelText(/email/i)
+    expect(email.className).toMatch(/\bh-12\b/)
+    expect(email.className).toMatch(/\btext-base\b/)
+    expect(email.className).not.toMatch(/border-white|ring-emerald-500/)
+  })
+
   it('muestra el aviso de cuenta eliminada con ?deleted=1', async () => {
     searchStr.mockReturnValue('deleted=1')
     await renderPage()

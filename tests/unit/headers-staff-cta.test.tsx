@@ -148,6 +148,27 @@ describe('PortalHeader — acceso al panel', () => {
     )
   })
 
+  it('la variante overlay (home) conserva Ingresar con next y la precedencia sesión > panel', () => {
+    const { unmount } = render(
+      withSession(<PortalHeader variant="overlay" signOutAction={signOutAction} />, {
+        session: null,
+        staffPanelPath: null,
+      }),
+    )
+    expect(screen.getByRole('link', { name: 'Ingresar' }).getAttribute('href')).toBe(
+      '/ingresar?next=%2F',
+    )
+    unmount()
+    render(
+      withSession(<PortalHeader variant="overlay" signOutAction={signOutAction} />, {
+        session: PLAYER,
+        staffPanelPath: '/dashboard',
+      }),
+    )
+    expect(screen.getByRole('button', { name: /cuenta de tom/i })).toBeTruthy()
+    expect(screen.queryByRole('link', { name: 'Ir a mi panel' })).toBeNull()
+  })
+
   it('el jugador gana sobre el complejo: se muestra su menú de cuenta', () => {
     render(
       withSession(<PortalHeader signOutAction={signOutAction} />, {

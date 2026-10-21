@@ -106,7 +106,7 @@ describe('Piso de 16px en campos — constantes compartidas', () => {
   })
 
   it('HeroSearch: los campos del buscador no bajan de 16px en el teléfono', () => {
-    const file = read('src/app/home/HeroSearch.tsx')
+    const file = read('src/components/site/HeroSearch.tsx')
     const code = stripComments(file)
     // La fecha vieja llegó a tener `text-[15px]`, bajado a propósito para ganar
     // ancho. 15 < 16 → iOS hace zoom al enfocar.

@@ -3,6 +3,7 @@
 import { Calendar, Compass, Settings } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { usePortalSession } from './PortalSessionProvider'
 
 const NAV_ITEMS = [
   {
@@ -28,21 +29,39 @@ const NAV_ITEMS = [
 
 /**
  * Navegación inferior del jugador (mobile-only). Vive en el shell compartido,
- * por lo que aparece tanto en la zona pública como en las secciones del jugador
- * mientras haya sesión. En desktop la navegación es el menú de cuenta (md:hidden).
- * Plana, con el mismo fondo que la barra superior (card en claro, background en oscuro).
- * El ítem activo no se dice solo con color: verde, semibold y una marca `primary` de
- * 2 px arriba del ícono (aria-current ya lo anuncia a los lectores de pantalla).
+ * por lo que aparece en la zona pública y en las secciones del jugador, CON o SIN
+ * sesión: sin sesión, Reservas y Cuenta redirigen a /ingresar?next=… por el guard de
+ * cada página. En desktop la navegación es el menú de cuenta (md:hidden).
+ * Alto real: 56 px de ítems (`min-h-14`) + 1 px de borde + área segura. Lo reservan
+ * `PortalFrame`, `globals.css` (scroll-padding) y `ConfirmBookingButton`: si cambia, cambian.
  */
+/** Páginas del portal que no son del jugador: la cuenta del complejo suspendido o por reactivar. */
+const NO_NAV_PATHS = ['/suspended', '/reactivar']
+
+/**
+ * La barra va con o sin sesión de jugador, pero no en `/suspended` ni `/reactivar` ni cuando hay
+ * sesión de complejo (`staffPanelPath`, la misma señal que usa `PortalHeader`): ahí Reservas y
+ * Cuenta no son del visitante.
+ */
+export function useBottomNavVisible(): boolean {
+  const pathname = usePathname()
+  const { staffPanelPath } = usePortalSession()
+  if (staffPanelPath) return false
+  return !NO_NAV_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+}
+
 export function PlayerBottomNav() {
   const pathname = usePathname()
+  const visible = useBottomNavVisible()
+  if (!visible) return null
   return (
     <nav
       aria-label="Navegación del jugador"
+      data-bottom-nav
       // z-40 y no z-10: con el PortalHeader en z-50, cualquier elevación
       // intermedia se le montaba encima a la nav. Queda igual por debajo del
       // overlay de Dialog/Sheet, que es lo que se busca.
-      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden dark:bg-background"
+      className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       {NAV_ITEMS.map(({ href, label, Icon, match }) => {
         const active = match(pathname)
@@ -51,7 +70,7 @@ export function PlayerBottomNav() {
             key={href}
             href={href}
             aria-current={active ? 'page' : undefined}
-            className={`relative flex min-h-14 flex-1 flex-col items-center justify-center gap-1 px-1 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
+            className={`relative flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 transition-colors duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${
               active
                 ? 'font-semibold text-emerald-700 dark:text-emerald-400'
                 : 'font-medium text-muted-foreground hover:text-foreground'

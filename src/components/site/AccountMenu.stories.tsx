@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { AccountMenu } from './AccountMenu'
 
 /**
@@ -74,16 +73,4 @@ export const MenuAbierto: Story = {
       await expect(item.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
     }
   },
-}
-
-/** El mismo menú bajo los tokens del portal (fondo, línea y hover del mundo). */
-export const MenuAbiertoMundo: Story = {
-  ...MenuAbierto,
-  decorators: [
-    (Story) => (
-      <PortalWorld>
-        <Story />
-      </PortalWorld>
-    ),
-  ],
 }

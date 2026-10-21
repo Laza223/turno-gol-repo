@@ -10,7 +10,7 @@ const meta = {
     layout: 'padded',
     nextjs: { appDirectory: true, navigation: { pathname: '/explorar' } },
   },
-  args: { total: 12 },
+  args: { total: 12, sort: 'name' },
 } satisfies Meta<typeof ExplorarToolbar>
 
 export default meta

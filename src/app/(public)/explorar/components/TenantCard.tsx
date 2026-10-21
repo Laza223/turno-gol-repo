@@ -4,6 +4,7 @@ import { MapPin, Zap } from 'lucide-react'
 import type { PublicTenantCard } from '@/modules/tenants/search.service'
 import type { SlotPill } from '@/modules/tenants/availability-search.service'
 import { formatArs, formatPerPlayerArs } from '@/lib/format'
+import { buildFichaHref, buildReservarHref } from '@/lib/booking/reserve-url'
 import { activeAmenities, AMENITIES } from '@/components/public/amenities'
 import { formatLabel, surfaceLabel } from '@/components/public/courtFacets'
 import RatingStars from '@/components/public/RatingStars'
@@ -15,18 +16,22 @@ import TenantCardCarousel from './TenantCardCarousel'
  * el <Link> del título cubre toda la card con ::after; favorito y carrusel son
  * hermanos con z-index para que el HTML sea válido. Overlays sobre la foto:
  * SOLO badge online + favorito (precio y rating viven en el body).
+ *
+ * `date`: el día buscado. Si viene, el link al complejo lo lleva (`?date=`) y la ficha abre ese día.
  */
 export default function TenantCard({
   tenant,
   initialFavorited = false,
   photos = [],
   slotPills,
+  date,
   variant = 'grid',
 }: {
   tenant: PublicTenantCard
   initialFavorited?: boolean
   photos?: string[]
   slotPills?: { date: string; slots: SlotPill[] }
+  date?: string
   variant?: 'grid' | 'compact'
 }) {
   if (variant === 'compact')
@@ -40,12 +45,13 @@ export default function TenantCard({
   const allPhotos = Array.from(
     new Set([tenant.coverUrl, ...photos].filter((p): p is string => Boolean(p))),
   )
+  const fichaHref = buildFichaHref(tenant.slug, date ? { date } : {})
 
   return (
     <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-border border-t-2 border-t-emerald-500 bg-card shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/60 hover:shadow-xl hover:shadow-emerald-500/10 active:scale-[0.99] focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-2 motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:hover:shadow-emerald-500/15">
       <div className="relative aspect-video w-full overflow-hidden bg-muted">
         {allPhotos.length > 0 ? (
-          <TenantCardCarousel photos={allPhotos} name={tenant.name} href={`/${tenant.slug}`} />
+          <TenantCardCarousel photos={allPhotos} name={tenant.name} href={fichaHref} />
         ) : (
           <div
             className="relative flex h-full w-full items-center justify-center overflow-hidden"
@@ -89,7 +95,7 @@ export default function TenantCard({
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-base font-semibold text-foreground transition-colors group-hover:text-emerald-700 dark:group-hover:text-emerald-400">
             <Link
-              href={`/${tenant.slug}`}
+              href={fichaHref}
               className="after:absolute after:inset-0 focus-visible:outline-hidden"
             >
               {tenant.name}
@@ -139,7 +145,11 @@ export default function TenantCard({
             {slotPills.slots.map((s) => (
               <Link
                 key={s.time}
-                href={`/${tenant.slug}/reservar?court=${s.courtId}&date=${slotPills.date}&time=${s.time}&dur=${s.durationMins}`}
+                href={buildReservarHref(tenant.slug, {
+                  courtId: s.courtId,
+                  date: slotPills.date,
+                  time: s.time,
+                })}
                 aria-label={`Reservar a las ${s.time}`}
                 className="inline-flex items-center rounded-md bg-primary px-2.5 py-1 text-xs font-semibold tabular-nums text-primary-foreground shadow-xs transition-[background-color,scale] hover:bg-primary/90 active:scale-95 motion-reduce:active:scale-100"
               >

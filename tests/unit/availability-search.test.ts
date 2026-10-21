@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   freeTimesFrom,
   parseAvailabilitySearchParams,
@@ -151,10 +151,51 @@ describe('parseAvailabilitySearchParams', () => {
     })
   })
 
-  it('returns null when either is missing', () => {
+  it('returns null without a time (a date alone does not filter)', () => {
     expect(parseAvailabilitySearchParams({ date: DATE })).toBeNull()
-    expect(parseAvailabilitySearchParams({ time: '20:00' })).toBeNull()
     expect(parseAvailabilitySearchParams({})).toBeNull()
+  })
+
+  // La home manda /explorar?time=20:00 sin `date` cuando el día elegido es hoy
+  // (HeroSearch.tsx). Antes el par incompleto apagaba el filtro en silencio.
+  describe('hora sin día', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('toma hoy en ART', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-11T15:00:00.000Z')) // 12:00 ART
+      expect(parseAvailabilitySearchParams({ time: '20:00' })).toEqual({
+        date: '2026-06-11',
+        time: '20:00',
+      })
+    })
+
+    it('hoy es el día ART, no el UTC (01:30 UTC del 11 son las 22:30 ART del 10)', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-11T01:30:00.000Z'))
+      expect(parseAvailabilitySearchParams({ time: '20:00' })?.date).toBe('2026-06-10')
+    })
+
+    it('un date vacío cuenta como ausente', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-11T15:00:00.000Z'))
+      expect(parseAvailabilitySearchParams({ date: '', time: '20:00' })).toEqual({
+        date: '2026-06-11',
+        time: '20:00',
+      })
+    })
+
+    it('un date inválido sigue apagando el filtro (no se reemplaza por hoy)', () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-11T15:00:00.000Z'))
+      expect(parseAvailabilitySearchParams({ date: '2026-02-30', time: '20:00' })).toBeNull()
+    })
+
+    it('una hora inválida sigue apagando el filtro', () => {
+      expect(parseAvailabilitySearchParams({ time: '25:99' })).toBeNull()
+    })
   })
 
   it('returns null on garbage instead of throwing (URL params are user input)', () => {

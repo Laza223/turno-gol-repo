@@ -95,59 +95,50 @@ describe('BusinessHeader — acceso al panel', () => {
 describe('PortalHeader — acceso al panel', () => {
   const signOutAction = vi.fn(async () => {})
 
-  it.each(['overlay', 'solid'] as const)(
-    'variante %s: con sesión de complejo muestra Ir a mi panel',
-    (variant) => {
-      render(
-        withSession(<PortalHeader variant={variant} signOutAction={signOutAction} />, {
-          session: null,
-          staffPanelPath: '/dashboard',
-        }),
-      )
-      expect(screen.getByRole('link', { name: 'Ir a mi panel' }).getAttribute('href')).toBe(
-        '/dashboard',
-      )
-      expect(screen.queryByRole('link', { name: 'Ingresar' })).toBeNull()
-    },
-  )
+  it('con sesión de complejo muestra Ir a mi panel', () => {
+    render(
+      withSession(<PortalHeader signOutAction={signOutAction} />, {
+        session: null,
+        staffPanelPath: '/dashboard',
+      }),
+    )
+    expect(screen.getByRole('link', { name: 'Ir a mi panel' }).getAttribute('href')).toBe(
+      '/dashboard',
+    )
+    expect(screen.queryByRole('link', { name: 'Ingresar' })).toBeNull()
+  })
 
-  it.each(['overlay', 'solid'] as const)(
-    'variante %s: sin sesión, Ingresar → /ingresar y vuelve a la home (next=%2F)',
-    (variant) => {
-      render(
-        withSession(<PortalHeader variant={variant} signOutAction={signOutAction} />, {
-          session: null,
-          staffPanelPath: null,
-        }),
-      )
-      expect(screen.getByRole('link', { name: 'Ingresar' }).getAttribute('href')).toBe(
-        '/ingresar?next=%2F',
-      )
-      expect(screen.queryByRole('link', { name: 'Ir a mi panel' })).toBeNull()
-    },
-  )
+  it('sin sesión, Ingresar → /ingresar y vuelve a la home (next=%2F)', () => {
+    render(
+      withSession(<PortalHeader signOutAction={signOutAction} />, {
+        session: null,
+        staffPanelPath: null,
+      }),
+    )
+    expect(screen.getByRole('link', { name: 'Ingresar' }).getAttribute('href')).toBe(
+      '/ingresar?next=%2F',
+    )
+    expect(screen.queryByRole('link', { name: 'Ir a mi panel' })).toBeNull()
+  })
 
-  it.each(['overlay', 'solid'] as const)(
-    'variante %s: Ingresar lleva la página actual con su query para volver ahí',
-    (variant) => {
-      nav.pathname = '/explorar'
-      nav.search = 'city=Rosario&q=palermo'
-      render(
-        withSession(<PortalHeader variant={variant} signOutAction={signOutAction} />, {
-          session: null,
-          staffPanelPath: null,
-        }),
-      )
-      expect(screen.getByRole('link', { name: 'Ingresar' }).getAttribute('href')).toBe(
-        '/ingresar?next=%2Fexplorar%3Fcity%3DRosario%26q%3Dpalermo',
-      )
-    },
-  )
+  it('Ingresar lleva la página actual con su query para volver ahí', () => {
+    nav.pathname = '/explorar'
+    nav.search = 'city=Rosario&q=palermo'
+    render(
+      withSession(<PortalHeader signOutAction={signOutAction} />, {
+        session: null,
+        staffPanelPath: null,
+      }),
+    )
+    expect(screen.getByRole('link', { name: 'Ingresar' }).getAttribute('href')).toBe(
+      '/ingresar?next=%2Fexplorar%3Fcity%3DRosario%26q%3Dpalermo',
+    )
+  })
 
-  it.each(['overlay', 'solid'] as const)('variante %s: Ir a mi panel no lleva next', (variant) => {
+  it('Ir a mi panel no lleva next', () => {
     nav.pathname = '/explorar'
     render(
-      withSession(<PortalHeader variant={variant} signOutAction={signOutAction} />, {
+      withSession(<PortalHeader signOutAction={signOutAction} />, {
         session: null,
         staffPanelPath: '/dashboard',
       }),
@@ -157,9 +148,30 @@ describe('PortalHeader — acceso al panel', () => {
     )
   })
 
-  it('el jugador gana sobre el complejo: se muestra su menú de cuenta', () => {
+  it('la variante overlay (home) conserva Ingresar con next y la precedencia sesión > panel', () => {
+    const { unmount } = render(
+      withSession(<PortalHeader variant="overlay" signOutAction={signOutAction} />, {
+        session: null,
+        staffPanelPath: null,
+      }),
+    )
+    expect(screen.getByRole('link', { name: 'Ingresar' }).getAttribute('href')).toBe(
+      '/ingresar?next=%2F',
+    )
+    unmount()
     render(
       withSession(<PortalHeader variant="overlay" signOutAction={signOutAction} />, {
+        session: PLAYER,
+        staffPanelPath: '/dashboard',
+      }),
+    )
+    expect(screen.getByRole('button', { name: /cuenta de tom/i })).toBeTruthy()
+    expect(screen.queryByRole('link', { name: 'Ir a mi panel' })).toBeNull()
+  })
+
+  it('el jugador gana sobre el complejo: se muestra su menú de cuenta', () => {
+    render(
+      withSession(<PortalHeader signOutAction={signOutAction} />, {
         session: PLAYER,
         staffPanelPath: '/dashboard',
       }),

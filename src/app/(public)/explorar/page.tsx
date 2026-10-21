@@ -4,6 +4,7 @@ import { unstable_cache } from 'next/cache'
 import { PUBLIC_CITIES_TAG, PUBLIC_TENANTS_TAG } from '@/shared/cache/public-listings'
 import {
   getCourtPhotosByTenant,
+  effectiveSort,
   listPublicCities,
   searchPublicTenants,
   type SortOption,
@@ -121,9 +122,9 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
     return acc
   }, [])
 
-  // Disponibilidad real: con fecha+hora válidas en la URL, la búsqueda queda
-  // restringida a complejos con al menos una cancha libre a esa hora (cacheado
-  // 30s en Upstash). Sin el par completo, el comportamiento es el histórico.
+  // Disponibilidad real: con hora válida en la URL (y fecha, o sin ella = hoy ART),
+  // la búsqueda queda restringida a complejos con al menos una cancha libre a esa
+  // hora (cacheado 30s en Upstash). Sin hora, el comportamiento es el histórico.
   const avail = parseAvailabilitySearchParams({
     date: searchParams.date,
     time: searchParams.time,
@@ -223,7 +224,10 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
       <div className="relative -mx-4 space-y-2 border-b border-border bg-card px-4 py-2.5 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <Suspense fallback={<div className="h-16" />}>
           <QuickFilters />
-          <ExplorarToolbar total={total} />
+          <ExplorarToolbar
+            total={total}
+            sort={effectiveSort(sort, num(searchParams.lat), num(searchParams.lng))}
+          />
         </Suspense>
       </div>
 
@@ -232,7 +236,7 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
           <aside className="hidden lg:block">
             <div className="sticky top-20 rounded-2xl border border-border bg-card p-5 shadow-xs">
               <Suspense fallback={<div className="h-40 animate-pulse rounded-xl bg-muted" />}>
-                <ExplorarFilters />
+                <ExplorarFilters idPrefix="sidebar-" />
               </Suspense>
             </div>
           </aside>
@@ -257,6 +261,7 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
                       tenant={t}
                       initialFavorited={favoriteIds.has(t.id)}
                       photos={photosByTenant[t.id] ?? []}
+                      date={avail?.date}
                       slotPills={
                         avail && pills?.length ? { date: avail.date, slots: pills } : undefined
                       }

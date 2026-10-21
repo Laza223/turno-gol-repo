@@ -107,34 +107,33 @@ Fixtures usadas: Tenant Demo `e2e-complejo-demo` (`requires_deposit:false`, `dep
 - **Prerrequisitos:** Ninguno (página pública, ISR `revalidate=300`, sin cookies de sesión requeridas).
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/`.
-  2. Esperar a que renderice el h1 "Reservá tu cancha al instante." (`src/app/home/Hero.tsx:64-67`).
-  3. Verificar la nav flotante con el link "Explorar" y el CTA "Ingresar" (`src/components/site/PortalHeader.tsx:63-69,95`).
-  4. En el formulario "Buscá disponibilidad ahora" (`src/components/site/HeroSearch.tsx:120`), completar el campo "Complejo" (id `hero-q-v`) con `demo` (`src/components/site/HeroSearch.tsx:125-141`).
-  5. Click en el combobox "Localidad" (id `hero-city-v`) y elegir una opción de la lista (`src/components/site/HeroSearch.tsx:146-169`).
-  6. Click en el botón "Buscar canchas" (`src/components/site/HeroSearch.tsx:227-233`).
-  7. Esperar la navegación a `/explorar?...` con los query params `q`/`city`/`province` seteados.
+  2. Esperar a que renderice el h1 "Tu partido empieza en TurnoGol" (`src/app/home/HeroHeadline.tsx:9-11`).
+  3. Verificar la barra del portal con el link "Explorar" y el CTA "Ingresar" (`src/components/site/PortalHeader.tsx:58-61,88`); "Para complejos" está en la misma barra (desde `sm`).
+  4. En el formulario "Buscar canchas de fútbol" (`src/app/home/HeroSearch.tsx:131-134`), abrir el selector "Hora" (id `hero-time`, `HeroSearch.tsx:194`) y elegir `20:00`. "Zona" (combobox `hero-city`) y "Día" (selector `hero-day`) son opcionales: el día arranca en "Hoy".
+  5. Click en el botón "Buscar canchas" (`src/app/home/HeroSearch.tsx:222-223`).
+  6. Esperar la navegación a `/explorar?...` con los query params que se hayan elegido (`city`/`province`, `date` si no es hoy, `time`).
 - **Comportamiento de componentes:**
-  - Loading: la home NO tiene `loading.tsx` propio (no existe `src/app/loading.tsx`; verificado con glob) — es 100% Server Component (`export default async function HomePage`, `src/app/page.tsx:50`), no hay skeleton visible en el primer render.
-  - Anti-doble-submit: no aplica — el submit del buscador es un `router.push` client-side (`src/components/site/HeroSearch.tsx:76-90`), no hay estado de loading ni disabled en el botón "Buscar canchas".
-  - Feedback: no hay toast; el resultado es una navegación (`router.push`) a `/explorar?...` (`src/components/site/HeroSearch.tsx:89`).
+  - Loading: la home NO tiene `loading.tsx` propio — es un Server Component (`export default async function HomePage`, `src/app/page.tsx:31`). Las canchas de "cerca tuyo" (`NearbyPanel`) se resuelven en el cliente: primero el estado "Buscamos la cancha más cerca tuyo" con el botón "Usar mi ubicación", y con permiso, la cancha más cercana con sus horarios libres de hoy (esqueleto mientras cargan).
+  - Anti-doble-submit: no aplica — el submit del buscador es un `router.push` client-side (`HeroSearch.tsx:127`), sin estado de loading.
+  - Feedback: no hay toast; el resultado es una navegación a `/explorar?...`.
+  - Si la disponibilidad de una cancha no carga (429, 4xx, 5xx o red), la tarjeta dice "No pudimos cargar los horarios" y ofrece "Ver el complejo" (`/{slug}`); NO dice "no hay turnos" (`src/app/home/nearby-context.tsx`, `loadSlots`).
+  - Precios: "Turno desde" solo aparece si el complejo no los oculta (`fromPriceCents` distinto de `null`).
 - **Validación de datos:**
-  - DB: ninguna escritura. Lectura server-side de `listPublicCities()` y `searchPublicTenants({ sort: 'rating', limit: 6 })` (`src/app/page.tsx:31-48`).
-  - API/Action: no hay Server Action ni fetch a `/api/...` en esta página — todo se resuelve en el Server Component antes del render (`src/app/page.tsx:50-51`).
-  - Externos: ninguno.
-  - UI-sin-reload: el submit del buscador es `router.push` (Next Client Router), no un fetch a route handler (`src/components/site/HeroSearch.tsx:89`).
+  - DB: ninguna escritura. Lectura server-side de `listPublicCities()` (`src/app/page.tsx:20-26`).
+  - API/Action: ninguna Server Action. El cliente consulta `/api/public/search` y `/api/public/availability` para "cerca tuyo".
+  - Externos: geolocalización del navegador (opcional).
+  - UI-sin-reload: el submit del buscador es `router.push` (Next Client Router), no un fetch a route handler.
 - **Evidencia (path:línea):**
-  - `src/app/page.tsx:50` — Server Component `HomePage`, sin `'use client'`.
-  - `src/app/home/Hero.tsx:64-67` — h1 "Reservá tu cancha al instante."
-  - `src/app/home/Hero.tsx:81` — `<HeroSearch cities={cities} layout="vertical" />`.
-  - `src/components/site/HeroSearch.tsx:120` — label "Buscá disponibilidad ahora".
-  - `src/components/site/HeroSearch.tsx:125-127` — label "Complejo", input `id="hero-q-v"`.
-  - `src/components/site/HeroSearch.tsx:146-148` — label "Localidad", combobox `id="hero-city-v"`.
-  - `src/components/site/HeroSearch.tsx:232` — texto del botón "Buscar canchas".
-  - `src/components/site/HeroSearch.tsx:89` — `router.push(qs ? \`/explorar?${qs}\` : '/explorar')`.
-  - `src/components/site/PortalHeader.tsx:63-69` — link "Explorar".
-  - `src/components/site/PortalHeader.tsx:95` — link "Ingresar" (deslogueado), a `/ingresar?next=<página actual>`.
-  - `src/app/home/FeaturedComplexes.tsx:31` — h2 "Los mejor valorados" (solo si `featured.length > 0`, `src/app/page.tsx:60`).
-  - `src/app/home/HowItWorks.tsx:8,15,22` — pasos "Explorá complejos" / "Compará disponibilidad" / "Confirmá y jugá".
+  - `src/app/page.tsx:31` — Server Component `HomePage`, sin `'use client'`; monta `PortalWorld` + `PortalShell` (único `<main id="main-content">`).
+  - `src/app/home/HeroHeadline.tsx:9-11` — h1 "Tu partido empieza en TurnoGol".
+  - `src/app/home/Hero.tsx:19-27` — titular, buscador y canchas en un solo árbol (el buscador antes que las canchas en el celular).
+  - `src/app/home/HeroSearch.tsx:133` — `aria-label="Buscar canchas de fútbol"`.
+  - `src/app/home/HeroSearch.tsx:145,171,194` — rótulos "Zona", "Día", "Hora".
+  - `src/app/home/HeroSearch.tsx:223` — texto del botón "Buscar canchas".
+  - `src/app/home/HeroSearch.tsx:127` — `router.push(qs ? \`/explorar?${qs}\` : '/explorar')`.
+  - `src/components/site/PortalHeader.tsx:58-61` — link "Explorar".
+  - `src/components/site/PortalHeader.tsx:88` — link "Ingresar" (deslogueado), a `/ingresar?next=<página actual>`.
+  - `src/app/home/OwnersStrip.tsx` — franja de dueños al pie, con el link a `/para-complejos`.
 
 ---
 

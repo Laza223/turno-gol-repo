@@ -341,7 +341,7 @@
 
   .dark {
     color-scheme: dark;
-    --background: 224 71% 4%; /* #020617 slate-950 */
+    --background: 224 71% 4%; /* #030711 */
     --foreground: 210 40% 98%; /* slate-50 */
 
     --card: 222 33% 9%; /* superficie elevada ~#0d1424 */
@@ -764,6 +764,19 @@ html:has([data-fixed-cta]) {
   background: #020617;
 }
 
+/* Scrim del hero desktop (foto full-bleed, dark-only): oscurece arriba/abajo
+   para que el headline y la search card centrados mantengan AA sobre la
+   foto sin depender de un mask que la diluya como en el hero mobile. */
+.dark .hero-desktop-scrim {
+  background: linear-gradient(
+    180deg,
+    rgba(2, 6, 23, 0.75) 0%,
+    rgba(2, 6, 23, 0.35) 38%,
+    rgba(2, 6, 23, 0.55) 78%,
+    rgba(2, 6, 23, 0.88) 100%
+  );
+}
+
 /* Nav flotante del hero (pill). Light = blanco elevado; dark = glass oscuro. */
 .overlay-nav {
   background: rgba(255, 255, 255, 0.88);
@@ -780,6 +793,12 @@ html:has([data-fixed-cta]) {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 18px 50px -28px rgba(0, 0, 0, 0.9);
+}
+
+/* Partícula flotante del hero (decorativa, dark-only en el JSX). */
+.hero-particle {
+  background: #34d399;
+  box-shadow: 0 0 16px 4px rgba(52, 211, 153, 0.6);
 }
 
 /* Pill "en vivo" (status). AA §2.4: texto emerald-800 en light, #6ee7b7 dark. */
@@ -852,22 +871,6 @@ html:has([data-fixed-cta]) {
       rgba(2, 6, 23, 0) 75%
     ),
     linear-gradient(135deg, #064e3b, #022c22);
-}
-
-/* Banda CTA (banner dueños). Light = blanca elevada con tinte; dark = slab. */
-.cta-band {
-  background:
-    radial-gradient(80% 120% at 100% 0%, rgba(16, 185, 129, 0.1), transparent 60%),
-    linear-gradient(180deg, #ffffff, #f8fafc);
-  border: 1px solid rgba(16, 185, 129, 0.2);
-  box-shadow:
-    0 1px 2px rgba(2, 6, 23, 0.05),
-    0 30px 70px -40px rgba(16, 185, 129, 0.4);
-}
-.dark .cta-band {
-  background: linear-gradient(120deg, rgba(15, 23, 42, 0.85), rgba(2, 6, 23, 0.9));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 30px 70px -40px rgba(0, 0, 0, 0.9);
 }
 
 /* ─── Slot bloqueado de la grilla (pages/grilla.md §2) ─────────────────────
@@ -1008,9 +1011,9 @@ html:has([data-fixed-cta]) {
   }
 }
 
-/* ─── Leaflet dark-mode overrides ────────────────────────────────────────
-   leaflet/dist/leaflet.css hardcodes white popup backgrounds. On always-dark
-   /explorar we override them via the .dark wrapper. */
+/* ─── Leaflet: overrides del popup ───────────────────────────────────────
+   leaflet/dist/leaflet.css hardcodes white popup backgrounds. En modo oscuro
+   (clase .dark, no una página always-dark) las pisamos acá. */
 .dark .leaflet-popup-content-wrapper {
   background: hsl(var(--card));
   color: hsl(var(--foreground));
@@ -1019,8 +1022,13 @@ html:has([data-fixed-cta]) {
 .dark .leaflet-popup-tip {
   background: hsl(var(--card));
 }
-.dark .leaflet-popup-content-wrapper a {
-  color: hsl(var(--primary));
+/* El único link del popup es el botón "Ver complejo" (bg-primary). leaflet.css le
+   pone color a todo `.leaflet-container a` y, al ir sin @layer, le gana a las
+   utilidades de Tailwind v4: sin esto queda azul sobre verde en claro. Va para los
+   dos temas (el texto del botón primario es blanco en claro y slate-950 en oscuro) y
+   con un selector más específico que el de Leaflet, sin !important. */
+.leaflet-container .leaflet-popup-content-wrapper a {
+  color: hsl(var(--primary-foreground));
 }
 
 /* ─── Comprobante de reserva imprimible ───────────────────────────────────

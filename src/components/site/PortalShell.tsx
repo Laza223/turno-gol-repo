@@ -35,10 +35,7 @@ export default function PortalShell({
 }) {
   return (
     <PortalSessionProvider initialValue={initialSession}>
-      <PortalFrame
-        header={<PortalHeader variant="solid" signOutAction={signOutAction} />}
-        footer={<SiteFooter />}
-      >
+      <PortalFrame header={<PortalHeader signOutAction={signOutAction} />} footer={<SiteFooter />}>
         {children}
       </PortalFrame>
     </PortalSessionProvider>

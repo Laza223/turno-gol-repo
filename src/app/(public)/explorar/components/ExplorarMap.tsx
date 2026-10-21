@@ -69,6 +69,26 @@ function FitBounds({ points }: { points: [number, number][] }) {
   return null
 }
 
+// El mapa vive dentro de una página que se scrollea: la rueda solo hace zoom con
+// el mapa en foco (click o Tab, que es cuando Leaflet dispara `focus`) y se
+// bloquea al salir. `scrollWheelZoom` arranca apagado en el MapContainer.
+// `map.on` y no `useMapEvents`: @types/leaflet no tipa `focus`/`blur` en el mapa
+// de handlers, aunque Leaflet los dispara (Map.Keyboard).
+function WheelZoomOnFocus() {
+  const map = useMap()
+  useEffect(() => {
+    const enable = () => map.scrollWheelZoom.enable()
+    const disable = () => map.scrollWheelZoom.disable()
+    map.on('focus', enable)
+    map.on('blur', disable)
+    return () => {
+      map.off('focus', enable)
+      map.off('blur', disable)
+    }
+  }, [map])
+  return null
+}
+
 export default function ExplorarMap({
   results,
   activeId = null,
@@ -108,12 +128,21 @@ export default function ExplorarMap({
     // context propio taparían cualquier dropdown de la página (p. ej. el combobox
     // de localidad, que el <select> nativo anterior no sufría por ser popup del OS).
     <div className="isolate h-[70vh] overflow-hidden rounded-2xl border border-border shadow-xs">
-      <MapContainer {...initialView} scrollWheelZoom className="h-full w-full">
+      {/* dragging: en el celular un dedo sobre el mapa tiene que scrollear la página, no
+          arrastrar el mapa; queda el gesto de dos dedos (touchZoom). `tap` no existe en
+          Leaflet 1.9 (lo reemplazó `tapHold`). */}
+      <MapContainer
+        {...initialView}
+        scrollWheelZoom={false}
+        dragging={!L.Browser.mobile}
+        className="h-full w-full"
+      >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <FitBounds points={points} />
+        <WheelZoomOnFocus />
         {located.map((t) => (
           <Marker
             key={t.id}

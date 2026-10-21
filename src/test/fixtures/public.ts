@@ -12,7 +12,7 @@ import { openingHours } from './tenant'
  *
  * Los fixtures de PublicTenantCard/CityCount (`/explorar`, home) viven en
  * `tenant.ts` — acá solo se RE-EXPORTAN bajo los nombres que consumen las
- * stories fuera de esta área (`FeaturedComplexCard`, `HeroSearch`), sin
+ * stories fuera de esta área (`HeroSearch`), sin
  * declarar una segunda vez el mismo shape (rompería el barrel: dos exports
  * distintos con igual nombre en `index.ts`).
  *
@@ -456,9 +456,9 @@ export const slotPill = (overrides: Partial<SlotPillFixture> = {}): SlotPillFixt
 // './public'`) resuelve ambos caminos al MISMO binding original y no lo
 // marca ambiguo (TS2308). Mismo dato, dos nombres: `tenant.ts` los llama
 // `publicTenantCardSinResenas` / `publicTenantCardSinReservaOnline`
-// (consumidos por FavoritesList y home/FeaturedComplexes); acá quedan
+// (consumidos por FavoritesList); acá quedan
 // disponibles también como `publicTenantCardNoPhoto` / `publicTenantCardNoOnline`
-// para las stories de `@/components/site` (FeaturedComplexCard, HeroSearch),
+// para las stories de `@/components/site` (HeroSearch),
 // que ya las importan con ese nombre desde este módulo.
 
 export {

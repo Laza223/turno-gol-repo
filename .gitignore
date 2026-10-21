@@ -83,3 +83,6 @@ docs/audit/screenshots/2026-09/**/*.png
 .impeccable/config.local.json
 .impeccable/hook.cache.json
 .impeccable/hook.pending.json
+
+# taste (design-taste-frontend): estado y cachés locales de la skill
+.taste-skill/

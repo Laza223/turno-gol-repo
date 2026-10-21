@@ -6,7 +6,7 @@ paths:
 
 # Inventario de tablas y su régimen de RLS
 
-- **Tablas aisladas** (tenant_id + RLS): courts, bookings, abonados, payments, cash_flows, daily_cash_opens, daily_cash_closes, tenant_subscriptions, notifications, audit_logs, tenant_player_bans, tenant_staff_members, push_subscriptions, analytics_events, canteen_products, canteen_tabs, stock_movements, tournaments, tournament_teams, tournament_team_players, tournament_stages, tournament_matches, tournament_match_events
+- **Tablas aisladas** (tenant_id + RLS): courts, bookings, abonados, payments, cash_flows, daily_cash_opens, daily_cash_closes, tenant_subscriptions, notifications, audit_logs, tenant_player_bans, tenant_staff_members, push_subscriptions, analytics_events, canteen_products, canteen_tabs, stock_movements, tournaments, tournament_teams, tournament_team_players, tournament_stages, tournament_matches, tournament_match_events, whatsapp_connections, whatsapp_chats, whatsapp_messages (migr. 096 — el webhook resuelve el complejo por `whatsapp_connections.phone_number_id` desde el pool worker, porque todavía no hay contexto)
 - **Globales sin RLS** (sin tenant_id y sin policies): tenants, plans, price_versions, processed_webhooks. El rol de la app las lee y escribe, pero **no las borra** y el catálogo comercial es de sólo lectura (migr. 085).
 - **Globales CON RLS** (sin tenant_id, pero con policies + FORCE): players, staff_users. Medido el 2026-09-05 — la lectura de un jugador desde el panel depende de que exista la relación con el complejo.
 - **Híbridas** (tenant_id + RLS por jugador): player_tenant_relationships (dual staff/player), reviews (lectura pública + insert del jugador dueño del booking), player_favorites (por `app.current_player_id`)

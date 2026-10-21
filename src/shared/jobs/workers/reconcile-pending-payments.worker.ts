@@ -5,6 +5,7 @@ import { dispatchPaymentInfo, lockMpEvent } from '@/modules/payments/payment.ser
 import { reconcileApprovedPaymentForBooking } from '@/modules/payments/mp-reconcile.service'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
 import { notifyAdminBookingConfirmed } from '@/modules/notifications/push.service'
+import { notifyWhatsappGuest } from '@/modules/whatsapp-bot/whatsapp-bot.notices'
 import { CRON_WORK_OPTIONS, QUEUE_RECONCILE_PENDING_PAYMENTS } from '../definitions'
 import { track } from '@/shared/observability'
 import { logger } from '@/shared/lib/logger'
@@ -92,6 +93,7 @@ export async function reconcilePendingPayments(): Promise<number> {
         // pago tardío. La devolución quedó registrada con la tx de arriba y la
         // hace el complejo; acá solo se cuenta para el resumen de la corrida.
         refunded += 1
+        await notifyWhatsappGuest(row.tenantId, row.bookingId, 'late_payment_refunded')
       }
 
       if (outcome && !outcome.alreadyProcessed) {
@@ -109,6 +111,7 @@ export async function reconcilePendingPayments(): Promise<number> {
         // ese caso) sigue saliendo igual, solo el push se gatea.
         if (outcome.won === true) {
           await notifyAdminBookingConfirmed(row.tenantId, row.bookingId)
+          await notifyWhatsappGuest(row.tenantId, row.bookingId, 'deposit_confirmed')
         }
         reconciled += 1
         track.payment('payment.reconcile.confirmed', {
@@ -202,6 +205,7 @@ async function reconcileExpiredOrphanedPayments(): Promise<number> {
       // despachan y se cuenta.
       if (result.refunded) {
         await Promise.all(result.notificationIds.map((id) => dispatchEmail(id)))
+        await notifyWhatsappGuest(row.tenantId, row.bookingId, 'late_payment_refunded')
         rescued += 1
         track.payment('payment.reconcile.late_refunded', {
           bookingId: row.bookingId,
@@ -221,6 +225,7 @@ async function reconcileExpiredOrphanedPayments(): Promise<number> {
 
       await Promise.all(result.notificationIds.map((id) => dispatchEmail(id)))
       await notifyAdminBookingConfirmed(row.tenantId, row.bookingId)
+      await notifyWhatsappGuest(row.tenantId, row.bookingId, 'deposit_confirmed')
       rescued += 1
       track.payment('payment.reconcile.confirmed', {
         bookingId: row.bookingId,

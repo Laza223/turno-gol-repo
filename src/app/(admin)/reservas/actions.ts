@@ -43,6 +43,7 @@ import {
   type ManualDepositMethod,
 } from '@/modules/payments/payment.service'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
+import { notifyWhatsappGuest } from '@/modules/whatsapp-bot/whatsapp-bot.notices'
 import { captureMessage, captureException } from '@/lib/sentry'
 import {
   createManualBookingSchema,
@@ -360,6 +361,14 @@ export async function confirmDepositPaymentAction(
     'email dispatch failed after manual deposit confirmation',
     { bookingId, tenantId: tenant.id },
   )
+  // Si la reserva vino del asistente de WhatsApp, se le confirma en el chat.
+  // Una seña pendiente de un invitado (teléfono, sin jugador ni staff) solo la
+  // crea el asistente: el resto ni agenda el `after`. Después de responder,
+  // como los mails: nunca tira.
+  const { playerId, createdByStaff, guestPhone } = outcome.booking
+  if (!playerId && !createdByStaff && guestPhone) {
+    after(() => notifyWhatsappGuest(tenant.id, bookingId, 'deposit_confirmed'))
+  }
 
   return { success: true, booking: outcome.booking }
 }

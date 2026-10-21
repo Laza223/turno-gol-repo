@@ -14,7 +14,7 @@ export default function PrivacidadPage() {
           Política de Privacidad
         </h1>
         <p className="text-sm text-muted-foreground">
-          Última actualización: 17 de septiembre de 2026.
+          Última actualización: 20 de octubre de 2026.
         </p>
       </header>
 
@@ -65,6 +65,12 @@ export default function PrivacidadPage() {
         <p>
           De los <strong>dueños y staff de complejos</strong> recolectamos nombre, email, teléfono,
           datos del complejo (nombre, dirección, configuración) y datos de facturación SaaS.
+        </p>
+        <p>
+          Si le escribís al <strong>asistente de WhatsApp</strong> de un complejo que lo tiene,
+          guardamos tu número, el nombre de tu perfil de WhatsApp y los mensajes de esa conversación
+          (los audios, como texto transcripto) para contestarte y gestionar tu reserva. El asistente
+          se presenta como tal: es un programa, no una persona.
         </p>
         <p>
           <strong>Nunca recolectamos</strong> números de tarjeta de crédito, CVV ni contraseñas. El
@@ -134,6 +140,15 @@ export default function PrivacidadPage() {
             <strong>Upstash</strong> (Estados Unidos): rate limiting para prevenir abuso de
             endpoints.
           </li>
+          <li>
+            <strong>Anthropic</strong> (Estados Unidos): el modelo de IA que redacta las respuestas
+            del asistente de WhatsApp. Recibe los mensajes de la conversación y los datos públicos
+            del complejo.
+          </li>
+          <li>
+            <strong>Kapso</strong> (Estados Unidos): conexión con la API de WhatsApp de Meta para
+            recibir y enviar los mensajes del asistente.
+          </li>
         </ul>
         <p>
           Cuando reservás en un complejo específico, ese complejo (tenant) accede a tu nombre,
@@ -167,6 +182,10 @@ export default function PrivacidadPage() {
           </li>
           <li>
             <strong>Audit logs</strong>: 12 meses, luego se purgan automáticamente.
+          </li>
+          <li>
+            <strong>Conversaciones con el asistente de WhatsApp</strong>: 30 días; se borran en la
+            limpieza semanal siguiente.
           </li>
           <li>
             <strong>Datos de tenants churned</strong>: 90 días tras la baja del complejo, luego se

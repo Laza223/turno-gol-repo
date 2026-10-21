@@ -12,6 +12,7 @@ import {
   ReconcileProcessingError,
 } from '@/modules/payments/mp-reconcile.service'
 import { notifyAdminBookingConfirmed } from '@/modules/notifications/push.service'
+import { notifyWhatsappGuest } from '@/modules/whatsapp-bot/whatsapp-bot.notices'
 import { track } from '@/shared/observability'
 import { expirePendingBooking } from './booking.service'
 import { logger } from '@/shared/lib/logger'
@@ -159,11 +160,17 @@ export async function expirePendingBookingWithPolicy(bookingId: string): Promise
       if (result.confirmed) {
         await Promise.all(result.notificationIds.map((id) => dispatchEmail(id)))
         await notifyAdminBookingConfirmed(state.tenantId, bookingId)
+        await notifyWhatsappGuest(state.tenantId, bookingId, 'deposit_confirmed')
         track.payment('payment.reconcile.confirmed', {
           bookingId,
           tenantId: state.tenantId,
         })
         return 'confirmed'
+      }
+      // Otro expirador le ganó mientras se consultaba a MP: la devolución quedó
+      // anotada acá y ningún otro camino vuelve a llegar a este pago.
+      if (result.refunded) {
+        await notifyWhatsappGuest(state.tenantId, bookingId, 'late_payment_refunded')
       }
     } catch (err) {
       // R1-A (rechazo review): el catch original trataba TODO error igual —
@@ -276,6 +283,7 @@ export async function expirePendingBookingWithPolicy(bookingId: string): Promise
   if (!won) return 'skipped'
 
   await Promise.all(notifIds.map((id) => dispatchEmail(id)))
+  await notifyWhatsappGuest(state.tenantId, bookingId, 'hold_expired')
   return 'expired'
 }
 

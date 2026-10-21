@@ -18,7 +18,10 @@ export * from './schema/tournaments'
 export * from './schema/tournament-teams'
 export * from './schema/tournament-team-players'
 export * from './schema/tournament-stages'
+export * from './schema/whatsapp'
 export * from './schema/bookings'
+// Después de bookings: whatsapp_messages referencia bookings.
+export * from './schema/whatsapp-messages'
 // Después de bookings: tournament_matches referencia bookings y courts.
 export * from './schema/tournament-matches'
 // Después de tournament-matches: el acta lo referencia con FK compuesta.

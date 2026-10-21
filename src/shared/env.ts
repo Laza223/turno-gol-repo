@@ -71,6 +71,14 @@ function makeSchema(isProd: boolean) {
     R2_SECRET_ACCESS_KEY: isProd ? z.string().min(1) : z.string().min(1).optional(),
     R2_BUCKET: isProd ? z.string().min(1) : z.string().min(1).optional(),
     R2_PUBLIC_BASE_URL: isProd ? z.url() : z.url().optional(),
+    // Bot de WhatsApp (docs/decisions/2026-10-20-bot-whatsapp.md). OPCIONALES
+    // incluso en producción, mismo criterio que MP_WEBHOOK_SECRET_CHECKOUT: la
+    // feature nace apagada (flag `whatsapp_bot`) y exigirlas acá tiraría la
+    // app al boot si el deploy le gana a la carga de las variables. Sin ellas,
+    // el webhook rechaza (fail-closed) y el worker no contesta.
+    KAPSO_API_KEY: z.string().min(1).optional(),
+    KAPSO_WEBHOOK_SECRET: minLen(16, 'KAPSO_WEBHOOK_SECRET').optional(),
+    ANTHROPIC_API_KEY: z.string().min(1).optional(),
   })
 }
 

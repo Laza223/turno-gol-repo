@@ -12,6 +12,7 @@ import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { MP_MOCK_ENABLED } from './mock-mp'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
 import { notifyAdminBookingConfirmed } from '@/modules/notifications/push.service'
+import { notifyWhatsappGuest } from '@/modules/whatsapp-bot/whatsapp-bot.notices'
 import { track } from '@/shared/observability'
 import { captureMessage } from '@/lib/sentry'
 
@@ -142,6 +143,8 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
   // bookingId through WebhookOutcome's type (minimal change, same pattern
   // as how dispatchEmail fires post-commit).
   let confirmedBookingId: string | null = null
+  // Pago tardío con la devolución anotada: el invitado del bot se entera por WhatsApp.
+  let refundedBookingId: string | null = null
 
   // Fix "checkout viejo pagado": el gateway que `onPaymentApproved` usa para
   // cancelar un preapproval huérfano (mismatch, ver dunning.service.ts) tiene
@@ -357,6 +360,9 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
     if (depositOutcome && !depositOutcome.alreadyProcessed && depositOutcome.won === true) {
       confirmedBookingId = info.externalReference
     }
+    if (depositOutcome && !depositOutcome.alreadyProcessed && depositOutcome.preparedRefund) {
+      refundedBookingId = info.externalReference
+    }
     return depositOutcome
   })
 
@@ -373,6 +379,10 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
   // push failure must never fail the payment confirmation).
   if (confirmedBookingId) {
     await notifyAdminBookingConfirmed(job.tenantId, confirmedBookingId)
+    await notifyWhatsappGuest(job.tenantId, confirmedBookingId, 'deposit_confirmed')
+  }
+  if (refundedBookingId) {
+    await notifyWhatsappGuest(job.tenantId, refundedBookingId, 'late_payment_refunded')
   }
 
   track.webhook('mp.webhook.processed', {

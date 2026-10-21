@@ -25,6 +25,9 @@ import {
   insertTournamentStage,
   insertTournamentMatch,
   insertTournamentMatchEvent,
+  insertWhatsappChat,
+  insertWhatsappConnection,
+  insertWhatsappMessage,
 } from './factories'
 
 /**
@@ -82,6 +85,9 @@ export async function setupTenant(
     bookingId,
     playerId: player.id,
   })
+  // Bot de WhatsApp (migr. 096): el chat donde nació la reserva. Se enlaza en el
+  // MISMO UPDATE que la vuelve terminal (abajo), por la misma razón.
+  const whatsappChatId = await insertWhatsappChat(sql, { tenantId: tenant.id })
   // Cerrar el ciclo bookings ↔ payments Y volver el booking terminal en el
   // MISMO UPDATE: una vez `completed`, enforce_booking_invariants bloquea
   // cualquier UPDATE posterior. payment_method='mercadopago' acompaña por
@@ -90,9 +96,26 @@ export async function setupTenant(
     UPDATE bookings
     SET payment_id = ${paymentId},
         payment_method = 'mercadopago',
+        whatsapp_chat_id = ${whatsappChatId},
         status = 'completed'::booking_status
     WHERE id = ${bookingId}
   `
+  // Conexión del número + un mensaje entrante y un aviso saliente que apunta a la
+  // reserva TERMINAL. El aviso ejercita la FK booking_id (ON DELETE CASCADE): con
+  // SET NULL, el CHECK notice_valid haría reventar el borrado de la reserva.
+  await insertWhatsappConnection(sql, { tenantId: tenant.id })
+  await insertWhatsappMessage(sql, {
+    tenantId: tenant.id,
+    chatId: whatsappChatId,
+    direction: 'inbound',
+  })
+  await insertWhatsappMessage(sql, {
+    tenantId: tenant.id,
+    chatId: whatsappChatId,
+    direction: 'outbound',
+    bookingId,
+    notice: 'deposit_confirmed',
+  })
   await insertCashFlow(sql, { tenantId: tenant.id, registeredBy: staff.id, bookingId })
   await insertNotification(sql, {
     tenantId: tenant.id,
@@ -242,6 +265,10 @@ export type ChildCounts = {
   tournamentStages: number
   tournamentMatches: number
   tournamentMatchEvents: number
+  // Bot de WhatsApp (migr. 096).
+  whatsappConnections: number
+  whatsappChats: number
+  whatsappMessages: number
 }
 
 export async function countChildren(sql: Sql, tenantId: string): Promise<ChildCounts> {
@@ -268,7 +295,10 @@ export async function countChildren(sql: Sql, tenantId: string): Promise<ChildCo
       (SELECT COUNT(*) FROM tournament_team_players WHERE tenant_id = ${tenantId})::text AS "tournamentTeamPlayers",
       (SELECT COUNT(*) FROM tournament_stages WHERE tenant_id = ${tenantId})::text AS "tournamentStages",
       (SELECT COUNT(*) FROM tournament_matches WHERE tenant_id = ${tenantId})::text AS "tournamentMatches",
-      (SELECT COUNT(*) FROM tournament_match_events WHERE tenant_id = ${tenantId})::text AS "tournamentMatchEvents"
+      (SELECT COUNT(*) FROM tournament_match_events WHERE tenant_id = ${tenantId})::text AS "tournamentMatchEvents",
+      (SELECT COUNT(*) FROM whatsapp_connections WHERE tenant_id = ${tenantId})::text AS "whatsappConnections",
+      (SELECT COUNT(*) FROM whatsapp_chats WHERE tenant_id = ${tenantId})::text AS "whatsappChats",
+      (SELECT COUNT(*) FROM whatsapp_messages WHERE tenant_id = ${tenantId})::text AS "whatsappMessages"
   `
   return {
     bookings: Number(r.bookings),
@@ -293,6 +323,9 @@ export async function countChildren(sql: Sql, tenantId: string): Promise<ChildCo
     tournamentStages: Number(r.tournamentStages),
     tournamentMatches: Number(r.tournamentMatches),
     tournamentMatchEvents: Number(r.tournamentMatchEvents),
+    whatsappConnections: Number(r.whatsappConnections),
+    whatsappChats: Number(r.whatsappChats),
+    whatsappMessages: Number(r.whatsappMessages),
   }
 }
 
@@ -319,6 +352,9 @@ export const ZERO: ChildCounts = {
   tournamentStages: 0,
   tournamentMatches: 0,
   tournamentMatchEvents: 0,
+  whatsappConnections: 0,
+  whatsappChats: 0,
+  whatsappMessages: 0,
 }
 
 export const FULL: ChildCounts = {
@@ -345,4 +381,8 @@ export const FULL: ChildCounts = {
   tournamentStages: 1,
   tournamentMatches: 1,
   tournamentMatchEvents: 1,
+  // El chat, la conexión del número y dos mensajes (un entrante y un aviso saliente).
+  whatsappConnections: 1,
+  whatsappChats: 1,
+  whatsappMessages: 2,
 }

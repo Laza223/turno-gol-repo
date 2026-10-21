@@ -53,7 +53,7 @@ export default function TenantGallery({ photos, name }: Props) {
         role="dialog"
         aria-modal="true"
         aria-label={`Fotos de ${name}`}
-        className="fixed inset-0 z-100 flex flex-col bg-slate-950/95 p-4"
+        className="fixed inset-0 z-100 flex flex-col bg-slate-950/95 p-4 backdrop-blur-xs"
       >
         <div className="flex items-center justify-between text-white">
           <span className="text-sm tabular-nums">
@@ -107,18 +107,21 @@ export default function TenantGallery({ photos, name }: Props) {
   if (photos.length === 1) {
     return (
       <>
-        <div className="rounded-xl bg-muted" style={{ height: 'clamp(200px, 32vw, 340px)' }}>
+        <div
+          className="overflow-hidden rounded-2xl bg-muted"
+          style={{ height: 'clamp(200px, 32vw, 340px)' }}
+        >
           <button
             type="button"
             onClick={() => openAt(0)}
-            className="relative h-full w-full overflow-hidden rounded-xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="group relative h-full w-full overflow-hidden rounded-2xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <Image
               src={photos[0]!}
               alt={`${name} — foto principal`}
               fill
               sizes="(max-width: 1400px) 100vw, 1400px"
-              className="object-cover"
+              className="object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:group-hover:scale-100"
             />
           </button>
         </div>
@@ -136,14 +139,14 @@ export default function TenantGallery({ photos, name }: Props) {
               key={p + i}
               type="button"
               onClick={() => openAt(i)}
-              className="relative h-full w-full overflow-hidden rounded-xl bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="group relative h-full w-full overflow-hidden rounded-2xl bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               <Image
                 src={p}
                 alt={`${name} — foto ${i + 1}`}
                 fill
                 sizes="50vw"
-                className="object-cover"
+                className="object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:group-hover:scale-100"
               />
             </button>
           ))}
@@ -166,14 +169,14 @@ export default function TenantGallery({ photos, name }: Props) {
         <button
           type="button"
           onClick={() => openAt(0)}
-          className="relative col-span-4 row-span-2 overflow-hidden rounded-xl bg-muted sm:col-span-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="group relative col-span-4 row-span-2 overflow-hidden rounded-2xl bg-muted sm:col-span-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <Image
             src={main}
             alt={`${name} — foto principal`}
             fill
             sizes="(max-width: 640px) 100vw, 50vw"
-            className="object-cover"
+            className="object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:group-hover:scale-100"
           />
         </button>
         {thumbs.map((p, i) => {
@@ -183,7 +186,7 @@ export default function TenantGallery({ photos, name }: Props) {
               key={p + i}
               type="button"
               onClick={() => openAt(i + 1)}
-              className={`relative hidden overflow-hidden rounded-xl bg-muted sm:block focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+              className={`group relative hidden overflow-hidden rounded-2xl bg-muted sm:block focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                 isThreePhotos ? 'col-span-2 row-span-1' : 'col-span-1 row-span-1'
               }`}
             >
@@ -192,7 +195,7 @@ export default function TenantGallery({ photos, name }: Props) {
                 alt={`${name} — foto ${i + 2}`}
                 fill
                 sizes={isThreePhotos ? '50vw' : '25vw'}
-                className="object-cover"
+                className="object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:group-hover:scale-100"
               />
               {i === thumbs.length - 1 && extra > 0 && (
                 <span className="absolute inset-0 flex items-center justify-center bg-slate-950/55 text-lg font-semibold text-white">

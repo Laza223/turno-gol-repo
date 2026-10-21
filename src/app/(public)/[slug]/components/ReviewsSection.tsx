@@ -4,8 +4,8 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { BadgeCheck, Star } from 'lucide-react'
 import RatingStars from '@/components/public/RatingStars'
-import { Button } from '@/components/ui/button'
-import { PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
+import { cn } from '@/lib/utils'
+import { PROFILE_CARD, PROFILE_SECTION_TITLE } from './styles'
 
 type ReviewItem = {
   id: string
@@ -51,9 +51,9 @@ export default function ReviewsSection({ tenantId, initial, total, average }: Pr
   }
 
   return (
-    <section aria-label="Reseñas" className="space-y-4">
+    <section aria-label="Reseñas" className={cn(PROFILE_CARD, 'space-y-4 p-5 sm:p-6')}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className={PORTAL_SECTION_TITLE}>Reseñas</h2>
+        <h2 className={PROFILE_SECTION_TITLE}>Reseñas</h2>
         <RatingStars rating={average} count={total} variant="full" className="text-foreground" />
       </div>
 
@@ -76,15 +76,14 @@ export default function ReviewsSection({ tenantId, initial, total, average }: Pr
       </ul>
 
       {hasMore && (
-        <Button
+        <button
           type="button"
-          variant="outline"
           onClick={loadMore}
           disabled={loading}
-          className="w-full shadow-none sm:w-auto md:h-11"
+          className="inline-flex h-11 w-full items-center justify-center rounded-full border border-input bg-card px-6 text-sm font-medium text-foreground shadow-xs transition-[color,border-color,box-shadow,translate] duration-200 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 hover:shadow-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60 motion-reduce:hover:translate-y-0 sm:w-auto dark:hover:text-emerald-400"
         >
           {loading ? 'Cargando…' : 'Ver más reseñas'}
-        </Button>
+        </button>
       )}
 
       {/* Las reseñas son verificadas (atadas a un turno jugado), así que no hay un
@@ -99,7 +98,7 @@ export default function ReviewsSection({ tenantId, initial, total, average }: Pr
         </p>
         <Link
           href="/mis-reservas?tab=historial"
-          className="inline-flex h-11 shrink-0 items-center gap-1.5 self-start rounded-md px-3 text-sm font-medium text-emerald-700 transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:text-emerald-400 sm:self-auto"
+          className="inline-flex h-11 shrink-0 items-center gap-1.5 self-start rounded-md px-3 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:text-emerald-400 dark:hover:bg-emerald-500/10 sm:self-auto"
         >
           <Star className="size-4" aria-hidden />
           Dejar una reseña

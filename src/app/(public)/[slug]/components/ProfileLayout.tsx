@@ -7,6 +7,11 @@ import type { ReactNode } from 'react'
  * columna lateral fija debajo de la barra (`top-14`) y scroll interno si no entra; su padding (4 px,
  * con margen superior negativo para no bajar la columna) deja lugar al anillo de foco, que ese
  * scroll recortaría, y alinea el primer chip con el borde superior del hero.
+ *
+ * Recalibra `--color-input` (el borde de los controles: chips, horas, botones) a un gris que llega
+ * a 3:1 sobre la tarjeta, en claro y en oscuro (WCAG 1.4.11): el del tema (= `--border`) mide
+ * 1,5:1. Se redeclara `--color-input` y no `--input` porque los `--color-*` de `@theme` ya se
+ * resolvieron en `:root`.
  */
 export default function ProfileLayout({
   hero,
@@ -18,7 +23,7 @@ export default function ProfileLayout({
   rest?: ReactNode
 }) {
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-4 sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-[auto_1fr] lg:gap-x-10 lg:py-8">
+    <div className="mx-auto w-full max-w-[1400px] px-4 py-6 [--color-input:hsl(215.4_16.3%_46.9%)] dark:[--color-input:hsl(215.4_16.3%_50%)] sm:px-6 lg:grid lg:grid-cols-[minmax(0,1fr)_24rem] lg:grid-rows-[auto_1fr] lg:gap-x-8 lg:px-8 lg:py-8">
       <div className="lg:col-start-1 lg:row-start-1">{hero}</div>
       <div className="-mx-1 mt-6 px-1 lg:sticky lg:top-14 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:-mt-1 lg:max-h-[calc(100dvh-3.5rem)] lg:self-start lg:overflow-y-auto lg:py-1">
         {reserve}

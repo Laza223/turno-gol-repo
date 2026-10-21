@@ -2,19 +2,20 @@ import type { ComponentProps } from 'react'
 import Link from 'next/link'
 import { Trophy } from 'lucide-react'
 import { formatDateRange } from '@/app/(admin)/torneos/torneos-lib'
-import { PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
+import { cn } from '@/lib/utils'
 import { STATUS_LABELS } from '@/lib/tournaments/status-visual'
 import type { PublicCourtCard, PublicTenant } from '@/modules/tenants/public.service'
 import type { PublicTournamentCard } from '@/modules/tournaments/tournament-public.service'
 import ComplexDetails from './ComplexDetails'
 import CourtTile from './CourtTile'
 import ReviewsSection from './ReviewsSection'
+import { PROFILE_CARD, PROFILE_SECTION_TITLE } from './styles'
 import TenantGallery from './TenantGallery'
 
 /** Título de bloque con su cantidad: "Canchas (5)". */
 function CountTitle({ children, count }: { children: string; count: number }) {
   return (
-    <h2 className={PORTAL_SECTION_TITLE}>
+    <h2 className={PROFILE_SECTION_TITLE}>
       {children}{' '}
       <span className="font-sans text-[13px] font-normal tabular-nums text-muted-foreground">
         ({count})
@@ -56,7 +57,7 @@ export default function ProfileRest({
       {tiles.length > 0 && (
         <section aria-label="Canchas" className="space-y-3">
           <CountTitle count={tiles.length}>Canchas</CountTitle>
-          <ul className="grid grid-cols-2 gap-x-3 gap-y-5 sm:grid-cols-3">
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {tiles.map(({ court, photo }) => (
               <CourtTile key={court.id} court={court} photo={photo} />
             ))}
@@ -81,9 +82,12 @@ export default function ProfileRest({
               <li key={t.slug}>
                 <Link
                   href={`/${tenant.slug}/torneos/${t.slug}`}
-                  className="flex min-h-16 items-center gap-3 rounded-xl border border-border bg-card px-4 py-2 transition-colors duration-150 hover:border-input focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className={cn(
+                    PROFILE_CARD,
+                    'flex min-h-16 items-center gap-3 px-4 py-2 shadow-xs transition-[translate,border-color,box-shadow] duration-150 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:shadow-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:hover:translate-y-0',
+                  )}
                 >
-                  <Trophy className="size-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <Trophy className="size-5 shrink-0 text-emerald-600" aria-hidden="true" />
                   <span className="min-w-0">
                     <span className="block truncate text-base font-semibold text-foreground">
                       {t.name}

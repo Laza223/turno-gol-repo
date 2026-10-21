@@ -19,6 +19,7 @@ import CourtRows from './CourtRows'
 import DayEmptyState, { type DayEmptyKind, type NextDay } from './DayEmptyState'
 import HourGrid, { HOUR_COLUMNS } from './HourGrid'
 import { useDayAvailability, useWeekFrom } from './reserve-data'
+import { PROFILE_CARD } from './styles'
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
@@ -32,7 +33,7 @@ export function ReserveSkeleton() {
       aria-label="Reservá tu turno"
       aria-busy="true"
       data-state="loading"
-      className="space-y-4"
+      className={cn(PROFILE_CARD, 'space-y-4 p-4 sm:p-5')}
     >
       <div className="flex gap-2 overflow-hidden" aria-hidden>
         {[0, 1, 2, 3].map((i) => (
@@ -226,7 +227,7 @@ export default function ReserveSection({
       aria-label="Reservá tu turno"
       aria-busy={phase === 'loading'}
       data-state={phase}
-      className="flex flex-col gap-4"
+      className={cn(PROFILE_CARD, 'flex flex-col gap-4 p-4 sm:p-5')}
     >
       <div className="flex flex-col gap-2">
         <DayChips
@@ -282,7 +283,7 @@ export default function ReserveSection({
       )}
 
       {taken && (
-        <div className="rounded-xl border border-border bg-muted p-4">
+        <div className="rounded-2xl border border-border bg-muted p-4">
           <p className="text-base font-semibold text-foreground">{takenMessage}</p>
         </div>
       )}

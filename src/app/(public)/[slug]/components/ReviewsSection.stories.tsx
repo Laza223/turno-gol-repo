@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, within } from 'storybook/test'
 import { uid } from '@/test/fixtures/ids'
 import { reviewItem, reviews } from '@/test/fixtures/public'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import ReviewsSection from './ReviewsSection'
 
 /** En el perfil va plana, en la columna del complejo (`page.tsx`). */
@@ -13,11 +12,9 @@ const meta = {
   args: { tenantId: uid(1) },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="max-w-2xl bg-background p-4">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="max-w-2xl bg-background p-4">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof ReviewsSection>

@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { addDays } from '@/shared/dates/art'
 import { openingHours } from '@/test/fixtures/tenant'
 import {
@@ -31,11 +30,9 @@ const meta = {
   args: { tenant: publicTenant(), formats: [5, 7], trackViewed: fn(async () => undefined) },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="mx-auto max-w-sm bg-background p-4 text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="mx-auto max-w-sm bg-background p-4 text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof ReserveSection>

@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { openingHours } from '@/test/fixtures/tenant'
 import {
   availabilityResponseCourts,
@@ -25,7 +24,7 @@ const HIDING_PRICES = availabilityMock({ price: null })
 
 /**
  * La ficha entera como la arma `(perfil)/page.tsx` (la page es un Server Component async con la
- * base: no se puede renderizar acá), con `PortalWorld` montado y el MISMO `ProfileRest` que
+ * base: no se puede renderizar acá), con el MISMO `ProfileRest` que
  * publica la página. Sirve para mirar la composición: hero → reserva → resto, y desde 1024 px la
  * reserva como columna lateral fija.
  */
@@ -39,14 +38,12 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="min-h-dvh bg-background text-foreground">
-          {/* La barra de 56 px del portal no está en las stories: este hueco deja la ficha donde cae
+      <div className="min-h-dvh bg-background text-foreground">
+        {/* La barra de 56 px del portal no está en las stories: este hueco deja la ficha donde cae
               en la página real (el sticky de la reserva, `top-14`, depende de eso). */}
-          <div className="h-14" aria-hidden />
-          <Story />
-        </div>
-      </PortalWorld>
+        <div className="h-14" aria-hidden />
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof ProfileLayout>

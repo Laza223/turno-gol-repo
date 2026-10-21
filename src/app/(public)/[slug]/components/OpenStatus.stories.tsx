@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { openingHours } from '@/test/fixtures/tenant'
 import OpenStatus from './OpenStatus'
 
@@ -18,11 +17,9 @@ const meta = {
   args: { schedule: { ...base, openingHours: openingHours() } },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="bg-background p-4 text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="bg-background p-4 text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof OpenStatus>

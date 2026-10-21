@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import type { HourRow } from '@/lib/booking/hour-summary'
 import { publicTenant, publicTenantNoOnlineBooking } from '@/test/fixtures/public'
 import CourtRows from './CourtRows'
@@ -27,11 +26,9 @@ const meta = {
   args: { tenant: publicTenant(), row: row(3), date: '2026-03-14' },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="mx-auto max-w-sm bg-background p-4 text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="mx-auto max-w-sm bg-background p-4 text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof CourtRows>

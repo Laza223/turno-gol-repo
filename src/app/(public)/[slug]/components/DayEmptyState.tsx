@@ -100,7 +100,7 @@ export default function DayEmptyState({
   return (
     <div
       role={kind === 'error' ? 'alert' : undefined}
-      className="rounded-xl border border-border bg-muted p-4"
+      className="rounded-2xl border border-border bg-muted p-4 shadow-xs"
     >
       <p className="text-base font-semibold text-foreground">{title}</p>
       {hint && <p className="mt-1 text-sm text-muted-foreground">{hint}</p>}

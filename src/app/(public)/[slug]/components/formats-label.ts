@@ -1,9 +1,3 @@
-/**
- * Solo queda `formatsLabel`, que usa la ficha del complejo (`ComplexHero`). El resto del
- * módulo era del panel "cerca tuyo" de la home, que se fue con La Previa; R3 (ficha) mueve
- * esta función junto a su único consumidor.
- */
-
 /** [5, 7] → "Fútbol 5 y 7" · [5, 7, 11] → "Fútbol 5, 7 y 11". */
 export function formatsLabel(formats: number[]): string | null {
   const f = [...new Set(formats)].sort((a, b) => a - b)

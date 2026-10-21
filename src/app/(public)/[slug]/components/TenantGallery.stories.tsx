@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import TenantGallery from './TenantGallery'
 
 // 6 fotos: 1 principal + 4 thumbnails + la 6ta se resume en el badge "+1" del último thumbnail.
@@ -21,11 +20,9 @@ const meta = {
   args: { name: 'Complejo Fénix' },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="max-w-2xl bg-background p-4">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="max-w-2xl bg-background p-4">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof TenantGallery>

@@ -103,11 +103,11 @@ describe('ComplexHero favorito (#40)', () => {
     const share = screen.getByRole('button', { name: 'Compartir' })
 
     expect(share.classList.contains('text-foreground')).toBe(true)
-    expect(share.classList.contains('border-border')).toBe(true)
+    expect(share.classList.contains('border-input')).toBe(true)
     expect(
       screen
         .getByRole('button', { name: 'Guardar en favoritos' })
-        .classList.contains('aria-[pressed=false]:border-border'),
+        .classList.contains('aria-[pressed=false]:border-input'),
     ).toBe(true)
   })
 

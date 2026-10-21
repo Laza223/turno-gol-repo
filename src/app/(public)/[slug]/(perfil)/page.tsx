@@ -10,12 +10,12 @@ import { isPublicPortalIndexable, isPublicPortalOpen } from '@/modules/tenants/t
 import { getAverageRating, getReviewsByTenant } from '@/modules/reviews/review.service'
 import { listPublicTournaments } from '@/modules/tournaments/tournament-public.service'
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
-import { PORTAL_TITLE } from '@/components/world/PortalAuthFrame'
 import { trackProfileViewedAction } from './actions'
 import ComplexHero from '../components/ComplexHero'
 import ProfileLayout from '../components/ProfileLayout'
 import ProfileRest from '../components/ProfileRest'
 import ReserveSection, { ReserveSkeleton } from '../components/ReserveSection'
+import { PROFILE_TITLE } from '../components/styles'
 import JsonLd from '@/components/seo/JsonLd'
 import { buildLocalBusiness, buildBreadcrumbList } from '@/lib/seo/structured-data'
 
@@ -46,7 +46,7 @@ export default async function PublicComplexPage(props: Props) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
         <div className="max-w-md space-y-3">
-          <h1 className={PORTAL_TITLE}>{tenant.name}</h1>
+          <h1 className={PROFILE_TITLE}>{tenant.name}</h1>
           <p className="text-base text-muted-foreground">
             Este complejo no está disponible temporalmente.
           </p>

@@ -14,7 +14,7 @@ const STATE_LABEL = (row: HourRow) =>
     : { last: 'Queda 1', only: 'Libre', held: 'Señando', full: 'Completo' }[row.state]
 
 const HOUR =
-  'group flex min-h-[50px] flex-col items-center justify-center rounded-xl border border-border bg-card px-1 py-1 text-foreground transition-colors duration-150 hover:border-input focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=checked]:border-primary! data-[state=checked]:bg-primary! data-[state=checked]:text-primary-foreground! disabled:cursor-not-allowed'
+  'group flex min-h-[50px] flex-col items-center justify-center rounded-xl border border-input bg-card px-1 py-1 text-foreground transition-[color,background-color,border-color,box-shadow,translate] duration-150 motion-safe:enabled:not-data-[state=checked]:hover:-translate-y-0.5 enabled:not-data-[state=checked]:hover:border-emerald-400/60 enabled:not-data-[state=checked]:hover:shadow-md enabled:not-data-[state=checked]:hover:shadow-emerald-500/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=checked]:border-primary! data-[state=checked]:bg-primary! data-[state=checked]:text-primary-foreground! disabled:cursor-not-allowed'
 
 /**
  * El ámbar (el tono `warning` de `status-tone`) es solo de "Queda 1", la única escasez real.
@@ -24,10 +24,13 @@ const HOUR =
  */
 const TONE: Record<HourRow['state'], string> = {
   free: '',
-  last: cn(TONE_TINT.warning, 'border-warning/40'),
+  last: cn(
+    TONE_TINT.warning,
+    'border-warning/40 enabled:not-data-[state=checked]:hover:border-warning!',
+  ),
   only: '',
-  held: 'border-dotted border-muted-foreground',
-  full: 'border-border bg-muted',
+  held: 'border-dotted border-muted-foreground enabled:not-data-[state=checked]:hover:border-muted-foreground!',
+  full: 'disabled:border-border bg-muted',
 }
 const NOTE_TONE: Record<HourRow['state'], string> = {
   free: 'text-muted-foreground',

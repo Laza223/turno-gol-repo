@@ -2,15 +2,15 @@ import type { Ref } from 'react'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import { formatLabel } from '@/components/public/courtFacets'
-import { PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
 import type { HourRow } from '@/lib/booking/hour-summary'
 import { buildReserveRequest, buildReservarHref } from '@/lib/booking/reserve-url'
 import { formatArs } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { PublicTenant } from '@/modules/tenants/public.service'
+import { PROFILE_SECTION_TITLE } from './styles'
 
 const ROW =
-  'flex min-h-16 items-center gap-3 rounded-xl border border-border bg-card px-4 py-2 text-foreground transition-colors duration-150 hover:border-input focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background'
+  'flex min-h-16 items-center gap-3 rounded-xl border border-input bg-card px-4 py-2 text-foreground transition-[color,border-color,box-shadow,translate] duration-150 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:shadow-md hover:shadow-emerald-500/10 motion-reduce:hover:translate-y-0 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background'
 
 /**
  * Las canchas libres a la hora elegida, en el lugar, debajo de las horas. Tocar una fila lleva a
@@ -39,7 +39,7 @@ export default function CourtRows({
 }) {
   return (
     <section ref={ref} aria-labelledby="canchas-libres" className={className}>
-      <h2 id="canchas-libres" className={PORTAL_SECTION_TITLE}>
+      <h2 id="canchas-libres" className={PROFILE_SECTION_TITLE}>
         Canchas libres a las {row.time}
       </h2>
       <ul className="mt-2 space-y-2">

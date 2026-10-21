@@ -1,8 +1,8 @@
 import { activeAmenities, AMENITIES } from '@/components/public/amenities'
-import { PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
 import type { PublicTenant } from '@/modules/tenants/public.service'
 import { DAY_KEYS } from '@/shared/time/week-days'
 import OpeningHoursList from './OpeningHoursList'
+import { PROFILE_SECTION_TITLE } from './styles'
 
 /**
  * Lo que el jugador mira antes de ir: qué es el complejo, horarios por día y servicios. Cada
@@ -24,7 +24,7 @@ export default function ComplexDetails({
 
       {days.length > 0 && (
         <section aria-labelledby="horarios" className="space-y-3">
-          <h2 id="horarios" className={PORTAL_SECTION_TITLE}>
+          <h2 id="horarios" className={PROFILE_SECTION_TITLE}>
             Horarios
           </h2>
           <OpeningHoursList openingHours={tenant.openingHours} />
@@ -33,7 +33,7 @@ export default function ComplexDetails({
 
       {amenities.length > 0 && (
         <section aria-labelledby="servicios" className="space-y-3">
-          <h2 id="servicios" className={PORTAL_SECTION_TITLE}>
+          <h2 id="servicios" className={PROFILE_SECTION_TITLE}>
             Servicios
           </h2>
           <ul className="flex flex-wrap gap-2">
@@ -42,9 +42,9 @@ export default function ComplexDetails({
               return (
                 <li
                   key={key}
-                  className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[13px] font-medium text-foreground"
+                  className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[13px] font-medium text-foreground shadow-xs"
                 >
-                  <Icon className="size-4 text-muted-foreground" aria-hidden />
+                  <Icon className="size-4 text-emerald-600" aria-hidden />
                   {label}
                 </li>
               )

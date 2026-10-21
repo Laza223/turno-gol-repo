@@ -29,11 +29,12 @@ const dayShort = (date: string) => SHORT_DAY.format(at(date)).replace('.', '')
 type Option = { value: string; label: string; note?: string; disabled?: boolean }
 
 const CHIP =
-  'group inline-flex min-h-11 shrink-0 flex-col items-center justify-center whitespace-nowrap rounded-full border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors duration-150 hover:border-input focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:font-semibold data-[state=checked]:text-primary-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:text-muted-foreground'
+  'group inline-flex min-h-11 shrink-0 flex-col items-center justify-center whitespace-nowrap rounded-full border border-input bg-card px-4 text-sm font-medium text-foreground transition-[color,background-color,border-color,box-shadow,translate] duration-150 motion-safe:enabled:not-data-[state=checked]:hover:-translate-y-0.5 enabled:not-data-[state=checked]:hover:border-emerald-400/60 enabled:not-data-[state=checked]:hover:text-emerald-700 enabled:not-data-[state=checked]:hover:shadow-sm dark:enabled:not-data-[state=checked]:hover:text-emerald-400 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:font-semibold data-[state=checked]:text-primary-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:text-muted-foreground'
 
 /**
  * Grupo de opción única (RadioGroup de Radix: flechas, un solo tab stop). El relleno verde y el
- * tilde marcan lo elegido: nunca solo color. El `p-1 -m-1` deja lugar para el anillo de foco, que
+ * tilde marcan lo elegido: nunca solo color. Al pasar el mouse sube un poco y se tiñe de esmeralda
+ * (solo los que se pueden elegir y no están elegidos). El `p-1 -m-1` deja lugar para el anillo de foco, que
  * el `overflow-x-auto` recortaría. Ojo: ese margen negativo le gana al `space-y-*` del padre, por
  * eso quien lo monta separa con `gap` (flex/grid) y no con `space-y`.
  *

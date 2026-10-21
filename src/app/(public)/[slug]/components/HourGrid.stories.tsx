@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import type { HourRow } from '@/lib/booking/hour-summary'
 import HourGrid from './HourGrid'
 
@@ -25,11 +24,9 @@ const meta = {
   args: { rows: ROWS, value: null, onChange: () => {} },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="mx-auto max-w-sm bg-background p-4 text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="mx-auto max-w-sm bg-background p-4 text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof HourGrid>

@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
 import { PortalSessionProvider } from '@/components/site/PortalSessionProvider'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { publicTenant } from '@/test/fixtures/public'
 import ComplexHero from './ComplexHero'
 
@@ -19,11 +18,9 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="mx-auto max-w-[390px] bg-background p-4 text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="mx-auto max-w-[390px] bg-background p-4 text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof ComplexHero>

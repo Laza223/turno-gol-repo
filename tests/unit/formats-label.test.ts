@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatsLabel } from '@/app/home/nearby'
+import { formatsLabel } from '@/app/(public)/[slug]/components/formats-label'
 
 describe('formatsLabel', () => {
   it('formatos ordenados y sin repetir', () => {

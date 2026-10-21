@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { ReservaNotFound } from './ReservaNotFound'
 
 const meta = {
@@ -9,11 +8,9 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="min-h-dvh bg-background text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="min-h-dvh bg-background text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof ReservaNotFound>

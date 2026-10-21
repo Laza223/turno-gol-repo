@@ -1,11 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { buildReservarHref, replaceReserveUrl, type PayMethod } from '@/lib/booking/reserve-url'
+import { Button } from '@/components/ui/button'
+import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
+import { buildReservarHref, type PayMethod } from '@/lib/booking/reserve-url'
+import { formatArs } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import type { createBookingAndCheckout, sendPlayerMagicLink } from '../actions'
-import ConfirmBookingButton from './ConfirmBookingButton'
+import ConfirmBookingButton, { FixedCta } from './ConfirmBookingButton'
 import LoginGate, { type StartGoogleLoginFromReservar } from './LoginGate'
-import PaymentMethodSelector from './PaymentMethodSelector'
 
 /**
  * La política de cancelación en una línea, sacada de la regla real del complejo. Con seña se dice
@@ -22,10 +25,13 @@ function cancellationNote(hours: number, withDeposit: boolean): string {
 }
 
 /**
- * Lo que va debajo del resumen: cómo se paga, la política de cancelación y, según la sesión, el
- * botón de confirmar o el ingreso. Existe para tener UNA sola copia de `pay`: lo elige el selector,
- * se escribe en la URL (`replaceState`, como la ficha) y viaja en el `next` del ingreso y en el
- * form de confirmar, así sobrevive al ingreso y a los reintentos.
+ * Lo que va debajo del resumen: UN botón de acción y, junto a él, la regla de cancelación. Con seña
+ * dice "Pagar seña" (con el monto si el complejo muestra sus precios); sin seña, "Reservar". Es el
+ * mismo botón con y sin sesión: con sesión envía la reserva, sin sesión abre el ingreso (un modal,
+ * `LoginGate`) y el `next` del ingreso lleva la reserva para que sobreviva a la vuelta.
+ *
+ * Ya no se elige cómo se paga en el complejo: sin seña la reserva se crea sin método presencial.
+ * `pay` solo existe para no romper un link viejo con `?pay=`: si viene, viaja igual.
  *
  * Las Server Actions entran por PROP: '../actions' es `'use server'` y arrastra
  * `request-context` → `node:async_hooks`, que Vite externaliza en el browser y rompe las stories.
@@ -37,9 +43,9 @@ export default function CheckoutFlow({
   time,
   dur,
   formato,
-  methods,
-  initialPay,
+  pay,
   withDeposit,
+  depositAmount,
   hidePrices = false,
   cancellationHours,
   isPlayer,
@@ -56,10 +62,12 @@ export default function CheckoutFlow({
   time: string
   dur: number
   formato: number | null
-  methods: PayMethod[]
-  initialPay: PayMethod | null
+  /** El `?pay=` de un link viejo, ya validado; ninguna pantalla lo ofrece. */
+  pay: PayMethod | null
   withDeposit: boolean
-  /** El complejo oculta sus precios: la sección de pago dice lo que el resumen no puede decir. */
+  /** Centavos de la seña, solo si el complejo muestra sus precios: con `hidePrices` no viaja. */
+  depositAmount?: number
+  /** El complejo oculta sus precios: la nota del botón dice lo que el resumen no puede decir. */
   hidePrices?: boolean
   cancellationHours: number
   isPlayer: boolean
@@ -72,25 +80,15 @@ export default function CheckoutFlow({
   sendLinkAction: typeof sendPlayerMagicLink
   googleAction: StartGoogleLoginFromReservar
 }) {
-  const [pay, setPay] = useState(initialPay)
-  // Ya arrancó la confirmación sola: el `pay` que viajó es el definitivo, cambiarlo ahora no aplica.
-  const [confirming, setConfirming] = useState(false)
-  const choose = (method: PayMethod) => {
-    setPay(method)
-    replaceReserveUrl({ pay: method })
-  }
+  const [loginOpen, setLoginOpen] = useState(false)
+  const label = withDeposit
+    ? depositAmount && !hidePrices
+      ? `Pagar seña · ${formatArs(depositAmount)}`
+      : 'Pagar seña'
+    : 'Reservar'
 
   return (
     <>
-      <PaymentMethodSelector
-        methods={methods}
-        value={pay}
-        onChange={choose}
-        hidePrices={hidePrices}
-        disabled={confirming}
-      >
-        {cancellationNote(cancellationHours, withDeposit)}
-      </PaymentMethodSelector>
       {isPlayer ? (
         <ConfirmBookingButton
           slug={slug}
@@ -100,21 +98,41 @@ export default function CheckoutFlow({
           dur={dur}
           formato={formato}
           pay={pay}
-          withDeposit={withDeposit}
+          label={label}
           autoConfirmToken={autoConfirmToken}
-          onAutoConfirm={() => setConfirming(true)}
           intentDegraded={intentDegraded}
           action={createAction}
         />
       ) : (
-        <LoginGate
-          next={buildReservarHref(slug, { courtId: court, date, time, formato, pay })}
-          action={sendLinkAction}
-          googleAction={googleAction}
-          inAppBrowser={inAppBrowser}
-          withDeposit={withDeposit}
-        />
+        <>
+          <FixedCta>
+            <Button
+              type="button"
+              aria-haspopup="dialog"
+              className={cn(PORTAL_BUTTON, 'min-h-[52px]')}
+              onClick={() => setLoginOpen(true)}
+            >
+              {label}
+            </Button>
+          </FixedCta>
+          <LoginGate
+            open={loginOpen}
+            onOpenChange={setLoginOpen}
+            next={buildReservarHref(slug, { courtId: court, date, time, formato, pay })}
+            action={sendLinkAction}
+            googleAction={googleAction}
+            inAppBrowser={inAppBrowser}
+            withDeposit={withDeposit}
+          />
+        </>
       )}
+      {/* Debajo del botón (en el celular el botón va fijo abajo y esto queda sobre él, en el flujo). */}
+      <div className="space-y-1 text-sm text-muted-foreground">
+        {withDeposit && hidePrices && (
+          <p>Pagás una seña online con MercadoPago; el resto, en el complejo.</p>
+        )}
+        <p>{cancellationNote(cancellationHours, withDeposit)}</p>
+      </div>
     </>
   )
 }

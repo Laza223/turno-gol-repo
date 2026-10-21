@@ -2730,29 +2730,6 @@
       "isolationNotes": "useActionState + useFormStatus; las dos Server Actions (sendPlayerMagicLink, startGoogleLoginFromReservar) entran por props `action` y `googleAction`. El reenvío y la red caída vienen de src/components/world/MagicLinkSent.tsx."
     },
     {
-      "path": "src/app/(public)/[slug]/reservar/components/PaymentMethodSelector.tsx",
-      "name": "PaymentMethodSelector",
-      "domain": "player-facing",
-      "rendering": "client",
-      "role": "form",
-      "isolationDifficulty": "trivial",
-      "classification": "DIRECT_STORY_REQUIRED",
-      "exclusionReason": "",
-      "relevantStates": [
-        "methods vacío (no renderiza nada)",
-        "con seña (una línea: MercadoPago, 'La cancha es tuya cuando empezás a señar.')",
-        "un solo método en el complejo (una línea, sin radio)",
-        "efectivo y transferencia (radio nativo, estado levantado)"
-      ],
-      "proposedStoryTitle": "Player/Checkout/PaymentMethodSelector",
-      "usesNetwork": false,
-      "usesSession": false,
-      "usesRouter": false,
-      "usesServerAction": false,
-      "providers": [],
-      "isolationNotes": "ninguno; controlado por `methods`, `value` y `onChange` (el estado vive en CheckoutFlow)."
-    },
-    {
       "path": "src/app/(public)/[slug]/reservar/components/CheckoutFlow.tsx",
       "name": "CheckoutFlow",
       "domain": "player-facing",

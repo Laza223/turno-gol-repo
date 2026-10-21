@@ -4,7 +4,7 @@
 // con lo que dice la URL y el complejo. Los componentes de abajo (resumen, pago, ingreso) tienen
 // sus tests; acá importa el cableado: qué llega a cada uno desde el tenant y la query.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { availabilityResponse, publicTenant } from '@/test/fixtures/public'
 
 const mocks = vi.hoisted(() => ({
@@ -110,78 +110,49 @@ describe('ReservarPage — precios ocultos del complejo', () => {
     expect(container.textContent).toContain('$')
   })
 
-  it('con seña y precios ocultos, la sección de pago dice que el resto es en el complejo', async () => {
+  it('con seña y precios ocultos, la nota dice que el resto es en el complejo', async () => {
     mocks.getPublicTenant.mockResolvedValue(
       publicTenant({ hidePrices: true, requiresDeposit: true }),
     )
     await renderPage()
     expect(
-      screen.getByText(
-        'Para confirmar pagás una seña online con MercadoPago. El resto, en el complejo.',
-      ),
+      screen.getByText('Pagás una seña online con MercadoPago; el resto, en el complejo.'),
     ).toBeTruthy()
   })
 })
 
-describe('ReservarPage — cómo se paga', () => {
-  it('sin `pay` en la URL: el primero que acepta el complejo (efectivo)', async () => {
-    const { container } = await renderPage()
-    expect(hiddenPay(container)).toBe('cash')
-    expect((screen.getByRole('radio', { name: /Efectivo/ }) as HTMLInputElement).checked).toBe(true)
+describe('ReservarPage — el botón y el `pay` de un link viejo', () => {
+  it('no hay sección "Cómo pagás" ni radios, con o sin seña', async () => {
+    await renderPage()
+    expect(screen.queryByRole('heading', { name: 'Cómo pagás' })).toBeNull()
+    expect(screen.queryByRole('radio')).toBeNull()
   })
 
-  it('un `pay` válido se respeta', async () => {
+  it('sin seña: un solo botón "Reservar" y ningún `pay` por defecto', async () => {
+    const { container } = await renderPage()
+    expect(screen.getByRole('button', { name: 'Reservar' })).toBeTruthy()
+    expect(hiddenPay(container)).toBeUndefined()
+  })
+
+  it('un `pay` válido de un link viejo se tolera y viaja', async () => {
     const { container } = await renderPage({ pay: 'transfer' })
     expect(hiddenPay(container)).toBe('transfer')
-    expect((screen.getByRole('radio', { name: /Transferencia/ }) as HTMLInputElement).checked).toBe(
-      true,
-    )
+    expect(screen.queryByRole('radio')).toBeNull()
   })
 
-  it.each(['bitcoin', 'mercadopago', ''])(
-    'un `pay` inválido o que el complejo no ofrece (%j) cae al default',
-    async (pay) => {
-      const { container } = await renderPage({ pay })
-      expect(hiddenPay(container)).toBe('cash')
-    },
-  )
-
-  it('un método que el complejo no acepta cae al default aunque la URL lo pida', async () => {
-    mocks.getPublicTenant.mockResolvedValue(
-      publicTenant({ requiresDeposit: false, acceptsTransfer: false }),
-    )
-    const { container } = await renderPage({ pay: 'transfer' })
-    expect(hiddenPay(container)).toBe('cash')
-    // Con un solo método no hay nada que elegir: una línea, sin radios.
-    expect(screen.queryByRole('radio')).toBeNull()
-    expect(screen.getByText('Pagás en el complejo, en efectivo.')).toBeTruthy()
-  })
-
-  it('un complejo que no acepta ni efectivo ni transferencia dice igual cómo se paga', async () => {
-    mocks.getPublicTenant.mockResolvedValue(
-      publicTenant({ requiresDeposit: false, acceptsCash: false, acceptsTransfer: false }),
-    )
-    const { container } = await renderPage({ pay: 'cash' })
-
-    expect(screen.getByRole('heading', { name: 'Cómo pagás' })).toBeTruthy()
-    expect(screen.getByText('Pagás en el complejo.')).toBeTruthy()
-    expect(screen.getByText('Podés cancelar desde Mis reservas.')).toBeTruthy()
-    // Sin método no hay qué elegir ni qué mandar: ni radios ni `pay` en el form de confirmar.
-    expect(screen.queryByRole('radio')).toBeNull()
+  it.each(['bitcoin', ''])('un `pay` inválido (%j) se descarta', async (pay) => {
+    const { container } = await renderPage({ pay })
     expect(hiddenPay(container)).toBeUndefined()
-    expect(screen.getByRole('button', { name: 'Confirmar reserva' })).toBeTruthy()
   })
 
-  it('con seña la única vía es MercadoPago, pida lo que pida la URL', async () => {
+  it('con seña el botón es "Pagar seña" con el monto, y un `pay` que no es MercadoPago se descarta', async () => {
     mocks.getPublicTenant.mockResolvedValue(
       publicTenant({ requiresDeposit: true, depositPercentage: 30 }),
     )
     const { container } = await renderPage({ pay: 'cash' })
-
-    expect(hiddenPay(container)).toBe('mercadopago')
-    expect(screen.queryByRole('radio')).toBeNull()
-    expect(screen.getByText('Pagás la seña online con MercadoPago.')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Pagar la seña' })).toBeTruthy()
+    // Con seña la única vía es MercadoPago y no se elige: un `pay=cash` viejo no viaja.
+    expect(hiddenPay(container)).toBeUndefined()
+    expect(screen.getByRole('button', { name: /^Pagar seña · \$/ })).toBeTruthy()
   })
 })
 
@@ -248,22 +219,27 @@ describe('ReservarPage — formato y el camino de vuelta', () => {
 describe('ReservarPage — la sesión y el navegador', () => {
   it('con sesión: el botón de confirmar y la barra fija; sin el ingreso', async () => {
     const { container } = await renderPage()
-    expect(screen.getByRole('button', { name: 'Confirmar reserva' })).toBeTruthy()
-    expect(screen.queryByRole('heading', { name: 'Entrá para reservar' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Reservar' })).toBeTruthy()
+    expect(screen.queryByRole('dialog')).toBeNull()
     expect(container.querySelector('[data-fixed-cta]')).toBeTruthy()
   })
 
-  it('sin sesión: el ingreso, con Google primero; el next conserva cancha, día, hora, formato y pay', async () => {
+  it('sin sesión: el mismo botón en la barra fija abre el ingreso, con Google primero; el next conserva cancha, día, hora, formato y pay', async () => {
     mocks.extractAuthUser.mockResolvedValue(null)
     const { container } = await renderPage({ formato: '5', pay: 'transfer' })
 
-    expect(screen.getByRole('heading', { name: 'Entrá para reservar' })).toBeTruthy()
-    expect(container.querySelector('[data-fixed-cta]')).toBeNull()
-    const names = within(container)
+    // Cerrado: solo el botón, en la barra fija, y el modal sin montar.
+    expect(container.querySelector('[data-fixed-cta]')).toBeTruthy()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Reservar' }))
+
+    const dialog = await screen.findByRole('dialog', { name: /Entrá para reservar/ })
+    const names = within(dialog)
       .getAllByRole('button')
       .map((b) => b.textContent)
+      .filter((t) => t && t !== 'Cerrar')
     expect(names).toEqual(['Continuar con Google', 'Continuar con mi email'])
-    const next = container.querySelector<HTMLInputElement>('input[name="next"]')!.value
+    const next = dialog.querySelector<HTMLInputElement>('input[name="next"]')!.value
     expect(next).toBe(
       `/complejo-fenix/reservar?court=${cancha1!.id}&date=${DATE}&time=20:00&dur=60&formato=5&pay=transfer`,
     )
@@ -272,17 +248,20 @@ describe('ReservarPage — la sesión y el navegador', () => {
   it('en el navegador interno de Instagram: el email primero y la aclaración de Google', async () => {
     mocks.extractAuthUser.mockResolvedValue(null)
     mocks.userAgent.current = 'Mozilla/5.0 (iPhone) AppleWebKit/605 Mobile/15E148 Instagram 300.0.0'
-    const { container } = await renderPage()
+    await renderPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Reservar' }))
 
-    const names = within(container)
+    const dialog = await screen.findByRole('dialog')
+    const names = within(dialog)
       .getAllByRole('button')
       .map((b) => b.textContent)
+      .filter((t) => t && t !== 'Cerrar')
     expect(names).toEqual(['Continuar con mi email', 'Continuar con Google'])
-    expect(screen.getByText(/Google puede no abrirse desde este navegador/)).toBeTruthy()
+    expect(within(dialog).getByText(/Google puede no abrirse desde este navegador/)).toBeTruthy()
   })
 })
 
-describe('ReservarPage — quién es: solo un jugador ve el botón de confirmar', () => {
+describe('ReservarPage — quién es: solo un jugador envía la reserva', () => {
   it.each([
     [
       'un staff logueado',
@@ -300,13 +279,16 @@ describe('ReservarPage — quién es: solo un jugador ve el botón de confirmar'
       'un super admin logueado',
       { type: 'system_admin', id: 'u2', email: 'sa@example.com', systemAdminId: 'u2' },
     ],
-  ])('%s ve el ingreso y no el botón ni la barra fija', async (_name, user) => {
+  ])('%s ve el botón que abre el ingreso, no el que envía la reserva', async (_name, user) => {
     mocks.extractAuthUser.mockResolvedValue(user)
     const { container } = await renderPage()
 
-    expect(screen.getByRole('heading', { name: 'Entrá para reservar' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Confirmar reserva' })).toBeNull()
-    expect(container.querySelector('[data-fixed-cta]')).toBeNull()
+    // El botón no es de submit (no hay form de confirmar) y abre el ingreso.
+    const button = screen.getByRole('button', { name: 'Reservar' })
+    expect(button.getAttribute('type')).toBe('button')
+    expect(container.querySelector('form')).toBeNull()
+    fireEvent.click(button)
+    expect(await screen.findByRole('dialog', { name: /Entrá para reservar/ })).toBeTruthy()
   })
 })
 

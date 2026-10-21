@@ -100,7 +100,7 @@ test.describe('TG-HP-228 — Push admin (reserva online con seña) + quiet hours
         timeout: 15_000,
       })
 
-      await page.getByRole('button', { name: 'Pagar la seña' }).click()
+      await page.getByRole('button', { name: /^Pagar seña/ }).click()
       await expect(page).toHaveURL(/\/mock-mp\/checkout/, { timeout: 15_000 })
       bookingId = extractBookingId(page.url())
 

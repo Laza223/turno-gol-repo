@@ -33,13 +33,13 @@ const newEmail = () => `e2e-intent-${randomUUID().slice(0, 8)}@turnogol.test`
 /** Llena el ingreso de /reservar y pide el enlace. Devuelve el enlace del mail. */
 async function requestLink(page: Page, email: string, date: string, time: string) {
   await page.goto(reservarUrl(date, time))
+  // Sin sesión el botón de acción abre el ingreso en un modal.
+  await page.getByRole('button', { name: 'Reservar' }).click()
   await expect(page.getByRole('heading', { name: 'Entrá para reservar' })).toBeVisible()
   // Sin seña: la línea de apoyo promete la confirmación.
   await expect(page.getByText('Entrás y la reserva queda confirmada.')).toBeVisible()
 
-  await page.getByLabel('Nombre').fill('Intento')
   await page.getByLabel('Email').fill(email)
-  await page.getByRole('checkbox').check()
   const sinceMs = Date.now()
   await page.getByRole('button', { name: 'Continuar con mi email' }).click()
 
@@ -161,17 +161,17 @@ test.describe('Reserva que se confirma sola al volver del ingreso', () => {
       await page.goto(link.toString())
       // Entró (sesión) pero NO confirmó sola: está en la pantalla de confirmar, con su botón.
       await expect(page).toHaveURL(new RegExp(`/${TENANT_SLUG}/reservar`), { timeout: 20_000 })
-      await expect(page.getByRole('button', { name: 'Confirmar reserva' })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Reservar' })).toBeVisible()
       await expect(page.getByRole('heading', { name: 'Entrá para reservar' })).toHaveCount(0)
       await expect(page.getByText('Confirmando tu reserva…')).toHaveCount(0)
       // Y la pantalla dice qué hacer: la promesa de "queda confirmada" no se cumplió.
-      await expect(page.getByText('Tocá Confirmar reserva para terminar.')).toBeVisible()
+      await expect(page.getByText('Tocá Reservar para terminar.')).toBeVisible()
       // Dar tiempo a que un envío indebido ocurra antes de mirar la base.
       await page.waitForTimeout(1500)
       expect(await bookingsOf(email, date, time)).toHaveLength(0)
 
       // Y el botón sigue funcionando a mano.
-      await page.getByRole('button', { name: 'Confirmar reserva' }).click()
+      await page.getByRole('button', { name: 'Reservar' }).click()
       await expect(page).toHaveURL(EXITO, { timeout: 20_000 })
       ids.push(...(await bookingsOf(email, date, time)).map((r) => r.id))
       expect(ids).toHaveLength(1)
@@ -200,9 +200,9 @@ test.describe('Reserva que se confirma sola al volver del ingreso', () => {
 
       const page = await intruder.newPage()
       await page.goto(next)
-      await expect(page.getByRole('button', { name: 'Confirmar reserva' })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'Reservar' })).toBeVisible()
       await expect(page.getByText('Confirmando tu reserva…')).toHaveCount(0)
-      await expect(page.getByText('Tocá Confirmar reserva para terminar.')).toBeVisible()
+      await expect(page.getByText('Tocá Reservar para terminar.')).toBeVisible()
       await page.waitForTimeout(1500)
       await expect(page).toHaveURL(new RegExp(`/${TENANT_SLUG}/reservar`))
       const rows = await runSql<{ n: string }>(

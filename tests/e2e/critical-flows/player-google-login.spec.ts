@@ -34,7 +34,7 @@ test.describe('Google login (botón, sin completar el flujo externo)', () => {
     }
   })
 
-  test('checkout: "Continuar con Google" no se deshabilita; sin la casilla el error sale EN la casilla @critical', async ({
+  test('checkout: el botón abre el ingreso; "Continuar con Google" habilitado, sin casilla y con el +18 en una frase @critical', async ({
     browser,
   }) => {
     const ctx = await browser.newContext()
@@ -42,28 +42,28 @@ test.describe('Google login (botón, sin completar el flujo externo)', () => {
       const page = await ctx.newPage()
       await page.goto(reservarUrl())
 
-      const googleButton = page.getByRole('button', { name: /continuar con google/i })
+      // Sin sesión el botón de acción (no hay casilla de +18) abre el ingreso en un modal.
+      await page.getByRole('button', { name: /^(Reservar|Pagar seña)/ }).click()
+      const dialog = page.getByRole('dialog', { name: /Entrá para reservar/ })
+      await expect(dialog).toBeVisible()
+
+      const googleButton = dialog.getByRole('button', { name: /continuar con google/i })
       await expect(googleButton).toBeVisible()
       await expect(googleButton).toBeEnabled()
 
-      // Sin la casilla el cliente ataja el envío: el error sale al instante y no se va a Google
-      // (el servidor lo exige igual, ver tests/unit/reservar-gate-actions.test.ts).
-      // OJO: getByRole('alert') a secas también matchea el anunciador de rutas de Next
-      // (`#__next-route-announcer__`, siempre presente): se filtra por el texto del error.
-      const checkbox = page.getByRole('checkbox')
-      const termsAlert = page
-        .getByRole('alert')
-        .filter({ hasText: 'Tenés que aceptar los términos.' })
-      await googleButton.click()
-      await expect(termsAlert).toBeVisible()
-      await expect(checkbox).toHaveAttribute('aria-invalid', 'true')
-      await expect(checkbox).toBeFocused()
-      await expect(page).toHaveURL(/\/reservar\?/)
+      // Clickwrap (decisión 2026-10-21): tocar Google es aceptar; no hay casilla que se pueda
+      // olvidar. El servidor exige `terms` igual (tests/unit/reservar-gate-actions.test.ts).
+      await expect(dialog.getByRole('checkbox')).toHaveCount(0)
+      await expect(dialog.getByText(/declarás que sos mayor de 18 años/)).toBeVisible()
+      await expect(dialog.getByRole('link', { name: /términos y condiciones/i })).toHaveAttribute(
+        'href',
+        '/terminos',
+      )
 
-      // Tildarla saca el error y el botón sigue habilitado.
-      await checkbox.check()
-      await expect(termsAlert).toHaveCount(0)
-      await expect(googleButton).toBeEnabled()
+      // Esc cierra el modal y deja la pantalla de confirmar.
+      await page.keyboard.press('Escape')
+      await expect(dialog).toBeHidden()
+      await expect(page).toHaveURL(/\/reservar\?/)
     } finally {
       await ctx.close()
     }

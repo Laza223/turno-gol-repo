@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// El ingreso de /reservar en el servidor: la casilla del +18 se exige acá (el botón ya no se
-// deshabilita), el error dice de qué campo es, el `formato` y el `pay` sobreviven a los rebotes,
+// El ingreso de /reservar en el servidor: `terms=on` se exige acá (la pantalla ya no tiene casilla:
+// tocar el botón lo manda), el nombre sale del email si no viene, el error dice de qué campo es,
+// el `formato` y el `pay` sobreviven a los rebotes,
 // el `next` no saca al jugador del sitio, y con seña el cliente no elige cómo se paga.
 
 const {
@@ -160,12 +161,13 @@ describe('sendPlayerMagicLink — de qué campo es el error', () => {
     })
   })
 
-  it('sin nombre: field "firstName"; con email roto: field "email"', async () => {
-    expect(await sendPlayerMagicLink(idle, fd({ ...ok, firstName: '  ' }))).toMatchObject({
-      field: 'firstName',
-      message: 'Ingresá tu nombre',
-      values: { email: 'tomas@example.com' },
-    })
+  it('con email roto: field "email"; con un nombre de más de 80 caracteres: field "firstName"', async () => {
+    expect(await sendPlayerMagicLink(idle, fd({ ...ok, firstName: 'a'.repeat(81) }))).toMatchObject(
+      {
+        field: 'firstName',
+        message: 'Máximo 80 caracteres',
+      },
+    )
     expect(await sendPlayerMagicLink(idle, fd({ ...ok, email: 'tomas@' }))).toMatchObject({
       field: 'email',
       message: 'Ingresá un email válido',
@@ -173,12 +175,56 @@ describe('sendPlayerMagicLink — de qué campo es el error', () => {
     })
   })
 
-  it('con todo mal, el campo que se marca es el primero de la pantalla (casilla, nombre, email)', async () => {
+  it('con todo mal, el campo que se marca es el primero: terms, y después el email (el nombre ya no se pide)', async () => {
     const empty = fd({ next: NEXT })
     expect(await sendPlayerMagicLink(idle, empty)).toMatchObject({ field: 'terms' })
     expect(await sendPlayerMagicLink(idle, fd({ next: NEXT, terms: 'on' }))).toMatchObject({
-      field: 'firstName',
+      field: 'email',
     })
+  })
+
+  it('sin nombre se deriva del email en el servidor y es el que se guarda y se devuelve', async () => {
+    const { firstName: _omit, ...sinNombre } = ok
+    const result = await sendPlayerMagicLink(
+      idle,
+      fd({ ...sinNombre, email: 'lazaro.feijoo2004@gmail.com' }),
+    )
+
+    expect(result).toEqual({
+      status: 'sent',
+      email: 'lazaro.feijoo2004@gmail.com',
+      firstName: 'Lazaro Feijoo',
+    })
+    expect(signInWithPlayerMagicLink).toHaveBeenCalledWith(
+      'lazaro.feijoo2004@gmail.com',
+      expect.any(String),
+      expect.objectContaining({ firstName: 'Lazaro Feijoo', agreedTerms: true }),
+    )
+  })
+
+  it('un nombre en blanco también se deriva, y sin letras en el email cae a "Jugador"', async () => {
+    await sendPlayerMagicLink(idle, fd({ ...ok, firstName: '   ' }))
+    expect(signInWithPlayerMagicLink).toHaveBeenLastCalledWith(
+      'tomas@example.com',
+      expect.any(String),
+      expect.objectContaining({ firstName: 'Tomas' }),
+    )
+
+    await sendPlayerMagicLink(idle, fd({ ...ok, firstName: '', email: '12345@example.com' }))
+    expect(signInWithPlayerMagicLink).toHaveBeenLastCalledWith(
+      '12345@example.com',
+      expect.any(String),
+      expect.objectContaining({ firstName: 'Jugador' }),
+    )
+  })
+
+  it('un nombre explícito gana sobre el del email', async () => {
+    await sendPlayerMagicLink(idle, fd({ ...ok, firstName: 'Tomi', email: 'otro.nombre@mail.com' }))
+    expect(signInWithPlayerMagicLink).toHaveBeenLastCalledWith(
+      'otro.nombre@mail.com',
+      expect.any(String),
+      expect.objectContaining({ firstName: 'Tomi' }),
+    )
   })
 
   it('sin apellido (la pantalla ya no lo pide) manda igual, y el next conserva formato y pay', async () => {

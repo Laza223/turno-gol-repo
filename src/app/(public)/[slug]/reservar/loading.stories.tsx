@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import CheckoutLoading from './loading'
 
 const meta = {
@@ -9,11 +8,9 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="min-h-dvh bg-background text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="min-h-dvh bg-background text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof CheckoutLoading>
@@ -22,9 +19,9 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 /**
- * Skeleton fijo de la pantalla de confirmar, en el mundo del portal. Mismo ritmo que la página real
- * (`page.tsx`) para que al cargar nada se mueva: la misma columna, 32 px entre bloques, 12 px bajo
- * el título de sección, 8 px hasta la regla de cancelación y 48 px al pie.
+ * Skeleton fijo de la pantalla de confirmar, sobre el cascarón de La Previa. Mismo ritmo que la
+ * página real (`page.tsx`) para que al cargar nada se mueva: la misma columna, 32 px entre bloques,
+ * 8 px entre el botón y la regla de cancelación y 48 px al pie.
  */
 export const Default: Story = {
   play: async ({ canvasElement }) => {
@@ -35,11 +32,9 @@ export const Default: Story = {
 
     const gap = (a: Element, b: Element) =>
       b.getBoundingClientRect().top - a.getBoundingClientRect().bottom
-    const [summary, payment, button] = [...column.lastElementChild!.children]
-    await expect(gap(summary!, payment!)).toBeCloseTo(32, 1)
-    await expect(gap(payment!, button!)).toBeCloseTo(32, 1)
-    const [title, options, rule] = [...payment!.children]
-    await expect(gap(title!, options!)).toBeCloseTo(12, 1)
-    await expect(gap(options!, rule!)).toBeCloseTo(8, 1)
+    const [summary, action] = [...column.lastElementChild!.children]
+    await expect(gap(summary!, action!)).toBeCloseTo(32, 1)
+    const [button, rule] = [...action!.children]
+    await expect(gap(button!, rule!)).toBeCloseTo(8, 1)
   },
 }

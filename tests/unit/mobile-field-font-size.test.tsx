@@ -74,7 +74,7 @@ describe('Piso de 16px en campos — constantes compartidas', () => {
     },
     {
       file: 'src/components/world/PortalAuthFrame.tsx',
-      needle: 'export const PORTAL_INPUT',
+      needle: 'const PORTAL_INPUT',
       what: 'email del login de jugador',
     },
     {
@@ -97,12 +97,12 @@ describe('Piso de 16px en campos — constantes compartidas', () => {
     })
   }
 
-  it('LoginGate (reservar): nombre y email usan PORTAL_INPUT, que ya arranca en 16px', () => {
+  it('LoginGate (reservar): el email usa AUTH_INPUT (PORTAL_INPUT), que ya arranca en 16px', () => {
     const code = stripComments(read('src/app/(public)/[slug]/reservar/components/LoginGate.tsx'))
-    // Los dos campos de texto (nombre y email) llevan la constante: una clase propia en un campo
-    // nuevo es justo donde se cuela el `text-sm` de 14px.
-    expect(code.match(/className=\{PORTAL_INPUT\}/g)).toHaveLength(2)
-    expect(code.match(/<Input\s/g)).toHaveLength(2)
+    // El único campo de texto (el email) lleva la constante: una clase propia en un campo nuevo
+    // es justo donde se cuela el `text-sm` de 14px.
+    expect(code.match(/className=\{AUTH_INPUT\}/g)).toHaveLength(1)
+    expect(code.match(/<Input\s/g)).toHaveLength(1)
   })
 
   it('HeroSearch: los campos del buscador no bajan de 16px en el teléfono', () => {

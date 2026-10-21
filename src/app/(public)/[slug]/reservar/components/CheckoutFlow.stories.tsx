@@ -1,12 +1,11 @@
 import type { ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
+import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test'
 import PortalFrame from '@/components/site/PortalFrame'
 import PortalHeader from '@/components/site/PortalHeader'
 import { PortalSessionProvider } from '@/components/site/PortalSessionProvider'
 import SiteFooter from '@/components/site/SiteFooter'
-import { PORTAL_TITLE } from '@/components/world/PortalAuthFrame'
-import { PortalWorld } from '@/components/world/PortalWorld'
+import ReservaShell from '@/components/booking/ReservaDarkShell'
 import { RESERVAR_COLUMN } from '../CheckoutStates'
 import BookingSummary, { type BookingSummaryData } from './BookingSummary'
 import CheckoutFlow from './CheckoutFlow'
@@ -30,13 +29,17 @@ const signOut = fn(async () => {})
 function Screen(props: ComponentProps<typeof CheckoutFlow> & { summary: BookingSummaryData }) {
   const { summary: data, ...flow } = props
   return (
-    <div className={`${RESERVAR_COLUMN} pb-12`}>
-      <h1 className={PORTAL_TITLE}>Confirmá tu reserva</h1>
-      <div className="mt-6 space-y-8">
-        <BookingSummary data={data} />
-        <CheckoutFlow {...flow} hidePrices={data.hidePrices} />
+    <ReservaShell>
+      <div className={`${RESERVAR_COLUMN} pb-12`}>
+        <h1 className="font-display text-3xl font-black italic tracking-tight text-foreground">
+          Confirmá tu <span className="hero-accent-text">reserva</span>
+        </h1>
+        <div className="mt-6 space-y-8">
+          <BookingSummary data={data} />
+          <CheckoutFlow {...flow} hidePrices={data.hidePrices} />
+        </div>
       </div>
-    </div>
+    </ReservaShell>
   )
 }
 
@@ -54,8 +57,7 @@ const meta = {
     time: '21:00',
     dur: 60,
     formato: 5,
-    methods: ['cash', 'transfer'],
-    initialPay: 'cash',
+    pay: null,
     withDeposit: false,
     cancellationHours: 12,
     isPlayer: true,
@@ -67,7 +69,7 @@ const meta = {
   render: (args) => <Screen {...args} summary={summary} />,
   decorators: [
     (Story, ctx) => (
-      <PortalWorld>
+      <>
         <PortalSessionProvider
           initialValue={{
             // `sesionHidratada: false`: el servidor sabe que es jugador pero la sesión del cliente
@@ -91,7 +93,7 @@ const meta = {
             <Story />
           </PortalFrame>
         </PortalSessionProvider>
-      </PortalWorld>
+      </>
     ),
   ],
 } satisfies Meta<typeof CheckoutFlow>
@@ -99,7 +101,7 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** El Vagón: precios ocultos, sin seña, efectivo o transferencia, F5; con sesión. Ningún "$". */
+/** El Vagón: precios ocultos, sin seña, F5; con sesión. Un solo botón "Reservar" y ningún "$". */
 export const ElVagonConSesion: Story = {
   render: (args) => <Screen {...args} summary={{ ...summary, hidePrices: true }} />,
   play: async ({ canvasElement }) => {
@@ -109,17 +111,16 @@ export const ElVagonConSesion: Story = {
     await expect(court).toBeVisible()
     await expect(court).toHaveTextContent('Cancha 2 · Fútbol 5')
     await expect(canvas.getByText('Podés cancelar desde Mis reservas.')).toBeVisible()
-    await userEvent.click(canvas.getByText('Transferencia'))
-    await expect(canvas.getByRole('radio', { name: /transferencia/i })).toBeChecked()
-    await expect(canvas.getByRole('button', { name: 'Confirmar reserva' })).toBeEnabled()
+    await expect(canvas.queryByText(/Cómo pagás/)).not.toBeInTheDocument()
+    await expect(canvas.queryByRole('radio')).not.toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: 'Reservar' })).toBeEnabled()
   },
 }
 
 /**
  * Vuelve del ingreso con el vínculo verificado (sin seña): el form se envía solo, una vez, con el
  * vínculo en un campo oculto, y el botón queda visible. La action es un mock: acá se ve el envío.
- * El "Confirmando…" entra en un lugar que ya estaba reservado (nada se mueve) y el selector de pago
- * se bloquea: un cambio ahí ya no se aplicaría.
+ * El "Confirmando…" entra en un lugar que ya estaba reservado (nada se mueve).
  */
 export const ConfirmaSola: Story = {
   args: { autoConfirmToken: 'eyJzbHVnIjoiY2x1Yi14In0.firma-de-ejemplo-0123456789abcdefghij' },
@@ -138,13 +139,11 @@ export const ConfirmaSola: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     await waitFor(() => expect(args.createAction).toHaveBeenCalledTimes(1))
-    await expect(canvas.getByRole('button', { name: /Confirmar reserva|Procesando/ })).toBeVisible()
+    await expect(canvas.getByRole('button', { name: /Reservar|Procesando/ })).toBeVisible()
     const form = canvasElement.querySelector('form')!
     await expect(form.querySelector('input[type="hidden"][name="booking_intent"]')).toHaveValue(
       args.autoConfirmToken,
     )
-    await expect(canvas.getByRole('radio', { name: /efectivo/i })).toBeDisabled()
-    await expect(canvas.getByRole('radio', { name: /transferencia/i })).toBeDisabled()
 
     // Sin salto de layout: el mismo nodo vacío, como llega del servidor, mide lo mismo que con el
     // texto puesto, y ese alto es el reservado (1,5 rem = la línea de 16 px).
@@ -162,62 +161,63 @@ export const ConfirmaSola: Story = {
 
 /**
  * Volvió con un vínculo que no valió (vencido, de otro email o de otro turno), sin seña: la pantalla
- * normal, con una línea corta que pide tocar el botón. Nada se envía solo y el selector queda libre.
+ * normal, con una línea corta que pide tocar el botón. Nada se envía solo.
  */
 export const VinculoQueNoValio: Story = {
   args: { intentDegraded: true },
   render: (args) => <Screen {...args} summary={{ ...summary, hidePrices: true }} />,
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const line = canvas.getByText('Tocá Confirmar reserva para terminar.')
+    const line = canvas.getByText('Tocá Reservar para terminar.')
     await expect(line).toBeVisible()
     await expect(getComputedStyle(line).fontSize).toBe('16px')
     await expect(canvas.queryByRole('status')).not.toBeInTheDocument()
-    await expect(canvas.getByRole('button', { name: 'Confirmar reserva' })).toBeEnabled()
-    await expect(canvas.getByRole('radio', { name: /efectivo/i })).toBeEnabled()
+    await expect(canvas.getByRole('button', { name: 'Reservar' })).toBeEnabled()
     await expect(args.createAction).not.toHaveBeenCalled()
   },
 }
 
-/** Lo mismo sin sesión: el ingreso (casilla, Google, email) en lugar del botón. */
+/** Lo mismo sin sesión: el mismo botón, que abre el ingreso (Google y email) en un modal. */
 export const ElVagonSinSesion: Story = {
   args: { isPlayer: false },
   render: (args) => <Screen {...args} summary={{ ...summary, hidePrices: true }} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvasElement.textContent).not.toContain('$')
-    await expect(canvas.getByRole('heading', { name: 'Entrá para reservar' })).toBeVisible()
-    await expect(canvas.getByRole('button', { name: 'Continuar con Google' })).toBeEnabled()
+    await expect(canvas.queryByRole('dialog')).not.toBeInTheDocument()
+    await userEvent.click(canvas.getByRole('button', { name: 'Reservar' }))
+    const opened = await screen.findByRole('dialog')
+    // Radix lo abre con un fade-in: durante la animación `toBeVisible` lo lee con opacidad 0.
+    await Promise.all(opened.getAnimations({ subtree: true }).map((a) => a.finished))
+    const modal = within(opened)
+    await expect(modal.getByRole('heading', { name: 'Entrá para reservar' })).toBeVisible()
+    await expect(modal.getByRole('button', { name: 'Continuar con Google' })).toBeEnabled()
   },
 }
 
 /** Con seña y precios visibles: MercadoPago, la seña a la vista y la regla de cancelación. */
 export const ConSenaYPrecios: Story = {
   args: {
-    methods: ['mercadopago'],
-    initialPay: 'mercadopago',
     withDeposit: true,
+    depositAmount: 450000,
     formato: null,
   },
   render: (args) => <Screen {...args} summary={{ ...summary, depositAmount: 450000 }} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Seña a pagar ahora')).toBeVisible()
-    await expect(canvas.getByText('La cancha es tuya cuando empezás a señar.')).toBeVisible()
     await expect(
       canvas.getByText(
         /Si cancelás con más de 12 horas de anticipación, el complejo te devuelve la seña/,
       ),
     ).toBeVisible()
-    await expect(canvas.getByRole('button', { name: 'Pagar la seña' })).toBeEnabled()
+    await expect(canvas.getByRole('button', { name: /^Pagar seña · \$/ })).toBeEnabled()
   },
 }
 
 /** Con seña y precios ocultos, sin sesión, en el navegador interno de Instagram. */
 export const ConSenaOcultaNavegadorInterno: Story = {
   args: {
-    methods: ['mercadopago'],
-    initialPay: 'mercadopago',
     withDeposit: true,
     isPlayer: false,
     inAppBrowser: true,
@@ -229,12 +229,11 @@ export const ConSenaOcultaNavegadorInterno: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvasElement.textContent).not.toContain('$')
-    // El resumen no dice cómo se paga; lo dice la sección de pago, con la frase del resto.
+    // El resumen no dice cómo se paga; lo dice la nota debajo del botón.
     await expect(
-      canvas.getByText(
-        'Para confirmar pagás una seña online con MercadoPago. El resto, en el complejo.',
-      ),
+      canvas.getByText('Pagás una seña online con MercadoPago; el resto, en el complejo.'),
     ).toBeVisible()
+    await expect(canvas.getByRole('button', { name: 'Pagar seña' })).toBeEnabled()
   },
 }
 
@@ -268,8 +267,8 @@ export const BarraFijaNoTapaElPie: Story = {
 }
 
 /**
- * WCAG 2.4.11 (foco no oculto): en un celular bajito, tabular al radio que quedó detrás de la barra
- * fija lo trae a la vista POR ENCIMA de ella. Sin el `scroll-padding-bottom` de `html` (globals.css)
+ * WCAG 2.4.11 (foco no oculto): en un celular bajito, tabular a un link del pie que quedó detrás de
+ * la barra fija lo trae a la vista POR ENCIMA de ella. Sin el `scroll-padding-bottom` de `html` (globals.css)
  * el navegador lo da por visible —está dentro del viewport— y la barra lo tapa. Ese relleno es el
  * mismo alto que reserva `PortalFrame` (57 + 77 px); si uno cambia, el otro también.
  */
@@ -284,7 +283,6 @@ export const FocoNoQuedaTapadoPorLaBarra: Story = {
   },
   render: (args) => <Screen {...args} summary={{ ...summary, hidePrices: true }} />,
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
     await expect(window.innerWidth).toBe(390)
     await expect(window.innerHeight).toBe(520)
     const bar = canvasElement.querySelector('[data-fixed-cta]')!
@@ -293,16 +291,12 @@ export const FocoNoQuedaTapadoPorLaBarra: Story = {
     await expect(getComputedStyle(frame).paddingBottom).toBe('134px')
     await expect(getComputedStyle(document.documentElement).scrollPaddingBottom).toBe('134px')
 
-    const radio = canvas.getByRole('radio', { name: /efectivo/i })
+    const link = canvasElement.querySelector<HTMLElement>('footer a')!
     window.scrollTo({ top: 0, behavior: 'instant' })
-    // Punto de partida: el radio está dentro del viewport pero detrás de la barra fija.
-    const start = radio.getBoundingClientRect()
-    await expect(start.top).toBeLessThan(window.innerHeight)
-    await expect(start.bottom).toBeGreaterThan(bar.getBoundingClientRect().top)
 
-    for (let i = 0; i < 15 && document.activeElement !== radio; i++) await userEvent.tab()
-    await expect(document.activeElement).toBe(radio)
-    await expect(radio.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+    for (let i = 0; i < 40 && document.activeElement !== link; i++) await userEvent.tab()
+    await expect(document.activeElement).toBe(link)
+    await expect(link.getBoundingClientRect().bottom).toBeLessThanOrEqual(
       bar.getBoundingClientRect().top,
     )
   },

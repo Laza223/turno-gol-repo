@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
 import { expect, waitFor, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { minutesFromNow } from '@/test/fixtures/clock'
 import PaymentStatusWatcher, { PaymentStatusView } from './PaymentStatusWatcher'
 
@@ -9,7 +8,7 @@ const bookingId = 'b1a2c3d4-0001-4000-8000-000000000001'
 
 /**
  * Vive en `reserva/[bookingId]/pendiente/page.tsx` (y en `/exito`, cuando el jugador vuelve de MP
- * antes de que llegue el webhook), dentro del mundo del portal: una columna de ~560 px, plana. Sin
+ * antes de que llegue el webhook), sobre el cascarón de La Previa. Sin
  * cuenta regresiva: todo el que llega ya pasó por MercadoPago.
  *
  * `Confirmando` y las dos de `confirmado` corren el watcher de verdad (polling a los 3 s contra un
@@ -46,11 +45,9 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="min-h-dvh bg-background text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="min-h-dvh bg-background text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof PaymentStatusWatcher>

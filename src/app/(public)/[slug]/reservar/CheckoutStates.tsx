@@ -1,16 +1,11 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { AlertTriangle } from 'lucide-react'
+import ReservaShell from '@/components/booking/ReservaDarkShell'
 import { buttonVariants } from '@/components/ui/button'
-import {
-  PORTAL_BUTTON,
-  PORTAL_COLUMN,
-  PORTAL_LINK,
-  PORTAL_TITLE,
-} from '@/components/world/PortalAuthFrame'
+import { PORTAL_BUTTON, PORTAL_COLUMN, PORTAL_LINK } from '@/components/world/PortalAuthFrame'
 import { buildFichaHref } from '@/lib/booking/reserve-url'
 import { formatDayHeader } from '@/lib/format'
-import { TONE_TEXT } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
 
 /** La columna de la pantalla de confirmar y de su carga: ~560 px en el celular y en escritorio. */
@@ -25,7 +20,8 @@ const NOTICE_LINK = cn(
 )
 
 /**
- * Aviso de La Reserva: `bg-muted` con borde `border`, esquina de 12 px y el ícono en `destructive`.
+ * Aviso del checkout, en el badge dual de La Previa: relleno rojo OPACO en claro (un `/10`
+ * translúcido compone contra el fondo del portal y daba 3,3:1) y tinte sobre el vidrio en oscuro.
  * Todo lo que se avisa acá frena la reserva, así que es un error y no una advertencia: el ámbar es
  * de la escasez ("Queda 1") y de nada más. Dice qué pasó y deja una salida (un aviso sin salida
  * obliga a usar el "atrás" del navegador).
@@ -34,11 +30,14 @@ function Notice({ href, action, children }: { href: string; action: string; chil
   return (
     <div
       role="alert"
-      className="flex items-start gap-3 rounded-xl border border-border bg-muted p-4"
+      className="flex items-start gap-3 rounded-xl bg-red-50 p-4 ring-1 ring-inset ring-destructive/25 dark:bg-red-500/10 dark:ring-red-500/30"
     >
-      <AlertTriangle className={cn('mt-0.5 size-5 shrink-0', TONE_TEXT.destructive)} aria-hidden />
+      <AlertTriangle
+        className="mt-0.5 size-5 shrink-0 text-red-700 dark:text-red-300"
+        aria-hidden
+      />
       <div>
-        <p className="text-base text-foreground">{children}</p>
+        <p className="text-base text-red-700 dark:text-red-300">{children}</p>
         <Link href={href} className={NOTICE_LINK}>
           {action}
         </Link>
@@ -202,15 +201,21 @@ export function CheckoutInvalidState({
       : undefined) ?? buildFichaHref(slug, {})
   const label = kind === 'taken-on-return' && date ? `${cta} del ${formatDayHeader(date)}` : cta
   return (
-    <div className={cn(RESERVAR_COLUMN, 'pb-12')}>
-      <div className="flex min-h-[50dvh] flex-col justify-center">
-        <AlertTriangle className="size-8 text-muted-foreground" aria-hidden />
-        <h1 className={cn(PORTAL_TITLE, 'mt-4 text-balance')}>{title}</h1>
-        {message && <p className="mt-2 text-pretty text-base text-muted-foreground">{message}</p>}
-        <Link href={href} className={cn(buttonVariants(), PORTAL_BUTTON, 'mt-8')}>
-          {label}
-        </Link>
+    <ReservaShell>
+      <div className={cn(RESERVAR_COLUMN, 'pb-12')}>
+        <div className="flex min-h-[50dvh] flex-col justify-center">
+          <div className="flex size-16 items-center justify-center rounded-full bg-red-50 text-red-700 ring-1 ring-inset ring-red-700/25 dark:bg-red-500/12 dark:text-red-300 dark:ring-red-400/35">
+            <AlertTriangle className="size-8" aria-hidden />
+          </div>
+          <h1 className="mt-5 text-balance font-display text-3xl font-black italic leading-tight tracking-tight text-foreground">
+            {title}
+          </h1>
+          {message && <p className="mt-2 text-pretty text-base text-muted-foreground">{message}</p>}
+          <Link href={href} className={cn(buttonVariants(), PORTAL_BUTTON, 'mt-8')}>
+            {label}
+          </Link>
+        </div>
       </div>
-    </div>
+    </ReservaShell>
   )
 }

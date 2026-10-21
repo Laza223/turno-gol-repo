@@ -1,16 +1,14 @@
 // @vitest-environment happy-dom
 //
-// La pantalla de confirmar sin el servidor: resumen + cómo se paga + política de cancelación +
-// botón o ingreso. Lo que importa de esta capa: el `pay` y el `formato` viajan (URL, `next` del
-// ingreso, form de confirmar) y con `hidePrices` no hay ni un monto.
+// La pantalla de confirmar sin el servidor: resumen + UN botón de acción + política de cancelación.
+// Sin sesión el botón abre el ingreso (modal). Lo que importa de esta capa: el `formato` y el `pay`
+// de un link viejo viajan (`next` del ingreso, form de confirmar) y con `hidePrices` no hay un monto.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import BookingSummary from '@/app/(public)/[slug]/reservar/components/BookingSummary'
 import CheckoutFlow from '@/app/(public)/[slug]/reservar/components/CheckoutFlow'
-import type { PayMethod } from '@/lib/booking/reserve-url'
 
 afterEach(() => cleanup())
-beforeEach(() => window.history.replaceState(null, '', '/club-x/reservar?court=c1&utm=ig'))
 
 const summary = {
   tenantName: 'El Vagón',
@@ -33,8 +31,7 @@ const flowProps = (over: Partial<FlowProps> = {}): FlowProps => ({
   time: '21:00',
   dur: 60,
   formato: 5,
-  methods: ['cash', 'transfer'],
-  initialPay: 'cash',
+  pay: null,
   withDeposit: false,
   cancellationHours: 12,
   isPlayer: true,
@@ -54,12 +51,11 @@ const attributeValues = (root: HTMLElement) =>
   )
 
 describe('pantalla de confirmar con precios ocultos', () => {
-  const sena = { withDeposit: true, methods: ['mercadopago'], initialPay: 'mercadopago' } as const
   const cases: ReadonlyArray<readonly [string, Partial<FlowProps>]> = [
     ['sin seña, con sesión', { withDeposit: false, isPlayer: true }],
     ['sin seña, sin sesión', { withDeposit: false, isPlayer: false }],
-    ['con seña, con sesión', { ...sena, methods: [...sena.methods], isPlayer: true }],
-    ['con seña, sin sesión', { ...sena, methods: [...sena.methods], isPlayer: false }],
+    ['con seña, con sesión', { withDeposit: true, isPlayer: true }],
+    ['con seña, sin sesión', { withDeposit: true, isPlayer: false }],
   ]
 
   it.each(cases)('%s: ningún "$" en el texto ni en un atributo', (_name, over) => {
@@ -75,20 +71,16 @@ describe('pantalla de confirmar con precios ocultos', () => {
     expect(attributeValues(container).filter((a) => a.includes('$'))).toEqual([])
   })
 
-  it('con seña y precios ocultos, la frase del resto en el complejo vive en la sección de pago', () => {
-    render(
-      <CheckoutFlow {...flowProps({ ...sena, methods: [...sena.methods], hidePrices: true })} />,
-    )
-    const frase = screen.getByText(
-      'Para confirmar pagás una seña online con MercadoPago. El resto, en el complejo.',
-    )
-    expect(frase.closest('section')?.querySelector('h2')?.textContent).toBe('Cómo pagás')
+  it('con seña y precios ocultos, la nota dice que el resto es en el complejo', () => {
+    render(<CheckoutFlow {...flowProps({ withDeposit: true, hidePrices: true })} />)
+    expect(
+      screen.getByText('Pagás una seña online con MercadoPago; el resto, en el complejo.'),
+    ).toBeTruthy()
   })
 
-  it('con seña y precios visibles el resumen ya dice el resto: la sección no lo repite', () => {
-    render(<CheckoutFlow {...flowProps({ ...sena, methods: [...sena.methods] })} />)
-    expect(screen.getByText('Pagás la seña online con MercadoPago.')).toBeTruthy()
-    expect(screen.queryByText(/El resto, en el complejo/)).toBeNull()
+  it('con seña y precios visibles el resumen ya dice el resto: la nota no lo repite', () => {
+    render(<CheckoutFlow {...flowProps({ withDeposit: true, depositAmount: 600_000 })} />)
+    expect(screen.queryByText(/el resto, en el complejo/)).toBeNull()
   })
 
   it('control: con los precios visibles el detector sí ve el "$" (el test puede dar rojo)', () => {
@@ -99,7 +91,42 @@ describe('pantalla de confirmar con precios ocultos', () => {
   })
 })
 
-describe('política de cancelación, una línea debajo del pago', () => {
+describe('el botón de acción es uno solo', () => {
+  it.each([true, false])('sin seña dice "Reservar" (con sesión: %s)', (isPlayer) => {
+    render(<CheckoutFlow {...flowProps({ isPlayer })} />)
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Reservar'])
+  })
+
+  it.each([true, false])('con seña y monto dice "Pagar seña · $" (con sesión: %s)', (isPlayer) => {
+    render(<CheckoutFlow {...flowProps({ isPlayer, withDeposit: true, depositAmount: 600_000 })} />)
+    expect(screen.getByRole('button', { name: /^Pagar seña · \$\s?6\.000/ })).toBeTruthy()
+  })
+
+  it('con seña y precios ocultos dice solo "Pagar seña"', () => {
+    render(<CheckoutFlow {...flowProps({ withDeposit: true, hidePrices: true })} />)
+    expect(screen.getByRole('button', { name: 'Pagar seña' })).toBeTruthy()
+  })
+
+  it('no hay sección ni radios de "Cómo pagás"', () => {
+    render(<CheckoutFlow {...flowProps()} />)
+    expect(screen.queryByText(/Cómo pagás/)).toBeNull()
+    expect(screen.queryAllByRole('radio')).toHaveLength(0)
+  })
+
+  it('sin sesión el botón abre el ingreso en un diálogo; con sesión no hay diálogo', async () => {
+    const sin = render(<CheckoutFlow {...flowProps({ isPlayer: false })} />)
+    expect(screen.queryByRole('dialog')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Reservar' }))
+    expect(await screen.findByRole('dialog', { name: /Entrá para reservar/ })).toBeTruthy()
+    sin.unmount()
+
+    render(<CheckoutFlow {...flowProps()} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Reservar' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+})
+
+describe('política de cancelación, una línea debajo del botón', () => {
   const note = (over: Partial<FlowProps>) => {
     render(<CheckoutFlow {...flowProps(over)} />)
     return screen.getByText(/cancel/i).textContent
@@ -120,12 +147,12 @@ describe('política de cancelación, una línea debajo del pago', () => {
     )
   })
 
-  it('la línea va DENTRO de la sección de pago, debajo de las opciones', () => {
+  it('va debajo del botón, no adentro de ninguna sección de pago', () => {
     render(<CheckoutFlow {...flowProps()} />)
     const nota = screen.getByText('Podés cancelar desde Mis reservas.')
-    const seccion = nota.closest('fieldset')!
-    expect(seccion.querySelector('legend')?.textContent).toBe('Cómo pagás en el complejo')
-    expect(seccion.lastElementChild).toBe(nota)
+    expect(nota.closest('section, fieldset')).toBeNull()
+    const button = screen.getByRole('button', { name: 'Reservar' })
+    expect(button.compareDocumentPosition(nota) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('sin seña no promete ningún plazo que el complejo no fijó', () => {
@@ -136,50 +163,35 @@ describe('política de cancelación, una línea debajo del pago', () => {
 })
 
 describe('pay y formato sobreviven', () => {
-  const chooseTransfer = () => fireEvent.click(screen.getByRole('radio', { name: /Transferencia/ }))
+  const field = (root: HTMLElement, name: string) =>
+    root.querySelector<HTMLInputElement>(`form input[type="hidden"][name="${name}"]`)?.value
 
-  it('con sesión: la elección va a la URL (conservando el resto) y al form de confirmar', () => {
-    const { container } = render(<CheckoutFlow {...flowProps()} />)
-    const field = (name: string) =>
-      (container.querySelector(`input[type="hidden"][name="${name}"]`) as HTMLInputElement).value
-
-    expect(field('pay')).toBe('cash')
-    expect(field('formato')).toBe('5')
-
-    chooseTransfer()
-
-    expect(field('pay')).toBe('transfer')
-    const url = new URL(window.location.href)
-    expect(url.searchParams.get('pay')).toBe('transfer')
-    expect(url.searchParams.get('utm')).toBe('ig')
-    expect(url.searchParams.get('court')).toBe('c1')
+  it('con sesión: el formato y el `pay` de un link viejo van al form de confirmar', () => {
+    const { container } = render(<CheckoutFlow {...flowProps({ pay: 'transfer' })} />)
+    expect(field(container, 'formato')).toBe('5')
+    expect(field(container, 'pay')).toBe('transfer')
   })
 
-  it('sin sesión: el next del ingreso (email y Google) lleva el pay y el formato elegidos', () => {
-    const { container } = render(<CheckoutFlow {...flowProps({ isPlayer: false })} />)
-    const nexts = () =>
-      Array.from(container.querySelectorAll<HTMLInputElement>('input[name="next"]')).map(
-        (i) => i.value,
-      )
+  it('sin `pay` en la URL no se manda ninguno', () => {
+    const { container } = render(<CheckoutFlow {...flowProps()} />)
+    expect(field(container, 'pay')).toBeUndefined()
+  })
 
-    expect(nexts()).toHaveLength(2)
-    chooseTransfer()
-
+  it('sin sesión: el next del ingreso (email y Google) lleva el formato y el pay', async () => {
+    render(<CheckoutFlow {...flowProps({ isPlayer: false, pay: 'transfer' })} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Reservar' }))
+    const dialog = await screen.findByRole('dialog')
+    const nexts = Array.from(dialog.querySelectorAll<HTMLInputElement>('input[name="next"]')).map(
+      (i) => i.value,
+    )
     const expected =
       '/club-x/reservar?court=c1&date=2026-03-14&time=21:00&dur=60&formato=5&pay=transfer'
-    expect(nexts()).toEqual([expected, expected])
+    expect(nexts).toEqual([expected, expected])
   })
 
-  it('sin formato elegido no inventa uno; con un solo método no hay radios pero el pay viaja', () => {
-    const methods: PayMethod[] = ['cash']
-    const { container } = render(
-      <CheckoutFlow {...flowProps({ formato: null, methods, initialPay: 'cash' })} />,
-    )
+  it('sin formato elegido no inventa uno', () => {
+    const { container } = render(<CheckoutFlow {...flowProps({ formato: null })} />)
     expect(container.querySelector('input[name="formato"]')).toBeNull()
-    expect(screen.queryAllByRole('radio')).toHaveLength(0)
-    expect(
-      (container.querySelector('input[type="hidden"][name="pay"]') as HTMLInputElement).value,
-    ).toBe('cash')
   })
 })
 
@@ -197,45 +209,24 @@ describe('confirmación sola (el vínculo ya lo verificó la page)', () => {
     expect(hidden(container)?.value).toBe(TOKEN)
     expect(screen.getByRole('status').textContent).toBe('Confirmando tu reserva…')
     // Visible siempre; mientras envía dice "Procesando…" (el estado de envío que ya tiene).
-    expect(screen.getByRole('button', { name: /Confirmar reserva|Procesando/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Reservar|Procesando/ })).toBeTruthy()
     expect(props.createAction).toHaveBeenCalledTimes(1)
-  })
-
-  it('mientras confirma, el selector de pago se bloquea (un cambio ahí ya no se aplicaría)', () => {
-    const { container } = render(<CheckoutFlow {...flowProps({ autoConfirmToken: TOKEN })} />)
-
-    const radios = screen.getAllByRole('radio') as HTMLInputElement[]
-    expect(radios).toHaveLength(2)
-    expect(radios.every((r) => r.disabled)).toBe(true)
-    // Lo que se envió es lo que estaba elegido.
-    expect(
-      (container.querySelector('input[type="hidden"][name="pay"]') as HTMLInputElement).value,
-    ).toBe('cash')
-  })
-
-  it('sin confirmación sola el selector queda libre', () => {
-    render(<CheckoutFlow {...flowProps()} />)
-    const radios = screen.getAllByRole('radio') as HTMLInputElement[]
-    expect(radios.every((r) => !r.disabled)).toBe(true)
   })
 
   it('con un vínculo que no valió: una línea corta pide tocar el botón, y nada se envía solo', () => {
     const props = flowProps({ intentDegraded: true })
     const { container } = render(<CheckoutFlow {...props} />)
 
-    expect(screen.getByText('Tocá Confirmar reserva para terminar.')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Confirmar reserva' })).toBeTruthy()
+    expect(screen.getByText('Tocá Reservar para terminar.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Reservar' })).toBeTruthy()
     expect(hidden(container)).toBeNull()
     expect(screen.queryByRole('status')).toBeNull()
     expect(props.createAction).not.toHaveBeenCalled()
-    expect((screen.getAllByRole('radio') as HTMLInputElement[]).every((r) => !r.disabled)).toBe(
-      true,
-    )
   })
 
   it('sin vínculo fallido no hay línea de ayuda', () => {
     render(<CheckoutFlow {...flowProps()} />)
-    expect(screen.queryByText('Tocá Confirmar reserva para terminar.')).toBeNull()
+    expect(screen.queryByText('Tocá Reservar para terminar.')).toBeNull()
   })
 
   it('sin token: el form es el de siempre, no se envía nada solo', () => {
@@ -247,30 +238,25 @@ describe('confirmación sola (el vínculo ya lo verificó la page)', () => {
     expect(props.createAction).not.toHaveBeenCalled()
   })
 
-  it('sin sesión el token no hace nada: se ve el ingreso', () => {
+  it('sin sesión el token no hace nada: el botón abre el ingreso y no se envía nada', async () => {
     const props = flowProps({ isPlayer: false, autoConfirmToken: TOKEN })
     const { container } = render(<CheckoutFlow {...props} />)
 
     expect(hidden(container)).toBeNull()
     expect(props.createAction).not.toHaveBeenCalled()
-    expect(screen.getByRole('heading', { name: 'Entrá para reservar' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Reservar' }))
+    expect(await screen.findByRole('heading', { name: 'Entrá para reservar' })).toBeTruthy()
   })
 
-  it('el ingreso sin seña promete confirmar; con seña, no', () => {
+  it('el ingreso sin seña promete confirmar; con seña, no', async () => {
     const sinSena = render(<CheckoutFlow {...flowProps({ isPlayer: false })} />)
-    expect(screen.getByText('Entrás y la reserva queda confirmada.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Reservar' }))
+    expect(await screen.findByText('Entrás y la reserva queda confirmada.')).toBeTruthy()
     sinSena.unmount()
 
-    render(
-      <CheckoutFlow
-        {...flowProps({
-          isPlayer: false,
-          withDeposit: true,
-          methods: ['mercadopago'],
-          initialPay: 'mercadopago',
-        })}
-      />,
-    )
+    render(<CheckoutFlow {...flowProps({ isPlayer: false, withDeposit: true })} />)
+    fireEvent.click(screen.getByRole('button', { name: /Pagar seña/ }))
+    await screen.findByRole('dialog')
     expect(screen.queryByText('Entrás y la reserva queda confirmada.')).toBeNull()
   })
 })

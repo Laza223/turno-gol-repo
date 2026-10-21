@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { player } from '@/test/fixtures/player'
 import { paintedContrast } from '@/test/contrast'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { ConfiguracionView } from './ConfiguracionView'
 import type { UpdateProfileResult } from './actions'
 import type { FavoriteRow } from './FavoritesList'
@@ -18,7 +17,7 @@ const fav = (n: number, name = `Complejo ${n}`, city = 'Rosario'): FavoriteRow =
 
 /**
  * Las dos Server Actions entran por prop: importarlas como valor arrastra drizzle/postgres y
- * rompe el bundle de browser. El decorator reproduce el mundo de La Reserva (en producción lo
+ * rompe el bundle de browser. El decorator reproduce el fondo del portal (en producción lo
  * pone `(player)/layout.tsx`) sin el cascarón, que también arrastra `signOutAction`.
  */
 const meta = {
@@ -43,11 +42,9 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="min-h-dvh bg-background text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="min-h-dvh bg-background text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof ConfiguracionView>

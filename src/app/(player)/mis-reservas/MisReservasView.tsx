@@ -1,14 +1,14 @@
 import { Fragment, type ReactNode } from 'react'
 import Link from 'next/link'
-import { MessageCircle, Navigation, RotateCcw } from 'lucide-react'
+import { CalendarX, Compass, MapPin, MessageCircle, Navigation, RotateCcw } from 'lucide-react'
 import { formatLabel } from '@/components/public/courtFacets'
 import { buttonVariants } from '@/components/ui/button'
 import { Pager } from '@/components/ui/pager'
-import { StatusBadge } from '@/components/ui/status-badge'
-import { PORTAL_BUTTON, PORTAL_COLUMN, PORTAL_TITLE } from '@/components/world/PortalAuthFrame'
+import { StatusBadge, type StatusBadgeVisual } from '@/components/ui/status-badge'
+import PlayerHeroBand from '@/components/site/PlayerHeroBand'
 import { buildFichaHref, buildReservaHref } from '@/lib/booking/reserve-url'
 import { formatArs } from '@/lib/format'
-import { TONE_BADGE } from '@/lib/status-tone'
+import { TONE_BADGE, TONE_TEXT, TONE_TINT } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
 import { addDays } from '@/shared/dates/art'
 import { playerBookingVisual, isDepositPaid } from './status-visual'
@@ -79,6 +79,24 @@ function formatDate(dateStr: string): string {
   }).formatToParts(new Date(`${dateStr}T12:00:00Z`))
   const pick = (type: string) => parts.find((p) => p.type === type)?.value ?? ''
   return `${pick('weekday')} ${pick('day')} ${pick('month')}`
+}
+
+/** Partes para el bloque-fecha de la tarjeta (día grande + mes/día-semana chico). */
+function dateParts(dateStr: string): { weekday: string; day: string; month: string } {
+  const d = new Date(`${dateStr}T12:00:00Z`)
+  return {
+    weekday: d.toLocaleDateString('es-AR', { weekday: 'short', timeZone: AR_TZ }),
+    day: d.toLocaleDateString('es-AR', { day: '2-digit', timeZone: AR_TZ }),
+    month: d.toLocaleDateString('es-AR', { month: 'short', timeZone: AR_TZ }),
+  }
+}
+
+/**
+ * El bloque-fecha toma el MISMO tono que el badge: el tinte de fondo y el color del label salen
+ * de la tabla del sistema, así la tarjeta no puede decir una cosa en el badge y otra en el bloque.
+ */
+function dateBlockClass(tone: StatusBadgeVisual['tone']): string {
+  return cn(TONE_TINT[tone], TONE_TEXT[tone])
 }
 
 /** "Hoy", "Mañana" o el día ("vie 3 oct"). `today` es el día ART de hoy. */
@@ -155,13 +173,17 @@ function payNote(b: MisReservasBookingRow): string[] {
   return parts
 }
 
-/** Botón de una acción de tarjeta: 44 px, plano (sin sombra ni levante), foco con el anillo del mundo. */
 /** Acción sin borde (cancelar, reseña, reservar de nuevo): 44 px de toque; la primera de la fila se alinea con el borde de la tarjeta. */
 const GHOST =
   'inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
 
+/** Botón de una acción de tarjeta: 44 px de toque, plano (sin sombra ni levante). */
 const ACTION =
   'h-auto min-h-11 md:h-auto gap-2 whitespace-normal px-4 py-2 text-sm shadow-none hover:shadow-none hover:translate-y-0 active:scale-100 focus-visible:ring-offset-background'
+
+/** Botón de las tarjetas vacías (CTA "Explorar complejos" / "Volver al principio"): 44 px. */
+const EMPTY_CARD_CTA =
+  'inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25'
 
 /** Tarjeta vacía compartida: "no tenés nada" y "esa página no existe" son el mismo molde con distinto texto. */
 function EmptyCard({
@@ -174,12 +196,15 @@ function EmptyCard({
   action: ReactNode
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-6">
-      <h2 className="font-display text-xl font-extrabold leading-7 tracking-[-0.01em] text-foreground">
-        {title}
-      </h2>
-      <p className="mt-2 text-base text-muted-foreground">{description}</p>
-      <div className="mt-6">{action}</div>
+    <div className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card px-6 py-14 text-center shadow-xs">
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20">
+        <CalendarX className="h-8 w-8" aria-hidden />
+      </div>
+      <div className="space-y-1">
+        <h2 className="font-display text-lg font-bold tracking-tight text-foreground">{title}</h2>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      {action}
     </div>
   )
 }
@@ -230,68 +255,100 @@ function BookingCard({
     </>
   )
 
+  const dp = dateParts(b.starts_on)
+
   return (
     <li
       className={cn(
-        'relative rounded-xl border border-border bg-card p-4 transition-colors',
-        href && 'hover:bg-accent',
+        'relative rounded-2xl border border-border bg-card p-4 shadow-xs transition-all duration-200 motion-reduce:hover:translate-y-0',
+        href &&
+          'hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/10',
       )}
     >
-      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-        <div id={whenId} className="min-w-0">
-          {href ? (
-            // Vínculo extendido: el `::after` cubre la tarjeta entera y las acciones de abajo
-            // quedan por encima (`z-10`), así no hay nada interactivo adentro de un <a>.
-            <Link
-              href={href}
-              className="rounded-sm after:absolute after:inset-0 after:rounded-xl focus-visible:outline-hidden focus-visible:after:ring-2 focus-visible:after:ring-ring"
-            >
-              {title}
-            </Link>
-          ) : (
-            title
+      <div className="flex gap-4">
+        {/* Bloque-fecha: lo lee el título ("Hoy", "Mañana" o el día), acá es solo adorno. */}
+        <div
+          aria-hidden
+          className={cn(
+            'flex w-14 shrink-0 flex-col items-center justify-center self-start rounded-xl py-2 ring-1 ring-inset ring-border',
+            dateBlockClass(visual.tone),
           )}
+        >
+          <span className="font-logo text-[13px] font-bold uppercase leading-4 tracking-wide">
+            {dp.weekday}
+          </span>
+          <span className="font-display text-xl font-black italic leading-none tabular-nums">
+            {dp.day}
+          </span>
+          <span className="font-logo text-[13px] font-bold uppercase leading-4 tracking-wide">
+            {dp.month}
+          </span>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {b.type === 'fixed' && (
-            <span
-              className={cn(
-                'inline-flex items-center rounded-full px-2 py-0.5 text-[13px] font-medium',
-                TONE_BADGE.neutral,
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+            <div id={whenId} className="min-w-0">
+              {href ? (
+                // Vínculo extendido: el `::after` cubre la tarjeta entera y las acciones de abajo
+                // quedan por encima (`z-10`), así no hay nada interactivo adentro de un <a>.
+                <Link
+                  href={href}
+                  className="rounded-sm after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-hidden focus-visible:after:ring-2 focus-visible:after:ring-ring"
+                >
+                  {title}
+                </Link>
+              ) : (
+                title
               )}
-            >
-              Turno fijo
-            </span>
-          )}
-          <StatusBadge visual={visual} className="shrink-0 whitespace-nowrap text-[13px]" />
-        </div>
-      </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {b.type === 'fixed' && (
+                <span
+                  className={cn(
+                    'inline-flex items-center rounded-full px-2 py-0.5 text-[13px] font-medium',
+                    TONE_BADGE.neutral,
+                  )}
+                >
+                  Turno fijo
+                </span>
+              )}
+              <StatusBadge visual={visual} className="max-w-full text-[13px]" />
+            </div>
+          </div>
 
-      <div id={whereId} className="mt-2 break-words">
-        <p className="text-base font-medium text-foreground">
-          {b.court_name} · {formatLabel(b.court_format)}
-        </p>
-        <p className="text-sm text-muted-foreground">{b.tenant_name}</p>
-        {featured && b.address !== '' && (
-          <p className="text-sm text-muted-foreground">{b.address}</p>
-        )}
-      </div>
-
-      {(pay.length > 0 || note) && (
-        <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-          {pay.length > 0 && (
-            <p className="tabular-nums">
-              {pay.map((part, i) => (
-                <Fragment key={part}>
-                  {i > 0 && ' · '}
-                  <span className="whitespace-nowrap">{part}</span>
-                </Fragment>
-              ))}
+          <div id={whereId} className="mt-2 break-words">
+            <p className="text-base font-medium text-foreground">
+              {b.court_name} · {formatLabel(b.court_format)}
             </p>
+            <p className="flex items-start gap-1 text-sm text-muted-foreground">
+              <MapPin
+                className="mt-0.5 size-3.5 shrink-0 text-emerald-700 dark:text-emerald-400"
+                aria-hidden
+              />
+              {b.tenant_name}
+            </p>
+            {featured && b.address !== '' && (
+              <p className="text-sm text-muted-foreground">{b.address}</p>
+            )}
+          </div>
+
+          {(pay.length > 0 || note) && (
+            <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+              {pay.length > 0 && (
+                <p className="tabular-nums">
+                  {pay.map((part, i) => (
+                    <Fragment key={part}>
+                      {i > 0 && ' · '}
+                      <span className="whitespace-nowrap">{part}</span>
+                    </Fragment>
+                  ))}
+                </p>
+              )}
+              {note && <p>{note}</p>}
+            </div>
           )}
-          {note && <p>{note}</p>}
         </div>
-      )}
+      </div>
 
       {b.refund && (
         <div className="relative z-10 mt-3 rounded-lg border border-border bg-muted p-3">
@@ -365,7 +422,7 @@ function BookingCard({
 }
 
 /**
- * Vista presentacional de /mis-reservas, en el mundo de La Reserva: título, pestañas
+ * Vista presentacional de /mis-reservas: banda hero, pestañas
  * próximos/historial, empty state y la lista de tarjetas. La primera de Próximos es la próxima
  * y se lee sola. Extraída de page.tsx (que solo aporta auth + la query cruda) para poder
  * aislarla en Storybook.
@@ -395,11 +452,11 @@ export function MisReservasView({
 }) {
   const tabClass = (active: boolean) =>
     cn(
-      '-mb-px flex min-h-11 flex-1 items-center justify-center border-b-2 px-2 text-center text-base transition-colors',
-      'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
+      'flex min-h-11 flex-1 items-center justify-center rounded-full py-2 text-center text-sm font-semibold transition-all duration-150',
+      'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
       active
-        ? 'border-primary font-semibold text-foreground'
-        : 'border-transparent font-medium text-muted-foreground hover:text-foreground',
+        ? 'bg-primary text-primary-foreground shadow-md shadow-emerald-600/25 dark:shadow-emerald-500/25'
+        : 'text-muted-foreground hover:text-foreground',
     )
 
   // La próxima: la primera confirmada que todavía no terminó (un turno de hoy ya jugado no lo es).
@@ -409,15 +466,23 @@ export function MisReservasView({
       : -1
 
   return (
-    <div className={cn(PORTAL_COLUMN, 'pb-12 pt-6')}>
-      <h1 className={PORTAL_TITLE}>Mis reservas</h1>
-      {upcomingCount > 0 && (
-        <p className="mt-1 text-base text-muted-foreground tabular-nums">
-          {`Tenés ${upcomingCount} turno${upcomingCount === 1 ? '' : 's'} por jugar.`}
-        </p>
-      )}
+    <div className="mx-auto max-w-lg space-y-5 px-4 py-6">
+      <PlayerHeroBand
+        eyebrow="Tu actividad"
+        title="Mis"
+        accent="reservas"
+        subtitle={
+          upcomingCount > 0
+            ? `Tenés ${upcomingCount} turno${upcomingCount === 1 ? '' : 's'} por jugar.`
+            : 'Consultá tus próximas reservas y tu historial de partidos.'
+        }
+      />
 
-      <nav aria-label="Tus reservas" className="mt-6 flex border-b border-border">
+      {/* Tabs como segmented control (píldora) */}
+      <nav
+        aria-label="Tus reservas"
+        className="flex gap-1 rounded-full border border-border bg-card p-1 shadow-xs"
+      >
         <Link
           href="/mis-reservas?tab=proximos"
           aria-current={tab === 'proximos' ? 'page' : undefined}
@@ -434,7 +499,7 @@ export function MisReservasView({
         </Link>
       </nav>
 
-      <div className="mt-6">
+      <div>
         {bookings.length === 0 ? (
           page > 0 ? (
             // Página fuera de rango (link viejo/compartido a una página que ya
@@ -445,7 +510,7 @@ export function MisReservasView({
               title="Esa página no existe"
               description={`${tab === 'proximos' ? 'Tus próximas reservas' : 'Tu historial'} tiene menos que lo que pide este link.`}
               action={
-                <Link href={pageHref(tab, 0)} className={cn(buttonVariants(), PORTAL_BUTTON)}>
+                <Link href={pageHref(tab, 0)} className={EMPTY_CARD_CTA}>
                   Volver al principio
                 </Link>
               }
@@ -459,7 +524,8 @@ export function MisReservasView({
                   : 'Acá van a aparecer tus partidos jugados.'
               }
               action={
-                <Link href="/explorar" className={cn(buttonVariants(), PORTAL_BUTTON)}>
+                <Link href="/explorar" className={EMPTY_CARD_CTA}>
+                  <Compass className="size-4" aria-hidden />
                   Explorar complejos
                 </Link>
               }
@@ -487,7 +553,7 @@ export function MisReservasView({
           total): nunca se dibuja con una sola página, y con la lista vacía
           (`bookings.length === 0`, arriba) ninguna rama llega hasta acá. */}
       {bookings.length > 0 && (
-        <div className="mt-6">
+        <div>
           <Pager
             label="Paginación de reservas"
             page={page}

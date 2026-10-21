@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, spyOn, userEvent, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { DataExportButton } from './DataExportButton'
 
 /**
@@ -15,11 +14,9 @@ const meta = {
   parameters: { layout: 'padded' },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="max-w-sm bg-background p-4 text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="max-w-sm bg-background p-4 text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof DataExportButton>

@@ -1,10 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import PlayerError from './error'
 
 /**
- * Error boundary del grupo (Mi cuenta, Eliminar la cuenta), en el mundo de La Reserva (lo pone
+ * Error boundary del grupo (Mi cuenta, Eliminar la cuenta), en el cascarón de La Previa (lo pone
  * `layout.tsx`; acá, el decorator). Reporta a Sentry en un `useEffect`; sin DSN configurado en
  * Storybook, `captureException` es un no-op — no hace falta mockear el módulo.
  */
@@ -20,11 +19,9 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="min-h-dvh bg-background text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="min-h-dvh bg-background text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof PlayerError>

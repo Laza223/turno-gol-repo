@@ -1,14 +1,20 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import { LogOut } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import {
-  PORTAL_COLUMN,
-  PORTAL_LINK,
-  PORTAL_SECTION_TITLE,
-  PORTAL_TITLE,
-} from '@/components/world/PortalAuthFrame'
+  Activity,
+  Download,
+  Heart,
+  LogOut,
+  SunMoon,
+  User,
+  UserX,
+  type LucideIcon,
+} from 'lucide-react'
+import PlayerHeroBand from '@/components/site/PlayerHeroBand'
+import { Button } from '@/components/ui/button'
+import { PORTAL_LINK, PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
 import ThemeToggle from '@/components/theme/ThemeToggle'
+import { initials } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import ActivityStats from './ActivityStats'
 import { DataExportButton } from './DataExportButton'
@@ -23,9 +29,16 @@ type ProfileValues = {
   preferredArea: string
 }
 
-/** Un bloque de la página: filete arriba y aire. */
-function Block({ children }: { children: ReactNode }) {
-  return <div className="mt-8 border-t border-border pt-8">{children}</div>
+/** Un bloque de la página: tarjeta con el ícono en su cajita arriba y el contenido de la sección abajo. */
+function SectionCard({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+      <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20">
+        <Icon className="size-5" aria-hidden />
+      </div>
+      {children}
+    </div>
+  )
 }
 
 /**
@@ -55,19 +68,32 @@ export function ConfiguracionView({
   const fullName = `${profile.firstName} ${profile.lastName}`.trim()
 
   return (
-    <div className={cn(PORTAL_COLUMN, 'pb-12 pt-6')}>
-      <h1 className={PORTAL_TITLE}>Mi cuenta</h1>
+    <div className="mx-auto max-w-lg space-y-5 px-4 py-6">
+      <PlayerHeroBand eyebrow="Tu cuenta" title="Mi" accent="cuenta">
+        <section
+          aria-labelledby="quien-sos-titulo"
+          className="mt-4 flex min-w-0 items-center gap-4"
+        >
+          <h2 id="quien-sos-titulo" className="sr-only">
+            Quién sos
+          </h2>
+          <div
+            aria-hidden
+            className="hero-avatar-fallback flex size-16 shrink-0 items-center justify-center rounded-full font-display text-xl font-black italic text-emerald-700 ring-1 ring-emerald-500/30 dark:text-emerald-200 dark:ring-emerald-400/30"
+          >
+            {initials(profile.firstName, profile.lastName)}
+          </div>
+          <div className="min-w-0">
+            <p className="break-words font-display text-xl font-black italic tracking-tight text-foreground">
+              {fullName}
+            </p>
+            <p className="break-all text-base text-muted-foreground">{email}</p>
+            <p className="mt-1 text-sm text-muted-foreground">El email no se puede cambiar.</p>
+          </div>
+        </section>
+      </PlayerHeroBand>
 
-      <section aria-labelledby="quien-sos-titulo" className="mt-4 min-w-0">
-        <h2 id="quien-sos-titulo" className="sr-only">
-          Quién sos
-        </h2>
-        <p className="break-words text-lg font-semibold text-foreground">{fullName}</p>
-        <p className="break-all text-base text-muted-foreground">{email}</p>
-        <p className="mt-1 text-sm text-muted-foreground">El email no se puede cambiar.</p>
-      </section>
-
-      <Block>
+      <SectionCard icon={User}>
         <section id="tus-datos" aria-labelledby="tus-datos-titulo" className="scroll-mt-20">
           <h2 id="tus-datos-titulo" className={PORTAL_SECTION_TITLE}>
             Tus datos
@@ -80,17 +106,17 @@ export function ConfiguracionView({
             el horario y cuando se vence la seña.
           </p>
         </section>
-      </Block>
+      </SectionCard>
 
-      <Block>
+      <SectionCard icon={Heart}>
         <FavoritesList favorites={favorites} />
-      </Block>
+      </SectionCard>
 
-      <Block>
+      <SectionCard icon={Activity}>
         <ActivityStats {...activity} />
-      </Block>
+      </SectionCard>
 
-      <Block>
+      <SectionCard icon={SunMoon}>
         <section aria-labelledby="tema-titulo">
           <h2 id="tema-titulo" className={PORTAL_SECTION_TITLE}>
             Tema y sesión
@@ -109,9 +135,9 @@ export function ConfiguracionView({
             </Button>
           </form>
         </section>
-      </Block>
+      </SectionCard>
 
-      <Block>
+      <SectionCard icon={Download}>
         <section id="mis-datos" aria-labelledby="mis-datos-titulo" className="scroll-mt-20">
           <h2 id="mis-datos-titulo" className={PORTAL_SECTION_TITLE}>
             Tus datos personales
@@ -127,9 +153,9 @@ export function ConfiguracionView({
             Es tu derecho de acceso, según la Ley 25.326.
           </p>
         </section>
-      </Block>
+      </SectionCard>
 
-      <Block>
+      <SectionCard icon={UserX}>
         <section aria-labelledby="baja-titulo">
           <h2 id="baja-titulo" className={PORTAL_SECTION_TITLE}>
             Darte de baja
@@ -147,7 +173,7 @@ export function ConfiguracionView({
             Eliminar la cuenta
           </Link>
         </section>
-      </Block>
+      </SectionCard>
     </div>
   )
 }

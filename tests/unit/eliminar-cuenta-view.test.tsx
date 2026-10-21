@@ -60,16 +60,13 @@ describe('EliminarCuentaView', () => {
     expect(screen.getByRole('button', { name: 'Descargar mis datos' })).toBeTruthy()
   })
 
-  it('un solo color de alarma: no hay tarjetas roja, naranja ni ámbar', () => {
+  it('trae las tarjetas de aviso roja, naranja y ámbar, y un solo botón rojo', () => {
     const { container } = renderView(2)
-    expect(container.innerHTML).not.toMatch(/orange-|amber-|bg-red-50|border-red-/)
-  })
-
-  it('el botón de alarma no ocupa todo el ancho y no lleva sombra', () => {
-    renderView(0)
-    const boton = screen.getByRole('button', { name: 'Eliminar mi cuenta' })
-    expect(boton.className).not.toMatch(/\bw-full\b/)
-    expect(boton.className).toContain('shadow-none')
+    expect(container.querySelector('.border-red-300.bg-red-50')).not.toBeNull()
+    expect(container.querySelector('.border-orange-300.bg-orange-50')).not.toBeNull()
+    expect(container.querySelector('.border-amber-200.bg-amber-50')).not.toBeNull()
+    expect(container.querySelectorAll('button.bg-red-600')).toHaveLength(1)
+    expect(screen.getByRole('heading', { level: 1 }).className).toMatch(/italic/)
   })
 
   it('el email confirma sin importar mayúsculas ni espacios, y el campo se arma para un email', async () => {

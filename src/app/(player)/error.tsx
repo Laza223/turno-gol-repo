@@ -8,7 +8,7 @@ import { PortalResult, PortalResultLink } from '@/components/world/PortalResult'
 import { Button } from '@/components/ui/button'
 
 /**
- * Error boundary del grupo (Mi cuenta, Eliminar la cuenta), en el mundo de La Reserva. Mis
+ * Error boundary del grupo (Mi cuenta, Eliminar la cuenta), en el cascarón de La Previa. Mis
  * reservas tiene el suyo. `PortalResult` pinta el <h1> y la columna dentro del <main> del
  * cascarón: no abre un <main> propio.
  */

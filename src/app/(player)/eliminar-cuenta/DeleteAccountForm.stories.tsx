@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, screen, userEvent, within } from 'storybook/test'
 import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
 import { paintedContrast } from '@/test/contrast'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { DeleteAccountForm } from './DeleteAccountForm'
 
 /**
@@ -22,11 +21,9 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="bg-background p-4 text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="bg-background p-4 text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof DeleteAccountForm>

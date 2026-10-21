@@ -4,7 +4,6 @@ import { artDateString, daysFromNow } from '@/test/fixtures/clock'
 import { courtFutbol5, courtFutbol7, courtFutbol11 } from '@/test/fixtures/court'
 import { tenant, tenantAlt } from '@/test/fixtures/tenant'
 import { paintedContrast } from '@/test/contrast'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import MisReservasLoading from './loading'
 import { MisReservasView, type MisReservasBookingRow } from './MisReservasView'
 
@@ -68,11 +67,9 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="min-h-dvh bg-background">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="min-h-dvh bg-background">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof MisReservasView>
@@ -670,6 +667,12 @@ export const TerminadoDeHoyNoEsLaProxima: Story = {
 /**
  * El esqueleto de `loading.tsx` mide lo que mide la tarjeta real, para que al llegar los datos
  * nada se mueva: la destacada (con seña, la más alta) y una compacta.
+ *
+ * Corre al ancho del runner: los `min-[Npx]` del esqueleto miran el VIEWPORT del iframe, y ni
+ * `parameters.viewport` ni un contenedor angosto lo cambian; `page.viewport` pasa por el canal de
+ * comandos de Vitest, que con ~280 stories en paralelo tarda decenas de segundos y muta la página
+ * compartida (ver `PortalWorld.stories.tsx`): no es estable. Las medidas a 320/360/390/430 px
+ * (Chromium, vista real vs esqueleto) se tomaron con Playwright contra Storybook: desvío ≤ 4 px en la banda, 0 px en pestañas y tarjetas a 320, 360, 390, 430 y 1280.
  */
 export const AlturaDelEsqueleto: Story = {
   args: {
@@ -697,10 +700,14 @@ export const AlturaDelEsqueleto: Story = {
   ),
   play: async ({ canvasElement }) => {
     const real = canvasElement.querySelectorAll('#real li')
-    const esqueleto = canvasElement.querySelectorAll('#esqueleto .rounded-xl')
-    // [0] son las pestañas; [1] la próxima; [2] una compacta.
+    const esqueleto = canvasElement.querySelectorAll('#esqueleto .rounded-2xl')
+    // [0] es la próxima; [1] una compacta.
     const alto = (el: Element | undefined) => el!.getBoundingClientRect().height
-    await expect(Math.abs(alto(esqueleto[1]) - alto(real[0]))).toBeLessThanOrEqual(8)
-    await expect(Math.abs(alto(esqueleto[2]) - alto(real[1]))).toBeLessThanOrEqual(8)
+    await expect(Math.abs(alto(esqueleto[0]) - alto(real[0]))).toBeLessThanOrEqual(8)
+    await expect(Math.abs(alto(esqueleto[1]) - alto(real[1]))).toBeLessThanOrEqual(8)
+    const hero = (root: string, sel: string) => alto(canvasElement.querySelector(`${root} ${sel}`)!)
+    await expect(
+      Math.abs(hero('#esqueleto', '.rounded-3xl') - hero('#real', 'section.rounded-3xl')),
+    ).toBeLessThanOrEqual(8)
   },
 }

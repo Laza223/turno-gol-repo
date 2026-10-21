@@ -96,9 +96,10 @@ describe('ConfiguracionView — Mi cuenta en una sola página', () => {
     expect(screen.getByRole('link', { name: 'Reservar una cancha' })).toBeTruthy()
   })
 
-  it('no trae la banda hero de La Previa ni itálica negra', () => {
+  it('trae la banda hero de La Previa con el avatar de iniciales y cada sección en tarjeta', () => {
     const { container } = renderView()
-    expect(container.querySelector('.player-hero-band')).toBeNull()
-    expect(container.innerHTML).not.toMatch(/\bitalic\b|font-black/)
+    expect(container.querySelector('.player-hero-band')).not.toBeNull()
+    expect(container.querySelector('.hero-avatar-fallback')).not.toBeNull()
+    expect(container.querySelectorAll('.rounded-2xl.bg-card').length).toBeGreaterThanOrEqual(6)
   })
 })

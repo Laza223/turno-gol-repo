@@ -726,6 +726,27 @@ html:has([data-fixed-cta]) {
   color: transparent;
 }
 
+/* Avatar fallback (iniciales) de la banda de perfil. */
+.hero-avatar-fallback {
+  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.22), rgba(255, 255, 255, 0.5));
+}
+.dark .hero-avatar-fallback {
+  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.28), rgba(2, 6, 23, 0.4));
+}
+
+/* Campos del grupo del jugador (Mi cuenta, Eliminar cuenta, diálogos de Mis reservas): el
+   --input del panel da 1,6:1 en claro y 1,2:1 en oscuro, y WCAG 1.4.11 pide 3:1 para el borde
+   de un control. Mismos valores que portal-world.css, sin el resto del mundo. Se cuelga de
+   <html> por lo mismo que aquél: los --color-* de @theme se resuelven en :root, y así alcanza
+   también lo que Radix monta en <body>. Marcador: `data-portal-fields` en (player)/layout.tsx. */
+html:not(.dark):has([data-portal-fields]) {
+  --input: 215.4 16.3% 46.9%; /* slate-500 — 4,8:1 sobre blanco */
+  --ring: var(--primary); /* emerald-700 — 5,6:1 sobre blanco */
+}
+html.dark:has([data-portal-fields]) {
+  --input: 215.4 16.3% 50%; /* #6B7C94 — 4,3:1 sobre la tarjeta, 4,7:1 sobre el fondo */
+}
+
 /* Tarjeta-comprobante: resumen del turno, código de reserva y política de reservas del panel
    (`ReservasPolicyForm`). Light = card blanca con elevación + tinte emerald;
    dark = slab translúcido oscuro con glow. */

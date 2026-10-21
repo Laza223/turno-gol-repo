@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
 import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { CancelBookingButton } from './CancelBookingButton'
 
 /**
@@ -44,13 +43,11 @@ const meta = {
     depositAmountCents: 150_000,
   },
   decorators: [
-    // En La Reserva: el mundo tiñe `<html>` por `:has()` y alcanza al diálogo, que monta en <body>.
+    // El diálogo monta en <body>, fuera del decorador.
     (Story) => (
-      <PortalWorld>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="rounded-xl border border-border bg-card p-4">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof CancelBookingButton>
@@ -82,10 +79,6 @@ export const Abierto: Story = {
     await expect(await screen.findByText('¿Cancelar esta reserva?')).toBeInTheDocument()
     const field = screen.getByLabelText(/motivo \(opcional\)/i)
     await expect(field).toBeInTheDocument()
-    // El diálogo vive en <body>: lo cubre el mundo (radio de La Reserva) y el campo es de 16 px.
-    await expect(
-      getComputedStyle(document.documentElement).getPropertyValue('--radius').trim(),
-    ).toBe('0.75rem')
     await expect(field).toHaveClass('text-base')
     // ENS-2: la consecuencia concreta de cancelar AHORA (no más "en el plazo/fuera del plazo" en abstracto).
     await expect(

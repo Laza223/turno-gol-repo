@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { LeaveReviewButton } from './LeaveReviewButton'
 
 /**
@@ -41,13 +40,11 @@ const meta = {
   parameters: { layout: 'centered' },
   args: { bookingId: 'booking-5', tenantName: 'Complejo Fénix' },
   decorators: [
-    // En La Reserva: el mundo tiñe `<html>` por `:has()` y alcanza al diálogo, que monta en <body>.
+    // El diálogo monta en <body>, fuera del decorador.
     (Story) => (
-      <PortalWorld>
-        <div className="rounded-xl border border-border bg-card p-4">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="rounded-xl border border-border bg-card p-4">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof LeaveReviewButton>
@@ -62,10 +59,6 @@ export const Abierto: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /dejar reseña/i }))
     await expect(await screen.findByText('¿Cómo estuvo Complejo Fénix?')).toBeInTheDocument()
-    // El diálogo vive en <body>: lo cubre el mundo (radio de La Reserva) y el campo es de 16 px.
-    await expect(
-      getComputedStyle(document.documentElement).getPropertyValue('--radius').trim(),
-    ).toBe('0.75rem')
     await expect(screen.getByLabelText(/comentario/i)).toHaveClass('text-base')
     for (const star of screen.getAllByRole('radio', { name: /estrella/i })) {
       // `offsetWidth` y no el rect: el diálogo entra con zoom y el rect se mide a mitad de la animación.

@@ -23,17 +23,29 @@ import PlayerLayout from '@/app/(player)/layout'
 afterEach(cleanup)
 
 describe('(player) layout', () => {
-  it('monta el mundo de La Reserva: es lo que cubre cada page del grupo, su loading, su error y los diálogos', async () => {
+  it('no monta el mundo de La Reserva: las páginas del grupo cuelgan directo del cascarón de La Previa', async () => {
     const { container } = render(
       await PlayerLayout({
         children: <p>contenido</p>,
       }),
     )
-    const world = container.querySelector('[data-world="portal"]')
-    expect(world).not.toBeNull()
-    expect(world?.textContent).toBe('contenido')
+    expect(container.querySelector('[data-world="portal"]')).toBeNull()
     // Dentro del cascarón, que es el que pinta el <main>.
-    expect(world?.closest('[data-testid="shell"]')).not.toBeNull()
+    const shell = container.querySelector('[data-testid="shell"]')
+    expect(shell?.textContent).toBe('contenido')
+  })
+
+  it('marca el grupo para que los bordes de campo y el foco lleguen a 3:1 (WCAG 1.4.11)', async () => {
+    const { container } = render(await PlayerLayout({ children: <input aria-label="campo" /> }))
+    expect(container.querySelector('[data-portal-fields] input')).not.toBeNull()
+
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const css = readFileSync(resolve(__dirname, '../../src/app/globals.css'), 'utf8')
+    expect(css).toMatch(
+      /html:not\(\.dark\):has\(\[data-portal-fields\]\) \{\s*--input: 215\.4 16\.3% 46\.9%;[^}]*--ring: var\(--primary\);/,
+    )
+    expect(css).toMatch(/html\.dark:has\(\[data-portal-fields\]\) \{\s*--input: 215\.4 16\.3% 50%;/)
   })
 
   it('Mis reservas ya no monta su propio mundo: lo hereda del grupo', async () => {

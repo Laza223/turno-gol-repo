@@ -37,6 +37,9 @@ vi.mock('@/modules/payments/mp-reconcile.service', () => {
 vi.mock('@/modules/notifications/push.service', () => ({
   notifyAdminBookingConfirmed: vi.fn(),
 }))
+vi.mock('@/modules/whatsapp-bot/whatsapp-bot.notices', () => ({
+  notifyWhatsappGuest: vi.fn(),
+}))
 vi.mock('@/shared/observability', () => ({
   track: { payment: vi.fn() },
 }))

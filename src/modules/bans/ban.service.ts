@@ -77,6 +77,40 @@ export async function checkPlayerBanned(
 }
 
 /**
+ * Ban vigente del complejo para un jugador cuyo teléfono termina en
+ * `phoneHint8` (`players.phone_hint8`, los últimos 8 dígitos). Es el cruce de la
+ * reserva por WhatsApp, que es de invitado y no trae `player_id`: mismo
+ * mecanismo y misma vigencia que `checkPlayerBanned` (bans manuales y softban
+ * de ausencias, ambos en `tenant_player_bans`), solo que se llega a la fila por
+ * el teléfono. No mira el ban global (`players.status`): bajo RLS un jugador sin
+ * relación con el complejo ni siquiera es visible desde acá.
+ */
+export async function findActiveBanByPhoneHint(
+  tenantId: string,
+  phoneHint8: string,
+  tx: DbTx,
+): Promise<{ playerId: string; reason: string; until: Date | null } | null> {
+  const rows = await tx
+    .select({
+      playerId: tenantPlayerBans.playerId,
+      reason: tenantPlayerBans.reason,
+      bannedUntil: tenantPlayerBans.bannedUntil,
+    })
+    .from(tenantPlayerBans)
+    .innerJoin(players, eq(players.id, tenantPlayerBans.playerId))
+    .where(
+      and(
+        eq(tenantPlayerBans.tenantId, tenantId),
+        eq(players.phoneHint8, phoneHint8),
+        banVigenteCond(),
+      ),
+    )
+    .limit(1)
+  const row = rows[0]
+  return row ? { playerId: row.playerId, reason: row.reason, until: row.bannedUntil } : null
+}
+
+/**
  * Motivo del ban vigente de un jugador en un tenant — usado por el checkout
  * público (`(public)/[slug]/reservar/page.tsx`) para mostrar el `reason` real
  * en el banner de error SIN que viaje por query string (R3-5): antes

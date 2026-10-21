@@ -23,6 +23,9 @@ import {
   insertTournamentStage,
   insertTournamentTeam,
   insertTournamentTeamPlayer,
+  insertWhatsappChat,
+  insertWhatsappConnection,
+  insertWhatsappMessage,
 } from './factories'
 
 export type IsolationSeed = {
@@ -47,6 +50,9 @@ export type IsolationSeed = {
   tournamentStageId: string
   tournamentMatchId: string
   tournamentMatchEventId: string
+  whatsappConnectionId: string
+  whatsappChatId: string
+  whatsappMessageId: string
 }
 
 /**
@@ -103,6 +109,13 @@ export async function seedIsolationData(sql: Sql, tenantId: string): Promise<Iso
     teamId: tournamentTeamId,
     teamPlayerId: tournamentTeamPlayerId,
   })
+  // Bot de WhatsApp (migr. 096): conexión, chat y un mensaje del chat.
+  const whatsappConnectionId = await insertWhatsappConnection(sql, { tenantId })
+  const whatsappChatId = await insertWhatsappChat(sql, { tenantId })
+  const whatsappMessageId = await insertWhatsappMessage(sql, {
+    tenantId,
+    chatId: whatsappChatId,
+  })
 
   return {
     tenantId,
@@ -126,5 +139,8 @@ export async function seedIsolationData(sql: Sql, tenantId: string): Promise<Iso
     tournamentStageId,
     tournamentMatchId,
     tournamentMatchEventId,
+    whatsappConnectionId,
+    whatsappChatId,
+    whatsappMessageId,
   }
 }

@@ -71,6 +71,10 @@ export const bookings = pgTable(
 
     guestName: text('guest_name'),
     guestPhone: text('guest_phone'),
+    // Migr. 096: la reserva nació en el bot de WhatsApp (reserva sin cuenta).
+    // Sin FK a propósito: un SET NULL al purgar el chat sería un UPDATE sobre
+    // reservas terminales, que el trigger de invariantes prohíbe (ver la 096).
+    whatsappChatId: uuid('whatsapp_chat_id'),
 
     canceledReason: text('canceled_reason'),
     canceledBy: cancellationActorEnum('canceled_by'),

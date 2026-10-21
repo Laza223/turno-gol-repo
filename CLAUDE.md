@@ -31,7 +31,7 @@ Resto:
 - PostgreSQL vía Supabase (Auth + Realtime) · Drizzle ORM · Zod 4 · pg-boss (background jobs)
 - shadcn/ui + Tailwind CSS v4 · Vitest + Playwright + Storybook
 - **Imágenes: Cloudflare R2** (`src/shared/storage/r2.ts`), NO Supabase Storage
-- Resend (email transaccional). WhatsApp **descartado para v1** (ADR-003)
+- Resend (email transaccional). WhatsApp: **solo el bot con IA del complejo** (extra pago, coexistencia vía Kapso, Claude Haiku; flag `whatsapp_bot`) — sin mensajes masivos ni recordatorios. Decisión: `docs/decisions/2026-10-20-bot-whatsapp.md`
 - Web Push API: push al admin cuando llega reserva online
 - **MercadoPago: DOS aplicaciones, una por circuito de plata** — Suscripciones cobra el plan SaaS con el token master del env (`MP_TURNOGOL_ACCESS_TOKEN`); Checkout Pro es el OAuth por complejo para señas (`MP_CLIENT_ID`/`MP_CLIENT_SECRET`). Las dos notifican al mismo buzón y MP genera una clave de firma por aplicación: `webhook-auth.ts` valida contra `MP_WEBHOOK_SECRET` **y** `MP_WEBHOOK_SECRET_CHECKOUT`.
   **TurnoGol NO reembolsa por API.** El scope `payments:refunds` solo funcionó con la cuenta master (dueña de las dos apps); con la cuenta de un tercero — o sea, cualquier cliente real — devuelve 403 siempre. El camino automático se eliminó: la devolución la hace el complejo y el sistema solo la registra y la lista en `/caja/cuentas`. No perseguir el token con permiso. Detalle: `docs/planning/2026-08-22-dos-apps-mercadopago.md`
@@ -144,7 +144,7 @@ Respuestas directas, sin introducciones ni conclusiones. Código y comandos, no 
 
 **SIEMPRE**
 - Correr el bloque de cuatro comandos de arriba antes de decir "listo". Al declarar verde, **citar el output real**; sin output pegado no hay claim.
-- TypeScript strict. Server Actions para mutaciones de UI interna; Route Handlers **solo** para webhooks de MP, endpoints públicos cross-origin (`/api/public/*`) y auth callbacks. Queries a DB solo desde Server Components o Server Actions.
+- TypeScript strict. Server Actions para mutaciones de UI interna; Route Handlers **solo** para webhooks (MP y WhatsApp), endpoints públicos cross-origin (`/api/public/*`) y auth callbacks. Queries a DB solo desde Server Components o Server Actions.
 - `SET LOCAL` para tenant context — **nunca `SET` sin LOCAL**.
 - En auditoría: citar archivo + línea, con evidencia (qué dice el código vs qué debería decir) y severidad 🔴/🟡/🟢. Registrar en `docs/audit/PROGRESS.md`.
 

@@ -2,7 +2,13 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql } from '@/shared/db/client'
 import { setBillingGateway } from '@/modules/billing/billing.gateway'
 import { MockGateway } from '@/modules/payments/mp-gateway.mock'
-import { cleanupAll, ensureRoles } from '../helpers/tenant'
+import { cleanupAll, createTestTenant, ensureRoles } from '../helpers/tenant'
+import {
+  insertBooking,
+  insertCourt,
+  insertWhatsappChat,
+  insertWhatsappMessage,
+} from '../helpers/factories'
 // Seed + counters compartidos con data-retention-worker-role.test.ts (rol real).
 import { FULL, ZERO, countChildren, setupTenant } from '../helpers/retention'
 
@@ -396,4 +402,70 @@ describe('data-retention-cleanup', () => {
     // siguen intactas — el DELETE nunca corrió.
     expect(await countChildren(sql, tenantId)).toEqual(FULL)
   }, 30_000)
+})
+
+// ─── Bot de WhatsApp (migr. 096): retención de 30 días ─────────────────────
+// Mensajes y chats sin actividad se purgan semanalmente. El wipe de un complejo
+// con estas tablas ya lo cubre el seed de `setupTenant` (FULL/ZERO traen chat,
+// conexión y dos mensajes, uno de ellos un aviso que apunta a una reserva
+// TERMINAL — el caso que fija el orden de los DELETE).
+describe('data-retention-cleanup — WhatsApp (30 días)', () => {
+  it('purga mensajes y chats de más de 30 días y conserva lo reciente', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const oldChat = await insertWhatsappChat(sql, { tenantId: tenant.id, lastInboundDaysAgo: 31 })
+    await insertWhatsappMessage(sql, { tenantId: tenant.id, chatId: oldChat, createdDaysAgo: 31 })
+    const liveChat = await insertWhatsappChat(sql, { tenantId: tenant.id, lastInboundDaysAgo: 1 })
+    const oldMessageInLiveChat = await insertWhatsappMessage(sql, {
+      tenantId: tenant.id,
+      chatId: liveChat,
+      createdDaysAgo: 31,
+    })
+    const freshMessage = await insertWhatsappMessage(sql, {
+      tenantId: tenant.id,
+      chatId: liveChat,
+      createdDaysAgo: 1,
+    })
+
+    await runDataRetentionCleanup()
+
+    const chats = await sql<{ id: string }[]>`
+      SELECT id FROM whatsapp_chats WHERE tenant_id = ${tenant.id}
+    `
+    // El chat sin actividad cae y se lleva sus mensajes por CASCADE; el vivo se queda.
+    expect(chats.map((c) => c.id)).toEqual([liveChat])
+    const messages = await sql<{ id: string }[]>`
+      SELECT id FROM whatsapp_messages WHERE tenant_id = ${tenant.id}
+    `
+    // El mensaje viejo de un chat vivo también se purga (se mide por created_at).
+    expect(messages.map((m) => m.id)).toEqual([freshMessage])
+    expect(messages.map((m) => m.id)).not.toContain(oldMessageInLiveChat)
+  }, 60_000)
+
+  it('un chat vencido con una reserva TERMINAL se purga igual y la reserva sobrevive intacta', async () => {
+    // bookings.whatsapp_chat_id va SIN foreign key (migr. 096): con ON DELETE SET
+    // NULL, el DELETE del chat haría un UPDATE sobre una reserva `completed`, que
+    // `enforce_booking_invariants_fn` prohíbe, y la purga abortaría entera.
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const courtId = await insertCourt(sql, tenant.id)
+    const chatId = await insertWhatsappChat(sql, { tenantId: tenant.id, lastInboundDaysAgo: 31 })
+    const bookingId = await insertBooking(sql, { tenantId: tenant.id, courtId })
+    await sql`
+      UPDATE bookings
+      SET whatsapp_chat_id = ${chatId}, status = 'completed'::booking_status
+      WHERE id = ${bookingId}
+    `
+
+    await runDataRetentionCleanup()
+
+    const chats = await sql<{ id: string }[]>`SELECT id FROM whatsapp_chats WHERE id = ${chatId}`
+    expect(chats).toHaveLength(0)
+    const [booking] = await sql<{ status: string; whatsapp_chat_id: string | null }[]>`
+      SELECT status, whatsapp_chat_id FROM bookings WHERE id = ${bookingId}
+    `
+    expect(booking?.status).toBe('completed')
+    // El id queda colgando a propósito: sigue marcando que la reserva vino del bot.
+    expect(booking?.whatsapp_chat_id).toBe(chatId)
+  }, 60_000)
 })

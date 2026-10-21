@@ -256,6 +256,42 @@ export class BookingPriceBelowPaidError extends Error {
   }
 }
 
+/**
+ * El turno no se ofrece online aunque esté libre: el portal del complejo está
+ * cerrado o sin reservas online, ese día está cerrado (`closed_dates` o día
+ * cerrado de `opening_hours`) o la hora cae fuera de su horario. Solo la lanza
+ * `createWhatsappBooking`, que además de las reglas del portal revalida lo que
+ * la grilla pública ya filtra. Subclase de `BookingValidationError` a propósito:
+ * quien no la conozca la trata como "turno no disponible".
+ */
+export class BookingNotOfferedError extends BookingValidationError {
+  constructor(
+    public readonly reason: 'portal_closed' | 'online_disabled' | 'closed_day' | 'outside_hours',
+  ) {
+    super(`Slot is not offered online: ${reason}`)
+    this.name = 'BookingNotOfferedError'
+  }
+}
+
+/**
+ * Topes por CHAT de WhatsApp (no por teléfono, que el staff puede editar):
+ * `holds` = demasiados `pending_payment` vivos, `unpaid_confirmed` = demasiadas
+ * reservas futuras confirmadas sin seña. Los límites viven en `shared/constants`.
+ */
+export class TooManyWhatsappBookingsError extends Error {
+  constructor(
+    public readonly chatId: string,
+    public readonly tenantId: string,
+    public readonly reason: 'holds' | 'unpaid_confirmed',
+    public readonly activeCount: number,
+  ) {
+    super(
+      `WhatsApp chat ${chatId} already has ${activeCount} bookings (${reason}) in tenant ${tenantId}`,
+    )
+    this.name = 'TooManyWhatsappBookingsError'
+  }
+}
+
 // INV-ABUSE-001: tope duro de holds (pending_payment) simultáneos sin pagar
 // por jugador+tenant — defensa de Denial-of-Inventory del portal público.
 export class TooManyActiveHoldsError extends Error {

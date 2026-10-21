@@ -52,9 +52,17 @@ vi.mock('@/modules/notifications/notification.service', async () => {
   }
 })
 
+vi.mock('@/lib/kapso/client', () => ({
+  sendWhatsappText: vi.fn(async () => ({ waMessageId: 'wamid.aviso-pago-tardio' })),
+}))
+
 import { reconcilePendingPayments } from '@/shared/jobs/workers/reconcile-pending-payments.worker'
 import { getBookingDetail } from '@/app/(admin)/reservas/queries'
 import { withTenantContext } from '@/shared/db/client'
+import { sendWhatsappText } from '@/lib/kapso/client'
+import { insertWhatsappChat, insertWhatsappConnection } from '../helpers/factories'
+
+const WA_PHONE = '5491155550000'
 
 const PRICING = {
   rules: [
@@ -77,11 +85,17 @@ const DEPOSIT = 240000
  * UPDATE sobre un booking terminal, así que no se puede llegar acá por
  * transición desde el test.
  */
-async function setupExpiredBookingWithStartedCheckout() {
+async function setupExpiredBookingWithStartedCheckout(opts: { viaWhatsapp?: boolean } = {}) {
   const sql = getSql()
   const tenant = await createTestTenant(sql)
-  const player = await createTestPlayer(sql)
-  await linkPlayerToTenant(sql, tenant.id, player.id)
+  // La del bot es de un invitado: sin cuenta de jugador, con el chat de WhatsApp.
+  const player = opts.viaWhatsapp ? null : await createTestPlayer(sql)
+  if (player) await linkPlayerToTenant(sql, tenant.id, player.id)
+  let chatId: string | null = null
+  if (opts.viaWhatsapp) {
+    await insertWhatsappConnection(sql, { tenantId: tenant.id })
+    chatId = await insertWhatsappChat(sql, { tenantId: tenant.id, waPhone: WA_PHONE })
+  }
 
   await sql`UPDATE tenants SET mp_access_token = ${'dummy-encrypted-token'} WHERE id = ${tenant.id}`
 
@@ -93,13 +107,15 @@ async function setupExpiredBookingWithStartedCheckout() {
 
   const [{ id: bookingId }] = await sql<{ id: string }[]>`
     INSERT INTO bookings (
-      tenant_id, court_id, player_id, date, time_start, time_end,
+      tenant_id, court_id, player_id, guest_name, guest_phone, whatsapp_chat_id,
+      date, time_start, time_end,
       starts_at, ends_at,
       price_snapshot, deposit_amount, deposit_status, payment_method, status,
       created_at, updated_at
     )
     VALUES (
-      ${tenant.id}, ${courtId}, ${player.id},
+      ${tenant.id}, ${courtId}, ${player?.id ?? null},
+      ${player ? null : 'Lucas'}, ${player ? null : WA_PHONE}, ${chatId},
       ${FUTURE_DATE}::date, '20:00'::time, '21:00'::time,
       (${FUTURE_DATE}::date + '20:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
       (${FUTURE_DATE}::date + '21:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
@@ -112,12 +128,12 @@ async function setupExpiredBookingWithStartedCheckout() {
   await sql`
     INSERT INTO payments (tenant_id, booking_id, player_id, amount, type, method, status, mp_preference_id)
     VALUES (
-      ${tenant.id}, ${bookingId}, ${player.id},
+      ${tenant.id}, ${bookingId}, ${player?.id ?? null},
       ${DEPOSIT}, 'deposit', 'mercadopago', 'pending', ${'pref-' + bookingId}
     )
   `
 
-  return { tenantId: tenant.id, bookingId, playerId: player.id }
+  return { tenantId: tenant.id, bookingId }
 }
 
 function approveInMp(bookingId: string, mpPaymentId: string): void {
@@ -151,6 +167,7 @@ afterEach(() => {
   mockGateway.searchCalls = []
   mockGateway.searchResults = {}
   sendEmailSpy.mockClear()
+  vi.mocked(sendWhatsappText).mockClear()
 })
 
 afterAll(async () => closeSql())
@@ -219,6 +236,30 @@ describe('pago tardio sobre reserva expirada', () => {
     await reconcilePendingPayments()
 
     expect(await refundRows(bookingId)).toHaveLength(1)
+  }, 30_000)
+
+  it('reserva del bot: el invitado se entera por WhatsApp una sola vez', async () => {
+    const { tenantId, bookingId } = await setupExpiredBookingWithStartedCheckout({
+      viaWhatsapp: true,
+    })
+    approveInMp(bookingId, `mp-late-wa-${bookingId.slice(0, 8)}`)
+
+    await reconcilePendingPayments()
+    await reconcilePendingPayments()
+
+    expect(await refundRows(bookingId)).toHaveLength(1)
+    expect(sendWhatsappText).toHaveBeenCalledTimes(1)
+    expect(sendWhatsappText).toHaveBeenCalledWith({
+      phoneNumberId: `pn-${tenantId}`,
+      to: WA_PHONE,
+      body: expect.stringContaining('El complejo te devuelve la plata'),
+    })
+    const notices = await getSql()<{ notice: string; wa_message_id: string | null }[]>`
+      SELECT notice, wa_message_id FROM whatsapp_messages WHERE booking_id = ${bookingId}
+    `
+    expect(notices).toEqual([
+      { notice: 'late_payment_refunded', wa_message_id: 'wamid.aviso-pago-tardio' },
+    ])
   }, 30_000)
 
   it('MP sin pago aprobado, ni devolución ni aviso (nadie pagó)', async () => {

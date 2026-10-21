@@ -73,12 +73,18 @@ const MP_PREFERENCE_MIN_WINDOW_SECONDS = 30
  * booking_id, a retry just creates another row).
  *
  * Caller redirects player to `initPoint`.
+ *
+ * `returnUrls` (opcional): a dónde vuelve MercadoPago tras el pago. Sin él,
+ * las pantallas del jugador con sesión (`/reserva/{id}/exito|error|pendiente`).
+ * El bot de WhatsApp lo pasa porque su invitado no tiene sesión y esas
+ * pantallas la exigen. URLs absolutas, ya armadas por el caller.
  */
 export async function createDepositPayment(
   bookingId: string,
   gateway: PaymentGateway,
   tenantId: string,
   appUrl: string,
+  returnUrls?: { success: string; failure: string; pending: string },
 ): Promise<PreferenceResult> {
   track.payment('payment.deposit.create', { bookingId })
 
@@ -150,9 +156,9 @@ export async function createDepositPayment(
     bookingId,
     amount: depositAmount,
     description: `Seña reserva ${bookingId.slice(0, 8)}`,
-    successUrl: `${appUrl}/reserva/${bookingId}/exito`,
-    failureUrl: `${appUrl}/reserva/${bookingId}/error`,
-    pendingUrl: `${appUrl}/reserva/${bookingId}/pendiente`,
+    successUrl: returnUrls?.success ?? `${appUrl}/reserva/${bookingId}/exito`,
+    failureUrl: returnUrls?.failure ?? `${appUrl}/reserva/${bookingId}/error`,
+    pendingUrl: returnUrls?.pending ?? `${appUrl}/reserva/${bookingId}/pendiente`,
     notificationUrl: `${appUrl}/api/webhooks/mercadopago?tenant=${tenantId}`,
     expiresAt,
   }

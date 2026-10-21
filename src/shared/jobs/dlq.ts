@@ -31,6 +31,8 @@ export const ALL_QUEUES: readonly string[] = [
   'push-send',
   'health-ping',
   'onboarding-abandonment-sweep',
+  'whatsapp-turn',
+  'whatsapp-turn-rescue',
 ] as const
 
 /**

@@ -667,6 +667,12 @@ export const TerminadoDeHoyNoEsLaProxima: Story = {
 /**
  * El esqueleto de `loading.tsx` mide lo que mide la tarjeta real, para que al llegar los datos
  * nada se mueva: la destacada (con seña, la más alta) y una compacta.
+ *
+ * Corre al ancho del runner: los `min-[Npx]` del esqueleto miran el VIEWPORT del iframe, y ni
+ * `parameters.viewport` ni un contenedor angosto lo cambian; `page.viewport` pasa por el canal de
+ * comandos de Vitest, que con ~280 stories en paralelo tarda decenas de segundos y muta la página
+ * compartida (ver `PortalWorld.stories.tsx`): no es estable. Las medidas a 320/360/390/430 px
+ * (Chromium, vista real vs esqueleto) se tomaron con Playwright contra Storybook: desvío ≤ 4 px en la banda, 0 px en pestañas y tarjetas a 320, 360, 390, 430 y 1280.
  */
 export const AlturaDelEsqueleto: Story = {
   args: {

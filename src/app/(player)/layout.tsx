@@ -24,7 +24,10 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
         session ? { session, favoriteTenantIds: new Set(), staffPanelPath: null } : undefined
       }
     >
-      {children}
+      {/* Bordes de campo y foco a 3:1 en todo el grupo, diálogos incluidos (ver globals.css). */}
+      <div data-portal-fields className="contents">
+        {children}
+      </div>
     </PortalShell>
   )
 }

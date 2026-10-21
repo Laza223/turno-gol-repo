@@ -35,6 +35,19 @@ describe('(player) layout', () => {
     expect(shell?.textContent).toBe('contenido')
   })
 
+  it('marca el grupo para que los bordes de campo y el foco lleguen a 3:1 (WCAG 1.4.11)', async () => {
+    const { container } = render(await PlayerLayout({ children: <input aria-label="campo" /> }))
+    expect(container.querySelector('[data-portal-fields] input')).not.toBeNull()
+
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const css = readFileSync(resolve(__dirname, '../../src/app/globals.css'), 'utf8')
+    expect(css).toMatch(
+      /html:not\(\.dark\):has\(\[data-portal-fields\]\) \{\s*--input: 215\.4 16\.3% 46\.9%;[^}]*--ring: var\(--primary\);/,
+    )
+    expect(css).toMatch(/html\.dark:has\(\[data-portal-fields\]\) \{\s*--input: 215\.4 16\.3% 50%;/)
+  })
+
   it('Mis reservas ya no monta su propio mundo: lo hereda del grupo', async () => {
     const { existsSync } = await import('node:fs')
     const { resolve } = await import('node:path')

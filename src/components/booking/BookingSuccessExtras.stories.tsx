@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
 import { tenant } from '@/test/fixtures/tenant'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { PORTAL_COLUMN } from '@/components/world/PortalAuthFrame'
 import BookingSuccessExtras from './BookingSuccessExtras'
 
@@ -30,13 +29,11 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="min-h-dvh bg-background text-foreground">
-          <div className={PORTAL_COLUMN}>
-            <Story />
-          </div>
+      <div className="min-h-dvh bg-background text-foreground">
+        <div className={PORTAL_COLUMN}>
+          <Story />
         </div>
-      </PortalWorld>
+      </div>
     ),
   ],
 } satisfies Meta<typeof BookingSuccessExtras>

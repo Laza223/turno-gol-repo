@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import ReservaError from './error'
 
 /**
@@ -18,11 +17,9 @@ const meta = {
   args: { reset: fn() },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="min-h-dvh bg-background text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="min-h-dvh bg-background text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof ReservaError>

@@ -47,7 +47,7 @@ async function runFlow(page: Page, date: string): Promise<void> {
   await page.goto(reservarUrl(date))
   await expect(page.getByRole('heading', { name: 'Confirmá tu reserva' })).toBeVisible()
 
-  const confirmBtn = page.getByRole('button', { name: 'Pagar la seña' })
+  const confirmBtn = page.getByRole('button', { name: /^Pagar seña/ })
   await confirmBtn.click()
   await expect(page).toHaveURL(/\/mock-mp\/checkout/, { timeout: 15_000 })
 

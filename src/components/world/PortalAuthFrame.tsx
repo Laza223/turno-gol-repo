@@ -51,7 +51,7 @@ export const PORTAL_LINK =
  * de ui/input.tsx medía 2,87:1 en claro y 3,35:1 en oscuro, y es el ejemplo del formato del email.
  * Se pasa por `className` al `Input`, que no se toca (tailwind-merge deja ganar esta clase).
  */
-export const PORTAL_INPUT =
+const PORTAL_INPUT =
   'h-12 md:h-12 text-base md:text-sm placeholder:text-muted-foreground aria-invalid:border-destructive aria-invalid:focus-visible:border-destructive'
 
 /**
@@ -76,8 +76,8 @@ export const AUTH_ACCENT_STYLE = {
  */
 export const AUTH_INPUT = `${PORTAL_INPUT} bg-white/4 text-white`
 
-/** El vidrio de la card de ingreso (el de `cardStyle` de La Previa). */
-const AUTH_CARD_STYLE = {
+/** El vidrio de la card de ingreso (el de `cardStyle` de La Previa); también el del modal de confirmar. */
+export const AUTH_CARD_STYLE = {
   background: 'linear-gradient(180deg, rgba(15,23,42,.72), rgba(2,6,23,.85))',
   border: '1px solid rgba(255,255,255,.1)',
   boxShadow: '0 0 60px rgba(16,185,129,.12), 0 40px 80px -42px rgba(0,0,0,.9)',

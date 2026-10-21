@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { uid } from '@/test/fixtures/ids'
 import { BookingSuccessCard, type ConfirmedBooking } from './BookingSuccessCard'
 
@@ -23,9 +22,9 @@ const base: ConfirmedBooking = {
 }
 
 /**
- * La reserva confirmada vive en `reserva/[bookingId]/exito/page.tsx`, dentro de `PortalShell` y del
- * mundo del portal (`reserva/layout.tsx`): una columna de ~560 px, plana, con una sola acción verde
- * ("Avisarle al grupo"). Las stories la montan en `PortalWorld`.
+ * La reserva confirmada vive en `reserva/[bookingId]/exito/page.tsx`, dentro de `PortalShell`: el
+ * cascarón de La Previa (glow esmeralda), la insignia con brillo y una sola acción verde
+ * ("Avisarle al grupo"). Las stories la montan sobre el fondo del tema.
  */
 const meta = {
   title: 'Player/BookingResult/BookingSuccessCard',
@@ -38,11 +37,9 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="min-h-dvh bg-background text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="min-h-dvh bg-background text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof BookingSuccessCard>

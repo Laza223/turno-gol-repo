@@ -90,7 +90,7 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
       await expect(page.getByRole('heading', { name: /confirmá tu reserva/i })).toBeVisible()
 
       // Click the deposit confirm button
-      await page.getByRole('button', { name: 'Pagar la seña' }).click()
+      await page.getByRole('button', { name: /^Pagar seña/ }).click()
 
       // Should be on mock MP checkout
       await expect(page).toHaveURL(/\/mock-mp\/checkout/, { timeout: 15_000 })
@@ -139,7 +139,7 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
       await page.goto(reservarUrl(DEPOSIT_TENANT_SLUG, DEPOSIT_COURT_ID, date, '16:00'))
       await expect(page.getByRole('heading', { name: /confirmá tu reserva/i })).toBeVisible()
 
-      await page.getByRole('button', { name: 'Pagar la seña' }).click()
+      await page.getByRole('button', { name: /^Pagar seña/ }).click()
       await expect(page).toHaveURL(/\/mock-mp\/checkout/, { timeout: 15_000 })
 
       const bookingId = extractBookingId(page.url())
@@ -209,7 +209,7 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
       await page.goto(reservarUrl(DEPOSIT_TENANT_SLUG, DEPOSIT_COURT_ID, date, '18:00'))
       await expect(page.getByRole('heading', { name: /confirmá tu reserva/i })).toBeVisible()
 
-      await page.getByRole('button', { name: 'Pagar la seña' }).click()
+      await page.getByRole('button', { name: /^Pagar seña/ }).click()
       await expect(page).toHaveURL(/\/mock-mp\/checkout/, { timeout: 15_000 })
 
       const bookingId = extractBookingId(page.url())
@@ -293,7 +293,7 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
       await page.goto(reservarUrl(DEMO_TENANT_SLUG, DEMO_COURT_ID, date, '14:00'))
       await expect(page.getByRole('heading', { name: /confirmá tu reserva/i })).toBeVisible()
 
-      await page.getByRole('button', { name: 'Confirmar reserva' }).click()
+      await page.getByRole('button', { name: 'Reservar' }).click()
 
       // Must NOT pass through /mock-mp/checkout
       await expect(page).toHaveURL(/\/reserva\/[0-9a-f-]{36}\/exito/, { timeout: 15_000 })

@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { RESERVAR_COLUMN } from '../CheckoutStates'
 import BookingSummary, { type BookingSummaryData } from './BookingSummary'
 
@@ -24,13 +23,11 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="min-h-dvh bg-background text-foreground">
-          <div className={RESERVAR_COLUMN}>
-            <Story />
-          </div>
+      <div className="min-h-dvh bg-background text-foreground">
+        <div className={RESERVAR_COLUMN}>
+          <Story />
         </div>
-      </PortalWorld>
+      </div>
     ),
   ],
 } satisfies Meta<typeof BookingSummary>

@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { CheckoutInvalidState } from './CheckoutStates'
 
 /**
@@ -15,11 +14,9 @@ const meta = {
   args: { slug: 'complejo-fenix' },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="min-h-dvh bg-background text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="min-h-dvh bg-background text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof CheckoutInvalidState>

@@ -3,7 +3,8 @@ import { cookies, headers } from 'next/headers'
 import Link from 'next/link'
 import { notFound, redirect, RedirectType } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
-import { PORTAL_LINK, PORTAL_TITLE } from '@/components/world/PortalAuthFrame'
+import ReservaShell from '@/components/booking/ReservaDarkShell'
+import { PORTAL_LINK } from '@/components/world/PortalAuthFrame'
 import { buildMetadata } from '@/lib/seo/metadata'
 import {
   buildFichaHref,
@@ -122,8 +123,9 @@ export default async function ReservarPage(props: Props) {
           ...(tenant.acceptsCash ? (['cash'] as const) : []),
           ...(tenant.acceptsTransfer ? (['transfer'] as const) : []),
         ]
-  // Cómo paga también vive en la URL; inválido = el primero que acepta el complejo.
-  const pay = parsePay(searchParams.pay, payMethods) ?? payMethods[0] ?? null
+  // `?pay=` ya no tiene pantalla (sin seña la reserva se crea sin método presencial): solo se
+  // respeta el de un link viejo, y ausente o inválido es `null`. Es lo que firma el vínculo.
+  const pay = parsePay(searchParams.pay, payMethods)
 
   const user = await extractAuthUser()
   const player = user?.type === 'player' ? user : null
@@ -227,67 +229,71 @@ export default async function ReservarPage(props: Props) {
       : null
 
   return (
-    // Con sesión, el botón de confirmar es una barra fija abajo en el celular: `PortalFrame` suma su
-    // alto a su relleno inferior (ver `data-fixed-cta`), así que la columna no lleva nada extra.
-    <div className={cn(RESERVAR_COLUMN, 'pb-12')}>
-      <Link
-        href={turnHref}
-        className={cn(
-          PORTAL_LINK,
-          '-ml-1 inline-flex min-h-11 items-center gap-1 rounded-md px-1 text-base font-semibold text-emerald-700 underline underline-offset-4 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300',
-        )}
-      >
-        <ArrowLeft className="size-4" aria-hidden />
-        Volver
-      </Link>
-      <h1 className={cn(PORTAL_TITLE, 'mt-2')}>Confirmá tu reserva</h1>
+    <ReservaShell>
+      {/* El botón de acción es una barra fija abajo en el celular (con y sin sesión): `PortalFrame`
+        suma su alto a su relleno inferior (ver `data-fixed-cta`), así que la columna no lleva nada extra. */}
+      <div className={cn(RESERVAR_COLUMN, 'pb-12')}>
+        <Link
+          href={turnHref}
+          className={cn(
+            PORTAL_LINK,
+            '-ml-1 inline-flex min-h-11 items-center gap-1 rounded-md px-1 text-base font-semibold text-emerald-700 underline underline-offset-4 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300',
+          )}
+        >
+          <ArrowLeft className="size-4" aria-hidden />
+          Volver
+        </Link>
+        <h1 className="mt-2 font-display text-3xl font-black italic tracking-tight text-foreground">
+          Confirmá tu <span className="hero-accent-text">reserva</span>
+        </h1>
 
-      <div className="mt-6 space-y-8">
-        <CheckoutErrorBanner
-          turnHref={turnHref}
-          error={searchParams.error}
-          until={searchParams.until}
-          reason={banReason ?? undefined}
-        />
+        <div className="mt-6 space-y-8">
+          <CheckoutErrorBanner
+            turnHref={turnHref}
+            error={searchParams.error}
+            until={searchParams.until}
+            reason={banReason ?? undefined}
+          />
 
-        <BookingSummary
-          data={{
-            tenantName: tenant.name,
-            address: tenant.address,
-            city: tenant.city,
-            courtName: courtData.name,
-            courtFormat: courtData.format,
-            date,
-            timeStart: time,
-            timeEnd,
-            price,
-            depositAmount,
-            hidePrices: tenant.hidePrices,
-          }}
-        />
+          <BookingSummary
+            data={{
+              tenantName: tenant.name,
+              address: tenant.address,
+              city: tenant.city,
+              courtName: courtData.name,
+              courtFormat: courtData.format,
+              date,
+              timeStart: time,
+              timeEnd,
+              price,
+              depositAmount,
+              hidePrices: tenant.hidePrices,
+            }}
+          />
 
-        <CheckoutFlow
-          slug={params.slug}
-          court={court}
-          date={date}
-          time={time}
-          dur={durNum}
-          formato={formato}
-          methods={payMethods}
-          initialPay={pay}
-          withDeposit={depositAmount > 0}
-          hidePrices={tenant.hidePrices}
-          cancellationHours={tenant.cancellationHoursBefore}
-          isPlayer={isPlayer}
-          autoConfirmToken={autoConfirmToken}
-          intentDegraded={intentDegraded}
-          inAppBrowser={inAppBrowser}
-          createAction={createBookingAndCheckout}
-          sendLinkAction={sendPlayerMagicLink}
-          googleAction={startGoogleLoginFromReservar}
-        />
+          <CheckoutFlow
+            slug={params.slug}
+            court={court}
+            date={date}
+            time={time}
+            dur={durNum}
+            formato={formato}
+            pay={pay}
+            withDeposit={depositAmount > 0}
+            depositAmount={tenant.hidePrices ? undefined : depositAmount}
+            hidePrices={tenant.hidePrices}
+            cancellationHours={tenant.cancellationHoursBefore}
+            isPlayer={isPlayer}
+            autoConfirmToken={autoConfirmToken}
+            intentDegraded={intentDegraded}
+            inAppBrowser={inAppBrowser}
+            createAction={createBookingAndCheckout}
+            sendLinkAction={sendPlayerMagicLink}
+            googleAction={startGoogleLoginFromReservar}
+          />
+        </div>
       </div>
-    </div>
+    </ReservaShell>
   )
 }
 

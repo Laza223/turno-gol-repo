@@ -11,9 +11,8 @@ type PlayerLoginState = Awaited<ReturnType<PlayerLoginAction>>
 
 /**
  * La Server Action entra por prop (ver el comentario en IngresarForm.tsx).
- * El decorator pone el mismo marco que /ingresar (page.tsx): el mundo del portal, el logo
- * arriba y una columna de 24 rem. Los tokens del mundo se resuelven en <html>, así que el
- * contraste se mide en los dos temas.
+ * El decorator pone el mismo marco que /ingresar (page.tsx): La Previa (fondo
+ * oscuro, logo arriba y card de vidrio). El marco es siempre oscuro, con el tema claro y con el oscuro.
  */
 const meta = {
   title: 'Auth/IngresarForm',

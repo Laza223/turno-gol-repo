@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { PlayerBottomNav } from './PlayerBottomNav'
 
 /**
@@ -8,7 +7,7 @@ import { PlayerBottomNav } from './PlayerBottomNav'
  * en una caja con containing block propio para no tapar el canvas. `usePathname`
  * viene del mock estándar de next/navigation (parameters.nextjs.navigation).
  * Plana: el ítem activo va en verde, semibold y con una marca `primary` de 2 px arriba del
- * ícono; los tres ítems miden 56 px o más. `RutaExplorarMundo` la mira con los tokens del portal.
+ * ícono; los tres ítems miden 56 px o más y, sin sesión, la barra aparece igual.
  */
 const meta = {
   title: 'Player/PlayerBottomNav',
@@ -58,17 +57,6 @@ export const RutaExplorar: Story = {
     )
     await expectActivo(canvasElement, 'Explorar')
   },
-}
-
-export const RutaExplorarMundo: Story = {
-  ...RutaExplorar,
-  decorators: [
-    (Story) => (
-      <PortalWorld>
-        <Story />
-      </PortalWorld>
-    ),
-  ],
 }
 
 export const RutaMisReservas: Story = {

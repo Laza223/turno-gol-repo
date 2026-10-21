@@ -327,9 +327,8 @@ export const BotonEnElFlujoDesdeMd: Story = {
 }
 
 /**
- * El servidor ya sabe que es jugador pero la sesión del cliente todavía no se hidrató (llega con
- * un fetch): la barra fija ya está por encima del lugar de la barra inferior y el marco ya reservó
- * su alto, así que cuando la sesión llega y aparece la barra inferior nada salta.
+ * La sesión del cliente todavía no se hidrató (llega con un fetch): la barra inferior va siempre,
+ * así que ya está en el DOM, la barra fija está encima de ella y el marco ya reservó su alto.
  */
 export const BarraFijaSinSesionHidratada: Story = {
   globals: { viewport: { value: 'celular390', isRotated: false } },
@@ -344,11 +343,13 @@ export const BarraFijaSinSesionHidratada: Story = {
   render: (args) => <Screen {...args} summary={{ ...summary, hidePrices: true }} />,
   play: async ({ canvasElement }) => {
     await expect(window.innerWidth).toBe(390)
-    // Sin sesión hidratada no hay barra inferior en el DOM…
-    await expect(canvasElement.querySelector('nav[aria-label="Navegación del jugador"]')).toBeNull()
+    // La barra inferior va siempre, también sin sesión hidratada…
+    await expect(
+      canvasElement.querySelector('nav[aria-label="Navegación del jugador"]'),
+    ).not.toBeNull()
     const bar = canvasElement.querySelector('[data-fixed-cta]')!
     await expect(getComputedStyle(bar).position).toBe('fixed')
-    // …pero la barra fija ya está donde va a estar: 57 px (3.5rem + 1 px) arriba del borde.
+    // …y la barra fija está donde va: 57 px (3.5rem + 1 px) arriba del borde.
     await expect(window.innerHeight - bar.getBoundingClientRect().bottom).toBeCloseTo(57, 1)
     // Y el marco ya reservó barra inferior + barra fija: 57 + 77 px.
     const frame = bar.closest('.player-shell-bg')!

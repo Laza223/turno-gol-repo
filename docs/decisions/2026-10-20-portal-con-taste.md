@@ -1,5 +1,7 @@
 # Decisión: la home y /explorar se rehacen con taste
 
+> **Reemplazada** por [`2026-10-20-vuelve-la-previa.md`](2026-10-20-vuelve-la-previa.md): el dueño rechazó La Reserva y taste; el portal vuelve a La Previa.
+
 **Fecha:** 2026-10-20. **Decide:** Lazar. Motivo: el rediseño de La Reserva con impeccable (PRs #424 a #452) le resultó aburrido. Frenó `/explorar` (fase 2.6) antes de mergearla y pidió rehacer con la skill de diseño `design-taste-frontend` (taste) la parte del portal que vende.
 
 ## Qué pasa a taste

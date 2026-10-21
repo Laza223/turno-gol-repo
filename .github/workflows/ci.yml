@@ -48,6 +48,10 @@ jobs:
 
       - name: Lint
         run: pnpm lint
+        # ESLint con reglas tipadas ronda los 2 GB de heap y el límite por defecto de Node en el
+        # runner lo voltea con OOM (exit 134) según cuánto crezca src/. 4 GB entra holgado.
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
 
       - name: Type-check
         run: pnpm typecheck

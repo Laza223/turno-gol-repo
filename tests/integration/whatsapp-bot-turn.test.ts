@@ -37,7 +37,7 @@ vi.mock('@/modules/whatsapp-bot/whatsapp-bot.agent', async (importOriginal) => (
 
 const MINUTE_MS = 60_000
 const HOUR_MS = 60 * MINUTE_MS
-const OWNER_PAUSE_MS = 4 * HOUR_MS
+const OWNER_PAUSE_MS = 6 * HOUR_MS
 const BOT_ERROR_PAUSE_MS = 30 * MINUTE_MS
 
 type InboundEvent = Extract<NormalizedWhatsappEvent, { kind: 'inbound' }>
@@ -369,7 +369,7 @@ describe('ingestWhatsappEvents — eco del dueño', () => {
     expect(await countRows(s.tenantId)).toEqual({ chats: 0, messages: 0 })
   })
 
-  it('a un chat existente: guarda el mensaje owner ya procesado y pausa 4 h con owner_replied', async () => {
+  it('a un chat existente: guarda el mensaje owner ya procesado y pausa 6 h con owner_replied', async () => {
     const s = await seed()
     const chatId = await addChat(s)
     const now = new Date()
@@ -420,7 +420,7 @@ describe('ingestWhatsappEvents — eco del dueño', () => {
     expect(await readMessages(s.tenantId, chatId)).toHaveLength(1)
   })
 
-  it('con el chat pausado por menos tiempo: extiende la pausa a 4 h', async () => {
+  it('con el chat pausado por menos tiempo: extiende la pausa a 6 h', async () => {
     const s = await seed()
     const chatId = await addChat(s)
     const now = new Date()

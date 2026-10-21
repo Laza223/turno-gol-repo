@@ -17,7 +17,7 @@ import { BOT_FEATURE_FLAG } from './whatsapp-bot.connection'
  */
 
 /** Cuánto se calla el bot en un chat después de que el dueño contestó a mano. */
-const OWNER_REPLY_PAUSE_MS = 4 * 60 * 60 * 1000
+const OWNER_REPLY_PAUSE_MS = 6 * 60 * 60 * 1000
 
 export type IngestResult = {
   /** Chats con mensajes nuevos del jugador: hay que encolar un turno del bot. */

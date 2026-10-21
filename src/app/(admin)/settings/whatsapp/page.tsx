@@ -25,7 +25,7 @@ export default async function WhatsappSettingsPage() {
             turnos libres y reserva por vos.
           </p>
           <p>
-            Cuando contestás vos desde el celular, se calla 4 horas en ese chat. Lluvia, reclamos y
+            Cuando contestás vos desde el celular, se calla 6 horas en ese chat. Lluvia, reclamos y
             eventos te los pasa a vos con una notificación.
           </p>
         </div>

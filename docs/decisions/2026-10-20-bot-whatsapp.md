@@ -55,6 +55,10 @@ Se decide **a sabiendas** de dos cosas:
 - **Reservas sin seña por el bot: hasta 2 futuras por chat** (decisión del dueño, 2026-10-20). Para la tercera, el bot manda el link de la página del complejo en TurnoGol, donde rigen las reglas de siempre. Quien reserva por WhatsApp no tiene cuenta y no acumula strikes por ausencia; si aparecen ausencias reales en el piloto, el strike por teléfono se diseña con esa evidencia.
 - El tope anti-abuso es de 30 respuestas del bot por chat y por hora, contado en la base. No usa el rate limiter de Upstash, porque el worker de Railway no depende de él.
 - Si MercadoPago devuelve al jugador a la web después de pagar la seña, cae en `/reserva/{id}/whatsapp`, una página estática sin datos. El resultado del pago se le confirma por el chat.
+- **Respuestas del dueño a las preguntas de la revisión final** (2026-10-21):
+  1. **Pausa:** cuando el dueño contesta un chat desde su celular, el bot se calla **6 h** en ese chat, no 4. Es un plazo fijo.
+  2. **Reservas sin seña:** se aceptan las que llegan desde teléfonos no verificados, con el tope de 2 por chat. No se pide verificación.
+  3. **Monitoreo del consumo:** lo mira el dueño. Se va a hacer en una sección nueva del panel de superadmin, con el contador mensual de Kapso, el gasto en Anthropic y la salud del bot, como esfuerzo aparte. Hasta que exista, se mira en los dashboards de Kapso y de Anthropic.
 
 ## Qué queda abierto
 

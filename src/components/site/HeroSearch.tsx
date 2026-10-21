@@ -273,11 +273,6 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
         aria-label="Buscar canchas de fútbol"
         className="search-card relative rounded-[22px] p-5 sm:p-7"
       >
-        <div className={`mb-4 flex items-center gap-[9px] ${eyebrowClass}`}>
-          {pulse}
-          Buscá disponibilidad ahora
-        </div>
-
         {/* Localidad en fila propia + Fecha/Hora a la par: a 640-1023px, 3 columnas iguales le
             dejaban a Fecha/Hora ~160px y el texto truncaba. A 2 columnas quedan en ~246px. */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -56,7 +56,7 @@ export function AccountMenu({
           type="button"
           aria-label={`Cuenta de ${firstName}`}
           className={cn(
-            'inline-flex h-11 items-center gap-2 rounded-full py-1 pl-1 pr-3 ring-1 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
+            'inline-flex h-11 max-w-full items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 ring-1 sm:gap-2 sm:pr-3 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2',
             chip,
           )}
         >
@@ -68,7 +68,7 @@ export function AccountMenu({
               {initials(firstName, lastName)}
             </span>
           )}
-          <span className="max-w-32 truncate text-sm font-medium">{firstName}</span>
+          <span className="max-w-24 truncate text-sm font-medium sm:max-w-32">{firstName}</span>
           <ChevronDown className="h-4 w-4 opacity-70" aria-hidden />
         </button>
       </PopoverTrigger>

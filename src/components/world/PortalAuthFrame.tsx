@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { Logo } from '@/components/ui/logo'
-import { PortalWorld } from './PortalWorld'
+import { cn } from '@/lib/utils'
 
 /**
  * Título de las pantallas de ingreso: Archivo 800 recta, 28 px. El tracking es de -0,01 em y no
@@ -54,23 +54,81 @@ export const PORTAL_LINK =
 export const PORTAL_INPUT =
   'h-12 md:h-12 text-base md:text-sm placeholder:text-muted-foreground aria-invalid:border-destructive aria-invalid:focus-visible:border-destructive'
 
-/** Marco de /ingresar, /aceptar-terminos y los estados de jugador de /verify: una columna con el logo arriba. */
-export function PortalAuthFrame({ children }: { children: ReactNode }) {
+/**
+ * Título de las pantallas de ingreso en La Previa: Archivo negra itálica, 30 px, siempre blanco
+ * (el marco es siempre oscuro). Los PORTAL_TITLE de arriba siguen siendo los de las otras pantallas.
+ */
+export const AUTH_TITLE =
+  'font-display text-3xl font-black italic leading-tight tracking-tight text-white'
+
+/** Tramo del título que lleva el degradé esmeralda ("cuenta"). */
+export const AUTH_ACCENT_STYLE = {
+  background: 'linear-gradient(100deg, #6ee7b7, #34d399 45%, #10b981)',
+  WebkitBackgroundClip: 'text',
+  backgroundClip: 'text',
+  color: 'transparent',
+} as const
+
+/**
+ * Campo de las pantallas de ingreso: PORTAL_INPUT (48 px, 16 px en mobile, placeholder pleno) con el
+ * vidrio de La Previa. El borde queda en `border-input` (3:1) y el foco en `ring-ring`/`border-primary`
+ * del primitivo: el `border-white/10` y el `ring-emerald-500` de la versión vieja no pasaban AA.
+ */
+export const AUTH_INPUT = `${PORTAL_INPUT} bg-white/4 text-white`
+
+/** El vidrio de la card de ingreso (el de `cardStyle` de La Previa). */
+const AUTH_CARD_STYLE = {
+  background: 'linear-gradient(180deg, rgba(15,23,42,.72), rgba(2,6,23,.85))',
+  border: '1px solid rgba(255,255,255,.1)',
+  boxShadow: '0 0 60px rgba(16,185,129,.12), 0 40px 80px -42px rgba(0,0,0,.9)',
+} as const
+
+/**
+ * Marco de /ingresar, /aceptar-terminos y los estados de jugador de /verify: La Previa. Fondo
+ * oscuro con resplandores, el logo arriba y el contenido en una card de vidrio. Es SIEMPRE oscuro:
+ * `dark` + `dark-surface` hacen que los tokens (texto atenuado, bordes, foco) y los `dark:` de los
+ * hijos resuelvan en oscuro también con el tema claro (ver `.dark-surface` en globals.css). `aside` (la foto) ocupa la mitad izquierda desde lg.
+ */
+export function PortalAuthFrame({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
   return (
-    <PortalWorld>
-      <div className="min-h-dvh bg-background text-foreground">
-        <div className="mx-auto w-full max-w-sm px-4 pb-12">
-          <div className="flex h-14 items-center">
-            <Link
-              href="/"
-              className="-mx-2 flex min-h-11 items-center rounded-md px-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              <Logo variant="horizontal" />
-            </Link>
+    <div
+      data-auth-frame
+      className={cn(
+        // --input del panel oscuro (#1D283A) da 1,2:1 sobre el vidrio; el de campo del portal
+        // oscuro (#6B7C94) llega a 3:1 (WCAG 1.4.11). `.dark-surface` lo vuelve a resolver acá.
+        'dark dark-surface min-h-dvh text-foreground [--input:215.4_16.3%_50%]',
+        aside && 'lg:grid lg:grid-cols-2',
+      )}
+      style={{ background: '#020617' }}
+    >
+      {aside}
+      <div className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden px-4 py-12 sm:px-6">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute right-[-15%] top-[-10%] -z-10 h-[440px] w-[440px] rounded-full blur-md"
+          style={{
+            background: 'radial-gradient(closest-side, rgba(16,185,129,.18), transparent 72%)',
+          }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute bottom-[-16%] left-[-10%] -z-10 h-[420px] w-[420px] rounded-full"
+          style={{
+            background: 'radial-gradient(closest-side, rgba(5,150,105,.12), transparent 72%)',
+          }}
+        />
+        <div className="w-full max-w-md">
+          <Link
+            href="/"
+            className="mx-auto mb-8 flex min-h-11 w-fit items-center rounded-md px-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <Logo variant="horizontal" textClassName="text-white" />
+          </Link>
+          <div className="rounded-2xl p-6 sm:p-8" style={AUTH_CARD_STYLE}>
+            {children}
           </div>
-          <div className="pt-6 sm:pt-12">{children}</div>
         </div>
       </div>
-    </PortalWorld>
+    </div>
   )
 }

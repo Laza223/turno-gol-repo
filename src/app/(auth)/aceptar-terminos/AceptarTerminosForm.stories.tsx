@@ -5,7 +5,7 @@ import { AceptarTerminosForm } from './AceptarTerminosForm'
 
 /**
  * La Server Action entra por prop. El decorator pone el mismo marco que /aceptar-terminos
- * (page.tsx): el mundo del portal, el logo arriba y la columna.
+ * (page.tsx): La Previa (fondo oscuro, logo arriba y card de vidrio).
  */
 const meta = {
   title: 'Auth/AceptarTerminosForm',

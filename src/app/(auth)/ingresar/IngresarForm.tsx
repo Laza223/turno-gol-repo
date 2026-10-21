@@ -10,10 +10,11 @@ import { Label } from '@/components/ui/label'
 import { SubmitButton } from '@/components/ui/submit-button'
 import { GoogleIcon } from '@/components/icons/GoogleIcon'
 import {
+  AUTH_ACCENT_STYLE,
+  AUTH_INPUT,
+  AUTH_TITLE,
   PORTAL_BUTTON,
   PORTAL_BUTTON_OUTLINE,
-  PORTAL_INPUT,
-  PORTAL_TITLE,
 } from '@/components/world/PortalAuthFrame'
 import {
   MAIL_ERROR_CLASS,
@@ -85,15 +86,12 @@ function DeletedNotice() {
   return (
     <div
       role="status"
-      className="mb-6 flex items-start gap-3 rounded-lg border bg-muted p-4 text-sm"
+      className="mb-6 flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm"
     >
-      <CheckCircle2
-        className="mt-0.5 size-5 shrink-0 text-emerald-700 dark:text-emerald-400"
-        aria-hidden
-      />
+      <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-300" aria-hidden />
       <div>
-        <p className="font-semibold text-foreground">Tu cuenta fue eliminada</p>
-        <p className="mt-0.5 text-muted-foreground">
+        <p className="font-semibold text-emerald-200">Tu cuenta fue eliminada</p>
+        <p className="mt-0.5 text-emerald-100/80">
           Lamentamos verte partir. Podés volver cuando quieras.
         </p>
       </div>
@@ -186,7 +184,7 @@ function FormCard({
           defaultValue={state.status === 'idle' ? undefined : state.email}
           aria-invalid={state.status === 'error' ? 'true' : undefined}
           aria-describedby={error ? 'email-error email-help' : 'email-help'}
-          className={PORTAL_INPUT}
+          className={AUTH_INPUT}
         />
         {error && (
           <p id="email-error" role="alert" className={MAIL_ERROR_CLASS}>
@@ -223,7 +221,9 @@ function FormCard({
   return (
     <>
       <div>
-        <h1 className={PORTAL_TITLE}>Accedé a tu cuenta</h1>
+        <h1 className={AUTH_TITLE}>
+          Accedé a tu <span style={AUTH_ACCENT_STYLE}>cuenta</span>
+        </h1>
         <p className="mt-2 text-pretty text-base text-muted-foreground">
           Entrá para ver tus reservas y reservar sin cargar tus datos cada vez.
         </p>
@@ -279,7 +279,7 @@ function SentPanel({
 
   return (
     <>
-      <h1 ref={heading} tabIndex={-1} className={cn(PORTAL_TITLE, 'outline-hidden')}>
+      <h1 ref={heading} tabIndex={-1} className={cn(AUTH_TITLE, 'outline-hidden')}>
         Revisá tu email
       </h1>
       {/* La action contesta "sent" aunque ese email no tenga cuenta (no revela quién tiene): el

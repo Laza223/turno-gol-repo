@@ -145,7 +145,9 @@ describe('VerifyView — errores solo de jugador', () => {
   it('oauth_cancelled no es una falla: ícono neutro y no el rojo de los errores', () => {
     renderView({ error: 'oauth_cancelled' })
 
+    // El ícono vive dentro del badge circular que precede al título.
     const icon = screen.getByRole('heading', { level: 1 }).previousElementSibling!
+      .firstElementChild!
     expect(icon.getAttribute('class')).toContain('lucide-info')
     expect(icon.getAttribute('class')).toContain('text-muted-foreground')
     expect(icon.getAttribute('class')).not.toContain('text-red')
@@ -160,7 +162,9 @@ describe('VerifyView — errores solo de jugador', () => {
   ])('%s %o sí es una falla: sigue en rojo', (error, extra) => {
     renderView({ error, ...extra })
 
+    // El ícono vive dentro del badge circular que precede al título.
     const icon = screen.getByRole('heading', { level: 1 }).previousElementSibling!
+      .firstElementChild!
     expect(icon.getAttribute('class')).toContain('text-red-700')
     expect(icon.getAttribute('class')).not.toContain('lucide-info')
   })

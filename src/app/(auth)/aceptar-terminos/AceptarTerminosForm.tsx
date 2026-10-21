@@ -4,7 +4,7 @@ import { useActionState } from 'react'
 import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { SubmitButton } from '@/components/ui/submit-button'
-import { PORTAL_BUTTON, PORTAL_TITLE } from '@/components/world/PortalAuthFrame'
+import { AUTH_TITLE, PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
 import { TONE_TEXT } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
 import type { acceptTermsAction, AcceptTermsState } from './actions'
@@ -31,7 +31,7 @@ export function AceptarTerminosForm({
   return (
     <>
       <div>
-        <h1 className={PORTAL_TITLE}>Un último paso</h1>
+        <h1 className={AUTH_TITLE}>Un último paso</h1>
         <p className="mt-2 text-base text-muted-foreground">
           Confirmá esto para terminar de crear tu cuenta.
         </p>

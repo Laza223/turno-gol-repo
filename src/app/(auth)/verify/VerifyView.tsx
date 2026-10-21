@@ -3,7 +3,7 @@ import { AlertCircle, CheckCircle2, Info } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import { SubmitButton } from '@/components/ui/submit-button'
 import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
-import { PORTAL_BUTTON, PORTAL_TITLE, PortalAuthFrame } from '@/components/world/PortalAuthFrame'
+import { AUTH_TITLE, PORTAL_BUTTON, PortalAuthFrame } from '@/components/world/PortalAuthFrame'
 import { parseIntent, parseVia, type PlayerVia, type SuccessIntent } from '@/lib/auth-success'
 import { sanitizeNext } from '@/lib/safe-redirect'
 import { TONE_TEXT } from '@/lib/status-tone'
@@ -175,7 +175,7 @@ export function VerifyView({
   const intent = parseIntent(searchParams.intent)
   const error = !isSuccess && errCode ? resolveError(errCode, parseVia(searchParams.via)) : null
 
-  // De quién es el estado. El jugador vive en el mundo del portal; el staff, y la pantalla sin
+  // De quién es el estado. El jugador vive en el marco de La Previa (PortalAuthFrame); el staff, y la pantalla sin
   // parámetros (que no sabe de quién es), siguen con el marco oscuro de siempre.
   if (isSuccess ? intent !== 'signup' : error && !error.toStaff) {
     return (
@@ -314,21 +314,33 @@ function ErrorState({ copy }: { copy: ErrorCopy }) {
   )
 }
 
-// ─── Jugador: el mundo del portal (PortalAuthFrame), sin card ni resplandores ───
+// ─── Jugador: el marco de La Previa (PortalAuthFrame): fondo oscuro, resplandores y card de vidrio ───
 
-/** Ícono de estado (color + ícono + texto) sobre el título, alineado a la izquierda como el resto. */
-const playerIconClass = 'size-8'
+/** Ícono de estado (color + ícono + texto) sobre el título, centrado en su badge, como en La Previa. */
+const playerIconClass = 'size-7'
 
 function PlayerSuccess({ next, intent }: { next: string | undefined; intent: SuccessIntent }) {
   const safeNext = sanitizeNext(next)
   const copy = SUCCESS_COPY[intent]
   return (
-    <>
-      <CheckCircle2
-        className={cn(playerIconClass, 'text-emerald-700 dark:text-emerald-400')}
-        aria-hidden
-      />
-      <h1 className={cn(PORTAL_TITLE, 'mt-4')}>{copy.title}</h1>
+    <div className="text-center">
+      <div className="relative mx-auto mb-5 flex h-16 w-16 items-center justify-center">
+        <span
+          aria-hidden
+          className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/30 motion-reduce:hidden"
+        />
+        <span
+          className="relative flex h-16 w-16 items-center justify-center rounded-full"
+          style={{
+            background: 'radial-gradient(closest-side, rgba(16,185,129,.28), rgba(2,6,23,.4))',
+            border: '1px solid rgba(16,185,129,.4)',
+            boxShadow: '0 0 50px rgba(16,185,129,.45)',
+          }}
+        >
+          <CheckCircle2 className="size-7 text-emerald-300" aria-hidden />
+        </span>
+      </div>
+      <h1 className={AUTH_TITLE}>{copy.title}</h1>
       <p className="mt-2 text-base text-muted-foreground">{copy.subtitle}</p>
       <Link href={safeNext} className={cn(buttonVariants(), PORTAL_BUTTON, 'mt-8')}>
         {copy.cta}
@@ -340,7 +352,7 @@ function PlayerSuccess({ next, intent }: { next: string | undefined; intent: Suc
         next={safeNext}
         className="mt-2 text-sm tabular-nums text-muted-foreground"
       />
-    </>
+    </div>
   )
 }
 
@@ -357,13 +369,20 @@ function PlayerError({
   // El destino original sobrevive al reintento solo si el callback lo mandó.
   const ingresarHref = next ? `/ingresar?next=${encodeURIComponent(safeNext)}` : '/ingresar'
   return (
-    <>
-      {copy.neutral ? (
-        <Info className={cn(playerIconClass, TONE_TEXT.neutral)} aria-hidden />
-      ) : (
-        <AlertCircle className={cn(playerIconClass, TONE_TEXT.destructive)} aria-hidden />
-      )}
-      <h1 className={cn(PORTAL_TITLE, 'mt-4')}>{copy.title}</h1>
+    <div className="text-center">
+      <div
+        className={cn(
+          'mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full ring-8',
+          copy.neutral ? 'bg-white/5 ring-white/5' : 'bg-red-500/15 ring-red-500/10',
+        )}
+      >
+        {copy.neutral ? (
+          <Info className={cn(playerIconClass, TONE_TEXT.neutral)} aria-hidden />
+        ) : (
+          <AlertCircle className={cn(playerIconClass, TONE_TEXT.destructive)} aria-hidden />
+        )}
+      </div>
+      <h1 className={AUTH_TITLE}>{copy.title}</h1>
       {/* role="alert" para que el lector de pantalla anuncie el motivo del fallo. */}
       <p role="alert" className="mt-2 text-base text-muted-foreground">
         {copy.message}
@@ -404,6 +423,6 @@ function PlayerError({
           Entrá al panel
         </Link>
       </p>
-    </>
+    </div>
   )
 }

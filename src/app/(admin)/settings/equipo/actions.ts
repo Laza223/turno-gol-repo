@@ -299,16 +299,23 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
         // force_password_change: el invite de GoTrue crea el usuario SIN
         // contraseña — sin este flag entra directo a /dashboard y queda sin
         // forma de volver a loguearse una vez que cierra sesión.
-        await adminClient.auth.admin.updateUserById(inviteData.user.id, {
-          app_metadata: {
-            staff_user_id: staffUser.id,
-            tenant_id: tenant.id,
-            role,
-            force_password_change: true,
-            // Solo cambia el copy de /reset-password ("Creá tu contraseña").
-            staff_invited: true,
+        // Sin los claims grabados, la invitación llega igual pero el invitado
+        // no entra como staff (y si alguna vez empezó un alta de jugador, el
+        // callback lo trata como jugador): se lanza para deshacer el alta.
+        const { error: claimError } = await adminClient.auth.admin.updateUserById(
+          inviteData.user.id,
+          {
+            app_metadata: {
+              staff_user_id: staffUser.id,
+              tenant_id: tenant.id,
+              role,
+              force_password_change: true,
+              // Solo cambia el copy de /reset-password ("Creá tu contraseña").
+              staff_invited: true,
+            },
           },
-        })
+        )
+        if (claimError) throw new InviteDeliveryError(claimError.message, claimError.code)
       } else if (inviteError) {
         // 'already been registered': el usuario ya existe en auth (p. ej. admin de
         // otro complejo). inviteUserByEmail no devuelve su id, así que lo buscamos y
@@ -319,9 +326,13 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
           throw new InvitePlayerAccountError(PLAYER_ACCOUNT_ERROR)
         }
         if (existingAuth) {
-          await adminClient.auth.admin.updateUserById(existingAuth.id, {
-            app_metadata: { ...(existingAuth.app_metadata ?? {}), staff_user_id: staffUser.id },
-          })
+          const { error: claimError } = await adminClient.auth.admin.updateUserById(
+            existingAuth.id,
+            {
+              app_metadata: { ...(existingAuth.app_metadata ?? {}), staff_user_id: staffUser.id },
+            },
+          )
+          if (claimError) throw new InviteDeliveryError(claimError.message, claimError.code)
         }
       }
 
@@ -406,6 +417,36 @@ export async function deactivateStaffAction(staffMemberId: string): Promise<Staf
     const [updated] = await tx
       .update(tenantStaffMembers)
       .set({ isActive: false })
+      .where(
+        and(eq(tenantStaffMembers.id, staffMemberId), eq(tenantStaffMembers.tenantId, tenant.id)),
+      )
+      .returning({ id: tenantStaffMembers.id })
+
+    if (!updated) return { success: false as const, error: 'Miembro no encontrado.' }
+    return { success: true as const }
+  })
+
+  if (result.success) revalidatePath('/settings/equipo')
+  return result
+}
+
+export async function reactivateStaffAction(staffMemberId: string): Promise<StaffActionResult> {
+  const { user, tenant } = await requireStaffTenant()
+  if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
+
+  const guard = await guardStaffMutation(tenant)
+  if (guard) return guard
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const result = await withTenantContext(tenant.id, async (tx) => {
+    const denied = await assertActorIsAdmin(tx, tenant.id, user.staffUserId)
+    if (denied) return denied
+
+    const [updated] = await tx
+      .update(tenantStaffMembers)
+      .set({ isActive: true })
       .where(
         and(eq(tenantStaffMembers.id, staffMemberId), eq(tenantStaffMembers.tenantId, tenant.id)),
       )

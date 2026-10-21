@@ -165,7 +165,7 @@ test.describe('Staff CRUD', () => {
         tenant_id: TENANT_ID,
         staff_user_id: staffUserId,
         role: 'admin',
-        is_active: false, // inactive → "Reenviar invitación" is the visible action
+        is_active: true, // active + never logged in (last_login_at null) → pending invite → "Reenviar invitación"
       })
 
       await page.goto('/settings/equipo')

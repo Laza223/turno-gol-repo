@@ -34,6 +34,7 @@ function renderActions(
         currentUserStaffId="staff-yo"
         activeAdminCount={overrides.activeAdminCount ?? 2}
         deactivateAction={vi.fn()}
+        reactivateAction={vi.fn()}
         resendInviteAction={vi.fn()}
         updateRoleAction={updateRoleAction}
       />,

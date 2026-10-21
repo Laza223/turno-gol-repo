@@ -57,6 +57,7 @@ const meta = {
     currentUserStaffId: '00000000-0000-4000-8000-000000000999',
     activeAdminCount: 2,
     deactivateAction: fn(async () => ({ success: true as const })),
+    reactivateAction: fn(async () => ({ success: true as const })),
     resendInviteAction: fn(async () => ({ success: true as const })),
     updateRoleAction: fn(async () => ({ success: true as const })),
   },
@@ -117,16 +118,14 @@ export const UltimoAdminActivo: Story = {
   },
 }
 
-/** Miembro inactivo (invitación revocada): única opción es reenviar. */
+/** Miembro inactivo (desactivado): única opción es reactivarlo. */
 export const MiembroInactivo: Story = {
   args: { member: INACTIVE_MEMBER },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Opciones' }))
     const menu = within(document.body)
-    await expect(
-      menu.findByRole('menuitem', { name: 'Reenviar invitación' }),
-    ).resolves.toBeInTheDocument()
+    await expect(menu.findByRole('menuitem', { name: 'Reactivar' })).resolves.toBeInTheDocument()
     await expect(menu.queryByRole('menuitem', { name: /Cambiar a/ })).toBeNull()
   },
 }

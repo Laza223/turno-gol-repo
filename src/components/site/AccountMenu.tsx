@@ -25,7 +25,7 @@ type Props = {
 // Touch-target 44px en mobile (WCAG 2.5.5), 36px en desktop. `group` habilita
 // el desplazamiento del ícono/label en hover.
 const itemClass =
-  'group relative flex min-h-11 w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-hidden transition-all duration-200 focus-visible:bg-accent focus-visible:text-accent-foreground'
+  'group relative flex min-h-11 w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm outline-hidden transition-colors duration-200 focus-visible:bg-accent focus-visible:text-accent-foreground'
 
 /**
  * Chip de avatar + nombre con panel desplegable de cuenta (estilo ecommerce).

@@ -36,9 +36,11 @@ function shortDayLabel(date: string, today: string): string {
   if (date === today) return 'Hoy'
   if (date === addDays(today, 1)) return 'Mañana'
   const [y, m, d] = date.split('-').map(Number)
-  const short = new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1).toLocaleDateString('es-AR', {
+  // UTC de punta a punta: la fecha es de calendario, así el server y el navegador dan el mismo día.
+  const short = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).toLocaleDateString('es-AR', {
     weekday: 'short',
     day: 'numeric',
+    timeZone: 'UTC',
   })
   return capitalizeFirst(short.replace(/\./g, '').replace(',', ''))
 }
@@ -234,7 +236,7 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
   const submitButton = (
     <button
       type="submit"
-      className="group relative overflow-hidden inline-flex h-[62px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 px-7 text-base font-bold text-slate-950 border border-emerald-400/20 shadow-[0_4px_20px_rgba(16,185,129,0.3),inset_0_1px_0_rgba(255,255,255,0.4)] transition-all duration-300 ease-out hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-[0_8px_30px_rgba(16,185,129,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] active:scale-[0.98] after:absolute after:inset-0 after:-translate-x-full after:bg-gradient-to-r after:from-transparent after:via-white/30 after:to-transparent after:transition-transform after:duration-1000 hover:after:translate-x-full whitespace-nowrap"
+      className="group relative overflow-hidden inline-flex h-[62px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 px-7 text-base font-bold text-slate-950 border border-emerald-400/20 shadow-[0_4px_20px_rgba(16,185,129,0.3),inset_0_1px_0_rgba(255,255,255,0.4)] transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-[0_8px_30px_rgba(16,185,129,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] active:scale-[0.98] after:absolute after:inset-0 after:-translate-x-full after:bg-gradient-to-r after:from-transparent after:via-white/30 after:to-transparent after:transition-transform after:duration-1000 hover:after:translate-x-full whitespace-nowrap"
     >
       <Search
         className="h-[19px] w-[19px] group-hover:scale-110 transition-transform duration-300"

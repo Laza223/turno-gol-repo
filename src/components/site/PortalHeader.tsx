@@ -50,7 +50,7 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
             <div className="flex items-center gap-1 sm:gap-1.5">
               <Link
                 href="/explorar"
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-full px-2.5 py-2 text-xs font-semibold text-muted-foreground transition-colors duration-150 hover:bg-foreground/5 hover:text-foreground sm:px-4 sm:py-[9px] sm:text-sm"
+                className="hidden min-h-11 items-center gap-1.5 rounded-full px-2.5 py-2 text-xs font-semibold text-muted-foreground transition-colors duration-150 hover:bg-foreground/5 hover:text-foreground sm:px-4 sm:py-[9px] sm:text-sm md:inline-flex"
               >
                 <Search className="h-[15px] w-[15px] sm:h-[17px] sm:w-[17px]" aria-hidden />
                 Explorar

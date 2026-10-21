@@ -64,7 +64,7 @@ export function HeroMobile({ cities }: { cities: CityCount[] }) {
           <p
             role="heading"
             aria-level={1}
-            className="mt-1 font-display font-black italic text-foreground dark:[text-shadow:0_12px_60px_rgba(0,0,0,.5)]"
+            className="mt-1 text-center font-display font-black italic text-foreground dark:[text-shadow:0_12px_60px_rgba(0,0,0,.5)]"
             style={{
               fontSize: 'clamp(38px, 5.2vw, 78px)',
               lineHeight: '0.95',
@@ -76,8 +76,8 @@ export function HeroMobile({ cities }: { cities: CityCount[] }) {
 
           {/* Subtítulo */}
           <p
-            className="mt-4 max-w-[540px] text-muted-foreground"
-            style={{ fontSize: 'clamp(16px, 1.5vw, 20px)', lineHeight: '1.55' }}
+            className="mx-auto mt-4 max-w-[540px] text-balance text-center text-muted-foreground"
+            style={{ fontSize: 'clamp(15px, 1.5vw, 20px)', lineHeight: '1.5' }}
           >
             Mirá los turnos libres de hoy y reservá sin llamar a nadie.
           </p>
@@ -88,7 +88,7 @@ export function HeroMobile({ cities }: { cities: CityCount[] }) {
           </div>
 
           {/* Pills de confianza */}
-          <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2.5">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2.5">
             {['Sin descargar ninguna app'].map((t) => (
               <span
                 key={t}

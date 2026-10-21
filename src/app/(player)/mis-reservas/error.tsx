@@ -7,7 +7,7 @@ import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
 import { PortalResult, PortalResultLink } from '@/components/world/PortalResult'
 import { Button } from '@/components/ui/button'
 
-/** Error boundary de /mis-reservas, en el mundo de La Reserva: dice qué pantalla no cargó. */
+/** Error boundary de /mis-reservas, en el cascarón de La Previa: dice qué pantalla no cargó. */
 export default function MisReservasError({
   error,
   reset,

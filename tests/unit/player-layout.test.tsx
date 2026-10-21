@@ -23,17 +23,16 @@ import PlayerLayout from '@/app/(player)/layout'
 afterEach(cleanup)
 
 describe('(player) layout', () => {
-  it('monta el mundo de La Reserva: es lo que cubre cada page del grupo, su loading, su error y los diálogos', async () => {
+  it('no monta el mundo de La Reserva: las páginas del grupo cuelgan directo del cascarón de La Previa', async () => {
     const { container } = render(
       await PlayerLayout({
         children: <p>contenido</p>,
       }),
     )
-    const world = container.querySelector('[data-world="portal"]')
-    expect(world).not.toBeNull()
-    expect(world?.textContent).toBe('contenido')
+    expect(container.querySelector('[data-world="portal"]')).toBeNull()
     // Dentro del cascarón, que es el que pinta el <main>.
-    expect(world?.closest('[data-testid="shell"]')).not.toBeNull()
+    const shell = container.querySelector('[data-testid="shell"]')
+    expect(shell?.textContent).toBe('contenido')
   })
 
   it('Mis reservas ya no monta su propio mundo: lo hereda del grupo', async () => {

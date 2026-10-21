@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { player } from '@/test/fixtures/player'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { ProfileForm } from './ProfileForm'
 
 const base = player()
@@ -14,7 +13,7 @@ const defaultValues = {
 
 /**
  * La Server Action entra por prop (ver el comentario en ProfileForm.tsx). El formulario vive en
- * la columna de La Reserva, sobre el fondo de la página, sin tarjeta.
+ * la tarjeta de "Tus datos" de Mi cuenta.
  */
 const meta = {
   title: 'Player/Configuracion/ProfileForm',
@@ -23,11 +22,9 @@ const meta = {
   args: { defaultValues },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="max-w-[35rem] bg-background p-4 text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="max-w-[35rem] bg-card p-5 text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof ProfileForm>
@@ -47,7 +44,7 @@ export const Default: Story = {
   },
 }
 
-/** Los campos de La Reserva: 44 px de alto y borde `input`, 16 px en el celular. */
+/** Los campos del portal: 44 px de alto y borde `input`, 16 px en el celular. */
 export const CamposDe44Px: Story = {
   args: { action: fn(async () => ({ success: true as const })) },
   play: async ({ canvasElement }) => {

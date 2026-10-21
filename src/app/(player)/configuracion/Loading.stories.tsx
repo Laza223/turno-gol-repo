@@ -1,22 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { expect } from 'storybook/test'
 import { player } from '@/test/fixtures/player'
 import { ConfiguracionView } from './ConfiguracionView'
 import Loading from './loading'
 
-/** Esqueleto de /configuracion, en la columna y el mundo de La Reserva. */
+/** Esqueleto de /configuracion, en la columna de la página. */
 const meta = {
   title: 'Player/Configuracion/LoadingSkeleton',
   component: Loading,
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="min-h-dvh bg-background">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="min-h-dvh bg-background">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof Loading>
@@ -62,7 +59,7 @@ export const AlturaDelEsqueleto: Story = {
     const esqueleto = canvasElement.querySelector('[data-t="esqueleto"]')!
     const real = canvasElement.querySelector('[data-t="real"]')!
     const tops = (root: Element) =>
-      [...root.querySelectorAll(':scope > div > div.border-t')].map(
+      [...root.querySelectorAll(':scope > div > div.rounded-2xl')].map(
         (b) => b.getBoundingClientRect().top - root.getBoundingClientRect().top,
       )
     const a = tops(esqueleto)

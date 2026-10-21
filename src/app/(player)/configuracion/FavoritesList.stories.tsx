@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import FavoritesList, { type FavoriteRow } from './FavoritesList'
 
 const fav = (n: number, name = `Complejo ${n}`, city = 'Rosario'): FavoriteRow => ({
@@ -16,18 +15,16 @@ const THREE = [
   fav(3, 'El Potrero', 'Villa Gobernador Gálvez'),
 ]
 
-/** Los complejos guardados: filas compactas sin precios ni fotos, en la columna de La Reserva. */
+/** Los complejos guardados: filas compactas sin precios ni fotos, en la columna de la página. */
 const meta = {
   title: 'Player/Configuracion/FavoritesList',
   component: FavoritesList,
   parameters: { layout: 'padded' },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="max-w-[35rem] bg-background p-4 text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="max-w-[35rem] bg-background p-4 text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof FavoritesList>

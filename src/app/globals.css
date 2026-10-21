@@ -726,6 +726,14 @@ html:has([data-fixed-cta]) {
   color: transparent;
 }
 
+/* Avatar fallback (iniciales) de la banda de perfil. */
+.hero-avatar-fallback {
+  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.22), rgba(255, 255, 255, 0.5));
+}
+.dark .hero-avatar-fallback {
+  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.28), rgba(2, 6, 23, 0.4));
+}
+
 /* Tarjeta-comprobante: resumen del turno, código de reserva y política de reservas del panel
    (`ReservasPolicyForm`). Light = card blanca con elevación + tinte emerald;
    dark = slab translúcido oscuro con glow. */

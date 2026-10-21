@@ -1,10 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
 import { paintedContrast } from '@/test/contrast'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { EliminarCuentaView } from './EliminarCuentaView'
 
-/** El decorator reproduce el mundo de La Reserva (en producción lo pone `(player)/layout.tsx`). */
+/** El decorator reproduce el fondo del portal (en producción lo pone `(player)/layout.tsx`). */
 const meta = {
   title: 'Player/EliminarCuenta/EliminarCuentaView',
   component: EliminarCuentaView,
@@ -18,11 +17,9 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="min-h-dvh bg-background text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="min-h-dvh bg-background text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof EliminarCuentaView>
@@ -76,24 +73,21 @@ export const VariasReservasFuturas: Story = {
   },
 }
 
-/** El botón de alarma no ocupa todo el ancho, no tiene sombra y no queda pegado al texto. */
+/** El botón de alarma es el único rojo sólido, mide 44 px o más y no queda pegado a la descarga. */
 export const BotonDeAlarma: Story = {
   args: { futureConfirmedCount: 0 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const boton = canvas.getByRole('button', { name: 'Eliminar mi cuenta' })
     const caja = boton.getBoundingClientRect()
-    const columna = boton.parentElement!.getBoundingClientRect()
-    await expect(caja.width).toBeLessThan(columna.width)
     await expect(caja.height).toBeGreaterThanOrEqual(44)
-    // Tailwind deja las capas de ring/shadow en transparente: lo que cuenta es que ninguna se vea.
-    const sombra = getComputedStyle(boton)
-      .boxShadow.replaceAll('rgba(0, 0, 0, 0) 0px 0px 0px 0px', '')
-      .replaceAll(',', '')
-      .trim()
-    await expect(['', 'none']).toContain(sombra)
+    await expect(boton).toHaveClass('bg-red-600')
+    const rojos = [...canvasElement.querySelectorAll('button')].filter((b) =>
+      b.classList.contains('bg-red-600'),
+    )
+    await expect(rojos).toHaveLength(1)
     const descarga = canvas.getByRole('button', { name: 'Descargar mis datos' })
-    await expect(caja.top - descarga.getBoundingClientRect().bottom).toBeGreaterThanOrEqual(32)
+    await expect(caja.top - descarga.getBoundingClientRect().bottom).toBeGreaterThanOrEqual(16)
   },
 }
 

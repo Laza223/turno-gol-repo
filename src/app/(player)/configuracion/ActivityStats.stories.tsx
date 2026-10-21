@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import ActivityStats from './ActivityStats'
 
 /** Lo que jugaste, en neutro: tres renglones, sin puntajes ni colores por logro. */
@@ -10,11 +9,9 @@ const meta = {
   parameters: { layout: 'padded' },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="max-w-[35rem] bg-background p-4 text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="max-w-[35rem] bg-background p-4 text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof ActivityStats>

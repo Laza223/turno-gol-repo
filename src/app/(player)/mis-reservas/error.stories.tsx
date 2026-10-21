@@ -1,10 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import MisReservasError from './error'
 
 /**
- * Error boundary de /mis-reservas, en el mundo de La Reserva (lo pone `layout.tsx`; acá, el
+ * Error boundary de /mis-reservas, en el cascarón de La Previa (lo pone `layout.tsx`; acá, el
  * decorator). Dice qué pantalla no cargó: el `error.tsx` del grupo `(player)` ya no puede decir
  * "reservas" en Cuenta. Reporta a Sentry en un `useEffect`; sin DSN en Storybook es un no-op.
  */
@@ -18,11 +17,9 @@ const meta = {
   args: { reset: fn() },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="min-h-dvh bg-background text-foreground">
-          <Story />
-        </div>
-      </PortalWorld>
+      <div className="min-h-dvh bg-background text-foreground">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof MisReservasError>

@@ -34,7 +34,7 @@ type Props = {
 
 const INITIAL_STATE: UpdateProfileResult = { success: true }
 
-/** Campo de La Reserva: 44 px, 16 px en el celular, borde `input` y el placeholder con el color pleno del token. */
+/** Campo del portal: 44 px, 16 px en el celular, borde `input` y el placeholder con el color pleno del token. */
 const FIELD = 'md:h-11 placeholder:text-muted-foreground aria-invalid:border-destructive'
 /** 13 px es el piso del portal; red-700/red-300 son los que pasan AA sobre `background` en los dos temas. */
 const FIELD_ERROR = 'text-[13px] leading-5 text-red-700 dark:text-red-300'

@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import type { DeleteAccountResult } from './actions'
 
@@ -28,15 +27,14 @@ export function DeleteAccountForm({
 
   return (
     <>
-      {/* El único color de alarma de la pantalla. Plano (sin sombra ni levante) y del ancho de su texto. */}
-      <Button
+      {/* El único botón rojo de la pantalla. */}
+      <button
         type="button"
-        variant="destructive"
         onClick={() => setOpen(true)}
-        className="h-auto min-h-11 px-5 shadow-none hover:translate-y-0 hover:shadow-none active:scale-100 focus-visible:ring-offset-background md:h-auto"
+        className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-red-600 px-4 text-sm font-semibold text-white shadow-md shadow-red-600/25 transition-[background-color,scale] hover:bg-red-700 active:scale-[0.98] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         Eliminar mi cuenta
-      </Button>
+      </button>
 
       <ConfirmDialog
         open={open}

@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import { signOutAction } from '@/modules/auth/sign-out.action'
 import { getPortalSession } from '@/modules/players/portal-session'
 import PortalShell from '@/components/site/PortalShell'
-import { PortalWorld } from '@/components/world/PortalWorld'
 
 export default async function PlayerLayout({ children }: { children: ReactNode }) {
   // Sin guard acá: el layout no conoce el pathname del pedido (el middleware no lo expone), así que
@@ -25,9 +24,7 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
         session ? { session, favoriteTenantIds: new Set(), staffPanelPath: null } : undefined
       }
     >
-      {/* El mundo de La Reserva cubre las páginas del grupo, sus `loading.tsx` y sus `error.tsx`; los
-          diálogos de Radix, que montan en <body>, los alcanza el `html:has()`. */}
-      <PortalWorld>{children}</PortalWorld>
+      {children}
     </PortalShell>
   )
 }

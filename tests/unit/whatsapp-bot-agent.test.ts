@@ -31,6 +31,7 @@ type Usage = {
   input_tokens: number
   output_tokens: number
   cache_read_input_tokens?: number | null
+  cache_creation_input_tokens?: number | null
 }
 
 const text = (value: string): Block => ({ type: 'text', text: value })
@@ -472,6 +473,23 @@ describe('runAgent — usage', () => {
       tools: [makeTool('ver_disponibilidad')],
     })
     expect(result.usage).toEqual({ inputTokens: 30, cachedTokens: 0, outputTokens: 3 })
+  })
+
+  it('la escritura de caché se suma a la entrada (se cobra 1,25×, se aproxima a 1×)', async () => {
+    script(
+      message([text('listo')], 'end_turn', {
+        input_tokens: 100,
+        output_tokens: 5,
+        cache_creation_input_tokens: 2000,
+        cache_read_input_tokens: 0,
+      }),
+    )
+    const result = await runAgent({
+      complexContext: CONTEXT,
+      history: HISTORY,
+      tools: [makeTool('ver_disponibilidad')],
+    })
+    expect(result.usage).toEqual({ inputTokens: 2100, cachedTokens: 0, outputTokens: 5 })
   })
 
   it('suma el usage de todas las vueltas, también la última del tope', async () => {

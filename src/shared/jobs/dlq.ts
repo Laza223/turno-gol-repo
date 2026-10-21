@@ -5,7 +5,7 @@ import { logger } from '@/shared/lib/logger'
 /**
  * Canonical list of active pg-boss queue names — every queue that a worker
  * registers via `boss.work(...)` in `registerAllWorkers`. Kept in sync with
- * `src/shared/jobs/workers/index.ts` (16 work queues: `expire-pending-booking`
+ * `src/shared/jobs/workers/index.ts` (the 20 queues listed below: `expire-pending-booking`
  * also registers a `-sweep` safety-net queue).
  *
  * NOTA: `daily-summary` no está en esta lista — gap preexistente, no
@@ -33,6 +33,7 @@ export const ALL_QUEUES: readonly string[] = [
   'onboarding-abandonment-sweep',
   'whatsapp-turn',
   'whatsapp-turn-rescue',
+  'whatsapp-ops-alerts',
 ] as const
 
 /**

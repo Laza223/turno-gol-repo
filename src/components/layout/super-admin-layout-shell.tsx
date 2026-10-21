@@ -4,7 +4,16 @@ import { useState, useTransition } from 'react'
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Activity, Building2, LogOut, Menu, ShieldCheck, Users, X } from 'lucide-react'
+import {
+  Activity,
+  Building2,
+  LogOut,
+  Menu,
+  MessageCircle,
+  ShieldCheck,
+  Users,
+  X,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { TONE_BADGE } from '@/lib/status-tone'
 import { Button } from '@/components/ui/button'
@@ -35,6 +44,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/super-admin', icon: Activity, label: 'Pulso' },
   { href: '/super-admin/tenants', icon: Building2, label: 'Complejos' },
   { href: '/super-admin/jugadores', icon: Users, label: 'Jugadores' },
+  { href: '/super-admin/whatsapp', icon: MessageCircle, label: 'Bot de WhatsApp' },
 ]
 
 function SidebarContent({

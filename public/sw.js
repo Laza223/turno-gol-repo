@@ -68,14 +68,20 @@ self.addEventListener('push', (event) => {
     // daily_summary (D8, Fase 2): resumen diario, no una reserva nueva —
     // title/body propios, si no cae en el fallback "Nueva reserva" incorrecto.
     const isDailySummary = payload.type === 'daily_summary'
+    // Bot de WhatsApp: un chat pasó a una persona (motivo de un enum cerrado,
+    // nunca texto del jugador). Mismo criterio que daily_summary: copy propio.
+    const isWhatsappHandoff = payload.type === 'whatsapp_handoff'
     const title = isDailySummary
       ? 'Resumen de ayer'
-      : payload.courtName
-        ? `Nueva reserva — ${payload.courtName}`
-        : 'Nueva reserva'
-    const body = isDailySummary
-      ? payload.summaryLabel || ''
-      : [payload.dateLabel, payload.timeLabel].filter(Boolean).join(' · ')
+      : isWhatsappHandoff
+        ? 'WhatsApp: te necesitan en un chat'
+        : payload.courtName
+          ? `Nueva reserva — ${payload.courtName}`
+          : 'Nueva reserva'
+    const body =
+      isDailySummary || isWhatsappHandoff
+        ? payload.summaryLabel || ''
+        : [payload.dateLabel, payload.timeLabel].filter(Boolean).join(' · ')
     const url = payload.url || '/grilla'
     await self.registration.showNotification(title, {
       body,

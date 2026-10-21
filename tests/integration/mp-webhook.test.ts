@@ -38,9 +38,17 @@ vi.mock('@/modules/payments/mp-gateway.implementation', () => {
   }
 })
 
+vi.mock('@/lib/kapso/client', () => ({
+  sendWhatsappText: vi.fn(async () => ({ waMessageId: 'wamid.aviso-webhook' })),
+}))
+
 // Static import — vi.mock is hoisted above all imports, so the mock applies
 // before the handler module loads `MercadoPagoGateway`.
 import { handleMpWebhookJob } from '@/modules/payments/mp-webhook.handler'
+import { sendWhatsappText } from '@/lib/kapso/client'
+import { insertWhatsappChat, insertWhatsappConnection } from '../helpers/factories'
+
+const WA_PHONE = '5491155550001'
 
 const PRICING = {
   rules: [
@@ -368,6 +376,68 @@ describe('handleMpWebhookJob — late payment attempt', () => {
     expect(notifs).toHaveLength(1)
     expect(notifs[0]!.recipient_type).toBe('tenant_owner')
     expect(notifs[0]!.recipient_id).toBe(staff.id)
+  })
+
+  it('reserva del bot: el invitado se entera por WhatsApp de la devolución, una sola vez', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    await setTenantMpToken(tenant.id)
+    await insertWhatsappConnection(sql, { tenantId: tenant.id })
+    const chatId = await insertWhatsappChat(sql, { tenantId: tenant.id, waPhone: WA_PHONE })
+    const courtId = await insertCourt(tenant.id)
+    const [{ id: bookingId }] = await sql<{ id: string }[]>`
+      INSERT INTO bookings (
+        tenant_id, court_id, guest_name, guest_phone, whatsapp_chat_id,
+        date, time_start, time_end, starts_at, ends_at,
+        price_snapshot, deposit_amount, deposit_status, payment_method, status
+      )
+      VALUES (
+        ${tenant.id}, ${courtId}, ${'Lucas'}, ${WA_PHONE}, ${chatId},
+        ${FUTURE_DATE}::date, '13:00'::time, '14:00'::time,
+        (${FUTURE_DATE}::date + '13:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        (${FUTURE_DATE}::date + '14:00'::time) AT TIME ZONE 'America/Argentina/Buenos_Aires',
+        800000, 240000, 'pending', NULL, 'pending_payment'
+      )
+      RETURNING id
+    `
+    await sql`UPDATE bookings SET status = 'expired' WHERE id = ${bookingId}`
+
+    const mpPaymentId = `mp-pay-wa-${bookingId.slice(0, 8)}`
+    const mpEventId = `mp-evt-wa-${bookingId.slice(0, 8)}`
+    mockGateway.statusByPaymentId[mpPaymentId] = {
+      mpPaymentId,
+      status: 'approved',
+      amount: 240_000,
+      externalReference: bookingId,
+      paymentMethodId: 'visa',
+    }
+    const job = {
+      tenantId: tenant.id,
+      mpEventId,
+      eventType: 'payment',
+      mpPaymentId,
+      rawPayload: { id: mpEventId, type: 'payment', data: { id: mpPaymentId } },
+    } as const
+
+    await handleMpWebhookJob(job)
+    // MP reentrega el mismo evento: ni otra devolución ni otro WhatsApp.
+    await handleMpWebhookJob(job)
+
+    expect(await getBookingStatus(bookingId)).toBe('expired')
+    const refunds = await sql`
+      SELECT 1 FROM payments WHERE booking_id = ${bookingId} AND type = 'refund'
+    `
+    expect(refunds).toHaveLength(1)
+    expect(sendWhatsappText).toHaveBeenCalledTimes(1)
+    expect(sendWhatsappText).toHaveBeenCalledWith({
+      phoneNumberId: `pn-${tenant.id}`,
+      to: WA_PHONE,
+      body: expect.stringContaining('El complejo te devuelve la plata'),
+    })
+    const notices = await sql<{ notice: string }[]>`
+      SELECT notice FROM whatsapp_messages WHERE booking_id = ${bookingId}
+    `
+    expect(notices).toEqual([{ notice: 'late_payment_refunded' }])
   })
 })
 

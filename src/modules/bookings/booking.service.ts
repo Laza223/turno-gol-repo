@@ -199,7 +199,7 @@ export async function lockCourtOrThrow(
   return { id: row.id, tenantId: row.tenantId, pricing: row.pricing, name: row.name }
 }
 
-async function checkOverlapOrThrow(
+export async function checkOverlapOrThrow(
   courtId: string,
   startsAt: Date,
   endsAt: Date,
@@ -446,11 +446,17 @@ export async function createOnlineBooking(
   )
 }
 
-async function createOnlineBookingImpl(
+/**
+ * Ventana de la reserva online: duración de 60 min, fecha/hora no vencida (con la
+ * excepción de la madrugada del día operativo), anticipación máxima y período pago.
+ * Compartida con `createWhatsappBooking` (booking.whatsapp.ts): el bot reserva con
+ * las MISMAS reglas que el portal. Extraída sin cambio de comportamiento.
+ */
+export async function assertOnlineSlotWindow(
   tenantId: string,
-  input: CreateOnlineBookingInput,
+  input: Pick<CreateOnlineBookingInput, 'date' | 'timeStart' | 'timeEnd' | 'maxAdvanceDays'>,
   tx: DbTx,
-): Promise<BookingRow> {
+): Promise<void> {
   // Date window validation (pure, before any DB call).
   if (!isValidCalendarDate(input.date)) {
     throw new BookingDateOutOfRangeError('past_date')
@@ -501,6 +507,117 @@ async function createOnlineBookingImpl(
   // portal: la autoridad sobre "hasta cuándo puede vender este complejo" vive
   // acá, no en el `maxAdvanceDays` que llega por parámetro.
   await assertWithinPaidPeriod(tenantId, [input.date], tx)
+}
+
+/**
+ * Cancha bloqueada (`FOR UPDATE`) + precio + instante físico del turno + la
+ * anticipación mínima del complejo. Compartida con `createWhatsappBooking`.
+ * Extraída sin cambio de comportamiento.
+ *
+ * ORDEN DE LOCKS: el caller toma ANTES su advisory lock de tope (por jugador en
+ * el portal, por chat en el bot) y recién después entra acá; el lock de la cancha
+ * va siempre último, para que no haya ciclos entre los dos caminos.
+ */
+export async function lockPricedSlot(
+  tenantId: string,
+  input: Pick<
+    CreateOnlineBookingInput,
+    'courtId' | 'date' | 'timeStart' | 'timeEnd' | 'minLeadMinutes'
+  >,
+  tx: DbTx,
+): Promise<{
+  court: Awaited<ReturnType<typeof lockCourtOrThrow>>
+  priceSnapshot: number
+  startsAt: Date
+  endsAt: Date
+}> {
+  const court = await lockCourtOrThrow(input.courtId, tx)
+  if (court.tenantId !== tenantId) {
+    throw new CourtOfflineError(input.courtId)
+  }
+
+  const calc = calculatePrice(court.pricing, artDateAt(input.date, input.timeStart))
+  if (calc === null) throw new PriceUnavailableError()
+  const priceSnapshot = calc
+
+  const physicallyNextDay = await slotIsPhysicallyNextDay(tenantId, input.date, input.timeStart, tx)
+  const { startsAt, endsAt } = physicalRange({
+    date: input.date,
+    timeStart: input.timeStart,
+    timeEnd: input.timeEnd,
+    physicallyNextDay,
+  })
+
+  // Anticipación mínima del complejo, contra el instante físico: el portal ya
+  // oculta esos turnos, esto es el backstop (link viejo, pestaña abierta).
+  if (input.minLeadMinutes && startsAt.getTime() - Date.now() < input.minLeadMinutes * 60_000) {
+    throw new BookingDateOutOfRangeError('lead_time')
+  }
+
+  return { court, priceSnapshot, startsAt, endsAt }
+}
+
+/**
+ * Lo que sigue a un INSERT online exitoso y es igual para el portal y para el
+ * bot: invalidar la caché de disponibilidad, el evento de éxito, el aha moment
+ * (primera reserva online del complejo) y el timer de vencimiento si la reserva
+ * quedó en hold. Extraída sin cambio de comportamiento, salvo que la invalidación
+ * de la caché corre al final y no apenas después del INSERT (la tx todavía no
+ * commiteó en ningún caso).
+ */
+export async function afterOnlineInsert(
+  booking: BookingRow,
+  ctx: { date: string; onboardingCompletedAt: string | undefined },
+  tx: DbTx,
+): Promise<void> {
+  await invalidateAvailSearch(ctx.date)
+
+  track.booking('booking.online.create.success', {
+    bookingId: booking.id,
+    tenantId: booking.tenantId,
+    courtId: booking.courtId,
+    playerId: booking.playerId ?? undefined,
+  })
+
+  // El aha moment real (plan de refactor §I): la primera reserva que entra
+  // SOLA para este tenant. Mismo predicado que `firstBookingReceived`
+  // (dashboard/queries.ts): `type = 'spontaneous' AND created_by_staff IS
+  // NULL` — created_by_staff solo no alcanza, los fijos de abonado (worker
+  // y alta) también nacen con esa columna en NULL (QA 2026-09-13). El COUNT
+  // corre DESPUÉS del insert, adentro de la misma tx, así que ya incluye
+  // esta fila — `=== 1` es "esta es la primera", sin una segunda query de
+  // "¿existía antes?" separada que pudiera racear contra otra reserva
+  // concurrente.
+  const onlineCountRows = (await tx.execute(sql`
+    SELECT COUNT(*)::int AS count FROM bookings
+    WHERE tenant_id = ${booking.tenantId} AND type = 'spontaneous' AND created_by_staff IS NULL
+  `)) as unknown as Array<{ count: number }>
+  if (onlineCountRows[0]?.count === 1) {
+    const completedAt = ctx.onboardingCompletedAt
+    const daysSinceOnboarding = completedAt
+      ? Math.floor((Date.now() - new Date(completedAt).getTime()) / 86_400_000)
+      : null
+    track.activation('activation.first_online_booking', {
+      tenantId: booking.tenantId,
+      daysSinceOnboarding,
+    })
+  }
+
+  if (booking.status === 'pending_payment') {
+    // Hallazgo 1: arm the 6-min expiry timer. Routed through an injectable
+    // seam so the test suite never starts a real pg-boss. This send happens
+    // inside the still-open tx; a rollback leaves an orphan job that no-ops
+    // (race-safe transition) and is also covered by the 5-min sweep.
+    await scheduleBookingExpiry(booking.id)
+  }
+}
+
+async function createOnlineBookingImpl(
+  tenantId: string,
+  input: CreateOnlineBookingInput,
+  tx: DbTx,
+): Promise<BookingRow> {
+  await assertOnlineSlotWindow(tenantId, input, tx)
 
   track.booking('booking.online.create.start', {
     tenantId,
@@ -545,28 +662,7 @@ async function createOnlineBookingImpl(
     throw new TooManyActiveHoldsError(input.playerId, tenantId, activeHoldsCount)
   }
 
-  const court = await lockCourtOrThrow(input.courtId, tx)
-  if (court.tenantId !== tenantId) {
-    throw new CourtOfflineError(input.courtId)
-  }
-
-  const calc = calculatePrice(court.pricing, artDateAt(input.date, input.timeStart))
-  if (calc === null) throw new PriceUnavailableError()
-  const priceSnapshot = calc
-
-  const physicallyNextDay = await slotIsPhysicallyNextDay(tenantId, input.date, input.timeStart, tx)
-  const { startsAt, endsAt } = physicalRange({
-    date: input.date,
-    timeStart: input.timeStart,
-    timeEnd: input.timeEnd,
-    physicallyNextDay,
-  })
-
-  // Anticipación mínima del complejo, contra el instante físico: el portal ya
-  // oculta esos turnos, esto es el backstop (link viejo, pestaña abierta).
-  if (input.minLeadMinutes && startsAt.getTime() - Date.now() < input.minLeadMinutes * 60_000) {
-    throw new BookingDateOutOfRangeError('lead_time')
-  }
+  const { court, priceSnapshot, startsAt, endsAt } = await lockPricedSlot(tenantId, input, tx)
 
   await checkOverlapOrThrow(input.courtId, startsAt, endsAt, tx)
 
@@ -596,7 +692,6 @@ async function createOnlineBookingImpl(
       .returning()
 
     const booking = rowToBookingRow(inserted[0]!)
-    await invalidateAvailSearch(input.date)
     await ensurePTR(input.playerId, tenantId, tx)
 
     const playerRows = (await tx.execute(sql`
@@ -656,41 +751,11 @@ async function createOnlineBookingImpl(
       tx,
     )
 
-    track.booking('booking.online.create.success', {
-      bookingId: booking.id,
-      tenantId: booking.tenantId,
-      courtId: booking.courtId,
-      playerId: booking.playerId ?? undefined,
-    })
-
-    // El aha moment real (plan de refactor §I): la primera reserva que entra
-    // SOLA para este tenant. Mismo predicado que `firstBookingReceived`
-    // (dashboard/queries.ts): `type = 'spontaneous' AND created_by_staff IS
-    // NULL` — created_by_staff solo no alcanza, los fijos de abonado (worker
-    // y alta) también nacen con esa columna en NULL (QA 2026-09-13). El COUNT
-    // corre DESPUÉS del insert, adentro de la misma tx, así que ya incluye
-    // esta fila — `=== 1` es "esta es la primera", sin una segunda query de
-    // "¿existía antes?" separada que pudiera racear contra otra reserva
-    // concurrente.
-    const onlineCountRows = (await tx.execute(sql`
-      SELECT COUNT(*)::int AS count FROM bookings
-      WHERE tenant_id = ${tenantId} AND type = 'spontaneous' AND created_by_staff IS NULL
-    `)) as unknown as Array<{ count: number }>
-    if (onlineCountRows[0]?.count === 1) {
-      const completedAt = tenantRows[0]?.settings?.onboarding_completed_at
-      const daysSinceOnboarding = completedAt
-        ? Math.floor((Date.now() - new Date(completedAt).getTime()) / 86_400_000)
-        : null
-      track.activation('activation.first_online_booking', { tenantId, daysSinceOnboarding })
-    }
-
-    if (booking.status === 'pending_payment') {
-      // Hallazgo 1: arm the 6-min expiry timer. Routed through an injectable
-      // seam so the test suite never starts a real pg-boss. This send happens
-      // inside the still-open tx; a rollback leaves an orphan job that no-ops
-      // (race-safe transition) and is also covered by the 5-min sweep.
-      await scheduleBookingExpiry(booking.id)
-    }
+    await afterOnlineInsert(
+      booking,
+      { date: input.date, onboardingCompletedAt: tenantRows[0]?.settings?.onboarding_completed_at },
+      tx,
+    )
 
     return booking
   } catch (err) {

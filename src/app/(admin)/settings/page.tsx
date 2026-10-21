@@ -8,6 +8,7 @@ import {
   HandCoins,
   LogOut,
   Mail,
+  MessageCircle,
   Receipt,
   Store,
   Users,
@@ -20,6 +21,7 @@ import { getSubscriptionState, listActivePlans } from '@/modules/billing/billing
 import { buildPriceBreakdown } from '@/modules/billing/pricing'
 import { listStaffRoster } from '@/modules/staff/staff.service'
 import { getProfileGaps } from '@/modules/tenants/setup-gaps'
+import { getWhatsappConnection } from '@/modules/whatsapp-bot/whatsapp-bot.connection'
 import { bookingMinAdvanceHours } from '@/modules/tenants/tenant.utils'
 import { deriveScheduleView, type LooseOpeningHours } from '@/lib/schedule/schedule-view'
 import { formatArs } from '@/lib/format'
@@ -52,6 +54,8 @@ export default async function SettingsPage() {
     ? firstCuotaPricing(await withTenantContext(tenant.id, (tx) => listActivePlans(tx)))
     : null
   const activeStaff = (await listStaffRoster(tenant.id)).filter((m) => m.isActive).length
+  // Extra pago: el renglón solo aparece en los complejos que lo tienen.
+  const whatsapp = await getWhatsappConnection(tenant.id)
 
   const mpConnected = !!tenant.mpConnectedAt
   const deposit = mpConnected && s.requires_deposit !== false
@@ -96,6 +100,7 @@ export default async function SettingsPage() {
           tone: 'warning',
           href: '/settings/perfil',
         },
+        ...(whatsapp ? [whatsappItem(whatsapp)] : []),
       ],
     },
     {
@@ -187,6 +192,24 @@ export default async function SettingsPage() {
       <SettingsIndex groups={groups} />
     </>
   )
+}
+
+function whatsappItem(
+  w: NonNullable<Awaited<ReturnType<typeof getWhatsappConnection>>>,
+): SettingsIndexGroup['items'][number] {
+  const [value, tone]: [string, StatusTone] = !w.connected
+    ? ['Desconectado', 'warning']
+    : w.enabled
+      ? ['Contesta solo', 'success']
+      : ['Apagado', 'neutral']
+  return {
+    label: 'Asistente de WhatsApp',
+    effect: 'Contesta, muestra turnos libres y reserva por vos.',
+    value,
+    tone,
+    icon: MessageCircle,
+    href: '/settings/whatsapp',
+  }
 }
 
 /** Lo que pagás hoy, o en qué está la suscripción si no hay un monto que decir. */

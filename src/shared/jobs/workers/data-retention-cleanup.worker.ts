@@ -245,6 +245,39 @@ async function purgeOldAnalyticsEvents(): Promise<void> {
   })
 }
 
+/**
+ * Purga GLOBAL de los datos del bot de WhatsApp con más de 30 días (migr. 096,
+ * decisión W4 de docs/decisions/2026-10-20-bot-whatsapp.md): los mensajes por su
+ * `created_at` y los chats —que guardan el teléfono y el nombre de perfil de una
+ * persona— por su `last_inbound_at`, o sea sin actividad. Los mensajes de un chat
+ * purgado caen por CASCADE. Como la corrida es semanal, en la práctica el dato
+ * vive hasta 37 días.
+ *
+ * Misma mecánica que sus gemelas: tablas per-tenant, retención por antigüedad
+ * sin filtro de tenant, pool worker BYPASSRLS. Primero los mensajes y después
+ * los chats, en sentencias separadas: si la de chats falla, los mensajes ya se
+ * purgaron.
+ */
+async function purgeOldWhatsappData(): Promise<void> {
+  const sql = getWorkerSql()
+  const messages = await sql`
+    DELETE FROM whatsapp_messages
+    WHERE created_at < NOW() - INTERVAL '30 days'
+  `
+  logger.info('purged whatsapp_messages', {
+    module: 'data-retention',
+    count: messages.count,
+  })
+  const chats = await sql`
+    DELETE FROM whatsapp_chats
+    WHERE last_inbound_at < NOW() - INTERVAL '30 days'
+  `
+  logger.info('purged whatsapp_chats', {
+    module: 'data-retention',
+    count: chats.count,
+  })
+}
+
 async function cancelPendingMpSubscription(
   gateway: PaymentGateway,
   tenantId: string,
@@ -410,7 +443,15 @@ export async function wipeTenant(
     await tx.execute(drizzleSql`DELETE FROM tournament_stages WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM tournament_team_players WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM tournament_teams WHERE tenant_id = ${tenantId}`)
+    // Bot de WhatsApp (migr. 096). La 096 ya esquiva las dos trampas de orden
+    //  (`whatsapp_messages.booking_id` es ON DELETE CASCADE y
+    //  `bookings.whatsapp_chat_id` no tiene FK, así que borrar un chat nunca
+    //  hace UPDATE sobre una reserva terminal); este orden es igual el natural:
+    //  mensajes → reservas → chats → conexión.
+    await tx.execute(drizzleSql`DELETE FROM whatsapp_messages WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM bookings WHERE tenant_id = ${tenantId}`)
+    await tx.execute(drizzleSql`DELETE FROM whatsapp_chats WHERE tenant_id = ${tenantId}`)
+    await tx.execute(drizzleSql`DELETE FROM whatsapp_connections WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM tournaments WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM abonados WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM courts WHERE tenant_id = ${tenantId}`)
@@ -516,6 +557,15 @@ export async function runDataRetentionCleanup(): Promise<void> {
     await purgeOldAnalyticsEvents()
   } catch (err) {
     logger.error('purge analytics_events failed (non-fatal, retried next run)', {
+      module: 'data-retention',
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
+
+  try {
+    await purgeOldWhatsappData()
+  } catch (err) {
+    logger.error('purge whatsapp (messages/chats) failed (non-fatal, retried next run)', {
       module: 'data-retention',
       error: err instanceof Error ? err.message : String(err),
     })

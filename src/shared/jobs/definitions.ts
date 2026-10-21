@@ -22,6 +22,8 @@ export const QUEUE_RECONCILE_ACCOUNTING_DRIFT = 'reconcile-accounting-drift'
 export const QUEUE_DAILY_SUMMARY = 'daily-summary'
 export const QUEUE_ONBOARDING_ABANDONMENT = 'onboarding-abandonment-sweep'
 export const QUEUE_RECONCILE_SUBSCRIPTIONS = 'reconcile-subscriptions'
+export const QUEUE_WHATSAPP_TURN = 'whatsapp-turn'
+export const QUEUE_WHATSAPP_TURN_RESCUE = 'whatsapp-turn-rescue'
 
 // ─── Job payload types ────────────────────────────────────────────────────────
 
@@ -101,6 +103,48 @@ export const PUSH_SEND_SEND_OPTIONS = {
   retryBackoff: true,
   expireInHours: 1,
 } as const
+
+// ─── Bot de WhatsApp ──────────────────────────────────────────────────────────
+// Un turno del bot por chat. Los jugadores escriben en ráfagas ("hola" /
+// "tenés para hoy?" / "a las 21"): el job arranca 4 s después del primer
+// mensaje y contesta todo junto.
+//
+// Por qué `useSingletonQueue` y no `singletonKey` a secas: en pg-boss 9 la
+// `singletonKey` sola cubre también el estado `active`
+// (node_modules/pg-boss/src/plans.js, índice job_singletonKey), así que un
+// mensaje que llega MIENTRAS el turno corre perdía su job (`send` devuelve
+// null) y quedaba sin respuesta. Con la cola singleton queda 1 job esperando
+// además del que corre; el worker suma `enforceSingletonQueueActiveLimit` para
+// que no corran dos del mismo chat a la vez.
+//
+// `retryLimit: 0`, OBLIGATORIO con la cola singleton: el índice único
+// `job_singleton_queue` cubre los estados < `active`, y un reintento pasa el
+// job de `active` a `retry`. Si ya había otro job del mismo chat esperando, ese
+// UPDATE viola el índice: pg-boss se traga el error, el job queda `active` para
+// siempre (el chat muere) y el `expire` de mantenimiento falla en cada ciclo
+// para TODAS las colas. Sin reintentos, un fallo queda `failed`/`expired`, que
+// no entran en el índice. El reintento real es el cron `whatsapp-turn-rescue`.
+//
+// `onComplete: true`: sin esto pg-boss 9 no emite el evento de cierre y la DLQ
+// (`dlq.ts`) nunca ve el fallo.
+
+export type WhatsappTurnJobData = { tenantId: string; chatId: string }
+
+const WHATSAPP_TURN_DEBOUNCE_SECONDS = 4
+
+export function whatsappTurnSendOptions(chatId: string) {
+  return {
+    singletonKey: chatId,
+    useSingletonQueue: true,
+    startAfter: WHATSAPP_TURN_DEBOUNCE_SECONDS,
+    retryLimit: 0,
+    // Más que el peor turno: 5 llamadas al modelo × (30 s de timeout × 3
+    // intentos del SDK) ≈ 8 min. Un job que vence con el handler vivo deja de
+    // contar como activo y el rescate arrancaría otro turno del mismo chat.
+    expireInMinutes: 15,
+    onComplete: true,
+  } as const
+}
 
 // ─── Poll tuning (WorkOptions) ─────────────────────────────────────────────────
 // D5 (auditoría de datos, 2026-07-23): en prod, el poller de pg-boss

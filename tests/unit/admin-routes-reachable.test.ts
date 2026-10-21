@@ -47,6 +47,8 @@ const CONTEXTUAL_ROUTES: Record<string, string> = {
   '/settings/perfil': 'tarjeta de la portada /settings (SettingsIndex)',
   '/settings/facturacion': 'tarjeta de la portada /settings (SettingsIndex)',
   '/settings/equipo': 'tarjeta de la portada /settings (SettingsIndex)',
+  '/settings/whatsapp':
+    'tarjeta de la portada /settings (SettingsIndex), solo si el complejo tiene el asistente',
   '/abonados/nuevo': 'CTA "Nuevo turno fijo" en /abonados',
   '/reservas/[id]': 'fila de la lista, "Mientras no estabas" de Hoy y Plata en la calle',
   '/jugadores/[playerId]': 'fila de la lista de clientes y nombre del deudor en Plata en la calle',

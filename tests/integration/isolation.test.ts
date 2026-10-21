@@ -133,6 +133,21 @@ const tablesAll: TableDef[] = [
     ownId: () => A.tournamentMatchEventId,
     otherId: () => B.tournamentMatchEventId,
   },
+  // Bot de WhatsApp (migr. 096): CRUD completo, aislamiento clásico por tenant_id.
+  // El webhook las lee SIN contexto de tenant resolviendo el complejo por
+  // `phone_number_id`, pero desde el pool worker (BYPASSRLS): bajo el rol de la app,
+  // sin contexto, tienen que dar 0 filas (bloque H).
+  {
+    name: 'whatsapp_connections',
+    ownId: () => A.whatsappConnectionId,
+    otherId: () => B.whatsappConnectionId,
+  },
+  { name: 'whatsapp_chats', ownId: () => A.whatsappChatId, otherId: () => B.whatsappChatId },
+  {
+    name: 'whatsapp_messages',
+    ownId: () => A.whatsappMessageId,
+    otherId: () => B.whatsappMessageId,
+  },
 ]
 
 // Tables with UPDATE policy (RLS allows UPDATE if context matches).
@@ -266,6 +281,17 @@ const insertOps: Record<string, InsertFn> = {
         (tenant_id, tournament_id, match_id, team_id, team_player_id, type)
       VALUES (${tid}, ${B.tournamentId}, ${B.tournamentMatchId},
               ${B.tournamentTeamId}, ${B.tournamentTeamPlayerId}, 'goal')`,
+  // WhatsApp (migr. 096). Valores válidos para los CHECK y sin choque de UNIQUE, y
+  // el chat padre es el de B (existe): el INSERT llega a la WITH CHECK de la tabla.
+  whatsapp_connections: async (tx, tid) =>
+    tx`INSERT INTO whatsapp_connections (tenant_id, phone_number_id)
+      VALUES (${tid}, ${`spoof-${faker.string.alphanumeric(10)}`})`,
+  whatsapp_chats: async (tx, tid) =>
+    tx`INSERT INTO whatsapp_chats (tenant_id, wa_phone)
+      VALUES (${tid}, ${`54911${faker.string.numeric(8)}`})`,
+  whatsapp_messages: async (tx, tid) =>
+    tx`INSERT INTO whatsapp_messages (tenant_id, chat_id, direction, wa_message_id)
+      VALUES (${tid}, ${B.whatsappChatId}, 'inbound', ${`spoof-${faker.string.alphanumeric(10)}`})`,
 }
 
 describe('C. cross-tenant INSERT bloqueado', () => {

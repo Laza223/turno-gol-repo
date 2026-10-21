@@ -26,6 +26,15 @@ export const DEFAULT_CANCELLATION_HOURS_BEFORE = 12
 export const MAX_ACTIVE_HOLDS_PER_PLAYER = 3
 
 /**
+ * Mismo criterio que `MAX_ACTIVE_HOLDS_PER_PLAYER`, para las reservas del bot de
+ * WhatsApp (invitado sin cuenta): se cuentan POR CHAT (`bookings.whatsapp_chat_id`),
+ * no por teléfono — el staff puede editar el teléfono de una reserva. Máximo de
+ * holds `pending_payment` vivos y de reservas futuras `confirmed` sin seña.
+ */
+export const MAX_WHATSAPP_ACTIVE_HOLDS_PER_CHAT = 3
+export const MAX_WHATSAPP_UNPAID_CONFIRMED_PER_CHAT = 2
+
+/**
  * Softban de ausencias (reemplaza la deuda por no-show del cambio #5): si la
  * ausencia actual ocurre dentro de esta ventana desde la anterior, cuenta como
  * reincidencia; si no, el contador vuelve a foja cero.

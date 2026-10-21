@@ -377,3 +377,68 @@ export async function insertTournamentMatchEvent(
   `
   return rows[0].id
 }
+
+// ─── Bot de WhatsApp (migr. 096) ───────────────────────────────────
+
+/** Número del complejo conectado al bot. `phone_number_id` es UNIQUE global: va derivado del tenant. */
+export async function insertWhatsappConnection(
+  sql: Sql,
+  args: { tenantId: string; enabled?: boolean },
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO whatsapp_connections (tenant_id, phone_number_id, enabled)
+    VALUES (${args.tenantId}, ${`pn-${args.tenantId}`}, ${args.enabled ?? true})
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+/**
+ * Chat del bot. `lastInboundDaysAgo` mueve `last_inbound_at` al pasado: la retención
+ * purga los chats sin actividad hace más de 30 días.
+ */
+export async function insertWhatsappChat(
+  sql: Sql,
+  args: { tenantId: string; waPhone?: string; lastInboundDaysAgo?: number },
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO whatsapp_chats (tenant_id, wa_phone, last_inbound_at)
+    VALUES (
+      ${args.tenantId},
+      ${args.waPhone ?? `54911${faker.string.numeric(8)}`},
+      NOW() - ${args.lastInboundDaysAgo ?? 0}::int * INTERVAL '1 day'
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}
+
+/**
+ * Mensaje del bot. `createdDaysAgo` mueve `created_at` (retención de 30 días). Con
+ * `notice` hace falta `bookingId` (CHECK `whatsapp_messages_notice_valid`).
+ */
+export async function insertWhatsappMessage(
+  sql: Sql,
+  args: {
+    tenantId: string
+    chatId: string
+    direction?: 'inbound' | 'outbound' | 'owner'
+    createdDaysAgo?: number
+    bookingId?: string | null
+    notice?: 'deposit_confirmed' | 'hold_expired' | 'late_payment_refunded' | null
+  },
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO whatsapp_messages (
+      tenant_id, chat_id, direction, wa_message_id, body, booking_id, notice, created_at
+    )
+    VALUES (
+      ${args.tenantId}, ${args.chatId}, ${args.direction ?? 'inbound'},
+      ${`wamid.${faker.string.uuid()}`}, ${'hola'},
+      ${args.bookingId ?? null}, ${args.notice ?? null},
+      NOW() - ${args.createdDaysAgo ?? 0}::int * INTERVAL '1 day'
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}

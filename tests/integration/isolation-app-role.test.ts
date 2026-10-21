@@ -112,6 +112,10 @@ const TENANT_SCOPED_DECLARADA = [
   'tournament_team_players',
   'tournament_teams',
   'tournaments',
+  // Bot de WhatsApp (migr. 096).
+  'whatsapp_chats',
+  'whatsapp_connections',
+  'whatsapp_messages',
 ]
 const PLAYER_SCOPED_DECLARADA = [
   'bookings',
@@ -286,6 +290,9 @@ beforeAll(async () => {
     tournament_team_players: s.tournamentTeamPlayerId,
     tournament_teams: s.tournamentTeamId,
     tournaments: s.tournamentId,
+    whatsapp_chats: s.whatsappChatId,
+    whatsapp_connections: s.whatsappConnectionId,
+    whatsapp_messages: s.whatsappMessageId,
   })
   Object.assign(rowA, seeded(A))
   Object.assign(rowB, seeded(B))
@@ -744,6 +751,9 @@ function tenantTablesLazy(): string[] {
     'tournament_team_players',
     'tournament_teams',
     'tournaments',
+    'whatsapp_chats',
+    'whatsapp_connections',
+    'whatsapp_messages',
   ]
 }
 

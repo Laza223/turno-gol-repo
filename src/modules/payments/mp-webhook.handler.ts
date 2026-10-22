@@ -1,10 +1,10 @@
 import { eq, sql } from 'drizzle-orm'
 import { tenants } from '@/shared/db/schema'
 import { getDb, withTenantContext } from '@/shared/db/client'
-import { resolveTenantGateway } from './mp-oauth'
+import { refreshTenantMpToken, resolveTenantGateway } from './mp-oauth'
 import type { PaymentGateway } from './mp-gateway'
 import { dispatchPaymentInfo, lockMpEvent } from './payment.service'
-import { TenantMpNotConnectedError } from './payment.errors'
+import { MpGrantRevokedError, TenantMpNotConnectedError } from './payment.errors'
 import { parseSaasUpgradeRef, type GatewayPaymentInfo } from './payment.types'
 import { onPaymentApproved, onPaymentRejected } from '@/modules/billing/dunning.service'
 import { buildSubscriptionChargeKey } from '@/modules/billing/subscription-reconcile.service'
@@ -36,6 +36,54 @@ export type MpWebhookJob = {
 }
 
 /**
+ * Desvinculación (`mp-connect` / `application.deauthorized`, la ruta ya filtró
+ * la acción y resolvió el complejo por la cuenta firmada).
+ *
+ * El evento NO se toma como verdad: se intenta renovar el token del complejo y
+ * el veredicto es de MP. `refreshTenantMpToken` marca si contesta que el
+ * permiso murió (`MpGrantRevokedError`) y limpia la marca si renueva. Así no
+ * hay falso positivo cuando el dueño desvinculó OTRA app de TurnoGol con la
+ * misma cuenta, ni cuando el aviso llega tarde a una reconexión.
+ *
+ * El evento se registra en `processed_webhooks` DESPUÉS de la comprobación: un
+ * error transitorio (5xx, red) tira y pg-boss reintenta; la revocación, que ya
+ * quedó marcada, no se reintenta.
+ */
+async function handleMpDeauthorization(
+  job: MpWebhookJob,
+  tenant: { mpRefreshToken: string | null; mpUserId: string | null } | undefined,
+): Promise<void> {
+  // Sin token no hay nada que comprobar (ya se desconectó desde TurnoGol), y
+  // con otra cuenta el aviso es de la conexión anterior: el complejo reconectó
+  // con una cuenta distinta entre el aviso y este job.
+  if (tenant?.mpRefreshToken && tenant.mpUserId === job.mpPaymentId) {
+    try {
+      await refreshTenantMpToken(job.tenantId, 'webhook')
+    } catch (err) {
+      if (!(err instanceof MpGrantRevokedError)) throw err
+    }
+  }
+
+  await withTenantContext(job.tenantId, (tx) =>
+    lockMpEvent(
+      {
+        mpEventId: job.mpEventId,
+        eventType: job.eventType,
+        mpPaymentId: job.mpPaymentId,
+        rawPayload: job.rawPayload,
+      },
+      tx,
+    ),
+  )
+  track.webhook('mp.webhook.processed', {
+    mpEventId: job.mpEventId,
+    tenantId: job.tenantId,
+    eventType: job.eventType,
+    mpPaymentId: job.mpPaymentId,
+  })
+}
+
+/**
  * Unit of work for the pg-boss `process-mp-webhook` queue.
  *
  *   1. Resolve tenant + decrypt MP access token (per-tenant OAuth, ADR-004).
@@ -47,6 +95,8 @@ export type MpWebhookJob = {
  *      - `subscription_authorized_payment` → dunning.onPaymentApproved/Rejected
  *      - `subscription_preapproval`        → no-op (we cancel/update via API, MP echoes)
  *      - `payment`                          → SaaS-upgrade dispatch OR booking deposit
+ *      - `mp-connect`                       → comprobación de desvinculación
+ *        (`handleMpDeauthorization`, antes de todo lo de arriba)
  *
  * Throws on tenant-not-connected or downstream errors; pg-boss retries up to
  * 5 times with backoff (see `MP_WEBHOOK_SEND_OPTIONS`).
@@ -57,6 +107,8 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
     .select({
       id: tenants.id,
       mpAccessToken: tenants.mpAccessToken,
+      mpRefreshToken: tenants.mpRefreshToken,
+      mpUserId: tenants.mpUserId,
     })
     .from(tenants)
     .where(eq(tenants.id, job.tenantId))
@@ -80,6 +132,11 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
       eventType: job.eventType,
       mpPaymentId: job.mpPaymentId,
     })
+    return
+  }
+
+  if (job.eventType === 'mp-connect') {
+    await handleMpDeauthorization(job, tenant)
     return
   }
 

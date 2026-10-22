@@ -297,12 +297,17 @@ jobs:
       # (proceso nuevo) por archivo. `ON_ERROR_STOP=1` sigue frenando en la
       # primera falla y el `\echo` sigue diciendo cuál — solo se ahorra el
       # spawn de los ~70 procesos.
+      #
+      # `[0-9]*`, no `0*`: desde la 100 los números arrancan en 1 y el glob
+      # viejo la salteaba en silencio (la migración no se aplicaba y fallaban
+      # los tests que la usan). Los nombres tienen 3 dígitos fijos, así que el
+      # orden lexicográfico del glob sigue siendo el numérico.
       - name: Apply migrations
         env:
           PGPASSWORD: postgres
         run: |
           {
-            for f in src/shared/db/migrations/0*.sql; do
+            for f in src/shared/db/migrations/[0-9]*.sql; do
               echo "\\echo >>> $f"
               echo "\\i $f"
             done

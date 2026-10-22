@@ -206,7 +206,7 @@ El switching cost de ATC Sports es **real pero superable**:
 | "Mis datos están en ATC" | Carga manual en el onboarding (no hay importador CSV/Excel — retirado del doc 2026-08-27, no existe en código ni está en roadmap) |
 | "Mi equipo ya sabe usar ATC" | Onboarding interactivo en el sistema. Interfaz más intuitiva = menos capacitación |
 | "Mis jugadores tienen la app de ATC" | Web pública del complejo (no requiere app). El jugador llega por link. |
-| "¿Y si TurnoGol cierra?" | Sin exportación de datos del complejo hoy (retirado del doc 2026-08-27 — no existe en código; solo hay export ARCO a nivel jugador, `/api/player/data-export`) |
+| "¿Y si TurnoGol cierra?" | El dueño baja sus reservas, turnos fijos y clientes en CSV para Excel cuando quiere (Ajustes → Tus datos, `/settings/datos`, desde 2026-10-22), y la caja mes a mes desde Métricas. Mientras tenga acceso al panel: un complejo bloqueado no exporta. |
 | "Ya pagué el año" | No podemos hacer nada aquí. El timing importa: captarlos cuando renuevan. |
 
 ---

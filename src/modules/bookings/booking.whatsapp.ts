@@ -156,6 +156,7 @@ async function createWhatsappBookingImpl(
       closedDates: tenants.closedDates,
       closesNextDay: tenants.closesNextDay,
       mpAccessToken: tenants.mpAccessToken,
+      mpDisconnectedAt: tenants.mpDisconnectedAt,
     })
     .from(tenants)
     .where(eq(tenants.id, tenantId))
@@ -281,9 +282,11 @@ async function createWhatsappBookingImpl(
   // ── Seña: la decisión de `createBookingAndCheckout` (reservar/actions.ts). Un complejo con
   // `requires_deposit` y MercadoPago SIN conectar no puede cobrar la seña, así que
   // la reserva se confirma sin seña (decisión del dueño, 2026-08-18) en vez de nacer
-  // `pending_payment` y vencer sola.
-  const depositUnpayable = settings.requires_deposit && !tenant.mpAccessToken
-  if (depositUnpayable) {
+  // `pending_payment` y vencer sola. Igual con MP marcado como desconectado (migr. 100,
+  // decisión 2026-10-22): sin reporte, el dueño ya tiene el aviso en Hoy.
+  const depositUnpayable =
+    settings.requires_deposit && (!tenant.mpAccessToken || !!tenant.mpDisconnectedAt)
+  if (settings.requires_deposit && !tenant.mpAccessToken) {
     captureMessage('whatsapp booking: requires_deposit sin MercadoPago conectado', 'warning')
   }
   const withDeposit =

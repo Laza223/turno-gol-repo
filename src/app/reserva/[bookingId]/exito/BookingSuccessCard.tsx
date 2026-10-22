@@ -1,6 +1,12 @@
-import { CheckCircle2, MessageCircle } from 'lucide-react'
+import Link from 'next/link'
+import { CheckCircle2, MessageCircle, Swords } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
-import { PORTAL_BUTTON, PORTAL_COLUMN } from '@/components/world/PortalAuthFrame'
+import {
+  PORTAL_BUTTON,
+  PORTAL_BUTTON_OUTLINE,
+  PORTAL_COLUMN,
+} from '@/components/world/PortalAuthFrame'
+import { isInRivalStartWindow } from '@/modules/rival/rival-window'
 import { bookingCode } from '@/lib/booking-code'
 import { buildGroupShareHref, buildGroupShareText } from '@/lib/booking/group-share'
 import { cn } from '@/lib/utils'
@@ -46,11 +52,14 @@ export function BookingSuccessCard({
   bookingId,
   booking,
   complexUrl,
+  rivalEnabled = false,
 }: {
   bookingId: string
   booking: ConfirmedBooking
   /** El link absoluto del complejo, para el mensaje al grupo. */
   complexUrl: string
+  /** Flag global de RIVAL: suma "Armar el partido" como acción secundaria. Apagado, nada. */
+  rivalEnabled?: boolean
 }) {
   const timeStart = booking.timeStart.slice(0, 5)
   const timeEnd = booking.timeEnd.slice(0, 5)
@@ -123,6 +132,19 @@ export function BookingSuccessCard({
           <p id="share-hint" className="mt-2 text-sm text-muted-foreground">
             Se abre WhatsApp con el turno escrito, para que lo mandes a tu grupo.
           </p>
+          {rivalEnabled && isInRivalStartWindow(booking.startsOn) && (
+            <Link
+              href={`/rival/nuevo?reserva=${bookingId}`}
+              className={cn(
+                buttonVariants({ variant: 'outline' }),
+                PORTAL_BUTTON_OUTLINE,
+                'mt-4 gap-2',
+              )}
+            >
+              <Swords className="size-5 shrink-0" aria-hidden />
+              Armar el partido
+            </Link>
+          )}
         </div>
 
         <div className="mt-8">

@@ -4,7 +4,7 @@ import { SETTINGS_ADMIN_ONLY_NOTICE } from '@/modules/staff/roles'
 
 /**
  * Toda la sección /settings es solo-admin (roles 029, modelo de 2 roles): la
- * portada y sus cinco páginas por igual, y los redirects viejos (`avisos`,
+ * portada y todas sus páginas por igual, y los redirects viejos (`avisos`,
  * `canchas` — Canchas salió a su propio espacio del menú el 2026-09-10 y
  * adentro usa requireOperatorStaff(), que nunca llega a correr: este guard
  * corta antes de que la page se renderice). Sin PIN — el

@@ -73,6 +73,7 @@ export default async function ReservasPolicyPage(
 
       <MercadoPagoSenaSection
         connected={mpConnected}
+        disconnected={!!tenant.mpDisconnectedAt}
         nickname={tenant.mpNickname}
         requiresDeposit={s.requires_deposit === true}
         error={searchParams?.error}

@@ -16,6 +16,8 @@ export type GetHoyDataOpts = {
   openingHours: OpeningHours
   closedDates: string[] | null
   closesNextDay: boolean
+  /** `tenants.mp_disconnected_at`: si no es null, suma la alerta. El worker de D8 no lo pasa. */
+  mpDisconnectedAt?: Date | null
 }
 
 function timeLabel(timeStart: string, timeEnd: string): string {
@@ -295,7 +297,11 @@ export async function getHoyData(
         ]
       : []
 
-  const needsAttention = sortAttentionItems([...failedDeposits, ...refundAlerts])
+  const mpAlerts: AttentionItem[] = opts.mpDisconnectedAt
+    ? [{ kind: 'mp_disconnected', since: opts.mpDisconnectedAt }]
+    : []
+
+  const needsAttention = sortAttentionItems([...mpAlerts, ...failedDeposits, ...refundAlerts])
   const whileYouWereAway = sortWhileAwayItems([
     ...onlineBookings,
     ...cancellations,

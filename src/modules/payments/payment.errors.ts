@@ -21,6 +21,26 @@ export class MpGatewayError extends Error {
   }
 }
 
+/**
+ * MercadoPago rechazó el refresh porque el permiso OAuth del complejo ya no
+ * existe: `invalid_grant` (refresh revocado, vencido o de otra aplicación) o
+ * `unauthorized_client` (la aplicación no tiene grant con ese usuario).
+ *
+ * Es la ÚNICA señal que marca al complejo como desconectado
+ * (`mp-connection.service.ts`). `invalid_client`, un 5xx o un timeout son
+ * problemas de TurnoGol o de MP, no del complejo, y siguen siendo
+ * `MpGatewayError` a secas: avisarle "reconectá" ahí sería mentirle.
+ */
+export class MpGrantRevokedError extends MpGatewayError {
+  constructor(
+    readonly mpError: 'invalid_grant' | 'unauthorized_client',
+    status: number,
+  ) {
+    super(`MP token refresh failed (HTTP ${status}, ${mpError})`)
+    this.name = 'MpGrantRevokedError'
+  }
+}
+
 export class TenantMpNotConnectedError extends Error {
   constructor(tenantId: string) {
     super(`Tenant ${tenantId} has no MercadoPago account connected`)

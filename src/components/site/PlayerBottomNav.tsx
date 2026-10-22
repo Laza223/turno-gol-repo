@@ -1,9 +1,16 @@
 'use client'
 
-import { Calendar, Compass, Settings } from 'lucide-react'
+import { Calendar, Compass, Settings, Swords } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { usePortalSession } from './PortalSessionProvider'
+
+const RIVAL_ITEM = {
+  href: '/rival',
+  label: 'Rival',
+  Icon: Swords,
+  match: (p: string) => p === '/rival' || p.startsWith('/rival/'),
+}
 
 const NAV_ITEMS = [
   {
@@ -53,7 +60,10 @@ export function useBottomNavVisible(): boolean {
 export function PlayerBottomNav() {
   const pathname = usePathname()
   const visible = useBottomNavVisible()
+  const { rivalEnabled } = usePortalSession()
   if (!visible) return null
+  // Con RIVAL prendido, Rival va segundo: Explorar · Rival · Reservas · Cuenta.
+  const items = rivalEnabled ? [NAV_ITEMS[0]!, RIVAL_ITEM, ...NAV_ITEMS.slice(1)] : NAV_ITEMS
   return (
     <nav
       aria-label="Navegación del jugador"
@@ -63,7 +73,7 @@ export function PlayerBottomNav() {
       // overlay de Dialog/Sheet, que es lo que se busca.
       className="fixed inset-x-0 bottom-0 z-40 flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden"
     >
-      {NAV_ITEMS.map(({ href, label, Icon, match }) => {
+      {items.map(({ href, label, Icon, match }) => {
         const active = match(pathname)
         return (
           <Link

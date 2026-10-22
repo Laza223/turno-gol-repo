@@ -72,6 +72,7 @@ function tenantRow(status: TenantRow['status']): TenantRow {
     closesNextDay: false,
     mpConnectedAt: null,
     mpNickname: null,
+    mpDisconnectedAt: null,
     latitude: null,
     longitude: null,
   }

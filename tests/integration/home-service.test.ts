@@ -277,6 +277,25 @@ describe('home.service — "Necesita tu atención" (taxonomía, docs/decisions/2
     expect(data.needsAttention.map((a) => a.kind)).toEqual(['failed_deposit'])
   })
 
+  it('MercadoPago desconectado es un ítem P1: va antes que la seña fallida', async () => {
+    const { tenant, courtId } = await seedTenant()
+    const bookingId = await insertBooking(getSql(), {
+      tenantId: tenant.id,
+      courtId,
+      status: 'pending_payment',
+    })
+    await insertDepositPayment(tenant.id, bookingId, 'rejected')
+    const today = artDateOf(new Date())
+    const since = new Date(Date.now() - 2 * 60 * 60 * 1000)
+
+    const data = await withTenantContext(tenant.id, (tx) =>
+      getHoyData(tenant.id, tx, { ...hoyOpts(tenant, today), mpDisconnectedAt: since }),
+    )
+
+    expect(data.needsAttention.map((a) => a.kind)).toEqual(['mp_disconnected', 'failed_deposit'])
+    expect(data.needsAttention[0]).toEqual({ kind: 'mp_disconnected', since })
+  })
+
   it('sin ninguna anomalía, "Necesita tu atención" queda vacío', async () => {
     const { tenant } = await seedTenant()
     const today = artDateOf(new Date())

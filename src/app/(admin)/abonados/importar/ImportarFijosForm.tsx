@@ -208,8 +208,8 @@ export function ImportarFijosForm({
           </h2>
           <p className="text-sm text-muted-foreground">
             La primera fila lleva los nombres de las columnas: Nombre, Teléfono, Cancha, Día, Desde,
-            Hasta y Precio. Si falta Hasta, el turno dura una hora. Cualquier otra columna se
-            ignora.
+            Hasta y Precio. Apellido es opcional y se suma al nombre. Si falta Hasta, el turno dura
+            una hora. Cualquier otra columna se ignora.
           </p>
           {courtNames.length > 0 && (
             <p className="text-sm text-muted-foreground">Tus canchas: {courtNames.join(', ')}.</p>

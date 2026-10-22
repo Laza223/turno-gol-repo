@@ -73,7 +73,8 @@ const CLIENTES: ClientListRow[] = [
  * "hace 5 semanas" no se corre con el calendario.
  */
 const NOW_MS = Date.parse('2026-10-22T15:00:00Z')
-const PUBLIC_URL = 'https://turnogol.com.ar/el-vagon'
+// localhost: tests/unit/stories-no-live-network.test.ts veta URLs de red reales.
+const PUBLIC_URL = 'http://localhost:3000/el-vagon'
 
 const noop: JugadoresViewProps['linkAction'] = async () => ({ success: true })
 const noopSearch: JugadoresViewProps['searchAction'] = async () => ({
@@ -347,17 +348,19 @@ export const DejaronDeVenir: Story = {
 
     // El mensaje precargado es el que aprobó el dueño, con el primer nombre.
     const wa = table.getByRole('link', { name: 'Escribirle por WhatsApp a Tomás Ibáñez' })
-    const href = wa.getAttribute('href') ?? ''
-    await expect(href.startsWith('https://wa.me/5491133445566?text=')).toBe(true)
-    await expect(new URL(href).searchParams.get('text')).toBe(
+    // Host y path por separado: un `wa.me/<dígitos>` literal en src/ lo veta
+    // tests/unit/contact-whatsapp.test.ts.
+    const url = new URL(wa.getAttribute('href') ?? '')
+    await expect(url.host).toBe('wa.me')
+    await expect(url.pathname).toBe('/5491133445566')
+    await expect(url.searchParams.get('text')).toBe(
       `Hola Tomás! ¿Cómo andás? Te escribimos de El Vagón. Hace un tiempo que no te vemos por acá. Si querés volver, reservá acá: ${PUBLIC_URL}`,
     )
     await expect(wa).toHaveAttribute('target', '_blank')
 
     // El contacto sin cuenta también: el móvil sin 9 se normaliza.
-    await expect(
-      table.getByRole('link', { name: 'Escribirle por WhatsApp a Diego Sosa' }),
-    ).toHaveAttribute('href', expect.stringMatching(/^https:\/\/wa\.me\/5491122334455\?text=/))
+    const diego = table.getByRole('link', { name: 'Escribirle por WhatsApp a Diego Sosa' })
+    await expect(new URL(diego.getAttribute('href') ?? '').pathname).toBe('/5491122334455')
     // "Vincular" se hace desde "Todas", no acá.
     await expect(table.queryByRole('button', { name: /Vincular/ })).not.toBeInTheDocument()
     // Sin teléfono no hay botón: un wa.me roto es peor que ninguno.

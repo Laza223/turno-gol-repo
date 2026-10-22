@@ -1,8 +1,9 @@
 import { and, asc, eq, gt, inArray, lt, sql } from 'drizzle-orm'
 import { buildWhatsappUrl } from '@/lib/whatsapp'
 import { publicTenantVisibilityConds } from '@/modules/tenants/search.service'
-import { artTodayStr } from '@/shared/dates/art'
-import { artDayRangeUtc } from '@/shared/time/art-date'
+import { addDays, artTodayStr } from '@/shared/dates/art'
+import { uuid } from '@/shared/validation/primitives'
+import { artDateOf, artDayRangeUtc } from '@/shared/time/art-date'
 import { getDb, withPlayerContext, type DbTx } from '@/shared/db/client'
 import {
   bookings,
@@ -22,7 +23,8 @@ import {
   type RivalReportReason,
   type RivalWelcomeInput,
 } from './rival.schema'
-import type { NewMatchBooking } from './rival-form'
+import { artTimeOf } from './rival-display'
+import type { NewMatchBooking, RepeatSource } from './rival-form'
 import { rivalLastStartDay } from './rival-window'
 import type {
   RivalBoardCursor,
@@ -580,6 +582,39 @@ export async function listUpcomingConfirmedBookings(playerId: string): Promise<N
       )
       .orderBy(asc(bookings.startsAt)),
   )
+}
+
+/**
+ * "Repetir" (spec §5.5): los datos de un partido PROPIO con el día corrido +7 (ART). `null` si el
+ * partido no existe o no es del jugador (el filtro por organizador va además de la RLS).
+ */
+export async function getRepeatPrefill(
+  playerId: string,
+  matchId: string,
+): Promise<RepeatSource | null> {
+  if (!uuid.safeParse(matchId).success) return null
+  return inPlayerContext(playerId, async (tx) => {
+    const [m] = await tx
+      .select({
+        tenantId: rivalMatches.tenantId,
+        startsAt: rivalMatches.startsAt,
+        format: rivalMatches.format,
+        capacity: rivalMatches.capacity,
+        level: rivalMatches.level,
+      })
+      .from(rivalMatches)
+      .where(and(eq(rivalMatches.id, matchId), eq(rivalMatches.organizerPlayerId, playerId)))
+      .limit(1)
+    if (!m) return null
+    return {
+      tenantId: m.tenantId,
+      date: addDays(artDateOf(m.startsAt), 7),
+      time: artTimeOf(m.startsAt),
+      format: m.format,
+      capacity: m.capacity,
+      level: m.level,
+    }
+  })
 }
 
 /** Lo que la bienvenida necesita: el nombre actual y si ya aceptó la versión vigente. */

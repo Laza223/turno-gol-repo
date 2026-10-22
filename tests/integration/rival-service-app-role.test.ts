@@ -21,6 +21,7 @@ import {
   createMatch,
   decideRequest,
   getContactLink,
+  getRepeatPrefill,
   getPublicMatch,
   getRivalWelcomeState,
   getRoster,
@@ -38,6 +39,8 @@ import {
   RIVAL_TERMS_VERSION,
   unpublishFromBoard,
 } from '@/modules/rival/rival.service'
+import { artDateOf } from '@/shared/time/art-date'
+import { artTimeOf } from '@/modules/rival/rival-display'
 import { mapRivalDbError, RivalError } from '@/modules/rival/rival.errors'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import { createRivalMatchSchema, publishBoardSchema } from '@/modules/rival/rival.schema'
@@ -983,5 +986,41 @@ describe('8. listEligibleTenants, listUpcomingConfirmedBookings y getRivalWelcom
       position: 'any',
       zone: 'Luján',
     })
+  })
+})
+
+// ─── 9. Repetir ──────────────────────────────────────────────────────────
+
+describe('9. getRepeatPrefill', () => {
+  it('9.1 el organizador recibe los datos del partido con el día +7 en ART; otro jugador, null', async () => {
+    const org = await welcomedPlayer('Repe')
+    const other = await welcomedPlayer('Ajeno')
+    const created = await createMatch(org, draft({ capacity: 8, format: 7 }))
+    const [row] = await adminSql()<{ starts_at: Date }[]>`
+      SELECT starts_at FROM rival_matches WHERE id = ${created.id}
+    `
+    const startsAt = row!.starts_at
+
+    expect(await getRepeatPrefill(org, created.id)).toEqual({
+      tenantId: tenant.id,
+      date: addDays(artDateOf(startsAt), 7),
+      time: artTimeOf(startsAt),
+      format: 7,
+      capacity: 8,
+      level: 'parejo',
+    })
+
+    // Ni siquiera quien está adentro puede repetir un partido que no armó.
+    await joinByInvite(other, created.inviteCode)
+    expect(await getRepeatPrefill(other, created.id)).toBeNull()
+    expect(await getRepeatPrefill(org, '33333333-3333-4333-8333-333333333333')).toBeNull()
+    expect(await getRepeatPrefill(org, 'no-es-uuid')).toBeNull()
+  })
+
+  it('9.2 un partido ya vencido también se puede repetir', async () => {
+    const org = await welcomedPlayer('Vieja')
+    const created = await createMatch(org, draft())
+    await adminSql()`UPDATE rival_matches SET starts_at = now() - interval '2 days' WHERE id = ${created.id}`
+    expect(await getRepeatPrefill(org, created.id)).toMatchObject({ tenantId: tenant.id })
   })
 })

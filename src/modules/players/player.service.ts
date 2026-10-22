@@ -7,6 +7,8 @@ export type GetOrCreatePlayerOpts = {
   agreedToTerms?: boolean
   termsVersion?: string
   phone?: string | null
+  /** De dónde nace la cuenta (`players.signup_source`). Solo se escribe en el alta: nunca pisa uno ya escrito. */
+  signupSource?: string
 }
 
 /**
@@ -53,10 +55,10 @@ export async function getOrCreatePlayer(
   }
 
   const created = await sql<{ id: string; agreed_to_terms_at: string | null }[]>`
-    INSERT INTO players (email, first_name, last_name, phone, agreed_to_terms_at, terms_version, last_login_at)
+    INSERT INTO players (email, first_name, last_name, phone, agreed_to_terms_at, terms_version, last_login_at, signup_source)
     VALUES (
       ${lower}, ${firstName}, ${lastName}, ${opts.phone ?? null},
-      ${agreed ? sql`NOW()` : null}, ${agreed ? termsVersion : null}, NOW()
+      ${agreed ? sql`NOW()` : null}, ${agreed ? termsVersion : null}, NOW(), ${opts.signupSource ?? null}
     )
     ON CONFLICT (email) DO UPDATE
     SET last_login_at = NOW(),

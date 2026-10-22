@@ -39,6 +39,13 @@ export type StartGoogleLoginFromReservar = (
   formData: FormData,
 ) => Promise<GateState>
 
+/**
+ * `reservar` (default): el ingreso de la pantalla de confirmar, donde `withDeposit` es obligatorio.
+ * `rival`: el "Voy" de un partido de RIVAL; no hay seña, entrar devuelve al mismo partido.
+ */
+type GateVariant =
+  { variant?: 'reservar'; withDeposit: boolean } | { variant: 'rival'; withDeposit?: never }
+
 /** Lo tipeado que se conserva si la request no llegó (los errores del servidor ya lo traen). */
 type GateEcho = { values: { email?: string; firstName?: string } }
 /** `n`: cuál fue la última respuesta entre las dos actions (un corte no mueve el reloj `at`). */
@@ -107,7 +114,8 @@ export default function LoginGate({
   action,
   googleAction,
   inAppBrowser = false,
-  withDeposit,
+  withDeposit = false,
+  variant = 'reservar',
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -115,8 +123,9 @@ export default function LoginGate({
   action: SendPlayerMagicLink
   googleAction: StartGoogleLoginFromReservar
   inAppBrowser?: boolean
-  withDeposit: boolean
-}) {
+} & GateVariant) {
+  const rival = variant === 'rival'
+  const scope = rival ? 'rival' : 'reservar'
   const calls = useRef(0)
   const run =
     (
@@ -126,7 +135,7 @@ export default function LoginGate({
     async (prev: State, formData: FormData): Promise<State> => {
       const n = ++calls.current
       return {
-        ...(await callMailAction(send, prev, formData, { scope: 'reservar', ...options })),
+        ...(await callMailAction(send, prev, formData, { scope, ...options })),
         n,
       }
     }
@@ -248,6 +257,12 @@ export default function LoginGate({
     </div>
   )
 
+  const sentMessage = rival
+    ? 'Cuando lo toques, volvés a este partido con tu cuenta.'
+    : withDeposit
+      ? 'Cuando lo toques, volvés a esta pantalla con tu cuenta y ahí pagás la seña.'
+      : 'Cuando lo toques, tu reserva queda confirmada.'
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={GATE_CONTENT} style={GATE_CARD_STYLE}>
@@ -257,7 +272,8 @@ export default function LoginGate({
             firstName={emailState.firstName}
             sentAt={emailState.at}
             next={next}
-            withDeposit={withDeposit}
+            sentMessage={sentMessage}
+            scope={scope}
             action={action}
             onChangeEmail={() => setDiscarded(emailState)}
           />
@@ -265,12 +281,26 @@ export default function LoginGate({
           <div className="space-y-6">
             <div>
               <DialogTitle className={AUTH_TITLE}>
-                Entrá para <span style={AUTH_ACCENT_STYLE}>reservar</span>
+                {rival ? (
+                  <>
+                    Entrá para <span style={AUTH_ACCENT_STYLE}>sumarte</span> al partido
+                  </>
+                ) : (
+                  <>
+                    Entrá para <span style={AUTH_ACCENT_STYLE}>reservar</span>
+                  </>
+                )}
               </DialogTitle>
-              {!withDeposit && (
+              {rival ? (
                 <p className="mt-2 text-pretty text-base text-muted-foreground">
-                  Entrás y la reserva queda confirmada.
+                  Entrás y volvés a este partido.
                 </p>
+              ) : (
+                !withDeposit && (
+                  <p className="mt-2 text-pretty text-base text-muted-foreground">
+                    Entrás y la reserva queda confirmada.
+                  </p>
+                )
               )}
             </div>
             {inAppBrowser ? (
@@ -319,7 +349,8 @@ function SentPanel({
   firstName,
   sentAt,
   next,
-  withDeposit,
+  sentMessage,
+  scope,
   action,
   onChangeEmail,
 }: {
@@ -327,7 +358,8 @@ function SentPanel({
   firstName: string
   sentAt: number
   next: string
-  withDeposit: boolean
+  sentMessage: string
+  scope: string
   action: SendPlayerMagicLink
   onChangeEmail: () => void
 }) {
@@ -344,11 +376,7 @@ function SentPanel({
       <p className="mt-3 break-words text-base text-foreground">
         Te mandamos un enlace a <strong className="font-semibold">{email}</strong>.
       </p>
-      <p className="mt-2 text-pretty text-base text-muted-foreground">
-        {withDeposit
-          ? 'Cuando lo toques, volvés a esta pantalla con tu cuenta y ahí pagás la seña.'
-          : 'Cuando lo toques, tu reserva queda confirmada.'}
-      </p>
+      <p className="mt-2 text-pretty text-base text-muted-foreground">{sentMessage}</p>
       <p className="mt-2 text-pretty text-sm text-muted-foreground">
         ¿No llegó? Revisá la carpeta de correo no deseado o que el email esté bien escrito.
       </p>
@@ -357,7 +385,7 @@ function SentPanel({
           action={action}
           fields={{ email, firstName, next, terms: 'on' }}
           sentAt={sentAt}
-          scope="reservar"
+          scope={scope}
           resentNotice="Listo: te mandamos otro enlace. Usá el del último correo."
         />
         <Button type="button" variant="ghost" className={PORTAL_BUTTON} onClick={onChangeEmail}>

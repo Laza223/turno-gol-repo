@@ -11,7 +11,7 @@ import { ChipGroup } from '@/app/(public)/[slug]/components/ChipGroups'
 import { RIVAL_POSITION_LABELS } from '@/modules/rival/rival-display'
 import { RIVAL_ZONES } from '@/modules/rival/rival-zones'
 import { RIVAL_POSITIONS } from '@/modules/rival/rival.schema'
-import type { RivalFormResult } from '../actions'
+import type { RivalFormResult } from './actions'
 
 /** Firma de la Server Action (llega por prop: importarla como valor arrastra drizzle al bundle del browser). */
 type WelcomeAction = (prev: RivalFormResult, formData: FormData) => Promise<RivalFormResult>
@@ -35,7 +35,7 @@ const ZONE_OPTIONS = RIVAL_ZONES.map((z) => ({ value: z, label: z }))
 
 /**
  * La bienvenida RIVAL (spec §7): una sola tarjeta, un solo botón que acepta. La primera vez que
- * el jugador organiza, y el PR3 la reusa para "Voy" (por eso `submitLabel`). Sin foto: es del PR5.
+ * el jugador organiza, y "Voy" la reusa con otro `submitLabel`. Sin foto: es del PR5.
  */
 export function WelcomeCard({
   defaultName,
@@ -43,6 +43,8 @@ export function WelcomeCard({
   defaultZone,
   action,
   submitLabel = 'Aceptar y seguir',
+  intro = 'Antes de armar tu primer partido, contanos quién sos.',
+  hidden,
 }: {
   defaultName: string
   /** Lo que el jugador ya había cargado (re-aceptación por cambio de versión de las reglas). */
@@ -50,6 +52,10 @@ export function WelcomeCard({
   defaultZone?: string | null
   action: WelcomeAction
   submitLabel?: string
+  /** Bajada de la tarjeta: cambia según a qué se llegó ("Voy" en vez de "Armar"). */
+  intro?: string
+  /** Campos ocultos que la action necesita (el código del partido en "Estoy adentro"). */
+  hidden?: Record<string, string>
 }) {
   const [state, formAction, pending] = useActionState(action, INITIAL)
   // Controlados: React 19 resetea los campos no controlados al terminar una action.
@@ -74,12 +80,13 @@ export function WelcomeCard({
         <h2 id="rival-bienvenida" className={PORTAL_SECTION_TITLE}>
           Bienvenido a RIVAL
         </h2>
-        <p className="mt-1 text-base text-muted-foreground">
-          Antes de armar tu primer partido, contanos quién sos.
-        </p>
+        <p className="mt-1 text-base text-muted-foreground">{intro}</p>
       </div>
 
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
+        {Object.entries(hidden ?? {}).map(([name, value]) => (
+          <input key={name} type="hidden" name={name} value={value} />
+        ))}
         <div className="space-y-1.5">
           <Label htmlFor="rival-nombre" className="text-base">
             Tu nombre

@@ -40,6 +40,22 @@ export function isBookingPath(next: string): boolean {
   return BOOKING_PATH_RE.test(next)
 }
 
+// `/rival/p/<code>` seguido de `?` o del fin: el código son 10 símbolos del alfabeto de los
+// referidos (mismo que `inviteCodeSchema`), así que no pasan `/rival/pX`, `/rival/p/x/../../admin`
+// ni `\`, `?` o `#` antes del fin del path. `/x?a=/rival/p/y` es el path `/x`.
+// El alfabeto es una copia de `REFERRAL_CODE_ALPHABET` (@/lib no importa del dominio): el test de
+// `isRivalPath` vigila que coincidan.
+const RIVAL_CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+const RIVAL_PATH_RE = new RegExp(`^/rival/p/[${RIVAL_CODE_ALPHABET}]{10}(?:\\?|$)`)
+
+/**
+ * ¿`next` es el partido de RIVAL? El jugador que tocó "Voy" vuelve DIRECTO ahí (sin `/verify`):
+ * ya eligió el partido y tiene que volver a él. Se usa con un `next` ya saneado.
+ */
+export function isRivalPath(next: string): boolean {
+  return RIVAL_PATH_RE.test(next)
+}
+
 /** Arma el path de éxito de `/verify` con `next` encodeado e `intent`. */
 export function successVerifyPath(next: string, intent: SuccessIntent): string {
   return `/verify?status=success&next=${encodeURIComponent(next)}&intent=${intent}`

@@ -30,19 +30,25 @@ const DB_ERROR_CODES = [
   'rival_captain_taken',
 ] as const
 
-type RivalErrorCode =
-  | (typeof DB_ERROR_CODES)[number]
+/** Códigos que NO salen de un `RAISE` de la base: infraestructura, índices únicos y chequeos del service. */
+const SERVICE_ERROR_CODES = [
   // La RLS rechazó la escritura (42501): el jugador tocó algo que no es suyo.
-  | 'rival_forbidden'
+  'rival_forbidden',
   // Deadlock (40P01), fallo de serialización (40001) o lock_timeout (55P03): la
   // UI dice "probá de nuevo". Sin reintento acá: la transacción ya está abortada.
-  | 'rival_try_again'
+  'rival_try_again',
   // Índices únicos de la 099 (23505).
-  | 'rival_already_participant'
-  | 'rival_already_reported'
+  'rival_already_participant',
+  'rival_already_reported',
   // Chequeos del service (no salen de la base).
-  | 'rival_tenant_unavailable'
-  | 'rival_welcome_required'
+  'rival_tenant_unavailable',
+  'rival_welcome_required',
+] as const
+
+/** Todos los códigos que puede llevar un `RivalError` (la UI tiene que tener copy para cada uno). */
+export const RIVAL_ERROR_CODES = [...DB_ERROR_CODES, ...SERVICE_ERROR_CODES] as const
+
+export type RivalErrorCode = (typeof RIVAL_ERROR_CODES)[number]
 
 export class RivalError extends Error {
   constructor(public readonly code: RivalErrorCode) {

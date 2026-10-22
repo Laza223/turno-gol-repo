@@ -82,6 +82,7 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   'configuracion',
   'eliminar-cuenta',
   'mis-reservas',
+  'rival',
   'perfil',
   // (public)
   'explorar',

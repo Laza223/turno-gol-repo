@@ -1,6 +1,15 @@
 import { Fragment, type ReactNode } from 'react'
 import Link from 'next/link'
-import { CalendarX, Compass, MapPin, MessageCircle, Navigation, RotateCcw } from 'lucide-react'
+import {
+  CalendarX,
+  Compass,
+  MapPin,
+  MessageCircle,
+  Navigation,
+  RotateCcw,
+  Swords,
+} from 'lucide-react'
+import { isInRivalStartWindow } from '@/modules/rival/rival-window'
 import { formatLabel } from '@/components/public/courtFacets'
 import { buttonVariants } from '@/components/ui/button'
 import { Pager } from '@/components/ui/pager'
@@ -216,12 +225,15 @@ function BookingCard({
   b,
   today,
   featured,
+  rivalEnabled,
   cancelAction,
 }: {
   b: MisReservasBookingRow
   today: string
   /** La próxima: la primera de Próximos. Trae dirección, "Avisarle al grupo" y "Cómo llegar". */
   featured: boolean
+  /** Flag de RIVAL: suma "Armar el partido" a la próxima. Apagado, no renderiza nada. */
+  rivalEnabled: boolean
   cancelAction: CancelMyBookingAction
 }) {
   const visual = playerBookingVisual(b.status, b.deposit_status)
@@ -240,7 +252,14 @@ function BookingCard({
   const canReserveAgain = RESERVE_AGAIN_STATUSES.has(b.status)
   const showShare = featured && b.share_href != null
   const showDirections = featured && b.directions_href != null
-  const hasActions = canCancel || canReview || canReserveAgain || showShare || showDirections
+  const showRival =
+    rivalEnabled &&
+    featured &&
+    b.status === 'confirmed' &&
+    !b.ended &&
+    isInRivalStartWindow(b.starts_on, today)
+  const hasActions =
+    canCancel || canReview || canReserveAgain || showShare || showDirections || showRival
 
   const title = (
     <>
@@ -388,6 +407,17 @@ function BookingCard({
               Cómo llegar
             </a>
           )}
+          {showRival && (
+            <Link
+              href={`/rival/nuevo?reserva=${b.id}`}
+              aria-describedby={describedBy}
+              data-ghost
+              className={cn(GHOST, 'text-foreground')}
+            >
+              <Swords className="size-4 shrink-0" aria-hidden />
+              Armar el partido
+            </Link>
+          )}
           {canCancel && (
             <CancelBookingButton
               bookingId={b.id}
@@ -441,6 +471,7 @@ export function MisReservasView({
   page,
   total,
   pageSize,
+  rivalEnabled = false,
 }: {
   bookings: MisReservasBookingRow[]
   tab: 'proximos' | 'historial'
@@ -454,6 +485,8 @@ export function MisReservasView({
   total: number
   /** Tamaño de página real (`MIS_RESERVAS_PAGE_SIZE`) — vive en page.tsx, se pasa por prop porque esta vista es presentacional. */
   pageSize: number
+  /** Flag global de RIVAL (lo lee la page en el server). */
+  rivalEnabled?: boolean
 }) {
   const tabClass = (active: boolean) =>
     cn(
@@ -544,6 +577,7 @@ export function MisReservasView({
                 b={b}
                 today={today}
                 featured={i === featuredIndex}
+                rivalEnabled={rivalEnabled}
                 cancelAction={cancelAction}
               />
             ))}

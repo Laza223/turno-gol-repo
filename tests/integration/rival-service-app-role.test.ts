@@ -22,11 +22,14 @@ import {
   decideRequest,
   getContactLink,
   getPublicMatch,
+  getRivalWelcomeState,
   getRoster,
   joinByInvite,
   leaveMatch,
   listBoard,
+  listEligibleTenants,
   listMyMatches,
+  listUpcomingConfirmedBookings,
   publishToBoard,
   removeParticipant,
   reportMatch,
@@ -901,5 +904,84 @@ describe('7. joinByInvite desde `left`', () => {
     await insertBan(adminSql(), { tenantId: tenant.id, playerId: banned, bannedBy: staffId })
     await rejectsWith('rival_banned', joinByInvite(banned, m.inviteCode))
     expect((await statusesOf(m.id))[banned]).toBe('left')
+  })
+})
+
+// ─── 8. Lecturas del formulario de "Armar un partido" ────────────────────
+
+describe('8. listEligibleTenants, listUpcomingConfirmedBookings y getRivalWelcomeState', () => {
+  it('8.1 listEligibleTenants usa el mismo filtro que createMatch: oculto, bloqueado o sin onboarding no salen', async () => {
+    const su = adminSql()
+    const hidden = await createTestTenant(su)
+    await su`UPDATE tenants SET marketplace_visible = false WHERE id = ${hidden.id}`
+    const blocked = await createTestTenant(su)
+    await su`UPDATE tenants SET status = 'blocked' WHERE id = ${blocked.id}`
+    const noOnboarding = await createTestTenant(su, { onboardingCompleted: false })
+
+    const ids = (await listEligibleTenants()).map((t) => t.id)
+    expect(ids).toContain(tenant.id)
+    for (const t of [hidden, blocked, noOnboarding]) expect(ids).not.toContain(t.id)
+  })
+
+  it('8.2 listUpcomingConfirmedBookings trae solo MIS reservas confirmadas y futuras, con el formato de la cancha', async () => {
+    const su = adminSql()
+    const me = await welcomedPlayer('Mia')
+    const other = await welcomedPlayer('Otra')
+    const courtId = await insertCourt(su, tenant.id)
+    await su`UPDATE courts SET format = 7 WHERE id = ${courtId}`
+    const date = addDays(artTodayStr(), 3)
+    const book = (
+      playerId: string,
+      o: { timeStart: string; timeEnd: string; status?: string; date?: string },
+    ) =>
+      insertBooking(su, {
+        tenantId: tenant.id,
+        courtId,
+        playerId,
+        date: o.date ?? date,
+        timeStart: o.timeStart,
+        timeEnd: o.timeEnd,
+        status: o.status ?? 'confirmed',
+      })
+    const mine = await book(me, { timeStart: '20:00', timeEnd: '21:00' })
+    await book(me, { timeStart: '21:00', timeEnd: '22:00', status: 'canceled_no_refund' })
+    await book(me, { timeStart: '22:00', timeEnd: '23:00', date: addDays(artTodayStr(), 20) })
+    // El schema admite hasta hoy+7 ART: una reserva a +8 no se puede vincular, ni siquiera listar.
+    await book(me, { timeStart: '18:00', timeEnd: '19:00', date: addDays(artTodayStr(), 8) })
+    const edge = await book(me, {
+      timeStart: '18:00',
+      timeEnd: '19:00',
+      date: addDays(artTodayStr(), 7),
+    })
+    await book(other, { timeStart: '19:00', timeEnd: '20:00' })
+
+    const list = await listUpcomingConfirmedBookings(me)
+    expect(list.map((b) => b.id)).toEqual([mine, edge])
+    expect(list[0]).toMatchObject({ tenantId: tenant.id, format: 7 })
+    expect(list[0]!.startsAt).toBeInstanceOf(Date)
+  })
+
+  it('8.3 getRivalWelcomeState: sin aceptar es false; aceptada la versión vigente, true; una vieja vuelve a false', async () => {
+    const su = adminSql()
+    const fresh = (await createTestPlayer(su)).id
+    expect(await getRivalWelcomeState(fresh)).toMatchObject({
+      welcomed: false,
+      position: null,
+      zone: null,
+    })
+    await acceptRivalWelcome(fresh, { firstName: 'Nuevo', position: 'any', zone: 'Luján' })
+    expect(await getRivalWelcomeState(fresh)).toEqual({
+      firstName: 'Nuevo',
+      welcomed: true,
+      position: 'any',
+      zone: 'Luján',
+    })
+    await su`UPDATE players SET rival_terms_version = 'rival-vieja' WHERE id = ${fresh}`
+    // Re-aceptación: sigue devolviendo lo que ya había cargado, para precargar la tarjeta.
+    expect(await getRivalWelcomeState(fresh)).toMatchObject({
+      welcomed: false,
+      position: 'any',
+      zone: 'Luján',
+    })
   })
 })

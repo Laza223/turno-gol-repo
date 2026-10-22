@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { getCancellationPreview } from '@/modules/bookings/cancellation-preview'
-import { DEFAULT_CANCELLATION_HOURS_BEFORE } from '@/shared/constants'
+import { DEFAULT_CANCELLATION_HOURS_BEFORE, LATE_CANCEL_WINDOW_DAYS } from '@/shared/constants'
 import { absoluteUrl } from '@/lib/seo/metadata'
 import { buildDirectionsHref } from '@/lib/booking/directions'
 import { buildGroupShareHref, buildGroupShareText } from '@/lib/booking/group-share'
@@ -56,6 +56,10 @@ type RawMisReservasRow = {
   tenant_latitude: string | null
   tenant_longitude: string | null
   cancellation_policy_hours: number
+  /** `settings.late_cancel_hours`; 0 = penalidad apagada. */
+  late_cancel_hours: number
+  /** Cancelaciones tardías del jugador en este complejo, últimos 60 días. */
+  late_cancel_count: number
   /** `null` = no hay devolución en juego. Ver `refundContactFor`. */
   refund_status: 'approved' | 'pending' | null
   /** Medio de la MISMA fila que dio `refund_status`. */
@@ -138,6 +142,12 @@ export default async function MisReservasPage(props: {
              t.latitude AS tenant_latitude, t.longitude AS tenant_longitude,
              t.phone AS tenant_phone, t.whatsapp AS tenant_whatsapp, t.email AS tenant_email,
              COALESCE((t.settings->'cancellation_policy'->>'hours_before')::int, ${DEFAULT_CANCELLATION_HOURS_BEFORE}::int) AS cancellation_policy_hours,
+             COALESCE((t.settings->>'late_cancel_hours')::int, 0) AS late_cancel_hours,
+             (SELECT count(*)::int FROM bookings lb
+               WHERE lb.player_id = b.player_id AND lb.tenant_id = b.tenant_id
+                 AND lb.canceled_late
+                 AND lb.canceled_at >= now() - make_interval(days => ${LATE_CANCEL_WINDOW_DAYS}::int)
+             ) AS late_cancel_count,
              COALESCE((t.settings->>'hide_public_prices')::boolean, false) AS hide_prices,
              EXISTS (SELECT 1 FROM reviews r WHERE r.booking_id = b.id) AS has_review,
              -- Estado REAL de la devolución. deposit_status no sirve: dice
@@ -219,6 +229,8 @@ export default async function MisReservasPage(props: {
       bookingStartUtcMs: new Date(r.starts_at).getTime(),
       policyHours: r.cancellation_policy_hours,
       nowMs: now,
+      lateCancelHours: r.late_cancel_hours,
+      lateCancelCount: r.late_cancel_count,
     })
     // Instante físico (`ends_at`), no la fecha: un turno de hoy que ya terminó no se cancela.
     const ended = new Date(r.ends_at).getTime() <= now
@@ -271,6 +283,10 @@ export default async function MisReservasPage(props: {
       has_review: r.has_review,
       cancellation_outcome: preview.kind,
       deposit_amount: preview.kind === 'no_deposit' ? 0 : preview.amountCents,
+      late_cancel:
+        preview.kind === 'no_deposit' && preview.lateCancel
+          ? { ...preview.lateCancel, hours: r.late_cancel_hours }
+          : null,
       deposit_status: r.deposit_status,
       refund: refundContactFor(r),
     }

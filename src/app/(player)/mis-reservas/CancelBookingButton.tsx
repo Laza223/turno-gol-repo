@@ -6,6 +6,7 @@ import * as Sentry from '@sentry/nextjs'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
+import { lateCancelPlayerText, type LateCancelPenalty } from '@/modules/bookings/late-cancel'
 import { useRefundDialog } from './RefundDialogProvider'
 import type { PlayerBookingActionResult } from './actions'
 
@@ -30,6 +31,10 @@ type Props = {
   cancellationOutcome: CancellationOutcome
   /** Monto de la seña en centavos — solo relevante si cancellationOutcome !== 'no_deposit'. */
   depositAmountCents: number
+  /** Cancelar AHORA cuenta como tardía (complejo sin seña); `hours` = umbral del complejo. */
+  lateCancel?: (LateCancelPenalty & { hours: number }) | null
+  /** Nombre del complejo, para el aviso de bloqueo. */
+  tenantName?: string
   /** Ids del contexto de la tarjeta (cuándo y dónde): el botón sigue llamándose "Cancelar" a secas. */
   describedBy?: string
   /**
@@ -60,6 +65,8 @@ export function CancelBookingButton({
   timeLabel,
   cancellationOutcome,
   depositAmountCents,
+  lateCancel,
+  tenantName,
   describedBy,
   action,
 }: Props) {
@@ -127,6 +134,19 @@ export function CancelBookingButton({
             <br />
             <br />
             {depositPreviewText(cancellationOutcome, depositAmountCents)}
+            {lateCancel && (
+              <>
+                <br />
+                <br />
+                <strong>
+                  {lateCancelPlayerText(
+                    lateCancel,
+                    lateCancel.hours,
+                    tenantName ?? 'este complejo',
+                  )}
+                </strong>
+              </>
+            )}
           </>
         }
         confirmLabel="Sí, cancelar"

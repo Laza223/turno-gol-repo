@@ -297,6 +297,7 @@ export type ReservaDetail = ReservaListRow & {
   canceledReason: string | null
   /** Horas de anticipación de la política de cancelación del complejo (Tarea #3). */
   cancellationPolicyHours: number
+  lateCancelHours?: number
   /** Tarea #4 — id del abonado si el turno es de tipo fixed (NULL en otro caso). */
   abonadoId: string | null
   /**
@@ -347,6 +348,7 @@ export async function getBookingDetail(
            b.notes_internal AS "notesInternal", b.guest_name AS "guestName", b.guest_phone AS "guestPhone",
            b.canceled_reason AS "canceledReason",
            COALESCE((t.settings->'cancellation_policy'->>'hours_before')::int, ${DEFAULT_CANCELLATION_HOURS_BEFORE}::int) AS "cancellationPolicyHours",
+           COALESCE((t.settings->>'late_cancel_hours')::int, 0) AS "lateCancelHours",
            b.abonado_id AS "abonadoId",
            b.starts_at AS "startsAt", b.ends_at AS "endsAt", b.updated_at AS "updatedAt",
            c.name AS "courtName",

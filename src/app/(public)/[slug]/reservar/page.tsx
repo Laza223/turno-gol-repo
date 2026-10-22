@@ -283,6 +283,7 @@ export default async function ReservarPage(props: Props) {
             depositAmount={tenant.hidePrices ? undefined : depositAmount}
             hidePrices={tenant.hidePrices}
             cancellationHours={tenant.cancellationHoursBefore}
+            lateCancelHours={tenant.lateCancelHours ?? 0}
             isPlayer={isPlayer}
             autoConfirmToken={autoConfirmToken}
             intentDegraded={intentDegraded}

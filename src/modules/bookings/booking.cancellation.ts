@@ -6,7 +6,13 @@ import { prepareRefund } from '@/modules/payments/payment.service'
 import { prepareManualRefund } from '@/modules/payments/refund.service'
 import { bookingCode } from '@/lib/booking-code'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
-import { applyNoShowStrike, revertNoShowStrike } from '@/modules/relationships/ptr.service'
+import {
+  applyLateCancelStrike,
+  applyNoShowStrike,
+  revertNoShowStrike,
+  type LateCancelStrikeResult,
+} from '@/modules/relationships/ptr.service'
+import { isLateCancel } from './late-cancel'
 import { markNoShow, revertNoShow } from './booking.service'
 import { invalidateAvailSearch } from '@/shared/cache/slots-cache'
 import { rowToBookingRow } from './booking.mappers'
@@ -253,6 +259,16 @@ async function currentBookingRow(bookingId: string, tx: DbTx): Promise<BookingRo
   return rowToBookingRow(current[0]!)
 }
 
+/** Huella de la escalera en el audit de la cancelación; vacío si no contó como tardía. */
+function lateCancelAudit(strike: LateCancelStrikeResult | null): Record<string, unknown> {
+  if (!strike) return {}
+  return {
+    lateCancel: true,
+    lateCancelCount: strike.lateCancelCount,
+    lateCancelBannedUntil: strike.bannedUntil?.toISOString() ?? null,
+  }
+}
+
 export async function cancelByPlayer(
   bookingId: string,
   playerId: string,
@@ -317,6 +333,16 @@ export async function cancelByPlayer(
   // efectivo, no tienen nada que reembolsar aunque caigan dentro del plazo).
   const hadPaidDeposit = b.deposit_status === 'paid'
   const targetStatus = inPolicy && hadPaidDeposit ? 'canceled_refunded' : 'canceled_no_refund'
+  // Sin seña no hay plata en juego: la consecuencia de cancelar sobre la hora es
+  // la escalera de `late_cancel_hours` (decisión 2026-10-21). Se evalúa sobre la
+  // reserva (`not_required`), no sobre el setting de seña de hoy.
+  const lateCancel =
+    b.deposit_status === 'not_required' &&
+    isLateCancel({
+      startsAtMs: bookingStartUtc.getTime(),
+      nowMs: Date.now(),
+      hours: settings.late_cancel_hours ?? 0,
+    })
   let newDepositStatus: DepositStatus = b.deposit_status as DepositStatus
 
   if (b.deposit_status === 'paid') {
@@ -339,11 +365,14 @@ export async function cancelByPlayer(
       canceledBy: 'player',
       canceledAt: new Date(),
       canceledReason: reason ?? null,
+      canceledLate: lateCancel,
       depositStatus: newDepositStatus,
       updatedAt: new Date(),
     })
     .where(eq(bookings.id, bookingId))
     .returning()
+
+  const strike = lateCancel ? await applyLateCancelStrike(b.tenant_id, playerId, tx) : null
 
   await insertAuditLog(tx, {
     tenantId: b.tenant_id,
@@ -352,7 +381,12 @@ export async function cancelByPlayer(
     action: 'booking.canceled',
     resourceType: 'booking',
     resourceId: bookingId,
-    metadata: { reason: reason ?? null, inPolicy, depositStatus: newDepositStatus },
+    metadata: {
+      reason: reason ?? null,
+      inPolicy,
+      depositStatus: newDepositStatus,
+      ...lateCancelAudit(strike),
+    },
   })
 
   await invalidateAvailSearch(b.date)
@@ -478,6 +512,19 @@ export async function cancelByAdmin(
   // lo habilite).
   const hadPaidDeposit = b.deposit_status === 'paid'
   const targetStatus = shouldRefund && hadPaidDeposit ? 'canceled_refunded' : 'canceled_no_refund'
+  // Solo "a pedido del jugador" y con jugador vinculado (el invitado sin cuenta no
+  // tiene a quién bloquear); "cancela el complejo" nunca cuenta. Un turno que ya
+  // terminó es una ausencia, no una cancelación (mismo criterio que cancelByPlayer).
+  const lateCancel =
+    cancellationType === 'jugador' &&
+    b.player_id !== null &&
+    b.deposit_status === 'not_required' &&
+    Date.now() < bookingEndUtc.getTime() &&
+    isLateCancel({
+      startsAtMs: bookingStartUtc.getTime(),
+      nowMs: Date.now(),
+      hours: settings.late_cancel_hours ?? 0,
+    })
   let newDepositStatus: DepositStatus = b.deposit_status as DepositStatus
 
   if (b.deposit_status === 'paid') {
@@ -498,11 +545,15 @@ export async function cancelByAdmin(
       canceledBy: 'admin',
       canceledAt: new Date(),
       canceledReason: storedReason,
+      canceledLate: lateCancel,
       depositStatus: newDepositStatus,
       updatedAt: new Date(),
     })
     .where(eq(bookings.id, bookingId))
     .returning()
+
+  const strike =
+    lateCancel && b.player_id ? await applyLateCancelStrike(b.tenant_id, b.player_id, tx) : null
 
   await insertAuditLog(tx, {
     tenantId: b.tenant_id,
@@ -511,7 +562,14 @@ export async function cancelByAdmin(
     action: 'booking.canceled_by_admin',
     resourceType: 'booking',
     resourceId: bookingId,
-    metadata: { reason, cancellationType, inPolicy, shouldRefund, depositStatus: newDepositStatus },
+    metadata: {
+      reason,
+      cancellationType,
+      inPolicy,
+      shouldRefund,
+      depositStatus: newDepositStatus,
+      ...lateCancelAudit(strike),
+    },
   })
 
   await invalidateAvailSearch(b.date)

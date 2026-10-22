@@ -10,7 +10,11 @@ import { SubmitButton } from '@/components/ui/submit-button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { formatArs } from '@/lib/format'
 import { addDays, artTodayStr } from '@/shared/dates/art'
-import { DEFAULT_CANCELLATION_HOURS_BEFORE } from '@/shared/constants'
+import {
+  DEFAULT_CANCELLATION_HOURS_BEFORE,
+  LATE_CANCEL_BAN_DAYS,
+  LATE_CANCEL_WINDOW_DAYS,
+} from '@/shared/constants'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 import type { PolicyActionResult } from './actions'
 
@@ -50,11 +54,22 @@ function formatShortDate(dateStr: string): string {
  * Caja › Cuentas, TurnoGol no reembolsa por API— o queda para el complejo
  * (`booking.cancellation.ts`: `inPolicy` → `registerRefundDue`).
  */
-function refundConsequence(requiresDeposit: boolean, hours: number): string {
-  if (!requiresDeposit) return 'Sin seña no hay nada que devolver: este plazo no cambia nada.'
+function refundConsequence(hours: number): string {
   if (hours === 0)
     return 'Si cancela antes de que empiece el turno, le devolvés la seña vos (te queda anotada en Caja › Cuentas). Si ya empezó, queda para el complejo.'
   return `Si cancela con más de ${hours} h, le devolvés la seña vos (te queda anotada en Caja › Cuentas). Con menos, queda para el complejo.`
+}
+
+/** Umbrales de "cancela a último momento" que ofrece el form (0 = no penalizar). */
+const LATE_CANCEL_PRESETS = [0, 2, 4, 6, 12, 24]
+
+/**
+ * La escalera de la cancelación tardía en criollo (decisión 2026-10-21): solo existe sin
+ * seña, porque con seña ya hay plata en juego y la regla es la de la devolución.
+ */
+function lateCancelConsequence(hours: number): string {
+  const [first, max] = LATE_CANCEL_BAN_DAYS
+  return `Si un jugador cancela con menos de ${hours} h: la primera vez le avisamos. Si vuelve a pasar en ${LATE_CANCEL_WINDOW_DAYS} días, no puede reservar online por ${first} días; desde la tercera, ${max} días. A los ${LATE_CANCEL_WINDOW_DAYS} días sin cancelar tarde, arranca de cero. Lo podés levantar vos desde Jugadores.`
 }
 
 /** Firma de la Server Action que consume el form. */
@@ -144,6 +159,13 @@ export function ReservasPolicyForm({
   )
   const [customHours, setCustomHours] = useState<string>(
     isPresetHours ? '12' : String(initialHours),
+  )
+
+  // Cancelación a último momento (solo sin seña). Un valor guardado fuera de los presets
+  // (lo puede dejar soporte) se ofrece como un chip más: guardar no lo cambia en silencio.
+  const [lateCancelHours, setLateCancelHours] = useState<number>(s.late_cancel_hours ?? 0)
+  const lateCancelOptions = [...new Set([...LATE_CANCEL_PRESETS, lateCancelHours])].sort(
+    (a, b) => a - b,
   )
 
   // Derivados en vivo, compartidos entre las frases de consecuencia inline y
@@ -236,6 +258,12 @@ export function ReservasPolicyForm({
           )}
 
           <p className="border-t border-border pt-3 text-xs text-muted-foreground dark:border-white/10">
+            {!requiresDeposit && lateCancelHours > 0 && (
+              <>
+                {`Si cancela con menos de ${lateCancelHours} h, puede quedar sin reservar online`}
+                {' · '}
+              </>
+            )}
             {requiresDeposit && validCancelHours != null && (
               <>
                 {validCancelHours === 0
@@ -498,94 +526,127 @@ export function ReservasPolicyForm({
           {/* DEVOLUCIÓN DE LA SEÑA — `hours_before` NO limita cuándo se cancela
               (el jugador cancela hasta que termina el turno,
               booking.cancellation.ts): decide si la seña pagada se devuelve o
-              queda para el complejo. */}
-          <div className="space-y-3">
-            <Label
-              htmlFor="cancellationHoursBefore"
-              className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90"
-            >
-              Devolución de la seña si cancela
-            </Label>
-            <div className="flex flex-wrap items-center gap-2">
+              queda para el complejo. Sin seña no hay nada que devolver: el bloque
+              entero se oculta y aparece el de cancelar a último momento. */}
+          {requiresDeposit && (
+            <div className="space-y-3">
+              <Label
+                htmlFor="cancellationHoursBefore"
+                className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90"
+              >
+                Devolución de la seña si cancela
+              </Label>
+              <div className="flex flex-wrap items-center gap-2">
+                <SegmentedControl
+                  className="flex flex-wrap items-center gap-2"
+                  // Mismo motivo que el `aria-label` de "% de seña" de arriba: no
+                  // repetir el texto de la <Label> vecina (evita ambigüar un futuro
+                  // `getByLabelText` entre el radiogroup y el input de "Otro").
+                  aria-label="Horas antes del turno (presets)"
+                  value={selectedHours === 'other' ? 'other' : String(selectedHours)}
+                  onValueChange={(v) => {
+                    if (v !== 'other') {
+                      setSelectedHours(Number(v))
+                      return
+                    }
+                    // Misma clase que el "Otro" de seña, arriba.
+                    if (typeof selectedHours === 'number') setCustomHours(String(selectedHours))
+                    setSelectedHours('other')
+                  }}
+                  itemClassName={chipClass}
+                  options={[
+                    { value: '0', label: 'Hasta que empieza' },
+                    { value: '2', label: '2 hs' },
+                    { value: '6', label: '6 hs' },
+                    { value: '12', label: '12 hs' },
+                    { value: '24', label: '24 hs' },
+                    { value: 'other', label: 'Otro' },
+                  ]}
+                />
+
+                {selectedHours === 'other' && (
+                  <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
+                    <Input
+                      id="cancellationHoursBefore"
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={72}
+                      value={customHours}
+                      onChange={(e) => setCustomHours(e.target.value)}
+                      placeholder="Ej: 48"
+                      className="w-24 h-11 md:h-10 rounded-xl bg-background border-border"
+                      required
+                    />
+                    <span className="text-sm text-muted-foreground">hs</span>
+                  </div>
+                )}
+              </div>
+              {validCancelHours != null && (
+                <p className="flex items-start gap-1.5 text-xs text-muted-foreground max-w-md">
+                  <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <span>{refundConsequence(validCancelHours)}</span>
+                </p>
+              )}
+              <input
+                type="hidden"
+                name="cancellationHoursBefore"
+                value={selectedHours === 'other' ? customHours : selectedHours}
+              />
+            </div>
+          )}
+
+          {!requiresDeposit && (
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold tracking-wide uppercase text-muted-foreground/90">
+                Si cancela a último momento
+              </Label>
               <SegmentedControl
                 className="flex flex-wrap items-center gap-2"
-                // Mismo motivo que el `aria-label` de "% de seña" de arriba: no
-                // repetir el texto de la <Label> vecina (evita ambigüar un futuro
-                // `getByLabelText` entre el radiogroup y el input de "Otro").
-                aria-label="Horas antes del turno (presets)"
-                value={selectedHours === 'other' ? 'other' : String(selectedHours)}
-                onValueChange={(v) => {
-                  if (v !== 'other') {
-                    setSelectedHours(Number(v))
-                    return
-                  }
-                  // Misma clase que el "Otro" de seña, arriba.
-                  if (typeof selectedHours === 'number') setCustomHours(String(selectedHours))
-                  setSelectedHours('other')
-                }}
+                aria-label="Horas antes del turno que cuentan como último momento"
+                value={String(lateCancelHours)}
+                onValueChange={(v) => setLateCancelHours(Number(v))}
                 itemClassName={chipClass}
-                options={[
-                  { value: '0', label: 'Hasta que empieza' },
-                  { value: '2', label: '2 hs' },
-                  { value: '6', label: '6 hs' },
-                  { value: '12', label: '12 hs' },
-                  { value: '24', label: '24 hs' },
-                  { value: 'other', label: 'Otro' },
-                ]}
+                options={lateCancelOptions.map((h) => ({
+                  value: String(h),
+                  label: h === 0 ? 'No penalizar' : `${h} h`,
+                }))}
               />
-
-              {selectedHours === 'other' && (
-                <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200">
-                  <Input
-                    id="cancellationHoursBefore"
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    max={72}
-                    value={customHours}
-                    onChange={(e) => setCustomHours(e.target.value)}
-                    placeholder="Ej: 48"
-                    className="w-24 h-11 md:h-10 rounded-xl bg-background border-border"
-                    required
-                  />
-                  <span className="text-sm text-muted-foreground">hs</span>
-                </div>
-              )}
-            </div>
-            {validCancelHours != null && (
               <p className="flex items-start gap-1.5 text-xs text-muted-foreground max-w-md">
                 <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-                <span>{refundConsequence(requiresDeposit, validCancelHours)}</span>
+                <span>
+                  {lateCancelHours === 0
+                    ? 'Cancelar a último momento no tiene ninguna consecuencia para el jugador.'
+                    : lateCancelConsequence(lateCancelHours)}
+                </span>
               </p>
-            )}
-            <input
-              type="hidden"
-              name="cancellationHoursBefore"
-              value={selectedHours === 'other' ? customHours : selectedHours}
-            />
-          </div>
+              <input type="hidden" name="lateCancelHours" value={lateCancelHours} />
+            </div>
+          )}
 
           {/* AUSENCIAS — plegado por default (Cambio 3). Informativo: no hay nada
               que configurar. */}
-          <Collapsible>
-            <CollapsibleTrigger className="group flex min-h-11 w-full items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:min-h-0">
-              <span className="flex items-center gap-2">
-                <HelpCircle className="h-4 w-4 text-muted-foreground" aria-hidden />
-                Si el jugador falta
-              </span>
-              <ChevronDown
-                aria-hidden="true"
-                className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
-              />
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pt-3">
-              <p className="text-xs text-muted-foreground max-w-md">
-                Si lo marcás como ausente y había pagado seña, la seña queda para el complejo. La
-                primera vez solo queda anotado; si vuelve a faltar dentro de los 90 días, no puede
-                reservar por internet en tu complejo por 14 días. No hay nada que configurar.
-              </p>
-            </CollapsibleContent>
-          </Collapsible>
+          {requiresDeposit && (
+            <Collapsible>
+              <CollapsibleTrigger className="group flex min-h-11 w-full items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:min-h-0">
+                <span className="flex items-center gap-2">
+                  <HelpCircle className="h-4 w-4 text-muted-foreground" aria-hidden />
+                  Si el jugador falta
+                </span>
+                <ChevronDown
+                  aria-hidden="true"
+                  className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
+                />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-3">
+                <p className="text-xs text-muted-foreground max-w-md">
+                  Si lo marcás como ausente y había pagado seña, la seña queda para el complejo. La
+                  primera vez solo queda anotado; si vuelve a faltar dentro de los 90 días, no puede
+                  reservar por internet en tu complejo por 14 días. No hay nada que configurar.
+                </p>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
         </section>
 
         <div className="space-y-3">

@@ -15,8 +15,11 @@ import LoginGate, { type StartGoogleLoginFromReservar } from './LoginGate'
  * la regla de las horas; sin seña no se promete ningún plazo que el complejo no fijó. La devolución
  * la hace el complejo (TurnoGol no reembolsa por API): el texto lo dice con esas palabras.
  */
-function cancellationNote(hours: number, withDeposit: boolean): string {
-  if (!withDeposit) return 'Podés cancelar desde Mis reservas.'
+function cancellationNote(hours: number, withDeposit: boolean, lateCancelHours: number): string {
+  if (!withDeposit) {
+    if (lateCancelHours <= 0) return 'Podés cancelar desde Mis reservas.'
+    return `Cancelá con más de ${lateCancelHours === 1 ? '1 hora' : `${lateCancelHours} horas`} de anticipación desde Mis reservas. Si cancelás más tarde, puede que no puedas reservar online en este complejo por un tiempo.`
+  }
   const rule =
     hours === 0
       ? 'antes de que empiece el turno'
@@ -48,6 +51,7 @@ export default function CheckoutFlow({
   depositAmount,
   hidePrices = false,
   cancellationHours,
+  lateCancelHours = 0,
   isPlayer,
   autoConfirmToken,
   intentDegraded = false,
@@ -70,6 +74,8 @@ export default function CheckoutFlow({
   /** El complejo oculta sus precios: la nota del botón dice lo que el resumen no puede decir. */
   hidePrices?: boolean
   cancellationHours: number
+  /** `settings.late_cancel_hours`: sin seña, cancelar más tarde que esto puede bloquear. 0 = apagado. */
+  lateCancelHours?: number
   isPlayer: boolean
   /** Vínculo ya verificado por la page: el form de confirmar se envía solo, una vez. */
   autoConfirmToken?: string
@@ -131,7 +137,7 @@ export default function CheckoutFlow({
         {withDeposit && hidePrices && (
           <p>Pagás una seña online con MercadoPago; el resto, en el complejo.</p>
         )}
-        <p>{cancellationNote(cancellationHours, withDeposit)}</p>
+        <p>{cancellationNote(cancellationHours, withDeposit, lateCancelHours)}</p>
       </div>
     </>
   )

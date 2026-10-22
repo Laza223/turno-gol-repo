@@ -67,6 +67,7 @@ Request de staff: `withTenant()` → `extractAuthUser` (JWT `app_metadata`) → 
 - **`staff_role` tiene 2 roles**: `admin` (dueño, acceso total) y `manager` (Encargado: Hoy, grilla, reservas, caja, jugadores). El manager NO entra a Configuración, Equipo ni Métricas. Detalle: `.claude/rules/staff-roles.md`.
 - Auth staff: email+password. Jugador: passwordless (Magic Link). SuperAdmin: `seed:system-admin` + allowlist `SYSTEM_ADMIN_EMAILS` (MFA TOTP: columnas en schema, **aún NO enforced** en los guards). La identidad sale del JWT (`app_metadata`), no del método de login.
 - Seña: configurable por complejo (`settings.requires_deposit` + `settings.deposit_percentage`, default 30). Sin modo garantía. Anticipación de reserva: `settings.booking_advance_days`, default 6.
+- **Cancelación tardía (solo sin seña)**: `settings.late_cancel_hours` (0 = apagado, default). Escalera en 60 días: 1ra aviso, 2da 7 días, 3ra+ 30 días sin reservar online vía `tenant_player_bans`. Es OTRO mecanismo que las ausencias (2 faltas en 90 días = 14 días), que no cambia. Detalle: `docs/decisions/2026-10-21-cancelacion-tardia.md`.
 - **Precio del SaaS: $30.000 por cancha, incluida la primera** (decisión 2026-10-20, supera la de $47.000 + $30.000 del 2026-09-17): anual 10% off, sin techo ni prorrateo. El monto lo calcula `src/modules/billing/pricing.ts`, no sale de una columna. Detalle: `.claude/rules/billing-precio.md`.
 
 ## Vetos de producto (no reproponer)

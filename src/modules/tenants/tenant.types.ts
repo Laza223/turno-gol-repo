@@ -35,6 +35,11 @@ export type TenantSettings = {
    *  Grilla sin este tope. Pedido de El Vagón (2026-10-17): le reservaban a
    *  último momento. Leer con `bookingMinAdvanceHours`, nunca directo. */
   booking_min_advance_hours?: number
+  /** Horas antes del turno desde las cuales cancelar cuenta como "a último
+   *  momento" (0–24). Solo reservas SIN seña. Ausente o 0 = apagado (el
+   *  default). Primer nivel y no dentro de `cancellation_policy`, para que el
+   *  merge superficial de esa clave no lo pise. Decisión 2026-10-21. */
+  late_cancel_hours?: number
   auto_complete_minutes: number
   onboarding_step?: number
   onboarding_completed?: boolean
@@ -126,6 +131,7 @@ export type UpdateTenantSettingsInput = Partial<
     | 'allow_online_booking'
     | 'booking_advance_days'
     | 'booking_min_advance_hours'
+    | 'late_cancel_hours'
     | 'auto_complete_minutes'
     | 'daily_summary_email_opt_in'
     | 'hide_public_prices'

@@ -147,6 +147,7 @@ export default async function ReservaDetailPage(props: Props) {
             endsAt={booking.endsAt}
             updatedAt={booking.updatedAt}
             cancellationPolicyHours={booking.cancellationPolicyHours}
+            lateCancelHours={booking.lateCancelHours}
             guestName={booking.guestName}
             guestPhone={booking.guestPhone}
             playerName={booking.playerName}

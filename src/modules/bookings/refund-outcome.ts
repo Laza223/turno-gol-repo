@@ -4,6 +4,7 @@
 // importar del módulo pesado rompería el bundle del browser (`node:crypto`
 // vía `@/shared/db/audit` → `impersonation-cookie.ts`).
 import { decideAdminRefund, type AdminCancellationType } from './refund-policy'
+import { isLateCancel } from './late-cancel'
 
 /**
  * Único cálculo de "qué pasa con la seña si cancelo AHORA" para la UI admin
@@ -24,7 +25,9 @@ import { decideAdminRefund, type AdminCancellationType } from './refund-policy'
  * que este criterio es un preview, no la fuente de verdad.
  */
 export type RefundOutcome =
-  | { kind: 'no_deposit' }
+  // `lateCancel`: sin seña y a menos de `late_cancel_hours` del turno, cancelar a pedido del
+  // jugador cuenta para la escalera. 'yes' = ya se eligió "jugador"; 'if_player' = todavía no.
+  | { kind: 'no_deposit'; lateCancel?: 'yes' | 'if_player' }
   | { kind: 'turno_ended'; amountCents: number }
   | {
       kind: 'undecided'
@@ -45,9 +48,30 @@ export function getRefundOutcome(opts: {
   policyHours: number
   nowMs: number
   cancellationType: AdminCancellationType | null
+  /** `settings.late_cancel_hours` (0 = apagado). */
+  lateCancelHours?: number
+  /** La reserva tiene jugador vinculado: el invitado sin cuenta no tiene a quién bloquear. */
+  hasPlayer?: boolean
 }): RefundOutcome {
   const hasPaidDeposit = opts.depositStatus === 'paid' && opts.depositAmountCents > 0
-  if (!hasPaidDeposit) return { kind: 'no_deposit' }
+  if (!hasPaidDeposit) {
+    // Mismas condiciones que `cancelByAdmin`: reserva sin seña, con jugador, antes de que termine.
+    const late =
+      opts.depositStatus === 'not_required' &&
+      opts.hasPlayer === true &&
+      opts.cancellationType !== 'complejo' &&
+      opts.nowMs < opts.bookingEndUtcMs &&
+      isLateCancel({
+        startsAtMs: opts.bookingStartUtcMs,
+        nowMs: opts.nowMs,
+        hours: opts.lateCancelHours ?? 0,
+      })
+    if (!late) return { kind: 'no_deposit' }
+    return {
+      kind: 'no_deposit',
+      lateCancel: opts.cancellationType === 'jugador' ? 'yes' : 'if_player',
+    }
+  }
 
   const common = {
     bookingStartUtcMs: opts.bookingStartUtcMs,

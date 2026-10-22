@@ -46,6 +46,7 @@ export function HoyShell({
   canManageCourts,
   serverNowMs,
   cancellationPolicyHours,
+  lateCancelHours = 0,
   actions,
 }: {
   /** Todos los turnos del día (todas las canchas), con sus instantes físicos. */
@@ -60,6 +61,7 @@ export function HoyShell({
   serverNowMs: number
   /** Horas de anticipación de la política de cancelación, para el aviso de seña del modal. */
   cancellationPolicyHours: number
+  lateCancelHours?: number
   actions: SlotPanelActions
 }) {
   const router = useRouter()
@@ -172,6 +174,7 @@ export function HoyShell({
           onClose={() => setOpenId(null)}
           onMutated={() => startRefresh(() => router.refresh())}
           cancellationPolicyHours={cancellationPolicyHours}
+          lateCancelHours={lateCancelHours}
         />
       )}
     </div>

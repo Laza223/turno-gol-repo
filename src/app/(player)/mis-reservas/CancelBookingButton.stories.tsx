@@ -101,6 +101,24 @@ export const AbiertoSinSeña: Story = {
   },
 }
 
+/** Sin seña y con la penalidad por cancelar tarde: la 2da lleva a 7 días sin reservar online. */
+export const AbiertoCancelacionTardia: Story = {
+  args: {
+    action: fn(async () => ({ success: true as const, booking: {} as never })),
+    cancellationOutcome: 'no_deposit',
+    depositAmountCents: 0,
+    tenantName: 'El Vagón',
+    lateCancel: { kind: 'ban', days: 7, hours: 4 },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
+    await expect(
+      await screen.findByText(hasText('no vas a poder reservar online en El Vagón por 7 días')),
+    ).toBeInTheDocument()
+  },
+}
+
 /** ENS-2: fuera de la ventana de reembolso, el jugador pierde la seña. */
 export const AbiertoFueraDePlazo: Story = {
   args: {

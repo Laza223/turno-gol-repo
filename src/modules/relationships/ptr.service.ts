@@ -1,7 +1,16 @@
 import { and, eq, sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
 import { playerTenantRelationships } from '@/shared/db/schema'
-import { NO_SHOW_STRIKE_WINDOW_DAYS, NO_SHOW_SOFTBAN_DAYS } from '@/shared/constants'
+import {
+  LATE_CANCEL_WINDOW_DAYS,
+  NO_SHOW_STRIKE_WINDOW_DAYS,
+  NO_SHOW_SOFTBAN_DAYS,
+} from '@/shared/constants'
+import {
+  LATE_CANCEL_SOFTBAN_REASON,
+  lateCancelPenalty,
+  type LateCancelPenalty,
+} from '@/modules/bookings/late-cancel'
 import { normalizePlayerTags, type PlayerTag } from './player-tags'
 
 export async function ensurePTR(playerId: string, tenantId: string, tx: DbTx): Promise<void> {
@@ -66,8 +75,12 @@ async function extendSoftban(
   playerId: string,
   now: Date,
   tx: DbTx,
+  { days, reason }: { days: number; reason: string } = {
+    days: NO_SHOW_SOFTBAN_DAYS,
+    reason: NO_SHOW_SOFTBAN_REASON,
+  },
 ): Promise<Date | null> {
-  const newUntil = new Date(now.getTime() + NO_SHOW_SOFTBAN_DAYS * 24 * 60 * 60 * 1000)
+  const newUntil = new Date(now.getTime() + days * 24 * 60 * 60 * 1000)
 
   const existing = (await tx.execute(sql`
     SELECT id, banned_until FROM tenant_player_bans
@@ -92,7 +105,7 @@ async function extendSoftban(
 
   const inserted = (await tx.execute(sql`
     INSERT INTO tenant_player_bans (tenant_id, player_id, reason, banned_until, banned_by)
-    VALUES (${tenantId}, ${playerId}, ${NO_SHOW_SOFTBAN_REASON}, ${newUntil.toISOString()}, NULL)
+    VALUES (${tenantId}, ${playerId}, ${reason}, ${newUntil.toISOString()}, NULL)
     RETURNING banned_until
   `)) as unknown as Array<{ banned_until: string }>
   return new Date(inserted[0]!.banned_until)
@@ -160,6 +173,61 @@ export async function applyNoShowStrike(
 
   const bannedUntil = await extendSoftban(tenantId, playerId, now, tx)
   return { noshowCount, softbanned: bannedUntil !== null, bannedUntil }
+}
+
+export type LateCancelStrikeResult = {
+  /** Cancelaciones tardías de la ventana de 60 días, contando la actual. */
+  lateCancelCount: number
+  penalty: LateCancelPenalty
+  /** Hasta cuándo queda sin reservar online, solo si la penalidad fue un bloqueo. */
+  bannedUntil: Date | null
+}
+
+/**
+ * Escalera de la cancelación tardía (sin seña): 1ra aviso, 2da 7 días, 3ra o más
+ * 30 días sin reservar online, vía `tenant_player_bans` (el mismo gate que ya
+ * mira la reserva online). El contador sale de `bookings.canceled_late` en los
+ * últimos `LATE_CANCEL_WINDOW_DAYS`: a los 60 días limpios vuelve a cero solo.
+ *
+ * Debe correr en el MISMO tx que el UPDATE de la cancelación, DESPUÉS de marcar
+ * `canceled_late = true` y `canceled_at`: así la cancelación actual ya cuenta.
+ * `FOR UPDATE` sobre la fila PTR serializa cancelaciones concurrentes del mismo
+ * jugador; el INSERT ON CONFLICT previo crea el vínculo si la reserva era manual,
+ * igual que `applyNoShowStrike`, para que siempre haya una fila que lockear.
+ */
+export async function applyLateCancelStrike(
+  tenantId: string,
+  playerId: string,
+  tx: DbTx,
+): Promise<LateCancelStrikeResult> {
+  await tx.execute(sql`
+    INSERT INTO player_tenant_relationships (tenant_id, player_id)
+    VALUES (${tenantId}, ${playerId})
+    ON CONFLICT (player_id, tenant_id) DO NOTHING
+  `)
+  await tx.execute(sql`
+    SELECT 1 FROM player_tenant_relationships
+    WHERE tenant_id = ${tenantId} AND player_id = ${playerId}
+    FOR UPDATE
+  `)
+
+  const now = new Date()
+  const since = new Date(now.getTime() - LATE_CANCEL_WINDOW_DAYS * 24 * 60 * 60 * 1000)
+  const rows = (await tx.execute(sql`
+    SELECT count(*)::int AS n FROM bookings
+    WHERE tenant_id = ${tenantId} AND player_id = ${playerId}
+      AND canceled_late AND canceled_at >= ${since.toISOString()}
+  `)) as unknown as Array<{ n: number }>
+  const lateCancelCount = Number(rows[0]?.n ?? 0)
+
+  const penalty = lateCancelPenalty(lateCancelCount)
+  if (penalty.kind === 'warning') return { lateCancelCount, penalty, bannedUntil: null }
+
+  const bannedUntil = await extendSoftban(tenantId, playerId, now, tx, {
+    days: penalty.days,
+    reason: LATE_CANCEL_SOFTBAN_REASON,
+  })
+  return { lateCancelCount, penalty, bannedUntil }
 }
 
 export type NoShowStrikeRevertResult = {

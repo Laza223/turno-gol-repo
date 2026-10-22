@@ -1132,7 +1132,7 @@ PASO 4 — Bienvenida post-conversión
 | El complejo tiene más canchas que las del plan elegido | Warning: "Tu complejo tiene {N} canchas pero el plan soporta {M}. Mover al plan superior?" Si insiste en el plan inferior → las canchas extra se desactivan (status → `offline`) |
 | Pago anual | Primer cobro = precio_anual completo. `price_locked_until` se setea. No puede haber aumento de precio durante el año. Descuento del 20% sobre el precio mensual. |
 | Pago mensual | Cobro automático cada 30 días vía MP Suscripciones. |
-| El trial ya venció (día 31+) | El complejo está en modo "bloqueado" (solo lectura). Al suscribirse, se desbloquea todo. Los datos se conservaron. |
+| El trial ya venció (día 31+) | El complejo está en solo lectura (`suspended`) 14 días y después `blocked` (decisión 2026-10-22). Al suscribirse, se desbloquea todo. Los datos se conservaron. |
 | Re-activación (churned, dentro de 7 días) | Al pagar, se restaura el acceso. Datos intactos. |
 | Re-activación (churned, después de 7 días) | Datos eliminados. Empieza como complejo nuevo. |
 | El pago de MP falla | Suscripción NO se activa. Mostrar error. Sugerir otro medio de pago. |
@@ -1148,7 +1148,8 @@ Trial activo (30 días):
   ├── Día 21: 📩 Email: "Quedan 9 días de tu prueba gratuita"
   ├── Día 28: 📞 Llamada humana (high-touch, no automatizado)
   ├── Día 30: 📩 Email urgente: "Último día de tu prueba. Suscribite para no perder acceso."
-  └── Día 31: 🔒 Acceso bloqueado + 📩 Email: "Tu prueba terminó. Tus datos están guardados 60 días."
+  ├── Día 31: 👁 Solo lectura (`suspended`) + 📩 Email: "Tu prueba terminó."
+  └── Día 45: 🔒 Acceso bloqueado (`blocked`), sin mail — la fecha ya la mostraba el aviso del panel
 ```
 
 ### Estados intermedios
@@ -1158,18 +1159,18 @@ Trial activo (30 días):
 | Eligiendo plan | Tabla de planes con pre-selección | Hasta confirmación |
 | Checkout de MP abierto | Pantalla de MP para registrar medio de pago | Hasta que pague |
 | Procesando suscripción | "Activando tu suscripción..." | ~5-30 segundos (webhook) |
-| Trial vencido | "Tu prueba gratuita terminó. Suscribite para seguir usando TurnoGol." + solo lectura | Hasta 60 días (BLOCKED) |
+| Trial vencido | Aviso "Tu prueba terminó. El panel quedó en solo lectura" con la fecha de corte + "Activar plan" (solo el dueño) | 14 días (`suspended`), después `blocked` |
 
 ### Puntos de salida
 
 - **Éxito**: Tenant `active`. TenantSubscription `active`. Acceso completo.
 - **Pago rechazado**: Subscription no se activa. Dueño puede reintentar.
-- **Abandono**: Si está en trial → sigue en trial. Si trial venció → sigue bloqueado.
-- **No convierte nunca**: Día 31 → BLOCKED (solo lectura, 60 días). Día 91 → CHURNED. Día 98 → DELETED.
+- **Abandono**: Si está en trial → sigue en trial. Si trial venció → sigue en solo lectura (o bloqueado, pasados los 14 días).
+- **No convierte nunca**: Día 31 → SUSPENDED (solo lectura). Día 45 → BLOCKED. Día 91 → CHURNED. Día 98 → DELETED.
 
 > [!WARNING]
 > **Gap de código confirmado (auditado 2026-08-27, flaggeado para implementar — no es solo drift de doc).**
-> `expire-trials.worker.ts` sí pasa el tenant a `blocked` al vencer el trial, pero a diferencia de la baja
+> `expire-trials.worker.ts` sí pasa el tenant a `blocked` a los 14 días de solo lectura (desde 2026-10-22; antes, al vencer el trial), pero a diferencia de la baja
 > voluntaria (`transitionCanceledToBlocked`, que sí agenda `scheduled_deletion_at`) y del dunning por impago
 > (que agenda `dunning_started_at`), este camino NO agenda ninguno de los dos campos. El tenant queda
 > `blocked` indefinidamente, sin la línea de tiempo Día 91 CHURNED / Día 98 DELETED que describe este mismo

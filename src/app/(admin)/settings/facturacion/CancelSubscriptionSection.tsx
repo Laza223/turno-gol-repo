@@ -24,8 +24,8 @@ type Props = {
    * literalmente cierto. 'reactivar' (Fix 2, R2-4 residual —
    * `/reactivar`, la única página que un `suspended` ve): para ese estado
    * `current_period_end` YA PASÓ por definición (se suspendió porque el
-   * período pagado terminó sin renovarse) y el dueño ya está bloqueado del
-   * panel — prometerle "acceso hasta [fecha pasada]" sería falso, así que la
+   * período pagado terminó sin renovarse) y el dueño ya no puede operar el
+   * panel (solo lectura) — prometerle "acceso hasta [fecha pasada]" sería falso, así que la
    * copy no depende de `accessUntil` para el cuerpo/diálogo. Nombrado
    * `context` (no `variant`) para no pisar visualmente el `variant`
    * `"destructive"` de `<ConfirmDialog>` más abajo.

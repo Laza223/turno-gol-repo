@@ -11,7 +11,7 @@ import { setWhatsappBotEnabledAction } from './actions'
  * tienen: sin conexión o con el flag apagado, 404.
  */
 export default async function WhatsappSettingsPage() {
-  const { tenant } = await requireAdminStaff()
+  const { tenant } = await requireAdminStaff({ allowReadOnly: true })
   const connection = await getWhatsappConnection(tenant.id)
   if (!connection) notFound()
 

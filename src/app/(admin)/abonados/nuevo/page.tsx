@@ -9,7 +9,7 @@ import { submitNewAbonado, previewAbonadoSlotsAction } from './actions'
 import { searchAbonadoPlayersAction } from '../actions'
 
 export default async function NuevoAbonadoPage() {
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect('/login')
   const { tenant } = auth
 

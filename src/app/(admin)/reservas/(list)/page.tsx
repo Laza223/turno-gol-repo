@@ -50,7 +50,7 @@ function now(): Date {
 
 export default async function ReservasPage(props: Props) {
   const searchParams = await props.searchParams
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect('/login')
   const { tenant } = auth
 

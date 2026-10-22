@@ -3,7 +3,11 @@ import { sql } from 'drizzle-orm'
 import { getWorkerDb, getWorkerSql } from '@/shared/db/client'
 import { insertSystemAuditLog } from '@/shared/db/audit'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
-import { SUBSCRIBED_TRIAL_GRACE_DAYS, TRIAL_ENDING_WARNING_DAYS } from '@/shared/constants'
+import {
+  SUBSCRIBED_TRIAL_GRACE_DAYS,
+  TRIAL_ENDING_WARNING_DAYS,
+  TRIAL_READ_ONLY_DAYS,
+} from '@/shared/constants'
 import { CRON_WORK_OPTIONS, QUEUE_EXPIRE_TRIALS } from '../definitions'
 import { logger } from '@/shared/lib/logger'
 
@@ -129,21 +133,113 @@ async function warnEndingTrials(): Promise<void> {
 }
 
 /**
- * Mueve tenants trialing con trial_ends_at vencido a 'blocked' y sincroniza
- * su tenant_subscriptions + audit log. La lectura de candidatos corre en el
- * pool worker (BYPASSRLS, cross-tenant — Fable 5 P0, no scopeable a un solo
- * app.current_tenant_id). Cada tenant abre su propia transacción corta
- * (tenants + tenant_subscriptions + audit, todo-o-nada) con try/catch propio
- * — mismo patrón que dunning-retry.worker.ts / data-retention-cleanup.worker.ts —
- * así un blip de conexión o timeout de lock en UN tenant no revierte a los
- * demás tenants vencidos de la misma corrida.
+ * Fin del solo lectura de la prueba: `suspended` → `blocked` a los
+ * `TRIAL_READ_ONLY_DAYS` (decisión 2026-10-22,
+ * `docs/decisions/2026-10-22-solo-lectura-al-vencer-la-prueba.md`).
  *
- * Antes de expirar, avisa a los que están por vencer (`warnEndingTrials`). El
- * orden importa: si expirara primero, un complejo que cruzó la línea entre dos
- * corridas quedaría apagado sin haber recibido nunca el aviso.
+ * Solo toma los `suspended` SIN `dunning_started_at`: ese es el que dejó la
+ * prueba vencida de abajo. El de la mora entra a `suspended` siempre con
+ * `dunning_started_at` (`transitionPastDueToSuspended`) y lo pasa a `blocked`
+ * su propio barrido (`runDunningSweep`), contando desde el primer cobro
+ * fallido. Si los dos barridos tomaran la misma fila, uno de ellos contaría
+ * los días desde la fecha equivocada.
+ *
+ * La cuenta es la de `trialReadOnlyEndsAt` (tenant.lifecycle.ts), la misma
+ * fecha que el aviso del panel le muestra al dueño: `trial_ends_at` más los
+ * días de solo lectura, más el margen de "Activar" si tiene
+ * `mp_subscription_id`.
+ *
+ * No manda mail: el único template de bloqueo (`subscription_blocked`) habla
+ * de la mora ("14 días sin regularizar el pago", "90 días para reactivar").
+ * El dueño ve la fecha de corte en el aviso del panel desde el primer día.
+ */
+async function blockEndedTrialReadOnly(): Promise<void> {
+  const readSql = getWorkerSql()
+  const candidates = await readSql<{ id: string }[]>`
+    SELECT t.id
+    FROM tenants t
+    JOIN tenant_subscriptions ts ON ts.tenant_id = t.id
+    WHERE t.status = 'suspended'
+      AND ts.status = 'suspended'
+      AND ts.dunning_started_at IS NULL
+      AND t.trial_ends_at IS NOT NULL
+      AND t.trial_ends_at < NOW() - make_interval(
+        days => ${TRIAL_READ_ONLY_DAYS}::int
+          + CASE WHEN ts.mp_subscription_id IS NULL THEN 0 ELSE ${SUBSCRIBED_TRIAL_GRACE_DAYS}::int END
+      )
+  `
+
+  if (candidates.length === 0) return
+
+  const db = getWorkerDb()
+
+  for (const t of candidates) {
+    try {
+      await db.transaction(async (tx) => {
+        // Orden A de locks: tenant_subscriptions ANTES que tenants (ver Fase 0).
+        // El `dunning_started_at IS NULL` se repite: si entre la lectura y acá
+        // arrancó la mora, la fila ya no es de este barrido.
+        const res = await tx.execute(sql`
+          UPDATE tenant_subscriptions
+          SET status = 'blocked', updated_at = NOW()
+          WHERE tenant_id = ${t.id} AND status = 'suspended' AND dunning_started_at IS NULL
+          RETURNING id
+        `)
+        if ((res as unknown as Array<{ id: string }>).length === 0) return
+
+        await tx.execute(sql`
+          UPDATE tenants
+          SET status = 'blocked', updated_at = NOW()
+          WHERE id = ${t.id} AND status = 'suspended'
+        `)
+        await insertSystemAuditLog(tx, {
+          tenantId: t.id,
+          action: 'tenant.blocked',
+          resourceType: 'tenant',
+          resourceId: t.id,
+          metadata: { reason: 'trial_read_only_ended' },
+        })
+      })
+      logger.info('blocked tenant after trial read-only', {
+        module: 'expire-trials',
+        tenantId: t.id,
+      })
+    } catch (err) {
+      logger.error('failed trial read-only block for tenant', {
+        module: 'expire-trials',
+        tenantId: t.id,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
+}
+
+/**
+ * Pasa a solo lectura (`suspended`) los tenants trialing con trial_ends_at
+ * vencido y sincroniza su tenant_subscriptions + audit log. Hasta 2026-10-22
+ * los pasaba directo a `blocked`; ahora miran sus datos, los exportan y pueden
+ * pagar, pero no operan ni reciben reservas online (decisión 2026-10-22).
+ *
+ * La lectura de candidatos corre en el pool worker (BYPASSRLS, cross-tenant —
+ * Fable 5 P0, no scopeable a un solo app.current_tenant_id). Cada tenant abre
+ * su propia transacción corta (tenants + tenant_subscriptions + audit,
+ * todo-o-nada) con try/catch propio — mismo patrón que dunning-retry.worker.ts
+ * / data-retention-cleanup.worker.ts — así un blip de conexión o timeout de
+ * lock en UN tenant no revierte a los demás tenants vencidos de la misma
+ * corrida.
+ *
+ * Orden de las fases:
+ * - Avisa primero a los que están por vencer (`warnEndingTrials`): si expirara
+ *   primero, un complejo que cruzó la línea entre dos corridas quedaría en
+ *   solo lectura sin haber recibido nunca el aviso.
+ * - El fin del solo lectura (`blockEndedTrialReadOnly`) va ANTES de expirar:
+ *   un complejo que llega tarde a `suspended` (cron caído más días que el solo
+ *   lectura) tiene al menos un día para mirar antes de bloquearse, en vez de
+ *   pasar a `blocked` en la misma corrida.
  */
 export async function runExpireTrials(): Promise<void> {
   await warnEndingTrials()
+  await blockEndedTrialReadOnly()
 
   const readSql = getWorkerSql()
   // `owner_name` por LATERAL, igual que en `warnEndingTrials`: evita un SELECT
@@ -152,10 +248,10 @@ export async function runExpireTrials(): Promise<void> {
   // Un complejo con `mp_subscription_id` ya tocó "Activar plan": su primer
   // cobro sale el día en que vence la prueba, a la hora que MP disponga, y MP
   // reintenta si la tarjeta rebota. Se le dan `SUBSCRIBED_TRIAL_GRACE_DAYS`
-  // antes de apagarlo; si el cobro entra en el medio, `onPaymentApproved` lo
-  // pasa a `active` y deja de ser candidato. El id no distingue un débito
-  // autorizado de un checkout que nunca se pagó: ese segundo caso recibe el
-  // mismo margen y después se bloquea igual.
+  // antes de pasarlo a solo lectura; si el cobro entra en el medio,
+  // `onPaymentApproved` lo pasa a `active` y deja de ser candidato. El id no
+  // distingue un débito autorizado de un checkout que nunca se pagó: ese
+  // segundo caso recibe el mismo margen y después pasa a solo lectura igual.
   const candidates = await readSql<{ id: string; name: string; owner_name: string | null }[]>`
     SELECT t.id, t.name, o.first_name AS owner_name
     FROM tenants t
@@ -186,7 +282,7 @@ export async function runExpireTrials(): Promise<void> {
         // Orden A de locks: tenant_subscriptions ANTES que tenants (ver Fase 0).
         const res = await tx.execute(sql`
           UPDATE tenant_subscriptions
-          SET status = 'blocked', updated_at = NOW()
+          SET status = 'suspended', updated_at = NOW()
           WHERE tenant_id = ${t.id} AND status = 'trialing'
           RETURNING id
         `)
@@ -195,7 +291,7 @@ export async function runExpireTrials(): Promise<void> {
 
         await tx.execute(sql`
           UPDATE tenants
-          SET status = 'blocked', updated_at = NOW()
+          SET status = 'suspended', updated_at = NOW()
           WHERE id = ${t.id} AND status = 'trialing'
         `)
         await insertSystemAuditLog(tx, {
@@ -203,11 +299,12 @@ export async function runExpireTrials(): Promise<void> {
           action: 'tenant.trial_expired',
           resourceType: 'tenant',
           resourceId: t.id,
-          metadata: { reason: 'trial_ends_at_passed' },
+          metadata: { reason: 'trial_ends_at_passed', status: 'suspended' },
         })
 
-        // doc7 Flujo 7: día 31, el complejo se entera de que quedó bloqueado.
-        // Antes de este fix no se avisaba nada acá (issue original).
+        // doc7 Flujo 7: día 31, el complejo se entera de que la prueba terminó.
+        // El template no dice "bloqueado" ni promete un plazo: vale igual
+        // para el solo lectura.
         await enqueueTenantOwnerNotification(
           {
             tenantId: t.id,
@@ -221,7 +318,7 @@ export async function runExpireTrials(): Promise<void> {
           tx,
         )
       })
-      logger.info('blocked tenant trial expired', {
+      logger.info('tenant trial expired, now read-only', {
         module: 'expire-trials',
         tenantId: t.id,
         tenantName: t.name,

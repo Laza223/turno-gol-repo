@@ -242,12 +242,25 @@ describe('cadena de guards de las páginas', () => {
     },
   )
 
+  // Decisión 2026-10-22: en solo lectura (`suspended`) el panel se mira. El
+  // guard rechaza por default, que es lo que necesitan las Server Actions, así
+  // que una página que lo llama sin `allowReadOnly` rebota al complejo a
+  // /reactivar en lugar de mostrarle sus datos.
+  it.each(delPanel.map((p) => [p.rel, p.file]))('%s deja mirar en solo lectura', (_rel, file) => {
+    const source = readFileSync(file as string, 'utf8')
+    const llamadas = source.match(/await\s+require(?:Operator|Admin)Staff\([^)]*\)/g) ?? []
+    for (const llamada of llamadas) {
+      expect(llamada, 'falta { allowReadOnly: true }').toContain('allowReadOnly: true')
+    }
+  })
+
   it('requireCajaContext envuelve un guard de staff de verdad', () => {
     // Es el único indirecto que acepta STAFF_GUARDS: las 4 pantallas de Caja lo
     // nombran a él y no al guard. Sin este chequeo, vaciarlo dejaría a las cuatro
     // pasando el test de arriba sin ningún chequeo de rol detrás.
     const source = readFileSync(join(APP_DIR, '(admin)', 'caja', 'queries.ts'), 'utf8')
-    expect(source).toContain('requireOperatorStaff()')
+    // Con `allowReadOnly`: las 4 pantallas de Caja se miran en solo lectura.
+    expect(source).toMatch(/await\s+requireOperatorStaff\(\{\s*allowReadOnly:\s*true\s*\}\)/)
     // La forma de LLAMADA, no la palabra: el docblock de arriba nombra
     // `extractAuthUser` justamente para contar que ya no se usa, y un
     // `toContain` pelado se pondría rojo por el comentario que lo explica.

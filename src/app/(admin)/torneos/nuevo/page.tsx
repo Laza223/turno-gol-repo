@@ -12,7 +12,7 @@ export default async function NuevoTorneoPage() {
   // `requireOperatorStaff` y no `requireAdminStaff` pese a ser solo-dueño: el
   // rebote del manager va a `/torneos` (mantener el contexto del módulo), no al
   // `/dashboard` que impone `requireAdminStaff`.
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect('/login')
   const { tenant, role } = auth
 

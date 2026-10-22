@@ -20,7 +20,7 @@ export default async function CanchasPage() {
   // menú, así que ya NO hereda el guard del layout de settings: este
   // requireAdminStaff es el gate real, no una redundancia. Sigue siendo
   // solo del dueño, igual que cuando vivía adentro de Configuración.
-  const { tenant } = await requireAdminStaff()
+  const { tenant } = await requireAdminStaff({ allowReadOnly: true })
 
   const courts = await withTenantContext(tenant.id, (tx) => listCourts(tenant.id, tx))
 

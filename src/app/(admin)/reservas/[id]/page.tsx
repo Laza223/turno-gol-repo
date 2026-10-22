@@ -34,7 +34,7 @@ type Props = { params: Promise<{ id: string }> }
 
 export default async function ReservaDetailPage(props: Props) {
   const params = await props.params
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect('/login')
   const { tenant } = auth
 

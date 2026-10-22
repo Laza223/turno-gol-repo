@@ -10,7 +10,7 @@ const FOREIGN_MIN_DIGITS = 8
  * marcable.
  *
  * Por qué esto no puede confiar en lo que está guardado: `parsePhoneNumber`
- * (`components/ui/phone-input.tsx`) BORRA el 9 de los móviles argentinos al
+ * (`lib/phone.ts`, el de `components/ui/phone-input.tsx`) BORRA el 9 de los móviles argentinos al
  * parsear, y `formatFullPhone` recompone "+54 <nacional>". O sea que el propio
  * formulario de `/settings/perfil` destruye el marcador de móvil en cada
  * guardado. Un `+54 2323 346976` guardado así es un fijo para WhatsApp y el

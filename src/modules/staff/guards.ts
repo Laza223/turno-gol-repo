@@ -23,7 +23,8 @@ type AdminStaff = {
  * - BLOCKED_TENANT_STATUSES (blocked/churned/deleted): nada pasa.
  * - READ_ONLY_TENANT_STATUSES (suspended): pasa solo quien lo pide con
  *   `allowReadOnly`, que es lo que hacen las pages del panel para LEER. Las
- *   Server Actions no lo piden, así que por default toda escritura se rechaza.
+ *   Server Actions no lo piden, así que por default toda escritura se rechaza
+ *   (las pocas excepciones están en `LifecycleOptions`).
  *   Desde 2026-10-22 es el estado de la prueba vencida y de la mora
  *   (`docs/decisions/2026-10-22-solo-lectura-al-vencer-la-prueba.md`): el
  *   dueño y el encargado miran, pero no operan.
@@ -61,7 +62,13 @@ const READ_ONLY_ERROR =
   'El complejo está en solo lectura: podés ver todo, pero no cargar ni cambiar nada hasta que se active el plan.'
 
 type LifecycleOptions = {
-  /** La llamada solo lee: un complejo en solo lectura (`suspended`) pasa. */
+  /**
+   * Un complejo en solo lectura (`suspended`) pasa. Lo piden las pages, las
+   * acciones que solo leen (exportar los datos) y una sola escritura que la
+   * decisión deja abierta: marcar una devolución como hecha
+   * (`caja/devoluciones/actions.ts`). Qué acciones lo piden lo fija
+   * `tests/unit/caja-solo-lectura.test.ts`.
+   */
   allowReadOnly?: boolean
 }
 

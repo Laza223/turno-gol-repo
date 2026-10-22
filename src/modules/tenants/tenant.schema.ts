@@ -119,3 +119,32 @@ export const tenantLocationSchema = createTenantSchema
   .pick({ address: true, city: true, province: true })
   .extend(coordinateFields)
   .refine(bothOrNeither, COORDINATE_PAIR_MESSAGE)
+
+const ownerName = z.string().trim().min(2, 'Mínimo 2 caracteres').max(80, 'Máximo 80 caracteres')
+
+/**
+ * Alta asistida desde el super-admin (decisión 2026-10-22). Son los datos
+ * básicos del complejo más los del dueño. El email del dueño es también el del
+ * complejo, igual que en el self-signup.
+ *
+ * El referido llega crudo, código o link `/r/<CODE>`, y lo resuelve el
+ * service. El campo se llama `referral` y no `code` porque `echoFields` bloquea
+ * `code` por nombre.
+ */
+export const assistedSignupSchema = createTenantSchema
+  .pick({ name: true, address: true, city: true, province: true, phone: true })
+  .extend({
+    firstName: ownerName,
+    lastName: ownerName,
+    // `.trim().toLowerCase()` ANTES de validar: `z.email()` corre primero y
+    // rechazaría un espacio pegado al copiar el mail de un chat.
+    email: z.string().trim().toLowerCase().pipe(z.email('Ingresá un email válido')),
+    referral: z
+      .string()
+      .trim()
+      .max(200, 'Máximo 200 caracteres')
+      .optional()
+      .transform((v) => (v ? v : null)),
+  })
+
+export type AssistedSignupInput = z.infer<typeof assistedSignupSchema>

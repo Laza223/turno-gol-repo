@@ -1,4 +1,6 @@
-import { Building2 } from 'lucide-react'
+import Link from 'next/link'
+import { Building2, Plus } from 'lucide-react'
+import { buttonVariants } from '@/components/ui/button'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { requireSystemAdmin } from '@/modules/auth/system-admin.guards'
 import { isTenantStatus, listTenants } from '@/modules/super-admin/tenants.service'
@@ -67,6 +69,12 @@ export default async function SuperAdminTenantsPage(props: {
             className="h-6 w-6 text-emerald-700 dark:text-emerald-400"
             aria-hidden="true"
           />
+        }
+        actions={
+          <Link href="/super-admin/tenants/nuevo" className={buttonVariants()}>
+            <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
+            Dar de alta
+          </Link>
         }
       />
 

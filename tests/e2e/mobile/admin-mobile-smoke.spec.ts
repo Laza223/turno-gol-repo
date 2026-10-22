@@ -178,9 +178,10 @@ test.describe('Admin mobile smoke', () => {
     await ctx.close()
   })
 
-  // La misma matriz que en escritorio, con columnas angostas: una hora se lee de
-  // izquierda a derecha en vez de recorrer fichas de a una.
-  test('grilla mobile: la matriz, con columnas angostas y sin scroll del body', async ({
+  // En el teléfono la grilla es una lista por hora (decisión del dueño
+  // 2026-10-22): la matriz de 5 canchas dejaba 56 px por columna y el dueño no
+  // encontraba sus canchas. La matriz sigue montada, oculta por CSS.
+  test('grilla mobile: la lista por hora, sin scroll del body', async ({
     browser,
     adminStorageState,
   }) => {
@@ -188,14 +189,14 @@ test.describe('Admin mobile smoke', () => {
     const page = await ctx.newPage()
     await page.goto('/grilla', { waitUntil: 'networkidle' })
 
-    await expect(page.getByTestId('booking-grid')).toBeVisible()
-    await expect(page.getByTestId('booking-day-list')).toHaveCount(0)
+    await expect(page.getByTestId('booking-hour-list')).toBeVisible()
+    await expect(page.getByTestId('booking-grid')).toBeHidden()
 
-    // La navegación del día vive arriba de la matriz, donde llega el pulgar.
+    // La navegación del día vive arriba de la lista, donde llega el pulgar.
     await expect(page.getByRole('button', { name: 'Día anterior' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Día siguiente' })).toBeVisible()
 
-    // La matriz scrollea adentro suyo: el body nunca desborda a lo ancho.
+    // La lista scrollea adentro suyo: el body nunca desborda a lo ancho.
     const noBodyOverflow = await page.evaluate(
       () => document.body.scrollWidth <= window.innerWidth + 1,
     )

@@ -414,35 +414,3 @@ export const CincoCanchas: Story = {
     })
   },
 }
-
-/**
- * El caso que motivó la lista (10-aprendizajes, 2026-09-16 y 2026-09-23): 5
- * canchas en un teléfono. Antes eran 5 columnas de 56 px con "C1…C5"; ahora,
- * debajo de `md`, la lista por hora. La matriz sigue montada y oculta por CSS
- * (decisión del dueño 2026-10-22).
- */
-export const CincoCanchasEnTelefono: Story = {
-  name: '5 canchas en el teléfono → lista por hora',
-  args: { courts: fullGridCourts(5) },
-  parameters: { viewport: { defaultViewport: 'mobile-primary' } },
-  beforeEach: () => {
-    mocked(useBookingRealtime).mockReturnValue({
-      bookings: fullDayBookings(fullGridCourts(5).map((c) => c.id)),
-      status: 'SUBSCRIBED',
-      refetch: fn(async () => {}),
-    })
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.getByTestId('booking-hour-list')).toBeVisible()
-    await expect(canvas.getByTestId('booking-grid')).not.toBeVisible()
-
-    // Tocar un turno de la lista abre el mismo modal que la matriz.
-    const [row] = within(canvas.getByTestId('booking-hour-list')).getAllByRole('button', {
-      name: /^Cancha \d+, de \d{2}:\d{2} a /,
-    })
-    await userEvent.click(row!)
-    const body = within(canvasElement.ownerDocument.body)
-    await expect(await body.findByRole('dialog')).toBeInTheDocument()
-  },
-}

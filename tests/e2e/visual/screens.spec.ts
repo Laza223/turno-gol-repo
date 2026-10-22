@@ -22,7 +22,6 @@ import {
   PLAYER_STORAGE_STATE,
 } from './_visual-test'
 import { tomorrowDateIsoArt } from '../_helpers/booking-seed'
-import { visibleGridView } from '../_helpers/grid'
 import {
   FROZEN_NOW,
   VISUAL_DATE,
@@ -133,8 +132,8 @@ test.describe('visual — admin', () => {
     // Fecha pinneada ⇒ artNow.date !== date ⇒ useNowLine devuelve null ⇒ la
     // línea roja de "ahora", el elemento más móvil de la pantalla, no se dibuja.
     await page.goto(`/grilla?date=${VISUAL_DATE}`)
-    await expect(visibleGridView(page).getByText('Martina Sosa')).toBeVisible()
-    await expect(visibleGridView(page).getByText('Equipo Los Pinos')).toBeVisible()
+    await expect(page.getByText('Martina Sosa')).toBeVisible()
+    await expect(page.getByText('Equipo Los Pinos')).toBeVisible()
     // Los controles de la vista viven en la barra superior por portal, así que
     // llegan recién con la hidratación: ver waitForHeaderSlot.
     await waitForHeaderSlot(page)

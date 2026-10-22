@@ -54,31 +54,17 @@ export function useNowLine({ artNow, date, visibleSlots }: Params): {
   useEffect(() => {
     if (didAutoScrollRef.current || nowRowIndex === null) return
     const container = gridScrollRef.current
-    if (!container) return
-    const scrollToNow = (): boolean => {
-      const marker = nowLineRef.current
-      // Oculta (en el teléfono se ve la lista, `hidden md:flex`): todo mide 0 y
-      // el scroll se gastaría en nada.
-      if (!marker || container.clientHeight === 0) return false
-      didAutoScrollRef.current = true
-      // Medido, no estimado: con filas `1fr` el alto real solo se sabe después
-      // del layout. La distancia del marcador al techo del scroller es la misma
-      // cuenta con la que `scrollIntoView` centraría, pero fijando el 30% (y no
-      // el 50%) que pide pages/grilla.md §6.
-      const containerRect = container.getBoundingClientRect()
-      const markerRect = marker.getBoundingClientRect()
-      const offset = markerRect.top - containerRect.top + container.scrollTop
-      container.scrollTop = Math.max(0, offset - container.clientHeight * 0.3)
-      return true
-    }
-    if (scrollToNow()) return
-    // Montada oculta: se ancla la primera vez que se ve (el teléfono acostado
-    // ya pasa `md`), no arriba de todo.
-    const observer = new ResizeObserver(() => {
-      if (scrollToNow()) observer.disconnect()
-    })
-    observer.observe(container)
-    return () => observer.disconnect()
+    const marker = nowLineRef.current
+    if (!container || !marker) return
+    didAutoScrollRef.current = true
+    // Medido, no estimado: con filas `1fr` el alto real solo se sabe después
+    // del layout. La distancia del marcador al techo del scroller es la misma
+    // cuenta con la que `scrollIntoView` centraría, pero fijando el 30% (y no
+    // el 50%) que pide pages/grilla.md §6.
+    const containerRect = container.getBoundingClientRect()
+    const markerRect = marker.getBoundingClientRect()
+    const offset = markerRect.top - containerRect.top + container.scrollTop
+    container.scrollTop = Math.max(0, offset - container.clientHeight * 0.3)
   }, [nowRowIndex])
 
   return { nowRowIndex, nowFraction, gridScrollRef, nowLineRef }

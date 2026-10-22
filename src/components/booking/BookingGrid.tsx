@@ -13,7 +13,6 @@ import { useGridActions } from '@/hooks/use-grid-actions'
 import { GridHeaderBar } from './grid/GridHeaderBar'
 import { FirstBookingHint } from './grid/FirstBookingHint'
 import { GridScroller } from './grid/GridScroller'
-import { GridHourList } from './grid/GridHourList'
 import { GridOverlays } from './grid/GridOverlays'
 import { ClosedDayEmptyState, GridOfflineBanner, NoCourtsEmptyState } from './grid/GridEmptyStates'
 import { moveGridFocus } from './grid/grid-keyboard-nav'
@@ -241,59 +240,31 @@ export function BookingGrid({
         <div className="flex-1 flex flex-col min-h-0 space-y-4">
           {showFirstHint && <FirstBookingHint onDismiss={dismissHint} />}
 
-          {/* Teléfono: la lista por hora (decisión del dueño, 2026-10-22). Desde
-              `md`, la matriz. Las dos quedan montadas y elige el CSS: un hook de
-              viewport resuelve después del primer pintado (useIsDesktop da
-              `true` en el server), así que el teléfono veía la matriz primero.
-              No duplica nada que se pueda desincronizar: mismo `cells`, mismos
-              callbacks, y el alta y el cobro son los de GridOverlays. */}
-          {/* `mb-0`: el `space-y-4` del padre le da margen a todo lo que no es el
-              último hijo, y el último es la matriz, que acá está oculta. */}
-          <div className="mb-0 flex min-h-0 flex-1 flex-col md:hidden">
-            <GridHourList
-              courts={courts}
-              slots={slots}
-              cells={cells}
-              nowSlot={nowRowIndex !== null ? (visibleSlots[nowRowIndex] ?? null) : null}
-              isNavPending={isNavPending}
-              nowMs={paintNowMs}
-              highlightPending={highlightPending}
-              ariaLabel={`Turnos del ${dayLabel} ${dateLabel}, hora por hora`}
-              isSlotPast={isSlotPast}
-              pulseIds={pulseIds}
-              detailBookingId={detailBookingId}
-              onDetailChange={setDetailBookingId}
-              onSlotClick={handleSlotClick}
-            />
-          </div>
-
-          <div className="hidden min-h-0 flex-1 flex-col md:flex">
-            <GridScroller
-              courts={courts}
-              slots={slots}
-              visibleSlots={visibleSlots}
-              cells={cells}
-              collapsedCount={collapsedCount}
-              hasBand={hasBand}
-              rowOffset={rowOffset}
-              rowHeightRem={rowHeightRem}
-              nowRowIndex={nowRowIndex}
-              nowFraction={nowFraction}
-              nowLineRef={nowLineRef}
-              isNavPending={isNavPending}
-              nowMs={paintNowMs}
-              highlightPending={highlightPending}
-              gridScrollRef={gridScrollRef}
-              ariaLabel={`Grilla de turnos del ${dayLabel} ${dateLabel}`}
-              isSlotPast={isSlotPast}
-              pulseIds={pulseIds}
-              detailBookingId={detailBookingId}
-              onDetailChange={setDetailBookingId}
-              onSlotClick={handleSlotClick}
-              onGridKeyDown={handleGridKeyDown}
-              onExpandMorning={() => setShowMorning(true)}
-            />
-          </div>
+          <GridScroller
+            courts={courts}
+            slots={slots}
+            visibleSlots={visibleSlots}
+            cells={cells}
+            collapsedCount={collapsedCount}
+            hasBand={hasBand}
+            rowOffset={rowOffset}
+            rowHeightRem={rowHeightRem}
+            nowRowIndex={nowRowIndex}
+            nowFraction={nowFraction}
+            nowLineRef={nowLineRef}
+            isNavPending={isNavPending}
+            nowMs={paintNowMs}
+            highlightPending={highlightPending}
+            gridScrollRef={gridScrollRef}
+            ariaLabel={`Grilla de turnos del ${dayLabel} ${dateLabel}`}
+            isSlotPast={isSlotPast}
+            pulseIds={pulseIds}
+            detailBookingId={detailBookingId}
+            onDetailChange={setDetailBookingId}
+            onSlotClick={handleSlotClick}
+            onGridKeyDown={handleGridKeyDown}
+            onExpandMorning={() => setShowMorning(true)}
+          />
         </div>
       )}
 

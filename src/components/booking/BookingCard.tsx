@@ -75,7 +75,7 @@ function placement(col: number, row: number, span: number, rowOffset: number): R
  * segundos o si el jugador ya había abandonado — o sea, si atender el teléfono
  * del que llama por esa cancha o hacerlo esperar.
  */
-export function HoldCountdown({ createdAt }: { createdAt: string | Date }) {
+function HoldCountdown({ createdAt }: { createdAt: string | Date }) {
   // `0` hasta hidratar. Antes arrancaba con
   // `useState(() => Date.now())`: el servidor pintaba mm:ss con SU reloj y el
   // cliente hidrataba con el suyo, así que el texto casi nunca coincidía y
@@ -120,7 +120,7 @@ function truncateDisplayName(name: string): string {
   return `${lastSpace > 0 ? cut.slice(0, lastSpace) : cut}…`
 }
 
-export function bookingDisplayName(booking: GridBooking): string | null {
+function bookingDisplayName(booking: GridBooking): string | null {
   if (booking.guestName) return truncateDisplayName(booking.guestName)
   if (booking.playerFirstName) {
     return truncateDisplayName(`${booking.playerFirstName} ${booking.playerLastName ?? ''}`.trim())

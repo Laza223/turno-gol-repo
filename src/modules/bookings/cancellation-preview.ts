@@ -1,4 +1,4 @@
-import { decideAdminRefund } from './booking.cancellation'
+import { decideAdminRefund } from './refund-policy'
 import { isLateCancel, lateCancelPenalty, type LateCancelPenalty } from './late-cancel'
 
 /**

@@ -1,7 +1,7 @@
-import { eq, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, or, sql } from 'drizzle-orm'
 import { bookings, tenants } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
-import { insertAuditLog } from '@/shared/db/audit'
+import { insertAuditLog, insertSystemAuditLog } from '@/shared/db/audit'
 import { prepareRefund } from '@/modules/payments/payment.service'
 import { prepareManualRefund } from '@/modules/payments/refund.service'
 import { bookingCode } from '@/lib/booking-code'
@@ -13,6 +13,11 @@ import {
   type LateCancelStrikeResult,
 } from '@/modules/relationships/ptr.service'
 import { isLateCancel } from './late-cancel'
+import {
+  guestLateCancelStatus,
+  PHONE_HINT_DIGITS,
+  type GuestLateCancelStatus,
+} from './guest-late-cancel'
 import { markNoShow, revertNoShow } from './booking.service'
 import { invalidateAvailSearch } from '@/shared/cache/slots-cache'
 import { rowToBookingRow } from './booking.mappers'
@@ -54,6 +59,9 @@ type LockedBooking = {
   time_start: string // 'HH:MM:SS'
   starts_at: Date
   ends_at: Date
+  whatsapp_chat_id: string | null
+  guest_phone: string | null
+  canceled_late: boolean
 }
 
 async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking | undefined> {
@@ -73,7 +81,10 @@ async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking |
       date::text AS date,
       time_start::text AS time_start,
       starts_at,
-      ends_at
+      ends_at,
+      whatsapp_chat_id,
+      guest_phone,
+      canceled_late
     FROM bookings
     WHERE id = ${bookingId}
     FOR UPDATE
@@ -271,35 +282,25 @@ function lateCancelAudit(strike: LateCancelStrikeResult | null): Record<string, 
   }
 }
 
-export async function cancelByPlayer(
-  bookingId: string,
-  playerId: string,
+type SettledCancellation = {
+  row: typeof bookings.$inferSelect
+  inPolicy: boolean
+  depositStatus: DepositStatus
+  lateCancel: boolean
+}
+
+/**
+ * Cuerpo común de cancelar "a pedido del jugador" (cuenta propia o invitado del
+ * bot): guard de turno terminado, complejo inactivo, política de seña, devolución
+ * registrada, `canceled_late` y el UPDATE. La reserva ya viene lockeada y validada
+ * (dueño, replay, `confirmed`); el strike, el audit y los avisos son de cada caller.
+ */
+async function settlePlayerSideCancellation(
+  b: LockedBooking,
   reason: string | undefined,
   tx: DbTx,
-): Promise<CancellationOutcome> {
-  const b = await lockBooking(bookingId, tx)
-  if (!b) throw new BookingNotInConfirmedError(bookingId)
-  // El dueño se chequea ANTES del replay: una reserva ajena ya cancelada sigue
-  // dando "no es tuya" y nunca un éxito que confirme que existe y está cancelada.
-  if (b.player_id !== playerId) throw new BookingNotOwnedByPlayerError(bookingId, playerId)
-
-  // Idempotencia: si ESTE jugador ya la canceló, el reintento (respuesta perdida,
-  // doble click) no es un error, lo que quería ya está hecho. Devuelve el estado
-  // actual sin escribir NADA: ni update, audit, devolución, mails ni `track`.
-  // Cancelada por el complejo (o sin `canceled_by`) no es replay: se le explica.
-  if (
-    (b.status === 'canceled_refunded' || b.status === 'canceled_no_refund') &&
-    b.canceled_by === 'player'
-  ) {
-    const current = await tx.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1)
-    return { booking: rowToBookingRow(current[0]!), notificationIds: [], replayed: true }
-  }
-  if (b.status !== 'confirmed') {
-    throw new BookingNotCancelableError(bookingId, b.status, b.canceled_by)
-  }
-
-  track.booking('booking.cancel.by_player', { bookingId, playerId })
-
+): Promise<SettledCancellation> {
+  const bookingId = b.id
   // 07-cancelbyplayer-noshow-guard: mismo criterio temporal que
   // `decideAdminRefund` (bookingEndUtcMs) — un turno cuyo ends_at ya pasó no
   // se puede "cancelar" desde el lado del jugador, es una ausencia. El status
@@ -375,6 +376,44 @@ export async function cancelByPlayer(
     .where(eq(bookings.id, bookingId))
     .returning()
 
+  return { row: updated[0]!, inPolicy, depositStatus: newDepositStatus, lateCancel }
+}
+
+export async function cancelByPlayer(
+  bookingId: string,
+  playerId: string,
+  reason: string | undefined,
+  tx: DbTx,
+): Promise<CancellationOutcome> {
+  const b = await lockBooking(bookingId, tx)
+  if (!b) throw new BookingNotInConfirmedError(bookingId)
+  // El dueño se chequea ANTES del replay: una reserva ajena ya cancelada sigue
+  // dando "no es tuya" y nunca un éxito que confirme que existe y está cancelada.
+  if (b.player_id !== playerId) throw new BookingNotOwnedByPlayerError(bookingId, playerId)
+
+  // Idempotencia: si ESTE jugador ya la canceló, el reintento (respuesta perdida,
+  // doble click) no es un error, lo que quería ya está hecho. Devuelve el estado
+  // actual sin escribir NADA: ni update, audit, devolución, mails ni `track`.
+  // Cancelada por el complejo (o sin `canceled_by`) no es replay: se le explica.
+  if (
+    (b.status === 'canceled_refunded' || b.status === 'canceled_no_refund') &&
+    b.canceled_by === 'player'
+  ) {
+    const current = await tx.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1)
+    return { booking: rowToBookingRow(current[0]!), notificationIds: [], replayed: true }
+  }
+  if (b.status !== 'confirmed') {
+    throw new BookingNotCancelableError(bookingId, b.status, b.canceled_by)
+  }
+
+  track.booking('booking.cancel.by_player', { bookingId, playerId })
+
+  const { row, inPolicy, depositStatus, lateCancel } = await settlePlayerSideCancellation(
+    b,
+    reason,
+    tx,
+  )
+
   const strike = lateCancel ? await applyLateCancelStrike(b.tenant_id, playerId, tx) : null
 
   await insertAuditLog(tx, {
@@ -387,14 +426,14 @@ export async function cancelByPlayer(
     metadata: {
       reason: reason ?? null,
       inPolicy,
-      depositStatus: newDepositStatus,
+      depositStatus,
       ...lateCancelAudit(strike),
     },
   })
 
   await invalidateAvailSearch(b.date)
 
-  const bookingRow = rowToBookingRow(updated[0]!)
+  const bookingRow = rowToBookingRow(row)
 
   // doc7 Flujo 4: avisar al jugador de que su propia cancelación se procesó.
   const notificationIds: string[] = []
@@ -436,6 +475,153 @@ export async function cancelByPlayer(
   }
 
   return { booking: bookingRow, notificationIds }
+}
+
+export type GuestCancellationOutcome = CancellationOutcome & {
+  /** Escalera del invitado tras esta cancelación; null si no contó como tardía. */
+  guestPenalty: GuestLateCancelStatus | null
+  inPolicy: boolean
+  depositStatus: DepositStatus
+}
+
+/**
+ * Cancelación de un invitado del bot de WhatsApp: mismo criterio que
+ * `cancelByPlayer`, pero el dueño es el CHAT (`whatsapp_chat_id`) y la escalera de
+ * cancelación tardía se deriva de sus reservas (`guestLateCancelStatus`), no de
+ * `player_tenant_relationships`. Sin mail: el bot le contesta en el mismo chat.
+ */
+export async function cancelByGuest(
+  bookingId: string,
+  chatId: string,
+  tx: DbTx,
+): Promise<GuestCancellationOutcome> {
+  const b = await lockBooking(bookingId, tx)
+  // Una reserva de otro chat es indistinguible de una que no existe.
+  if (!b || b.whatsapp_chat_id !== chatId) throw new BookingNotInConfirmedError(bookingId)
+
+  if (
+    (b.status === 'canceled_refunded' || b.status === 'canceled_no_refund') &&
+    b.canceled_by === 'player'
+  ) {
+    // Sin escribir nada: el estado final de la fila dice qué pasó. Si fue tardía, la
+    // escalera vigente (no una consecuencia futura) sigue saliendo de sus reservas.
+    const guestPenalty = b.canceled_late
+      ? b.guest_phone && b.player_id === null
+        ? await guestLateCancelStatus(b.tenant_id, b.guest_phone.slice(-PHONE_HINT_DIGITS), tx)
+        : { count: 0, bannedUntil: null }
+      : null
+    return {
+      booking: await currentBookingRow(bookingId, tx),
+      notificationIds: [],
+      replayed: true,
+      guestPenalty,
+      inPolicy: false,
+      depositStatus: b.deposit_status as DepositStatus,
+    }
+  }
+  if (b.status !== 'confirmed') {
+    throw new BookingNotCancelableError(bookingId, b.status, b.canceled_by)
+  }
+
+  // Serializa las cancelaciones del mismo teléfono en este complejo: sin esto, dos
+  // cancelaciones tardías concurrentes contarían cada una la suya y se saltearían la 2da.
+  const hint = b.guest_phone?.slice(-PHONE_HINT_DIGITS)
+  if (hint) {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`${b.tenant_id}:${hint}`}))`)
+  }
+
+  const { row, inPolicy, depositStatus, lateCancel } = await settlePlayerSideCancellation(
+    b,
+    undefined,
+    tx,
+  )
+  // Con jugador vinculado (un staff lo asoció) rige su escalera de siempre; sin cuenta,
+  // la derivada del teléfono.
+  let guestPenalty: GuestLateCancelStatus | null = null
+  if (lateCancel && b.player_id) {
+    const strike = await applyLateCancelStrike(b.tenant_id, b.player_id, tx)
+    guestPenalty = { count: strike.lateCancelCount, bannedUntil: strike.bannedUntil }
+  } else if (lateCancel && hint) {
+    guestPenalty = await guestLateCancelStatus(b.tenant_id, hint, tx)
+  }
+
+  await insertSystemAuditLog(tx, {
+    tenantId: b.tenant_id,
+    action: 'booking.canceled',
+    resourceType: 'booking',
+    resourceId: bookingId,
+    metadata: {
+      via: 'whatsapp',
+      chatId,
+      inPolicy,
+      depositStatus,
+      ...(guestPenalty
+        ? {
+            lateCancel: true,
+            lateCancelCount: guestPenalty.count,
+            lateCancelBannedUntil: guestPenalty.bannedUntil?.toISOString() ?? null,
+          }
+        : {}),
+    },
+  })
+
+  await invalidateAvailSearch(b.date)
+
+  return {
+    booking: rowToBookingRow(row),
+    notificationIds: [],
+    guestPenalty,
+    inPolicy,
+    depositStatus,
+  }
+}
+
+/**
+ * Reserva de ESTE chat en una cancha, día operativo y hora: `confirmed` o
+ * `pending_payment` y, si no hay, la que el propio jugador ya canceló (para que el
+ * reintento de un pedido ya aplicado cuente lo que pasó). Solo lee.
+ */
+export async function findChatBookingForCancel(
+  tenantId: string,
+  chatId: string,
+  slot: { courtId: string; date: string; timeStart: string },
+  tx: DbTx,
+) {
+  const rows = await tx
+    .select({
+      id: bookings.id,
+      status: bookings.status,
+      depositStatus: bookings.depositStatus,
+      depositAmount: bookings.depositAmount,
+      startsAt: bookings.startsAt,
+      endsAt: bookings.endsAt,
+      guestPhone: bookings.guestPhone,
+      canceledLate: bookings.canceledLate,
+    })
+    .from(bookings)
+    .where(
+      and(
+        eq(bookings.tenantId, tenantId),
+        eq(bookings.whatsappChatId, chatId),
+        eq(bookings.courtId, slot.courtId),
+        sql`${bookings.date} = ${slot.date}::date`,
+        eq(bookings.timeStart, slot.timeStart),
+        or(
+          inArray(bookings.status, ['confirmed', 'pending_payment']),
+          and(
+            inArray(bookings.status, ['canceled_refunded', 'canceled_no_refund']),
+            eq(bookings.canceledBy, 'player'),
+          ),
+        ),
+      ),
+    )
+    // La vigente primero; entre canceladas, la última.
+    .orderBy(
+      sql`(${bookings.status} IN ('confirmed', 'pending_payment')) DESC`,
+      desc(bookings.canceledAt),
+    )
+    .limit(1)
+  return rows[0] ?? null
 }
 
 // Etiqueta legible que se antepone al motivo para que `canceled_reason`

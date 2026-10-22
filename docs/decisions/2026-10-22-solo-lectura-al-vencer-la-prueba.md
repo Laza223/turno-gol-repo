@@ -28,7 +28,7 @@ Cuando vence la prueba y el complejo no pagó, **no queda bloqueado de golpe**. 
 - Ninguna escritura fuera de la devolución: crear, mover o cancelar reservas, cobrar, cargar abonados, cambiar la configuración ni el equipo.
 - De caja, nada más que la devolución: ni ventas, ni cobros de deudas o fiados, ni movimientos.
 - Lo corta el guard central de Server Actions (`requireStaffWithRole`, `src/modules/staff/guards.ts`) y `withTenant` para las rutas de API. No se toca acción por acción.
-- `allowReadOnly` en una Server Action es opt-in, y la lista de las que lo piden es cerrada: `tests/unit/caja-solo-lectura.test.ts` falla si otra acción lo pide. Sumar una necesita una decisión del dueño.
+- `allowReadOnly` es opt-in, y fuera de las pages y layouts la lista de archivos que lo nombran es cerrada: el guard, el export, la devolución y `requireCajaContext` (el guard de las pages de Caja). `tests/unit/caja-solo-lectura.test.ts` falla si aparece en otro archivo, si una page declara una Server Action adentro o si algo que no es una page usa `requireCajaContext`. Sumar uno necesita una decisión del dueño.
 - Las de facturación (`requireBillingAdminStaffAction`, `withBillingTenant`) siguen abiertas a propósito: son la salida.
 - Los pasos previos a una escritura (vista previa, buscador de jugadores, impacto de pausar una cancha) también rebotan. El aviso llega antes de llenar el formulario.
 - Conectar o cambiar la cuenta de MercadoPago de las señas: `/api/mp/oauth-start` no pasa por el guard, así que corta por su cuenta.

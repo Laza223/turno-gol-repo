@@ -157,34 +157,58 @@ describe('caja en solo lectura (suspended)', () => {
   )
 })
 
-// `allowReadOnly` en una Server Action deja escribir (o leer) a un complejo que
-// no pagó. Es opt-in, y la lista de quién lo pide es cerrada: una acción nueva
-// que lo pida tiene que pasar por una decisión del dueño y sumarse acá.
-const ACCIONES_EN_SOLO_LECTURA = [
+// `allowReadOnly` deja pasar a un complejo que no pagó. Las pages y layouts lo
+// piden todas (app-page-guard-chain.test.ts); fuera de ellas, la lista de
+// dónde aparece es cerrada. Sumar un archivo necesita una decisión del dueño.
+const ALLOW_READ_ONLY_FUERA_DE_PAGES = [
+  // Lo define.
+  'src/modules/staff/guards.ts',
   // Exportar sus datos (#476): solo lee.
   'src/app/(admin)/settings/datos/actions.ts',
   // Marcar una devolución como hecha: la única escritura (decisión 2026-10-22).
   'src/app/(admin)/caja/devoluciones/actions.ts',
+  // `requireCajaContext`, el guard de las pages de Caja. Lo envuelve, así que
+  // una acción que lo llamara abriría una escritura: ver el test de abajo.
+  'src/app/(admin)/caja/queries.ts',
 ]
 
-function filesUnder(dir: string): string[] {
+const ROOT = process.cwd()
+
+function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     const path = join(dir, name)
-    return statSync(path).isDirectory() ? filesUnder(path) : [path]
+    if (statSync(path).isDirectory()) return sourceFiles(path)
+    return /\.(ts|tsx)$/.test(name) ? [path] : []
   })
 }
 
-describe('acciones que andan en solo lectura', () => {
-  it('solo las de la lista piden allowReadOnly', () => {
-    const root = process.cwd()
-    const conAllowReadOnly = filesUnder(join(root, 'src'))
-      .filter((f) => /\.(ts|tsx)$/.test(f))
-      .filter((f) => {
-        const source = readFileSync(f, 'utf8')
-        return /^\s*['"]use server['"]/.test(source) && /allowReadOnly:\s*true/.test(source)
-      })
-      .map((f) => relative(root, f).split(sep).join('/'))
+const rel = (f: string) => relative(ROOT, f).split(sep).join('/')
+const isPageOrLayout = (f: string) => /\/(page|layout)\.tsx$/.test(rel(f))
+const SRC = sourceFiles(join(ROOT, 'src'))
+
+describe('dónde puede aparecer allowReadOnly', () => {
+  it('fuera de pages y layouts, solo en los archivos de la lista', () => {
+    // Cualquier forma cuenta (`: true`, una variable, shorthand): se busca la
+    // palabra, no la llamada.
+    const found = SRC.filter((f) => !isPageOrLayout(f))
+      .filter((f) => readFileSync(f, 'utf8').includes('allowReadOnly'))
+      .map(rel)
       .sort()
-    expect(conAllowReadOnly).toEqual([...ACCIONES_EN_SOLO_LECTURA].sort())
+    expect(found).toEqual([...ALLOW_READ_ONLY_FUERA_DE_PAGES].sort())
+  })
+
+  it('ninguna page ni layout declara una Server Action adentro', () => {
+    // Las pages piden `allowReadOnly` por regla; una acción inline lo heredaría.
+    const inline = SRC.filter(isPageOrLayout)
+      .filter((f) => /['"]use server['"]/.test(readFileSync(f, 'utf8')))
+      .map(rel)
+    expect(inline).toEqual([])
+  })
+
+  it('requireCajaContext solo lo usan pages', () => {
+    const users = SRC.filter((f) => rel(f) !== 'src/app/(admin)/caja/queries.ts')
+      .filter((f) => readFileSync(f, 'utf8').includes('requireCajaContext'))
+      .map(rel)
+    expect(users.filter((f) => !/\/page\.tsx$/.test(f))).toEqual([])
   })
 })

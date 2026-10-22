@@ -24,6 +24,7 @@ const client = (key: string): Page['rows'][number] => ({
   bookingsCount: 1,
   noshowCount: 0,
   lastBookingAt: '2026-10-01',
+  lastActiveAt: null,
   tags: [],
   fixedCount: 0,
   suggestedPlayerId: null,

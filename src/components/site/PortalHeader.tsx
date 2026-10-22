@@ -5,7 +5,7 @@ import { Logo } from '@/components/ui/logo'
 import { AccountMenu } from './AccountMenu'
 import { IngresarLink } from './IngresarLink'
 import { usePortalSession } from './PortalSessionProvider'
-import { Search, Building2, Calendar } from 'lucide-react'
+import { Search, Building2, Calendar, Swords } from 'lucide-react'
 
 type Props = {
   variant?: 'overlay' | 'solid'
@@ -23,7 +23,7 @@ type Props = {
  * `variant="overlay"` se usa sobre el hero de la landing (markup preservado).
  */
 export default function PortalHeader({ variant = 'solid', signOutAction }: Props) {
-  const { session, staffPanelPath } = usePortalSession()
+  const { session, staffPanelPath, rivalEnabled } = usePortalSession()
 
   // Precedencia: el jugador gana siempre. En la práctica son cookies
   // mutuamente excluyentes (un solo auth user por navegador), pero el orden lo
@@ -55,6 +55,15 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
                 <Search className="h-[15px] w-[15px] sm:h-[17px] sm:w-[17px]" aria-hidden />
                 Explorar
               </Link>
+              {rivalEnabled && (
+                <Link
+                  href="/rival"
+                  className="hidden min-h-11 items-center gap-1.5 rounded-full px-2.5 py-2 text-xs font-semibold text-muted-foreground transition-colors duration-150 hover:bg-foreground/5 hover:text-foreground sm:px-4 sm:py-[9px] sm:text-sm md:inline-flex"
+                >
+                  <Swords className="h-[15px] w-[15px] sm:h-[17px] sm:w-[17px]" aria-hidden />
+                  Rival
+                </Link>
+              )}
               <Link
                 href="/para-complejos"
                 className="hidden min-h-11 items-center gap-2 rounded-full px-4 py-[9px] text-sm font-semibold text-muted-foreground transition-colors duration-150 hover:bg-foreground/5 hover:text-foreground sm:inline-flex"
@@ -111,6 +120,15 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
             <Search className="h-4 w-4" />
             <span>Explorar</span>
           </Link>
+          {rivalEnabled && (
+            <Link
+              href="/rival"
+              className="hidden min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground md:inline-flex md:text-sm"
+            >
+              <Swords className="h-4 w-4" aria-hidden />
+              <span>Rival</span>
+            </Link>
+          )}
           {session ? (
             <>
               <Link

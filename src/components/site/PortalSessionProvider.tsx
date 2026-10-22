@@ -14,6 +14,13 @@ export type PortalSessionContextValue = {
    * viaja email, ni nombre, ni id de complejo.
    */
   staffPanelPath: string | null
+  /** Flag global de RIVAL. `false` mientras hidrata: el HTML estático nunca lo muestra. */
+  rivalEnabled: boolean
+}
+
+/** Semilla del provider (Storybook, tests, layout del jugador): `rivalEnabled` es opcional y cae en `false`. */
+export type PortalSessionSeed = Omit<PortalSessionContextValue, 'rivalEnabled'> & {
+  rivalEnabled?: boolean
 }
 
 const EMPTY_FAVORITES: ReadonlySet<string> = new Set()
@@ -23,6 +30,7 @@ const PortalSessionContext = createContext<PortalSessionContextValue>({
   session: null,
   favoriteTenantIds: EMPTY_FAVORITES,
   staffPanelPath: null,
+  rivalEnabled: false,
 })
 
 type SessionPayload = {
@@ -30,6 +38,7 @@ type SessionPayload = {
     session?: PortalSession | null
     favoriteTenantIds?: string[]
     staffPanelPath?: string | null
+    rivalEnabled?: boolean
   }
 }
 
@@ -48,15 +57,16 @@ export function PortalSessionProvider({
 }: {
   children: ReactNode
   /** Storybook/tests: siembra el estado y corta el fetch a /api/player/session. */
-  initialValue?: PortalSessionContextValue
+  initialValue?: PortalSessionSeed
 }) {
   const [value, setValue] = useState<PortalSessionContextValue>(() => {
     return (
-      initialValue ??
+      (initialValue && { ...initialValue, rivalEnabled: initialValue.rivalEnabled ?? false }) ??
       cachedSessionValue ?? {
         session: null,
         favoriteTenantIds: EMPTY_FAVORITES,
         staffPanelPath: null,
+        rivalEnabled: false,
       }
     )
   })
@@ -72,6 +82,7 @@ export function PortalSessionProvider({
               session: null,
               favoriteTenantIds: EMPTY_FAVORITES,
               staffPanelPath: null,
+              rivalEnabled: false,
             }
             cachedSessionValue = fallback
             setValue(fallback)
@@ -85,6 +96,7 @@ export function PortalSessionProvider({
           session: json.data?.session ?? null,
           favoriteTenantIds: new Set(json.data?.favoriteTenantIds ?? []),
           staffPanelPath: json.data?.staffPanelPath ?? null,
+          rivalEnabled: json.data?.rivalEnabled === true,
         }
         cachedSessionValue = newValue
         setValue(newValue)
@@ -96,6 +108,7 @@ export function PortalSessionProvider({
             session: null,
             favoriteTenantIds: EMPTY_FAVORITES,
             staffPanelPath: null,
+            rivalEnabled: false,
           }
           cachedSessionValue = fallback
           setValue(fallback)

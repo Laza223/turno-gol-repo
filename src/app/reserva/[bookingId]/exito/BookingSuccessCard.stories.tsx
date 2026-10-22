@@ -92,6 +92,19 @@ export const AvisarleAlGrupo: Story = {
   },
 }
 
+/** Con el flag de RIVAL prendido: "Armar el partido" como secundaria, sin tocar "Avisarle al grupo". */
+export const ConArmarElPartido: Story = {
+  args: { rivalEnabled: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('link', { name: 'Armar el partido' })).toHaveAttribute(
+      'href',
+      `/rival/nuevo?reserva=${uid(1001)}`,
+    )
+    await expect(canvas.getByRole('link', { name: 'Avisarle al grupo' })).toBeTruthy()
+  },
+}
+
 /** Sin seña (`requires_deposit: false` o pago 100% presencial): se abona el total en el complejo. */
 export const SinSena: Story = {
   args: { booking: { ...base, depositAmount: 0, depositStatus: 'not_required' } },

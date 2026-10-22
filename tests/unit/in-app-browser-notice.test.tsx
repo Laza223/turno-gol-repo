@@ -2,20 +2,33 @@
 //
 // El aviso que reemplaza a "Continuar con Google" en el navegador interno de una app. Quién lo
 // muestra y en qué orden lo cubren ingresar-page, login-gate y reservar-page-render.
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { InAppBrowserNotice } from '@/components/world/InAppBrowserNotice'
 
 const original = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+const realLocation = Object.getOwnPropertyDescriptor(window, 'location')
+const PAGE = 'http://localhost/complejo-fenix/reservar?court=c1&date=2026-10-22'
 
 function setClipboard(value: unknown) {
   Object.defineProperty(navigator, 'clipboard', { value, configurable: true })
 }
 
+beforeEach(() => {
+  // La URL se fija a mano: otros archivos del mismo worker (singleThread comparte el window) dejan
+  // `window.location` reemplazado, y en CI llegaba `about:blank`.
+  Object.defineProperty(window, 'location', {
+    value: new URL(PAGE),
+    writable: true,
+    configurable: true,
+  })
+})
+
 afterEach(() => {
   cleanup()
   if (original) Object.defineProperty(navigator, 'clipboard', original)
   else Reflect.deleteProperty(navigator, 'clipboard')
+  if (realLocation) Object.defineProperty(window, 'location', realLocation)
 })
 
 const copy = async () => {
@@ -37,14 +50,11 @@ describe('InAppBrowserNotice', () => {
   it('copia la página tal cual (con el turno elegido) y avisa dónde pegarla', async () => {
     const writeText = vi.fn(async () => {})
     setClipboard({ writeText })
-    window.history.replaceState(null, '', '/complejo-fenix/reservar?court=c1&date=2026-10-22')
     render(<InAppBrowserNotice />)
 
     await copy()
 
-    expect(writeText).toHaveBeenCalledWith(
-      `${window.location.origin}/complejo-fenix/reservar?court=c1&date=2026-10-22`,
-    )
+    expect(writeText).toHaveBeenCalledWith(PAGE)
     expect(screen.getByRole('status').textContent).toBe(
       'Enlace copiado. Pegalo en Chrome o Safari.',
     )

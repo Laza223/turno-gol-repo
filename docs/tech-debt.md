@@ -140,6 +140,10 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 
 **Disparador de resolución**: el primer cliente pago que entre en mora, o antes si se decide qué tiene que pasar al prender una cancha en ese estado.
 
+### RESUELTA (2026-10-22) — se detecta y se avisa a ops, sin tocar la cuota
+
+Decisión: [docs/decisions/2026-10-22-cancha-en-mora.md](decisions/2026-10-22-cancha-en-mora.md). `reconcile-subscriptions` ahora busca cada hora las suscripciones `active` sin cambio agendado (`pending_billed_courts IS NULL`) que tienen más canchas `online` que `billed_courts`, y por cada una deja `subscription.courts_over_billed` en `audit_logs`, un warning en Sentry y un mail a los super admins (canal `ops_alerts`, migr. 097), con el mismo dedup de 20 h que `subscription.amount_drift`. No cambia el precio ni le pregunta nada a MP: subir la cuota queda a criterio del dueño. Prender una cancha en mora sigue pasando sin aviso (P2 de la decisión).
+
 ---
 
 ## `application.deauthorized` se descarta con 400: TurnoGol no se entera de una desvinculación

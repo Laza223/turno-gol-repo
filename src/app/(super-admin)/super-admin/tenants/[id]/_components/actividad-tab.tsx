@@ -54,6 +54,10 @@ const ACTION_LABELS: Record<string, string> = {
   'support.tenant.plan_changed': 'Canchas facturadas cambiadas por soporte',
   'support.tenant.referral_code_generated': 'Link de referidos generado',
   'support.tenant.referrer_assigned': 'Referidor asignado',
+  'referral.reward_earned': 'Pagó su primer mes: el que lo trajo ganó un mes',
+  'referral.reward_approved': 'Premio de referido aprobado (falta devolver un cobro)',
+  'referral.reward_applied': 'Premio de referido acreditado',
+  'referral.reward_rejected': 'Premio de referido rechazado',
   'support.user.password_reset': 'Contraseña reseteada por soporte',
 }
 

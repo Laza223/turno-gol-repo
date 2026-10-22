@@ -1,5 +1,5 @@
 import { randomInt } from 'node:crypto'
-import { and, eq, isNull, lte, notInArray } from 'drizzle-orm'
+import { and, desc, eq, isNull, lte, ne, notInArray } from 'drizzle-orm'
 import { getDb } from '@/shared/db/client'
 import { tenants } from '@/shared/db/schema'
 import { isUniqueViolation } from '@/shared/db/pg-errors'
@@ -182,4 +182,32 @@ export async function assignReferrer(
 
   if (updated.length === 0) return { ok: false, reason: 'not_eligible' }
   return { ok: true, referrerName: referral.name }
+}
+
+export type MyReferral = {
+  id: string
+  name: string
+  createdAt: Date
+  /** `tenants.referral_reward_status`: `null` = todavía no pagó su primer mes. */
+  rewardStatus: string | null
+}
+
+/**
+ * Los complejos que trajo `tenantId`, del más nuevo al más viejo, para el
+ * panel del dueño (`/settings/invitar`). Proyección EXPLÍCITA a propósito:
+ * `tenants` es global y sin RLS, así que es la única barrera contra mostrarle
+ * al referidor datos de otro complejo (emails, tokens, slugs, settings).
+ */
+export async function listMyReferrals(tenantId: string): Promise<MyReferral[]> {
+  const db = getDb()
+  return db
+    .select({
+      id: tenants.id,
+      name: tenants.name,
+      createdAt: tenants.createdAt,
+      rewardStatus: tenants.referralRewardStatus,
+    })
+    .from(tenants)
+    .where(and(eq(tenants.referredByTenantId, tenantId), ne(tenants.status, 'deleted')))
+    .orderBy(desc(tenants.createdAt))
 }

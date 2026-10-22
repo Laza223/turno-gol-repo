@@ -336,6 +336,9 @@ export type TenantDetail = {
      *  con una segunda query proyectada (`tenants` es global sin RLS): nunca
      *  se expone el `referred_by_tenant_id` crudo. */
     referrerName: string | null
+    /** Premio que ESTE complejo le hizo ganar a su referidor (B3, migr. 094).
+     *  `null` = todavía no pagó, o no llegó por referido. */
+    referralRewardStatus: string | null
   }
   pulse: TenantPulse
   subscription: {
@@ -408,6 +411,7 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
       settings: tenants.settings,
       referralCode: tenants.referralCode,
       referredByTenantId: tenants.referredByTenantId,
+      referralRewardStatus: tenants.referralRewardStatus,
     })
     .from(tenants)
     .where(eq(tenants.id, tenantId))

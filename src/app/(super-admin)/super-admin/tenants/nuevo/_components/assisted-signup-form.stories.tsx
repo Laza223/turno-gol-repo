@@ -13,7 +13,7 @@ const meta = {
   component: AssistedSignupForm,
   parameters: { layout: 'padded' },
   args: {
-    loginUrl: 'https://turnogol.app/login',
+    loginUrl: 'http://localhost:3000/login',
     action: respond({
       status: 'success',
       tenantId: TENANT_ID,

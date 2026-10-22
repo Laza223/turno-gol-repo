@@ -1,6 +1,7 @@
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import type { MethodReport } from './report.types'
 import { capitalizeFirst } from '@/lib/format'
+import { addDays } from '@/shared/dates/art'
 import { effectiveCloseMins, operatingDayRangeUtc } from '@/shared/time/operating-day'
 
 function hhmmToMins(hhmm: string): number {
@@ -78,6 +79,21 @@ export function getMonthBounds(month: string, cutoffMins = 0): MonthBounds {
     fromDate,
     toDate,
     fromUtc: operatingDayRangeUtc(fromDate, cutoffMins).fromUtc,
+    toUtc: operatingDayRangeUtc(toDate, cutoffMins).fromUtc,
+  }
+}
+
+/**
+ * Límites de la semana de 7 días operativos que arranca en `weekStart`
+ * ('YYYY-MM-DD', inclusive). Misma forma y mismo corte que `getMonthBounds`,
+ * así el resumen semanal agrega exactamente como Métricas.
+ */
+export function getWeekBounds(weekStart: string, cutoffMins = 0): MonthBounds {
+  const toDate = addDays(weekStart, 7)
+  return {
+    fromDate: weekStart,
+    toDate,
+    fromUtc: operatingDayRangeUtc(weekStart, cutoffMins).fromUtc,
     toUtc: operatingDayRangeUtc(toDate, cutoffMins).fromUtc,
   }
 }
@@ -222,30 +238,40 @@ export function calcOccupancyPct(bookedMinutes: number, availableMinutes: number
   return Math.round((bookedMinutes / availableMinutes) * 1000) / 10
 }
 
-/** Leading char that a spreadsheet app reads as "this cell is a formula". */
-const FORMULA_PREFIX_RE = /^[=+\-@]/
+/**
+ * Leading char that a spreadsheet app reads as "this cell is a formula". Tab y
+ * CR también (OWASP CSV Injection): algunas planillas los saltean y evalúan lo
+ * que viene después.
+ */
+const FORMULA_PREFIX_RE = /^[=+\-@\t\r]/
+
+/**
+ * Una celda CSV (RFC 4180) para el separador dado. La comparten `toCsv` (caja,
+ * con `,`) y el export de datos del complejo (con `;`, ver `data-export.ts`):
+ * la defensa contra fórmulas vive en un solo lugar.
+ */
+export function csvCell(v: unknown, separator: string): string {
+  let s = String(v ?? '')
+  // Neutralize CSV/formula injection (security scan F13/F17/F19): a
+  // leading =, +, -, or @ makes Excel/LibreOffice evaluate the cell as a
+  // formula when a staff member later opens the exported file — prefixing
+  // with a single quote forces it to render as literal text instead
+  // (OWASP CSV Injection guidance).
+  if (FORMULA_PREFIX_RE.test(s)) {
+    s = `'${s}`
+  }
+  if (s.includes(separator) || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+    return `"${s.replace(/"/g, '""')}"`
+  }
+  return s
+}
 
 /** Converts an array of objects to an RFC 4180 CSV string. Returns '' for empty input. */
 export function toCsv(rows: Record<string, unknown>[]): string {
   if (rows.length === 0) return ''
   const headers = Object.keys(rows[0])
-  const escape = (v: unknown): string => {
-    let s = String(v ?? '')
-    // Neutralize CSV/formula injection (security scan F13/F17/F19): a
-    // leading =, +, -, or @ makes Excel/LibreOffice evaluate the cell as a
-    // formula when a staff member later opens the exported file — prefixing
-    // with a single quote forces it to render as literal text instead
-    // (OWASP CSV Injection guidance).
-    if (FORMULA_PREFIX_RE.test(s)) {
-      s = `'${s}`
-    }
-    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
-      return `"${s.replace(/"/g, '""')}"`
-    }
-    return s
-  }
   return [
     headers.join(','),
-    ...rows.map((row) => headers.map((h) => escape(row[h])).join(',')),
+    ...rows.map((row) => headers.map((h) => csvCell(row[h], ',')).join(',')),
   ].join('\r\n')
 }

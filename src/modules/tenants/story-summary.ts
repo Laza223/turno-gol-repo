@@ -40,7 +40,7 @@ const MAX_NAME_LENGTH = 64
 const UNSUPPORTED_GLYPHS =
   /[^\u0020-\u007E\u00A0-\u00FF\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u2026]/g
 
-function sanitizeName(raw: string, fallback: string): string {
+export function sanitizeName(raw: string, fallback: string): string {
   // Tabs y saltos de línea pasan a espacio (no se borran como "no dibujables", que
   // pegaría las palabras) y el colapso va DESPUÉS de sacar los glifos: borrar un
   // emoji entre dos espacios deja dos.

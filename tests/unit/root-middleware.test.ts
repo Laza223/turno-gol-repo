@@ -24,7 +24,7 @@ vi.mock('@/shared/rate-limit/apply', async (importOriginal) => {
   return { ...actual, enforce: vi.fn(async () => ({ ok: true }) as never) }
 })
 
-import { middleware, needsSessionRefresh } from '../../middleware'
+import { config, middleware, needsSessionRefresh } from '../../middleware'
 import { refreshSessionCookies } from '@/lib/supabase/middleware'
 import { enforce, rateLimit429 } from '@/shared/rate-limit/apply'
 
@@ -70,6 +70,9 @@ describe('needsSessionRefresh', () => {
     '/super-admin',
     '/super-admin/tenants/abc',
     '/mis-reservas',
+    '/rival',
+    '/rival/nuevo',
+    '/rival/p/ABC123',
     '/perfil',
     '/reserva/abc/exito',
     '/reset-password',
@@ -83,6 +86,11 @@ describe('needsSessionRefresh', () => {
   it('no matchea por prefijo de string suelto: /dashboardero no es /dashboard', () => {
     expect(needsSessionRefresh('/dashboardero')).toBe(false)
     expect(needsSessionRefresh('/loginz')).toBe(false)
+  })
+
+  it('/rival entra al matcher (y sus subrutas): sin eso el refresco nunca corre', () => {
+    expect(config.matcher).toContain('/rival')
+    expect(config.matcher).toContain('/rival/:path*')
   })
 })
 

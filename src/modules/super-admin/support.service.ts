@@ -217,31 +217,47 @@ export async function extendTrial(
   now: Date = new Date(),
 ): Promise<{ trialEndsAt: Date }> {
   return withTenantContext(tenantId, async (tx) => {
-    const tenant = await loadTenantForUpdate(tx, tenantId)
-    if (tenant.status !== 'trialing') {
-      throw new TrialNotActiveError(tenantId, tenant.status)
-    }
-
-    const currentEnd = tenant.trial_ends_at ? toDate(tenant.trial_ends_at) : now
-    const base = currentEnd > now ? currentEnd : now
-    const newEnd = addDays(base, days)
-
-    await tx.execute(sql`
-      UPDATE tenants
-      SET trial_ends_at = ${newEnd.toISOString()}::timestamptz, updated_at = NOW()
-      WHERE id = ${tenantId}
-    `)
+    const { before, after } = await extendTrialInTx(tx, tenantId, days, now)
 
     await supportAudit(tx, systemAdminId, tenantId, 'support.tenant.trial_extended', {
       days,
-      before: {
-        trialEndsAt: tenant.trial_ends_at ? toDate(tenant.trial_ends_at).toISOString() : null,
-      },
-      after: { trialEndsAt: newEnd.toISOString() },
+      before: { trialEndsAt: before?.toISOString() ?? null },
+      after: { trialEndsAt: after.toISOString() },
     })
 
-    return { trialEndsAt: newEnd }
+    return { trialEndsAt: after }
   })
+}
+
+/**
+ * El cuerpo de `extendTrial` sin transacción propia ni audit, para quien ya
+ * tiene la fila lockeada en su tx y deja su propio rastro (el premio de
+ * referidos, `referral-reward.service.ts`). Lockea `tenants`: el caller que
+ * también toque `tenant_subscriptions` la lockea ANTES (Orden A).
+ */
+export async function extendTrialInTx(
+  tx: DbTx,
+  tenantId: string,
+  days: number,
+  now: Date = new Date(),
+): Promise<{ before: Date | null; after: Date }> {
+  const tenant = await loadTenantForUpdate(tx, tenantId)
+  if (tenant.status !== 'trialing') {
+    throw new TrialNotActiveError(tenantId, tenant.status)
+  }
+
+  const before = tenant.trial_ends_at ? toDate(tenant.trial_ends_at) : null
+  const currentEnd = before ?? now
+  const base = currentEnd > now ? currentEnd : now
+  const after = addDays(base, days)
+
+  await tx.execute(sql`
+    UPDATE tenants
+    SET trial_ends_at = ${after.toISOString()}::timestamptz, updated_at = NOW()
+    WHERE id = ${tenantId}
+  `)
+
+  return { before, after }
 }
 
 // ─── Forzar transición de estado (reusa el FSM de lifecycle.service) ─────────

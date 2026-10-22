@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { addDays } from '@/shared/dates/art'
 
 vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn() }))
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn(), useToast: () => ({ toast: vi.fn() }) }))
@@ -47,7 +48,7 @@ const row = (overrides: Partial<MisReservasBookingRow> = {}): MisReservasBooking
 
 function renderView(
   bookings: MisReservasBookingRow[],
-  props: { tab?: 'proximos' | 'historial'; page?: number } = {},
+  props: { tab?: 'proximos' | 'historial'; page?: number; rivalEnabled?: boolean } = {},
 ) {
   return render(
     <MisReservasView
@@ -59,6 +60,7 @@ function renderView(
       page={props.page ?? 0}
       total={bookings.length}
       pageSize={20}
+      rivalEnabled={props.rivalEnabled}
     />,
   )
 }
@@ -351,5 +353,41 @@ describe('MisReservasView — acciones livianas y alineadas (ronda 2)', () => {
     expect(within(card('a')).getByRole('button', { name: 'Cancelar' })).toHaveAttribute(
       'data-ghost',
     )
+  })
+})
+
+describe('MisReservasView — "Armar el partido" (RIVAL)', () => {
+  const armar = (c: HTMLElement) => within(c).queryByRole('link', { name: 'Armar el partido' })
+
+  it('con el flag prendido, la próxima reserva lo ofrece hacia /rival/nuevo?reserva=<id>, sin tocar "Avisarle al grupo"', () => {
+    renderView([row()], { rivalEnabled: true })
+    const link = armar(card('b-1'))!
+    expect(link.getAttribute('href')).toBe('/rival/nuevo?reserva=b-1')
+    expect(within(card('b-1')).getByRole('link', { name: 'Avisarle al grupo' })).toBeTruthy()
+  })
+
+  it('solo hasta hoy+7 (ART): +7 lo ofrece, +8 no (el schema no deja armar más lejos)', () => {
+    renderView([row({ date: addDays(TODAY, 7) })], { rivalEnabled: true })
+    expect(armar(card('b-1'))).not.toBeNull()
+    cleanup()
+    renderView([row({ date: addDays(TODAY, 8) })], { rivalEnabled: true })
+    expect(armar(card('b-1'))).toBeNull()
+  })
+
+  it('con el flag apagado (o sin pasarlo) no aparece', () => {
+    renderView([row()], { rivalEnabled: false })
+    expect(armar(card('b-1'))).toBeNull()
+    cleanup()
+    renderView([row()])
+    expect(armar(card('b-1'))).toBeNull()
+  })
+
+  it('solo en la próxima: la segunda reserva y el historial no lo llevan', () => {
+    renderView([row({ id: 'b-1' }), row({ id: 'b-2' })], { rivalEnabled: true })
+    expect(armar(card('b-1'))).not.toBeNull()
+    expect(armar(card('b-2'))).toBeNull()
+    cleanup()
+    renderView([row({ status: 'completed' })], { tab: 'historial', rivalEnabled: true })
+    expect(armar(card('b-1'))).toBeNull()
   })
 })

@@ -83,6 +83,8 @@ describe('ARCO data export endpoint (B9.2 — Ley 25.326 Art. 14)', () => {
       // 24 meses = decisión del dueño (D5 2026-07-23), sync con
       // purgeOldAuditLogs y doc18 §7.1.
       audit_logs: '24 months',
+      rival_matches:
+        '12 months after the match; saved WhatsApp deleted when it starts or is canceled',
     })
   })
 
@@ -133,6 +135,61 @@ describe('ARCO data export endpoint (B9.2 — Ley 25.326 Art. 14)', () => {
     expect(Array.isArray(json.data.tenant_relationships)).toBe(true)
     expect(json.data.tenant_relationships.length).toBeGreaterThanOrEqual(1)
     expect(json.data.tenant_relationships[0]).toHaveProperty('tenant_id', tenant.id)
+  })
+
+  it('incluye lo de RIVAL del jugador y NUNCA el WhatsApp ni los datos de otra persona', async () => {
+    const sql = getSql()
+    const other = await createTestPlayer(sql)
+    await sql`UPDATE players SET position = 'goalkeeper', zone = 'Luján', rival_accepted_at = NOW(),
+              rival_terms_version = 'rival-test', signup_source = 'rival' WHERE id = ${player.id}`
+    // Un partido que organiza el jugador (con SU WhatsApp) y uno de otro donde el jugador está.
+    const [mine] = await sql<{ id: string }[]>`
+      INSERT INTO rival_matches (tenant_id, organizer_player_id, starts_at, format, capacity, level, court_declared)
+      VALUES (${tenant.id}, ${player.id}, NOW() + INTERVAL '2 days', 5, 10, 'parejo', true)
+      RETURNING id
+    `
+    await sql`INSERT INTO rival_match_contacts (match_id, whatsapp_digits) VALUES (${mine!.id}, '5491100000001')`
+    const [theirs] = await sql<{ id: string }[]>`
+      INSERT INTO rival_matches (tenant_id, organizer_player_id, starts_at, format, capacity, level, court_declared)
+      VALUES (${tenant.id}, ${other.id}, NOW() + INTERVAL '2 days', 5, 10, 'parejo', true)
+      RETURNING id
+    `
+    await sql`INSERT INTO rival_match_contacts (match_id, whatsapp_digits) VALUES (${theirs!.id}, '5491100000002')`
+    await sql`INSERT INTO rival_participants (tenant_id, match_id, player_id, status, origin)
+              VALUES (${tenant.id}, ${theirs!.id}, ${player.id}, 'confirmed', 'invite')`
+    await sql`INSERT INTO rival_reports (match_id, reporter_player_id, reported_player_id, reason)
+              VALUES (${theirs!.id}, ${player.id}, ${other.id}, 'offensive')`
+    await sql`INSERT INTO rival_alert_subscriptions (player_id, tenant_id, only_goalkeeper)
+              VALUES (${player.id}, ${tenant.id}, true)`
+
+    const res = await exportData(new NextRequest('http://localhost/api/player/data-export'))
+    const json = await res.json()
+    const rival = json.data.rival
+
+    expect(rival.profile).toMatchObject({
+      position: 'goalkeeper',
+      zone: 'Luján',
+      terms_version: 'rival-test',
+      signup_source: 'rival',
+    })
+    expect(rival.profile.accepted_at).toBeTruthy()
+    expect(rival.organized_matches.map((m: { id: string }) => m.id)).toEqual([mine!.id])
+    expect(rival.organized_matches[0].whatsapp_saved).toBe('5491100000001')
+    // Participa en el de otro (y en el propio, por la fila del organizador).
+    expect(rival.participations.map((p: { match_id: string }) => p.match_id).sort()).toEqual(
+      [mine!.id, theirs!.id].sort(),
+    )
+    expect(rival.reports_made).toHaveLength(1)
+    expect(rival.reports_made[0]).toMatchObject({ reason: 'offensive', about_a_person: true })
+    expect(rival.alert_subscriptions).toEqual([
+      expect.objectContaining({ tenant_id: tenant.id, only_goalkeeper: true }),
+    ])
+
+    // Nada de otra persona: ni su WhatsApp, ni su id, ni los códigos de invitación.
+    const raw = JSON.stringify(json)
+    expect(raw).not.toContain('5491100000002')
+    expect(raw).not.toContain(other.id)
+    expect(raw).not.toContain('invite_code')
   })
 
   it('RLS isolation: another player cannot read this player export', async () => {

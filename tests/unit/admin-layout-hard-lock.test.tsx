@@ -4,8 +4,10 @@ import { render, screen } from '@testing-library/react'
 
 // ENS-26: un tenant `canceled` conserva acceso completo al panel — solo el
 // sweep `canceled → blocked` (cuando vence `period_end`) corta el acceso, y
-// `blocked` sigue en el hard-lock. Cubre las 5 ramas: acceso normal para
-// `canceled`, y redirect a /suspended para blocked/churned/suspended/deleted.
+// `blocked` sigue en el hard-lock. Cubre acceso normal para `canceled`, y
+// redirect a /suspended para blocked/churned/deleted.
+// Decisión 2026-10-22: `suspended` es solo lectura y entra al panel con el
+// aviso (`readOnly`): trial si no hay `dunning_started_at`, mora si lo hay.
 
 vi.mock('next/navigation', () => ({
   redirect: vi.fn((url: string) => {
@@ -26,12 +28,18 @@ vi.mock('@/shared/db/schema', () => ({ tenantSubscriptions: {} }))
 vi.mock('@/components/layout/admin-layout-shell', () => ({
   AdminLayoutShell: ({
     tenantStatus,
+    readOnly,
     children,
   }: {
     tenantStatus: string
+    readOnly?: unknown
     children: React.ReactNode
   }) => (
-    <div data-testid="admin-shell" data-tenant-status={tenantStatus}>
+    <div
+      data-testid="admin-shell"
+      data-tenant-status={tenantStatus}
+      data-read-only={JSON.stringify(readOnly ?? null)}
+    >
       {children}
     </div>
   ),
@@ -49,6 +57,7 @@ import AdminLayout from '@/app/(admin)/layout'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { resolveImpersonatedStaffContext } from '@/modules/auth/impersonation.server'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { withTenantContext } from '@/shared/db/client'
 
 const STAFF_USER = {
   type: 'staff',
@@ -86,15 +95,62 @@ describe('AdminLayout — hard lock por tenant_status', () => {
     expect(screen.getByText('contenido')).toBeTruthy()
   })
 
-  it.each(['blocked', 'churned', 'suspended', 'deleted'])(
-    '%s: redirige a /suspended',
-    async (status) => {
-      vi.mocked(getStaffTenant).mockResolvedValue(tenant(status) as never)
-      await expect(AdminLayout({ children: <p>contenido</p> })).rejects.toThrow(
-        'REDIRECT:/suspended',
-      )
-    },
-  )
+  it.each(['blocked', 'churned', 'deleted'])('%s: redirige a /suspended', async (status) => {
+    vi.mocked(getStaffTenant).mockResolvedValue(tenant(status) as never)
+    await expect(AdminLayout({ children: <p>contenido</p> })).rejects.toThrow('REDIRECT:/suspended')
+  })
+
+  it('suspended por prueba vencida: entra en solo lectura con la fecha de corte', async () => {
+    vi.mocked(getStaffTenant).mockResolvedValue({
+      ...tenant('suspended'),
+      trialEndsAt: new Date('2026-12-06T03:00:00.000Z'),
+    } as never)
+    vi.mocked(withTenantContext).mockResolvedValueOnce({
+      currentPeriodEnd: null,
+      mpSubscriptionId: null,
+      dunningStartedAt: null,
+    })
+
+    render(await AdminLayout({ children: <p>contenido</p> }))
+
+    const shell = screen.getByTestId('admin-shell')
+    expect(shell.getAttribute('data-tenant-status')).toBe('suspended')
+    // trial_ends_at + TRIAL_READ_ONLY_DAYS (14), sin el margen de "Activar".
+    expect(JSON.parse(shell.getAttribute('data-read-only') ?? 'null')).toEqual({
+      origin: 'trial',
+      until: '2026-12-20T03:00:00.000Z',
+    })
+    expect(screen.getByText('contenido')).toBeTruthy()
+  })
+
+  it('suspended por mora: entra en solo lectura, sin fecha de corte de la prueba', async () => {
+    vi.mocked(getStaffTenant).mockResolvedValue({
+      ...tenant('suspended'),
+      trialEndsAt: new Date('2026-10-01T03:00:00.000Z'),
+    } as never)
+    vi.mocked(withTenantContext).mockResolvedValueOnce({
+      currentPeriodEnd: null,
+      mpSubscriptionId: 'mp-1',
+      dunningStartedAt: new Date('2026-11-01T12:00:00.000Z'),
+    })
+
+    render(await AdminLayout({ children: <p>contenido</p> }))
+
+    const shell = screen.getByTestId('admin-shell')
+    expect(JSON.parse(shell.getAttribute('data-read-only') ?? 'null')).toEqual({
+      origin: 'dunning',
+      until: null,
+    })
+  })
+
+  it('suspended con el onboarding sin terminar: va a /reactivar, no al wizard', async () => {
+    vi.mocked(getStaffTenant).mockResolvedValue({
+      ...tenant('suspended'),
+      settings: { onboarding_completed: false },
+    } as never)
+
+    await expect(AdminLayout({ children: <p>contenido</p> })).rejects.toThrow('REDIRECT:/reactivar')
+  })
 
   it('active: NO redirige (caso base, regresión)', async () => {
     vi.mocked(getStaffTenant).mockResolvedValue(tenant('active') as never)

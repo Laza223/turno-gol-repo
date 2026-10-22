@@ -27,7 +27,7 @@ export default async function ActaPartidoPage(props: {
 }) {
   const { id, matchId } = await props.params
 
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect('/login')
   const { tenant } = auth
 

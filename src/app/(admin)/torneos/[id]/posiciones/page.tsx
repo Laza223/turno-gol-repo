@@ -32,7 +32,7 @@ export default async function TorneoPosicionesPage(props: { params: Promise<{ id
   // salía de un `getStaffRole` propio corriendo en paralelo con los datos del
   // torneo; ahora lo devuelve el guard, así que esa lectura desaparece en vez de
   // paralelizarse.
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect('/login')
   const { tenant, role } = auth
 

@@ -31,7 +31,7 @@ export default async function WhatsappSettingsPage({
 }: {
   searchParams: Promise<{ conectado?: string; error?: string }>
 }) {
-  const { tenant } = await requireAdminStaff()
+  const { tenant } = await requireAdminStaff({ allowReadOnly: true })
   const state = await getWhatsappPlusState(tenant.id)
   if (!state) notFound()
   const { connection } = state

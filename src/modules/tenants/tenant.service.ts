@@ -2,6 +2,7 @@ import { cache } from 'react'
 import { and, eq, like, ne, or, sql } from 'drizzle-orm'
 import { getDb, getSql, getWorkerDb, withTenantContext, type DbTx } from '@/shared/db/client'
 import { plans, tenants, tenantStaffMembers, tenantSubscriptions } from '@/shared/db/schema'
+import { insertAuditLog } from '@/shared/db/audit'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { DEFAULT_CANCELLATION_HOURS_BEFORE, TRIAL_DAYS } from '@/shared/constants'
 import { generateSlug, RESERVED_SLUGS } from './tenant.utils'
@@ -82,8 +83,8 @@ export async function createTenantWithTrial(
 ): Promise<{ id: string; slug: string }> {
   const db = getDb()
   const slug = await generateUniqueSlug(input.name)
-  // El default (30) es el del self-signup y no se toca. `input.trialDays` solo
-  // llega desde el alta asistida del super-admin, y el MISMO número alimenta
+  // El default (30) es el del self-signup y el del alta asistida, y no se toca.
+  // Si algún día llega `input.trialDays`, el MISMO número alimenta
   // `trial_ends_at`, `current_period_end` y el copy del mail de bienvenida: son
   // tres lugares que un cliente puede comparar entre sí.
   const trialDays = input.trialDays ?? TRIAL_DAYS
@@ -150,6 +151,20 @@ export async function createTenantWithTrial(
       currentPeriodEnd: trialEndsAt,
     })
 
+    // Alta asistida: el audit va en esta transacción para que no exista un
+    // complejo creado desde el super-admin sin su rastro.
+    if (input.assistedBy) {
+      await insertAuditLog(tx, {
+        tenantId: tenant.id,
+        actorId: input.assistedBy.systemAdminId,
+        actorType: 'system',
+        action: 'support.tenant.created',
+        resourceType: 'tenant',
+        resourceId: tenant.id,
+        metadata: input.assistedBy.metadata,
+      })
+    }
+
     // Bienvenida. Va DESPUÉS del insert de tenant_staff_members a propósito:
     // `enqueueTenantOwnerNotification` resuelve los destinatarios leyendo esa
     // tabla, así que invertir el orden manda el mail a nadie, en silencio.
@@ -212,6 +227,7 @@ function rowToTenantRow(t: typeof tenants.$inferSelect): TenantRow {
     closesNextDay: t.closesNextDay,
     mpConnectedAt: t.mpConnectedAt,
     mpNickname: t.mpNickname,
+    mpDisconnectedAt: t.mpDisconnectedAt,
     latitude: coordinateFromColumn(t.latitude),
     longitude: coordinateFromColumn(t.longitude),
   }
@@ -366,15 +382,22 @@ export async function completeOnboarding(tenantId: string): Promise<void> {
  * cross-tenant por naturaleza —justamente busca en los complejos ajenos— y
  * dejarla en el pool restringido la ataría al contexto del tenant en curso.
  * Devuelve solo el nombre: nunca credenciales de otro complejo.
+ *
+ * Sin `exceptTenantId` contesta "¿qué complejo cobra con esta cuenta?": así
+ * resuelve el webhook de desvinculación (`mp-connect`) de quién es el aviso.
  */
 export async function findTenantUsingMpAccount(
   mpUserId: string,
-  exceptTenantId: string,
+  exceptTenantId?: string,
 ): Promise<{ id: string; name: string } | null> {
   const rows = await getWorkerDb()
     .select({ id: tenants.id, name: tenants.name })
     .from(tenants)
-    .where(and(eq(tenants.mpUserId, mpUserId), ne(tenants.id, exceptTenantId)))
+    .where(
+      exceptTenantId
+        ? and(eq(tenants.mpUserId, mpUserId), ne(tenants.id, exceptTenantId))
+        : eq(tenants.mpUserId, mpUserId),
+    )
     .limit(1)
   return rows[0] ?? null
 }
@@ -399,6 +422,8 @@ export async function connectMercadoPago(
       mpPublicKey: data.mpPublicKey,
       mpNickname: data.mpNickname ?? null,
       mpConnectedAt: new Date(),
+      // Reconectar cura la marca de "MercadoPago se desconectó" (migr. 100).
+      mpDisconnectedAt: null,
       updatedAt: new Date(),
     })
     .where(eq(tenants.id, tenantId))
@@ -439,6 +464,7 @@ export async function disconnectMercadoPago(
         mp_public_key = NULL,
         mp_nickname = NULL,
         mp_connected_at = NULL,
+        mp_disconnected_at = NULL,
         -- t.settings calificado: con el self-join del FROM, "settings" a secas
         -- es ambiguo (42702). El lado izquierdo del SET nunca lleva prefijo;
         -- el derecho sí lo necesita. (Sin backticks en este comentario: cierran

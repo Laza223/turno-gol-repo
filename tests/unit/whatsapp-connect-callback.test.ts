@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server'
 
 vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: vi.fn() }))
 vi.mock('@/modules/staff/staff.service', () => ({ getStaffRole: vi.fn() }))
-vi.mock('@/modules/staff/guards', () => ({ isBlockedForStaff: vi.fn() }))
+vi.mock('@/modules/staff/guards', () => ({ lifecycleGateForStaff: vi.fn() }))
 vi.mock('@/modules/tenants/tenant.service', () => ({ getStaffTenant: vi.fn() }))
 vi.mock('@/modules/whatsapp-bot/whatsapp-bot.connection', () => ({
   getWhatsappPlusState: vi.fn(),
@@ -17,7 +17,7 @@ vi.mock('@/shared/lib/logger', () => ({ logger: { error: vi.fn(), info: vi.fn(),
 
 import { GET } from '@/app/api/whatsapp/connect/callback/route'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { isBlockedForStaff } from '@/modules/staff/guards'
+import { lifecycleGateForStaff } from '@/modules/staff/guards'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import {
@@ -50,7 +50,7 @@ beforeEach(() => {
   } as never)
   vi.mocked(getStaffTenant).mockResolvedValue({ id: 'tenant-1', name: 'Uno' } as never)
   vi.mocked(getStaffRole).mockResolvedValue('admin')
-  vi.mocked(isBlockedForStaff).mockResolvedValue(false)
+  vi.mocked(lifecycleGateForStaff).mockResolvedValue('open')
   vi.mocked(getWhatsappPlusState).mockResolvedValue({ connection: null })
   vi.mocked(registerWhatsappConnection).mockResolvedValue({ ok: true })
 })
@@ -62,9 +62,12 @@ describe('GET /api/whatsapp/connect/callback', () => {
     expect(registerWhatsappConnection).not.toHaveBeenCalled()
   })
 
-  it('un complejo bloqueado no registra nada', async () => {
-    vi.mocked(isBlockedForStaff).mockResolvedValue(true)
-    expect(location(await get('?phone_number_id=pn-1'))).toBe(`${APP_URL}/suspended`)
+  it.each([
+    ['blocked', '/suspended'],
+    ['read_only', '/reactivar'],
+  ] as const)('un complejo %s no registra nada y va a %s', async (gate, path) => {
+    vi.mocked(lifecycleGateForStaff).mockResolvedValue(gate)
+    expect(location(await get('?phone_number_id=pn-1'))).toBe(`${APP_URL}${path}`)
     expect(registerWhatsappConnection).not.toHaveBeenCalled()
   })
 

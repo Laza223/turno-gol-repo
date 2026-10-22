@@ -92,7 +92,12 @@ describe('anonymizePlayer', () => {
         preferred_area = 'Palermo',
         ban_reason = 'ban previo del sistema',
         ban_until = NOW() + INTERVAL '10 days',
-        last_login_at = NOW()
+        last_login_at = NOW(),
+        position = 'goalkeeper',
+        zone = 'Luján',
+        rival_accepted_at = NOW(),
+        rival_terms_version = 'rival-test',
+        signup_source = 'rival'
       WHERE id = ${player.id}
     `
 
@@ -112,9 +117,15 @@ describe('anonymizePlayer', () => {
         agreed_to_terms_at: Date | null
         terms_version: string | null
         last_login_at: Date | null
+        position: string | null
+        zone: string | null
+        rival_accepted_at: Date | null
+        rival_terms_version: string | null
+        signup_source: string | null
       }>
     >`SELECT status, email, first_name, last_name, phone, avatar_url, preferred_area,
-        ban_reason, ban_until, agreed_to_terms_at, terms_version, last_login_at
+        ban_reason, ban_until, agreed_to_terms_at, terms_version, last_login_at,
+        position, zone, rival_accepted_at, rival_terms_version, signup_source
         FROM players WHERE id = ${player.id}`
 
     const row = rows[0]!
@@ -131,6 +142,12 @@ describe('anonymizePlayer', () => {
     expect(row.agreed_to_terms_at).toBeNull() // createTestPlayer sets NOW()
     expect(row.terms_version).toBeNull() // createTestPlayer sets 'v1'
     expect(row.last_login_at).toBeNull()
+    // Perfil RIVAL: sembrado con valores reales arriba, así que el null prueba la limpieza.
+    expect(row.position).toBeNull()
+    expect(row.zone).toBeNull()
+    expect(row.rival_accepted_at).toBeNull()
+    expect(row.rival_terms_version).toBeNull()
+    expect(row.signup_source).toBeNull()
   })
 
   it('elimina los player_tenant_relationships de todos los complejos', async () => {
@@ -353,5 +370,154 @@ describe('anonymizePlayer', () => {
     // Nada se modificó: ambos intentos fueron rechazados.
     expect(row[0]!.player_id).toBe(player.id)
     expect(row[0]!.time_start).toBe('18:00:00')
+  })
+})
+
+// ─── RIVAL (migr. 099) ──────────────────────────────────────────────────────
+// Se siembra por el pool admin (sin `app.current_player_id`): los triggers de
+// reglas por actor se saltean, pero el recuento y la promoción del banco (AFTER
+// de rival_participants) corren igual. Es exactamente la condición de ARCO.
+describe('anonymizePlayer — RIVAL', () => {
+  async function seedMatch(
+    tenantId: string,
+    organizerId: string,
+    opts: { startsAt: 'future' | 'past'; capacity?: number; contact?: boolean },
+  ): Promise<string> {
+    const startsAt =
+      opts.startsAt === 'future' ? "NOW() + INTERVAL '3 days'" : "NOW() - INTERVAL '1 day'"
+    const onBoard = opts.contact === true
+    const [m] = await sql<{ id: string }[]>`
+      INSERT INTO rival_matches (
+        tenant_id, organizer_player_id, starts_at, format, capacity, level, court_declared
+      )
+      VALUES (
+        ${tenantId}, ${organizerId}, ${sql.unsafe(startsAt)}, 5, ${opts.capacity ?? 10}, 'parejo',
+        true
+      )
+      RETURNING id
+    `
+    if (onBoard) {
+      // Publicado exige el contacto ya guardado (trigger diferido): primero el
+      // contacto, después se publica.
+      await sql`
+        INSERT INTO rival_match_contacts (match_id, whatsapp_digits)
+        VALUES (${m!.id}, '5491155551234')
+      `
+      await sql`
+        UPDATE rival_matches SET on_board = true, seeking = 'players', seeking_position = 'any'
+        WHERE id = ${m!.id}
+      `
+    }
+    return m!.id
+  }
+
+  async function addParticipant(
+    tenantId: string,
+    matchId: string,
+    playerId: string,
+    status: 'confirmed' | 'bench' | 'requested',
+  ): Promise<void> {
+    await sql`
+      INSERT INTO rival_participants (tenant_id, match_id, player_id, role, status, origin)
+      VALUES (${tenantId}, ${matchId}, ${playerId}, 'player', ${status},
+              ${status === 'requested' ? 'board' : 'invite'})
+    `
+  }
+
+  async function statusOf(matchId: string, playerId: string): Promise<string | undefined> {
+    const rows = await sql<{ status: string }[]>`
+      SELECT status FROM rival_participants WHERE match_id = ${matchId} AND player_id = ${playerId}
+    `
+    return rows[0]?.status
+  }
+
+  it('el organizador: sus partidos abiertos se cancelan, salen del tablón y se borra el WhatsApp de todos', async () => {
+    const tenant = await createTestTenant(sql)
+    const org = await createTestPlayer(sql)
+    const other = await createTestPlayer(sql)
+    const upcoming = await seedMatch(tenant.id, org.id, { startsAt: 'future', contact: true })
+    const past = await seedMatch(tenant.id, org.id, { startsAt: 'past', contact: true })
+    await addParticipant(tenant.id, upcoming, other.id, 'confirmed')
+    // Control: un partido de OTRO organizador con contacto no se toca.
+    const bystanderOrg = await createTestPlayer(sql)
+    const bystander = await seedMatch(tenant.id, bystanderOrg.id, {
+      startsAt: 'future',
+      contact: true,
+    })
+
+    await anonymizePlayer(org.id)
+
+    const [up] = await sql<{ status: string; on_board: boolean; seeking: string | null }[]>`
+      SELECT status, on_board, seeking FROM rival_matches WHERE id = ${upcoming}
+    `
+    expect(up).toEqual({ status: 'canceled', on_board: false, seeking: null })
+    // El vencido es historia: sigue 'open' (se deriva como vencido), pero sin contacto.
+    const [pa] = await sql<
+      { status: string }[]
+    >`SELECT status FROM rival_matches WHERE id = ${past}`
+    expect(pa!.status).toBe('open')
+    const contacts = await sql<{ match_id: string }[]>`
+      SELECT match_id FROM rival_match_contacts WHERE match_id IN (${upcoming}, ${past}, ${bystander})
+    `
+    expect(contacts.map((c) => c.match_id)).toEqual([bystander])
+    // Las filas históricas siguen, apuntando al jugador anonimizado.
+    expect(await statusOf(upcoming, org.id)).toBe('confirmed')
+    expect(await statusOf(upcoming, other.id)).toBe('confirmed')
+    const [bm] = await sql<{ status: string }[]>`
+      SELECT status FROM rival_matches WHERE id = ${bystander}
+    `
+    expect(bm!.status).toBe('open')
+  })
+
+  it('el participante: pasa a left, entra el primero del banco, se borran sus alertas', async () => {
+    const tenant = await createTestTenant(sql)
+    const org = await createTestPlayer(sql)
+    const leaver = await createTestPlayer(sql)
+    const bench1 = await createTestPlayer(sql)
+    const bench2 = await createTestPlayer(sql)
+    const matchId = await seedMatch(tenant.id, org.id, { startsAt: 'future', capacity: 2 })
+    await addParticipant(tenant.id, matchId, leaver.id, 'confirmed')
+    // El banco respeta el orden de llegada: bench1 antes que bench2.
+    await addParticipant(tenant.id, matchId, bench1.id, 'bench')
+    await new Promise((r) => setTimeout(r, 15))
+    await addParticipant(tenant.id, matchId, bench2.id, 'bench')
+    await sql`
+      INSERT INTO rival_alert_subscriptions (player_id, tenant_id) VALUES (${leaver.id}, ${tenant.id})
+    `
+    // Un vencido donde también estaba: no se toca.
+    const pastMatch = await seedMatch(tenant.id, org.id, { startsAt: 'past' })
+    await addParticipant(tenant.id, pastMatch, leaver.id, 'confirmed')
+    const [before] = await sql<{ confirmed_count: number }[]>`
+      SELECT confirmed_count FROM rival_matches WHERE id = ${matchId}
+    `
+    // Control: el organizador y el que se va ocupan los 2 lugares, y el banco espera.
+    expect(before!.confirmed_count).toBe(2)
+    expect(await statusOf(matchId, bench1.id)).toBe('bench')
+
+    await anonymizePlayer(leaver.id)
+
+    expect(await statusOf(matchId, leaver.id)).toBe('left')
+    expect(await statusOf(matchId, bench1.id)).toBe('confirmed')
+    expect(await statusOf(matchId, bench2.id)).toBe('bench')
+    const [after] = await sql<{ confirmed_count: number }[]>`
+      SELECT confirmed_count FROM rival_matches WHERE id = ${matchId}
+    `
+    expect(after!.confirmed_count).toBe(2)
+    expect(await statusOf(pastMatch, leaver.id)).toBe('confirmed')
+    expect(
+      await sql`SELECT 1 FROM rival_alert_subscriptions WHERE player_id = ${leaver.id}`,
+    ).toHaveLength(0)
+  })
+
+  it('un pedido pendiente en un partido abierto también pasa a left', async () => {
+    const tenant = await createTestTenant(sql)
+    const org = await createTestPlayer(sql)
+    const asker = await createTestPlayer(sql)
+    const matchId = await seedMatch(tenant.id, org.id, { startsAt: 'future', contact: true })
+    await addParticipant(tenant.id, matchId, asker.id, 'requested')
+
+    await anonymizePlayer(asker.id)
+
+    expect(await statusOf(matchId, asker.id)).toBe('left')
   })
 })

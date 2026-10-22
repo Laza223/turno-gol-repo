@@ -19,7 +19,7 @@ export default async function TorneosPage() {
   // /torneos/nuevo, que ya rebota server-side al manager). El botón se oculta
   // según `role` para no mandarlo a un rebote sin explicación — y el rol lo
   // devuelve el guard, sin una segunda lectura de tenant_staff_members.
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect('/login')
   const { tenant, role } = auth
 

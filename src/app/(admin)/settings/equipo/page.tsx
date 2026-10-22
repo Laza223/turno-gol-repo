@@ -20,12 +20,12 @@ import { SettingsHeader } from '../SettingsHeader'
 
 /**
  * Ajustes → Vos y tu equipo: quién entra al panel y qué le llega. "Tu usuario"
- * (email para entrar y resumen diario) vivía en Perfil, al lado de lo que ve
+ * (email para entrar y resúmenes) vivía en Perfil, al lado de lo que ve
  * el jugador; se mudó acá el 2026-09-25. Los forms y sus actions siguen en
  * `perfil/` — solo cambió dónde se muestran.
  */
 export default async function SettingsEquipoPage() {
-  const { user, tenant } = await requireAdminStaff()
+  const { user, tenant } = await requireAdminStaff({ allowReadOnly: true })
   const staffUserId: string = user.staffUserId
 
   const [members, tournamentsEnabled] = await Promise.all([
@@ -98,7 +98,7 @@ export default async function SettingsEquipoPage() {
           </div>
 
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Resumen diario</h3>
+            <h3 className="text-sm font-semibold text-foreground">Resúmenes</h3>
             <AvisosForm s={tenant.settings} action={updateAvisosSettingsAction} />
           </div>
         </div>

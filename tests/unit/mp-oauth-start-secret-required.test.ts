@@ -65,3 +65,27 @@ describe('MP OAuth start — MP_CLIENT_SECRET requerido (hallazgo #5)', () => {
     )
   })
 })
+
+// Decisión 2026-10-22: conectar MP es una escritura, y la ruta no pasa por el
+// guard de Server Actions. Sin este corte, un complejo en solo lectura podía
+// cambiar la cuenta que cobra las señas.
+describe('MP OAuth start — lifecycle del complejo', () => {
+  it.each([
+    ['suspended', '/reactivar'],
+    ['blocked', '/suspended'],
+    ['churned', '/suspended'],
+  ])('%s → %s, nunca a MercadoPago', async (status, destino) => {
+    vi.mocked(getStaffTenant).mockResolvedValue({ id: TENANT, status } as never)
+    const res = await oauthStart(new NextRequest(`${APP_URL}/api/mp/oauth-start`))
+    expect(new URL(res.headers.get('location') ?? '').pathname).toBe(destino)
+  })
+
+  it.each(['trialing', 'active', 'past_due', 'canceled'])(
+    '%s → sigue a MercadoPago',
+    async (status) => {
+      vi.mocked(getStaffTenant).mockResolvedValue({ id: TENANT, status } as never)
+      const res = await oauthStart(new NextRequest(`${APP_URL}/api/mp/oauth-start`))
+      expect(res.headers.get('location')).toMatch(/^https:\/\/auth\.mercadopago\.com\.ar\//)
+    },
+  )
+})

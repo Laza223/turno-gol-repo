@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
-import { isBlockedForStaff } from '@/modules/staff/guards'
+import { lifecycleGateForStaff } from '@/modules/staff/guards'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import {
@@ -41,8 +41,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   if (!user || user.type !== 'staff' || !user.staffUserId) return to('/login')
   const tenant = await getStaffTenant(user.staffUserId, user.tenantId)
   if (!tenant) return to('/login')
-  // Mismo hard-lock que las Server Actions: este GET no pasa por (admin)/layout.
-  if (await isBlockedForStaff(tenant)) return to('/suspended')
+  // Mismo gate que requireAdminStaff para una escritura: este GET no pasa por
+  // (admin)/layout. Bloqueado → /suspended; solo lectura → /reactivar.
+  const gate = await lifecycleGateForStaff(tenant)
+  if (gate === 'blocked') return to('/suspended')
+  if (gate === 'read_only') return to('/reactivar')
   // El rol se relee de la DB: el claim del JWT nunca se confía.
   if ((await getStaffRole(tenant.id, user.staffUserId)) !== 'admin') {
     return to('/dashboard?error=whatsapp_forbidden')

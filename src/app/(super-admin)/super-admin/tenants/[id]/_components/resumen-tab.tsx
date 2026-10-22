@@ -25,6 +25,15 @@ const PENALTY_LABELS: Record<string, string> = {
   full: 'se cobra el total',
 }
 
+/** Estado del premio que este complejo le hizo ganar a su referidor (B3). */
+const REFERRAL_REWARD_LABELS: Record<string, string> = {
+  earned: 'Ganado: espera tu aprobación en el Pulso',
+  manual_pending: 'Aprobado: falta devolverle un cobro al referidor',
+  applied: 'Acreditado',
+  rejected: 'Rechazado',
+  over_cap: 'No suma: el referidor llegó al tope de 6',
+}
+
 const TH = 'py-2 pr-4 text-xs font-medium uppercase tracking-wide text-muted-foreground'
 
 /**
@@ -106,6 +115,11 @@ export function ResumenTab({
               action={assignReferrerAction}
             />
           </Dt>
+          {tenant.referralRewardStatus && (
+            <Dt label="Premio del referidor">
+              {REFERRAL_REWARD_LABELS[tenant.referralRewardStatus] ?? tenant.referralRewardStatus}
+            </Dt>
+          )}
           {tenant.scheduledDeletionAt && (
             <Dt label="Eliminación programada">
               <span className={TONE_TEXT.destructive}>

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { UserPlus, Users } from 'lucide-react'
+import { FileSpreadsheet, UserPlus, Users } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Pager } from '@/components/ui/pager'
@@ -41,7 +41,7 @@ export default async function AbonadosPage(props: {
   searchParams: Promise<{ status?: string; created?: string; pagina?: string }>
 }) {
   const searchParams = await props.searchParams
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect('/login')
   const { tenant } = auth
 
@@ -97,13 +97,22 @@ export default async function AbonadosPage(props: {
         subtitle={headerSubtitle}
         icon={<Users className="h-6 w-6" aria-hidden="true" />}
         actions={
-          <Link
-            href="/abonados/nuevo"
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-xs transition-[background-color,scale] hover:bg-primary/90 active:scale-[0.98] motion-reduce:active:scale-100"
-          >
-            <UserPlus className="h-4 w-4" aria-hidden="true" />
-            Nuevo turno fijo
-          </Link>
+          <>
+            <Link
+              href="/abonados/importar"
+              className="inline-flex h-11 md:h-10 items-center gap-2 rounded-lg border border-input bg-card px-4 text-sm font-semibold text-foreground shadow-xs transition-[background-color,scale] hover:bg-accent active:scale-[0.98] motion-reduce:active:scale-100"
+            >
+              <FileSpreadsheet className="h-4 w-4" aria-hidden="true" />
+              Importar planilla
+            </Link>
+            <Link
+              href="/abonados/nuevo"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-xs transition-[background-color,scale] hover:bg-primary/90 active:scale-[0.98] motion-reduce:active:scale-100"
+            >
+              <UserPlus className="h-4 w-4" aria-hidden="true" />
+              Nuevo turno fijo
+            </Link>
+          </>
         }
       />
 

@@ -25,8 +25,14 @@ export default function Loading() {
         ))}
       </div>
 
-      {/* Buscador */}
-      <Skeleton className="h-10 w-full max-w-md rounded-lg" />
+      {/* Buscador y pastillas de filtro */}
+      <div className="space-y-3">
+        <Skeleton className="h-10 w-full max-w-md rounded-lg" />
+        <div className="flex gap-2">
+          <Skeleton className="h-11 w-20 rounded-full md:h-9" />
+          <Skeleton className="h-11 w-44 rounded-full md:h-9" />
+        </div>
+      </div>
 
       {/* Lista */}
       <div className="rounded-lg border border-border bg-card shadow-xs overflow-hidden">

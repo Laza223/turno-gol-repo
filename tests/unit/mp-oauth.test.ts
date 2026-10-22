@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { encrypt } from '@/lib/crypto/encrypt'
 import { refreshMpAccessToken } from '@/modules/payments/mp-oauth'
-import { MpGatewayError } from '@/modules/payments/payment.errors'
+import { MpGatewayError, MpGrantRevokedError } from '@/modules/payments/payment.errors'
 
 let encryptedRefresh: string
 
@@ -71,5 +71,60 @@ describe('refreshMpAccessToken', () => {
   it('throws when the response is missing tokens', async () => {
     mockFetch(() => new Response(JSON.stringify({ access_token: 'x' }), { status: 200 }))
     await expect(refreshMpAccessToken(encryptedRefresh)).rejects.toBeInstanceOf(MpGatewayError)
+  })
+})
+
+// Aviso de MP desconectado (migr. 100): solo estos dos códigos dicen "el
+// complejo revocó el permiso" y marcan. Todo lo demás es un error de gateway
+// que no le puede decir al dueño "reconectá".
+describe('refreshMpAccessToken: clasificación del rechazo', () => {
+  it.each(['invalid_grant', 'unauthorized_client'] as const)(
+    '400 con %s → MpGrantRevokedError con el código',
+    async (code) => {
+      mockFetch(
+        () =>
+          new Response(JSON.stringify({ error: code, message: code, status: 400, cause: [] }), {
+            status: 400,
+          }),
+      )
+      const err = await refreshMpAccessToken(encryptedRefresh).catch((e: unknown) => e)
+      expect(err).toBeInstanceOf(MpGrantRevokedError)
+      expect((err as MpGrantRevokedError).mpError).toBe(code)
+    },
+  )
+
+  it('el código en `message` (sin `error`) también cuenta', async () => {
+    mockFetch(() => new Response(JSON.stringify({ message: 'invalid_grant' }), { status: 400 }))
+    await expect(refreshMpAccessToken(encryptedRefresh)).rejects.toBeInstanceOf(MpGrantRevokedError)
+  })
+
+  it.each([
+    ['invalid_client (credenciales de TurnoGol)', 400, JSON.stringify({ error: 'invalid_client' })],
+    ['5xx aunque diga invalid_grant', 503, JSON.stringify({ error: 'invalid_grant' })],
+    ['body no JSON', 400, 'Bad Request'],
+    ['texto libre que menciona el código', 400, JSON.stringify({ error: 'invalid_grant: oops' })],
+  ])('%s → MpGatewayError, no revocación', async (_caso, status, body) => {
+    mockFetch(() => new Response(body, { status }))
+    const err = await refreshMpAccessToken(encryptedRefresh).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(MpGatewayError)
+    expect(err).not.toBeInstanceOf(MpGrantRevokedError)
+  })
+
+  it('un `message` libre de MP no llega al mensaje del error (va a logs y Sentry)', async () => {
+    mockFetch(
+      () =>
+        new Response(JSON.stringify({ message: 'Invalid refresh_token TG-123-secreto' }), {
+          status: 400,
+        }),
+    )
+    const err = await refreshMpAccessToken(encryptedRefresh).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(MpGatewayError)
+    expect((err as Error).message).toBe('MP token refresh failed (HTTP 400)')
+  })
+
+  it('un código OAuth sí va al mensaje, para poder diagnosticarlo', async () => {
+    mockFetch(() => new Response(JSON.stringify({ error: 'invalid_client' }), { status: 400 }))
+    const err = await refreshMpAccessToken(encryptedRefresh).catch((e: unknown) => e)
+    expect((err as Error).message).toBe('MP token refresh failed (HTTP 400, invalid_client)')
   })
 })

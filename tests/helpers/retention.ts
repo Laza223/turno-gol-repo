@@ -179,6 +179,37 @@ export async function setupTenant(
     tournamentTeamId,
   })
 
+  // RIVAL (migr. 099): un partido vinculado a la reserva (rival_matches.booking_id
+  // referencia bookings SIN cascade: el wipe tiene que borrar RIVAL antes que
+  // bookings, y sin esta fila ese orden nunca se ejercita), con su contacto, la
+  // fila del organizador (la crea el trigger), una denuncia, la suscripción a
+  // alertas y el dedupe de un envío. Se siembra por el pool admin (sin actor).
+  const [rivalMatch] = await sql<{ id: string }[]>`
+    INSERT INTO rival_matches (
+      tenant_id, organizer_player_id, booking_id, starts_at, format, capacity, level
+    )
+    VALUES (
+      ${tenant.id}, ${player.id}, ${bookingId}, NOW() + INTERVAL '2 days', 5, 10, 'parejo'
+    )
+    RETURNING id
+  `
+  await sql`
+    INSERT INTO rival_match_contacts (match_id, whatsapp_digits)
+    VALUES (${rivalMatch!.id}, '5491155551234')
+  `
+  await sql`
+    INSERT INTO rival_reports (match_id, reporter_player_id, reason)
+    VALUES (${rivalMatch!.id}, ${player.id}, 'spam')
+  `
+  await sql`
+    INSERT INTO rival_alert_subscriptions (player_id, tenant_id)
+    VALUES (${player.id}, ${tenant.id})
+  `
+  await sql`
+    INSERT INTO rival_alert_sends (match_id, player_id, sent_on)
+    VALUES (${rivalMatch!.id}, ${player.id}, CURRENT_DATE)
+  `
+
   // Hybrid / operational tenant-scoped rows the wipe must also clear.
   // reviews.booking_id is a RESTRICT FK to bookings: the wipe deletes reviews
   // before bookings or the bookings DELETE fails the FK check.
@@ -269,6 +300,14 @@ export type ChildCounts = {
   whatsappConnections: number
   whatsappChats: number
   whatsappMessages: number
+  // RIVAL (migr. 099). Los contactos y los envíos de alertas no tienen tenant_id:
+  // se cuentan por el partido.
+  rivalMatches: number
+  rivalParticipants: number
+  rivalContacts: number
+  rivalReports: number
+  rivalAlertSubscriptions: number
+  rivalAlertSends: number
 }
 
 export async function countChildren(sql: Sql, tenantId: string): Promise<ChildCounts> {
@@ -298,7 +337,13 @@ export async function countChildren(sql: Sql, tenantId: string): Promise<ChildCo
       (SELECT COUNT(*) FROM tournament_match_events WHERE tenant_id = ${tenantId})::text AS "tournamentMatchEvents",
       (SELECT COUNT(*) FROM whatsapp_connections WHERE tenant_id = ${tenantId})::text AS "whatsappConnections",
       (SELECT COUNT(*) FROM whatsapp_chats WHERE tenant_id = ${tenantId})::text AS "whatsappChats",
-      (SELECT COUNT(*) FROM whatsapp_messages WHERE tenant_id = ${tenantId})::text AS "whatsappMessages"
+      (SELECT COUNT(*) FROM whatsapp_messages WHERE tenant_id = ${tenantId})::text AS "whatsappMessages",
+      (SELECT COUNT(*) FROM rival_matches WHERE tenant_id = ${tenantId})::text AS "rivalMatches",
+      (SELECT COUNT(*) FROM rival_participants WHERE tenant_id = ${tenantId})::text AS "rivalParticipants",
+      (SELECT COUNT(*) FROM rival_match_contacts c JOIN rival_matches m ON m.id = c.match_id WHERE m.tenant_id = ${tenantId})::text AS "rivalContacts",
+      (SELECT COUNT(*) FROM rival_reports r JOIN rival_matches m ON m.id = r.match_id WHERE m.tenant_id = ${tenantId})::text AS "rivalReports",
+      (SELECT COUNT(*) FROM rival_alert_subscriptions WHERE tenant_id = ${tenantId})::text AS "rivalAlertSubscriptions",
+      (SELECT COUNT(*) FROM rival_alert_sends a JOIN rival_matches m ON m.id = a.match_id WHERE m.tenant_id = ${tenantId})::text AS "rivalAlertSends"
   `
   return {
     bookings: Number(r.bookings),
@@ -326,6 +371,12 @@ export async function countChildren(sql: Sql, tenantId: string): Promise<ChildCo
     whatsappConnections: Number(r.whatsappConnections),
     whatsappChats: Number(r.whatsappChats),
     whatsappMessages: Number(r.whatsappMessages),
+    rivalMatches: Number(r.rivalMatches),
+    rivalParticipants: Number(r.rivalParticipants),
+    rivalContacts: Number(r.rivalContacts),
+    rivalReports: Number(r.rivalReports),
+    rivalAlertSubscriptions: Number(r.rivalAlertSubscriptions),
+    rivalAlertSends: Number(r.rivalAlertSends),
   }
 }
 
@@ -355,6 +406,12 @@ export const ZERO: ChildCounts = {
   whatsappConnections: 0,
   whatsappChats: 0,
   whatsappMessages: 0,
+  rivalMatches: 0,
+  rivalParticipants: 0,
+  rivalContacts: 0,
+  rivalReports: 0,
+  rivalAlertSubscriptions: 0,
+  rivalAlertSends: 0,
 }
 
 export const FULL: ChildCounts = {
@@ -385,4 +442,11 @@ export const FULL: ChildCounts = {
   whatsappConnections: 1,
   whatsappChats: 1,
   whatsappMessages: 2,
+  // El partido, la fila del organizador, su contacto, una denuncia, la suscripción y el dedupe.
+  rivalMatches: 1,
+  rivalParticipants: 1,
+  rivalContacts: 1,
+  rivalReports: 1,
+  rivalAlertSubscriptions: 1,
+  rivalAlertSends: 1,
 }

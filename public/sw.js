@@ -71,18 +71,23 @@ self.addEventListener('push', (event) => {
     // Bot de WhatsApp: un chat pasó a una persona (motivo de un enum cerrado,
     // nunca texto del jugador). Mismo criterio que daily_summary: copy propio.
     const isWhatsappHandoff = payload.type === 'whatsapp_handoff'
-    const title = isDailySummary
-      ? 'Resumen de ayer'
-      : isWhatsappHandoff
-        ? 'WhatsApp: te necesitan en un chat'
-        : payload.courtName
-          ? `Nueva reserva — ${payload.courtName}`
-          : 'Nueva reserva'
-    const body =
-      isDailySummary || isWhatsappHandoff
+    // mp_disconnected: el permiso OAuth de MercadoPago murió; copy fijo.
+    const isMpDisconnected = payload.type === 'mp_disconnected'
+    const title = isMpDisconnected
+      ? 'MercadoPago se desconectó'
+      : isDailySummary
+        ? 'Resumen de ayer'
+        : isWhatsappHandoff
+          ? 'WhatsApp: te necesitan en un chat'
+          : payload.courtName
+            ? `Nueva reserva — ${payload.courtName}`
+            : 'Nueva reserva'
+    const body = isMpDisconnected
+      ? 'Las reservas online entran sin seña hasta que se reconecte.'
+      : isDailySummary || isWhatsappHandoff
         ? payload.summaryLabel || ''
         : [payload.dateLabel, payload.timeLabel].filter(Boolean).join(' · ')
-    const url = payload.url || '/grilla'
+    const url = payload.url || (isMpDisconnected ? '/dashboard' : '/grilla')
     await self.registration.showNotification(title, {
       body,
       icon: '/favicon.ico',

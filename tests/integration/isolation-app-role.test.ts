@@ -124,6 +124,11 @@ const PLAYER_SCOPED_DECLARADA = [
   'player_favorites',
   'player_tenant_relationships',
   'players',
+  // RIVAL (migr. 099): por jugador, nunca por complejo.
+  'rival_alert_subscriptions',
+  'rival_matches',
+  'rival_participants',
+  'rival_reports',
   'tenant_player_bans',
 ]
 
@@ -319,6 +324,23 @@ beforeAll(async () => {
       su`INSERT INTO player_favorites (player_id, tenant_id)
          VALUES (${seed.playerId}, ${tenant.id}) RETURNING id`,
     )
+    // RIVAL (migr. 099): el partido sembrado deja al organizador como confirmed
+    // (el trigger AFTER INSERT crea su fila de participante).
+    await one(
+      'rival_matches',
+      su`INSERT INTO rival_matches (tenant_id, organizer_player_id, starts_at, format, capacity, level, court_declared)
+         VALUES (${tenant.id}, ${seed.playerId}, now() + interval '3 days', 5, 10, 'parejo', true)
+         RETURNING id`,
+    )
+    await one(
+      'rival_participants',
+      su`SELECT id FROM rival_participants WHERE match_id = ${target['rival_matches']}`,
+    )
+    await one(
+      'rival_alert_subscriptions',
+      su`INSERT INTO rival_alert_subscriptions (player_id, tenant_id)
+         VALUES (${seed.playerId}, ${tenant.id}) RETURNING id`,
+    )
     await one(
       'canteen_products',
       su`INSERT INTO canteen_products (tenant_id, name, price, stock)
@@ -493,6 +515,12 @@ describe('0. controles', () => {
       processed_webhooks: 'INSERT,SELECT,UPDATE',
       plans: 'SELECT',
       price_versions: 'SELECT',
+      // Migración 099 (RIVAL): la app no borra partidos, plantel ni contactos, y
+      // las denuncias son append-only.
+      rival_matches: 'INSERT,SELECT,UPDATE',
+      rival_participants: 'INSERT,SELECT,UPDATE',
+      rival_match_contacts: 'INSERT,SELECT,UPDATE',
+      rival_reports: 'INSERT,SELECT',
     }
     for (const [t, esperado] of Object.entries(recortes)) {
       expect(`${t}=${actual[t] ?? 'SIN PERMISOS'}`).toBe(`${t}=${esperado}`)
@@ -501,6 +529,8 @@ describe('0. controles', () => {
     expect(actual['push_send_log'] ?? 'SIN PERMISOS').toBe('SIN PERMISOS')
     // Ídem el dedupe de alertas por mail (migr. 097).
     expect(actual['ops_alerts'] ?? 'SIN PERMISOS').toBe('SIN PERMISOS')
+    // Ídem el dedupe de las alertas de RIVAL (migr. 099): solo el worker.
+    expect(actual['rival_alert_sends'] ?? 'SIN PERMISOS').toBe('SIN PERMISOS')
   })
 
   it('0.3 control NEGATIVO: cada fila sembrada SÍ se ve desde su propio contexto', async () => {
@@ -743,6 +773,9 @@ function tenantTablesLazy(): string[] {
     'player_tenant_relationships',
     'push_subscriptions',
     'reviews',
+    'rival_alert_subscriptions',
+    'rival_matches',
+    'rival_participants',
     'stock_movements',
     'tenant_player_bans',
     'tenant_staff_members',

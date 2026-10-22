@@ -68,6 +68,10 @@ const ALLOWLIST: Record<string, string> = {
     '`HrefDeWhatsapp` solo lee el atributo href para comprobar el mensaje armado, nunca lo ' +
     'clickea. La URL de referidos (`https://turnogol.app/r/...`) solo alimenta ' +
     '`navigator.clipboard.writeText()`, igual que referral-link-panel.stories.tsx.',
+  'src/app/(admin)/settings/invitar/ReferralPanel.stories.tsx':
+    'Mismo motivo que ReferralShareBanner.stories.tsx: la URL de referidos se muestra como ' +
+    'texto y alimenta `navigator.clipboard.writeText()`, y el link de wa.me solo se lee ' +
+    'por su atributo href — nunca se fetchea ni se renderiza como recurso.',
   'src/app/(super-admin)/super-admin/tenants/[id]/_components/assign-referrer-panel.stories.tsx':
     'La URL se tipea en un <input> de texto y se verifica con `toHaveBeenCalledWith` sobre ' +
     'el `action` mockeado — nunca se fetchea ni se renderiza como recurso, mismo motivo que ' +

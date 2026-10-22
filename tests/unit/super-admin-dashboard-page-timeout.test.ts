@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 const h = vi.hoisted(() => ({
   getDashboardData: vi.fn(),
   getPlatformActivity: vi.fn(),
+  listReferralRewardsForReview: vi.fn(),
   logError: vi.fn(),
 }))
 
@@ -17,6 +18,15 @@ vi.mock('@/modules/super-admin/dashboard.service', () => ({
 vi.mock('@/modules/super-admin/activity.service', () => ({
   getPlatformActivity: h.getPlatformActivity,
   isActivityWindow: (v: string | undefined) => v === 'hoy' || v === '7d' || v === '30d',
+}))
+vi.mock('@/modules/referrals/referral-reward.service', () => ({
+  listReferralRewardsForReview: h.listReferralRewardsForReview,
+}))
+// Las actions de los premios entran por prop; su grafo (gateway de MP) no hace falta acá.
+vi.mock('@/app/(super-admin)/super-admin/actions', () => ({
+  approveReferralRewardAction: vi.fn(),
+  markReferralRewardAppliedAction: vi.fn(),
+  rejectReferralRewardAction: vi.fn(),
 }))
 vi.mock('@/modules/auth/system-admin.guards', () => ({
   requireSystemAdmin: vi.fn().mockResolvedValue({ admin: { id: 'sa-1' } }),
@@ -33,6 +43,7 @@ describe('SuperAdminPulsoPage — tope de tiempo por sección', () => {
     vi.useFakeTimers()
     h.getDashboardData.mockReturnValue(new Promise<never>(() => {}))
     h.getPlatformActivity.mockReturnValue(new Promise<never>(() => {}))
+    h.listReferralRewardsForReview.mockReturnValue(new Promise<never>(() => {}))
     const { default: SuperAdminPulsoPage } = await import('@/app/(super-admin)/super-admin/page')
 
     // No espera a las lecturas: resuelve de inmediato con el árbol.
@@ -41,6 +52,6 @@ describe('SuperAdminPulsoPage — tope de tiempo por sección', () => {
 
     // Al vencer el tope, cada sección loguea y degrada: ningún rechazo sin atrapar.
     await vi.advanceTimersByTimeAsync(12_100)
-    expect(h.logError).toHaveBeenCalledTimes(2)
+    expect(h.logError).toHaveBeenCalledTimes(3)
   })
 })

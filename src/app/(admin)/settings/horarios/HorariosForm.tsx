@@ -13,6 +13,8 @@ import type { HorariosActionResult } from './actions'
 
 const INITIAL: HorariosActionResult = { success: true }
 
+const DAYS_LIST = new Intl.ListFormat('es-AR', { type: 'conjunction' })
+
 /** Firma de updateHorariosAction — ver comentario de DI en ReservasPolicyForm.tsx. */
 export type UpdateHorariosAction = (
   prevState: HorariosActionResult,
@@ -80,7 +82,7 @@ export function HorariosForm({
         {didSubmit && state.success && state.pricingPending && (
           <p role="alert" className="text-sm font-medium text-amber-700 dark:text-amber-400">
             Falta un paso: cargar el precio{' '}
-            {new Intl.ListFormat('es-AR', { type: 'conjunction' }).format(
+            {DAYS_LIST.format(
               state.pricingPending.days.map((day) => `del ${DAY_LABELS_LONG[day].toLowerCase()}`),
             )}{' '}
             en {state.pricingPending.courts} cancha

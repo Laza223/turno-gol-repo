@@ -1,5 +1,5 @@
 /** Las columnas que entiende el importador de turnos fijos. */
-export type ImportField = 'name' | 'phone' | 'court' | 'day' | 'start' | 'end' | 'price'
+export type ImportField = 'name' | 'surname' | 'phone' | 'court' | 'day' | 'start' | 'end' | 'price'
 
 /** Una fila ya entendida: lo que termina en `createAbonado`. */
 export type ImportRowValue = {

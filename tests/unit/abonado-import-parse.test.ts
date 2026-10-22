@@ -7,6 +7,7 @@ import {
   parseDelimitedText,
   parseHour,
   parsePhone,
+  joinSurname,
   parsePriceCents,
   serializeTable,
   validateImportText,
@@ -481,6 +482,56 @@ describe('validateImportText', () => {
     expect(JSON.stringify(row!.value)).not.toContain('conflictivo')
   })
 
+  it('suma la columna Apellido al nombre, sin duplicarlo si el nombre ya lo trae', () => {
+    const header = ['Nombre', 'Apellidos', 'Teléfono', 'Cancha', 'Día', 'Desde', 'Precio']
+    const rows = rowsOf(
+      [
+        ['Juan', 'Pérez', '1123456789', '1', 'lunes', '20', '1000'],
+        ['Juan Pérez', 'Pérez', '1123456789', '1', 'martes', '20', '1000'],
+        ['ana maria lopez', 'López', '1123456789', '1', 'miércoles', '20', '1000'],
+        ['Leo', '', '1123456789', '1', 'jueves', '20', '1000'],
+        // «Pérez» no está como palabra entera en «Perezoso»: se suma.
+        ['Perezoso', 'Pérez', '1123456789', '1', 'viernes', '20', '1000'],
+      ],
+      header,
+    )
+    expect(rows.map((r) => r.value?.contactName)).toEqual([
+      'Juan Pérez',
+      'Juan Pérez',
+      'ana maria lopez',
+      'Leo',
+      'Perezoso Pérez',
+    ])
+  })
+
+  it('el tope de 120 letras cuenta el nombre con el apellido', () => {
+    const header = ['Nombre', 'Apellido', 'Teléfono', 'Cancha', 'Día', 'Desde', 'Precio']
+    const [justo, largo] = rowsOf(
+      [
+        ['A'.repeat(60), 'B'.repeat(59), '1123456789', '1', 'lunes', '20', '1000'],
+        ['A'.repeat(60), 'B'.repeat(60), '1123456789', '1', 'martes', '20', '1000'],
+      ],
+      header,
+    )
+    expect(justo!.errors).toEqual([])
+    expect(largo!.errors).toEqual(['El nombre es demasiado largo (máximo 120 letras)'])
+  })
+
+  it('un apellido sin nombre no alcanza: el nombre sigue siendo obligatorio', () => {
+    const header = ['Nombre', 'Apellido', 'Teléfono', 'Cancha', 'Día', 'Desde', 'Precio']
+    const [row] = rowsOf([['', 'Pérez', '1123456789', '1', 'lunes', '20', '1000']], header)
+    expect(row!.value).toBeNull()
+    expect(row!.errors).toEqual(['Falta completar Nombre'])
+  })
+
+  it('joinSurname compara palabras enteras, sin mayúsculas ni tildes', () => {
+    expect(joinSurname('Juan', undefined)).toBe('Juan')
+    expect(joinSurname('Juan', 'Pérez')).toBe('Juan Pérez')
+    expect(joinSurname('JUAN PEREZ', 'Pérez')).toBe('JUAN PEREZ')
+    expect(joinSurname('Juan de la Cruz', 'de la Cruz')).toBe('Juan de la Cruz')
+    expect(joinSurname('Juan Cruz', 'de la Cruz')).toBe('Juan Cruz de la Cruz')
+  })
+
   it('devuelve las columnas ignoradas, también la que repite un campo ya tomado', () => {
     const header = [
       'Nombre',
@@ -502,9 +553,9 @@ describe('validateImportText', () => {
       COURTS,
     )
     if (!result.ok) throw new Error(result.error)
-    expect(result.ignoredColumns).toEqual(['Apellido', 'Celular', 'Observaciones'])
+    expect(result.ignoredColumns).toEqual(['Celular', 'Observaciones'])
     expect(result.rows[0]!.value).toMatchObject({
-      contactName: 'Juan',
+      contactName: 'Juan Pérez',
       contactPhone: '+54 1123456789',
     })
   })

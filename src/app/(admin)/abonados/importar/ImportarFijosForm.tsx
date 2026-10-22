@@ -398,7 +398,7 @@ function PreviewPanel({
 
 function PreviewRow({ row }: { row: ImportRowPreview }) {
   const ok = row.errors.length === 0
-  const name = row.value?.contactName ?? row.raw.name ?? ''
+  const name = row.value?.contactName ?? [row.raw.name, row.raw.surname].filter(Boolean).join(' ')
   const phone = row.value?.contactPhone ?? row.raw.phone
   const detail = rowDetail(row)
   const day = row.value?.dayOfWeek

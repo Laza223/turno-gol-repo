@@ -34,6 +34,7 @@ const REQUIRED_FIELDS: ImportField[] = ['name', 'phone', 'court', 'day', 'start'
 
 const FIELD_LABELS: Record<ImportField, string> = {
   name: 'Nombre',
+  surname: 'Apellido',
   phone: 'Teléfono',
   court: 'Cancha',
   day: 'Día',
@@ -46,6 +47,8 @@ const FIELD_LABELS: Record<ImportField, string> = {
 const HEADER_SYNONYMS: Record<ImportField, string[]> = {
   // Sin «contacto»: en muchas planillas esa columna es el teléfono.
   name: ['nombre', 'cliente', 'equipo', 'responsable', 'titular', 'nombreyapellido'],
+  // Opcional: se suma al nombre.
+  surname: ['apellido', 'apellidos'],
   phone: ['telefono', 'tel', 'celular', 'cel', 'whatsapp', 'movil', 'telefonodecontacto'],
   court: ['cancha'],
   day: ['dia', 'diadelasemana'],
@@ -363,8 +366,7 @@ export type ValidatedImport =
 
 /**
  * Qué columna es cada campo. Las que no son ninguno, o repiten uno ya tomado
- * (un segundo "Celular"), se ignoran y se devuelven para avisarlo: un "Apellido"
- * aparte, por ejemplo, no llega al nombre.
+ * (un segundo "Celular"), se ignoran y se devuelven para avisarlo.
  */
 function mapHeader(header: string[]): {
   columns: Partial<Record<ImportField, number>>
@@ -387,6 +389,19 @@ function joinLabels(labels: string[]): string {
   return labels.length === 1 ? labels[0]! : `${labels.slice(0, -1).join(', ')} y ${labels.at(-1)}`
 }
 
+/**
+ * «Juan» + «Pérez» = «Juan Pérez». Si el nombre ya trae el apellido («Juan
+ * Pérez» + «Pérez», sin importar mayúsculas ni tildes), queda como está.
+ */
+export function joinSurname(name: string, surname: string | undefined): string {
+  if (!surname) return name
+  const words = (s: string) => s.split(/\s+/).filter(Boolean).map(normalizeKey)
+  const n = words(name)
+  const sn = words(surname)
+  const included = n.some((_, i) => sn.every((w, j) => n[i + j] === w))
+  return included ? name : `${name} ${surname}`.trim()
+}
+
 function validateRow(
   line: number,
   cells: string[],
@@ -404,7 +419,7 @@ function validateRow(
     errors.push(`Falta completar ${joinLabels(missing.map((f) => FIELD_LABELS[f]))}`)
   }
 
-  const contactName = raw.name ?? ''
+  const contactName = joinSurname(raw.name ?? '', raw.surname)
   if (contactName.length > 120) errors.push('El nombre es demasiado largo (máximo 120 letras)')
   // Una celda entre comillas puede traer saltos de línea: en el nombre son una
   // nota pegada abajo.

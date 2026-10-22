@@ -28,8 +28,7 @@ export default async function NuevoPartidoPage(props: {
   searchParams: Promise<{ reserva?: string }>
 }) {
   if (!(await isRivalEnabled())) notFound()
-  const { reserva } = await props.searchParams
-  const user = await extractAuthUser()
+  const [{ reserva }, user] = await Promise.all([props.searchParams, extractAuthUser()])
   if (!user || user.type !== 'player') {
     // El `next` conserva la reserva: volver del login cae en la misma pantalla precargada.
     const back = reserva ? `/rival/nuevo?reserva=${encodeURIComponent(reserva)}` : '/rival/nuevo'

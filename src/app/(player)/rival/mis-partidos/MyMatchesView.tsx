@@ -105,8 +105,10 @@ function Section({ title, matches, now }: { title: string; matches: RivalMyMatch
 
 export function MyMatchesView({ matches, now }: { matches: RivalMyMatch[]; now: Date }) {
   const mine = matches.filter(isMine)
-  const upcoming = mine.filter((m) => m.startsAt.getTime() > now.getTime() && m.status === 'open')
-  const past = mine.filter((m) => !upcoming.includes(m))
+  const isUpcoming = (m: RivalMyMatch) =>
+    m.startsAt.getTime() > now.getTime() && m.status === 'open'
+  const upcoming = mine.filter(isUpcoming)
+  const past = mine.filter((m) => !isUpcoming(m))
   return (
     <div className="mx-auto max-w-lg space-y-5 px-4 py-6">
       <PlayerHeroBand eyebrow="RIVAL powered by TurnoGol" title="Mis" accent="partidos" />

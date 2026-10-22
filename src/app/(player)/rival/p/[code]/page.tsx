@@ -24,9 +24,11 @@ export default async function RivalMatchPage(props: {
   searchParams: Promise<{ creado?: string }>
 }) {
   if (!(await isRivalEnabled())) notFound()
-  const [{ code }, { creado }] = await Promise.all([props.params, props.searchParams])
-
-  const user = await extractAuthUser()
+  const [{ code }, { creado }, user] = await Promise.all([
+    props.params,
+    props.searchParams,
+    extractAuthUser(),
+  ])
   const playerId = user && user.type === 'player' ? user.playerId : null
 
   // Oculto o inexistente: 404 real (la base ya lo filtra, salvo para el organizador).

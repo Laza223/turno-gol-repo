@@ -46,7 +46,7 @@ type LifecycleGate = 'open' | 'read_only' | 'blocked'
  * entrar a un tenant bloqueado para dar soporte (revisar/corregir datos antes
  * de que el dueño reactive el pago).
  */
-async function lifecycleGateForStaff(tenant: TenantRow): Promise<LifecycleGate> {
+export async function lifecycleGateForStaff(tenant: TenantRow): Promise<LifecycleGate> {
   const gate: LifecycleGate = BLOCKED_TENANT_STATUSES.has(tenant.status)
     ? 'blocked'
     : READ_ONLY_TENANT_STATUSES.has(tenant.status)

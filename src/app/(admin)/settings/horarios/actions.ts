@@ -10,9 +10,11 @@ import { horariosFormDataToInput, horariosSchema } from '@/modules/tenants/openi
 import { listCourts, updateCourt } from '@/modules/courts/court.service'
 import {
   compressGridToRules,
-  countEmptyCells,
+  DAY_KEYS,
+  daysWithEmptyCells,
   expandRulesToGrid,
   fillGridGaps,
+  type DayKey,
 } from '@/modules/courts/pricing-grid'
 
 export type HorariosActionResult =
@@ -21,12 +23,12 @@ export type HorariosActionResult =
       /** Presente solo si el cambio de horario dejó (y ya completó) huecos de precio. */
       pricingFilled?: { courts: number; cells: number }
       /**
-       * Horas que el horario nuevo dejó sin precio y que NO se completaron
-       * solas, porque cubrirlas habría significado traer una tarifa de otro
-       * día. Las tiene que cargar el dueño en Canchas; hasta entonces esas
-       * franjas no se pueden reservar.
+       * Canchas y días (lun..dom) que el horario nuevo dejó con horas sin precio
+       * y que NO se completaron solas, porque cubrirlas habría significado
+       * traer una tarifa de otro día. Las tiene que cargar el dueño en Canchas;
+       * hasta entonces esas franjas no se pueden reservar.
        */
-      pricingPending?: { courts: number; cells: number }
+      pricingPending?: { courts: number; days: DayKey[] }
     }
   | { success: false; error: string }
 
@@ -75,7 +77,7 @@ export async function updateHorariosAction(
     let filledCourts = 0
     let filledCells = 0
     let pendingCourts = 0
-    let pendingCells = 0
+    const pendingDays = new Set<DayKey>()
     for (const court of courtRows) {
       const grid = expandRulesToGrid(court.pricing.rules, openingHours, closesNextDay)
       const { grid: filledGrid, filled } = fillGridGaps(
@@ -85,10 +87,10 @@ export async function updateHorariosAction(
         null,
         true,
       )
-      const stillEmpty = countEmptyCells(filledGrid, openingHours, closesNextDay)
-      if (stillEmpty > 0) {
+      const emptyDays = daysWithEmptyCells(filledGrid, openingHours, closesNextDay)
+      if (emptyDays.length > 0) {
         pendingCourts++
-        pendingCells += stillEmpty
+        for (const day of emptyDays) pendingDays.add(day)
       }
       if (filled.length === 0) continue
       const rules = compressGridToRules(filledGrid, openingHours, closesNextDay)
@@ -98,7 +100,10 @@ export async function updateHorariosAction(
     }
     return {
       filled: filledCourts > 0 ? { courts: filledCourts, cells: filledCells } : undefined,
-      pending: pendingCourts > 0 ? { courts: pendingCourts, cells: pendingCells } : undefined,
+      pending:
+        pendingCourts > 0
+          ? { courts: pendingCourts, days: DAY_KEYS.filter((day) => pendingDays.has(day)) }
+          : undefined,
     }
   })
 

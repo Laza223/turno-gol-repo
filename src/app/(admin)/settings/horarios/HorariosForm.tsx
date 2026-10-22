@@ -8,6 +8,7 @@ import {
   type LooseOpeningHours,
   type ScheduleView,
 } from '@/lib/schedule/schedule-view'
+import { DAY_LABELS_LONG } from '@/shared/time/week-days'
 import type { HorariosActionResult } from './actions'
 
 const INITIAL: HorariosActionResult = { success: true }
@@ -73,18 +74,21 @@ export function HorariosForm({
         {/* Los huecos que el sistema NO completó solo (habría tenido que traer
             una tarifa de otro día, y esa decisión es del dueño) son turnos que
             hoy nadie puede reservar: van aparte y con la acción encima, no
-            escondidos dentro del "Horarios guardados" en verde. */}
+            escondidos dentro del "Horarios guardados" en verde. Se nombran los
+            días: "25 horarios sin precio" no le dice al dueño qué abrió ni qué
+            le falta, y lo leyó como un error aunque el horario ya estaba guardado. */}
         {didSubmit && state.success && state.pricingPending && (
           <p role="alert" className="text-sm font-medium text-amber-700 dark:text-amber-400">
-            Quedaron {state.pricingPending.cells} horario
-            {state.pricingPending.cells === 1 ? '' : 's'} sin precio en{' '}
-            {state.pricingPending.courts} cancha
-            {state.pricingPending.courts === 1 ? '' : 's'}. Hasta que les pongas precio, esos turnos
-            no se pueden reservar:{' '}
+            Falta un paso: cargar el precio{' '}
+            {new Intl.ListFormat('es-AR', { type: 'conjunction' }).format(
+              state.pricingPending.days.map((day) => `del ${DAY_LABELS_LONG[day].toLowerCase()}`),
+            )}{' '}
+            en {state.pricingPending.courts} cancha
+            {state.pricingPending.courts === 1 ? '' : 's'}. Hasta entonces nadie puede reservar esos
+            turnos online.{' '}
             <a href="/canchas" className="font-semibold underline underline-offset-2">
-              cargalos en Canchas
+              Cargar precios en Canchas
             </a>
-            .
           </p>
         )}
       </div>

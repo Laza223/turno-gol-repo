@@ -345,6 +345,17 @@ export function countEmptyCells(
   return n
 }
 
+/** Días (lun..dom) con al menos una celda activa sin precio. */
+export function daysWithEmptyCells(
+  grid: PriceGrid,
+  openingHours: OpeningHours,
+  closesNextDay: boolean,
+): DayKey[] {
+  return DAY_KEYS.filter((day) =>
+    activeHoursForDay(openingHours, day, closesNextDay).some((h) => grid[day]?.[h] == null),
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Auto-relleno de horas sin precio (decisión del dueño, no re-litigar): cuando
 // el complejo amplía el horario, o cuando abre el editor de una cancha vieja

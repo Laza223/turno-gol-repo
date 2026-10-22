@@ -71,6 +71,28 @@ export const ConDiaCerrado: Story = {
   },
 }
 
+/** El horario se guardó, pero el domingo recién abierto no tiene precio en ninguna cancha:
+ *  el aviso va en ámbar, nombra el día y lleva a Canchas — no es un error. */
+export const GuardadoConDiaSinPrecio: Story = {
+  args: {
+    hours: openingHours(),
+    action: fn(async () => ({
+      success: true as const,
+      pricingPending: { courts: 5, days: ['sun' as const] },
+    })),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Guardar horarios' }))
+    await expect(await canvas.findByRole('alert')).toHaveTextContent(
+      'Falta un paso: cargar el precio del domingo en 5 canchas.',
+    )
+    await expect(
+      canvas.getByRole('link', { name: 'Cargar precios en Canchas' }),
+    ).toBeInTheDocument()
+  },
+}
+
 export const ErrorDelServidor: Story = {
   args: {
     hours: openingHours(),

@@ -252,6 +252,45 @@ describe('marca de MercadoPago desconectado', () => {
     }
   })
 
+  it('los ya marcados no cuentan para el freno: un revocado nuevo igual se marca', async () => {
+    // Tres marcados que nunca reconectaron dan invalid_grant en cada tick. Si
+    // contaran, 4 de 5 revocados dispararían el freno y el nuevo no se marcaría.
+    const marcados: string[] = []
+    for (const cuenta of ['1111', '2222', '3333']) {
+      const { id } = await seedConnectedTenant(cuenta, `refresh-marcado-${cuenta}`)
+      await markDirectly(id)
+      marcados.push(id)
+    }
+    const nuevo = await seedConnectedTenant('4242', 'refresh-nuevo-revocado')
+    const sano = await seedConnectedTenant('5151', 'refresh-sano')
+
+    global.fetch = vi.fn(async (url: unknown, init?: RequestInit) => {
+      if (typeof url === 'string' && url.includes('mercadopago.com/oauth/token')) {
+        const body = JSON.parse(String(init?.body)) as { refresh_token: string }
+        const r: Respuesta =
+          body.refresh_token === 'refresh-sano'
+            ? { status: 200, body: { ...(RENOVADO.body as object), user_id: 5151 } }
+            : REVOCADO
+        return new Response(JSON.stringify(r.body), {
+          status: r.status,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+      return realFetch(url as Parameters<typeof realFetch>[0])
+    }) as typeof fetch
+
+    await runRefreshMpTokens()
+
+    expect(await disconnectedAt(nuevo.id)).not.toBeNull()
+    expect(await auditRows(nuevo.id)).toHaveLength(1)
+    expect(await disconnectedAt(sano.id)).toBeNull()
+    for (const id of marcados) {
+      expect(await disconnectedAt(id)).not.toBeNull()
+      // Ya estaban marcados: no se vuelven a auditar.
+      expect(await auditRows(id)).toHaveLength(0)
+    }
+  })
+
   it('el portal deja de anunciar la seña mientras dura la marca', async () => {
     const { id, slug } = await seedConnectedTenant()
     await getSql()`

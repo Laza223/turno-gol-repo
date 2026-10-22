@@ -889,7 +889,7 @@ como el nuevo pueden funcionar con el schema actual.
 
 Hay dos árboles de migraciones SQL escritas a mano:
 
-- `src/shared/db/migrations/0*.sql` — **autoridad**. Orden numérico (`001…`), aplicadas por
+- `src/shared/db/migrations/[0-9]*.sql` — **autoridad**. Orden numérico (`001…`), aplicadas por
   psql en el job de integración de CI.
 - `supabase/migrations/*.sql` — **espejo** con formato timestamp para el Supabase CLI (local + prod).
 
@@ -925,7 +925,7 @@ npx supabase start
 cp .env.example .env.local
 # → Editar con los valores de Supabase local (se muestran al iniciar)
 
-# 5. Aplicar migraciones (SQL a mano en src/shared/db/migrations/0*.sql,
+# 5. Aplicar migraciones (SQL a mano en src/shared/db/migrations/[0-9]*.sql,
 #    vía psql o el CLI de Supabase — drizzle-kit push NO es el camino:
 #    "db:migrate"/"db:push" están DENEGADOS en .claude/settings.json, ver §7.4)
 
@@ -944,7 +944,7 @@ pnpm dev
 > Lista real verificada contra `package.json` (2026-08-27) — la fuente de verdad viva es
 > `CLAUDE.md` §Comandos, este bloque es un subset ilustrativo. `db:push`/`db:migrate` (alias de
 > `drizzle-kit push`) están **DENEGADOS** en `.claude/settings.json`: las migraciones reales son
-> los SQL a mano de `src/shared/db/migrations/0*.sql` (§7.4). No existe script `db:seed`.
+> los SQL a mano de `src/shared/db/migrations/[0-9]*.sql` (§7.4). No existe script `db:seed`.
 
 ```json
 {

@@ -67,8 +67,8 @@ export async function runRefreshMpTokens(): Promise<void> {
   // RLS, así que el pool de la app también leería — pero el día que la tenga,
   // este SELECT devolvería cero filas en silencio y ningún token se refrescaría.
   const sql = getWorkerSql()
-  const rows = await sql<{ id: string }[]>`
-    SELECT id
+  const rows = await sql<{ id: string; alreadyMarked: boolean }[]>`
+    SELECT id, mp_disconnected_at IS NOT NULL AS "alreadyMarked"
     FROM tenants
     WHERE mp_refresh_token IS NOT NULL
       AND status IN ('active', 'trialing', 'past_due', 'suspended')
@@ -77,6 +77,12 @@ export async function runRefreshMpTokens(): Promise<void> {
   const db = getWorkerDb()
   let refreshed = 0
   let skippedLocked = 0
+  // Un complejo ya marcado sigue en el barrido (un refresh OK es lo que cura la
+  // marca), pero su invalid_grant de cada tick no es noticia: no cuenta para el
+  // freno ni se vuelve a marcar. Si contara, tres marcados sin reconectar
+  // dispararían el freno en cada tick y ningún complejo nuevo se marcaría más.
+  let stillRevoked = 0
+  const pending = rows.filter((r) => !r.alreadyMarked).length
   const revoked: Array<{ tenantId: string } & Extract<RefreshOutcome, { kind: 'revoked' }>> = []
   for (const row of rows) {
     try {
@@ -121,6 +127,7 @@ export async function runRefreshMpTokens(): Promise<void> {
       })
       if (outcome.kind === 'refreshed') refreshed += 1
       else if (outcome.kind === 'skipped') skippedLocked += 1
+      else if (row.alreadyMarked) stillRevoked += 1
       else revoked.push({ tenantId: row.id, ...outcome })
     } catch (err) {
       logger.error('tenant token refresh failed', {
@@ -131,12 +138,12 @@ export async function runRefreshMpTokens(): Promise<void> {
     }
   }
 
-  const massRevoke = revoked.length >= MASS_REVOKE_MIN && revoked.length * 2 > rows.length
+  const massRevoke = revoked.length >= MASS_REVOKE_MIN && revoked.length * 2 > pending
   if (massRevoke) {
     logger.error('refresh-mp-tokens: invalid_grant masivo, no se marca ningún complejo', {
       module: 'refresh-mp-tokens',
       revoked: revoked.length,
-      total: rows.length,
+      total: pending,
     })
     captureMessage(
       'refresh-mp-tokens: invalid_grant masivo (¿credenciales de la app de MP?)',
@@ -161,6 +168,7 @@ export async function runRefreshMpTokens(): Promise<void> {
       refreshed,
       skipped_locked: skippedLocked,
       revoked: revoked.length,
+      still_revoked: stillRevoked,
       total: rows.length,
     })
   }

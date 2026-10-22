@@ -85,7 +85,8 @@ export type CreateTenantInput = {
   longitude?: number | null
   /** Días de prueba gratuita. Omitido = `TRIAL_DAYS` (30), el default del
    *  self-signup — el wizard de onboarding NO lo pasa y no debe pasarlo.
-   *  Solo el alta asistida del super-admin fija un valor distinto (pilotos). */
+   *  El alta asistida tampoco: usa los mismos 30 (decisión 2026-10-22). Hoy
+   *  nadie lo pasa; otro largo es una decisión del dueño. */
   trialDays?: number
   /** UUID pre-generado por el caller (B2): permite resolver `referredByTenantId`
    *  ANTES del insert, para el chequeo real de "no autoreferirse" (además del
@@ -95,6 +96,10 @@ export type CreateTenantInput = {
   /** Referidor del programa de referidos (B2), ya resuelto y validado por
    *  `resolveSignupReferrer`. `null`/omitido = alta sin referido. */
   referredByTenantId?: string | null
+  /** Alta asistida desde el super-admin: se audita `support.tenant.created` en
+   *  la MISMA transacción que la membresía y la suscripción. El self-signup no
+   *  lo pasa. `metadata` nunca lleva la contraseña temporal. */
+  assistedBy?: { systemAdminId: string; metadata: Record<string, unknown> }
 }
 
 export type UpdateTenantInput = Partial<{

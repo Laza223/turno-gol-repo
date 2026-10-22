@@ -28,6 +28,7 @@ const client = (key: string): Page['rows'][number] => ({
   fixedCount: 0,
   suggestedPlayerId: null,
   suggestedPlayerName: null,
+  lastActiveAt: null,
 })
 
 const keys = (from: number, to: number) =>
@@ -35,7 +36,8 @@ const keys = (from: number, to: number) =>
 
 /** Sirve las páginas en orden, cada una con el total que diría la query. */
 function serve(pages: Array<Page['rows']>, total: number) {
-  for (const rows of pages) vi.mocked(listTenantClients).mockResolvedValueOnce({ rows, total })
+  for (const rows of pages)
+    vi.mocked(listTenantClients).mockResolvedValueOnce({ rows, total, dormantTotal: 0 })
 }
 
 const tx = {} as DbTx
@@ -62,7 +64,7 @@ describe('listClientsForExport', () => {
 
   it('con un total justo en el borde, la página vacía no lo pisa con 0', async () => {
     serve([keys(0, CLIENTES_PAGE_SIZE)], CLIENTES_PAGE_SIZE)
-    vi.mocked(listTenantClients).mockResolvedValueOnce({ rows: [], total: 0 })
+    vi.mocked(listTenantClients).mockResolvedValueOnce({ rows: [], total: 0, dormantTotal: 0 })
     expect(await listClientsForExport('tenant-1', tx)).toHaveLength(CLIENTES_PAGE_SIZE)
     expect(listTenantClients).toHaveBeenCalledTimes(2)
   })
@@ -104,7 +106,7 @@ describe('listClientsForExport', () => {
   })
 
   it('si en ninguna vuelta cierra el total, falla en vez de entregar un archivo con menos', async () => {
-    vi.mocked(listTenantClients).mockResolvedValue({ rows: keys(0, 3), total: 4 })
+    vi.mocked(listTenantClients).mockResolvedValue({ rows: keys(0, 3), total: 4, dormantTotal: 0 })
     await expect(listClientsForExport('tenant-1', tx)).rejects.toThrow(
       'La lista de clientes cambió mientras se exportaba',
     )

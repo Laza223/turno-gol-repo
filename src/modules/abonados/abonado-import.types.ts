@@ -33,6 +33,8 @@ export type ImportRowPreview = {
   startsNextWeek: boolean
   /** Si no está vacío, la fila no se carga. */
   errors: string[]
+  /** Avisos de la fila: se carga igual. */
+  warnings: string[]
   /** Turnos de las primeras semanas que se van a generar. */
   slotCount: number
   /** Fechas de esas semanas que ya están ocupadas y se saltean. */

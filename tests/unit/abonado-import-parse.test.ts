@@ -8,6 +8,7 @@ import {
   parseHour,
   parsePhone,
   joinSurname,
+  lacksAreaCode,
   parsePriceCents,
   serializeTable,
   validateImportText,
@@ -317,6 +318,22 @@ describe('parsePhone', () => {
   )
 })
 
+describe('lacksAreaCode', () => {
+  it.each(['+54 4234 5678', '+54 15 5555 5555', '+54 0 15 5555 5555'])(
+    '«%s» no trae código de área',
+    (phone) => {
+      expect(lacksAreaCode(phone)).toBe(true)
+    },
+  )
+
+  it.each(['+54 11 2345 6789', '+54 011 15 2345 6789', '+54 2323 346976', '+598 99 123 456'])(
+    '«%s» sí (o no es argentino)',
+    (phone) => {
+      expect(lacksAreaCode(phone)).toBe(false)
+    },
+  )
+})
+
 describe('matchCourt', () => {
   it('encuentra la cancha por su nombre, sin mayúsculas ni tildes', () => {
     expect(matchCourt('cancha 1', COURTS)).toEqual({ ok: true, value: COURTS[0] })
@@ -438,6 +455,21 @@ describe('validateImportText', () => {
     )
     if (!result.ok) throw new Error(result.error)
     expect(result.rows).toMatchObject([{ line: 3, errors: [] }])
+  })
+
+  it('sin código de área la fila se carga igual, con un aviso', () => {
+    const aviso = 'Sin código de área: este contacto queda sin botón de WhatsApp.'
+    const [ocho, quince, completo] = rowsOf([
+      ['Ana', '4234-5678', '1', 'lunes', '20', '21', '1000'],
+      ['Leo', '15 5555-5555', '1', 'martes', '20', '21', '1000'],
+      ['Juan', '11 2345-6789', '1', 'miércoles', '20', '21', '1000'],
+    ])
+    for (const row of [ocho, quince]) {
+      expect(row!.errors).toEqual([])
+      expect(row!.value).not.toBeNull()
+      expect(row!.warnings).toEqual([aviso])
+    }
+    expect(completo!.warnings).toEqual([])
   })
 
   it('el turno que termina a la medianoche se guarda hasta las 24:00', () => {

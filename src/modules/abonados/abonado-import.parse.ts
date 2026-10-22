@@ -332,6 +332,18 @@ export function parsePhone(cell: string): CellResult<string> {
   return { ok: true, value: phone }
 }
 
+/**
+ * Un teléfono argentino ya guardado (`+54 <nacional>`) sin código de área: 8
+ * dígitos, o «15 …» sin el área adelante (ninguna característica empieza con
+ * 15). Se carga igual (decisión de Lazar), pero `toWhatsappDigits` no puede
+ * armarle el link: le falta el área, o con el 15 adelante arma otro número.
+ */
+export function lacksAreaCode(phone: string): boolean {
+  if (!phone.startsWith('+54 ')) return false
+  const national = phone.slice(4).replace(/\D/g, '').replace(/^0/, '')
+  return national.startsWith('15') || national.length < 10
+}
+
 export type ImportCourt = { id: string; name: string }
 
 /**
@@ -358,6 +370,7 @@ type ValidatedRow = {
   raw: Partial<Record<ImportField, string>>
   value: ImportRowValue | null
   errors: string[]
+  warnings: string[]
 }
 
 export type ValidatedImport =
@@ -483,7 +496,11 @@ function validateRow(
           pricePerSession: price.value,
         }
       : null
-  return { line, cells, raw, value, errors }
+  const warnings =
+    phone?.ok && lacksAreaCode(phone.value)
+      ? ['Sin código de área: este contacto queda sin botón de WhatsApp.']
+      : []
+  return { line, cells, raw, value, errors, warnings }
 }
 
 /** Dos filas de la planilla en la misma cancha, el mismo día y horarios que se pisan. */

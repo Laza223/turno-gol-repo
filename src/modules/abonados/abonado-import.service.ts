@@ -85,6 +85,7 @@ export async function previewAbonadoImport(
       firstDate: null,
       startsNextWeek: false,
       errors: row.errors,
+      warnings: row.warnings,
       slotCount: 0,
       skippedDates: [],
       physicallyNextDay: false,

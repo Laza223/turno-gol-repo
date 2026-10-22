@@ -448,6 +448,12 @@ function PreviewRow({ row }: { row: ImportRowPreview }) {
               : `Ya están ocupados y se saltean: ${row.skippedDates.map(shortDate).join(', ')}.`}
           </p>
         )}
+        {ok &&
+          row.warnings.map((w) => (
+            <p key={w} className={cn('text-xs', TONE_TEXT.warning)}>
+              {w}
+            </p>
+          ))}
         {row.errors.map((e) => (
           <p key={e} className={cn('text-sm', TONE_TEXT.destructive)}>
             {e}

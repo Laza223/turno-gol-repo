@@ -17,7 +17,7 @@ Ninguna de las dos pide un importador: es lo que se deduce de ellas.
 2. **Errores:** al confirmar se cargan las filas buenas; las que tienen error quedan afuera, listadas, y vuelven a la caja para corregirlas.
 3. **Precio:** obligatorio por fila. No se deduce de la tarifa de la cancha.
 4. **Arranque:** una sola fecha "Empiezan el" para todo el lote (hoy por defecto). Cada fijo arranca el primer día suyo desde esa fecha.
-5. **Apellido** (Lazar, después de la ronda 3): una columna Apellido se suma al nombre en vez de ignorarse con aviso. El teléfono que trae algo más que el número se sigue rechazando.
+5. **Apellido** (Lazar, después de la ronda 3): una columna Apellido se suma al nombre en vez de ignorarse con aviso. El teléfono que trae algo más que el número se sigue rechazando. Un teléfono argentino sin código de área se carga con un aviso.
 
 Decidido sin preguntar, por regla existente:
 
@@ -62,6 +62,7 @@ Error de planilla (no se revisa ninguna fila): una comilla que se abre y no se c
 Avisos (la fila se carga igual):
 
 - Algunas fechas están ocupadas y se saltean, igual que en el alta manual.
+- El teléfono argentino no trae código de área (8 dígitos, o «15 …» sin el área adelante): «Sin código de área: este contacto queda sin botón de WhatsApp.» Decisión de Lazar: cargar y avisar (`lacksAreaCode`).
 - El primer día del fijo es hoy y esa hora ya pasó: arranca la semana siguiente. Sin esto, con "Empiezan el" en hoy (el default), nacía con un turno confirmado en el pasado. El alta manual tiene el mismo hueco y no se toca acá.
 - "Arranca el" muestra el primer turno real: el primer día del fijo, corrido por las fechas cerradas, el período pago y las ocupadas.
 
@@ -89,7 +90,7 @@ Revisados en la ronda 3 y aceptados como están, sin código:
 
 - **Espera por fila con una cancha tomada.** Si otra transacción retiene una cancha mucho rato, cada fila de esa cancha espera el `lock_timeout` de 3 s antes de quedar afuera con su motivo. Con varias filas en esa cancha, las esperas se suman.
 - **UTF-16 al subir.** Un archivo guardado en UTF-16 no se lee al subirlo. Pegar lo copiado sí funciona.
-- **Teléfono sin código de área.** Un número de 8 dígitos (`4234-5678`) se acepta, pero queda sin link de WhatsApp. Exigir el código de área es decisión de Lazar.
+- **Teléfono sin código de área.** Se carga con un aviso en la revisión, pero queda sin link de WhatsApp (decidido por Lazar: cargar y avisar).
 - **Mínimo de "Empiezan el".** Es el día calendario, no el operativo, igual que en el alta manual.
 
 ## Alternativas descartadas

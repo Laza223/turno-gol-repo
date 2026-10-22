@@ -81,4 +81,4 @@ Medir cada día (2 minutos, desde super-admin → Actividad, o preguntando):
 
 ## Qué NO hacer con P1
 
-No prometer export del complejo (hoy solo hay CSV de métricas), aviso por WhatsApp al jugador, cobro automático de fijos, ni "te traigo jugadores". No programar nada que P1 no haya pedido **después de usarlo**.
+No prometer aviso por WhatsApp al jugador, cobro automático de fijos, ni "te traigo jugadores". No programar nada que P1 no haya pedido **después de usarlo**.

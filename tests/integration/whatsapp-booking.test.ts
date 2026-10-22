@@ -260,6 +260,20 @@ describe('createWhatsappBooking — alta', () => {
     })
   })
 
+  it('seña pedida con MercadoPago marcado como desconectado: confirma sin seña (decisión 2026-10-22)', async () => {
+    const s = await seed({ mp: true, settings: { requires_deposit: true } })
+    await getSql()`UPDATE tenants SET mp_disconnected_at = NOW() WHERE id = ${s.tenantId}`
+    const res = await book(s)
+
+    expect(res.requiresPayment).toBe(false)
+    expect(res.booking).toMatchObject({
+      status: 'confirmed',
+      depositStatus: 'not_required',
+      depositAmount: 0,
+    })
+    expect(scheduledExpiries).not.toContain(res.booking.id)
+  })
+
   it('un turno de madrugada de un complejo que cierra pasada la medianoche cae en el día físico siguiente', async () => {
     // Abre 18:00 y cierra 02:00: el 01:00 es el último turno del día operativo DATE.
     const s = await seed({

@@ -106,7 +106,7 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
         <nav className="flex items-center gap-1 sm:gap-2">
           <Link
             href="/explorar"
-            className="flex min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground md:text-sm"
+            className="hidden min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground md:flex md:text-sm"
           >
             <Search className="h-4 w-4" />
             <span>Explorar</span>

@@ -6,9 +6,11 @@ import type { AttentionItem, WhileAwayItem } from './home.types'
  * vive en "Cobrar ahora" de Hoy (antes, el tablero "Turnos de hoy"), que es donde se cobra.
  */
 const ATTENTION_PRIORITY: Record<AttentionItem['kind'], number> = {
-  // P1: plata comprometida con un jugador que espera. El daño crece con los días.
-  pending_refunds: 1,
-  failed_deposit: 2,
+  // P1: cada reserva online que entra mientras tanto se pierde la seña.
+  mp_disconnected: 1,
+  // P2: plata comprometida con un jugador que espera. El daño crece con los días.
+  pending_refunds: 2,
+  failed_deposit: 3,
 }
 
 /** Prioridad P1→P2, luego antigüedad ascendente (la más vieja primero). */

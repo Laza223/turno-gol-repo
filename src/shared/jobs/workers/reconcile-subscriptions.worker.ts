@@ -1,9 +1,10 @@
 import type PgBoss from 'pg-boss'
 import { sql as drizzleSql } from 'drizzle-orm'
 import type { Sql } from 'postgres'
-import { getWorkerSql, withTenantContext, type DbTx } from '@/shared/db/client'
+import { getWorkerDb, getWorkerSql, withTenantContext, type DbTx } from '@/shared/db/client'
 import { insertSystemAuditLog } from '@/shared/db/audit'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
+import { artHourKey, sendOpsAlerts } from '@/modules/super-admin/ops-alerts.service'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { MP_MOCK_ENABLED } from '@/modules/payments/mock-mp'
 import {
@@ -621,6 +622,123 @@ async function sweepPreapprovalAmounts(amountAlerted: Set<string>): Promise<numb
   return drifted
 }
 
+/**
+ * Canchas prendidas por encima de lo facturado (decisión
+ * `docs/decisions/2026-10-22-cancha-en-mora.md`).
+ *
+ * En mora (`past_due`, o `canceled` antes del fin del período) crear o prender
+ * una cancha no avisa ni mueve `billed_courts`: `getCourtCountAndBilled`
+ * devuelve `billedCourts: null` fuera de `active`/`trialing`, a propósito. Si
+ * después el complejo vuelve a `active` sin pasar por `reactivate()` —MP
+ * reintenta el débito con el monto viejo, o este mismo worker rescata el
+ * cobro— queda operando más canchas de las que paga. El chequeo de monto no lo
+ * ve: compara MP contra `billed_courts`, y acá el que quedó corto es
+ * `billed_courts`.
+ *
+ * Con un cambio agendado (`pending_billed_courts`) no se alerta: el sweep de
+ * `dunning-retry` aplica `GREATEST(agendado, canchas prendidas)` al cierre del
+ * período, así que se corrige solo. `trialing` tampoco: ahí el aviso existe y
+ * el cambio se aplica en el acto.
+ *
+ * SOLO avisa a ops. Subirle la cuota a un complejo es decisión del dueño, caso
+ * por caso. No le pregunta nada a MP: es pura DB.
+ */
+type CourtsOverBilled = {
+  tenantId: string
+  tenantName: string
+  billedCourts: number
+  onlineCourts: number
+}
+
+/** Cross-tenant ⇒ pool de servicio, igual que `loadCandidates`. `tenants` es global y sin RLS. */
+async function loadCourtsOverBilled(sql: Sql): Promise<CourtsOverBilled[]> {
+  return sql<CourtsOverBilled[]>`
+    SELECT ts.tenant_id     AS "tenantId",
+           t.name           AS "tenantName",
+           ts.billed_courts AS "billedCourts",
+           c.online         AS "onlineCourts"
+    FROM tenant_subscriptions ts
+    JOIN tenants t ON t.id = ts.tenant_id
+    CROSS JOIN LATERAL (
+      SELECT COUNT(*)::int AS online
+      FROM courts
+      WHERE courts.tenant_id = ts.tenant_id AND courts.status = 'online'
+    ) c
+    WHERE ts.status = 'active'
+      AND ts.pending_billed_courts IS NULL
+      AND c.online > ts.billed_courts
+    ORDER BY ts.tenant_id
+    LIMIT 200
+  `
+}
+
+async function alertCourtsOverBilled(row: CourtsOverBilled, now: Date): Promise<void> {
+  captureMessage('active subscription operating more courts than it is billed for', {
+    level: 'warning',
+    extra: {
+      tenantId: row.tenantId,
+      billedCourts: row.billedCourts,
+      onlineCourts: row.onlineCourts,
+    },
+  })
+  track.payment('payment.subscription.courts_over_billed', { tenantId: row.tenantId })
+
+  // Primero el mail y después el audit: el audit es el dedup de 20 h, así que
+  // escribirlo antes gastaría el aviso aunque el mail no salga. Si no sale,
+  // `ops_alerts` libera la clave y el próximo tick reintenta (Sentry se repite,
+  // agrupado en el mismo issue). La clave por hora sólo evita el doble envío si
+  // el mail salió y el audit no.
+  const undelivered = await sendOpsAlerts(
+    getWorkerDb(),
+    [
+      {
+        key: `courts-over-billed:${row.tenantId}:${artHourKey(now)}`,
+        subject: `${row.tenantName} opera más canchas de las que paga`,
+        lines: [
+          `Tiene ${row.onlineCourts} canchas prendidas y la suscripción factura ${row.billedCourts}.`,
+          'Lo más probable es que haya prendido canchas estando en mora y que después se haya puesto al día sin pasar por Reactivar.',
+          'No se cambió nada: subirle la cuota queda a tu criterio.',
+        ],
+      },
+    ],
+    { path: `/super-admin/tenants/${row.tenantId}`, label: 'Abrir el complejo en el panel' },
+  )
+  if (undelivered.length > 0) throw new Error('ops mail not delivered, retrying next tick')
+
+  await withTenantContext(row.tenantId, (tx) =>
+    insertSystemAuditLog(tx, {
+      tenantId: row.tenantId,
+      action: 'subscription.courts_over_billed',
+      resourceType: 'tenant_subscription',
+      resourceId: row.tenantId,
+      metadata: { billedCourts: row.billedCourts, onlineCourts: row.onlineCourts },
+    }),
+  )
+}
+
+/** Cuenta los complejos encontrados (avisados o no por el dedup), para el log. */
+async function sweepCourtsOverBilled(overBilledAlerted: Set<string>): Promise<number> {
+  const rows = await loadCourtsOverBilled(getWorkerSql())
+  const now = new Date()
+
+  for (const row of rows) {
+    if (overBilledAlerted.has(row.tenantId)) continue
+    overBilledAlerted.add(row.tenantId)
+    try {
+      // secuencial: mismo motivo que en `sweep`.
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop
+      await alertCourtsOverBilled(row, now)
+    } catch (err) {
+      logger.error('failed courts over billed alert', {
+        module: 'reconcile-subscriptions',
+        tenantId: row.tenantId,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
+  return rows.length
+}
+
 export async function reconcileSubscriptions(): Promise<number> {
   // Modo mock (E2E): `getBillingGateway()` NO honra MP_MOCK_ENABLED —sólo lo
   // hace `resolveTenantGateway`—, así que acá pegaría contra MP con el token
@@ -630,6 +748,7 @@ export async function reconcileSubscriptions(): Promise<number> {
 
   const alerted = await recentlyAlerted(getWorkerSql(), 'subscription.mp_desync')
   const amountAlerted = await recentlyAlerted(getWorkerSql(), 'subscription.amount_drift')
+  const overBilledAlerted = await recentlyAlerted(getWorkerSql(), 'subscription.courts_over_billed')
 
   const fixed = await sweep(CORE_STATUSES, null, alerted, amountAlerted)
   if (fixed > 0) {
@@ -648,6 +767,16 @@ export async function reconcileSubscriptions(): Promise<number> {
     logger.warn('preapprovals charging an amount that does not match their plan', {
       module: 'reconcile-subscriptions',
       count: drifted,
+    })
+  }
+
+  // Tampoco suma: va último para mirar los `active` que los barridos de arriba
+  // acaban de levantar.
+  const overBilled = await sweepCourtsOverBilled(overBilledAlerted)
+  if (overBilled > 0) {
+    logger.warn('active subscriptions operating more courts than they are billed for', {
+      module: 'reconcile-subscriptions',
+      count: overBilled,
     })
   }
 

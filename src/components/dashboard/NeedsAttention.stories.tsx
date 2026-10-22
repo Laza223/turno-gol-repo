@@ -42,7 +42,7 @@ const items: AttentionItem[] = [
 ]
 
 export const ConAlertas: Story = {
-  args: { items, nowMs: NOW_MS },
+  args: { items, nowMs: NOW_MS, isAdmin: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Necesita tu atención')).toBeVisible()
@@ -60,9 +60,41 @@ export const ConAlertas: Story = {
   },
 }
 
+const mpDisconnected: AttentionItem = {
+  kind: 'mp_disconnected',
+  since: new Date('2026-08-02T18:05:00Z'),
+}
+
+/** El dueño ve la causa y el botón: `<a>` plano a oauth-start (un `Link` prefetchearía el redirect a MP). */
+export const MercadoPagoDesconectadoDueno: Story = {
+  args: { items: [mpDisconnected], nowMs: NOW_MS, isAdmin: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('MercadoPago se desconectó')).toBeVisible()
+    await expect(canvas.getByText('Las reservas online entran sin seña · hace 3 h')).toBeVisible()
+    await expect(canvas.getByRole('link', { name: 'Reconectar' })).toHaveAttribute(
+      'href',
+      '/api/mp/oauth-start',
+    )
+  },
+}
+
+/** El Encargado no puede reconectar (oauth-start es solo admin): ve el aviso y a quién pedírselo. */
+export const MercadoPagoDesconectadoEncargado: Story = {
+  args: { items: [mpDisconnected], nowMs: NOW_MS, isAdmin: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('MercadoPago se desconectó')).toBeVisible()
+    await expect(
+      canvas.getByText('Avisale al dueño para que lo reconecte · hace 3 h'),
+    ).toBeVisible()
+    await expect(canvas.queryByRole('link')).toBeNull()
+  },
+}
+
 /** Singular: el contador del encabezado y el copy de devoluciones cambian. */
 export const UnaSolaAlerta: Story = {
-  args: { items: [items[0]!], nowMs: NOW_MS },
+  args: { items: [items[0]!], nowMs: NOW_MS, isAdmin: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('1 pendiente')).toBeVisible()
@@ -75,7 +107,7 @@ export const UnaSolaAlerta: Story = {
  * tablero, en el primer renglón de la pantalla del mostrador.
  */
 export const Vacio: Story = {
-  args: { items: [], nowMs: NOW_MS },
+  args: { items: [], nowMs: NOW_MS, isAdmin: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.queryByText(/Nada pendiente/)).toBeNull()

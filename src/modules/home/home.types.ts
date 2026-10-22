@@ -44,6 +44,11 @@ export type WhileAwayItem =
     }
 
 export type AttentionItem =
+  /**
+   * El permiso OAuth de MercadoPago del complejo murió: mientras dure, las
+   * reservas online entran sin seña. Único por render (`tenants.mp_disconnected_at`).
+   */
+  | { kind: 'mp_disconnected'; since: Date }
   | {
       kind: 'failed_deposit'
       paymentId: string

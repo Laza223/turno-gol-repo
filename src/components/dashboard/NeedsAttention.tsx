@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Undo2, XCircle } from 'lucide-react'
+import { Undo2, Unplug, XCircle } from 'lucide-react'
 import { TONE_BADGE, TONE_BORDER, TONE_TINT, type StatusTone } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
 import { formatArs, relativeTimeEs } from '@/lib/format'
@@ -13,11 +13,14 @@ import type { AttentionItem } from '@/modules/home/home.types'
  * de hoy", que es donde está el cliente esperando en el mostrador.
  */
 const TONE_BY_KIND: Record<AttentionItem['kind'], StatusTone> = {
+  // Rojo: cada reserva online que entra mientras tanto se pierde la seña.
+  mp_disconnected: 'destructive',
   pending_refunds: 'warning',
   failed_deposit: 'warning',
 }
 
 const ICON_BY_KIND = {
+  mp_disconnected: Unplug,
   failed_deposit: XCircle,
   pending_refunds: Undo2,
 } as const
@@ -25,6 +28,8 @@ const ICON_BY_KIND = {
 /** Renglón principal: quién y dónde, o cuántas devoluciones y por cuánto. */
 function headlineFor(item: AttentionItem): string {
   switch (item.kind) {
+    case 'mp_disconnected':
+      return 'MercadoPago se desconectó'
     case 'failed_deposit':
       return `${item.contactName} · ${item.courtName}`
     case 'pending_refunds':
@@ -41,9 +46,13 @@ function headlineFor(item: AttentionItem): string {
  * es lo que decide si hay que llamar al jugador. Mismo helper que ya usan
  * `/caja/deudas` y `/caja/devoluciones`.
  */
-function subtitleFor(item: AttentionItem, nowMs: number): string {
+function subtitleFor(item: AttentionItem, nowMs: number, isAdmin: boolean): string {
   const ago = relativeTimeEs(item.since.toISOString(), nowMs)
   switch (item.kind) {
+    case 'mp_disconnected':
+      return isAdmin
+        ? `Las reservas online entran sin seña · ${ago}`
+        : `Avisale al dueño para que lo reconecte · ${ago}`
     case 'failed_deposit':
       return `Seña rechazada · ${ago}`
     case 'pending_refunds':
@@ -51,8 +60,15 @@ function subtitleFor(item: AttentionItem, nowMs: number): string {
   }
 }
 
-function actionFor(item: AttentionItem): { label: string; href: string } {
+function actionFor(
+  item: AttentionItem,
+  isAdmin: boolean,
+): { label: string; href: string; plain?: boolean } | null {
   switch (item.kind) {
+    // Route handler que redirige a MP: `<a>` plano (un `Link` lo prefetchea) y solo
+    // del dueño, porque oauth-start es solo admin.
+    case 'mp_disconnected':
+      return isAdmin ? { label: 'Reconectar', href: '/api/mp/oauth-start', plain: true } : null
     case 'failed_deposit':
       return { label: 'Ver reserva', href: `/reservas/${item.bookingId}` }
     // "Gestionar" no decía a dónde llevaba y era el único botón de la pantalla
@@ -61,6 +77,9 @@ function actionFor(item: AttentionItem): { label: string; href: string } {
       return { label: 'Ver devoluciones', href: '/caja/cuentas' }
   }
 }
+
+const ACTION_CLASS =
+  'flex min-h-11 w-full shrink-0 items-center justify-center whitespace-nowrap rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-auto'
 
 /**
  * "Necesita tu atención" (Fase 2, contrato §4.1 + taxonomía
@@ -78,7 +97,15 @@ function actionFor(item: AttentionItem): { label: string; href: string } {
  * mostrador para decir "todo en orden" justo arriba de los turnos por cobrar
  * del tablero: dos mensajes que se contradecían a la vista.
  */
-export function NeedsAttention({ items, nowMs }: { items: AttentionItem[]; nowMs: number }) {
+export function NeedsAttention({
+  items,
+  nowMs,
+  isAdmin,
+}: {
+  items: AttentionItem[]
+  nowMs: number
+  isAdmin: boolean
+}) {
   if (items.length === 0) return null
 
   return (
@@ -96,7 +123,7 @@ export function NeedsAttention({ items, nowMs }: { items: AttentionItem[]; nowMs
         {items.map((item) => {
           const Icon = ICON_BY_KIND[item.kind]
           const tone = TONE_BY_KIND[item.kind]
-          const action = actionFor(item)
+          const action = actionFor(item, isAdmin)
           const headline = headlineFor(item)
           // `pending_refunds` no tiene bookingId —es agregado— y además es
           // único por render, así que su propio kind alcanza.
@@ -121,18 +148,24 @@ export function NeedsAttention({ items, nowMs }: { items: AttentionItem[]; nowMs
 
               <div className="min-w-0 flex-[1_1_220px]">
                 <p className="text-sm font-semibold leading-tight text-foreground">{headline}</p>
-                <p className="mt-0.5 text-sm text-muted-foreground">{subtitleFor(item, nowMs)}</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  {subtitleFor(item, nowMs, isAdmin)}
+                </p>
               </div>
 
               {/* En 375px el botón toma el ancho completo en su propio renglón
                   (el `flex-wrap` del `li`); de `sm` para arriba vuelve a la
                   derecha de la fila. 44px de alto en los dos casos. */}
-              <Link
-                href={action.href}
-                className="flex min-h-11 w-full shrink-0 items-center justify-center whitespace-nowrap rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-auto"
-              >
-                {action.label}
-              </Link>
+              {action &&
+                (action.plain ? (
+                  <a href={action.href} className={ACTION_CLASS}>
+                    {action.label}
+                  </a>
+                ) : (
+                  <Link href={action.href} className={ACTION_CLASS}>
+                    {action.label}
+                  </Link>
+                ))}
             </li>
           )
         })}

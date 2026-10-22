@@ -49,7 +49,7 @@ Migrations are SQL files at `src/shared/db/migrations/`. Apply them in order aga
 
 ```bash
 # Set the production DATABASE_URL, then:
-for f in src/shared/db/migrations/0*.sql; do
+for f in src/shared/db/migrations/[0-9]*.sql; do
   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$f"
 done
 ```

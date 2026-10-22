@@ -128,7 +128,9 @@ export async function startWhatsappConnect(
  * Registra el número que el dueño acaba de conectar: verifica que sea de SU
  * cliente de Kapso y en coexistencia, suscribe el webhook y recién ahí guarda la
  * fila (con el webhook caído, una fila `connected` sería un bot mudo sin aviso).
- * El asistente queda apagado: lo prende el dueño.
+ * La primera conexión deja el asistente apagado (lo prende el dueño); al
+ * reconectar, aunque sea otro número, `enabled` queda como estaba (decisión de
+ * Lazar, 2026-10-22).
  *
  * El audit `whatsapp.connected` va en la misma transacción que la fila: lo dejan
  * igual el callback de Kapso y el "Ya lo conecté".

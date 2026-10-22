@@ -62,6 +62,9 @@ export type TenantSettings = {
   /** D8 (Fase 2, resumen diario): opt-in explícito, default false — el push
    *  al admin con PWA es el default gratis, el email tiene costo por tenant×día. */
   daily_summary_email_opt_in?: boolean
+  /** Resumen semanal por mail (los lunes, solo administradores): opt-in
+   *  explícito, default false. Lo lee `daily-summary.worker.ts`. */
+  weekly_summary_email_opt_in?: boolean
   /** Oculta todo precio del lado jugador (portal, APIs públicas, checkout,
    *  confirmación, mis reservas). Default false. Pedido del piloto: el dueño del
    *  predio que alquila controla cuánto cobra (2026-10-14). Leer con

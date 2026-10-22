@@ -406,6 +406,7 @@ export type AvisosActionResult = { success: true } | { success: false; error: st
 
 const avisosSchema = z.object({
   dailySummaryEmailOptIn: z.boolean(),
+  weeklySummaryEmailOptIn: z.boolean(),
 })
 
 export async function updateAvisosSettingsAction(
@@ -421,6 +422,7 @@ export async function updateAvisosSettingsAction(
 
   const parsed = avisosSchema.safeParse({
     dailySummaryEmailOptIn: formData.get('dailySummaryEmailOptIn') === 'true',
+    weeklySummaryEmailOptIn: formData.get('weeklySummaryEmailOptIn') === 'true',
   })
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
@@ -428,6 +430,7 @@ export async function updateAvisosSettingsAction(
 
   const patch = {
     daily_summary_email_opt_in: parsed.data.dailySummaryEmailOptIn,
+    weekly_summary_email_opt_in: parsed.data.weeklySummaryEmailOptIn,
   }
 
   // Sin JSON.stringify: ver nota en settings/reservas/actions.ts (el objeto

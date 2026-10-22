@@ -8,16 +8,19 @@ import type {
   MethodReport,
   PeriodTotals,
   CashFlowExportRow,
+  WeekRevenue,
 } from './report.types'
 import {
   aggregateByMethod,
   calcAvailableMinutes,
   calcOccupancyPct,
   getMonthBounds,
+  getWeekBounds,
   occupancyEndDate,
   prevMonthStr,
   type MonthBounds,
 } from './report.utils'
+import { addDays } from '@/shared/dates/art'
 import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
 
 const ACTIVE_STATUSES = ['confirmed', 'completed', 'no_show'] as Array<
@@ -234,6 +237,26 @@ export async function getRevenueReport(
     byMethod: current.byMethod,
     prevPeriod,
   }
+}
+
+/**
+ * Lo que entró en la semana operativa que arranca en `weekStart` y en la
+ * anterior, para el resumen semanal por mail. Sale de `fetchPeriodAgg`, la
+ * misma agregación que Métricas: el mail y la pantalla no pueden contar
+ * distinto.
+ */
+export async function getWeekRevenue(
+  tenantId: string,
+  weekStart: string,
+  cutoffMins: number,
+): Promise<WeekRevenue> {
+  const bounds = getWeekBounds(weekStart, cutoffMins)
+  const prevBounds = getWeekBounds(addDays(weekStart, -7), cutoffMins)
+  const [current, prev] = await Promise.all([
+    fetchPeriodAgg(tenantId, bounds, bounds.toDate),
+    fetchPeriodAgg(tenantId, prevBounds, prevBounds.toDate),
+  ])
+  return { income: current.income, byMethod: current.byMethod, prevIncome: prev.income }
 }
 
 /**

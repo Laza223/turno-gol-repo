@@ -29,7 +29,6 @@ const client = (key: string): Page['rows'][number] => ({
   fixedCount: 0,
   suggestedPlayerId: null,
   suggestedPlayerName: null,
-  lastActiveAt: null,
 })
 
 const keys = (from: number, to: number) =>

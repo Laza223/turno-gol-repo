@@ -22,6 +22,8 @@ const meta = {
     nowMs: Date.now(),
     impersonateAction: fn(async () => ({ success: true as const })),
     updateMarketplaceVisibilityAction: fn(async () => ({ success: true as const })),
+    plusEnabled: false,
+    setTenantPlusAction: fn(async () => ({ success: true as const })),
     generateReferralLinkAction: fn(async () => ({
       success: true as const,
       url: 'https://turnogol.app/r/AH2K9MZP',

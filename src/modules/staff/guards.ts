@@ -43,7 +43,7 @@ const BLOCKED_STAFF_TENANT_STATUSES: ReadonlySet<string> = new Set([
  * bloqueado para dar soporte (revisar/corregir datos antes de que el dueño
  * reactive el pago).
  */
-async function isBlockedForStaff(tenant: TenantRow): Promise<boolean> {
+export async function isBlockedForStaff(tenant: TenantRow): Promise<boolean> {
   if (!BLOCKED_STAFF_TENANT_STATUSES.has(tenant.status)) return false
   const impersonating = await getImpersonationSession()
   return impersonating === null

@@ -42,16 +42,6 @@ runs:
       with:
         version: 1.226.4
 
-    # El CLI baja las imágenes del stack de ghcr.io. Sin login, ghcr.io cortó
-    # las descargas anónimas con `toomanyrequests` durante horas (2026-10-22) y
-    # ningún run de e2e ni de visual llegaba a levantar el stack.
-    - name: Login a ghcr.io
-      shell: bash
-      env:
-        GHCR_TOKEN: ${{ github.token }}
-        GHCR_USER: ${{ github.actor }}
-      run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
-
     # supabase/migrations/ (espejo de src/shared/db/migrations/) se auto-aplica
     # en el primer `start` sobre una DB fresca — y rompe en 008_revokes.sql
     # porque el rol turnogol_app todavía no existe. Se saca del paso para que
@@ -71,6 +61,11 @@ runs:
           echo "::warning::supabase start falló — limpiando residuos y reintentando"
           supabase stop --no-backup || true
           docker ps -aq --filter name=supabase | xargs -r docker rm -f || true
+          # setup-cli fija ghcr.io como registry, y ghcr.io cortó las descargas
+          # con `toomanyrequests` durante horas el 2026-10-22, con login o sin
+          # él: ningún run de e2e ni de visual levantaba el stack. El reintento
+          # baja las mismas imágenes de public.ecr.aws.
+          export SUPABASE_INTERNAL_IMAGE_REGISTRY=public.ecr.aws
           start_stack
         fi
         mv supabase/migrations.disabled supabase/migrations

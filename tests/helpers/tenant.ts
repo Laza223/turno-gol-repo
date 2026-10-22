@@ -242,6 +242,7 @@ export async function cleanupAll(sql?: Sql): Promise<void> {
       courts,
       processed_webhooks,
       push_send_log,
+      ops_alerts,
       tenants,
       system_admins,
       staff_users,

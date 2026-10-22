@@ -499,6 +499,8 @@ describe('0. controles', () => {
     }
     // Deny-all: el registro de envíos de push no es visible para la app.
     expect(actual['push_send_log'] ?? 'SIN PERMISOS').toBe('SIN PERMISOS')
+    // Ídem el dedupe de alertas por mail (migr. 097).
+    expect(actual['ops_alerts'] ?? 'SIN PERMISOS').toBe('SIN PERMISOS')
   })
 
   it('0.3 control NEGATIVO: cada fila sembrada SÍ se ve desde su propio contexto', async () => {

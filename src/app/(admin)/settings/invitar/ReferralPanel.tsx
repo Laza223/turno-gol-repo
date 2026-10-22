@@ -6,7 +6,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { buildReferralWhatsappHref } from '@/lib/dashboard/referral-share'
 import { TONE_BADGE } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
-import { countReferralMonths, describeReferralStatus } from '@/modules/referrals/referral-status'
+import { describeReferralStatus } from '@/modules/referrals/referral-status'
 import { REFERRAL_REWARD_CAP } from '@/shared/constants'
 import type { ActionResult } from '@/shared/types/action-result'
 
@@ -26,6 +26,8 @@ type Props = {
   tenantName: string
   promoOpen: boolean
   referrals: ReferralPanelItem[]
+  /** Meses que suma, con el criterio del tope (incluye referidos dados de baja). */
+  months: number
   generateAction: GenerateReferralLinkAction
 }
 
@@ -40,9 +42,14 @@ const dateFormatter = new Intl.DateTimeFormat('es-AR', {
  * docs/decisions/2026-09-26-referidos.md): link para compartir y la lista de
  * a quién trajo, con el estado de cada premio.
  */
-export function ReferralPanel({ url, tenantName, promoOpen, referrals, generateAction }: Props) {
-  const months = countReferralMonths(referrals)
-
+export function ReferralPanel({
+  url,
+  tenantName,
+  promoOpen,
+  referrals,
+  months,
+  generateAction,
+}: Props) {
   return (
     <div className="space-y-6">
       <section className="card-premium space-y-4 rounded-lg p-4 sm:p-6">

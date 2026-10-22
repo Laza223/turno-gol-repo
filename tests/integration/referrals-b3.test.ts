@@ -45,6 +45,7 @@ import { forceTenantStatus, reactivateTenant } from '@/modules/super-admin/suppo
 import { REFERRAL_REWARD_CAP } from '@/shared/constants'
 import {
   approveReferralReward,
+  countReferralMonths,
   listReferralRewardsForReview,
   markReferralRewardApplied,
   rejectReferralReward,
@@ -617,6 +618,50 @@ describe('approveReferralReward', () => {
       expect(await audits(sql, referrer, 'referral.reward_approved')).toHaveLength(1)
     },
   )
+
+  it('10c. referidor que se da de baja DESPUÉS de aprobado: "Ya lo apliqué" se niega y queda rechazar', async () => {
+    const sql = getSql()
+    const referrer = await seedTenant(sql, { status: 'active', mpSubscriptionId: 'pre-baja' })
+    const referred = await seedReferred(sql, referrer, { reward: 'earned', status: 'active' })
+    expect(await approveReferralReward(referred, ADMIN_ID, new MockGateway(), NOW)).toEqual({
+      ok: true,
+      applied: 'manual_pending',
+    })
+
+    await sql`UPDATE tenants SET status = 'churned' WHERE id = ${referrer}`
+
+    expect(await markReferralRewardApplied(referred, ADMIN_ID)).toEqual({
+      ok: false,
+      reason: 'referrer_inactive',
+    })
+    expect((await readTenant(sql, referred)).referral_reward_status).toBe('manual_pending')
+    expect(await audits(sql, referrer, 'referral.reward_applied')).toHaveLength(0)
+
+    const listed = (await listReferralRewardsForReview()).find(
+      (r) => r.referredTenantId === referred,
+    )
+    expect(listed?.referrerStatus).toBe('churned')
+
+    expect(await rejectReferralReward(referred, ADMIN_ID)).toEqual({ ok: true })
+    expect((await readTenant(sql, referred)).referral_reward_status).toBe('rejected')
+  })
+})
+
+describe('countReferralMonths — panel del dueño alineado con el tope', () => {
+  it('13. cuenta earned/manual_pending/applied, incluidos los referidos dados de baja', async () => {
+    const sql = getSql()
+    const referrer = await seedTenant(sql, { status: 'active' })
+    await seedReferred(sql, referrer, { reward: 'earned', status: 'active' })
+    await seedReferred(sql, referrer, { reward: 'applied', status: 'active' })
+    const gone = await seedReferred(sql, referrer, { reward: 'manual_pending', status: 'active' })
+    await sql`UPDATE tenants SET status = 'deleted' WHERE id = ${gone}`
+    await seedReferred(sql, referrer, { reward: 'rejected', status: 'active' })
+    await seedReferred(sql, referrer, { reward: 'over_cap', status: 'active' })
+    await seedReferred(sql, referrer, { status: 'active' })
+
+    expect(await countReferralMonths(referrer)).toBe(3)
+    expect(await countReferralMonths(await seedTenant(sql))).toBe(0)
+  })
 })
 
 // ─── 11-12: rechazo y lista ──────────────────────────────────────────────────

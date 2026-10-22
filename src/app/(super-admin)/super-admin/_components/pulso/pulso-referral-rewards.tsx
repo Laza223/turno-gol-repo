@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import type { ActionResult } from '@/shared/types/action-result'
 import type { ReferralRewardForReview } from '@/modules/referrals/referral-reward.service'
+import { isReferrerInactive } from '@/modules/referrals/referral-status'
 import type { ReferralRewardActionResult } from '../../actions'
 import { TenantStatusBadge } from '../tenant-status-visual'
 import { PulsoSection } from './pulso-section'
@@ -69,6 +70,9 @@ function RewardRow({
   actions: ReferralRewardActions
 }) {
   const [dialog, setDialog] = useState<DialogKind | null>(null)
+  // Se dio de baja después de ganar o de aprobado: el premio se perdió
+  // (sub-regla 3) y lo único que queda es rechazarlo.
+  const lost = isReferrerInactive(reward.referrerStatus)
   const pending = reward.status === 'manual_pending'
   const referrerName = reward.referrerName ?? 'un complejo que ya no existe'
 
@@ -92,7 +96,11 @@ function RewardRow({
         )}
         {reward.referrerStatus ? <TenantStatusBadge status={reward.referrerStatus} /> : null}
         <span className="text-sm text-muted-foreground">
-          {pending ? 'aprobado, falta devolverle un cobro' : 'ganó un mes'}
+          {lost
+            ? 'se dio de baja: el premio se perdió'
+            : pending
+              ? 'aprobado, falta devolverle un cobro'
+              : 'ganó un mes'}
           {reward.statusAt ? ` · ${dateFormat.format(reward.statusAt)}` : ''}
         </span>
       </div>
@@ -103,14 +111,14 @@ function RewardRow({
         </Link>
         , que ya pagó su primer mes.
       </p>
-      {pending ? (
+      {pending && !lost ? (
         <p className="text-sm text-foreground">
           Devolvé su próximo cobro desde el panel de MercadoPago de la cuenta master (si paga anual,
           1/12 del cobro) y avisale antes por WhatsApp.
         </p>
       ) : null}
       <div className="flex flex-wrap gap-2">
-        {pending ? (
+        {lost ? null : pending ? (
           <Button type="button" size="sm" onClick={() => setDialog('applied')}>
             Ya lo devolví
           </Button>

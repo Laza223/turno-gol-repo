@@ -76,6 +76,13 @@ export async function markReferralRewardAppliedAction(
 
   const result = await markReferralRewardApplied(parsed.data, auth.admin.id)
   if (!result.ok) {
+    if (result.reason === 'referrer_inactive') {
+      return {
+        success: false,
+        error:
+          'El complejo que lo trajo se dio de baja: el premio se perdió. Rechazalo como "No corresponde".',
+      }
+    }
     return { success: false, error: result.reason === 'not_found' ? NOT_FOUND : ALREADY_PROCESSED }
   }
 

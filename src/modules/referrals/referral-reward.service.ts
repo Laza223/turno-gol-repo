@@ -9,6 +9,7 @@ import { isTrialCheckoutUnpaid } from '@/modules/billing/billing.service'
 import { extendTrialInTx } from '@/modules/super-admin/support.service'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import type { TenantStatus } from '@/modules/billing/billing.types'
+import { isReferrerInactive } from './referral-status'
 
 /**
  * Premio del programa de referidos (B3). Reglas: R1/R3/R4/R5 de
@@ -37,9 +38,6 @@ const REVIEW_STATUSES: ReferralRewardStatus[] = ['earned', 'manual_pending']
 
 /** El mes del premio, cuando se aplica corriendo la prueba (R5). */
 const REWARD_TRIAL_DAYS = 30
-
-/** Un referidor en estos estados ya no tiene cuenta vigente (`/terminos` §7, cláusula 1). */
-const INACTIVE_REFERRER_STATUSES: TenantStatus[] = ['canceled', 'churned', 'deleted']
 
 // ─── Detección (R3) ──────────────────────────────────────────────────────────
 
@@ -113,6 +111,24 @@ export async function markReferralRewardEarned(tenantId: string, tx: DbTx): Prom
 }
 
 // ─── Lista para el founder (R4) ──────────────────────────────────────────────
+
+/**
+ * Meses que suma el referidor para el panel del dueño, con el MISMO criterio
+ * que el tope de R1 (`markReferralRewardEarned`): también cuentan los
+ * referidos dados de baja, que la lista del panel no muestra.
+ */
+export async function countReferralMonths(referrerTenantId: string): Promise<number> {
+  const [row] = await getDb()
+    .select({ n: sql<number>`count(*)::int` })
+    .from(tenants)
+    .where(
+      and(
+        eq(tenants.referredByTenantId, referrerTenantId),
+        inArray(tenants.referralRewardStatus, COUNTED_STATUSES),
+      ),
+    )
+  return row?.n ?? 0
+}
 
 export type ReferralRewardForReview = {
   referredTenantId: string
@@ -223,7 +239,7 @@ export async function approveReferralReward(
     `)) as unknown as Array<{ status: TenantStatus; mp_subscription_id: string | null }>
     return rows[0] ?? null
   })
-  if (!before || INACTIVE_REFERRER_STATUSES.includes(before.status)) {
+  if (!before || isReferrerInactive(before.status)) {
     return { ok: false, reason: 'referrer_inactive' }
   }
 
@@ -242,7 +258,7 @@ export async function approveReferralReward(
       SELECT status FROM tenants WHERE id = ${referrerId} FOR UPDATE
     `)) as unknown as Array<{ status: TenantStatus }>
     const referrerStatus = tenantRows[0]?.status
-    if (!referrerStatus || INACTIVE_REFERRER_STATUSES.includes(referrerStatus)) {
+    if (!referrerStatus || isReferrerInactive(referrerStatus)) {
       return { ok: false, reason: 'referrer_inactive' } as const
     }
 
@@ -293,9 +309,13 @@ export async function approveReferralReward(
 // ─── Cierre a mano (método A) y rechazo ──────────────────────────────────────
 
 export type CloseReferralRewardResult =
-  { ok: true } | { ok: false; reason: 'not_found' | 'already_processed' }
+  { ok: true } | { ok: false; reason: 'not_found' | 'already_processed' | 'referrer_inactive' }
 
-/** "Ya lo apliqué": el founder devolvió el cobro en el panel de MP. */
+/**
+ * "Ya lo apliqué": el founder devolvió el cobro en el panel de MP. Si el
+ * referidor se dio de baja después de aprobado, el premio se perdió
+ * (sub-regla 3): se niega y al founder le queda solo "No corresponde".
+ */
 export async function markReferralRewardApplied(
   referredTenantId: string,
   systemAdminId: string,
@@ -308,6 +328,13 @@ export async function markReferralRewardApplied(
   }
 
   return withTenantContext(referrerId, async (tx) => {
+    const referrerRows = (await tx.execute(sql`
+      SELECT status FROM tenants WHERE id = ${referrerId} FOR UPDATE
+    `)) as unknown as Array<{ status: TenantStatus }>
+    if (isReferrerInactive(referrerRows[0]?.status ?? 'deleted')) {
+      return { ok: false, reason: 'referrer_inactive' } as const
+    }
+
     const updated = await tx
       .update(tenants)
       .set({ referralRewardStatus: 'applied', referralRewardAt: new Date(), updatedAt: new Date() })

@@ -83,6 +83,18 @@ export const ApruebaConConfirmacion: Story = {
   },
 }
 
+/** El referidor se dio de baja después de aprobado: solo queda "Rechazar". */
+export const ReferidorDadoDeBaja: Story = {
+  args: { rewards: [{ ...pendienteManual, referrerStatus: 'churned' }] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText(/se dio de baja: el premio se perdió/)).toBeInTheDocument()
+    await expect(canvas.queryByRole('button', { name: 'Ya lo devolví' })).toBeNull()
+    await expect(canvas.queryByRole('button', { name: 'Aprobar' })).toBeNull()
+    await expect(canvas.getByRole('button', { name: 'Rechazar' })).toBeInTheDocument()
+  },
+}
+
 /** Doble click desde otra pestaña: el error del CAS se ve en el diálogo. */
 export const YaProcesado: Story = {
   args: {

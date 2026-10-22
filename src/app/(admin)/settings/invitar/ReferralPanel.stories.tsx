@@ -13,6 +13,7 @@ const meta = {
     tenantName: 'Complejo Demo',
     promoOpen: true,
     referrals: [],
+    months: 0,
     generateAction,
   },
 } satisfies Meta<typeof ReferralPanel>
@@ -57,6 +58,7 @@ export const ConInvitados: Story = {
         rewardStatus: 'over_cap',
       },
     ],
+    months: 3,
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

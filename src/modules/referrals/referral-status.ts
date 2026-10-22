@@ -37,11 +37,13 @@ export function describeReferralStatus(status: string | null): ReferralStatusCop
   return COPY.pending
 }
 
-const COUNTED = new Set(['earned', 'manual_pending', 'applied'])
+/**
+ * Un referidor en estos estados ya no tiene cuenta vigente (`/terminos` §7,
+ * cláusula 1) y pierde el premio. `suspended`/`blocked` siguen vigentes
+ * (decisión del dueño 2026-10-22, sub-regla 3).
+ */
+const INACTIVE_REFERRER_STATUSES: ReadonlySet<string> = new Set(['canceled', 'churned', 'deleted'])
 
-/** Meses que ya sumó el dueño: pagaron y el premio no fue rechazado ni quedó sobre el tope. */
-export function countReferralMonths(
-  referrals: ReadonlyArray<{ rewardStatus: string | null }>,
-): number {
-  return referrals.filter((r) => r.rewardStatus !== null && COUNTED.has(r.rewardStatus)).length
+export function isReferrerInactive(status: string | null): boolean {
+  return status !== null && INACTIVE_REFERRER_STATUSES.has(status)
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countReferralMonths, describeReferralStatus } from '@/modules/referrals/referral-status'
+import { describeReferralStatus, isReferrerInactive } from '@/modules/referrals/referral-status'
 import { REFERRAL_REWARD_CAP } from '@/shared/constants'
 
 describe('describeReferralStatus', () => {
@@ -22,15 +22,15 @@ describe('describeReferralStatus', () => {
   })
 })
 
-describe('countReferralMonths', () => {
-  it('cuenta earned, manual_pending y applied; no cuenta null, rejected ni over_cap', () => {
-    const referrals = [null, 'earned', 'manual_pending', 'applied', 'rejected', 'over_cap'].map(
-      (rewardStatus) => ({ rewardStatus }),
-    )
-    expect(countReferralMonths(referrals)).toBe(3)
+describe('isReferrerInactive (sub-regla 3)', () => {
+  it.each(['canceled', 'churned', 'deleted'])('%s pierde el premio', (status) => {
+    expect(isReferrerInactive(status)).toBe(true)
   })
 
-  it('lista vacía → 0', () => {
-    expect(countReferralMonths([])).toBe(0)
-  })
+  it.each(['trialing', 'active', 'past_due', 'suspended', 'blocked', null])(
+    '%s sigue vigente',
+    (status) => {
+      expect(isReferrerInactive(status)).toBe(false)
+    },
+  )
 })

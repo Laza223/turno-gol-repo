@@ -84,7 +84,7 @@ afterAll(async () => {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 type SeedOpts = {
-  status?: 'trialing' | 'active' | 'past_due' | 'blocked' | 'canceled' | 'churned'
+  status?: 'trialing' | 'active' | 'past_due' | 'suspended' | 'blocked' | 'canceled' | 'churned'
   mpSubscriptionId?: string | null
   trialEndsAt?: Date | null
   referredBy?: string | null
@@ -592,6 +592,29 @@ describe('approveReferralReward', () => {
       expect(res).toEqual({ ok: false, reason: 'referrer_inactive' })
       expect((await readTenant(sql, referred)).referral_reward_status).toBe('earned')
       expect(await audits(sql, referrer, 'referral.reward_applied')).toHaveLength(0)
+    },
+  )
+
+  // Decisión del dueño 2026-10-22 (sub-regla 3): suspended/blocked siguen siendo
+  // cuenta vigente. El premio espera su próximo cobro aprobado y se devuelve
+  // ese; la prueba no se toca.
+  it.each(['suspended', 'blocked'] as const)(
+    '10b. referidor %s → manual_pending (cuenta vigente), sin extender la prueba',
+    async (status) => {
+      const sql = getSql()
+      const trialEndsAt = new Date('2026-12-06T03:00:00Z')
+      const referrer = await seedTenant(sql, { status, trialEndsAt })
+      const referred = await seedReferred(sql, referrer, { reward: 'earned', status: 'active' })
+
+      const res = await approveReferralReward(referred, ADMIN_ID, new MockGateway(), NOW)
+
+      expect(res).toEqual({ ok: true, applied: 'manual_pending' })
+      expect((await readTenant(sql, referred)).referral_reward_status).toBe('manual_pending')
+      const [row] = await sql<{ trial_ends_at: string | null }[]>`
+        SELECT trial_ends_at::text FROM tenants WHERE id = ${referrer}
+      `
+      expect(new Date(row?.trial_ends_at ?? 0).toISOString()).toBe(trialEndsAt.toISOString())
+      expect(await audits(sql, referrer, 'referral.reward_approved')).toHaveLength(1)
     },
   )
 })

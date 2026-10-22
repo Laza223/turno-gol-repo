@@ -21,7 +21,9 @@ export const metadata: Metadata = {
  * renderiza FUERA de ese boundary, así que acá el `redirect()` llega a
  * tiempo.
  *
- * Solo chequea SESIÓN (staff autenticado). Cada page sigue llamando
+ * Chequea SESIÓN (staff autenticado) y el cambio de contraseña pendiente, igual
+ * que `(admin)/layout.tsx`: el dueño de un alta asistida entra con una
+ * contraseña temporal y su primer destino es justamente este wizard. Cada page sigue llamando
  * `extractAuthUser()` por su cuenta para el `staffUserId` que necesita —
  * está memoizada con `cache()`, así que no es un segundo viaje real (mismo
  * criterio que `getPublicTenant` en el layout de `[slug]`). El resto de las
@@ -33,6 +35,7 @@ export const metadata: Metadata = {
 export default async function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
+  if (user.forcePasswordChange) redirect('/reset-password')
 
   return (
     <WizardMotionProvider>

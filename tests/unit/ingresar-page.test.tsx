@@ -72,17 +72,17 @@ describe('IngresarPage — acceso jugador', () => {
     expect(link.getAttribute('href')).toBe('/explorar')
   })
 
-  it('en un navegador común va primero Google; en el de Instagram, el email', async () => {
+  it('en un navegador común va primero Google; en el de Instagram, el email y el aviso en su lugar', async () => {
     mocks.userAgent =
       'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/126.0.0.0 Safari/537.36'
     await renderPage()
     expect(buttonNames()).toEqual(['Continuar con Google', 'Mandame el enlace'])
-    expect(screen.queryByText(/Google puede no abrirse/)).toBeNull()
+    expect(screen.queryByText('¿Querés entrar con Google?')).toBeNull()
     cleanup()
 
     mocks.userAgent = INSTAGRAM_UA
     await renderPage()
-    expect(buttonNames()).toEqual(['Mandame el enlace', 'Continuar con Google'])
-    expect(screen.getByText(/Google puede no abrirse/)).toBeTruthy()
+    expect(buttonNames()).toEqual(['Mandame el enlace', 'Copiar enlace'])
+    expect(screen.getByText('¿Querés entrar con Google?')).toBeTruthy()
   })
 })

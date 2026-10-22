@@ -40,8 +40,15 @@ const IN_APP = {
 }
 
 // Los que SÍ dejan entrar con Google: el UA es el del navegador (Custom Tabs y SFSafariViewController
-// no se distinguen de Chrome y Safari, y está bien: Google los acepta).
+// no se distinguen de Chrome y Safari, y está bien: Google los acepta). WhatsApp abre el link de un
+// chat en el navegador del teléfono, así que el UA que llega es el de ese navegador, sin marca de
+// WhatsApp. Su navegador interno solo abre los botones de plantillas de empresas grandes (y en
+// iPhone hay uno en desarrollo, todavía sin UA conocido): no es el camino del link del complejo.
 const BROWSER = {
+  'WhatsApp en iPhone (el link del chat abre Safari)':
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1',
+  'WhatsApp en Android (el link del chat abre Chrome o Custom Tabs)':
+    'Mozilla/5.0 (Linux; Android 15; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Mobile Safari/537.36',
   'Chrome en Android':
     'Mozilla/5.0 (Linux; Android 14; SM-A546E) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36',
   'Chrome Custom Tabs en Android (una app abre el link en Chrome)':

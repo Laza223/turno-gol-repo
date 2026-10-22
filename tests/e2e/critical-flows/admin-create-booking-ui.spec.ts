@@ -9,7 +9,7 @@
  */
 
 import { test, expect } from '../fixtures'
-import { openCreateModal } from '../_helpers/grid'
+import { openCreateModal, visibleGridView } from '../_helpers/grid'
 import {
   tomorrowDateIsoArt,
   cleanupBookingsByIds,
@@ -68,7 +68,9 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
 
       // Booking visible in the grid — guest name rendered by BookingCard.
       // BookingCard truncates at 20 chars: 'E2E Admin Create' is 16 chars, fully visible.
-      await expect(page.getByText(/E2E Admin Create/i)).toBeVisible({ timeout: 10_000 })
+      await expect(visibleGridView(page).getByText(/E2E Admin Create/i)).toBeVisible({
+        timeout: 10_000,
+      })
 
       // Verify DB row via service-role.
       const { data, error } = await supabase
@@ -124,7 +126,9 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
       await expect(page.getByText('Reserva creada', { exact: true })).toBeVisible({
         timeout: 10_000,
       })
-      await expect(page.getByText(/E2E Quick Enter/i)).toBeVisible({ timeout: 10_000 })
+      await expect(visibleGridView(page).getByText(/E2E Quick Enter/i)).toBeVisible({
+        timeout: 10_000,
+      })
 
       const { data, error } = await supabase
         .from('bookings')

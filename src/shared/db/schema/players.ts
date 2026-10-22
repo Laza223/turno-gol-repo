@@ -37,6 +37,18 @@ export const players = pgTable(
     }),
     termsVersion: text('terms_version'),
 
+    // Perfil RIVAL (migr. 099), todo nullable. La foto reusa `avatarUrl`.
+    rivalAcceptedAt: timestamp('rival_accepted_at', { withTimezone: true, mode: 'date' }),
+    rivalTermsVersion: text('rival_terms_version'),
+    /** Cerrada en la DB: goalkeeper | defender | midfielder | forward | any. */
+    position: text('position', {
+      enum: ['goalkeeper', 'defender', 'midfielder', 'forward', 'any'],
+    }),
+    /** Zona de la lista cerrada de `rival-zones.ts` (CHECK en la base, mismo contenido). */
+    zone: text('zone'),
+    /** Origen de la cuenta (ej. 'rival'), para las métricas. */
+    signupSource: text('signup_source'),
+
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
     lastLoginAt: timestamp('last_login_at', {
       withTimezone: true,

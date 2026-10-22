@@ -109,22 +109,12 @@ export const VISIBLE_TENANT_STATUSES = ['active', 'trialing'] as const
 export const SEARCHABLE_TENANT_STATUSES = [...VISIBLE_TENANT_STATUSES, 'canceled'] as const
 const VISIBLE = SEARCHABLE_TENANT_STATUSES
 
-export async function searchPublicTenants(params: SearchParams): Promise<SearchResult> {
-  return withSpan('search.public', 'db.query.search', () => searchPublicTenantsImpl(params))
-}
-
-async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResult> {
-  // Lista vacía = el filtro de disponibilidad no dejó candidatos: cortar acá
-  // (inArray con [] no es válido y la respuesta es trivialmente vacía).
-  if (params.tenantIds && params.tenantIds.length === 0) {
-    return { results: [], total: 0 }
-  }
-
-  const db = getDb()
-  const limit = Math.min(Math.max(params.limit ?? 20, 1), 50)
-  const offset = Math.max(params.offset ?? 0, 0)
-
-  const conds: SQL[] = [
+/**
+ * Visibilidad pública de un complejo: la MISMA para la búsqueda y para RIVAL (que solo
+ * deja armar partidos en complejos que un jugador podría encontrar).
+ */
+export function publicTenantVisibilityConds(): SQL[] {
+  return [
     inArray(tenants.status, VISIBLE as never),
     eq(tenants.marketplaceVisible, true),
     // F-004 (QA prod 2026-08-17): la visibilidad pública decidía solo por
@@ -141,6 +131,24 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
     // romper ese caso real.
     sql`COALESCE((${tenants.settings} ->> 'onboarding_completed')::boolean, false) = true`,
   ]
+}
+
+export async function searchPublicTenants(params: SearchParams): Promise<SearchResult> {
+  return withSpan('search.public', 'db.query.search', () => searchPublicTenantsImpl(params))
+}
+
+async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResult> {
+  // Lista vacía = el filtro de disponibilidad no dejó candidatos: cortar acá
+  // (inArray con [] no es válido y la respuesta es trivialmente vacía).
+  if (params.tenantIds && params.tenantIds.length === 0) {
+    return { results: [], total: 0 }
+  }
+
+  const db = getDb()
+  const limit = Math.min(Math.max(params.limit ?? 20, 1), 50)
+  const offset = Math.max(params.offset ?? 0, 0)
+
+  const conds: SQL[] = publicTenantVisibilityConds()
   if (params.tenantIds) conds.push(inArray(tenants.id, params.tenantIds))
   const q = params.q?.trim()
   if (q) conds.push(ilike(tenants.name, `%${q}%`))

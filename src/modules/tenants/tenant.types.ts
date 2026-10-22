@@ -62,6 +62,9 @@ export type TenantSettings = {
   /** D8 (Fase 2, resumen diario): opt-in explícito, default false — el push
    *  al admin con PWA es el default gratis, el email tiene costo por tenant×día. */
   daily_summary_email_opt_in?: boolean
+  /** Resumen semanal por mail (los lunes, solo administradores): opt-in
+   *  explícito, default false. Lo lee `daily-summary.worker.ts`. */
+  weekly_summary_email_opt_in?: boolean
   /** Oculta todo precio del lado jugador (portal, APIs públicas, checkout,
    *  confirmación, mis reservas). Default false. Pedido del piloto: el dueño del
    *  predio que alquila controla cuánto cobra (2026-10-14). Leer con
@@ -85,7 +88,8 @@ export type CreateTenantInput = {
   longitude?: number | null
   /** Días de prueba gratuita. Omitido = `TRIAL_DAYS` (30), el default del
    *  self-signup — el wizard de onboarding NO lo pasa y no debe pasarlo.
-   *  Solo el alta asistida del super-admin fija un valor distinto (pilotos). */
+   *  El alta asistida tampoco: usa los mismos 30 (decisión 2026-10-22). Hoy
+   *  nadie lo pasa; otro largo es una decisión del dueño. */
   trialDays?: number
   /** UUID pre-generado por el caller (B2): permite resolver `referredByTenantId`
    *  ANTES del insert, para el chequeo real de "no autoreferirse" (además del
@@ -95,6 +99,10 @@ export type CreateTenantInput = {
   /** Referidor del programa de referidos (B2), ya resuelto y validado por
    *  `resolveSignupReferrer`. `null`/omitido = alta sin referido. */
   referredByTenantId?: string | null
+  /** Alta asistida desde el super-admin: se audita `support.tenant.created` en
+   *  la MISMA transacción que la membresía y la suscripción. El self-signup no
+   *  lo pasa. `metadata` nunca lleva la contraseña temporal. */
+  assistedBy?: { systemAdminId: string; metadata: Record<string, unknown> }
 }
 
 export type UpdateTenantInput = Partial<{

@@ -6,6 +6,9 @@ const mocks = vi.hoisted(() => ({
   withTenantContext: vi.fn(),
   getDb: vi.fn(),
   createWhatsappBooking: vi.fn(),
+  cancelByGuest: vi.fn(),
+  findChatBookingForCancel: vi.fn(),
+  guestLateCancelStatus: vi.fn(),
   getPublicAvailability: vi.fn(),
   createDepositPayment: vi.fn(),
   resolveTenantGateway: vi.fn(),
@@ -20,6 +23,14 @@ vi.mock('@/shared/db/client', () => ({
 vi.mock('@/shared/lib/logger', () => ({ logger: mocks.logger }))
 vi.mock('@/modules/bookings/booking.whatsapp', () => ({
   createWhatsappBooking: mocks.createWhatsappBooking,
+}))
+vi.mock('@/modules/bookings/booking.cancellation', () => ({
+  cancelByGuest: mocks.cancelByGuest,
+  findChatBookingForCancel: mocks.findChatBookingForCancel,
+}))
+vi.mock('@/modules/bookings/guest-late-cancel', () => ({
+  guestLateCancelStatus: mocks.guestLateCancelStatus,
+  PHONE_HINT_DIGITS: 8,
 }))
 vi.mock('@/modules/tenants/public.service', () => ({
   getPublicAvailability: mocks.getPublicAvailability,
@@ -41,12 +52,17 @@ import {
   type ToolContext,
 } from '@/modules/whatsapp-bot/whatsapp-bot.tools'
 import {
+  BookingAlreadyEndedError,
   BookingDateOutOfRangeError,
+  BookingNotCancelableError,
+  BookingNotInConfirmedError,
   BookingValidationError,
   CourtOfflineError,
+  GuestLateCancelBlockedError,
   PlayerBannedError,
   PriceUnavailableError,
   SlotTakenError,
+  TenantInactiveError,
   TooManyWhatsappBookingsError,
 } from '@/modules/bookings/booking.errors'
 import type { PublicTenant } from '@/modules/tenants/public.service'
@@ -172,11 +188,12 @@ function bookingResult(overrides: Record<string, unknown> = {}) {
 }
 
 describe('buildBotTools', () => {
-  it('expone exactamente las tres herramientas, todas strict y sin propiedades extra', () => {
+  it('expone exactamente las cuatro herramientas, todas strict y sin propiedades extra', () => {
     const tools = buildBotTools(makeContext(), COURTS)
     expect(tools.map((t) => t.definition.name)).toEqual([
       'ver_disponibilidad',
       'reservar',
+      'cancelar',
       'pasar_a_humano',
     ])
     for (const { definition } of tools) {
@@ -469,6 +486,15 @@ describe('reservar — reglas del complejo y traducción de errores de dominio',
     expect(out).not.toContain('motivo-interno-del-ban')
   })
 
+  it('bloqueo por cancelaciones tardías del invitado → bloqueado con dd/mm HH:MM en hora ART', async () => {
+    // 2026-11-01 02:00Z = 31/10 23:00 ART: el día se cuenta en Argentina, no en UTC.
+    mocks.createWhatsappBooking.mockRejectedValue(
+      new GuestLateCancelBlockedError(new Date('2026-11-01T02:00:00Z')),
+    )
+    const out = await toolNamed(makeContext(), 'reservar').run(validBooking)
+    expect(JSON.parse(out)).toEqual({ error: 'bloqueado', hasta: '31/10 23:00' })
+  })
+
   it('un error inesperado se propaga tal cual (el turno pasa a una persona), NO como ToolInputError', async () => {
     const boom = new Error('connection terminated')
     mocks.createWhatsappBooking.mockRejectedValue(boom)
@@ -524,6 +550,224 @@ describe('reservar — con seña', () => {
     const ctx = makeContext({ tenant: makeTenant({ hidePrices: true }) })
     const out = JSON.parse(await toolNamed(ctx, 'reservar').run(validBooking))
     expect(out).not.toHaveProperty('precio')
+  })
+})
+
+describe('cancelar — dos pasos, solo reservas de este chat', () => {
+  const BOOKING_ID = '44444444-4444-4444-8444-444444444444'
+  const cancelInputOk = { cancha: 'Cancha 1', fecha: '2026-10-25', hora: '21:00' }
+  // El turno es el dom 25/10 21:00 ART; NOW es el sáb 24/10 12:00 ART (33 h antes).
+  const found = (overrides: Record<string, unknown> = {}) => ({
+    id: BOOKING_ID,
+    status: 'confirmed',
+    depositStatus: 'not_required',
+    depositAmount: 0,
+    startsAt: new Date('2026-10-26T00:00:00Z'),
+    endsAt: new Date('2026-10-26T01:00:00Z'),
+    guestPhone: WA_PHONE,
+    ...overrides,
+  })
+  const lateTenant = () => makeTenant({ requiresDeposit: false, lateCancelHours: 48 })
+
+  beforeEach(() => {
+    mocks.findChatBookingForCancel.mockResolvedValue(found())
+    mocks.guestLateCancelStatus.mockResolvedValue({ count: 0, bannedUntil: null })
+  })
+
+  it('confirmar:false NO escribe y busca solo con el chat y el tenant de la clausura', async () => {
+    const out = await toolNamed(makeContext({ tenant: lateTenant() }), 'cancelar').run({
+      ...cancelInputOk,
+      confirmar: false,
+    })
+    expect(JSON.parse(out)).toEqual({ consecuencia: 'aviso' })
+    expect(mocks.cancelByGuest).not.toHaveBeenCalled()
+    expect(mocks.findChatBookingForCancel).toHaveBeenCalledWith(
+      TENANT_ID,
+      CHAT_ID,
+      { courtId: COURT_ID, date: '2026-10-25', timeStart: '21:00' },
+      TX,
+    )
+    expect(mocks.guestLateCancelStatus).toHaveBeenCalledWith(TENANT_ID, '15551234', TX)
+  })
+
+  it('el count+1 del invitado decide: con una tardía previa, la próxima es bloqueo de 7 días', async () => {
+    mocks.guestLateCancelStatus.mockResolvedValue({ count: 1, bannedUntil: null })
+    const out = await toolNamed(makeContext({ tenant: lateTenant() }), 'cancelar').run({
+      ...cancelInputOk,
+      confirmar: false,
+    })
+    expect(JSON.parse(out)).toEqual({ consecuencia: 'bloqueo', dias: 7 })
+  })
+
+  it('antes del umbral y sin seña → sin_consecuencia', async () => {
+    const tenant = makeTenant({ requiresDeposit: false, lateCancelHours: 12 })
+    const out = await toolNamed(makeContext({ tenant }), 'cancelar').run({
+      ...cancelInputOk,
+      confirmar: false,
+    })
+    expect(JSON.parse(out)).toEqual({ consecuencia: 'sin_consecuencia' })
+  })
+
+  it.each([
+    ['en plazo', 24, 'se_devuelve_la_sena'],
+    ['fuera de plazo', 48, 'pierde_la_sena'],
+  ])('con seña paga %s → %s', async (_n, policyHours, consecuencia) => {
+    mocks.findChatBookingForCancel.mockResolvedValue(
+      found({ depositStatus: 'paid', depositAmount: 360_000 }),
+    )
+    const tenant = makeTenant({ cancellationHoursBefore: policyHours })
+    const out = await toolNamed(makeContext({ tenant }), 'cancelar').run({
+      ...cancelInputOk,
+      confirmar: false,
+    })
+    expect(JSON.parse(out)).toEqual({ consecuencia })
+  })
+
+  it('confirmar:true cancela con cancelByGuest dentro de withTenantContext y cuenta la penalidad', async () => {
+    mocks.cancelByGuest.mockResolvedValue({
+      booking: {},
+      notificationIds: [],
+      guestPenalty: { count: 2, bannedUntil: new Date('2026-11-10T00:00:00Z') },
+      inPolicy: false,
+      depositStatus: 'not_required',
+    })
+    const out = await toolNamed(makeContext({ tenant: lateTenant() }), 'cancelar').run({
+      ...cancelInputOk,
+      confirmar: true,
+    })
+    expect(mocks.cancelByGuest).toHaveBeenCalledWith(BOOKING_ID, CHAT_ID, TX)
+    expect(JSON.parse(out)).toEqual({
+      estado: 'cancelada',
+      cancha: 'Cancha 1',
+      fecha: '2026-10-25',
+      hora: '21:00',
+      consecuencia: 'bloqueo',
+      dias: 7,
+      hasta: '09/11 21:00',
+    })
+  })
+
+  it.each([true, false])(
+    'reintento (confirmar:%s) sobre una ya cancelada tarde: cuenta lo que pasó, sin consecuencia futura',
+    async (confirmar) => {
+      mocks.findChatBookingForCancel.mockResolvedValue(
+        found({ status: 'canceled_no_refund', canceledLate: true }),
+      )
+      mocks.cancelByGuest.mockResolvedValue({
+        booking: {},
+        notificationIds: [],
+        replayed: true,
+        guestPenalty: { count: 1, bannedUntil: null },
+        inPolicy: false,
+        depositStatus: 'not_required',
+      })
+      const out = await toolNamed(makeContext({ tenant: lateTenant() }), 'cancelar').run({
+        ...cancelInputOk,
+        confirmar,
+      })
+      expect(JSON.parse(out)).toMatchObject({ estado: 'cancelada', consecuencia: 'aviso' })
+      // Ni siquiera la preview consulta la escalera: lo dice la fila.
+      expect(mocks.guestLateCancelStatus).not.toHaveBeenCalled()
+    },
+  )
+
+  it('confirmar:true con seña devuelta → se_devuelve_la_sena', async () => {
+    mocks.cancelByGuest.mockResolvedValue({
+      booking: {},
+      notificationIds: [],
+      guestPenalty: null,
+      inPolicy: true,
+      depositStatus: 'refunded',
+    })
+    const out = JSON.parse(
+      await toolNamed(makeContext(), 'cancelar').run({ ...cancelInputOk, confirmar: true }),
+    )
+    expect(out).toMatchObject({ estado: 'cancelada', consecuencia: 'se_devuelve_la_sena' })
+  })
+
+  it('una reserva de otro chat (o inexistente) no se encuentra y no se cancela nada', async () => {
+    mocks.findChatBookingForCancel.mockResolvedValue(null)
+    const out = await toolNamed(makeContext(), 'cancelar').run({
+      ...cancelInputOk,
+      confirmar: true,
+    })
+    expect(JSON.parse(out)).toEqual({ error: 'no_encontrada' })
+    expect(mocks.cancelByGuest).not.toHaveBeenCalled()
+  })
+
+  it('pendiente de pago → pendiente_de_pago sin cancelar (el hold se libera solo)', async () => {
+    mocks.findChatBookingForCancel.mockResolvedValue(found({ status: 'pending_payment' }))
+    const out = await toolNamed(makeContext(), 'cancelar').run({
+      ...cancelInputOk,
+      confirmar: true,
+    })
+    expect(JSON.parse(out)).toEqual({ error: 'pendiente_de_pago' })
+    expect(mocks.cancelByGuest).not.toHaveBeenCalled()
+  })
+
+  it('turno que ya terminó → ya_empezo', async () => {
+    mocks.findChatBookingForCancel.mockResolvedValue(
+      found({ endsAt: new Date('2026-10-24T14:00:00Z') }),
+    )
+    const out = await toolNamed(makeContext(), 'cancelar').run({
+      ...cancelInputOk,
+      confirmar: false,
+    })
+    expect(JSON.parse(out)).toEqual({ error: 'ya_empezo' })
+  })
+
+  it.each([
+    ['BookingAlreadyEndedError', 'ya_empezo', () => new BookingAlreadyEndedError('x')],
+    ['BookingNotInConfirmedError', 'no_encontrada', () => new BookingNotInConfirmedError('x')],
+    [
+      'BookingNotCancelableError',
+      'no_encontrada',
+      () => new BookingNotCancelableError('x', 'canceled_no_refund', 'admin'),
+    ],
+    [
+      'TenantInactiveError',
+      'no_se_puede_cancelar_por_aca',
+      () => new TenantInactiveError(TENANT_ID, 'blocked'),
+    ],
+  ])('%s → { error: "%s" }', async (_n, reason, makeError) => {
+    mocks.cancelByGuest.mockRejectedValue(makeError())
+    const out = await toolNamed(makeContext(), 'cancelar').run({
+      ...cancelInputOk,
+      confirmar: true,
+    })
+    expect(JSON.parse(out)).toEqual({ error: reason })
+  })
+
+  it('un error inesperado se propaga (el turno pasa a una persona)', async () => {
+    const boom = new Error('connection terminated')
+    mocks.cancelByGuest.mockRejectedValue(boom)
+    expect(
+      await outcomeOf(toolNamed(makeContext(), 'cancelar'), { ...cancelInputOk, confirmar: true }),
+    ).toBe(boom)
+  })
+
+  it('cancha inexistente → lista de canchas, sin buscar', async () => {
+    const out = await toolNamed(makeContext(), 'cancelar').run({
+      ...cancelInputOk,
+      cancha: 'Cancha 9',
+      confirmar: true,
+    })
+    expect(JSON.parse(out)).toEqual({ error: 'cancha_inexistente', canchas: ['Cancha 1'] })
+    expect(mocks.findChatBookingForCancel).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['sin confirmar', cancelInputOk],
+    ['confirmar como string', { ...cancelInputOk, confirmar: 'true' }],
+    ['tenant_id', { ...cancelInputOk, confirmar: true, tenant_id: OTHER_TENANT_ID }],
+    ['chat_id', { ...cancelInputOk, confirmar: true, chat_id: OTHER_CHAT_ID }],
+    ['booking_id', { ...cancelInputOk, confirmar: true, booking_id: BOOKING_ID }],
+    ['hora inválida', { ...cancelInputOk, hora: '9:00', confirmar: true }],
+  ])('input inválido (%s) → ToolInputError y no toca nada', async (_n, input) => {
+    const out = await outcomeOf(toolNamed(makeContext(), 'cancelar'), input)
+    expect(out).toBeInstanceOf(ToolInputError)
+    expect(mocks.findChatBookingForCancel).not.toHaveBeenCalled()
+    expect(mocks.cancelByGuest).not.toHaveBeenCalled()
   })
 })
 

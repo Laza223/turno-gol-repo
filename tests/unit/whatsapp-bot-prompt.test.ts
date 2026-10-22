@@ -309,6 +309,29 @@ describe('buildComplexContext', () => {
     }
   })
 
+  it('cancelación sin seña: con late_cancel_hours dice el umbral; apagado (0) no dice nada', () => {
+    const on = buildComplexContext(
+      makeTenant({ requiresDeposit: false, lateCancelHours: 6 }),
+      [],
+      SATURDAY_1200,
+    )
+    expect(on).toContain('Cancelación: cancelar con menos de 6 h de anticipación')
+    for (const lateCancelHours of [0, undefined]) {
+      const off = buildComplexContext(
+        makeTenant({ requiresDeposit: false, lateCancelHours }),
+        [],
+        SATURDAY_1200,
+      )
+      expect(off).not.toContain('Cancelación:')
+    }
+  })
+
+  it('cancelación con seña: manda la política de la seña, no la escalera tardía', () => {
+    const ctx = buildComplexContext(makeTenant({ lateCancelHours: 6 }), [], SATURDAY_1200)
+    expect(ctx).toContain('se devuelve la seña')
+    expect(ctx).not.toContain('cancelación tardía')
+  })
+
   it('la duración del turno está en los datos del complejo (el juez y el bot ven lo mismo)', () => {
     expect(buildComplexContext(makeTenant(), [], SATURDAY_1200)).toContain(
       'Cada turno dura 60 minutos.',
@@ -354,6 +377,11 @@ describe('SYSTEM_RULES (bloque cacheado)', () => {
     ]) {
       expect(SYSTEM_RULES).not.toContain(name)
     }
+  })
+
+  it('las cancelaciones las resuelve el bot en dos pasos: ya no se derivan a una persona', () => {
+    expect(SYSTEM_RULES).toContain('Para cancelar, llamá a cancelar sin confirmar')
+    expect(SYSTEM_RULES).not.toMatch(/cancelaciones,/)
   })
 
   it('cierra con la regla de que las reglas valen para toda la conversación', () => {

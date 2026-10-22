@@ -71,6 +71,14 @@ export class PlayerBannedError extends Error {
   }
 }
 
+/** Invitado del bot bloqueado por cancelaciones tardías reiteradas (ver `guest-late-cancel.ts`). */
+export class GuestLateCancelBlockedError extends Error {
+  constructor(public readonly until: Date) {
+    super(`Guest blocked from booking by late cancellations until ${until.toISOString()}`)
+    this.name = 'GuestLateCancelBlockedError'
+  }
+}
+
 export class BookingNotOwnedByPlayerError extends Error {
   constructor(bookingId: string, playerId: string) {
     super(`Booking ${bookingId} does not belong to player ${playerId}`)

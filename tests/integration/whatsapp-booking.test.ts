@@ -5,11 +5,15 @@ import {
   createWhatsappBooking,
   type CreateWhatsappBookingInput,
 } from '@/modules/bookings/booking.whatsapp'
+import { cancelByGuest, findChatBookingForCancel } from '@/modules/bookings/booking.cancellation'
+import { guestLateCancelStatus, PHONE_HINT_DIGITS } from '@/modules/bookings/guest-late-cancel'
 import {
   BookingDateOutOfRangeError,
+  BookingNotInConfirmedError,
   BookingNotOfferedError,
   BookingValidationError,
   CourtOfflineError,
+  GuestLateCancelBlockedError,
   PlayerBannedError,
   SlotTakenError,
   TooManyWhatsappBookingsError,
@@ -616,5 +620,313 @@ describe('createDepositPayment — returnUrls (el bot de WhatsApp vuelve a otra 
       failureUrl: `${APP_URL}/reserva/${booking.id}/error`,
       pendingUrl: `${APP_URL}/reserva/${booking.id}/pendiente`,
     })
+  })
+})
+
+describe('cancelByGuest — cancelación del invitado del bot', () => {
+  // 96 h: el turno (hoy + 3 días, 20:00 ART) siempre cae dentro de la ventana tardía.
+  const LATE_SETTINGS = { late_cancel_hours: 96 }
+
+  const cancel = (s: Seed, bookingId: string) =>
+    withTenantContext(s.tenantId, (tx) => cancelByGuest(bookingId, s.chatId, tx))
+
+  async function row(bookingId: string) {
+    const [r] = await getSql()<
+      {
+        status: string
+        canceled_by: string | null
+        canceled_late: boolean
+        deposit_status: string
+      }[]
+    >`SELECT status, canceled_by, canceled_late, deposit_status FROM bookings WHERE id = ${bookingId}`
+    return r!
+  }
+
+  it('un chat ajeno no puede cancelar: indistinguible de una reserva que no existe', async () => {
+    const s = await seed({ settings: LATE_SETTINGS })
+    const { booking } = await book(s)
+    const other = await addChat(s)
+
+    await expect(cancel(other, booking.id)).rejects.toBeInstanceOf(BookingNotInConfirmedError)
+    await expect(
+      withTenantContext(s.tenantId, (tx) =>
+        cancelByGuest('00000000-0000-4000-8000-000000000001', s.chatId, tx),
+      ),
+    ).rejects.toBeInstanceOf(BookingNotInConfirmedError)
+    expect((await row(booking.id)).status).toBe('confirmed')
+  })
+
+  it('en plazo y sin seña: cancela sin consecuencia, y el reintento es replay sin escribir', async () => {
+    const s = await seed({ settings: { late_cancel_hours: 1 } })
+    const { booking } = await book(s)
+
+    const out = await cancel(s, booking.id)
+    expect(out.guestPenalty).toBeNull()
+    expect(await row(booking.id)).toMatchObject({
+      status: 'canceled_no_refund',
+      canceled_by: 'player',
+      canceled_late: false,
+    })
+
+    const audits = () =>
+      getSql()<{ n: number }[]>`
+        SELECT COUNT(*)::int AS n FROM audit_logs
+        WHERE resource_id = ${booking.id} AND action = 'booking.canceled'
+      `
+    expect((await audits())[0]!.n).toBe(1)
+    const again = await cancel(s, booking.id)
+    expect(again.replayed).toBe(true)
+    expect((await audits())[0]!.n).toBe(1)
+  })
+
+  it('tarde y sin seña: queda canceled_late con aviso (la primera)', async () => {
+    const s = await seed({ settings: LATE_SETTINGS })
+    const { booking } = await book(s)
+
+    const out = await cancel(s, booking.id)
+    expect(out.guestPenalty).toEqual({ count: 1, bannedUntil: null })
+    expect(await row(booking.id)).toMatchObject({
+      status: 'canceled_no_refund',
+      canceled_late: true,
+    })
+    // El turno se libera para otro.
+    await expect(book(await addChat(s))).resolves.toMatchObject({ alreadyExisted: false })
+  })
+
+  it('la 2da tardía bloquea reservar por el bot (por teléfono, también desde otro chat)', async () => {
+    const s = await seed({ settings: LATE_SETTINGS })
+    const first = await book(s)
+    const second = await book(s, { timeStart: '21:00' })
+    await cancel(s, first.booking.id)
+    const out = await cancel(s, second.booking.id)
+    expect(out.guestPenalty?.count).toBe(2)
+    expect(out.guestPenalty?.bannedUntil).toBeInstanceOf(Date)
+
+    const err = await book(s, { timeStart: '19:00' }).catch((e: unknown) => e)
+    expect(err).toBeInstanceOf(GuestLateCancelBlockedError)
+    expect((err as GuestLateCancelBlockedError).until.getTime()).toBeGreaterThan(
+      Date.now() + 6 * 86_400_000,
+    )
+    // Otro chat con el MISMO teléfono: se cruza por los últimos 8 dígitos.
+    const otherChatId = await insertWhatsappChat(getSql(), {
+      tenantId: s.tenantId,
+      waPhone: `1${s.phone}`,
+    })
+    await expect(
+      book({ ...s, chatId: otherChatId }, { timeStart: '19:00' }),
+    ).rejects.toBeInstanceOf(GuestLateCancelBlockedError)
+    // Otro teléfono, no.
+    await expect(book(await addChat(s), { timeStart: '19:00' })).resolves.toBeDefined()
+  })
+
+  it('con seña paga en plazo: queda la devolución registrada', async () => {
+    const s = await seed({ mp: true, settings: { requires_deposit: true, late_cancel_hours: 0 } })
+    const { booking } = await book(s)
+    await getSql()`
+      UPDATE bookings SET status = 'confirmed', deposit_status = 'paid', payment_method = 'transfer'
+      WHERE id = ${booking.id}
+    `
+
+    const out = await cancel(s, booking.id)
+    expect(out.depositStatus).toBe('refunded')
+    expect(out.guestPenalty).toBeNull()
+    expect(await row(booking.id)).toMatchObject({
+      status: 'canceled_refunded',
+      deposit_status: 'refunded',
+      canceled_late: false,
+    })
+    const refunds = await getSql()<{ n: number }[]>`
+      SELECT COUNT(*)::int AS n FROM payments WHERE booking_id = ${booking.id} AND type = 'refund'
+    `
+    expect(refunds[0]!.n).toBe(1)
+  })
+})
+
+describe('findChatBookingForCancel — qué reserva encuentra el bot', () => {
+  const find = (s: Seed, over: { courtId?: string; date?: string; timeStart?: string } = {}) =>
+    withTenantContext(s.tenantId, (tx) =>
+      findChatBookingForCancel(
+        s.tenantId,
+        s.chatId,
+        { courtId: s.courtId, date: DATE, timeStart: '20:00', ...over },
+        tx,
+      ),
+    )
+
+  it('dos chats y dos complejos: cada uno ve solo lo suyo', async () => {
+    const a = await seed()
+    const a2 = await addChat(a)
+    const b = await seed()
+    const mine = await book(a)
+    const theirs = await book(a2, { timeStart: '21:00' })
+    await book(b)
+
+    expect((await find(a))?.id).toBe(mine.booking.id)
+    // El turno de otro chat del MISMO complejo no aparece, ni a la misma hora.
+    expect(await find(a, { timeStart: '21:00' })).toBeNull()
+    expect((await find(a2, { timeStart: '21:00' }))?.id).toBe(theirs.booking.id)
+    expect(await find(a2)).toBeNull()
+    // El chat de un complejo no encuentra nada en la cancha de otro.
+    expect(await find({ ...a, courtId: b.courtId })).toBeNull()
+    expect(await find({ ...b, chatId: a.chatId })).toBeNull()
+  })
+
+  it('complejo que cierra de madrugada: el turno de las 00:00 se busca por el día operativo', async () => {
+    const s = await seed({
+      openingHours: weekOf({ open: '18:00', close: '02:00' }),
+      closesNextDay: true,
+    })
+    const { booking } = await book(s, { timeStart: '00:00' })
+
+    expect((await find(s, { timeStart: '00:00' }))?.id).toBe(booking.id)
+    expect(await find(s, { date: addDays(DATE, 1), timeStart: '00:00' })).toBeNull()
+  })
+
+  it('una reserva pending_payment se encuentra con su estado', async () => {
+    const s = await seed({ mp: true, settings: { requires_deposit: true } })
+    await book(s)
+    expect(await find(s)).toMatchObject({ status: 'pending_payment' })
+  })
+
+  it('la ya cancelada por el jugador se encuentra; la cancelada por el complejo, no', async () => {
+    const s = await seed({ settings: { late_cancel_hours: 1 } })
+    const { booking } = await book(s)
+    await withTenantContext(s.tenantId, (tx) => cancelByGuest(booking.id, s.chatId, tx))
+    expect(await find(s)).toMatchObject({ id: booking.id, status: 'canceled_no_refund' })
+
+    const byAdmin = await book(s, { timeStart: '21:00' })
+    await getSql()`
+      UPDATE bookings
+      SET status = 'canceled_no_refund', canceled_by = 'admin', canceled_at = NOW()
+      WHERE id = ${byAdmin.booking.id}
+    `
+    expect(await find(s, { timeStart: '21:00' })).toBeNull()
+  })
+
+  it('con una cancelada y otra vigente en el mismo turno, gana la vigente', async () => {
+    const s = await seed({ settings: { late_cancel_hours: 1 } })
+    const first = await book(s)
+    await withTenantContext(s.tenantId, (tx) => cancelByGuest(first.booking.id, s.chatId, tx))
+    const second = await book(s)
+    expect((await find(s))?.id).toBe(second.booking.id)
+  })
+})
+
+describe('guestLateCancelStatus — escalera derivada del teléfono', () => {
+  const status = (s: Seed, phone = s.phone) =>
+    withTenantContext(s.tenantId, (tx) =>
+      guestLateCancelStatus(s.tenantId, phone.slice(-PHONE_HINT_DIGITS), tx),
+    )
+
+  /** Reserva de `s` en `timeStart` marcada como cancelada tarde hace `daysAgo` días. */
+  async function lateCanceled(
+    s: Seed,
+    timeStart: string,
+    daysAgo: number,
+    over: { late?: boolean; noPhone?: boolean } = {},
+  ): Promise<string> {
+    const { booking } = await book(s, { timeStart })
+    await getSql()`
+      UPDATE bookings
+      SET status = 'canceled_no_refund', canceled_by = 'player', canceled_late = ${over.late ?? true},
+          guest_phone = CASE WHEN ${over.noPhone ?? false} THEN NULL ELSE guest_phone END,
+          canceled_at = NOW() - ${daysAgo}::int * INTERVAL '1 day'
+      WHERE id = ${booking.id}
+    `
+    return booking.id
+  }
+
+  it('sin cancelaciones: cero y sin bloqueo', async () => {
+    const s = await seed()
+    expect(await status(s)).toEqual({ count: 0, bannedUntil: null })
+  })
+
+  it('una sola: cuenta 1 y es solo aviso', async () => {
+    const s = await seed()
+    await lateCanceled(s, '20:00', 1)
+    expect(await status(s)).toEqual({ count: 1, bannedUntil: null })
+  })
+
+  it('dos recientes: bloqueo de 7 días desde la última', async () => {
+    const s = await seed()
+    await lateCanceled(s, '20:00', 3)
+    await lateCanceled(s, '21:00', 2)
+    const res = await status(s)
+    expect(res.count).toBe(2)
+    const expected = Date.now() + 5 * 86_400_000
+    expect(Math.abs(res.bannedUntil!.getTime() - expected)).toBeLessThan(60_000)
+  })
+
+  it('el bloqueo ya cumplido no bloquea, aunque las dos sigan en la ventana de 60 días', async () => {
+    const s = await seed()
+    await lateCanceled(s, '20:00', 30)
+    await lateCanceled(s, '21:00', 20)
+    expect(await status(s)).toEqual({ count: 2, bannedUntil: null })
+  })
+
+  it('las de más de 60 días no cuentan', async () => {
+    const s = await seed()
+    await lateCanceled(s, '20:00', 61)
+    await lateCanceled(s, '21:00', 1)
+    expect(await status(s)).toEqual({ count: 1, bannedUntil: null })
+  })
+
+  it('una reserva sin guest_phone no se le suma a nadie', async () => {
+    const s = await seed()
+    await lateCanceled(s, '20:00', 1, { noPhone: true })
+    expect(await status(s)).toEqual({ count: 0, bannedUntil: null })
+  })
+
+  it('aislada por complejo: el mismo teléfono en otro complejo arranca de cero', async () => {
+    const a = await seed()
+    const b = await seed()
+    await lateCanceled(a, '20:00', 1)
+    await lateCanceled(a, '21:00', 1)
+    expect((await status(a)).count).toBe(2)
+    expect(await status(b, a.phone)).toEqual({ count: 0, bannedUntil: null })
+    // Y la de B (mismo teléfono) no le suma a A.
+    await lateCanceled({ ...b, phone: a.phone }, '20:00', 1)
+    expect((await status(a)).count).toBe(2)
+    expect((await status(b, a.phone)).count).toBe(1)
+  })
+
+  it('las no tardías no cuentan', async () => {
+    const s = await seed()
+    await lateCanceled(s, '20:00', 1, { late: false })
+    expect(await status(s)).toEqual({ count: 0, bannedUntil: null })
+  })
+})
+
+describe('cancelByGuest — reintento y jugador vinculado', () => {
+  it('el replay de una cancelación tardía devuelve la escalera vigente, sin escribir', async () => {
+    const s = await seed({ settings: { late_cancel_hours: 96 } })
+    const { booking } = await book(s)
+    const run = () => withTenantContext(s.tenantId, (tx) => cancelByGuest(booking.id, s.chatId, tx))
+
+    expect((await run()).guestPenalty).toEqual({ count: 1, bannedUntil: null })
+    const again = await run()
+    expect(again.replayed).toBe(true)
+    expect(again.guestPenalty).toEqual({ count: 1, bannedUntil: null })
+    const audits = await getSql()<{ n: number }[]>`
+      SELECT COUNT(*)::int AS n FROM audit_logs
+      WHERE resource_id = ${booking.id} AND action = 'booking.canceled'
+    `
+    expect(audits[0]!.n).toBe(1)
+  })
+
+  it('con jugador vinculado, la tardía corre su escalera de jugador', async () => {
+    const s = await seed({ settings: { late_cancel_hours: 96 } })
+    const player = await createTestPlayer(getSql())
+    await linkPlayerToTenant(getSql(), s.tenantId, player.id)
+    const { booking } = await book(s)
+    await getSql()`UPDATE bookings SET player_id = ${player.id} WHERE id = ${booking.id}`
+
+    const out = await withTenantContext(s.tenantId, (tx) => cancelByGuest(booking.id, s.chatId, tx))
+    expect(out.guestPenalty).toEqual({ count: 1, bannedUntil: null })
+    // La escalera del jugador cuenta sus reservas con `player_id`: la fila quedó tardía.
+    const [row] = await getSql()<{ canceled_late: boolean }[]>`
+      SELECT canceled_late FROM bookings WHERE id = ${booking.id}
+    `
+    expect(row?.canceled_late).toBe(true)
   })
 })

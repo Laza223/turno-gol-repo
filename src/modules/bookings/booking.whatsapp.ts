@@ -33,11 +33,13 @@ import {
   BookingNotOfferedError,
   BookingValidationError,
   CourtOfflineError,
+  GuestLateCancelBlockedError,
   PlayerBannedError,
   SlotTakenError,
   TooManyWhatsappBookingsError,
 } from './booking.errors'
 import { calcDepositCents } from './deposit'
+import { guestLateCancelStatus, PHONE_HINT_DIGITS } from './guest-late-cancel'
 import { rowToBookingRow } from './booking.mappers'
 import type { BookingRow } from './booking.types'
 
@@ -68,8 +70,6 @@ export type CreateWhatsappBookingResult = {
 
 const PHONE_RE = /^\d{8,15}$/
 const GUEST_NAME_MAX = 80
-/** Largo de `players.phone_hint8`. */
-const PHONE_HINT_DIGITS = 8
 
 export async function createWhatsappBooking(
   tenantId: string,
@@ -233,6 +233,10 @@ async function createWhatsappBookingImpl(
     tx,
   )
   if (ban) throw new PlayerBannedError(ban.playerId, tenantId, false, ban.reason, ban.until)
+
+  // Cancelaciones tardías del invitado: se derivan de sus reservas (no hay fila de ban).
+  const late = await guestLateCancelStatus(tenantId, input.guestPhone.slice(-PHONE_HINT_DIGITS), tx)
+  if (late.bannedUntil) throw new GuestLateCancelBlockedError(late.bannedUntil)
 
   // ── Topes por CHAT (no por teléfono: el staff puede editarlo en la reserva).
   const capRows = (await tx.execute(sql`

@@ -37,7 +37,9 @@ type Dataset = 'bookings' | 'abonados' | 'clients'
  * archivos. Si el audit no se puede escribir, el dato no sale.
  *
  * Solo el dueño (spec §6.1): `requireAdminStaffAction` además rebota a un
- * complejo bloqueado (§6.3) igual que el resto de las acciones del panel.
+ * complejo bloqueado (§6.3) igual que el resto de las acciones del panel. En
+ * solo lectura (`suspended`, decisión 2026-10-22) exportar sí se puede: es
+ * leer sus propios datos, y pasa por `allowReadOnly`.
  */
 async function runExport(
   dataset: Dataset,
@@ -45,7 +47,7 @@ async function runExport(
   header: string,
   auditExtra: Record<string, unknown> = {},
 ): Promise<DataExportResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowReadOnly: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant, user } = auth
 

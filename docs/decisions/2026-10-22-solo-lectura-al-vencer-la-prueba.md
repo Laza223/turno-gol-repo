@@ -16,7 +16,7 @@ Cuando vence la prueba y el complejo no pagó, **no queda bloqueado de golpe**. 
 ### Qué puede hacer en solo lectura
 
 - Entrar al panel y ver Hoy, grilla, reservas, jugadores, abonados y caja. El dueño ve además Métricas y Ajustes.
-- Exportar sus datos, cuando entre la exportación (#476). `requireAdminStaffAction` acepta `allowReadOnly` para eso: la página y las acciones de exportar tienen que pedirlo.
+- Exportar sus datos desde Ajustes → Tus datos (`/settings/datos`, #476). La página y `runExport` piden el guard con `allowReadOnly`.
 - Activar el plan desde `/reactivar`. `reactivate()` ya acepta `suspended` y, cuando el pago entra, `onPaymentApproved` lo pasa a `active` (`transitionToActiveFromAny`).
 
 ### Qué no puede hacer

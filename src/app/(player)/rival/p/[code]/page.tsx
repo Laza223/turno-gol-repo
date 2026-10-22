@@ -6,6 +6,7 @@ import { isInAppBrowser } from '@/lib/in-app-browser'
 import { absoluteUrl } from '@/lib/seo/metadata'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import { getPublicMatch, getRivalWelcomeState, getRoster } from '@/modules/rival/rival.service'
+import { shouldAutoJoin } from '@/modules/rival/rival-join-rule'
 import { buildShareHref } from '@/modules/rival/rival-share'
 import { RIVAL_INTENT_PARAM } from '@/shared/security/rival-intent'
 import {
@@ -79,7 +80,11 @@ export default async function RivalMatchPage(props: {
       shareUrl={shareUrl}
       shareHref={buildShareHref(match, shareUrl)}
       welcome={welcome}
-      autoJoin={intentOk && welcome === null}
+      autoJoin={shouldAutoJoin({
+        intentOk,
+        welcomeDone: welcome === null,
+        myStatus: roster.find((r) => r.isMe)?.status ?? null,
+      })}
       openWelcome={intentOk && welcome !== null}
       intentParam={RIVAL_INTENT_PARAM}
       voyGate={

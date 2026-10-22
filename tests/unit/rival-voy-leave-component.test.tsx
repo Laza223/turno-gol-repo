@@ -80,6 +80,27 @@ describe('VoyPanel', () => {
   })
 })
 
+describe('VoyPanel: el intent se gasta', () => {
+  it('con la bienvenida abierta, el param sale de la URL apenas se monta (no solo al autoenviar)', async () => {
+    window.history.replaceState(null, '', '/rival/p/ABCDEFGHJK?rival_intent=TOKEN&otro=1')
+    renderVoy({
+      welcome: { firstName: 'Lazaro', position: null, zone: null },
+      openWelcome: true,
+    })
+    await waitFor(() => expect(window.location.search).toBe('?otro=1'))
+  })
+
+  it('un rechazo de red de la action se muestra inline y no rompe', async () => {
+    const join = vi.fn(async () => {
+      throw new TypeError('Failed to fetch')
+    })
+    renderVoy({ joinAction: join })
+    fireEvent.click(screen.getByRole('button', { name: 'Voy' }))
+    expect((await screen.findByRole('alert')).textContent).toMatch(/conexión/)
+    expect(screen.getByRole('button', { name: 'Voy' })).toBeTruthy()
+  })
+})
+
 describe('LeaveMatch', () => {
   it('"Me bajo" pide confirmación y recién ahí llama a la action con el partido', async () => {
     const leave = vi.fn(async () => ({ success: true as const }))

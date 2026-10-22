@@ -8,8 +8,8 @@ Es el esfuerzo de [`docs/decisions/2026-10-22-rival-v1.md`](../decisions/2026-10
 |---|---|---|---|
 | 0 | Documentos: spec, decisiones (RIVAL v1 y freeze), ideas, este ledger, `CLAUDE.md` y `PRODUCT.md` | #467 | Mergeado |
 | 1 | DB + esqueleto del módulo + retención, ARCO y export | #469 | Mergeado |
-| 2 | Shell, `/rival`, `/rival/nuevo`, vista del partido, entradas desde reservas, OG. Suma la tarjeta de bienvenida, que estaba en la fase 3, porque crear un partido la exige | — | En curso |
-| 3 | "Voy" con cuenta (reusa la bienvenida de la fase 2), banco, me bajo, avisar al grupo, repetir | — | Pendiente |
+| 2 | Shell, `/rival`, `/rival/nuevo`, vista del partido, entradas desde reservas, OG. Suma la tarjeta de bienvenida, que estaba en la fase 3, porque crear un partido la exige | #479 | Mergeado |
+| 3 | "Voy" con cuenta (reusa la bienvenida de la fase 2), banco, me bajo, avisar al grupo, repetir | — | En curso |
 | 4 | Tablón: publicar, pedir, decidir, contacto, bans, denuncias | — | Pendiente |
 | 5 | Foto de perfil (R2) | — | Pendiente |
 | 6 | Emails y alertas | — | Pendiente |
@@ -39,6 +39,8 @@ Es el esfuerzo de [`docs/decisions/2026-10-22-rival-v1.md`](../decisions/2026-10
 | 2 | `sonnet-adversarial-reviewer` (contexto fresco) | Verificar los arreglos | ~105 k tokens y ~9 min | "Listo para PR". Quedan 🟢: el CTA desde reservas a más de 7 días y un callejón si la reserva se cancela con el form abierto |
 | 2 | `sonnet-ux-verifier` | App real a 390 px y escritorio, claro y oscuro | ~135 k tokens y ~21 min | "Pasa con problemas": tres verdes en `/rival` vacío y detalles menores. El desborde de 3 px del header con sesión es preexistente (aparece con el flag apagado). La app corrió como `postgres`, así que la RLS no se ejerció en la UI (sí en integración) |
 | 2 | `sonnet-implementer` (B, tercera vuelta) | Ajustes de la verificación | Medio | CTA solo hasta +7 con un helper único (`rival-window.ts`), un solo verde en `/rival`, chips sin recorte, salida si se cae el sello y test de componente del alert |
+| 3 | `sonnet-implementer` (A) | Intent firmado (`rival-intent.ts`), `isRivalPath`, vuelta directa en el callback y en aceptar-terminos, `signup_source`, variante RIVAL de `LoginGate` y `RivalVoyGate` | ~150 k tokens y ~21 min | Hecho. La primitiva HMAC quedó duplicada (unas 40 líneas) para no refactorizar `booking-intent.ts`; el alfabeto del código está copiado en `auth-success.ts` por la regla de capas, con un test que falla si diverge |
+| 3 | `sonnet-implementer` (B) | Voy con sesión y bienvenida en un toque, autoenvío con intent, me bajo, avisar al grupo, repetir, actions | ~187 k tokens y ~20 min | Hecho. "Avisar al grupo" usa `buildGroupShareHref` (`wa.me/?text=`), porque `buildWhatsappUrl` exige teléfono |
 
 ## Cambios ajenos sobre superficie de RIVAL
 

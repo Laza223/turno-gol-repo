@@ -1,5 +1,6 @@
 'use client'
 
+import { unstable_rethrow } from 'next/navigation'
 import { startTransition, useEffect, useRef, useState, useTransition, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
@@ -14,6 +15,7 @@ type AcceptAndJoinAction = (prev: RivalFormResult, formData: FormData) => Promis
 export type VoyWelcome = { firstName: string; position: string | null; zone: string | null }
 
 const STORAGE_PREFIX = 'tg-rival-auto-join:'
+const OFFLINE = 'No pudimos conectar. Revisá tu conexión y probá de nuevo.'
 const ERROR = 'text-[13px] leading-5 text-red-700 dark:text-red-300'
 
 /**
@@ -56,8 +58,14 @@ export function VoyPanel({
   function join() {
     setError(null)
     startJoin(async () => {
-      const res = await joinAction(code)
-      if (!res.success) startTransition(() => setError(res.error))
+      try {
+        const res = await joinAction(code)
+        if (!res.success) startTransition(() => setError(res.error))
+      } catch (err) {
+        // Un redirect o un notFound de la action viajan como excepción: no se tragan.
+        unstable_rethrow(err)
+        startTransition(() => setError(OFFLINE))
+      }
     })
   }
 
@@ -65,6 +73,15 @@ export function VoyPanel({
     event.preventDefault()
     join()
   }
+
+  // El intento se gasta al montar, en cualquier camino (también con la bienvenida abierta): si la
+  // URL lo conserva, un re-render posterior (p. ej. tras "Me bajo") lo volvería a leer como válido.
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (!url.searchParams.has(intentParam)) return
+    url.searchParams.delete(intentParam)
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
+  }, [intentParam])
 
   useEffect(() => {
     if (!autoJoin || welcome || started.current) return
@@ -78,11 +95,8 @@ export function VoyPanel({
       // Sin sessionStorage (modo privado): queda el guard del ref.
     }
     if (alreadySent || !formRef.current) return
-    const url = new URL(window.location.href)
-    url.searchParams.delete(intentParam)
-    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
     formRef.current.requestSubmit()
-  }, [autoJoin, welcome, code, intentParam])
+  }, [autoJoin, welcome, code])
 
   if (welcome) {
     return cardOpen ? (

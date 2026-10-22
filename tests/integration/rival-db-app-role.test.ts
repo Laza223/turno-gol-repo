@@ -541,7 +541,7 @@ describe('2. cupo, banco y promoción', () => {
     ).toBe(confirmedAt.getTime())
   })
 
-  it('2.5 el alta por invitación es idempotente y quien se bajó no vuelve por el link', async () => {
+  it('2.5 el alta por invitación es idempotente; quien se bajó vuelve como alta nueva (decisión 10)', async () => {
     const org = await newPlayer()
     const m = await createMatch(org, { capacity: 5 })
     const a = await newPlayer()
@@ -551,7 +551,7 @@ describe('2. cupo, banco y promoción', () => {
     expect(r2['joined']).toBe(false)
     await setStatus(a, String(r1['participant_id']), 'left')
     const r3 = await join(a, m.code)
-    expect(r3).toMatchObject({ status: 'left', joined: false })
+    expect(r3).toMatchObject({ status: 'confirmed', joined: true })
   })
 
   it('2.6 el cliente no puede insertarse directo como confirmed ni por invitación (solo el pedido del tablón)', async () => {
@@ -1911,4 +1911,181 @@ describe('17. tres denuncias simultáneas contra el mismo partido', () => {
       expect((await matchRow(m.id))['hidden_at'], `ronda ${round}`).not.toBeNull()
     }
   }, 60_000)
+})
+
+// ─── 18. Quien se bajó vuelve por el link (decisión 10) ──────────────────
+
+describe('18. la vuelta por el link desde `left` es un alta nueva', () => {
+  async function row(matchId: string, playerId: string): Promise<Row> {
+    const rows = await adminSql()<Row[]>`
+      SELECT id, status, role, origin FROM rival_participants
+      WHERE match_id = ${matchId} AND player_id = ${playerId}`
+    return rows[0]!
+  }
+  async function count(matchId: string): Promise<number> {
+    return Number((await matchRow(matchId))['confirmed_count'])
+  }
+
+  it('18.1 un confirmado se baja y vuelve confirmado si hay lugar', async () => {
+    const org = await newPlayer()
+    const m = await createMatch(org, { capacity: 5 })
+    const a = await newPlayer()
+    await join(a, m.code)
+    await setStatus(a, await participantId(m.id, a), 'left')
+    expect(await count(m.id)).toBe(1)
+    const r = await join(a, m.code)
+    expect(r).toMatchObject({ status: 'confirmed', joined: true })
+    expect(await row(m.id, a)).toMatchObject({
+      status: 'confirmed',
+      role: 'player',
+      origin: 'invite',
+    })
+    expect(await count(m.id)).toBe(2)
+  })
+
+  it('18.2 con el partido lleno vuelve al banco, sin promover a nadie ni mover el cupo', async () => {
+    const org = await newPlayer()
+    const m = await createMatch(org, { capacity: 2 })
+    const a = await newPlayer()
+    const c = await newPlayer()
+    const d = await newPlayer()
+    await join(a, m.code) // 2/2
+    await join(c, m.code) // banco
+    await join(d, m.code) // banco
+    await setStatus(a, await participantId(m.id, a), 'left') // entra c
+    expect(await statuses(m.id)).toMatchObject({ [c]: 'confirmed', [d]: 'bench', [a]: 'left' })
+    const r = await join(a, m.code)
+    expect(r).toMatchObject({ status: 'bench', joined: true })
+    expect(await statuses(m.id)).toMatchObject({ [c]: 'confirmed', [d]: 'bench', [a]: 'bench' })
+    expect(await count(m.id)).toBe(2)
+  })
+
+  it('18.3 un capitán rival o alguien del tablón vuelve como player/invite', async () => {
+    const org = await newPlayer()
+    const m = await createMatch(org, { capacity: 5, seeking: 'rival' })
+    const cap = await newPlayer()
+    const capId = await request(cap, m.id)
+    await setStatus(org, capId, 'confirmed')
+    await setStatus(cap, capId, 'left')
+    expect(await row(m.id, cap)).toMatchObject({ role: 'rival_captain', origin: 'board' })
+    expect(await join(cap, m.code)).toMatchObject({ status: 'confirmed', joined: true })
+    expect(await row(m.id, cap)).toMatchObject({ role: 'player', origin: 'invite' })
+
+    const m2 = await createMatch(org, { capacity: 5, seeking: 'players' })
+    const b = await newPlayer()
+    const bId = await request(b, m2.id)
+    await setStatus(org, bId, 'confirmed')
+    await setStatus(b, bId, 'left')
+    expect(await row(m2.id, b)).toMatchObject({ role: 'player', origin: 'board' })
+    expect(await join(b, m2.code)).toMatchObject({ status: 'confirmed', joined: true })
+    expect(await row(m2.id, b)).toMatchObject({ role: 'player', origin: 'invite' })
+  })
+
+  it('18.4 removed y declined no vuelven por el link: fila intacta, joined = false', async () => {
+    const org = await newPlayer()
+    const m = await createMatch(org, { capacity: 5, seeking: 'players' })
+    const sacado = await newPlayer()
+    await join(sacado, m.code)
+    await setStatus(org, await participantId(m.id, sacado), 'removed')
+    const rechazado = await newPlayer()
+    const reqId = await request(rechazado, m.id)
+    await setStatus(org, reqId, 'declined')
+    const antes = await statuses(m.id)
+    const idSacado = await participantId(m.id, sacado)
+    expect(await join(sacado, m.code)).toMatchObject({
+      participant_id: idSacado,
+      status: 'removed',
+      joined: false,
+    })
+    expect(await join(rechazado, m.code)).toMatchObject({
+      participant_id: reqId,
+      status: 'declined',
+      joined: false,
+    })
+    expect(await statuses(m.id)).toEqual(antes)
+    expect(await participantId(m.id, sacado)).toBe(idSacado)
+  })
+
+  it('18.5 confirmed, bench y requested siguen devolviendo su fila con joined = false', async () => {
+    const org = await newPlayer()
+    const m = await createMatch(org, { capacity: 2, seeking: 'players' })
+    const a = await newPlayer()
+    const b = await newPlayer()
+    const p = await newPlayer()
+    const reqId = await request(p, m.id)
+    await join(a, m.code) // 2/2
+    await join(b, m.code) // banco
+    expect(await join(a, m.code)).toMatchObject({ status: 'confirmed', joined: false })
+    expect(await join(b, m.code)).toMatchObject({ status: 'bench', joined: false })
+    expect(await join(p, m.code)).toMatchObject({
+      participant_id: reqId,
+      status: 'requested',
+      joined: false,
+    })
+  })
+
+  it('18.6 baneado, vencido, cancelado u oculto: se rechaza y la fila left queda intacta', async () => {
+    const su = adminSql()
+    const org = await newPlayer()
+    const casos: [string, string, (matchId: string, p: string) => Promise<unknown>][] = [
+      [
+        'rival_banned',
+        'baneado',
+        (_id, p) => insertBan(su, { tenantId, playerId: p, bannedBy: staffId }),
+      ],
+      ['rival_expired', 'vencido', (id) => expire(id)],
+      [
+        'rival_canceled',
+        'cancelado',
+        (id) => su`UPDATE rival_matches SET status = 'canceled' WHERE id = ${id}`,
+      ],
+      [
+        'rival_not_found',
+        'oculto',
+        (id) => su`UPDATE rival_matches SET hidden_at = now() WHERE id = ${id}`,
+      ],
+    ]
+    for (const [code, label, apply] of casos) {
+      const m = await createMatch(org, { capacity: 5 })
+      const a = await newPlayer()
+      await join(a, m.code)
+      const id = await participantId(m.id, a)
+      await setStatus(a, id, 'left')
+      const antes = await count(m.id)
+      await apply(m.id, a)
+      await rejectsRival(code, join(a, m.code))
+      expect(await row(m.id, a), label).toMatchObject({ id, status: 'left' })
+      expect(await count(m.id), label).toBe(antes)
+    }
+  })
+
+  it('18.7 el borrado de la fila left no promueve al banco aunque haya lugar (el del banco tiene ban)', async () => {
+    const org = await newPlayer()
+    const m = await createMatch(org, { capacity: 2 })
+    const a = await newPlayer()
+    const c = await newPlayer()
+    await join(a, m.code) // 2/2
+    await join(c, m.code) // banco
+    await insertBan(adminSql(), { tenantId, playerId: c, bannedBy: staffId })
+    await setStatus(a, await participantId(m.id, a), 'left') // lugar libre; c baneado se saltea
+    expect(await statuses(m.id)).toMatchObject({ [c]: 'bench', [a]: 'left' })
+    const antes = await count(m.id)
+    await join(a, m.code) // borra left e inserta de nuevo
+    expect(await statuses(m.id)).toMatchObject({ [c]: 'bench', [a]: 'confirmed' })
+    expect(await count(m.id)).toBe(antes + 1)
+  })
+
+  it('18.8 el cliente sigue sin poder borrar su fila', async () => {
+    const org = await newPlayer()
+    const m = await createMatch(org, { capacity: 5 })
+    const a = await newPlayer()
+    await join(a, m.code)
+    const id = await participantId(m.id, a)
+    await setStatus(a, id, 'left')
+    expectDenied(
+      await caught(q(a, drizzleSql`DELETE FROM rival_participants WHERE id = ${id}::uuid`)),
+      'delete directo',
+    )
+    expect((await row(m.id, a))['status']).toBe('left')
+  })
 })

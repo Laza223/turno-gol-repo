@@ -876,3 +876,30 @@ describe('6. orden de locks (deadlock entre la baja del banco y la baja o el saq
     expect(mapped?.code).toBe('rival_try_again')
   })
 })
+
+// ─── 7. Quien se bajó vuelve por el link (decisión 10) ───────────────────
+
+describe('7. joinByInvite desde `left`', () => {
+  it('7.1 vuelve como alta (joined = true); removed no vuelve y el error de un baneado es el de siempre', async () => {
+    const [org, b, r, banned] = await Promise.all([
+      welcomedPlayer('Org'),
+      welcomedPlayer('Beto'),
+      welcomedPlayer('Rudo'),
+      welcomedPlayer('Bano'),
+    ])
+    const m = await createMatch(org, draft({ capacity: 5 }))
+    await joinByInvite(b, m.inviteCode)
+    const rJoin = await joinByInvite(r, m.inviteCode)
+    await joinByInvite(banned, m.inviteCode)
+    await leaveMatch(b, m.id)
+    await leaveMatch(banned, m.id)
+    await removeParticipant(org, rJoin.participantId)
+
+    expect(await joinByInvite(b, m.inviteCode)).toMatchObject({ status: 'confirmed', joined: true })
+    expect(await joinByInvite(r, m.inviteCode)).toMatchObject({ status: 'removed', joined: false })
+
+    await insertBan(adminSql(), { tenantId: tenant.id, playerId: banned, bannedBy: staffId })
+    await rejectsWith('rival_banned', joinByInvite(banned, m.inviteCode))
+    expect((await statusesOf(m.id))[banned]).toBe('left')
+  })
+})

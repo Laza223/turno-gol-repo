@@ -30,6 +30,8 @@ Es el esfuerzo de [`docs/decisions/2026-10-22-rival-v1.md`](../decisions/2026-10
 | 1 | `sonnet-implementer` (C) | Arreglar los hallazgos de la revisión | ~231 k tokens y ~21 min | Todo arreglado y cada uno con su test, visto rojo antes del arreglo. La escritura interna se reconoce por `current_user` igual al dueño dentro de un trigger. Se lockea primero el partido. La FK queda `ON DELETE SET NULL` y la cancha se exige al crear. `rol-real`: 280 tests en verde |
 | 1 | `sonnet-adversarial-reviewer` (contexto fresco) | Verificar los arreglos | ~200 k tokens y ~29 min | "Listo para PR". Cerró los 5 arreglos y comprobó con mutación que sus tests detectan la regresión; no encontró ninguna escritura interna que se pueda fabricar. Encontró un 🟡 nuevo: deadlock con 3 denuncias simultáneas, que se arregló lockeando el partido en el BEFORE |
 | 1 | `sonnet-implementer` (C, segunda vuelta) | Deadlock de denuncias, orden de locks de la anonimización y docs desactualizados | ~241 k tokens y ~7 min | Lock del partido en el BEFORE de denuncias. El test 17.1 lo vio rojo antes del arreglo; después no se vio flaky |
+| 1 | `sonnet-implementer` (D) | Decisión 10: quien se bajó vuelve por el link | ~91 k tokens y ~14 min | Se borra la fila `left` y se hace el alta de siempre. Tests 18.x y 7.1, vistos rojos antes del cambio |
+| 1 | `sonnet-adversarial-reviewer` (contexto fresco) | Verificar la decisión 10 | Medio | "Listo": sin 🔴 ni 🟡. Las dos mutaciones las detectan los tests y el doble toque no da error |
 
 ## Pendientes que no son de una fase
 

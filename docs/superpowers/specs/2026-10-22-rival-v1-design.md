@@ -83,6 +83,7 @@ Ningún campo es texto libre y ninguno es un precio.
 | `requested` → `declined` | El organizador | — |
 | `bench` → `confirmed` | El sistema | Cuando se libera un lugar entra el primero del banco, en orden de llegada y en la misma transacción que la baja |
 | `confirmed` / `bench` / `requested` → `left` | El jugador | Antes de `starts_at` |
+| `left` → `confirmed` / `bench` | El jugador, por el link del grupo | Es un alta nueva: pasa por cupo, bans, vencimiento y partido cancelado u oculto, y queda como `player` con `origin = 'invite'` aunque antes fuera capitán rival o viniera del tablón. `removed` y `declined` NO vuelven por el link |
 | `confirmed` / `bench` → `removed` | El organizador | Antes de `starts_at` |
 
 - El organizador entra como fila `confirmed` automáticamente y no puede bajarse: para irse, cancela el partido.

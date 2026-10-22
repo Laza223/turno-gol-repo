@@ -1337,8 +1337,18 @@ AS $$
 $$;
 
 -- "Voy" por link. Idempotente: si ya hay fila, la devuelve sin tocarla (un
--- pedido del tablón NO se confirma por acá, ni un `left`/`removed` vuelve).
+-- pedido del tablón NO se confirma por acá, ni un `removed`/`declined` vuelve).
 -- Con cupo entra confirmed, sin cupo entra al banco (lo decide el trigger).
+-- Decisión 10: quien se bajó solo (`left`) vuelve como un alta nueva. Se borra
+-- su fila y se hace el INSERT de siempre, así pasa por las mismas validaciones
+-- del trigger BEFORE INSERT (cupo, banco, bans, vencido, cancelado, oculto) y
+-- vuelve como `player`/`invite` aunque antes fuera capitán o viniera del tablón.
+-- Es atómico: si el INSERT rechaza, el DELETE se deshace y la fila `left` queda.
+-- rival_participants no tiene triggers de DELETE y una fila `left` no cuenta en
+-- confirmed_count, así que borrarla no promueve ni recuenta nada.
+-- El DELETE lockea la fila del participante antes que el partido, al revés del
+-- orden del encabezado. Es deliberado y no deadlockea: ningún camino que lockea
+-- el partido primero toca una fila `left`.
 CREATE OR REPLACE FUNCTION rival_join_by_invite(p_code text)
 RETURNS TABLE (participant_id uuid, match_id uuid, status text, joined boolean)
 LANGUAGE plpgsql
@@ -1372,8 +1382,11 @@ BEGIN
   SELECT p.id, p.status INTO v_id, v_status
     FROM rival_participants p WHERE p.match_id = m.id AND p.player_id = v_actor;
   IF FOUND THEN
-    RETURN QUERY SELECT v_id, m.id, v_status, false;
-    RETURN;
+    IF v_status <> 'left' THEN
+      RETURN QUERY SELECT v_id, m.id, v_status, false;
+      RETURN;
+    END IF;
+    DELETE FROM rival_participants WHERE id = v_id;
   END IF;
 
   INSERT INTO rival_participants (tenant_id, match_id, player_id, role, status, origin)

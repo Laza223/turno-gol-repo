@@ -10,6 +10,7 @@ import { sumBookingChargesByBooking } from '@/app/(admin)/reservas/queries'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import type { RefundState } from '@/app/(admin)/reservas/deposit-display'
 import type { AbonadoStatus } from '@/modules/abonados/abonado.types'
+import { DORMANT_AFTER_DAYS, DORMANT_MIN_BOOKINGS } from '@/modules/relationships/dormant'
 
 /**
  * Una persona vista por este complejo (B13). Dos orígenes, una sola lista:
@@ -42,6 +43,12 @@ export type ClientListRow = {
    */
   suggestedPlayerId: string | null
   suggestedPlayerName: string | null
+  /**
+   * ISO del inicio de su última reserva que no se cayó (ni cancelada ni
+   * vencida), futura incluida. Es la fecha que lee "Última vez hace 5 semanas"
+   * en el filtro de los que dejaron de venir.
+   */
+  lastActiveAt: string | null
 }
 
 function likeArg(q: string): string {
@@ -100,11 +107,48 @@ export const CLIENTES_PAGE_SIZE = 50
 export type ClientListPage = {
   rows: ClientListRow[]
   total: number
+  /** Cuántas de las personas de esta búsqueda dejaron de venir (todas las páginas). */
+  dormantTotal: number
 }
 
+/**
+ * Reservas que "se cayeron" y no cuentan como venir: las canceladas y las que
+ * vencieron esperando la seña. Un `no_show` sí cuenta: reservó.
+ */
+const KEPT_BOOKING = sql.raw(`NOT IN ('canceled_refunded', 'canceled_no_refund', 'expired')`)
+
+/** Instante → ISO en UTC con formato fijo, que además ordena como texto. */
+const isoUtc = (col: string) =>
+  sql.raw(`to_char(${col} AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`)
+
+/**
+ * Corte de "hace más de 4 semanas" contra el reloj de la base (`NOW()`), el
+ * mismo que decide el resto de lo físico (`starts_at`).
+ */
+const DORMANT_CUTOFF = sql`NOW() - make_interval(days => ${DORMANT_AFTER_DAYS}::int)`
+
+/**
+ * Fijo que todavía genera turnos. Uno `active` con `ends_on` ya pasado no
+ * protege de "Dejaron de venir" aunque nadie lo haya dado de baja (decisión del
+ * dueño, 2026-10-22). `ends_on` es inclusivo (slot-generator) y "hoy" es el día
+ * ART: CURRENT_DATE es UTC y entre las 21 y la medianoche ya es mañana.
+ */
+const runningFixed = (alias: string) =>
+  sql.raw(
+    `${alias}.status = 'active' AND (${alias}.ends_on IS NULL OR ${alias}.ends_on >= (NOW() AT TIME ZONE 'America/Argentina/Buenos_Aires')::date)`,
+  )
+
+/**
+ * `filters.dormant` — solo las personas que dejaron de venir (decisión del
+ * 2026-10-22, docs/decisions/2026-10-22-clientes-que-dejaron-de-venir.md):
+ * 3 reservas o más que no se cayeron, la última hace más de 4 semanas, sin
+ * turno fijo vigente y, si tiene cuenta, sin bloqueo vigente ni anonimizada.
+ * Se calcula acá, al leer: no se guarda en ningún lado. Ordena de la que se
+ * fue hace menos a la que se fue hace más, que es la más fácil de recuperar.
+ */
 export async function listTenantClients(
   tenantId: string,
-  filters: { q?: string },
+  filters: { q?: string; dormant?: boolean },
   tx: DbTx,
   page = 0,
 ): Promise<ClientListPage> {
@@ -123,9 +167,28 @@ export async function listTenantClients(
     fixedCount: number
     suggestedPlayerId: string | null
     suggestedPlayerName: string | null
+    lastActiveAt: string | null
+    dormant: boolean
     total: number
+    dormantTotal: number
   }>(sql`
-    WITH registered AS (
+    -- Actividad de cada jugador con cuenta, en UNA pasada sobre las reservas
+    -- del complejo. Una reserva es suya por player_id o por ser de un fijo
+    -- suyo: al vincular un contacto, sus reservas PASADAS quedan con
+    -- player_id NULL (la vinculación solo mueve pendientes y confirmadas), y
+    -- sin el COALESCE un fijo de meses que se dio de baja no contaría.
+    WITH player_activity AS (
+      SELECT COALESCE(b.player_id, fa.player_id) AS player_id,
+             COUNT(*)::int AS kept_count,
+             MAX(b.starts_at) AS last_active_at
+      FROM bookings b
+      LEFT JOIN abonados fa ON fa.id = b.abonado_id
+      WHERE b.tenant_id = ${tenantId}
+        AND b.status ${KEPT_BOOKING}
+        AND COALESCE(b.player_id, fa.player_id) IS NOT NULL
+      GROUP BY 1
+    ),
+    registered AS (
       SELECT p.id::text AS key,
              'player'::text AS kind,
              p.id::text AS "playerId",
@@ -148,9 +211,32 @@ export async function listTenantClients(
                  AND fa.player_id = r.player_id
                  AND fa.status <> 'canceled') AS "fixedCount",
              NULL::text AS "suggestedPlayerId",
-             NULL::text AS "suggestedPlayerName"
+             NULL::text AS "suggestedPlayerName",
+             ${isoUtc('pa.last_active_at')} AS "lastActiveAt",
+             COALESCE(
+               pa.kept_count >= ${DORMANT_MIN_BOOKINGS}::int
+               AND pa.last_active_at < ${DORMANT_CUTOFF}
+               AND NOT EXISTS (
+                 SELECT 1 FROM abonados af
+                 WHERE af.tenant_id = r.tenant_id
+                   AND af.player_id = r.player_id
+                   AND ${runningFixed('af')}
+               )
+               -- Escribirle "hace rato que no venís" a alguien bloqueado o
+               -- anonimizado no tiene sentido: no son clientes a recuperar.
+               AND p.status <> 'anonymized'
+               AND NOT (p.status = 'banned' AND (p.ban_until IS NULL OR p.ban_until > NOW()))
+               AND NOT EXISTS (
+                 SELECT 1 FROM tenant_player_bans tb
+                 WHERE tb.tenant_id = r.tenant_id
+                   AND tb.player_id = r.player_id
+                   AND (tb.banned_until IS NULL OR tb.banned_until > NOW())
+               ),
+               FALSE
+             ) AS dormant
       FROM player_tenant_relationships r
       JOIN players p ON p.id = r.player_id
+      LEFT JOIN player_activity pa ON pa.player_id = r.player_id
       WHERE r.tenant_id = ${tenantId}
         ${playerSearchCond(filters.q)}
     ),
@@ -158,7 +244,7 @@ export async function listTenantClients(
     -- llega al mínimo de dígitos cae al id de la fila, para no fusionar en una
     -- sola persona a todos los que tienen el teléfono mal cargado.
     unlinked AS (
-      SELECT a.id, a.contact_name, a.contact_phone, a.status, a.created_at,
+      SELECT a.id, a.contact_name, a.contact_phone, a.status, a.ends_on, a.created_at,
              ${ABONADO_HINT} AS hint_phone,
              COALESCE(${ABONADO_PHONE}, 'id:' || a.id::text) AS group_key
       FROM abonados a
@@ -171,7 +257,8 @@ export async function listTenantClients(
              MAX(u.hint_phone) AS hint_phone,
              (ARRAY_AGG(u.contact_name ORDER BY u.created_at DESC))[1] AS name,
              (ARRAY_AGG(u.contact_phone ORDER BY u.created_at DESC))[1] AS phone,
-             COUNT(*) FILTER (WHERE u.status <> 'canceled')::int AS fixed_count
+             COUNT(*) FILTER (WHERE u.status <> 'canceled')::int AS fixed_count,
+             COUNT(*) FILTER (WHERE ${runningFixed('u')})::int AS active_fixed_count
       FROM unlinked u
       GROUP BY u.group_key
     ),
@@ -180,7 +267,9 @@ export async function listTenantClients(
     group_bookings AS (
       SELECT u.group_key,
              COUNT(b.id)::int AS bookings_count,
-             MAX(b.date)::text AS last_booking_at
+             MAX(b.date)::text AS last_booking_at,
+             COUNT(b.id) FILTER (WHERE b.status ${KEPT_BOOKING})::int AS kept_count,
+             MAX(b.starts_at) FILTER (WHERE b.status ${KEPT_BOOKING}) AS last_active_at
       FROM unlinked u
       LEFT JOIN bookings b ON b.abonado_id = u.id
       GROUP BY u.group_key
@@ -196,7 +285,15 @@ export async function listTenantClients(
              NULL::player_tag[] AS tags,
              g.fixed_count AS "fixedCount",
              s.id::text AS "suggestedPlayerId",
-             s.name AS "suggestedPlayerName"
+             s.name AS "suggestedPlayerName",
+             ${isoUtc('gb.last_active_at')} AS "lastActiveAt",
+             -- Sin cuenta no hay bloqueo posible: alcanza con el fijo.
+             COALESCE(
+               gb.kept_count >= ${DORMANT_MIN_BOOKINGS}::int
+               AND gb.last_active_at < ${DORMANT_CUTOFF}
+               AND g.active_fixed_count = 0,
+               FALSE
+             ) AS dormant
       FROM grouped g
       LEFT JOIN group_bookings gb ON gb.group_key = g.group_key
       -- Sugerencia: un jugador YA vinculado a este complejo cuyo teléfono
@@ -224,24 +321,29 @@ export async function listTenantClients(
     )
     -- El total sale de esta MISMA pasada (COUNT(*) OVER(), sin PARTITION BY:
     -- cuenta el resultado entero del combined, antes del LIMIT) — no una
-    -- segunda query que repita las cinco CTEs de arriba.
-    SELECT *, COUNT(*) OVER()::int AS total
+    -- segunda query que repita las CTEs de arriba. El de los que dejaron de
+    -- venir, igual: con el filtro puesto coincide con el total.
+    SELECT *,
+           COUNT(*) OVER()::int AS total,
+           (COUNT(*) FILTER (WHERE dormant) OVER())::int AS "dormantTotal"
     FROM combined
+    ${filters.dormant ? sql`WHERE dormant` : sql``}
     -- "key" como último desempate: sin él, dos personas con el mismo
     -- lastBookingAt Y el mismo nombre no tenían orden estable entre páginas
     -- (podían intercambiarse o repetirse de una página a la siguiente).
-    ORDER BY "lastBookingAt" DESC NULLS LAST, name ASC, key ASC
+    ORDER BY ${filters.dormant ? sql`"lastActiveAt" DESC` : sql`"lastBookingAt" DESC NULLS LAST`},
+             name ASC, key ASC
     LIMIT ${CLIENTES_PAGE_SIZE} OFFSET ${safePage * CLIENTES_PAGE_SIZE}
   `)
 
   const list = [...rows]
-  const total = list[0]?.total ?? 0
   return {
-    rows: list.map(({ total: _total, ...r }) => ({
+    rows: list.map(({ total: _total, dormantTotal: _dormantTotal, dormant: _dormant, ...r }) => ({
       ...r,
       tags: normalizePlayerTags(r.tags ?? []),
     })),
-    total,
+    total: list[0]?.total ?? 0,
+    dormantTotal: list[0]?.dormantTotal ?? 0,
   }
 }
 

@@ -73,6 +73,12 @@ export const POLICIES = {
   // origin can trigger by varying blockedUri per request. Fail open: losing
   // CSP telemetry during an Upstash outage isn't worth blocking the endpoint.
   cspReport: { limit: 20, window: '60 s', keyBy: 'ip', failMode: 'open' },
+  // RIVAL v1: armar un partido. 10 cada 10 min por jugador sobra para uno real (tope de 3
+  // activos) y frena a quien llene la base de partidos. Fail open: es una escritura de
+  // bajo valor, no justifica bloquear si cae Upstash.
+  rivalCreate: { limit: 10, window: '10 m', keyBy: 'player', failMode: 'open' },
+  // RIVAL v1: el resto de las escrituras del jugador (bienvenida, cancelar, bajarse...).
+  rivalWrite: { limit: 30, window: '60 s', keyBy: 'player', failMode: 'open' },
 } as const satisfies Record<string, Policy>
 
 export type PolicyName = keyof typeof POLICIES

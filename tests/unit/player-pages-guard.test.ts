@@ -24,11 +24,25 @@ vi.mock('@/modules/players/player.anonymization', () => ({
 }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/modules/bookings/cancellation-preview', () => ({ getCancellationPreview: vi.fn() }))
+// RIVAL: con el flag prendido, para llegar al guard de sesión. El service y las actions no se tocan.
+vi.mock('@/modules/rival/rival.flags', () => ({ isRivalEnabled: vi.fn(async () => true) }))
+vi.mock('@/modules/rival/rival.service', () => ({
+  getRivalWelcomeState: vi.fn(),
+  listEligibleTenants: vi.fn(),
+  listMyMatches: vi.fn(),
+  listUpcomingConfirmedBookings: vi.fn(),
+}))
+vi.mock('@/app/(player)/rival/actions', () => ({
+  acceptRivalWelcomeAction: vi.fn(),
+  createMatchAction: vi.fn(),
+}))
 
 import ConfiguracionPage from '@/app/(player)/configuracion/page'
 import EliminarCuentaPage from '@/app/(player)/eliminar-cuenta/page'
 import MisReservasPage from '@/app/(player)/mis-reservas/page'
 import PerfilPage from '@/app/(player)/perfil/page'
+import MisPartidosPage from '@/app/(player)/rival/mis-partidos/page'
+import NuevoPartidoPage from '@/app/(player)/rival/nuevo/page'
 
 async function destino(run: () => Promise<unknown>): Promise<string> {
   try {
@@ -59,6 +73,20 @@ describe('(player): cada ruta sin sesión conserva su destino', () => {
     expect(
       await destino(() => MisReservasPage({ searchParams: Promise.resolve({ tab: 'historial' }) })),
     ).toBe(next('/mis-reservas?tab=historial'))
+  })
+
+  // `/rival` y `/rival/p/[code]` se ven sin sesión a propósito (spec §12): no entran acá.
+  it('/rival/nuevo -> next=/rival/nuevo, y la reserva a precargar sobrevive al login', async () => {
+    expect(await destino(() => NuevoPartidoPage({ searchParams: Promise.resolve({}) }))).toBe(
+      next('/rival/nuevo'),
+    )
+    expect(
+      await destino(() => NuevoPartidoPage({ searchParams: Promise.resolve({ reserva: 'b-1' }) })),
+    ).toBe(next('/rival/nuevo?reserva=b-1'))
+  })
+
+  it('/rival/mis-partidos -> next=/rival/mis-partidos', async () => {
+    expect(await destino(() => MisPartidosPage())).toBe(next('/rival/mis-partidos'))
   })
 
   it('/perfil redirige a /configuracion, que es la que guarda el destino', async () => {

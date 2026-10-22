@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
 import { PlayerBottomNav } from './PlayerBottomNav'
+import { PortalSessionProvider } from './PortalSessionProvider'
 
 /**
  * `fixed inset-x-0 bottom-0` + `md:hidden`: viewport mobile fijo, contenido
@@ -80,5 +81,44 @@ export const RutaConfiguracion: Story = {
       'page',
     )
     await expectActivo(canvasElement, 'Cuenta')
+  },
+}
+
+/** Con el flag de RIVAL prendido: cuatro ítems y Rival queda activo en `/rival` y sus subrutas. */
+export const ConRivalEnRutaRival: Story = {
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/rival/nuevo' } } },
+  decorators: [
+    (Story) => (
+      <PortalSessionProvider
+        initialValue={{
+          session: null,
+          favoriteTenantIds: new Set(),
+          staffPanelPath: null,
+          rivalEnabled: true,
+        }}
+      >
+        <Story />
+      </PortalSessionProvider>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const links = within(canvasElement).getAllByRole('link')
+    await expect(links.map((l) => l.textContent)).toEqual([
+      'Explorar',
+      'Rival',
+      'Reservas',
+      'Cuenta',
+    ])
+    await expect(within(canvasElement).getByRole('link', { name: 'Rival' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    await expect(within(canvasElement).getByRole('link', { name: 'Rival' })).toHaveAttribute(
+      'href',
+      '/rival',
+    )
+    for (const link of links) {
+      await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(56)
+    }
   },
 }

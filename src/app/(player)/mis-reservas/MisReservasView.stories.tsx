@@ -97,6 +97,25 @@ export const Proximos: Story = {
   },
 }
 
+/** Con el flag de RIVAL prendido, la próxima suma "Armar el partido" (acción secundaria, sin segundo verde). */
+export const ProximaConArmarElPartido: Story = {
+  args: {
+    tab: 'proximos',
+    upcomingCount: 2,
+    rivalEnabled: true,
+    bookings: [
+      row({ id: 'b-1', status: 'confirmed', date: artDateString(daysFromNow(1)) }),
+      row({ id: 'b-2', status: 'confirmed', date: artDateString(daysFromNow(3)) }),
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const links = canvas.getAllByRole('link', { name: 'Armar el partido' })
+    await expect(links).toHaveLength(1)
+    await expect(links[0]).toHaveAttribute('href', '/rival/nuevo?reserva=b-1')
+  },
+}
+
 /** Turno fijo (abonado): badge "Turno fijo", sin CancelBookingButton propio de spontaneous. */
 export const TurnoFijo: Story = {
   args: {

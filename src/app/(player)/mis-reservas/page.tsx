@@ -5,6 +5,7 @@ import { withPlayerContext } from '@/shared/db/client'
 import { getCancellationPreview } from '@/modules/bookings/cancellation-preview'
 import { DEFAULT_CANCELLATION_HOURS_BEFORE, LATE_CANCEL_WINDOW_DAYS } from '@/shared/constants'
 import { absoluteUrl } from '@/lib/seo/metadata'
+import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import { buildDirectionsHref } from '@/lib/booking/directions'
 import { buildGroupShareHref, buildGroupShareText } from '@/lib/booking/group-share'
 import { MisReservasView, type MisReservasBookingRow } from './MisReservasView'
@@ -94,6 +95,7 @@ export default async function MisReservasPage(props: {
       )}`,
     )
 
+  const rivalEnabled = await isRivalEnabled().catch(() => false)
   const today = artToday()
   const tab = searchParams.tab === 'historial' ? 'historial' : 'proximos'
   const page = parsePage(searchParams.pagina)
@@ -307,6 +309,7 @@ export default async function MisReservasPage(props: {
         pageSize={MIS_RESERVAS_PAGE_SIZE}
         upcomingCount={upcoming}
         cancelAction={cancelMyBookingAction}
+        rivalEnabled={rivalEnabled}
       />
     </RefundDialogProvider>
   )

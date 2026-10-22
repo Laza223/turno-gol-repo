@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { signOutAction } from '@/modules/auth/sign-out.action'
 import { getPortalSession } from '@/modules/players/portal-session'
+import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import PortalShell from '@/components/site/PortalShell'
 
 export default async function PlayerLayout({ children }: { children: ReactNode }) {
@@ -15,13 +16,22 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
   // `getPlayerHeaderInfo`, ya cacheada por request para el resto del árbol.
   // `favoriteTenantIds` sigue hidratando client-side como siempre — no es lo
   // que este hallazgo señala y no vale la query extra acá.
-  const session = await getPortalSession()
+  //
+  // Con la sesión sembrada el provider NO consulta /api/player/session, así que el flag de RIVAL
+  // se siembra acá también (si no, la barra inferior perdería "Rival" en estas páginas). Este
+  // layout ya es dinámico por las cookies: no cambia nada del cacheo de las rutas públicas.
+  const [session, rivalEnabled] = await Promise.all([
+    getPortalSession(),
+    isRivalEnabled().catch(() => false),
+  ])
 
   return (
     <PortalShell
       signOutAction={signOutAction}
       initialSession={
-        session ? { session, favoriteTenantIds: new Set(), staffPanelPath: null } : undefined
+        session
+          ? { session, favoriteTenantIds: new Set(), staffPanelPath: null, rivalEnabled }
+          : undefined
       }
     >
       {/* Bordes de campo y foco a 3:1 en todo el grupo, diálogos incluidos (ver globals.css). */}

@@ -1,8 +1,12 @@
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, eq, gt, inArray, lt, sql } from 'drizzle-orm'
 import { buildWhatsappUrl } from '@/lib/whatsapp'
 import { publicTenantVisibilityConds } from '@/modules/tenants/search.service'
+import { artTodayStr } from '@/shared/dates/art'
+import { artDayRangeUtc } from '@/shared/time/art-date'
 import { getDb, withPlayerContext, type DbTx } from '@/shared/db/client'
 import {
+  bookings,
+  courts,
   players,
   rivalMatchContacts,
   rivalMatches,
@@ -18,6 +22,8 @@ import {
   type RivalReportReason,
   type RivalWelcomeInput,
 } from './rival.schema'
+import type { NewMatchBooking } from './rival-form'
+import { rivalLastStartDay } from './rival-window'
 import type {
   RivalBoardCursor,
   RivalBoardItem,
@@ -528,5 +534,79 @@ export async function listMyMatches(playerId: string): Promise<RivalMyMatch[]> {
         myOrigin: (r.my_origin ?? null) as RivalParticipantOrigin | null,
       }
     })
+  })
+}
+
+/**
+ * Complejos donde se puede armar un partido: los mismos que encuentra la búsqueda
+ * pública (`publicTenantVisibilityConds`, el filtro que también aplica `createMatch`).
+ * `tenants` es global y sin RLS: no hace falta contexto de jugador.
+ */
+export async function listEligibleTenants(): Promise<{ id: string; name: string; city: string }[]> {
+  return publicRead(() =>
+    getDb()
+      .select({ id: tenants.id, name: tenants.name, city: tenants.city })
+      .from(tenants)
+      .where(and(...publicTenantVisibilityConds()))
+      .orderBy(asc(tenants.name))
+      .limit(200),
+  )
+}
+
+/**
+ * Reservas `confirmed` y futuras DEL jugador (hoy..+7 en ART, la misma ventana que admite el schema): sirven para vincular el
+ * partido (sello "Reservada en TurnoGol") y para precargar desde `?reserva=<id>`. El
+ * filtro por `player_id` va además de la RLS.
+ */
+export async function listUpcomingConfirmedBookings(playerId: string): Promise<NewMatchBooking[]> {
+  const { toUtc } = artDayRangeUtc(artTodayStr(), rivalLastStartDay())
+  return inPlayerContext(playerId, (tx) =>
+    tx
+      .select({
+        id: bookings.id,
+        tenantId: bookings.tenantId,
+        startsAt: bookings.startsAt,
+        format: courts.format,
+      })
+      .from(bookings)
+      .innerJoin(courts, eq(courts.id, bookings.courtId))
+      .where(
+        and(
+          eq(bookings.playerId, playerId),
+          eq(bookings.status, 'confirmed'),
+          gt(bookings.startsAt, sql`now()`),
+          lt(bookings.startsAt, toUtc),
+        ),
+      )
+      .orderBy(asc(bookings.startsAt)),
+  )
+}
+
+/** Lo que la bienvenida necesita: el nombre actual y si ya aceptó la versión vigente. */
+export async function getRivalWelcomeState(playerId: string): Promise<{
+  firstName: string
+  welcomed: boolean
+  position: RivalPosition | null
+  zone: string | null
+} | null> {
+  return inPlayerContext(playerId, async (tx) => {
+    const [row] = await tx
+      .select({
+        firstName: players.firstName,
+        at: players.rivalAcceptedAt,
+        version: players.rivalTermsVersion,
+        position: players.position,
+        zone: players.zone,
+      })
+      .from(players)
+      .where(eq(players.id, playerId))
+      .limit(1)
+    if (!row) return null
+    return {
+      firstName: row.firstName,
+      welcomed: row.at !== null && row.version === RIVAL_TERMS_VERSION,
+      position: row.position,
+      zone: row.zone,
+    }
   })
 }

@@ -62,12 +62,14 @@ runs:
         # - ghcr.io (el registry que fija setup-cli) cortaba con `toomanyrequests`,
         #   con login o sin él;
         # - public.ecr.aws cortaba a algunos runners con "Data limit exceeded".
-        # Por eso se alternan los dos registries, con espera creciente entre
-        # vueltas.
+        # Por eso se alternan los registries, con espera creciente entre
+        # vueltas. Esa misma tarde los dos cortaron a la vez; Docker Hub
+        # (`docker.io`: la CLI baja las imágenes con su nombre original) va
+        # último para gastar sus pulls solo cuando los otros dos fallan.
         started=false
         for wait in 0 30 60; do
           sleep "$wait"
-          for registry in ghcr.io public.ecr.aws; do
+          for registry in ghcr.io public.ecr.aws docker.io; do
             export SUPABASE_INTERNAL_IMAGE_REGISTRY="$registry"
             if start_stack; then started=true; break 2; fi
             echo "::warning::supabase start falló con $registry — limpiando residuos y reintentando"

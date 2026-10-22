@@ -11,6 +11,9 @@
 const PG_UNIQUE_VIOLATION = '23505'
 const PG_FOREIGN_KEY_VIOLATION = '23503'
 const PG_LOCK_NOT_AVAILABLE = '55P03'
+const PG_SERIALIZATION_FAILURE = '40001'
+const PG_DEADLOCK_DETECTED = '40P01'
+const PG_INSUFFICIENT_PRIVILEGE = '42501'
 
 type PgErrorLike = { code?: string; constraint_name?: string; constraint?: string }
 
@@ -58,4 +61,52 @@ export function isForeignKeyViolation(err: unknown, constraint: string): boolean
  */
 export function isLockTimeout(err: unknown): boolean {
   return asPgError(err)?.code === PG_LOCK_NOT_AVAILABLE
+}
+
+/**
+ * `40P01 deadlock_detected` / `40001 serialization_failure`: Postgres abortó ESTA
+ * transacción para destrabar un cruce de locks con otra. Es concurrencia normal y
+ * el reintento del usuario funciona. No se reintenta adentro: una transacción
+ * abortada no se puede reusar, hay que abrir otra desde el caller.
+ */
+export function isConcurrencyConflict(err: unknown): boolean {
+  const code = asPgError(err)?.code
+  return code === PG_DEADLOCK_DETECTED || code === PG_SERIALIZATION_FAILURE
+}
+
+/**
+ * `42501 insufficient_privilege`: la RLS (o un GRANT) rechazó la escritura. Bajo
+ * el rol real de la app es lo que ve un jugador que toca algo que no es suyo.
+ */
+export function isInsufficientPrivilege(err: unknown): boolean {
+  return asPgError(err)?.code === PG_INSUFFICIENT_PRIVILEGE
+}
+
+const PG_RAISE_EXCEPTION = 'P0001'
+const RIVAL_ERROR_CODE_RE = /^rival_[a-z_]+$/
+
+/**
+ * Código estable de un `RAISE EXCEPTION 'rival_*'` de los triggers y funciones
+ * de RIVAL (migr. 099), o null si el error no es uno de esos.
+ *
+ * La migración usa el código como MESSAGE (SQLSTATE `P0001`), por ejemplo
+ * `rival_full` o `rival_banned`. Camina la cadena de `cause` por el mismo
+ * motivo que `asPgError`: Drizzle 0.45 envuelve el error de postgres-js.
+ */
+export function rivalErrorCode(err: unknown): string | null {
+  let current: unknown = err
+  for (let depth = 0; depth < 5 && current != null; depth++) {
+    if (typeof current === 'object') {
+      const { code, message } = current as { code?: unknown; message?: unknown }
+      if (
+        code === PG_RAISE_EXCEPTION &&
+        typeof message === 'string' &&
+        RIVAL_ERROR_CODE_RE.test(message)
+      ) {
+        return message
+      }
+    }
+    current = (current as { cause?: unknown }).cause
+  }
+  return null
 }

@@ -22,6 +22,9 @@ export const dynamic = 'force-dynamic'
  *   - tenant_relationships: bookings/no-show counters + flags per complex
  *   - bans: any tenant_player_bans rows
  *   - consents: terms_version + agreed_at + +18 flag
+ *   - rival (migr. 099): perfil RIVAL, partidos organizados (con SU WhatsApp
+ *     guardado mientras exista), participaciones, denuncias hechas y suscripciones
+ *     a alertas. Nunca el WhatsApp, el email ni el nombre de otra persona.
  *
  * Compliance traceability (ARCO Art. 22): audit_logs requires tenant_id NOT
  * NULL so cross-tenant exports are tracked via Sentry instead. A dedicated
@@ -82,6 +85,41 @@ export const GET = withPlayer(async (_req, user, tx) => {
     WHERE player_id = ${user.playerId}
   `
 
+  // RIVAL (migr. 099). Todo filtrado por el jugador autenticado. `invite_code` queda
+  // afuera (es una credencial del link, no un dato de la persona) y de las
+  // denuncias solo se exporta si eran sobre una persona, no a quién: el id del
+  // denunciado es dato de OTRO.
+  const rivalOrganized = await adminSql<Record<string, unknown>[]>`
+    SELECT m.id, m.tenant_id, m.booking_id, m.court_declared, m.starts_at, m.format,
+           m.capacity, m.level, m.on_board, m.seeking, m.seeking_position, m.status,
+           m.hidden_at, m.confirmed_count, m.filled_at, m.created_at,
+           c.whatsapp_digits AS whatsapp_saved
+    FROM rival_matches m
+    LEFT JOIN rival_match_contacts c ON c.match_id = m.id
+    WHERE m.organizer_player_id = ${user.playerId}
+    ORDER BY m.starts_at DESC
+  `
+
+  const rivalParticipations = await adminSql<Record<string, unknown>[]>`
+    SELECT id, match_id, tenant_id, role, status, origin, confirmed_at, decided_at, created_at
+    FROM rival_participants
+    WHERE player_id = ${user.playerId}
+    ORDER BY created_at DESC
+  `
+
+  const rivalReports = await adminSql<Record<string, unknown>[]>`
+    SELECT id, match_id, reason, (reported_player_id IS NOT NULL) AS about_a_person, created_at
+    FROM rival_reports
+    WHERE reporter_player_id = ${user.playerId}
+    ORDER BY created_at DESC
+  `
+
+  const rivalAlertSubscriptions = await adminSql<Record<string, unknown>[]>`
+    SELECT tenant_id, only_goalkeeper, created_at
+    FROM rival_alert_subscriptions
+    WHERE player_id = ${user.playerId}
+  `
+
   const bundle = {
     exported_at: new Date().toISOString(),
     retention_policy: {
@@ -90,6 +128,9 @@ export const GET = withPlayer(async (_req, user, tx) => {
       // 24 meses = decisión del dueño (D5, 2026-07-23), implementada en
       // purgeOldAuditLogs — mantener en sync con ese worker y doc18 §12.2.
       audit_logs: '24 months',
+      // Mantener en sync con purgeOldRivalData (worker de retención).
+      rival_matches:
+        '12 months after the match; saved WhatsApp deleted when it starts or is canceled',
     },
     profile: {
       id: profile.id,
@@ -115,6 +156,20 @@ export const GET = withPlayer(async (_req, user, tx) => {
     payments,
     tenant_relationships: tenantRelationships,
     bans,
+    rival: {
+      profile: {
+        position: profile.position,
+        zone: profile.zone,
+        avatar_url: profile.avatarUrl,
+        accepted_at: profile.rivalAcceptedAt,
+        terms_version: profile.rivalTermsVersion,
+        signup_source: profile.signupSource,
+      },
+      organized_matches: rivalOrganized,
+      participations: rivalParticipations,
+      reports_made: rivalReports,
+      alert_subscriptions: rivalAlertSubscriptions,
+    },
   }
 
   // audit_logs.tenant_id is NOT NULL so we can't insert a tenant-less row.

@@ -211,8 +211,8 @@ function bookTool(ctx: ToolContext, courts: BotCourt[]): BotTool {
     definition: {
       name: 'reservar',
       description:
-        'Reserva un turno de 60 minutos a nombre del jugador. Usala cuando el jugador aceptó la cancha, el día, la hora y el precio que le confirmaste, o cuando él mismo eligió una de las opciones que le ofreciste y te dio el nombre. ' +
-        'Vuelve a chequear que el turno siga libre: con estado confirmada, el turno quedó reservado y se paga en el complejo. ' +
+        'Reserva un turno de 60 minutos a nombre del jugador. Usala cuando el jugador aceptó la cancha, el día y la hora que le confirmaste, o cuando él mismo eligió una de las opciones que le ofreciste y te dio el nombre. ' +
+        'Vuelve a chequear que el turno siga libre: con estado confirmada, el turno quedó reservado. ' +
         'Con estado falta_pagar_la_sena, mandale link_pago en su propia línea y avisale que tiene minutos_para_pagar minutos para pagar la seña: si no la paga a tiempo, el turno se libera solo. ' +
         'Errores (explicalos simple, ofrecé otra opción y no repitas la misma reserva): turno_ocupado (lo tomó otro: mostrale otros horarios); demasiadas_reservas_sin_sena (el chat ya tiene las 2 reservas sin seña que se permiten por acá: mandale link_para_reservar para reservar desde la página del complejo); demasiadas_senas_pendientes (tiene señas sin pagar); falta_poco_para_el_turno; fecha_fuera_de_rango; fuera_de_horario; el_complejo_cierra_ese_dia; cancha_inexistente (trae la lista de canchas); turno_no_disponible; reservas_online_cerradas y no_se_puede_reservar_por_aca (en estos dos, ofrecé pasarle la consulta a una persona del complejo).',
       strict: true,
@@ -285,7 +285,7 @@ function bookTool(ctx: ToolContext, courts: BotCourt[]): BotTool {
         precio: tenant.hidePrices ? undefined : formatArs(booking.priceSnapshot),
       }
       if (!result.requiresPayment) {
-        return json({ estado: 'confirmada', ...resumen, pago: 'en el complejo' })
+        return json({ estado: 'confirmada', ...resumen })
       }
 
       // La preferencia de MercadoPago se crea FUERA de la transacción que

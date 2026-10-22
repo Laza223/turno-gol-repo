@@ -91,7 +91,10 @@ export async function runAgent(params: {
       messages,
     })
 
-    usage.inputTokens += response.usage.input_tokens
+    // La escritura de caché se cobra 1,25× la entrada; la aproximamos a 1× y la
+    // sumamos acá para que el gasto estimado del monitor no la deje afuera.
+    usage.inputTokens +=
+      response.usage.input_tokens + (response.usage.cache_creation_input_tokens ?? 0)
     usage.cachedTokens += response.usage.cache_read_input_tokens ?? 0
     usage.outputTokens += response.usage.output_tokens
 

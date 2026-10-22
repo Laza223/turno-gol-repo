@@ -176,6 +176,23 @@ export async function purgePushSendLog(): Promise<void> {
 }
 
 /**
+ * Purga GLOBAL de `ops_alerts` (migr. 097, dedupe de alertas por mail): las
+ * claves llevan mes u hora, así que pasados 90 días ya no dedupean nada.
+ * Sin `tenant_id`, deny-all para turnogol_app: corre en el pool worker.
+ */
+export async function purgeOpsAlerts(): Promise<void> {
+  const sql = getWorkerSql()
+  const result = await sql`
+    DELETE FROM ops_alerts
+    WHERE created_at < NOW() - INTERVAL '90 days'
+  `
+  logger.info('purged ops_alerts', {
+    module: 'data-retention',
+    count: result.count,
+  })
+}
+
+/**
  * D5 (retención por antigüedad, aprobada por el dueño 2026-07-23): purga
  * GLOBAL de `audit_logs` con más de 24 meses. OJO: la tabla ES per-tenant
  * (tiene `tenant_id`) pero la retención es por antigüedad, cross-tenant — el
@@ -530,6 +547,15 @@ export async function runDataRetentionCleanup(): Promise<void> {
     await purgePushSendLog()
   } catch (err) {
     logger.error('purge push_send_log failed (non-fatal, retried next run)', {
+      module: 'data-retention',
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
+
+  try {
+    await purgeOpsAlerts()
+  } catch (err) {
+    logger.error('purge ops_alerts failed (non-fatal, retried next run)', {
       module: 'data-retention',
       error: err instanceof Error ? err.message : String(err),
     })

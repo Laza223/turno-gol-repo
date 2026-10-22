@@ -229,7 +229,8 @@ export default async function MisReservasPage(props: {
       bookingStartUtcMs: new Date(r.starts_at).getTime(),
       policyHours: r.cancellation_policy_hours,
       nowMs: now,
-      lateCancelHours: r.late_cancel_hours,
+      // Los turnos de abonado (type 'fixed') quedan fuera de la escalera.
+      lateCancelHours: r.type === 'fixed' ? 0 : r.late_cancel_hours,
       lateCancelCount: r.late_cancel_count,
     })
     // Instante físico (`ends_at`), no la fecha: un turno de hoy que ya terminó no se cancela.

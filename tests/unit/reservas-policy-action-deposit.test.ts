@@ -139,7 +139,7 @@ describe('updateReservasPolicyAction — cada rama toca solo lo suyo', () => {
     expect(lastPatch).not.toHaveProperty('cancellation_policy')
   })
 
-  it('con seña guarda cancellation_policy y NO pisa late_cancel_hours', async () => {
+  it('con seña guarda cancellation_policy y apaga late_cancel_hours', async () => {
     const result = await updateReservasPolicyAction(
       { success: true },
       formData({ ...BASE_FIELDS, requiresDeposit: 'true', depositPercentage: '30' }),
@@ -147,7 +147,7 @@ describe('updateReservasPolicyAction — cada rama toca solo lo suyo', () => {
 
     expect(result).toEqual({ success: true })
     expect(lastPatch).toMatchObject({ cancellation_policy: { hours_before: 12 } })
-    expect(lastPatch).not.toHaveProperty('late_cancel_hours')
+    expect(lastPatch).toMatchObject({ late_cancel_hours: 0 })
   })
 
   it('rechaza más de 24 horas', async () => {

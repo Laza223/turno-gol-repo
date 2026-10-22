@@ -27,6 +27,7 @@ vi.mock('@/modules/payments/mp-gateway.implementation', () => {
 
 import { cancelByAdmin, cancelByPlayer } from '@/modules/bookings/booking.cancellation'
 import { revertNoShowStrike } from '@/modules/relationships/ptr.service'
+import { liftPlayerBan } from '@/modules/bans/ban.service'
 
 // Cancelación tardía sin seña (docs/decisions/2026-10-21-cancelacion-tardia.md).
 // Las reservas están ~500 días adelante: con `late_cancel_hours` en 20.000 (~833 días)
@@ -239,5 +240,44 @@ describe('cancelación tardía sin seña', () => {
       revertNoShowStrike(ctx.tenant.id, ctx.player.id, b2, tx),
     )
     expect(await getBan(ctx.tenant.id, ctx.player.id)).not.toBeNull()
+  })
+
+  it('un turno de abonado no cuenta para la escalera', async () => {
+    const sql = getSql()
+    const ctx = await setup(LATE_HOURS)
+    const abonado = await sql<{ id: string }[]>`
+      INSERT INTO abonados (
+        tenant_id, court_id, player_id, contact_name, contact_phone,
+        day_of_week, time_start, time_end, price_per_session, starts_on, status
+      ) VALUES (
+        ${ctx.tenant.id}, ${ctx.courtId}, ${ctx.player.id}, ${'Equipo'}, ${'1122334455'},
+        ${1}, '12:00'::time, '13:00'::time, ${800000}, CURRENT_DATE, 'active'
+      )
+      RETURNING id
+    `
+    const ids = [await book(ctx, 1), await book(ctx, 2)]
+    await sql`UPDATE bookings SET abonado_id = ${abonado[0]!.id} WHERE id = ANY(${ids})`
+    await withTenantContext(ctx.tenant.id, async (tx) => {
+      for (const id of ids) await cancelByPlayer(id, ctx.player.id, undefined, tx)
+    })
+    for (const id of ids) expect(await getCanceledLate(id)).toBe(false)
+    expect(await getBan(ctx.tenant.id, ctx.player.id)).toBeNull()
+  })
+
+  it('levantar el bloqueo por tardías vuelve el conteo a cero', async () => {
+    const ctx = await setup(LATE_HOURS)
+    const [b1, b2, b3] = [await book(ctx, 1), await book(ctx, 2), await book(ctx, 3)]
+    await withTenantContext(ctx.tenant.id, async (tx) => {
+      await cancelByPlayer(b1, ctx.player.id, undefined, tx)
+      await cancelByPlayer(b2, ctx.player.id, undefined, tx)
+    })
+    expect(await getBan(ctx.tenant.id, ctx.player.id)).not.toBeNull()
+
+    await withTenantContext(ctx.tenant.id, (tx) => liftPlayerBan(ctx.tenant.id, ctx.player.id, tx))
+    expect(await getBan(ctx.tenant.id, ctx.player.id)).toBeNull()
+
+    // Empieza de cero: la próxima tardía es la 1ra (solo aviso), no la 3ra.
+    await withTenantContext(ctx.tenant.id, (tx) => cancelByPlayer(b3, ctx.player.id, undefined, tx))
+    expect(await getBan(ctx.tenant.id, ctx.player.id)).toBeNull()
   })
 })

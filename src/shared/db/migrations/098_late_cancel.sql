@@ -11,8 +11,14 @@
 -- Aditiva e inerte: DEFAULT false, ningún código viejo la lee ni la escribe, y
 -- `settings.late_cancel_hours` ausente = 0 = apagado.
 --
+-- `tenant_player_bans.late_cancel_reset_at`: corte del conteo cuando el dueño
+-- levanta un bloqueo por tardías. No se puede resetear `canceled_late` en las
+-- reservas porque `enforce_booking_invariants_fn` (089) prohíbe todo UPDATE
+-- sobre una reserva terminal; el conteo solo cuenta lo posterior al corte.
+--
 -- Rollback: DROP INDEX idx_bookings_late_cancel; ALTER TABLE bookings DROP
--- COLUMN canceled_late; (el código nuevo deja de correr antes, sino rompe).
+-- COLUMN canceled_late; ALTER TABLE tenant_player_bans DROP COLUMN
+-- late_cancel_reset_at; (el código nuevo deja de correr antes, sino rompe).
 -- ============================================================
 
 ALTER TABLE bookings
@@ -21,3 +27,6 @@ ALTER TABLE bookings
 CREATE INDEX IF NOT EXISTS idx_bookings_late_cancel
   ON bookings (tenant_id, canceled_at)
   WHERE canceled_late;
+
+ALTER TABLE tenant_player_bans
+  ADD COLUMN IF NOT EXISTS late_cancel_reset_at timestamptz;

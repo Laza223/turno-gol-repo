@@ -217,6 +217,10 @@ export async function applyLateCancelStrike(
     SELECT count(*)::int AS n FROM bookings
     WHERE tenant_id = ${tenantId} AND player_id = ${playerId}
       AND canceled_late AND canceled_at >= ${since.toISOString()}
+      AND canceled_at > COALESCE((
+        SELECT max(late_cancel_reset_at) FROM tenant_player_bans
+        WHERE tenant_id = ${tenantId} AND player_id = ${playerId}
+      ), '-infinity'::timestamptz)
   `)) as unknown as Array<{ n: number }>
   const lateCancelCount = Number(rows[0]?.n ?? 0)
 

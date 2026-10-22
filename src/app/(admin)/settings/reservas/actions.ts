@@ -100,9 +100,9 @@ export async function updateReservasPolicyAction(
     allow_online_booking: allowOnlineBooking,
     booking_advance_days: bookingAdvanceDays,
     booking_min_advance_hours: bookingMinAdvanceHours,
-    // Cada rama toca SOLO lo suyo: con seña manda la política de devolución; sin seña,
-    // la penalidad por cancelar tarde. El form no renderiza los inputs de la otra rama,
-    // y guardar con ellos ausentes (Number(null) = 0) pisaría lo configurado.
+    // Con seña manda la política de devolución y la penalidad por cancelar tarde se APAGA
+    // (el control no se muestra: no puede quedar activa e invisible). Sin seña, al revés:
+    // `cancellation_policy` no se toca, porque su input no se renderiza (Number(null) = 0).
     ...(requiresDeposit
       ? {
           cancellation_policy: {
@@ -110,6 +110,7 @@ export async function updateReservasPolicyAction(
             penalty_type: 'deposit',
             penalty_amount: null,
           },
+          late_cancel_hours: 0,
         }
       : { late_cancel_hours: lateCancelHours }),
   }

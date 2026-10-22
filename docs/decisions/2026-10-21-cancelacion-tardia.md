@@ -22,6 +22,14 @@
 6. **Bloqueo:** reusa `tenant_player_bans` vía `extendSoftban`, con un reason propio ("Cancelaciones tardías"). Es el mismo gate que ya chequea la reserva online. `revertNoShowStrike` filtra por el reason exacto de las ausencias, así que no lo toca.
 7. **Avisos:** al jugador en el diálogo de cancelar y en el checkout; al staff en el diálogo de cancelar "a pedido del jugador", antes de confirmar.
 
+8. **Con seña, la penalidad se apaga:** al guardar Configuración → Reservas con `requires_deposit`, `late_cancel_hours` se fuerza a 0 (la escalera es solo para complejos sin seña).
+9. **Abonados no cuentan:** una reserva con `abonado_id` (turno fijo) nunca marca `canceled_late`. En la UI del jugador se pasa `lateCancelHours: 0` si `type='fixed'`. Los diálogos del staff no conocen el abonado, así que el texto puede avisar de más para un turno fijo; el backend no cuenta.
+10. **Levantar el bloqueo reinicia el conteo:** `liftPlayerBan` de un ban con reason de tardías guarda `tenant_player_bans.late_cancel_reset_at = NOW()` y el conteo solo cuenta cancelaciones posteriores. No se resetea `canceled_late`: el trigger de 089 prohíbe todo UPDATE sobre una reserva terminal. La próxima tardía vuelve a ser solo aviso. Levantar un ban por ausencias no toca el conteo.
+
+## Imprecisión aceptada
+
+Hay una sola fila de `tenant_player_bans` por (jugador, complejo) y conserva el reason con que nació al extenderse. Si se mezclan un ban por ausencias y uno por tardías, `revertNoShowStrike` y el reinicio de tardías pueden equivocarse en dos casos raros. Se acepta y se documenta; no se agrega un segundo mecanismo.
+
 ## Racional
 
 En apps de reservas se avisa la primera vez, se escala en días y el contador se limpia solo. 90 días de bloqueo le hacen perder un cliente semanal al complejo, por eso el tope es 30.

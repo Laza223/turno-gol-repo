@@ -43,6 +43,7 @@ type LockedBooking = {
   tenant_id: string
   court_id: string
   player_id: string | null
+  abonado_id: string | null
   status: BookingStatus
   canceled_by: CancellationActor | null
   deposit_status: string
@@ -62,6 +63,7 @@ async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking |
       tenant_id,
       court_id,
       player_id,
+      abonado_id,
       status,
       canceled_by,
       deposit_status,
@@ -338,6 +340,7 @@ export async function cancelByPlayer(
   // reserva (`not_required`), no sobre el setting de seña de hoy.
   const lateCancel =
     b.deposit_status === 'not_required' &&
+    b.abonado_id === null &&
     isLateCancel({
       startsAtMs: bookingStartUtc.getTime(),
       nowMs: Date.now(),
@@ -512,12 +515,13 @@ export async function cancelByAdmin(
   // lo habilite).
   const hadPaidDeposit = b.deposit_status === 'paid'
   const targetStatus = shouldRefund && hadPaidDeposit ? 'canceled_refunded' : 'canceled_no_refund'
-  // Solo "a pedido del jugador" y con jugador vinculado (el invitado sin cuenta no
+  // Los turnos de abonado (acuerdo fijo) no cuentan. Solo "a pedido del jugador" y con jugador vinculado (el invitado sin cuenta no
   // tiene a quién bloquear); "cancela el complejo" nunca cuenta. Un turno que ya
   // terminó es una ausencia, no una cancelación (mismo criterio que cancelByPlayer).
   const lateCancel =
     cancellationType === 'jugador' &&
     b.player_id !== null &&
+    b.abonado_id === null &&
     b.deposit_status === 'not_required' &&
     Date.now() < bookingEndUtc.getTime() &&
     isLateCancel({

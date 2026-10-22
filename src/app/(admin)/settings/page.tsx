@@ -211,6 +211,7 @@ function whatsappItem(
     effect: 'Contesta, muestra turnos libres y reserva por vos.',
     value,
     tone,
+    plus: true,
     icon: MessageCircle,
     href: '/settings/whatsapp',
   }

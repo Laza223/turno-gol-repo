@@ -38,13 +38,15 @@ interface NavItem {
   href: string
   icon: React.ComponentType<{ className?: string }>
   label: string
+  /** Es del paquete pago con IA (TurnoGol Plus): se pinta en violeta. */
+  plus?: boolean
 }
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/super-admin', icon: Activity, label: 'Pulso' },
   { href: '/super-admin/tenants', icon: Building2, label: 'Complejos' },
   { href: '/super-admin/jugadores', icon: Users, label: 'Jugadores' },
-  { href: '/super-admin/whatsapp', icon: MessageCircle, label: 'Bot de WhatsApp' },
+  { href: '/super-admin/whatsapp', icon: MessageCircle, label: 'Bot de WhatsApp', plus: true },
 ]
 
 function SidebarContent({
@@ -92,7 +94,7 @@ function SidebarContent({
         aria-label="Navegación del panel super-admin"
         className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5"
       >
-        {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
+        {NAV_ITEMS.map(({ href, icon: Icon, label, plus }) => {
           const isActive =
             pathname === href || (href !== '/super-admin' && pathname.startsWith(href + '/'))
 
@@ -105,16 +107,20 @@ function SidebarContent({
               className={cn(
                 'group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
                 isActive
-                  ? 'bg-primary/10 text-emerald-800 dark:text-emerald-300'
+                  ? plus
+                    ? 'bg-plus/10 text-violet-700 dark:text-violet-300'
+                    : 'bg-primary/10 text-emerald-800 dark:text-emerald-300'
                   : 'text-muted-foreground hover:bg-accent hover:text-foreground',
               )}
             >
               <Icon
                 className={cn(
                   'h-4 w-4 shrink-0 transition-colors',
-                  isActive
-                    ? 'text-emerald-700 dark:text-emerald-400'
-                    : 'text-muted-foreground/70 group-hover:text-foreground',
+                  plus
+                    ? 'text-violet-700 dark:text-violet-300'
+                    : isActive
+                      ? 'text-emerald-700 dark:text-emerald-400'
+                      : 'text-muted-foreground/70 group-hover:text-foreground',
                 )}
               />
               <span className="flex-1 truncate">{label}</span>

@@ -70,6 +70,9 @@
   --color-info: hsl(var(--info));
   --color-info-foreground: hsl(var(--info-foreground));
 
+  --color-plus: hsl(var(--plus));
+  --color-plus-foreground: hsl(var(--plus-foreground));
+
   /* ─── Paleta semántica pineada a los valores de Tailwind 3 ─────────────────
    *
    * Tailwind 4 reescribió su paleta default en OKLCH. Los colores quedan un
@@ -326,6 +329,8 @@
     --warning-foreground: 0 0% 100%;
     --info: 221 83% 53%; /* blue-600 #2563EB — informativo neutro (MASTER §2.2) */
     --info-foreground: 0 0% 100%; /* white — 5.2:1 on blue-600 */
+    --plus: 262 83% 58%; /* violet-600 #7C3AED — TurnoGol Plus (lo pago con IA), nunca un estado */
+    --plus-foreground: 0 0% 100%; /* white — 5.7:1 on violet-600 */
 
     /* Layout shell — field texture overlay */
     --shell-bg: 221 32% 14%; /* slate-900 #1E2535 — dark shell bg */
@@ -375,6 +380,8 @@
     --warning-foreground: 0 0% 100%;
     --info: 217 91% 60%; /* blue-500 #3B82F6 */
     --info-foreground: 224 71% 4%; /* slate-950 — 5.5:1 on blue-500 */
+    --plus: 258 90% 66%; /* violet-500 #8B5CF6 */
+    --plus-foreground: 224 71% 4%; /* slate-950 — 4.8:1 on violet-500 */
   }
 
   /* Superficie siempre oscura dentro de un sitio en claro (/para-complejos, bajo
@@ -409,6 +416,8 @@
     --color-warning-foreground: hsl(var(--warning-foreground));
     --color-info: hsl(var(--info));
     --color-info-foreground: hsl(var(--info-foreground));
+    --color-plus: hsl(var(--plus));
+    --color-plus-foreground: hsl(var(--plus-foreground));
   }
 }
 
@@ -604,6 +613,11 @@ html:has([data-fixed-cta]) {
     box-shadow 250ms cubic-bezier(0.33, 1, 0.68, 1),
     border-color 250ms ease;
 }
+/* TurnoGol Plus: el filo de arriba pasa de esmeralda a violeta. */
+.card-premium.card-plus {
+  border-top-color: hsl(var(--plus) / 0.35);
+}
+
 .dark .card-premium {
   background-color: rgba(255, 255, 255, 0.03);
   border-color: rgba(255, 255, 255, 0.08);
@@ -613,6 +627,10 @@ html:has([data-fixed-cta]) {
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.03) inset,
     0 24px 50px -34px rgba(0, 0, 0, 0.9);
+}
+
+.dark .card-premium.card-plus {
+  border-top-color: hsl(var(--plus) / 0.45);
 }
 
 /* Lift/glow en hover. NO fija cursor: los cards genuinamente clickeables

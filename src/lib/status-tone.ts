@@ -19,7 +19,8 @@
  * light quedaba innecesariamente apagado y 700 ya cumple AA sobre el tinte.
  */
 
-export type StatusTone = 'success' | 'warning' | 'info' | 'destructive' | 'neutral' | 'brand'
+export type StatusTone =
+  'success' | 'warning' | 'info' | 'destructive' | 'neutral' | 'brand' | 'plus'
 
 /**
  * Pill de badge dual-theme (MASTER §6.5): tinte 10%/15% + texto AA + ring.
@@ -39,6 +40,8 @@ export const TONE_BADGE: Record<StatusTone, string> = {
     'bg-slate-500/10 text-slate-800 ring-1 ring-inset ring-slate-500/25 dark:bg-slate-500/15 dark:text-slate-300 dark:ring-slate-500/40',
   brand:
     'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-600/25 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/40',
+  /* TurnoGol Plus (lo pago con IA): violeta, nunca un estado. Ver DESIGN.md. */
+  plus: 'bg-plus/10 text-violet-700 ring-1 ring-inset ring-plus/25 dark:bg-plus/15 dark:text-violet-300 dark:ring-plus/40',
 }
 
 /** Color del label de estado sobre un tinte (escala AA verificada, §2.4). */
@@ -49,6 +52,7 @@ export const TONE_TEXT: Record<StatusTone, string> = {
   destructive: 'text-red-700 dark:text-red-300',
   neutral: 'text-muted-foreground',
   brand: 'text-emerald-800 dark:text-emerald-300',
+  plus: 'text-violet-700 dark:text-violet-300',
 }
 
 /** Borde izquierdo de 3px: identificador primario del estado en la grilla. */
@@ -59,6 +63,7 @@ export const TONE_BORDER: Record<StatusTone, string> = {
   destructive: 'border-l-destructive',
   neutral: 'border-l-slate-400 dark:border-l-slate-500',
   brand: 'border-l-primary',
+  plus: 'border-l-plus',
 }
 
 /** Acento sólido (tira lateral de las listas). */
@@ -69,6 +74,7 @@ export const TONE_ACCENT: Record<StatusTone, string> = {
   destructive: 'bg-destructive',
   neutral: 'bg-muted-foreground',
   brand: 'bg-primary',
+  plus: 'bg-plus',
 }
 
 /** Tinte de fondo de la celda. `strong` marca el remate de un ciclo (Jugada). */
@@ -79,6 +85,7 @@ export const TONE_TINT: Record<StatusTone, string> = {
   destructive: 'bg-destructive/10 dark:bg-destructive/15',
   neutral: 'bg-muted/30 dark:bg-muted/40',
   brand: 'bg-primary/10 dark:bg-primary/15',
+  plus: 'bg-plus/10 dark:bg-plus/15',
 }
 
 export const TONE_TINT_STRONG: Record<StatusTone, string> = {
@@ -88,6 +95,7 @@ export const TONE_TINT_STRONG: Record<StatusTone, string> = {
   destructive: 'bg-destructive/15 dark:bg-destructive/20',
   neutral: 'bg-muted/40 dark:bg-muted/50',
   brand: 'bg-primary/15 dark:bg-primary/20',
+  plus: 'bg-plus/15 dark:bg-plus/20',
 }
 
 /** Swatch de leyenda: cuadradito que enseña el mapeo color↔estado. */
@@ -98,4 +106,5 @@ export const TONE_SWATCH: Record<StatusTone, string> = {
   destructive: 'bg-destructive/15 border-l-2 border-l-destructive',
   neutral: 'bg-muted/40 border-l-2 border-l-slate-400 dark:border-l-slate-500',
   brand: 'bg-primary/15 border-l-2 border-l-primary',
+  plus: 'bg-plus/15 border-l-2 border-l-plus',
 }

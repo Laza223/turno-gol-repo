@@ -10,6 +10,7 @@ import {
   HandCoins,
   LogOut,
   Mail,
+  MessageCircle,
   Receipt,
   Store,
   Users,
@@ -48,6 +49,15 @@ function groups({
           value: '08:00 a 01:00',
           icon: Clock,
           href: '/settings/horarios',
+        },
+        {
+          label: 'Asistente de WhatsApp',
+          effect: 'Contesta, muestra turnos libres y reserva por vos.',
+          value: 'Contesta solo',
+          tone: 'success',
+          plus: true,
+          icon: MessageCircle,
+          href: '/settings/whatsapp',
         },
         {
           label: 'Página pública',

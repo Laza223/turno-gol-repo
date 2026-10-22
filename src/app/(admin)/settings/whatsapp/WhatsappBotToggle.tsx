@@ -42,7 +42,7 @@ export function WhatsappBotToggle({
       </p>
       <input type="hidden" name="enabled" value={enabled ? 'false' : 'true'} />
       <SubmitButton
-        variant={enabled ? 'outline' : 'default'}
+        variant={enabled ? 'outline' : 'plus'}
         pendingLabel={enabled ? 'Apagando…' : 'Prendiendo…'}
       >
         {enabled ? 'Apagar el asistente' : 'Prender el asistente'}

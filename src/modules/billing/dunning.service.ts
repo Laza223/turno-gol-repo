@@ -4,6 +4,7 @@ import { enqueueTenantOwnerNotification } from '@/modules/notifications/notifica
 import { captureMessage } from '@/lib/sentry'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import { isMpAlreadyCancelledPreapprovalError } from '@/modules/payments/mp-token-refresh'
+import { markReferralRewardEarned } from '@/modules/referrals/referral-reward.service'
 import {
   transitionActiveToPastDue,
   transitionPastDueToActive,
@@ -432,6 +433,14 @@ export async function onPaymentApproved(
     `)
     template = 'subscription_renewed'
   }
+
+  // Si este complejo llegó por un referido, su primer cobro real le gana el
+  // mes a quien lo trajo (R3). En savepoint: nunca revierte este cobro.
+  // "Primer cobro" = el primero aprobado desde que tiene referidor: un complejo
+  // al que soporte le asignó referidor ya pagando lo gana en la renovación.
+  // No se usa `last_payment_at` porque soporte lo escribe sin pago
+  // (`transitionToActiveFromAny`). Igual lo aprueba el founder (R4).
+  await markReferralRewardEarned(tenantId, tx)
 
   const tenantInfo = await loadTenantInfo(tenantId, tx)
   if (tenantInfo && template) {

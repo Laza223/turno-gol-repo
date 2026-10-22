@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { buildWhatsappUrl } from '@/lib/whatsapp'
 import {
   IMPORT_TEMPLATE,
   MAX_IMPORT_ROWS,
@@ -468,8 +469,11 @@ describe('validateImportText', () => {
       expect(row!.errors).toEqual([])
       expect(row!.value).not.toBeNull()
       expect(row!.warnings).toEqual([aviso])
+      // El aviso dice «sin botón de WhatsApp»: que sea cierto.
+      expect(buildWhatsappUrl(row!.value!.contactPhone)).toBeNull()
     }
     expect(completo!.warnings).toEqual([])
+    expect(buildWhatsappUrl(completo!.value!.contactPhone)).toBe('https://wa.me/5491123456789')
   })
 
   it('el turno que termina a la medianoche se guarda hasta las 24:00', () => {

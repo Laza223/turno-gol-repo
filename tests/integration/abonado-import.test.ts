@@ -122,6 +122,20 @@ afterAll(async () => {
 })
 
 describe('importar turnos fijos desde una planilla', () => {
+  it('la fila que queda afuera se nombra con el apellido', async () => {
+    const f = await setup()
+    const text = tsv([
+      ['Nombre', 'Apellido', 'Teléfono', 'Cancha', 'Día', 'Desde', 'Hasta', 'Precio'],
+      ['Juan', 'Pérez', '', 'Cancha 1', 'Martes', '20', '21', '1000'],
+    ])
+
+    const outcome = await runImport(f, text)
+
+    expect(outcome.ok && outcome.skipped).toEqual([
+      { line: 2, contactName: 'Juan Pérez', reason: 'Falta completar Teléfono' },
+    ])
+  })
+
   it('carga las filas buenas con sus turnos, por el mismo camino que el alta manual', async () => {
     const f = await setup()
     const text = tsv([

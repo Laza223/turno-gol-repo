@@ -10,7 +10,12 @@ import { checkAbonadoSlotConflict, createAbonado, getAbonadoSlotConflicts } from
 import { createAbonadoSchema } from './abonado.schema'
 import { generateSlotDates } from './slot-generator'
 import { AbonadoConflictError, CourtNotFoundError } from './abonado.errors'
-import { parseDelimitedText, serializeTable, validateImportText } from './abonado-import.parse'
+import {
+  joinSurname,
+  parseDelimitedText,
+  serializeTable,
+  validateImportText,
+} from './abonado-import.parse'
 import type {
   ImportOutcome,
   ImportPreview,
@@ -226,7 +231,7 @@ export async function importAbonados(
   const created: Extract<ImportOutcome, { ok: true }>['created'] = []
   const skipped: Extract<ImportOutcome, { ok: true }>['skipped'] = []
   for (const row of preview.rows) {
-    const contactName = row.value?.contactName ?? row.raw.name ?? ''
+    const contactName = row.value?.contactName ?? joinSurname(row.raw.name ?? '', row.raw.surname)
     if (!row.value || !row.startsOn || row.errors.length > 0) {
       skipped.push({ line: row.line, contactName, reason: row.errors[0] ?? 'Datos inválidos' })
       continue

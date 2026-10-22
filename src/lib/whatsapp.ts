@@ -42,6 +42,10 @@ export function toWhatsappDigits(raw: string | null | undefined): string | null 
   // El 54 inicial solo puede ser el código de país: el único código de área
   // argentino de dos dígitos es el 11.
   const national = normalizeArNational(digits.startsWith('54') ? digits.slice(2) : digits)
+  // Ninguna característica argentina empieza con 15: un nacional que arranca
+  // así es el prefijo de móvil sin el área adelante. Con 549 delante sería un
+  // link a otro número.
+  if ((national.startsWith('9') ? national.slice(1) : national).startsWith('15')) return null
   const withMobileMarker = national.startsWith('9') ? national : `9${national}`
   const full = `54${withMobileMarker}`
 

@@ -336,7 +336,7 @@ export function parsePhone(cell: string): CellResult<string> {
  * Un teléfono argentino ya guardado (`+54 <nacional>`) sin código de área: 8
  * dígitos, o «15 …» sin el área adelante (ninguna característica empieza con
  * 15). Se carga igual (decisión de Lazar), pero `toWhatsappDigits` no puede
- * armarle el link: le falta el área, o con el 15 adelante arma otro número.
+ * armarle el link sin el área y devuelve null: el contacto queda sin botón.
  */
 export function lacksAreaCode(phone: string): boolean {
   if (!phone.startsWith('+54 ')) return false

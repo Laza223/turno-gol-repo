@@ -13,7 +13,7 @@ import { ImportarFijosForm } from './ImportarFijosForm'
 import { importAbonadosAction, previewAbonadoImportAction } from './actions'
 
 export default async function ImportarFijosPage() {
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect('/login')
   const { tenant } = auth
 

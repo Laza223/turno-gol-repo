@@ -25,7 +25,7 @@ import { SettingsHeader } from '../SettingsHeader'
  * `perfil/` — solo cambió dónde se muestran.
  */
 export default async function SettingsEquipoPage() {
-  const { user, tenant } = await requireAdminStaff()
+  const { user, tenant } = await requireAdminStaff({ allowReadOnly: true })
   const staffUserId: string = user.staffUserId
 
   const [members, tournamentsEnabled] = await Promise.all([

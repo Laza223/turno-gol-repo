@@ -16,6 +16,9 @@ import { SETTINGS_ADMIN_ONLY_NOTICE } from '@/modules/staff/roles'
  * un bug). grilla/page.tsx traduce el código a un toast.
  */
 export default async function SettingsLayout({ children }: { children: ReactNode }) {
-  await requireAdminStaff({ onRoleRejected: `/grilla?notice=${SETTINGS_ADMIN_ONLY_NOTICE}` })
+  await requireAdminStaff({
+    allowReadOnly: true,
+    onRoleRejected: `/grilla?notice=${SETTINGS_ADMIN_ONLY_NOTICE}`,
+  })
   return <>{children}</>
 }

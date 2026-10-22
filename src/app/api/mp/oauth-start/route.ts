@@ -3,6 +3,10 @@ import { createHmac } from 'node:crypto'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getStaffRole } from '@/modules/staff/staff.service'
+import {
+  BLOCKED_TENANT_STATUSES,
+  READ_ONLY_TENANT_STATUSES,
+} from '@/modules/tenants/tenant.lifecycle'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -23,6 +27,17 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const role = await getStaffRole(tenant.id, user.staffUserId)
   if (role !== 'admin') {
     return NextResponse.redirect(new URL('/dashboard?error=mp_forbidden', req.url))
+  }
+
+  // Conectar MP escribe las credenciales del complejo: en solo lectura
+  // (decisión 2026-10-22) o bloqueado no arranca, igual que una Server Action
+  // (`requireAdminStaff`). Basta con cortar acá: el callback solo acepta un
+  // `state` firmado por este handler, que vence a los 10 minutos.
+  if (BLOCKED_TENANT_STATUSES.has(tenant.status)) {
+    return NextResponse.redirect(new URL('/suspended', req.url))
+  }
+  if (READ_ONLY_TENANT_STATUSES.has(tenant.status)) {
+    return NextResponse.redirect(new URL('/reactivar', req.url))
   }
 
   const clientId = process.env.MP_CLIENT_ID

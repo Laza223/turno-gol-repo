@@ -16,7 +16,7 @@ export default async function JugadoresPage(props: {
 }) {
   const searchParams = await props.searchParams
   // Constraint: el módulo se protege con requireOperatorStaff (admin + manager).
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect('/dashboard')
   const { tenant } = auth
 

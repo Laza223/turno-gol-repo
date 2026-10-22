@@ -42,7 +42,7 @@ export default async function GrillaPage(props: {
   const searchParams = await props.searchParams
   // `/onboarding` y no `/login` en el rechazo: es el destino que esta página ya
   // tenía para "sin complejo resuelto" y se preserva tal cual.
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect('/onboarding')
   const { tenant } = auth
 

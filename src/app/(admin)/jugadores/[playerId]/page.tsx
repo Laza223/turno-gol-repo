@@ -33,7 +33,7 @@ function parseHistoryPage(raw: string | undefined): number {
 export default async function JugadorProfilePage(props: Props) {
   const params = await props.params
   const searchParams = await props.searchParams
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect('/dashboard')
   const { tenant } = auth
 

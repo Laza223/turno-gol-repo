@@ -50,7 +50,7 @@ function mostCommonPriceCents(courts: Awaited<ReturnType<typeof listCourts>>): n
 export default async function ReservasPolicyPage(
   props: { searchParams?: Promise<{ error?: string; complejo?: string }> } = {},
 ) {
-  const { tenant } = await requireAdminStaff()
+  const { tenant } = await requireAdminStaff({ allowReadOnly: true })
   const searchParams = await props.searchParams
   const mpConnected = !!tenant.mpConnectedAt
 

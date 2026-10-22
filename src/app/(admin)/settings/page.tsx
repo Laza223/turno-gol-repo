@@ -42,7 +42,7 @@ import { SettingsIndex, type SettingsIndexGroup } from './SettingsIndex'
  * vez de romper la portada.
  */
 export default async function SettingsPage() {
-  const { user, tenant } = await requireAdminStaff()
+  const { user, tenant } = await requireAdminStaff({ allowReadOnly: true })
   const s = tenant.settings
 
   let sub: Awaited<ReturnType<typeof getSubscriptionState>> | null = null

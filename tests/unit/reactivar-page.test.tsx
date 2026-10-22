@@ -173,13 +173,30 @@ describe('/reactivar — rol no-admin', () => {
 })
 
 describe('/reactivar — admin en estado elegible', () => {
-  it('suspended: muestra el botón de reactivar apuntando a /api/billing/reactivate', async () => {
+  it('suspended por mora: muestra el botón de reactivar apuntando a /api/billing/reactivate', async () => {
+    vi.mocked(getStaffTenant).mockResolvedValue(tenant('suspended') as never)
+    vi.mocked(getSubscriptionState).mockResolvedValue({
+      ...sub('suspended'),
+      dunningStartedAt: new Date('2027-01-05'),
+    } as never)
+
+    render(await ReactivarPage())
+
+    expect(screen.getByText('Tu cuenta está suspendida')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Reactivar —/ })).toBeTruthy()
+  })
+
+  // Decisión 2026-10-22: la prueba vencida queda en `suspended` sin
+  // `dunning_started_at` (solo lectura). No es una mora: no se le habla de pago
+  // fallido, se le dice que la prueba terminó y que active el plan.
+  it('suspended por prueba vencida: habla de la prueba, no de la mora, y ofrece el botón', async () => {
     vi.mocked(getStaffTenant).mockResolvedValue(tenant('suspended') as never)
     vi.mocked(getSubscriptionState).mockResolvedValue(sub('suspended') as never)
 
     render(await ReactivarPage())
 
-    expect(screen.getByText('Tu cuenta está suspendida')).toBeTruthy()
+    expect(screen.getByText('Tu prueba terminó')).toBeTruthy()
+    expect(screen.queryByText('Tu cuenta está suspendida')).toBeNull()
     expect(screen.getByRole('button', { name: /^Reactivar —/ })).toBeTruthy()
   })
 
@@ -230,21 +247,35 @@ describe('/reactivar — past_due (sigue con acceso completo al panel)', () => {
   })
 })
 
-// Fix 2 (R2-4 residual): el hard-lock del layout de (admin) saca a TODO
-// `suspended` fuera de `/settings/facturacion` (donde vive el botón de baja
-// normal, ENS-25) — sin esto, un dueño suspendido no tenía NINGÚN camino de
-// UI a la baja voluntaria (Res. 424/2020). `/reactivar` es la única página
-// que un `suspended` ve, así que reutiliza `CancelSubscriptionSection`
-// gateada por el mismo `CANCELABLE` que usa `/settings/facturacion`.
+// Fix 2 (R2-4 residual): `/settings/facturacion` (donde vive el botón de baja
+// normal, ENS-25) manda a todo `suspended` acá — sin esto, un dueño en mora no
+// tenía NINGÚN camino de UI a la baja voluntaria (Res. 424/2020). `/reactivar`
+// reutiliza `CancelSubscriptionSection` gateada por el mismo `CANCELABLE` que
+// usa `/settings/facturacion`.
 describe('/reactivar — sección de baja (Fix 2, R2-4 residual)', () => {
-  it('suspended: ve el botón de "Dar de baja" además del de reactivar', async () => {
+  it('suspended por mora: ve el botón de "Dar de baja" además del de reactivar', async () => {
+    vi.mocked(getStaffTenant).mockResolvedValue(tenant('suspended') as never)
+    vi.mocked(getSubscriptionState).mockResolvedValue({
+      ...sub('suspended'),
+      dunningStartedAt: new Date('2027-01-05'),
+    } as never)
+
+    render(await ReactivarPage())
+
+    expect(screen.getByRole('button', { name: /^Reactivar —/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Dar de baja' })).toBeTruthy()
+  })
+
+  // Decisión 2026-10-22: la prueba vencida queda en `suspended`, que está en
+  // `CANCELABLE`. Igual que `trialing`, nunca eligió plan: la baja no se ofrece.
+  it('suspended por prueba vencida: NO ve el botón de cancelar', async () => {
     vi.mocked(getStaffTenant).mockResolvedValue(tenant('suspended') as never)
     vi.mocked(getSubscriptionState).mockResolvedValue(sub('suspended') as never)
 
     render(await ReactivarPage())
 
     expect(screen.getByRole('button', { name: /^Reactivar —/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Dar de baja' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Dar de baja' })).toBeNull()
   })
 
   it('blocked: NO ve el botón de cancelar (blocked no es una transición válida de cancel())', async () => {

@@ -1,10 +1,10 @@
 import { z } from 'zod'
 import { REFERRAL_CODE_ALPHABET } from '@/modules/referrals/referral.schema'
 import { toWhatsappDigits } from '@/lib/whatsapp'
-import { addDays, artTodayStr } from '@/shared/dates/art'
 import { artDateOf } from '@/shared/time/art-date'
 import { uuid } from '@/shared/validation/primitives'
 import { RIVAL_ZONES } from './rival-zones'
+import { isInRivalStartWindow } from './rival-window'
 
 // Mensajes en es-AR (la Server Action los muestra tal cual). Todos los valores
 // cerrados replican los CHECK de la migración 099: cambiar uno acá sin la
@@ -18,9 +18,6 @@ export const RIVAL_SEEKING = ['players', 'rival'] as const
 export const RIVAL_SEEKING_POSITIONS = ['any', 'goalkeeper'] as const
 /** "El partido no existe" · "Es spam o publicidad" · "Nombre o foto ofensivos" · "Parece menor de 18". */
 export const RIVAL_REPORT_REASONS = ['not_exists', 'spam', 'offensive', 'minor'] as const
-
-/** Ventana de inicio: hoy y los 7 días siguientes, en días calendario ART. */
-const START_WINDOW_DAYS = 7
 
 const INVITE_CODE_RE = new RegExp(`^[${REFERRAL_CODE_ALPHABET}]{10}$`)
 
@@ -44,7 +41,7 @@ const startsAtSchema = z.coerce.date('Fecha y hora inválidas').superRefine((d, 
   ) {
     ctx.addIssue({ code: 'custom', message: 'La hora tiene que ser en punto o y media.' })
   }
-  if (artDateOf(d) > addDays(artTodayStr(), START_WINDOW_DAYS)) {
+  if (!isInRivalStartWindow(artDateOf(d))) {
     ctx.addIssue({ code: 'custom', message: 'Solo se puede armar hasta 7 días adelante.' })
   }
 })

@@ -4,13 +4,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // queda, así que la action no abre una preferencia nueva si vencería DESPUÉS del hold (un pago que
 // entra tarde no confirma la reserva y la seña la tiene que devolver el complejo).
 
-const { redirect, user, execute, createDepositPayment } = vi.hoisted(() => ({
+const { redirect, user, execute, createDepositPayment, tenantRow } = vi.hoisted(() => ({
   redirect: vi.fn((url: string) => {
     throw new Error(`NEXT_REDIRECT:${url}`)
   }),
   user: vi.fn(),
   execute: vi.fn(),
   createDepositPayment: vi.fn(),
+  tenantRow: { current: { mpAccessToken: 'tok', mpDisconnectedAt: null as Date | null } },
 }))
 
 vi.mock('@/modules/auth/auth.service', () => ({
@@ -30,7 +31,7 @@ vi.mock('@/shared/rate-limit', () => ({
 vi.mock('@/shared/db/client', () => ({
   getDb: () => ({
     select: () => ({
-      from: () => ({ where: () => ({ limit: async () => [{ mpAccessToken: 'tok' }] }) }),
+      from: () => ({ where: () => ({ limit: async () => [tenantRow.current] }) }),
     }),
   }),
   withPlayerContext: async (_playerId: string, run: (tx: unknown) => unknown) => run({ execute }),
@@ -61,6 +62,7 @@ function pendingWith(secondsLeft: number) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  tenantRow.current = { mpAccessToken: 'tok', mpDisconnectedAt: null }
   user.mockResolvedValue({ type: 'player', id: 'u1', playerId: 'p1', email: 'a@b.com' })
   createDepositPayment.mockResolvedValue({ initPoint: 'https://mp.example/checkout' })
 })
@@ -72,6 +74,15 @@ describe('retryDepositPaymentAction — hold casi vencido', () => {
       'NEXT_REDIRECT:https://mp.example/checkout',
     )
     expect(createDepositPayment).toHaveBeenCalledTimes(1)
+  })
+
+  it('con MercadoPago marcado como desconectado no abre preferencia: va a /pendiente', async () => {
+    pendingWith(300)
+    tenantRow.current = { mpAccessToken: 'tok', mpDisconnectedAt: new Date() }
+    await expect(retryDepositPaymentAction(fd())).rejects.toThrow(
+      `NEXT_REDIRECT:/reserva/${BOOKING_ID}/pendiente`,
+    )
+    expect(createDepositPayment).not.toHaveBeenCalled()
   })
 
   it.each([90, 30, 0])(

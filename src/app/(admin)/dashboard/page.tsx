@@ -117,6 +117,7 @@ export default async function DashboardPage() {
             openingHours: tenant.openingHours,
             closedDates: tenant.closedDates,
             closesNextDay: tenant.closesNextDay,
+            mpDisconnectedAt: tenant.mpDisconnectedAt,
           }),
           listCourts(tenant.id, tx),
           listDayGridBookings(tenant.id, date, tx),
@@ -236,7 +237,7 @@ export default async function DashboardPage() {
           arranca en el primer renglón. */}
         {needsAttention.length > 0 && (
           <div className="card-entrance">
-            <NeedsAttention items={needsAttention} nowMs={now.getTime()} />
+            <NeedsAttention items={needsAttention} nowMs={now.getTime()} isAdmin={isAdmin} />
           </div>
         )}
 

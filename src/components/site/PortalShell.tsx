@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import PortalHeader from './PortalHeader'
 import SiteFooter from './SiteFooter'
 import PortalFrame from './PortalFrame'
-import { PortalSessionProvider, type PortalSessionContextValue } from './PortalSessionProvider'
+import { PortalSessionProvider, type PortalSessionSeed } from './PortalSessionProvider'
 
 /**
  * Cascarón único del portal del jugador (público + logueado + post-reserva).
@@ -31,7 +31,7 @@ export default function PortalShell({
    * anónimo-primero es a propósito para ISR) el comportamiento es el de
    * siempre.
    */
-  initialSession?: PortalSessionContextValue
+  initialSession?: PortalSessionSeed
 }) {
   return (
     <PortalSessionProvider initialValue={initialSession}>

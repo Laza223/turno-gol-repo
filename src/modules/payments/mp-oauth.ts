@@ -6,10 +6,11 @@ import { logger } from '@/shared/lib/logger'
 import { captureException } from '@/lib/sentry'
 import { MercadoPagoGateway } from './mp-gateway.implementation'
 import { withCircuitBreaker } from './mp-breaker.gateway'
-import { MpGatewayError, TenantMpNotConnectedError } from './payment.errors'
+import { MpGatewayError, MpGrantRevokedError, TenantMpNotConnectedError } from './payment.errors'
 import type { PaymentGateway } from './mp-gateway'
 import { MP_MOCK_ENABLED, LocalMockGateway } from './mock-mp'
 import { MP_GET_TIMEOUT_MS } from './mp-gateway.implementation'
+import { markMpDisconnected, type MpDisconnectDetectedBy } from './mp-connection.service'
 
 const MP_OAUTH_TOKEN_URL = 'https://api.mercadopago.com/oauth/token'
 
@@ -19,6 +20,28 @@ type MpRefreshResponse = {
   user_id?: number
   public_key?: string
   expires_in?: number
+}
+
+/** Los dos códigos del endpoint de token que dicen "el complejo revocó el permiso". */
+function isGrantRevokedCode(value: string | null): value is MpGrantRevokedError['mpError'] {
+  return value === 'invalid_grant' || value === 'unauthorized_client'
+}
+
+/**
+ * Código OAuth del rechazo (`{ error: 'invalid_grant', ... }`), o `null` si el
+ * body no es JSON o no lo trae. Compara contra un conjunto CERRADO, así que un
+ * texto libre de MP nunca se lee como revocación. El body no se loguea.
+ */
+async function readOAuthErrorCode(res: Response): Promise<string | null> {
+  try {
+    const body: unknown = await res.json()
+    if (typeof body !== 'object' || body === null) return null
+    const { error, message } = body as { error?: unknown; message?: unknown }
+    if (typeof error === 'string') return error
+    return typeof message === 'string' ? message : null
+  } catch {
+    return null
+  }
 }
 
 export type MpRefreshedTokens = {
@@ -62,7 +85,19 @@ export async function refreshMpAccessToken(
   })
 
   if (!res.ok) {
-    throw new MpGatewayError(`MP token refresh failed (HTTP ${res.status})`)
+    const code = await readOAuthErrorCode(res)
+    // Solo un 4xx con uno de los dos códigos es "el complejo revocó el
+    // permiso". `invalid_client` (credenciales de TurnoGol), un 5xx o un body
+    // ilegible siguen siendo un error de gateway: no marcan al complejo.
+    if (res.status >= 400 && res.status < 500 && isGrantRevokedCode(code)) {
+      throw new MpGrantRevokedError(code, res.status)
+    }
+    // El código va al mensaje (y de ahí a logs y Sentry) solo si tiene forma
+    // de código OAuth: un `message` libre de MP podría repetir el token.
+    const safeCode = code && /^[a-z_]{1,40}$/.test(code) ? code : null
+    throw new MpGatewayError(
+      `MP token refresh failed (HTTP ${res.status}${safeCode ? `, ${safeCode}` : ''})`,
+    )
   }
 
   const data = (await res.json()) as MpRefreshResponse
@@ -82,11 +117,21 @@ export async function refreshMpAccessToken(
  * Refresh one tenant's MP credentials and persist the new (encrypted) tokens.
  * Returns the new **encrypted** access token (the gateway feeds it back into
  * `mpClient`). Throws if the tenant has no refresh token on file.
+ *
+ * Si MP contesta que el permiso ya no existe (`MpGrantRevokedError`), marca al
+ * complejo como desconectado antes de propagar el error; un refresh exitoso
+ * limpia esa marca. `detectedBy` solo viaja al audit log.
  */
-export async function refreshTenantMpToken(tenantId: string): Promise<string> {
+export async function refreshTenantMpToken(
+  tenantId: string,
+  detectedBy: MpDisconnectDetectedBy = 'refresh_on_401',
+): Promise<string> {
   const db = getDb()
   const rows = await db
-    .select({ mpRefreshToken: tenants.mpRefreshToken })
+    .select({
+      mpRefreshToken: tenants.mpRefreshToken,
+      mpDisconnectedAt: tenants.mpDisconnectedAt,
+    })
     .from(tenants)
     .where(eq(tenants.id, tenantId))
     .limit(1)
@@ -97,7 +142,20 @@ export async function refreshTenantMpToken(tenantId: string): Promise<string> {
   // La llamada a MP va FUERA de toda transacción (convenciones-stack: un efecto
   // externo nunca adentro de una tx SQL). A partir de acá el refresh token
   // viejo ya está MUERTO del lado de MercadoPago: rota y es de un solo uso.
-  const fresh = await refreshMpAccessToken(encryptedRefresh)
+  let fresh: MpRefreshedTokens
+  try {
+    fresh = await refreshMpAccessToken(encryptedRefresh)
+  } catch (err) {
+    if (err instanceof MpGrantRevokedError) {
+      await markMpDisconnected({
+        tenantId,
+        usedRefreshToken: encryptedRefresh,
+        detectedBy,
+        mpError: err.mpError,
+      })
+    }
+    throw err
+  }
   const encryptedAccess = encrypt(fresh.accessToken)
 
   // Compare-and-set: solo pisamos la fila si el refresh token sigue siendo el
@@ -118,6 +176,8 @@ export async function refreshTenantMpToken(tenantId: string): Promise<string> {
       ...(fresh.userId ? { mpUserId: fresh.userId } : {}),
       ...(fresh.publicKey ? { mpPublicKey: fresh.publicKey } : {}),
       mpConnectedAt: new Date(),
+      // Un refresh que anda prueba que el permiso está vivo: cura la marca.
+      mpDisconnectedAt: null,
       updatedAt: new Date(),
     })
     .where(and(eq(tenants.id, tenantId), eq(tenants.mpRefreshToken, encryptedRefresh)))
@@ -136,6 +196,15 @@ export async function refreshTenantMpToken(tenantId: string): Promise<string> {
     )
     captureException(err)
     throw err
+  }
+
+  if (rows[0]?.mpDisconnectedAt) {
+    // Estaba marcado y el refresh anduvo: o el dueño volvió a autorizar por
+    // fuera de TurnoGol, o la marca fue un falso positivo. Queda rastro.
+    logger.warn('mp: refresh exitoso sobre un complejo marcado; se limpia la marca', {
+      module: 'mp-oauth',
+      tenantId,
+    })
   }
 
   return encryptedAccess

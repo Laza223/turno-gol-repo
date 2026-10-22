@@ -25,9 +25,15 @@ const PLAYER: PortalSession = {
   email: 'tomas@test.com',
 }
 
-function frame(session: PortalSession | null, staffPanelPath: string | null = null) {
+function frame(
+  session: PortalSession | null,
+  staffPanelPath: string | null = null,
+  rivalEnabled = false,
+) {
   return render(
-    <PortalSessionProvider initialValue={{ session, favoriteTenantIds: new Set(), staffPanelPath }}>
+    <PortalSessionProvider
+      initialValue={{ session, favoriteTenantIds: new Set(), staffPanelPath, rivalEnabled }}
+    >
       <PortalFrame header={<header>h</header>} footer={<footer>f</footer>}>
         <p>contenido</p>
       </PortalFrame>
@@ -51,6 +57,48 @@ describe('PortalFrame — barra inferior', () => {
     const hrefs = [...nav.querySelectorAll('a')].map((a) => a.getAttribute('href'))
     expect(hrefs).toEqual(['/explorar', '/mis-reservas', '/configuracion'])
     expect(screen.getByRole('link', { name: 'Explorar' }).getAttribute('aria-current')).toBe('page')
+  })
+
+  it('con RIVAL prendido la barra es Explorar · Rival · Reservas · Cuenta', () => {
+    frame(null, null, true)
+    const nav = screen.getByRole('navigation', { name: 'Navegación del jugador' })
+    const hrefs = [...nav.querySelectorAll('a')].map((a) => a.getAttribute('href'))
+    expect(hrefs).toEqual(['/explorar', '/rival', '/mis-reservas', '/configuracion'])
+  })
+
+  it.each(['/rival', '/rival/nuevo', '/rival/p/ABC123'])(
+    'con RIVAL prendido, %s deja activo a Rival y a nadie más',
+    (pathname) => {
+      nav.pathname = pathname
+      frame(null, null, true)
+      const active = screen
+        .getAllByRole('link')
+        .filter((a) => a.getAttribute('aria-current') === 'page')
+        .map((a) => a.textContent)
+      expect(active).toEqual(['Rival'])
+    },
+  )
+
+  it('el header del portal suma "Rival" solo con el flag prendido', async () => {
+    const { default: PortalHeader } = await import('@/components/site/PortalHeader')
+    const header = (rivalEnabled: boolean) =>
+      render(
+        <PortalSessionProvider
+          initialValue={{
+            session: null,
+            favoriteTenantIds: new Set(),
+            staffPanelPath: null,
+            rivalEnabled,
+          }}
+        >
+          <PortalHeader signOutAction={async () => {}} />
+        </PortalSessionProvider>,
+      )
+    header(false)
+    expect(screen.queryByRole('link', { name: 'Rival' })).toBeNull()
+    cleanup()
+    header(true)
+    expect(screen.getByRole('link', { name: 'Rival' }).getAttribute('href')).toBe('/rival')
   })
 
   it('reserva el alto de la barra aunque no haya sesión', () => {

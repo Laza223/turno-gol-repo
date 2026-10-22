@@ -9,7 +9,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/shared/db/client', () => ({
   getWorkerSql: vi.fn(),
+  getWorkerDb: vi.fn(() => 'worker-db'),
   withTenantContext: vi.fn(),
+}))
+vi.mock('@/modules/super-admin/ops-alerts.service', () => ({
+  sendOpsAlerts: vi.fn(),
+  artHourKey: vi.fn(() => '2026-10-22T14'),
 }))
 vi.mock('@/modules/billing/billing.gateway', () => ({
   getBillingGateway: vi.fn(),
@@ -38,6 +43,7 @@ import { getWorkerSql, withTenantContext } from '@/shared/db/client'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { insertSystemAuditLog } from '@/shared/db/audit'
 import { captureMessage } from '@/lib/sentry'
+import { sendOpsAlerts } from '@/modules/super-admin/ops-alerts.service'
 import { reconcileSubscriptions } from '@/shared/jobs/workers/reconcile-subscriptions.worker'
 
 const mockGetWorkerSql = getWorkerSql as ReturnType<typeof vi.fn>
@@ -45,6 +51,7 @@ const mockWithTenantContext = withTenantContext as ReturnType<typeof vi.fn>
 const mockGetBillingGateway = getBillingGateway as ReturnType<typeof vi.fn>
 const mockInsertAudit = insertSystemAuditLog as ReturnType<typeof vi.fn>
 const mockCaptureMessage = captureMessage as ReturnType<typeof vi.fn>
+const mockSendOpsAlerts = sendOpsAlerts as ReturnType<typeof vi.fn>
 
 const TENANT = 'fbeda410-39eb-4ed0-b248-2f732ad14d26'
 const PREAPPROVAL = '275616150bef48aa85d502d9b490a359'
@@ -59,9 +66,13 @@ const PREAPPROVAL = '275616150bef48aa85d502d9b490a359'
  * template literal, así que tampoco se distinguen por el texto: lo que los
  * separa es el array de estados interpolado.
  *
- * Las dos llamadas a `recentlyAlerted` también comparten template y se separan
- * por la acción interpolada (`subscription.mp_desync` vs
- * `subscription.amount_drift`).
+ * Las llamadas a `recentlyAlerted` también comparten template y se separan por
+ * la acción interpolada (`subscription.mp_desync`, `subscription.amount_drift`
+ * o `subscription.courts_over_billed`).
+ *
+ * El chequeo de canchas por encima de lo facturado tiene su propia query, que
+ * también nombra `tenant_subscriptions`: se la reconoce por el `FROM courts` y
+ * se la despacha ANTES, o caería en el barrido núcleo.
  */
 function mockWorkerSql(
   alertRows: unknown[],
@@ -69,14 +80,19 @@ function mockWorkerSql(
   postTerminalRows: unknown[],
   activeRows: unknown[] = [],
   amountAlertRows: unknown[] = [],
+  overBilledRows: unknown[] = [],
+  overBilledAlertRows: unknown[] = [],
 ) {
   const stub = vi
     .fn()
     .mockImplementation(async (strings: TemplateStringsArray, ...values: unknown[]) => {
       const text = Array.isArray(strings) ? strings.join(' ') : String(strings)
       if (text.includes('audit_logs')) {
-        return values[0] === 'subscription.amount_drift' ? amountAlertRows : alertRows
+        if (values[0] === 'subscription.amount_drift') return amountAlertRows
+        if (values[0] === 'subscription.courts_over_billed') return overBilledAlertRows
+        return alertRows
       }
+      if (text.includes('FROM courts')) return overBilledRows
       if (text.includes('tenant_subscriptions')) {
         const statuses = values[0]
         if (Array.isArray(statuses) && statuses.includes('active')) return activeRows
@@ -334,6 +350,119 @@ describe('reconcileSubscriptions — desfasaje de monto del preapproval', () => 
     expect(mockInsertAudit).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ action: 'subscription.amount_drift' }),
+    )
+  })
+})
+
+/**
+ * Canchas prendidas por encima de lo facturado
+ * (`docs/decisions/2026-10-22-cancha-en-mora.md`).
+ *
+ * La condición (qué estados, qué cuenta como cancha prendida, cuándo un cambio
+ * agendado ya lo cubre) vive en el SQL y se prueba contra DB real en
+ * `tests/integration/courts-over-billed.test.ts`. Acá, el cableado: qué deja,
+ * a quién avisa, el dedup y que no toque nada.
+ */
+describe('reconcileSubscriptions — canchas por encima de lo facturado', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockWithTenantContext.mockImplementation(
+      async (_tenantId: string, fn: (tx: unknown) => Promise<unknown>) =>
+        fn({ execute: vi.fn(async () => []) }),
+    )
+    mockSendOpsAlerts.mockResolvedValue([])
+  })
+
+  function fila(over: Record<string, unknown> = {}) {
+    return {
+      tenantId: TENANT,
+      tenantName: 'Complejo Norte',
+      billedCourts: 2,
+      onlineCourts: 3,
+      ...over,
+    }
+  }
+
+  it('deja el rastro, avisa a Sentry y manda el mail de ops, sin preguntarle a MP', async () => {
+    mockWorkerSql([], [], [], [], [], [fila()])
+
+    const fixed = await reconcileSubscriptions()
+
+    // Avisar no levanta ninguna suscripción.
+    expect(fixed).toBe(0)
+    expect(mockInsertAudit).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        action: 'subscription.courts_over_billed',
+        tenantId: TENANT,
+        resourceId: TENANT,
+        metadata: { billedCourts: 2, onlineCourts: 3 },
+      }),
+    )
+    expect(mockCaptureMessage).toHaveBeenCalledTimes(1)
+    expect(mockSendOpsAlerts).toHaveBeenCalledTimes(1)
+    expect(mockSendOpsAlerts).toHaveBeenCalledWith(
+      'worker-db',
+      [
+        expect.objectContaining({
+          key: `courts-over-billed:${TENANT}:2026-10-22T14`,
+          subject: expect.stringContaining('Complejo Norte'),
+        }),
+      ],
+      expect.objectContaining({ path: `/super-admin/tenants/${TENANT}` }),
+    )
+    // Pura DB: ni el estado del preapproval ni el monto.
+    expect(mockGetBillingGateway).not.toHaveBeenCalled()
+  })
+
+  it('no repite la alerta de un complejo ya avisado en las últimas 20 h', async () => {
+    mockWorkerSql([], [], [], [], [], [fila()], [{ resourceId: TENANT }])
+
+    await reconcileSubscriptions()
+
+    expect(mockInsertAudit).not.toHaveBeenCalled()
+    expect(mockCaptureMessage).not.toHaveBeenCalled()
+    expect(mockSendOpsAlerts).not.toHaveBeenCalled()
+  })
+
+  it('el dedup es por acción: una alerta de monto reciente no la apaga', async () => {
+    mockWorkerSql([{ resourceId: TENANT }], [], [], [], [{ resourceId: TENANT }], [fila()])
+
+    await reconcileSubscriptions()
+
+    expect(mockSendOpsAlerts).toHaveBeenCalledTimes(1)
+  })
+
+  it('si el mail no le llega a nadie, no deja el rastro: el próximo tick reintenta', async () => {
+    mockWorkerSql([], [], [], [], [], [fila()])
+    mockSendOpsAlerts.mockResolvedValueOnce([`courts-over-billed:${TENANT}:2026-10-22T14`])
+
+    await expect(reconcileSubscriptions()).resolves.toBe(0)
+
+    // El rastro es el dedup de 20 h: escribirlo sin mail gastaría el aviso.
+    expect(mockInsertAudit).not.toHaveBeenCalled()
+    // Sentry queda de respaldo mientras el mail no sale.
+    expect(mockCaptureMessage).toHaveBeenCalledTimes(1)
+  })
+
+  it('un fallo al avisar de un complejo no frena a los demás', async () => {
+    mockWorkerSql(
+      [],
+      [],
+      [],
+      [],
+      [],
+      [fila({ tenantId: 'tenant-a' }), fila({ tenantId: 'tenant-b' })],
+    )
+    mockSendOpsAlerts.mockRejectedValueOnce(new Error('DB caída'))
+
+    await expect(reconcileSubscriptions()).resolves.toBe(0)
+
+    expect(mockSendOpsAlerts).toHaveBeenCalledTimes(2)
+    expect(mockInsertAudit).toHaveBeenCalledTimes(1)
+    expect(mockInsertAudit).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ action: 'subscription.courts_over_billed', tenantId: 'tenant-b' }),
     )
   })
 })

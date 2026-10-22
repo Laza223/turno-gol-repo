@@ -6,6 +6,7 @@ import { isUuid } from '@/shared/validation/primitives'
 import { holdExpiresAtIso } from '@/lib/booking/hold'
 import { buildIngresarForReservaHref } from '@/lib/booking/reserve-url'
 import { absoluteUrl } from '@/lib/seo/metadata'
+import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import PaymentStatusWatcher from '@/components/booking/PaymentStatusWatcher'
 import { ReservaNotFound } from '../ReservaNotFound'
 import { BookingSuccessCard } from './BookingSuccessCard'
@@ -99,10 +100,13 @@ export default async function ReservaExitoPage(props: Props) {
     )
   }
 
+  const rivalEnabled = await isRivalEnabled().catch(() => false)
+
   return (
     <BookingSuccessCard
       bookingId={params.bookingId}
       complexUrl={absoluteUrl(`/${booking.tenantSlug}`)}
+      rivalEnabled={rivalEnabled}
       booking={{
         tenantName: booking.tenantName,
         tenantSlug: booking.tenantSlug,

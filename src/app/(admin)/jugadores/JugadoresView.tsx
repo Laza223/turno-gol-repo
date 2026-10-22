@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Search, Contact, Users } from 'lucide-react'
+import { Search, Contact, Users, MessageCircle, UserCheck } from 'lucide-react'
 import { Pager } from '@/components/ui/pager'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { ResponsiveList } from '@/components/ui/responsive-list'
@@ -7,6 +7,14 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { Th, Td, Tr } from '@/components/ui/table'
 import { TONE_BADGE } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
+import { buildWhatsappUrl } from '@/lib/whatsapp'
+import {
+  DORMANT_AFTER_DAYS,
+  DORMANT_FILTER_PARAM,
+  DORMANT_MIN_BOOKINGS,
+  lastSeenLabel,
+  winBackMessage,
+} from '@/modules/relationships/dormant'
 import { ClientesTabs } from './ClientesTabs'
 import { PlayerTagChips } from './PlayerTagChips'
 import { LinkContactDialog, type LinkContactDialogProps } from './LinkContactDialog'
@@ -30,15 +38,60 @@ export type JugadoresViewProps = {
   page?: number
   /** Total de personas, sumando todas las páginas (B10). */
   total?: number
+  /** Filtro "Dejaron de venir" puesto (`?filtro=dejaron-de-venir`). */
+  dormant?: boolean
+  /** Cuántas personas de esta búsqueda dejaron de venir: el número de la pastilla. */
+  dormantTotal: number
+  /** Nombre del complejo, para el mensaje precargado de WhatsApp. */
+  tenantName: string
+  /** Ficha pública del complejo (URL absoluta) o `null` si no hay base configurada. */
+  publicUrl: string | null
+  /** "Ahora" del render, para "Última vez hace 5 semanas" (fijo en las stories). */
+  nowMs: number
 }
 
-/** `/jugadores?…` preservando la búsqueda. `?pagina=` es 1-based en la URL. */
-function pageHref(q: string | undefined, page: number): string {
+/**
+ * `/jugadores?…` preservando la búsqueda y el filtro. `?pagina=` es 1-based en
+ * la URL. Cambiar de filtro vuelve a la página 1 (esos links pasan `page` 0).
+ */
+function pageHref(q: string | undefined, page: number, dormant = false): string {
   const search = new URLSearchParams()
   if (q) search.set('q', q)
+  if (dormant) search.set('filtro', DORMANT_FILTER_PARAM)
   if (page > 0) search.set('pagina', String(page + 1))
   const qs = search.toString()
   return qs ? `/jugadores?${qs}` : '/jugadores'
+}
+
+const DORMANT_WEEKS = DORMANT_AFTER_DAYS / 7
+
+/**
+ * Pastilla de filtro: el patrón de `/abonados`, con 44 px de blanco táctil en
+ * el teléfono. `aria-current` dice cuál está puesta sin depender del color.
+ */
+function FilterPill({
+  href,
+  active,
+  children,
+}: {
+  href: string
+  active: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? 'page' : undefined}
+      className={cn(
+        'inline-flex min-h-11 items-center gap-1 rounded-full px-3 text-sm font-medium transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:min-h-9',
+        active
+          ? 'bg-primary text-primary-foreground shadow-xs'
+          : 'bg-muted text-foreground hover:bg-accent',
+      )}
+    >
+      {children}
+    </Link>
+  )
 }
 
 /** "3 reservas · 1 fijo". Las unidades en singular cuando corresponde. */
@@ -71,7 +124,50 @@ export function JugadoresView({
   // Sin total explícito (stories viejas), se asume que lo que llegó es todo:
   // una sola página, el mismo comportamiento que el `hasMore=false` de antes.
   total = clients.length,
+  dormant = false,
+  dormantTotal,
+  tenantName,
+  publicUrl,
+  nowMs,
 }: JugadoresViewProps) {
+  // Las pastillas no tienen sentido en un complejo sin ningún cliente: ahí va
+  // el EmptyState de "Todavía no tenés clientes" y nada más.
+  const showFilters = !(clients.length === 0 && !q && !dormant && page === 0)
+
+  /**
+   * Con el filtro puesto, la acción de la fila es escribirle: un `wa.me` con el
+   * mensaje ya redactado, que el dueño o el encargado manda desde su teléfono.
+   * Sin teléfono marcable no se ofrece (un `wa.me` roto es peor que ninguno).
+   * "Vincular" sigue en "Todas".
+   */
+  const renderWhatsappButton = (c: ClientListRow) => {
+    const href = buildWhatsappUrl(c.phone, winBackMessage({ name: c.name, tenantName, publicUrl }))
+    if (!href) return null
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Escribirle por WhatsApp a ${c.name}`}
+        className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:min-h-0 md:py-1.5"
+      >
+        <MessageCircle
+          className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400"
+          aria-hidden="true"
+        />
+        WhatsApp
+      </a>
+    )
+  }
+
+  const renderLastSeen = (c: ClientListRow) =>
+    c.lastActiveAt ? (
+      <p className="text-xs text-muted-foreground">
+        Última vez{' '}
+        <span className="font-medium text-foreground">{lastSeenLabel(c.lastActiveAt, nowMs)}</span>
+      </p>
+    ) : null
+
   const renderLinkButton = (c: ClientListRow) =>
     c.kind === 'contact' ? (
       <LinkContactDialog
@@ -86,6 +182,9 @@ export function JugadoresView({
       />
     ) : null
 
+  const renderRowAction = (c: ClientListRow) =>
+    dormant ? renderWhatsappButton(c) : renderLinkButton(c)
+
   return (
     <div className="space-y-6">
       <PageHeader title="Personas" icon={<Contact className="h-6 w-6" aria-hidden="true" />} />
@@ -94,24 +193,35 @@ export function JugadoresView({
         <ClientesTabs active="/jugadores" />
       </div>
 
-      <form
-        method="GET"
-        className="card-entrance relative max-w-md"
-        style={{ animationDelay: '120ms' }}
-      >
-        <Search
-          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-          aria-hidden
-        />
-        <input
-          type="search"
-          name="q"
-          aria-label="Buscar personas"
-          defaultValue={q ?? ''}
-          placeholder="Nombre, teléfono o email"
-          className="w-full min-h-11 rounded-md border border-border py-2 pl-9 pr-3 text-base md:min-h-0 md:text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
-        />
-      </form>
+      <div className="card-entrance space-y-3" style={{ animationDelay: '120ms' }}>
+        <form method="GET" className="relative max-w-md">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+          <input
+            type="search"
+            name="q"
+            aria-label="Buscar personas"
+            defaultValue={q ?? ''}
+            placeholder="Nombre, teléfono o email"
+            className="w-full min-h-11 rounded-md border border-border py-2 pl-9 pr-3 text-base md:min-h-0 md:text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
+          />
+          {/* Buscar no saca el filtro: el form GET manda solo sus campos. */}
+          {dormant && <input type="hidden" name="filtro" value={DORMANT_FILTER_PARAM} />}
+        </form>
+
+        {showFilters && (
+          <nav aria-label="Filtrar personas" className="flex flex-wrap gap-2">
+            <FilterPill href={pageHref(q, 0)} active={!dormant}>
+              Todas
+            </FilterPill>
+            <FilterPill href={pageHref(q, 0, true)} active={dormant}>
+              Dejaron de venir <span className="tabular-nums">· {dormantTotal}</span>
+            </FilterPill>
+          </nav>
+        )}
+      </div>
 
       {clients.length === 0 ? (
         q ? (
@@ -126,10 +236,16 @@ export function JugadoresView({
           // en la misma pantalla (🟡 QA 2026-08-13).
           <p className="text-sm text-muted-foreground">
             No hay personas en esta página.{' '}
-            <Link href={pageHref(q, 0)} className="font-medium text-foreground underline">
+            <Link href={pageHref(q, 0, dormant)} className="font-medium text-foreground underline">
               Volver al principio
             </Link>
           </p>
+        ) : dormant ? (
+          <EmptyState
+            icon={UserCheck}
+            title="Nadie dejó de venir"
+            description={`Acá aparecen los clientes con ${DORMANT_MIN_BOOKINGS} reservas o más que hace ${DORMANT_WEEKS} semanas no reservan.`}
+          />
         ) : (
           <EmptyState
             icon={Users}
@@ -171,9 +287,12 @@ export function JugadoresView({
                         <p className="text-xs text-muted-foreground">
                           {c.phone ?? c.email} · {metaLine(c)}
                         </p>
+                        {dormant && renderLastSeen(c)}
                         <PlayerTagChips tags={c.tags} className="mt-1.5" />
                       </div>
-                      {c.noshowCount > 0 && (
+                      {/* Con el filtro, el botón de WhatsApp ya va al lado: el
+                          badge de ausencias le sacaba ancho al nombre. */}
+                      {!dormant && c.noshowCount > 0 && (
                         <span className="inline-flex shrink-0 items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
                           {c.noshowCount} ausencia{c.noshowCount !== 1 ? 's' : ''}
                         </span>
@@ -196,14 +315,15 @@ export function JugadoresView({
                       <p className="text-xs text-muted-foreground">
                         {c.phone} · {metaLine(c)}
                       </p>
-                      {c.suggestedPlayerName && (
+                      {dormant && renderLastSeen(c)}
+                      {!dormant && c.suggestedPlayerName && (
                         <p className="mt-1 truncate text-xs text-emerald-700 dark:text-emerald-400">
                           Mismo teléfono que {c.suggestedPlayerName}
                         </p>
                       )}
                     </div>
                   )}
-                  {renderLinkButton(c)}
+                  {renderRowAction(c)}
                 </li>
               ))}
             </ul>
@@ -215,8 +335,14 @@ export function JugadoresView({
                   <Th>Persona</Th>
                   <Th>Contacto</Th>
                   <Th align="right">Reservas</Th>
-                  <Th align="right">Fijos</Th>
-                  <Th align="right">Ausencias</Th>
+                  {dormant ? (
+                    <Th>Última vez</Th>
+                  ) : (
+                    <>
+                      <Th align="right">Fijos</Th>
+                      <Th align="right">Ausencias</Th>
+                    </>
+                  )}
                   <Th>
                     <span className="sr-only">Acciones</span>
                   </Th>
@@ -242,7 +368,7 @@ export function JugadoresView({
                             {c.name}
                             <SinCuentaBadge />
                           </span>
-                          {c.suggestedPlayerName && (
+                          {!dormant && c.suggestedPlayerName && (
                             <span className="mt-1 block text-xs text-emerald-700 dark:text-emerald-400">
                               Mismo teléfono que {c.suggestedPlayerName}
                             </span>
@@ -254,23 +380,31 @@ export function JugadoresView({
                     <Td align="right" className="text-foreground">
                       {c.bookingsCount}
                     </Td>
-                    <Td align="right" className="text-foreground">
-                      {c.fixedCount > 0 ? (
-                        c.fixedCount
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </Td>
-                    <Td align="right">
-                      {c.noshowCount > 0 ? (
-                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
-                          {c.noshowCount}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </Td>
-                    <Td align="right">{renderLinkButton(c)}</Td>
+                    {dormant ? (
+                      <Td className="text-foreground">
+                        {c.lastActiveAt ? lastSeenLabel(c.lastActiveAt, nowMs) : '—'}
+                      </Td>
+                    ) : (
+                      <>
+                        <Td align="right" className="text-foreground">
+                          {c.fixedCount > 0 ? (
+                            c.fixedCount
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </Td>
+                        <Td align="right">
+                          {c.noshowCount > 0 ? (
+                            <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                              {c.noshowCount}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </Td>
+                      </>
+                    )}
+                    <Td align="right">{renderRowAction(c)}</Td>
                   </Tr>
                 ))}
               </tbody>
@@ -293,7 +427,7 @@ export function JugadoresView({
           pageSize={CLIENTES_PAGE_SIZE}
           shown={clients.length}
           className="pt-4"
-          hrefFor={(p) => pageHref(q, p)}
+          hrefFor={(p) => pageHref(q, p, dormant)}
         />
       )}
     </div>

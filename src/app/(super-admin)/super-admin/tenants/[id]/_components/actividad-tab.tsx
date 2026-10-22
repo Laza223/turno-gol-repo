@@ -30,6 +30,7 @@ const ACTION_LABELS: Record<string, string> = {
   'abonado.reactivated': 'Abonado reactivado',
   'mp.connected': 'MercadoPago conectado',
   'tenant.mp_disconnected': 'MercadoPago desconectado',
+  'tenant.mp_disconnected_detected': 'MercadoPago desconectado (lo detectó TurnoGol)',
   'tenant.activated': 'Complejo activado',
   'tenant.past_due': 'Pago vencido',
   'tenant.suspended': 'Complejo suspendido',

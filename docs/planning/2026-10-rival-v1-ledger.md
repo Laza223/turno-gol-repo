@@ -6,10 +6,10 @@ Es el esfuerzo de [`docs/decisions/2026-10-22-rival-v1.md`](../decisions/2026-10
 
 | Fase | Qué | PR | Estado |
 |---|---|---|---|
-| 0 | Documentos: spec, decisiones (RIVAL v1 y freeze), ideas, este ledger, `CLAUDE.md` y `PRODUCT.md` | #467 | PR abierto |
-| 1 | DB + esqueleto del módulo + retención, ARCO y export | — | PR abierto |
-| 2 | Shell, `/rival`, `/rival/nuevo`, vista del partido, entradas desde reservas, OG | — | Pendiente |
-| 3 | "Voy" con cuenta, bienvenida, banco, me bajo, avisar al grupo, repetir | — | Pendiente |
+| 0 | Documentos: spec, decisiones (RIVAL v1 y freeze), ideas, este ledger, `CLAUDE.md` y `PRODUCT.md` | #467 | Mergeado |
+| 1 | DB + esqueleto del módulo + retención, ARCO y export | #469 | Mergeado |
+| 2 | Shell, `/rival`, `/rival/nuevo`, vista del partido, entradas desde reservas, OG. Suma la tarjeta de bienvenida, que estaba en la fase 3, porque crear un partido la exige | — | En curso |
+| 3 | "Voy" con cuenta (reusa la bienvenida de la fase 2), banco, me bajo, avisar al grupo, repetir | — | Pendiente |
 | 4 | Tablón: publicar, pedir, decidir, contacto, bans, denuncias | — | Pendiente |
 | 5 | Foto de perfil (R2) | — | Pendiente |
 | 6 | Emails y alertas | — | Pendiente |
@@ -32,6 +32,17 @@ Es el esfuerzo de [`docs/decisions/2026-10-22-rival-v1.md`](../decisions/2026-10
 | 1 | `sonnet-implementer` (C, segunda vuelta) | Deadlock de denuncias, orden de locks de la anonimización y docs desactualizados | ~241 k tokens y ~7 min | Lock del partido en el BEFORE de denuncias. El test 17.1 lo vio rojo antes del arreglo; después no se vio flaky |
 | 1 | `sonnet-implementer` (D) | Decisión 10: quien se bajó vuelve por el link | ~91 k tokens y ~14 min | Se borra la fila `left` y se hace el alta de siempre. Tests 18.x y 7.1, vistos rojos antes del cambio |
 | 1 | `sonnet-adversarial-reviewer` (contexto fresco) | Verificar la decisión 10 | Medio | "Listo": sin 🔴 ni 🟡. Las dos mutaciones las detectan los tests y el doble toque no da error |
+| 2 | `sonnet-implementer` (A) | Flag en la sesión, barra y header, middleware, robots, guard, entradas desde reservas, OG | ~154 k tokens y ~39 min | Hecho. Además sumó `rival` a `RESERVED_SLUGS` y la siembra del flag en el layout `(player)` |
+| 2 | `sonnet-implementer` (B) | `/rival`, `/rival/mis-partidos`, `/rival/nuevo` con bienvenida, `/rival/p/[code]`, actions y rate limit | ~58 k tokens y ~63 min | Hecho. Tres lecturas nuevas en el service, cubiertas en integración |
+| 2 | `sonnet-adversarial-reviewer` (contexto fresco) | Revisar el PR2 sin commitear | ~194 k tokens y ~26 min | "Arreglar antes": 2 🟡 (el form con reserva a +8 días fallaba sin mensaje; no había test de flag apagado en las páginas) y varios 🟢 |
+| 2 | `sonnet-implementer` (B, segunda vuelta) | Arreglar la revisión | ~113 k tokens y ~18 min | Todo arreglado; el banner de "Listo" pasa a neutro |
+| 2 | `sonnet-adversarial-reviewer` (contexto fresco) | Verificar los arreglos | ~105 k tokens y ~9 min | "Listo para PR". Quedan 🟢: el CTA desde reservas a más de 7 días y un callejón si la reserva se cancela con el form abierto |
+| 2 | `sonnet-ux-verifier` | App real a 390 px y escritorio, claro y oscuro | ~135 k tokens y ~21 min | "Pasa con problemas": tres verdes en `/rival` vacío y detalles menores. El desborde de 3 px del header con sesión es preexistente (aparece con el flag apagado). La app corrió como `postgres`, así que la RLS no se ejerció en la UI (sí en integración) |
+| 2 | `sonnet-implementer` (B, tercera vuelta) | Ajustes de la verificación | Medio | CTA solo hasta +7 con un helper único (`rival-window.ts`), un solo verde en `/rival`, chips sin recorte, salida si se cae el sello y test de componente del alert |
+
+## Cambios ajenos sobre superficie de RIVAL
+
+- **#470** (`4f9751c8`, en main desde el 2026-10-22, excepción aprobada por el dueño en el plan de features post-freeze): `LoginGate.tsx` ya no muestra "Continuar con Google" dentro del navegador interno de Instagram, Facebook o TikTok. En su lugar renderiza `InAppBrowserNotice` (`src/components/world/`); la detección vive en `src/lib/in-app-browser.ts`. También cambiaron `LoginGate.stories.tsx` y el párrafo de `LoginGate` en `DESIGN.md`. La fase 3 trae main antes de tocar `LoginGate`.
 
 ## Pendientes que no son de una fase
 

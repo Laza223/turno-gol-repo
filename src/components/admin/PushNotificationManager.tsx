@@ -160,15 +160,20 @@ export function PushNotificationManager() {
       // SW broadcasts include courtName/dateLabel/timeLabel from the push payload.
       // daily_summary (D8, Fase 2): resumen diario, no una reserva nueva.
       const isDailySummary = data.type === 'daily_summary'
-      const title = isDailySummary
-        ? 'Resumen de ayer'
-        : data.courtName
-          ? `Nueva reserva — ${data.courtName}`
-          : 'Nueva reserva'
-      const description = isDailySummary
-        ? data.summaryLabel || ''
-        : [data.dateLabel, data.timeLabel].filter(Boolean).join(' · ') ||
-          'Tenés una nueva reserva confirmada en la grilla.'
+      const isMpDisconnected = data.type === 'mp_disconnected'
+      const title = isMpDisconnected
+        ? 'MercadoPago se desconectó'
+        : isDailySummary
+          ? 'Resumen de ayer'
+          : data.courtName
+            ? `Nueva reserva — ${data.courtName}`
+            : 'Nueva reserva'
+      const description = isMpDisconnected
+        ? 'Las reservas online entran sin seña hasta que se reconecte.'
+        : isDailySummary
+          ? data.summaryLabel || ''
+          : [data.dateLabel, data.timeLabel].filter(Boolean).join(' · ') ||
+            'Tenés una nueva reserva confirmada en la grilla.'
       toast({
         title,
         description,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeDelta, formatMethodLabel } from './report.utils'
+import { computeDelta, formatMethodLabel, getWeekBounds } from './report.utils'
 
 describe('computeDelta', () => {
   it('returns null when there is no comparable previous period', () => {
@@ -29,5 +29,26 @@ describe('formatMethodLabel', () => {
     expect(formatMethodLabel('transfer')).toBe('Transferencia')
     expect(formatMethodLabel('mercadopago')).toBe('MercadoPago')
     expect(formatMethodLabel('other')).toBe('Otro')
+  })
+})
+
+describe('getWeekBounds', () => {
+  it('covers 7 operating days, starting at ART midnight', () => {
+    expect(getWeekBounds('2026-10-12')).toEqual({
+      fromDate: '2026-10-12',
+      toDate: '2026-10-19',
+      fromUtc: new Date('2026-10-12T03:00:00.000Z'),
+      toUtc: new Date('2026-10-19T03:00:00.000Z'),
+    })
+  })
+
+  it('moves both ends by the night cutoff (complex that closes at 02:00)', () => {
+    const b = getWeekBounds('2026-10-12', 120)
+    expect(b.fromUtc).toEqual(new Date('2026-10-12T05:00:00.000Z'))
+    expect(b.toUtc).toEqual(new Date('2026-10-19T05:00:00.000Z'))
+  })
+
+  it('crosses a month boundary', () => {
+    expect(getWeekBounds('2026-10-26').toDate).toBe('2026-11-02')
   })
 })

@@ -8,7 +8,7 @@ import {
   E2E_COURT_ID,
 } from '../../_helpers/booking-seed'
 import { suppressPushPrompt } from '../_qa/session'
-import { openCreateModal } from '../../_helpers/grid'
+import { openCreateModal, visibleGridView } from '../../_helpers/grid'
 
 /**
  * TG-HP-208 — Crear reserva MANUAL desde grilla (offline / "de palabra").
@@ -60,7 +60,9 @@ test.describe('TG-HP-208 — Reserva manual desde grilla (de palabra)', () => {
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5_000 })
 
       // Booking visible en la grilla (BookingCard renderiza el guest name).
-      await expect(page.getByText(/E2E QA-208 Manual/i)).toBeVisible({ timeout: 10_000 })
+      await expect(visibleGridView(page).getByText(/E2E QA-208 Manual/i)).toBeVisible({
+        timeout: 10_000,
+      })
 
       // DB: status siempre 'confirmed' para reservas manuales (nunca pending_payment),
       // type='spontaneous', sin payments asociado.

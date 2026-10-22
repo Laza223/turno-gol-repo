@@ -1,6 +1,7 @@
 import {
   Banknote,
   BellRing,
+  CalendarDays,
   Clock,
   CreditCard,
   Eye,
@@ -184,6 +185,13 @@ export default async function SettingsPage() {
           effect: 'Lo que entró ayer, a las 8.',
           value: s.daily_summary_email_opt_in ? 'También por email' : 'Solo notificación',
           icon: BellRing,
+          href: '/settings/equipo#tu-usuario',
+        },
+        {
+          label: 'Resumen semanal',
+          effect: 'Lo que entró en la semana, los lunes a las 8.',
+          value: s.weekly_summary_email_opt_in ? 'Por email' : 'Apagado',
+          icon: CalendarDays,
           href: '/settings/equipo#tu-usuario',
         },
       ],

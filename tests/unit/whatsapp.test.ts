@@ -45,6 +45,30 @@ describe('toWhatsappDigits — móviles argentinos', () => {
   })
 })
 
+describe('toWhatsappDigits — móvil «15 …» sin código de área', () => {
+  /**
+   * Ninguna característica argentina empieza con 15: un nacional que arranca
+   * así es el prefijo de marcación sin el área adelante. Anteponerle 549 armaba
+   * un wa.me a otro número (`+54 15 5555 5555` → `5491555555555`).
+   */
+  it.each(['+54 15 5555 5555', '15 5555-5555', '+54 9 15 5555 5555', '0 15 5555 5555'])(
+    '«%s» no tiene área: null, sin botón',
+    (phone) => {
+      expect(toWhatsappDigits(phone)).toBeNull()
+      expect(buildWhatsappUrl(phone)).toBeNull()
+    },
+  )
+
+  it.each([
+    ['11 15 5555 5555', '5491155555555'],
+    ['+54 9 11 5555 5555', '5491155555555'],
+    ['0221 15 555 5555', '5492215555555'],
+    ['+54 11 1555 5555', '5491115555555'],
+  ])('con área no cambia: «%s» → %s', (phone, digits) => {
+    expect(toWhatsappDigits(phone)).toBe(digits)
+  })
+})
+
 describe('toWhatsappDigits — lo que NO tiene que tocar', () => {
   it('otro país declarado con + queda intacto: estas reglas son argentinas', () => {
     expect(toWhatsappDigits('+598 99 123456')).toBe('59899123456')

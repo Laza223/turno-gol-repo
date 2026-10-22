@@ -1,6 +1,7 @@
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import type { MethodReport } from './report.types'
 import { capitalizeFirst } from '@/lib/format'
+import { addDays } from '@/shared/dates/art'
 import { effectiveCloseMins, operatingDayRangeUtc } from '@/shared/time/operating-day'
 
 function hhmmToMins(hhmm: string): number {
@@ -78,6 +79,21 @@ export function getMonthBounds(month: string, cutoffMins = 0): MonthBounds {
     fromDate,
     toDate,
     fromUtc: operatingDayRangeUtc(fromDate, cutoffMins).fromUtc,
+    toUtc: operatingDayRangeUtc(toDate, cutoffMins).fromUtc,
+  }
+}
+
+/**
+ * Límites de la semana de 7 días operativos que arranca en `weekStart`
+ * ('YYYY-MM-DD', inclusive). Misma forma y mismo corte que `getMonthBounds`,
+ * así el resumen semanal agrega exactamente como Métricas.
+ */
+export function getWeekBounds(weekStart: string, cutoffMins = 0): MonthBounds {
+  const toDate = addDays(weekStart, 7)
+  return {
+    fromDate: weekStart,
+    toDate,
+    fromUtc: operatingDayRangeUtc(weekStart, cutoffMins).fromUtc,
     toUtc: operatingDayRangeUtc(toDate, cutoffMins).fromUtc,
   }
 }

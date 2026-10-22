@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SubmitButton } from '@/components/ui/submit-button'
 import { GoogleIcon } from '@/components/icons/GoogleIcon'
+import { InAppBrowserNotice } from '@/components/world/InAppBrowserNotice'
 import {
   AUTH_ACCENT_STYLE,
   AUTH_INPUT,
@@ -61,7 +62,8 @@ const exploreLinkClass =
  * se importa como valor.
  *
  * `inAppBrowser` lo resuelve el servidor (page.tsx) con el User-Agent: en el navegador
- * interno de Instagram, Facebook o TikTok va primero el email, porque Google puede no abrir.
+ * interno de Instagram, Facebook o TikTok va primero el email y, en lugar de Google, que ahí no
+ * deja entrar, el aviso para abrir la página en el navegador (`InAppBrowserNotice`).
  */
 export function IngresarForm({
   action,
@@ -201,17 +203,6 @@ function FormCard({
     </form>
   )
 
-  const googleBlock = (
-    <div className="space-y-3">
-      <GoogleForm googleAction={googleAction} next={next} />
-      {inAppBrowser && (
-        <p className="text-pretty text-sm text-muted-foreground">
-          Google puede no abrirse desde este navegador. Con tu email entrás igual.
-        </p>
-      )}
-    </div>
-  )
-
   const divider = (
     <div aria-hidden className="flex items-center gap-3 text-sm text-muted-foreground">
       <div className="h-px flex-1 bg-border" />o<div className="h-px flex-1 bg-border" />
@@ -233,11 +224,11 @@ function FormCard({
           <>
             {emailForm}
             {divider}
-            {googleBlock}
+            <InAppBrowserNotice />
           </>
         ) : (
           <>
-            {googleBlock}
+            <GoogleForm googleAction={googleAction} next={next} />
             {divider}
             {emailForm}
           </>

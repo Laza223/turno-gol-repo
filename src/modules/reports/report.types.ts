@@ -30,6 +30,14 @@ export type RevenueReport = {
   prevPeriod: PeriodTotals | null
 }
 
+export type WeekRevenue = {
+  /** Lo que entró en la semana (centavos): el mismo `income` que Métricas. */
+  income: number
+  byMethod: MethodReport[]
+  /** `income` de los 7 días operativos anteriores, para comparar. */
+  prevIncome: number
+}
+
 export type CashFlowExportRow = {
   fecha: string
   tipo: string

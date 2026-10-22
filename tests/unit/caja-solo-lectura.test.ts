@@ -83,7 +83,8 @@ function setTenant(status: TenantRow['status'], role: 'admin' | 'manager' = 'man
     email: 'staff@test.local',
     staffUserId: STAFF_USER_ID,
     tenantId: TENANT_ID,
-    role,
+    // El claim del JWT no se confía: el rol que cuenta es el de `getStaffRole`.
+    role: 'admin',
   })
   vi.mocked(getStaffRole).mockResolvedValue(role)
   vi.mocked(getStaffTenant).mockResolvedValue(tenantRow(status))

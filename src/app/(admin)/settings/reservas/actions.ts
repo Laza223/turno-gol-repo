@@ -23,6 +23,8 @@ const reservasPolicySchema = z
     cancellationHoursBefore: z.number().int().min(0).max(72),
     bookingAdvanceDays: z.number().int().min(1).max(60),
     bookingMinAdvanceHours: z.number().int().min(0).max(48),
+    // Solo sin seña (el input no se renderiza con seña → llega 0 y no se guarda).
+    lateCancelHours: z.number().int().min(0).max(24),
   })
   .superRefine((data, ctx) => {
     if (data.requiresDeposit && (data.depositPercentage < 10 || data.depositPercentage > 100)) {
@@ -52,6 +54,7 @@ export async function updateReservasPolicyAction(
     cancellationHoursBefore: Number(formData.get('cancellationHoursBefore')),
     bookingAdvanceDays: Number(formData.get('bookingAdvanceDays')),
     bookingMinAdvanceHours: Number(formData.get('bookingMinAdvanceHours')),
+    lateCancelHours: Number(formData.get('lateCancelHours')),
   }
 
   const parsed = reservasPolicySchema.safeParse(raw)
@@ -66,6 +69,7 @@ export async function updateReservasPolicyAction(
     cancellationHoursBefore,
     bookingAdvanceDays,
     bookingMinAdvanceHours,
+    lateCancelHours,
   } = parsed.data
 
   // 🔴 F-003 (QA de producción 2026-08-17): exigir seña sin MercadoPago conectado
@@ -96,11 +100,19 @@ export async function updateReservasPolicyAction(
     allow_online_booking: allowOnlineBooking,
     booking_advance_days: bookingAdvanceDays,
     booking_min_advance_hours: bookingMinAdvanceHours,
-    cancellation_policy: {
-      hours_before: cancellationHoursBefore,
-      penalty_type: 'deposit',
-      penalty_amount: null,
-    },
+    // Con seña manda la política de devolución y la penalidad por cancelar tarde se APAGA
+    // (el control no se muestra: no puede quedar activa e invisible). Sin seña, al revés:
+    // `cancellation_policy` no se toca, porque su input no se renderiza (Number(null) = 0).
+    ...(requiresDeposit
+      ? {
+          cancellation_policy: {
+            hours_before: cancellationHoursBefore,
+            penalty_type: 'deposit',
+            penalty_amount: null,
+          },
+          late_cancel_hours: 0,
+        }
+      : { late_cancel_hours: lateCancelHours }),
   }
 
   // El objeto va SIN JSON.stringify: pre-serializado llega como escalar jsonb

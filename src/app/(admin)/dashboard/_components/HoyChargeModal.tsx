@@ -78,6 +78,7 @@ export function HoyChargeModal({
   onMutated,
   hasEnded: hasEndedFallback,
   cancellationPolicyHours = null,
+  lateCancelHours = 0,
 }: {
   booking: ChargeBooking
   courtName: string
@@ -114,6 +115,7 @@ export function HoyChargeModal({
    * solo al texto genérico.
    */
   cancellationPolicyHours?: number | null
+  lateCancelHours?: number
 }) {
   const hasEnded =
     typeof booking.endsAtMs === 'number'
@@ -373,6 +375,7 @@ export function HoyChargeModal({
         hasEnded={hasEnded}
         nowMs={nowMs}
         cancellationPolicyHours={cancellationPolicyHours}
+        lateCancelHours={lateCancelHours}
         courts={courts}
         court={court}
         dayBookings={dayBookings}

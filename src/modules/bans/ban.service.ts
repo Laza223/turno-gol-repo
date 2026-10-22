@@ -2,6 +2,7 @@ import { and, eq, sql } from 'drizzle-orm'
 import { players, tenantPlayerBans } from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
 import { playerBelongsToTenant } from '@/modules/relationships/ptr.service'
+import { LATE_CANCEL_SOFTBAN_REASON } from '@/modules/bookings/late-cancel'
 import type { ManualBanDuration } from './ban.schema'
 
 export type BanCheckResult =
@@ -220,7 +221,12 @@ export async function liftPlayerBan(
 ): Promise<boolean> {
   const result = await tx
     .update(tenantPlayerBans)
-    .set({ bannedUntil: sql`NOW()` })
+    .set({
+      bannedUntil: sql`NOW()`,
+      // Perdonar un bloqueo por tardías vuelve el conteo a cero: si no, la siguiente
+      // tardía sería la 3ra (30 días) aunque el encargado ya lo haya levantado.
+      lateCancelResetAt: sql`CASE WHEN ${tenantPlayerBans.reason} = ${LATE_CANCEL_SOFTBAN_REASON} THEN NOW() ELSE ${tenantPlayerBans.lateCancelResetAt} END`,
+    })
     .where(
       and(
         eq(tenantPlayerBans.tenantId, tenantId),

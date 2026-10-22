@@ -48,6 +48,16 @@ export const NO_SHOW_STRIKE_WINDOW_DAYS = 90
 export const NO_SHOW_SOFTBAN_DAYS = 14
 
 /**
+ * Cancelación tardía (complejos sin seña, `settings.late_cancel_hours`): las
+ * cancelaciones tardías se cuentan en esta ventana; a los 60 días sin ninguna el
+ * contador vuelve a cero. Escalera en `modules/bookings/late-cancel.ts`.
+ */
+export const LATE_CANCEL_WINDOW_DAYS = 60
+
+/** Días sin reservar online: 2da cancelación tardía → [0], 3ra o más (el tope) → [1]. */
+export const LATE_CANCEL_BAN_DAYS = [7, 30] as const
+
+/**
  * Días de prueba gratuita. Fijado en `createTenantWithTrial`; se declara acá
  * para que los avisos de abajo se lean contra el mismo número.
  */

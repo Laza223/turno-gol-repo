@@ -14,6 +14,7 @@ import { addDays } from '@/shared/dates/art'
 import { playerBookingVisual, isDepositPaid } from './status-visual'
 import { RefundContactPanel } from './RefundContactPanel'
 import type { RefundContactInfo } from './actions'
+import type { LateCancelPenalty } from '@/modules/bookings/late-cancel'
 import { CancelBookingButton, type CancelMyBookingAction } from './CancelBookingButton'
 import { LeaveReviewButton } from './LeaveReviewButton'
 
@@ -58,6 +59,8 @@ export type MisReservasBookingRow = {
   cancellation_outcome: 'no_deposit' | 'refund' | 'no_refund'
   /** Monto de la seña en centavos — solo relevante si cancellation_outcome !== 'no_deposit'. */
   deposit_amount: number
+  /** Cancelar AHORA cuenta como tardía (complejo sin seña): qué le pasa y el umbral en horas. */
+  late_cancel?: (LateCancelPenalty & { hours: number }) | null
   /** `deposit_status` de la reserva: decide si "Cancelada" lleva "(sin reembolso)". */
   deposit_status: string
   /**
@@ -393,6 +396,8 @@ function BookingCard({
               timeLabel={when}
               cancellationOutcome={b.cancellation_outcome}
               depositAmountCents={b.deposit_amount}
+              lateCancel={b.late_cancel ?? null}
+              tenantName={b.tenant_name}
               describedBy={describedBy}
               action={cancelAction}
             />

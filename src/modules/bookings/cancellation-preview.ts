@@ -1,4 +1,5 @@
 import { decideAdminRefund } from './booking.cancellation'
+import { isLateCancel, lateCancelPenalty, type LateCancelPenalty } from './late-cancel'
 
 /**
  * Consecuencia concreta de cancelar ESTE booking AHORA (ENS-2). Asume la
@@ -7,7 +8,8 @@ import { decideAdminRefund } from './booking.cancellation'
  * fuente de verdad real; NO inventa un umbral nuevo).
  */
 export type CancellationPreview =
-  | { kind: 'no_deposit' }
+  // `lateCancel` solo viaja si cancelar AHORA cuenta como tardía (sin seña).
+  | { kind: 'no_deposit'; lateCancel?: LateCancelPenalty }
   | { kind: 'refund'; amountCents: number }
   | { kind: 'no_refund'; amountCents: number }
 
@@ -17,9 +19,23 @@ export function getCancellationPreview(opts: {
   bookingStartUtcMs: number
   policyHours: number
   nowMs: number
+  /** `settings.late_cancel_hours`; ausente o 0 = apagado. */
+  lateCancelHours?: number
+  /** Cancelaciones tardías del jugador en este complejo en la ventana de 60 días, sin contar esta. */
+  lateCancelCount?: number
 }): CancellationPreview {
   if (opts.depositStatus !== 'paid' || opts.depositAmountCents <= 0) {
-    return { kind: 'no_deposit' }
+    // Mismo criterio que `cancelByPlayer`: cuenta solo si la reserva nació sin seña.
+    const late =
+      opts.depositStatus === 'not_required' &&
+      isLateCancel({
+        startsAtMs: opts.bookingStartUtcMs,
+        nowMs: opts.nowMs,
+        hours: opts.lateCancelHours ?? 0,
+      })
+    return late
+      ? { kind: 'no_deposit', lateCancel: lateCancelPenalty((opts.lateCancelCount ?? 0) + 1) }
+      : { kind: 'no_deposit' }
   }
   const { inPolicy } = decideAdminRefund({
     cancellationType: 'jugador',

@@ -110,7 +110,11 @@ export default async function SettingsPage() {
       items: [
         {
           label: 'Seña',
-          effect: 'Cuánto paga al reservar y cuándo se le devuelve.',
+          effect: deposit
+            ? 'Cuánto paga al reservar y cuándo se le devuelve.'
+            : (s.late_cancel_hours ?? 0) > 0
+              ? `Cancelar con menos de ${s.late_cancel_hours} h tiene consecuencias.`
+              : 'Cancelar a último momento no tiene consecuencias.',
           value: deposit ? `${s.deposit_percentage ?? 30} %` : 'Sin seña',
           icon: HandCoins,
           tone: deposit ? 'success' : 'neutral',

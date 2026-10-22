@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import {
+  boolean,
   check,
   date,
   index,
@@ -79,6 +80,9 @@ export const bookings = pgTable(
     canceledReason: text('canceled_reason'),
     canceledBy: cancellationActorEnum('canceled_by'),
     canceledAt: timestamp('canceled_at', { withTimezone: true, mode: 'date' }),
+    // Migr. 098: la cancelación contó como tardía (sin seña) para la escalera de
+    // `late-cancel.ts`. El contador de los últimos 60 días sale de acá.
+    canceledLate: boolean('canceled_late').notNull().default(false),
 
     completedByStaff: uuid('completed_by_staff').references(() => staffUsers.id),
 
@@ -111,6 +115,10 @@ export const bookings = pgTable(
       .where(sql`tournament_id IS NOT NULL`),
     statusIdx: index('idx_bookings_status').on(table.tenantId, table.status),
     dateStatusIdx: index('idx_bookings_date_status').on(table.tenantId, table.date, table.status),
+    // Migr. 098: cuenta las cancelaciones tardías del jugador en la ventana de 60 días.
+    lateCancelIdx: index('idx_bookings_late_cancel')
+      .on(table.tenantId, table.canceledAt)
+      .where(sql`canceled_late`),
     // Migr. 061 (reconciliación contable D4 §7): sweep cross-tenant
     // (turnogol_worker, sin tenant_id en el WHERE) — ver reconciliation.service.ts.
     // INV4 filtra y ordena por updated_at (no created_at): el índice tiene que

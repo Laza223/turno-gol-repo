@@ -121,3 +121,42 @@ describe('updateReservasPolicyAction — booking_min_advance_hours', () => {
     expect(lastPatch).toBeNull()
   })
 })
+
+describe('updateReservasPolicyAction — cada rama toca solo lo suyo', () => {
+  it('sin seña guarda late_cancel_hours y NO pisa cancellation_policy', async () => {
+    const result = await updateReservasPolicyAction(
+      { success: true },
+      formData({
+        allowOnlineBooking: 'true',
+        bookingAdvanceDays: '6',
+        requiresDeposit: 'false',
+        lateCancelHours: '4',
+      }),
+    )
+
+    expect(result).toEqual({ success: true })
+    expect(lastPatch).toMatchObject({ late_cancel_hours: 4 })
+    expect(lastPatch).not.toHaveProperty('cancellation_policy')
+  })
+
+  it('con seña guarda cancellation_policy y apaga late_cancel_hours', async () => {
+    const result = await updateReservasPolicyAction(
+      { success: true },
+      formData({ ...BASE_FIELDS, requiresDeposit: 'true', depositPercentage: '30' }),
+    )
+
+    expect(result).toEqual({ success: true })
+    expect(lastPatch).toMatchObject({ cancellation_policy: { hours_before: 12 } })
+    expect(lastPatch).toMatchObject({ late_cancel_hours: 0 })
+  })
+
+  it('rechaza más de 24 horas', async () => {
+    const result = await updateReservasPolicyAction(
+      { success: true },
+      formData({ ...BASE_FIELDS, requiresDeposit: 'false', lateCancelHours: '25' }),
+    )
+
+    expect(result.success).toBe(false)
+    expect(lastPatch).toBeNull()
+  })
+})

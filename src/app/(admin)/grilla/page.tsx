@@ -91,6 +91,7 @@ export default async function GrillaPage(props: {
         cancellationPolicyHours={
           tenant.settings.cancellation_policy?.hours_before ?? DEFAULT_CANCELLATION_HOURS_BEFORE
         }
+        lateCancelHours={tenant.settings.late_cancel_hours ?? 0}
         action={createBookingAction}
         createAbonadoAction={createAbonadoAction}
         checkAvailabilityAction={checkSlotAvailabilityAction}

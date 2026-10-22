@@ -84,6 +84,7 @@ type Props = {
   updatedAt?: string | null
   /** Horas de anticipación de la política de cancelación del complejo. */
   cancellationPolicyHours: number
+  lateCancelHours?: number
   completeAndChargeBookingAction: (
     input: CompleteAndChargeInput,
   ) => Promise<CompleteAndChargeResult>
@@ -371,6 +372,7 @@ function ConfirmedActions({
   startsAt,
   endsAt,
   cancellationPolicyHours,
+  lateCancelHours = 0,
   priceSnapshot,
   chargesTotal,
   guestName,
@@ -393,6 +395,7 @@ function ConfirmedActions({
   startsAt: string | null | undefined
   endsAt: string | null | undefined
   cancellationPolicyHours: number
+  lateCancelHours?: number
   priceSnapshot: number
   chargesTotal: number
   guestName: string | null
@@ -475,6 +478,8 @@ function ConfirmedActions({
       policyHours: cancellationPolicyHours,
       nowMs,
       cancellationType: cancelType,
+      lateCancelHours,
+      hasPlayer: playerName != null,
     }),
   )
 
@@ -628,6 +633,7 @@ export default function BookingActions({
   endsAt,
   updatedAt,
   cancellationPolicyHours,
+  lateCancelHours = 0,
   priceSnapshot,
   chargesTotal,
   guestName,
@@ -711,6 +717,7 @@ export default function BookingActions({
       startsAt={startsAt}
       endsAt={endsAt}
       cancellationPolicyHours={cancellationPolicyHours}
+      lateCancelHours={lateCancelHours}
       priceSnapshot={priceSnapshot}
       chargesTotal={chargesTotal}
       guestName={guestName}

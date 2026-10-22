@@ -108,6 +108,12 @@ export const settingsPatchSchema = z
       .min(0, 'La anticipación mínima no puede ser negativa.')
       .max(48, 'La anticipación mínima no puede superar 48 horas.')
       .optional(),
+    late_cancel_hours: z
+      .number()
+      .int()
+      .min(0, 'Las horas de cancelación tardía no pueden ser negativas.')
+      .max(24, 'Las horas de cancelación tardía no pueden superar 24.')
+      .optional(),
     auto_complete_minutes: z
       .number()
       .int()

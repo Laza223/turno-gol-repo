@@ -46,6 +46,7 @@ type Props = Omit<
   }
   /** Horas de anticipación de la política de cancelación, para el aviso de seña del modal. */
   cancellationPolicyHours: number
+  lateCancelHours?: number
   /** La placa de turnos libres para historias. Sin esto la barra no ofrece el botón. */
   storyShare?: {
     slug: string
@@ -54,7 +55,13 @@ type Props = Omit<
   }
 }
 
-export function GrillaView({ canteen, cancellationPolicyHours, storyShare, ...gridProps }: Props) {
+export function GrillaView({
+  canteen,
+  cancellationPolicyHours,
+  lateCancelHours = 0,
+  storyShare,
+  ...gridProps
+}: Props) {
   return (
     <BookingGrid
       {...gridProps}
@@ -100,6 +107,7 @@ export function GrillaView({ canteen, cancellationPolicyHours, storyShare, ...gr
             onClose={args.onClose}
             onMutated={args.onMutated}
             cancellationPolicyHours={cancellationPolicyHours}
+            lateCancelHours={lateCancelHours}
           />
         )
       }

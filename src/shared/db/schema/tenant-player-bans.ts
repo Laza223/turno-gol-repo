@@ -22,6 +22,8 @@ export const tenantPlayerBans = pgTable(
       mode: 'date',
     }),
     bannedBy: uuid('banned_by').references(() => staffUsers.id),
+    // Migr. 098: corte del conteo de cancelaciones tardías al levantar ese bloqueo.
+    lateCancelResetAt: timestamp('late_cancel_reset_at', { withTimezone: true, mode: 'date' }),
   },
   (table) => ({
     playerIdx: index('idx_tenant_player_bans_player').on(table.playerId),

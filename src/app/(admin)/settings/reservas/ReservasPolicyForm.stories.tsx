@@ -36,10 +36,27 @@ export const Default: Story = {
   args: { action: fn(async () => ({ success: true as const })) },
 }
 
-/** Complejo sin seña: el bloque de porcentaje ni siquiera se renderiza. */
+/**
+ * Complejo sin seña: el bloque de porcentaje ni siquiera se renderiza, tampoco la devolución
+ * ni "Si el jugador falta"; aparece "Si cancela a último momento" (apagado por defecto).
+ */
 export const SinSena: Story = {
   args: {
     s: tenantSettings({ requires_deposit: false }),
+    action: fn(async () => ({ success: true as const })),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Si cancela a último momento')).toBeInTheDocument()
+    await expect(canvas.queryByText('Devolución de la seña')).not.toBeInTheDocument()
+    await expect(canvas.queryByText('Si el jugador falta')).not.toBeInTheDocument()
+  },
+}
+
+/** Sin seña y con la penalidad prendida en 4 h. */
+export const SinSenaConCancelacionTardia: Story = {
+  args: {
+    s: tenantSettings({ requires_deposit: false, late_cancel_hours: 4 }),
     action: fn(async () => ({ success: true as const })),
   },
 }

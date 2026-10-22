@@ -32,6 +32,7 @@ export function HoyChargeModalDialogs({
   hasEnded,
   nowMs,
   cancellationPolicyHours,
+  lateCancelHours = 0,
   courts,
   court,
   dayBookings,
@@ -62,6 +63,7 @@ export function HoyChargeModalDialogs({
   nowMs: number
   /** `null` si el caller no tiene la política a mano: `SlotCancelDialog` degrada solo. */
   cancellationPolicyHours: number | null
+  lateCancelHours?: number
   courts: HoyCourt[]
   court: HoyCourt | undefined
   dayBookings: ChargeBooking[]
@@ -167,6 +169,8 @@ export function HoyChargeModalDialogs({
                   bookingStartUtcMs: booking.startsAtMs,
                   bookingEndUtcMs: booking.endsAtMs,
                   policyHours: cancellationPolicyHours,
+                  lateCancelHours,
+                  hasPlayer: booking.playerFirstName != null,
                   nowMs,
                   cancellationType,
                 })

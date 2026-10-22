@@ -55,6 +55,8 @@ export type PublicTenant = {
    * Es la misma regla que aplica `booking.cancellation.ts`; acá solo se dice, no se decide.
    */
   cancellationHoursBefore: number
+  /** `settings.late_cancel_hours`: 0 = sin penalidad por cancelar a último momento (sin seña). */
+  lateCancelHours?: number
   /**
    * Anticipación EFECTIVA, no la cruda de `settings`: un complejo `canceled`
    * la trae recortada para no vender turnos posteriores a su período pago
@@ -433,6 +435,7 @@ async function _getPublicTenant(slug: string): Promise<PublicTenant | null> {
     acceptsTransfer: s.accepts_transfer ?? true,
     cancellationHoursBefore:
       s.cancellation_policy?.hours_before ?? DEFAULT_CANCELLATION_HOURS_BEFORE,
+    lateCancelHours: s.late_cancel_hours ?? 0,
     bookingAdvanceDays: publicBookingAdvanceDays(
       s.booking_advance_days ?? 6,
       row.status,

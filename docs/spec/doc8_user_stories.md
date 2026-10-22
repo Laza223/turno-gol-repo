@@ -285,7 +285,7 @@ para responder en menos de 5 segundos sin equivocarme.
 - [ ] Dado que hago click en un slot libre, cuando se abre el modal, entonces puedo crear una reserva manual (US-RES-002).
 - [ ] Dado que hago click en un slot ocupado, cuando se abre el detalle, entonces veo: jugador, tipo, precio, seña, notas, y acciones disponibles (cancelar, marcar completado/no-show).
 - [ ] Dado que cambio de día con los controles de navegación, cuando elijo otra fecha, entonces la grilla se recarga en <500ms.
-- [ ] La grilla funciona en mobile (pantalla de 375px): scroll horizontal suave para ver todas las canchas.
+- [ ] La grilla funciona en mobile (pantalla de 375px): debajo de 768 px es una lista por hora, sin scroll horizontal (decisión 2026-10-22, `docs/decisions/2026-10-22-grilla-celular-por-hora.md`).
 - [ ] La grilla se actualiza en tiempo real (o con polling cada 30s), sin necesidad de recargar la página.
 
 ❌ Edge Cases

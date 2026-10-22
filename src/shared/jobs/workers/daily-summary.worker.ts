@@ -1,15 +1,20 @@
 import type PgBoss from 'pg-boss'
+import { and, eq, gt, sql as drizzleSql } from 'drizzle-orm'
 import { getWorkerSql, withTenantContext } from '@/shared/db/client'
+import { notifications } from '@/shared/db/schema'
 import { getHoyData } from '@/modules/home/home.service'
 import { addDays } from '@/shared/dates/art'
 import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
 import { notifyAdminPush } from '@/modules/notifications/push.service'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
+import { getWeekRevenue } from '@/modules/reports/report.service'
+import { buildWeeklySummary, weeklySummaryWeekStart } from '@/modules/reports/weekly-summary'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import { CRON_WORK_OPTIONS, QUEUE_DAILY_SUMMARY } from '../definitions'
 import { logger } from '@/shared/lib/logger'
 
 const ART_TZ = 'America/Argentina/Buenos_Aires'
+const WEEKLY_TRIGGER = 'weekly_summary.sweep'
 
 /** Sin símbolo de moneda — el caller antepone "$" (mismo criterio que
  *  `AdminLatePaymentData.amountArs` en admin-late-payment.ts). */
@@ -24,6 +29,7 @@ type SummaryTenant = {
   closedDates: string[] | null
   closesNextDay: boolean
   dailySummaryEmailOptIn: boolean
+  weeklySummaryEmailOptIn: boolean
 }
 
 function dateLabelMedium(date: string): string {
@@ -62,10 +68,12 @@ export async function runDailySummarySweep(): Promise<void> {
       closed_dates: string[] | null
       closes_next_day: boolean
       daily_summary_email_opt_in: boolean | null
+      weekly_summary_email_opt_in: boolean | null
     }>
   >`
     SELECT id, opening_hours, closed_dates, closes_next_day,
-           (settings->>'daily_summary_email_opt_in')::boolean AS daily_summary_email_opt_in
+           (settings->>'daily_summary_email_opt_in')::boolean AS daily_summary_email_opt_in,
+           (settings->>'weekly_summary_email_opt_in')::boolean AS weekly_summary_email_opt_in
     FROM tenants
     WHERE status IN ('trialing', 'active', 'past_due')
   `
@@ -76,6 +84,7 @@ export async function runDailySummarySweep(): Promise<void> {
     closedDates: t.closed_dates,
     closesNextDay: t.closes_next_day,
     dailySummaryEmailOptIn: t.daily_summary_email_opt_in === true,
+    weeklySummaryEmailOptIn: t.weekly_summary_email_opt_in === true,
   }))
 
   for (const tenant of list) {
@@ -89,7 +98,65 @@ export async function runDailySummarySweep(): Promise<void> {
         error: err instanceof Error ? err.message : String(err),
       })
     }
+
+    if (!tenant.weeklySummaryEmailOptIn) continue
+    // try propio: que falle el diario (un push caído) no se lleve puesto el
+    // semanal, que no depende de él.
+    try {
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop
+      await sendWeeklySummary(tenant)
+    } catch (err) {
+      logger.warn('weekly-summary: failed for tenant', {
+        module: 'daily-summary.worker',
+        tenantId: tenant.id,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
   }
+}
+
+/**
+ * Resumen semanal por mail: cuelga de este mismo cron (08:00 ART) y de este
+ * mismo template en vez de registrar cola y template propios, porque esos
+ * registros (`workers/index.ts`, `definitions.ts`, `templates/index.ts`) los
+ * comparte RIVAL. Sale solo los lunes (`weeklySummaryWeekStart`) y solo a los
+ * administradores: trae lo mismo que Métricas, que el Encargado no ve.
+ */
+async function sendWeeklySummary(tenant: SummaryTenant): Promise<void> {
+  const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
+  const weekStart = weeklySummaryWeekStart(operatingDateOf(new Date(), cutoffMins))
+  if (!weekStart) return
+
+  const revenue = await getWeekRevenue(tenant.id, weekStart, cutoffMins)
+  // Decisión de Lazar (2026-10-22): una semana sin ingresos no manda mail.
+  if (revenue.income <= 0) return
+  await withTenantContext(tenant.id, async (tx) => {
+    // Un barrido que vuelve a correr el mismo lunes (disparo manual, doble
+    // worker) no le manda dos veces la semana al dueño.
+    const alreadySent = await tx
+      .select({ id: notifications.id })
+      .from(notifications)
+      .where(
+        and(
+          eq(notifications.tenantId, tenant.id),
+          eq(notifications.triggerEvent, WEEKLY_TRIGGER),
+          gt(notifications.createdAt, drizzleSql`now() - interval '6 days'`),
+        ),
+      )
+      .limit(1)
+    if (alreadySent.length > 0) return
+
+    await enqueueTenantOwnerNotification(
+      {
+        tenantId: tenant.id,
+        templateName: 'daily_summary',
+        triggerEvent: WEEKLY_TRIGGER,
+        content: buildWeeklySummary(weekStart, revenue),
+      },
+      tx,
+      { onlyRole: 'admin' },
+    )
+  })
 }
 
 async function sendTenantSummary(tenant: SummaryTenant): Promise<void> {

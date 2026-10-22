@@ -295,6 +295,43 @@ async function purgeOldWhatsappData(): Promise<void> {
   })
 }
 
+/**
+ * RIVAL (migr. 099), purga GLOBAL en dos pasos y por antigüedad del partido
+ * (`starts_at`), sin filtro de tenant, pool worker BYPASSRLS:
+ *
+ *  1. El WhatsApp guardado de un partido ya empezado (`rival_match_contacts`).
+ *     Nadie lo necesita después de `starts_at` y la RLS ya no lo deja leer; esto
+ *     lo borra de verdad. La corrida es semanal, así que puede quedar hasta 7
+ *     días ilegible en la tabla.
+ *  2. Todo el partido a los 12 meses de jugado (spec §10). Participantes,
+ *     denuncias, contacto y dedupe de alertas caen por el ON DELETE CASCADE de
+ *     sus FKs a `rival_matches`. Las suscripciones a alertas no cuelgan de un
+ *     partido y no se tocan acá.
+ *
+ * Sentencias separadas: si la segunda falla, los contactos ya se purgaron.
+ */
+async function purgeOldRivalData(): Promise<void> {
+  const sql = getWorkerSql()
+  const contacts = await sql`
+    DELETE FROM rival_match_contacts c
+    USING rival_matches m
+    WHERE m.id = c.match_id
+      AND m.starts_at <= NOW()
+  `
+  logger.info('purged rival_match_contacts', {
+    module: 'data-retention',
+    count: contacts.count,
+  })
+  const matches = await sql`
+    DELETE FROM rival_matches
+    WHERE starts_at < NOW() - INTERVAL '12 months'
+  `
+  logger.info('purged rival_matches', {
+    module: 'data-retention',
+    count: matches.count,
+  })
+}
+
 async function cancelPendingMpSubscription(
   gateway: PaymentGateway,
   tenantId: string,
@@ -465,6 +502,28 @@ export async function wipeTenant(
     //  `bookings.whatsapp_chat_id` no tiene FK, así que borrar un chat nunca
     //  hace UPDATE sobre una reserva terminal); este orden es igual el natural:
     //  mensajes → reservas → chats → conexión.
+    // RIVAL (migr. 099). `rival_matches.booking_id` es ON DELETE SET NULL, pero
+    // acá el complejo entero se va: todo RIVAL del complejo se borra ANTES que
+    // `bookings` para no dejar el UPDATE de la FK. Los hijos tienen CASCADE hacia
+    // el partido, pero acá el partido se borra por tenant y no queremos depender
+    // de eso: explícito y de hijo a padre.
+    await tx.execute(drizzleSql`
+      DELETE FROM rival_alert_sends
+      WHERE match_id IN (SELECT id FROM rival_matches WHERE tenant_id = ${tenantId})
+    `)
+    await tx.execute(drizzleSql`
+      DELETE FROM rival_reports
+      WHERE match_id IN (SELECT id FROM rival_matches WHERE tenant_id = ${tenantId})
+    `)
+    await tx.execute(drizzleSql`DELETE FROM rival_participants WHERE tenant_id = ${tenantId}`)
+    await tx.execute(drizzleSql`
+      DELETE FROM rival_match_contacts
+      WHERE match_id IN (SELECT id FROM rival_matches WHERE tenant_id = ${tenantId})
+    `)
+    await tx.execute(drizzleSql`DELETE FROM rival_matches WHERE tenant_id = ${tenantId}`)
+    await tx.execute(
+      drizzleSql`DELETE FROM rival_alert_subscriptions WHERE tenant_id = ${tenantId}`,
+    )
     await tx.execute(drizzleSql`DELETE FROM whatsapp_messages WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM bookings WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM whatsapp_chats WHERE tenant_id = ${tenantId}`)
@@ -592,6 +651,15 @@ export async function runDataRetentionCleanup(): Promise<void> {
     await purgeOldWhatsappData()
   } catch (err) {
     logger.error('purge whatsapp (messages/chats) failed (non-fatal, retried next run)', {
+      module: 'data-retention',
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
+
+  try {
+    await purgeOldRivalData()
+  } catch (err) {
+    logger.error('purge rival (contacts/matches) failed (non-fatal, retried next run)', {
       module: 'data-retention',
       error: err instanceof Error ? err.message : String(err),
     })

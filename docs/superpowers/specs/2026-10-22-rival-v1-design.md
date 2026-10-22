@@ -83,6 +83,7 @@ Ningún campo es texto libre y ninguno es un precio.
 | `requested` → `declined` | El organizador | — |
 | `bench` → `confirmed` | El sistema | Cuando se libera un lugar entra el primero del banco, en orden de llegada y en la misma transacción que la baja |
 | `confirmed` / `bench` / `requested` → `left` | El jugador | Antes de `starts_at` |
+| `left` → `confirmed` / `bench` | El jugador, por el link del grupo | Es un alta nueva: pasa por cupo, bans, vencimiento y partido cancelado u oculto, y queda como `player` con `origin = 'invite'` aunque antes fuera capitán rival o viniera del tablón. `removed` y `declined` NO vuelven por el link |
 | `confirmed` / `bench` → `removed` | El organizador | Antes de `starts_at` |
 
 - El organizador entra como fila `confirmed` automáticamente y no puede bajarse: para irse, cancela el partido.
@@ -284,7 +285,7 @@ Se cuentan sobre tablas propias, porque `track.*` descarta `playerId`. Se muestr
 
 | Tabla | Claves |
 |---|---|
-| `rival_matches` | `tenant_id`, `organizer_player_id`, `booking_id` NULL, `court_declared`, `starts_at`, `format` (4..11), `capacity`, `level`, `invite_code` UNIQUE, `on_board`, `seeking`, `seeking_position`, `status`, `hidden_at`, `confirmed_count`, `filled_at`. CHECK `booking_id IS NOT NULL OR court_declared` |
+| `rival_matches` | `tenant_id`, `organizer_player_id`, `booking_id` NULL, `court_declared`, `starts_at`, `format` (4..11), `capacity`, `level`, `invite_code` UNIQUE, `on_board`, `seeking`, `seeking_position`, `status`, `hidden_at`, `confirmed_count`, `filled_at`. `booking_id` es `ON DELETE SET NULL`: si se borra la reserva (cancelar un abonado, liberar un bloqueo) el partido queda como si se hubiera cancelado. La cancha (reserva o `court_declared`) se exige al CREAR, en el trigger de alta, no como CHECK |
 | `rival_match_contacts` | `match_id` PK, `whatsapp_digits`. Va aparte porque una columna no puede tener RLS propio. Se borra al cancelar, al llegar `starts_at` (barrido del worker de retención) y con ARCO |
 | `rival_participants` | `tenant_id`, `match_id`, `player_id`, `role` (player / rival_captain), `status`, `origin` (invite / board), `confirmed_at`, `decided_at`. UNIQUE (`match_id`, `player_id`); índice único parcial: un `rival_captain` `confirmed` por partido |
 | `rival_reports` | `match_id`, `reporter_player_id`, `reported_player_id` NULL, `reason`, `counts_for_autohide`. UNIQUE NULLS NOT DISTINCT (`match_id`, `reporter_player_id`, `reported_player_id`) |
@@ -307,7 +308,7 @@ Se cuentan sobre tablas propias, porque `track.*` descarta `playerId`. Se muestr
 - `rival_board(tenant, cursor)`: expone `id`, nunca `invite_code`, porque con el código cualquiera se saltaría la aceptación;
 - `rival_roster(match_id)`: autoriza adentro según §6;
 - `rival_join_by_invite(code)`
-- los helpers `rival_is_organizer` y `rival_is_participant`, que evitan la recursión de policies.
+- los helpers `rival_is_organizer` y `rival_lock_match` (lock del partido antes de tocar participantes), y `rival_is_internal_write` (señal de escritura interna en el WHEN de los triggers); `rival_is_organizer` evita la recursión de policies.
 
 Todas llevan REVOKE de PUBLIC, anon y authenticated, y GRANT a `turnogol_app` y `turnogol_worker` (patrón `056` / `080`).
 

@@ -2717,7 +2717,7 @@
         "reposo (modal oscuro, frase del +18 sin casilla, Google y email del mismo peso, nada deshabilitado)",
         "error de email (junto al campo, foco ahí, lo tipeado se conserva)",
         "estado 'sent' ('Revisá tu email', reenviar, usar otro email)",
-        "navegador interno (email primero, aclaración de Google)",
+        "navegador interno (email primero y, en lugar de Google, el aviso para abrir la página en el navegador)",
         "red caída (mensaje en el formulario, sin error boundary)"
       ],
       "proposedStoryTitle": "Player/Checkout/LoginGate",

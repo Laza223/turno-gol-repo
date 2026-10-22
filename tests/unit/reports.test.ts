@@ -245,6 +245,12 @@ describe('toCsv', () => {
     expect(dataLine).toBe("'+1,'-1,'@cmd")
   })
 
+  it('neutralizes a leading tab or carriage return (OWASP)', () => {
+    const csv = toCsv([{ a: '\t=1+1', b: '\r=1+1' }])
+    const dataLine = csv.slice(csv.indexOf('\r\n') + 2)
+    expect(dataLine).toBe(`'\t=1+1,"'\r=1+1"`)
+  })
+
   it('does not touch a value that merely contains = elsewhere', () => {
     const csv = toCsv([{ desc: 'total = 100' }])
     const dataLine = csv.split('\r\n')[1]!

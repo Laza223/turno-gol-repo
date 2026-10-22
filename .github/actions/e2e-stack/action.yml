@@ -90,7 +90,7 @@ runs:
         PGPASSWORD: postgres
       run: |
         {
-          for f in src/shared/db/migrations/0*.sql; do
+          for f in src/shared/db/migrations/[0-9]*.sql; do  # [0-9]*: la 100+ arranca en 1
             echo "\\echo >>> $f"
             echo "\\i $f"
           done

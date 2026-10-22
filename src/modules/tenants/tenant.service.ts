@@ -212,6 +212,7 @@ function rowToTenantRow(t: typeof tenants.$inferSelect): TenantRow {
     closesNextDay: t.closesNextDay,
     mpConnectedAt: t.mpConnectedAt,
     mpNickname: t.mpNickname,
+    mpDisconnectedAt: t.mpDisconnectedAt,
     latitude: coordinateFromColumn(t.latitude),
     longitude: coordinateFromColumn(t.longitude),
   }
@@ -366,15 +367,22 @@ export async function completeOnboarding(tenantId: string): Promise<void> {
  * cross-tenant por naturaleza —justamente busca en los complejos ajenos— y
  * dejarla en el pool restringido la ataría al contexto del tenant en curso.
  * Devuelve solo el nombre: nunca credenciales de otro complejo.
+ *
+ * Sin `exceptTenantId` contesta "¿qué complejo cobra con esta cuenta?": así
+ * resuelve el webhook de desvinculación (`mp-connect`) de quién es el aviso.
  */
 export async function findTenantUsingMpAccount(
   mpUserId: string,
-  exceptTenantId: string,
+  exceptTenantId?: string,
 ): Promise<{ id: string; name: string } | null> {
   const rows = await getWorkerDb()
     .select({ id: tenants.id, name: tenants.name })
     .from(tenants)
-    .where(and(eq(tenants.mpUserId, mpUserId), ne(tenants.id, exceptTenantId)))
+    .where(
+      exceptTenantId
+        ? and(eq(tenants.mpUserId, mpUserId), ne(tenants.id, exceptTenantId))
+        : eq(tenants.mpUserId, mpUserId),
+    )
     .limit(1)
   return rows[0] ?? null
 }
@@ -399,6 +407,8 @@ export async function connectMercadoPago(
       mpPublicKey: data.mpPublicKey,
       mpNickname: data.mpNickname ?? null,
       mpConnectedAt: new Date(),
+      // Reconectar cura la marca de "MercadoPago se desconectó" (migr. 100).
+      mpDisconnectedAt: null,
       updatedAt: new Date(),
     })
     .where(eq(tenants.id, tenantId))
@@ -439,6 +449,7 @@ export async function disconnectMercadoPago(
         mp_public_key = NULL,
         mp_nickname = NULL,
         mp_connected_at = NULL,
+        mp_disconnected_at = NULL,
         -- t.settings calificado: con el self-join del FROM, "settings" a secas
         -- es ambiguo (42702). El lado izquierdo del SET nunca lleva prefijo;
         -- el derecho sí lo necesita. (Sin backticks en este comentario: cierran

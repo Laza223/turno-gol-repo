@@ -341,6 +341,23 @@ describe('createBookingAndCheckout — con seña el cliente no elige cómo se pa
     expect(bookingInput()).toMatchObject({ requiresDeposit: true, depositPercentage: 30 })
   })
 
+  it('con seña pero MercadoPago marcado como desconectado: se confirma sin seña y honra el pay', async () => {
+    // Decisión 2026-10-22: hay token, pero MP ya no lo acepta. Mandarlo a pagar
+    // sería mandarlo a una página de error; el complejo cobra en el mostrador.
+    tenantRow.current = {
+      ...tenant({ requires_deposit: true, deposit_percentage: 30 }),
+      mpDisconnectedAt: new Date('2026-10-22T15:00:00Z'),
+    }
+    createOnlineBooking.mockResolvedValue({ id: 'b4', status: 'confirmed' })
+
+    await expect(createBookingAndCheckout(fd({ ...turno, pay: 'cash' }))).rejects.toThrow(
+      'NEXT_REDIRECT:/reserva/b4/exito',
+    )
+
+    expect(bookingInput()).toMatchObject({ requiresDeposit: false, paymentMethod: 'cash' })
+    expect(createDepositPayment).not.toHaveBeenCalled()
+  })
+
   it.each(['cash', 'transfer'])(
     'sin seña, pay=%s lo honra cuando el complejo lo acepta y confirma en el momento',
     async (pay) => {

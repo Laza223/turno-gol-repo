@@ -11,6 +11,7 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 **Qué es**: cada circuito de plata tiene tests unitarios y de integración con MP simulado, y algunos pasos se probaron a mano en producción con el complejo de prueba. Nunca se hizo una corrida completa contra el sandbox de MP que recorra todos los caminos con cobros, webhooks y cancelaciones reales.
 
 **Por qué existe**: los arreglos de facturación de septiembre (#319, #321, #324, #327, #333) se verificaron sobre producción solo hasta el checkout, sin pagar: el anual abre a $604.800, reintentar la misma opción reusa el link y cambiar de opción ya no manda mails de cancelación (2026-09-17). Lo que nunca se ejecutó con plata o notificaciones reales:
+
 - el primer cobro diferido al fin de la prueba (`start_date` futuro);
 - el cobro recurrente que llega por webhook;
 - la mora (`past_due`) y la recuperación;
@@ -101,6 +102,7 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 ## `plans.price_monthly` / `price_annual` y `tenant_subscriptions.pending_plan_change` quedaron muertas
 
 **Qué es**: tres columnas que ya no participan de ningún cálculo ni de ninguna escritura, sobrevivientes del modelo de bandas (migr. 090/091, 2026-09-17).
+
 - `plans.price_monthly` y `plans.price_annual`: siguen `NOT NULL` y en la fila activa valen $47.000 y $42.300, o sea **el caso de una cancha**. Ningún cobro sale de ahí — el monto lo calcula [`pricing.ts`](src/modules/billing/pricing.ts) sobre `billed_courts`.
 - `tenant_subscriptions.pending_plan_change`: `uuid REFERENCES plans(id)`. La reemplazó `pending_billed_courts` (integer), que no se pudo hacer sobre la misma columna por el tipo. Ya no tiene escritores; los dos lugares que tocaban un cambio pendiente ([billing.service.ts](src/modules/billing/billing.service.ts) y [dunning-retry.worker.ts](src/shared/jobs/workers/dunning-retry.worker.ts)) la ponen en NULL explícitamente.
 
@@ -153,6 +155,18 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 **Costo estimado de resolverla**: bajo, ~2h. Aceptar el tipo en el schema del webhook y resolver el tenant por `mp_user_id` en vez de por `?tenant=` (el payload trae el user id de MercadoPago, que ya está en `tenants.mp_user_id`); al recibirlo, limpiar las columnas de MP igual que hace la desvinculación desde la UI y avisarle al dueño. Ojo con el orden del route handler: hoy el guard de tenant corre antes de validar la firma, así que hay que mover ese caso sin debilitar el guard para el resto.
 
 **Disparador de resolución**: cuando se cierre el tema del par OAuth (`MP_CLIENT_ID` apuntando a la aplicación vieja) — decisión del dueño el 2026-08-28, para no tocar dos cosas del mismo circuito a la vez. Contexto completo en [docs/qa/GUION-ENSAYOS-PLATA-2026-08-28.md](qa/GUION-ENSAYOS-PLATA-2026-08-28.md).
+
+### RESUELTA (2026-10-22) — se marca, no se borra, y el veredicto es de MercadoPago
+
+Spec: [`docs/superpowers/specs/2026-10-22-aviso-mp-desconectado-design.md`](superpowers/specs/2026-10-22-aviso-mp-desconectado-design.md). Se apartó de la propuesta de arriba en tres puntos:
+
+- **No se limpian las columnas de MP.** Se marca `tenants.mp_disconnected_at` (migr. 100) y los tokens quedan: marcar es reversible, borrar no.
+- **El evento no es la verdad, es el gatillo.** El aviso `mp-connect` (`application.deauthorized`), con el complejo resuelto por la cuenta firmada (`data.id`), dispara un intento de refresh. Solo `invalid_grant`/`unauthorized_client` marcan (`MpGrantRevokedError`). Un 5xx o un timeout tiran, para que pg-boss reintente. Por la misma clasificación marcan también el refresh-on-401 y el cron de las 4 h, así que la desconexión se detecta aunque el webhook no llegue. El cron no marca a nadie si el `invalid_grant` es masivo (3 complejos o más y más de la mitad del barrido): eso huele a credenciales de la aplicación, no a dueños que revocaron, y va a Sentry.
+- **El orden del route no se debilitó.** La rama `mp-connect` corre después de validar la firma (`webhook-auth.ts` intacto) y no lleva `?tenant=`. El `user_id` del body, que la firma no cubre, solo se usa para cotejar.
+
+El dueño lo ve en Hoy (P1, [enmienda a la taxonomía](decisions/2026-08-02-taxonomia-alertas-hoy.md)), en Configuración y por un push. Mientras dure la marca, la reserva online entra sin seña ([decisión](decisions/2026-10-22-reservar-sin-sena-con-mp-desconectado.md)).
+
+**Queda sin verificar contra MP real** (ensayo en sandbox): el código exacto que devuelve el refresh después de desvincular, y si `data.id == user_id` en el aviso. Mientras tanto lo cubren los tests con el contrato documentado.
 
 ---
 

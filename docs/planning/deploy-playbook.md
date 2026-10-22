@@ -90,7 +90,7 @@ supabase migration list   # verifica qué quedó registrado en supabase_migratio
 ```
 
 - **NO usar `pnpm db:push` / `pnpm db:migrate` en prod**: ambos son `drizzle-kit push:pg` (`package.json:46-47`), que difunde el schema Drizzle por introspección y **no aplica el SQL de las migraciones** (perdería policies RLS, triggers, FORCE RLS, seeds — nada de eso está en el schema Drizzle).
-- Alternativa equivalente a CI (sin CLI Supabase): loop `psql` en orden lexicográfico, igual que `.github/workflows/ci.yml` ("Apply migrations"): `for f in src/shared/db/migrations/0*.sql; do psql "$DB" -v ON_ERROR_STOP=1 -f "$f"; done`. Si se usa esta vía, la CLI de Supabase no registra el historial — elegir UNA vía y sostenerla.
+- Alternativa equivalente a CI (sin CLI Supabase): loop `psql` en orden lexicográfico, igual que `.github/workflows/ci.yml` ("Apply migrations"): `for f in src/shared/db/migrations/[0-9]*.sql; do psql "$DB" -v ON_ERROR_STOP=1 -f "$f"; done`. Si se usa esta vía, la CLI de Supabase no registra el historial — elegir UNA vía y sostenerla.
 - Gotcha enums: `ALTER TYPE ... ADD VALUE` + uso del valor nuevo en la misma transacción da error `55P04`; la 025 lo esquiva comparando `::text` (`025_cashflow_expense.sql:11-12`). No mezclar a mano una 0NN de enum con DML que use el valor nuevo en la misma transacción.
 
 ### 2.2 Tabla 001→026

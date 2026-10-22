@@ -6,6 +6,7 @@ import { handleMpWebhookJob, type MpWebhookJob } from '@/modules/payments/mp-web
 import { verifyWebhookSignature, webhookSecretsStatus } from '@/modules/payments/webhook-auth'
 import { MP_MOCK_ENABLED } from '@/modules/payments/mock-mp'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
+import { findTenantUsingMpAccount } from '@/modules/tenants/tenant.service'
 import { track, withSpan } from '@/shared/observability'
 import { logger } from '@/shared/lib/logger'
 import { validatedJson } from '@/shared/api-output'
@@ -59,6 +60,103 @@ function rechazar(motivo: string, status: number, body: unknown): NextResponse {
   return NextResponse.json({ error: motivo }, { status })
 }
 
+function ignorar(eventType: string): NextResponse {
+  return validatedJson(
+    webhookResponseSchema,
+    { ok: true, ignored: eventType },
+    'POST /api/webhooks/mercadopago',
+  )
+}
+
+/**
+ * Encola el job (o lo procesa inline en modo mock). Un fallo devuelve 500 para
+ * que MP reintente y no marque la entrega como hecha.
+ */
+async function encolar(job: MpWebhookJob): Promise<NextResponse> {
+  try {
+    await withSpan('mp.webhook.process', 'webhook.mp', async () => {
+      if (MP_MOCK_ENABLED) {
+        await handleMpWebhookJob(job) // process inline → deterministic for E2E
+      } else {
+        const boss = await getBoss()
+        await boss.send(QUEUE_PROCESS_MP_WEBHOOK, job, MP_WEBHOOK_SEND_OPTIONS)
+      }
+    })
+  } catch (err) {
+    // Enqueue/processing failure → MP will retry. Return 5xx so MP doesn't mark delivered.
+    logger.error('webhook processing failed', {
+      module: 'mp-webhook',
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return NextResponse.json({ error: 'enqueue failed' }, { status: 500 })
+  }
+
+  return validatedJson(webhookResponseSchema, { ok: true }, 'POST /api/webhooks/mercadopago')
+}
+
+/**
+ * "Vinculación de aplicaciones" (`type: 'mp-connect'`): el dueño autorizó o
+ * desautorizó una aplicación de TurnoGol en su cuenta de MercadoPago.
+ *
+ * Llega por el canal global del panel, sin `?tenant=`, y el complejo NO se le
+ * cree a la URL: se resuelve por la cuenta, que es el `data.id` FIRMADO
+ * (`cuenta`). `user_id` viaja en el body, que la firma no cubre; sólo se usa
+ * como chequeo cruzado.
+ *
+ * Encolar no marca nada: el handler comprueba con un refresh si el permiso de
+ * ESE complejo murió de verdad (`mp-connection.service.ts`). Spec:
+ * `docs/superpowers/specs/2026-10-22-aviso-mp-desconectado-design.md`.
+ */
+async function recibirVinculacion(
+  payload: { id: string; type: string; action?: string; user_id?: string | number },
+  cuenta: string,
+): Promise<NextResponse> {
+  // `application.authorized` no cambia nada: la conexión la registra el
+  // callback de OAuth, que es el que tiene los tokens.
+  if (payload.action !== 'application.deauthorized') return ignorar(payload.type)
+
+  if (payload.user_id !== undefined && String(payload.user_id) !== cuenta) {
+    // El supuesto del diseño (data.id = la cuenta) no se cumplió. No se actúa:
+    // el cron de 4 h y el primer cobro fallido siguen cubriendo. `error` para
+    // que llegue a Sentry y se revise el formato real del evento.
+    logger.error('mp-webhook: desvinculación con user_id distinto de data.id; no se actúa', {
+      module: 'mp-webhook',
+      mpEventId: payload.id,
+    })
+    return ignorar(payload.type)
+  }
+
+  let tenantId: string | null
+  try {
+    tenantId = (await findTenantUsingMpAccount(cuenta))?.id ?? null
+  } catch (err) {
+    logger.error('mp-webhook: no se pudo resolver el complejo de la desvinculación', {
+      module: 'mp-webhook',
+      mpEventId: payload.id,
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return NextResponse.json({ error: 'tenant lookup failed' }, { status: 500 })
+  }
+  // Ninguna cuenta conectada a un complejo: la desvinculación de otra app de
+  // TurnoGol (p. ej. la cuenta master) o de un complejo que ya desconectó.
+  if (!tenantId) return ignorar(payload.type)
+
+  track.webhook('mp.webhook.received', {
+    mpEventId: payload.id,
+    tenantId,
+    eventType: payload.type,
+    mpPaymentId: cuenta,
+  })
+
+  return encolar({
+    tenantId,
+    mpEventId: payload.id,
+    eventType: payload.type,
+    mpPaymentId: cuenta,
+    rawPayload: payload,
+  })
+}
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const url = new URL(req.url)
 
@@ -102,6 +200,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       })
     }
     return rechazar('invalid signature', 401, body)
+  }
+
+  if (payload.type === 'mp-connect') {
+    return recibirVinculacion(payload, dataId)
   }
 
   // De qué complejo es este evento.
@@ -160,11 +262,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       // MP no reconoce el id, o el preapproval no tiene `external_reference`
       // (los creados fuera de TurnoGol, p. ej. a mano en el panel). 200 a
       // propósito: reintentarlo no lo va a resolver nunca.
-      return validatedJson(
-        webhookResponseSchema,
-        { ok: true, ignored: payload.type },
-        'POST /api/webhooks/mercadopago',
-      )
+      return ignorar(payload.type)
     }
   }
 
@@ -179,17 +277,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   //   - `payment`                          → booking deposit OR SaaS upgrade proration
   //   - `subscription_authorized_payment`  → SaaS recurring charge (preapproval child)
   //   - `subscription_preapproval`         → preapproval lifecycle change (cancel / hold)
+  //   (`mp-connect` se resuelve arriba, en `recibirVinculacion`.)
   const HANDLED_TYPES = new Set([
     'payment',
     'subscription_authorized_payment',
     'subscription_preapproval',
   ])
   if (!HANDLED_TYPES.has(payload.type)) {
-    return validatedJson(
-      webhookResponseSchema,
-      { ok: true, ignored: payload.type },
-      'POST /api/webhooks/mercadopago',
-    )
+    return ignorar(payload.type)
   }
 
   // `source=saas` lo pone TurnoGol al crear el preapproval / la preferencia de
@@ -199,32 +294,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const source =
     url.searchParams.get('source') === 'saas' || resueltoPorMp ? ('saas' as const) : undefined
 
-  const job: MpWebhookJob = {
+  return encolar({
     tenantId,
     mpEventId: payload.id,
     eventType: payload.type,
     mpPaymentId: payload.data.id,
     rawPayload: payload,
     ...(source ? { source } : {}),
-  }
-
-  try {
-    await withSpan('mp.webhook.process', 'webhook.mp', async () => {
-      if (MP_MOCK_ENABLED) {
-        await handleMpWebhookJob(job) // process inline → deterministic for E2E
-      } else {
-        const boss = await getBoss()
-        await boss.send(QUEUE_PROCESS_MP_WEBHOOK, job, MP_WEBHOOK_SEND_OPTIONS)
-      }
-    })
-  } catch (err) {
-    // Enqueue/processing failure → MP will retry. Return 5xx so MP doesn't mark delivered.
-    logger.error('webhook processing failed', {
-      module: 'mp-webhook',
-      error: err instanceof Error ? err.message : String(err),
-    })
-    return NextResponse.json({ error: 'enqueue failed' }, { status: 500 })
-  }
-
-  return validatedJson(webhookResponseSchema, { ok: true }, 'POST /api/webhooks/mercadopago')
+  })
 }

@@ -182,7 +182,7 @@ Regla: **se potencia el encuadre, nunca el número** ([`2026-09-26-referidos.md`
 | Anclaje | "Unos $1.100 por cancha por día" ($167.000 / 5 canchas / 30 días). "Lo que cobrás por 3 o 4 turnos en el mes." "Menos que 20 horas de un encargado" (a $8.600-9.200 la hora con cargas). | Compararnos con ATC: con 4-6 canchas somos más caros. |
 | Prueba social | Un cliente con nombre y con su permiso, y "preguntale a él cómo le va". | Cantidad de clientes o testimonios inventados. |
 | Reciprocidad | "Te lo cargo yo con tus canchas, precios y fijos antes de que pagues un peso." | — |
-| Riesgo cero | "30 días gratis y sin tarjeta. Si no te sirve, no pagás nada y no tenés que dar de baja nada." | "Exportás tus datos": la función no existe. |
+| Riesgo cero | "30 días gratis y sin tarjeta. Si no te sirve, no pagás nada y no tenés que dar de baja nada." "Antes de irte, te bajás tus reservas, tus fijos y tus clientes en Excel." | "Exportás todo": se bajan reservas, turnos fijos y clientes (Ajustes → Tus datos) y la caja mes a mes desde Métricas; cantina y torneos no. "Cuando quieras": un complejo bloqueado (trial vencido sin pagar o mora) no exporta, así que se baja antes de que venza. |
 | Autoridad | "Hecho en Luján, solo para complejos de fútbol." | Premios, prensa, "expertos". |
 | Urgencia | Una fecha real: el premio del referidor vale para las altas hasta el 31/10. "[Complejo] ya lo usa." | Cupos inventados: no hay un límite real. |
 | Compromiso | Un sí chiquito primero: "¿Te muestro en 10 minutos cómo queda con tus canchas?" | — |

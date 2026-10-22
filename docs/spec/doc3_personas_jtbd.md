@@ -84,7 +84,7 @@
 | "Ya tengo ATC" | "TurnoGol es más barato y tiene mejor UX. Probalo 30 días gratis." |
 | "No tengo tiempo de configurarlo" | "Lo configurás en 20 min. La interfaz te guía paso a paso." |
 | "¿Y si mis clientes no quieren reservar online?" | "Vos podés seguir cargando reservas manuales. Ellos pueden reservar si quieren." |
-| "¿Y mis datos si me voy?" | Sin respuesta hoy — no hay exportación de datos del complejo en código (retirado del doc 2026-08-27; solo existe export ARCO a nivel jugador). |
+| "¿Y mis datos si me voy?" | "Te los bajás en Excel antes de irte: reservas, turnos fijos y clientes desde Ajustes, y la caja desde Métricas." (`/settings/datos`, desde 2026-10-22). Un complejo bloqueado (trial vencido sin pagar o mora) no exporta. |
 | "¿Le enseño esto al empleado?" | "El empleado lo aprende en 10 minutos. La interfaz es más simple que Instagram." |
 
 ### Canal de adquisición

@@ -19,6 +19,7 @@ const jugador = (overrides: Partial<ClientListRow> = {}): ClientListRow => ({
   bookingsCount: 12,
   noshowCount: 0,
   lastBookingAt: '2026-03-10',
+  lastActiveAt: '2026-03-10T22:00:00Z',
   tags: [],
   fixedCount: 0,
   suggestedPlayerId: null,
@@ -67,6 +68,13 @@ const CLIENTES: ClientListRow[] = [
   }),
 ]
 
+/**
+ * "Ahora" fijo de las stories: `lastSeenLabel` calcula contra esto, así que el
+ * "hace 5 semanas" no se corre con el calendario.
+ */
+const NOW_MS = Date.parse('2026-10-22T15:00:00Z')
+const PUBLIC_URL = 'https://turnogol.com.ar/el-vagon'
+
 const noop: JugadoresViewProps['linkAction'] = async () => ({ success: true })
 const noopSearch: JugadoresViewProps['searchAction'] = async () => ({
   success: true,
@@ -88,6 +96,10 @@ const meta = {
     q: undefined,
     searchAction: noopSearch,
     linkAction: noop,
+    dormantTotal: 0,
+    tenantName: 'El Vagón',
+    publicUrl: PUBLIC_URL,
+    nowMs: NOW_MS,
   },
   decorators: [
     (Story) => (
@@ -158,6 +170,10 @@ export const Vacio: Story = {
     await expect(
       canvas.getByRole('link', { name: 'Compartí tu link desde el panel' }),
     ).toHaveAttribute('href', '/dashboard')
+    // Sin ningún cliente, las pastillas de filtro no aportan nada.
+    await expect(
+      canvas.queryByRole('navigation', { name: 'Filtrar personas' }),
+    ).not.toBeInTheDocument()
   },
 }
 
@@ -197,6 +213,16 @@ export const ConPaginas: Story = {
     await expect(within(pager).getByRole('link', { name: /Siguientes/ })).toHaveAttribute(
       'href',
       '/jugadores?q=ruiz&pagina=3',
+    )
+    // Las pastillas preservan la búsqueda y vuelven a la página 1.
+    const filtros = within(canvas.getByRole('navigation', { name: 'Filtrar personas' }))
+    await expect(filtros.getByRole('link', { name: 'Todas' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    await expect(filtros.getByRole('link', { name: /Dejaron de venir/ })).toHaveAttribute(
+      'href',
+      '/jugadores?q=ruiz&filtro=dejaron-de-venir',
     )
   },
 }
@@ -278,5 +304,98 @@ export const ContactoNombreLargo: Story = {
     const cards = within(canvasElement.querySelector('ul')!)
     const nameEl = cards.getByText('Cliente QA Test con Nombre Bien Largo')
     await expect(nameEl).toHaveAttribute('title', 'Cliente QA Test con Nombre Bien Largo')
+  },
+}
+
+/**
+ * Filtro "Dejaron de venir": 3+ reservas y hace más de 4 semanas que no
+ * reservan. La fila dice cuándo vino por última vez y la acción es escribirle
+ * por WhatsApp con un mensaje ya redactado, que se manda a mano, uno por uno.
+ * Decisión: docs/decisions/2026-10-22-clientes-que-dejaron-de-venir.md.
+ */
+export const DejaronDeVenir: Story = {
+  args: {
+    dormant: true,
+    dormantTotal: 3,
+    total: 3,
+    clients: [
+      jugador({ lastActiveAt: '2026-09-17T15:00:00Z' }),
+      contacto({ lastActiveAt: '2026-09-03T15:00:00Z', fixedCount: 0 }),
+      jugador({
+        key: uid(226),
+        playerId: uid(226),
+        name: 'Lucas Benítez',
+        email: 'lucas.benitez@example.com',
+        phone: null,
+        lastActiveAt: '2026-05-01T15:00:00Z',
+      }),
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const filtros = within(canvas.getByRole('navigation', { name: 'Filtrar personas' }))
+    const pill = filtros.getByRole('link', { name: /Dejaron de venir/ })
+    await expect(pill).toHaveAttribute('aria-current', 'page')
+    await expect(pill).toHaveTextContent('Dejaron de venir · 3')
+    await expect(filtros.getByRole('link', { name: 'Todas' })).toHaveAttribute('href', '/jugadores')
+
+    const table = within(canvas.getByRole('table'))
+    await expect(table.getByRole('columnheader', { name: 'Última vez' })).toBeVisible()
+    await expect(table.getByText('hace 5 semanas')).toBeVisible()
+    await expect(table.getByText('hace 7 semanas')).toBeVisible()
+    await expect(table.getByText('hace 5 meses')).toBeVisible()
+
+    // El mensaje precargado es el que aprobó el dueño, con el primer nombre.
+    const wa = table.getByRole('link', { name: 'Escribirle por WhatsApp a Tomás Ibáñez' })
+    const href = wa.getAttribute('href') ?? ''
+    await expect(href.startsWith('https://wa.me/5491133445566?text=')).toBe(true)
+    await expect(new URL(href).searchParams.get('text')).toBe(
+      `Hola Tomás! ¿Cómo andás? Te escribimos de El Vagón. Hace un tiempo que no te vemos por acá. Si querés volver, reservá acá: ${PUBLIC_URL}`,
+    )
+    await expect(wa).toHaveAttribute('target', '_blank')
+
+    // El contacto sin cuenta también: el móvil sin 9 se normaliza.
+    await expect(
+      table.getByRole('link', { name: 'Escribirle por WhatsApp a Diego Sosa' }),
+    ).toHaveAttribute('href', expect.stringMatching(/^https:\/\/wa\.me\/5491122334455\?text=/))
+    // "Vincular" se hace desde "Todas", no acá.
+    await expect(table.queryByRole('button', { name: /Vincular/ })).not.toBeInTheDocument()
+    // Sin teléfono no hay botón: un wa.me roto es peor que ninguno.
+    await expect(
+      table.queryByRole('link', { name: 'Escribirle por WhatsApp a Lucas Benítez' }),
+    ).not.toBeInTheDocument()
+  },
+}
+
+/** Sin URL absoluta de la app, el mensaje sale sin la invitación a reservar. */
+export const DejaronDeVenirSinLink: Story = {
+  args: {
+    dormant: true,
+    dormantTotal: 1,
+    publicUrl: null,
+    clients: [jugador({ lastActiveAt: '2026-09-17T15:00:00Z' })],
+  },
+  play: async ({ canvasElement }) => {
+    const table = within(within(canvasElement).getByRole('table'))
+    const wa = table.getByRole('link', { name: 'Escribirle por WhatsApp a Tomás Ibáñez' })
+    await expect(new URL(wa.getAttribute('href') ?? '').searchParams.get('text')).toBe(
+      'Hola Tomás! ¿Cómo andás? Te escribimos de El Vagón. Hace un tiempo que no te vemos por acá.',
+    )
+  },
+}
+
+/** Nadie dejó de venir: el vacío explica qué aparecería acá. */
+export const DejaronDeVenirVacio: Story = {
+  args: { dormant: true, dormantTotal: 0, clients: [] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Nadie dejó de venir')).toBeInTheDocument()
+    await expect(
+      canvas.getByText(
+        'Acá aparecen los clientes con 3 reservas o más que hace 4 semanas no reservan.',
+      ),
+    ).toBeInTheDocument()
+    // Las pastillas siguen: es la salida de vuelta a "Todas".
+    await expect(canvas.getByRole('link', { name: 'Todas' })).toHaveAttribute('href', '/jugadores')
   },
 }

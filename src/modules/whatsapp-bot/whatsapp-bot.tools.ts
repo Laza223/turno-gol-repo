@@ -12,13 +12,26 @@ import { getPublicAvailability, type PublicTenant } from '@/modules/tenants/publ
 import { isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
 import { createWhatsappBooking } from '@/modules/bookings/booking.whatsapp'
 import {
+  cancelByGuest,
+  findChatBookingForCancel,
+  type GuestCancellationOutcome,
+} from '@/modules/bookings/booking.cancellation'
+import { getCancellationPreview } from '@/modules/bookings/cancellation-preview'
+import { guestLateCancelStatus, PHONE_HINT_DIGITS } from '@/modules/bookings/guest-late-cancel'
+import { lateCancelPenalty, type LateCancelPenalty } from '@/modules/bookings/late-cancel'
+import {
+  BookingAlreadyEndedError,
   BookingDateOutOfRangeError,
+  BookingNotCancelableError,
+  BookingNotInConfirmedError,
   BookingNotOfferedError,
   BookingValidationError,
   CourtOfflineError,
+  GuestLateCancelBlockedError,
   PlayerBannedError,
   PriceUnavailableError,
   SlotTakenError,
+  TenantInactiveError,
   TooManyWhatsappBookingsError,
 } from '@/modules/bookings/booking.errors'
 import { createDepositPayment } from '@/modules/payments/payment.service'
@@ -189,6 +202,12 @@ function bookingErrorReason(err: unknown): string | null {
   return null
 }
 
+/** Fecha y hora (dd/mm HH:MM) en hora de Argentina (UTC-3 fijo). */
+function ddmmHhmmArt(d: Date): string {
+  const iso = new Date(d.getTime() - 3 * 60 * 60 * 1000).toISOString()
+  return `${iso.slice(8, 10)}/${iso.slice(5, 7)} ${iso.slice(11, 16)}`
+}
+
 /** Cancha del complejo, para resolver el nombre que manda el modelo. */
 export type BotCourt = { id: string; name: string }
 
@@ -214,7 +233,7 @@ function bookTool(ctx: ToolContext, courts: BotCourt[]): BotTool {
         'Reserva un turno de 60 minutos a nombre del jugador. Usala cuando el jugador aceptó la cancha, el día y la hora que le confirmaste, o cuando él mismo eligió una de las opciones que le ofreciste y te dio el nombre. ' +
         'Vuelve a chequear que el turno siga libre: con estado confirmada, el turno quedó reservado. ' +
         'Con estado falta_pagar_la_sena, mandale link_pago en su propia línea y avisale que tiene minutos_para_pagar minutos para pagar la seña: si no la paga a tiempo, el turno se libera solo. ' +
-        'Errores (explicalos simple, ofrecé otra opción y no repitas la misma reserva): turno_ocupado (lo tomó otro: mostrale otros horarios); demasiadas_reservas_sin_sena (el chat ya tiene las 2 reservas sin seña que se permiten por acá: mandale link_para_reservar para reservar desde la página del complejo); demasiadas_senas_pendientes (tiene señas sin pagar); falta_poco_para_el_turno; fecha_fuera_de_rango; fuera_de_horario; el_complejo_cierra_ese_dia; cancha_inexistente (trae la lista de canchas); turno_no_disponible; reservas_online_cerradas y no_se_puede_reservar_por_aca (en estos dos, ofrecé pasarle la consulta a una persona del complejo).',
+        'Errores (explicalos simple, ofrecé otra opción y no repitas la misma reserva): bloqueado (canceló tarde varias veces y no puede reservar por acá hasta la fecha hasta, dd/mm HH:MM: decísela y ofrecé pasarle la consulta a una persona); turno_ocupado (lo tomó otro: mostrale otros horarios); demasiadas_reservas_sin_sena (el chat ya tiene las 2 reservas sin seña que se permiten por acá: mandale link_para_reservar para reservar desde la página del complejo); demasiadas_senas_pendientes (tiene señas sin pagar); falta_poco_para_el_turno; fecha_fuera_de_rango; fuera_de_horario; el_complejo_cierra_ese_dia; cancha_inexistente (trae la lista de canchas); turno_no_disponible; reservas_online_cerradas y no_se_puede_reservar_por_aca (en estos dos, ofrecé pasarle la consulta a una persona del complejo).',
       strict: true,
       input_schema: {
         type: 'object',
@@ -266,6 +285,9 @@ function bookTool(ctx: ToolContext, courts: BotCourt[]): BotTool {
           ),
         )
       } catch (err) {
+        if (err instanceof GuestLateCancelBlockedError) {
+          return json({ error: 'bloqueado', hasta: ddmmHhmmArt(err.until) })
+        }
         const reason = bookingErrorReason(err)
         // Decisión del dueño (2026-10-20): por el bot, hasta 2 reservas sin seña
         // por chat; para la tercera se lo manda a reservar en la página del
@@ -324,6 +346,130 @@ function bookTool(ctx: ToolContext, courts: BotCourt[]): BotTool {
   }
 }
 
+// ─── cancelar ────────────────────────────────────────────────────────────────
+
+const cancelInput = z
+  .object({
+    cancha: z.string().trim().min(1).max(80),
+    fecha: dateSchema,
+    hora: timeSchema,
+    confirmar: z.boolean(),
+  })
+  .strict()
+
+/** Lo que le cuesta cancelar tarde, en el vocabulario de la tool. */
+function latePenaltyReason(p: LateCancelPenalty) {
+  return p.kind === 'ban' ? { consecuencia: 'bloqueo', dias: p.days } : { consecuencia: 'aviso' }
+}
+
+function cancelTool(ctx: ToolContext, courts: BotCourt[]): BotTool {
+  return {
+    definition: {
+      name: 'cancelar',
+      description:
+        'Cancela una reserva confirmada de ESTE chat. Funciona en dos pasos: primero llamala con confirmar false, que NO cancela y devuelve la consecuencia; contásela al jugador en una línea y llamala con confirmar true solo si te confirma que quiere cancelar. ' +
+        'Consecuencias: se_devuelve_la_sena (la seña queda a devolver por el complejo); pierde_la_sena; sin_consecuencia; aviso (cancela tarde, esta vez es solo un aviso); bloqueo con dias (cancela tarde y no va a poder reservar por el bot ese tiempo). ' +
+        'Con confirmar true devuelve estado cancelada (si el pedido se repite y ya estaba cancelada, también) y, si hay bloqueo, hasta (dd/mm HH:MM). Errores: no_encontrada (no hay una reserva confirmada de este chat en esa cancha, día y hora); pendiente_de_pago (falta pagar la seña: no hace falta cancelar, el turno se libera solo); ya_empezo; cancha_inexistente; no_se_puede_cancelar_por_aca (ofrecé pasarle la consulta a una persona).',
+      strict: true,
+      input_schema: {
+        type: 'object',
+        properties: {
+          cancha: { type: 'string', description: 'Nombre de la cancha de la reserva.' },
+          fecha: { type: 'string', description: 'AAAA-MM-DD de la reserva (día operativo).' },
+          hora: { type: 'string', description: 'HH:MM de inicio de la reserva.' },
+          confirmar: {
+            type: 'boolean',
+            description: 'false: solo informa la consecuencia. true: cancela de verdad.',
+          },
+        },
+        required: ['cancha', 'fecha', 'hora', 'confirmar'],
+        additionalProperties: false,
+      },
+    },
+    run: async (input) => {
+      const args = parseInput(cancelInput, input)
+      const { tenant, now } = ctx
+      const court = findCourt(courts, args.cancha)
+      if (!court) return json({ error: 'cancha_inexistente', canchas: courts.map((c) => c.name) })
+
+      try {
+        return await withTenantContext(tenant.id, async (tx) => {
+          // Solo reservas de ESTE chat: lo que mande el modelo nunca elige de quién es el turno.
+          const found = await findChatBookingForCancel(
+            tenant.id,
+            ctx.chatId,
+            { courtId: court.id, date: args.fecha, timeStart: args.hora },
+            tx,
+          )
+          if (!found) return json({ error: 'no_encontrada' })
+          const cancelledResult = (out: GuestCancellationOutcome) => {
+            const consequence = out.guestPenalty
+              ? latePenaltyReason(lateCancelPenalty(out.guestPenalty.count))
+              : out.depositStatus === 'refunded'
+                ? { consecuencia: 'se_devuelve_la_sena' }
+                : out.depositStatus === 'captured'
+                  ? { consecuencia: 'pierde_la_sena' }
+                  : { consecuencia: 'sin_consecuencia' }
+            return json({
+              estado: 'cancelada',
+              cancha: court.name,
+              fecha: args.fecha,
+              hora: args.hora,
+              ...consequence,
+              ...(out.guestPenalty?.bannedUntil
+                ? { hasta: ddmmHhmmArt(out.guestPenalty.bannedUntil) }
+                : {}),
+            })
+          }
+          // Ya cancelada por este chat (el pedido se repitió): se cuenta lo que pasó, con
+          // o sin confirmar, y `cancelByGuest` no escribe nada en ese caso.
+          if (found.status === 'canceled_refunded' || found.status === 'canceled_no_refund') {
+            return cancelledResult(await cancelByGuest(found.id, ctx.chatId, tx))
+          }
+          if (found.status === 'pending_payment') return json({ error: 'pendiente_de_pago' })
+          if (found.endsAt.getTime() <= now.getTime()) return json({ error: 'ya_empezo' })
+
+          if (!args.confirmar) {
+            const late = found.guestPhone
+              ? await guestLateCancelStatus(
+                  tenant.id,
+                  found.guestPhone.slice(-PHONE_HINT_DIGITS),
+                  tx,
+                )
+              : { count: 0 }
+            const preview = getCancellationPreview({
+              depositStatus: found.depositStatus,
+              depositAmountCents: found.depositAmount,
+              bookingStartUtcMs: found.startsAt.getTime(),
+              policyHours: tenant.cancellationHoursBefore,
+              nowMs: now.getTime(),
+              lateCancelHours: tenant.lateCancelHours,
+              lateCancelCount: late.count,
+            })
+            if (preview.kind === 'refund') return json({ consecuencia: 'se_devuelve_la_sena' })
+            if (preview.kind === 'no_refund') return json({ consecuencia: 'pierde_la_sena' })
+            return json(
+              preview.lateCancel
+                ? latePenaltyReason(preview.lateCancel)
+                : { consecuencia: 'sin_consecuencia' },
+            )
+          }
+
+          return cancelledResult(await cancelByGuest(found.id, ctx.chatId, tx))
+        })
+      } catch (err) {
+        if (err instanceof BookingAlreadyEndedError) return json({ error: 'ya_empezo' })
+        // `BookingNotCancelableError` es subclase: carrera con el staff u otro pedido.
+        if (err instanceof BookingNotInConfirmedError || err instanceof BookingNotCancelableError)
+          return json({ error: 'no_encontrada' })
+        if (err instanceof TenantInactiveError)
+          return json({ error: 'no_se_puede_cancelar_por_aca' })
+        throw err
+      }
+    },
+  }
+}
+
 // ─── pasar_a_humano ──────────────────────────────────────────────────────────
 
 const handoffInput = z
@@ -369,7 +515,7 @@ function handoffTool(ctx: ToolContext): BotTool {
       name: 'pasar_a_humano',
       description:
         'Le pasa la conversación a una persona del complejo: el chat queda en pausa y el asistente deja de contestar acá. ' +
-        'Usala cuando el jugador pregunta por lluvia o suspensiones, hace un reclamo, consulta por un evento o un cumpleaños, quiere cancelar o cambiar una reserva, pide hablar con una persona, o necesita algo que no está en los datos y aceptó que se lo averigüen. ' +
+        'Usala cuando el jugador pregunta por lluvia o suspensiones, hace un reclamo, consulta por un evento o un cumpleaños, quiere cambiar una reserva (cancelar lo resolvés vos con la herramienta cancelar), pide hablar con una persona, o necesita algo que no está en los datos y aceptó que se lo averigüen. ' +
         'En esa misma respuesta avisale que en un rato le contesta alguien del complejo por este chat.',
       strict: true,
       input_schema: {
@@ -379,7 +525,7 @@ function handoffTool(ctx: ToolContext): BotTool {
             type: 'string',
             enum: Object.keys(HANDOFF_REASONS),
             description:
-              'lluvia: lluvia o suspensiones. reclamo: un reclamo. evento: eventos o cumpleaños. otro: todo lo demás (cancelar, pedir una persona, una consulta sin datos).',
+              'lluvia: lluvia o suspensiones. reclamo: un reclamo. evento: eventos o cumpleaños. otro: todo lo demás (cambiar una reserva, pedir una persona, una consulta sin datos).',
           },
         },
         required: ['motivo'],
@@ -396,5 +542,5 @@ function handoffTool(ctx: ToolContext): BotTool {
 }
 
 export function buildBotTools(ctx: ToolContext, courts: BotCourt[]): BotTool[] {
-  return [availabilityTool(ctx), bookTool(ctx, courts), handoffTool(ctx)]
+  return [availabilityTool(ctx), bookTool(ctx, courts), cancelTool(ctx, courts), handoffTool(ctx)]
 }

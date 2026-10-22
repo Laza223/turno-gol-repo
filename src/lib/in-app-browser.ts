@@ -1,15 +1,15 @@
 /**
  * ¿El User-Agent es el de un navegador interno de una app (Instagram, Facebook, TikTok…)?
  * Es donde cae el jugador que llega por un link de redes. Ahí Google rechaza el ingreso
- * (`disallowed_useragent`: no deja loguear en un WebView embebido), así que /ingresar pone
- * primero el email.
+ * (`disallowed_useragent`: no deja loguear en un WebView embebido), así que /ingresar y el ingreso
+ * de /reservar ponen primero el email y, en lugar del botón de Google, `InAppBrowserNotice`.
  *
  * Es una heurística sobre el UA: las marcas de las apps conocidas y el `wv` de Android System
- * WebView, que alcanza a las demás apps de Android. Google va PRIMERO en el navegador común, así
- * que un falso negativo deja el botón de Google arriba dentro de un WebView, donde no anda: por
- * eso la lista es generosa. No detecta a los que abren el link en el navegador del sistema
- * (WhatsApp; ahí Google anda) ni a un WKWebView de iPhone sin marca conocida. Chrome, Custom Tabs,
- * Safari y SFSafariViewController llevan el UA del navegador y no matchean.
+ * WebView, que alcanza a las demás apps de Android. Un falso negativo deja el botón de Google
+ * arriba dentro de un WebView, donde termina en el error de Google: por eso la lista es generosa.
+ * Un falso positivo solo esconde Google (el email sigue). No detecta a los que abren el link en el
+ * navegador del sistema (WhatsApp; ahí Google anda) ni a un WKWebView de iPhone sin marca conocida.
+ * Chrome, Custom Tabs, Safari y SFSafariViewController llevan el UA del navegador y no matchean.
  * Puro: se evalúa en el servidor con el header, para que el orden no cambie al hidratar.
  */
 const IN_APP_UA =

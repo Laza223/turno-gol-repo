@@ -213,17 +213,22 @@ export const Enviado: Story = {
   },
 }
 
-/** Instagram, Facebook o TikTok (lo decide el servidor): primero el email y la aclaración de Google. */
+/**
+ * Instagram, Facebook o TikTok (lo decide el servidor): primero el email y, en lugar de Google, que
+ * ahí termina en su error, el aviso para abrir la página en el navegador. Su texto se lee sobre el
+ * vidrio del modal con 4,5:1.
+ */
 export const NavegadorInterno: Story = {
   args: { inAppBrowser: true },
   play: async () => {
     const modal = await dialog()
-    await expect(buttonNames(modal)).toEqual(['Continuar con mi email', 'Continuar con Google'])
+    await expect(buttonNames(modal)).toEqual(['Continuar con mi email', 'Copiar enlace'])
     await expect(
-      within(modal).getByText(
-        'Google puede no abrirse desde este navegador. Con tu email entrás igual.',
-      ),
-    ).toBeVisible()
+      within(modal).queryByRole('button', { name: 'Continuar con Google' }),
+    ).not.toBeInTheDocument()
+    const help = within(modal).getByText(/No funciona dentro de esta app\./)
+    await expect(help).toBeVisible()
+    await expect(await onGlass(() => paintedContrast(help))).toBeGreaterThanOrEqual(4.5)
   },
 }
 

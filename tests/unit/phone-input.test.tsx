@@ -2,12 +2,8 @@
 import React from 'react'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import {
-  PhoneInput,
-  parsePhoneNumber,
-  formatFullPhone,
-  COUNTRIES,
-} from '@/components/ui/phone-input'
+import { PhoneInput } from '@/components/ui/phone-input'
+import { parsePhoneNumber, formatFullPhone, COUNTRIES } from '@/lib/phone'
 
 afterEach(() => cleanup())
 

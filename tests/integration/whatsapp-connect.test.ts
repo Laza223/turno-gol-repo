@@ -53,6 +53,16 @@ vi.mock('@/lib/kapso/platform', () => ({
   listKapsoPhoneNumbers: vi.fn(),
 }))
 
+/** Quien conecta: `audit_logs.actor_id` es uuid sin FK. */
+const ACTOR = faker.string.uuid()
+
+async function connectedAudits(tenantId: string): Promise<{ actor_id: string }[]> {
+  return adminSql()<{ actor_id: string }[]>`
+    SELECT actor_id FROM audit_logs
+    WHERE tenant_id = ${tenantId} AND action = 'whatsapp.connected'
+  `
+}
+
 type Row = { phone_number_id: string; display_phone_number: string | null; enabled: boolean }
 
 async function connectionOf(tenantId: string): Promise<Row | undefined> {
@@ -95,23 +105,25 @@ describe('registerWhatsappConnection (Postgres real)', () => {
     const tenant = await createTestTenant(adminSql())
     const pn = kapsoNumber(tenant)
 
-    expect(await registerWhatsappConnection(tenant, pn)).toEqual({ ok: true })
+    expect(await registerWhatsappConnection(tenant, pn, ACTOR)).toEqual({ ok: true })
     expect(await connectionOf(tenant.id)).toEqual({
       phone_number_id: pn,
       display_phone_number: '+54 9 11 1111-1111',
       enabled: false,
     })
+    // El audit va en la misma transacción que la fila.
+    expect(await connectedAudits(tenant.id)).toEqual([{ actor_id: ACTOR }])
   })
 
   it('volver a conectar es idempotente, actualiza el número y respeta enabled', async () => {
     const tenant = await createTestTenant(adminSql())
     const first = kapsoNumber(tenant)
-    await registerWhatsappConnection(tenant, first)
+    await registerWhatsappConnection(tenant, first, ACTOR)
     await withTenantContext(tenant.id, (tx) => setWhatsappBotEnabled(tenant.id, true, tx))
 
-    expect(await registerWhatsappConnection(tenant, first)).toEqual({ ok: true })
+    expect(await registerWhatsappConnection(tenant, first, ACTOR)).toEqual({ ok: true })
     const second = kapsoNumber(tenant, '+54 9 11 2222-2222')
-    expect(await registerWhatsappConnection(tenant, second)).toEqual({ ok: true })
+    expect(await registerWhatsappConnection(tenant, second, ACTOR)).toEqual({ ok: true })
 
     const [{ count }] = await adminSql()<{ count: string }[]>`
       SELECT count(*)::text AS count FROM whatsapp_connections WHERE tenant_id = ${tenant.id}
@@ -128,15 +140,16 @@ describe('registerWhatsappConnection (Postgres real)', () => {
     const a = await createTestTenant(adminSql())
     const b = await createTestTenant(adminSql())
     const pn = kapsoNumber(a)
-    await registerWhatsappConnection(a, pn)
+    await registerWhatsappConnection(a, pn, ACTOR)
     // Kapso lo muestra también a nombre de B (caso de datos cruzados): la base es la red.
     h.numbers.set(pn, { ...h.numbers.get(pn)!, customerId: `cust-${b.id}` })
 
-    expect(await registerWhatsappConnection(b, pn)).toEqual({
+    expect(await registerWhatsappConnection(b, pn, ACTOR)).toEqual({
       ok: false,
       error: 'numero_de_otro_complejo',
     })
     expect(await connectionOf(b.id)).toBeUndefined()
+    expect(await connectedAudits(b.id)).toEqual([])
   })
 })
 
@@ -153,7 +166,7 @@ describe('getWhatsappPlusState (Postgres real)', () => {
     clearFeatureFlagCache()
     expect(await getWhatsappPlusState(tenant.id)).toEqual({ connection: null })
 
-    await registerWhatsappConnection(tenant, kapsoNumber(tenant))
+    await registerWhatsappConnection(tenant, kapsoNumber(tenant), ACTOR)
     expect(await getWhatsappPlusState(tenant.id)).toEqual({
       connection: { displayPhoneNumber: '+54 9 11 1111-1111', connected: true, enabled: false },
     })

@@ -9,11 +9,6 @@ vi.mock('@/modules/whatsapp-bot/whatsapp-bot.connection', () => ({
   getWhatsappPlusState: vi.fn(),
   registerWhatsappConnection: vi.fn(),
 }))
-vi.mock('@/shared/db/audit', () => ({ insertAuditLog: vi.fn(async () => {}) }))
-vi.mock('@/shared/db/client', () => ({
-  withTenantContext: vi.fn(async (_id: string, fn: (tx: unknown) => Promise<unknown>) => fn({})),
-}))
-vi.mock('@/shared/lib/logger', () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() } }))
 
 import { GET } from '@/app/api/whatsapp/connect/callback/route'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
@@ -24,7 +19,6 @@ import {
   getWhatsappPlusState,
   registerWhatsappConnection,
 } from '@/modules/whatsapp-bot/whatsapp-bot.connection'
-import { insertAuditLog } from '@/shared/db/audit'
 
 const APP_URL = 'https://app.test.local'
 
@@ -71,10 +65,10 @@ describe('GET /api/whatsapp/connect/callback', () => {
     expect(registerWhatsappConnection).not.toHaveBeenCalled()
   })
 
-  it('un encargado (no admin) no registra nada', async () => {
+  it('un encargado (no admin) no registra nada y ve el aviso de Ajustes', async () => {
     vi.mocked(getStaffRole).mockResolvedValue('manager')
     expect(location(await get('?phone_number_id=pn-1'))).toBe(
-      `${APP_URL}/dashboard?error=whatsapp_forbidden`,
+      `${APP_URL}/grilla?notice=settings-admin-only`,
     )
     expect(registerWhatsappConnection).not.toHaveBeenCalled()
   })
@@ -85,21 +79,24 @@ describe('GET /api/whatsapp/connect/callback', () => {
     expect(registerWhatsappConnection).not.toHaveBeenCalled()
   })
 
-  it.each(['?fallo=1', '?error_code=access_denied&phone_number_id=pn-1', ''])(
-    'si Kapso volvió con fallo o sin número (%s) es conexion_incompleta',
-    async (qs) => {
-      expect(location(await get(qs))).toBe(`${APP_URL}/settings/whatsapp?error=conexion_incompleta`)
-      expect(registerWhatsappConnection).not.toHaveBeenCalled()
-    },
-  )
+  it.each([
+    '?fallo=1',
+    '?error_code=access_denied&phone_number_id=pn-1',
+    '',
+    '?phone_number_id=..',
+    '?phone_number_id=pn-1%2F..%2Fwebhooks',
+  ])('si Kapso volvió con fallo o sin número (%s) es conexion_incompleta', async (qs) => {
+    expect(location(await get(qs))).toBe(`${APP_URL}/settings/whatsapp?error=conexion_incompleta`)
+    expect(registerWhatsappConnection).not.toHaveBeenCalled()
+  })
 
-  it('éxito: registra, deja audit log y vuelve con conectado=1', async () => {
+  it('éxito: registra a nombre del admin y vuelve con conectado=1', async () => {
     const res = await get('?setup_link_id=s1&status=completed&phone_number_id=pn-1')
     expect(location(res)).toBe(`${APP_URL}/settings/whatsapp?conectado=1`)
-    expect(registerWhatsappConnection).toHaveBeenCalledWith({ id: 'tenant-1', name: 'Uno' }, 'pn-1')
-    expect(insertAuditLog).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ action: 'whatsapp.connected', tenantId: 'tenant-1' }),
+    expect(registerWhatsappConnection).toHaveBeenCalledWith(
+      { id: 'tenant-1', name: 'Uno' },
+      'pn-1',
+      'staff-1',
     )
   })
 
@@ -110,14 +107,6 @@ describe('GET /api/whatsapp/connect/callback', () => {
     })
     expect(location(await get('?phone_number_id=pn-1'))).toBe(
       `${APP_URL}/settings/whatsapp?error=numero_de_otro_complejo`,
-    )
-    expect(insertAuditLog).not.toHaveBeenCalled()
-  })
-
-  it('si el audit log falla igual termina bien', async () => {
-    vi.mocked(insertAuditLog).mockRejectedValue(new Error('db'))
-    expect(location(await get('?phone_number_id=pn-1'))).toBe(
-      `${APP_URL}/settings/whatsapp?conectado=1`,
     )
   })
 })

@@ -2,15 +2,13 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { lifecycleGateForStaff } from '@/modules/staff/guards'
+import { SETTINGS_ADMIN_ONLY_NOTICE } from '@/modules/staff/roles'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import {
   getWhatsappPlusState,
   registerWhatsappConnection,
 } from '@/modules/whatsapp-bot/whatsapp-bot.connection'
-import { insertAuditLog } from '@/shared/db/audit'
-import { withTenantContext } from '@/shared/db/client'
-import { logger } from '@/shared/lib/logger'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -26,7 +24,13 @@ export const dynamic = 'force-dynamic'
  * NEXT_PUBLIC_APP_URL, nunca del host del request.
  */
 const querySchema = z.object({
-  phone_number_id: z.string().min(1).max(64).optional(),
+  // Va a un path de la API de Kapso: `..` o `/` lo harían salir de ese recurso.
+  phone_number_id: z
+    .string()
+    .min(1)
+    .max(64)
+    .regex(/^[\w-]+$/)
+    .optional(),
   error_code: z.string().max(100).optional(),
   fallo: z.string().max(10).optional(),
 })
@@ -46,9 +50,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const gate = await lifecycleGateForStaff(tenant)
   if (gate === 'blocked') return to('/suspended')
   if (gate === 'read_only') return to('/reactivar')
-  // El rol se relee de la DB: el claim del JWT nunca se confía.
+  // El rol se relee de la DB: el claim del JWT nunca se confía. El encargado
+  // rebota igual que en settings/layout.tsx, con el aviso de Ajustes.
   if ((await getStaffRole(tenant.id, user.staffUserId)) !== 'admin') {
-    return to('/dashboard?error=whatsapp_forbidden')
+    return to(`/grilla?notice=${SETTINGS_ADMIN_ONLY_NOTICE}`)
   }
   if ((await getWhatsappPlusState(tenant.id)) === null) return to('/settings')
 
@@ -70,28 +75,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const result = await registerWhatsappConnection(
     { id: tenant.id, name: tenant.name },
     parsed.data.phone_number_id,
+    user.staffUserId,
   )
   if (!result.ok) return settings(`error=${result.error}`)
-
-  try {
-    await withTenantContext(tenant.id, (tx) =>
-      insertAuditLog(tx, {
-        tenantId: tenant.id,
-        actorId: user.staffUserId!,
-        actorType: 'staff',
-        action: 'whatsapp.connected',
-        resourceType: 'tenant',
-        resourceId: tenant.id,
-        metadata: { phoneNumberId: parsed.data.phone_number_id },
-      }),
-    )
-  } catch (err) {
-    // La conexión ya quedó guardada: perder la traza no la deshace.
-    logger.error('whatsapp connect: no se pudo asentar el audit log', {
-      module: 'whatsapp-connect',
-      tenantId: tenant.id,
-      error: err instanceof Error ? err.message : String(err),
-    })
-  }
   return settings('conectado=1')
 }

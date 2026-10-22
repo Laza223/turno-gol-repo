@@ -3,12 +3,14 @@ import { sql } from 'drizzle-orm'
 import { getWorkerDb } from '@/shared/db/client'
 import {
   CRON_WORK_OPTIONS,
+  QUEUE_WHATSAPP_OPS_ALERTS,
   QUEUE_WHATSAPP_TURN,
   QUEUE_WHATSAPP_TURN_RESCUE,
   type WhatsappTurnJobData,
 } from '../definitions'
 import { processWhatsappTurn } from '@/modules/whatsapp-bot/whatsapp-bot.turn'
 import { enqueueWhatsappTurns } from '@/modules/whatsapp-bot/whatsapp-bot.queue'
+import { runWhatsappOpsAlerts } from '@/modules/super-admin/whatsapp-ops-alerts.service'
 import { captureMessage } from '@/lib/sentry'
 import { logger } from '@/shared/lib/logger'
 
@@ -88,4 +90,12 @@ export async function registerWhatsappTurnWorker(boss: PgBoss): Promise<void> {
     await enqueueWhatsappTurns(stalled)
   })
   logger.info('registered queue', { module: 'workers', queue: QUEUE_WHATSAPP_TURN_RESCUE })
+
+  // Mail al dueño cuando el consumo del mes se acerca al límite o el bot se
+  // rompe. Dedupe por clave en `ops_alerts`; ver whatsapp-ops-alerts.service.ts.
+  await boss.schedule(QUEUE_WHATSAPP_OPS_ALERTS, '*/5 * * * *', {})
+  await boss.work(QUEUE_WHATSAPP_OPS_ALERTS, CRON_WORK_OPTIONS, async () => {
+    await runWhatsappOpsAlerts(getWorkerDb())
+  })
+  logger.info('registered queue', { module: 'workers', queue: QUEUE_WHATSAPP_OPS_ALERTS })
 }

@@ -1064,6 +1064,26 @@ describe('P. push_send_log (migración 059)', () => {
   })
 })
 
+// ─── P2. ops_alerts (migración 097, dedupe de alertas por mail) ────────────
+// Misma clasificación que push_send_log (P): del sistema, deny-all para la app.
+describe('P2. ops_alerts (migración 097)', () => {
+  it('turnogol_app: SELECT denegado (permission denied — sin GRANT, migr. 097)', async () => {
+    await expect(
+      withContextRollback({ role: 'turnogol_app' }, (tx) =>
+        tx.unsafe(`SELECT key FROM ops_alerts LIMIT 1`),
+      ),
+    ).rejects.toThrow(/permission denied/i)
+  })
+
+  it('turnogol_app: INSERT denegado (permission denied — sin GRANT, migr. 097)', async () => {
+    await expect(
+      withContextRollback({ role: 'turnogol_app' }, (tx) =>
+        tx.unsafe(`INSERT INTO ops_alerts (key) VALUES ('spoof-key-isolation-test')`),
+      ),
+    ).rejects.toThrow(/permission denied/i)
+  })
+})
+
 // ─── Q. analytics_events (migración 072, instrumentación de producto) ─────
 // Aislamiento clásico por tenant_id (como L/N/O) MÁS dos particularidades:
 //   1. Append-only: sin policy de UPDATE + REVOKE UPDATE, igual que

@@ -24,6 +24,7 @@ export const QUEUE_ONBOARDING_ABANDONMENT = 'onboarding-abandonment-sweep'
 export const QUEUE_RECONCILE_SUBSCRIPTIONS = 'reconcile-subscriptions'
 export const QUEUE_WHATSAPP_TURN = 'whatsapp-turn'
 export const QUEUE_WHATSAPP_TURN_RESCUE = 'whatsapp-turn-rescue'
+export const QUEUE_WHATSAPP_OPS_ALERTS = 'whatsapp-ops-alerts'
 
 // ─── Job payload types ────────────────────────────────────────────────────────
 

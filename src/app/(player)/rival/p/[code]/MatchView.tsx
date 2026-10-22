@@ -126,6 +126,66 @@ function myStatusLine(status: RivalRosterEntry['status']): string | null {
   }
 }
 
+function MatchHeader({
+  match,
+  ended,
+  now,
+}: {
+  match: RivalPublicMatch
+  ended: boolean
+  now: Date
+}) {
+  return (
+    <section
+      aria-labelledby="rival-partido"
+      className="reserva-receipt-card space-y-3 rounded-2xl p-5"
+    >
+      <p className="font-logo text-[12px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
+        RIVAL powered by TurnoGol
+      </p>
+      <h1
+        id="rival-partido"
+        className="break-words font-display text-2xl font-black italic leading-tight tracking-tight text-foreground"
+      >
+        {match.tenantName}
+      </h1>
+      <p className="text-base text-foreground">{whenLabel(match.startsAt, now)}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <FactPill>{formatLabel(match.format)}</FactPill>
+        <FactPill>{RIVAL_LEVEL_LABELS[match.level]}</FactPill>
+        {match.hasStamp && <StampBadge />}
+        {ended && <FactPill>Jugado</FactPill>}
+      </div>
+    </section>
+  )
+}
+
+/** Sin sesión no hay personas; con sesión, los confirmados; el organizador ve además banco y pedidos. */
+function Roster({
+  roster,
+  signedIn,
+  isOrganizer,
+}: {
+  roster: RivalRosterEntry[]
+  signedIn: boolean
+  isOrganizer: boolean
+}) {
+  if (!signedIn) return null
+  const confirmed = roster.filter((r) => r.status === 'confirmed')
+  if (!isOrganizer) return <PeopleSection title="Quiénes van" entries={confirmed} detail={false} />
+  return (
+    <>
+      <PeopleSection title="Confirmados" entries={confirmed} detail />
+      <PeopleSection title="El banco" entries={roster.filter((r) => r.status === 'bench')} detail />
+      <PeopleSection
+        title="Pedidos"
+        entries={roster.filter((r) => r.status === 'requested')}
+        detail
+      />
+    </>
+  )
+}
+
 type Props = {
   match: RivalPublicMatch
   /** `true` si hay un jugador con sesión mirando. */
@@ -158,9 +218,7 @@ export function MatchView({
   const ended = !canceled && match.startsAt.getTime() <= now.getTime()
   const open = !canceled && !ended
   const me = roster.find((r) => r.isMe)
-  const confirmed = roster.filter((r) => r.status === 'confirmed')
-  const bench = roster.filter((r) => r.status === 'bench')
-  const requested = roster.filter((r) => r.status === 'requested')
+  const myStatus = me && open ? myStatusLine(me.status) : null
 
   return (
     <div className="mx-auto max-w-lg space-y-5 px-4 py-6">
@@ -174,27 +232,7 @@ export function MatchView({
         </p>
       )}
 
-      <section
-        aria-labelledby="rival-partido"
-        className="reserva-receipt-card space-y-3 rounded-2xl p-5"
-      >
-        <p className="font-logo text-[12px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
-          RIVAL powered by TurnoGol
-        </p>
-        <h1
-          id="rival-partido"
-          className="break-words font-display text-2xl font-black italic leading-tight tracking-tight text-foreground"
-        >
-          {match.tenantName}
-        </h1>
-        <p className="text-base text-foreground">{whenLabel(match.startsAt, now)}</p>
-        <div className="flex flex-wrap items-center gap-2">
-          <FactPill>{formatLabel(match.format)}</FactPill>
-          <FactPill>{RIVAL_LEVEL_LABELS[match.level]}</FactPill>
-          {match.hasStamp && <StampBadge />}
-          {ended && <FactPill>Jugado</FactPill>}
-        </div>
-      </section>
+      <MatchHeader match={match} ended={ended} now={now} />
 
       {canceled ? (
         <section className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card px-6 py-10 text-center shadow-xs">
@@ -209,20 +247,10 @@ export function MatchView({
         <>
           <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
             <ShirtGrid capacity={match.capacity} confirmed={match.confirmedCount} />
-            {me && open && myStatusLine(me.status) && (
-              <p className="mt-4 text-base text-foreground">{myStatusLine(me.status)}</p>
-            )}
+            {myStatus && <p className="mt-4 text-base text-foreground">{myStatus}</p>}
           </section>
 
-          {signedIn && match.isOrganizer ? (
-            <>
-              <PeopleSection title="Confirmados" entries={confirmed} detail />
-              <PeopleSection title="El banco" entries={bench} detail />
-              <PeopleSection title="Pedidos" entries={requested} detail />
-            </>
-          ) : (
-            signedIn && <PeopleSection title="Quiénes van" entries={confirmed} detail={false} />
-          )}
+          <Roster roster={roster} signedIn={signedIn} isOrganizer={match.isOrganizer} />
 
           {open && match.isOrganizer && (
             <OrganizerActions matchId={match.id} shareUrl={shareUrl} cancelAction={cancelAction} />

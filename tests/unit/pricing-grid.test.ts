@@ -6,6 +6,7 @@ import {
   describeRules,
   expandRulesToGrid,
   countEmptyCells,
+  daysWithEmptyCells,
   fillGridGaps,
   getOperativeHours,
   hourLabel,
@@ -223,6 +224,29 @@ describe('countEmptyCells', () => {
     const grid = emptyGrid()
     grid.mon[8] = 1000 // 9 queda vacío
     expect(countEmptyCells(grid, oh, false)).toBe(1)
+  })
+})
+
+describe('daysWithEmptyCells', () => {
+  it('devuelve solo los días con una celda activa sin precio, en orden lun..dom', () => {
+    const oh: OpeningHours = {
+      ...uniformHours('08:00', '10:00'), // slots 8,9 todos los días
+      tue: day('00:00', '00:00', true), // cerrado: no cuenta aunque no tenga precio
+    }
+    const grid = emptyGrid()
+    for (const d of DAYS) {
+      for (const h of activeHoursForDay(oh, d, false)) grid[d][h] = 1000
+    }
+    delete grid.sun[9]
+    delete grid.fri[8]
+
+    expect(daysWithEmptyCells(grid, oh, false)).toEqual(['fri', 'sun'])
+  })
+
+  it('grilla completa → ningún día', () => {
+    const oh = uniformHours('08:00', '10:00')
+    const grid = buildTemplateGrid(oh, { mode: 'uniform', price: 2000000 }, false)
+    expect(daysWithEmptyCells(grid, oh, false)).toEqual([])
   })
 })
 

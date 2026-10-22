@@ -3,6 +3,7 @@ import { expect, within } from 'storybook/test'
 import {
   Banknote,
   BellRing,
+  CalendarDays,
   Clock,
   CreditCard,
   Eye,
@@ -150,6 +151,13 @@ function groups({
           effect: 'Lo que entró ayer, a las 8.',
           value: 'También por email',
           icon: BellRing,
+          href: '/settings/equipo#tu-usuario',
+        },
+        {
+          label: 'Resumen semanal',
+          effect: 'Lo que entró en la semana, los lunes a las 8.',
+          value: 'Por email',
+          icon: CalendarDays,
           href: '/settings/equipo#tu-usuario',
         },
       ],

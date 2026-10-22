@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import { getBoss, stopBoss } from '@/shared/jobs/boss'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
@@ -159,5 +159,128 @@ describe('daily-summary.worker — resumen diario (D8)', () => {
       SELECT id FROM pgboss.job WHERE name = 'push-send' AND data->>'subscription_id' = ${subId}
     `
     expect(jobs).toHaveLength(0)
+  }, 30_000)
+})
+
+/**
+ * Resumen semanal: cuelga del mismo barrido. Sale los lunes con la semana
+ * lun–dom que cerró, solo si el complejo lo prendió y solo a administradores.
+ * El reloj se fija con `toFake: ['Date']`: pg-boss y postgres siguen con sus
+ * timers reales.
+ */
+describe('daily-summary.worker — resumen semanal', () => {
+  const MONDAY_8AM_ART = new Date('2026-10-19T11:00:00Z')
+  const TUESDAY_8AM_ART = new Date('2026-10-20T11:00:00Z')
+
+  // Semana que resume el lunes 19: lun 12 → dom 18. La anterior: 5 → 11.
+  const WEEK_FLOWS = [
+    { amount: 900000, method: 'cash' as const, occurredAt: new Date('2026-10-14T15:00:00Z') },
+    { amount: 300000, method: 'transfer' as const, occurredAt: new Date('2026-10-18T23:30:00Z') },
+  ]
+  const OUTSIDE_FLOWS = [
+    { amount: 800000, method: 'cash' as const, occurredAt: new Date('2026-10-07T15:00:00Z') },
+    // Lunes 19 a la madrugada ART: ya es la semana siguiente, no entra.
+    { amount: 500000, method: 'cash' as const, occurredAt: new Date('2026-10-19T04:00:00Z') },
+  ]
+
+  async function seedWeeklyTenant(
+    weeklyOptIn: boolean,
+    flows = [...WEEK_FLOWS, ...OUTSIDE_FLOWS],
+  ): Promise<{
+    tenant: TestTenant
+    adminId: string
+    managerId: string
+  }> {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const admin = await createTestStaffUser(sql)
+    const manager = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, admin.id, 'admin')
+    await linkStaffToTenant(sql, tenant.id, manager.id, 'manager')
+    if (weeklyOptIn) {
+      await sql`UPDATE tenants SET settings = settings || ${sql.json({ weekly_summary_email_opt_in: true })} WHERE id = ${tenant.id}`
+    }
+
+    for (const f of flows) {
+      await withTenantContext(tenant.id, (tx) =>
+        createCashFlow(
+          tenant.id,
+          admin.id,
+          { type: 'income', category: 'other', description: 'Semana', ...f },
+          tx,
+        ),
+      )
+    }
+    return { tenant, adminId: admin.id, managerId: manager.id }
+  }
+
+  async function runSweepAt(now: Date): Promise<void> {
+    vi.useFakeTimers({ toFake: ['Date'], now })
+    try {
+      await runDailySummarySweep()
+    } finally {
+      vi.useRealTimers()
+    }
+  }
+
+  async function weeklyNotifications(tenantId: string) {
+    return getSql()<{ recipient_id: string; template_name: string; content: unknown }[]>`
+      SELECT recipient_id, template_name, content FROM notifications
+      WHERE tenant_id = ${tenantId} AND trigger_event = 'weekly_summary.sweep'
+    `
+  }
+
+  it('el lunes encola el semanal solo al administrador, con la semana cerrada', async () => {
+    const { tenant, adminId } = await seedWeeklyTenant(true)
+
+    await runSweepAt(MONDAY_8AM_ART)
+
+    const notifs = await weeklyNotifications(tenant.id)
+    expect(notifs).toHaveLength(1)
+    expect(notifs[0]!.recipient_id).toBe(adminId)
+    expect(notifs[0]!.template_name).toBe('daily_summary')
+    const content = notifs[0]!.content as {
+      kind: string
+      weekLabel: string
+      totalArs: string
+      comparison: { direction: string; label: string } | null
+      methods: Array<{ label: string; amountArs: string }>
+    }
+    expect(content.kind).toBe('weekly')
+    expect(content.weekLabel).toBe('lun 12 al dom 18 de octubre')
+    expect(content.totalArs).toContain('12.000')
+    expect(content.comparison).toMatchObject({
+      direction: 'up',
+      label: '50% vs la semana anterior',
+    })
+    expect(content.methods.find((m) => m.label === 'Efectivo')?.amountArs).toContain('9.000')
+    expect(content.methods.find((m) => m.label === 'Transferencia')?.amountArs).toContain('3.000')
+  }, 30_000)
+
+  it('si el barrido vuelve a correr el mismo lunes, no encola la semana dos veces', async () => {
+    const { tenant } = await seedWeeklyTenant(true)
+
+    await runSweepAt(MONDAY_8AM_ART)
+    await runSweepAt(MONDAY_8AM_ART)
+
+    expect(await weeklyNotifications(tenant.id)).toHaveLength(1)
+  }, 30_000)
+
+  it('una semana en $ 0 no manda mail, aunque la anterior haya tenido plata', async () => {
+    const { tenant } = await seedWeeklyTenant(true, OUTSIDE_FLOWS)
+    await runSweepAt(MONDAY_8AM_ART)
+    expect(await weeklyNotifications(tenant.id)).toHaveLength(0)
+  }, 30_000)
+
+  it('otro día de la semana no encola nada', async () => {
+    const { tenant } = await seedWeeklyTenant(true)
+    await runSweepAt(TUESDAY_8AM_ART)
+    expect(await weeklyNotifications(tenant.id)).toHaveLength(0)
+  }, 30_000)
+
+  it('sin el opt-in no encola nada, aunque sea lunes', async () => {
+    const { tenant } = await seedWeeklyTenant(false)
+    await runSweepAt(MONDAY_8AM_ART)
+    expect(await weeklyNotifications(tenant.id)).toHaveLength(0)
   }, 30_000)
 })

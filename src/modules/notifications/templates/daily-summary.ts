@@ -1,6 +1,7 @@
 import type { EmailContent } from './index'
+import { renderWeeklySummary, type WeeklySummaryData } from './weekly-summary'
 
-export type DailySummaryData = {
+type DayData = {
   /** "lun 1 de agosto" — formato medio §8.3, ya resuelto por el caller. */
   dateLabel: string
   /** Pre-formatted ARS, ej. "184.500,00". */
@@ -10,6 +11,13 @@ export type DailySummaryData = {
 }
 
 /**
+ * El semanal viaja por este mismo template (`kind: 'weekly'`) en vez de
+ * registrar uno propio: el registro de templates (`index.ts`) lo comparte
+ * RIVAL. Las filas del diario no traen `kind` y siguen saliendo como siempre.
+ */
+export type DailySummaryData = DayData | WeeklySummaryData
+
+/**
  * D8 (Fase 2 — docs/planning/2026-08-01-decisiones-de-fase-v2.md §3):
  * resumen diario del día anterior, opt-in (no default). Sin nombre de tenant
  * ni de dueño interpolado en el cuerpo a propósito — son campos de texto
@@ -17,6 +25,7 @@ export type DailySummaryData = {
  * numéricos/booleanos, evitando la superficie de HTML injection de raíz.
  */
 export function renderDailySummary(data: DailySummaryData): EmailContent {
+  if ('kind' in data) return renderWeeklySummary(data)
   const summaryLine = `${data.dateLabel}: $${data.collectedArs} · ${data.occupiedLabel}`
   const subject = `Resumen de ayer — $${data.collectedArs}`
   const html = `

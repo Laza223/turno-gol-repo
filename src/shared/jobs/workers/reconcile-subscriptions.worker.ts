@@ -19,6 +19,7 @@ import {
   type LocalSubSnapshot,
 } from '@/modules/billing/subscription-reconcile.service'
 import { computeSubscriptionAmount } from '@/modules/billing/pricing'
+import { markReferralRewardEarned } from '@/modules/referrals/referral-reward.service'
 import type { BillingCycle, SubscriptionStatus } from '@/modules/billing/billing.types'
 import {
   CRON_WORK_OPTIONS,
@@ -435,6 +436,10 @@ async function reconcileOne(
     } else {
       return { activated: false, alert: null }
     }
+
+    // Mismo enganche que `onPaymentApproved`: el cobro rescatado acá también
+    // es real (R3) y la clave por cobro de arriba ya descartó el duplicado.
+    await markReferralRewardEarned(cand.tenantId, tx)
 
     // `transitionTrialingToActive` y `transitionToActiveFromAny` escriben
     // `last_payment_at = NOW()`, no la fecha de MP. No se toca el FSM por eso:

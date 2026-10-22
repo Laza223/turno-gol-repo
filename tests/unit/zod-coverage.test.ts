@@ -36,6 +36,9 @@ const NO_INPUT_ALLOWLIST: ReadonlySet<string> = new Set<string>([
   // la sesión vía requireAdminStaffAction. Contracara exacta de
   // /api/mp/oauth-start, que ya está en esta lista por lo mismo.
   'src/app/(admin)/settings/facturacion/actions.ts',
+  // generateReferralLinkAction() takes no args; el tenant sale de la sesión
+  // vía requireAdminStaffAction (B4 de referidos).
+  'src/app/(admin)/settings/invitar/actions.ts',
   // GET with no input; returns global cities list.
   'src/app/api/public/cities/route.ts',
   // Health endpoint, no input.

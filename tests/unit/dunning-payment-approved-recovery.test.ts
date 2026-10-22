@@ -27,6 +27,10 @@ vi.mock('@/modules/notifications/notification.service', () => ({
   enqueueTenantOwnerNotification: vi.fn(),
 }))
 vi.mock('@/lib/sentry', () => ({ captureMessage: vi.fn() }))
+// El premio de referidos tiene su propia suite (referrals-b3); acá solo importa el cobro.
+vi.mock('@/modules/referrals/referral-reward.service', () => ({
+  markReferralRewardEarned: vi.fn(),
+}))
 
 import { onPaymentApproved } from '@/modules/billing/dunning.service'
 import {

@@ -1,5 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { whatsappConnections } from '@/shared/db/schema'
+import { insertAuditLog } from '@/shared/db/audit'
 import { withTenantContext, type DbTx } from '@/shared/db/client'
 import { isFeatureEnabled } from '@/shared/feature-flags'
 import { isUniqueViolation } from '@/shared/db/pg-errors'
@@ -127,11 +128,17 @@ export async function startWhatsappConnect(
  * Registra el número que el dueño acaba de conectar: verifica que sea de SU
  * cliente de Kapso y en coexistencia, suscribe el webhook y recién ahí guarda la
  * fila (con el webhook caído, una fila `connected` sería un bot mudo sin aviso).
- * El asistente queda apagado: lo prende el dueño.
+ * La primera conexión deja el asistente apagado (lo prende el dueño); al
+ * reconectar, aunque sea otro número, `enabled` queda como estaba (decisión de
+ * Lazar, 2026-10-22).
+ *
+ * El audit `whatsapp.connected` va en la misma transacción que la fila: lo dejan
+ * igual el callback de Kapso y el "Ya lo conecté".
  */
 export async function registerWhatsappConnection(
   tenant: Tenant,
   phoneNumberId: string,
+  actorId: string,
 ): Promise<{ ok: true } | { ok: false; error: WhatsappConnectError }> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
   const secret = process.env.KAPSO_WEBHOOK_SECRET
@@ -161,8 +168,8 @@ export async function registerWhatsappConnection(
   }
 
   try {
-    await withTenantContext(tenant.id, (tx) =>
-      tx
+    await withTenantContext(tenant.id, async (tx) => {
+      await tx
         .insert(whatsappConnections)
         .values({
           tenantId: tenant.id,
@@ -182,8 +189,17 @@ export async function registerWhatsappConnection(
             status: 'connected',
             updatedAt: new Date(),
           },
-        }),
-    )
+        })
+      await insertAuditLog(tx, {
+        tenantId: tenant.id,
+        actorId,
+        actorType: 'staff',
+        action: 'whatsapp.connected',
+        resourceType: 'tenant',
+        resourceId: tenant.id,
+        metadata: { phoneNumberId: number.phoneNumberId },
+      })
+    })
   } catch (err) {
     if (isUniqueViolation(err, 'phone_number_id')) {
       logger.error('whatsapp connect: el número ya es de otro complejo', {
@@ -201,6 +217,7 @@ export async function registerWhatsappConnection(
 /** "Ya lo conecté": busca el número coexistente del complejo en Kapso y lo registra. */
 export async function findAndRegisterWhatsappConnection(
   tenant: Tenant,
+  actorId: string,
 ): Promise<{ ok: true } | { ok: false; error: WhatsappConnectError }> {
   let phoneNumberId: string | undefined
   try {
@@ -213,5 +230,5 @@ export async function findAndRegisterWhatsappConnection(
     return kapsoDown(tenant.id, 'find', err)
   }
   if (!phoneNumberId) return { ok: false, error: 'conexion_incompleta' }
-  return registerWhatsappConnection(tenant, phoneNumberId)
+  return registerWhatsappConnection(tenant, phoneNumberId, actorId)
 }

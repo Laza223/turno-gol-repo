@@ -21,6 +21,7 @@ const h = vi.hoisted(() => {
     },
     upserts: [] as unknown[],
     insertError: null as unknown,
+    audits: [] as unknown[],
   }
 })
 
@@ -28,6 +29,11 @@ vi.mock('@/lib/kapso/platform', () => ({ KapsoPlatformError: h.KapsoPlatformErro
 vi.mock('@/shared/feature-flags', () => ({ isFeatureEnabled: vi.fn(async () => true) }))
 vi.mock('@/shared/lib/logger', () => ({ logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() } }))
 vi.mock('@/shared/db/schema', () => ({ whatsappConnections: { tenantId: 'tenant_id' } }))
+vi.mock('@/shared/db/audit', () => ({
+  insertAuditLog: vi.fn(async (_tx: unknown, entry: unknown) => {
+    h.audits.push(entry)
+  }),
+}))
 vi.mock('@/shared/db/client', () => ({
   withTenantContext: vi.fn(async (_tenantId: string, fn: (tx: unknown) => Promise<unknown>) =>
     fn({
@@ -64,6 +70,7 @@ beforeEach(() => {
   for (const fn of Object.values(h.platform)) fn.mockReset()
   h.upserts.length = 0
   h.insertError = null
+  h.audits.length = 0
   h.platform.findKapsoCustomer.mockResolvedValue({ id: 'cust-1' })
   h.platform.getKapsoPhoneNumber.mockResolvedValue(NUMBER)
   h.platform.ensureKapsoMessageWebhook.mockResolvedValue(undefined)
@@ -95,7 +102,7 @@ describe('startWhatsappConnect', () => {
 
 describe('registerWhatsappConnection', () => {
   it('registra: webhook primero, fila después, con el asistente apagado', async () => {
-    expect(await registerWhatsappConnection(TENANT, 'pn-1')).toEqual({ ok: true })
+    expect(await registerWhatsappConnection(TENANT, 'pn-1', 'staff-1')).toEqual({ ok: true })
     expect(h.platform.ensureKapsoMessageWebhook).toHaveBeenCalledWith({
       phoneNumberId: 'pn-1',
       url: 'https://app.test.local/api/webhooks/whatsapp',
@@ -118,9 +125,24 @@ describe('registerWhatsappConnection', () => {
     expect(conflict.set).not.toHaveProperty('enabled')
   })
 
+  it('deja el audit whatsapp.connected a nombre de quien conectó', async () => {
+    await registerWhatsappConnection(TENANT, 'pn-1', 'staff-1')
+    expect(h.audits).toEqual([
+      {
+        tenantId: 'tenant-1',
+        actorId: 'staff-1',
+        actorType: 'staff',
+        action: 'whatsapp.connected',
+        resourceType: 'tenant',
+        resourceId: 'tenant-1',
+        metadata: { phoneNumberId: 'pn-1' },
+      },
+    ])
+  })
+
   it('rechaza un número que es de otro cliente de Kapso', async () => {
     h.platform.getKapsoPhoneNumber.mockResolvedValue({ ...NUMBER, customerId: 'otro' })
-    expect(await registerWhatsappConnection(TENANT, 'pn-1')).toEqual({
+    expect(await registerWhatsappConnection(TENANT, 'pn-1', 'staff-1')).toEqual({
       ok: false,
       error: 'conexion_incompleta',
     })
@@ -130,7 +152,7 @@ describe('registerWhatsappConnection', () => {
 
   it('rechaza un número que no es de coexistencia', async () => {
     h.platform.getKapsoPhoneNumber.mockResolvedValue({ ...NUMBER, isCoexistence: false })
-    expect(await registerWhatsappConnection(TENANT, 'pn-1')).toEqual({
+    expect(await registerWhatsappConnection(TENANT, 'pn-1', 'staff-1')).toEqual({
       ok: false,
       error: 'conexion_incompleta',
     })
@@ -139,28 +161,29 @@ describe('registerWhatsappConnection', () => {
 
   it('sin cliente en Kapso o con número desconocido es conexion_incompleta', async () => {
     h.platform.findKapsoCustomer.mockResolvedValue(null)
-    expect(await registerWhatsappConnection(TENANT, 'pn-1')).toMatchObject({
+    expect(await registerWhatsappConnection(TENANT, 'pn-1', 'staff-1')).toMatchObject({
       error: 'conexion_incompleta',
     })
     h.platform.findKapsoCustomer.mockResolvedValue({ id: 'cust-1' })
     h.platform.getKapsoPhoneNumber.mockResolvedValue(null)
-    expect(await registerWhatsappConnection(TENANT, 'pn-1')).toMatchObject({
+    expect(await registerWhatsappConnection(TENANT, 'pn-1', 'staff-1')).toMatchObject({
       error: 'conexion_incompleta',
     })
   })
 
   it('NO guarda la fila si el webhook no se pudo crear', async () => {
     h.platform.ensureKapsoMessageWebhook.mockRejectedValue(new h.KapsoPlatformError(422, 'x'))
-    expect(await registerWhatsappConnection(TENANT, 'pn-1')).toEqual({
+    expect(await registerWhatsappConnection(TENANT, 'pn-1', 'staff-1')).toEqual({
       ok: false,
       error: 'kapso_no_disponible',
     })
     expect(h.upserts).toHaveLength(0)
+    expect(h.audits).toHaveLength(0)
   })
 
   it('sin KAPSO_WEBHOOK_SECRET es kapso_no_disponible y no llama a Kapso', async () => {
     vi.stubEnv('KAPSO_WEBHOOK_SECRET', '')
-    expect(await registerWhatsappConnection(TENANT, 'pn-1')).toEqual({
+    expect(await registerWhatsappConnection(TENANT, 'pn-1', 'staff-1')).toEqual({
       ok: false,
       error: 'kapso_no_disponible',
     })
@@ -172,15 +195,18 @@ describe('registerWhatsappConnection', () => {
       code: '23505',
       constraint_name: 'whatsapp_connections_phone_number_id_key',
     })
-    expect(await registerWhatsappConnection(TENANT, 'pn-1')).toEqual({
+    expect(await registerWhatsappConnection(TENANT, 'pn-1', 'staff-1')).toEqual({
       ok: false,
       error: 'numero_de_otro_complejo',
     })
+    expect(h.audits).toHaveLength(0)
   })
 
   it('otro error de la base se propaga', async () => {
     h.insertError = new Error('conexión caída')
-    await expect(registerWhatsappConnection(TENANT, 'pn-1')).rejects.toThrow('conexión caída')
+    await expect(registerWhatsappConnection(TENANT, 'pn-1', 'staff-1')).rejects.toThrow(
+      'conexión caída',
+    )
   })
 })
 
@@ -190,13 +216,15 @@ describe('findAndRegisterWhatsappConnection', () => {
       { ...NUMBER, phoneNumberId: 'sandbox', isCoexistence: false },
       NUMBER,
     ])
-    expect(await findAndRegisterWhatsappConnection(TENANT)).toEqual({ ok: true })
+    expect(await findAndRegisterWhatsappConnection(TENANT, 'staff-1')).toEqual({ ok: true })
     expect(h.platform.getKapsoPhoneNumber).toHaveBeenCalledWith('pn-1')
+    // "Ya lo conecté" deja el mismo audit que el callback.
+    expect(h.audits).toMatchObject([{ action: 'whatsapp.connected', actorId: 'staff-1' }])
   })
 
   it('sin números de coexistencia es conexion_incompleta', async () => {
     h.platform.listKapsoPhoneNumbers.mockResolvedValue([{ ...NUMBER, isCoexistence: false }])
-    expect(await findAndRegisterWhatsappConnection(TENANT)).toEqual({
+    expect(await findAndRegisterWhatsappConnection(TENANT, 'staff-1')).toEqual({
       ok: false,
       error: 'conexion_incompleta',
     })

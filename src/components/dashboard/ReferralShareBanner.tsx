@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from 'react'
 import { Check, Copy, Gift, MessageCircle, X } from 'lucide-react'
+import Link from 'next/link'
+import { buildReferralWhatsappHref } from '@/lib/dashboard/referral-share'
 import { REFERRAL_REWARD_CAP } from '@/shared/constants'
 import type { MarkReferralBannerDismissedResult } from '@/app/(admin)/dashboard/actions'
 
@@ -53,8 +55,7 @@ export function ReferralShareBanner({ url, tenantName, dismissAction }: Props) {
     })
   }
 
-  const waMessage = `Te paso TurnoGol, lo uso en ${tenantName} para los turnos y la caja. Lo probás 30 días gratis, sin tarjeta: ${url}`
-  const waHref = `https://wa.me/?text=${encodeURIComponent(waMessage)}`
+  const waHref = buildReferralWhatsappHref(tenantName, url)
 
   return (
     <div
@@ -83,6 +84,13 @@ export function ReferralShareBanner({ url, tenantName, dismissAction }: Props) {
           >
             Ver condiciones
           </a>
+          {' · '}
+          <Link
+            href="/settings/invitar"
+            className="text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            Ver tus invitados
+          </Link>
         </p>
         <div className="flex shrink-0 items-center gap-1.5">
           <button

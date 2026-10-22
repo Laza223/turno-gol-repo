@@ -8,11 +8,16 @@ import {
 } from '@/modules/super-admin/activity.service'
 import { requireSystemAdmin } from '@/modules/auth/system-admin.guards'
 import { getDashboardData, type DashboardData } from '@/modules/super-admin/dashboard.service'
+import {
+  listReferralRewardsForReview,
+  type ReferralRewardForReview,
+} from '@/modules/referrals/referral-reward.service'
 import { logger } from '@/shared/lib/logger'
 import { withTimeout } from '@/shared/utils/async'
 import { SuperAdminDashboardView } from './_components/dashboard-view'
 import { PulsoAttention } from './_components/pulso/pulso-attention'
 import { PulsoFeed } from './_components/pulso/pulso-feed'
+import { PulsoReferralRewards } from './_components/pulso/pulso-referral-rewards'
 import { PulsoSeries } from './_components/pulso/pulso-series'
 import {
   ActivityTopSkeleton,
@@ -22,6 +27,11 @@ import {
 import { PulsoStats } from './_components/pulso/pulso-stats'
 import { PulsoUnavailable } from './_components/pulso/pulso-unavailable'
 import { WindowSwitch } from './_components/pulso/window-switch'
+import {
+  approveReferralRewardAction,
+  markReferralRewardAppliedAction,
+  rejectReferralRewardAction,
+} from './actions'
 
 // Métricas en vivo — nunca servir un snapshot cacheado del build.
 export const dynamic = 'force-dynamic'
@@ -68,6 +78,26 @@ async function Attention({ dashboard }: { dashboard: DashboardRead }) {
   return <PulsoAttention data={data} />
 }
 
+async function ReferralRewards({
+  rewards,
+}: {
+  rewards: Promise<ReferralRewardForReview[] | null>
+}) {
+  const data = await rewards
+  // Sin premios (o sin poder leerlos) no se dibuja nada: no es una sección fija.
+  if (!data) return null
+  return (
+    <PulsoReferralRewards
+      rewards={data}
+      actions={{
+        approve: approveReferralRewardAction,
+        markApplied: markReferralRewardAppliedAction,
+        reject: rejectReferralRewardAction,
+      }}
+    />
+  )
+}
+
 async function Feed({ activity }: { activity: ActivityRead }) {
   const data = await activity
   // El aviso de "no se pudo leer" ya lo da `ActivityTop`.
@@ -92,9 +122,10 @@ export default async function SuperAdminPulsoPage({
   const { ventana } = await searchParams
   const window = isActivityWindow(ventana) ? ventana : 'hoy'
 
-  // Las dos lecturas arrancan acá, en paralelo, antes de pintar nada.
+  // Las tres lecturas arrancan acá, en paralelo, antes de pintar nada.
   const activity = settle(getPlatformActivity(window), 'actividad')
   const dashboard = settle(getDashboardData(), 'resto')
+  const rewards = settle(listReferralRewardsForReview(), 'premios de referidos')
 
   return (
     <div className="space-y-6">
@@ -113,6 +144,10 @@ export default async function SuperAdminPulsoPage({
 
       <Suspense fallback={null}>
         <Attention dashboard={dashboard} />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <ReferralRewards rewards={rewards} />
       </Suspense>
 
       <Suspense fallback={<FeedSkeleton />}>

@@ -47,6 +47,7 @@ const CONTEXTUAL_ROUTES: Record<string, string> = {
   '/settings/perfil': 'tarjeta de la portada /settings (SettingsIndex)',
   '/settings/facturacion': 'tarjeta de la portada /settings (SettingsIndex)',
   '/settings/equipo': 'tarjeta de la portada /settings (SettingsIndex)',
+  '/settings/invitar': 'tarjeta de la portada /settings (SettingsIndex)',
   '/settings/whatsapp':
     'tarjeta de la portada /settings (SettingsIndex), solo si el complejo tiene el asistente',
   '/settings/datos': 'tarjeta de la portada /settings (SettingsIndex), grupo "Tus datos"',

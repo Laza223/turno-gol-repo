@@ -31,6 +31,7 @@ type PaymentEvent =
   | 'payment.subscription.reconciled'
   | 'payment.subscription.mp_desync'
   | 'payment.subscription.amount_drift'
+  | 'payment.subscription.courts_over_billed'
 
 type WebhookEvent =
   'mp.webhook.received' | 'mp.webhook.duplicate' | 'mp.webhook.processed' | 'mp.webhook.failed'

@@ -20,6 +20,8 @@ El founder lo prioriza igual por dos razones: es lo que el dueño del piloto dij
 
 ## F2 — Panel admin en mantenimiento
 
+> **SUPERADA el 2026-10-22** por [`2026-10-22-se-levanta-el-freeze.md`](2026-10-22-se-levanta-el-freeze.md): el panel vuelve a recibir mejoras.
+
 - **Decisión:** el panel deja de recibir refinamientos de diseño. Entran solo las excepciones de D4: bugs, seguridad, circuitos de plata y fricción observada en clientes reales. El refinamiento habilitado el 2026-09-23 se da por cerrado.
 - **Evidencia:** el dueño del piloto dijo que con el panel pudieron gestionar todo el complejo sin problemas.
 
@@ -33,6 +35,8 @@ El founder lo prioriza igual por dos razones: es lo que el dueño del piloto dij
 - **Criterio de éxito:** un jugador nuevo reserva en su complejo desde el link que le pasó el complejo con menos toques que hoy (medido antes y después), y cada error dice qué pasó y qué hacer.
 
 ## F4 — RIVAL v1 ("RIVAL powered by TurnoGol")
+
+> **Enmendada el 2026-10-22** por [`2026-10-22-rival-v1.md`](2026-10-22-rival-v1.md): RIVAL no tiene umbral de reversión. La revisión a 30 días sirve para elegir la próxima ola, no para decidir si se corta. La spec está en [`docs/superpowers/specs/2026-10-22-rival-v1-design.md`](../superpowers/specs/2026-10-22-rival-v1-design.md).
 
 - **Qué es:** la sección de comunidad del portal del jugador. Trae las dos cosas:
   - **El partido del grupo:** una convocatoria con link para el grupo de WhatsApp, donde cada uno confirma en un toque y el organizador ve "7/10 confirmados".
@@ -52,5 +56,7 @@ El founder lo prioriza igual por dos razones: es lo que el dueño del piloto dij
 - **Dueños y encargados que juegan** usan otra cuenta. Si RIVAL necesitara que participen con la misma, se decide aparte, con revisión de seguridad.
 
 ## Lo que sigue congelado
+
+> **Sin efecto desde el 2026-10-22** ([`2026-10-22-se-levanta-el-freeze.md`](2026-10-22-se-levanta-el-freeze.md)): esta lista ya no está congelada por el freeze, y cada punto entra con una decisión escrita del dueño. Siguen vigentes los vetos de producto de `CLAUDE.md` (entre ellos, sin billetera) y la regla de que un cambio de precio, seña o lifecycle necesita decisión escrita. RIVAL v1 sale sin rankings y sin feed por su propia spec.
 
 Rankings · red social o feed · Cam · marketplace como promesa · app nativa · profesores · billetera o pagos entre jugadores · cualquier cambio de precio, seña o lifecycle sin decisión escrita.

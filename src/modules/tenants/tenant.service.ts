@@ -2,6 +2,7 @@ import { cache } from 'react'
 import { and, eq, like, ne, or, sql } from 'drizzle-orm'
 import { getDb, getSql, getWorkerDb, withTenantContext, type DbTx } from '@/shared/db/client'
 import { plans, tenants, tenantStaffMembers, tenantSubscriptions } from '@/shared/db/schema'
+import { insertAuditLog } from '@/shared/db/audit'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { DEFAULT_CANCELLATION_HOURS_BEFORE, TRIAL_DAYS } from '@/shared/constants'
 import { generateSlug, RESERVED_SLUGS } from './tenant.utils'
@@ -82,8 +83,8 @@ export async function createTenantWithTrial(
 ): Promise<{ id: string; slug: string }> {
   const db = getDb()
   const slug = await generateUniqueSlug(input.name)
-  // El default (30) es el del self-signup y no se toca. `input.trialDays` solo
-  // llega desde el alta asistida del super-admin, y el MISMO número alimenta
+  // El default (30) es el del self-signup y el del alta asistida, y no se toca.
+  // Si algún día llega `input.trialDays`, el MISMO número alimenta
   // `trial_ends_at`, `current_period_end` y el copy del mail de bienvenida: son
   // tres lugares que un cliente puede comparar entre sí.
   const trialDays = input.trialDays ?? TRIAL_DAYS
@@ -149,6 +150,20 @@ export async function createTenantWithTrial(
       currentPeriodStart: new Date(),
       currentPeriodEnd: trialEndsAt,
     })
+
+    // Alta asistida: el audit va en esta transacción para que no exista un
+    // complejo creado desde el super-admin sin su rastro.
+    if (input.assistedBy) {
+      await insertAuditLog(tx, {
+        tenantId: tenant.id,
+        actorId: input.assistedBy.systemAdminId,
+        actorType: 'system',
+        action: 'support.tenant.created',
+        resourceType: 'tenant',
+        resourceId: tenant.id,
+        metadata: input.assistedBy.metadata,
+      })
+    }
 
     // Bienvenida. Va DESPUÉS del insert de tenant_staff_members a propósito:
     // `enqueueTenantOwnerNotification` resuelve los destinatarios leyendo esa

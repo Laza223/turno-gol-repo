@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
 import { usePathname, useRouter } from 'next/navigation'
-import { UserPlus, Users, Info } from 'lucide-react'
+import { FileSpreadsheet, UserPlus, Users, Info } from 'lucide-react'
 import Link from 'next/link'
 import type { AbonadoRow } from '@/modules/abonados/abonado.types'
 import type { AbonadoActionResult } from './actions'
@@ -120,13 +120,25 @@ export function AbonadosList({
             : 'Creá el primer turno fijo para que aparezca acá.'
         }
         action={
-          <Link
-            href="/abonados/nuevo"
-            className="inline-flex h-10 items-center gap-2 justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            <UserPlus className="h-4 w-4" aria-hidden="true" />
-            Nuevo turno fijo
-          </Link>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Link
+              href="/abonados/nuevo"
+              className="inline-flex h-10 items-center gap-2 justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              <UserPlus className="h-4 w-4" aria-hidden="true" />
+              Nuevo turno fijo
+            </Link>
+            {/* Un complejo que recién arranca suele traer los fijos en una planilla. */}
+            {!filterLabel && (
+              <Link
+                href="/abonados/importar"
+                className="inline-flex h-11 md:h-10 items-center gap-2 justify-center rounded-lg border border-input bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent"
+              >
+                <FileSpreadsheet className="h-4 w-4" aria-hidden="true" />
+                Importar planilla
+              </Link>
+            )}
+          </div>
         }
       />
     )

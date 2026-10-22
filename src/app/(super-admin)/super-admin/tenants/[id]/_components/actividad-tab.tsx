@@ -49,6 +49,7 @@ const ACTION_LABELS: Record<string, string> = {
   'subscription.reactivate_initiated': 'Reactivación iniciada',
   'support.impersonation.started': 'Soporte entró al panel del complejo',
   'support.impersonation.ended': 'Soporte salió del panel del complejo',
+  'support.tenant.created': 'Complejo dado de alta por soporte',
   'support.tenant.trial_extended': 'Prueba extendida por soporte',
   'support.tenant.settings_updated': 'Ajustes editados por soporte',
   'support.tenant.status_forced': 'Estado cambiado por soporte',

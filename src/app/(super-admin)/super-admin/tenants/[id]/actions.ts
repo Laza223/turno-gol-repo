@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { randomBytes } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -11,6 +10,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
 import { uuid } from '@/shared/validation/primitives'
 import { requireSystemAdminAction } from '@/modules/auth/system-admin.guards'
+import { generateTempPassword } from '@/modules/auth/password'
 import {
   buildImpersonationCookie,
   IMPERSONATION_COOKIE_NAME,
@@ -302,11 +302,6 @@ async function findAuthUserByEmail(
     if (users.length < PER_PAGE) return null
   }
   return null
-}
-
-/** Contraseña temporal legible para dictar por teléfono (≥8, sin ambigüedad). */
-function generateTempPassword(): string {
-  return `TG-${randomBytes(5).toString('hex')}`
 }
 
 /**

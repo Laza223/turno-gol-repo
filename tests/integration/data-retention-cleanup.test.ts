@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql } from '@/shared/db/client'
 import { setBillingGateway } from '@/modules/billing/billing.gateway'
 import { MockGateway } from '@/modules/payments/mp-gateway.mock'
-import { cleanupAll, createTestTenant, ensureRoles } from '../helpers/tenant'
+import { cleanupAll, createTestPlayer, createTestTenant, ensureRoles } from '../helpers/tenant'
 import {
   insertBooking,
   insertCourt,
@@ -467,5 +467,100 @@ describe('data-retention-cleanup — WhatsApp (30 días)', () => {
     expect(booking?.status).toBe('completed')
     // El id queda colgando a propósito: sigue marcando que la reserva vino del bot.
     expect(booking?.whatsapp_chat_id).toBe(chatId)
+  }, 60_000)
+})
+
+// ─── RIVAL (migr. 099): contacto al llegar starts_at, partido a los 12 meses ───
+// El wipe de un complejo (RIVAL antes que bookings) lo cubre el seed de
+// `setupTenant`: FULL/ZERO traen partido, contacto, denuncia, suscripción y dedupe.
+describe('data-retention-cleanup — RIVAL', () => {
+  type SeededMatch = { id: string }
+
+  /** Siembra por el pool admin (sin actor: los triggers de reglas de negocio se saltean). */
+  async function seedMatch(
+    tenantId: string,
+    organizerId: string,
+    startsAtSql: 'future' | 'past_1_day' | 'past_13_months',
+  ): Promise<SeededMatch> {
+    const sql = getSql()
+    const interval =
+      startsAtSql === 'future'
+        ? "NOW() + INTERVAL '3 days'"
+        : startsAtSql === 'past_1_day'
+          ? "NOW() - INTERVAL '1 day'"
+          : "NOW() - INTERVAL '13 months'"
+    const [m] = await sql<{ id: string }[]>`
+      INSERT INTO rival_matches (
+        tenant_id, organizer_player_id, starts_at, format, capacity, level, court_declared
+      )
+      VALUES (${tenantId}, ${organizerId}, ${sql.unsafe(interval)}, 5, 10, 'parejo', true)
+      RETURNING id
+    `
+    await sql`
+      INSERT INTO rival_match_contacts (match_id, whatsapp_digits)
+      VALUES (${m!.id}, '5491155551234')
+    `
+    await sql`
+      INSERT INTO rival_reports (match_id, reporter_player_id, reason)
+      VALUES (${m!.id}, ${organizerId}, 'spam')
+    `
+    return { id: m!.id }
+  }
+
+  it('borra el WhatsApp de un partido que ya empezó pero conserva el partido; el futuro no se toca', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const started = await seedMatch(tenant.id, player.id, 'past_1_day')
+    const upcoming = await seedMatch(tenant.id, player.id, 'future')
+
+    await runDataRetentionCleanup()
+
+    const contacts = await sql<{ match_id: string }[]>`
+      SELECT match_id FROM rival_match_contacts WHERE match_id IN (${started.id}, ${upcoming.id})
+    `
+    expect(contacts.map((c) => c.match_id)).toEqual([upcoming.id])
+    // El partido vencido y sus participantes/denuncias siguen (la ventana es de 12 meses).
+    const matches = await sql<{ id: string }[]>`
+      SELECT id FROM rival_matches WHERE id IN (${started.id}, ${upcoming.id})
+    `
+    expect(matches).toHaveLength(2)
+    const reports = await sql`SELECT 1 FROM rival_reports WHERE match_id = ${started.id}`
+    expect(reports).toHaveLength(1)
+  }, 60_000)
+
+  it('borra el partido y todo lo que cuelga a los 12 meses de jugado, y conserva el de hace 1 día', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const old = await seedMatch(tenant.id, player.id, 'past_13_months')
+    const recent = await seedMatch(tenant.id, player.id, 'past_1_day')
+    await sql`
+      INSERT INTO rival_alert_sends (match_id, player_id, sent_on)
+      VALUES (${old.id}, ${player.id}, CURRENT_DATE)
+    `
+    await sql`
+      INSERT INTO rival_alert_subscriptions (player_id, tenant_id) VALUES (${player.id}, ${tenant.id})
+    `
+    // El organizador entró como participante por el trigger de alta.
+    expect(await sql`SELECT 1 FROM rival_participants WHERE match_id = ${old.id}`).toHaveLength(1)
+
+    await runDataRetentionCleanup()
+
+    for (const table of [
+      'rival_participants',
+      'rival_reports',
+      'rival_match_contacts',
+      'rival_alert_sends',
+    ]) {
+      const rows = await sql.unsafe(`SELECT 1 FROM ${table} WHERE match_id = $1`, [old.id])
+      expect(rows, table).toHaveLength(0)
+    }
+    expect(await sql`SELECT 1 FROM rival_matches WHERE id = ${old.id}`).toHaveLength(0)
+    expect(await sql`SELECT 1 FROM rival_matches WHERE id = ${recent.id}`).toHaveLength(1)
+    // Las suscripciones no cuelgan de un partido: la purga por antigüedad no las toca.
+    expect(
+      await sql`SELECT 1 FROM rival_alert_subscriptions WHERE tenant_id = ${tenant.id}`,
+    ).toHaveLength(1)
   }, 60_000)
 })

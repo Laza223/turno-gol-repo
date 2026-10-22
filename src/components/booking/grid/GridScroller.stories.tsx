@@ -129,13 +129,14 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {}
 
 /**
- * Teléfono: la MISMA matriz, con columnas de 48 px (44 tocables) y el eje de
- * horas en dos dígitos. Reemplazó a la lista por hora con carrusel de
- * canchas, donde leer una sola hora obligaba a recorrer fichas de a una.
+ * Tablet vertical (de `md` a `lg`): la matriz con columnas de 48 px (44
+ * tocables) y el eje de horas en dos dígitos. Debajo de `md` la grilla no es
+ * esta matriz sino la lista por hora (GridHourList, decisión del dueño
+ * 2026-10-22).
  */
-export const EnTelefono: Story = {
-  name: 'Teléfono (columnas de 48px)',
-  parameters: { viewport: { defaultViewport: 'mobile-primary' } },
+export const EnTablet: Story = {
+  name: 'Tablet vertical (columnas de 48px)',
+  parameters: { viewport: { defaultViewport: 'tablet' } },
 }
 
 /**

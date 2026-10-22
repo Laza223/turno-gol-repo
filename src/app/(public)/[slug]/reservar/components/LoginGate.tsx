@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SubmitButton } from '@/components/ui/submit-button'
+import { InAppBrowserNotice } from '@/components/world/InAppBrowserNotice'
 import {
   MAIL_ERROR_CLASS,
   ResendLinkForm,
@@ -93,7 +94,7 @@ const GATE_CARD_STYLE = {
  * pedir el enlace y lo vuelve a abrir, sigue viendo "Revisá tu email".
  *
  * `inAppBrowser` lo resuelve el servidor (page.tsx) con el User-Agent: en el navegador interno de
- * Instagram, Facebook o TikTok va primero el email, porque Google puede no abrirse.
+ * Instagram, Facebook o TikTok va primero el email y, en lugar de Google, `InAppBrowserNotice`.
  *
  * `withDeposit` decide qué se promete: sin seña, entrar deja la reserva confirmada (vuelve del
  * ingreso con la reserva hecha); con seña vuelve a esta pantalla y el jugador paga. Requerido a
@@ -238,11 +239,6 @@ export default function LoginGate({
           {googleSendError}
         </p>
       )}
-      {inAppBrowser && (
-        <p className="text-pretty text-sm text-muted-foreground">
-          Google puede no abrirse desde este navegador. Con tu email entrás igual.
-        </p>
-      )}
     </div>
   )
 
@@ -281,7 +277,7 @@ export default function LoginGate({
               <>
                 {emailForm}
                 {divider}
-                {googleBlock}
+                <InAppBrowserNotice />
               </>
             ) : (
               <>

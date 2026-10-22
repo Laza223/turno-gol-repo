@@ -57,4 +57,16 @@ describe('AvisosForm — el reset del form no pisa la selección', () => {
     )
     expect(container.querySelector('input[name="dailySummaryEmailOptIn"]')).toHaveValue('true')
   })
+
+  it('mantiene el semanal "Por email" después del reset, sin tocar el diario', () => {
+    formState.mockReturnValue({ success: true })
+    const { container } = render(<AvisosForm s={SIN_EMAIL} action={noopAction} />)
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Por email' }))
+    fireEvent.reset(container.querySelector('form')!)
+
+    expect(screen.getByRole('radio', { name: 'Por email' })).toHaveAttribute('aria-checked', 'true')
+    expect(container.querySelector('input[name="weeklySummaryEmailOptIn"]')).toHaveValue('true')
+    expect(container.querySelector('input[name="dailySummaryEmailOptIn"]')).toHaveValue('false')
+  })
 })

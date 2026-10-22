@@ -15,6 +15,7 @@ const meta = {
   parameters: { layout: 'padded' },
   args: {
     connected: true,
+    disconnected: false,
     nickname: 'ELVAGON.FUTBOL',
     requiresDeposit: true,
     disconnectAction: fn(async () => ({ success: true as const })),
@@ -30,6 +31,21 @@ export const Conectado: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('ELVAGON.FUTBOL')).toBeVisible()
     await expect(canvas.queryByRole('button', { name: 'Desconectar' })).not.toBeInTheDocument()
+  },
+}
+
+/** MP revocó el permiso: badge de advertencia, la causa y "Reconectar"; "Desconectar" se mantiene. */
+export const Desconectado: Story = {
+  args: { disconnected: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Desconectado')).toBeVisible()
+    await expect(canvas.getByText(/dejó de aceptar la conexión de TurnoGol/)).toBeVisible()
+    await expect(canvas.getByRole('link', { name: /Reconectar MercadoPago/ })).toHaveAttribute(
+      'href',
+      '/api/mp/oauth-start',
+    )
+    await expect(canvas.getByRole('button', { name: /Desconectar MercadoPago/ })).toBeVisible()
   },
 }
 

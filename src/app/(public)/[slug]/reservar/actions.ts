@@ -347,6 +347,7 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
       status: tenants.status,
       settings: tenants.settings,
       mpAccessToken: tenants.mpAccessToken,
+      mpDisconnectedAt: tenants.mpDisconnectedAt,
     })
     .from(tenants)
     .where(eq(tenants.slug, slug))
@@ -390,8 +391,14 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
   // crear —la Server Action de Políticas de Reserva lo rechaza y el default de la
   // columna nace en `false` (migr. 077)—, así que llegar acá significa que quedó un
   // tenant inconsistente de antes: se reporta para poder encontrarlo.
-  const depositUnpayable = settings.requires_deposit && !tenant!.mpAccessToken
-  if (depositUnpayable) {
+  //
+  // Mismo criterio mientras MercadoPago está marcado como desconectado (migr.
+  // 100, decisión 2026-10-22): hay token, pero MP ya no lo acepta y pedir la
+  // seña es mandar al jugador a una página de error. Ese caso no se reporta: el
+  // dueño ya tiene el aviso en Hoy.
+  const depositUnpayable =
+    settings.requires_deposit && (!tenant!.mpAccessToken || !!tenant!.mpDisconnectedAt)
+  if (settings.requires_deposit && !tenant!.mpAccessToken) {
     captureMessage('checkout: requires_deposit sin MercadoPago conectado', 'warning')
   }
   const withDeposit =
@@ -569,14 +576,18 @@ export async function retryDepositPaymentAction(formData: FormData): Promise<voi
 
   const db = getDb()
   const tRows = await db
-    .select({ mpAccessToken: tenants.mpAccessToken })
+    .select({
+      mpAccessToken: tenants.mpAccessToken,
+      mpDisconnectedAt: tenants.mpDisconnectedAt,
+    })
     .from(tenants)
     .where(eq(tenants.id, tenantId))
     .limit(1)
 
   const mpAccessToken = tRows[0]?.mpAccessToken ?? null
-  if (!mpAccessToken) {
-    // No gateway configured — drop player to pending watcher
+  // Sin token, o con MP marcado como desconectado (migr. 100): la preferencia
+  // fallaría. Drop player to pending watcher.
+  if (!mpAccessToken || tRows[0]?.mpDisconnectedAt) {
     redirect(`/reserva/${bookingId}/pendiente`)
   }
 

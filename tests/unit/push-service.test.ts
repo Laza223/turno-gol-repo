@@ -112,6 +112,47 @@ describe('notifyAdminPush', () => {
       expect.objectContaining({ retryLimit: 3 }),
     )
   })
+
+  it('MercadoPago desconectado: dedupeKey por complejo e instante de la marca', async () => {
+    // Un aviso por transición (mp-connection.service): un retry del job de
+    // push no lo duplica, y una desconexión NUEVA (otro instante) sí avisa.
+    const subs = [{ id: 'sub-1' }]
+    mockSql.mockReturnValue(makeSqlStub(subs))
+    const boss = makeBossStub()
+    mockGetBoss.mockResolvedValue(boss)
+
+    const payload = {
+      type: 'mp_disconnected',
+      url: '/dashboard',
+      disconnectedAt: '2026-10-22T15:00:00.000Z',
+    }
+    await notifyAdminPush('tenant-1', payload)
+
+    expect(boss.send).toHaveBeenCalledWith(
+      QUEUE_PUSH_SEND,
+      {
+        subscription_id: 'sub-1',
+        payload,
+        dedupeKey: 'push:mp-disconnected:tenant-1:2026-10-22T15:00:00.000Z:sub-1',
+      },
+      expect.objectContaining({ retryLimit: 3 }),
+    )
+  })
+
+  it('MercadoPago desconectado sin instante: NO arma una dedupeKey rota', async () => {
+    mockSql.mockReturnValue(makeSqlStub([{ id: 'sub-1' }]))
+    const boss = makeBossStub()
+    mockGetBoss.mockResolvedValue(boss)
+
+    const payload = { type: 'mp_disconnected', url: '/dashboard' }
+    await notifyAdminPush('tenant-1', payload)
+
+    expect(boss.send).toHaveBeenCalledWith(
+      QUEUE_PUSH_SEND,
+      { subscription_id: 'sub-1', payload },
+      expect.objectContaining({ retryLimit: 3 }),
+    )
+  })
 })
 
 describe('notifyStaffPush', () => {

@@ -154,6 +154,18 @@ Revisar en cada retrospectiva del esfuerzo relacionado — ver skill `deuda-tecn
 
 **Disparador de resolución**: cuando se cierre el tema del par OAuth (`MP_CLIENT_ID` apuntando a la aplicación vieja) — decisión del dueño el 2026-08-28, para no tocar dos cosas del mismo circuito a la vez. Contexto completo en [docs/qa/GUION-ENSAYOS-PLATA-2026-08-28.md](qa/GUION-ENSAYOS-PLATA-2026-08-28.md).
 
+### RESUELTA (2026-10-22) — se marca, no se borra, y el veredicto es de MercadoPago
+
+Spec: [`docs/superpowers/specs/2026-10-22-aviso-mp-desconectado-design.md`](superpowers/specs/2026-10-22-aviso-mp-desconectado-design.md). Se apartó de la propuesta de arriba en tres puntos:
+
+- **No se limpian las columnas de MP.** Se marca `tenants.mp_disconnected_at` (migr. 100) y los tokens quedan: marcar es reversible, borrar no.
+- **El evento no es la verdad, es el gatillo.** El aviso `mp-connect` (`application.deauthorized`), con el complejo resuelto por la cuenta firmada (`data.id`), dispara un intento de refresh. Solo `invalid_grant`/`unauthorized_client` marcan (`MpGrantRevokedError`). Un 5xx o un timeout tiran, para que pg-boss reintente. Por la misma clasificación marcan también el refresh-on-401 y el cron de las 4 h, así que la desconexión se detecta aunque el webhook no llegue. El cron no marca a nadie si el `invalid_grant` es masivo (3 complejos o más y más de la mitad del barrido, sin contar los que ya estaban marcados): eso huele a credenciales de la aplicación, no a dueños que revocaron, y va a Sentry.
+- **El orden del route no se debilitó.** La rama `mp-connect` corre después de validar la firma (`webhook-auth.ts` intacto) y no lleva `?tenant=`. El `user_id` del body, que la firma no cubre, solo se usa para cotejar.
+
+El dueño lo ve en Hoy (P1, [enmienda a la taxonomía](decisions/2026-08-02-taxonomia-alertas-hoy.md)), en Configuración y por un push. Mientras dure la marca, la reserva online entra sin seña ([decisión](decisions/2026-10-22-reservar-sin-sena-con-mp-desconectado.md)).
+
+**Queda sin verificar contra MP real** (ensayo en sandbox): el código exacto que devuelve el refresh después de desvincular, y si `data.id == user_id` en el aviso. Mientras tanto lo cubren los tests con el contrato documentado.
+
 ---
 
 ## La devolución manual no está explicada, y la pantalla todavía promete el reembolso automático que se eliminó

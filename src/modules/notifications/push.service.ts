@@ -68,7 +68,11 @@ export async function notifyAdminPush(
           ? `push:booking-confirmed:${payload.bookingId}:${sub.id}`
           : payload.type === 'daily_summary' && payload.date
             ? `push:daily-summary:${tenantId}:${payload.date}:${sub.id}`
-            : undefined
+            : // MercadoPago desconectado (mp-connection.service): un aviso por
+              // transición, identificada por el instante de la marca.
+              payload.type === 'mp_disconnected' && typeof payload.disconnectedAt === 'string'
+              ? `push:mp-disconnected:${tenantId}:${payload.disconnectedAt}:${sub.id}`
+              : undefined
       const data: PushSendJobData = {
         subscription_id: sub.id,
         payload,

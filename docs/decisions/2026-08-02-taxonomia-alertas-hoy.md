@@ -1,7 +1,7 @@
 # Taxonomía de alertas de "Hoy" (Fase 2 del contrato v2)
 
 **Fecha:** 2026-08-02
-**Estado:** Decidida (dueño: Lazar) — implementada. **Enmendada el 2026-08-23** (cuarto evento: devoluciones) y **el 2026-09-19** (sale "turno sin cobrar"; ver la última enmienda).
+**Estado:** Decidida (dueño: Lazar) — implementada. **Enmendada el 2026-08-23** (cuarto evento: devoluciones) **el 2026-09-19** (sale "turno sin cobrar") y **el 2026-10-22** (entra "MercadoPago desconectado", P1; ver la última enmienda).
 **Migraciones:** ninguna (todo se computa en vivo sobre tablas existentes + 1 flag jsonb en `tenants.settings`)
 **Origen:** criterio de ENTRADA bloqueante de Fase 2, `docs/planning/2026-08-01-decisiones-de-fase-v2.md` §3 ("taxonomía de alertas cerrada por escrito, lista finita de eventos y alertas, con prioridad y umbral cada una"). El pase crítico (`docs/planning/2026-08-01-vision-v2-pase-critico.md:115`) marca esto como bloqueante explícito: *"Sin taxonomía, Hoy degenera en bandeja de notificaciones — exactamente lo que vino a matar."*
 
@@ -63,11 +63,27 @@ Decisión de Lazar en la sesión del pulido de Hoy (2026-09-24): pidió el "Por 
 
 **La fila del tablero ya no es roja.** El turno terminado con saldo se muestra "Por cobrar", en ámbar (`PENDING_CHARGE_BADGE` en `slot-visual.ts`): en el Vagón el primer pago llega en la mediana 29 minutos después del partido (`docs/rediseno-panel/insumos.md`), así que es lo normal y no una alarma ni una deuda (principio 3 de `PRODUCT.md`). El umbral no cambia: la fila aparece apenas el turno termina. La celda de la Grilla, su leyenda y la pastilla de Reservas todavía dicen "Sin cobrar" en rojo; unificarlas es un pase aparte. El modal de cobro sí cambia en todos lados, porque la Grilla y el detalle de la reserva usan el mismo: "Falta cobrar" en ámbar y el botón parcial dice "quedan $X por cobrar" en vez de "de deuda".
 
+## Enmienda 2026-10-22 — entra "MercadoPago desconectado", P1
+
+Decisión de Lazar (2026-10-22), al cerrar el ítem de deuda "`application.deauthorized` se descarta con 400". Este documento exige volver acá para sumar un evento; se suma uno.
+
+**Qué cambió afuera:** en 2026-08-02 "conexión de MP caída" quedó afuera de v1 (ver *Alternativas descartadas*). Sin señal, el que descubría la desconexión era el jugador, al chocar con el error de pago. Ahora TurnoGol detecta la revocación del permiso (el aviso `mp-connect` de MercadoPago, un refresh que falla con `invalid_grant`/`unauthorized_client`, o el cron de las 4 h) y la guarda en `tenants.mp_disconnected_at`. Spec: [`docs/superpowers/specs/2026-10-22-aviso-mp-desconectado-design.md`](../superpowers/specs/2026-10-22-aviso-mp-desconectado-design.md).
+
+| # | Evento | Prioridad | Umbral | Fuente de datos | Acción al lado |
+|---|---|---|---|---|---|
+| 5 | **MercadoPago desconectado** | **P1**, arriba de devoluciones | Inmediato: aparece apenas se marca y se va sola cuando un refresh vuelve a andar, el dueño reconecta o aprieta "Desconectar" | `tenants.mp_disconnected_at IS NOT NULL` (`getHoyData`, opción `mpDisconnectedAt`). **Tenant-wide, sin fecha**, un solo ítem | Dueño: "Reconectar" → `/api/mp/oauth-start`. Encargado: sin botón, "Avisale al dueño para que lo reconecte" |
+
+**Por qué P1:** mientras dure, toda reserva online entra sin seña ([`2026-10-22-reservar-sin-sena-con-mp-desconectado.md`](2026-10-22-reservar-sin-sena-con-mp-desconectado.md)). No es plata trabada con alguien que espera, como la devolución: es el canal de cobro cortado, y se pierde en cada reserva nueva. Por eso es el único de los tres en rojo (`destructive`).
+
+**Es un evento de estado, no de "hoy".** Igual que las devoluciones, no caduca con el día: dura lo que dura la marca. Y es un solo ítem por complejo, nunca uno por reserva afectada.
+
+**Lista vigente: tres eventos**, en este orden (`ATTENTION_PRIORITY`): MercadoPago desconectado (P1), devoluciones de seña pendientes (P2) y seña que falló (P3). Sigue siendo **cerrada**: un cuarto evento requiere volver acá.
+
 ## Alternativas descartadas
 
 - **Ventana de gracia de 30 min en "turno sin cobrar"** (la opción que el pase crítico ofrecía como ejemplo): descartada por Lazar — el costo de avisar de más es menor que el costo de un cobro perdido por aviso tardío.
 - **"Caja sin cerrar" con backlog de N días** (alarmar por cada día abierto sin cerrar, no solo ayer): fuera de alcance v1 — si el contrato lo pide más adelante es un fast-follow aditivo (misma query, sin `LIMIT 1` día), no un rediseño.
-- **Alertas adicionales mencionadas en la visión pero no en el contrato de salida** ("cliente en su segundo no-show", "conexión de MP caída" como evento propio distinto de "seña fallida"): NO entran a v1 — el criterio de salida de Fase 2 nombra exactamente 3, y agregar una cuarta sin pasar por este documento es el "bandeja de notificaciones" que el pase crítico advierte.
+- **Alertas adicionales mencionadas en la visión pero no en el contrato de salida** ("cliente en su segundo no-show", "conexión de MP caída" como evento propio distinto de "seña fallida"): NO entran a v1 (**"conexión de MP caída" entró el 2026-10-22**, ver la enmienda) — el criterio de salida de Fase 2 nombra exactamente 3, y agregar una cuarta sin pasar por este documento es el "bandeja de notificaciones" que el pase crítico advierte.
 
 ## Alcance de implementación
 

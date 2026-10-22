@@ -61,6 +61,7 @@ export default async function SettingsPage() {
   const whatsapp = await getWhatsappConnection(tenant.id)
 
   const mpConnected = !!tenant.mpConnectedAt
+  const mpDisconnected = mpConnected && !!tenant.mpDisconnectedAt
   const deposit = mpConnected && s.requires_deposit !== false
   const hours = deriveScheduleView(tenant.openingHours as LooseOpeningHours).general
   const gaps = getProfileGaps(tenant).length
@@ -126,9 +127,9 @@ export default async function SettingsPage() {
         {
           label: 'MercadoPago para cobrar la seña',
           effect: 'Donde te entra esa plata.',
-          value: mpConnected ? 'Conectado' : 'Sin conectar',
+          value: mpDisconnected ? 'Desconectado' : mpConnected ? 'Conectado' : 'Sin conectar',
           icon: Wallet,
-          tone: mpConnected ? 'success' : 'warning',
+          tone: mpConnected && !mpDisconnected ? 'success' : 'warning',
           href: '/settings/reservas#mercado-pago',
         },
       ],

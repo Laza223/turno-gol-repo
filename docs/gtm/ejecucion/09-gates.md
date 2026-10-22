@@ -39,6 +39,8 @@
 
 **Congelado 6-12 meses** (D4/D5): Cam · rankings · perfil público del jugador · red social · Falta Uno · profesores · marketplace como promesa · app nativa · expansión fuera del corredor.
 
+> **Sin efecto desde el 2026-10-22** ([`2026-10-22-se-levanta-el-freeze.md`](../../decisions/2026-10-22-se-levanta-el-freeze.md)): esta lista deja de estar congelada y cada punto entra con una decisión escrita del dueño. Los gates siguen como orientación para priorizar, no como bloqueo.
+
 > Acotado el 2026-10-14 por [`2026-10-14-foco-jugador-rival.md`](../../decisions/2026-10-14-foco-jugador-rival.md): Falta Uno sale de esta lista (vuelve como RIVAL v1, F4), junto con el perfil mínimo del jugador que RIVAL necesita. El resto sigue congelado.
 
 Cuándo se revisa este archivo: en cada cierre de gate, con entrada en [`10-aprendizajes.md`](10-aprendizajes.md).

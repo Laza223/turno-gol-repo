@@ -8,7 +8,7 @@ web
 
 ## Users
 
-TurnoGol tiene dos superficies y cada una tiene su usuario: el portal (la web pública y la cuenta del jugador) y el panel del complejo. Desde el 2026-10-14 el foco está en el portal y el panel queda en mantenimiento (`docs/decisions/2026-10-14-foco-jugador-rival.md`, F2 y F3).
+TurnoGol tiene dos superficies y cada una tiene su usuario: el portal (la web pública y la cuenta del jugador) y el panel del complejo. Desde el 2026-10-14 el foco está en el portal (`docs/decisions/2026-10-14-foco-jugador-rival.md`, F3). El mantenimiento del panel (F2) cayó con el freeze el 2026-10-22 (`docs/decisions/2026-10-22-se-levanta-el-freeze.md`): el panel vuelve a recibir mejoras.
 
 ### Portal: el jugador
 
@@ -23,7 +23,7 @@ Como el link llega por WhatsApp o por redes, se abre en el celular.
 
 ### Panel: el encargado y el dueño
 
-En mantenimiento desde el 2026-10-14: entran solo bugs, seguridad, circuitos de plata y fricción observada en clientes reales (F2).
+Estuvo en mantenimiento del 2026-10-14 al 2026-10-22 (F2). Desde que se levantó el freeze vuelve a recibir mejoras (`docs/decisions/2026-10-22-se-levanta-el-freeze.md`).
 
 **Primario: el encargado en el mostrador** (Rodrigo en `docs/spec/doc3_personas_jtbd.md`, rol `manager`). Trabaja solo de 17 a 01, en una PC fija con mouse. Hace todo a la vez: contesta el WhatsApp del complejo, que es por donde entran las reservas; carga turnos para el mismo día; cobra los turnos que terminan y vende en la cantina. Aprende rápido y no tolera pasos de más. Su trabajo es que nadie espere en el mostrador y que no se pierda plata.
 
@@ -57,13 +57,13 @@ El panel tiene éxito si:
 
 La promesa general es que el complejo funciona bajo control aunque el dueño no esté encima. Los turnos fijos son la puerta de entrada comercial. La seña online es opcional y nunca va de titular. Esto es provisional: es el wedge D→C→B→A de `docs/decisions/2026-09-02-experimento-30-dias.md` D2, con confianza baja.
 
-**Portal.** La reserva del jugador cae en la misma grilla con la que el complejo trabaja todo el día: si el complejo carga ahí sus turnos, lo que el portal muestra libre está libre. RIVAL arranca por el partido del grupo, que sirve aunque no haya nadie más en la zona y se comparte en el WhatsApp del grupo; el tablón con desconocidos viene después. Es la respuesta al arranque en frío que hizo eliminar Falta Uno en junio. Confianza baja: el pedido es de un solo cliente (F4).
+**Portal.** La reserva del jugador cae en la misma grilla con la que el complejo trabaja todo el día: si el complejo carga ahí sus turnos, lo que el portal muestra libre está libre. RIVAL sale con el partido del grupo y el tablón juntos, sobre un solo modelo de partido. El partido del grupo sirve aunque no haya nadie más en la zona y se comparte en el WhatsApp del grupo. Es la respuesta al arranque en frío que hizo eliminar Falta Uno en junio. El tablón suma desconocidos cuando hay densidad. Confianza baja: el pedido es de un solo cliente. Aun así, el dueño va con todo y sin umbral de reversión (`docs/decisions/2026-10-22-rival-v1.md`).
 
 ## Operating Context
 
 ### Portal
 
-No hay uso real que medir: en El Vagón no entró ninguna reserva online (decisión del 2026-10-14). Lo que sigue sale del código, de las decisiones y del demo del 2026-10-14.
+Hay poco uso real que medir. El 2026-10-14 en El Vagón no había entrado ninguna reserva online. El 2026-10-16 publicó su link y ese día entraron 10 jugadores nuevos y 9 reservas online (`10-aprendizajes.md`). Lo que sigue sale del código, de las decisiones y del demo del 2026-10-14.
 
 - **Llegada por el link.** `turnogol.app/<slug>` abre la página del complejo sin día, hora ni cancha. El complejo lo comparte desde el cierre del alta, con un mensaje de WhatsApp ya escrito, o lo copia del panel. La home y `/explorar` no están en el recorrido de reserva: hoy solo aparecen como salidas después de reservar.
 - **El navegador interno.** El link que se toca en Instagram, y quizá en WhatsApp, puede abrirse en el navegador de esa app, y Google no deja iniciar sesión desde navegadores embebidos (`disallowed_useragent`). **Inferido, sin probar en un teléfono.** Si se confirma, "Continuar con Google" falla justo en el camino principal.
@@ -97,7 +97,7 @@ Todo lo que sigue sale de 8 días de producción (14 al 22 de septiembre de 2026
 - Montos en centavos de ARS. Horas en UTC en la base, que se muestran en hora argentina. Día operativo: el turno de las 23 y los de la madrugada pertenecen al día en que arrancó la jornada.
 - Ley 25.326: nunca texto libre sobre personas. Las etiquetas son un enum cerrado de 5.
 - Vetos de producto que están en `CLAUDE.md`: sin billetera, sin saldo a favor de abonados, el no-show no es deuda, sin recordatorio de 24 h, el jugador no tiene Realtime y no hay AFIP. Falta Uno vuelve como RIVAL v1, diseñado de cero (`docs/decisions/2026-10-14-foco-jugador-rival.md`).
-- Feature freeze hasta el 2026-11-01 (D4). Desde el 2026-10-14 el panel queda en mantenimiento y se liberan el rediseño del portal público y del jugador y RIVAL v1 (`docs/decisions/2026-10-14-foco-jugador-rival.md`).
+- Sin feature freeze desde el 2026-10-22 (`docs/decisions/2026-10-22-se-levanta-el-freeze.md`, supera D4 y F2): las features nuevas se proponen y se diseñan, y el panel vuelve a recibir mejoras. Cambiar precio, seña por defecto o lifecycle sigue necesitando decisión escrita del dueño.
 
 ### Portal: lo que existe
 
@@ -109,28 +109,33 @@ Todo lo que sigue sale de 8 días de producción (14 al 22 de septiembre de 2026
 - perfil, cuenta (`/configuracion`) y eliminar la cuenta;
 - favoritos y compartir.
 
-### RIVAL v1: decidido, sin construir (F4)
+### RIVAL v1: especificado, sin construir
 
-- **El partido del grupo:** una convocatoria con link para el grupo de WhatsApp, donde cada uno confirma en un toque y el organizador ve cuántos confirmaron.
-- **El tablón:** "Me falta 1" (o los que falten), "Busco arquero" y "Busco rival".
-- Una publicación no depende de una reserva. Si el partido sale de una reserva hecha en TurnoGol, lleva un sello.
-- El contacto es por WhatsApp y recién cuando el organizador acepta al que se suma: un link `wa.me` que abre el jugador. Sin chat propio.
-- Perfil mínimo: foto, posición, zona y la carrera que sale de las reservas jugadas.
-- Va detrás del flag `rival`, global en `false` hasta que el dueño lo prenda. Se revisa a los 30 días con publicaciones creadas, personas sumadas y partidos completados.
+Spec: `docs/superpowers/specs/2026-10-22-rival-v1-design.md`. Decisiones: F4 y `docs/decisions/2026-10-22-rival-v1.md`. Lo esencial:
+
+- **El partido del grupo:** el organizador arma el partido en un complejo de TurnoGol y pasa el link al grupo de WhatsApp. Cada uno toca "Voy", con cuenta de jugador, y todos ven cuántos faltan. Hay cupo duro y un banco con promoción automática; "Me bajo" no tiene penalidad.
+- **El tablón:** el mismo partido, publicado como "Faltan N", "Se busca arquero" o "Busca rival". El organizador acepta a cada uno, y el aceptado ve el WhatsApp del organizador (`wa.me`). Sin chat propio.
+- **Sin dependencia de la reserva.** El partido lleva el sello "Reservada en TurnoGol" si el organizador tiene la reserva; si no, declara que tiene la cancha.
+- **Perfil:** nombre corto, foto opcional, posición, zona de una lista cerrada y la carrera. Posición, zona y carrera las ve solo el organizador, dentro del partido. Nombre corto y foto los ve además quien tenga el link y sesión.
+- **Niveles:** Tranqui · Parejo · Picante.
+- **Bans:** frenan RIVAL el ban global y el manual del complejo. Los softbans automáticos no.
+- **Moderación:** denuncias con motivos cerrados y ocultamiento automático con 3.
+- **Alertas:** por mail, con opt-in por complejo.
+- Va detrás del flag `rival`, global en `false` hasta que el dueño lo prenda. **Sin umbral de reversión:** la revisión a 30 días elige la próxima ola. Roadmap: `docs/planning/2026-10-rival-ideas.md` §5.
 
 ### Portal: restricciones
 
 - Alcance del rediseño (F3): home, `/explorar`, página del complejo, reservar, reserva confirmada, pago pendiente y error, `/ingresar`, `/verify`, `/aceptar-terminos`, `/mis-reservas`, `/perfil` y `/configuracion`. No cambian el panel, el login y el alta del staff (`/login`, `/register`, recuperación de contraseña), `/para-complejos`, `/precios` ni la lógica de reserva, seña y MercadoPago.
 - Todo funciona con los precios ocultos.
 - Cuentas separadas (F5): una cuenta de complejo o de super admin no puede ser jugador con el mismo mail. El mensaje lo dice así y ofrece entrar con otra cuenta de Google o con el email.
-- Sin puntajes entre personas ni rankings. Sin red social ni feed, sin pagos entre jugadores y sin app nativa (F4, "Lo que sigue congelado").
+- Sin puntajes ni reseñas entre personas y sin texto libre sobre personas (Ley 25.326). RIVAL v1 sale sin rankings y sin feed, por su spec. Sin billetera ni pagos entre jugadores (veto de `CLAUDE.md`). Un ranking, un feed o una app nativa entran solo con decisión escrita del dueño.
 - El jugador no recibe push: existe solo para el dueño del complejo.
 - La reserva no lleva QR: no sirve para nada (el founder, 2026-10-15). Se sacó de la pantalla de reserva confirmada y del comprobante en #423.
-- Vocabulario de pantalla hoy: Explorar, Reservas (Mis reservas), Cuenta, Ingresar, complejo, cancha, turno, reserva, seña, "Fútbol 5". RIVAL: "Me falta 1", "Busco arquero", "Busco rival".
+- Vocabulario de pantalla hoy: Explorar, Reservas (Mis reservas), Cuenta, Ingresar, complejo, cancha, turno, reserva, seña, "Fútbol 5". RIVAL: "Voy", "Estoy adentro", "Faltan 3" / "Falta 1", "Se busca arquero", "Busca rival", "El banco", "Se juega", "Se cayó", "Donde me pongan".
 
 ### Portal: sin decidir
 
-- La spec de RIVAL, con el dueño: los campos de una publicación, si el tablón se ve sin entrar, qué se muestra del organizador, si el teléfono es obligatorio, cómo se dice el lugar, formatos, niveles y cupos, vencimiento y tope, alertas, moderación y textos legales. El relevamiento suma cuatro: qué mide el éxito del piloto y su umbral de reversión, qué pasa cuando alguien se baja, qué pasa con las publicaciones sin cancha confirmada y si el nivel se declara o se infiere.
+- Los textos legales de RIVAL: la spec trae borradores (§10) y el dueño los valida con asesoría antes de prender el flag.
 - Si un complejo puede impedir que se cancele tarde: es una regla nueva y no es urgente.
 - Si "Continuar con Google" anda desde los navegadores internos de Instagram y WhatsApp.
 
@@ -183,8 +188,9 @@ Todo lo que sigue sale de 8 días de producción (14 al 22 de septiembre de 2026
 - `docs/decisions/2026-10-14-foco-jugador-rival.md`: el foco en el jugador, F1 a F5.
 - `docs/planning/2026-10-14-portal-jugador-linea-base.md`: cuánto cuesta reservar hoy, contado en el código (pantallas, toques, campos, saltos y 70 textos de error y de estado). Es el "antes" del rediseño.
 - `docs/planning/2026-10-rival-benchmark.md`: cómo completan un partido 12 plataformas (Falta Uno, Juol, Timpik, CanchaFija, ATC, Arqueros Ya y otras), con 23 fuentes leídas desde afuera.
-- `docs/gtm/ejecucion/10-aprendizajes.md`, 2026-10-14: lo que pidió el dueño de El Vagón (un perfil, "me falta 1", "busco rival" y "busco arquero"), el pedido de ocultar precios y los dos fallos del demo.
-- Lo que no hay y no se inventa: reservas online reales, jugadores entrevistados, cuántos llegan por el link y cuántos por la búsqueda, desde qué navegador, y nadie usando RIVAL. Tampoco testimonios de jugadores, ni cupos, confirmados o publicaciones de ejemplo que pasen por reales.
+- `docs/planning/2026-10-rival-ideas.md`: ideas de convocatoria, tablón y crecimiento de otras plataformas, y el roadmap de RIVAL por olas.
+- `docs/gtm/ejecucion/10-aprendizajes.md`, 2026-10-14: lo que pidió el dueño de El Vagón (un perfil, "me falta 1", "busco rival" y "busco arquero"), el pedido de ocultar precios y los dos fallos del demo. Y 2026-10-16: las primeras 9 reservas online.
+- Lo que no hay y no se inventa: volumen sostenido de reservas online, jugadores entrevistados, cuántos llegan por el link y cuántos por la búsqueda, desde qué navegador, y nadie usando RIVAL. Tampoco testimonios de jugadores, ni cupos, confirmados o publicaciones de ejemplo que pasen por reales.
 
 **Panel**
 

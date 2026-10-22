@@ -17,7 +17,7 @@
 ## Qué sigue vigente
 
 - Contraste AA en claro y en oscuro (borde de campo `border-input` a 3:1, foco visible), aunque el look vuelva.
-- Los precios ocultos, los vetos de producto de `CLAUDE.md` y el feature freeze.
+- Los precios ocultos, los vetos de producto de `CLAUDE.md` y el feature freeze. (El freeze se levantó el 2026-10-22: `docs/decisions/2026-10-22-se-levanta-el-freeze.md`.)
 
 ## Fases
 

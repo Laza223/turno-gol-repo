@@ -19,7 +19,7 @@ const read = (rel: string) => readFileSync(path.join(projectRoot, rel), 'utf8')
  * sin comentarios ni espacios, con `!important`. Si se cambian tokens del panel A PROPÓSITO, se
  * actualiza este hash en el mismo PR (el mensaje del test imprime el valor nuevo).
  */
-const PANEL_TOKENS_SHA256 = 'a5e06e884563a438cc6b90cfd00b99dd67460c9211224f47df8e83b0b172b154'
+const PANEL_TOKENS_SHA256 = 'b7cf114bc1dd3d4f6e4c808d7fe464dc7ee495392e260ee74bf0a376d65e4da5'
 
 const PANEL_SELECTORS = [':root', '.dark', '.dark-surface']
 

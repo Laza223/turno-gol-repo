@@ -20,6 +20,8 @@ const buttonVariants = cva(
           'bg-destructive text-destructive-foreground shadow-md shadow-red-600/20 hover:bg-destructive/90 hover:-translate-y-0.5',
         outline:
           'border border-input bg-card text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground',
+        // TurnoGol Plus (lo pago con IA): violeta, ver DESIGN.md.
+        plus: 'bg-plus text-plus-foreground shadow-md shadow-plus/20 hover:bg-plus/90 hover:-translate-y-0.5 disabled:translate-y-0 disabled:shadow-none',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
         ghost: 'text-foreground hover:bg-accent hover:text-accent-foreground',
         link: 'text-emerald-700 dark:text-emerald-400 underline-offset-4 hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline',

@@ -43,7 +43,7 @@ export default async function SuperAdminWhatsappPage() {
         subtitle="Cuánto consume y cómo anda en cada complejo."
         icon={
           <MessageCircle
-            className="h-6 w-6 text-emerald-700 dark:text-emerald-400"
+            className="h-6 w-6 text-violet-700 dark:text-violet-300"
             aria-hidden="true"
           />
         }

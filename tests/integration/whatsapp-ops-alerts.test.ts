@@ -1,5 +1,7 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { closeSql, getSql, getWorkerDb } from '@/shared/db/client'
+import { clearFeatureFlagCache } from '@/shared/feature-flags'
+import { artDateOf } from '@/shared/time/art-date'
 import {
   resetEmailProvider,
   setEmailProvider,
@@ -7,6 +9,10 @@ import {
 } from '@/modules/notifications/email.provider'
 import { monthWindowArt } from '@/modules/super-admin/whatsapp-monitor.service'
 import { runWhatsappOpsAlerts } from '@/modules/super-admin/whatsapp-ops-alerts.service'
+import {
+  markWhatsappDisconnected,
+  restoreWhatsappConnection,
+} from '@/modules/whatsapp-bot/whatsapp-bot.connection'
 import {
   cleanupAll,
   createTestSystemAdmin,
@@ -20,6 +26,9 @@ import { insertWhatsappChat, insertWhatsappConnection } from '../helpers/factori
  * Cron `whatsapp-ops-alerts`: un mail por clave (dedupe en `ops_alerts`), la
  * clave se libera si el envío falla, y los destinatarios son los super admins
  * activos. Los umbrales de mensajes usan el mes ART real (`new Date()`).
+ *
+ * El health de los números va con `fetch` mockeado: nunca contra la API real
+ * de Kapso.
  */
 
 type Sent = Parameters<EmailProvider['send']>[0]
@@ -201,5 +210,320 @@ describe('runWhatsappOpsAlerts', () => {
 
     await runWhatsappOpsAlerts(getWorkerDb())
     expect(sent).toHaveLength(1)
+  })
+})
+
+describe('runWhatsappOpsAlerts: salud de los números (Kapso mockeado)', () => {
+  const APP_URL = 'https://app.test.local'
+  const WEBHOOK_URL = `${APP_URL}/api/webhooks/whatsapp`
+  const fetchMock = vi.fn<typeof fetch>()
+
+  function json(body: unknown, status = 200): Response {
+    return new Response(JSON.stringify(body), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
+
+  const DISCONNECTED = {
+    status: 'unhealthy',
+    checks: { phone_number_connection: { passed: false, details: { status: 'DISCONNECTED' } } },
+  }
+  const HEALTHY = {
+    status: 'healthy',
+    checks: { phone_number_connection: { passed: true, details: { status: 'CONNECTED' } } },
+  }
+
+  const NOT_FOUND = () => json({ error: 'not found' }, 404)
+
+  /** Cada llamada arma su Response: un body se lee una sola vez. */
+  function kapso(routes: {
+    health: () => Response
+    webhooks?: () => Response
+    number?: () => Response
+  }) {
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.endsWith('/health')) return routes.health()
+      if (url.endsWith('/webhooks') && routes.webhooks) return routes.webhooks()
+      if (/\/whatsapp\/phone_numbers\/[^/]+$/.test(url) && routes.number) return routes.number()
+      throw new Error(`fetch inesperado: ${url}`)
+    })
+  }
+
+  function healthCalls(): number {
+    return fetchMock.mock.calls.filter(([u]) => String(u).endsWith('/health')).length
+  }
+
+  async function enablePlus(tenantId: string) {
+    await getSql()`
+      INSERT INTO feature_flags (key, value, tenant_id) VALUES ('whatsapp_bot', true, ${tenantId})
+    `
+  }
+
+  async function addPlusTenant() {
+    const other = await createTestTenant(getSql())
+    await insertWhatsappConnection(getSql(), { tenantId: other.id })
+    await enablePlus(other.id)
+  }
+
+  async function connectionStatus(tenantId: string): Promise<string | undefined> {
+    const rows = await getSql()<{ status: string }[]>`
+      SELECT status FROM whatsapp_connections WHERE tenant_id = ${tenantId}
+    `
+    return rows[0]?.status
+  }
+
+  async function setDisconnected(tenantId: string) {
+    await getSql()`
+      UPDATE whatsapp_connections SET status = 'disconnected' WHERE tenant_id = ${tenantId}
+    `
+  }
+
+  async function audits(tenantId: string) {
+    return getSql()<{ action: string; metadata: Record<string, unknown> | null }[]>`
+      SELECT action, metadata FROM audit_logs
+      WHERE tenant_id = ${tenantId} AND action LIKE 'whatsapp.%'
+      ORDER BY created_at
+    `
+  }
+
+  beforeEach(async () => {
+    clearFeatureFlagCache()
+    fetchMock.mockReset()
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubEnv('KAPSO_API_KEY', 'k-test')
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', APP_URL)
+    await enablePlus(tenant.id)
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
+  })
+
+  it('sin TurnoGol Plus no consulta a Kapso', async () => {
+    await getSql()`DELETE FROM feature_flags WHERE tenant_id = ${tenant.id}`
+    kapso({ health: () => json(DISCONNECTED) })
+    await runWhatsappOpsAlerts(getWorkerDb())
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(sent).toEqual([])
+  })
+
+  it('desconectado: un mail por día con el nombre del complejo, y queda disconnected', async () => {
+    kapso({ health: () => json(DISCONNECTED) })
+    await runWhatsappOpsAlerts(getWorkerDb())
+
+    expect(sent).toHaveLength(1)
+    expect(sent[0]?.subject).toBe(`WhatsApp de ${tenant.name}: el número se desconectó`)
+    expect(sent[0]?.text).toContain('El asistente está prendido')
+    expect(sent[0]?.text).toContain('Ajustes > Asistente de WhatsApp')
+    expect(await alertKeys(getSql())).toEqual([
+      `wa-numero-caido:${tenant.id}:${artDateOf(new Date())}`,
+    ])
+    expect(await connectionStatus(tenant.id)).toBe('disconnected')
+    expect(await audits(tenant.id)).toEqual([
+      {
+        action: 'whatsapp.disconnected',
+        metadata: { phoneNumberId: `pn-${tenant.id}`, cause: 'desconectado' },
+      },
+    ])
+
+    // Sigue caído: se vuelve a mirar, pero el mismo día no hay otro mail ni otro audit.
+    await runWhatsappOpsAlerts(getWorkerDb())
+    expect(healthCalls()).toBe(2)
+    expect(sent).toHaveLength(1)
+    expect(await audits(tenant.id)).toHaveLength(1)
+  })
+
+  it('el mail dice si el asistente está apagado', async () => {
+    await getSql()`UPDATE whatsapp_connections SET enabled = false WHERE tenant_id = ${tenant.id}`
+    kapso({ health: () => json(DISCONNECTED) })
+    await runWhatsappOpsAlerts(getWorkerDb())
+    expect(sent[0]?.text).toContain('El asistente está apagado')
+  })
+
+  it.each([
+    ['404 (y el número tampoco aparece)', NOT_FOUND, 'no_existe'],
+    [
+      'acceso perdido',
+      () => json({ status: 'unhealthy', checks: { phone_number_access: { passed: false } } }),
+      'sin_acceso',
+    ],
+  ] as const)('%s: mail y disconnected', async (_label, health, cause) => {
+    kapso({ health, number: NOT_FOUND })
+    await runWhatsappOpsAlerts(getWorkerDb())
+    expect(sent).toHaveLength(1)
+    expect(await connectionStatus(tenant.id)).toBe('disconnected')
+    expect((await audits(tenant.id))[0]?.metadata).toMatchObject({ cause })
+  })
+
+  it('health 404 de un número que Kapso sí tiene: cambió la API, monitor ciego sin desconectar a nadie', async () => {
+    await addPlusTenant()
+    kapso({
+      health: NOT_FOUND,
+      number: () => json({ data: { id: `pn-${tenant.id}`, display_phone_number: '+54 9 11' } }),
+    })
+    await runWhatsappOpsAlerts(getWorkerDb())
+    expect(healthCalls()).toBe(1)
+    expect(sent).toHaveLength(1)
+    expect(sent[0]?.subject).toBe('No pudimos revisar los números de WhatsApp')
+    expect(await connectionStatus(tenant.id)).toBe('connected')
+    expect(await audits(tenant.id)).toEqual([])
+  })
+
+  it('si falla la escritura del estado, los mails del tick salen igual', async () => {
+    await addPlusTenant()
+    const sql = getSql()
+    await sql`
+      CREATE FUNCTION test_wa_update_falla() RETURNS trigger LANGUAGE plpgsql
+      AS $$ BEGIN RAISE EXCEPTION 'falla de prueba'; END $$
+    `
+    await sql`
+      CREATE TRIGGER test_wa_update_falla BEFORE UPDATE ON whatsapp_connections
+      FOR EACH ROW EXECUTE FUNCTION test_wa_update_falla()
+    `
+    try {
+      kapso({ health: () => json(DISCONNECTED) })
+      await runWhatsappOpsAlerts(getWorkerDb())
+      expect(healthCalls()).toBe(2)
+      expect(sent).toHaveLength(2)
+      expect(await connectionStatus(tenant.id)).toBe('connected')
+    } finally {
+      await sql`DROP TRIGGER test_wa_update_falla ON whatsapp_connections`
+      await sql`DROP FUNCTION test_wa_update_falla()`
+    }
+  })
+
+  it('marcar desconectado no pisa la conexión si el dueño ya conectó otro número', async () => {
+    const flipped = await markWhatsappDisconnected(
+      getWorkerDb(),
+      { tenantId: tenant.id, phoneNumberId: 'pn-viejo' },
+      'desconectado',
+    )
+    expect(flipped).toBe(false)
+    expect(await connectionStatus(tenant.id)).toBe('connected')
+    expect(await audits(tenant.id)).toEqual([])
+  })
+
+  it('restaurar una conexión que ya está connected no hace nada ni audita', async () => {
+    kapso({ health: () => json(HEALTHY), webhooks: () => json({ data: [{ url: WEBHOOK_URL }] }) })
+    const flipped = await restoreWhatsappConnection(getWorkerDb(), {
+      tenantId: tenant.id,
+      phoneNumberId: `pn-${tenant.id}`,
+    })
+    expect(flipped).toBe(false)
+    expect(await audits(tenant.id)).toEqual([])
+  })
+
+  it('bloqueado: mail, pero la conexión queda connected (no se arregla reconectando)', async () => {
+    kapso({
+      health: () =>
+        json({ status: 'unhealthy', checks: { messaging_health: { overall_status: 'BLOCKED' } } }),
+    })
+    await runWhatsappOpsAlerts(getWorkerDb())
+    expect(sent).toHaveLength(1)
+    expect(sent[0]?.subject).toContain('Meta frenó los envíos')
+    expect(sent[0]?.text).toContain('saldo de Kapso')
+    expect(await connectionStatus(tenant.id)).toBe('connected')
+    expect(await audits(tenant.id)).toEqual([])
+  })
+
+  it.each([
+    [
+      'degraded',
+      () =>
+        json({ status: 'degraded', checks: { messaging_health: { overall_status: 'LIMITED' } } }),
+    ],
+    ['status error', () => json({ status: 'error', error: 'Service temporarily unavailable' })],
+    ['500', () => json({ error: 'boom' }, 500)],
+    [
+      'timeout',
+      (): Response => {
+        throw new Error('timeout')
+      },
+    ],
+  ] as const)('%s: sin mail y sin tocar la conexión', async (_label, health) => {
+    kapso({ health })
+    await runWhatsappOpsAlerts(getWorkerDb())
+    expect(sent).toEqual([])
+    expect(await alertKeys(getSql())).toEqual([])
+    expect(await connectionStatus(tenant.id)).toBe('connected')
+  })
+
+  it('si Kapso falla, las alertas de conteo salen igual', async () => {
+    await seedMonthMessages(getSql(), 1600)
+    kapso({ health: () => json({ error: 'boom' }, 500) })
+    await runWhatsappOpsAlerts(getWorkerDb())
+    expect(sent.map((s) => s.subject)).toEqual([
+      'Bot de WhatsApp: llegó al 80% de los mensajes del mes',
+    ])
+  })
+
+  it.each([
+    ['401 (clave rechazada)', () => json({ error: 'unauthorized' }, 401), 'rechazó la clave'],
+    ['respuesta ilegible', () => json({ status: 'raro' }), 'no entendemos'],
+  ] as const)('%s: corta el tick y un solo mail por día', async (_label, health, line) => {
+    await addPlusTenant()
+    kapso({ health })
+
+    await runWhatsappOpsAlerts(getWorkerDb())
+    expect(healthCalls()).toBe(1)
+    expect(sent).toHaveLength(1)
+    expect(sent[0]?.subject).toBe('No pudimos revisar los números de WhatsApp')
+    expect(sent[0]?.text).toContain(line)
+    expect(await alertKeys(getSql())).toEqual([`kapso-health:${artDateOf(new Date())}`])
+
+    await runWhatsappOpsAlerts(getWorkerDb())
+    expect(sent).toHaveLength(1)
+  })
+
+  it('sin KAPSO_API_KEY avisa que el monitor está ciego, sin llamar a la red', async () => {
+    vi.stubEnv('KAPSO_API_KEY', '')
+    kapso({ health: () => json(HEALTHY) })
+    await runWhatsappOpsAlerts(getWorkerDb())
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(sent[0]?.text).toContain('Falta KAPSO_API_KEY')
+  })
+
+  it('429: corta el tick sin mail (el límite es por proyecto)', async () => {
+    await addPlusTenant()
+    kapso({ health: () => json({ error: 'rate limited' }, 429) })
+    await runWhatsappOpsAlerts(getWorkerDb())
+    expect(healthCalls()).toBe(1)
+    expect(sent).toEqual([])
+  })
+
+  it('vuelve solo: un disconnected que da sano, con el webhook suscrito, vuelve a connected', async () => {
+    await setDisconnected(tenant.id)
+    kapso({
+      health: () => json(HEALTHY),
+      webhooks: () => json({ data: [{ url: WEBHOOK_URL }] }),
+    })
+    await runWhatsappOpsAlerts(getWorkerDb())
+    expect(sent).toEqual([])
+    expect(await connectionStatus(tenant.id)).toBe('connected')
+    expect(await audits(tenant.id)).toEqual([
+      { action: 'whatsapp.reconnected', metadata: { phoneNumberId: `pn-${tenant.id}` } },
+    ])
+  })
+
+  it('sin nuestro webhook no vuelve solo: sería un bot mudo, que reconecte el dueño', async () => {
+    await setDisconnected(tenant.id)
+    kapso({
+      health: () => json(HEALTHY),
+      webhooks: () => json({ data: [{ url: 'https://otra.app/hook' }] }),
+    })
+    await runWhatsappOpsAlerts(getWorkerDb())
+    expect(await connectionStatus(tenant.id)).toBe('disconnected')
+    expect(await audits(tenant.id)).toEqual([])
+  })
+
+  it('un disconnected que sigue caído manda su mail del día y no se audita de nuevo', async () => {
+    await setDisconnected(tenant.id)
+    kapso({ health: () => json(DISCONNECTED) })
+    await runWhatsappOpsAlerts(getWorkerDb())
+    expect(sent).toHaveLength(1)
+    expect(await audits(tenant.id)).toEqual([])
   })
 })

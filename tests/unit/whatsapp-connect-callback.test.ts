@@ -5,7 +5,11 @@ vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: vi.fn() }))
 vi.mock('@/modules/staff/staff.service', () => ({ getStaffRole: vi.fn() }))
 vi.mock('@/modules/staff/guards', () => ({ lifecycleGateForStaff: vi.fn() }))
 vi.mock('@/modules/tenants/tenant.service', () => ({ getStaffTenant: vi.fn() }))
-vi.mock('@/modules/whatsapp-bot/whatsapp-bot.connection', () => ({
+vi.mock('@/modules/whatsapp-bot/whatsapp-bot.connection', async (importOriginal) => ({
+  // La traducción del `error_code` es la real: es lo que se prueba acá.
+  connectErrorFromKapso: (
+    await importOriginal<typeof import('@/modules/whatsapp-bot/whatsapp-bot.connection')>()
+  ).connectErrorFromKapso,
   getWhatsappPlusState: vi.fn(),
   registerWhatsappConnection: vi.fn(),
 }))
@@ -87,6 +91,36 @@ describe('GET /api/whatsapp/connect/callback', () => {
     '?phone_number_id=pn-1%2F..%2Fwebhooks',
   ])('si Kapso volvió con fallo o sin número (%s) es conexion_incompleta', async (qs) => {
     expect(location(await get(qs))).toBe(`${APP_URL}/settings/whatsapp?error=conexion_incompleta`)
+    expect(registerWhatsappConnection).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['facebook_auth_failed', 'facebook_cancelado'],
+    ['phone_verification_failed', 'numero_no_verificado'],
+    ['waba_limit_reached', 'limite_de_cuentas'],
+    ['token_exchange_failed', 'meta_fallo'],
+    ['link_expired', 'link_vencido'],
+    ['already_used', 'link_usado'],
+  ])('el error_code %s de Kapso vuelve como %s', async (kapsoCode, ours) => {
+    expect(location(await get(`?setup_link_id=s1&fallo=1&error_code=${kapsoCode}`))).toBe(
+      `${APP_URL}/settings/whatsapp?error=${ours}`,
+    )
+    expect(registerWhatsappConnection).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    '?error_code=toString',
+    '?error_code=__proto__',
+    '?error_code=%3Cscript%3Ealert(1)%3C%2Fscript%3E',
+    '?error_code=link_vencido',
+  ])('un error_code que no es de Kapso (%s) no se refleja: conexion_incompleta', async (qs) => {
+    expect(location(await get(qs))).toBe(`${APP_URL}/settings/whatsapp?error=conexion_incompleta`)
+  })
+
+  it('con error_code no registra aunque venga un phone_number_id', async () => {
+    expect(location(await get('?error_code=link_expired&phone_number_id=pn-1'))).toBe(
+      `${APP_URL}/settings/whatsapp?error=link_vencido`,
+    )
     expect(registerWhatsappConnection).not.toHaveBeenCalled()
   })
 

@@ -76,23 +76,26 @@ export default async function WhatsappSettingsPage({
           </>
         ) : (
           <div className="space-y-4">
-            {connection ? (
+            {connection && (
               <p role="status" className="text-sm text-amber-700 dark:text-amber-400">
                 Tu número se desconectó. Volvé a conectarlo para que el asistente siga contestando.
               </p>
-            ) : (
-              <div className="space-y-1 text-sm text-muted-foreground">
-                <p>
-                  Necesitás la app WhatsApp Business actualizada en tu celular y tu cuenta de
-                  Facebook. Tarda 1 minuto.
-                </p>
-                <p>
-                  Cuando Meta te pregunte, elegí tu número, no &quot;usar un nombre con número
-                  virtual&quot;.
-                </p>
-                <p>{KEEP_ALIVE_TIP}</p>
-              </div>
             )}
+            <div className="space-y-2 text-sm">
+              <p className="font-medium text-foreground">Antes de conectar (tarda 1 minuto):</p>
+              <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
+                <li>Usá la app WhatsApp Business actualizada, no el WhatsApp común.</li>
+                <li>Entrá con la cuenta de Facebook que maneja tu negocio.</li>
+                <li>
+                  Si en WhatsApp Business tenés prendidas las etiquetas automáticas o el agente de
+                  IA de Meta, apagalos.
+                </li>
+                <li>
+                  Cuando Meta te pregunte, elegí tu número. No elijas «usar un nombre visible con
+                  número virtual».
+                </li>
+              </ol>
+            </div>
             <ConnectWhatsappButtons
               connectLabel={connection ? 'Volver a conectar' : 'Conectar mi WhatsApp'}
               startAction={startWhatsappConnectAction}

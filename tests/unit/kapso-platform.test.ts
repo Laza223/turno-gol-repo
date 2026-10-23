@@ -6,6 +6,7 @@ import {
   findKapsoCustomer,
   findOrCreateKapsoCustomer,
   getKapsoPhoneNumber,
+  getKapsoPhoneNumberHealth,
   listKapsoPhoneNumbers,
 } from '@/lib/kapso/platform'
 
@@ -197,6 +198,93 @@ describe('kapso platform', () => {
   it('un fallo de red o timeout es KapsoPlatformError con status 0', async () => {
     fetchMock.mockRejectedValueOnce(new Error('timeout'))
     await expect(findKapsoCustomer('t')).rejects.toMatchObject({ status: 0 })
+  })
+
+  describe('getKapsoPhoneNumberHealth (ejemplos de la doc de Kapso)', () => {
+    it('desconectado: lee la conexión de Meta del check, sin envoltorio `data`', async () => {
+      fetchMock.mockResolvedValueOnce(
+        json({
+          status: 'unhealthy',
+          timestamp: '2026-09-17T09:12:00Z',
+          checks: {
+            phone_number_access: { passed: true },
+            phone_number_connection: { passed: false, details: { status: 'DISCONNECTED' } },
+            messaging_health: { passed: true, overall_status: 'AVAILABLE' },
+            webhook_verified: { passed: true },
+          },
+        }),
+      )
+      expect(await getKapsoPhoneNumberHealth('pn 1')).toEqual({
+        status: 'unhealthy',
+        connection: 'DISCONNECTED',
+        messaging: 'AVAILABLE',
+        accessOk: true,
+        failingChecks: ['phone_number_connection'],
+      })
+      expect(call(0).url).toBe(`${BASE}/whatsapp/phone_numbers/pn%201/health`)
+    })
+
+    it('token inválido: acceso en falso y la lista de checks que fallan', async () => {
+      fetchMock.mockResolvedValueOnce(
+        json({
+          status: 'unhealthy',
+          retry_after: '2025-01-20T18:27:45Z',
+          checks: {
+            phone_number_access: { passed: false, error: 'Invalid OAuth access token' },
+            messaging_health: { passed: false, error: 'Invalid OAuth access token' },
+            webhook_subscription: { passed: false },
+            webhook_verified: { passed: true, verified_at: '2025-01-10T08:15:30Z' },
+          },
+        }),
+      )
+      expect(await getKapsoPhoneNumberHealth('pn-1')).toMatchObject({
+        accessOk: false,
+        connection: null,
+        messaging: null,
+        failingChecks: ['phone_number_access', 'messaging_health', 'webhook_subscription'],
+      })
+    })
+
+    it('bloqueado: el estado de mensajería sale de `overall_status`', async () => {
+      fetchMock.mockResolvedValueOnce(
+        json({
+          status: 'unhealthy',
+          checks: { messaging_health: { passed: false, overall_status: 'BLOCKED' } },
+        }),
+      )
+      expect((await getKapsoPhoneNumberHealth('pn-1'))?.messaging).toBe('BLOCKED')
+    })
+
+    it('`status: error` sin checks', async () => {
+      fetchMock.mockResolvedValueOnce(
+        json({ status: 'error', error: 'Service temporarily unavailable' }),
+      )
+      expect(await getKapsoPhoneNumberHealth('pn-1')).toEqual({
+        status: 'error',
+        connection: null,
+        messaging: null,
+        accessOk: null,
+        failingChecks: [],
+      })
+    })
+
+    it('404 es null: Kapso ya no tiene el número', async () => {
+      fetchMock.mockResolvedValueOnce(json({ error: 'not found' }, 404))
+      expect(await getKapsoPhoneNumberHealth('pn-1')).toBeNull()
+    })
+
+    it.each([429, 401])('un %i es KapsoPlatformError con el status', async (status) => {
+      fetchMock.mockResolvedValueOnce(json({ error: 'x' }, status))
+      await expect(getKapsoPhoneNumberHealth('pn-1')).rejects.toMatchObject({ status })
+    })
+
+    it('un `status` que no conocemos es KapsoPlatformError con el status 2xx', async () => {
+      fetchMock.mockResolvedValueOnce(json({ status: 'raro' }))
+      await expect(getKapsoPhoneNumberHealth('pn-1')).rejects.toMatchObject({
+        name: 'KapsoPlatformError',
+        status: 200,
+      })
+    })
   })
 
   it('sin KAPSO_API_KEY falla sin llamar a la red', async () => {

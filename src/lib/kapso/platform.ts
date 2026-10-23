@@ -39,6 +39,37 @@ const phoneNumberSchema = z
 
 const webhookSchema = z.object({ url: z.string().nullish() }).loose()
 
+const healthCheckSchema = z
+  .object({
+    passed: z.boolean().nullish(),
+    overall_status: z.string().nullish(),
+    details: z
+      .object({ status: z.string().nullish(), can_send_message: z.string().nullish() })
+      .loose()
+      .nullish(),
+  })
+  .loose()
+
+// Sin el envoltorio `data` del resto de la plataforma: así lo documenta Kapso.
+const healthSchema = z
+  .object({
+    status: z.enum(['healthy', 'degraded', 'unhealthy', 'error']),
+    checks: z.record(z.string(), healthCheckSchema).nullish(),
+  })
+  .loose()
+
+export type KapsoNumberHealth = {
+  status: 'healthy' | 'degraded' | 'unhealthy' | 'error'
+  /** `CONNECTED` / `DISCONNECTED` / `UNKNOWN` según Meta; null si no vino el check. */
+  connection: string | null
+  /** `AVAILABLE` / `LIMITED` / `BLOCKED`; null si no vino el check. */
+  messaging: string | null
+  /** false: Kapso no pudo leer el número en Meta (token vencido o revocado). */
+  accessOk: boolean | null
+  /** Nombres de los checks con `passed: false`, para el log. */
+  failingChecks: string[]
+}
+
 export type KapsoPhoneNumber = {
   phoneNumberId: string
   businessAccountId: string | null
@@ -171,6 +202,34 @@ export async function getKapsoPhoneNumber(phoneNumberId: string): Promise<KapsoP
   return res ? toPhoneNumber(res.data) : null
 }
 
+/**
+ * Salud del número según Meta y Kapso, o null si Kapso ya no lo tiene. Kapso
+ * cachea la respuesta 3 min por número y limita a 5 por segundo y 60 por
+ * minuto por proyecto (un 429 llega sin llamar a Meta).
+ */
+export async function getKapsoPhoneNumberHealth(
+  phoneNumberId: string,
+): Promise<KapsoNumberHealth | null> {
+  const res = await kapsoRequest(
+    `/whatsapp/phone_numbers/${encodeURIComponent(phoneNumberId)}/health`,
+    { schema: healthSchema, nullOn404: true },
+  )
+  if (!res) return null
+  const checks = res.checks ?? {}
+  return {
+    status: res.status,
+    connection: checks.phone_number_connection?.details?.status ?? null,
+    messaging:
+      checks.messaging_health?.overall_status ??
+      checks.messaging_health?.details?.can_send_message ??
+      null,
+    accessOk: checks.phone_number_access?.passed ?? null,
+    failingChecks: Object.entries(checks)
+      .filter(([, c]) => c.passed === false)
+      .map(([name]) => name),
+  }
+}
+
 export async function listKapsoPhoneNumbers(customerId: string): Promise<KapsoPhoneNumber[]> {
   const { data } = await call(
     `/whatsapp/phone_numbers?customer_id=${encodeURIComponent(customerId)}`,
@@ -180,6 +239,22 @@ export async function listKapsoPhoneNumbers(customerId: string): Promise<KapsoPh
   )
   // Mismo criterio que findKapsoCustomer: no confiar solo en el filtro del servidor.
   return data.map(toPhoneNumber).filter((n) => n.customerId === customerId)
+}
+
+function numberWebhooksPath(phoneNumberId: string): string {
+  return `/whatsapp/phone_numbers/${encodeURIComponent(phoneNumberId)}/webhooks`
+}
+
+/** ¿El número tiene un webhook con esa URL? */
+export async function hasKapsoMessageWebhook(params: {
+  phoneNumberId: string
+  url: string
+}): Promise<boolean> {
+  // La lista del número (no la del proyecto entero, que crece con cada complejo y pagina).
+  const { data } = await call(numberWebhooksPath(params.phoneNumberId), {
+    schema: z.object({ data: z.array(webhookSchema) }).loose(),
+  })
+  return data.some((w) => w.url === params.url)
 }
 
 /**
@@ -192,14 +267,9 @@ export async function ensureKapsoMessageWebhook(params: {
   url: string
   secret: string
 }): Promise<void> {
-  // La lista del número (no la del proyecto entero, que crece con cada complejo y pagina).
-  const path = `/whatsapp/phone_numbers/${encodeURIComponent(params.phoneNumberId)}/webhooks`
-  const { data } = await call(path, {
-    schema: z.object({ data: z.array(webhookSchema) }).loose(),
-  })
-  if (data.some((w) => w.url === params.url)) return
+  if (await hasKapsoMessageWebhook(params)) return
 
-  await call(path, {
+  await call(numberWebhooksPath(params.phoneNumberId), {
     redact: params.secret,
     method: 'POST',
     body: {

@@ -15,6 +15,7 @@ import {
   disablePlus,
   enablePlus,
   ensurePlusFlagOn,
+  getBotFlagOn,
   getPlusAdminState,
   startPlusProratePayment,
   type PlusActor,
@@ -834,6 +835,14 @@ describe('estado de Plus para el panel y la facturación', () => {
     const manual = await seed(getSql(), 'active')
     await setOverrideBySql(manual, true)
     expect((await getPlusAdminState(manual)).kind).toBe('manual_override')
+  })
+
+  it('sin suscripción: getBotFlagOn lee el override real (super-admin no dice "Apagado")', async () => {
+    const t = (await createTestTenant(getSql())).id
+    expect(await getBotFlagOn(t)).toBe(false)
+
+    await setOverrideBySql(t, true)
+    expect(await getBotFlagOn(t)).toBe(true)
   })
 
   it('getSubscriptionState expone Plus (enabled, precio efectivo, acceso, cotización)', async () => {

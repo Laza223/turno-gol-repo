@@ -23,6 +23,7 @@ const meta = {
     mode: 'activate',
     onlineCourts: 1,
     billedCourts: 1,
+    plusPerCourtCents: 0,
   },
 } satisfies Meta<typeof CuotaSection>
 

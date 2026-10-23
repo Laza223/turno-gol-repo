@@ -4,7 +4,7 @@ import { ArrowLeft, Building2 } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { ScrollTabs } from '@/components/ui/scroll-tabs'
 import { requireSystemAdmin } from '@/modules/auth/system-admin.guards'
-import { getPlusAdminState } from '@/modules/billing/plus.service'
+import { getBotFlagOn, getPlusAdminState } from '@/modules/billing/plus.service'
 import { PLUS_LIST_PER_COURT_CENTS, effectivePlusPerCourtCents } from '@/modules/billing/pricing'
 import {
   getTenantActivity,
@@ -56,8 +56,8 @@ const TAB_LABELS: Record<Tab, string> = {
 
 const ACTIVITY_PAGE_SIZE = 25
 
-const PLUS_STATE_OFF = {
-  kind: 'off',
+const PLUS_STATE_NO_SUBSCRIPTION = {
+  kind: 'no_subscription',
   pricePerCourtCents: null,
   effectivePerCourtCents: PLUS_LIST_PER_COURT_CENTS,
   accessUntil: null,
@@ -101,7 +101,8 @@ export default async function SuperAdminTenantDetailPage(props: {
       : null
 
   const { tenant } = detail
-  // Sin suscripción no hay Plus que mostrar (`getPlusAdminState` la exige).
+  // Sin suscripción no hay Plus que cobrar (`getPlusAdminState` la exige), pero
+  // el bot puede estar prendido por un override: se muestra el flag real.
   const plusAdmin =
     tab === 'resumen' && detail.subscription ? await getPlusAdminState(tenant.id) : null
   const plusState = plusAdmin
@@ -112,7 +113,10 @@ export default async function SuperAdminTenantDetailPage(props: {
         accessUntil: plusAdmin.accessUntil?.toISOString() ?? null,
         quote: plusAdmin.quote,
       }
-    : PLUS_STATE_OFF
+    : {
+        ...PLUS_STATE_NO_SUBSCRIPTION,
+        botOn: tab === 'resumen' ? await getBotFlagOn(tenant.id) : false,
+      }
 
   return (
     <div className="space-y-6">

@@ -811,13 +811,24 @@ async function sweepCourtsOverBilled(overBilledAlerted: Set<string>): Promise<nu
  * El flag del bot se prende despues del commit. Devuelve cuantos acredito.
  */
 async function sweepPlusProrate(): Promise<number> {
-  const pending = await getWorkerSql()<{ tenantId: string; quotedAt: Date | string | null }[]>`
-    SELECT tenant_id AS "tenantId", plus_prorate_quoted_at AS "quotedAt"
-    FROM tenant_subscriptions
-    WHERE plus_prorate_cents IS NOT NULL
-    ORDER BY updated_at ASC
-    LIMIT 200
-  `
+  type PendingQuote = { tenantId: string; quotedAt: Date | string | null }
+  let pending: PendingQuote[]
+  try {
+    pending = await getWorkerSql()<PendingQuote[]>`
+      SELECT tenant_id AS "tenantId", plus_prorate_quoted_at AS "quotedAt"
+      FROM tenant_subscriptions
+      WHERE plus_prorate_cents IS NOT NULL
+      ORDER BY updated_at ASC
+      LIMIT 200
+    `
+  } catch (err) {
+    // Que una lectura caída no corte el job: el chequeo de canchas va después.
+    logger.error('failed to load plus prorate quotes', {
+      module: 'reconcile-subscriptions',
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return 0
+  }
 
   let credited = 0
   for (const { tenantId, quotedAt } of pending) {

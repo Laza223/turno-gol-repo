@@ -64,8 +64,10 @@ type CuotaSectionProps = {
   /**
    * Plus por cancha que se está FACTURANDO hoy (`plus.enabled ? perCourtCents : 0`),
    * nunca el flag: el Plus es por cancha, así que cambiar las canchas mueve su monto.
+   * OBLIGATORIO a propósito: una pantalla que se olvide de pasarlo no compila, en
+   * vez de mostrar el monto sin Plus mientras el débito lo cobra (pasó en /reactivar).
    */
-  plusPerCourtCents?: number
+  plusPerCourtCents: number
 }
 
 type Phase = 'idle' | 'loading' | 'error' | 'done'
@@ -111,7 +113,7 @@ export function CuotaSection({
   pendingBilledCourts = null,
   periodEnd = null,
   billingCycle = 'monthly',
-  plusPerCourtCents = 0,
+  plusPerCourtCents,
 }: CuotaSectionProps) {
   const router = useRouter()
 

@@ -20,7 +20,9 @@ export type SetTenantPlusAction = (
  * viajan en ISO.
  */
 export type PlusToggleState = {
-  kind: 'off' | 'billed' | 'ending' | 'quote_pending' | 'manual_override'
+  kind: 'off' | 'billed' | 'ending' | 'quote_pending' | 'manual_override' | 'no_subscription'
+  /** Solo con `no_subscription`: el flag real del bot (puede estar prendido por un override). */
+  botOn?: boolean
   /** Precio especial cargado, o null (= sigue a la lista). Centavos. */
   pricePerCourtCents: number | null
   /** Lo que se está aplicando por cancha (especial o lista). Centavos. */
@@ -213,7 +215,18 @@ export function PlusToggle({ tenantId, state, action }: Props) {
         {state.kind === 'manual_override' && (
           <span className="text-sm font-medium text-foreground">Prendido a mano (sin cobro)</span>
         )}
+        {state.kind === 'no_subscription' && (
+          <span className="text-sm font-medium text-foreground">
+            Sin suscripción · bot {state.botOn ? 'prendido a mano (sin cobro)' : 'apagado'}
+          </span>
+        )}
       </div>
+
+      {state.kind === 'no_subscription' && (
+        <p className="text-xs text-muted-foreground">
+          Plus va en el débito del plan: se puede prender cuando el complejo tenga suscripción.
+        </p>
+      )}
 
       {state.kind === 'off' && offForm}
 

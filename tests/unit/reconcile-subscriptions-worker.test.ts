@@ -579,6 +579,20 @@ describe('reconcileSubscriptions — canchas por encima de lo facturado', () => 
       expect.objectContaining({ action: 'subscription.courts_over_billed', tenantId: 'tenant-b' }),
     )
   })
+  it('un fallo al leer las cotizaciones de Plus no frena el chequeo de canchas', async () => {
+    const stub = mockWorkerSql([], [], [], [], [], [fila()])
+    const base = stub.getMockImplementation()
+    stub.mockImplementation(async (strings: TemplateStringsArray, ...values: unknown[]) => {
+      if (Array.isArray(strings) && strings.join(' ').includes('plus_prorate_cents')) {
+        throw new Error('DB caída')
+      }
+      return base?.(strings, ...values)
+    })
+
+    await expect(reconcileSubscriptions()).resolves.toBe(0)
+
+    expect(mockSendOpsAlerts).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('reconcileSubscriptions en modo mock', () => {

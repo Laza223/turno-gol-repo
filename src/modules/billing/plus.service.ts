@@ -707,6 +707,27 @@ export type PlusAdminState = {
 }
 
 /**
+ * ¿El bot está prendido para el complejo? Mismo criterio que el loader de
+ * `feature-flags.ts`: el override del complejo gana al global. Sin cache: el
+ * panel tiene que mostrar la verdad.
+ */
+async function readBotFlagOn(tenantId: string, tx: DbTx): Promise<boolean> {
+  const flagRows = (await tx.execute(sql`
+    SELECT value FROM feature_flags
+    WHERE key = ${BOT_FEATURE_FLAG}
+      AND (tenant_id = ${tenantId}::uuid OR tenant_id IS NULL)
+    ORDER BY tenant_id NULLS LAST
+    LIMIT 1
+  `)) as unknown as Array<{ value: boolean }>
+  return flagRows[0]?.value === true
+}
+
+/** El flag del bot para un complejo SIN suscripción (super-admin no puede usar `getPlusAdminState`). */
+export async function getBotFlagOn(tenantId: string): Promise<boolean> {
+  return withTenantContext(tenantId, (tx) => readBotFlagOn(tenantId, tx))
+}
+
+/**
  * Estado de Plus de un complejo para el panel de super-admin. Orden de `kind`:
  * `plus_enabled` → billed; cotización → quote_pending; `plus_access_until` →
  * ending; flag en true → manual_override (bot prendido sin Plus en la
@@ -716,16 +737,7 @@ export async function getPlusAdminState(tenantId: string): Promise<PlusAdminStat
   return withTenantContext(tenantId, async (tx) => {
     const sub = await loadSub(tenantId, tx)
     if (!sub) throw new SubscriptionNotFoundError(tenantId)
-    // Mismo criterio que el loader de `feature-flags.ts`: el override del
-    // complejo gana al global. Sin cache: el panel tiene que mostrar la verdad.
-    const flagRows = (await tx.execute(sql`
-      SELECT value FROM feature_flags
-      WHERE key = ${BOT_FEATURE_FLAG}
-        AND (tenant_id = ${tenantId}::uuid OR tenant_id IS NULL)
-      ORDER BY tenant_id NULLS LAST
-      LIMIT 1
-    `)) as unknown as Array<{ value: boolean }>
-    const flagOn = flagRows[0]?.value === true
+    const flagOn = await readBotFlagOn(tenantId, tx)
 
     // Una cotización de un período que ya renovó está vencida: no es `quote_pending`.
     const quote =

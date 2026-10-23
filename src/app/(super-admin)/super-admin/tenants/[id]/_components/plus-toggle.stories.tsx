@@ -261,3 +261,46 @@ export const ErrorDelService: Story = {
     await expect(await canvas.findByRole('alert')).toHaveTextContent('regularizar el pago')
   },
 }
+
+/**
+ * Sin suscripción: no hay débito donde meter Plus, así que no se ofrece prenderlo;
+ * pero el bot puede estar prendido por un override y eso se muestra tal cual.
+ */
+export const SinSuscripcionConBotPrendido: Story = {
+  args: {
+    state: {
+      kind: 'no_subscription',
+      botOn: true,
+      pricePerCourtCents: null,
+      effectivePerCourtCents: 2_000_000,
+      accessUntil: null,
+      quote: null,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      canvas.getByText('Sin suscripción · bot prendido a mano (sin cobro)'),
+    ).toBeInTheDocument()
+    await expect(canvas.queryByText('Apagado')).toBeNull()
+    await expect(canvas.queryByRole('button', { name: 'Prender Plus' })).toBeNull()
+  },
+}
+
+export const SinSuscripcionConBotApagado: Story = {
+  args: {
+    state: {
+      kind: 'no_subscription',
+      botOn: false,
+      pricePerCourtCents: null,
+      effectivePerCourtCents: 2_000_000,
+      accessUntil: null,
+      quote: null,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Sin suscripción · bot apagado')).toBeInTheDocument()
+    await expect(canvas.queryByRole('button', { name: 'Prender Plus' })).toBeNull()
+  },
+}

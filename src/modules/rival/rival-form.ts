@@ -1,9 +1,12 @@
 // Del formulario de "Armar un partido" al borrador del service, y la precarga desde
 // una reserva. Puro (sin DB): las reservas del organizador entran por parámetro.
+import { artTodayStr } from '@/shared/dates/art'
 import { artDateOf } from '@/shared/time/art-date'
 import { uuid } from '@/shared/validation/primitives'
 import { artInstantOf, artTimeOf } from './rival-display'
 import { createRivalMatchSchema, type RivalMatchDraft } from './rival.schema'
+import { isInRivalStartWindow } from './rival-window'
+import type { RivalLevel } from './rival.types'
 
 /** Reserva `confirmed` y futura del organizador (la lista la lee el service). */
 export type NewMatchBooking = { id: string; tenantId: string; startsAt: Date; format: number }
@@ -51,6 +54,40 @@ export function parseNewMatchForm(
     ok: false,
     error: issue?.message ?? 'Revisá los datos del partido.',
     ...(typeof field === 'string' ? { field } : {}),
+  }
+}
+
+/** Lo que `getRepeatPrefill` saca de un partido propio: `date` ya corrida +7 días (ART). */
+export type RepeatSource = {
+  tenantId: string
+  date: string
+  time: string
+  format: number
+  capacity: number
+  level: RivalLevel
+}
+
+/** `?desde=<id>` ya resuelto para el form: precarga SIN bloquear campos. `date` null = sin fecha. */
+export type RepeatPrefill = Omit<RepeatSource, 'date'> & { date: string | null }
+
+/**
+ * Del partido de origen a la precarga: si el día +7 cae fuera de la ventana (hoy..+7, o ya
+ * pasó) se precarga sin fecha y sin hora; un complejo que ya no es elegible queda sin elegir.
+ */
+export function resolveRepeatPrefill(
+  source: RepeatSource | null,
+  eligibleTenantIds: string[],
+  today: string = artTodayStr(),
+): RepeatPrefill | null {
+  if (!source) return null
+  const inWindow = source.date >= today && isInRivalStartWindow(source.date, today)
+  return {
+    tenantId: eligibleTenantIds.includes(source.tenantId) ? source.tenantId : '',
+    date: inWindow ? source.date : null,
+    time: inWindow ? source.time : '',
+    format: source.format,
+    capacity: source.capacity,
+    level: source.level,
   }
 }
 

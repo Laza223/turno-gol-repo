@@ -7,6 +7,9 @@ const mocks = vi.hoisted(() => ({
   createMatch: vi.fn(),
   cancelMatch: vi.fn(),
   acceptRivalWelcome: vi.fn(),
+  joinByInvite: vi.fn(),
+  leaveMatch: vi.fn(),
+  clearRivalIntentCookie: vi.fn(async () => undefined),
   listUpcomingConfirmedBookings: vi.fn(async () => []),
   redirect: vi.fn((url: string) => {
     throw new Error(`REDIRECT:${url}`)
@@ -17,6 +20,9 @@ const mocks = vi.hoisted(() => ({
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('next/navigation', () => ({ redirect: mocks.redirect }))
 vi.mock('@/lib/sentry', () => ({ captureException: mocks.captureException }))
+vi.mock('@/app/(player)/rival/p/[code]/rival-intent.server', () => ({
+  clearRivalIntentCookie: mocks.clearRivalIntentCookie,
+}))
 vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: mocks.extractAuthUser }))
 vi.mock('@/shared/rate-limit', () => ({ enforce: mocks.enforce }))
 vi.mock('@/modules/rival/rival.flags', () => ({ isRivalEnabled: mocks.isRivalEnabled }))
@@ -24,18 +30,24 @@ vi.mock('@/modules/rival/rival.service', () => ({
   createMatch: mocks.createMatch,
   cancelMatch: mocks.cancelMatch,
   acceptRivalWelcome: mocks.acceptRivalWelcome,
+  joinByInvite: mocks.joinByInvite,
+  leaveMatch: mocks.leaveMatch,
   listUpcomingConfirmedBookings: mocks.listUpcomingConfirmedBookings,
 }))
 
 import {
   acceptRivalWelcomeAction,
+  acceptWelcomeAndJoinAction,
   cancelMatchAction,
   createMatchAction,
+  joinMatchAction,
+  leaveMatchAction,
 } from '@/app/(player)/rival/actions'
 import { RivalError } from '@/modules/rival/rival.errors'
 
 const TENANT = '11111111-1111-4111-8111-111111111111'
 const MATCH = '22222222-2222-4222-8222-222222222222'
+const CODE = 'ABCDEFGHJK'
 
 function createForm(over: Record<string, string> = {}): FormData {
   const f = new FormData()
@@ -177,5 +189,115 @@ describe('cancelMatchAction y bienvenida', () => {
     expect(await acceptRivalWelcomeAction({ success: true }, welcomeForm())).toEqual({
       success: true,
     })
+  })
+})
+
+describe('Voy, Estoy adentro y Me bajo', () => {
+  it('con el flag apagado ninguna toca la sesión ni el service', async () => {
+    mocks.isRivalEnabled.mockResolvedValue(false)
+    const f = welcomeForm()
+    f.set('code', CODE)
+    const results = [
+      await joinMatchAction(CODE),
+      await acceptWelcomeAndJoinAction({ success: true }, f),
+      await leaveMatchAction(MATCH),
+    ]
+    for (const r of results) expect(r).toMatchObject({ success: false })
+    expect(mocks.extractAuthUser).not.toHaveBeenCalled()
+    expect(mocks.joinByInvite).not.toHaveBeenCalled()
+    expect(mocks.leaveMatch).not.toHaveBeenCalled()
+  })
+
+  it('sin sesión de jugador no llegan al rate limit ni al service', async () => {
+    mocks.extractAuthUser.mockResolvedValue(null)
+    expect(await joinMatchAction(CODE)).toEqual({
+      success: false,
+      error: 'Ingresá a tu cuenta para seguir.',
+    })
+    expect(await leaveMatchAction(MATCH)).toMatchObject({ success: false })
+    expect(mocks.enforce).not.toHaveBeenCalled()
+    expect(mocks.joinByInvite).not.toHaveBeenCalled()
+  })
+
+  it('con el rate limit vencido cortan antes del service', async () => {
+    mocks.enforce.mockResolvedValue({ ok: false })
+    expect(await joinMatchAction(CODE)).toEqual({
+      success: false,
+      error: 'Demasiadas solicitudes. Esperá un momento.',
+    })
+    expect(await leaveMatchAction(MATCH)).toMatchObject({ success: false })
+    expect(mocks.enforce).toHaveBeenCalledWith('rivalWrite', 'player-1')
+    expect(mocks.joinByInvite).not.toHaveBeenCalled()
+    expect(mocks.leaveMatch).not.toHaveBeenCalled()
+  })
+
+  it('joinMatchAction suma con el jugador de la sesión y gasta el intento', async () => {
+    mocks.joinByInvite.mockResolvedValue({ status: 'confirmed', joined: true })
+    expect(await joinMatchAction(CODE)).toEqual({ success: true })
+    expect(mocks.joinByInvite).toHaveBeenCalledWith('player-1', CODE)
+    expect(mocks.clearRivalIntentCookie).toHaveBeenCalledTimes(1)
+  })
+
+  it('un código mal formado es "no encontrado" y no toca el service', async () => {
+    expect(await joinMatchAction('abc')).toEqual({
+      success: false,
+      error: 'No encontramos ese partido.',
+    })
+    expect(mocks.joinByInvite).not.toHaveBeenCalled()
+  })
+
+  it('un error de dominio sale como texto humano (y el intento se gasta igual)', async () => {
+    mocks.joinByInvite.mockRejectedValue(new RivalError('rival_expired'))
+    expect(await joinMatchAction(CODE)).toEqual({
+      success: false,
+      error: 'Este partido ya empezó, así que no admite cambios.',
+    })
+    expect(mocks.captureException).not.toHaveBeenCalled()
+    expect(mocks.clearRivalIntentCookie).toHaveBeenCalledTimes(1)
+  })
+
+  it('un fallo de infraestructura va a Sentry y sale genérico', async () => {
+    mocks.joinByInvite.mockRejectedValue(new Error('connection reset'))
+    expect(await joinMatchAction(CODE)).toMatchObject({
+      success: false,
+      error: 'No pudimos completar la acción. Probá de nuevo en unos segundos.',
+    })
+    expect(mocks.captureException).toHaveBeenCalledTimes(1)
+  })
+
+  it('"Estoy adentro" acepta la bienvenida y suma, en ese orden', async () => {
+    mocks.acceptRivalWelcome.mockResolvedValue(undefined)
+    mocks.joinByInvite.mockResolvedValue({ status: 'bench', joined: true })
+    const f = welcomeForm()
+    f.set('code', CODE)
+    expect(await acceptWelcomeAndJoinAction({ success: true }, f)).toEqual({ success: true })
+    expect(mocks.acceptRivalWelcome.mock.invocationCallOrder[0]!).toBeLessThan(
+      mocks.joinByInvite.mock.invocationCallOrder[0]!,
+    )
+    expect(mocks.joinByInvite).toHaveBeenCalledWith('player-1', CODE)
+  })
+
+  it('"Estoy adentro" con zona inválida vuelve con el campo y no suma', async () => {
+    const f = welcomeForm()
+    f.set('code', CODE)
+    f.set('zone', 'Marte')
+    expect(await acceptWelcomeAndJoinAction({ success: true }, f)).toMatchObject({
+      success: false,
+      field: 'zone',
+    })
+    expect(mocks.acceptRivalWelcome).not.toHaveBeenCalled()
+    expect(mocks.joinByInvite).not.toHaveBeenCalled()
+  })
+
+  it('leaveMatchAction baja con el jugador de la sesión; un id que no es uuid es "no encontrado"', async () => {
+    mocks.leaveMatch.mockResolvedValue(undefined)
+    expect(await leaveMatchAction(MATCH)).toEqual({ success: true })
+    expect(mocks.leaveMatch).toHaveBeenCalledWith('player-1', MATCH)
+    expect(await leaveMatchAction('no-es-uuid')).toEqual({
+      success: false,
+      error: 'No encontramos ese partido.',
+    })
+    mocks.leaveMatch.mockRejectedValue(new RivalError('rival_expired'))
+    expect(await leaveMatchAction(MATCH)).toMatchObject({ success: false })
   })
 })

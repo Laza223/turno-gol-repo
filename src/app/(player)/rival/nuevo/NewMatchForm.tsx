@@ -10,6 +10,7 @@ import { FORMAT_OPTIONS, formatLabel } from '@/components/public/courtFacets'
 import { ChipGroup, DayChips } from '@/app/(public)/[slug]/components/ChipGroups'
 import { addDays } from '@/shared/dates/art'
 import { artInstantOf, dayLabel, RIVAL_LEVEL_LABELS } from '@/modules/rival/rival-display'
+import type { RepeatPrefill } from '@/modules/rival/rival-form'
 import { RIVAL_LEVELS } from '@/modules/rival/rival.schema'
 import type { RivalFormResult } from '../actions'
 import { StampBadge } from '../MatchBits'
@@ -53,6 +54,7 @@ export function NewMatchForm({
   tenants,
   bookings,
   prefill,
+  repeat = null,
   today,
   nowTime,
   action,
@@ -60,20 +62,25 @@ export function NewMatchForm({
   tenants: NewMatchTenant[]
   bookings: NewMatchBookingProp[]
   prefill: NewMatchPrefill | null
+  /** "Repetir" (`?desde=`): precarga todo SIN bloquear campos. `date` null = sin fecha ni hora. */
+  repeat?: RepeatPrefill | null
   /** Hoy en ART (YYYY-MM-DD) y la hora ART de ahora (HH:MM), de la page. */
   today: string
   nowTime: string
   action: CreateAction
 }) {
   const [state, formAction, pending] = useActionState(action, INITIAL)
+  const initial = prefill ?? repeat
   const [tenantId, setTenantId] = useState(
-    prefill?.tenantId ?? (tenants.length === 1 ? tenants[0]!.id : ''),
+    initial?.tenantId || (tenants.length === 1 ? tenants[0]!.id : ''),
   )
-  const [date, setDate] = useState(prefill?.date ?? today)
-  const [time, setTime] = useState(prefill?.time ?? '')
-  const [format, setFormat] = useState(prefill?.format ?? 5)
-  const [capacity, setCapacity] = useState<number | null>(null)
-  const [level, setLevel] = useState<string>('parejo')
+  const [date, setDate] = useState(initial?.date ?? today)
+  const [time, setTime] = useState(initial?.time ?? '')
+  const [format, setFormat] = useState(initial?.format ?? 5)
+  const [capacity, setCapacity] = useState<number | null>(
+    repeat && repeat.capacity !== repeat.format * 2 ? repeat.capacity : null,
+  )
+  const [level, setLevel] = useState<string>(repeat?.level ?? 'parejo')
   const [courtDeclared, setCourtDeclared] = useState(false)
 
   const locked = prefill !== null

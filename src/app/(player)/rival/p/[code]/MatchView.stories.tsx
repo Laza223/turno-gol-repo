@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import type { RivalPublicMatch, RivalRosterEntry } from '@/modules/rival/rival.types'
+import { buildShareHref } from '@/modules/rival/rival-share'
+import type { RivalFormResult } from '../../actions'
 import { MatchView } from './MatchView'
 
 // Reloj congelado de las stories: sábado 2026-03-14, 15:30 ART.
@@ -57,13 +59,22 @@ const meta = {
     nextjs: { appDirectory: true, navigation: { pathname: '/rival/p/ABCDEFGHJK' } },
   },
   args: {
+    code: 'ABCDEFGHJK',
     match: match(),
     signedIn: false,
     roster: [],
     shareUrl: '/rival/p/ABCDEFGHJK',
+    shareHref: '#avisar-al-grupo',
     justCreated: false,
     now: NOW,
+    welcome: null,
+    autoJoin: false,
+    openWelcome: false,
+    intentParam: 'rival_intent',
     cancelAction: fn(async () => ({ success: true as const })),
+    joinAction: fn(async () => ({ success: true as const })),
+    acceptAndJoinAction: fn(async (): Promise<RivalFormResult> => ({ success: true })),
+    leaveAction: fn(async () => ({ success: true as const })),
   },
 } satisfies Meta<typeof MatchView>
 
@@ -76,7 +87,7 @@ export const SinSesion: Story = {
     await expect(canvas.getByRole('heading', { name: 'El Vagón' })).toBeInTheDocument()
     await expect(canvas.getByText('Faltan 3')).toBeInTheDocument()
     await expect(canvas.getByText('Reservada en TurnoGol')).toBeInTheDocument()
-    // Ninguna persona, y ningún botón muerto ("Voy" es del PR3).
+    // Ninguna persona, y ningún botón muerto (el "Voy" sin sesión lo pone la page con el login).
     await expect(canvas.queryByRole('button')).toBeNull()
     await expect(canvas.queryByText('Quiénes van')).toBeNull()
   },
@@ -101,9 +112,78 @@ export const ParticipanteEnElBanco: Story = {
     ],
   },
   play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
     await expect(
-      within(canvasElement).getByText('Estás en el banco. Si alguien se baja, entrás vos.'),
+      canvas.getByText(
+        'Quedaste en el banco. Si alguien se baja, entrás vos y te avisamos por mail.',
+      ),
     ).toBeInTheDocument()
+    // Ya está adentro: no hay "Voy", sí "Me bajo".
+    await expect(canvas.queryByRole('button', { name: 'Voy' })).toBeNull()
+    await expect(canvas.getByRole('button', { name: 'Me bajo' })).toBeInTheDocument()
+  },
+}
+
+export const InvitadoConSesion: Story = {
+  args: { signedIn: true, roster },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Voy' }))
+    await waitFor(() => expect(args.joinAction).toHaveBeenCalledWith('ABCDEFGHJK'))
+  },
+}
+
+export const InvitadoSinBienvenida: Story = {
+  args: {
+    signedIn: true,
+    roster,
+    welcome: { firstName: 'Lazaro', position: null, zone: null },
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    // "Voy" no suma: abre la tarjeta, y su botón acepta y suma en un toque.
+    await userEvent.click(canvas.getByRole('button', { name: 'Voy' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Estoy adentro' }))
+    await waitFor(() => expect(args.acceptAndJoinAction).toHaveBeenCalled())
+    await expect(args.joinAction).not.toHaveBeenCalled()
+  },
+}
+
+export const BienvenidaAbierta: Story = {
+  args: {
+    signedIn: true,
+    roster,
+    openWelcome: true,
+    welcome: { firstName: 'Lazaro', position: null, zone: null },
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    // Vuelta del login: la tarjeta sale abierta y NO hay autoenvío.
+    await expect(canvas.getByRole('button', { name: 'Estoy adentro' })).toBeInTheDocument()
+    await expect(canvas.getByLabelText('Tu nombre')).toHaveValue('Lazaro')
+    await expect(args.joinAction).not.toHaveBeenCalled()
+    await expect(args.acceptAndJoinAction).not.toHaveBeenCalled()
+  },
+}
+
+export const ConfirmadoSeBaja: Story = {
+  args: {
+    signedIn: true,
+    roster: [...roster, person({ participantId: 'me', shortName: 'Vos V.', isMe: true })],
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      canvas.getByText('Listo, estás adentro. Nos vemos en la cancha.'),
+    ).toBeInTheDocument()
+    await expect(
+      canvas.getByText('Si no podés ir, bajate a tiempo: alguien del banco ocupa tu lugar.'),
+    ).toBeInTheDocument()
+    await userEvent.click(canvas.getByRole('button', { name: 'Me bajo' }))
+    const dialog = within(await within(document.body).findByRole('dialog'))
+    await expect(args.leaveAction).not.toHaveBeenCalled()
+    await userEvent.click(dialog.getByRole('button', { name: 'Sí, me bajo' }))
+    await waitFor(() => expect(args.leaveAction).toHaveBeenCalledWith('m1'))
   },
 }
 
@@ -146,6 +226,15 @@ export const Organizador: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Listo. Ahora pasale el link al grupo.')).toBeInTheDocument()
+    // El único verde del organizador: un link, no un botón.
+    await expect(canvas.getByRole('link', { name: 'Avisar al grupo' })).toHaveAttribute(
+      'href',
+      '#avisar-al-grupo',
+    )
+    await expect(canvas.queryByRole('button', { name: 'Voy' })).toBeNull()
+    await expect(canvas.queryByRole('button', { name: 'Me bajo' })).toBeNull()
+    // Confirmado en su propio partido, pero no "va": sin la línea del invitado.
+    await expect(canvas.queryByText(/estás adentro/)).toBeNull()
     await expect(canvas.getByText('El banco')).toBeInTheDocument()
     await expect(canvas.getByText('Pedidos')).toBeInTheDocument()
     await expect(canvas.getByText(/En TurnoGol desde octubre de 2025/)).toBeInTheDocument()
@@ -156,6 +245,26 @@ export const Organizador: Story = {
     const dialog = within(await within(document.body).findByRole('dialog'))
     await userEvent.click(dialog.getByRole('button', { name: 'Sí, cancelar el partido' }))
     await waitFor(() => expect(args.cancelAction).toHaveBeenCalledWith('m1'))
+  },
+}
+
+export const OrganizadorLleno: Story = {
+  args: {
+    signedIn: true,
+    match: match({ isOrganizer: true, confirmedCount: 10 }),
+    shareHref: buildShareHref(
+      { startsAt: match().startsAt, tenantName: 'El Vagón', capacity: 10, confirmedCount: 10 },
+      '/rival/p/ABCDEFGHJK',
+    ),
+    roster: [person({ participantId: 'org', shortName: 'Yo O.', isMe: true })],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('¡Estamos los 10! Se juega.')).toBeInTheDocument()
+    const href = canvas.getByRole('link', { name: 'Avisar al grupo' }).getAttribute('href') ?? ''
+    await expect(decodeURIComponent(href)).toContain(
+      '/?text=¡Estamos los 10! Se juega el sábado 21:00 en El Vagón.',
+    )
   },
 }
 
@@ -187,7 +296,14 @@ export const Vencido: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Jugado')).toBeInTheDocument()
-    // Sin acciones: no se copia ni se cancela un partido que ya se jugó.
+    // Un partido jugado no dice cuántos faltan.
+    await expect(canvas.queryByText(/^Faltan/)).toBeNull()
+    await expect(canvas.getByText('7 de 10 confirmados')).toBeInTheDocument()
+    // Sin acciones: no se copia ni se cancela un partido que ya se jugó; se repite.
     await expect(canvas.queryByRole('button')).toBeNull()
+    await expect(canvas.queryByRole('link', { name: 'Avisar al grupo' })).toBeNull()
+    await expect(
+      canvas.getByRole('link', { name: 'Armar el del jueves que viene' }),
+    ).toHaveAttribute('href', '/rival/nuevo?desde=m1')
   },
 }

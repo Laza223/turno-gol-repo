@@ -42,6 +42,13 @@ export function dayLabel(date: string): string {
   return capitalizeFirst(WEEKDAY_DAY.format(new Date(`${date}T12:00:00Z`)))
 }
 
+const WEEKDAY = new Intl.DateTimeFormat('es-AR', { weekday: 'long', timeZone: 'UTC' })
+
+/** "2026-10-22" → "jueves" (minúscula, para meterlo en una frase). */
+export function weekdayOf(date: string): string {
+  return WEEKDAY.format(new Date(`${date}T12:00:00Z`))
+}
+
 /** "Hoy 21:00", "Mañana 21:00" o "Sábado 24 · 21:00". */
 export function whenLabel(startsAt: Date, now: Date = new Date()): string {
   const day = artDateOf(startsAt)

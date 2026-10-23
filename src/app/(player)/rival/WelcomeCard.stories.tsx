@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import type { RivalFormResult } from '../actions'
+import type { RivalFormResult } from './actions'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { WelcomeCard } from './WelcomeCard'
 

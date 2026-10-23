@@ -274,3 +274,34 @@ export const RedCaida: Story = {
     await expect(modal.getByRole('button', { name: 'Continuar con mi email' })).toBeEnabled()
   },
 }
+
+/** RIVAL ("Voy" sin sesión): su propio título y su línea de apoyo; ni una palabra de reservar. */
+export const Rival: Story = {
+  args: { variant: 'rival', withDeposit: undefined, next: '/rival/p/ABCDEFGH23' },
+  play: async () => {
+    const root = await dialog()
+    const modal = within(root)
+    await expect(
+      modal.getByRole('heading', { name: 'Entrá para sumarte al partido' }),
+    ).toBeVisible()
+    await expect(modal.getByText('Entrás y volvés a este partido.')).toBeVisible()
+    await expect(root).not.toHaveTextContent(/reserv|turno/i)
+    await expect(buttonNames(root)).toEqual(['Continuar con Google', 'Continuar con mi email'])
+  },
+}
+
+/** RIVAL, mail enviado: al tocar el enlace vuelve al partido, no a una reserva. */
+export const RivalEnviado: Story = {
+  args: { variant: 'rival', withDeposit: undefined, next: '/rival/p/ABCDEFGH23', action: fn(sent) },
+  play: async () => {
+    const modal = within(await dialog())
+    await userEvent.type(modal.getByLabelText('Email'), 'tomas.ibanez@example.com')
+    await userEvent.click(modal.getByRole('button', { name: 'Continuar con mi email' }))
+
+    await modal.findByRole('heading', { name: 'Revisá tu email' })
+    await expect(
+      modal.getByText('Cuando lo toques, volvés a este partido con tu cuenta.'),
+    ).toBeVisible()
+    await expect(modal.queryByText(/reserva/)).not.toBeInTheDocument()
+  },
+}

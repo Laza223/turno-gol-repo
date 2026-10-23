@@ -182,6 +182,14 @@ export default {
         ],
         rules: ['react-doctor/no-derived-useState'],
       },
+      {
+        // VoyPanel: `useState(openWelcome)` es una foto A PROPÓSITO. `openWelcome`
+        // sale del token de la URL, que se borra al montar; un refresh posterior
+        // lo trae en false y, derivado, cerraría la bienvenida mientras el jugador
+        // la está llenando. Verificado leyendo el componente (2026-10-23).
+        files: ['**/rival/p/*/VoyPanel.tsx'],
+        rules: ['react-doctor/no-derived-useState'],
+      },
       { files: ['**/SearchBar.tsx'], rules: ['react-doctor/no-derived-state-effect'] },
       {
         files: [
@@ -427,6 +435,7 @@ export default {
           '**/login/actions.ts',
           '**/register/actions.ts',
           '**/sign-out.action.ts',
+          '**/rival/p/*/login-actions.ts',
         ],
         rules: ['react-doctor/server-auth-actions'],
       },

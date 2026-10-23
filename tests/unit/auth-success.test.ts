@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { isBookingPath, parseIntent, parseVia, successVerifyPath } from '@/lib/auth-success'
+import { REFERRAL_CODE_ALPHABET } from '@/modules/referrals/referral.schema'
+import {
+  isBookingPath,
+  isRivalPath,
+  parseIntent,
+  parseVia,
+  successVerifyPath,
+} from '@/lib/auth-success'
 
 describe('parseVia', () => {
   it('acepta las dos vías del jugador', () => {
@@ -60,6 +67,50 @@ describe('isBookingPath', () => {
     expect(isBookingPath('https://evil.com/club/reservar')).toBe(false)
     // El navegador lee `\` como `/`: `/\evil.com/reservar` terminaría en //evil.com/reservar.
     expect(isBookingPath('/\\evil.com/reservar')).toBe(false)
+  })
+})
+
+describe('isRivalPath', () => {
+  const CODE = 'ABCDEFGH23'
+  it('el alfabeto es el de los códigos de partido (referidos): ni un símbolo de más ni de menos', () => {
+    for (const ch of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') {
+      expect(isRivalPath(`/rival/p/${ch.repeat(10)}`)).toBe(REFERRAL_CODE_ALPHABET.includes(ch))
+    }
+  })
+  it('true para el partido, con o sin query', () => {
+    expect(isRivalPath(`/rival/p/${CODE}`)).toBe(true)
+    expect(isRivalPath(`/rival/p/${CODE}?rival_intent=abc.def`)).toBe(true)
+  })
+  it('false para otros destinos de RIVAL o del sitio', () => {
+    expect(isRivalPath('/rival')).toBe(false)
+    expect(isRivalPath('/rival/nuevo')).toBe(false)
+    expect(isRivalPath('/rival/mis-partidos')).toBe(false)
+    expect(isRivalPath('/rival/p/')).toBe(false)
+    expect(isRivalPath('/mis-reservas')).toBe(false)
+    expect(isRivalPath('')).toBe(false)
+  })
+  it('el código son 10 símbolos del alfabeto: ni más, ni menos, ni minúsculas', () => {
+    expect(isRivalPath('/rival/p/x')).toBe(false)
+    expect(isRivalPath(`/rival/p/${CODE}A`)).toBe(false)
+    expect(isRivalPath('/rival/p/ABCDEFGH2')).toBe(false)
+    expect(isRivalPath('/rival/p/abcdefgh23')).toBe(false)
+    expect(isRivalPath('/rival/p/ABCDEFGH10')).toBe(false) // 1 y 0 no están en el alfabeto
+  })
+  it('no pasan trampas de path, query ni fragmento', () => {
+    expect(isRivalPath('/rival/p/x/../../admin')).toBe(false)
+    expect(isRivalPath(`/rival/p/${CODE}/../../admin`)).toBe(false)
+    expect(isRivalPath(`/rival/p/${CODE}/`)).toBe(false)
+    expect(isRivalPath(`/rival/p/${CODE}#frag`)).toBe(false)
+    expect(isRivalPath('/rival/pX')).toBe(false)
+    expect(isRivalPath(`/rival/p${CODE}`)).toBe(false)
+    expect(isRivalPath(`/x?a=/rival/p/${CODE}`)).toBe(false)
+    expect(isRivalPath(`/x#/rival/p/${CODE}`)).toBe(false)
+  })
+  it('false si no es un path del sitio: nunca manda a otro origen', () => {
+    expect(isRivalPath(`//evil.com/rival/p/${CODE}`)).toBe(false)
+    expect(isRivalPath(`https://evil.com/rival/p/${CODE}`)).toBe(false)
+    expect(isRivalPath(`/\\evil.com/rival/p/${CODE}`)).toBe(false)
+    expect(isRivalPath(`\\rival\\p\\${CODE}`)).toBe(false)
   })
 })
 

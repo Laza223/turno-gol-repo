@@ -1,14 +1,25 @@
+import type { ReactNode } from 'react'
 import { Check } from 'lucide-react'
 import Link from 'next/link'
 import { formatLabel } from '@/components/public/courtFacets'
 import { cn } from '@/lib/utils'
 import { TONE_BADGE, type StatusTone } from '@/lib/status-tone'
-import { RIVAL_LEVEL_LABELS, RIVAL_POSITION_LABELS, whenLabel } from '@/modules/rival/rival-display'
+import {
+  RIVAL_LEVEL_LABELS,
+  RIVAL_POSITION_LABELS,
+  weekdayOf,
+  whenLabel,
+} from '@/modules/rival/rival-display'
+import { artDateOf } from '@/shared/time/art-date'
 import type { RivalPublicMatch, RivalRosterEntry } from '@/modules/rival/rival.types'
 import type { ActionResult } from '@/shared/types/action-result'
+import type { RivalFormResult } from '../../actions'
 import { FactPill, RIVAL_CTA, StampBadge } from '../../MatchBits'
+import { DropIntentParam } from './DropIntentParam'
+import { LeaveMatch } from './LeaveMatch'
 import { OrganizerActions } from './OrganizerActions'
 import { ShirtGrid } from './ShirtGrid'
+import { VoyPanel, type VoyWelcome } from './VoyPanel'
 
 const MEMBER_SINCE = new Intl.DateTimeFormat('es-AR', {
   month: 'long',
@@ -110,13 +121,13 @@ function PeopleSection({
   )
 }
 
-/** Mi estado cuando juego o pedí sumarme (la acción de bajarse es del PR3). */
+/** Mi estado cuando juego o pedí sumarme (el resultado de "Voy", en palabras de la spec §5.2). */
 function myStatusLine(status: RivalRosterEntry['status']): string | null {
   switch (status) {
     case 'confirmed':
-      return 'Estás adentro. Nos vemos en la cancha.'
+      return 'Listo, estás adentro. Nos vemos en la cancha.'
     case 'bench':
-      return 'Estás en el banco. Si alguien se baja, entrás vos.'
+      return 'Quedaste en el banco. Si alguien se baja, entrás vos y te avisamos por mail.'
     case 'requested':
       return 'Tu pedido está enviado. Te avisamos por mail si te aceptan.'
     case 'declined':
@@ -127,6 +138,8 @@ function myStatusLine(status: RivalRosterEntry['status']): string | null {
 }
 
 type Props = {
+  /** Código del link (`/rival/p/[code]`): "Voy" suma por él. */
+  code: string
   match: RivalPublicMatch
   /** `true` si hay un jugador con sesión mirando. */
   signedIn: boolean
@@ -136,23 +149,47 @@ type Props = {
   /** Recién creado (`?creado=1`): muestra el aviso del organizador. */
   justCreated: boolean
   now: Date
+  /** `wa.me/?text=…` de "Avisar al grupo", armado en el servidor. */
+  shareHref: string
+  /** Bienvenida RIVAL pendiente del jugador con sesión; `null` si ya la aceptó. */
+  welcome: VoyWelcome | null
+  /** Vuelta del login con intento válido y bienvenida aceptada: "Voy" se envía solo. */
+  autoJoin: boolean
+  /** Vuelta del login con intento válido y sin bienvenida: la tarjeta sale abierta. */
+  openWelcome: boolean
+  intentParam: string
+  /** El "Voy" sin sesión (la variante RIVAL del login); lo arma la page. */
+  voyGate?: ReactNode
   cancelAction: (matchId: string) => Promise<ActionResult>
+  joinAction: (code: string) => Promise<ActionResult>
+  acceptAndJoinAction: (prev: RivalFormResult, formData: FormData) => Promise<RivalFormResult>
+  leaveAction: (matchId: string) => Promise<ActionResult>
 }
 
 /**
  * La vista del partido por link (`/rival/p/[code]`), según quién mira (spec §5.2, §5.3, §6):
  * sin sesión no hay personas; con sesión, nombre corto y foto de los confirmados; el organizador
- * ve además el banco, los pedidos y la ficha. "Voy", "Me bajo" y "Avisar al grupo" son del PR3
- * y publicar en el tablón del PR4: acá no hay botones muertos.
+ * ve además el banco, los pedidos y la ficha. Un solo verde por vista: "Voy" para el invitado,
+ * "Avisar al grupo" para el organizador. Publicar en el tablón es del PR4: acá no hay botones muertos.
  */
 export function MatchView({
+  code,
   match,
   signedIn,
   roster,
   shareUrl,
   justCreated,
   now,
+  shareHref,
+  welcome,
+  autoJoin,
+  openWelcome,
+  intentParam,
+  voyGate,
   cancelAction,
+  joinAction,
+  acceptAndJoinAction,
+  leaveAction,
 }: Props) {
   const canceled = match.status === 'canceled'
   const ended = !canceled && match.startsAt.getTime() <= now.getTime()
@@ -161,9 +198,18 @@ export function MatchView({
   const confirmed = roster.filter((r) => r.status === 'confirmed')
   const bench = roster.filter((r) => r.status === 'bench')
   const requested = roster.filter((r) => r.status === 'requested')
+  // Quien se bajó vuelve por el link (spec §4); el organizador no "va" ni se baja: cancela.
+  const canJoin = open && !match.isOrganizer && (!me || me.status === 'left')
+  const canLeave =
+    open &&
+    !match.isOrganizer &&
+    me !== undefined &&
+    (me.status === 'confirmed' || me.status === 'bench' || me.status === 'requested')
+  const repeatDay = weekdayOf(artDateOf(match.startsAt))
 
   return (
     <div className="mx-auto max-w-lg space-y-5 px-4 py-6">
+      <DropIntentParam param={intentParam} />
       {justCreated && match.isOrganizer && open && (
         <p
           role="status"
@@ -208,8 +254,9 @@ export function MatchView({
       ) : (
         <>
           <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <ShirtGrid capacity={match.capacity} confirmed={match.confirmedCount} />
-            {me && open && myStatusLine(me.status) && (
+            <ShirtGrid capacity={match.capacity} confirmed={match.confirmedCount} ended={ended} />
+            {/* El organizador no "va": su línea sería ruido en cada visita. */}
+            {me && open && !match.isOrganizer && myStatusLine(me.status) && (
               <p className="mt-4 text-base text-foreground">{myStatusLine(me.status)}</p>
             )}
           </section>
@@ -225,7 +272,32 @@ export function MatchView({
           )}
 
           {open && match.isOrganizer && (
-            <OrganizerActions matchId={match.id} shareUrl={shareUrl} cancelAction={cancelAction} />
+            <OrganizerActions
+              matchId={match.id}
+              shareUrl={shareUrl}
+              shareHref={shareHref}
+              cancelAction={cancelAction}
+            />
+          )}
+
+          {canJoin && !signedIn && voyGate}
+          {canJoin && signedIn && (
+            <VoyPanel
+              code={code}
+              welcome={welcome}
+              autoJoin={autoJoin}
+              openWelcome={openWelcome}
+              intentParam={intentParam}
+              joinAction={joinAction}
+              acceptAndJoinAction={acceptAndJoinAction}
+            />
+          )}
+          {canLeave && <LeaveMatch matchId={match.id} leaveAction={leaveAction} />}
+
+          {ended && signedIn && match.isOrganizer && (
+            <Link href={`/rival/nuevo?desde=${match.id}`} className={RIVAL_CTA}>
+              Armar el del {repeatDay} que viene
+            </Link>
           )}
         </>
       )}

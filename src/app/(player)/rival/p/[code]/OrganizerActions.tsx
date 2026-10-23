@@ -1,27 +1,33 @@
 'use client'
 
-import { cn } from '@/lib/utils'
 import { useState } from 'react'
-import { Check, Copy } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Check, Copy, Share2 } from 'lucide-react'
+import { buttonVariants, Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { PORTAL_BUTTON, PORTAL_BUTTON_OUTLINE } from '@/components/world/PortalAuthFrame'
+import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
+import { cn } from '@/lib/utils'
 import type { ActionResult } from '@/shared/types/action-result'
 
 /** Firma de la Server Action (por prop, no por import: ver convenciones-stack). */
 type CancelAction = (matchId: string) => Promise<ActionResult>
 
+/** Quiet Ghost Rule (DESIGN.md): sin borde ni relleno, 44 px, 14 px medium. */
+const GHOST = 'h-11 w-full text-sm font-medium'
+
 /**
- * Acciones del organizador: "Copiar link" (el único verde de la vista; cuando llegue "Avisar al
- * grupo" del PR3 pasa a ser el secundario) y "Cancelar el partido", con confirmación.
+ * Acciones del organizador. El único verde es "Avisar al grupo" (spec §5.3): un `<a href>` que
+ * arma el servidor con el texto del estado. "Copiar link" y "Cancelar el partido" son fantasma.
  */
 export function OrganizerActions({
   matchId,
   shareUrl,
+  shareHref,
   cancelAction,
 }: {
   matchId: string
   shareUrl: string
+  /** `wa.me/?text=…` armado en el servidor (`buildShareHref`). */
+  shareHref: string
   cancelAction: CancelAction
 }) {
   const [copied, setCopied] = useState(false)
@@ -41,8 +47,16 @@ export function OrganizerActions({
   }
 
   return (
-    <div className="space-y-3">
-      <Button type="button" onClick={copy} className={cn(PORTAL_BUTTON, 'gap-2')}>
+    <div className="space-y-2">
+      <a
+        href={shareHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(buttonVariants(), PORTAL_BUTTON, 'gap-2')}
+      >
+        <Share2 className="size-4 shrink-0" aria-hidden /> Avisar al grupo
+      </a>
+      <Button type="button" variant="ghost" onClick={copy} className={cn(GHOST, 'gap-2')}>
         {copied ? (
           <>
             <Check className="size-4 shrink-0" aria-hidden /> Link copiado
@@ -61,12 +75,7 @@ export function OrganizerActions({
           No pudimos copiarlo solo. Copialo desde acá: {shareUrl}
         </p>
       )}
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => setConfirmOpen(true)}
-        className={PORTAL_BUTTON_OUTLINE}
-      >
+      <Button type="button" variant="ghost" onClick={() => setConfirmOpen(true)} className={GHOST}>
         Cancelar el partido
       </Button>
       <ConfirmDialog

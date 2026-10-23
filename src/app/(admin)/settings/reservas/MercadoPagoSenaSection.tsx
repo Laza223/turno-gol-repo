@@ -32,6 +32,7 @@ function mpErrorMessage(code: string, conflictTenant?: string | null): string {
  */
 export function MercadoPagoSenaSection({
   connected,
+  disconnected,
   nickname,
   requiresDeposit,
   error,
@@ -39,6 +40,8 @@ export function MercadoPagoSenaSection({
   disconnectAction,
 }: {
   connected: boolean
+  /** `tenants.mp_disconnected_at`: MP dejó de aceptar la conexión; la seña no se cobra. */
+  disconnected: boolean
   nickname: string | null
   /** Hoy cobra seña: desconectar la apaga (lo dice el diálogo). */
   requiresDeposit: boolean
@@ -70,42 +73,63 @@ export function MercadoPagoSenaSection({
         {connected && (
           <StatusBadge
             className="shrink-0"
-            visual={{ icon: CheckCircle2, label: 'Conectado', tone: 'success' }}
+            visual={
+              disconnected
+                ? { icon: AlertTriangle, label: 'Desconectado', tone: 'warning' }
+                : { icon: CheckCircle2, label: 'Conectado', tone: 'success' }
+            }
           />
         )}
       </div>
 
       {connected ? (
         <div className="mt-4 max-w-2xl space-y-2">
+          {disconnected && (
+            <p className="text-sm font-medium text-foreground">
+              MercadoPago dejó de aceptar la conexión de TurnoGol. Mientras tanto, las reservas
+              online entran sin seña.
+            </p>
+          )}
           {/* Decir CUÁL cuenta está conectada, no solo que hay una: MercadoPago
               no vuelve a pedir permiso si la app ya está autorizada, así que
               conectar la cuenta personal en vez de la del complejo era un clic
               sin ninguna pantalla de por medio — y las señas caían ahí sin que
               nada lo dijera. */}
-          <p className="text-sm text-foreground">
-            Cobrando en la cuenta <span className="font-semibold">{nickname ?? 'conectada'}</span>.
-            Si no es la del complejo, desconectala y conectá la correcta.
-          </p>
+          {disconnected ? (
+            // Con la conexión caída no se cobra nada: decir "Cobrando" mentía.
+            <p className="text-sm text-foreground">
+              Estaba conectada la cuenta{' '}
+              <span className="font-semibold">{nickname ?? 'del complejo'}</span>. Al reconectar,
+              entrá con la cuenta del complejo.
+            </p>
+          ) : (
+            <p className="text-sm text-foreground">
+              Cobrando en la cuenta <span className="font-semibold">{nickname ?? 'conectada'}</span>
+              . Si no es la del complejo, desconectala y conectá la correcta.
+            </p>
+          )}
           {/* MercadoPago le pone 18 días de plazo a toda cuenta nueva por default
               (verificado en producción, 2026-08-19: la cuenta configurada libera
               antes, la default no). Es un ajuste DENTRO del panel de MercadoPago,
               no algo que TurnoGol pueda cambiar por el complejo — por eso el aviso
-              recién aparece una vez conectado. */}
-          <p className="flex items-start gap-2 text-sm text-muted-foreground">
-            <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-            <span>
-              Por defecto, MercadoPago tarda 18 días en acreditarte cada seña.{' '}
-              <a
-                href="https://youtu.be/pwUFOdZMxYs"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-primary underline underline-offset-2 hover:text-emerald-700 dark:hover:text-emerald-300"
-              >
-                Mirá cómo cobrarla al instante (2 min)
-              </a>
-              .
-            </span>
-          </p>
+              recién aparece una vez conectado, y no mientras no cobra. */}
+          {!disconnected && (
+            <p className="flex items-start gap-2 text-sm text-muted-foreground">
+              <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <span>
+                Por defecto, MercadoPago tarda 18 días en acreditarte cada seña.{' '}
+                <a
+                  href="https://youtu.be/pwUFOdZMxYs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-primary underline underline-offset-2 hover:text-emerald-700 dark:hover:text-emerald-300"
+                >
+                  Mirá cómo cobrarla al instante (2 min)
+                </a>
+                .
+              </span>
+            </p>
+          )}
         </div>
       ) : (
         <p className="mt-4 max-w-2xl text-sm text-muted-foreground">
@@ -122,6 +146,15 @@ export function MercadoPagoSenaSection({
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <p>{mpErrorMessage(error, conflictTenant)}</p>
         </div>
+      )}
+
+      {connected && disconnected && (
+        <a
+          href="/api/mp/oauth-start"
+          className="mt-4 inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 md:h-10"
+        >
+          Reconectar MercadoPago <ExternalLink className="h-4 w-4" aria-hidden />
+        </a>
       )}
 
       {connected ? (

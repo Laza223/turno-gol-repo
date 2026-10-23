@@ -17,36 +17,59 @@ type AdminStaff = {
 }
 
 /**
- * Estados de tenant que bloquean el panel admin: unión de BLOCKED_TENANT_STATUSES
- * (blocked/churned/deleted) + READ_ONLY_TENANT_STATUSES (suspended) de
- * tenant.lifecycle.ts, la misma fuente que usa `withTenant` para los route
- * handlers — mismo conjunto que el hard-lock de
- * (admin)/layout.tsx (ENS-20/ENS-26). Ahí `suspended` es solo-lectura para GET;
- * acá todo lo que pasa por este guard es una mutación (Server Action) o una
- * page/action de configuración, así que se trata como bloqueo total.
+ * Gate de lifecycle del staff, el único punto por el que pasan
+ * requireOperatorStaff / requireAdminStaffAction / requireAdminStaff.
+ *
+ * - BLOCKED_TENANT_STATUSES (blocked/churned/deleted): nada pasa.
+ * - READ_ONLY_TENANT_STATUSES (suspended): pasa solo quien lo pide con
+ *   `allowReadOnly`, que es lo que hacen las pages del panel para LEER. Las
+ *   Server Actions no lo piden, así que por default toda escritura se rechaza
+ *   (las pocas excepciones están en `LifecycleOptions`).
+ *   Desde 2026-10-22 es el estado de la prueba vencida y de la mora
+ *   (`docs/decisions/2026-10-22-solo-lectura-al-vencer-la-prueba.md`): el
+ *   dueño y el encargado miran, pero no operan.
+ *
+ * El default es el seguro: una page que se olvida de `allowReadOnly` rebota a
+ * un complejo en solo lectura (bug visible), mientras que una action que se
+ * olvidara de pedir el bloqueo sería una escritura que se cuela.
  *
  * Hallazgo R2 (ensayo general): los Server Actions no pasan por
  * (admin)/layout.tsx, así que su hard-lock nunca corría para ellos — un tenant
  * `blocked` por falta de pago podía seguir creando reservas o moviendo caja
- * invocando la action por POST directo. Este check es el único punto por el
- * que pasan requireOperatorStaff / requireAdminStaffAction / requireAdminStaff.
+ * invocando la action por POST directo.
  */
-const BLOCKED_STAFF_TENANT_STATUSES: ReadonlySet<string> = new Set([
-  ...BLOCKED_TENANT_STATUSES,
-  ...READ_ONLY_TENANT_STATUSES,
-])
+type LifecycleGate = 'open' | 'read_only' | 'blocked'
 
 /**
- * true si el tenant está en un estado bloqueante Y la sesión NO es una
- * impersonación de SuperAdmin. La impersonación bypassea el lock a propósito
- * ((admin)/layout.tsx:17-20, spec §6): necesita poder entrar a un tenant
- * bloqueado para dar soporte (revisar/corregir datos antes de que el dueño
- * reactive el pago).
+ * Cómo le pega el lifecycle a ESTA sesión. La impersonación de SuperAdmin
+ * bypassea todo a propósito ((admin)/layout.tsx, spec §6): necesita poder
+ * entrar a un tenant bloqueado para dar soporte (revisar/corregir datos antes
+ * de que el dueño reactive el pago).
  */
-async function isBlockedForStaff(tenant: TenantRow): Promise<boolean> {
-  if (!BLOCKED_STAFF_TENANT_STATUSES.has(tenant.status)) return false
+export async function lifecycleGateForStaff(tenant: TenantRow): Promise<LifecycleGate> {
+  const gate: LifecycleGate = BLOCKED_TENANT_STATUSES.has(tenant.status)
+    ? 'blocked'
+    : READ_ONLY_TENANT_STATUSES.has(tenant.status)
+      ? 'read_only'
+      : 'open'
+  if (gate === 'open') return gate
   const impersonating = await getImpersonationSession()
-  return impersonating === null
+  return impersonating === null ? gate : 'open'
+}
+
+/** Lo que ve el staff cuando una escritura choca con el solo lectura. */
+const READ_ONLY_ERROR =
+  'El complejo está en solo lectura: podés ver todo, pero no cargar ni cambiar nada hasta que se active el plan.'
+
+type LifecycleOptions = {
+  /**
+   * Un complejo en solo lectura (`suspended`) pasa. Lo piden las pages, las
+   * acciones que solo leen (exportar los datos) y una sola escritura que la
+   * decisión deja abierta: marcar una devolución como hecha
+   * (`caja/devoluciones/actions.ts`). Qué acciones lo piden lo fija
+   * `tests/unit/caja-solo-lectura.test.ts`.
+   */
+  allowReadOnly?: boolean
 }
 
 /**
@@ -66,7 +89,7 @@ export type StaffActionAuth =
 async function requireStaffWithRole(
   allowed: readonly StaffRole[],
   error: string,
-  opts?: { billing?: boolean },
+  opts?: LifecycleOptions & { billing?: boolean },
 ): Promise<StaffActionAuth> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
@@ -89,8 +112,12 @@ async function requireStaffWithRole(
     if (tenant.status === 'deleted') {
       return { ok: false, error: 'El complejo fue eliminado.' }
     }
-  } else if (await isBlockedForStaff(tenant)) {
-    return { ok: false, error: 'El complejo está bloqueado por falta de pago.' }
+  } else {
+    const gate = await lifecycleGateForStaff(tenant)
+    if (gate === 'blocked') {
+      return { ok: false, error: 'El complejo está bloqueado por falta de pago.' }
+    }
+    if (gate === 'read_only' && !opts?.allowReadOnly) return { ok: false, error: READ_ONLY_ERROR }
   }
 
   return { ok: true, user: { ...user, staffUserId: user.staffUserId }, tenant, role }
@@ -99,17 +126,28 @@ async function requireStaffWithRole(
 /**
  * Guard para Server Actions operativas (reservas, caja): admin y manager
  * (Encargado) pasan. Rebota con error si no hay membresía activa.
+ *
+ * Las pages operativas (Hoy, grilla, reservas, jugadores, abonados, caja) lo
+ * usan también, con `allowReadOnly: true`: leer en solo lectura se puede,
+ * escribir no.
  */
-export async function requireOperatorStaff(): Promise<StaffActionAuth> {
-  return requireStaffWithRole(['admin', 'manager'], 'Tu rol no permite realizar esta acción.')
+export async function requireOperatorStaff(opts?: LifecycleOptions): Promise<StaffActionAuth> {
+  return requireStaffWithRole(['admin', 'manager'], 'Tu rol no permite realizar esta acción.', opts)
 }
 
 /**
  * Guard para Server Actions de configuración (p. ej. productos de cantina):
  * solo admin. A diferencia de requireAdminStaff, no redirige al rechazar.
+ *
+ * `allowReadOnly` es para las acciones del dueño que solo leen y tienen que
+ * andar en solo lectura, como exportar sus datos.
  */
-export async function requireAdminStaffAction(): Promise<StaffActionAuth> {
-  return requireStaffWithRole(['admin'], 'Solo el administrador puede modificar la configuración.')
+export async function requireAdminStaffAction(opts?: LifecycleOptions): Promise<StaffActionAuth> {
+  return requireStaffWithRole(
+    ['admin'],
+    'Solo el administrador puede modificar la configuración.',
+    opts,
+  )
 }
 
 /**
@@ -163,7 +201,9 @@ export async function requireAuthenticatedStaffAction(): Promise<AuthenticatedSt
  * redirigir). El rol se lee de la DB en cada request — un cambio de rol
  * aplica de inmediato, sin esperar a que el JWT se refresque.
  */
-export async function requireAdminStaff(opts?: { onRoleRejected?: string }): Promise<AdminStaff> {
+export async function requireAdminStaff(
+  opts?: LifecycleOptions & { onRoleRejected?: string },
+): Promise<AdminStaff> {
   const user = await extractAuthUser()
   if (!user || user.type !== 'staff' || !user.staffUserId) redirect('/login')
 
@@ -176,9 +216,12 @@ export async function requireAdminStaff(opts?: { onRoleRejected?: string }): Pro
   // Mismo bloqueo de tenant lifecycle que requireStaffWithRole (hallazgo R2):
   // requireAdminStaff también se usa como guard de Server Actions fuera de
   // (admin)/* (p. ej. finishOnboardingAction en src/app/onboarding/actions.ts),
-  // rutas que no pasan por el hard-lock de (admin)/layout.tsx. Mismo destino
-  // que el layout: /suspended.
-  if (await isBlockedForStaff(tenant)) redirect('/suspended')
+  // rutas que no pasan por el hard-lock de (admin)/layout.tsx. Bloqueado va a
+  // /suspended, como el layout; en solo lectura, quien no pidió
+  // `allowReadOnly` (una escritura) va a /reactivar, que es la salida.
+  const gate = await lifecycleGateForStaff(tenant)
+  if (gate === 'blocked') redirect('/suspended')
+  if (gate === 'read_only' && !opts?.allowReadOnly) redirect('/reactivar')
 
   return { user: { ...user, staffUserId: user.staffUserId }, tenant }
 }

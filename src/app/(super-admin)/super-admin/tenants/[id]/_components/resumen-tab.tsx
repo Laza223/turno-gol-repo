@@ -14,6 +14,7 @@ import {
   MarketplaceVisibilityToggle,
   type UpdateMarketplaceVisibilityAction,
 } from './marketplace-visibility-toggle'
+import { PlusToggle, type SetTenantPlusAction } from './plus-toggle'
 import { ReferralLinkPanel, type GenerateReferralLinkAction } from './referral-link-panel'
 import { AssignReferrerPanel, type AssignReferrerAction } from './assign-referrer-panel'
 
@@ -22,6 +23,15 @@ const ROLE_LABELS = { admin: 'Dueño', manager: STAFF_ROLE_LABELS.manager }
 const PENALTY_LABELS: Record<string, string> = {
   deposit: 'pierde la seña',
   full: 'se cobra el total',
+}
+
+/** Estado del premio que este complejo le hizo ganar a su referidor (B3). */
+const REFERRAL_REWARD_LABELS: Record<string, string> = {
+  earned: 'Ganado: espera tu aprobación en el Pulso',
+  manual_pending: 'Aprobado: falta devolverle un cobro al referidor',
+  applied: 'Acreditado',
+  rejected: 'Rechazado',
+  over_cap: 'No suma: el referidor llegó al tope de 6',
 }
 
 const TH = 'py-2 pr-4 text-xs font-medium uppercase tracking-wide text-muted-foreground'
@@ -36,6 +46,8 @@ export function ResumenTab({
   detail,
   impersonateAction,
   updateMarketplaceVisibilityAction,
+  plusEnabled,
+  setTenantPlusAction,
   generateReferralLinkAction,
   assignReferrerAction,
   nowMs,
@@ -43,6 +55,8 @@ export function ResumenTab({
   detail: TenantDetail
   impersonateAction: StartImpersonationAction
   updateMarketplaceVisibilityAction: UpdateMarketplaceVisibilityAction
+  plusEnabled: boolean
+  setTenantPlusAction: SetTenantPlusAction
   generateReferralLinkAction: GenerateReferralLinkAction
   assignReferrerAction: AssignReferrerAction
   nowMs: number
@@ -80,6 +94,13 @@ export function ResumenTab({
               action={updateMarketplaceVisibilityAction}
             />
           </Dt>
+          <Dt label="TurnoGol Plus">
+            <PlusToggle
+              tenantId={tenant.id}
+              initialEnabled={plusEnabled}
+              action={setTenantPlusAction}
+            />
+          </Dt>
           <Dt label="Link de referidos">
             <ReferralLinkPanel
               tenantId={tenant.id}
@@ -94,6 +115,11 @@ export function ResumenTab({
               action={assignReferrerAction}
             />
           </Dt>
+          {tenant.referralRewardStatus && (
+            <Dt label="Premio del referidor">
+              {REFERRAL_REWARD_LABELS[tenant.referralRewardStatus] ?? tenant.referralRewardStatus}
+            </Dt>
+          )}
           {tenant.scheduledDeletionAt && (
             <Dt label="Eliminación programada">
               <span className={TONE_TEXT.destructive}>

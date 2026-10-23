@@ -1,6 +1,9 @@
-import { sql } from 'drizzle-orm'
-import { getDb, withTenantContext, type DbTx } from '@/shared/db/client'
+import { isNotNull, sql } from 'drizzle-orm'
+import { getDb, getWorkerDb, withTenantContext, type DbTx } from '@/shared/db/client'
 import { insertAuditLog } from '@/shared/db/audit'
+import { featureFlags } from '@/shared/db/schema'
+import { clearFeatureFlagCache } from '@/shared/feature-flags'
+import { BOT_FEATURE_FLAG } from '@/modules/whatsapp-bot/whatsapp-bot.connection'
 import {
   transitionActiveToPastDue,
   transitionBlockedToChurned,
@@ -214,31 +217,47 @@ export async function extendTrial(
   now: Date = new Date(),
 ): Promise<{ trialEndsAt: Date }> {
   return withTenantContext(tenantId, async (tx) => {
-    const tenant = await loadTenantForUpdate(tx, tenantId)
-    if (tenant.status !== 'trialing') {
-      throw new TrialNotActiveError(tenantId, tenant.status)
-    }
-
-    const currentEnd = tenant.trial_ends_at ? toDate(tenant.trial_ends_at) : now
-    const base = currentEnd > now ? currentEnd : now
-    const newEnd = addDays(base, days)
-
-    await tx.execute(sql`
-      UPDATE tenants
-      SET trial_ends_at = ${newEnd.toISOString()}::timestamptz, updated_at = NOW()
-      WHERE id = ${tenantId}
-    `)
+    const { before, after } = await extendTrialInTx(tx, tenantId, days, now)
 
     await supportAudit(tx, systemAdminId, tenantId, 'support.tenant.trial_extended', {
       days,
-      before: {
-        trialEndsAt: tenant.trial_ends_at ? toDate(tenant.trial_ends_at).toISOString() : null,
-      },
-      after: { trialEndsAt: newEnd.toISOString() },
+      before: { trialEndsAt: before?.toISOString() ?? null },
+      after: { trialEndsAt: after.toISOString() },
     })
 
-    return { trialEndsAt: newEnd }
+    return { trialEndsAt: after }
   })
+}
+
+/**
+ * El cuerpo de `extendTrial` sin transacción propia ni audit, para quien ya
+ * tiene la fila lockeada en su tx y deja su propio rastro (el premio de
+ * referidos, `referral-reward.service.ts`). Lockea `tenants`: el caller que
+ * también toque `tenant_subscriptions` la lockea ANTES (Orden A).
+ */
+export async function extendTrialInTx(
+  tx: DbTx,
+  tenantId: string,
+  days: number,
+  now: Date = new Date(),
+): Promise<{ before: Date | null; after: Date }> {
+  const tenant = await loadTenantForUpdate(tx, tenantId)
+  if (tenant.status !== 'trialing') {
+    throw new TrialNotActiveError(tenantId, tenant.status)
+  }
+
+  const before = tenant.trial_ends_at ? toDate(tenant.trial_ends_at) : null
+  const currentEnd = before ?? now
+  const base = currentEnd > now ? currentEnd : now
+  const after = addDays(base, days)
+
+  await tx.execute(sql`
+    UPDATE tenants
+    SET trial_ends_at = ${after.toISOString()}::timestamptz, updated_at = NOW()
+    WHERE id = ${tenantId}
+  `)
+
+  return { before, after }
 }
 
 // ─── Forzar transición de estado (reusa el FSM de lifecycle.service) ─────────
@@ -480,5 +499,36 @@ export async function updateTenantMarketplaceVisibility(
       'support.tenant.marketplace_visibility_updated',
       { visible },
     )
+  })
+}
+
+/**
+ * Prende/apaga TurnoGol Plus (el bot de WhatsApp) para un complejo: upsert del
+ * override por tenant de `whatsapp_bot`. Apagar deja la fila en `false` (no la
+ * borra). `feature_flags` no tiene policy de escritura para el rol de la app, así
+ * que la escritura va por el pool worker (BYPASSRLS).
+ */
+export async function setTenantPlus(
+  tenantId: string,
+  enabled: boolean,
+  systemAdminId: string,
+): Promise<void> {
+  const exists = await getDb().execute(sql`SELECT 1 FROM tenants WHERE id = ${tenantId}`)
+  if ((exists as unknown[]).length === 0) {
+    throw new TenantNotFoundError(tenantId)
+  }
+
+  await getWorkerDb()
+    .insert(featureFlags)
+    .values({ key: BOT_FEATURE_FLAG, value: enabled, tenantId })
+    .onConflictDoUpdate({
+      target: [featureFlags.key, featureFlags.tenantId],
+      targetWhere: isNotNull(featureFlags.tenantId),
+      set: { value: enabled },
+    })
+  clearFeatureFlagCache()
+
+  await withTenantContext(tenantId, async (tx) => {
+    await supportAudit(tx, systemAdminId, tenantId, 'support.tenant.plus_toggled', { enabled })
   })
 }

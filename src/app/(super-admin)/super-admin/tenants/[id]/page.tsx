@@ -4,6 +4,8 @@ import { ArrowLeft, Building2 } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { ScrollTabs } from '@/components/ui/scroll-tabs'
 import { requireSystemAdmin } from '@/modules/auth/system-admin.guards'
+import { isFeatureEnabled } from '@/shared/feature-flags'
+import { BOT_FEATURE_FLAG } from '@/modules/whatsapp-bot/whatsapp-bot.connection'
 import {
   getTenantActivity,
   getTenantDetail,
@@ -32,6 +34,7 @@ import {
   generateReferralLinkAction,
   reactivateTenantAction,
   resetStaffPasswordAction,
+  setTenantPlusAction,
   startImpersonationAction,
   updateTenantMarketplaceVisibilityAction,
   updateTenantSettingsAction,
@@ -90,6 +93,7 @@ export default async function SuperAdminTenantDetailPage(props: {
       : null
 
   const { tenant } = detail
+  const plusEnabled = tab === 'resumen' && (await isFeatureEnabled(BOT_FEATURE_FLAG, tenant.id))
 
   return (
     <div className="space-y-6">
@@ -129,6 +133,8 @@ export default async function SuperAdminTenantDetailPage(props: {
           detail={detail}
           impersonateAction={startImpersonationAction}
           updateMarketplaceVisibilityAction={updateTenantMarketplaceVisibilityAction}
+          plusEnabled={plusEnabled}
+          setTenantPlusAction={setTenantPlusAction}
           generateReferralLinkAction={generateReferralLinkAction}
           assignReferrerAction={assignReferrerAction}
           nowMs={currentMs()}

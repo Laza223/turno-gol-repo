@@ -10,7 +10,7 @@ import { artTodayStr } from '@/shared/dates/art'
 import { EmptyState } from '@/components/ui/empty-state'
 
 export default async function HorariosPage() {
-  const { tenant } = await requireAdminStaff()
+  const { tenant } = await requireAdminStaff({ allowReadOnly: true })
 
   const hours = tenant.openingHours as LooseOpeningHours
   const closedDates = (tenant.closedDates ?? []) as unknown as string[]

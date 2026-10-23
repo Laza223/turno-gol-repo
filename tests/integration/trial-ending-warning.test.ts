@@ -170,12 +170,12 @@ describe('aviso de fin de prueba', () => {
 
     expect(await warnings(s, tenant.id)).toHaveLength(0)
     const rows = await s<{ status: string }[]>`SELECT status FROM tenants WHERE id = ${tenant.id}`
-    expect(rows[0]!.status).toBe('blocked')
+    expect(rows[0]!.status).toBe('suspended')
   })
 
   it('avisar no toca el estado: el complejo sigue operando hasta que venza', async () => {
     // Control positivo del test de arriba: la fase de aviso no debe adelantar
-    // el bloqueo ni un día.
+    // el vencimiento ni un día.
     const s = getSql()
     const tenant = await seedTrialing(s, planId, inDays(3))
 
@@ -186,11 +186,11 @@ describe('aviso de fin de prueba', () => {
   })
 })
 
-describe('bloqueo por trial vencido', () => {
+describe('fin de la prueba (pasa a solo lectura)', () => {
   // Gap encontrado al arreglar item de auditoría: el sweep bloqueaba el tenant
   // sin avisarle nunca al dueño (a diferencia de dunning-retry.worker.ts, que
   // sí encola una notificación en cada transición de estado).
-  it('al vencer y bloquear, encola trial_expired con el nombre del dueño y del complejo', async () => {
+  it('al vencer, encola trial_expired con el nombre del dueño y del complejo', async () => {
     const s = getSql()
     const tenant = await seedTrialing(s, planId, inDays(-1))
 
@@ -202,7 +202,7 @@ describe('bloqueo por trial vencido', () => {
     expect(typeof rows[0]!.content.ownerName).toBe('string')
   })
 
-  it('correrlo de nuevo sobre el mismo tenant ya bloqueado no reenvía', async () => {
+  it('correrlo de nuevo sobre el mismo tenant ya en solo lectura no reenvía', async () => {
     // El UPDATE de bloqueo filtra WHERE status = 'trialing': la 2da corrida no
     // afecta filas y la notificación queda adentro del mismo `if (0 rows) return`.
     const s = getSql()

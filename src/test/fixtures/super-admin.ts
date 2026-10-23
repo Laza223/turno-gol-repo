@@ -377,6 +377,7 @@ export type SaTenantDetail = {
     referralCode: string | null
     /** Nombre del complejo que trajo a ESTE (B2). `null` = sin referidor todavía. */
     referrerName: string | null
+    referralRewardStatus: string | null
   }
   pulse: SaTenantPulse
   subscription: {
@@ -462,6 +463,7 @@ const tenantDefault = (): SaTenantDetail['tenant'] => ({
   settings: tenantSettings(),
   referralCode: null,
   referrerName: null,
+  referralRewardStatus: null,
 })
 
 /** Tenant activo, con suscripción al día, canchas y staff cargados. */

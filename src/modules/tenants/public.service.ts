@@ -37,6 +37,7 @@ export type PublicTenant = {
   canceledPeriodEnd: Date | null
   timezone: string
   allowOnlineBooking: boolean
+  /** Si la reserva online pide seña HOY: `false` también con MP marcado como desconectado. */
   requiresDeposit: boolean
   depositPercentage: number
   /**
@@ -385,6 +386,8 @@ async function _getPublicTenant(slug: string): Promise<PublicTenant | null> {
       amenities: true,
       latitude: true,
       longitude: true,
+      // Instante, no credencial: dice si la seña online se puede cobrar.
+      mpDisconnectedAt: true,
       // NEVER: email, mpAccessToken, mpRefreshToken, mpUserId, mpPublicKey
     },
   })
@@ -428,7 +431,10 @@ async function _getPublicTenant(slug: string): Promise<PublicTenant | null> {
     canceledPeriodEnd,
     timezone: row.timezone,
     allowOnlineBooking: s.allow_online_booking ?? true,
-    requiresDeposit: s.requires_deposit ?? false,
+    // Con MP marcado como desconectado la reserva online entra sin seña
+    // (decisión 2026-10-22, `depositUnpayable` en reservar/actions.ts): el
+    // checkout y el bot no la pueden anunciar.
+    requiresDeposit: (s.requires_deposit ?? false) && !row.mpDisconnectedAt,
     depositPercentage: s.deposit_percentage ?? 30,
     hidePrices: arePublicPricesHidden(s),
     acceptsCash: s.accepts_cash ?? true,

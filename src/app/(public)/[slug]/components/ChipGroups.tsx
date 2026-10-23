@@ -40,18 +40,21 @@ const CHIP =
  * `wrap`: desde `lg` los chips pasan a varias filas en vez de una fila que se desplaza; en el
  * celular siempre es una fila cortada en el borde, que avisa que hay más.
  */
-function ChipGroup({
+export function ChipGroup({
   label,
   options,
   value,
   onChange,
   wrap = false,
+  alwaysWrap = false,
 }: {
   label: string
   options: Option[]
   value: string
   onChange: (value: string) => void
   wrap?: boolean
+  /** Varias filas también en el celular: para pocas opciones cortas, sin fila que se corte. */
+  alwaysWrap?: boolean
 }) {
   const ref = useRef<HTMLDivElement>(null)
   // Con 30 días de ventana el elegido puede quedar fuera de la fila: se la corre hasta que se
@@ -74,6 +77,7 @@ function ChipGroup({
       className={cn(
         '-m-1 flex gap-2 overflow-x-auto p-1 [scrollbar-width:none]',
         wrap && 'lg:flex-wrap lg:overflow-visible',
+        alwaysWrap && 'flex-wrap overflow-visible',
       )}
     >
       {options.map((o) => (

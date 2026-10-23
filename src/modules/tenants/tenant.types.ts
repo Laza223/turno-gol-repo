@@ -177,6 +177,10 @@ export type TenantRow = {
   mpConnectedAt: Date | null
   /** Apodo de la cuenta de MP conectada. Sirve para mostrar CUÁL quedó. */
   mpNickname: string | null
+  /** Cuándo TurnoGol comprobó que el permiso de MP del complejo ya no sirve
+   *  (migr. 100). `null` = conectado o nunca conectado. Ver
+   *  `payments/mp-connection.service.ts`. */
+  mpDisconnectedAt: Date | null
   /** Punto en el mapa, ya convertido a número (la columna es `numeric` y
    *  drizzle la devuelve como string). `null` = todavía sin cargar. */
   latitude: number | null

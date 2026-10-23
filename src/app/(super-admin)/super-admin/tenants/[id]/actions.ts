@@ -44,6 +44,7 @@ import {
   forceTenantStatus,
   PlanAlreadyAssignedError,
   reactivateTenant,
+  setTenantPlus,
   TenantNotFoundError,
   TrialNotActiveError,
   updateTenantMarketplaceVisibility,
@@ -404,6 +405,31 @@ export async function updateTenantMarketplaceVisibilityAction(
     message: visible
       ? 'El complejo ahora es visible en el marketplace.'
       : 'El complejo fue ocultado del marketplace.',
+  }
+}
+
+export async function setTenantPlusAction(
+  tenantId: string,
+  enabled: boolean,
+): Promise<SupportActionResult> {
+  const auth = await requireSystemAdminAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+
+  const parsed = uuid.safeParse(tenantId)
+  if (!parsed.success) return { success: false, error: 'Tenant inválido.' }
+
+  try {
+    await setTenantPlus(parsed.data, enabled, auth.admin.id)
+  } catch (err) {
+    return mapKnownError(err)
+  }
+
+  revalidateTenantPaths(parsed.data)
+  return {
+    success: true,
+    message: enabled
+      ? 'TurnoGol Plus activado: el complejo ya ve el Asistente de WhatsApp en Ajustes.'
+      : 'TurnoGol Plus desactivado: el bot deja de contestar en este complejo.',
   }
 }
 

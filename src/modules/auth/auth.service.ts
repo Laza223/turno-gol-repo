@@ -229,7 +229,8 @@ export async function resolveStaffTenants(staffUserId: string): Promise<StaffTen
   // excluía también suspended/blocked/churned — un dueño moroso ni siquiera
   // podía loguearse a ver el aviso o pagar (provisionAndRouteStaff lo mandaba
   // a /onboarding como si no tuviera complejo, tenants.length === 0). Ahora
-  // entra y el gate de (admin)/layout.tsx lo redirige a /suspended → /reactivar.
+  // entra: bloqueado, el gate de (admin)/layout.tsx lo redirige a /suspended →
+  // /reactivar; suspended, ve el panel en solo lectura.
   const sql = getWorkerSql()
   const rows = await sql<StaffTenantRow[]>`
     SELECT

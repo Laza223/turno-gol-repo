@@ -75,7 +75,7 @@ export default async function DashboardPage() {
   // rebota al manager A `/dashboard`, que es ESTA página, así que sería un loop
   // de redirects. El guard operator deja pasar a los dos y devuelve el rol ya
   // leído, que es lo que hace falta para decidir qué bloques ve cada uno.
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect('/login')
   const { tenant, role } = auth
 
@@ -117,6 +117,7 @@ export default async function DashboardPage() {
             openingHours: tenant.openingHours,
             closedDates: tenant.closedDates,
             closesNextDay: tenant.closesNextDay,
+            mpDisconnectedAt: tenant.mpDisconnectedAt,
           }),
           listCourts(tenant.id, tx),
           listDayGridBookings(tenant.id, date, tx),
@@ -236,7 +237,7 @@ export default async function DashboardPage() {
           arranca en el primer renglón. */}
         {needsAttention.length > 0 && (
           <div className="card-entrance">
-            <NeedsAttention items={needsAttention} nowMs={now.getTime()} />
+            <NeedsAttention items={needsAttention} nowMs={now.getTime()} isAdmin={isAdmin} />
           </div>
         )}
 

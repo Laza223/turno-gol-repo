@@ -38,7 +38,8 @@ export async function selectTenantAction(
   // Defensa: rechaza tenants a los que el staff no pertenece. ENS-20:
   // resolveStaffTenants ya NO filtra por status (solo excluye `deleted`) — un
   // tenant suspended/blocked/etc. puede aparecer acá; entrar cae en
-  // (admin)/layout.tsx → /suspended → /reactivar, no es un bypass.
+  // (admin)/layout.tsx: bloqueado → /suspended → /reactivar, suspended → panel
+  // en solo lectura. No es un bypass.
   if (!isMemberTenant(tenantId, tenants)) redirect('/select-tenant?error=invalid')
 
   await setStaffTenantClaim(user.id, tenantId, user.staffUserId)

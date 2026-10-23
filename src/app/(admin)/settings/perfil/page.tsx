@@ -17,7 +17,7 @@ import { SettingsHeader } from '../SettingsHeader'
  * están en "Vos y tu equipo" (`/settings/equipo`), en "Tu usuario".
  */
 export default async function PerfilPage() {
-  const { tenant } = await requireAdminStaff()
+  const { tenant } = await requireAdminStaff({ allowReadOnly: true })
   const gaps = getProfileGaps(tenant)
 
   return (

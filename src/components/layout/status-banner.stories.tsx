@@ -31,6 +31,37 @@ export const Suspended: Story = {
 }
 
 /**
+ * Solo lectura por prueba vencida (decisión 2026-10-22): fecha de corte y, para
+ * el dueño, el botón de activar. El encargado lee a quién avisarle.
+ */
+export const PruebaVencidaDueno: Story = {
+  args: {
+    tenantStatus: 'suspended',
+    periodEnd: null,
+    readOnly: { origin: 'trial', until: daysFromNow(9).toISOString() },
+    staffRole: 'admin',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('link', { name: 'Activar plan' })).toBeVisible()
+  },
+}
+
+export const PruebaVencidaEncargado: Story = {
+  args: {
+    tenantStatus: 'suspended',
+    periodEnd: null,
+    readOnly: { origin: 'trial', until: daysFromNow(9).toISOString() },
+    staffRole: 'manager',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText(/Avisale al dueño del complejo/)).toBeVisible()
+    await expect(canvas.queryByRole('link')).toBeNull()
+  },
+}
+
+/**
  * `active` sin trial/past_due/suspended: no renderiza nada (`null`). Se
  * verifica sobre un wrapper propio (no `canvasElement` completo): el preview
  * global monta `<Toaster />` + el script de FOUC de next-themes como hermanos

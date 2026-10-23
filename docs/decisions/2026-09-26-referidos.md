@@ -5,6 +5,7 @@
 **Supera a D8** de [`2026-09-02-experimento-30-dias.md`](2026-09-02-experimento-30-dias.md) ("1 referido pago → 1 mes bonificado, manual, no se construye"). **Acota D4**: el feature freeze sigue vigente para todo lo demás. Lo único que se libera es el programa de referidos: el link, la atribución en el alta, el premio y el panel. De la web comercial solo se suma la página `/r/<código>`; `/para-complejos` y `/precios` no cambian.
 
 Se decide **a sabiendas** de dos cosas:
+
 - H3 ("los dueños se refieren entre sí") todavía no tiene evidencia.
 - El formato "código con meses bonificados" ya lo tiene CanchaFija (`10-aprendizajes.md`, 2026-09-01), o sea que cae en "copiado de un competidor sin evidencia".
 
@@ -55,6 +56,7 @@ Plan de ejecución y estado: [`docs/planning/2026-09-26-referidos-ledger.md`](..
   - devolver ese cobro a mano desde el panel de MP de la cuenta master.
 - **Nunca cancelar la suscripción para regalar un mes:** MP le manda al cliente un mail de cancelación.
 - **Caso concreto:** El Vagón tiene un preapproval creado con primer cobro el 2026-12-06 ([`2026-09-17-precio-por-cancha.md`](2026-09-17-precio-por-cancha.md) P5), así que su premio va por el camino manual.
+- **Actualización 2026-10-22:** el método manual quedó definido (devolver el cobro) y el caso de El Vagón se corrigió: su preapproval es un checkout pendiente que nunca cobró, así que mientras no active el plan su premio extiende la prueba. Detalle y la premisa de "no hay pausa" corregida: [`2026-10-22-referidos-metodo-manual-premio.md`](2026-10-22-referidos-metodo-manual-premio.md).
 
 ## R6 — Honestidad del mensaje: se potencia el encuadre, nunca el número
 
@@ -79,6 +81,7 @@ Plan de ejecución y estado: [`docs/planning/2026-09-26-referidos-ledger.md`](..
   - demos, altas y primeros pagos de referidos.
 
   Se registra en el CRM (`grupo_wa`, `reenvio`, `referido_por`) y en `10-aprendizajes.md`.
+
 - **Revisiones:**
   - **2026-10-02:** H3, con el umbral ya escrito.
   - **2026-11-01:** si la promo sigue, se estira o termina, y si el sistema recibe más inversión.

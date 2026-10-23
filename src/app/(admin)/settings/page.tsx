@@ -4,7 +4,10 @@ import {
   CalendarDays,
   Clock,
   CreditCard,
+  Download,
   Eye,
+  FolderDown,
+  Gift,
   Globe,
   HandCoins,
   LogOut,
@@ -19,10 +22,14 @@ import {
 import { requireAdminStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { getSubscriptionState, listActivePlans } from '@/modules/billing/billing.service'
+import { REFERRAL_PROMO_ENDS_AT, REFERRAL_REWARD_CAP } from '@/shared/constants'
 import { buildPriceBreakdown } from '@/modules/billing/pricing'
 import { listStaffRoster } from '@/modules/staff/staff.service'
 import { getProfileGaps } from '@/modules/tenants/setup-gaps'
-import { getWhatsappConnection } from '@/modules/whatsapp-bot/whatsapp-bot.connection'
+import {
+  getWhatsappPlusState,
+  type WhatsappConnectionView,
+} from '@/modules/whatsapp-bot/whatsapp-bot.connection'
 import { bookingMinAdvanceHours } from '@/modules/tenants/tenant.utils'
 import { deriveScheduleView, type LooseOpeningHours } from '@/lib/schedule/schedule-view'
 import { formatArs } from '@/lib/format'
@@ -42,7 +49,7 @@ import { SettingsIndex, type SettingsIndexGroup } from './SettingsIndex'
  * vez de romper la portada.
  */
 export default async function SettingsPage() {
-  const { user, tenant } = await requireAdminStaff()
+  const { user, tenant } = await requireAdminStaff({ allowReadOnly: true })
   const s = tenant.settings
 
   let sub: Awaited<ReturnType<typeof getSubscriptionState>> | null = null
@@ -56,9 +63,10 @@ export default async function SettingsPage() {
     : null
   const activeStaff = (await listStaffRoster(tenant.id)).filter((m) => m.isActive).length
   // Extra pago: el renglón solo aparece en los complejos que lo tienen.
-  const whatsapp = await getWhatsappConnection(tenant.id)
+  const whatsapp = await getWhatsappPlusState(tenant.id)
 
   const mpConnected = !!tenant.mpConnectedAt
+  const mpDisconnected = mpConnected && !!tenant.mpDisconnectedAt
   const deposit = mpConnected && s.requires_deposit !== false
   const hours = deriveScheduleView(tenant.openingHours as LooseOpeningHours).general
   const gaps = getProfileGaps(tenant).length
@@ -101,7 +109,7 @@ export default async function SettingsPage() {
           tone: 'warning',
           href: '/settings/perfil',
         },
-        ...(whatsapp ? [whatsappItem(whatsapp)] : []),
+        ...(whatsapp ? [whatsappItem(whatsapp.connection)] : []),
       ],
     },
     {
@@ -124,9 +132,9 @@ export default async function SettingsPage() {
         {
           label: 'MercadoPago para cobrar la seña',
           effect: 'Donde te entra esa plata.',
-          value: mpConnected ? 'Conectado' : 'Sin conectar',
+          value: mpDisconnected ? 'Desconectado' : mpConnected ? 'Conectado' : 'Sin conectar',
           icon: Wallet,
-          tone: mpConnected ? 'success' : 'warning',
+          tone: mpConnected && !mpDisconnected ? 'success' : 'warning',
           href: '/settings/reservas#mercado-pago',
         },
       ],
@@ -194,6 +202,28 @@ export default async function SettingsPage() {
           icon: CalendarDays,
           href: '/settings/equipo#tu-usuario',
         },
+        {
+          label: 'Invitá otro complejo',
+          effect:
+            new Date().getTime() <= REFERRAL_PROMO_ENDS_AT.getTime()
+              ? `Obtené hasta ${REFERRAL_REWARD_CAP} meses gratis de TurnoGol.`
+              : 'Tus invitados y tus meses.',
+          icon: Gift,
+          href: '/settings/invitar',
+        },
+      ],
+    },
+    {
+      title: 'Tus datos',
+      lead: 'Son tuyos: los bajás cuando quieras.',
+      icon: FolderDown,
+      items: [
+        {
+          label: 'Bajar tus datos',
+          effect: 'Reservas, turnos fijos y clientes, para abrir en Excel.',
+          icon: Download,
+          href: '/settings/datos',
+        },
       ],
     },
   ]
@@ -206,14 +236,14 @@ export default async function SettingsPage() {
   )
 }
 
-function whatsappItem(
-  w: NonNullable<Awaited<ReturnType<typeof getWhatsappConnection>>>,
-): SettingsIndexGroup['items'][number] {
-  const [value, tone]: [string, StatusTone] = !w.connected
-    ? ['Desconectado', 'warning']
-    : w.enabled
-      ? ['Contesta solo', 'success']
-      : ['Apagado', 'neutral']
+function whatsappItem(w: WhatsappConnectionView | null): SettingsIndexGroup['items'][number] {
+  const [value, tone]: [string, StatusTone] = !w
+    ? ['Sin conectar', 'warning']
+    : !w.connected
+      ? ['Desconectado', 'warning']
+      : w.enabled
+        ? ['Contesta solo', 'success']
+        : ['Apagado', 'neutral']
   return {
     label: 'Asistente de WhatsApp',
     effect: 'Contesta, muestra turnos libres y reserva por vos.',

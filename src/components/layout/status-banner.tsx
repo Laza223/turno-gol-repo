@@ -2,19 +2,31 @@
 
 import Link from 'next/link'
 import { AlertTriangle, XCircle } from 'lucide-react'
-import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_NUMBER, SUPPORT_WHATSAPP_URL } from '@/shared/constants'
+import type { StaffRole } from '@/modules/staff/roles'
 
 /**
  * La banda de estado de la cuenta, arriba de toda pantalla del panel. Es solo
  * para lo que corta o puede cortar el servicio (servicio degradado, pago
- * fallido, suscripción cancelada, cuenta suspendida). El período de prueba NO va
+ * fallido, suscripción cancelada, solo lectura). El período de prueba NO va
  * acá desde el 2026-09-24: vive en el pie del riel, arriba de Ayuda
  * (`admin-sidebar.tsx`), porque una banda de 90 días le comía a cada vista el
  * alto de un renglón de trabajo.
  */
+/**
+ * Por qué el complejo está en solo lectura y hasta cuándo. Lo arma el layout
+ * de (admin) desde `tenant_subscriptions`: `trial` = prueba vencida sin pago
+ * (`dunning_started_at` vacío), `dunning` = mora. `until` es la fecha en que
+ * pasa a bloqueado, solo para la prueba (ISO UTC).
+ */
+export type ReadOnlyNotice = { origin: 'trial' | 'dunning'; until: string | null }
+
 interface StatusBannerProps {
   tenantStatus: string
   periodEnd: string | null
+  /** Solo para `suspended`. Sin valor, se usa el texto de la mora. */
+  readOnly?: ReadOnlyNotice | null
+  /** Rol del staff logueado: solo el dueño ve el botón de pagar. */
+  staffRole?: StaffRole
   /**
    * Override para Storybook/tests: por default lee `NEXT_PUBLIC_SERVICE_DEGRADED`
    * (deploy-playbook.md — toggle sin redeploy de código). Nadie en la app real
@@ -25,6 +37,19 @@ interface StatusBannerProps {
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })
+}
+
+/**
+ * Igual que `formatDate`, pero con la zona fija: el banner se renderiza en el
+ * servidor (UTC) y se hidrata en el navegador (ART), y una fecha de corte
+ * cerca de la medianoche daría un día distinto en cada lado.
+ */
+function formatArtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-AR', {
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'America/Argentina/Buenos_Aires',
+  })
 }
 
 /**
@@ -41,6 +66,8 @@ function ctaClass(hover: string): string {
 export function StatusBanner({
   tenantStatus,
   periodEnd,
+  readOnly,
+  staffRole,
   serviceDegraded = process.env.NEXT_PUBLIC_SERVICE_DEGRADED === 'true',
 }: StatusBannerProps) {
   // Priority 1: Service degraded
@@ -98,29 +125,39 @@ export function StatusBanner({
     )
   }
 
-  // Priority 4: Suspended
+  // Priority 4: Solo lectura (`suspended`). Desde 2026-10-22 el panel se ve
+  // pero no se opera: la prueba vencida y la mora entran acá
+  // (`docs/decisions/2026-10-22-solo-lectura-al-vencer-la-prueba.md`). La
+  // salida es `/reactivar`, que es solo del dueño: el encargado lee a quién
+  // avisarle en lugar de un botón que lo rebotaría.
   if (tenantStatus === 'suspended') {
+    const isTrial = readOnly?.origin === 'trial'
     return (
-      <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border-b border-red-200 text-sm text-red-800 dark:bg-red-500/10 dark:border-red-500/25 dark:text-red-200">
+      <div
+        role="status"
+        className="flex items-center gap-3 px-4 py-3 bg-red-50 border-b border-red-200 text-sm text-red-800 dark:bg-red-500/10 dark:border-red-500/25 dark:text-red-200"
+      >
         <XCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" aria-hidden="true" />
-        <span>
-          Tu cuenta está suspendida. Contactá a soporte por{' '}
-          <a
-            href={SUPPORT_WHATSAPP_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium underline underline-offset-2 hover:text-red-900 dark:hover:text-red-300 transition-colors duration-150"
-          >
-            WhatsApp ({SUPPORT_WHATSAPP_NUMBER})
-          </a>{' '}
-          o por mail a{' '}
-          <a
-            href={`mailto:${SUPPORT_EMAIL}`}
-            className="font-medium underline underline-offset-2 hover:text-red-900 dark:hover:text-red-300 transition-colors duration-150"
-          >
-            {SUPPORT_EMAIL}
-          </a>
+        <span className="flex-1">
+          {isTrial ? 'Tu prueba terminó.' : 'Tu cuenta está suspendida por falta de pago.'} El panel
+          quedó en solo lectura: podés ver todo, pero no cargar ni cambiar nada.
+          {readOnly?.until && (
+            <>
+              {' '}
+              Tenés hasta el <strong>{formatArtDate(readOnly.until)}</strong> para activarlo;
+              después se corta el acceso.
+            </>
+          )}
+          {staffRole !== 'admin' && ' Avisale al dueño del complejo.'}
         </span>
+        {staffRole === 'admin' && (
+          <Link
+            href="/reactivar"
+            className={ctaClass('hover:text-red-900 dark:hover:text-red-300')}
+          >
+            {isTrial ? 'Activar plan' : 'Regularizar pago'}
+          </Link>
+        )}
       </div>
     )
   }

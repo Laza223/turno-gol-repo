@@ -19,9 +19,19 @@ describe('sortAttentionItems', () => {
     since: new Date('2026-08-01T00:00:00Z'),
   }
 
-  it('devolución pendiente (P1) antes que seña fallida (P2), sin importar el orden de entrada', () => {
+  it('devolución pendiente antes que seña fallida, sin importar el orden de entrada', () => {
     const sorted = sortAttentionItems([deposit, refund])
     expect(sorted.map((i) => i.kind)).toEqual(['pending_refunds', 'failed_deposit'])
+  })
+
+  it('MercadoPago desconectado va primero aunque sea más nuevo que una devolución', () => {
+    const mp: AttentionItem = { kind: 'mp_disconnected', since: new Date('2026-08-03T00:00:00Z') }
+    const sorted = sortAttentionItems([deposit, refund, mp])
+    expect(sorted.map((i) => i.kind)).toEqual([
+      'mp_disconnected',
+      'pending_refunds',
+      'failed_deposit',
+    ])
   })
 
   it('dentro de la misma prioridad, ordena por antigüedad ascendente (más vieja primero)', () => {

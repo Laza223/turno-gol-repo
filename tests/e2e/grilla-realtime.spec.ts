@@ -19,7 +19,6 @@ import { createClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
 import { tomorrowDateIsoArt } from './_helpers/booking-seed'
 import { bookingInstants } from './_helpers/booking-instants'
-import { visibleGridView } from './_helpers/grid'
 
 // ── Seeded E2E constants (matches scripts/seed-e2e.ts) ──────────────────────
 const TENANT_ID = '00000000-0000-4000-8000-000000000001'
@@ -165,7 +164,7 @@ test.describe('grilla realtime — multi-browser <2s', () => {
       // BookingCard no longer renders the time range in the cell (the sticky
       // hour axis is the single source — pages/grilla.md §3); the cell shows
       // the guest name, so we assert on that.
-      await expect(visibleGridView(pageB).getByText('E2E Api Guest')).toBeVisible({ timeout: 2000 })
+      await expect(pageB.getByText('E2E Api Guest')).toBeVisible({ timeout: 2000 })
       expect(Date.now() - t0).toBeLessThan(2000)
     } finally {
       await ctxA.close()
@@ -224,7 +223,7 @@ test.describe('grilla realtime — catch-up after disconnect', () => {
       // After reconnect the hook fires fetchFromApi() on re-SUBSCRIBE (seconds)
       // or falls back to the 30s polling interval. Allow 35s for either path.
       // Cells render the guest name (not the time range — pages/grilla.md §3).
-      await expect(visibleGridView(page).getByText('E2E Guest')).toBeVisible({ timeout: 35_000 })
+      await expect(page.getByText('E2E Guest')).toBeVisible({ timeout: 35_000 })
     } finally {
       await context.close()
       await deleteBookingServiceRole(supabase, bookingId)
@@ -259,15 +258,14 @@ test.describe('grilla — mobile usable (375px)', () => {
         timeout: 15_000,
       })
 
-      // A 375px la grilla es la lista por hora (decisión del dueño
-      // 2026-10-22): la matriz sigue montada pero oculta por CSS.
-      await expect(page.getByTestId('booking-hour-list')).toBeVisible({ timeout: 10_000 })
-      await expect(page.getByTestId('booking-grid')).toBeHidden()
+      // A 375px se renderiza la MISMA matriz que en escritorio, con columnas de
+      // 44px: la lista por hora con carrusel de canchas se eliminó porque
+      // obligaba a recorrer fichas de a una para leer una sola hora.
+      await expect(page.getByTestId('booking-grid')).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByTestId('booking-day-list')).toHaveCount(0)
 
-      // Touch target: los botones "+ Cancha N" de las libres miden 44px.
-      const cell = page
-        .getByRole('button', { name: /^Reservar turno a las \d{2}:\d{2} en /i })
-        .first()
+      // Touch target: la fila mide 4rem, o sea 64px.
+      const cell = page.getByRole('button', { name: /^Reservar turno \d{2}:\d{2} en /i }).first()
       await expect(cell).toBeVisible({ timeout: 10_000 })
       const box = await cell.boundingBox()
       expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)

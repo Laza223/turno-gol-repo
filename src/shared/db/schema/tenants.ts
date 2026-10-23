@@ -131,6 +131,14 @@ export const tenants = pgTable(
       withTimezone: true,
       mode: 'date',
     }),
+    // Migr. 100: TurnoGol comprobó que el permiso OAuth ya no sirve (el refresh
+    // dio invalid_grant / unauthorized_client). La escribe y la limpia
+    // `payments/mp-connection.service.ts`; los tokens quedan, la marca es
+    // reversible.
+    mpDisconnectedAt: timestamp('mp_disconnected_at', {
+      withTimezone: true,
+      mode: 'date',
+    }),
 
     scheduledDeletionAt: timestamp('scheduled_deletion_at', {
       withTimezone: true,

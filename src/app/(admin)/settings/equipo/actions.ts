@@ -121,8 +121,8 @@ export type StaffActionResult =
  * pagó; el sweep recién lo pasa a `blocked` al vencer, doc4 §2 /
  * tenant.lifecycle.ts). Ahora deriva de `BLOCKED_TENANT_STATUSES` +
  * `READ_ONLY_TENANT_STATUSES` (tenant.lifecycle.ts), la misma fuente única que
- * ya usa `guards.ts` (`BLOCKED_STAFF_TENANT_STATUSES`) — `canceled` deja de
- * bloquear la gestión de equipo.
+ * ya usa `guards.ts` (`lifecycleGateForStaff`) — `canceled` deja de bloquear
+ * la gestión de equipo.
  */
 const STAFF_WRITE_BLOCKED_STATUSES: ReadonlySet<string> = new Set([
   ...BLOCKED_TENANT_STATUSES,

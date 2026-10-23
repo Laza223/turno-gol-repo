@@ -62,6 +62,17 @@ const STATUS_COPY: Record<string, { title: string; description: string }> = {
   },
 }
 
+/**
+ * Prueba vencida sin pago (decisión 2026-10-22): `suspended` sin mora abierta
+ * (`dunning_started_at` vacío). El texto de `suspended` de arriba habla de
+ * "falta de pago", que acá no aplica: el complejo todavía no pagó nunca.
+ */
+const TRIAL_READ_ONLY_COPY = {
+  title: 'Tu prueba terminó',
+  description:
+    'El panel quedó en solo lectura: podés ver tus datos, pero no cargar reservas, cobrar ni cambiar nada. Activá tu plan para volver a usar TurnoGol.',
+}
+
 const DEFAULT_COPY = {
   title: 'Tu cuenta necesita atención',
   description: 'Contactá a soporte para regularizar tu cuenta.',
@@ -133,7 +144,8 @@ export default async function ReactivarPage() {
   // a operar de más pagando de menos (el server lo corta igual).
   const onlineCourts = courts.filter((c) => c.status === 'online').length
 
-  const copy = STATUS_COPY[tenant.status] ?? DEFAULT_COPY
+  const trialReadOnly = tenant.status === 'suspended' && !!sub && !sub.dunningStartedAt
+  const copy = trialReadOnly ? TRIAL_READ_ONLY_COPY : (STATUS_COPY[tenant.status] ?? DEFAULT_COPY)
   const deadline = sub?.scheduledDeletionAt ?? null
   // Server Component: el cuerpo corre UNA vez por request, en el servidor. La
   // regla del React Compiler apunta a renders de CLIENTE, que se pueden
@@ -146,8 +158,9 @@ export default async function ReactivarPage() {
   const pricing = canReactivate ? await loadCuotaPricing() : null
 
   // Con qué cuenta de MercadoPago paga (migr. 078). Va acá y no solo en
-  // /settings/facturacion porque el hard-lock del panel deja al dueño
-  // suspendido/bloqueado con esta página como única superficie: si el cobro
+  // /settings/facturacion porque al dueño suspendido o bloqueado esta es la
+  // única página de facturación que le queda (/settings/facturacion lo manda
+  // acá; bloqueado, el panel entero lo saca): si el cobro
   // rebota por el email, corregirlo tiene que ser posible SIN salir de acá.
   const payer = await withTenantContext(tenant.id, (tx) => getBillingPayerEmail(tenant.id, tx))
 
@@ -205,17 +218,20 @@ export default async function ReactivarPage() {
 
       {/*
         Fix 2 (R2-4 residual): el backend ya acepta `cancel()` para
-        `suspended` (`withBillingTenant`, ver `/api/billing/cancel`), pero el
-        hard-lock del layout de (admin) saca a TODO `suspended` fuera de
-        `/settings/facturacion` — sin esto, un dueño suspendido no tenía
-        NINGÚN camino de UI a la baja (Res. 424/2020: la baja debe ser tan
-        fácil como el alta). `/reactivar` es la única página que un
-        `suspended` sí ve, así que reutiliza `CancelSubscriptionSection` acá
-        (gateado por el mismo `CANCELABLE` que usa `/settings/facturacion` —
-        nunca se ofrece para `canceled`/`blocked`/`churned`, que no son
-        transiciones válidas de `cancel()`).
+        `suspended` (`withBillingTenant`, ver `/api/billing/cancel`), pero
+        `/settings/facturacion` manda a todo `suspended` acá — sin esto, un
+        dueño en mora no tenía NINGÚN camino de UI a la baja (Res. 424/2020:
+        la baja debe ser tan fácil como el alta). Reutiliza
+        `CancelSubscriptionSection`, gateado por el mismo `CANCELABLE` que
+        `/settings/facturacion` (nunca para `canceled`/`blocked`/`churned`,
+        que no son transiciones válidas de `cancel()`).
+
+        La prueba vencida (`trialReadOnly`) tampoco la ve, igual que
+        `trialing`: nunca eligió plan, no hay nada que dar de baja. Antes del
+        2026-10-22 la prueba vencida iba directo a `blocked`, que tampoco la
+        mostraba.
       */}
-      {sub && CANCELABLE.has(sub.status) && (
+      {sub && CANCELABLE.has(sub.status) && !trialReadOnly && (
         <CancelSubscriptionSection
           status={sub.status}
           accessUntil={new Date(sub.currentPeriodEnd).toISOString()}

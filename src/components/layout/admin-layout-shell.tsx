@@ -9,7 +9,7 @@ import { NO_SETUP_ALERTS, type SetupAlerts } from './setup-alerts'
 import { AdminSidebar } from './admin-sidebar'
 import { AdminBottomNav } from './admin-bottom-nav'
 import { AdminHeader } from './admin-header'
-import { StatusBanner } from './status-banner'
+import { StatusBanner, type ReadOnlyNotice } from './status-banner'
 import { PushNotificationManagerLoader } from '@/components/admin/PushNotificationManagerLoader'
 
 /** Días de prueba que le quedan al complejo, o null si no está en prueba. */
@@ -36,6 +36,8 @@ interface AdminLayoutShellProps {
   /** Lo que le falta completar al complejo: prende los puntos rojos del menú y de las
    *  pestañas de Configuración. Sin valor, sin avisos. */
   setupAlerts?: SetupAlerts
+  /** Por qué está en solo lectura (`suspended`) y hasta cuándo; lo arma el layout. */
+  readOnly?: ReadOnlyNotice | null
 }
 
 export function AdminLayoutShell({
@@ -50,6 +52,7 @@ export function AdminLayoutShell({
   tournamentsEnabled,
   staffRole,
   setupAlerts = NO_SETUP_ALERTS,
+  readOnly = null,
 }: AdminLayoutShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [, startTransition] = useTransition()
@@ -119,7 +122,12 @@ export function AdminLayoutShell({
 
           {/* Estado de la cuenta, solo cuando corta o puede cortar el servicio.
               El período de prueba va en el riel, arriba de Ayuda. */}
-          <StatusBanner tenantStatus={tenantStatus} periodEnd={periodEnd} />
+          <StatusBanner
+            tenantStatus={tenantStatus}
+            periodEnd={periodEnd}
+            readOnly={readOnly}
+            staffRole={staffRole}
+          />
 
           {/* Page content — slate gradient suave sobre el shell oscuro */}
           {/* El `pb` de mobile reserva el alto de AdminBottomNav (3.5rem) más el

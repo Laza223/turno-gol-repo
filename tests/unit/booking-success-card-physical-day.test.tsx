@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render } from '@testing-library/react'
 import {
   BookingSuccessCard,
@@ -62,5 +62,53 @@ describe('BookingSuccessCard — día físico', () => {
     expect(shareText).toContain('sábado 17 de octubre')
     expect(receipt).toContain('17/10/2026')
     expect(container.textContent).not.toContain('18 de octubre')
+  })
+})
+
+describe('BookingSuccessCard — "Armar el partido" (RIVAL)', () => {
+  const renderWith = (rivalEnabled?: boolean) =>
+    render(
+      <BookingSuccessCard
+        bookingId={BOOKING_ID}
+        booking={booking({})}
+        complexUrl="https://t.test/el-vagon"
+        rivalEnabled={rivalEnabled}
+      />,
+    )
+
+  it('con el flag prendido suma el link a /rival/nuevo?reserva=<id> y conserva "Avisarle al grupo"', () => {
+    const { container } = renderWith(true)
+    const link = [...container.querySelectorAll('a')].find(
+      (a) => a.textContent?.trim() === 'Armar el partido',
+    )
+    expect(link?.getAttribute('href')).toBe(`/rival/nuevo?reserva=${BOOKING_ID}`)
+    expect(container.textContent).toContain('Avisarle al grupo')
+  })
+
+  it('solo hasta hoy+7 (ART): +7 lo ofrece, +8 no', () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date('2026-10-22T15:00:00Z')) // 12:00 ART del 22/10
+      const armar = (startsOn: string) =>
+        render(
+          <BookingSuccessCard
+            bookingId={BOOKING_ID}
+            booking={booking({ startsOn })}
+            complexUrl="https://t.test/el-vagon"
+            rivalEnabled
+          />,
+        ).container.textContent?.includes('Armar el partido')
+      expect(armar('2026-10-29')).toBe(true)
+      cleanup()
+      expect(armar('2026-10-30')).toBe(false)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it.each([false, undefined])('con el flag en %s no renderiza nada de RIVAL', (flag) => {
+    const { container } = renderWith(flag)
+    expect(container.textContent).not.toContain('Armar el partido')
+    expect(container.querySelector('a[href^="/rival"]')).toBeNull()
   })
 })

@@ -15,12 +15,29 @@
  * importando `@/server` desde `@/modules` — la dirección al revés (B6).
  */
 import { artDateOf, todayART } from '@/shared/time/art-date'
+import { SUBSCRIBED_TRIAL_GRACE_DAYS, TRIAL_READ_ONLY_DAYS } from '@/shared/constants'
 
 /** Estados en los que el complejo no tiene acceso a nada. */
 export const BLOCKED_TENANT_STATUSES = new Set(['blocked', 'churned', 'deleted'])
 
 /** Estados en los que el complejo puede leer pero no escribir. */
 export const READ_ONLY_TENANT_STATUSES = new Set(['suspended'])
+
+const DAY_MS = 86_400_000
+
+/**
+ * Hasta cuándo dura el solo lectura de un complejo cuya prueba venció sin pago
+ * (decisión 2026-10-22). Entra en `suspended` el día que vence la prueba, o
+ * `SUBSCRIBED_TRIAL_GRACE_DAYS` después si ya tocó "Activar", y pasa a
+ * `blocked` `TRIAL_READ_ONLY_DAYS` más tarde.
+ *
+ * Es la misma cuenta que hace `runExpireTrials` en SQL para decidir el
+ * bloqueo. Acá se usa para mostrarle la fecha al dueño en el aviso.
+ */
+export function trialReadOnlyEndsAt(trialEndsAt: Date, hasSubscription: boolean): Date {
+  const days = TRIAL_READ_ONLY_DAYS + (hasSubscription ? SUBSCRIBED_TRIAL_GRACE_DAYS : 0)
+  return new Date(trialEndsAt.getTime() + days * DAY_MS)
+}
 
 // ─── Superficie pública (portal del jugador) ────────────────────────────────
 

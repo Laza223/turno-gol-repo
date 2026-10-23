@@ -18,7 +18,7 @@ import { getPublicCourtCards, getPublicTenant } from '@/modules/tenants/public.s
 import { runAgent } from './whatsapp-bot.agent'
 import { buildChatBookings, buildComplexContext, type ChatBooking } from './whatsapp-bot.prompt'
 import { buildBotTools, pauseChatForHuman } from './whatsapp-bot.tools'
-import { BOT_FEATURE_FLAG } from './whatsapp-bot.connection'
+import { BOT_FEATURE_FLAG, isBotTenantOpen } from './whatsapp-bot.connection'
 
 /**
  * Un turno del bot: toma los mensajes pendientes de un chat, corre el agente y
@@ -321,7 +321,8 @@ export async function processWhatsappTurn(
   const live =
     state.connection?.enabled === true &&
     state.connection.status === 'connected' &&
-    (await isFeatureEnabled(BOT_FEATURE_FLAG, tenantId))
+    (await isFeatureEnabled(BOT_FEATURE_FLAG, tenantId)) &&
+    (await isBotTenantOpen(tenantId, now))
   if (!live || !state.connection) {
     // Apagado: el mensaje queda para el dueño en su celular. Se marca
     // procesado para que el rescate no lo vuelva a levantar cada minuto.

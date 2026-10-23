@@ -104,9 +104,14 @@ describe('la fórmula del código sobre los parámetros de la base da los montos
 
       expect(monthlyListAmount(billedCourts, params)).toBe(monthlyCents)
       // El ciclo mensual le cobra a MP exactamente la cuota de lista.
-      expect(computeSubscriptionAmount({ billedCourts, cycle: 'monthly', ...params })).toBe(
-        monthlyCents,
-      )
+      expect(
+        computeSubscriptionAmount({
+          billedCourts,
+          cycle: 'monthly',
+          plusPerCourtCents: 0,
+          ...params,
+        }),
+      ).toBe(monthlyCents)
     },
   )
 
@@ -137,15 +142,25 @@ describe('la fórmula del código sobre los parámetros de la base da los montos
     // 12 veces menos plata, en silencio.
     for (const billedCourts of [1, 4, 6, 8]) {
       expect(
-        computeSubscriptionAmount({ billedCourts, cycle: 'annual', ...params }),
+        computeSubscriptionAmount({
+          billedCourts,
+          cycle: 'annual',
+          plusPerCourtCents: 0,
+          ...params,
+        }),
         `${billedCourts} canchas, ciclo anual`,
       ).toBe(annualMonthlyEquivalent(billedCourts, params) * 12)
     }
 
     // Una cancha, a mano: $27.000 × 12 = $324.000 al año.
-    expect(computeSubscriptionAmount({ billedCourts: 1, cycle: 'annual', ...params })).toBe(
-      32_400_000,
-    )
+    expect(
+      computeSubscriptionAmount({
+        billedCourts: 1,
+        cycle: 'annual',
+        plusPerCourtCents: 0,
+        ...params,
+      }),
+    ).toBe(32_400_000)
   })
 })
 
@@ -170,6 +185,7 @@ describe('/precios publica la lista uniforme del catálogo', () => {
         computeSubscriptionAmount({
           billedCourts: courts,
           cycle: 'annual',
+          plusPerCourtCents: 0,
           ...(await pricingParamsFromDb()),
         }),
       ).toBe(annual * 12)

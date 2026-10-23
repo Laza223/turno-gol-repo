@@ -27,10 +27,12 @@ import type { DbTx } from '@/shared/db/client'
 import {
   changeBilledCourts,
   loadActivePlan,
+  loadSub,
+  plusPerCourtOf,
   pricingParamsOf,
 } from '@/modules/billing/billing.service'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
-import { monthlyListAmount } from '@/modules/billing/pricing'
+import { computeSubscriptionAmount } from '@/modules/billing/pricing'
 import { billingChangeMessage, type BillingChangePreview } from './billing-copy'
 
 export type CourtActionResult =
@@ -78,19 +80,25 @@ const BILLING_SYNC_ERROR =
  * en un estado donde mover el cobro signifique algo).
  */
 async function billingPreviewFor(
+  tenantId: string,
   billed: { billedCourts: number | null; isTrialing: boolean },
   nextOnlineCourts: number,
   tx: DbTx,
 ): Promise<BillingChangePreview | null> {
   if (billed.billedCourts === null || nextOnlineCourts <= billed.billedCourts) return null
   // Los montos salen del motor de precio, no de una cuenta a mano acá: la
-  // pantalla y el cobro no pueden divergir.
+  // pantalla y el cobro no pueden divergir. Llevan el Plus facturado: el débito
+  // real es plan + Plus por cancha.
   const params = pricingParamsOf(await loadActivePlan(tx))
+  const sub = await loadSub(tenantId, tx)
+  const plusPerCourtCents = sub ? plusPerCourtOf(sub) : 0
+  const monthlyFor = (billedCourts: number) =>
+    computeSubscriptionAmount({ ...params, billedCourts, cycle: 'monthly', plusPerCourtCents })
   return {
     currentBilledCourts: billed.billedCourts,
     nextBilledCourts: nextOnlineCourts,
-    currentMonthlyCents: monthlyListAmount(billed.billedCourts, params),
-    nextMonthlyCents: monthlyListAmount(nextOnlineCourts, params),
+    currentMonthlyCents: monthlyFor(billed.billedCourts),
+    nextMonthlyCents: monthlyFor(nextOnlineCourts),
     isTrialing: billed.isTrialing,
   }
 }
@@ -192,7 +200,7 @@ export async function createCourtAction(
     // Una cancha nace `online` (default de la tabla), así que suma a la cuenta
     // facturable desde el minuto cero.
     const nextOnlineCourts = billed.onlineCourts + 1
-    const preview = await billingPreviewFor(billed, nextOnlineCourts, tx)
+    const preview = await billingPreviewFor(tenant.id, billed, nextOnlineCourts, tx)
 
     if (preview && !confirmBillingChange) {
       return {
@@ -308,7 +316,7 @@ export async function toggleCourtStatusAction(
       if (current.status !== 'online') {
         const billed = await getCourtCountAndBilled(tenant.id, tx)
         const nextOnlineCourts = billed.onlineCourts + 1
-        const preview = await billingPreviewFor(billed, nextOnlineCourts, tx)
+        const preview = await billingPreviewFor(tenant.id, billed, nextOnlineCourts, tx)
 
         if (preview && !confirmBillingChange) {
           return {

@@ -13,6 +13,8 @@ function setup(cycle: 'monthly' | 'annual' = 'monthly') {
     planSlug: 'turnogol',
     billingCycle: cycle,
     billedCourts: 5,
+    plusEnabled: false,
+    plusPricePerCourtCents: null as number | null,
     mpSubscriptionId: 'preapproval',
     currentPeriodStart: future,
     currentPeriodEnd: future,
@@ -171,6 +173,24 @@ describe('repricing operacional', () => {
     await applyManifest(await buildManifest([local], deps.gateway), deps)
     expect(deps.gateway.updatePreapprovalAmount).not.toHaveBeenCalled()
     expect(deps.recordAudit).toHaveBeenCalledTimes(1)
+  })
+  // RP1: el script solo BAJA precios. Un complejo con Plus cuyo debito todavia no
+  // lo lleva (remoto 16.700.000 < objetivo con Plus 5 x (3.000.000 + 2.000.000)
+  // = 25.000.000) no se sube en silencio: queda en "Caso requiere revision".
+  it('con Plus prendido el objetivo lo incluye y un debito sin Plus no se sube', async () => {
+    const { local, deps } = setup()
+    Object.assign(local, { plusEnabled: true })
+    const manifest = await buildManifest([local], deps.gateway)
+    expect(manifest.entries[0].targetCents).toBe(25_000_000)
+    await expect(applyManifest(manifest, deps)).rejects.toThrow('Caso requiere revisión')
+    expect(deps.gateway.updatePreapprovalAmount).not.toHaveBeenCalled()
+  })
+  it('con Plus a precio especial el objetivo usa ese precio (anual: -10% sobre la suma, x12)', async () => {
+    const { local, deps } = setup('annual')
+    Object.assign(local, { plusEnabled: true, plusPricePerCourtCents: 1_000_000 })
+    const manifest = await buildManifest([local], deps.gateway)
+    // 5 x (3.000.000 + 1.000.000) = 20.000.000 -> x0,9 = 18.000.000 -> x12
+    expect(manifest.entries[0].targetCents).toBe(216_000_000)
   })
   it('rechaza manifiesto manipulado y bloqueo de precio', async () => {
     const { local, deps } = setup()

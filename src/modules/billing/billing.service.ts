@@ -1,10 +1,11 @@
 import { sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
-import type {
-  CreatePreapprovalInput,
-  GatewaySubscriptionState,
-  PreapprovalResult,
+import {
+  buildSaasPlusRef,
+  type CreatePreapprovalInput,
+  type GatewaySubscriptionState,
+  type PreapprovalResult,
 } from '@/modules/payments/payment.types'
 import {
   isMpInvalidPayerError,
@@ -12,6 +13,7 @@ import {
 } from '@/modules/payments/mp-token-refresh'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { insertSystemAuditLog } from '@/shared/db/audit'
+import { logger } from '@/shared/lib/logger'
 import {
   DowngradeBlockedError,
   InvalidPayerEmailError,
@@ -19,7 +21,11 @@ import {
   ReactivateNotAllowedError,
   SubscriptionNotFoundError,
 } from './billing.errors'
-import { computeSubscriptionAmount } from './pricing'
+import {
+  PLUS_LIST_PER_COURT_CENTS,
+  computeSubscriptionAmount,
+  effectivePlusPerCourtCents,
+} from './pricing'
 import { transitionToCanceled } from './lifecycle.service'
 import type {
   BillingCycle,
@@ -57,12 +63,25 @@ export type PlanRow = {
   annual_discount_bps: number | null
 }
 
-type SubRow = {
+export type SubRow = {
   status: SubscriptionStatus
   plan_id: string
   billing_cycle: BillingCycle
   /** Canchas sobre las que esta calculado el cobro vigente (migr. 090). */
   billed_courts: number
+  /** Migr. 101 — Plus va en el debito. Es lo unico que lo mete en el monto. */
+  plus_enabled: boolean
+  /** Precio especial de Plus por cancha y mes. NULL = lista. */
+  plus_price_per_court_cents: number | null
+  /** Baja agendada: el bot sigue hasta aca. */
+  plus_access_until: Date | string | null
+  /** Cotizacion anual congelada pendiente de pago (van las dos o ninguna). */
+  plus_prorate_cents: number | null
+  plus_prorate_months: number | null
+  /** current_period_end contra el que se cotizo; si cambio (renovo), la cotizacion vencio. */
+  plus_prorate_period_end: Date | string | null
+  /** Cuando se cotizo: un pago anterior a este instante no la acredita. */
+  plus_prorate_quoted_at: Date | string | null
   /** Canchas a las que pasa el cobro en `pending_change_at`. NULL = sin cambio. */
   pending_billed_courts: number | null
   current_period_start: Date | string
@@ -136,13 +155,50 @@ export function pricingParamsOf(plan: PlanRow): {
  * Reemplaza a `planAmount()`, que leia un precio fijo de la fila del plan.
  * Ahora el monto es funcion de `billed_courts`: la regla vive en
  * `./pricing.ts` y esta funcion solo le pasa los parametros del catalogo.
+ *
+ * `plusPerCourtCents` es OBLIGATORIO (0 = sin Plus): el debito lleva el plan
+ * MAS Plus, y un caller que lo omita no compila en vez de cobrar de menos.
+ * Se arma con `plusPerCourtOf(sub)`.
  */
 export function subscriptionAmount(
   plan: PlanRow,
   billedCourts: number,
   cycle: BillingCycle,
+  plusPerCourtCents: number,
 ): number {
-  return computeSubscriptionAmount({ billedCourts, cycle, ...pricingParamsOf(plan) })
+  return computeSubscriptionAmount({
+    billedCourts,
+    cycle,
+    plusPerCourtCents,
+    ...pricingParamsOf(plan),
+  })
+}
+
+/**
+ * ¿La cotizacion anual de Plus sigue valiendo? Hay cotizacion Y se hizo contra el
+ * periodo vigente: si el anual renovo (`current_period_end` cambio) la cotizacion
+ * de "los N meses que faltan" ya no describe nada y hay que recotizar. Un solo
+ * criterio para el boton de pago, el link, el panel y la acreditacion.
+ */
+export function isQuoteCurrent(sub: {
+  plus_prorate_cents: number | null
+  plus_prorate_period_end: Date | string | null
+  current_period_end: Date | string
+}): boolean {
+  if (sub.plus_prorate_cents === null || sub.plus_prorate_period_end === null) return false
+  return toDate(sub.plus_prorate_period_end).getTime() === toDate(sub.current_period_end).getTime()
+}
+
+/**
+ * Plus por cancha que lleva el debito de esta suscripcion. Sale SOLO de las
+ * columnas de `tenant_subscriptions` (`plus_enabled` + precio especial), nunca
+ * del override del flag `whatsapp_bot`.
+ */
+export function plusPerCourtOf(sub: {
+  plus_enabled: boolean
+  plus_price_per_court_cents: number | null
+}): number {
+  return effectivePlusPerCourtCents(sub.plus_enabled, sub.plus_price_per_court_cents)
 }
 
 /**
@@ -164,9 +220,12 @@ export async function listActivePlans(tx: DbTx): Promise<PlanSummary[]> {
   return rows as unknown as PlanSummary[]
 }
 
-async function loadSub(tenantId: string, tx: DbTx): Promise<SubRow | null> {
+export async function loadSub(tenantId: string, tx: DbTx): Promise<SubRow | null> {
   const rows = await tx.execute(sql`
     SELECT status, plan_id, billing_cycle, billed_courts, pending_billed_courts,
+           plus_enabled, plus_price_per_court_cents, plus_access_until,
+           plus_prorate_cents, plus_prorate_months,
+           plus_prorate_period_end, plus_prorate_quoted_at,
            current_period_start, current_period_end,
            mp_subscription_id, mp_payer_email, pending_plan_change, pending_change_at,
            canceled_at, cancellation_reason, scheduled_deletion_at,
@@ -193,9 +252,12 @@ async function loadSub(tenantId: string, tx: DbTx): Promise<SubRow | null> {
  * `support.service.ts:loadSubForUpdate`. `loadSub` (lecturas read-only como
  * `getSubscriptionState`) queda intacto — no debe lockear.
  */
-async function loadSubForUpdate(tenantId: string, tx: DbTx): Promise<SubRow | null> {
+export async function loadSubForUpdate(tenantId: string, tx: DbTx): Promise<SubRow | null> {
   const rows = await tx.execute(sql`
     SELECT status, plan_id, billing_cycle, billed_courts, pending_billed_courts,
+           plus_enabled, plus_price_per_court_cents, plus_access_until,
+           plus_prorate_cents, plus_prorate_months,
+           plus_prorate_period_end, plus_prorate_quoted_at,
            current_period_start, current_period_end,
            mp_subscription_id, mp_payer_email, pending_plan_change, pending_change_at,
            canceled_at, cancellation_reason, scheduled_deletion_at,
@@ -326,7 +388,7 @@ function formatDate(d: Date): string {
   return `${dd}/${mm}/${d.getUTCFullYear()}`
 }
 
-function computeReturnUrl(): string {
+export function computeReturnUrl(): string {
   return `${process.env.APP_URL ?? 'http://localhost:3000'}/settings/facturacion`
 }
 
@@ -346,7 +408,7 @@ function computeReturnUrl(): string {
  * efectivamente parsee como referencia de upgrade, y que el tenant que declara
  * la URL coincida con el embebido en esa referencia.
  */
-function computeNotificationUrl(tenantId: string): string {
+export function computeNotificationUrl(tenantId: string): string {
   return `${process.env.APP_URL ?? 'http://localhost:3000'}/api/webhooks/mercadopago?tenant=${tenantId}&source=saas`
 }
 
@@ -551,9 +613,16 @@ function assertBilledCourtsCoverOnline(
  * preapproval y la cantidad de canchas que representa (MP no tiene un campo
  * estructurado para eso), asi que `reusablePendingCheckout` lo compara.
  */
-function billingReason(billedCourts: number, cycle: BillingCycle): string {
+export function billingReason(
+  billedCourts: number,
+  cycle: BillingCycle,
+  plusPerCourtCents: number,
+): string {
   const canchas = billedCourts === 1 ? '1 cancha' : `${billedCourts} canchas`
-  return `TurnoGol — ${canchas} (${cycle === 'annual' ? 'anual' : 'mensual'})`
+  // Sin Plus el texto queda IDENTICO al de antes: el reuso de checkouts
+  // pendientes compara el `reason` con el que ya esta grabado en MP.
+  const plus = plusPerCourtCents > 0 ? ' + Asistente de WhatsApp' : ''
+  return `TurnoGol — ${canchas}${plus} (${cycle === 'annual' ? 'anual' : 'mensual'})`
 }
 
 // ─── subscribe ──────────────────────────────────────────────────────────────
@@ -600,8 +669,9 @@ export async function subscribe(
     throw new SubscriptionNotFoundError(tenantId)
   }
 
-  const amount = subscriptionAmount(plan, billedCourts, billingCycle)
-  const reason = billingReason(billedCourts, billingCycle)
+  const plusPerCourt = plusPerCourtOf(sub)
+  const amount = subscriptionAmount(plan, billedCourts, billingCycle, plusPerCourt)
+  const reason = billingReason(billedCourts, billingCycle, plusPerCourt)
   // Fix trial-first-charge: elegir plan no puede sacar plata antes de que
   // termine la prueba. Se calcula ACÁ para que el reuso compare contra la
   // misma fecha que mandaría un preapproval nuevo.
@@ -640,6 +710,8 @@ export async function subscribe(
             pending_change_at = NULL,
             updated_at = NOW()
         WHERE tenant_id = ${tenantId} AND mp_subscription_id = ${sub.mp_subscription_id}
+          AND plus_enabled = ${sub.plus_enabled}
+          AND plus_price_per_court_cents IS NOT DISTINCT FROM ${sub.plus_price_per_court_cents}::int
         RETURNING tenant_id
       `)
       if ((reuseUpdate as unknown as Array<{ tenant_id: string }>).length > 0) {
@@ -676,6 +748,11 @@ export async function subscribe(
   if (!payerEmail) {
     throw new SubscriptionNotFoundError(tenantId)
   }
+  // Plus tambien pudo cambiar en el medio (el interruptor de super-admin): el
+  // monto que se manda a MP sale de la fila lockeada, no de la lectura de arriba.
+  const lockedPlusPerCourt = plusPerCourtOf(lockedSub)
+  const createAmount = subscriptionAmount(plan, billedCourts, billingCycle, lockedPlusPerCourt)
+  const createReason = billingReason(billedCourts, billingCycle, lockedPlusPerCourt)
 
   // Fix "no cancelar un checkout que nunca se pagó": si el preapproval que hay
   // que reemplazar es EXACTAMENTE el que se leyó sin lock (nadie ganó una
@@ -707,10 +784,10 @@ export async function subscribe(
   const preapproval = await createPreapprovalOrThrowFriendly(gateway, {
     tenantId,
     payerEmail,
-    amount,
+    amount: createAmount,
     frequency: billingCycle,
     planId,
-    reason,
+    reason: createReason,
     returnUrl: computeReturnUrl(),
     notificationUrl: computeNotificationUrl(tenantId),
     // Fix trial-first-charge: elegir plan no puede sacar plata antes de que
@@ -828,10 +905,12 @@ export async function changeBilledCourts(
     // preserva `start_date`, así que el primer cobro sigue cayendo al final de
     // la prueba.
     if (row.mp_subscription_id) {
+      // Plus sale de la fila lockeada de arriba (`loadSubForUpdate`).
+      const plusPerCourt = plusPerCourtOf(sub)
       await gateway.updatePreapprovalAmount(
         row.mp_subscription_id,
-        subscriptionAmount(plan, targetBilledCourts, sub.billing_cycle),
-        { reason: billingReason(targetBilledCourts, sub.billing_cycle) },
+        subscriptionAmount(plan, targetBilledCourts, sub.billing_cycle, plusPerCourt),
+        { reason: billingReason(targetBilledCourts, sub.billing_cycle, plusPerCourt) },
       )
     }
 
@@ -953,6 +1032,40 @@ export async function cancel(
     })
   }
 
+  // P5: "si se da de baja el plan, Plus se va con él". Misma tx que la FSM de
+  // arriba. NO apaga el bot ya: sigue hasta el fin del período pago
+  // (`plus_access_until`), y lo apaga el barrido diario (`expirePlusAccess`).
+  // Tampoco llama a MP: el preapproval se cancela entero justo arriba.
+  // `reactivate()` NO lo devuelve: lo vuelve a prender TurnoGol (P2).
+  // Una cotización anual pendiente también se descarta (ya no hay plan pago al
+  // que sumarle Plus); el precio especial se conserva solo si Plus estaba en el
+  // débito.
+  if (sub.plus_enabled || sub.plus_prorate_cents !== null) {
+    await tx.execute(sql`
+      UPDATE tenant_subscriptions
+      SET plus_access_until = CASE WHEN plus_enabled THEN current_period_end ELSE plus_access_until END,
+          plus_price_per_court_cents = CASE WHEN plus_enabled THEN plus_price_per_court_cents ELSE NULL END,
+          plus_enabled = false,
+          plus_prorate_cents = NULL,
+          plus_prorate_months = NULL,
+          plus_prorate_period_end = NULL,
+          plus_prorate_quoted_at = NULL,
+          updated_at = NOW()
+      WHERE tenant_id = ${tenantId}
+    `)
+    await insertSystemAuditLog(tx, {
+      tenantId,
+      action: 'plus.end_scheduled',
+      resourceType: 'tenant_subscription',
+      resourceId: tenantId,
+      metadata: {
+        by: 'plan_canceled',
+        wasBilled: sub.plus_enabled,
+        accessUntil: sub.plus_enabled ? toDate(sub.current_period_end).toISOString() : null,
+      },
+    })
+  }
+
   const owner = await loadTenantOwner(tenantId, tx)
   if (owner) {
     await enqueueTenantOwnerNotification(
@@ -1014,11 +1127,12 @@ export async function reactivate(
   let payerEmail = resolvePayerEmail(sub, owner)
   if (!payerEmail) throw new SubscriptionNotFoundError(tenantId)
 
-  const amount = subscriptionAmount(plan, billedCourts, billingCycle)
+  const plusPerCourt = plusPerCourtOf(sub)
+  const amount = subscriptionAmount(plan, billedCourts, billingCycle, plusPerCourt)
   // Reactivar es post-trial (canceled/churned/suspended/blocked): el cobro sale
   // ya, sin `firstChargeAt`. El reuso exige que el pendiente tampoco tenga
   // fecha futura grabada.
-  const reason = `${billingReason(billedCourts, billingCycle)} — reactivación`
+  const reason = `${billingReason(billedCourts, billingCycle, plusPerCourt)} — reactivación`
 
   // Fix "no cancelar un checkout que nunca se pagó" — mismo criterio que
   // `subscribe()` (ver ese comentario): un solo GET, guardado para el chequeo
@@ -1046,6 +1160,8 @@ export async function reactivate(
             pending_change_at = NULL,
             updated_at = NOW()
         WHERE tenant_id = ${tenantId} AND mp_subscription_id = ${sub.mp_subscription_id}
+          AND plus_enabled = ${sub.plus_enabled}
+          AND plus_price_per_court_cents IS NOT DISTINCT FROM ${sub.plus_price_per_court_cents}::int
         RETURNING tenant_id
       `)
       if ((reuseUpdate as unknown as Array<{ tenant_id: string }>).length > 0) {
@@ -1075,6 +1191,10 @@ export async function reactivate(
   // `mp_payer_email` pudo cambiar entre la lectura sin lock y acá.
   payerEmail = resolvePayerEmail(lockedSub, owner)
   if (!payerEmail) throw new SubscriptionNotFoundError(tenantId)
+  // Mismo criterio que `subscribe()`: Plus se relee de la fila lockeada.
+  const lockedPlusPerCourt = plusPerCourtOf(lockedSub)
+  const createAmount = subscriptionAmount(plan, billedCourts, billingCycle, lockedPlusPerCourt)
+  const createReason = `${billingReason(billedCourts, billingCycle, lockedPlusPerCourt)} — reactivación`
 
   // Fix 1 (R2 🔴): el preapproval VIEJO puede seguir vivo en MP reintentando
   // — el sweep de dunning (dunning-retry.worker.ts) solo escala estado
@@ -1131,10 +1251,10 @@ export async function reactivate(
   const preapproval = await createPreapprovalOrThrowFriendly(gateway, {
     tenantId,
     payerEmail,
-    amount,
+    amount: createAmount,
     frequency: billingCycle,
     planId,
-    reason,
+    reason: createReason,
     returnUrl: computeReturnUrl(),
     notificationUrl: computeNotificationUrl(tenantId),
   })
@@ -1201,15 +1321,61 @@ export async function getSubscriptionState(tenantId: string, tx: DbTx): Promise<
            ts.scheduled_deletion_at AS "scheduledDeletionAt",
            ts.dunning_started_at AS "dunningStartedAt",
            ts.last_payment_failed_at AS "lastPaymentFailedAt",
-           ts.last_payment_at AS "lastPaymentAt"
+           ts.last_payment_at AS "lastPaymentAt",
+           ts.plus_enabled AS "plusEnabled",
+           ts.plus_price_per_court_cents AS "plusPricePerCourtCents",
+           ts.plus_access_until AS "plusAccessUntil",
+           ts.plus_prorate_cents AS "plusProrateCents",
+           ts.plus_prorate_months AS "plusProrateMonths",
+           ts.plus_prorate_period_end AS "plusProratePeriodEnd"
     FROM tenant_subscriptions ts
     JOIN plans p ON p.id = ts.plan_id
     WHERE ts.tenant_id = ${tenantId}
     LIMIT 1
   `)
-  const row = (rows as unknown as Array<SubscriptionState>)[0]
-  if (!row) throw new SubscriptionNotFoundError(tenantId)
-  return row
+  const raw = (
+    rows as unknown as Array<
+      Omit<SubscriptionState, 'plus'> & {
+        plusEnabled: boolean
+        plusPricePerCourtCents: number | null
+        plusAccessUntil: Date | string | null
+        plusProrateCents: number | null
+        plusProrateMonths: number | null
+        plusProratePeriodEnd: Date | string | null
+      }
+    >
+  )[0]
+  if (!raw) throw new SubscriptionNotFoundError(tenantId)
+  const {
+    plusEnabled,
+    plusPricePerCourtCents,
+    plusAccessUntil,
+    plusProrateCents,
+    plusProrateMonths,
+    plusProratePeriodEnd,
+    ...state
+  } = raw
+  return {
+    ...state,
+    plus: {
+      enabled: plusEnabled,
+      // Lo que cuesta Plus por cancha y mes para este complejo (especial o
+      // lista), este prendido o no: la pantalla lo muestra en las dos.
+      perCourtCents: plusPricePerCourtCents ?? PLUS_LIST_PER_COURT_CENTS,
+      accessUntil: plusAccessUntil ? toDate(plusAccessUntil) : null,
+      quote:
+        plusProrateCents !== null &&
+        plusProrateMonths !== null &&
+        // Una cotizacion de un periodo que ya renovo esta vencida: no hay boton.
+        isQuoteCurrent({
+          plus_prorate_cents: plusProrateCents,
+          plus_prorate_period_end: plusProratePeriodEnd,
+          current_period_end: state.currentPeriodEnd,
+        })
+          ? { months: plusProrateMonths, amountCents: plusProrateCents }
+          : null,
+    },
+  }
 }
 
 // ─── payer email de MercadoPago (migr. 078) ─────────────────────────────────
@@ -1299,10 +1465,43 @@ export async function listInvoices(
   gateway: PaymentGateway,
 ): Promise<InvoiceEntry[]> {
   const payments = await gateway.searchPaymentsByReference(tenantId)
-  return payments.map((p) => ({
+  const entries: InvoiceEntry[] = payments.map((p) => ({
     mpPaymentId: p.mpPaymentId,
     status: p.status,
     amount: p.amount,
     date: toInvoiceDate(p.dateCreated),
+    kind: 'subscription',
   }))
+
+  // El pago único de Plus en un anual (P7) cuelga de otra referencia. Si esa
+  // búsqueda falla, el historial del débito se muestra igual.
+  try {
+    const seen = new Set(entries.map((e) => e.mpPaymentId))
+    const plusPayments = await gateway.searchPaymentsByReference(buildSaasPlusRef(tenantId))
+    for (const p of plusPayments) {
+      if (seen.has(p.mpPaymentId)) continue
+      seen.add(p.mpPaymentId)
+      entries.push({
+        mpPaymentId: p.mpPaymentId,
+        status: p.status,
+        amount: p.amount,
+        date: toInvoiceDate(p.dateCreated),
+        kind: 'plus_prorate',
+      })
+    }
+  } catch (err) {
+    logger.warn('listInvoices: no se pudo leer el pago de Plus; se muestra solo el débito', {
+      module: 'billing',
+      tenantId,
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return entries
+  }
+
+  // Más nuevo primero (como lo devuelve MP); sin fecha, al final. Orden estable.
+  return entries.sort(
+    (a, b) =>
+      (b.date?.getTime() ?? Number.MIN_SAFE_INTEGER) -
+      (a.date?.getTime() ?? Number.MIN_SAFE_INTEGER),
+  )
 }

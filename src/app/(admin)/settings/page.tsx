@@ -265,6 +265,7 @@ function cuotaValue(
     const { monthlyEffectiveCents } = buildPriceBreakdown({
       billedCourts: sub.billedCourts,
       cycle: sub.billingCycle,
+      plusPerCourtCents: sub.plus.enabled ? sub.plus.perCourtCents : 0,
       ...pricing,
     })
     return `${formatArs(monthlyEffectiveCents)} por mes`

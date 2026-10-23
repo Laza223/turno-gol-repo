@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { SQL } from 'drizzle-orm'
 
 // caza-bugs #9/#10: tenant_subscriptions tiene RLS+FORCE (NO es una tabla
 // global pese a lo que decía el comentario de cabecera de estos dos
@@ -73,6 +74,33 @@ describe('getMrrCents (dashboard.service) — lee tenant_subscriptions vía getW
     expect(data.mrrCents).toBe(350000)
     expect(h.getWorkerDb).toHaveBeenCalled()
   })
+
+  // Con `prepare: false` una query con parámetros va en dos tiempos y fue la que
+  // se colgó en prod el 2026-09-21 (comentario del `.where` en dashboard.service).
+  // Sumar Plus al MRR no puede volver a meterle un parámetro enlazado.
+  it('la query del MRR no lleva parámetros enlazados (ni con el precio de lista de Plus)', async () => {
+    const { PgDialect } = await import('drizzle-orm/pg-core')
+    const captured: { select?: Record<string, SQL>; where?: SQL } = {}
+    const chain = makeChain([{ mrr: '0' }])
+    chain.select = (arg: Record<string, SQL>) => {
+      captured.select ??= arg
+      return chain
+    }
+    chain.where = (arg: SQL) => {
+      captured.where ??= arg
+      return chain
+    }
+    h.getWorkerDb.mockReturnValue(chain)
+    const { getDashboardData } = await import('@/modules/super-admin/dashboard.service')
+
+    await getDashboardData()
+
+    const dialect = new PgDialect()
+    const mrr = captured.select?.mrr
+    expect(mrr).toBeDefined()
+    expect(dialect.sqlToQuery(mrr as SQL).params).toEqual([])
+    expect(dialect.sqlToQuery(captured.where as SQL).params).toEqual([])
+  })
 })
 
 describe('listTenants (tenants.service) — cross-tenant vía getWorkerDb, no getDb', () => {
@@ -90,6 +118,8 @@ describe('listTenants (tenants.service) — cross-tenant vía getWorkerDb, no ge
         priceFirstCourtCents: 4_700_000,
         priceExtraCourtCents: 3_000_000,
         annualDiscountBps: 1000,
+        plusEnabled: false,
+        plusPricePerCourtCents: null,
         billingCycle: 'monthly',
         subscriptionStatus: 'active',
       },
@@ -123,6 +153,8 @@ describe('listTenants (tenants.service) — cross-tenant vía getWorkerDb, no ge
         priceFirstCourtCents: 4_700_000,
         priceExtraCourtCents: 3_000_000,
         annualDiscountBps: 1000,
+        plusEnabled: false,
+        plusPricePerCourtCents: null,
         billingCycle: 'annual',
         subscriptionStatus: 'active',
       },

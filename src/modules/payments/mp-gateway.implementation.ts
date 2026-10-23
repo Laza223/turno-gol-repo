@@ -5,9 +5,11 @@ import { withTokenRefresh } from './mp-token-refresh'
 import { centsToPesos, pesosToCents } from './money'
 import type { PaymentGateway } from './mp-gateway'
 import {
+  buildSaasPlusRef,
   buildSaasUpgradeRef,
   type CreatePreapprovalInput,
   type CreatePreferenceInput,
+  type CreateSaasPlusPreferenceInput,
   type CreateSaasUpgradePreferenceInput,
   type GatewayPaymentInfo,
   type GatewaySubscriptionState,
@@ -22,6 +24,7 @@ const ALLOWED_STATUSES: ReadonlyArray<MpPaymentStatus> = [
   'approved',
   'rejected',
   'refunded',
+  'charged_back',
   'cancelled',
 ]
 
@@ -212,6 +215,11 @@ export class MercadoPagoGateway implements PaymentGateway {
         preapprovalId: (
           res.point_of_interaction?.transaction_data as { subscription_id?: string } | undefined
         )?.subscription_id,
+        // El pago unico de Plus (`saas-plus:`) solo se acredita si es posterior
+        // a su cotizacion: el webhook necesita la fecha.
+        ...(typeof res.date_created === 'string' && res.date_created !== ''
+          ? { dateCreated: res.date_created }
+          : {}),
       }
     } catch (err) {
       throw new MpGatewayError(`Failed to fetch MP payment ${mpPaymentId}`, err)
@@ -641,6 +649,50 @@ export class MercadoPagoGateway implements PaymentGateway {
       if (err instanceof MpGatewayError) throw err
       throw new MpGatewayError(
         `Failed to create MP saas-upgrade preference for tenant ${input.tenantId}`,
+        err,
+      )
+    }
+  }
+
+  async createSaasPlusPreference(input: CreateSaasPlusPreferenceInput): Promise<PreferenceResult> {
+    const preference = new Preference(this.config)
+    const externalRef = buildSaasPlusRef(input.tenantId)
+    try {
+      const res = await preference.create({
+        body: {
+          items: [
+            {
+              id: externalRef,
+              title: input.description,
+              unit_price: centsToPesos(input.amount),
+              quantity: 1,
+              currency_id: 'ARS',
+            },
+          ],
+          back_urls: {
+            success: normalizeUrl(input.returnUrl),
+            failure: normalizeUrl(input.returnUrl),
+            pending: normalizeUrl(input.returnUrl),
+          },
+          auto_return: 'approved',
+          external_reference: externalRef,
+          notification_url: normalizeUrl(input.notificationUrl),
+          expires: true,
+          expiration_date_to: input.expiresAt.toISOString(),
+        },
+      })
+      if (!res.id || !res.init_point) {
+        throw new MpGatewayError('MP returned an empty saas-plus preference')
+      }
+      return {
+        preferenceId: res.id,
+        initPoint: res.init_point,
+        sandboxInitPoint: res.sandbox_init_point ?? res.init_point,
+      }
+    } catch (err) {
+      if (err instanceof MpGatewayError) throw err
+      throw new MpGatewayError(
+        `Failed to create MP saas-plus preference for tenant ${input.tenantId}`,
         err,
       )
     }

@@ -27,7 +27,12 @@ import { CancelSubscriptionSection } from './CancelSubscriptionSection'
 import { InvoiceHistorySection, STATUS_LABELS } from './InvoiceHistorySection'
 import { MpPayerEmailSection } from './MpPayerEmailSection'
 import { SUBSCRIPTION_STATUS_LABEL } from './subscription-status-label'
-import { updateMpPayerEmailAction } from './actions'
+import { PlusSection } from './PlusSection'
+import {
+  disablePlusAction,
+  startPlusProratePaymentAction,
+  updateMpPayerEmailAction,
+} from './actions'
 
 function formatDate(d: string | Date | null): string {
   if (!d) return '—'
@@ -146,11 +151,15 @@ export default async function FacturacionPage() {
           ? 'manage'
           : null
 
+  // Plus EFECTIVO que se factura (no el flag): el mismo número que va al débito.
+  const plusBilledPerCourt = sub?.plus.enabled ? sub.plus.perCourtCents : 0
+
   const readOnlyBreakdown =
     sub && pricing && !cuotaMode
       ? buildPriceBreakdown({
           billedCourts: sub.billedCourts,
           cycle: sub.billingCycle,
+          plusPerCourtCents: plusBilledPerCourt,
           ...pricing,
         })
       : null
@@ -189,6 +198,7 @@ export default async function FacturacionPage() {
               pendingBilledCourts={sub.pendingBilledCourts}
               periodEnd={new Date(sub.currentPeriodEnd).toISOString()}
               billingCycle={sub.billingCycle}
+              plusPerCourtCents={plusBilledPerCourt}
             />
           ) : (
             <section className="card-premium rounded-xl p-6">
@@ -253,6 +263,21 @@ export default async function FacturacionPage() {
                 </div>
               </dl>
             </section>
+          )}
+          {sub && (
+            <PlusSection
+              plus={{
+                enabled: sub.plus.enabled,
+                perCourtCents: sub.plus.perCourtCents,
+                accessUntil: sub.plus.accessUntil
+                  ? new Date(sub.plus.accessUntil).toISOString()
+                  : null,
+                quote: sub.plus.quote,
+              }}
+              periodEnd={new Date(sub.currentPeriodEnd).toISOString()}
+              disableAction={disablePlusAction}
+              payAction={startPlusProratePaymentAction}
+            />
           )}
         </div>
       </div>

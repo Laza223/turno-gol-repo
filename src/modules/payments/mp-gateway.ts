@@ -1,6 +1,7 @@
 import type {
   CreatePreapprovalInput,
   CreatePreferenceInput,
+  CreateSaasPlusPreferenceInput,
   CreateSaasUpgradePreferenceInput,
   GatewayPaymentInfo,
   GatewaySubscriptionState,
@@ -99,4 +100,9 @@ export interface PaymentGateway {
    * route the resulting payment to `billing.handleUpgradePayment`.
    */
   createSaasUpgradePreference(input: CreateSaasUpgradePreferenceInput): Promise<PreferenceResult>
+  /**
+   * Pago unico del alta de TurnoGol Plus en un anual ya pago (P7), por la
+   * cuenta MASTER. external_reference = `saas-plus:<tenantId>`.
+   */
+  createSaasPlusPreference(input: CreateSaasPlusPreferenceInput): Promise<PreferenceResult>
 }

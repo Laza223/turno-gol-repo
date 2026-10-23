@@ -388,6 +388,8 @@ export type SaTenantDetail = {
     priceFirstCourtCents: number | null
     priceExtraCourtCents: number | null
     annualDiscountBps: number | null
+    plusEnabled: boolean
+    plusPricePerCourtCents: number | null
     billingCycle: SaBillingCycle
     currentPeriodStart: Date
     currentPeriodEnd: Date
@@ -430,6 +432,8 @@ const subscriptionDefault = (overrides: Partial<SaSubscription> = {}): SaSubscri
   billedCourts: 5,
   pendingBilledCourts: null,
   ...billedCourtsPricing(),
+  plusEnabled: false,
+  plusPricePerCourtCents: null,
   billingCycle: 'monthly',
   currentPeriodStart: daysFromNow(-10),
   currentPeriodEnd: daysFromNow(20),

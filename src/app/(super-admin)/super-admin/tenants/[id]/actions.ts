@@ -7,6 +7,8 @@ import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { formatArs } from '@/lib/format'
+import { formatArtDate } from '@/shared/time/art-date'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
 import { uuid } from '@/shared/validation/primitives'
 import { requireSystemAdminAction } from '@/modules/auth/system-admin.guards'
@@ -25,8 +27,13 @@ import {
   DowngradeBlockedError,
   InvalidTransitionError,
   PlanNotFoundError,
+  PlusFlagPendingError,
+  PlusNotAllowedError,
+  PlusQuoteNotPendingError,
   SubscriptionNotFoundError,
 } from '@/modules/billing/billing.errors'
+import { InvalidPlusPriceError, PLUS_LIST_PER_COURT_CENTS } from '@/modules/billing/pricing'
+import { disablePlus, enablePlus } from '@/modules/billing/plus.service'
 import {
   cancelSubscriptionInputSchema,
   changeBilledCourtsInputSchema,
@@ -44,7 +51,6 @@ import {
   forceTenantStatus,
   PlanAlreadyAssignedError,
   reactivateTenant,
-  setTenantPlus,
   TenantNotFoundError,
   TrialNotActiveError,
   updateTenantMarketplaceVisibility,
@@ -107,6 +113,20 @@ function mapKnownError(err: unknown): SupportActionResult {
   }
   if (err instanceof PlanAlreadyAssignedError) {
     return { success: false, error: 'El complejo ya tiene asignado ese plan.' }
+  }
+  if (
+    err instanceof PlusNotAllowedError ||
+    err instanceof PlusFlagPendingError ||
+    err instanceof PlusQuoteNotPendingError
+  ) {
+    return { success: false, error: err.message }
+  }
+  if (err instanceof InvalidPlusPriceError) {
+    return {
+      success: false,
+      error:
+        'El precio especial de Plus tiene que ser mayor a cero. Para usar la lista, dejalo vacío.',
+    }
   }
   throw err
 }
@@ -408,29 +428,94 @@ export async function updateTenantMarketplaceVisibilityAction(
   }
 }
 
+/**
+ * Interruptor de TurnoGol Plus. Los montos NO vienen del cliente salvo el
+ * precio especial por cancha, que se valida acá (entero > 0, P10; `null` = la
+ * lista, que sigue a la lista cuando cambia); el resto lo recalcula el service.
+ * El `max` es el techo de un `integer` de Postgres: sin él un número grande
+ * reventaba como error de DB.
+ */
+const setPlusInputSchema = z.discriminatedUnion('op', [
+  z.object({
+    op: z.literal('enable'),
+    pricePerCourtCents: z.number().int().positive().max(2_147_483_647).nullable(),
+  }),
+  z.object({ op: z.literal('disable'), mode: z.enum(['end_of_period', 'immediate']) }),
+])
+export type SetPlusInput = z.infer<typeof setPlusInputSchema>
+
+/** DD/MM en ART (el día ART, no el UTC). */
+function formatShortDate(d: Date): string {
+  return formatArtDate(d).slice(0, 5)
+}
+
 export async function setTenantPlusAction(
   tenantId: string,
-  enabled: boolean,
+  input: SetPlusInput,
 ): Promise<SupportActionResult> {
   const auth = await requireSystemAdminAction()
   if (!auth.ok) return { success: false, error: auth.error }
 
   const parsed = uuid.safeParse(tenantId)
   if (!parsed.success) return { success: false, error: 'Tenant inválido.' }
+  const data = setPlusInputSchema.safeParse(input)
+  if (!data.success) {
+    return {
+      success: false,
+      error: 'El precio por cancha tiene que ser un número mayor a cero, o vacío para la lista.',
+    }
+  }
 
+  // Mismo gateway que `changeBilledCourtsAction`: la cuenta MASTER (y su modo mock).
+  const actor = { type: 'system', id: auth.admin.id } as const
+  let message: string
   try {
-    await setTenantPlus(parsed.data, enabled, auth.admin.id)
+    const now = new Date()
+    if (data.data.op === 'enable') {
+      const price = data.data.pricePerCourtCents
+      const result = await enablePlus(
+        parsed.data,
+        { pricePerCourtCents: price },
+        actor,
+        getBillingGateway(),
+        now,
+      )
+      if (result.kind === 'quote_pending') {
+        message = `Se cotizaron ${result.months} ${result.months === 1 ? 'mes' : 'meses'} (${formatArs(result.amountCents)}): el dueño ve el botón para pagarlos en Facturación.`
+      } else if (result.kind === 'unchanged') {
+        // `unchanged` también sale cuando ya hay una cotización vigente con ese
+        // precio: Plus NO está prendido, está esperando el pago.
+        message = 'No cambió nada: Plus ya estaba así (prendido, o esperando el pago del dueño).'
+      } else {
+        message =
+          price === null
+            ? `Plus prendido: el próximo débito suma ${formatArs(PLUS_LIST_PER_COURT_CENTS)} por cancha (lista).`
+            : `Plus prendido: el próximo débito suma ${formatArs(price)} por cancha.`
+      }
+    } else {
+      const result = await disablePlus(
+        parsed.data,
+        { mode: data.data.mode },
+        actor,
+        getBillingGateway(),
+        now,
+      )
+      if (result.kind === 'scheduled') {
+        message = `Baja agendada: el bot sigue hasta el ${formatShortDate(result.accessUntil)} y el próximo débito ya no lo incluye.`
+      } else if (result.kind === 'turned_off') {
+        message = 'Plus apagado: el bot deja de contestar en este complejo. No se devolvió nada.'
+      } else if (result.kind === 'quote_cleared') {
+        message = 'Se canceló la cotización pendiente.'
+      } else {
+        message = 'No había nada que apagar.'
+      }
+    }
   } catch (err) {
     return mapKnownError(err)
   }
 
   revalidateTenantPaths(parsed.data)
-  return {
-    success: true,
-    message: enabled
-      ? 'TurnoGol Plus activado: el complejo ya ve el Asistente de WhatsApp en Ajustes.'
-      : 'TurnoGol Plus desactivado: el bot deja de contestar en este complejo.',
-  }
+  return { success: true, message }
 }
 
 // ─── Link de referidos (B1) ───────────────────────────────────────────────────

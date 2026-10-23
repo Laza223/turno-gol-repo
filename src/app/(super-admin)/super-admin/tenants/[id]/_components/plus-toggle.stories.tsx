@@ -1,21 +1,34 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
-import { PlusToggle, type SetTenantPlusAction } from './plus-toggle'
+import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test'
+import { PlusToggle, type PlusToggleState, type SetTenantPlusAction } from './plus-toggle'
+
+const TENANT = '00000000-0000-4000-8000-000000000001'
+
+const billed: PlusToggleState = {
+  kind: 'billed',
+  pricePerCourtCents: null,
+  effectivePerCourtCents: 2_000_000,
+  accessUntil: null,
+  quote: null,
+}
 
 const meta = {
   title: 'SuperAdmin/TenantDetail/PlusToggle',
   component: PlusToggle,
   parameters: { layout: 'padded' },
   args: {
-    tenantId: '00000000-0000-4000-8000-000000000001',
-    initialEnabled: false,
-    action: fn(
-      async () =>
-        ({
-          success: true as const,
-          message: 'Actualizado',
-        }) as unknown as ReturnType<SetTenantPlusAction>,
-    ),
+    tenantId: TENANT,
+    state: {
+      kind: 'off',
+      pricePerCourtCents: null,
+      effectivePerCourtCents: 2_000_000,
+      accessUntil: null,
+      quote: null,
+    },
+    action: fn<SetTenantPlusAction>(async () => ({
+      success: true as const,
+      message: 'Plus prendido: el próximo débito suma $ 15.000 por cancha.',
+    })),
   },
   decorators: [
     (Story) => (
@@ -32,41 +45,219 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Desactivado: Story = {
-  args: { initialEnabled: false },
-}
-
-export const Activado: Story = {
-  args: { initialEnabled: true },
-}
-
-export const ToggleSuccess: Story = {
-  args: { initialEnabled: false },
+/**
+ * Apagado: el campo arranca VACÍO (= lista, con la lista de placeholder) y
+ * prender sin tipear manda `null`: así el complejo sigue a la lista.
+ */
+export const Apagado: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const switchBtn = canvas.getByRole('switch', { name: /turnogol plus/i })
-    await expect(switchBtn).toHaveAttribute('aria-checked', 'false')
-    await userEvent.click(switchBtn)
-    await expect(args.action).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000001', true)
-    await waitFor(() => expect(canvas.getByText('Activado')).toBeInTheDocument())
+    const input = canvas.getByLabelText('Precio por cancha')
+    await expect(input).toHaveValue(null)
+    await expect(input).toHaveAttribute('placeholder', '20.000 (lista)')
+    await userEvent.click(canvas.getByRole('button', { name: 'Prender Plus' }))
+    await waitFor(() =>
+      expect(args.action).toHaveBeenCalledWith(TENANT, {
+        op: 'enable',
+        pricePerCourtCents: null,
+      }),
+    )
+    await expect(await canvas.findByRole('status')).toHaveTextContent('Plus prendido')
   },
 }
 
-export const ToggleError: Story = {
+/** Un precio especial tipeado viaja en centavos; tras el éxito el campo vuelve al valor del estado. */
+export const ApagadoPrecioEspecial: Story = {
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByLabelText('Precio por cancha')
+    await userEvent.type(input, '15000')
+    await userEvent.click(canvas.getByRole('button', { name: 'Prender Plus' }))
+    await waitFor(() =>
+      expect(args.action).toHaveBeenCalledWith(TENANT, {
+        op: 'enable',
+        pricePerCourtCents: 1_500_000,
+      }),
+    )
+    await expect(await canvas.findByRole('status')).toHaveTextContent('Plus prendido')
+    // El estado de esta story no cambia (sin recarga real): el campo vuelve a vacío.
+    await waitFor(() => expect(input).toHaveValue(null))
+  },
+}
+
+/** Un 0 tipeado no llega a la action (vacío es la lista; 0 es un error). */
+export const PrecioInvalido: Story = {
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await userEvent.type(canvas.getByLabelText('Precio por cancha'), '0')
+    await userEvent.click(canvas.getByRole('button', { name: 'Prender Plus' }))
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('mayor a cero')
+    await expect(args.action).not.toHaveBeenCalled()
+  },
+}
+
+/** Facturado: se actualiza el precio con el campo. */
+export const Facturado: Story = {
+  args: { state: { ...billed, pricePerCourtCents: 1_500_000, effectivePerCourtCents: 1_500_000 } },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      canvas.getByText(/Facturado: .*15\.000 por cancha \(precio especial\)/),
+    ).toBeInTheDocument()
+    const input = canvas.getByLabelText('Precio por cancha')
+    await expect(input).toHaveValue(15000)
+    await userEvent.clear(input)
+    await userEvent.type(input, '18000')
+    await userEvent.click(canvas.getByRole('button', { name: 'Actualizar precio' }))
+    await waitFor(() =>
+      expect(args.action).toHaveBeenCalledWith(TENANT, {
+        op: 'enable',
+        pricePerCourtCents: 1_800_000,
+      }),
+    )
+  },
+}
+
+/** Facturado a la lista: campo vacío; vaciar un especial vuelve a la lista (`null`). */
+export const FacturadoALista: Story = {
+  args: { state: billed },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText(/Facturado: .*20\.000 por cancha \(lista\)/)).toBeInTheDocument()
+    await expect(canvas.getByLabelText('Precio por cancha')).toHaveValue(null)
+    await userEvent.click(canvas.getByRole('button', { name: 'Actualizar precio' }))
+    await waitFor(() =>
+      expect(args.action).toHaveBeenCalledWith(TENANT, { op: 'enable', pricePerCourtCents: null }),
+    )
+  },
+}
+
+export const FacturadoBajaFinDePeriodo: Story = {
+  args: { state: billed },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Dar de baja (fin de período)' }))
+    await waitFor(() =>
+      expect(args.action).toHaveBeenCalledWith(TENANT, { op: 'disable', mode: 'end_of_period' }),
+    )
+  },
+}
+
+/** "Apagar ya" avisa que el bot calla en el acto y que no se devuelve nada. */
+export const ApagarYaPideConfirmacion: Story = {
+  args: { state: billed },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Apagar ya' }))
+    const dialog = await screen.findByRole('dialog')
+    await expect(
+      within(dialog).getByText(/No se devuelve nada de forma automática/),
+    ).toBeInTheDocument()
+    await expect(args.action).not.toHaveBeenCalled()
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Apagar ya' }))
+    await waitFor(() =>
+      expect(args.action).toHaveBeenCalledWith(TENANT, { op: 'disable', mode: 'immediate' }),
+    )
+  },
+}
+
+/** F7b: tras "Apagar ya" exitoso el campo no conserva lo último que se tipeó. */
+export const ApagarYaLimpiaElCampo: Story = {
   args: {
-    initialEnabled: false,
-    action: fn(async () => ({
+    state: {
+      kind: 'manual_override',
+      pricePerCourtCents: null,
+      effectivePerCourtCents: 2_000_000,
+      accessUntil: null,
+      quote: null,
+    },
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByLabelText('Precio por cancha')
+    await userEvent.type(input, '18000')
+    await userEvent.click(canvas.getByRole('button', { name: 'Apagar ya' }))
+    const dialog = await screen.findByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Apagar ya' }))
+    await waitFor(() =>
+      expect(args.action).toHaveBeenCalledWith(TENANT, { op: 'disable', mode: 'immediate' }),
+    )
+    await waitFor(() => expect(input).toHaveValue(null))
+  },
+}
+
+/** Baja agendada: se puede volver a prender con el precio actual. */
+export const BajaAgendada: Story = {
+  args: {
+    state: {
+      kind: 'ending',
+      pricePerCourtCents: 1_500_000,
+      effectivePerCourtCents: 1_500_000,
+      accessUntil: '2027-03-15T12:00:00.000Z',
+      quote: null,
+    },
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Baja agendada: activo hasta el 15/03')).toBeInTheDocument()
+    await userEvent.click(canvas.getByRole('button', { name: 'Volver a prender' }))
+    await waitFor(() =>
+      expect(args.action).toHaveBeenCalledWith(TENANT, {
+        op: 'enable',
+        pricePerCourtCents: 1_500_000,
+      }),
+    )
+  },
+}
+
+/** Anual a mitad de año: esperando el pago de los meses que faltan. */
+export const CotizacionPendiente: Story = {
+  args: {
+    state: {
+      kind: 'quote_pending',
+      pricePerCourtCents: null,
+      effectivePerCourtCents: 2_000_000,
+      accessUntil: null,
+      quote: { months: 5, amountCents: 18_000_000 },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText(/Esperando el pago de 5 meses: .*180\.000/)).toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: 'Apagar ya' })).toBeInTheDocument()
+  },
+}
+
+/** El caso de El Vagón: bot prendido a mano, hoy no se le cobra. */
+export const PrendidoAMano: Story = {
+  args: {
+    state: {
+      kind: 'manual_override',
+      pricePerCourtCents: null,
+      effectivePerCourtCents: 2_000_000,
+      accessUntil: null,
+      quote: null,
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Prendido a mano (sin cobro)')).toBeInTheDocument()
+    await expect(canvas.getByText(/Hoy no se le cobra nada/)).toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: 'Prender Plus' })).toBeInTheDocument()
+  },
+}
+
+/** Si el service rechaza, el error queda en pantalla. */
+export const ErrorDelService: Story = {
+  args: {
+    action: fn<SetTenantPlusAction>(async () => ({
       success: false as const,
-      error: 'No se pudo actualizar TurnoGol Plus.',
+      error: 'Primero tiene que regularizar el pago.',
     })),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const switchBtn = canvas.getByRole('switch', { name: /turnogol plus/i })
-    await userEvent.click(switchBtn)
-    await waitFor(() =>
-      expect(canvas.getByText('No se pudo actualizar TurnoGol Plus.')).toBeInTheDocument(),
-    )
-    await expect(canvas.getByText('Desactivado')).toBeInTheDocument()
+    await userEvent.click(canvas.getByRole('button', { name: 'Prender Plus' }))
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('regularizar el pago')
   },
 }

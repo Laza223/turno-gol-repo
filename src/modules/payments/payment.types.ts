@@ -1,3 +1,5 @@
+import { isUuid } from '@/shared/validation/primitives'
+
 export type PreferenceResult = {
   preferenceId: string
   initPoint: string
@@ -5,7 +7,7 @@ export type PreferenceResult = {
 }
 
 export type MpPaymentStatus =
-  'pending' | 'in_process' | 'approved' | 'rejected' | 'refunded' | 'cancelled'
+  'pending' | 'in_process' | 'approved' | 'rejected' | 'refunded' | 'charged_back' | 'cancelled'
 
 export type GatewayPaymentInfo = {
   mpPaymentId: string
@@ -27,12 +29,11 @@ export type GatewayPaymentInfo = {
    */
   preapprovalId?: string | null
   /**
-   * `date_created` crudo de MP (ISO-8601 con offset), solo poblado por
-   * `searchPaymentsByReference` — historial de facturación SaaS
-   * (`billing.service.ts:listInvoices`). `getPaymentStatus` no lo necesita
-   * (booking deposits ya tienen su propio `created_at` en `payments`) y
-   * agregarlo ahí obligaría a tocar los mismos ~15 tests que ya evitó
-   * `preapprovalId` arriba. Opcional/string crudo por la misma razón.
+   * `date_created` crudo de MP (ISO-8601 con offset). Lo pueblan
+   * `searchPaymentsByReference` (historial de facturación SaaS y rescate del
+   * pago anual de Plus) y `getPaymentStatus` (el webhook de Plus lo compara
+   * contra `plus_prorate_quoted_at`: un pago anterior a la cotización no la
+   * acredita). Opcional/string crudo: las señas no lo usan.
    */
   dateCreated?: string
 }
@@ -231,4 +232,33 @@ export function parseSaasUpgradeRef(
   const [, tenantId, targetPlanId] = externalReference.split(':')
   if (!tenantId || !targetPlanId) return null
   return { tenantId, targetPlanId }
+}
+
+export type CreateSaasPlusPreferenceInput = {
+  tenantId: string
+  /** Centavos ARS: la cotizacion congelada de los meses de Plus que faltan del anual. */
+  amount: number
+  description: string
+  returnUrl: string
+  notificationUrl: string
+  expiresAt: Date
+}
+
+/**
+ * external_reference del pago unico del alta de Plus en un anual ya pago (P7):
+ *   `saas-plus:<tenantId>`
+ * No choca con el debito del plan (`external_reference = tenantId`) ni con el
+ * prorrateo de upgrade (`saas-upgrade:`), asi que el pago nunca pasa por
+ * `onPaymentApproved` (que cancelaria el preapproval vigente).
+ */
+const SAAS_PLUS_REF_PREFIX = 'saas-plus:'
+
+export function buildSaasPlusRef(tenantId: string): string {
+  return `${SAAS_PLUS_REF_PREFIX}${tenantId}`
+}
+
+export function parseSaasPlusRef(externalReference: string): { tenantId: string } | null {
+  if (!externalReference.startsWith(SAAS_PLUS_REF_PREFIX)) return null
+  const tenantId = externalReference.slice(SAAS_PLUS_REF_PREFIX.length)
+  return isUuid(tenantId) ? { tenantId } : null
 }

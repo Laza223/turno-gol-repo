@@ -1,8 +1,9 @@
 import { eq } from 'drizzle-orm'
-import { whatsappConnections } from '@/shared/db/schema'
+import { tenants, tenantSubscriptions, whatsappConnections } from '@/shared/db/schema'
 import { insertAuditLog } from '@/shared/db/audit'
 import { withTenantContext, type DbTx } from '@/shared/db/client'
 import { isFeatureEnabled } from '@/shared/feature-flags'
+import { isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
 import { isUniqueViolation } from '@/shared/db/pg-errors'
 import { logger } from '@/shared/lib/logger'
 import {
@@ -17,6 +18,33 @@ import {
 
 /** Flag global en `false` (migración 096); se prende por complejo con un override. */
 export const BOT_FEATURE_FLAG = 'whatsapp_bot'
+
+/**
+ * ¿El complejo está al día como para que el bot le conteste a sus clientes?
+ * (P8). Mismo criterio que el portal público y las herramientas de reserva
+ * (`isPublicPortalOpen`): en `suspended` / `blocked` / `churned` / `deleted` y en
+ * `canceled` con el período vencido el bot se calla y el mensaje queda para el
+ * dueño en su celular, como cuando está apagado; en `past_due` y en `canceled`
+ * con período vigente sigue contestando.
+ *
+ * UN solo helper para el turno y la ingesta: antes el corte miraba solo
+ * "habilitado + conectado + flag" y un complejo moroso seguía consumiendo
+ * respuestas pagas por TurnoGol. `tenants` es global; la suscripción está bajo
+ * RLS, por eso se lee dentro del contexto del complejo. El período pago solo
+ * cuenta cuando el estado es `canceled`.
+ */
+export async function isBotTenantOpen(tenantId: string, now: Date): Promise<boolean> {
+  const [row] = await withTenantContext(tenantId, (tx) =>
+    tx
+      .select({ status: tenants.status, periodEnd: tenantSubscriptions.currentPeriodEnd })
+      .from(tenants)
+      .leftJoin(tenantSubscriptions, eq(tenantSubscriptions.tenantId, tenants.id))
+      .where(eq(tenants.id, tenantId))
+      .limit(1),
+  )
+  if (!row) return false
+  return isPublicPortalOpen(row.status, row.status === 'canceled' ? row.periodEnd : null, now)
+}
 
 export type WhatsappConnectionView = {
   displayPhoneNumber: string | null

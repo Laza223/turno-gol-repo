@@ -4,8 +4,8 @@ import { ArrowLeft, Building2 } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { ScrollTabs } from '@/components/ui/scroll-tabs'
 import { requireSystemAdmin } from '@/modules/auth/system-admin.guards'
-import { isFeatureEnabled } from '@/shared/feature-flags'
-import { BOT_FEATURE_FLAG } from '@/modules/whatsapp-bot/whatsapp-bot.connection'
+import { getPlusAdminState } from '@/modules/billing/plus.service'
+import { PLUS_LIST_PER_COURT_CENTS, effectivePlusPerCourtCents } from '@/modules/billing/pricing'
 import {
   getTenantActivity,
   getTenantDetail,
@@ -56,6 +56,14 @@ const TAB_LABELS: Record<Tab, string> = {
 
 const ACTIVITY_PAGE_SIZE = 25
 
+const PLUS_STATE_OFF = {
+  kind: 'off',
+  pricePerCourtCents: null,
+  effectivePerCourtCents: PLUS_LIST_PER_COURT_CENTS,
+  accessUntil: null,
+  quote: null,
+} as const
+
 // Fuera del componente: el lint de pureza no deja llamar a Date.now() en el render.
 function currentMs(): number {
   return Date.now()
@@ -93,7 +101,18 @@ export default async function SuperAdminTenantDetailPage(props: {
       : null
 
   const { tenant } = detail
-  const plusEnabled = tab === 'resumen' && (await isFeatureEnabled(BOT_FEATURE_FLAG, tenant.id))
+  // Sin suscripción no hay Plus que mostrar (`getPlusAdminState` la exige).
+  const plusAdmin =
+    tab === 'resumen' && detail.subscription ? await getPlusAdminState(tenant.id) : null
+  const plusState = plusAdmin
+    ? {
+        kind: plusAdmin.kind,
+        pricePerCourtCents: plusAdmin.pricePerCourtCents,
+        effectivePerCourtCents: plusAdmin.effectivePerCourtCents,
+        accessUntil: plusAdmin.accessUntil?.toISOString() ?? null,
+        quote: plusAdmin.quote,
+      }
+    : PLUS_STATE_OFF
 
   return (
     <div className="space-y-6">
@@ -133,7 +152,7 @@ export default async function SuperAdminTenantDetailPage(props: {
           detail={detail}
           impersonateAction={startImpersonationAction}
           updateMarketplaceVisibilityAction={updateTenantMarketplaceVisibilityAction}
-          plusEnabled={plusEnabled}
+          plusState={plusState}
           setTenantPlusAction={setTenantPlusAction}
           generateReferralLinkAction={generateReferralLinkAction}
           assignReferrerAction={assignReferrerAction}
@@ -206,6 +225,14 @@ function AccionesTab({ detail }: { detail: TenantDetail }) {
       billingCycle={subscription?.billingCycle ?? null}
       onlineCourts={onlineCourts}
       pricing={pricing}
+      plusPerCourtCents={
+        subscription
+          ? effectivePlusPerCourtCents(
+              subscription.plusEnabled,
+              subscription.plusPricePerCourtCents,
+            )
+          : 0
+      }
       settings={panelSettings}
       actions={SUPPORT_ACTIONS}
     />

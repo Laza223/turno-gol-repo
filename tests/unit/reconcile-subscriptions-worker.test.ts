@@ -93,6 +93,8 @@ function mockWorkerSql(
         return alertRows
       }
       if (text.includes('FROM courts')) return overBilledRows
+      // Rescate del pago anual de Plus: estos tests no siembran cotizaciones.
+      if (text.includes('plus_prorate_cents')) return []
       if (text.includes('tenant_subscriptions')) {
         const statuses = values[0]
         if (Array.isArray(statuses) && statuses.includes('active')) return activeRows
@@ -118,6 +120,9 @@ function candidate(over: Record<string, unknown> = {}) {
     mpSubscriptionId: PREAPPROVAL,
     lastPaymentAt: null,
     billedCourts: 1,
+    plusEnabled: false,
+    plusPricePerCourtCents: null,
+    plusAccessUntil: null,
     priceFirstCourtCents: 4_700_000,
     priceExtraCourtCents: 3_000_000,
     annualDiscountBps: 1_000,
@@ -237,6 +242,7 @@ describe('reconcileSubscriptions', () => {
 describe('reconcileSubscriptions — desfasaje de monto del preapproval', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockSendOpsAlerts.mockResolvedValue([])
     mockWithTenantContext.mockImplementation(
       async (_tenantId: string, fn: (tx: unknown) => Promise<unknown>) =>
         fn({ execute: vi.fn(async () => []) }),
@@ -298,6 +304,114 @@ describe('reconcileSubscriptions — desfasaje de monto del preapproval', () => 
 
     expect(mockInsertAudit).not.toHaveBeenCalled()
     expect(mockCaptureMessage).not.toHaveBeenCalled()
+  })
+
+  // DR1/DR2 — TurnoGol Plus: el monto esperado suma Plus SOLO si `plus_enabled`
+  // (con su precio especial si lo hay). Una cotización anual pendiente o una baja
+  // agendada tienen `plus_enabled = false`: el débito vigente no lleva Plus.
+  describe('con TurnoGol Plus', () => {
+    // 1 cancha mensual a $47.000 (fixture): plan 4.700.000.
+    const PLAN_ONLY = 4_700_000
+    const withPlus = (over: Record<string, unknown>) =>
+      candidate({ status: 'active', billingCycle: 'monthly', ...over })
+
+    async function run(cand: ReturnType<typeof candidate>, remoteCents: number) {
+      mockWorkerSql([], [], [], [cand])
+      mockGetBillingGateway.mockReturnValue({
+        getSubscriptionState: vi.fn(async () => remoteAuthorized(remoteCents)),
+      })
+      await reconcileSubscriptions()
+    }
+
+    it('Plus prendido y el débito de MP lleva solo el plan: alerta con el esperado CON Plus', async () => {
+      await run(withPlus({ plusEnabled: true }), PLAN_ONLY)
+
+      expect(mockInsertAudit).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          action: 'subscription.amount_drift',
+          metadata: expect.objectContaining({
+            expectedCents: PLAN_ONLY + 2_000_000,
+            actualCents: PLAN_ONLY,
+          }),
+        }),
+      )
+      // Con Plus el drift además avisa por mail al dueño de TurnoGol.
+      expect(mockSendOpsAlerts).toHaveBeenCalledTimes(1)
+      const [, alerts, link] = mockSendOpsAlerts.mock.calls[0] as [
+        unknown,
+        Array<{ key: string; subject: string }>,
+        { path: string },
+      ]
+      expect(alerts[0]?.key).toBe(`plus-amount-drift:${TENANT}:2026-10-22T14`)
+      expect(alerts[0]?.subject).toContain('el débito de MercadoPago no refleja TurnoGol Plus')
+      expect(link.path).toBe(`/super-admin/tenants/${TENANT}`)
+    })
+
+    it('baja agendada (plus_access_until) con drift: también avisa por mail', async () => {
+      await run(
+        withPlus({ plusEnabled: false, plusAccessUntil: '2027-01-01T00:00:00Z' }),
+        PLAN_ONLY + 2_000_000,
+      )
+
+      expect(mockSendOpsAlerts).toHaveBeenCalledTimes(1)
+    })
+
+    it('si el mail no sale no escribe el audit (el próximo tick reintenta)', async () => {
+      mockSendOpsAlerts.mockResolvedValue(['plus-amount-drift'])
+
+      await run(withPlus({ plusEnabled: true }), PLAN_ONLY)
+
+      expect(mockInsertAudit).not.toHaveBeenCalled()
+    })
+
+    it('sin Plus el drift sigue sin mail', async () => {
+      await run(withPlus({ plusEnabled: false }), PLAN_ONLY + 2_000_000)
+
+      expect(mockInsertAudit).toHaveBeenCalledTimes(1)
+      expect(mockSendOpsAlerts).not.toHaveBeenCalled()
+    })
+
+    it('Plus prendido y el débito ya lo lleva: sin alerta', async () => {
+      await run(withPlus({ plusEnabled: true }), PLAN_ONLY + 2_000_000)
+
+      expect(mockInsertAudit).not.toHaveBeenCalled()
+      expect(mockCaptureMessage).not.toHaveBeenCalled()
+    })
+
+    it('usa el precio especial y no el de lista', async () => {
+      await run(
+        withPlus({ plusEnabled: true, plusPricePerCourtCents: 1_000_000 }),
+        PLAN_ONLY + 1_000_000,
+      )
+      expect(mockInsertAudit).not.toHaveBeenCalled()
+
+      vi.clearAllMocks()
+      await run(
+        withPlus({ plusEnabled: true, plusPricePerCourtCents: 1_000_000 }),
+        PLAN_ONLY + 2_000_000,
+      )
+      expect(mockInsertAudit).toHaveBeenCalledTimes(1)
+    })
+
+    it('baja aplicada en la base pero MP todavía cobra Plus: alerta', async () => {
+      await run(withPlus({ plusEnabled: false }), PLAN_ONLY + 2_000_000)
+
+      expect(mockInsertAudit).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          action: 'subscription.amount_drift',
+          metadata: expect.objectContaining({ expectedCents: PLAN_ONLY }),
+        }),
+      )
+    })
+
+    it('cotización anual pendiente (plus_enabled = false con precio guardado) y débito solo-plan: sin alerta', async () => {
+      await run(withPlus({ plusEnabled: false, plusPricePerCourtCents: 1_500_000 }), PLAN_ONLY)
+
+      expect(mockInsertAudit).not.toHaveBeenCalled()
+      expect(mockCaptureMessage).not.toHaveBeenCalled()
+    })
   })
 
   it('no repite la alerta de un complejo ya avisado en las últimas 20 h', async () => {

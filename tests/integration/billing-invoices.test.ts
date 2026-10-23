@@ -99,15 +99,22 @@ describe('listInvoices (service)', () => {
 
     const invoices = await listInvoices('tenant-x', mockGateway)
 
-    expect(mockGateway.searchCalls).toEqual(['tenant-x'])
+    expect(mockGateway.searchCalls).toEqual(['tenant-x', 'saas-plus:tenant-x'])
     expect(invoices).toEqual([
       {
         mpPaymentId: 'mp-pay-1',
         status: 'approved',
         amount: 8_500_000,
         date: new Date(APPROVED.dateCreated!),
+        kind: 'subscription',
       },
-      { mpPaymentId: 'mp-pay-2', status: 'rejected', amount: 8_500_000, date: null },
+      {
+        mpPaymentId: 'mp-pay-2',
+        status: 'rejected',
+        amount: 8_500_000,
+        date: null,
+        kind: 'subscription',
+      },
     ])
   })
 
@@ -138,7 +145,7 @@ describe('GET /api/billing/invoices (route)', () => {
     const json = (await res.json()) as { data: Array<{ mpPaymentId: string }> }
     expect(json.data).toHaveLength(1)
     expect(json.data[0]!.mpPaymentId).toBe('mp-pay-1')
-    expect(mockGateway.searchCalls).toEqual([tenantA.id])
+    expect(mockGateway.searchCalls).toEqual([tenantA.id, `saas-plus:${tenantA.id}`])
   })
 
   it('rebota al manager (Encargado): la facturación es solo-admin (doc15 §5.8)', async () => {

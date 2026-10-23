@@ -21,6 +21,7 @@ const PARAMS = {
   priceFirstCourtCents: 4_700_000, // $47.000
   priceExtraCourtCents: 3_000_000, // $30.000
   annualDiscountBps: 1_000, // 10%
+  plusPerCourtCents: 0, // sin Plus: este archivo prueba el plan solo (Plus: pricing-plus.test.ts)
 }
 
 describe('monthlyListAmount — la cuota mensual de lista', () => {
@@ -103,6 +104,9 @@ describe('buildPriceBreakdown — lo que ve el dueño en pantalla', () => {
       extraCourts: 4,
       extraCourtUnitCents: 3_000_000,
       extraCourtsTotalCents: 12_000_000,
+      planMonthlyListCents: 16_700_000,
+      plusPerCourtCents: 0,
+      plusMonthlyListCents: 0,
       monthlyListCents: 16_700_000,
       monthlyEffectiveCents: 16_700_000,
       chargePerCycleCents: 16_700_000,

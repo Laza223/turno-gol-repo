@@ -15,6 +15,7 @@ import type { RivalPublicMatch, RivalRosterEntry } from '@/modules/rival/rival.t
 import type { ActionResult } from '@/shared/types/action-result'
 import type { RivalFormResult } from '../../actions'
 import { FactPill, RIVAL_CTA, StampBadge } from '../../MatchBits'
+import { DropIntentParam } from './DropIntentParam'
 import { LeaveMatch } from './LeaveMatch'
 import { OrganizerActions } from './OrganizerActions'
 import { ShirtGrid } from './ShirtGrid'
@@ -208,6 +209,7 @@ export function MatchView({
 
   return (
     <div className="mx-auto max-w-lg space-y-5 px-4 py-6">
+      <DropIntentParam param={intentParam} />
       {justCreated && match.isOrganizer && open && (
         <p
           role="status"
@@ -252,8 +254,9 @@ export function MatchView({
       ) : (
         <>
           <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <ShirtGrid capacity={match.capacity} confirmed={match.confirmedCount} />
-            {me && open && myStatusLine(me.status) && (
+            <ShirtGrid capacity={match.capacity} confirmed={match.confirmedCount} ended={ended} />
+            {/* El organizador no "va": su línea sería ruido en cada visita. */}
+            {me && open && !match.isOrganizer && myStatusLine(me.status) && (
               <p className="mt-4 text-base text-foreground">{myStatusLine(me.status)}</p>
             )}
           </section>

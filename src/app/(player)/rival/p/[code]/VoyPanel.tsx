@@ -7,6 +7,7 @@ import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
 import type { ActionResult } from '@/shared/types/action-result'
 import type { RivalFormResult } from '../../actions'
 import { WelcomeCard } from '../../WelcomeCard'
+import { dropUrlParam } from './DropIntentParam'
 
 /** Firmas de las Server Actions (por prop, no por import: ver convenciones-stack). */
 type JoinAction = (code: string) => Promise<ActionResult>
@@ -74,29 +75,27 @@ export function VoyPanel({
     join()
   }
 
-  // El intento se gasta al montar, en cualquier camino (también con la bienvenida abierta): si la
-  // URL lo conserva, un re-render posterior (p. ej. tras "Me bajo") lo volvería a leer como válido.
+  // El autoenvío sale con el intento ya fuera de la URL (lo saca también `DropIntentParam`, pero acá
+  // el orden importa). Diferido por la misma razón que ese componente: el router tiene que enterarse.
   useEffect(() => {
-    const url = new URL(window.location.href)
-    if (!url.searchParams.has(intentParam)) return
-    url.searchParams.delete(intentParam)
-    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
-  }, [intentParam])
+    const timer = window.setTimeout(() => {
+      dropUrlParam(intentParam)
 
-  useEffect(() => {
-    if (!autoJoin || welcome || started.current) return
-    started.current = true
-    const key = `${STORAGE_PREFIX}${code}`
-    let alreadySent = false
-    try {
-      alreadySent = window.sessionStorage.getItem(key) !== null
-      if (!alreadySent) window.sessionStorage.setItem(key, '1')
-    } catch {
-      // Sin sessionStorage (modo privado): queda el guard del ref.
-    }
-    if (alreadySent || !formRef.current) return
-    formRef.current.requestSubmit()
-  }, [autoJoin, welcome, code])
+      if (!autoJoin || welcome || started.current) return
+      started.current = true
+      const key = `${STORAGE_PREFIX}${code}`
+      let alreadySent = false
+      try {
+        alreadySent = window.sessionStorage.getItem(key) !== null
+        if (!alreadySent) window.sessionStorage.setItem(key, '1')
+      } catch {
+        // Sin sessionStorage (modo privado): queda el guard del ref.
+      }
+      if (alreadySent || !formRef.current) return
+      formRef.current.requestSubmit()
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [intentParam, autoJoin, welcome, code])
 
   if (welcome) {
     return cardOpen ? (

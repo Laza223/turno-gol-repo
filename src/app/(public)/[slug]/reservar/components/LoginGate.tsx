@@ -280,7 +280,8 @@ export default function LoginGate({
         ) : (
           <div className="space-y-6">
             <div>
-              <DialogTitle className={AUTH_TITLE}>
+              {/* `pr-6`: deja libre el lugar de la X del diálogo (el título RIVAL llega hasta ahí a 390 px). */}
+              <DialogTitle className={cn(AUTH_TITLE, 'pr-6')}>
                 {rival ? (
                   <>
                     Entrá para <span style={AUTH_ACCENT_STYLE}>sumarte</span> al partido

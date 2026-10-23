@@ -233,6 +233,8 @@ export const Organizador: Story = {
     )
     await expect(canvas.queryByRole('button', { name: 'Voy' })).toBeNull()
     await expect(canvas.queryByRole('button', { name: 'Me bajo' })).toBeNull()
+    // Confirmado en su propio partido, pero no "va": sin la línea del invitado.
+    await expect(canvas.queryByText(/estás adentro/)).toBeNull()
     await expect(canvas.getByText('El banco')).toBeInTheDocument()
     await expect(canvas.getByText('Pedidos')).toBeInTheDocument()
     await expect(canvas.getByText(/En TurnoGol desde octubre de 2025/)).toBeInTheDocument()
@@ -294,6 +296,9 @@ export const Vencido: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Jugado')).toBeInTheDocument()
+    // Un partido jugado no dice cuántos faltan.
+    await expect(canvas.queryByText(/^Faltan/)).toBeNull()
+    await expect(canvas.getByText('7 de 10 confirmados')).toBeInTheDocument()
     // Sin acciones: no se copia ni se cancela un partido que ya se jugó; se repite.
     await expect(canvas.queryByRole('button')).toBeNull()
     await expect(canvas.queryByRole('link', { name: 'Avisar al grupo' })).toBeNull()

@@ -15,16 +15,21 @@ type LeaveAction = (matchId: string) => Promise<ActionResult>
 export function LeaveMatch({
   matchId,
   leaveAction,
+  showHint = true,
 }: {
   matchId: string
   leaveAction: LeaveAction
+  /** `false` con un pedido sin aceptar: todavía no hay lugar que ocupe el banco. */
+  showHint?: boolean
 }) {
   const [open, setOpen] = useState(false)
   return (
     <div className="space-y-1">
-      <p className="text-sm text-muted-foreground">
-        Si no podés ir, bajate a tiempo: alguien del banco ocupa tu lugar.
-      </p>
+      {showHint && (
+        <p className="text-sm text-muted-foreground">
+          Si no podés ir, bajate a tiempo: alguien del banco ocupa tu lugar.
+        </p>
+      )}
       <Button
         type="button"
         variant="ghost"

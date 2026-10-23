@@ -7,28 +7,43 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
 import { cn } from '@/lib/utils'
 import type { ActionResult } from '@/shared/types/action-result'
+import type { RivalFormResult } from '../../actions'
+import { PublishToBoard } from './PublishToBoard'
 
 /** Firma de la Server Action (por prop, no por import: ver convenciones-stack). */
 type CancelAction = (matchId: string) => Promise<ActionResult>
+type PublishAction = (prev: RivalFormResult, formData: FormData) => Promise<RivalFormResult>
 
 /** Quiet Ghost Rule (DESIGN.md): sin borde ni relleno, 44 px, 14 px medium. */
 const GHOST = 'h-11 w-full text-sm font-medium'
 
 /**
  * Acciones del organizador. El único verde es "Avisar al grupo" (spec §5.3): un `<a href>` que
- * arma el servidor con el texto del estado. "Copiar link" y "Cancelar el partido" son fantasma.
+ * arma el servidor con el texto del estado. El tablón, "Copiar link" y "Cancelar el partido" son fantasma.
  */
 export function OrganizerActions({
   matchId,
   shareUrl,
   shareHref,
+  boardLabel,
+  whatsappPrefill,
+  canSeekRival,
   cancelAction,
+  publishAction,
+  unpublishAction,
 }: {
   matchId: string
   shareUrl: string
   /** `wa.me/?text=…` armado en el servidor (`buildShareHref`). */
   shareHref: string
+  /** Con qué tipo está en el tablón ("Faltan 3"…); `null` = solo el grupo. */
+  boardLabel: string | null
+  whatsappPrefill: string | null
+  /** Ver `PublishToBoard`. */
+  canSeekRival: boolean
   cancelAction: CancelAction
+  publishAction: PublishAction
+  unpublishAction: CancelAction
 }) {
   const [copied, setCopied] = useState(false)
   const [copyFailed, setCopyFailed] = useState(false)
@@ -56,6 +71,14 @@ export function OrganizerActions({
       >
         <Share2 className="size-4 shrink-0" aria-hidden /> Avisar al grupo
       </a>
+      <PublishToBoard
+        matchId={matchId}
+        boardLabel={boardLabel}
+        whatsappPrefill={whatsappPrefill}
+        canSeekRival={canSeekRival}
+        publishAction={publishAction}
+        unpublishAction={unpublishAction}
+      />
       <Button type="button" variant="ghost" onClick={copy} className={cn(GHOST, 'gap-2')}>
         {copied ? (
           <>

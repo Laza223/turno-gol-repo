@@ -110,6 +110,17 @@ describe('GET /api/auth/callback — ingreso desde un partido de RIVAL', () => {
     )
   })
 
+  it('el tablón (/rival/partido/<id>) también marca signup_source = rival y vuelve DIRECTO (sin /verify)', async () => {
+    player()
+    const next = '/rival/partido/22222222-2222-4222-8222-222222222222'
+
+    const res = await GET(makeRequest({ code: 'good-code', next }))
+
+    expect(mockGetOrCreatePlayer.mock.calls[0]![3]).toMatchObject({ signupSource: 'rival' })
+    const location = new URL(res.headers.get('location')!)
+    expect(location.pathname).toBe(next)
+  })
+
   it('un next que NO empieza con /rival/ no marca nada', async () => {
     player()
 

@@ -35,9 +35,8 @@ const isMine = (m: RivalMyMatch) =>
 function MatchRow({ m, now }: { m: RivalMyMatch; now: Date }) {
   const ended = m.startsAt.getTime() <= now.getTime()
   const state = myState(m, ended)
-  // Solo el organizador tiene el código del link: los demás participantes todavía no tienen
-  // una pantalla propia del partido (llega con el PR3).
-  const href = m.isOrganizer && m.inviteCode ? `/rival/p/${m.inviteCode}` : null
+  // El organizador entra por el código del link; el resto, por la vista del partido por id.
+  const href = m.isOrganizer && m.inviteCode ? `/rival/p/${m.inviteCode}` : `/rival/partido/${m.id}`
   const title = (
     <span className="break-words font-display text-lg font-black italic leading-tight tracking-tight text-foreground">
       {m.tenantName}
@@ -47,16 +46,12 @@ function MatchRow({ m, now }: { m: RivalMyMatch; now: Date }) {
     <li className="relative rounded-2xl border border-border bg-card p-4 shadow-xs">
       <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div className="min-w-0">
-          {href ? (
-            <Link
-              href={href}
-              className="rounded-sm after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-hidden focus-visible:after:ring-2 focus-visible:after:ring-ring"
-            >
-              {title}
-            </Link>
-          ) : (
-            title
-          )}
+          <Link
+            href={href}
+            className="rounded-sm after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-hidden focus-visible:after:ring-2 focus-visible:after:ring-ring"
+          >
+            {title}
+          </Link>
           <p className="text-sm text-muted-foreground">{whenLabel(m.startsAt, now)}</p>
         </div>
         <span

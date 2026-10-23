@@ -5,15 +5,26 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { isInAppBrowser } from '@/lib/in-app-browser'
 import { absoluteUrl } from '@/lib/seo/metadata'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
-import { getPublicMatch, getRivalWelcomeState, getRoster } from '@/modules/rival/rival.service'
+import {
+  getBoardPublishPrefill,
+  getPublicMatch,
+  getRivalWelcomeState,
+  getRoster,
+} from '@/modules/rival/rival.service'
 import { shouldAutoJoin } from '@/modules/rival/rival-join-rule'
 import { buildShareHref } from '@/modules/rival/rival-share'
 import { RIVAL_INTENT_PARAM } from '@/shared/security/rival-intent'
 import {
   acceptWelcomeAndJoinAction,
   cancelMatchAction,
+  decideRequestAction,
   joinMatchAction,
   leaveMatchAction,
+  publishToBoardAction,
+  removeParticipantAction,
+  reportMatchAction,
+  reportPlayerAction,
+  unpublishFromBoardAction,
 } from '../../actions'
 import { MatchView } from './MatchView'
 import { sendRivalMagicLinkAction, startGoogleLoginFromRivalAction } from './login-actions'
@@ -70,6 +81,9 @@ export default async function RivalMatchPage(props: {
       : null
   const intentOk = intent?.ok === true
 
+  // El WhatsApp precargado del form de publicar: solo lo usa el organizador.
+  const prefill = playerId && match.isOrganizer ? await getBoardPublishPrefill(playerId) : null
+
   const shareUrl = absoluteUrl(`/rival/p/${code}`)
   return (
     <MatchView
@@ -99,7 +113,14 @@ export default async function RivalMatchPage(props: {
       }
       justCreated={creado === '1'}
       now={nowDate()}
+      whatsappPrefill={prefill?.whatsapp ?? null}
       cancelAction={cancelMatchAction}
+      publishAction={publishToBoardAction}
+      unpublishAction={unpublishFromBoardAction}
+      decideAction={decideRequestAction}
+      removeAction={removeParticipantAction}
+      reportMatchAction={reportMatchAction}
+      reportPlayerAction={reportPlayerAction}
       joinAction={joinMatchAction}
       acceptAndJoinAction={acceptWelcomeAndJoinAction}
       leaveAction={leaveMatchAction}

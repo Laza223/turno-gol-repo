@@ -75,6 +75,15 @@ const meta = {
     joinAction: fn(async () => ({ success: true as const })),
     acceptAndJoinAction: fn(async (): Promise<RivalFormResult> => ({ success: true })),
     leaveAction: fn(async () => ({ success: true as const })),
+    whatsappPrefill: '1123456789',
+    publishAction: fn(async (_prev: RivalFormResult, _fd: FormData): Promise<RivalFormResult> => ({
+      success: true,
+    })),
+    unpublishAction: fn(async () => ({ success: true as const })),
+    decideAction: fn(async () => ({ success: true as const })),
+    removeAction: fn(async () => ({ success: true as const })),
+    reportMatchAction: fn(async () => ({ success: true as const })),
+    reportPlayerAction: fn(async () => ({ success: true as const })),
   },
 } satisfies Meta<typeof MatchView>
 
@@ -184,6 +193,25 @@ export const ConfirmadoSeBaja: Story = {
     await expect(args.leaveAction).not.toHaveBeenCalled()
     await userEvent.click(dialog.getByRole('button', { name: 'Sí, me bajo' }))
     await waitFor(() => expect(args.leaveAction).toHaveBeenCalledWith('m1'))
+  },
+}
+
+export const PedidoPendienteSinTextoDelBanco: Story = {
+  args: {
+    signedIn: true,
+    roster: [
+      ...roster,
+      person({ participantId: 'me', shortName: 'Vos V.', isMe: true, status: 'requested' }),
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(
+      canvas.getByText('Pedido enviado. Te avisamos por mail si te aceptan.'),
+    ).toBeInTheDocument()
+    // Puede bajarse del pedido, pero todavía no hay lugar que ocupe el banco.
+    await expect(canvas.getByRole('button', { name: 'Me bajo' })).toBeInTheDocument()
+    await expect(canvas.queryByText(/alguien del banco ocupa tu lugar/)).toBeNull()
   },
 }
 
@@ -305,5 +333,218 @@ export const Vencido: Story = {
     await expect(
       canvas.getByRole('link', { name: 'Armar el del jueves que viene' }),
     ).toHaveAttribute('href', '/rival/nuevo?desde=m1')
+  },
+}
+
+/** Un diálogo de Radix entra con fade-in: se espera a que termine antes de mirarlo. */
+async function openDialog() {
+  const dialog = await within(document.body).findByRole('dialog')
+  await Promise.all(dialog.getAnimations({ subtree: true }).map((a) => a.finished))
+  return within(dialog)
+}
+
+const organizerRoster = [
+  person({ participantId: 'org', shortName: 'Yo O.', isMe: true }),
+  person({ participantId: 'b', shortName: 'Beto R.', status: 'bench' }),
+  person({ participantId: 'c', shortName: 'Caro D.', status: 'requested', origin: 'board' }),
+  person({
+    participantId: 'r',
+    shortName: 'Rival R.',
+    status: 'requested',
+    origin: 'board',
+    role: 'rival_captain',
+  }),
+]
+
+export const OrganizadorDecidePedidos: Story = {
+  args: {
+    signedIn: true,
+    match: match({ isOrganizer: true }),
+    roster: organizerRoster,
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    // Hay lugar: "Aceptar" sale en las dos filas (jugador y capitán rival).
+    await expect(canvas.getAllByRole('button', { name: 'Aceptar' })).toHaveLength(2)
+    await userEvent.click(canvas.getAllByRole('button', { name: 'Esta vez no' })[0]!)
+    await waitFor(() => expect(args.decideAction).toHaveBeenCalledWith('c', 'decline'))
+    await userEvent.click(canvas.getAllByRole('button', { name: 'Aceptar' })[0]!)
+    await waitFor(() => expect(args.decideAction).toHaveBeenCalledWith('c', 'accept'))
+    // Sacar del banco pide confirmación.
+    await userEvent.click(canvas.getByRole('button', { name: 'Sacar a Beto R.' }))
+    const dialog = await openDialog()
+    await expect(args.removeAction).not.toHaveBeenCalled()
+    await userEvent.click(dialog.getByRole('button', { name: 'Sí, sacar' }))
+    await waitFor(() => expect(args.removeAction).toHaveBeenCalledWith('b'))
+  },
+}
+
+export const OrganizadorLlenoNoAcepta: Story = {
+  args: {
+    signedIn: true,
+    match: match({ isOrganizer: true, confirmedCount: 10 }),
+    roster: organizerRoster,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // Lleno: el jugador que pidió ya no se puede aceptar; el capitán rival no cuenta para el cupo.
+    await expect(canvas.getAllByRole('button', { name: 'Aceptar' })).toHaveLength(1)
+    await expect(canvas.getAllByRole('button', { name: 'Esta vez no' })).toHaveLength(2)
+  },
+}
+
+export const OrganizadorConCapitanConfirmado: Story = {
+  args: {
+    signedIn: true,
+    match: match({ isOrganizer: true }),
+    roster: [
+      ...organizerRoster,
+      person({ participantId: 'r2', shortName: 'Otro O.', role: 'rival_captain' }),
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // Ya hay capitán confirmado: el pedido del segundo no se acepta (pero sí el del jugador).
+    await expect(canvas.getAllByRole('button', { name: 'Aceptar' })).toHaveLength(1)
+  },
+}
+
+export const OrganizadorPublicaEnElTablon: Story = {
+  args: {
+    signedIn: true,
+    // Cupo = formato: "Buscamos rival" está disponible.
+    match: match({ isOrganizer: true, capacity: 5 }),
+    roster: organizerRoster.slice(0, 1),
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Publicar en el tablón' }))
+    // WhatsApp precargado, teclado numérico y la casilla de consentimiento sin tildar.
+    const whatsapp = canvas.getByLabelText('Tu WhatsApp')
+    await expect(whatsapp).toHaveValue('1123456789')
+    await expect(whatsapp).toHaveAttribute('type', 'tel')
+    await expect(whatsapp).toHaveAttribute('inputmode', 'tel')
+    const consent = canvas.getByRole('checkbox', {
+      name: 'Lo ve solo a quien aceptes en este partido',
+    })
+    await expect(consent).not.toBeChecked()
+    await userEvent.click(canvas.getByRole('radio', { name: 'Arquero' }))
+    await userEvent.click(consent)
+    await userEvent.click(canvas.getByRole('button', { name: 'Publicar' }))
+    await waitFor(() => expect(args.publishAction).toHaveBeenCalled())
+    const fd = args.publishAction.mock.calls[0]![1]
+    await expect(fd.get('matchId')).toBe('m1')
+    await expect(fd.get('seeking')).toBe('players')
+    await expect(fd.get('seekingPosition')).toBe('goalkeeper')
+    await expect(fd.get('whatsappConsent')).toBe('on')
+    // "Buscamos rival" no lleva posición.
+    await userEvent.click(canvas.getByRole('radio', { name: 'Buscamos rival' }))
+    await expect(canvas.queryByRole('radio', { name: 'Arquero' })).toBeNull()
+  },
+}
+
+export const OrganizadorSinBuscarRivalPorCupo: Story = {
+  args: {
+    signedIn: true,
+    // F5 con cupo 10: "Busca rival" exige cupo = formato y la capacidad no se edita.
+    match: match({ isOrganizer: true }),
+    roster: organizerRoster.slice(0, 1),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Publicar en el tablón' }))
+    await expect(canvas.getByRole('radio', { name: 'Buscamos jugadores' })).toBeInTheDocument()
+    await expect(canvas.queryByRole('radio', { name: 'Buscamos rival' })).toBeNull()
+  },
+}
+
+export const OrganizadorSinBuscarRivalConCapitan: Story = {
+  args: {
+    signedIn: true,
+    match: match({ isOrganizer: true, capacity: 5 }),
+    roster: [
+      ...organizerRoster.slice(0, 1),
+      person({ participantId: 'r1', shortName: 'Rival R.', role: 'rival_captain' }),
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Publicar en el tablón' }))
+    await expect(canvas.getByRole('radio', { name: 'Buscamos jugadores' })).toBeInTheDocument()
+    await expect(canvas.queryByRole('radio', { name: 'Buscamos rival' })).toBeNull()
+  },
+}
+
+export const PublicarConErrores: Story = {
+  args: {
+    signedIn: true,
+    match: match({ isOrganizer: true }),
+    roster: organizerRoster.slice(0, 1),
+    whatsappPrefill: null,
+    publishAction: fn(async (_prev: RivalFormResult, _fd: FormData): Promise<RivalFormResult> => ({
+      success: false,
+      error: 'Ingresá un WhatsApp argentino válido.',
+      field: 'whatsapp',
+    })),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Publicar en el tablón' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Publicar' }))
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('WhatsApp argentino válido')
+    await expect(canvas.getByLabelText('Tu WhatsApp')).toHaveAttribute('aria-invalid', 'true')
+  },
+}
+
+export const OrganizadorEnElTablon: Story = {
+  args: {
+    signedIn: true,
+    match: match({ isOrganizer: true, seeking: 'players', seekingPosition: 'goalkeeper' }),
+    roster: organizerRoster.slice(0, 1),
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('En el tablón: Se busca arquero')).toBeInTheDocument()
+    await expect(canvas.queryByRole('button', { name: 'Publicar en el tablón' })).toBeNull()
+    await userEvent.click(canvas.getByRole('button', { name: 'Sacar del tablón' }))
+    await waitFor(() => expect(args.unpublishAction).toHaveBeenCalledWith('m1'))
+  },
+}
+
+export const InvitadoDenunciaElPartido: Story = {
+  args: { signedIn: true, roster },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Denunciar el partido' }))
+    const dialog = await openDialog()
+    // Los 4 motivos cerrados, y sin motivo no se envía.
+    await expect(dialog.getAllByRole('radio')).toHaveLength(4)
+    await userEvent.click(dialog.getByRole('button', { name: 'Enviar denuncia' }))
+    await expect(await dialog.findByRole('alert')).toHaveTextContent('Elegí el motivo')
+    await expect(args.reportMatchAction).not.toHaveBeenCalled()
+    await userEvent.click(dialog.getByRole('radio', { name: 'Es spam o publicidad' }))
+    await userEvent.click(dialog.getByRole('button', { name: 'Enviar denuncia' }))
+    await waitFor(() => expect(args.reportMatchAction).toHaveBeenCalledWith('m1', 'spam'))
+    await expect(await canvas.findByText('Gracias. Lo vamos a revisar.')).toBeInTheDocument()
+  },
+}
+
+export const InvitadoDenunciaAUnaPersona: Story = {
+  args: { signedIn: true, roster },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getAllByRole('button', { name: 'Denunciar' })[0]!)
+    const dialog = await openDialog()
+    await userEvent.click(dialog.getByRole('radio', { name: 'Nombre o foto ofensivos' }))
+    await userEvent.click(dialog.getByRole('button', { name: 'Enviar denuncia' }))
+    await waitFor(() =>
+      expect(args.reportPlayerAction).toHaveBeenCalledWith('m1', 'pl-a', 'offensive'),
+    )
+  },
+}
+
+export const SinSesionNoDenuncia: Story = {
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).queryByRole('button', { name: /Denunciar/ })).toBeNull()
   },
 }

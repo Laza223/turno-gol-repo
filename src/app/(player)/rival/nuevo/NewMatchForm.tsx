@@ -13,6 +13,7 @@ import { artInstantOf, dayLabel, RIVAL_LEVEL_LABELS } from '@/modules/rival/riva
 import type { RepeatPrefill } from '@/modules/rival/rival-form'
 import { RIVAL_LEVELS } from '@/modules/rival/rival.schema'
 import type { RivalFormResult } from '../actions'
+import { BoardFields, type BoardPosition, type BoardSeeking } from '../BoardFields'
 import { StampBadge } from '../MatchBits'
 
 type CreateAction = (prev: RivalFormResult, formData: FormData) => Promise<RivalFormResult>
@@ -45,8 +46,8 @@ function FieldLabel({ id, children }: { id?: string; children: string }) {
 }
 
 /**
- * "Armar un partido" en una sola pantalla (spec §3 y §5.1). El tablón queda en "Apagado": publicar
- * es del PR4. Con una reserva (`prefill`) el complejo, el día, la hora y el formato vienen
+ * "Armar un partido" en una sola pantalla (spec §3 y §5.1). El tablón arranca "Apagado" (solo el
+ * grupo); con "Buscamos rival" el cupo queda fijo en el formato. Con una reserva (`prefill`) el complejo, el día, la hora y el formato vienen
  * bloqueados. El sello se ve acá solo como aviso: el servidor vuelve a buscar la reserva por su
  * cuenta (el form no manda `bookingId`).
  */
@@ -57,6 +58,7 @@ export function NewMatchForm({
   repeat = null,
   today,
   nowTime,
+  whatsappPrefill = null,
   action,
 }: {
   tenants: NewMatchTenant[]
@@ -67,6 +69,8 @@ export function NewMatchForm({
   /** Hoy en ART (YYYY-MM-DD) y la hora ART de ahora (HH:MM), de la page. */
   today: string
   nowTime: string
+  /** WhatsApp precargado (de `players.phone`) para cuando se publica en el tablón. */
+  whatsappPrefill?: string | null
   action: CreateAction
 }) {
   const [state, formAction, pending] = useActionState(action, INITIAL)
@@ -82,9 +86,15 @@ export function NewMatchForm({
   )
   const [level, setLevel] = useState<string>(repeat?.level ?? 'parejo')
   const [courtDeclared, setCourtDeclared] = useState(false)
+  const [seeking, setSeeking] = useState<BoardSeeking>('off')
+  const [position, setPosition] = useState<BoardPosition>('any')
+  const [whatsapp, setWhatsapp] = useState(whatsappPrefill ?? '')
+  const [consent, setConsent] = useState(false)
 
   const locked = prefill !== null
-  const effectiveCapacity = capacity ?? format * 2
+  // Buscando rival, el cupo es el formato: tu equipo, sin contar al rival.
+  const teamOnly = seeking === 'rival'
+  const effectiveCapacity = teamOnly ? format : (capacity ?? format * 2)
   const days = Array.from({ length: 8 }, (_, i) => addDays(today, i))
   // Hoy solo quedan las horas que no pasaron.
   const hours = date === today ? TIME_OPTIONS.filter((o) => o.value > nowTime) : TIME_OPTIONS
@@ -117,7 +127,7 @@ export function NewMatchForm({
       <input type="hidden" name="date" value={date} />
       <input type="hidden" name="time" value={time} />
       <input type="hidden" name="format" value={format} />
-      <input type="hidden" name="capacity" value={capacity ?? ''} />
+      <input type="hidden" name="capacity" value={teamOnly ? format : (capacity ?? '')} />
       <input type="hidden" name="level" value={level} />
 
       {locked ? (
@@ -197,7 +207,7 @@ export function NewMatchForm({
             variant="outline"
             size="icon"
             aria-label="Uno menos"
-            disabled={effectiveCapacity <= MIN_CAPACITY}
+            disabled={teamOnly || effectiveCapacity <= MIN_CAPACITY}
             onClick={() => setCapacity(Math.max(MIN_CAPACITY, effectiveCapacity - 1))}
           >
             <Minus className="size-4" aria-hidden />
@@ -213,13 +223,15 @@ export function NewMatchForm({
             variant="outline"
             size="icon"
             aria-label="Uno más"
-            disabled={effectiveCapacity >= MAX_CAPACITY}
+            disabled={teamOnly || effectiveCapacity >= MAX_CAPACITY}
             onClick={() => setCapacity(Math.min(MAX_CAPACITY, effectiveCapacity + 1))}
           >
             <Plus className="size-4" aria-hidden />
           </Button>
         </div>
-        <p className="text-[13px] leading-5 text-muted-foreground">Contándote a vos.</p>
+        <p className="text-[13px] leading-5 text-muted-foreground">
+          {teamOnly ? `Tu equipo: ${format}` : 'Contándote a vos.'}
+        </p>
         {err('capacity')}
       </div>
 
@@ -254,13 +266,19 @@ export function NewMatchForm({
         {err('courtDeclared')}
       </div>
 
-      <div className="space-y-1.5">
-        <p className="text-base font-medium text-foreground">Tablón</p>
-        <p className="text-base text-foreground">Apagado (solo el grupo)</p>
-        <p className="text-[13px] leading-5 text-muted-foreground">
-          Armás el partido y le pasás el link a tu grupo.
-        </p>
-      </div>
+      <BoardFields
+        idPrefix="armar"
+        allowOff
+        seeking={seeking}
+        onSeekingChange={setSeeking}
+        position={position}
+        onPositionChange={setPosition}
+        whatsapp={whatsapp}
+        onWhatsappChange={setWhatsapp}
+        consent={consent}
+        onConsentChange={setConsent}
+        fieldError={fieldError}
+      />
 
       <div className="space-y-3">
         <Button type="submit" disabled={pending} aria-busy={pending} className={PORTAL_BUTTON}>

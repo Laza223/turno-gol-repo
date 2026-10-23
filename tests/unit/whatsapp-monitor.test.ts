@@ -5,7 +5,11 @@ import {
   projectMonth,
   tokensToUsd,
 } from '@/modules/super-admin/whatsapp-monitor.service'
-import { pickOpsAlerts } from '@/modules/super-admin/whatsapp-ops-alerts.service'
+import {
+  classifyNumberHealth,
+  pickOpsAlerts,
+} from '@/modules/super-admin/whatsapp-ops-alerts.service'
+import type { KapsoNumberHealth } from '@/lib/kapso/platform'
 
 describe('tokensToUsd (Claude Haiku 5.5: 0,10 / 0,01 / 0,50 USD por millón)', () => {
   it('un millón de cada tipo suma 0,61', () => {
@@ -158,5 +162,59 @@ describe('pickOpsAlerts', () => {
       expect(a.subject.length).toBeGreaterThan(0)
       expect(a.lines.join(' ')).not.toMatch(/\d{10,}/)
     }
+  })
+})
+
+describe('classifyNumberHealth', () => {
+  const healthy: KapsoNumberHealth = {
+    status: 'healthy',
+    connection: 'CONNECTED',
+    messaging: 'AVAILABLE',
+    accessOk: true,
+    failingChecks: [],
+  }
+
+  it('404 (null): caído, Kapso ya no tiene el número', () => {
+    expect(classifyNumberHealth(null)).toEqual({ kind: 'down', cause: 'no_existe' })
+  })
+
+  it.each([
+    [{ status: 'unhealthy', connection: 'DISCONNECTED' }, 'desconectado'],
+    [{ status: 'unhealthy', accessOk: false, messaging: null }, 'sin_acceso'],
+    [{ status: 'unhealthy', messaging: 'BLOCKED' }, 'bloqueado'],
+    [{ status: 'unhealthy' }, 'otro'],
+    // Los checks se miran solos: no se confía en que Kapso los refleje en el `status`.
+    [{ status: 'degraded', connection: 'DISCONNECTED' }, 'desconectado'],
+    [{ status: 'healthy', messaging: 'BLOCKED' }, 'bloqueado'],
+  ] as const)('%o es caído por %s', (patch, cause) => {
+    expect(classifyNumberHealth({ ...healthy, ...patch })).toEqual({ kind: 'down', cause })
+  })
+
+  it('desconectado gana sobre bloqueado: se arregla reconectando', () => {
+    expect(
+      classifyNumberHealth({ ...healthy, connection: 'DISCONNECTED', messaging: 'BLOCKED' }),
+    ).toEqual({ kind: 'down', cause: 'desconectado' })
+  })
+
+  it('degraded (LIMITED, nombre sin aprobar) no es caído', () => {
+    expect(classifyNumberHealth({ ...healthy, status: 'degraded', messaging: 'LIMITED' })).toEqual({
+      kind: 'degraded',
+    })
+  })
+
+  it('`status: error` es desconocido, no caído', () => {
+    expect(
+      classifyNumberHealth({
+        status: 'error',
+        connection: null,
+        messaging: null,
+        accessOk: null,
+        failingChecks: [],
+      }),
+    ).toEqual({ kind: 'unknown' })
+  })
+
+  it('sano es ok', () => {
+    expect(classifyNumberHealth(healthy)).toEqual({ kind: 'ok' })
   })
 })

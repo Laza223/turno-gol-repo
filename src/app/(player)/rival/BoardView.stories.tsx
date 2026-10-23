@@ -55,7 +55,7 @@ const meta = {
     layout: 'fullscreen',
     nextjs: { appDirectory: true, navigation: { pathname: '/rival' } },
   },
-  args: { items, tenants, selectedTenantId: null, now: NOW },
+  args: { items, tenants, selectedTenantId: null, nextHref: null, now: NOW },
 } satisfies Meta<typeof BoardView>
 
 export default meta
@@ -71,8 +71,23 @@ export const Default: Story = {
     await expect(canvas.getByText('Falta 1')).toBeInTheDocument()
     await expect(canvas.getByText('Se busca arquero')).toBeInTheDocument()
     await expect(canvas.getByText('Busca rival')).toBeInTheDocument()
-    // El tablón no muestra personas ni linkea a una vista que todavía no existe.
-    await expect(canvas.queryByRole('link', { name: /Faltan 3/ })).toBeNull()
+    // Cada tarjeta es un link al partido por id, con nombre accesible claro; sin "Ver más".
+    await expect(
+      canvas.getByRole('link', { name: /^Faltan 3 en El Vagón, Hoy 20:00/ }),
+    ).toHaveAttribute('href', '/rival/partido/a')
+    await expect(canvas.getByRole('link', { name: /^Busca rival en El Vagón/ })).toBeInTheDocument()
+    await expect(canvas.queryByRole('link', { name: 'Ver más partidos' })).toBeNull()
+  },
+}
+
+export const ConVerMas: Story = {
+  args: { nextHref: '/rival?despues=2026-03-18T22%3A30%3A00.000Z_d' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('link', { name: 'Ver más partidos' })).toHaveAttribute(
+      'href',
+      '/rival?despues=2026-03-18T22%3A30%3A00.000Z_d',
+    )
   },
 }
 

@@ -79,6 +79,9 @@ export const POLICIES = {
   rivalCreate: { limit: 10, window: '10 m', keyBy: 'player', failMode: 'open' },
   // RIVAL v1: el resto de las escrituras del jugador (bienvenida, cancelar, bajarse...).
   rivalWrite: { limit: 30, window: '60 s', keyBy: 'player', failMode: 'open' },
+  // RIVAL v1: denunciar. Más estricta: una persona real denuncia pocas veces y es el camino
+  // para ensuciar el partido de otro.
+  rivalReport: { limit: 10, window: '10 m', keyBy: 'player', failMode: 'open' },
 } as const satisfies Record<string, Policy>
 
 export type PolicyName = keyof typeof POLICIES

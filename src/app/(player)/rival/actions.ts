@@ -5,16 +5,29 @@ import { redirect } from 'next/navigation'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import { RivalError } from '@/modules/rival/rival.errors'
-import { inviteCodeSchema, rivalWelcomeSchema } from '@/modules/rival/rival.schema'
-import { parseNewMatchForm } from '@/modules/rival/rival-form'
+import {
+  inviteCodeSchema,
+  rivalReportSchema,
+  rivalWelcomeSchema,
+  type RivalReportReason,
+} from '@/modules/rival/rival.schema'
+import { parseBoardForm, parseNewMatchForm } from '@/modules/rival/rival-form'
 import { rivalErrorMessage } from '@/modules/rival/rival-copy'
 import {
   acceptRivalWelcome,
   cancelMatch,
   createMatch,
+  decideRequest,
+  getBoardMatch,
   joinByInvite,
   leaveMatch,
   listUpcomingConfirmedBookings,
+  publishToBoard,
+  removeParticipant,
+  reportMatch,
+  reportPlayer,
+  requestToJoin,
+  unpublishFromBoard,
 } from '@/modules/rival/rival.service'
 import { captureException } from '@/lib/sentry'
 import { clearRivalIntentCookie } from './p/[code]/rival-intent.server'
@@ -153,7 +166,7 @@ export async function leaveMatchAction(matchId: string): Promise<ActionResult> {
   return { success: true }
 }
 
-/** Arma el partido y va a la vista del organizador. Solo "el grupo": publicar en el tablón es del PR4. */
+/** Arma el partido (con o sin tablón, según `seeking`) y va a la vista del organizador. */
 export async function createMatchAction(
   _prev: RivalFormResult,
   formData: FormData,
@@ -195,4 +208,167 @@ export async function cancelMatchAction(matchId: string): Promise<ActionResult> 
   }
   revalidatePath('/rival', 'layout')
   return { success: true }
+}
+
+const notFound = (): { success: false; error: string } => ({
+  success: false,
+  error: rivalErrorMessage(new RivalError('rival_not_found')),
+})
+
+/** Pedido del tablón: el complejo sale de la tarjeta publicada, no del cliente. */
+async function requestFromBoard(playerId: string, matchId: string): Promise<void> {
+  const card = await getBoardMatch(matchId)
+  if (!card) throw new RivalError('rival_not_found')
+  await requestToJoin(playerId, { matchId, tenantId: card.tenantId })
+}
+
+/** "Quiero sumarme" desde el tablón (§5.6), con la bienvenida ya aceptada. El organizador decide. */
+export async function requestToJoinAction(matchId: string): Promise<ActionResult> {
+  const g = await guard('rivalWrite')
+  if ('error' in g) return { success: false, error: g.error }
+  const id = uuid.safeParse(matchId)
+  if (!id.success) return notFound()
+  try {
+    await requestFromBoard(g.playerId, id.data)
+  } catch (err) {
+    return failure(err)
+  }
+  revalidatePath('/rival', 'layout')
+  return { success: true }
+}
+
+/** Bienvenida + pedido del tablón en un toque. El `matchId` viaja oculto en el form. */
+export async function acceptWelcomeAndRequestAction(
+  _prev: RivalFormResult,
+  formData: FormData,
+): Promise<RivalFormResult> {
+  const g = await guard('rivalWrite')
+  if ('error' in g) return { success: false, error: g.error }
+
+  const welcome = parseWelcome(formData)
+  if (!welcome.ok) return welcome.result
+  const id = uuid.safeParse(formData.get('matchId'))
+  if (!id.success) return notFound()
+  try {
+    await acceptRivalWelcome(g.playerId, welcome.data)
+    await requestFromBoard(g.playerId, id.data)
+  } catch (err) {
+    return failure(err)
+  } finally {
+    revalidatePath('/rival', 'layout')
+  }
+  return { success: true }
+}
+
+/** El organizador acepta o rechaza un pedido. El service filtra por organizador. */
+export async function decideRequestAction(
+  participantId: string,
+  decision: 'accept' | 'decline',
+): Promise<ActionResult> {
+  const g = await guard('rivalWrite')
+  if ('error' in g) return { success: false, error: g.error }
+  const id = uuid.safeParse(participantId)
+  if (!id.success || (decision !== 'accept' && decision !== 'decline')) return notFound()
+  try {
+    await decideRequest(g.playerId, id.data, decision)
+  } catch (err) {
+    return failure(err)
+  }
+  revalidatePath('/rival', 'layout')
+  return { success: true }
+}
+
+/** El organizador saca a alguien confirmado o del banco; entra el primero del banco. */
+export async function removeParticipantAction(participantId: string): Promise<ActionResult> {
+  const g = await guard('rivalWrite')
+  if ('error' in g) return { success: false, error: g.error }
+  const id = uuid.safeParse(participantId)
+  if (!id.success) return notFound()
+  try {
+    await removeParticipant(g.playerId, id.data)
+  } catch (err) {
+    return failure(err)
+  }
+  revalidatePath('/rival', 'layout')
+  return { success: true }
+}
+
+/** Publica (o cambia lo que busca) un partido propio. WhatsApp y consentimiento viajan en el form. */
+export async function publishToBoardAction(
+  _prev: RivalFormResult,
+  formData: FormData,
+): Promise<RivalFormResult> {
+  const g = await guard('rivalWrite')
+  if ('error' in g) return { success: false, error: g.error }
+
+  const id = uuid.safeParse(formData.get('matchId'))
+  if (!id.success) return notFound()
+  const parsed = parseBoardForm(Object.fromEntries(formData))
+  if (!parsed.ok) {
+    return {
+      success: false,
+      error: parsed.error,
+      ...(parsed.field ? { field: parsed.field } : {}),
+    }
+  }
+  try {
+    await publishToBoard(g.playerId, id.data, parsed.board)
+  } catch (err) {
+    return failure(err)
+  }
+  revalidatePath('/rival', 'layout')
+  return { success: true }
+}
+
+/** Saca el partido del tablón (queda solo el grupo). */
+export async function unpublishFromBoardAction(matchId: string): Promise<ActionResult> {
+  const g = await guard('rivalWrite')
+  if ('error' in g) return { success: false, error: g.error }
+  const id = uuid.safeParse(matchId)
+  if (!id.success) return notFound()
+  try {
+    await unpublishFromBoard(g.playerId, id.data)
+  } catch (err) {
+    return failure(err)
+  }
+  revalidatePath('/rival', 'layout')
+  return { success: true }
+}
+
+/** Denuncia con motivo cerrado. Una por denunciante, partido y denunciado (la base lo exige). */
+async function report(input: {
+  matchId: string
+  reason: RivalReportReason
+  reportedPlayerId?: string
+}): Promise<ActionResult> {
+  const g = await guard('rivalReport')
+  if ('error' in g) return { success: false, error: g.error }
+  const parsed = rivalReportSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: rivalErrorMessage(new RivalError('rival_invalid_report')) }
+  }
+  const { matchId, reason, reportedPlayerId } = parsed.data
+  try {
+    if (reportedPlayerId) await reportPlayer(g.playerId, matchId, reportedPlayerId, reason)
+    else await reportMatch(g.playerId, matchId, reason)
+  } catch (err) {
+    return failure(err)
+  }
+  revalidatePath('/rival', 'layout')
+  return { success: true }
+}
+
+export async function reportMatchAction(
+  matchId: string,
+  reason: RivalReportReason,
+): Promise<ActionResult> {
+  return report({ matchId, reason })
+}
+
+export async function reportPlayerAction(
+  matchId: string,
+  reportedPlayerId: string,
+  reason: RivalReportReason,
+): Promise<ActionResult> {
+  return report({ matchId, reason, reportedPlayerId })
 }

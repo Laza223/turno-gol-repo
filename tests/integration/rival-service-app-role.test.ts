@@ -20,7 +20,10 @@ import {
   cancelMatch,
   createMatch,
   decideRequest,
+  getBoardMatch,
+  getBoardPublishPrefill,
   getContactLink,
+  getMyMatch,
   getRepeatPrefill,
   getPublicMatch,
   getRivalWelcomeState,
@@ -28,6 +31,7 @@ import {
   joinByInvite,
   leaveMatch,
   listBoard,
+  listBoardTenants,
   listEligibleTenants,
   listMyMatches,
   listUpcomingConfirmedBookings,
@@ -1022,5 +1026,210 @@ describe('9. getRepeatPrefill', () => {
     const created = await createMatch(org, draft())
     await adminSql()`UPDATE rival_matches SET starts_at = now() - interval '2 days' WHERE id = ${created.id}`
     expect(await getRepeatPrefill(org, created.id)).toMatchObject({ tenantId: tenant.id })
+  })
+})
+
+// ─── 10. Lecturas del tablón (PR4) ───────────────────────────────────────
+
+describe('10. getBoardMatch, listBoardTenants, getMyMatch y getBoardPublishPrefill', () => {
+  /** Partido con su propio organizador (tope de 3 activos por persona) en el complejo dado. */
+  async function boardMatch(
+    t: { id: string },
+    o: { capacity?: number; withBoard?: 'players' | 'rival' | null } = {},
+  ): Promise<{ org: string; id: string; code: string }> {
+    const org = await welcomedPlayer('Org')
+    const withBoard = o.withBoard === undefined ? 'players' : o.withBoard
+    const created = await createMatch(
+      org,
+      draft({
+        tenantId: t.id,
+        capacity: o.capacity ?? 4,
+        ...(withBoard ? { withBoard } : {}),
+      }),
+    )
+    return { org, id: created.id, code: created.inviteCode }
+  }
+
+  it('10.1 getBoardMatch: devuelve la tarjeta de lo visible y null para todo lo demás', async () => {
+    const su = adminSql()
+    const visible = await boardMatch(tenant)
+    const card = await getBoardMatch(visible.id)
+    expect(card).toMatchObject({
+      id: visible.id,
+      tenantId: tenant.id,
+      tenantName: tenant.name,
+      seeking: 'players',
+      seekingPosition: 'any',
+      capacity: 4,
+      confirmedCount: 1,
+    })
+    expect(JSON.stringify(card)).not.toContain(visible.code)
+    expect(Object.keys(card!)).not.toContain('inviteCode')
+    expect(Object.keys(card!)).not.toContain('organizerPlayerId')
+
+    const unpublished = await boardMatch(tenant, { withBoard: null })
+    expect(await getBoardMatch(unpublished.id)).toBeNull()
+
+    const hidden = await boardMatch(tenant)
+    await su`UPDATE rival_matches SET hidden_at = now() WHERE id = ${hidden.id}`
+    expect(await getBoardMatch(hidden.id)).toBeNull()
+
+    const canceled = await boardMatch(tenant)
+    await cancelMatch(canceled.org, canceled.id)
+    expect(await getBoardMatch(canceled.id)).toBeNull()
+
+    const expired = await boardMatch(tenant)
+    await su`UPDATE rival_matches SET starts_at = now() - interval '1 hour' WHERE id = ${expired.id}`
+    expect(await getBoardMatch(expired.id)).toBeNull()
+
+    // Lleno buscando jugadores: sale. Buscando rival: sigue, aunque esté lleno.
+    const fullPlayers = await boardMatch(tenant, { capacity: 2 })
+    await joinByInvite(await welcomedPlayer('Lleno'), fullPlayers.code)
+    expect(await getBoardMatch(fullPlayers.id)).toBeNull()
+    const fullRival = await boardMatch(tenant, { capacity: 5, withBoard: 'rival' })
+    await su`UPDATE rival_matches SET confirmed_count = capacity WHERE id = ${fullRival.id}`
+    expect(await getBoardMatch(fullRival.id)).toMatchObject({ id: fullRival.id, seeking: 'rival' })
+
+    // Complejo que dejó de ser público: tampoco sale por id.
+    const t2 = await createTestTenant(su)
+    const other = await boardMatch(t2)
+    expect(await getBoardMatch(other.id)).not.toBeNull()
+    await su`UPDATE tenants SET marketplace_visible = false WHERE id = ${t2.id}`
+    expect(await getBoardMatch(other.id)).toBeNull()
+
+    expect(await getBoardMatch('no-es-uuid')).toBeNull()
+    expect(await getBoardMatch('44444444-4444-4444-8444-444444444444')).toBeNull()
+  })
+
+  it('10.2 listBoardTenants: solo complejos con publicaciones visibles, sin repetir y con id y nombre', async () => {
+    const su = adminSql()
+    const withPost = await createTestTenant(su)
+    const onlyHidden = await createTestTenant(su)
+    const onlyUnpublished = await createTestTenant(su)
+    const empty = await createTestTenant(su)
+    await boardMatch(withPost)
+    await boardMatch(withPost)
+    const h = await boardMatch(onlyHidden)
+    await su`UPDATE rival_matches SET hidden_at = now() WHERE id = ${h.id}`
+    await boardMatch(onlyUnpublished, { withBoard: null })
+
+    const list = await listBoardTenants()
+    const ids = list.map((t) => t.id)
+    expect(ids).toContain(withPost.id)
+    for (const t of [onlyHidden, onlyUnpublished, empty]) expect(ids).not.toContain(t.id)
+    expect(list.find((t) => t.id === withPost.id)).toEqual({ id: withPost.id, name: withPost.name })
+    expect(ids.length).toBe(new Set(ids).size)
+  })
+
+  it('10.2b un complejo suspendido, bloqueado o sin onboarding no sale por getBoardMatch ni por listBoardTenants', async () => {
+    const su = adminSql()
+    const t = await createTestTenant(su)
+    const m = await boardMatch(t)
+    expect(await getBoardMatch(m.id)).not.toBeNull() // control
+    expect((await listBoardTenants()).map((x) => x.id)).toContain(t.id)
+    for (const status of ['suspended', 'blocked']) {
+      await su.unsafe(`UPDATE tenants SET status = '${status}' WHERE id = '${t.id}'`)
+      expect(await getBoardMatch(m.id), status).toBeNull()
+      expect(
+        (await listBoardTenants()).map((x) => x.id),
+        status,
+      ).not.toContain(t.id)
+    }
+    await su`UPDATE tenants SET status = 'active' WHERE id = ${t.id}`
+    expect(await getBoardMatch(m.id)).not.toBeNull()
+    await su`UPDATE tenants SET settings = settings || '{"onboarding_completed": false}'::jsonb WHERE id = ${t.id}`
+    expect(await getBoardMatch(m.id)).toBeNull()
+    expect((await listBoardTenants()).map((x) => x.id)).not.toContain(t.id)
+  })
+
+  it('10.2c publicar "Busca rival" después exige cupo = formato; "Busca jugadores" siempre se puede', async () => {
+    const wide = await boardMatch(tenant, { capacity: 10, withBoard: null }) // F5, cupo 10
+    await rejectsWith('rival_capacity_mismatch', publishToBoard(wide.org, wide.id, board('rival')))
+    const [row] = await adminSql()<{ on_board: boolean }[]>`
+      SELECT on_board FROM rival_matches WHERE id = ${wide.id}
+    `
+    expect(row?.on_board).toBe(false)
+    await expect(publishToBoard(wide.org, wide.id, board('players'))).resolves.toBeUndefined()
+
+    const exact = await boardMatch(tenant, { capacity: 5, withBoard: null }) // F5, cupo 5
+    await expect(publishToBoard(exact.org, exact.id, board('rival'))).resolves.toBeUndefined()
+  })
+
+  it('10.3 getMyMatch: organizador, aceptado, pedido y rechazado ven el suyo; un tercero, null', async () => {
+    const m = await boardMatch(tenant, { capacity: 4 })
+    const accepted = await welcomedPlayer('Aceptado')
+    const pending = await welcomedPlayer('Pendiente')
+    const declined = await welcomedPlayer('Rechazado')
+    const stranger = await welcomedPlayer('Tercero')
+    const reqA = await requestToJoin(accepted, { matchId: m.id, tenantId: tenant.id })
+    await requestToJoin(pending, { matchId: m.id, tenantId: tenant.id })
+    const reqD = await requestToJoin(declined, { matchId: m.id, tenantId: tenant.id })
+    await decideRequest(m.org, reqA.participantId, 'accept')
+    await decideRequest(m.org, reqD.participantId, 'decline')
+
+    expect(await getMyMatch(m.org, m.id)).toMatchObject({
+      id: m.id,
+      isOrganizer: true,
+      inviteCode: m.code,
+    })
+    expect(await getMyMatch(accepted, m.id)).toMatchObject({
+      id: m.id,
+      isOrganizer: false,
+      myStatus: 'confirmed',
+      myOrigin: 'board',
+      participantId: reqA.participantId,
+      inviteCode: null,
+    })
+    expect(await getMyMatch(pending, m.id)).toMatchObject({
+      myStatus: 'requested',
+      inviteCode: null,
+    })
+    expect(await getMyMatch(declined, m.id)).toMatchObject({ myStatus: 'declined' })
+
+    expect(await getMyMatch(stranger, m.id)).toBeNull()
+    expect(await getMyMatch(accepted, 'no-es-uuid')).toBeNull()
+  })
+
+  it('10.4 getContactLink: link solo para el aceptado; null para pedido, rechazado, tercero, organizador y tras cancelar', async () => {
+    const m = await boardMatch(tenant)
+    const [acc, pend, dec, stranger] = await Promise.all([
+      welcomedPlayer('Acc'),
+      welcomedPlayer('Pend'),
+      welcomedPlayer('Dec'),
+      welcomedPlayer('Ter'),
+    ])
+    const rA = await requestToJoin(acc, { matchId: m.id, tenantId: tenant.id })
+    await requestToJoin(pend, { matchId: m.id, tenantId: tenant.id })
+    const rD = await requestToJoin(dec, { matchId: m.id, tenantId: tenant.id })
+    await decideRequest(m.org, rA.participantId, 'accept')
+    await decideRequest(m.org, rD.participantId, 'decline')
+
+    expect(await getContactLink(acc, m.id)).toContain('https://wa.me/5491155551234')
+    for (const who of [pend, dec, stranger, m.org]) {
+      expect(await getContactLink(who, m.id)).toBeNull()
+    }
+    await cancelMatch(m.org, m.id)
+    expect(await getContactLink(acc, m.id)).toBeNull()
+  })
+
+  it('10.5 requestToJoin: el ban manual tira rival_banned; el softban automático pasa', async () => {
+    const su = adminSql()
+    const m = await boardMatch(tenant)
+    const manual = await welcomedPlayer('BanManual')
+    await insertBan(su, { tenantId: tenant.id, playerId: manual, bannedBy: staffId })
+    await rejectsWith('rival_banned', requestToJoin(manual, { matchId: m.id, tenantId: tenant.id }))
+
+    const auto = await welcomedPlayer('BanAuto')
+    await insertBan(su, { tenantId: tenant.id, playerId: auto, bannedBy: null })
+    await expect(requestToJoin(auto, { matchId: m.id, tenantId: tenant.id })).resolves.toBeDefined()
+  })
+
+  it('10.6 getBoardPublishPrefill: el teléfono tal cual, o null', async () => {
+    const su = adminSql()
+    const withPhone = await welcomedPlayer('ConTel')
+    await su`UPDATE players SET phone = '+54 9 11 5555-1234' WHERE id = ${withPhone}`
+    expect(await getBoardPublishPrefill(withPhone)).toEqual({ whatsapp: '+54 9 11 5555-1234' })
+    const without = await welcomedPlayer('SinTel')
+    expect(await getBoardPublishPrefill(without)).toEqual({ whatsapp: null })
   })
 })

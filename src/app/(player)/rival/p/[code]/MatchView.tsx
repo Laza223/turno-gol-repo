@@ -1,141 +1,21 @@
 import type { ReactNode } from 'react'
 import { Check } from 'lucide-react'
 import Link from 'next/link'
-import { formatLabel } from '@/components/public/courtFacets'
-import { cn } from '@/lib/utils'
-import { TONE_BADGE, type StatusTone } from '@/lib/status-tone'
-import {
-  RIVAL_LEVEL_LABELS,
-  RIVAL_POSITION_LABELS,
-  weekdayOf,
-  whenLabel,
-} from '@/modules/rival/rival-display'
+import { matchTypeLabel, weekdayOf } from '@/modules/rival/rival-display'
 import { artDateOf } from '@/shared/time/art-date'
+import type { RivalReportReason } from '@/modules/rival/rival.schema'
 import type { RivalPublicMatch, RivalRosterEntry } from '@/modules/rival/rival.types'
 import type { ActionResult } from '@/shared/types/action-result'
 import type { RivalFormResult } from '../../actions'
-import { FactPill, RIVAL_CTA, StampBadge } from '../../MatchBits'
+import { CanceledCard, MatchHeader, RIVAL_CTA } from '../../MatchBits'
 import { DropIntentParam } from './DropIntentParam'
 import { LeaveMatch } from './LeaveMatch'
+import { canSeekRival } from './organizer-rules'
 import { OrganizerActions } from './OrganizerActions'
+import { myStatusLine, PeopleSection, type RowActionProps } from './People'
+import { ReportMatchButton } from './ReportButton'
 import { ShirtGrid } from './ShirtGrid'
 import { VoyPanel, type VoyWelcome } from './VoyPanel'
-
-const MEMBER_SINCE = new Intl.DateTimeFormat('es-AR', {
-  month: 'long',
-  year: 'numeric',
-  timeZone: 'America/Argentina/Buenos_Aires',
-})
-
-function initialsOf(shortName: string): string {
-  return shortName
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
-}
-
-function Avatar({ entry }: { entry: RivalRosterEntry }) {
-  return entry.avatarUrl ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={entry.avatarUrl} alt="" className="size-10 shrink-0 rounded-full object-cover" />
-  ) : (
-    <span
-      aria-hidden
-      className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted font-display text-sm font-black italic text-foreground"
-    >
-      {initialsOf(entry.shortName)}
-    </span>
-  )
-}
-
-const STATUS_BADGE: Partial<
-  Record<RivalRosterEntry['status'], { label: string; tone: StatusTone }>
-> = {
-  confirmed: { label: 'Confirmado', tone: 'success' },
-  bench: { label: 'En el banco', tone: 'neutral' },
-  requested: { label: 'Pidió sumarse', tone: 'neutral' },
-}
-
-/** Una fila del plantel. Con `detail` (solo el organizador) suma la ficha de la spec §6. */
-function PersonRow({ entry, detail }: { entry: RivalRosterEntry; detail: boolean }) {
-  const badge = detail ? STATUS_BADGE[entry.status] : undefined
-  const facts = detail
-    ? [
-        entry.position ? RIVAL_POSITION_LABELS[entry.position] : null,
-        entry.zone,
-        entry.gamesPlayed !== null
-          ? `${entry.gamesPlayed} ${entry.gamesPlayed === 1 ? 'partido jugado' : 'partidos jugados'}`
-          : null,
-        entry.memberSince ? `En TurnoGol desde ${MEMBER_SINCE.format(entry.memberSince)}` : null,
-      ].filter((f): f is string => f !== null)
-    : []
-  return (
-    <li className="flex items-start gap-3 py-2">
-      <Avatar entry={entry} />
-      <div className="min-w-0 flex-1">
-        <p className="break-words text-base font-medium text-foreground">
-          {entry.role === 'rival_captain' ? 'Equipo rival: ' : ''}
-          {entry.shortName}
-          {entry.isMe && <span className="font-normal text-muted-foreground"> (vos)</span>}
-        </p>
-        {facts.length > 0 && <p className="text-sm text-muted-foreground">{facts.join(' · ')}</p>}
-      </div>
-      {badge && (
-        <span
-          className={cn(
-            'shrink-0 rounded-full px-2 py-0.5 text-[13px] font-medium',
-            TONE_BADGE[badge.tone],
-          )}
-        >
-          {badge.label}
-        </span>
-      )}
-    </li>
-  )
-}
-
-function PeopleSection({
-  title,
-  entries,
-  detail,
-}: {
-  title: string
-  entries: RivalRosterEntry[]
-  detail: boolean
-}) {
-  if (entries.length === 0) return null
-  return (
-    <section aria-label={title} className="space-y-1">
-      <h2 className="font-display text-lg font-extrabold tracking-[-0.01em] text-foreground">
-        {title}
-      </h2>
-      <ul className="divide-y divide-border">
-        {entries.map((e) => (
-          <PersonRow key={e.participantId} entry={e} detail={detail} />
-        ))}
-      </ul>
-    </section>
-  )
-}
-
-/** Mi estado cuando juego o pedí sumarme (el resultado de "Voy", en palabras de la spec §5.2). */
-function myStatusLine(status: RivalRosterEntry['status']): string | null {
-  switch (status) {
-    case 'confirmed':
-      return 'Listo, estás adentro. Nos vemos en la cancha.'
-    case 'bench':
-      return 'Quedaste en el banco. Si alguien se baja, entrás vos y te avisamos por mail.'
-    case 'requested':
-      return 'Tu pedido está enviado. Te avisamos por mail si te aceptan.'
-    case 'declined':
-      return 'Esta vez no hubo lugar.'
-    default:
-      return null
-  }
-}
 
 type Props = {
   /** Código del link (`/rival/p/[code]`): "Voy" suma por él. */
@@ -160,7 +40,19 @@ type Props = {
   intentParam: string
   /** El "Voy" sin sesión (la variante RIVAL del login); lo arma la page. */
   voyGate?: ReactNode
+  /** Prefill del WhatsApp del form de publicar (de `players.phone`). */
+  whatsappPrefill: string | null
   cancelAction: (matchId: string) => Promise<ActionResult>
+  publishAction: (prev: RivalFormResult, formData: FormData) => Promise<RivalFormResult>
+  unpublishAction: (matchId: string) => Promise<ActionResult>
+  decideAction: (participantId: string, decision: 'accept' | 'decline') => Promise<ActionResult>
+  removeAction: (participantId: string) => Promise<ActionResult>
+  reportMatchAction: (matchId: string, reason: RivalReportReason) => Promise<ActionResult>
+  reportPlayerAction: (
+    matchId: string,
+    reportedPlayerId: string,
+    reason: RivalReportReason,
+  ) => Promise<ActionResult>
   joinAction: (code: string) => Promise<ActionResult>
   acceptAndJoinAction: (prev: RivalFormResult, formData: FormData) => Promise<RivalFormResult>
   leaveAction: (matchId: string) => Promise<ActionResult>
@@ -170,7 +62,7 @@ type Props = {
  * La vista del partido por link (`/rival/p/[code]`), según quién mira (spec §5.2, §5.3, §6):
  * sin sesión no hay personas; con sesión, nombre corto y foto de los confirmados; el organizador
  * ve además el banco, los pedidos y la ficha. Un solo verde por vista: "Voy" para el invitado,
- * "Avisar al grupo" para el organizador. Publicar en el tablón es del PR4: acá no hay botones muertos.
+ * "Avisar al grupo" para el organizador.
  */
 export function MatchView({
   code,
@@ -190,6 +82,13 @@ export function MatchView({
   joinAction,
   acceptAndJoinAction,
   leaveAction,
+  whatsappPrefill,
+  publishAction,
+  unpublishAction,
+  decideAction,
+  removeAction,
+  reportMatchAction,
+  reportPlayerAction,
 }: Props) {
   const canceled = match.status === 'canceled'
   const ended = !canceled && match.startsAt.getTime() <= now.getTime()
@@ -205,6 +104,16 @@ export function MatchView({
     !match.isOrganizer &&
     me !== undefined &&
     (me.status === 'confirmed' || me.status === 'bench' || me.status === 'requested')
+  // Cada fila ofrece lo suyo: el organizador decide y saca; cualquiera con sesión denuncia.
+  const rowActions: RowActionProps | undefined = signedIn
+    ? {
+        matchId: match.id,
+        match,
+        roster,
+        reportPlayerAction,
+        ...(match.isOrganizer && open ? { organizer: { decideAction, removeAction } } : {}),
+      }
+    : undefined
   const repeatDay = weekdayOf(artDateOf(match.startsAt))
 
   return (
@@ -220,37 +129,18 @@ export function MatchView({
         </p>
       )}
 
-      <section
-        aria-labelledby="rival-partido"
-        className="reserva-receipt-card space-y-3 rounded-2xl p-5"
-      >
-        <p className="font-logo text-[12px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
-          RIVAL powered by TurnoGol
-        </p>
-        <h1
-          id="rival-partido"
-          className="break-words font-display text-2xl font-black italic leading-tight tracking-tight text-foreground"
-        >
-          {match.tenantName}
-        </h1>
-        <p className="text-base text-foreground">{whenLabel(match.startsAt, now)}</p>
-        <div className="flex flex-wrap items-center gap-2">
-          <FactPill>{formatLabel(match.format)}</FactPill>
-          <FactPill>{RIVAL_LEVEL_LABELS[match.level]}</FactPill>
-          {match.hasStamp && <StampBadge />}
-          {ended && <FactPill>Jugado</FactPill>}
-        </div>
-      </section>
+      <MatchHeader
+        tenantName={match.tenantName}
+        startsAt={match.startsAt}
+        format={match.format}
+        level={match.level}
+        hasStamp={match.hasStamp}
+        ended={ended}
+        now={now}
+      />
 
       {canceled ? (
-        <section className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card px-6 py-10 text-center shadow-xs">
-          <p className="font-display text-2xl font-black italic text-foreground">
-            Este partido se cayó.
-          </p>
-          <Link href="/rival/nuevo" className={RIVAL_CTA}>
-            Armar otro
-          </Link>
-        </section>
+        <CanceledCard />
       ) : (
         <>
           <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
@@ -263,12 +153,19 @@ export function MatchView({
 
           {signedIn && match.isOrganizer ? (
             <>
-              <PeopleSection title="Confirmados" entries={confirmed} detail />
-              <PeopleSection title="El banco" entries={bench} detail />
-              <PeopleSection title="Pedidos" entries={requested} detail />
+              <PeopleSection title="Pedidos" entries={requested} detail actions={rowActions} />
+              <PeopleSection title="Confirmados" entries={confirmed} detail actions={rowActions} />
+              <PeopleSection title="El banco" entries={bench} detail actions={rowActions} />
             </>
           ) : (
-            signedIn && <PeopleSection title="Quiénes van" entries={confirmed} detail={false} />
+            signedIn && (
+              <PeopleSection
+                title="Quiénes van"
+                entries={confirmed}
+                detail={false}
+                actions={rowActions}
+              />
+            )
           )}
 
           {open && match.isOrganizer && (
@@ -276,7 +173,12 @@ export function MatchView({
               matchId={match.id}
               shareUrl={shareUrl}
               shareHref={shareHref}
+              boardLabel={match.seeking === null ? null : matchTypeLabel(match)}
+              whatsappPrefill={whatsappPrefill}
+              canSeekRival={canSeekRival(match, roster)}
               cancelAction={cancelAction}
+              publishAction={publishAction}
+              unpublishAction={unpublishAction}
             />
           )}
 
@@ -292,7 +194,17 @@ export function MatchView({
               acceptAndJoinAction={acceptAndJoinAction}
             />
           )}
-          {canLeave && <LeaveMatch matchId={match.id} leaveAction={leaveAction} />}
+          {canLeave && (
+            <LeaveMatch
+              matchId={match.id}
+              leaveAction={leaveAction}
+              showHint={me?.status !== 'requested'}
+            />
+          )}
+
+          {signedIn && !match.isOrganizer && (
+            <ReportMatchButton matchId={match.id} reportAction={reportMatchAction} />
+          )}
 
           {ended && signedIn && match.isOrganizer && (
             <Link href={`/rival/nuevo?desde=${match.id}`} className={RIVAL_CTA}>

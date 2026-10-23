@@ -4,7 +4,12 @@ import { artTodayStr } from '@/shared/dates/art'
 import { artDateOf } from '@/shared/time/art-date'
 import { uuid } from '@/shared/validation/primitives'
 import { artInstantOf, artTimeOf } from './rival-display'
-import { createRivalMatchSchema, type RivalMatchDraft } from './rival.schema'
+import {
+  createRivalMatchSchema,
+  publishBoardSchema,
+  type RivalBoardDraft,
+  type RivalMatchDraft,
+} from './rival.schema'
 import { isInRivalStartWindow } from './rival-window'
 import type { RivalLevel } from './rival.types'
 
@@ -18,6 +23,39 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const TIME_RE = /^\d{2}:\d{2}$/
 
 const text = (v: unknown): string => (typeof v === 'string' ? v.trim() : '')
+
+/**
+ * Campos del tablón del form (`seeking`, `seekingPosition`, `whatsapp`, `whatsappConsent`) → la
+ * entrada de `publishBoardSchema`. `seeking` vacío u `off` = sin tablón (`null`). La posición solo
+ * viaja buscando jugadores: un valor suelto al buscar rival no rompe el form.
+ */
+function boardInput(raw: Record<string, unknown>): Record<string, unknown> | null {
+  const seeking = text(raw.seeking)
+  if (seeking === '' || seeking === 'off') return null
+  const position = text(raw.seekingPosition)
+  return {
+    seeking,
+    ...(seeking === 'players' && position !== '' ? { seekingPosition: position } : {}),
+    whatsapp: text(raw.whatsapp),
+    whatsappConsent: ['on', 'true'].includes(text(raw.whatsappConsent)),
+  }
+}
+
+export type BoardFormResult =
+  { ok: true; board: RivalBoardDraft } | { ok: false; error: string; field?: string }
+
+/** Form de "Publicar en el tablón" (partido ya armado). Los errores llevan el nombre del campo del form. */
+export function parseBoardForm(raw: Record<string, unknown>): BoardFormResult {
+  const parsed = publishBoardSchema.safeParse(boardInput(raw) ?? {})
+  if (parsed.success) return { ok: true, board: parsed.data }
+  const issue = parsed.error.issues[0]
+  const field = issue?.path[0]
+  return {
+    ok: false,
+    error: issue?.message ?? 'Revisá los datos de la publicación.',
+    ...(typeof field === 'string' ? { field } : {}),
+  }
+}
 
 /**
  * Campos crudos del form (día y hora en ART) → borrador validado. La reserva se
@@ -38,6 +76,7 @@ export function parseNewMatchForm(
       ? bookings.find((b) => b.tenantId === tenantId && b.startsAt.getTime() === startsAt.getTime())
       : undefined
 
+  const board = boardInput(raw)
   const parsed = createRivalMatchSchema.safeParse({
     tenantId,
     startsAt: startsAt ?? '',
@@ -46,10 +85,12 @@ export function parseNewMatchForm(
     level: text(raw.level),
     ...(booking ? { bookingId: booking.id } : {}),
     courtDeclared: !booking && ['on', 'true'].includes(text(raw.courtDeclared)),
+    ...(board ? { board } : {}),
   })
   if (parsed.success) return { ok: true, draft: parsed.data }
   const issue = parsed.error.issues[0]
-  const field = issue?.path[0]
+  // Los errores del tablón vienen como `board.<campo>`: el form los pinta junto al campo.
+  const field = issue?.path[0] === 'board' ? issue.path[1] : issue?.path[0]
   return {
     ok: false,
     error: issue?.message ?? 'Revisá los datos del partido.',

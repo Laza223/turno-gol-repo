@@ -114,6 +114,23 @@ function toPublicMatch(r: Row): RivalPublicMatch {
   return { ...toMatchBase(r), tenantCity: String(r.tenant_city) }
 }
 
+function toBoardItem(r: Row): RivalBoardItem {
+  return {
+    id: String(r.id),
+    tenantId: String(r.tenant_id),
+    tenantName: String(r.tenant_name),
+    tenantSlug: String(r.tenant_slug),
+    startsAt: toDate(r.starts_at),
+    format: Number(r.format),
+    capacity: Number(r.capacity),
+    level: r.level as RivalLevel,
+    seeking: r.seeking as RivalSeeking,
+    seekingPosition: (r.seeking_position ?? null) as RivalSeekingPosition | null,
+    confirmedCount: Number(r.confirmed_count),
+    hasStamp: Boolean(r.has_stamp),
+  }
+}
+
 /** El jugador tiene que haber aceptado la bienvenida de la versión vigente. */
 async function requireWelcome(tx: DbTx, playerId: string): Promise<void> {
   const [row] = await tx
@@ -178,6 +195,15 @@ export async function publishToBoard(
   board: RivalBoardDraft,
 ): Promise<void> {
   await inPlayerContext(playerId, async (tx) => {
+    if (board.seeking === 'rival') {
+      const [own] = await tx
+        .select({ capacity: rivalMatches.capacity, format: rivalMatches.format })
+        .from(rivalMatches)
+        .where(and(eq(rivalMatches.id, matchId), eq(rivalMatches.organizerPlayerId, playerId)))
+        .limit(1)
+      if (!own) throw new RivalError('rival_not_found')
+      if (own.capacity !== own.format) throw new RivalError('rival_capacity_mismatch')
+    }
     const updated = await tx
       .update(rivalMatches)
       .set({ onBoard: true, seeking: board.seeking, seekingPosition: board.seekingPosition })
@@ -371,24 +397,37 @@ export async function listBoard(
         )
       `)) as unknown as Row[],
   )
-  const items: RivalBoardItem[] = rows.slice(0, limit).map((r) => ({
-    id: String(r.id),
-    tenantId: String(r.tenant_id),
-    tenantName: String(r.tenant_name),
-    tenantSlug: String(r.tenant_slug),
-    startsAt: toDate(r.starts_at),
-    format: Number(r.format),
-    capacity: Number(r.capacity),
-    level: r.level as RivalLevel,
-    seeking: r.seeking as RivalSeeking,
-    seekingPosition: (r.seeking_position ?? null) as RivalSeekingPosition | null,
-    confirmedCount: Number(r.confirmed_count),
-    hasStamp: Boolean(r.has_stamp),
-  }))
+  const items: RivalBoardItem[] = rows.slice(0, limit).map(toBoardItem)
   const last = items[items.length - 1]
   const nextCursor: RivalBoardCursor | null =
     rows.length > limit && last ? { startsAt: last.startsAt, id: last.id } : null
   return { items, nextCursor }
+}
+
+/**
+ * Una tarjeta del tablón por id (vista pública `/rival/partido/<id>`). Mismos filtros que
+ * `listBoard` (los aplica `rival_board_match`): `null` si no está publicado, está oculto,
+ * cancelado, vencido, lleno buscando jugadores, o si el id no es un uuid.
+ */
+export async function getBoardMatch(matchId: string): Promise<RivalBoardItem | null> {
+  if (!uuid.safeParse(matchId).success) return null
+  const rows = await publicRead(
+    async () =>
+      (await getDb().execute(
+        sql`SELECT * FROM rival_board_match(${matchId}::uuid)`,
+      )) as unknown as Row[],
+  )
+  const r = rows[0]
+  return r ? toBoardItem(r) : null
+}
+
+/** Complejos con al menos un partido visible en el tablón, por nombre (el filtro de la página). */
+export async function listBoardTenants(): Promise<{ id: string; name: string }[]> {
+  const rows = await publicRead(
+    async () =>
+      (await getDb().execute(sql`SELECT * FROM rival_board_tenants()`)) as unknown as Row[],
+  )
+  return rows.map((r) => ({ id: String(r.id), name: String(r.name) }))
 }
 
 /**
@@ -515,6 +554,19 @@ export async function acceptRivalWelcome(
   })
 }
 
+function toMyMatch(r: Row): RivalMyMatch {
+  return {
+    ...toMatchBase(r),
+    onBoard: Boolean(r.on_board),
+    inviteCode: strOrNull(r.invite_code),
+    isHidden: Boolean(r.is_hidden),
+    participantId: strOrNull(r.participant_id),
+    myRole: (r.my_role ?? null) as RivalParticipantRole | null,
+    myStatus: (r.my_status ?? null) as RivalParticipantStatus | null,
+    myOrigin: (r.my_origin ?? null) as RivalParticipantOrigin | null,
+  }
+}
+
 /**
  * "Mis partidos": los que organizo y en los que estoy, en cualquier estado de
  * participante (también el pedido pendiente o rechazado). Los próximos arriba.
@@ -524,18 +576,33 @@ export async function acceptRivalWelcome(
 export async function listMyMatches(playerId: string): Promise<RivalMyMatch[]> {
   return inPlayerContext(playerId, async (tx) => {
     const rows = (await tx.execute(sql`SELECT * FROM rival_my_matches()`)) as unknown as Row[]
-    return rows.map((r) => {
-      return {
-        ...toMatchBase(r),
-        onBoard: Boolean(r.on_board),
-        inviteCode: strOrNull(r.invite_code),
-        isHidden: Boolean(r.is_hidden),
-        participantId: strOrNull(r.participant_id),
-        myRole: (r.my_role ?? null) as RivalParticipantRole | null,
-        myStatus: (r.my_status ?? null) as RivalParticipantStatus | null,
-        myOrigin: (r.my_origin ?? null) as RivalParticipantOrigin | null,
-      }
-    })
+    return rows.map(toMyMatch)
+  })
+}
+
+/** Un partido de "Mis partidos" por id (organizador o participante en cualquier estado). `null` si no es mío. */
+export async function getMyMatch(playerId: string, matchId: string): Promise<RivalMyMatch | null> {
+  if (!uuid.safeParse(matchId).success) return null
+  return inPlayerContext(playerId, async (tx) => {
+    const rows = (await tx.execute(
+      sql`SELECT * FROM rival_my_matches() WHERE id = ${matchId}::uuid`,
+    )) as unknown as Row[]
+    const r = rows[0]
+    return r ? toMyMatch(r) : null
+  })
+}
+
+/** Para precargar el WhatsApp del form de publicar: el `players.phone` tal cual, sin normalizar. */
+export async function getBoardPublishPrefill(
+  playerId: string,
+): Promise<{ whatsapp: string | null }> {
+  return inPlayerContext(playerId, async (tx) => {
+    const [row] = await tx
+      .select({ phone: players.phone })
+      .from(players)
+      .where(eq(players.id, playerId))
+      .limit(1)
+    return { whatsapp: row?.phone ?? null }
   })
 }
 

@@ -3,6 +3,7 @@
 import { capitalizeFirst } from '@/lib/format'
 import { addDays } from '@/shared/dates/art'
 import { artDateOf } from '@/shared/time/art-date'
+import type { RivalReportReason } from './rival.schema'
 import type { RivalLevel, RivalPosition, RivalSeeking, RivalSeekingPosition } from './rival.types'
 
 const ART_OFFSET_MS = 3 * 3600_000
@@ -11,6 +12,13 @@ export const RIVAL_LEVEL_LABELS: Record<RivalLevel, string> = {
   tranqui: 'Tranqui',
   parejo: 'Parejo',
   picante: 'Picante',
+}
+
+export const RIVAL_REPORT_REASON_LABELS: Record<RivalReportReason, string> = {
+  not_exists: 'El partido no existe',
+  spam: 'Es spam o publicidad',
+  offensive: 'Nombre o foto ofensivos',
+  minor: 'Parece menor de 18',
 }
 
 export const RIVAL_POSITION_LABELS: Record<RivalPosition, string> = {

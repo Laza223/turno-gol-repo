@@ -112,6 +112,33 @@ describe('isRivalPath', () => {
     expect(isRivalPath(`/\\evil.com/rival/p/${CODE}`)).toBe(false)
     expect(isRivalPath(`\\rival\\p\\${CODE}`)).toBe(false)
   })
+  describe('tablón: /rival/partido/<uuid>', () => {
+    const ID = '2a2b2c2d-22e2-4f22-8a22-2b2c2d2e2f22'
+    it('true con uuid en minúscula, con o sin query', () => {
+      expect(isRivalPath(`/rival/partido/${ID}`)).toBe(true)
+      expect(isRivalPath(`/rival/partido/${ID}?rival_intent=abc.def`)).toBe(true)
+    })
+    it('false con uuid en mayúsculas o mal formado', () => {
+      expect(isRivalPath(`/rival/partido/${ID.toUpperCase()}`)).toBe(false)
+      expect(isRivalPath('/rival/partido/22222222-2222-4222-8222-22222222222')).toBe(false)
+      expect(isRivalPath('/rival/partido/22222222222242228222222222222222')).toBe(false)
+      expect(isRivalPath('/rival/partido/no-es-uuid')).toBe(false)
+      expect(isRivalPath('/rival/partido/')).toBe(false)
+      expect(isRivalPath('/rival/partido')).toBe(false)
+    })
+    it('false con sufijos, otro prefijo o trampas de path', () => {
+      expect(isRivalPath(`/rival/partido/${ID}/x`)).toBe(false)
+      expect(isRivalPath(`/rival/partido/${ID}/`)).toBe(false)
+      expect(isRivalPath(`/rival/partido/${ID}x`)).toBe(false)
+      expect(isRivalPath(`/rival/partido/${ID}#frag`)).toBe(false)
+      expect(isRivalPath(`/rival/partidoX/${ID}`)).toBe(false)
+      expect(isRivalPath(`/rival/partido/${ID}/../../admin`)).toBe(false)
+      expect(isRivalPath(`/rival/partido/../${ID}`)).toBe(false)
+      expect(isRivalPath(`/rival/partido\${ID}`)).toBe(false)
+      expect(isRivalPath(`/x?a=/rival/partido/${ID}`)).toBe(false)
+      expect(isRivalPath(`//evil.com/rival/partido/${ID}`)).toBe(false)
+    })
+  })
 })
 
 describe('successVerifyPath', () => {

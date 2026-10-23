@@ -69,7 +69,7 @@ export type SubRow = {
   billing_cycle: BillingCycle
   /** Canchas sobre las que esta calculado el cobro vigente (migr. 090). */
   billed_courts: number
-  /** Migr. 101 — Plus va en el debito. Es lo unico que lo mete en el monto. */
+  /** Migr. 102 — Plus va en el debito. Es lo unico que lo mete en el monto. */
   plus_enabled: boolean
   /** Precio especial de Plus por cancha y mes. NULL = lista. */
   plus_price_per_court_cents: number | null

@@ -63,7 +63,7 @@ export type SubscriptionState = {
   dunningStartedAt: Date | null
   lastPaymentFailedAt: Date | null
   lastPaymentAt: Date | null
-  /** Migr. 101 — TurnoGol Plus (Asistente de WhatsApp) en el debito. */
+  /** Migr. 102 — TurnoGol Plus (Asistente de WhatsApp) en el debito. */
   plus: PlusSubscriptionState
 }
 

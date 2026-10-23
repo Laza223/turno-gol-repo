@@ -1,5 +1,5 @@
 -- ============================================================
--- 101_plus_billing.sql
+-- 102_plus_billing.sql
 -- Cobro automático de TurnoGol Plus (Asistente de WhatsApp), Fase A.
 --
 -- Racional: docs/decisions/2026-10-22-cobro-turnogol-plus.md (P1-P11).

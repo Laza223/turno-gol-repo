@@ -364,7 +364,7 @@ export type TenantDetail = {
     priceFirstCourtCents: number | null
     priceExtraCourtCents: number | null
     annualDiscountBps: number | null
-    /** Migr. 101: Plus va en el débito. Con `plusPricePerCourtCents` NULL rige la lista. */
+    /** Migr. 102: Plus va en el débito. Con `plusPricePerCourtCents` NULL rige la lista. */
     plusEnabled: boolean
     plusPricePerCourtCents: number | null
     billingCycle: BillingCycle

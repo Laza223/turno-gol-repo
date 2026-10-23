@@ -78,7 +78,7 @@ type SubSnapshotRow = {
 type Candidate = SubSnapshotRow & {
   /** Canchas facturadas (migr. 090) — la base del monto esperado. */
   billedCourts: number
-  /** Migr. 101 — Plus en el debito. El monto esperado lo suma SOLO si esta prendido aca. */
+  /** Migr. 102 — Plus en el debito. El monto esperado lo suma SOLO si esta prendido aca. */
   plusEnabled: boolean
   plusPricePerCourtCents: number | null
   /** Baja agendada: el complejo tuvo Plus y todavia puede tener drift por eso. */

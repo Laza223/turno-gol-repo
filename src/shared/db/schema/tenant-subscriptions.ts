@@ -62,7 +62,7 @@ export const tenantSubscriptions = pgTable(
       mode: 'date',
     }),
 
-    // Migr. 101 — cobro de TurnoGol Plus. `plusEnabled` es lo unico que mete Plus
+    // Migr. 102 — cobro de TurnoGol Plus. `plusEnabled` es lo unico que mete Plus
     // en el monto del debito; el override del flag `whatsapp_bot` NO lo decide.
     plusEnabled: boolean('plus_enabled').notNull().default(false),
     // Precio especial por cancha y mes. NULL = lista. CHECK > 0 (P10).

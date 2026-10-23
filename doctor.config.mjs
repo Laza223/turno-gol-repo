@@ -435,6 +435,7 @@ export default {
           '**/login/actions.ts',
           '**/register/actions.ts',
           '**/sign-out.action.ts',
+          '**/rival/p/*/login-actions.ts',
         ],
         rules: ['react-doctor/server-auth-actions'],
       },

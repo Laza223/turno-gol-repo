@@ -217,10 +217,8 @@ async function listNumbersToCheck(db: Db) {
  */
 async function checkNumbersHealth(db: Db, now: Date): Promise<OpsAlert[]> {
   const all = await listNumbersToCheck(db)
-  const numbers: typeof all = []
-  for (const n of all) {
-    if (await isFeatureEnabled(BOT_FEATURE_FLAG, n.tenantId)) numbers.push(n)
-  }
+  const plus = await Promise.all(all.map((n) => isFeatureEnabled(BOT_FEATURE_FLAG, n.tenantId)))
+  const numbers = all.filter((_, i) => plus[i])
   if (numbers.length === 0) return []
   if (!process.env.KAPSO_API_KEY) return [blindAlert('sin_clave', now)]
 

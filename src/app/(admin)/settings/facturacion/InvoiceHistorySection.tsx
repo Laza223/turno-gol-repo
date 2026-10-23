@@ -17,6 +17,7 @@ export const STATUS_LABELS: Record<InvoiceEntry['status'], string> = {
   rejected: 'Rechazado',
   refunded: 'Reembolsado',
   cancelled: 'Cancelado',
+  charged_back: 'Contracargo',
 }
 
 /**
@@ -35,6 +36,7 @@ const STATUS_VISUALS: Record<InvoiceEntry['status'], StatusBadgeVisual> = {
   rejected: { icon: AlertCircle, label: STATUS_LABELS.rejected, tone: 'destructive' },
   refunded: { icon: Undo2, label: STATUS_LABELS.refunded, tone: 'neutral' },
   cancelled: { icon: XCircle, label: STATUS_LABELS.cancelled, tone: 'neutral' },
+  charged_back: { icon: AlertCircle, label: STATUS_LABELS.charged_back, tone: 'destructive' },
 }
 
 function formatDate(d: Date | null): string {
@@ -62,7 +64,8 @@ export function InvoiceHistorySection({ invoices }: Props) {
           — usa otra referencia de MercadoPago, ver InvoiceEntry — y se podía
           leer como un error del sistema en vez de una omisión a propósito. */}
       <p className="mt-1 text-xs text-muted-foreground">
-        Los cobros de tu cuota. Sumar o sacar canchas nunca genera un cobro aparte.
+        Los cobros de tu cuota. Sumar o sacar canchas nunca genera un cobro aparte. Sumar el
+        Asistente a un plan anual sí: se paga una vez por los meses que faltan.
       </p>
 
       {invoices.length === 0 ? (
@@ -86,7 +89,14 @@ export function InvoiceHistorySection({ invoices }: Props) {
             <tbody>
               {invoices.map((invoice) => (
                 <tr key={invoice.mpPaymentId} className="border-b border-border last:border-0">
-                  <td className="py-2.5 pr-4 text-foreground">{formatDate(invoice.date)}</td>
+                  <td className="py-2.5 pr-4 text-foreground">
+                    {formatDate(invoice.date)}
+                    {invoice.kind === 'plus_prorate' && (
+                      <span className="block text-xs text-muted-foreground">
+                        Asistente de WhatsApp · meses restantes del plan anual
+                      </span>
+                    )}
+                  </td>
                   <td className="py-2.5 pr-4 font-medium tabular-nums text-foreground">
                     {formatArs(invoice.amount)}
                   </td>

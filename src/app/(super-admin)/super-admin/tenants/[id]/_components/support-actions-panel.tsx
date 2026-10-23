@@ -36,6 +36,8 @@ type Props = {
   /** Canchas con `status='online'`: piso de lo que se puede facturar. */
   onlineCourts: number
   pricing: BilledCourtsPricing | null
+  /** Plus EFECTIVO por cancha que se factura hoy (0 si no hay). */
+  plusPerCourtCents?: number
   settings: SupportPanelSettings
   actions: SupportActionsBag
 }
@@ -60,6 +62,7 @@ export function SupportActionsPanel({
   billingCycle,
   onlineCourts,
   pricing,
+  plusPerCourtCents = 0,
   settings,
   actions,
 }: Props) {
@@ -116,6 +119,7 @@ export function SupportActionsPanel({
         billingCycle={billingCycle}
         onlineCourts={onlineCourts}
         pricing={pricing}
+        plusPerCourtCents={plusPerCourtCents}
         pending={pending}
         run={run}
         action={actions.changeBilledCourts}

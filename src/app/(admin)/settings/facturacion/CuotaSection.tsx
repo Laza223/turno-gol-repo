@@ -61,6 +61,13 @@ type CuotaSectionProps = {
   periodEnd?: string | null
   /** Ciclo vigente. En `manage` se muestra, no se elige. */
   billingCycle?: BillingCycle
+  /**
+   * Plus por cancha que se está FACTURANDO hoy (`plus.enabled ? perCourtCents : 0`),
+   * nunca el flag: el Plus es por cancha, así que cambiar las canchas mueve su monto.
+   * OBLIGATORIO a propósito: una pantalla que se olvide de pasarlo no compila, en
+   * vez de mostrar el monto sin Plus mientras el débito lo cobra (pasó en /reactivar).
+   */
+  plusPerCourtCents: number
 }
 
 type Phase = 'idle' | 'loading' | 'error' | 'done'
@@ -106,6 +113,7 @@ export function CuotaSection({
   pendingBilledCourts = null,
   periodEnd = null,
   billingCycle = 'monthly',
+  plusPerCourtCents,
 }: CuotaSectionProps) {
   const router = useRouter()
 
@@ -122,15 +130,22 @@ export function CuotaSection({
   const [errorCode, setErrorCode] = useState<string | null>(null)
   const [limitHint, setLimitHint] = useState<LimitHint | null>(null)
 
-  const breakdown = buildPriceBreakdown({ billedCourts: courts, cycle, ...pricing })
+  const breakdown = buildPriceBreakdown({
+    billedCourts: courts,
+    cycle,
+    plusPerCourtCents,
+    ...pricing,
+  })
   const oneMore = buildPriceBreakdown({
     billedCourts: Math.min(courts + 1, MAX_BILLED_COURTS),
     cycle,
+    plusPerCourtCents,
     ...pricing,
   })
 
   const monthlyFor = (n: number): number =>
-    buildPriceBreakdown({ billedCourts: n, cycle, ...pricing }).monthlyEffectiveCents
+    buildPriceBreakdown({ billedCourts: n, cycle, plusPerCourtCents, ...pricing })
+      .monthlyEffectiveCents
 
   const chargeLabel =
     cycle === 'annual'

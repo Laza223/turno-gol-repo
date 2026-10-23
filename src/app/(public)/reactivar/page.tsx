@@ -156,6 +156,10 @@ export default async function ReactivarPage() {
   const canReactivate = REACTIVATE_ELIGIBLE.has(tenant.status) && !deadlinePassed
 
   const pricing = canReactivate ? await loadCuotaPricing() : null
+  // Plus EFECTIVO que se factura, igual que /settings/facturacion: `reactivate()`
+  // vuelve a cobrar con el Plus de la suscripción, así que la pantalla tiene que
+  // mostrar ese mismo monto.
+  const plusBilledPerCourt = sub?.plus.enabled ? sub.plus.perCourtCents : 0
 
   // Con qué cuenta de MercadoPago paga (migr. 078). Va acá y no solo en
   // /settings/facturacion porque al dueño suspendido o bloqueado esta es la
@@ -186,6 +190,7 @@ export default async function ReactivarPage() {
           onlineCourts={onlineCourts}
           billedCourts={sub?.billedCourts ?? 1}
           billingCycle={sub?.billingCycle ?? 'monthly'}
+          plusPerCourtCents={plusBilledPerCourt}
         />
       )}
 

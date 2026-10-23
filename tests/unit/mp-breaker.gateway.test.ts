@@ -41,6 +41,11 @@ function makeInner(overrides: Partial<PaymentGateway> = {}): PaymentGateway {
       initPoint: 'ip',
       sandboxInitPoint: 'sip',
     })),
+    createSaasPlusPreference: vi.fn(async (): Promise<PreferenceResult> => ({
+      preferenceId: 'pl',
+      initPoint: 'ip',
+      sandboxInitPoint: 'sip',
+    })),
   }
   return { ...base, ...overrides }
 }
@@ -91,6 +96,16 @@ const FULL_ARGS: { [K in keyof PaymentGateway]: Required<Parameters<PaymentGatew
       targetPlanId: 'plan-2',
       amount: 3_000_000,
       description: 'Upgrade',
+      returnUrl: 'https://t.test/back',
+      notificationUrl: 'https://t.test/wh',
+      expiresAt: new Date(0),
+    },
+  ],
+  createSaasPlusPreference: [
+    {
+      tenantId: 't-1',
+      amount: 6_000_000,
+      description: 'Asistente de WhatsApp',
       returnUrl: 'https://t.test/back',
       notificationUrl: 'https://t.test/wh',
       expiresAt: new Date(0),

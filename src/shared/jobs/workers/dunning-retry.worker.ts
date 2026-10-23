@@ -10,9 +10,16 @@ import {
   transitionPastDueToSuspended,
   transitionSuspendedToBlocked,
 } from '@/modules/billing/lifecycle.service'
-import { loadActivePlan, subscriptionAmount } from '@/modules/billing/billing.service'
+import {
+  billingReason,
+  loadActivePlan,
+  plusPerCourtOf,
+  subscriptionAmount,
+} from '@/modules/billing/billing.service'
 import type { BillingCycle } from '@/modules/billing/billing.types'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
+import { ensurePlusFlagOn, expirePlusAccess } from '@/modules/billing/plus.service'
+import { BOT_FEATURE_FLAG } from '@/modules/whatsapp-bot/whatsapp-bot.connection'
 import { MP_MOCK_ENABLED } from '@/modules/payments/mock-mp'
 import { insertSystemAuditLog } from '@/shared/db/audit'
 import { CRON_WORK_OPTIONS, QUEUE_DUNNING_RETRY } from '../definitions'
@@ -68,7 +75,7 @@ function tenantName(map: Map<string, TenantOwnerInfo>, tenantId: string): string
   return map.get(tenantId)?.tenantName ?? '(complejo)'
 }
 
-export async function runDunningSweep(): Promise<void> {
+export async function runDunningSweep(now: Date = new Date()): Promise<void> {
   const sql = getWorkerSql()
 
   // ─── 1. past_due → suspended (≥ 7d) ────────────────────────────────────
@@ -282,13 +289,16 @@ export async function runDunningSweep(): Promise<void> {
               pending_change_at = NULL,
               updated_at = NOW()
           WHERE tenant_id = ${item.tenant_id} AND status = 'active'
-          RETURNING mp_subscription_id, billing_cycle, billed_courts
+          RETURNING mp_subscription_id, billing_cycle, billed_courts,
+                    plus_enabled, plus_price_per_court_cents
         `)
         const row = (
           updated as unknown as Array<{
             mp_subscription_id: string | null
             billing_cycle: BillingCycle
             billed_courts: number
+            plus_enabled: boolean
+            plus_price_per_court_cents: number | null
           }>
         )[0]
         const appliedBilledCourts = row?.billed_courts ?? item.pendingBilledCourts
@@ -315,13 +325,13 @@ export async function runDunningSweep(): Promise<void> {
         // igual.
         if (row?.mp_subscription_id && !MP_MOCK_ENABLED) {
           const plan = await loadActivePlan(tx)
-          const canchas = appliedBilledCourts === 1 ? '1 cancha' : `${appliedBilledCourts} canchas`
+          // Plus sale de la fila que acaba de devolver el UPDATE: mover las
+          // canchas no puede sacarle (ni ponerle) Plus al debito.
+          const plusPerCourt = plusPerCourtOf(row)
           await getBillingGateway().updatePreapprovalAmount(
             row.mp_subscription_id,
-            subscriptionAmount(plan, appliedBilledCourts, row.billing_cycle),
-            {
-              reason: `TurnoGol — ${canchas} (${row.billing_cycle === 'annual' ? 'anual' : 'mensual'})`,
-            },
+            subscriptionAmount(plan, appliedBilledCourts, row.billing_cycle, plusPerCourt),
+            { reason: billingReason(appliedBilledCourts, row.billing_cycle, plusPerCourt) },
           )
         }
       })
@@ -334,6 +344,64 @@ export async function runDunningSweep(): Promise<void> {
       logger.warn('failed billed courts change', {
         module: 'dunning-retry',
         tenantId: item.tenant_id,
+        error: String(err),
+      })
+    }
+  }
+
+  // ─── 6. TurnoGol Plus: vence la baja agendada ───────────────────────────
+  // SIN filtro de `status`: el caso tipico es `canceled` (la baja del plan se
+  // lleva a Plus hasta el fin del periodo pago). Solo los que tienen
+  // `plus_access_until`: un complejo con el bot prendido a mano por SQL (El
+  // Vagon) nunca entra aca. `expirePlusAccess` revalida bajo lock.
+  const expiringPlus = await sql<{ tenant_id: string }[]>`
+    SELECT tenant_id FROM tenant_subscriptions
+    WHERE plus_enabled = false
+      AND plus_access_until IS NOT NULL
+      AND plus_access_until <= ${now.toISOString()}::timestamptz
+    ORDER BY plus_access_until
+    LIMIT 200
+  `
+  for (const { tenant_id: id } of expiringPlus) {
+    try {
+      // Secuencial: cada ítem abre una tx propia sobre el pool worker.
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop
+      if (await expirePlusAccess(id, now)) {
+        logger.info('plus access expired', { module: 'dunning-retry', tenantId: id })
+      }
+    } catch (err) {
+      logger.warn('failed plus access expiry', {
+        module: 'dunning-retry',
+        tenantId: id,
+        error: String(err),
+      })
+    }
+  }
+
+  // ─── 7. TurnoGol Plus: cura el flag que no se pudo prender ──────────────
+  // Plus ya esta cobrandose (`plus_enabled`) pero el override del bot no esta
+  // en true: el interruptor commiteo el cobro y fallo al prender. Reparar es
+  // idempotente (`ensurePlusFlagOn` relee bajo lock).
+  const missingFlag = await sql<{ tenant_id: string }[]>`
+    SELECT ts.tenant_id FROM tenant_subscriptions ts
+    WHERE ts.plus_enabled = true
+      AND NOT EXISTS (
+        SELECT 1 FROM feature_flags ff
+        WHERE ff.key = ${BOT_FEATURE_FLAG}
+          AND ff.tenant_id = ts.tenant_id
+          AND ff.value = true
+      )
+    LIMIT 200
+  `
+  for (const { tenant_id: id } of missingFlag) {
+    try {
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop
+      await ensurePlusFlagOn(id)
+      logger.info('plus flag healed', { module: 'dunning-retry', tenantId: id })
+    } catch (err) {
+      logger.warn('failed plus flag heal', {
+        module: 'dunning-retry',
+        tenantId: id,
         error: String(err),
       })
     }

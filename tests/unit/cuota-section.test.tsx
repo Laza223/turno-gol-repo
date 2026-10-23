@@ -76,7 +76,15 @@ function mockFetch(body: unknown, status = 200): ReturnType<typeof vi.fn> {
 
 describe('CuotaSection — desglose para N canchas', () => {
   it('5 canchas: $167.000 y desglose 1ª + 4 más', () => {
-    render(<CuotaSection pricing={PRICING} mode="manage" onlineCourts={5} billedCourts={5} />)
+    render(
+      <CuotaSection
+        pricing={PRICING}
+        mode="manage"
+        onlineCourts={5}
+        billedCourts={5}
+        plusPerCourtCents={0}
+      />,
+    )
 
     const primera = screen.getByText('1ª cancha')
     expect((primera.nextElementSibling as HTMLElement).textContent).toBe(formatArs(4_700_000))
@@ -91,7 +99,15 @@ describe('CuotaSection — desglose para N canchas', () => {
   })
 
   it('1 cancha: $47.000 sin fila de "canchas más"', () => {
-    render(<CuotaSection pricing={PRICING} mode="manage" onlineCourts={1} billedCourts={1} />)
+    render(
+      <CuotaSection
+        pricing={PRICING}
+        mode="manage"
+        onlineCourts={1}
+        billedCourts={1}
+        plusPerCourtCents={0}
+      />,
+    )
 
     const porMes = screen.getByText('Por mes')
     expect((porMes.nextElementSibling as HTMLElement).textContent).toBe(formatArs(4_700_000))
@@ -100,7 +116,15 @@ describe('CuotaSection — desglose para N canchas', () => {
   })
 
   it('8 canchas: $257.000', () => {
-    render(<CuotaSection pricing={PRICING} mode="manage" onlineCourts={8} billedCourts={8} />)
+    render(
+      <CuotaSection
+        pricing={PRICING}
+        mode="manage"
+        onlineCourts={8}
+        billedCourts={8}
+        plusPerCourtCents={0}
+      />,
+    )
 
     const porMes = screen.getByText('Por mes')
     // 47.000 + 7 × 30.000 = 257.000
@@ -111,7 +135,15 @@ describe('CuotaSection — desglose para N canchas', () => {
 describe('CuotaSection — el descuento anual sale de los datos, no está hardcodeado', () => {
   it('con annualDiscountBps=1500 (15%), la UI muestra 15% y el monto que corresponde — nunca "20%"', () => {
     const pricing: PricingParams = { ...PRICING, annualDiscountBps: 1500 }
-    render(<CuotaSection pricing={pricing} mode="activate" onlineCourts={3} billedCourts={3} />)
+    render(
+      <CuotaSection
+        pricing={pricing}
+        mode="activate"
+        onlineCourts={3}
+        billedCourts={3}
+        plusPerCourtCents={0}
+      />,
+    )
 
     fireEvent.click(screen.getByRole('radio', { name: /^Anual/ }))
 
@@ -132,7 +164,15 @@ describe('CuotaSection — el descuento anual sale de los datos, no está hardco
 
 describe('CuotaSection — el stepper no baja de las canchas online', () => {
   it('con onlineCourts=5 y billedCourts=5, "Quitar una cancha" no baja el valor y explica qué hacer', () => {
-    render(<CuotaSection pricing={PRICING} mode="manage" onlineCourts={5} billedCourts={5} />)
+    render(
+      <CuotaSection
+        pricing={PRICING}
+        mode="manage"
+        onlineCourts={5}
+        billedCourts={5}
+        plusPerCourtCents={0}
+      />,
+    )
 
     const group = screen.getByRole('group', { name: 'Canchas' })
     expect(within(group).getByText('5')).toBeTruthy()
@@ -147,7 +187,15 @@ describe('CuotaSection — el stepper no baja de las canchas online', () => {
   })
 
   it('con margen (onlineCourts=2, billedCourts=5), sí puede bajar hasta el piso', () => {
-    render(<CuotaSection pricing={PRICING} mode="manage" onlineCourts={2} billedCourts={5} />)
+    render(
+      <CuotaSection
+        pricing={PRICING}
+        mode="manage"
+        onlineCourts={2}
+        billedCourts={5}
+        plusPerCourtCents={0}
+      />,
+    )
     const group = screen.getByRole('group', { name: 'Canchas' })
 
     fireEvent.click(screen.getByRole('button', { name: 'Quitar una cancha' }))
@@ -158,7 +206,15 @@ describe('CuotaSection — el stepper no baja de las canchas online', () => {
 describe('CuotaSection — el CTA llama al endpoint correcto según el modo', () => {
   it('activate: POST /api/billing/subscribe con { billedCourts, billingCycle } y redirige al checkout', async () => {
     const fetchSpy = mockFetch({ data: { checkoutUrl: 'https://mp.test/checkout/activate' } })
-    render(<CuotaSection pricing={PRICING} mode="activate" onlineCourts={3} billedCourts={3} />)
+    render(
+      <CuotaSection
+        pricing={PRICING}
+        mode="activate"
+        onlineCourts={3}
+        billedCourts={3}
+        plusPerCourtCents={0}
+      />,
+    )
 
     fireEvent.click(screen.getByRole('button', { name: /^Activar —/ }))
 
@@ -170,7 +226,15 @@ describe('CuotaSection — el CTA llama al endpoint correcto según el modo', ()
 
   it('reactivate: POST /api/billing/reactivate con { billedCourts, billingCycle }', async () => {
     const fetchSpy = mockFetch({ data: { checkoutUrl: 'https://mp.test/checkout/reactivate' } })
-    render(<CuotaSection pricing={PRICING} mode="reactivate" onlineCourts={2} billedCourts={2} />)
+    render(
+      <CuotaSection
+        pricing={PRICING}
+        mode="reactivate"
+        onlineCourts={2}
+        billedCourts={2}
+        plusPerCourtCents={0}
+      />,
+    )
 
     fireEvent.click(screen.getByRole('button', { name: /^Reactivar —/ }))
 
@@ -184,7 +248,15 @@ describe('CuotaSection — el CTA llama al endpoint correcto según el modo', ()
 
   it('manage: POST /api/billing/canchas con { billedCourts } — SIN billingCycle', async () => {
     const fetchSpy = mockFetch({ data: { applied: true, billedCourts: 4 } })
-    render(<CuotaSection pricing={PRICING} mode="manage" onlineCourts={3} billedCourts={3} />)
+    render(
+      <CuotaSection
+        pricing={PRICING}
+        mode="manage"
+        onlineCourts={3}
+        billedCourts={3}
+        plusPerCourtCents={0}
+      />,
+    )
 
     // Con 3 canchas facturadas ya no hay nada que guardar (nothingToSave):
     // hay que mover el stepper para habilitar el botón.
@@ -213,7 +285,15 @@ describe('CuotaSection — manejo de errores', () => {
       },
       409,
     )
-    render(<CuotaSection pricing={PRICING} mode="activate" onlineCourts={3} billedCourts={3} />)
+    render(
+      <CuotaSection
+        pricing={PRICING}
+        mode="activate"
+        onlineCourts={3}
+        billedCourts={3}
+        plusPerCourtCents={0}
+      />,
+    )
 
     fireEvent.click(screen.getByRole('button', { name: /^Activar —/ }))
 
@@ -228,7 +308,15 @@ describe('CuotaSection — manejo de errores', () => {
 
   it('501 (kill switch del flag) muestra un mensaje que dice qué hacer, no el código crudo', async () => {
     mockFetch({}, 501)
-    render(<CuotaSection pricing={PRICING} mode="activate" onlineCourts={3} billedCourts={3} />)
+    render(
+      <CuotaSection
+        pricing={PRICING}
+        mode="activate"
+        onlineCourts={3}
+        billedCourts={3}
+        plusPerCourtCents={0}
+      />,
+    )
 
     fireEvent.click(screen.getByRole('button', { name: /^Activar —/ }))
 
@@ -248,6 +336,7 @@ describe('CuotaSection — cambio ya agendado', () => {
         onlineCourts={3}
         billedCourts={4}
         pendingBilledCourts={6}
+        plusPerCourtCents={0}
         periodEnd="2027-03-15T15:00:00.000Z"
       />,
     )
@@ -260,7 +349,15 @@ describe('CuotaSection — cambio ya agendado', () => {
 
 describe('CuotaSection — sin régimen fiscal definido (D9)', () => {
   it('nunca dice "+ IVA" ni "precio final": el régimen fiscal todavía no está decidido', () => {
-    render(<CuotaSection pricing={PRICING} mode="activate" onlineCourts={3} billedCourts={3} />)
+    render(
+      <CuotaSection
+        pricing={PRICING}
+        mode="activate"
+        onlineCourts={3}
+        billedCourts={3}
+        plusPerCourtCents={0}
+      />,
+    )
 
     expect(screen.queryByText(/\+\s*IVA/i)).toBeNull()
     expect(screen.queryByText(/precio final/i)).toBeNull()

@@ -31,6 +31,38 @@ export const SuscripcionActiva: Story = {
   },
 }
 
+/**
+ * F7a: con Plus facturado la pestaña muestra la parte de Plus, así las líneas
+ * cierran con la cuota: 2 canchas = 1ª $30.000 + 1 × $30.000 + Plus 2 × $15.000 = $90.000.
+ */
+export const ConPlusFacturado: Story = {
+  args: {
+    detail: (() => {
+      const base = tenantDetail()
+      return tenantDetail({
+        subscription: {
+          ...base.subscription!,
+          billedCourts: 2,
+          plusEnabled: true,
+          plusPricePerCourtCents: 1_500_000,
+        },
+      })
+    })(),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText(/Plus: 2 canchas × .*15\.000/)).toBeInTheDocument()
+    await expect(canvas.getByText(/90\.000/)).toBeInTheDocument()
+  },
+}
+
+/** Sin Plus no aparece ninguna línea de Plus. */
+export const SinPlusNoMuestraLinea: Story = {
+  play: async ({ canvasElement }) => {
+    await expect(within(canvasElement).queryByText(/Plus:/)).not.toBeInTheDocument()
+  },
+}
+
 /** Sin fila en `tenant_subscriptions`: el trial todavía no activó el cobro. */
 export const SinSuscripcion: Story = {
   args: { detail: tenantDetailTrialing() },

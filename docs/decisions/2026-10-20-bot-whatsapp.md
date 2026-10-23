@@ -66,6 +66,13 @@ Se decide **a sabiendas** de dos cosas:
   - Piloto: **$20.000 por cancha por mes**. El Vagón son $100.000. El dueño del Vagón ayuda a montarlo.
   - Cuando haya más complejos: **$15.000 por cancha**.
   - Siguen abiertos: el monto del alta, el ajuste, la permanencia y la moneda (el dueño evalúa cobrar en dólares). Se definen junto con la suscripción.
+  - **Actualizado el 2026-10-22** en [`2026-10-22-cobro-turnogol-plus.md`](2026-10-22-cobro-turnogol-plus.md), que supera los precios de arriba.
+    - Lista: $20.000 por cancha para todos.
+    - El Vagón: precio especial fijo de $15.000.
+    - Se cobra en el mismo débito del plan.
+    - Sin cargo de alta, en pesos y con ajuste a mano.
+    - Sin permanencia.
+    - Anual: ×12 con 10% off.
   - El cobro automático se implementa después del cambio a $30.000 por cancha, porque toca `pricing.ts` y el preapproval. Hasta entonces se cobra a mano.
 - **Costos al 2026-10-21** (dólar tarjeta $2.008,50):
   - **TurnoGol paga**:

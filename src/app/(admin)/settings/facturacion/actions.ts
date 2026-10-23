@@ -8,7 +8,15 @@ import { insertAuditLog } from '@/shared/db/audit'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { disconnectMercadoPago } from '@/modules/tenants/tenant.service'
 import { setBillingPayerEmail } from '@/modules/billing/billing.service'
-import { SubscriptionNotFoundError } from '@/modules/billing/billing.errors'
+import {
+  PlusFlagPendingError,
+  PlusNotAllowedError,
+  PlusQuoteNotPendingError,
+  SubscriptionNotFoundError,
+} from '@/modules/billing/billing.errors'
+import { disablePlus, startPlusProratePayment } from '@/modules/billing/plus.service'
+import { getBillingGateway } from '@/modules/billing/billing.gateway'
+import { logger } from '@/shared/lib/logger'
 
 export type DisconnectMpResult = { success: true } | { success: false; error: string }
 
@@ -142,4 +150,103 @@ export async function updateMpPayerEmailAction(
   // `state`. El "Guardado" viaja por `state` igual, porque es el dato ya
   // normalizado por el server, no porque haga falta esquivar nada.)
   return { success: true, email }
+}
+
+/** Errores conocidos del Asistente de WhatsApp en criollo; el resto se re-lanza (nunca stack al cliente). */
+function plusErrorMessage(err: unknown): string | null {
+  if (err instanceof SubscriptionNotFoundError) {
+    return 'Este complejo todavía no tiene una suscripción.'
+  }
+  if (err instanceof PlusNotAllowedError) {
+    return 'Primero tenés que regularizar el pago de tu cuota.'
+  }
+  if (err instanceof PlusQuoteNotPendingError) {
+    return 'No hay ningún pago pendiente del Asistente de WhatsApp. Actualizá la página.'
+  }
+  if (err instanceof PlusFlagPendingError) {
+    return 'Tu pedido quedó registrado, pero falta un paso para terminarlo. Escribinos y lo resolvemos.'
+  }
+  return null
+}
+
+export type DisablePlusResult =
+  { success: true; accessUntil: string | null } | { success: false; error: string }
+
+/**
+ * Baja del Asistente de WhatsApp (Plus) desde Facturación: el próximo débito ya
+ * no lo incluye y el bot sigue hasta el fin del período pago (P5).
+ *
+ * `requireBillingAdminStaffAction` y no `requireAdminStaffAction`: un dueño
+ * `suspended` tiene que poder bajar lo que paga (mismo racional que
+ * `updateMpPayerEmailAction`). El complejo sale del guard, nunca de un parámetro,
+ * y la baja inmediata es solo del super-admin: acá el modo va fijo.
+ */
+export async function disablePlusAction(): Promise<DisablePlusResult> {
+  const auth = await requireBillingAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant, user } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  try {
+    const result = await disablePlus(
+      tenant.id,
+      { mode: 'end_of_period' },
+      { type: 'staff', id: user.staffUserId },
+      getBillingGateway(),
+      new Date(),
+    )
+    revalidatePath('/settings/facturacion')
+    return {
+      success: true,
+      accessUntil: result.kind === 'scheduled' ? result.accessUntil.toISOString() : null,
+    }
+  } catch (err) {
+    const message = plusErrorMessage(err)
+    if (message) return { success: false, error: message }
+    logger.error('disablePlusAction falló', {
+      module: 'billing',
+      tenantId: tenant.id,
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return { success: false, error: 'No pudimos dar de baja el Asistente. Intentá de nuevo.' }
+  }
+}
+
+export type StartPlusProratePaymentResult =
+  { success: true; checkoutUrl: string } | { success: false; error: string }
+
+/**
+ * Link de pago de los meses que faltan del plan anual para sumar el Asistente
+ * (P7). El monto es la cotización congelada en la DB: nada viene del cliente.
+ * El cliente hace `window.location.assign(checkoutUrl)`, igual que el checkout
+ * de la suscripción.
+ */
+export async function startPlusProratePaymentAction(): Promise<StartPlusProratePaymentResult> {
+  const auth = await requireBillingAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  try {
+    const { checkoutUrl } = await startPlusProratePayment(
+      tenant.id,
+      getBillingGateway(),
+      new Date(),
+    )
+    revalidatePath('/settings/facturacion')
+    return { success: true, checkoutUrl }
+  } catch (err) {
+    const message = plusErrorMessage(err)
+    if (message) return { success: false, error: message }
+    logger.error('startPlusProratePaymentAction falló', {
+      module: 'billing',
+      tenantId: tenant.id,
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return { success: false, error: 'No pudimos abrir el pago. Intentá de nuevo.' }
+  }
 }

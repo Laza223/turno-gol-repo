@@ -1,5 +1,5 @@
 import { formatArs } from '@/lib/format'
-import { buildPriceBreakdown } from '@/modules/billing/pricing'
+import { buildPriceBreakdown, effectivePlusPerCourtCents } from '@/modules/billing/pricing'
 import type { TenantDetail } from '@/modules/super-admin/tenants.service'
 import { TenantStatusBadge } from '../../../_components/tenant-status-visual'
 import { TONE_TEXT } from '@/lib/status-tone'
@@ -43,10 +43,14 @@ export function SuscripcionTab({ detail }: { detail: TenantDetail }) {
         }
       : null
 
+  // Plus EFECTIVO que se factura (no el flag): el mismo número que va al débito.
+  const plusPerCourtCents = effectivePlusPerCourtCents(sub.plusEnabled, sub.plusPricePerCourtCents)
+
   const breakdown = pricing
     ? buildPriceBreakdown({
         billedCourts: sub.billedCourts,
         cycle: sub.billingCycle,
+        plusPerCourtCents,
         ...pricing,
       })
     : null
@@ -55,6 +59,7 @@ export function SuscripcionTab({ detail }: { detail: TenantDetail }) {
       ? buildPriceBreakdown({
           billedCourts: sub.pendingBilledCourts,
           cycle: sub.billingCycle,
+          plusPerCourtCents,
           ...pricing,
         })
       : null
@@ -73,6 +78,12 @@ export function SuscripcionTab({ detail }: { detail: TenantDetail }) {
                 {' '}
                 · 1ª {formatArs(breakdown.firstCourtCents)} + {breakdown.extraCourts} ×{' '}
                 {formatArs(breakdown.extraCourtUnitCents)}
+              </span>
+            )}
+            {breakdown && breakdown.plusMonthlyListCents > 0 && (
+              <span className="block text-muted-foreground">
+                Plus: {breakdown.billedCourts} cancha{breakdown.billedCourts === 1 ? '' : 's'} ×{' '}
+                {formatArs(breakdown.plusPerCourtCents)}
               </span>
             )}
           </Dt>

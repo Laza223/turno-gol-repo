@@ -63,6 +63,19 @@ export type SubscriptionState = {
   dunningStartedAt: Date | null
   lastPaymentFailedAt: Date | null
   lastPaymentAt: Date | null
+  /** Migr. 102 — TurnoGol Plus (Asistente de WhatsApp) en el debito. */
+  plus: PlusSubscriptionState
+}
+
+type PlusSubscriptionState = {
+  /** Plus va en el debito. */
+  enabled: boolean
+  /** Plus por cancha y mes de este complejo: el especial si lo tiene, si no la lista. Centavos. */
+  perCourtCents: number
+  /** Baja agendada: el debito ya no lo lleva y el bot sigue hasta aca. */
+  accessUntil: Date | null
+  /** Alta en un anual ya pago: cotizacion congelada esperando el pago del dueño. */
+  quote: { months: number; amountCents: number } | null
 }
 
 export type SubscribeResult = {
@@ -128,4 +141,9 @@ export type InvoiceEntry = {
   amount: number
   /** `null` si MP no mandó `date_created` en el resultado de búsqueda. */
   date: Date | null
+  /**
+   * `subscription`: cobro del débito (`external_reference = tenantId`).
+   * `plus_prorate`: pago único de Plus en un anual (`saas-plus:<tenantId>`).
+   */
+  kind: 'subscription' | 'plus_prorate'
 }

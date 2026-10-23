@@ -5,16 +5,18 @@ import { refreshTenantMpToken, resolveTenantGateway } from './mp-oauth'
 import type { PaymentGateway } from './mp-gateway'
 import { dispatchPaymentInfo, lockMpEvent } from './payment.service'
 import { MpGrantRevokedError, TenantMpNotConnectedError } from './payment.errors'
-import { parseSaasUpgradeRef, type GatewayPaymentInfo } from './payment.types'
+import { parseSaasPlusRef, parseSaasUpgradeRef, type GatewayPaymentInfo } from './payment.types'
 import { onPaymentApproved, onPaymentRejected } from '@/modules/billing/dunning.service'
 import { buildSubscriptionChargeKey } from '@/modules/billing/subscription-reconcile.service'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
+import { applyPlusProratePayment, ensurePlusFlagOn } from '@/modules/billing/plus.service'
 import { MP_MOCK_ENABLED } from './mock-mp'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
 import { notifyAdminBookingConfirmed } from '@/modules/notifications/push.service'
 import { notifyWhatsappGuest } from '@/modules/whatsapp-bot/whatsapp-bot.notices'
 import { track } from '@/shared/observability'
-import { captureMessage } from '@/lib/sentry'
+import { captureException, captureMessage } from '@/lib/sentry'
+import { logger } from '@/shared/lib/logger'
 
 /**
  * Payload for the `process-mp-webhook` queue. The route enqueues this; the
@@ -202,6 +204,9 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
   let confirmedBookingId: string | null = null
   // Pago tardío con la devolución anotada: el invitado del bot se entera por WhatsApp.
   let refundedBookingId: string | null = null
+  // Pago anual de Plus acreditado: el flag `whatsapp_bot` se prende DESPUÉS del
+  // commit (regla de `plus.service.ts`), mismo patrón que `confirmedBookingId`.
+  let plusFlagTenantId: string | null = null
 
   // Fix "checkout viejo pagado": el gateway que `onPaymentApproved` usa para
   // cancelar un preapproval huérfano (mismatch, ver dunning.service.ts) tiene
@@ -349,6 +354,7 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
       throw new Error('mp-webhook: missing prefetched payment info for payment event')
     }
     const upgrade = parseSaasUpgradeRef(info.externalReference)
+    const plus = parseSaasPlusRef(info.externalReference)
 
     // El `source=saas` de la URL y el `external_reference` del pago tienen que
     // contar la misma historia. No alcanza con confiar en la query: quien tenga
@@ -356,10 +362,35 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
     // hacerla resolver contra la cuenta master. Si no coinciden, se corta —
     // pg-boss reintenta y el evento queda visible en vez de aplicar plata por
     // la rama equivocada.
-    if ((job.source === 'saas') !== Boolean(upgrade)) {
+    if ((job.source === 'saas') !== Boolean(upgrade || plus)) {
       throw new Error(
         `webhook source mismatch: source=${job.source ?? 'none'} ref=${info.externalReference}`,
       )
+    }
+
+    if (plus) {
+      // Mismo cross-check de tenant que el upgrade.
+      if (plus.tenantId !== job.tenantId) {
+        throw new Error(`webhook tenant mismatch: claimed=${job.tenantId} actual=${plus.tenantId}`)
+      }
+      // Pago único del alta de Plus en un anual (P7). `gateway` es la cuenta
+      // MASTER (el chequeo de origen de arriba exige `source=saas`); en modo mock
+      // no se toca MP. NUNCA pasa por `onPaymentApproved`: cancelaría el
+      // preapproval vigente.
+      const result = await applyPlusProratePayment(
+        {
+          tenantId: job.tenantId,
+          mpPaymentId: info.mpPaymentId,
+          status: info.status,
+          amountCents: info.amount,
+          dateCreated: info.dateCreated,
+        },
+        MP_MOCK_ENABLED ? undefined : gateway,
+        tx,
+        new Date(),
+      )
+      if (result.enableFlag) plusFlagTenantId = job.tenantId
+      return
     }
 
     if (upgrade) {
@@ -440,6 +471,20 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
   }
   if (refundedBookingId) {
     await notifyWhatsappGuest(job.tenantId, refundedBookingId, 'late_payment_refunded')
+  }
+  if (plusFlagTenantId) {
+    // El evento ya quedó procesado: si el flag falla no se reintenta el webhook
+    // (el barrido diario de Plus cura el flag).
+    try {
+      await ensurePlusFlagOn(plusFlagTenantId)
+    } catch (err) {
+      logger.error('plus: pago anual acreditado pero no se pudo prender el bot', {
+        module: 'mp-webhook',
+        tenantId: plusFlagTenantId,
+        error: err instanceof Error ? err.message : String(err),
+      })
+      captureException(err)
+    }
   }
 
   track.webhook('mp.webhook.processed', {

@@ -131,6 +131,7 @@ function sub(status: string) {
     // indefinido no es un entero >= 1).
     billedCourts: 3,
     pendingBilledCourts: null as number | null,
+    plus: { enabled: false, perCourtCents: 2_000_000, accessUntil: null, quote: null },
     currentPeriodStart: new Date('2026-08-13T12:00:00.000Z'),
     currentPeriodEnd: new Date('2026-09-13T12:00:00.000Z'),
     mpSubscriptionId: 'mp-1',
@@ -179,6 +180,26 @@ describe('/settings/facturacion — CancelSubscriptionSection por estado', () =>
     const cuotaSection = cuotaHeading.closest('section') as HTMLElement
     expect(within(cuotaSection).getByRole('button', { name: 'Guardar' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Dar de baja' })).toBeTruthy()
+  })
+
+  it('active con Plus facturado: la cuota suma la fila del Asistente y aparece su sección', async () => {
+    vi.mocked(getSubscriptionState).mockResolvedValue({
+      ...sub('active'),
+      plus: { enabled: true, perCourtCents: 2_000_000, accessUntil: null, quote: null },
+    } as never)
+
+    render(await FacturacionPage())
+
+    expect(screen.getByText(/Asistente de WhatsApp \(Plus\) · 3 canchas/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Dar de baja el Asistente' })).toBeTruthy()
+  })
+
+  it('active sin Plus: no hay sección del Asistente ni fila en la cuota', async () => {
+    vi.mocked(getSubscriptionState).mockResolvedValue(sub('active') as never)
+
+    render(await FacturacionPage())
+
+    expect(screen.queryByText(/Asistente de WhatsApp/)).toBeNull()
   })
 
   it('canceled: muestra el texto de baja + link a /reactivar, sin el botón', async () => {

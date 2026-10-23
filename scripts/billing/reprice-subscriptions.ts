@@ -3,7 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { z } from 'zod'
-import { computeSubscriptionAmount } from '@/modules/billing/pricing'
+import { computeSubscriptionAmount, effectivePlusPerCourtCents } from '@/modules/billing/pricing'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import type { GatewaySubscriptionState } from '@/modules/payments/payment.types'
 
@@ -18,6 +18,8 @@ const localSchema = z
     planSlug: z.string(),
     billingCycle: z.enum(['monthly', 'annual']),
     billedCourts: z.number().int().positive(),
+    plusEnabled: z.boolean(),
+    plusPricePerCourtCents: z.number().int().positive().nullable(),
     mpSubscriptionId: z.string().min(1).nullable(),
     currentPeriodStart: date,
     currentPeriodEnd: date,
@@ -69,8 +71,11 @@ type Dependencies = {
 }
 function target(local: Local): number {
   return computeSubscriptionAmount({
-    ...local,
+    billedCourts: local.billedCourts,
     cycle: local.billingCycle,
+    // El script solo BAJA precios: un complejo con Plus cuyo debito todavia no
+    // lo lleva queda en "Caso requiere revision" (subir Plus es del interruptor).
+    plusPerCourtCents: effectivePlusPerCourtCents(local.plusEnabled, local.plusPricePerCourtCents),
     priceFirstCourtCents: 3_000_000,
     priceExtraCourtCents: 3_000_000,
     annualDiscountBps: 1000,
@@ -200,6 +205,8 @@ async function main(): Promise<void> {
       planSlug: p.slug,
       billingCycle: s.billingCycle,
       billedCourts: s.billedCourts,
+      plusEnabled: s.plusEnabled,
+      plusPricePerCourtCents: s.plusPricePerCourtCents,
       mpSubscriptionId: s.mpSubscriptionId,
       currentPeriodStart: s.currentPeriodStart,
       currentPeriodEnd: s.currentPeriodEnd,

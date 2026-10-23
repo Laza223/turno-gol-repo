@@ -119,6 +119,7 @@ function sub(status: string, scheduledDeletionAt: Date | null = null) {
     dunningStartedAt: null,
     lastPaymentFailedAt: null,
     lastPaymentAt: null,
+    plus: { enabled: false, perCourtCents: 2_000_000, accessUntil: null, quote: null },
   }
 }
 
@@ -198,6 +199,31 @@ describe('/reactivar — admin en estado elegible', () => {
     expect(screen.getByText('Tu prueba terminó')).toBeTruthy()
     expect(screen.queryByText('Tu cuenta está suspendida')).toBeNull()
     expect(screen.getByRole('button', { name: /^Reactivar —/ })).toBeTruthy()
+  })
+
+  it('con Plus prendido, el monto que muestra es el que cobra reactivate() (plan + Plus)', async () => {
+    vi.mocked(getStaffTenant).mockResolvedValue(tenant('suspended') as never)
+    vi.mocked(getSubscriptionState).mockResolvedValue({
+      ...sub('suspended'),
+      plus: { enabled: true, perCourtCents: 2_000_000, accessUntil: null, quote: null },
+    } as never)
+
+    render(await ReactivarPage())
+
+    // 1 cancha: $47.000 del plan + $20.000 de Plus.
+    expect(screen.getByRole('button', { name: /^Reactivar — .*67\.000/ })).toBeTruthy()
+  })
+
+  it('con Plus apagado no suma Plus aunque haya precio especial guardado', async () => {
+    vi.mocked(getStaffTenant).mockResolvedValue(tenant('suspended') as never)
+    vi.mocked(getSubscriptionState).mockResolvedValue({
+      ...sub('suspended'),
+      plus: { enabled: false, perCourtCents: 1_500_000, accessUntil: null, quote: null },
+    } as never)
+
+    render(await ReactivarPage())
+
+    expect(screen.getByRole('button', { name: /^Reactivar — .*47\.000/ })).toBeTruthy()
   })
 
   it('blocked: muestra el botón de reactivar', async () => {

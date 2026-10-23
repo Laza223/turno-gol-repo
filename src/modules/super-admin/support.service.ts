@@ -1,9 +1,6 @@
-import { isNotNull, sql } from 'drizzle-orm'
-import { getDb, getWorkerDb, withTenantContext, type DbTx } from '@/shared/db/client'
+import { sql } from 'drizzle-orm'
+import { getDb, withTenantContext, type DbTx } from '@/shared/db/client'
 import { insertAuditLog } from '@/shared/db/audit'
-import { featureFlags } from '@/shared/db/schema'
-import { clearFeatureFlagCache } from '@/shared/feature-flags'
-import { BOT_FEATURE_FLAG } from '@/modules/whatsapp-bot/whatsapp-bot.connection'
 import {
   transitionActiveToPastDue,
   transitionBlockedToChurned,
@@ -14,8 +11,10 @@ import {
   transitionTrialingToActive,
 } from '@/modules/billing/lifecycle.service'
 import {
+  billingReason,
   cancel as billingCancel,
   loadActivePlan,
+  plusPerCourtOf,
   subscriptionAmount,
 } from '@/modules/billing/billing.service'
 import {
@@ -155,27 +154,19 @@ type SubRowLite = {
   billing_cycle: BillingCycle
   billed_courts: number
   mp_subscription_id: string | null
+  plus_enabled: boolean
+  plus_price_per_court_cents: number | null
 }
 
 async function loadSubForUpdate(tx: DbTx, tenantId: string): Promise<SubRowLite | null> {
   const rows = await tx.execute(sql`
-    SELECT status, plan_id, billing_cycle, billed_courts, mp_subscription_id
+    SELECT status, plan_id, billing_cycle, billed_courts, mp_subscription_id,
+           plus_enabled, plus_price_per_court_cents
     FROM tenant_subscriptions
     WHERE tenant_id = ${tenantId}
     FOR UPDATE
   `)
   return (rows as unknown as SubRowLite[])[0] ?? null
-}
-
-/**
- * Mismo texto que `billing.service.billingReason`: es lo que el pagador ve en
- * MercadoPago Y el unico vinculo entre un preapproval y su cantidad de
- * canchas. Si soporte corrige el numero y el `reason` queda viejo, el reuso de
- * checkout pendiente deja de matchear.
- */
-function billingReasonForSupport(billedCourts: number, cycle: BillingCycle): string {
-  const canchas = billedCourts === 1 ? '1 cancha' : `${billedCourts} canchas`
-  return `TurnoGol — ${canchas} (${cycle === 'annual' ? 'anual' : 'mensual'})`
 }
 
 function supportAudit(
@@ -399,9 +390,18 @@ export async function changeBilledCourtsForSupport(
     // Dentro de la tx (mismo patrón que billing.service): si MP falla, el
     // cambio rollbackea junto con el audit.
     if (sub.mp_subscription_id) {
-      const newAmount = subscriptionAmount(plan, targetBilledCourts, sub.billing_cycle)
+      // Plus sale de la fila lockeada: corregir las canchas no puede sacarle
+      // (ni ponerle) Plus al debito. El `reason` es el mismo texto que ve el
+      // pagador y que compara el reuso de checkout pendiente.
+      const plusPerCourt = plusPerCourtOf(sub)
+      const newAmount = subscriptionAmount(
+        plan,
+        targetBilledCourts,
+        sub.billing_cycle,
+        plusPerCourt,
+      )
       await gateway.updatePreapprovalAmount(sub.mp_subscription_id, newAmount, {
-        reason: billingReasonForSupport(targetBilledCourts, sub.billing_cycle),
+        reason: billingReason(targetBilledCourts, sub.billing_cycle, plusPerCourt),
       })
     }
 
@@ -499,36 +499,5 @@ export async function updateTenantMarketplaceVisibility(
       'support.tenant.marketplace_visibility_updated',
       { visible },
     )
-  })
-}
-
-/**
- * Prende/apaga TurnoGol Plus (el bot de WhatsApp) para un complejo: upsert del
- * override por tenant de `whatsapp_bot`. Apagar deja la fila en `false` (no la
- * borra). `feature_flags` no tiene policy de escritura para el rol de la app, así
- * que la escritura va por el pool worker (BYPASSRLS).
- */
-export async function setTenantPlus(
-  tenantId: string,
-  enabled: boolean,
-  systemAdminId: string,
-): Promise<void> {
-  const exists = await getDb().execute(sql`SELECT 1 FROM tenants WHERE id = ${tenantId}`)
-  if ((exists as unknown[]).length === 0) {
-    throw new TenantNotFoundError(tenantId)
-  }
-
-  await getWorkerDb()
-    .insert(featureFlags)
-    .values({ key: BOT_FEATURE_FLAG, value: enabled, tenantId })
-    .onConflictDoUpdate({
-      target: [featureFlags.key, featureFlags.tenantId],
-      targetWhere: isNotNull(featureFlags.tenantId),
-      set: { value: enabled },
-    })
-  clearFeatureFlagCache()
-
-  await withTenantContext(tenantId, async (tx) => {
-    await supportAudit(tx, systemAdminId, tenantId, 'support.tenant.plus_toggled', { enabled })
   })
 }

@@ -22,7 +22,13 @@ const meta = {
     nowMs: Date.now(),
     impersonateAction: fn(async () => ({ success: true as const })),
     updateMarketplaceVisibilityAction: fn(async () => ({ success: true as const })),
-    plusEnabled: false,
+    plusState: {
+      kind: 'off' as const,
+      pricePerCourtCents: null,
+      effectivePerCourtCents: 2_000_000,
+      accessUntil: null,
+      quote: null,
+    },
     setTenantPlusAction: fn(async () => ({ success: true as const })),
     generateReferralLinkAction: fn(async () => ({
       success: true as const,
@@ -48,4 +54,17 @@ export const TenantEnTrial: Story = {
 /** Cancelado con eliminación programada — el aviso rojo aparece en "Datos del complejo". */
 export const EliminacionProgramada: Story = {
   args: { detail: tenantDetailScheduledForDeletion() },
+}
+
+/** Plus facturado: precio especial y las dos bajas. */
+export const PlusFacturado: Story = {
+  args: {
+    plusState: {
+      kind: 'billed',
+      pricePerCourtCents: 1_500_000,
+      effectivePerCourtCents: 1_500_000,
+      accessUntil: null,
+      quote: null,
+    },
+  },
 }

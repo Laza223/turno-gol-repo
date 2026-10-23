@@ -929,3 +929,102 @@ describe('processWhatsappTurn — tope de respuestas por hora', () => {
     expect(runAgent).toHaveBeenCalledTimes(1)
   })
 })
+
+// ─── P8: el bot se calla cuando el complejo no está al día ──────────────────
+
+describe('el bot según el estado del complejo (TurnoGol Plus, P8)', () => {
+  /**
+   * Pone al complejo en `status`. Para `canceled` deja una suscripción con el
+   * fin de período que se pida: es lo único que decide si todavía pagó el mes.
+   */
+  async function setTenantStatus(
+    tenantId: string,
+    status: string,
+    periodEnd: Date | null = null,
+  ): Promise<void> {
+    const sql = adminSql()
+    await sql`UPDATE tenants SET status = ${status}::tenant_status WHERE id = ${tenantId}`
+    if (periodEnd) {
+      const [plan] = await sql<{ id: string }[]>`
+        SELECT id FROM plans WHERE is_active = true ORDER BY sort_order LIMIT 1
+      `
+      await sql`
+        INSERT INTO tenant_subscriptions (
+          tenant_id, plan_id, billing_cycle, billed_courts, status,
+          current_period_start, current_period_end
+        ) VALUES (
+          ${tenantId}, ${plan!.id}, 'monthly', 1, 'canceled'::subscription_status,
+          ${new Date(periodEnd.getTime() - 30 * 86_400_000)}, ${periodEnd}
+        )
+      `
+    }
+  }
+
+  const SILENT = ['suspended', 'blocked', 'churned'] as const
+
+  it.each(SILENT)('ingesta: en %s no guarda nada y cuenta el evento en botOff', async (status) => {
+    const s = await seed()
+    await setTenantStatus(s.tenantId, status)
+
+    const res = await ingestWhatsappEvents([inboundEvent(s)], new Date())
+
+    expect(res).toEqual({ chatsToProcess: [], unknownNumbers: 0, botOff: 1 })
+    expect(await countRows(s.tenantId)).toEqual({ chats: 0, messages: 0 })
+  })
+
+  it.each(SILENT)(
+    'turno: en %s no llama al modelo ni envía, y marca el pendiente',
+    async (status) => {
+      const s = await seed()
+      const chatId = await addChat(s)
+      const now = new Date()
+      const pending = await seedMessage(s, chatId, {
+        direction: 'inbound',
+        body: 'hola',
+        createdAt: ago(now, MINUTE_MS),
+      })
+      await setTenantStatus(s.tenantId, status)
+
+      expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId }, now)).toBe('disabled')
+      expect(runAgent).not.toHaveBeenCalled()
+      expect(sendWhatsappText).not.toHaveBeenCalled()
+      expect(byId(await readMessages(s.tenantId, chatId), pending).processed_at).toEqual(now)
+    },
+  )
+
+  it('canceled con el período VENCIDO también se calla (ingesta y turno)', async () => {
+    const s = await seed()
+    const chatId = await addChat(s)
+    const now = new Date()
+    await seedMessage(s, chatId, {
+      direction: 'inbound',
+      body: 'hola',
+      createdAt: ago(now, MINUTE_MS),
+    })
+    await setTenantStatus(s.tenantId, 'canceled', ago(now, 24 * HOUR_MS))
+
+    expect((await ingestWhatsappEvents([inboundEvent(s)], now)).botOff).toBe(1)
+    expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId }, now)).toBe('disabled')
+    expect(runAgent).not.toHaveBeenCalled()
+  })
+
+  it('controles positivos: past_due y canceled con el período vigente SIGUEN contestando', async () => {
+    const pastDue = await seed()
+    await setTenantStatus(pastDue.tenantId, 'past_due')
+    const resPastDue = await ingestWhatsappEvents([inboundEvent(pastDue)], new Date())
+    expect(resPastDue.botOff).toBe(0)
+    expect(resPastDue.chatsToProcess).toHaveLength(1)
+
+    const canceled = await seed()
+    const chatId = await addChat(canceled)
+    const now = new Date()
+    await seedMessage(canceled, chatId, {
+      direction: 'inbound',
+      body: 'hola',
+      createdAt: ago(now, MINUTE_MS),
+    })
+    await setTenantStatus(canceled.tenantId, 'canceled', new Date(now.getTime() + 5 * 86_400_000))
+    expect(await processWhatsappTurn({ tenantId: canceled.tenantId, chatId }, now)).toBe('replied')
+    expect(runAgent).toHaveBeenCalledTimes(1)
+  })
+})

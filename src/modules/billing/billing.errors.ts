@@ -91,3 +91,46 @@ export class InvalidPayerEmailError extends Error {
     this.name = 'InvalidPayerEmailError'
   }
 }
+
+/**
+ * TurnoGol Plus: el interruptor solo prende (o cambia el precio) en `trialing`
+ * o `active` (P9). El mensaje llega tal cual al panel de super-admin.
+ */
+export class PlusNotAllowedError extends Error {
+  readonly code = 'PLUS_NOT_ALLOWED'
+  constructor(
+    public readonly tenantId: string,
+    public readonly currentStatus: string,
+  ) {
+    super('Primero tiene que regularizar el pago.')
+    this.name = 'PlusNotAllowedError'
+  }
+}
+
+/** No hay una cotización de Plus pendiente de pago (o el complejo no está en `active`). */
+export class PlusQuoteNotPendingError extends Error {
+  readonly code = 'PLUS_QUOTE_NOT_PENDING'
+  constructor(public readonly tenantId: string) {
+    super('No hay un pago de TurnoGol Plus pendiente para este complejo.')
+    this.name = 'PlusQuoteNotPendingError'
+  }
+}
+
+/**
+ * El cobro de Plus ya quedó aplicado (DB + MP) pero no se pudo prender el
+ * asistente. Reintentar el interruptor lo arregla: `enablePlus` es idempotente y
+ * el barrido diario también cura este estado.
+ */
+export class PlusFlagPendingError extends Error {
+  readonly code = 'PLUS_FLAG_PENDING'
+  constructor(
+    public readonly tenantId: string,
+    cause: unknown,
+  ) {
+    super(
+      'El cobro de Plus quedó aplicado, pero no se pudo prender el asistente de WhatsApp. Volvé a tocar el interruptor: es seguro y lo termina de prender.',
+      { cause },
+    )
+    this.name = 'PlusFlagPendingError'
+  }
+}

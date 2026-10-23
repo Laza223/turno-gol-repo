@@ -112,7 +112,15 @@ describe('runDunningSweep — downgrade aplicado actualiza el monto recurrente e
       [{ tenantId: 'tenant-1', tenantName: 'Club Norte', ownerName: 'Marcelo' }], // loadTenantOwners
     ])
     txMock = makeTxMock([
-      [{ mp_subscription_id: 'mp-sub-1', billing_cycle: 'monthly', billed_courts: 5 }], // UPDATE ... RETURNING
+      [
+        {
+          mp_subscription_id: 'mp-sub-1',
+          billing_cycle: 'monthly',
+          billed_courts: 5,
+          plus_enabled: false,
+          plus_price_per_court_cents: null,
+        },
+      ], // UPDATE ... RETURNING
       [PLAN_ROW], // loadActivePlan
     ])
 
@@ -133,7 +141,15 @@ describe('runDunningSweep — downgrade aplicado actualiza el monto recurrente e
       [{ tenantId: 'tenant-1', tenantName: 'Club Norte', ownerName: 'Marcelo' }], // loadTenantOwners
     ])
     txMock = makeTxMock([
-      [{ mp_subscription_id: 'mp-sub-1', billing_cycle: 'monthly', billed_courts: 5 }], // UPDATE ... RETURNING
+      [
+        {
+          mp_subscription_id: 'mp-sub-1',
+          billing_cycle: 'monthly',
+          billed_courts: 5,
+          plus_enabled: false,
+          plus_price_per_court_cents: null,
+        },
+      ], // UPDATE ... RETURNING
       [PLAN_ROW], // loadActivePlan
     ])
 
@@ -158,7 +174,15 @@ describe('runDunningSweep — downgrade aplicado actualiza el monto recurrente e
       [{ tenantId: 'tenant-1', tenantName: 'Club Norte', ownerName: 'Marcelo' }],
     ])
     txMock = makeTxMock([
-      [{ mp_subscription_id: 'mp-sub-1', billing_cycle: 'annual', billed_courts: 5 }],
+      [
+        {
+          mp_subscription_id: 'mp-sub-1',
+          billing_cycle: 'annual',
+          billed_courts: 5,
+          plus_enabled: false,
+          plus_price_per_court_cents: null,
+        },
+      ],
       [PLAN_ROW],
     ])
 
@@ -167,6 +191,82 @@ describe('runDunningSweep — downgrade aplicado actualiza el monto recurrente e
     expect(updatePreapprovalAmount).toHaveBeenCalledTimes(1)
     expect(updatePreapprovalAmount).toHaveBeenCalledWith('mp-sub-1', CINCO_CANCHAS_ANUAL, {
       reason: 'TurnoGol — 5 canchas (anual)',
+    })
+  })
+
+  // CB1 — TurnoGol Plus: este barrido es el ÚNICO lugar que mueve el monto de una
+  // suscripción que ya cobra. Si no lleva Plus, le saca el Asistente al débito en
+  // silencio. Montos a mano: plan 5 canchas $167.000 + Plus 5 x $20.000 = $267.000.
+  describe('con TurnoGol Plus en el débito', () => {
+    const sweepWith = async (row: Record<string, unknown>) => {
+      sqlMock = makeSqlMock([
+        [],
+        [],
+        [],
+        [],
+        [{ tenant_id: 'tenant-1', pendingBilledCourts: 5 }],
+        [{ tenantId: 'tenant-1', tenantName: 'Club Norte', ownerName: 'Marcelo' }],
+      ])
+      txMock = makeTxMock([[row], [PLAN_ROW]])
+      await runDunningSweep()
+    }
+
+    it('mensual, precio de lista: el PUT lleva plan + Plus y el reason lo nombra', async () => {
+      await sweepWith({
+        mp_subscription_id: 'mp-sub-1',
+        billing_cycle: 'monthly',
+        billed_courts: 5,
+        plus_enabled: true,
+        plus_price_per_court_cents: null,
+      })
+
+      expect(updatePreapprovalAmount).toHaveBeenCalledTimes(1)
+      expect(updatePreapprovalAmount).toHaveBeenCalledWith('mp-sub-1', 26_700_000, {
+        reason: 'TurnoGol — 5 canchas + Asistente de WhatsApp (mensual)',
+      })
+    })
+
+    it('mensual, precio especial $15.000: usa el especial', async () => {
+      await sweepWith({
+        mp_subscription_id: 'mp-sub-1',
+        billing_cycle: 'monthly',
+        billed_courts: 5,
+        plus_enabled: true,
+        plus_price_per_court_cents: 1_500_000,
+      })
+
+      expect(updatePreapprovalAmount).toHaveBeenCalledWith('mp-sub-1', 24_200_000, {
+        reason: 'TurnoGol — 5 canchas + Asistente de WhatsApp (mensual)',
+      })
+    })
+
+    it('anual: 10% sobre la suma plan + Plus, POR 12', async () => {
+      await sweepWith({
+        mp_subscription_id: 'mp-sub-1',
+        billing_cycle: 'annual',
+        billed_courts: 5,
+        plus_enabled: true,
+        plus_price_per_court_cents: null,
+      })
+
+      // (16.700.000 + 10.000.000) x 0,9 = 24.030.000 x 12
+      expect(updatePreapprovalAmount).toHaveBeenCalledWith('mp-sub-1', 24_030_000 * 12, {
+        reason: 'TurnoGol — 5 canchas + Asistente de WhatsApp (anual)',
+      })
+    })
+
+    it('Plus apagado con un precio especial guardado (baja o cotización): el PUT NO lo lleva', async () => {
+      await sweepWith({
+        mp_subscription_id: 'mp-sub-1',
+        billing_cycle: 'monthly',
+        billed_courts: 5,
+        plus_enabled: false,
+        plus_price_per_court_cents: 1_500_000,
+      })
+
+      expect(updatePreapprovalAmount).toHaveBeenCalledWith('mp-sub-1', CINCO_CANCHAS_MENSUAL, {
+        reason: 'TurnoGol — 5 canchas (mensual)',
+      })
     })
   })
 
@@ -180,7 +280,15 @@ describe('runDunningSweep — downgrade aplicado actualiza el monto recurrente e
       [{ tenantId: 'tenant-1', tenantName: 'Club Norte', ownerName: 'Marcelo' }],
     ])
     txMock = makeTxMock([
-      [{ mp_subscription_id: null, billing_cycle: 'monthly', billed_courts: 5 }],
+      [
+        {
+          mp_subscription_id: null,
+          billing_cycle: 'monthly',
+          billed_courts: 5,
+          plus_enabled: false,
+          plus_price_per_court_cents: null,
+        },
+      ],
     ])
 
     await runDunningSweep()

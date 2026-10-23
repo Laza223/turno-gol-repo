@@ -28,6 +28,9 @@ export function PriceBreakdown({
     extraCourts,
     extraCourtUnitCents,
     extraCourtsTotalCents,
+    billedCourts,
+    plusPerCourtCents,
+    plusMonthlyListCents,
     monthlyListCents,
     monthlyEffectiveCents,
     chargePerCycleCents,
@@ -45,6 +48,12 @@ export function PriceBreakdown({
           <BreakdownRow
             label={`${extraCourts} ${extraCourts === 1 ? 'cancha más' : 'canchas más'} × ${formatArs(extraCourtUnitCents)}`}
             value={formatArs(extraCourtsTotalCents)}
+          />
+        )}
+        {plusMonthlyListCents > 0 && (
+          <BreakdownRow
+            label={`Asistente de WhatsApp (Plus) · ${billedCourts} ${billedCourts === 1 ? 'cancha' : 'canchas'} × ${formatArs(plusPerCourtCents)}`}
+            value={formatArs(plusMonthlyListCents)}
           />
         )}
         {annual && (

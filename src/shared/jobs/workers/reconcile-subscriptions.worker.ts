@@ -7,6 +7,9 @@ import { enqueueTenantOwnerNotification } from '@/modules/notifications/notifica
 import { artHourKey, sendOpsAlerts } from '@/modules/super-admin/ops-alerts.service'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { MP_MOCK_ENABLED } from '@/modules/payments/mock-mp'
+import { buildSaasPlusRef } from '@/modules/payments/payment.types'
+import { applyPlusProratePayment, ensurePlusFlagOn } from '@/modules/billing/plus.service'
+import { formatArs } from '@/lib/format'
 import {
   transitionPastDueToActive,
   transitionToActiveFromAny,
@@ -18,7 +21,7 @@ import {
   detectPreapprovalAmountDrift,
   type LocalSubSnapshot,
 } from '@/modules/billing/subscription-reconcile.service'
-import { computeSubscriptionAmount } from '@/modules/billing/pricing'
+import { computeSubscriptionAmount, effectivePlusPerCourtCents } from '@/modules/billing/pricing'
 import { markReferralRewardEarned } from '@/modules/referrals/referral-reward.service'
 import type { BillingCycle, SubscriptionStatus } from '@/modules/billing/billing.types'
 import {
@@ -75,6 +78,11 @@ type SubSnapshotRow = {
 type Candidate = SubSnapshotRow & {
   /** Canchas facturadas (migr. 090) — la base del monto esperado. */
   billedCourts: number
+  /** Migr. 102 — Plus en el debito. El monto esperado lo suma SOLO si esta prendido aca. */
+  plusEnabled: boolean
+  plusPricePerCourtCents: number | null
+  /** Baja agendada: el complejo tuvo Plus y todavia puede tener drift por eso. */
+  plusAccessUntil: Date | string | null
   priceFirstCourtCents: number | null
   priceExtraCourtCents: number | null
   annualDiscountBps: number | null
@@ -113,6 +121,9 @@ async function loadCandidates(
            ts.mp_subscription_id AS "mpSubscriptionId",
            ts.last_payment_at    AS "lastPaymentAt",
            ts.billed_courts      AS "billedCourts",
+           ts.plus_enabled       AS "plusEnabled",
+           ts.plus_price_per_court_cents AS "plusPricePerCourtCents",
+           ts.plus_access_until  AS "plusAccessUntil",
            p.price_first_court_cents AS "priceFirstCourtCents",
            p.price_extra_court_cents AS "priceExtraCourtCents",
            p.annual_discount_bps     AS "annualDiscountBps"
@@ -221,7 +232,29 @@ async function alertAmountDrift(
   preapprovalId: string,
   drift: { expectedCents: number; actualCents: number; reason: string },
   billingCycle: BillingCycle,
+  /** Con Plus (prendido o con baja agendada) el desfasaje tambien avisa por mail. */
+  plus: { tenantName: string } | null,
 ): Promise<void> {
+  // Mail primero y audit despues: el audit es el dedupe de 20 h, escribirlo antes
+  // gastaria el aviso aunque el mail no salga (mismo orden que `alertCourtsOverBilled`).
+  if (plus) {
+    const undelivered = await sendOpsAlerts(
+      getWorkerDb(),
+      [
+        {
+          key: `plus-amount-drift:${tenantId}:${artHourKey(new Date())}`,
+          subject: `${plus.tenantName}: el débito de MercadoPago no refleja TurnoGol Plus`,
+          lines: [
+            `El débito esperado es ${formatArs(drift.expectedCents)} y en MercadoPago figura ${formatArs(drift.actualCents)}.`,
+            `Motivo: ${drift.reason}.`,
+            'No se cambió nada: corregirlo queda a tu criterio.',
+          ],
+        },
+      ],
+      { path: `/super-admin/tenants/${tenantId}`, label: 'Abrir el complejo en el panel' },
+    )
+    if (undelivered.length > 0) throw new Error('ops mail not delivered, retrying next tick')
+  }
   await withTenantContext(tenantId, (tx) =>
     insertSystemAuditLog(tx, {
       tenantId,
@@ -248,6 +281,14 @@ async function alertAmountDrift(
     },
   })
   track.payment('payment.subscription.amount_drift', { tenantId, preapprovalId })
+}
+
+/** `tenants` es global y sin RLS: se lee con el pool de servicio. */
+async function loadTenantName(tenantId: string): Promise<string> {
+  const rows = await getWorkerSql()<{ name: string }[]>`
+    SELECT name FROM tenants WHERE id = ${tenantId} LIMIT 1
+  `
+  return rows[0]?.name ?? tenantId
 }
 
 /**
@@ -278,6 +319,9 @@ async function checkAmountDrift(
   const expected = computeSubscriptionAmount({
     billedCourts: cand.billedCourts,
     cycle: cand.billingCycle,
+    // Una cotizacion anual pendiente (`plus_enabled = false`) o una baja agendada
+    // NO suman Plus: el debito vigente todavia no (o ya no) lo lleva.
+    plusPerCourtCents: effectivePlusPerCourtCents(cand.plusEnabled, cand.plusPricePerCourtCents),
     priceFirstCourtCents: cand.priceFirstCourtCents,
     priceExtraCourtCents: cand.priceExtraCourtCents,
     annualDiscountBps: cand.annualDiscountBps,
@@ -287,7 +331,16 @@ async function checkAmountDrift(
 
   if (amountAlerted.has(cand.tenantId)) return true
   amountAlerted.add(cand.tenantId)
-  await alertAmountDrift(cand.tenantId, cand.mpSubscriptionId, drift, cand.billingCycle)
+  // Solo los complejos con Plus mandan mail: hay debitos viejos con drift conocido
+  // por la baja de precio y no hay que inundar la casilla.
+  const hasPlus = cand.plusEnabled || Boolean(cand.plusAccessUntil)
+  await alertAmountDrift(
+    cand.tenantId,
+    cand.mpSubscriptionId,
+    drift,
+    cand.billingCycle,
+    hasPlus ? { tenantName: await loadTenantName(cand.tenantId) } : null,
+  )
   return true
 }
 
@@ -348,7 +401,17 @@ async function reconcileOne(
   // Gratis: la respuesta de MP ya está en mano. Va antes del `return` del 404 y
   // de cualquier decisión porque el desfasaje de monto es ortogonal a si la
   // suscripción se rescata o no.
-  await checkAmountDrift(cand, remote, amountAlerted)
+  // Si el mail de un drift con Plus no sale, tira para reintentar en el proximo
+  // tick (no se escribio el audit); eso no debe frenar el rescate de abajo.
+  try {
+    await checkAmountDrift(cand, remote, amountAlerted)
+  } catch (err) {
+    logger.error('failed amount drift alert', {
+      module: 'reconcile-subscriptions',
+      tenantId: cand.tenantId,
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
 
   if (remote === null) {
     if (!alerted.has(cand.tenantId)) {
@@ -739,6 +802,85 @@ async function sweepCourtsOverBilled(overBilledAlerted: Set<string>): Promise<nu
   return rows.length
 }
 
+/**
+ * Rescate del pago anual de Plus (P7), por si la notificacion nunca llega.
+ *
+ * Para cada complejo con una cotizacion pendiente busca en la cuenta MASTER los
+ * pagos `saas-plus:<tenantId>` y acredita los aprobados con la MISMA funcion y la
+ * MISMA clave por pago que el webhook: los dos caminos nunca acreditan dos veces.
+ * El flag del bot se prende despues del commit. Devuelve cuantos acredito.
+ */
+async function sweepPlusProrate(): Promise<number> {
+  type PendingQuote = { tenantId: string; quotedAt: Date | string | null }
+  let pending: PendingQuote[]
+  try {
+    pending = await getWorkerSql()<PendingQuote[]>`
+      SELECT tenant_id AS "tenantId", plus_prorate_quoted_at AS "quotedAt"
+      FROM tenant_subscriptions
+      WHERE plus_prorate_cents IS NOT NULL
+      ORDER BY updated_at ASC
+      LIMIT 200
+    `
+  } catch (err) {
+    // Que una lectura caída no corte el job: el chequeo de canchas va después.
+    logger.error('failed to load plus prorate quotes', {
+      module: 'reconcile-subscriptions',
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return 0
+  }
+
+  let credited = 0
+  for (const { tenantId, quotedAt } of pending) {
+    try {
+      // secuencial: mismo motivo que en `sweep` (conexion postgres-js compartida).
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop
+      const pagos = await getBillingGateway().searchPaymentsByReference(buildSaasPlusRef(tenantId))
+      let enableFlag = false
+      for (const pago of pagos) {
+        if (pago.status !== 'approved' || pago.mpPaymentId === '') continue
+        // Un pago anterior a la cotización es de una cotización vieja ya
+        // acreditada: se descarta en silencio. `processed_webhooks` purga la clave
+        // por pago a los 30 días, y sin este filtro cada tick mandaría un mail
+        // "unmatched" por un pago viejo. Sin fecha legible sí pasa: la acreditación
+        // lo manda a unmatched (una sola vez).
+        if (quotedAt && pago.dateCreated) {
+          const paidAt = new Date(pago.dateCreated).getTime()
+          if (!Number.isNaN(paidAt) && paidAt < new Date(quotedAt).getTime()) continue
+        }
+        // react-doctor-disable-next-line react-doctor/async-await-in-loop
+        const result = await withTenantContext(tenantId, (tx) =>
+          applyPlusProratePayment(
+            {
+              tenantId,
+              mpPaymentId: pago.mpPaymentId,
+              status: pago.status,
+              amountCents: pago.amount,
+              dateCreated: pago.dateCreated,
+            },
+            getBillingGateway(),
+            tx,
+            new Date(),
+          ),
+        )
+        enableFlag = enableFlag || result.enableFlag
+      }
+      if (enableFlag) {
+        credited += 1
+        // react-doctor-disable-next-line react-doctor/async-await-in-loop
+        await ensurePlusFlagOn(tenantId)
+      }
+    } catch (err) {
+      logger.error('failed plus prorate rescue', {
+        module: 'reconcile-subscriptions',
+        tenantId,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
+  return credited
+}
+
 export async function reconcileSubscriptions(): Promise<number> {
   // Modo mock (E2E): `getBillingGateway()` NO honra MP_MOCK_ENABLED —sólo lo
   // hace `resolveTenantGateway`—, así que acá pegaría contra MP con el token
@@ -767,6 +909,15 @@ export async function reconcileSubscriptions(): Promise<number> {
     logger.warn('preapprovals charging an amount that does not match their plan', {
       module: 'reconcile-subscriptions',
       count: drifted,
+    })
+  }
+
+  // Tampoco suma a `fixed`: acredita un pago unico de Plus, no levanta suscripciones.
+  const plusCredited = await sweepPlusProrate()
+  if (plusCredited > 0) {
+    logger.info('plus annual payments credited via reconcile', {
+      module: 'reconcile-subscriptions',
+      count: plusCredited,
     })
   }
 

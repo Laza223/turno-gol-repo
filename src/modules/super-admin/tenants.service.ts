@@ -12,7 +12,7 @@ import { pgTs } from '@/modules/super-admin/activity.service'
 import { addDays } from '@/shared/dates/art'
 import { artDateOf, artDayRangeUtc } from '@/shared/time/art-date'
 import { listStaffRoster } from '@/modules/staff/staff.service'
-import { annualMonthlyEquivalent, monthlyListAmount } from '@/modules/billing/pricing'
+import { buildPriceBreakdown, effectivePlusPerCourtCents } from '@/modules/billing/pricing'
 import { TENANT_STATUSES, isTenantStatus } from '@/modules/billing/billing.types'
 import type {
   BillingCycle,
@@ -168,11 +168,13 @@ export type TenantList = {
  * Usa las mismas funciones puras que el cobro (`@/modules/billing/pricing`)
  * para que el panel y lo que se le manda a MercadoPago no puedan divergir.
  * El ciclo anual aporta su equivalente MENSUAL, no el cobro del año: el MRR es
- * una tasa mensual.
+ * una tasa mensual. Lleva el Plus facturado (`plus_enabled` + precio especial o
+ * lista): el débito es plan + Plus y el descuento anual va sobre la suma.
  */
 function monthlyEquivalentCents(
   cycle: BillingCycle | null,
   billedCourts: number | null,
+  plus: { plusEnabled: boolean | null; plusPricePerCourtCents: number | null },
   plan: {
     priceFirstCourtCents: number | null
     priceExtraCourtCents: number | null
@@ -190,14 +192,17 @@ function monthlyEquivalentCents(
   ) {
     return 0
   }
-  const params = {
+  return buildPriceBreakdown({
     priceFirstCourtCents: plan.priceFirstCourtCents,
     priceExtraCourtCents: plan.priceExtraCourtCents,
     annualDiscountBps: plan.annualDiscountBps,
-  }
-  return cycle === 'annual'
-    ? annualMonthlyEquivalent(billedCourts, params)
-    : monthlyListAmount(billedCourts, params)
+    billedCourts,
+    cycle: cycle === 'annual' ? 'annual' : 'monthly',
+    plusPerCourtCents: effectivePlusPerCourtCents(
+      plus.plusEnabled === true,
+      plus.plusPricePerCourtCents,
+    ),
+  }).monthlyEffectiveCents
 }
 
 /**
@@ -241,6 +246,8 @@ async function listTenantsWith(db: Db, filters: TenantListFilters): Promise<Tena
       priceFirstCourtCents: plans.priceFirstCourtCents,
       priceExtraCourtCents: plans.priceExtraCourtCents,
       annualDiscountBps: plans.annualDiscountBps,
+      plusEnabled: tenantSubscriptions.plusEnabled,
+      plusPricePerCourtCents: tenantSubscriptions.plusPricePerCourtCents,
       billingCycle: tenantSubscriptions.billingCycle,
       subscriptionStatus: tenantSubscriptions.status,
     })
@@ -280,7 +287,7 @@ async function listTenantsWith(db: Db, filters: TenantListFilters): Promise<Tena
       subscriptionStatus: r.subscriptionStatus,
       mrrCents:
         r.subscriptionStatus === 'active'
-          ? monthlyEquivalentCents(r.billingCycle, r.billedCourts, r)
+          ? monthlyEquivalentCents(r.billingCycle, r.billedCourts, r, r)
           : 0,
     })),
     total: totalRows[0]?.total ?? 0,
@@ -357,6 +364,9 @@ export type TenantDetail = {
     priceFirstCourtCents: number | null
     priceExtraCourtCents: number | null
     annualDiscountBps: number | null
+    /** Migr. 102: Plus va en el débito. Con `plusPricePerCourtCents` NULL rige la lista. */
+    plusEnabled: boolean
+    plusPricePerCourtCents: number | null
     billingCycle: BillingCycle
     currentPeriodStart: Date
     currentPeriodEnd: Date
@@ -443,6 +453,8 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
           priceFirstCourtCents: plans.priceFirstCourtCents,
           priceExtraCourtCents: plans.priceExtraCourtCents,
           annualDiscountBps: plans.annualDiscountBps,
+          plusEnabled: tenantSubscriptions.plusEnabled,
+          plusPricePerCourtCents: tenantSubscriptions.plusPricePerCourtCents,
           billingCycle: tenantSubscriptions.billingCycle,
           currentPeriodStart: tenantSubscriptions.currentPeriodStart,
           currentPeriodEnd: tenantSubscriptions.currentPeriodEnd,

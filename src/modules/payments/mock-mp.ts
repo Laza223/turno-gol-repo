@@ -5,6 +5,7 @@ import type { PaymentGateway } from './mp-gateway'
 import type {
   CreatePreapprovalInput,
   CreatePreferenceInput,
+  CreateSaasPlusPreferenceInput,
   CreateSaasUpgradePreferenceInput,
   GatewayPaymentInfo,
   GatewaySubscriptionState,
@@ -154,6 +155,13 @@ export class LocalMockGateway implements PaymentGateway {
     input: CreateSaasUpgradePreferenceInput,
   ): Promise<PreferenceResult> {
     const prefId = `mock-upgrade-pref-${input.tenantId}-${input.targetPlanId}`
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+    const initPoint = `${appUrl}/mock-mp/checkout?pref=${encodeURIComponent(prefId)}`
+    return { preferenceId: prefId, initPoint, sandboxInitPoint: initPoint }
+  }
+
+  async createSaasPlusPreference(input: CreateSaasPlusPreferenceInput): Promise<PreferenceResult> {
+    const prefId = `mock-plus-pref-${input.tenantId}`
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
     const initPoint = `${appUrl}/mock-mp/checkout?pref=${encodeURIComponent(prefId)}`
     return { preferenceId: prefId, initPoint, sandboxInitPoint: initPoint }

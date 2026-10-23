@@ -1,8 +1,10 @@
 import type { PaymentGateway } from './mp-gateway'
 import {
+  buildSaasPlusRef,
   buildSaasUpgradeRef,
   type CreatePreapprovalInput,
   type CreatePreferenceInput,
+  type CreateSaasPlusPreferenceInput,
   type CreateSaasUpgradePreferenceInput,
   type GatewayPaymentInfo,
   type GatewaySubscriptionState,
@@ -82,6 +84,13 @@ export class MockGateway implements PaymentGateway {
    * Mismo patrón que `statusOverride`: seteable por instancia, opcional.
    */
   cancelPreapprovalError?: unknown
+
+  /**
+   * Igual que `cancelPreapprovalError`, para `updatePreapprovalAmount`: sin esto
+   * el PUT del monto nunca podia fallar y ningun test podia probar el rollback
+   * de "MP ultimo" (interruptor de Plus, bajas).
+   */
+  updatePreapprovalError?: unknown
 
   async createPreapproval(input: CreatePreapprovalInput): Promise<PreapprovalResult> {
     this.preapprovalCalls.push(input)
@@ -167,6 +176,7 @@ export class MockGateway implements PaymentGateway {
     opts?: { reason?: string },
   ): Promise<void> {
     this.updatePreapprovalCalls.push({ preapprovalId, amount, reason: opts?.reason })
+    if (this.updatePreapprovalError !== undefined) throw this.updatePreapprovalError
   }
 
   saasUpgradePreferenceCalls: CreateSaasUpgradePreferenceInput[] = []
@@ -183,6 +193,34 @@ export class MockGateway implements PaymentGateway {
       preferenceId: id,
       initPoint: `https://mp.test/checkout/upgrade/${id}?ref=${encodeURIComponent(externalRef)}`,
       sandboxInitPoint: `https://mp.test/sandbox/upgrade/${id}`,
+    }
+  }
+
+  /** Pagos unicos de Plus pedidos: ref (`saas-plus:<tenant>`), monto y URL de notificacion. */
+  plusPreferenceCalls: Array<{
+    externalReference: string
+    amount: number
+    notificationUrl: string
+    description: string
+    expiresAt: Date
+  }> = []
+  plusPreferenceCounter = 0
+
+  async createSaasPlusPreference(input: CreateSaasPlusPreferenceInput): Promise<PreferenceResult> {
+    const externalReference = buildSaasPlusRef(input.tenantId)
+    this.plusPreferenceCalls.push({
+      externalReference,
+      amount: input.amount,
+      notificationUrl: input.notificationUrl,
+      description: input.description,
+      expiresAt: input.expiresAt,
+    })
+    this.plusPreferenceCounter += 1
+    const id = `mp-plus-pref-${this.plusPreferenceCounter}-${input.tenantId}`
+    return {
+      preferenceId: id,
+      initPoint: `https://mp.test/checkout/plus/${id}?ref=${encodeURIComponent(externalReference)}`,
+      sandboxInitPoint: `https://mp.test/sandbox/plus/${id}`,
     }
   }
 }

@@ -23,6 +23,7 @@ const meta = {
     mode: 'activate',
     onlineCourts: 1,
     billedCourts: 1,
+    plusPerCourtCents: 0,
   },
 } satisfies Meta<typeof CuotaSection>
 
@@ -87,5 +88,34 @@ export const GestionarConCambioAgendado: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getAllByText(/180\.000/).length).toBeGreaterThan(0)
+  },
+}
+
+/** Con Plus facturado: 5 canchas = $150.000 + 5 × $20.000 = $250.000 por mes, con su propia fila. */
+export const ConAsistenteDeWhatsApp: Story = {
+  args: { onlineCourts: 5, billedCourts: 5, plusPerCourtCents: 2_000_000 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText(/Asistente de WhatsApp \(Plus\) · 5 canchas/)).toBeInTheDocument()
+    await expect(canvas.getAllByText(/250\.000/).length).toBeGreaterThan(0)
+  },
+}
+
+/** El descuento anual se aplica a la suma: ($150.000 + $100.000) − 10% = $225.000 por mes. */
+export const ConAsistenteDeWhatsAppAnual: Story = {
+  args: { onlineCourts: 5, billedCourts: 5, billingCycle: 'annual', plusPerCourtCents: 2_000_000 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getAllByText(/225\.000/).length).toBeGreaterThan(0)
+  },
+}
+
+/** Sumar una cancha con Plus suma también su Plus: $300.000 con 6 canchas. */
+export const SumarCanchaConPlusMueveElMonto: Story = {
+  args: { onlineCourts: 5, billedCourts: 5, plusPerCourtCents: 2_000_000 },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Agregar una cancha' }))
+    await expect(canvas.getAllByText(/300\.000/).length).toBeGreaterThan(0)
   },
 }

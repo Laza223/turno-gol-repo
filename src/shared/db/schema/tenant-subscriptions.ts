@@ -1,4 +1,14 @@
-import { index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import {
+  boolean,
+  index,
+  integer,
+  pgTable,
+  smallint,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core'
+import { sql } from 'drizzle-orm'
 import { tenants } from './tenants'
 import { plans } from './plans'
 import { billingCycleEnum, subscriptionStatusEnum } from './enums'
@@ -52,6 +62,24 @@ export const tenantSubscriptions = pgTable(
       mode: 'date',
     }),
 
+    // Migr. 102 — cobro de TurnoGol Plus. `plusEnabled` es lo unico que mete Plus
+    // en el monto del debito; el override del flag `whatsapp_bot` NO lo decide.
+    plusEnabled: boolean('plus_enabled').notNull().default(false),
+    // Precio especial por cancha y mes. NULL = lista. CHECK > 0 (P10).
+    plusPricePerCourtCents: integer('plus_price_per_court_cents'),
+    // Baja agendada: el debito ya no lleva Plus, el bot sigue hasta aca.
+    plusAccessUntil: timestamp('plus_access_until', { withTimezone: true, mode: 'date' }),
+    // Cotizacion anual congelada, pendiente de pago (P7). Van las cuatro o ninguna.
+    plusProrateCents: integer('plus_prorate_cents'),
+    plusProrateMonths: smallint('plus_prorate_months'),
+    // current_period_end contra el que se cotizo (si renovo, la cotizacion vencio)
+    // y cuando se cotizo (un pago anterior no la acredita).
+    plusProratePeriodEnd: timestamp('plus_prorate_period_end', {
+      withTimezone: true,
+      mode: 'date',
+    }),
+    plusProrateQuotedAt: timestamp('plus_prorate_quoted_at', { withTimezone: true, mode: 'date' }),
+
     canceledAt: timestamp('canceled_at', { withTimezone: true, mode: 'date' }),
     cancellationReason: text('cancellation_reason'),
 
@@ -80,5 +108,8 @@ export const tenantSubscriptions = pgTable(
     statusIdx: index('idx_tenant_subs_status').on(table.status),
     periodEndIdx: index('idx_tenant_subs_period_end').on(table.currentPeriodEnd),
     dunningIdx: index('idx_tenant_subs_dunning').on(table.dunningStartedAt),
+    plusAccessUntilIdx: index('idx_tenant_subs_plus_access_until')
+      .on(table.plusAccessUntil)
+      .where(sql`${table.plusAccessUntil} IS NOT NULL`),
   }),
 )

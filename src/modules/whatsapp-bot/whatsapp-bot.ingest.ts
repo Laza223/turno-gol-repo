@@ -3,7 +3,7 @@ import { getWorkerDb, withTenantContext } from '@/shared/db/client'
 import { whatsappChats, whatsappConnections, whatsappMessages } from '@/shared/db/schema'
 import type { NormalizedWhatsappEvent } from '@/lib/kapso/events.schema'
 import { isFeatureEnabled } from '@/shared/feature-flags'
-import { BOT_FEATURE_FLAG } from './whatsapp-bot.connection'
+import { BOT_FEATURE_FLAG, isBotTenantOpen } from './whatsapp-bot.connection'
 
 /**
  * Ingesta de eventos de WhatsApp: guarda el mensaje y decide si hay que
@@ -35,6 +35,7 @@ export type IngestResult = {
  */
 async function connectionsByPhoneNumberId(
   ids: string[],
+  now: Date,
 ): Promise<Map<string, { tenantId: string; live: boolean }>> {
   if (ids.length === 0) return new Map()
   const rows = await getWorkerDb()
@@ -57,7 +58,8 @@ async function connectionsByPhoneNumberId(
               live:
                 r.enabled &&
                 r.status === 'connected' &&
-                (await isFeatureEnabled(BOT_FEATURE_FLAG, r.tenantId)),
+                (await isFeatureEnabled(BOT_FEATURE_FLAG, r.tenantId)) &&
+                (await isBotTenantOpen(r.tenantId, now)),
             },
           ] as const,
       ),
@@ -72,9 +74,10 @@ export async function ingestWhatsappEvents(
   const relevant = events.filter(
     (e): e is Exclude<NormalizedWhatsappEvent, { kind: 'ignored' }> => e.kind !== 'ignored',
   )
-  const connections = await connectionsByPhoneNumberId([
-    ...new Set(relevant.map((e) => e.phoneNumberId)),
-  ])
+  const connections = await connectionsByPhoneNumberId(
+    [...new Set(relevant.map((e) => e.phoneNumberId))],
+    now,
+  )
 
   const toProcess = new Map<string, { tenantId: string; chatId: string }>()
   let unknownNumbers = 0

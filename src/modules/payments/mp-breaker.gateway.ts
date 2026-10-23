@@ -58,5 +58,7 @@ export function withCircuitBreaker(
       breaker.execute(key, () => inner.updatePreapprovalAmount(...args)),
     createSaasUpgradePreference: (...args) =>
       breaker.execute(key, () => inner.createSaasUpgradePreference(...args)),
+    createSaasPlusPreference: (...args) =>
+      breaker.execute(key, () => inner.createSaasPlusPreference(...args)),
   }
 }

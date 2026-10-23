@@ -6,6 +6,7 @@ import { ALL_QUEUES } from '@/shared/jobs/dlq'
 import type { QueueDepthEntry } from '@/shared/jobs/queue-stats'
 import { logger } from '@/shared/lib/logger'
 import { withTimeout } from '@/shared/utils/async'
+import { PLUS_LIST_PER_COURT_CENTS } from '@/modules/billing/pricing'
 import { WIZARD_STEPS } from '@/modules/onboarding/onboarding.steps'
 
 /**
@@ -195,7 +196,12 @@ async function getOnboardingFunnel(db: Db): Promise<OnboardingFunnelData> {
  * (misma fórmula, para una suscripción) vive en `@/modules/billing/pricing`.
  */
 async function getMrrCents(db: Db): Promise<number> {
-  const monthlyList = sql`(${plans.priceFirstCourtCents} + (${tenantSubscriptions.billedCourts} - 1) * ${plans.priceExtraCourtCents})`
+  // Plan + Plus facturado (`plus_enabled`: precio especial o, sin él, la lista),
+  // igual que `monthlyEquivalentCents` de tenants.service: el descuento anual
+  // va sobre la SUMA. La lista entra como literal (`sql.raw` de una constante
+  // entera nuestra), no como parámetro: ver el comentario del `.where` abajo.
+  const plusList = sql.raw(String(Math.trunc(PLUS_LIST_PER_COURT_CENTS)))
+  const monthlyList = sql`(${plans.priceFirstCourtCents} + (${tenantSubscriptions.billedCourts} - 1) * ${plans.priceExtraCourtCents} + case when ${tenantSubscriptions.plusEnabled} then ${tenantSubscriptions.billedCourts} * coalesce(${tenantSubscriptions.plusPricePerCourtCents}, ${plusList}::int) else 0 end)`
   const rows = await db
     .select({
       // El ciclo anual aporta su equivalente mensual CON descuento

@@ -62,13 +62,16 @@ export async function startWhatsappConnectAction(): Promise<ActionResult> {
 export async function checkWhatsappConnectionAction(): Promise<ActionResult> {
   const auth = await requireAdminStaffAction()
   if (!auth.ok) return { success: false, error: auth.error }
-  const { tenant } = auth
+  const { tenant, user } = auth
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
   if ((await getWhatsappPlusState(tenant.id)) === null) return { success: false, error: NO_PLUS }
 
-  const result = await findAndRegisterWhatsappConnection({ id: tenant.id, name: tenant.name })
+  const result = await findAndRegisterWhatsappConnection(
+    { id: tenant.id, name: tenant.name },
+    user.staffUserId,
+  )
   if (!result.ok) return { success: false, error: CONNECT_ERROR_MESSAGE[result.error] }
   redirect('/settings/whatsapp?conectado=1')
 }

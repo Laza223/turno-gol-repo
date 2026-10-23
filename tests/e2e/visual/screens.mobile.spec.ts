@@ -17,7 +17,6 @@ import {
   PLAYER_STORAGE_STATE,
 } from './_visual-test'
 import { tomorrowDateIsoArt } from '../_helpers/booking-seed'
-import { visibleGridView } from '../_helpers/grid'
 import {
   FROZEN_NOW,
   VISUAL_DATE,
@@ -83,7 +82,7 @@ test.describe('visual mobile — admin', () => {
     await suppressPushBanner(page)
     await page.clock.setFixedTime(FROZEN_NOW)
     await page.goto(`/grilla?date=${VISUAL_DATE}`)
-    await expect(visibleGridView(page).getByText('Martina Sosa')).toBeVisible()
+    await expect(page.getByText('Martina Sosa')).toBeVisible()
     // El segmento Grilla|Agenda llega por portal después de hidratar (ver
     // `waitForHeaderSlot`): sin esperarlo, dos regeneraciones seguidas del
     // 2026-09-28 salieron una con el segmento y otra sin.

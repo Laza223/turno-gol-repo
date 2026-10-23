@@ -52,7 +52,7 @@ export default async function AnaliticasPage(props: {
   const searchParams = await props.searchParams
   // El Encargado rebota a /dashboard (default de requireAdminStaff), que ahora
   // también es suya: no hay loop.
-  const { tenant } = await requireAdminStaff()
+  const { tenant } = await requireAdminStaff({ allowReadOnly: true })
 
   const systemAdmin = await resolveSystemAdmin()
   const canSeeSystem = systemAdmin !== null

@@ -39,7 +39,7 @@ type Props = {
   onExpandMorning: () => void
 }
 
-/** "Cancha 3" → "C3" para la columna angosta de la tablet; otro nombre, igual. */
+/** "Cancha 3" → "C3" para la columna angosta del teléfono; otro nombre, igual. */
 function shortCourtName(name: string): string {
   return name.replace(/^cancha\s*(?=\d)/i, 'C')
 }
@@ -86,7 +86,7 @@ export function GridScroller({
   onGridKeyDown,
   onExpandMorning,
 }: Props) {
-  // Canchas que no entran (tablet con muchas canchas, o escritorio angosto): un
+  // Canchas que no entran (teléfono con más de 6, o un escritorio angosto): un
   // degradé + pastilla "N canchas →" en el borde derecho, MIENTRAS falte
   // scrollear. Se mide el scroll real (evento + ResizeObserver) — un umbral
   // por cantidad de canchas mentía apenas la ventana cambiaba de ancho.
@@ -131,7 +131,7 @@ export function GridScroller({
       >
         <div
           // Las variables son el único lugar donde vive el ancho de la matriz: el
-          // tablet usa 48 px por cancha (44 tocables) y el escritorio 4.75rem
+          // teléfono usa 48 px por cancha (44 tocables) y el escritorio 4.75rem
           // mínimo — la fila `1fr` reparte lo que sobra entre las canchas.
           className="grid relative h-full [--tg-col:3rem] [--tg-hours:2.75rem] lg:[--tg-col:4.75rem] lg:[--tg-hours:3.5rem]"
           style={{
@@ -160,7 +160,7 @@ export function GridScroller({
                 style={{ gridColumn: ci + 2, gridRow: 1 }}
                 className="sticky top-0 z-20 flex min-w-0 snap-start scroll-ml-11 flex-col items-center justify-center gap-0 border-b border-border bg-card/95 px-1 leading-tight backdrop-blur-sm lg:scroll-ml-14"
               >
-                {/* Tablet: "Cancha 3" no entra en 48px y se truncaba a "Canc…",
+                {/* Teléfono: "Cancha 3" no entra en 48px y se truncaba a "Canc…",
                     justo sin el número — ahí va "C3" con el dato corto debajo.
                     Desde `lg` entra todo en una sola línea: "Cancha 3 · F5". */}
                 <span className="max-w-full truncate text-xs font-bold text-foreground lg:hidden">
@@ -205,7 +205,7 @@ export function GridScroller({
                     className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-destructive"
                   />
                 )}
-                {/* Sólo la hora en la tablet: ":00" es ruido en una columna de 44 px. */}
+                {/* Sólo la hora en el teléfono: ":00" es ruido en una columna de 44 px. */}
                 <span className="lg:hidden">{slotTime.slice(0, 2)}</span>
                 <span className="hidden lg:inline">{slotTime}</span>
               </div>

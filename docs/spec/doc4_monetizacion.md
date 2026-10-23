@@ -133,9 +133,9 @@ facturadas. Esta tabla es ilustrativa, no es la fuente — la fuente es
               │            │            │
               ▼            ▼            │
        ┌──────────┐  ┌──────────┐      │
-       │  ACTIVE  │  │ BLOCKED  │      │
-       └────┬─────┘  │(sin acc. │      │
-            │        │total 60d)│      │
+       │  ACTIVE  │  │SUSPENDED │      │
+       └────┬─────┘  │(solo lect│      │
+            │        │14d→BLOCK)│      │
      [Cobro falla]   └────┬─────┘      │
             │              │            │
             ▼         [Paga dentro     │
@@ -191,6 +191,17 @@ facturadas. Esta tabla es ilustrativa, no es la fuente — la fuente es
 > crons de churn y alinear con la minimización de datos — **implementación de código PENDIENTE**
 > (`lifecycle.service.ts` sigue en 90; `BLOCKED_TO_CHURNED_DAYS` no fue tocado).
 
+> [!NOTE]
+> **Prueba vencida → SUSPENDED (solo lectura) 14 días → BLOCKED** (decisión 2026-10-22,
+> [`docs/decisions/2026-10-22-solo-lectura-al-vencer-la-prueba.md`](../decisions/2026-10-22-solo-lectura-al-vencer-la-prueba.md)).
+> Hasta esa fecha la prueba vencida pasaba directo a BLOCKED. Ahora `runExpireTrials`
+> (`src/shared/jobs/workers/expire-trials.worker.ts`) la deja en `suspended` el día que vence
+> `trial_ends_at` (3 días después si ya tocó "Activar", `SUBSCRIBED_TRIAL_GRACE_DAYS`) y la pasa a
+> `blocked` `TRIAL_READ_ONLY_DAYS = 14` días más tarde. Es el mismo `suspended` de la mora, con el
+> mismo comportamiento de la tabla de abajo; se distingue por `tenant_subscriptions.dunning_started_at`
+> vacío, y cada uno lo bloquea su propio barrido. Dueño y encargado entran a mirar; las reservas
+> online se cortan (`isPublicPortalOpen`). La salida es "Activar plan" en `/reactivar` → ACTIVE.
+
 ### Estados y comportamiento del sistema
 
 | Estado | Acceso admin | Acceso jugador | Cobro | Notificaciones | Color admin interno |
@@ -222,7 +233,7 @@ facturadas. Esta tabla es ilustrativa, no es la fuente — la fuente es
 | Duración del trial | 30 días | No (fijo v1) |
 | Acceso durante trial | Completo (todas las features del plan Full) | No |
 | Trial extendido | No existe | — |
-| Datos post-trial | Conservados 60 días en modo solo lectura | No |
+| Datos post-trial | 14 días en solo lectura (`suspended`), después `blocked` (decisión 2026-10-22) | No |
 
 ### Cronograma de Notificaciones (Trial) — ÚNICO Y DEFINITIVO
 
@@ -236,7 +247,7 @@ facturadas. Esta tabla es ilustrativa, no es la fuente — la fuente es
 | 25 | 📩 Email | Automático | "Antes de que venza tu prueba: ¿qué te faltó?" (feedback + retención) |
 | 28 | 📩 Email | **Humano** | Email personalizado del equipo (high-touch, crítico para conversión) |
 | 30 | 📩 Email | Automático | "Último día. Suscribite para no perder acceso." |
-| 31 | 📩 Email | Automático | "Tu prueba venció. Tus datos están seguros 60 días." + estado → BLOCKED |
+| 31 | 📩 Email | Automático | "Tu prueba venció." + estado → SUSPENDED (solo lectura; BLOCKED 14 días después, sin mail) |
 | 37 | 📩 Email | Automático | "Te perdimos. Contanos qué pasó." (win-back) |
 
 > [!WARNING]

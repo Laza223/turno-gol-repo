@@ -14,6 +14,7 @@ import {
   MarketplaceVisibilityToggle,
   type UpdateMarketplaceVisibilityAction,
 } from './marketplace-visibility-toggle'
+import { PlusToggle, type SetTenantPlusAction } from './plus-toggle'
 import { ReferralLinkPanel, type GenerateReferralLinkAction } from './referral-link-panel'
 import { AssignReferrerPanel, type AssignReferrerAction } from './assign-referrer-panel'
 
@@ -45,6 +46,8 @@ export function ResumenTab({
   detail,
   impersonateAction,
   updateMarketplaceVisibilityAction,
+  plusEnabled,
+  setTenantPlusAction,
   generateReferralLinkAction,
   assignReferrerAction,
   nowMs,
@@ -52,6 +55,8 @@ export function ResumenTab({
   detail: TenantDetail
   impersonateAction: StartImpersonationAction
   updateMarketplaceVisibilityAction: UpdateMarketplaceVisibilityAction
+  plusEnabled: boolean
+  setTenantPlusAction: SetTenantPlusAction
   generateReferralLinkAction: GenerateReferralLinkAction
   assignReferrerAction: AssignReferrerAction
   nowMs: number
@@ -87,6 +92,13 @@ export function ResumenTab({
               tenantId={tenant.id}
               initialVisible={tenant.marketplaceVisible}
               action={updateMarketplaceVisibilityAction}
+            />
+          </Dt>
+          <Dt label="TurnoGol Plus">
+            <PlusToggle
+              tenantId={tenant.id}
+              initialEnabled={plusEnabled}
+              action={setTenantPlusAction}
             />
           </Dt>
           <Dt label="Link de referidos">

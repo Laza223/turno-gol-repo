@@ -49,7 +49,7 @@ const CONTEXTUAL_ROUTES: Record<string, string> = {
   '/settings/equipo': 'tarjeta de la portada /settings (SettingsIndex)',
   '/settings/invitar': 'tarjeta de la portada /settings (SettingsIndex)',
   '/settings/whatsapp':
-    'tarjeta de la portada /settings (SettingsIndex), solo si el complejo tiene el asistente',
+    'tarjeta de la portada /settings (SettingsIndex), solo si el complejo tiene TurnoGol Plus',
   '/settings/datos': 'tarjeta de la portada /settings (SettingsIndex), grupo "Tus datos"',
   '/abonados/nuevo': 'CTA "Nuevo turno fijo" en /abonados',
   '/abonados/importar':

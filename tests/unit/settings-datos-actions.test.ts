@@ -96,6 +96,19 @@ describe('export de datos — autorización', () => {
     expect(withTenantContext).not.toHaveBeenCalled()
   })
 
+  // Decisión 2026-10-22: en solo lectura el dueño puede llevarse sus datos. El
+  // guard rechaza `suspended` por default; exportar lo pide explícito.
+  it('las tres piden el guard con allowReadOnly', async () => {
+    await exportBookingsAction(null)
+    await exportAbonadosAction()
+    await exportClientsAction()
+    expect(vi.mocked(requireAdminStaffAction).mock.calls).toEqual([
+      [{ allowReadOnly: true }],
+      [{ allowReadOnly: true }],
+      [{ allowReadOnly: true }],
+    ])
+  })
+
   it('respeta el rate-limit del complejo', async () => {
     vi.mocked(adminRateLimited).mockResolvedValue('Demasiadas operaciones.')
     expect(await exportBookingsAction(null)).toEqual({

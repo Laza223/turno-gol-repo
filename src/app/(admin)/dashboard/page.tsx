@@ -75,7 +75,7 @@ export default async function DashboardPage() {
   // rebota al manager A `/dashboard`, que es ESTA página, así que sería un loop
   // de redirects. El guard operator deja pasar a los dos y devuelve el rol ya
   // leído, que es lo que hace falta para decidir qué bloques ve cada uno.
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect('/login')
   const { tenant, role } = auth
 

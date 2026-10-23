@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { redirect } from 'next/navigation'
 import { ChevronDown, CreditCard } from 'lucide-react'
 import { requireAdminStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
@@ -13,6 +14,7 @@ import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { listCourts } from '@/modules/courts/court.service'
 import { buildPriceBreakdown } from '@/modules/billing/pricing'
 import { CANCELABLE } from '@/modules/billing/cancelable-statuses'
+import { READ_ONLY_TENANT_STATUSES } from '@/modules/tenants/tenant.lifecycle'
 import { formatArs } from '@/lib/format'
 import { SUPPORT_EMAIL } from '@/shared/constants'
 import { CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -87,7 +89,12 @@ function BillingDisclosure({
  * `/settings/facturacion` porque la usan los mails de cobro ya mandados.
  */
 export default async function FacturacionPage() {
-  const { tenant } = await requireAdminStaff()
+  const { tenant } = await requireAdminStaff({ allowReadOnly: true })
+  // En solo lectura esta pantalla no tiene nada que ofrecer (la cuota no se
+  // activa ni se cambia desde acá en `suspended`): la salida es /reactivar. Es
+  // también a donde llega el botón del mail "Tu prueba gratuita terminó",
+  // que apunta a esta URL.
+  if (READ_ONLY_TENANT_STATUSES.has(tenant.status)) redirect('/reactivar')
 
   let sub: Awaited<ReturnType<typeof getSubscriptionState>> | null = null
 
@@ -296,14 +303,14 @@ export default async function FacturacionPage() {
             {sub.status === 'trialing' ? (
               <section className="card-premium rounded-xl p-6">
                 <h2 className="text-base font-semibold text-foreground">Dar de baja TurnoGol</h2>
-                {/* Sin cuota activada: `expire-trials` pasa el complejo a `blocked`
-                    el día que vence la prueba, sin cobrar nada. Con la cuota ya
+                {/* Sin cuota activada: `expire-trials` pasa el complejo a solo
+                    lectura el día que vence la prueba, sin cobrar nada. Con la cuota ya
                     activada hay un preapproval que MercadoPago cobra ese día, y en
                     `trialing` no se puede cancelar desde la app (`CANCELABLE`). */}
                 <p className="mt-1 text-sm text-muted-foreground">
                   {liveMpSubscriptionId
                     ? `Para darte de baja antes del primer cobro, escribinos a ${SUPPORT_EMAIL}.`
-                    : `Estás en la prueba gratis hasta el ${formatDate(tenant.trialEndsAt)}. Si no activás la cuota, no se te cobra nada: ese día se cortan el panel y la reserva por internet.`}
+                    : `Estás en la prueba gratis hasta el ${formatDate(tenant.trialEndsAt)}. Si no activás la cuota, no se te cobra nada: ese día el panel queda en solo lectura y se corta la reserva por internet.`}
                 </p>
               </section>
             ) : (

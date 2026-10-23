@@ -1,5 +1,7 @@
 # Decisión: la grilla en el celular es una lista por hora
 
+> **REVERTIDA 2026-10-22** por pedido del dueño tras feedback de un cliente (el Zurdo): no se distinguían bien las horas con libres. Vuelve la matriz en el celular. No reproponer la lista por hora sin resolver eso. Lo que sigue es el registro de lo que se probó.
+
 **Fecha:** 2026-10-22 · **Decide:** Lazar (founder), entre tres variantes dibujadas a 375 px · **Insumo:** [`10-aprendizajes.md`](../gtm/ejecucion/10-aprendizajes.md) (2026-09-16 y 2026-09-23) y PRODUCT.md (el dueño mira la noche desde el teléfono y a veces carga un turno).
 
 ## Problema

@@ -27,6 +27,12 @@ export type MarkRefundSettledResult =
  *
  * Lo ejecuta cualquiera del staff que opera la caja (admin o encargado), mismo
  * criterio que cobrar una deuda.
+ *
+ * Es la única escritura de caja que anda en solo lectura (`suspended`,
+ * decisión del dueño 2026-10-22): la plata es del jugador que canceló, y el
+ * complejo tiene que poder registrar que se la devolvió aunque no haya pagado
+ * el plan. Por eso pide `allowReadOnly`; ventas, cobros y movimientos siguen
+ * rechazados.
  */
 export async function markRefundSettledAction(
   refundPaymentId: string,
@@ -35,7 +41,7 @@ export async function markRefundSettledAction(
   const parsed = settleSchema.safeParse({ refundPaymentId, method })
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
 
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
 

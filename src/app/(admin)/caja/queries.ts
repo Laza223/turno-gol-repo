@@ -15,7 +15,7 @@ import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
  * grupo— no tenga que pedir un `getStaffRole` propio sobre la misma fila.
  */
 export async function requireCajaContext() {
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect('/login')
   const { user, tenant, role } = auth
 

@@ -1,4 +1,4 @@
-import { CONTACT_WHATSAPP_DISPLAY, contactWhatsappUrl } from '@/lib/contact'
+import { contactWhatsappUrl } from '@/lib/contact'
 
 /** Constantes globales del dominio. */
 
@@ -94,10 +94,22 @@ export const TRIAL_ENDING_WARNING_DAYS = [1, 7] as const
 export const SUBSCRIBED_TRIAL_GRACE_DAYS = 3
 
 /**
+ * Días que un complejo con la prueba vencida pasa en solo lectura (`suspended`)
+ * antes de que `expire-trials` lo pase a `blocked`. Mismo escalón que la mora
+ * (`suspended → blocked` a los 14 días), decisión del dueño 2026-10-22
+ * (`docs/decisions/2026-10-22-solo-lectura-al-vencer-la-prueba.md`).
+ *
+ * Se cuentan desde que entra en solo lectura: `trial_ends_at`, más
+ * `SUBSCRIBED_TRIAL_GRACE_DAYS` si ya tocó "Activar". La fecha la calcula
+ * `trialReadOnlyEndsAt` (tenant.lifecycle.ts), y el worker repite la misma
+ * cuenta en SQL.
+ */
+export const TRIAL_READ_ONLY_DAYS = 14
+
+/**
  * Canales oficiales de soporte de TurnoGol (B9).
  */
 export const SUPPORT_EMAIL = 'turnogol@gmail.com'
-export const SUPPORT_WHATSAPP_NUMBER = CONTACT_WHATSAPP_DISPLAY
 export const SUPPORT_WHATSAPP_URL = contactWhatsappUrl()
 
 /**

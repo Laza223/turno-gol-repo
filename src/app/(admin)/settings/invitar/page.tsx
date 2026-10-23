@@ -10,7 +10,7 @@ import { generateReferralLinkAction } from './actions'
 
 /** Link de referidos y lista de invitados (solo dueño: el layout ya exige admin). */
 export default async function InvitarSettingsPage() {
-  const { tenant } = await requireAdminStaff()
+  const { tenant } = await requireAdminStaff({ allowReadOnly: true })
   const [code, referrals, months] = await Promise.all([
     getTenantReferralCode(tenant.id),
     listMyReferrals(tenant.id),

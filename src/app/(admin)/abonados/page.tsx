@@ -41,7 +41,7 @@ export default async function AbonadosPage(props: {
   searchParams: Promise<{ status?: string; created?: string; pagina?: string }>
 }) {
   const searchParams = await props.searchParams
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect('/login')
   const { tenant } = auth
 

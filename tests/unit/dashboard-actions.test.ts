@@ -26,6 +26,11 @@ import { getStaffRole } from '@/modules/staff/staff.service'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { withTenantContext } from '@/shared/db/client'
 
+// Decisión 2026-10-22: `suspended` es solo lectura; la escritura sigue
+// rebotando, con su propio mensaje.
+const READ_ONLY_ERROR =
+  'El complejo está en solo lectura: podés ver todo, pero no cargar ni cambiar nada hasta que se active el plan.'
+
 const staffUser = { type: 'staff', staffUserId: 'staff-1' }
 
 function tenant(status = 'active') {
@@ -81,7 +86,7 @@ describe('markPublicLinkSharedAction', () => {
 
     const res = await markPublicLinkSharedAction()
 
-    expect(res).toEqual({ success: false, error: 'El complejo está bloqueado por falta de pago.' })
+    expect(res).toEqual({ success: false, error: READ_ONLY_ERROR })
     expect(vi.mocked(withTenantContext)).not.toHaveBeenCalled()
   })
 
@@ -142,7 +147,7 @@ describe('markChecklistDismissedAction', () => {
 
     const res = await markChecklistDismissedAction()
 
-    expect(res).toEqual({ success: false, error: 'El complejo está bloqueado por falta de pago.' })
+    expect(res).toEqual({ success: false, error: READ_ONLY_ERROR })
     expect(vi.mocked(withTenantContext)).not.toHaveBeenCalled()
   })
 })
@@ -182,7 +187,7 @@ describe('markReferralBannerDismissedAction', () => {
 
     const res = await markReferralBannerDismissedAction()
 
-    expect(res).toEqual({ success: false, error: 'El complejo está bloqueado por falta de pago.' })
+    expect(res).toEqual({ success: false, error: READ_ONLY_ERROR })
     expect(vi.mocked(withTenantContext)).not.toHaveBeenCalled()
   })
 })

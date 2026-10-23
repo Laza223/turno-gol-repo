@@ -103,6 +103,32 @@ describe('HorariosForms — feedback (#19)', () => {
     )
   })
 
+  // El zurdo abrió el domingo, vio "25 horarios sin precio" y lo leyó como un
+  // error aunque el horario ya estaba guardado: el aviso nombra el día y dice
+  // que falta un paso, no que algo falló.
+  it('nombra los días que quedaron sin precio y lleva a Canchas', () => {
+    formState.mockReturnValue({
+      success: true,
+      pricingPending: { courts: 5, days: ['sat', 'sun'] },
+    })
+    render(<HorariosForm hours={{}} action={noopAction} />)
+    fireEvent.submit(screen.getByRole('button', { name: 'Guardar horarios' }).closest('form')!)
+    const alert = screen.getByRole('alert')
+    expect(alert.textContent).toContain('Falta un paso')
+    expect(alert.textContent).toContain('del sábado y del domingo en 5 canchas')
+    expect(screen.getByRole('link', { name: 'Cargar precios en Canchas' })).toHaveAttribute(
+      'href',
+      '/canchas',
+    )
+  })
+
+  it('con una sola cancha pendiente el aviso va en singular', () => {
+    formState.mockReturnValue({ success: true, pricingPending: { courts: 1, days: ['sun'] } })
+    render(<HorariosForm hours={{}} action={noopAction} />)
+    fireEvent.submit(screen.getByRole('button', { name: 'Guardar horarios' }).closest('form')!)
+    expect(screen.getByRole('alert').textContent).toContain('del domingo en 1 cancha.')
+  })
+
   it('sin huecos que completar, el aviso de guardado no menciona precios', () => {
     formState.mockReturnValue({ success: true })
     render(<HorariosForm hours={{}} action={noopAction} />)

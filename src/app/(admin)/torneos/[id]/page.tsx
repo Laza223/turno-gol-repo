@@ -39,7 +39,7 @@ export default async function TorneoDetailPage(props: { params: Promise<{ id: st
 
   // El rol define si se puede publicar; el panel igual muestra el estado. Lo
   // devuelve el guard, sin una segunda lectura de tenant_staff_members.
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect('/login')
   const { tenant, role } = auth
 

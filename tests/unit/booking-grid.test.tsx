@@ -191,9 +191,7 @@ function renderGrid(opts?: {
 describe('BookingGrid — layout CSS Grid', () => {
   it('renderiza un header por cancha (1 y 8 canchas)', () => {
     renderGrid({ courts: [court('c1', 'Única')] })
-    // Acotado a la matriz: la lista del teléfono también nombra la cancha (en
-    // happy-dom no hay CSS, así que las dos vistas están "visibles").
-    expect(within(screen.getByTestId('booking-grid')).getByText('Única')).toBeTruthy()
+    expect(screen.getByText('Única')).toBeTruthy()
     cleanup()
 
     const eight = Array.from({ length: 8 }, (_, i) => court(`c${i}`, `Cancha ${i + 1}`))
@@ -627,99 +625,5 @@ describe('BookingGrid — panel de acciones del turno', () => {
 
     fireEvent.click(within(panel).getByRole('button', { name: /Cantina/ }))
     expect(await screen.findByTestId('canteen-dialog')).toBeTruthy()
-  })
-})
-
-/**
- * La lista por hora del teléfono (decisión del dueño 2026-10-22, variante A).
- * Está montada al lado de la matriz y el CSS elige cuál se ve, así que acá se
- * la consulta siempre adentro de su región.
- */
-describe('BookingGrid — lista por hora del teléfono', () => {
-  const list = () => within(screen.getByTestId('booking-hour-list'))
-
-  it('omite las horas pasadas vacías, dice "No cobrado" y ofrece solo las libres por empezar', () => {
-    // Hoy 2026-06-10 a las 12:00: 08:00–11:00 ya empezaron.
-    renderGrid({
-      date: '2026-06-10',
-      bookings: [
-        booking({
-          date: '2026-06-10',
-          timeStart: '10:00',
-          timeEnd: '11:00',
-          // Sin `endsAtMs` la grilla solo da por terminado lo que la DB ya cerró.
-          status: 'completed',
-          pending: 2000000,
-          totalPaid: 0,
-        }),
-      ],
-    })
-    expect(list().getByText('08:00–10:00')).toBeTruthy()
-    expect(list().queryByRole('heading', { name: /^09:00/ })).toBeNull()
-    expect(list().queryByRole('heading', { name: /^11:00/ })).toBeNull()
-
-    const row = list().getByRole('button', {
-      name: /^Cancha 1, de 10:00 a 11:00: Tomás García, No cobrado, falta cobrar/,
-    })
-    expect(within(row).getByText('No cobrado')).toBeTruthy()
-
-    expect(list().queryByRole('button', { name: /Reservar turno a las 10:00/ })).toBeNull()
-    expect(
-      list().getByRole('button', { name: 'Reservar turno a las 13:00 en Cancha 1' }),
-    ).toBeTruthy()
-  })
-
-  it('marca la hora de ahora', () => {
-    renderGrid({
-      date: '2026-06-10',
-      bookings: [booking({ date: '2026-06-10', timeStart: '12:00', timeEnd: '13:00' })],
-    })
-    expect(list().getByRole('heading', { name: /^12:00\s*Ahora$/ })).toBeTruthy()
-    expect(list().queryByText('Ahora', { selector: 'h3 > span' })).toBeTruthy()
-  })
-
-  it('tocar una libre abre el alta con la hora y la cancha', () => {
-    renderGrid()
-    fireEvent.click(list().getByRole('button', { name: 'Reservar turno a las 16:00 en Cancha 2' }))
-    const dialog = screen.getByTestId('booking-form-modal')
-    expect(dialog.getAttribute('data-date')).toBe('2026-06-12')
-    expect(dialog.getAttribute('data-time')).toBe('16:00')
-    expect(dialog.textContent).toContain('Cancha 2')
-  })
-
-  it('tocar un turno abre el mismo modal de cobro que la matriz', async () => {
-    renderGrid({ bookings: [booking({ pending: 2000000, totalPaid: 0 })] })
-    const row = list().getByRole('button', { name: /^Cancha 1, de 16:00 a 17:00/ })
-    expect(row.getAttribute('aria-expanded')).toBe('false')
-    fireEvent.click(row)
-    expect(await screen.findByRole('dialog')).toBeTruthy()
-    expect(row.getAttribute('aria-expanded')).toBe('true')
-  })
-
-  it('un evento de 2 horas sigue en la hora siguiente, y una hora sin libres dice "Completo"', async () => {
-    renderGrid({
-      courts: [court('c1', 'Cancha 1')],
-      bookings: [booking({ timeStart: '16:00', timeEnd: '18:00' })],
-    })
-    expect(list().getByRole('button', { name: /^Cancha 1, de 16:00 a 18:00/ })).toBeTruthy()
-    expect(list().getAllByText('Completo')).toHaveLength(2)
-
-    const continues = list().getByRole('button', {
-      name: 'Cancha 1: Tomás García, sigue hasta las 18:00',
-    })
-    fireEvent.click(continues)
-    expect(await screen.findByRole('dialog')).toBeTruthy()
-  })
-
-  it('una cancha pausada no se ofrece como libre, pero su turno se sigue viendo', () => {
-    renderGrid({
-      courts: [court('c1', 'Cancha 1'), court('c2', 'Cancha 2', 'offline')],
-      bookings: [booking({ courtId: 'c2' })],
-    })
-    expect(list().getByRole('button', { name: /^Cancha 2, de 16:00 a 17:00/ })).toBeTruthy()
-    expect(list().queryByRole('button', { name: /Reservar turno a las .* en Cancha 2/ })).toBeNull()
-    expect(
-      list().getByRole('button', { name: 'Reservar turno a las 16:00 en Cancha 1' }),
-    ).toBeTruthy()
   })
 })

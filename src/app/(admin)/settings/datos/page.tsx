@@ -9,7 +9,7 @@ import { exportAbonadosAction, exportBookingsAction, exportClientsAction } from 
  * encargado, y cada acción vuelve a chequearlo (spec 2026-10-22 §6.1).
  */
 export default async function DatosPage() {
-  const { tenant } = await requireAdminStaff()
+  const { tenant } = await requireAdminStaff({ allowReadOnly: true })
 
   return (
     <div className="space-y-6">

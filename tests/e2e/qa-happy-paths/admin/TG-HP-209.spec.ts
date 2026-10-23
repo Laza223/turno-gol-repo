@@ -7,7 +7,7 @@ import {
   E2E_COURT_ID,
 } from '../../_helpers/booking-seed'
 import { suppressPushPrompt } from '../_qa/session'
-import { openCreateModal, visibleGridView } from '../../_helpers/grid'
+import { openCreateModal } from '../../_helpers/grid'
 
 /**
  * TG-HP-209 — Grilla realtime: celda ocupada se actualiza sin reload.
@@ -84,9 +84,7 @@ test.describe('TG-HP-209 — Grilla realtime sin reload', () => {
       // es la fuente autoritativa. Lo que NO se tolera es que el booking no exista.
       let realtimeArrived = true
       try {
-        await expect(visibleGridView(pageB).getByText(/E2E QA-209 Realtime/i)).toBeVisible({
-          timeout: 15_000,
-        })
+        await expect(pageB.getByText(/E2E QA-209 Realtime/i)).toBeVisible({ timeout: 15_000 })
         await expect(pageB.getByText(/Nueva reserva: 21:00/i)).toBeVisible({ timeout: 15_000 })
       } catch {
         realtimeArrived = false

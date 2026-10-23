@@ -19,7 +19,7 @@ import { FixturePanel } from './FixturePanel'
 export default async function TorneoFixturePage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params
 
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect('/login')
   const { tenant } = auth
 

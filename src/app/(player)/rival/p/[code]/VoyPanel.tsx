@@ -7,7 +7,7 @@ import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
 import type { ActionResult } from '@/shared/types/action-result'
 import type { RivalFormResult } from '../../actions'
 import { WelcomeCard } from '../../WelcomeCard'
-import { dropUrlParam } from './DropIntentParam'
+import { dropUrlParam } from './drop-url-param'
 
 /** Firmas de las Server Actions (por prop, no por import: ver convenciones-stack). */
 type JoinAction = (code: string) => Promise<ActionResult>

@@ -42,6 +42,8 @@ export const AbreElIngreso: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole('button', { name: 'Voy' }))
     const dialog = await screen.findByRole('dialog')
+    // Radix lo monta con un fade-in: un `toBeVisible` durante la animación lee opacidad 0.
+    await Promise.all(dialog.getAnimations({ subtree: true }).map((a) => a.finished))
     const modal = within(dialog)
     await expect(
       modal.getByRole('heading', { name: 'Entrá para sumarte al partido' }),

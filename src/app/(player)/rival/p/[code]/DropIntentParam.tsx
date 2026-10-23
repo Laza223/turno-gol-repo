@@ -1,14 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-
-/** Saca `param` de la URL sin navegar (idempotente). */
-export function dropUrlParam(param: string) {
-  const url = new URL(window.location.href)
-  if (!url.searchParams.has(param)) return
-  url.searchParams.delete(param)
-  window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`)
-}
+import { dropUrlParam } from './drop-url-param'
 
 /**
  * El intento de RIVAL se gasta al entrar, se sume o no: también vuelven del login con él el

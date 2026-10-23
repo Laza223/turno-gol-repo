@@ -164,6 +164,39 @@ describe('MercadoPagoGateway.updatePreapprovalAmount — no rompe la prueba grat
     expect(updateSpy).not.toHaveBeenCalled()
   })
 
+  it('checkout pending con start_date futuro (fin del trial): sigue ajustando el monto', async () => {
+    getSpy.mockResolvedValue({ ...trialPreapproval(), status: 'pending' })
+
+    await new MercadoPagoGateway('token', { plaintextToken: true }).updatePreapprovalAmount(
+      PREAPPROVAL_ID,
+      16_700_000,
+    )
+
+    expect(sentAutoRecurring()).toMatchObject({
+      transaction_amount: 167000,
+      start_date: START_DATE,
+    })
+  })
+
+  it('checkout pending con start_date pasado (nunca autorizado): no hace el PUT', async () => {
+    // Forma real del checkout de El Vagón: MP completa `start_date` con la
+    // fecha de creación, ya pasada; reenviarla daba 400 y frenaba prender Plus.
+    getSpy.mockResolvedValue({
+      ...trialPreapproval({ start_date: '2026-09-07T15:12:00.000-04:00' }),
+      status: 'pending',
+      date_created: '2026-09-07T15:12:00.000-04:00',
+    })
+
+    await expect(
+      new MercadoPagoGateway('token', { plaintextToken: true }).updatePreapprovalAmount(
+        PREAPPROVAL_ID,
+        22_500_000,
+        { reason: 'TurnoGol — 5 canchas + Plus (mensual)' },
+      ),
+    ).resolves.toBeUndefined()
+    expect(updateSpy).not.toHaveBeenCalled()
+  })
+
   it('sin start_date en MP no inventa uno (el preapproval ya cobraba al autorizar)', async () => {
     getSpy.mockResolvedValue(trialPreapproval({ start_date: undefined }))
 

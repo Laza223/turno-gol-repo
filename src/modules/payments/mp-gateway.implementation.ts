@@ -579,6 +579,13 @@ export class MercadoPagoGateway implements PaymentGateway {
       const startDate = typeof recurring?.start_date === 'string' ? recurring.start_date : null
       const endDate = typeof recurring?.end_date === 'string' ? recurring.end_date : null
 
+      // Checkout `pending` con `start_date` ya pasado (MP lo completa con la
+      // fecha de creación): reenviarla da 400 "cannot be a past date" (prod,
+      // 2026-10-23: prender Plus en El Vagón, checkout `pending` desde
+      // 2026-09-07). Nadie lo autorizó, así que no hay débito que ajustar: si
+      // el dueño activa, `subscribe()` arma uno nuevo con el monto del día.
+      if (current?.status === 'pending' && startDate && Date.parse(startDate) <= Date.now()) return
+
       await preapproval.update({
         id: preapprovalId,
         body: {

@@ -88,6 +88,9 @@ export interface PaymentGateway {
    * primer cobro al final de la prueba. La implementacion tiene que releer el
    * preapproval y reenviar el objeto completo. Ver
    * `mp-gateway.implementation.ts`.
+   *
+   * Un checkout `pending` con `start_date` ya pasado se deja como está, sin
+   * PUT: MP lo rechaza y no hay débito autorizado que ajustar.
    */
   updatePreapprovalAmount(
     preapprovalId: string,

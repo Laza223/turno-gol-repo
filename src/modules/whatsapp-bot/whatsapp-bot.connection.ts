@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { tenants, tenantSubscriptions, whatsappConnections } from '@/shared/db/schema'
-import { insertAuditLog } from '@/shared/db/audit'
-import { withTenantContext, type DbTx } from '@/shared/db/client'
+import { insertAuditLog, insertSystemAuditLog } from '@/shared/db/audit'
+import { withTenantContext, type Db, type DbTx } from '@/shared/db/client'
 import { isFeatureEnabled } from '@/shared/feature-flags'
 import { isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
 import { isUniqueViolation } from '@/shared/db/pg-errors'
@@ -13,6 +13,7 @@ import {
   findKapsoCustomer,
   findOrCreateKapsoCustomer,
   getKapsoPhoneNumber,
+  hasKapsoMessageWebhook,
   listKapsoPhoneNumbers,
 } from '@/lib/kapso/platform'
 
@@ -101,11 +102,34 @@ export async function setWhatsappBotEnabled(
 }
 
 export type WhatsappConnectError =
-  'kapso_no_disponible' | 'numero_de_otro_complejo' | 'conexion_incompleta'
+  'kapso_no_disponible' | 'numero_de_otro_complejo' | 'conexion_incompleta' | KapsoSetupError
+
+/** Lo que Kapso pone en `error_code` al volver de un setup link fallido, en nuestro código. */
+const KAPSO_SETUP_ERRORS = {
+  facebook_auth_failed: 'facebook_cancelado',
+  phone_verification_failed: 'numero_no_verificado',
+  waba_limit_reached: 'limite_de_cuentas',
+  token_exchange_failed: 'meta_fallo',
+  link_expired: 'link_vencido',
+  already_used: 'link_usado',
+} as const
+
+type KapsoSetupError = (typeof KAPSO_SETUP_ERRORS)[keyof typeof KAPSO_SETUP_ERRORS]
+
+/**
+ * El `error_code` de Kapso, traducido. Uno desconocido (o ninguno) es
+ * `conexion_incompleta`: el query string nunca llega tal cual a la pantalla.
+ */
+export function connectErrorFromKapso(code: string | undefined): WhatsappConnectError {
+  return code && Object.hasOwn(KAPSO_SETUP_ERRORS, code)
+    ? KAPSO_SETUP_ERRORS[code as keyof typeof KAPSO_SETUP_ERRORS]
+    : 'conexion_incompleta'
+}
 
 type Tenant = { id: string; name: string }
 
 const CALLBACK_PATH = '/api/whatsapp/connect/callback'
+const WEBHOOK_PATH = '/api/webhooks/whatsapp'
 
 /** Un fallo de Kapso (caído, timeout, sin configurar) es "no disponible"; lo demás es un bug. */
 function kapsoDown(
@@ -188,7 +212,7 @@ export async function registerWhatsappConnection(
     }
     await ensureKapsoMessageWebhook({
       phoneNumberId: number.phoneNumberId,
-      url: new URL('/api/webhooks/whatsapp', appUrl).toString(),
+      url: new URL(WEBHOOK_PATH, appUrl).toString(),
       secret,
     })
   } catch (err) {
@@ -259,4 +283,80 @@ export async function findAndRegisterWhatsappConnection(
   }
   if (!phoneNumberId) return { ok: false, error: 'conexion_incompleta' }
   return registerWhatsappConnection(tenant, phoneNumberId, actorId)
+}
+
+/** Caídas que se arreglan volviendo a conectar el número desde Ajustes. */
+export type WhatsappDisconnectCause = 'desconectado' | 'sin_acceso' | 'no_existe'
+
+type ConnectionRef = { tenantId: string; phoneNumberId: string }
+
+/**
+ * CAS sobre el estado de la conexión + su audit, en una transacción. Compara
+ * también el número: si el dueño reconectó otro en el medio, no se pisa.
+ */
+async function flipConnectionStatus(
+  db: Db,
+  conn: ConnectionRef,
+  from: 'connected' | 'disconnected',
+  audit: { action: string; metadata: Record<string, unknown> },
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const updated = await tx
+      .update(whatsappConnections)
+      .set({ status: from === 'connected' ? 'disconnected' : 'connected', updatedAt: new Date() })
+      .where(
+        and(
+          eq(whatsappConnections.tenantId, conn.tenantId),
+          eq(whatsappConnections.phoneNumberId, conn.phoneNumberId),
+          eq(whatsappConnections.status, from),
+        ),
+      )
+      .returning({ id: whatsappConnections.id })
+    if (updated.length === 0) return false
+    await insertSystemAuditLog(tx, {
+      tenantId: conn.tenantId,
+      action: audit.action,
+      resourceType: 'tenant',
+      resourceId: conn.tenantId,
+      metadata: { phoneNumberId: conn.phoneNumberId, ...audit.metadata },
+    })
+    return true
+  })
+}
+
+/**
+ * El monitor encontró el número caído: pasa a `disconnected`, que es lo que
+ * Ajustes le muestra al dueño (con "Volver a conectar") y lo que la ingesta y el
+ * turno ya tratan como apagado. `db` es el pool worker. Devuelve si cambió.
+ */
+export function markWhatsappDisconnected(
+  db: Db,
+  conn: ConnectionRef,
+  cause: WhatsappDisconnectCause,
+): Promise<boolean> {
+  return flipConnectionStatus(db, conn, 'connected', {
+    action: 'whatsapp.disconnected',
+    metadata: { cause },
+  })
+}
+
+/**
+ * Un número que el monitor había marcado caído volvió a dar sano (Meta lo
+ * reconectó): vuelve a `connected` sin que el dueño entre a Ajustes. Solo si
+ * nuestro webhook sigue suscrito: sin él, `connected` sería un bot mudo, y ahí
+ * conviene que el dueño reconecte (eso lo vuelve a suscribir). Puede tirar
+ * `KapsoPlatformError`.
+ */
+export async function restoreWhatsappConnection(db: Db, conn: ConnectionRef): Promise<boolean> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) return false
+  const subscribed = await hasKapsoMessageWebhook({
+    phoneNumberId: conn.phoneNumberId,
+    url: new URL(WEBHOOK_PATH, appUrl).toString(),
+  })
+  if (!subscribed) return false
+  return flipConnectionStatus(db, conn, 'disconnected', {
+    action: 'whatsapp.reconnected',
+    metadata: {},
+  })
 }

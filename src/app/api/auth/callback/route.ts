@@ -12,7 +12,7 @@ import {
 import { hasStaffOrAdminClaims, isPlayerAccount } from '@/modules/auth/account-kind'
 import { getOrCreatePlayer } from '@/modules/players/player.service'
 import { sanitizeNext } from '@/lib/safe-redirect'
-import { isBookingPath, parseVia, successVerifyPath } from '@/lib/auth-success'
+import { isBookingPath, isRivalPath, parseVia, successVerifyPath } from '@/lib/auth-success'
 import { logger } from '@/shared/lib/logger'
 import { track, withSpan } from '@/shared/observability'
 import { CURRENT_TERMS_VERSION } from '@/shared/terms'
@@ -107,11 +107,16 @@ async function provisionPlayerAndRedirect(
   const firstName = firstNameMeta || givenName || fullFirst || email.split('@')[0] || 'Jugador'
   const lastName = lastNameMeta ?? familyName ?? fullRest.join(' ')
 
+  const next = sanitizeNext(new URL(req.url).searchParams.get('next'))
+
   let player: Awaited<ReturnType<typeof getOrCreatePlayer>>
   try {
     player = await getOrCreatePlayer(email, firstName, lastName, {
       agreedToTerms: opts.agreedTerms,
       termsVersion: opts.termsVersion,
+      // La cuenta que NACE entrando desde un partido de RIVAL queda marcada; getOrCreatePlayer
+      // solo lo escribe en el alta, así que un `signup_source` ya escrito no se pisa.
+      ...(next.startsWith('/rival/') ? { signupSource: 'rival' } : {}),
     })
 
     if (meta.player_id !== player.id || meta.is_player !== true) {
@@ -135,7 +140,6 @@ async function provisionPlayerAndRedirect(
   }
 
   track.auth('player.login', { playerId: player.id })
-  const next = sanitizeNext(new URL(req.url).searchParams.get('next'))
 
   if (!player.hasAgreedTerms) {
     const url = new URL('/aceptar-terminos', req.url)
@@ -144,8 +148,8 @@ async function provisionPlayerAndRedirect(
   }
 
   // Una reserva en curso vuelve DIRECTO a confirmar: ya tocó "Continuar" una vez y /verify sería
-  // otra pantalla y otro toque. El resto de los destinos sigue por /verify.
-  if (isBookingPath(next)) return NextResponse.redirect(new URL(next, req.url))
+  // otra pantalla y otro toque. Igual el "Voy" de un partido de RIVAL. El resto sigue por /verify.
+  if (isBookingPath(next) || isRivalPath(next)) return NextResponse.redirect(new URL(next, req.url))
   return NextResponse.redirect(new URL(successVerifyPath(next, 'login'), req.url))
 }
 

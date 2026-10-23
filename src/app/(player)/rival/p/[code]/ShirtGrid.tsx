@@ -5,14 +5,23 @@ import { missingLabel } from '@/modules/rival/rival-display'
 /**
  * La grilla de camisetas y el contador. Confirmadas en esmeralda, vacías con trazo punteado.
  * "¡Estamos los N! Se juega." pulsa UNA vez (600 ms, `animate-slot-pulse`) y no se mueve con
- * `prefers-reduced-motion`. El contador va en Archivo tabular.
+ * `prefers-reduced-motion`. El contador va en Archivo tabular. Un partido jugado (`ended`) no lleva
+ * titular: "Faltan 9" o "Se juega" ya no son ciertos.
  */
-export function ShirtGrid({ capacity, confirmed }: { capacity: number; confirmed: number }) {
+export function ShirtGrid({
+  capacity,
+  confirmed,
+  ended = false,
+}: {
+  capacity: number
+  confirmed: number
+  ended?: boolean
+}) {
   const filled = Math.min(confirmed, capacity)
   const full = confirmed >= capacity
   return (
     <div className="space-y-4">
-      {full ? (
+      {ended ? null : full ? (
         <p
           role="status"
           className="inline-block rounded-2xl font-display text-3xl font-black italic leading-tight tracking-tight text-foreground tabular-nums animate-slot-pulse motion-reduce:animate-none"

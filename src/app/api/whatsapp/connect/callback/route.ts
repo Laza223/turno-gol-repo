@@ -6,9 +6,11 @@ import { SETTINGS_ADMIN_ONLY_NOTICE } from '@/modules/staff/roles'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import {
+  connectErrorFromKapso,
   getWhatsappPlusState,
   registerWhatsappConnection,
 } from '@/modules/whatsapp-bot/whatsapp-bot.connection'
+import { logger } from '@/shared/lib/logger'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -34,6 +36,8 @@ const querySchema = z.object({
   error_code: z.string().max(100).optional(),
   fallo: z.string().max(10).optional(),
 })
+
+const KAPSO_CODE_SHAPE = /^[a-z_]{1,40}$/
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
@@ -63,18 +67,24 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     error_code: q.get('error_code') ?? undefined,
     fallo: q.get('fallo') ?? undefined,
   })
-  if (
-    !parsed.success ||
-    parsed.data.fallo ||
-    parsed.data.error_code ||
-    !parsed.data.phone_number_id
-  ) {
-    return settings('error=conexion_incompleta')
+  if (!parsed.success) return settings('error=conexion_incompleta')
+  const { phone_number_id: phoneNumberId, error_code: kapsoCode, fallo } = parsed.data
+  if (fallo || kapsoCode || !phoneNumberId) {
+    // El `error_code` viaja traducido a nuestro enum: nunca tal cual a la pantalla.
+    const error = connectErrorFromKapso(kapsoCode)
+    logger.warn('whatsapp connect: Kapso volvió sin conectar', {
+      module: 'whatsapp-connect',
+      tenantId: tenant.id,
+      error,
+      // Al log solo si tiene la forma de un código: cualquiera arma esta URL.
+      kapsoCode: kapsoCode && KAPSO_CODE_SHAPE.test(kapsoCode) ? kapsoCode : undefined,
+    })
+    return settings(`error=${error}`)
   }
 
   const result = await registerWhatsappConnection(
     { id: tenant.id, name: tenant.name },
-    parsed.data.phone_number_id,
+    phoneNumberId,
     user.staffUserId,
   )
   if (!result.ok) return settings(`error=${result.error}`)

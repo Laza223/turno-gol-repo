@@ -10,7 +10,7 @@ const COPY: Record<RivalErrorCode, string> = {
   rival_no_session: 'Ingresá a tu cuenta para seguir.',
   rival_expired: 'Este partido ya empezó, así que no admite cambios.',
   rival_canceled: 'Este partido se cayó.',
-  rival_full: 'El partido ya está completo.',
+  rival_full: 'No queda lugar: el partido ya está completo.',
   rival_banned: 'No podés sumarte a partidos en este complejo.',
   rival_limit_active:
     'Ya tenés 3 partidos armados. Cancelá uno o esperá a que se juegue para armar otro.',
@@ -29,9 +29,10 @@ const COPY: Record<RivalErrorCode, string> = {
   rival_forbidden: 'No tenés permiso para hacer eso.',
   rival_try_again: 'Había mucho movimiento. Probá de nuevo.',
   rival_already_participant: 'Ya estás en este partido.',
-  rival_already_reported: 'Ya hiciste esta denuncia. La vamos a revisar.',
+  rival_already_reported: 'Ya lo denunciaste.',
   rival_tenant_unavailable: 'Ese complejo no está disponible para armar partidos.',
   rival_welcome_required: 'Antes de seguir, aceptá las reglas de RIVAL.',
+  rival_capacity_mismatch: 'Buscando rival, juegan tantos como el formato.',
 }
 
 /** Texto para mostrar. Un error que no es de RIVAL cae en el genérico (el caller lo reporta a Sentry). */

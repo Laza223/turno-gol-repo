@@ -5,6 +5,7 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { buildMetadata } from '@/lib/seo/metadata'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import {
+  getBoardPublishPrefill,
   getRepeatPrefill,
   getRivalWelcomeState,
   listEligibleTenants,
@@ -69,11 +70,12 @@ async function NewMatchSection({
   reserva?: string
   desde?: string
 }) {
-  const [tenants, bookings, source] = await Promise.all([
+  const [tenants, bookings, source, boardPrefill] = await Promise.all([
     listEligibleTenants(),
     listUpcomingConfirmedBookings(playerId),
     // `?desde=` solo precarga un partido PROPIO (el service devuelve null si no lo es).
     desde ? getRepeatPrefill(playerId, desde) : null,
+    getBoardPublishPrefill(playerId),
   ])
   const now = artNowParts()
   // La reserva se resuelve contra las del JUGADOR de la sesión: un id ajeno se ignora sin error.
@@ -98,6 +100,7 @@ async function NewMatchSection({
       repeat={repeat}
       today={now.date}
       nowTime={now.time}
+      whatsappPrefill={boardPrefill.whatsapp}
       action={createMatchAction}
     />
   )

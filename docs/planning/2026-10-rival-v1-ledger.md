@@ -9,8 +9,8 @@ Es el esfuerzo de [`docs/decisions/2026-10-22-rival-v1.md`](../decisions/2026-10
 | 0 | Documentos: spec, decisiones (RIVAL v1 y freeze), ideas, este ledger, `CLAUDE.md` y `PRODUCT.md` | #467 | Mergeado |
 | 1 | DB + esqueleto del módulo + retención, ARCO y export | #469 | Mergeado |
 | 2 | Shell, `/rival`, `/rival/nuevo`, vista del partido, entradas desde reservas, OG. Suma la tarjeta de bienvenida, que estaba en la fase 3, porque crear un partido la exige | #479 | Mergeado |
-| 3 | "Voy" con cuenta (reusa la bienvenida de la fase 2), banco, me bajo, avisar al grupo, repetir | — | En curso |
-| 4 | Tablón: publicar, pedir, decidir, contacto, bans, denuncias | — | Pendiente |
+| 3 | "Voy" con cuenta (reusa la bienvenida de la fase 2), banco, me bajo, avisar al grupo, repetir | #492 | Mergeado |
+| 4 | Tablón: publicar, pedir, decidir, contacto, bans, denuncias | #494 | Abierto |
 | 5 | Foto de perfil (R2) | — | Pendiente |
 | 6 | Emails y alertas | — | Pendiente |
 | 7 | `/super-admin/rival` | — | Pendiente |
@@ -45,6 +45,12 @@ Es el esfuerzo de [`docs/decisions/2026-10-22-rival-v1.md`](../decisions/2026-10
 | 3 | `sonnet-adversarial-reviewer` (contexto fresco) | Verificar los arreglos | ~80 k tokens y ~9 min | "Listo para PR". Las mutaciones de `shouldAutoJoin` y del `replaceState` las detectan los tests. Avisó que el `replaceState` al montar podía no sostenerse en Next real |
 | 3 | `sonnet-ux-verifier` | App real a 390 px y escritorio, claro y oscuro, con login por Inbucket | ~167 k tokens y ~19 min | "Pasa con problemas": 🟡 el token volvía a la URL tras sumarse (el `replaceState` corría antes de que el AppRouter lo enganchara); 🟢 la X pisaba el título del ingreso, el organizador veía "Listo, estás adentro" y un partido jugado decía "Faltan N". La app corrió como `postgres`, así que la RLS no se ejerció en la UI |
 | 3 | `sonnet-ux-verifier` (segunda vuelta) | Verificar esos arreglos en el navegador | ~27 k tokens y ~20 min | "Pasa". La URL queda sin el token al volver, al sumarse y al recargar. Encontró que el organizador que vuelve del mail conservaba el token: se arregló con `DropIntentParam` |
+| 4 | `sonnet-implementer` (A) | Migración 101 (`rival_board_match`, `rival_board_tenants`), service, form, actions de pedir, decidir, sacar, publicar y denunciar, más rate limit | ~184 k tokens y ~15 min | Hecho. Integración sección 10 (39 tests), con los vistos rojos antes del código |
+| 4 | `sonnet-implementer` (B) | Tablón con cursor y selector de complejo, `/rival/partido/[id]`, vista del organizador con pedidos, publicar y denunciar, y form de armar con tablón | ~213 k tokens y ~22 min | Hecho. 56 stories en claro y oscuro |
+| 4 | `sonnet-adversarial-reviewer` (contexto fresco) | Revisar el PR4 sin commitear | ~212 k tokens y ~17 min | "Arreglar antes": 🟡 publicar "Buscamos rival" con cupo distinto del formato; 🟡 los filtros de estado del complejo y de onboarding de la 101 sin test (dos mutaciones sobrevivieron); 🟡 la vuelta del login pasaba por `/verify`; y 🟢 varios. Sin fugas de personas ni contacto |
+| 4 | `sonnet-ux-verifier` | App real a 390 px y escritorio, claro y oscuro, con login por Inbucket | ~156 k tokens y ~20 min | "Pasa con problemas": 🟡 la denuncia a una persona ofrecía "El partido no existe"; 🟢 el texto de "Me bajo" en un pedido. Los seis 404 son reales y no aparece ningún teléfono ajeno. La app corrió como `postgres` |
+| 4 | `sonnet-implementer` (segunda vuelta) | Arreglar la revisión y la verificación | ~141 k tokens y ~27 min | Ocho arreglos con test, todos vistos rojos. "Buscamos rival" solo con cupo = formato (lo exige el service y la UI no lo ofrece), `isRivalPath` acepta `/rival/partido/<uuid>`, "Pedir sumarme" en los dos tipos. Una story nueva tenía un `wa.me` con número y la pasé a href inerte |
+| 4 | `sonnet-adversarial-reviewer` (contexto fresco) | Verificar los arreglos | ~132 k tokens y ~14 min | "Listo para PR": los 8 cerrados y las mutaciones las detectan los tests. Sobrevivía la de `canSeekRival` en `MatchView`, que pasó a `organizer-rules.ts` con unit (visto rojo). **Incidente:** dos corridas sin las variables de la base cayeron a la local (:54322) y `cleanupAll` la vació |
 
 ## Cambios ajenos sobre superficie de RIVAL
 

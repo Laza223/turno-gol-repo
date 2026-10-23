@@ -73,8 +73,12 @@ export const Mixto: Story = {
     await expect(canvas.getByText('Jugado')).toBeInTheDocument()
     // Me bajé: ya no es "mío".
     await expect(canvas.getAllByRole('listitem')).toHaveLength(4)
-    // Solo el partido que organizo linkea (los demás no tienen vista propia todavía).
-    await expect(canvas.getAllByRole('link', { name: 'El Vagón' })).toHaveLength(1)
+    // El que organizo linkea por código; los demás, a la vista del partido por id.
+    const links = canvas.getAllByRole('link', { name: 'El Vagón' })
+    await expect(links).toHaveLength(4)
+    await expect(links[0]).toHaveAttribute('href', '/rival/p/ABCDEFGHJK')
+    await expect(links[1]).toHaveAttribute('href', '/rival/partido/bench')
+    await expect(links[2]).toHaveAttribute('href', '/rival/partido/req')
   },
 }
 

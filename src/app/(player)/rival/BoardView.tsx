@@ -58,11 +58,13 @@ function TenantFilter({
   )
 }
 
-/**
- * Tarjeta del tablón. No lleva personas. Todavía no linkea: no hay una vista del partido
- * por `id` (la vista pública es por código y el tablón nunca expone el código); "Pedir
- * sumarme" y su pantalla son del PR4.
- */
+/** Nombre accesible de la tarjeta: el tipo, el complejo, cuándo y qué partido es. */
+function cardLabel(item: RivalBoardItem, type: string, now: Date): string {
+  const sello = item.hasStamp ? ', reservada en TurnoGol' : ''
+  return `${type} en ${item.tenantName}, ${whenLabel(item.startsAt, now)}. ${formatLabel(item.format)}, ${RIVAL_LEVEL_LABELS[item.level]}${sello}`
+}
+
+/** Tarjeta del tablón: un link a `/rival/partido/<id>`. No lleva personas. */
 function BoardCard({ item, now }: { item: RivalBoardItem; now: Date }) {
   const type = matchTypeLabel({
     seeking: item.seeking,
@@ -71,19 +73,25 @@ function BoardCard({ item, now }: { item: RivalBoardItem; now: Date }) {
     confirmedCount: item.confirmedCount,
   })
   return (
-    <li className="rounded-2xl border border-border bg-card p-4 shadow-xs">
-      <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-        <p className="font-display text-xl font-black italic leading-none tracking-tight text-foreground tabular-nums">
-          {type}
-        </p>
-        {item.hasStamp && <StampBadge />}
-      </div>
-      <p className="mt-3 break-words text-base font-medium text-foreground">{item.tenantName}</p>
-      <p className="text-sm text-muted-foreground">{whenLabel(item.startsAt, now)}</p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <FactPill>{formatLabel(item.format)}</FactPill>
-        <FactPill>{RIVAL_LEVEL_LABELS[item.level]}</FactPill>
-      </div>
+    <li>
+      <Link
+        href={`/rival/partido/${item.id}`}
+        aria-label={cardLabel(item, type, now)}
+        className="block rounded-2xl border border-border bg-card p-4 shadow-xs transition-colors hover:border-input focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      >
+        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+          <p className="font-display text-xl font-black italic leading-none tracking-tight text-foreground tabular-nums">
+            {type}
+          </p>
+          {item.hasStamp && <StampBadge />}
+        </div>
+        <p className="mt-3 break-words text-base font-medium text-foreground">{item.tenantName}</p>
+        <p className="text-sm text-muted-foreground">{whenLabel(item.startsAt, now)}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <FactPill>{formatLabel(item.format)}</FactPill>
+          <FactPill>{RIVAL_LEVEL_LABELS[item.level]}</FactPill>
+        </div>
+      </Link>
     </li>
   )
 }
@@ -115,12 +123,15 @@ export function BoardView({
   items,
   tenants,
   selectedTenantId,
+  nextHref,
   now,
 }: {
   items: RivalBoardItem[]
   /** Complejos con publicaciones (para el selector). */
   tenants: { id: string; name: string }[]
   selectedTenantId: string | null
+  /** Link a la página siguiente (`?despues=`); `null` = no hay más. */
+  nextHref: string | null
   now: Date
 }) {
   const groups = groupBoardByDay(items, now)
@@ -160,6 +171,17 @@ export function BoardView({
                 </ul>
               </section>
             ))
+          )}
+          {nextHref && (
+            <Link
+              href={nextHref}
+              className={cn(
+                buttonVariants({ variant: 'ghost' }),
+                'h-11 w-full text-sm font-medium',
+              )}
+            >
+              Ver más partidos
+            </Link>
           )}
         </>
       )}

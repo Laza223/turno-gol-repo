@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import type { Db } from '@/shared/db/client'
-import { tenants, whatsappConnections } from '@/shared/db/schema'
+import { opsAlerts, tenants, whatsappConnections } from '@/shared/db/schema'
 import { isFeatureEnabled } from '@/shared/feature-flags'
 import { logger } from '@/shared/lib/logger'
 import { artDateOf } from '@/shared/time/art-date'
@@ -190,6 +190,18 @@ function blindAlert(reason: BlindReason, now: Date): OpsAlert {
 /** Menos de 5 por segundo: el límite de Kapso para el health es 5/s y 60/min por proyecto. */
 const HEALTH_PAUSE_MS = 250
 
+/**
+ * Tantos timeouts o errores de red seguidos son Kapso caído o la red del worker:
+ * con 10 s por timeout, seguir solo estira el tick. El próximo tick reintenta.
+ */
+const MAX_NETWORK_FAILS = 3
+
+/**
+ * Hasta dónde una lectura caída confirma a la anterior: tres ticks de 5 min, así
+ * uno o dos en el medio que no pudieron mirar (error o red) no la pierden.
+ */
+const SUSPICION_WINDOW_MS = 15 * 60_000
+
 type NumberToCheck = Awaited<ReturnType<typeof listNumbersToCheck>>[number]
 
 async function listNumbersToCheck(db: Db) {
@@ -205,15 +217,46 @@ async function listNumbersToCheck(db: Db) {
     .innerJoin(tenants, eq(tenants.id, whatsappConnections.tenantId))
 }
 
+/** Sin migración: la sospecha es una clave más de `ops_alerts`, que ya purga a los 90 días. */
+function suspicionKey(n: NumberToCheck): string {
+  return `wa-sospecha:${n.tenantId}:${n.phoneNumberId}`
+}
+
+/**
+ * Una sola lectura caída no alcanza para avisar ni para desconectar: puede ser un
+ * corte de segundos de Meta, y con `disconnected` la ingesta descarta los
+ * entrantes. La primera deja la sospecha y la confirma la siguiente dentro de la
+ * ventana. Un `disconnected` ya se había confirmado.
+ */
+async function isDownConfirmed(db: Db, n: NumberToCheck, now: Date): Promise<boolean> {
+  if (n.status === 'disconnected') return true
+  const key = suspicionKey(n)
+  const [prev] = await db
+    .select({ at: opsAlerts.createdAt })
+    .from(opsAlerts)
+    .where(eq(opsAlerts.key, key))
+  await db
+    .insert(opsAlerts)
+    .values({ key, createdAt: now })
+    .onConflictDoUpdate({ target: opsAlerts.key, set: { createdAt: now } })
+  return prev !== undefined && now.getTime() - prev.at.getTime() <= SUSPICION_WINDOW_MS
+}
+
+async function clearSuspicion(db: Db, n: NumberToCheck): Promise<void> {
+  await db.delete(opsAlerts).where(eq(opsAlerts.key, suspicionKey(n)))
+}
+
 /**
  * Consulta la salud de cada número con TurnoGol Plus (con el asistente prendido
  * o no: un número caído es un bot mudo el día que lo prendan) y arma los mails.
  * Además mueve el estado de la conexión: caído por desconexión, acceso o 404 →
- * `disconnected`; un `disconnected` que vuelve a dar sano → `connected`.
+ * `disconnected`; un `disconnected` que vuelve a dar sano → `connected`. Caído
+ * cuenta recién con dos lecturas seguidas (`isDownConfirmed`).
  *
  * Un error de Kapso no es un número caído: se loguea y el próximo tick reintenta.
  * Las excepciones son la clave rechazada y una respuesta ilegible, que dejan al
  * monitor ciego para todos los números: cortan el tick y avisan una vez por día.
+ * Un 429 o `MAX_NETWORK_FAILS` errores de red seguidos cortan sin mail.
  */
 async function checkNumbersHealth(db: Db, now: Date): Promise<OpsAlert[]> {
   const all = await listNumbersToCheck(db)
@@ -223,6 +266,7 @@ async function checkNumbersHealth(db: Db, now: Date): Promise<OpsAlert[]> {
   if (!process.env.KAPSO_API_KEY) return [blindAlert('sin_clave', now)]
 
   const alerts: OpsAlert[] = []
+  let networkFails = 0
   for (const [i, n] of numbers.entries()) {
     if (i > 0) await new Promise((r) => setTimeout(r, HEALTH_PAUSE_MS))
     const log = { module: 'super-admin', tenantId: n.tenantId, phoneNumberId: n.phoneNumberId }
@@ -243,23 +287,41 @@ async function checkNumbersHealth(db: Db, now: Date): Promise<OpsAlert[]> {
         status: err.status,
         error: err.message,
       })
+      networkFails = err.status === 0 ? networkFails + 1 : 0
       // 429: el límite es por proyecto, seguir solo suma rechazos. El próximo tick sigue.
-      if (err.status === 429) return alerts
+      if (err.status === 429 || networkFails === MAX_NETWORK_FAILS) {
+        logger.warn('whatsapp: se corta la revisión de los números hasta el próximo tick', {
+          module: 'super-admin',
+          status: err.status,
+          unchecked: numbers.length - i - 1,
+        })
+        return alerts
+      }
       continue
     }
+    networkFails = 0
 
     const verdict = classifyNumberHealth(health)
-    if (verdict.kind === 'down') alerts.push(numberDownAlert(n, verdict.cause, now))
     if (verdict.kind === 'unknown') logger.warn('whatsapp: Kapso no pudo revisar el número', log)
     if (verdict.kind === 'degraded') {
       logger.info('whatsapp: número degradado', { ...log, failing: health?.failingChecks })
     }
-    // Aparte: si falla la escritura del estado, el mail de este número y el del
-    // resto del tick salen igual.
+    // Aparte: si falla la base con este número, el resto del tick sigue. El mail
+    // va antes que la escritura del estado: si esa falla, sale igual.
     try {
+      if (verdict.kind === 'down') {
+        if (!(await isDownConfirmed(db, n, now))) {
+          logger.info('whatsapp: número caído, se confirma en el próximo tick', {
+            ...log,
+            cause: verdict.cause,
+          })
+          continue
+        }
+        alerts.push(numberDownAlert(n, verdict.cause, now))
+      }
       await syncConnectionStatus(db, n, verdict, log)
     } catch (err) {
-      logger.error('whatsapp: no se pudo actualizar el estado de la conexión', {
+      logger.error('whatsapp: no se pudo guardar el estado del número', {
         ...log,
         error: err instanceof Error ? err.message : String(err),
       })
@@ -269,9 +331,10 @@ async function checkNumbersHealth(db: Db, now: Date): Promise<OpsAlert[]> {
 }
 
 /**
- * Caído por desconexión, acceso o 404 → `disconnected`; un `disconnected` que
- * vuelve a dar sano → `connected`. `n.status` es la foto del principio del
- * tick: el CAS de cada lado es el que evita pisar una reconexión del dueño.
+ * Caído (ya confirmado) por desconexión, acceso o 404 → `disconnected`; un
+ * `disconnected` que vuelve a dar sano → `connected`. `n.status` es la foto del
+ * principio del tick: el CAS de cada lado es el que evita pisar una reconexión
+ * del dueño.
  */
 async function syncConnectionStatus(
   db: Db,
@@ -287,10 +350,14 @@ async function syncConnectionStatus(
       (await markWhatsappDisconnected(db, n, cause))
     ) {
       logger.warn('whatsapp: número caído, se marca desconectado', { ...log, cause })
+      // Si el dueño reconecta enseguida, una lectura vieja del cache de Kapso
+      // (3 min) tiene que volver a confirmarse antes de desconectarlo de nuevo.
+      await clearSuspicion(db, n)
     }
     return
   }
   if (verdict.kind === 'unknown') return
+  await clearSuspicion(db, n)
   if (n.status === 'disconnected' && (await restoreWhatsappConnection(db, n))) {
     logger.info('whatsapp: el número volvió, se marca conectado', log)
   }

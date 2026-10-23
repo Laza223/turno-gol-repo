@@ -29,7 +29,7 @@
 
 **Qué números.** Las filas de `whatsapp_connections` de los complejos con el flag `whatsapp_bot` prendido: sin Plus no interesa. Se incluyen las que tienen el asistente apagado, porque un número caído es un bot mudo el día que lo prendan; el mail dice si está prendido.
 
-**Ritmo.** De a uno, con 250 ms entre llamadas (menos de 5 por segundo). Con 429 se corta el tick y sigue en el próximo. A este ritmo entran unos 50 números por tick sin tocar el límite de 60 por minuto. Con más que eso hay que pasar a los webhooks de proyecto.
+**Ritmo.** De a uno, con 250 ms entre llamadas (menos de 5 por segundo). Con 429 se corta el tick y sigue en el próximo. También se corta después de 3 errores de red seguidos (timeout de 10 s o sin conexión): es Kapso caído o la red del worker, y seguir solo estira el tick. Una respuesta cualquiera en el medio reinicia la cuenta. En los dos cortes queda en el log cuántos números quedaron sin revisar (ajuste a partir de la revisión de #493). A este ritmo entran unos 50 números por tick sin tocar el límite de 60 por minuto. Con más que eso hay que pasar a los webhooks de proyecto.
 
 **Cuándo hay mail** (un número está **caído**):
 
@@ -42,6 +42,8 @@
 | `status` = `unhealthy` por otra cosa       | El número tiene un problema (el detalle está en Kapso)                           |
 
 Las tres condiciones del pedido (`unhealthy`, `DISCONNECTED`, `BLOCKED`) se miran por separado: no se confía en que Kapso las refleje siempre en el `status` general.
+
+**Caído se confirma con dos lecturas seguidas** (ajuste a partir de la revisión de #493). Con una sola lectura caída no hay mail ni cambio de estado: puede ser un corte de segundos de Meta, y con `disconnected` la ingesta tira los mensajes. La primera deja una sospecha en `ops_alerts` (clave `wa-sospecha:{tenantId}:{phoneNumberId}`, sin migración) y la confirma la siguiente lectura caída si llega dentro de 15 minutos: así uno o dos ticks en el medio que no pudieron mirar (error de Kapso o de red) no la pierden. Una lectura sana o `degraded` borra la sospecha; también se borra al marcar `disconnected`, para que si el dueño reconecta enseguida, una lectura vieja del cache de Kapso tenga que volver a confirmarse. Una fila que ya está `disconnected` no necesita confirmación: su mail del día sale con la primera lectura caída. Costo: la alerta llega unos 5 minutos más tarde.
 
 **El 404 se confirma** (ajuste de implementación, a partir de la revisión). Antes de tratarlo como "Kapso ya no tiene el número" se pide el número (`GET /whatsapp/phone_numbers/{id}`). Si también da 404, el número no está. Si aparece, lo que cambió es la API del health: se trata como monitor ciego y nadie queda desconectado. Sin la confirmación, un cambio de ruta en Kapso dejaría `disconnected` a todos los complejos, y la ingesta tiraría sus mensajes. Cuesta un pedido más, y solo cuando hay un 404.
 

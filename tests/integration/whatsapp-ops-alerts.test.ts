@@ -1,6 +1,7 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { closeSql, getSql, getWorkerDb } from '@/shared/db/client'
 import { clearFeatureFlagCache } from '@/shared/feature-flags'
+import { logger } from '@/shared/lib/logger'
 import { artDateOf } from '@/shared/time/art-date'
 import {
   resetEmailProvider,
@@ -255,6 +256,19 @@ describe('runWhatsappOpsAlerts: salud de los números (Kapso mockeado)', () => {
     return fetchMock.mock.calls.filter(([u]) => String(u).endsWith('/health')).length
   }
 
+  /** Mediodía ART: el día del mail no cambia entre ticks. */
+  const T0 = new Date('2026-10-15T15:00:00Z')
+  const DAY = artDateOf(T0)
+
+  /** El tick `n` del cron, a 5 min del anterior. Caído cuenta con dos lecturas seguidas. */
+  function tick(n: number) {
+    return runWhatsappOpsAlerts(getWorkerDb(), new Date(T0.getTime() + n * 5 * 60_000))
+  }
+
+  function suspicionKey(tenantId: string) {
+    return `wa-sospecha:${tenantId}:pn-${tenantId}`
+  }
+
   async function enablePlus(tenantId: string) {
     await getSql()`
       INSERT INTO feature_flags (key, value, tenant_id) VALUES ('whatsapp_bot', true, ${tenantId})
@@ -300,6 +314,7 @@ describe('runWhatsappOpsAlerts: salud de los números (Kapso mockeado)', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()
+    vi.restoreAllMocks()
   })
 
   it('sin TurnoGol Plus no consulta a Kapso', async () => {
@@ -310,17 +325,22 @@ describe('runWhatsappOpsAlerts: salud de los números (Kapso mockeado)', () => {
     expect(sent).toEqual([])
   })
 
-  it('desconectado: un mail por día con el nombre del complejo, y queda disconnected', async () => {
+  it('desconectado dos ticks seguidos: un mail por día con el nombre del complejo, y queda disconnected', async () => {
     kapso({ health: () => json(DISCONNECTED) })
-    await runWhatsappOpsAlerts(getWorkerDb())
 
+    // La primera lectura caída solo deja la sospecha.
+    await tick(0)
+    expect(sent).toEqual([])
+    expect(await alertKeys(getSql())).toEqual([suspicionKey(tenant.id)])
+    expect(await connectionStatus(tenant.id)).toBe('connected')
+
+    await tick(1)
     expect(sent).toHaveLength(1)
     expect(sent[0]?.subject).toBe(`WhatsApp de ${tenant.name}: el número se desconectó`)
     expect(sent[0]?.text).toContain('El asistente está prendido')
     expect(sent[0]?.text).toContain('Ajustes > Asistente de WhatsApp')
-    expect(await alertKeys(getSql())).toEqual([
-      `wa-numero-caido:${tenant.id}:${artDateOf(new Date())}`,
-    ])
+    // Desconectado, la sospecha se borra.
+    expect(await alertKeys(getSql())).toEqual([`wa-numero-caido:${tenant.id}:${DAY}`])
     expect(await connectionStatus(tenant.id)).toBe('disconnected')
     expect(await audits(tenant.id)).toEqual([
       {
@@ -330,16 +350,73 @@ describe('runWhatsappOpsAlerts: salud de los números (Kapso mockeado)', () => {
     ])
 
     // Sigue caído: se vuelve a mirar, pero el mismo día no hay otro mail ni otro audit.
-    await runWhatsappOpsAlerts(getWorkerDb())
-    expect(healthCalls()).toBe(2)
+    await tick(2)
+    expect(healthCalls()).toBe(3)
     expect(sent).toHaveLength(1)
     expect(await audits(tenant.id)).toHaveLength(1)
+  })
+
+  it('una lectura caída y después una sana: ni mail ni desconexión, y la sospecha se olvida', async () => {
+    kapso({ health: () => json(DISCONNECTED) })
+    await tick(0)
+    kapso({ health: () => json(HEALTHY) })
+    await tick(1)
+    expect(await alertKeys(getSql())).toEqual([])
+
+    // La caída siguiente vuelve a empezar de cero.
+    kapso({ health: () => json(DISCONNECTED) })
+    await tick(2)
+    expect(sent).toEqual([])
+    expect(await connectionStatus(tenant.id)).toBe('connected')
+    expect(await audits(tenant.id)).toEqual([])
+  })
+
+  it('un tick que no pudo mirar en el medio no pierde la sospecha', async () => {
+    kapso({ health: () => json(DISCONNECTED) })
+    await tick(0)
+    kapso({ health: () => json({ error: 'boom' }, 500) })
+    await tick(1)
+    kapso({ health: () => json(DISCONNECTED) })
+    await tick(2)
+    expect(sent).toHaveLength(1)
+    expect(await connectionStatus(tenant.id)).toBe('disconnected')
+  })
+
+  it('una sospecha de hace más de 15 min no confirma: la caída vuelve a empezar', async () => {
+    kapso({ health: () => json(DISCONNECTED) })
+    await tick(0)
+    await tick(4)
+    expect(sent).toEqual([])
+    expect(await connectionStatus(tenant.id)).toBe('connected')
+
+    await tick(5)
+    expect(sent).toHaveLength(1)
+    expect(await connectionStatus(tenant.id)).toBe('disconnected')
+  })
+
+  it('si el dueño reconecta, una lectura caída vieja no lo desconecta de nuevo sin confirmar', async () => {
+    kapso({ health: () => json(DISCONNECTED) })
+    await tick(0)
+    await tick(1)
+    expect(await connectionStatus(tenant.id)).toBe('disconnected')
+
+    await getSql()`
+      UPDATE whatsapp_connections SET status = 'connected' WHERE tenant_id = ${tenant.id}
+    `
+    await tick(2)
+    expect(await connectionStatus(tenant.id)).toBe('connected')
+    expect(await audits(tenant.id)).toHaveLength(1)
+
+    await tick(3)
+    expect(await connectionStatus(tenant.id)).toBe('disconnected')
+    expect(await audits(tenant.id)).toHaveLength(2)
   })
 
   it('el mail dice si el asistente está apagado', async () => {
     await getSql()`UPDATE whatsapp_connections SET enabled = false WHERE tenant_id = ${tenant.id}`
     kapso({ health: () => json(DISCONNECTED) })
-    await runWhatsappOpsAlerts(getWorkerDb())
+    await tick(0)
+    await tick(1)
     expect(sent[0]?.text).toContain('El asistente está apagado')
   })
 
@@ -350,9 +427,10 @@ describe('runWhatsappOpsAlerts: salud de los números (Kapso mockeado)', () => {
       () => json({ status: 'unhealthy', checks: { phone_number_access: { passed: false } } }),
       'sin_acceso',
     ],
-  ] as const)('%s: mail y disconnected', async (_label, health, cause) => {
+  ] as const)('%s dos ticks seguidos: mail y disconnected', async (_label, health, cause) => {
     kapso({ health, number: NOT_FOUND })
-    await runWhatsappOpsAlerts(getWorkerDb())
+    await tick(0)
+    await tick(1)
     expect(sent).toHaveLength(1)
     expect(await connectionStatus(tenant.id)).toBe('disconnected')
     expect((await audits(tenant.id))[0]?.metadata).toMatchObject({ cause })
@@ -385,8 +463,9 @@ describe('runWhatsappOpsAlerts: salud de los números (Kapso mockeado)', () => {
     `
     try {
       kapso({ health: () => json(DISCONNECTED) })
-      await runWhatsappOpsAlerts(getWorkerDb())
-      expect(healthCalls()).toBe(2)
+      await tick(0)
+      await tick(1)
+      expect(healthCalls()).toBe(4)
       expect(sent).toHaveLength(2)
       expect(await connectionStatus(tenant.id)).toBe('connected')
     } finally {
@@ -416,12 +495,14 @@ describe('runWhatsappOpsAlerts: salud de los números (Kapso mockeado)', () => {
     expect(await audits(tenant.id)).toEqual([])
   })
 
-  it('bloqueado: mail, pero la conexión queda connected (no se arregla reconectando)', async () => {
+  it('bloqueado dos ticks seguidos: mail, pero la conexión queda connected (no se arregla reconectando)', async () => {
     kapso({
       health: () =>
         json({ status: 'unhealthy', checks: { messaging_health: { overall_status: 'BLOCKED' } } }),
     })
-    await runWhatsappOpsAlerts(getWorkerDb())
+    await tick(0)
+    expect(sent).toEqual([])
+    await tick(1)
     expect(sent).toHaveLength(1)
     expect(sent[0]?.subject).toContain('Meta frenó los envíos')
     expect(sent[0]?.text).toContain('saldo de Kapso')
@@ -486,12 +567,44 @@ describe('runWhatsappOpsAlerts: salud de los números (Kapso mockeado)', () => {
     expect(sent[0]?.text).toContain('Falta KAPSO_API_KEY')
   })
 
-  it('429: corta el tick sin mail (el límite es por proyecto)', async () => {
+  it('429: corta el tick sin mail (el límite es por proyecto) y loguea cuántos quedaron', async () => {
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {})
     await addPlusTenant()
     kapso({ health: () => json({ error: 'rate limited' }, 429) })
     await runWhatsappOpsAlerts(getWorkerDb())
     expect(healthCalls()).toBe(1)
     expect(sent).toEqual([])
+    expect(warn).toHaveBeenCalledWith(
+      'whatsapp: se corta la revisión de los números hasta el próximo tick',
+      expect.objectContaining({ status: 429, unchecked: 1 }),
+    )
+  })
+
+  it('3 errores de red seguidos cortan el tick; una respuesta en el medio corta la racha', async () => {
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => {})
+    for (let i = 0; i < 5; i++) await addPlusTenant()
+    const replies: (() => Response)[] = [
+      () => {
+        throw new Error('timeout')
+      },
+      () => json({ error: 'boom' }, 500),
+    ]
+    let call = 0
+    kapso({
+      health: () => {
+        const reply = replies[call++]
+        if (reply) return reply()
+        throw new Error('timeout')
+      },
+    })
+    await runWhatsappOpsAlerts(getWorkerDb())
+    // timeout, 500, timeout, timeout, timeout: corta en la 5ª y el 6º queda sin mirar.
+    expect(healthCalls()).toBe(5)
+    expect(sent).toEqual([])
+    expect(warn).toHaveBeenCalledWith(
+      'whatsapp: se corta la revisión de los números hasta el próximo tick',
+      expect.objectContaining({ status: 0, unchecked: 1 }),
+    )
   })
 
   it('vuelve solo: un disconnected que da sano, con el webhook suscrito, vuelve a connected', async () => {

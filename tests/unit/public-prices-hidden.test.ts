@@ -91,3 +91,33 @@ describe('settings.hide_public_prices — lo que sale del service público', () 
     expect((await getPublicCourtCards(tenant(false)))[0]!.fromPriceCents).toBe(1_500_000)
   })
 })
+
+// El Vagón (2026-10-24): domingo abierto sin tarifa. El portal y el bot lo
+// ofrecían libre y la reserva explotaba con PriceUnavailableError. Un turno sin
+// precio no se ofrece, también cuando el complejo oculta los precios.
+describe('turnos sin precio no se ofrecen como libres', () => {
+  const HALF_PRICED = {
+    ...COURT,
+    pricing: { rules: [{ ...PRICING.rules[0]!, to: '18:00' }] },
+  }
+
+  function statusByTime(courts: { slots: { time: string; status: string }[] }[]) {
+    return Object.fromEntries(courts[0]!.slots.map((s) => [s.time, s.status]))
+  }
+
+  it.each([true, false])('con hidePrices=%s, solo lo tarifado queda libre', async (hide) => {
+    db.result = { courtsData: [HALF_PRICED], bookingsData: [] }
+    const status = statusByTime((await getPublicAvailability(tenant(hide), DATE)).courts)
+    expect(status['17:00']).toBe('free')
+    expect(status['18:00']).toBe('occupied')
+    expect(status['22:00']).toBe('occupied')
+  })
+
+  it('el semanal aplica la misma regla', async () => {
+    db.result = { courtsData: [{ ...COURT, pricing: { rules: [] } }], bookingsByDate: new Map() }
+    const res = await getPublicWeeklyAvailability(tenant(true), artTodayStr())
+    const statuses = res.days.flatMap((d) => d.courts.flatMap((c) => c.slots.map((s) => s.status)))
+    expect(statuses.length).toBeGreaterThan(0)
+    expect(statuses).not.toContain('free')
+  })
+})

@@ -71,25 +71,32 @@ export const ConDiaCerrado: Story = {
   },
 }
 
-/** El horario se guardó, pero el domingo recién abierto no tiene precio en ninguna cancha:
- *  el aviso va en ámbar, nombra el día y lleva a Canchas — no es un error. */
-export const GuardadoConDiaSinPrecio: Story = {
+/** El domingo recién abierto no tiene precio: el horario NO se guarda y el form
+ *  pide el precio de cada cancha ahí mismo, con la tarifa de siempre sugerida.
+ *  Al volver a guardar, el precio viaja con el horario. */
+export const PideElPrecioDelDiaSinTarifa: Story = {
   args: {
     hours: openingHours(),
-    action: fn(async () => ({
-      success: true as const,
-      pricingPending: { courts: 5, days: ['sun' as const] },
-    })),
+    action: fn(async (_prev: unknown, formData: FormData) =>
+      formData.get('price_cancha-1')
+        ? { success: true as const }
+        : {
+            success: false as const,
+            error: 'Falta el precio de los días que abrís.',
+            needsPrices: {
+              days: ['sun' as const],
+              courts: [{ id: 'cancha-1', name: 'Cancha 1', suggestedCents: 8_400_000 }],
+            },
+          },
+    ),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Guardar horarios' }))
-    await expect(await canvas.findByRole('alert')).toHaveTextContent(
-      'Falta un paso: cargar el precio del domingo en 5 canchas.',
-    )
-    await expect(
-      canvas.getByRole('link', { name: 'Cargar precios en Canchas' }),
-    ).toBeInTheDocument()
+    await expect(await canvas.findByRole('alert')).toHaveTextContent('Falta el precio del domingo.')
+    await expect(canvas.getByLabelText('Cancha 1')).toHaveValue('84.000')
+    await userEvent.click(canvas.getByRole('button', { name: 'Guardar horarios y precios' }))
+    await expect(await canvas.findByRole('status')).toHaveTextContent('Horarios guardados.')
   },
 }
 

@@ -29,7 +29,7 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Estado inicial: preset $30.000 × 2 clavos/semana → pérdida mensual > precio del plan más barato. */
+/** Estado inicial: preset $30.000 × 2 turnos colgados/semana → pérdida mensual > precio del plan más barato. */
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -54,24 +54,24 @@ export const TurnoPersonalizado: Story = {
   },
 }
 
-/** Cero clavos: mensaje de felicitación, sin la cuenta de pérdida. */
+/** Ninguno colgado: mensaje de felicitación, sin la cuenta de pérdida. */
 export const CeroClavos: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Un ausente menos por semana' }))
-    await userEvent.click(canvas.getByRole('button', { name: 'Un ausente menos por semana' }))
-    await expect(canvas.getByText(/enhorabuena — sos la excepción/i)).toBeInTheDocument()
+    await userEvent.click(canvas.getByRole('button', { name: 'Un turno colgado menos por semana' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Un turno colgado menos por semana' }))
+    await expect(canvas.getByText(/bien ahí, sos la excepción/i)).toBeInTheDocument()
   },
 }
 
-/** Pérdida mensual por debajo del precio del plan: sin el remate "menos que los clavos". */
+/** Pérdida mensual por debajo del precio del plan: sin el remate "menos que los turnos colgados". */
 export const PerdidaMenorAlPlan: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const input = canvas.getByLabelText(/a cuánto está tu turno/i)
     await userEvent.clear(input)
     await userEvent.type(input, '5000')
-    await userEvent.click(canvas.getByRole('button', { name: 'Un ausente menos por semana' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Un turno colgado menos por semana' }))
     // Acotamos al resultado (role "status" del <output>).
     const resultado = within(canvas.getByRole('status'))
     await expect(resultado.getByText(money(`$${nbsp}20.000`))).toBeInTheDocument()

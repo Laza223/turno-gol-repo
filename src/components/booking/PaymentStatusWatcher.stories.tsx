@@ -1,10 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
-import { expect, waitFor, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { minutesFromNow } from '@/test/fixtures/clock'
 import PaymentStatusWatcher, { PaymentStatusView } from './PaymentStatusWatcher'
 
 const bookingId = 'b1a2c3d4-0001-4000-8000-000000000001'
+
+const turn = {
+  startsOn: '2026-03-14',
+  timeStart: '21:00:00',
+  timeEnd: '22:00:00',
+  courtName: 'Cancha 2',
+  tenantName: 'Complejo Fénix',
+}
+const whatsapp = { channel: 'whatsapp', href: '/whatsapp-de-la-story' } as const
 
 /**
  * Vive en `reserva/[bookingId]/pendiente/page.tsx` (y en `/exito`, cuando el jugador vuelve de MP
@@ -136,13 +145,17 @@ export const ConfirmadoEnExito: Story = {
 /** `expired`: el turno se liberó; "Reservar de nuevo" abre la ficha del complejo en ese día. */
 export const Expirada: Story = {
   name: 'expired — el turno quedó liberado',
-  args: { initialStatus: 'expired' },
+  args: { initialStatus: 'expired', contact: whatsapp },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('heading', { name: 'La reserva expiró' })).toBeInTheDocument()
     await expect(canvas.getByRole('link', { name: 'Reservar de nuevo' })).toHaveAttribute(
       'href',
       '/complejo-fenix?date=2026-03-14',
+    )
+    await expect(canvas.getByRole('link', { name: 'Escribirle al complejo' })).toHaveAttribute(
+      'href',
+      whatsapp.href,
     )
   },
 }
@@ -194,6 +207,7 @@ export const SinConexion: StoryObj<typeof PaymentStatusView> = {
       showDelayNote
       tenantSlug="complejo-fenix"
       date="2026-03-14"
+      contact={{ channel: 'tel', href: 'tel:+541145550000' }}
     />
   ),
   play: async ({ canvasElement }) => {
@@ -201,8 +215,61 @@ export const SinConexion: StoryObj<typeof PaymentStatusView> = {
     await expect(
       canvas.getByRole('heading', { name: 'No pudimos verificar tu pago' }),
     ).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: 'Llamar al complejo' })).toHaveAttribute(
+      'href',
+      'tel:+541145550000',
+    )
     await expect(canvas.getByText(/escribile al complejo/)).toBeVisible()
     await expect(canvasElement.textContent).not.toMatch(/email|te avisamos|acredite/i)
     await expect(canvas.getByRole('link', { name: 'Ver mis reservas' })).toBeInTheDocument()
+  },
+}
+
+/**
+ * Cortó el pago sin pagar (cerró MercadoPago, volvió atrás): sigue el "Confirmando…" (puede haber
+ * pagado y el webhook no llegó), pero con el turno a la vista y "Pagar la seña" hasta la hora límite.
+ */
+export const ConPagoAbierto: Story = {
+  name: 'pending_payment — cortó el pago, puede pagar la seña',
+  args: {
+    turn,
+    pay: {
+      until: '20:14',
+      deadline: minutesFromNow(4).toISOString(),
+      action: fn(async () => undefined),
+    },
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('heading', { name: 'Confirmando tu pago…' })).toBeInTheDocument()
+    await expect(canvas.getByText(/^Sábado, 14 de marzo ·/).closest('p')).toHaveTextContent(
+      'Sábado, 14 de marzo · 21:00 a 22:00 Cancha 2 · Complejo Fénix',
+    )
+    await expect(
+      canvas.getByText('¿No llegaste a pagar? Podés pagar hasta las 20:14.'),
+    ).toBeInTheDocument()
+    await userEvent.click(canvas.getByRole('button', { name: 'Pagar la seña' }))
+    await waitFor(() => expect(args.pay?.action).toHaveBeenCalledTimes(1))
+  },
+}
+
+/** Pasada la hora límite (o MP caído, o un pago en proceso: `pay=null`), el botón no se ofrece. */
+export const ConPagoVencido: Story = {
+  name: 'pending_payment — ya no hay margen para pagar',
+  args: {
+    turn,
+    pay: {
+      until: '20:14',
+      deadline: minutesFromNow(-1).toISOString(),
+      action: fn(async () => undefined),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('heading', { name: 'Confirmando tu pago…' })).toBeInTheDocument()
+    await waitFor(() =>
+      expect(canvas.queryByRole('button', { name: 'Pagar la seña' })).not.toBeInTheDocument(),
+    )
+    await expect(canvas.queryByText(/¿No llegaste a pagar\?/)).not.toBeInTheDocument()
   },
 }

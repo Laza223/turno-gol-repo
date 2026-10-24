@@ -46,7 +46,7 @@ const renderPage = async () =>
   render(await ReservaErrorPage({ params: Promise.resolve({ bookingId: BOOKING_ID }) }))
 
 /** Una fila como la que devuelve la query de la page. */
-const row = (status: string, createdAt: Date) => [
+const row = (status: string, createdAt: Date, over: Record<string, unknown> = {}) => [
   {
     status,
     createdAt,
@@ -57,6 +57,13 @@ const row = (status: string, createdAt: Date) => [
     timeEnd: '21:00:00',
     courtName: 'Cancha 2',
     tenantSlug: 'cancha-x',
+    tenantName: 'Cancha X',
+    tenantPhone: '341 555-0000',
+    tenantWhatsapp: null,
+    depositAmount: 500000,
+    mpReady: true,
+    inProcess: false,
+    ...over,
   },
 ]
 
@@ -113,8 +120,22 @@ describe('ReservaErrorPage — qué pasó con el turno', () => {
     execute.mockResolvedValue(row('pending_payment', new Date()))
     const { container } = await renderPage()
     expect(screen.getByText('El pago no se procesó')).toBeTruthy()
-    expect(screen.getByText(/Tu turno sigue guardado por poco tiempo/)).toBeTruthy()
+    // El plazo es la hora del reloj (ART), nunca "poco tiempo" ni una cuenta regresiva.
+    expect(
+      screen.getByText(/Tu turno sigue guardado: podés pagar hasta las \d\d:\d\d/),
+    ).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Reintentar pago' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Elegir otro turno' }).getAttribute('href')).toBe(
+      '/cancha-x?date=2030-06-17',
+    )
+    // Sin WhatsApp cargado usa el teléfono del complejo para el wa.me, y el mensaje nombra la reserva.
+    const contact = screen.getByRole('link', { name: 'Escribirle al complejo' })
+    expect(decodeURIComponent(contact.getAttribute('href')!)).toMatch(
+      /^https:\/\/wa\.me\/\d+\?text=Hola Cancha X, te escribo por la seña de mi reserva /,
+    )
+    // wa.me abre afuera; el tel: (abajo, en las stories) no lleva target.
+    expect(contact.getAttribute('target')).toBe('_blank')
+    expect(contact.getAttribute('rel')).toBe('noopener noreferrer')
     expect(screen.queryByRole('link', { name: 'Reservar de nuevo' })).toBeNull()
     // Rojo: el pago falló.
     expect(container.querySelector('svg')?.getAttribute('class')).toContain(TONE_TEXT.destructive)
@@ -122,7 +143,7 @@ describe('ReservaErrorPage — qué pasó con el turno', () => {
     expect(screen.getByText(/^Martes, 18 de junio ·/).closest('p')?.textContent).toBe(
       'Martes, 18 de junio · 20:00 a 21:00 Cancha 2',
     )
-    expect(container.textContent!.match(/\d{1,2}:\d\d/g)).toEqual(['20:00', '21:00'])
+    expect(container.textContent!.match(/\d{1,2}:\d\d/g)?.slice(1)).toEqual(['20:00', '21:00'])
     expect(container.textContent).not.toMatch(/\d+ minutos/)
   })
 
@@ -137,6 +158,7 @@ describe('ReservaErrorPage — qué pasó con el turno', () => {
       expect(screen.getByRole('link', { name: 'Reservar de nuevo' }).getAttribute('href')).toBe(
         '/cancha-x?date=2030-06-17',
       )
+      expect(screen.getByRole('link', { name: 'Escribirle al complejo' })).toBeTruthy()
     },
   )
 
@@ -148,6 +170,28 @@ describe('ReservaErrorPage — qué pasó con el turno', () => {
     expect(screen.queryByRole('button', { name: 'Reintentar pago' })).toBeNull()
     expect(screen.queryByText(/Tu turno sigue guardado/)).toBeNull()
     expect(screen.getByText(/el turno ya no está guardado/)).toBeTruthy()
+  })
+
+  it('pending_payment con MercadoPago del complejo desconectado: ni "Reintentar pago" ni hora (la acción mandaría a /pendiente sin nada que pagar)', async () => {
+    execute.mockResolvedValue(row('pending_payment', new Date(), { mpReady: false }))
+    await renderPage()
+    expect(screen.getByText('El pago no se procesó')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Reintentar pago' })).toBeNull()
+    expect(screen.queryByText(/podés pagar hasta las/)).toBeNull()
+    expect(screen.getByText(/Por ahora no se puede reintentar el pago desde acá/)).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Elegir otro turno' }).getAttribute('href')).toBe(
+      '/cancha-x?date=2030-06-17',
+    )
+    expect(screen.getByRole('link', { name: 'Escribirle al complejo' })).toBeTruthy()
+  })
+
+  it('pending_payment con otro pago en revisión: no ofrece reintentar (doble cobro)', async () => {
+    execute.mockResolvedValue(row('pending_payment', new Date(), { inProcess: true }))
+    await renderPage()
+    expect(screen.getByRole('heading', { name: 'Tenés un pago en revisión' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Reintentar pago' })).toBeNull()
+    expect(screen.queryByText(/podés pagar hasta las/)).toBeNull()
+    expect(screen.getByRole('link', { name: 'Ver mis reservas' })).toBeTruthy()
   })
 
   it('expired con el created_at DENTRO de la ventana: el estado manda, no el reloj (sin reintento)', async () => {

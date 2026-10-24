@@ -8,6 +8,8 @@ import { absoluteUrl } from '@/lib/seo/metadata'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import { buildDirectionsHref } from '@/lib/booking/directions'
 import { buildGroupShareHref, buildGroupShareText } from '@/lib/booking/group-share'
+import { depositPayState } from '@/lib/booking/hold'
+import { retryDepositPaymentAction } from '@/app/(public)/[slug]/reservar/actions'
 import { MisReservasView, type MisReservasBookingRow } from './MisReservasView'
 import { cancelMyBookingAction } from './actions'
 import { refundContactFor } from './refund-contact'
@@ -47,6 +49,12 @@ type RawMisReservasRow = {
   deposit_status: string
   deposit_amount: number
   starts_at: string
+  /** Inicio del hold de la seña (`holdAllowsRetry`). */
+  created_at: string
+  /** MercadoPago del complejo conectado (booleano en SQL: el token no sale de la base). */
+  mp_ready: boolean
+  /** Hay un pago de seña `in_process`: ofrecer otro invitaría a un doble cobro. */
+  in_process: boolean
   /** Día calendario ART en que arranca el turno (≠ `date` si el complejo cierra pasada la medianoche). */
   starts_on: string
   ends_at: string
@@ -136,7 +144,10 @@ export default async function MisReservasPage(props: {
     const paged = await tx.execute(sql`
       SELECT b.id, b.date::text, b.time_start::text, b.time_end::text,
              b.type, b.status, b.price_snapshot,
-             b.deposit_status, b.deposit_amount, b.starts_at, b.ends_at,
+             b.deposit_status, b.deposit_amount, b.starts_at, b.ends_at, b.created_at,
+             (t.mp_access_token IS NOT NULL AND t.mp_disconnected_at IS NULL) AS mp_ready,
+             EXISTS (SELECT 1 FROM payments ip
+                      WHERE ip.booking_id = b.id AND ip.status = 'in_process') AS in_process,
              (b.starts_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date::text AS starts_on,
              b.canceled_by::text AS canceled_by,
              c.name AS court_name, c.format AS court_format, t.name AS tenant_name, t.slug AS tenant_slug,
@@ -291,6 +302,18 @@ export default async function MisReservasPage(props: {
           ? { ...preview.lateCancel, hours: r.late_cancel_hours }
           : null,
       deposit_status: r.deposit_status,
+      // La misma regla que /pendiente: ofrecer un botón que la acción rechaza manda al jugador a
+      // /error o, con MercadoPago caído, a /pendiente en loop.
+      pay_deposit: depositPayState(
+        {
+          status: r.status,
+          depositAmount: r.deposit_amount,
+          mpReady: r.mp_ready,
+          inProcess: r.in_process,
+          createdAt: r.created_at,
+        },
+        now,
+      ),
       refund: refundContactFor(r),
     }
   })
@@ -309,6 +332,7 @@ export default async function MisReservasPage(props: {
         pageSize={MIS_RESERVAS_PAGE_SIZE}
         upcomingCount={upcoming}
         cancelAction={cancelMyBookingAction}
+        payDepositAction={retryDepositPaymentAction}
         rivalEnabled={rivalEnabled}
       />
     </RefundDialogProvider>

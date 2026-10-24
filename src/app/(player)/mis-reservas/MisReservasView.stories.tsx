@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { artDateString, daysFromNow } from '@/test/fixtures/clock'
 import { courtFutbol5, courtFutbol7, courtFutbol11 } from '@/test/fixtures/court'
 import { tenant, tenantAlt } from '@/test/fixtures/tenant'
@@ -58,6 +58,7 @@ const meta = {
       success: true as const,
       booking: {} as never,
     })),
+    payDepositAction: fn(async () => undefined),
     page: 0,
     // Default bajo a propósito: con `total <= pageSize` el Pager nunca se
     // dibuja, que es el caso normal de casi todas las stories de acá. Las que
@@ -86,6 +87,7 @@ export const Proximos: Story = {
       row({
         id: 'b-2',
         status: 'pending_payment',
+        pay_deposit: 'open',
         date: artDateString(daysFromNow(3)),
         time_start: '20:00',
         time_end: '21:00',
@@ -403,6 +405,7 @@ export const ProximosTodosLosEstados: Story = {
       row({
         id: 'p-pendiente',
         status: 'pending_payment',
+        pay_deposit: 'open',
         share_href: null,
         date: artDateString(daysFromNow(2)),
         deposit_status: 'pending',
@@ -579,6 +582,53 @@ export const CanceladasYDevoluciones: Story = {
   },
 }
 
+/**
+ * Esperando seña, los tres casos: con margen ofrece "Pagar la seña" (el verde de la tarjeta, con
+ * el turno por descripción); con un pago en curso no ofrece otro; sin margen dice que se libera.
+ */
+export const EsperandoSena: Story = {
+  args: {
+    tab: 'proximos',
+    upcomingCount: 3,
+    bookings: [
+      row({
+        id: 's-abierta',
+        status: 'pending_payment',
+        pay_deposit: 'open',
+        share_href: null,
+        date: artDateString(daysFromNow(1)),
+        deposit_status: 'pending',
+      }),
+      row({
+        id: 's-procesando',
+        status: 'pending_payment',
+        pay_deposit: 'processing',
+        share_href: null,
+        date: artDateString(daysFromNow(2)),
+        deposit_status: 'pending',
+      }),
+      row({
+        id: 's-vencida',
+        status: 'pending_payment',
+        pay_deposit: 'closed',
+        share_href: null,
+        date: artDateString(daysFromNow(3)),
+        deposit_status: 'pending',
+      }),
+    ],
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    const pay = canvas.getAllByRole('button', { name: 'Pagar la seña' })
+    await expect(pay).toHaveLength(1)
+    await expect(canvas.getByText(/Falta pagar la seña/)).toBeVisible()
+    await expect(canvas.getByText(/Tu pago se está procesando/)).toBeVisible()
+    await expect(canvas.getByText(/El turno se está liberando/)).toBeVisible()
+    await userEvent.click(pay[0]!)
+    await waitFor(() => expect(args.payDepositAction).toHaveBeenCalledTimes(1))
+  },
+}
+
 /** Ausente y expirada: dicen qué pasó, sin alarma. */
 export const AusenteYExpirada: Story = {
   args: {
@@ -613,7 +663,13 @@ export const ContrasteMedido: Story = {
         deposit_amount: 500000,
         cancellation_outcome: 'refund',
       }),
-      row({ id: 'm-2', status: 'pending_payment', share_href: null, deposit_status: 'pending' }),
+      row({
+        id: 'm-2',
+        status: 'pending_payment',
+        pay_deposit: 'open',
+        share_href: null,
+        deposit_status: 'pending',
+      }),
       row({ id: 'm-3', status: 'no_show', date: artDateString(daysFromNow(-1)) }),
       row({
         id: 'm-4',

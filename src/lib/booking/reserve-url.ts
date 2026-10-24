@@ -3,6 +3,7 @@ import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { addDays } from '@/shared/dates/art'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 import { formatDayHeader } from '@/lib/format'
+import { bookingCode } from '@/lib/booking-code'
 import { resolveTenantContact, type TenantContactSource } from '@/lib/tenant-contact'
 
 /**
@@ -160,6 +161,22 @@ export function buildReserveRequest(
   time: string,
 ): ReserveRequest | null {
   const text = `Hola, quiero reservar un turno el ${formatDayHeader(date)} a las ${time} (${court.name}, ${formatLabel(court.format)}).`
+  const contact = resolveTenantContact(tenant, text)
+  if (contact.whatsappUrl) return { channel: 'whatsapp', href: contact.whatsappUrl }
+  return contact.telHref ? { channel: 'tel', href: contact.telHref } : null
+}
+
+/**
+ * "Escribirle al complejo" desde la vuelta de una reserva cuyo pago no salió (o no sabemos si
+ * salió): el mismo canal que `buildReserveRequest`, con la reserva escrita para que el complejo la
+ * encuentre (el código pegado en su buscador la trae). `null` si no hay nada marcable: la pantalla
+ * no dibuja el botón.
+ */
+export function buildBookingContact(
+  tenant: TenantContactSource & { name: string },
+  booking: { id: string; startsOn: string; timeStart: string; courtName: string },
+): ReserveRequest | null {
+  const text = `Hola ${tenant.name}, te escribo por la seña de mi reserva ${bookingCode(booking.id)} del ${formatDayHeader(booking.startsOn)} a las ${booking.timeStart.slice(0, 5)} (${booking.courtName}).`
   const contact = resolveTenantContact(tenant, text)
   if (contact.whatsappUrl) return { channel: 'whatsapp', href: contact.whatsappUrl }
   return contact.telHref ? { channel: 'tel', href: contact.telHref } : null

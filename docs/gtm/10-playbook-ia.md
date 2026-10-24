@@ -4,7 +4,7 @@
 
 ## Contexto mínimo (leer siempre)
 
-- TurnoGol: SaaS de gestión para complejos de fútbol en Argentina. Suscripción mensual: Predio $55.000 (1-2 canchas), Complejo $85.000 (3-5), Estadio $115.000 (6+), + IVA 21%, anual -20%. Trial 30 días sin tarjeta. (Fuente de verdad: tabla `plans` / `src/app/(business)/precios/plans-data.ts` — verificar ahí si hubo actualización por inflación.)
+- TurnoGol: SaaS de gestión para complejos de fútbol en Argentina. Suscripción: $30.000 por cancha por mes, incluida la primera, sin techo; anual 10% off ($27.000 por cancha como equivalente mensual). TurnoGol Plus (asistente de WhatsApp) es un extra de $20.000 por cancha por mes. Trial 30 días sin tarjeta. No decir "+IVA" ni "precio final" hasta resolver D9. (Fuente de verdad: `src/modules/billing/pricing.ts` y [`2026-10-20-precio-uniforme-por-cancha.md`](../decisions/2026-10-20-precio-uniforme-por-cancha.md); cualquier otro precio necesita decisión escrita del dueño.)
 - Competidor principal: ATC Sports (multi-deporte, marketplace de jugadores establecido, más caro — verificar precio vigente antes de citarlo).
 - Estrategia: founder-led, hiperlocal, presencial. Gancho: el ausente y el teléfono. Docs 01-09 de esta carpeta son la doctrina.
 - Idioma: español rioplatense, voseo, cero corporate. Vocabulario y frases: [03-posicionamiento.md](./03-posicionamiento.md).
@@ -27,13 +27,14 @@
 - Turnos fijos (abonados): generación semanal automática, precio por sesión, control de quién pagó cada sesión. **El cobro se REGISTRA a mano. NO existe saldo a favor ni ledger de deudas** (eliminados).
 - Caja: ingresos, gastos, cantina con stock y alertas, cierre diario. Módulo Jugadores: ficha, historial, stats, abonados del jugador, indicador de bloqueo por ausencias.
 - Métricas: caja, ocupación, KPIs. Turnos de madrugada agrupados en la noche anterior (día operativo).
-- Onboarding self-service ~20 min; trial 30 días sin tarjeta; exportación de datos; staff sin límite (admin + encargados); cancelación de reserva con política y reembolso automático MP según configuración.
+- Onboarding self-service ~20 min; trial 30 días sin tarjeta; exportación de datos; staff sin límite (admin + encargados); cancelación de reserva con política según configuración (si corresponde devolver la seña, la devolución la hace el complejo y TurnoGol solo la registra).
 
 ## PROHIBIDO PROMETER (no existe / no es así)
 
 - ❌ Cobro automático/débito de abonados (doc2 lo menciona como visión — NO construido).
 - ❌ Avisos por WhatsApp (v1 = email + push; WhatsApp evaluado post-v1, sin fecha).
 - ❌ Recordatorio 24h al jugador (eliminado de v1).
+- ❌ Reembolso automático de la seña por MercadoPago (se eliminó: MP devuelve 403 con la cuenta de cualquier complejo real; ver CLAUDE.md, MercadoPago).
 - ❌ "Te traemos jugadores" / marketplace con tráfico (la búsqueda cross-complejo existe como feature, pero sin masa de jugadores no genera demanda — no venderla).
 - ❌ Importador automático de datos de ATC (la migración la hace el founder a mano — se ofrece como servicio, no como feature).
 - ❌ Facturación AFIP, torneos/ligas, partidos abiertos, app nativa, billetera del jugador.

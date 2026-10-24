@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
-import type { LucideIcon } from 'lucide-react'
+import { MessageCircle, Phone, type LucideIcon } from 'lucide-react'
 import ReservaShell from '@/components/booking/ReservaDarkShell'
 import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TONE_TEXT, type StatusTone } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
+import type { ReserveRequest } from '@/lib/booking/reserve-url'
 import { PORTAL_BUTTON, PORTAL_BUTTON_OUTLINE, PORTAL_COLUMN } from './PortalAuthFrame'
 
 /** El círculo del ícono de estado: un tinte del tono con un aro de 8 px (el éxito lleva el resplandor esmeralda). */
@@ -74,27 +75,61 @@ export function PortalResult({
   )
 }
 
-/** La salida de un resultado: un botón de 48 px a todo el ancho. La principal es verde; la otra, `outline`. */
+/**
+ * La salida de un resultado: un botón de 48 px a todo el ancho. La principal es verde; la otra,
+ * `outline`. `external` la vuelve un `<a>` (wa.me, `tel:`), que `next/link` no tiene que prefetchear.
+ */
 export function PortalResultLink({
   href,
   variant = 'primary',
+  external = false,
   children,
 }: {
   href: string
   variant?: 'primary' | 'outline'
+  external?: boolean
   children: ReactNode
 }) {
+  const className = cn(
+    variant === 'outline'
+      ? [buttonVariants({ variant: 'outline' }), PORTAL_BUTTON_OUTLINE]
+      : [buttonVariants(), PORTAL_BUTTON],
+    // El ícono del contacto no queda pegado al texto (el botón del portal pisa el gap de la base).
+    'gap-2',
+  )
+  if (external) {
+    // wa.me abre otra pestaña (la app de WhatsApp); `tel:` marca sin irse de la página.
+    const newTab = href.startsWith('http')
+    return (
+      <a
+        href={href}
+        className={className}
+        {...(newTab ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+      >
+        {children}
+      </a>
+    )
+  }
   return (
-    <Link
-      href={href}
-      className={cn(
-        variant === 'outline'
-          ? [buttonVariants({ variant: 'outline' }), PORTAL_BUTTON_OUTLINE]
-          : [buttonVariants(), PORTAL_BUTTON],
-      )}
-    >
+    <Link href={href} className={className}>
       {children}
     </Link>
+  )
+}
+
+/**
+ * "Escribirle al complejo" (WhatsApp) o "Llamar al complejo" (sin número para WhatsApp): la última
+ * salida, `outline`. Sin canal marcable no se dibuja (`buildBookingContact` da `null`).
+ */
+export function PortalResultContact({ contact }: { contact: ReserveRequest | null }) {
+  if (!contact) return null
+  const whatsapp = contact.channel === 'whatsapp'
+  const Icon = whatsapp ? MessageCircle : Phone
+  return (
+    <PortalResultLink href={contact.href} variant="outline" external>
+      <Icon className="size-4 shrink-0" aria-hidden />
+      {whatsapp ? 'Escribirle al complejo' : 'Llamar al complejo'}
+    </PortalResultLink>
   )
 }
 

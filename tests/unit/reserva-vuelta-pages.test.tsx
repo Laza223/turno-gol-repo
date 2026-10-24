@@ -18,6 +18,9 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/reserva/x/pendiente',
 }))
 vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser }))
+vi.mock('@/app/(public)/[slug]/reservar/actions', () => ({
+  retryDepositPaymentAction: vi.fn(),
+}))
 vi.mock('@/shared/db/client', () => ({
   withPlayerContext: (_pid: string, fn: (tx: { execute: typeof execute }) => unknown) =>
     fn({ execute }),
@@ -152,17 +155,68 @@ describe('pendiente', () => {
     )
   })
 
-  it('pending_payment: la espera, sin cuenta regresiva', async () => {
-    execute.mockResolvedValue([
-      {
-        status: 'pending_payment',
-        createdAt: new Date(),
-        date: '2030-06-17',
-        tenantSlug: 'club-norte',
-      },
-    ])
+  const pendingRow = (over: Record<string, unknown> = {}) => ({
+    status: 'pending_payment',
+    createdAt: new Date(),
+    date: '2030-06-17',
+    tenantSlug: 'club-norte',
+    startsOn: '2030-06-17',
+    timeStart: '20:00:00',
+    timeEnd: '21:00:00',
+    depositAmount: 500000,
+    courtName: 'Cancha 2',
+    tenantName: 'Club Norte',
+    tenantPhone: '341 555-0000',
+    tenantWhatsapp: null,
+    mpReady: true,
+    inProcess: false,
+    ...over,
+  })
+
+  it('pending_payment: la espera con el turno y "Pagar la seña" hasta una hora, sin cuenta regresiva', async () => {
+    execute.mockResolvedValue([pendingRow()])
     const { container } = render(await ReservaPendientePage(params))
     expect(screen.getByRole('heading', { name: 'Confirmando tu pago…' })).toBeTruthy()
-    expect(container.textContent).not.toMatch(/te queda|\d:\d\d/i)
+    expect(screen.getByRole('button', { name: 'Pagar la seña' })).toBeTruthy()
+    expect(
+      screen.getByText(/^¿No llegaste a pagar\? Podés pagar hasta las \d\d:\d\d\.$/),
+    ).toBeTruthy()
+    expect(container.textContent).not.toMatch(/te queda|\d:\d\d:\d\d|\$/i)
+  })
+
+  it('vuelve de MercadoPago con un pago en revisión (payment_id en la URL): no ofrece otro', async () => {
+    execute.mockResolvedValue([pendingRow()])
+    render(
+      await ReservaPendientePage({
+        ...params,
+        searchParams: Promise.resolve({ payment_id: '123456789' }),
+      }),
+    )
+    expect(screen.queryByRole('button', { name: 'Pagar la seña' })).toBeNull()
+  })
+
+  it('con payment_id=null (MercadoPago sin pago) sí ofrece pagar', async () => {
+    execute.mockResolvedValue([pendingRow()])
+    render(
+      await ReservaPendientePage({
+        ...params,
+        searchParams: Promise.resolve({ payment_id: 'null' }),
+      }),
+    )
+    expect(screen.getByRole('button', { name: 'Pagar la seña' })).toBeTruthy()
+  })
+
+  it.each([
+    ['MercadoPago desconectado (la acción mandaría de vuelta acá: loop)', { mpReady: false }],
+    ['un pago en proceso (doble cobro)', { inProcess: true }],
+    ['sin seña', { depositAmount: 0 }],
+    ['el hold sin margen', { createdAt: new Date(Date.now() - 5 * 60_000) }],
+  ])('pending_payment con %s: no ofrece pagar', async (_label, over) => {
+    execute.mockResolvedValue([pendingRow(over)])
+    const { container } = render(await ReservaPendientePage(params))
+    expect(screen.getByRole('heading', { name: 'Confirmando tu pago…' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Pagar la seña' })).toBeNull()
+    // Solo las horas del turno: ni plazo ni cuenta regresiva.
+    expect(container.textContent!.match(/\d{1,2}:\d\d/g)).toEqual(['20:00', '21:00'])
   })
 })

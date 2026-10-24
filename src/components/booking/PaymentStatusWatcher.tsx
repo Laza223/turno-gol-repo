@@ -3,8 +3,41 @@
 import { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { AlertTriangle, CalendarCheck, Clock, Loader2, XCircle } from 'lucide-react'
-import { PortalResult, PortalResultLink } from '@/components/world/PortalResult'
-import { buildReservaHref, buildReserveAgainHref } from '@/lib/booking/reserve-url'
+import {
+  PortalResult,
+  PortalResultContact,
+  PortalResultLink,
+} from '@/components/world/PortalResult'
+import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
+import { SubmitButton } from '@/components/ui/submit-button'
+import { ReservaTurnLines } from '@/components/booking/ReservaTurnLines'
+import {
+  buildReservaHref,
+  buildReserveAgainHref,
+  type ReserveRequest,
+} from '@/lib/booking/reserve-url'
+import type { retryDepositPaymentAction } from '@/app/(public)/[slug]/reservar/actions'
+
+/** Qué turno es (lo arma la page con `ReservaTurnLines` en mente). */
+type Turn = {
+  startsOn: string
+  timeStart: string
+  timeEnd: string
+  courtName: string
+  tenantName?: string
+}
+
+/**
+ * "Pagar la seña" para quien cortó el pago. Lo arma la page solo si la acción lo puede cobrar;
+ * `null` = no se ofrece. `action` entra por prop: `.../reservar/actions` es `'use server'`.
+ */
+type PayDeposit = {
+  /** "20:14": hasta qué hora, en el texto (`holdPayUntilLabel`). */
+  until: string
+  /** ISO del mismo instante: el watcher esconde el botón cuando llega. */
+  deadline: string
+  action: typeof retryDepositPaymentAction
+}
 
 type Props = {
   bookingId: string
@@ -14,6 +47,10 @@ type Props = {
   tenantSlug: string | null
   /** "YYYY-MM-DD" */
   date: string | null
+  turn?: Turn | null
+  pay?: PayDeposit | null
+  /** "Escribirle al complejo" (`buildBookingContact`) en los estados en que el pago quedó en duda. */
+  contact?: ReserveRequest | null
 }
 
 const TERMINAL_STATUSES = new Set([
@@ -35,8 +72,14 @@ export default function PaymentStatusWatcher({
   expiresAt,
   tenantSlug,
   date,
+  turn = null,
+  pay = null,
+  contact = null,
 }: Props) {
   const [status, setStatus] = useState(initialStatus)
+  // "Pagar la seña" se esconde cuando el hold ya no deja margen para pagar (`pay.deadline`): la
+  // acción igual lo rechazaría, pero mandarlo a /error para eso es peor que no ofrecerlo.
+  const [payOpen, setPayOpen] = useState(pay !== null)
   const [showDelayNote, setShowDelayNote] = useState(false)
   // `stalled` corta el spinner indefinido: 'expired' = se agotó el tiempo sin
   // transición terminal (#45, #48); 'error' = el polling falló repetidamente (#46).
@@ -95,6 +138,20 @@ export default function PaymentStatusWatcher({
     return () => clearTimeout(id)
   }, [status, expiresAt])
 
+  const payDeadline = pay?.deadline ?? null
+  useEffect(() => {
+    if (!payDeadline) return
+    const ms = new Date(payDeadline).getTime() - Date.now()
+    if (ms <= 0) {
+      // Rama inmediata del mismo timeout (la página quedó abierta o volvió del fondo): idempotente.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPayOpen(false)
+      return
+    }
+    const id = setTimeout(() => setPayOpen(false), ms)
+    return () => clearTimeout(id)
+  }, [payDeadline])
+
   // Polling effect — re-runs whenever status/stalled changes so early-return cleans up.
   // Cache-bust query param: dev/SSR caches occasionally serve stale 'pending'
   // even with `cache: 'no-store'`; a varying URL guarantees a fresh response.
@@ -152,11 +209,15 @@ export default function PaymentStatusWatcher({
 
   return (
     <PaymentStatusView
+      bookingId={bookingId}
       status={status}
       stalled={stalled}
       showDelayNote={showDelayNote}
       tenantSlug={tenantSlug}
       date={date}
+      turn={turn}
+      pay={payOpen ? pay : null}
+      contact={contact}
     />
   )
 }
@@ -166,17 +227,27 @@ export default function PaymentStatusWatcher({
  * esperar los timers de verdad (la nota de los 30 s, el corte por red caída a los ~75 s).
  */
 export function PaymentStatusView({
+  bookingId,
   status,
   stalled,
   showDelayNote,
   tenantSlug,
   date,
+  turn = null,
+  pay = null,
+  contact = null,
 }: {
+  /** Para el form de "Pagar la seña": sin él no se dibuja. */
+  bookingId?: string
   status: string
   stalled: null | 'expired' | 'error'
   showDelayNote: boolean
   tenantSlug: string | null
   date: string | null
+  turn?: Turn | null
+  /** Abierto y con plazo: "Pagar la seña". `null` = no se ofrece (o ya no se puede). */
+  pay?: PayDeposit | null
+  contact?: ReserveRequest | null
 }) {
   const reserveAgainHref = buildReserveAgainHref(tenantSlug, date)
 
@@ -185,7 +256,12 @@ export function PaymentStatusView({
       <PortalResult
         icon={XCircle}
         title="La reserva expiró"
-        actions={<PortalResultLink href={reserveAgainHref}>Reservar de nuevo</PortalResultLink>}
+        actions={
+          <>
+            <PortalResultLink href={reserveAgainHref}>Reservar de nuevo</PortalResultLink>
+            <PortalResultContact contact={contact} />
+          </>
+        }
       >
         <p>
           No se completó el pago a tiempo y el turno quedó liberado. Si llegaste a pagar, escribile
@@ -235,7 +311,12 @@ export function PaymentStatusView({
         icon={failed ? AlertTriangle : Clock}
         tone={failed ? 'destructive' : 'neutral'}
         title={failed ? 'No pudimos verificar tu pago' : 'Se acabó el tiempo'}
-        actions={<PortalResultLink href="/mis-reservas">Ver mis reservas</PortalResultLink>}
+        actions={
+          <>
+            <PortalResultLink href="/mis-reservas">Ver mis reservas</PortalResultLink>
+            <PortalResultContact contact={contact} />
+          </>
+        }
       >
         <p>
           {failed
@@ -246,17 +327,34 @@ export function PaymentStatusView({
     )
   }
 
-  // Default: pending_payment (y confirmed, mientras navega a /exito). Todo el que llega acá ya
-  // pasó por MercadoPago, así que no se le muestra cuánto le queda: el corte por tiempo
-  // (`stalled`) sigue andando por dentro.
+  // Default: pending_payment (y confirmed, mientras navega a /exito). Quien vuelve de MercadoPago
+  // ya pagado espera acá sin cuenta regresiva (el corte por tiempo, `stalled`, sigue por dentro). Y
+  // quien cortó el pago sin pagar (cerró MercadoPago, volvió atrás, recargó) tiene con qué pagar:
+  // el turno a la vista y "Pagar la seña" con la hora límite, mientras se pueda.
   return (
-    <PortalResult icon={Loader2} spin title="Confirmando tu pago…">
+    <PortalResult
+      icon={Loader2}
+      spin
+      title="Confirmando tu pago…"
+      actions={
+        pay && bookingId ? (
+          <form action={pay.action}>
+            <input type="hidden" name="bookingId" value={bookingId} />
+            <SubmitButton className={PORTAL_BUTTON} pendingLabel="Abriendo MercadoPago…">
+              Pagar la seña
+            </SubmitButton>
+          </form>
+        ) : undefined
+      }
+    >
       <p>Esto puede tardar unos segundos.</p>
+      {turn && <ReservaTurnLines {...turn} />}
       {showDelayNote && (
         <p className="text-sm">
           ¿Tarda? Si se confirma, te llega un email. También lo ves en Mis reservas.
         </p>
       )}
+      {pay && bookingId && <p>¿No llegaste a pagar? Podés pagar hasta las {pay.until}.</p>}
     </PortalResult>
   )
 }

@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   HOLD_TTL_SECONDS,
+  depositPayState,
   holdAllowsRetry,
   holdExpiresAtIso,
   holdExpiresAtMs,
   holdIsExpired,
+  holdPayUntilLabel,
   holdRemainingLabel,
+  holdRetryDeadlineMs,
 } from '@/lib/booking/hold'
 
 /**
@@ -92,5 +95,60 @@ describe('holdAllowsRetry', () => {
     expect(holdAllowsRetry(created, expires - 90_000)).toBe(false)
     expect(holdAllowsRetry(created, expires - 10_000)).toBe(false)
     expect(holdAllowsRetry(created, expires + 1)).toBe(false)
+  })
+})
+
+describe('holdRetryDeadlineMs / holdPayUntilLabel', () => {
+  it('el plazo para pagar es el vencimiento del hold menos los 90 s, el mismo borde que holdAllowsRetry', () => {
+    const deadline = holdRetryDeadlineMs(new Date(T0))
+    expect(deadline).toBe(T0 + HOLD_TTL_SECONDS * 1000 - 90_000)
+    expect(holdAllowsRetry(new Date(T0), deadline - 1)).toBe(true)
+    expect(holdAllowsRetry(new Date(T0), deadline)).toBe(false)
+  })
+
+  it('la hora va en ART y corta los segundos: nunca promete un minuto que no hay', () => {
+    // T0 = 17:30:00 ART; el plazo cae 17:34:30 → "17:34", no "17:35".
+    expect(holdPayUntilLabel(new Date(T0))).toBe('17:34')
+    expect(holdPayUntilLabel(new Date(T0).toISOString())).toBe('17:34')
+  })
+
+  it('pasada la medianoche ART dice 00:xx, no 24:xx', () => {
+    // 02:58:00Z = 23:58 ART → plazo 00:02:30 del día siguiente.
+    expect(holdPayUntilLabel(new Date('2026-08-12T02:58:00Z'))).toBe('00:02')
+  })
+})
+
+describe('depositPayState — la regla de "Pagar la seña" en /pendiente y Mis reservas', () => {
+  const base = {
+    status: 'pending_payment',
+    depositAmount: 500000,
+    mpReady: true,
+    inProcess: false,
+    createdAt: new Date(T0),
+  }
+
+  it('con hold, seña y MercadoPago listo: se ofrece', () => {
+    expect(depositPayState(base, T0)).toBe('open')
+  })
+
+  it('un pago en curso gana sobre todo: nunca se ofrece otro', () => {
+    expect(depositPayState({ ...base, inProcess: true }, T0)).toBe('processing')
+    expect(depositPayState({ ...base, inProcess: true }, T0 + 10 * 60_000)).toBe('processing')
+  })
+
+  it('sin margen de hold: cerrado, aunque MercadoPago esté caído', () => {
+    const late = holdRetryDeadlineMs(base.createdAt)
+    expect(depositPayState(base, late)).toBe('closed')
+    expect(depositPayState({ ...base, mpReady: false }, late)).toBe('closed')
+  })
+
+  it('con hold pero sin MercadoPago o sin seña: no disponible (la acción mandaría en loop a /pendiente)', () => {
+    expect(depositPayState({ ...base, mpReady: false }, T0)).toBe('unavailable')
+    expect(depositPayState({ ...base, depositAmount: 0 }, T0)).toBe('unavailable')
+  })
+
+  it('fuera de pending_payment no aplica', () => {
+    expect(depositPayState({ ...base, status: 'confirmed' }, T0)).toBeNull()
+    expect(depositPayState({ ...base, status: 'expired' }, T0)).toBeNull()
   })
 })

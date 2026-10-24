@@ -3,8 +3,12 @@ import { sql } from 'drizzle-orm'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { isUuid } from '@/shared/validation/primitives'
-import { holdAllowsRetry } from '@/lib/booking/hold'
-import { buildIngresarForReservaHref, buildReservaHref } from '@/lib/booking/reserve-url'
+import { depositPayState, holdPayUntilLabel } from '@/lib/booking/hold'
+import {
+  buildBookingContact,
+  buildIngresarForReservaHref,
+  buildReservaHref,
+} from '@/lib/booking/reserve-url'
 import { retryDepositPaymentAction } from '@/app/(public)/[slug]/reservar/actions'
 import { ReservaNotFound } from '../ReservaNotFound'
 import { BookingErrorCard, errorViewFor } from './BookingErrorCard'
@@ -19,7 +23,13 @@ async function loadBooking(bookingId: string, playerId: string) {
       SELECT b.status, b.created_at AS "createdAt", b.date::text AS date,
              (b.starts_at AT TIME ZONE 'America/Argentina/Buenos_Aires')::date::text AS "startsOn",
              b.time_start::text AS "timeStart", b.time_end::text AS "timeEnd",
-             c.name AS "courtName", t.slug AS "tenantSlug"
+             c.name AS "courtName", t.slug AS "tenantSlug",
+             t.name AS "tenantName", t.phone AS "tenantPhone", t.whatsapp AS "tenantWhatsapp",
+             b.deposit_amount AS "depositAmount",
+             -- Booleanos: el token del complejo no sale de la base.
+             (t.mp_access_token IS NOT NULL AND t.mp_disconnected_at IS NULL) AS "mpReady",
+             EXISTS (SELECT 1 FROM payments ip
+                      WHERE ip.booking_id = b.id AND ip.status = 'in_process') AS "inProcess"
       FROM bookings b
       JOIN courts c ON c.id = b.court_id
       JOIN tenants t ON t.id = b.tenant_id
@@ -33,6 +43,12 @@ async function loadBooking(bookingId: string, playerId: string) {
       timeEnd: string
       courtName: string
       tenantSlug: string | null
+      tenantName: string
+      tenantPhone: string
+      tenantWhatsapp: string | null
+      depositAmount: number
+      mpReady: boolean
+      inProcess: boolean
     }>
     return rows[0] ?? null
   })
@@ -78,8 +94,27 @@ export default async function ReservaErrorPage(props: Props) {
   // booking que el worker de expiración ya había liberado, y el retry fallaba
   // confuso. Y con el hold a punto de vencer, la preferencia nueva se comería el margen
   // del webhook (`holdAllowsRetry`): un pago que entra tarde no confirma la reserva.
-  const withinWindow =
-    booking.status === 'pending_payment' && holdAllowsRetry(booking.createdAt, now)
+  // `depositPayState` suma lo demás que la acción no puede cobrar (MercadoPago caído, un pago en
+  // revisión): la misma regla que /pendiente y Mis reservas.
+  const view = errorViewFor(booking.status, depositPayState(booking, now))
+  // Contacto solo donde el pago está en juego: el mensaje escrito lleva el código y el turno, para
+  // que el complejo lo encuentre.
+  const contact =
+    view !== 'canceled' && view !== 'past'
+      ? buildBookingContact(
+          {
+            name: booking.tenantName,
+            phone: booking.tenantPhone,
+            whatsapp: booking.tenantWhatsapp,
+          },
+          {
+            id: params.bookingId,
+            startsOn: booking.startsOn,
+            timeStart: booking.timeStart,
+            courtName: booking.courtName,
+          },
+        )
+      : null
 
   return (
     <BookingErrorCard
@@ -92,7 +127,9 @@ export default async function ReservaErrorPage(props: Props) {
         timeStart: booking.timeStart,
         timeEnd: booking.timeEnd,
       }}
-      view={errorViewFor(booking.status, withinWindow)}
+      view={view}
+      payUntil={view === 'retry' ? holdPayUntilLabel(booking.createdAt) : null}
+      contact={contact}
       retryAction={retryDepositPaymentAction}
     />
   )

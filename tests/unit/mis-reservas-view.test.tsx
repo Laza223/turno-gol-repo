@@ -61,6 +61,7 @@ function renderView(
       total={bookings.length}
       pageSize={20}
       rivalEnabled={props.rivalEnabled}
+      payDepositAction={async () => undefined}
     />,
   )
 }
@@ -130,11 +131,45 @@ describe('MisReservasView — cada tarjeta se abre', () => {
     expect(link.contains(within(card('a')).getByRole('button', { name: 'Cancelar' }))).toBe(false)
   })
 
-  it('esperando seña no abre nada y explica que el turno se libera', () => {
-    renderView([row({ id: 'a', status: 'pending_payment', share_href: null })])
+  it('esperando seña con margen: no abre nada, ofrece "Pagar la seña" y explica que el turno se libera', () => {
+    renderView([row({ id: 'a', status: 'pending_payment', share_href: null, pay_deposit: 'open' })])
     const c = within(card('a'))
     expect(c.queryByRole('link', { name: /20:00 a 21:00/ })).toBeNull()
     expect(c.getByText(/el turno se libera/)).toBeInTheDocument()
+    const pay = c.getByRole('button', { name: 'Pagar la seña' })
+    // El turno que se paga va por descripción, como las demás acciones de la tarjeta.
+    expect(pay).toHaveAccessibleDescription(/20:00 a 21:00|Cancha 2/)
+    const form = pay.closest('form')!
+    expect(new FormData(form).get('bookingId')).toBe('a')
+  })
+
+  it('esperando seña con un pago en curso: no ofrece pagar otra vez', () => {
+    renderView([
+      row({ id: 'a', status: 'pending_payment', share_href: null, pay_deposit: 'processing' }),
+    ])
+    const c = within(card('a'))
+    expect(c.queryByRole('button', { name: 'Pagar la seña' })).toBeNull()
+    expect(c.getByText(/Tu pago se está procesando/)).toBeInTheDocument()
+  })
+
+  it('esperando seña sin margen: ni botón ni "Falta pagar", el turno se está liberando', () => {
+    renderView([
+      row({ id: 'a', status: 'pending_payment', share_href: null, pay_deposit: 'closed' }),
+    ])
+    const c = within(card('a'))
+    expect(c.queryByRole('button', { name: 'Pagar la seña' })).toBeNull()
+    expect(c.queryByText(/Falta pagar/)).toBeNull()
+    expect(c.getByText(/El turno se está liberando/)).toBeInTheDocument()
+  })
+
+  it('esperando seña con MercadoPago del complejo caído: no dice que se terminó el tiempo', () => {
+    renderView([
+      row({ id: 'a', status: 'pending_payment', share_href: null, pay_deposit: 'unavailable' }),
+    ])
+    const c = within(card('a'))
+    expect(c.queryByRole('button', { name: 'Pagar la seña' })).toBeNull()
+    expect(c.queryByText(/Se terminó el tiempo/)).toBeNull()
+    expect(c.getByText(/Por ahora no se puede pagar la seña desde acá/)).toBeInTheDocument()
   })
 
   it('los botones repetidos conservan su nombre exacto y llevan el contexto por descripción', () => {

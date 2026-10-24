@@ -58,9 +58,11 @@ async function runFlow(page: Page, date: string): Promise<void> {
   await expect(page).toHaveURL(new RegExp(`/reserva/${bookingId}/error`), { timeout: 15_000 })
 
   await expect(page.getByRole('heading', { name: 'El pago no se procesó' })).toBeVisible()
-  // Dice qué pasó con el pago Y con el turno: sigue guardado por poco tiempo, sin cuenta regresiva.
+  // Dice qué pasó con el pago Y con el turno: sigue guardado hasta una hora del reloj, sin cuenta regresiva.
   await expect(page.getByText('El pago fue rechazado o cancelado.')).toBeVisible()
-  await expect(page.getByText(/Tu turno sigue guardado por poco tiempo/)).toBeVisible()
+  await expect(
+    page.getByText(/Tu turno sigue guardado: podés pagar hasta las \d\d:\d\d/),
+  ).toBeVisible()
 
   // Dentro de la ventana de hold: CTA = "Reintentar pago".
   const retryBtn = page.getByRole('button', { name: 'Reintentar pago' })

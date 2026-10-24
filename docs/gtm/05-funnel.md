@@ -37,7 +37,7 @@ Una fila por complejo. Columnas:
 ```
 nombre | zona | canchas | score_icp | ig | telefono | canal_1er_contacto |
 etapa | fecha_ultimo_toque | proxima_accion | fecha_proxima_accion |
-dolor_principal (clavos/telefono/caja/abonados) | objecion_principal |
+dolor_principal (colgados/telefono/caja/abonados) | objecion_principal |
 motivo_salida | referido_por | notas
 ```
 

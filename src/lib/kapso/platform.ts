@@ -167,10 +167,14 @@ export async function findOrCreateKapsoCustomer(params: {
   return { id: data.id }
 }
 
-/** Link de un solo uso para que el dueño conecte su número. Crear uno revoca el anterior. */
+/**
+ * Link de un solo uso para que el dueño conecte su número. Crear uno revoca el
+ * anterior. Con `reconnectPhoneNumber` el link refresca la conexión que Kapso ya
+ * tiene de ese número en vez de crear otra, y Meta solo deja elegir ese número.
+ */
 export async function createKapsoSetupLink(
   customerId: string,
-  urls: { successUrl: string; failureUrl: string },
+  urls: { successUrl: string; failureUrl: string; reconnectPhoneNumber?: string },
 ): Promise<{ url: string }> {
   const { data } = await call(`/customers/${encodeURIComponent(customerId)}/setup_links`, {
     method: 'POST',
@@ -181,6 +185,7 @@ export async function createKapsoSetupLink(
         language: 'es',
         success_redirect_url: urls.successUrl,
         failure_redirect_url: urls.failureUrl,
+        ...(urls.reconnectPhoneNumber && { reconnect_phone_number: urls.reconnectPhoneNumber }),
       },
     },
     schema: z.object({ data: z.object({ url: z.url() }).loose() }).loose(),

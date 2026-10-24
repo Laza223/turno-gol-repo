@@ -74,6 +74,7 @@ beforeEach(() => {
   h.platform.findKapsoCustomer.mockResolvedValue({ id: 'cust-1' })
   h.platform.getKapsoPhoneNumber.mockResolvedValue(NUMBER)
   h.platform.ensureKapsoMessageWebhook.mockResolvedValue(undefined)
+  h.platform.listKapsoPhoneNumbers.mockResolvedValue([])
 })
 
 describe('startWhatsappConnect', () => {
@@ -88,6 +89,22 @@ describe('startWhatsappConnect', () => {
     expect(h.platform.createKapsoSetupLink).toHaveBeenCalledWith('cust-1', {
       successUrl: 'https://app.test.local/api/whatsapp/connect/callback',
       failureUrl: 'https://app.test.local/api/whatsapp/connect/callback?fallo=1',
+    })
+  })
+
+  it('si Kapso ya tiene el número del complejo, el link lo reconecta', async () => {
+    h.platform.findOrCreateKapsoCustomer.mockResolvedValue({ id: 'cust-1' })
+    h.platform.listKapsoPhoneNumbers.mockResolvedValue([
+      { ...NUMBER, phoneNumberId: 'pn-dedicado', isCoexistence: false },
+      NUMBER,
+    ])
+    h.platform.createKapsoSetupLink.mockResolvedValue({ url: 'https://app.kapso.ai/x' })
+    expect(await startWhatsappConnect(TENANT)).toEqual({ ok: true, url: 'https://app.kapso.ai/x' })
+    expect(h.platform.listKapsoPhoneNumbers).toHaveBeenCalledWith('cust-1')
+    expect(h.platform.createKapsoSetupLink).toHaveBeenCalledWith('cust-1', {
+      successUrl: 'https://app.test.local/api/whatsapp/connect/callback',
+      failureUrl: 'https://app.test.local/api/whatsapp/connect/callback?fallo=1',
+      reconnectPhoneNumber: '+54 9 11 1234-5678',
     })
   })
 

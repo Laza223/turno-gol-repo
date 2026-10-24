@@ -148,7 +148,12 @@ function kapsoDown(
   return { ok: false, error: 'kapso_no_disponible' }
 }
 
-/** Link de Kapso para que el dueño conecte su número (coexistencia). */
+/**
+ * Link de Kapso para que el dueño conecte su número (coexistencia). Si Kapso ya
+ * tiene un número de coexistencia de este complejo (el dueño lo desconectó, o
+ * Meta), el link lo reconecta: uno común lo cuenta como un número más y choca
+ * con el tope de números del plan de Kapso.
+ */
 export async function startWhatsappConnect(
   tenant: Tenant,
 ): Promise<{ ok: true; url: string } | { ok: false; error: 'kapso_no_disponible' }> {
@@ -166,9 +171,11 @@ export async function startWhatsappConnect(
 
   try {
     const customer = await findOrCreateKapsoCustomer({ externalId: tenant.id, name: tenant.name })
+    const existing = (await listKapsoPhoneNumbers(customer.id)).find((n) => n.isCoexistence)
     const link = await createKapsoSetupLink(customer.id, {
       successUrl: successUrl.toString(),
       failureUrl: failureUrl.toString(),
+      ...(existing?.displayPhoneNumber && { reconnectPhoneNumber: existing.displayPhoneNumber }),
     })
     return { ok: true, url: link.url }
   } catch (err) {

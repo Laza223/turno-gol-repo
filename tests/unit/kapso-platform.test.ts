@@ -91,6 +91,20 @@ describe('kapso platform', () => {
     })
   })
 
+  it('con reconnectPhoneNumber el setup link reconecta ese número', async () => {
+    fetchMock.mockResolvedValueOnce(json({ data: { url: 'https://app.kapso.ai/x' } }, 201))
+    await createKapsoSetupLink('c-1', {
+      successUrl: 'https://a/ok',
+      failureUrl: 'https://a/ko',
+      reconnectPhoneNumber: '+54 9 2323 60-9056',
+    })
+    expect(JSON.parse(call(0).init.body as string).setup_link).toMatchObject({
+      allowed_connection_types: ['coexistence'],
+      meta_billing_mode: 'partner_managed',
+      reconnect_phone_number: '+54 9 2323 60-9056',
+    })
+  })
+
   it.each(['https://evil.test/x', 'http://app.kapso.ai/x', 'https://kapso.ai.evil.test/x'])(
     'un link de conexión fuera de https://*.kapso.ai (%s) es KapsoPlatformError',
     async (bad) => {

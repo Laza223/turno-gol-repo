@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, userEvent, within } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 import ThemeToggle from './ThemeToggle'
 
 /**
@@ -96,13 +96,18 @@ export const Portal: Story = {
     const marcados = radios.filter((r) => r.getAttribute('aria-checked') === 'true')
     await expect(marcados).toHaveLength(1)
     // Visualmente activo = relleno + semibold + borde sin color: exactamente la elegida.
-    const seVenActivos = radios.filter(
-      (r) =>
-        relleno(r) &&
-        getComputedStyle(r).fontWeight === '600' &&
-        getComputedStyle(r).borderTopColor === 'rgba(0, 0, 0, 0)',
+    // Con `waitFor`: en CI (shard 2/3 dark, PR #497) el botón ya tenía las clases activas y el
+    // estilo computado todavía no — leído al toque del click, sin dejar asentar el render.
+    await waitFor(() =>
+      expect(
+        radios.filter(
+          (r) =>
+            relleno(r) &&
+            getComputedStyle(r).fontWeight === '600' &&
+            getComputedStyle(r).borderTopColor === 'rgba(0, 0, 0, 0)',
+        ),
+      ).toEqual(marcados),
     )
-    await expect(seVenActivos).toEqual(marcados)
     // Con el foco en OTRO segmento: el enfocado lleva anillo y sin relleno, la elegida no lleva anillo.
     const otro = radios.find((r) => !marcados.includes(r))!
     await userEvent.tab()

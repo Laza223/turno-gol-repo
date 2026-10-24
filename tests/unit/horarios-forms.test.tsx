@@ -103,30 +103,34 @@ describe('HorariosForms — feedback (#19)', () => {
     )
   })
 
-  // El zurdo abrió el domingo, vio "25 horarios sin precio" y lo leyó como un
-  // error aunque el horario ya estaba guardado: el aviso nombra el día y dice
-  // que falta un paso, no que algo falló.
-  it('nombra los días que quedaron sin precio y lleva a Canchas', () => {
+  // El Vagón abrió el domingo sin precio y el bot no pudo reservar (2026-10-24):
+  // ese horario ya no se guarda. El form nombra el día y pide el precio de cada
+  // cancha ahí mismo, con la tarifa de siempre a la vista.
+  it('sin precio no guarda: nombra los días y pide el precio de cada cancha', () => {
     formState.mockReturnValue({
-      success: true,
-      pricingPending: { courts: 5, days: ['sat', 'sun'] },
+      success: false,
+      error: 'Falta el precio de los días que abrís.',
+      needsPrices: {
+        days: ['sat', 'sun'],
+        courts: [
+          { id: 'c1', name: 'Cancha 1', suggestedCents: 8_400_000 },
+          { id: 'c2', name: 'Cancha 2', suggestedCents: null },
+        ],
+      },
     })
     render(<HorariosForm hours={{}} action={noopAction} />)
-    fireEvent.submit(screen.getByRole('button', { name: 'Guardar horarios' }).closest('form')!)
     const alert = screen.getByRole('alert')
-    expect(alert.textContent).toContain('Falta un paso')
-    expect(alert.textContent).toContain('del sábado y del domingo en 5 canchas')
-    expect(screen.getByRole('link', { name: 'Cargar precios en Canchas' })).toHaveAttribute(
-      'href',
-      '/canchas',
-    )
-  })
-
-  it('con una sola cancha pendiente el aviso va en singular', () => {
-    formState.mockReturnValue({ success: true, pricingPending: { courts: 1, days: ['sun'] } })
-    render(<HorariosForm hours={{}} action={noopAction} />)
-    fireEvent.submit(screen.getByRole('button', { name: 'Guardar horarios' }).closest('form')!)
-    expect(screen.getByRole('alert').textContent).toContain('del domingo en 1 cancha.')
+    expect(alert.textContent).toContain('Falta el precio del sábado y del domingo.')
+    expect(alert.textContent).toContain('el horario todavía no se guardó')
+    expect(screen.getByLabelText('Cancha 1')).toHaveValue('84.000')
+    expect(screen.getByLabelText('Cancha 2')).toHaveValue('')
+    expect(screen.getByLabelText('Cancha 2')).toBeRequired()
+    expect(
+      (document.querySelector('input[type="hidden"][name="price_c1"]') as HTMLInputElement).value,
+    ).toBe('8400000')
+    expect(screen.getByRole('button', { name: 'Guardar horarios y precios' })).toBeInTheDocument()
+    // Un solo aviso: el error genérico no se repite debajo en rojo.
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
   })
 
   it('sin huecos que completar, el aviso de guardado no menciona precios', () => {

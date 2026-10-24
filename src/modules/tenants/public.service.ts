@@ -145,12 +145,20 @@ type PublicSlot = {
   /** Solo en `held`: ver comentario de `Slot.heldUntil`. */
   heldUntil?: string
 }
+// Un turno libre sin precio no se ofrece: reservarlo revienta con
+// PriceUnavailableError, así que el portal y el bot lo mostrarían para después
+// fallar (El Vagón, 2026-10-24: domingo abierto sin tarifa cargada). El precio
+// se mira acá, antes de ocultarlo, porque `hidePrices` lo borra después.
+function publicStatus(s: Slot): PublicSlotStatus {
+  if (s.status === 'free') return s.price === null ? 'occupied' : 'free'
+  return s.status === 'past' || s.status === 'held' ? s.status : 'occupied'
+}
+
 function toPublicSlots(slots: Slot[], hidePrices: boolean): PublicSlot[] {
   return slots.map((s) => ({
     time: s.time,
     duration: s.duration,
-    status:
-      s.status === 'free' || s.status === 'past' || s.status === 'held' ? s.status : 'occupied',
+    status: publicStatus(s),
     price: hidePrices ? null : s.price,
     ...(s.status === 'held' && s.heldUntil ? { heldUntil: s.heldUntil } : {}),
   }))

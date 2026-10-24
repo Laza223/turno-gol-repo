@@ -17,6 +17,7 @@ export function SubmitButton({
   variant,
   size,
   disabled,
+  'aria-describedby': describedBy,
 }: {
   children: ReactNode
   pendingLabel?: string
@@ -24,6 +25,7 @@ export function SubmitButton({
   variant?: ComponentProps<typeof Button>['variant']
   size?: ComponentProps<typeof Button>['size']
   disabled?: boolean
+  'aria-describedby'?: string
 }) {
   const { pending } = useFormStatus()
   return (
@@ -31,6 +33,7 @@ export function SubmitButton({
       type="submit"
       isLoading={pending}
       aria-busy={pending}
+      aria-describedby={describedBy}
       className={className}
       variant={variant}
       size={size}

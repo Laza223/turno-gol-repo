@@ -3,6 +3,7 @@ import Link from 'next/link'
 import {
   CalendarX,
   Compass,
+  CreditCard,
   MapPin,
   MessageCircle,
   Navigation,
@@ -12,6 +13,7 @@ import {
 import { isInRivalStartWindow } from '@/modules/rival/rival-window'
 import { formatLabel } from '@/components/public/courtFacets'
 import { buttonVariants } from '@/components/ui/button'
+import { SubmitButton } from '@/components/ui/submit-button'
 import { Pager } from '@/components/ui/pager'
 import { StatusBadge, type StatusBadgeVisual } from '@/components/ui/status-badge'
 import PlayerHeroBand from '@/components/site/PlayerHeroBand'
@@ -26,6 +28,11 @@ import type { RefundContactInfo } from './actions'
 import type { LateCancelPenalty } from '@/modules/bookings/late-cancel'
 import { CancelBookingButton, type CancelMyBookingAction } from './CancelBookingButton'
 import { LeaveReviewButton } from './LeaveReviewButton'
+import type { retryDepositPaymentAction } from '@/app/(public)/[slug]/reservar/actions'
+import type { DepositPayState } from '@/lib/booking/hold'
+
+/** Entra por prop: `.../reservar/actions` es `'use server'` y no se importa como valor acá. */
+export type PayDepositAction = typeof retryDepositPaymentAction
 
 /**
  * Fila de reserva del jugador tal como la arma la query cruda (raw SQL vía
@@ -72,6 +79,8 @@ export type MisReservasBookingRow = {
   late_cancel?: (LateCancelPenalty & { hours: number }) | null
   /** `deposit_status` de la reserva: decide si "Cancelada" lleva "(sin reembolso)". */
   deposit_status: string
+  /** Solo `pending_payment`: qué se ofrece para pagar la seña (`depositPayState`, en page.tsx). */
+  pay_deposit?: DepositPayState | null
   /**
    * Devolución de seña en juego, si la hay. Sale de la fila `payments`, no de
    * `deposit_status` — ver `refundContactFor` en page.tsx.
@@ -152,7 +161,13 @@ const PRICE_STATUSES: ReadonlySet<string> = new Set([
 function statusNote(b: MisReservasBookingRow): string | null {
   switch (b.status) {
     case 'pending_payment':
-      return 'Falta pagar la seña. Si no se paga a tiempo, el turno se libera.'
+      if (b.pay_deposit === 'processing')
+        return 'Tu pago se está procesando. Si se aprueba, el turno queda confirmado.'
+      if (b.pay_deposit === 'open')
+        return 'Falta pagar la seña. Si no se paga a tiempo, el turno se libera.'
+      if (b.pay_deposit === 'unavailable')
+        return 'Por ahora no se puede pagar la seña desde acá. Escribile al complejo.'
+      return 'Se terminó el tiempo para pagar la seña. El turno se está liberando.'
     case 'expired':
       return 'No se pagó la seña a tiempo, así que el turno se liberó.'
     case 'no_show':
@@ -227,6 +242,7 @@ function BookingCard({
   featured,
   rivalEnabled,
   cancelAction,
+  payDepositAction,
 }: {
   b: MisReservasBookingRow
   today: string
@@ -235,6 +251,7 @@ function BookingCard({
   /** Flag de RIVAL: suma "Armar el partido" a la próxima. Apagado, no renderiza nada. */
   rivalEnabled: boolean
   cancelAction: CancelMyBookingAction
+  payDepositAction?: PayDepositAction
 }) {
   const visual = playerBookingVisual(b.status, b.deposit_status)
   // "18:00 a 19:00", como la vuelta de la reserva: se lee en voz alta mejor que la raya.
@@ -242,11 +259,12 @@ function BookingCard({
   const whenId = `reserva-${b.id}-cuando`
   const whereId = `reserva-${b.id}-donde`
   const describedBy = `${whenId} ${whereId}`
-  // Esperando seña no abre nada: /reserva/{id}/error habla de un pago "rechazado o cancelado" y
-  // acá el jugador puede no haber pagado todavía (pendiente de decisión de producto).
+  // Esperando seña no abre nada: su salida es "Pagar la seña", abajo.
   const href = b.status === 'confirmed' ? buildReservaHref(b.id, 'exito') : null
   const note = statusNote(b)
   const pay = payNote(b)
+  const canPayDeposit =
+    b.status === 'pending_payment' && b.pay_deposit === 'open' && payDepositAction != null
   const canCancel = b.status === 'confirmed' && !b.ended
   const canReview = b.status === 'completed' && !b.has_review
   const canReserveAgain = RESERVE_AGAIN_STATUSES.has(b.status)
@@ -259,7 +277,13 @@ function BookingCard({
     !b.ended &&
     isInRivalStartWindow(b.starts_on, today)
   const hasActions =
-    canCancel || canReview || canReserveAgain || showShare || showDirections || showRival
+    canPayDeposit ||
+    canCancel ||
+    canReview ||
+    canReserveAgain ||
+    showShare ||
+    showDirections ||
+    showRival
 
   const title = (
     <>
@@ -383,6 +407,19 @@ function BookingCard({
 
       {hasActions && (
         <div className="relative z-10 mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3 [&>[data-ghost]:first-child]:-ml-3 [&>:not([data-ghost])~[data-ghost]]:ml-auto">
+          {canPayDeposit && (
+            <form action={payDepositAction}>
+              <input type="hidden" name="bookingId" value={b.id} />
+              <SubmitButton
+                aria-describedby={describedBy}
+                className={cn(buttonVariants(), ACTION)}
+                pendingLabel="Abriendo MercadoPago…"
+              >
+                <CreditCard className="size-4 shrink-0" aria-hidden />
+                Pagar la seña
+              </SubmitButton>
+            </form>
+          )}
           {showShare && (
             <a
               href={b.share_href!}
@@ -468,6 +505,7 @@ export function MisReservasView({
   today,
   upcomingCount,
   cancelAction,
+  payDepositAction,
   page,
   total,
   pageSize,
@@ -479,6 +517,8 @@ export function MisReservasView({
   today: string
   upcomingCount: number
   cancelAction: CancelMyBookingAction
+  /** "Pagar la seña" de las que esperan seña (`retryDepositPaymentAction`, por prop). */
+  payDepositAction?: PayDepositAction
   /** Página 0-based que se está viendo (B10). */
   page: number
   /** Reservas en total para este tab (`COUNT(*) OVER()`, mismo filtro que la lista) — alimenta el Pager compartido en modo total. */
@@ -579,6 +619,7 @@ export function MisReservasView({
                 featured={i === featuredIndex}
                 rivalEnabled={rivalEnabled}
                 cancelAction={cancelAction}
+                payDepositAction={payDepositAction}
               />
             ))}
           </ul>

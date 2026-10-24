@@ -88,7 +88,65 @@ export function holdRemainingLabel(
  */
 const RETRY_MIN_REMAINING_SECONDS = 90
 
+/**
+ * Último instante en que se ofrece "Pagar la seña" / "Reintentar pago": el vencimiento del hold
+ * menos el margen de arriba. Las pantallas lo usan para esconder el botón a tiempo; la acción
+ * vuelve a chequearlo con `holdAllowsRetry`.
+ */
+export function holdRetryDeadlineMs(createdAt: Date | string): number {
+  return holdExpiresAtMs(createdAt) - RETRY_MIN_REMAINING_SECONDS * 1000
+}
+
 /** ¿Queda hold suficiente para reintentar el pago con el margen de la preferencia intacto? */
 export function holdAllowsRetry(createdAt: Date | string, nowMs: number): boolean {
-  return holdExpiresAtMs(createdAt) - nowMs > RETRY_MIN_REMAINING_SECONDS * 1000
+  return holdRetryDeadlineMs(createdAt) > nowMs
+}
+
+/**
+ * Qué se le ofrece a una reserva para pagar la seña desde /pendiente y Mis reservas. Son los gates de
+ * `retryDepositPaymentAction` (hold con margen, MercadoPago del complejo listo), que se repiten
+ * para no ofrecer un botón que la acción rechaza: con MercadoPago caído la acción manda a /pendiente,
+ * y desde /pendiente se armaría un loop. A esos se suman dos que la acción no ve: sin seña no hay
+ * preferencia que armar, y con un pago `in_process` ya hay uno en camino (otro sería doble cobro).
+ * - `open`: se ofrece "Pagar la seña".
+ * - `processing`: MercadoPago tiene un pago en curso.
+ * - `unavailable`: el hold sigue, pero desde acá no se puede cobrar (MercadoPago caído, sin seña).
+ * - `closed`: ya no hay margen; el turno se está liberando.
+ * `null`: no es una reserva esperando seña.
+ */
+export type DepositPayState = 'open' | 'processing' | 'unavailable' | 'closed'
+
+export function depositPayState(
+  b: {
+    status: string
+    depositAmount: number
+    /** MercadoPago del complejo conectado (booleano en SQL: el token no sale de la base). */
+    mpReady: boolean
+    inProcess: boolean
+    createdAt: Date | string
+  },
+  nowMs: number,
+): DepositPayState | null {
+  if (b.status !== 'pending_payment') return null
+  if (b.inProcess) return 'processing'
+  if (!holdAllowsRetry(b.createdAt, nowMs)) return 'closed'
+  if (b.depositAmount <= 0 || !b.mpReady) return 'unavailable'
+  return 'open'
+}
+
+const PAY_UNTIL_FORMAT = new Intl.DateTimeFormat('es-AR', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+  timeZone: 'America/Argentina/Buenos_Aires',
+})
+
+/**
+ * "20:14": hasta qué hora (ART) se puede pagar la seña. Es la hora del reloj y no una cuenta
+ * regresiva (la vuelta de la reserva no muestra "Te quedan 6:00"). Los segundos se cortan, así que
+ * nunca promete un minuto que no hay. Se arma en el servidor y viaja como texto: el cliente no
+ * recalcula ni el huso ni la hora.
+ */
+export function holdPayUntilLabel(createdAt: Date | string): string {
+  return PAY_UNTIL_FORMAT.format(new Date(holdRetryDeadlineMs(createdAt)))
 }

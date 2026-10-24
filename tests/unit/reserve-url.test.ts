@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { sanitizeNext } from '@/lib/safe-redirect'
 import {
+  buildBookingContact,
   buildFichaHref,
   buildIngresarForReservaHref,
   buildReserveAgainHref,
@@ -209,6 +210,36 @@ describe('buildReserveRequest', () => {
     expect(
       buildReserveRequest({ whatsapp: null, phone: '' }, court, '2026-10-15', '21:00'),
     ).toBeNull()
+  })
+})
+
+describe('buildBookingContact — "Escribirle al complejo" desde la vuelta de la reserva', () => {
+  const booking = {
+    id: '11111111-2222-4333-8444-555555555555',
+    startsOn: '2026-10-15',
+    timeStart: '21:00:00',
+    courtName: 'Cancha 2',
+  }
+  const text = (href: string) => new URL(href).searchParams.get('text')
+
+  it('abre WhatsApp con la reserva escrita (código, día, hora y cancha) para que el complejo la encuentre', () => {
+    const contact = buildBookingContact(
+      { name: 'El Vagón', whatsapp: '+54 9 11 4567-8900', phone: '11 1111-2222' },
+      booking,
+    )
+    expect(contact?.channel).toBe('whatsapp')
+    expect(contact?.href).toMatch(/^https:\/\/wa\.me\/5491145678900\?text=/)
+    expect(text(contact!.href)).toMatch(
+      /^Hola El Vagón, te escribo por la seña de mi reserva \S+ del jueves 15 de octubre a las 21:00 \(Cancha 2\)\.$/,
+    )
+  })
+
+  it('si el número no sirve para WhatsApp, marca el teléfono; sin nada marcable, no hay botón', () => {
+    expect(buildBookingContact({ name: 'X', whatsapp: null, phone: '4567' }, booking)).toEqual({
+      channel: 'tel',
+      href: 'tel:4567',
+    })
+    expect(buildBookingContact({ name: 'X', whatsapp: null, phone: '' }, booking)).toBeNull()
   })
 })
 

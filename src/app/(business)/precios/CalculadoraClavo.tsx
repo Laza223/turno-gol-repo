@@ -112,14 +112,14 @@ export default function CalculadoraClavo() {
               id="clavos-label"
               className="font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400"
             >
-              ¿Cuántos te cuelgan por semana?
+              ¿Cuántos turnos te cuelgan por semana?
             </span>
             <div className="mt-3 inline-flex items-center gap-4 rounded-full border border-white/10 bg-white/4 p-1.5">
               <button
                 type="button"
                 onClick={() => setClavos((c) => Math.max(0, c - 1))}
                 disabled={clavos === 0}
-                aria-label="Un ausente menos por semana"
+                aria-label="Un turno colgado menos por semana"
                 className="flex h-11 w-11 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/8 hover:text-white disabled:opacity-35 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               >
                 <Minus className="h-4 w-4" aria-hidden />
@@ -134,7 +134,7 @@ export default function CalculadoraClavo() {
                 type="button"
                 onClick={() => setClavos((c) => Math.min(MAX_CLAVOS, c + 1))}
                 disabled={clavos === MAX_CLAVOS}
-                aria-label="Un ausente más por semana"
+                aria-label="Un turno colgado más por semana"
                 className="flex h-11 w-11 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/8 hover:text-white disabled:opacity-35 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
               >
                 <Plus className="h-4 w-4" aria-hidden />
@@ -150,7 +150,7 @@ export default function CalculadoraClavo() {
         >
           {clavos === 0 ? (
             <p className="text-lg leading-relaxed text-slate-300">
-              ¿Cero ausentes? Enhorabuena — sos la excepción.{' '}
+              ¿Ninguno? Bien ahí, sos la excepción.{' '}
               <span className="text-slate-400">
                 TurnoGol igual te ordena la grilla, la caja y el teléfono, desde{' '}
                 <span className="font-semibold text-white">{formatArs(desdeCents)}/mes</span>.
@@ -200,8 +200,10 @@ export default function CalculadoraClavo() {
                 )}
               </p>
               <p className="mt-3 text-[15px] leading-relaxed text-slate-300">
-                Con la seña, el turno colgado lo paga el que no vino.{' '}
-                <span className="font-semibold text-[#6ee7b7]">No vos.</span>
+                Con la seña, el que no vino deja su parte.{' '}
+                <span className="font-semibold text-[#6ee7b7]">
+                  Y si falta dos veces, no reserva online por dos semanas.
+                </span>
               </p>
             </>
           )}

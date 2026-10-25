@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
 import type { ActionResult } from '@/shared/types/action-result'
 import type { RivalFormResult } from '../../actions'
-import { WelcomeCard } from '../../WelcomeCard'
+import { WelcomeCard, type WelcomePhoto } from '../../WelcomeCard'
 import { dropUrlParam } from './drop-url-param'
 
 /** Firmas de las Server Actions (por prop, no por import: ver convenciones-stack). */
@@ -39,6 +39,7 @@ export function VoyPanel({
   intentParam,
   joinAction,
   acceptAndJoinAction,
+  photo,
 }: {
   code: string
   /** `null` = ya aceptó la bienvenida de la versión vigente. */
@@ -49,6 +50,8 @@ export function VoyPanel({
   intentParam: string
   joinAction: JoinAction
   acceptAndJoinAction: AcceptAndJoinAction
+  /** Foto opcional de la tarjeta de bienvenida (solo con storage configurado). */
+  photo?: WelcomePhoto
 }) {
   const formRef = useRef<HTMLFormElement>(null)
   const started = useRef(false)
@@ -107,6 +110,7 @@ export function VoyPanel({
         submitLabel="Estoy adentro"
         intro="Para sumarte, contanos quién sos."
         hidden={{ code }}
+        photo={photo}
       />
     ) : (
       <Button type="button" onClick={() => setCardOpen(true)} className={PORTAL_BUTTON}>

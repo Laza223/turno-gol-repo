@@ -1,4 +1,9 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  ListObjectsV2Command,
+} from '@aws-sdk/client-s3'
 import { captureException } from '@/lib/sentry'
 
 // Re-export: la definición vive en `r2-config.ts` (sin el SDK de AWS) para que
@@ -52,7 +57,14 @@ function getClient(): S3Client {
  * código de error de R2. El mensaje amable para el usuario lo siguen dando
  * ellos; el diagnóstico vive acá, una sola vez.
  */
-export async function putImage(key: string, bytes: Uint8Array, contentType: string): Promise<void> {
+export async function putImage(
+  key: string,
+  bytes: Uint8Array,
+  contentType: string,
+  // Default: el `immutable` de un año de canchas/logos. Una foto de persona (RIVAL)
+  // pide un TTL corto: si se borra por ARCO, el borde no la sirve más de 1 h.
+  opts?: { cacheControl?: string },
+): Promise<void> {
   const c = getConfig()
   try {
     await getClient().send(
@@ -67,7 +79,7 @@ export async function putImage(key: string, bytes: Uint8Array, contentType: stri
         // Nunca se sobreescribe una key existente, así que el objeto que hay en
         // una URL no cambia jamás. Sin esta cabecera, el TTL en el borde lo
         // decidía Cloudflare por default en vez del código.
-        CacheControl: 'public, max-age=31536000, immutable',
+        CacheControl: opts?.cacheControl ?? 'public, max-age=31536000, immutable',
       }),
     )
   } catch (err) {
@@ -89,6 +101,23 @@ export async function putImage(key: string, bytes: Uint8Array, contentType: stri
 export async function deleteImage(key: string): Promise<void> {
   const c = getConfig()
   await getClient().send(new DeleteObjectCommand({ Bucket: c.bucket, Key: key }))
+}
+
+/** Lista los objetos bajo `prefix` (pagina hasta agotar). Solo la usa el barrido de huérfanos. */
+export async function listImages(prefix: string): Promise<{ key: string; lastModified: Date }[]> {
+  const c = getConfig()
+  const out: { key: string; lastModified: Date }[] = []
+  let token: string | undefined
+  do {
+    const res = await getClient().send(
+      new ListObjectsV2Command({ Bucket: c.bucket, Prefix: prefix, ContinuationToken: token }),
+    )
+    for (const o of res.Contents ?? []) {
+      if (o.Key && o.LastModified) out.push({ key: o.Key, lastModified: o.LastModified })
+    }
+    token = res.IsTruncated ? res.NextContinuationToken : undefined
+  } while (token)
+  return out
 }
 
 /** URL pública servida por el custom domain para una key dada. */

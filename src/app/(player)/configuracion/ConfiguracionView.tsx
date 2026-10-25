@@ -5,12 +5,18 @@ import {
   Download,
   Heart,
   LogOut,
+  Shirt,
   SunMoon,
   User,
   UserX,
   type LucideIcon,
 } from 'lucide-react'
 import PlayerHeroBand from '@/components/site/PlayerHeroBand'
+import {
+  PlayerPhotoField,
+  type PhotoRemoveAction,
+  type PhotoUploadAction,
+} from '@/components/rival/PlayerPhotoField'
 import { Button } from '@/components/ui/button'
 import { PORTAL_LINK, PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
 import ThemeToggle from '@/components/theme/ThemeToggle'
@@ -27,6 +33,13 @@ type ProfileValues = {
   lastName: string
   phone: string
   preferredArea: string
+}
+
+/** Foto de RIVAL: solo se pasa con RIVAL prendido y storage configurado. Las actions entran por prop. */
+type RivalPhotoProps = {
+  url: string | null
+  uploadAction: PhotoUploadAction
+  removeAction: PhotoRemoveAction
 }
 
 /** Un bloque de la página: tarjeta con el ícono en su cajita arriba y el contenido de la sección abajo. */
@@ -54,6 +67,7 @@ export function ConfiguracionView({
   activity,
   updateProfileAction,
   signOutAction,
+  rivalPhoto,
 }: {
   profile: ProfileValues
   email: string
@@ -64,6 +78,8 @@ export function ConfiguracionView({
     formData: FormData,
   ) => Promise<UpdateProfileResult>
   signOutAction: () => Promise<void>
+  /** Sin este prop no hay tarjeta "Tu perfil en RIVAL" (RIVAL apagado o sin storage). */
+  rivalPhoto?: RivalPhotoProps
 }) {
   const fullName = `${profile.firstName} ${profile.lastName}`.trim()
 
@@ -107,6 +123,28 @@ export function ConfiguracionView({
           </p>
         </section>
       </SectionCard>
+
+      {rivalPhoto && (
+        <SectionCard icon={Shirt}>
+          <section aria-labelledby="rival-perfil-titulo">
+            <h2 id="rival-perfil-titulo" className={PORTAL_SECTION_TITLE}>
+              Tu perfil en RIVAL
+            </h2>
+            <div className="mt-4">
+              <PlayerPhotoField
+                url={rivalPhoto.url}
+                initials={initials(profile.firstName, profile.lastName)}
+                uploadAction={rivalPhoto.uploadAction}
+                removeAction={rivalPhoto.removeAction}
+              />
+            </div>
+            <p className="mt-4 text-sm text-muted-foreground">
+              Tu foto la ve quien tenga el link de un partido tuyo y haya iniciado sesión, y el
+              organizador. Podés quitarla cuando quieras.
+            </p>
+          </section>
+        </SectionCard>
+      )}
 
       <SectionCard icon={Heart}>
         <FavoritesList favorites={favorites} />

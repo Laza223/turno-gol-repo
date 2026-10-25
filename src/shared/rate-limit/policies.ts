@@ -82,6 +82,10 @@ export const POLICIES = {
   // RIVAL v1: denunciar. Más estricta: una persona real denuncia pocas veces y es el camino
   // para ensuciar el partido de otro.
   rivalReport: { limit: 10, window: '10 m', keyBy: 'player', failMode: 'open' },
+  // RIVAL v1: subir o quitar la foto de perfil. Cada subida es un PUT a R2 (costo real) y
+  // una persona legítima la cambia una o dos veces. Fail open: no justifica bloquear si cae
+  // Upstash.
+  rivalPhoto: { limit: 10, window: '10 m', keyBy: 'player', failMode: 'open' },
 } as const satisfies Record<string, Policy>
 
 export type PolicyName = keyof typeof POLICIES

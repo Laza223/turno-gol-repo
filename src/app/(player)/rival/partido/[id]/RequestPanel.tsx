@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
 import type { ActionResult } from '@/shared/types/action-result'
 import type { RivalFormResult } from '../../actions'
-import { WelcomeCard } from '../../WelcomeCard'
+import { WelcomeCard, type WelcomePhoto } from '../../WelcomeCard'
 import type { VoyWelcome } from '../../p/[code]/VoyPanel'
 
 /** Firmas de las Server Actions (por prop, no por import: ver convenciones-stack). */
@@ -30,6 +30,7 @@ export function RequestPanel({
   welcome,
   requestAction,
   acceptAndRequestAction,
+  photo,
 }: {
   matchId: string
   label: string
@@ -37,6 +38,8 @@ export function RequestPanel({
   welcome: VoyWelcome | null
   requestAction: RequestAction
   acceptAndRequestAction: AcceptAndRequestAction
+  /** Foto opcional de la tarjeta de bienvenida (solo con storage configurado). */
+  photo?: WelcomePhoto
 }) {
   const [pending, run] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -67,6 +70,7 @@ export function RequestPanel({
         submitLabel={label}
         intro="Para pedir tu lugar, contanos quién sos."
         hidden={{ matchId }}
+        photo={photo}
       />
     ) : (
       <Button type="button" onClick={() => setCardOpen(true)} className={PORTAL_BUTTON}>

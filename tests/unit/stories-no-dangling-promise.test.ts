@@ -32,6 +32,10 @@ function findStories(dir: string, out: string[] = []): string[] {
  * escribir el motivo, la excepción no corresponde.
  */
 const ALLOWLIST: Record<string, string> = {
+  'src/components/rival/PlayerPhotoField.stories.tsx':
+    'PlayerPhotoField no usa transiciones de React: `busy` es un useState y la action se ' +
+    'espera con un await normal (mismo caso que image-uploader). La story colgada, `Ocupada`, ' +
+    'queda antes de `ConError`, que no depende de una transición previa.',
   'src/components/ui/image-uploader.stories.tsx':
     'ImageUploader no usa transiciones de React: `busy` es un useState y el upload ' +
     'resuelve en un `finally` de async normal. Migrarlo al helper introduce una espera ' +

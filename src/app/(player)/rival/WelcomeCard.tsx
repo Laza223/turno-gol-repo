@@ -8,6 +8,12 @@ import { Label } from '@/components/ui/label'
 import { SelectMenu } from '@/components/ui/select-menu'
 import { PORTAL_BUTTON, PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
 import { ChipGroup } from '@/app/(public)/[slug]/components/ChipGroups'
+import {
+  PlayerPhotoField,
+  type PhotoRemoveAction,
+  type PhotoUploadAction,
+} from '@/components/rival/PlayerPhotoField'
+import { initials } from '@/lib/format'
 import { RIVAL_POSITION_LABELS } from '@/modules/rival/rival-display'
 import { RIVAL_ZONES } from '@/modules/rival/rival-zones'
 import { RIVAL_POSITIONS } from '@/modules/rival/rival.schema'
@@ -15,6 +21,13 @@ import type { RivalFormResult } from './actions'
 
 /** Firma de la Server Action (llega por prop: importarla como valor arrastra drizzle al bundle del browser). */
 type WelcomeAction = (prev: RivalFormResult, formData: FormData) => Promise<RivalFormResult>
+
+/** La foto opcional de la bienvenida: la actual del jugador y las dos Server Actions (por prop). */
+export type WelcomePhoto = {
+  url: string | null
+  uploadAction: PhotoUploadAction
+  removeAction: PhotoRemoveAction
+}
 
 const INITIAL: RivalFormResult = { success: true }
 const FIELD_ERROR = 'text-[13px] leading-5 text-red-700 dark:text-red-300'
@@ -35,7 +48,8 @@ const ZONE_OPTIONS = RIVAL_ZONES.map((z) => ({ value: z, label: z }))
 
 /**
  * La bienvenida RIVAL (spec §7): una sola tarjeta, un solo botón que acepta. La primera vez que
- * el jugador organiza, y "Voy" la reusa con otro `submitLabel`. Sin foto: es del PR5.
+ * el jugador organiza, y "Voy" la reusa con otro `submitLabel`. La foto es opcional (`photo`): se
+ * sube al elegirla, aparte del botón que acepta.
  */
 export function WelcomeCard({
   defaultName,
@@ -45,6 +59,7 @@ export function WelcomeCard({
   submitLabel = 'Aceptar y seguir',
   intro = 'Antes de armar tu primer partido, contanos quién sos.',
   hidden,
+  photo,
 }: {
   defaultName: string
   /** Lo que el jugador ya había cargado (re-aceptación por cambio de versión de las reglas). */
@@ -56,6 +71,8 @@ export function WelcomeCard({
   intro?: string
   /** Campos ocultos que la action necesita (el código del partido en "Estoy adentro"). */
   hidden?: Record<string, string>
+  /** Sin esta prop (o sin storage) la tarjeta no ofrece foto. */
+  photo?: WelcomePhoto
 }) {
   const [state, formAction, pending] = useActionState(action, INITIAL)
   // Controlados: React 19 resetea los campos no controlados al terminar una action.
@@ -112,6 +129,18 @@ export function WelcomeCard({
             </p>
           )}
         </div>
+
+        {photo && (
+          <div className="space-y-1.5">
+            <p className="text-base font-medium text-foreground">Tu foto (opcional)</p>
+            <PlayerPhotoField
+              url={photo.url}
+              initials={initials(name, '')}
+              uploadAction={photo.uploadAction}
+              removeAction={photo.removeAction}
+            />
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <p id="rival-posicion" className="text-base font-medium text-foreground">

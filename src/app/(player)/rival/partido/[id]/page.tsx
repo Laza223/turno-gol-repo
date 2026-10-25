@@ -17,6 +17,7 @@ import {
   reportPlayerAction,
   requestToJoinAction,
 } from '../../actions'
+import { loadWelcomePhoto } from '../../welcome-photo'
 import { ParticipantMatchView } from './ParticipantMatchView'
 import { PublicBoardView, type BoardViewer } from './PublicBoardView'
 
@@ -64,6 +65,7 @@ export default async function RivalBoardMatchPage(props: { params: Promise<{ id:
   if (!match) notFound()
 
   let viewer: BoardViewer = { kind: 'anon' }
+  let photo: Awaited<ReturnType<typeof loadWelcomePhoto>>
   if (playerId) {
     const welcomeState = await getRivalWelcomeState(playerId)
     viewer = {
@@ -77,6 +79,7 @@ export default async function RivalBoardMatchPage(props: { params: Promise<{ id:
             }
           : null,
     }
+    if (viewer.welcome) photo = await loadWelcomePhoto(playerId)
   }
 
   return (
@@ -87,6 +90,7 @@ export default async function RivalBoardMatchPage(props: { params: Promise<{ id:
       requestAction={requestToJoinAction}
       acceptAndRequestAction={acceptWelcomeAndRequestAction}
       reportMatchAction={reportMatchAction}
+      photo={photo}
     />
   )
 }

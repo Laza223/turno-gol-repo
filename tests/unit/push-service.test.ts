@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // Mocks must be hoisted before imports.
 vi.mock('@/shared/db/client', () => ({
   getWorkerSql: vi.fn(),
+  withTenantContext: vi.fn(),
 }))
 
 vi.mock('@/shared/jobs/boss', () => ({
@@ -13,13 +14,19 @@ vi.mock('@/shared/lib/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-import { getWorkerSql } from '@/shared/db/client'
+import { getWorkerSql, withTenantContext } from '@/shared/db/client'
 import { getBoss } from '@/shared/jobs/boss'
-import { notifyAdminPush, notifyStaffPush } from '@/modules/notifications/push.service'
+import {
+  notifyAdminBookingCanceled,
+  notifyAdminPush,
+  notifyOwnerPlanEvent,
+  notifyStaffPush,
+} from '@/modules/notifications/push.service'
 import { QUEUE_PUSH_SEND } from '@/shared/jobs/definitions'
 
 const mockSql = getWorkerSql as ReturnType<typeof vi.fn>
 const mockGetBoss = getBoss as ReturnType<typeof vi.fn>
+const mockWithTenantContext = withTenantContext as ReturnType<typeof vi.fn>
 
 function makeBossStub() {
   return { send: vi.fn().mockResolvedValue(undefined) }
@@ -152,6 +159,183 @@ describe('notifyAdminPush', () => {
       { subscription_id: 'sub-1', payload },
       expect.objectContaining({ retryLimit: 3 }),
     )
+  })
+})
+
+/** Parámetros con los que se llamó al tagged template del mock de `getWorkerSql`. */
+function sqlParams(sql: unknown): unknown[] {
+  return (sql as ReturnType<typeof vi.fn>).mock.calls.flatMap(([, ...params]) => params)
+}
+
+describe('notifyAdminPush — dedupeKey de los avisos nuevos', () => {
+  it('cancelación del jugador: dedupeKey por reserva y suscripción', async () => {
+    mockSql.mockReturnValue(makeSqlStub([{ id: 'sub-1' }]))
+    const boss = makeBossStub()
+    mockGetBoss.mockResolvedValue(boss)
+
+    const payload = { type: 'booking.canceled_by_player', bookingId: 'b-1' }
+    await notifyAdminPush('tenant-1', payload)
+
+    expect(boss.send).toHaveBeenCalledWith(
+      QUEUE_PUSH_SEND,
+      { subscription_id: 'sub-1', payload, dedupeKey: 'push:booking-canceled:b-1:sub-1' },
+      expect.objectContaining({ retryLimit: 3 }),
+    )
+  })
+
+  it('cancelación sin bookingId: NO arma una dedupeKey rota', async () => {
+    mockSql.mockReturnValue(makeSqlStub([{ id: 'sub-1' }]))
+    const boss = makeBossStub()
+    mockGetBoss.mockResolvedValue(boss)
+
+    const payload = { type: 'booking.canceled_by_player' }
+    await notifyAdminPush('tenant-1', payload)
+
+    expect(boss.send).toHaveBeenCalledWith(
+      QUEUE_PUSH_SEND,
+      { subscription_id: 'sub-1', payload },
+      expect.objectContaining({ retryLimit: 3 }),
+    )
+  })
+
+  it('plan SaaS: dedupeKey por tipo, complejo, instancia del evento y suscripción', async () => {
+    mockSql.mockReturnValue(makeSqlStub([{ id: 'sub-1' }]))
+    const boss = makeBossStub()
+    mockGetBoss.mockResolvedValue(boss)
+
+    const payload = { type: 'plan.payment_failed', dedupeId: 'pay-9' }
+    await notifyAdminPush('tenant-1', payload)
+
+    expect(boss.send).toHaveBeenCalledWith(
+      QUEUE_PUSH_SEND,
+      {
+        subscription_id: 'sub-1',
+        payload,
+        dedupeKey: 'push:plan.payment_failed:tenant-1:pay-9:sub-1',
+      },
+      expect.objectContaining({ retryLimit: 3 }),
+    )
+  })
+
+  it('plan SaaS sin dedupeId: sin dedupeKey (nunca "undefined" en la clave)', async () => {
+    mockSql.mockReturnValue(makeSqlStub([{ id: 'sub-1' }]))
+    const boss = makeBossStub()
+    mockGetBoss.mockResolvedValue(boss)
+
+    await notifyAdminPush('tenant-1', { type: 'plan.suspended' })
+
+    expect(boss.send).toHaveBeenCalledWith(
+      QUEUE_PUSH_SEND,
+      { subscription_id: 'sub-1', payload: { type: 'plan.suspended' } },
+      expect.objectContaining({ retryLimit: 3 }),
+    )
+  })
+})
+
+describe('notifyAdminPush — filtro por rol', () => {
+  it('sin onlyRole: el SQL no filtra por rol', async () => {
+    const sql = makeSqlStub([{ id: 'sub-1' }])
+    mockSql.mockReturnValue(sql)
+    mockGetBoss.mockResolvedValue(makeBossStub())
+
+    await notifyAdminPush('tenant-1', { type: 'x' })
+
+    expect(sqlParams(sql)).not.toContain('admin')
+  })
+
+  it("onlyRole: 'admin' manda el rol como parámetro de la query (solo el dueño)", async () => {
+    const sql = makeSqlStub([{ id: 'sub-1' }])
+    mockSql.mockReturnValue(sql)
+    mockGetBoss.mockResolvedValue(makeBossStub())
+
+    await notifyAdminPush('tenant-1', { type: 'plan.suspended' }, { onlyRole: 'admin' })
+
+    expect(sqlParams(sql)).toContain('admin')
+  })
+})
+
+describe('notifyAdminBookingCanceled', () => {
+  const rows = [
+    { court_name: 'Cancha 2', date: '2026-10-25', time_start: '21:00', time_end: '22:00' },
+  ]
+
+  it('lee el contexto de la reserva y encola el push con título, cuerpo y late', async () => {
+    mockSql.mockReturnValue(makeSqlStub([{ id: 'sub-1' }]))
+    const boss = makeBossStub()
+    mockGetBoss.mockResolvedValue(boss)
+    mockWithTenantContext.mockResolvedValue(rows)
+
+    await notifyAdminBookingCanceled('tenant-1', 'b-1', { late: true })
+
+    expect(mockWithTenantContext).toHaveBeenCalledWith('tenant-1', expect.any(Function))
+    const [queue, data] = boss.send.mock.calls[0]!
+    expect(queue).toBe(QUEUE_PUSH_SEND)
+    expect(data).toMatchObject({
+      subscription_id: 'sub-1',
+      dedupeKey: 'push:booking-canceled:b-1:sub-1',
+      payload: {
+        type: 'booking.canceled_by_player',
+        bookingId: 'b-1',
+        late: true,
+        title: 'Cancelación tardía — Cancha 2',
+        url: '/grilla?date=2026-10-25',
+      },
+    })
+  })
+
+  it('nunca lanza: si falla la lectura del contexto, resuelve y no encola nada', async () => {
+    mockSql.mockReturnValue(makeSqlStub([{ id: 'sub-1' }]))
+    const boss = makeBossStub()
+    mockGetBoss.mockResolvedValue(boss)
+    mockWithTenantContext.mockRejectedValue(new Error('db caída'))
+
+    await expect(
+      notifyAdminBookingCanceled('tenant-1', 'b-1', { late: false }),
+    ).resolves.toBeUndefined()
+    expect(boss.send).not.toHaveBeenCalled()
+  })
+
+  it('nunca lanza: si falla pg-boss, resuelve', async () => {
+    mockSql.mockReturnValue(makeSqlStub([{ id: 'sub-1' }]))
+    mockGetBoss.mockRejectedValue(new Error('boss caído'))
+    mockWithTenantContext.mockResolvedValue(rows)
+
+    await expect(
+      notifyAdminBookingCanceled('tenant-1', 'b-1', { late: false }),
+    ).resolves.toBeUndefined()
+  })
+})
+
+describe('notifyOwnerPlanEvent', () => {
+  it('encola el aviso de plan filtrando por el rol admin (el encargado no ve facturación)', async () => {
+    const sql = makeSqlStub([{ id: 'sub-1' }])
+    mockSql.mockReturnValue(sql)
+    const boss = makeBossStub()
+    mockGetBoss.mockResolvedValue(boss)
+
+    await notifyOwnerPlanEvent('tenant-1', { event: 'trial_expired' }, 'trial-2026-11-01')
+
+    expect(sqlParams(sql)).toContain('admin')
+    expect(boss.send).toHaveBeenCalledWith(
+      QUEUE_PUSH_SEND,
+      expect.objectContaining({
+        dedupeKey: 'push:plan.trial_expired:tenant-1:trial-2026-11-01:sub-1',
+        payload: expect.objectContaining({
+          type: 'plan.trial_expired',
+          title: 'Terminó tu prueba',
+        }),
+      }),
+      expect.objectContaining({ retryLimit: 3 }),
+    )
+  })
+
+  it('nunca lanza: un fallo de la cola no tira la transición de plan que lo disparó', async () => {
+    mockSql.mockReturnValue(makeSqlStub([{ id: 'sub-1' }]))
+    mockGetBoss.mockRejectedValue(new Error('boss caído'))
+
+    await expect(
+      notifyOwnerPlanEvent('tenant-1', { event: 'suspended' }, 'x'),
+    ).resolves.toBeUndefined()
   })
 })
 

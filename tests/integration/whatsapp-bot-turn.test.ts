@@ -713,6 +713,8 @@ describe('processWhatsappTurn — fallas', () => {
     expect(notifyAdminPush).toHaveBeenCalledTimes(1)
     expect(notifyAdminPush).toHaveBeenCalledWith(s.tenantId, {
       type: 'whatsapp_handoff',
+      title: 'WhatsApp: te necesitan en un chat',
+      body: expect.any(String),
       summaryLabel: expect.any(String),
       url: '/settings/whatsapp',
     })

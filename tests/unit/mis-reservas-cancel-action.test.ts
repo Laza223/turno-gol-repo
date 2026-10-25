@@ -41,6 +41,7 @@ vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 // `after` fuera de un request tira; acá solo registra el callback para correrlo a mano.
 vi.mock('next/server', () => ({ after: vi.fn() }))
 vi.mock('@/modules/notifications/notification.service', () => ({ dispatchEmail: vi.fn() }))
+vi.mock('@/modules/notifications/push.service', () => ({ notifyAdminBookingCanceled: vi.fn() }))
 // Reporte a Sentry con flush (`@/lib/sentry`): lo que tiene que usar el fallo del mail.
 vi.mock('@/lib/sentry', () => ({ captureMessage: vi.fn() }))
 vi.mock('next/navigation', () => ({
@@ -53,10 +54,15 @@ import { revalidatePath } from 'next/cache'
 import { after } from 'next/server'
 import { cancelByPlayer } from '@/modules/bookings/booking.cancellation'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
+import { notifyAdminBookingCanceled } from '@/modules/notifications/push.service'
 import { captureMessage } from '@/lib/sentry'
 import { cancelMyBookingAction } from '@/app/(player)/mis-reservas/actions'
 
 const VALID_UUID = '11111111-1111-1111-1111-111111111111'
+
+/** Corre todos los callbacks que la action agendó con `after()` (push al admin + mail). */
+const runAfterCallbacks = () =>
+  Promise.all(vi.mocked(after).mock.calls.map(([cb]) => (cb as () => Promise<void> | void)()))
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -348,12 +354,12 @@ describe('cancelMyBookingAction — replay y despacho del mail', () => {
     const result = await cancelMyBookingAction(VALID_UUID)
 
     expect(result.success).toBe(true)
-    expect(after).toHaveBeenCalledTimes(1)
+    // Dos callbacks: el push al admin y el mail al jugador.
+    expect(after).toHaveBeenCalledTimes(2)
     expect(dispatchEmail).not.toHaveBeenCalled() // corre después de la respuesta
-    const run = vi.mocked(after).mock.calls[0]![0] as () => Promise<void>
     vi.useFakeTimers()
     try {
-      const done = run()
+      const done = runAfterCallbacks()
       await vi.advanceTimersByTimeAsync(60_000)
       await done
     } finally {
@@ -371,11 +377,37 @@ describe('cancelMyBookingAction — replay y despacho del mail', () => {
     vi.mocked(cancelByPlayer).mockResolvedValueOnce(OUTCOME_CON_MAILS)
 
     expect((await cancelMyBookingAction(VALID_UUID)).success).toBe(true)
-    await (vi.mocked(after).mock.calls[0]![0] as () => Promise<void>)()
+    await runAfterCallbacks()
 
     expect(captureMessage).toHaveBeenCalledWith('email dispatch failed after player cancellation', {
       level: 'warning',
       extra: expect.objectContaining({ error: 'pg-boss caído' }),
     })
+  })
+
+  it('el push al admin va en after() con el tenant de la reserva y sin late por defecto', async () => {
+    vi.mocked(cancelByPlayer).mockResolvedValueOnce(OUTCOME_CON_MAILS)
+
+    await cancelMyBookingAction(VALID_UUID)
+    expect(notifyAdminBookingCanceled).not.toHaveBeenCalled() // corre después de la respuesta
+    await runAfterCallbacks()
+
+    expect(notifyAdminBookingCanceled).toHaveBeenCalledTimes(1)
+    expect(notifyAdminBookingCanceled).toHaveBeenCalledWith('tenant-1', VALID_UUID, { late: false })
+  })
+
+  it('cancelación tardía: el push al admin sale con late: true', async () => {
+    vi.mocked(cancelByPlayer).mockResolvedValueOnce({
+      booking: canceled,
+      notificationIds: [],
+      lateCancel: true,
+    } as never)
+
+    await cancelMyBookingAction(VALID_UUID)
+    await runAfterCallbacks()
+
+    expect(notifyAdminBookingCanceled).toHaveBeenCalledWith('tenant-1', VALID_UUID, { late: true })
+    // Sin mails que despachar queda solo el callback del push.
+    expect(after).toHaveBeenCalledTimes(1)
   })
 })

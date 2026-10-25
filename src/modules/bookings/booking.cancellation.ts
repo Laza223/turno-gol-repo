@@ -220,6 +220,12 @@ export type CancellationOutcome = {
   notificationIds: string[]
   /** `true`: reintento de una cancelación ya hecha por el mismo actor, no se escribió nada. */
   replayed?: boolean
+  /**
+   * La cancelación del jugador cayó dentro de la ventana de cancelación tardía
+   * (`bookings.canceled_late`). Lo usa el push al admin; no viene en las cancelaciones
+   * del staff ni en los replays.
+   */
+  lateCancel?: boolean
 }
 
 /**
@@ -474,7 +480,7 @@ export async function cancelByPlayer(
     })
   }
 
-  return { booking: bookingRow, notificationIds }
+  return { booking: bookingRow, notificationIds, lateCancel }
 }
 
 export type GuestCancellationOutcome = CancellationOutcome & {
@@ -570,6 +576,7 @@ export async function cancelByGuest(
   return {
     booking: rowToBookingRow(row),
     notificationIds: [],
+    lateCancel,
     guestPenalty,
     inPolicy,
     depositStatus,

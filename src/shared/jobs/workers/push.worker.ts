@@ -39,8 +39,9 @@ export async function handlePushSendJob(job: Job<PushSendJobData>): Promise<void
     // processed_webhooks/lockMpEvent (payment.service.ts:193). pg-boss
     // (retryLimit=3) puede re-entregar este job tras un crash/error POST-envío;
     // sin este guard, el retry vuelve a llamar sendPushNotification y duplica
-    // el push visible al admin. At-most-once por dedupeKey: un crash entre el
-    // claim y el envío pierde ese push (aceptado — molestia menor vs. duplicar).
+    // el push visible al admin. Un crash entre el claim y el envío pierde ese
+    // push (aceptado — molestia menor vs. duplicar); un fallo de envío, en cambio,
+    // libera el claim más abajo para que el reintento sí reenvíe.
     const claim = await sql<{ dedupe_key: string }[]>`
       INSERT INTO push_send_log (dedupe_key) VALUES (${dedupeKey})
       ON CONFLICT (dedupe_key) DO NOTHING
@@ -55,10 +56,36 @@ export async function handlePushSendJob(job: Job<PushSendJobData>): Promise<void
     }
   }
 
-  const result = await sendPushNotification(
-    { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } },
-    payload,
-  )
+  // Un fallo de envío NO es un crash a mitad de camino: el job va a reintentar, y
+  // si el claim sigue ahí el reintento sale en silencio (`claim.length === 0`) y el
+  // push se pierde para siempre sin dejar rastro. Se libera antes de relanzar para
+  // que pg-boss reenvíe de verdad. Costo asumido: si el proveedor aceptó el envío y
+  // la respuesta se perdió (statusCode 0), el reintento duplica el push; entre
+  // perderlo y verlo dos veces, se prefiere verlo dos veces.
+  // El 410 conserva el claim: la suscripción se borra y la clave incluye su id.
+  // Si el DELETE mismo falla, se loguea y se relanza el error ORIGINAL del envío.
+  const releaseClaim = async () => {
+    if (!dedupeKey) return
+    try {
+      await sql`DELETE FROM push_send_log WHERE dedupe_key = ${dedupeKey}`
+    } catch (err) {
+      logger.warn('push.worker: could not release dedupe claim', {
+        module: 'push.worker',
+        dedupeKey,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
+  let result: Awaited<ReturnType<typeof sendPushNotification>>
+  try {
+    result = await sendPushNotification(
+      { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } },
+      payload,
+    )
+  } catch (err) {
+    await releaseClaim()
+    throw err
+  }
   if (result.success) {
     await sql`UPDATE push_subscriptions SET last_used_at = now() WHERE id = ${sub.id}`
     return
@@ -72,6 +99,7 @@ export async function handlePushSendJob(job: Job<PushSendJobData>): Promise<void
     })
     return
   }
+  await releaseClaim()
   throw new Error(`push send failed: statusCode=${result.statusCode} ${result.error}`)
 }
 

@@ -11,6 +11,7 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { enforce } from '@/shared/rate-limit'
 import { withPlayerContext, withTenantContext } from '@/shared/db/client'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
+import { notifyAdminBookingCanceled } from '@/modules/notifications/push.service'
 import { cancelByPlayer, type CancellationOutcome } from '@/modules/bookings/booking.cancellation'
 import {
   BookingAlreadyEndedError,
@@ -240,6 +241,15 @@ export async function cancelMyBookingAction(
   // Reintento de una cancelación ya hecha: la misma respuesta de éxito, sin mail
   // ni aviso de devolución (la lista ya muestra el estado real de la devolución).
   if (outcome.replayed) return { success: true, booking }
+
+  // Push al admin del complejo: el jugador soltó un turno. En `after()` por lo mismo
+  // que el mail (arranque en frío de pg-boss); `notifyAdminBookingCanceled` no lanza,
+  // y como el replay ya salió arriba, cada cancelación avisa una sola vez.
+  after(() =>
+    notifyAdminBookingCanceled(pre.tenant_id, parsed.data.bookingId, {
+      late: outcome.lateCancel === true,
+    }),
+  )
 
   // doc7 Flujo 4: el mail se despacha ya commiteada la tx, y en `after()`:
   // `dispatchEmail` arranca pg-boss en frío (`getBoss` → `boss.start()`) y esperarlo

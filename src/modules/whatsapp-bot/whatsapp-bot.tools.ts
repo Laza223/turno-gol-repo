@@ -36,7 +36,11 @@ import {
 } from '@/modules/bookings/booking.errors'
 import { createDepositPayment } from '@/modules/payments/payment.service'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
-import { notifyAdminPush } from '@/modules/notifications/push.service'
+import {
+  notifyAdminBookingCanceled,
+  notifyAdminBookingConfirmed,
+  notifyAdminPush,
+} from '@/modules/notifications/push.service'
 import { ToolInputError, type BotTool } from './whatsapp-bot.agent'
 import { complexPageUrl, operatingToday } from './whatsapp-bot.prompt'
 
@@ -307,6 +311,11 @@ function bookTool(ctx: ToolContext, courts: BotCourt[]): BotTool {
         precio: tenant.hidePrices ? undefined : formatArs(booking.priceSnapshot),
       }
       if (!result.requiresPayment) {
+        // Quedó confirmada sin seña: nunca pasa por el webhook de MP, así que el aviso al
+        // admin sale acá, ya commiteada la tx. No lanza; si el job se reintenta
+        // (`alreadyExisted`) la dedupeKey por reserva evita el doble push. Las reservas
+        // con seña avisan al confirmarse el pago.
+        await notifyAdminBookingConfirmed(tenant.id, booking.id)
         return json({ estado: 'confirmada', ...resumen })
       }
 
@@ -392,8 +401,12 @@ function cancelTool(ctx: ToolContext, courts: BotCourt[]): BotTool {
       const court = findCourt(courts, args.cancha)
       if (!court) return json({ error: 'cancha_inexistente', canchas: courts.map((c) => c.name) })
 
+      // El aviso push al admin sale DESPUÉS del commit: el callback solo anota qué se
+      // canceló de verdad (un replay no escribe nada y no se anota). Es un arreglo y no
+      // un `let` porque TS reduce un `let x = null` asignado desde un closure a `never`.
+      const freshCancels: Array<{ bookingId: string; late: boolean }> = []
       try {
-        return await withTenantContext(tenant.id, async (tx) => {
+        const reply = await withTenantContext(tenant.id, async (tx) => {
           // Solo reservas de ESTE chat: lo que mande el modelo nunca elige de quién es el turno.
           const found = await findChatBookingForCancel(
             tenant.id,
@@ -403,6 +416,9 @@ function cancelTool(ctx: ToolContext, courts: BotCourt[]): BotTool {
           )
           if (!found) return json({ error: 'no_encontrada' })
           const cancelledResult = (out: GuestCancellationOutcome) => {
+            if (!out.replayed) {
+              freshCancels.push({ bookingId: found.id, late: out.lateCancel === true })
+            }
             const consequence = out.guestPenalty
               ? latePenaltyReason(lateCancelPenalty(out.guestPenalty.count))
               : out.depositStatus === 'refunded'
@@ -457,6 +473,10 @@ function cancelTool(ctx: ToolContext, courts: BotCourt[]): BotTool {
 
           return cancelledResult(await cancelByGuest(found.id, ctx.chatId, tx))
         })
+        for (const c of freshCancels) {
+          await notifyAdminBookingCanceled(tenant.id, c.bookingId, { late: c.late })
+        }
+        return reply
       } catch (err) {
         if (err instanceof BookingAlreadyEndedError) return json({ error: 'ya_empezo' })
         // `BookingNotCancelableError` es subclase: carrera con el staff u otro pedido.
@@ -498,6 +518,8 @@ export async function pauseChatForHuman(
   // El push no puede tirar abajo el turno: si falla, el chat igual quedó pausado.
   await notifyAdminPush(ctx.tenant.id, {
     type: 'whatsapp_handoff',
+    title: 'WhatsApp: te necesitan en un chat',
+    body: label,
     summaryLabel: label,
     url: WHATSAPP_SETTINGS_PATH,
   }).catch((err: unknown) =>

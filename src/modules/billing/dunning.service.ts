@@ -176,7 +176,11 @@ export async function onPaymentRejected(
   rawPayload: unknown,
   failedAt: Date,
   tx: DbTx,
-): Promise<{ alreadyProcessed: boolean }> {
+): Promise<{
+  alreadyProcessed: boolean
+  /** Fecha de reintento que dice el mail: si viene, se encoló el aviso al dueño y el caller manda el push. */
+  retryDate?: string
+}> {
   const fresh = await lockWebhook(mpEventId, eventType, rawPayload, tx)
   if (!fresh) return { alreadyProcessed: true }
 
@@ -226,6 +230,7 @@ export async function onPaymentRejected(
       },
       tx,
     )
+    return { alreadyProcessed: false, retryDate }
   }
 
   return { alreadyProcessed: false }

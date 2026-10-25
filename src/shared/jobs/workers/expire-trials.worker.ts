@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm'
 import { getWorkerDb, getWorkerSql } from '@/shared/db/client'
 import { insertSystemAuditLog } from '@/shared/db/audit'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
+import { notifyOwnerPlanEvent } from '@/modules/notifications/push.service'
 import {
   SUBSCRIBED_TRIAL_GRACE_DAYS,
   TRIAL_ENDING_WARNING_DAYS,
@@ -89,7 +90,7 @@ async function warnEndingTrials(): Promise<void> {
     if (threshold === undefined) continue
 
     try {
-      await db.transaction(async (tx) => {
+      const warned = await db.transaction(async (tx) => {
         const res = await tx.execute(sql`
           UPDATE tenants
           SET trial_warning_days_sent = ${threshold}, updated_at = NOW()
@@ -98,7 +99,7 @@ async function warnEndingTrials(): Promise<void> {
             AND (trial_warning_days_sent IS NULL OR trial_warning_days_sent > ${threshold})
           RETURNING id
         `)
-        if ((res as unknown as Array<{ id: string }>).length === 0) return
+        if ((res as unknown as Array<{ id: string }>).length === 0) return false
 
         // `enqueueTenantOwnerNotification` lee tenant_staff_members. Corre en
         // el pool worker (BYPASSRLS), así que no necesita contexto de tenant.
@@ -115,7 +116,17 @@ async function warnEndingTrials(): Promise<void> {
           },
           tx,
         )
+        return true
       })
+      // Push al dueño, junto al mail y ya commiteada la marca. El umbral es la
+      // identidad del aviso: si pg-boss reentrega este sweep, la dedupeKey lo frena.
+      if (warned) {
+        await notifyOwnerPlanEvent(
+          t.id,
+          { event: 'trial_ending', daysLeft: Math.max(1, t.days_left) },
+          String(threshold),
+        )
+      }
       logger.info('warned tenant about ending trial', {
         module: 'expire-trials',
         tenantId: t.id,
@@ -278,7 +289,7 @@ export async function runExpireTrials(): Promise<void> {
 
   for (const t of candidates) {
     try {
-      await db.transaction(async (tx) => {
+      const expired = await db.transaction(async (tx) => {
         // Orden A de locks: tenant_subscriptions ANTES que tenants (ver Fase 0).
         const res = await tx.execute(sql`
           UPDATE tenant_subscriptions
@@ -287,7 +298,7 @@ export async function runExpireTrials(): Promise<void> {
           RETURNING id
         `)
         const updated = res as unknown as Array<{ id: string }>
-        if (updated.length === 0) return
+        if (updated.length === 0) return false
 
         await tx.execute(sql`
           UPDATE tenants
@@ -317,7 +328,10 @@ export async function runExpireTrials(): Promise<void> {
           },
           tx,
         )
+        return true
       })
+      // La prueba vence una sola vez por complejo: `dedupeId` fijo.
+      if (expired) await notifyOwnerPlanEvent(t.id, { event: 'trial_expired' }, 'expired')
       logger.info('tenant trial expired, now read-only', {
         module: 'expire-trials',
         tenantId: t.id,

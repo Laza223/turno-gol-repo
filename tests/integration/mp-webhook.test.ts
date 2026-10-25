@@ -378,6 +378,82 @@ describe('handleMpWebhookJob — late payment attempt', () => {
     expect(notifs[0]!.recipient_id).toBe(staff.id)
   })
 
+  it('P2: segunda seña aprobada sobre una reserva confirmada → auditoría, mail al complejo y devolución registrada', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    await setTenantMpToken(tenant.id)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart: '15:00',
+      timeEnd: '16:00',
+    })
+    const suffix = bookingId.slice(0, 8)
+    const pay = (n: number) => `mp-pay-dup${n}-${suffix}`
+    for (const n of [1, 2]) {
+      mockGateway.statusByPaymentId[pay(n)] = {
+        mpPaymentId: pay(n),
+        status: 'approved',
+        amount: 240_000,
+        externalReference: bookingId,
+        paymentMethodId: 'visa',
+      }
+    }
+    const job = (n: number, evt = `mp-evt-dup${n}-${suffix}`) => ({
+      tenantId: tenant.id,
+      mpEventId: evt,
+      eventType: 'payment',
+      mpPaymentId: pay(n),
+      rawPayload: { id: evt, type: 'payment', data: { id: pay(n) } },
+    })
+
+    // El primer pago confirma: nada de duplicado.
+    await handleMpWebhookJob(job(1))
+    expect(await getBookingStatus(bookingId)).toBe('confirmed')
+    const none = await sql`
+      SELECT 1 FROM audit_logs
+      WHERE resource_id = ${bookingId} AND action = 'booking.duplicate_payment'
+    `
+    expect(none).toHaveLength(0)
+
+    // El segundo pago (otra preferencia del mismo turno) es el duplicado.
+    await handleMpWebhookJob(job(2))
+    // El mismo evento otra vez no suma nada (processed_webhooks).
+    await handleMpWebhookJob(job(2))
+    // Reintento del primer pago por otro camino (reconcile): NO es duplicado de sí mismo.
+    await handleMpWebhookJob(job(1, `reconcile-${pay(1)}`))
+
+    expect(await getBookingStatus(bookingId)).toBe('confirmed')
+
+    const audits = await sql<Array<{ metadata: Record<string, unknown> | string }>>`
+      SELECT metadata FROM audit_logs
+      WHERE resource_id = ${bookingId} AND action = 'booking.duplicate_payment'
+    `
+    // Uno solo: el evento repetido y el reintento del pago 1 no suman.
+    expect(audits).toHaveLength(1)
+
+    const refunds = await sql<Array<{ status: string; amount: number; description: string }>>`
+      SELECT p.status, p.amount, p.description FROM payments p
+      WHERE p.booking_id = ${bookingId} AND p.type = 'refund'
+    `
+    expect(refunds).toHaveLength(1)
+    expect(refunds[0]).toMatchObject({ status: 'pending', amount: 240_000 })
+
+    const notifs = await sql<Array<{ recipient_id: string; content: Record<string, unknown> }>>`
+      SELECT recipient_id, content FROM notifications
+      WHERE tenant_id = ${tenant.id} AND template_name = 'admin_late_payment'
+    `
+    expect(notifs).toHaveLength(1)
+    expect(notifs[0]!.recipient_id).toBe(staff.id)
+    expect(notifs[0]!.content).toMatchObject({ duplicate: true, refundIssued: true })
+  })
+
   it('reserva del bot: el invitado se entera por WhatsApp de la devolución, una sola vez', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)

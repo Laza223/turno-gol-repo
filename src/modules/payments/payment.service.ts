@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm'
+import { and, desc, eq, isNotNull, sql } from 'drizzle-orm'
 import { bookings, payments } from '@/shared/db/schema'
 import { withTenantContext, type DbTx } from '@/shared/db/client'
 import { insertSystemAuditLog } from '@/shared/db/audit'
@@ -53,6 +53,54 @@ const MP_PREFERENCE_SAFETY_BUFFER_SECONDS = 60
 const MP_PREFERENCE_MIN_WINDOW_SECONDS = 30
 
 /**
+ * Hasta cuándo vive la preferencia de una seña creada en `atMs` para una reserva
+ * nacida en `bookingCreatedAt`. Es la fuente única del vencimiento: la usan la
+ * creación (`expiration_date_to`), el reuso de una preferencia ya creada y el
+ * `minutos_para_pagar` que el bot le dice al jugador.
+ */
+function depositPreferenceExpiresAt(bookingCreatedAt: Date | string, atMs: number): Date {
+  const preferredExpiresAtMs =
+    holdExpiresAtMs(bookingCreatedAt) - MP_PREFERENCE_SAFETY_BUFFER_SECONDS * 1000
+  return new Date(Math.max(preferredExpiresAtMs, atMs + MP_PREFERENCE_MIN_WINDOW_SECONDS * 1000))
+}
+
+/** `PreferenceResult` + hasta cuándo se puede pagar de verdad (para avisarle al jugador). */
+export type DepositPreference = PreferenceResult & { expiresAt: Date }
+
+/**
+ * La tx 1 de `createDepositPayment` commitea la fila `pending` ANTES de llamar a
+ * MP, y `mp_preference_id` se escribe recién en la tx 2. Un segundo pedido en
+ * esa ventana (doble tap, el bot reintentando) no vería preferencia que reusar y
+ * crearía otra: dos links vivos, o sea el doble cobro de P2. Si hay una creación
+ * en curso (fila pendiente sin preferencia, de hace menos de
+ * `IN_FLIGHT_MAX_AGE_SECONDS`), se espera a que termine y recién ahí se decide
+ * reusar o crear. Una fila más vieja es un intento que murió (MP falló): no se
+ * espera. Si tras la espera sigue sin resolverse, se sigue como antes: la
+ * ventana queda reducida a una creación que tarda más que la espera.
+ */
+const IN_FLIGHT_MAX_AGE_SECONDS = 15
+const IN_FLIGHT_POLL_MS = 400
+const IN_FLIGHT_MAX_WAIT_MS = 8_000
+
+async function waitForPreferenceInFlight(bookingId: string, tenantId: string): Promise<void> {
+  const deadline = Date.now() + IN_FLIGHT_MAX_WAIT_MS
+  for (;;) {
+    const rows = await withTenantContext(tenantId, (tx) =>
+      tx.execute(sql`
+        SELECT 1 FROM payments
+        WHERE booking_id = ${bookingId}
+          AND type = 'deposit' AND method = 'mercadopago' AND status = 'pending'
+          AND mp_preference_id IS NULL
+          AND created_at > NOW() - make_interval(secs => ${IN_FLIGHT_MAX_AGE_SECONDS})
+        LIMIT 1
+      `),
+    )
+    if ((rows as unknown[]).length === 0 || Date.now() >= deadline) return
+    await new Promise((resolve) => setTimeout(resolve, IN_FLIGHT_POLL_MS))
+  }
+}
+
+/**
  * Pre-checkout (Pilar B + Fix #13 + Saga fix, Fable 5 P0).
  *
  * MP is called BETWEEN two short transactions, never from inside one — the
@@ -85,10 +133,12 @@ export async function createDepositPayment(
   tenantId: string,
   appUrl: string,
   returnUrls?: { success: string; failure: string; pending: string },
-): Promise<PreferenceResult> {
+): Promise<DepositPreference> {
   track.payment('payment.deposit.create', { bookingId })
 
-  const { depositAmount, createdAt, paymentId } = await withTenantContext(tenantId, async (tx) => {
+  await waitForPreferenceInFlight(bookingId, tenantId)
+
+  const prepared = await withTenantContext(tenantId, async (tx) => {
     const lockRows = await tx.execute(sql`
         SELECT id, player_id AS "playerId",
                deposit_amount AS "depositAmount", status, created_at AS "createdAt"
@@ -118,6 +168,55 @@ export async function createDepositPayment(
       throw new BookingNotPendingPaymentError(bookingId)
     }
 
+    // Pedir el link de nuevo (el bot, "Reintentar pago") NO crea otra preferencia
+    // mientras la anterior siga viva: dos preferencias vivas con el mismo
+    // external_reference son dos pagos posibles y el segundo es plata cobrada de
+    // más (P2). Corre bajo el FOR UPDATE de arriba, así que dos pedidos
+    // simultáneos no pueden crear dos.
+    const pendingRows = await tx
+      .select({
+        mpPreferenceId: payments.mpPreferenceId,
+        mpInitPoint: payments.mpInitPoint,
+        amount: payments.amount,
+        createdAt: payments.createdAt,
+      })
+      .from(payments)
+      .where(
+        and(
+          eq(payments.bookingId, bookingId),
+          eq(payments.type, 'deposit'),
+          eq(payments.method, 'mercadopago'),
+          eq(payments.status, 'pending'),
+          // Solo filas con la preferencia ya creada: una huérfana (MP falló antes)
+          // no tiene que tapar a una anterior que sí tiene link vigente.
+          isNotNull(payments.mpPreferenceId),
+          isNotNull(payments.mpInitPoint),
+        ),
+      )
+      .orderBy(desc(payments.createdAt))
+      .limit(1)
+    const pending = pendingRows[0]
+    if (
+      pending?.mpPreferenceId &&
+      pending.mpInitPoint &&
+      pending.amount === booking.depositAmount
+    ) {
+      const reusableUntil = depositPreferenceExpiresAt(
+        booking.createdAt,
+        pending.createdAt.getTime(),
+      )
+      if (reusableUntil.getTime() > Date.now() + MP_PREFERENCE_MIN_WINDOW_SECONDS * 1000) {
+        return {
+          reused: {
+            preferenceId: pending.mpPreferenceId,
+            initPoint: pending.mpInitPoint,
+            sandboxInitPoint: pending.mpInitPoint,
+            expiresAt: reusableUntil,
+          } satisfies DepositPreference,
+        }
+      }
+    }
+
     const inserted = await tx
       .insert(payments)
       .values({
@@ -145,12 +244,10 @@ export async function createDepositPayment(
       paymentId: insertedPaymentId,
     }
   })
+  if (prepared.reused) return prepared.reused
+  const { depositAmount, createdAt, paymentId } = prepared
 
-  const preferredExpiresAtMs =
-    holdExpiresAtMs(createdAt) - MP_PREFERENCE_SAFETY_BUFFER_SECONDS * 1000
-  const expiresAt = new Date(
-    Math.max(preferredExpiresAtMs, Date.now() + MP_PREFERENCE_MIN_WINDOW_SECONDS * 1000),
-  )
+  const expiresAt = depositPreferenceExpiresAt(createdAt, Date.now())
 
   const preferenceInput: CreatePreferenceInput = {
     bookingId,
@@ -167,11 +264,11 @@ export async function createDepositPayment(
   await withTenantContext(tenantId, async (tx) => {
     await tx
       .update(payments)
-      .set({ mpPreferenceId: preference.preferenceId })
+      .set({ mpPreferenceId: preference.preferenceId, mpInitPoint: preference.initPoint })
       .where(eq(payments.id, paymentId))
   })
 
-  return preference
+  return { ...preference, expiresAt }
 }
 
 /**
@@ -254,6 +351,7 @@ export async function dispatchPaymentInfo(
       // en la tx; el caller lo liquida contra MP DESPUÉS del commit, igual
       // que hace con `notificationIds`.
       preparedRefund: approved.preparedRefund,
+      duplicate: approved.duplicate,
     }
   }
   if (info.status === 'in_process') {
@@ -493,6 +591,7 @@ async function handleApproved(
   row?: BookingRow
   notificationIds: string[]
   preparedRefund?: PreparedRefund
+  duplicate?: boolean
 }> {
   // Fetch expected deposit before upserting so we can compare amounts.
   const depRows = await tx.execute(sql`
@@ -503,6 +602,16 @@ async function handleApproved(
   `)
   const depositAmount =
     (depRows as unknown as Array<{ depositAmount: number }>)[0]?.depositAmount ?? info.amount
+
+  // ¿Este pago ya figuraba aprobado? Antes del upsert, que lo marca. Distingue un
+  // pago repetido (webhook + reconcile llegan por claves de evento distintas) de
+  // una segunda seña de verdad.
+  const priorRows = await tx.execute(sql`
+    SELECT 1 FROM payments
+    WHERE mp_payment_id = ${info.mpPaymentId} AND status = 'approved'
+    LIMIT 1
+  `)
+  const alreadyApproved = (priorRows as unknown[]).length > 0
 
   await upsertPaymentRow(info, tenantId, 'approved', tx)
 
@@ -694,6 +803,58 @@ async function handleApproved(
     }
 
     return { won: false, notificationIds, preparedRefund }
+  }
+
+  // Segunda seña sobre una reserva que YA está confirmada (P2): el jugador pagó
+  // dos preferencias del mismo turno. `confirmed` no es terminal, así que antes
+  // esto caía mudo: plata cobrada de más y nadie enterado. Se trata como el pago
+  // tardío: auditoría + mail al complejo + devolución REGISTRADA (el complejo la
+  // salda; TurnoGol no reembolsa por API). Distinto del reintento del MISMO pago
+  // (reconcile / webhook repetido): ese comparte `mp_payment_id` y se excluye.
+  if (row.status === 'confirmed' && !alreadyApproved) {
+    const otherRows = await tx.execute(sql`
+      SELECT mp_payment_id AS "mpPaymentId" FROM payments
+      WHERE booking_id = ${info.externalReference}
+        AND type = 'deposit'
+        AND status = 'approved'
+        AND mp_payment_id IS DISTINCT FROM ${info.mpPaymentId}
+      ORDER BY created_at
+      LIMIT 1
+    `)
+    const original = (otherRows as unknown as Array<{ mpPaymentId: string | null }>)[0]
+    if (original) {
+      await insertSystemAuditLog(tx, {
+        tenantId,
+        action: 'booking.duplicate_payment',
+        resourceType: 'booking',
+        resourceId: info.externalReference,
+        metadata: {
+          mpPaymentId: info.mpPaymentId,
+          originalMpPaymentId: original.mpPaymentId,
+          amount: info.amount,
+        },
+      })
+      const preparedRefund = await prepareLatePaymentRefund(info, tx)
+      const ids = await enqueueTenantOwnerNotification(
+        {
+          tenantId,
+          templateName: 'admin_late_payment',
+          content: {
+            bookingId: info.externalReference,
+            amountArs: formatArs(info.amount),
+            currentStatus: row.status,
+            courtName: row.court_name,
+            date: row.date.slice(0, 10).split('-').reverse().join('/'),
+            refundIssued: preparedRefund !== undefined,
+            duplicate: true,
+          },
+          triggerEvent: 'booking.duplicate_payment',
+        },
+        tx,
+      )
+      notificationIds.push(...ids)
+      return { won: false, notificationIds, preparedRefund, duplicate: true }
+    }
   }
   return { won: false, notificationIds }
 }

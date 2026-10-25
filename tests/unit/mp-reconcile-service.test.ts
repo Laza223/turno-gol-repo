@@ -267,6 +267,28 @@ describe('reconcileApprovedPaymentForBooking — pago tardío', () => {
     expect(Object.keys(gateway)).toEqual(['searchPaymentsByReference'])
   })
 
+  it('seña duplicada sobre reserva confirmada → refunded:false (no se le dice al jugador que perdió el turno)', async () => {
+    mockTx()
+    mockLockMpEvent.mockResolvedValue(true)
+    mockDispatchPaymentInfo.mockResolvedValue({
+      alreadyProcessed: false,
+      result: 'confirmed',
+      notificationIds: ['n1'],
+      won: false,
+      preparedRefund: PREPARED,
+      duplicate: true,
+    })
+
+    const result = await reconcileApprovedPaymentForBooking(
+      BOOKING_ID,
+      TENANT_ID,
+      gatewayWithApproved() as never,
+      'expiry-precheck',
+    )
+
+    expect(result.refunded).toBe(false)
+  })
+
   it('sin devolución registrada, refunded:false', async () => {
     mockTx()
     mockLockMpEvent.mockResolvedValue(true)

@@ -444,6 +444,102 @@ describe('createDepositPayment — booking-payment consistency (Fix #13)', () =>
   })
 })
 
+describe('createDepositPayment — pedir el link de nuevo reusa la preferencia vigente (P2)', () => {
+  async function setup(timeStart: string) {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const player = await createTestPlayer(sql)
+    const courtId = await insertCourt(tenant.id)
+    const bookingId = await insertPendingBooking({
+      tenantId: tenant.id,
+      courtId,
+      playerId: player.id,
+      date: FUTURE_DATE,
+      timeStart,
+      timeEnd: `${String(Number(timeStart.slice(0, 2)) + 1).padStart(2, '0')}:00`,
+    })
+    return { sql, tenant, bookingId }
+  }
+
+  it('la segunda llamada devuelve el mismo link: sin fila nueva, sin preferencia nueva en MP', async () => {
+    const { tenant, bookingId } = await setup('16:00')
+    const gateway = new MockGateway()
+
+    const first = await createDepositPayment(bookingId, gateway, tenant.id, 'https://app.test')
+    const second = await createDepositPayment(bookingId, gateway, tenant.id, 'https://app.test')
+
+    expect(second.initPoint).toBe(first.initPoint)
+    expect(second.preferenceId).toBe(first.preferenceId)
+    expect(second.expiresAt.getTime()).toBe(first.expiresAt.getTime())
+    expect(gateway.preferenceCalls).toHaveLength(1)
+    const rows = await getPaymentRows(bookingId)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.mp_preference_id).toBe(first.preferenceId)
+  })
+
+  it('si la preferencia ya no tiene margen, crea una nueva (no reusa un link por vencer)', async () => {
+    const { sql, tenant, bookingId } = await setup('17:00')
+    const gateway = new MockGateway()
+    await createDepositPayment(bookingId, gateway, tenant.id, 'https://app.test')
+
+    // Hold casi vencido: la preferencia vieja cierra en menos del piso de 30 s.
+    await sql`UPDATE bookings SET created_at = NOW() - interval '330 seconds' WHERE id = ${bookingId}`
+    await sql`UPDATE payments SET created_at = NOW() - interval '60 seconds' WHERE booking_id = ${bookingId}`
+    await createDepositPayment(bookingId, gateway, tenant.id, 'https://app.test')
+
+    expect(gateway.preferenceCalls).toHaveLength(2)
+    expect(await getPaymentRows(bookingId)).toHaveLength(2)
+  })
+
+  it('dos pedidos simultáneos con MP lento: una sola preferencia, el segundo espera y reusa', async () => {
+    const { tenant, bookingId } = await setup('19:00')
+    const gateway = new MockGateway()
+    const original = gateway.createPreference.bind(gateway)
+    gateway.createPreference = async (input) => {
+      await new Promise((r) => setTimeout(r, 1200))
+      return original(input)
+    }
+
+    const [a, b] = await Promise.all([
+      createDepositPayment(bookingId, gateway, tenant.id, 'https://app.test'),
+      createDepositPayment(bookingId, gateway, tenant.id, 'https://app.test'),
+    ])
+
+    expect(b.initPoint).toBe(a.initPoint)
+    expect(gateway.preferenceCalls).toHaveLength(1)
+    expect(await getPaymentRows(bookingId)).toHaveLength(1)
+  })
+
+  it('una fila huérfana más nueva no tapa a una preferencia vigente anterior', async () => {
+    const { sql, tenant, bookingId } = await setup('20:00')
+    const gateway = new MockGateway()
+    const first = await createDepositPayment(bookingId, gateway, tenant.id, 'https://app.test')
+    await sql`
+      INSERT INTO payments (tenant_id, booking_id, amount, type, method, status, created_at)
+      SELECT tenant_id, booking_id, amount, 'deposit', 'mercadopago', 'pending', NOW() - interval '40 seconds'
+      FROM payments WHERE booking_id = ${bookingId}
+    `
+    await sql`UPDATE payments SET created_at = NOW() - interval '50 seconds' WHERE mp_preference_id IS NOT NULL AND booking_id = ${bookingId}`
+
+    const again = await createDepositPayment(bookingId, gateway, tenant.id, 'https://app.test')
+
+    expect(again.initPoint).toBe(first.initPoint)
+    expect(gateway.preferenceCalls).toHaveLength(1)
+  })
+
+  it('una fila pendiente sin preferencia (MP falló antes) no se reusa', async () => {
+    const { sql, tenant, bookingId } = await setup('18:00')
+    const gateway = new MockGateway()
+    await createDepositPayment(bookingId, gateway, tenant.id, 'https://app.test')
+    // Intento que murió hace rato (no es una creación en curso): no se espera ni se reusa.
+    await sql`UPDATE payments SET mp_preference_id = NULL, mp_init_point = NULL, created_at = NOW() - interval '60 seconds' WHERE booking_id = ${bookingId}`
+
+    await createDepositPayment(bookingId, gateway, tenant.id, 'https://app.test')
+
+    expect(gateway.preferenceCalls).toHaveLength(2)
+  })
+})
+
 // ─── GAP (caza-bugs #1): re-link post-webhook, no cancelación huérfana ─────
 // Ningún test previo encadenaba createDepositPayment → webhook approval →
 // cancelación: cancellations.test.ts inserta el payment 'approved' YA linkeado

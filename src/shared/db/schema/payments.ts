@@ -23,6 +23,8 @@ export const payments = pgTable(
 
     mpPaymentId: text('mp_payment_id').unique(),
     mpPreferenceId: text('mp_preference_id'),
+    // Migr. 103: el link de la preferencia, para reusarla en vez de crear otra.
+    mpInitPoint: text('mp_init_point'),
 
     description: text('description'),
 

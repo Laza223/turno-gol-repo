@@ -322,7 +322,8 @@ async function createWhatsappBookingImpl(
       .returning()
     const booking = rowToBookingRow(inserted[0]!)
 
-    // Aviso al admin: el mismo mail que la reserva online (sin push nuevo).
+    // Aviso al admin: el mismo mail que la reserva online. El push sale del caller
+    // (whatsapp-bot.tools.ts), ya commiteada la tx.
     await enqueueTenantOwnerNotification(
       {
         tenantId,

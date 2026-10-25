@@ -178,6 +178,90 @@ describe('handlePushSendJob', () => {
     })
   })
 
+  // El claim es at-most-once, pero un fallo de envío no es un crash: si el claim
+  // sobrevive, el reintento de pg-boss lo ve y sale en silencio — push perdido.
+  describe('con dedupeKey: el claim no sobrevive a un fallo reintentable', () => {
+    const KEY = 'push:booking-confirmed:b-1:sub-uuid-1'
+    const CLAIMED = [{ dedupe_key: KEY }]
+    const statements = (sql: unknown) =>
+      (sql as { mock: { calls: unknown[][] } }).mock.calls.map((c) =>
+        (c[0] as readonly string[]).join('?').replace(/\s+/g, ' ').trim(),
+      )
+
+    it('error no-gone del proveedor: libera el claim y relanza (el reintento SÍ reenvía)', async () => {
+      const sql = makeSqlSequence([[SUB_ROW], CLAIMED])
+      mockGetSql.mockReturnValue(sql)
+      mockSendPush.mockResolvedValue({
+        success: false,
+        gone: false,
+        statusCode: 503,
+        error: 'unavailable',
+      })
+
+      await expect(handlePushSendJob(makeJobWithDedupe(KEY))).rejects.toThrow(/statusCode=503/)
+
+      expect(statements(sql)[2]).toBe('DELETE FROM push_send_log WHERE dedupe_key = ?')
+      expect((sql as unknown as { mock: { calls: unknown[][] } }).mock.calls[2]![1]).toBe(KEY)
+    })
+
+    it('sendPushNotification tira (ej. VAPID sin configurar): libera el claim y relanza', async () => {
+      const sql = makeSqlSequence([[SUB_ROW], CLAIMED])
+      mockGetSql.mockReturnValue(sql)
+      mockSendPush.mockRejectedValue(new Error('VAPID env vars not set'))
+
+      await expect(handlePushSendJob(makeJobWithDedupe(KEY))).rejects.toThrow(/VAPID/)
+
+      expect(statements(sql)[2]).toBe('DELETE FROM push_send_log WHERE dedupe_key = ?')
+    })
+
+    it('si el DELETE del claim también falla: se relanza el error ORIGINAL del envío', async () => {
+      let n = 0
+      const sql = vi.fn(async (..._args: unknown[]) => {
+        n++
+        if (n === 1) return [SUB_ROW]
+        if (n === 2) return CLAIMED
+        throw new Error('db caída en el DELETE')
+      }) as unknown as ReturnType<typeof getWorkerSql>
+      mockGetSql.mockReturnValue(sql)
+      mockSendPush.mockResolvedValue({
+        success: false,
+        gone: false,
+        statusCode: 503,
+        error: 'unavailable',
+      })
+
+      await expect(handlePushSendJob(makeJobWithDedupe(KEY))).rejects.toThrow(/statusCode=503/)
+    })
+
+    it('410 (suscripción muerta): conserva el claim, solo borra la suscripción', async () => {
+      const sql = makeSqlSequence([[SUB_ROW], CLAIMED])
+      mockGetSql.mockReturnValue(sql)
+      mockSendPush.mockResolvedValue({ success: false, gone: true, statusCode: 410 })
+
+      await handlePushSendJob(makeJobWithDedupe(KEY))
+
+      const all = statements(sql)
+      expect(all).toHaveLength(3)
+      expect(all[2]).toBe('DELETE FROM push_subscriptions WHERE id = ?')
+      expect(all.some((s) => s.includes('push_send_log WHERE'))).toBe(false)
+    })
+
+    it('sin dedupeKey y con fallo: no toca push_send_log', async () => {
+      const sql = makeSqlStub([SUB_ROW])
+      mockGetSql.mockReturnValue(sql)
+      mockSendPush.mockResolvedValue({
+        success: false,
+        gone: false,
+        statusCode: 500,
+        error: 'boom',
+      })
+
+      await expect(handlePushSendJob(makeJob())).rejects.toThrow(/statusCode=500/)
+
+      expect(sql).toHaveBeenCalledTimes(1)
+    })
+  })
+
   describe('sin dedupeKey (comportamiento viejo, sin guard)', () => {
     it('no consulta push_send_log: SELECT + envío directo, igual que antes de F3', async () => {
       const sql = makeSqlStub([SUB_ROW])

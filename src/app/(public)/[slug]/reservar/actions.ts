@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { headers, cookies } from 'next/headers'
 import { redirect, RedirectType } from 'next/navigation'
+import { after } from 'next/server'
 import { eq, sql } from 'drizzle-orm'
 import { signInWithPlayerMagicLink, signInWithGooglePlayer } from '@/modules/auth/auth.service'
 import {
@@ -27,6 +28,7 @@ import { tenants, tenantSubscriptions } from '@/shared/db/schema'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { enforce, parseClientIp } from '@/shared/rate-limit'
 import { createOnlineBooking } from '@/modules/bookings/booking.service'
+import { notifyAdminBookingConfirmed } from '@/modules/notifications/push.service'
 import { findOwnLiveBookingOrNull } from './own-booking'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { endLabelFromMins } from '@/shared/time/operating-day'
@@ -479,6 +481,12 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
     if (intentValid) track.funnel('checkout.intent_confirmed', { tenantId: tenant!.id })
 
     if (booking.status === 'confirmed') {
+      // Sin seña (o con el complejo sin MP) la reserva nace `confirmed` acá y nunca
+      // pasa por el webhook de MP, que era el único lugar que avisaba por push: el
+      // admin se enteraba solo por el mail. En `after()` por el arranque en frío de
+      // pg-boss; la dedupeKey por reserva evita un doble aviso si algún otro camino
+      // también la confirma. No lanza.
+      after(() => notifyAdminBookingConfirmed(tenant!.id, booking.id))
       redirectTo = buildReservaHref(booking.id, 'exito')
     } else {
       if (!tenant!.mpAccessToken) {

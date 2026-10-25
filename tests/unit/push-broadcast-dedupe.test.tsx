@@ -134,6 +134,7 @@ afterAll(() => {
 
 // ─── Import the component AFTER globals are set up ────────────────────────────
 import { PushNotificationManager } from '@/components/admin/PushNotificationManager'
+import { toast } from '@/hooks/use-toast'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -286,6 +287,63 @@ describe('PushNotificationManager — BroadcastChannel dedupe', () => {
 
     // No new messages should have been sent.
     expect(componentChannel.sentMessages.length).toBe(initialSentCount)
+  })
+
+  // El toast usa el copy que arma el servidor y solo pinta de verde las buenas noticias.
+  describe('toast según el payload del push', () => {
+    async function broadcast(data: Record<string, unknown>) {
+      await act(async () => {
+        render(<PushNotificationManager />)
+      })
+      const swChannel = new MockBroadcastChannel('notif-dedupe')
+      await act(async () => {
+        swChannel.postMessage(data)
+        await new Promise((r) => setTimeout(r, 50))
+      })
+      swChannel.close()
+    }
+
+    it('cancelación: usa title/body del servidor y va con el estilo neutro', async () => {
+      await broadcast({
+        id: 'booking.canceled_by_player:b-1',
+        type: 'booking.canceled_by_player',
+        title: 'Reserva cancelada — Cancha 1',
+        body: '25 de octubre · 21:00–22:00',
+      })
+
+      expect(toast).toHaveBeenCalledWith({
+        title: 'Reserva cancelada — Cancha 1',
+        description: '25 de octubre · 21:00–22:00',
+        variant: 'default',
+      })
+    })
+
+    it('aviso de plan: estilo neutro', async () => {
+      await broadcast({
+        id: 'plan.trial_ending:1',
+        type: 'plan.trial_ending',
+        title: 'Tu prueba termina pronto',
+        body: 'Activá tu plan para no perder el acceso.',
+      })
+
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ variant: 'default' }))
+    })
+
+    it('reserva nueva sin title/body (payload viejo): sigue verde y con la cadena de siempre', async () => {
+      await broadcast({
+        id: 'booking.confirmed_online:b-2',
+        type: 'booking.confirmed_online',
+        courtName: 'Cancha 2',
+        dateLabel: '25 de octubre',
+        timeLabel: '21:00–22:00',
+      })
+
+      expect(toast).toHaveBeenCalledWith({
+        title: 'Nueva reserva — Cancha 2',
+        description: '25 de octubre · 21:00–22:00',
+        variant: 'success',
+      })
+    })
   })
 
   it('closes the BroadcastChannel on unmount', async () => {

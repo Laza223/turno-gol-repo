@@ -31,11 +31,15 @@ vi.mock('@/modules/billing/dunning.service', () => ({
 vi.mock('@/modules/billing/billing.service', () => ({ handleUpgradeApproved: vi.fn() }))
 vi.mock('@/modules/billing/billing.gateway', () => ({ getBillingGateway: vi.fn() }))
 vi.mock('@/modules/notifications/notification.service', () => ({ dispatchEmail: vi.fn() }))
-vi.mock('@/modules/notifications/push.service', () => ({ notifyAdminBookingConfirmed: vi.fn() }))
+vi.mock('@/modules/notifications/push.service', () => ({
+  notifyAdminBookingConfirmed: vi.fn(),
+  notifyOwnerPlanEvent: vi.fn(),
+}))
 vi.mock('@/shared/observability', () => ({ track: { webhook: vi.fn(), payment: vi.fn() } }))
 
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { onPaymentApproved, onPaymentRejected } from '@/modules/billing/dunning.service'
+import { notifyOwnerPlanEvent } from '@/modules/notifications/push.service'
 import { lockMpEvent } from '@/modules/payments/payment.service'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { handleMpWebhookJob, type MpWebhookJob } from '@/modules/payments/mp-webhook.handler'
@@ -45,6 +49,7 @@ const mockResolveTenantGateway = resolveTenantGateway as ReturnType<typeof vi.fn
 const mockOnPaymentApproved = onPaymentApproved as ReturnType<typeof vi.fn>
 const mockOnPaymentRejected = onPaymentRejected as ReturnType<typeof vi.fn>
 const mockLockMpEvent = lockMpEvent as ReturnType<typeof vi.fn>
+const mockNotifyOwnerPlanEvent = notifyOwnerPlanEvent as ReturnType<typeof vi.fn>
 
 // Ids reales del cobro de producción del 2026-08-20.
 const TENANT = 'fbeda410-39eb-4ed0-b248-2f732ad14d26'
@@ -127,6 +132,53 @@ describe('handleMpWebhookJob — cobro de suscripción', () => {
 
     expect(mockOnPaymentRejected).toHaveBeenCalledTimes(1)
     expect(mockOnPaymentApproved).not.toHaveBeenCalled()
+  })
+
+  describe('push al dueño por el cobro rechazado', () => {
+    it('con la fecha de reintento que dice el mail: avisa SOLO al dueño, con el id del evento', async () => {
+      mockGetBillingGateway.mockReturnValue(gatewayMaster('rejected'))
+      mockOnPaymentRejected.mockResolvedValueOnce({
+        alreadyProcessed: false,
+        retryDate: '28/10/2026',
+      })
+
+      await handleMpWebhookJob(job())
+
+      expect(mockNotifyOwnerPlanEvent).toHaveBeenCalledTimes(1)
+      expect(mockNotifyOwnerPlanEvent).toHaveBeenCalledWith(
+        TENANT,
+        { event: 'payment_failed', retryDate: '28/10/2026' },
+        'evt-1',
+      )
+    })
+
+    it('evento ya procesado (reintento del webhook): no vuelve a avisar', async () => {
+      mockGetBillingGateway.mockReturnValue(gatewayMaster('rejected'))
+      mockOnPaymentRejected.mockResolvedValueOnce({
+        alreadyProcessed: true,
+        retryDate: '28/10/2026',
+      })
+
+      await handleMpWebhookJob(job())
+
+      expect(mockNotifyOwnerPlanEvent).not.toHaveBeenCalled()
+    })
+
+    it('sin aviso encolado (sin retryDate): no hay push', async () => {
+      mockGetBillingGateway.mockReturnValue(gatewayMaster('rejected'))
+
+      await handleMpWebhookJob(job())
+
+      expect(mockNotifyOwnerPlanEvent).not.toHaveBeenCalled()
+    })
+
+    it('un cobro aprobado no avisa de nada', async () => {
+      mockGetBillingGateway.mockReturnValue(gatewayMaster('approved'))
+
+      await handleMpWebhookJob(job())
+
+      expect(mockNotifyOwnerPlanEvent).not.toHaveBeenCalled()
+    })
   })
 
   it('siempre por la cuenta MASTER, aunque el complejo nunca haya conectado su MP', async () => {

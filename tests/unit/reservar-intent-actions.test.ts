@@ -19,6 +19,8 @@ const {
   warn,
   enforce,
   captureMessage,
+  after,
+  notifyAdminBookingConfirmed,
 } = vi.hoisted(() => ({
   signInWithGooglePlayer: vi.fn(),
   signInWithPlayerMagicLink: vi.fn(),
@@ -38,6 +40,9 @@ const {
   warn: vi.fn(),
   enforce: vi.fn(async (..._args: unknown[]) => ({ ok: true })),
   captureMessage: vi.fn(),
+  // `after` fuera de un request tira; acá solo registra el callback para correrlo a mano.
+  after: vi.fn(),
+  notifyAdminBookingConfirmed: vi.fn(),
 }))
 
 vi.mock('@/modules/auth/auth.service', () => ({
@@ -54,6 +59,8 @@ vi.mock('next/headers', () => ({
   }),
 }))
 vi.mock('next/navigation', () => ({ redirect, RedirectType: { push: 'push', replace: 'replace' } }))
+vi.mock('next/server', () => ({ after }))
+vi.mock('@/modules/notifications/push.service', () => ({ notifyAdminBookingConfirmed }))
 vi.mock('@/shared/rate-limit', () => ({ enforce, parseClientIp: () => '1.1.1.1' }))
 vi.mock('@/shared/db/client', () => ({
   getDb: () => ({
@@ -310,6 +317,10 @@ describe('createBookingAndCheckout — la reserva que se confirma sola', () => {
     expect(out).toEqual({ type: 'replace', url: '/reserva/b1/exito' })
     expect(createOnlineBooking).toHaveBeenCalledTimes(1)
     expect(events()).toEqual([['checkout.intent_confirmed', { tenantId: 't1' }]])
+    // La reserva nació confirmada: el aviso push al admin se agenda post-respuesta.
+    expect(after).toHaveBeenCalledTimes(1)
+    await (after.mock.calls[0]![0] as () => Promise<void> | void)()
+    expect(notifyAdminBookingConfirmed).toHaveBeenCalledWith('t1', 'b1')
   })
 
   it('el vínculo de Google (cookie) también confirma, y la cookie se borra al usarla', async () => {

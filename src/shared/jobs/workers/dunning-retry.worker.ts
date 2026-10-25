@@ -2,6 +2,8 @@ import type PgBoss from 'pg-boss'
 import { sql as drizzleSql } from 'drizzle-orm'
 import { getWorkerSql, withTenantContext } from '@/shared/db/client'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
+import { notifyOwnerPlanEvent } from '@/modules/notifications/push.service'
+import { artTodayStr } from '@/shared/dates/art'
 import {
   CANCELED_BLOCKED_DELETION_DAYS,
   CHURNED_DELETION_DAYS,
@@ -24,6 +26,11 @@ import { MP_MOCK_ENABLED } from '@/modules/payments/mock-mp'
 import { insertSystemAuditLog } from '@/shared/db/audit'
 import { CRON_WORK_OPTIONS, QUEUE_DUNNING_RETRY } from '../definitions'
 import { logger } from '@/shared/lib/logger'
+
+/** dd/mm/aaaa, el formato de fecha que usan el mail y el push de aviso de borrado. */
+function ddmmyyyy(d: Date): string {
+  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`
+}
 
 /**
  * Daily 13:00 ART sweep. Drives time-based escalations of the SaaS lifecycle.
@@ -154,6 +161,9 @@ export async function runDunningSweep(now: Date = new Date()): Promise<void> {
           tx,
         )
       })
+      // Push al dueño junto al mail, ya commiteada la transición. Un ciclo de mora
+      // pasa a `suspended` una vez por día como mucho: el día identifica el aviso.
+      await notifyOwnerPlanEvent(id, { event: 'suspended' }, artTodayStr())
       logger.info('tenant transitioned past_due → suspended', {
         module: 'dunning-retry',
         tenantId: id,
@@ -184,6 +194,7 @@ export async function runDunningSweep(now: Date = new Date()): Promise<void> {
           tx,
         )
       })
+      await notifyOwnerPlanEvent(id, { event: 'blocked' }, artTodayStr())
       logger.info('tenant transitioned suspended → blocked', {
         module: 'dunning-retry',
         tenantId: id,
@@ -211,13 +222,22 @@ export async function runDunningSweep(now: Date = new Date()): Promise<void> {
             content: {
               ownerName: ownerName(ownerMap, id),
               tenantName: tenantName(ownerMap, id),
-              deletionDate: `${String(deletionDate.getUTCDate()).padStart(2, '0')}/${String(deletionDate.getUTCMonth() + 1).padStart(2, '0')}/${deletionDate.getUTCFullYear()}`,
+              deletionDate: ddmmyyyy(deletionDate),
               daysRemaining: CHURNED_DELETION_DAYS,
             },
           },
           tx,
         )
       })
+      await notifyOwnerPlanEvent(
+        id,
+        {
+          event: 'deletion_warning',
+          deletionDate: ddmmyyyy(deletionDate),
+          daysRemaining: CHURNED_DELETION_DAYS,
+        },
+        artTodayStr(),
+      )
       logger.info('tenant transitioned blocked → churned', {
         module: 'dunning-retry',
         tenantId: id,
@@ -245,13 +265,22 @@ export async function runDunningSweep(now: Date = new Date()): Promise<void> {
             content: {
               ownerName: ownerName(ownerMap, id),
               tenantName: tenantName(ownerMap, id),
-              deletionDate: `${String(deletionDate.getUTCDate()).padStart(2, '0')}/${String(deletionDate.getUTCMonth() + 1).padStart(2, '0')}/${deletionDate.getUTCFullYear()}`,
+              deletionDate: ddmmyyyy(deletionDate),
               daysRemaining: CANCELED_BLOCKED_DELETION_DAYS,
             },
           },
           tx,
         )
       })
+      await notifyOwnerPlanEvent(
+        id,
+        {
+          event: 'deletion_warning',
+          deletionDate: ddmmyyyy(deletionDate),
+          daysRemaining: CANCELED_BLOCKED_DELETION_DAYS,
+        },
+        artTodayStr(),
+      )
       logger.info('tenant transitioned canceled → blocked (period ended)', {
         module: 'dunning-retry',
         tenantId: id,

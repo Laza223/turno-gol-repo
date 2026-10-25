@@ -34,7 +34,13 @@ self.addEventListener('push', (event) => {
   } catch (e) {
     payload = { type: 'unknown', courtName: 'Notificación' }
   }
-  const id = payload.bookingId || payload.type || String(Date.now())
+  // El id agrupa el aviso en la pestaña (seen-set de PushNotificationManager) y es
+  // el `tag` nativo, que REEMPLAZA a otro con el mismo tag sin sonar: tiene que ser
+  // distinto por evento. Con el bookingId a secas, la cancelación de una reserva
+  // pisaba el aviso de su alta; y sin bookingId, el 2do aviso del mismo tipo
+  // (otro chat que pide una persona) moría contra el 1ro mientras la pestaña seguía abierta.
+  const kind = payload.type || 'push'
+  const id = payload.bookingId ? `${kind}:${payload.bookingId}` : `${kind}:${Date.now()}`
   const showFallback = async () => {
     const bc = new BroadcastChannel('notif-dedupe')
     const acked = await new Promise((resolve) => {
@@ -55,6 +61,8 @@ self.addEventListener('push', (event) => {
       // (courtName, dateLabel, timeLabel) instead of generic copy.
       bc.postMessage({
         id,
+        title: payload.title,
+        body: payload.body,
         courtName: payload.courtName,
         dateLabel: payload.dateLabel,
         timeLabel: payload.timeLabel,
@@ -73,20 +81,29 @@ self.addEventListener('push', (event) => {
     const isWhatsappHandoff = payload.type === 'whatsapp_handoff'
     // mp_disconnected: el permiso OAuth de MercadoPago murió; copy fijo.
     const isMpDisconnected = payload.type === 'mp_disconnected'
-    const title = isMpDisconnected
-      ? 'MercadoPago se desconectó'
-      : isDailySummary
-        ? 'Resumen de ayer'
-        : isWhatsappHandoff
-          ? 'WhatsApp: te necesitan en un chat'
-          : payload.courtName
-            ? `Nueva reserva — ${payload.courtName}`
-            : 'Nueva reserva'
-    const body = isMpDisconnected
-      ? 'Las reservas online entran sin seña hasta que se reconecte.'
-      : isDailySummary || isWhatsappHandoff
-        ? payload.summaryLabel || ''
-        : [payload.dateLabel, payload.timeLabel].filter(Boolean).join(' · ')
+    // Los tipos nuevos traen `title`/`body` armados en el servidor
+    // (push.service.ts) y mandan sobre esta cadena: agregar un aviso no obliga a
+    // tocar acá ni en PushNotificationManager. La cadena queda para los payloads
+    // viejos (jobs ya encolados antes del deploy).
+    const title =
+      payload.title ||
+      (isMpDisconnected
+        ? 'MercadoPago se desconectó'
+        : isDailySummary
+          ? 'Resumen de ayer'
+          : isWhatsappHandoff
+            ? 'WhatsApp: te necesitan en un chat'
+            : payload.courtName
+              ? `Nueva reserva — ${payload.courtName}`
+              : 'Nueva reserva')
+    const body =
+      typeof payload.body === 'string'
+        ? payload.body
+        : isMpDisconnected
+          ? 'Las reservas online entran sin seña hasta que se reconecte.'
+          : isDailySummary || isWhatsappHandoff
+            ? payload.summaryLabel || ''
+            : [payload.dateLabel, payload.timeLabel].filter(Boolean).join(' · ')
     const url = payload.url || (isMpDisconnected ? '/dashboard' : '/grilla')
     await self.registration.showNotification(title, {
       body,

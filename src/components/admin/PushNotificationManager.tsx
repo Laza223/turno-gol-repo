@@ -144,6 +144,8 @@ export function PushNotificationManager() {
       const data = (msg.data || {}) as {
         id?: string
         ack?: boolean
+        title?: string
+        body?: string
         courtName?: string
         dateLabel?: string
         timeLabel?: string
@@ -159,25 +161,36 @@ export function PushNotificationManager() {
       // Render payload-specific toast: title=courtName, description=date+time.
       // SW broadcasts include courtName/dateLabel/timeLabel from the push payload.
       // daily_summary (D8, Fase 2): resumen diario, no una reserva nueva.
+      // Los tipos nuevos traen `title`/`body` del servidor y mandan; el resto de
+      // la cadena es para payloads viejos (mismo criterio que public/sw.js).
       const isDailySummary = data.type === 'daily_summary'
       const isMpDisconnected = data.type === 'mp_disconnected'
-      const title = isMpDisconnected
-        ? 'MercadoPago se desconectó'
-        : isDailySummary
-          ? 'Resumen de ayer'
-          : data.courtName
-            ? `Nueva reserva — ${data.courtName}`
-            : 'Nueva reserva'
-      const description = isMpDisconnected
-        ? 'Las reservas online entran sin seña hasta que se reconecte.'
-        : isDailySummary
-          ? data.summaryLabel || ''
-          : [data.dateLabel, data.timeLabel].filter(Boolean).join(' · ') ||
-            'Tenés una nueva reserva confirmada en la grilla.'
+      const title =
+        data.title ||
+        (isMpDisconnected
+          ? 'MercadoPago se desconectó'
+          : isDailySummary
+            ? 'Resumen de ayer'
+            : data.courtName
+              ? `Nueva reserva — ${data.courtName}`
+              : 'Nueva reserva')
+      const description =
+        typeof data.body === 'string'
+          ? data.body
+          : isMpDisconnected
+            ? 'Las reservas online entran sin seña hasta que se reconecte.'
+            : isDailySummary
+              ? data.summaryLabel || ''
+              : [data.dateLabel, data.timeLabel].filter(Boolean).join(' · ') ||
+                'Tenés una nueva reserva confirmada en la grilla.'
+      // Verde = buena noticia (reserva nueva, resumen). Una cancelación o un aviso
+      // de plan no lo son: van con el estilo neutro.
+      const isNeutral =
+        data.type === 'booking.canceled_by_player' || data.type?.startsWith('plan.') === true
       toast({
         title,
         description,
-        variant: 'success',
+        variant: isNeutral ? 'default' : 'success',
       })
       try {
         if (localStorage.getItem(SOUND_ENABLED_KEY) === '1' && audioRef.current) {

@@ -12,7 +12,10 @@ import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { applyPlusProratePayment, ensurePlusFlagOn } from '@/modules/billing/plus.service'
 import { MP_MOCK_ENABLED } from './mock-mp'
 import { dispatchEmail } from '@/modules/notifications/notification.service'
-import { notifyAdminBookingConfirmed } from '@/modules/notifications/push.service'
+import {
+  notifyAdminBookingConfirmed,
+  notifyOwnerPlanEvent,
+} from '@/modules/notifications/push.service'
 import { notifyWhatsappGuest } from '@/modules/whatsapp-bot/whatsapp-bot.notices'
 import { track } from '@/shared/observability'
 import { captureException, captureMessage } from '@/lib/sentry'
@@ -207,6 +210,9 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
   // Pago anual de Plus acreditado: el flag `whatsapp_bot` se prende DESPUÉS del
   // commit (regla de `plus.service.ts`), mismo patrón que `confirmedBookingId`.
   let plusFlagTenantId: string | null = null
+  // Cobro del plan SaaS rechazado: el push al dueño sale DESPUÉS del commit, con la
+  // misma fecha de reintento que ya dice el mail. Mismo patrón que `confirmedBookingId`.
+  let planPaymentRetryDate: string | null = null
 
   // Fix "checkout viejo pagado": el gateway que `onPaymentApproved` usa para
   // cancelar un preapproval huérfano (mismatch, ver dunning.service.ts) tiene
@@ -275,7 +281,17 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
           resolveBillingCancelGateway(),
         )
       } else if (info.status === 'rejected' || info.status === 'cancelled') {
-        await onPaymentRejected(job.tenantId, job.mpEventId, job.eventType, job.rawPayload, at, tx)
+        const rejected = await onPaymentRejected(
+          job.tenantId,
+          job.mpEventId,
+          job.eventType,
+          job.rawPayload,
+          at,
+          tx,
+        )
+        if (!rejected.alreadyProcessed && rejected.retryDate) {
+          planPaymentRetryDate = rejected.retryDate
+        }
       }
       // pending / in_process: no-op until next event.
       return
@@ -328,7 +344,17 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
           resolveBillingCancelGateway(),
         )
       } else if (info.status === 'rejected' || info.status === 'cancelled') {
-        await onPaymentRejected(job.tenantId, job.mpEventId, job.eventType, job.rawPayload, at, tx)
+        const rejected = await onPaymentRejected(
+          job.tenantId,
+          job.mpEventId,
+          job.eventType,
+          job.rawPayload,
+          at,
+          tx,
+        )
+        if (!rejected.alreadyProcessed && rejected.retryDate) {
+          planPaymentRetryDate = rejected.retryDate
+        }
       }
       // pending / in_process: no-op hasta el próximo evento.
       return
@@ -476,6 +502,15 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
   }
   if (refundedBookingId) {
     await notifyWhatsappGuest(job.tenantId, refundedBookingId, 'late_payment_refunded')
+  }
+  if (planPaymentRetryDate) {
+    // Solo al dueño; `mpEventId` identifica este rechazo, así que un reintento del
+    // job no lo repite. No lanza: un push caído no debe fallar el webhook.
+    await notifyOwnerPlanEvent(
+      job.tenantId,
+      { event: 'payment_failed', retryDate: planPaymentRetryDate },
+      job.mpEventId,
+    )
   }
   if (plusFlagTenantId) {
     // El evento ya quedó procesado: si el flag falla no se reintenta el webhook

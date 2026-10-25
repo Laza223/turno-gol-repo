@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   createDepositPayment: vi.fn(),
   resolveTenantGateway: vi.fn(),
   notifyAdminPush: vi.fn(),
+  notifyAdminBookingConfirmed: vi.fn(),
+  notifyAdminBookingCanceled: vi.fn(),
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
@@ -43,6 +45,8 @@ vi.mock('@/modules/payments/mp-oauth', () => ({
 }))
 vi.mock('@/modules/notifications/push.service', () => ({
   notifyAdminPush: mocks.notifyAdminPush,
+  notifyAdminBookingConfirmed: mocks.notifyAdminBookingConfirmed,
+  notifyAdminBookingCanceled: mocks.notifyAdminBookingCanceled,
 }))
 
 import { ToolInputError, type BotTool } from '@/modules/whatsapp-bot/whatsapp-bot.agent'
@@ -574,6 +578,34 @@ describe('reservar — con seña', () => {
   })
 })
 
+describe('reservar — aviso push al admin', () => {
+  const BOOKING_ID = '44444444-4444-4444-8444-444444444444'
+
+  it('sin seña: la reserva queda confirmada y se avisa al admin con el tenant del contexto', async () => {
+    mocks.createWhatsappBooking.mockResolvedValue(bookingResult())
+    const out = JSON.parse(await toolNamed(makeContext(), 'reservar').run(validBooking))
+    expect(out).toMatchObject({ estado: 'confirmada' })
+    expect(mocks.notifyAdminBookingConfirmed).toHaveBeenCalledTimes(1)
+    expect(mocks.notifyAdminBookingConfirmed).toHaveBeenCalledWith(TENANT_ID, BOOKING_ID)
+  })
+
+  it('con seña: no avisa todavía (avisa al confirmarse el pago, por el webhook)', async () => {
+    mocks.createWhatsappBooking.mockResolvedValue(bookingResult({ requiresPayment: true }))
+    mocks.createDepositPayment.mockResolvedValue({
+      initPoint: 'https://mp.test/checkout/abc',
+      expiresAt: new Date(Date.now() + 270_000),
+    })
+    await toolNamed(makeContext(), 'reservar').run(validBooking)
+    expect(mocks.notifyAdminBookingConfirmed).not.toHaveBeenCalled()
+  })
+
+  it('si la reserva falla, no se avisa nada', async () => {
+    mocks.createWhatsappBooking.mockRejectedValue(new Error('boom'))
+    await outcomeOf(toolNamed(makeContext(), 'reservar'), validBooking)
+    expect(mocks.notifyAdminBookingConfirmed).not.toHaveBeenCalled()
+  })
+})
+
 describe('cancelar — dos pasos, solo reservas de este chat', () => {
   const BOOKING_ID = '44444444-4444-4444-8444-444444444444'
   const cancelInputOk = { cancha: 'Cancha 1', fecha: '2026-10-25', hora: '21:00' }
@@ -691,6 +723,57 @@ describe('cancelar — dos pasos, solo reservas de este chat', () => {
       expect(mocks.guestLateCancelStatus).not.toHaveBeenCalled()
     },
   )
+
+  describe('aviso push al admin', () => {
+    const outcome = (overrides: Record<string, unknown> = {}) => ({
+      booking: {},
+      notificationIds: [],
+      guestPenalty: null,
+      inPolicy: true,
+      depositStatus: 'not_required',
+      ...overrides,
+    })
+
+    it('cancelación hecha: avisa después del commit, con el tenant del contexto y late: false', async () => {
+      mocks.cancelByGuest.mockResolvedValue(outcome())
+      await toolNamed(makeContext(), 'cancelar').run({ ...cancelInputOk, confirmar: true })
+      expect(mocks.notifyAdminBookingCanceled).toHaveBeenCalledTimes(1)
+      expect(mocks.notifyAdminBookingCanceled).toHaveBeenCalledWith(TENANT_ID, BOOKING_ID, {
+        late: false,
+      })
+    })
+
+    it('cancelación tardía: el aviso sale con late: true', async () => {
+      mocks.cancelByGuest.mockResolvedValue(
+        outcome({ lateCancel: true, guestPenalty: { count: 1, bannedUntil: null } }),
+      )
+      await toolNamed(makeContext({ tenant: lateTenant() }), 'cancelar').run({
+        ...cancelInputOk,
+        confirmar: true,
+      })
+      expect(mocks.notifyAdminBookingCanceled).toHaveBeenCalledWith(TENANT_ID, BOOKING_ID, {
+        late: true,
+      })
+    })
+
+    it('replay de una cancelación ya hecha: no vuelve a avisar', async () => {
+      mocks.cancelByGuest.mockResolvedValue(outcome({ replayed: true }))
+      await toolNamed(makeContext(), 'cancelar').run({ ...cancelInputOk, confirmar: true })
+      expect(mocks.notifyAdminBookingCanceled).not.toHaveBeenCalled()
+    })
+
+    it('la preview (confirmar:false) no cancela ni avisa', async () => {
+      await toolNamed(makeContext(), 'cancelar').run({ ...cancelInputOk, confirmar: false })
+      expect(mocks.cancelByGuest).not.toHaveBeenCalled()
+      expect(mocks.notifyAdminBookingCanceled).not.toHaveBeenCalled()
+    })
+
+    it('si cancelByGuest falla, no avisa', async () => {
+      mocks.cancelByGuest.mockRejectedValue(new BookingAlreadyEndedError('x'))
+      await toolNamed(makeContext(), 'cancelar').run({ ...cancelInputOk, confirmar: true })
+      expect(mocks.notifyAdminBookingCanceled).not.toHaveBeenCalled()
+    })
+  })
 
   it('confirmar:true con seña devuelta → se_devuelve_la_sena', async () => {
     mocks.cancelByGuest.mockResolvedValue({
@@ -825,6 +908,8 @@ describe('pasar_a_humano — solo el enum cerrado de motivos', () => {
       expect(HANDOFF_PAUSE_MS).toBe(12 * 60 * 60 * 1000)
       expect(mocks.notifyAdminPush).toHaveBeenCalledWith(TENANT_ID, {
         type: 'whatsapp_handoff',
+        title: 'WhatsApp: te necesitan en un chat',
+        body: label,
         summaryLabel: label,
         url: '/settings/whatsapp',
       })

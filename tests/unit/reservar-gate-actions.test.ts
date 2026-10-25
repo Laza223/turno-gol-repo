@@ -15,6 +15,8 @@ const {
   tenantRow,
   createOnlineBooking,
   createDepositPayment,
+  after,
+  notifyAdminBookingConfirmed,
 } = vi.hoisted(() => ({
   signInWithGooglePlayer: vi.fn(),
   signInWithPlayerMagicLink: vi.fn(),
@@ -28,6 +30,9 @@ const {
   tenantRow: { current: null as unknown },
   createOnlineBooking: vi.fn(),
   createDepositPayment: vi.fn(),
+  // `after` fuera de un request tira; acá solo registra el callback para correrlo a mano.
+  after: vi.fn(),
+  notifyAdminBookingConfirmed: vi.fn(),
 }))
 
 vi.mock('@/modules/auth/auth.service', () => ({
@@ -40,6 +45,8 @@ vi.mock('next/headers', () => ({
   cookies: async () => ({ get: () => undefined, set: cookieSet, delete: cookieDelete }),
 }))
 vi.mock('next/navigation', () => ({ redirect, RedirectType: { push: 'push', replace: 'replace' } }))
+vi.mock('next/server', () => ({ after }))
+vi.mock('@/modules/notifications/push.service', () => ({ notifyAdminBookingConfirmed }))
 vi.mock('@/shared/rate-limit', () => ({
   enforce: vi.fn(async () => ({ ok: true })),
   parseClientIp: () => '1.1.1.1',
@@ -323,6 +330,9 @@ describe('createBookingAndCheckout — con seña el cliente no elige cómo se pa
   })
   /** Lo que `createOnlineBooking` recibió como datos de la reserva. */
   const bookingInput = () => createOnlineBooking.mock.calls[0]![1] as Record<string, unknown>
+  /** Corre lo que la action agendó con `after()` (el push al admin). */
+  const runAfter = () =>
+    Promise.all(after.mock.calls.map(([cb]) => (cb as () => Promise<void> | void)()))
 
   beforeEach(() => {
     user.mockResolvedValue({ type: 'player', playerId: 'p1' })
@@ -339,6 +349,8 @@ describe('createBookingAndCheckout — con seña el cliente no elige cómo se pa
 
     expect(bookingInput()).not.toHaveProperty('paymentMethod')
     expect(bookingInput()).toMatchObject({ requiresDeposit: true, depositPercentage: 30 })
+    // Con seña el aviso al admin llega al confirmarse el pago (webhook), no acá.
+    expect(after).not.toHaveBeenCalled()
   })
 
   it('con seña pero MercadoPago marcado como desconectado: se confirma sin seña y honra el pay', async () => {
@@ -369,6 +381,11 @@ describe('createBookingAndCheckout — con seña el cliente no elige cómo se pa
       )
 
       expect(bookingInput()).toMatchObject({ paymentMethod: pay })
+      // Confirmada en el momento: el aviso push al admin se agenda post-respuesta.
+      expect(notifyAdminBookingConfirmed).not.toHaveBeenCalled()
+      await runAfter()
+      expect(notifyAdminBookingConfirmed).toHaveBeenCalledTimes(1)
+      expect(notifyAdminBookingConfirmed).toHaveBeenCalledWith('t1', 'b2')
     },
   )
 

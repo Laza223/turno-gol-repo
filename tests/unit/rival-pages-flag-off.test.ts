@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   getRivalWelcomeState: vi.fn(),
   listEligibleTenants: vi.fn(),
   listUpcomingConfirmedBookings: vi.fn(),
+  peekAlertUnsub: vi.fn(),
 }))
 
 vi.mock('next/navigation', () => ({
@@ -41,6 +42,7 @@ vi.mock('@/modules/rival/rival.service', () => ({
   listEligibleTenants: mocks.listEligibleTenants,
   listUpcomingConfirmedBookings: mocks.listUpcomingConfirmedBookings,
 }))
+vi.mock('@/modules/rival/rival-alerts.service', () => ({ peekAlertUnsub: mocks.peekAlertUnsub }))
 vi.mock('@/app/(player)/rival/actions', () => ({
   acceptRivalWelcomeAction: vi.fn(),
   createMatchAction: vi.fn(),
@@ -50,6 +52,8 @@ vi.mock('@/app/(player)/rival/actions', () => ({
   acceptWelcomeAndRequestAction: vi.fn(),
   reportMatchAction: vi.fn(),
   reportPlayerAction: vi.fn(),
+  subscribeRivalAlertAction: vi.fn(),
+  unsubscribeRivalAlertAction: vi.fn(),
 }))
 
 import RivalPage from '@/app/(player)/rival/page'
@@ -57,6 +61,7 @@ import MisPartidosPage from '@/app/(player)/rival/mis-partidos/page'
 import NuevoPartidoPage from '@/app/(player)/rival/nuevo/page'
 import RivalMatchPage from '@/app/(player)/rival/p/[code]/page'
 import RivalBoardMatchPage from '@/app/(player)/rival/partido/[id]/page'
+import BajaPage from '@/app/(player)/rival/baja/page'
 
 const PAGES: Array<[string, () => Promise<unknown>]> = [
   ['/rival', () => RivalPage({ searchParams: Promise.resolve({}) })],
@@ -77,6 +82,7 @@ const PAGES: Array<[string, () => Promise<unknown>]> = [
         params: Promise.resolve({ id: '11111111-1111-4111-8111-111111111111' }),
       }),
   ],
+  ['/rival/baja', () => BajaPage({ searchParams: Promise.resolve({ t: 'tok.sig' }) })],
 ]
 
 beforeEach(() => {
@@ -100,6 +106,7 @@ describe('RIVAL con el flag apagado', () => {
       mocks.getRivalWelcomeState,
       mocks.listEligibleTenants,
       mocks.listUpcomingConfirmedBookings,
+      mocks.peekAlertUnsub,
     ]) {
       expect(read).not.toHaveBeenCalled()
     }

@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
+import { notFound as notFoundPage, redirect } from 'next/navigation'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import { RivalError } from '@/modules/rival/rival.errors'
@@ -12,6 +12,11 @@ import {
   type RivalReportReason,
 } from '@/modules/rival/rival.schema'
 import { parseBoardForm, parseNewMatchForm } from '@/modules/rival/rival-form'
+import {
+  subscribeAlert,
+  unsubscribeAlert,
+  unsubscribeByToken,
+} from '@/modules/rival/rival-alerts.service'
 import { rivalErrorMessage } from '@/modules/rival/rival-copy'
 import {
   acceptRivalWelcome,
@@ -371,4 +376,66 @@ export async function reportPlayerAction(
   reason: RivalReportReason,
 ): Promise<ActionResult> {
   return report({ matchId, reason, reportedPlayerId })
+}
+
+/** "Avisame cuando haya" (estado vacío del tablón): el complejo viaja en el form y se valida acá. */
+export async function subscribeRivalAlertAction(
+  _prev: RivalFormResult,
+  formData: FormData,
+): Promise<RivalFormResult> {
+  const g = await guard('rivalWrite')
+  if ('error' in g) return { success: false, error: g.error }
+  const tenantId = uuid.safeParse(formData.get('tenantId'))
+  if (!tenantId.success) {
+    return { success: false, error: 'Elegí un complejo.', field: 'tenantId' }
+  }
+  try {
+    await subscribeAlert(g.playerId, {
+      tenantId: tenantId.data,
+      onlyGoalkeeper: formData.get('onlyGoalkeeper') === 'on',
+    })
+  } catch (err) {
+    return failure(err)
+  }
+  revalidatePath('/rival')
+  return { success: true }
+}
+
+/** "Dejar de avisarme" desde la sesión: el complejo viaja en el form. Idempotente. */
+export async function unsubscribeMyRivalAlertAction(
+  _prev: RivalFormResult,
+  formData: FormData,
+): Promise<RivalFormResult> {
+  const g = await guard('rivalWrite')
+  if ('error' in g) return { success: false, error: g.error }
+  const tenantId = uuid.safeParse(formData.get('tenantId'))
+  if (!tenantId.success) {
+    return { success: false, error: 'Elegí un complejo.', field: 'tenantId' }
+  }
+  try {
+    await unsubscribeAlert(g.playerId, tenantId.data)
+  } catch (err) {
+    return failure(err)
+  }
+  revalidatePath('/rival')
+  return { success: true }
+}
+
+/**
+ * Baja de las alertas desde el link del mail (`/rival/baja?t=`). Es POST a propósito: los
+ * escáneres de mail abren links y un GET jamás borra. Sin sesión: el token firmado es la prueba.
+ * Token inválido o suscripción ya inexistente dan la misma pantalla (no revela si existía).
+ */
+export async function unsubscribeRivalAlertAction(formData: FormData): Promise<void> {
+  if (!(await isRivalEnabled())) notFoundPage()
+  const token = formData.get('t')
+  if (typeof token === 'string' && token.length > 0 && token.length <= 512) {
+    try {
+      await unsubscribeByToken(token)
+    } catch (err) {
+      // La pantalla es la misma haya fallado o no; la falla de infraestructura va a Sentry.
+      captureException(err)
+    }
+  }
+  redirect('/rival/baja?listo=1')
 }

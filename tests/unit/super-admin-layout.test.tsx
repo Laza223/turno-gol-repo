@@ -99,7 +99,7 @@ describe('SuperAdminLayout (server component)', () => {
 })
 
 describe('SuperAdminLayoutShell', () => {
-  it('renderiza los links a /super-admin y /super-admin/tenants', () => {
+  it('renderiza los links a /super-admin, /super-admin/tenants y /super-admin/rival', () => {
     render(
       <SuperAdminLayoutShell
         userEmail="duenio@turnogol.app"
@@ -113,6 +113,7 @@ describe('SuperAdminLayoutShell', () => {
     const hrefs = screen.getAllByRole('link', { hidden: true }).map((a) => a.getAttribute('href'))
     expect(hrefs).toContain('/super-admin')
     expect(hrefs).toContain('/super-admin/tenants')
+    expect(hrefs).toContain('/super-admin/rival')
   })
 
   it('muestra el título del panel y el email del admin', () => {

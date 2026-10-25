@@ -6,6 +6,8 @@ import { logger } from '@/shared/lib/logger'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { isMpAlreadyCancelledPreapprovalError } from '@/modules/payments/mp-token-refresh'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
+import { isR2Configured } from '@/shared/storage/r2-config'
+import { RIVAL_AVATAR_PREFIX } from '@/modules/players/player-photo.service'
 
 /**
  * Sentinel de actor de sistema (mismo valor que `SYSTEM_ACTOR_ID` en
@@ -330,6 +332,50 @@ async function purgeOldRivalData(): Promise<void> {
     module: 'data-retention',
     count: matches.count,
   })
+}
+
+/**
+ * Red de seguridad de las fotos de RIVAL en R2: la saga de `player-photo.service`
+ * (compensación que falla, proceso que muere entre el commit y el borrado) puede dejar
+ * un objeto sin jugador que lo apunte, y es una foto pública de una persona. Lista
+ * `rival/avatars/`, ignora lo de menos de 1 h (una subida en curso todavía no commiteó
+ * el puntero) y lo que algún `players.avatar_url` referencia, y borra el resto.
+ * Sin R2 configurado (local, preview) no hace nada.
+ */
+export async function purgeOrphanRivalAvatars(): Promise<void> {
+  if (!isR2Configured()) return
+  const { listImages, deleteImage } = await import('@/shared/storage/r2')
+  const sql = getWorkerSql()
+  const cutoff = Date.now() - 60 * 60 * 1000
+  const objects = await listImages(RIVAL_AVATAR_PREFIX)
+  const candidates = objects.filter((o) => o.lastModified.getTime() < cutoff)
+  if (candidates.length === 0) return
+
+  const rows = await sql<{ avatar_url: string }[]>`
+    SELECT avatar_url FROM players WHERE avatar_url IS NOT NULL
+  `
+  // La clave sale del pathname y NO de `keyFromPublicUrl`: esa descarta las URLs de otro
+  // host, y si `R2_PUBLIC_BASE_URL` cambió (dominio nuevo) o difiere entre Vercel y este
+  // worker, ninguna foto viva quedaría referenciada y el barrido las borraría todas.
+  const referenced = new Set<string>()
+  for (const r of rows) {
+    try {
+      referenced.add(new URL(r.avatar_url).pathname.replace(/^\/+/, ''))
+    } catch {
+      // Un puntero ilegible: no se sabe qué objeto protege. Ante la duda no se borra nada.
+      logger.warn('orphan rival avatars sweep aborted: unreadable avatar_url', {
+        module: 'data-retention',
+      })
+      return
+    }
+  }
+  let deleted = 0
+  for (const { key } of candidates) {
+    if (referenced.has(key)) continue
+    await deleteImage(key)
+    deleted += 1
+  }
+  logger.info('purged orphan rival avatars', { module: 'data-retention', count: deleted })
 }
 
 async function cancelPendingMpSubscription(
@@ -660,6 +706,15 @@ export async function runDataRetentionCleanup(): Promise<void> {
     await purgeOldRivalData()
   } catch (err) {
     logger.error('purge rival (contacts/matches) failed (non-fatal, retried next run)', {
+      module: 'data-retention',
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
+
+  try {
+    await purgeOrphanRivalAvatars()
+  } catch (err) {
+    logger.error('purge orphan rival avatars failed (non-fatal, retried next run)', {
       module: 'data-retention',
       error: err instanceof Error ? err.message : String(err),
     })

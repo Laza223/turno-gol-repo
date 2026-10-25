@@ -16,6 +16,7 @@ import { artNowParts } from '@/shared/dates/art'
 import { acceptRivalWelcomeAction, createMatchAction } from '../actions'
 import { NewMatchForm } from './NewMatchForm'
 import { WelcomeCard } from '../WelcomeCard'
+import { loadWelcomePhoto } from '../welcome-photo'
 
 export function generateMetadata(): Metadata {
   return buildMetadata({
@@ -55,6 +56,7 @@ export default async function NuevoPartidoPage(props: {
           defaultPosition={welcome.position}
           defaultZone={welcome.zone}
           action={acceptRivalWelcomeAction}
+          photo={await loadWelcomePhoto(user.playerId)}
         />
       )}
     </div>

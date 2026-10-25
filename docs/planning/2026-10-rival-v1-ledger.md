@@ -10,8 +10,8 @@ Es el esfuerzo de [`docs/decisions/2026-10-22-rival-v1.md`](../decisions/2026-10
 | 1 | DB + esqueleto del módulo + retención, ARCO y export | #469 | Mergeado |
 | 2 | Shell, `/rival`, `/rival/nuevo`, vista del partido, entradas desde reservas, OG. Suma la tarjeta de bienvenida, que estaba en la fase 3, porque crear un partido la exige | #479 | Mergeado |
 | 3 | "Voy" con cuenta (reusa la bienvenida de la fase 2), banco, me bajo, avisar al grupo, repetir | #492 | Mergeado |
-| 4 | Tablón: publicar, pedir, decidir, contacto, bans, denuncias | #494 | Abierto |
-| 5 | Foto de perfil (R2) | — | Pendiente |
+| 4 | Tablón: publicar, pedir, decidir, contacto, bans, denuncias | #494 | Mergeado |
+| 5 | Foto de perfil (R2) | PR_FASE_5 | Abierto |
 | 6 | Emails y alertas | — | Pendiente |
 | 7 | `/super-admin/rival` | — | Pendiente |
 | Cierre | `sonnet-release-verifier` sobre main integrado; el flag lo prende el dueño | — | Pendiente |
@@ -51,6 +51,11 @@ Es el esfuerzo de [`docs/decisions/2026-10-22-rival-v1.md`](../decisions/2026-10
 | 4 | `sonnet-ux-verifier` | App real a 390 px y escritorio, claro y oscuro, con login por Inbucket | ~156 k tokens y ~20 min | "Pasa con problemas": 🟡 la denuncia a una persona ofrecía "El partido no existe"; 🟢 el texto de "Me bajo" en un pedido. Los seis 404 son reales y no aparece ningún teléfono ajeno. La app corrió como `postgres` |
 | 4 | `sonnet-implementer` (segunda vuelta) | Arreglar la revisión y la verificación | ~141 k tokens y ~27 min | Ocho arreglos con test, todos vistos rojos. "Buscamos rival" solo con cupo = formato (lo exige el service y la UI no lo ofrece), `isRivalPath` acepta `/rival/partido/<uuid>`, "Pedir sumarme" en los dos tipos. Una story nueva tenía un `wa.me` con número y la pasé a href inerte |
 | 4 | `sonnet-adversarial-reviewer` (contexto fresco) | Verificar los arreglos | ~132 k tokens y ~14 min | "Listo para PR": los 8 cerrados y las mutaciones las detectan los tests. Sobrevivía la de `canSeekRival` en `MatchView`, que pasó a `organizer-rules.ts` con unit (visto rojo). **Incidente:** dos corridas sin las variables de la base cayeron a la local (:54322) y `cleanupAll` la vació |
+| 5 | `sonnet-implementer` (A) | Servicio de foto con saga, `putImage` con cache corto, `listImages`, borrado post-commit en ARCO, barrido de huérfanos, política `rivalPhoto` | ~143 k tokens y ~40 min | Hecho. 19 + 4 unit y 9 de integración (base descartable), vistos rojos antes del código |
+| 5 | `sonnet-implementer` (B) | Actions, `PlayerPhotoField`, foto opcional en la bienvenida, tarjeta "Tu perfil en RIVAL", stories | ~154 k tokens y ~39 min | Hecho. 102 unit verdes y stories en claro y oscuro |
+| 5 | `sonnet-adversarial-reviewer` (contexto fresco) | Revisar la fase 5 sin commitear | ~94 k tokens y ~4 min | "Arreglar antes": 🟡 el barrido borraba todas las fotos vivas si cambiaba el host de `R2_PUBLIC_BASE_URL`; 🟢 varios. Sin fugas de la foto a anónimos |
+| 5 | `sonnet-ux-verifier` | Stories de la foto a 390 px y escritorio, claro y oscuro | ~91 k tokens y ~6 min | "Pasa con problemas": en Storybook sin hallazgos (tocables de 44 px, foco, contraste, sin desborde). **La app real quedó sin verificar**: el dev server del worktree no tiene env y no se leen `.env.*`. Tampoco se probó una subida real a R2 |
+| 5 | Sesión principal | Arreglar el 🟡 | Bajo | La clave del barrido sale del pathname y aborta si una URL no se lee; 2 tests vistos rojos |
 
 ## Cambios ajenos sobre superficie de RIVAL
 
@@ -59,3 +64,5 @@ Es el esfuerzo de [`docs/decisions/2026-10-22-rival-v1.md`](../decisions/2026-10
 ## Pendientes que no son de una fase
 
 - Borrar `players.preferred_area` (texto libre) con una migración propia, después de PR3, cuando la zona de lista cerrada ya esté en uso (spec §7).
+- Editar posición y zona en la tarjeta "Tu perfil en RIVAL" de `/configuracion` (spec §7): la fase 5 la creó solo con la foto y ninguna fase de la tabla lo cubre.
+- Fase 7: el super-admin quita una foto con `removePlayerPhoto` (`src/modules/players/player-photo.service.ts`).

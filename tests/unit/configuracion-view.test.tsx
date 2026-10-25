@@ -96,6 +96,25 @@ describe('ConfiguracionView — Mi cuenta en una sola página', () => {
     expect(screen.getByRole('link', { name: 'Reservar una cancha' })).toBeTruthy()
   })
 
+  it('sin el prop rivalPhoto no hay tarjeta de RIVAL', () => {
+    renderView()
+    expect(screen.queryByRole('heading', { name: 'Tu perfil en RIVAL' })).toBeNull()
+  })
+
+  it('con rivalPhoto aparece la tarjeta con el campo de foto y la leyenda de quién la ve', () => {
+    renderView({
+      rivalPhoto: {
+        url: null,
+        uploadAction: vi.fn(async () => ({ success: true as const, url: null })),
+        removeAction: vi.fn(async () => ({ success: true as const, url: null })),
+      },
+    })
+    const seccion = screen.getByRole('heading', { name: 'Tu perfil en RIVAL' }).closest('section')!
+    expect(within(seccion).getByRole('button', { name: 'Subir foto' })).toBeTruthy()
+    expect(seccion.textContent).toMatch(/link de un partido tuyo/)
+    expect(seccion.textContent).toMatch(/quitarla cuando quieras/)
+  })
+
   it('trae la banda hero de La Previa con el avatar de iniciales y cada sección en tarjeta', () => {
     const { container } = renderView()
     expect(container.querySelector('.player-hero-band')).not.toBeNull()

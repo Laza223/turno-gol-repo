@@ -14,6 +14,9 @@ import {
   isoMondayOf,
 } from '@/modules/players/activity.service'
 import { buildMetadata } from '@/lib/seo/metadata'
+import { isRivalEnabled } from '@/modules/rival/rival.flags'
+import { isR2Configured } from '@/shared/storage/r2-config'
+import { removeRivalPhotoAction, uploadRivalPhotoAction } from '../rival/photo-actions'
 import { ConfiguracionView } from './ConfiguracionView'
 import type { FavoriteRow } from './FavoritesList'
 import { updateProfileAction } from './actions'
@@ -49,12 +52,13 @@ export default async function ConfiguracionPage() {
   if (!user || user.type !== 'player')
     redirect(`/ingresar?next=${encodeURIComponent('/configuracion')}`)
 
-  const [rows, favorites, activityRaw] = await Promise.all([
+  const [rows, favorites, activityRaw, rivalOn] = await Promise.all([
     withPlayerContext(user.playerId, (tx) =>
       tx.select().from(players).where(eq(players.id, user.playerId)).limit(1),
     ),
     loadFavorites(user.playerId),
     withPlayerContext(user.playerId, (tx) => getPlayerActivity(user.playerId, tx)),
+    isRivalEnabled(),
   ])
 
   const player = rows[0]
@@ -78,6 +82,15 @@ export default async function ConfiguracionPage() {
       }}
       updateProfileAction={updateProfileAction}
       signOutAction={signOutAction}
+      rivalPhoto={
+        rivalOn && isR2Configured()
+          ? {
+              url: player.avatarUrl,
+              uploadAction: uploadRivalPhotoAction,
+              removeAction: removeRivalPhotoAction,
+            }
+          : undefined
+      }
     />
   )
 }

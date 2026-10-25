@@ -18,6 +18,7 @@ import { registerHealthPingWorker } from './health-ping.worker'
 import { registerDailySummaryWorker } from './daily-summary.worker'
 import { registerOnboardingAbandonmentWorker } from './onboarding-abandonment.worker'
 import { registerWhatsappTurnWorker } from './whatsapp-turn.worker'
+import { registerRivalMailWorker } from './rival-mail.worker'
 import { attachFailureHandlers } from '../dlq'
 
 export async function registerAllWorkers(boss: PgBoss): Promise<void> {
@@ -40,6 +41,7 @@ export async function registerAllWorkers(boss: PgBoss): Promise<void> {
   await registerDailySummaryWorker(boss)
   await registerOnboardingAbandonmentWorker(boss)
   await registerWhatsappTurnWorker(boss)
+  await registerRivalMailWorker(boss)
   // DLQ visibility (B10 T7): emit Sentry + structured log when a job exhausts
   // retries and fails. Must be last so every worker's queue exists first.
   await attachFailureHandlers(boss)

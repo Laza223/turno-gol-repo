@@ -1,9 +1,12 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { buildMetadata } from '@/lib/seo/metadata'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
-import { listBoard, listBoardTenants } from '@/modules/rival/rival.service'
+import { listBoard, listBoardTenants, listEligibleTenants } from '@/modules/rival/rival.service'
+import { listMyAlerts } from '@/modules/rival/rival-alerts.service'
 import { uuid } from '@/shared/validation/primitives'
+import { subscribeRivalAlertAction, unsubscribeMyRivalAlertAction } from './actions'
 import { BoardView } from './BoardView'
 import { encodeBoardCursor, parseBoardCursor } from './board-cursor'
 
@@ -39,6 +42,14 @@ export default async function RivalPage(props: {
   if (selectedTenantId) next.set('complejo', selectedTenantId)
   if (board.nextCursor) next.set('despues', encodeBoardCursor(board.nextCursor))
 
+  // El aviso solo se ofrece en el tablón vacío, pero la lista es barata y evita otro round-trip.
+  const user = await extractAuthUser()
+  const playerId = user?.type === 'player' ? user.playerId : null
+  const [eligible, mine] = await Promise.all([
+    listEligibleTenants(),
+    playerId ? listMyAlerts(playerId) : Promise.resolve([]),
+  ])
+
   return (
     <BoardView
       items={board.items}
@@ -46,6 +57,13 @@ export default async function RivalPage(props: {
       selectedTenantId={selectedTenantId}
       nextHref={board.nextCursor ? `/rival?${next.toString()}` : null}
       now={new Date()}
+      alert={{
+        alertTenants: eligible.map((t) => ({ id: t.id, name: t.name })),
+        signedIn: playerId !== null,
+        subscribed: mine.map((a) => ({ tenantId: a.tenantId, onlyGoalkeeper: a.onlyGoalkeeper })),
+        subscribeAction: subscribeRivalAlertAction,
+        unsubscribeAction: unsubscribeMyRivalAlertAction,
+      }}
     />
   )
 }

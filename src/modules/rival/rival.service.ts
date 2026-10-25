@@ -25,6 +25,7 @@ import {
 } from './rival.schema'
 import { artTimeOf } from './rival-display'
 import type { NewMatchBooking, RepeatSource } from './rival-form'
+import { scheduleRivalMail } from './rival-mail.service'
 import { rivalLastStartDay } from './rival-window'
 import type {
   RivalBoardCursor,
@@ -148,7 +149,7 @@ export async function createMatch(
   playerId: string,
   draft: RivalMatchDraft,
 ): Promise<{ id: string; inviteCode: string }> {
-  return inPlayerContext(playerId, async (tx) => {
+  const created = await inPlayerContext(playerId, async (tx) => {
     await requireWelcome(tx, playerId)
 
     // Mismo filtro de visibilidad que la búsqueda pública: nada de partidos en
@@ -186,6 +187,9 @@ export async function createMatch(
     }
     return match
   })
+  // Post-commit y sin lanzar: el mail nunca tumba la acción ni corre dentro de la transacción.
+  if (draft.board) await scheduleRivalMail({ type: 'alert_publish', matchId: created.id })
+  return created
 }
 
 /** Publica (o cambia lo que busca) un partido propio. El WhatsApp se confirma en cada publicación. */
@@ -219,6 +223,7 @@ export async function publishToBoard(
         set: { whatsappDigits: board.whatsappDigits },
       })
   })
+  await scheduleRivalMail({ type: 'alert_publish', matchId })
 }
 
 /** Saca el partido del tablón (queda solo el grupo). El contacto de los ya aceptados no se toca. */
@@ -243,6 +248,7 @@ export async function cancelMatch(playerId: string, matchId: string): Promise<vo
       .returning({ id: rivalMatches.id })
     if (updated.length === 0) throw new RivalError('rival_not_found')
   })
+  await scheduleRivalMail({ type: 'canceled', matchId })
 }
 
 /** "Voy" por link. Idempotente. Con cupo entra confirmado, sin cupo al banco. */
@@ -273,7 +279,7 @@ export async function requestToJoin(
   playerId: string,
   input: { matchId: string; tenantId: string },
 ): Promise<{ participantId: string }> {
-  return inPlayerContext(playerId, async (tx) => {
+  const result = await inPlayerContext(playerId, async (tx) => {
     await requireWelcome(tx, playerId)
     const [row] = await tx
       .insert(rivalParticipants)
@@ -288,6 +294,12 @@ export async function requestToJoin(
     if (!row) throw new RivalError('rival_forbidden')
     return { participantId: row.id }
   })
+  await scheduleRivalMail({
+    type: 'join_request',
+    matchId: input.matchId,
+    participantId: result.participantId,
+  })
+  return result
 }
 
 /**
@@ -305,8 +317,8 @@ async function updateParticipantAsOrganizer(
   organizerId: string,
   participantId: string,
   status: 'confirmed' | 'declined' | 'removed',
-): Promise<void> {
-  await inPlayerContext(organizerId, async (tx) => {
+): Promise<string> {
+  return inPlayerContext(organizerId, async (tx) => {
     // Sin lock: solo se resuelve el partido de la fila para tomarlo primero.
     const [target] = await tx
       .select({ matchId: rivalParticipants.matchId })
@@ -326,25 +338,28 @@ async function updateParticipantAsOrganizer(
       .where(and(eq(rivalParticipants.id, participantId), inArray(rivalParticipants.matchId, own)))
       .returning({ id: rivalParticipants.id })
     if (updated.length === 0) throw new RivalError('rival_not_found')
+    return target.matchId
   })
 }
 
 /** El organizador acepta o rechaza un pedido del tablón. Aceptar exige cupo (`rival_full`). */
-export function decideRequest(
+export async function decideRequest(
   organizerId: string,
   participantId: string,
   decision: 'accept' | 'decline',
 ): Promise<void> {
-  return updateParticipantAsOrganizer(
+  const matchId = await updateParticipantAsOrganizer(
     organizerId,
     participantId,
     decision === 'accept' ? 'confirmed' : 'declined',
   )
+  // Un rechazo no manda mail (spec §5.7.4): solo el aceptado se entera.
+  if (decision === 'accept') await scheduleRivalMail({ type: 'accepted', matchId, participantId })
 }
 
 /** El organizador saca a alguien confirmado o del banco; entra el primero del banco. */
-export function removeParticipant(organizerId: string, participantId: string): Promise<void> {
-  return updateParticipantAsOrganizer(organizerId, participantId, 'removed')
+export async function removeParticipant(organizerId: string, participantId: string): Promise<void> {
+  await updateParticipantAsOrganizer(organizerId, participantId, 'removed')
 }
 
 /** "Me bajo" (confirmado, banco o pedido). Si había banco, entra el primero. */

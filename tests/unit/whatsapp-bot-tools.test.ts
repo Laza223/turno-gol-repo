@@ -591,7 +591,10 @@ describe('reservar — aviso push al admin', () => {
 
   it('con seña: no avisa todavía (avisa al confirmarse el pago, por el webhook)', async () => {
     mocks.createWhatsappBooking.mockResolvedValue(bookingResult({ requiresPayment: true }))
-    mocks.createDepositPayment.mockResolvedValue({ initPoint: 'https://mp.test/checkout/abc' })
+    mocks.createDepositPayment.mockResolvedValue({
+      initPoint: 'https://mp.test/checkout/abc',
+      expiresAt: new Date(Date.now() + 270_000),
+    })
     await toolNamed(makeContext(), 'reservar').run(validBooking)
     expect(mocks.notifyAdminBookingConfirmed).not.toHaveBeenCalled()
   })

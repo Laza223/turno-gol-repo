@@ -13,7 +13,7 @@ Es el esfuerzo de [`docs/decisions/2026-10-22-rival-v1.md`](../decisions/2026-10
 | 4 | Tablón: publicar, pedir, decidir, contacto, bans, denuncias | #494 | Abierto |
 | 5 | Foto de perfil (R2) | — | Pendiente |
 | 6 | Emails y alertas | — | Pendiente |
-| 7 | `/super-admin/rival` | — | Pendiente |
+| 7 | `/super-admin/rival` | Abierto (ver PR de la rama `claude/fervent-hellman-a7a063`) | En revisión |
 | Cierre | `sonnet-release-verifier` sobre main integrado; el flag lo prende el dueño | — | Pendiente |
 
 ## Delegaciones
@@ -51,6 +51,10 @@ Es el esfuerzo de [`docs/decisions/2026-10-22-rival-v1.md`](../decisions/2026-10
 | 4 | `sonnet-ux-verifier` | App real a 390 px y escritorio, claro y oscuro, con login por Inbucket | ~156 k tokens y ~20 min | "Pasa con problemas": 🟡 la denuncia a una persona ofrecía "El partido no existe"; 🟢 el texto de "Me bajo" en un pedido. Los seis 404 son reales y no aparece ningún teléfono ajeno. La app corrió como `postgres` |
 | 4 | `sonnet-implementer` (segunda vuelta) | Arreglar la revisión y la verificación | ~141 k tokens y ~27 min | Ocho arreglos con test, todos vistos rojos. "Buscamos rival" solo con cupo = formato (lo exige el service y la UI no lo ofrece), `isRivalPath` acepta `/rival/partido/<uuid>`, "Pedir sumarme" en los dos tipos. Una story nueva tenía un `wa.me` con número y la pasé a href inerte |
 | 4 | `sonnet-adversarial-reviewer` (contexto fresco) | Verificar los arreglos | ~132 k tokens y ~14 min | "Listo para PR": los 8 cerrados y las mutaciones las detectan los tests. Sobrevivía la de `canSeekRival` en `MatchView`, que pasó a `organizer-rules.ts` con unit (visto rojo). **Incidente:** dos corridas sin las variables de la base cayeron a la local (:54322) y `cleanupAll` la vació |
+| 7 | `sonnet-implementer` | Servicios de métricas y moderación, actions con guard, página, vista con stories y nav | ~180 k tokens y ~39 min | Hecho sin migración. Los tests del guard y de integración (Postgres descartable) pasan |
+| 7 | `sonnet-adversarial-reviewer` (contexto fresco) | Revisar la fase 7 sin commitear | ~128 k tokens y ~5 min | "Arreglar antes": 🔴 bajas y entradas del banco daban siempre 0 (`decided_at` no se escribe en `left` ni en la promoción) y el test sembraba el dato; 🟡 avatar sin vínculo con el partido, race, seam de R2 sin try/catch, personas no distintas |
+| 7 | `sonnet-implementer` (segunda vuelta) | Arreglar la revisión | ~196 k tokens | Las dos métricas se sacan del panel con nota "no se miden todavía" (hace falta una migración con `left_at` y sello en la promoción, después de las fases 5 y 6); resto arreglado con test. Integración: 22 pasan y 1 `it.todo` para el borrado en R2 de la fase 5 |
+| 7 | `sonnet-ux-verifier` | App real con auth real y base descartable, 390 px y escritorio, claro y oscuro | ~131 k tokens y ~11 min | "Pasa": sin desborde, ocultar, restaurar y quitar foto con su fila de auditoría, redirect a /login sin sesión, sin PII en el HTML, consola limpia. No probó un staff real ni el cálculo del trigger de 099 |
 
 ## Cambios ajenos sobre superficie de RIVAL
 

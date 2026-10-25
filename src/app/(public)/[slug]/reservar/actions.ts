@@ -601,9 +601,8 @@ export async function retryDepositPaymentAction(formData: FormData): Promise<voi
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
   const gateway = resolveTenantGateway(tenantId, mpAccessToken)
-  // Re-invoking createDepositPayment is safe: payments has no UNIQUE on
-  // (booking_id, type); a second pending row is allowed and bookings.payment_id
-  // will be updated to the newer payment row.
+  // createDepositPayment reusa la preferencia pendiente vigente (no crea otra):
+  // dos preferencias vivas serían dos pagos posibles de la misma seña.
   const pref = await createDepositPayment(bookingId, gateway, tenantId, appUrl)
 
   redirect(pref.initPoint)

@@ -511,7 +511,10 @@ describe('reservar — reglas del complejo y traducción de errores de dominio',
 describe('reservar — con seña', () => {
   beforeEach(() => {
     mocks.createWhatsappBooking.mockResolvedValue(bookingResult({ requiresPayment: true }))
-    mocks.createDepositPayment.mockResolvedValue({ initPoint: 'https://mp.test/checkout/abc' })
+    mocks.createDepositPayment.mockResolvedValue({
+      initPoint: 'https://mp.test/checkout/abc',
+      expiresAt: new Date(Date.now() + 270_000),
+    })
   })
 
   it('crea la preferencia FUERA de la tx y devuelve el link con los minutos para pagar', async () => {
@@ -521,7 +524,7 @@ describe('reservar — con seña', () => {
       fecha: '2026-10-25',
       hora: '21:00',
       link_pago: 'https://mp.test/checkout/abc',
-      minutos_para_pagar: 6,
+      minutos_para_pagar: 4,
     })
     const back = 'https://app.test/reserva/44444444-4444-4444-8444-444444444444/whatsapp'
     expect(mocks.resolveTenantGateway).toHaveBeenCalledWith(TENANT_ID, 'encrypted-token')
@@ -534,6 +537,24 @@ describe('reservar — con seña', () => {
     )
     // La única `withTenantContext` es la de la reserva: la preferencia no corre adentro.
     expect(mocks.withTenantContext).toHaveBeenCalledTimes(1)
+  })
+
+  it('minutos_para_pagar sale del vencimiento real (P6), nunca promete de más ni baja de 1', async () => {
+    mocks.createDepositPayment.mockResolvedValue({
+      initPoint: 'https://mp.test/checkout/abc',
+      expiresAt: new Date(Date.now() + 40_000),
+    })
+    const out = JSON.parse(await toolNamed(makeContext(), 'reservar').run(validBooking))
+    expect(out.minutos_para_pagar).toBe(1)
+  })
+
+  it('reservar repetido (alreadyExisted) devuelve el link que entrega createDepositPayment, que reusa la preferencia', async () => {
+    mocks.createWhatsappBooking.mockResolvedValue(
+      bookingResult({ requiresPayment: true, alreadyExisted: true }),
+    )
+    const out = JSON.parse(await toolNamed(makeContext(), 'reservar').run(validBooking))
+    expect(out.link_pago).toBe('https://mp.test/checkout/abc')
+    expect(mocks.createDepositPayment).toHaveBeenCalledTimes(1)
   })
 
   it('complejo sin MercadoPago conectado → turno_no_disponible, sin crear preferencia', async () => {

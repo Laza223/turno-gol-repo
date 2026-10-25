@@ -250,11 +250,23 @@ describe('race: dos eventos DISTINTOS sobre la misma reserva (la UPDATE condicio
     // Ambos pagos quedan en el trail de auditoría, cada uno approved.
     const pays = await sql<{ mp_payment_id: string; status: string }[]>`
       SELECT mp_payment_id, status FROM payments
-      WHERE booking_id = ${bk}
+      WHERE booking_id = ${bk} AND type = 'deposit'
       ORDER BY mp_payment_id
     `
     expect(pays.map((p) => p.mp_payment_id)).toEqual(['pay-dist-1', 'pay-dist-2'])
     expect(pays.map((p) => p.status)).toEqual(['approved', 'approved'])
+
+    // P2: el que perdió la carrera es una seña cobrada de más — auditoría y UNA
+    // devolución registrada (pendiente: la salda el complejo), no un pago mudo.
+    const refunds = await sql<{ status: string; amount: number }[]>`
+      SELECT status, amount FROM payments WHERE booking_id = ${bk} AND type = 'refund'
+    `
+    expect(refunds).toEqual([{ status: 'pending', amount: DEPOSIT }])
+    const dupAudits = await sql<{ c: number }[]>`
+      SELECT COUNT(*)::int AS c FROM audit_logs
+      WHERE resource_id = ${bk} AND action = 'booking.duplicate_payment'
+    `
+    expect(dupAudits[0].c).toBe(1)
 
     // Sigue siendo UNA sola reserva activa sobre ese court/slot (no se duplicó).
     const active = await sql<{ c: number }[]>`

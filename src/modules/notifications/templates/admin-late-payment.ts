@@ -23,6 +23,13 @@ export type AdminLatePaymentData = {
    * donde sigue haciendo falta que decida un humano.
    */
   refundIssued?: boolean
+  /**
+   * `true` cuando el pago NO llegó tarde: la reserva está confirmada y ya tenía
+   * su seña, y el jugador pagó una segunda preferencia del mismo turno. El
+   * turno es suyo; lo que sobra es la plata. Cambia el texto, no el flujo de
+   * devolución (mismo registro pendiente en Caja y Cantina → Devoluciones).
+   */
+  duplicate?: boolean
 }
 
 /**
@@ -32,6 +39,7 @@ export type AdminLatePaymentData = {
  */
 export function renderAdminLatePayment(data: AdminLatePaymentData): EmailContent {
   const ref = data.bookingId.slice(0, 8)
+  if (data.duplicate) return renderDuplicate(data, ref)
   const subject = data.refundIssued
     ? `⚠️ Pago tardío recibido — devolución pendiente (reserva #${ref})`
     : `⚠️ Pago tardío recibido — acción requerida (reserva #${ref})`
@@ -65,5 +73,37 @@ export function renderAdminLatePayment(data: AdminLatePaymentData): EmailContent
 </body>
 </html>`
   const text = `${headline}\n\nSe recibió un pago de $${data.amountArs} para la reserva #${ref}, que ya estaba ${data.currentStatus}.\n${actionText}${data.courtName ? `\n\nCancha: ${data.courtName}` : ''}${data.date ? `\nFecha: ${data.date}` : ''}\n\n— TurnoGol`
+  return { subject, html, text }
+}
+
+/** Seña cobrada dos veces sobre una reserva confirmada: el turno está bien, hay que devolver una. */
+function renderDuplicate(data: AdminLatePaymentData, ref: string): EmailContent {
+  const subject = `⚠️ Seña cobrada dos veces — devolución pendiente (reserva #${ref})`
+  const headline = 'Seña cobrada dos veces'
+  const body = data.refundIssued
+    ? 'El turno sigue confirmado, pero quedó <strong>registrada una devolución pendiente</strong> en Caja y Cantina → Devoluciones. <strong>La plata todavía no volvió</strong>: devolvésela vos por donde te quede más cómodo — MercadoPago, transferencia o efectivo — y después marcala en Caja y Cantina → Devoluciones. Si la devolvés desde el panel de MercadoPago, se marca sola.'
+    : 'El turno sigue confirmado. Revisá los pagos de esta reserva en MercadoPago: <strong>hay que devolver uno</strong>.'
+  const bodyText = body.replace(/<\/?strong>/g, '')
+  const html = `
+<!DOCTYPE html>
+<html lang="es">
+<body style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1e293b">
+  <h2 style="color:#dc2626">${headline}</h2>
+  <p>El jugador pagó <strong>$${data.amountArs}</strong> por segunda vez la seña de la reserva <strong>#${ref}</strong>.</p>
+  <p>${body}</p>
+  <p style="color:#64748b;font-size:14px">${data.courtName ? `${escapeHtml(data.courtName)}` : ''}${data.date ? ` · ${data.date}` : ''}</p>
+  <p style="color:#64748b;font-size:14px">— TurnoGol</p>
+</body>
+</html>`
+  const text = [
+    headline,
+    `El jugador pagó $${data.amountArs} por segunda vez la seña de la reserva #${ref}.`,
+    bodyText,
+    data.courtName ? `Cancha: ${data.courtName}` : '',
+    data.date ? `Fecha: ${data.date}` : '',
+    '— TurnoGol',
+  ]
+    .filter(Boolean)
+    .join('\n\n')
   return { subject, html, text }
 }

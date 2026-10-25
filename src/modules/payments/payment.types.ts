@@ -162,6 +162,12 @@ export type WebhookOutcome =
        * devolvía 403 siempre).
        */
       preparedRefund?: PreparedRefund
+      /**
+       * `true` = segunda seña sobre una reserva ya confirmada (P2). Hay
+       * `preparedRefund` pero el turno NO se perdió: los callers no le avisan
+       * al jugador "tu turno se liberó" (texto del pago tardío, falso acá).
+       */
+      duplicate?: boolean
     }
 
 // ─── SaaS recurring billing (P18) ──────────────────────────────

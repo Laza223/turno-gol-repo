@@ -19,6 +19,7 @@ function tenant(overrides: Partial<WhatsappTenantHealth> = {}): WhatsappTenantHe
     enabled: true,
     lastInboundAt: minutesAgo(12),
     lastOutboundAt: minutesAgo(11),
+    silent: false,
     backlog: 0,
     pausedByReason: {},
     monthMessages: 420,
@@ -115,6 +116,20 @@ export const Alerta: Story = {
     const table = within(canvas.getByRole('table'))
     await expect(table.getByText('Mensajes sin contestar')).toBeInTheDocument()
     await expect(table.getByText(/1 error del bot/)).toBeInTheDocument()
+  },
+}
+
+/** Conectado y prendido, sin cola, pero sin entrantes hace horas: no puede decir "Andando". */
+export const SinMensajes: Story = {
+  args: {
+    data: monitor({
+      tenants: [tenant({ silent: true, lastInboundAt: minutesAgo(60 * 30) })],
+    }),
+  },
+  play: async ({ canvasElement }) => {
+    const table = within(within(canvasElement).getByRole('table'))
+    await expect(table.getByText('Sin mensajes hace horas')).toBeInTheDocument()
+    await expect(table.queryByText('Andando')).not.toBeInTheDocument()
   },
 }
 

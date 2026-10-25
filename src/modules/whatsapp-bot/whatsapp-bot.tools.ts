@@ -5,7 +5,6 @@ import { getDb, withTenantContext } from '@/shared/db/client'
 import { tenants, whatsappChats } from '@/shared/db/schema'
 import { addDays } from '@/shared/dates/art'
 import { hhmmToMins } from '@/shared/time/operating-day'
-import { DEFAULT_EXPIRY_SECONDS } from '@/shared/jobs/definitions'
 import { formatArs } from '@/lib/format'
 import { logger } from '@/shared/lib/logger'
 import { getPublicAvailability, type PublicTenant } from '@/modules/tenants/public.service'
@@ -340,7 +339,12 @@ function bookTool(ctx: ToolContext, courts: BotCourt[]): BotTool {
         ...resumen,
         sena: formatArs(booking.depositAmount),
         link_pago: pref.initPoint,
-        minutos_para_pagar: Math.floor(DEFAULT_EXPIRY_SECONDS / 60),
+        // Del vencimiento REAL de la preferencia (P6): al pedir el link de nuevo
+        // quedan menos que al reservar, y el checkout cierra solo.
+        minutos_para_pagar: Math.max(
+          1,
+          Math.floor((pref.expiresAt.getTime() - Date.now()) / 60_000),
+        ),
       })
     },
   }

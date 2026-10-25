@@ -82,6 +82,26 @@ export const Completa: Story = {
   },
 }
 
+/** RIVAL prendido y storage configurado: aparece la tarjeta de la foto, entre Tus datos y Favoritos. */
+export const ConPerfilRival: Story = {
+  args: {
+    rivalPhoto: {
+      url: '/bg-owner.png',
+      uploadAction: fn(async () => ({ success: true as const, url: '/bg-owner.png' })),
+      removeAction: fn(async () => ({ success: true as const, url: null })),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const titulos = canvas.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
+    await expect(titulos.slice(0, 3)).toEqual(['Quién sos', 'Tus datos', 'Tu perfil en RIVAL'])
+    await expect(canvas.getByRole('button', { name: 'Cambiar foto' })).toBeInTheDocument()
+    await expect(canvas.getByText(/Podés quitarla cuando quieras/)).toBeInTheDocument()
+    const ratio = await paintedContrast(canvas.getByText(/Podés quitarla cuando quieras/))
+    await expect(ratio).toBeGreaterThanOrEqual(4.5)
+  },
+}
+
 /** Sin interruptores de avisos: una línea dice qué mails llegan siempre. */
 export const SinInterruptoresDeAvisos: Story = {
   play: async ({ canvasElement }) => {

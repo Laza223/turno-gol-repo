@@ -4,7 +4,10 @@ import { normalizeKapsoPayload } from '@/lib/kapso/events.schema'
 import { captureException, captureMessage } from '@/lib/sentry'
 import { ingestWhatsappEvents } from '@/modules/whatsapp-bot/whatsapp-bot.ingest'
 import { enqueueWhatsappTurns } from '@/modules/whatsapp-bot/whatsapp-bot.queue'
+import { getWorkerDb } from '@/shared/db/client'
+import { opsAlerts } from '@/shared/db/schema'
 import { logger } from '@/shared/lib/logger'
+import { SIGNATURE_REJECTION_PREFIX } from '@/modules/super-admin/whatsapp-monitor.service'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -22,10 +25,39 @@ function rechazar(motivo: string, status: number): NextResponse {
   return NextResponse.json({ error: motivo }, { status })
 }
 
+/**
+ * Un 401 suelto no es nada; un 401 sostenido es el bot mudo (secreto rotado o
+ * mal cargado). Deja una clave por minuto en `ops_alerts` (pool worker: la app no
+ * la toca) y el cron `whatsapp-ops-alerts` avisa por mail pasado el umbral. Solo
+ * cuenta si vino con `x-webhook-event`, que Kapso manda siempre: un escáner no.
+ */
+let lastRecordedMinute = ''
+
+async function recordSignatureRejection(req: NextRequest): Promise<void> {
+  if (!req.headers.get('x-webhook-event')) return
+  // Ese header lo manda cualquiera: un flood no puede traducirse en una query por
+  // request. Una escritura por minuto por instancia alcanza para el umbral.
+  const minute = new Date().toISOString().slice(0, 16)
+  if (minute === lastRecordedMinute) return
+  lastRecordedMinute = minute
+  try {
+    await getWorkerDb()
+      .insert(opsAlerts)
+      .values({ key: `${SIGNATURE_REJECTION_PREFIX}${minute}` })
+      .onConflictDoNothing()
+  } catch (err) {
+    logger.error('whatsapp-webhook: no se pudo registrar el rechazo de firma', {
+      module: 'whatsapp-webhook',
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
+}
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   // La firma es sobre el body CRUDO: hay que leerlo como texto antes de parsear.
   const raw = await req.text()
   if (!verifyKapsoSignature(raw, req.headers.get('x-webhook-signature'))) {
+    await recordSignatureRejection(req)
     return rechazar('invalid signature', 401)
   }
 

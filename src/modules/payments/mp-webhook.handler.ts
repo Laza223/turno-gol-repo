@@ -448,7 +448,12 @@ export async function handleMpWebhookJob(job: MpWebhookJob): Promise<void> {
     if (depositOutcome && !depositOutcome.alreadyProcessed && depositOutcome.won === true) {
       confirmedBookingId = info.externalReference
     }
-    if (depositOutcome && !depositOutcome.alreadyProcessed && depositOutcome.preparedRefund) {
+    if (
+      depositOutcome &&
+      !depositOutcome.alreadyProcessed &&
+      depositOutcome.preparedRefund &&
+      !depositOutcome.duplicate
+    ) {
       refundedBookingId = info.externalReference
     }
     return depositOutcome

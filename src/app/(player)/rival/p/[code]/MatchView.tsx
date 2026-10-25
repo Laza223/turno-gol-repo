@@ -15,6 +15,7 @@ import { OrganizerActions } from './OrganizerActions'
 import { myStatusLine, PeopleSection, type RowActionProps } from './People'
 import { ReportMatchButton } from './ReportButton'
 import { ShirtGrid } from './ShirtGrid'
+import type { WelcomePhoto } from '../../WelcomeCard'
 import { VoyPanel, type VoyWelcome } from './VoyPanel'
 
 type Props = {
@@ -56,6 +57,8 @@ type Props = {
   joinAction: (code: string) => Promise<ActionResult>
   acceptAndJoinAction: (prev: RivalFormResult, formData: FormData) => Promise<RivalFormResult>
   leaveAction: (matchId: string) => Promise<ActionResult>
+  /** Foto opcional de la bienvenida (la page la arma solo si hay storage). */
+  photo?: WelcomePhoto
 }
 
 /**
@@ -89,6 +92,7 @@ export function MatchView({
   removeAction,
   reportMatchAction,
   reportPlayerAction,
+  photo,
 }: Props) {
   const canceled = match.status === 'canceled'
   const ended = !canceled && match.startsAt.getTime() <= now.getTime()
@@ -192,6 +196,7 @@ export function MatchView({
               intentParam={intentParam}
               joinAction={joinAction}
               acceptAndJoinAction={acceptAndJoinAction}
+              photo={photo}
             />
           )}
           {canLeave && (

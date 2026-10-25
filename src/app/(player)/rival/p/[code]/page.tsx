@@ -26,6 +26,7 @@ import {
   reportPlayerAction,
   unpublishFromBoardAction,
 } from '../../actions'
+import { loadWelcomePhoto } from '../../welcome-photo'
 import { MatchView } from './MatchView'
 import { sendRivalMagicLinkAction, startGoogleLoginFromRivalAction } from './login-actions'
 import { readRivalIntent } from './rival-intent.server'
@@ -72,6 +73,9 @@ export default async function RivalMatchPage(props: {
           zone: welcomeState.zone,
         }
       : null
+
+  // La foto opcional solo se ofrece dentro de la tarjeta de bienvenida.
+  const photo = playerId && welcome ? await loadWelcomePhoto(playerId) : undefined
 
   // Vuelta del login con "Voy" firmado: aceptada la bienvenida se suma sola; sin ella, la tarjeta
   // sale abierta y el consentimiento pide el toque. Un intento que no vale es una visita normal.
@@ -124,6 +128,7 @@ export default async function RivalMatchPage(props: {
       joinAction={joinMatchAction}
       acceptAndJoinAction={acceptWelcomeAndJoinAction}
       leaveAction={leaveMatchAction}
+      photo={photo}
     />
   )
 }

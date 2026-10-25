@@ -12,7 +12,7 @@ Es el esfuerzo de [`docs/decisions/2026-10-22-rival-v1.md`](../decisions/2026-10
 | 3      | "Voy" con cuenta (reusa la bienvenida de la fase 2), banco, me bajo, avisar al grupo, repetir                                                                             | #492 | Mergeado  |
 | 4      | Tablón: publicar, pedir, decidir, contacto, bans, denuncias                                                                                                               | #494 | Abierto   |
 | 5      | Foto de perfil (R2)                                                                                                                                                       | —    | Pendiente |
-| 6      | Emails y alertas (4 mails: quiere sumarse, te aceptaron, se cayó el partido y alerta "hay partido" con baja de un toque)                                                  | PR_6 | Abierto   |
+| 6      | Emails y alertas (4 mails: quiere sumarse, te aceptaron, se cayó el partido y alerta "hay partido" con baja de un toque)                                                  | #505 | Abierto   |
 | 7      | `/super-admin/rival`                                                                                                                                                      | —    | Pendiente |
 | Cierre | `sonnet-release-verifier` sobre main integrado; el flag lo prende el dueño                                                                                                | —    | Pendiente |
 

@@ -44,6 +44,10 @@ import {
 } from './tenant-deletion-warning'
 import { renderDailySummary, type DailySummaryData } from './daily-summary'
 import { renderOnboardingAbandoned, type OnboardingAbandonedData } from './onboarding-abandoned'
+import { renderRivalJoinRequest, type RivalJoinRequestData } from './rival-join-request'
+import { renderRivalAccepted, type RivalAcceptedData } from './rival-accepted'
+import { renderRivalCanceled, type RivalCanceledData } from './rival-canceled'
+import { renderRivalAlert, type RivalAlertData } from './rival-alert'
 
 export {
   renderBookingConfirmed,
@@ -93,6 +97,10 @@ type TemplateDataMap = {
   tenant_deletion_warning: TenantDeletionWarningData
   daily_summary: DailySummaryData
   onboarding_abandoned: OnboardingAbandonedData
+  rival_join_request: RivalJoinRequestData
+  rival_accepted: RivalAcceptedData
+  rival_canceled: RivalCanceledData
+  rival_alert: RivalAlertData
 }
 
 export type TemplateName = keyof TemplateDataMap
@@ -121,6 +129,10 @@ const RENDERERS: { [K in TemplateName]: (data: TemplateDataMap[K]) => EmailConte
   tenant_deletion_warning: renderTenantDeletionWarning,
   daily_summary: renderDailySummary,
   onboarding_abandoned: renderOnboardingAbandoned,
+  rival_join_request: renderRivalJoinRequest,
+  rival_accepted: renderRivalAccepted,
+  rival_canceled: renderRivalCanceled,
+  rival_alert: renderRivalAlert,
 }
 
 export function renderTemplate(name: TemplateName, data: unknown): EmailContent {

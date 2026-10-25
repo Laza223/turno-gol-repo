@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, within } from 'storybook/test'
+import { expect, fn, within } from 'storybook/test'
 import type { RivalBoardItem } from '@/modules/rival/rival.types'
+import type { RivalFormResult } from './actions'
 import { BoardView } from './BoardView'
 
 // Reloj congelado de las stories: sábado 2026-03-14, 15:30 ART.
@@ -55,7 +56,20 @@ const meta = {
     layout: 'fullscreen',
     nextjs: { appDirectory: true, navigation: { pathname: '/rival' } },
   },
-  args: { items, tenants, selectedTenantId: null, nextHref: null, now: NOW },
+  args: {
+    items,
+    tenants,
+    selectedTenantId: null,
+    nextHref: null,
+    now: NOW,
+    alert: {
+      alertTenants: tenants,
+      signedIn: true,
+      subscribed: [],
+      subscribeAction: fn(async (): Promise<RivalFormResult> => ({ success: true })),
+      unsubscribeAction: fn(async (): Promise<RivalFormResult> => ({ success: true })),
+    },
+  },
 } satisfies Meta<typeof BoardView>
 
 export default meta
@@ -113,5 +127,14 @@ export const Vacio: Story = {
     await expect(canvas.getAllByRole('link', { name: 'Armar un partido' }).length).toBeGreaterThan(
       0,
     )
+  },
+}
+
+export const VacioConAviso: Story = {
+  args: { items: [], tenants: [] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByLabelText('Avisame de partidos en')).toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: 'Avisame cuando haya' })).toBeEnabled()
   },
 }

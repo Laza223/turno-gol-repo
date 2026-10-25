@@ -25,6 +25,7 @@ export const QUEUE_RECONCILE_SUBSCRIPTIONS = 'reconcile-subscriptions'
 export const QUEUE_WHATSAPP_TURN = 'whatsapp-turn'
 export const QUEUE_WHATSAPP_TURN_RESCUE = 'whatsapp-turn-rescue'
 export const QUEUE_WHATSAPP_OPS_ALERTS = 'whatsapp-ops-alerts'
+export const QUEUE_RIVAL_MAIL = 'rival-mail'
 
 // ─── Job payload types ────────────────────────────────────────────────────────
 
@@ -146,6 +147,25 @@ export function whatsappTurnSendOptions(chatId: string) {
     onComplete: true,
   } as const
 }
+
+// ─── Mails de RIVAL ───────────────────────────────────────────────────────────
+// El job NO manda el mail: al despertar revalida contra la base y recién ahí inserta la
+// notificación (la manda `send-email`). Se difiere con `startAfter` para respetar la ventana
+// silenciosa 00-08 ART; por eso `expireInHours` cubre la espera más los reintentos.
+// `ref` de cada tipo: participantId (join_request/accepted) o matchId (canceled/alert_publish).
+
+export type RivalMailJobData =
+  | { type: 'join_request'; matchId: string; participantId: string }
+  | { type: 'accepted'; matchId: string; participantId: string }
+  | { type: 'canceled'; matchId: string }
+  | { type: 'alert_publish'; matchId: string }
+
+export const RIVAL_MAIL_SEND_OPTIONS = {
+  retryLimit: 3,
+  retryDelay: 60,
+  retryBackoff: true,
+  expireInHours: 24,
+} as const
 
 // ─── Poll tuning (WorkOptions) ─────────────────────────────────────────────────
 // D5 (auditoría de datos, 2026-07-23): en prod, el poller de pg-boss

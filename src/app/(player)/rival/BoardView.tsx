@@ -11,6 +11,8 @@ import {
   whenLabel,
 } from '@/modules/rival/rival-display'
 import type { RivalBoardItem } from '@/modules/rival/rival.types'
+import { AlertOptIn } from './AlertOptIn'
+import type { RivalFormResult } from './actions'
 import { FactPill, RIVAL_CTA, StampBadge } from './MatchBits'
 import { RivalTabs } from './RivalTabs'
 
@@ -96,7 +98,17 @@ function BoardCard({ item, now }: { item: RivalBoardItem; now: Date }) {
   )
 }
 
-function EmptyBoard() {
+/** Lo que el estado vacío necesita para ofrecer el aviso "cuando haya partido". */
+export type BoardAlertProps = {
+  /** Complejos elegibles para la alerta. */
+  alertTenants: { id: string; name: string }[]
+  signedIn: boolean
+  subscribed: { tenantId: string; onlyGoalkeeper: boolean }[]
+  subscribeAction: (prev: RivalFormResult, formData: FormData) => Promise<RivalFormResult>
+  unsubscribeAction: (prev: RivalFormResult, formData: FormData) => Promise<RivalFormResult>
+}
+
+function EmptyBoard({ alert }: { alert: BoardAlertProps }) {
   return (
     <div className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card px-6 py-14 text-center shadow-xs">
       <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20">
@@ -115,6 +127,17 @@ function EmptyBoard() {
         <Plus className="size-4" aria-hidden />
         Armar un partido
       </Link>
+      {alert.alertTenants.length > 0 && (
+        <div className="w-full border-t border-border pt-5">
+          <AlertOptIn
+            tenants={alert.alertTenants}
+            signedIn={alert.signedIn}
+            subscribed={alert.subscribed}
+            action={alert.subscribeAction}
+            unsubscribeAction={alert.unsubscribeAction}
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -125,6 +148,7 @@ export function BoardView({
   selectedTenantId,
   nextHref,
   now,
+  alert,
 }: {
   items: RivalBoardItem[]
   /** Complejos con publicaciones (para el selector). */
@@ -133,6 +157,7 @@ export function BoardView({
   /** Link a la página siguiente (`?despues=`); `null` = no hay más. */
   nextHref: string | null
   now: Date
+  alert: BoardAlertProps
 }) {
   const groups = groupBoardByDay(items, now)
   return (
@@ -147,7 +172,7 @@ export function BoardView({
       </div>
 
       {groups.length === 0 && selectedTenantId === null ? (
-        <EmptyBoard />
+        <EmptyBoard alert={alert} />
       ) : (
         <>
           {tenants.length > 0 && <TenantFilter tenants={tenants} selectedId={selectedTenantId} />}

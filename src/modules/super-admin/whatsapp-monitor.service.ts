@@ -1,6 +1,7 @@
 import { sql, type SQL } from 'drizzle-orm'
 import { withDisposableWorkerDb, type Db } from '@/shared/db/client'
 import { artDateOf, artDayRangeUtc } from '@/shared/time/art-date'
+import { isInboundSilent, type OpeningHoursMap } from './whatsapp-silence'
 
 /**
  * Monitor del bot de WhatsApp para el dueño (`/super-admin/whatsapp`) y base del
@@ -89,6 +90,8 @@ export type WhatsappTenantHealth = {
   enabled: boolean
   lastInboundAt: Date | null
   lastOutboundAt: Date | null
+  /** Conectado y prendido, pero sin entrantes durante muchas horas con el complejo abierto. */
+  silent: boolean
   /** Entrantes sin procesar de hace más de 2 min y menos de 6 h. */
   backlog: number
   pausedByReason: PausedByReason
@@ -145,6 +148,69 @@ export async function countInboundBacklog(db: Db, minMinutes: number): Promise<n
   return rows[0]?.total ?? 0
 }
 
+export type SilentNumber = { tenantId: string; tenantName: string; lastInboundAt: Date | null }
+
+/**
+ * Números `connected` y `enabled` sin entrantes durante `SILENCE_ALERT_OPEN_HOURS`
+ * horas de horario del complejo. El piso es la última vez que se tocó la conexión
+ * (alta, reconexión o prendido): uno recién conectado no alerta de entrada.
+ * El filtro por flag `whatsapp_bot` lo aplica el caller.
+ */
+export async function listSilentNumbers(db: Db, now: Date): Promise<SilentNumber[]> {
+  const rows = (await db.execute(sql`
+    SELECT c.tenant_id AS "tenantId", t.name AS "tenantName",
+           t.opening_hours AS "openingHours", t.closes_next_day AS "closesNextDay",
+           GREATEST(c.created_at, c.updated_at) AS floor,
+           (SELECT MAX(ch.last_inbound_at) FROM whatsapp_chats ch WHERE ch.tenant_id = c.tenant_id)
+             AS "lastInboundAt"
+    FROM whatsapp_connections c
+    JOIN tenants t ON t.id = c.tenant_id
+    WHERE c.status = 'connected' AND c.enabled
+  `)) as unknown as Rows<{
+    tenantId: string
+    tenantName: string
+    openingHours: OpeningHoursMap
+    closesNextDay: boolean
+    floor: unknown
+    lastInboundAt: unknown
+  }>
+  const silent: SilentNumber[] = []
+  for (const r of rows) {
+    const lastInboundAt = asDate(r.lastInboundAt)
+    const floor = asDate(r.floor)
+    if (!floor) continue
+    if (
+      isInboundSilent({
+        lastInboundAt,
+        floor,
+        now,
+        openingHours: r.openingHours,
+        closesNextDay: r.closesNextDay,
+      })
+    ) {
+      silent.push({ tenantId: r.tenantId, tenantName: r.tenantName, lastInboundAt })
+    }
+  }
+  return silent
+}
+
+/** Prefijo de las claves de `ops_alerts` con un rechazo de firma del webhook (una por minuto). */
+export const SIGNATURE_REJECTION_PREFIX = 'wa-firma-rej:'
+
+/** Minutos distintos con al menos un rechazo de firma en los últimos `windowMinutes`. */
+export async function countSignatureRejectionMinutes(
+  db: Db,
+  windowMinutes: number,
+): Promise<number> {
+  const rows = (await db.execute(sql`
+    SELECT COUNT(*)::int AS total
+    FROM ops_alerts
+    WHERE key LIKE ${sql.raw(`'${SIGNATURE_REJECTION_PREFIX}%'`)}
+      AND created_at > now() - ${sql.raw(`interval '${Math.floor(windowMinutes)} minutes'`)}
+  `)) as unknown as Rows<{ total: number }>
+  return rows[0]?.total ?? 0
+}
+
 /** Chats que el bot pausó por un error propio y siguen pausados. */
 export async function countBotErrorPaused(db: Db): Promise<number> {
   const rows = (await db.execute(sql`
@@ -163,7 +229,9 @@ async function readMonitor(db: Db, now: Date): Promise<WhatsappMonitor> {
   const [conns, usage, health, paused, bookings] = await Promise.all([
     db.execute(sql`
       SELECT c.tenant_id AS "tenantId", t.name, t.slug,
-             c.display_phone_number AS "displayPhoneNumber", c.status, c.enabled
+             c.display_phone_number AS "displayPhoneNumber", c.status, c.enabled,
+             t.opening_hours AS "openingHours", t.closes_next_day AS "closesNextDay",
+             GREATEST(c.created_at, c.updated_at) AS floor
       FROM whatsapp_connections c
       JOIN tenants t ON t.id = c.tenant_id
       ORDER BY t.name
@@ -281,14 +349,24 @@ async function readMonitor(db: Db, now: Date): Promise<WhatsappMonitor> {
         displayPhoneNumber: string | null
         status: 'connected' | 'disconnected'
         enabled: boolean
+        openingHours: OpeningHoursMap
+        closesNextDay: boolean
+        floor: unknown
       }>
-    ).map((c) => {
+    ).map(({ openingHours, closesNextDay, floor, ...c }) => {
       const h = healthBy.get(c.tenantId)
+      const lastInboundAt = asDate(h?.lastInboundAt)
+      const floorAt = asDate(floor)
       const u = perTenant.get(c.tenantId)
       const b = bookingsBy.get(c.tenantId)
       return {
         ...c,
-        lastInboundAt: asDate(h?.lastInboundAt),
+        lastInboundAt,
+        silent:
+          c.status === 'connected' &&
+          c.enabled &&
+          floorAt !== null &&
+          isInboundSilent({ lastInboundAt, floor: floorAt, now, openingHours, closesNextDay }),
         lastOutboundAt: asDate(h?.lastOutboundAt),
         backlog: h?.backlog ?? 0,
         pausedByReason: pausedBy.get(c.tenantId) ?? {},

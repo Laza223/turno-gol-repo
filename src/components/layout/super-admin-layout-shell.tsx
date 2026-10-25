@@ -11,6 +11,7 @@ import {
   Menu,
   MessageCircle,
   ShieldCheck,
+  Swords,
   Users,
   X,
 } from 'lucide-react'
@@ -47,6 +48,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/super-admin/tenants', icon: Building2, label: 'Complejos' },
   { href: '/super-admin/jugadores', icon: Users, label: 'Jugadores' },
   { href: '/super-admin/whatsapp', icon: MessageCircle, label: 'Bot de WhatsApp', plus: true },
+  { href: '/super-admin/rival', icon: Swords, label: 'RIVAL' },
 ]
 
 function SidebarContent({

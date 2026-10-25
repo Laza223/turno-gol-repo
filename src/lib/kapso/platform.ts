@@ -37,7 +37,9 @@ const phoneNumberSchema = z
   })
   .loose()
 
-const webhookSchema = z.object({ url: z.string().nullish() }).loose()
+const webhookSchema = z
+  .object({ id: z.string().nullish(), url: z.string().nullish(), secret_key: z.string().nullish() })
+  .loose()
 
 const healthCheckSchema = z
   .object({
@@ -92,7 +94,7 @@ function toPhoneNumber(raw: z.infer<typeof phoneNumberSchema>): KapsoPhoneNumber
 async function kapsoRequest<T>(
   path: string,
   opts: {
-    method?: 'GET' | 'POST'
+    method?: 'GET' | 'POST' | 'PATCH'
     body?: unknown
     schema: z.ZodType<T>
     nullOn404?: boolean
@@ -133,7 +135,12 @@ async function kapsoRequest<T>(
 
 async function call<T>(
   path: string,
-  opts: { method?: 'GET' | 'POST'; body?: unknown; schema: z.ZodType<T>; redact?: string },
+  opts: {
+    method?: 'GET' | 'POST' | 'PATCH'
+    body?: unknown
+    schema: z.ZodType<T>
+    redact?: string
+  },
 ): Promise<T> {
   // Sin `nullOn404` la función nunca devuelve null.
   return (await kapsoRequest(path, opts)) as T
@@ -250,15 +257,20 @@ function numberWebhooksPath(phoneNumberId: string): string {
   return `/whatsapp/phone_numbers/${encodeURIComponent(phoneNumberId)}/webhooks`
 }
 
+async function listNumberWebhooks(phoneNumberId: string) {
+  // La lista del número (no la del proyecto entero, que crece con cada complejo y pagina).
+  const { data } = await call(numberWebhooksPath(phoneNumberId), {
+    schema: z.object({ data: z.array(webhookSchema) }).loose(),
+  })
+  return data
+}
+
 /** ¿El número tiene un webhook con esa URL? */
 export async function hasKapsoMessageWebhook(params: {
   phoneNumberId: string
   url: string
 }): Promise<boolean> {
-  // La lista del número (no la del proyecto entero, que crece con cada complejo y pagina).
-  const { data } = await call(numberWebhooksPath(params.phoneNumberId), {
-    schema: z.object({ data: z.array(webhookSchema) }).loose(),
-  })
+  const data = await listNumberWebhooks(params.phoneNumberId)
   return data.some((w) => w.url === params.url)
 }
 
@@ -266,13 +278,31 @@ export async function hasKapsoMessageWebhook(params: {
  * Suscribe nuestro webhook a los mensajes del número (`received` y `sent`: el
  * `sent` trae lo que el dueño contesta desde su celular). Idempotente: si ya hay
  * uno con esa URL para ese número, no crea otro.
+ *
+ * Si el existente trae un `secret_key` distinto del nuestro (secreto rotado de un
+ * lado), lo corrige con un PATCH: sin eso cada POST de Kapso daría 401 y "Volver
+ * a conectar" no lo arreglaba. Si Kapso no devuelve el secreto (`null` o ausente)
+ * no se puede comparar y se deja como está: no se inventa nada.
  */
 export async function ensureKapsoMessageWebhook(params: {
   phoneNumberId: string
   url: string
   secret: string
 }): Promise<void> {
-  if (await hasKapsoMessageWebhook(params)) return
+  const existing = (await listNumberWebhooks(params.phoneNumberId)).find(
+    (w) => w.url === params.url,
+  )
+  if (existing) {
+    if (existing.id && existing.secret_key && existing.secret_key !== params.secret) {
+      await call(`${numberWebhooksPath(params.phoneNumberId)}/${encodeURIComponent(existing.id)}`, {
+        redact: params.secret,
+        method: 'PATCH',
+        body: { whatsapp_webhook: { secret_key: params.secret } },
+        schema: z.unknown(),
+      })
+    }
+    return
+  }
 
   await call(numberWebhooksPath(params.phoneNumberId), {
     redact: params.secret,

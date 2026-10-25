@@ -158,6 +158,7 @@ function stateOf(t: WhatsappTenantHealth): { tone: StatusTone; label: string } {
   if (t.status === 'disconnected') return { tone: 'destructive', label: 'Desconectado' }
   if (!t.enabled) return { tone: 'neutral', label: 'Apagado' }
   if (t.backlog > 0) return { tone: 'warning', label: 'Mensajes sin contestar' }
+  if (t.silent) return { tone: 'warning', label: 'Sin mensajes hace horas' }
   return { tone: 'success', label: 'Andando' }
 }
 

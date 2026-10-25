@@ -20,9 +20,13 @@ import { artHourKey, sendOpsAlerts, type OpsAlert } from './ops-alerts.service'
 import {
   countBotErrorPaused,
   countInboundBacklog,
+  countSignatureRejectionMinutes,
   getMonthMessageTotal,
   KAPSO_PLAN_MONTHLY_MESSAGES,
+  listSilentNumbers,
+  type SilentNumber,
 } from './whatsapp-monitor.service'
+import { SILENCE_ALERT_OPEN_HOURS } from './whatsapp-silence'
 
 /**
  * Alertas por mail al dueño sobre el bot de WhatsApp (cron `whatsapp-ops-alerts`,
@@ -89,6 +93,47 @@ export function pickOpsAlerts(s: OpsSnapshot): OpsAlert[] {
   }
 
   return alerts
+}
+
+/** Rechazos de firma: minutos distintos con 401 en la ventana (REQUIERE INPUT: 3 en 15 min). */
+export const SIGNATURE_ALERT_MINUTES = 3
+const SIGNATURE_WINDOW_MINUTES = 15
+
+/**
+ * Un número conectado y prendido sin entrantes durante horas de horario abierto.
+ * Cubre lo que las demás alertas no ven: un mensaje que nunca llega. Pura.
+ */
+export function pickSilenceAlerts(silent: readonly SilentNumber[], now: Date): OpsAlert[] {
+  return silent.map((n) => ({
+    key: `wa-sin-entrantes:${n.tenantId}:${artDateOf(now)}`,
+    subject: `WhatsApp de ${n.tenantName}: hace horas que no llega ningún mensaje`,
+    lines: [
+      `El número está conectado y el asistente prendido, pero no entró ningún mensaje en las últimas ${SILENCE_ALERT_OPEN_HOURS} horas de horario del complejo.`,
+      'Puede ser que nadie haya escrito, o que los mensajes no estén llegando: el secreto del webhook mal cargado, el número sin registrar en la Cloud API o el webhook pausado en Kapso.',
+      'Mandá un mensaje de prueba al número para descartarlo.',
+    ],
+  }))
+}
+
+/** Rechazos de firma sostenidos: Kapso manda eventos y los descartamos con 401. Pura. */
+export function pickSignatureAlerts(rejectionMinutes: number, now: Date): OpsAlert[] {
+  if (rejectionMinutes < SIGNATURE_ALERT_MINUTES) return []
+  return [
+    {
+      key: `wa-firma-rechazada:${artHourKey(now)}`,
+      subject: 'Bot de WhatsApp: el webhook está rechazando los mensajes',
+      lines: [
+        `En los últimos ${SIGNATURE_WINDOW_MINUTES} minutos rechazamos con 401 los eventos de Kapso en ${rejectionMinutes} minutos distintos: la firma no coincide.`,
+        'Mientras tanto el bot no recibe nada. Casi seguro es KAPSO_WEBHOOK_SECRET distinto en Vercel y en Kapso: hay que dejar el mismo valor de los dos lados.',
+      ],
+    },
+  ]
+}
+
+async function silentWithFlag(db: Db, now: Date): Promise<SilentNumber[]> {
+  const silent = await listSilentNumbers(db, now)
+  const on = await Promise.all(silent.map((n) => isFeatureEnabled(BOT_FEATURE_FLAG, n.tenantId)))
+  return silent.filter((_, i) => on[i])
 }
 
 type NumberDownCause = WhatsappDisconnectCause | 'bloqueado' | 'otro'
@@ -373,6 +418,16 @@ export async function runWhatsappOpsAlerts(db: Db, now: Date = new Date()): Prom
   ])
   // 100% y 80% en el mismo tick ya se resolvieron en `pickOpsAlerts`: un solo mail.
   await sendOpsAlerts(db, pickOpsAlerts({ now, monthTotal, backlog, botErrorPaused }), link)
+  // Lo que deja de llegar: no hay mensaje guardado que lo cuente.
+  const [silent, rejections] = await Promise.all([
+    silentWithFlag(db, now),
+    countSignatureRejectionMinutes(db, SIGNATURE_WINDOW_MINUTES),
+  ])
+  await sendOpsAlerts(
+    db,
+    [...pickSilenceAlerts(silent, now), ...pickSignatureAlerts(rejections, now)],
+    link,
+  )
   // Después de las de conteo: si Kapso tarda o falla, esas ya salieron.
   await sendOpsAlerts(db, await checkNumbersHealth(db, now), link)
 }

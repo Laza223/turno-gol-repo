@@ -13,7 +13,7 @@ Es el esfuerzo de [`docs/decisions/2026-10-22-rival-v1.md`](../decisions/2026-10
 | 4 | Tablón: publicar, pedir, decidir, contacto, bans, denuncias | #494 | Mergeado |
 | 5 | Foto de perfil (R2) | #504 | Abierto |
 | 6 | Emails y alertas | — | Pendiente |
-| 7 | `/super-admin/rival` | — | Pendiente |
+| 7 | `/super-admin/rival` | #503 | Mergeado |
 | Cierre | `sonnet-release-verifier` sobre main integrado; el flag lo prende el dueño | — | Pendiente |
 
 ## Delegaciones
@@ -56,6 +56,10 @@ Es el esfuerzo de [`docs/decisions/2026-10-22-rival-v1.md`](../decisions/2026-10
 | 5 | `sonnet-adversarial-reviewer` (contexto fresco) | Revisar la fase 5 sin commitear | ~94 k tokens y ~4 min | "Arreglar antes": 🟡 el barrido borraba todas las fotos vivas si cambiaba el host de `R2_PUBLIC_BASE_URL`; 🟢 varios. Sin fugas de la foto a anónimos |
 | 5 | `sonnet-ux-verifier` | Stories de la foto a 390 px y escritorio, claro y oscuro | ~91 k tokens y ~6 min | "Pasa con problemas": en Storybook sin hallazgos (tocables de 44 px, foco, contraste, sin desborde). **La app real quedó sin verificar**: el dev server del worktree no tiene env y no se leen `.env.*`. Tampoco se probó una subida real a R2 |
 | 5 | Sesión principal | Arreglar el 🟡 | Bajo | La clave del barrido sale del pathname y aborta si una URL no se lee; 2 tests vistos rojos |
+| 7 | `sonnet-implementer` | Servicios de métricas y moderación, actions con guard, página, vista con stories y nav | ~180 k tokens y ~39 min | Hecho sin migración. Los tests del guard y de integración (Postgres descartable) pasan |
+| 7 | `sonnet-adversarial-reviewer` (contexto fresco) | Revisar la fase 7 sin commitear | ~128 k tokens y ~5 min | "Arreglar antes": 🔴 bajas y entradas del banco daban siempre 0 (`decided_at` no se escribe en `left` ni en la promoción) y el test sembraba el dato; 🟡 avatar sin vínculo con el partido, race, seam de R2 sin try/catch, personas no distintas |
+| 7 | `sonnet-implementer` (segunda vuelta) | Arreglar la revisión | ~196 k tokens | Las dos métricas se sacan del panel con nota "no se miden todavía" (hace falta una migración con `left_at` y sello en la promoción, después de las fases 5 y 6); resto arreglado con test. Integración: 22 pasan y 1 `it.todo` para el borrado en R2 de la fase 5 |
+| 7 | `sonnet-ux-verifier` | App real con auth real y base descartable, 390 px y escritorio, claro y oscuro | ~131 k tokens y ~11 min | "Pasa": sin desborde, ocultar, restaurar y quitar foto con su fila de auditoría, redirect a /login sin sesión, sin PII en el HTML, consola limpia. No probó un staff real ni el cálculo del trigger de 099 |
 
 ## Cambios ajenos sobre superficie de RIVAL
 

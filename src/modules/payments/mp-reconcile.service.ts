@@ -108,6 +108,6 @@ export async function reconcileApprovedPaymentForBooking(
   return {
     confirmed: outcome.won === true,
     notificationIds: outcome.notificationIds ?? [],
-    refunded: outcome.preparedRefund !== undefined,
+    refunded: outcome.preparedRefund !== undefined && !outcome.duplicate,
   }
 }

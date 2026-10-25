@@ -90,12 +90,14 @@ function wonBookingRow(): BookingRow {
  * tx fake: solo necesita responder a los `tx.execute` que preceden a
  * transitionFromPendingPayment (mockeado aparte, sin tocar tx) dentro de
  * handleApproved — el SELECT del deposit_amount esperado, y el UPDATE de
+ * "¿este pago ya figuraba aprobado?" y el UPDATE de
  * re-link de upsertPaymentRow (se lo hace "exitoso" para que no dispare el
  * INSERT posterior, minimizando la cantidad de calls a mockear).
  */
 function mockTx() {
   const execute = vi.fn()
   execute.mockResolvedValueOnce([{ depositAmount: info.amount }]) // depRows
+  execute.mockResolvedValueOnce([]) // ¿el pago ya figuraba aprobado? no
   execute.mockResolvedValueOnce([{ id: 'pay-1' }]) // upsertPaymentRow: relink OK
   return { execute } as never
 }
@@ -144,6 +146,8 @@ describe('dispatchPaymentInfo — ENS-21: cash_flow automático de la seña MP',
     ;(tx as { execute: ReturnType<typeof vi.fn> }).execute.mockResolvedValueOnce([
       { status: 'confirmed', court_name: 'Cancha 1', date: '2027-01-01' },
     ])
+    // ...y una 4ta: ¿hay OTRA seña aprobada de esta reserva? No: es el mismo pago.
+    ;(tx as { execute: ReturnType<typeof vi.fn> }).execute.mockResolvedValueOnce([])
     await dispatchPaymentInfo(info, TENANT_ID, tx)
 
     expect(vi.mocked(createCashFlow)).not.toHaveBeenCalled()

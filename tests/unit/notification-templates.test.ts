@@ -436,6 +436,20 @@ describe('renderAdminLatePayment', () => {
     expect(text).toContain('acción manual')
   })
 
+  it('duplicate: avisa de la seña cobrada dos veces, sin decir que el turno se liberó', () => {
+    const { subject, html, text } = renderAdminLatePayment({
+      ...DATA,
+      currentStatus: 'confirmed',
+      refundIssued: true,
+      duplicate: true,
+    })
+    expect(subject).toContain('Seña cobrada dos veces')
+    expect(html).toContain('El turno sigue confirmado')
+    expect(text).toContain('devolución pendiente')
+    expect(`${html}${text}`).not.toContain('liberado')
+    expect(text).not.toContain('<strong>')
+  })
+
   it('con refundIssued: false explícito sigue pidiendo acción manual', () => {
     const { subject, html, text } = renderAdminLatePayment({ ...DATA, refundIssued: false })
     expect(subject).toContain('acción requerida')

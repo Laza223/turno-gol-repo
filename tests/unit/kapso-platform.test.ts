@@ -184,6 +184,34 @@ describe('kapso platform', () => {
     })
   })
 
+  it('ensureKapsoMessageWebhook con el mismo secreto no toca nada', async () => {
+    fetchMock.mockResolvedValueOnce(
+      json({ data: [{ id: 'w-1', url: 'https://a/hook', secret_key: 'sec' }] }),
+    )
+    await ensureKapsoMessageWebhook({ phoneNumberId: 'pn-1', url: 'https://a/hook', secret: 'sec' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('ensureKapsoMessageWebhook con otro secreto lo corrige con un PATCH', async () => {
+    fetchMock.mockResolvedValueOnce(
+      json({ data: [{ id: 'w-1', url: 'https://a/hook', secret_key: 'viejo' }] }),
+    )
+    fetchMock.mockResolvedValueOnce(json({ data: { id: 'w-1' } }))
+    await ensureKapsoMessageWebhook({ phoneNumberId: 'pn-1', url: 'https://a/hook', secret: 'sec' })
+    const { url, init } = call(1)
+    expect(url).toBe(`${BASE}/whatsapp/phone_numbers/pn-1/webhooks/w-1`)
+    expect(init.method).toBe('PATCH')
+    expect(JSON.parse(init.body as string)).toEqual({ whatsapp_webhook: { secret_key: 'sec' } })
+  })
+
+  it('ensureKapsoMessageWebhook si Kapso no devuelve el secreto, no inventa nada', async () => {
+    fetchMock.mockResolvedValueOnce(
+      json({ data: [{ id: 'w-1', url: 'https://a/hook', secret_key: null }] }),
+    )
+    await ensureKapsoMessageWebhook({ phoneNumberId: 'pn-1', url: 'https://a/hook', secret: 'sec' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
   it('si Kapso devuelve el secret en el error, no queda en el mensaje', async () => {
     fetchMock.mockResolvedValueOnce(json({ data: [] }))
     fetchMock.mockResolvedValueOnce(json({ error: 'bad', echo: { secret_key: 'super-sec' } }, 422))

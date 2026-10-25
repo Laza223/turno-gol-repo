@@ -640,3 +640,88 @@ describe('runWhatsappOpsAlerts: salud de los números (Kapso mockeado)', () => {
     expect(await audits(tenant.id)).toEqual([])
   })
 })
+
+describe('runWhatsappOpsAlerts: lo que deja de llegar', () => {
+  // Miércoles 15:00 ART. El horario por defecto del complejo de prueba abre a las 08:00.
+  const NOW = new Date('2026-10-21T18:00:00Z')
+  const DAY = artDateOf(NOW)
+
+  async function setupSilence(args: { inboundHoursAgo: number | null; flag?: boolean }) {
+    const sql = getSql()
+    const ago = (h: number) => new Date(NOW.getTime() - h * 3600_000).toISOString()
+    // La conexión es vieja: el piso no tapa el silencio.
+    await sql`
+      UPDATE whatsapp_connections SET created_at = ${ago(24 * 10)}::timestamptz,
+        updated_at = ${ago(24 * 10)}::timestamptz
+      WHERE tenant_id = ${tenant.id}
+    `
+    if (args.inboundHoursAgo !== null) {
+      await sql`
+        UPDATE whatsapp_chats SET last_inbound_at = ${ago(args.inboundHoursAgo)}::timestamptz
+        WHERE id = ${chatId}
+      `
+    }
+    clearFeatureFlagCache()
+    if (args.flag !== false) {
+      await sql`
+        INSERT INTO feature_flags (key, value, tenant_id) VALUES ('whatsapp_bot', true, ${tenant.id})
+      `
+    }
+  }
+
+  afterEach(async () => {
+    await getSql()`DELETE FROM feature_flags WHERE tenant_id = ${tenant.id}`
+    clearFeatureFlagCache()
+  })
+
+  it('conectado y prendido sin entrantes en horas abiertas: un mail por día', async () => {
+    await setupSilence({ inboundHoursAgo: 7 })
+    await runWhatsappOpsAlerts(getWorkerDb(), NOW)
+    const silence = sent.filter((m) => m.subject.includes('no llega ningún mensaje'))
+    expect(silence).toHaveLength(1)
+    expect(silence[0]?.to).toBe(activeEmail)
+    expect(await alertKeys(getSql())).toContain(`wa-sin-entrantes:${tenant.id}:${DAY}`)
+
+    await runWhatsappOpsAlerts(getWorkerDb(), new Date(NOW.getTime() + 5 * 60_000))
+    expect(sent.filter((m) => m.subject.includes('no llega ningún mensaje'))).toHaveLength(1)
+  })
+
+  it('con un entrante reciente no avisa', async () => {
+    await setupSilence({ inboundHoursAgo: 1 })
+    await runWhatsappOpsAlerts(getWorkerDb(), NOW)
+    expect(await alertKeys(getSql())).not.toContain(`wa-sin-entrantes:${tenant.id}:${DAY}`)
+  })
+
+  it('con el asistente apagado o sin el flag no avisa', async () => {
+    await setupSilence({ inboundHoursAgo: 7, flag: false })
+    await runWhatsappOpsAlerts(getWorkerDb(), NOW)
+    expect(await alertKeys(getSql())).toEqual([])
+
+    await getSql()`UPDATE whatsapp_connections SET enabled = false WHERE tenant_id = ${tenant.id}`
+    await runWhatsappOpsAlerts(getWorkerDb(), NOW)
+    expect(await alertKeys(getSql())).toEqual([])
+  })
+
+  it('tres minutos con 401 de firma en 15 min: un mail; con dos, nada', async () => {
+    const sql = getSql()
+    const minute = (m: number) => `wa-firma-rej:2026-10-21T18:${String(m).padStart(2, '0')}`
+    await sql`INSERT INTO ops_alerts (key, created_at) VALUES (${minute(0)}, now()), (${minute(1)}, now())`
+    await runWhatsappOpsAlerts(getWorkerDb(), NOW)
+    expect(sent.filter((m) => m.subject.includes('rechazando'))).toHaveLength(0)
+
+    await sql`INSERT INTO ops_alerts (key, created_at) VALUES (${minute(2)}, now())`
+    await runWhatsappOpsAlerts(getWorkerDb(), NOW)
+    expect(sent.filter((m) => m.subject.includes('rechazando'))).toHaveLength(1)
+  })
+
+  it('rechazos viejos (fuera de la ventana de 15 min) no cuentan', async () => {
+    await getSql()`
+      INSERT INTO ops_alerts (key, created_at) VALUES
+        ('wa-firma-rej:a', now() - interval '1 hour'),
+        ('wa-firma-rej:b', now() - interval '1 hour'),
+        ('wa-firma-rej:c', now() - interval '1 hour')
+    `
+    await runWhatsappOpsAlerts(getWorkerDb(), NOW)
+    expect(sent.filter((m) => m.subject.includes('rechazando'))).toHaveLength(0)
+  })
+})

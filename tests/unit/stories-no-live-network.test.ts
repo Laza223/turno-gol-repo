@@ -31,6 +31,12 @@ function findStories(dir: string, out: string[] = []): string[] {
  * hay que reemplazarla por un `data:` URI.
  */
 const ALLOWLIST: Record<string, string> = {
+  'src/components/rival/PlayerPhotoField.stories.tsx':
+    'http://www.w3.org/2000/svg es el namespace del <svg> del avatar de muestra, que viaja ' +
+    'dentro de un data: URI — no se fetchea.',
+  'src/app/(player)/rival/WelcomeCard.stories.tsx':
+    'http://www.w3.org/2000/svg es el namespace del <svg> del avatar de muestra, que viaja ' +
+    'dentro de un data: URI — no se fetchea.',
   'src/components/ui/image-uploader.stories.tsx':
     'http://www.w3.org/2000/svg es el namespace del <svg> del placeholder, no una URL ' +
     'que se fetchea.',

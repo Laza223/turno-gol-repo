@@ -11,6 +11,7 @@ import { MatchHeader } from '../../MatchBits'
 import { ReportMatchButton } from '../../p/[code]/ReportButton'
 import { ShirtGrid } from '../../p/[code]/ShirtGrid'
 import type { VoyWelcome } from '../../p/[code]/VoyPanel'
+import type { WelcomePhoto } from '../../WelcomeCard'
 import { RequestPanel } from './RequestPanel'
 
 /** Quién mira: sin sesión (el verde manda al login) o un jugador, con su bienvenida pendiente o no. */
@@ -27,6 +28,7 @@ export function PublicBoardView({
   requestAction,
   acceptAndRequestAction,
   reportMatchAction,
+  photo,
 }: {
   match: RivalBoardItem
   viewer: BoardViewer
@@ -34,6 +36,8 @@ export function PublicBoardView({
   requestAction: (matchId: string) => Promise<ActionResult>
   acceptAndRequestAction: (prev: RivalFormResult, formData: FormData) => Promise<RivalFormResult>
   reportMatchAction: (matchId: string, reason: RivalReportReason) => Promise<ActionResult>
+  /** Foto opcional de la bienvenida (la page la arma solo si hay storage). */
+  photo?: WelcomePhoto
 }) {
   const type = matchTypeLabel(match)
   const label = 'Pedir sumarme'
@@ -74,6 +78,7 @@ export function PublicBoardView({
             welcome={viewer.welcome}
             requestAction={requestAction}
             acceptAndRequestAction={acceptAndRequestAction}
+            photo={photo}
           />
           <ReportMatchButton matchId={match.id} reportAction={reportMatchAction} />
         </>

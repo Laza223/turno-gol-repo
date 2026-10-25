@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm'
 import { getWorkerDb } from '@/shared/db/client'
 import { insertSystemAuditLog } from '@/shared/db/audit'
 import { track } from '@/shared/observability'
+import { deletePlayerPhotoObject } from './player-photo.service'
 
 export class PlayerNotFoundError extends Error {
   constructor(playerId: string) {
@@ -22,7 +23,9 @@ export class PlayerAlreadyAnonymizedError extends Error {
  *
  * What happens:
  *   1. PII fields replaced: email → 'anon-<id>@anon.local', names → '[eliminado]',
- *      phone/avatar/preferredArea → NULL.
+ *      phone/avatar/preferredArea → NULL. El objeto de la foto en R2 se borra DESPUÉS
+ *      del commit (nunca dentro de la tx) y con reintentos; si no se puede, lo levanta
+ *      el barrido diario de huérfanos.
  *   2. Status → 'anonymized'; ban fields cleared.
  *   3. player_tenant_relationships → deleted (all tenants).
  *   4. tenant_player_bans → deleted (all tenants).
@@ -49,21 +52,24 @@ export async function anonymizePlayer(playerId: string): Promise<void> {
   // tables while `players` still flips to anonymized — same bug class as
   // getStaffRole, needs the bypass-capable worker pool.
   const db = getWorkerDb()
+  let avatarUrl: string | null = null
 
   await db.transaction(async (tx) => {
     const rows = await tx.execute(sql`
-      SELECT id, status, email FROM players WHERE id = ${playerId} FOR UPDATE
+      SELECT id, status, email, avatar_url FROM players WHERE id = ${playerId} FOR UPDATE
     `)
     const player = (
       rows as unknown as Array<{
         id: string
         status: string
         email: string
+        avatar_url: string | null
       }>
     )[0]
 
     if (!player) throw new PlayerNotFoundError(playerId)
     if (player.status === 'anonymized') throw new PlayerAlreadyAnonymizedError(playerId)
+    avatarUrl = player.avatar_url
 
     const affectedTenants = await tx.execute(sql`
       SELECT DISTINCT tenant_id AS "tenantId" FROM player_tenant_relationships
@@ -177,6 +183,9 @@ export async function anonymizePlayer(playerId: string): Promise<void> {
       })
     }
   })
+
+  // Post-commit: el PII ya se anuló en la base; si R2 falla, no revierte la baja.
+  await deletePlayerPhotoObject(avatarUrl)
 
   track.auth('player.anonymized', { playerId })
 }

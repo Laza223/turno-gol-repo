@@ -6,31 +6,52 @@ import { requireAdminStaffAction } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
-import { horariosFormDataToInput, horariosSchema } from '@/modules/tenants/opening-hours.schema'
+import {
+  horariosFormDataToInput,
+  horariosPriceField,
+  horariosSchema,
+} from '@/modules/tenants/opening-hours.schema'
 import { listCourts, updateCourt } from '@/modules/courts/court.service'
 import {
+  activeHoursForDay,
   compressGridToRules,
   DAY_KEYS,
   daysWithEmptyCells,
   expandRulesToGrid,
   fillGridGaps,
+  mostFrequentRulePrice,
   type DayKey,
 } from '@/modules/courts/pricing-grid'
+
+/**
+ * Canchas que quedarían con un día abierto sin ningún precio. El horario NO se
+ * guarda hasta que el dueño ponga cuánto cobra en cada una: abrir un día sin
+ * tarifa deja turnos que se ven libres y nadie puede reservar.
+ */
+type HorariosNeedsPrices = {
+  days: DayKey[]
+  courts: {
+    id: string
+    name: string
+    /** Lo que ya mandó el dueño, o la tarifa que más cobra esa cancha. */
+    suggestedCents: number | null
+  }[]
+}
 
 export type HorariosActionResult =
   | {
       success: true
       /** Presente solo si el cambio de horario dejó (y ya completó) huecos de precio. */
       pricingFilled?: { courts: number; cells: number }
-      /**
-       * Canchas y días (lun..dom) que el horario nuevo dejó con horas sin precio
-       * y que NO se completaron solas, porque cubrirlas habría significado
-       * traer una tarifa de otro día. Las tiene que cargar el dueño en Canchas;
-       * hasta entonces esas franjas no se pueden reservar.
-       */
-      pricingPending?: { courts: number; days: DayKey[] }
     }
-  | { success: false; error: string }
+  | { success: false; error: string; needsPrices?: HorariosNeedsPrices }
+
+function ownerPriceCents(formData: FormData, courtId: string): number | null {
+  const raw = formData.get(horariosPriceField(courtId))
+  if (typeof raw !== 'string' || raw.trim() === '') return null
+  const cents = Number(raw)
+  return Number.isSafeInteger(cents) && cents > 0 ? cents : null
+}
 
 export async function updateHorariosAction(
   _prevState: HorariosActionResult,
@@ -64,55 +85,93 @@ export async function updateHorariosAction(
   // 02:00 hereda de la 01:00 y listo. Traer una tarifa de otro día sería
   // cobrarle al jugador un precio que el dueño nunca eligió — un complejo con
   // precio sólo los sábados terminaría con la tarifa de fin de semana aplicada
-  // a los cinco días hábiles enteros, escrita sin que nadie la vea. Esos huecos
-  // se reportan para que el dueño los cargue en Canchas, donde el editor sí
-  // sugiere a partir de otros días porque ahí los ve antes de guardar.
-  const pricing = await withTenantContext(tenant.id, async (tx) => {
-    await tx
-      .update(tenants)
-      .set({ openingHours, closesNextDay, updatedAt: new Date() })
-      .where(eq(tenants.id, tenant.id))
+  // a los cinco días hábiles enteros, escrita sin que nadie la vea.
+  //
+  // Lo que queda vacío después de eso es un día abierto sin ningún precio, y
+  // ese horario no se guarda (2026-10-24, El Vagón abrió el domingo sin tarifa
+  // y el bot no pudo reservar): se le pide al dueño cuánto cobra en cada cancha,
+  // con la tarifa que más usa como sugerencia a la vista, y horario y precios
+  // se guardan juntos.
+  const result = await withTenantContext(
+    tenant.id,
+    async (
+      tx,
+    ): Promise<{ ok: true; filledCourts: number; filledCells: number } | HorariosNeedsPrices> => {
+      const courtRows = await listCourts(tenant.id, tx)
+      const plans = courtRows.map((court) => {
+        const grid = expandRulesToGrid(court.pricing.rules, openingHours, closesNextDay)
+        const { grid: filledGrid, filled } = fillGridGaps(
+          grid,
+          openingHours,
+          closesNextDay,
+          null,
+          true,
+        )
+        return {
+          court,
+          grid: filledGrid,
+          filledCells: filled.length,
+          emptyDays: daysWithEmptyCells(filledGrid, openingHours, closesNextDay),
+          ownerPrice: ownerPriceCents(formData, court.id),
+        }
+      })
 
-    const courtRows = await listCourts(tenant.id, tx)
-    let filledCourts = 0
-    let filledCells = 0
-    let pendingCourts = 0
-    const pendingDays = new Set<DayKey>()
-    for (const court of courtRows) {
-      const grid = expandRulesToGrid(court.pricing.rules, openingHours, closesNextDay)
-      const { grid: filledGrid, filled } = fillGridGaps(
-        grid,
-        openingHours,
-        closesNextDay,
-        null,
-        true,
-      )
-      const emptyDays = daysWithEmptyCells(filledGrid, openingHours, closesNextDay)
-      if (emptyDays.length > 0) {
-        pendingCourts++
-        for (const day of emptyDays) pendingDays.add(day)
+      const pending = plans.filter((p) => p.emptyDays.length > 0)
+      if (pending.some((p) => p.ownerPrice === null)) {
+        const days = new Set(pending.flatMap((p) => p.emptyDays))
+        return {
+          days: DAY_KEYS.filter((day) => days.has(day)),
+          courts: pending.map((p) => ({
+            id: p.court.id,
+            name: p.court.name,
+            suggestedCents: p.ownerPrice ?? mostFrequentRulePrice(p.court.pricing.rules),
+          })),
+        }
       }
-      if (filled.length === 0) continue
-      const rules = compressGridToRules(filledGrid, openingHours, closesNextDay)
-      await updateCourt(court.id, tenant.id, { pricing: { rules } }, tx)
-      filledCourts++
-      filledCells += filled.length
-    }
+
+      await tx
+        .update(tenants)
+        .set({ openingHours, closesNextDay, updatedAt: new Date() })
+        .where(eq(tenants.id, tenant.id))
+
+      let filledCourts = 0
+      let filledCells = 0
+      for (const plan of plans) {
+        if (plan.emptyDays.length > 0 && plan.ownerPrice !== null) {
+          for (const day of plan.emptyDays) {
+            for (const hour of activeHoursForDay(openingHours, day, closesNextDay)) {
+              plan.grid[day][hour] ??= plan.ownerPrice
+            }
+          }
+        } else if (plan.filledCells === 0) {
+          continue
+        }
+        const rules = compressGridToRules(plan.grid, openingHours, closesNextDay)
+        await updateCourt(plan.court.id, tenant.id, { pricing: { rules } }, tx)
+        if (plan.filledCells > 0) {
+          filledCourts++
+          filledCells += plan.filledCells
+        }
+      }
+      return { ok: true, filledCourts, filledCells }
+    },
+  )
+
+  if (!('ok' in result)) {
     return {
-      filled: filledCourts > 0 ? { courts: filledCourts, cells: filledCells } : undefined,
-      pending:
-        pendingCourts > 0
-          ? { courts: pendingCourts, days: DAY_KEYS.filter((day) => pendingDays.has(day)) }
-          : undefined,
+      success: false,
+      error: 'Falta el precio de los días que abrís. Sin precio no se puede guardar el horario.',
+      needsPrices: result,
     }
-  })
+  }
 
   revalidatePath('/settings/horarios')
   revalidatePath('/canchas')
   return {
     success: true,
-    ...(pricing.filled ? { pricingFilled: pricing.filled } : {}),
-    ...(pricing.pending ? { pricingPending: pricing.pending } : {}),
+    ...(result.filledCourts > 0
+      ? { pricingFilled: { courts: result.filledCourts, cells: result.filledCells } }
+      : {}),
   }
 }
 

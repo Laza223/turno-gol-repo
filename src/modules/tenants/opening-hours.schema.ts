@@ -92,6 +92,14 @@ export function horariosFormDataToInput(formData: FormData): Record<string, unkn
   }
 }
 
+/**
+ * Campo opcional del mismo form: el precio en centavos que pone el dueño para
+ * una cancha cuando el horario abre un día que esa cancha no tiene tarifado.
+ */
+export function horariosPriceField(courtId: string): string {
+  return `price_${courtId}`
+}
+
 // `closed` viaja con cada día (rediseño 2026-07-02, pages/horarios-precios.md §2.3).
 // Antes el schema lo despojaba: un domingo cerrado en el wizard de onboarding se
 // perdía silenciosamente al guardar desde /settings/horarios.

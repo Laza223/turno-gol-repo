@@ -11,8 +11,8 @@ Es el esfuerzo de [`docs/decisions/2026-10-22-rival-v1.md`](../decisions/2026-10
 | 2      | Shell, `/rival`, `/rival/nuevo`, vista del partido, entradas desde reservas, OG. Suma la tarjeta de bienvenida, que estaba en la fase 3, porque crear un partido la exige | #479 | Mergeado  |
 | 3      | "Voy" con cuenta (reusa la bienvenida de la fase 2), banco, me bajo, avisar al grupo, repetir                                                                             | #492 | Mergeado  |
 | 4      | Tablón: publicar, pedir, decidir, contacto, bans, denuncias                                                                                                               | #494 | Mergeado  |
-| 5      | Foto de perfil (R2)                                                                                                                                                       | #504 | Abierto   |
-| 6      | Emails y alertas (4 mails: quiere sumarse, te aceptaron, se cayó el partido y alerta "hay partido" con baja de un toque)                                                  | #505 | Abierto   |
+| 5      | Foto de perfil (R2)                                                                                                                                                       | #504 | Mergeado  |
+| 6      | Emails y alertas (4 mails: quiere sumarse, te aceptaron, se cayó el partido y alerta "hay partido" con baja de un toque)                                                  | #505 | Mergeado  |
 | 7      | `/super-admin/rival`                                                                                                                                                      | #503 | Mergeado  |
 | Cierre | `sonnet-release-verifier` sobre main integrado; el flag lo prende el dueño                                                                                                | —    | Pendiente |
 

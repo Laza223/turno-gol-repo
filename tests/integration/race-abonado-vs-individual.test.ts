@@ -123,6 +123,8 @@ describe('abonado slot generation vs individual booking on same slot', () => {
 
   it('individual y abonado concurrentes en el mismo slot → exactamente UNO persiste (exclusion constraint)', async () => {
     const startsOn = '2026-11-02' // Monday
+    // 13:00 y no 14:00: `seedIsolationData` deja una reserva a hoy+7 a las 14:00, y el día que
+    // hoy+7 cae en `startsOn` ocupaba el slot antes de que arrancara la carrera.
 
     // Dispatch both concurrent
     const indivPromise = withTenantContext(tenant.id, async (tx) => {
@@ -132,8 +134,8 @@ describe('abonado slot generation vs individual booking on same slot', () => {
           {
             courtId: seed.courtId,
             date: startsOn,
-            timeStart: '14:00',
-            timeEnd: '15:00',
+            timeStart: '13:00',
+            timeEnd: '14:00',
             type: 'spontaneous',
             staffUserId: seed.staffUserId,
             playerId,
@@ -157,8 +159,8 @@ describe('abonado slot generation vs individual booking on same slot', () => {
             contactName: 'Conc',
             contactPhone: '+5491122222222',
             dayOfWeek: 1, // Monday
-            timeStart: '14:00',
-            timeEnd: '15:00',
+            timeStart: '13:00',
+            timeEnd: '14:00',
             pricePerSession: 100000,
             startsOn,
             endsOn: '2026-11-30',
@@ -178,7 +180,7 @@ describe('abonado slot generation vs individual booking on same slot', () => {
     //  - `> 1` significaría double-booking (exclusion constraint roto).
     //  - `0` significaría que ambos abortaron y el slot quedó vacío (deadlock /
     //    rollback espurio). El `<= 1` original toleraba este caso silenciosamente.
-    expect(await countActiveOnSlot(startsOn, '14:00')).toBe(1)
+    expect(await countActiveOnSlot(startsOn, '13:00')).toBe(1)
 
     // Al menos una operación tuvo éxito sobre ese slot: si el individual perdió,
     // fue porque el abonado ganó el slot (y viceversa). "Ambos fallaron" es un bug.
@@ -190,7 +192,7 @@ describe('abonado slot generation vs individual booking on same slot', () => {
     // Consistencia: el origen del booking sobreviviente coincide con quién ganó.
     if (indivRes === 'indiv_won') {
       // El individual ganó → el abonado debe haber saltado ese slot (o fallado entero).
-      const abonadoRows = await countActiveOnSlot(startsOn, '14:00')
+      const abonadoRows = await countActiveOnSlot(startsOn, '13:00')
       expect(abonadoRows).toBe(1)
     }
   }, 30_000)

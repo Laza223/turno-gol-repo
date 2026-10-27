@@ -1,14 +1,27 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
-import { config as loadEnv } from 'dotenv'
+import { parse as parseEnv } from 'dotenv'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createClient } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/ssr'
 
 // Las claves de Supabase viven en .env.local (tests/setup.ts solo carga
-// .env.test, que trae el DATABASE_URL). Mismo criterio que el harness e2e.
+// .env.test, que trae el DATABASE_URL). Se toman SOLO estas tres: cargar el
+// archivo entero metía WORKER_DATABASE_URL en process.env, que bajo
+// singleThread sobrevive a este archivo y mandaba getWorkerDb() de los
+// siguientes a la base local (:54322) aunque DATABASE_URL fuera descartable.
+const SUPABASE_KEYS = [
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'SUPABASE_SERVICE_ROLE_KEY',
+] as const
 const envLocal = path.resolve(process.cwd(), '.env.local')
-if (existsSync(envLocal)) loadEnv({ path: envLocal })
+if (existsSync(envLocal)) {
+  const parsed = parseEnv(readFileSync(envLocal))
+  for (const key of SUPABASE_KEYS) {
+    if (process.env[key] === undefined && parsed[key] !== undefined) process.env[key] = parsed[key]
+  }
+}
 
 /**
  * Regresión del bug de sesión del 2026-09-04.

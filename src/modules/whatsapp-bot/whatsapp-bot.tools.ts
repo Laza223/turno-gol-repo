@@ -111,6 +111,7 @@ function availabilityTool(ctx: ToolContext): BotTool {
         'Devuelve los turnos libres de todas las canchas para un día, leídos del sistema en este momento: por cancha, su nombre, su formato y cada horario libre con su precio. ' +
         'Usala en la misma respuesta en la que ofrecés o confirmás horarios libres, también para otro día que propongas: la disponibilidad cambia minuto a minuto y lo que viste en un mensaje anterior puede estar viejo. ' +
         'Un horario con madrugada_del_dia_siguiente se juega pasada la medianoche: decilo así ("el viernes a la noche, pasada la medianoche, ya sábado"). ' +
+        'No lista los turnos que empiezan antes de la anticipación mínima del complejo (si la hay, figura en "Hoy"): que un horario falte no siempre quiere decir que esté ocupado. ' +
         'Si el complejo cierra ese día devuelve cerrado: true. Errores: fecha_fuera_de_rango (el día no está en la tabla de días reservables) y reservas_online_cerradas (el complejo no toma reservas por acá: pasale el teléfono del complejo).',
       strict: true,
       input_schema: {

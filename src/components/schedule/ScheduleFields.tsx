@@ -1,7 +1,7 @@
 'use client'
 
 import { Fragment, useState } from 'react'
-import { ChevronDown, Moon } from 'lucide-react'
+import { ChevronDown, Info, Moon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -25,6 +25,16 @@ type Props = {
  * "Sábado 15:00–02:00 · Domingo cerrado". Sin excepciones, avisa que rige el
  * horario general para los 7 días.
  */
+/** Abre === cierra: se guarda como 24 horas (no se bloquea, solo se avisa). */
+function SameTimeNotice() {
+  return (
+    <p className="flex items-start gap-2 rounded-md bg-muted px-3 py-2 text-xs text-foreground">
+      <Info aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+      <span>Abre y cierra a la misma hora: queda abierto las 24 horas.</span>
+    </p>
+  )
+}
+
 function describeExceptions(view: ScheduleView): string {
   const exceptions = DAY_KEYS.filter((day) => view.days[day].mode !== 'general')
   if (exceptions.length === 0) return 'Todos los días con el horario general'
@@ -148,6 +158,7 @@ export function ScheduleFields({ view, onViewChange }: Props) {
             />
           </div>
         </div>
+        {view.general.open !== '' && view.general.open === view.general.close && <SameTimeNotice />}
         {/* Sin checkbox que activar: esto es la explicación de lo que ya se
             detectó en el horario cargado. */}
         {effectiveClosesNextDay && (
@@ -327,6 +338,9 @@ export function ScheduleFields({ view, onViewChange }: Props) {
                         )}
                       </div>
                     </div>
+                  )}
+                  {d.mode === 'custom' && eff.open !== '' && eff.open === eff.close && (
+                    <SameTimeNotice />
                   )}
                 </li>
               )

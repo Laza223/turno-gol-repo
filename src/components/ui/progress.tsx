@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
  * propio gradiente y su propia duración.
  *
  * A11y: sin `label` el componente es DECORATIVO (`aria-hidden`). Es el caso normal
- * en el onboarding, donde el texto "Paso 2 de 4 · 50%" ya dice lo mismo y MASTER §7
+ * en el onboarding, donde el texto "Paso 2 de 4" ya dice lo mismo y MASTER §7
  * pide un solo indicador por viewport — dos anuncios del mismo dato es ruido para
  * quien usa lector de pantalla, no accesibilidad.
  */

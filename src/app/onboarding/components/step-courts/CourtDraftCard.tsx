@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { ChevronDown, ChevronUp, Pencil, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -37,6 +38,8 @@ export function CourtDraftCard({
   onUploadPhoto,
   onRemovePhoto,
 }: Props) {
+  const [moreOpen, setMoreOpen] = useState(false)
+  const moreId = `court-more-${draft.key}`
   const surfaceLabel =
     SURFACE_OPTIONS.find((s) => s.value === draft.surfaceType)?.label ?? draft.surfaceType
 
@@ -49,7 +52,7 @@ export function CourtDraftCard({
         <button
           type="button"
           onClick={() => onToggle(draft.key)}
-          className="group flex flex-1 items-center gap-3 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
+          className="group flex min-h-11 flex-1 items-center gap-3 text-left focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded"
         >
           {isExpanded ? (
             <ChevronUp
@@ -135,7 +138,7 @@ export function CourtDraftCard({
         <div className="min-h-0 space-y-4">
           <div>
             <label htmlFor={`court-name-${draft.key}`} className={labelClass}>
-              Nombre <span className="text-red-500 dark:text-red-400">*</span>
+              Nombre <span className="text-red-600 dark:text-red-400">*</span>
             </label>
             <input
               id={`court-name-${draft.key}`}
@@ -147,7 +150,7 @@ export function CourtDraftCard({
             />
           </div>
 
-          {/* Formato en chips (Hick: 5 opciones, las mismas que /canchas). */}
+          {/* Formato en chips (Hick: 8 opciones, las mismas que /canchas). */}
           <fieldset>
             <legend className={labelClass}>Formato</legend>
             <div className="flex flex-wrap gap-2">
@@ -177,53 +180,23 @@ export function CourtDraftCard({
             </div>
           </fieldset>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label htmlFor={`court-surface-${draft.key}`} className={labelClass}>
-                Superficie
-              </label>
-              <select
-                id={`court-surface-${draft.key}`}
-                value={draft.surfaceType}
-                onChange={(e) =>
-                  onUpdate(draft.key, { surfaceType: e.target.value as SurfaceType })
-                }
-                className={fieldClass}
-              >
-                {SURFACE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor={`court-price-${draft.key}`} className={labelClass}>
-                Precio por turno <span className="text-red-500 dark:text-red-400">*</span>
-              </label>
-              <MoneyInput
-                id={`court-price-${draft.key}`}
-                valueCents={draft.priceCents}
-                onValueChange={(cents) => onUpdate(draft.key, { priceCents: cents })}
-                placeholder="Ej: 20.000"
-                required
-              />
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                Por turno de 1 hora, igual toda la semana. Después podés poner precio por franja
-                desde Canchas.
-              </p>
-            </div>
-          </div>
-
-          <label className="flex w-fit cursor-pointer select-none items-center gap-2">
-            <input
-              type="checkbox"
-              checked={draft.isCovered}
-              onChange={(e) => onUpdate(draft.key, { isCovered: e.target.checked })}
-              className="h-4 w-4 accent-emerald-600"
+          <div>
+            <label htmlFor={`court-price-${draft.key}`} className={labelClass}>
+              Precio por turno <span className="text-red-600 dark:text-red-400">*</span>
+            </label>
+            <MoneyInput
+              id={`court-price-${draft.key}`}
+              valueCents={draft.priceCents}
+              onValueChange={(cents) => onUpdate(draft.key, { priceCents: cents })}
+              placeholder="Ej: 20.000"
+              required
+              className="placeholder:text-muted-foreground"
             />
-            <span className="text-sm text-foreground">Techada</span>
-          </label>
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Por turno de 1 hora, igual toda la semana. Después podés poner precio por franja desde
+              Canchas.
+            </p>
+          </div>
 
           {/* La foto se pide ACÁ y no "después desde Canchas": de los complejos
               que probaron el alta, casi ninguno volvió a cargarlas. La previa de
@@ -243,6 +216,54 @@ export function CourtDraftCard({
               </p>
             </div>
           )}
+
+          <div>
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-11 w-full justify-between px-3 text-sm text-muted-foreground hover:text-foreground"
+              aria-expanded={moreOpen}
+              aria-controls={moreId}
+              onClick={() => setMoreOpen((v) => !v)}
+            >
+              Más datos de la cancha (opcional)
+              {moreOpen ? (
+                <ChevronUp className="h-4 w-4" aria-hidden />
+              ) : (
+                <ChevronDown className="h-4 w-4" aria-hidden />
+              )}
+            </Button>
+            <div id={moreId} hidden={!moreOpen} className="mt-2 space-y-4">
+              <div>
+                <label htmlFor={`court-surface-${draft.key}`} className={labelClass}>
+                  Superficie
+                </label>
+                <select
+                  id={`court-surface-${draft.key}`}
+                  value={draft.surfaceType}
+                  onChange={(e) =>
+                    onUpdate(draft.key, { surfaceType: e.target.value as SurfaceType })
+                  }
+                  className={fieldClass}
+                >
+                  {SURFACE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <label className="flex min-h-11 w-fit cursor-pointer select-none items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={draft.isCovered}
+                  onChange={(e) => onUpdate(draft.key, { isCovered: e.target.checked })}
+                  className="h-5 w-5 accent-emerald-600"
+                />
+                <span className="text-sm text-foreground">Techada</span>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
     </fieldset>

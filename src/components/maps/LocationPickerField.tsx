@@ -99,6 +99,9 @@ export default function LocationPickerField({
   const [open, setOpen] = useState(!collapsible || initialLatitude !== null)
 
   const [query, setQuery] = useState(defaultQuery)
+  // Si el dueño no tocó el buscador, al abrir el disclosure se siembra con la dirección actual
+  // (useState(defaultQuery) solo la toma al montar, y en un alta nueva el campo estaba vacío).
+  const [queryEdited, setQueryEdited] = useState(false)
   const [searchState, setSearchState] = useState<SearchState>('idle')
   const [searchError, setSearchError] = useState<string | null>(null)
   const [candidates, setCandidates] = useState<GeocodeCandidate[]>([])
@@ -156,6 +159,11 @@ export default function LocationPickerField({
     if (collapsible) setOpen(true)
   }
 
+  function toggleOpen() {
+    if (!open && !queryEdited) setQuery(defaultQuery)
+    setOpen(!open)
+  }
+
   function handleQueryKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     // El input vive dentro del <form> del paso (StepIdentity): sin este
     // preventDefault, Enter dispara el submit del wizard en vez de buscar.
@@ -201,12 +209,15 @@ export default function LocationPickerField({
       <input type="hidden" name="latitude" value={point ? String(point.lat) : ''} />
       <input type="hidden" name="longitude" value={point ? String(point.lng) : ''} />
 
-      {geocodeAction && (
+      {geocodeAction && open && (
         <div className="space-y-2">
           <div className="flex gap-2">
             <Input
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQueryEdited(true)
+                setQuery(e.target.value)
+              }}
               onKeyDown={handleQueryKeyDown}
               placeholder="Buscá tu dirección"
               aria-label="Buscar dirección"
@@ -264,10 +275,10 @@ export default function LocationPickerField({
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => setOpen((v) => !v)}
+          onClick={toggleOpen}
           aria-expanded={open}
           aria-controls="location-picker-panel"
-          className="-ml-2"
+          className="-ml-2 h-11 md:h-9"
         >
           <MapPin className="mr-2 h-4 w-4" aria-hidden />
           {open ? 'Ocultar el mapa' : 'Marcarlo en el mapa (opcional)'}
@@ -302,11 +313,24 @@ export default function LocationPickerField({
       {/* type="button" en los tres: sin eso, un botón adentro de un form lo
           envía. Es el clásico silencioso de este patrón. */}
       <div className={open ? 'flex flex-wrap gap-2' : 'hidden'}>
-        <Button type="button" variant="outline" size="sm" onClick={useCurrentPosition}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-11 md:h-9"
+          onClick={useCurrentPosition}
+        >
           <Crosshair className="mr-2 h-4 w-4" aria-hidden />
           Usar mi ubicación actual
         </Button>
-        <Button type="button" variant="outline" size="sm" onClick={pickMapCenter} disabled={!map}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-11 md:h-9"
+          onClick={pickMapCenter}
+          disabled={!map}
+        >
           <MapPin className="mr-2 h-4 w-4" aria-hidden />
           Poner el punto en el centro
         </Button>
@@ -315,6 +339,7 @@ export default function LocationPickerField({
             type="button"
             variant="ghost"
             size="sm"
+            className="h-11 md:h-9"
             onClick={() => {
               setPoint(null)
               onHasPointChange?.(false)

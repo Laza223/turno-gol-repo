@@ -123,14 +123,62 @@ export function StepFirstBooking({ date, courts, action, finishAction }: Props) 
     })
   }
 
+  const nameForm = activeSlot && (
+    <form
+      onSubmit={handleConfirm}
+      className="space-y-3 rounded-xl border border-emerald-600/40 bg-primary/5 p-4 dark:bg-emerald-500/10"
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-sm font-semibold text-foreground">
+          {activeSlot.courtName} · {activeSlot.timeStart}–{activeSlot.timeEnd}
+        </p>
+        <p className="shrink-0 text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
+          {activeSlot.price != null ? formatArs(activeSlot.price) : 'Sin precio'}
+        </p>
+      </div>
+      <div className="space-y-1.5">
+        <label htmlFor="first-booking-name" className="text-xs font-medium text-muted-foreground">
+          ¿A nombre de quién?
+        </label>
+        <input
+          id="first-booking-name"
+          value={guestName}
+          onChange={(e) => setGuestName(e.target.value)}
+          autoFocus
+          autoComplete="off"
+          placeholder="Nombre"
+          className="h-11 w-full rounded-md border border-border bg-card px-3 text-base focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:h-10 md:text-sm"
+        />
+      </div>
+      {error && (
+        // red-700, no red-600: acá el fondo es el tinte esmeralda del mini-form
+        // (bg-primary/5), no el fondo plano del resto del wizard — red-600 mide
+        // 4.49:1 sobre ese tinte, justo abajo del 4.5:1 que pide AA.
+        <p role="alert" className="text-xs text-red-700 dark:text-red-400">
+          {error}
+        </p>
+      )}
+      <div className="flex gap-2">
+        <Button type="button" variant="ghost" onClick={closeSlot} disabled={isPending}>
+          Cancelar
+        </Button>
+        <Button type="submit" isLoading={isPending} className="flex-1">
+          Confirmar turno
+        </Button>
+      </div>
+    </form>
+  )
+
   return (
     <WizardShell>
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">Tu primera reserva</h2>
+          <h2 tabIndex={-1} className="text-2xl font-bold tracking-tight text-foreground">
+            Tu primera reserva
+          </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Probá: tocá un horario y cargá un turno. Es el mismo gesto que vas a usar todos los
-            días.
+            Cargá un turno de hoy que ya tengas, como uno que te pidieron por WhatsApp. Queda en tu
+            grilla de verdad.
           </p>
         </div>
 
@@ -192,58 +240,10 @@ export function StepFirstBooking({ date, courts, action, finishAction }: Props) 
                     })}
                   </div>
                 )}
+                {activeSlot?.courtId === court.courtId && <div className="mt-3">{nameForm}</div>}
               </div>
             ))}
           </div>
-        )}
-
-        {activeSlot && (
-          <form
-            onSubmit={handleConfirm}
-            className="space-y-3 rounded-xl border border-emerald-600/40 bg-primary/5 p-4 dark:bg-emerald-500/10"
-          >
-            <div className="flex items-baseline justify-between gap-2">
-              <p className="text-sm font-semibold text-foreground">
-                {activeSlot.courtName} · {activeSlot.timeStart}–{activeSlot.timeEnd}
-              </p>
-              <p className="shrink-0 text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
-                {activeSlot.price != null ? formatArs(activeSlot.price) : 'Sin precio'}
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <label
-                htmlFor="first-booking-name"
-                className="text-xs font-medium text-muted-foreground"
-              >
-                ¿A nombre de quién?
-              </label>
-              <input
-                id="first-booking-name"
-                value={guestName}
-                onChange={(e) => setGuestName(e.target.value)}
-                autoFocus
-                autoComplete="off"
-                placeholder="Nombre"
-                className="h-11 w-full rounded-md border border-border bg-card px-3 text-base focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:h-10 md:text-sm"
-              />
-            </div>
-            {error && (
-              // red-700, no red-600: acá el fondo es el tinte esmeralda del mini-form
-              // (bg-primary/5), no el fondo plano del resto del wizard — red-600 mide
-              // 4.49:1 sobre ese tinte, justo abajo del 4.5:1 que pide AA.
-              <p role="alert" className="text-xs text-red-700 dark:text-red-400">
-                {error}
-              </p>
-            )}
-            <div className="flex gap-2">
-              <Button type="button" variant="ghost" onClick={closeSlot} disabled={isPending}>
-                Cancelar
-              </Button>
-              <Button type="submit" isLoading={isPending} className="flex-1">
-                Confirmar turno
-              </Button>
-            </div>
-          </form>
         )}
 
         {!activeSlot && error && (

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { Button } from '@/components/ui/button'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import type { WizardActionResult } from '../actions'
@@ -82,6 +82,8 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
   const [address, setAddress] = useState(defaultValues?.address ?? '')
   const [city, setCity] = useState(defaultValues?.city ?? '')
   const [province, setProvince] = useState(defaultValues?.province ?? '')
+  const [provinceError, setProvinceError] = useState<string | null>(null)
+  const errorRef = useRef<HTMLParagraphElement>(null)
   // Sin punto, el complejo no sale en el mapa de /explorar ni se puede ordenar
   // por cercanía: el preview lo dice, para que cargarlo tenga consecuencia visible.
   const [hasLocation, setHasLocation] = useState(
@@ -97,9 +99,19 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
   // no lo mueve, porque el link público ya puede estar circulando.
   const slug = isEdit ? defaultValues.slug : generateSlug(name)
 
+  // Lleva el foco (y el scroll) al error del server cuando aparece: al pie del form quedaba fuera de pantalla.
+  useEffect(() => {
+    if (error) errorRef.current?.focus()
+  }, [error])
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
+    if (!province) {
+      setProvinceError('Elegí tu provincia de la lista.')
+      document.getElementById('identity-province')?.focus()
+      return
+    }
     const formData = new FormData(e.currentTarget)
 
     startTransition(async () => {
@@ -127,7 +139,9 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
     >
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">Tu complejo</h2>
+          <h2 tabIndex={-1} className="text-2xl font-bold tracking-tight text-foreground">
+            Tu complejo
+          </h2>
           <p className="text-sm text-muted-foreground mt-1">
             {isEdit
               ? 'Corregí lo que haga falta y seguí donde estabas.'
@@ -138,7 +152,7 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="identity-name" className={labelClass}>
-              Nombre del complejo <span className="text-red-500 dark:text-red-400">*</span>
+              Nombre del complejo <span className="text-red-600 dark:text-red-400">*</span>
             </label>
             <input
               id="identity-name"
@@ -146,6 +160,9 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ej: Complejo San Martín"
+              autoComplete="organization"
+              autoCapitalize="words"
+              enterKeyHint="next"
               required
               className={fieldClass}
             />
@@ -163,7 +180,7 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
 
           <div>
             <label htmlFor="identity-address" className={labelClass}>
-              Dirección <span className="text-red-500 dark:text-red-400">*</span>
+              Dirección <span className="text-red-600 dark:text-red-400">*</span>
             </label>
             <input
               id="identity-address"
@@ -171,6 +188,8 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="Ej: Av. Corrientes 1234"
+              autoComplete="address-line1"
+              enterKeyHint="next"
               required
               className={fieldClass}
             />
@@ -180,7 +199,7 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label htmlFor="identity-city" className={labelClass}>
-                Ciudad <span className="text-red-500 dark:text-red-400">*</span>
+                Ciudad <span className="text-red-600 dark:text-red-400">*</span>
               </label>
               <input
                 id="identity-city"
@@ -188,13 +207,16 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 placeholder="Ej: Rosario"
+                autoComplete="address-level2"
+                autoCapitalize="words"
+                enterKeyHint="next"
                 required
                 className={fieldClass}
               />
             </div>
             <div>
               <label htmlFor="identity-province" className={labelClass}>
-                Provincia <span className="text-red-500 dark:text-red-400">*</span>
+                Provincia <span className="text-red-600 dark:text-red-400">*</span>
               </label>
               {/* Combobox no participa de FormData por sí solo (no tiene `name`):
                   el hidden input de abajo es lo que el server realmente lee. */}
@@ -202,7 +224,12 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
                 id="identity-province"
                 options={PROVINCE_OPTIONS}
                 value={province}
-                onChange={setProvince}
+                onChange={(v) => {
+                  setProvince(v)
+                  if (v) setProvinceError(null)
+                }}
+                aria-invalid={provinceError ? true : undefined}
+                aria-describedby={provinceError ? 'identity-province-error' : undefined}
                 placeholder="Buscá tu provincia..."
                 listboxLabel="Provincias"
                 inputClassName={fieldClass}
@@ -211,6 +238,15 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
                   validation del browser (nunca bloquearía el submit) — la
                   validación real es server-side, `createTenantSchema`. */}
               <input type="hidden" name="province" value={province} />
+              {provinceError && (
+                <p
+                  id="identity-province-error"
+                  role="alert"
+                  className="mt-1.5 text-xs text-destructive"
+                >
+                  {provinceError}
+                </p>
+              )}
             </div>
           </div>
 
@@ -232,7 +268,12 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
           />
 
           {error && (
-            <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+            <p
+              ref={errorRef}
+              tabIndex={-1}
+              role="alert"
+              className="text-sm text-red-600 dark:text-red-400 focus:outline-hidden"
+            >
               {error}
             </p>
           )}

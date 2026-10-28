@@ -4,8 +4,10 @@ import { canteenProduct } from '@/test/fixtures'
 import type {
   CreateTabActionResult,
   SellTicketActionResult,
+  VenderCatalogActionResult,
 } from '@/app/(admin)/caja/cantina/actions'
-import { VenderProvider, useVender } from './VenderProvider'
+import { useVender } from '@/components/layout/vender-context'
+import { VenderProvider } from './VenderProvider'
 
 /**
  * Vender en Hoy: un modal grande con rubros, la lista del rubro y la venta a la
@@ -53,6 +55,10 @@ const PECHERAS = canteenProduct({
 })
 const PRODUCTS = [AGUA, GATORADE, QUILMES, STELLA, PECHERAS]
 
+/** La carga del catálogo que hace el layout al abrir: lo que cambia entre stories es qué devuelve. */
+const catalogOf = (products: typeof PRODUCTS, topProductIds: string[]) =>
+  fn(async (): Promise<VenderCatalogActionResult> => ({ success: true, products, topProductIds }))
+
 /** Un botón cualquiera que abre la venta: el real cuelga de la barra superior por un portal. */
 function OpenVender() {
   const { setOpen } = useVender()
@@ -68,8 +74,7 @@ const meta = {
   component: VenderProvider,
   parameters: { layout: 'fullscreen' },
   args: {
-    products: PRODUCTS,
-    topProductIds: [QUILMES.id, AGUA.id],
+    loadCatalogAction: catalogOf(PRODUCTS, [QUILMES.id, AGUA.id]),
     sellTicketAction: fn(async (): Promise<SellTicketActionResult> => ({
       success: true,
       total: 300000,
@@ -91,6 +96,8 @@ async function openDialog(canvasElement: HTMLElement) {
   const element = await screen.findByRole('dialog', { name: 'Vender' })
   // Entra con una animación de opacidad: se espera a que termine.
   await waitFor(() => expect(element).toBeVisible())
+  // El catálogo se pide al abrir: hasta que llega, el modal solo muestra el spinner.
+  await within(element).findByTestId('canteen-catalog')
   return within(element)
 }
 
@@ -128,8 +135,10 @@ export const Rubros: Story = {
 /** Sin categorías ni ventas: solo "Todos", sin rubros vacíos. */
 export const SinCategorias: Story = {
   args: {
-    products: PRODUCTS.map((p) => ({ ...p, category: null })),
-    topProductIds: [],
+    loadCatalogAction: catalogOf(
+      PRODUCTS.map((p) => ({ ...p, category: null })),
+      [],
+    ),
   },
   play: async ({ canvasElement }) => {
     const dialog = await openDialog(canvasElement)
@@ -169,6 +178,33 @@ export const VendeConElTeclado: Story = {
       ),
     )
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  },
+}
+
+/** Si el catálogo no carga, el modal lo dice y deja reintentar sin cerrar. */
+export const CatalogoConError: Story = {
+  args: {
+    // Falla la primera vez y responde bien al reintento.
+    loadCatalogAction: (() => {
+      let calls = 0
+      return fn(async (): Promise<VenderCatalogActionResult> => {
+        calls += 1
+        return calls === 1
+          ? { success: false, error: 'No se pudieron cargar los productos.' }
+          : { success: true, products: PRODUCTS, topProductIds: [] }
+      })
+    })(),
+  },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Abrir venta' }))
+    const element = await screen.findByRole('dialog', { name: 'Vender' })
+    const dialog = within(element)
+    // Entra con una animación de opacidad: "visible" recién cuando termina.
+    const error = await dialog.findByText('No se pudieron cargar los productos.')
+    await waitFor(() => expect(error).toBeVisible())
+
+    await userEvent.click(dialog.getByRole('button', { name: 'Reintentar' }))
+    await waitFor(() => expect(dialog.getByTestId('canteen-catalog')).toBeVisible())
   },
 }
 

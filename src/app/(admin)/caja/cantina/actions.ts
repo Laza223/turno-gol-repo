@@ -5,6 +5,8 @@ import { requireOperatorStaff } from '@/modules/staff/guards'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { withTenantContext } from '@/shared/db/client'
 import { listProducts } from '@/modules/canteen/canteen.service'
+import { getTopSellerIds } from '@/modules/canteen/canteen-report.service'
+import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
 import { sellTicket } from '@/modules/canteen/canteen-sale.service'
 import { createTab, settleTab, cancelTab } from '@/modules/canteen/canteen-tab.service'
 import {
@@ -126,6 +128,32 @@ export async function listCanteenForBookingAction(): Promise<CanteenCatalogActio
   const products = await withTenantContext(tenant.id, (tx) => listProducts(tenant.id, tx))
 
   return { success: true, products }
+}
+
+export type VenderCatalogActionResult =
+  | { success: true; products: CanteenProductRow[]; topProductIds: string[] }
+  | { success: false; error: string }
+
+/**
+ * Lo que necesita el modal de Vender, que se abre desde cualquier vista del panel:
+ * el catálogo y los más vendidos. Se carga al abrir (o cuando el botón anticipa el
+ * toque) y no con el layout, para no pagar dos queries en cada pantalla del panel.
+ */
+export async function loadVenderCatalogAction(): Promise<VenderCatalogActionResult> {
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
+  const date = operatingDateOf(new Date(), cutoffMins)
+  const [products, topProductIds] = await withTenantContext(tenant.id, (tx) =>
+    Promise.all([listProducts(tenant.id, tx), getTopSellerIds(tenant.id, tx, date, cutoffMins)]),
+  )
+
+  return { success: true, products, topProductIds }
 }
 
 /**

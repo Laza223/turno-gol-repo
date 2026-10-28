@@ -29,7 +29,9 @@ vi.mock('@/modules/canteen/canteen-tab.service', () => ({
   cancelTab: vi.fn(),
   listOpenTabs: vi.fn(),
 }))
+vi.mock('@/modules/canteen/canteen-report.service', () => ({ getTopSellerIds: vi.fn() }))
 vi.mock('@/modules/canteen/canteen.service', () => ({
+  listProducts: vi.fn(),
   createProduct: vi.fn(),
   updateProduct: vi.fn(),
   deactivateProduct: vi.fn(),
@@ -46,6 +48,7 @@ import {
   createTabAction,
   settleTabAction,
   cancelTabAction,
+  loadVenderCatalogAction,
 } from '@/app/(admin)/caja/cantina/actions'
 import {
   createProductAction,
@@ -60,7 +63,8 @@ import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { sellTicket } from '@/modules/canteen/canteen-sale.service'
 import { createTab, settleTab, cancelTab } from '@/modules/canteen/canteen-tab.service'
-import { createProduct, updateProduct } from '@/modules/canteen/canteen.service'
+import { createProduct, listProducts, updateProduct } from '@/modules/canteen/canteen.service'
+import { getTopSellerIds } from '@/modules/canteen/canteen-report.service'
 import { registerPurchase } from '@/modules/canteen/stock.service'
 import type { CreateCashFlowInput } from '@/modules/cashflow/cashflow.types'
 
@@ -267,5 +271,37 @@ describe('caja/productos — catálogo es solo admin (cruce #3, ex saveCanteenPr
     const res = await updateProductAction({ productId: PRODUCT_ID, patch: { price: 200000 } })
     expect(res.success).toBe(true)
     expect(vi.mocked(updateProduct)).toHaveBeenCalled()
+  })
+})
+
+// Vender se abre desde cualquier vista del panel (2026-10-26) y pide el catálogo al
+// abrir: la action es la puerta, con el mismo guard que vender.
+describe('loadVenderCatalogAction — catálogo del modal de Vender', () => {
+  it('sin rol no lee el catálogo', async () => {
+    vi.mocked(getStaffRole).mockResolvedValue(null)
+    const res = await loadVenderCatalogAction()
+    expect(res.success).toBe(false)
+    expect(vi.mocked(withTenantContext)).not.toHaveBeenCalled()
+  })
+
+  it('el manager recibe catálogo y más vendidos', async () => {
+    vi.mocked(getStaffRole).mockResolvedValue('manager')
+    vi.mocked(listProducts).mockResolvedValue([{ id: PRODUCT_ID }] as never)
+    vi.mocked(getTopSellerIds).mockResolvedValue([PRODUCT_ID])
+    const res = await loadVenderCatalogAction()
+    expect(res).toEqual({
+      success: true,
+      products: [{ id: PRODUCT_ID }],
+      topProductIds: [PRODUCT_ID],
+    })
+    expect(vi.mocked(listProducts)).toHaveBeenCalledWith('tenant-1', FAKE_TX)
+  })
+
+  it('con el rate limit agotado no toca la DB', async () => {
+    vi.mocked(getStaffRole).mockResolvedValue('admin')
+    vi.mocked(adminRateLimited).mockResolvedValue('Demasiadas solicitudes' as never)
+    const res = await loadVenderCatalogAction()
+    expect(res).toEqual({ success: false, error: 'Demasiadas solicitudes' })
+    expect(vi.mocked(withTenantContext)).not.toHaveBeenCalled()
   })
 })

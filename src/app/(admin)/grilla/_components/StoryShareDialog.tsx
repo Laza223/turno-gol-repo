@@ -8,6 +8,8 @@ import { SegmentedControl } from '@/components/ui/segmented-control'
 import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 import { computeArtNow } from '@/hooks/use-art-now'
 import { addDays } from '@/lib/booking/grid-cells'
+import { MAX_HOURS } from '@/lib/story-image/model'
+import { freeHoursOf } from '@/modules/tenants/story-summary'
 import { buildPublicLinkUrl, cn } from '@/lib/utils'
 import { rejectionMessage } from '@/shared/lib/rejection-message'
 import type { ActionResult } from '@/shared/types/action-result'
@@ -35,6 +37,10 @@ type Loaded =
 // Una historia se arma para hoy o para los próximos días: con ventanas de reserva
 // largas (hasta 31 días) la fila de chips se volvería una regla.
 const MAX_DAYS_AHEAD = 6
+
+// Al tocar horas la placa se vuelve a pedir; sin esperar, cada toque gastaría uno
+// de los renders por minuto que la ruta deja pedir (política `publicStory`).
+const HOURS_DEBOUNCE_MS = 400
 
 const TIME_ZONE = 'America/Argentina/Buenos_Aires'
 
@@ -77,6 +83,11 @@ export function StoryShareDialog({ slug, bookingAdvanceDays, trackAction, onClos
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [copied, setCopied] = useState(false)
   const [shareError, setShareError] = useState<string | null>(null)
+  // Las horas libres del día elegido, para ofrecerlas. `null` en `selected` = las
+  // primeras libres, que es lo que la placa muestra sola: no se manda `hours`.
+  const [available, setAvailable] = useState<{ date: string; times: string[] } | null>(null)
+  const [selected, setSelected] = useState<string[] | null>(null)
+  const [hoursHint, setHoursHint] = useState<string | null>(null)
 
   const dayCount = Math.min(bookingAdvanceDays, MAX_DAYS_AHEAD) + 1
   const days = Array.from({ length: dayCount }, (_, i) => {
@@ -84,49 +95,81 @@ export function StoryShareDialog({ slug, bookingAdvanceDays, trackAction, onClos
     return { value: String(i), label: dayChipLabel(i, date) }
   })
   const date = addDays(today, daysAhead)
-  const key = `${date}:${attempt}`
+  const hoursParam = selected ? selected.join(',') : ''
+  const key = `${date}:${attempt}:${hoursParam}`
+
+  // Si esto falla no pasa nada: la placa sale igual, solo que sin elegir horas.
+  useEffect(() => {
+    const controller = new AbortController()
+    fetch(`/api/public/availability?slug=${encodeURIComponent(slug)}&date=${date}`, {
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error('availability')
+        const times = freeHoursOf(await res.json()).map((hour) => hour.time)
+        if (!controller.signal.aborted) setAvailable({ date, times })
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setAvailable({ date, times: [] })
+      })
+    return () => controller.abort()
+  }, [slug, date])
 
   useEffect(() => {
     const controller = new AbortController()
     let objectUrl: string | null = null
 
-    fetch(`/api/public/story?slug=${encodeURIComponent(slug)}&date=${date}`, {
-      signal: controller.signal,
-    })
-      .then(async (res) => {
-        if (!res.ok) {
-          const message =
-            res.status === 429
-              ? 'Pediste muchas placas seguidas. Probá de nuevo en un minuto.'
-              : await rejectionMessage(res, 'No se pudo generar la imagen. Probá de nuevo.')
+    const hoursQuery = hoursParam ? `&hours=${encodeURIComponent(hoursParam)}` : ''
+    function load() {
+      void fetch(`/api/public/story?slug=${encodeURIComponent(slug)}&date=${date}${hoursQuery}`, {
+        signal: controller.signal,
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            const message =
+              res.status === 429
+                ? 'Pediste muchas placas seguidas. Probá de nuevo en un minuto.'
+                : await rejectionMessage(res, 'No se pudo generar la imagen. Probá de nuevo.')
+            if (controller.signal.aborted) return
+            // Un 4xx (sin turnos libres, día cerrado…) no se arregla reintentando: se cambia de día.
+            setLoaded({
+              key,
+              ok: false,
+              message,
+              retryable: res.status >= 500 || res.status === 429,
+            })
+            return
+          }
+          const blob = await res.blob()
+          // Si el dueño ya cambió de día, esta respuesta es de otra placa: crear la
+          // URL ahora dejaría un blob que el cleanup (que ya corrió) no revoca.
           if (controller.signal.aborted) return
-          // Un 4xx (sin turnos libres, día cerrado…) no se arregla reintentando: se cambia de día.
-          setLoaded({ key, ok: false, message, retryable: res.status >= 500 || res.status === 429 })
-          return
-        }
-        const blob = await res.blob()
-        // Si el dueño ya cambió de día, esta respuesta es de otra placa: crear la
-        // URL ahora dejaría un blob que el cleanup (que ya corrió) no revoca.
-        if (controller.signal.aborted) return
-        objectUrl = URL.createObjectURL(blob)
-        const file = new File([blob], `turnos-${slug}-${date}.png`, { type: 'image/png' })
-        setLoaded({ key, ok: true, url: objectUrl, file, canShare: canShareFile(file) })
-      })
-      .catch(() => {
-        if (controller.signal.aborted) return
-        setLoaded({
-          key,
-          ok: false,
-          message: 'No hay conexión. Revisá tu internet y probá de nuevo.',
-          retryable: true,
+          objectUrl = URL.createObjectURL(blob)
+          const file = new File([blob], `turnos-${slug}-${date}.png`, { type: 'image/png' })
+          setLoaded({ key, ok: true, url: objectUrl, file, canShare: canShareFile(file) })
         })
-      })
+        .catch(() => {
+          if (controller.signal.aborted) return
+          setLoaded({
+            key,
+            ok: false,
+            message: 'No hay conexión. Revisá tu internet y probá de nuevo.',
+            retryable: true,
+          })
+        })
+    }
+
+    // Sin elección, la placa se pide al toque; tocando horas, se espera a que pare.
+    let timer: ReturnType<typeof setTimeout> | undefined
+    if (hoursParam) timer = setTimeout(load, HOURS_DEBOUNCE_MS)
+    else load()
 
     return () => {
+      if (timer) clearTimeout(timer)
       controller.abort()
       if (objectUrl) URL.revokeObjectURL(objectUrl)
     }
-  }, [slug, date, key])
+  }, [slug, date, hoursParam, key])
 
   useEffect(() => {
     if (!copied) return
@@ -141,6 +184,25 @@ export function StoryShareDialog({ slug, bookingAdvanceDays, trackAction, onClos
   const failure = current && !current.ok ? current : null
 
   const canShare = image?.canShare ?? false
+
+  const times = available?.date === date ? available.times : []
+  const checked = selected ?? times.slice(0, MAX_HOURS)
+
+  function toggleHour(time: string) {
+    setShareError(null)
+    if (checked.includes(time)) {
+      if (checked.length === 1) return
+      setHoursHint(null)
+      setSelected(checked.filter((t) => t !== time))
+      return
+    }
+    if (checked.length >= MAX_HOURS) {
+      setHoursHint(`Máximo ${MAX_HOURS} horarios por imagen. Sacá uno para sumar otro.`)
+      return
+    }
+    setHoursHint(null)
+    setSelected(times.filter((t) => t === time || checked.includes(t)))
+  }
 
   // Best-effort: la imagen ya salió, si la medición falla el dueño no se entera.
   function track(method: StoryExportMethod) {
@@ -204,6 +266,8 @@ export function StoryShareDialog({ slug, bookingAdvanceDays, trackAction, onClos
             value={String(daysAhead)}
             onValueChange={(v) => {
               setDaysAhead(Number(v))
+              setSelected(null)
+              setHoursHint(null)
               setShareError(null)
             }}
             options={days}
@@ -216,6 +280,40 @@ export function StoryShareDialog({ slug, bookingAdvanceDays, trackAction, onClos
               )
             }
           />
+        )}
+
+        {times.length > 1 && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">
+              Horarios en la imagen (hasta {MAX_HOURS})
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {times.map((time) => {
+                const active = checked.includes(time)
+                return (
+                  <button
+                    key={time}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => toggleHour(time)}
+                    className={cn(
+                      'h-10 rounded-lg border text-sm font-semibold tabular-nums transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+                      active
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-card text-foreground hover:bg-accent',
+                    )}
+                  >
+                    {time}
+                  </button>
+                )
+              })}
+            </div>
+            {hoursHint && (
+              <p role="status" className="text-xs text-muted-foreground">
+                {hoursHint}
+              </p>
+            )}
+          </div>
         )}
 
         <div

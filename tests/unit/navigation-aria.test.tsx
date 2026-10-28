@@ -1,9 +1,10 @@
 // @vitest-environment happy-dom
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, it, expect, vi } from 'vitest'
 import { PlayerBottomNav } from '@/components/site/PlayerBottomNav'
 import { AdminSidebar } from '@/components/layout/admin-sidebar'
 import { AdminBottomNav } from '@/components/layout/admin-bottom-nav'
+import { VenderContext } from '@/components/layout/vender-context'
 
 afterEach(cleanup)
 
@@ -131,6 +132,35 @@ describe('AdminSidebar — los 6 espacios', () => {
     renderSidebar('/grilla', 'admin')
     expect(screen.getAllByRole('link', { name: 'Hoy' }).length).toBeGreaterThan(0)
     expect(screen.getAllByRole('link', { name: 'Métricas' }).length).toBeGreaterThan(0)
+  })
+
+  it('sin el proveedor de Vender el riel no dibuja el botón', () => {
+    renderSidebar('/grilla', 'admin')
+    expect(screen.queryByRole('button', { name: 'Vender' })).toBeNull()
+  })
+
+  it('con el proveedor, el botón del riel abre la venta y anticipa el catálogo', () => {
+    const setOpen = vi.fn()
+    const prefetch = vi.fn()
+    vi.mocked(usePathname).mockReturnValue('/grilla')
+    render(
+      <VenderContext value={{ open: false, setOpen, prefetch }}>
+        <AdminSidebar
+          tenantName="Test Club"
+          mobileOpen={false}
+          onClose={() => {}}
+          userEmail="marcelo@test.com"
+          onSignOut={() => {}}
+          staffRole="manager"
+        />
+      </VenderContext>,
+    )
+    const button = screen.getByRole('button', { name: 'Vender' })
+    expect(button.getAttribute('aria-keyshortcuts')).toBe('V')
+    fireEvent.pointerEnter(button)
+    expect(prefetch).toHaveBeenCalled()
+    fireEvent.click(button)
+    expect(setOpen).toHaveBeenCalledWith(true)
   })
 
   it('al manager Configuración se le bloquea con candado, no se le esconde', () => {

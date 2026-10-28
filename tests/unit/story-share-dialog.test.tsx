@@ -22,6 +22,16 @@ function errorResponse(status: number, message: string) {
 }
 
 const fetchMock = vi.fn()
+const availabilityMock = vi.fn()
+
+// Disponibilidad pública de un día con estas horas libres en una sola cancha.
+function availabilityResponse(times: string[]) {
+  const slots = times.map((time) => ({ time, duration: 60, status: 'free', price: 100 }))
+  return new Response(JSON.stringify({ date: '2026-09-29', courts: [{ id: 'c1', slots }] }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
 const trackAction = vi.fn()
 const onClose = vi.fn()
 
@@ -71,7 +81,11 @@ function setCoarsePointer(coarse: boolean) {
 beforeEach(() => {
   vi.clearAllMocks()
   fetchMock.mockImplementation(async () => pngResponse())
-  vi.stubGlobal('fetch', fetchMock)
+  // Por defecto no hay horas para elegir: los tests de la placa ven solo `fetchMock`.
+  availabilityMock.mockImplementation(async () => availabilityResponse([]))
+  vi.stubGlobal('fetch', (url: string, init?: RequestInit) =>
+    url.startsWith('/api/public/availability') ? availabilityMock(url, init) : fetchMock(url, init),
+  )
   URL.createObjectURL = vi.fn(() => 'blob:placa')
   URL.revokeObjectURL = vi.fn()
   trackAction.mockResolvedValue({ success: true })
@@ -87,6 +101,73 @@ afterEach(() => {
   URL.createObjectURL = originalCreateObjectURL
   URL.revokeObjectURL = originalRevokeObjectURL
   restoreNavigator()
+})
+
+describe('StoryShareDialog — elegir horarios', () => {
+  const EVENING = ['09:00', '10:00', '11:00', '12:00', '20:00', '21:00', '22:00']
+
+  beforeEach(() => {
+    availabilityMock.mockImplementation(async () => availabilityResponse(EVENING))
+  })
+
+  const chip = (time: string) => screen.getByRole('button', { name: time })
+
+  it('arranca con las primeras 4 elegidas y pide la placa sin `hours`', async () => {
+    renderDialog()
+    await screen.findByRole('img')
+    expect(chip('09:00').getAttribute('aria-pressed')).toBe('true')
+    expect(chip('12:00').getAttribute('aria-pressed')).toBe('true')
+    expect(chip('20:00').getAttribute('aria-pressed')).toBe('false')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).not.toContain('hours')
+  })
+
+  it('al cambiar las horas vuelve a pedir la placa con solo esas', async () => {
+    renderDialog()
+    await screen.findByRole('img')
+    for (const time of ['09:00', '10:00', '11:00']) fireEvent.click(chip(time))
+    for (const time of ['20:00', '21:00']) fireEvent.click(chip(time))
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        `/api/public/story?slug=m10&date=2026-09-29&hours=${encodeURIComponent('12:00,20:00,21:00')}`,
+        expect.anything(),
+      ),
+    )
+    // Los toques seguidos no pidieron una placa por cada uno.
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('no deja pasar de 4 horas ni quedarse sin ninguna', async () => {
+    renderDialog()
+    await screen.findByRole('img')
+    fireEvent.click(chip('20:00'))
+    expect(chip('20:00').getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByRole('status').textContent).toMatch(/Máximo 4/)
+
+    for (const time of ['09:00', '10:00', '11:00', '12:00']) fireEvent.click(chip(time))
+    expect(chip('12:00').getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('al cambiar de día vuelve a las primeras libres', async () => {
+    renderDialog()
+    await screen.findByRole('img')
+    fireEvent.click(chip('09:00'))
+    fireEvent.click(screen.getByRole('radio', { name: 'Mañana' }))
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        '/api/public/story?slug=m10&date=2026-09-30',
+        expect.anything(),
+      ),
+    )
+  })
+
+  it('si no se pudo leer la disponibilidad la placa sale igual, sin horas para elegir', async () => {
+    availabilityMock.mockImplementation(async () => new Response('', { status: 500 }))
+    renderDialog()
+    await screen.findByRole('img')
+    expect(screen.queryByRole('button', { name: '09:00' })).toBeNull()
+  })
 })
 
 describe('StoryShareDialog', () => {

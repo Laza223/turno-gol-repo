@@ -91,6 +91,7 @@ export const Expandido: Story = {
     await userEvent.click(canvas.getByRole('radio', { name: 'Fútbol 7' }))
     await expect(args.onUpdate).toHaveBeenCalledWith(1, { format: 7 })
 
+    await userEvent.click(canvas.getByRole('button', { name: /Más datos de la cancha/ }))
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Techada' }))
     await expect(args.onUpdate).toHaveBeenCalledWith(1, { isCovered: true })
 

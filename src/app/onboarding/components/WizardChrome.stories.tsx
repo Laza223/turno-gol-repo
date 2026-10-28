@@ -37,7 +37,7 @@ export const Paso2 = {
     // visible según el viewport vía CSS cada una) + la región viva oculta
     // (aria-live, plan §J) que anuncia el cambio de paso a un lector de
     // pantalla sin depender del foco.
-    await expect(canvas.getAllByText('Paso 2 de 4 · 50%').length).toBe(3)
+    await expect(canvas.getAllByText('Paso 2 de 4').length).toBe(3)
     const current = canvas.getByText('Horarios').closest('li')
     await expect(current).toHaveAttribute('aria-current', 'step')
     const done = canvas.getByText('Tu complejo').closest('li')
@@ -53,7 +53,7 @@ export const Paso4 = {
     const canvas = within(canvasElement)
     const heading = canvas.getByRole('heading', { name: 'Tu primera reserva' })
     await expect(heading).toBeVisible()
-    await expect(canvas.getAllByText('Paso 4 de 4 · 100%').length).toBe(3)
+    await expect(canvas.getAllByText('Paso 4 de 4').length).toBe(3)
 
     // Fase 8: un montaje inicial (carga dura — login, F5) no le roba el foco
     // al navegador; solo las transiciones DESPUÉS de la primera lo mueven al

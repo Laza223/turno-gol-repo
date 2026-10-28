@@ -4,11 +4,11 @@ import { PreviewPane } from './PreviewPane'
 type Props = {
   /**
    * Contenido del panel de preview. Presente → layout split (columna en
-   * desktop, barra sticky en mobile, vía `PreviewPane`) y la card del form se
+   * desktop, botón + sheet en mobile, vía `PreviewPane`) y la card del form se
    * angosta para dejarle lugar. Ausente → card centrada como antes.
    */
   preview?: React.ReactNode
-  /** Rótulo de la barra colapsada de `PreviewPane` en mobile. */
+  /** Título del sheet de `PreviewPane` en mobile. */
   previewTitle?: string
   children: React.ReactNode
 }

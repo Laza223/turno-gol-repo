@@ -75,7 +75,9 @@ export function StepSchedule({ hours, closesNextDay, action }: Props) {
     >
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">Horarios</h2>
+          <h2 tabIndex={-1} className="text-2xl font-bold tracking-tight text-foreground">
+            Horarios
+          </h2>
           <p className="text-sm text-muted-foreground mt-1">
             Ya cargamos un horario típico — cambiá solo lo que sea distinto en tu complejo.
           </p>

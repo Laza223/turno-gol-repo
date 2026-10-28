@@ -65,8 +65,8 @@ test.describe('onboarding', () => {
       await page.context().addCookies(JSON.parse(freshAdminStorageState).cookies)
       await page.goto('/onboarding')
 
-      // "Paso 1 de 4 · 25%": la cuenta arranca regalada (MASTER §9).
-      await expect(page.getByText(/paso 1 de 4 · 25\s?%/i).first()).toBeVisible()
+      // "Paso 1 de 4": la cuenta arranca regalada (MASTER §9).
+      await expect(page.getByText(/paso 1 de 4/i).first()).toBeVisible()
     })
   })
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { AnimatePresence, m } from 'motion/react'
 import { Logo } from '@/components/ui/logo'
@@ -35,9 +35,8 @@ const VARIANTS = {
 export function WizardChrome({ children }: Props) {
   const pathname = usePathname()
   const currentStep = stepFromPathname(pathname)
-  const pct = Math.round((Math.min(currentStep, LAST_WIZARD_STEP) / LAST_WIZARD_STEP) * 100)
   const isDone = currentStep > LAST_WIZARD_STEP
-  const progressLabel = isDone ? '¡Listo!' : `Paso ${currentStep} de ${LAST_WIZARD_STEP} · ${pct}%`
+  const progressLabel = isDone ? '¡Listo!' : `Paso ${currentStep} de ${LAST_WIZARD_STEP}`
 
   // Dirección de la transición: "ajustar estado durante el render" (patrón de
   // react.dev, no un efecto — leer `ref.current` en render está prohibido por
@@ -68,6 +67,11 @@ export function WizardChrome({ children }: Props) {
   // de exit todavía encontraría el <h2> VIEJO (a punto de desmontarse). Se
   // ignora esa llamada: solo la variante "center" (fin del enter) es la señal
   // real de "ya está el paso nuevo".
+  function focusTitle() {
+    const heading = mainRef.current?.querySelector('h2')
+    if (!heading) return
+    heading.focus()
+  }
   function focusStepTitle(definition: unknown) {
     if (definition !== 'center') return
     // Ya se movió el foco para este pathname (incluido el montaje inicial,
@@ -75,11 +79,47 @@ export function WizardChrome({ children }: Props) {
     // navegador, no nuestro para robarlo.
     if (focusedPathRef.current === pathname) return
     focusedPathRef.current = pathname
-    const heading = mainRef.current?.querySelector('h2')
-    if (!heading) return
-    if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1')
-    ;(heading as HTMLElement).focus()
+    focusTitle()
   }
+  // Paso 1 → 2 es una navegación DURA (`hardNavigate`: la respuesta reescribe la
+  // cookie de sesión): el wizard se monta de cero en /onboarding/2, el guard de
+  // arriba lo toma por "carga inicial" y el foco quedaba en <body>. Se distingue
+  // de login/F5 porque llegamos con un `navigate` (no reload ni back/forward)
+  // desde OTRA ruta del wizard.
+  useEffect(() => {
+    const nav = performance.getEntriesByType('navigation')[0] as
+      PerformanceNavigationTiming | undefined
+    if (nav?.type !== 'navigate') return
+    let fromWizard = false
+    try {
+      const ref = new URL(document.referrer)
+      fromWizard =
+        ref.origin === window.location.origin &&
+        ref.pathname.startsWith('/onboarding') &&
+        ref.pathname !== window.location.pathname
+    } catch {
+      return
+    }
+    if (!fromWizard) return
+    // `loading.tsx` es un Suspense: el chrome hidrata antes de que llegue el
+    // paso por streaming, así que el <h2> puede no existir todavía. Se espera a
+    // que aparezca (el tabIndex viene en el JSX del paso: mutarlo acá antes de
+    // hidratar rompía la hidratación).
+    const main = mainRef.current
+    if (!main) return
+    if (main.querySelector('h2')) return focusTitle()
+    const observer = new MutationObserver(() => {
+      if (!main.querySelector('h2')) return
+      observer.disconnect()
+      focusTitle()
+    })
+    observer.observe(main, { childList: true, subtree: true })
+    const timeout = window.setTimeout(() => observer.disconnect(), 5000)
+    return () => {
+      observer.disconnect()
+      window.clearTimeout(timeout)
+    }
+  }, [])
 
   return (
     <div className="grid min-h-dvh lg:grid-cols-[240px_1fr]">
@@ -112,13 +152,13 @@ export function WizardChrome({ children }: Props) {
           <Stepper steps={WIZARD_STEPS} current={currentStep} tone="on-dark" className="mt-5" />
         </div>
 
-        {/* Anti-ansiedad (doc10 §4): cuánto falta y que nada es irreversible. */}
+        {/* Anti-ansiedad (doc10 §4): que nada es irreversible. */}
         <p className="relative text-xs leading-relaxed text-slate-400">
-          Menos de 5 minutos. Todo se puede cambiar después desde Ajustes.
+          Todo se puede cambiar después desde Ajustes.
         </p>
       </aside>
 
-      {/* Anuncio de progreso (plan §J): el texto "Paso 2 de 4 · 50%" ya está en
+      {/* Anuncio de progreso (plan §J): el texto "Paso 2 de 4" ya está en
           pantalla (rail desktop + header mobile), pero ninguna de las dos
           copias es una región viva — al cambiar de paso por client-side
           navigation no hay reload que un lector de pantalla anuncie solo. Una
@@ -129,7 +169,8 @@ export function WizardChrome({ children }: Props) {
         {progressLabel}
       </div>
 
-      <main ref={mainRef} className="content-area-gradient">
+      <main id="main-content" ref={mainRef} className="content-area-gradient">
+        <h1 className="sr-only">Configurá tu complejo</h1>
         {/* Header mobile: el ÚNICO indicador en pantallas chicas. */}
         <header className="border-b border-border px-4 py-3 lg:hidden">
           <div className="flex items-center justify-between">
@@ -147,6 +188,11 @@ export function WizardChrome({ children }: Props) {
             completed={Math.min(currentStep, LAST_WIZARD_STEP)}
             className="mt-2.5"
           />
+          {currentStep === 1 && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Todo se puede cambiar después desde Ajustes.
+            </p>
+          )}
         </header>
 
         <AnimatePresence mode="wait" initial={false} custom={direction}>

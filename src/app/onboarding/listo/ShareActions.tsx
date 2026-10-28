@@ -76,7 +76,7 @@ export function ShareActions({ appUrl, slug, tenantName, action }: Props) {
   return (
     <div className="mt-6 space-y-3">
       {publicUrl && (
-        <p className="truncate rounded-lg border border-border bg-muted/50 px-3.5 py-2.5 text-sm text-foreground">
+        <p className="break-all rounded-lg border border-border bg-muted/50 px-3.5 py-2.5 text-sm text-foreground">
           {publicUrl.replace(/^https?:\/\//, '')}
         </p>
       )}

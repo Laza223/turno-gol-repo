@@ -36,6 +36,7 @@ type Props = {
   /** Si se define, agrega una primera opción que limpia la selección (value ""), como el "Todas" de un select. */
   clearOptionLabel?: string
   'aria-describedby'?: string
+  'aria-invalid'?: boolean
 }
 
 /** Comparación insensible a acentos y mayúsculas ("cordoba" matchea "Córdoba"). */
@@ -61,6 +62,7 @@ export default function Combobox({
   listboxLabel,
   clearOptionLabel,
   'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
 }: Props) {
   const [open, setOpen] = useState(false)
   // null = sin edición en curso: el input muestra el label del value seleccionado.
@@ -216,6 +218,7 @@ export default function Combobox({
             aria-autocomplete="list"
             aria-activedescendant={activeOptionId}
             aria-describedby={ariaDescribedBy}
+            aria-invalid={ariaInvalid}
             value={inputText}
             placeholder={placeholder}
             className={cn(COMBOBOX_INPUT_BASE, inputClassName)}

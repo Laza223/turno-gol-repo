@@ -226,6 +226,12 @@ export function buildComplexContext(
   const amenities = Object.entries(tenant.amenities)
     .filter(([, v]) => v)
     .map(([k]) => k)
+  // `ver_disponibilidad` no lista los turnos dentro del mínimo (el portal los
+  // oculta igual): sin esta línea el bot los contaba como ocupados.
+  const minLeadLine =
+    tenant.bookingMinAdvanceHours > 0
+      ? `\nAnticipación mínima: no se reserva un turno que empiece en menos de ${tenant.bookingMinAdvanceHours} h. Esos turnos no aparecen libres aunque nadie los haya reservado: si te piden uno, explicá que ya no se reserva por acá y ofrecé el próximo horario libre.`
+      : ''
 
   return `# Complejo
 Nombre: ${tenant.name}
@@ -244,5 +250,5 @@ ${paymentLines(tenant)}
 
 # Hoy
 Son las ${artTime} (hora de Argentina). Días en los que se puede reservar:
-${buildDaysTable(tenant, now)}`
+${buildDaysTable(tenant, now)}${minLeadLine}`
 }

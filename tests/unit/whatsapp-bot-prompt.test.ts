@@ -338,6 +338,22 @@ describe('buildComplexContext', () => {
     )
   })
 
+  // El Vagón, 2026-10-27: pidieron las 20 a las 19:40, el mínimo era de 1 h, la
+  // herramienta no la listó y el bot dijo "no hay turno libre".
+  it('anticipación mínima: se la dice al bot con el número, para no contar esos turnos como ocupados', () => {
+    const ctx = buildComplexContext(makeTenant({ bookingMinAdvanceHours: 1 }), [], SATURDAY_1200)
+    expect(ctx).toContain(
+      'Anticipación mínima: no se reserva un turno que empiece en menos de 1 h.',
+    )
+    expect(ctx).toContain('no aparecen libres aunque nadie los haya reservado')
+  })
+
+  it('sin anticipación mínima: no agrega la línea', () => {
+    expect(buildComplexContext(makeTenant(), [], SATURDAY_1200)).not.toContain(
+      'Anticipación mínima',
+    )
+  })
+
   it('medios de pago: lista los cargados y no afirma nada de los que no están', () => {
     const ctx = buildComplexContext(
       makeTenant({ acceptsCash: true, acceptsTransfer: false }),

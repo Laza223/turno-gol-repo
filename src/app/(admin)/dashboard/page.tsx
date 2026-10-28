@@ -6,8 +6,6 @@ import { addDays } from '@/shared/dates/art'
 import { daySlotsFor } from '@/lib/dashboard/day-bookings'
 import { getHoyData } from '@/modules/home/home.service'
 import { listCourts } from '@/modules/courts/court.service'
-import { listProducts } from '@/modules/canteen/canteen.service'
-import { getSalesRanking } from '@/modules/canteen/canteen-report.service'
 import { OnboardingChecklist } from '@/components/dashboard/onboarding-checklist'
 import { DashboardTour } from '@/components/dashboard/dashboard-tour'
 import { WhileYouWereAway } from '@/components/dashboard/WhileYouWereAway'
@@ -32,10 +30,10 @@ import {
 } from '@/app/(admin)/reservas/actions'
 import { getBookingEditDetailAction } from '@/app/(admin)/reservas/edit-detail-actions'
 import { chargeDebtAction } from '@/app/(admin)/caja/deudas/actions'
-import { createTabAction, sellTicketAction } from '@/app/(admin)/caja/cantina/actions'
+import { trackStoryExportAction } from '@/app/(admin)/grilla/actions'
 import { HoyHeaderSlot } from './HoyHeaderSlot'
 import { HoyShell } from './_components/HoyShell'
-import { VenderProvider } from './_components/VenderProvider'
+import { ShareScheduleFab } from './_components/ShareScheduleFab'
 import { getChecklistState, getTenantReferralCode } from './queries'
 import {
   markPublicLinkSharedAction,
@@ -54,10 +52,6 @@ import {
  * está en Caja › Cuentas.
  */
 const EARLIER_UNPAID_LIMIT = 50
-
-/** "Más vendidos" del modal de Vender: cuántos días mira y cuántos productos muestra. */
-const TOP_SELLERS_DAYS = 30
-const TOP_SELLERS_COUNT = 8
 
 function todayLabelsArt(now: Date): { medium: string; short: string } {
   const tz = { timeZone: 'America/Argentina/Buenos_Aires' } as const
@@ -101,16 +95,12 @@ export default async function DashboardPage() {
     !tenant.settings.referral_banner_dismissed_at &&
     now.getTime() <= REFERRAL_PROMO_ENDS_AT.getTime()
 
-  const [
-    { data, courts, dayBookings, earlierUnpaid, products, ranking },
-    checklistState,
-    referralCode,
-  ] = await Promise.all([
-    withTenantContext(tenant.id, async (tx) => {
-      // La cola de cobro sale del MISMO loader que la Grilla (`listDayGridBookings`):
-      // el "falta cobrar" de cada fila es el número de la Grilla, del detalle y de Caja.
-      const [hoy, courtRows, bookingRows, earlierRows, productRows, rankingRows] =
-        await Promise.all([
+  const [{ data, courts, dayBookings, earlierUnpaid }, checklistState, referralCode] =
+    await Promise.all([
+      withTenantContext(tenant.id, async (tx) => {
+        // La cola de cobro sale del MISMO loader que la Grilla (`listDayGridBookings`):
+        // el "falta cobrar" de cada fila es el número de la Grilla, del detalle y de Caja.
+        const [hoy, courtRows, bookingRows, earlierRows] = await Promise.all([
           getHoyData(tenant.id, tx, {
             date,
             cutoffMins,
@@ -124,32 +114,20 @@ export default async function DashboardPage() {
           // Lo que se jugó en días anteriores y nadie cobró, con el mismo saldo que
           // Caja › Cuentas: Hoy lo muestra debajo de "Cobrar ahora".
           listUnpaidGridBookingsBefore(tenant.id, date, tx, { limit: EARLIER_UNPAID_LIMIT }),
-          // El catálogo del modal de "Vender": el mismo de /caja.
-          listProducts(tenant.id, tx),
-          // "Más vendidos" del modal: la misma cuenta que el reporte de Caja › Productos,
-          // sobre los últimos 30 días operativos.
-          getSalesRanking(
-            tenant.id,
-            tx,
-            { from: addDays(date, -(TOP_SELLERS_DAYS - 1)), to: date },
-            cutoffMins,
-          ),
         ])
-      return {
-        data: hoy,
-        courts: courtRows,
-        dayBookings: bookingRows,
-        earlierUnpaid: earlierRows,
-        products: productRows,
-        ranking: rankingRows,
-      }
-    }),
-    // El checklist de arranque es solo del dueño: al Encargado no se le pagan sus queries.
-    // Y si el dueño ya lo descartó tampoco: Hoy se refresca cada minuto y no tiene
-    // sentido consultar siete pasos para no dibujarlos.
-    wantsChecklist ? getChecklistState(tenant, tenant.settings, !!tenant.mpConnectedAt) : null,
-    wantsReferralCode ? getTenantReferralCode(tenant.id) : null,
-  ])
+        return {
+          data: hoy,
+          courts: courtRows,
+          dayBookings: bookingRows,
+          earlierUnpaid: earlierRows,
+        }
+      }),
+      // El checklist de arranque es solo del dueño: al Encargado no se le pagan sus queries.
+      // Y si el dueño ya lo descartó tampoco: Hoy se refresca cada minuto y no tiene
+      // sentido consultar siete pasos para no dibujarlos.
+      wantsChecklist ? getChecklistState(tenant, tenant.settings, !!tenant.mpConnectedAt) : null,
+      wantsReferralCode ? getTenantReferralCode(tenant.id) : null,
+    ])
 
   // Todos los pasos de la checklist, no solo 2 de 7 (bug: antes el complejo
   // podía dar "por terminado" el onboarding con canchas/horarios sin cargar).
@@ -208,126 +186,120 @@ export default async function DashboardPage() {
   }
 
   return (
-    <VenderProvider
-      products={products}
-      topProductIds={topSellerIds(ranking)}
-      sellTicketAction={sellTicketAction}
-      createTabAction={createTabAction}
-    >
-      {/* Una sola columna a todo el ancho (2026-09-25): la venta dejó de ser una columna
-          fija a la derecha y pasó a un modal que abre "Vender" o la tecla V. */}
-      <div className="min-w-0 space-y-4">
-        {showTour && <DashboardTour action={markTourSeenAction} />}
+    // Una sola columna a todo el ancho (2026-09-25): la venta dejó de ser una columna
+    // fija a la derecha y pasó a un modal que abre "Vender" o la tecla V (desde
+    // 2026-10-26 el modal vive en el layout del panel).
+    <div className="min-w-0 space-y-4">
+      {showTour && <DashboardTour action={markTourSeenAction} />}
 
-        {/* La banda `PageHeader` se fue (rediseño 2026-09-12): el riel ya dice
+      {/* La banda `PageHeader` se fue (rediseño 2026-09-12): el riel ya dice
           "Hoy" y la fecha cuelga del hueco de la barra superior, que es la
           regla del armazón desde MASTER §6.8 y lo que ya hicieron la Grilla y
           Configuración. En 375px eso devuelve ~110px a la primera pantalla.
           El `<h1>` sigue existiendo para lectores de pantalla y para el
           esquema de encabezados: lo que se eliminó es la FILA, no el título. */}
-        <HoyHeaderSlot dateLabel={today.medium} shortDateLabel={today.short} />
-        <h1 className="sr-only">Hoy</h1>
+      <HoyHeaderSlot dateLabel={today.medium} shortDateLabel={today.short} />
+      <h1 className="sr-only">Hoy</h1>
 
-        {/* ORDEN (rediseño 2026-09-12): lo que exige acción va primero y siempre
+      {/* ORDEN (rediseño 2026-09-12): lo que exige acción va primero y siempre
           en el mismo lugar. Antes las alertas quedaban entre dos bloques de
           lectura —lo crítico en el medio, justo lo que MASTER §9 (serial
           position) dice que no—, así que a las 17:00, con el cliente parado en
           el mostrador, el botón de cobrar aparecía después de scrollear el
           tablero entero. Sin alertas no hay bloque (2026-09-24): el tablero
           arranca en el primer renglón. */}
-        {needsAttention.length > 0 && (
-          <div className="card-entrance">
-            <NeedsAttention items={needsAttention} nowMs={now.getTime()} isAdmin={isAdmin} />
-          </div>
-        )}
+      {needsAttention.length > 0 && (
+        <div className="card-entrance">
+          <NeedsAttention items={needsAttention} nowMs={now.getTime()} isAdmin={isAdmin} />
+        </div>
+      )}
 
-        {/* Aviso de referidos (R1/R2, docs/decisions/2026-09-26-referidos.md): discreto,
+      {/* Aviso de referidos (R1/R2, docs/decisions/2026-09-26-referidos.md): discreto,
           nunca más prominente que NeedsAttention ni "Cobrar ahora" — por eso va DESPUÉS
           de lo urgente y no desplaza el tablero. */}
-        {showReferralBanner && referralCode && (
-          <div className="card-entrance">
-            <ReferralShareBanner
-              url={absoluteUrl(`/r/${referralCode}`)}
-              tenantName={tenant.name}
-              dismissAction={markReferralBannerDismissedAction}
-            />
-          </div>
-        )}
+      {showReferralBanner && referralCode && (
+        <div className="card-entrance">
+          <ReferralShareBanner
+            url={absoluteUrl(`/r/${referralCode}`)}
+            tenantName={tenant.name}
+            dismissAction={markReferralBannerDismissedAction}
+          />
+        </div>
+      )}
 
-        {/* Rediseño 2026-09-25 (docs/decisions/2026-09-25-hoy-cobrar-ahora.md): Hoy
+      {/* Rediseño 2026-09-25 (docs/decisions/2026-09-25-hoy-cobrar-ahora.md): Hoy
           ya no muestra todos los turnos del día ni la ocupación. Muestra lo que
           hay que COBRAR: los turnos a los que les llegó la hora y no se cobraron
           ("Cobrar ahora") y lo que quedó sin cobrar de días anteriores. Lo que
           viene aparece solo cuando no hay nada para cobrar; el día entero está en
           la Grilla. */}
-        <div className="card-entrance" style={{ animationDelay: '60ms' }}>
-          <HoyShell
-            bookings={hoyBookings}
-            earlier={earlier}
-            courts={hoyCourts}
-            daySlots={daySlots}
-            dayIsClosed={dayIsClosed}
-            // Solo el dueño puede activar canchas (Configuración es suya).
-            canManageCourts={isAdmin}
-            serverNowMs={now.getTime()}
-            cancellationPolicyHours={
-              tenant.settings.cancellation_policy?.hours_before ?? DEFAULT_CANCELLATION_HOURS_BEFORE
-            }
-            lateCancelHours={tenant.settings.late_cancel_hours ?? 0}
-            actions={{
-              chargeDebtAction,
-              completeAndChargeBookingAction,
-              addBookingChargeAction,
-              confirmDepositPaymentAction,
-              markNoShowAction,
-              revertNoShowAction,
-              listRescheduleSlotsAction,
-              rescheduleBookingAction,
-              cancelBookingAction,
-              releaseBlockAction,
-              editBookingAction,
-              getBookingEditDetailAction,
-            }}
-          />
-        </div>
+      <div className="card-entrance" style={{ animationDelay: '60ms' }}>
+        <HoyShell
+          bookings={hoyBookings}
+          earlier={earlier}
+          courts={hoyCourts}
+          daySlots={daySlots}
+          dayIsClosed={dayIsClosed}
+          // Solo el dueño puede activar canchas (Configuración es suya).
+          canManageCourts={isAdmin}
+          serverNowMs={now.getTime()}
+          cancellationPolicyHours={
+            tenant.settings.cancellation_policy?.hours_before ?? DEFAULT_CANCELLATION_HOURS_BEFORE
+          }
+          lateCancelHours={tenant.settings.late_cancel_hours ?? 0}
+          actions={{
+            chargeDebtAction,
+            completeAndChargeBookingAction,
+            addBookingChargeAction,
+            confirmDepositPaymentAction,
+            markNoShowAction,
+            revertNoShowAction,
+            listRescheduleSlotsAction,
+            rescheduleBookingAction,
+            cancelBookingAction,
+            releaseBlockAction,
+            editBookingAction,
+            getBookingEditDetailAction,
+          }}
+        />
+      </div>
 
-        {/* La checklist de arranque va DEBAJO del tablero (decisión del dueño,
+      {/* La checklist de arranque va DEBAJO del tablero (decisión del dueño,
           2026-09-24): el encargado entra con el usuario del dueño, así que arriba
           le ocupaba 240 px de la notebook del mostrador todas las noches. Lo de
           cada mes no le gana el lugar a lo de cada minuto (principio 1 de
           PRODUCT.md); el dueño la sigue viendo al bajar. */}
-        {showChecklist && checklistState && (
-          <div className="card-entrance" style={{ animationDelay: '120ms' }}>
-            <OnboardingChecklist
-              state={checklistState}
-              tenantSlug={tenant.slug}
-              appUrl={appUrl}
-              action={markPublicLinkSharedAction}
-              onDismiss={markChecklistDismissedAction}
-              staffRole={role}
-            />
-          </div>
-        )}
+      {showChecklist && checklistState && (
+        <div className="card-entrance" style={{ animationDelay: '120ms' }}>
+          <OnboardingChecklist
+            state={checklistState}
+            tenantSlug={tenant.slug}
+            appUrl={appUrl}
+            action={markPublicLinkSharedAction}
+            onDismiss={markChecklistDismissedAction}
+            staffRole={role}
+          />
+        </div>
+      )}
 
-        {/* Sin novedades no hay bloque (2026-09-24): "Nada nuevo desde la última
+      {/* Sin novedades no hay bloque (2026-09-24): "Nada nuevo desde la última
           vez" ocupaba una tarjeta entera todas las noches para no decir nada. */}
-        {whileYouWereAway.length > 0 && (
-          <div className="card-entrance" style={{ animationDelay: '180ms' }}>
-            <WhileYouWereAway items={whileYouWereAway} />
-          </div>
-        )}
-      </div>
-    </VenderProvider>
-  )
-}
+      {whileYouWereAway.length > 0 && (
+        <div className="card-entrance" style={{ animationDelay: '180ms' }}>
+          <WhileYouWereAway items={whileYouWereAway} />
+        </div>
+      )}
 
-/**
- * Los más vendidos por UNIDADES, que es lo que se busca en el mostrador (el reporte
- * de Caja los ordena por plata: una cerveza cara no es la que más se pide).
- */
-function topSellerIds(ranking: { productId: string; units: number }[]): string[] {
-  return [...ranking]
-    .sort((a, b) => b.units - a.units)
-    .slice(0, TOP_SELLERS_COUNT)
-    .map((r) => r.productId)
+      {/* Sin canchas online la placa no tendría qué mostrar: el diálogo solo diría
+          "no hay canchas activas". */}
+      {hoyCourts.some((court) => court.status === 'online') && (
+        <ShareScheduleFab
+          slug={tenant.slug}
+          bookingAdvanceDays={tenant.settings.booking_advance_days ?? 6}
+          trackAction={trackStoryExportAction}
+          operatingDate={date}
+        />
+      )}
+    </div>
+  )
 }

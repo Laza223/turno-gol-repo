@@ -23,6 +23,12 @@ import { getStaffRole } from '@/modules/staff/staff.service'
 import { AdminLayoutShell } from '@/components/layout/admin-layout-shell'
 import { ImpersonationBanner } from '@/components/layout/impersonation-banner'
 import { signOutAction } from '@/app/(admin)/actions/auth'
+import {
+  createTabAction,
+  loadVenderCatalogAction,
+  sellTicketAction,
+} from '@/app/(admin)/caja/cantina/actions'
+import { VenderProvider } from '@/app/(admin)/dashboard/_components/VenderProvider'
 import { stopImpersonationAction } from '@/app/(super-admin)/super-admin/tenants/[id]/actions'
 
 /**
@@ -73,6 +79,22 @@ function readOnlyNotice(tenant: TenantRow, sub: SubscriptionSummary | null): Rea
   }
 }
 
+/**
+ * El modal de Vender vive acá y no en Hoy: se abre desde cualquier vista del panel
+ * (botón del riel o tecla V), así que no hace falta volver a Hoy para vender.
+ */
+function WithVender({ children }: { children: ReactNode }) {
+  return (
+    <VenderProvider
+      loadCatalogAction={loadVenderCatalogAction}
+      sellTicketAction={sellTicketAction}
+      createTabAction={createTabAction}
+    >
+      {children}
+    </VenderProvider>
+  )
+}
+
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   // Impersonación (spec §6): el super admin entra a CUALQUIER tenant para dar
   // soporte, salteando las puertas de billing/kill-switch/onboarding — puede
@@ -85,22 +107,24 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       loadSetupAlerts(imp.tenant),
     ])
     return (
-      <AdminLayoutShell
-        tenantName={imp.tenant.name}
-        tenantStatus={imp.tenant.status}
-        trialEndsAt={imp.tenant.trialEndsAt?.toISOString() ?? null}
-        periodEnd={impSub?.currentPeriodEnd?.toISOString() ?? null}
-        userEmail={imp.user.email}
-        signOut={signOutAction}
-        impersonationBanner={
-          <ImpersonationBanner tenantName={imp.tenant.name} action={stopImpersonationAction} />
-        }
-        staffRole="admin"
-        setupAlerts={impAlerts}
-        readOnly={readOnlyNotice(imp.tenant, impSub)}
-      >
-        {children}
-      </AdminLayoutShell>
+      <WithVender>
+        <AdminLayoutShell
+          tenantName={imp.tenant.name}
+          tenantStatus={imp.tenant.status}
+          trialEndsAt={imp.tenant.trialEndsAt?.toISOString() ?? null}
+          periodEnd={impSub?.currentPeriodEnd?.toISOString() ?? null}
+          userEmail={imp.user.email}
+          signOut={signOutAction}
+          impersonationBanner={
+            <ImpersonationBanner tenantName={imp.tenant.name} action={stopImpersonationAction} />
+          }
+          staffRole="admin"
+          setupAlerts={impAlerts}
+          readOnly={readOnlyNotice(imp.tenant, impSub)}
+        >
+          {children}
+        </AdminLayoutShell>
+      </WithVender>
     )
   }
 
@@ -162,19 +186,21 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const setupAlerts = staffRole === 'admin' ? alerts : NO_SETUP_ALERTS
 
   return (
-    <AdminLayoutShell
-      tenantName={tenant.name}
-      tenantStatus={tenant.status}
-      trialEndsAt={tenant.trialEndsAt?.toISOString() ?? null}
-      periodEnd={sub?.currentPeriodEnd?.toISOString() ?? null}
-      userEmail={user.email}
-      signOut={signOutAction}
-      tournamentsEnabled={tournamentsEnabled}
-      staffRole={staffRole ?? 'manager'}
-      setupAlerts={setupAlerts}
-      readOnly={readOnlyNotice(tenant, sub)}
-    >
-      {children}
-    </AdminLayoutShell>
+    <WithVender>
+      <AdminLayoutShell
+        tenantName={tenant.name}
+        tenantStatus={tenant.status}
+        trialEndsAt={tenant.trialEndsAt?.toISOString() ?? null}
+        periodEnd={sub?.currentPeriodEnd?.toISOString() ?? null}
+        userEmail={user.email}
+        signOut={signOutAction}
+        tournamentsEnabled={tournamentsEnabled}
+        staffRole={staffRole ?? 'manager'}
+        setupAlerts={setupAlerts}
+        readOnly={readOnlyNotice(tenant, sub)}
+      >
+        {children}
+      </AdminLayoutShell>
+    </WithVender>
   )
 }

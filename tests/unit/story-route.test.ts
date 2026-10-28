@@ -112,6 +112,33 @@ describe('GET /api/public/story', () => {
     expect(getPublicTenant).not.toHaveBeenCalled()
   })
 
+  it('con `hours` arma la placa solo con esas horas', async () => {
+    vi.mocked(getPublicAvailability).mockResolvedValue(
+      availability([slot('09:00'), slot('20:00'), slot('21:00')]),
+    )
+    const res = await GET(req(`?slug=m10&date=${TODAY}&hours=20:00,21:00`))
+    expect(res.status).toBe(200)
+    expect(vi.mocked(renderStoryPng).mock.calls[0][0].hours.map((h) => h.time)).toEqual([
+      '20:00',
+      '21:00',
+    ])
+  })
+
+  it('400 si `hours` viene mal: formato, repetidas o más de las que entran', async () => {
+    for (const hours of ['25:00', '20', '20:00,20:00', '', '08:00,09:00,10:00,11:00,12:00']) {
+      const res = await GET(req(`?slug=m10&date=${TODAY}&hours=${hours}`))
+      expect(res.status, hours).toBe(400)
+      expect((await res.json()).error.code).toBe('INVALID_PARAMS')
+    }
+  })
+
+  it('409 si ninguna de las horas elegidas sigue libre', async () => {
+    const res = await GET(req(`?slug=m10&date=${TODAY}&hours=20:00`))
+    expect(res.status).toBe(409)
+    expect((await res.json()).error.code).toBe('STORY_TAKEN')
+    expect(renderStoryPng).not.toHaveBeenCalled()
+  })
+
   it('404 si el complejo no existe', async () => {
     vi.mocked(getPublicTenant).mockResolvedValue(null as never)
     const res = await GET(req(`?slug=fantasma&date=${TODAY}`))

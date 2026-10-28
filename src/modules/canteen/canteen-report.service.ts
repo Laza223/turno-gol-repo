@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
+import { addDays } from '@/shared/dates/art'
 import { operatingDateOf, operatingDayRangeUtc } from '@/shared/time/operating-day'
 import type { CashPaymentMethod } from '@/modules/cashflow/cashflow.types'
 
@@ -41,6 +42,34 @@ export type SalesRankingRow = {
   units: number
   /** Centavos ARS a precio de venta snapshot (unit_price del ledger). */
   revenue: number
+}
+
+/** "Más vendidos" del modal de Vender: cuántos días mira y cuántos productos muestra. */
+const TOP_SELLERS_DAYS = 30
+const TOP_SELLERS_COUNT = 8
+
+/**
+ * Los más vendidos de los últimos 30 días operativos hasta `date`, por UNIDADES
+ * (lo que se busca en el mostrador: una cerveza cara no es la que más se pide,
+ * a diferencia del reporte de Caja, que ordena por plata). Misma cuenta que
+ * `getSalesRanking`.
+ */
+export async function getTopSellerIds(
+  tenantId: string,
+  tx: DbTx,
+  date: string,
+  cutoffMins: number,
+): Promise<string[]> {
+  const ranking = await getSalesRanking(
+    tenantId,
+    tx,
+    { from: addDays(date, -(TOP_SELLERS_DAYS - 1)), to: date },
+    cutoffMins,
+  )
+  return [...ranking]
+    .sort((a, b) => b.units - a.units)
+    .slice(0, TOP_SELLERS_COUNT)
+    .map((r) => r.productId)
 }
 
 export type CanteenMethodTotal = {

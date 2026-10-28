@@ -1,9 +1,9 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 
 /**
- * Vender en Hoy es un modal (2026-09-25): se abre con el botón "Vender" de la barra
- * superior, que existe a todos los anchos (en el teléfono muestra solo el ícono, con
- * el mismo nombre accesible).
+ * Vender es un modal que se abre con el botón "Vender" del riel (desde `lg`, en
+ * todas las vistas) o, en el teléfono, con el de la barra superior de Hoy (solo
+ * ícono, mismo nombre accesible). Nunca hay dos a la vez.
  */
 export async function openVender(page: Page): Promise<Locator> {
   await page.getByRole('button', { name: 'Vender', exact: true }).click()

@@ -103,11 +103,7 @@ vi.mock('@/app/(admin)/reservas/edit-detail-actions', () => ({
   getBookingEditDetailAction: vi.fn(),
 }))
 vi.mock('@/app/(admin)/caja/deudas/actions', () => ({ chargeDebtAction: vi.fn() }))
-vi.mock('@/app/(admin)/caja/cantina/actions', () => ({
-  createTabAction: vi.fn(),
-  listCanteenForBookingAction: vi.fn(),
-  sellTicketAction: vi.fn(),
-}))
+vi.mock('@/app/(admin)/grilla/actions', () => ({ trackStoryExportAction: vi.fn() }))
 
 /** Un bloque de UI reemplazado por un marcador: `stub('Nombre', 'id')` → `{ Nombre: () => <div data-testid="id" /> }`. */
 const stub = vi.hoisted(() => async (name: string, testId: string) => {
@@ -133,16 +129,6 @@ vi.mock('@/app/(admin)/dashboard/_components/HoyShell', async () => {
   }
 })
 vi.mock('@/app/(admin)/dashboard/HoyHeaderSlot', () => stub('HoyHeaderSlot', 'header'))
-// El proveedor (dueño del modal de Vender) deja pasar lo que envuelve: sin eso
-// desaparecería toda la página. La marca `vender` dice que la venta está montada.
-vi.mock('@/app/(admin)/dashboard/_components/VenderProvider', async () => {
-  const { createElement } = await import('react')
-  return {
-    VenderProvider: (props: { children: React.ReactNode }) =>
-      createElement('div', { 'data-testid': 'vender' }, props.children),
-  }
-})
-
 import DashboardPage from '@/app/(admin)/dashboard/page'
 
 beforeEach(() => {
@@ -193,15 +179,6 @@ describe('Hoy — qué ve cada rol', () => {
 
     expect(state.getChecklistState).not.toHaveBeenCalled()
     expect(screen.queryByTestId('checklist')).toBeNull()
-  })
-
-  it('los dos roles ven la venta: Caja es de los dos', async () => {
-    for (const role of ['admin', 'manager'] as const) {
-      state.role = role
-      const { unmount } = render(await DashboardPage())
-      expect(screen.getByTestId('vender')).toBeInTheDocument()
-      unmount()
-    }
   })
 
   it('al Encargado ni siquiera se le pagan las consultas del checklist', async () => {

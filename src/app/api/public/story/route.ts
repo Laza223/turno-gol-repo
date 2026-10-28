@@ -1,9 +1,10 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { dateStr, slug } from '@/shared/validation/primitives'
+import { dateStr, hhmm, slug } from '@/shared/validation/primitives'
 import { getPublicAvailability, getPublicTenant } from '@/modules/tenants/public.service'
 import { isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
 import { buildStoryModel, STORY_FAILURE_MESSAGES } from '@/modules/tenants/story-summary'
+import { MAX_HOURS } from '@/lib/story-image/model'
 import { renderStoryPng } from '@/lib/story-image/render'
 import { buildPublicLinkUrl } from '@/lib/utils'
 import { addDays, artNowParts } from '@/shared/dates/art'
@@ -18,6 +19,13 @@ export const dynamic = 'force-dynamic'
 const querySchema = z.object({
   slug,
   date: dateStr,
+  // Las horas que el dueño eligió ('20:00,21:00'). Sin el parámetro, las primeras libres.
+  hours: z
+    .string()
+    .transform((value) => value.split(','))
+    .pipe(z.array(hhmm).min(1).max(MAX_HOURS))
+    .refine((list) => new Set(list).size === list.length)
+    .optional(),
 })
 
 /**
@@ -36,11 +44,14 @@ export async function GET(req: NextRequest) {
   const parsed = querySchema.safeParse({
     slug: req.nextUrl.searchParams.get('slug'),
     date: req.nextUrl.searchParams.get('date'),
+    hours: req.nextUrl.searchParams.get('hours') ?? undefined,
   })
   if (!parsed.success) {
-    return badRequest('Faltan el complejo o el día.', { code: 'INVALID_PARAMS' })
+    return badRequest('Faltan el complejo o el día, o los horarios no son válidos.', {
+      code: 'INVALID_PARAMS',
+    })
   }
-  const { slug: tenantSlug, date } = parsed.data
+  const { slug: tenantSlug, date, hours } = parsed.data
 
   const now = artNowParts()
 
@@ -68,7 +79,13 @@ export async function GET(req: NextRequest) {
     if (!portalUrl) throw new Error('No se pudo resolver la URL pública del complejo')
 
     const availability = await getPublicAvailability(tenant, date)
-    const result = buildStoryModel({ tenant, availability, todayStr: now.date, portalUrl })
+    const result = buildStoryModel({
+      tenant,
+      availability,
+      todayStr: now.date,
+      portalUrl,
+      only: hours,
+    })
     if (!result.ok) {
       return conflict(STORY_FAILURE_MESSAGES[result.reason], {
         code: `STORY_${result.reason.toUpperCase()}`,

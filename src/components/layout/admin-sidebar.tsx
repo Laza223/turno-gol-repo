@@ -14,10 +14,12 @@ import {
   Lock,
   LogOut,
   Settings,
+  ShoppingBag,
   Trophy,
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useOptionalVender } from './vender-context'
 import { TONE_TEXT } from '@/lib/status-tone'
 import { WhatsappIcon } from '@/components/icons/WhatsappIcon'
 import { SUPPORT_WHATSAPP_URL, TRIAL_ENDING_WARNING_DAYS } from '@/shared/constants'
@@ -416,6 +418,7 @@ function SidebarRail({
   const ConfigIcon = CONFIG_ITEM.icon
   const configActive = isNavItemActive(CONFIG_ITEM, pathname)
   const configAlert = navItemHasAlert(CONFIG_ITEM, setupAlerts)
+  const vender = useOptionalVender()
 
   return (
     <aside
@@ -447,6 +450,27 @@ function SidebarRail({
           accentClassName="text-primary-foreground"
         />
       </Link>
+
+      {/* Vender desde cualquier vista (2026-10-26): no es un destino sino una acción, así
+          que va aparte de la navegación y relleno. Sin proveedor (stories, tests) no se dibuja. */}
+      {vender && (
+        <button
+          type="button"
+          onClick={() => vender.setOpen(true)}
+          onPointerEnter={vender.prefetch}
+          onFocus={vender.prefetch}
+          onTouchStart={vender.prefetch}
+          aria-keyshortcuts="V"
+          className={cn(
+            RAIL_ITEM,
+            RAIL_ITEM_HOVERABLE,
+            'mb-1 bg-primary text-primary-foreground hover:bg-primary/90',
+          )}
+        >
+          <ShoppingBag aria-hidden className="h-5 w-5 shrink-0" />
+          <span className={RAIL_LABEL}>Vender</span>
+        </button>
+      )}
 
       <nav
         aria-label="Navegación del panel"

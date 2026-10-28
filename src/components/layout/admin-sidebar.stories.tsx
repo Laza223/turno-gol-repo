@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, within } from 'storybook/test'
 import { AdminSidebar } from './admin-sidebar'
+import { VenderContext } from './vender-context'
 
 /**
  * `usePathname` viene del mock estándar de next/navigation del framework
@@ -45,6 +46,29 @@ export const RutaDashboard: Story = {
     await expect(canvas.getAllByRole('link', { name: 'Hoy' })[0]).toHaveAttribute(
       'aria-current',
       'page',
+    )
+  },
+}
+
+/**
+ * Con el modal de Vender montado en el layout, el riel suma el botón "Vender" arriba de
+ * la navegación: abre la venta desde cualquier vista y anticipa el catálogo al apuntarlo.
+ */
+export const ConBotonVender: Story = {
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/grilla' } } },
+  args: { staffRole: 'manager' },
+  decorators: [
+    (Story) => (
+      <VenderContext value={{ open: false, setOpen: fn(), prefetch: fn() }}>
+        <Story />
+      </VenderContext>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('button', { name: 'Vender' })).toHaveAttribute(
+      'aria-keyshortcuts',
+      'V',
     )
   },
 }

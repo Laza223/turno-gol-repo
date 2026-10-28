@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { AvailabilityResponse, PublicSlotStatus } from '@/modules/tenants/public.service'
-import { buildStoryModel, STORY_FAILURE_MESSAGES } from '@/modules/tenants/story-summary'
+import {
+  buildStoryModel,
+  freeHoursOf,
+  STORY_FAILURE_MESSAGES,
+} from '@/modules/tenants/story-summary'
 import { MAX_HOURS } from '@/lib/story-image/model'
 
 type Court = AvailabilityResponse['courts'][number]
@@ -51,6 +55,16 @@ function model(...args: Parameters<typeof build>) {
   const result = build(...args)
   if (!result.ok) throw new Error(`esperaba ok, vino ${result.reason}`)
   return result.model
+}
+
+function buildOnly(courts: Court[], only: string[]) {
+  return buildStoryModel({
+    tenant: TENANT,
+    availability: availability(courts),
+    todayStr: TODAY,
+    portalUrl: PORTAL,
+    only,
+  })
 }
 
 const hours = (n: number, from = 10) =>
@@ -111,6 +125,46 @@ describe('buildStoryModel — horas libres', () => {
   })
 })
 
+describe('buildStoryModel — horarios elegidos por el dueño', () => {
+  const evening = [court('A', [...hours(6, 9), slot('20:00'), slot('21:00'), slot('22:00')])]
+
+  it('muestra solo las horas elegidas, sin "y N más"', () => {
+    const result = buildOnly(evening, ['20:00', '21:00', '22:00'])
+    if (!result.ok) throw new Error(result.reason)
+    expect(result.model.hours.map((h) => h.time)).toEqual(['20:00', '21:00', '22:00'])
+    expect(result.model.hiddenHours).toBe(0)
+  })
+
+  it('respeta el orden operativo y no el del pedido', () => {
+    const late = [court('A', [slot('22:00'), slot('23:00'), slot('00:00')])]
+    const result = buildOnly(late, ['00:00', '22:00'])
+    if (!result.ok) throw new Error(result.reason)
+    expect(result.model.hours.map((h) => h.time)).toEqual(['22:00', '00:00'])
+  })
+
+  it('ignora las elegidas que ya no están libres y avisa si no queda ninguna', () => {
+    const mixed = [court('A', [slot('20:00', 'occupied'), slot('21:00')])]
+    const some = buildOnly(mixed, ['20:00', '21:00'])
+    if (!some.ok) throw new Error(some.reason)
+    expect(some.model.hours.map((h) => h.time)).toEqual(['21:00'])
+    expect(buildOnly(mixed, ['20:00'])).toEqual({ ok: false, reason: 'taken' })
+  })
+
+  it('freeHoursOf devuelve las horas libres en orden operativo', () => {
+    expect(freeHoursOf(availability(evening)).map((h) => h.time)).toEqual([
+      '09:00',
+      '10:00',
+      '11:00',
+      '12:00',
+      '13:00',
+      '14:00',
+      '20:00',
+      '21:00',
+      '22:00',
+    ])
+  })
+})
+
 describe('buildStoryModel — cuándo no hay placa', () => {
   it('sin canchas online', () => {
     expect(build([])).toEqual({ ok: false, reason: 'no_courts' })
@@ -136,6 +190,7 @@ describe('buildStoryModel — cuándo no hay placa', () => {
       'full',
       'no_courts',
       'over',
+      'taken',
     ])
   })
 })

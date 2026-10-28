@@ -126,6 +126,7 @@ test.describe('Hoy (Fase 2) — pantalla del mostrador', () => {
       // Ya no hay columna fija: el tablero ocupa todo el ancho (2026-09-25).
       await expect(page.getByRole('complementary', { name: 'Vender' })).toHaveCount(0)
 
+      // A 1366 px el único botón "Vender" es el del riel (el de la barra de Hoy es de <lg).
       await page.getByRole('button', { name: 'Vender', exact: true }).click()
       const dialog = page.getByRole('dialog', { name: 'Vender' })
       await expect(dialog).toBeVisible()
@@ -135,6 +136,15 @@ test.describe('Hoy (Fase 2) — pantalla del mostrador', () => {
       // La V lo abre desde cualquier lado de Hoy (salvo escribiendo en un campo).
       await page.keyboard.press('v')
       await expect(dialog).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(dialog).toBeHidden()
+
+      // Y desde otra vista, sin volver a Hoy: el botón del riel.
+      await page.goto('/grilla', { waitUntil: 'networkidle' })
+      await page.getByRole('complementary').getByRole('button', { name: 'Vender' }).click()
+      await expect(dialog).toBeVisible()
+      await expect(dialog.getByTestId('canteen-catalog')).toBeVisible()
+      await expect(page).toHaveURL(/\/grilla/)
     } finally {
       await context.close()
     }

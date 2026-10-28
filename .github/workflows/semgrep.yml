@@ -36,7 +36,7 @@ jobs:
     steps:
       # fetch-depth: 0 — `--baseline-commit` necesita el merge-base presente
       # localmente para poder escanear las dos puntas.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -81,7 +81,7 @@ jobs:
             --text \
             ${{ github.event_name == 'pull_request' && format('--baseline-commit={0}', github.event.pull_request.base.sha) || '' }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: semgrep-sarif

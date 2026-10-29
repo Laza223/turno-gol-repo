@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { RIVAL_REPORT_REASON_LABELS } from '@/modules/rival/rival-display'
 import { RIVAL_REPORT_REASONS, type RivalReportReason } from '@/modules/rival/rival.schema'
 import type { ActionResult } from '@/shared/types/action-result'
-import { RIVAL_GHOST_QUIET } from '../../MatchBits'
+import { RIVAL_GHOST_QUIET } from '../../rival-classes'
 
 /** Firmas de las Server Actions (por prop, no por import: ver convenciones-stack). */
 type ReportMatchAction = (matchId: string, reason: RivalReportReason) => Promise<ActionResult>

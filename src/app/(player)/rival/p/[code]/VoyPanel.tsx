@@ -6,7 +6,7 @@ import { FixedCta } from '@/app/(public)/[slug]/reservar/components/ConfirmBooki
 import { Button } from '@/components/ui/button'
 import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
 import { cn } from '@/lib/utils'
-import { RIVAL_OFFLINE_MESSAGE } from '@/modules/rival/rival-copy'
+import { RIVAL_OFFLINE_MESSAGE, voyLabel } from '@/modules/rival/rival-copy'
 import type { RivalFormResult } from '../../actions'
 import { FormError } from '../../FormError'
 import { WelcomeCard, type WelcomeNeeds } from '../../WelcomeCard'
@@ -25,9 +25,6 @@ export type VoyWelcome = {
 }
 
 const STORAGE_PREFIX = 'tg-rival-auto-join:'
-
-/** Con el partido lleno entra al banco: la etiqueta no promete un lugar. */
-export const voyLabel = (full: boolean) => (full ? 'Voy al banco' : 'Voy')
 
 /**
  * "Voy" (el único verde del invitado, spec §5.2), en la barra fija de abajo como el de la reserva.

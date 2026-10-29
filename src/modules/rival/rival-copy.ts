@@ -47,6 +47,9 @@ export const RIVAL_RATE_LIMITED_MESSAGE =
 /** Cuando la action ni siquiera responde (sin conexión): lo muestran las vistas del cliente. */
 export const RIVAL_OFFLINE_MESSAGE = 'No pudimos conectar. Revisá tu conexión y probá de nuevo.'
 
+/** Con el partido lleno entra al banco: la etiqueta no promete un lugar. */
+export const voyLabel = (full: boolean) => (full ? 'Voy al banco' : 'Voy')
+
 /** Texto para mostrar. Un error que no es de RIVAL cae en el genérico (el caller lo reporta a Sentry). */
 export function rivalErrorMessage(err: unknown): string {
   return err instanceof RivalError ? COPY[err.code] : FALLBACK

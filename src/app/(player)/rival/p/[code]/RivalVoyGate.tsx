@@ -2,9 +2,9 @@
 
 import { FixedCta } from '@/app/(public)/[slug]/reservar/components/ConfirmBookingButton'
 import { cn } from '@/lib/utils'
-import { RIVAL_ACTION } from '../../MatchBits'
+import { voyLabel } from '@/modules/rival/rival-copy'
+import { RIVAL_ACTION } from '../../rival-classes'
 import { RivalEntryGate } from '../../RivalEntryGate'
-import { voyLabel } from './VoyPanel'
 import type { SendRivalMagicLink, StartGoogleLoginFromRival } from './login-actions'
 
 /**

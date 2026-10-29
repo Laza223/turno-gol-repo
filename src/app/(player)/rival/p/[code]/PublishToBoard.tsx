@@ -19,7 +19,7 @@ import type { ActionResult } from '@/shared/types/action-result'
 import type { RivalFormResult } from '../../actions'
 import { FormError } from '../../FormError'
 import { BoardFields, type BoardPosition, type BoardSeeking } from '../../BoardFields'
-import { RIVAL_GHOST } from '../../MatchBits'
+import { RIVAL_GHOST } from '../../rival-classes'
 
 /** Firmas de las Server Actions (por prop, no por import: ver convenciones-stack). */
 type PublishAction = (prev: RivalFormResult, formData: FormData) => Promise<RivalFormResult>

@@ -7,7 +7,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { cn } from '@/lib/utils'
 import type { ActionResult } from '@/shared/types/action-result'
 import type { RivalFormResult } from '../../actions'
-import { RIVAL_ACTION, RIVAL_GHOST, RIVAL_GHOST_DESTRUCTIVE } from '../../MatchBits'
+import { RIVAL_ACTION, RIVAL_GHOST, RIVAL_GHOST_DESTRUCTIVE } from '../../rival-classes'
 import { PublishToBoard, RIVAL_SECONDARY } from './PublishToBoard'
 
 /** Firma de la Server Action (por prop, no por import: ver convenciones-stack). */

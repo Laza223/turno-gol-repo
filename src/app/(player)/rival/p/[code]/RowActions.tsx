@@ -7,7 +7,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { cn } from '@/lib/utils'
 import { RIVAL_OFFLINE_MESSAGE } from '@/modules/rival/rival-copy'
 import type { ActionResult } from '@/shared/types/action-result'
-import { RIVAL_GHOST } from '../../MatchBits'
+import { RIVAL_GHOST } from '../../rival-classes'
 
 /** Firmas de las Server Actions (por prop, no por import: ver convenciones-stack). */
 type DecideAction = (participantId: string, decision: 'accept' | 'decline') => Promise<ActionResult>

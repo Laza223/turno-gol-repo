@@ -5,7 +5,7 @@ import LoginGate, {
   type RivalGatePurpose,
 } from '@/app/(public)/[slug]/reservar/components/LoginGate'
 import type { SendRivalMagicLink, StartGoogleLoginFromRival } from './p/[code]/login-actions'
-import { RIVAL_ACTION } from './MatchBits'
+import { RIVAL_ACTION } from './rival-classes'
 
 /**
  * El botón de RIVAL que, sin sesión, abre el ingreso (variante RIVAL de `LoginGate`, mismo patrón

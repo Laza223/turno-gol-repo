@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { cn } from '@/lib/utils'
 import type { ActionResult } from '@/shared/types/action-result'
-import { RIVAL_GHOST_DESTRUCTIVE } from '../../MatchBits'
+import { RIVAL_GHOST_DESTRUCTIVE } from '../../rival-classes'
 
 /** Firma de la Server Action (por prop, no por import: ver convenciones-stack). */
 type LeaveAction = (matchId: string) => Promise<ActionResult>

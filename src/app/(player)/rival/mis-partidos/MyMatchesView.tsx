@@ -8,7 +8,8 @@ import { cn } from '@/lib/utils'
 import { TONE_BADGE, type StatusTone } from '@/lib/status-tone'
 import { matchTypeLabel, RIVAL_LEVEL_LABELS, whenLabel } from '@/modules/rival/rival-display'
 import type { RivalMyMatch } from '@/modules/rival/rival.types'
-import { RIVAL_CTA, RIVAL_GHOST, RivalDeadEnd, StampBadge } from '../MatchBits'
+import { RivalDeadEnd, StampBadge } from '../MatchBits'
+import { RIVAL_CTA, RIVAL_GHOST } from '../rival-classes'
 import { RivalTabs } from '../RivalTabs'
 
 /**

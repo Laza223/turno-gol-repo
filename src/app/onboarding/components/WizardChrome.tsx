@@ -169,8 +169,10 @@ export function WizardChrome({ children }: Props) {
         {progressLabel}
       </div>
 
-      <main id="main-content" ref={mainRef} className="content-area-gradient">
-        <h1 className="sr-only">Configurá tu complejo</h1>
+      {/* El header mobile es banner, no contenido: vive afuera de <main> para que
+          el skip link ("#main-content") lo salte. El wrapper es la columna
+          derecha del grid y lleva el gradiente. */}
+      <div className="content-area-gradient">
         {/* Header mobile: el ÚNICO indicador en pantallas chicas. */}
         <header className="border-b border-border px-4 py-3 lg:hidden">
           <div className="flex items-center justify-between">
@@ -195,21 +197,26 @@ export function WizardChrome({ children }: Props) {
           )}
         </header>
 
-        <AnimatePresence mode="wait" initial={false} custom={direction}>
-          <m.div
-            key={pathname}
-            custom={direction}
-            variants={VARIANTS}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ type: 'tween', duration: 0.25, ease: 'easeOut' }}
-            onAnimationComplete={focusStepTitle}
-          >
-            {children}
-          </m.div>
-        </AnimatePresence>
-      </main>
+        {/* tabIndex -1: el skip link necesita un destino enfocable (si no, el
+            foco se queda en el link en varios browsers). */}
+        <main id="main-content" ref={mainRef} tabIndex={-1} className="focus:outline-hidden">
+          <h1 className="sr-only">Configurá tu complejo</h1>
+          <AnimatePresence mode="wait" initial={false} custom={direction}>
+            <m.div
+              key={pathname}
+              custom={direction}
+              variants={VARIANTS}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ type: 'tween', duration: 0.25, ease: 'easeOut' }}
+              onAnimationComplete={focusStepTitle}
+            >
+              {children}
+            </m.div>
+          </AnimatePresence>
+        </main>
+      </div>
     </div>
   )
 }

@@ -75,7 +75,10 @@ export function StepSchedule({ hours, closesNextDay, action }: Props) {
     >
       <div className="space-y-6">
         <div>
-          <h2 tabIndex={-1} className="text-2xl font-bold tracking-tight text-foreground">
+          <h2
+            tabIndex={-1}
+            className="text-2xl font-bold tracking-tight text-foreground focus:outline-hidden"
+          >
             Horarios
           </h2>
           <p className="text-sm text-muted-foreground mt-1">

@@ -44,6 +44,12 @@ export default function SiteFooter({ signedIn = false }: { signedIn?: boolean } 
             </IngresarLink>
           )}
           <Link
+            href="/para-complejos"
+            className="inline-flex min-h-11 items-center transition-colors hover:text-foreground"
+          >
+            Para complejos
+          </Link>
+          <Link
             href="/privacidad"
             className="inline-flex min-h-11 items-center transition-colors hover:text-foreground"
           >

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
 
 vi.mock('@/hooks/use-toast', () => ({
@@ -46,10 +46,11 @@ type MemberProp = Parameters<typeof StaffActions>[0]['member']
 
 // Las Server Actions entran por prop (ver ReservasPolicyForm.tsx) — mocks
 // locales en vez de vi.mock('.../staff/actions').
-let deactivateAction: ReturnType<typeof vi.fn>
-let reactivateAction: ReturnType<typeof vi.fn>
-let resendInviteActionMock: ReturnType<typeof vi.fn>
-let updateRoleAction: ReturnType<typeof vi.fn>
+type StaffActionsProps = Parameters<typeof StaffActions>[0]
+let deactivateAction: Mock<StaffActionsProps['deactivateAction']>
+let reactivateAction: Mock<StaffActionsProps['reactivateAction']>
+let resendInviteActionMock: Mock<StaffActionsProps['resendInviteAction']>
+let updateRoleAction: Mock<StaffActionsProps['updateRoleAction']>
 
 /** Open the dropdown for the given member and return the menu content node. */
 async function openDropdown(member: MemberProp, activeAdminCount = 3) {
@@ -77,10 +78,10 @@ async function openDropdown(member: MemberProp, activeAdminCount = 3) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  deactivateAction = vi.fn()
-  reactivateAction = vi.fn()
-  resendInviteActionMock = vi.fn()
-  updateRoleAction = vi.fn()
+  deactivateAction = vi.fn<StaffActionsProps['deactivateAction']>()
+  reactivateAction = vi.fn<StaffActionsProps['reactivateAction']>()
+  resendInviteActionMock = vi.fn<StaffActionsProps['resendInviteAction']>()
+  updateRoleAction = vi.fn<StaffActionsProps['updateRoleAction']>()
 })
 
 afterEach(() => {

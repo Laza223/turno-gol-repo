@@ -12,9 +12,15 @@ export default defineConfig({
     testTimeout: 10_000,
     hookTimeout: 30_000,
     // `pool` explícito: desde Vitest 2 el default pasó de 'threads' a 'forks'. Sin
-    // esta línea, `poolOptions.threads.singleThread` queda IGNORADO en silencio y
-    // los tests de integración (Postgres compartido, RLS, isolation.test.ts) corren
-    // en forks paralelos y racean. Falla como flake, no como crash.
+    // esta línea los tests de integración (Postgres compartido, RLS,
+    // isolation.test.ts) corren en forks paralelos y racean. Falla como flake, no
+    // como crash. `maxWorkers: 1` + `isolate: false` reemplazan desde Vitest 4 a
+    // `poolOptions.threads.singleThread` (`poolOptions` se removió): un solo
+    // thread compartido, archivos en serie. Sin `isolate: false` cada archivo
+    // abre un thread nuevo: unit tarda 5x y los pools de Postgres guardados en
+    // `globalThis` no sobreviven entre archivos de integración. Lo que
+    // singleThread hacía solo (reevaluar módulos y no arrastrar env ni stubs al
+    // archivo siguiente) ahora lo hace tests/setup.ts.
     //
     // Probado (2026-08-10) sacarle singleThread a unit, separando en un config
     // propio: tests/unit/staff-actions.test.tsx > "clicking Desactivar abre el
@@ -22,12 +28,9 @@ export default defineConfig({
     // paralelo real — una carrera real, no flake preexistente. La ganancia
     // (~15-20s) no vale romper un check requerido. Revertido.
     pool: 'threads',
-    poolOptions: {
-      threads: {
-        singleThread: true,
-      },
-    },
-    // Bajo `singleThread` todos los archivos comparten worker, así que un
+    maxWorkers: 1,
+    isolate: false,
+    // Con un solo worker todos los archivos lo comparten, así que un
     // `vi.stubGlobal`/`vi.stubEnv` sin deshacer se filtra a TODO lo que corra
     // después, y qué archivo lo ve depende del orden de ejecución — o sea que
     // falla como flake no reproducible. Con esto Vitest lo deshace antes de cada
@@ -38,10 +41,11 @@ export default defineConfig({
     setupFiles: ['./tests/setup.ts'],
   },
   // Use the automatic JSX runtime (same as Next.js production build) so server
-  // components compiled by esbuild for tests don't require `import React` and
-  // can be invoked directly as functions in smoke tests (see legal-pages.test.ts).
-  esbuild: {
-    jsx: 'automatic',
+  // components compiled by oxc (Vite 8; `esbuild` quedó deprecado) for tests don't
+  // require `import React` and can be invoked directly as functions in smoke tests
+  // (see legal-pages.test.ts).
+  oxc: {
+    jsx: { runtime: 'automatic' },
   },
   resolve: {
     alias: {

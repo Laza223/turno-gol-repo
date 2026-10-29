@@ -23,13 +23,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v6
         with:
-          version: 10.34.5
+          version: 10.34.9
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'pnpm'
@@ -70,13 +70,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v6
         with:
-          version: 10.34.5
+          version: 10.34.9
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'pnpm'
@@ -151,13 +151,13 @@ jobs:
         # que no hay que tocar branch protection.
         theme: [light, dark]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v6
         with:
-          version: 10.34.5
+          version: 10.34.9
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'pnpm'
@@ -168,7 +168,7 @@ jobs:
       # El binario de Chromium (~150MB) es lo caro de descargar; las libs de
       # sistema (apt) pueden faltar en un runner nuevo aunque el binario esté
       # cacheado, así que install-deps corre siempre.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         id: pw-cache
         with:
           path: ~/.cache/ms-playwright
@@ -244,13 +244,13 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@127.0.0.1:54322/postgres
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v3
+      - uses: pnpm/action-setup@v6
         with:
-          version: 10.34.5
+          version: 10.34.9
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'pnpm'
@@ -365,7 +365,7 @@ jobs:
     steps:
       # checkout ANTES de la composite: la action vive en este repo, sin el
       # working tree en disco no se puede resolver.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # pnpm + node + Supabase local + roles + migraciones + env + browsers.
       # Extraído a composite para que visual-baseline.yml levante EXACTAMENTE el
@@ -393,7 +393,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-results
           path: test-results/
@@ -437,7 +437,7 @@ jobs:
 
     steps:
       # checkout ANTES de la composite: la action vive en este repo.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Mismo stack que e2e-tests y que visual-baseline.yml, una sola definición.
       - uses: ./.github/actions/e2e-stack
@@ -452,7 +452,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: visual-results
           path: test-results/

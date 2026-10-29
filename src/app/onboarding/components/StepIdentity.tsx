@@ -193,7 +193,11 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
               className={fieldClass}
             />
             {fieldError?.field === 'name' && (
-              <p id="identity-name-error" role="alert" className="mt-1.5 text-xs text-destructive">
+              <p
+                id="identity-name-error"
+                role="alert"
+                className="mt-1.5 text-xs text-red-600 dark:text-red-400"
+              >
                 {fieldError.message}
               </p>
             )}
@@ -235,7 +239,7 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
               <p
                 id="identity-address-error"
                 role="alert"
-                className="mt-1.5 text-xs text-destructive"
+                className="mt-1.5 text-xs text-red-600 dark:text-red-400"
               >
                 {fieldError.message}
               </p>
@@ -269,7 +273,7 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
                 <p
                   id="identity-city-error"
                   role="alert"
-                  className="mt-1.5 text-xs text-destructive"
+                  className="mt-1.5 text-xs text-red-600 dark:text-red-400"
                 >
                   {fieldError.message}
                 </p>
@@ -303,7 +307,7 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
                 <p
                   id="identity-province-error"
                   role="alert"
-                  className="mt-1.5 text-xs text-destructive"
+                  className="mt-1.5 text-xs text-red-600 dark:text-red-400"
                 >
                   {provinceError}
                 </p>

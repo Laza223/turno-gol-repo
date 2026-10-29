@@ -158,7 +158,11 @@ export function CourtDraftCard({
               className={fieldClass}
             />
             {invalidField === 'name' && errorMessage && (
-              <p id={nameErrorId} role="alert" className="mt-1.5 text-xs text-destructive">
+              <p
+                id={nameErrorId}
+                role="alert"
+                className="mt-1.5 text-xs text-red-600 dark:text-red-400"
+              >
                 {errorMessage}
               </p>
             )}
@@ -209,7 +213,11 @@ export function CourtDraftCard({
               className="placeholder:text-muted-foreground aria-invalid:border-destructive"
             />
             {invalidField === 'price' && errorMessage && (
-              <p id={priceErrorId} role="alert" className="mt-1.5 text-xs text-destructive">
+              <p
+                id={priceErrorId}
+                role="alert"
+                className="mt-1.5 text-xs text-red-600 dark:text-red-400"
+              >
                 {errorMessage}
               </p>
             )}

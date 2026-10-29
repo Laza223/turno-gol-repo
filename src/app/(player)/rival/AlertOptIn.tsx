@@ -71,7 +71,7 @@ export function AlertOptIn({
       : ''
   const [tenantId, setTenantId] = useState(initialTenantId)
   const [onlyGoalkeeper, setOnlyGoalkeeper] = useState(
-    subscribed.find((a) => a.tenantId === initialTenantId)?.onlyGoalkeeper ?? false,
+    () => subscribed.find((a) => a.tenantId === initialTenantId)?.onlyGoalkeeper ?? false,
   )
   // Cuál de las dos acciones tocó el jugador por última vez (decide qué mensaje va).
   const [last, setLast] = useState<'sub' | 'unsub' | null>(null)

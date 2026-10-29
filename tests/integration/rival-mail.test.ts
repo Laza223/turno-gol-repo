@@ -113,7 +113,8 @@ function draft(o: DraftOpts) {
     tenantId: tenant.id,
     startsAt: startsAtIn(48),
     format: 5,
-    capacity: o.capacity,
+    // "Mi equipo busca rival" fija los jugadores al formato (canSeekRival).
+    capacity: o.capacity ?? (o.seeking === 'rival' ? 5 : undefined),
     level: 'parejo',
     courtDeclared: true,
   })

@@ -89,7 +89,6 @@ function welcomeState(over: Record<string, unknown> = {}) {
   return {
     firstName: 'Lazaro',
     welcomed: false,
-    profileComplete: false,
     position: null,
     zone: null,
     ...over,
@@ -394,9 +393,7 @@ describe('Voy, Estoy adentro y Me bajo', () => {
   })
 
   it('reglas de una versión vieja con el perfil completo: re-acepta sin pedir ni pisar posición y zona', async () => {
-    mocks.getRivalWelcomeState.mockResolvedValue(
-      welcomeState({ profileComplete: true, position: 'any', zone: 'Luján' }),
-    )
+    mocks.getRivalWelcomeState.mockResolvedValue(welcomeState({ position: 'any', zone: 'Luján' }))
     mocks.joinByInvite.mockResolvedValue({ status: 'confirmed', joined: true })
     const f = new FormData()
     f.set('firstName', 'Lazaro')
@@ -407,7 +404,7 @@ describe('Voy, Estoy adentro y Me bajo', () => {
 
   it('con todo completo no escribe nada y suma (el servidor decide, no lo que mandó el cliente)', async () => {
     mocks.getRivalWelcomeState.mockResolvedValue(
-      welcomeState({ welcomed: true, profileComplete: true, position: 'any', zone: 'Luján' }),
+      welcomeState({ welcomed: true, position: 'any', zone: 'Luján' }),
     )
     mocks.joinByInvite.mockResolvedValue({ status: 'confirmed', joined: true })
     const f = new FormData()
@@ -495,7 +492,7 @@ describe('un error de estado vencido refresca la vista; el resto no', () => {
   it('el tope de pedidos lleva su código para ofrecer la salida', async () => {
     mocks.getBoardMatch.mockResolvedValue({ id: MATCH, tenantId: TENANT })
     mocks.getRivalWelcomeState.mockResolvedValue(
-      welcomeState({ welcomed: true, profileComplete: true, position: 'any', zone: 'Luján' }),
+      welcomeState({ welcomed: true, position: 'any', zone: 'Luján' }),
     )
     mocks.requestToJoin.mockRejectedValue(new RivalError('rival_limit_requests'))
     expect(await requestToJoinAction(MATCH)).toMatchObject({ code: 'rival_limit_requests' })

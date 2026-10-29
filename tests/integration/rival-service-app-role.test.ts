@@ -176,7 +176,9 @@ async function createOnBoard(
   seeking: 'players' | 'rival',
   o: Parameters<typeof draft>[0] = {},
 ) {
-  const created = await createMatch(playerId, draft(o))
+  // "Mi equipo busca rival" fija los jugadores al formato (canSeekRival).
+  const capacity = o.capacity ?? (seeking === 'rival' ? (o.format ?? 5) : undefined)
+  const created = await createMatch(playerId, draft({ ...o, capacity }))
   await publishToBoard(playerId, created.id, board(seeking))
   return created
 }
@@ -1007,7 +1009,6 @@ describe('8. listEligibleTenants, listUpcomingConfirmedBookings y getRivalWelcom
     const fresh = (await createTestPlayer(su)).id
     expect(await getRivalWelcomeState(fresh)).toMatchObject({
       welcomed: false,
-      profileComplete: false,
       position: null,
       zone: null,
     })
@@ -1015,7 +1016,6 @@ describe('8. listEligibleTenants, listUpcomingConfirmedBookings y getRivalWelcom
     expect(await getRivalWelcomeState(fresh)).toEqual({
       firstName: 'Nuevo',
       welcomed: true,
-      profileComplete: true,
       position: 'any',
       zone: 'Luján',
     })
@@ -1023,7 +1023,6 @@ describe('8. listEligibleTenants, listUpcomingConfirmedBookings y getRivalWelcom
     // Re-aceptación: sigue devolviendo lo que ya había cargado, para precargar la tarjeta.
     expect(await getRivalWelcomeState(fresh)).toMatchObject({
       welcomed: false,
-      profileComplete: true,
       position: 'any',
       zone: 'Luján',
     })
@@ -1036,7 +1035,6 @@ describe('8. listEligibleTenants, listUpcomingConfirmedBookings y getRivalWelcom
     await acceptRivalWelcome(p, { firstName: 'Solo nombre' })
     expect(await getRivalWelcomeState(p)).toMatchObject({
       welcomed: true,
-      profileComplete: false,
       position: null,
       zone: null,
     })
@@ -1061,7 +1059,6 @@ describe('8. listEligibleTenants, listUpcomingConfirmedBookings y getRivalWelcom
     await completeRivalProfile(p, { position: 'goalkeeper', zone: 'Luján' })
     expect(await stamp()).toEqual(before)
     expect(await getRivalWelcomeState(p)).toMatchObject({
-      profileComplete: true,
       position: 'goalkeeper',
     })
     await expect(joinByInvite(p, m.inviteCode)).resolves.toMatchObject({ joined: true })

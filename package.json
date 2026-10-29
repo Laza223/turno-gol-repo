@@ -2,7 +2,7 @@
   "name": "turnogol",
   "version": "0.1.0",
   "private": true,
-  "packageManager": "pnpm@10.34.9",
+  "packageManager": "pnpm@12.16.1",
   "engines": {
     "node": ">=20.9"
   },
@@ -172,41 +172,5 @@
     "typescript-eslint": "^8.72.1",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
-  },
-  "pnpm": {
-    "overrides": {
-      "react": "$react",
-      "react-dom": "$react-dom",
-      "fast-uri": ">=4.1.3",
-      "sharp": ">=0.35.5",
-      "cookie@<0.7.0": "^0.7.0",
-      "postcss@<8.5.10": "^8.5.10",
-      "js-yaml@<3.15.2": "^3.15.2",
-      "mercadopago>uuid": "^11.1.1",
-      "pg-boss>uuid": "^11.1.1",
-      "brace-expansion@5": "^5.0.11",
-      "nanoid@<3.3.17": "^3.3.17",
-      "browserslist@<4.28.7": "^4.28.7",
-      "source-map-js@<1.2.2": "^1.2.2"
-    },
-    "onlyBuiltDependencies": [
-      "@sentry/cli",
-      "esbuild",
-      "sharp",
-      "supabase",
-      "unrs-resolver"
-    ],
-    "packageExtensions": {
-      "@supabase/functions-js": {
-        "peerDependencies": {
-          "tslib": "*"
-        }
-      },
-      "@supabase/supabase-js": {
-        "peerDependencies": {
-          "tslib": "*"
-        }
-      }
-    }
   }
 }

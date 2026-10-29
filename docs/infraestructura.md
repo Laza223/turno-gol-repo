@@ -50,7 +50,7 @@ Si los workers no corren, se cae la mitad invisible del negocio:
 |---|---|---|
 | **Vercel Pro** | Web Next.js | ~US$20 |
 | **Supabase Pro** | DB + Auth + Realtime + backups diarios | ~US$25 |
-| **Railway** (o Render / Fly.io) | **Correr `pnpm jobs:start` 24/7** ← la pieza faltante | ~US$5–10 |
+| **Railway** (o Render / Fly.io) | **Correr `run-workers.ts` 24/7** (con `node --import tsx`, no `pnpm jobs:start`: ver `railway.toml`) ← la pieza faltante | ~US$5–10 |
 | Upstash Redis | Rate-limit / cache | Free → ~US$10 |
 | Resend | Emails transaccionales | Free (3k) → ~US$20 |
 | Sentry | Observabilidad de errores | Free / Team |

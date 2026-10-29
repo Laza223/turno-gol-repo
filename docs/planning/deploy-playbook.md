@@ -3,7 +3,7 @@
 > ⚠️ **Actualización 2026-07-07**: el schema avanzó a **35 migraciones** (027–035: drop open_matches, drop read_only, pricing por franja, format/capacity, cashflow, drop no_show_penalty, closes_next_day). El §2.2 lista solo 001–026; el procedimiento de aplicación (§2.1) sigue idéntico — aplicar las 35 en orden. El fix de BK-01 (§4) ya existe en código: DSN dual `getWorkerSql`/`getWorkerDb` para workers.
 >
 > Verificado contra el código en dev @ `4a3c6c2` (2026-06-12). Cada claim cita `archivo:línea`.
-> Arquitectura de deploy: **web Next.js → Vercel** + **workers pg-boss → Railway** (`railway.toml:1-15`, `Dockerfile.worker:1-31`) + **PostgreSQL/Auth/Realtime → Supabase Pro** (`docs/infraestructura.md` §1-§3). No existe `vercel.json`; el deploy de la web lo hace `.github/workflows/deploy.yml` (Vercel CLI `--prebuilt --prod`) tras CI verde en `main`.
+> Arquitectura de deploy: **web Next.js → Vercel** + **workers pg-boss → Railway** (`railway.toml:1-15`, `Dockerfile.worker:1-31`) + **PostgreSQL/Auth/Realtime → Supabase Pro** (`docs/infraestructura.md` §1-§3). El build de la web lo hace Vercel desde la integración de git (los previews están apagados en `vercel.json`: `docs/decisions/2026-08-26-preview-deshabilitado.md`). Instala con el pnpm de `packageManager` vía corepack, lo que **exige `ENABLE_EXPERIMENTAL_COREPACK=1` en Production** (cargada el 2026-10-29) y una corepack ≥0.34.5. Sin la variable, Vercel usa pnpm 10, que no lee `pnpm-workspace.yaml` y el build pierde los overrides.
 
 ---
 
@@ -199,7 +199,7 @@ supabase migration list   # verifica qué quedó registrado en supabase_migratio
 - [ ] **Rol de servicio de los workers (BK-01 — riesgo abierto)**: los workers pg-boss acceden a la DB con `getSql()`/`getDb()` **sin `SET LOCAL` de tenant** (ej. `src/modules/bookings/booking.expiry.ts:38,105,172`, invocado por `src/shared/jobs/workers/expire-pending-booking.worker.ts:28`). Con FORCE RLS (021) y policies que exigen `app.current_tenant_id` (`006_rls_policies.sql:83-91`), un rol **sin** BYPASSRLS ve 0 filas → los sweeps no expiran nada, los webhooks no confirman reservas, y nada tira error visible. **Requisito exacto**: el `DATABASE_URL` de Railway debe autenticar con un rol que ignore RLS — el rol `postgres` de Supabase (que tiene `rolbypassrls=true` en Supabase gestionado) o un rol dedicado `CREATE ROLE turnogol_worker LOGIN BYPASSRLS ...` con GRANTs sobre `public` y `pgboss`. Es el opuesto deliberado del rol de la web (que `launch:check` obliga a NO bypassear). Hoy los tests pasan porque CI corre como `postgres` — verificar el rol real de Railway con la query (a) de arriba conectado con ESE URL, esperando `rolbypassrls = t`.
 - [ ] **`NEXT_PUBLIC_E2E` y `MP_MOCK_MODE` ausentes en Vercel prod**: `vercel env ls production | grep -E 'E2E|MOCK'` → vacío (guards en `mock-mp.ts:20-24` y `launch-check.ts:144-151`).
 - [ ] **Resend**: dominio `turnogol.app` verificado (SPF+DKIM+DMARC) — el From está hardcodeado a `no-reply@turnogol.app` (`src/modules/notifications/email.provider.ts:23`).
-- [ ] **Worker deployado en Railway**: servicio con `Dockerfile.worker`, `startCommand pnpm jobs:start` (`railway.toml:10`), env §1 cargado, `DATABASE_URL` **directa `:5432`** y con rol BYPASSRLS (ítem anterior).
+- [ ] **Worker deployado en Railway**: servicio con `Dockerfile.worker`, `startCommand node --import tsx src/shared/jobs/run-workers.ts` (`railway.toml`, sección `[deploy]`), env §1 cargado, `DATABASE_URL` **directa `:5432`** y con rol BYPASSRLS (ítem anterior).
 
 ---
 

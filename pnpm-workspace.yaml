@@ -1,0 +1,33 @@
+overrides:
+  react: $react
+  react-dom: $react-dom
+  fast-uri: '>=4.1.3'
+  sharp: '>=0.35.5'
+  'cookie@<0.7.0': '^0.7.0'
+  'postcss@<8.5.10': '^8.5.10'
+  'js-yaml@<3.15.2': '^3.15.2'
+  'mercadopago>uuid': '^11.1.1'
+  'pg-boss>uuid': '^11.1.1'
+  'brace-expansion@5': '^5.0.11'
+  'nanoid@<3.3.17': '^3.3.17'
+  'browserslist@<4.28.7': '^4.28.7'
+  'source-map-js@<1.2.2': '^1.2.2'
+allowBuilds:
+  '@sentry/cli': true
+  esbuild: true
+  sharp: true
+  supabase: true
+  unrs-resolver: true
+packageExtensions:
+  '@supabase/functions-js':
+    peerDependencies:
+      tslib: '*'
+  '@supabase/supabase-js':
+    peerDependencies:
+      tslib: '*'
+publicHoistPattern:
+  - '*tslib*'
+# Como en pnpm 10: `pnpm run` no reverifica dependencias. Con el default de
+# pnpm 11+ cada script revisa el lock contra minimumReleaseAge (4-7 s), y el
+# worker en Docker (`pnpm jobs:start`) lo haría en cada arranque.
+verifyDepsBeforeRun: false

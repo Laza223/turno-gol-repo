@@ -1,6 +1,6 @@
 # Dockerfile para el servicio de WORKERS (pg-boss), no para la web.
 # La web (Next.js) se deploya en Vercel; este contenedor corre el proceso
-# Node 24/7 que procesa los background jobs (`pnpm jobs:start`).
+# Node 24/7 que procesa los background jobs (lo mismo que `pnpm jobs:start`).
 #
 # Pensado para Railway / Render / Fly.io. Los workers corren con tsx
 # (sin build): se ejecuta TypeScript directo, igual que en local.
@@ -10,13 +10,13 @@
 FROM node:22-slim
 
 # pnpm vía corepack, pinneado a la versión del repo (packageManager).
-RUN corepack enable && corepack prepare pnpm@10.34.9 --activate
+RUN corepack enable && corepack prepare pnpm@12.16.1 --activate
 
 WORKDIR /app
 
 # Instalar dependencias primero (capa cacheable). Se instalan TODAS las deps
 # —incluida tsx (devDependency)— porque el worker se ejecuta con tsx.
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
 # Código fuente (tsx resuelve los alias `@/` desde tsconfig.json).
@@ -43,4 +43,8 @@ ENV NODE_ENV=production
 # que además ya valida la cadena contra la raíz de Supabase. Ver
 # docs/audit/2026-08-25-auditoria-infra.md §11-12 y §22, y el mismo
 # razonamiento en railway.toml.
-CMD ["pnpm", "jobs:start"]
+#
+# Node directo y no `pnpm jobs:start`, para que el SIGTERM llegue a
+# `run-workers.ts` y apague pg-boss. El porqué está en railway.toml, cuyo
+# `startCommand` pisa este CMD.
+CMD ["node", "--import", "tsx", "src/shared/jobs/run-workers.ts"]

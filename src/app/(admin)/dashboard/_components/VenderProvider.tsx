@@ -121,7 +121,8 @@ export function VenderProvider({
   // pantalla.
   useEffect(() => {
     function onKeyDown(e: globalThis.KeyboardEvent) {
-      if (e.key.toLowerCase() !== 'v' || e.repeat) return
+      // El autocompletado del navegador dispara keydown sin `key`, aunque el tipo diga string.
+      if (e.key?.toLowerCase() !== 'v' || e.repeat) return
       if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || isTyping(e.target)) return
       if (document.querySelector(OPEN_OVERLAY)) return
       e.preventDefault()

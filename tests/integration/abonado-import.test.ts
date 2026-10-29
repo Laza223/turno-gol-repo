@@ -283,10 +283,11 @@ describe('importar turnos fijos desde una planilla', () => {
         slotCount: 0,
         skippedDates: [],
       },
-      // No es el mismo horario exacto, pero todos sus lunes chocan con el fijo.
+      // No es el mismo horario exacto, pero se solapa con el fijo: es el mismo
+      // choque que el constraint no_overlapping_abonados rechazaría al confirmar.
       {
         line: 3,
-        errors: ['Todas las fechas de este horario ya están reservadas'],
+        errors: ['Ya hay un turno fijo activo en ese horario'],
         slotCount: 0,
         skippedDates: [],
       },

@@ -126,7 +126,14 @@ function makeTenant(overrides: Partial<PublicTenant> = {}): PublicTenant {
 }
 
 function makeContext(overrides: Partial<ToolContext> = {}): ToolContext {
-  return { tenant: makeTenant(), chatId: CHAT_ID, waPhone: WA_PHONE, now: NOW, ...overrides }
+  return {
+    tenant: makeTenant(),
+    chatId: CHAT_ID,
+    waPhone: WA_PHONE,
+    now: NOW,
+    phoneBookings: [],
+    ...overrides,
+  }
 }
 
 function toolNamed(ctx: ToolContext, name: string): BotTool {
@@ -797,6 +804,26 @@ describe('cancelar — dos pasos, solo reservas de este chat', () => {
     })
     expect(JSON.parse(out)).toEqual({ error: 'no_encontrada' })
     expect(mocks.cancelByGuest).not.toHaveBeenCalled()
+  })
+
+  it('un turno de este teléfono que no salió del chat → reservada_por_otro_lado, sin cancelar', async () => {
+    mocks.findChatBookingForCancel.mockResolvedValue(null)
+    const ctx = makeContext({
+      phoneBookings: [
+        { date: '2026-10-25', timeStart: '21:00:00', courtName: 'cancha 1', fixed: true },
+      ],
+    })
+    const out = await toolNamed(ctx, 'cancelar').run({ ...cancelInputOk, confirmar: true })
+    expect(JSON.parse(out)).toEqual({ error: 'reservada_por_otro_lado' })
+    expect(mocks.cancelByGuest).not.toHaveBeenCalled()
+
+    // Otro horario del mismo teléfono no alcanza: sigue siendo no_encontrada.
+    const other = await toolNamed(ctx, 'cancelar').run({
+      ...cancelInputOk,
+      hora: '22:00',
+      confirmar: true,
+    })
+    expect(JSON.parse(other)).toEqual({ error: 'no_encontrada' })
   })
 
   it('pendiente de pago → pendiente_de_pago sin cancelar (el hold se libera solo)', async () => {

@@ -1,9 +1,11 @@
 import type Anthropic from '@anthropic-ai/sdk'
-import { and, asc, count, desc, eq, gt, gte, inArray, isNull, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gt, gte, inArray, isNull, ne, or, sql } from 'drizzle-orm'
 import { getDb, withTenantContext } from '@/shared/db/client'
 import {
+  abonados,
   bookings,
   courts,
+  players,
   tenants,
   whatsappChats,
   whatsappConnections,
@@ -14,9 +16,16 @@ import { logger } from '@/shared/lib/logger'
 import { captureException } from '@/lib/sentry'
 import { sendWhatsappText } from '@/lib/kapso/client'
 import type { CourtPricingData } from '@/modules/courts/court.types'
+import { PHONE_HINT_DIGITS } from '@/modules/bookings/guest-late-cancel'
+import { suggestionPhoneSql } from '@/modules/relationships/contact-identity'
 import { getPublicCourtCards, getPublicTenant } from '@/modules/tenants/public.service'
 import { runAgent } from './whatsapp-bot.agent'
-import { buildChatBookings, buildComplexContext, type ChatBooking } from './whatsapp-bot.prompt'
+import {
+  buildChatBookings,
+  buildComplexContext,
+  buildPhoneBookings,
+  type ChatBooking,
+} from './whatsapp-bot.prompt'
 import { buildBotTools, pauseChatForHuman } from './whatsapp-bot.tools'
 import { BOT_FEATURE_FLAG, isBotTenantOpen } from './whatsapp-bot.connection'
 
@@ -295,6 +304,42 @@ export async function processWhatsappTurn(
       )
       .orderBy(asc(bookings.startsAt))
       .limit(5)
+    // Los turnos de este teléfono que no salieron del chat: cargados por el
+    // staff, sesiones de un turno fijo o reservas de la página. Mismo cruce por
+    // los últimos 8 dígitos que la sugerencia de /jugadores.
+    const hint =
+      chat && chat.waPhone.length >= PHONE_HINT_DIGITS
+        ? chat.waPhone.slice(-PHONE_HINT_DIGITS)
+        : null
+    const phoneBookings = hint
+      ? await tx
+          .select({
+            date: sql<string>`to_char(${bookings.date}, 'YYYY-MM-DD')`,
+            timeStart: bookings.timeStart,
+            courtName: courts.name,
+            type: bookings.type,
+          })
+          .from(bookings)
+          .innerJoin(courts, eq(courts.id, bookings.courtId))
+          .leftJoin(players, eq(players.id, bookings.playerId))
+          .leftJoin(abonados, eq(abonados.id, bookings.abonadoId))
+          .where(
+            and(
+              eq(bookings.tenantId, tenantId),
+              or(isNull(bookings.whatsappChatId), ne(bookings.whatsappChatId, chatId)),
+              eq(bookings.status, 'confirmed'),
+              inArray(bookings.type, ['spontaneous', 'fixed']),
+              gt(bookings.endsAt, now),
+              or(
+                sql`${sql.raw(suggestionPhoneSql('bookings.guest_phone'))} = ${hint}`,
+                eq(players.phoneHint8, hint),
+                sql`${sql.raw(suggestionPhoneSql('abonados.contact_phone'))} = ${hint}`,
+              ),
+            ),
+          )
+          .orderBy(asc(bookings.startsAt))
+          .limit(5)
+      : []
     const courtPricing = await tx
       .select({ id: courts.id, pricing: courts.pricing })
       .from(courts)
@@ -306,6 +351,7 @@ export async function processWhatsappTurn(
         ...b,
         status: b.status as ChatBooking['status'],
       })),
+      phoneBookings: phoneBookings.map(({ type, ...b }) => ({ ...b, fixed: type === 'fixed' })),
       priceRules: new Map(
         courtPricing.map((c) => [c.id, (c.pricing as CourtPricingData | null)?.rules ?? []]),
       ),
@@ -363,7 +409,7 @@ export async function processWhatsappTurn(
 
   const phoneNumberId = state.connection.phoneNumberId
   const to = state.chat.waPhone
-  const ctx = { tenant, chatId, waPhone: to, now }
+  const ctx = { tenant, chatId, waPhone: to, now, phoneBookings: state.phoneBookings }
 
   let reply = FALLBACK_REPLY
   let usage: { inputTokens: number; cachedTokens: number; outputTokens: number } | undefined
@@ -376,7 +422,11 @@ export async function processWhatsappTurn(
       priceRules: tenant.hidePrices ? [] : (state.priceRules.get(c.id) ?? []),
     }))
     const result = await runAgent({
-      complexContext: `${buildComplexContext(tenant, courts, now)}\n\n${buildChatBookings(tenant, state.chatBookings)}`,
+      complexContext: [
+        buildComplexContext(tenant, courts, now),
+        buildChatBookings(tenant, state.chatBookings),
+        buildPhoneBookings(tenant, state.phoneBookings),
+      ].join('\n\n'),
       history,
       tools: buildBotTools(ctx, courts),
     })

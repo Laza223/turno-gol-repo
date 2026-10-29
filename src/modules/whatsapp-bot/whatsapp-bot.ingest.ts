@@ -11,9 +11,9 @@ import { BOT_FEATURE_FLAG, isBotTenantOpen } from './whatsapp-bot.connection'
  * contestar en menos de 10 s: acá no se llama al modelo ni a Kapso.
  *
  * Minimización (Ley 25.326): con el asistente apagado no se guarda NADA; y el
- * eco de lo que el dueño escribe desde su celular solo se registra en chats
- * donde el jugador ya le habló al asistente — nunca crea un chat para un
- * proveedor o un familiar al que el dueño le escribe.
+ * texto que el dueño escribe desde su celular solo se registra en chats donde
+ * el jugador ya escribió. Si el dueño abre la charla, del número queda el
+ * teléfono y la pausa, sin nombre ni texto (decisión del 2026-10-29).
  */
 
 /** Cuánto se calla el bot en un chat después de que el dueño contestó a mano. */
@@ -105,7 +105,8 @@ export async function ingestWhatsappEvents(
         .insert(whatsappChats)
         .values({
           tenantId,
-          waPhone: event.from,
+          // Misma forma que el chat que abre el dueño: si no, el jugador caería en otro.
+          waPhone: inboundForm(event.from),
           displayName: event.contactName,
           lastInboundAt: now,
         })
@@ -153,10 +154,21 @@ function sameMobile(phone: string): string[] {
   return [phone]
 }
 
+/** Un celular argentino sin el 9 pasa a la forma en que llega el entrante. */
+function inboundForm(phone: string): string {
+  return phone.length === 12 && phone.startsWith('54') && !phone.startsWith('549')
+    ? `549${phone.slice(2)}`
+    : phone
+}
+
 /**
- * El dueño contestó desde su celular: el bot se calla en ese chat. Solo si el
- * chat ya existe (el jugador le habló al asistente); a cualquier otro número
- * no se le guarda nada.
+ * El dueño escribió desde su celular: el bot se calla en ese chat.
+ *
+ * Si el número nunca le escribió al asistente (el dueño abrió la charla), el
+ * chat se crea igual, pausado: si el jugador contesta, el bot no se mete en una
+ * charla que no vio. Su `last_inbound_at` queda en la creación, así la purga de
+ * 30 días lo borra. Lo que escribe el dueño se guarda solo después de que el
+ * jugador escribió.
  */
 async function recordOwnerReply(
   tenantId: string,
@@ -164,7 +176,7 @@ async function recordOwnerReply(
   now: Date,
 ): Promise<void> {
   await withTenantContext(tenantId, async (tx) => {
-    const [chat] = await tx
+    const [existing] = await tx
       .select({ id: whatsappChats.id })
       .from(whatsappChats)
       .where(
@@ -174,23 +186,47 @@ async function recordOwnerReply(
         ),
       )
       .limit(1)
+    const [chat] = existing
+      ? [existing]
+      : await tx
+          .insert(whatsappChats)
+          .values({ tenantId, waPhone: inboundForm(event.to) })
+          // Carrera con un entrante del mismo número: no pisa nada, solo trae el id.
+          .onConflictDoUpdate({
+            target: [whatsappChats.tenantId, whatsappChats.waPhone],
+            set: { waPhone: sql`excluded.wa_phone` },
+          })
+          .returning({ id: whatsappChats.id })
     if (!chat) return
 
-    const inserted = await tx
-      .insert(whatsappMessages)
-      .values({
-        tenantId,
-        chatId: chat.id,
-        direction: 'owner',
-        waMessageId: event.waMessageId,
-        kind: 'text',
-        body: event.text,
-        // El echo del dueño no lo consume ningún turno.
-        processedAt: now,
-      })
-      .onConflictDoNothing({ target: whatsappMessages.waMessageId })
-      .returning({ id: whatsappMessages.id })
-    if (inserted.length === 0) return
+    const [playerWrote] = await tx
+      .select({ id: whatsappMessages.id })
+      .from(whatsappMessages)
+      .where(
+        and(
+          eq(whatsappMessages.tenantId, tenantId),
+          eq(whatsappMessages.chatId, chat.id),
+          eq(whatsappMessages.direction, 'inbound'),
+        ),
+      )
+      .limit(1)
+    if (playerWrote) {
+      const inserted = await tx
+        .insert(whatsappMessages)
+        .values({
+          tenantId,
+          chatId: chat.id,
+          direction: 'owner',
+          waMessageId: event.waMessageId,
+          kind: 'text',
+          body: event.text,
+          // El echo del dueño no lo consume ningún turno.
+          processedAt: now,
+        })
+        .onConflictDoNothing({ target: whatsappMessages.waMessageId })
+        .returning({ id: whatsappMessages.id })
+      if (inserted.length === 0) return
+    }
 
     // GREATEST: si el chat ya estaba pausado más tiempo (pase a humano, pausa
     // manual), contestar a mano no le acorta la pausa.

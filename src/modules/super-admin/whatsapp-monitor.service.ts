@@ -161,7 +161,9 @@ export async function listSilentNumbers(db: Db, now: Date): Promise<SilentNumber
     SELECT c.tenant_id AS "tenantId", t.name AS "tenantName",
            t.opening_hours AS "openingHours", t.closes_next_day AS "closesNextDay",
            GREATEST(c.created_at, c.updated_at) AS floor,
-           (SELECT MAX(ch.last_inbound_at) FROM whatsapp_chats ch WHERE ch.tenant_id = c.tenant_id)
+           -- Mensajes y no chats.last_inbound_at: un chat que abrió el dueño no es un entrante.
+           (SELECT MAX(m.created_at) FROM whatsapp_messages m
+             WHERE m.tenant_id = c.tenant_id AND m.direction = 'inbound')
              AS "lastInboundAt"
     FROM whatsapp_connections c
     JOIN tenants t ON t.id = c.tenant_id

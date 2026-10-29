@@ -47,7 +47,10 @@ export default async function OnboardingListoPage() {
           </ListoRevealItem>
 
           <ListoRevealItem>
-            <h2 tabIndex={-1} className="mt-4 text-2xl font-bold tracking-tight text-foreground">
+            <h2
+              tabIndex={-1}
+              className="mt-4 text-2xl font-bold tracking-tight text-foreground focus:outline-hidden"
+            >
               ¡Tu complejo está online!
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">

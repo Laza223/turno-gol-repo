@@ -142,6 +142,21 @@ export const RevisitaEditando: Story = {
   },
 }
 
+/** Nombre vacío: sin popup nativo (`noValidate`), error bajo el campo y foco en él. */
+export const NombreVacio: Story = {
+  args: { action: fn(async () => ({ success: true as const })) },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: /continuar/i }))
+    const name = canvas.getByLabelText(/nombre del complejo/i)
+    const error = await canvas.findByRole('alert')
+    await expect(error).toHaveTextContent('Poné el nombre del complejo.')
+    await expect(name).toHaveAttribute('aria-invalid', 'true')
+    await expect(name).toHaveAttribute('aria-describedby', error.id)
+    await expect(name).toHaveFocus()
+  },
+}
+
 export const Enviando: Story = {
   args: { action: fn(enviandoIdentidad.action) },
   play: async ({ canvasElement }) => {

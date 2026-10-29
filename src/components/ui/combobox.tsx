@@ -299,7 +299,7 @@ export default function Combobox({
                 lastPointer.current = { x: e.clientX, y: e.clientY }
                 if (moved && activeIndex !== i) setActiveIndex(i)
               }}
-              className={`flex cursor-pointer select-none items-center justify-between gap-3 px-2.5 py-2 text-sm rounded-lg outline-hidden transition-all duration-200 ${
+              className={`flex min-h-11 md:min-h-0 cursor-pointer select-none items-center justify-between gap-3 px-2.5 py-2 text-sm rounded-lg outline-hidden transition-all duration-200 ${
                 i === activeIndex ? 'bg-accent text-accent-foreground' : 'text-foreground/90'
               }`}
             >

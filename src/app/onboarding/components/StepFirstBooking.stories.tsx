@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { pendingAction } from '@/test/pending-action'
 import type { FirstBookingCourtSlots } from '@/modules/onboarding/onboarding.service'
 import type { CreateFirstBookingResult } from '@/modules/onboarding/onboarding.types'
@@ -86,6 +86,21 @@ export const ErrorAlConfirmar: Story = {
   },
 }
 
+/** Nombre vacío: error de campo (no el alert del server), input marcado y con el foco. */
+export const NombreVacio: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: '18:00' }))
+    await userEvent.click(canvas.getByRole('button', { name: /confirmar turno/i }))
+    const input = canvas.getByLabelText(/a nombre de quién/i)
+    const error = await canvas.findByRole('alert')
+    await expect(error).toHaveTextContent('Poné a nombre de quién va el turno.')
+    await expect(input).toHaveAttribute('aria-invalid', 'true')
+    await expect(input).toHaveAttribute('aria-describedby', error.id)
+    await expect(input).toHaveFocus()
+  },
+}
+
 /** Turno cargado: banner de éxito + el CTA primario cambia a "Terminar y ver mi complejo". */
 export const TurnoCargado: Story = {
   play: async ({ canvasElement }) => {
@@ -93,9 +108,13 @@ export const TurnoCargado: Story = {
     await userEvent.click(canvas.getByRole('button', { name: '18:00' }))
     await userEvent.type(canvas.getByLabelText(/a nombre de quién/i), 'Juan')
     await userEvent.click(canvas.getByRole('button', { name: /confirmar turno/i }))
-    await expect(
-      await canvas.findByText('¡Turno cargado! Ya está en tu grilla.'),
-    ).toBeInTheDocument()
+    const banner = await canvas.findByRole('status')
+    await expect(within(banner).getByText('¡Turno cargado!')).toBeInTheDocument()
+    await expect(banner).toHaveTextContent('Juan · Cancha 1 · 18:00–19:00')
+    await expect(banner).toHaveTextContent('Ya está en tu grilla')
+    await expect(banner).toHaveTextContent('«Cancelar reserva»')
+    // El mini-form se desmontó: el foco lo recoge el banner, no cae a BODY.
+    await waitFor(() => expect(banner).toHaveFocus())
     await expect(canvas.getByRole('button', { name: /terminar y ver mi complejo/i })).toBeVisible()
     await expect(
       canvas.queryByRole('button', { name: /saltar por ahora/i }),

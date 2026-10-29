@@ -58,6 +58,17 @@ const expectTouchTarget = async (link: HTMLElement, root: HTMLElement) => {
   }
 }
 
+/** "Entrar a mi panel" → /login y "Registrar mi complejo" → /register, cada uno con 44 px de toque. */
+const expectComplejoLinks = async (root: HTMLElement) => {
+  const canvas = within(root)
+  const panel = canvas.getByRole('link', { name: 'Entrar a mi panel' })
+  await expect(panel).toHaveAttribute('href', '/login')
+  await expectTouchTarget(panel, root)
+  const register = canvas.getByRole('link', { name: 'Registrar mi complejo' })
+  await expect(register).toHaveAttribute('href', '/register')
+  await expectTouchTarget(register, root)
+}
+
 export const Idle: Story = {
   args: { action: fn(async () => ({ status: 'idle' as const })) },
   play: async ({ canvasElement }) => {
@@ -65,6 +76,8 @@ export const Idle: Story = {
     const explore = within(canvasElement).getByRole('link', { name: /Descubrí complejos/ })
     await expect(explore).toHaveAttribute('href', '/explorar')
     await expectTouchTarget(explore, canvasElement)
+    // La puerta del complejo: sin ella, desde el celu el dueño no llegaba a /login ni a /register.
+    await expectComplejoLinks(canvasElement)
     // El placeholder es el ejemplo del formato: axe no lo mide, y con el /60 de ui/input.tsx daba 2,87:1.
     const email = within(canvasElement).getByLabelText('Email')
     await expect(email).toHaveAttribute('placeholder', 'vos@email.com')
@@ -170,6 +183,8 @@ export const Enviado: Story = {
     )
     await expectTouchTarget(firstTime, canvasElement)
     await expect(canvas.getByRole('button', { name: 'Continuar con Google' })).toBeEnabled()
+    // Quien tipeó el mail del complejo espera un enlace que no llega: la puerta sigue a la vista.
+    await expectComplejoLinks(canvasElement)
   },
 }
 

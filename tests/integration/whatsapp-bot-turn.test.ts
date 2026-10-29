@@ -3,6 +3,7 @@ import { faker } from '@faker-js/faker'
 import { closeSql } from '@/shared/db/client'
 import { clearFeatureFlagCache } from '@/shared/feature-flags'
 import { DAY_KEYS } from '@/shared/time/week-days'
+import { addDays, artTodayStr } from '@/shared/dates/art'
 import type { NormalizedWhatsappEvent } from '@/lib/kapso/events.schema'
 import { sendWhatsappText } from '@/lib/kapso/client'
 import { captureException } from '@/lib/sentry'
@@ -12,8 +13,15 @@ import { ingestWhatsappEvents } from '@/modules/whatsapp-bot/whatsapp-bot.ingest
 import { processWhatsappTurn } from '@/modules/whatsapp-bot/whatsapp-bot.turn'
 import { runAgent, type AgentResult } from '@/modules/whatsapp-bot/whatsapp-bot.agent'
 import { adminSql } from '../helpers/admin-db'
-import { asApp, createTestTenant, ensureRoles } from '../helpers/tenant'
 import {
+  asApp,
+  createTestPlayer,
+  createTestTenant,
+  ensureRoles,
+  linkPlayerToTenant,
+} from '../helpers/tenant'
+import {
+  insertAbonado,
   insertBooking,
   insertCourt,
   insertWhatsappChat,
@@ -543,6 +551,96 @@ describe('processWhatsappTurn — respuesta', () => {
     expect(complexContext).toMatch(/de 18:00 a 00:00: \$\s*35\.000/)
     expect(complexContext).toContain('a las 21:00, Cancha Uno: confirmada, se paga en el complejo')
     expect(complexContext).not.toContain('a las 19:00')
+  })
+
+  // El 29/10 el bot le dijo "no figura ninguna reserva a tu nombre" a un jugador
+  // con turno para hoy: solo veía lo que se había reservado por el chat.
+  it('el contexto lista los turnos de ESTE teléfono que no salieron del chat (staff, cuenta, turno fijo)', async () => {
+    const sql = adminSql()
+    const s = await seed()
+    const chatId = await addChat(s)
+    const courtId = await insertCourt(sql, s.tenantId)
+    await sql`UPDATE courts SET name = 'Cancha Tel' WHERE id = ${courtId}`
+    const d8 = s.phone.slice(-8)
+    const at = (timeStart: string, date?: string) =>
+      insertBooking(sql, {
+        tenantId: s.tenantId,
+        courtId,
+        timeStart,
+        timeEnd: `${String(Number(timeStart.slice(0, 2)) + 1).padStart(2, '0')}:00`,
+        status: 'confirmed',
+        date,
+      })
+
+    // Cargado por el staff, con el teléfono escrito como lo escribe la gente.
+    const staff = await at('10:00')
+    await sql`UPDATE bookings SET guest_phone = ${`+54 9 11 ${d8.slice(0, 4)}-${d8.slice(4)}`} WHERE id = ${staff}`
+    // Reserva de un jugador con cuenta: el teléfono está en `players`.
+    const player = await createTestPlayer(sql)
+    await sql`UPDATE players SET phone = ${`11${d8}`} WHERE id = ${player.id}`
+    await linkPlayerToTenant(sql, s.tenantId, player.id)
+    const web = await at('11:00')
+    await sql`UPDATE bookings SET player_id = ${player.id} WHERE id = ${web}`
+    // Sesión de un turno fijo sin cuenta: el teléfono está en `abonados`.
+    const abonadoId = await insertAbonado(sql, s.tenantId, courtId)
+    await sql`UPDATE abonados SET contact_phone = ${`(11) ${d8}`} WHERE id = ${abonadoId}`
+    const fixed = await at('12:00')
+    await sql`UPDATE bookings SET type = 'fixed', abonado_id = ${abonadoId} WHERE id = ${fixed}`
+
+    // Lo que NO va: otro teléfono, uno cancelado, uno que ya pasó, uno de este chat
+    // (ese va en "Reservas de este chat"), una seña sin pagar y otro complejo.
+    const otherPhone = await at('13:00')
+    await sql`UPDATE bookings SET guest_phone = ${'5491100000000'} WHERE id = ${otherPhone}`
+    // El teléfono va antes de cancelar: una reserva terminal ya no se puede editar.
+    const canceled = await at('14:00')
+    await sql`UPDATE bookings SET guest_phone = ${s.phone} WHERE id = ${canceled}`
+    await sql`UPDATE bookings SET status = 'canceled_no_refund', canceled_at = now() WHERE id = ${canceled}`
+    const past = await at('15:00', addDays(artTodayStr(), -2))
+    await sql`UPDATE bookings SET guest_phone = ${s.phone} WHERE id = ${past}`
+    const fromChat = await at('16:00')
+    await sql`UPDATE bookings SET guest_phone = ${s.phone}, whatsapp_chat_id = ${chatId} WHERE id = ${fromChat}`
+    // Una seña sin pagar todavía no es un turno.
+    const unpaid = await insertBooking(sql, {
+      tenantId: s.tenantId,
+      courtId,
+      timeStart: '17:00',
+      timeEnd: '18:00',
+      status: 'pending_payment',
+      depositStatus: 'pending',
+      depositAmount: 240000,
+    })
+    await sql`UPDATE bookings SET guest_phone = ${s.phone} WHERE id = ${unpaid}`
+    // El mismo teléfono en OTRO complejo: nunca cruza.
+    const otherTenant = await createTestTenant(sql)
+    const otherCourt = await insertCourt(sql, otherTenant.id)
+    const foreign = await insertBooking(sql, {
+      tenantId: otherTenant.id,
+      courtId: otherCourt,
+      timeStart: '18:00',
+      timeEnd: '19:00',
+      status: 'confirmed',
+    })
+    await sql`UPDATE bookings SET guest_phone = ${s.phone} WHERE id = ${foreign}`
+
+    const now = new Date()
+    await seedMessage(s, chatId, {
+      direction: 'inbound',
+      body: 'quiero mover mi turno',
+      createdAt: ago(now, MINUTE_MS),
+    })
+
+    expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId }, now)).toBe('replied')
+
+    const { complexContext } = vi.mocked(runAgent).mock.calls[0]![0]
+    const [chatPart, phonePart] = complexContext.split('# Otros turnos de este teléfono\n')
+    expect(phonePart).toBeDefined()
+    expect(phonePart).toContain('a las 10:00, Cancha Tel\n')
+    expect(phonePart).toContain('a las 11:00, Cancha Tel\n')
+    expect(phonePart).toContain('a las 12:00, Cancha Tel (turno fijo)')
+    for (const hour of ['13:00', '14:00', '15:00', '16:00', '17:00', '18:00']) {
+      expect(phonePart).not.toContain(`a las ${hour}`)
+    }
+    expect(chatPart).toContain('a las 16:00, Cancha Tel: confirmada')
   })
 
   it('un entrante que llega mientras corre el modelo queda sin procesar para el próximo turno', async () => {

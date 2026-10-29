@@ -4,6 +4,7 @@ import {
   buildChatBookings,
   buildComplexContext,
   buildDaysTable,
+  buildPhoneBookings,
   operatingToday,
   type BotCourtCard,
   type ChatBooking,
@@ -395,9 +396,18 @@ describe('SYSTEM_RULES (bloque cacheado)', () => {
     }
   })
 
-  it('las cancelaciones las resuelve el bot en dos pasos: ya no se derivan a una persona', () => {
-    expect(SYSTEM_RULES).toContain('Para cancelar, llamá a cancelar sin confirmar')
+  it('las reservas del chat las cancela el bot en dos pasos; las de otro origen se derivan', () => {
+    expect(SYSTEM_RULES).toContain(
+      'Para cancelar una de "Reservas de este chat", llamá a cancelar sin confirmar',
+    )
     expect(SYSTEM_RULES).not.toMatch(/cancelaciones,/)
+    expect(SYSTEM_RULES).toContain('nunca le digas que no existe ni que no tiene reserva')
+  })
+
+  // El 29/10 un jugador escribió "Zurdo, ¿cómo estás?" y el bot lo llamó Zurdo.
+  it('el bot se presenta como asistente virtual y no llama a nadie por su nombre', () => {
+    expect(SYSTEM_RULES).toContain('Sos un asistente virtual, no una persona del complejo')
+    expect(SYSTEM_RULES).toContain('No llames al jugador por ningún nombre')
   })
 
   it('cierra con la regla de que las reglas valen para toda la conversación', () => {
@@ -448,5 +458,23 @@ describe('buildChatBookings', () => {
     expect(buildChatBookings(makeTenant(), [booking({ timeStart: '01:00:00' })])).not.toContain(
       'medianoche',
     )
+  })
+})
+
+describe('buildPhoneBookings', () => {
+  it('sin turnos lo dice explícito', () => {
+    expect(buildPhoneBookings(makeTenant(), [])).toBe('# Otros turnos de este teléfono\n- Ninguno.')
+  })
+
+  it('lista día, hora y cancha, y marca el turno fijo', () => {
+    const text = buildPhoneBookings(makeTenant(), [
+      { date: '2026-10-23', timeStart: '21:00:00', courtName: 'Cancha 2', fixed: false },
+      { date: '2026-10-24', timeStart: '20:00:00', courtName: 'Cancha 1', fixed: true },
+    ])
+    expect(text.split('\n')).toEqual([
+      '# Otros turnos de este teléfono',
+      '- viernes 23/10 a las 21:00, Cancha 2',
+      '- sábado 24/10 a las 20:00, Cancha 1 (turno fijo)',
+    ])
   })
 })

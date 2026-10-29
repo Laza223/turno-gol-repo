@@ -41,7 +41,7 @@ import {
   notifyAdminPush,
 } from '@/modules/notifications/push.service'
 import { ToolInputError, type BotTool } from './whatsapp-bot.agent'
-import { complexPageUrl, operatingToday } from './whatsapp-bot.prompt'
+import { complexPageUrl, operatingToday, type PhoneBooking } from './whatsapp-bot.prompt'
 
 /**
  * Herramientas del bot. El complejo y el chat van por CLAUSURA: el modelo no
@@ -59,6 +59,8 @@ export type ToolContext = {
   waPhone: string
   /** Cuándo se pausa el chat al pasar a humano. */
   now: Date
+  /** Turnos de este teléfono que no salieron del chat: el bot los ve, no los toca. */
+  phoneBookings: PhoneBooking[]
 }
 
 /** Motivos de pase a humano. ENUM cerrado: nunca texto del modelo (Ley 25.326). */
@@ -383,7 +385,7 @@ function cancelTool(ctx: ToolContext, courts: BotCourt[]): BotTool {
       description:
         'Cancela una reserva confirmada de ESTE chat. Funciona en dos pasos: primero llamala con confirmar false, que NO cancela y devuelve la consecuencia; contásela al jugador en una línea y llamala con confirmar true solo si te confirma que quiere cancelar. ' +
         'Consecuencias: se_devuelve_la_sena (la seña queda a devolver por el complejo); pierde_la_sena; sin_consecuencia; aviso (cancela tarde, esta vez es solo un aviso); bloqueo con dias (cancela tarde y no va a poder reservar por el bot ese tiempo). ' +
-        'Con confirmar true devuelve estado cancelada (si el pedido se repite y ya estaba cancelada, también) y, si hay bloqueo, hasta (dd/mm HH:MM). Errores: no_encontrada (no hay una reserva confirmada de este chat en esa cancha, día y hora); pendiente_de_pago (falta pagar la seña: no hace falta cancelar, el turno se libera solo); ya_empezo; cancha_inexistente; no_se_puede_cancelar_por_aca (ofrecé pasarle la consulta a una persona).',
+        'Con confirmar true devuelve estado cancelada (si el pedido se repite y ya estaba cancelada, también) y, si hay bloqueo, hasta (dd/mm HH:MM). Errores: no_encontrada (no hay una reserva confirmada de este chat en esa cancha, día y hora: no le digas que no tiene turno, ofrecé pasarle la consulta a una persona); reservada_por_otro_lado (es uno de "Otros turnos de este teléfono": pasale la conversación a una persona); pendiente_de_pago (falta pagar la seña: no hace falta cancelar, el turno se libera solo); ya_empezo; cancha_inexistente; no_se_puede_cancelar_por_aca (ofrecé pasarle la consulta a una persona).',
       strict: true,
       input_schema: {
         type: 'object',
@@ -419,7 +421,15 @@ function cancelTool(ctx: ToolContext, courts: BotCourt[]): BotTool {
             { courtId: court.id, date: args.fecha, timeStart: args.hora },
             tx,
           )
-          if (!found) return json({ error: 'no_encontrada' })
+          if (!found) {
+            const elsewhere = ctx.phoneBookings.some(
+              (b) =>
+                normalizeName(b.courtName) === normalizeName(court.name) &&
+                b.date === args.fecha &&
+                b.timeStart.slice(0, 5) === args.hora,
+            )
+            return json({ error: elsewhere ? 'reservada_por_otro_lado' : 'no_encontrada' })
+          }
           const cancelledResult = (out: GuestCancellationOutcome) => {
             if (!out.replayed) {
               freshCancels.push({ bookingId: found.id, late: out.lateCancel === true })
@@ -542,7 +552,7 @@ function handoffTool(ctx: ToolContext): BotTool {
       name: 'pasar_a_humano',
       description:
         'Le pasa la conversación a una persona del complejo: el chat queda en pausa y el asistente deja de contestar acá. ' +
-        'Usala cuando el jugador pregunta por lluvia o suspensiones, hace un reclamo, consulta por un evento o un cumpleaños, quiere cambiar una reserva (cancelar lo resolvés vos con la herramienta cancelar), pide hablar con una persona, o necesita algo que no está en los datos y aceptó que se lo averigüen. ' +
+        'Usala cuando el jugador pregunta por lluvia o suspensiones, hace un reclamo, consulta por un evento o un cumpleaños, quiere cambiar una reserva o cancelar un turno que no salió de este chat (los de este chat los cancelás vos con la herramienta cancelar), busca rival o jugadores, manda una imagen o un archivo, pide hablar con una persona, o necesita algo que no está en los datos y aceptó que se lo averigüen. ' +
         'En esa misma respuesta avisale que en un rato le contesta alguien del complejo por este chat.',
       strict: true,
       input_schema: {
@@ -552,7 +562,7 @@ function handoffTool(ctx: ToolContext): BotTool {
             type: 'string',
             enum: Object.keys(HANDOFF_REASONS),
             description:
-              'lluvia: lluvia o suspensiones. reclamo: un reclamo. evento: eventos o cumpleaños. otro: todo lo demás (cambiar una reserva, pedir una persona, una consulta sin datos).',
+              'lluvia: lluvia o suspensiones. reclamo: un reclamo. evento: eventos o cumpleaños. otro: todo lo demás (cambiar o cancelar un turno que no salió de este chat, rival, una imagen, pedir una persona, una consulta sin datos).',
           },
         },
         required: ['motivo'],

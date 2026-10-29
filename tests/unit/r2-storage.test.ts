@@ -2,9 +2,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const send = vi.fn()
 vi.mock('@aws-sdk/client-s3', () => ({
-  S3Client: vi.fn().mockImplementation(() => ({ send })),
-  PutObjectCommand: vi.fn((input) => ({ input, __type: 'Put' })),
-  DeleteObjectCommand: vi.fn((input) => ({ input, __type: 'Delete' })),
+  S3Client: vi.fn().mockImplementation(function () {
+    return { send }
+  }),
+  PutObjectCommand: vi.fn(function (input) {
+    return { input, __type: 'Put' }
+  }),
+  DeleteObjectCommand: vi.fn(function (input) {
+    return { input, __type: 'Delete' }
+  }),
 }))
 
 const captureException = vi.fn()

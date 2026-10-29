@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi, type Mock } from 'vitest'
+import type { ComponentProps } from 'react'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
@@ -152,16 +153,18 @@ const panelActions = () => ({
   releaseBlockAction: vi.fn(async () => ({ success: true as const })),
 })
 
+type GridProps = ComponentProps<typeof BookingGrid>
+
 function renderGrid(opts?: {
   courts?: CourtRow[]
   bookings?: GridBooking[]
   date?: string
-  action?: ReturnType<typeof vi.fn>
-  createAbonadoAction?: ReturnType<typeof vi.fn>
-  checkAvailabilityAction?: ReturnType<typeof vi.fn>
-  searchPlayersAction?: ReturnType<typeof vi.fn>
+  action?: Mock<GridProps['action']>
+  createAbonadoAction?: Mock<GridProps['createAbonadoAction']>
+  checkAvailabilityAction?: Mock<NonNullable<GridProps['checkAvailabilityAction']>>
+  searchPlayersAction?: Mock<NonNullable<GridProps['searchPlayersAction']>>
   /** Para asertar sobre una acción puntual (ej. addBookingChargeAction) hay que pasar el MISMO objeto que ve el test. */
-  slotPanelActions?: ReturnType<typeof panelActions>
+  slotPanelActions?: GridProps['slotPanelActions']
 }) {
   return render(
     <BookingGrid
@@ -174,8 +177,8 @@ function renderGrid(opts?: {
       closesNextDay={false}
       // next/dynamic está mockeado más abajo con un stub que ignora `action`
       // (el modal real no se monta en estos tests).
-      action={opts?.action ?? vi.fn()}
-      createAbonadoAction={opts?.createAbonadoAction ?? vi.fn()}
+      action={opts?.action ?? vi.fn<GridProps['action']>()}
+      createAbonadoAction={opts?.createAbonadoAction ?? vi.fn<GridProps['createAbonadoAction']>()}
       checkAvailabilityAction={opts?.checkAvailabilityAction}
       searchPlayersAction={opts?.searchPlayersAction}
       slotPanelActions={opts?.slotPanelActions ?? panelActions()}

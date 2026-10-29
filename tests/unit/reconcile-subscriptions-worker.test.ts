@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 
 /**
  * Fronteras del worker de reconciliación de suscripciones: a quién le pregunta,
@@ -47,7 +47,9 @@ import { sendOpsAlerts } from '@/modules/super-admin/ops-alerts.service'
 import { reconcileSubscriptions } from '@/shared/jobs/workers/reconcile-subscriptions.worker'
 
 const mockGetWorkerSql = getWorkerSql as ReturnType<typeof vi.fn>
-const mockWithTenantContext = withTenantContext as ReturnType<typeof vi.fn>
+const mockWithTenantContext = withTenantContext as unknown as Mock<
+  (tenantId: string, fn: (tx: unknown) => Promise<unknown>) => Promise<unknown>
+>
 const mockGetBillingGateway = getBillingGateway as ReturnType<typeof vi.fn>
 const mockInsertAudit = insertSystemAuditLog as ReturnType<typeof vi.fn>
 const mockCaptureMessage = captureMessage as ReturnType<typeof vi.fn>

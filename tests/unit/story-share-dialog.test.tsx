@@ -363,7 +363,9 @@ describe('StoryShareDialog', () => {
     })
 
     it('si el portapapeles no está, muestra el link para copiarlo a mano', async () => {
-      const prompt = vi.spyOn(window, 'prompt').mockReturnValue(null)
+      // happy-dom 21 ya no define `window.prompt`: no hay nada que espiar.
+      const prompt = vi.fn<(message?: string, defaultValue?: string) => string | null>(() => null)
+      vi.stubGlobal('prompt', prompt)
       renderDialog()
       await screen.findByRole('img')
 

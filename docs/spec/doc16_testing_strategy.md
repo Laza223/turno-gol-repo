@@ -910,7 +910,9 @@ export async function seedIsolationData(tenantId: string) {
 > **El `vitest.config.ts` real no tiene bloque `coverage` ni thresholds** (verificado
 > 2026-08-27) — ni los targets pragmáticos de abajo ni el `pnpm test:coverage` de §10.2. Sí
 > comparte lo esencial: `environment: 'node'`, alias `@`, y agrega `pool: 'threads'` con
-> `singleThread: true` — necesario para que los tests de integración (Postgres compartido, RLS)
+> `maxWorkers: 1` + `isolate: false` (el `singleThread: true` de Vitest 3; lo que ese modo
+> reseteaba solo entre archivos lo hace ahora `tests/setup.ts`) — necesario para que los tests
+> de integración (Postgres compartido, RLS)
 > no se corran en paralelo real y se pisen entre sí (probado y revertido para `unit`: la ganancia
 > no valía la carrera que introducía). `include`/`exclude` corren sobre `configDefaults.exclude`
 > más `tests/e2e/**` y los worktrees anidados, no el patrón `tests/**/*.test.ts` de abajo. Los

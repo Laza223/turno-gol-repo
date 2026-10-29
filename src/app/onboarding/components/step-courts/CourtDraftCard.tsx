@@ -23,6 +23,9 @@ type Props = {
   photosEnabled: boolean
   onUploadPhoto: (blob: Blob) => Promise<void>
   onRemovePhoto: () => Promise<void>
+  /** Campo que rechazó el último submit: se marca y `errorMessage` va debajo de él. */
+  invalidField?: 'name' | 'price'
+  errorMessage?: string
 }
 
 /** Tarjeta de un borrador de cancha: fila-resumen colapsable + form inline. */
@@ -37,9 +40,13 @@ export function CourtDraftCard({
   photosEnabled,
   onUploadPhoto,
   onRemovePhoto,
+  invalidField,
+  errorMessage,
 }: Props) {
   const [moreOpen, setMoreOpen] = useState(false)
   const moreId = `court-more-${draft.key}`
+  const nameErrorId = `court-name-error-${draft.key}`
+  const priceErrorId = `court-price-error-${draft.key}`
   const surfaceLabel =
     SURFACE_OPTIONS.find((s) => s.value === draft.surfaceType)?.label ?? draft.surfaceType
 
@@ -145,9 +152,20 @@ export function CourtDraftCard({
               value={draft.name}
               onChange={(e) => onUpdate(draft.key, { name: e.target.value })}
               placeholder="Ej: Cancha 1"
+              aria-invalid={invalidField === 'name' ? true : undefined}
+              aria-describedby={invalidField === 'name' ? nameErrorId : undefined}
               required
               className={fieldClass}
             />
+            {invalidField === 'name' && errorMessage && (
+              <p
+                id={nameErrorId}
+                role="alert"
+                className="mt-1.5 text-xs text-red-600 dark:text-red-400"
+              >
+                {errorMessage}
+              </p>
+            )}
           </div>
 
           {/* Formato en chips (Hick: 8 opciones, las mismas que /canchas). */}
@@ -189,10 +207,21 @@ export function CourtDraftCard({
               valueCents={draft.priceCents}
               onValueChange={(cents) => onUpdate(draft.key, { priceCents: cents })}
               placeholder="Ej: 20.000"
+              aria-invalid={invalidField === 'price' ? true : undefined}
+              aria-describedby={invalidField === 'price' ? priceErrorId : undefined}
               required
-              className="placeholder:text-muted-foreground"
+              className="placeholder:text-muted-foreground aria-invalid:border-destructive"
             />
-            <p className="mt-1.5 text-xs text-muted-foreground">
+            {invalidField === 'price' && errorMessage && (
+              <p
+                id={priceErrorId}
+                role="alert"
+                className="mt-1.5 text-xs text-red-600 dark:text-red-400"
+              >
+                {errorMessage}
+              </p>
+            )}
+            <p className="mt-1.5 text-pretty text-xs text-muted-foreground">
               Por turno de 1 hora, igual toda la semana. Después podés poner precio por franja desde
               Canchas.
             </p>
@@ -221,7 +250,7 @@ export function CourtDraftCard({
             <Button
               type="button"
               variant="ghost"
-              className="h-11 w-full justify-between px-3 text-sm text-muted-foreground hover:text-foreground"
+              className="h-auto min-h-11 w-full justify-between gap-2 whitespace-normal px-3 text-left text-sm text-muted-foreground hover:text-foreground"
               aria-expanded={moreOpen}
               aria-controls={moreId}
               onClick={() => setMoreOpen((v) => !v)}

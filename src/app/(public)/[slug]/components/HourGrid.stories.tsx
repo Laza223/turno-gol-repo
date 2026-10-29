@@ -45,22 +45,28 @@ export const Interactiva: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('radio', { name: /^22:00/ }))
-    await expect(canvas.getByRole('radio', { name: /^22:00/ })).toBeChecked()
-    await userEvent.click(canvas.getByRole('radio', { name: /^19:00/ }))
-    await expect(canvas.getByRole('radio', { name: /^22:00/ })).toBeChecked()
-    await expect(canvas.getByRole('radio', { name: /^19:00/ })).toBeDisabled()
+    await userEvent.click(canvas.getByRole('button', { name: /^22:00/ }))
+    await expect(canvas.getByRole('button', { name: /^22:00/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await userEvent.click(canvas.getByRole('button', { name: /^19:00/ }))
+    await expect(canvas.getByRole('button', { name: /^22:00/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(canvas.getByRole('button', { name: /^19:00/ })).toBeDisabled()
   },
 }
 
 export const Estados: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('radio', { name: /^18:00/ })).toHaveTextContent('3 libres')
-    await expect(canvas.getByRole('radio', { name: /^19:00/ })).toHaveTextContent('Completo')
-    await expect(canvas.getByRole('radio', { name: /^20:00/ })).toHaveTextContent('Queda 1')
-    await expect(canvas.getByRole('radio', { name: /^23:00/ })).toHaveTextContent('Libre')
-    const held = canvas.getByRole('radio', { name: /^21:00/ })
+    await expect(canvas.getByRole('button', { name: /^18:00/ })).toHaveTextContent('3 libres')
+    await expect(canvas.getByRole('button', { name: /^19:00/ })).toHaveTextContent('Completo')
+    await expect(canvas.getByRole('button', { name: /^20:00/ })).toHaveTextContent('Queda 1')
+    await expect(canvas.getByRole('button', { name: /^23:00/ })).toHaveTextContent('Libre')
+    const held = canvas.getByRole('button', { name: /^21:00/ })
     await expect(held).toHaveTextContent('Señando')
     await expect(held).toBeDisabled()
     // La ayuda del "Señando" es texto visible, no un `title`.
@@ -71,6 +77,9 @@ export const Estados: Story = {
 export const HoraElegida: Story = {
   args: { value: '20:00' },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByRole('radio', { name: /^20:00/ })).toBeChecked()
+    await expect(within(canvasElement).getByRole('button', { name: /^20:00/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
   },
 }

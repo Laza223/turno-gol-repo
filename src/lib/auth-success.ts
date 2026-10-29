@@ -61,6 +61,18 @@ export function isRivalPath(next: string): boolean {
   return RIVAL_PATH_RE.test(next)
 }
 
+// Las pantallas de RIVAL sin id: la portada, armar y Mis partidos. Mismo cuidado que los otros: `?` o
+// fin de path, sin sufijos ni barras.
+const RIVAL_HOME_RE = /^\/rival(?:\/nuevo|\/mis-partidos)?(?:\?|$)/
+
+/**
+ * ¿`next` es cualquier pantalla de RIVAL a la que se vuelve DIRECTO tras entrar? Suma, a los partidos de
+ * `isRivalPath`, la portada, armar y Mis partidos: quien ya eligió adónde iba no pasa por `/verify`.
+ */
+export function isRivalReturnPath(next: string): boolean {
+  return RIVAL_HOME_RE.test(next) || isRivalPath(next)
+}
+
 /** Arma el path de éxito de `/verify` con `next` encodeado e `intent`. */
 export function successVerifyPath(next: string, intent: SuccessIntent): string {
   return `/verify?status=success&next=${encodeURIComponent(next)}&intent=${intent}`

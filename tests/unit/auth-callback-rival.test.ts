@@ -121,6 +121,15 @@ describe('GET /api/auth/callback — ingreso desde un partido de RIVAL', () => {
     expect(location.pathname).toBe(next)
   })
 
+  it('armar, la portada y Mis partidos también vuelven DIRECTO (sin /verify)', async () => {
+    player()
+
+    for (const next of ['/rival', '/rival/nuevo', '/rival/mis-partidos']) {
+      const res = await GET(makeRequest({ code: 'good-code', next }))
+      expect(new URL(res.headers.get('location')!).pathname).toBe(next)
+    }
+  })
+
   it('un next que NO empieza con /rival/ no marca nada', async () => {
     player()
 

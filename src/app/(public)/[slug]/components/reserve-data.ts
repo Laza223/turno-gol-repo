@@ -72,10 +72,13 @@ type DayEntry = { data: AvailabilityResponse; at: number }
  * mientras llega lo nuevo. `date = null` no pide nada (día cerrado o página sin hidratar). Cambiar
  * de día aborta el pedido en curso.
  *
+ * `seed` (opcional): lo que ya se sabe de ese día (la semana del paso 1). Se muestra enseguida,
+ * sin esqueleto, y el día se pide igual por detrás para refrescarlo.
+ *
  * Con alguna cancha `held` (alguien pagando la seña) y la pestaña a la vista, el día se refresca
  * cada 30 s para que el "Señando" se libere solo; sin eso no hay ningún intervalo.
  */
-export function useDayAvailability(slug: string, date: string | null) {
+export function useDayAvailability(slug: string, date: string | null, seed?: AvailabilityResponse) {
   const [days, setDays] = useState<Record<string, DayEntry>>({})
   const [failure, setFailure] = useState<{ date: string; cause: DayFailure } | null>(null)
   const [attempt, setAttempt] = useState(0)
@@ -90,7 +93,7 @@ export function useDayAvailability(slug: string, date: string | null) {
   }
 
   const entry = date === null ? undefined : days[date]
-  const data = entry?.data
+  const data = entry?.data ?? seed
   const fetchedAt = entry?.at
   const hasHeld = data?.courts.some((c) => c.slots.some((s) => s.status === 'held')) ?? false
   // Mostrar u ocultar la pestaña solo reinicia el pedido cuando ya hay datos que pudieron vencer.

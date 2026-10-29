@@ -11,10 +11,7 @@ export function renderRivalCanceled(data: RivalCanceledData): EmailContent {
   return renderRivalMail({
     subject: `Se canceló el partido en ${data.tenantName}`,
     title: 'Se canceló el partido',
-    lines: [
-      'El organizador canceló el partido en el que estabas anotado.',
-      'Si querés jugar igual, en el tablón hay otros partidos abiertos.',
-    ],
+    lines: ['El organizador canceló el partido.', 'Mirá en el tablón si hay otro abierto.'],
     tenantName: data.tenantName,
     dateLabel: data.dateLabel,
     cta: 'Ver partidos abiertos',

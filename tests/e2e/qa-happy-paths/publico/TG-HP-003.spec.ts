@@ -32,25 +32,25 @@ test.describe('TG-HP-003 — Perfil público del complejo', () => {
     const contactLink = page.getByRole('link', { name: /^(WhatsApp|Llamar)$/ })
     await expect(contactLink).toHaveAttribute('href', /^(https:\/\/wa\.me\/|tel:)/)
 
-    // Step 5: la región de la reserva pide el día de HOY al montar (auto-wait cubre el fetch).
-    // No se elige una hora de hoy acá: si el test corre tarde a la noche (cierre 23:00 del
-    // fixture) todas pueden haber pasado; mañana nunca tiene horas pasadas.
+    // Step 5: la reserva arranca en el paso 1: una fila por día, sin ninguno elegido.
+    // No se elige hoy acá: si el test corre tarde a la noche (cierre 23:00 del fixture) todas las
+    // horas pueden haber pasado; mañana nunca tiene horas pasadas.
     const reserva = page.getByRole('region', { name: 'Reservá tu turno' })
-    const dias = reserva.getByRole('radiogroup', { name: 'Día' })
-    await expect(dias.getByRole('radio').first()).toBeChecked()
+    const dias = reserva.getByRole('list', { name: 'Día' })
+    await expect(dias.getByRole('button').first()).toHaveAttribute('aria-pressed', 'false')
 
-    // Step 6: elegir mañana — refetch de disponibilidad
+    // Step 6: elegir mañana (paso 2) — pide la disponibilidad del día
     const nextDayFetch = page.waitForResponse(
       (r) =>
         r.url().includes('/api/public/availability') && r.url().includes('slug=e2e-complejo-sena'),
     )
-    await dias.getByRole('radio').nth(1).click()
+    await dias.getByRole('button').nth(1).click()
     await nextDayFetch
 
-    // Step 7: elegir la primera hora con lugar → debajo aparecen las canchas libres a esa hora
-    const horas = reserva.getByRole('radiogroup', { name: 'Hora' })
-    await horas.getByRole('radio', { disabled: false }).first().click()
-    const canchas = page.getByRole('region', { name: /^Canchas libres a las \d{2}:\d{2}$/ })
+    // Step 7: elegir la primera hora con lugar (paso 3) → aparecen las canchas libres a esa hora
+    const horas = reserva.getByRole('group', { name: 'Hora' })
+    await horas.getByRole('button', { disabled: false }).first().click()
+    const canchas = reserva.getByRole('list', { name: /^Canchas libres a las \d{2}:\d{2}$/ })
     await expect(canchas).toBeVisible()
 
     // Step 8: tocar una cancha → navega a /reservar con court/date/time/dur

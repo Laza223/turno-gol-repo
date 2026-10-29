@@ -39,6 +39,11 @@ export const Default: Story = {
       'href',
       '/ingresar?next=%2Fexplorar%3Fcity%3Drosario',
     )
+    // Pie de todo el portal: el dueño del complejo llega a su página también desde el celu.
+    await expect(canvas.getByRole('link', { name: 'Para complejos' })).toHaveAttribute(
+      'href',
+      '/para-complejos',
+    )
     // Navegación real, no texto corrido: 44 px de alto en todos los links y canales.
     for (const link of canvas.getAllByRole('link')) {
       await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
@@ -55,5 +60,21 @@ export const Default: Story = {
     )
     // El link viejo se fue: si vuelve, es que alguien deshizo el grupo.
     await expect(canvas.queryByRole('link', { name: 'Contacto' })).toBeNull()
+  },
+}
+
+/** Con la sesión sembrada por el server no se ofrece "Ingresar"; el resto del footer sigue igual. */
+export const ConSesion: Story = {
+  args: { signedIn: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.queryByRole('link', { name: 'Ingresar' })).toBeNull()
+    for (const link of canvas.getAllByRole('link')) {
+      await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
+    }
+    await expect(canvas.getByRole('link', { name: 'Privacidad' })).toHaveAttribute(
+      'href',
+      '/privacidad',
+    )
   },
 }

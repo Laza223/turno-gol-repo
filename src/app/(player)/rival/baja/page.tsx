@@ -1,8 +1,10 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
-import Link from 'next/link'
-import { Button, buttonVariants } from '@/components/ui/button'
+import { BellOff, Link2Off as LinkIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { PORTAL_BUTTON, PORTAL_COLUMN, PORTAL_TITLE } from '@/components/world/PortalAuthFrame'
+import { PortalResult, PortalResultLink } from '@/components/world/PortalResult'
+import { contactWhatsappUrl } from '@/lib/contact'
 import { buildMetadata } from '@/lib/seo/metadata'
 import { cn } from '@/lib/utils'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
@@ -35,38 +37,53 @@ export default async function BajaPage(props: {
   const invalid = listo === undefined && (token === null || verifyAlertUnsubToken(token) === null)
   const pending = listo === undefined && !invalid && token ? await peekAlertUnsub(token) : null
 
-  return (
-    <div className={cn(PORTAL_COLUMN, 'space-y-5 pb-10')}>
-      {pending && token ? (
-        <>
-          <h1 className={PORTAL_TITLE}>Dejar de recibir alertas de {pending.tenantName}</h1>
-          <p className="text-base text-muted-foreground">
-            Dejamos de mandarte mails cuando haya partido ahí. Cuando quieras, las activás de nuevo
-            desde el tablón.
-          </p>
-          <form action={unsubscribeRivalAlertAction}>
-            <input type="hidden" name="t" value={token} />
-            <Button type="submit" variant="outline" className={cn(PORTAL_BUTTON, 'rounded-full')}>
-              Dejar de recibir alertas
-            </Button>
-          </form>
-        </>
-      ) : invalid ? (
-        <>
-          <h1 className={PORTAL_TITLE}>Este link no es válido.</h1>
-          <p className="text-base text-muted-foreground">Escribinos y te damos de baja.</p>
-        </>
-      ) : (
-        <>
-          <h1 className={PORTAL_TITLE}>Ya está: no te vamos a avisar más.</h1>
-          <Link
-            href="/rival"
-            className={cn(buttonVariants({ variant: 'outline' }), PORTAL_BUTTON, 'rounded-full')}
+  if (pending && token) {
+    return (
+      <div className={cn(PORTAL_COLUMN, 'space-y-5 pb-10')}>
+        <h1 className={PORTAL_TITLE}>Dejar de recibir alertas de {pending.tenantName}</h1>
+        <p className="text-base text-muted-foreground">
+          Dejamos de mandarte mails cuando haya partido ahí. Cuando quieras, las activás de nuevo
+          desde el tablón.
+        </p>
+        <form action={unsubscribeRivalAlertAction}>
+          <input type="hidden" name="t" value={token} />
+          <Button type="submit" variant="outline" className={cn(PORTAL_BUTTON, 'rounded-full')}>
+            Dejar de recibir alertas
+          </Button>
+        </form>
+      </div>
+    )
+  }
+
+  // Los dos callejones (link que no sirve, baja hecha) usan el mismo resultado de La Previa que el 404.
+  if (invalid) {
+    return (
+      <PortalResult
+        icon={LinkIcon}
+        tone="neutral"
+        title="Este link no sirve."
+        actions={
+          <PortalResultLink
+            href={contactWhatsappUrl('Quiero darme de baja de los avisos de RIVAL')}
+            variant="outline"
+            external
           >
-            Ir al tablón
-          </Link>
-        </>
-      )}
-    </div>
+            Escribinos por WhatsApp
+          </PortalResultLink>
+        }
+      >
+        <p>Escribinos y te damos de baja.</p>
+      </PortalResult>
+    )
+  }
+  return (
+    <PortalResult
+      icon={BellOff}
+      tone="neutral"
+      title="Listo, no te vamos a avisar más."
+      actions={<PortalResultLink href="/rival">Ir al tablón</PortalResultLink>}
+    >
+      <p>Cuando quieras, los activás de nuevo desde el tablón.</p>
+    </PortalResult>
   )
 }

@@ -18,6 +18,7 @@ import { addDays, artTodayStr } from '@/shared/dates/art'
 import {
   acceptRivalWelcome,
   cancelMatch,
+  completeRivalProfile,
   createMatch,
   decideRequest,
   getBoardMatch,
@@ -156,7 +157,6 @@ function draft(
     capacity?: number
     format?: number
     bookingId?: string
-    withBoard?: 'players' | 'rival'
   } = {},
 ) {
   return createRivalMatchSchema.parse({
@@ -167,10 +167,20 @@ function draft(
     level: 'parejo',
     courtDeclared: o.bookingId === undefined,
     ...(o.bookingId ? { bookingId: o.bookingId } : {}),
-    ...(o.withBoard
-      ? { board: { seeking: o.withBoard, whatsapp: WHATSAPP, whatsappConsent: true } }
-      : {}),
   })
+}
+
+/** Arma el partido y lo publica en el tablón: `createMatch` ya no lo hace, es otro paso. */
+async function createOnBoard(
+  playerId: string,
+  seeking: 'players' | 'rival',
+  o: Parameters<typeof draft>[0] = {},
+) {
+  // "Mi equipo busca rival" fija los jugadores al formato (canSeekRival).
+  const capacity = o.capacity ?? (seeking === 'rival' ? (o.format ?? 5) : undefined)
+  const created = await createMatch(playerId, draft({ ...o, capacity }))
+  await publishToBoard(playerId, created.id, board(seeking))
+  return created
 }
 
 async function rejectsWith(code: string, p: Promise<unknown>): Promise<void> {
@@ -412,7 +422,7 @@ describe('2. errores de dominio (ningún error de la base llega crudo)', () => {
     const raw = (await createTestPlayer(adminSql())).id
     await rejectsWith('rival_welcome_required', createMatch(raw, draft()))
     const org = await welcomedPlayer('Org')
-    const m = await createMatch(org, draft({ withBoard: 'players' }))
+    const m = await createOnBoard(org, 'players')
     await rejectsWith('rival_welcome_required', joinByInvite(raw, m.inviteCode))
     await rejectsWith(
       'rival_welcome_required',
@@ -460,9 +470,9 @@ describe('2. errores de dominio (ningún error de la base llega crudo)', () => {
     await expect(createMatch(org, draft())).resolves.toMatchObject({ id: expect.any(String) })
   })
 
-  it('2.4 publicar sin WhatsApp es imposible por el schema; con él, el contacto se crea en la misma transacción', async () => {
+  it('2.4 publicar sin WhatsApp es imposible por el schema; con él, el contacto se crea en la misma transacción que sube el partido', async () => {
     const org = await welcomedPlayer('Pub2')
-    const m = await createMatch(org, draft({ withBoard: 'rival' }))
+    const m = await createOnBoard(org, 'rival')
     const [c] = await adminSql()<{ whatsapp_digits: string }[]>`
       SELECT whatsapp_digits FROM rival_match_contacts WHERE match_id = ${m.id}
     `
@@ -470,6 +480,35 @@ describe('2. errores de dominio (ningún error de la base llega crudo)', () => {
     const pub = await getPublicMatch(m.inviteCode)
     // Busca rival: el cupo es el formato.
     expect(pub).toMatchObject({ seeking: 'rival', capacity: 5, seekingPosition: null })
+  })
+
+  it('2.4b publicar con "Guardar este número" lo deja en players.phone (formato del perfil), en la misma transacción', async () => {
+    const su = adminSql()
+    const org = await welcomedPlayer('GuardaNum')
+    const m = await createMatch(org, draft())
+    const phone = () =>
+      su<{ phone: string | null; hint: string | null }[]>`
+        SELECT phone, phone_hint8 AS hint FROM players WHERE id = ${org}
+      `.then((r) => r[0]!)
+    expect((await phone()).phone).toBeNull()
+
+    // Sin la casilla no guarda nada.
+    await publishToBoard(org, m.id, board('players'))
+    expect((await phone()).phone).toBeNull()
+
+    // Con la casilla: "+54 " + nacional, y el precargado de la próxima vez lo entiende.
+    await publishToBoard(
+      org,
+      m.id,
+      publishBoardSchema.parse({
+        seeking: 'players',
+        whatsapp: WHATSAPP,
+        whatsappConsent: true,
+        savePhone: true,
+      }),
+    )
+    expect(await phone()).toEqual({ phone: '+54 1155551234', hint: '55551234' })
+    expect(await getBoardPublishPrefill(org)).toEqual({ whatsapp: '+54 1155551234' })
   })
 
   it('2.5 tope de 3 partidos activos, tope de 5 pedidos, pedir a un partido que no está en el tablón', async () => {
@@ -487,7 +526,7 @@ describe('2. errores de dominio (ningún error de la base llega crudo)', () => {
     const ids: string[] = []
     for (let i = 0; i < 6; i++) {
       const o = await welcomedPlayer(`Tablon${i}`)
-      ids.push((await createMatch(o, draft({ withBoard: 'players' }))).id)
+      ids.push((await createOnBoard(o, 'players')).id)
     }
     for (const id of ids.slice(0, 5))
       await requestToJoin(asker, { matchId: id, tenantId: tenant.id })
@@ -603,10 +642,7 @@ describe('3. el tablón con cursor', () => {
     ])
     const ids: string[] = []
     for (const [i, o] of orgs.entries()) {
-      ids.push(
-        (await createMatch(o, draft({ tenantId: t.id, hoursAhead: 40 + i, withBoard: 'players' })))
-          .id,
-      )
+      ids.push((await createOnBoard(o, 'players', { tenantId: t.id, hoursAhead: 40 + i })).id)
     }
     // Uno del grupo (sin publicar) en el mismo complejo: no aparece.
     await createMatch(orgs[0]!, draft({ tenantId: t.id, hoursAhead: 60 }))
@@ -640,7 +676,7 @@ describe('4. listMyMatches', () => {
     await su`UPDATE rival_matches SET starts_at = now() - interval '2 days' WHERE id = ${old.id}`
 
     // Pedido pendiente en un partido ajeno: la RLS no me deja leer esa fila, igual tiene que aparecer.
-    const asked = await createMatch(o1!, draft({ hoursAhead: 48, withBoard: 'players' }))
+    const asked = await createOnBoard(o1!, 'players', { hoursAhead: 48 })
     await requestToJoin(me, { matchId: asked.id, tenantId: tenant.id })
     // Un partido ajeno por link donde estoy confirmado, y uno donde me bajé.
     const joined = await createMatch(o2!, draft({ hoursAhead: 50 }))
@@ -991,6 +1027,102 @@ describe('8. listEligibleTenants, listUpcomingConfirmedBookings y getRivalWelcom
       zone: 'Luján',
     })
   })
+
+  it('8.4 la bienvenida se parte en dos: armar sin posición ni zona; sumarse las exige; completar el perfil no re-consiente', async () => {
+    const su = adminSql()
+    const p = (await createTestPlayer(su)).id
+    // Primer momento: solo el nombre y las reglas. No se pisa con null lo que no vino.
+    await acceptRivalWelcome(p, { firstName: 'Solo nombre' })
+    expect(await getRivalWelcomeState(p)).toMatchObject({
+      welcomed: true,
+      position: null,
+      zone: null,
+    })
+    const org = await welcomedPlayer('OrgPerfil')
+    const m = await createOnBoard(org, 'players')
+
+    // Armar anda sin perfil; sumarse y pedir sumarse no.
+    await expect(createMatch(p, draft())).resolves.toMatchObject({ id: expect.any(String) })
+    await rejectsWith('rival_profile_required', joinByInvite(p, m.inviteCode))
+    await rejectsWith(
+      'rival_profile_required',
+      requestToJoin(p, { matchId: m.id, tenantId: tenant.id }),
+    )
+    expect(await statusesOf(m.id)).not.toHaveProperty(p)
+
+    // Segundo momento: no toca el consentimiento (ni la fecha ni la versión).
+    const stamp = () =>
+      su<{ at: Date; v: string }[]>`
+        SELECT rival_accepted_at AS at, rival_terms_version AS v FROM players WHERE id = ${p}
+      `.then((r) => r[0]!)
+    const before = await stamp()
+    await completeRivalProfile(p, { position: 'goalkeeper', zone: 'Luján' })
+    expect(await stamp()).toEqual(before)
+    expect(await getRivalWelcomeState(p)).toMatchObject({
+      position: 'goalkeeper',
+    })
+    await expect(joinByInvite(p, m.inviteCode)).resolves.toMatchObject({ joined: true })
+
+    // Aceptar de nuevo las reglas sin mandar perfil NO borra el que ya estaba.
+    await acceptRivalWelcome(p, { firstName: 'Solo nombre' })
+    expect(await getRivalWelcomeState(p)).toMatchObject({ position: 'goalkeeper', zone: 'Luján' })
+  })
+
+  it('8.4b el capitán pide a un partido que busca rival con solo la zona; por invitación la posición sigue siendo obligatoria', async () => {
+    const su = adminSql()
+    const org = await welcomedPlayer('OrgCapitan')
+    const rival = await createOnBoard(org, 'rival', { capacity: 5 })
+    const players = await createOnBoard(org, 'players')
+
+    // Sin perfil: ni zona ni posición. Pedir como capitán exige la zona.
+    const p = (await createTestPlayer(su)).id
+    await acceptRivalWelcome(p, { firstName: 'Capitan' })
+    await rejectsWith(
+      'rival_profile_required',
+      requestToJoin(p, { matchId: rival.id, tenantId: tenant.id }),
+    )
+
+    // Con zona y sin posición: pide al partido que busca rival (la posición no se le pide)...
+    await completeRivalProfile(p, { zone: 'Luján' })
+    expect(await getRivalWelcomeState(p)).toMatchObject({ position: null, zone: 'Luján' })
+    await expect(
+      requestToJoin(p, { matchId: rival.id, tenantId: tenant.id }),
+    ).resolves.toMatchObject({ participantId: expect.any(String) })
+    const [role] = await su<{ role: string }[]>`
+      SELECT role FROM rival_participants WHERE match_id = ${rival.id} AND player_id = ${p}
+    `
+    expect(role?.role).toBe('rival_captain')
+
+    // ...pero NO se suma por invitación ni pide a un partido de jugadores sin posición.
+    await rejectsWith('rival_profile_required', joinByInvite(p, players.inviteCode))
+    await rejectsWith(
+      'rival_profile_required',
+      requestToJoin(p, { matchId: players.id, tenantId: tenant.id }),
+    )
+
+    // Guardar solo la zona no pisó la posición que ya tenía otro jugador.
+    const q = await welcomedPlayer('ConPosicion')
+    await completeRivalProfile(q, { zone: 'Pilar' })
+    expect(await getRivalWelcomeState(q)).toMatchObject({ position: 'midfielder', zone: 'Pilar' })
+  })
+
+  it('8.5 completar el perfil exige las reglas de la versión vigente', async () => {
+    const raw = (await createTestPlayer(adminSql())).id
+    await rejectsWith(
+      'rival_welcome_required',
+      completeRivalProfile(raw, { position: 'any', zone: 'Luján' }),
+    )
+  })
+
+  it('8.6 listEligibleTenants trae el horario del complejo para filtrar las horas del form', async () => {
+    const found = (await listEligibleTenants()).find((t) => t.id === tenant.id)
+    expect(found).toMatchObject({
+      slug: expect.any(String),
+      closedDates: expect.any(Array),
+      closesNextDay: expect.any(Boolean),
+    })
+    expect(found!.openingHours).toHaveProperty('mon')
+  })
 })
 
 // ─── 9. Repetir ──────────────────────────────────────────────────────────
@@ -1039,14 +1171,10 @@ describe('10. getBoardMatch, listBoardTenants, getMyMatch y getBoardPublishPrefi
   ): Promise<{ org: string; id: string; code: string }> {
     const org = await welcomedPlayer('Org')
     const withBoard = o.withBoard === undefined ? 'players' : o.withBoard
-    const created = await createMatch(
-      org,
-      draft({
-        tenantId: t.id,
-        capacity: o.capacity ?? 4,
-        ...(withBoard ? { withBoard } : {}),
-      }),
-    )
+    const opts = { tenantId: t.id, capacity: o.capacity ?? 4 }
+    const created = withBoard
+      ? await createOnBoard(org, withBoard, opts)
+      : await createMatch(org, draft(opts))
     return { org, id: created.id, code: created.inviteCode }
   }
 

@@ -4,8 +4,9 @@ import {
   inviteCodeSchema,
   publishBoardSchema,
   RIVAL_REPORT_REASONS,
+  rivalIdentitySchema,
+  rivalProfileSchema,
   rivalReportSchema,
-  rivalWelcomeSchema,
 } from '@/modules/rival/rival.schema'
 
 const TENANT = '11111111-1111-4111-8111-111111111111'
@@ -99,13 +100,8 @@ describe('createRivalMatchSchema: formato, cupo, cancha', () => {
     expect(createRivalMatchSchema.safeParse(base({ format: 5.5 })).success).toBe(false)
   })
 
-  it('en "Busca rival" el cupo es el formato, y un cupo distinto se rechaza', () => {
-    const board = { seeking: 'rival', whatsapp: '11 5555-1234', whatsappConsent: true }
-    expect(createRivalMatchSchema.parse(base({ format: 7, board })).capacity).toBe(7)
-    expect(createRivalMatchSchema.parse(base({ format: 7, capacity: 7, board })).capacity).toBe(7)
-    expect(createRivalMatchSchema.safeParse(base({ format: 7, capacity: 14, board })).success).toBe(
-      false,
-    )
+  it('el cupo que manda el form se respeta (en "Mi equipo busca rival" el form manda el formato)', () => {
+    expect(createRivalMatchSchema.parse(base({ format: 7, capacity: 7 })).capacity).toBe(7)
   })
 
   it('exige cancha: reserva o la casilla "Ya tengo la cancha"', () => {
@@ -125,8 +121,34 @@ describe('createRivalMatchSchema: formato, cupo, cancha', () => {
     }
   })
 
-  it('sin board es solo el grupo', () => {
-    expect(createRivalMatchSchema.parse(base()).board).toBeNull()
+  it('el tablón ya no es parte de armar: una clave `board` se descarta sin romper', () => {
+    const board = { seeking: 'rival', whatsapp: '11 5555-1234', whatsappConsent: true }
+    expect(createRivalMatchSchema.parse(base({ board }))).not.toHaveProperty('board')
+  })
+})
+
+describe('createRivalMatchSchema: mensajes que le sirven a quien los lee', () => {
+  const messages = (input: Record<string, unknown>) => {
+    const r = createRivalMatchSchema.safeParse(input)
+    return r.success ? [] : r.error.issues.map((i) => i.message)
+  }
+
+  it('sin complejo dice "Elegí el complejo.", no "UUID inválido"', () => {
+    expect(messages(base({ tenantId: '' }))).toEqual(['Elegí el complejo.'])
+    expect(messages(base({ tenantId: 'no-es-un-uuid' }))).toEqual(['Elegí el complejo.'])
+    expect(messages(base({ tenantId: undefined }))).toEqual(['Elegí el complejo.'])
+  })
+
+  it('sin hora dice "Elegí la hora de inicio."', () => {
+    expect(startsAtError('')).toBe('Elegí la hora de inicio.')
+  })
+
+  it('todos los campos mal se informan juntos', () => {
+    const m = messages(
+      base({ tenantId: '', startsAt: '', format: '', level: '', courtDeclared: false }),
+    )
+    expect(m).toEqual(expect.arrayContaining(['Elegí el complejo.', 'Elegí la hora de inicio.']))
+    expect(m.length).toBeGreaterThanOrEqual(4)
   })
 })
 
@@ -140,10 +162,32 @@ describe('publishBoardSchema', () => {
     )
   })
 
+  it('pide el WhatsApp con un texto que dice qué falta o cómo arreglarlo', () => {
+    const msg = (whatsapp: unknown) => {
+      const r = publishBoardSchema.safeParse({ ...ok, whatsapp })
+      return r.success ? [] : r.error.issues.map((i) => i.message)
+    }
+    expect(msg('')).toEqual(['Ingresá tu WhatsApp.'])
+    expect(msg('   ')).toEqual(['Ingresá tu WhatsApp.'])
+    const invalid = [
+      'Revisá el WhatsApp: tiene que ser de Argentina, con código de área y sin 0 ni 15. Ejemplo: 11 2345 6789.',
+    ]
+    expect(msg('123')).toEqual(invalid)
+    expect(msg('+598 99 123 456')).toEqual(invalid)
+  })
+
   it('rechaza un teléfono que no es argentino o no se puede marcar', () => {
     expect(publishBoardSchema.safeParse({ ...ok, whatsapp: '+598 99 123 456' }).success).toBe(false)
     expect(publishBoardSchema.safeParse({ ...ok, whatsapp: '123' }).success).toBe(false)
     expect(publishBoardSchema.safeParse({ ...ok, whatsapp: '' }).success).toBe(false)
+  })
+
+  it('guardar el número en la cuenta es opt-in y independiente del consentimiento', () => {
+    expect(publishBoardSchema.parse(ok).savePhone).toBe(false)
+    expect(publishBoardSchema.parse({ ...ok, savePhone: true }).savePhone).toBe(true)
+    expect(
+      publishBoardSchema.safeParse({ ...ok, whatsappConsent: false, savePhone: true }).success,
+    ).toBe(false)
   })
 
   it('exige el consentimiento explícito', () => {
@@ -184,14 +228,20 @@ describe('inviteCodeSchema', () => {
   })
 })
 
-describe('rivalWelcomeSchema y rivalReportSchema', () => {
-  it('la zona sale de la lista cerrada, con "Otra zona"', () => {
-    const ok = { firstName: ' Lazaro ', position: 'any', zone: 'Luján' }
-    expect(rivalWelcomeSchema.parse(ok).firstName).toBe('Lazaro')
-    expect(rivalWelcomeSchema.safeParse({ ...ok, zone: 'Otra zona' }).success).toBe(true)
-    expect(rivalWelcomeSchema.safeParse({ ...ok, zone: 'Palermo' }).success).toBe(false)
-    expect(rivalWelcomeSchema.safeParse({ ...ok, position: 'dt' }).success).toBe(false)
-    expect(rivalWelcomeSchema.safeParse({ ...ok, firstName: '   ' }).success).toBe(false)
+describe('bienvenida en dos momentos y denuncias', () => {
+  it('armar pide solo el nombre', () => {
+    expect(rivalIdentitySchema.parse({ firstName: ' Lazaro ' }).firstName).toBe('Lazaro')
+    expect(rivalIdentitySchema.safeParse({ firstName: '   ' }).success).toBe(false)
+    expect(rivalIdentitySchema.safeParse({}).success).toBe(false)
+  })
+
+  it('sumarse pide posición y zona; la zona sale de la lista cerrada, con "Otra zona"', () => {
+    const ok = { position: 'any', zone: 'Luján' }
+    expect(rivalProfileSchema.safeParse(ok).success).toBe(true)
+    expect(rivalProfileSchema.safeParse({ ...ok, zone: 'Otra zona' }).success).toBe(true)
+    expect(rivalProfileSchema.safeParse({ ...ok, zone: 'Palermo' }).success).toBe(false)
+    expect(rivalProfileSchema.safeParse({ ...ok, position: 'dt' }).success).toBe(false)
+    expect(rivalProfileSchema.safeParse({ zone: 'Luján' }).success).toBe(false)
   })
 
   it('los motivos de denuncia son los 4 cerrados', () => {

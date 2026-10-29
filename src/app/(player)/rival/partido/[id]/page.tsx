@@ -1,6 +1,9 @@
+import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import type { Metadata } from 'next'
+import { isInAppBrowser } from '@/lib/in-app-browser'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { welcomeNeeds } from '@/modules/rival/rival-join-rule'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import {
   getBoardMatch,
@@ -17,7 +20,10 @@ import {
   reportPlayerAction,
   requestToJoinAction,
 } from '../../actions'
-import { loadWelcomePhoto } from '../../welcome-photo'
+import {
+  sendRivalMagicLinkAction,
+  startGoogleLoginFromRivalAction,
+} from '../../p/[code]/login-actions'
 import { ParticipantMatchView } from './ParticipantMatchView'
 import { PublicBoardView, type BoardViewer } from './PublicBoardView'
 
@@ -65,21 +71,24 @@ export default async function RivalBoardMatchPage(props: { params: Promise<{ id:
   if (!match) notFound()
 
   let viewer: BoardViewer = { kind: 'anon' }
-  let photo: Awaited<ReturnType<typeof loadWelcomePhoto>>
   if (playerId) {
+    // Solo se pide lo que falta: nombre y reglas, posición y zona, o las dos cosas.
     const welcomeState = await getRivalWelcomeState(playerId)
+    const needs = welcomeState
+      ? welcomeNeeds(welcomeState, match.seeking === 'rival' ? 'desafiar' : 'sumarse')
+      : null
     viewer = {
       kind: 'player',
       welcome:
-        welcomeState && !welcomeState.welcomed
+        welcomeState && needs
           ? {
               firstName: welcomeState.firstName,
               position: welcomeState.position,
               zone: welcomeState.zone,
+              needs,
             }
           : null,
     }
-    if (viewer.welcome) photo = await loadWelcomePhoto(playerId)
   }
 
   return (
@@ -90,7 +99,9 @@ export default async function RivalBoardMatchPage(props: { params: Promise<{ id:
       requestAction={requestToJoinAction}
       acceptAndRequestAction={acceptWelcomeAndRequestAction}
       reportMatchAction={reportMatchAction}
-      photo={photo}
+      sendMagicLink={sendRivalMagicLinkAction}
+      startGoogle={startGoogleLoginFromRivalAction}
+      inAppBrowser={playerId === null && isInAppBrowser((await headers()).get('user-agent'))}
     />
   )
 }

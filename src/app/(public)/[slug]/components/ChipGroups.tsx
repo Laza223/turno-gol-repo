@@ -41,13 +41,21 @@ const CHIP =
  * celular siempre es una fila cortada en el borde, que avisa que hay más.
  */
 export function ChipGroup({
+  id,
   label,
   options,
   value,
   onChange,
   wrap = false,
   alwaysWrap = false,
+  tabular = false,
+  className,
+  'aria-invalid': ariaInvalid,
+  'aria-describedby': ariaDescribedBy,
+  'aria-required': ariaRequired,
 }: {
+  /** Para enfocar el grupo desde un error: va al `radiogroup`, que Radix no deja enfocable. */
+  id?: string
   label: string
   options: Option[]
   value: string
@@ -55,6 +63,14 @@ export function ChipGroup({
   wrap?: boolean
   /** Varias filas también en el celular: para pocas opciones cortas, sin fila que se corte. */
   alwaysWrap?: boolean
+  /** Dígitos de ancho fijo en los chips (horas: 19:00 y 20:00 no deben bailar). */
+  tabular?: boolean
+  /** Se suma al final: quien monta puede pasar a grilla (`grid grid-cols-3 overflow-visible`). */
+  className?: string
+  /** Error del grupo; `aria-describedby` apunta al mensaje que lo explica. */
+  'aria-invalid'?: boolean
+  'aria-describedby'?: string
+  'aria-required'?: boolean
 }) {
   const ref = useRef<HTMLDivElement>(null)
   // Con 30 días de ventana el elegido puede quedar fuera de la fila: se la corre hasta que se
@@ -70,7 +86,11 @@ export function ChipGroup({
   return (
     <RadioGroup.Root
       ref={ref}
+      id={id}
       aria-label={label}
+      aria-invalid={ariaInvalid}
+      aria-describedby={ariaDescribedBy}
+      aria-required={ariaRequired}
       value={value}
       onValueChange={onChange}
       orientation="horizontal"
@@ -78,10 +98,16 @@ export function ChipGroup({
         '-m-1 flex gap-2 overflow-x-auto p-1 [scrollbar-width:none]',
         wrap && 'lg:flex-wrap lg:overflow-visible',
         alwaysWrap && 'flex-wrap overflow-visible',
+        className,
       )}
     >
       {options.map((o) => (
-        <RadioGroup.Item key={o.value} value={o.value} disabled={o.disabled} className={CHIP}>
+        <RadioGroup.Item
+          key={o.value}
+          value={o.value}
+          disabled={o.disabled}
+          className={cn(CHIP, tabular && 'tabular-nums')}
+        >
           <span className="inline-flex items-center gap-1">
             <RadioGroup.Indicator>
               <Check className="size-4" aria-hidden />
@@ -102,12 +128,15 @@ export function DayChips({
   value,
   isClosed,
   onChange,
+  alwaysWrap = false,
 }: {
   days: string[]
   today: string
   value: string
   isClosed: (date: string) => boolean
   onChange: (date: string) => void
+  /** Varias filas también en el celular (ver `ChipGroup`): el form de RIVAL muestra los 8 días. */
+  alwaysWrap?: boolean
 }) {
   const options = days.map((date) => ({
     value: date,
@@ -123,6 +152,7 @@ export function DayChips({
       value={value}
       onChange={onChange}
       wrap={days.length <= 8}
+      alwaysWrap={alwaysWrap}
     />
   )
 }

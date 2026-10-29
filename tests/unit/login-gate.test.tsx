@@ -224,6 +224,29 @@ describe('LoginGate — el email', () => {
     expect(email.value).toBe('tomas@')
   })
 
+  it('editar el campo limpia el error y reenviar lo vuelve a mostrar con foco', async () => {
+    renderGate({
+      action: async () => ({
+        status: 'error',
+        message: 'Ingresá un email válido',
+        field: 'email',
+        values: { email: 'tomas@' },
+      }),
+    })
+    type('Email', 'tomas@')
+    await click('Continuar con mi email')
+    await screen.findByRole('alert')
+
+    type('Email', 'tomas@x')
+    const email = screen.getByLabelText('Email') as HTMLInputElement
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(email.getAttribute('aria-invalid')).not.toBe('true')
+
+    await click('Continuar con mi email')
+    expect((await screen.findByRole('alert')).textContent).toBe('Ingresá un email válido')
+    await waitFor(() => expect(email).toHaveFocus())
+  })
+
   it('un error sin campo (límite de pedidos, mail que falló) sale arriba del botón y no marca nada', async () => {
     renderGate({
       action: async () => ({ status: 'error', message: 'Demasiados intentos. Esperá un minuto.' }),

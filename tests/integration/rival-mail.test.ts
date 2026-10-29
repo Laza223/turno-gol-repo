@@ -102,29 +102,40 @@ function startsAtIn(hoursAhead: number): string {
   return new Date(Math.ceil((Date.now() + hoursAhead * HOUR) / HOUR) * HOUR).toISOString()
 }
 
-function draft(o: {
+type DraftOpts = {
   capacity?: number
   seeking?: 'players' | 'rival'
   position?: 'any' | 'goalkeeper'
-}) {
+}
+
+function draft(o: DraftOpts) {
   return createRivalMatchSchema.parse({
     tenantId: tenant.id,
     startsAt: startsAtIn(48),
     format: 5,
-    capacity: o.capacity,
+    // "Mi equipo busca rival" fija los jugadores al formato (canSeekRival).
+    capacity: o.capacity ?? (o.seeking === 'rival' ? 5 : undefined),
     level: 'parejo',
     courtDeclared: true,
-    ...(o.seeking
-      ? {
-          board: {
-            seeking: o.seeking,
-            ...(o.position ? { seekingPosition: o.position } : {}),
-            whatsapp: WHATSAPP,
-            whatsappConsent: true,
-          },
-        }
-      : {}),
   })
+}
+
+/** Arma el partido y, con `seeking`, lo publica: el tablón ya no se arma en `createMatch`. */
+async function create(playerId: string, o: DraftOpts) {
+  const created = await createMatch(playerId, draft(o))
+  if (o.seeking) {
+    await publishToBoard(
+      playerId,
+      created.id,
+      publishBoardSchema.parse({
+        seeking: o.seeking,
+        ...(o.position ? { seekingPosition: o.position } : {}),
+        whatsapp: WHATSAPP,
+        whatsappConsent: true,
+      }),
+    )
+  }
+  return created
 }
 
 type NotifRow = {
@@ -167,7 +178,7 @@ describe('1. hooks de rival.service: encolan DESPUÉS del commit y nunca rompen 
   it('1.1 requestToJoin -> join_request con participantId, ya commiteado', async () => {
     const A = await welcomed('Ana')
     const B = await welcomed('Beto')
-    const { id: matchId } = await createMatch(A, draft({ seeking: 'players' }))
+    const { id: matchId } = await create(A, { seeking: 'players' })
     bossSend.mockClear()
     const seen = probeOnSend(async (d) => {
       const rows = await adminSql()`
@@ -186,7 +197,7 @@ describe('1. hooks de rival.service: encolan DESPUÉS del commit y nunca rompen 
     const A = await welcomed('Ana')
     const B = await welcomed('Beto')
     const C = await welcomed('Caro')
-    const { id: matchId } = await createMatch(A, draft({ seeking: 'players' }))
+    const { id: matchId } = await create(A, { seeking: 'players' })
     const reqB = await requestToJoin(B, { matchId, tenantId: tenant.id })
     const reqC = await requestToJoin(C, { matchId, tenantId: tenant.id })
     bossSend.mockClear()
@@ -207,7 +218,7 @@ describe('1. hooks de rival.service: encolan DESPUÉS del commit y nunca rompen 
 
   it('1.3 cancelMatch -> canceled, con el partido ya cancelado en la base', async () => {
     const A = await welcomed('Ana')
-    const { id: matchId } = await createMatch(A, draft({}))
+    const { id: matchId } = await create(A, {})
     bossSend.mockClear()
     const seen = probeOnSend(async (d) => {
       const rows = await adminSql()`
@@ -231,10 +242,10 @@ describe('1. hooks de rival.service: encolan DESPUÉS del commit y nunca rompen 
       return rows[0]?.on_board === true
     })
 
-    await createMatch(A, draft({}))
+    await create(A, {})
     expect(seen).toHaveLength(0)
 
-    const { id } = await createMatch(A, draft({ seeking: 'players' }))
+    const { id } = await create(A, { seeking: 'players' })
     expect(seen).toHaveLength(1)
     expect(seen[0]!.data).toEqual({ type: 'alert_publish', matchId: id })
     expect(seen[0]!.committed).toBe(true)
@@ -242,7 +253,7 @@ describe('1. hooks de rival.service: encolan DESPUÉS del commit y nunca rompen 
 
   it('1.5 publishToBoard -> alert_publish', async () => {
     const A = await welcomed('Ana')
-    const { id: matchId } = await createMatch(A, draft({}))
+    const { id: matchId } = await create(A, {})
     bossSend.mockClear()
     const seen = probeOnSend(async (d) => {
       const rows = await adminSql()`
@@ -264,7 +275,7 @@ describe('1. hooks de rival.service: encolan DESPUÉS del commit y nunca rompen 
   it('1.6 si pg-boss falla la acción igual termina bien', async () => {
     const A = await welcomed('Ana')
     const B = await welcomed('Beto')
-    const { id: matchId } = await createMatch(A, draft({ seeking: 'players' }))
+    const { id: matchId } = await create(A, { seeking: 'players' })
     bossSend.mockRejectedValue(new Error('pg-boss caído'))
 
     const { participantId } = await requestToJoin(B, { matchId, tenantId: tenant.id })
@@ -275,7 +286,7 @@ describe('1. hooks de rival.service: encolan DESPUÉS del commit y nunca rompen 
   it('1.7 un rechazo de la base NO encola nada (la tx no commiteó)', async () => {
     const A = await welcomed('Ana')
     const B = await welcomed('Beto')
-    const { id: matchId } = await createMatch(A, draft({ seeking: 'players' }))
+    const { id: matchId } = await create(A, { seeking: 'players' })
     await requestToJoin(B, { matchId, tenantId: tenant.id })
     bossSend.mockClear()
     // Segundo pedido del mismo jugador: viola la unique del plantel.
@@ -292,7 +303,7 @@ describe('2. join_request: revalida al despertar', () => {
   async function setup() {
     const A = await welcomed('Ana')
     const B = await welcomed('Beto')
-    const { id: matchId } = await createMatch(A, draft({ seeking: 'players' }))
+    const { id: matchId } = await create(A, { seeking: 'players' })
     const { participantId } = await requestToJoin(B, { matchId, tenantId: tenant.id })
     return {
       A,
@@ -316,10 +327,26 @@ describe('2. join_request: revalida al despertar', () => {
       template_name: 'rival_join_request',
       trigger_event: 'rival_join_request',
     })
-    expect(rows[0]!.content).toMatchObject({ ref: participantId, requesterFirstName: 'Beto' })
+    expect(rows[0]!.content).toMatchObject({
+      ref: participantId,
+      requesterFirstName: 'Beto',
+      requesterRole: 'player',
+    })
     expect(JSON.stringify(rows[0]!.content)).not.toMatch(/5491155551234|whatsapp|@/i)
     // El organizador cae en /rival/partido/<id>, que lo redirige a su pantalla con Aceptar / Esta vez no.
     expect(String(rows[0]!.content.url)).toMatch(new RegExp(`/rival/partido/${matchId}$`))
+  })
+
+  it('2.1b pedido a un partido que busca rival: el mail dice capitán, aunque después se despublique', async () => {
+    const A = await welcomed('Ana')
+    const CAP = await welcomed('Cap')
+    const { id: matchId } = await create(A, { seeking: 'rival' })
+    const { participantId } = await requestToJoin(CAP, { matchId, tenantId: tenant.id })
+    await setMatch(matchId, 'on_board = false, seeking = NULL, seeking_position = NULL')
+    await processRivalMailJob({ type: 'join_request', matchId, participantId }, noonArt())
+    const rows = await notifsFor([A], 'rival_join_request')
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.content).toMatchObject({ requesterFirstName: 'Cap', requesterRole: 'captain' })
   })
 
   it.each([
@@ -353,7 +380,7 @@ describe('3. accepted', () => {
   async function setup() {
     const A = await welcomed('Ana')
     const B = await welcomed('Beto')
-    const { id: matchId } = await createMatch(A, draft({ seeking: 'players' }))
+    const { id: matchId } = await create(A, { seeking: 'players' })
     const { participantId } = await requestToJoin(B, { matchId, tenantId: tenant.id })
     await decideRequest(A, participantId, 'accept')
     return {
@@ -394,7 +421,7 @@ describe('3. accepted', () => {
   it('3.4 el capitán rival confirmado también recibe "te aceptaron"', async () => {
     const A = await welcomed('Ana')
     const CAP = await welcomed('Cap')
-    const { id: matchId } = await createMatch(A, draft({ seeking: 'rival' }))
+    const { id: matchId } = await create(A, { seeking: 'rival' })
     const [row] = await adminSql()`
       INSERT INTO rival_participants (tenant_id, match_id, player_id, role, status, origin, confirmed_at)
       VALUES (${tenant.id}, ${matchId}, ${CAP}, 'rival_captain', 'confirmed', 'board', now())
@@ -409,7 +436,7 @@ describe('3. accepted', () => {
   it('3.3 quien entró por link (origin invite) no recibe "te aceptaron"', async () => {
     const A = await welcomed('Ana')
     const B = await welcomed('Beto')
-    const { id: matchId, inviteCode } = await createMatch(A, draft({ capacity: 3 }))
+    const { id: matchId, inviteCode } = await create(A, { capacity: 3 })
     const joined = await joinByInvite(B, inviteCode)
     await processRivalMailJob(
       { type: 'accepted', matchId, participantId: joined.participantId },
@@ -428,10 +455,7 @@ describe('4. canceled', () => {
     const C = await welcomed('Caro') // banco
     const D = await welcomed('Dani') // se bajó
     const E = await welcomed('Eli') // pedido pendiente
-    const { id: matchId, inviteCode } = await createMatch(
-      A,
-      draft({ capacity: 2, seeking: 'players' }),
-    )
+    const { id: matchId, inviteCode } = await create(A, { capacity: 2, seeking: 'players' })
     // El pedido va primero: con el partido lleno la base ya no admite pedidos.
     await requestToJoin(E, { matchId, tenantId: tenant.id })
     await joinByInvite(B, inviteCode)
@@ -458,7 +482,7 @@ describe('4. canceled', () => {
   it('4.4 el capitán rival confirmado también recibe "se canceló"', async () => {
     const A = await welcomed('Ana')
     const CAP = await welcomed('Cap')
-    const { id: matchId } = await createMatch(A, draft({ seeking: 'rival' }))
+    const { id: matchId } = await create(A, { seeking: 'rival' })
     await adminSql()`
       INSERT INTO rival_participants (tenant_id, match_id, player_id, role, status, origin, confirmed_at)
       VALUES (${tenant.id}, ${matchId}, ${CAP}, 'rival_captain', 'confirmed', 'board', now())`
@@ -489,14 +513,11 @@ describe('5. alert_publish', () => {
     organizer: string,
     o: { seeking?: 'players' | 'rival'; position?: 'any' | 'goalkeeper'; capacity?: number } = {},
   ) {
-    const { id } = await createMatch(
-      organizer,
-      draft({
-        seeking: o.seeking ?? 'players',
-        position: o.position,
-        capacity: o.seeking === 'rival' ? undefined : o.capacity,
-      }),
-    )
+    const { id } = await create(organizer, {
+      seeking: o.seeking ?? 'players',
+      position: o.position,
+      capacity: o.seeking === 'rival' ? undefined : o.capacity,
+    })
     return id
   }
   const sub = (playerId: string, onlyGoalkeeper = false) =>
@@ -686,7 +707,7 @@ describe('6. ventana silenciosa y efectos externos', () => {
   it('6.1 despertado de madrugada: re-difiere y no inserta nada', async () => {
     const A = await welcomed('Ana')
     const B = await welcomed('Beto')
-    const { id: matchId, inviteCode } = await createMatch(A, draft({ capacity: 2 }))
+    const { id: matchId, inviteCode } = await create(A, { capacity: 2 })
     await joinByInvite(B, inviteCode)
     await cancelMatch(A, matchId)
     bossSend.mockClear()
@@ -704,7 +725,7 @@ describe('6. ventana silenciosa y efectos externos', () => {
     const A = await welcomed('Ana')
     const B = await welcomed('Beto')
     const C = await welcomed('Caro')
-    const { id: matchId, inviteCode } = await createMatch(A, draft({ capacity: 2 }))
+    const { id: matchId, inviteCode } = await create(A, { capacity: 2 })
     await joinByInvite(B, inviteCode)
     await joinByInvite(C, inviteCode)
     await cancelMatch(A, matchId)
@@ -740,7 +761,7 @@ describe('6. ventana silenciosa y efectos externos', () => {
   it('6.3 si dispatchEmail falla la fila queda queued (la agarra el barrido) y el job no se rompe', async () => {
     const A = await welcomed('Ana')
     const B = await welcomed('Beto')
-    const { id: matchId, inviteCode } = await createMatch(A, draft({ capacity: 2 }))
+    const { id: matchId, inviteCode } = await create(A, { capacity: 2 })
     await joinByInvite(B, inviteCode)
     await cancelMatch(A, matchId)
     bossSend.mockReset()
@@ -841,7 +862,7 @@ describe('8. ARCO: rival_alert_sends no bloquea la anonimización', () => {
     const P = await welcomed('Pablo')
     await adminSql()`
       INSERT INTO rival_alert_subscriptions (player_id, tenant_id) VALUES (${P}, ${tenant.id})`
-    const { id: matchId } = await createMatch(A, draft({ seeking: 'players' }))
+    const { id: matchId } = await create(A, { seeking: 'players' })
     await processRivalMailJob({ type: 'alert_publish', matchId }, noonArt())
     expect(await adminSql()`SELECT 1 FROM rival_alert_sends WHERE player_id = ${P}`).toHaveLength(1)
 

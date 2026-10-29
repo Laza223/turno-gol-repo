@@ -19,6 +19,8 @@ Mundo: La Previa (DESIGN.md, sección del portal), re-aplicada el 2026-10-20 ([`
 - **La home queda en solo el hero de agosto** (#129): titular, subtítulo y buscador. No vuelven "cerca tuyo" (`NearbyPanel`), "Los mejor valorados", "Cómo funciona" ni la franja de dueños (`OwnersStrip`). "Para complejos" sigue en la barra.
 - Se conservan el titular "Tu partido empieza en TurnoGol", el subtítulo "Mirá los turnos libres de hoy y reservá sin llamar a nadie." y la ausencia de "confirmación inmediata".
 
+**2026-10-29 (la puerta del complejo en el celu):** la barra esconde "Para complejos" bajo `sm` (640 px) y desde el celu el dueño no tenía cómo llegar. Se suma una línea de texto, no la franja de dueños: "¿Tenés un complejo? Sumalo a TurnoGol" → `/para-complejos`, solo bajo `sm`, debajo de la pill de confianza (`HeroMobile`). "Para complejos" entra también en el pie. En `/ingresar`, "Entrar a mi panel" (`/login`) y "Registrar mi complejo" (`/register`).
+
 ## Qué tiene la página, en orden
 
 1. **El cromo del portal.** La barra `overlay` de `PortalHeader` (pastilla `.overlay-nav` flotante sobre el hero), el pie y la barra inferior del celular, que se ve también sin sesión (Explorar, Reservas, Cuenta). La home vive en la raíz de `app/` y arma su propio cromo en `src/app/page.tsx`. Hay un solo `<main id="main-content">` y un solo skip link.

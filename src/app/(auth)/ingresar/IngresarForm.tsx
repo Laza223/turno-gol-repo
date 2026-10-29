@@ -56,6 +56,30 @@ const exploreLinkClass =
   'py-3.5 font-semibold text-emerald-700 underline underline-offset-4 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300'
 
 /**
+ * Puerta del complejo: /ingresar es el login del JUGADOR, y desde el celu la barra no trae "Para
+ * complejos". Sin esto el dueño, con cuenta o sin ella, no tenía cómo llegar a /login ni a /register.
+ * Va en el formulario y en el "enviado" (quien tipeó el mail del complejo espera un enlace que no
+ * llega). Links planos y no `IngresarLink`: el destino no es /ingresar. Cada uno mide 44 px.
+ */
+function ComplejoLinks() {
+  const linkClass =
+    'inline-flex min-h-11 items-center font-semibold text-emerald-700 underline underline-offset-4 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300'
+  return (
+    <div className="mt-6 border-t border-border pt-4 text-sm text-muted-foreground">
+      <p>¿Tenés un complejo?</p>
+      <div className="flex flex-wrap items-center gap-x-5">
+        <Link href="/login" className={linkClass}>
+          Entrar a mi panel
+        </Link>
+        <Link href="/register" className={linkClass}>
+          Registrar mi complejo
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+/**
  * Bloque cliente de /ingresar (aviso ?deleted=1 + magic link). La action llega
  * por PROP: './actions' es `'use server'` y arrastra request-context →
  * `node:async_hooks`, que Vite externaliza en el browser y rompe la story si
@@ -241,6 +265,7 @@ function FormCard({
           Descubrí complejos y reservá tu cancha
         </Link>
       </p>
+      <ComplejoLinks />
     </>
   )
 }
@@ -318,6 +343,7 @@ function SentPanel({
         </p>
         {!inAppBrowser && <GoogleForm googleAction={googleAction} next={next} />}
       </div>
+      <ComplejoLinks />
     </>
   )
 }

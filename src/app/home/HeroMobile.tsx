@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Check } from 'lucide-react'
 import HeroSearch from '@/components/site/HeroSearch'
 import PitchLines from '@/components/public/PitchLines'
@@ -103,6 +104,18 @@ export function HeroMobile({ cities }: { cities: CityCount[] }) {
               </span>
             ))}
           </div>
+
+          {/* Entrada del complejo: la barra esconde "Para complejos" bajo sm (640 px), y en el
+              celu el dueño no tenía cómo llegar. Desde sm vuelve a estar en la barra. */}
+          <p className="mt-1 text-center text-[13px] text-muted-foreground sm:hidden">
+            ¿Tenés un complejo?{' '}
+            <Link
+              href="/para-complejos"
+              className="py-3.5 font-semibold text-emerald-700 underline underline-offset-4 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"
+            >
+              Sumalo a TurnoGol
+            </Link>
+          </p>
         </div>
       </div>
     </section>

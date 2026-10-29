@@ -1,66 +1,25 @@
 'use client'
 
-import { startTransition, useActionState, useState, type FormEvent } from 'react'
-import { Minus, Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { SelectMenu } from '@/components/ui/select-menu'
-import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
-import { FORMAT_OPTIONS, formatLabel } from '@/components/public/courtFacets'
-import { ChipGroup, DayChips } from '@/app/(public)/[slug]/components/ChipGroups'
-import { addDays } from '@/shared/dates/art'
-import { artInstantOf, dayLabel, RIVAL_LEVEL_LABELS } from '@/modules/rival/rival-display'
+import { useEffect, useRef } from 'react'
+import type { ScheduleSource } from '@/lib/schedule/open-status'
 import type { RepeatPrefill } from '@/modules/rival/rival-form'
-import { RIVAL_LEVELS } from '@/modules/rival/rival.schema'
-import type { RivalFormResult } from '../actions'
-import { BoardFields, type BoardPosition, type BoardSeeking } from '../BoardFields'
-import { StampBadge } from '../MatchBits'
+import { CourtBlock, MatchBlock, ModePicker, SubmitBar, WhereWhenBlock } from './NewMatchSections'
+import type { CreateAction } from './new-match-form'
+import { useNewMatchForm } from './use-new-match-form'
 
-type CreateAction = (prev: RivalFormResult, formData: FormData) => Promise<RivalFormResult>
-
-export type NewMatchTenant = { id: string; name: string; city: string }
-/** Reserva `confirmed` y futura del jugador, con el instante como ISO (cruza server → client). */
-export type NewMatchBookingProp = { tenantId: string; startsAt: string }
-export type NewMatchPrefill = { tenantId: string; date: string; time: string; format: number }
-
-const INITIAL: RivalFormResult = { success: true }
-/** Campos que la reserva fijada oculta: su error no tiene dónde pintarse y sale arriba del botón. */
-const LOCKED_FIELDS = new Set(['tenantId', 'startsAt', 'format'])
-const FIELD_ERROR = 'text-[13px] leading-5 text-red-700 dark:text-red-300'
-const FORMAT_CHIPS = FORMAT_OPTIONS.map((f) => ({ value: String(f), label: formatLabel(f) }))
-const LEVEL_CHIPS = RIVAL_LEVELS.map((l) => ({ value: l, label: RIVAL_LEVEL_LABELS[l] }))
-/** Del día entero, en punto o y media (el schema valida lo mismo). */
-const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
-  const t = `${String(Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`
-  return { value: t, label: t }
-})
-const MIN_CAPACITY = 2
-const MAX_CAPACITY = 22
-
-function FieldLabel({ id, children }: { id?: string; children: string }) {
-  return (
-    <Label htmlFor={id} className="text-base">
-      {children}
-    </Label>
-  )
+export type NewMatchTenant = {
+  id: string
+  name: string
+  city: string
+  slug: string
+  /** Horario del complejo para filtrar las horas; `null` = sin horario cargado (lista completa). */
+  schedule: ScheduleSource | null
 }
+/** Reserva `confirmed` y futura del jugador, con el instante como ISO (cruza server → client). */
+type NewMatchBookingProp = { tenantId: string; startsAt: string }
+type NewMatchPrefill = { tenantId: string; date: string; time: string; format: number }
 
-/**
- * "Armar un partido" en una sola pantalla (spec §3 y §5.1). El tablón arranca "Apagado" (solo el
- * grupo); con "Buscamos rival" el cupo queda fijo en el formato. Con una reserva (`prefill`) el complejo, el día, la hora y el formato vienen
- * bloqueados. El sello se ve acá solo como aviso: el servidor vuelve a buscar la reserva por su
- * cuenta (el form no manda `bookingId`).
- */
-export function NewMatchForm({
-  tenants,
-  bookings,
-  prefill,
-  repeat = null,
-  today,
-  nowTime,
-  whatsappPrefill = null,
-  action,
-}: {
+export type NewMatchFormProps = {
   tenants: NewMatchTenant[]
   bookings: NewMatchBookingProp[]
   prefill: NewMatchPrefill | null
@@ -69,227 +28,42 @@ export function NewMatchForm({
   /** Hoy en ART (YYYY-MM-DD) y la hora ART de ahora (HH:MM), de la page. */
   today: string
   nowTime: string
-  /** WhatsApp precargado (de `players.phone`) para cuando se publica en el tablón. */
-  whatsappPrefill?: string | null
   action: CreateAction
-}) {
-  const [state, formAction, pending] = useActionState(action, INITIAL)
-  const initial = prefill ?? repeat
-  const [tenantId, setTenantId] = useState(
-    initial?.tenantId || (tenants.length === 1 ? tenants[0]!.id : ''),
-  )
-  const [date, setDate] = useState(initial?.date ?? today)
-  const [time, setTime] = useState(initial?.time ?? '')
-  const [format, setFormat] = useState(initial?.format ?? 5)
-  const [capacity, setCapacity] = useState<number | null>(
-    repeat && repeat.capacity !== repeat.format * 2 ? repeat.capacity : null,
-  )
-  const [level, setLevel] = useState<string>(repeat?.level ?? 'parejo')
-  const [courtDeclared, setCourtDeclared] = useState(false)
-  const [seeking, setSeeking] = useState<BoardSeeking>('off')
-  const [position, setPosition] = useState<BoardPosition>('any')
-  const [whatsapp, setWhatsapp] = useState(whatsappPrefill ?? '')
-  const [consent, setConsent] = useState(false)
+}
 
-  const locked = prefill !== null
-  // Buscando rival, el cupo es el formato: tu equipo, sin contar al rival.
-  const teamOnly = seeking === 'rival'
-  const effectiveCapacity = teamOnly ? format : (capacity ?? format * 2)
-  const days = Array.from({ length: 8 }, (_, i) => addDays(today, i))
-  // Hoy solo quedan las horas que no pasaron.
-  const hours = date === today ? TIME_OPTIONS.filter((o) => o.value > nowTime) : TIME_OPTIONS
-  const tenantName = tenants.find((t) => t.id === tenantId)?.name ?? ''
-
-  const instant = time ? artInstantOf(date, time).getTime() : null
-  const hasStamp =
-    instant !== null &&
-    bookings.some((b) => b.tenantId === tenantId && new Date(b.startsAt).getTime() === instant)
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    startTransition(() => formAction(new FormData(event.currentTarget)))
-  }
-
-  const error = !state.success ? state : null
-  // Si la reserva se cayó antes de enviar, el server pide declarar la cancha: sin sello, con la casilla.
-  const showStamp = hasStamp && error?.field !== 'courtDeclared'
-  const fieldError = (f: string) => (error?.field === f ? error.error : undefined)
-  const err = (f: string) =>
-    fieldError(f) ? (
-      <p role="alert" className={FIELD_ERROR}>
-        {fieldError(f)}
-      </p>
-    ) : null
-
+/**
+ * "Armar un partido" en una sola pantalla (spec §3 y §5.1). Arriba, "¿Qué armás?" (partido
+ * completo o equipo que busca rival: con rival el cupo es el formato); después tres bloques: dónde
+ * y cuándo, el partido y la cancha. El tablón no se carga acá: se publica desde la vista del
+ * partido. Con una reserva (`prefill`) el complejo, el día, la hora y el formato vienen
+ * bloqueados. El sello se ve acá solo como aviso: el servidor vuelve a buscar la reserva por su
+ * cuenta (el form no manda `bookingId`). Las horas se ofrecen según el horario del complejo, como
+ * ayuda: el servidor no lo valida.
+ */
+export function NewMatchForm(props: NewMatchFormProps) {
+  const form = useNewMatchForm(props)
+  const errorRef = useRef<HTMLDivElement>(null)
+  // El form mide ~1000 px y el botón es fijo: sin esto el error general queda fuera de pantalla.
+  // Va después del hook para correr después del foco al campo con error y ganarle el scroll.
+  useEffect(() => {
+    errorRef.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
+  }, [form.response])
+  const { tenantId, date, validTime, format, capacity, teamOnly, level, mode } = form
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-6">
+    <form onSubmit={form.handleSubmit} noValidate className="space-y-7">
       <input type="hidden" name="tenantId" value={tenantId} />
       <input type="hidden" name="date" value={date} />
-      <input type="hidden" name="time" value={time} />
+      <input type="hidden" name="time" value={validTime} />
       <input type="hidden" name="format" value={format} />
       <input type="hidden" name="capacity" value={teamOnly ? format : (capacity ?? '')} />
       <input type="hidden" name="level" value={level} />
+      <input type="hidden" name="mode" value={mode} />
 
-      {locked ? (
-        <section aria-label="Tu reserva" className="space-y-1 rounded-2xl bg-muted/50 p-4">
-          <p className="text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
-            Viene de tu reserva
-          </p>
-          <p className="text-base font-semibold text-foreground">{tenantName}</p>
-          <p className="text-base text-foreground">
-            {dayLabel(date)} · {time} · {formatLabel(format)}
-          </p>
-        </section>
-      ) : (
-        <>
-          <div className="space-y-1.5">
-            <FieldLabel id="rival-complejo">Complejo</FieldLabel>
-            <SelectMenu
-              id="rival-complejo"
-              value={tenantId}
-              onChange={setTenantId}
-              options={tenants.map((t) => ({ value: t.id, label: `${t.name} · ${t.city}` }))}
-              placeholder="Elegí el complejo"
-            />
-            {err('tenantId')}
-          </div>
-
-          <div className="space-y-1.5">
-            <p className="text-base font-medium text-foreground">Día</p>
-            <DayChips
-              days={days}
-              today={today}
-              value={date}
-              isClosed={() => false}
-              onChange={(d) => {
-                setDate(d)
-                // Si la hora elegida ya pasó en el día nuevo (hoy), se pide de nuevo.
-                if (d === today && time <= nowTime) setTime('')
-              }}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <FieldLabel id="rival-hora">Hora de inicio</FieldLabel>
-            <SelectMenu
-              id="rival-hora"
-              value={time}
-              onChange={setTime}
-              options={hours}
-              placeholder="Elegí la hora"
-            />
-            <p className="text-[13px] leading-5 text-muted-foreground">
-              Hora argentina, en punto o y media.
-            </p>
-            {err('startsAt')}
-          </div>
-
-          <div className="space-y-1.5">
-            <p className="text-base font-medium text-foreground">Formato</p>
-            <ChipGroup
-              label="Formato"
-              options={FORMAT_CHIPS}
-              value={String(format)}
-              onChange={(v) => setFormat(Number(v))}
-            />
-            {err('format')}
-          </div>
-        </>
-      )}
-
-      <div className="space-y-1.5">
-        <p id="rival-cuantos" className="text-base font-medium text-foreground">
-          Cuántos juegan
-        </p>
-        <div className="flex items-center gap-3" role="group" aria-labelledby="rival-cuantos">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            aria-label="Uno menos"
-            disabled={teamOnly || effectiveCapacity <= MIN_CAPACITY}
-            onClick={() => setCapacity(Math.max(MIN_CAPACITY, effectiveCapacity - 1))}
-          >
-            <Minus className="size-4" aria-hidden />
-          </Button>
-          <output
-            aria-live="polite"
-            className="min-w-12 text-center font-display text-3xl font-black italic tabular-nums text-foreground"
-          >
-            {effectiveCapacity}
-          </output>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            aria-label="Uno más"
-            disabled={teamOnly || effectiveCapacity >= MAX_CAPACITY}
-            onClick={() => setCapacity(Math.min(MAX_CAPACITY, effectiveCapacity + 1))}
-          >
-            <Plus className="size-4" aria-hidden />
-          </Button>
-        </div>
-        <p className="text-[13px] leading-5 text-muted-foreground">
-          {teamOnly ? `Tu equipo: ${format}` : 'Contándote a vos.'}
-        </p>
-        {err('capacity')}
-      </div>
-
-      <div className="space-y-1.5">
-        <p className="text-base font-medium text-foreground">Nivel</p>
-        <ChipGroup label="Nivel" options={LEVEL_CHIPS} value={level} onChange={setLevel} />
-        {err('level')}
-      </div>
-
-      <div className="space-y-1.5">
-        <p className="text-base font-medium text-foreground">Cancha</p>
-        {showStamp ? (
-          <div className="space-y-1">
-            <StampBadge />
-            <p className="text-[13px] leading-5 text-muted-foreground">
-              Encontramos tu reserva a esa hora. Si se cae, te avisamos.
-            </p>
-          </div>
-        ) : (
-          <label className="flex min-h-11 cursor-pointer items-start gap-3">
-            <input
-              type="checkbox"
-              name="courtDeclared"
-              checked={courtDeclared}
-              onChange={(e) => setCourtDeclared(e.target.checked)}
-              aria-invalid={fieldError('courtDeclared') ? true : undefined}
-              className="mt-0.5 size-6 shrink-0 cursor-pointer"
-            />
-            <span className="text-base text-foreground">Ya tengo la cancha</span>
-          </label>
-        )}
-        {err('courtDeclared')}
-      </div>
-
-      <BoardFields
-        idPrefix="armar"
-        allowOff
-        seeking={seeking}
-        onSeekingChange={setSeeking}
-        position={position}
-        onPositionChange={setPosition}
-        whatsapp={whatsapp}
-        onWhatsappChange={setWhatsapp}
-        consent={consent}
-        onConsentChange={setConsent}
-        fieldError={fieldError}
-      />
-
-      <div className="space-y-3">
-        <Button type="submit" disabled={pending} aria-busy={pending} className={PORTAL_BUTTON}>
-          {pending ? 'Armando…' : 'Armar el partido'}
-        </Button>
-        {error && (!error.field || (locked && LOCKED_FIELDS.has(error.field))) && (
-          <p role="alert" className={FIELD_ERROR}>
-            {error.error}
-          </p>
-        )}
-      </div>
+      <ModePicker form={form} />
+      <WhereWhenBlock form={form} />
+      <MatchBlock form={form} />
+      <CourtBlock form={form} />
+      <SubmitBar form={form} errorRef={errorRef} />
     </form>
   )
 }

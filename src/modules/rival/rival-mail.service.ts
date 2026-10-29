@@ -116,7 +116,7 @@ async function processJoinRequest(
 ): Promise<Insertion> {
   const [r] = toRows(
     await tx.execute(sql`
-      SELECT m.tenant_id, m.starts_at, m.organizer_player_id, t.name AS tenant_name,
+      SELECT m.tenant_id, m.starts_at, m.organizer_player_id, p.role AS requester_role, t.name AS tenant_name,
              req.first_name AS requester_first_name
       FROM rival_participants p
       JOIN rival_matches m ON m.id = p.match_id
@@ -141,6 +141,8 @@ async function processJoinRequest(
     ref: job.participantId,
     content: {
       requesterFirstName: String(r.requester_first_name),
+      // El rol que fijó el trigger al insertar el pedido: `seeking` puede haber cambiado hasta que despierta el job.
+      requesterRole: r.requester_role === 'rival_captain' ? 'captain' : 'player',
       tenantName: String(r.tenant_name),
       dateLabel: whenLabel(new Date(String(r.starts_at))),
       url: appLink(`/rival/partido/${job.matchId}`),

@@ -107,3 +107,23 @@ export const Abierto: Story = {
     await waitFor(() => expect(body.getByRole('menu')).toBeVisible())
   },
 }
+
+/** Con error: el trigger lleva `aria-invalid` y apunta al mensaje con `aria-describedby`. */
+export const ConError: Story = {
+  render: () => (
+    <div className="w-64">
+      <ControlledSelectMenu aria-invalid aria-describedby="demo-select-menu-error" />
+      <p
+        id="demo-select-menu-error"
+        className="mt-1.5 text-[13px] leading-5 text-red-700 dark:text-red-300"
+      >
+        Elegí la superficie.
+      </p>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const trigger = within(canvasElement).getByLabelText('Superficie')
+    await expect(trigger).toHaveAttribute('aria-invalid', 'true')
+    await expect(trigger).toHaveAccessibleDescription('Elegí la superficie.')
+  },
+}

@@ -50,6 +50,20 @@ export const ExitoLogin: Story = {
   },
 }
 
+/** Quien volvía a armar un partido (abrió el enlace en otro dispositivo): el botón nombra RIVAL. */
+export const ExitoLoginRival: Story = {
+  args: { searchParams: { status: 'success', intent: 'login', next: '/rival/nuevo' } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Ya estás adentro.')).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: 'Volver a RIVAL' })).toHaveAttribute(
+      'href',
+      '/rival/nuevo',
+    )
+    await expect(canvas.queryByRole('link', { name: 'Ir a mis reservas' })).toBeNull()
+  },
+}
+
 export const ExitoSignup: Story = {
   args: { searchParams: { status: 'success', intent: 'signup', next: '/dashboard' } },
   play: async ({ canvasElement }) => {

@@ -6,22 +6,31 @@ import { missingLabel } from '@/modules/rival/rival-display'
  * La grilla de camisetas y el contador. Confirmadas en esmeralda, vacías con trazo punteado.
  * "¡Estamos los N! Se juega." pulsa UNA vez (600 ms, `animate-slot-pulse`) y no se mueve con
  * `prefers-reduced-motion`. El contador va en Archivo tabular. Un partido jugado (`ended`) no lleva
- * titular: "Faltan 9" o "Se juega" ya no son ciertos.
+ * titular: "Faltan 9" o "Se juega" ya no son ciertos. Un partido que busca rival con el equipo
+ * completo todavía no se juega: la vista pasa `headline` para decirlo (`null` = sin titular, porque
+ * ya hay otro arriba; texto = ese titular, sin pulso ni `role="status"`).
  */
 export function ShirtGrid({
   capacity,
   confirmed,
   ended = false,
+  headline,
 }: {
   capacity: number
   confirmed: number
   ended?: boolean
+  /** Reemplaza solo el titular del equipo completo; sin pasarlo es "¡Estamos los N! Se juega.". */
+  headline?: string | null
 }) {
   const filled = Math.min(confirmed, capacity)
   const full = confirmed >= capacity
   return (
     <div className="space-y-4">
-      {ended ? null : full ? (
+      {ended || (full && headline === null) ? null : full && headline !== undefined ? (
+        <p className="font-display text-3xl font-black italic leading-tight tracking-tight text-foreground tabular-nums">
+          {headline}
+        </p>
+      ) : full ? (
         <p
           role="status"
           className="inline-block rounded-2xl font-display text-3xl font-black italic leading-tight tracking-tight text-foreground tabular-nums animate-slot-pulse motion-reduce:animate-none"
@@ -54,7 +63,7 @@ export function ShirtGrid({
         ))}
       </div>
       <p className="text-sm text-muted-foreground tabular-nums">
-        {confirmed} de {capacity} confirmados
+        {filled} de {capacity} confirmados
       </p>
     </div>
   )

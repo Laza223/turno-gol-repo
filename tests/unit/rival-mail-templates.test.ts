@@ -54,4 +54,35 @@ describe('templates de RIVAL', () => {
     expect(out.html).toContain('Beto')
     expect(out.subject).toContain('Beto')
   })
+
+  it('el título del pedido nombra a quien pide y el de la alerta, el complejo', () => {
+    const join = renderTemplate('rival_join_request', { ...BASE, requesterFirstName: 'Beto' })
+    expect(join.html).toContain('<h2>Alguien quiere sumarse</h2>')
+    const alert = renderTemplate('rival_alert', {
+      ...BASE,
+      tenantName: 'Los Pinos',
+      unsubscribeUrl: 'https://turnogol.app/rival/baja?t=tok.sig',
+    })
+    expect(alert.html).toContain('<h2>Hay un partido nuevo en Los Pinos</h2>')
+  })
+
+  it('sin requesterRole (jobs viejos) sale el mail de jugador; con captain, el de equipo', () => {
+    const base = { ...BASE, requesterFirstName: 'Beto' }
+    const legacy = renderTemplate('rival_join_request', base)
+    const player = renderTemplate('rival_join_request', { ...base, requesterRole: 'player' })
+    expect(legacy).toEqual(player)
+    expect(legacy.subject).toBe('Beto quiere sumarse a tu partido')
+
+    const captain = renderTemplate('rival_join_request', { ...base, requesterRole: 'captain' })
+    expect(captain.subject).toBe('Beto quiere jugarle a tu equipo')
+    expect(captain.html).toContain('<h2>Beto trae un equipo para jugarte</h2>')
+    expect(captain.html).toContain('Ver el desafío')
+    expect(captain.html).not.toContain('quiere sumarse')
+  })
+
+  it('el botón usa el verde de marca medido (blanco sobre #047857), no el 600', () => {
+    const out = renderTemplate('rival_accepted', { ...BASE })
+    expect(out.html).toContain('background:#047857')
+    expect(out.html).not.toContain('#16a34a')
+  })
 })

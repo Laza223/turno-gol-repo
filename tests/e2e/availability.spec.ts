@@ -8,11 +8,13 @@ test.describe('public availability', () => {
     // <title> es un nodo de texto mas del documento. Apuntamos al h1, que es lo
     // que el test quiere verificar: el nombre visible para el usuario.
     await expect(page.getByRole('heading', { level: 1, name: 'E2E Complejo Demo' })).toBeVisible()
-    // La reserva: chips de día y, tras el fetch, al menos una hora (HH:MM).
+    // La reserva arranca en el paso 1 (la lista de días); tocar uno lleva al paso 2 con, tras el
+    // fetch, al menos una hora (HH:MM).
     const reserva = page.getByRole('region', { name: 'Reservá tu turno' })
-    await expect(reserva.getByRole('radiogroup', { name: 'Día' })).toBeVisible()
-    await expect(reserva.getByRole('radiogroup', { name: 'Hora' })).toBeVisible()
-    await expect(reserva.getByRole('radio', { name: /^\d{2}:\d{2}/ }).first()).toBeVisible()
+    await expect(reserva.getByRole('list', { name: 'Día' })).toBeVisible()
+    await reserva.getByRole('button', { name: /^Mañana/ }).click()
+    await expect(reserva.getByRole('group', { name: 'Hora' })).toBeVisible()
+    await expect(reserva.getByRole('button', { name: /^\d{2}:\d{2}/ }).first()).toBeVisible()
   })
 
   // La vista semanal se sacó (PR 2.3a): el link viejo redirige a la ficha y la query pasa sola.

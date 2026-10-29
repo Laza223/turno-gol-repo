@@ -39,12 +39,47 @@ export type StartGoogleLoginFromReservar = (
   formData: FormData,
 ) => Promise<GateState>
 
+/** A qué entra quien pasa por el ingreso RIVAL: sumarse con "Voy", armar un partido, pedir sumarse o pedir jugar con su equipo. */
+export type RivalGatePurpose = 'voy' | 'armar' | 'pedir' | 'pedir_equipo'
+
 /**
  * `reservar` (default): el ingreso de la pantalla de confirmar, donde `withDeposit` es obligatorio.
- * `rival`: el "Voy" de un partido de RIVAL; no hay seña, entrar devuelve al mismo partido.
+ * `rival`: el ingreso de RIVAL; no hay seña, entrar devuelve a donde se estaba. `purpose` (default
+ * `voy`) cambia el título y lo que promete: armar y pedir sumarse no se envían solos al volver.
  */
 type GateVariant =
-  { variant?: 'reservar'; withDeposit: boolean } | { variant: 'rival'; withDeposit?: never }
+  | { variant?: 'reservar'; withDeposit: boolean; purpose?: never }
+  | { variant: 'rival'; withDeposit?: never; purpose?: RivalGatePurpose }
+
+const RIVAL_COPY: Record<
+  RivalGatePurpose,
+  { accent: string; after: string; lead: string; sent: string }
+> = {
+  voy: {
+    accent: 'sumarte',
+    after: ' al partido',
+    lead: 'Entrás y volvés a este partido.',
+    sent: 'Cuando lo toques, volvés a este partido con tu cuenta.',
+  },
+  armar: {
+    accent: 'armar',
+    after: ' tu partido',
+    lead: 'Entrás y volvés a armarlo.',
+    sent: 'Cuando lo toques, volvés a armar tu partido con tu cuenta.',
+  },
+  pedir: {
+    accent: 'pedir',
+    after: ' tu lugar',
+    lead: 'Entrás y volvés a este partido.',
+    sent: 'Cuando lo toques, volvés a este partido con tu cuenta.',
+  },
+  pedir_equipo: {
+    accent: 'pedir',
+    after: ' jugar con tu equipo',
+    lead: 'Entrás y volvés a este partido.',
+    sent: 'Cuando lo toques, volvés a este partido con tu cuenta.',
+  },
+}
 
 /** Lo tipeado que se conserva si la request no llegó (los errores del servidor ya lo traen). */
 type GateEcho = { values: { email?: string; firstName?: string } }
@@ -116,6 +151,7 @@ export default function LoginGate({
   inAppBrowser = false,
   withDeposit = false,
   variant = 'reservar',
+  purpose = 'voy',
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -125,6 +161,7 @@ export default function LoginGate({
   inAppBrowser?: boolean
 } & GateVariant) {
   const rival = variant === 'rival'
+  const rivalCopy = RIVAL_COPY[purpose]
   const scope = rival ? 'rival' : 'reservar'
   const calls = useRef(0)
   const run =
@@ -153,6 +190,8 @@ export default function LoginGate({
   const state = googleState.n > emailState.n ? googleState : emailState
   // "Usar otro email": useActionState no se puede reiniciar, así que se descarta ese envío.
   const [discarded, setDiscarded] = useState<State | null>(null)
+  // Editar el campo limpia el error de esa respuesta; la próxima respuesta es otro estado y vuelve a mostrarlo.
+  const [editedAt, setEditedAt] = useState<State | null>(null)
   const emailRef = useRef<HTMLInputElement>(null)
 
   // El foco va al email cuando es el campo inválido (cada respuesta es un estado nuevo).
@@ -175,7 +214,8 @@ export default function LoginGate({
       : emailState.status === 'error' || emailState.status === 'unreached'
         ? (emailState.values ?? {})
         : {}
-  const emailError = state.status === 'error' && state.field === 'email' ? state.message : null
+  const emailError =
+    state.status === 'error' && state.field === 'email' && editedAt !== state ? state.message : null
   // El error que no es del campo del email va junto al botón que lo causó.
   const sendError =
     state.status === 'unreached' || (state.status === 'error' && state.field !== 'email')
@@ -209,6 +249,7 @@ export default function LoginGate({
           required
           placeholder="vos@email.com"
           defaultValue={values.email}
+          onChange={() => setEditedAt(state)}
           aria-invalid={emailError ? 'true' : undefined}
           aria-describedby={emailError ? 'gate-email-error' : undefined}
           className={AUTH_INPUT}
@@ -258,7 +299,7 @@ export default function LoginGate({
   )
 
   const sentMessage = rival
-    ? 'Cuando lo toques, volvés a este partido con tu cuenta.'
+    ? rivalCopy.sent
     : withDeposit
       ? 'Cuando lo toques, volvés a esta pantalla con tu cuenta y ahí pagás la seña.'
       : 'Cuando lo toques, tu reserva queda confirmada.'
@@ -284,7 +325,8 @@ export default function LoginGate({
               <DialogTitle className={cn(AUTH_TITLE, 'pr-6')}>
                 {rival ? (
                   <>
-                    Entrá para <span style={AUTH_ACCENT_STYLE}>sumarte</span> al partido
+                    Entrá para <span style={AUTH_ACCENT_STYLE}>{rivalCopy.accent}</span>
+                    {rivalCopy.after}
                   </>
                 ) : (
                   <>
@@ -293,9 +335,7 @@ export default function LoginGate({
                 )}
               </DialogTitle>
               {rival ? (
-                <p className="mt-2 text-pretty text-base text-muted-foreground">
-                  Entrás y volvés a este partido.
-                </p>
+                <p className="mt-2 text-pretty text-base text-muted-foreground">{rivalCopy.lead}</p>
               ) : (
                 !withDeposit && (
                   <p className="mt-2 text-pretty text-base text-muted-foreground">

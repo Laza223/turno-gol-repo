@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { expect, within } from 'storybook/test'
 import { cityCounts } from '@/test/fixtures/tenant'
 import { withGeolocation } from '@/test/storybook/with-geolocation'
 import { Hero } from './Hero'
@@ -30,6 +31,14 @@ type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
   args: { cities: cityCounts() },
+  play: async ({ canvasElement }) => {
+    // La barra esconde "Para complejos" bajo sm: en el celu la entrada del dueño es esta línea.
+    // Solo existe en HeroMobile (un único link en el DOM aunque los dos heros se sirvan). `hidden`:
+    // el browser del runner es ancho y `sm:hidden` la saca del árbol de accesibilidad acá.
+    await expect(
+      within(canvasElement).getByRole('link', { name: 'Sumalo a TurnoGol', hidden: true }),
+    ).toHaveAttribute('href', '/para-complejos')
+  },
 }
 
 /** `loadCities()` degrada a `[]` si `listPublicCities()` tira — el combobox queda sin opciones. */

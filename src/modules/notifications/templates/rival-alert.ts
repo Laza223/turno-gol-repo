@@ -12,8 +12,8 @@ export type RivalAlertData = {
 export function renderRivalAlert(data: RivalAlertData): EmailContent {
   return renderRivalMail({
     subject: `Hay un partido en ${data.tenantName} que busca gente`,
-    title: 'Hay partido en tu complejo',
-    lines: ['Pediste que te avisemos y hay un partido nuevo con lugar.'],
+    title: `Hay un partido nuevo en ${data.tenantName}`,
+    lines: ['Pediste que te avisemos de este complejo y apareció uno nuevo en el tablón.'],
     tenantName: data.tenantName,
     dateLabel: data.dateLabel,
     cta: 'Ver el partido',

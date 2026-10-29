@@ -57,3 +57,19 @@ export const Default: Story = {
     await expect(canvas.queryByRole('link', { name: 'Contacto' })).toBeNull()
   },
 }
+
+/** Con la sesión sembrada por el server no se ofrece "Ingresar"; el resto del footer sigue igual. */
+export const ConSesion: Story = {
+  args: { signedIn: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.queryByRole('link', { name: 'Ingresar' })).toBeNull()
+    for (const link of canvas.getAllByRole('link')) {
+      await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
+    }
+    await expect(canvas.getByRole('link', { name: 'Privacidad' })).toHaveAttribute(
+      'href',
+      '/privacidad',
+    )
+  },
+}

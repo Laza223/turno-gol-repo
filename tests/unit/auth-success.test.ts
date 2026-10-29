@@ -3,6 +3,7 @@ import { REFERRAL_CODE_ALPHABET } from '@/modules/referrals/referral.schema'
 import {
   isBookingPath,
   isRivalPath,
+  isRivalReturnPath,
   parseIntent,
   parseVia,
   successVerifyPath,
@@ -138,6 +139,40 @@ describe('isRivalPath', () => {
       expect(isRivalPath(`/x?a=/rival/partido/${ID}`)).toBe(false)
       expect(isRivalPath(`//evil.com/rival/partido/${ID}`)).toBe(false)
     })
+  })
+})
+
+describe('isRivalReturnPath', () => {
+  it('suma la portada, armar y Mis partidos a los partidos de isRivalPath', () => {
+    for (const next of [
+      '/rival',
+      '/rival/nuevo',
+      '/rival/nuevo?reserva=abc',
+      '/rival/mis-partidos',
+    ]) {
+      expect(isRivalReturnPath(next)).toBe(true)
+    }
+    expect(isRivalReturnPath('/rival/p/ABCDEFGH23?rival_intent=a.b')).toBe(true)
+    expect(isRivalReturnPath('/rival/partido/22222222-2222-4222-8222-222222222222')).toBe(true)
+  })
+  it('no deja pasar sufijos, traversal ni otros orígenes', () => {
+    for (const next of [
+      '/rival/nuevox',
+      '/rival/nuevo/',
+      '/rival/nuevo/../x',
+      '/rival/../admin',
+      '/rivalx',
+      '/rival/baja',
+      '/rival#frag',
+      '/x?a=/rival',
+      '//evil.com/rival',
+      'https://evil.com/rival',
+      '/\\evil.com/rival',
+      '/mis-reservas',
+      '',
+    ]) {
+      expect(isRivalReturnPath(next)).toBe(false)
+    }
   })
 })
 

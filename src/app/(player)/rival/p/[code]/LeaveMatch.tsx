@@ -3,51 +3,53 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { cn } from '@/lib/utils'
 import type { ActionResult } from '@/shared/types/action-result'
+import { RIVAL_GHOST_DESTRUCTIVE } from '../../rival-classes'
 
 /** Firma de la Server Action (por prop, no por import: ver convenciones-stack). */
 type LeaveAction = (matchId: string) => Promise<ActionResult>
 
 /**
  * "Me bajo" (spec §5.4): acción discreta (Quiet Ghost Rule) con el copy sin culpa y confirmación.
- * Sin penalidad en v1. Vuelve a aparecer "Voy" cuando el plantel se refresca.
+ * Sin penalidad en v1. Vuelve a aparecer "Voy" cuando el plantel se refresca. El efecto (el lugar
+ * queda libre y entra el banco) se dice una sola vez, en el diálogo donde se decide.
  */
 export function LeaveMatch({
   matchId,
   leaveAction,
-  showHint = true,
+  requested = false,
 }: {
   matchId: string
   leaveAction: LeaveAction
-  /** `false` con un pedido sin aceptar: todavía no hay lugar que ocupe el banco. */
-  showHint?: boolean
+  /** El pedido todavía no se aceptó: no hay lugar del que bajarse, se cancela el pedido. */
+  requested?: boolean
 }) {
   const [open, setOpen] = useState(false)
   return (
-    <div className="space-y-1">
-      {showHint && (
-        <p className="text-sm text-muted-foreground">
-          Si no podés ir, bajate a tiempo: alguien del banco ocupa tu lugar.
-        </p>
-      )}
+    <>
       <Button
         type="button"
         variant="ghost"
         onClick={() => setOpen(true)}
-        className="h-11 px-3 text-sm font-medium"
+        className={cn(RIVAL_GHOST_DESTRUCTIVE, 'w-full')}
       >
-        Me bajo
+        {requested ? 'Cancelar pedido' : 'Me bajo'}
       </Button>
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}
-        title="¿Te bajás del partido?"
-        description="Tu lugar queda libre: si hay banco, entra el primero."
-        confirmLabel="Sí, me bajo"
-        cancelLabel="No, voy"
+        title={requested ? '¿Cancelás tu pedido?' : '¿Te bajás del partido?'}
+        description={
+          requested
+            ? 'El organizador deja de verlo. Si querés, lo pedís de nuevo.'
+            : 'Tu lugar queda libre: si hay banco, entra el primero.'
+        }
+        confirmLabel={requested ? 'Sí, cancelar' : 'Sí, me bajo'}
+        cancelLabel={requested ? 'No, lo dejo' : 'No, voy'}
         variant="destructive"
         onConfirm={() => leaveAction(matchId)}
       />
-    </div>
+    </>
   )
 }

@@ -1,18 +1,11 @@
-import { cn } from '@/lib/utils'
-import { TONE_BADGE, type StatusTone } from '@/lib/status-tone'
-import { RIVAL_POSITION_LABELS } from '@/modules/rival/rival-display'
+import { PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
 import type { RivalPublicMatch, RivalRosterEntry } from '@/modules/rival/rival.types'
 import type { ActionResult } from '@/shared/types/action-result'
 import type { RivalReportReason } from '@/modules/rival/rival.schema'
 import { canAcceptRequest } from './organizer-rules'
+import { rowFacts } from './people-facts'
 import { ReportPlayerButton } from './ReportButton'
 import { RemoveRowAction, RequestRowActions } from './RowActions'
-
-const MEMBER_SINCE = new Intl.DateTimeFormat('es-AR', {
-  month: 'long',
-  year: 'numeric',
-  timeZone: 'America/Argentina/Buenos_Aires',
-})
 
 function initialsOf(shortName: string): string {
   return shortName
@@ -38,14 +31,6 @@ function Avatar({ entry }: { entry: RivalRosterEntry }) {
   )
 }
 
-const STATUS_BADGE: Partial<
-  Record<RivalRosterEntry['status'], { label: string; tone: StatusTone }>
-> = {
-  confirmed: { label: 'Confirmado', tone: 'success' },
-  bench: { label: 'En el banco', tone: 'neutral' },
-  requested: { label: 'Pidió sumarse', tone: 'neutral' },
-}
-
 /** Las acciones de las filas: lo que el organizador decide y la denuncia de quien tiene sesión. */
 export type RowActionProps = {
   matchId: string
@@ -65,12 +50,13 @@ export type RowActionProps = {
   ) => Promise<ActionResult>
 }
 
+/** Lo que el organizador decide en la fila (la denuncia va en la línea del nombre, no acá). */
 function RowActions({ entry, actions }: { entry: RivalRosterEntry; actions: RowActionProps }) {
   if (entry.isMe) return null
-  const { organizer, reportPlayerAction } = actions
+  const { organizer } = actions
   const decide = organizer && entry.status === 'requested'
   const remove = organizer && (entry.status === 'confirmed' || entry.status === 'bench')
-  if (!decide && !remove && !reportPlayerAction) return null
+  if (!decide && !remove) return null
   return (
     <div className="flex flex-wrap items-center gap-x-1 pb-1 pl-[52px]">
       {decide && (
@@ -87,18 +73,36 @@ function RowActions({ entry, actions }: { entry: RivalRosterEntry; actions: RowA
           removeAction={organizer.removeAction}
         />
       )}
-      {reportPlayerAction && (
-        <ReportPlayerButton
-          matchId={actions.matchId}
-          playerId={entry.playerId}
-          reportAction={reportPlayerAction}
-        />
-      )}
     </div>
   )
 }
 
-/** Una fila del plantel. Con `detail` (solo el organizador) suma la ficha de la spec §6. */
+function PersonName({ entry }: { entry: RivalRosterEntry }) {
+  return (
+    <p className="break-words text-base font-medium text-foreground">
+      {entry.role === 'rival_captain' ? 'Equipo rival: ' : ''}
+      {entry.shortName}
+      {entry.isMe && <span className="font-normal text-muted-foreground"> (vos)</span>}
+    </p>
+  )
+}
+
+function ReportSlot({ entry, actions }: { entry: RivalRosterEntry; actions?: RowActionProps }) {
+  if (!actions?.reportPlayerAction || entry.isMe) return null
+  return (
+    <ReportPlayerButton
+      matchId={actions.matchId}
+      playerId={entry.playerId}
+      name={entry.shortName}
+      reportAction={actions.reportPlayerAction}
+    />
+  )
+}
+
+/**
+ * Una fila del plantel. Con `detail` (solo el organizador) suma la ficha de la spec §6, salvo en la
+ * propia. El estado no se repite en la fila: lo dice el título de la sección.
+ */
 function PersonRow({
   entry,
   detail,
@@ -108,39 +112,18 @@ function PersonRow({
   detail: boolean
   actions?: RowActionProps
 }) {
-  const badge = detail ? STATUS_BADGE[entry.status] : undefined
-  const facts = detail
-    ? [
-        entry.position ? RIVAL_POSITION_LABELS[entry.position] : null,
-        entry.zone,
-        entry.gamesPlayed !== null
-          ? `${entry.gamesPlayed} ${entry.gamesPlayed === 1 ? 'partido jugado' : 'partidos jugados'}`
-          : null,
-        entry.memberSince ? `En TurnoGol desde ${MEMBER_SINCE.format(entry.memberSince)}` : null,
-      ].filter((f): f is string => f !== null)
-    : []
+  const facts = rowFacts(entry, detail)
   return (
     <li className="py-2">
       <div className="flex items-start gap-3">
         <Avatar entry={entry} />
         <div className="min-w-0 flex-1">
-          <p className="break-words text-base font-medium text-foreground">
-            {entry.role === 'rival_captain' ? 'Equipo rival: ' : ''}
-            {entry.shortName}
-            {entry.isMe && <span className="font-normal text-muted-foreground"> (vos)</span>}
-          </p>
-          {facts.length > 0 && <p className="text-sm text-muted-foreground">{facts.join(' · ')}</p>}
+          <PersonName entry={entry} />
+          {facts.length > 0 && (
+            <p className="text-sm tabular-nums text-muted-foreground">{facts.join(' · ')}</p>
+          )}
         </div>
-        {badge && (
-          <span
-            className={cn(
-              'shrink-0 rounded-full px-2 py-0.5 text-[13px] font-medium',
-              TONE_BADGE[badge.tone],
-            )}
-          >
-            {badge.label}
-          </span>
-        )}
+        <ReportSlot entry={entry} actions={actions} />
       </div>
       {actions && <RowActions entry={entry} actions={actions} />}
     </li>
@@ -161,9 +144,7 @@ export function PeopleSection({
   if (entries.length === 0) return null
   return (
     <section aria-label={title} className="space-y-1">
-      <h2 className="font-display text-lg font-extrabold tracking-[-0.01em] text-foreground">
-        {title}
-      </h2>
+      <h2 className={PORTAL_SECTION_TITLE}>{title}</h2>
       <ul className="divide-y divide-border">
         {entries.map((e) => (
           <PersonRow key={e.participantId} entry={e} detail={detail} actions={actions} />

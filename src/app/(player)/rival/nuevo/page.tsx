@@ -5,13 +5,13 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { buildMetadata } from '@/lib/seo/metadata'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import {
-  getBoardPublishPrefill,
   getRepeatPrefill,
   getRivalWelcomeState,
   listEligibleTenants,
   listUpcomingConfirmedBookings,
 } from '@/modules/rival/rival.service'
 import { resolveRepeatPrefill, resolveReservaPrefill } from '@/modules/rival/rival-form'
+import { welcomeNeeds } from '@/modules/rival/rival-join-rule'
 import { artNowParts } from '@/shared/dates/art'
 import { acceptRivalWelcomeAction, createMatchAction } from '../actions'
 import { NewMatchForm } from './NewMatchForm'
@@ -44,20 +44,24 @@ export default async function NuevoPartidoPage(props: {
 
   const welcome = await getRivalWelcomeState(user.playerId)
   if (!welcome) notFound()
+  // Para armar alcanzan el nombre y las reglas: la posición y la zona se piden al sumarse.
+  const needs = welcomeNeeds(welcome, 'armar')
 
   return (
-    <div className="mx-auto max-w-lg space-y-5 px-4 py-6">
+    <div className="mx-auto max-w-lg space-y-4 px-4 py-6">
       <PlayerHeroBand eyebrow="RIVAL powered by TurnoGol" title="Armá tu" accent="partido" />
-      {welcome.welcomed ? (
-        <NewMatchSection playerId={user.playerId} reserva={reserva} desde={desde} />
-      ) : (
+      {needs ? (
         <WelcomeCard
+          needs={needs}
           defaultName={welcome.firstName}
           defaultPosition={welcome.position}
           defaultZone={welcome.zone}
           action={acceptRivalWelcomeAction}
-          photo={await loadWelcomePhoto(user.playerId)}
+          photo={needs.identity ? await loadWelcomePhoto(user.playerId) : undefined}
+          dismissHref="/rival"
         />
+      ) : (
+        <NewMatchSection playerId={user.playerId} reserva={reserva} desde={desde} />
       )}
     </div>
   )
@@ -72,12 +76,11 @@ async function NewMatchSection({
   reserva?: string
   desde?: string
 }) {
-  const [tenants, bookings, source, boardPrefill] = await Promise.all([
+  const [tenants, bookings, source] = await Promise.all([
     listEligibleTenants(),
     listUpcomingConfirmedBookings(playerId),
     // `?desde=` solo precarga un partido PROPIO (el service devuelve null si no lo es).
     desde ? getRepeatPrefill(playerId, desde) : null,
-    getBoardPublishPrefill(playerId),
   ])
   const now = artNowParts()
   // La reserva se resuelve contra las del JUGADOR de la sesión: un id ajeno se ignora sin error.
@@ -96,13 +99,15 @@ async function NewMatchSection({
       )
   return (
     <NewMatchForm
-      tenants={tenants}
+      tenants={tenants.map(({ openingHours, closedDates, closesNextDay, ...t }) => ({
+        ...t,
+        schedule: { openingHours, closedDates, closesNextDay },
+      }))}
       bookings={bookings.map((b) => ({ tenantId: b.tenantId, startsAt: b.startsAt.toISOString() }))}
       prefill={prefill}
       repeat={repeat}
       today={now.date}
       nowTime={now.time}
-      whatsappPrefill={boardPrefill.whatsapp}
       action={createMatchAction}
     />
   )

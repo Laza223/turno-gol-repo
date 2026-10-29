@@ -62,6 +62,8 @@ export const AlturaDelEsqueleto: Story = {
     </>
   ),
   play: async ({ canvasElement }) => {
+    // Los cortes de línea dependen de la fuente web: medir antes de que cargue da 17-20 px de desvío.
+    await canvasElement.ownerDocument.fonts.ready
     const esqueleto = canvasElement.querySelector('[data-t="esqueleto"]')!
     const real = canvasElement.querySelector('[data-t="real"]')!
     const tops = (root: Element) =>

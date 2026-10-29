@@ -35,14 +35,14 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByLabelText('Solo si buscan arquero')).not.toBeChecked()
-    await expect(canvas.getAllByRole('button', { name: 'Avisame cuando haya' })).toHaveLength(1)
+    await expect(canvas.getAllByRole('button', { name: 'Avisarme por mail' })).toHaveLength(1)
   },
 }
 
 export const GuardaYConfirma: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Avisame cuando haya' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Avisarme por mail' }))
     await expect(await canvas.findByRole('status')).toHaveTextContent(
       'Listo, te avisamos por mail. Un mail por día como mucho y podés darte de baja con un toque.',
     )
@@ -60,10 +60,10 @@ export const ConErrorDelServidor: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Avisame cuando haya' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Avisarme por mail' }))
     await expect(await canvas.findByRole('alert')).toHaveTextContent('Elegí un complejo.')
     await waitFor(() =>
-      expect(canvas.getByRole('button', { name: 'Avisame cuando haya' })).toBeEnabled(),
+      expect(canvas.getByRole('button', { name: 'Avisarme por mail' })).toBeEnabled(),
     )
   },
 }
@@ -76,7 +76,7 @@ export const YaSuscripto: Story = {
     await userEvent.click(
       await within(document.body).findByRole('menuitemradio', { name: 'El Vagón' }),
     )
-    await expect(canvas.getByText(/Ya te avisamos de ese complejo/)).toBeInTheDocument()
+    await expect(canvas.getByText(/Ya tenés el aviso activado en ese complejo/)).toBeInTheDocument()
     // La casilla toma la preferencia guardada.
     await expect(canvas.getByLabelText('Solo si buscan arquero')).toBeChecked()
     // Se puede actualizar la preferencia y también darse de baja desde la sesión.
@@ -86,6 +86,19 @@ export const YaSuscripto: Story = {
       await canvas.findByText('Listo, no te vamos a avisar más de ese complejo.'),
     ).toBeInTheDocument()
     await expect(args.unsubscribeAction).toHaveBeenCalledTimes(1)
+  },
+}
+
+/** Llega desde el filtro del tablón: el complejo viene elegido y la preferencia guardada, cargada. */
+export const ConComplejoElegido: Story = {
+  args: { defaultTenantId: 't1', subscribed: [{ tenantId: 't1', onlyGoalkeeper: true }] },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('button', { name: 'Avisame de partidos en' })).toHaveTextContent(
+      'El Vagón',
+    )
+    await expect(canvas.getByLabelText('Solo si buscan arquero')).toBeChecked()
+    await expect(canvas.getByRole('button', { name: 'Actualizar aviso' })).toBeEnabled()
   },
 }
 

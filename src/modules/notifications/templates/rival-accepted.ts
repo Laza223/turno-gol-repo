@@ -12,7 +12,7 @@ export function renderRivalAccepted(data: RivalAcceptedData): EmailContent {
     subject: `Te aceptaron en el partido de ${data.tenantName}`,
     title: '¡Te aceptaron!',
     lines: [
-      'El organizador te aceptó en el partido. Entrá para escribirle y coordinar los detalles.',
+      'Te aceptaron en el partido. Entrá para escribirle al organizador por WhatsApp y coordinar.',
     ],
     tenantName: data.tenantName,
     dateLabel: data.dateLabel,

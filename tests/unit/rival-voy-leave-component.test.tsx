@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { DropIntentParam } from '@/app/(player)/rival/p/[code]/DropIntentParam'
 import { LeaveMatch } from '@/app/(player)/rival/p/[code]/LeaveMatch'
+import { RivalVoyGate } from '@/app/(player)/rival/p/[code]/RivalVoyGate'
 import { VoyPanel } from '@/app/(player)/rival/p/[code]/VoyPanel'
 
 afterEach(() => {
@@ -11,6 +12,7 @@ afterEach(() => {
   window.sessionStorage.clear()
 })
 
+const BOTH = { identity: true, profile: true, position: true }
 const accept = vi.fn(async () => ({ success: true as const }))
 
 function renderVoy(over: Partial<Parameters<typeof VoyPanel>[0]> = {}) {
@@ -50,6 +52,39 @@ function RouterLike({ children, seen }: { children: ReactNode; seen: string[] })
 }
 
 describe('VoyPanel', () => {
+  it('con el partido lleno, el botón dice "Voy al banco" y suma igual', async () => {
+    const join = renderVoy({ full: true })
+    expect(screen.queryByRole('button', { name: 'Voy' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Voy al banco' }))
+    await waitFor(() => expect(join).toHaveBeenCalledWith('ABCDEFGHJK'))
+  })
+
+  it('lleno y con algo pendiente de la bienvenida, el botón que la abre también dice "Voy al banco"', () => {
+    renderVoy({
+      full: true,
+      welcome: { firstName: 'Lazaro', position: null, zone: null, needs: BOTH },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Voy al banco' }))
+    expect(screen.getByRole('button', { name: 'Estoy adentro' })).toBeTruthy()
+  })
+
+  it('el pendiente sigue diciendo "Sumándote…" aunque esté lleno', async () => {
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const join = vi.fn(async () => {
+      await gate
+      return { success: true as const }
+    })
+    renderVoy({ full: true, joinAction: join })
+    fireEvent.click(screen.getByRole('button', { name: 'Voy al banco' }))
+    expect(await screen.findByRole('button', { name: 'Sumándote…' })).toBeTruthy()
+    // Se libera la transición: una colgada envenenaría a los tests que siguen.
+    release()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Voy al banco' })).toBeTruthy())
+  })
+
   it('con la bienvenida aceptada, "Voy" suma directo con el código del link', async () => {
     const join = renderVoy()
     fireEvent.click(screen.getByRole('button', { name: 'Voy' }))
@@ -64,25 +99,52 @@ describe('VoyPanel', () => {
     renderVoy({ joinAction: join })
     fireEvent.click(screen.getByRole('button', { name: 'Voy' }))
     expect((await screen.findByRole('alert')).textContent).toBe('El partido ya está completo.')
+    // En el flujo, no en la barra fija (su alto es fijo).
+    expect((await screen.findByRole('alert')).closest('[data-fixed-cta]')).toBeNull()
     expect(screen.getByRole('button', { name: 'Voy' })).toBeTruthy()
   })
 
   it('sin bienvenida, "Voy" no suma: abre la tarjeta con "Estoy adentro"', () => {
-    const join = renderVoy({ welcome: { firstName: 'Lazaro', position: null, zone: null } })
+    const join = renderVoy({
+      welcome: { firstName: 'Lazaro', position: null, zone: null, needs: BOTH },
+    })
     expect(screen.queryByRole('button', { name: 'Estoy adentro' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Voy' }))
     expect(screen.getByRole('button', { name: 'Estoy adentro' })).toBeTruthy()
     expect(join).not.toHaveBeenCalled()
   })
 
+  it('"Ahora no" cierra la tarjeta y el foco vuelve a "Voy"', () => {
+    renderVoy({ welcome: { firstName: 'Lazaro', position: null, zone: null, needs: BOTH } })
+    fireEvent.click(screen.getByRole('button', { name: 'Voy' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ahora no' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Voy' }))
+  })
+
   it('vuelta del login con bienvenida pendiente: tarjeta abierta y NINGÚN autoenvío', () => {
     const join = renderVoy({
-      welcome: { firstName: 'Lazaro', position: null, zone: null },
+      welcome: { firstName: 'Lazaro', position: null, zone: null, needs: BOTH },
       openWelcome: true,
     })
     expect(screen.getByRole('button', { name: 'Estoy adentro' })).toBeTruthy()
     expect(join).not.toHaveBeenCalled()
     expect(accept).not.toHaveBeenCalled()
+  })
+
+  it('con el perfil incompleto, el autoenvío NO suma: abre la tarjeta con solo lo que falta', () => {
+    const join = renderVoy({
+      autoJoin: true,
+      openWelcome: true,
+      welcome: {
+        firstName: 'Lazaro',
+        position: null,
+        zone: null,
+        needs: { identity: false, profile: true, position: true },
+      },
+    })
+    expect(screen.getByRole('heading', { name: 'Un dato más para sumarte' })).toBeTruthy()
+    expect(screen.queryByLabelText('Tu nombre')).toBeNull()
+    expect(join).not.toHaveBeenCalled()
   })
 
   it('vuelta del login con intento válido y bienvenida aceptada: se suma sola, UNA vez', async () => {
@@ -105,7 +167,7 @@ describe('VoyPanel: el intent se gasta', () => {
   it('con la bienvenida abierta, el param sale de la URL apenas se monta (no solo al autoenviar)', async () => {
     window.history.replaceState(null, '', '/rival/p/ABCDEFGHJK?rival_intent=TOKEN&otro=1')
     renderVoy({
-      welcome: { firstName: 'Lazaro', position: null, zone: null },
+      welcome: { firstName: 'Lazaro', position: null, zone: null, needs: BOTH },
       openWelcome: true,
     })
     await waitFor(() => expect(window.location.search).toBe('?otro=1'))
@@ -118,7 +180,7 @@ describe('VoyPanel: el intent se gasta', () => {
       <RouterLike seen={seen}>
         <VoyPanel
           code="ABCDEFGHJK"
-          welcome={{ firstName: 'Lazaro', position: null, zone: null }}
+          welcome={{ firstName: 'Lazaro', position: null, zone: null, needs: BOTH }}
           autoJoin={false}
           openWelcome
           intentParam="rival_intent"
@@ -170,11 +232,10 @@ describe('LeaveMatch', () => {
   it('"Me bajo" pide confirmación y recién ahí llama a la action con el partido', async () => {
     const leave = vi.fn(async () => ({ success: true as const }))
     render(<LeaveMatch matchId="m1" leaveAction={leave} />)
-    expect(
-      screen.getByText('Si no podés ir, bajate a tiempo: alguien del banco ocupa tu lugar.'),
-    ).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Me bajo' }))
     expect(leave).not.toHaveBeenCalled()
+    // El efecto se dice una vez, en el diálogo donde se decide.
+    expect(screen.getByText('Tu lugar queda libre: si hay banco, entra el primero.')).toBeTruthy()
     fireEvent.click(await screen.findByRole('button', { name: 'Sí, me bajo' }))
     await waitFor(() => expect(leave).toHaveBeenCalledWith('m1'))
   })
@@ -185,5 +246,27 @@ describe('LeaveMatch', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Me bajo' }))
     fireEvent.click(await screen.findByRole('button', { name: 'No, voy' }))
     expect(leave).not.toHaveBeenCalled()
+  })
+})
+
+describe('RivalVoyGate', () => {
+  const gate = (full?: boolean) =>
+    render(
+      <RivalVoyGate
+        code="ABCDEFGHJK"
+        {...(full === undefined ? {} : { full })}
+        sendMagicLink={async () => ({ status: 'idle' })}
+        startGoogle={async () => ({ status: 'idle' })}
+      />,
+    )
+
+  it('sin sesión y con cupo dice "Voy"', () => {
+    gate()
+    expect(screen.getByRole('button', { name: 'Voy' })).toBeTruthy()
+  })
+
+  it('sin sesión y con el partido lleno dice "Voy al banco"', () => {
+    gate(true)
+    expect(screen.getByRole('button', { name: 'Voy al banco' })).toBeTruthy()
   })
 })

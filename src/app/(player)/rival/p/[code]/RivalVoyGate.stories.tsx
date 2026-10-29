@@ -27,12 +27,13 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** El botón verde "Voy", de 44 px o más, sin el ingreso abierto. */
+/** El botón verde "Voy", de 52 px, en la barra fija de abajo y sin el ingreso abierto. */
 export const Reposo: Story = {
   play: async ({ canvasElement }) => {
     const voy = within(canvasElement).getByRole('button', { name: 'Voy' })
     await expect(voy).toBeEnabled()
-    await expect(voy.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
+    await expect(voy.getBoundingClientRect().height).toBeGreaterThanOrEqual(52)
+    await expect(voy.closest('[data-fixed-cta]')).not.toBeNull()
     await expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   },
 }

@@ -4,7 +4,13 @@ import { buttonVariants } from '@/components/ui/button'
 import { SubmitButton } from '@/components/ui/submit-button'
 import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 import { AUTH_TITLE, PORTAL_BUTTON, PortalAuthFrame } from '@/components/world/PortalAuthFrame'
-import { parseIntent, parseVia, type PlayerVia, type SuccessIntent } from '@/lib/auth-success'
+import {
+  isRivalReturnPath,
+  parseIntent,
+  parseVia,
+  type PlayerVia,
+  type SuccessIntent,
+} from '@/lib/auth-success'
 import { sanitizeNext } from '@/lib/safe-redirect'
 import { TONE_TEXT } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
@@ -123,6 +129,19 @@ const SUCCESS_COPY: Record<SuccessIntent, { title: string; subtitle: string; cta
   },
 }
 
+/** Quien volvía a RIVAL (p. ej. abrió el enlace en otro dispositivo) no vino por sus reservas. */
+const RIVAL_SUCCESS_COPY = {
+  title: '¡Listo!',
+  subtitle: 'Ya estás adentro.',
+  cta: 'Volver a RIVAL',
+}
+
+function successCopy(intent: SuccessIntent, safeNext: string) {
+  return intent === 'login' && isRivalReturnPath(safeNext)
+    ? RIVAL_SUCCESS_COPY
+    : SUCCESS_COPY[intent]
+}
+
 const cardStyle = {
   background: 'linear-gradient(180deg, rgba(15,23,42,.72), rgba(2,6,23,.85))',
   border: '1px solid rgba(255,255,255,.1)',
@@ -229,7 +248,7 @@ export function VerifyView({
 
 function SuccessState({ next, intent }: { next: string | undefined; intent: SuccessIntent }) {
   const safeNext = sanitizeNext(next)
-  const copy = SUCCESS_COPY[intent]
+  const copy = successCopy(intent, safeNext)
   return (
     <>
       <div className="relative mx-auto mb-5 flex h-16 w-16 items-center justify-center">
@@ -321,7 +340,7 @@ const playerIconClass = 'size-7'
 
 function PlayerSuccess({ next, intent }: { next: string | undefined; intent: SuccessIntent }) {
   const safeNext = sanitizeNext(next)
-  const copy = SUCCESS_COPY[intent]
+  const copy = successCopy(intent, safeNext)
   return (
     <div className="text-center">
       <div className="relative mx-auto mb-5 flex h-16 w-16 items-center justify-center">

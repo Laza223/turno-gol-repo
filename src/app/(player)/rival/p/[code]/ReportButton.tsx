@@ -1,6 +1,7 @@
 'use client'
 
 import { startTransition, useState } from 'react'
+import { Flag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { RadioChip, RadioChipGroup } from '@/components/ui/radio-chip'
@@ -8,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { RIVAL_REPORT_REASON_LABELS } from '@/modules/rival/rival-display'
 import { RIVAL_REPORT_REASONS, type RivalReportReason } from '@/modules/rival/rival.schema'
 import type { ActionResult } from '@/shared/types/action-result'
+import { RIVAL_GHOST_QUIET } from '../../rival-classes'
 
 /** Firmas de las Server Actions (por prop, no por import: ver convenciones-stack). */
 type ReportMatchAction = (matchId: string, reason: RivalReportReason) => Promise<ActionResult>
@@ -19,17 +21,21 @@ type ReportPlayerAction = (
 
 const THANKS = 'Gracias. Lo vamos a revisar.'
 
-/** El botón fantasma + el diálogo de motivos. Una denuncia enviada deja el agradecimiento en su lugar. */
+/**
+ * El botón fantasma + el diálogo de motivos. Una denuncia enviada deja el agradecimiento en su lugar.
+ * `iconOnly` (la denuncia a una persona) es una bandera con "Denunciar" de 44 px de alto que va en la
+ * línea del nombre; ya enviada queda un "Gracias." corto para que la fila no cambie de ancho.
+ */
 function ReportDialogButton({
   label,
   title,
-  small = false,
+  iconOnly = false,
   reasons = RIVAL_REPORT_REASONS,
   onReport,
 }: {
   label: string
   title: string
-  small?: boolean
+  iconOnly?: boolean
   reasons?: readonly RivalReportReason[]
   onReport: (reason: RivalReportReason) => Promise<ActionResult>
 }) {
@@ -39,8 +45,14 @@ function ReportDialogButton({
 
   if (sent) {
     return (
-      <p role="status" className="py-2 text-sm text-muted-foreground">
-        {THANKS}
+      <p role="status" className={cn('py-2 text-sm text-muted-foreground', iconOnly && 'shrink-0')}>
+        {iconOnly ? (
+          <>
+            Gracias.<span className="sr-only"> Lo vamos a revisar.</span>
+          </>
+        ) : (
+          THANKS
+        )}
       </p>
     )
   }
@@ -59,9 +71,20 @@ function ReportDialogButton({
         type="button"
         variant="ghost"
         onClick={() => setOpen(true)}
-        className={cn('h-11 font-medium', small ? 'px-3 text-[13px]' : 'w-full text-sm')}
+        aria-label={iconOnly ? label : undefined}
+        className={cn(
+          RIVAL_GHOST_QUIET,
+          iconOnly ? '-my-2 shrink-0 gap-1 self-center px-3' : 'w-full',
+        )}
       >
-        {label}
+        {iconOnly ? (
+          <>
+            <Flag className="size-4" aria-hidden />
+            Denunciar
+          </>
+        ) : (
+          label
+        )}
       </Button>
       <ConfirmDialog
         open={open}
@@ -96,30 +119,35 @@ export function ReportMatchButton({
   reportAction: ReportMatchAction
 }) {
   return (
-    <ReportDialogButton
-      label="Denunciar el partido"
-      title="Denunciar el partido"
-      onReport={(reason) => reportAction(matchId, reason)}
-    />
+    // Aparte de las acciones propias: una línea y aire, para que nadie la toque buscando "Me bajo".
+    <div className="border-t border-border pt-4">
+      <ReportDialogButton
+        label="Denunciar el partido"
+        title="Denunciar el partido"
+        onReport={(reason) => reportAction(matchId, reason)}
+      />
+    </div>
   )
 }
 
-/** "Denunciar" a una persona dentro del partido. */
+/** "Denunciar a {name}": un ícono en la fila de la persona, con su nombre en el nombre accesible. */
 export function ReportPlayerButton({
   matchId,
   playerId,
+  name,
   reportAction,
 }: {
   matchId: string
   playerId: string
+  name: string
   reportAction: ReportPlayerAction
 }) {
   return (
     <ReportDialogButton
-      small
+      iconOnly
       // "El partido no existe" no aplica a una persona.
       reasons={RIVAL_REPORT_REASONS.filter((r) => r !== 'not_exists')}
-      label="Denunciar"
+      label={`Denunciar a ${name}`}
       title="Denunciar a esta persona"
       onReport={(reason) => reportAction(matchId, playerId, reason)}
     />

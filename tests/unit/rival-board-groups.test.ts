@@ -3,7 +3,7 @@ import { groupBoardByDay } from '@/modules/rival/rival-display'
 
 const at = (iso: string, id: string) => ({ id, startsAt: new Date(iso) })
 
-describe('groupBoardByDay: Hoy / Mañana / Esta semana, en ART', () => {
+describe('groupBoardByDay: Hoy / Mañana / Próximos días, en ART', () => {
   // Jueves 2026-10-22, 12:00 ART.
   const now = new Date('2026-10-22T15:00:00Z')
 
@@ -20,7 +20,7 @@ describe('groupBoardByDay: Hoy / Mañana / Esta semana, en ART', () => {
     expect(groups.map((g) => [g.key, g.label, g.items.map((i) => i.id)])).toEqual([
       ['today', 'Hoy', ['tarde', 'noche']],
       ['tomorrow', 'Mañana', ['manana']],
-      ['week', 'Esta semana', ['semana']],
+      ['week', 'Próximos días', ['semana']],
     ])
   })
 

@@ -67,6 +67,10 @@ export const AUTH_ACCENT_STYLE = {
   WebkitBackgroundClip: 'text',
   backgroundClip: 'text',
   color: 'transparent',
+  // Como `.hero-accent-text`: la itálica sobresale de la caja y `background-clip: text` la recorta.
+  paddingRight: '0.15em',
+  boxDecorationBreak: 'clone',
+  WebkitBoxDecorationBreak: 'clone',
 } as const
 
 /**

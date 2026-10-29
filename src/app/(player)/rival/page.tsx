@@ -1,6 +1,8 @@
+import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { isInAppBrowser } from '@/lib/in-app-browser'
 import { buildMetadata } from '@/lib/seo/metadata'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import { listBoard, listBoardTenants, listEligibleTenants } from '@/modules/rival/rival.service'
@@ -9,6 +11,7 @@ import { uuid } from '@/shared/validation/primitives'
 import { subscribeRivalAlertAction, unsubscribeMyRivalAlertAction } from './actions'
 import { BoardView } from './BoardView'
 import { encodeBoardCursor, parseBoardCursor } from './board-cursor'
+import { sendRivalMagicLinkAction, startGoogleLoginFromRivalAction } from './p/[code]/login-actions'
 
 export function generateMetadata(): Metadata {
   return buildMetadata({
@@ -42,7 +45,7 @@ export default async function RivalPage(props: {
   if (selectedTenantId) next.set('complejo', selectedTenantId)
   if (board.nextCursor) next.set('despues', encodeBoardCursor(board.nextCursor))
 
-  // El aviso solo se ofrece en el tablón vacío, pero la lista es barata y evita otro round-trip.
+  // El aviso se ofrece en el tablón vacío y en el complejo filtrado sin partidos, pero la lista es barata y evita otro round-trip.
   const user = await extractAuthUser()
   const playerId = user?.type === 'player' ? user.playerId : null
   const [eligible, mine] = await Promise.all([
@@ -63,6 +66,11 @@ export default async function RivalPage(props: {
         subscribed: mine.map((a) => ({ tenantId: a.tenantId, onlyGoalkeeper: a.onlyGoalkeeper })),
         subscribeAction: subscribeRivalAlertAction,
         unsubscribeAction: unsubscribeMyRivalAlertAction,
+      }}
+      entry={{
+        sendMagicLink: sendRivalMagicLinkAction,
+        startGoogle: startGoogleLoginFromRivalAction,
+        inAppBrowser: isInAppBrowser((await headers()).get('user-agent')),
       }}
     />
   )

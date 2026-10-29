@@ -5,6 +5,7 @@ import { addDays, artTodayStr } from '@/shared/dates/art'
 import { uuid } from '@/shared/validation/primitives'
 import { artDateOf, artDayRangeUtc } from '@/shared/time/art-date'
 import { getDb, withPlayerContext, type DbTx } from '@/shared/db/client'
+import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import {
   bookings,
   courts,
@@ -20,11 +21,12 @@ import {
   inviteCodeSchema,
   type RivalBoardDraft,
   type RivalMatchDraft,
+  type RivalProfileUpdate,
   type RivalReportReason,
   type RivalWelcomeInput,
 } from './rival.schema'
 import { artTimeOf } from './rival-display'
-import type { NewMatchBooking, RepeatSource } from './rival-form'
+import { playerPhoneOf, type NewMatchBooking, type RepeatSource } from './rival-form'
 import { scheduleRivalMail } from './rival-mail.service'
 import { rivalLastStartDay } from './rival-window'
 import type {
@@ -144,12 +146,33 @@ async function requireWelcome(tx: DbTx, playerId: string): Promise<void> {
   }
 }
 
-/** Arma un partido. Si va al tablón, el contacto se crea en la MISMA transacción (lo exige un trigger diferido). */
+/**
+ * Para sumarse o pedir sumarse hacen falta la posición y la zona: el organizador las usa para armar
+ * el equipo. Es el cierre del servidor de la decisión 2 (el intent por mail nunca deja adentro sin
+ * ellas); armar un partido NO las pide. Pedir como capitán de un equipo rival (decisión 15) exige
+ * solo la zona.
+ */
+async function requireProfile(
+  tx: DbTx,
+  playerId: string,
+  purpose: 'sumarse' | 'desafiar',
+): Promise<void> {
+  const [row] = await tx
+    .select({ position: players.position, zone: players.zone })
+    .from(players)
+    .where(eq(players.id, playerId))
+    .limit(1)
+  if (!row || row.zone === null || (purpose === 'sumarse' && row.position === null)) {
+    throw new RivalError('rival_profile_required')
+  }
+}
+
+/** Arma un partido solo del grupo. Al tablón se sube después, con `publishToBoard`. */
 export async function createMatch(
   playerId: string,
   draft: RivalMatchDraft,
 ): Promise<{ id: string; inviteCode: string }> {
-  const created = await inPlayerContext(playerId, async (tx) => {
+  return inPlayerContext(playerId, async (tx) => {
     await requireWelcome(tx, playerId)
 
     // Mismo filtro de visibilidad que la búsqueda pública: nada de partidos en
@@ -161,7 +184,6 @@ export async function createMatch(
       .limit(1)
     if (!tenant) throw new RivalError('rival_tenant_unavailable')
 
-    const board = draft.board
     const [match] = await tx
       .insert(rivalMatches)
       .values({
@@ -173,26 +195,17 @@ export async function createMatch(
         format: draft.format,
         capacity: draft.capacity,
         level: draft.level,
-        onBoard: board !== null,
-        seeking: board?.seeking ?? null,
-        seekingPosition: board?.seekingPosition ?? null,
       })
       .returning({ id: rivalMatches.id, inviteCode: rivalMatches.inviteCode })
     if (!match) throw new RivalError('rival_forbidden')
-
-    if (board) {
-      await tx
-        .insert(rivalMatchContacts)
-        .values({ matchId: match.id, whatsappDigits: board.whatsappDigits })
-    }
     return match
   })
-  // Post-commit y sin lanzar: el mail nunca tumba la acción ni corre dentro de la transacción.
-  if (draft.board) await scheduleRivalMail({ type: 'alert_publish', matchId: created.id })
-  return created
 }
 
-/** Publica (o cambia lo que busca) un partido propio. El WhatsApp se confirma en cada publicación. */
+/**
+ * Publica (o cambia lo que busca) un partido propio. El WhatsApp se confirma en cada publicación;
+ * con `board.savePhone` queda además en `players.phone`, en la misma transacción.
+ */
 export async function publishToBoard(
   playerId: string,
   matchId: string,
@@ -222,6 +235,14 @@ export async function publishToBoard(
         target: rivalMatchContacts.matchId,
         set: { whatsappDigits: board.whatsappDigits },
       })
+
+    // `phone_hint8` es una columna GENERATED: se recalcula sola con el UPDATE.
+    if (board.savePhone) {
+      await tx
+        .update(players)
+        .set({ phone: playerPhoneOf(board.whatsappDigits) })
+        .where(eq(players.id, playerId))
+    }
   })
   await scheduleRivalMail({ type: 'alert_publish', matchId })
 }
@@ -257,6 +278,7 @@ export async function joinByInvite(playerId: string, code: string): Promise<Riva
   if (!parsed.success) throw new RivalError('rival_not_found')
   return inPlayerContext(playerId, async (tx) => {
     await requireWelcome(tx, playerId)
+    await requireProfile(tx, playerId, 'sumarse')
     const rows = (await tx.execute(
       sql`SELECT * FROM rival_join_by_invite(${parsed.data})`,
     )) as unknown as Row[]
@@ -281,6 +303,11 @@ export async function requestToJoin(
 ): Promise<{ participantId: string }> {
   const result = await inPlayerContext(playerId, async (tx) => {
     await requireWelcome(tx, playerId)
+    // El rol lo da el partido, no el cliente: si busca rival, el que pide es capitán (solo zona).
+    const seekingRows = (await tx.execute(
+      sql`SELECT seeking FROM rival_board_match(${input.matchId}::uuid)`,
+    )) as unknown as Row[]
+    await requireProfile(tx, playerId, seekingRows[0]?.seeking === 'rival' ? 'desafiar' : 'sumarse')
     const [row] = await tx
       .insert(rivalParticipants)
       .values({
@@ -290,8 +317,11 @@ export async function requestToJoin(
         status: 'requested',
         origin: 'board',
       })
-      .returning({ id: rivalParticipants.id })
+      .returning({ id: rivalParticipants.id, role: rivalParticipants.role })
     if (!row) throw new RivalError('rival_forbidden')
+    // El trigger fija el rol leyendo `seeking` con lock; si el organizador lo cambió entre la lectura
+    // de arriba y el INSERT, el rol real manda: como jugador hace falta la posición (revierte la tx).
+    if (row.role === 'player') await requireProfile(tx, playerId, 'sumarse')
     return { participantId: row.id }
   })
   await scheduleRivalMail({
@@ -548,7 +578,10 @@ export function reportPlayer(
   return insertReport(playerId, matchId, reason, reportedPlayerId)
 }
 
-/** Bienvenida RIVAL: guarda nombre, posición, zona y el clickwrap versionado. */
+/**
+ * Bienvenida RIVAL: guarda el nombre y el clickwrap versionado. La posición y la zona se escriben
+ * solo si vienen: armar un partido no las pide y no hay que pisar con nada lo ya cargado.
+ */
 export async function acceptRivalWelcome(
   playerId: string,
   input: RivalWelcomeInput,
@@ -558,11 +591,30 @@ export async function acceptRivalWelcome(
       .update(players)
       .set({
         firstName: input.firstName,
-        position: input.position,
-        zone: input.zone,
+        ...(input.position ? { position: input.position } : {}),
+        ...(input.zone ? { zone: input.zone } : {}),
         rivalAcceptedAt: sql`now()`,
         rivalTermsVersion: RIVAL_TERMS_VERSION,
       })
+      .where(and(eq(players.id, playerId), eq(players.status, 'active')))
+      .returning({ id: players.id })
+    if (updated.length === 0) throw new RivalError('rival_forbidden')
+  })
+}
+
+/**
+ * Segundo momento de la bienvenida: posición y zona de quien ya aceptó las reglas. NO toca
+ * `rival_accepted_at` ni la versión: completar el perfil no es volver a consentir.
+ */
+export async function completeRivalProfile(
+  playerId: string,
+  input: RivalProfileUpdate,
+): Promise<void> {
+  await inPlayerContext(playerId, async (tx) => {
+    await requireWelcome(tx, playerId)
+    const updated = await tx
+      .update(players)
+      .set({ zone: input.zone, ...(input.position ? { position: input.position } : {}) })
       .where(and(eq(players.id, playerId), eq(players.status, 'active')))
       .returning({ id: players.id })
     if (updated.length === 0) throw new RivalError('rival_forbidden')
@@ -626,15 +678,38 @@ export async function getBoardPublishPrefill(
  * pública (`publicTenantVisibilityConds`, el filtro que también aplica `createMatch`).
  * `tenants` es global y sin RLS: no hace falta contexto de jugador.
  */
-export async function listEligibleTenants(): Promise<{ id: string; name: string; city: string }[]> {
-  return publicRead(() =>
+export async function listEligibleTenants(): Promise<
+  {
+    id: string
+    name: string
+    city: string
+    slug: string
+    openingHours: OpeningHours
+    closedDates: string[]
+    closesNextDay: boolean
+  }[]
+> {
+  const rows = await publicRead(() =>
     getDb()
-      .select({ id: tenants.id, name: tenants.name, city: tenants.city })
+      .select({
+        id: tenants.id,
+        name: tenants.name,
+        city: tenants.city,
+        slug: tenants.slug,
+        openingHours: tenants.openingHours,
+        closedDates: tenants.closedDates,
+        closesNextDay: tenants.closesNextDay,
+      })
       .from(tenants)
       .where(and(...publicTenantVisibilityConds()))
       .orderBy(asc(tenants.name))
       .limit(200),
   )
+  return rows.map((t) => ({
+    ...t,
+    openingHours: t.openingHours as OpeningHours,
+    closedDates: t.closedDates ?? [],
+  }))
 }
 
 /**
@@ -699,7 +774,10 @@ export async function getRepeatPrefill(
   })
 }
 
-/** Lo que la bienvenida necesita: el nombre actual y si ya aceptó la versión vigente. */
+/**
+ * Lo que la bienvenida necesita: el nombre actual, si ya aceptó la versión vigente (`welcomed`) y
+ * la posición y zona guardadas. Qué pide la tarjeta lo decide `welcomeNeeds`.
+ */
 export async function getRivalWelcomeState(playerId: string): Promise<{
   firstName: string
   welcomed: boolean

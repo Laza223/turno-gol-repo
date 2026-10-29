@@ -43,6 +43,8 @@ const SERVICE_ERROR_CODES = [
   // Chequeos del service (no salen de la base).
   'rival_tenant_unavailable',
   'rival_welcome_required',
+  // Para sumarse o pedir sumarse hacen falta posición y zona (armar un partido no las pide).
+  'rival_profile_required',
   // "Busca rival" exige cupo = formato; la capacidad no se edita, así que no se puede publicar así después.
   'rival_capacity_mismatch',
 ] as const

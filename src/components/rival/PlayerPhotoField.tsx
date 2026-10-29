@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 import { resizeToPreset } from '@/shared/images/resize-image'
 import type { RivalPhotoResult } from '@/app/(player)/rival/photo-actions'
@@ -22,11 +23,14 @@ export function PlayerPhotoField({
   initials,
   uploadAction,
   removeAction,
+  compact = false,
 }: {
   url: string | null
   initials: string
   uploadAction: PhotoUploadAction
   removeAction: PhotoRemoveAction
+  /** Fila baja (avatar chico y un botón "Agregar foto (opcional)"): para tarjetas donde la foto no es obligatoria. */
+  compact?: boolean
 }) {
   const [url, setUrl] = useState(initialUrl)
   const [busy, setBusy] = useState(false)
@@ -75,9 +79,13 @@ export function PlayerPhotoField({
         }}
       />
 
-      <div className="flex items-center gap-4">
+      <div className={compact ? 'flex items-center gap-3' : 'flex items-center gap-4'}>
         <div
-          className="relative flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full bg-emerald-50 font-display text-2xl font-black italic text-emerald-700 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20"
+          className={cn(
+            'relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-emerald-50 font-display font-black italic',
+            compact ? 'size-11 text-base' : 'size-20 text-2xl',
+            ' text-emerald-700 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20',
+          )}
           aria-busy={busy}
         >
           {url ? (
@@ -101,7 +109,7 @@ export function PlayerPhotoField({
             onClick={() => inputRef.current?.click()}
             className={BUTTON}
           >
-            {url ? 'Cambiar foto' : 'Subir foto'}
+            {url ? 'Cambiar foto' : compact ? 'Agregar foto (opcional)' : 'Subir foto'}
           </Button>
           {url && (
             <Button

@@ -16,6 +16,7 @@ import {
   cancelAbonado,
   getAbonadoSlotConflicts,
 } from '@/modules/abonados/abonado.service'
+import { AbonadoConflictError } from '@/modules/abonados/abonado.errors'
 import { createOnlineBooking } from '@/modules/bookings/booking.service'
 import { runRollingSlotGeneration } from '@/shared/jobs/workers/generate-abonado-slots.worker'
 
@@ -111,6 +112,41 @@ describe('abonado service', () => {
       expect(row.status).toBe('confirmed')
       expect(row.abonado_id).toBe(abonado.id)
     }
+  })
+
+  // Sentry SCHOOL-9: el pre-chequeo comparaba horarios por igualdad y el
+  // constraint por solapamiento, así que un fijo más largo que pisaba a otro
+  // reventaba con 23P01 en vez de AbonadoConflictError.
+  it('rejects an abonado that partially overlaps another with AbonadoConflictError', async () => {
+    const sql = getSql()
+    const tenant = await createTestTenant(sql)
+    const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
+    const courtId = await insertCourt(tenant.id)
+    const base = {
+      courtId,
+      contactName: 'Solape Test',
+      dayOfWeek: ABO_DOW,
+      pricePerSession: 800000,
+      startsOn: ABO_START,
+      paymentMethod: 'cash' as const,
+    }
+
+    await withTenantContext(tenant.id, (tx) =>
+      createAbonado(tenant.id, staff.id, { ...base, timeStart: '20:00', timeEnd: '21:00' }, tx),
+    )
+
+    await expect(
+      withTenantContext(tenant.id, (tx) =>
+        createAbonado(tenant.id, staff.id, { ...base, timeStart: '19:00', timeEnd: '22:00' }, tx),
+      ),
+    ).rejects.toBeInstanceOf(AbonadoConflictError)
+
+    // Contiguo no es solapado: el rango del constraint es [inicio, fin).
+    const { abonado } = await withTenantContext(tenant.id, (tx) =>
+      createAbonado(tenant.id, staff.id, { ...base, timeStart: '21:00', timeEnd: '22:00' }, tx),
+    )
+    expect(abonado.status).toBe('active')
   })
 
   it('reactivates paused abonado and regenerates 8 weeks', async () => {

@@ -67,13 +67,17 @@ export async function checkAbonadoSlotConflict(
   excludeId: string | null,
   tx: DbTx,
 ): Promise<boolean> {
+  // Misma regla que el constraint `no_overlapping_abonados` (migr. 004): se
+  // pisan si el horario se SOLAPA, no solo si es idéntico. Con igualdad exacta,
+  // un 20:00–23:00 sobre un 21:00–22:00 pasaba este chequeo y el INSERT
+  // reventaba con 23P01 → pantalla de error en vez de AbonadoConflictError.
   const rows = await tx.execute(sql`
     SELECT id FROM abonados
     WHERE tenant_id = ${tenantId}
       AND court_id = ${courtId}
       AND day_of_week = ${dayOfWeek}
-      AND time_start = ${timeStart}::time
-      AND time_end = ${timeEnd}::time
+      AND time_start < ${timeEnd}::time
+      AND time_end > ${timeStart}::time
       AND status = 'active'
       ${excludeId ? sql`AND id != ${excludeId}` : sql``}
     LIMIT 1

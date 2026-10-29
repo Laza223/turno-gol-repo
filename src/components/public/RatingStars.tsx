@@ -11,7 +11,9 @@ type Props = {
 
 /**
  * Calificación promedio. Hereda el color del texto del contenedor
- * (funciona en cards claras y oscuras); solo la estrella es ámbar.
+ * (funciona en cards claras y oscuras); solo la estrella es ámbar. La cantidad
+ * se distingue por tamaño, no con `opacity`: sobre el color heredado bajaba el
+ * contraste a 2.8:1 (axe 4.14, story ExplorarMap › Popup Abierto).
  * Accesible: role="img" + aria-label descriptivo.
  */
 export default function RatingStars({ rating, count, variant = 'compact', className }: Props) {
@@ -31,7 +33,7 @@ export default function RatingStars({ rating, count, variant = 'compact', classN
         <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400" aria-hidden />
         <span className="font-semibold tabular-nums">{rounded.toFixed(1)}</span>
         {typeof count === 'number' && count > 0 && (
-          <span className="text-xs tabular-nums opacity-60">({count})</span>
+          <span className="text-xs tabular-nums">({count})</span>
         )}
       </span>
     )
@@ -59,7 +61,7 @@ export default function RatingStars({ rating, count, variant = 'compact', classN
         })}
       </span>
       {typeof count === 'number' && (
-        <span className="ml-1 text-sm tabular-nums opacity-70">
+        <span className="ml-1 text-sm tabular-nums">
           {rounded.toFixed(1)} ({count})
         </span>
       )}

@@ -11,9 +11,9 @@ function Contenido() {
 }
 
 /**
- * `children` se renderiza dos veces a propósito (aside desktop / barra
- * mobile) — mismo patrón que el indicador de progreso de `WizardShell`. La
- * barra mobile es `lg:hidden`: viewport mobile forzado, porque en el canvas
+ * `children` se renderiza dos veces a propósito (aside desktop / Sheet
+ * mobile) — mismo patrón que el indicador de progreso de `WizardShell`. El
+ * botón mobile es `lg:hidden`: viewport mobile forzado, porque en el canvas
  * ancho de Storybook `getByRole('button')` no la encontraría (oculta por
  * `display:none` al breakpoint desktop — no es solo CSS, sale del árbol de
  * accesibilidad).
@@ -31,21 +31,21 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Barra mobile colapsada por defecto: no le tapa el form a nadie sin que lo pida. */
-export const ColapsadaPorDefecto: Story = {
+/** Mobile: solo el botón; la vista previa no está montada hasta pedirla. */
+export const BotonCerrado: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const toggle = canvas.getByRole('button', { name: /tu complejo/i })
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await expect(canvas.getByRole('button', { name: /ver vista previa/i })).toBeVisible()
+    await expect(canvas.queryByRole('dialog')).not.toBeInTheDocument()
   },
 }
 
-/** Tocar la barra la expande: el contenido pasa a estar a la vista. */
-export const Expandida: Story = {
+/** Tocar el botón abre el Sheet inferior con el título y el contenido. */
+export const SheetAbierto: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const toggle = canvas.getByRole('button', { name: /tu complejo/i })
-    await userEvent.click(toggle)
-    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    await userEvent.click(canvas.getByRole('button', { name: /ver vista previa/i }))
+    const dialog = await within(document.body).findByRole('dialog', { name: /tu complejo/i })
+    await expect(within(dialog).getByText('Contenido de ejemplo')).toBeVisible()
   },
 }

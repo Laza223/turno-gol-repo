@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { CalendarCheck, CheckCircle2 } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
@@ -45,12 +47,11 @@ export default async function OnboardingListoPage() {
           </ListoRevealItem>
 
           <ListoRevealItem>
-            <h2 className="mt-4 text-2xl font-bold tracking-tight text-foreground">
+            <h2 tabIndex={-1} className="mt-4 text-2xl font-bold tracking-tight text-foreground">
               ¡Tu complejo está online!
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              {tenant.name} ya puede recibir reservas. Falta un solo paso: que tus clientes conozcan
-              el link.
+              {tenant.name} ya puede recibir reservas. Ahora compartí el link con tus clientes.
             </p>
           </ListoRevealItem>
 
@@ -78,7 +79,7 @@ export default async function OnboardingListoPage() {
             </p>
             <Link
               href="/dashboard"
-              className="mt-2 inline-block text-sm font-medium text-emerald-700 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"
+              className={cn(buttonVariants({ variant: 'ghost' }), 'mt-2 h-11 w-full md:h-10')}
             >
               Ir a mi panel
             </Link>

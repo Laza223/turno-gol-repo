@@ -10,7 +10,7 @@
 FROM node:22-slim
 
 # pnpm vía corepack, pinneado a la versión del repo (packageManager).
-RUN corepack enable && corepack prepare pnpm@10.34.5 --activate
+RUN corepack enable && corepack prepare pnpm@10.34.9 --activate
 
 WORKDIR /app
 

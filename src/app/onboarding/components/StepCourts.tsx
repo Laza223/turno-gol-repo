@@ -145,7 +145,9 @@ export function StepCourts({
     >
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">Tus canchas</h2>
+          <h2 tabIndex={-1} className="text-2xl font-bold tracking-tight text-foreground">
+            Tus canchas
+          </h2>
           <p className="text-sm text-muted-foreground mt-1">
             Con una cancha y su precio ya podés recibir reservas online. Sumá una foto si la tenés a
             mano: es lo primero que mira el jugador.

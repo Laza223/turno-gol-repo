@@ -82,8 +82,8 @@ export const PreviewDeLaTarjetaEnVivo: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     // Sin nombre, la tarjeta muestra el placeholder — nunca inventa un dato.
-    // getAllBy: PublicCardPreview vive dos veces en el DOM (aside desktop +
-    // panel mobile de PreviewPane), mismo patrón que el indicador de progreso.
+    // getAllBy: tolera que PublicCardPreview aparezca más de una vez (aside
+    // desktop + sheet mobile de PreviewPane si está abierto).
     await expect(canvas.getAllByText('Así te van a ver los jugadores.').length).toBeGreaterThan(0)
 
     await userEvent.type(canvas.getByLabelText(/nombre del complejo/i), 'Complejo San Martín')

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { m } from 'motion/react'
 import { CalendarClock, CheckCircle2 } from 'lucide-react'
@@ -62,7 +62,23 @@ export function StepFirstBooking({ date, courts, action, finishAction }: Props) 
   const [activeSlot, setActiveSlot] = useState<ActiveSlot | null>(null)
   const [guestName, setGuestName] = useState('')
   const [error, setError] = useState<string | null>(null)
+  // Nombre vacío: error de campo (aria-invalid + foco). Aparte de `error`, que es
+  // el rechazo del server y no es culpa de un campo en particular.
+  const [nameError, setNameError] = useState<string | null>(null)
   const [bookedKeys, setBookedKeys] = useState<Set<string>>(new Set())
+  // El mini-form se desmonta al confirmar y el foco caería a BODY: el banner de
+  // éxito lo recoge, y de paso nombra el turno que quedó cargado.
+  const [lastBooked, setLastBooked] = useState<{
+    name: string
+    courtName: string
+    timeStart: string
+    timeEnd: string
+  } | null>(null)
+  const bannerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (lastBooked) bannerRef.current?.focus()
+  }, [lastBooked])
 
   const hasAnySlot = courts.some((c) => c.slots.length > 0)
   const hasBooked = bookedKeys.size > 0
@@ -74,6 +90,7 @@ export function StepFirstBooking({ date, courts, action, finishAction }: Props) 
     price: number | null,
   ) {
     setError(null)
+    setNameError(null)
     setGuestName('')
     setActiveSlot({ courtId: court.courtId, courtName: court.courtName, timeStart, timeEnd, price })
   }
@@ -81,6 +98,7 @@ export function StepFirstBooking({ date, courts, action, finishAction }: Props) 
   function closeSlot() {
     setActiveSlot(null)
     setError(null)
+    setNameError(null)
   }
 
   function handleConfirm(e: React.FormEvent<HTMLFormElement>) {
@@ -88,10 +106,13 @@ export function StepFirstBooking({ date, courts, action, finishAction }: Props) 
     if (!activeSlot || isPending) return
     const trimmed = guestName.trim()
     if (!trimmed) {
-      setError('Poné a nombre de quién va el turno.')
+      setError(null)
+      setNameError('Poné a nombre de quién va el turno.')
+      document.getElementById('first-booking-name')?.focus()
       return
     }
     setError(null)
+    setNameError(null)
 
     startTransition(async () => {
       const result = await action({
@@ -111,6 +132,12 @@ export function StepFirstBooking({ date, courts, action, finishAction }: Props) 
         setBookedKeys((prev) =>
           new Set(prev).add(slotKey(result.booking.courtId, result.booking.timeStart)),
         )
+        setLastBooked({
+          name: trimmed,
+          courtName: activeSlot.courtName,
+          timeStart: activeSlot.timeStart,
+          timeEnd: activeSlot.timeEnd,
+        })
         setActiveSlot(null)
         setGuestName('')
       })
@@ -143,12 +170,28 @@ export function StepFirstBooking({ date, courts, action, finishAction }: Props) 
         <input
           id="first-booking-name"
           value={guestName}
-          onChange={(e) => setGuestName(e.target.value)}
+          onChange={(e) => {
+            setGuestName(e.target.value)
+            if (nameError) setNameError(null)
+          }}
           autoFocus
           autoComplete="off"
+          enterKeyHint="done"
+          aria-invalid={nameError ? true : undefined}
+          aria-describedby={nameError ? 'first-booking-name-error' : undefined}
           placeholder="Nombre"
-          className="h-11 w-full rounded-md border border-border bg-card px-3 text-base focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:h-10 md:text-sm"
+          className="h-11 w-full rounded-md border border-border bg-card px-3 text-base aria-invalid:border-destructive focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:h-10 md:text-sm"
         />
+        {nameError && (
+          // Mismo red-700 que el error del server de abajo (fondo con tinte).
+          <p
+            id="first-booking-name-error"
+            role="alert"
+            className="text-xs text-red-700 dark:text-red-400"
+          >
+            {nameError}
+          </p>
+        )}
       </div>
       {error && (
         // red-700, no red-600: acá el fondo es el tinte esmeralda del mini-form
@@ -158,11 +201,16 @@ export function StepFirstBooking({ date, courts, action, finishAction }: Props) 
           {error}
         </p>
       )}
-      <div className="flex gap-2">
+      {/* Apilados en mobile: el mini-form vive dentro de la card de la cancha,
+          dentro de la card del paso, y a 360 los dos botones lado a lado no
+          entraban (scroll lateral de ~21px). Confirmar queda arriba, al pulgar. */}
+      <div className="flex flex-col-reverse gap-2 sm:flex-row">
         <Button type="button" variant="ghost" onClick={closeSlot} disabled={isPending}>
           Cancelar
         </Button>
-        <Button type="submit" isLoading={isPending} className="flex-1">
+        {/* `flex-1` solo en fila: en columna el flex-basis 0 pisa el h-11 y el
+            botón quedaba en 36px. */}
+        <Button type="submit" isLoading={isPending} className="sm:flex-1">
           Confirmar turno
         </Button>
       </div>
@@ -173,7 +221,10 @@ export function StepFirstBooking({ date, courts, action, finishAction }: Props) 
     <WizardShell>
       <div className="space-y-6">
         <div>
-          <h2 tabIndex={-1} className="text-2xl font-bold tracking-tight text-foreground">
+          <h2
+            tabIndex={-1}
+            className="text-2xl font-bold tracking-tight text-foreground focus:outline-hidden"
+          >
             Tu primera reserva
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
@@ -184,14 +235,25 @@ export function StepFirstBooking({ date, courts, action, finishAction }: Props) 
 
         {hasBooked && (
           <div
+            ref={bannerRef}
             role="status"
-            className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100"
+            tabIndex={-1}
+            className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100 focus:outline-hidden"
           >
             <CheckCircle2
-              className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+              className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400"
               aria-hidden
             />
-            ¡Turno cargado! Ya está en tu grilla.
+            <div className="min-w-0 break-words">
+              <p className="font-semibold">¡Turno cargado!</p>
+              {lastBooked && (
+                <p>
+                  {lastBooked.name} · {lastBooked.courtName} · {lastBooked.timeStart}–
+                  {lastBooked.timeEnd}. Ya está en tu grilla; si era de prueba, tocalo ahí y elegí
+                  «Cancelar reserva».
+                </p>
+              )}
+            </div>
           </div>
         )}
 
@@ -265,10 +327,12 @@ export function StepFirstBooking({ date, courts, action, finishAction }: Props) 
           </Link>
           <Button
             type="button"
-            variant={hasBooked ? 'default' : 'ghost'}
+            variant={hasBooked ? 'default' : 'outline'}
             onClick={handleFinish}
             isLoading={isPending}
-            className="flex-1"
+            // Puede partirse en dos líneas: "Terminar y ver mi complejo" al lado de
+            // "Volver" no entra a 360 y el `whitespace-nowrap` del Button desbordaba.
+            className="h-auto min-h-11 min-w-0 flex-1 whitespace-normal text-center"
           >
             {hasBooked ? 'Terminar y ver mi complejo' : 'Saltar por ahora'}
           </Button>

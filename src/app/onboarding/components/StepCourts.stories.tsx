@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { pendingAction } from '@/test/pending-action'
 import { courtFutbol5, courtFutbol7 } from '@/test/fixtures/court'
 import { StepCourts } from './StepCourts'
@@ -128,9 +128,9 @@ export const VariosBorradores: Story = {
 }
 
 /**
- * Precio no numérico ("0", sin dígitos válidos): pasa el `required` nativo
- * (no está vacío) pero `parsePesosToCents` lo rechaza — dispara el mensaje
- * custom, no el popup nativo del browser.
+ * Precio no numérico ("0", sin dígitos válidos): el form es `noValidate` (no hay
+ * popup nativo de `required`) y el chequeo propio lo rechaza — mensaje al pie,
+ * input marcado `aria-invalid` y con el foco.
  */
 export const ErrorDePrecio: Story = {
   args: { tenantId: errorPrecio },
@@ -141,6 +141,9 @@ export const ErrorDePrecio: Story = {
     await expect(await canvas.findByRole('alert')).toHaveTextContent(
       'Cargá el precio por turno de Cancha 1.',
     )
+    const price = canvas.getByLabelText('Precio por turno *')
+    await expect(price).toHaveAttribute('aria-invalid', 'true')
+    await waitFor(() => expect(price).toHaveFocus())
   },
 }
 

@@ -221,6 +221,7 @@ export default function LocationPickerField({
               onKeyDown={handleQueryKeyDown}
               placeholder="Buscá tu dirección"
               aria-label="Buscar dirección"
+              enterKeyHint="search"
               className="flex-1"
             />
             <Button

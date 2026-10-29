@@ -83,6 +83,12 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
   const [city, setCity] = useState(defaultValues?.city ?? '')
   const [province, setProvince] = useState(defaultValues?.province ?? '')
   const [provinceError, setProvinceError] = useState<string | null>(null)
+  // Error inline de los campos de texto. Con `noValidate` el popup nativo de
+  // `required` no aparece: la paridad la da este chequeo, un campo por vez.
+  const [fieldError, setFieldError] = useState<{
+    field: 'name' | 'address' | 'city'
+    message: string
+  } | null>(null)
   const errorRef = useRef<HTMLParagraphElement>(null)
   // Sin punto, el complejo no sale en el mapa de /explorar ni se puede ordenar
   // por cercanía: el preview lo dice, para que cargarlo tenga consecuencia visible.
@@ -107,6 +113,18 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
+    const empties = [
+      { field: 'name', value: name, message: 'Poné el nombre del complejo.' },
+      { field: 'address', value: address, message: 'Poné la dirección.' },
+      { field: 'city', value: city, message: 'Poné la ciudad.' },
+    ] as const
+    const empty = empties.find((f) => f.value.trim() === '')
+    if (empty) {
+      setFieldError({ field: empty.field, message: empty.message })
+      document.getElementById(`identity-${empty.field}`)?.focus()
+      return
+    }
+    setFieldError(null)
     if (!province) {
       setProvinceError('Elegí tu provincia de la lista.')
       document.getElementById('identity-province')?.focus()
@@ -139,7 +157,10 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
     >
       <div className="space-y-6">
         <div>
-          <h2 tabIndex={-1} className="text-2xl font-bold tracking-tight text-foreground">
+          <h2
+            tabIndex={-1}
+            className="text-2xl font-bold tracking-tight text-foreground focus:outline-hidden"
+          >
             Tu complejo
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
@@ -149,7 +170,7 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <div>
             <label htmlFor="identity-name" className={labelClass}>
               Nombre del complejo <span className="text-red-600 dark:text-red-400">*</span>
@@ -158,14 +179,28 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
               id="identity-name"
               name="name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value)
+                if (fieldError?.field === 'name') setFieldError(null)
+              }}
               placeholder="Ej: Complejo San Martín"
               autoComplete="organization"
               autoCapitalize="words"
               enterKeyHint="next"
+              aria-invalid={fieldError?.field === 'name' ? true : undefined}
+              aria-describedby={fieldError?.field === 'name' ? 'identity-name-error' : undefined}
               required
               className={fieldClass}
             />
+            {fieldError?.field === 'name' && (
+              <p
+                id="identity-name-error"
+                role="alert"
+                className="mt-1.5 text-xs text-red-600 dark:text-red-400"
+              >
+                {fieldError.message}
+              </p>
+            )}
             {(isEdit || name.length >= 2) && (
               <p className="text-xs text-muted-foreground mt-1.5">
                 Tu link público:{' '}
@@ -186,13 +221,29 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
               id="identity-address"
               name="address"
               value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              onChange={(e) => {
+                setAddress(e.target.value)
+                if (fieldError?.field === 'address') setFieldError(null)
+              }}
               placeholder="Ej: Av. Corrientes 1234"
               autoComplete="address-line1"
               enterKeyHint="next"
+              aria-invalid={fieldError?.field === 'address' ? true : undefined}
+              aria-describedby={
+                fieldError?.field === 'address' ? 'identity-address-error' : undefined
+              }
               required
               className={fieldClass}
             />
+            {fieldError?.field === 'address' && (
+              <p
+                id="identity-address-error"
+                role="alert"
+                className="mt-1.5 text-xs text-red-600 dark:text-red-400"
+              >
+                {fieldError.message}
+              </p>
+            )}
           </div>
 
           {/* Columnas solo desde sm: en 375px los placeholders deben caber (§6.3). */}
@@ -205,14 +256,28 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
                 id="identity-city"
                 name="city"
                 value={city}
-                onChange={(e) => setCity(e.target.value)}
+                onChange={(e) => {
+                  setCity(e.target.value)
+                  if (fieldError?.field === 'city') setFieldError(null)
+                }}
                 placeholder="Ej: Rosario"
                 autoComplete="address-level2"
                 autoCapitalize="words"
                 enterKeyHint="next"
+                aria-invalid={fieldError?.field === 'city' ? true : undefined}
+                aria-describedby={fieldError?.field === 'city' ? 'identity-city-error' : undefined}
                 required
                 className={fieldClass}
               />
+              {fieldError?.field === 'city' && (
+                <p
+                  id="identity-city-error"
+                  role="alert"
+                  className="mt-1.5 text-xs text-red-600 dark:text-red-400"
+                >
+                  {fieldError.message}
+                </p>
+              )}
             </div>
             <div>
               <label htmlFor="identity-province" className={labelClass}>
@@ -242,7 +307,7 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
                 <p
                   id="identity-province-error"
                   role="alert"
-                  className="mt-1.5 text-xs text-destructive"
+                  className="mt-1.5 text-xs text-red-600 dark:text-red-400"
                 >
                   {provinceError}
                 </p>

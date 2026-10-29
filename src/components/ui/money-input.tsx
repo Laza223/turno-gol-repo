@@ -32,6 +32,7 @@ export interface MoneyInputProps {
   className?: string
   'aria-label'?: string
   'aria-describedby'?: string
+  'aria-invalid'?: boolean
   /** Relectura en palabras arriba de MONEY_WORDS_THRESHOLD_CENTS (visión v2 §6.3):
    *  hace imposible tipear $25 en vez de $25.000 sin notarlo. default true. */
   showWords?: boolean

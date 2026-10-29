@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -58,6 +58,13 @@ export function StepCourts({
 }: Props) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  // Campo culpable del último submit rechazado. Objeto nuevo en cada rechazo:
+  // si el usuario reintenta sin corregir, el efecto de foco corre igual.
+  const [invalid, setInvalid] = useState<{
+    key: number
+    field: 'name' | 'price'
+    message: string
+  } | null>(null)
   const navigate = useWizardNavigation()
   const {
     drafts,
@@ -96,19 +103,40 @@ export function StepCourts({
     if (previous) void deletePhotoAction(previous)
   }
 
+  // El foco va DESPUÉS del render: la card puede estar colapsada y `expand`
+  // la re-renderiza; el input recién existe como destino en ese commit.
+  useEffect(() => {
+    if (!invalid) return
+    document.getElementById(`court-${invalid.field}-${invalid.key}`)?.focus()
+  }, [invalid])
+
+  function handleUpdate(key: number, patch: Partial<Draft>) {
+    if (
+      invalid?.key === key &&
+      (invalid.field === 'name' ? 'name' in patch : 'priceCents' in patch)
+    )
+      setInvalid(null)
+    updateDraft(key, patch)
+  }
+
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
+    setInvalid(null)
 
     const courts: WizardCourtDraftInput[] = []
     for (const d of drafts) {
       if (d.name.trim().length === 0) {
-        setError('Poné un nombre a cada cancha.')
+        setInvalid({ key: d.key, field: 'name', message: 'Poné un nombre a cada cancha.' })
         expand(d.key)
         return
       }
       if (d.priceCents == null || d.priceCents <= 0) {
-        setError(`Cargá el precio por turno de ${d.name.trim() || 'cada cancha'}.`)
+        setInvalid({
+          key: d.key,
+          field: 'price',
+          message: `Cargá el precio por turno de ${d.name.trim() || 'cada cancha'}.`,
+        })
         expand(d.key)
         return
       }
@@ -145,7 +173,10 @@ export function StepCourts({
     >
       <div className="space-y-6">
         <div>
-          <h2 tabIndex={-1} className="text-2xl font-bold tracking-tight text-foreground">
+          <h2
+            tabIndex={-1}
+            className="text-2xl font-bold tracking-tight text-foreground focus:outline-hidden"
+          >
             Tus canchas
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
@@ -154,7 +185,7 @@ export function StepCourts({
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {existingCourts.length > 0 && <ExistingCourtsList courts={existingCourts} />}
 
           {drafts.map((draft, i) => (
@@ -165,7 +196,9 @@ export function StepCourts({
               isExpanded={expandedKeys.has(draft.key)}
               canRemove={canRemove}
               onToggle={toggleExpand}
-              onUpdate={updateDraft}
+              onUpdate={handleUpdate}
+              invalidField={invalid?.key === draft.key ? invalid.field : undefined}
+              errorMessage={invalid?.key === draft.key ? invalid.message : undefined}
               onRemove={removeDraft}
               photosEnabled={photosEnabled}
               onUploadPhoto={(blob) => uploadPhoto(draft, blob)}

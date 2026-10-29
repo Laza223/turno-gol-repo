@@ -76,6 +76,11 @@ export function parseReserveState(
   }
 }
 
+/** Lo que se escribe en la URL: `null` borra el param, `undefined` lo deja como está. */
+type ReservePatch = {
+  [K in keyof (ReserveState & { pay: PayMethod })]?: (ReserveState & { pay: PayMethod })[K] | null
+}
+
 /**
  * Copia de `current` con los params de la reserva puestos. `null` borra el param, `undefined` lo
  * deja como está; todos los demás (utm, ref…) se conservan. Para `history.replaceState`: el
@@ -83,7 +88,7 @@ export function parseReserveState(
  */
 export function writeReserveParams(
   current: URLSearchParams | string,
-  next: Partial<ReserveState & { pay: PayMethod }>,
+  next: ReservePatch,
 ): URLSearchParams {
   const params = new URLSearchParams(current)
   for (const [key, value] of Object.entries(next)) {
@@ -94,14 +99,38 @@ export function writeReserveParams(
   return params
 }
 
-/** `replaceState` y no `push`: elegir días no llena el historial. Conserva los demás params (utm, ref…). */
-export function replaceReserveUrl(patch: Partial<ReserveState & { pay: PayMethod }>): void {
+/** La URL actual con los params de la reserva puestos (conserva path, hash y los demás params). */
+function reserveUrl(patch: ReservePatch): string {
   const query = writeReserveParams(window.location.search, patch).toString()
+  return `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`
+}
+
+/**
+ * Marca que dejan los pasos de la ficha en `history.state`: la entrada la empujó esta página, así
+ * que "Volver" puede hacer `history.back()` sin sacar al jugador del sitio.
+ */
+const RESERVE_STEP_MARK = 'tgReserve'
+
+/** ¿La entrada actual del historial la empujó un paso de la ficha? */
+export function hasReserveStepMark(): boolean {
+  return Boolean((window.history.state as Record<string, unknown> | null)?.[RESERVE_STEP_MARK])
+}
+
+/**
+ * `replaceState` para lo que no es un paso (el filtro de formato): no llena el historial. Conserva
+ * los demás params (utm, ref…) y la marca de paso de la entrada, si la tiene.
+ */
+export function replaceReserveUrl(patch: ReservePatch): void {
   window.history.replaceState(
-    null,
+    hasReserveStepMark() ? { [RESERVE_STEP_MARK]: true } : null,
     '',
-    `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`,
+    reserveUrl(patch),
   )
+}
+
+/** `pushState` para avanzar de paso: el botón atrás del celular retrocede uno. Deja la marca. */
+export function pushReserveUrl(patch: ReservePatch): void {
+  window.history.pushState({ [RESERVE_STEP_MARK]: true }, '', reserveUrl(patch))
 }
 
 /** La ficha del complejo con lo que el jugador había elegido: el "Volver" y el "Elegir otro turno". */

@@ -7,6 +7,8 @@ import {
   publicCourtCard,
   publicTenant,
   reviews,
+  todayArt,
+  weeklyAvailabilityResponse,
 } from '@/test/fixtures/public'
 import ComplexHero from './ComplexHero'
 import ProfileLayout from './ProfileLayout'
@@ -15,6 +17,8 @@ import ReserveSection from './ReserveSection'
 
 // Lo que manda el servidor: con los precios visibles trae el monto; si el complejo los oculta, `null`.
 const availabilityMock = (options: { price?: number | null } = {}) => [
+  // La semana del paso 1 va primero: la ruta del día es prefijo de esta.
+  { match: '/api/public/availability/week', json: weeklyAvailabilityResponse(todayArt()) },
   {
     match: '/api/public/availability',
     json: availabilityResponseCourts(5, { formats: [5, 7], ...options }),
@@ -131,9 +135,12 @@ export const Completa: Story = {
   render: () => <Page complete hidePrices={false} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(await canvas.findByRole('radio', { name: /^21:00/ }))
-    await expect(await canvas.findByText('Canchas libres a las 21:00')).toBeVisible()
-    // Todos los títulos de sección miden lo mismo (incluido "Canchas libres a las 21:00").
+    await userEvent.click(await canvas.findByRole('button', { name: /^Hoy/ }))
+    await userEvent.click(await canvas.findByRole('button', { name: /^21:00/ }))
+    await expect(
+      await canvas.findByRole('list', { name: 'Canchas libres a las 21:00' }),
+    ).toBeVisible()
+    // Todos los títulos de sección miden lo mismo (incluido el del paso de la reserva).
     const sizes = canvas
       .getAllByRole('heading', { level: 2 })
       .map((h) => getComputedStyle(h).fontSize)
@@ -157,8 +164,11 @@ export const PreciosOcultos: Story = {
   render: () => <Page complete hidePrices />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(await canvas.findByRole('radio', { name: /^21:00/ }))
-    await expect(await canvas.findByText('Canchas libres a las 21:00')).toBeVisible()
+    await userEvent.click(await canvas.findByRole('button', { name: /^Hoy/ }))
+    await userEvent.click(await canvas.findByRole('button', { name: /^21:00/ }))
+    await expect(
+      await canvas.findByRole('list', { name: 'Canchas libres a las 21:00' }),
+    ).toBeVisible()
     await expect(canvasElement.textContent).not.toContain('$')
     await expect(canvas.queryByText(/^Desde/)).not.toBeInTheDocument()
   },
@@ -184,7 +194,8 @@ export const Minima: Story = {
   render: () => <Page complete={false} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByRole('radiogroup', { name: 'Hora' })).toBeVisible()
+    await userEvent.click(await canvas.findByRole('button', { name: /^Hoy/ }))
+    await expect(await canvas.findByRole('group', { name: 'Hora' })).toBeVisible()
     await expect(canvas.queryByRole('region', { name: 'Reseñas' })).not.toBeInTheDocument()
     await expect(canvas.queryByRole('img', { name: /Portada/ })).not.toBeInTheDocument()
   },

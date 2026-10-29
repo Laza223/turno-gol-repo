@@ -1,0 +1,65 @@
+/* Pasos de la reserva de la ficha (`runStepTransition`): al cambiar de paso el panel viejo se va
+   rápido hacia un lado (90 ms) y el nuevo entra ~48 px desde el otro, 200 ms en total; al volver,
+   al revés. El viejo se apaga antes de que el nuevo se asiente: si los dos se funden a la vez, a
+   mitad de camino se leen dos pasos encimados. El nombre de la transición se pone SOLO mientras
+   `data-reserve-step` está en <html>, así no choca si hubiera dos paneles. El resto de la página
+   (`root`) no se anima. */
+:root[data-reserve-step] [data-reserve-panel] {
+  view-transition-name: reserve-step;
+}
+
+:root[data-reserve-step]::view-transition-old(root),
+:root[data-reserve-step]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+/* La caja del panel salta al tamaño nuevo: lo que se mueve es el contenido, no el marco. */
+:root[data-reserve-step]::view-transition-group(reserve-step) {
+  animation: none;
+}
+
+:root[data-reserve-step='forward']::view-transition-old(reserve-step) {
+  animation: reserve-step-out-left 90ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+:root[data-reserve-step='forward']::view-transition-new(reserve-step) {
+  animation: reserve-step-in-right 160ms cubic-bezier(0.16, 1, 0.3, 1) 40ms both;
+}
+:root[data-reserve-step='back']::view-transition-old(reserve-step) {
+  animation: reserve-step-out-right 90ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+:root[data-reserve-step='back']::view-transition-new(reserve-step) {
+  animation: reserve-step-in-left 160ms cubic-bezier(0.16, 1, 0.3, 1) 40ms both;
+}
+
+@keyframes reserve-step-out-left {
+  to {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+}
+@keyframes reserve-step-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(48px);
+  }
+}
+@keyframes reserve-step-out-right {
+  to {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+@keyframes reserve-step-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-48px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-reserve-step]::view-transition-old(reserve-step),
+  :root[data-reserve-step]::view-transition-new(reserve-step) {
+    animation: none;
+  }
+}

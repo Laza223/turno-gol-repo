@@ -66,11 +66,13 @@ const WHATSAPP_INVALID_MESSAGE =
 
 /** WhatsApp argentino de móvil, normalizado con `toWhatsappDigits` (54 9 + área + abonado). */
 const whatsappSchema = z
-  .string('Ingresá tu WhatsApp.')
+  .string({ error: 'Ingresá tu WhatsApp.' })
   .trim()
   .min(1, 'Ingresá tu WhatsApp.')
   .transform((raw) => toWhatsappDigits(raw))
-  .pipe(z.string(WHATSAPP_INVALID_MESSAGE).regex(/^549\d{8,10}$/, WHATSAPP_INVALID_MESSAGE))
+  .pipe(
+    z.string({ error: WHATSAPP_INVALID_MESSAGE }).regex(/^549\d{8,10}$/, WHATSAPP_INVALID_MESSAGE),
+  )
 
 /**
  * Publicar en el tablón, después de armar. Lleva el WhatsApp con el
@@ -111,7 +113,7 @@ export const COURT_REQUIRED_MESSAGE = 'Marcá "Ya tengo la cancha": no se arman 
 
 export const createRivalMatchSchema = z
   .object({
-    tenantId: z.string('Elegí el complejo.').refine(isUuid, 'Elegí el complejo.'),
+    tenantId: z.string({ error: 'Elegí el complejo.' }).refine(isUuid, 'Elegí el complejo.'),
     startsAt: startsAtSchema,
     format: formatSchema,
     /** Por defecto el formato × 2. En "Mi equipo busca rival" el form lo manda igual al formato. */
@@ -140,7 +142,7 @@ export const createRivalMatchSchema = z
 /** Bienvenida RIVAL (§7), primer momento (alcanza para armar): el nombre y las reglas. */
 export const rivalIdentitySchema = z.object({
   firstName: z
-    .string('Ingresá tu nombre')
+    .string({ error: 'Ingresá tu nombre' })
     .trim()
     .min(1, 'Ingresá tu nombre.')
     .max(40, 'El nombre no puede superar los 40 caracteres.'),

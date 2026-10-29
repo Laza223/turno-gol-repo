@@ -1,17 +1,11 @@
 import { PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
-import { RIVAL_POSITION_LABELS } from '@/modules/rival/rival-display'
 import type { RivalPublicMatch, RivalRosterEntry } from '@/modules/rival/rival.types'
 import type { ActionResult } from '@/shared/types/action-result'
 import type { RivalReportReason } from '@/modules/rival/rival.schema'
 import { canAcceptRequest } from './organizer-rules'
+import { rowFacts } from './people-facts'
 import { ReportPlayerButton } from './ReportButton'
 import { RemoveRowAction, RequestRowActions } from './RowActions'
-
-const MEMBER_SINCE = new Intl.DateTimeFormat('es-AR', {
-  month: 'long',
-  year: 'numeric',
-  timeZone: 'America/Argentina/Buenos_Aires',
-})
 
 function initialsOf(shortName: string): string {
   return shortName
@@ -83,6 +77,28 @@ function RowActions({ entry, actions }: { entry: RivalRosterEntry; actions: RowA
   )
 }
 
+function PersonName({ entry }: { entry: RivalRosterEntry }) {
+  return (
+    <p className="break-words text-base font-medium text-foreground">
+      {entry.role === 'rival_captain' ? 'Equipo rival: ' : ''}
+      {entry.shortName}
+      {entry.isMe && <span className="font-normal text-muted-foreground"> (vos)</span>}
+    </p>
+  )
+}
+
+function ReportSlot({ entry, actions }: { entry: RivalRosterEntry; actions?: RowActionProps }) {
+  if (!actions?.reportPlayerAction || entry.isMe) return null
+  return (
+    <ReportPlayerButton
+      matchId={actions.matchId}
+      playerId={entry.playerId}
+      name={entry.shortName}
+      reportAction={actions.reportPlayerAction}
+    />
+  )
+}
+
 /**
  * Una fila del plantel. Con `detail` (solo el organizador) suma la ficha de la spec §6, salvo en la
  * propia. El estado no se repite en la fila: lo dice el título de la sección.
@@ -96,39 +112,18 @@ function PersonRow({
   detail: boolean
   actions?: RowActionProps
 }) {
-  const facts =
-    detail && !entry.isMe
-      ? [
-          entry.position ? RIVAL_POSITION_LABELS[entry.position] : null,
-          entry.zone,
-          entry.gamesPlayed !== null
-            ? `${entry.gamesPlayed} ${entry.gamesPlayed === 1 ? 'partido jugado' : 'partidos jugados'}`
-            : null,
-          entry.memberSince ? `En TurnoGol desde ${MEMBER_SINCE.format(entry.memberSince)}` : null,
-        ].filter((f): f is string => f !== null)
-      : []
+  const facts = rowFacts(entry, detail)
   return (
     <li className="py-2">
       <div className="flex items-start gap-3">
         <Avatar entry={entry} />
         <div className="min-w-0 flex-1">
-          <p className="break-words text-base font-medium text-foreground">
-            {entry.role === 'rival_captain' ? 'Equipo rival: ' : ''}
-            {entry.shortName}
-            {entry.isMe && <span className="font-normal text-muted-foreground"> (vos)</span>}
-          </p>
+          <PersonName entry={entry} />
           {facts.length > 0 && (
             <p className="text-sm tabular-nums text-muted-foreground">{facts.join(' · ')}</p>
           )}
         </div>
-        {actions?.reportPlayerAction && !entry.isMe && (
-          <ReportPlayerButton
-            matchId={actions.matchId}
-            playerId={entry.playerId}
-            name={entry.shortName}
-            reportAction={actions.reportPlayerAction}
-          />
-        )}
+        <ReportSlot entry={entry} actions={actions} />
       </div>
       {actions && <RowActions entry={entry} actions={actions} />}
     </li>

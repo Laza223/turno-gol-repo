@@ -40,7 +40,11 @@ const board = (o: Partial<RivalBoardItem> = {}): RivalBoardItem => ({
 
 const idle = vi.fn(async () => ({ status: 'idle' as const }))
 
-function renderPublic(o: Partial<RivalBoardItem>, viewer: BoardViewer, acceptAction = noopForm) {
+function renderPublic(
+  o: Partial<RivalBoardItem>,
+  viewer: BoardViewer,
+  acceptAction: (p: RivalFormResult, fd: FormData) => Promise<RivalFormResult> = noopForm,
+) {
   render(
     <PublicBoardView
       match={board(o)}

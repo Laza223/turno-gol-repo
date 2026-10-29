@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { closeSql, getSql, getWorkerDb } from '@/shared/db/client'
 import { clearFeatureFlagCache } from '@/shared/feature-flags'
@@ -655,10 +656,14 @@ describe('runWhatsappOpsAlerts: lo que deja de llegar', () => {
         updated_at = ${ago(24 * 10)}::timestamptz
       WHERE tenant_id = ${tenant.id}
     `
+    // El silencio se mide con los mensajes del jugador, no con el chat: un chat
+    // que abrió el dueño no es un entrante.
+    await sql`DELETE FROM whatsapp_messages WHERE tenant_id = ${tenant.id} AND direction = 'inbound'`
     if (args.inboundHoursAgo !== null) {
       await sql`
-        UPDATE whatsapp_chats SET last_inbound_at = ${ago(args.inboundHoursAgo)}::timestamptz
-        WHERE id = ${chatId}
+        INSERT INTO whatsapp_messages (tenant_id, chat_id, direction, wa_message_id, body, created_at)
+        VALUES (${tenant.id}, ${chatId}, 'inbound', ${`wamid.silence.${randomUUID()}`}, 'hola',
+                ${ago(args.inboundHoursAgo)}::timestamptz)
       `
     }
     clearFeatureFlagCache()

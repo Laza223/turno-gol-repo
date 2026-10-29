@@ -7,6 +7,7 @@
 **Supera** "WhatsApp descartado para v1" de `CLAUDE.md`. El ADR-003 que se citaba es de email y no analiza WhatsApp. Las razones del descarte eran de costo: [`doc4`](../spec/doc4_monetizacion.md) §WhatsApp y [`DECISIONES_SISTEMA.md`](DECISIONES_SISTEMA.md) ("es muy caro"). Con el pricing de Meta vigente desde el 2026-10-01, ese costo lo paga el complejo y las primeras 1.000 respuestas por mes y por número son gratis.
 
 Se decide **a sabiendas** de dos cosas:
+
 - La evidencia es un solo cliente. Le ofrecieron un bot de terceros, le gustó más que el link de reserva de TurnoGol y dijo que paga. Es una señal, no una validación.
 - JuegaFácil y Clubo traen el bot incluido en el plan. Para ellos es lo mínimo esperable, no un diferencial.
 
@@ -43,6 +44,10 @@ Se decide **a sabiendas** de dos cosas:
 ## W4 — Datos y privacidad
 
 - Mensajes y chats se guardan 30 días y después se purgan. Son también la instrumentación del piloto: reservas, respuestas, porcentaje de audios y costo.
+- **Charlas que abre el dueño** (decisión del dueño, 2026-10-29). Cuando el dueño le escribe primero a un número desde su celular, se crea el chat pausado 6 h, igual que si hubiera contestado. Si el jugador responde, el bot no se mete en una charla que no vio; antes pasó en 4 conversaciones reales.
+  - Del número se guarda solo el teléfono, la pausa y la fecha: sin nombre ni texto.
+  - Lo que escribe el dueño se guarda recién después de que el jugador escribió.
+  - Esto amplía la minimización original, en la que el eco del dueño nunca creaba un chat. El chat entra en la purga de 30 días como cualquier otro.
 - Anthropic y Kapso se suman a los subprocesadores de `/privacidad`.
 - La reserva por WhatsApp es sin cuenta (`guest_name`/`guest_phone`). El ban por complejo se cruza por teléfono contra `tenant_player_bans`, que es el mismo mecanismo de siempre.
 

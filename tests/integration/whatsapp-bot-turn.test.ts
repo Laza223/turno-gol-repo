@@ -369,25 +369,70 @@ describe('ingestWhatsappEvents — entrantes', () => {
 })
 
 describe('ingestWhatsappEvents — eco del dueño', () => {
-  it('a un número SIN chat: no crea chat ni mensaje', async () => {
+  // El 29/10 el bot le contestó encima al dueño en charlas que había abierto él.
+  it('a un número SIN chat (el dueño abre la charla): crea el chat pausado, sin nombre ni texto', async () => {
     const s = await seed()
-    const res = await ingestWhatsappEvents([ownerEvent(s)], new Date())
+    const now = new Date()
+    const res = await ingestWhatsappEvents([ownerEvent(s)], now)
 
     expect(res).toEqual({ chatsToProcess: [], unknownNumbers: 0, botOff: 0 })
-    expect(await countRows(s.tenantId)).toEqual({ chats: 0, messages: 0 })
+    expect(await countRows(s.tenantId)).toEqual({ chats: 1, messages: 0 })
+    const [chat] = await readChats(s.tenantId)
+    expect(chat).toMatchObject({ wa_phone: s.phone, display_name: null })
+    expect(chat!.pause_reason).toBe('owner_replied')
+    expect(chat!.paused_until).toEqual(new Date(now.getTime() + OWNER_PAUSE_MS))
   })
 
-  it('a un chat existente: guarda el mensaje owner ya procesado y pausa 6 h con owner_replied', async () => {
+  it('charla abierta por el dueño: su texto no se guarda hasta que el jugador escribe, y el bot no se mete', async () => {
+    const s = await seed()
+    const now = new Date()
+    // El echo trae el celular sin el 9: el chat queda como llega el entrante.
+    await ingestWhatsappEvents([ownerEvent(s, { to: `54${s.phone.slice(3)}` })], now)
+    await ingestWhatsappEvents([ownerEvent(s, { text: '¿Venís el jueves?' })], now)
+    expect(await countRows(s.tenantId)).toEqual({ chats: 1, messages: 0 })
+
+    const res = await ingestWhatsappEvents([inboundEvent(s, { text: 'sí, ahí voy' })], now)
+    const [chat] = await readChats(s.tenantId)
+    expect(res.chatsToProcess).toEqual([{ tenantId: s.tenantId, chatId: chat!.id }])
+    expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId: chat!.id }, now)).toBe(
+      'paused',
+    )
+    expect(runAgent).not.toHaveBeenCalled()
+
+    // Ya escribió el jugador: lo que contesta el dueño entra al historial.
+    await ingestWhatsappEvents([ownerEvent(s, { text: 'Dale, te espero' })], now)
+    const owner = (await readMessages(s.tenantId, chat!.id)).filter((m) => m.direction === 'owner')
+    expect(owner.map((m) => m.body)).toEqual(['Dale, te espero'])
+  })
+
+  it('si el entrante llega sin el 9, cae en el chat pausado que abrió el dueño', async () => {
+    const s = await seed()
+    const now = new Date()
+    await ingestWhatsappEvents([ownerEvent(s)], now)
+    await ingestWhatsappEvents([inboundEvent(s, { from: `54${s.phone.slice(3)}` })], now)
+
+    const chats = await readChats(s.tenantId)
+    expect(chats).toHaveLength(1)
+    expect(chats[0]!.pause_reason).toBe('owner_replied')
+  })
+
+  it('a un chat donde el jugador ya escribió: guarda el mensaje owner ya procesado y pausa 6 h con owner_replied', async () => {
     const s = await seed()
     const chatId = await addChat(s)
     const now = new Date()
+    await seedMessage(s, chatId, {
+      direction: 'inbound',
+      body: 'hola',
+      createdAt: ago(now, MINUTE_MS),
+      processedAt: ago(now, MINUTE_MS),
+    })
 
     const echo = ownerEvent(s, { text: 'Dale, te espero' })
     const res = await ingestWhatsappEvents([echo], now)
 
     // El eco no despierta al bot: ningún turno que encolar.
     expect(res.chatsToProcess).toEqual([])
-    const messages = await readMessages(s.tenantId, chatId)
+    const messages = (await readMessages(s.tenantId, chatId)).filter((m) => m.direction === 'owner')
     expect(messages).toHaveLength(1)
     expect(messages[0]).toMatchObject({
       direction: 'owner',
@@ -419,13 +464,20 @@ describe('ingestWhatsappEvents — eco del dueño', () => {
     const now = new Date()
     const handoffUntil = new Date(now.getTime() + 12 * HOUR_MS)
     await pauseChat(chatId, handoffUntil, 'handoff_other')
+    await seedMessage(s, chatId, {
+      direction: 'inbound',
+      body: 'quiero hablar con alguien',
+      createdAt: ago(now, MINUTE_MS),
+      processedAt: ago(now, MINUTE_MS),
+    })
 
     await ingestWhatsappEvents([ownerEvent(s)], now)
 
     const chat = await readChat(s.tenantId, chatId)
     expect(chat.paused_until).toEqual(handoffUntil)
     expect(chat.pause_reason).toBe('handoff_other')
-    expect(await readMessages(s.tenantId, chatId)).toHaveLength(1)
+    const messages = await readMessages(s.tenantId, chatId)
+    expect(messages.filter((m) => m.direction === 'owner')).toHaveLength(1)
   })
 
   it('con el chat pausado por menos tiempo: extiende la pausa a 6 h', async () => {

@@ -28,9 +28,10 @@ Lo lanza a prod el dueño, con su OK. Sigue con Haiku: se decidió no pasar a So
 
 ## Pendiente
 
-- REQUIERE INPUT:
-  - ¿El bot puede cancelar turnos que no salieron del chat?
-  - ¿Rival e imágenes pausan el chat 12 h?
-  - Hilos que inicia el dueño: el eco no se guarda si el chat no existe (minimización, Ley 25.326), así que el bot no se pausa.
+- Respuestas del dueño (2026-10-29):
+  - Los turnos que no salieron del chat solo se informan.
+  - Rival e imágenes pausan 12 h con aviso, como está.
+  - Charlas que abre el dueño: se crea el chat pausado, sin el texto. Implementado en `whatsapp-bot.ingest.ts` y registrado en la decisión W4.
+- El banco de pruebas no se corrió: el dueño eligió commitear sin correrlo.
 - Sin confirmar: c66 ("el sistema me dice que ese turno no está disponible") puede ser una falla de `reservar`.
 - `pnpm test:bot-bench` (gasta plata) antes del deploy.

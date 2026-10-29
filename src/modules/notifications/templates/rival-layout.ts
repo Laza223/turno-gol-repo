@@ -29,7 +29,7 @@ export function renderRivalMail(args: {
   <h2>${escapeHtml(title)}</h2>
   ${paragraphs}
   <p><strong>${escapeHtml(tenantName)}</strong><br>${escapeHtml(dateLabel)}</p>
-  <p><a href="${escapeHtml(url)}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600">${escapeHtml(cta)}</a></p>
+  <p><a href="${escapeHtml(url)}" style="display:inline-block;background:#047857;color:#fff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:600">${escapeHtml(cta)}</a></p>
   <p style="color:#64748b;font-size:14px">${escapeHtml(url)}</p>
   ${footerHtml}
   <p style="color:#64748b;font-size:14px">— RIVAL, de TurnoGol</p>

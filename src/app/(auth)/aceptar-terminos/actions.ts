@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { acceptPlayerTerms } from '@/modules/players/player.service'
 import { sanitizeNext } from '@/lib/safe-redirect'
-import { isBookingPath, isRivalPath, successVerifyPath } from '@/lib/auth-success'
+import { isBookingPath, isRivalReturnPath, successVerifyPath } from '@/lib/auth-success'
 import { CURRENT_TERMS_VERSION } from '@/shared/terms'
 
 export type AcceptTermsState = { status: 'idle' } | { status: 'error'; message: string }
@@ -41,7 +41,7 @@ export async function acceptTermsAction(
 
   // Misma regla que el callback: una reserva en curso o un "Voy" de RIVAL vuelven directo.
   redirect(
-    isBookingPath(safeNext) || isRivalPath(safeNext)
+    isBookingPath(safeNext) || isRivalReturnPath(safeNext)
       ? safeNext
       : successVerifyPath(safeNext, 'login'),
   )

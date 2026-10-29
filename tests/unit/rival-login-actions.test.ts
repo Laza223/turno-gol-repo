@@ -73,11 +73,14 @@ describe('con el flag apagado', () => {
   })
 })
 
-describe('un next que no es un partido', () => {
+describe('un next que no es de armar, pedir ni un partido', () => {
   it.each([
     '/mis-reservas',
+    '/rival',
+    '/rival/mis-partidos',
     '/rival/p/corto',
-    '/rival/nuevo',
+    '/rival/nuevo/otra-cosa',
+    '/rival/partido/no-es-un-uuid',
     'https://evil.com/rival/p/ABCDEFGHJK',
     '',
   ])('da error (%j) y no manda nada', async (next) => {
@@ -147,5 +150,57 @@ describe('el mail', () => {
     expect(check('ana@example.com', CODE)).toEqual({ ok: true })
     expect(check('otra@example.com', CODE)).toMatchObject({ ok: false })
     expect(check('ana@example.com', 'ZZZZZZZZZZ')).toMatchObject({ ok: false })
+  })
+})
+
+describe('armar y pedir sumarme: crean la cuenta pero no se auto-envían', () => {
+  const MATCH_ID = '3f2b8c1e-5d4a-4e6f-9a7b-0c1d2e3f4a5b'
+
+  it.each([
+    ['/rival/nuevo', '/rival/nuevo'],
+    ['/rival/nuevo?x=1', '/rival/nuevo'],
+    [`/rival/partido/${MATCH_ID}`, `/rival/partido/${MATCH_ID}`],
+    [`/rival/partido/${MATCH_ID}?y=2`, `/rival/partido/${MATCH_ID}`],
+  ])(
+    'el mail de %s vuelve a %s SIN vínculo firmado y con el consentimiento +18',
+    async (raw, back) => {
+      const r = await sendRivalMagicLinkAction(
+        idle,
+        fd({ next: raw, terms: 'on', email: 'ana@example.com' }),
+      )
+      expect(r).toMatchObject({ status: 'sent', email: 'ana@example.com' })
+      const [email, redirectTo, signup] = signInWithPlayerMagicLink.mock.calls[0]!
+      expect(email).toBe('ana@example.com')
+      expect(new URL(redirectTo as string).searchParams.get('next')).toBe(back)
+      expect(signup).toMatchObject({ agreedTerms: true })
+    },
+  )
+
+  it('sin terms=on el mail tampoco sale', async () => {
+    const r = await sendRivalMagicLinkAction(
+      idle,
+      fd({ next: '/rival/nuevo', email: 'a@example.com' }),
+    )
+    expect(r).toMatchObject({ status: 'error', field: 'terms' })
+    expect(signInWithPlayerMagicLink).not.toHaveBeenCalled()
+  })
+
+  it('Google setea la cookie de términos pero NO la del vínculo del partido', async () => {
+    await expect(
+      startGoogleLoginFromRivalAction(idle, fd({ next: '/rival/nuevo', terms: 'on' })),
+    ).rejects.toThrow('NEXT_REDIRECT:https://accounts.google.com/o')
+    const names = cookieSet.mock.calls.map((c) => (c[0] as Record<string, unknown>).name)
+    expect(names).toEqual([GOOGLE_TERMS_COOKIE_NAME])
+    expect(signInWithGooglePlayer).toHaveBeenCalledWith(
+      `http://localhost:3000/api/auth/callback?next=${encodeURIComponent('/rival/nuevo')}`,
+    )
+  })
+
+  it('"Voy" sigue llevando el vínculo: la cookie del partido se setea', async () => {
+    await expect(
+      startGoogleLoginFromRivalAction(idle, fd({ next: NEXT, terms: 'on' })),
+    ).rejects.toThrow('NEXT_REDIRECT')
+    const names = cookieSet.mock.calls.map((c) => (c[0] as Record<string, unknown>).name)
+    expect(names).toEqual([GOOGLE_TERMS_COOKIE_NAME, RIVAL_INTENT_COOKIE_NAME])
   })
 })

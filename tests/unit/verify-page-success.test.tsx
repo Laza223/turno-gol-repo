@@ -29,6 +29,20 @@ describe('VerifyPage — estado de éxito', () => {
     )
   })
 
+  it('login que volvía a RIVAL: el botón nombra RIVAL y vuelve a donde iba', async () => {
+    await renderPage({ status: 'success', next: '/rival/nuevo', intent: 'login' })
+    expect(screen.getByText('Ya estás adentro.')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Volver a RIVAL' }).getAttribute('href')).toBe(
+      '/rival/nuevo',
+    )
+    expect(screen.queryByRole('link', { name: /ir a mis reservas/i })).toBeNull()
+  })
+
+  it('un next de otra sección no hereda el copy de RIVAL', async () => {
+    await renderPage({ status: 'success', next: '/rivalx', intent: 'login' })
+    expect(screen.queryByRole('link', { name: 'Volver a RIVAL' })).toBeNull()
+  })
+
   it('intent signup: bienvenida + botón al panel', async () => {
     await renderPage({ status: 'success', next: '/dashboard', intent: 'signup' })
     expect(screen.getByText(/bienvenido a turnogol/i)).toBeTruthy()

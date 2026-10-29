@@ -7,6 +7,11 @@ import {
   setPlayerPhoto,
   validatePhotoUpload,
 } from '@/modules/players/player-photo.service'
+import {
+  RIVAL_DISABLED_MESSAGE,
+  RIVAL_NO_SESSION_MESSAGE,
+  RIVAL_RATE_LIMITED_MESSAGE,
+} from '@/modules/rival/rival-copy'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import { captureException } from '@/lib/sentry'
 import { enforce } from '@/shared/rate-limit'
@@ -22,11 +27,11 @@ const fail = (error: string): RivalPhotoResult => ({ success: false, error })
 
 /** Mismo orden que el `guard` de `./actions`: flag → sesión de jugador → rate limit. */
 async function guard(): Promise<{ playerId: string } | { error: string }> {
-  if (!(await isRivalEnabled())) return { error: 'RIVAL todavía no está disponible.' }
+  if (!(await isRivalEnabled())) return { error: RIVAL_DISABLED_MESSAGE }
   const user = await extractAuthUser()
-  if (!user || user.type !== 'player') return { error: 'Ingresá a tu cuenta para seguir.' }
+  if (!user || user.type !== 'player') return { error: RIVAL_NO_SESSION_MESSAGE }
   const rl = await enforce('rivalPhoto', user.playerId)
-  if (!rl.ok) return { error: 'Demasiadas solicitudes. Esperá un momento.' }
+  if (!rl.ok) return { error: RIVAL_RATE_LIMITED_MESSAGE }
   return { playerId: user.playerId }
 }
 
@@ -39,7 +44,8 @@ function refresh(): void {
 export async function uploadRivalPhotoAction(formData: FormData): Promise<RivalPhotoResult> {
   const g = await guard()
   if ('error' in g) return fail(g.error)
-  if (!isR2Configured()) return fail('Storage no configurado en este entorno')
+  if (!isR2Configured())
+    return fail('No pudimos subir la foto ahora. Probá de nuevo en un momento.')
 
   const file = formData.get('file')
   if (!(file instanceof Blob) || file.size === 0) return fail('Elegí una foto.')

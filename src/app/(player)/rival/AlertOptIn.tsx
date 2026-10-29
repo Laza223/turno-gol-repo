@@ -1,13 +1,17 @@
 'use client'
 
-import { startTransition, useActionState, useState, type FormEvent } from 'react'
+import { startTransition, useActionState, useMemo, useState, type FormEvent } from 'react'
 import Link from 'next/link'
+import { unstable_rethrow } from 'next/navigation'
 import { BellRing } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { SelectMenu } from '@/components/ui/select-menu'
 import { PORTAL_BUTTON_OUTLINE } from '@/components/world/PortalAuthFrame'
+import { RIVAL_OFFLINE_MESSAGE } from '@/modules/rival/rival-copy'
 import type { RivalFormResult } from './actions'
+import { FormError } from './FormError'
+import { RivalCheckbox } from './RivalCheckbox'
 
 /** Firma de las Server Actions (llegan por prop: importarlas como valor arrastra drizzle al bundle del browser). */
 type AlertAction = (prev: RivalFormResult, formData: FormData) => Promise<RivalFormResult>
@@ -15,9 +19,26 @@ type AlertAction = (prev: RivalFormResult, formData: FormData) => Promise<RivalF
 // Estado inicial "sin respuesta todavía": ni éxito ni error, así no parpadea un "Listo" antes de que responda la action.
 const IDLE: RivalFormResult = { success: false, error: '' }
 const FIELD_ERROR = 'text-[13px] leading-5 text-red-700 dark:text-red-300'
+const TENANT_ERROR_ID = 'rival-alerta-complejo-error'
 
 /**
- * "Avisame cuando haya" del tablón vacío: un mail por día como mucho, con baja de un toque.
+ * Un corte de red no puede mandar al error boundary: guardar y darse de baja son idempotentes,
+ * así que se dice y se reintenta. Un redirect o un notFound viajan como excepción y pasan.
+ */
+function offlineSafe(action: AlertAction): AlertAction {
+  return async (prev, formData) => {
+    try {
+      return await action(prev, formData)
+    } catch (err) {
+      unstable_rethrow(err)
+      return { success: false, error: RIVAL_OFFLINE_MESSAGE }
+    }
+  }
+}
+
+/**
+ * "Avisame cuando haya" del tablón vacío (y del complejo filtrado sin partidos): un mail por día
+ * como mucho, con baja de un toque.
  * Acción secundaria (outline): el único verde de la vista es "Armar un partido". Si ya hay alerta
  * en el complejo, el mismo botón la actualiza (upsert) y aparece "Dejar de avisarme".
  */
@@ -25,6 +46,7 @@ export function AlertOptIn({
   tenants,
   signedIn,
   subscribed,
+  defaultTenantId,
   action,
   unsubscribeAction,
 }: {
@@ -32,14 +54,25 @@ export function AlertOptIn({
   signedIn: boolean
   /** Alertas que el jugador ya tiene (complejo y preferencia guardada). */
   subscribed: { tenantId: string; onlyGoalkeeper: boolean }[]
+  /** Complejo que ya eligió el jugador (el filtro del tablón): llega elegido. */
+  defaultTenantId?: string
   action: AlertAction
   unsubscribeAction: AlertAction
 }) {
-  const [subState, subAction, subPending] = useActionState(action, IDLE)
-  const [unsubState, unsubAction, unsubPending] = useActionState(unsubscribeAction, IDLE)
+  const safeAction = useMemo(() => offlineSafe(action), [action])
+  const safeUnsubscribe = useMemo(() => offlineSafe(unsubscribeAction), [unsubscribeAction])
+  const [subState, subAction, subPending] = useActionState(safeAction, IDLE)
+  const [unsubState, unsubAction, unsubPending] = useActionState(safeUnsubscribe, IDLE)
   // Controlados: React 19 resetea los campos no controlados al terminar una action.
-  const [tenantId, setTenantId] = useState('')
-  const [onlyGoalkeeper, setOnlyGoalkeeper] = useState(false)
+  const initialTenantId = tenants.some((t) => t.id === defaultTenantId)
+    ? (defaultTenantId ?? '')
+    : tenants.length === 1
+      ? tenants[0]!.id
+      : ''
+  const [tenantId, setTenantId] = useState(initialTenantId)
+  const [onlyGoalkeeper, setOnlyGoalkeeper] = useState(
+    subscribed.find((a) => a.tenantId === initialTenantId)?.onlyGoalkeeper ?? false,
+  )
   // Cuál de las dos acciones tocó el jugador por última vez (decide qué mensaje va).
   const [last, setLast] = useState<'sub' | 'unsub' | null>(null)
 
@@ -60,21 +93,22 @@ export function AlertOptIn({
 
   const pending = subPending || unsubPending
   const alreadyOn = tenantId !== '' && subscribed.some((a) => a.tenantId === tenantId)
-  const result = last === 'unsub' ? unsubState : subState
-  const error = !result.success && result.error ? result : null
+  // Sin envío (o al cambiar de complejo) no hay mensaje: el resultado viejo era de otro complejo.
+  const result = last === null ? null : last === 'unsub' ? unsubState : subState
+  const error = result && !result.success && result.error ? result : null
+  const tenantError = error?.field === 'tenantId' ? error : null
   // El éxito se muestra solo cuando la action ya respondió con success (nunca mientras está pendiente).
   const okMessage =
-    pending || !result.success
+    pending || !result?.success
       ? null
       : last === 'sub'
         ? 'Listo, te avisamos por mail. Un mail por día como mucho y podés darte de baja con un toque.'
-        : last === 'unsub'
-          ? 'Listo, no te vamos a avisar más de ese complejo.'
-          : null
+        : 'Listo, no te vamos a avisar más de ese complejo.'
 
   // Al elegir un complejo con alerta, la casilla toma lo guardado: "Actualizar" no pisa la preferencia en silencio.
   function handleTenantChange(id: string) {
     setTenantId(id)
+    setLast(null)
     const saved = subscribed.find((a) => a.tenantId === id)
     if (saved) setOnlyGoalkeeper(saved.onlyGoalkeeper)
   }
@@ -115,29 +149,25 @@ export function AlertOptIn({
           onChange={handleTenantChange}
           options={tenants.map((t) => ({ value: t.id, label: t.name }))}
           placeholder="Elegí un complejo"
+          className="rounded-lg bg-card md:text-base"
+          aria-invalid={tenantError ? true : undefined}
+          aria-describedby={tenantError ? TENANT_ERROR_ID : undefined}
         />
-        {error?.field === 'tenantId' && (
-          <p role="alert" className={FIELD_ERROR}>
-            {error.error}
+        {tenantError && (
+          <p id={TENANT_ERROR_ID} role="alert" className={FIELD_ERROR}>
+            {tenantError.error}
           </p>
         )}
         {alreadyOn && (
           <p role="status" className="text-[13px] leading-5 text-muted-foreground">
-            Ya te avisamos de ese complejo. Podés cambiar la preferencia o dejar de recibirlas.
+            Ya tenés el aviso activado en ese complejo. Podés cambiar la preferencia o desactivarlo.
           </p>
         )}
       </div>
 
-      <label className="flex min-h-11 cursor-pointer items-center gap-3">
-        <input
-          type="checkbox"
-          name="onlyGoalkeeper"
-          checked={onlyGoalkeeper}
-          onChange={(e) => setOnlyGoalkeeper(e.target.checked)}
-          className="size-6 shrink-0 cursor-pointer"
-        />
-        <span className="text-base text-foreground">Solo si buscan arquero</span>
-      </label>
+      <RivalCheckbox name="onlyGoalkeeper" checked={onlyGoalkeeper} onChange={setOnlyGoalkeeper}>
+        Solo si buscan arquero
+      </RivalCheckbox>
 
       <div className="space-y-2">
         <Button
@@ -148,7 +178,7 @@ export function AlertOptIn({
           className={`${PORTAL_BUTTON_OUTLINE} gap-2 rounded-full font-semibold`}
         >
           <BellRing className="size-4" aria-hidden />
-          {subPending ? 'Guardando…' : alreadyOn ? 'Actualizar aviso' : 'Avisame cuando haya'}
+          {subPending ? 'Guardando…' : alreadyOn ? 'Actualizar aviso' : 'Avisarme por mail'}
         </Button>
         {alreadyOn && (
           <Button
@@ -162,11 +192,7 @@ export function AlertOptIn({
           </Button>
         )}
       </div>
-      {error && error.field !== 'tenantId' && (
-        <p role="alert" className={FIELD_ERROR}>
-          {error.error}
-        </p>
-      )}
+      {error && !tenantError && <FormError error={error.error} code={error.code} />}
       {okMessage && (
         <p role="status" className="text-base text-foreground">
           {okMessage}

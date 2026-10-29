@@ -96,6 +96,11 @@ Ningún campo es texto libre y ninguno es un precio.
 
 ### 5.1 Armar (`/rival/nuevo`)
 
+> **Enmendado el 2026-10-28** ([decisión](../../decisions/2026-10-28-rival-bienvenida-y-tablon-despues-de-crear.md)):
+> - el form arranca con "¿Qué armás?" (Partido completo / Mi equipo busca rival) y ya no lleva el tablón;
+> - la hora va con chips filtrados por el horario del complejo;
+> - la bienvenida para armar pide solo el nombre y las reglas.
+
 - **Entradas:**
   - "Armar un partido" en `/rival`;
   - "Armar el partido" como acción secundaria en la próxima reserva de Mis reservas y en la pantalla de reserva confirmada (`?reserva=<id>`; "Avisarle al grupo" sigue como está);
@@ -163,6 +168,8 @@ En un partido vencido, el organizador ve "Armar el del jueves que viene". El lin
 
 ### 5.7 Pedir sumarse, aceptar y contacto
 
+> **Enmendado el 2026-10-28** ([decisión](../../decisions/2026-10-28-rival-bienvenida-y-tablon-despues-de-crear.md)): "Pedir sumarme", igual que "Voy", pide la posición y la zona si faltan. Al publicar, el WhatsApp puede guardarse en la cuenta con una casilla sin marcar.
+
 1. **El jugador pide.** Toca "Pedir sumarme", con cuenta y bienvenida hechas, y ve "Pedido enviado. Te avisamos por mail si te aceptan." Al organizador le llega el mail "Alguien quiere sumarse".
 2. **El organizador decide.** Ve la ficha del que pidió (§6) y elige "Aceptar" o "Esta vez no".
 3. **Si acepta:** al aceptado le llega un mail y ve "Escribile por WhatsApp", un `<a href>` armado en el servidor con este texto: "Hola, soy [nombre] de RIVAL. Me aceptaste para el partido del jueves 21:00 en El Vagón."
@@ -195,6 +202,10 @@ En un partido vencido, el organizador ve "Armar el del jueves que viene". El lin
 ## 7. Perfil RIVAL y bienvenida
 
 La bienvenida aparece la primera vez que el jugador organiza, toca "Voy" o pide sumarse. Es una sola tarjeta.
+
+> **Enmendado el 2026-10-28** ([decisión](../../decisions/2026-10-28-rival-bienvenida-y-tablon-despues-de-crear.md)): la tarjeta se parte en dos momentos.
+> - **Para armar:** nombre y reglas.
+> - **Al sumarse** (Voy, Pedir sumarme o el intent por mail): posición y zona, solo si faltan. La frase "El organizador ve además tu posición y tu zona." va en ese paso.
 
 - **Nombre:** se precarga con el actual, que hoy puede salir del email. Es obligatorio y solo se muestra el nombre corto.
 - **Posición:** Arquero · Defensor · Mediocampista · Delantero · Donde me pongan.

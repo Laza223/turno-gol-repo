@@ -31,6 +31,12 @@ type Props = {
    * un lector de pantalla no distingue el método del cobro 1 del del cobro 2.
    */
   'aria-label'?: string
+  /**
+   * Estado de error del campo; `aria-describedby` apunta al mensaje que lo explica. Sin
+   * `aria-required`: el rol `button` del trigger no lo admite (axe `aria-allowed-attr`).
+   */
+  'aria-invalid'?: boolean
+  'aria-describedby'?: string
 }
 
 /**
@@ -50,19 +56,25 @@ export function SelectMenu({
   contentClassName,
   disabled = false,
   'aria-label': ariaLabel,
+  'aria-invalid': ariaInvalid,
+  'aria-describedby': ariaDescribedBy,
 }: Props) {
   const selected = options.find((o) => o.value === value)
 
   return (
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
+        {/* aria-invalid es global en ARIA 1.1: el trigger es el control del campo y tiene que poder marcarlo. */}
+        {/* eslint-disable-next-line jsx-a11y/role-supports-aria-props */}
         <button
           type="button"
           id={id}
           disabled={disabled}
           aria-label={ariaLabel}
+          aria-invalid={ariaInvalid}
+          aria-describedby={ariaDescribedBy}
           className={cn(
-            'relative h-12 w-full rounded-xl border border-input bg-background text-base md:text-sm text-foreground shadow-xs transition-colors flex items-center justify-between text-left focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60',
+            'relative h-12 w-full rounded-xl border border-input bg-background text-base md:text-sm text-foreground shadow-xs transition-colors flex items-center justify-between text-left focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-destructive aria-invalid:focus-visible:border-destructive aria-invalid:focus-visible:ring-destructive',
             icon ? 'pl-10' : 'pl-3.5',
             'pr-10',
             className,
@@ -88,14 +100,20 @@ export function SelectMenu({
       <DropdownMenuContent
         align="start"
         tabIndex={0}
+        collisionPadding={8}
         className={cn(
-          'max-h-60 min-w-[var(--radix-dropdown-menu-trigger-width)]',
+          // El ancho nunca pasa del espacio libre del viewport: un nombre largo se parte dentro del ítem.
+          'max-h-60 min-w-[var(--radix-dropdown-menu-trigger-width)] max-w-[var(--radix-dropdown-menu-content-available-width)]',
           contentClassName,
         )}
       >
         <DropdownMenuRadioGroup value={value} onValueChange={onChange}>
           {options.map((o) => (
-            <DropdownMenuRadioItem key={o.value} value={o.value} className="cursor-pointer">
+            <DropdownMenuRadioItem
+              key={o.value}
+              value={o.value}
+              className="cursor-pointer break-words"
+            >
               {o.label}
             </DropdownMenuRadioItem>
           ))}

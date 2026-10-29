@@ -90,11 +90,11 @@ export type BoardGroupKey = 'today' | 'tomorrow' | 'week'
 const GROUP_LABELS: Record<BoardGroupKey, string> = {
   today: 'Hoy',
   tomorrow: 'Mañana',
-  week: 'Esta semana',
+  week: 'Próximos días',
 }
 
 /**
- * Hoy / Mañana / Esta semana, por día ART y ordenado por hora. Los grupos vacíos no
+ * Hoy / Mañana / Próximos días, por día ART y ordenado por hora. Los grupos vacíos no
  * salen. `now` entra por parámetro para poder probar el borde de las 21:00 a 23:59 ART
  * (donde el día UTC ya es el siguiente).
  */

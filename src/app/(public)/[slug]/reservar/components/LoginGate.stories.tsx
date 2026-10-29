@@ -305,3 +305,51 @@ export const RivalEnviado: Story = {
     await expect(modal.queryByText(/reserva/)).not.toBeInTheDocument()
   },
 }
+
+/** RIVAL, armar un partido: pide entrar para armarlo y promete volver a armarlo. */
+export const RivalArmar: Story = {
+  args: { variant: 'rival', purpose: 'armar', withDeposit: undefined, next: '/rival/nuevo' },
+  play: async () => {
+    const root = await dialog()
+    const modal = within(root)
+    await expect(modal.getByRole('heading', { name: 'Entrá para armar tu partido' })).toBeVisible()
+    await expect(modal.getByText('Entrás y volvés a armarlo.')).toBeVisible()
+    await expect(root).not.toHaveTextContent(/reserv|turno/i)
+  },
+}
+
+/** RIVAL, armar, mail enviado: al tocar el enlace vuelve a armar, no a un partido. */
+export const RivalArmarEnviado: Story = {
+  args: {
+    variant: 'rival',
+    purpose: 'armar',
+    withDeposit: undefined,
+    next: '/rival/nuevo',
+    action: fn(sent),
+  },
+  play: async () => {
+    const modal = within(await dialog())
+    await userEvent.type(modal.getByLabelText('Email'), 'tomas.ibanez@example.com')
+    await userEvent.click(modal.getByRole('button', { name: 'Continuar con mi email' }))
+
+    await modal.findByRole('heading', { name: 'Revisá tu email' })
+    await expect(
+      modal.getByText('Cuando lo toques, volvés a armar tu partido con tu cuenta.'),
+    ).toBeVisible()
+  },
+}
+
+/** RIVAL, pedir sumarme: vuelve al partido del tablón. */
+export const RivalPedir: Story = {
+  args: {
+    variant: 'rival',
+    purpose: 'pedir',
+    withDeposit: undefined,
+    next: '/rival/partido/3f2b8c1e-5d4a-4e6f-9a7b-0c1d2e3f4a5b',
+  },
+  play: async () => {
+    const modal = within(await dialog())
+    await expect(modal.getByRole('heading', { name: 'Entrá para pedir tu lugar' })).toBeVisible()
+    await expect(modal.getByText('Entrás y volvés a este partido.')).toBeVisible()
+  },
+}

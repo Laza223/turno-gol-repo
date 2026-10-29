@@ -11,7 +11,7 @@ import {
   getRivalWelcomeState,
   getRoster,
 } from '@/modules/rival/rival.service'
-import { shouldAutoJoin } from '@/modules/rival/rival-join-rule'
+import { shouldAutoJoin, welcomeNeeds } from '@/modules/rival/rival-join-rule'
 import { buildShareHref } from '@/modules/rival/rival-share'
 import { RIVAL_INTENT_PARAM } from '@/shared/security/rival-intent'
 import {
@@ -26,7 +26,6 @@ import {
   reportPlayerAction,
   unpublishFromBoardAction,
 } from '../../actions'
-import { loadWelcomePhoto } from '../../welcome-photo'
 import { MatchView } from './MatchView'
 import { sendRivalMagicLinkAction, startGoogleLoginFromRivalAction } from './login-actions'
 import { readRivalIntent } from './rival-intent.server'
@@ -63,22 +62,22 @@ export default async function RivalMatchPage(props: {
   // Sin sesión no hay personas: ni se consulta el plantel.
   const roster = playerId ? await getRoster(playerId, match.id, code) : []
 
-  // Bienvenida pendiente: "Voy" abre la tarjeta ("Estoy adentro"). Aceptada: "Voy" suma directo.
+  // Lo que le falta a la bienvenida (para sumarse: nombre y reglas, y posición y zona): "Voy" abre la
+  // tarjeta con solo eso ("Estoy adentro"). Sin faltantes, "Voy" suma directo.
   const welcomeState = playerId ? await getRivalWelcomeState(playerId) : null
+  const needs = welcomeState ? welcomeNeeds(welcomeState, 'sumarse') : null
   const welcome =
-    welcomeState && !welcomeState.welcomed
+    welcomeState && needs
       ? {
           firstName: welcomeState.firstName,
           position: welcomeState.position,
           zone: welcomeState.zone,
+          needs,
         }
       : null
 
-  // La foto opcional solo se ofrece dentro de la tarjeta de bienvenida.
-  const photo = playerId && welcome ? await loadWelcomePhoto(playerId) : undefined
-
-  // Vuelta del login con "Voy" firmado: aceptada la bienvenida se suma sola; sin ella, la tarjeta
-  // sale abierta y el consentimiento pide el toque. Un intento que no vale es una visita normal.
+  // Vuelta del login con "Voy" firmado: sin faltantes se suma solo; si falta algo, la tarjeta sale
+  // abierta y el toque suma. Un intento que no vale es una visita normal.
   const intent =
     user && user.type === 'player'
       ? await readRivalIntent(code, { email: user.email }, linkToken)
@@ -88,6 +87,7 @@ export default async function RivalMatchPage(props: {
   // El WhatsApp precargado del form de publicar: solo lo usa el organizador.
   const prefill = playerId && match.isOrganizer ? await getBoardPublishPrefill(playerId) : null
 
+  const inAppBrowser = isInAppBrowser((await headers()).get('user-agent'))
   const shareUrl = absoluteUrl(`/rival/p/${code}`)
   return (
     <MatchView
@@ -106,16 +106,20 @@ export default async function RivalMatchPage(props: {
       openWelcome={intentOk && welcome !== null}
       intentParam={RIVAL_INTENT_PARAM}
       voyGate={
-        playerId === null ? (
-          <RivalVoyGate
-            code={code}
-            sendMagicLink={sendRivalMagicLinkAction}
-            startGoogle={startGoogleLoginFromRivalAction}
-            inAppBrowser={isInAppBrowser((await headers()).get('user-agent'))}
-          />
-        ) : undefined
+        playerId === null
+          ? (full) => (
+              <RivalVoyGate
+                code={code}
+                full={full}
+                sendMagicLink={sendRivalMagicLinkAction}
+                startGoogle={startGoogleLoginFromRivalAction}
+                inAppBrowser={inAppBrowser}
+              />
+            )
+          : undefined
       }
-      justCreated={creado === '1'}
+      justCreated={creado === '1' || creado === 'rival'}
+      createdAs={creado === 'rival' ? 'rival' : 'full'}
       now={nowDate()}
       whatsappPrefill={prefill?.whatsapp ?? null}
       cancelAction={cancelMatchAction}
@@ -128,7 +132,6 @@ export default async function RivalMatchPage(props: {
       joinAction={joinMatchAction}
       acceptAndJoinAction={acceptWelcomeAndJoinAction}
       leaveAction={leaveMatchAction}
-      photo={photo}
     />
   )
 }

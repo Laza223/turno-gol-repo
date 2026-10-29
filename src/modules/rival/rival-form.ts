@@ -5,6 +5,7 @@ import { artDateOf } from '@/shared/time/art-date'
 import { uuid } from '@/shared/validation/primitives'
 import { artInstantOf, artTimeOf } from './rival-display'
 import {
+  COURT_REQUIRED_MESSAGE,
   createRivalMatchSchema,
   publishBoardSchema,
   type RivalBoardDraft,
@@ -16,44 +17,98 @@ import type { RivalLevel } from './rival.types'
 /** Reserva `confirmed` y futura del organizador (la lista la lee el service). */
 export type NewMatchBooking = { id: string; tenantId: string; startsAt: Date; format: number }
 
+/** Error por campo del form: el primero de cada uno, para pintarlos todos juntos. */
+export type RivalFieldErrors = Record<string, string>
+
+/**
+ * Resultado de un form de RIVAL. `field` y `error` son el PRIMER error (junto a qué campo se
+ * pinta); `fieldErrors` los trae todos. `code` deja que la vista ofrezca una salida: `no_session`
+ * (sesión vencida), `rival_limit_active` y `rival_limit_requests` (el tope).
+ */
+export type RivalFormResult =
+  | { success: true }
+  | {
+      success: false
+      error: string
+      field?: string
+      fieldErrors?: RivalFieldErrors
+      code?: string
+    }
+
 export type NewMatchFormResult =
-  { ok: true; draft: RivalMatchDraft } | { ok: false; error: string; field?: string }
+  | { ok: true; draft: RivalMatchDraft }
+  | { ok: false; error: string; field?: string; fieldErrors: RivalFieldErrors }
+
+/** Orden del form de armar: de él sale el primer error (`field`/`error`). */
+const FIELD_ORDER = ['tenantId', 'startsAt', 'format', 'capacity', 'level', 'courtDeclared']
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const TIME_RE = /^\d{2}:\d{2}$/
 
 const text = (v: unknown): string => (typeof v === 'string' ? v.trim() : '')
 
+/** Issues de Zod → el primer mensaje de cada campo (`path[0]`). */
+export function collectFieldErrors(
+  issues: readonly { path: readonly PropertyKey[]; message: string }[],
+): RivalFieldErrors {
+  const out: RivalFieldErrors = {}
+  for (const issue of issues) {
+    const field = issue.path[0]
+    if (typeof field === 'string') out[field] ??= issue.message
+  }
+  return out
+}
+
+/** El primer campo con error según `order` (los que no figuran, después, en el orden en que llegaron). */
+function firstFieldError(
+  fieldErrors: RivalFieldErrors,
+  order: readonly string[],
+): { field?: string; error?: string } {
+  const field = [...order, ...Object.keys(fieldErrors)].find((f) => fieldErrors[f] !== undefined)
+  return field ? { field, error: fieldErrors[field] } : {}
+}
+
 /**
- * Campos del tablón del form (`seeking`, `seekingPosition`, `whatsapp`, `whatsappConsent`) → la
- * entrada de `publishBoardSchema`. `seeking` vacío u `off` = sin tablón (`null`). La posición solo
+ * `players.phone` a partir de los dígitos de `wa.me` (549 + área + abonado), con el formato que ya
+ * guarda el perfil ("+54 " + nacional, sin el 9 de móvil): la precarga lo vuelve a normalizar.
+ */
+export function playerPhoneOf(whatsappDigits: string): string {
+  return `+54 ${whatsappDigits.slice(3)}`
+}
+
+/**
+ * Campos de "Publicar en el tablón" (`seeking`, `seekingPosition`, `whatsapp`, `whatsappConsent`) →
+ * la entrada de `publishBoardSchema`. `seeking` vacío = sin tablón (`null`). La posición solo
  * viaja buscando jugadores: un valor suelto al buscar rival no rompe el form.
  */
 function boardInput(raw: Record<string, unknown>): Record<string, unknown> | null {
   const seeking = text(raw.seeking)
-  if (seeking === '' || seeking === 'off') return null
+  if (seeking === '') return null
   const position = text(raw.seekingPosition)
   return {
     seeking,
     ...(seeking === 'players' && position !== '' ? { seekingPosition: position } : {}),
     whatsapp: text(raw.whatsapp),
     whatsappConsent: ['on', 'true'].includes(text(raw.whatsappConsent)),
+    savePhone: ['on', 'true'].includes(text(raw.savePhone)),
   }
 }
 
 export type BoardFormResult =
-  { ok: true; board: RivalBoardDraft } | { ok: false; error: string; field?: string }
+  | { ok: true; board: RivalBoardDraft }
+  | { ok: false; error: string; field?: string; fieldErrors: RivalFieldErrors }
 
 /** Form de "Publicar en el tablón" (partido ya armado). Los errores llevan el nombre del campo del form. */
 export function parseBoardForm(raw: Record<string, unknown>): BoardFormResult {
   const parsed = publishBoardSchema.safeParse(boardInput(raw) ?? {})
   if (parsed.success) return { ok: true, board: parsed.data }
-  const issue = parsed.error.issues[0]
-  const field = issue?.path[0]
+  const fieldErrors = collectFieldErrors(parsed.error.issues)
+  const first = firstFieldError(fieldErrors, [])
   return {
     ok: false,
-    error: issue?.message ?? 'Revisá los datos de la publicación.',
-    ...(typeof field === 'string' ? { field } : {}),
+    error: first.error ?? 'Revisá los datos de la publicación.',
+    ...(first.field ? { field: first.field } : {}),
+    fieldErrors,
   }
 }
 
@@ -76,7 +131,6 @@ export function parseNewMatchForm(
       ? bookings.find((b) => b.tenantId === tenantId && b.startsAt.getTime() === startsAt.getTime())
       : undefined
 
-  const board = boardInput(raw)
   const parsed = createRivalMatchSchema.safeParse({
     tenantId,
     startsAt: startsAt ?? '',
@@ -85,16 +139,22 @@ export function parseNewMatchForm(
     level: text(raw.level),
     ...(booking ? { bookingId: booking.id } : {}),
     courtDeclared: !booking && ['on', 'true'].includes(text(raw.courtDeclared)),
-    ...(board ? { board } : {}),
   })
   if (parsed.success) return { ok: true, draft: parsed.data }
-  const issue = parsed.error.issues[0]
-  // Los errores del tablón vienen como `board.<campo>`: el form los pinta junto al campo.
-  const field = issue?.path[0] === 'board' ? issue.path[1] : issue?.path[0]
+
+  const fieldErrors = collectFieldErrors(parsed.error.issues)
+  if (time === '') fieldErrors.startsAt = 'Elegí la hora.'
+  // El superRefine del objeto no corre si falla otro campo: la cancha se chequea acá para que
+  // el error de todos los campos llegue en un solo envío.
+  if (!booking && !['on', 'true'].includes(text(raw.courtDeclared))) {
+    fieldErrors.courtDeclared ??= COURT_REQUIRED_MESSAGE
+  }
+  const first = firstFieldError(fieldErrors, FIELD_ORDER)
   return {
     ok: false,
-    error: issue?.message ?? 'Revisá los datos del partido.',
-    ...(typeof field === 'string' ? { field } : {}),
+    error: first.error ?? 'Revisá los datos del partido.',
+    ...(first.field ? { field: first.field } : {}),
+    fieldErrors,
   }
 }
 

@@ -126,6 +126,14 @@ describe('SiteFooter (legal links)', () => {
     expect(text).toMatch(/Términos/)
   })
 
+  it('ofrece "Ingresar" salvo con la sesión sembrada (signedIn), sin tocar el resto', () => {
+    expect(collectText(SiteFooter())).toMatch(/Ingresar/)
+    const text = collectText(SiteFooter({ signedIn: true }))
+    expect(text).not.toMatch(/Ingresar/)
+    expect(text).toMatch(/Privacidad/)
+    expect(text).toMatch(/Términos/)
+  })
+
   it('renders the brand via the Logo component', () => {
     // La marca pasó de texto plano a <Logo>; el walker no expande componentes
     // función, así que verificamos la presencia del elemento Logo en el árbol.

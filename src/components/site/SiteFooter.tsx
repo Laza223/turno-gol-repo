@@ -8,7 +8,12 @@ import { IngresarLink } from './IngresarLink'
 const channelCls =
   'inline-flex min-h-11 min-w-11 items-center justify-center rounded transition-colors hover:text-foreground'
 
-export default function SiteFooter() {
+/**
+ * `signedIn` solo lo pasa quien YA sabe que hay sesión (el layout del jugador la siembra desde el
+ * server): ahí "Ingresar" sobra. En las rutas públicas la sesión hidrata después, así que no se
+ * decide por contexto —el link parpadearía— y el footer queda como siempre.
+ */
+export default function SiteFooter({ signedIn = false }: { signedIn?: boolean } = {}) {
   return (
     <footer className="border-t border-border bg-card/60 py-10 dark:border-white/5 dark:bg-slate-950">
       <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6 lg:px-8">
@@ -33,9 +38,11 @@ export default function SiteFooter() {
           >
             Explorar
           </Link>
-          <IngresarLink className="inline-flex min-h-11 items-center transition-colors hover:text-foreground">
-            Ingresar
-          </IngresarLink>
+          {!signedIn && (
+            <IngresarLink className="inline-flex min-h-11 items-center transition-colors hover:text-foreground">
+              Ingresar
+            </IngresarLink>
+          )}
           <Link
             href="/privacidad"
             className="inline-flex min-h-11 items-center transition-colors hover:text-foreground"

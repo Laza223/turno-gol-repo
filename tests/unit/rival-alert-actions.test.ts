@@ -92,7 +92,7 @@ describe.each([
     service.mockRejectedValue(new RivalError('rival_tenant_unavailable'))
     expect(await action(IDLE, form({ tenantId: TENANT }))).toEqual({
       success: false,
-      error: 'Ese complejo no está disponible para armar partidos.',
+      error: 'Ese complejo no está disponible para armar partidos. Elegí otro.',
     })
   })
 })

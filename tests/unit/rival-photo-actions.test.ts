@@ -64,14 +64,20 @@ describe('uploadRivalPhotoAction', () => {
     mocks.enforce.mockResolvedValue({ ok: false })
     const res = await uploadRivalPhotoAction(formWith(photo()))
     expect(mocks.enforce).toHaveBeenCalledWith('rivalPhoto', 'player-1')
-    expect(res).toEqual({ success: false, error: 'Demasiadas solicitudes. Esperá un momento.' })
+    expect(res).toEqual({
+      success: false,
+      error: 'Hiciste muchos cambios seguidos. Esperá un momento y probá de nuevo.',
+    })
     expect(mocks.setPlayerPhoto).not.toHaveBeenCalled()
   })
 
   it('R2 sin configurar: mensaje claro y no sube', async () => {
     mocks.isR2Configured.mockReturnValue(false)
     const res = await uploadRivalPhotoAction(formWith(photo()))
-    expect(res).toEqual({ success: false, error: 'Storage no configurado en este entorno' })
+    expect(res).toEqual({
+      success: false,
+      error: 'No pudimos subir la foto ahora. Probá de nuevo en un momento.',
+    })
     expect(mocks.setPlayerPhoto).not.toHaveBeenCalled()
   })
 

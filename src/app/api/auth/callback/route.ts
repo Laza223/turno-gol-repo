@@ -12,7 +12,7 @@ import {
 import { hasStaffOrAdminClaims, isPlayerAccount } from '@/modules/auth/account-kind'
 import { getOrCreatePlayer } from '@/modules/players/player.service'
 import { sanitizeNext } from '@/lib/safe-redirect'
-import { isBookingPath, isRivalPath, parseVia, successVerifyPath } from '@/lib/auth-success'
+import { isBookingPath, isRivalReturnPath, parseVia, successVerifyPath } from '@/lib/auth-success'
 import { logger } from '@/shared/lib/logger'
 import { track, withSpan } from '@/shared/observability'
 import { CURRENT_TERMS_VERSION } from '@/shared/terms'
@@ -148,8 +148,10 @@ async function provisionPlayerAndRedirect(
   }
 
   // Una reserva en curso vuelve DIRECTO a confirmar: ya tocó "Continuar" una vez y /verify sería
-  // otra pantalla y otro toque. Igual el "Voy" de un partido de RIVAL. El resto sigue por /verify.
-  if (isBookingPath(next) || isRivalPath(next)) return NextResponse.redirect(new URL(next, req.url))
+  // otra pantalla y otro toque. Igual vuelve directo todo lo de RIVAL (Voy, armar, tablón, Mis
+  // partidos). El resto sigue por /verify.
+  if (isBookingPath(next) || isRivalReturnPath(next))
+    return NextResponse.redirect(new URL(next, req.url))
   return NextResponse.redirect(new URL(successVerifyPath(next, 'login'), req.url))
 }
 

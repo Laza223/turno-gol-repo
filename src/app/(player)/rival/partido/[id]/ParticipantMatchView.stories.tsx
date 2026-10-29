@@ -86,13 +86,12 @@ export const PedidoEnviado: Story = {
     await expect(
       canvas.getByText('Pedido enviado. Te avisamos por mail si te aceptan.'),
     ).toBeInTheDocument()
-    // Sin personas ni WhatsApp todavía; se puede bajar.
+    // Sin personas ni WhatsApp todavía; se puede cancelar el pedido.
     await expect(canvas.queryByText('Quiénes van')).toBeNull()
     await expect(canvas.queryByRole('link', { name: 'Escribile por WhatsApp' })).toBeNull()
-    await expect(canvas.queryByText(/alguien del banco ocupa tu lugar/)).toBeNull()
-    await userEvent.click(canvas.getByRole('button', { name: 'Me bajo' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Cancelar pedido' }))
     const dialog = within(await within(document.body).findByRole('dialog'))
-    await userEvent.click(dialog.getByRole('button', { name: 'Sí, me bajo' }))
+    await userEvent.click(dialog.getByRole('button', { name: 'Sí, cancelar' }))
     await waitFor(() => expect(args.leaveAction).toHaveBeenCalledWith('m1'))
   },
 }
@@ -129,6 +128,12 @@ export const AceptadoDelTablon: Story = {
       CONTACT_LINK,
     )
     await expect(canvas.getByRole('button', { name: 'Me bajo' })).toBeInTheDocument()
+    // El verde va justo debajo del cupo, antes de la lista de personas.
+    const verde = canvas.getByRole('link', { name: 'Escribile por WhatsApp' })
+    await expect(
+      verde.compareDocumentPosition(canvas.getByText('Quiénes van')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
   },
 }
 
@@ -153,8 +158,21 @@ export const CapitanRival: Story = {
   },
   play: async ({ canvasElement }) => {
     await expect(
-      within(canvasElement).getByText('Son el equipo rival. Listo, quedó confirmado.'),
+      within(canvasElement).getByText('Listo: tu equipo es el rival de este partido.'),
     ).toBeInTheDocument()
+  },
+}
+
+/** Busca rival con el equipo completo: el titular es solo "Busca rival", no "Se juega". */
+export const BuscaRivalEquipoCompleto: Story = {
+  args: {
+    match: mine({ seeking: 'rival', seekingPosition: null, capacity: 5, confirmedCount: 5 }),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getAllByText('Busca rival')).toHaveLength(1)
+    await expect(canvas.queryByText(/Se juega/)).toBeNull()
+    await expect(canvas.getByText('5 de 5 confirmados')).toBeInTheDocument()
   },
 }
 

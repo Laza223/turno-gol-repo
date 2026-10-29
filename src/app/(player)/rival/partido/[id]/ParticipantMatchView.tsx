@@ -1,11 +1,9 @@
 import Link from 'next/link'
-import { buttonVariants } from '@/components/ui/button'
-import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
-import { cn } from '@/lib/utils'
+import { matchTypeLabel } from '@/modules/rival/rival-display'
 import type { RivalReportReason } from '@/modules/rival/rival.schema'
 import type { RivalMyMatch, RivalRosterEntry } from '@/modules/rival/rival.types'
 import type { ActionResult } from '@/shared/types/action-result'
-import { CanceledCard, MatchHeader, RIVAL_CTA } from '../../MatchBits'
+import { CanceledCard, MatchHeader, RIVAL_ACTION } from '../../MatchBits'
 import { LeaveMatch } from '../../p/[code]/LeaveMatch'
 import { myStatusLine, PeopleSection, type RowActionProps } from '../../p/[code]/People'
 import { ReportMatchButton } from '../../p/[code]/ReportButton'
@@ -16,7 +14,7 @@ function statusLine(m: RivalMyMatch): string | null {
   switch (m.myStatus) {
     case 'confirmed':
       return m.myRole === 'rival_captain'
-        ? 'Son el equipo rival. Listo, quedó confirmado.'
+        ? 'Listo: tu equipo es el rival de este partido.'
         : myStatusLine('confirmed')
     case 'left':
       return 'Te bajaste de este partido.'
@@ -66,25 +64,50 @@ export function ParticipantMatchView({
   const rowActions: RowActionProps = { matchId: match.id, match, roster, reportPlayerAction }
 
   return (
-    <div className="mx-auto max-w-lg space-y-5 px-4 py-6">
-      <MatchHeader
-        tenantName={match.tenantName}
-        startsAt={match.startsAt}
-        format={match.format}
-        level={match.level}
-        hasStamp={match.hasStamp}
-        ended={ended}
-        now={now}
-      />
+    <div className="mx-auto max-w-lg space-y-8 px-4 py-6">
+      <div className="space-y-3">
+        <MatchHeader
+          tenantName={match.tenantName}
+          startsAt={match.startsAt}
+          format={match.format}
+          level={match.level}
+          hasStamp={match.hasStamp}
+          ended={ended}
+          now={now}
+        />
 
-      {canceled ? (
-        <CanceledCard />
-      ) : (
-        <>
+        {canceled ? (
+          <CanceledCard signedIn />
+        ) : (
           <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <ShirtGrid capacity={match.capacity} confirmed={match.confirmedCount} ended={ended} />
+            {/* Buscando rival el equipo completo no significa "Se juega": el titular es "Busca rival". */}
+            <ShirtGrid
+              capacity={match.capacity}
+              confirmed={match.confirmedCount}
+              ended={ended}
+              headline={match.seeking === 'rival' ? matchTypeLabel(match) : undefined}
+            />
             {open && line && <p className="mt-4 text-base text-foreground">{line}</p>}
           </section>
+        )}
+      </div>
+
+      {!canceled && (
+        <>
+          {/* El único verde, justo debajo del cupo: no queda detrás de la lista de personas. */}
+          {showContact && (
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Al escribirle, va a ver tu número.</p>
+              <a
+                href={contactLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={RIVAL_ACTION}
+              >
+                Escribile por WhatsApp
+              </a>
+            </div>
+          )}
 
           {inside && (
             <PeopleSection
@@ -95,30 +118,16 @@ export function ParticipantMatchView({
             />
           )}
 
-          {showContact && (
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Al escribirle, va a ver tu número.</p>
-              <a
-                href={contactLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  buttonVariants(),
-                  PORTAL_BUTTON,
-                  'inline-flex items-center justify-center',
-                )}
-              >
-                Escribile por WhatsApp
-              </a>
-            </div>
-          )}
-
           {canLeave && (
-            <LeaveMatch matchId={match.id} leaveAction={leaveAction} showHint={inside} />
+            <LeaveMatch
+              matchId={match.id}
+              leaveAction={leaveAction}
+              requested={status === 'requested'}
+            />
           )}
 
           {(out || ended) && (
-            <Link href="/rival" className={cn(RIVAL_CTA, 'w-full')}>
+            <Link href="/rival" className={RIVAL_ACTION}>
               Ver el tablón
             </Link>
           )}

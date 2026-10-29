@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Check } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import Link from 'next/link'
 import { matchTypeLabel, weekdayOf } from '@/modules/rival/rival-display'
 import { artDateOf } from '@/shared/time/art-date'
@@ -7,7 +7,7 @@ import type { RivalReportReason } from '@/modules/rival/rival.schema'
 import type { RivalPublicMatch, RivalRosterEntry } from '@/modules/rival/rival.types'
 import type { ActionResult } from '@/shared/types/action-result'
 import type { RivalFormResult } from '../../actions'
-import { CanceledCard, MatchHeader, RIVAL_CTA } from '../../MatchBits'
+import { CanceledCard, MatchHeader, RIVAL_ACTION } from '../../MatchBits'
 import { DropIntentParam } from './DropIntentParam'
 import { LeaveMatch } from './LeaveMatch'
 import { canSeekRival } from './organizer-rules'
@@ -15,7 +15,6 @@ import { OrganizerActions } from './OrganizerActions'
 import { myStatusLine, PeopleSection, type RowActionProps } from './People'
 import { ReportMatchButton } from './ReportButton'
 import { ShirtGrid } from './ShirtGrid'
-import type { WelcomePhoto } from '../../WelcomeCard'
 import { VoyPanel, type VoyWelcome } from './VoyPanel'
 
 type Props = {
@@ -27,20 +26,22 @@ type Props = {
   /** Lo que `getRoster` deja ver a este jugador (vacío sin sesión). */
   roster: RivalRosterEntry[]
   shareUrl: string
-  /** Recién creado (`?creado=1`): muestra el aviso del organizador. */
+  /** Recién creado (`?creado=`): el aviso del organizador y su acción verde arriba, antes del plantel. */
   justCreated: boolean
+  /** Qué armó: `rival` ("Mi equipo busca rival") hace de "Publicar en el tablón" el paso que sigue. */
+  createdAs?: 'full' | 'rival'
   now: Date
   /** `wa.me/?text=…` de "Avisar al grupo", armado en el servidor. */
   shareHref: string
-  /** Bienvenida RIVAL pendiente del jugador con sesión; `null` si ya la aceptó. */
+  /** Lo que le falta a la bienvenida del jugador con sesión; `null` si no le falta nada. */
   welcome: VoyWelcome | null
-  /** Vuelta del login con intento válido y bienvenida aceptada: "Voy" se envía solo. */
+  /** Vuelta del login con intento válido y nada pendiente: "Voy" se envía solo. */
   autoJoin: boolean
-  /** Vuelta del login con intento válido y sin bienvenida: la tarjeta sale abierta. */
+  /** Vuelta del login con intento válido y algo pendiente: la tarjeta sale abierta. */
   openWelcome: boolean
   intentParam: string
-  /** El "Voy" sin sesión (la variante RIVAL del login); lo arma la page. */
-  voyGate?: ReactNode
+  /** El "Voy" sin sesión (la variante RIVAL del login); lo arma la page. Con función recibe si el partido está lleno. */
+  voyGate?: ReactNode | ((full: boolean) => ReactNode)
   /** Prefill del WhatsApp del form de publicar (de `players.phone`). */
   whatsappPrefill: string | null
   cancelAction: (matchId: string) => Promise<ActionResult>
@@ -54,18 +55,17 @@ type Props = {
     reportedPlayerId: string,
     reason: RivalReportReason,
   ) => Promise<ActionResult>
-  joinAction: (code: string) => Promise<ActionResult>
+  joinAction: (code: string) => Promise<RivalFormResult>
   acceptAndJoinAction: (prev: RivalFormResult, formData: FormData) => Promise<RivalFormResult>
   leaveAction: (matchId: string) => Promise<ActionResult>
-  /** Foto opcional de la bienvenida (la page la arma solo si hay storage). */
-  photo?: WelcomePhoto
 }
 
 /**
  * La vista del partido por link (`/rival/p/[code]`), según quién mira (spec §5.2, §5.3, §6):
  * sin sesión no hay personas; con sesión, nombre corto y foto de los confirmados; el organizador
- * ve además el banco, los pedidos y la ficha. Un solo verde por vista: "Voy" para el invitado,
- * "Avisar al grupo" para el organizador.
+ * ve además el banco, los pedidos y la ficha. Un solo verde por vista, y es el paso que sigue: "Voy"
+ * para el invitado, "Avisar al grupo" (o "Publicar en el tablón" si su equipo busca rival) para el
+ * organizador, que recién armado lo ve antes que el plantel.
  */
 export function MatchView({
   code,
@@ -74,6 +74,7 @@ export function MatchView({
   roster,
   shareUrl,
   justCreated,
+  createdAs = 'full',
   now,
   shareHref,
   welcome,
@@ -92,7 +93,6 @@ export function MatchView({
   removeAction,
   reportMatchAction,
   reportPlayerAction,
-  photo,
 }: Props) {
   const canceled = match.status === 'canceled'
   const ended = !canceled && match.startsAt.getTime() <= now.getTime()
@@ -119,48 +119,114 @@ export function MatchView({
       }
     : undefined
   const repeatDay = weekdayOf(artDateOf(match.startsAt))
+  const full = match.confirmedCount >= match.capacity
+  // Recién armado y del organizador: su acción sube sobre el plantel (el resto de las veces va al final).
+  const lifted = justCreated && match.isOrganizer && open
+  const primary =
+    lifted && createdAs === 'rival' && match.seeking === null && canSeekRival(match, roster)
+      ? 'publish'
+      : 'share'
+  const created =
+    primary === 'publish'
+      ? {
+          title: 'Partido armado',
+          line: 'Publicalo en el tablón para que un equipo rival te encuentre.',
+        }
+      : match.seeking === null
+        ? {
+            title: 'Partido armado',
+            line: 'Pasale el link al grupo: cada uno confirma con un toque.',
+          }
+        : { title: 'Ya está en el tablón', line: 'Pasale el link al grupo.' }
+  // Recién armado: arriba va el paso que sigue y "Cancelar el partido" queda abajo, después del plantel.
+  const organizerActions = (part: 'all' | 'main' | 'cancel') =>
+    open &&
+    match.isOrganizer && (
+      <OrganizerActions
+        part={part}
+        matchId={match.id}
+        shareUrl={shareUrl}
+        shareHref={shareHref}
+        boardLabel={match.seeking === null ? null : matchTypeLabel(match)}
+        whatsappPrefill={whatsappPrefill}
+        canSeekRival={canSeekRival(match, roster)}
+        primary={primary}
+        cancelAction={cancelAction}
+        publishAction={publishAction}
+        unpublishAction={unpublishAction}
+      />
+    )
 
   return (
-    <div className="mx-auto max-w-lg space-y-5 px-4 py-6">
+    <div className="mx-auto max-w-lg space-y-8 px-4 py-6">
       <DropIntentParam param={intentParam} />
-      {justCreated && match.isOrganizer && open && (
-        <p
-          role="status"
-          className="flex items-center gap-2.5 rounded-2xl bg-muted/50 p-4 text-base font-medium text-foreground"
-        >
-          <Check aria-hidden className="size-5 shrink-0 text-muted-foreground" />
-          Listo. Ahora pasale el link al grupo.
-        </p>
-      )}
-
-      <MatchHeader
-        tenantName={match.tenantName}
-        startsAt={match.startsAt}
-        format={match.format}
-        level={match.level}
-        hasStamp={match.hasStamp}
-        ended={ended}
-        now={now}
-      />
-
-      {canceled ? (
-        <CanceledCard />
-      ) : (
-        <>
+      <div className="space-y-3">
+        {lifted && (
+          <div role="status" className="space-y-1">
+            <p className="font-display text-3xl font-black italic leading-tight tracking-tight text-foreground">
+              {created.title}
+            </p>
+            <p className="text-base text-muted-foreground">{created.line}</p>
+          </div>
+        )}
+        <MatchHeader
+          tenantName={match.tenantName}
+          startsAt={match.startsAt}
+          format={match.format}
+          level={match.level}
+          hasStamp={match.hasStamp}
+          ended={ended}
+          now={now}
+        />
+        {canceled ? (
+          <CanceledCard signedIn={signedIn} />
+        ) : (
           <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-            <ShirtGrid capacity={match.capacity} confirmed={match.confirmedCount} ended={ended} />
+            <ShirtGrid
+              capacity={match.capacity}
+              confirmed={match.confirmedCount}
+              ended={ended}
+              // Un equipo que busca rival todavía no sabe si se juega: el titular es "Busca rival".
+              headline={match.seeking === 'rival' ? 'Busca rival' : undefined}
+            />
             {/* El organizador no "va": su línea sería ruido en cada visita. */}
             {me && open && !match.isOrganizer && myStatusLine(me.status) && (
               <p className="mt-4 text-base text-foreground">{myStatusLine(me.status)}</p>
             )}
           </section>
+        )}
+      </div>
+
+      {!canceled && (
+        <>
+          {lifted && organizerActions('main')}
+
+          {/* "Voy" va pegado al cupo ("Faltan 3" → "Voy"), no detrás del plantel. */}
+          {canJoin && full && (signedIn || voyGate) && (
+            <p className="text-sm text-muted-foreground">
+              El partido está completo. Si te sumás, quedás en el banco y entrás si alguien se baja.
+            </p>
+          )}
+          {canJoin && signedIn && (
+            <VoyPanel
+              code={code}
+              welcome={welcome}
+              autoJoin={autoJoin}
+              openWelcome={openWelcome}
+              full={full}
+              intentParam={intentParam}
+              joinAction={joinAction}
+              acceptAndJoinAction={acceptAndJoinAction}
+            />
+          )}
+          {canJoin && !signedIn && (typeof voyGate === 'function' ? voyGate(full) : voyGate)}
 
           {signedIn && match.isOrganizer ? (
-            <>
+            <div className="space-y-6">
               <PeopleSection title="Pedidos" entries={requested} detail actions={rowActions} />
-              <PeopleSection title="Confirmados" entries={confirmed} detail actions={rowActions} />
+              <PeopleSection title="Quiénes van" entries={confirmed} detail actions={rowActions} />
               <PeopleSection title="El banco" entries={bench} detail actions={rowActions} />
-            </>
+            </div>
           ) : (
             signedIn && (
               <PeopleSection
@@ -172,49 +238,30 @@ export function MatchView({
             )
           )}
 
-          {open && match.isOrganizer && (
-            <OrganizerActions
-              matchId={match.id}
-              shareUrl={shareUrl}
-              shareHref={shareHref}
-              boardLabel={match.seeking === null ? null : matchTypeLabel(match)}
-              whatsappPrefill={whatsappPrefill}
-              canSeekRival={canSeekRival(match, roster)}
-              cancelAction={cancelAction}
-              publishAction={publishAction}
-              unpublishAction={unpublishAction}
-            />
-          )}
+          {organizerActions(lifted ? 'cancel' : 'all')}
 
-          {canJoin && !signedIn && voyGate}
-          {canJoin && signedIn && (
-            <VoyPanel
-              code={code}
-              welcome={welcome}
-              autoJoin={autoJoin}
-              openWelcome={openWelcome}
-              intentParam={intentParam}
-              joinAction={joinAction}
-              acceptAndJoinAction={acceptAndJoinAction}
-              photo={photo}
-            />
-          )}
           {canLeave && (
             <LeaveMatch
               matchId={match.id}
               leaveAction={leaveAction}
-              showHint={me?.status !== 'requested'}
+              requested={me?.status === 'requested'}
             />
+          )}
+
+          {ended && signedIn && match.isOrganizer && (
+            <Link href={`/rival/nuevo?desde=${match.id}`} className={RIVAL_ACTION}>
+              <Plus className="size-4" aria-hidden />
+              Armar el del {repeatDay} que viene
+            </Link>
+          )}
+          {ended && !match.isOrganizer && (
+            <Link href="/rival" className={RIVAL_ACTION}>
+              Ver el tablón
+            </Link>
           )}
 
           {signedIn && !match.isOrganizer && (
             <ReportMatchButton matchId={match.id} reportAction={reportMatchAction} />
-          )}
-
-          {ended && signedIn && match.isOrganizer && (
-            <Link href={`/rival/nuevo?desde=${match.id}`} className={RIVAL_CTA}>
-              Armar el del {repeatDay} que viene
-            </Link>
           )}
         </>
       )}

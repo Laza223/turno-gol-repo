@@ -30,7 +30,7 @@ export function wallClock(hhmm: string): string {
  * Horario del día de `date`. Mismo criterio que `getPublicAvailability`: un día sin entrada en
  * `openingHours` cae a 08:00–23:00, y `closedDates` o `closed` lo cierran entero.
  */
-function hoursOf(date: string, { openingHours, closedDates }: ScheduleSource) {
+export function hoursOf(date: string, { openingHours, closedDates }: ScheduleSource) {
   const day = openingHours[dayKeyOf(date)]
   return {
     open: day?.open ?? '08:00',

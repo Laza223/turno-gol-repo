@@ -3,6 +3,7 @@ import {
   describeOpenStatus,
   getOpenStatus,
   hourPhrase,
+  hoursOf,
   isDayClosed,
   isDayServed,
   nextOpenDay,
@@ -322,5 +323,23 @@ describe('describeOpenStatus', () => {
     // Solo los miércoles, y el miércoles que viene (21) es feriado.
     const s = schedule({ openingHours: onlyOpen('wed'), closedDates: ['2026-10-21'] })
     expect(text('2026-10-14', '23:30', s)).toEqual({ open: false, text: 'Cerró por hoy' })
+  })
+})
+
+describe('hoursOf', () => {
+  it('trae apertura, cierre y si el día no se atiende', () => {
+    expect(hoursOf('2026-10-16', schedule())).toEqual({
+      open: '10:00',
+      close: '01:00',
+      closed: false,
+    })
+    expect(hoursOf('2026-10-14', schedule({ closedDates: ['2026-10-14'] })).closed).toBe(true)
+  })
+
+  it('un día sin entrada cae a 08:00-23:00, igual que la disponibilidad pública', () => {
+    const { mon: _omit, ...rest } = schedule().openingHours
+    expect(
+      hoursOf('2026-10-19', schedule({ openingHours: rest as ScheduleSource['openingHours'] })),
+    ).toEqual({ open: '08:00', close: '23:00', closed: false })
   })
 })

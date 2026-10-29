@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { closeSql, getSql } from '@/shared/db/client'
 import {
   hideMatch,
@@ -11,6 +11,14 @@ import { getRivalMonitor, listRivalReports } from '@/modules/super-admin/rival-m
 import { adminSql } from '../helpers/admin-db'
 import { cleanupAll, createTestPlayer, createTestTenant, ensureRoles } from '../helpers/tenant'
 import { insertBooking, insertCourt } from '../helpers/factories'
+
+// R2 mockeado: solo importa qué clave se borra y qué ve la base en ese momento.
+const R2_BASE = 'https://media.turnogol.test'
+const r2 = vi.hoisted(() => ({ deleteImage: vi.fn() }))
+vi.mock('@/shared/storage/r2', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/shared/storage/r2')>()),
+  deleteImage: r2.deleteImage,
+}))
 
 /**
  * Panel /super-admin/rival (fase 7), contra la base real con el pool worker del servicio.
@@ -329,7 +337,28 @@ describe('quitar la foto', () => {
     expect(await audits(target)).toHaveLength(1)
   })
 
-  it.todo('la fase 5 conecta el borrado del objeto en R2 (deletePlayerAvatarObject)')
+  it('borra el objeto en R2 después del commit, una sola vez', async () => {
+    // `unstubEnvs` (vitest.config) lo deshace antes de cada test.
+    vi.stubEnv('R2_PUBLIC_BASE_URL', R2_BASE)
+    const m = await match(await player())
+    const target = await player()
+    await su`UPDATE players SET avatar_url = ${`${R2_BASE}/rival/avatars/x.jpg`} WHERE id = ${target}`
+    await su`INSERT INTO rival_participants (tenant_id, match_id, player_id, status, origin)
+             VALUES (${tenantId}, ${m}, ${target}, 'confirmed', 'invite')`
+    // Otra conexión: ve solo lo ya commiteado.
+    const seen: Array<string | null> = []
+    r2.deleteImage.mockReset().mockImplementation(async () => {
+      seen.push(await avatarOf(target))
+    })
+
+    await removePlayerAvatar(target, m, ADMIN_ID)
+    expect(r2.deleteImage).toHaveBeenCalledExactlyOnceWith('rival/avatars/x.jpg')
+    expect(seen).toEqual([null])
+
+    // Sin foto no hay objeto que borrar.
+    await removePlayerAvatar(target, m, ADMIN_ID)
+    expect(r2.deleteImage).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('métricas', () => {

@@ -2,7 +2,7 @@ import { and, eq, isNotNull, isNull } from 'drizzle-orm'
 import { insertAuditLog } from '@/shared/db/audit'
 import { withDisposableWorkerDb } from '@/shared/db/client'
 import { players, rivalMatches, rivalParticipants, rivalReports } from '@/shared/db/schema'
-import { logger } from '@/shared/lib/logger'
+import { deletePlayerPhotoObject } from '@/modules/players/player-photo.service'
 
 /**
  * Moderación de RIVAL desde el super-admin (spec §8): ocultar / restaurar un partido y
@@ -27,14 +27,6 @@ class RivalPlayerNotFoundError extends Error {
     super('rival_player_not_found')
     this.name = 'RivalPlayerNotFoundError'
   }
-}
-
-/**
- * Borra el archivo de la foto del storage. SEAM: la fase 5 (foto de perfil en R2) lo
- * completa; mientras tanto solo se limpia `players.avatar_url` y el objeto queda en R2.
- */
-async function deletePlayerAvatarObject(url: string): Promise<void> {
-  void url
 }
 
 async function setHidden(matchId: string, adminId: string, hide: boolean): Promise<void> {
@@ -143,12 +135,7 @@ export async function removePlayerAvatar(
       return player[0].avatarUrl
     }),
   )
-  if (previousUrl === null) return
-  try {
-    await deletePlayerAvatarObject(previousUrl)
-  } catch (err) {
-    logger.warn('super-admin rival: no se pudo borrar el objeto de la foto', {
-      error: err instanceof Error ? err.message : String(err),
-    })
-  }
+  // Después del commit, como en la baja del propio jugador: no lanza y, si R2 falla, el
+  // barrido diario de huérfanos lo termina.
+  await deletePlayerPhotoObject(previousUrl)
 }

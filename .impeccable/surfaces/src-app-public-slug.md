@@ -104,3 +104,91 @@ STORY: Ve que está en su complejo (foto, nombre, si está abierto, cómo llegar
 FIRST VIEWPORT: A 390×844: barra de TurnoGol de 56 px; portada a lo ancho de ~160 px con radio de 16 px (sin portada no hay bloque); nombre en 28 px, dirección y "Abierto · hasta la 01:00"; Cómo llegar y WhatsApp de 44 px. Debajo, el paso 1: "Paso 1 de 3" con sus segmentos, "¿Qué día querés jugar?" y los primeros días a la vista, "Hoy" arriba. Firma: una pregunta por pantalla. Tocar un día sube la página hasta la barra del paso, pegada bajo la de TurnoGol, y el paso nuevo entra de costado. Tocar una hora lleva a las canchas y tocar una cancha, a confirmar. "Volver" y el atrás del celular retroceden un paso. Movimiento: 200 ms en total, el paso viejo se apaga antes de que el nuevo se asiente, sin rebotes; con reduce-motion, nada se anima.
 FORM: El estándar de la categoría: la salida permanente de la ronda, fuera de la lista ordenada de candidatos. Boceto aprobado `.impeccable/mocks/decision/canon.html`, con un cambio: la cancha se toca y lleva a confirmar, sin radio ni barra fija en la página del complejo (el botón fijo queda en confirmar). Seed 2cd7b7ed.
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+
+## Spec visual (movida de DESIGN.md el 2026-10-29)
+
+Vivía en DESIGN.md › Components › Portal (La Previa) y se movió sin cambios de contenido; la ficha se actualizó después con la reserva en tres pasos. Lo que comparte todo el portal (cromo, `PORTAL_BUTTON`, The Quiet Ghost Rule) sigue en DESIGN.md.
+
+### La ficha del complejo y su reserva (La Reserva, excepción del 2026-10-21)
+
+`/[slug]`, en `src/app/(public)/[slug]/(perfil)/` y `components/`. Es **la única parte del portal que sigue en La Reserva**, por decisión del dueño del 2026-10-21 (la fase R3 de La Previa se cerró sin mergear). `PortalWorld` se monta en `(perfil)/layout.tsx`, que cubre la página, su `loading.tsx` y el aviso de complejo no disponible, y también en `not-found.tsx`; `torneos/*` queda afuera. Plana en los dos temas: botones de acción con `shadow-none`, sin vidrio, resplandores ni foto de fondo. Todo lo que depende del visitante (qué día es, si está abierto, qué horas quedan) se hidrata en el cliente porque la página es ISR (`revalidate = 300`): hasta entonces se ve el esqueleto, con la misma silueta.
+
+- **Portada y datos (`ComplexHero`):** portada de 160 px de alto a todo el ancho con esquina de 16 px (sin portada no hay bloque). Nombre del complejo con `PORTAL_TITLE` (28 px) hasta tres líneas con `text-balance`; debajo, dirección y ciudad y una línea apagada de datos ("5 canchas · Fútbol 5 y 7") en 14 px `muted-foreground`; sin dato no se pinta. Después el estado de apertura y, si hay reseñas, la valoración. Los accesos son botones `outline` de 44 px: "Cómo llegar" (siempre) y "WhatsApp" o, si no hay, "Llamar"; el ícono se guarda debajo de 400 px porque el texto ya dice qué hace. Compartir y guardar van a la derecha, solo ícono de 44×44, transparentes, sin sombra, vidrio ni levante.
+- **Estado de apertura (`OpenStatus`):** una línea de 14 px, siempre en palabras: "Abierto · hasta la 01:00" en verde semibold (`text-emerald-700 dark:text-emerald-400`), "Cerrado · abre a las 18:00", "Cerrado hoy" o "Cerró por hoy · abre mañana a las 09:00" en `muted-foreground`. Antes de hidratar deja una línea vacía del mismo alto (`min-h-5`). Los cálculos (cierre pasada la medianoche incluido) salen de `src/lib/schedule/open-status.ts`. `OpeningHoursList` repite los horarios por día en una lista con borde; hoy va en fondo `muted`, semibold, con la palabra "hoy" y `aria-current="date"`, y el cierre a medianoche se dice "00:00".
+- **Reserva en tres pasos (`ReserveSection`):** decisión del dueño del 2026-10-29 ([`docs/decisions/2026-10-29-ficha-reserva-en-pasos.md`](../../docs/decisions/2026-10-29-ficha-reserva-en-pasos.md)).
+  - Una sección "Reservá tu turno" con una pregunta por vez: "¿Qué día querés jugar?", "¿A qué hora?" y "¿En qué cancha?". Las preguntas van en Portal section, con `tabIndex=-1` para recibir el foco.
+  - Debajo de cada pregunta, una línea de 14 px `muted-foreground` dice qué tocar:
+    - paso 1: la ventana ("Reservás hasta 6 días antes" o "Reservás solo para hoy");
+    - paso 2: "Jueves 29 · Debajo de cada hora, cuántas canchas quedan libres.";
+    - paso 3: "Jueves 29 · 21:00 a 22:00 · Tocá la cancha y seguís a confirmar." Sin reserva online termina en "…le escribís al complejo." o "…llamás al complejo."
+  - Tocar una opción avanza. Elegir otro día borra la hora. El formato filtra del lado del cliente y no avanza.
+- **El paso vive en la URL:** sin `date` es el 1, con `date` el 2 y con `date` y `hora` el 3; `formato` viaja aparte.
+  - Avanzar hace `pushState` con la marca `{ tgReserve: true }` en `history.state`. Así el atrás del celular retrocede un paso: un `popstate` mueve el paso.
+  - "Volver" hace `history.back()` si el paso anterior lo empujó esta página. Si se entró por un link directo al 2 o al 3, hace `replaceState`, para no sacar a nadie del sitio.
+  - El formato hace `replaceState` y conserva la marca.
+  - Los helpers son `pushReserveUrl`, `replaceReserveUrl` y `hasReserveStepMark`, de `src/lib/booking/reserve-url.ts`.
+  - El "Volver" de confirmar cae en el paso 3.
+  - Si la hora del link ya no tiene lugar, el paso 3 dice "Las 21:00 se ocuparon." con "Elegir otra hora" (`outline`, vuelve al 2).
+- **Cambio de paso:** sin librería, con `document.startViewTransition` (`reserve-transition.ts` + `reserve-step.css`).
+  - Debajo de `lg`, la página se alinea primero, al instante, con la sección (`scrollIntoView` con `block: 'start'`). Después el paso entra de costado. Desde `lg` no hay alineación.
+  - El nombre `reserve-step` se pone en `[data-reserve-panel]` solo mientras `<html data-reserve-step="forward|back">` está puesto. El resto de la página (`root`) no se anima.
+  - Adelante, el viejo se va 24 px a la izquierda y se apaga en 90 ms (ease-in). El nuevo entra 48 px desde la derecha en 160 ms, con 40 ms de espera (expo-out): 200 ms en total. Atrás, al revés.
+  - El viejo se apaga antes de que el nuevo se asiente: fundidos a la vez, a mitad de camino se leían dos pasos encimados.
+  - Sin soporte o con `prefers-reduced-motion`, el paso cambia sin animarse.
+  - Después, el foco va al título del paso (`preventScroll`).
+- **Barra del paso (`StepBar`):**
+  - "← Volver" de 44 px en 16 px semibold, solo en los pasos 2 y 3. En el 1 queda el hueco, para que la fila no salte.
+  - "Paso N de 3" en 14 px semibold tabular `muted-foreground`.
+  - Tres segmentos de 6 px: `primary` los hechos e `input` los que faltan. Son spans, porque `SegmentedProgress` importa `motion`.
+  - Debajo de `lg` va pegada (`top-20`, `z-10`), con fondo `background` opaco y sangrada hasta el borde. Desde `lg`, estática.
+- **`data-state` de la sección:** el `<section aria-label="Reservá tu turno">` lleva `data-state`:
+  - `loading`: el esqueleto, hasta que llega el primer dato del paso o mientras se busca el próximo día;
+  - `ready`, `closed` o `error`.
+
+  `aria-busy` es verdadero solo en `loading`. Es el gancho de los tests y de las capturas y no cambia el aspecto. Un `<p role="status" class="sr-only">` anuncia el paso, por ejemplo "Paso 2 de 3. ¿A qué hora? Jueves 29: 9 horarios con lugar.".
+- **Días (`DayList`, paso 1):** una fila por día, a lo ancho: 64 px de alto mínimo, esquina de 12 px, borde `input` y fondo `card`.
+  - Hoy y mañana van como "Hoy" o "Mañana" en portal hour, con "jueves 29" debajo en 14 px. El resto, "Sábado 31".
+  - A la derecha van el estado en 14 px semibold y un chevron. El estado es "Hay lugar", o deshabilitado (fondo `muted`, borde `border`, texto `muted-foreground`): "Completo", "Sin horarios" o "Cerrado".
+  - "Cerrado" sale del horario del complejo; el resto, de `/api/public/availability/week`, contando todas las canchas: el filtro de formato vive en el paso 2 y en el 1 no se ve. Mientras carga, si falla o pasada la semana, la fila se toca sin estado, y no cambia de alto cuando el estado llega.
+  - Si la semana ya trajo el día elegido, el paso 2 arranca con esos datos y los refresca por detrás.
+  - Cada fila es un botón con `aria-pressed`: el día elegido antes va con relleno `primary` y tilde de 20 px.
+- **Chips de formato (`FormatChips`, paso 2):** van arriba de las horas, solo si el complejo tiene más de un formato.
+  - Grupo de opción única con `RadioGroup` de Radix (flechas, un solo tab stop): filtra, no avanza.
+  - Pastilla de 44 px de alto, `full`, borde `border`, fondo `card` y 14 px medium. Con palabras: "Todos · Fútbol 5 · Fútbol 7".
+  - **La elegida** va con relleno `primary`, texto `primary-foreground`, semibold y un tilde de 16 px: nunca solo color.
+  - El foco necesita lugar: la fila lleva 4 px de relleno con margen negativo, y quien la monta separa con `gap` y no con `space-y`.
+  - `DayChips`, del mismo archivo, ya no está en la ficha: lo usa RIVAL.
+- **Grilla de horas (`HourGrid`, paso 2):** botones con `aria-pressed`, no un `RadioGroup`: las flechas de un grupo de radios elegirían, y avanzarían de paso, sin querer.
+  - Miden 64 px de alto mínimo, con esquina de 12 px, borde `input` y fondo `card`.
+  - La hora va arriba (portal hour) y el estado debajo (14 px).
+  - Columnas por contenedor (ver Layout). Solo aparecen las horas que todavía no pasaron y, con `closes_next_day`, la madrugada va al final del mismo día operativo. Cinco estados, cada uno con palabra:
+  - **"N libres"** (dos o más canchas): neutro, con la cuenta en `muted-foreground`.
+  - **"Queda 1"** (una sola libre de varias): fondo ámbar 50, borde ámbar 300 y texto ámbar 800 semibold (en oscuro, ámbar al 10 %, borde al 40 % y texto ámbar 300). Es la única escasez real y el único ámbar de la reserva.
+  - **"Libre"** (el filtro deja una sola cancha y está libre): neutro. No es escasez, es la única que hay, así que no se pinta de ámbar.
+  - **"Señando"**: ninguna libre pero alguien está pagando la seña y puede liberarse (decisión v2 D1). Borde punteado `muted-foreground` sobre `card`, texto en `foreground`, deshabilitada. No es una alerta: es una espera. Se explica con una ayuda visible de 13 px debajo de la grilla (enlazada con `aria-describedby`, no un `title`) y el día se refresca solo cada 30 s mientras haya una hora así y la pestaña esté a la vista.
+  - **"Completo"**: fondo `muted`, hora tachada y en `muted-foreground`, deshabilitada, pero a la vista y dicha.
+  - **La elegida** (al volver desde el paso 3) va con relleno `primary`, texto `primary-foreground`, un tilde de 16 px antes de la hora y el estado en semibold. El relleno y el texto llevan `!` (`aria-pressed:bg-primary!`): en oscuro, el tinte `dark:` de "Queda 1" le ganaba al relleno verde y dejaba texto oscuro sobre ámbar (1,1:1). Al hover el fondo pasa a `muted`, sin levante.
+- **Tarjetas de cancha (`CourtRows`, paso 3):** el título lo pone el paso. Es una lista (`aria-label="Canchas libres a las 21:00"`) de tarjetas tocables enteras.
+  - Miden 72 px de alto mínimo, con borde `input`, fondo `card` y esquina de 12 px.
+  - El nombre va en portal hour, en una línea con corte, y debajo el formato en 14 px `muted-foreground`.
+  - A la derecha, el precio tabular en semibold y un chevron de 20 px en un círculo `muted` de 32 px.
+  - Tocar una lleva a confirmar (`/reservar?court&date&time&dur`), sin selección intermedia. Con `hidePrices` el servidor manda `null` y el componente lo vuelve a chequear: la fila no deja hueco. Sin reserva online la fila abre WhatsApp con el pedido escrito y muestra "WhatsApp" en verde de texto, o "Llamar" si solo hay teléfono; sin ninguno queda apagada y sin acción.
+- **Vacíos y errores por causa (`DayEmptyState`):** un aviso `bg-muted` con borde `border`, esquina de 12 px y 16 px de relleno, con el título en 16 px semibold y la ayuda en 14 px `muted-foreground`. Siempre dice qué pasó y deja una salida arriba del pliegue, con botones `outline` de 48 px (a todo el ancho en el celular, del ancho del texto desde `sm`). La fila de acciones reserva 44 px de alto, para que "Buscando…" y el botón no muevan la página. Una causa, un texto:
+  - `closed`: "Cerrado el jueves 15", con "Ver el viernes 16" (el próximo día abierto dentro de la ventana) o "No hay otros días abiertos para reservar".
+  - `none` y `full`: "No quedan horarios el jueves 15", con el botón al próximo día con lugar (una sola consulta a la semana que sigue) o "No hay lugar en los próximos N días". Con el día lleno y otro día al que ir, la grilla de "Completo" se oculta y la reemplaza el botón; con el día lleno y nada que ofrecer, la grilla queda debajo.
+  - `noCourts`: "Este complejo todavía no tiene canchas para reservar", con "Consultar por WhatsApp" o "Llamar al complejo".
+  - `error`, por causa (`role="alert"`): la red ("No pudimos cargar los horarios del jueves 15"), el servidor ("Falló algo de nuestro lado"), el límite de pedidos ("Hubo demasiadas consultas seguidas") y el complejo que ya no existe ("Este complejo ya no está disponible", con "Buscar otro complejo" en vez de reintentar). Las tres primeras traen "Reintentar" y la frase "Tu elección sigue guardada".
+- **Canchas con foto (`CourtTile`):** foto 4:3 de esquina 12 px sobre `muted`, nombre en 16 px semibold, "Fútbol 5 · Sintético" en 13 px y, si el precio se ve, "Desde $ 60.000" con la cifra en semibold tabular. Plana: sin tarjeta, sombra ni levante; la foto manda. Una cancha sin foto no se pinta en este bloque, y una foto que ya se vio en una cancha no se repite en la galería.
+- **Detalles, servicios, torneos y reseñas:** la descripción en 16 px con tope de ancho de lectura; los servicios son pastillas de 32 px con ícono de 16 px, borde `border` y 13 px medium; los torneos, filas de 64 px (máximo 4 y el enlace "Ver los N torneos"); las reseñas, una lista con divisores de 1 px (no una tarjeta), el texto en 16 px, la fecha en 13 px tabular y "Ver más reseñas" como botón `outline`. Cada bloque desaparece sin dejar hueco cuando no hay dato; sin reseñas no se monta ni un vacío.
+- **Redirección:** `/[slug]/disponibilidad` (la vista semanal y su modal) ya no existe: `next.config.ts` la redirige con un 308 a `/[slug]`, y la query (`?date=`) llega sola a la ficha. `profile.viewed` pasó a emitirse desde `ReserveSection`, una vez por pestaña y complejo, cuando la primera disponibilidad queda resuelta: la semana en el paso 1, o las horas o el día cerrado si se entra al 2 o al 3. Un error no cuenta.
+- **Deuda conocida:** `CourtCard` sigue siendo la tarjeta de cancha del panel (la vista previa "Así la ve el jugador" del editor de Canchas) y del onboarding, con el aspecto viejo (tarjeta con borde y sombra); la ficha pública ya no la usa, usa `CourtTile`. Hasta que se decida unificarlas, esa vista previa no es lo que el jugador ve.
+
+### La vuelta de la reserva
+
+`/reserva/[bookingId]/{exito,pendiente,error}`, en `src/app/reserva/`. `reserva/layout.tsx` monta `PortalShell`; cada página y cada `loading.tsx` pone su propio `ReservaDarkShell` (`src/components/booking/ReservaDarkShell.tsx`): `.reserva-shell` (transparente en claro, #020617 en oscuro) con dos resplandores (`.reserva-glow-top` de 560 px arriba a la derecha y `.reserva-glow-bottom` de 480 px abajo a la izquierda). Sin sesión, las tres mandan a `/ingresar?next=/reserva/{id}/{vista}`. Una reserva que no existe, purgada o de otra cuenta (RLS) es `ReservaNotFound`.
+
+- **Resultado (`PortalResult`, `src/components/world/PortalResult.tsx`):** la forma común de pendiente, error, el error de carga y "No encontramos tu reserva". Centrada en el alto (`min-h-[50dvh]`, `aria-live="polite"`): ícono, título, qué pasó y la salida. El color del ícono sale de `TONE_TEXT` de `status-tone.ts`: rojo solo cuando algo falló, gris para lo que no es una falla, verde para confirmada. Una sola salida verde por pantalla.
+- **Éxito (`BookingSuccessCard`):** arranca a 24 px de la barra (48 px desde `sm`). El aro de éxito (`.reserva-success-badge`, con el pulso `animate-slot-pulse` una sola vez, congelado con `prefers-reduced-motion`), "¡Reserva **confirmada!**" en Archivo negra itálica con `.hero-accent-text`, el resumen (`BookingSummary` con la seña pagada) y **una sola acción principal: "Avisarle al grupo"** (`<a href="https://wa.me/?text=…">`; el mensaje lo arma `src/lib/booking/group-share.ts` y nunca lleva montos). Después `BookingSuccessExtras`: "Cómo llegar", "Agregar al calendario" y "Ver mis reservas" como filas planas dentro de un contenedor con borde.
+- **Pendiente (`PaymentStatusWatcher` / `PaymentStatusView`):** "Confirmando tu pago…" sin cuenta regresiva (quien llega ya pasó por MercadoPago); pasados 30 s, una nota con dónde mirar. Una reserva ya confirmada redirige a `/exito`. Los estados terminales ("La reserva expiró", "Reserva cancelada", "Esta reserva ya pasó", "Se acabó el tiempo", "No pudimos verificar tu pago") dicen qué pasó y qué hacer.
+- **Error (`BookingErrorCard`, vistas `retry` / `released` / `canceled` / `past`):** "El pago no se procesó" con "Reintentar pago" mientras el hold lo permite; si no, "Reservar de nuevo"; cancelada y pasada, "Ver mis reservas".
+- **Error de carga (`reserva/error.tsx`):** `PortalResult` rojo, "No pudimos cargar esta página", con "Reintentar" y "Ver mis reservas". Reporta a Sentry.

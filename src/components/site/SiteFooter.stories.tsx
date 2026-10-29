@@ -39,6 +39,11 @@ export const Default: Story = {
       'href',
       '/ingresar?next=%2Fexplorar%3Fcity%3Drosario',
     )
+    // Pie de todo el portal: el dueño del complejo llega a su página también desde el celu.
+    await expect(canvas.getByRole('link', { name: 'Para complejos' })).toHaveAttribute(
+      'href',
+      '/para-complejos',
+    )
     // Navegación real, no texto corrido: 44 px de alto en todos los links y canales.
     for (const link of canvas.getAllByRole('link')) {
       await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)

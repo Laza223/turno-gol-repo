@@ -58,3 +58,16 @@ Bloques en este orden. En el celular es una columna; en escritorio, la misma col
 ## Fuera de alcance
 
 Foto de perfil, posición, nivel y todo el perfil de RIVAL. Cambios de schema. El export en JSON (su formato es de ARCO): solo cambia su texto. Borrar el usuario de Supabase Auth al eliminar la cuenta y que los softbans sobrevivan a la baja van como REQUIERE INPUT aparte. La lógica de cancelar, reseñas, seña y MercadoPago.
+
+## Spec visual (movida de DESIGN.md el 2026-10-29)
+
+Vivía en DESIGN.md › Components › Portal (La Previa) y se movió sin cambios de contenido. Lo que comparte todo el portal (cromo, `PORTAL_BUTTON`, The Quiet Ghost Rule) sigue en DESIGN.md.
+
+### El grupo del jugador: Mis reservas, Mi cuenta y Eliminar la cuenta
+
+`src/app/(player)/`. `(player)/layout.tsx` monta `PortalShell` y envuelve las páginas en `data-portal-fields` (bordes de campo y foco a 3:1, diálogos incluidos). Columna `max-w-lg` con `px-4 py-6` y `space-y-5`. Mis reservas y Mi cuenta abren con **`PlayerHeroBand`** (`src/components/site/PlayerHeroBand.tsx`): la banda `.player-hero-band` (esquina de 24 px, `px-6 py-7`) con el resplandor `.hero-glow-blob`, la grilla `.player-hero-grid` con máscara, un eyebrow de 12 px (`font-logo`, mayúsculas, `text-emerald-700 dark:text-emerald-400`: 5,2:1 sobre el extremo de la banda), el titular en Archivo negra itálica con un tramo en `.hero-accent-text`, un subtítulo opcional y `children` (en Mi cuenta, el avatar y el nombre).
+
+- **Mis reservas (`/mis-reservas`):** banda "Tu actividad · Mis **reservas**" con una línea de turnos por jugar. Pestañas Próximos / Historial como píldora segmentada (`<nav aria-label="Tus reservas">` de dos links con `aria-current`, `rounded-full`, 44 px; la activa, con relleno `primary`). Cada reserva es una tarjeta `rounded-2xl` con borde `border`, fondo `card` y `shadow-xs`; la próxima confirmada se destaca y es la única con "Avisarle al grupo" y "Cómo llegar". Acciones sin borde ("Cancelar", "Dejar reseña", "Reservar de nuevo") de 44 px. Los tonos del jugador salen de `status-visual.ts`: confirmada en verde; "Ausente" y "Esperando seña" en neutro. Vacío con `EmptyCard`; paginador compartido (`Pager`). `error.tsx` y `loading.tsx` en la misma columna.
+- **Mi cuenta (`/configuracion`):** banda "Tu cuenta · Mi **cuenta**" con el avatar (`.hero-avatar-fallback`, iniciales en Archivo negra itálica), el nombre y el email. Debajo, una tarjeta por tema (`SectionCard`: `rounded-2xl`, borde, `bg-card`, un cuadrado de 40 px con ícono esmeralda): Tus datos (`#tus-datos`), Favoritos, Tu actividad, Tema y sesión (`ThemeToggle variant="portal"` y "Salir"), descargar tus datos (Ley 25.326) y darte de baja. `/perfil` redirige a `/configuracion`.
+- **Eliminar la cuenta (`/eliminar-cuenta`):** sin banda: "Volver a Mi cuenta", el h1 "Eliminar mi cuenta" en Archivo negra itálica y avisos de colores por gravedad (rojo para lo irreversible, naranja y ámbar para el resto), cada uno con borde, tinte e ícono; la confirmación es un `ConfirmDialog` con `phraseMatch="email"` (escribir el email).
+- **Errores (`(player)/error.tsx`, `mis-reservas/error.tsx`):** `PortalResult` rojo con "Reintentar" y la salida del grupo; con `digest`, el código de referencia. Reportan a Sentry.

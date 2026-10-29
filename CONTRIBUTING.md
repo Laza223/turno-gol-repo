@@ -8,7 +8,7 @@ Para variables de entorno, deploy y restore de backups, ver también `README.md`
 
 ## 1. Setup local
 
-Requisitos: **Node ≥ 20**, **pnpm 8.15.0** (ver `packageManager` en `package.json`), Docker (para Supabase local).
+Requisitos: **Node ≥ 20**, **pnpm** (versión exacta en `packageManager` de `package.json`), Docker (para Supabase local).
 
 ```bash
 pnpm install
@@ -196,7 +196,7 @@ el dashboard de Vercel. Ver `README.md`.
 contratación de planes o acceso a cuentas externas:
 
 - [ ] **Dónde correr los workers de pg-boss** (Railway / Fly.io / VPS). **No puede ser Vercel serverless.**
-      Decidir host y deployar `pnpm jobs:start` ahí.
+      Decidir host y deployar ahí `node --import tsx src/shared/jobs/run-workers.ts` (no `pnpm jobs:start`: con pnpm en el medio el SIGTERM no llega; ver `railway.toml`).
 - [ ] **Proyecto de Supabase staging** separado de dev/prod. Requiere contratar el plan.
 - [ ] **Deploy a Vercel**: crear el proyecto, cargar los secrets (`VERCEL_*`, `SENTRY_*`) y las env vars
       encriptadas. `deploy.yml` ya está listo para usarlos.

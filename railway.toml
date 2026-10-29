@@ -7,7 +7,18 @@ builder = "dockerfile"
 dockerfilePath = "Dockerfile.worker"
 
 [deploy]
-startCommand = "pnpm jobs:start"
+# Node directo, NO `pnpm jobs:start` (hace lo mismo que ese script). Railway
+# corre esto como PID 1, y con pnpm en el medio el SIGTERM del deploy nunca
+# llegaba a `run-workers.ts`: pnpm 10 se cerraba y se llevaba puesto al worker,
+# y pnpm 12 ni lo atiende, así que Railway terminaba matándolo a la fuerza. En
+# cualquiera de los dos casos `stopBoss()` no corría. Medido en Docker el
+# 2026-10-29 (ledger de T2b, docs/planning/2026-10-28-actualizacion-dependencias.md).
+startCommand = "node --import tsx src/shared/jobs/run-workers.ts"
+# Margen entre el SIGTERM y el SIGKILL al deployar. El default de Railway es 0
+# (docs.railway.com/variables/reference, RAILWAY_DEPLOYMENT_DRAINING_SECONDS),
+# así que aunque la señal llegue, `stopBoss()` —que espera hasta 5 s los jobs
+# en vuelo (boss.ts)— no alcanzaba a terminar.
+drainingSeconds = 10
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
 # Segunda mitad de M-5. Railway solo sabía si el proceso RESPIRA, y eso no

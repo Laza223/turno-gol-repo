@@ -39,7 +39,7 @@
 | **Analytics** | Vercel Analytics | Included | — |
 | **Autocompletado de direcciones** | Google Places API | Latest | — |
 | **Testing** | Vitest + Playwright | `vitest ^3.2` / `@playwright/test ^1.61` | — |
-| **Package Manager** | pnpm | 10.x+ (`packageManager: pnpm@10.34.5`) | — |
+| **Package Manager** | pnpm | 12.x (`packageManager: pnpm@12.16.1`) | — |
 
 > [!NOTE]
 > **Google Places API** (Decisión de auditoría 2026-07-21 — ARG-10): se usa en el onboarding

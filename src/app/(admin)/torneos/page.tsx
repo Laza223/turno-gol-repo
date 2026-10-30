@@ -35,7 +35,7 @@ export default async function TorneosPage() {
   const total = tournaments.length
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <PageHeader
         title="Torneos"
         subtitle={total === 1 ? '1 torneo' : `${total} torneos`}

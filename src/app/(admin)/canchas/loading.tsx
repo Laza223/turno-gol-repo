@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 /** Silueta de CourtList: título plano + la tabla de canchas (una fila por cancha desde lg). */
 export default function Loading() {
   return (
-    <div className="space-y-5" aria-busy="true">
+    <div className="space-y-3 lg:space-y-5" aria-busy="true">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-2">
           <Skeleton className="h-8 w-32" />

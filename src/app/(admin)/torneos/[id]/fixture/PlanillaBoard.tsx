@@ -233,7 +233,7 @@ export function PlanillaBoard({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 lg:space-y-4">
       {moving && (
         // Sin `sticky`: en mobile el aviso ocupa tres líneas y pegado arriba se
         // come un tercio de la pantalla tapando los propios destinos. Salir del

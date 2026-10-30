@@ -21,7 +21,7 @@ export function PulsoFeed({
 }) {
   const nowMs = now.getTime()
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 lg:gap-6 lg:grid-cols-2">
       <PulsoSection title="Reservas online">
         {activity.recentOnlineBookings.length === 0 ? (
           <EmptyHint text="Todavía no hubo reservas online." />

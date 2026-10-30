@@ -84,7 +84,7 @@ export function SupportActionsPanel({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 lg:space-y-4">
       <ForceStatusSection
         tenantId={tenantId}
         tenantName={tenantName}

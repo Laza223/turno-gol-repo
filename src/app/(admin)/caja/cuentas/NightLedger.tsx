@@ -151,7 +151,7 @@ export function NightLedger({
           icon={Receipt}
           title={emptyTitle}
           description={emptyDescription}
-          className="border-0 py-10"
+          className="border-0 py-5 lg:py-10"
         />
       ) : (
         // Una noche del piloto son 40-70 filas: con tope de alto, el pie
@@ -225,7 +225,7 @@ export function NightLedger({
           </ul>
 
           {visible.length === 0 && (
-            <p className="px-5 py-8 text-center text-sm text-muted-foreground">
+            <p className="px-5 py-5 lg:py-8 text-center text-sm text-muted-foreground">
               Nada de esto en el día.
             </p>
           )}

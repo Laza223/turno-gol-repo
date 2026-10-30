@@ -67,7 +67,7 @@ function RoleSpacesCard({ tournamentsEnabled }: { tournamentsEnabled: boolean })
   )
 
   return (
-    <div className="card-premium rounded-lg p-6">
+    <div className="card-premium rounded-lg p-4 lg:p-6">
       <h2 className="mb-4 text-base font-semibold text-foreground">Qué ve cada persona</h2>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {STAFF_ROLES.map((role) => (
@@ -124,7 +124,7 @@ export function StaffRosterView({
   const activeAdminCount = members.filter((m) => m.isActive && m.role === 'admin').length
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <RoleSpacesCard tournamentsEnabled={tournamentsEnabled} />
 
       {members.length === 0 ? (

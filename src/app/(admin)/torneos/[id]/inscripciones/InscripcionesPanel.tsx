@@ -131,7 +131,7 @@ export function InscripcionesPanel({
   }
 
   return (
-    <section className="space-y-5 rounded-xl border border-border bg-card p-5">
+    <section className="space-y-3 lg:space-y-5 rounded-xl border border-border bg-card p-4 lg:p-5">
       <div>
         <h2 className="font-display text-lg font-semibold text-foreground">Inscripciones</h2>
         <p className="mt-0.5 text-sm text-muted-foreground">

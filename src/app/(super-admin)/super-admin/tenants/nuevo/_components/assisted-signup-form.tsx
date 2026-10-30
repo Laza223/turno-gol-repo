@@ -56,8 +56,8 @@ function AssistedSignupFlow({ action, loginUrl, onAnother }: Props & { onAnother
   const vals = state.status === 'error' ? state.values : {}
 
   return (
-    <form action={formAction} noValidate className="max-w-3xl space-y-6">
-      <fieldset className="space-y-4 rounded-xl border border-border bg-card p-5">
+    <form action={formAction} noValidate className="max-w-3xl space-y-3 lg:space-y-6">
+      <fieldset className="space-y-3 lg:space-y-4 rounded-xl border border-border bg-card p-4 lg:p-5">
         <legend className="px-1 text-sm font-semibold text-foreground">El complejo</legend>
         <Field name="name" label="Nombre" error={errs.name} defaultValue={vals.name} />
         <Field
@@ -81,7 +81,7 @@ function AssistedSignupFlow({ action, loginUrl, onAnother }: Props & { onAnother
         />
       </fieldset>
 
-      <fieldset className="space-y-4 rounded-xl border border-border bg-card p-5">
+      <fieldset className="space-y-3 lg:space-y-4 rounded-xl border border-border bg-card p-4 lg:p-5">
         <legend className="px-1 text-sm font-semibold text-foreground">El dueño</legend>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field
@@ -110,7 +110,7 @@ function AssistedSignupFlow({ action, loginUrl, onAnother }: Props & { onAnother
         />
       </fieldset>
 
-      <fieldset className="space-y-4 rounded-xl border border-border bg-card p-5">
+      <fieldset className="space-y-3 lg:space-y-4 rounded-xl border border-border bg-card p-4 lg:p-5">
         <legend className="px-1 text-sm font-semibold text-foreground">Referido (opcional)</legend>
         <Field
           name="referral"
@@ -244,7 +244,7 @@ function SignupDone({
   }
 
   return (
-    <div className="max-w-3xl space-y-5 rounded-xl border border-emerald-600/30 bg-card p-5">
+    <div className="max-w-3xl space-y-3 lg:space-y-5 rounded-xl border border-emerald-600/30 bg-card p-4 lg:p-5">
       <div className="space-y-1">
         <h2
           ref={headingRef}

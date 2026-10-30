@@ -44,7 +44,7 @@ export function PlayersTable({
     // `?pagina=99` de un link viejo: hay jugadores, lo que no existe es esa página.
     if (total > 0) {
       return (
-        <p className="rounded-xl border border-border/60 bg-card px-4 py-10 text-center text-sm text-muted-foreground">
+        <p className="rounded-xl border border-border/60 bg-card px-4 py-5 lg:py-10 text-center text-sm text-muted-foreground">
           Esa página no existe.{' '}
           <Link
             href={hrefFor(0)}

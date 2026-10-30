@@ -19,7 +19,7 @@ function Serie({ title, days }: { title: string; days: { day: string; value: num
 export function PulsoSeries({ series }: { series: PlatformActivity['series'] }) {
   return (
     <PulsoSection title="Últimos 14 días">
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:gap-8 md:grid-cols-2">
         <Serie
           title="Jugadores nuevos por día"
           days={series.map((d) => ({ day: d.day, value: d.newPlayers }))}

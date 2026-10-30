@@ -82,7 +82,7 @@ function BillingDisclosure({
           className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
         />
       </CollapsibleTrigger>
-      <CollapsibleContent className="mt-3 space-y-4">{children}</CollapsibleContent>
+      <CollapsibleContent className="mt-3 space-y-3 lg:space-y-4">{children}</CollapsibleContent>
     </HashOpenCollapsible>
   )
 }
@@ -181,13 +181,13 @@ export default async function FacturacionPage() {
     !!sub && (CANCELABLE.has(sub.status) || sub.status === 'canceled' || sub.status === 'trialing')
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <SettingsHeader title="Suscripción" />
 
       {/* "En 3 segundos": lo único que se ve sin plegar nada. La cuota va
           primera y ocupa más ancho porque es la única pregunta que el dueño
           tiene en esta pantalla — "¿cuánto pago?" y "¿cómo lo cambio?". */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-3 lg:gap-6 lg:grid-cols-5">
         <div className="lg:col-span-3">
           {sub && pricing && cuotaMode ? (
             <CuotaSection
@@ -201,7 +201,7 @@ export default async function FacturacionPage() {
               plusPerCourtCents={plusBilledPerCourt}
             />
           ) : (
-            <section className="card-premium rounded-xl p-6">
+            <section className="card-premium rounded-xl p-4 lg:p-6">
               <h2 className="text-base font-semibold text-foreground">Tu cuota</h2>
               {readOnlyBreakdown && sub ? (
                 <>
@@ -225,9 +225,9 @@ export default async function FacturacionPage() {
           )}
         </div>
 
-        <div className="space-y-6 lg:col-span-2">
+        <div className="space-y-3 lg:space-y-6 lg:col-span-2">
           {sub && (
-            <section className="card-premium rounded-xl p-6">
+            <section className="card-premium rounded-xl p-4 lg:p-6">
               <h2 className="text-base font-semibold text-foreground">Tu suscripción</h2>
               <dl className="mt-4 space-y-3 text-sm">
                 <div>
@@ -326,7 +326,7 @@ export default async function FacturacionPage() {
             summary="Qué pasa y hasta cuándo seguís."
           >
             {sub.status === 'trialing' ? (
-              <section className="card-premium rounded-xl p-6">
+              <section className="card-premium rounded-xl p-4 lg:p-6">
                 <h2 className="text-base font-semibold text-foreground">Dar de baja TurnoGol</h2>
                 {/* Sin cuota activada: `expire-trials` pasa el complejo a solo
                     lectura el día que vence la prueba, sin cobrar nada. Con la cuota ya

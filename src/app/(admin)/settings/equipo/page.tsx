@@ -45,7 +45,7 @@ export default async function SettingsEquipoPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       {/* El botón de invitar cuelga de la barra superior, al lado del nombre de
           la página (MASTER §6.8). En el teléfono no entra ahí (tapaba el nombre
           y el botón de tema), así que baja al principio del contenido. */}
@@ -75,7 +75,7 @@ export default async function SettingsEquipoPage() {
       <section
         id="tu-usuario"
         aria-labelledby="tu-usuario-titulo"
-        className="card-premium scroll-mt-24 rounded-lg p-6"
+        className="card-premium scroll-mt-24 rounded-lg p-4 lg:p-6"
       >
         <header>
           <h2 id="tu-usuario-titulo" className="text-base font-semibold text-foreground">
@@ -84,8 +84,8 @@ export default async function SettingsEquipoPage() {
           <p className="mt-0.5 text-sm text-muted-foreground">Esto no lo ve el jugador.</p>
         </header>
 
-        <div className="mt-6 grid grid-cols-1 gap-10 xl:grid-cols-2">
-          <div className="space-y-4">
+        <div className="mt-4 lg:mt-6 grid grid-cols-1 gap-10 xl:grid-cols-2">
+          <div className="space-y-3 lg:space-y-4">
             <div>
               <h3 className="text-sm font-semibold text-foreground">Email para entrar</h3>
               {cuotaGoesToThisEmail && (
@@ -97,7 +97,7 @@ export default async function SettingsEquipoPage() {
             <AccountEmailForm currentEmail={user.email} updateEmailAction={updateUserEmailAction} />
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3 lg:space-y-4">
             <h3 className="text-sm font-semibold text-foreground">Resúmenes</h3>
             <AvisosForm s={tenant.settings} action={updateAvisosSettingsAction} />
           </div>

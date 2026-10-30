@@ -17,22 +17,22 @@ export default async function HorariosPage() {
   const minDate = artTodayStr()
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <SettingsHeader title="Horarios" />
 
       {/* `min-[1440px]` y no `lg`: los días de "Días con otro horario" van en dos columnas
           por viewport (`md:grid-cols-2` en ScheduleFields), y a media card quedan
           de ~190px en 1024px (con la card a 3fr/2fr, desde 1440px son ~360px) — no entra "Miércoles + 10:00 a 23:00 + Personalizar". */}
-      <div className="card-premium grid grid-cols-1 gap-6 rounded-lg p-6 min-[1440px]:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="card-premium grid grid-cols-1 gap-3 lg:gap-6 rounded-lg p-4 lg:p-6 min-[1440px]:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <div>
           <h2 className="text-base font-semibold text-foreground">Horario de la semana</h2>
-          <p className="mt-0.5 mb-6 text-sm text-muted-foreground">
+          <p className="mt-0.5 mb-4 lg:mb-6 text-sm text-muted-foreground">
             Lo que ve el jugador y las horas que muestra la Grilla.
           </p>
           <HorariosForm hours={hours} action={updateHorariosAction} />
         </div>
 
-        <div className="space-y-3 border-t border-border pt-6 min-[1440px]:border-t-0 min-[1440px]:border-l min-[1440px]:pt-0 min-[1440px]:pl-6">
+        <div className="space-y-3 border-t border-border pt-4 lg:pt-6 min-[1440px]:border-t-0 min-[1440px]:border-l min-[1440px]:pt-0 min-[1440px]:pl-6">
           <div className="flex items-center gap-2">
             <CalendarOff className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             <h2 className="text-sm font-semibold text-foreground">Días cerrados</h2>
@@ -75,7 +75,7 @@ export default async function HorariosPage() {
               icon={CalendarOff}
               title="No hay días cerrados"
               description="Agregá una fecha abajo para bloquear un día completo."
-              className="py-6"
+              className="py-4 lg:py-6"
             />
           )}
 

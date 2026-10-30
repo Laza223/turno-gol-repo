@@ -77,7 +77,7 @@ export function PlusSection({ plus, periodEnd, disableAction, payAction }: Props
   }
 
   return (
-    <section className="card-premium rounded-xl p-6">
+    <section className="card-premium rounded-xl p-4 lg:p-6">
       <h2 className="text-base font-semibold text-foreground">Asistente de WhatsApp</h2>
 
       {quote ? (

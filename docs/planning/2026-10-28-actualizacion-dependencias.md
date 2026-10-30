@@ -11,8 +11,8 @@ Pedido de Lazar: llevar a la última versión **estable** todo lo que usa el rep
 | T2b | pnpm 12 (sale de la T2: toca CI, Docker y el build de Vercel; va aislado)                            | mergeado #525 |
 | T3  | React 19.3 (ver abajo), date-fns 4, motion 14, @anthropic-ai/sdk 1.x                                 | mergeado #529 |
 | T4  | @sentry/nextjs 11                                                                                    | mergeado #531 |
-| T5  | Supabase CLI 2.x + `supabase/setup-cli` v3 (incluye `db-migrate.yml`, que corre contra prod)         | en curso      |
-| T6  | mercadopago 3 — OK del dueño antes de prod                                                           | pendiente     |
+| T5  | Supabase CLI 2.x + `supabase/setup-cli` v3 (incluye `db-migrate.yml`, que corre contra prod)         | mergeado #532 |
+| T6  | mercadopago 3 — OK del dueño antes de prod                                                           | en curso      |
 | T7  | pg-boss 12 — migra el schema `pgboss` en prod; efecto sobre El Vagón + OK antes                      | pendiente     |
 | T8  | Node 24 LTS (Docker, CI, Vercel, `engines`) — se adelanta a la T3 (ver notas)                        | mergeado #526 |
 
@@ -126,10 +126,27 @@ Pedido de Lazar: llevar a la última versión **estable** todo lo que usa el rep
   - `postgres:15-alpine` pelado, como el job de integración: 103, la 001 corrida dos veces, y la función queda con nuestro cuerpo.
   - Única diferencia en los stacks de Supabase: queda el `auth.jwt()` oficial, que sin claims da NULL en vez de `{}`. Solo se usa como `auth.jwt() -> 'app_metadata' ->> 'tenant_id'` (006 y 052), donde los dos dan NULL.
   - Primero se probó un paso del e2e-stack que le devolvía los dos permisos con `supabase_admin` (commit 113b81dd); con el guard sobra y se sacó.
+- **CI completo con el guard (run 41084583460): todo verde**, E2E y regresión visual incluidos. Con el paso de GRANTs (run 41081936494) también había dado verde.
+- **Después del merge (2026-10-30):**
+  - `db-migrate` (run 41086419880) se disparó porque cambió el espejo de la 001. `link` OK, y el dry-run, el push y la verificación dijeron "Remote database is up to date." / "Producción al día.". No aplicó nada.
+  - Vercel: el deploy de producción de 5d2193d6 quedó READY.
+  - Railway: SUCCESS. `pnpm install --frozen-lockfile` instaló `supabase 2.122.0` en 6,1 s, y el worker registró las 18 colas.
 - **`supabase` sale de `allowBuilds`.** El paquete 2.x no tiene scripts de instalación: el binario viene en los paquetes opcionales `@supabase/cli-*`.
 - **Hallazgos previos, fuera de T5:**
   - Prod corre Postgres 17 (`17.6.1.141`, según el MCP de Supabase), pero `supabase/config.toml` (`major_version = 15`) y el job de integración de CI (`postgres:15-alpine`) corren 15. Las 103 migraciones aplican igual en 17 (probado arriba).
   - `supabase start -x ...,storage` en `e2e-stack` no excluye nada, ni en la 1.x ni en la 2.x: el nombre válido es `storage-api`. Storage arranca igual en CI y el comentario que lo justifica es falso. Arreglarlo cambia lo que corre en CI: va aparte.
+
+## T6 — notas
+
+- **mercadopago 2.13.0 → 3.6.1** (publicada el 2026-09-09), con versión exacta. No cambia la API que usamos: `MercadoPagoConfig` es idéntico, y `Preference`, `Payment` y `PreApproval` solo suman campos opcionales. Los casts de PreApproval siguen haciendo falta.
+- **La 3.x no depende de nada**: sale `node-fetch` (usa el `fetch` global) y sale `uuid` (usa `crypto.randomUUID`). El override `'mercadopago>uuid'` de `pnpm-workspace.yaml` quedaba muerto y se sacó. El de `pg-boss>uuid` sigue.
+- **Reintentos: se dejan como en la 2.** La 3 hace 4 intentos por defecto, también reintenta los 429 esperando el `Retry-After` (hasta 30 s) y sube el timeout por defecto a 60 s. Con el timeout de 8 s, un MP caído pasaba de ~18 s a ~39 s por llamada, y una de esas está en el camino del webhook. `mpClientFromPlaintext` pasa `maxRetries: 1` y `retryOn: [500, 502, 503, 504]`: 2 intentos, solo ante 5xx o corte de red. La idempotency key se genera una vez por llamada y viaja igual en el reintento (`RestClient.fetch`), así que reintentar un `create` no lo duplica. Test con el SDK real y un `fetch` falso: con los defaults de la 3 falla 3 de 4; con la config, 4 de 4.
+- **Forma del error.** La 2 tiraba el body crudo de MP; la 3 tira un `MercadoPagoError` (subclases por status) con el `cause` de MP copiado a `causes`, y el `status` de la respuesta HTTP, no del body.
+  - `describeMpError` perdía `mp_code`/`mp_desc` en los logs de reembolso. Ahora lee `causes` y también `cause`. El test con el `buildError` real falla con el código viejo.
+  - `isMpUnauthorized` y los dos detectores por mensaje andan igual (test con `buildError`). Un corte de red llega como `MPConnectionError` con `status: 0` y da "no es 401", igual que antes.
+- **Lo que la 3 empeora y se acepta (verificador fresco):**
+  - El timeout de 8 s corta hasta que llegan los headers: el body se lee sin tope (`clearTimeout` en el `finally` de `fetchFn`). La 2 lo cubría con el `timeout` de node-fetch. Si MP manda headers y se cuelga, la llamada espera al `bodyTimeout` de undici o a que Vercel corte la función. No se envuelve con un `withTimeout` propio: cortar un método con GET + PUT puede dar por fallida una operación que MP sí aplicó. No hay plata en juego: el webhook lo reintentan MP y pg-boss. Anotado en el comentario de `MP_GET_TIMEOUT_MS`.
+  - Un 200 con body ilegible ya no tira: el SDK lo convierte en `{}`. En `getPaymentStatus` da una referencia vacía, que el handler del webhook rechaza (mismatch de tenant) y el job reintenta. En los `create`, el chequeo de `id` vacío tira error.
 
 ## T1 — notas de CI
 
@@ -159,3 +176,5 @@ Pedido de Lazar: llevar a la última versión **estable** todo lo que usa el rep
 | 2026-10-30 | sonnet-reconnaissance       | T5: CLI de Supabase 2.x y setup-cli v3 contra nuestro uso, con foco en `db-migrate.yml`                    | ~72k tokens                                            | La 2.0 no rompe nada; los breaking están en 2.100–2.115 (flags estrictos, `auto_expose_new_tables`, `db push` en batch). Riesgo central: que la CLI 2 lea mal el historial de prod y el texto del chequeo final. Plan de prueba sobre una base descartable                                                                                                                                             |
 | 2026-10-30 | sonnet-adversarial-reviewer | T5: verificación fresca del diff contra el fuente de la CLI v2.122.0 y su binario                          | ~211k tokens                                           | GO con reservas, sin 🔴. `--linked`, `--yes` global, `link --project-ref` y el texto "Remote database is up to date." confirmados en el fuente. 🟡 el chequeo final se tragaba la salida con `bash -e` → corregido. 🟡 el camino `link`/`--linked` real no se probó (→ `workflow_dispatch` con nada pendiente). 🟢 `-x storage` no excluye nada (va aparte); `allowBuilds: supabase` obsoleto → sacado |
 | 2026-10-30 | sonnet-adversarial-reviewer | T5: verificación fresca del guard en la 001, su espejo y el e2e-stack sin el paso de GRANTs                | ~95k tokens                                            | GO, sin 🔴. `db push` compara solo versiones (fuente de la CLI 2.122); el splitter respeta `$guard$`; las 103 aplican como `postgres` en la imagen 15.19 con el `auth.jwt()` de gotrue y en `postgres:15-alpine` vía `bootstrap-test-db.mjs`. 🟡 faltaba el e2e de CI con el diff final.                                                                                                               |
+| 2026-10-30 | sonnet-reconnaissance       | T6: breaking changes de mercadopago 3.6.1 contra nuestro uso, con los dos tarballs                         | ~123k tokens                                           | Sin breaking de API. Cambian los reintentos (4 intentos, también 429) y la forma del error (`causes`); `describeMpError` perdía el detalle. El override de `uuid` queda muerto.                                                                                                                                                                                                                        |
+| 2026-10-30 | sonnet-adversarial-reviewer | T6: verificación fresca del diff con el SDK real y `fetch` falso                                           | ~120k tokens                                           | NO-GO solo por `format:check` (ya corregido). Opciones de reintento llegan a todas las rutas; misma idempotency key en POST y PUT reintentados; ningún consumidor decide mal con `status: 0`. 🟡 el timeout ya no cubre el body (aceptado y documentado).                                                                                                                                              |

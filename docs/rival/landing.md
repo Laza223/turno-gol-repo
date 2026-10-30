@@ -935,6 +935,18 @@ En producción hay dos caminos, que se pueden combinar:
 - antes de instalar, leer la licencia estándar de GSAP (prohíbe usarla en productos que compitan con el editor visual de Webflow; TurnoGol no es eso, pero se deja por escrito);
 - con `prefers-reduced-motion` no se crea ningún ScrollTrigger, y la página es la misma lista estática de hoy.
 
+**Resultado de la medición (2026-10-30).** En el prototipo, a 390×844 con la CPU frenada ×4 en Chromium, se recorrió la página entera tres veces con la rueda. Se compararon tres versiones: el motor `--p`, el mismo motor arreglado (lee todas las escenas antes de escribir) y GSAP moviendo las escenas 1 y 3.
+
+| Versión | Cuadros de más de 50 ms | 95 % de los cuadros en | Trabajo largo al cargar |
+|---|---|---|---|
+| Motor `--p` | 18 y 22 | 33 y 50 ms | 2,0 a 2,2 s |
+| Motor arreglado | 6 y 12 | 33 y 50 ms | — |
+| GSAP | 0 en las tres | 16,8 ms en las tres | 2,0 a 2,3 s |
+
+La primera corrida de los dos motores se descarta: dio cuadros de 1 s, que es el navegador frenando una pestaña en segundo plano, no la página. La tabla de los motores muestra las corridas 2 y 3.
+
+GSAP suma 46 KB comprimidos (`gsap` 28 KB y `ScrollTrigger` 18 KB). El LCP no empeoró, pero varió mucho entre corridas como para comparar más fino. La regla era "entra si no empeora ninguna", y el peso empeora siempre; Lazar decidió que entre por la fluidez (2026-10-30). En producción mueve todas las escenas, no solo la 1 y la 3.
+
 ## Rendimiento en el celular
 
 - **LCP:** el h1 o la pizarra, que es un SVG en línea de unos pocos KB. El hero no tiene foto. El texto nunca arranca invisible esperando JavaScript: la entrada de `@starting-style` arranca con el primer pintado.
@@ -1071,7 +1083,7 @@ Las tres de referencia sirven si un día se quiere una voz de tapa distinta de A
 | 2 | Tema | La landing es siempre oscura. |
 | 3 | Archivo | Se prende el eje de ancho para la tapa y los dorsales. Va a DESIGN.md. |
 | 4 | Oro de trofeo | Sí: `#fcd34d` y su luz `#fef3c7`, solo para las estrellas, la Corona y la figurita Oro. Va a DESIGN.md. |
-| 5 | Librería | **GSAP con ScrollTrigger, con medición.** Antes de adoptarla se rehacen las dos escenas más pesadas con GSAP y se miden contra el motor `--p` del prototipo, con la CPU frenada ×4 (un Android medio). Entra si no empeora la fluidez (frames largos, INP) ni la carga (LCP, peso). Ver "Con GSAP" en Movimiento. |
+| 5 | Librería | **GSAP con ScrollTrigger, con medición. Medido el 2026-10-30 y aprobado: entra.** Antes de adoptarla se rehacen las dos escenas más pesadas con GSAP y se miden contra el motor `--p` del prototipo, con la CPU frenada ×4 (un Android medio). Entra si no empeora la fluidez (frames largos, INP) ni la carga (LCP, peso). Ver "Con GSAP" en Movimiento. |
 | 6 | "Avisame" de la Temporada Cero | Todavía no. El opt-in se diseña con la ola de clubes. |
 | 7 | Quiz | Va, con "Próximamente" bien visible y sin guardar nada. |
 | 8 | Números que son propuesta | Afuera hasta su ola. |

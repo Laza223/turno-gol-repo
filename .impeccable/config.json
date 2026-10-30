@@ -66,6 +66,15 @@
         ],
         "createdAt": "2026-10-30T15:29:00.994Z",
         "reason": "Prototipo: las tarjetas sobre la pizarra son demos de la UI real de RIVAL (partido, tablón), no anidado decorativo"
+      },
+      {
+        "rule": "gradient-text",
+        "value": "*",
+        "files": [
+          "src/app/(player)/rival/_landing/landing.module.css"
+        ],
+        "createdAt": "2026-10-30T20:23:02.655Z",
+        "reason": "DESIGN.md Slanted Title Rule: tramo de titular en .hero-accent-text (degradé esmeralda); el prototipo de la landing lo usa y Lazar lo vio y aprobó"
       }
     ]
   },

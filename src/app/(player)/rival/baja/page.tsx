@@ -81,7 +81,7 @@ export default async function BajaPage(props: {
       icon={BellOff}
       tone="neutral"
       title="Listo, no te vamos a avisar más."
-      actions={<PortalResultLink href="/rival">Ir al tablón</PortalResultLink>}
+      actions={<PortalResultLink href="/rival/tablon">Ir al tablón</PortalResultLink>}
     >
       <p>Cuando quieras, los activás de nuevo desde el tablón.</p>
     </PortalResult>

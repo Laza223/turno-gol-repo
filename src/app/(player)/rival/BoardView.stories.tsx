@@ -58,7 +58,7 @@ const meta = {
   component: BoardView,
   parameters: {
     layout: 'fullscreen',
-    nextjs: { appDirectory: true, navigation: { pathname: '/rival' } },
+    nextjs: { appDirectory: true, navigation: { pathname: '/rival/tablon' } },
   },
   args: {
     items,
@@ -123,12 +123,12 @@ export const SinSesion: Story = {
 }
 
 export const ConVerMas: Story = {
-  args: { nextHref: '/rival?despues=2026-03-18T22%3A30%3A00.000Z_d' },
+  args: { nextHref: '/rival/tablon?despues=2026-03-18T22%3A30%3A00.000Z_d' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('link', { name: 'Ver más partidos' })).toHaveAttribute(
       'href',
-      '/rival?despues=2026-03-18T22%3A30%3A00.000Z_d',
+      '/rival/tablon?despues=2026-03-18T22%3A30%3A00.000Z_d',
     )
   },
 }

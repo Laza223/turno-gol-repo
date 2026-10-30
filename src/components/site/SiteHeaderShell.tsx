@@ -6,6 +6,8 @@ import { cn } from '@/lib/utils'
 type Props = {
   /** `fixed` flota sobre el hero (home, para-complejos); `sticky` acompaña el scroll del portal. */
   position?: 'fixed' | 'sticky'
+  /** Superficie siempre oscura (para-complejos): resuelve los tokens en oscuro aunque el tema sea claro. */
+  dark?: boolean
   /** Destino del logo. */
   homeHref?: string
   /** Lado derecho del pill: links y CTA de cada contexto. */
@@ -18,12 +20,18 @@ type Props = {
  * login/registro y onboarding la usan; lo único que cambia entre contextos son
  * los links y el CTA que van en `children`. No armar otro header con otro logo.
  */
-export function SiteHeaderShell({ position = 'fixed', homeHref = '/', children }: Props) {
+export function SiteHeaderShell({
+  position = 'fixed',
+  homeHref = '/',
+  dark = false,
+  children,
+}: Props) {
   return (
     <header
       className={cn(
         'top-0 z-50 w-full px-3 pt-[calc(12px+env(safe-area-inset-top))] sm:px-6 sm:pt-[calc(18px+env(safe-area-inset-top))]',
         position === 'fixed' ? 'fixed' : 'sticky pb-2',
+        dark && 'dark dark-surface',
       )}
     >
       <div className="mx-auto max-w-[1240px]">

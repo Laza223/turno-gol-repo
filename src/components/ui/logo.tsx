@@ -32,8 +32,8 @@ export function Logo({
   return (
     <span
       className={cn(
-        'inline-flex items-center font-display uppercase italic font-black tracking-tighter',
-        variant === 'vertical' ? 'justify-center text-4xl sm:text-5xl' : SIZE[size],
+        'inline-block font-display uppercase italic font-black tracking-tighter',
+        variant === 'vertical' ? 'text-center text-4xl sm:text-5xl' : SIZE[size],
         textClassName,
         className,
       )}

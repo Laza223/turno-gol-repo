@@ -51,7 +51,7 @@ La landing no puede prometer lo que no existe. Esta tabla manda: cada pieza de l
 | El club: nombre, escudo, plantel, dorsales, mercado de pases, palmarés, hinchada, historia | Próximamente | `clubes.md` |
 | El partido oficial, la cartelera, la tabla, divisiones y temporadas, clásicos, la Corona, desafío y revancha, "¿Volverían a jugar?", rival ideal, álbum de la zona | Próximamente | README, mundo ELLOS |
 | La figura, la tapa, la figurita, las tarjetas 9:16, Tu Temporada, logros, Versus, racha, trayectoria | Próximamente | README, mundos YO y EL RELATO |
-| Pronósticos (el "Prode" del README, REQUIERE INPUT 16), desafío de la semana, el Diario de la Zona | Próximamente | README, mundo EL RITUAL |
+| Desafío de la semana, el Diario de la Zona | Próximamente | README, mundo EL RITUAL |
 | El estadio, Leyenda de la cancha, Complejo de la zona, el sticker, Hora RIVAL, Pedí tu cancha | Próximamente | README, mundo LA CANCHA |
 | Temporada Cero y la marca Fundador (sin "para siempre") | Próximamente | README, Marketing |
 
@@ -686,7 +686,6 @@ Cada [ ] es una ventanita de 1em de alto dentro del texto, con la pieza dibujada
   - **Versus.** Tu carrera contra la de un amigo, si los dos aceptan.
   - **Tu Temporada.** El resumen de tu año, para compartir.
 - Y toda la semana (antes, sección 7):
-  - **Pronósticos.** Con tus amigos, tu club y tu complejo. Sin plata.
   - **El desafío de la semana.** Un reto nuevo para clubes y jugadores.
   - **El Diario de la Zona.** Los lunes, la edición de tu zona: resultados, la tabla, el clásico y la goleada.
 
@@ -733,7 +732,6 @@ Cada [ ] es una ventanita de 1em de alto dentro del texto, con la pieza dibujada
 Decisión de Lazar (2026-10-30): **el Crack del Día no es parte de RIVAL.** Es un jueguito de TurnoGol que vive en la home, al lado del buscador de canchas (un acceso al costado o un botón flotante: "Adiviná el crack del día"). Se juega con las letras del apellido, como los Wordle de fútbol. Detalle: [`crack-del-dia.md`](crack-del-dia.md).
 
 Sin el Crack, a la sección le faltaba su demo y su razón de ser. Los otros rasgos pasan a la lista de la sección 6 ("Y toda la semana"):
-- **Pronósticos.** Con tus amigos, tu club y tu complejo. Sin plata. (El README lo llama "Prode TurnoGol"; el nombre está en REQUIERE INPUT 16.)
 - **El desafío de la semana.** Un reto nuevo para clubes y jugadores.
 - **El Diario de la Zona.** Los lunes, la edición de tu zona: resultados, la tabla, el clásico y la goleada.
 
@@ -1085,10 +1083,11 @@ Las tres de referencia sirven si un día se quiere una voz de tapa distinta de A
 | 14 | Trazo de tiza | Se acepta la excepción, solo para la pizarra, el escudo y el "RIVAL" del pie. Con GSAP sale con DrawSVG, que anima lo mismo. |
 | 15 | Fundador | Va la marca, sin "para siempre": el sello y la edición Fundador de la figurita. Las reglas (quién la gana y dónde se ve) se escriben con la ola de clubes. "Fundador de la sede" se decide con "Pedí tu cancha" y no va en la landing. |
 | Crack del Día | Fuera de RIVAL | Es un jueguito de TurnoGol en la home, junto al buscador, y se juega con letras. Sale de la landing (sección 7). |
+| 16 | Prode | Sale de la landing. El README ("Premios y prode") ya avisa que un concurso con premio necesita asesoría por Lealtad Comercial, y "Prode" puede ser marca de la Lotería `[VERIFICAR]`: se retoma con su ola, no en la landing. |
 
 ## REQUIERE INPUT (lo que queda)
 
-16. **El nombre "Prode".** El README propone un prode de fútbol profesional: pronosticás la Liga y la Selección cada fecha y competís en tablitas con tus amigos, tu club y tu complejo, sin plata. El README ("Premios y prode") avisa que un concurso con premio necesita asesoría por Lealtad Comercial, y "Prode" es el nombre de un juego de la Lotería, que puede ser marca registrada `[VERIFICAR]`. **Recomendación:** en la landing se llama "Pronósticos", y "Prode" espera el OK de la asesoría.
+Ninguno.
 
 ## Follow-ups encontrados (fuera de esta tarea)
 

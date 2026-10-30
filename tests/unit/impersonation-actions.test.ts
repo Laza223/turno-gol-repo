@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   IMPERSONATION_COOKIE_NAME,
   verifyImpersonationCookie,
@@ -71,6 +71,12 @@ vi.mock('@/modules/staff/staff.service', () => ({
 async function loadActions() {
   return import('@/app/(super-admin)/super-admin/tenants/[id]/actions')
 }
+
+// La primera carga del módulo tarda segundos: en un hook corre contra el `hookTimeout` (30 s) y
+// no contra los 10 s del primer `it`, que bajo la suite completa se pasaba de tiempo.
+beforeAll(async () => {
+  await loadActions()
+})
 
 beforeEach(() => {
   process.env.IMPERSONATION_COOKIE_SECRET = 'test-secret-at-least-16-chars-long'

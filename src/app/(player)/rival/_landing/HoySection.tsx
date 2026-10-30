@@ -1,6 +1,7 @@
 import { cssVars } from './css-vars'
 import s from './landing.module.css'
-import { HOLE_POSITION, HOY_PLAYERS, PlayerDot, SeJuegaChip } from './pitch'
+import { PlayerDot, SeJuegaChip } from './pitch'
+import { HOLE_POSITION, HOY_PLAYERS } from './pitch-players'
 import { StatusChip } from './StatusChip'
 import { TablonTabs } from './TablonTabs'
 

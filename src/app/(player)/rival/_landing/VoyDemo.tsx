@@ -3,7 +3,8 @@
 import { useRef, useState } from 'react'
 import { cssVars } from './css-vars'
 import s from './landing.module.css'
-import { HERO_PLAYERS, HOLE_POSITION, PlayerDot, SeJuegaChip } from './pitch'
+import { PlayerDot, SeJuegaChip } from './pitch'
+import { HERO_PLAYERS, HOLE_POSITION } from './pitch-players'
 
 /**
  * La pizarra del hero. "Voy" es v1 real (contador, cupo, "¡Estamos los N!"), pero la demo no guarda

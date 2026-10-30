@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
+import { MPConnectionError, buildError } from 'mercadopago'
+import { MpGatewayError } from '@/modules/payments/payment.errors'
 import {
   isMpUnauthorized,
   isMpInvalidPayerError,
@@ -219,6 +221,95 @@ describe('describeMpError', () => {
     const out = describeMpError(err)
     expect(out).toContain('tres')
     expect(out).not.toContain('cuatro')
+  })
+})
+
+/**
+ * El SDK 3 ya no tira el body crudo: tira un MercadoPagoError armado por
+ * `buildError`, con el `cause` de MP copiado a `causes` y el status de la
+ * respuesta HTTP. Se arma con el `buildError` real para que el test se rompa si
+ * el SDK vuelve a cambiar la forma.
+ */
+describe('errores del SDK 3 de MercadoPago', () => {
+  it('describeMpError rescata el detalle que el SDK copia a `causes`', () => {
+    const raw = buildError(400, {
+      message: 'Bad Request',
+      error: 'bad_request',
+      cause: [{ code: 2062, description: 'Refund is not available for this payment' }],
+    })
+    const out = describeMpError(new MpGatewayError('Failed to refund MP payment 175029618908', raw))
+    expect(out).toContain('mp_status=400')
+    expect(out).toContain('mp_code=2062')
+    expect(out).toContain('Refund is not available for this payment')
+  })
+
+  it('un 401 sin `status` en el body sigue siendo 401: lo toma de la respuesta HTTP', () => {
+    const raw = buildError(401, { message: 'invalid access token' })
+    expect(isMpUnauthorized(new MpGatewayError('Failed to get MP payment 1', raw))).toBe(true)
+  })
+
+  it('un 403 de permisos no se confunde con un token vencido', () => {
+    const raw = buildError(403, { message: 'At least one policy returned UNAUTHORIZED.' })
+    expect(isMpUnauthorized(new MpGatewayError('Failed to refund MP payment 1', raw))).toBe(false)
+  })
+
+  it('la clase del error manda: MPAuthenticationError es token vencido, crudo o envuelto', () => {
+    const raw = buildError(401, {})
+    expect(isMpUnauthorized(raw)).toBe(true)
+    expect(isMpUnauthorized(new MpGatewayError('Failed to get MP payment 1', raw))).toBe(true)
+  })
+
+  it('MPForbiddenError no es token vencido aunque el texto diga UNAUTHORIZED', () => {
+    const raw = buildError(403, { message: 'At least one policy returned UNAUTHORIZED.' })
+    expect(isMpUnauthorized(raw)).toBe(false)
+    expect(isMpUnauthorized(new MpGatewayError('Failed to refund MP payment 1', raw))).toBe(false)
+  })
+
+  it('un 401 cuyo mensaje es el del PolicyAgent sigue siendo 401 si la clase lo dice', () => {
+    const raw = buildError(401, { message: 'At least one policy returned UNAUTHORIZED.' })
+    expect(isMpUnauthorized(raw)).toBe(true)
+  })
+
+  it('la clase gana sobre el status: sin la rama instanceof este test falla', () => {
+    const sinStatus = Object.assign(buildError(401, {}), { status: 0 })
+    expect(isMpUnauthorized(sinStatus)).toBe(true)
+    const forbiddenConStatus401 = Object.assign(buildError(403, {}), { status: 401 })
+    expect(isMpUnauthorized(forbiddenConStatus401)).toBe(false)
+    expect(isMpUnauthorized(new MpGatewayError('x', forbiddenConStatus401))).toBe(false)
+  })
+
+  it('un corte de red (MPConnectionError, status 0) no es token vencido', () => {
+    const raw = new MPConnectionError(new TypeError('fetch failed: unauthorized proxy'))
+    expect(isMpUnauthorized(raw)).toBe(false)
+    expect(isMpUnauthorized(new MpGatewayError('Failed to get MP payment 1', raw))).toBe(false)
+  })
+
+  it('withTokenRefresh no renueva ante un MPForbiddenError y sí ante un MPAuthenticationError', async () => {
+    const forbidden = buildError(403, { message: 'At least one policy returned UNAUTHORIZED.' })
+    const refreshForbidden = vi.fn()
+    await expect(
+      withTokenRefresh(vi.fn().mockRejectedValue(forbidden), refreshForbidden),
+    ).rejects.toBe(forbidden)
+    expect(refreshForbidden).not.toHaveBeenCalled()
+
+    const op = vi.fn().mockRejectedValueOnce(buildError(401, {})).mockResolvedValueOnce('ok')
+    const refresh = vi.fn().mockResolvedValue(undefined)
+    await expect(withTokenRefresh(op, refresh)).resolves.toBe('ok')
+    expect(refresh).toHaveBeenCalledTimes(1)
+  })
+
+  it('reconoce los dos rechazos de MP que se detectan por mensaje', () => {
+    const cancelled = buildError(400, { message: 'You can not modify a cancelled preapproval.' })
+    expect(
+      isMpAlreadyCancelledPreapprovalError(new MpGatewayError('Failed to cancel', cancelled)),
+    ).toBe(true)
+
+    const payer = buildError(400, {
+      message: 'Both payer and collector must be real or test users',
+    })
+    expect(isMpInvalidPayerError(new MpGatewayError('Failed to create preapproval', payer))).toBe(
+      true,
+    )
   })
 })
 

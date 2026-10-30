@@ -58,9 +58,9 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Setup Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v3
         with:
-          version: 1.226.4
+          version: 2.122.0
 
       - name: Verificar secrets presentes
         env:
@@ -91,23 +91,29 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
           echo "── Migraciones pendientes en producción ──"
-          supabase db push --dry-run
+          # `--linked` explícito: la CLI 2 avisa que el destino por defecto va a dejar de ser el proyecto linkeado.
+          supabase db push --dry-run --linked
 
       - name: Aplicar
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-        run: supabase db push
+        # `--yes`: la CLI 2 cambió el prompt de confirmación; no depender de cómo responde sin TTY.
+        run: supabase db push --linked --yes
 
       - name: Verificar que no quedó nada pendiente
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
-          out="$(supabase db push --dry-run 2>&1)"
+          # Con `bash -e`, un dry-run que falla cortaba acá sin mostrar su salida.
+          out="$(supabase db push --dry-run --linked 2>&1)" || { echo "$out"; exit 1; }
           echo "$out"
-          # El CLI dice "Remote database is up to date." cuando no queda nada.
-          if echo "$out" | grep -qiE "supabase/migrations/[0-9]+"; then
+          # El CLI dice "Remote database is up to date." cuando no queda nada. Se exige
+          # ese texto: las pendientes salen como `• 2026..._x.sql`, sin el prefijo
+          # `supabase/migrations/` que buscaba la versión anterior (nunca podía saltar;
+          # medido con la CLI 1.226.4 y la 2.122.0 el 2026-10-30).
+          if ! echo "$out" | grep -qF "Remote database is up to date."; then
             echo "::error::Quedaron migraciones sin aplicar después del push."
             exit 1
           fi

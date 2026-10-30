@@ -1,9 +1,11 @@
 /**
  * Pure MP-error-shape-detection helpers (401 unauthorized — Hallazgo 4 — and
- * ENS-23's invalid-payer preapproval rejection). No DB/SDK deps so callers
+ * ENS-23's invalid-payer preapproval rejection). No DB deps so callers
  * (the gateway implementation, the OAuth service, billing.service.ts) can
  * import them without a cycle, and so the detection is directly unit-testable.
+ * Del SDK solo se importan sus clases de error.
  */
+import { MPAuthenticationError, MPForbiddenError } from 'mercadopago'
 
 function readNumber(value: unknown): number | undefined {
   return typeof value === 'number' ? value : undefined
@@ -18,8 +20,15 @@ const POLICY_RECHAZO_RE = /policy returned unauthorized|PA_UNAUTHORIZED_RESULT_F
 
 /**
  * True when a MercadoPago error represents an expired/invalid access token
- * (HTTP 401). Handles the raw SDK error shape (`status`/`statusCode`), a nested
- * `cause`, and a 401/"unauthorized" message fallback.
+ * (HTTP 401).
+ *
+ * La señal principal es la clase del SDK 3: su `buildError` arma un
+ * `MPAuthenticationError` para todo 401 y un `MPForbiddenError` para todo 403,
+ * con el status de la respuesta HTTP. Se mira el error y su `.cause`, porque el
+ * gateway lo envuelve en `MpGatewayError(msg, cause)`. Lo que viene después
+ * (`status`/`statusCode`, `cause` anidado y el texto con 401/"unauthorized") es
+ * respaldo para errores que no arma el SDK: la función es pública y no todo
+ * llamador garantiza esa forma.
  *
  * 🔴 Ese fallback por texto se comía el 403 de permisos y tapaba el
  * diagnóstico. MercadoPago rechaza un reembolso sin permiso con
@@ -39,6 +48,14 @@ const POLICY_RECHAZO_RE = /policy returned unauthorized|PA_UNAUTHORIZED_RESULT_F
 export function isMpUnauthorized(err: unknown): boolean {
   if (typeof err !== 'object' || err === null) return false
   const e = err as { status?: unknown; statusCode?: unknown; cause?: unknown; message?: unknown }
+
+  for (const candidate of [err, e.cause]) {
+    if (candidate instanceof MPAuthenticationError) return true
+    // El rechazo de permisos (`At least one policy returned UNAUTHORIZED.`):
+    // renovar el token no cambia nada.
+    if (candidate instanceof MPForbiddenError) return false
+  }
+
   const cause =
     typeof e.cause === 'object' && e.cause !== null
       ? (e.cause as { status?: unknown; statusCode?: unknown })
@@ -165,14 +182,25 @@ export function describeMpError(err: unknown): string {
   // El SDK anida el error crudo un nivel abajo (MpGatewayError.cause).
   const raw =
     typeof e.cause === 'object' && e.cause !== null
-      ? (e.cause as { message?: unknown; status?: unknown; statusCode?: unknown; cause?: unknown })
+      ? (e.cause as {
+          message?: unknown
+          status?: unknown
+          statusCode?: unknown
+          cause?: unknown
+          causes?: unknown
+        })
       : undefined
   if (raw) {
     pushIfString(parts, 'mp_msg', raw.message)
     pushIfString(parts, 'mp_status', raw.status ?? raw.statusCode)
 
-    // `cause` de MP es un array de { code, description } con el motivo real.
-    const detail = Array.isArray(raw.cause) ? raw.cause : []
+    // El `cause` de MP es un array de { code, description } con el motivo real.
+    // El SDK 3 lo copia a `causes` de su MercadoPagoError; el 2 tiraba el body crudo.
+    const detail = Array.isArray(raw.causes)
+      ? raw.causes
+      : Array.isArray(raw.cause)
+        ? raw.cause
+        : []
     for (const item of detail.slice(0, 3)) {
       if (typeof item !== 'object' || item === null) continue
       const d = item as { code?: unknown; description?: unknown }

@@ -87,6 +87,13 @@ const DEPOSIT_EXCLUDED_PAYMENT_TYPES = [{ id: 'ticket' }, { id: 'atm' }, { id: '
  * The SDK client already defaults to 8s, but pinning it on the call keeps the
  * bound from silently changing if the client default is ever edited — a slow MP
  * must never stall the conversion path (doc5 NFR: p95 < 500ms).
+ *
+ * Desde el SDK 3 el tope corta hasta que llegan los headers: el `clearTimeout`
+ * corre apenas resuelve el `fetch`, y el body se lee sin tope. Un MP que manda
+ * headers y se cuelga en el body queda esperando al `bodyTimeout` de undici o
+ * a que Vercel corte la función. No se envuelve con un `withTimeout` propio:
+ * cortar el método entero (hay métodos con GET + PUT) puede dar por fallida
+ * una operación que MP sí aplicó.
  */
 export const MP_GET_TIMEOUT_MS = 8000
 
@@ -207,14 +214,10 @@ export class MercadoPagoGateway implements PaymentGateway {
         // .subscription_id` — VERIFICADO contra un pago real de sandbox
         // (operación 167921223525 del ensayo: trae subscription_id
         // `e00ea2c8…`, el mismo preapproval que canceló K5; `linked_to` NO
-        // aparece en el payload real). El tipo `TransactionData` del SDK no
-        // declara el campo (SDK incompleto vs payload real), de ahí el cast
-        // estructural estrecho. Ausente (`undefined`) en pagos de
+        // aparece en el payload real). Ausente (`undefined`) en pagos de
         // booking-deposit normales — dunning.service.ts distingue
         // "undefined = no lo sé" de "null/otro id = confirmé que no matchea".
-        preapprovalId: (
-          res.point_of_interaction?.transaction_data as { subscription_id?: string } | undefined
-        )?.subscription_id,
+        preapprovalId: res.point_of_interaction?.transaction_data?.subscription_id,
         // El pago unico de Plus (`saas-plus:`) solo se acredita si es posterior
         // a su cotizacion: el webhook necesita la fecha.
         ...(typeof res.date_created === 'string' && res.date_created !== ''

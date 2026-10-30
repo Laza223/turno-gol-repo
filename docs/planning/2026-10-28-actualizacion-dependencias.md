@@ -9,7 +9,7 @@ Pedido de Lazar: llevar a la última versión **estable** todo lo que usa el rep
 | T1  | Patch/minor de npm, GitHub Actions, pnpm 10.34.9, skills de `skills-lock.json`, plugin sentry        | mergeado #515 |
 | T2  | vitest 5 + @vitest/browser 5, vite 8, eslint 10, happy-dom 21, jest-dom 7, dotenv 18, @types/node 22 | mergeado #518 |
 | T2b | pnpm 12 (sale de la T2: toca CI, Docker y el build de Vercel; va aislado)                            | mergeado #525 |
-| T3  | React 19.3 (ver abajo), date-fns 4, motion 14, @anthropic-ai/sdk 1.x                                 | en curso      |
+| T3  | React 19.3 (ver abajo), date-fns 4, motion 14, @anthropic-ai/sdk 1.x                                 | en PR         |
 | T4  | @sentry/nextjs 11                                                                                    | pendiente     |
 | T5  | Supabase CLI 2.x + `supabase/setup-cli` v3 (incluye `db-migrate.yml`, que corre contra prod)         | pendiente     |
 | T6  | mercadopago 3 — OK del dueño antes de prod                                                           | pendiente     |
@@ -81,6 +81,7 @@ Pedido de Lazar: llevar a la última versión **estable** todo lo que usa el rep
 - **date-fns 3.6 → 4.4.** En `src/` solo lo usa `billing/pricing.ts` (`differenceInMonths`), y `src/shared/time/**` no lo usa. `date-fns-tz` 3.2 acepta `^3 || ^4` y solo aparece en tests y scripts.
 - **motion 13.5 → 14.7.1, no 14.8.0.** La 14.8.0 tenía 8 h de publicada y pnpm 12 la había metido sumando una entrada a `minimumReleaseAgeExclude`. Así se salteaba la espera de 1 día sin avisar, y se sacó. La 14.0 solo saca APIs internas de compatibilidad con framer-motion 13.0–13.4, y nosotros importamos todo de `motion/react`. Puede cambiar algo visual: la 14.3.1 cambió cuándo termina la salida en `AnimatePresence`, y la usan `WizardChrome` (con `mode="wait"`) y `CourtsPreview`, del onboarding. Lo cubren storybook y la regresión visual.
 - **@anthropic-ai/sdk 0.137 → 1.3.** El único breaking es la versión de API: manda `anthropic-version: 2026-10-21` en vez de `2023-06-01`, y la key va como `Authorization: Bearer`. El bot no usa parámetros de muestreo (los saca la API nueva), streaming ni betas. El typecheck pasó sin tocar código.
+- **Pruebas antes del PR (2026-10-30).** El CI completo se disparó a mano sobre la rama ya mergeada con main (run 40994892679) y dio verde en todo: E2E, regresión visual, stories light y dark, integración y aislamiento. La llamada real del SDK a la API se salteó por decisión de Lazar. El script quedó probado hasta la API con una key inválida (401). Por eso la primera llamada con la versión de API nueva va a ser el primer turno del bot en prod. Si falla, el turno pasa a una persona con push (`whatsapp-bot.turn.ts`). Después del merge hay que mirar ese primer turno.
 
 ## T1 — notas de CI
 

@@ -33,10 +33,17 @@ describe('paridad del tapado de datos personales entre los tres entrypoints', ()
     expect(src).toContain('scrubEvent(event)')
   })
 
-  it.each(ENTRYPOINTS)('%s tapa también las transacciones (beforeSendTransaction)', (rel) => {
+  it.each(ENTRYPOINTS)('%s tapa también las trazas (beforeSendSpan)', (rel) => {
     const src = leer(rel)
-    expect(src).toContain('beforeSendTransaction(event)')
-    expect(src).toContain('scrubTransaction(event)')
+    // Sentry 11 ignora `beforeSendTransaction` con spans en streaming (el default).
+    expect(src).not.toContain('beforeSendTransaction')
+    expect(src).toContain('beforeSendSpan(span)')
+    expect(src).toContain('scrubStreamedSpan(span)')
+  })
+
+  it.each(ENTRYPOINTS)('%s usa el baseline de datos compartido (dataCollection)', (rel) => {
+    // Sin `dataCollection`, Sentry 11 manda cookies, cuerpos y SQL por defecto.
+    expect(leer(rel)).toContain('...SENTRY_SHARED_OPTIONS')
   })
 
   it.each(ENTRYPOINTS)('%s no vuelve a tapar por su cuenta', (rel) => {

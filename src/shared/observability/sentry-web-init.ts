@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
-import { scrubEvent, scrubTransaction } from '@/lib/sentry-pii-scrub'
+import { SENTRY_SHARED_OPTIONS, scrubEvent, scrubStreamedSpan } from '@/lib/sentry-pii-scrub'
 import { isValidDsn, isDroppableDomainError } from '@/lib/sentry-event-filter'
 import { registerSentryErrorSink } from './error-sink'
 
@@ -74,16 +74,27 @@ export function ensureWebSentry(): boolean {
   // inicializar es un no-op, pero un error durante el propio `init` sí llega.
   registerSentryErrorSink()
   Sentry.init({
+    ...SENTRY_SHARED_OPTIONS,
     dsn,
     environment: process.env.NODE_ENV,
     release: process.env.VERCEL_GIT_COMMIT_SHA,
     tracesSampler: (samplingContext) => {
+      // Fuera de producción no se manda ninguna traza. Antes lo cortaba el filtro de
+      // transacciones devolviendo null; `beforeSendSpan` no puede descartar.
+      if (process.env.NODE_ENV !== 'production') return 0
       // Sentry v8 sacó `transactionContext` de SamplingContext: el nombre de la
       // transacción ahora viene directo en `samplingContext.name`. Si se dejaba
       // el acceso viejo quedaba `undefined` y TODO el sampling por ruta colapsaba
       // en silencio al 0.1 de abajo — los webhooks de MP perdían la mitad de su
-      // traza sin que nada fallara.
-      const name = samplingContext.name ?? ''
+      // traza sin que nada fallara. Sentry 11 muestrea antes de que el span tenga
+      // su nombre final (Next 16 lo abre como `GET` a secas): por eso se mira también
+      // el `http.target` que pone Next y la URL del pedido.
+      const target = samplingContext.attributes?.['http.target']
+      const name = [
+        samplingContext.name,
+        typeof target === 'string' ? target : '',
+        samplingContext.normalizedRequest?.url,
+      ].join(' ')
       if (name.includes('/api/health') || name.includes('/api/status')) return 0
       if (name.includes('/api/webhooks')) return 0.5
       if (name.includes('/api/bookings')) return 0.3
@@ -101,11 +112,10 @@ export function ensureWebSentry(): boolean {
       scrubEvent(event)
       return event
     },
-    beforeSendTransaction(event) {
-      if (process.env.NODE_ENV !== 'production') return null
-      // Las trazas llevan la URL completa (nombre y spans): mismo tapado que los errores.
-      scrubTransaction(event)
-      return event
+    beforeSendSpan(span) {
+      // Las trazas llevan la URL completa (nombre y atributos): mismo tapado que los errores.
+      scrubStreamedSpan(span)
+      return span
     },
   })
   return true

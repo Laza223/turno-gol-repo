@@ -50,7 +50,7 @@ memoria de sobra.
 
 1. **Requisitos en la máquina de Lazar (Windows)**: WSL2 habilitado + Docker
    Desktop (ya lo usa `supabase start` en local, así que la imagen ya está
-   resuelta) + Node 22 + pnpm.
+   resuelta) + Node 24 + pnpm.
 2. **Registrar el runner**: `Settings → Actions → Runners → New self-hosted
    runner` en `github.com/Laza223/turno-gol-repo`. Sigue el script que da GitHub
    (`config.cmd` con el token de registro), corrido dentro de WSL2 para que el

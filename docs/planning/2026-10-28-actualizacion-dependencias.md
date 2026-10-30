@@ -8,13 +8,13 @@ Pedido de Lazar: llevar a la última versión **estable** todo lo que usa el rep
 | --- | ---------------------------------------------------------------------------------------------------- | ------------- |
 | T1  | Patch/minor de npm, GitHub Actions, pnpm 10.34.9, skills de `skills-lock.json`, plugin sentry        | mergeado #515 |
 | T2  | vitest 5 + @vitest/browser 5, vite 8, eslint 10, happy-dom 21, jest-dom 7, dotenv 18, @types/node 22 | mergeado #518 |
-| T2b | pnpm 12 (sale de la T2: toca CI, Docker y el build de Vercel; va aislado)                            | en curso      |
+| T2b | pnpm 12 (sale de la T2: toca CI, Docker y el build de Vercel; va aislado)                            | mergeado #525 |
 | T3  | React 19.3 (ver abajo), date-fns 4, motion 14, @anthropic-ai/sdk 1.x                                 | pendiente     |
 | T4  | @sentry/nextjs 11                                                                                    | pendiente     |
 | T5  | Supabase CLI 2.x + `supabase/setup-cli` v3 (incluye `db-migrate.yml`, que corre contra prod)         | pendiente     |
 | T6  | mercadopago 3 — OK del dueño antes de prod                                                           | pendiente     |
 | T7  | pg-boss 12 — migra el schema `pgboss` en prod; efecto sobre El Vagón + OK antes                      | pendiente     |
-| T8  | Node 24 LTS (Docker, CI, Vercel, `engines`) — opcional                                               | pendiente     |
+| T8  | Node 24 LTS (Docker, CI, Vercel, `engines`) — se adelanta a la T3 (ver notas)                        | en curso      |
 
 ## Bloqueado
 
@@ -60,6 +60,19 @@ Pedido de Lazar: llevar a la última versión **estable** todo lo que usa el rep
 - `pnpm/action-setup@v6` flotante apunta a un commit anterior a v6.1.0, que es la primera con pnpm 12. Por eso se pineó `@v6.1.0`.
 - La sintaxis `"$react"` de overrides tira un warning de deprecación. Lo que propone pnpm es un `catalog:`, que cambia `package.json`: queda para cuando se toque React (T3).
 
+- **Después del merge (2026-10-29):**
+  - Vercel: "Detected ENABLE_EXPERIMENTAL_COREPACK=1 and pnpm@12.16.1", install verde y supply-chain en 3,7 s. `dpl_CCjfwxUB5SRK5m4CWPKmfz1M8YxA` quedó READY en turnogol.app.
+  - Railway: el worker nuevo registró las 24 colas, levantó el health server y dio `health.ping.ok`.
+  - Al worker anterior, que todavía arrancaba con `pnpm jobs:start`, le llegó "sending signal SIGTERM to container" y 0,1 s después cortó con `ELIFECYCLE Command failed`, sin `received signal, stopping...`. Es el bug medido en Docker, confirmado en prod.
+  - El apagado limpio se ve recién en el próximo deploy del worker.
+
+## T8 — notas
+
+- **Se adelanta a la T3.** El build de prod de #525 avisó: `Due to "engines": { "node": ">=20.9" } ... the Node.js Version defined in your Project Settings ("24.x") will not apply, Node.js Version "26.x" will be used instead`. O sea que la web corría en Node 26, que es la versión Current y no LTS, mientras el desarrollo local, el CI y los tests corrían en 22 o 24.
+- `engines.node: "24.x"`. Es el formato que Vercel documenta para fijar una mayor y coincide con el setting del proyecto. **pnpm no lo hace cumplir**: sin `engineStrict`, pnpm 12.16.1 instala con otro Node sin avisar (lo midió el verificador con `engines: 26.x` y Node 24). Docker y CI quedan en 24 porque lo fijan a mano. No se prende `engineStrict`: también falla el install por el `engines` de cualquier dependencia futura, y para el riesgo real, que es prod, ya alcanza con Vercel.
+- `@types/node` 22 → 24, para que los tipos sean los del runtime.
+- Docs que decían Node 20 o 22 como requisito: `CONTRIBUTING.md`, `docs/operations/self-hosted-runner.md` (el runner no existe, es un plan) y `doc16`.
+
 ## T1 — notas de CI
 
 - `supabase/setup-cli` NO se tocó en T1: está en `db-migrate.yml`, que aplica migraciones a prod al mergear. Va con T5.
@@ -80,3 +93,4 @@ Pedido de Lazar: llevar a la última versión **estable** todo lo que usa el rep
 | 2026-10-29 | sonnet-adversarial-reviewer | Verificación fresca del diff de T2b (config, lock, CI, Docker, Vercel) + storybook               | ~109k tokens                                           | GO con reservas, sin 🔴. Storybook 1496/1496, lock solo aditivo, claves reconocidas por pnpm 12. 🟡 el wrapper `bin/pnpm.mjs` hace `spawnSync` y no maneja SIGTERM: el worker podría no recibirlo en Railway (se prueba en la fase B). 🟡 corepack de Vercel sin verificar y la variable sin documentar (→ playbook). 🟢 skill con `pnpm.overrides`         |
 | 2026-10-29 | sonnet-implementer          | T2b fase B: install sin override, Docker y prueba de SIGTERM                                     | ~0 (lo cortó el fin de sesión antes de arrancar)       | Sin trabajo. La fase B la corrió el orquestador: install frozen OK, juez y unit 7259 verdes, imagen con pnpm 12.16.1 y corepack 0.36.0, SIGTERM perdido con pnpm 10 y 12 → start command con Node directo                                                                                                                                                   |
 | 2026-10-29 | sonnet-adversarial-reviewer | Verificación fresca del start command del worker (`railway.toml`, `Dockerfile.worker`, docs)     | ~78k tokens                                            | GO con reservas, sin 🔴. `node --import tsx` usa el mismo loader que la CLI; probó en la imagen los alias de los `import()` dinámicos. Railway corre el start command en exec form con builder Dockerfile. 🟡 draining de 0 s por defecto → `drainingSeconds = 10`. 🟢 dos docs que mandaban a deployar con pnpm → corregidos                               |
+| 2026-10-29 | sonnet-adversarial-reviewer | T8: verificación fresca del pase a Node 24 (engines, Docker, CI, Vercel)                         | ~72k tokens                                            | GO con reservas, sin 🔴. Imagen `node:24-slim` con corepack 0.36.0 y pnpm 12.16.1; sin env muere en `ECONNREFUSED`; SIGTERM en 0,8 s con `node --import tsx`. Ninguna dependencia excluye Node 24. 🟡 "pnpm hace cumplir `engines`" era falso → corregido. 🟡 tres docs con Node 20/22 → corregidas                                                         |

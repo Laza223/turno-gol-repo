@@ -8,7 +8,7 @@ Para variables de entorno, deploy y restore de backups, ver también `README.md`
 
 ## 1. Setup local
 
-Requisitos: **Node ≥ 20**, **pnpm** (versión exacta en `packageManager` de `package.json`), Docker (para Supabase local).
+Requisitos: **Node 24** (`engines` de `package.json`), **pnpm** (versión exacta en `packageManager` de `package.json`), Docker (para Supabase local).
 
 ```bash
 pnpm install

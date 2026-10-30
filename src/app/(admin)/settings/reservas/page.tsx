@@ -59,10 +59,10 @@ export default async function ReservasPolicyPage(
   const examplePriceCents = mostCommonPriceCents(courts)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <SettingsHeader title="Reservas y seña" />
 
-      <div className="card-premium rounded-lg p-6">
+      <div className="card-premium rounded-lg p-4 lg:p-6">
         <ReservasPolicyForm
           s={s}
           action={updateReservasPolicyAction}

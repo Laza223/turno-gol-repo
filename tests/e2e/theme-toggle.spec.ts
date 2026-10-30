@@ -62,13 +62,12 @@ test.describe('Toggle de tema', () => {
     try {
       await page.goto('/dashboard')
 
-      // El switch de tema (AdminThemeMenu) está montado en el header admin.
-      // La interacción del dropdown Radix en sí se cubre con el patrón del
-      // AccountMenu del jugador; acá validamos que el panel admin completo
-      // (chrome incluido) responde al tema que ese toggle persiste.
-      await expect(page.getByRole('button', { name: 'Cambiar tema' })).toBeVisible({
-        timeout: 60_000,
-      })
+      // El switch de tema vive en el menú de cuenta del riel (desktop) y en el
+      // cajón de "Más" (mobile), no en el header. Acá validamos que el panel
+      // admin completo (chrome incluido) responde al tema que persiste.
+      await page.getByRole('button', { name: /^Cuenta:/ }).click({ timeout: 60_000 })
+      await expect(page.getByRole('radio', { name: 'Oscuro' })).toBeVisible()
+      await page.keyboard.press('Escape')
 
       // next-themes persiste el tema elegido en localStorage['theme'].
       // Forzar "oscuro" → el panel admin flipa a dark.

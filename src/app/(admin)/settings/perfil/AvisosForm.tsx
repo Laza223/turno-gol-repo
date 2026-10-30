@@ -41,7 +41,11 @@ export function AvisosForm({ s, action }: { s: TenantSettings; action: UpdateAvi
   const [didSubmit, setDidSubmit] = useState(false)
 
   return (
-    <form action={formAction} onSubmit={() => setDidSubmit(true)} className="space-y-6 max-w-lg">
+    <form
+      action={formAction}
+      onSubmit={() => setDidSubmit(true)}
+      className="space-y-3 lg:space-y-6 max-w-lg"
+    >
       <fieldset className="space-y-3">
         {/* El título del bloque ("Resúmenes") lo pone la página, un `<h3>` en
             "Tu usuario". */}

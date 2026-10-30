@@ -48,7 +48,7 @@ export default async function SuperAdminPlayersPage(props: {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <PageHeader
         title="Jugadores"
         subtitle={`${stats.total} ${stats.total === 1 ? 'jugador' : 'jugadores'} en la plataforma`}

@@ -29,6 +29,7 @@ import { SetupAlertDot } from './setup-alert-dot'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
+import ThemeToggle from '@/components/theme/ThemeToggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface SidebarProps {
@@ -377,6 +378,12 @@ function AccountMenu({
         {/* Sin modificador de opacidad sobre `--muted-foreground`: está calibrado
             a 4.93:1 (globals.css) y cualquier `/N` lo deja bajo AA. */}
         <p className="px-2 pb-2 text-xs font-medium text-muted-foreground break-all">{userEmail}</p>
+        <p className="px-2 pb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Tema
+        </p>
+        <div className="pb-2">
+          <ThemeToggle />
+        </div>
         <Button
           variant="ghost"
           className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
@@ -672,6 +679,12 @@ function SidebarDrawerContent({
       </nav>
 
       <div className="border-t border-border px-3 py-3">
+        <p className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Tema
+        </p>
+        <div className="px-3 pb-3">
+          <ThemeToggle variant="portal" />
+        </div>
         <p className="px-3 pb-2 text-xs font-medium text-muted-foreground break-all">{userEmail}</p>
         <Button
           variant="ghost"

@@ -37,7 +37,7 @@ export default async function SuperAdminWhatsappPage() {
   const data = await readMonitor()
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <PageHeader
         title="Bot de WhatsApp"
         subtitle="Cuánto consume y cómo anda en cada complejo."

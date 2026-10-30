@@ -32,7 +32,7 @@ export function AnaliticasView({
   csv: { from: string; to: string }
 }) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-3 lg:space-y-5">
       {/* La barra es navegación: el título lo tiene que encontrar igual el lector de pantalla. */}
       <h1 className="sr-only">Métricas</h1>
       <AdminHeaderSlot>
@@ -51,7 +51,7 @@ export function AnaliticasView({
       )}
 
       {/* Un bloque ausente no deja hueco: `empty:hidden` (sin hijos no hay fila). */}
-      <div className="grid grid-cols-1 items-start gap-5 empty:hidden lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-start gap-3 lg:gap-5 empty:hidden lg:grid-cols-2">
         {!isEmpty && <MethodSummary report={report} />}
         {(isCurrent || canSeeSystem) && (
           <MetricsDashboard canSeeSystem={canSeeSystem} showRecent={isCurrent} />

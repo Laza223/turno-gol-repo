@@ -21,7 +21,7 @@ export function PulsoTech({
           aria-hidden="true"
         />
       </summary>
-      <div className="grid grid-cols-1 gap-8 border-t border-border px-4 py-4 sm:px-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:gap-8 border-t border-border px-4 py-4 sm:px-6 lg:grid-cols-2">
         <div>
           <h3 className="text-sm font-semibold text-foreground">Tareas pendientes</h3>
           <p className="mb-2 text-xs text-muted-foreground">

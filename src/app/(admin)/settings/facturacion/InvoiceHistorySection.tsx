@@ -54,7 +54,7 @@ function formatDate(d: Date | null): string {
  */
 export function InvoiceHistorySection({ invoices }: Props) {
   return (
-    <section className="card-premium rounded-xl p-6">
+    <section className="card-premium rounded-xl p-4 lg:p-6">
       <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
         <Receipt className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden /> Historial
         de pagos

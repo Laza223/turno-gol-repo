@@ -99,7 +99,10 @@ function TopSlots({ metrics }: { metrics: TenantMetrics }) {
 function Recent({ metrics, staleError }: { metrics: TenantMetrics; staleError: string | null }) {
   if (metrics.topSlots.length === 0 && metrics.noShow.finished === 0) return null
   return (
-    <section aria-labelledby="ultimos-30" className="card-premium space-y-4 p-4 sm:p-5">
+    <section
+      aria-labelledby="ultimos-30"
+      className="card-premium space-y-3 lg:space-y-4 p-4 sm:p-5"
+    >
       <h2 id="ultimos-30" className="text-sm font-semibold text-foreground">
         Últimos 30 días
       </h2>
@@ -124,7 +127,11 @@ function Recent({ metrics, staleError }: { metrics: TenantMetrics; staleError: s
 
 function RecentSkeleton() {
   return (
-    <div className="card-premium space-y-4 p-4 sm:p-5" role="status" aria-label="Cargando métricas">
+    <div
+      className="card-premium space-y-3 lg:space-y-4 p-4 sm:p-5"
+      role="status"
+      aria-label="Cargando métricas"
+    >
       <Skeleton className="h-4 w-28" />
       {Array.from({ length: 5 }).map((_, i) => (
         <div key={i} className="space-y-1.5">

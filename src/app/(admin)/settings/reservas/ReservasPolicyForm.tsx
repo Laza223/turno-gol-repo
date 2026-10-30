@@ -194,12 +194,12 @@ export function ReservasPolicyForm({
     examplePriceCents != null && depositCents != null ? examplePriceCents - depositCents : null
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
+    <div className="grid grid-cols-1 gap-3 lg:gap-6 lg:grid-cols-3 lg:items-start">
       {/* Panel "Así lo ve el jugador" (Cambio 2): arriba del form en mobile
           (order-first), columna sticky a la derecha en desktop. Es solo una
           vista previa — nada de acá se manda a la Server Action. */}
       <div className="order-first lg:sticky lg:top-6 lg:order-2 lg:col-span-1">
-        <div className="reserva-receipt-card relative space-y-4 overflow-hidden rounded-2xl p-5">
+        <div className="reserva-receipt-card relative space-y-3 lg:space-y-4 overflow-hidden rounded-2xl p-4 lg:p-5">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
             <Eye className="h-4 w-4 text-emerald-700 dark:text-emerald-400" aria-hidden />
             Así lo ve el jugador
@@ -293,7 +293,7 @@ export function ReservasPolicyForm({
         {/* Dos bloques y una sola action: `updateReservasPolicyAction` guarda
             todo junto, así que se parte con títulos dentro del mismo form y no
             en dos forms con dos "Guardar". */}
-        <section aria-labelledby="reservas-internet" className="space-y-8">
+        <section aria-labelledby="reservas-internet" className="space-y-4 lg:space-y-8">
           <header>
             <h2 id="reservas-internet" className="text-base font-semibold text-foreground">
               Reservas por internet
@@ -406,7 +406,11 @@ export function ReservasPolicyForm({
 
         {/* `scroll-mt-24`: la portada linkea acá (`#sena`) y la barra del panel
             es sticky — sin margen, el título quedaba tapado. */}
-        <section id="sena" aria-labelledby="sena-titulo" className="scroll-mt-24 space-y-8">
+        <section
+          id="sena"
+          aria-labelledby="sena-titulo"
+          className="scroll-mt-24 space-y-4 lg:space-y-8"
+        >
           <header>
             <h2 id="sena-titulo" className="text-base font-semibold text-foreground">
               Seña
@@ -416,7 +420,7 @@ export function ReservasPolicyForm({
             </p>
           </header>
 
-          <div className="space-y-4">
+          <div className="space-y-3 lg:space-y-4">
             <SegmentedControl
               className={`flex gap-2 ${mpConnected ? '' : 'opacity-50 cursor-not-allowed'}`}
               aria-label="Seña"

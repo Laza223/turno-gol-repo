@@ -65,7 +65,7 @@ export function SuscripcionTab({ detail }: { detail: TenantDetail }) {
       : null
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 lg:space-y-4">
       <Card title="Estado de la suscripción">
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Dt label="Estado">

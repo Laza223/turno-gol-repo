@@ -23,7 +23,7 @@ export default async function ImportarFijosPage() {
   const [header, ...example] = IMPORT_TEMPLATE
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <PageHeader
         variant="plain"
         title="Importar turnos fijos"

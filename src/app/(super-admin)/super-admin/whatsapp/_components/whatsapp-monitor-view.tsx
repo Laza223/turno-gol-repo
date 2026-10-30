@@ -282,7 +282,7 @@ function TenantCards({ tenants }: { tenants: WhatsappTenantHealth[] }) {
 /** Cuerpo de `/super-admin/whatsapp`: consumo de Kapso y Anthropic, y salud por complejo. */
 export function WhatsappMonitorView({ data }: { data: WhatsappMonitor }) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <KapsoCard kapso={data.kapso} month={data.month} />
         <AnthropicCard anthropic={data.anthropic} />

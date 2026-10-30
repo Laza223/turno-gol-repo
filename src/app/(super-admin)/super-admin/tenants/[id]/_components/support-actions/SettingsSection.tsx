@@ -38,7 +38,7 @@ export function SettingsSection({ tenantId, settings, pending, run, action }: Pr
       title="Editar settings del complejo"
       description="Solo campos whitelisteados (los mismos que el admin edita en su panel). Nunca JSON libre."
     >
-      <div className="space-y-4">
+      <div className="space-y-3 lg:space-y-4">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {boolFields.map(({ key, label }) => (
             <label key={key} className="flex items-center gap-2 text-sm text-foreground">

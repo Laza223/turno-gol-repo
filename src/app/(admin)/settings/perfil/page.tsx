@@ -21,7 +21,7 @@ export default async function PerfilPage() {
   const gaps = getProfileGaps(tenant)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <SettingsHeader title="Página pública" />
 
       {/* Lo que el punto del riel y de la portada anuncian: qué falta y qué se pierde.
@@ -47,13 +47,13 @@ export default async function PerfilPage() {
 
       {/* Las dos cards de datos del complejo van lado a lado en escritorio; las
           filas plegables de abajo siguen a ancho completo. */}
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2 xl:items-start">
+      <div className="grid grid-cols-1 gap-3 lg:gap-6 xl:grid-cols-2 xl:items-start">
         {/* Maqueta de la cabecera pública (cover + logo + nombre + dirección) +
           las dos filas de subida: antes había que abrir "Ver mi perfil
           público" en otra pestaña a ciegas para comprobar cómo quedaba una
           imagen recién subida. */}
-        <div className="card-premium rounded-lg p-6">
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
+        <div className="card-premium rounded-lg p-4 lg:p-6">
+          <div className="mb-4 lg:mb-6 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-base font-semibold text-foreground">Fotos</h2>
             {/* H067: sin este link no había forma de verificar cómo quedaron
               el logo y la portada en el perfil público real. */}

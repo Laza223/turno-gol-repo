@@ -19,7 +19,7 @@ export function SuspendidosPanel({ rows }: { rows: SuspendidoView[] }) {
   const pending = rows.filter((r) => r.pendingMatches > 0)
 
   if (pending.length === 0) {
-    return <EmptyState title="No hay jugadores suspendidos." className="py-6" />
+    return <EmptyState title="No hay jugadores suspendidos." className="py-4 lg:py-6" />
   }
 
   return (

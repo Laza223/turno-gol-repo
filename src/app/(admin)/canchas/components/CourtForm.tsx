@@ -321,7 +321,7 @@ export function CourtForm({
   const cancel = () => onCancel(isEdit ? photos : undefined)
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
+    <div className="mx-auto max-w-3xl space-y-3 lg:space-y-5">
       <div className="space-y-2">
         <button
           type="button"
@@ -338,7 +338,7 @@ export function CourtForm({
       </div>
 
       <form onSubmit={handleSubmit} className="rounded-xl border border-border bg-card shadow-xs">
-        <section className="space-y-4 p-5 sm:p-6">
+        <section className="space-y-3 lg:space-y-4 p-4 lg:p-5 sm:p-6">
           <h2 className="text-base font-semibold text-foreground">La cancha</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
             <div className="space-y-1.5">
@@ -383,7 +383,7 @@ export function CourtForm({
           </div>
         </section>
 
-        <section className="space-y-4 border-t border-border p-5 sm:p-6">
+        <section className="space-y-3 lg:space-y-4 border-t border-border p-4 lg:p-5 sm:p-6">
           <div className="space-y-0.5">
             <h2 className="text-base font-semibold text-foreground">Precio del turno</h2>
             <p className="text-sm text-muted-foreground">Lo que cobrás por un turno de una hora.</p>
@@ -399,7 +399,7 @@ export function CourtForm({
 
         <section
           ref={photosRef}
-          className="scroll-mt-4 space-y-4 border-t border-border p-5 sm:p-6"
+          className="scroll-mt-4 space-y-3 lg:space-y-4 border-t border-border p-4 lg:p-5 sm:p-6"
         >
           <div className="space-y-0.5">
             <h2 className="text-base font-semibold text-foreground">Fotos</h2>
@@ -409,7 +409,7 @@ export function CourtForm({
               </p>
             )}
           </div>
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-[minmax(0,1fr)_14rem]">
+          <div className="grid grid-cols-1 gap-3 lg:gap-5 md:grid-cols-[minmax(0,1fr)_14rem]">
             <div className="space-y-2">
               <ImageUploader
                 preset="court"

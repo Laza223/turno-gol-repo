@@ -147,7 +147,7 @@ export function PendingLines({
       <Dialog open={open !== null} onOpenChange={(next) => !next && setOpen(null)}>
         {openCopy && (
           <DialogContent className="max-w-xl grid-cols-1 gap-0 p-0">
-            <div className="border-b border-border p-5 pr-14">
+            <div className="border-b border-border p-4 lg:p-5 pr-14">
               <DialogTitle className="font-display text-lg leading-tight">
                 {openCopy.title}
               </DialogTitle>
@@ -159,7 +159,7 @@ export function PendingLines({
             {openRows.length === 0 ? (
               <p
                 className={cn(
-                  'flex items-center justify-center gap-2 px-5 py-10 text-sm font-medium',
+                  'flex items-center justify-center gap-2 px-5 py-5 lg:py-10 text-sm font-medium',
                   TONE_TEXT.success,
                 )}
               >

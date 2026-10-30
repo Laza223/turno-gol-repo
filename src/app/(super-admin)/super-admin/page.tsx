@@ -64,7 +64,7 @@ async function ActivityTop({ activity }: { activity: ActivityRead }) {
   const data = await activity
   if (!data) return <PulsoUnavailable />
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <PulsoStats activity={data} />
       <PulsoSeries series={data.series} />
     </div>
@@ -128,7 +128,7 @@ export default async function SuperAdminPulsoPage({
   const rewards = settle(listReferralRewardsForReview(), 'premios de referidos')
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <PageHeader
         title="Pulso"
         subtitle="Cómo viene la plataforma hoy y esta semana."

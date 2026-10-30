@@ -17,7 +17,7 @@ export default async function NuevoAbonadoPage() {
   const courtOptions = courts.map((c) => ({ id: c.id, name: c.name }))
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <PageHeader
         variant="plain"
         title="Nuevo turno fijo"

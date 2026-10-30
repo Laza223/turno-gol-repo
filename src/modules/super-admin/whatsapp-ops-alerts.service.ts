@@ -292,6 +292,20 @@ async function clearSuspicion(db: Db, n: NumberToCheck): Promise<void> {
 }
 
 /**
+ * Un `degraded` (nombre visible sin aprobar, negocio sin verificar) dura días y
+ * no es accionable: loguearlo en cada tick son 288 líneas por día y por número.
+ * Una por día; `ops_alerts` ya purga a los 90 días.
+ */
+async function claimDegradedLog(db: Db, n: NumberToCheck, now: Date): Promise<boolean> {
+  const claimed = await db
+    .insert(opsAlerts)
+    .values({ key: `wa-degradado:${n.tenantId}:${n.phoneNumberId}:${artDateOf(now)}` })
+    .onConflictDoNothing()
+    .returning({ key: opsAlerts.key })
+  return claimed.length > 0
+}
+
+/**
  * Consulta la salud de cada número con TurnoGol Plus (con el asistente prendido
  * o no: un número caído es un bot mudo el día que lo prendan) y arma los mails.
  * Además mueve el estado de la conexión: caído por desconexión, acceso o 404 →
@@ -348,12 +362,12 @@ async function checkNumbersHealth(db: Db, now: Date): Promise<OpsAlert[]> {
 
     const verdict = classifyNumberHealth(health)
     if (verdict.kind === 'unknown') logger.warn('whatsapp: Kapso no pudo revisar el número', log)
-    if (verdict.kind === 'degraded') {
-      logger.info('whatsapp: número degradado', { ...log, failing: health?.failingChecks })
-    }
     // Aparte: si falla la base con este número, el resto del tick sigue. El mail
     // va antes que la escritura del estado: si esa falla, sale igual.
     try {
+      if (verdict.kind === 'degraded' && (await claimDegradedLog(db, n, now))) {
+        logger.info('whatsapp: número degradado', { ...log, failing: health?.failingChecks })
+      }
       if (verdict.kind === 'down') {
         if (!(await isDownConfirmed(db, n, now))) {
           logger.info('whatsapp: número caído, se confirma en el próximo tick', {

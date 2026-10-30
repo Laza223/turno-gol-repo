@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
  */
 export default function Loading() {
   return (
-    <div className="space-y-6" aria-busy="true">
+    <div className="space-y-3 lg:space-y-6" aria-busy="true">
       <div className="page-header-band relative overflow-hidden rounded-2xl border border-border/60 px-5 py-5 sm:px-7 sm:py-6">
         <div className="flex items-center gap-4">
           <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />

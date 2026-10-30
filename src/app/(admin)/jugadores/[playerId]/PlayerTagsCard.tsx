@@ -74,7 +74,7 @@ export function PlayerTagsCard({ playerId, tags, setPlayerTagsAction }: Props) {
   }
 
   return (
-    <section className="card-premium rounded-xl p-6">
+    <section className="card-premium rounded-xl p-4 lg:p-6">
       <h2 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
         <Tag className="h-4 w-4 text-muted-foreground" aria-hidden /> Etiquetas
       </h2>

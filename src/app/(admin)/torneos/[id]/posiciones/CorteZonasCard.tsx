@@ -75,7 +75,7 @@ export function CorteZonasCard({
   }
 
   return (
-    <section className="rounded-xl border border-border bg-card p-5 space-y-4">
+    <section className="rounded-xl border border-border bg-card p-4 lg:p-5 space-y-3 lg:space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="font-display text-lg font-semibold text-foreground">

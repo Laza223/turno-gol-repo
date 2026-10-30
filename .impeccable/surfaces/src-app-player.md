@@ -36,7 +36,7 @@ Bloques en este orden. En el celular es una columna; en escritorio, la misma col
 1. **Quién sos:** dentro de la banda `PlayerHeroBand` de "Mi cuenta": avatar con iniciales, nombre y email.
 2. **Tus datos:** nombre (obligatorio), apellido (opcional), teléfono y zona. El email no se edita (se muestra en "Quién sos"). Los errores van al lado de su campo y "Guardado" desaparece si se vuelve a editar.
 3. **Favoritos:** los complejos guardados, cada uno a un toque de su página. Si no hay, una salida a Explorar.
-4. **Tu actividad:** partidos jugados, complejos y racha. Sin puntajes ni rankings. Con cero, una salida a reservar.
+4. **Tu actividad:** partidos jugados, complejos y racha. Sin puntajes ni rankings (en v1; las próximas olas de RIVAL pueden sumar la media y tablas: `docs/rival/README.md`). Con cero, una salida a reservar.
 5. **Tema** (el `ThemeToggle` en su variante del portal) y **Salir**.
 6. **Tus datos personales:** "Descargar mis datos", en palabras de jugador y sin jerga legal en el texto principal. Avisa cuando la descarga terminó.
 7. **Eliminar la cuenta:** un link sobrio a `/eliminar-cuenta`, sin tarjeta roja.

@@ -84,7 +84,7 @@ export function FiadosList({
       </div>
 
       {tabs.length === 0 ? (
-        <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+        <p className="px-4 py-4 lg:py-6 text-center text-sm text-muted-foreground">
           Nadie tiene fiado abierto.
         </p>
       ) : (
@@ -262,7 +262,7 @@ function SettleTabDialog({
             onRetry={() => run(retry)}
           />
         )}
-        <div className="space-y-4" hidden={retry !== null}>
+        <div className="space-y-3 lg:space-y-4" hidden={retry !== null}>
           <SplitPaymentFields
             lines={lines}
             onChange={setLines}
@@ -354,7 +354,7 @@ function CancelTabDialog({
         <DialogHeader>
           <DialogTitle>Anular fiado — {tab?.debtorName}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="space-y-3 lg:space-y-4">
           <p className="text-xs text-muted-foreground">
             Devuelve el stock entregado. La plata nunca entró a la caja.
           </p>

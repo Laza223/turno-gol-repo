@@ -92,7 +92,7 @@ export function StatCard({
   className,
 }: StatCardProps) {
   return (
-    <div className={cn('card-premium card-premium-interactive group p-5', className)}>
+    <div className={cn('card-premium card-premium-interactive group p-4 lg:p-5', className)}>
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm font-medium text-muted-foreground">{label}</p>
         {icon && (

@@ -64,7 +64,7 @@ export function CancelSubscriptionSection({ status, accessUntil, context = 'sett
 
   if (status === 'canceled') {
     return (
-      <section className="card-premium rounded-xl p-6">
+      <section className="card-premium rounded-xl p-4 lg:p-6">
         <h2 className="text-base font-semibold text-foreground">Dar de baja TurnoGol</h2>
         <p className="mt-3 text-sm text-muted-foreground">
           Te diste de baja: seguís usando todo hasta el {formatDate(accessUntil)}.
@@ -136,7 +136,7 @@ export function CancelSubscriptionSection({ status, accessUntil, context = 'sett
   }
 
   return (
-    <section className="card-premium rounded-xl p-6">
+    <section className="card-premium rounded-xl p-4 lg:p-6">
       <h2 className="text-base font-semibold text-foreground">Dar de baja TurnoGol</h2>
       <p className="mt-1 text-sm text-muted-foreground">{intro}</p>
 

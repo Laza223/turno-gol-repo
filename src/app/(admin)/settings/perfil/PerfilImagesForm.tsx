@@ -167,7 +167,7 @@ export function PerfilImagesForm({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3 lg:space-y-5">
       <PublicHeaderPreview
         tenantName={tenantName}
         tenantAddress={tenantAddress}

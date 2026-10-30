@@ -138,7 +138,7 @@ export function PreviewSlotsView({
   const noSlots = goodCount === 0
 
   return (
-    <div className="space-y-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
+    <div className="space-y-3 lg:space-y-6 rounded-2xl border border-border bg-card p-4 lg:p-6 shadow-sm">
       <div className="flex items-center justify-between border-b border-border pb-4">
         <div>
           <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
@@ -218,7 +218,7 @@ export function PreviewSlotsView({
           type="button"
           onClick={onConfirm}
           disabled={noSlots || isConfirming}
-          className="h-11 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50 transition flex items-center gap-2 active:scale-[0.98]"
+          className="h-11 rounded-xl bg-primary px-4 lg:px-6 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50 transition flex items-center gap-2 active:scale-[0.98]"
         >
           {isConfirming ? (
             <>
@@ -456,12 +456,12 @@ export default function AbonadoForm({
     'h-11 w-full rounded-xl border border-input bg-background text-base md:text-sm text-foreground shadow-xs transition-all focus-within:border-primary focus-within:ring-2 focus-within:ring-ring hover:border-accent-foreground/20'
 
   return (
-    <form onSubmit={handlePreviewSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+    <form onSubmit={handlePreviewSubmit} className="space-y-3 lg:space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:gap-6 items-start">
         {/* Columna Izquierda / Central: Formulario */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-3 lg:space-y-6">
           {/* Seccion 1: Turno Fijo */}
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
+          <div className="rounded-2xl border border-border bg-card p-4 lg:p-6 shadow-xs space-y-3 lg:space-y-4">
             <div className="flex items-center gap-2.5 pb-2 border-b border-border">
               <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                 <Repeat className="h-4 w-4" />
@@ -474,7 +474,7 @@ export default function AbonadoForm({
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3 lg:space-y-4">
               <div className="space-y-1.5">
                 <label
                   htmlFor="courtId"
@@ -589,7 +589,7 @@ export default function AbonadoForm({
           </div>
 
           {/* Seccion 2: Cliente y Precio */}
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-4">
+          <div className="rounded-2xl border border-border bg-card p-4 lg:p-6 shadow-xs space-y-3 lg:space-y-4">
             <div className="flex items-center gap-2.5 pb-2 border-b border-border">
               <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                 <User className="h-4 w-4" />
@@ -602,7 +602,7 @@ export default function AbonadoForm({
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3 lg:space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="relative space-y-1.5">
                   {/* F-021: era el único campo del form sin label asociada — un
@@ -726,8 +726,8 @@ export default function AbonadoForm({
         </div>
 
         {/* Columna Derecha: Tarjeta de Resumen en Vivo (Desktop Sidebar) */}
-        <div className="lg:col-span-1 space-y-4 lg:sticky lg:top-6">
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-xs space-y-5">
+        <div className="lg:col-span-1 space-y-3 lg:space-y-4 lg:sticky lg:top-6">
+          <div className="rounded-2xl border border-border bg-card p-4 lg:p-6 shadow-xs space-y-3 lg:space-y-5">
             <div className="flex items-center justify-between pb-3 border-b border-border">
               <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
@@ -806,7 +806,7 @@ export default function AbonadoForm({
             <button
               type="submit"
               disabled={isPreviewing}
-              className="w-full h-11 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-60 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+              className="w-full h-11 rounded-xl bg-primary px-4 lg:px-6 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-60 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
             >
               {isPreviewing ? (
                 <>

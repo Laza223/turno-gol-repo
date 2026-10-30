@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
  */
 export default function Loading() {
   return (
-    <div className="space-y-5" aria-busy="true">
+    <div className="space-y-3 lg:space-y-5" aria-busy="true">
       <Skeleton className="h-11 w-56 lg:hidden" />
 
       <div className="card-premium space-y-4 p-4 sm:p-5">

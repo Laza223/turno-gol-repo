@@ -46,7 +46,7 @@ export function PlayerBookingsTable({
     <section className="space-y-3">
       <h2 className="text-base font-semibold text-foreground">Reservas</h2>
       {rows.length === 0 ? (
-        <p className="rounded-xl border border-border/60 bg-card px-4 py-10 text-center text-sm text-muted-foreground">
+        <p className="rounded-xl border border-border/60 bg-card px-4 py-5 lg:py-10 text-center text-sm text-muted-foreground">
           {total > 0 ? (
             <>
               Esa página no existe.{' '}

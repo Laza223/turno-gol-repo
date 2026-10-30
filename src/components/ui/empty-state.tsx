@@ -21,7 +21,7 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'card-entrance relative flex flex-col items-center justify-center overflow-hidden rounded-xl border border-dashed border-border/70 bg-gradient-to-b from-card to-muted/30 px-6 py-14 text-center dark:from-card dark:to-muted/10',
+        'card-entrance relative flex flex-col items-center justify-center overflow-hidden rounded-xl border border-dashed border-border/70 bg-gradient-to-b from-card to-muted/30 px-4 py-6 text-center lg:px-6 lg:py-14 dark:from-card dark:to-muted/10',
         className,
       )}
     >
@@ -53,7 +53,7 @@ export function EmptyState({
           {description}
         </p>
       ) : null}
-      {action ? <div className="relative mt-6">{action}</div> : null}
+      {action ? <div className="relative mt-4 lg:mt-6">{action}</div> : null}
     </div>
   )
 }

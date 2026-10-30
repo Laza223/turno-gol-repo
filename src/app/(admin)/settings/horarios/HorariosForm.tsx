@@ -46,7 +46,11 @@ export function HorariosForm({
   const needsPrices = state.success ? undefined : state.needsPrices
 
   return (
-    <form action={formAction} onSubmit={() => setDidSubmit(true)} className="space-y-4">
+    <form
+      action={formAction}
+      onSubmit={() => setDidSubmit(true)}
+      className="space-y-3 lg:space-y-4"
+    >
       {/* Sin closesNextDay/onClosesNextDayChange: en /settings/horarios el flag
           se deriva solo (Cambio 1, rediseño horarios) — no hay checkbox manual. */}
       <ScheduleFields view={view} onViewChange={setView} />

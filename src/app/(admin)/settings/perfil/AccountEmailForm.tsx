@@ -42,7 +42,7 @@ export function AccountEmailForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-md space-y-4">
+    <form onSubmit={handleSubmit} className="max-w-md space-y-3 lg:space-y-4">
       <div>
         <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Email actual

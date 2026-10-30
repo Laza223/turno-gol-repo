@@ -197,10 +197,10 @@ export function ImportarFijosForm({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <section
         aria-labelledby="importar-planilla"
-        className="space-y-5 rounded-2xl border border-border bg-card p-4 shadow-xs sm:p-6"
+        className="space-y-3 lg:space-y-5 rounded-2xl border border-border bg-card p-4 shadow-xs sm:p-6"
       >
         <div className="space-y-1.5">
           <h2 id="importar-planilla" className="text-base font-semibold text-foreground">
@@ -338,7 +338,7 @@ function PreviewPanel({
   return (
     <section
       aria-labelledby="importar-revision"
-      className="space-y-4 rounded-2xl border border-border bg-card p-4 shadow-xs sm:p-6"
+      className="space-y-3 lg:space-y-4 rounded-2xl border border-border bg-card p-4 shadow-xs sm:p-6"
     >
       <div className="space-y-1">
         <h2
@@ -472,7 +472,7 @@ function ResultPanel({ result }: { result: ImportResult }) {
   return (
     <section
       aria-labelledby="importar-resultado"
-      className="space-y-4 rounded-2xl border border-border bg-card p-4 shadow-xs sm:p-6"
+      className="space-y-3 lg:space-y-4 rounded-2xl border border-border bg-card p-4 shadow-xs sm:p-6"
     >
       <div className="space-y-1">
         <h2

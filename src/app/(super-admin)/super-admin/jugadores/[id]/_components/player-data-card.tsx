@@ -29,7 +29,7 @@ export function PlayerDataCard({ player, now }: { player: PlayerDetail['player']
   const wa = player.phone ? whatsappHref(player.phone) : null
 
   return (
-    <section className="rounded-xl border border-border/60 bg-card p-5 shadow-xs">
+    <section className="rounded-xl border border-border/60 bg-card p-4 lg:p-5 shadow-xs">
       <h2 className="mb-4 text-base font-semibold text-foreground">Datos</h2>
       {anonymized && (
         <p className="mb-4 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">

@@ -320,7 +320,7 @@ export function ActaPanel({
         </div>
 
         {events.length === 0 ? (
-          <EmptyState title="Todavía no hay goles ni tarjetas cargados." className="py-6" />
+          <EmptyState title="Todavía no hay goles ni tarjetas cargados." className="py-4 lg:py-6" />
         ) : (
           <ul className="divide-y divide-border">
             {events.map((ev) => (

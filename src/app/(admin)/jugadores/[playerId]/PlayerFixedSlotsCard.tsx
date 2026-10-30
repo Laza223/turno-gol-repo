@@ -37,7 +37,7 @@ export function PlayerFixedSlotsCard({
   if (slots.length === 0) return null
 
   return (
-    <section className="card-premium rounded-xl p-6">
+    <section className="card-premium rounded-xl p-4 lg:p-6">
       <div className="flex items-start justify-between gap-3">
         <h2 className="text-sm font-semibold text-foreground">Turnos fijos</h2>
         <button

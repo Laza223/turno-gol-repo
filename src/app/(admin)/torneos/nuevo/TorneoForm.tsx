@@ -93,8 +93,8 @@ export function TorneoForm({ action }: { action: CreateTournamentAction }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="rounded-xl border border-border bg-card p-5 space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-3 lg:space-y-6">
+      <div className="rounded-xl border border-border bg-card p-4 lg:p-5 space-y-3 lg:space-y-5">
         <div className="space-y-1.5">
           <label htmlFor="torneo-nombre" className="text-sm font-medium text-foreground">
             Nombre del torneo

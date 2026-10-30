@@ -189,7 +189,7 @@ export default async function DashboardPage() {
     // Una sola columna a todo el ancho (2026-09-25): la venta dejó de ser una columna
     // fija a la derecha y pasó a un modal que abre "Vender" o la tecla V (desde
     // 2026-10-26 el modal vive en el layout del panel).
-    <div className="min-w-0 space-y-4">
+    <div className="min-w-0 space-y-3 lg:space-y-4">
       {showTour && <DashboardTour action={markTourSeenAction} />}
 
       {/* La banda `PageHeader` se fue (rediseño 2026-09-12): el riel ya dice

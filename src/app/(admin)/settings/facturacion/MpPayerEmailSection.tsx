@@ -55,7 +55,7 @@ export function MpPayerEmailSection({
   const effective = declared ?? ownerEmail
 
   return (
-    <section id={anchorId} className="card-premium rounded-xl p-6 scroll-mt-24">
+    <section id={anchorId} className="card-premium rounded-xl p-4 lg:p-6 scroll-mt-24">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
           <Wallet className="h-5 w-5" aria-hidden />
@@ -81,7 +81,7 @@ export function MpPayerEmailSection({
         </p>
       )}
 
-      <form action={formAction} className="mt-4 max-w-md space-y-4">
+      <form action={formAction} className="mt-4 max-w-md space-y-3 lg:space-y-4">
         <div>
           <label htmlFor="mp-payer-email" className="block text-sm font-medium text-foreground">
             Email de tu cuenta de MercadoPago

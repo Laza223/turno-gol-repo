@@ -7,7 +7,7 @@ function Block({ className }: { className: string }) {
 /** Silueta de los cuatro números + las dos series. */
 export function ActivityTopSkeleton() {
   return (
-    <div className="space-y-6" aria-hidden="true">
+    <div className="space-y-3 lg:space-y-6" aria-hidden="true">
       <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         {[0, 1, 2, 3].map((i) => (
           <Block key={i} className="h-32" />
@@ -20,7 +20,7 @@ export function ActivityTopSkeleton() {
 
 export function FeedSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2" aria-hidden="true">
+    <div className="grid grid-cols-1 gap-3 lg:gap-6 lg:grid-cols-2" aria-hidden="true">
       <Block className="h-80" />
       <Block className="h-80" />
     </div>
@@ -29,8 +29,8 @@ export function FeedSkeleton() {
 
 export function RestSkeleton() {
   return (
-    <div className="space-y-6" aria-hidden="true">
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div className="space-y-3 lg:space-y-6" aria-hidden="true">
+      <div className="grid grid-cols-1 gap-3 lg:gap-6 lg:grid-cols-2">
         <Block className="h-56" />
         <Block className="h-56" />
       </div>

@@ -163,8 +163,8 @@ export function FixturePanel({
 
   if (matches.length === 0) {
     return (
-      <section className="space-y-4">
-        <div className="rounded-xl border border-border bg-card p-5 space-y-5">
+      <section className="space-y-3 lg:space-y-4">
+        <div className="rounded-xl border border-border bg-card p-4 lg:p-5 space-y-3 lg:space-y-5">
           <div>
             <h2 className="font-display text-lg font-semibold text-foreground">
               Generar el fixture
@@ -254,7 +254,7 @@ export function FixturePanel({
   }
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-3 lg:space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground tabular-nums">
           {matches.length} {matches.length === 1 ? 'partido' : 'partidos'}

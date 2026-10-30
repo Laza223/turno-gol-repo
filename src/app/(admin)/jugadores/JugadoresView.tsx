@@ -186,7 +186,7 @@ export function JugadoresView({
     dormant ? renderWhatsappButton(c) : renderLinkButton(c)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <PageHeader title="Personas" icon={<Contact className="h-6 w-6" aria-hidden="true" />} />
 
       <div className="card-entrance" style={{ animationDelay: '80ms' }}>

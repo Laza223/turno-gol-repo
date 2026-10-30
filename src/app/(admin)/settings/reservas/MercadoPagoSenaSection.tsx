@@ -55,7 +55,7 @@ export function MercadoPagoSenaSection({
     <section
       id="mercado-pago"
       aria-labelledby="mercado-pago-titulo"
-      className="card-premium scroll-mt-24 rounded-lg p-6"
+      className="card-premium scroll-mt-24 rounded-lg p-4 lg:p-6"
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">

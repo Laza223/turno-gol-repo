@@ -62,7 +62,7 @@ export function NightSummary({ heading, summary }: { heading: string; summary: D
   return (
     <section
       aria-label="Resumen del día"
-      className="card-premium flex flex-col gap-4 p-5 lg:flex-row lg:items-end lg:justify-between"
+      className="card-premium flex flex-col gap-4 p-4 lg:p-5 lg:flex-row lg:items-end lg:justify-between"
     >
       <div>
         <p className="text-sm text-muted-foreground">{heading}</p>

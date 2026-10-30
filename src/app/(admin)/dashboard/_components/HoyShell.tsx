@@ -136,7 +136,7 @@ export function HoyShell({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 lg:space-y-4">
       <CourtBoard
         board={board}
         courts={courts}

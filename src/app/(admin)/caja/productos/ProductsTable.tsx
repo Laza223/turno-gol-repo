@@ -202,7 +202,7 @@ export function ProductsTable({
         onRestock={setEntryProduct}
       />
 
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="grid grid-cols-1 items-start gap-3 lg:gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <section
           ref={sectionRef}
           aria-labelledby="catalogo-titulo"
@@ -229,7 +229,7 @@ export function ProductsTable({
               icon={Package}
               title="Todavía no cargaste productos"
               description="Cargá tus productos (agua, gatorade, cerveza…) para venderlos con un toque desde Hoy."
-              className="border-0 py-10"
+              className="border-0 py-5 lg:py-10"
               action={
                 canEditCatalog ? (
                   <button

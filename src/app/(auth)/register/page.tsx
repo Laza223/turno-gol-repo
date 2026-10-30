@@ -1,9 +1,8 @@
-import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowLeft, CheckCircle2 } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 import { registerAction } from './actions'
 import { RegisterCard } from './RegisterCard'
-import { Logo } from '@/components/ui/logo'
+import { SiteHeaderShell } from '@/components/site/SiteHeaderShell'
 import { referralCodeSchema } from '@/modules/referrals/referral.schema'
 
 const HERO_IMG =
@@ -28,6 +27,7 @@ export default async function RegisterPage({
 
   return (
     <div className="grid min-h-dvh lg:grid-cols-2">
+      <SiteHeaderShell />
       <ImagePane />
       <FormPane pending={pending} refCode={refCode} />
     </div>
@@ -50,13 +50,7 @@ function ImagePane() {
         className="absolute inset-0 bg-linear-to-br from-slate-950/85 via-slate-950/65 to-emerald-900/45"
       />
       <div className="relative flex h-full flex-col justify-between p-12 text-white">
-        <Link href="/">
-          <Logo
-            variant="horizontal"
-            textClassName="text-white"
-            iconClassName="bg-white/95 shadow-lg shadow-emerald-500/30"
-          />
-        </Link>
+        <span aria-hidden />
 
         <div>
           <h2 className="text-3xl font-extrabold tracking-tight text-white">
@@ -86,20 +80,8 @@ function ImagePane() {
 
 function FormPane({ pending, refCode }: { pending: boolean; refCode: string | null }) {
   return (
-    <div className="relative flex items-center justify-center bg-linear-to-br from-slate-50 via-white to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/40 px-4 py-12 sm:px-6 lg:px-8">
-      <Link
-        href="/"
-        className="absolute left-4 top-4 inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 py-1 text-xs md:min-h-0 font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors lg:hidden"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
-        Volver
-      </Link>
-
+    <div className="relative flex items-center justify-center bg-linear-to-br from-slate-50 via-white to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/40 px-4 pb-12 pt-28 sm:px-6 lg:px-8">
       <div className="w-full max-w-md">
-        <div className="mb-8 flex justify-center lg:hidden">
-          <Logo variant="vertical" className="w-32" />
-        </div>
-
         <RegisterCard action={registerAction} pending={pending} refCode={refCode} />
       </div>
     </div>

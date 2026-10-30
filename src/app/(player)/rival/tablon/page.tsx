@@ -56,13 +56,16 @@ export default async function RivalPage(props: {
     playerId ? listMyAlerts(playerId) : Promise.resolve([]),
   ])
 
+  // El tablón se arma entero en el servidor (BoardView es Server Component): la hora es la del pedido.
+  const now = new Date()
+
   return (
     <BoardView
       items={board.items}
       tenants={tenants}
       selectedTenantId={selectedTenantId}
       nextHref={board.nextCursor ? `/rival/tablon?${next.toString()}` : null}
-      now={new Date()}
+      now={now}
       alert={{
         alertTenants: eligible.map((t) => ({ id: t.id, name: t.name })),
         signedIn: playerId !== null,

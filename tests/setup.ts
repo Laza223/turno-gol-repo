@@ -36,6 +36,22 @@ if (existsSync(envTest)) {
 // los tests verían mensajes Zod en inglés mientras prod ya está en español.
 installZodLocale()
 
+// happy-dom (21.0.4) arma el `submit` de `form.requestSubmit()` sin botón con el form mismo como
+// `submitter`; el estándar y los navegadores dan `null`. React 19.3 le pasa ese submitter a
+// `new FormData(form, submitter)`, happy-dom tira ("not owned by this form element") y la action
+// del form nunca corre: es lo que rompía `AutoConfirm`. Se normaliza como en el navegador. Se saca
+// cuando happy-dom respete el estándar (sin esto caen los tests de `AutoConfirm`).
+if (typeof window !== 'undefined' && 'happyDOM' in window && !('specSubmitter' in FormData)) {
+  class SpecFormData extends FormData {
+    static specSubmitter = true
+    constructor(form?: HTMLFormElement, submitter?: HTMLElement | null) {
+      super(form, submitter === form ? null : submitter)
+    }
+  }
+  window.FormData = SpecFormData
+  globalThis.FormData = SpecFormData
+}
+
 // Auto-cleanup DOM after every test to prevent cross-file pollution with a
 // shared worker. cleanup() is a no-op when the test environment has no DOM
 // (default 'node'), so this is safe across all test files.

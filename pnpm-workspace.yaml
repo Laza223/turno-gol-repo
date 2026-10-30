@@ -1,6 +1,11 @@
+# Una sola versión de React en todo el árbol: la fija el catálogo y la usan
+# package.json y el override (que reemplaza a la sintaxis `$react`, deprecada).
+catalog:
+  react: 19.3.1
+  react-dom: 19.3.1
 overrides:
-  react: $react
-  react-dom: $react-dom
+  react: 'catalog:'
+  react-dom: 'catalog:'
   fast-uri: '>=4.1.3'
   sharp: '>=0.35.5'
   'cookie@<0.7.0': '^0.7.0'

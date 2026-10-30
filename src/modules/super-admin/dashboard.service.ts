@@ -335,23 +335,25 @@ async function getRecentWebhooks(): Promise<RecentWebhook[]> {
 const QUEUE_DEPTH_TIMEOUT_MS = 4_000
 
 /**
- * Profundidad de cada cola pg-boss, leída con UNA query sobre `pgboss.job` por
- * el pool worker — la misma cuenta que `boss.getQueueSize` (`state < 'active'`
- * = creado o en reintento), sin instanciar pg-boss.
+ * Profundidad de cada cola pg-boss, leída con UNA query sobre `pgboss_v12.job` por
+ * el pool de la app (`state < 'active'` = creado o en reintento), sin instanciar
+ * pg-boss. NO por el pool worker: las tablas de pg-boss son de `turnogol_app` y
+ * `turnogol_worker` no tiene permisos en `pgboss_v12` (migración 104).
  *
  * `getBoss()` NO va acá: en frío abre un pool y chequea/migra el schema
- * `pgboss` antes de poder leer, y esperarlo dejó `/super-admin` cargando hasta
+ * `pgboss_v12` antes de poder leer, y esperarlo dejó `/super-admin` cargando hasta
  * el timeout de 300 s de Vercel (2026-09-20, "Ir a mi panel" no entraba; ese
  * día su `start()` además arrancaba supervisor y cron en la web — hoy solo lo
  * hace el worker). Si la lectura falla o tarda más que el tope, el dashboard
  * degrada a "no disponible" en vez de romper o colgar el render completo.
  */
-async function getQueueDepthsSafe(db: Db): Promise<QueueDepthEntry[]> {
+async function getQueueDepthsSafe(): Promise<QueueDepthEntry[]> {
   try {
+    const db = getDb()
     const rows = await withTimeout(
       db.execute(sql`
         SELECT name, COUNT(*)::int AS depth
-        FROM pgboss.job
+        FROM pgboss_v12.job
         WHERE state < 'active'
         GROUP BY name
       `),
@@ -372,22 +374,18 @@ async function getQueueDepthsSafe(db: Db): Promise<QueueDepthEntry[]> {
 
 /**
  * Jobs fallidos de las últimas 24 h. Sin parámetros (un solo envío, ver el
- * comentario de `getMrrCents`). pg-boss 9 pasa lo terminado a
- * `pgboss.archive` a las pocas horas, así que se miran las dos tablas
- * (`completedon`: pg-boss crea las columnas sin comillas, en minúscula).
+ * comentario de `getMrrCents`). pg-boss 12 no tiene archivo: lo terminado vive 7
+ * días en `pgboss_v12.job` (`completed_on`, que un job `failed` también tiene).
+ * Pool de la app, por lo mismo que `getQueueDepthsSafe`.
  */
-async function getFailedJobsSafe(db: Db): Promise<{ queue: string; failed: number }[] | null> {
+async function getFailedJobsSafe(): Promise<{ queue: string; failed: number }[] | null> {
   try {
+    const db = getDb()
     const rows = await withTimeout(
       db.execute(sql`
         SELECT name, COUNT(*)::int AS failed
-        FROM (
-          SELECT name FROM pgboss.job
-          WHERE state = 'failed' AND completedon >= now() - interval '24 hours'
-          UNION ALL
-          SELECT name FROM pgboss.archive
-          WHERE state = 'failed' AND completedon >= now() - interval '24 hours'
-        ) f
+        FROM pgboss_v12.job
+        WHERE state = 'failed' AND completed_on >= now() - interval '24 hours'
         GROUP BY name
         ORDER BY failed DESC
       `),
@@ -428,7 +426,9 @@ const WORKER_READS_TIMEOUT_MS = 10_000
 export async function getDashboardData(): Promise<DashboardData> {
   const now = new Date()
   const [
-    [mrrCents, queues, onboardingFunnel, failedJobs24h],
+    [mrrCents, onboardingFunnel],
+    queues,
+    failedJobs24h,
     tenantsByStatus,
     expiringTrials,
     signups,
@@ -439,13 +439,11 @@ export async function getDashboardData(): Promise<DashboardData> {
     // al terminar: una query colgada muere con él y no le come el pool
     // compartido al resto de la instancia (ver `withDisposableWorkerDb`).
     withDisposableWorkerDb(WORKER_READS_TIMEOUT_MS, (db) =>
-      Promise.all([
-        getMrrCentsSafe(db),
-        getQueueDepthsSafe(db),
-        getOnboardingFunnelSafe(db),
-        getFailedJobsSafe(db),
-      ]),
+      Promise.all([getMrrCentsSafe(db), getOnboardingFunnelSafe(db)]),
     ),
+    // Las dos lecturas de pg-boss van por el pool de la app, no por el worker.
+    getQueueDepthsSafe(),
+    getFailedJobsSafe(),
     getTenantsByStatus(),
     getExpiringTrials(now),
     getRecentSignups(now),

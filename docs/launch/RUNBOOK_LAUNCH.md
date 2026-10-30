@@ -145,7 +145,7 @@ Los webhooks de MercadoPago procesan pagos de señas y cobros de suscripciones S
 3. **Verificar cola de workers (`pg-boss`)**:
    Buscar si hay jobs fallidos en la cola de webhooks:
    ```sql
-   SELECT * FROM pgboss.job WHERE name='process-mp-webhook' AND state='failed';
+   SELECT * FROM pgboss_v12.job WHERE name='process-mp-webhook' AND state='failed';
    ```
 4. **Replay de Webhook**:
    Si un webhook falló por un problema transitorio (ej. DB caída), MercadoPago lo reintentará automáticamente. Si se necesita forzar, se puede reenviar manualmente desde el panel de developers de MercadoPago, o usar un harness local con bypass (solo en staging o simulando firmas).

@@ -25,8 +25,8 @@ import { suppressPushPrompt } from '../_qa/session'
  * banda de la corrida QA que use el mismo court/fecha/hora — no controlable
  * desde este spec.
  *
- * Lo que se verifica es el ENQUEUE server-side (fila en `pgboss.job`,
- * `name='push-send'`, con `startafter` correcto según horario silencioso) —
+ * Lo que se verifica es el ENQUEUE server-side (fila en `pgboss_v12.job`,
+ * `name='push-send'`, con `start_after` correcto según horario silencioso) —
  * NO la entrega end-to-end al navegador: no hay worker de pg-boss corriendo
  * en este harness (`pnpm dev` solamente) y VAPID puede no estar configurado
  * en este entorno. Si `VAPID_*` no está seteado se deja nota explícita — el
@@ -117,9 +117,9 @@ test.describe('TG-HP-228 — Push admin (reserva online con seña) + quiet hours
       const jobs = await runSql<{
         id: string
         data: { subscription_id: string; payload: { type: string; bookingId?: string } }
-        startafter: string
+        start_after: string
       }>(
-        `SELECT id, data, startafter FROM pgboss.job WHERE name = 'push-send' AND data->>'subscription_id' = $1`,
+        `SELECT id, data, start_after FROM pgboss_v12.job WHERE name = 'push-send' AND data->>'subscription_id' = $1`,
         [subscriptionId],
       )
       expect(jobs.length).toBeGreaterThanOrEqual(1)
@@ -128,10 +128,10 @@ test.describe('TG-HP-228 — Push admin (reserva online con seña) + quiet hours
 
       // Horario silencioso 00:00–08:00 ART: en madrugada el envío se agenda para
       // las 08:00 locales (11:00 UTC, ART fijo UTC-3); fuera de madrugada, envío
-      // inmediato (startafter ~ ahora).
+      // inmediato (start_after ~ ahora).
       const hourNow = localHour(now, ART_TIMEZONE)
       const inQuietHours = hourNow < 8
-      const startAfter = new Date(job.startafter)
+      const startAfter = new Date(job.start_after)
 
       if (inQuietHours) {
         expect(startAfter.getUTCHours()).toBe(11) // 08:00 ART = 11:00 UTC
@@ -147,9 +147,9 @@ test.describe('TG-HP-228 — Push admin (reserva online con seña) + quiet hours
         vapidConfigured,
         localHourArt: hourNow,
         inQuietHours,
-        pgBossJob: { id: job.id, startafter: job.startafter, payloadType: job.data.payload.type },
+        pgBossJob: { id: job.id, start_after: job.start_after, payloadType: job.data.payload.type },
         notes:
-          'Se verificó el ENQUEUE server-side (pgboss.job) del push, no la entrega end-to-end al ' +
+          'Se verificó el ENQUEUE server-side (pgboss_v12.job) del push, no la entrega end-to-end al ' +
           'navegador — no hay worker de pg-boss corriendo en este harness (solo `pnpm dev`) y el enqueue ' +
           'no depende de VAPID (solo lo usa el worker de envío real). ' +
           (vapidConfigured
@@ -159,7 +159,9 @@ test.describe('TG-HP-228 — Push admin (reserva online con seña) + quiet hours
       })
     } finally {
       await context.close()
-      await runSql(`DELETE FROM pgboss.job WHERE data->>'subscription_id' = $1`, [subscriptionId])
+      await runSql(`DELETE FROM pgboss_v12.job WHERE data->>'subscription_id' = $1`, [
+        subscriptionId,
+      ])
       await runSql('DELETE FROM push_subscriptions WHERE id = $1', [subscriptionId])
       if (bookingId) {
         await runSql('UPDATE bookings SET payment_id = NULL, payment_method = NULL WHERE id = $1', [

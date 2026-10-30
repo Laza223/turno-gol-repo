@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { PortalSession } from '@/modules/players/portal-session'
 
 export type PortalSessionContextValue = {
@@ -16,11 +16,17 @@ export type PortalSessionContextValue = {
   staffPanelPath: string | null
   /** Flag global de RIVAL. `false` mientras hidrata: el HTML estático nunca lo muestra. */
   rivalEnabled: boolean
+  /** El jugador ya aceptó la bienvenida de RIVAL (versión vigente): el nav lo manda directo al tablón. */
+  rivalWelcomed: boolean
 }
 
-/** Semilla del provider (Storybook, tests, layout del jugador): `rivalEnabled` es opcional y cae en `false`. */
-export type PortalSessionSeed = Omit<PortalSessionContextValue, 'rivalEnabled'> & {
+/** Semilla del provider (Storybook, tests, layout del jugador): `rivalEnabled` y `rivalWelcomed` son opcionales y caen en `false`. */
+export type PortalSessionSeed = Omit<
+  PortalSessionContextValue,
+  'rivalEnabled' | 'rivalWelcomed'
+> & {
   rivalEnabled?: boolean
+  rivalWelcomed?: boolean
 }
 
 const EMPTY_FAVORITES: ReadonlySet<string> = new Set()
@@ -31,6 +37,7 @@ const PortalSessionContext = createContext<PortalSessionContextValue>({
   favoriteTenantIds: EMPTY_FAVORITES,
   staffPanelPath: null,
   rivalEnabled: false,
+  rivalWelcomed: false,
 })
 
 type SessionPayload = {
@@ -39,6 +46,7 @@ type SessionPayload = {
     favoriteTenantIds?: string[]
     staffPanelPath?: string | null
     rivalEnabled?: boolean
+    rivalWelcomed?: boolean
   }
 }
 
@@ -61,12 +69,17 @@ export function PortalSessionProvider({
 }) {
   const [value, setValue] = useState<PortalSessionContextValue>(() => {
     return (
-      (initialValue && { ...initialValue, rivalEnabled: initialValue.rivalEnabled ?? false }) ??
+      (initialValue && {
+        ...initialValue,
+        rivalEnabled: initialValue.rivalEnabled ?? false,
+        rivalWelcomed: initialValue.rivalWelcomed ?? false,
+      }) ??
       cachedSessionValue ?? {
         session: null,
         favoriteTenantIds: EMPTY_FAVORITES,
         staffPanelPath: null,
         rivalEnabled: false,
+        rivalWelcomed: false,
       }
     )
   })
@@ -83,6 +96,7 @@ export function PortalSessionProvider({
               favoriteTenantIds: EMPTY_FAVORITES,
               staffPanelPath: null,
               rivalEnabled: false,
+              rivalWelcomed: false,
             }
             cachedSessionValue = fallback
             setValue(fallback)
@@ -97,6 +111,7 @@ export function PortalSessionProvider({
           favoriteTenantIds: new Set(json.data?.favoriteTenantIds ?? []),
           staffPanelPath: json.data?.staffPanelPath ?? null,
           rivalEnabled: json.data?.rivalEnabled === true,
+          rivalWelcomed: json.data?.rivalWelcomed === true,
         }
         cachedSessionValue = newValue
         setValue(newValue)
@@ -109,6 +124,7 @@ export function PortalSessionProvider({
             favoriteTenantIds: EMPTY_FAVORITES,
             staffPanelPath: null,
             rivalEnabled: false,
+            rivalWelcomed: false,
           }
           cachedSessionValue = fallback
           setValue(fallback)
@@ -120,7 +136,19 @@ export function PortalSessionProvider({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initialValue es un seed de una sola vez (Storybook/tests), no debe re-disparar el fetch si el caller pasa un objeto nuevo por render.
   }, [])
 
-  return <PortalSessionContext.Provider value={value}>{children}</PortalSessionContext.Provider>
+  // La semilla entra una sola vez al estado, pero `rivalWelcomed` cambia en plena sesión: aceptar la
+  // bienvenida revalida el layout del jugador, que vuelve a sembrar sin remontar el provider. Con
+  // semilla no hay fetch, así que la semilla de este render es la verdad.
+  const seededWelcomed = initialValue?.rivalWelcomed
+  const current = useMemo(
+    () =>
+      seededWelcomed === undefined || seededWelcomed === value.rivalWelcomed
+        ? value
+        : { ...value, rivalWelcomed: seededWelcomed },
+    [value, seededWelcomed],
+  )
+
+  return <PortalSessionContext.Provider value={current}>{children}</PortalSessionContext.Provider>
 }
 
 export function usePortalSession(): PortalSessionContextValue {

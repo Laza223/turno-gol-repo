@@ -160,7 +160,7 @@ export function MyMatchesView({ matches, now }: { matches: RivalMyMatch[]; now: 
                 Armar un partido
               </Link>
               <Link
-                href="/rival"
+                href="/rival/tablon"
                 className={cn(buttonVariants({ variant: 'ghost' }), RIVAL_GHOST, 'w-full')}
               >
                 Ver el tablón

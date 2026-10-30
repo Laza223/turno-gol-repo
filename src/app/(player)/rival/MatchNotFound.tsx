@@ -15,7 +15,7 @@ export async function MatchNotFound() {
       icon={CalendarX}
       tone="neutral"
       title="Este partido ya no está"
-      actions={<PortalResultLink href="/rival">Ver el tablón</PortalResultLink>}
+      actions={<PortalResultLink href="/rival/tablon">Ver el tablón</PortalResultLink>}
     >
       <p>Pudo llenarse, empezar o cancelarse.</p>
     </PortalResult>

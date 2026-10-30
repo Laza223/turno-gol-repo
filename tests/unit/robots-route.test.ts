@@ -31,16 +31,18 @@ describe('robots()', () => {
     for (const route of ['/dashboard', '/grilla', '/caja', '/reservas', '/settings']) {
       expect(disallow, `falta la ruta admin ${route}`).toContain(route)
     }
-    for (const route of ['/mis-reservas', '/perfil', '/configuracion', '/rival$', '/rival/']) {
+    for (const route of ['/mis-reservas', '/perfil', '/configuracion', '/rival/']) {
       expect(disallow, `falta la ruta de jugador ${route}`).toContain(route)
     }
-    // `/rival` pelado es un prefijo: bloquearía un slug como `/rival-futbol`.
+    // `/rival` pelado es la landing (indexable) y, como prefijo, bloquearía un slug como `/rival-futbol`.
     expect(disallow).not.toContain('/rival')
+    expect(disallow).not.toContain('/rival$')
     const blocked = (path: string) =>
       disallow.some((rule) =>
         rule.endsWith('$') ? path === rule.slice(0, -1) : path.startsWith(rule),
       )
-    expect(blocked('/rival')).toBe(true)
+    expect(blocked('/rival')).toBe(false)
+    expect(blocked('/rival/tablon')).toBe(true)
     expect(blocked('/rival/nuevo')).toBe(true)
     expect(blocked('/rival/p/ABC234')).toBe(true)
     expect(blocked('/rival-futbol')).toBe(false)

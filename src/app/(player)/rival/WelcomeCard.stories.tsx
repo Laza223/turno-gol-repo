@@ -211,11 +211,11 @@ export const AhoraNoBoton: Story = {
 
 /** Con `dismissHref` (la tarjeta es la página) la salida es un link. */
 export const AhoraNoLink: Story = {
-  args: { dismissHref: '/rival' },
+  args: { dismissHref: '/rival/tablon' },
   play: async ({ canvasElement }) => {
     await expect(within(canvasElement).getByRole('link', { name: 'Ahora no' })).toHaveAttribute(
       'href',
-      '/rival',
+      '/rival/tablon',
     )
   },
 }

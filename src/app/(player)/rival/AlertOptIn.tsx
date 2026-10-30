@@ -18,7 +18,7 @@ function SignedOutPrompt() {
     <p className="text-base text-muted-foreground">
       ¿Querés que te avisemos cuando haya partido?{' '}
       <Link
-        href={`/ingresar?next=${encodeURIComponent('/rival')}`}
+        href={`/ingresar?next=${encodeURIComponent('/rival/tablon')}`}
         className="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4"
       >
         Ingresá y activá el aviso

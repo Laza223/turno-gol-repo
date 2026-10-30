@@ -104,7 +104,7 @@ export const NoHuboLugar: Story = {
     await expect(canvas.queryByRole('button', { name: 'Me bajo' })).toBeNull()
     await expect(canvas.getByRole('link', { name: 'Ver el tablón' })).toHaveAttribute(
       'href',
-      '/rival',
+      '/rival/tablon',
     )
   },
 }

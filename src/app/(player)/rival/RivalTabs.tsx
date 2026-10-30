@@ -16,7 +16,7 @@ export function RivalTabs({ current }: { current: 'tablon' | 'mis-partidos' }) {
       className="flex gap-1 rounded-full border border-border bg-card p-1 shadow-xs lg:max-w-sm"
     >
       <Link
-        href="/rival"
+        href="/rival/tablon"
         aria-current={current === 'tablon' ? 'page' : undefined}
         className={tabClass(current === 'tablon')}
       >

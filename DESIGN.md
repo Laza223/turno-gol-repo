@@ -391,6 +391,7 @@ Esmeralda de cancha sobre slate frío: un solo protagonista verde, neutros que c
 - **Línea de superficie** (`portal-border`, slate-200 #E2E8F0, en claro): separa superficies. Con 1,2:1 sobre blanco no delimita un control.
 - **Borde de campo** (`portal-input`, slate-500 #64748B, en claro · `portal-input-dark` #6B7C94 en oscuro): el borde de los campos y del botón `outline`. Llega a 3:1 contra el fondo (WCAG 1.4.11): 4,8:1 sobre blanco; en oscuro, 4,7:1 sobre el fondo, 4,3:1 sobre la tarjeta y 3,2:1 en hover (`border-input/80`).
 - **Ámbar de "Queda 1"** (`portal-last-fill` #FFFBEB, `portal-last-border` #FCD34D y `portal-last-text` #92400E en claro; en oscuro, ámbar al 10 % con borde al 40 % y texto #FCD34D): escalas amber 50, 300 y 800, escritas como clases de Tailwind en `HourGrid`. Solo la hora a la que queda una cancha; ver The Scarcity Amber Rule.
+- **Oro de trofeo** (#FCD34D y su luz #FEF3C7, solo en oscuro): únicamente en la landing de RIVAL (`/rival`), para las estrellas de un club, la Corona y la figurita Oro. Es un premio, no un estado ni escasez: no se usa en ningún otro lado, y el ámbar de "Queda 1" sigue siendo solo de la ficha (decisión del dueño del 2026-10-30).
 - **Foco** (`ring` = `primary`): emerald-700 en claro (5,6:1 sobre blanco; el emerald-500 del panel da 2,6:1) y emerald-500 en oscuro (7,8:1 sobre el fondo).
 - **Selección de texto:** tinte `primary` al 25 % con el texto en `foreground`, puesto una vez en `PortalWorld`.
 
@@ -424,7 +425,7 @@ Los rótulos sobre un tinte de estado usan la escala 800 en claro y 300 en oscur
 
 ## Typography
 
-**Display Font:** Archivo (variable, `font-display`, con fallback `ui-sans-serif, system-ui`)
+**Display Font:** Archivo (variable, `font-display`, con fallback `ui-sans-serif, system-ui`). La landing de RIVAL carga su propia instancia (`_landing/fonts.ts`) con la itálica real y el eje de ancho (`wdth`, de 62 a 125), y la usa condensada (`font-stretch: 72%`) en la tapa y los dorsales (decisión del dueño del 2026-10-30). El resto del sitio no carga esos archivos y sigue con la itálica sintetizada.
 **Body Font:** Inter (variable, `font-sans`, el default del `<body>`)
 **Label/Mono Font:** Sora (`font-logo`), solo en microrrótulos de la web comercial y del login. La monoespaciada es la del sistema (`font-mono`, sin fuente propia) y solo muestra códigos que se copian o se tipean: la frase de `ConfirmDialog`, el código de referencia de `ErrorState`, el código de una reserva.
 
@@ -613,6 +614,7 @@ Lo de arriba es lo que comparten todas las pantallas. La spec de cada pantalla v
 - **Do** ponerle tope de alto y scroll propio a una lista que puede ser larga (`ScrollRegion`, o `scrollLabel` en `ResponsiveList`): hasta 36 rem o el 65 % de la pantalla, con el encabezado de la tabla pegado arriba y el paginador afuera, a la vista. Una página que se estira con cuarenta filas deja lo que viene abajo a metros (pedido del dueño, 2026-09-26). Hoy lo tienen el catálogo, lo que más salió y los movimientos de stock de Productos, los movimientos de Cuentas, Personas, Turnos fijos y el historial de un jugador; la Agenda scrollea adentro desde `lg` con su propio armado.
 - **Do** probar cada pantalla en claro y en oscuro, con contraste medido: 4,5:1 en texto y 3:1 en componentes (la suite a11y de Storybook corre en los dos temas).
 - **Do** mantener el movimiento de los controles del panel en 200 ms o menos, animando transform, opacidad, color o sombra, nunca ancho, alto ni posición. Las excepciones de hoy: la sheet al abrir (300 ms), el levante de `.card-premium-interactive` (250 ms), el pulso de un turno nuevo (600 ms, una vez) y el punto que late en el botón "Cobrar $X" de Hoy (pedido del dueño, 2026-09-25). `prefers-reduced-motion` congela todo desde `globals.css`: una animación nueva tiene que verse bien congelada.
+- **Do** dejar el movimiento largo para la landing de RIVAL (`/rival`, decisión del dueño del 2026-10-30), que es la excepción del portal: escenas fijadas que se arman con el scroll, movidas por GSAP con ScrollTrigger (una variable por escena, sin secuestrar el scroll ni suavizarlo con Lenis o similares; GSAP se carga solo en `/rival`). Entró porque en un celular medio fue más fluido que el motor propio (medición del 2026-10-30 en `docs/rival/landing.md`), animando transform y opacidad. La única propiedad fuera de esas dos es el trazo de tiza (`stroke-dashoffset`), y solo en la pizarra, el escudo y el "RIVAL" del pie. Con `prefers-reduced-motion` ninguna escena se fija y la página es una lista estática. Diseño completo: [`docs/rival/landing.md`](docs/rival/landing.md).
 - **Do** colgar los controles de una vista en el hueco de la barra superior (`AdminHeaderSlot`) en vez de sumar filas de encabezado.
 - **Do** reservar 44 px de blanco táctil debajo de 768 px (`h-11 md:h-10`) y dejar la fila entera clickeable cuando abre un detalle.
 - **Do** escribir en voseo, en sentence case y con el vocabulario de pantalla de `PRODUCT.md`; mayúsculas solo en microrrótulos de una o dos palabras con `tracking`.
@@ -643,6 +645,6 @@ Lo de arriba es lo que comparten todas las pantallas. La spec de cada pantalla v
 - **Don't** esconder las horas completas ni los días cerrados: se ven, deshabilitados y dichos ("Completo" tachado, "Cerrado").
 - **Don't** usar `CourtCard` en una página del portal: es la tarjeta del panel y del onboarding; la ficha usa `CourtTile`.
 - **Don't** elegir las columnas de las horas con `md:grid-cols-*`: la reserva mide 384 px en escritorio y seis columnas no entran.
-- **Don't** agregar librerías de animación (la única excepción es `/onboarding`, con `motion` en `LazyMotion`) ni loops infinitos fuera del skeleton, de la web comercial y del punto de "Cobrar $X" en Hoy.
+- **Don't** agregar librerías de animación (la única excepción es `/onboarding`, con `motion` en `LazyMotion`; y `/rival`, con GSAP) ni loops infinitos fuera del skeleton, de la web comercial y del punto de "Cobrar $X" en Hoy.
 - **Don't** usar el placeholder como rótulo, emojis como íconos estructurales ni fechas ISO o anglicismos de dashboard ("Revenue", "Booking") frente al usuario.
 - **Don't** mostrar un número verificable que no salga de datos reales (prueba social, escasez, contadores): lo trucho descubierto destruye la confianza para pagar la seña y es publicidad engañosa (Ley 24.240).

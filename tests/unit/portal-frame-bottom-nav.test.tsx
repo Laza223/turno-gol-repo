@@ -29,10 +29,17 @@ function frame(
   session: PortalSession | null,
   staffPanelPath: string | null = null,
   rivalEnabled = false,
+  rivalWelcomed = false,
 ) {
   return render(
     <PortalSessionProvider
-      initialValue={{ session, favoriteTenantIds: new Set(), staffPanelPath, rivalEnabled }}
+      initialValue={{
+        session,
+        favoriteTenantIds: new Set(),
+        staffPanelPath,
+        rivalEnabled,
+        rivalWelcomed,
+      }}
     >
       <PortalFrame header={<header>h</header>} footer={<footer>f</footer>}>
         <p>contenido</p>
@@ -66,7 +73,36 @@ describe('PortalFrame — barra inferior', () => {
     expect(hrefs).toEqual(['/explorar', '/rival', '/mis-reservas', '/configuracion'])
   })
 
-  it.each(['/rival', '/rival/nuevo', '/rival/p/ABC123'])(
+  it('con RIVAL prendido y la bienvenida aceptada, Rival va directo al tablón', () => {
+    frame(null, null, true, true)
+    const nav = screen.getByRole('navigation', { name: 'Navegación del jugador' })
+    const hrefs = [...nav.querySelectorAll('a')].map((a) => a.getAttribute('href'))
+    expect(hrefs).toEqual(['/explorar', '/rival/tablon', '/mis-reservas', '/configuracion'])
+  })
+
+  it('aceptar la bienvenida pasa Rival al tablón sin recargar (el layout re-siembra, no remonta)', () => {
+    const tree = (rivalWelcomed: boolean) => (
+      <PortalSessionProvider
+        initialValue={{
+          session: PLAYER,
+          favoriteTenantIds: new Set(),
+          staffPanelPath: null,
+          rivalEnabled: true,
+          rivalWelcomed,
+        }}
+      >
+        <PortalFrame header={<header>h</header>} footer={<footer>f</footer>}>
+          <p>contenido</p>
+        </PortalFrame>
+      </PortalSessionProvider>
+    )
+    const { rerender } = render(tree(false))
+    expect(screen.getByRole('link', { name: 'Rival' }).getAttribute('href')).toBe('/rival')
+    rerender(tree(true))
+    expect(screen.getByRole('link', { name: 'Rival' }).getAttribute('href')).toBe('/rival/tablon')
+  })
+
+  it.each(['/rival', '/rival/tablon', '/rival/nuevo', '/rival/p/ABC123'])(
     'con RIVAL prendido, %s deja activo a Rival y a nadie más',
     (pathname) => {
       nav.pathname = pathname
@@ -81,7 +117,7 @@ describe('PortalFrame — barra inferior', () => {
 
   it('el header del portal suma "Rival" solo con el flag prendido', async () => {
     const { default: PortalHeader } = await import('@/components/site/PortalHeader')
-    const header = (rivalEnabled: boolean) =>
+    const header = (rivalEnabled: boolean, rivalWelcomed = false) =>
       render(
         <PortalSessionProvider
           initialValue={{
@@ -89,6 +125,7 @@ describe('PortalFrame — barra inferior', () => {
             favoriteTenantIds: new Set(),
             staffPanelPath: null,
             rivalEnabled,
+            rivalWelcomed,
           }}
         >
           <PortalHeader signOutAction={async () => {}} />
@@ -99,6 +136,9 @@ describe('PortalFrame — barra inferior', () => {
     cleanup()
     header(true)
     expect(screen.getByRole('link', { name: 'Rival' }).getAttribute('href')).toBe('/rival')
+    cleanup()
+    header(true, true)
+    expect(screen.getByRole('link', { name: 'Rival' }).getAttribute('href')).toBe('/rival/tablon')
   })
 
   it('reserva el alto de la barra aunque no haya sesión', () => {

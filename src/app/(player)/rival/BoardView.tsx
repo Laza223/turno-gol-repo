@@ -49,7 +49,7 @@ function TenantFilter({
       className="-mx-4 flex gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0"
     >
       <Link
-        href="/rival"
+        href="/rival/tablon"
         aria-current={selectedId === null ? 'page' : undefined}
         className={chip(selectedId === null)}
       >
@@ -58,7 +58,7 @@ function TenantFilter({
       {tenants.map((t) => (
         <Link
           key={t.id}
-          href={`/rival?complejo=${t.id}`}
+          href={`/rival/tablon?complejo=${t.id}`}
           title={t.name}
           aria-current={selectedId === t.id ? 'page' : undefined}
           className={chip(selectedId === t.id)}

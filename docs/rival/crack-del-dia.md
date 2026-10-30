@@ -6,21 +6,24 @@
 
 Un minijuego diario en la home de TurnoGol: adivinar un futbolista en 6 intentos. Es el mismo para todos y cambia a la medianoche (hora de Argentina).
 
+**Decisión de Lazar (2026-10-30): no es parte de RIVAL.** Es un jueguito extra de TurnoGol. Vive en la home, al lado del buscador de canchas, como un acceso al costado o un botón flotante ("Adiviná el crack del día"). La landing de RIVAL no lo muestra. Se juega con las letras del apellido, como los Wordle de fútbol.
+
 Es la única pieza de RIVAL que **no necesita gente en la zona**: anda desde el día 1 con un solo complejo. Por eso trae tráfico y hábito antes de que haya tablas.
 
-Tomamos el **género** (adivinar con pistas de colores, popularizado por Wordle), no copiamos un juego puntual. Nombre, diseño, pistas y modos son propios.
+Tomamos el **género** (adivinar letras con colores, popularizado por Wordle y sus versiones de fútbol), no copiamos un juego puntual. Nombre, diseño y modos son propios.
 
 ## Cómo se juega
 
-1. Escribís el apellido de un futbolista; el campo autocompleta desde la lista del juego, así no se pierden intentos por tipeo.
-2. Cada intento muestra pistas futboleras con tres colores:
-   - **verde:** coincide;
-   - **amarillo:** cerca (por ejemplo, la misma década o la misma región);
-   - **gris:** no coincide.
-3. Las pistas son: posición, país, un club por el que pasó, década en que brilló, y la letra inicial del apellido.
-4. Si lo sacás, ves tu número de intentos y tu racha. Si no, ves quién era.
+1. La grilla tiene tantas casillas como letras el apellido del crack del día, y 6 filas.
+2. Escribís el apellido de un futbolista del largo justo. Solo valen apellidos de la lista del juego, así no se queman intentos con palabras cualquiera.
+3. Cada letra se pinta:
+   - **verde:** la letra está y en su lugar;
+   - **marcada (otro color o patrón):** la letra está, pero en otro lugar;
+   - **gris:** la letra no está.
+4. Un teclado en pantalla marca las letras que ya usaste.
+5. Si lo sacás, ves tu número de intentos y tu racha. Si no, ves quién era.
 
-Los detalles finos (qué es "cerca" en cada pista, cuántas pistas por intento) se ajustan al diseñar la ola, probándolo.
+El color de "en otro lugar" se decide al diseñarlo: el ámbar de DESIGN.md es solo de "Queda 1". Los apellidos compuestos, los acentos y la ñ se resuelven al diseñar, probándolo.
 
 ## Modos
 
@@ -33,7 +36,7 @@ Los modos extra son una propuesta: arranca solo el Diario.
 
 ## De dónde salen los jugadores
 
-- Una lista curada a mano, con los datos que alimentan las pistas (posición, país, clubes, década).
+- Una lista curada a mano de apellidos, que es también la lista de intentos válidos.
 - Son hechos públicos sobre carreras deportivas; no se usa ninguna foto, escudo, camiseta ni voz.
 - Nadie de la lista aparece como si apoyara TurnoGol.
 - El orden de los días se arma de antemano y no se repite un jugador dentro de un período largo.
@@ -43,7 +46,7 @@ Los modos extra son una propuesta: arranca solo el Diario.
 
 - **La grilla de cuadraditos**, sin el nombre del jugador (para no arruinarle el día a nadie), con el número del día y el link. Se pega en el grupo de WhatsApp.
 - **La tarjeta 9:16**, que reusa `src/lib/story-image/`.
-- **Tu club:** "tu club promedia 3,8 intentos" (el número es el real de cada club). Le da al club algo de qué hablar todos los días.
+- **Tu club** (solo si algún día se cruza con RIVAL, que hoy no): "tu club promedia 3,8 intentos", con el número real de cada club.
 
 ## Hábito y racha
 

@@ -6,7 +6,7 @@
 - este documento;
 - el prototipo [`landing-prototipo/index.html`](landing-prototipo/index.html), que se abre en el navegador a 390 y a 1440 px y tampoco es código de producción.
 
-**Visión que cuenta:** [`README.md`](README.md), [`categorias.md`](categorias.md), [`clubes.md`](clubes.md), [`ideas.md`](ideas.md), [`crack-del-dia.md`](crack-del-dia.md) y [la decisión del 29/10](../decisions/2026-10-29-rival-cultura-de-turnogol.md). **Lo construido:** la [spec de v1](../superpowers/specs/2026-10-22-rival-v1-design.md). **Autoridad visual:** [`DESIGN.md`](../../DESIGN.md), mundo La Previa.
+**Visión que cuenta:** [`README.md`](README.md), [`categorias.md`](categorias.md), [`clubes.md`](clubes.md), [`ideas.md`](ideas.md) y [la decisión del 29/10](../decisions/2026-10-29-rival-cultura-de-turnogol.md). **Lo construido:** la [spec de v1](../superpowers/specs/2026-10-22-rival-v1-design.md). **Autoridad visual:** [`DESIGN.md`](../../DESIGN.md), mundo La Previa.
 
 > `categorias.md` y `clubes.md` todavía viven en la rama `claude/rival-strategy-features-327f6e` y no en main. Esos dos links andan cuando esa rama se mergea.
 
@@ -15,7 +15,8 @@
 1. **Cuenta todo RIVAL**, lo que existe y lo que viene. Cada sección que todavía no existe lleva "Próximamente".
 2. **Vive en `/rival`.** El tablón se muda a `/rival/tablon`.
 3. **Se aprueba viendo:** este doc más un prototipo HTML.
-4. **Se mueve con el scroll** (pedido del mismo día): escenas que se fijan en pantalla y se arman mientras bajás, con motion graphics limpios.
+4. **Se mueve con el scroll** (pedido del mismo día): escenas que se fijan en pantalla y se arman mientras bajás, con motion graphics limpios. Busca un efecto "wow" muy coreografiado, pero sin que la web se ponga lenta.
+5. **Las respuestas a los REQUIERE INPUT** están en "Lo que decidió Lazar sobre los REQUIERE INPUT", al final. Las que más cambian el diseño: GSAP con medición, "gratis" se dice, la marca Fundador va y el Crack del Día sale de RIVAL.
 
 ## En una pantalla
 
@@ -50,9 +51,9 @@ La landing no puede prometer lo que no existe. Esta tabla manda: cada pieza de l
 | El club: nombre, escudo, plantel, dorsales, mercado de pases, palmarés, hinchada, historia | Próximamente | `clubes.md` |
 | El partido oficial, la cartelera, la tabla, divisiones y temporadas, clásicos, la Corona, desafío y revancha, "¿Volverían a jugar?", rival ideal, álbum de la zona | Próximamente | README, mundo ELLOS |
 | La figura, la tapa, la figurita, las tarjetas 9:16, Tu Temporada, logros, Versus, racha, trayectoria | Próximamente | README, mundos YO y EL RELATO |
-| Crack del Día, pronósticos (el "Prode" del README, REQUIERE INPUT 16), desafío de la semana, el Diario de la Zona | Próximamente | `crack-del-dia.md`, README, mundo EL RITUAL |
+| Pronósticos (el "Prode" del README, REQUIERE INPUT 16), desafío de la semana, el Diario de la Zona | Próximamente | README, mundo EL RITUAL |
 | El estadio, Leyenda de la cancha, Complejo de la zona, el sticker, Hora RIVAL, Pedí tu cancha | Próximamente | README, mundo LA CANCHA |
-| Temporada Cero (la marca Fundador espera decisión: REQUIERE INPUT 15) | Próximamente | README, Marketing |
+| Temporada Cero y la marca Fundador (sin "para siempre") | Próximamente | README, Marketing |
 
 **Lo que no entra, ni como Próximamente:**
 - copas y torneos, porque quedaron fuera de RIVAL el 2026-10-30;
@@ -77,7 +78,7 @@ La landing no puede prometer lo que no existe. Esta tabla manda: cada pieza de l
 | El capitán | "Fundá tu club" y la Corona |
 | El ex de inferiores o de liga | La escala de Novena a Primera |
 | El arquero | "Se busca arquero", que ya anda |
-| El espontáneo | El Crack del Día y las tarjetas |
+| El espontáneo | Las tarjetas y el quiz |
 | El dueño de complejo | "Tu cancha" y el link a `/para-complejos` |
 
 **Éxito:**
@@ -99,7 +100,7 @@ Cada sección existe porque sostiene una afirmación. Si una sección no tiene a
 | 4 | Tu club va a vivir en TurnoGol como uno de verdad | El escudo que se arma, los dorsales y el mercado de pases |
 | 5 | Entre clubes se juega por algo | La Corona, la cartelera y la tabla |
 | 6 | Lo que pasa en la cancha se cuenta y se comparte | La tapa, la figurita y "Que se sepa" |
-| 7 | Hay algo para hacer todos los días | El Crack del Día |
+| 7 | (Sacada: el Crack del Día es de la home de TurnoGol, no de RIVAL) | — |
 | 8 | Tu cancha también juega | El estadio del complejo y "Pedí tu cancha" |
 | 9 | Se compite sin escrache | Las reglas, en voz alta |
 | 10 | Empezar ahora tiene algo que después no se repite | La Temporada Cero, más el botón |
@@ -143,7 +144,7 @@ Una sola forma, la línea de tiza, a cuatro escalas:
 |---|---|
 | Gigante | La cancha dibujada del hero, recortada por los bordes de la pantalla |
 | Banda | **La línea de mitad de cancha** con el círculo central, a todo el ancho, entre "Hoy ya se juega" y lo que viene |
-| Figura | Las jugadas de cada sección: flechas punteadas, el escudo dibujado antes de pintarse, la escalera de categorías a lo largo de la cancha, la grilla del Crack |
+| Figura | Las jugadas de cada sección: flechas punteadas, el escudo dibujado antes de pintarse, la escalera de categorías a lo largo de la cancha |
 | Viñeta | El círculo de tiza (el "O" de la pizarra, que es un jugador) como viñeta de cada lista, a tamaño de texto |
 
 **Cómo se adaptó la ficha de la skill.** Se tomó la composición de cada sección y nada más. Tipografía y color salen de DESIGN.md (`--keep palette,type`).
@@ -185,7 +186,7 @@ Sí se respetan sus otras reglas: titulares de 2 líneas como máximo, nada de n
 4  Fundá tu club ─ el escudo se pinta y el párrafo se lee             [Próximamente]
 5  El partido oficial ─ la Corona viaja + los rasgos                  [Próximamente]
 6  Tercer tiempo ─ la tapa y las figuritas, de costado                [Próximamente]
-7  Todos los días ─ la grilla del Crack en tiza                        [Próximamente]
+   (7 Todos los días: sacada; sus rasgos pasan a la 6)
 8  Tu cancha ─ zoom al estadio + Pedí tu cancha                        [Próximamente]
 9  Las reglas del vestuario ─ preguntas y respuestas                   [vigente]
 10 Temporada Cero ─ la pizarra limpia + la banda ARMALO                [Próximamente]
@@ -266,7 +267,7 @@ Las esquinas son de 12 px (el `lg` del portal), de 16 px en tarjetas grandes y `
 
   Las tres son de día y chocan con la noche de La Previa. Las de potrero muestran personas reconocibles: en una pieza comercial, eso pide el permiso de cada uno (CCyC art. 53), y CC BY-SA obliga a compartir con la misma licencia cualquier versión editada. **Recomendación:** la sesión propia en El Vagón.
 - **No se usa `bg-how-it-works`,** porque tiene logos de Nike (ver Follow-ups).
-- **Se dibuja en código:** la pizarra, escudos, figuritas, la tapa y la grilla del Crack. No hay fotos de profesionales, escudos reales ni camisetas reales (README, "Imagen").
+- **Se dibuja en código:** la pizarra, escudos, figuritas y la tapa. No hay fotos de profesionales, escudos reales ni camisetas reales (README, "Imagen").
 - **Íconos:** Lucide, la única librería. Nada de emojis estructurales.
 
 ## Las secciones
@@ -568,19 +569,19 @@ El puesto no cambia la categoría: queda para la figurita y la Selección.
   - **La hinchada.** Cualquiera puede seguir a tu club.
   - **La historia.** La escribe la IA con los datos reales, sin nombrar a nadie.
 - Nombres de ejemplo, en una lista de 5 rotulada "Ejemplo" (REQUIERE INPUT 9):
-  - Deportivo Pecheras
-  - Real Sin Pechera
-  - Atlético Tercer Tiempo
-  - Los del Fondo
-  - Sportivo Banco de Suplentes
+  - Los Mismos de Siempre
+  - Deportivo Rejunte
+  - Deportivo Después Te Transfiero
+  - La Banda del Rulo
+  - Villa Resaca
 
 **El párrafo con palabras-imagen** (el plano de la ficha, en lugar de una grilla de rasgos). Va en Archivo 700, de 24 px en el celular y 36 px como máximo en escritorio:
 
 > Fundá tu club con nombre y escudo [escudo], camiseta con tu número [camiseta 10] y un plantel que acepta la invitación [tres círculos de tiza]. Cada título suma una estrella arriba del escudo [estrella].
 
-Cada [ ] es una ventanita de 1em de alto dentro del texto, con la pieza dibujada en SVG. Las piezas son de "Deportivo Pecheras", un club de ejemplo. Debajo del párrafo van los ocho rasgos, en lista con viñetas de tiza.
+Cada [ ] es una ventanita de 1em de alto dentro del texto, con la pieza dibujada en SVG. Las piezas son de "Los Mismos de Siempre", un club de ejemplo. Debajo del párrafo van los ocho rasgos, en lista con viñetas de tiza.
 
-**La demo del escudo:** el escudo grande de "Deportivo Pecheras" primero se dibuja con tiza, solo el contorno, y después se pinta pieza por pieza: la forma, la banda, las iniciales y la estrella. Lleva el rótulo "Ejemplo".
+**La demo del escudo:** el escudo grande de "Los Mismos de Siempre" primero se dibuja con tiza, solo el contorno, y después se pinta pieza por pieza: la forma, la banda, las iniciales y la estrella. Lleva el rótulo "Ejemplo".
 
 **390 px:**
 
@@ -596,7 +597,7 @@ Cada [ ] es una ventanita de 1em de alto dentro del texto, con la pieza dibujada
 │          ╭─────────╮                 │
 │          │  ESCUDO │ ← tiza, después │
 │          ╰─────────╯   se pinta      │
-│   EJEMPLO · Deportivo Pecheras       │
+│   EJEMPLO · Los Mismos de Siempre       │
 │ ◯ El nombre. La IA te propone…       │ ← viñetas de tiza
 │ ◯ El escudo y la camiseta…           │
 │ ◯ El plantel…                        │
@@ -632,7 +633,7 @@ Cada [ ] es una ventanita de 1em de alto dentro del texto, con la pieza dibujada
   - **¿Volverían a jugar?** Después del partido, cada equipo dice sí o no del rival. Lo bueno se ve; lo malo no se le muestra a otros jugadores. (El sistema sí lo usa, para no volver a emparejarlos y para moderar: README. Va a asesoría con el resto de la sección 9.)
   - **El álbum de la zona.** Cada club que enfrentás, a tu álbum.
 
-**La demo de la Corona:** dos escudos de ejemplo, "Deportivo Pecheras" contra "Real Sin Pechera", con un marcador "Ejemplo". La Corona arranca sobre el primero, y con el scroll salta al segundo. "Defensas" vuelve a 0 y aparece "Nuevo campeón".
+**La demo de la Corona:** dos escudos de ejemplo, "Los Mismos de Siempre" contra "Deportivo Rejunte", con un marcador "Ejemplo". La Corona arranca sobre el primero, y con el scroll salta al segundo. "Defensas" vuelve a 0 y aparece "Nuevo campeón".
 
 **390 px:**
 
@@ -644,7 +645,7 @@ Cada [ ] es una ventanita de 1em de alto dentro del texto, con la pieza dibujada
 │ ┌──────────── EJEMPLO ─────────────┐ │
 │ │      ♛                           │ │ ← la Corona viaja
 │ │ [ESCUDO A]  3 – 4  [ESCUDO B]    │ │   de A a B
-│ │ Deportivo Pecheras · Real Sin P. │ │
+│ │ Los Mismos de S. · Dep. Rejunte  │ │
 │ │ Nuevo campeón de la Corona       │ │
 │ └──────────────────────────────────┘ │
 │ ◯ La cartelera…                      │ ← viñetas de tiza,
@@ -684,10 +685,14 @@ Cada [ ] es una ventanita de 1em de alto dentro del texto, con la pieza dibujada
   - **Tu carrera.** Ganados, empatados y perdidos, clásicos, títulos y logros con nombre de crónica, como Centenario o Matador de clásicos. Algunos están ocultos.
   - **Versus.** Tu carrera contra la de un amigo, si los dos aceptan.
   - **Tu Temporada.** El resumen de tu año, para compartir.
+- Y toda la semana (antes, sección 7):
+  - **Pronósticos.** Con tus amigos, tu club y tu complejo. Sin plata.
+  - **El desafío de la semana.** Un reto nuevo para clubes y jugadores.
+  - **El Diario de la Zona.** Los lunes, la edición de tu zona: resultados, la tabla, el clásico y la goleada.
 
 **La tapa de ejemplo** (`.rival-tapa`, con el rótulo "Ejemplo") va pegada a la pizarra con un imán, como el recorte que el DT pega en el vestuario:
 - titular: **SE TERMINÓ EL REINADO** (sale del README);
-- bajada: "Real Sin Pechera le sacó la Corona a Deportivo Pecheras en la noche del jueves.";
+- bajada: "Deportivo Rejunte le sacó la Corona a Los Mismos de Siempre en la noche del jueves.";
 - sin nombres de personas, como manda la decisión del 30/10.
 
 **El mazo de figuritas de ejemplo:** cinco figuritas (Debut, Plata, Oro, Figura y Fundador) en un carrusel horizontal con `scroll-snap`. Cada una tiene una silueta en lugar de foto, el dorsal en Archivo condensada si se aprueba la 3, el club inventado y "Ejemplo".
@@ -702,7 +707,7 @@ Cada [ ] es una ventanita de 1em de alto dentro del texto, con la pieza dibujada
 │ │ ● EL DIARIO DE LA ZONA           │ │ ← la tapa se pega (● el imán)
 │ │ SE TERMINÓ                       │ │
 │ │ EL REINADO                       │ │
-│ │ Real Sin Pechera le sacó la…     │ │
+│ │ Deportivo Rejunte le sacó la…     │ │
 │ └──────────────────────────────────┘ │
 │ ◯ La figura…  ◯ La tapa…             │
 │ ┌────┐┌────┐┌────┐  →  (deslizá)    │ ← mazo con scroll-snap
@@ -723,30 +728,16 @@ Cada [ ] es una ventanita de 1em de alto dentro del texto, con la pieza dibujada
 
 **Sin movimiento:** el mazo es un carrusel con scroll horizontal nativo y `scroll-snap`, sin inclinación ni brillo.
 
-### 7. Todos los días
+### 7. Todos los días (sacada)
 
-**Estado:** Próximamente. **Objetivo:** dar una razón para volver aunque no haya partido. El Crack del Día anda desde el día 1, sin gente en la zona.
+Decisión de Lazar (2026-10-30): **el Crack del Día no es parte de RIVAL.** Es un jueguito de TurnoGol que vive en la home, al lado del buscador de canchas (un acceso al costado o un botón flotante: "Adiviná el crack del día"). Se juega con las letras del apellido, como los Wordle de fútbol. Detalle: [`crack-del-dia.md`](crack-del-dia.md).
 
-**Copy:**
-- h2: ¿Quién es el **crack** de hoy?
-- Bajada: Uno por día, el mismo para todos. Adiviná el futbolista con pistas de colores: posición, país, un club y la década en que brilló.
-- Rasgos:
-  - **El Crack del Día.** Compartís tu grilla en el grupo sin spoilear a nadie, y tu racha se cuenta.
-  - **Pronósticos.** Con tus amigos, tu club y tu complejo. Sin plata. (El README lo llama "Prode TurnoGol"; el nombre espera la asesoría: REQUIERE INPUT 16.)
-  - **El desafío de la semana.** Un reto nuevo para clubes y jugadores.
-  - **El Diario de la Zona.** Los lunes, la edición de tu zona: resultados, la tabla, el clásico y la goleada.
+Sin el Crack, a la sección le faltaba su demo y su razón de ser. Los otros rasgos pasan a la lista de la sección 6 ("Y toda la semana"):
+- **Pronósticos.** Con tus amigos, tu club y tu complejo. Sin plata. (El README lo llama "Prode TurnoGol"; el nombre está en REQUIERE INPUT 16.)
+- **El desafío de la semana.** Un reto nuevo para clubes y jugadores.
+- **El Diario de la Zona.** Los lunes, la edición de tu zona: resultados, la tabla, el clásico y la goleada.
 
-**La demo:** la grilla de un día de ejemplo, dibujada con tiza sobre la pizarra y sin el nombre del jugador: es el formato que se comparte (`crack-del-dia.md`).
-- Las columnas son las pistas: posición, país, club y década.
-- Las filas son los intentos.
-- Cada casillero se pinta de verde, lleva rayado de tiza o queda gris, y lleva su texto ("Coincide", "Cerca", "No") para no depender del color.
-- Abajo va el botón de compartir de ejemplo, apagado: "Compartir mi grilla".
-
-**Composición:** en escritorio, la grilla a la izquierda y los otros tres rasgos a la derecha, con viñetas de tiza. En el celular, la grilla va arriba.
-
-**Animación, atada al scroll (de paso):** los casilleros se dan vuelta uno por uno (`rotateX` de 90° a 0°) a medida que la grilla sube por la pantalla. Si se vuelve para arriba, se dan vuelta al revés.
-
-**"Cerca" va con rayado de tiza, no en amarillo:** el ámbar es solo de "Queda 1" (DESIGN.md). El color del juego se decide en su ola.
+Los números de sección no se corren, para no romper las referencias del resto del doc.
 
 ### 8. Tu cancha
 
@@ -798,6 +789,7 @@ Nunca se dice "te traemos jugadores" ni "llenamos tu cancha".
 | ¿Se va a ver cuando me va mal? | No se le va a mostrar a otros jugadores. Cuando lleguen las tablas, lo bueno se ve y lo malo no: nadie ve a otro abajo de una tabla. |
 | ¿Qué partidos van a contar? | Para la tabla y la categoría, que llegan muy pronto, solo lo verificado: partidos entre clubes, con turno en un complejo TurnoGol y el resultado confirmado. |
 | ¿Alguien puede escribir algo sobre mí? | No. En RIVAL no hay comentarios ni notas de una persona a otra. Y la tapa, cuando llegue, va a hablar de clubes y resultados. |
+| ¿Cuánto sale? | Nada. RIVAL es gratis para el jugador. |
 
 Lo que todavía no existe se responde en futuro: la sección no lleva chip, pero no promete en presente nada que sea "Próximamente".
 | ¿Hay plata en juego? | No. Ni apuestas ni plata entre jugadores. |
@@ -819,8 +811,7 @@ Cada respuesta es un compromiso público y tiene que coincidir con los textos le
 
 **Copy:**
 - h2: Temporada **Cero.**
-- Texto: Los primeros clubes se fundan en la Temporada Cero, y la primera temporada pasa una sola vez.
-- Si se aprueba la marca Fundador (REQUIERE INPUT 15), se suma: "Los que la jueguen quedan como Fundadores." Sin "para siempre".
+- Texto: Los primeros clubes se fundan en la Temporada Cero, y los que la jueguen quedan como Fundadores. La primera temporada pasa una sola vez.
 - Puente: Mientras tanto, armá el partido de esta semana.
 - **La banda ARMALO**, con el plano "una palabra es el botón":
   - una banda esmeralda (`primary`) a todo el ancho, de 46svh en el celular y 60svh en escritorio, que es un solo link a `/rival/nuevo`;
@@ -836,7 +827,7 @@ Ese FOMO es real (`categorias.md`): la primera temporada ocurre una sola vez. No
 
 **La escena (fijada, unas 2,2 pantallas):**
 - El borrador cruza la pizarra atado al scroll, y la jugada vieja baja de 55 % a 12 % de opacidad a su paso.
-- Aparece "Temporada Cero." y cae el sello "FUNDADOR" (o "TEMPORADA CERO", según REQUIERE INPUT 15): escala de 1,3 a 1 y opacidad en 300 ms, en blanco tiza y en Archivo condensada si se aprueba la 3, para no competir con el verde de la banda.
+- Aparece "Temporada Cero." y cae el sello "FUNDADOR": escala de 1,3 a 1 y opacidad en 300 ms, en blanco tiza y en Archivo condensada si se aprueba la 3, para no competir con el verde de la banda.
 
 **La banda ARMALO, atada al scroll (de paso):** las seis letras suben desde abajo, una detrás de otra, mientras la banda entra en pantalla. Con hover y foco, fondo y texto se invierten al instante.
 
@@ -848,14 +839,14 @@ Es el `SiteFooter` del portal, sin cambios. Arriba del pie va "RIVAL" en Archivo
 
 ## Movimiento
 
-Pedido de Lazar (2026-10-30): **la página se mueve con el scroll**, con motion graphics limpios. El prototipo lo prueba sin librerías.
+Pedido de Lazar (2026-10-30): **la página se mueve con el scroll**, con motion graphics limpios y un efecto "wow" muy coreografiado, pero sin que la web se ponga lenta. El prototipo lo prueba sin librerías; en producción va GSAP si pasa la medición (ver "Con GSAP").
 
 ### Gramática
 
 - **Una sola firma al cargar: la tiza.** Se dibuja la cancha, caen los jugadores y queda el hueco. Es lo único que se mueve sin que el usuario haga nada.
 - **Después, todo lo mueve el scroll.** Hay dos tipos de escena:
   - **Fijadas** (`position: sticky`): la sección se queda en pantalla de 2 a 4 pantallas de scroll mientras su jugada se arma. Son la jugada de hoy, la escalera, el picado que se ordena en club, el escudo, la Corona, el mazo de costado, el zoom a la cancha y la Temporada Cero.
-  - **De paso:** se arman mientras cruzan la pantalla, sin fijarse. Son la mitad de cancha, la grilla del Crack, la banda ARMALO y el "RIVAL" del pie.
+  - **De paso:** se arman mientras cruzan la pantalla, sin fijarse. Son la mitad de cancha, la banda ARMALO y el "RIVAL" del pie.
 - **Todo es reversible.** Scrollear para arriba desarma la jugada.
 - **El scroll es nativo.** No hay scroll suavizado ni secuestrado (nada del tipo Lenis): el dedo manda. Lo que se suaviza es la escena, que sigue al scroll con un retraso corto (un 22 % del camino por cuadro). Así se siente fluida sin frenar el dedo.
 - **Una idea por escena.** Cada escena mueve una sola cosa grande; el resto entra con `Reveal` (16 px y opacidad, 700 ms, una vez).
@@ -887,7 +878,6 @@ Pedido de Lazar (2026-10-30): **la página se mueve con el scroll**, con motion 
 | 4. Fundá tu club | Fijada | 2,6 pantallas | El escudo se dibuja y se pinta; el párrafo se lee palabra por palabra | Pintado y entero |
 | 5. Partido oficial | Fijada | 2,8 pantallas | El marcador rueda y la Corona viaja de A a B por el arco | Corona en B |
 | 6. Tercer tiempo | Fijada, horizontal | Lo que mide el mazo | El mazo corre de costado; cada pieza se inclina según su distancia al centro; brilla la Oro | Carrusel nativo con `scroll-snap` |
-| 7. Todos los días | De paso | — | Los casilleros se dan vuelta uno por uno | Dados vuelta |
 | 8. Tu cancha | Fijada | 2,6 pantallas | La ventana del círculo central crece hasta casi toda la pizarra; se pega el sticker | Abierta |
 | 9. Reglas | — | — | Solo `Reveal` y el abrir de cada baldosa (200 ms) | — |
 | 10. Temporada Cero | Fijada | 2,2 pantallas | El borrador cruza la pizarra, aparece el título y cae el sello | Borrada |
@@ -921,20 +911,44 @@ En producción hay dos caminos, que se pueden combinar:
 | Scroll-driven animations (`animation-timeline`) | No es Baseline. Chrome y Edge desde la 115; Safari 26 según fuentes secundarias `[VERIFICAR]`; Firefox estable sin soporte | Camino opcional en producción, siempre dentro de `@supports` |
 | `<details name>` | Chrome 120, Safari 17.2, Firefox 130 | Las baldosas de las reglas: se abre una por vez |
 
-**Sin librerías nuevas.** Con tanto scroll, las alternativas serían GSAP con ScrollTrigger (una dependencia nueva, con licencia propia de GSAP) o `motion`, que ya está instalada (v14) pero que DESIGN.md limita a `/onboarding`. **Recomendación: ninguna de las dos**, porque el prototipo muestra que alcanza con CSS y el motor chico (REQUIERE INPUT 5).
+### Con GSAP (decisión de Lazar, condicionada a la medición)
+
+**Qué suma.** GSAP es gratis desde que lo compró Webflow, plugins incluidos, también para uso comercial. Lo que da y el motor `--p` no:
+- el morph real de una forma en otra (MorphSVG): los diez puntos que se ordenan en formación y el escudo que se arma;
+- texto que se arma por letra o por palabra (SplitText), en la sección 4 y en ARMALO;
+- timelines largas, con varias piezas encadenadas en una sola escena;
+- el pin de ScrollTrigger, que se banca el cambio de alto de la barra del navegador en el celular;
+- DrawSVG para la tiza, que anima lo mismo que `stroke-dashoffset`.
+
+**Por qué no tiene que hacer lenta la web.**
+- Pesa unos 35 a 40 KB gzip entre el núcleo, ScrollTrigger y los plugins que se usen `[VERIFICAR con el build]`.
+- Se carga solo en `/rival` y después de la foto del hero, que es el LCP.
+- La lentitud no viene de la librería sino de qué se anima: sigue la regla de solo transform y opacidad, más los trazos de la excepción.
+- Sin smooth scroll que secuestre la rueda o el dedo (Lenis y similares): el scroll sigue siendo el nativo.
+
+**La medición antes de adoptarla:**
+1. Se rehacen con GSAP las dos escenas más pesadas: 1 (Hoy) y 3 (Grupo no es club).
+2. Se comparan con el prototipo actual a 390 px, con la CPU frenada ×4: frames largos durante el scroll, INP, LCP y peso de JavaScript.
+3. Entra si no empeora ninguna. Si empeora, se queda el motor `--p`.
+
+**Lo que hay que hacer si entra:**
+- es una dependencia nueva: `pnpm add -E gsap`;
+- DESIGN.md limita las librerías de animación a `/onboarding`, así que hay que sumar la excepción para `/rival`;
+- antes de instalar, leer la licencia estándar de GSAP (prohíbe usarla en productos que compitan con el editor visual de Webflow; TurnoGol no es eso, pero se deja por escrito);
+- con `prefers-reduced-motion` no se crea ningún ScrollTrigger, y la página es la misma lista estática de hoy.
 
 ## Rendimiento en el celular
 
 - **LCP:** el h1 o la pizarra, que es un SVG en línea de unos pocos KB. El hero no tiene foto. El texto nunca arranca invisible esperando JavaScript: la entrada de `@starting-style` arranca con el primer pintado.
 - **La única foto** (`bg-hero-2`, avif de unos 96 KB) va en la sección 8, con `loading="lazy"` y su `sizes`, dentro del círculo.
-- **JavaScript:** el motor de escenas (uno solo para toda la página) y tres islas chicas: la demo de "Voy", el quiz y las pestañas del tablón. Todo lo demás es Server Component con CSS. La pizarra, el escudo, la tapa, las figuritas y el Crack son marcado y SVG.
+- **JavaScript:** el motor de escenas (uno solo para toda la página) y tres islas chicas: la demo de "Voy", el quiz y las pestañas del tablón. Todo lo demás es Server Component con CSS. La pizarra, el escudo, la tapa y las figuritas son marcado y SVG.
 - **Escenas:** solo se calculan las visibles; cada cuadro escribe una variable por escena y nada más. `will-change` va solo en el mazo horizontal. El scroll no se secuestra.
 - **Vidrio:** como mucho 2 superficies con `backdrop-filter` a la vez en pantalla. El desenfoque es lo más caro en un Android de gama baja.
 - **Abajo del pliegue:** `content-visibility: auto` con `contain-intrinsic-size` en cada sección.
 - **Página estática** (ISR o estática). No depende de la sesión: el cromo ya resuelve "Ingresar" o el avatar en el cliente.
 - **Interacciones:** las animaciones del toque duran 250 ms como mucho y no bloquean el hilo.
 - **Anclaje del scroll apagado** (`overflow-anchor: none`). En el prototipo, el anclaje de Chrome peleaba con las escenas y corría la página sola al cargar.
-- **Alto de la página:** las escenas suman unas 27 pantallas de scroll en el celular (medido a 390×844 en el prototipo), y la página entera unas 35 con las listas, las reglas y el pie. Es largo a propósito, pero el botón verde está en el primer pantallazo y la banda ARMALO cierra la página.
+- **Alto de la página:** las escenas suman unas 27 pantallas de scroll en el celular (medido a 390×844 en el prototipo), y la página entera unas 34 con las listas, las reglas y el pie. Es largo a propósito, pero el botón verde está en el primer pantallazo y la banda ARMALO cierra la página.
 
 ## Accesibilidad
 
@@ -945,8 +959,6 @@ En producción hay dos caminos, que se pueden combinar:
 - **La demo de "Voy":** el contador va en `aria-live="polite"` y el botón es un `<button>` real. La demo dice "Ejemplo" en el texto, no solo en un rótulo visual.
 - **El quiz:** cada pregunta es un `radiogroup` con chips de 44 px. El resultado se anuncia con `aria-live`.
 - **El mazo de figuritas:** se puede recorrer con el teclado, y hay un texto con las ediciones para lectores de pantalla.
-- **La grilla del Crack:** cada casillero lleva su texto ("Coincide", "Cerca", "No").
-- Todo blanco táctil mide 44 px o más, y nada depende del hover.
 
 ## SEO y metadatos
 
@@ -1024,7 +1036,6 @@ Un archivo `src/modules/rival/rival-landing-status.ts` exporta, por pieza, `'ava
 | Copa90 | La cultura del hincha como marca, "hecho por hinchas" | [Transform, identidad de Copa90](https://www.transformmagazine.net/articles/2017/copa90-solidifies-international-focus-with-updated-visual-identity/) |
 | Playtomic | Un nivel que solo mueven los partidos competitivos, con una fiabilidad que crece | [Cómo funciona el nivel](https://playerhelp.playtomic.com/hc/en-gb/articles/43310980754193-How-the-Playtomic-level-system-works) |
 | Strava, Local Legends | La corona para el que más va, no para el más rápido | [DC Rainmaker](https://dcrainmaker.com/2020/06/strava-legends-feature.html) |
-| "Who Are Ya?" | El género del Crack del Día: verde, amarillo y gris por posición, país y club | [TechRadar](https://www.techradar.com/news/wordle-now-has-a-football-spin-off-heres-how-to-play) |
 | Sorare | Figuritas digitales con ediciones y escasez, y la foto como centro de la carta | [SportBusiness](https://www.sportbusiness.com/news/sorare-launches-3d-digital-cards-for-2023-24-premier-league-season/) |
 | Spotify Wrapped | El formato de Tu Temporada: vertical, para historias | (cultura general) |
 | El álbum del Mundial 2026, Olé y El Gráfico | Figuritas, ediciones y tapas de diario deportivo. **Solo como cultura:** no se copian marcas, logos ni diseños | (cultura general) |
@@ -1051,37 +1062,33 @@ Las tres de referencia sirven si un día se quiere una voz de tapa distinta de A
 - [MDN: `animation-timeline`](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/animation-timeline). Todavía no es Baseline.
 - [Chrome: scroll-driven animations](https://developer.chrome.com/docs/css-ui/scroll-driven-animations) y [scroll-driven-animations.style](https://scroll-driven-animations.style/), con demos y patrones.
 - [motion: reducir el tamaño con LazyMotion](https://motion.dev/docs/react-reduce-bundle-size).
+- [GSAP: licencia estándar](https://gsap.com/community/standard-license/) y [README de GSAP 3.15](https://cdn.jsdelivr.net/npm/gsap@3.15.0/README.md), donde dice que los plugins pasaron a ser gratis.
 - En el repo: `src/components/site/Reveal.tsx`, con el porqué de su red de seguridad para el scroll rápido en iPhone, `animate-slot-pulse` y el bloque `prefers-reduced-motion` de `src/app/globals.css`.
 
-## REQUIERE INPUT
+## Lo que decidió Lazar sobre los REQUIERE INPUT (2026-10-30)
 
-Cada punto lleva su recomendación. Ninguno frena la aprobación del diseño, pero todos frenan la implementación de su parte.
+| # | Tema | Decisión |
+|---|---|---|
+| 1 | Barra inferior | "RIVAL" lleva al tablón a quien ya aceptó la bienvenida y a la landing al resto. `/rival` se indexa. |
+| 2 | Tema | La landing es siempre oscura. |
+| 3 | Archivo | Se prende el eje de ancho para la tapa y los dorsales. Va a DESIGN.md. |
+| 4 | Oro de trofeo | Sí: `#fcd34d` y su luz `#fef3c7`, solo para las estrellas, la Corona y la figurita Oro. Va a DESIGN.md. |
+| 5 | Librería | **GSAP con ScrollTrigger, con medición.** Antes de adoptarla se rehacen las dos escenas más pesadas con GSAP y se miden contra el motor `--p` del prototipo, con la CPU frenada ×4 (un Android medio). Entra si no empeora la fluidez (frames largos, INP) ni la carga (LCP, peso). Ver "Con GSAP" en Movimiento. |
+| 6 | "Avisame" de la Temporada Cero | Todavía no. El opt-in se diseña con la ola de clubes. |
+| 7 | Quiz | Va, con "Próximamente" bien visible y sin guardar nada. |
+| 8 | Números que son propuesta | Afuera hasta su ola. |
+| 9 | Clubes de ejemplo | Los que eligió Lazar: Los Mismos de Siempre, Deportivo Rejunte, Deportivo Después Te Transfiero, La Banda del Rulo y Villa Resaca. Antes de publicar, buscarlos en Google para descartar un club real con el mismo nombre. |
+| 10 | Fotos y El Vagón | Sin sesión de fotos: sigue `bg-hero-2` como foto de ejemplo, y la landing no nombra complejos. La Temporada Cero queda como cierre. |
+| 11 | Rótulos | "Ya disponible" y "Próximamente". |
+| 12 | "Gratis" | **RIVAL es gratis para el jugador, y se dice.** Está en la sección 9 ("¿Cuánto sale?"). Es una promesa pública: cobrarle después al jugador sería volver atrás. |
+| 13 | Reglas de la sección 9 | Se publican ya, tal cual. Lo que queda pendiente: que los términos y la privacidad digan lo mismo, incluido que el "no" de "¿Volverían a jugar?" se guarda y lo ve moderación. |
+| 14 | Trazo de tiza | Se acepta la excepción, solo para la pizarra, el escudo y el "RIVAL" del pie. Con GSAP sale con DrawSVG, que anima lo mismo. |
+| 15 | Fundador | Va la marca, sin "para siempre": el sello y la edición Fundador de la figurita. Las reglas (quién la gana y dónde se ve) se escriben con la ola de clubes. "Fundador de la sede" se decide con "Pedí tu cancha" y no va en la landing. |
+| Crack del Día | Fuera de RIVAL | Es un jueguito de TurnoGol en la home, junto al buscador, y se juega con letras. Sale de la landing (sección 7). |
 
-1. **La barra inferior y la indexación.**
-   - Para quien ya usa RIVAL, ¿"RIVAL" lleva al tablón o a la landing? **Recomendación:** al tablón para quien ya aceptó la bienvenida y a la landing para el resto.
-   - ¿Se indexa `/rival`? **Recomendación:** sí, porque es la URL que va en el sticker y en Instagram.
-2. **Siempre oscura.** ¿La landing es siempre oscura, como `/para-complejos`? **Recomendación:** sí. La tiza solo se lee sobre una pizarra oscura, y hay precedente en DESIGN.md (`.dark-surface`).
-3. **El eje de ancho de Archivo.** ¿Se prende para la tapa y los dorsales? Es un cambio de DESIGN.md, sin dependencia nueva. **Recomendación:** sí.
-4. **Oro de trofeo.** ¿Se suma un token para las estrellas, la Corona y la edición Oro? Es un cambio de DESIGN.md: `#fcd34d` y su luz `#fef3c7`, nada más. **Recomendación:** sí, limitado a esas tres piezas.
-5. **Una librería para el scroll.** Con tanto movimiento, ¿se suma GSAP con ScrollTrigger (dependencia nueva) o se pide la excepción para `motion` (ya instalada, limitada a `/onboarding`)? **Recomendación:** no, ninguna. El prototipo hace todas las escenas con CSS y un motor de unas 60 líneas; se vuelve a preguntar solo si la implementación muestra lo contrario.
-6. **"Avisame cuando arranque la Temporada Cero."** Pide un opt-in nuevo por mail, con su finalidad (Ley 25.326), y hoy no existe. **Recomendación:** no construirlo todavía. El único botón es "Armá tu partido", y el opt-in se diseña con la ola de clubes.
-7. **El quiz de categoría.** ¿Va en la landing aunque la categoría no exista todavía? ¿Va la tabla de respuestas propuesta? **Recomendación:** sí, con "Próximamente" bien visible y sin guardar nada. Es el gancho más fuerte de `categorias.md`.
-8. **Números que hoy son propuesta.** Estos números de la visión no van al copy hasta que se confirmen:
-   - los 11 de la Selección;
-   - los 90 días de la Leyenda;
-   - los 3 partidos de un clásico;
-   - los 50 y 100 partidos de Plata y Oro;
-   - los 8 clubes o 3 complejos para abrir la tabla.
+## REQUIERE INPUT (lo que queda)
 
-   **Recomendación:** dejarlos afuera hasta su ola. Los que sí van, porque están decididos, son la escala, el techo en Quinta, los 10 partidos del "?" y "como mucho una categoría".
-9. **Los nombres de clubes de ejemplo.** "Deportivo Pecheras", "Real Sin Pechera", "Atlético Tercer Tiempo", "Los del Fondo" y "Sportivo Banco de Suplentes". ¿Van? **Recomendación:** sí, después de buscarlos en Google para descartar un club real con ese nombre. Aparte: el README usa "Sacachispas FC vs. Chacarita FC" como ejemplo, y los dos son clubes reales, así que no se usan afuera (ver Follow-ups).
-10. **Fotos y El Vagón.** ¿Se hace una sesión de fotos de El Vagón de noche? ¿La landing nombra a El Vagón y a Luján, por ejemplo en "Temporada Cero en El Vagón"? Lo segundo necesita el OK del dueño de El Vagón. **Recomendación:** fotos sí. Nombrarlo, solo con su OK; mientras tanto, la landing no nombra complejos.
-11. **Los rótulos de estado.** ¿Van "Ya disponible" y "Próximamente"? **Recomendación:** sí, porque son los más claros. "Ya en la cancha" suena mejor pero se entiende menos, y "Se juega" ya significa otra cosa en RIVAL.
-12. **"Gratis".** ¿RIVAL es gratis para el jugador, y se puede decir? No está escrito en ninguna decisión. **Recomendación:** decidirlo por escrito. Hasta entonces el copy no lo dice.
-13. **Las reglas de la sección 9 como compromiso público.** ¿Se publican tal cual? Tienen que coincidir con los términos y la privacidad, y validarse con asesoría. Ojo con "¿Volverían a jugar?": el "no" no se le muestra a otros jugadores, pero el sistema lo guarda, lo usa para no volver a emparejar a esos equipos y lo ve moderación. Ese dato negativo existe, y la privacidad tiene que decirlo. Por eso el copy dice "no se le muestra a otros jugadores" y no "no lo ve nadie". **Recomendación:** sí, porque son el diferencial, pero después de la asesoría legal.
-14. **El trazo de tiza.** DESIGN.md pide animar transform, opacidad, color o sombra. La firma dibuja las líneas con `stroke-dashoffset`, que pinta sin mover el layout pero no es ninguna de esas cuatro. Se usa en tres lugares: las líneas de la pizarra, el escudo que se dibuja y el "RIVAL" del pie. Con el scroll, el trazo **sigue al dedo y se deshace si volvés para arriba**: no es una animación de una vez, es un dibujo atado al scroll. ¿Se acepta la excepción para esos tres trazos? **Recomendación:** sí, acotada a SVG chicos (la pizarra, el escudo y el wordmark), sin trazos sobre fotos ni sobre texto corrido. La alternativa sin excepción es tapar el trazo con una capa que se corre (`translateX`): sirve para rectas, pero no para el círculo central ni para el escudo.
-15. **La marca "Fundador".** El copy de Temporada Cero dice que los que la jueguen quedan como "Fundadores para siempre", y la sección de la cancha, que los que pidieron la sede quedan como "Fundadores de la sede". Las dos marcas están en la visión (README), pero no entre lo decidido el 2026-10-29: no hay regla de quién la gana, si se ve en la figurita o en el perfil, ni si es opt-in. "Para siempre" es una promesa difícil de sostener si la Temporada Cero cambia de forma. **Recomendación:** decidirlo antes de publicar. Hasta entonces, el copy dice "Los primeros clubes se fundan en la Temporada Cero", sin "para siempre" y sin "Fundadores de la sede"; así está en el doc y en el prototipo. Dependen de la misma decisión el sello de la escena y la edición Fundador del mazo de figuritas. El prototipo muestra el sello "FUNDADOR" para que se vea la escena; sin OK, el sello dice "TEMPORADA CERO".
-16. **El nombre "Prode".** La sección "Todos los días" y el catálogo hablan de "Prode TurnoGol". El README ("Premios y prode") ya avisa que un concurso con premio necesita asesoría por Lealtad Comercial. Aparte, "Prode" es el nombre de un juego de la Lotería, y hay que ver si es marca registrada `[VERIFICAR]`. **Recomendación:** que lo vea la asesoría junto con la sección 9. Mientras tanto, nombrarlo "Pronósticos" o "La fecha" en la landing, y guardar "Prode" para cuando haya OK.
+16. **El nombre "Prode".** El README propone un prode de fútbol profesional: pronosticás la Liga y la Selección cada fecha y competís en tablitas con tus amigos, tu club y tu complejo, sin plata. El README ("Premios y prode") avisa que un concurso con premio necesita asesoría por Lealtad Comercial, y "Prode" es el nombre de un juego de la Lotería, que puede ser marca registrada `[VERIFICAR]`. **Recomendación:** en la landing se llama "Pronósticos", y "Prode" espera el OK de la asesoría.
 
 ## Follow-ups encontrados (fuera de esta tarea)
 

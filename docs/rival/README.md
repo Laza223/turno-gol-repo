@@ -112,7 +112,7 @@ El detalle de cada idea (etapa, puerta, tamaño, qué reusa) está en [`ideas.md
 
 ### 5. EL RITUAL: todos los días
 
-- **El Crack del Día**, en la home: adiviná el futbolista con letras en verde, amarillo y gris. No necesita gente en la zona, así que anda desde el día 1. Detalle: [`crack-del-dia.md`](crack-del-dia.md).
+- **El Crack del Día**, en la home: adiviná el futbolista con letras en verde, amarillo y gris. **Desde el 2026-10-30 no es parte de RIVAL:** es un jueguito de TurnoGol. No necesita gente en la zona, así que anda desde el día 1. Detalle: [`crack-del-dia.md`](crack-del-dia.md).
 - **Prode TurnoGol** (Liga y Selección), con ligas por club, complejo y amigos, sin plata.
 - **Desafío de la semana** para clubes y jugadores. A futuro, patrocinado por una marca.
 - **El Diario de la Zona**, los lunes. Es una edición, no un feed: resultados, tabla, clásico, goleada, equipo de la fecha y el complejo destacado, con titulares de la IA que no nombran jugadores.

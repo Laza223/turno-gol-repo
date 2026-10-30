@@ -400,19 +400,6 @@ html:not(.js-scroll) .rail { --p: .5; }
 .story .big { font: 900 italic 40px/.95 Archivo, sans-serif; letter-spacing: -.03em; }
 .story .share { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--ghost); font-size: 14px; font-weight: 600; }
 
-/* ═══ 7. TODOS LOS DÍAS ═══════════════════════════════════════════════ */
-.crack .board { padding: 16px; margin-top: 18px; }
-.crack .split { display: flex; flex-direction: column-reverse; gap: 28px; }
-.cgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; perspective: 600px; }
-.cgrid .h { font: 600 12px/1.2 Sora, sans-serif; color: var(--ink-3); text-align: center; padding-bottom: 4px; }
-.cell { --f: 1; aspect-ratio: 1.25; border-radius: 10px; display: grid; place-items: center; font-size: 12px; font-weight: 700; transform-origin: center top;
-  transform: rotateX(calc((1 - var(--f)) * 90deg)); opacity: calc(.15 + var(--f) * .85); }
-.js-scroll .crack .cell { --f: clamp(0, (var(--p, 1) - .2) * 40 - var(--i), 1); }
-.cell.y { background: var(--em-700); color: var(--ink); }
-.cell.c { color: var(--ink); background: repeating-linear-gradient(135deg, rgba(248, 250, 252, .28) 0 5px, rgba(248, 250, 252, .08) 5px 10px); box-shadow: inset 0 0 0 1px var(--chalk); }
-.cell.n { background: #1e293b; color: var(--ink-3); }
-.share-off { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.share-off span { display: inline-flex; min-height: 44px; align-items: center; padding: 0 16px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); color: var(--ink-3); font-weight: 600; }
 
 /* ═══ 8. TU CANCHA ════════════════════════════════════════════════════ */
 .tc .board { margin-top: 16px; aspect-ratio: 600 / 400; width: min(100%, calc(50svh * 600 / 400)); margin-inline: auto; }
@@ -533,7 +520,6 @@ html:not(.js-scroll) .rail { --p: .5; }
   .js-scroll .gc .split { display: grid; }
   .js-scroll .gc .split > div:first-child { display: block; }
   .js-scroll .cat-index { display: none; }
-  .crack .split { display: grid; }
 
   .fc .grid { grid-template-columns: 4fr 8fr; gap: 56px; }
   .fc .shield { width: min(100%, 340px); }
@@ -555,8 +541,6 @@ html:not(.js-scroll) .rail { --p: .5; }
   .story .big { font-size: 50px; }
   .track { gap: 36px; padding-inline: max(40px, calc((100vw - var(--maxw)) / 2)); }
 
-  .crack .split { align-items: center; }
-  .cell { font-size: 13px; }
 
   .tc .board { width: min(100%, calc(62svh * 600 / 400)); }
   .tc-after { display: grid; grid-template-columns: 7fr 5fr; gap: 56px; align-items: start; }
@@ -875,7 +859,7 @@ html.reduce *, html.reduce *::before, html.reduce *::after { animation-duration:
           <svg class="rival-ghost" viewBox="0 0 100 116" aria-hidden="true"><path d="M50 4 92 18v38c0 28-18 46-42 56C26 102 8 84 8 56V18Z" fill="none" stroke="#f8fafc" stroke-width="3" stroke-dasharray="6 6"/></svg>
           <span class="bench-l">Suplentes</span>
         </div>
-        <p class="board-legend" style="font-size:12px;color:var(--ink-3);margin-top:8px">Ejemplo: el grupo de los miércoles funda Deportivo Pecheras y sale a jugar contra otro club.</p>
+        <p class="board-legend" style="font-size:12px;color:var(--ink-3);margin-top:8px">Ejemplo: el grupo de los miércoles funda Los Mismos de Siempre y sale a jugar contra otro club.</p>
       </div>
     </div>
   </div>
@@ -911,7 +895,7 @@ html.reduce *, html.reduce *::before, html.reduce *::after { animation-duration:
           <text class="sh-piece" style="--k:2" x="100" y="216" text-anchor="middle" font-family="Archivo" font-weight="900" font-style="italic" font-size="44" fill="#f8fafc">DP</text>
           <path class="sh-out draw" pathLength="1" d="M100 62 184 86v66c0 46-36 76-84 92-48-16-84-46-84-92V86Z" fill="none" stroke="#f8fafc" stroke-opacity=".8" stroke-width="3" stroke-linejoin="round"/>
         </svg>
-        <p style="text-align:center;margin-top:8px"><span class="ej">Ejemplo · Deportivo Pecheras</span></p>
+        <p style="text-align:center;margin-top:8px"><span class="ej">Ejemplo · Los Mismos de Siempre</span></p>
       </div>
       <p class="words" id="words">Fundá tu club con nombre y escudo <span class="pic"><svg viewBox="0 0 24 28"><path d="M12 1 23 5v9c0 7-5 11-11 13C6 25 1 21 1 14V5Z" fill="#065f46" stroke="#f8fafc" stroke-width="1.6"/></svg></span>, camiseta con tu número <span class="pic"><svg viewBox="0 0 28 26"><path d="M9 1 1 6l3 6 3-1v14h14V11l3 1 3-6-8-5c-1 3-3 4-5 4S10 4 9 1Z" fill="#f8fafc"/><text x="14" y="21" text-anchor="middle" font-family="Archivo" font-weight="900" font-style="italic" font-size="10" fill="#020617">10</text></svg></span> y un plantel que acepta la invitación <span class="pic" style="width:1.9em"><svg viewBox="0 0 46 24"><g fill="none" stroke="#f8fafc" stroke-opacity=".8" stroke-width="2"><circle cx="8" cy="12" r="6.5"/><circle cx="23" cy="12" r="6.5"/><circle cx="38" cy="12" r="6.5"/></g></svg></span>. Cada título suma una estrella arriba del escudo <span class="pic"><svg viewBox="0 0 24 24"><path d="M12 1.5 15 8l7 .7-5.3 4.8 1.6 7L12 16.8 5.7 20.5l1.6-7L2 8.7 9 8Z" fill="var(--gold)"/></svg></span>.</p>
     </div>
@@ -931,7 +915,7 @@ html.reduce *, html.reduce *::before, html.reduce *::after { animation-duration:
   </ul>
   <div data-reveal style="margin-top:32px">
     <span class="ej">Ejemplo · nombres que podría tirar la IA</span>
-    <ul class="names"><li>Deportivo Pecheras</li><li>Real Sin Pechera</li><li>Atlético Tercer Tiempo</li><li>Los del Fondo</li><li>Sportivo Banco de Suplentes</li></ul>
+    <ul class="names"><li>Los Mismos de Siempre</li><li>Deportivo Rejunte</li><li>Deportivo Después Te Transfiero</li><li>La Banda del Rulo</li><li>Villa Resaca</li></ul>
   </div>
 </section>
 
@@ -945,13 +929,13 @@ html.reduce *, html.reduce *::before, html.reduce *::after { animation-duration:
       <p style="position:absolute;left:14px;top:12px"><span class="ej">Ejemplo</span></p>
       <div class="score" id="score">
         <svg class="chalk-svg" viewBox="0 0 600 340" aria-hidden="true"><path class="arc draw" pathLength="1" d="M110 132Q300 -68 490 132" stroke-dasharray="1" /></svg>
-        <div class="team" style="left:18.3%"><svg viewBox="0 0 100 116"><path d="M50 4 92 18v38c0 28-18 46-42 56C26 102 8 84 8 56V18Z" fill="#065f46" stroke="#f8fafc" stroke-width="4"/><path d="M8 52 92 30v18L8 70Z" fill="#f8fafc"/></svg><p>Deportivo Pecheras</p></div>
+        <div class="team" style="left:18.3%"><svg viewBox="0 0 100 116"><path d="M50 4 92 18v38c0 28-18 46-42 56C26 102 8 84 8 56V18Z" fill="#065f46" stroke="#f8fafc" stroke-width="4"/><path d="M8 52 92 30v18L8 70Z" fill="#f8fafc"/></svg><p>Los Mismos de Siempre</p></div>
         <div class="result" aria-hidden="true"><span>3</span><span style="opacity:.5">–</span><span class="digit"><span class="roll"><span>3</span><span>4</span></span></span></div>
-        <div class="team" style="left:81.7%"><svg viewBox="0 0 100 116"><path d="M50 4 92 18v38c0 28-18 46-42 56C26 102 8 84 8 56V18Z" fill="#334155" stroke="#f8fafc" stroke-width="4"/><path d="M50 4v108" stroke="#f8fafc" stroke-width="10"/></svg><p>Real Sin Pechera</p></div>
+        <div class="team" style="left:81.7%"><svg viewBox="0 0 100 116"><path d="M50 4 92 18v38c0 28-18 46-42 56C26 102 8 84 8 56V18Z" fill="#334155" stroke="#f8fafc" stroke-width="4"/><path d="M50 4v108" stroke="#f8fafc" stroke-width="10"/></svg><p>Deportivo Rejunte</p></div>
         <div class="crown" aria-hidden="true"><svg viewBox="0 0 64 48"><path d="M4 40 0 10l16 12L32 2l16 20 16-12-4 30Z" fill="var(--gold)"/><rect x="4" y="40" width="56" height="7" rx="2" fill="var(--gold)"/></svg></div>
       </div>
       <p class="status"><span class="old">La Corona del complejo · Defensas: 2</span><span class="new">Nuevo campeón de la Corona · Defensas: 0</span></p>
-      <p class="sr">Ejemplo: Real Sin Pechera le gana 4 a 3 a Deportivo Pecheras y se lleva la Corona del complejo.</p>
+      <p class="sr">Ejemplo: Deportivo Rejunte le gana 4 a 3 a Los Mismos de Siempre y se lleva la Corona del complejo.</p>
     </div>
   </div>
 </section>
@@ -982,12 +966,12 @@ html.reduce *, html.reduce *::before, html.reduce *::after { animation-duration:
         <article class="rival-tapa" aria-label="Tapa de ejemplo">
           <div class="mast"><span>EL DIARIO DE LA ZONA</span><span>EJEMPLO</span></div>
           <h3>Se terminó el reinado</h3>
-          <p>Real Sin Pechera le sacó la Corona a Deportivo Pecheras en la noche del jueves.</p>
+          <p>Deportivo Rejunte le sacó la Corona a Los Mismos de Siempre en la noche del jueves.</p>
           <span class="ej">Ejemplo · la escribe la IA, sin nombrar a nadie</span>
         </article>
-        <div class="rival-figurita f-debut"><span class="ed">Debut</span><span class="num">7</span><div class="sil"><svg viewBox="0 0 100 90"><circle cx="50" cy="28" r="20" fill="currentColor" opacity=".35"/><path d="M8 90c4-24 20-36 42-36s38 12 42 36Z" fill="currentColor" opacity=".35"/></svg></div><div class="foot"><span>Deportivo Pecheras</span><span>Ejemplo</span></div></div>
-        <div class="rival-figurita f-plata"><span class="ed">Plata</span><span class="num">4</span><div class="sil"><svg viewBox="0 0 100 90"><circle cx="50" cy="28" r="20" fill="currentColor" opacity=".35"/><path d="M8 90c4-24 20-36 42-36s38 12 42 36Z" fill="currentColor" opacity=".35"/></svg></div><div class="foot"><span>Real Sin Pechera</span><span>Ejemplo</span></div></div>
-        <div class="rival-figurita f-oro"><span class="ed">Oro</span><span class="num">10</span><div class="sil"><svg viewBox="0 0 100 90"><circle cx="50" cy="28" r="20" fill="currentColor" opacity=".35"/><path d="M8 90c4-24 20-36 42-36s38 12 42 36Z" fill="currentColor" opacity=".35"/></svg></div><div class="foot"><span>Los del Fondo</span><span>Ejemplo</span></div></div>
+        <div class="rival-figurita f-debut"><span class="ed">Debut</span><span class="num">7</span><div class="sil"><svg viewBox="0 0 100 90"><circle cx="50" cy="28" r="20" fill="currentColor" opacity=".35"/><path d="M8 90c4-24 20-36 42-36s38 12 42 36Z" fill="currentColor" opacity=".35"/></svg></div><div class="foot"><span>Los Mismos de Siempre</span><span>Ejemplo</span></div></div>
+        <div class="rival-figurita f-plata"><span class="ed">Plata</span><span class="num">4</span><div class="sil"><svg viewBox="0 0 100 90"><circle cx="50" cy="28" r="20" fill="currentColor" opacity=".35"/><path d="M8 90c4-24 20-36 42-36s38 12 42 36Z" fill="currentColor" opacity=".35"/></svg></div><div class="foot"><span>Deportivo Rejunte</span><span>Ejemplo</span></div></div>
+        <div class="rival-figurita f-oro"><span class="ed">Oro</span><span class="num">10</span><div class="sil"><svg viewBox="0 0 100 90"><circle cx="50" cy="28" r="20" fill="currentColor" opacity=".35"/><path d="M8 90c4-24 20-36 42-36s38 12 42 36Z" fill="currentColor" opacity=".35"/></svg></div><div class="foot"><span>La Banda del Rulo</span><span>Ejemplo</span></div></div>
         <div class="rival-figurita f-figura"><span class="ed">Figura</span><span class="num">9</span><div class="sil"><svg viewBox="0 0 100 90"><circle cx="50" cy="28" r="20" fill="currentColor" opacity=".35"/><path d="M8 90c4-24 20-36 42-36s38 12 42 36Z" fill="currentColor" opacity=".35"/></svg></div><div class="foot"><span>La vota el rival</span><span>Ejemplo</span></div></div>
         <div class="rival-figurita f-fundador"><span class="ed">Fundador</span><span class="num">1</span><div class="sil"><svg viewBox="0 0 100 90"><circle cx="50" cy="28" r="20" fill="currentColor" opacity=".35"/><path d="M8 90c4-24 20-36 42-36s38 12 42 36Z" fill="currentColor" opacity=".35"/></svg></div><div class="foot"><span>Temporada Cero</span><span>Ejemplo</span></div></div>
         <div class="story"><span class="ej" style="align-self:flex-start">Ejemplo · tarjeta 9:16</span><p class="big">¡Subí a <span class="acc">Quinta!</span></p><span class="share">Que se sepa</span></div>
@@ -1006,36 +990,12 @@ html.reduce *, html.reduce *::before, html.reduce *::after { animation-duration:
     <li><b>Versus.</b> Tu carrera contra la de un amigo, si los dos aceptan.</li>
     <li><b>Tu Temporada.</b> El resumen de tu año, para compartir.</li>
   </ul>
-</section>
-
-<!-- ═══ 7. TODOS LOS DÍAS (los casilleros se dan vuelta con el scroll) ═══ -->
-<section class="crack scene" id="todos-los-dias" data-scene="view" aria-labelledby="crack-h">
-  <div class="wrap" style="padding-block:96px">
-    <div class="split">
-      <div>
-        <span class="chip soon" data-reveal><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>Próximamente</span>
-        <h2 class="display" id="crack-h" style="margin-top:10px" data-reveal>¿Quién es el <span class="acc">crack</span> de hoy?</h2>
-        <p class="lede" style="margin-top:12px" data-reveal>Uno por día, el mismo para todos. Adiviná el futbolista con pistas de colores: posición, país, un club y la década en que brilló.</p>
-        <ul class="chalk-list" style="margin-top:24px" data-reveal>
-          <li><b>El Crack del Día.</b> Compartís tu grilla en el grupo sin spoilear a nadie, y tu racha se cuenta.</li>
-          <li><b>Pronósticos.</b> Con tus amigos, tu club y tu complejo. Sin plata.</li>
-          <li><b>El desafío de la semana.</b> Un reto nuevo para clubes y jugadores.</li>
-          <li><b>El Diario de la Zona.</b> Los lunes, la edición de tu zona: resultados, la tabla, el clásico y la goleada.</li>
-        </ul>
-      </div>
-      <div class="board rival-pizarra">
-        <p style="margin-bottom:10px"><span class="ej">Ejemplo · la grilla de un día</span></p>
-        <div class="cgrid" role="img" aria-label="Grilla de ejemplo del Crack del Día: cuatro intentos con pistas de posición, país, club y década; en el cuarto coinciden las cuatro.">
-          <span class="h">Posición</span><span class="h">País</span><span class="h">Club</span><span class="h">Década</span>
-          <span class="cell n" style="--i:0">No</span><span class="cell c" style="--i:1">Cerca</span><span class="cell n" style="--i:2">No</span><span class="cell n" style="--i:3">No</span>
-          <span class="cell y" style="--i:4">Coincide</span><span class="cell c" style="--i:5">Cerca</span><span class="cell n" style="--i:6">No</span><span class="cell c" style="--i:7">Cerca</span>
-          <span class="cell y" style="--i:8">Coincide</span><span class="cell y" style="--i:9">Coincide</span><span class="cell c" style="--i:10">Cerca</span><span class="cell y" style="--i:11">Coincide</span>
-          <span class="cell y" style="--i:12">Coincide</span><span class="cell y" style="--i:13">Coincide</span><span class="cell y" style="--i:14">Coincide</span><span class="cell y" style="--i:15">Coincide</span>
-        </div>
-        <div class="share-off"><span aria-disabled="true">Compartir mi grilla</span><span class="chip soon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>Próximamente</span></div>
-      </div>
-    </div>
-  </div>
+  <h3 style="margin-top:40px" data-reveal>Y toda la semana</h3>
+  <ul class="chalk-list two-col" style="margin-top:16px" data-reveal>
+    <li><b>Pronósticos.</b> Con tus amigos, tu club y tu complejo. Sin plata.</li>
+    <li><b>El desafío de la semana.</b> Un reto nuevo para clubes y jugadores.</li>
+    <li><b>El Diario de la Zona.</b> Los lunes, la edición de tu zona: resultados, la tabla, el clásico y la goleada.</li>
+  </ul>
 </section>
 
 <!-- ═══ 8. TU CANCHA (escena fijada: la foto se abre en el círculo central) ═══ -->
@@ -1094,6 +1054,7 @@ html.reduce *, html.reduce *::before, html.reduce *::after { animation-duration:
       <details name="rival-reglas"><summary>¿Se va a ver cuando me va mal?</summary><p>No se le va a mostrar a otros jugadores. Cuando lleguen las tablas, lo bueno se ve y lo malo no: nadie ve a otro abajo de una tabla.</p></details>
       <details name="rival-reglas"><summary>¿Qué partidos van a contar?</summary><p>Para la tabla y la categoría, que llegan muy pronto, solo lo verificado: partidos entre clubes, con turno en un complejo TurnoGol y el resultado confirmado.</p></details>
       <details name="rival-reglas"><summary>¿Alguien puede escribir algo sobre mí?</summary><p>No. En RIVAL no hay comentarios ni notas de una persona a otra. Y la tapa, cuando llegue, va a hablar de clubes y resultados.</p></details>
+      <details name="rival-reglas"><summary>¿Cuánto sale?</summary><p>Nada. RIVAL es gratis para el jugador.</p></details>
       <details name="rival-reglas"><summary>¿Hay plata en juego?</summary><p>No. Ni apuestas ni plata entre jugadores.</p></details>
       <details name="rival-reglas"><summary>¿Desde qué edad?</summary><p>Solo mayores de 18.</p></details>
       <details name="rival-reglas"><summary>¿Qué pasa con mis datos?</summary><p>Son tuyos: los podés ver, corregir, descargar o borrar (Ley 25.326).</p></details>
@@ -1118,7 +1079,7 @@ html.reduce *, html.reduce *::before, html.reduce *::after { animation-duration:
       <div class="eraser-move" aria-hidden="true"><span class="eraser"></span></div>
       <span class="stamp" aria-hidden="true">FUNDADOR</span>
     </div>
-    <p class="lede" style="margin-top:16px">Los primeros clubes se fundan en la Temporada Cero, y la primera temporada pasa una sola vez.</p>
+    <p class="lede" style="margin-top:16px">Los primeros clubes se fundan en la Temporada Cero, y los que la jueguen quedan como Fundadores. La primera temporada pasa una sola vez.</p>
     <p style="margin-top:10px;font-weight:600">Mientras tanto, armá el partido de esta semana.</p>
   </div>
 </section>

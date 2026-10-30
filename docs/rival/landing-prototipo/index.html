@@ -1,0 +1,1343 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>RIVAL · prototipo de landing (no es código de producción)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=Inter:wght@400..700&family=Sora:wght@500..700&display=swap" rel="stylesheet">
+<!--
+  Prototipo de diseño de la landing de RIVAL (docs/rival/landing.md).
+  NO es código de producción: es un solo archivo con CSS y JS vanilla para ver
+  la composición, el copy y el movimiento a 390 y a 1440 px.
+
+  Movimiento: las escenas se fijan en pantalla (position: sticky) y se arman con
+  el scroll. Un solo motor chico escribe --p (0 a 1) en cada escena y el CSS
+  hace el resto con transform y opacidad. Sin librerías.
+  Sin JavaScript o con movimiento reducido, cada escena se ve en su estado final.
+  Para ver la versión con movimiento reducido: agregar ?reducido a la URL.
+-->
+<style>
+:root {
+  --slab: #020617;
+  --slab-2: #0f172a;
+  --line: #1e293b;
+  --ink: #f8fafc;
+  --ink-2: #cbd5e1;
+  --ink-3: #94a3b8;
+  --ghost: #6b7c94;
+  --primary: #10b981;
+  --em-300: #6ee7b7;
+  --em-400: #34d399;
+  --em-600: #059669;
+  --em-700: #047857;
+  --em-800: #065f46;
+  --em-900: #064e3b;
+  --board: #0b2a22;
+  --chalk: rgba(248, 250, 252, .55);
+  --chalk-dim: rgba(248, 250, 252, .14);
+  /* Propuesta: "oro de trofeo" (REQUIERE INPUT 4). Solo estrellas, Corona y edición Oro. */
+  --gold: #fcd34d;
+  --pad: 16px;
+  --maxw: 1240px;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+  --nav-h: 57px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: var(--slab); color: var(--ink); -webkit-text-size-adjust: 100%; overflow-anchor: none; }
+body { font: 400 16px/1.5 Inter, system-ui, sans-serif; overflow-x: clip; padding-bottom: var(--nav-h); }
+a { color: inherit; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+img, svg { display: block; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ─── Tipografía ──────────────────────────────────────────────────────── */
+.display { font-family: Archivo, system-ui, sans-serif; font-weight: 900; font-style: italic; letter-spacing: -.03em; line-height: .95; }
+.cond { font-stretch: 72%; } /* Propuesta: eje de ancho de Archivo (REQUIERE INPUT 3) */
+.acc { background: linear-gradient(100deg, #6ee7b7, #34d399 45%, #10b981); -webkit-background-clip: text; background-clip: text; color: transparent; padding-right: .12em; }
+.micro { font: 600 13px/1.3 Sora, Inter, sans-serif; color: var(--em-300); }
+.kicker { font: 600 12px/1.3 Sora, Inter, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+h2.display { font-size: clamp(40px, 6.2vw, 88px); }
+.lede { font-size: 16px; color: var(--ink-2); max-width: 34em; }
+.wrap { width: 100%; max-width: calc(var(--maxw) + 2 * var(--pad)); margin-inline: auto; padding-inline: var(--pad); }
+
+/* ─── Controles ───────────────────────────────────────────────────────── */
+.btn, .ghost { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 20px; border-radius: 12px; font-weight: 600; font-size: 16px; text-decoration: none; transition: background-color .2s, border-color .2s, color .2s; }
+.btn { background: var(--primary); color: var(--slab); }
+.btn:hover { background: var(--em-400); }
+.ghost { box-shadow: inset 0 0 0 1px var(--ghost); color: var(--ink); font-weight: 500; }
+.ghost:hover { box-shadow: inset 0 0 0 1px var(--ink-2); }
+:focus-visible { outline: 2px solid var(--em-300); outline-offset: 3px; }
+.link { color: var(--em-300); font-weight: 600; text-underline-offset: 4px; }
+
+.chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 999px; font: 600 12px/1 Inter, sans-serif; white-space: nowrap; }
+.chip svg { width: 14px; height: 14px; flex: none; }
+.chip.ok { background: rgba(16, 185, 129, .15); color: var(--em-300); box-shadow: inset 0 0 0 1px rgba(16, 185, 129, .4); }
+.chip.soon { background: rgba(100, 116, 139, .15); color: var(--ink-2); box-shadow: inset 0 0 0 1px rgba(100, 116, 139, .4); }
+.ej { display: inline-block; white-space: nowrap; font: 600 12px/1 Sora, Inter, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); padding: 4px 8px; border-radius: 6px; box-shadow: inset 0 0 0 1px var(--line); }
+
+/* Viñeta de tiza: el círculo de jugador como bullet. */
+.chalk-list { list-style: none; display: grid; gap: 18px; }
+.chalk-list li { position: relative; padding-left: 40px; color: var(--ink-2); }
+.chalk-list li::before { content: ""; position: absolute; left: 0; top: 1px; width: 24px; height: 24px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--chalk); }
+.chalk-list b { color: var(--ink); font-weight: 600; }
+.chalk-list .chip { margin-left: 6px; vertical-align: 1px; }
+
+/* ─── La pizarra (receta propuesta .rival-pizarra) ────────────────────── */
+.rival-pizarra { position: relative; background: radial-gradient(120% 80% at 50% 0%, var(--board) 0%, var(--slab) 70%); border-radius: 24px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); overflow: hidden; isolation: isolate; }
+.rival-pizarra::after { content: ""; position: absolute; inset: 0; z-index: -1; opacity: .07; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.chalk-svg { fill: none; stroke: var(--ink); stroke-opacity: .55; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.chalk-svg .draw { stroke-dasharray: 1; stroke-dashoffset: 0; }
+.chalk-svg .dot { fill: var(--ink); fill-opacity: .55; stroke: none; }
+
+/* Una caja de proporción fija: cancha (SVG) y jugadores (HTML) comparten coordenadas. */
+.field { position: relative; aspect-ratio: 600 / 380; width: 100%; }
+.field > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.pl { --d: 34px; position: absolute; width: var(--d); height: var(--d); margin: calc(var(--d) / -2) 0 0 calc(var(--d) / -2); border-radius: 50%; display: grid; place-items: center; font: 900 italic 14px/1 Archivo, sans-serif; }
+/* Pecheras en esmeralda 700: el primary (#10b981) queda solo para el botón (One Voice). */
+.pl.pe { background: var(--em-700); color: var(--ink); }
+.pl.sp { box-shadow: inset 0 0 0 2px rgba(248, 250, 252, .85); color: var(--ink); background: rgba(2, 6, 23, .35); }
+
+/* ─── Franja de prototipo y cromo ─────────────────────────────────────── */
+.proto { display: flex; gap: 12px; align-items: center; justify-content: center; flex-wrap: wrap; min-height: 30px; padding: 6px 12px; background: #1e293b; color: var(--ink-2); font: 500 12px/1.3 Inter, sans-serif; text-align: center; position: relative; z-index: 5; }
+.proto a { color: var(--em-300); }
+.topnav { position: absolute; z-index: 4; left: var(--pad); right: var(--pad); margin-top: 12px; height: 56px; border-radius: 999px; background: rgba(15, 23, 42, .8); box-shadow: inset 0 0 0 1px var(--line); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 16px; max-width: var(--maxw); margin-inline: auto; }
+.logo { display: flex; align-items: center; gap: 8px; text-decoration: none; font: 900 italic 20px/1 Archivo, sans-serif; letter-spacing: -.02em; }
+.logo i { width: 28px; height: 28px; border-radius: 8px; background: var(--primary); color: var(--slab); display: grid; place-items: center; font-size: 13px; font-style: italic; }
+.topnav .links { display: none; gap: 28px; font-size: 15px; color: var(--ink-2); }
+.topnav .links a { text-decoration: none; }
+.topnav .links a[aria-current] { color: var(--em-400); font-weight: 600; }
+.topnav .ghost { min-height: 44px; padding: 0 16px; font-size: 15px; border-radius: 999px; }
+
+.bottomnav { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; height: var(--nav-h); background: rgba(15, 23, 42, .96); box-shadow: inset 0 1px 0 var(--line); display: flex; padding-bottom: env(safe-area-inset-bottom); }
+.bottomnav a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 12px; color: var(--ink-3); text-decoration: none; }
+.bottomnav svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.bottomnav a[aria-current] { color: var(--em-400); font-weight: 600; }
+
+/* ─── Escenas: fijadas con sticky; --p lo escribe el motor ────────────── */
+.scene { position: relative; }
+.js-scroll .scene.pin { height: var(--len, 300svh); }
+.js-scroll .scene.pin > .stage { position: sticky; top: 0; height: 100svh; overflow: hidden; }
+.stage { padding-block: 72px 40px; }
+.js-scroll .scene.pin > .stage { padding-block: 24px calc(var(--nav-h) + 16px); display: flex; flex-direction: column; justify-content: center; }
+.sj { display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; margin-left: 6px; border-radius: 999px; vertical-align: 4px; font: 600 12px/1 Inter, sans-serif; letter-spacing: 0; background: rgba(16, 185, 129, .15); color: var(--em-300); box-shadow: inset 0 0 0 1px rgba(16, 185, 129, .4); }
+.sj svg { width: 13px; height: 13px; }
+section { position: relative; }
+.after { padding-block: 24px 96px; }
+
+[data-reveal] { transition: opacity .7s var(--ease), transform .7s var(--ease); transition-delay: var(--rd, 0ms); }
+.js-scroll [data-reveal]:not(.in) { opacity: 0; transform: translateY(16px); }
+
+/* ═══ 0. HERO ═════════════════════════════════════════════════════════ */
+.hero { position: relative; overflow: clip; padding: 104px var(--pad) 20px; min-height: calc(100svh - 30px - var(--nav-h)); display: flex; flex-direction: column; }
+.hero .glow { position: absolute; width: 340px; height: 340px; right: -120px; top: 80px; border-radius: 50%; background: radial-gradient(closest-side, rgba(16, 185, 129, .26), transparent 70%); pointer-events: none; }
+.hero-copy { position: relative; }
+.hero-copy .micro { margin-bottom: 10px; }
+.hero-h1 { font-size: 52px; }
+.hero-h1 .ln { display: block; animation: rise .7s var(--ease) both; animation-delay: calc(150ms + var(--li, 0) * 80ms); }
+.hero-copy .lede { margin-top: 12px; line-height: 1.45; animation: rise .7s var(--ease) .35s both; }
+.hero-board { margin-top: 16px; padding: 12px 16px 12px; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.board-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.board-meta { font-size: 13px; color: var(--ink-3); }
+.board-count { font: 900 italic 26px/1.05 Archivo, sans-serif; letter-spacing: -.02em; border-radius: 10px; }
+.board-count.pulse, .hole.pulse { animation: slot-pulse .6s ease-out 1; }
+.hero .field { margin: auto 0; }
+.hero-board .board-legend { font-size: 13px; color: var(--ink-3); margin-top: 6px; }
+.legend-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.hero-actions { display: flex; gap: 8px; margin-top: 12px; animation: rise .7s var(--ease) .5s both; }
+.hero-actions .btn { flex: 1.15; } .hero-actions .ghost { flex: 1; }
+.hero .note { margin-top: 8px; font-size: 13px; color: var(--ink-3); text-align: center; }
+.reset { font-size: 13px; color: var(--em-300); text-decoration: underline; text-underline-offset: 3px; min-height: 44px; flex: none; }
+
+/* El hueco "Falta 1": es el botón Voy. */
+.hole { --d: 48px; position: absolute; width: var(--d); height: var(--d); margin: calc(var(--d) / -2) 0 0 calc(var(--d) / -2); border-radius: 50%; border: 2px dashed var(--em-300); color: var(--em-300); background: rgba(2, 6, 23, .55); font: 700 14px/1 Inter, sans-serif; display: grid; place-items: center; transition: border-color .2s, color .2s, transform .2s var(--ease); }
+.hole:hover { transform: scale(1.06); }
+.hole .lbl { position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 11px; font-weight: 700; color: var(--em-300); }
+.hole.joined { border-style: solid; border-color: var(--ink); color: var(--ink); }
+.hole.joined .lbl { opacity: 0; }
+
+/* Entrada del hero: la tiza dibuja la cancha y caen los jugadores. */
+.hero .draw { animation: draw .9s var(--ease) both; animation-delay: var(--dd, 0ms); }
+.hero .pl { animation: drop .5s var(--ease) both; animation-delay: calc(500ms + var(--i, 0) * 50ms); }
+.hero .hole { animation: drop .5s var(--ease) .95s both, slot-pulse .6s ease-out 1.05s 1; }
+.hero .arrow { animation: fade .5s ease .9s both; }
+@keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes drop { from { opacity: 0; transform: translateY(-12px) scale(.85); } }
+@keyframes rise { from { opacity: 0; transform: translateY(24px); } }
+@keyframes fade { from { opacity: 0; } }
+@keyframes slot-pulse { 0% { box-shadow: 0 0 0 0 hsl(160 84% 39% / .65); } 100% { box-shadow: 0 0 0 10px hsl(160 84% 39% / 0); } }
+
+/* Salida del hero con el scroll: el texto se va más rápido que la pizarra. */
+.js-scroll .hero-copy { transform: translateY(calc(var(--p, 0) * -70px)); opacity: calc(1 - var(--p, 0) * 1.3); }
+.js-scroll .hero-board { transform: translateY(calc(var(--p, 0) * -24px)) scale(calc(1 + var(--p, 0) * .05)); }
+
+/* ═══ 1. HOY YA SE JUEGA ══════════════════════════════════════════════ */
+.hoy .head { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.hoy h2 { font-size: clamp(36px, 6vw, 80px); }
+.hoy .board { margin-top: 16px; padding: 12px 14px 14px; }
+.js-scroll .hoy .board { flex: 0 1 auto; }
+.hoy .field { width: min(100%, calc(38svh * 600 / 380)); margin-inline: auto; }
+.match-card, .link-bubble, .post-card { position: absolute; z-index: 2; border-radius: 12px; font-size: 13px; line-height: 1.35; transition: opacity .3s var(--ease), transform .4s var(--ease); }
+.match-card { left: 10px; top: 10px; padding: 8px 10px; background: rgba(15, 23, 42, .92); box-shadow: inset 0 0 0 1px var(--line); }
+.match-card b { display: block; font-size: 13px; }
+.seal { display: inline-flex; gap: 4px; align-items: center; margin-top: 4px; color: var(--em-300); font-weight: 600; }
+.link-bubble { right: 10px; bottom: 10px; max-width: 62%; padding: 8px 10px; background: #1e293b; box-shadow: 0 6px 20px rgba(0, 0, 0, .35); }
+.link-bubble u { color: var(--em-300); text-decoration: none; font-weight: 600; }
+.post-card { right: 10px; bottom: 10px; padding: 8px 10px; background: var(--ink); color: var(--slab); font-weight: 600; }
+.js-scroll .hoy:not(.card-on) .match-card { opacity: 0; transform: translateY(-8px); }
+.hoy.joined .hole { border-style: solid; border-color: var(--ink); color: var(--ink); }
+.js-scroll .hoy:not(.link-on) .link-bubble { opacity: 0; transform: translateY(14px); }
+.js-scroll .hoy:not(.posted) .post-card { opacity: 0; transform: translateX(24px); }
+.hoy .pl { transition: opacity .25s var(--ease), transform .3s var(--ease); }
+.js-scroll .hoy .pl:not(.on) { opacity: 0; transform: translateY(-14px) scale(.7); }
+.js-scroll .hoy .draw { stroke-dashoffset: calc(1 - var(--t0, 0)); }
+.hoy .hole { pointer-events: none; }
+.hoy .hole .in { transition: opacity .3s, transform .3s var(--ease); }
+.js-scroll .hoy:not(.joined) .hole .in { opacity: 0; transform: scale(.6); }
+.hoy:not(.joined) .hole .lbl, .hoy .hole .lbl { display: none; }
+
+.steps { list-style: none; margin-top: 16px; display: grid; gap: 8px; }
+.steps li { border-radius: 16px; padding: 16px; }
+/* De oscuro a claro, sin llegar al primary: el verde que grita es el botón. */
+.steps li:nth-child(1) { background: #022c22; }
+.steps li:nth-child(2) { background: var(--em-900); }
+.steps li:nth-child(3) { background: var(--em-800); }
+.steps li:nth-child(4) { background: var(--em-700); }
+.steps h3 { font: 900 italic 24px/1 Archivo, sans-serif; letter-spacing: -.02em; }
+.steps p { margin-top: 6px; color: #d1fae5; font-size: 15px; }
+.js-scroll .hoy .steps { position: relative; flex: none; min-height: 194px; }
+.js-scroll .hoy .steps li { position: absolute; inset: 0 0 auto 0; opacity: 0; transform: translateY(14px); transition: opacity .35s var(--ease), transform .45s var(--ease); }
+.js-scroll .hoy .steps li.active { opacity: 1; transform: none; }
+.ticks { display: none; gap: 6px; margin-top: 8px; }
+.js-scroll .ticks { display: flex; }
+.ticks i { flex: 1; height: 3px; border-radius: 3px; background: var(--chalk-dim); overflow: hidden; }
+.ticks i::after { content: ""; display: block; height: 100%; background: var(--em-300); transform-origin: left; transform: scaleX(var(--tk, 1)); }
+
+.tablon { display: grid; gap: 20px; margin-top: 8px; }
+.plate { aspect-ratio: 1; display: grid; place-items: center; padding: 24px; }
+.plate .ring { position: absolute; inset: 9%; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--chalk); }
+.tcard { position: relative; width: min(100%, 280px); padding: 16px; border-radius: 16px; background: rgba(15, 23, 42, .92); box-shadow: inset 0 0 0 1px var(--line), 0 20px 40px rgba(0, 0, 0, .35); transition: opacity .2s; }
+.tcard .t { font: 900 italic 28px/1 Archivo, sans-serif; letter-spacing: -.02em; }
+.tcard .m { margin-top: 8px; font-size: 14px; color: var(--ink-2); }
+.tcard .ej { margin-top: 12px; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.tabs button { min-height: 44px; font: 900 italic 22px/1 Archivo, sans-serif; color: var(--ink-3); letter-spacing: -.02em; }
+.tabs button[aria-selected="true"] { color: var(--ink); text-decoration: underline; text-decoration-color: var(--em-300); text-underline-offset: 8px; text-decoration-thickness: 2px; }
+.tab-text { color: var(--ink-2); margin-top: 6px; min-height: 3em; }
+.actions-col { display: grid; gap: 8px; margin-top: 16px; }
+
+/* ═══ MITAD DE CANCHA ═════════════════════════════════════════════════ */
+.mitad { padding-block: 72px; overflow: hidden; }
+.mitad .row { position: relative; display: grid; gap: 28px; }
+.mitad .line-wrap { position: relative; height: 200px; display: grid; place-items: center; }
+.mitad .hline { position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: var(--chalk); transform-origin: center; }
+.mitad svg { width: 200px; height: 200px; position: relative; }
+.mitad svg circle { fill: var(--slab); }
+.mitad .a { font: 900 italic 30px/1 Archivo, sans-serif; letter-spacing: -.02em; }
+.mitad .b { color: var(--ink-2); max-width: 26em; }
+.js-scroll .mitad .hline { transform: scaleX(clamp(0, (var(--p, 0) - .12) * 3, 1)); }
+.js-scroll .mitad .draw { stroke-dashoffset: calc(1 - clamp(0, (var(--p, 0) - .22) * 5, 1)); }
+.js-scroll .mitad .a { transform: translateX(calc((1 - clamp(0, (var(--p, 0) - .1) * 3, 1)) * -60px)); opacity: clamp(0, (var(--p, 0) - .1) * 3, 1); }
+.js-scroll .mitad .b { transform: translateX(calc((1 - clamp(0, (var(--p, 0) - .2) * 3, 1)) * 60px)); opacity: clamp(0, (var(--p, 0) - .2) * 3, 1); }
+
+/* ═══ 2. CATEGORÍA ════════════════════════════════════════════════════ */
+.cat .head { display: grid; gap: 10px; justify-items: start; }
+.cat .ticker { position: relative; margin-top: 20px; }
+.ladder-names { list-style: none; display: grid; gap: 2px; }
+.ladder-names li { font: 900 italic 30px/1.05 Archivo, sans-serif; letter-spacing: -.03em; color: var(--ink-3); }
+.ladder-names li.techo::after { content: " · techo del arranque"; font: 600 12px/1 Sora, sans-serif; letter-spacing: 0; color: var(--em-300); font-style: normal; vertical-align: middle; }
+.ladder-names li.sel { color: var(--ink); }
+.ticker-tag, .cat-index { display: none; }
+.js-scroll .cat-index { display: grid; list-style: none; gap: 2px; margin-top: 18px; font: 600 11px/1.35 Sora, Inter, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+.js-scroll .cat-index li { opacity: .45; transition: opacity .3s, color .3s, transform .3s var(--ease); }
+.js-scroll .cat-index li.on { opacity: 1; color: var(--ink); transform: translateX(10px); }
+.js-scroll .cat .ticker { flex: none; margin-top: 32px; }
+.js-scroll .cat .mask { height: 1em; overflow: hidden; font: 900 italic clamp(56px, 15vw, 210px)/1 Archivo, sans-serif; letter-spacing: -.04em; }
+.js-scroll .cat .ladder-names { display: block; transform: translateY(calc(var(--idx, 0) * -100% / 9)); transition: transform .55s var(--ease); }
+.js-scroll .cat .ladder-names li { font: inherit; height: 1em; line-height: 1; color: var(--ink); }
+.js-scroll .cat .ladder-names li.techo::after { content: none; }
+.js-scroll .cat .ladder-names li.sel { background: linear-gradient(100deg, #6ee7b7, #34d399 45%, #10b981); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.js-scroll .ticker-tag { display: block; min-height: 24px; margin-top: 12px; }
+.rail { position: relative; height: 56px; margin: 24px -12px 0; overflow: hidden; }
+html:not(.js-scroll) .rail { --p: .5; }
+.rail .base, .rail .fill { position: absolute; left: 12px; right: 12px; top: 27px; height: 2px; border-radius: 2px; }
+.rail .base { background: var(--chalk-dim); }
+.rail .fill { background: var(--chalk); transform-origin: left; transform: scaleX(var(--p, 1)); }
+.rail .notches { position: absolute; inset: 0 12px; display: flex; justify-content: space-between; }
+.rail .notches span { position: relative; width: 2px; height: 14px; margin-top: 21px; background: var(--chalk); }
+.rail .notches span b { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); font: 600 12px/1 Sora, sans-serif; color: var(--ink-3); white-space: nowrap; display: none; }
+.rail .ends { position: absolute; left: 12px; right: 12px; top: 44px; display: flex; justify-content: space-between; font: 600 12px/1 Sora, sans-serif; color: var(--ink-3); }
+.rail .mover { position: absolute; left: 12px; right: 12px; top: 0; transform: translateX(calc(var(--p, 1) * 100%)); }
+.rail .ball { position: absolute; left: -9px; top: 19px; width: 18px; height: 18px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 4px rgba(248, 250, 252, .15); }
+.rules { display: grid; gap: 28px; }
+.quiz { padding: 20px; border-radius: 20px; background: rgba(15, 23, 42, .7); box-shadow: inset 0 0 0 1px var(--line); view-transition-name: rival-quiz; }
+.quiz h3 { font: 900 italic 26px/1.05 Archivo, sans-serif; letter-spacing: -.02em; }
+.quiz fieldset { border: 0; margin-top: 18px; }
+.quiz legend { font-weight: 600; margin-bottom: 8px; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px; }
+.opts label { position: relative; }
+.opts input { position: absolute; opacity: 0; inset: 0; }
+.opts span { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--ghost); font-size: 15px; transition: background-color .2s, color .2s, box-shadow .2s; }
+.opts input:checked + span { background: var(--ink); color: var(--slab); box-shadow: none; font-weight: 600; }
+.opts input:focus-visible + span { outline: 2px solid var(--em-300); outline-offset: 2px; }
+.quiz .res { display: none; }
+.quiz.done .q { display: none; }
+.quiz.done .res { display: block; }
+.res .big { font: 900 italic clamp(44px, 9vw, 88px)/1 Archivo, sans-serif; letter-spacing: -.03em; margin-top: 6px; }
+.res .big b { display: inline-block; }
+.res .big b.pulse { animation: slot-pulse .6s ease-out 1; border-radius: 12px; }
+.res p { color: var(--ink-2); margin-top: 10px; }
+.res .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 16px; }
+.quiz .note { margin-top: 14px; font-size: 13px; color: var(--ink-3); }
+.bridge { font: 900 italic 28px/1.05 Archivo, sans-serif; letter-spacing: -.02em; }
+::view-transition-old(rival-quiz), ::view-transition-new(rival-quiz) { animation-duration: .3s; }
+
+/* ═══ 3. GRUPO NO ES CLUB ═════════════════════════════════════════════ */
+.gc h2 .two { transition: opacity .4s; }
+.js-scroll .gc:not(.club) h2 .two { opacity: .22; }
+.js-scroll .gc.club h2 .one { opacity: .22; }
+.gc h2 .one { transition: opacity .4s; }
+.gc .board { margin-top: 16px; padding: 12px; }
+.gfield { position: relative; aspect-ratio: 600 / 440; width: min(100%, calc(40svh * 600 / 440)); margin-inline: auto; }
+.gfield > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.gdot { --d: 26px; --e: clamp(0, (var(--p, 1) - .18 - var(--i) * .025) / .4, 1); --s: calc(var(--e) * var(--e) * (3 - 2 * var(--e)));
+  position: absolute; left: 0; top: 0; width: var(--d); height: var(--d); margin: calc(var(--d) / -2) 0 0 calc(var(--d) / -2); border-radius: 50%;
+  transform: translate(calc((var(--x0) + (var(--x1) - var(--x0)) * var(--s)) * var(--u, 1px)), calc((var(--y0) + (var(--y1) - var(--y0)) * var(--s)) * var(--u, 1px))); }
+.gdot.pe { background: var(--em-700); }
+.gdot.sp { box-shadow: inset 0 0 0 2px rgba(248, 250, 252, .85); }
+.gdot.sp::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--em-700); opacity: var(--s); }
+.gc .crest { position: absolute; left: 50%; top: 43.2%; width: 15%; transform: translate(-50%, -50%) scale(calc(.6 + .4 * clamp(0, (var(--p, 1) - .55) * 4, 1))); opacity: clamp(0, (var(--p, 1) - .55) * 4, 1); }
+.gc .rival-ghost { position: absolute; left: 75%; top: 43.2%; width: 13%; transform: translate(-50%, -50%); opacity: calc(.6 * clamp(0, (var(--p, 1) - .7) * 4, 1)); }
+.gc .bench-l { position: absolute; left: 6%; top: 98%; font: 600 11px/1 Sora, sans-serif; color: var(--ink-3); opacity: clamp(0, (var(--p, 1) - .6) * 4, 1); }
+.gc .cols { display: grid; gap: 24px; margin-top: 18px; }
+.gc .col h3 { font: 900 italic 24px/1 Archivo, sans-serif; letter-spacing: -.02em; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.gc .col > p { margin-top: 8px; color: var(--ink-2); }
+.gc .col .chalk-list { margin-top: 14px; gap: 12px; }
+.js-scroll .gc .cols { position: relative; flex: none; min-height: 168px; margin-top: 16px; }
+.js-scroll .gc .split { display: flex; flex-direction: column; }
+.js-scroll .gc .split > div:first-child { display: contents; }
+.js-scroll .gc .split > .board { order: 1; }
+.js-scroll .gc .cols { order: 2; }
+.js-scroll .gc .col { position: absolute; inset: 0 0 auto 0; transition: opacity .4s var(--ease), transform .45s var(--ease); }
+.js-scroll .gc:not(.club) .col.club-c, .js-scroll .gc.club .col.group-c { opacity: 0; transform: translateY(12px); pointer-events: none; }
+.gc .closer { font: 900 italic 26px/1.05 Archivo, sans-serif; letter-spacing: -.02em; }
+
+/* ═══ 4. FUNDÁ TU CLUB ════════════════════════════════════════════════ */
+.fc .grid { display: grid; gap: 20px; margin-top: 16px; align-items: center; }
+.fc .shield { width: min(46vw, 200px); margin-inline: auto; }
+.shield svg { width: 100%; height: auto; overflow: visible; }
+.fc .words { font: 700 24px/1.3 Archivo, sans-serif; letter-spacing: -.01em; }
+.fc .words .w { transition: opacity .2s linear; }
+.js-scroll .fc .words .w { opacity: clamp(.18, ((var(--p, 1) * 1.3 - .08) * var(--n) - var(--i)), 1); }
+.pic { display: inline-block; width: 1.15em; height: 1em; vertical-align: -.14em; margin: 0 .08em; }
+.pic svg { width: 100%; height: 100%; overflow: visible; }
+.js-scroll .fc .sh-out { stroke-dashoffset: calc(1 - clamp(0, var(--p, 1) * 3.2, 1)); }
+.fc .sh-piece { transform-box: fill-box; transform-origin: center; }
+.js-scroll .fc .sh-piece { opacity: clamp(0, (var(--p, 1) - .3 - var(--k) * .09) * 7, 1); transform: scale(calc(.85 + .15 * clamp(0, (var(--p, 1) - .3 - var(--k) * .09) * 7, 1))); }
+.fc .names { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.fc .names li { padding: 8px 12px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--line); font-size: 14px; color: var(--ink-2); }
+.two-col { display: grid; gap: 18px; }
+
+/* ═══ 5. PARTIDO OFICIAL ══════════════════════════════════════════════ */
+.po .board { margin-top: 16px; padding: 16px 12px; }
+.score { position: relative; aspect-ratio: 600 / 340; width: min(100%, calc(44svh * 600 / 340)); margin-inline: auto; }
+.score > svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.score .team { position: absolute; top: 69%; width: 26%; transform: translate(-50%, -50%); text-align: center; }
+.score .team svg { width: 64%; margin-inline: auto; }
+.score .team p { font-size: 12px; color: var(--ink-2); margin-top: 6px; line-height: 1.2; }
+.score .result { position: absolute; left: 50%; top: 62%; transform: translate(-50%, -50%); font: 900 italic clamp(40px, 9vw, 96px)/1 Archivo, sans-serif; letter-spacing: -.03em; display: flex; gap: .2em; align-items: center; }
+.digit { display: inline-block; height: 1em; overflow: hidden; }
+.digit .roll { display: block; transition: transform .3s var(--ease); }
+.digit .roll span { display: block; height: 1em; }
+.po.scored .digit .roll { transform: translateY(-1em); }
+.crown { --s: 1; position: absolute; left: 0; top: 0; width: 13%; margin: -6.5% 0 0 -6.5%;
+  transform: translate(calc((110 + 380 * var(--s)) * var(--u, 1px)), calc((92 + 40 - var(--s) * (1 - var(--s)) * 4 * 100) * var(--u, 1px))); }
+.js-scroll .po .crown { --e: clamp(0, (var(--p, 1) - .3) / .5, 1); --s: calc(var(--e) * var(--e) * (3 - 2 * var(--e))); }
+.crown svg { width: 100%; overflow: visible; }
+.js-scroll .po .arc { stroke-dashoffset: calc(1 - clamp(0, (var(--p, 1) - .3) / .5, 1)); }
+.po .status { margin-top: 18px; text-align: center; font-size: 13px; color: var(--ink-2); }
+.po .status .new { display: none; color: var(--ink); font-weight: 600; }
+.po.champ .status .new { display: inline; }
+.po.champ .status .old { display: none; }
+.menu { list-style: none; display: grid; gap: 22px; }
+.menu li { position: relative; padding-left: 44px; }
+.menu li::before { content: ""; position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--chalk); }
+.menu b { display: block; font-size: 18px; font-weight: 600; }
+.menu span { display: block; color: var(--ink-2); margin-top: 2px; }
+
+/* ═══ 6. TERCER TIEMPO (scroll horizontal) ════════════════════════════ */
+.tt .stage { overflow: hidden; }
+.track-wrap { margin-top: 20px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; padding-bottom: 12px; }
+.js-scroll .tt .track-wrap { overflow: visible; flex: 1 1 auto; display: flex; align-items: center; padding: 0; margin-top: 12px; }
+.track { display: flex; gap: 20px; padding-inline: var(--pad); width: max-content; align-items: center; }
+.js-scroll .tt .track { will-change: transform; }
+.track > * { scroll-snap-align: center; flex: none; }
+.rival-tapa { --c: 0; width: 290px; padding: 18px 18px 20px; border-radius: 6px; background: #f1f5f9; color: var(--slab); position: relative; transform: rotate(calc(-2deg + var(--c) * -6deg)); box-shadow: 0 24px 50px rgba(0, 0, 0, .45); }
+.rival-tapa::before { content: ""; position: absolute; top: -9px; left: 50%; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #94a3b8, #334155); box-shadow: 0 3px 6px rgba(0, 0, 0, .4); }
+.rival-tapa .mast { display: flex; justify-content: space-between; font: 700 11px/1 Sora, sans-serif; letter-spacing: .12em; padding-bottom: 8px; border-bottom: 2px solid var(--slab); }
+.rival-tapa h3 { font: 900 64px/.86 Archivo, sans-serif; font-stretch: 72%; letter-spacing: -.02em; margin-top: 12px; text-transform: uppercase; }
+.rival-tapa p { font-size: 14px; margin-top: 10px; line-height: 1.35; }
+.rival-tapa .ej { white-space: normal; line-height: 1.3; color: #475569; box-shadow: inset 0 0 0 1px #cbd5e1; margin-top: 12px; }
+.rival-figurita { --c: 0; --ac: 0; position: relative; width: 200px; aspect-ratio: 5 / 7; border-radius: 16px; padding: 12px; display: flex; flex-direction: column; overflow: hidden; isolation: isolate;
+  transform: rotate(calc(var(--c) * -7deg)) translateY(calc(var(--ac) * 26px)); box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
+.rival-figurita .ed { font: 700 11px/1 Sora, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+.rival-figurita .sil { flex: 1; display: grid; place-items: end center; }
+.rival-figurita .sil svg { width: 74%; }
+.rival-figurita .num { position: absolute; right: 12px; top: 28px; font: 900 italic 64px/1 Archivo, sans-serif; font-stretch: 72%; letter-spacing: -.02em; }
+.rival-figurita .foot { display: flex; justify-content: space-between; align-items: end; font-size: 12px; font-weight: 600; padding-top: 8px; border-top: 1px solid currentColor; }
+.f-debut { background: linear-gradient(160deg, #334155, #0f172a); color: var(--ink); }
+.f-plata { background: linear-gradient(160deg, #e2e8f0, #94a3b8); color: var(--slab); }
+/* Propuesta "oro de trofeo" (REQUIERE INPUT 4): #fcd34d con su luz #fef3c7; sin ámbares. */
+.f-oro { background: linear-gradient(160deg, #fef3c7, #fcd34d 55%); color: var(--slab); }
+.f-figura { background: linear-gradient(160deg, var(--em-700), var(--em-900)); color: var(--ink); }
+.f-fundador { background: var(--slab); color: var(--ink); box-shadow: inset 0 0 0 2px var(--chalk), 0 18px 40px rgba(0, 0, 0, .45); }
+.f-oro::after { content: ""; position: absolute; inset: -20% -60%; z-index: -1; background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, .55) 50%, transparent 60%); transform: translateX(calc(var(--c) * -120%)); }
+.story { width: 200px; aspect-ratio: 9 / 16; border-radius: 20px; padding: 16px; background: radial-gradient(120% 70% at 50% 0%, var(--board), var(--slab) 75%); box-shadow: inset 0 0 0 1px var(--line), 0 18px 40px rgba(0, 0, 0, .45); display: flex; flex-direction: column; justify-content: space-between; transform: rotate(calc(var(--c, 0) * -6deg)); }
+.story .big { font: 900 italic 40px/.95 Archivo, sans-serif; letter-spacing: -.03em; }
+.story .share { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--ghost); font-size: 14px; font-weight: 600; }
+
+/* ═══ 7. TODOS LOS DÍAS ═══════════════════════════════════════════════ */
+.crack .board { padding: 16px; margin-top: 18px; }
+.crack .split { display: flex; flex-direction: column-reverse; gap: 28px; }
+.cgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; perspective: 600px; }
+.cgrid .h { font: 600 12px/1.2 Sora, sans-serif; color: var(--ink-3); text-align: center; padding-bottom: 4px; }
+.cell { --f: 1; aspect-ratio: 1.25; border-radius: 10px; display: grid; place-items: center; font-size: 12px; font-weight: 700; transform-origin: center top;
+  transform: rotateX(calc((1 - var(--f)) * 90deg)); opacity: calc(.15 + var(--f) * .85); }
+.js-scroll .crack .cell { --f: clamp(0, (var(--p, 1) - .2) * 40 - var(--i), 1); }
+.cell.y { background: var(--em-700); color: var(--ink); }
+.cell.c { color: var(--ink); background: repeating-linear-gradient(135deg, rgba(248, 250, 252, .28) 0 5px, rgba(248, 250, 252, .08) 5px 10px); box-shadow: inset 0 0 0 1px var(--chalk); }
+.cell.n { background: #1e293b; color: var(--ink-3); }
+.share-off { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.share-off span { display: inline-flex; min-height: 44px; align-items: center; padding: 0 16px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--line); color: var(--ink-3); font-weight: 600; }
+
+/* ═══ 8. TU CANCHA ════════════════════════════════════════════════════ */
+.tc .board { margin-top: 16px; aspect-ratio: 600 / 400; width: min(100%, calc(50svh * 600 / 400)); margin-inline: auto; }
+.tc .board > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tc .others { opacity: calc(1 - .78 * var(--s, 1)); }
+.tc .window { position: absolute; left: 50%; top: 50%; width: 53.4%; aspect-ratio: 1; margin: -26.7% 0 0 -26.7%; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 2px var(--chalk); transform: scale(calc(.28 + .72 * var(--s, 1))); }
+.tc .window img { width: 100%; height: 100%; object-fit: cover; transform: scale(calc(1.3 - .3 * var(--s, 1))); }
+.js-scroll .tc .stage { --e: clamp(0, (var(--p, 1) - .08) / .6, 1); --s: calc(var(--e) * var(--e) * (3 - 2 * var(--e))); }
+.sticker { position: absolute; right: 4%; top: 6%; z-index: 3; padding: 8px 12px; border-radius: 10px; background: var(--ink); color: var(--slab); font: 900 italic 13px/1 Archivo, sans-serif; letter-spacing: .02em; text-transform: uppercase; transform: rotate(3deg); transition: transform .3s var(--ease), opacity .3s; box-shadow: 0 8px 18px rgba(0, 0, 0, .4); }
+.js-scroll .tc:not(.stamped) .sticker { opacity: 0; transform: rotate(0) scale(1.15); }
+.glass { padding: 20px; border-radius: 20px; background: rgba(15, 23, 42, .72); box-shadow: inset 0 0 0 1px var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.glass h3 { font: 900 italic 24px/1 Archivo, sans-serif; letter-spacing: -.02em; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.glass p { color: var(--ink-2); margin-top: 8px; }
+
+/* ═══ 9. LAS REGLAS DEL VESTUARIO ═════════════════════════════════════ */
+.faq { display: grid; gap: 8px; margin-top: 20px; }
+.faq details { border-radius: 16px; background: #0f172a; box-shadow: inset 0 0 0 1px var(--line); transition: background-color .2s; }
+.faq details[open] { background: var(--em-900); box-shadow: none; }
+.faq summary { list-style: none; min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 18px; cursor: pointer; font-weight: 600; font-size: 17px; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: ""; flex: none; width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--chalk); background: linear-gradient(var(--ink), var(--ink)) center / 10px 2px no-repeat, linear-gradient(var(--ink), var(--ink)) center / 2px 10px no-repeat; transition: transform .2s; }
+.faq details[open] summary::after { transform: rotate(45deg); }
+.faq details p { padding: 0 18px 18px; color: #d1fae5; }
+
+/* ═══ 10. TEMPORADA CERO + ARMALO ═════════════════════════════════════ */
+.tz .board { margin-top: 16px; aspect-ratio: 600 / 360; width: min(100%, calc(46svh * 600 / 360)); margin-inline: auto; display: grid; place-items: center; }
+.tz .board > svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.tz .ghost-play { opacity: calc(.55 - .43 * var(--s, 1)); }
+.js-scroll .tz .stage { --e: clamp(0, (var(--p, 1) - .06) / .5, 1); --s: calc(var(--e) * var(--e) * (3 - 2 * var(--e))); }
+.eraser-move { position: absolute; inset: 0; transform: translateX(calc(-30% + var(--s, 1) * 160%)); pointer-events: none; }
+.eraser { position: absolute; left: 0; top: 30%; width: 22%; height: 40%; margin-left: -11%; border-radius: 12px; background: linear-gradient(#334155 0 62%, #f1f5f9 62%); box-shadow: 0 12px 24px rgba(0, 0, 0, .5); transform: rotate(-8deg); }
+.tz .title { position: relative; z-index: 1; text-align: center; font-size: clamp(48px, 12vw, 150px); }
+.js-scroll .tz .title { opacity: clamp(0, (var(--p, 1) - .4) * 5, 1); transform: translateY(calc((1 - clamp(0, (var(--p, 1) - .4) * 5, 1)) * 30px)); }
+.stamp { position: absolute; z-index: 2; right: 7%; bottom: 10%; padding: 6px 12px; border-radius: 8px; box-shadow: inset 0 0 0 3px var(--ink); color: var(--ink); font: 900 22px/1 Archivo, sans-serif; font-stretch: 72%; letter-spacing: .06em; transform: rotate(-9deg); transition: transform .3s var(--ease), opacity .3s; }
+.js-scroll .tz:not(.stamped) .stamp { opacity: 0; transform: rotate(-9deg) scale(1.3); }
+.armalo { display: block; position: relative; text-decoration: none; background: var(--primary); color: var(--slab); min-height: 46svh; padding: 18px var(--pad) 10px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+.armalo:hover, .armalo:focus-visible { background: var(--ink); }
+.armalo:focus-visible { outline: 3px solid var(--em-300); outline-offset: -6px; }
+.armalo .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; font-weight: 600; font-size: 17px; }
+.armalo .top svg { width: 32px; height: 32px; flex: none; stroke: currentColor; fill: none; stroke-width: 2.4; }
+.armalo .word { display: flex; font: 900 italic 19.5vw/.8 Archivo, sans-serif; letter-spacing: -.05em; overflow: hidden; padding: .06em 0 .02em; }
+.armalo .word span { display: block; transform: translateY(calc((1 - var(--l, 1)) * 105%)); }
+.js-scroll .armalo .word span { --l: clamp(0, (var(--p, 1) - .1) * 4 - var(--i) * .14, 1); }
+.after-armalo { padding: 18px var(--pad) 48px; text-align: center; }
+
+/* ═══ PIE ═════════════════════════════════════════════════════════════ */
+.wordmark { padding: 56px var(--pad) 24px; }
+.wordmark svg { width: 100%; height: auto; overflow: visible; }
+.wordmark text { font: 900 italic 236px Archivo, sans-serif; letter-spacing: -8px; fill: none; stroke: var(--ink); stroke-opacity: .55; stroke-width: 2.5; }
+.js-scroll .wordmark text { stroke-dasharray: 1100; stroke-dashoffset: calc(1100 * (1 - clamp(0, (var(--p, 1) - .1) * 2.4, 1))); }
+.footer { border-top: 1px solid var(--line); padding: 28px var(--pad) 40px; display: grid; gap: 18px; color: var(--ink-3); font-size: 14px; }
+.footer nav { display: flex; flex-wrap: wrap; gap: 10px 20px; }
+.footer nav a { text-decoration: none; color: var(--ink-2); }
+.proto-notes { font-size: 12px; color: var(--ink-3); }
+
+/* ─── Escritorio ──────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+  :root { --pad: 40px; --nav-h: 0px; }
+  .bottomnav { display: none; }
+  .topnav { left: max(40px, calc((100% - var(--maxw)) / 2)); right: max(40px, calc((100% - var(--maxw)) / 2)); padding-left: 22px; }
+  .topnav .links { display: flex; }
+  .pl { --d: 52px; font-size: 18px; }
+  .hole { --d: 64px; font-size: 16px; }
+  .hole .lbl { font-size: 13px; }
+  .micro { font-size: 14px; }
+  .lede { font-size: 18px; }
+
+  .hero { display: grid; grid-template-columns: max(40px, calc((100% - var(--maxw)) / 2)) minmax(0, 560px) minmax(0, 1fr); column-gap: 56px; align-items: center; padding: 120px 0 56px; min-height: calc(100svh - 30px); }
+  .hero .glow { width: 620px; height: 620px; right: auto; left: 30%; top: 10%; }
+  .hero { grid-template-rows: 1fr auto auto auto 1fr; }
+  .hero-copy { grid-column: 2; grid-row: 2; }
+  .hero-h1 { font-size: clamp(64px, 5.6vw, 88px); }
+  .hero-actions { grid-column: 2; grid-row: 3; align-self: start; margin-top: 28px; }
+  .hero-actions .btn, .hero-actions .ghost { flex: none; }
+  .hero .note { grid-column: 2; grid-row: 4; text-align: left; align-self: start; margin-top: 14px; }
+  .hero-board { grid-column: 3; grid-row: 1 / -1; margin: 0; height: min(76svh, 700px); border-radius: 28px 0 0 28px; padding: 24px 0 20px 28px; }
+  .board-head { padding-right: 28px; }
+  .board-meta { font-size: 14px; }
+  .board-count { font-size: 36px; }
+  .hero .field { width: 128%; margin: auto 0; }
+  .hero-board .board-legend { font-size: 14px; }
+
+  .js-scroll .scene.pin > .stage { padding-block: 56px 48px; }
+  .stage { padding-block: 112px 48px; }
+  .split { display: grid; grid-template-columns: 5fr 7fr; gap: 56px; align-items: center; flex: 1 1 auto; min-height: 0; }
+  .split > .board { margin-top: 0; }
+
+  .hoy .field { width: min(100%, calc(56svh * 600 / 380)); }
+  .match-card, .link-bubble, .post-card { font-size: 14px; }
+  .match-card { left: 18px; top: 18px; padding: 12px 14px; }
+  .link-bubble { right: 18px; bottom: 18px; padding: 12px 14px; max-width: 46%; }
+  .post-card { right: 18px; top: 18px; padding: 12px 14px; }
+  .steps h3 { font-size: 32px; }
+  .steps p { font-size: 17px; }
+  .js-scroll .hoy .steps { flex: none; min-height: 210px; }
+  .tablon { grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; }
+  .tcard { width: 320px; }
+  .tcard .t { font-size: 34px; }
+  .tabs button { font-size: 28px; }
+  .actions-col { display: flex; gap: 12px; }
+
+  .mitad .row { grid-template-columns: 1fr 220px 1fr; align-items: center; gap: 40px; }
+  .mitad .a { font-size: 44px; text-align: right; }
+  .mitad .line-wrap { height: 220px; }
+  .mitad svg { width: 220px; height: 220px; }
+
+  .cat .head .lede { font-size: 20px; }
+  .rail .notches span b { display: block; }
+  .rail .ends { display: none; }
+  .rail { margin-bottom: 20px; }
+  .rules-quiz { display: grid; grid-template-columns: 5fr 7fr; gap: 56px; align-items: start; }
+  .quiz { padding: 32px; }
+
+  .gc .board { margin-top: 0; }
+  .gfield { width: min(100%, calc(60svh * 600 / 440)); }
+  .gdot { --d: 40px; }
+  .js-scroll .gc .cols { flex: none; min-height: 300px; order: 0; }
+  .js-scroll .gc .split { display: grid; }
+  .js-scroll .gc .split > div:first-child { display: block; }
+  .js-scroll .cat-index { display: none; }
+  .crack .split { display: grid; }
+
+  .fc .grid { grid-template-columns: 4fr 8fr; gap: 56px; }
+  .fc .shield { width: min(100%, 340px); }
+  .fc .words { font-size: clamp(30px, 2.6vw, 40px); }
+  .two-col { grid-template-columns: 1fr 1fr; column-gap: 56px; }
+
+  .po .board { padding: 28px; }
+  .score { width: min(100%, calc(52svh * 600 / 340)); }
+  .score .team p { font-size: 15px; }
+  .menu { grid-template-columns: 1fr 1fr; column-gap: 56px; row-gap: 32px; }
+  .menu li { padding-left: 72px; }
+  .menu li::before { width: 52px; height: 52px; top: -4px; }
+
+  .rival-tapa { width: 440px; padding: 24px 26px 28px; }
+  .rival-tapa h3 { font-size: 104px; }
+  .rival-tapa p { font-size: 17px; }
+  .rival-figurita, .story { width: 250px; }
+  .rival-figurita .num { font-size: 84px; }
+  .story .big { font-size: 50px; }
+  .track { gap: 36px; padding-inline: max(40px, calc((100vw - var(--maxw)) / 2)); }
+
+  .crack .split { align-items: center; }
+  .cell { font-size: 13px; }
+
+  .tc .board { width: min(100%, calc(62svh * 600 / 400)); }
+  .tc-after { display: grid; grid-template-columns: 7fr 5fr; gap: 56px; align-items: start; }
+
+  .reglas .wrap { display: grid; grid-template-columns: 4fr 8fr; gap: 56px; align-items: start; }
+  .reglas .side { position: sticky; top: 48px; }
+  .reglas .faq { margin-top: 0; }
+
+  .tz .board { width: min(100%, calc(56svh * 600 / 360)); }
+  .armalo { min-height: 60svh; padding: 28px 40px 14px; }
+  .armalo .top { font-size: 22px; }
+  .armalo .top svg { width: 44px; height: 44px; }
+  .armalo .word { font-size: 19.5vw; }
+  .footer { grid-template-columns: 1fr auto; align-items: center; padding-inline: max(40px, calc((100% - var(--maxw)) / 2)); }
+  .wordmark { padding-inline: max(40px, calc((100% - var(--maxw)) / 2)); }
+}
+
+/* ─── Movimiento reducido: igual que el bloque de globals.css ─────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; transition-delay: 0ms !important; }
+}
+html.reduce *, html.reduce *::before, html.reduce *::after { animation-duration: .01ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; transition-delay: 0ms !important; }
+
+/* ─── Celulares bajos (667 px y parecidos): las escenas fijadas entran enteras ── */
+@media (max-width: 1023px) and (max-height: 740px) {
+  .js-scroll .scene.pin > .stage { padding-top: 12px; }
+  .js-scroll .scene.pin h2.display { font-size: 32px; }
+  .hoy .field { width: min(100%, calc(27svh * 600 / 380)); }
+  .js-scroll .hoy .steps { min-height: 176px; }
+  .steps p { font-size: 14px; }
+  .gfield { width: min(100%, calc(28svh * 600 / 440)); }
+  .js-scroll .gc .cols { min-height: 150px; }
+  .gc .col > p { font-size: 15px; }
+  .rival-tapa { width: 240px; padding: 14px; }
+  .rival-tapa h3 { font-size: 50px; }
+  .rival-figurita, .story { width: 160px; }
+  .rival-figurita .num { font-size: 48px; }
+  .story .big { font-size: 30px; }
+  .tt .lede { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="proto" role="note">
+  <span>Prototipo: no es código de producción.</span>
+  <a id="motion-toggle" href="?reducido">Movimiento reducido</a>
+</div>
+
+<header class="topnav">
+  <a class="logo" href="#top"><i>TG</i>TurnoGol</a>
+  <nav class="links" aria-label="Principal">
+    <a href="#">Explorar</a><a href="#top" aria-current="page">RIVAL</a><a href="#">Mis reservas</a>
+  </nav>
+  <a class="ghost" href="#">Ingresar</a>
+</header>
+
+<main>
+
+<!-- ═══ 0. HERO ═══ -->
+<section class="hero scene" id="top" data-scene="exit">
+  <div class="glow" aria-hidden="true"></div>
+  <div class="hero-copy">
+    <p class="micro">RIVAL powered by TurnoGol</p>
+    <h1 class="display hero-h1"><span class="ln">Cada partido</span> <span class="ln acc" style="--li:1">cuenta.</span></h1>
+    <p class="lede">Armá el partido, cada uno toca Voy y, si falta 1, sale al tablón. Muy pronto, con tu club: la tabla, la Corona y tu categoría.</p>
+  </div>
+
+  <div class="hero-board rival-pizarra">
+    <div class="board-head">
+      <div>
+        <p class="board-meta">Ejemplo · Miércoles 21:00 · Fútbol 5</p>
+        <p class="board-count" id="hero-count" aria-live="polite">Falta 1</p>
+      </div>
+    </div>
+    <div class="field">
+      <svg class="chalk-svg" viewBox="0 0 600 380" aria-hidden="true">
+        <rect class="draw" pathLength="1" x="20" y="20" width="560" height="340" rx="6"/>
+        <line class="draw" pathLength="1" x1="300" y1="20" x2="300" y2="360" style="--dd:300ms"/>
+        <circle class="draw" pathLength="1" cx="300" cy="190" r="42" style="--dd:420ms"/>
+        <circle class="dot" cx="300" cy="190" r="3"/>
+        <path class="draw" pathLength="1" d="M20 110H92V270H20" style="--dd:520ms"/>
+        <path class="draw" pathLength="1" d="M580 110H508V270H580" style="--dd:520ms"/>
+        <path class="draw" pathLength="1" d="M20 160H8V220H20M580 160H592V220H580" style="--dd:600ms"/>
+        <path class="arrow" d="M226 116C280 64 334 66 372 112" stroke="#6ee7b7" stroke-opacity=".9" stroke-dasharray="6 7"/>
+      </svg>
+      <span class="pl pe" style="left:10%;top:50%;--i:0">M</span>
+      <span class="pl pe" style="left:25%;top:28.9%;--i:1">J</span>
+      <span class="pl pe" style="left:25%;top:71.1%;--i:2">L</span>
+      <span class="pl pe" style="left:33.3%;top:36.8%;--i:3">F</span>
+      <span class="pl pe" style="left:33.3%;top:63.2%;--i:4">N</span>
+      <span class="pl sp" style="left:90%;top:50%;--i:5">T</span>
+      <span class="pl sp" style="left:77%;top:26.3%;--i:6">R</span>
+      <span class="pl sp" style="left:77%;top:73.7%;--i:7">G</span>
+      <span class="pl sp" style="left:66.7%;top:63.2%;--i:8">S</span>
+      <button class="hole" id="hole" style="left:66.7%;top:36.8%" aria-pressed="false" aria-label="Voy: sumarme al partido de ejemplo"><span class="in">Voy</span></button>
+    </div>
+    <p class="sr">Ejemplo de partido de Fútbol 5: 9 confirmados, falta 1.</p>
+    <div class="legend-row">
+      <p class="board-legend">Ejemplo. Hoy tocás Voy y entrás. Muy pronto, además, elegís tu puesto en la cancha.</p>
+      <button class="reset" id="hero-reset" hidden>Reiniciar</button>
+    </div>
+  </div>
+
+  <div class="hero-actions">
+    <a class="btn" href="#">Armá tu partido</a>
+    <a class="ghost" href="#tablon">Mirá el tablón</a>
+  </div>
+  <p class="note">Con tu cuenta de TurnoGol. Solo mayores de 18.</p>
+</section>
+
+<!-- ═══ 1. HOY YA SE JUEGA (escena fijada: el partido se arma con el scroll) ═══ -->
+<section class="hoy scene pin" id="hoy" data-scene="pin" style="--len:420svh" aria-labelledby="hoy-h">
+  <div class="stage wrap">
+    <div class="split">
+      <div>
+        <div class="head">
+          <span class="chip ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>Ya disponible</span>
+          <h2 class="display" id="hoy-h">Chau, encuesta del <span class="acc">grupo.</span></h2>
+        </div>
+        <ol class="steps" id="steps">
+          <li><h3>Armás el partido</h3><p>Complejo, día, hora, formato y nivel: Tranqui, Parejo o Picante. Si la cancha ya está reservada en TurnoGol, el partido lo dice.</p></li>
+          <li><h3>Pasás el link al grupo</h3><p>Por WhatsApp, como siempre. El link muestra el partido y cuántos faltan.</p></li>
+          <li><h3>Cada uno toca Voy</h3><p>El cupo es de verdad: cuando se llena, se llena. El que llega tarde va al banco y entra solo si alguien se baja. Bajarse es un toque, sin drama. Y el fijo de la semana se repite sin armarlo de cero.</p></li>
+          <li><h3>¿Falta 1? Al tablón.</h3><p>Publicás el mismo partido y se suma gente de afuera. Vos aceptás a cada uno, y recién ahí ve tu WhatsApp.</p></li>
+        </ol>
+        <div class="ticks" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="board rival-pizarra">
+        <div class="board-head">
+          <div>
+            <p class="board-meta">Ejemplo · Miércoles 21:00 · Fútbol 5</p>
+            <p class="board-count" id="hoy-count">¡Estamos los 10!<span class="sj"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Se juega</span></p>
+          </div>
+        </div>
+        <div class="field">
+          <svg class="chalk-svg" viewBox="0 0 600 380" aria-hidden="true">
+            <rect class="draw" pathLength="1" x="20" y="20" width="560" height="340" rx="6"/>
+            <line class="draw" pathLength="1" x1="300" y1="20" x2="300" y2="360"/>
+            <circle class="draw" pathLength="1" cx="300" cy="190" r="42"/>
+            <path class="draw" pathLength="1" d="M20 110H92V270H20"/>
+            <path class="draw" pathLength="1" d="M580 110H508V270H580"/>
+          </svg>
+          <div class="match-card"><b>Miércoles 21:00 · Fútbol 5</b>Nivel Parejo<br><span class="seal">✓ Reservada en TurnoGol</span></div>
+          <div class="link-bubble">Link del partido<br><u>Faltan 9 · Tocá Voy</u></div>
+          <div class="post-card">En el tablón: Falta 1</div>
+          <span class="pl pe" style="left:10%;top:50%">M</span>
+          <span class="pl sp" style="left:90%;top:50%">T</span>
+          <span class="pl pe" style="left:25%;top:28.9%">J</span>
+          <span class="pl sp" style="left:77%;top:26.3%">R</span>
+          <span class="pl pe" style="left:25%;top:71.1%">L</span>
+          <span class="pl sp" style="left:77%;top:73.7%">G</span>
+          <span class="pl pe" style="left:33.3%;top:36.8%">F</span>
+          <span class="pl sp" style="left:66.7%;top:63.2%">S</span>
+          <span class="pl pe" style="left:33.3%;top:63.2%">N</span>
+          <span class="hole" style="left:66.7%;top:36.8%" aria-hidden="true"><span class="in">+1</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- El tablón (después de la escena) -->
+<section class="after wrap" id="tablon" aria-labelledby="tablon-h">
+  <div class="tablon">
+    <div class="plate rival-pizarra" data-reveal>
+      <span class="ring" aria-hidden="true"></span>
+      <div class="tcard" id="tcard" aria-live="polite">
+        <p class="t">Faltan 3</p>
+        <p class="m">Jueves 22:00 · Fútbol 7 · Tranqui<br>Complejo de ejemplo</p>
+        <span class="ej">Ejemplo</span>
+      </div>
+    </div>
+    <div data-reveal style="--rd:90ms">
+      <h3 class="display" id="tablon-h" style="font-size:clamp(36px,4vw,56px)">El tablón</h3>
+      <div class="tabs" role="tablist" aria-label="Qué se publica en el tablón" style="margin-top:12px">
+        <button role="tab" id="tab-0" aria-selected="true" aria-controls="tab-panel" tabindex="0" data-tab="0">Faltan 3</button>
+        <button role="tab" id="tab-1" aria-selected="false" aria-controls="tab-panel" tabindex="-1" data-tab="1">Se busca arquero</button>
+        <button role="tab" id="tab-2" aria-selected="false" aria-controls="tab-panel" tabindex="-1" data-tab="2">Busca rival</button>
+      </div>
+      <div id="tab-panel" role="tabpanel" aria-labelledby="tab-0">
+        <p class="tab-text" id="tab-text">Al partido le faltan jugadores. Te sumás con un pedido, y el organizador te acepta.</p>
+      </div>
+      <p style="color:var(--ink-2);margin-top:10px">Y si querés, te avisamos por mail cuando busquen gente en tu complejo.</p>
+      <div class="actions-col">
+        <a class="ghost" href="#">Mirá el tablón</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ MITAD DE CANCHA ═══ -->
+<section class="mitad scene" data-scene="view" aria-label="Lo que ya se juega y lo que viene">
+  <div class="wrap row">
+    <p class="a">Hasta acá, lo que ya se juega.</p>
+    <div class="line-wrap" aria-hidden="true">
+      <span class="hline"></span>
+      <svg class="chalk-svg" viewBox="0 0 200 200"><circle class="draw" pathLength="1" cx="100" cy="100" r="96"/><circle class="dot" cx="100" cy="100" r="4"/></svg>
+    </div>
+    <p class="b">De acá para allá, lo que viene. Todo lo que sigue dice "Próximamente" hasta que esté en la cancha.</p>
+  </div>
+</section>
+
+<!-- ═══ 2. ¿DE QUÉ CATEGORÍA SOS? (escena fijada: la escalera) ═══ -->
+<section class="cat scene pin" id="categoria" data-scene="pin" style="--len:320svh" aria-labelledby="cat-h">
+  <div class="stage wrap">
+    <div class="head">
+      <span class="chip soon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>Próximamente</span>
+      <h2 class="display" id="cat-h">¿De qué <span class="acc">categoría</span> sos?</h2>
+      <p class="lede">Todos dicen que son de Primera. La cancha lo dice.</p>
+    </div>
+    <ol class="cat-index" id="cat-index" aria-hidden="true"><li>Selección de la zona</li><li>Primera</li><li>Reserva</li><li>Cuarta</li><li>Quinta</li><li>Sexta</li><li>Séptima</li><li>Octava</li><li>Novena</li></ol>
+    <div class="ticker">
+      <div class="mask">
+        <ol class="ladder-names" id="ladder" aria-label="La escala, de abajo hacia arriba">
+          <li>Novena</li><li>Octava</li><li>Séptima</li><li>Sexta</li><li class="techo">Quinta</li><li>Cuarta</li><li>Reserva</li><li>Primera</li><li class="sel">Selección</li>
+        </ol>
+      </div>
+      <p class="ticker-tag" id="ticker-tag" aria-hidden="true"></p>
+      <div class="rail" aria-hidden="true">
+        <span class="base"></span><span class="fill"></span>
+        <div class="notches"><span><b>Novena</b></span><span><b>Octava</b></span><span><b>Séptima</b></span><span><b>Sexta</b></span><span><b>Quinta</b></span><span><b>Cuarta</b></span><span><b>Reserva</b></span><span><b>Primera</b></span><span><b>Selección</b></span></div>
+        <div class="ends"><span>Tu arco</span><span>Arco rival</span></div>
+        <div class="mover"><span class="ball"></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="after wrap" aria-label="Cómo funciona la categoría">
+  <div class="rules-quiz">
+    <div class="rules">
+      <ul class="chalk-list" data-reveal>
+        <li><b>Declarás y la cancha confirma.</b> Arrancás con tres preguntas y un "?" al lado. A los 10 partidos oficiales con tu club, se va el "?".</li>
+        <li><b>Subís en el momento. Bajás despacio.</b> Solo al cierre de la temporada, y como mucho una categoría. Una mala noche no te manda abajo.</li>
+        <li><b>Es tuya.</b> La ves vos. Pública, solo si querés.</li>
+      </ul>
+      <p data-reveal style="color:var(--ink-2)">Arriba de Primera está la <b style="color:var(--ink)">Selección de la zona</b>: los mejores de cada temporada, entre los que eligieron mostrarse.</p>
+      <p class="bridge" data-reveal>Sin club no hay categoría oficial.</p>
+    </div>
+    <form class="quiz" id="quiz" data-reveal style="--rd:90ms" onsubmit="return false">
+      <div class="q">
+        <span class="chip soon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>Próximamente</span>
+        <h3 style="margin-top:10px">Probá: ¿de qué categoría arrancarías?</h3>
+        <p style="color:var(--ink-2);margin-top:6px;font-size:15px">La categoría todavía no existe. Esto es para que veas cómo va a ser.</p>
+        <fieldset><legend>¿Cuánto jugás?</legend><div class="opts">
+          <label><input type="radio" name="f" value="0"><span>1 vez por semana</span></label>
+          <label><input type="radio" name="f" value="1"><span>2 o 3</span></label>
+          <label><input type="radio" name="f" value="2"><span>4 o más</span></label>
+        </div></fieldset>
+        <fieldset><legend>¿Dónde jugaste?</legend><div class="opts">
+          <label><input type="radio" name="w" value="0"><span>Picados</span></label>
+          <label><input type="radio" name="w" value="1"><span>Liga amateur</span></label>
+          <label><input type="radio" name="w" value="2"><span>Inferiores de un club</span></label>
+          <label><input type="radio" name="w" value="3"><span>Federado</span></label>
+        </div></fieldset>
+        <fieldset><legend>¿Tu puesto?</legend><div class="opts">
+          <label><input type="radio" name="pos" value="0"><span>Arquero</span></label>
+          <label><input type="radio" name="pos" value="1"><span>Defensor</span></label>
+          <label><input type="radio" name="pos" value="2"><span>Mediocampista</span></label>
+          <label><input type="radio" name="pos" value="3"><span>Delantero</span></label>
+        </div></fieldset>
+      </div>
+      <p class="sr" id="quiz-live" aria-live="polite"></p>
+      <div class="res">
+        <p class="kicker">Cuando salga la categoría</p>
+        <p class="big" id="res-h" tabindex="-1">Arrancarías en <b id="res-cat">Sexta?</b></p>
+        <p>Nadie arranca más arriba de Quinta. El "?" se va con 10 partidos oficiales: la cancha no miente. Tu puesto no cambia la categoría: queda para tu figurita.</p>
+        <div class="row">
+          <button type="button" class="ghost" id="quiz-again">Probar de nuevo</button>
+          <span class="chip soon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>Compartir: Próximamente</span>
+        </div>
+      </div>
+      <p class="note">No guardamos tus respuestas.</p>
+    </form>
+  </div>
+</section>
+
+<!-- ═══ 3. GRUPO NO ES CLUB (escena fijada: el picado se ordena en club) ═══ -->
+<section class="gc scene pin" id="grupo-club" data-scene="pin" style="--len:300svh" aria-labelledby="gc-h">
+  <div class="stage wrap">
+    <div class="split">
+      <div>
+        <h2 class="display" id="gc-h" style="font-size:clamp(34px,4.4vw,64px)"><span class="one">El fijo es para <span class="acc">jugar.</span></span> <span class="two">El club, para competir.</span></h2>
+        <div class="cols">
+          <div class="col group-c">
+            <h3>El grupo</h3>
+            <p>El fijo de los miércoles, pecheras contra sin pechera. Muy pronto, cada picado va a sumar a tus partidos jugados, y nada más: sin tabla, sin goles, sin figura.</p>
+          </div>
+          <div class="col club-c">
+            <h3>El club <span class="chip soon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>Próximamente</span></h3>
+            <p>Un equipo serio que vive en TurnoGol: nombre, escudo, plantel, títulos y antigüedad. Juega contra otros clubes, y esos partidos sí cuentan.</p>
+          </div>
+        </div>
+      </div>
+      <div class="board rival-pizarra">
+        <div class="gfield" id="gfield">
+          <svg class="chalk-svg" viewBox="0 0 600 440" aria-hidden="true">
+            <rect x="20" y="20" width="560" height="340" rx="6"/>
+            <line x1="300" y1="20" x2="300" y2="360"/>
+            <circle cx="300" cy="190" r="48"/>
+            <path d="M20 110H92V270H20M580 110H508V270H580"/>
+            <line x1="40" y1="410" x2="300" y2="410" stroke-dasharray="2 8"/>
+          </svg>
+          <span class="gdot pe" style="--i:0;--x0:110;--y0:110;--x1:60;--y1:190"></span>
+          <span class="gdot sp" style="--i:1;--x0:180;--y0:250;--x1:125;--y1:115"></span>
+          <span class="gdot pe" style="--i:2;--x0:250;--y0:90;--x1:125;--y1:265"></span>
+          <span class="gdot sp" style="--i:3;--x0:330;--y0:200;--x1:205;--y1:135"></span>
+          <span class="gdot pe" style="--i:4;--x0:400;--y0:300;--x1:205;--y1:245"></span>
+          <span class="gdot sp" style="--i:5;--x0:470;--y0:110;--x1:70;--y1:410"></span>
+          <span class="gdot pe" style="--i:6;--x0:150;--y0:310;--x1:120;--y1:410"></span>
+          <span class="gdot sp" style="--i:7;--x0:290;--y0:320;--x1:170;--y1:410"></span>
+          <span class="gdot pe" style="--i:8;--x0:380;--y0:80;--x1:220;--y1:410"></span>
+          <span class="gdot sp" style="--i:9;--x0:510;--y0:250;--x1:270;--y1:410"></span>
+          <svg class="crest" viewBox="0 0 100 116" aria-hidden="true"><path d="M50 4 92 18v38c0 28-18 46-42 56C26 102 8 84 8 56V18Z" fill="#065f46" stroke="#f8fafc" stroke-width="4"/><path d="M8 52 92 30v18L8 70Z" fill="#f8fafc"/><text x="50" y="96" text-anchor="middle" font-family="Archivo" font-weight="900" font-style="italic" font-size="22" fill="#f8fafc">DP</text></svg>
+          <svg class="rival-ghost" viewBox="0 0 100 116" aria-hidden="true"><path d="M50 4 92 18v38c0 28-18 46-42 56C26 102 8 84 8 56V18Z" fill="none" stroke="#f8fafc" stroke-width="3" stroke-dasharray="6 6"/></svg>
+          <span class="bench-l">Suplentes</span>
+        </div>
+        <p class="board-legend" style="font-size:12px;color:var(--ink-3);margin-top:8px">Ejemplo: el grupo de los miércoles funda Deportivo Pecheras y sale a jugar contra otro club.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="after wrap" aria-label="Lo que ya tiene y lo que va a tener el grupo">
+  <div class="two-col" style="align-items:start">
+    <div data-reveal>
+      <h3 class="display" style="font-size:28px">El grupo, hoy y lo que viene</h3>
+      <ul class="chalk-list" style="margin-top:18px">
+              <li><b>La convocatoria</b> <span class="chip ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m8 12 3 3 5-6"/></svg>Ya disponible</span><br>El partido del grupo, con su link.</li>
+              <li><b>La formación</b> <span class="chip soon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>Próximamente</span><br>Cada uno toca su puesto y los huecos salen al tablón: "Faltan 2: un defensor y un delantero".</li>
+              <li><b>Pan y queso</b> <span class="chip soon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>Próximamente</span><br>Equipos parejos para el picado, sin mostrar el nivel de nadie.</li>
+            </ul>
+    </div>
+    <div data-reveal style="--rd:90ms">
+      <p class="closer">¿Tu grupo juega en serio? Que tus partidos cuenten: <span class="acc">armá tu club.</span></p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 4. FUNDÁ TU CLUB (escena fijada: el escudo se pinta y el párrafo se lee) ═══ -->
+<section class="fc scene pin" id="club" data-scene="pin" style="--len:260svh" aria-labelledby="fc-h">
+  <div class="stage wrap">
+    <span class="chip soon" style="align-self:flex-start"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>Próximamente</span>
+    <h2 class="display" id="fc-h" style="margin-top:10px">Fundá tu <span class="acc">club.</span></h2>
+    <div class="grid" style="flex:1 1 auto">
+      <div class="shield">
+        <svg viewBox="0 0 200 250" aria-hidden="true">
+          <path class="sh-piece" style="--k:3" d="M100 6 108 22 126 24 113 36 116 54 100 46 84 54 87 36 74 24 92 22Z" fill="var(--gold)"/>
+          <path class="sh-piece" style="--k:0" d="M100 62 184 86v66c0 46-36 76-84 92-48-16-84-46-84-92V86Z" fill="#065f46"/>
+          <path class="sh-piece" style="--k:1" d="M16 140 184 104v32L16 172Z" fill="#f8fafc"/>
+          <text class="sh-piece" style="--k:2" x="100" y="216" text-anchor="middle" font-family="Archivo" font-weight="900" font-style="italic" font-size="44" fill="#f8fafc">DP</text>
+          <path class="sh-out draw" pathLength="1" d="M100 62 184 86v66c0 46-36 76-84 92-48-16-84-46-84-92V86Z" fill="none" stroke="#f8fafc" stroke-opacity=".8" stroke-width="3" stroke-linejoin="round"/>
+        </svg>
+        <p style="text-align:center;margin-top:8px"><span class="ej">Ejemplo · Deportivo Pecheras</span></p>
+      </div>
+      <p class="words" id="words">Fundá tu club con nombre y escudo <span class="pic"><svg viewBox="0 0 24 28"><path d="M12 1 23 5v9c0 7-5 11-11 13C6 25 1 21 1 14V5Z" fill="#065f46" stroke="#f8fafc" stroke-width="1.6"/></svg></span>, camiseta con tu número <span class="pic"><svg viewBox="0 0 28 26"><path d="M9 1 1 6l3 6 3-1v14h14V11l3 1 3-6-8-5c-1 3-3 4-5 4S10 4 9 1Z" fill="#f8fafc"/><text x="14" y="21" text-anchor="middle" font-family="Archivo" font-weight="900" font-style="italic" font-size="10" fill="#020617">10</text></svg></span> y un plantel que acepta la invitación <span class="pic" style="width:1.9em"><svg viewBox="0 0 46 24"><g fill="none" stroke="#f8fafc" stroke-opacity=".8" stroke-width="2"><circle cx="8" cy="12" r="6.5"/><circle cx="23" cy="12" r="6.5"/><circle cx="38" cy="12" r="6.5"/></g></svg></span>. Cada título suma una estrella arriba del escudo <span class="pic"><svg viewBox="0 0 24 24"><path d="M12 1.5 15 8l7 .7-5.3 4.8 1.6 7L12 16.8 5.7 20.5l1.6-7L2 8.7 9 8Z" fill="var(--gold)"/></svg></span>.</p>
+    </div>
+  </div>
+</section>
+
+<section class="after wrap" aria-label="Lo que tiene un club">
+  <ul class="chalk-list two-col" data-reveal>
+    <li><b>El nombre.</b> La IA te propone nombres con humor de potrero, y vos elegís.</li>
+    <li><b>El escudo y la camiseta.</b> El escudo se arma de piezas.</li>
+    <li><b>El plantel.</b> Entra quien acepta la invitación. Un club por jugador.</li>
+    <li><b>Los dorsales.</b> El 10 se pelea.</li>
+    <li><b>El mercado de pases.</b> Se cambia de club solo en las ventanas de cada temporada. Cada fichaje sale con su tarjeta: "Es oficial".</li>
+    <li><b>El palmarés.</b> Una estrella arriba del escudo por cada título.</li>
+    <li><b>La hinchada.</b> Cualquiera puede seguir a tu club.</li>
+    <li><b>La historia.</b> La escribe la IA con los datos reales, sin nombrar a nadie.</li>
+  </ul>
+  <div data-reveal style="margin-top:32px">
+    <span class="ej">Ejemplo · nombres que podría tirar la IA</span>
+    <ul class="names"><li>Deportivo Pecheras</li><li>Real Sin Pechera</li><li>Atlético Tercer Tiempo</li><li>Los del Fondo</li><li>Sportivo Banco de Suplentes</li></ul>
+  </div>
+</section>
+
+<!-- ═══ 5. EL PARTIDO OFICIAL (escena fijada: la Corona viaja) ═══ -->
+<section class="po scene pin" id="oficial" data-scene="pin" style="--len:280svh" aria-labelledby="po-h">
+  <div class="stage wrap">
+    <span class="chip soon" style="align-self:flex-start"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>Próximamente</span>
+    <h2 class="display" id="po-h" style="margin-top:10px">Club contra club. Esto <span class="acc">cuenta.</span></h2>
+    <p class="lede" style="margin-top:12px">El partido oficial es entre dos clubes, con turno en un complejo TurnoGol. Al final, los dos capitanes confirman el resultado en un toque, o lo confirma el encargado. Si no coinciden, no cuenta.</p>
+    <div class="board rival-pizarra" style="margin-top:18px">
+      <p style="position:absolute;left:14px;top:12px"><span class="ej">Ejemplo</span></p>
+      <div class="score" id="score">
+        <svg class="chalk-svg" viewBox="0 0 600 340" aria-hidden="true"><path class="arc draw" pathLength="1" d="M110 132Q300 -68 490 132" stroke-dasharray="1" /></svg>
+        <div class="team" style="left:18.3%"><svg viewBox="0 0 100 116"><path d="M50 4 92 18v38c0 28-18 46-42 56C26 102 8 84 8 56V18Z" fill="#065f46" stroke="#f8fafc" stroke-width="4"/><path d="M8 52 92 30v18L8 70Z" fill="#f8fafc"/></svg><p>Deportivo Pecheras</p></div>
+        <div class="result" aria-hidden="true"><span>3</span><span style="opacity:.5">–</span><span class="digit"><span class="roll"><span>3</span><span>4</span></span></span></div>
+        <div class="team" style="left:81.7%"><svg viewBox="0 0 100 116"><path d="M50 4 92 18v38c0 28-18 46-42 56C26 102 8 84 8 56V18Z" fill="#334155" stroke="#f8fafc" stroke-width="4"/><path d="M50 4v108" stroke="#f8fafc" stroke-width="10"/></svg><p>Real Sin Pechera</p></div>
+        <div class="crown" aria-hidden="true"><svg viewBox="0 0 64 48"><path d="M4 40 0 10l16 12L32 2l16 20 16-12-4 30Z" fill="var(--gold)"/><rect x="4" y="40" width="56" height="7" rx="2" fill="var(--gold)"/></svg></div>
+      </div>
+      <p class="status"><span class="old">La Corona del complejo · Defensas: 2</span><span class="new">Nuevo campeón de la Corona · Defensas: 0</span></p>
+      <p class="sr">Ejemplo: Real Sin Pechera le gana 4 a 3 a Deportivo Pecheras y se lleva la Corona del complejo.</p>
+    </div>
+  </div>
+</section>
+
+<section class="after wrap" aria-label="Lo que trae el partido oficial">
+  <ul class="menu" data-reveal>
+    <li><b>La cartelera de la zona.</b><span>Los partidos que se vienen, con los dos escudos.</span></li>
+    <li><b>La tabla.</b><span>Por zona, formato y división. Aparece el club que quiere.</span></li>
+    <li><b>Divisiones y temporadas.</b><span>Ascensos, descensos y "¡Zafamos!".</span></li>
+    <li><b>Clásicos.</b><span>Cuando dos clubes se cruzan seguido, nace el clásico, con su historial.</span></li>
+    <li><b>La Corona del complejo.</b><span>Un club la tiene y cualquiera lo desafía. Si le ganás, te la llevás.</span></li>
+    <li><b>Desafío y revancha.</b><span>En un toque, por WhatsApp.</span></li>
+    <li><b>¿Volverían a jugar?</b><span>Después del partido, cada equipo dice sí o no del rival. Lo bueno se ve; lo malo no se le muestra a otros jugadores.</span></li>
+    <li><b>El álbum de la zona.</b><span>Cada club que enfrentás, a tu álbum.</span></li>
+  </ul>
+</section>
+
+<!-- ═══ 6. TERCER TIEMPO (escena fijada con scroll horizontal) ═══ -->
+<section class="tt scene pin" id="tercer-tiempo" data-scene="hpin" aria-labelledby="tt-h">
+  <div class="stage">
+    <div class="wrap">
+      <span class="chip soon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>Próximamente</span>
+      <h2 class="display" id="tt-h" style="margin-top:10px">Que se <span class="acc">sepa.</span></h2>
+      <p class="lede" style="margin-top:10px">Después del partido viene lo mejor: el resultado, la figura y la tapa. Todo listo para pegar en el grupo y en tu historia.</p>
+    </div>
+    <div class="track-wrap">
+      <div class="track" id="track">
+        <article class="rival-tapa" aria-label="Tapa de ejemplo">
+          <div class="mast"><span>EL DIARIO DE LA ZONA</span><span>EJEMPLO</span></div>
+          <h3>Se terminó el reinado</h3>
+          <p>Real Sin Pechera le sacó la Corona a Deportivo Pecheras en la noche del jueves.</p>
+          <span class="ej">Ejemplo · la escribe la IA, sin nombrar a nadie</span>
+        </article>
+        <div class="rival-figurita f-debut"><span class="ed">Debut</span><span class="num">7</span><div class="sil"><svg viewBox="0 0 100 90"><circle cx="50" cy="28" r="20" fill="currentColor" opacity=".35"/><path d="M8 90c4-24 20-36 42-36s38 12 42 36Z" fill="currentColor" opacity=".35"/></svg></div><div class="foot"><span>Deportivo Pecheras</span><span>Ejemplo</span></div></div>
+        <div class="rival-figurita f-plata"><span class="ed">Plata</span><span class="num">4</span><div class="sil"><svg viewBox="0 0 100 90"><circle cx="50" cy="28" r="20" fill="currentColor" opacity=".35"/><path d="M8 90c4-24 20-36 42-36s38 12 42 36Z" fill="currentColor" opacity=".35"/></svg></div><div class="foot"><span>Real Sin Pechera</span><span>Ejemplo</span></div></div>
+        <div class="rival-figurita f-oro"><span class="ed">Oro</span><span class="num">10</span><div class="sil"><svg viewBox="0 0 100 90"><circle cx="50" cy="28" r="20" fill="currentColor" opacity=".35"/><path d="M8 90c4-24 20-36 42-36s38 12 42 36Z" fill="currentColor" opacity=".35"/></svg></div><div class="foot"><span>Los del Fondo</span><span>Ejemplo</span></div></div>
+        <div class="rival-figurita f-figura"><span class="ed">Figura</span><span class="num">9</span><div class="sil"><svg viewBox="0 0 100 90"><circle cx="50" cy="28" r="20" fill="currentColor" opacity=".35"/><path d="M8 90c4-24 20-36 42-36s38 12 42 36Z" fill="currentColor" opacity=".35"/></svg></div><div class="foot"><span>La vota el rival</span><span>Ejemplo</span></div></div>
+        <div class="rival-figurita f-fundador"><span class="ed">Fundador</span><span class="num">1</span><div class="sil"><svg viewBox="0 0 100 90"><circle cx="50" cy="28" r="20" fill="currentColor" opacity=".35"/><path d="M8 90c4-24 20-36 42-36s38 12 42 36Z" fill="currentColor" opacity=".35"/></svg></div><div class="foot"><span>Temporada Cero</span><span>Ejemplo</span></div></div>
+        <div class="story"><span class="ej" style="align-self:flex-start">Ejemplo · tarjeta 9:16</span><p class="big">¡Subí a <span class="acc">Quinta!</span></p><span class="share">Que se sepa</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="after wrap" aria-label="Lo que se gana y se comparte">
+  <ul class="chalk-list two-col" data-reveal>
+    <li><b>La figura.</b> La vota el rival, así no se arregla entre amigos.</li>
+    <li><b>La tapa.</b> La IA escribe la crónica de cada partido oficial, con titular de diario deportivo. Habla de clubes y resultados: no nombra a nadie.</li>
+    <li><b>La figurita.</b> Tu carta: foto, dorsal, club y números verdaderos. Con ediciones que se ganan jugando: Debut, Plata, Oro, Campeón, Figura y Fundador.</li>
+    <li><b>Tarjetas para todo.</b> Resultado, fichaje, ascenso, "¡Subí a Quinta!", la Corona. Con un botón: "Que se sepa".</li>
+    <li><b>Tu carrera.</b> Ganados, empatados y perdidos, clásicos, títulos y logros con nombre de crónica, como Centenario o Matador de clásicos. Algunos están ocultos.</li>
+    <li><b>Versus.</b> Tu carrera contra la de un amigo, si los dos aceptan.</li>
+    <li><b>Tu Temporada.</b> El resumen de tu año, para compartir.</li>
+  </ul>
+</section>
+
+<!-- ═══ 7. TODOS LOS DÍAS (los casilleros se dan vuelta con el scroll) ═══ -->
+<section class="crack scene" id="todos-los-dias" data-scene="view" aria-labelledby="crack-h">
+  <div class="wrap" style="padding-block:96px">
+    <div class="split">
+      <div>
+        <span class="chip soon" data-reveal><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>Próximamente</span>
+        <h2 class="display" id="crack-h" style="margin-top:10px" data-reveal>¿Quién es el <span class="acc">crack</span> de hoy?</h2>
+        <p class="lede" style="margin-top:12px" data-reveal>Uno por día, el mismo para todos. Adiviná el futbolista con pistas de colores: posición, país, un club y la década en que brilló.</p>
+        <ul class="chalk-list" style="margin-top:24px" data-reveal>
+          <li><b>El Crack del Día.</b> Compartís tu grilla en el grupo sin spoilear a nadie, y tu racha se cuenta.</li>
+          <li><b>Pronósticos.</b> Con tus amigos, tu club y tu complejo. Sin plata.</li>
+          <li><b>El desafío de la semana.</b> Un reto nuevo para clubes y jugadores.</li>
+          <li><b>El Diario de la Zona.</b> Los lunes, la edición de tu zona: resultados, la tabla, el clásico y la goleada.</li>
+        </ul>
+      </div>
+      <div class="board rival-pizarra">
+        <p style="margin-bottom:10px"><span class="ej">Ejemplo · la grilla de un día</span></p>
+        <div class="cgrid" role="img" aria-label="Grilla de ejemplo del Crack del Día: cuatro intentos con pistas de posición, país, club y década; en el cuarto coinciden las cuatro.">
+          <span class="h">Posición</span><span class="h">País</span><span class="h">Club</span><span class="h">Década</span>
+          <span class="cell n" style="--i:0">No</span><span class="cell c" style="--i:1">Cerca</span><span class="cell n" style="--i:2">No</span><span class="cell n" style="--i:3">No</span>
+          <span class="cell y" style="--i:4">Coincide</span><span class="cell c" style="--i:5">Cerca</span><span class="cell n" style="--i:6">No</span><span class="cell c" style="--i:7">Cerca</span>
+          <span class="cell y" style="--i:8">Coincide</span><span class="cell y" style="--i:9">Coincide</span><span class="cell c" style="--i:10">Cerca</span><span class="cell y" style="--i:11">Coincide</span>
+          <span class="cell y" style="--i:12">Coincide</span><span class="cell y" style="--i:13">Coincide</span><span class="cell y" style="--i:14">Coincide</span><span class="cell y" style="--i:15">Coincide</span>
+        </div>
+        <div class="share-off"><span aria-disabled="true">Compartir mi grilla</span><span class="chip soon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>Próximamente</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 8. TU CANCHA (escena fijada: la foto se abre en el círculo central) ═══ -->
+<section class="tc scene pin" id="tu-cancha" data-scene="pin" style="--len:260svh" aria-labelledby="tc-h">
+  <div class="stage wrap">
+    <span class="chip soon" style="align-self:flex-start"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>Próximamente</span>
+    <h2 class="display" id="tc-h" style="margin-top:10px">Tu cancha, tu <span class="acc">estadio.</span></h2>
+    <p class="lede" style="margin-top:12px">Cada complejo TurnoGol tiene su página RIVAL: la Corona en juego, los clásicos que se juegan ahí y sus leyendas.</p>
+    <div class="board rival-pizarra">
+      <svg class="chalk-svg" viewBox="0 0 600 400" aria-hidden="true">
+        <g class="others">
+          <rect x="30" y="20" width="240" height="120" rx="4"/><line x1="150" y1="20" x2="150" y2="140"/><circle cx="150" cy="80" r="22"/>
+          <rect x="330" y="20" width="240" height="120" rx="4"/><line x1="450" y1="20" x2="450" y2="140"/><circle cx="450" cy="80" r="22"/>
+          <rect x="30" y="260" width="240" height="120" rx="4"/><line x1="150" y1="260" x2="150" y2="380"/><circle cx="150" cy="320" r="22"/>
+          <rect x="330" y="260" width="240" height="120" rx="4"/><line x1="450" y1="260" x2="450" y2="380"/><circle cx="450" cy="320" r="22"/>
+          <rect x="180" y="140" width="240" height="120" rx="4"/><line x1="300" y1="140" x2="300" y2="260"/>
+        </g>
+      </svg>
+      <div class="window"><img src="../../../public/bg-hero-2.webp" alt="Foto de ejemplo: una cancha de fútbol 5 iluminada de noche" loading="lazy" width="1200" height="800"></div>
+      <span class="sticker">Sede oficial RIVAL</span>
+      <p style="position:absolute;left:14px;bottom:12px;z-index:3"><span class="ej" style="background:rgba(2,6,23,.7)">Ejemplo</span></p>
+    </div>
+  </div>
+</section>
+
+<section class="after wrap" aria-label="Lo que tiene tu cancha">
+  <div class="tc-after">
+    <ul class="chalk-list" data-reveal>
+      <li><b>Leyenda de la cancha.</b> La gana el que más juega ahí. Premia la constancia, no el talento.</li>
+      <li><b>Complejo de la zona.</b> Cada mes, el complejo con más vida RIVAL.</li>
+      <li><b>Sede oficial RIVAL.</b> El sticker en la puerta, con QR.</li>
+      <li><b>Hora RIVAL.</b> El complejo publica partidos de la casa con la Corona en juego.</li>
+    </ul>
+    <div data-reveal style="--rd:90ms;display:grid;gap:18px">
+      <div class="glass">
+        <h3>Pedí tu cancha <span class="chip soon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>Próximamente</span></h3>
+        <p>¿Jugás en un complejo sin TurnoGol? Pedilo, y le llevamos tu pedido.</p>
+      </div>
+      <p style="color:var(--ink-2)">¿Tenés un complejo? <a class="link" href="#">Conocé TurnoGol para complejos</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 9. LAS REGLAS DEL VESTUARIO ═══ -->
+<section class="reglas after" id="reglas" aria-labelledby="reglas-h" style="padding-top:72px">
+  <div class="wrap">
+    <div class="side" data-reveal>
+      <h2 class="display" id="reglas-h">Competir sin <span class="acc">escrache.</span></h2>
+      <p class="lede" style="margin-top:12px">Las reglas del vestuario valen para todo RIVAL: lo que ya se juega y lo que viene.</p>
+      <p style="margin-top:14px"><a class="link" href="#">Términos y privacidad</a></p>
+    </div>
+    <div class="faq" data-reveal style="--rd:90ms">
+      <details name="rival-reglas" open><summary>¿Qué puedo usar hoy?</summary><p>El partido del grupo y el tablón. Lo que dice "Próximamente" está en camino.</p></details>
+      <details name="rival-reglas"><summary>¿Cuándo llega lo que dice "Próximamente"?</summary><p>Por partes y sin fecha. Cada parte sale cuando está lista, y acá pasa de "Próximamente" a "Ya disponible".</p></details>
+      <details name="rival-reglas"><summary>¿Quién va a ver mi categoría?</summary><p>La categoría llega muy pronto, y la vas a ver vos. Mostrarla, aparecer en una tabla o mostrar tu figurita lo vas a elegir vos, y lo vas a poder volver a ocultar.</p></details>
+      <details name="rival-reglas"><summary>¿Se va a ver cuando me va mal?</summary><p>No se le va a mostrar a otros jugadores. Cuando lleguen las tablas, lo bueno se ve y lo malo no: nadie ve a otro abajo de una tabla.</p></details>
+      <details name="rival-reglas"><summary>¿Qué partidos van a contar?</summary><p>Para la tabla y la categoría, que llegan muy pronto, solo lo verificado: partidos entre clubes, con turno en un complejo TurnoGol y el resultado confirmado.</p></details>
+      <details name="rival-reglas"><summary>¿Alguien puede escribir algo sobre mí?</summary><p>No. En RIVAL no hay comentarios ni notas de una persona a otra. Y la tapa, cuando llegue, va a hablar de clubes y resultados.</p></details>
+      <details name="rival-reglas"><summary>¿Hay plata en juego?</summary><p>No. Ni apuestas ni plata entre jugadores.</p></details>
+      <details name="rival-reglas"><summary>¿Desde qué edad?</summary><p>Solo mayores de 18.</p></details>
+      <details name="rival-reglas"><summary>¿Qué pasa con mis datos?</summary><p>Son tuyos: los podés ver, corregir, descargar o borrar (Ley 25.326).</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 10. TEMPORADA CERO (escena fijada: el borrador limpia la pizarra) ═══ -->
+<section class="tz scene pin" id="temporada-cero" data-scene="pin" style="--len:220svh" aria-labelledby="tz-h">
+  <div class="stage wrap">
+    <span class="chip soon" style="align-self:flex-start"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 7v5l3 2"/></svg>Próximamente</span>
+    <div class="board rival-pizarra">
+      <svg class="chalk-svg" viewBox="0 0 600 360" aria-hidden="true">
+        <g class="ghost-play">
+          <path d="M60 280C140 200 200 260 260 170S380 90 470 120"/><path d="m458 106 14 14-18 6"/>
+          <path d="M90 90l20 20m0-20-20 20M200 300l20 20m0-20-20 20M380 250l20 20m0-20-20 20"/>
+          <circle cx="160" cy="130" r="14"/><circle cx="330" cy="70" r="14"/><circle cx="520" cy="250" r="14"/>
+          <path d="M300 300c40-30 90-30 130 0" stroke-dasharray="6 8"/>
+        </g>
+      </svg>
+      <h2 class="display title" id="tz-h">Temporada <span class="acc">Cero.</span></h2>
+      <div class="eraser-move" aria-hidden="true"><span class="eraser"></span></div>
+      <span class="stamp" aria-hidden="true">FUNDADOR</span>
+    </div>
+    <p class="lede" style="margin-top:16px">Los primeros clubes se fundan en la Temporada Cero, y la primera temporada pasa una sola vez.</p>
+    <p style="margin-top:10px;font-weight:600">Mientras tanto, armá el partido de esta semana.</p>
+  </div>
+</section>
+
+<a class="armalo scene" data-scene="view" href="#" aria-label="Armá el partido de esta semana">
+  <span class="top" aria-hidden="true"><span>Armá el partido de esta semana</span><svg viewBox="0 0 24 24"><path d="M5 19 19 5M8 5h11v11"/></svg></span>
+  <span class="word" aria-hidden="true"><span style="--i:0">A</span><span style="--i:1">R</span><span style="--i:2">M</span><span style="--i:3">A</span><span style="--i:4">L</span><span style="--i:5">O</span></span>
+</a>
+<p class="after-armalo"><a class="link" href="#tablon">Mirá el tablón</a></p>
+
+</main>
+
+<div class="wordmark scene" data-scene="view" aria-hidden="true">
+  <svg viewBox="0 0 1000 220"><text x="500" y="196" text-anchor="middle">RIVAL</text></svg>
+</div>
+<footer class="footer">
+  <nav aria-label="Pie"><a href="#">Explorar</a><a href="#">Para complejos</a><a href="#">Ayuda</a><a href="#">Términos y privacidad</a></nav>
+  <p>© TurnoGol</p>
+  <p class="proto-notes">En este prototipo se ven dos propuestas sin aprobar: el oro de trofeo (REQUIERE INPUT 4) y Archivo condensada (REQUIERE INPUT 3).</p>
+</footer>
+
+<nav class="bottomnav" aria-label="Navegación del jugador">
+  <a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5Z"/></svg>Explorar</a>
+  <a href="#top" aria-current="page"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="3"/></svg>RIVAL</a>
+  <a href="#"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>Reservas</a>
+  <a href="#"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>Cuenta</a>
+</nav>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const root = document.documentElement;
+  const forced = new URLSearchParams(location.search).has('reducido');
+  const reduce = forced || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  root.classList.add(reduce ? 'reduce' : 'js-scroll');
+  const toggle = $('#motion-toggle');
+  if (forced) { toggle.textContent = 'Ver con movimiento'; toggle.href = location.pathname; }
+
+  /* ── Entradas (Reveal): una vez, al entrar en pantalla ── */
+  if (!reduce) {
+    const io = new IntersectionObserver((es) => es.forEach((e) => {
+      if (e.isIntersecting || e.boundingClientRect.top < 0) { e.target.classList.add('in'); io.unobserve(e.target); }
+    }), { threshold: .15 });
+    $$('[data-reveal]').forEach((el) => io.observe(el));
+  }
+
+  /* ── La demo de "Voy" del hero ── */
+  const hole = $('#hole'), heroCount = $('#hero-count'), heroReset = $('#hero-reset');
+  const pulse = (el) => { el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse'); };
+  const SE_JUEGA = '¡Estamos los 10!<span class="sj"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Se juega</span>';
+  hole.addEventListener('click', () => {
+    if (hole.classList.contains('joined')) return;
+    hole.classList.add('joined'); hole.setAttribute('aria-pressed', 'true');
+    hole.querySelector('.in').textContent = 'Vos';
+    heroCount.innerHTML = SE_JUEGA; pulse(heroCount);
+    heroReset.hidden = false;
+  });
+  heroReset.addEventListener('click', () => {
+    hole.classList.remove('joined'); hole.setAttribute('aria-pressed', 'false');
+    hole.querySelector('.in').textContent = 'Voy';
+    heroCount.textContent = 'Falta 1'; heroReset.hidden = true; hole.focus();
+  });
+
+  /* ── El tablón: pestañas ── */
+  const TABS = [
+    { t: 'Faltan 3', m: 'Jueves 22:00 · Fútbol 7 · Tranqui', x: 'Al partido le faltan jugadores. Te sumás con un pedido, y el organizador te acepta.' },
+    { t: 'Se busca arquero', m: 'Martes 20:00 · Fútbol 5 · Parejo', x: 'El puesto que nadie quiere y todos necesitan. Si atajás, acá te buscan.' },
+    { t: 'Busca rival', m: 'Sábado 18:00 · Fútbol 5 · Picante', x: 'Un equipo completo busca a otro equipo para jugar.' },
+  ];
+  const tcard = $('#tcard');
+  const tabs = $$('.tabs button');
+  tabs.forEach((b, i) => b.addEventListener('keydown', (e) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+    next.focus(); next.click();
+  }));
+  tabs.forEach((b) => b.addEventListener('click', () => {
+    const d = TABS[+b.dataset.tab];
+    tabs.forEach((o) => { o.setAttribute('aria-selected', String(o === b)); o.tabIndex = o === b ? 0 : -1; });
+    $('#tab-panel').setAttribute('aria-labelledby', b.id);
+    tcard.style.opacity = 0;
+    setTimeout(() => {
+      tcard.querySelector('.t').textContent = d.t;
+      tcard.querySelector('.m').innerHTML = d.m + '<br>Complejo de ejemplo';
+      $('#tab-text').textContent = d.x; tcard.style.opacity = 1;
+    }, reduce ? 0 : 160);
+  }));
+
+  /* ── El quiz de categoría (propuesta de tabla, REQUIERE INPUT 7) ── */
+  const CATS = [['Novena', 'Octava', 'Séptima'], ['Octava', 'Séptima', 'Sexta'], ['Séptima', 'Sexta', 'Quinta'], ['Sexta', 'Quinta', 'Quinta']];
+  const quiz = $('#quiz');
+  const swap = (fn) => (document.startViewTransition && !reduce) ? document.startViewTransition(fn) : fn();
+  quiz.addEventListener('change', () => {
+    const f = quiz.elements.f.value, w = quiz.elements.w.value, p = quiz.elements.pos.value;
+    if (f === '' || w === '' || p === '') return;
+    const cat = CATS[+w][+f];
+    const done = swap(() => { $('#res-cat').textContent = cat + '?'; quiz.classList.add('done'); });
+    Promise.resolve(done && done.updateCallbackDone).then(() => $('#res-h').focus());
+    $('#quiz-live').textContent = `Cuando salga la categoría, arrancarías en ${cat}, con el signo de pregunta hasta jugar 10 partidos oficiales.`;
+    setTimeout(() => pulse($('#res-cat')), reduce ? 0 : 320);
+  });
+  $('#quiz-again').addEventListener('click', () => {
+    const done = swap(() => { quiz.reset(); quiz.classList.remove('done'); });
+    Promise.resolve(done && done.updateCallbackDone).then(() => quiz.querySelector('input').focus());
+    $('#quiz-live').textContent = '';
+  });
+
+  /* ── Texto que se lee con el scroll (sección 4): una palabra por span ── */
+  const words = $('#words');
+  let wi = 0;
+  [...words.childNodes].forEach((node) => {
+    if (node.nodeType === 3) {
+      const frag = document.createDocumentFragment();
+      node.textContent.split(/(\s+)/).forEach((part) => {
+        if (!part) return;
+        if (/^\s+$/.test(part)) { frag.append(part); return; }
+        const s = document.createElement('span'); s.className = 'w'; s.style.setProperty('--i', wi++); s.textContent = part; frag.append(s);
+      });
+      node.replaceWith(frag);
+    } else { node.classList.add('w'); node.style.setProperty('--i', wi++); }
+  });
+  words.style.setProperty('--n', wi);
+
+  /* Escala de las piezas dibujadas en coordenadas de diseño (600 de ancho). */
+  const units = [[$('#gfield'), 600], [$('#score'), 600]];
+  const setUnits = () => units.forEach(([el, w]) => el.style.setProperty('--u', (el.clientWidth / w).toFixed(4) + 'px'));
+  setUnits();
+  addEventListener('resize', setUnits);
+
+  if (reduce) return; // Movimiento reducido: todo queda en su estado final.
+
+  /* ── El motor: escribe --p (0 a 1) por escena, con un suavizado corto ── */
+  const hoy = $('#hoy'), hoyPl = $$('.pl', hoy), hoyCount = $('#hoy-count'), steps = $$('#steps li'), ticks = $$('.ticks i', hoy);
+  const ladder = $('#ladder'), tag = $('#ticker-tag'), catIndex = $$('#cat-index li');
+  const TAGS = { 4: 'Techo del arranque: nadie empieza más arriba.', 8: 'Selección de la zona: los mejores de cada temporada.' };
+  const track = $('#track'), trackItems = [...track.children];
+
+  const hooks = {
+    hoy(p) {
+      const k = Math.min(3, Math.floor(p * 4));
+      const t = [0, 1, 2, 3].map((i) => clamp(p * 4 - i, 0, 1));
+      hoy.style.setProperty('--t0', t[0].toFixed(3));
+      steps.forEach((s, i) => s.classList.toggle('active', i === k));
+      ticks.forEach((tk, i) => tk.style.setProperty('--tk', t[i].toFixed(3)));
+      let n = t[0] > .85 ? 1 : 0;
+      if (k >= 2) n = k === 2 ? 1 + Math.floor(t[2] * 8.999) : 9;
+      hoyPl.forEach((el, i) => el.classList.toggle('on', i < n));
+      hoy.classList.toggle('card-on', (k === 0 && t[0] > .45) || k === 1);
+      hoy.classList.toggle('link-on', k === 1 && t[1] > .15);
+      hoy.classList.toggle('posted', k === 3 && t[3] > .12);
+      const joined = k === 3 && t[3] > .6;
+      const text = joined ? SE_JUEGA : n === 9 ? 'Falta 1' : `Faltan ${10 - n}`;
+      if (hoyCount.dataset.t !== text) { hoyCount.dataset.t = text; hoyCount.innerHTML = text; if (joined) pulse(hoyCount); }
+      hoy.classList.toggle('joined', joined);
+    },
+    categoria(p) {
+      const idx = Math.min(8, Math.floor(p * 9));
+      if (ladder.dataset.idx !== String(idx)) {
+        ladder.dataset.idx = idx; ladder.style.setProperty('--idx', idx);
+        tag.textContent = TAGS[idx] || '';
+        catIndex.forEach((li, i) => li.classList.toggle('on', 8 - i === idx));
+      }
+    },
+    'grupo-club'(p, el) { el.classList.toggle('club', p > .5); },
+    oficial(p, el) { el.classList.toggle('scored', p > .2); el.classList.toggle('champ', p > .82); },
+    'tercer-tiempo'(p, el, s) {
+      track.style.transform = `translate3d(${(-p * s.over).toFixed(1)}px,0,0)`;
+      const vw = innerWidth;
+      trackItems.forEach((it, i) => {
+        const c = (s.centers[i] - p * s.over - vw / 2) / vw;
+        it.style.setProperty('--c', c.toFixed(3)); it.style.setProperty('--ac', Math.abs(c).toFixed(3));
+      });
+    },
+    'tu-cancha'(p, el) { el.classList.toggle('stamped', p > .78); },
+    'temporada-cero'(p, el) { el.classList.toggle('stamped', p > .72); },
+  };
+
+  const scenes = $$('[data-scene]').map((el) => ({ el, mode: el.dataset.scene, fn: hooks[el.id], cur: -1, target: 0, visible: true, over: 0, centers: [] }));
+
+  function layout() {
+    scenes.filter((s) => s.mode === 'hpin').forEach((s) => {
+      track.style.transform = 'none';
+      s.over = Math.max(0, track.scrollWidth - innerWidth);
+      s.centers = trackItems.map((it) => it.offsetLeft + it.offsetWidth / 2);
+      s.el.style.height = `${s.over + innerHeight * 1.25}px`;
+    });
+  }
+  function measure(s) {
+    const r = s.el.getBoundingClientRect(), vh = innerHeight;
+    if (s.mode === 'pin' || s.mode === 'hpin') return clamp(-r.top / Math.max(1, r.height - vh), 0, 1);
+    if (s.mode === 'exit') return clamp(-r.top / Math.max(1, r.height), 0, 1);
+    return clamp((vh - r.top) / (vh + r.height), 0, 1);
+  }
+  let raf = 0;
+  function frame() {
+    raf = 0; let moving = false;
+    for (const s of scenes) {
+      if (!s.visible) continue;
+      s.target = measure(s);
+      const d = s.target - s.cur;
+      s.cur = (s.cur < 0 || Math.abs(d) < .0006) ? s.target : s.cur + d * .22;
+      if (s.cur !== s.target) moving = true;
+      s.el.style.setProperty('--p', s.cur.toFixed(4));
+      if (s.fn) s.fn(s.cur, s.el, s);
+    }
+    if (moving) raf = requestAnimationFrame(frame);
+  }
+  const kick = () => { if (!raf) raf = requestAnimationFrame(frame); };
+  const vis = new IntersectionObserver((es) => es.forEach((e) => {
+    const s = scenes.find((x) => x.el === e.target); if (s) { s.visible = e.isIntersecting; kick(); }
+  }), { rootMargin: '25% 0px' });
+  scenes.forEach((s) => vis.observe(s.el));
+  addEventListener('scroll', kick, { passive: true });
+  addEventListener('resize', () => { layout(); kick(); });
+  document.fonts.ready.then(() => { layout(); kick(); });
+  layout(); kick();
+})();
+</script>
+</body>
+</html>

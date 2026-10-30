@@ -60,7 +60,7 @@ export default async function SuperAdminTenantsPage(props: {
     `/super-admin/tenants${buildQuery(searchParams, { page: String(p + 1) })}`
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <PageHeader
         title="Complejos"
         subtitle={`${result.total} complejo${result.total === 1 ? '' : 's'}`}

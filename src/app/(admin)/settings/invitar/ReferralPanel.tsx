@@ -51,8 +51,8 @@ export function ReferralPanel({
   generateAction,
 }: Props) {
   return (
-    <div className="space-y-6">
-      <section className="card-premium space-y-4 rounded-lg p-4 sm:p-6">
+    <div className="space-y-3 lg:space-y-6">
+      <section className="card-premium space-y-3 lg:space-y-4 rounded-lg p-4 sm:p-6">
         {promoOpen ? (
           <ShareBlock url={url} tenantName={tenantName} generateAction={generateAction} />
         ) : (
@@ -60,7 +60,7 @@ export function ReferralPanel({
         )}
       </section>
 
-      <section className="card-premium space-y-4 rounded-lg p-4 sm:p-6">
+      <section className="card-premium space-y-3 lg:space-y-4 rounded-lg p-4 sm:p-6">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-base font-semibold text-foreground">Tus invitados</h2>
           <p className="text-sm font-medium text-foreground">
@@ -136,7 +136,7 @@ function ShareBlock({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 lg:space-y-4">
       <div className="flex items-start gap-3">
         <Gift
           aria-hidden

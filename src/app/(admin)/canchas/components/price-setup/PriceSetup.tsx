@@ -190,7 +190,7 @@ export function PriceSetup({
   const defaultOtherDays = weekend.length < openDays.length ? weekend : openDays.slice(-1)
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3 lg:space-y-5">
       {autoFilled.filled.length > 0 && (
         <p
           role="status"

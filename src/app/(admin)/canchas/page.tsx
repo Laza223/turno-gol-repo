@@ -25,7 +25,7 @@ export default async function CanchasPage() {
   const courts = await withTenantContext(tenant.id, (tx) => listCourts(tenant.id, tx))
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <div className="card-entrance">
         <CourtList
           initialCourts={courts}

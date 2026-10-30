@@ -44,7 +44,7 @@ export default async function SuperAdminRivalPage() {
   const data = await readAll()
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <PageHeader
         title="RIVAL"
         subtitle="Cómo anda y qué hay que moderar."

@@ -96,7 +96,7 @@ export function CourtBoard({
           icon={CalendarOff}
           title="Hoy el complejo está cerrado."
           description="No hay horarios cargados para este día."
-          className="rounded-t-none border-0 py-10"
+          className="rounded-t-none border-0 py-5 lg:py-10"
         />
       ) : board.tiles.length === 0 ? (
         <EmptyState
@@ -117,7 +117,7 @@ export function CourtBoard({
               </Link>
             ) : undefined
           }
-          className="rounded-t-none border-0 py-10"
+          className="rounded-t-none border-0 py-5 lg:py-10"
         />
       ) : (
         <ul className="grid grid-cols-1 gap-x-3 gap-y-2 p-3 @min-[40rem]/board:grid-cols-2 sm:p-4">
@@ -349,7 +349,7 @@ export function EarlierUnpaidBanner({
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-xl grid-cols-1 gap-0 p-0">
-          <div className="border-b border-border p-5 pr-14">
+          <div className="border-b border-border p-4 lg:p-5 pr-14">
             <DialogTitle className="font-display text-lg leading-tight">
               Turnos no cobrados
             </DialogTitle>

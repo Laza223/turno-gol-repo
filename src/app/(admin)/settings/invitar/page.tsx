@@ -18,7 +18,7 @@ export default async function InvitarSettingsPage() {
   ])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <SettingsHeader title="Invitá otro complejo" />
       <ReferralPanel
         url={code ? absoluteUrl(`/r/${code}`) : null}

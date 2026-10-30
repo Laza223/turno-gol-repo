@@ -89,7 +89,7 @@ export default async function AbonadosPage(props: {
   const pageOutOfRange = page > 0 && abonados.length === 0
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <ClientesTabs active="/abonados" />
 
       <PageHeader
@@ -142,7 +142,7 @@ export default async function AbonadosPage(props: {
         ))}
       </div>
 
-      <div className="card-entrance space-y-4" style={{ animationDelay: '160ms' }}>
+      <div className="card-entrance space-y-3 lg:space-y-4" style={{ animationDelay: '160ms' }}>
         {pageOutOfRange ? (
           <EmptyState
             icon={Users}

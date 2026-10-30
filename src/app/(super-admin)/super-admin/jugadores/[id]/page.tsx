@@ -47,7 +47,7 @@ export default async function SuperAdminPlayerDetailPage(props: {
       : `/super-admin/jugadores/${params.id}`
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <PageHeader
         back={<BackLink href="/super-admin/jugadores">Jugadores</BackLink>}
         title={detail.player.name}
@@ -59,7 +59,7 @@ export default async function SuperAdminPlayerDetailPage(props: {
         }
         actions={<PlayerStatusBadge status={detail.player.status} />}
       />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-3 lg:gap-6 lg:grid-cols-2">
         <PlayerDataCard player={detail.player} now={nowMs()} />
         <PlayerTenantsCard tenants={detail.tenants} />
       </div>

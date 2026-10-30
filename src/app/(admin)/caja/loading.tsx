@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 // Silueta real del contenido (§5.3): header band, 3 KPIs, cantina, tabla.
 export default function Loading() {
   return (
-    <div className="space-y-6" aria-busy="true">
+    <div className="space-y-3 lg:space-y-6" aria-busy="true">
       <Skeleton className="h-24 w-full rounded-2xl" />
       <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
         <Skeleton className="order-first col-span-2 h-32 w-full lg:order-0 lg:col-span-1" />

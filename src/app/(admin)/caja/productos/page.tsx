@@ -82,7 +82,7 @@ export default async function CajaProductosPage(props: {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3 lg:space-y-5">
       {/* MASTER §6.8: la vista no abre encabezado propio — ver settings/perfil. */}
       <CajaTabs active="/caja/productos" lowStock={countLowStock(products)} />
 

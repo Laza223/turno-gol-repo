@@ -143,7 +143,7 @@ export function AdminLayoutShell({
               'isolate mx-auto w-full px-4 sm:px-6 lg:px-8',
               isFullBleed
                 ? 'max-w-full flex-1 flex flex-col min-h-0 overflow-hidden pt-4 pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-4'
-                : 'max-w-[1600px] pt-8 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-8 min-h-[calc(100dvh-3.75rem)]',
+                : 'max-w-[1600px] pt-2 lg:pt-8 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-8 min-h-[calc(100dvh-3.75rem)]',
             )}
           >
             {/* Va acá, en flujo y dentro del contenedor de la página, y no como

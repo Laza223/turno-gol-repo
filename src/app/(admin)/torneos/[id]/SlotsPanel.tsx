@@ -145,8 +145,8 @@ export function SlotsPanel({
   }
 
   return (
-    <section className="space-y-4">
-      <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+    <section className="space-y-3 lg:space-y-4">
+      <div className="rounded-xl border border-border bg-card p-4 lg:p-5 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="font-display text-lg font-semibold text-foreground">Horarios tomados</h2>
@@ -170,7 +170,7 @@ export function SlotsPanel({
         {slots.length === 0 ? (
           <EmptyState
             title="Todavía no reservaste ningún horario para este torneo."
-            className="py-6"
+            className="py-4 lg:py-6"
           />
         ) : (
           <ul className="divide-y divide-border text-sm">
@@ -199,7 +199,7 @@ export function SlotsPanel({
         )}
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-5 space-y-5">
+      <div className="rounded-xl border border-border bg-card p-4 lg:p-5 space-y-3 lg:space-y-5">
         <div>
           <h2 className="font-display text-lg font-semibold text-foreground">Tomar horarios</h2>
           <p className="mt-1 text-sm text-muted-foreground">

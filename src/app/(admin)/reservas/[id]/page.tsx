@@ -61,7 +61,7 @@ export default async function ReservaDetailPage(props: Props) {
     // en una notebook, y ocupa todo el ancho que deja el shell. Sin cobros
     // (turno no cobrable) queda una sola columna: estirar la ficha al ancho
     // completo sería leerla de punta a punta de la pantalla.
-    <div className={cn('space-y-6', !charges && 'max-w-3xl')}>
+    <div className={cn('space-y-3 lg:space-y-6', !charges && 'max-w-3xl')}>
       <PageHeader
         variant="plain"
         title="Detalle de la reserva"
@@ -80,7 +80,7 @@ export default async function ReservaDetailPage(props: Props) {
       */}
       <div
         className={cn(
-          'grid gap-8',
+          'grid gap-4 lg:gap-8',
           charges && 'lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:gap-10',
         )}
       >
@@ -108,7 +108,7 @@ export default async function ReservaDetailPage(props: Props) {
         */}
         <div
           className={cn(
-            'space-y-6',
+            'space-y-3 lg:space-y-6',
             charges && 'border-t border-border pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-10',
           )}
         >

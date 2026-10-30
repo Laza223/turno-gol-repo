@@ -34,6 +34,7 @@ Ninguna fila es un compromiso de construir. Levantar el veto no es construir ya.
 | Dorsales, estrellas arriba del escudo, parche de campeón | 2 | Ninguna | — | S | Pertenencia, estatus | — |
 | Historia del club escrita por la IA | 3 | Un club con temporada jugada | — | S | Dotación | Haiku (bot de WhatsApp) |
 | Vestuario: convocatoria, Pan y queso, tabla del grupo | 2 | Ninguna | — | M | Pertenencia | Partido del grupo de v1 |
+| La formación: dos medias canchas con puestos; cada uno toca su lugar, los huecos van al tablón | 2 | Ninguna | Visibilidad nueva (enmienda la spec §6) y texto de privacidad | M | Pertenencia, compromiso público | Partido del grupo, "repetir", `rival_participants`, `players.position`, `seeking_position`, `story-image` |
 | Del turno fijo al club (invitación desde el panel) | 2 | Ninguna | — | S | Pertenencia | `src/modules/abonados` |
 | Hinchada: seguir a un club | 3 | Clubes públicos | Consentimiento del club | S | Pertenencia | — |
 

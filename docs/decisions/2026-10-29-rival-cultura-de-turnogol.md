@@ -74,11 +74,18 @@ Los nombres de pantalla (las divisiones, la media, la figurita) se eligen al dis
 
 ## Lo que se cerró después de la revisión (2026-10-30)
 
-Tres preguntas que dejó abierta la revisión adversarial, contestadas por el founder:
+Las tres preguntas que dejó abiertas la revisión adversarial, contestadas por el founder, y una idea que sumó ese mismo día (la 4):
 
 1. **La IA no nombra jugadores.** La tapa, la historia del club, el Diario y el informe del DT hablan de clubes y resultados. Motivo: "mucha exposición".
 2. **Sí hay tabla de goleadores**, con los goles que carga cada capitán para su equipo, que tienen que sumar el resultado confirmado. Es una excepción consciente a "nunca rankings sobre datos auto-reportados": el resultado está verificado y la atribución de cada gol no.
 3. **Torneos no entra en RIVAL.** El flag `tournaments` no se prende para RIVAL y no hay copas sobre el módulo de torneos. Un organizador de torneos (tipo "copa fácil") sería otra parte de TurnoGol, más adelante: primero lo simple. El canal de WhatsApp por zona y el partido de la casa siguen en la tabla y se confirman al abrir su ola.
+4. **La formación** entra como idea de la punta de entrada ([`docs/rival/README.md`](../rival/README.md), mundo NOSOTROS):
+   - en el partido del grupo hay una cancha dibujada con dos equipos y puestos, y cada uno toca su lugar;
+   - los huecos son el "falta uno" que se publica en el tablón;
+   - la formación (quién juega en cada puesto, con nombre corto y foto) la ven todos los del partido;
+   - afuera del partido no se ve quién juega en cada puesto, solo los puestos que faltan.
+
+   Para esa ola enmienda la spec §6, donde la posición la ve solo el organizador, y pide actualizar el clickwrap y el texto de privacidad.
 
 ## Lo que no cambia
 

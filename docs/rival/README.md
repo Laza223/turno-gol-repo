@@ -67,8 +67,17 @@ El detalle de cada idea (etapa, puerta, tamaño, qué reusa) está en [`ideas.md
 - **La historia del club**, escrita por la IA con datos reales y sin nombrar jugadores: mayor goleada, rachas, clásicos.
 - **El vestuario**, privado:
   - la convocatoria, que reusa el partido del grupo de v1;
+  - **"La formación"** (nombre de trabajo; decisión del 2026-10-30), detallada abajo;
   - **"Pan y queso"**, que arma equipos parejos para el picado interno con la media y el historial;
   - la tabla del grupo, que ve solo el grupo.
+- **La formación: cada uno elige su puesto.** Es el patrón de las apps de "falta uno", con nombre, diseño y reglas propios.
+  - **La cancha dibujada.** Según el formato del partido (5, 7, 8, 9 u 11) hay dos medias canchas, una por equipo ("Pecheras" y "Sin pechera"), con puestos de arquero, defensa, medio y adelante. Cuántos puestos lleva cada formato es una propuesta.
+  - **"Voy" es tocar un lugar libre.** Primero se sugiere el puesto del perfil. Quien eligió "Donde me pongan" queda para ubicar en un hueco: lo ubica el sistema o el organizador.
+  - **El organizador acomoda:** mueve a cualquiera de puesto o de equipo. Más adelante, "Pan y queso" le propone los dos equipos parejos.
+  - **Los huecos son el "falta uno":** "Faltan 2: 1 defensor, 1 delantero". Publicado en el tablón, sale con esas posiciones; hoy el tablón de v1 solo busca "Donde me pongan" o "Arquero".
+  - **El fijo semanal.** "Repetir" trae la formación de la semana pasada y cada uno ve "Tu lugar de siempre". Se confirma en un toque, y nadie queda confirmado sin tocar, igual que en v1.
+  - **Quién ve qué.** Los confirmados y el banco ven la formación, con nombre corto y foto en cada puesto. Fuera del partido, con el link o en el tablón, no se ve quién juega en cada puesto: solo los puestos que faltan. Lo que v1 ya muestra con link y sesión no cambia.
+  - **Se comparte** como tarjeta 9:16 ("La formación del miércoles") para el grupo, con el permiso de los que aparecen.
 - **Del turno fijo al club.** Los abonados ya son equipos: el complejo los invita desde el panel a fundar su club, y se arranca sin juntar gente de cero.
 - **Hinchada.** Cualquiera sigue a un club, y la cantidad de hinchas se ve en su página.
 
@@ -154,7 +163,7 @@ Tomás tiene 26 y es el jugador espontáneo de [doc3](../spec/doc3_personas_jtbd
 
 Marcelo tiene 43 y es dueño de 4 a 6 canchas.
 
-- **Semana 1.** Desde el panel invita a sus turnos fijos a fundar su club. Agustín (32, abonado de los miércoles a las 20:00) funda Los del Miércoles con su grupo de siempre: se arranca con plantel, sin juntar gente.
+- **Semana 1.** Desde el panel invita a sus turnos fijos a fundar su club. Agustín (32, abonado de los miércoles a las 20:00) funda Los del Miércoles con su grupo de siempre: se arranca con plantel, sin juntar gente. Cada lunes Agustín repite el partido, cada uno confirma "su lugar de siempre" en la formación, y si queda un hueco de defensor se publica en el tablón.
 - **Semana 2.** Publica dos partidos de la casa en sus horas muertas del martes con la Corona en juego, y se juegan.
 - **Semana 3.** El panel le dice "te faltan 4 partidos para Complejo de la zona". Pega en su comunidad de WhatsApp "lo de la semana" que le arma TurnoGol.
 - **Semana 4.** Gana Complejo de la zona, pega el sticker en la puerta y otro dueño de la zona le pregunta qué es eso.
@@ -211,6 +220,7 @@ Los números de estas historias son ilustrativos. No son datos medidos y no se u
 2. **La punta de entrada.** Anda con un complejo y sin densidad:
    - Crack del Día;
    - club, y del turno fijo al club;
+   - la formación;
    - Pan y queso con figura del picado;
    - tapa, figurita y carrera;
    - logros y Leyenda;

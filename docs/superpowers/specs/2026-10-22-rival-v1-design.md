@@ -12,6 +12,7 @@
 
 **Enmienda del 2026-10-29** ([`2026-10-29-rival-cultura-de-turnogol.md`](../../decisions/2026-10-29-rival-cultura-de-turnogol.md)). Esta spec sigue describiendo v1 tal como está construido. Para las próximas olas:
 - §6 ("No hay perfil público navegable"): puede haber perfil y figurita públicos, opt-in y privados por defecto;
+- §6 (la posición la ve solo el organizador): con "La formación" (decisión del 2026-10-30), los del partido ven quién juega en cada puesto, y afuera del partido no se ve quién juega en cada puesto, solo los que faltan;
 - §8 (el único texto es tu propio nombre): se suma el nombre del club, moderado;
 - §10 ("hasta 12 meses"): la promesa vale para lo guardado con ese texto; la carrera necesita una política nueva con su consentimiento.
 

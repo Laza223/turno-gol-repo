@@ -12,8 +12,8 @@ Pedido de Lazar: llevar a la última versión **estable** todo lo que usa el rep
 | T3  | React 19.3 (ver abajo), date-fns 4, motion 14, @anthropic-ai/sdk 1.x                                 | mergeado #529 |
 | T4  | @sentry/nextjs 11                                                                                    | mergeado #531 |
 | T5  | Supabase CLI 2.x + `supabase/setup-cli` v3 (incluye `db-migrate.yml`, que corre contra prod)         | mergeado #532 |
-| T6  | mercadopago 3 — OK del dueño antes de prod                                                           | en curso      |
-| T7  | pg-boss 12 — migra el schema `pgboss` en prod; efecto sobre El Vagón + OK antes                      | pendiente     |
+| T6  | mercadopago 3 — OK del dueño antes de prod                                                           | mergeado #533 |
+| T7  | pg-boss 12 — migra el schema `pgboss` en prod; efecto sobre El Vagón + OK antes                      | T7a #535 ✓ · T7b en curso |
 | T8  | Node 24 LTS (Docker, CI, Vercel, `engines`) — se adelanta a la T3 (ver notas)                        | mergeado #526 |
 
 ## Bloqueado
@@ -147,6 +147,96 @@ Pedido de Lazar: llevar a la última versión **estable** todo lo que usa el rep
 - **Lo que la 3 empeora y se acepta (verificador fresco):**
   - El timeout de 8 s corta hasta que llegan los headers: el body se lee sin tope (`clearTimeout` en el `finally` de `fetchFn`). La 2 lo cubría con el `timeout` de node-fetch. Si MP manda headers y se cuelga, la llamada espera al `bodyTimeout` de undici o a que Vercel corte la función. No se envuelve con un `withTimeout` propio: cortar un método con GET + PUT puede dar por fallida una operación que MP sí aplicó. No hay plata en juego: el webhook lo reintentan MP y pg-boss. Anotado en el comentario de `MP_GET_TIMEOUT_MS`.
   - Un 200 con body ilegible ya no tira: el SDK lo convierte en `{}`. En `getPaymentStatus` da una referencia vacía, que el handler del webhook rechaza (mismatch de tenant) y el job reintenta. En los `create`, el chequeo de `id` vacío tira error.
+- **Smoke test contra el sandbox real de MP (2026-10-30).** Lo corrió Lazar con un usuario de prueba vendedor y uno comprador, a través del `MercadoPagoGateway` real con el SDK 3.6.1. 9 de 9 OK:
+  - token inválido → `MPAuthenticationError` 401, reconocido por `isMpUnauthorized`;
+  - `createPreference` OK;
+  - pago inexistente → `MPNotFoundError` 404 con `mp_code=2000 mp_desc=Payment not found` en `describeMpError`;
+  - búsqueda vacía;
+  - `createPreapproval`, `getSubscriptionState`, y `updatePreapprovalAmount` que cambia el monto y conserva `start_date`;
+  - cancelar, y cancelar de nuevo → `MPBadRequestError` reconocido como "ya cancelado".
+  - Cada POST y cada PUT llevó su idempotency key, y no hubo reintentos de más.
+- **CI completo con E2E (run 41093366392):** verde.
+- **Después del merge (2026-10-30):** Vercel READY con b3e6fd49. Railway SUCCESS: Sentry `enabled=true` y el worker corriendo. `db-migrate` no corrió, porque la T6 no toca migraciones.
+- **Seguimiento:** las mejoras que habilita la v3 (`isMpUnauthorized` por clase de error, log con `onRetry`, sacar el cast de `subscription_id`) van en un PR aparte, de la sesión `mp-sdk3-mejoras`.
+
+## T7 — notas
+
+- **pg-boss 9.0.3 → 12.38.0** (publicada el 2026-10-13; pasa el `minimumReleaseAge`). Engines `node >=22.12.0`: prod corre 24. Ya no depende de `uuid`, así que el override `'pg-boss>uuid'` queda muerto y se saca.
+- **La 12 no puede migrar el schema de la 9, y ninguna versión puede.** La 10 y la 11 lo dicen en sus release notes ("Automatic migration from v9 or lower is not currently available"; "from v10 or lower is not supported"), y la 12 lo hace cumplir. Medido sobre un `pgboss` instalado por la 9.0.3 (schema 20): `start()` tira `AssertionError: Cannot migrate pg-boss schema from version 20: the oldest supported starting version is 25` antes de mandar SQL y deja el schema intacto. Un bump directo dejaba el worker en loop de reinicios y la web sin poder encolar.
+- **Diseño: la 12 vive en un schema nuevo, `pgboss_v12`, y el de la 9 queda congelado.**
+  - Lo precrea la migración 104 (`CREATE SCHEMA` + `GRANT USAGE, CREATE` a `turnogol_app`, como la 039 hizo con `pgboss`). `turnogol_app` no puede crear schemas: con `createSchema: true` la 12 falla con `permission denied for database`. Con el schema precreado y `createSchema: false`, instala en 268 ms como `turnogol_app` y re-arranca en 25 ms.
+  - Las tablas quedan de `turnogol_app`, y tiene que ser así: los minors de la 12 migran su schema seguido (de la versión 25 a la 46 en un año). Por eso el rollback y cualquier lectura de esas tablas van con el DSN de la app, y el dashboard del super admin pasa a leerlas con el pool de la app y no con el worker.
+  - Se descartó renombrar `pgboss` en el momento del deploy: es DDL a mano contra prod con los dos workers vivos, y el rollback deja de ser volver al deploy anterior.
+  - Va en **dos PRs**: la 104 sola primero (inerte: un schema vacío), y la 12 después. Si van juntas, el código nuevo puede arrancar antes de que `db-migrate` aplique la 104 y fallar.
+- **Puente: el worker nuevo mueve a la 12 los jobs pendientes que queden en la 9.** Una pasada al arrancar y otra por minuto durante 60 min: lee con `FOR UPDATE SKIP LOCKED`, inserta en la 12 con el mismo id y borra de la 9, todo en una transacción. Así un job nunca corre en los dos workers durante el solapamiento del deploy. Colas: `process-mp-webhook`, `send-email` (sin los ticks del cron), `push-send`, `expire-pending-booking` y `rival-mail`. Quedan afuera los crons, que la 12 vuelve a agendar, y `whatsapp-turn`, porque el rescate re-encola todo entrante sin procesar de hace más de 30 s. Medido con el worker de la 9 consumiendo a la vez, a través de PgBouncer en modo transacción: 450 jobs, 0 duplicados, 0 perdidos, 0 pendientes en la 9, y los diferidos llegan con su `start_after`.
+- **Cambios de API que se adaptan sin cambiar el comportamiento:**
+  - Toda cola se crea antes de usarla: `send` a una cola inexistente da `PGBOSS_QUEUE_NOT_FOUND`, y `schedule` también la exige. Hay un registro único de colas (23 + `dead-letter`).
+  - El `retryLimit` por defecto pasa de 0 a 2. Toda cola se crea con `retryLimit: 0`, y los `send` que pasan el suyo lo siguen pisando por job (probado). Los crons sin opciones siguen sin reintento.
+  - `whatsapp-turn`: `useSingletonQueue` + `enforceSingletonQueueActiveLimit` pasan a la política `stately` de la cola. Probado: por chat queda 1 turno esperando y 1 corriendo, nunca 2 activos del mismo chat con 4 en paralelo, y un mensaje que llega durante el turno queda esperando.
+  - `onComplete` no existe más. En la 9 solo lo emitía `whatsapp-turn`, porque era la única cola con `onComplete: true`. La DLQ pasa a una cola `dead-letter` solo para esa cola, como hoy. El job que llega trae `sourceName` y `sourceOutput` con el error (probado).
+  - La 12 ignora en silencio `expireInHours`, `expireInMinutes`, `teamSize`, `newJobCheckIntervalSeconds` y el resto de las opciones viejas. Solo las rechaza el tipo. Las opciones se tipan con `satisfies SendOptions`.
+  - Sin `getQueueSize` ni tabla `archive`. Lo completado queda 7 días en `job`, con columnas en snake_case. El heartbeat sobre 35k filas entra por índice en 0,11 ms.
+  - Los crons siguen en UTC, y un tick perdido se saltea (`missed: skip`), igual que en la 9.
+- **Productor de la web:** `supervise`, `schedule` y `registerInstance` apagados, y caché de colas y BAM cada 1 h. Así manda 6 sentencias al arrancar y ninguna en 70 s de reposo. Sin `registerInstance: false`, cada instancia escribe un latido cada 30 s. `migrate` queda prendido, porque con `migrate: false` la web no arranca si la versión del schema difiere en cualquier sentido.
+- **Pooler:** prod va por Supavisor en modo transacción (`:6543`). La 12 usa locks `pg_advisory_xact_lock`, que son de transacción, y LISTEN/NOTIFY viene apagado (`useListenNotify: false`). Todo lo de arriba se probó a través de PgBouncer 1.26 en modo transacción: instalación, crons con tz, `stately`, DLQ y `stop` graceful.
+- **Rollback, probado:** primero se vuelven Vercel y Railway al deploy anterior. Después se corre como `turnogol_app` el SQL que devuelve a la 9 los pendientes no-cron de la 12. El worker de la 9 arranca sobre su schema intacto, corre lo devuelto y su cron vuelve a disparar en 13 s.
+- **Ensayo con el código real (2026-10-30).** Postgres 17 con las 104 migraciones y los `rolconfig` de prod, PgBouncer 1.26 en modo transacción, y `pgboss` de la 9 instalado por `postgres` con 3 crons y 8 jobs pendientes:
+  - **Worker:** la imagen de `Dockerfile.worker` como `turnogol_app` por el pooler. Registró las 23 colas y las 18 programaciones (UTC; `reconcile-subscriptions` con sus opciones), y `/health` dio 200 con los tres checks.
+  - **Arranque:** el puente movió los 5 pendientes que le tocaban. Se quedaron en la 9 el tick del cron y `whatsapp-turn`, y los diferidos conservaron su `start_after`.
+  - **Apagado:** SIGTERM con exit 0 en 1,4 s. El segundo arranque fue limpio.
+  - **Ventana del deploy:** un job encolado en la 9 con el worker nuevo arriba (la web vieja durante la ventana) se movió en la pasada siguiente, 50 s después, y corrió.
+  - **Productor real de la web:** listo en 50 ms, 9 sentencias y ninguna en 70 s de reposo.
+- **Plan de deploy** (tiempos medidos en el merge de T6: Vercel READY a los 2:01, worker nuevo de Railway sano a los 3:25, el viejo afuera a los 3:39):
+  1. **PR T7a: solo la 104** ([#535](https://github.com/Laza223/turno-gol-repo/pull/535), mergeado el 2026-10-30 como `690e27f9`: `db-migrate` run 41130788212 SUCCESS, "Applying migration 20260424000104_pgboss_v12_schema.sql" y "Remote database is up to date."). Al mergear, `db-migrate` la aplica. Verificar que el run quedó SUCCESS y que `list_migrations` muestra la 104. No cambia nada en ejecución: es un schema vacío.
+  2. **PR T7b: la 12**, en un horario lejos de los crons diarios (10, 11, 12 y 16 UTC, o sea 7, 8, 9 y 13 ART) y del pico de reservas (18 a 23 ART).
+  3. **Después del merge:**
+     - Vercel READY y Railway SUCCESS.
+     - En el log del worker: 22 líneas `registered queue` (una es `registered queue (cron sweep)`; medido en el ensayo), `health server listening`, ningún `pg-boss error`.
+     - `/api/status` en 200, con el primer `health-ping` en la 12 a los ≤5 min.
+     - Un turno del bot con `whatsapp-turn: turno procesado`.
+     - A la hora, `SELECT name, count(*) FROM pgboss.job WHERE state IN ('created','retry') GROUP BY 1` como `turnogol_app`: solo crons, `whatsapp-turn` o colas internas.
+  4. **Limpieza (PR aparte, una semana después):** sacar el puente y `DROP SCHEMA pgboss` en una migración.
+- **Efecto sobre El Vagón** en la ventana del deploy (unos 1,5 min entre que Vercel pasa a la 12 y el worker nuevo arranca):
+  - Lo que encola la web en esa ventana espera en la 12 y se procesa apenas arranca el worker. No se pierde nada.
+  - **Bot de WhatsApp:** una respuesta que hoy tarda 4 a 10 s puede tardar hasta ~2 min. Si un turno quedó en la 9, el rescate de la 12 lo retoma en ≤90 s.
+  - **Pagos:** el webhook de MP se recibe y se le contesta 200 como siempre. Lo que se demora hasta ~2 min es procesarlo, y la seña puede verse "pendiente" un rato más. No hay doble cobro ni doble registro: el job es idempotente y el puente no deja correr un job en los dos workers.
+  - **Push al admin, mails y vencimiento de reservas pendientes:** demora de hasta ~2 min.
+  - **Panel, grilla y portal:** no se tocan, porque pg-boss no está en el camino de la request salvo para encolar.
+  - **Crons:** en los ~14 s de solapamiento un barrido idempotente puede correr dos veces, o perder un tick, como ya pasa hoy (7,6%).
+  - **Riesgo real:** que el worker nuevo no arranque en Railway. El healthcheck lo frena y el viejo sigue vivo, pero queda consumiendo la 9 mientras la web nueva encola en la 12. Todo lo asíncrono se para: bot, pagos, push y mails. No se pierde nada, porque queda encolado. Por eso el paso 3 se mira en vivo y no a la hora. Si pasa, el rollback es volver Vercel al deploy anterior (segundos) y correr el SQL de abajo.
+- **SQL de rollback.** Correrlo como `turnogol_app`, con el `DATABASE_URL` de Railway, DESPUÉS de volver Vercel y Railway al deploy anterior. Es una sola sentencia: o se mueven todos o ninguno.
+
+  ```sql
+  WITH moved AS (
+    DELETE FROM pgboss_v12.job
+    WHERE name IN ('process-mp-webhook', 'send-email', 'push-send', 'expire-pending-booking', 'rival-mail')
+      AND state IN ('created', 'retry')
+      AND NOT (name = 'send-email' AND data = '{}'::jsonb)
+    RETURNING id, name, data, priority, retry_limit, retry_count, retry_delay, retry_backoff,
+              start_after, singleton_key, expire_seconds, created_on
+  )
+  INSERT INTO pgboss.job (id, name, data, priority, retrylimit, retrycount, retrydelay, retrybackoff,
+                          startafter, singletonkey, expirein, createdon, keepuntil)
+  SELECT id, name, data, priority, retry_limit, retry_count, retry_delay, retry_backoff,
+         start_after, singleton_key, make_interval(secs => expire_seconds), created_on,
+         greatest(start_after, now()) + interval '14 days'
+  FROM moved;
+  ```
+
+- **Verificación (2026-10-30):**
+  - Juez verde: `format:check`, `lint` (0 errores, 3 warnings que ya estaban), `typecheck` y `knip`.
+  - Unit: 7504 tests (los corrió el revisor).
+  - Integración, aislamiento y aislamiento con rol real, sobre un Postgres 17 descartable con las 104 migraciones: 1642, 190 y 308 tests en verde.
+  - `pnpm build` de Next 16 con la 12 (solo ESM): exit 0.
+  - Después de traer #534 (mejoras del SDK de MP, sin archivos en común) con fast-forward: juez verde otra vez, unit con 7518 tests, e integración, aislamiento y rol real de nuevo en 1642, 190 y 308.
+- **Revisión adversarial: GO con reservas, sin 🔴.** Lo que salió:
+  - El timer del puente no tenía test. Ahora tiene cinco: 60 pasadas y se apaga, `stop()`, reentrada, lote lleno de 500 y pasada que falla. Atrapan las tres mutaciones que antes pasaban en verde.
+  - Los runbooks consultaban el schema congelado: `doc19`, `doc17`, `doc4`, `RUNBOOK_LAUNCH`, el protocolo de 48 h y el playbook. Pasan a `pgboss_v12` en este mismo PR, porque se vuelven falsos justo cuando se mergea. Los docs históricos de `qa/` y `superpowers/` no se tocan.
+  - El split en dos PRs se respeta al abrirlos.
+- **Aceptado y anotado:**
+  - Un job que esté `active` en la 9 cuando muere el worker viejo no se mueve. El SIGTERM da 5 s de graceful. Si es un webhook de MP, lo cubren `processed_webhooks` y `reconcile-pending-payments`.
+  - `whatsapp-turn` con `localConcurrency: 4` abre 4 pollers. Igual el neto de pollers baja, porque la DLQ pasa de 21 pollers `onComplete` a 1.
+  - Una base local que no corrió la 104 no levanta pg-boss: se arregla con `pnpm supabase:reset` o aplicando la 104.
 
 ## T1 — notas de CI
 
@@ -178,3 +268,8 @@ Pedido de Lazar: llevar a la última versión **estable** todo lo que usa el rep
 | 2026-10-30 | sonnet-adversarial-reviewer | T5: verificación fresca del guard en la 001, su espejo y el e2e-stack sin el paso de GRANTs                | ~95k tokens                                            | GO, sin 🔴. `db push` compara solo versiones (fuente de la CLI 2.122); el splitter respeta `$guard$`; las 103 aplican como `postgres` en la imagen 15.19 con el `auth.jwt()` de gotrue y en `postgres:15-alpine` vía `bootstrap-test-db.mjs`. 🟡 faltaba el e2e de CI con el diff final.                                                                                                               |
 | 2026-10-30 | sonnet-reconnaissance       | T6: breaking changes de mercadopago 3.6.1 contra nuestro uso, con los dos tarballs                         | ~123k tokens                                           | Sin breaking de API. Cambian los reintentos (4 intentos, también 429) y la forma del error (`causes`); `describeMpError` perdía el detalle. El override de `uuid` queda muerto.                                                                                                                                                                                                                        |
 | 2026-10-30 | sonnet-adversarial-reviewer | T6: verificación fresca del diff con el SDK real y `fetch` falso                                           | ~120k tokens                                           | NO-GO solo por `format:check` (ya corregido). Opciones de reintento llegan a todas las rutas; misma idempotency key en POST y PUT reintentados; ningún consumidor decide mal con `status: 0`. 🟡 el timeout ya no cubre el body (aceptado y documentado).                                                                                                                                              |
+| 2026-10-30 | sonnet-release-verifier     | T6: gate final antes del merge                                                                             | ~63k tokens                                            | GO. Juez y 7479 tests verdes, lock congelado sin cambios, CI con E2E verde sobre el mismo SHA.                                                                                                                                                                                                                                                                                                         |
+| 2026-10-30 | sonnet-reconnaissance       | T7: mapa del uso de pg-boss 9 (cliente, 21 colas, handlers, retry efectivo, SQL directo, tests, deploy)    | ~144k tokens                                           | Mapa completo con archivo:línea. Sin `createQueue` en el repo, la web también hace `start()`, DLQ por `onComplete`, SQL directo a `pgboss.job`/`archive` en 4 lugares de prod. No pudo leer la API real (sin `node_modules`): eso lo cubrió el orquestador con los tarballs.                                                                                                                         |
+| 2026-10-30 | sonnet-implementer          | T7: pg-boss 12.38.0 en `pgboss_v12` con la 104, colas explícitas, puente desde la 9 y tests              | ~215k tokens                                           | Juez y unit verdes. 24 colas con `retryLimit: 0` por defecto, `whatsapp-turn` con `stately` y DLQ, profundidades por SQL. Sacó el override de `uuid`. No corrió integración ni el ensayo con la imagen real (los corrió el orquestador). |
+| 2026-10-30 | sonnet-adversarial-reviewer | T7: verificación fresca del diff con pg-boss 12 real, PgBouncer en modo transacción y mutaciones        | ~254k tokens                                           | GO con reservas, sin 🔴. 24 colas con `retryLimit 0` y `expire 900`; el puente mueve los 6 casos sembrados y atrapa las mutaciones de orden y filtro; productor sin sentencias en reposo. 🟡 timer del puente sin test → 5 tests. 🟡 runbooks contra `pgboss` → `pgboss_v12`. 🟡 respetar el split en dos PRs. No corrió `pnpm build` (lo corre el orquestador) |
+| 2026-10-30 | sonnet-release-verifier     | T7: gate final, separado en T7a (la 104) y T7b (el resto)                                                  | ~66k tokens                                            | T7a GO: espejo idéntico, idempotente (aplicada dos veces) e inerte sobre main. T7b GO con reservas, sin 🔴: juez y 7509 tests verdes, lock congelado, sin la 104 la 12 no arranca (`schema "pgboss_v12" does not exist`), rollback cuadra con `plans.js`. 🟡 rama atrás de #534 → fast-forward y juez de nuevo. No re-corrió integración ni build |

@@ -29,6 +29,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 import { getBoss, stopBoss } from './boss'
 import { registerAllWorkers } from './workers'
+import { startLegacyV9Drain } from './legacy-v9-drain'
 import { assertAppDbReachable, assertWorkerDbVisibility } from '@/shared/db/client'
 import { startHealthServer } from './health-server'
 import { logger } from '@/shared/lib/logger'
@@ -67,6 +68,8 @@ async function main(): Promise<void> {
   await assertAppDbReachable()
   const boss = await getBoss('worker')
   await registerAllWorkers(boss)
+  // Mueve a `pgboss_v12` lo que haya quedado pendiente en el schema de la 9 (se borra con él).
+  const stopLegacyDrain = startLegacyV9Drain(boss)
 
   // Despues de registrar las colas: un healthcheck que contesta 200 con las
   // colas sin consumidor estaria certificando justo lo que no queremos.
@@ -76,6 +79,7 @@ async function main(): Promise<void> {
   const shutdown = async (signal: string) => {
     logger.info('received signal, stopping...', { module: 'workers', signal })
     healthServer?.close()
+    stopLegacyDrain()
     await stopBoss()
     process.exit(0)
   }

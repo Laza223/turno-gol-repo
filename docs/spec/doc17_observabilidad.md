@@ -628,7 +628,7 @@ async function collectBusinessMetrics() {
 > **`/api/health` es un alias de `/api/status`** (mismo handler, re-exportado — predates doc17).
 > Los checks reales no son database/auth/job_queue como el ejemplo de abajo: son `database`,
 > `worker-pool` (rol capaz de bypassear RLS para lecturas cross-tenant), `pg-boss`,
-> `worker-heartbeat` (último `health-ping` del worker vía `pgboss.job`, tolerancia de 6 latidos
+> `worker-heartbeat` (último `health-ping` del worker vía `pgboss_v12.job`, tolerancia de 6 latidos
 > perdidos = 30 min — endurecido 2026-08-26 tras una falsa alarma, ver P-12), `upstash`
 > (rate-limit), `encryption-key`, `storage` (R2) y presencia de `mercadopago`/`email`/`sentry`. **No
 > se verifica Supabase Auth con `getSession()`** como muestra el ejemplo. El detalle por

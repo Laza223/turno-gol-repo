@@ -1,14 +1,23 @@
-import PgBoss from 'pg-boss'
+import { PgBoss } from 'pg-boss'
 import { logger } from '@/shared/lib/logger'
 import { pgConnectionConfig } from '@/shared/db/ssl'
 import { withTimeout } from '@/shared/utils/async'
 import { describeBossError } from './boss-error'
+import { ensureQueues } from './ensure-queues'
 
 const DEFAULT_URL = 'postgres://postgres:postgres@127.0.0.1:54322/postgres'
 
+/**
+ * Schema de pg-boss 12. La 12 NO migra un schema de la 9 (`start()` tira "Cannot migrate
+ * pg-boss schema from version 20"), así que vive en uno nuevo que crea la migración 104; lo que
+ * quedó pendiente en `pgboss` lo mueve `legacy-v9-drain.ts`.
+ */
+export const PGBOSS_SCHEMA = 'pgboss_v12'
+
 // Topes del PRODUCTOR (el worker no tiene, como hoy). Un `start()` que se cuelga —un proxy que
 // se traga la conexión, la espera del advisory lock del contractor— dejaba el memo pegado: todo
-// `getBoss()` de esa instancia de Vercel colgaba hasta el timeout de la función.
+// `getBoss()` de esa instancia de Vercel colgaba hasta el timeout de la función. El tope cubre
+// también `ensureQueues`.
 const CONNECT_TIMEOUT_MS = 10_000
 const START_TIMEOUT_MS = 15_000
 
@@ -30,9 +39,11 @@ const globalForBoss = globalThis as unknown as { __turnogolBossState?: BossState
 /**
  * Returns the singleton pg-boss instance, starting it on first call.
  *
- * Schema isolation: pg-boss tables live under the `pgboss` schema (default),
- * keeping them out of the application schema. Migrations don't manage this
- * schema — pg-boss creates/migrates it on `start()`.
+ * Schema isolation: pg-boss tables live under the `pgboss_v12` schema, keeping them
+ * out of the application schema. El schema VACÍO lo crea la migración 104
+ * (`createSchema: false`: `turnogol_app` no puede crear schemas); las tablas las
+ * instala y migra pg-boss en `start()`. Después de `start()`, `ensureQueues` deja
+ * creadas las colas del registro antes de resolver la promesa.
  */
 export async function getBoss(role: BossRole = 'producer'): Promise<PgBoss> {
   // El global de dev se lee SIN copiarlo a `_state`: así un arranque fallido que lo limpia
@@ -60,29 +71,36 @@ export async function getBoss(role: BossRole = 'producer'): Promise<PgBoss> {
     // certificado del pooler. Medido con pg@8.22.0; la tabla está en
     // `src/shared/db/ssl.ts`.
     ...pgConnectionConfig(url),
-    schema: 'pgboss',
-    // Pool interno de pg-boss (node-pg `Pool` bajo pg-boss/src/db.js). Sin
-    // `max`, node-pg usa su propio default (10). Prod comparte
-    // max_connections=60 entre turnogol_app / turnogol_worker / Supabase
-    // pooler — acotamos explícito para que este pool nunca compita por más
-    // de lo presupuestado (D5, auditoría 2026-07-23).
+    schema: PGBOSS_SCHEMA,
+    createSchema: false,
+    // Pool interno de pg-boss (node-pg `Pool`). Sin `max`, node-pg usa su propio
+    // default (10). Prod comparte max_connections=60 entre turnogol_app /
+    // turnogol_worker / Supabase pooler — acotamos explícito para que este pool
+    // nunca compita por más de lo presupuestado (D5, auditoría 2026-07-23).
     max: 5,
-    // Maintenance EXPLÍCITA (D5): la auditoría de prod encontró el poller de
-    // pg-boss (`WITH nextJob as (SELECT id FROM pgboss.job ...)`) como la TOP
-    // query absoluta de la DB con la app sin tráfico. Los valores de abajo
-    // COINCIDEN con los defaults reales de pg-boss v9.0.3 — verificados
-    // leyendo node_modules/pg-boss/src/attorney.js — y se dejan explícitos a
-    // propósito: la elección queda auditada en vez de heredada en silencio.
-    archiveCompletedAfterSeconds: 43200, // 12h — ARCHIVE_DEFAULT en attorney.js
-    deleteAfterDays: 7, // default real: applyDeleteConfig() → '7 days'
-    maintenanceIntervalSeconds: 120, // default real: applyMaintenanceConfig() → 120
-    // El productor no supervisa ni agenda (index.js:108-114 de pg-boss 9.0.3): sus timers
-    // y pollers colgaron `/super-admin` (2026-09-20). Lo hace el worker; `start()` migra igual.
-    noSupervisor: producer,
-    noScheduling: producer,
-    // pg-boss no lo tipa pero se lo pasa al `pg.Pool` (db.js:14): sin esto, una conexión que un
-    // proxy se traga espera para siempre.
-    ...(producer ? { connectionTimeoutMillis: CONNECT_TIMEOUT_MS } : {}),
+    // El worker corre con los defaults de la 12 (supervisor, cron, mantenimiento: lo de
+    // `archiveCompletedAfterSeconds`, `deleteAfterDays` y `maintenanceIntervalSeconds` de la 9
+    // ya no existe como tal — la 12 no tiene tabla `archive` y borra lo completado a los 7 días
+    // por cola, `deleteAfterSeconds`).
+    //
+    // El PRODUCTOR no supervisa, no agenda y no se registra: sus timers y pollers colgaron
+    // `/super-admin` (2026-09-20). Medido contra Postgres 17 + PgBouncer en modo transacción:
+    // 6 sentencias al arrancar y CERO en 70 s de reposo. Sin `registerInstance: false` cada
+    // instancia escribe un latido cada 30 s; sin los intervalos altos consulta colas y BAM cada
+    // 60 s. `migrate` queda en true a propósito: con `migrate: false`, `check()` falla si la
+    // versión de la base difiere en CUALQUIER sentido, y la web no podría encolar cada vez que
+    // un minor de la 12 migre el schema antes o después que ella.
+    ...(producer
+      ? {
+          supervise: false,
+          schedule: false,
+          registerInstance: false,
+          queueCacheIntervalSeconds: 3600,
+          bamIntervalSeconds: 3600,
+          // Sin esto, una conexión que un proxy se traga espera para siempre.
+          connectionTimeoutMillis: CONNECT_TIMEOUT_MS,
+        }
+      : {}),
   })
   boss.on('error', (err) => {
     // `describeBossError` y no `err.message`: pg-boss emite un OBJETO PLANO, no
@@ -90,18 +108,24 @@ export async function getBoss(role: BossRole = 'producer'): Promise<PgBoss> {
     // tirando el message, el stack, y sobre todo QUÉ COLA se rompió.
     logger.error('pg-boss error', { module: 'pg-boss', ...describeBossError(err) })
   })
+  boss.on('warning', (warning) => {
+    logger.warn('pg-boss warning', { module: 'pg-boss', warning })
+  })
+  const start = async () => {
+    await boss.start()
+    await ensureQueues(boss, role)
+  }
   const started = producer
-    ? withTimeout(boss.start(), START_TIMEOUT_MS, `pg-boss start() exceeded ${START_TIMEOUT_MS}ms`)
-    : boss.start()
+    ? withTimeout(start(), START_TIMEOUT_MS, `pg-boss start() exceeded ${START_TIMEOUT_MS}ms`)
+    : start()
   const ready = started.then(
     () => boss,
     (err: unknown) => {
       // Un arranque fallido o vencido no queda memoizado: se suelta el memo ANTES de cerrar y
-      // sin esperar (un `pool.end()` colgado no traba el reintento). Sin `destroy`, `stop()`
-      // no cierra el pool en pg-boss 9.0.3.
+      // sin esperar (un `pool.end()` colgado no traba el reintento). `close` es true por defecto.
       _state = null
       globalForBoss.__turnogolBossState = undefined
-      void boss.stop({ graceful: false, destroy: true }).catch(() => {})
+      void boss.stop({ graceful: false }).catch(() => {})
       throw err
     },
   )

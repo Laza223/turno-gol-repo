@@ -1,72 +1,42 @@
 import { headers } from 'next/headers'
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import type { Metadata } from 'next'
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { isInAppBrowser } from '@/lib/in-app-browser'
 import { buildMetadata } from '@/lib/seo/metadata'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
-import { listBoard, listBoardTenants, listEligibleTenants } from '@/modules/rival/rival.service'
-import { listMyAlerts } from '@/modules/rival/rival-alerts.service'
-import { uuid } from '@/shared/validation/primitives'
-import { subscribeRivalAlertAction, unsubscribeMyRivalAlertAction } from './actions'
-import { BoardView } from './BoardView'
-import { encodeBoardCursor, parseBoardCursor } from './board-cursor'
+import { RivalLanding } from './_landing/RivalLanding'
 import { sendRivalMagicLinkAction, startGoogleLoginFromRivalAction } from './p/[code]/login-actions'
 
 export function generateMetadata(): Metadata {
   return buildMetadata({
-    title: 'RIVAL',
-    description: 'Armá tu partido o sumate a uno en los complejos de TurnoGol.',
+    title: 'RIVAL: cada partido cuenta | TurnoGol',
+    titleAbsolute: true,
+    description:
+      'Armá el partido con tu grupo, encontrá al que falta y, muy pronto, jugá con tu club por la tabla, la Corona y tu categoría. El lado jugador de TurnoGol.',
     path: '/rival',
-    noIndex: true,
   })
 }
 
-// Sin loading.tsx en todo /rival: abriría un <Suspense> y el notFound() de abajo quedaría en
-// 200 (soft-404). Ver "loading.tsx" en .claude/skills/convenciones-stack.
-
-const PAGE_SIZE = 20
-
+/**
+ * La landing de RIVAL (docs/rival/landing.md). Se indexa; el tablón vive en `/rival/tablon`.
+ * Sin el flag, 404 como el resto de RIVAL.
+ */
 export default async function RivalPage(props: {
   searchParams: Promise<{ complejo?: string; despues?: string }>
 }) {
   if (!(await isRivalEnabled())) notFound()
   const { complejo, despues } = await props.searchParams
-  const tenantFilter = uuid.safeParse(complejo)
-  const selectedTenantId = tenantFilter.success ? tenantFilter.data : null
 
-  // Un cursor inválido se ignora: es la primera página.
-  const [tenants, board] = await Promise.all([
-    listBoardTenants(),
-    listBoard({ tenantId: selectedTenantId, after: parseBoardCursor(despues), limit: PAGE_SIZE }),
-  ])
-
-  const next = new URLSearchParams()
-  if (selectedTenantId) next.set('complejo', selectedTenantId)
-  if (board.nextCursor) next.set('despues', encodeBoardCursor(board.nextCursor))
-
-  // El aviso se ofrece en el tablón vacío y en el complejo filtrado sin partidos, pero la lista es barata y evita otro round-trip.
-  const user = await extractAuthUser()
-  const playerId = user?.type === 'player' ? user.playerId : null
-  const [eligible, mine] = await Promise.all([
-    listEligibleTenants(),
-    playerId ? listMyAlerts(playerId) : Promise.resolve([]),
-  ])
+  // Links viejos del tablón (`/rival?complejo=…`, `?despues=…`) siguen funcionando.
+  if (complejo !== undefined || despues !== undefined) {
+    const params = new URLSearchParams()
+    if (complejo !== undefined) params.set('complejo', complejo)
+    if (despues !== undefined) params.set('despues', despues)
+    permanentRedirect(`/rival/tablon?${params.toString()}`)
+  }
 
   return (
-    <BoardView
-      items={board.items}
-      tenants={tenants}
-      selectedTenantId={selectedTenantId}
-      nextHref={board.nextCursor ? `/rival?${next.toString()}` : null}
-      now={new Date()}
-      alert={{
-        alertTenants: eligible.map((t) => ({ id: t.id, name: t.name })),
-        signedIn: playerId !== null,
-        subscribed: mine.map((a) => ({ tenantId: a.tenantId, onlyGoalkeeper: a.onlyGoalkeeper })),
-        subscribeAction: subscribeRivalAlertAction,
-        unsubscribeAction: unsubscribeMyRivalAlertAction,
-      }}
+    <RivalLanding
       entry={{
         sendMagicLink: sendRivalMagicLinkAction,
         startGoogle: startGoogleLoginFromRivalAction,

@@ -146,6 +146,8 @@ describe('isRivalReturnPath', () => {
   it('suma la portada, armar y Mis partidos a los partidos de isRivalPath', () => {
     for (const next of [
       '/rival',
+      '/rival/tablon',
+      '/rival/tablon?complejo=abc',
       '/rival/nuevo',
       '/rival/nuevo?reserva=abc',
       '/rival/mis-partidos',

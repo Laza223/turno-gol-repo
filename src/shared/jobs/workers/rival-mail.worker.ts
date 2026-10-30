@@ -1,4 +1,4 @@
-import type PgBoss from 'pg-boss'
+import type { PgBoss } from 'pg-boss'
 import { processRivalMailJob } from '@/modules/rival/rival-mail.service'
 import { logger } from '@/shared/lib/logger'
 import { QUEUE_RIVAL_MAIL, type RivalMailJobData } from '../definitions'
@@ -9,10 +9,9 @@ import { QUEUE_RIVAL_MAIL, type RivalMailJobData } from '../definitions'
  * RIVAL post-commit, diferido a las 08:00 ART si cae en la ventana silenciosa.
  */
 export async function registerRivalMailWorker(boss: PgBoss): Promise<void> {
-  await boss.work<RivalMailJobData>(QUEUE_RIVAL_MAIL, async (job) => {
-    const j = Array.isArray(job) ? job[0] : job
-    if (!j?.data) return
-    await processRivalMailJob(j.data)
+  await boss.work<RivalMailJobData>(QUEUE_RIVAL_MAIL, async ([job]) => {
+    if (!job?.data) return
+    await processRivalMailJob(job.data)
   })
   logger.info('registered queue', { module: 'workers', queue: QUEUE_RIVAL_MAIL })
 }

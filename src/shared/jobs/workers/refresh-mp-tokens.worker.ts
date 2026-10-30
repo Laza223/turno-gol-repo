@@ -1,4 +1,4 @@
-import type PgBoss from 'pg-boss'
+import type { PgBoss } from 'pg-boss'
 import { eq, sql as drizzleSql } from 'drizzle-orm'
 import { tenants } from '@/shared/db/schema'
 import { getWorkerSql, getWorkerDb } from '@/shared/db/client'

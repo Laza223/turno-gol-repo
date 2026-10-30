@@ -60,7 +60,7 @@ Si en cualquier bloque aparece una métrica fuera de umbral (ver §1.2/§1.3), *
 | Disk IO / Disk usage | Supabase → Database → Disk Usage | Sin crecimiento anómalo | Cerca del límite del plan, o crecimiento > 20%/día no explicado por volumen esperado |
 | Query performance / slow queries | Supabase → Database → Query Performance | Sin queries > 1s recurrentes | Cualquier query recurrente > 2s, o cualquier query bloqueante (lock) > 5 min — usar `pg_stat_activity` (doc19 §3.3 paso 4) |
 | Replication lag | Supabase → Database → Replication (si hay read replica configurada) | N/A en v1 (sin replica en el plan de lanzamiento) — verificar si esto cambió antes de asumir que no aplica | Si aplica: > 5s de lag |
-| Estado de `pgboss.job` (workers) | SQL Editor: `SELECT name, state, COUNT(*) FROM pgboss.job GROUP BY name, state` | Mayoría en `completed`, pocos `created` (cola corta) | Acumulación de `created` sin bajar (worker caído) o `failed` creciendo — ver §2.3 |
+| Estado de `pgboss_v12.job` (workers) | SQL Editor: `SELECT name, state, COUNT(*) FROM pgboss_v12.job GROUP BY name, state` | Mayoría en `completed`, pocos `created` (cola corta) | Acumulación de `created` sin bajar (worker caído) o `failed` creciendo — ver §2.3 |
 
 ### 1.4 Registro del chequeo
 
@@ -113,7 +113,7 @@ Estas son verificaciones de flujo end-to-end específicas de TurnoGol, no solo m
 
 - [ ] **Primera reserva online end-to-end**: crear/observar una reserva real desde el perfil público de un complejo hasta `confirmed`, sin intervención manual en DB. Confirmar que aparece en la grilla admin en tiempo real (Realtime Supabase).
 - [ ] **Primer webhook de suscripción SaaS** (si el piloto ya paga la suscripción de TurnoGol, no solo señas de jugadores): confirmar en `processed_webhooks` y que `tenant_subscriptions`/`tenants.status` reflejan el estado correcto.
-- [ ] **Cron/workers de pg-boss corriendo**: `send-email`, `reconcile-pending-payments`, liberación de holds vencidos, y el worker de envío de push (`registerPushSendWorker`, `push.worker.ts` — aplica el delay de quiet hours al encolar vía `startAfter`/`pushSendOptions`/`quietHoursReleaseAt` en `push-quiet-hours.ts`; no es una cola ni worker separado, no va a aparecer como "quiet-hours" en el `GROUP BY name` de abajo). Verificar con la query de `pgboss.job` de §1.3 que ninguno está "created" acumulando sin procesar.
+- [ ] **Cron/workers de pg-boss corriendo**: `send-email`, `reconcile-pending-payments`, liberación de holds vencidos, y el worker de envío de push (`registerPushSendWorker`, `push.worker.ts` — aplica el delay de quiet hours al encolar vía `startAfter`/`pushSendOptions`/`quietHoursReleaseAt` en `push-quiet-hours.ts`; no es una cola ni worker separado, no va a aparecer como "quiet-hours" en el `GROUP BY name` de abajo). Verificar con la query de `pgboss_v12.job` de §1.3 que ninguno está "created" acumulando sin procesar.
 - [ ] **Holds expirados se liberan solos**: crear un hold de prueba (o esperar uno real vencido) y confirmar que el slot vuelve a estar disponible sin intervención manual.
 - [ ] **Rate limiting de holds activo** (INV-ABUSE-001): confirmar en logs/Sentry que el rate limit por IP/tenant está bloqueando abuso, no solo desplegado en el código.
 - [ ] **Aislamiento cross-tenant**: si hay 2+ tenants activos en esta ventana, hacer al menos una verificación cruzada manual (un admin del tenant A no puede ver reservas/jugadores del tenant B) — no esperar a un reporte de usuario para descubrir un leak.

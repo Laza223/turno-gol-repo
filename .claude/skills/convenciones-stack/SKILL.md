@@ -85,7 +85,10 @@ params: <params>`, ver `node_modules/drizzle-orm/errors.js`). Loguear `err.messa
 
 ## pg-boss
 
-- Workers en `src/shared/jobs/workers/`, nombres de cola en `src/shared/jobs/queue-names.ts`, proceso con `pnpm jobs:start`.
+- Workers en `src/shared/jobs/workers/`, nombres de cola en `src/shared/jobs/queue-names.ts` / `definitions.ts`, proceso con `pnpm jobs:start`.
+- **pg-boss 12, schema `pgboss_v12`** (`PGBOSS_SCHEMA` en `boss.ts`). El schema vacío lo crea la migración 104 y `boss.ts` pasa `createSchema: false`: `turnogol_app` no puede crear schemas. El schema viejo `pgboss` (la 9) ya no se lee en `src/` salvo en `legacy-v9-drain.ts` (se borra con él); el test `queue-registry` lo verifica por grep. Columnas en snake_case (`completed_on`, `start_after`) y sin tabla `archive`.
+- **Registro de colas obligatorio:** toda cola nueva va en `QUEUE_DEFINITIONS` (`definitions.ts`). La 12 tira `PGBOSS_QUEUE_NOT_FOUND` en `send`/`schedule` si la cola no existe; `ensureQueues` (dentro de `getBoss()`) las crea. Todas con `retryLimit: 0` (el default de la 12 es 2; el reintento es cada `send`). Las `SendOptions` se tipan `satisfies SendOptions`: la 12 ignora en silencio `expireInHours`, `teamSize`, `useSingletonQueue`, `onComplete`… (usar `expireInSeconds`, `localConcurrency`, política de cola, cola `dead-letter`). Y el handler de `work()` recibe SIEMPRE un array.
+- No hay conteo en vivo de profundidad (`getQueueSize` no existe): SQL `state < 'active'` sobre `pgboss_v12.job` por el pool de la app (el worker no tiene permisos ahí).
 - **`getBoss()` sin argumentos es productor (sin supervisor ni cron); todo entrypoint que procese jobs pide `getBoss('worker')` primero** — si no, `/health` da 200 y los crons no se disparan nunca, sin ningún error. La guarda de `run-workers.ts` está en `tests/unit/worker-health-server.test.ts`.
 - Todo job debe ser idempotente (webhooks deduplican vía `processed_webhooks` / idempotency keys en cash_flows).
 - Efectos con horario (push en madrugada 00–08): patrón `startAfter` de `src/modules/notifications/push-quiet-hours.ts`, nunca sleep.

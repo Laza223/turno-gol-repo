@@ -85,12 +85,12 @@ describe('daily-summary.worker — resumen diario (D8)', () => {
   it('encola push siempre; NO encola email si el tenant no activó el opt-in', async () => {
     const sql = getSql()
     const { tenant, subId } = await seedTenantWithYesterdayActivity(false)
-    await sql`DELETE FROM pgboss.job WHERE name = 'push-send'`
+    await sql`DELETE FROM pgboss_v12.job WHERE name = 'push-send'`
 
     await runDailySummarySweep()
 
     const jobs = await sql<{ data: unknown }[]>`
-      SELECT data FROM pgboss.job WHERE name = 'push-send' AND data->>'subscription_id' = ${subId}
+      SELECT data FROM pgboss_v12.job WHERE name = 'push-send' AND data->>'subscription_id' = ${subId}
     `
     expect(jobs).toHaveLength(1)
     const jobData = jobs[0]!.data as {
@@ -115,12 +115,12 @@ describe('daily-summary.worker — resumen diario (D8)', () => {
   it('encola push Y notificación de email cuando el tenant activó el opt-in', async () => {
     const sql = getSql()
     const { tenant, subId } = await seedTenantWithYesterdayActivity(true)
-    await sql`DELETE FROM pgboss.job WHERE name = 'push-send'`
+    await sql`DELETE FROM pgboss_v12.job WHERE name = 'push-send'`
 
     await runDailySummarySweep()
 
     const jobs = await sql<{ id: string }[]>`
-      SELECT id FROM pgboss.job WHERE name = 'push-send' AND data->>'subscription_id' = ${subId}
+      SELECT id FROM pgboss_v12.job WHERE name = 'push-send' AND data->>'subscription_id' = ${subId}
     `
     expect(jobs).toHaveLength(1)
 
@@ -137,12 +137,12 @@ describe('daily-summary.worker — resumen diario (D8)', () => {
     const sql = getSql()
     const { tenant, subId } = await seedTenantWithYesterdayActivity(false)
     await sql`UPDATE tenants SET status = 'blocked' WHERE id = ${tenant.id}`
-    await sql`DELETE FROM pgboss.job WHERE name = 'push-send'`
+    await sql`DELETE FROM pgboss_v12.job WHERE name = 'push-send'`
 
     await runDailySummarySweep()
 
     const jobs = await sql<{ id: string }[]>`
-      SELECT id FROM pgboss.job WHERE name = 'push-send' AND data->>'subscription_id' = ${subId}
+      SELECT id FROM pgboss_v12.job WHERE name = 'push-send' AND data->>'subscription_id' = ${subId}
     `
     expect(jobs).toHaveLength(0)
   }, 30_000)
@@ -151,12 +151,12 @@ describe('daily-summary.worker — resumen diario (D8)', () => {
     const sql = getSql()
     const { tenant, subId } = await seedTenantWithYesterdayActivity(false)
     await sql`UPDATE tenants SET status = 'suspended' WHERE id = ${tenant.id}`
-    await sql`DELETE FROM pgboss.job WHERE name = 'push-send'`
+    await sql`DELETE FROM pgboss_v12.job WHERE name = 'push-send'`
 
     await runDailySummarySweep()
 
     const jobs = await sql<{ id: string }[]>`
-      SELECT id FROM pgboss.job WHERE name = 'push-send' AND data->>'subscription_id' = ${subId}
+      SELECT id FROM pgboss_v12.job WHERE name = 'push-send' AND data->>'subscription_id' = ${subId}
     `
     expect(jobs).toHaveLength(0)
   }, 30_000)

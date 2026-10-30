@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { signOutAction } from '@/modules/auth/sign-out.action'
 import { getPortalSession } from '@/modules/players/portal-session'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
+import { getRivalWelcomeState } from '@/modules/rival/rival.service'
 import PortalShell from '@/components/site/PortalShell'
 
 export default async function PlayerLayout({ children }: { children: ReactNode }) {
@@ -25,12 +26,25 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
     isRivalEnabled().catch(() => false),
   ])
 
+  const rivalWelcomed =
+    session && rivalEnabled
+      ? await getRivalWelcomeState(session.playerId)
+          .then((s) => s?.welcomed === true)
+          .catch(() => false)
+      : false
+
   return (
     <PortalShell
       signOutAction={signOutAction}
       initialSession={
         session
-          ? { session, favoriteTenantIds: new Set(), staffPanelPath: null, rivalEnabled }
+          ? {
+              session,
+              favoriteTenantIds: new Set(),
+              staffPanelPath: null,
+              rivalEnabled,
+              rivalWelcomed,
+            }
           : undefined
       }
     >

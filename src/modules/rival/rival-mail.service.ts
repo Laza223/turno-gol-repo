@@ -228,7 +228,7 @@ async function processCanceled(
       content: {
         tenantName: String(m.tenant_name),
         dateLabel: whenLabel(new Date(String(m.starts_at))),
-        url: appLink('/rival'),
+        url: appLink('/rival/tablon'),
       },
     })
     if (id) ids.push(id)

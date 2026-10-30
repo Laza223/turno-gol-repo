@@ -1,0 +1,7 @@
+/* View Transition del quiz de RIVAL. Va en un CSS global porque los pseudo-elementos ::view-transition-*
+   cuelgan de la raíz del documento y un CSS Module no puede escribirlos. El nombre
+   `rival-quiz` lo pone `landing.module.css` en `.quiz`. */
+::view-transition-old(rival-quiz),
+::view-transition-new(rival-quiz) {
+  animation-duration: 300ms;
+}

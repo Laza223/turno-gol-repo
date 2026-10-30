@@ -14,7 +14,9 @@ describe('MatchNotFound', () => {
     mocks.isRivalEnabled.mockResolvedValue(true)
     render(await MatchNotFound())
     expect(screen.getByText('Este partido ya no está')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Ver el tablón' }).getAttribute('href')).toBe('/rival')
+    expect(screen.getByRole('link', { name: 'Ver el tablón' }).getAttribute('href')).toBe(
+      '/rival/tablon',
+    )
     // Sin sesión `/rival/nuevo` mandaría a `/ingresar`, que por email no crea cuenta.
     expect(screen.queryByRole('link', { name: 'Armar un partido' })).toBeNull()
   })

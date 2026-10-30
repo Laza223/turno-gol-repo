@@ -1,4 +1,4 @@
-import type PgBoss from 'pg-boss'
+import type { PgBoss } from 'pg-boss'
 import {
   CRON_WORK_OPTIONS,
   QUEUE_EXPIRE_PENDING_BOOKING,
@@ -18,9 +18,8 @@ import { logger } from '@/shared/lib/logger'
  *   - a 5-minute sweep cron as a safety net for jobs that never ran.
  */
 export async function registerExpirePendingBookingWorker(boss: PgBoss): Promise<void> {
-  await boss.work<ExpirePendingBookingJobData>(QUEUE_EXPIRE_PENDING_BOOKING, async (job) => {
-    const j = Array.isArray(job) ? job[0] : job
-    const bookingId = j?.data?.bookingId
+  await boss.work<ExpirePendingBookingJobData>(QUEUE_EXPIRE_PENDING_BOOKING, async ([job]) => {
+    const bookingId = job?.data?.bookingId
     if (!bookingId) return
     await expirePendingBookingWithPolicy(bookingId)
   })

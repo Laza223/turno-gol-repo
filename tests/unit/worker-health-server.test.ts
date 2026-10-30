@@ -21,12 +21,12 @@ vi.mock('@/shared/db/client', () => ({
 
 const { runHealthChecks, healthPort } = await import('@/shared/jobs/health-server')
 
-type FakeBoss = { getQueueSize: (q: string) => Promise<number> }
-const bossOk = { getQueueSize: async () => 0 } as unknown as Parameters<typeof runHealthChecks>[0]
+type FakeBoss = { getQueue: (q: string) => Promise<unknown> }
+const bossOk = { getQueue: async () => 0 } as unknown as Parameters<typeof runHealthChecks>[0]
 
 function bossThatThrows(message: string): Parameters<typeof runHealthChecks>[0] {
   return {
-    getQueueSize: async () => {
+    getQueue: async () => {
       throw new Error(message)
     },
   } as unknown as FakeBoss as Parameters<typeof runHealthChecks>[0]

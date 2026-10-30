@@ -160,7 +160,7 @@ export function CanceledCard({ signedIn }: { signedIn: boolean }) {
             Armar otro
           </Link>
         ) : (
-          <Link href="/rival" className={RIVAL_ACTION}>
+          <Link href="/rival/tablon" className={RIVAL_ACTION}>
             Ver el tablón
           </Link>
         )

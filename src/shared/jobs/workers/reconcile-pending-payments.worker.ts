@@ -1,4 +1,4 @@
-import type PgBoss from 'pg-boss'
+import type { PgBoss } from 'pg-boss'
 import { getWorkerSql, withTenantContext } from '@/shared/db/client'
 import { resolveTenantGateway } from '@/modules/payments/mp-oauth'
 import { dispatchPaymentInfo, lockMpEvent } from '@/modules/payments/payment.service'

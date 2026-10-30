@@ -19,8 +19,8 @@ const archivo = Archivo({
   display: 'swap',
 })
 
-// Logo-only display face. Geometric grotesque with more character than Archivo
-// for the TurnoGol wordmark. Single family, restricted to <Logo />.
+// Micro-label face (uppercase eyebrows, `font-logo`). NOT the wordmark: <Logo /> uses
+// Archivo 900 italic (`font-display`).
 const sora = Sora({
   subsets: ['latin'],
   weight: ['600', '700', '800'],

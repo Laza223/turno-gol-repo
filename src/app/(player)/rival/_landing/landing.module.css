@@ -377,8 +377,11 @@ button.armalo {
 .heroCopy {
   position: relative;
 }
-.heroCopy .micro {
-  margin-bottom: 10px;
+.heroLogo {
+  display: block;
+  width: 232px;
+  height: auto;
+  margin-bottom: 14px;
 }
 .heroH1 {
   font-size: 52px;
@@ -2050,25 +2053,15 @@ button.armalo {
 .wordmark {
   padding: 56px var(--pad) 24px;
 }
-.wordmark svg {
-  width: 100%;
+.wordmark img {
+  display: block;
+  width: min(100%, 520px);
   height: auto;
-  overflow: visible;
+  margin-inline: auto;
 }
-.wordmark text {
-  font:
-    900 italic 236px var(--font-archivo),
-    system-ui,
-    sans-serif;
-  letter-spacing: -8px;
-  fill: none;
-  stroke: var(--ink);
-  stroke-opacity: 0.55;
-  stroke-width: 2.5;
-}
-.root[data-motion] .wordmark text {
-  stroke-dasharray: 1100;
-  stroke-dashoffset: calc(1100 * (1 - clamp(0, (var(--p, 1) - 0.1) * 2.4, 1)));
+.root[data-motion] .wordmark img {
+  opacity: clamp(0, (var(--p, 1) - 0.1) * 2.4, 1);
+  transform: translateY(calc(12px * (1 - clamp(0, (var(--p, 1) - 0.1) * 2.4, 1))));
 }
 
 /* La barra inferior del portal es solo del celular (md:hidden). */
@@ -2097,6 +2090,10 @@ button.armalo {
   }
   .micro {
     font-size: 14px;
+  }
+  .heroLogo {
+    width: 300px;
+    margin-bottom: 18px;
   }
   .lede {
     font-size: 18px;

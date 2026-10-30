@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next'
+import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import { listSitemapTenants, type SitemapTenant } from '@/modules/tenants/sitemap.service'
 import { listPublicTournamentSlugs } from '@/modules/tournaments/tournament-public.service'
 import { absoluteUrl } from '@/lib/seo/metadata'
@@ -42,6 +43,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     { url: absoluteUrl('/terminos'), lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
   ]
+
+  // La landing de RIVAL se indexa solo con el flag prendido: apagado es 404.
+  if (await isRivalEnabled().catch(() => false)) {
+    staticRoutes.push({
+      url: absoluteUrl('/rival'),
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.6,
+    })
+  }
 
   const editorialRoutes: MetadataRoute.Sitemap = [
     ...listBlogPosts().map((p) => ({

@@ -214,14 +214,10 @@ export class MercadoPagoGateway implements PaymentGateway {
         // .subscription_id` — VERIFICADO contra un pago real de sandbox
         // (operación 167921223525 del ensayo: trae subscription_id
         // `e00ea2c8…`, el mismo preapproval que canceló K5; `linked_to` NO
-        // aparece en el payload real). El tipo `TransactionData` del SDK no
-        // declara el campo (SDK incompleto vs payload real), de ahí el cast
-        // estructural estrecho. Ausente (`undefined`) en pagos de
+        // aparece en el payload real). Ausente (`undefined`) en pagos de
         // booking-deposit normales — dunning.service.ts distingue
         // "undefined = no lo sé" de "null/otro id = confirmé que no matchea".
-        preapprovalId: (
-          res.point_of_interaction?.transaction_data as { subscription_id?: string } | undefined
-        )?.subscription_id,
+        preapprovalId: res.point_of_interaction?.transaction_data?.subscription_id,
         // El pago unico de Plus (`saas-plus:`) solo se acredita si es posterior
         // a su cotizacion: el webhook necesita la fecha.
         ...(typeof res.date_created === 'string' && res.date_created !== ''

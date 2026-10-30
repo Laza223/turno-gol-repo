@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { buildError } from 'mercadopago'
+import { MPConnectionError, buildError } from 'mercadopago'
 import { MpGatewayError } from '@/modules/payments/payment.errors'
 import {
   isMpUnauthorized,
@@ -251,6 +251,51 @@ describe('errores del SDK 3 de MercadoPago', () => {
   it('un 403 de permisos no se confunde con un token vencido', () => {
     const raw = buildError(403, { message: 'At least one policy returned UNAUTHORIZED.' })
     expect(isMpUnauthorized(new MpGatewayError('Failed to refund MP payment 1', raw))).toBe(false)
+  })
+
+  it('la clase del error manda: MPAuthenticationError es token vencido, crudo o envuelto', () => {
+    const raw = buildError(401, {})
+    expect(isMpUnauthorized(raw)).toBe(true)
+    expect(isMpUnauthorized(new MpGatewayError('Failed to get MP payment 1', raw))).toBe(true)
+  })
+
+  it('MPForbiddenError no es token vencido aunque el texto diga UNAUTHORIZED', () => {
+    const raw = buildError(403, { message: 'At least one policy returned UNAUTHORIZED.' })
+    expect(isMpUnauthorized(raw)).toBe(false)
+    expect(isMpUnauthorized(new MpGatewayError('Failed to refund MP payment 1', raw))).toBe(false)
+  })
+
+  it('un 401 cuyo mensaje es el del PolicyAgent sigue siendo 401 si la clase lo dice', () => {
+    const raw = buildError(401, { message: 'At least one policy returned UNAUTHORIZED.' })
+    expect(isMpUnauthorized(raw)).toBe(true)
+  })
+
+  it('la clase gana sobre el status: sin la rama instanceof este test falla', () => {
+    const sinStatus = Object.assign(buildError(401, {}), { status: 0 })
+    expect(isMpUnauthorized(sinStatus)).toBe(true)
+    const forbiddenConStatus401 = Object.assign(buildError(403, {}), { status: 401 })
+    expect(isMpUnauthorized(forbiddenConStatus401)).toBe(false)
+    expect(isMpUnauthorized(new MpGatewayError('x', forbiddenConStatus401))).toBe(false)
+  })
+
+  it('un corte de red (MPConnectionError, status 0) no es token vencido', () => {
+    const raw = new MPConnectionError(new TypeError('fetch failed: unauthorized proxy'))
+    expect(isMpUnauthorized(raw)).toBe(false)
+    expect(isMpUnauthorized(new MpGatewayError('Failed to get MP payment 1', raw))).toBe(false)
+  })
+
+  it('withTokenRefresh no renueva ante un MPForbiddenError y sí ante un MPAuthenticationError', async () => {
+    const forbidden = buildError(403, { message: 'At least one policy returned UNAUTHORIZED.' })
+    const refreshForbidden = vi.fn()
+    await expect(
+      withTokenRefresh(vi.fn().mockRejectedValue(forbidden), refreshForbidden),
+    ).rejects.toBe(forbidden)
+    expect(refreshForbidden).not.toHaveBeenCalled()
+
+    const op = vi.fn().mockRejectedValueOnce(buildError(401, {})).mockResolvedValueOnce('ok')
+    const refresh = vi.fn().mockResolvedValue(undefined)
+    await expect(withTokenRefresh(op, refresh)).resolves.toBe('ok')
+    expect(refresh).toHaveBeenCalledTimes(1)
   })
 
   it('reconoce los dos rechazos de MP que se detectan por mensaje', () => {

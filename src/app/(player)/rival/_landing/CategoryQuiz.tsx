@@ -75,7 +75,7 @@ function Question({ legend, name, options, value, onPick }: QuestionProps) {
  */
 export function CategoryQuiz() {
   const [answers, setAnswers] = useState<Answers>(EMPTY)
-  const formRef = useRef<HTMLFormElement>(null)
+  const quizRef = useRef<HTMLDivElement>(null)
   const resultRef = useRef<HTMLParagraphElement>(null)
 
   const category = resultOf(answers)
@@ -91,17 +91,17 @@ export function CategoryQuiz() {
 
   function again() {
     void swap(() => setAnswers(EMPTY)).then(() =>
-      formRef.current?.querySelector<HTMLInputElement>('input')?.focus(),
+      quizRef.current?.querySelector<HTMLInputElement>('input')?.focus(),
     )
   }
 
   return (
-    <form
-      ref={formRef}
+    // Un div y no un <form>: el quiz no envía nada (corre en el navegador y no guarda).
+    <div
+      ref={quizRef}
       className={category ? `${s.quiz} ${s.done}` : s.quiz}
       data-reveal=""
       style={cssVars({ '--rd': '90ms' })}
-      onSubmit={(e) => e.preventDefault()}
     >
       <div className={s.q}>
         <StatusChip piece="category" />
@@ -153,6 +153,6 @@ export function CategoryQuiz() {
         </div>
       </div>
       <p className={s.note}>No guardamos tus respuestas.</p>
-    </form>
+    </div>
   )
 }

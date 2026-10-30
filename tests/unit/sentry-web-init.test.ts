@@ -24,7 +24,13 @@ const DSN = 'https://clave@o1.ingest.sentry.io/456'
 type OpcionesInit = {
   dsn: string
   environment?: string
-  tracesSampler: (ctx: { name?: string }) => number
+  tracesSampler: (ctx: {
+    name?: string
+    attributes?: Record<string, unknown>
+    normalizedRequest?: { url?: string }
+  }) => number
+  dataCollection?: Record<string, unknown>
+  attachStacktrace?: boolean
   beforeSend: (event: Record<string, unknown>, hint: unknown) => unknown
 }
 
@@ -97,6 +103,31 @@ describe('ensureWebSentry', () => {
     expect(sampler({ name: 'POST /api/bookings' })).toBe(0.3)
     expect(sampler({ name: 'GET /grilla' })).toBe(0.1)
     expect(sampler({})).toBe(0.1)
+    // Sentry 11 puede muestrear con el nombre todavía sin ruta: decide la URL del pedido.
+    expect(
+      sampler({ name: 'POST', normalizedRequest: { url: 'https://x.app/api/webhooks/mp' } }),
+    ).toBe(0.5)
+    expect(sampler({ name: 'GET', attributes: { 'http.target': '/api/health' } })).toBe(0)
+  })
+
+  it('no suma datos personales: dataCollection y attachStacktrace como en Sentry 10', async () => {
+    const { ensureWebSentry } = await import('@/shared/observability/sentry-web-init')
+    ensureWebSentry()
+    // Igualdad exacta: los cuatro inits hacen spread de la misma constante, así que
+    // abrir cualquier categoría (genAI son los chats del bot) tiene que poner esto rojo.
+    const deny = ['forwarded', '-ip', 'remote-', 'via', '-user']
+    expect(opcionesDelInit().attachStacktrace).toBe(false)
+    expect(opcionesDelInit().dataCollection).toEqual({
+      userInfo: false,
+      cookies: false,
+      httpHeaders: { request: { deny }, response: { deny } },
+      httpBodies: [],
+      urlQueryParams: { deny },
+      genAI: { inputs: false, outputs: false },
+      databaseQueryData: false,
+      queues: false,
+      graphQL: { document: false, variables: false },
+    })
   })
 
   it('conserva el scrub de PII: saca cookies, auth y datos del request', async () => {
@@ -124,5 +155,7 @@ describe('ensureWebSentry', () => {
     const { ensureWebSentry } = await import('@/shared/observability/sentry-web-init')
     ensureWebSentry()
     expect(opcionesDelInit().beforeSend({}, {})).toBeNull()
+    // Y ninguna traza: `beforeSendSpan` no puede descartar, así que corta el muestreo.
+    expect(opcionesDelInit().tracesSampler({ name: 'POST /api/webhooks/mp' })).toBe(0)
   })
 })

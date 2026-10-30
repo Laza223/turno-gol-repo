@@ -1,5 +1,5 @@
 import { isValidDsn, isDroppableDomainError } from '@/lib/sentry-event-filter'
-import { scrubEvent, scrubTransaction } from '@/lib/sentry-pii-scrub'
+import { SENTRY_SHARED_OPTIONS, scrubEvent, scrubStreamedSpan } from '@/lib/sentry-pii-scrub'
 
 const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN
 
@@ -34,6 +34,7 @@ export function filterReplay<T extends { name: string }>(integrations: T[]): T[]
 function initSentry(): void {
   void import('@sentry/nextjs').then((Sentry) => {
     Sentry.init({
+      ...SENTRY_SHARED_OPTIONS,
       dsn,
       tracesSampleRate: 0.1,
       integrations: filterReplay,
@@ -57,11 +58,11 @@ function initSentry(): void {
         scrubEvent(event)
         return event
       },
-      beforeSendTransaction(event) {
-        if (process.env.NODE_ENV !== 'production') return null
-        // Las trazas llevan la URL completa (nombre y spans): mismo tapado que los errores.
-        scrubTransaction(event)
-        return event
+      beforeSendSpan(span) {
+        // Las trazas llevan la URL completa (nombre y atributos): mismo tapado que los errores.
+        // Fuera de producción no hay spans: este init solo corre en producción (abajo).
+        scrubStreamedSpan(span)
+        return span
       },
       beforeBreadcrumb(breadcrumb) {
         if (breadcrumb.category === 'ui.click') return null

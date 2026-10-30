@@ -18,7 +18,6 @@ overrides:
   'browserslist@<4.28.7': '^4.28.7'
   'source-map-js@<1.2.2': '^1.2.2'
 allowBuilds:
-  '@sentry/cli': true
   esbuild: true
   sharp: true
   supabase: true

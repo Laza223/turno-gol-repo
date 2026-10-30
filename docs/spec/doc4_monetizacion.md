@@ -633,7 +633,7 @@ decisión de producto a tomar explícitamente, no algo que este doc deba dar por
 | SUSPENDED = admin r/o, jugadores siguen | Middleware diferenciado por rol: bloquea escritura admin, permite lectura jugador. |
 | Dunning: 3 reintentos en 5 días | MP lo maneja los reintentos. Nosotros procesamos webhooks de `payment.rejected`. |
 | Datos conservados post-churn | Cancelación voluntaria: 60d BLOCKED → CHURNED → 7d → DELETED (67d total). Dunning: 90d post-primer-fallo → CHURNED → 7d → DELETED (97d total). Campo `scheduled_deletion_at` en `tenants`. (Decisión de auditoría 2026-07-21: evaluar reducir la ruta de dunning a 60 días — implementación de código PENDIENTE, ver nota en §2.) |
-| Notificaciones de trial por email | Scheduled jobs en pg-boss (tabla `pgboss.job`). Ver ADR-005. |
+| Notificaciones de trial por email | Scheduled jobs en pg-boss (tabla `pgboss_v12.job`). Ver ADR-005. |
 | Cambiar canchas facturadas nunca se cobra prorrateado | En `trialing` se aplica en el acto; en `active` se agenda con `pending_billed_courts` + `pending_change_at` y lo aplica el sweep diario de `dunning-retry.worker.ts`, que además hace el PUT del monto en MP. El prorrateo y su Preference de cobro único se ELIMINARON. |
 | No facturar por menos canchas de las prendidas | `assertBilledCourtsCoverOnline` server-side en `billing.service.ts` (`DowngradeBlockedError`). El número llega del cliente, así que se valida siempre. |
 | ARS volátil: precios históricos | Tabla `price_versions` con `valid_from`. |

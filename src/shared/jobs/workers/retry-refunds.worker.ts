@@ -1,4 +1,4 @@
-import type PgBoss from 'pg-boss'
+import type { PgBoss } from 'pg-boss'
 import { getWorkerSql, withTenantContext } from '@/shared/db/client'
 import { formatArs } from '@/modules/payments/payment.service'
 import {
@@ -54,7 +54,7 @@ type StaleRefundRow = {
  * no borra el schedule viejo al registrar uno nuevo. Renombrar la cola dejaría
  * `retry-pending-refunds` agendada para siempre en producción, creando un job
  * por hora que ningún worker consume — se acumulan en estado `created` sin que
- * nada avise. Cambiarlo exige borrar la fila de `pgboss.schedule` en el mismo
+ * nada avise. Cambiarlo exige borrar la fila de `pgboss_v12.schedule` en el mismo
  * deploy, y no vale ese riesgo por un nombre.
  */
 export async function remindPendingRefunds(): Promise<{ reminded: number }> {

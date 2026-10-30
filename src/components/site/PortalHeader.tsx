@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { Logo } from '@/components/ui/logo'
+import { cn } from '@/lib/utils'
+import { SiteHeaderShell } from './SiteHeaderShell'
 import { AccountMenu } from './AccountMenu'
 import { IngresarLink } from './IngresarLink'
 import { usePortalSession } from './PortalSessionProvider'
@@ -33,141 +34,56 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
   const panelLinkClass =
     'inline-flex h-11 items-center rounded-full border border-border bg-card px-3.5 text-xs font-semibold text-foreground transition-[background-color,scale] hover:bg-accent active:scale-95 sm:px-6 sm:text-sm dark:border-white/20 dark:bg-white/5 dark:hover:bg-white/10 whitespace-nowrap'
 
-  if (variant === 'overlay') {
-    // Pill flotante theme-adaptive (receta .overlay-nav). Paddings/gaps con
-    // cascada mobile-first: a 375px el CTA "Ingresar" no debe desbordar
-    // (deuda MASTER §13.5).
-    return (
-      <header className="fixed top-0 z-50 w-full px-3 pt-3.5 sm:px-6 sm:pt-[18px]">
-        <div className="mx-auto max-w-[1240px]">
-          <div className="overlay-nav flex items-center justify-between gap-2 rounded-full py-2 pl-4 pr-2 sm:gap-6 sm:py-3 sm:pl-6 sm:pr-3.5">
-            <Link
-              href="/"
-              aria-label="TurnoGol — inicio"
-              className="inline-flex min-h-11 shrink-0 items-center transition-opacity hover:opacity-90"
-            >
-              <Logo variant="horizontal" textClassName="text-foreground" />
-            </Link>
-            <div className="flex items-center gap-1 sm:gap-1.5">
-              <Link
-                href="/explorar"
-                className="hidden min-h-11 items-center gap-1.5 rounded-full px-2.5 py-2 text-xs font-semibold text-muted-foreground transition-colors duration-150 hover:bg-foreground/5 hover:text-foreground sm:px-4 sm:py-[9px] sm:text-sm md:inline-flex"
-              >
-                <Search className="h-[15px] w-[15px] sm:h-[17px] sm:w-[17px]" aria-hidden />
-                Explorar
-              </Link>
-              {rivalEnabled && (
-                <Link
-                  href={rivalHref}
-                  className="hidden min-h-11 items-center gap-1.5 rounded-full px-2.5 py-2 text-xs font-semibold text-muted-foreground transition-colors duration-150 hover:bg-foreground/5 hover:text-foreground sm:px-4 sm:py-[9px] sm:text-sm md:inline-flex"
-                >
-                  <Swords className="h-[15px] w-[15px] sm:h-[17px] sm:w-[17px]" aria-hidden />
-                  Rival
-                </Link>
-              )}
-              <Link
-                href="/para-complejos"
-                className="hidden min-h-11 items-center gap-2 rounded-full px-4 py-[9px] text-sm font-semibold text-muted-foreground transition-colors duration-150 hover:bg-foreground/5 hover:text-foreground sm:inline-flex"
-              >
-                <Building2 className="h-[17px] w-[17px]" aria-hidden />
-                Para complejos
-              </Link>
-              <span
-                aria-hidden
-                className="mx-1 hidden h-[22px] w-px bg-border sm:mx-1.5 sm:block dark:bg-white/10"
-              />
-              {session ? (
-                <AccountMenu
-                  firstName={session.firstName}
-                  lastName={session.lastName}
-                  email={session.email}
-                  avatarUrl={session.avatarUrl}
-                  variant="overlay"
-                  signOutAction={signOutAction}
-                />
-              ) : staffPanelPath ? (
-                <Link href={staffPanelPath} className={panelLinkClass}>
-                  Ir a mi panel
-                </Link>
-              ) : (
-                <IngresarLink className={panelLinkClass}>Ingresar</IngresarLink>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-    )
-  }
+  // Un solo header para las dos variantes (la del home): `overlay` flota sobre el hero,
+  // `solid` acompaña el scroll. Paddings/gaps mobile-first: a 375px el CTA "Ingresar" no debe
+  // desbordar (deuda MASTER §13.5).
+  const navLink =
+    'hidden min-h-11 items-center gap-1.5 rounded-full px-2.5 py-2 text-xs font-semibold text-muted-foreground transition-colors duration-150 hover:bg-foreground/5 hover:text-foreground sm:px-4 sm:py-[9px] sm:text-sm md:inline-flex'
 
   return (
-    <header className="sticky top-0 z-50 w-full px-4 py-3 bg-transparent">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between rounded-full border border-border bg-card/80 px-4 shadow-[0_8px_30px_rgb(0,0,0,0.06)] backdrop-blur-md sm:px-6 lg:px-8">
-        <Link
-          href="/"
-          aria-label="TurnoGol — inicio"
-          className="inline-flex min-h-11 items-center transition-opacity hover:opacity-90"
-        >
-          <Logo
-            variant="horizontal"
-            textClassName="text-foreground font-bold"
-            iconClassName="bg-card border-border"
-          />
+    <SiteHeaderShell position={variant === 'overlay' ? 'fixed' : 'sticky'}>
+      <Link href="/explorar" className={navLink}>
+        <Search className="h-[15px] w-[15px] sm:h-[17px] sm:w-[17px]" aria-hidden />
+        Explorar
+      </Link>
+      {rivalEnabled && (
+        <Link href={rivalHref} className={navLink}>
+          <Swords className="h-[15px] w-[15px] sm:h-[17px] sm:w-[17px]" aria-hidden />
+          Rival
         </Link>
-        <nav className="flex items-center gap-1 sm:gap-2">
-          <Link
-            href="/explorar"
-            className="hidden min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground md:flex md:text-sm"
-          >
-            <Search className="h-4 w-4" />
-            <span>Explorar</span>
-          </Link>
-          {rivalEnabled && (
-            <Link
-              href={rivalHref}
-              className="hidden min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground md:inline-flex md:text-sm"
-            >
-              <Swords className="h-4 w-4" aria-hidden />
-              <span>Rival</span>
-            </Link>
-          )}
-          {session ? (
-            <>
-              <Link
-                href="/mis-reservas"
-                className="hidden min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground md:text-sm sm:inline-flex"
-              >
-                <Calendar className="h-4 w-4" />
-                <span>Mis reservas</span>
-              </Link>
-              <AccountMenu
-                firstName={session.firstName}
-                lastName={session.lastName}
-                email={session.email}
-                avatarUrl={session.avatarUrl}
-                variant="solid"
-                signOutAction={signOutAction}
-              />
-            </>
-          ) : (
-            <>
-              <Link
-                href="/para-complejos"
-                className="hidden min-h-11 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors duration-200 hover:bg-accent hover:text-foreground md:text-sm sm:inline-flex"
-              >
-                <Building2 className="h-4 w-4" />
-                <span>Para complejos</span>
-              </Link>
-              {staffPanelPath ? (
-                <Link href={staffPanelPath} className={panelLinkClass}>
-                  Ir a mi panel
-                </Link>
-              ) : (
-                <IngresarLink className={panelLinkClass}>Ingresar</IngresarLink>
-              )}
-            </>
-          )}
-        </nav>
-      </div>
-    </header>
+      )}
+      {session && variant === 'solid' && (
+        <Link href="/mis-reservas" className={cn(navLink, 'sm:inline-flex')}>
+          <Calendar className="h-[15px] w-[15px] sm:h-[17px] sm:w-[17px]" aria-hidden />
+          Mis reservas
+        </Link>
+      )}
+      {(variant === 'overlay' || !session) && (
+        <Link href="/para-complejos" className={cn(navLink, 'sm:inline-flex')}>
+          <Building2 className="h-[17px] w-[17px]" aria-hidden />
+          Para complejos
+        </Link>
+      )}
+      <span
+        aria-hidden
+        className="mx-1 hidden h-[22px] w-px bg-border sm:mx-1.5 sm:block dark:bg-white/10"
+      />
+      {session ? (
+        <AccountMenu
+          firstName={session.firstName}
+          lastName={session.lastName}
+          email={session.email}
+          avatarUrl={session.avatarUrl}
+          variant={variant}
+          signOutAction={signOutAction}
+        />
+      ) : staffPanelPath ? (
+        <Link href={staffPanelPath} className={panelLinkClass}>
+          Ir a mi panel
+        </Link>
+      ) : (
+        <IngresarLink className={panelLinkClass}>Ingresar</IngresarLink>
+      )}
+    </SiteHeaderShell>
   )
 }

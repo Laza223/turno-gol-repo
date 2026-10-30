@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { AnimatePresence, m } from 'motion/react'
-import { Logo } from '@/components/ui/logo'
+import { SiteHeaderShell } from '@/components/site/SiteHeaderShell'
 import { Stepper } from '@/components/ui/stepper'
 import { SegmentedProgress } from '@/components/ui/progress'
 import { WIZARD_STEPS, stepFromPathname } from '@/modules/onboarding/onboarding.steps'
@@ -123,6 +123,7 @@ export function WizardChrome({ children }: Props) {
 
   return (
     <div className="grid min-h-dvh lg:grid-cols-[240px_1fr]">
+      <SiteHeaderShell />
       {/* Rail de marca: superficie always-dark (como el pane de register), no
           vista de tarea — por eso colores literales y no tokens theme-adaptive.
           aria-label: PreviewPane agrega OTRO <aside> en los pasos con preview
@@ -130,7 +131,7 @@ export function WizardChrome({ children }: Props) {
           mismo tipo implícito). */}
       <aside
         aria-label="Progreso del wizard"
-        className="sticky top-0 self-start h-dvh relative hidden overflow-hidden bg-linear-to-br from-slate-950 via-slate-900 to-emerald-950 lg:flex lg:flex-col lg:justify-between lg:p-6"
+        className="sticky top-0 self-start h-dvh relative hidden overflow-hidden bg-linear-to-br from-slate-950 via-slate-900 to-emerald-950 lg:flex lg:flex-col lg:justify-between lg:p-6 lg:pt-28"
       >
         <div
           aria-hidden
@@ -141,9 +142,7 @@ export function WizardChrome({ children }: Props) {
           className="absolute -bottom-32 -left-20 h-80 w-80 rounded-full bg-emerald-400/5 blur-3xl"
         />
 
-        <div className="relative">
-          <Logo variant="horizontal" textClassName="text-white" className="[&>span]:text-xl" />
-        </div>
+        <div aria-hidden />
 
         <div className="relative">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-400 tabular-nums">
@@ -174,13 +173,8 @@ export function WizardChrome({ children }: Props) {
           derecha del grid y lleva el gradiente. */}
       <div className="content-area-gradient">
         {/* Header mobile: el ÚNICO indicador en pantallas chicas. */}
-        <header className="border-b border-border px-4 py-3 lg:hidden">
+        <header className="border-b border-border px-4 pb-3 pt-24 lg:hidden">
           <div className="flex items-center justify-between">
-            <Logo
-              variant="horizontal"
-              textClassName="text-foreground"
-              className="[&>span]:text-xl"
-            />
             <p className="text-xs font-medium text-muted-foreground tabular-nums">
               {progressLabel}
             </p>

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Logo } from '@/components/ui/logo'
+import { SiteHeaderShell } from '@/components/site/SiteHeaderShell'
 import { AuthBackdrop } from '@/app/(auth)/AuthBackdrop'
 import { signOutAction } from '@/app/(admin)/actions/auth'
 
@@ -15,12 +15,10 @@ export const metadata: Metadata = {
  */
 export default function SinAccesoPage() {
   return (
-    <div className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden bg-linear-to-br from-slate-50 via-white to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/40 px-4 py-12 sm:px-6 lg:px-8">
+    <div className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden bg-linear-to-br from-slate-50 via-white to-emerald-50/60 dark:from-slate-950 dark:via-slate-950 dark:to-emerald-950/40 px-4 pb-12 pt-28 sm:px-6 lg:px-8">
+      <SiteHeaderShell />
       <AuthBackdrop />
       <div className="w-full max-w-md">
-        <div className="mb-8 flex justify-center">
-          <Logo variant="vertical" className="w-32" />
-        </div>
         <div className="rounded-2xl border border-border/60 bg-card/90 p-8 text-center shadow-xl shadow-slate-900/5 dark:bg-white/4 dark:border-white/8 backdrop-blur-md">
           <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
             Tu acceso fue desactivado

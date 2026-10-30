@@ -1,5 +1,4 @@
-import type PgBoss from 'pg-boss'
-import type { Job } from 'pg-boss'
+import type { Job, PgBoss } from 'pg-boss'
 import { getWorkerSql } from '@/shared/db/client'
 import { sendPushNotification } from '@/lib/web-push'
 import { logger } from '@/shared/lib/logger'
@@ -104,10 +103,9 @@ export async function handlePushSendJob(job: Job<PushSendJobData>): Promise<void
 }
 
 export async function registerPushSendWorker(boss: PgBoss): Promise<void> {
-  await boss.work<PushSendJobData>(QUEUE_PUSH_SEND, async (job) => {
-    const j = Array.isArray(job) ? job[0] : job
-    if (!j) return
-    await handlePushSendJob(j)
+  await boss.work<PushSendJobData>(QUEUE_PUSH_SEND, async ([job]) => {
+    if (!job) return
+    await handlePushSendJob(job)
   })
   logger.info('registered queue', { module: 'workers', queue: QUEUE_PUSH_SEND })
 }

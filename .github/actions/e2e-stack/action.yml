@@ -98,22 +98,6 @@ runs:
         END $$;
         SQL
 
-    # La imagen de Postgres de la CLI 2 (15.19) le sacó a `postgres` el CREATE
-    # sobre el schema `auth` y la membresía en `supabase_auth_admin`, y
-    # 001_extensions.sql se cae al crear su `auth.jwt()` ("permission denied
-    # for schema auth"). Se le devuelven los dos, medidos en la imagen de la
-    # CLI 1 (15.6.1.139). Solo puede darlos `supabase_admin`, el superusuario
-    # de la imagen, que tiene la misma clave que `postgres` en el stack local.
-    - name: Give postgres the auth privileges 001_extensions.sql needs
-      shell: bash
-      env:
-        PGPASSWORD: postgres
-      run: |
-        psql -h 127.0.0.1 -p 54322 -U supabase_admin -d postgres -v ON_ERROR_STOP=1 <<'SQL'
-        GRANT CREATE ON SCHEMA auth TO postgres;
-        GRANT supabase_auth_admin TO postgres;
-        SQL
-
     # Un solo proceso de psql con `\i` por archivo — mismo criterio que
     # ci.yml, ~70 archivos sin spawnear un proceso por cada uno.
     - name: Apply migrations

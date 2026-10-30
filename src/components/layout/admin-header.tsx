@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { Logo } from '@/components/ui/logo'
-import { AdminThemeMenu } from '@/components/admin/AdminThemeMenu'
 import { ADMIN_HEADER_SLOT_ID } from './admin-header-slot'
 
 interface AdminHeaderProps {
@@ -45,10 +44,6 @@ export function AdminHeader({ tenantName, homeHref = '/dashboard' }: AdminHeader
           segmento, la semana y el chip de lo pendiente. Vacío no ocupa nada
           visible, pero el `flex-1` mantiene el resto del header a la derecha. */}
       <div id={ADMIN_HEADER_SLOT_ID} className="flex min-w-0 flex-1 items-center gap-3" />
-
-      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-        <AdminThemeMenu />
-      </div>
     </header>
   )
 }

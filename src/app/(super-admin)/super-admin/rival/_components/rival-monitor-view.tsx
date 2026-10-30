@@ -342,7 +342,7 @@ function TenantsSection({ tenants }: { tenants: RivalMonitor['tenants'] }) {
 
 export function RivalMonitorView({ monitor, reports, actions }: Props) {
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <ReportsSection reports={reports} actions={actions} />
       <WeeksSection monitor={monitor} />
       <TenantsSection tenants={monitor.tenants} />

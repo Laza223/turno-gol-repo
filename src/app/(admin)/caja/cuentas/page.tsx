@@ -123,7 +123,7 @@ export default async function CajaCuentasPage(props: {
   const heading = isToday ? 'Entró hoy' : day === yesterday ? 'Entró ayer' : `Entró el ${dayName}`
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3 lg:space-y-5">
       {/* Las flechas de día cuelgan de la barra superior en escritorio; en el
           teléfono no entran al lado de las pestañas y bajan al cuerpo. */}
       <CajaTabs

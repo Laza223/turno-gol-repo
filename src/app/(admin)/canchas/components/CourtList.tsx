@@ -59,7 +59,11 @@ const ConfirmDialog = dynamic(
 const CourtForm = dynamic(() => import('./CourtForm').then((m) => m.CourtForm), {
   ssr: false,
   loading: () => (
-    <div className="mx-auto max-w-3xl space-y-5" aria-busy="true" aria-label="Cargando la cancha…">
+    <div
+      className="mx-auto max-w-3xl space-y-3 lg:space-y-5"
+      aria-busy="true"
+      aria-label="Cargando la cancha…"
+    >
       <div className="space-y-2">
         <Skeleton className="h-5 w-20" aria-hidden />
         <Skeleton className="h-8 w-48" aria-hidden />
@@ -192,7 +196,7 @@ export function CourtList({
   )
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-3 lg:space-y-5">
       <PageHeader
         variant="plain"
         title="Canchas"

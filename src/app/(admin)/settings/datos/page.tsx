@@ -12,7 +12,7 @@ export default async function DatosPage() {
   const { tenant } = await requireAdminStaff({ allowReadOnly: true })
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <SettingsHeader title="Tus datos" />
       <DatosView
         fileStem={`${tenant.slug}-${artTodayStr()}`}

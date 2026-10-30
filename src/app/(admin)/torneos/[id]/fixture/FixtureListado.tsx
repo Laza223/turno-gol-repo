@@ -62,7 +62,7 @@ export function FixtureListado({
   }, [matches, stageById, stages.length, totalRoundsByStage])
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 lg:space-y-4">
       {grouped.map((group) => (
         <ResponsiveList
           key={group.key}

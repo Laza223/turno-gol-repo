@@ -145,7 +145,7 @@ export function AbonadosList({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 lg:space-y-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-xl border border-blue-500/20 bg-blue-500/10 p-3.5 text-xs text-blue-900 dark:text-blue-200">
         <div className="flex items-center gap-2">
           <Info className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />

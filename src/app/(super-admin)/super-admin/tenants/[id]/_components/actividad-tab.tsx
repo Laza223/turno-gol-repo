@@ -86,7 +86,7 @@ export function ActividadTab({
   activity: TenantActivity
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 lg:space-y-4">
       <Card title={`Historial (${activity.totalLogs})`}>
         {activity.logs.length === 0 ? (
           // `?actPage=99` de un link viejo: hay eventos, lo que no existe es

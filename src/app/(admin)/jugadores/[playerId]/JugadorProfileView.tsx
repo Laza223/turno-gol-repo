@@ -165,7 +165,7 @@ export function JugadorProfileView({
     // vacía menos: una pista vacía igual paga sus dos `gap`.
     <div
       className={cn(
-        'grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start',
+        'grid grid-cols-1 gap-3 lg:gap-6 lg:grid-cols-2 lg:items-start',
         fixedSlots.length > 0
           ? 'lg:grid-rows-[auto_auto_auto_1fr]'
           : 'lg:grid-rows-[auto_auto_1fr]',
@@ -178,8 +178,8 @@ export function JugadorProfileView({
         <ChevronLeft className="h-4 w-4" aria-hidden /> Personas
       </Link>
 
-      <div className="space-y-6">
-        <div className="card-premium rounded-xl p-6">
+      <div className="space-y-3 lg:space-y-6">
+        <div className="card-premium rounded-xl p-4 lg:p-6">
           <h1 className="text-2xl font-semibold text-foreground">{profile.name}</h1>
           {/* `min-w-0` + `break-words`: en media columna un email largo se pisaba con el
               teléfono (las dos columnas de acá son por viewport, no por la card). */}
@@ -233,7 +233,7 @@ export function JugadorProfileView({
       */}
       <section
         className={cn(
-          'card-premium rounded-xl p-6 lg:col-start-2 lg:row-start-2',
+          'card-premium rounded-xl p-4 lg:p-6 lg:col-start-2 lg:row-start-2',
           fixedSlots.length > 0 ? 'lg:row-span-3' : 'lg:row-span-2',
         )}
       >

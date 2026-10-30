@@ -64,7 +64,7 @@ export function ResumenTab({
   const { tenant, courts, staff, pulse } = detail
   const s = tenant.settings
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 lg:space-y-4">
       <Card title="Datos del complejo">
         <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Dt label="Dirección">

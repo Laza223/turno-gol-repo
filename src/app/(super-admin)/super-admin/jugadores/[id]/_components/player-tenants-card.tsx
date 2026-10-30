@@ -19,7 +19,7 @@ function plural(n: number, one: string, many: string): string {
 /** Una fila por complejo donde el jugador tiene relación. */
 export function PlayerTenantsCard({ tenants }: { tenants: PlayerTenantLink[] }) {
   return (
-    <section className="rounded-xl border border-border/60 bg-card p-5 shadow-xs">
+    <section className="rounded-xl border border-border/60 bg-card p-4 lg:p-5 shadow-xs">
       <h2 className="mb-4 text-base font-semibold text-foreground">Sus complejos</h2>
       {tenants.length === 0 ? (
         <p className="text-sm text-muted-foreground">Todavía no reservó en ningún complejo.</p>

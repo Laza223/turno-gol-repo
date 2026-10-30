@@ -39,10 +39,10 @@ export default async function WhatsappSettingsPage({
   const errorText = errorMessage(error)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       <SettingsHeader title="Asistente de WhatsApp" />
 
-      <div className="card-premium card-plus space-y-4 rounded-lg p-6">
+      <div className="card-premium card-plus space-y-3 lg:space-y-4 rounded-lg p-4 lg:p-6">
         <div className="flex items-center gap-2">
           <h2 className="text-base font-semibold text-foreground">TurnoGol Plus</h2>
           <PlusBadge />
@@ -75,7 +75,7 @@ export default async function WhatsappSettingsPage({
             <p className="text-sm text-muted-foreground">{KEEP_ALIVE_TIP}</p>
           </>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3 lg:space-y-4">
             {connection && (
               <p role="status" className="text-sm text-amber-700 dark:text-amber-400">
                 Tu número se desconectó. Volvé a conectarlo para que el asistente siga contestando.

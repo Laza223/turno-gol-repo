@@ -29,7 +29,7 @@ export function PosicionesTable({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 lg:space-y-4">
       {groups.map((group) => (
         <ResponsiveList
           key={`${group.stageId}-${group.groupLabel ?? ''}`}

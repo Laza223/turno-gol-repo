@@ -63,7 +63,7 @@ export function TenantLocationForm({
   const hasLocation = currentLatitude !== null && currentLongitude !== null
 
   return (
-    <div className="card-premium rounded-xl p-6">
+    <div className="card-premium rounded-xl p-4 lg:p-6">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
           <MapPin className="h-5 w-5" />
@@ -80,7 +80,7 @@ export function TenantLocationForm({
       <form
         action={formAction}
         onSubmit={() => setDidSubmit(true)}
-        className="mt-6 max-w-xl space-y-4"
+        className="mt-4 lg:mt-6 max-w-xl space-y-3 lg:space-y-4"
       >
         <div>
           <label

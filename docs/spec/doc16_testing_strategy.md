@@ -1140,8 +1140,8 @@ E2E tests:           pnpm install + Supabase local + app levantada + Playwright 
 
 Requisitos de infra local:
   - Docker Desktop (para Supabase local)
-  - Node.js 20+
-  - pnpm 8+
+  - Node.js 24
+  - pnpm (versión exacta en `packageManager` de `package.json`)
 ```
 
 ---

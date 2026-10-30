@@ -67,7 +67,7 @@ export function PortalPanel({
   }
 
   return (
-    <section className="space-y-4 rounded-xl border border-border bg-card p-5">
+    <section className="space-y-3 lg:space-y-4 rounded-xl border border-border bg-card p-4 lg:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="flex items-center gap-2 font-display text-lg font-semibold text-foreground">

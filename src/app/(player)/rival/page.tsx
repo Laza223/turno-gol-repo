@@ -2,19 +2,21 @@ import { headers } from 'next/headers'
 import { notFound, permanentRedirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { isInAppBrowser } from '@/lib/in-app-browser'
-import { buildMetadata } from '@/lib/seo/metadata'
+import { absoluteUrl } from '@/lib/seo/metadata'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import { RivalLanding } from './_landing/RivalLanding'
 import { sendRivalMagicLinkAction, startGoogleLoginFromRivalAction } from './p/[code]/login-actions'
 
 export function generateMetadata(): Metadata {
-  return buildMetadata({
-    title: 'RIVAL: cada partido cuenta | TurnoGol',
-    titleAbsolute: true,
+  // Sin `openGraph` ni `twitter` a propósito (no `buildMetadata`): la imagen de vista previa la
+  // ponen `opengraph-image.tsx` y `twitter-image.tsx` de esta carpeta (URL con hash, no se puede
+  // escribir a mano) y cualquier `openGraph` propio de la página las pisa. Igual que `p/[code]`.
+  return {
+    title: { absolute: 'RIVAL: cada partido cuenta | TurnoGol' },
     description:
       'Armá el partido con tu grupo, encontrá al que falta y, muy pronto, jugá con tu club por la tabla, la Corona y tu categoría. El lado jugador de TurnoGol.',
-    path: '/rival',
-  })
+    alternates: { canonical: absoluteUrl('/rival') },
+  }
 }
 
 /**

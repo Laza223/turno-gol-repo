@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import { ArmarCta, type LandingEntry } from './ArmarCta'
 import { cssVars } from './css-vars'
@@ -10,7 +11,15 @@ export function Hero({ entry }: { entry: LandingEntry }) {
     <section className={`${s.hero} ${s.scene}`} data-scene="exit">
       <div className={s.glow} aria-hidden="true" />
       <div className={s.heroCopy}>
-        <p className={s.micro}>RIVAL powered by TurnoGol</p>
+        <Image
+          className={s.heroLogo}
+          src="/brand-assets/rival/rival-logo.svg"
+          alt="RIVAL powered by TurnoGol"
+          width={1880}
+          height={375}
+          unoptimized
+          priority
+        />
         <h1 className={`${s.display} ${s.heroH1}`}>
           <span className={s.ln}>Cada partido</span>{' '}
           <span className={`${s.ln} ${s.acc}`} style={cssVars({ '--li': 1 })}>

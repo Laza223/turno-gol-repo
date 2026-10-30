@@ -96,7 +96,7 @@ Todo lo que sigue sale de 8 días de producción (14 al 22 de septiembre de 2026
 
 - Montos en centavos de ARS. Horas en UTC en la base, que se muestran en hora argentina. Día operativo: el turno de las 23 y los de la madrugada pertenecen al día en que arrancó la jornada.
 - Ley 25.326: nunca texto libre sobre personas. Las etiquetas son un enum cerrado de 5.
-- Vetos de producto que están en `CLAUDE.md`: sin billetera, sin saldo a favor de abonados, el no-show no es deuda, sin recordatorio de 24 h, el jugador no tiene Realtime y no hay AFIP. Falta Uno vuelve como RIVAL v1, diseñado de cero (`docs/decisions/2026-10-14-foco-jugador-rival.md`).
+- Vetos de producto que están en `CLAUDE.md`: sin billetera, sin saldo a favor de abonados, el no-show no es deuda, sin recordatorio de 24 h (salvo "El Día del Partido" de RIVAL, opt-in, decisión del 2026-10-29), el jugador no tiene Realtime y no hay AFIP. Falta Uno vuelve como RIVAL v1, diseñado de cero (`docs/decisions/2026-10-14-foco-jugador-rival.md`).
 - Sin feature freeze desde el 2026-10-22 (`docs/decisions/2026-10-22-se-levanta-el-freeze.md`, supera D4 y F2): las features nuevas se proponen y se diseñan, y el panel vuelve a recibir mejoras. Cambiar precio, seña por defecto o lifecycle sigue necesitando decisión escrita del dueño.
 
 ### Portal: lo que existe
@@ -109,7 +109,9 @@ Todo lo que sigue sale de 8 días de producción (14 al 22 de septiembre de 2026
 - perfil, cuenta (`/configuracion`) y eliminar la cuenta;
 - favoritos y compartir.
 
-### RIVAL v1: especificado, sin construir
+### RIVAL v1: construido y prendido el 2026-10-29
+
+> La visión completa de RIVAL (clubes, tablas, la media, la figura, el relato y los complejos) está en `docs/rival/README.md`, habilitada por `docs/decisions/2026-10-29-rival-cultura-de-turnogol.md`. Lo de abajo es lo que v1 tiene hoy.
 
 Spec: `docs/superpowers/specs/2026-10-22-rival-v1-design.md`. Decisiones: F4 y `docs/decisions/2026-10-22-rival-v1.md`. Lo esencial:
 
@@ -121,15 +123,15 @@ Spec: `docs/superpowers/specs/2026-10-22-rival-v1-design.md`. Decisiones: F4 y `
 - **Bans:** frenan RIVAL el ban global y el manual del complejo. Los softbans automáticos no.
 - **Moderación:** denuncias con motivos cerrados y ocultamiento automático con 3.
 - **Alertas:** por mail, con opt-in por complejo.
-- Va detrás del flag `rival`, global en `false` hasta que el dueño lo prenda. **Sin umbral de reversión:** la revisión a 30 días elige la próxima ola. Roadmap: `docs/planning/2026-10-rival-ideas.md` §5.
+- Va detrás del flag `rival`, que el dueño prendió el 2026-10-29. **Sin umbral de reversión:** la revisión a 30 días elige la próxima ola. Roadmap: `docs/planning/2026-10-rival-ideas.md` §5.
 
 ### Portal: restricciones
 
 - Alcance del rediseño (F3): home, `/explorar`, página del complejo, reservar, reserva confirmada, pago pendiente y error, `/ingresar`, `/verify`, `/aceptar-terminos`, `/mis-reservas`, `/perfil` y `/configuracion`. No cambian el panel, el login y el alta del staff (`/login`, `/register`, recuperación de contraseña), `/para-complejos`, `/precios` ni la lógica de reserva, seña y MercadoPago.
 - Todo funciona con los precios ocultos.
 - Cuentas separadas (F5): una cuenta de complejo o de super admin no puede ser jugador con el mismo mail. El mensaje lo dice así y ofrece entrar con otra cuenta de Google o con el email.
-- Sin puntajes ni reseñas entre personas y sin texto libre sobre personas (Ley 25.326). RIVAL v1 sale sin rankings y sin feed, por su spec. Sin billetera ni pagos entre jugadores (veto de `CLAUDE.md`). Un ranking, un feed o una app nativa entran solo con decisión escrita del dueño.
-- El jugador no recibe push: existe solo para el dueño del complejo.
+- Sin puntajes ni reseñas entre personas y sin texto libre sobre personas (Ley 25.326). RIVAL v1 sale sin rankings y sin feed, por su spec; desde el 2026-10-29 las tablas de RIVAL se pueden diseñar con sus condiciones (decisión del 29/10), y un feed de publicaciones sigue vetado. Sin billetera ni pagos entre jugadores (veto de `CLAUDE.md`). Una app nativa entra solo con decisión escrita del dueño.
+- El jugador no recibe push: existe solo para el dueño del complejo. RIVAL puede sumar push opt-in, con horario silencioso, en su ola (decisión del 2026-10-29).
 - La reserva no lleva QR: no sirve para nada (el founder, 2026-10-15). Se sacó de la pantalla de reserva confirmada y del comprobante en #423.
 - Vocabulario de pantalla hoy: Explorar, Reservas (Mis reservas), Cuenta, Ingresar, complejo, cancha, turno, reserva, seña, "Fútbol 5". RIVAL: "Voy", "Estoy adentro", "Faltan 3" / "Falta 1", "Se busca arquero", "Busca rival", "El banco", "Se juega", "Se cayó", "Donde me pongan".
 

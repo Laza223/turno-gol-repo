@@ -10,6 +10,11 @@
 
 **Autoridad visual:** `DESIGN.md`, en La Previa.
 
+**Enmienda del 2026-10-29** ([`2026-10-29-rival-cultura-de-turnogol.md`](../../decisions/2026-10-29-rival-cultura-de-turnogol.md)). Esta spec sigue describiendo v1 tal como está construido. Para las próximas olas:
+- §6 ("No hay perfil público navegable"): puede haber perfil y figurita públicos, opt-in y privados por defecto;
+- §8 (el único texto es tu propio nombre): se suma el nombre del club, moderado;
+- §10 ("hasta 12 meses"): la promesa vale para lo guardado con ese texto; la carrera necesita una política nueva con su consentimiento.
+
 ## 1. Qué es
 
 RIVAL es la sección de comunidad del portal del jugador: "RIVAL powered by TurnoGol". Tiene dos caras sobre **un solo modelo de partido**:

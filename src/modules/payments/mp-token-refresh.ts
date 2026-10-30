@@ -165,14 +165,25 @@ export function describeMpError(err: unknown): string {
   // El SDK anida el error crudo un nivel abajo (MpGatewayError.cause).
   const raw =
     typeof e.cause === 'object' && e.cause !== null
-      ? (e.cause as { message?: unknown; status?: unknown; statusCode?: unknown; cause?: unknown })
+      ? (e.cause as {
+          message?: unknown
+          status?: unknown
+          statusCode?: unknown
+          cause?: unknown
+          causes?: unknown
+        })
       : undefined
   if (raw) {
     pushIfString(parts, 'mp_msg', raw.message)
     pushIfString(parts, 'mp_status', raw.status ?? raw.statusCode)
 
-    // `cause` de MP es un array de { code, description } con el motivo real.
-    const detail = Array.isArray(raw.cause) ? raw.cause : []
+    // El `cause` de MP es un array de { code, description } con el motivo real.
+    // El SDK 3 lo copia a `causes` de su MercadoPagoError; el 2 tiraba el body crudo.
+    const detail = Array.isArray(raw.causes)
+      ? raw.causes
+      : Array.isArray(raw.cause)
+        ? raw.cause
+        : []
     for (const item of detail.slice(0, 3)) {
       if (typeof item !== 'object' || item === null) continue
       const d = item as { code?: unknown; description?: unknown }

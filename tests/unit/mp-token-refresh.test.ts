@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
+import { buildError } from 'mercadopago'
+import { MpGatewayError } from '@/modules/payments/payment.errors'
 import {
   isMpUnauthorized,
   isMpInvalidPayerError,
@@ -219,6 +221,50 @@ describe('describeMpError', () => {
     const out = describeMpError(err)
     expect(out).toContain('tres')
     expect(out).not.toContain('cuatro')
+  })
+})
+
+/**
+ * El SDK 3 ya no tira el body crudo: tira un MercadoPagoError armado por
+ * `buildError`, con el `cause` de MP copiado a `causes` y el status de la
+ * respuesta HTTP. Se arma con el `buildError` real para que el test se rompa si
+ * el SDK vuelve a cambiar la forma.
+ */
+describe('errores del SDK 3 de MercadoPago', () => {
+  it('describeMpError rescata el detalle que el SDK copia a `causes`', () => {
+    const raw = buildError(400, {
+      message: 'Bad Request',
+      error: 'bad_request',
+      cause: [{ code: 2062, description: 'Refund is not available for this payment' }],
+    })
+    const out = describeMpError(new MpGatewayError('Failed to refund MP payment 175029618908', raw))
+    expect(out).toContain('mp_status=400')
+    expect(out).toContain('mp_code=2062')
+    expect(out).toContain('Refund is not available for this payment')
+  })
+
+  it('un 401 sin `status` en el body sigue siendo 401: lo toma de la respuesta HTTP', () => {
+    const raw = buildError(401, { message: 'invalid access token' })
+    expect(isMpUnauthorized(new MpGatewayError('Failed to get MP payment 1', raw))).toBe(true)
+  })
+
+  it('un 403 de permisos no se confunde con un token vencido', () => {
+    const raw = buildError(403, { message: 'At least one policy returned UNAUTHORIZED.' })
+    expect(isMpUnauthorized(new MpGatewayError('Failed to refund MP payment 1', raw))).toBe(false)
+  })
+
+  it('reconoce los dos rechazos de MP que se detectan por mensaje', () => {
+    const cancelled = buildError(400, { message: 'You can not modify a cancelled preapproval.' })
+    expect(
+      isMpAlreadyCancelledPreapprovalError(new MpGatewayError('Failed to cancel', cancelled)),
+    ).toBe(true)
+
+    const payer = buildError(400, {
+      message: 'Both payer and collector must be real or test users',
+    })
+    expect(isMpInvalidPayerError(new MpGatewayError('Failed to create preapproval', payer))).toBe(
+      true,
+    )
   })
 })
 

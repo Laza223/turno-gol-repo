@@ -87,6 +87,13 @@ const DEPOSIT_EXCLUDED_PAYMENT_TYPES = [{ id: 'ticket' }, { id: 'atm' }, { id: '
  * The SDK client already defaults to 8s, but pinning it on the call keeps the
  * bound from silently changing if the client default is ever edited — a slow MP
  * must never stall the conversion path (doc5 NFR: p95 < 500ms).
+ *
+ * Desde el SDK 3 el tope corta hasta que llegan los headers: el `clearTimeout`
+ * corre apenas resuelve el `fetch`, y el body se lee sin tope. Un MP que manda
+ * headers y se cuelga en el body queda esperando al `bodyTimeout` de undici o
+ * a que Vercel corte la función. No se envuelve con un `withTimeout` propio:
+ * cortar el método entero (hay métodos con GET + PUT) puede dar por fallida
+ * una operación que MP sí aplicó.
  */
 export const MP_GET_TIMEOUT_MS = 8000
 

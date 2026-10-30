@@ -38,9 +38,9 @@ runs:
 
     # Pinneada a la versión resuelta en pnpm-lock.yaml (devDependency `supabase`)
     # para no depender de "latest" en un paso crítico.
-    - uses: supabase/setup-cli@v1
+    - uses: supabase/setup-cli@v3
       with:
-        version: 1.226.4
+        version: 2.122.0
 
     # supabase/migrations/ (espejo de src/shared/db/migrations/) se auto-aplica
     # en el primer `start` sobre una DB fresca — y rompe en 008_revokes.sql
@@ -59,7 +59,8 @@ runs:
         # tests/e2e/ — el servicio no tiene un solo consumidor acá.
         start_stack() { supabase start -x studio,imgproxy,edge-runtime,logflare,vector,storage; }
         # El 2026-10-22, durante horas, ningún run levantaba el stack:
-        # - ghcr.io (el registry que fija setup-cli) cortaba con `toomanyrequests`,
+        # - ghcr.io (el que fijaba setup-cli v1; desde la CLI 2.108 elige la CLI)
+        #   cortaba con `toomanyrequests`,
         #   con login o sin él;
         # - public.ecr.aws cortaba a algunos runners con "Data limit exceeded".
         # Por eso se alternan los registries, con espera creciente entre

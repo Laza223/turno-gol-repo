@@ -10,8 +10,8 @@ Pedido de Lazar: llevar a la última versión **estable** todo lo que usa el rep
 | T2  | vitest 5 + @vitest/browser 5, vite 8, eslint 10, happy-dom 21, jest-dom 7, dotenv 18, @types/node 22 | mergeado #518 |
 | T2b | pnpm 12 (sale de la T2: toca CI, Docker y el build de Vercel; va aislado)                            | mergeado #525 |
 | T3  | React 19.3 (ver abajo), date-fns 4, motion 14, @anthropic-ai/sdk 1.x                                 | mergeado #529 |
-| T4  | @sentry/nextjs 11                                                                                    | en curso      |
-| T5  | Supabase CLI 2.x + `supabase/setup-cli` v3 (incluye `db-migrate.yml`, que corre contra prod)         | pendiente     |
+| T4  | @sentry/nextjs 11                                                                                    | mergeado #531 |
+| T5  | Supabase CLI 2.x + `supabase/setup-cli` v3 (incluye `db-migrate.yml`, que corre contra prod)         | en curso      |
 | T6  | mercadopago 3 — OK del dueño antes de prod                                                           | pendiente     |
 | T7  | pg-boss 12 — migra el schema `pgboss` en prod; efecto sobre El Vagón + OK antes                      | pendiente     |
 | T8  | Node 24 LTS (Docker, CI, Vercel, `engines`) — se adelanta a la T3 (ver notas)                        | mergeado #526 |
@@ -100,6 +100,25 @@ Pedido de Lazar: llevar a la última versión **estable** todo lo que usa el rep
   - Web vitals por navegación.
   - Sesiones `page`.
 - **A mirar después del deploy:** el `environment` de los eventos del navegador (Vercel ahora da `production`) y que los source maps se suban en el build de Vercel.
+- **Después del merge (2026-10-30).** Vercel y Railway desplegaron #531 en verde. En el worker, Sentry arrancó (`sentry enabled=true`). En el build de Vercel, `runAfterProductionCompile` (donde el plugin sube los source maps) tardó 16 s, contra 4 s en local sin token. Indica que se subieron, pero no se confirmó en Sentry.
+
+## T5 — notas
+
+- **Supabase CLI 1.226.4 → 2.122.0** (publicada el 2026-10-23; la 3.x solo existe en beta) y `supabase/setup-cli` v1 → v3. Los pines de `db-migrate.yml` y `e2e-stack` siguen fijos a mano: no salen del lock.
+- **Prueba de `db push` sin tocar prod (2026-10-30).** `.claude/settings.json` deniega `supabase db push`, `--db-url` y `link`, así que la corrió Lazar en su terminal, sobre dos Postgres 17 descartables (el major de prod):
+  - La CLI 1.226.4 aplicó las 103 migraciones y registró 103 versiones, como en prod.
+  - Sobre ese historial, la CLI 2.122.0 en `--dry-run` dijo "Remote database is up to date.".
+  - La CLI 2.122.0 aplicó las 103 desde cero, en la otra base, sin errores.
+  - `pg_dump -s` de las dos bases: idénticos (8140 líneas; solo cambia el token aleatorio de `\restrict`).
+  - La CLI 2 exige TLS y no cae a texto plano como la 1: contra un Postgres sin TLS hay que pasar `sslmode=disable`. Prod tiene TLS.
+- **El chequeo final de `db-migrate.yml` nunca podía saltar.** Buscaba `supabase/migrations/[0-9]+`, pero las dos CLI listan las pendientes como `• 2026..._x.sql`, sin ese prefijo. Ahora exige el texto "Remote database is up to date.", así que cualquier otra salida falla.
+- **`db push` con `--linked` y `--yes` explícitos.** La CLI 2 avisa que el destino por defecto va a dejar de ser el proyecto linkeado. Además cambió el prompt de confirmación por uno interactivo, y el paso corre sin TTY.
+- **Lo que se aplica a prod no cambia con este PR:** no toca `supabase/migrations/`, así que no dispara `db-migrate`. Prod tiene registradas exactamente las 103 versiones del repo (`list_migrations` del MCP de Supabase, 2026-10-30). Lo que la prueba local NO cubrió es el camino real `link` + `--linked`: el pooler, TLS y el token. Un `workflow_dispatch` de `db-migrate` con nada pendiente lo prueba sin aplicar nada. Si no se hace, la primera corrida con la CLI 2 va a ser el próximo PR con una migración. Riesgo conocido: en la 2.122.0, `link` pide las API keys y falla si el token tiene scope sin "API Key Secrets" (issue supabase/cli#7165, arreglado después de la 2.122.0). Es una falla segura: el paso queda rojo y no se aplica nada.
+- **El chequeo final muestra la salida si el dry-run falla.** Antes, con `bash -e`, el paso cortaba sin imprimir nada.
+- **`supabase` sale de `allowBuilds`.** El paquete 2.x no tiene scripts de instalación: el binario viene en los paquetes opcionales `@supabase/cli-*`.
+- **Hallazgos previos, fuera de T5:**
+  - Prod corre Postgres 17 (`17.6.1.141`, según el MCP de Supabase), pero `supabase/config.toml` (`major_version = 15`) y el job de integración de CI (`postgres:15-alpine`) corren 15. Las 103 migraciones aplican igual en 17 (probado arriba).
+  - `supabase start -x ...,storage` en `e2e-stack` no excluye nada, ni en la 1.x ni en la 2.x: el nombre válido es `storage-api`. Storage arranca igual en CI y el comentario que lo justifica es falso. Arreglarlo cambia lo que corre en CI: va aparte.
 
 ## T1 — notas de CI
 
@@ -126,3 +145,5 @@ Pedido de Lazar: llevar a la última versión **estable** todo lo que usa el rep
 | 2026-10-29 | sonnet-reconnaissance       | T3: breaking changes de date-fns 4, motion 14 y SDK 1.x contra nuestro uso                                 | ~73k tokens                                            | Nada de código que cambiar por lectura. Riesgo real: la versión de API del SDK (header de auth y `anthropic-version`), que se mira con una llamada real. `MessageParam` pasa a unión por rol; el typecheck pasó                                                                                                                                                                                        |
 | 2026-10-30 | sonnet-reconnaissance       | T4: breaking changes de @sentry/nextjs 11 contra nuestro uso                                               | ~166k tokens                                           | Lo crítico es privacidad: con spans en streaming `beforeSendTransaction` no corre (scrub de trazas muerto) y `dataCollection` por defecto es más permisivo. Las APIs que usamos siguen; `withSentryConfig` ya salía de `@sentry/nextjs/config`                                                                                                                                                         |
 | 2026-10-30 | sonnet-adversarial-reviewer | T4: verificación fresca del diff + prueba empírica del SDK 11 con transport capturador (server y Chromium) | ~333k tokens                                           | GO con reservas, sin 🔴. Server, navegador y dev sin fugas: `token`, `booking_intent`, `email`, auth y cookies tapados o filtrados, y 0 spans fuera de producción. Mutaciones del scrub y del sampler ponen la suite roja. 🟡 test de `dataCollection` parcial → igualdad exacta. 🟡 sampler con una sola fuente → suma `http.target`. 🟢 cabecera `trace.transaction` sin tapar (hoy sin fuga)        |
+| 2026-10-30 | sonnet-reconnaissance       | T5: CLI de Supabase 2.x y setup-cli v3 contra nuestro uso, con foco en `db-migrate.yml`                    | ~72k tokens                                            | La 2.0 no rompe nada; los breaking están en 2.100–2.115 (flags estrictos, `auto_expose_new_tables`, `db push` en batch). Riesgo central: que la CLI 2 lea mal el historial de prod y el texto del chequeo final. Plan de prueba sobre una base descartable                                                                                                                                             |
+| 2026-10-30 | sonnet-adversarial-reviewer | T5: verificación fresca del diff contra el fuente de la CLI v2.122.0 y su binario                          | ~211k tokens                                           | GO con reservas, sin 🔴. `--linked`, `--yes` global, `link --project-ref` y el texto "Remote database is up to date." confirmados en el fuente. 🟡 el chequeo final se tragaba la salida con `bash -e` → corregido. 🟡 el camino `link`/`--linked` real no se probó (→ `workflow_dispatch` con nada pendiente). 🟢 `-x storage` no excluye nada (va aparte); `allowBuilds: supabase` obsoleto → sacado |

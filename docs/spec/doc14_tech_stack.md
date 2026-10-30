@@ -17,7 +17,7 @@
 | Capa | Tecnología | Versión target | ADR |
 |---|---|---|---|
 | **Lenguaje** | TypeScript | 6.x (`package.json`: `^6.0.3`) | — |
-| **Runtime** | Node.js | 20 LTS (`engines.node: >=20.9`) | — |
+| **Runtime** | Node.js | 24 LTS (`engines.node: 24.x`: Vercel lo hace cumplir; pnpm no, porque no hay `engineStrict`; Docker y CI fijan 24 a mano) | — |
 | **Framework fullstack** | Next.js (App Router, Turbopack) | 16.x (`^16.2.11`) | ADR-008 |
 | **UI Library** | React | 19.x (`^19.2.7`) | ADR-008 |
 | **Component Library** | shadcn/ui + Radix UI | Latest | — |

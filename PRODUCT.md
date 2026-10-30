@@ -111,7 +111,7 @@ Todo lo que sigue sale de 8 días de producción (14 al 22 de septiembre de 2026
 
 ### RIVAL v1: construido y prendido el 2026-10-29
 
-> La visión completa de RIVAL (clubes, tablas, la media, la figura, el relato y los complejos) está en `docs/rival/README.md`, habilitada por `docs/decisions/2026-10-29-rival-cultura-de-turnogol.md`. Lo de abajo es lo que v1 tiene hoy.
+> La visión completa de RIVAL (clubes, categorías del jugador, tablas, la figura, el relato y los complejos) está en `docs/rival/README.md`, habilitada por `docs/decisions/2026-10-29-rival-cultura-de-turnogol.md`. Lo de abajo es lo que v1 tiene hoy.
 
 Spec: `docs/superpowers/specs/2026-10-22-rival-v1-design.md`. Decisiones: F4 y `docs/decisions/2026-10-22-rival-v1.md`. Lo esencial:
 

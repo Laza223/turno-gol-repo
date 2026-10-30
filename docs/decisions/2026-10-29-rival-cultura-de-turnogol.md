@@ -21,6 +21,8 @@ En palabras del founder, RIVAL "era pensado tipo una especie de plataforma o par
    - el turno está en la grilla de un complejo TurnoGol, reservado online o cargado por el encargado;
    - el resultado lo confirman los dos capitanes, o el encargado desde la grilla.
 
+   **Enmendado el 2026-10-30 (punto 6 de abajo):** el partido oficial es solo el que se juega **entre dos clubes**. El picado de un grupo de amigos suma solo como partido jugado.
+
    Propuesta para cuando no coinciden: el partido queda en revisión y no cuenta. Los partidos en canchas sin TurnoGol no cuentan: esa es la palanca de "Pedí tu cancha". La ficha de v1 (partidos jugados, que sale de las reservas) no cambia.
 3. **Compiten los clubes y también cada jugador.** Hay un nivel individual, "la media", y una figura del partido. La media sale solo de resultados de partidos oficiales. La mecánica de la figura es una propuesta que se ajusta al diseñar su ola: la votan los del otro equipo y se publica solo quién ganó.
 4. **Se levantan todos los vetos que la visión toca**, cada uno con su condición:
@@ -28,7 +30,7 @@ En palabras del founder, RIVAL "era pensado tipo una especie de plataforma o par
 | Veto hasta hoy (dónde) | Desde esta decisión | Condición que queda |
 |---|---|---|
 | Sin rankings (F4, v1, `CLAUDE.md`, `PRODUCT.md`, ideas) | Tablas de clubes e individuales, "Los fijos de El Vagón" | Solo partidos verificados; aparecer es opt-in; las individuales muestran solo la parte de arriba |
-| Nivel numérico y Elo (ideas) | La media de cada jugador | La mueven solo resultados verificados; es privada por defecto |
+| Nivel numérico y Elo (ideas) | La categoría de cada jugador; "la media" es el número oculto detrás (punto 5 de la sección del 30/10) | La mueven solo resultados verificados; la categoría es privada por defecto y el número no se muestra |
 | Ganados y perdidos entre equipos (ideas) | G/E/P del partido oficial | Un partido en disputa no cuenta |
 | Comparar personas, "top X%" (ideas) | Versus y tablas individuales | Versus solo entre quienes aceptan; nadie ve a otro abajo |
 | Puntajes entre personas y jugador del partido (F4, v1, ideas) | La figura del partido | Solo voto positivo (la mecánica exacta es propuesta). Una nota de una persona a otra sigue vetada |
@@ -57,7 +59,7 @@ La visión no lo necesita:
 ## Lo que no se levanta por decisión, porque es ley
 
 Necesita asesoría antes de construir cada ola:
-- consentimiento por cada finalidad nueva: tabla pública, media pública, figura, Versus;
+- consentimiento por cada finalidad nueva: tabla pública, categoría pública, figura, Versus;
 - **retención:** la promesa de la spec §10 ("hasta 12 meses después de jugado") vale para todo lo guardado con ese texto, y la carrera necesita una política nueva con su consentimiento;
 - votos y media como datos personales (qué se guarda y por cuánto tiempo se define con asesoría; la propuesta de diseño es guardar el resultado, no quién votó a quién);
 - "¿Volverían a jugar?": aunque lo negativo nunca se muestre, es un registro sobre personas alcanzado por el derecho de acceso;
@@ -74,7 +76,7 @@ Los nombres de pantalla (las divisiones, la media, la figurita) se eligen al dis
 
 ## Lo que se cerró después de la revisión (2026-10-30)
 
-Las tres preguntas que dejó abiertas la revisión adversarial, contestadas por el founder, y una idea que sumó ese mismo día (la 4):
+Las tres preguntas que dejó abiertas la revisión adversarial, contestadas por el founder, y lo que sumó ese mismo día (del 4 al 6):
 
 1. **La IA no nombra jugadores.** La tapa, la historia del club, el Diario y el informe del DT hablan de clubes y resultados. Motivo: "mucha exposición".
 2. **Sí hay tabla de goleadores**, con los goles que carga cada capitán para su equipo, que tienen que sumar el resultado confirmado. Es una excepción consciente a "nunca rankings sobre datos auto-reportados": el resultado está verificado y la atribución de cada gol no.
@@ -86,11 +88,24 @@ Las tres preguntas que dejó abiertas la revisión adversarial, contestadas por 
    - afuera del partido no se ve quién juega en cada puesto, solo los puestos que faltan.
 
    Para esa ola enmienda la spec §6, donde la posición la ve solo el organizador, y pide actualizar el clickwrap y el texto de privacidad.
+5. **Las categorías del jugador** ([`docs/rival/categorias.md`](../rival/categorias.md)):
+   - **escala:** Novena → Octava → Séptima → Sexta → Quinta → Cuarta → Reserva → Primera, y arriba la Selección de la zona;
+   - **arranque, "declara y se valida":** 3 preguntas cerradas, techo en Quinta, "?" hasta 10 partidos oficiales; te podés declarar más abajo, nunca arriba del techo;
+   - **visibilidad:** la ve el jugador; pública solo si él quiere;
+   - **descenso blando:** solo al cierre de la temporada y como mucho una categoría;
+   - **estadísticas en tres niveles:** partidos jugados (todos, fijos incluidos), oficial con el club (goles, figura, categoría) y torneos certificados por su organizador (a futuro).
+6. **Grupo no es club** ([`docs/rival/clubes.md`](../rival/clubes.md)):
+   - el fijo de los amigos es para jugar y despejarse: suma solo como partido jugado, sin estadísticas y sin mover la categoría;
+   - el club es un equipo serio que vive en TurnoGol: plantel, títulos, antigüedad, tarjeta de jugador con su club;
+   - la categoría la mueven solo los partidos entre clubes y, a futuro, los torneos;
+   - el partido entre clubes es un evento de la zona: se anuncia, y el ganador y los goleadores (los públicos) se publican;
+   - un jugador está en un club a la vez, y el cambio de club se hace solo en las ventanas del mercado de pases de cada temporada (cómo se maneja el que se va fuera de la ventana es propuesta: ver `clubes.md`);
+   - los títulos salen de los torneos de TurnoGol (a futuro), del campeonato de la temporada de la zona y de la Corona.
 
 ## Lo que no cambia
 
 - RIVAL v1 construido, detrás del flag `rival`, que se prendió el 2026-10-29.
-- La decisión 6 de v1: el nivel del partido (Tranqui, Parejo, Picante) lo declara el organizador. La media es otra cosa, un número por jugador que sale de resultados verificados.
+- La decisión 6 de v1: el nivel del partido (Tranqui, Parejo, Picante) lo declara el organizador. La media es otra cosa: el número oculto detrás de la categoría de cada jugador, que sale de resultados verificados entre clubes.
 - **Levantar un veto no es construir ya.** Cada idea entra con su ola y su puerta de densidad ([`docs/rival/README.md`](../rival/README.md), "Etapas"). Antes de cada ola: spec, asesoría si toca la ley y OK del dueño.
 
 ## Confianza

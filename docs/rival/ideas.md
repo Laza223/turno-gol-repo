@@ -17,34 +17,40 @@ Ninguna fila es un compromiso de construir. Levantar el veto no es construir ya.
 | Idea | Etapa | Puerta | ⚖ | Tamaño | Resorte | Reusa |
 |---|---|---|---|---|---|---|
 | Ficha con G/E/P, clásicos, títulos y figuras | 2 | Ninguna | Consentimiento | S | Progreso | Ficha de v1 (`src/modules/rival`) |
-| La media | 2 | Ninguna (provisoria hasta N partidos) | Consentimiento por finalidad; dato personal | M | Progreso, estatus | Partido oficial |
+| Tu categoría (Novena a Primera), con declaración inicial y "?" ([detalle](categorias.md)) | 2 | Los primeros clubes | Perfil de la persona: consentimiento por finalidad, explicación y revisión | M | Progreso, estatus, identidad | Partido oficial entre clubes |
+| Selección de la zona: "Los 11 de Luján" por temporada | 3 | Tabla de la zona | Solo públicos; consentimiento | S | Estatus, escasez real | La categoría, la Gala |
+| Estadísticas en tres niveles de verdad (jugados, oficial ✓, torneo ✓✓) | 2 | Ninguna | — | S | Progreso, estatus | Reservas, partido oficial |
 | Figura del partido, votada por el rival | 2 | Ninguna | Se guarda el resultado, no quién votó | M | Premio variable, estatus | Partido oficial |
 | La figurita con ediciones | 2 | Ninguna | Imagen propia (art. 53) | M | Colección, estatus | `story-image` |
 | Trayectoria y "Es oficial" (fichaje) | 2 | Ninguna | Retención (carrera) | S | Dotación | `story-image` |
 | Logros con tono de crónica y logros ocultos | 2 | Ninguna | — | M | Premio variable, progreso | Reservas |
-| Versus con un amigo que acepta | 3 | Dos jugadores con partidos oficiales | Consentimiento de los dos | S | Compararse con los cercanos | La media |
+| Versus con un amigo que acepta | 3 | Dos jugadores con partidos oficiales | Consentimiento de los dos | S | Compararse con los cercanos | La categoría |
 | Racha semanal con perdón | 2 | Ninguna | — | S | Miedo a perder | Reservas |
-| Goles en un toque a la mañana siguiente | 2 | Ninguna | — | S | Progreso | Partido oficial |
 
-## 2. NOSOTROS: tu club
+## 2. NOSOTROS: tu grupo y tu club
+
+Grupo no es club: el grupo (el fijo) suma solo partidos jugados; el club compite. Detalle: [`clubes.md`](clubes.md).
 
 | Idea | Etapa | Puerta | ⚖ | Tamaño | Resorte | Reusa |
 |---|---|---|---|---|---|---|
-| Fundá tu club: nombre moderado por IA, escudo de piezas, camiseta, año, local | 2 | Ninguna | Nombre: moderación, denuncia y lista negra | M | Pertenencia, efecto IKEA | Partido del grupo de v1 |
+| Fundá tu club: nombre moderado por IA, escudo de piezas, camiseta, zona, local, fecha de fundación | 2 | Ninguna | Nombre: moderación, denuncia y lista negra | M | Pertenencia, efecto IKEA | — |
+| El plantel: invitación aceptada, un club por jugador, plantel congelado antes del partido | 2 | Ninguna | Aceptar es el consentimiento | M | Pertenencia | Link de v1 por WhatsApp |
+| Mercado de pases: cambio de club solo en ventanas por temporada (propuesta: irse siempre, el que se fue no ficha hasta la próxima) | 3 | Temporadas | — | S | Pertenencia, escasez real | "Es oficial", `story-image` |
 | Dorsales, estrellas arriba del escudo, parche de campeón | 2 | Ninguna | — | S | Pertenencia, estatus | — |
 | Historia del club escrita por la IA | 3 | Un club con temporada jugada | — | S | Dotación | Haiku (bot de WhatsApp) |
-| Vestuario: convocatoria, Pan y queso, tabla del grupo | 2 | Ninguna | — | M | Pertenencia | Partido del grupo de v1 |
+| El grupo: convocatoria y Pan y queso (sin estadísticas: suma solo partidos jugados) | 2 | Ninguna | — | M | Pertenencia | Partido del grupo de v1 |
 | La formación: dos medias canchas con puestos; cada uno toca su lugar, los huecos van al tablón | 2 | Ninguna | Visibilidad nueva (enmienda la spec §6) y texto de privacidad | M | Pertenencia, compromiso público | Partido del grupo, "repetir", `rival_participants`, `players.position`, `seeking_position`, `story-image` |
-| Del turno fijo al club (invitación desde el panel) | 2 | Ninguna | — | S | Pertenencia | `src/modules/abonados` |
+| Armá tu club, el impulso: "que tus partidos cuenten, armá tu club" | 2 | Ninguna | — | S | Pertenencia | `src/modules/abonados` (invitar a los turnos fijos) |
 | Hinchada: seguir a un club | 3 | Clubes públicos | Consentimiento del club | S | Pertenencia | — |
 
 ## 3. ELLOS: la competencia
 
 | Idea | Etapa | Puerta | ⚖ | Tamaño | Resorte | Reusa |
 |---|---|---|---|---|---|---|
-| Partido oficial con doble confirmación | 2 | Ninguna | — | M | Base de todo | Grilla y reservas |
-| Tabla de la zona 3/1/0, por formato y categoría | 3 | 8 clubes activos en la zona (propuesta) | Consentimiento por aparecer | M | Compararse con los cercanos | Zonas de la spec v1 §7 |
-| Tablas individuales (top 10): media, figuras y goleadores | 3 | Igual que la tabla | Consentimiento; solo la parte de arriba. Goleadores con goles del capitán: excepción decidida el 2026-10-30 | M | Estatus | La media, la figura |
+| Partido oficial entre clubes, con doble confirmación | 2 | Ninguna | — | M | Base de todo | Grilla y reservas |
+| Cartelera de la zona: los partidos entre clubes que se vienen, y después ganador y goleadores públicos | 3 | Clubes activos en la zona | Goleadores solo públicos | S | Anticipación, pertenencia | Partido oficial |
+| Tabla de la zona 3/1/0, por formato y división | 3 | 8 clubes activos en la zona (propuesta) | Consentimiento por aparecer | M | Compararse con los cercanos | Zonas de la spec v1 §7 |
+| Tablas individuales (top 10): categorías, figuras y goleadores | 3 | Igual que la tabla | Consentimiento; solo la parte de arriba. Goleadores con goles del capitán: excepción decidida el 2026-10-30 | M | Estatus | La categoría, la figura |
 | Divisiones (Elo oculto del club) | 3 | Igual que la tabla | — | M | Progreso | — |
 | Temporadas con ascenso y descenso blando | 3 | Divisiones | — | M | Progreso, pico y final | — |
 | Clásicos automáticos desde 3 partidos | 2 | Dos clubes que se repiten | — | S | Pertenencia | Partido oficial |

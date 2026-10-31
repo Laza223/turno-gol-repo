@@ -77,7 +77,7 @@ describe('setTenantPlusAction — autorización', () => {
 
     const res = await setTenantPlusAction(TENANT, { op: 'enable', pricePerCourtCents: null })
 
-    expect(res).toMatchObject({ success: true, message: expect.stringContaining('20.000') })
+    expect(res).toMatchObject({ success: true, message: expect.stringContaining('15.000') })
     expect(enablePlus).toHaveBeenCalledTimes(1)
     expect(enablePlus.mock.calls[0]![1]).toEqual({ pricePerCourtCents: null })
   })

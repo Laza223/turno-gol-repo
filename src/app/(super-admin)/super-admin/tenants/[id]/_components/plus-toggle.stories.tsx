@@ -7,7 +7,7 @@ const TENANT = '00000000-0000-4000-8000-000000000001'
 const billed: PlusToggleState = {
   kind: 'billed',
   pricePerCourtCents: null,
-  effectivePerCourtCents: 2_000_000,
+  effectivePerCourtCents: 1_500_000,
   accessUntil: null,
   quote: null,
 }
@@ -21,7 +21,7 @@ const meta = {
     state: {
       kind: 'off',
       pricePerCourtCents: null,
-      effectivePerCourtCents: 2_000_000,
+      effectivePerCourtCents: 1_500_000,
       accessUntil: null,
       quote: null,
     },
@@ -54,7 +54,7 @@ export const Apagado: Story = {
     const canvas = within(canvasElement)
     const input = canvas.getByLabelText('Precio por cancha')
     await expect(input).toHaveValue(null)
-    await expect(input).toHaveAttribute('placeholder', '20.000 (lista)')
+    await expect(input).toHaveAttribute('placeholder', '15.000 (lista)')
     await userEvent.click(canvas.getByRole('button', { name: 'Prender Plus' }))
     await waitFor(() =>
       expect(args.action).toHaveBeenCalledWith(TENANT, {
@@ -123,7 +123,7 @@ export const FacturadoALista: Story = {
   args: { state: billed },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/Facturado: .*20\.000 por cancha \(lista\)/)).toBeInTheDocument()
+    await expect(canvas.getByText(/Facturado: .*15\.000 por cancha \(lista\)/)).toBeInTheDocument()
     await expect(canvas.getByLabelText('Precio por cancha')).toHaveValue(null)
     await userEvent.click(canvas.getByRole('button', { name: 'Actualizar precio' }))
     await waitFor(() =>
@@ -167,7 +167,7 @@ export const ApagarYaLimpiaElCampo: Story = {
     state: {
       kind: 'manual_override',
       pricePerCourtCents: null,
-      effectivePerCourtCents: 2_000_000,
+      effectivePerCourtCents: 1_500_000,
       accessUntil: null,
       quote: null,
     },
@@ -216,7 +216,7 @@ export const CotizacionPendiente: Story = {
     state: {
       kind: 'quote_pending',
       pricePerCourtCents: null,
-      effectivePerCourtCents: 2_000_000,
+      effectivePerCourtCents: 1_500_000,
       accessUntil: null,
       quote: { months: 5, amountCents: 18_000_000 },
     },
@@ -234,7 +234,7 @@ export const PrendidoAMano: Story = {
     state: {
       kind: 'manual_override',
       pricePerCourtCents: null,
-      effectivePerCourtCents: 2_000_000,
+      effectivePerCourtCents: 1_500_000,
       accessUntil: null,
       quote: null,
     },
@@ -272,7 +272,7 @@ export const SinSuscripcionConBotPrendido: Story = {
       kind: 'no_subscription',
       botOn: true,
       pricePerCourtCents: null,
-      effectivePerCourtCents: 2_000_000,
+      effectivePerCourtCents: 1_500_000,
       accessUntil: null,
       quote: null,
     },
@@ -293,7 +293,7 @@ export const SinSuscripcionConBotApagado: Story = {
       kind: 'no_subscription',
       botOn: false,
       pricePerCourtCents: null,
-      effectivePerCourtCents: 2_000_000,
+      effectivePerCourtCents: 1_500_000,
       accessUntil: null,
       quote: null,
     },

@@ -12,7 +12,7 @@ const meta = {
   parameters: { layout: 'padded' },
   args: {
     periodEnd: '2027-03-15T12:00:00.000Z',
-    plus: { enabled: true, perCourtCents: 2_000_000, accessUntil: null, quote: null },
+    plus: { enabled: true, perCourtCents: 1_500_000, accessUntil: null, quote: null },
     disableAction: fn(async () => ({
       success: true as const,
       accessUntil: '2027-03-15T12:00:00.000Z',
@@ -49,7 +49,7 @@ export const BajaAgendada: Story = {
   args: {
     plus: {
       enabled: false,
-      perCourtCents: 2_000_000,
+      perCourtCents: 1_500_000,
       accessUntil: '2027-03-15T12:00:00.000Z',
       quote: null,
     },
@@ -68,7 +68,7 @@ export const CotizacionPendiente: Story = {
   args: {
     plus: {
       enabled: false,
-      perCourtCents: 2_000_000,
+      perCourtCents: 1_500_000,
       accessUntil: null,
       quote: { months: 5, amountCents: 18_000_000 },
     },

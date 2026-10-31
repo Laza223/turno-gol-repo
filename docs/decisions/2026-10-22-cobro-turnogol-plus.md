@@ -11,6 +11,8 @@
 
 **Supera** el precio de Plus del 2026-10-21 ("piloto $20.000; cuando haya más complejos, $15.000"). Ahora la lista es de **$20.000 por cancha por mes para todos**, con un precio especial de **$15.000 para El Vagón** (P3).
 
+**Enmienda 2026-10-31 (decisión del dueño, D11 de `docs/visibilidad-ia/02-estrategia.md`):** la lista de Plus pasa de $20.000 a **$15.000 por cancha por mes** (`PLUS_LIST_PER_COURT_CENTS = 1_500_000`). El precio especial por complejo sigue siendo un override sobre la lista. No cambia ningún preapproval existente: un débito autorizado con la lista vieja sigue con su monto hasta repricearlo a mano, y el reconciliador solo avisa (`subscription.amount_drift`). El texto de abajo queda como estaba al 2026-10-22.
+
 **Ya decidido:** Plus es el override por complejo del flag `whatsapp_bot`, y lo prende TurnoGol desde super-admin (#468). Hasta que entre este cobro, el extra se cobra a mano.
 
 ---

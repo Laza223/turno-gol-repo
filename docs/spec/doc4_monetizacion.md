@@ -80,21 +80,13 @@ facturadas. Esta tabla es ilustrativa, no es la fuente — la fuente es
 > Revisar precios cada 3 meses dado el IPC argentino (ver sección 5: ARS volátil).
 > Revisión de esta decisión: 2026-12-15.
 
-> [!WARNING]
-> **El IVA sigue sin resolverse** (decisión P7, que mantiene D9 de
-> [`2026-09-02-experimento-30-dias.md`](../decisions/2026-09-02-experimento-30-dias.md) abierto).
-> Este documento decía *"Precios NO incluyen IVA — se agrega 21% en el checkout"*, pero **el
-> código no agrega IVA en ningún lado** (barrido completo de `src/`, 2026-08-07; sigue así con el
-> precio lineal). Hoy el checkout cobra el número pelado que devuelve `pricing.ts`.
->
-> Mientras esté abierto, **ningún texto de la aplicación dice "+ IVA" ni "precio final"**: el
-> desglose que ve el dueño muestra el monto y nada más. Eso incluye los textos legales públicos
-> (`/terminos`, `/privacidad`), que describen la regla de cobro sin afirmar nada fiscal.
->
-> Es una decisión de negocio + fiscal, no técnica: queda como **REQUIERE INPUT** hasta que el
-> dueño defina si el precio publicado es final o si el IVA se discrimina — a más tardar antes del
-> primer cobro real. Las menciones de IVA que quedan en §10 y §11 describen ese estado no
-> implementado.
+> [!NOTE]
+> **El precio es final: sin IVA aparte** (decisión del dueño, 2026-10-31:
+> [`2026-10-31-iva-precio-final.md`](../decisions/2026-10-31-iva-precio-final.md); cierra D9 de
+> [`2026-09-02-experimento-30-dias.md`](../decisions/2026-09-02-experimento-30-dias.md)). Este
+> documento decía *"Precios NO incluyen IVA — se agrega 21% en el checkout"*; eso nunca se
+> implementó y quedó descartado. El checkout cobra el número que devuelve `pricing.ts`, sin
+> recargo. Los textos de la aplicación todavía no dicen "precio final": ver REQUIERE INPUT en la decisión.
 
 > [!NOTE]
 > **La web pública `/precios` publica la misma lista de $30.000 por cancha y anual 10%.**
@@ -628,7 +620,7 @@ decisión de producto a tomar explícitamente, no algo que este doc deba dar por
 | Precio lineal por cancha, sin techo | UNA fila activa en `plans` (`slug='turnogol'`, `max_courts=NULL`) con `price_first_court_cents` / `price_extra_court_cents`, y `tenant_subscriptions.billed_courts`. El monto NO es una columna: lo calcula `src/modules/billing/pricing.ts`. Sin middleware que bloquee crear canchas — solo el piso "no facturar por menos de las prendidas". |
 | Pago mensual y anual | Campo `billing_cycle` (monthly/annual) en suscripción. |
 | Descuento 10% anual | `plans.annual_discount_bps` (1000 bps). Se aplica en el cálculo, no como cupón. El preapproval anual cobra el equivalente mensual con descuento × 12. |
-| IVA excluido (se suma en checkout) | **NUNCA se implementó y sigue sin decidirse** (ver el WARNING de §1). No existe `price_without_tax` ni cálculo de IVA en ningún lado del código. |
+| Precio final, sin IVA aparte | Decidido el 2026-10-31 (ver §1). No existe ni se necesita `price_without_tax` ni cálculo de IVA: el monto es el de `pricing.ts`. |
 | 8 estados del tenant | ENUM `tenant_status` con 8 valores. Middleware en todos los endpoints que verifica estado. |
 | SUSPENDED = admin r/o, jugadores siguen | Middleware diferenciado por rol: bloquea escritura admin, permite lectura jugador. |
 | Dunning: 3 reintentos en 5 días | MP lo maneja los reintentos. Nosotros procesamos webhooks de `payment.rejected`. |

@@ -3,7 +3,7 @@
 import { useId } from 'react'
 import * as RadioGroupPrimitive from '@radix-ui/react-radio-group'
 import { Ban, Clock, Repeat, Users, type LucideIcon } from 'lucide-react'
-import { SegmentedControl } from '@/components/ui/segmented-control'
+import { choiceChipClass, SegmentedControl } from '@/components/ui/segmented-control'
 import { cn } from '@/lib/utils'
 import type { BookingKind } from './types'
 
@@ -44,18 +44,21 @@ export function TypePicker({
   const hintId = useId()
   return (
     <>
-      <div className="lg:hidden">
+      {/* El mismo margen de 16 px que el formulario de abajo (12 + el `p-1` del
+          scroll): pegados al borde de la pantalla, los chips no se leían como
+          parte del modal. El `p-1` deja lugar al anillo de foco, que el
+          `overflow-x-auto` recortaría. */}
+      <div className="px-3 pt-2 lg:hidden">
         <SegmentedControl
-          className="flex gap-1.5 overflow-x-auto pb-1"
+          className="flex gap-1.5 overflow-x-auto p-1"
           aria-label="¿Qué vas a agendar?"
           value={value}
           onValueChange={onChange}
+          // 44 px también en tablet: hasta `lg` esto se toca con el dedo.
           itemClassName={(active) =>
             cn(
-              'flex h-11 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer',
-              active
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-border bg-card text-foreground hover:bg-accent',
+              choiceChipClass(active),
+              'flex shrink-0 items-center gap-1.5 whitespace-nowrap md:h-11',
             )
           }
           options={TYPES.map((t) => ({
@@ -85,10 +88,13 @@ export function TypePicker({
             // descripción (si no, el radio se llama "Turno fijo Todas las…").
             aria-label={t.title}
             aria-describedby={`${hintId}-${t.value}`}
+            // Solo la elegida lleva caja (borde `primary` + tinte); las otras son
+            // renglones sin borde: cuatro cajas iguales eran ruido alrededor de la
+            // única que importa.
             className={cn(
-              'group flex items-start gap-2.5 rounded-lg border border-border bg-card px-3 py-2.5 text-left transition-colors hover:bg-accent',
+              'group flex items-start gap-2.5 rounded-lg border border-transparent px-3 py-2.5 text-left transition-colors hover:bg-accent',
               'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
-              'data-[state=checked]:border-primary data-[state=checked]:bg-primary/5 dark:data-[state=checked]:bg-primary/10',
+              'data-[state=checked]:border-primary data-[state=checked]:bg-primary/5 data-[state=checked]:hover:bg-primary/5 dark:data-[state=checked]:bg-primary/10 dark:data-[state=checked]:hover:bg-primary/10',
             )}
           >
             <t.icon

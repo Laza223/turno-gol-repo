@@ -3,7 +3,6 @@
 import { AlertCircle, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { formatArs } from '@/lib/format'
-import { cn } from '@/lib/utils'
 
 /**
  * "Resumen" fijo a la derecha en escritorio (cancha, fecha, horario y
@@ -103,16 +102,13 @@ export function Summary({
                 <dt className="text-muted-foreground">Cobrado ahora</dt>
                 <dd className="tabular-nums text-foreground">{formatArs(collectedCents)}</dd>
               </div>
+              {/* Sin ámbar: un turno que todavía no se jugó y debe se cobra a tiempo
+                  y va sin color (principio 3 de PRODUCT.md). Casi todos se cobran
+                  después del partido, así que con "No cobré" el ámbar estaba
+                  prendido siempre y no avisaba nada. */}
               <div className="flex justify-between gap-2">
                 <dt className="text-muted-foreground">Queda por cobrar</dt>
-                <dd
-                  className={cn(
-                    'font-semibold tabular-nums',
-                    pendingCents && pendingCents > 0
-                      ? 'text-amber-700 dark:text-amber-400'
-                      : 'text-foreground',
-                  )}
-                >
+                <dd className="font-semibold tabular-nums text-foreground">
                   {formatArs(pendingCents ?? 0)}
                 </dd>
               </div>
@@ -124,7 +120,9 @@ export function Summary({
           <Button type="submit" isLoading={isPending} disabled={disabled} className="w-full">
             {primaryLabel}
           </Button>
-          <Button type="button" variant="outline" onClick={onCancel} className="w-full">
+          {/* Sin borde: cerrar ya está en la X y en Escape, y un `outline` de ancho
+              completo pesaba casi como "Reservar". */}
+          <Button type="button" variant="ghost" onClick={onCancel} className="w-full">
             Cancelar
           </Button>
         </div>

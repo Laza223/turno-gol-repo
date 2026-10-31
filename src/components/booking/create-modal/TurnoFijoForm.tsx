@@ -6,24 +6,15 @@ import { toast } from '@/hooks/use-toast'
 import { formatArs, formatDateLong } from '@/lib/format'
 import { Label } from '@/components/ui/label'
 import { MoneyInput } from '@/components/ui/money-input'
-import { SegmentedControl } from '@/components/ui/segmented-control'
+import { choiceChipClass, SegmentedControl } from '@/components/ui/segmented-control'
 import { priceForRange } from '@/lib/booking/pricing'
-import { cn } from '@/lib/utils'
 import { ContactField } from './ContactField'
 import { DateRangeFields } from './DateRangeFields'
 import { Summary } from './Summary'
 import { usePlayerSearch } from './use-player-search'
 import { endTimeOptions, weekdayOf, toDdMm, WEEKDAY_NAMES_ES } from './time-options'
-import { selectClass } from './styles'
+import { readOnlyFieldClass, selectClass } from './styles'
 import type { TypeFormProps } from './types'
-
-const paymentChipClass = (active: boolean) =>
-  cn(
-    'h-11 md:h-9 cursor-pointer rounded-lg border text-xs font-semibold transition-colors',
-    active
-      ? 'border-primary bg-primary text-primary-foreground'
-      : 'border-border bg-card hover:bg-accent',
-  )
 
 /** Turno fijo — abonado semanal (mismo día y hora, todas las semanas). */
 export function TurnoFijoForm({
@@ -141,7 +132,7 @@ export function TurnoFijoForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden lg:flex-row">
-      <div className="flex-1 space-y-5 overflow-y-auto p-4 lg:p-6">
+      <div className="flex-1 space-y-5 overflow-y-auto p-4 lg:space-y-8 lg:p-6">
         <section className="space-y-3">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Quién
@@ -170,9 +161,7 @@ export function TurnoFijoForm({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Empieza</Label>
-              <p className={cn(selectClass, 'flex items-center text-muted-foreground')}>
-                {timeStart}
-              </p>
+              <p className={readOnlyFieldClass}>{timeStart}</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="fijo-end">Hasta</Label>
@@ -252,7 +241,7 @@ export function TurnoFijoForm({
               aria-label="¿Cómo paga?"
               value={paymentMethod}
               onValueChange={setPaymentMethod}
-              itemClassName={paymentChipClass}
+              itemClassName={choiceChipClass}
               options={[
                 { value: 'cash', label: 'Efectivo' },
                 { value: 'transfer', label: 'Transferencia' },

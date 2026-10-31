@@ -7,7 +7,7 @@ import {
   SplitPaymentFields,
   type ChargeLine,
 } from '@/components/admin/SplitPaymentFields'
-import { SegmentedControl } from '@/components/ui/segmented-control'
+import { choiceChipClass, SegmentedControl } from '@/components/ui/segmented-control'
 import { SelectMenu } from '@/components/ui/select-menu'
 import {
   chargeCta,
@@ -100,6 +100,9 @@ export function HoyChargeSection({
   const awaitingRetry = retryTotal !== null
   const disabled = locked || awaitingRetry
   const total = lines.reduce((sum, l) => sum + (l.amountCents ?? 0), 0)
+  // El monto en palabras recién cuando se toca, como en la tarjeta de cada equipo:
+  // precargado repite el "Falta cobrar" que está justo arriba.
+  const touched = lines.length > 1 || lines[0]?.amountCents !== pending
 
   return (
     <section className="flex flex-col gap-3">
@@ -112,13 +115,16 @@ export function HoyChargeSection({
             onValueChange={setPicked}
             disabled={disabled}
             options={tabs.available.map((t) => ({ value: t, label: TAB_LABEL[t] }))}
-            className="flex gap-1 rounded-xl border border-border bg-card p-1"
+            className="flex gap-1.5"
+            // Lo elegido con borde y tinte, no en verde sólido: el verde es del
+            // botón que cobra, y con la pestaña también en verde "Por equipo"
+            // tenía tres losas gritando a la vez.
             itemClassName={(active) =>
               cn(
+                choiceChipClass(active),
                 // `px-1` en el teléfono: con `px-2`, a 375 px "Por jugador" se partía
                 // en dos renglones dentro de un segmento de 94 px.
-                'h-10 flex-1 rounded-lg px-1 text-sm font-semibold transition-colors sm:px-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60',
-                active ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-accent',
+                'flex-1 px-1 text-sm sm:px-2',
               )
             }
           />
@@ -134,6 +140,7 @@ export function HoyChargeSection({
               maxLines={MAX_LINES}
               disabled={disabled}
               idPrefix="hoy-cobro"
+              showWords={touched}
             />
           </div>
           {!awaitingRetry && (
@@ -427,13 +434,15 @@ function PlayersTab({
           onChange={(v) => onMethodChange(v as MethodKey)}
           options={PAYMENT_METHOD_OPTIONS}
           disabled={disabled}
-          className="h-14 w-36 shrink-0"
+          // La misma superficie y alto que el resto del modal: con `bg-background`
+          // y 56 px era un hueco oscuro más grande que el botón de "Todo junto".
+          className="h-12 w-36 shrink-0 rounded-lg bg-card"
         />
         <button
           type="button"
           onClick={() => onPartialCharge(amount, method)}
           disabled={disabled || amount <= 0}
-          className={cn(PRIMARY_BUTTON, 'h-14 text-base')}
+          className={cn(PRIMARY_BUTTON, 'h-12 text-base')}
         >
           {isPending ? 'Procesando…' : `Pagó uno — ${formatArs(amount)}`}
         </button>

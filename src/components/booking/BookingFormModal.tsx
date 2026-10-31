@@ -150,7 +150,7 @@ export function BookingFormModal({
         >
           <div className="flex items-center justify-between gap-3 border-b border-border p-4 lg:px-6">
             <div className="min-w-0">
-              <Dialog.Title className="text-lg font-bold tracking-tight text-foreground">
+              <Dialog.Title className="text-lg font-semibold tracking-tight text-foreground">
                 Nueva reserva
               </Dialog.Title>
               <Dialog.Description className="truncate text-sm text-muted-foreground">

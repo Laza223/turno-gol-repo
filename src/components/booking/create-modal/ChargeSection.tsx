@@ -2,9 +2,8 @@
 
 import { useEffect } from 'react'
 import { MoneyInput } from '@/components/ui/money-input'
-import { SegmentedControl } from '@/components/ui/segmented-control'
+import { choiceChipClass, SegmentedControl } from '@/components/ui/segmented-control'
 import { PaymentMethodChips } from '@/components/ui/payment-method-chips'
-import { cn } from '@/lib/utils'
 import type { ChargeChoice, DepositMethod } from './types'
 
 const CHOICES: Array<{ value: ChargeChoice; label: string }> = [
@@ -12,14 +11,6 @@ const CHOICES: Array<{ value: ChargeChoice; label: string }> = [
   { value: 'partial', label: 'Una parte' },
   { value: 'full', label: 'Todo' },
 ]
-
-const chipClass = (active: boolean) =>
-  cn(
-    'h-11 md:h-9 cursor-pointer rounded-lg border text-xs font-semibold transition-colors',
-    active
-      ? 'border-primary bg-primary text-primary-foreground'
-      : 'border-border bg-card hover:bg-accent',
-  )
 
 /**
  * "¿Cobraste algo ahora?" — No cobré (default) / Una parte / Todo, con método
@@ -81,11 +72,16 @@ export function ChargeSection({
         aria-label="¿Cobraste algo ahora?"
         value={choice}
         onValueChange={handleChoice}
-        itemClassName={chipClass}
+        // El mismo chip que el método de pago de abajo: lo elegido es un estado,
+        // no una acción, y el verde sólido es del botón "Reservar".
+        itemClassName={choiceChipClass}
         options={CHOICES}
       />
       {choice !== 'none' && (
-        <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-3">
+        // Sin caja propia: el método y el monto quedan pegados a la elección por
+        // cercanía. Una caja más adentro de la columna era ruido, y su padding
+        // dejaba el monto debajo del pliegue en la notebook del mostrador.
+        <div className="space-y-2">
           <PaymentMethodChips<DepositMethod>
             className="grid grid-cols-4 gap-1.5"
             aria-label="Método de cobro"

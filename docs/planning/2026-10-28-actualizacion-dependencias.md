@@ -13,7 +13,7 @@ Pedido de Lazar: llevar a la última versión **estable** todo lo que usa el rep
 | T4  | @sentry/nextjs 11                                                                                    | mergeado #531 |
 | T5  | Supabase CLI 2.x + `supabase/setup-cli` v3 (incluye `db-migrate.yml`, que corre contra prod)         | mergeado #532 |
 | T6  | mercadopago 3 — OK del dueño antes de prod                                                           | mergeado #533 |
-| T7  | pg-boss 12 — migra el schema `pgboss` en prod; efecto sobre El Vagón + OK antes                      | T7a #535 ✓ · T7b en curso |
+| T7  | pg-boss 12 — migra el schema `pgboss` en prod; efecto sobre El Vagón + OK antes                      | mergeado #535 + #538 |
 | T8  | Node 24 LTS (Docker, CI, Vercel, `engines`) — se adelanta a la T3 (ver notas)                        | mergeado #526 |
 
 ## Bloqueado
@@ -237,6 +237,36 @@ Pedido de Lazar: llevar a la última versión **estable** todo lo que usa el rep
   - Un job que esté `active` en la 9 cuando muere el worker viejo no se mueve. El SIGTERM da 5 s de graceful. Si es un webhook de MP, lo cubren `processed_webhooks` y `reconcile-pending-payments`.
   - `whatsapp-turn` con `localConcurrency: 4` abre 4 pollers. Igual el neto de pollers baja, porque la DLQ pasa de 21 pollers `onComplete` a 1.
   - Una base local que no corrió la 104 no levanta pg-boss: se arregla con `pnpm supabase:reset` o aplicando la 104.
+- **Merge de T7b:** [#538](https://github.com/Laza223/turno-gol-repo/pull/538) se mergeó el 2026-10-30 a las 22:46 UTC (19:46 ART, dentro del pico) como `76b98ed1`. Atrás entraron #537, #539 y #540, así que el worker se redeployó 4 veces en una hora, todas con la 12.
+- **Después del merge (chequeo del 2026-10-30, 23:50–23:57 UTC):**
+  - **Deploys:** Vercel `success` y Railway `success` para `76b98ed1`. El deploy activo del worker (`5177990c`, #540) está en SUCCESS.
+  - **Log del worker:** 22 líneas `registered queue` (una es la de `(cron sweep)`) y `health server listening` en el puerto 8080. Desde el merge no hay ningún `pg-boss error`, ni una pasada fallida del puente, ni un `job.failed`.
+  - **Bot:** el rescate reencoló 1 chat que quedó en la ventana del deploy (22:49:11). Se contestó a las 22:49:30. Desde ahí, 6 turnos de El Vagón procesados: 4 `replied`, 1 `nothing_pending` y 1 `paused`.
+  - **`/api/status`:** 200 tres veces, en 0,19 a 0,44 s. `health.ping.ok` cada 5 min.
+  - **Prod (SQL de solo lectura):**
+    - `pgboss_v12` está en la versión 46 de schema, con 25 colas: las 24 del registro más la interna `__pgboss__send-it`.
+    - 24 colas tienen `retryLimit 0` y `whatsapp-turn` está en `stately`. Hay 18 schedules.
+    - Completados desde el merge: 14 `health-ping`, 5 `whatsapp-turn`, 4 `push-send`, 67 `send-email` y los barridos de cada cron.
+    - En las últimas 2 h no hay ningún job `created`, `retry`, `active` ni `failed` en la 12.
+  - **Schema viejo:** a `pgboss.job` solo le quedan sus dos jobs internos (`__pgboss__cron` y `__pgboss__maintenance`, en `created`), que son inertes. No quedó ningún job con datos. El puente no logueó movimientos: cuando arrancó, ya no había pendientes de datos en la 9.
+  - **Observado y preexistente, no es de T7:** el worker loguea `SentryPropagator: Injecting trace data of a different context…` con nivel error en cada turno del bot. Ya salía desde las 15:20 UTC con la 9 (después de T4).
+- **Pendiente:** el PR de limpieza desde el **2026-11-06**, que saca `legacy-v9-drain.ts` y hace `DROP SCHEMA pgboss` en una migración nueva.
+
+## Cierre del esfuerzo (2026-10-30)
+
+Las nueve tandas (T1–T8 con T2b) están mergeadas y verificadas en prod. Lo que queda:
+
+- **Bloqueado:** TypeScript 7, hasta que typescript-eslint lo soporte (ver "Bloqueado").
+- **Skills:** `pnpm dlx skills update -p -y` sobre main trajo una versión nueva de `agent-browser`, que saca `Bash(npx agent-browser:*)` de `allowed-tools`. Va en el PR de cierre, con su `computedHash` en `skills-lock.json`. Las otras dos estaban al día.
+- **Árbol principal:** falta correr ahí el mismo comando, para refrescar las copias gitignoreadas de `.claude/skills/`. No se corrió, porque está en la rama de otra sesión (`feat/panel-mobile-denso`) con trabajo sin commitear. Va cuando esa rama esté limpia. `pnpm -C <dir>` no sirve: el CLI de `skills` usa el directorio del proceso, no el de pnpm.
+- **MCP de Sentry:** lo re-autentica Lazar con `/mcp`.
+- **Follow-ups, cada uno como tarea aparte:**
+  - Postgres local y de CI a 17, como prod.
+  - En la lista de `supabase start -x` de `.github/actions/e2e-stack/action.yml:60`, `storage` pasa a `storage-api` (T5: `storage` no excluye nada).
+  - El flake de `players_email_key` por los emails de faker en `tests/helpers/tenant.ts:143`.
+  - Los 9 tests unit que importan `@/app` dentro del `it`.
+  - El PR que arregla `label-content-name-mismatch` en 34 componentes y vuelve a prender la regla (T1).
+  - La limpieza de pg-boss 9 del 2026-11-06 (ver T7).
 
 ## T1 — notas de CI
 
@@ -273,3 +303,4 @@ Pedido de Lazar: llevar a la última versión **estable** todo lo que usa el rep
 | 2026-10-30 | sonnet-implementer          | T7: pg-boss 12.38.0 en `pgboss_v12` con la 104, colas explícitas, puente desde la 9 y tests              | ~215k tokens                                           | Juez y unit verdes. 24 colas con `retryLimit: 0` por defecto, `whatsapp-turn` con `stately` y DLQ, profundidades por SQL. Sacó el override de `uuid`. No corrió integración ni el ensayo con la imagen real (los corrió el orquestador). |
 | 2026-10-30 | sonnet-adversarial-reviewer | T7: verificación fresca del diff con pg-boss 12 real, PgBouncer en modo transacción y mutaciones        | ~254k tokens                                           | GO con reservas, sin 🔴. 24 colas con `retryLimit 0` y `expire 900`; el puente mueve los 6 casos sembrados y atrapa las mutaciones de orden y filtro; productor sin sentencias en reposo. 🟡 timer del puente sin test → 5 tests. 🟡 runbooks contra `pgboss` → `pgboss_v12`. 🟡 respetar el split en dos PRs. No corrió `pnpm build` (lo corre el orquestador) |
 | 2026-10-30 | sonnet-release-verifier     | T7: gate final, separado en T7a (la 104) y T7b (el resto)                                                  | ~66k tokens                                            | T7a GO: espejo idéntico, idempotente (aplicada dos veces) e inerte sobre main. T7b GO con reservas, sin 🔴: juez y 7509 tests verdes, lock congelado, sin la 104 la 12 no arranca (`schema "pgboss_v12" does not exist`), rollback cuadra con `plans.js`. 🟡 rama atrás de #534 → fast-forward y juez de nuevo. No re-corrió integración ni build |
+| 2026-10-30 | sonnet-release-verifier     | Cierre del esfuerzo: juez sobre main integrado, PRs mergeados, versiones, follow-ups y coherencia del ledger | ~42k tokens                                            | GO con reservas, sin 🔴. Juez verde, `pnpm test` 7546 en main (831b6078), los 10 PRs en MERGED, versiones y lock coinciden con el ledger, y los follow-ups apuntan a código que existe. 🟡 ledger y skill `agent-browser` sin commitear → PR de cierre. 🟡 el camino `link`/`--linked` de `db-migrate` sigue sin `workflow_dispatch` en vacío (falla segura) |

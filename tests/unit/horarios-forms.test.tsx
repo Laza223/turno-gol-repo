@@ -36,6 +36,7 @@ vi.mock('react-dom', async (importOriginal) => {
 })
 
 import { AddClosedDateForm } from '@/app/(admin)/settings/horarios/AddClosedDateForm'
+import HorariosPage from '@/app/(admin)/settings/horarios/page'
 import { HorariosForm } from '@/app/(admin)/settings/horarios/HorariosForm'
 import { RemoveClosedDateForm } from '@/app/(admin)/settings/horarios/RemoveClosedDateForm'
 import { requireAdminStaff } from '@/modules/staff/guards'
@@ -167,7 +168,6 @@ describe('HorariosPage — minDate en ART (regresión 05-horarios-mindate-utc)',
       },
     } as never)
 
-    const HorariosPage = (await import('@/app/(admin)/settings/horarios/page')).default
     render(await HorariosPage())
 
     // El cierre de HOY (ART 06-12) sigue en la lista — con el bug, minDate

@@ -102,7 +102,7 @@ Detalle de los jobs de CI:
 
 - **Lint & Types**: `pnpm lint` + `pnpm typecheck`.
 - **Unit Tests**: `pnpm test` (Vitest, `tests/unit`).
-- **Integration & Isolation (BLOCKING)**: levanta un service container `postgres:15-alpine`, crea los roles
+- **Integration & Isolation (BLOCKING)**: levanta un service container `postgres:17-alpine`, crea los roles
   (`turnogol_app`, `authenticated`), aplica **todas** las migraciones de `src/shared/db/migrations/[0-9]*.sql`
   con `psql`, y corre `pnpm test:integration` + `pnpm test:isolation`. Si una migración rompe, el job falla
   (o sea: el CI ya verifica que las migraciones aplican limpio). Los tests de aislamiento son **bloqueantes**.

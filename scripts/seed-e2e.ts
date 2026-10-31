@@ -14,7 +14,7 @@ import { deleteFreshAdminTenants } from '../tests/e2e/_helpers/fresh-tenant-clea
 // down for turnogol_app (audit immutability) — the running app must never
 // delete those rows, but resetting E2E fixtures between runs needs to. So,
 // like a migration, it connects with the well-known local/CI Postgres
-// superuser (same default CI's postgres:15-alpine service and local
+// superuser (same default CI's postgres:17-alpine service and local
 // Supabase both use on :54322 — see .github/workflows/ci.yml) instead of
 // DATABASE_URL/getSql() — production code never takes this path.
 const SEED_ADMIN_URL = 'postgres://postgres:postgres@127.0.0.1:54322/postgres'

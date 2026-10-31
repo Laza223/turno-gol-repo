@@ -2,11 +2,32 @@
 
 import type { ReactNode } from 'react'
 import * as RadioGroupPrimitive from '@radix-ui/react-radio-group'
+import { cn } from '@/lib/utils'
 import { RADIX_DETACHED_FORM_ID } from './radix-form-detach'
 
 export type SegmentedControlOption<T extends string> = {
   value: T
   label: ReactNode
+}
+
+/**
+ * El look estándar de "una opción elegida entre pocas" en el panel (DESIGN.md
+ * › Chips, el de `RadioChip`): borde `border`; la elegida pasa a borde
+ * `primary` + fondo `primary` al 5% (10% en oscuro). El tinte es tan sutil que
+ * `text-foreground` sigue en AA en los dos estados. Nunca relleno `primary`
+ * sólido: ese verde es del botón que cobra o confirma (The One Voice Rule), y
+ * con los dos en verde la vista tenía dos o tres losas gritando a la vez.
+ * El peso es la pista que no es color (semibold la elegida, medium el resto):
+ * el estado nunca se dice solo con color (PRODUCT.md). Cada caller ajusta tamaño
+ * con `cn(choiceChipClass(active), '…')`; el peso no se pisa.
+ */
+export function choiceChipClass(active: boolean): string {
+  return cn(
+    'h-11 md:h-10 cursor-pointer rounded-lg border px-3 text-xs transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60',
+    active
+      ? 'border-primary bg-primary/5 font-semibold text-foreground dark:bg-primary/10'
+      : 'border-border bg-card font-medium text-foreground hover:bg-accent',
+  )
 }
 
 /**
@@ -18,13 +39,11 @@ export type SegmentedControlOption<T extends string> = {
  * `role="radiogroup"` + `role="radio"` + `aria-checked` + roving tabindex +
  * flechas de teclado gratis, sin reimplementar nada a mano.
  *
- * Deliberadamente SIN estilo propio: cada uso de este patrón en el repo ya
- * tenía su propia identidad visual (pill grande de `ReservasPolicyForm`,
- * chip chico de `DepositFieldset`, chip de `CompleteBookingDialog`) y
- * uniformarlos hubiera sido un rediseño no pedido por el hallazgo — que es
- * de accesibilidad, no de UI. `itemClassName(active)` devuelve las clases
- * exactas que el caller ya tenía; `RadioGroupPrimitive.Item` renderiza un
- * `<button type="button">`, así que el swap es 1:1 con el `<button>` de antes.
+ * El estilo lo pone el caller con `itemClassName(active)`: algunos usos
+ * tienen identidad propia (pill grande de `ReservasPolicyForm`, chip chico de
+ * `DepositFieldset`). Lo que es "elegir una opción" usa `choiceChipClass`.
+ * `RadioGroupPrimitive.Item` renderiza un `<button type="button">`, así que el
+ * swap es 1:1 con el `<button>` de antes.
  */
 export function SegmentedControl<T extends string>({
   value,

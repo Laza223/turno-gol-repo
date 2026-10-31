@@ -6,9 +6,8 @@ import { toast } from '@/hooks/use-toast'
 import { formatArs, formatDateLong } from '@/lib/format'
 import { Label } from '@/components/ui/label'
 import { MoneyInput } from '@/components/ui/money-input'
-import { SegmentedControl } from '@/components/ui/segmented-control'
+import { choiceChipClass, SegmentedControl } from '@/components/ui/segmented-control'
 import { priceForRange } from '@/lib/booking/pricing'
-import { cn } from '@/lib/utils'
 import { ContactField } from './ContactField'
 import { ChargeSection } from './ChargeSection'
 import { DateRangeFields } from './DateRangeFields'
@@ -16,7 +15,7 @@ import { Summary } from './Summary'
 import { usePlayerSearch } from './use-player-search'
 import { useSlotAvailability } from './use-slot-availability'
 import { durationHours, endTimeOptions, toDdMm, weekdayOf, WEEKDAY_NAMES_ES } from './time-options'
-import { selectClass } from './styles'
+import { readOnlyFieldClass, selectClass } from './styles'
 import type { ChargeChoice, DepositMethod, TypeFormProps } from './types'
 
 const EVENT_CHIPS = ['Escuelita', 'Torneo', 'Cumpleaños', 'Clase', 'Otro'] as const
@@ -250,7 +249,7 @@ export function EventoForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden lg:flex-row">
-      <div className="flex-1 space-y-5 overflow-y-auto p-4 lg:p-6">
+      <div className="flex-1 space-y-5 overflow-y-auto p-4 lg:space-y-8 lg:p-6">
         <section className="space-y-3">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Repetición
@@ -260,14 +259,7 @@ export function EventoForm({
             aria-label="Repetición del evento"
             value={repeatMode}
             onValueChange={handleRepeatModeChange}
-            itemClassName={(active) =>
-              cn(
-                'h-11 md:h-9 cursor-pointer rounded-lg border text-xs font-semibold transition-colors',
-                active
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border bg-card hover:bg-accent',
-              )
-            }
+            itemClassName={choiceChipClass}
             options={[
               { value: 'once', label: 'Una vez' },
               { value: 'weekly', label: 'Cada semana' },
@@ -285,12 +277,9 @@ export function EventoForm({
                 key={chip}
                 type="button"
                 onClick={() => pickChip(chip)}
-                className={cn(
-                  'h-11 md:h-9 cursor-pointer rounded-lg border px-3 text-xs font-medium transition-colors',
-                  name === chip
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground',
-                )}
+                // El mismo chip que "Repetición" y "Precio": un solo lenguaje de
+                // "elegido" en todo el modal.
+                className={choiceChipClass(name === chip)}
               >
                 {chip}
               </button>
@@ -322,9 +311,7 @@ export function EventoForm({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Empieza</Label>
-              <p className={cn(selectClass, 'flex items-center text-muted-foreground')}>
-                {timeStart}
-              </p>
+              <p className={readOnlyFieldClass}>{timeStart}</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="evento-end">Hasta</Label>
@@ -358,14 +345,7 @@ export function EventoForm({
             aria-label="Precio del evento"
             value={priceMode}
             onValueChange={handlePriceModeChange}
-            itemClassName={(active) =>
-              cn(
-                'h-11 md:h-9 cursor-pointer rounded-lg border text-xs font-semibold transition-colors',
-                active
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border bg-card hover:bg-accent',
-              )
-            }
+            itemClassName={choiceChipClass}
             options={[
               { value: 'priced', label: 'Tiene precio' },
               { value: 'free', label: 'No se cobra' },

@@ -6,10 +6,10 @@ import { toast } from '@/hooks/use-toast'
 import { formatDateLong } from '@/lib/format'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { cn } from '@/lib/utils'
+import { choiceChipClass } from '@/components/ui/segmented-control'
 import { Summary } from './Summary'
 import { durationHours, endTimeOptions } from './time-options'
-import { selectClass } from './styles'
+import { readOnlyFieldClass, selectClass } from './styles'
 import type { TypeFormProps } from './types'
 
 const REASONS = ['Mantenimiento', 'Cancha cerrada', 'Otro'] as const
@@ -88,7 +88,7 @@ export function BloqueoForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden lg:flex-row">
-      <div className="flex-1 space-y-5 overflow-y-auto p-4 lg:p-6">
+      <div className="flex-1 space-y-5 overflow-y-auto p-4 lg:space-y-8 lg:p-6">
         <section className="space-y-3">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Motivo
@@ -99,12 +99,9 @@ export function BloqueoForm({
                 key={r}
                 type="button"
                 onClick={() => pickReason(r)}
-                className={cn(
-                  'h-11 md:h-9 cursor-pointer rounded-lg border px-3 text-xs font-medium transition-colors',
-                  reason === r
-                    ? 'border-primary bg-primary/10 text-primary'
-                    : 'border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground',
-                )}
+                // El mismo chip que "Repetición" y "Precio": un solo lenguaje de
+                // "elegido" en todo el modal.
+                className={choiceChipClass(reason === r)}
               >
                 {r}
               </button>
@@ -132,9 +129,7 @@ export function BloqueoForm({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Empieza</Label>
-              <p className={cn(selectClass, 'flex items-center text-muted-foreground')}>
-                {timeStart}
-              </p>
+              <p className={readOnlyFieldClass}>{timeStart}</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="bloqueo-end">Hasta</Label>

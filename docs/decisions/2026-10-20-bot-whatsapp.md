@@ -78,6 +78,7 @@ Se decide **a sabiendas** de dos cosas:
     - Sin cargo de alta, en pesos y con ajuste a mano.
     - Sin permanencia.
     - Anual: ×12 con 10% off.
+  - **Enmienda 2026-10-31:** la lista de Plus pasa a **$15.000 por cancha** (D11, ver [`2026-10-22-cobro-turnogol-plus.md`](2026-10-22-cobro-turnogol-plus.md)).
   - El cobro automático se implementa después del cambio a $30.000 por cancha, porque toca `pricing.ts` y el preapproval. Hasta entonces se cobra a mano.
 - **Costos al 2026-10-21** (dólar tarjeta $2.008,50):
   - **TurnoGol paga**:

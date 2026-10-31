@@ -36,7 +36,7 @@ import type { Sql } from 'postgres'
  * Cobro de TurnoGol Plus, Fase B: acreditar el pago único del alta de Plus en un
  * anual ya pago (P7) y los avisos por mail al dueño de TurnoGol (P11).
  *
- * Montos a mano (plan $30.000 por cancha, Plus de lista $20.000, anual 10% sobre
+ * Montos a mano (plan $30.000 por cancha, Plus de lista $15.000, anual 10% sobre
  * la suma, 5 canchas): un test que recalcula con la fórmula del código no prueba
  * nada. Las fechas salen de un `NOW` inyectado.
  */
@@ -44,14 +44,14 @@ import type { Sql } from 'postgres'
 const NOW = new Date('2027-03-10T12:00:00Z')
 /** 5 meses y 12 días por delante: se cobran 5. */
 const PERIOD_END = addDays(addMonths(NOW, 5), 12)
-/** Plus especial de El Vagón: $15.000 por cancha. */
-const SPECIAL_PRICE = 1_500_000
-/** 5 meses x $15.000 x 5 canchas x 0,9. */
-const QUOTE_CENTS = 33_750_000
+/** Plus especial de prueba: $12.000 por cancha (distinto de la lista, a propósito). */
+const SPECIAL_PRICE = 1_200_000
+/** 5 meses x $12.000 x 5 canchas x 0,9. */
+const QUOTE_CENTS = 27_000_000
+/** (150.000 + 5 x 12.000) x 0,9 x 12. */
+const ANNUAL_WITH_SPECIAL = 226_800_000
 /** (150.000 + 5 x 15.000) x 0,9 x 12. */
-const ANNUAL_WITH_SPECIAL = 243_000_000
-/** (150.000 + 5 x 20.000) x 0,9 x 12. */
-const ANNUAL_WITH_LIST = 270_000_000
+const ANNUAL_WITH_LIST = 243_000_000
 const PAYMENT = 'mp-pay-100'
 
 type Sent = Parameters<EmailProvider['send']>[0]
@@ -249,11 +249,11 @@ describe('acreditación del pago anual (AN2, AN3)', () => {
 
   it('AN2: sin precio especial el débito anual usa la lista de Plus', async () => {
     const t = await seed({ quote: false })
-    // Cotización a precio de lista (price NULL): 5 x 5 x 20.000 x 0,9 = 450.000.
+    // Cotización a precio de lista (price NULL): 5 x 5 x 15.000 x 0,9 = 337.500.
     await enablePlus(t, { pricePerCourtCents: null }, actor, gateway, NOW)
     gateway.updatePreapprovalCalls.length = 0
 
-    await pay(t, { amount: 45_000_000 })
+    await pay(t, { amount: 33_750_000 })
 
     expect(gateway.updatePreapprovalCalls[0]?.amount).toBe(ANNUAL_WITH_LIST)
   })
@@ -571,7 +571,7 @@ describe('drift del débito con Plus (mail)', () => {
     expect(sent[0]?.subject).toBe(
       'Complejo Drift: el débito de MercadoPago no refleja TurnoGol Plus',
     )
-    expect(sent[0]?.text).toContain('250.000')
+    expect(sent[0]?.text).toContain('225.000')
     expect(sent[0]?.text).toContain('100.000')
   })
 
@@ -649,14 +649,14 @@ describe('la cotización está atada a su período y a su momento (F2, F3)', () 
 
     const res = await enablePlus(t, { pricePerCourtCents: SPECIAL_PRICE }, actor, gateway, later)
 
-    // 11 meses completos hasta newEnd x (5 x $15.000 x 0,9 = $67.500)
-    expect(res).toEqual({ kind: 'quote_pending', months: 11, amountCents: 74_250_000 })
+    // 11 meses completos hasta newEnd x (5 x $12.000 x 0,9 = $54.000)
+    expect(res).toEqual({ kind: 'quote_pending', months: 11, amountCents: 59_400_000 })
     const row = await subRow(t)
     expect(new Date(row.plus_prorate_period_end!)).toEqual(newEnd)
     expect(new Date(row.plus_prorate_quoted_at!)).toEqual(later)
     expect(await auditCount(t, 'plus.quote_created')).toBe(2)
     const state = await withTenantContext(t, (tx) => getSubscriptionState(t, tx))
-    expect(state.plus.quote).toEqual({ months: 11, amountCents: 74_250_000 })
+    expect(state.plus.quote).toEqual({ months: 11, amountCents: 59_400_000 })
   })
 
   it('F3: pago aprobado de hace un año con la misma referencia y monto: el webhook no acredita y avisa', async () => {

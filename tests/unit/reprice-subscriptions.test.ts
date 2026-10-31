@@ -175,13 +175,13 @@ describe('repricing operacional', () => {
     expect(deps.recordAudit).toHaveBeenCalledTimes(1)
   })
   // RP1: el script solo BAJA precios. Un complejo con Plus cuyo debito todavia no
-  // lo lleva (remoto 16.700.000 < objetivo con Plus 5 x (3.000.000 + 2.000.000)
-  // = 25.000.000) no se sube en silencio: queda en "Caso requiere revision".
+  // lo lleva (remoto 16.700.000 < objetivo con Plus 5 x (3.000.000 + 1.500.000)
+  // = 22.500.000) no se sube en silencio: queda en "Caso requiere revision".
   it('con Plus prendido el objetivo lo incluye y un debito sin Plus no se sube', async () => {
     const { local, deps } = setup()
     Object.assign(local, { plusEnabled: true })
     const manifest = await buildManifest([local], deps.gateway)
-    expect(manifest.entries[0].targetCents).toBe(25_000_000)
+    expect(manifest.entries[0].targetCents).toBe(22_500_000)
     await expect(applyManifest(manifest, deps)).rejects.toThrow('Caso requiere revisión')
     expect(deps.gateway.updatePreapprovalAmount).not.toHaveBeenCalled()
   })

@@ -196,7 +196,7 @@ describe('runDunningSweep — downgrade aplicado actualiza el monto recurrente e
 
   // CB1 — TurnoGol Plus: este barrido es el ÚNICO lugar que mueve el monto de una
   // suscripción que ya cobra. Si no lleva Plus, le saca el Asistente al débito en
-  // silencio. Montos a mano: plan 5 canchas $167.000 + Plus 5 x $20.000 = $267.000.
+  // silencio. Montos a mano: plan 5 canchas $167.000 + Plus 5 x $15.000 = $242.000.
   describe('con TurnoGol Plus en el débito', () => {
     const sweepWith = async (row: Record<string, unknown>) => {
       sqlMock = makeSqlMock([
@@ -221,21 +221,21 @@ describe('runDunningSweep — downgrade aplicado actualiza el monto recurrente e
       })
 
       expect(updatePreapprovalAmount).toHaveBeenCalledTimes(1)
-      expect(updatePreapprovalAmount).toHaveBeenCalledWith('mp-sub-1', 26_700_000, {
+      expect(updatePreapprovalAmount).toHaveBeenCalledWith('mp-sub-1', 24_200_000, {
         reason: 'TurnoGol — 5 canchas + Asistente de WhatsApp (mensual)',
       })
     })
 
-    it('mensual, precio especial $15.000: usa el especial', async () => {
+    it('mensual, precio especial $12.000: usa el especial', async () => {
       await sweepWith({
         mp_subscription_id: 'mp-sub-1',
         billing_cycle: 'monthly',
         billed_courts: 5,
         plus_enabled: true,
-        plus_price_per_court_cents: 1_500_000,
+        plus_price_per_court_cents: 1_200_000,
       })
 
-      expect(updatePreapprovalAmount).toHaveBeenCalledWith('mp-sub-1', 24_200_000, {
+      expect(updatePreapprovalAmount).toHaveBeenCalledWith('mp-sub-1', 22_700_000, {
         reason: 'TurnoGol — 5 canchas + Asistente de WhatsApp (mensual)',
       })
     })
@@ -249,8 +249,8 @@ describe('runDunningSweep — downgrade aplicado actualiza el monto recurrente e
         plus_price_per_court_cents: null,
       })
 
-      // (16.700.000 + 10.000.000) x 0,9 = 24.030.000 x 12
-      expect(updatePreapprovalAmount).toHaveBeenCalledWith('mp-sub-1', 24_030_000 * 12, {
+      // (16.700.000 + 7.500.000) x 0,9 = 21.780.000 x 12
+      expect(updatePreapprovalAmount).toHaveBeenCalledWith('mp-sub-1', 21_780_000 * 12, {
         reason: 'TurnoGol — 5 canchas + Asistente de WhatsApp (anual)',
       })
     })

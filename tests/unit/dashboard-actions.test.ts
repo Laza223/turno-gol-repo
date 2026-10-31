@@ -25,6 +25,12 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { withTenantContext } from '@/shared/db/client'
+import {
+  markChecklistDismissedAction,
+  markPublicLinkSharedAction,
+  markReferralBannerDismissedAction,
+  markTourSeenAction,
+} from '@/app/(admin)/dashboard/actions'
 
 // Decisión 2026-10-22: `suspended` es solo lectura; la escritura sigue
 // rebotando, con su propio mensaje.
@@ -48,7 +54,6 @@ beforeEach(() => {
 describe('markPublicLinkSharedAction', () => {
   it('returns success:false surfacing the rate-limit message when limited', async () => {
     vi.mocked(adminRateLimited).mockResolvedValueOnce('Demasiados intentos. Esperá un momento.')
-    const { markPublicLinkSharedAction } = await import('@/app/(admin)/dashboard/actions')
     const res = await markPublicLinkSharedAction()
     expect(res.success).toBe(false)
     if (!res.success) expect(res.error).toBe('Demasiados intentos. Esperá un momento.')
@@ -56,7 +61,6 @@ describe('markPublicLinkSharedAction', () => {
 
   it('returns success:true on the happy path (not rate limited)', async () => {
     vi.mocked(adminRateLimited).mockResolvedValueOnce(null)
-    const { markPublicLinkSharedAction } = await import('@/app/(admin)/dashboard/actions')
     const res = await markPublicLinkSharedAction()
     expect(res.success).toBe(true)
   })
@@ -64,14 +68,12 @@ describe('markPublicLinkSharedAction', () => {
   it('manager (Encargado) también puede tildar el checklist (requireOperatorStaff = admin+manager)', async () => {
     vi.mocked(getStaffRole).mockResolvedValueOnce('manager')
     vi.mocked(adminRateLimited).mockResolvedValueOnce(null)
-    const { markPublicLinkSharedAction } = await import('@/app/(admin)/dashboard/actions')
     const res = await markPublicLinkSharedAction()
     expect(res.success).toBe(true)
   })
 
   it('tenant blocked: rebota con ok:false y NO muta (Fix 3, R5 🟢 residual)', async () => {
     vi.mocked(getStaffTenant).mockResolvedValueOnce(tenant('blocked') as never)
-    const { markPublicLinkSharedAction } = await import('@/app/(admin)/dashboard/actions')
 
     const res = await markPublicLinkSharedAction()
 
@@ -82,7 +84,6 @@ describe('markPublicLinkSharedAction', () => {
 
   it('tenant suspended: rebota con ok:false y NO muta', async () => {
     vi.mocked(getStaffTenant).mockResolvedValueOnce(tenant('suspended') as never)
-    const { markPublicLinkSharedAction } = await import('@/app/(admin)/dashboard/actions')
 
     const res = await markPublicLinkSharedAction()
 
@@ -92,7 +93,6 @@ describe('markPublicLinkSharedAction', () => {
 
   it('sin sesión staff: redirige a /login (no devuelve un result)', async () => {
     vi.mocked(extractAuthUser).mockResolvedValueOnce(null)
-    const { markPublicLinkSharedAction } = await import('@/app/(admin)/dashboard/actions')
 
     await expect(markPublicLinkSharedAction()).rejects.toThrow('REDIRECT:/login')
   })
@@ -101,7 +101,6 @@ describe('markPublicLinkSharedAction', () => {
 describe('markTourSeenAction', () => {
   it('returns success:false surfacing the rate-limit message when limited', async () => {
     vi.mocked(adminRateLimited).mockResolvedValueOnce('Demasiados intentos. Esperá un momento.')
-    const { markTourSeenAction } = await import('@/app/(admin)/dashboard/actions')
     const res = await markTourSeenAction()
     expect(res.success).toBe(false)
     if (!res.success) expect(res.error).toBe('Demasiados intentos. Esperá un momento.')
@@ -109,14 +108,12 @@ describe('markTourSeenAction', () => {
 
   it('returns success:true on the happy path (not rate limited)', async () => {
     vi.mocked(adminRateLimited).mockResolvedValueOnce(null)
-    const { markTourSeenAction } = await import('@/app/(admin)/dashboard/actions')
     const res = await markTourSeenAction()
     expect(res.success).toBe(true)
   })
 
   it('tenant blocked: rebota con ok:false y NO muta (misma clase que Fix 3)', async () => {
     vi.mocked(getStaffTenant).mockResolvedValueOnce(tenant('blocked') as never)
-    const { markTourSeenAction } = await import('@/app/(admin)/dashboard/actions')
 
     const res = await markTourSeenAction()
 
@@ -128,7 +125,6 @@ describe('markTourSeenAction', () => {
 describe('markChecklistDismissedAction', () => {
   it('returns success:false surfacing the rate-limit message when limited', async () => {
     vi.mocked(adminRateLimited).mockResolvedValueOnce('Demasiados intentos. Esperá un momento.')
-    const { markChecklistDismissedAction } = await import('@/app/(admin)/dashboard/actions')
     const res = await markChecklistDismissedAction()
     expect(res.success).toBe(false)
     if (!res.success) expect(res.error).toBe('Demasiados intentos. Esperá un momento.')
@@ -136,14 +132,12 @@ describe('markChecklistDismissedAction', () => {
 
   it('returns success:true on the happy path (not rate limited)', async () => {
     vi.mocked(adminRateLimited).mockResolvedValueOnce(null)
-    const { markChecklistDismissedAction } = await import('@/app/(admin)/dashboard/actions')
     const res = await markChecklistDismissedAction()
     expect(res.success).toBe(true)
   })
 
   it('tenant suspended: rebota con ok:false y NO muta (misma clase que Fix 3)', async () => {
     vi.mocked(getStaffTenant).mockResolvedValueOnce(tenant('suspended') as never)
-    const { markChecklistDismissedAction } = await import('@/app/(admin)/dashboard/actions')
 
     const res = await markChecklistDismissedAction()
 
@@ -155,7 +149,6 @@ describe('markChecklistDismissedAction', () => {
 describe('markReferralBannerDismissedAction', () => {
   it('returns success:false surfacing the rate-limit message when limited', async () => {
     vi.mocked(adminRateLimited).mockResolvedValueOnce('Demasiados intentos. Esperá un momento.')
-    const { markReferralBannerDismissedAction } = await import('@/app/(admin)/dashboard/actions')
     const res = await markReferralBannerDismissedAction()
     expect(res.success).toBe(false)
     if (!res.success) expect(res.error).toBe('Demasiados intentos. Esperá un momento.')
@@ -163,14 +156,12 @@ describe('markReferralBannerDismissedAction', () => {
 
   it('returns success:true on the happy path (not rate limited)', async () => {
     vi.mocked(adminRateLimited).mockResolvedValueOnce(null)
-    const { markReferralBannerDismissedAction } = await import('@/app/(admin)/dashboard/actions')
     const res = await markReferralBannerDismissedAction()
     expect(res.success).toBe(true)
   })
 
   it('manager (Encargado) NO puede descartar el aviso para todo el complejo (solo admin)', async () => {
     vi.mocked(getStaffRole).mockResolvedValueOnce('manager')
-    const { markReferralBannerDismissedAction } = await import('@/app/(admin)/dashboard/actions')
 
     const res = await markReferralBannerDismissedAction()
 
@@ -183,7 +174,6 @@ describe('markReferralBannerDismissedAction', () => {
 
   it('tenant suspended: rebota con ok:false y NO muta (misma clase que Fix 3)', async () => {
     vi.mocked(getStaffTenant).mockResolvedValueOnce(tenant('suspended') as never)
-    const { markReferralBannerDismissedAction } = await import('@/app/(admin)/dashboard/actions')
 
     const res = await markReferralBannerDismissedAction()
 

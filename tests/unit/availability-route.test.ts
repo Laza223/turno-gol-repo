@@ -7,6 +7,7 @@ vi.mock('@/modules/tenants/public.service', () => ({
 }))
 
 import { getPublicTenant, getPublicAvailability } from '@/modules/tenants/public.service'
+import { GET } from '@/app/api/public/availability/route'
 
 const todayStr = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
 
@@ -24,7 +25,6 @@ describe('GET /api/public/availability — tenant status gating', () => {
       status: 'suspended',
       bookingAdvanceDays: 6,
     } as never)
-    const { GET } = await import('@/app/api/public/availability/route')
     const res = await GET(req('rincon', todayStr))
     expect(res.status).toBe(404)
     expect(await res.json()).toEqual({ error: 'not_found' })
@@ -37,7 +37,6 @@ describe('GET /api/public/availability — tenant status gating', () => {
       bookingAdvanceDays: 6,
     } as never)
     vi.mocked(getPublicAvailability).mockResolvedValue({ courts: [] } as never)
-    const { GET } = await import('@/app/api/public/availability/route')
     const res = await GET(req('rincon', todayStr))
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({ courts: [] })
@@ -57,7 +56,6 @@ describe('GET /api/public/availability — tenant status gating', () => {
       bookingAdvanceDays: 6,
     } as never)
     vi.mocked(getPublicAvailability).mockResolvedValue({ courts: [] } as never)
-    const { GET } = await import('@/app/api/public/availability/route')
     const res = await GET(req('rincon', todayStr))
     expect(res.status).toBe(200)
   })
@@ -68,7 +66,6 @@ describe('GET /api/public/availability — tenant status gating', () => {
       canceledPeriodEnd: new Date(Date.now() - 24 * 3_600_000),
       bookingAdvanceDays: 6,
     } as never)
-    const { GET } = await import('@/app/api/public/availability/route')
     const res = await GET(req('rincon', todayStr))
     expect(res.status).toBe(404)
     expect(getPublicAvailability).not.toHaveBeenCalled()
@@ -81,7 +78,6 @@ describe('GET /api/public/availability — tenant status gating', () => {
       canceledPeriodEnd: null,
       bookingAdvanceDays: 6,
     } as never)
-    const { GET } = await import('@/app/api/public/availability/route')
     const res = await GET(req('rincon', todayStr))
     expect(res.status).toBe(404)
   })

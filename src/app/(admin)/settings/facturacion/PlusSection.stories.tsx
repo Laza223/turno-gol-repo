@@ -31,7 +31,7 @@ type Story = StoryObj<typeof meta>
 export const Facturado: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/Incluido en tu cuota: .*20\.000 por cancha/)).toBeInTheDocument()
+    await expect(canvas.getByText(/Incluido en tu cuota: .*15\.000 por cancha/)).toBeInTheDocument()
     await userEvent.click(canvas.getByRole('button', { name: 'Dar de baja el Asistente' }))
     const dialog = await screen.findByRole('dialog')
     await expect(

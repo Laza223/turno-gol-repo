@@ -109,8 +109,8 @@ flowchart TD
   - **Fuerza alta** como principio.
 - **Qué hacer:**
   - CC genera `docs/visibilidad-ia/medicion/` con la plantilla CSV v1, el protocolo en una página y el tablero.
-  - L corre la primera semana (32 respuestas) y la primera mensual (unas 87) **antes de tocar el sitio**. Protocolo en `06-medicion.md` §3.
-- **Responsable · Esfuerzo · Costo:** CC (S) + L (S, ~3 h) · $0.
+  - CC corre la primera semana (32 respuestas) y la primera mensual (unas 87) en el navegador, sin sesión, **antes de tocar el sitio** (D14). Protocolo en `06-medicion.md` §3.
+- **Responsable · Esfuerzo · Costo:** CC · M · $0.
 - **Impacto · Confianza · Puntaje:** 3 · alta · 3,0.
 - **Depende de:** —
 - **Aceptación:** la planilla tiene 32 o más filas de la semana 2026-W45 y unas 87 de la mensual, con el set v1.
@@ -394,7 +394,7 @@ flowchart TD
   - El formato de precio es lo que más se asocia con ser citado (β +0,39, prompt).
   - Hoy faltan ARS y vigencia, no aparece Plus y hay promesas falsas (re-verif., C-03).
   - **Fuerza media-alta.**
-- **Qué hacer:** brief B-03.
+- **Qué hacer:** brief B-03. Antes, alinear `PLUS_LIST_PER_COURT_CENTS` de `src/modules/billing/pricing.ts:27` a $15.000 (D11) con su test, y "vigentes desde 20/10/2026" (D15).
 - **Responsable · Esfuerzo · Costo:** CC (L confirma la fecha de vigencia y la retención) · S · $0.
 - **Impacto · Confianza · Puntaje:** 4 · alta · 4,0.
 - **Depende de:** VIS-006 (hotfix ya hecho). La respuesta sobre retención está en `09` P5.
@@ -462,7 +462,7 @@ flowchart TD
   - Promete "Cobros automáticos con MercadoPago", que no existe, y "menos de 2 minutos", que no está medido (re-verif., C-07).
   - Lo prometido obliga (Ley 24.240, art. 8, prompt).
   - **Fuerza alta.**
-- **Qué hacer:** reemplazar por "Cobrás la seña por Mercado Pago, directo a tu cuenta" y sacar los tiempos. **Requiere el OK de L** (L3).
+- **Qué hacer:** sacar "Cobros automáticos con MercadoPago" sin poner la seña en su lugar (D9): el panel nombra la operación (fijos, cobro por equipo, caja y buffet, reservas 24/7). Sacar los tiempos. OK de L dado el 31/10.
 - **Responsable · Esfuerzo · Costo:** CC · S · $0.
 - **Impacto · Confianza · Puntaje:** 1 · alta · 1,0.
 - **Depende de:** el OK de L (`09` P4).

@@ -12,11 +12,11 @@ Es la frase que queremos que una IA repita cuando describe a TurnoGol. Va igual 
 
 **Larga** (primer párrafo de `/para-complejos`, `/nosotros`, `llms.txt`, descripción de Capterra y G2):
 
-> TurnoGol es el sistema de gestión hecho solo para complejos de fútbol: tus jugadores reservan online las 24 horas sin bajarse una app, cobrás la seña (si querés) por Mercado Pago directo a tu cuenta, y manejás los turnos fijos, los cobros por equipo, la caja y el buffet desde el celular. Sin comisión por reserva y sin cargo al jugador.
+> TurnoGol es el sistema de gestión hecho solo para complejos de fútbol: manejás la noche entera desde el celular (turnos fijos que se repiten solos, cobro por equipo, caja y buffet) mientras tus jugadores reservan online las 24 horas, sin bajarse una app. Sin comisión por reserva y sin cargo al jugador.
 
 **Media**, para la meta description, hasta 155 caracteres:
 
-> Sistema de gestión para complejos de fútbol: reservas online 24/7, seña opcional por Mercado Pago, turnos fijos, caja y buffet. Sin comisión por reserva.
+> Sistema de gestión para complejos de fútbol: turnos fijos, cobro por equipo, caja y buffet, y reservas online 24/7. Sin comisión por reserva.
 
 **Corta** (categoría en perfiles, `sameAs`, firma, bio):
 
@@ -24,7 +24,7 @@ Es la frase que queremos que una IA repita cuando describe a TurnoGol. Va igual 
 
 **Bio de Instagram** (hasta 150 caracteres):
 
-> Sistema de gestión para complejos de fútbol ⚽ Reservas 24/7, seña por Mercado Pago, fijos, caja y buffet. Probalo 30 días gratis 👇
+> Sistema de gestión para complejos de fútbol ⚽ Fijos, cobro por equipo, caja, buffet y reservas online 24/7. Probalo 30 días gratis 👇
 
 **Por qué esta frase** (evidencia, con su fuerza):
 - **Usa las palabras de la pregunta que perdimos.** "Gestión" y "complejo de fútbol" son las mismas palabras de "la mejor app para la gestión de mi complejo de fútbol". Lo que más pesa para que una IA cite una página es que la pregunta y el contenido digan lo mismo (β +0,37; Discovered Labs, 2 millones de citas; observacional, de proveedor). **Fuerza media.**
@@ -50,6 +50,13 @@ Es la frase que queremos que una IA repita cuando describe a TurnoGol. Va igual 
 | D6 | **Axxen no se menciona en TurnoGol.** Lo de Axxen sobre TurnoGol cuenta como mención de un tercero. | Lázaro, 30/10/2026 | — |
 | D7 | **El repo queda público** y se prende el secret scanning. Pasarlo a privado más un recorte del CI queda en el radar. | Lázaro, 31/10/2026 | **Privado ya**: corta el CI a mitad de mes, porque se usaron 2.195 min de reloj en 30 días contra un tope de 2.000. |
 | D8 | **Presupuesto $0.** Todo lo pago se especifica "a futuro" y no se activa. | Lázaro, 30/10/2026 | — |
+| D9 | **La seña es un opcional, no el producto.** Mercado Pago no va en ningún titular, frase canónica, bio ni perfil: aparece solo en `/funciones/sena-opcional`, en `/integraciones/mercado-pago` y como "si querés" al final de una lista. Se sacan los copys que la inflan. | Lázaro, 31/10/2026 ("el fútbol es más humilde, no es como el pádel") | **Seña de titular**: ningún complejo de fútbol la pide como mejora; desgasta el producto. |
+| D10 | **Titular = la operación de la noche + reservas online 24/7** (frase de §1). | Lázaro, 31/10/2026 | Solo reservas 24/7, u "ordenar el WhatsApp". |
+| D11 | **Plus: precio de lista $15.000 por cancha**, visible en `/precios` como opcional. **El código dice otra cosa**: `PLUS_LIST_PER_COURT_CENTS = 2_000_000` en `src/modules/billing/pricing.ts:27`. Antes de publicar el precio hay que alinear el código (VIS-018). | Lázaro, 31/10/2026 | "Consultanos" o no mostrarlo. |
+| D12 | **RIVAL se nombra entero.** El copy se escribe para todo RIVAL; cada parte se publica cuando esté andando en producción (Lázaro termina lo que falta en estos días). | Lázaro, 31/10/2026 | Solo lo "Ya disponible": habría que reescribir el copy después. |
+| D13 | **Ficha `/[slug]`: excepción a la decisión del 21/10.** Streaming y `noindex` van directo; el bloque "Cómo se reserva acá" y el pie "Reservas con TurnoGol" se muestran en captura antes. | Lázaro, 31/10/2026 | Todo sin pasar por él, o solo lo técnico. |
+| D14 | **Claude ejecuta todo**, incluida la medición (en el navegador, sin sesión). A Lázaro le quedan solo los clics que exigen su cuenta (GitHub, Search Console, Vercel, perfiles) y los pedidos a los complejos. | Lázaro, 31/10/2026 | 3 h por semana de Lázaro, que era un supuesto del plan, no un dato. |
+| D15 | **De los clientes no se publica nada** (ni nombres, ni testimonios, ni números) hasta nuevo aviso. "Vigentes desde" de `/precios` = **20/10/2026**. Retención al vencer la prueba = **14 días de solo lectura**. | Lázaro, 31/10/2026 | — |
 
 ## 3. Propuesta de valor con la camiseta puesta
 
@@ -63,7 +70,7 @@ TurnoGol no es un sistema de reservas con extras. Es **el sistema de la noche de
 |---|---|---|---|
 | Tus jugadores reservan desde el celu en tres toques, sin app, las 24 h | A | `docs/decisions/2026-10-29-ficha-reserva-en-pasos.md` | Sí, es común |
 | **Sin comisión por reserva y sin cargo al jugador** | A | No hay fees en `src/modules` ni en `src/lib`; `createPreference` arma un solo ítem igual a la seña | **No todos.** Según su propia web (30/10/2026), Vibe le cobra $1.000 al jugador por cada pago online |
-| Seña opcional por Mercado Pago, directo a tu cuenta; si no paga en 6 minutos, el turno se libera solo | A | `src/shared/jobs/definitions.ts:103`, `hold.ts` | Común |
+| Seña **opcional** (D9: nunca de titular) por Mercado Pago, directo a tu cuenta; si no paga en 6 minutos, el turno se libera solo | A | `src/shared/jobs/definitions.ts:103`, `hold.ts` | Común |
 | El que falta dos veces en 90 días queda 14 días sin reservar online en tu complejo | A | `src/shared/constants.ts:42-48` | Poco común |
 | **Cobrás por equipo y de a partes**, mezclando efectivo, Mercado Pago y transferencia | A | `docs/decisions/2026-09-15-cobro-por-equipo.md` | **No** (específico de fútbol) |
 | **Precio por jugador** en tu página ("$4.300 por jugador") | A | `2026-09-15-precio-por-jugador-denormalizado.md` | **No** |
@@ -76,7 +83,7 @@ TurnoGol no es un sistema de reservas con extras. Es **el sistema de la noche de
 | Placa de turnos libres lista para historias y estados | A | `src/app/api/public/story` | Raro |
 | Encargado con su usuario, sin acceso a Ajustes ni Métricas; usuarios sin límite | A | `src/modules/staff/roles.ts` | Común |
 | Push con cada reserva; de 00 a 08 espera a las 8 | A | `push-quiet-hours.ts` | Poco común |
-| **TurnoGol Plus**: asistente con IA que contesta el WhatsApp del complejo con tus horarios, muestra turnos libres y reserva en el chat. Extra de $20.000 por cancha | B (en vivo en un complejo) | `2026-10-20-bot-whatsapp.md`, `pricing.ts:27` | Raro en el rubro |
+| **TurnoGol Plus**: asistente con IA que contesta el WhatsApp del complejo con tus horarios, muestra turnos libres y reserva en el chat. Extra de $15.000 por cancha | B (en vivo en un complejo) | `2026-10-20-bot-whatsapp.md`, `pricing.ts:27` | Raro en el rubro |
 | **RIVAL**: tus jugadores arman el partido en tu cancha y lo cierran por WhatsApp; ven cuántos faltan y se bajan sin drama | B (flag global prendido el 29/10/2026) | `docs/decisions/2026-10-29-rival-cultura-de-turnogol.md`, `docs/rival/README.md` | **No** |
 
 **Lo que NO se dice**, porque es estado C o D, está vetado o es falso:
@@ -130,7 +137,7 @@ TurnoGol es el más caro de los que cobran en pesos. El precio no se toca (D5), 
 │
 ├─ /funciones/            Etapa 2: una página por operación (las 8 de abajo)
 │   ├─ reservas-online      ├─ cobro-por-equipo     ├─ faltazos
-│   ├─ sena-mercado-pago    ├─ turnos-fijos         ├─ asistente-whatsapp (Plus)
+│   ├─ sena-opcional        ├─ turnos-fijos         ├─ asistente-whatsapp (Plus)
 │   └─ caja-y-buffet        └─ rival
 ├─ /integraciones/mercado-pago   Etapa 2: conexión, comisión de MP, acreditación, devoluciones
 ├─ /comparar/             Etapa 2: turnogol-vs-vibe, -canchafija, -clubin, -atc-sports
@@ -224,7 +231,7 @@ Prompts y keywords → página que responde. La prioridad sale del impacto sobre
 | Descubrimiento B2B | Tengo tres canchas y un buffet y anoto todo en un cuaderno, ¿qué app me recomendás? | `/para-complejos` (sección buffet), `/funciones/caja-y-buffet` | Reescribir / nueva | 1 |
 | Precio | ¿Hay alguna app gratis o barata para gestionar canchas de fútbol? | `/precios` (con "sin cargo al jugador"), `/comparar/turnogol-vs-vibe` | Corregir / nueva | 2 |
 | Necesidad | Sistema de turnos para canchas de fútbol sin comisión por reserva | `/precios`, `/para-complejos` | Corregir | 1 |
-| Necesidad | ¿Cómo cobro señas online en mi complejo con Mercado Pago? | `/funciones/sena-mercado-pago`, `/integraciones/mercado-pago` | Nueva | 2 |
+| Necesidad | ¿Cómo cobro señas online en mi complejo con Mercado Pago? | `/funciones/sena-opcional`, `/integraciones/mercado-pago` | Nueva | 2 |
 | Necesidad | App para manejar turnos fijos en canchas de fútbol | `/funciones/turnos-fijos` | Nueva | 2 |
 | Necesidad | ¿Cómo evito que los jugadores falten a los turnos? | `/funciones/faltazos`, `/herramientas/calculadora-de-faltazos` | Nueva | 2 |
 | Necesidad | Software para controlar la caja del buffet de un complejo de fútbol | `/funciones/caja-y-buffet` | Nueva | 2 |

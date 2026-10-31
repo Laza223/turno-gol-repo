@@ -30,7 +30,7 @@
 | P8 | ¿Cuánto sale hoy un turno de fútbol 5 en El Vagón en horario pico? Hace falta para el ancla "Lo que te deja un turno, una vez al mes" (¿$30.000 por cancha es menos que un turno?). | VIS-017, VIS-018 | El ancla queda como está hoy en `/precios`, sin cifra nueva. |
 | P9 | ¿Desde qué fecha rige el precio de $30.000 por cancha (la que va como "vigentes desde")? ¿El 20/10/2026 o el día en que se aplicó la migración 095 en producción? | VIS-018 | El día en que se aplicó la 095, a confirmar en el deploy. |
 | P10 | ¿La Fábrica puede generar tutoriales con capturas reales del panel (cuenta demo, sin datos de clientes reales)? | VIS-035 | Sí, con una cuenta demo sembrada. |
-| P11 | ¿Plus se muestra en `/precios` con el precio de lista de $20.000 por cancha, o preferís "consultanos" mientras tenga un solo cliente? | VIS-018 | Se muestra con el precio de lista y como opcional. |
+| P11 | ¿Plus se muestra en `/precios` con el precio de lista de $15.000 por cancha, o preferís "consultanos" mientras tenga un solo cliente? | VIS-018 | Se muestra con el precio de lista y como opcional. |
 
 ## A futuro (cuando haya plata o tiempo)
 
@@ -48,6 +48,26 @@
 | P16 | Si una semana no llegás a las 3 h, ¿qué se cae primero? | Calendario de `04` | Se cae en este orden: LinkedIn (VIS-038) → alianzas (VIS-039) → videos (VIS-035). Nunca se cae la medición semanal de V0 ni el pedido del link a El Vagón. |
 
 Pendientes de forma que dejó la revisión y no cambian el plan: alinear semanas y rangos de etapa entre `03` y `04`, sumar al diagrama las aristas faltantes y sacar los autolazos, que IndexNow (VIS-014) necesita un workflow nuevo sobre `deployment_status`, y que los eventos custom de Vercel Analytics dependen del plan (Hobby es de uso no comercial: confirmarlo en VIS-007).
+
+## Respuestas de Lázaro (31/10/2026)
+
+Mandan sobre los supuestos de las tablas de arriba. Las decisiones nuevas están en `02-estrategia.md` §2 (D9 a D15).
+
+| # | Respuesta |
+|---|---|
+| P1 | No se publica nada de los clientes todavía: ni nombres, ni testimonios, ni números (D15). |
+| P2 | Search Console **ya está verificado**. Los nameservers de turnogol.app son de Cloudflare (`nslookup -type=NS` → `keenan` y `olivia.ns.cloudflare.com`, 31/10), sin proxy; el hosting es Vercel. VIS-002 se reduce a mandar el sitemap y revisar el reporte. |
+| P3 | Vercel **Pro**. Web Analytics con eventos custom entra; confirmar el tope del plan en VIS-007. |
+| P4 | Sí, y más: la seña deja de ser argumento de venta (D9). En `/register` se saca "Cobros automáticos" **sin** poner la seña en su lugar, y se sacan los tiempos. |
+| P5 | "Si no seguís, tu cuenta queda en solo lectura 14 días para que exportes tus datos" (D15). |
+| P6 | Pendiente: la búsqueda en el INPI no está hecha. |
+| P7 | Se nombra todo RIVAL; cada parte se publica cuando anda en producción (D12). |
+| P8 | Sin responder. El ancla de `/precios` queda sin cifra nueva. |
+| P9 | Vigentes desde el **20/10/2026** (D15). |
+| P10 | La Fábrica hace tutoriales. Falta una cuenta demo sembrada con datos falsos: la arma Claude Code antes de VIS-035. |
+| P11 | Plus se muestra con su precio de lista, **$15.000 por cancha**, como opcional. El código dice $20.000 (`pricing.ts:27`): se alinea antes de publicarlo (D11). |
+| P15 | Excepción: streaming y `noindex` directo; bloque y pie con captura antes (D13). |
+| P16 | No aplica: no hay "3 horas de Lázaro". Claude ejecuta todo, incluida la medición, y a Lázaro le quedan los clics de cuenta (D14). |
 
 ## Notas de esta sesión que conviene saber
 

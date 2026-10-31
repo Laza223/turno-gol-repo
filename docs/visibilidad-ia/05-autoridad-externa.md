@@ -173,7 +173,7 @@ Si el dueño es conocido tuyo, agregá: "Ojo, poné que me conocés, así queda 
 
 ### P4 · Propuesta a un proveedor del rubro (césped, iluminación, constructora)
 
-> Hola [nombre], ¿cómo va? Somos TurnoGol, un sistema para complejos de fútbol (reservas online, seña por Mercado Pago, fijos, caja y buffet). Muchos de sus clientes son nuestros clientes posibles y al revés.
+> Hola [nombre], ¿cómo va? Somos TurnoGol, un sistema para complejos de fútbol (turnos fijos, cobro por equipo, caja, buffet y reservas online). Muchos de sus clientes son nuestros clientes posibles y al revés.
 >
 > Les proponemos algo simple: cuando un cliente suyo termina la obra y pregunta cómo manejar las reservas, le cuentan que existe TurnoGol, y nosotros, cuando un complejo nos pregunta por césped o luces, les pasamos su contacto. Es una recomendación de boca a boca entre gente del rubro, no un canje de links. ¿Lo charlamos 10 minutos?
 

@@ -42,14 +42,14 @@ Decirlo explícito en el cierre — filtra a los que no van a activar:
 
 **Día 21 del piloto** (no el 30 — no negociar contra el vencimiento): visita o llamada de conversión.
 
-> "Van [N] reservas online y [M] señas cobradas — eso ya son $[X] que antes eran riesgo de turno colgado. El plan para tus [C] canchas sale $[precio]/mes + IVA. Como estás entrando primero, [oferta fundador]. ¿Lo dejamos andando?"
+> "Van [N] reservas online y [M] señas cobradas — eso ya son $[X] que antes eran riesgo de turno colgado. El plan para tus [C] canchas sale $[precio]/mes, precio final. Como estás entrando primero, [oferta fundador]. ¿Lo dejamos andando?"
 
 **Precio fundador — REQUIERE INPUT (decisión de negocio tuya, no la tomo yo):**
 - Opción A (recomendada): 20-30% de descuento por 6 meses para los primeros 20 complejos, con precio de lista después. Simple, con fecha de fin, no destruye el pricing.
 - Opción B: precio de lista desde el día 1, y el "extra fundador" es el setup + soporte directo. Más sano a largo plazo, más difícil de cerrar sin casos de éxito.
 - NO recomendado: gratis extendido o "de por vida" — atrae a los que no valoran y regala lo que facturás por mes que después cuesta recuperar con la inflación.
 
-Recordar SIEMPRE: precios +21% IVA en la pantalla de pago (doc4). Decirlo antes de la pantalla de pago, nunca que lo descubra solo.
+Recordar SIEMPRE: el precio es final, sin IVA aparte ([decisión del 2026-10-31](../decisions/2026-10-31-iva-precio-final.md)). La pantalla de pago muestra el mismo número que le dijiste.
 
 ## Criterios de kill del piloto (protegé tus horas)
 

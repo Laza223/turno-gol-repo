@@ -179,7 +179,7 @@ Cuando exista su link `/r/<código>`, se suma al final. Nunca pongas números su
 
 ## 9. Respuestas rápidas (guardarlas en WhatsApp Business)
 
-- **"¿Cuánto sale?"** → "Son $30.000 por mes por cancha, incluida la primera. Con 4 canchas son $120.000, con 5 $150.000 y con 6 $180.000; pagando el año, 10% menos. Sin comisión por reserva: es un fijo, te cuelguen el turno o no. Los primeros 30 días son gratis y sin tarjeta. ¿Cuántas canchas tenés?" _(fuente: `src/modules/billing/pricing.ts`, [`2026-10-20-precio-uniforme-por-cancha.md`](../decisions/2026-10-20-precio-uniforme-por-cancha.md). El asistente de WhatsApp (TurnoGol Plus) es aparte. No decir "+IVA" ni "precio final" hasta resolver D9.)_
+- **"¿Cuánto sale?"** → "Son $30.000 por mes por cancha, incluida la primera. Con 4 canchas son $120.000, con 5 $150.000 y con 6 $180.000; pagando el año, 10% menos. Sin comisión por reserva: es un fijo, te cuelguen el turno o no. Los primeros 30 días son gratis y sin tarjeta. ¿Cuántas canchas tenés?" _(fuente: `src/modules/billing/pricing.ts`, [`2026-10-20-precio-uniforme-por-cancha.md`](../decisions/2026-10-20-precio-uniforme-por-cancha.md). El asistente de WhatsApp (TurnoGol Plus) es aparte. Es precio final, sin IVA aparte ([decisión del 2026-10-31](../decisions/2026-10-31-iva-precio-final.md)).)_
 - **"¿Es una app que tienen que bajar?"** → "No, es un link. Lo abrís del navegador como una página. Tus clientes no bajan nada."
 - **"Mandame info"** → "Te mandamos un video de 1 minuto que lo muestra andando [link]. Pero la verdad: en 15 minutos en el complejo lo ves con TUS canchas y decidís mejor. ¿Cuándo estás?"
 

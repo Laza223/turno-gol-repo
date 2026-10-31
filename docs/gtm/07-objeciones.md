@@ -20,7 +20,7 @@
 
 > "$30.000 por cancha al mes, incluida la primera; pagando el año, 10% menos. Sin comisión por reserva: es fijo. Para que te des una idea, son unos $1.000 por cancha por día. Los primeros 30 días son gratis y sin tarjeta, así que la cuenta la hacés con tus números reales: ¿a cuánto está tu turno? ¿$[X]?"
 >
-> _(Fuente: `src/modules/billing/pricing.ts`. No decir "+IVA" ni "precio final" hasta resolver D9. No decir "se paga solo" ni "ya se pagó": no sabemos cuánto turno recupera cada uno.)_
+> _(Fuente: `src/modules/billing/pricing.ts`. Es precio final, sin IVA aparte ([decisión del 2026-10-31](../decisions/2026-10-31-iva-precio-final.md)). No decir "se paga solo" ni "ya se pagó": no sabemos cuánto turno recupera cada uno.)_
 
 **5. "No tengo tiempo de cargar todo / no me llevo con la tecnología"**
 

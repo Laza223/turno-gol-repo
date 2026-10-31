@@ -2,7 +2,6 @@ import { requireAdminStaff } from '@/modules/staff/guards'
 import { listMyReferrals } from '@/modules/referrals/referral.service'
 import { countReferralMonths } from '@/modules/referrals/referral-reward.service'
 import { absoluteUrl } from '@/lib/seo/metadata'
-import { REFERRAL_PROMO_ENDS_AT } from '@/shared/constants'
 import { getTenantReferralCode } from '../../dashboard/queries'
 import { SettingsHeader } from '../SettingsHeader'
 import { ReferralPanel } from './ReferralPanel'
@@ -23,7 +22,6 @@ export default async function InvitarSettingsPage() {
       <ReferralPanel
         url={code ? absoluteUrl(`/r/${code}`) : null}
         tenantName={tenant.name}
-        promoOpen={new Date().getTime() <= REFERRAL_PROMO_ENDS_AT.getTime()}
         referrals={referrals}
         months={months}
         generateAction={generateReferralLinkAction}

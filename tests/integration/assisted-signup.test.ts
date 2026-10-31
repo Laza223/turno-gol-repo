@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { closeSql } from '@/shared/db/client'
-import { REFERRAL_PROMO_ENDS_AT, TRIAL_DAYS } from '@/shared/constants'
+import { TRIAL_DAYS } from '@/shared/constants'
 import { adminSql } from '../helpers/admin-db'
 import {
   asApp,
@@ -266,9 +266,6 @@ describe('createAssistedTenant — rechazos antes de crear nada', () => {
 
 describe('createAssistedTenant — referido', () => {
   it('con el link /r/<CODE> de un complejo, lo asigna como referidor', async () => {
-    // Relativo al corte de la promo, no una fecha fija: el test no vence.
-    // Solo `Date`: los timers reales siguen andando para el driver de Postgres.
-    vi.useFakeTimers({ toFake: ['Date'], now: REFERRAL_PROMO_ENDS_AT.getTime() - DAY_MS })
     const referrer = await createTestTenant()
     await adminSql()`UPDATE tenants SET referral_code = 'AH2K9MZP' WHERE id = ${referrer.id}`
 

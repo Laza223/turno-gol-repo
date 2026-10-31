@@ -8,31 +8,28 @@
  * `tests/unit/server-no-importa-valores-de-modulos-client.test.ts`, caso real
  * 2026-08-20 con `CANCELABLE`).
  */
-import { REFERRAL_PROMO_ENDS_AT } from '@/shared/constants'
 import type { StaffRole } from '@/modules/staff/roles'
 
 export type ReferralBannerVisibilityInput = {
   role: StaffRole
-  /** `tenants.referral_code`: null hasta que el super-admin lo genera. */
+  /** `tenants.referral_code`: null solo si falló la generación del alta. */
   referralCode: string | null
   /** `tenant.settings.referral_banner_dismissed_at`, ISO o ausente. */
   dismissedAt?: string | null
-  now: Date
 }
 
 /**
- * Solo admin, con código ya generado, sin descartar y dentro de la ventana de
- * la promo. El componente no sabe de fechas ni roles — la página decide y le
+ * Solo admin, con código ya generado y sin descartar. El programa es
+ * permanente (docs/decisions/2026-10-31-referidos-permanentes.md): no hay
+ * ventana de fechas. El componente no sabe de roles — la página decide y le
  * pasa el resultado.
  */
 export function shouldShowReferralBanner({
   role,
   referralCode,
   dismissedAt,
-  now,
 }: ReferralBannerVisibilityInput): boolean {
   if (role !== 'admin') return false
   if (!referralCode) return false
-  if (dismissedAt) return false
-  return now.getTime() <= REFERRAL_PROMO_ENDS_AT.getTime()
+  return !dismissedAt
 }

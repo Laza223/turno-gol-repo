@@ -22,7 +22,7 @@ import {
 import { requireAdminStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { getSubscriptionState, listActivePlans } from '@/modules/billing/billing.service'
-import { REFERRAL_PROMO_ENDS_AT, REFERRAL_REWARD_CAP } from '@/shared/constants'
+import { REFERRAL_REWARD_CAP } from '@/shared/constants'
 import { buildPriceBreakdown } from '@/modules/billing/pricing'
 import { listStaffRoster } from '@/modules/staff/staff.service'
 import { getProfileGaps } from '@/modules/tenants/setup-gaps'
@@ -204,10 +204,7 @@ export default async function SettingsPage() {
         },
         {
           label: 'Invitá otro complejo',
-          effect:
-            new Date().getTime() <= REFERRAL_PROMO_ENDS_AT.getTime()
-              ? `Obtené hasta ${REFERRAL_REWARD_CAP} meses gratis de TurnoGol.`
-              : 'Tus invitados y tus meses.',
+          effect: `Obtené hasta ${REFERRAL_REWARD_CAP} meses gratis de TurnoGol.`,
           icon: Gift,
           href: '/settings/invitar',
         },

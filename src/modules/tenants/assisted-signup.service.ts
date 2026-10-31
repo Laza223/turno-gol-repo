@@ -68,7 +68,6 @@ export async function createAssistedTenant(
     referredByTenantId = referralCode
       ? await resolveSignupReferrer({
           code: referralCode,
-          staffCreatedAt: new Date(),
           excludeTenantId: tenantId,
         })
       : null

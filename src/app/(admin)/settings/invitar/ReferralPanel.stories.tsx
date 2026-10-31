@@ -11,7 +11,6 @@ const meta = {
   args: {
     url: 'https://turnogol.app/r/AH2K9MZP',
     tenantName: 'Complejo Demo',
-    promoOpen: true,
     referrals: [],
     months: 0,
     generateAction,
@@ -81,26 +80,6 @@ export const SinLink: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Generar mi link' }))
     await waitFor(() => expect(args.generateAction).toHaveBeenCalledOnce())
-  },
-}
-
-export const PromoCerrada: Story = {
-  args: {
-    promoOpen: false,
-    referrals: [
-      {
-        id: '1',
-        name: 'Canchas del Sur',
-        createdAt: d('2026-10-20T15:00:00Z'),
-        rewardStatus: 'applied',
-      },
-    ],
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.getByText('La promo cerró el 31/10.')).toBeInTheDocument()
-    await expect(canvas.queryByRole('button', { name: 'Generar mi link' })).not.toBeInTheDocument()
-    await expect(canvas.queryByRole('button', { name: 'Copiar link' })).not.toBeInTheDocument()
   },
 }
 

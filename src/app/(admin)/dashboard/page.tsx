@@ -13,7 +13,7 @@ import { NeedsAttention } from '@/components/dashboard/NeedsAttention'
 import { ReferralShareBanner } from '@/components/dashboard/ReferralShareBanner'
 import { shouldShowReferralBanner } from '@/lib/dashboard/referral-banner'
 import { absoluteUrl } from '@/lib/seo/metadata'
-import { DEFAULT_CANCELLATION_HOURS_BEFORE, REFERRAL_PROMO_ENDS_AT } from '@/shared/constants'
+import { DEFAULT_CANCELLATION_HOURS_BEFORE } from '@/shared/constants'
 import { listDayGridBookings, listUnpaidGridBookingsBefore } from '@/app/(admin)/reservas/queries'
 import { mediumDateLabel } from '@/app/(admin)/caja/caja-lib'
 import {
@@ -87,13 +87,10 @@ export default async function DashboardPage() {
   const now = new Date()
   const date = operatingDateOf(now, cutoffMins)
 
-  // El código de referido se pide solo cuando podría mostrarse: rol, descarte
-  // y fecha ya se saben sin ir a la base (mismo criterio que `wantsChecklist`),
-  // así que solo falta el código para decidir del todo.
-  const wantsReferralCode =
-    isAdmin &&
-    !tenant.settings.referral_banner_dismissed_at &&
-    now.getTime() <= REFERRAL_PROMO_ENDS_AT.getTime()
+  // El código de referido se pide solo cuando podría mostrarse: rol y descarte
+  // ya se saben sin ir a la base (mismo criterio que `wantsChecklist`), así que
+  // solo falta el código para decidir del todo.
+  const wantsReferralCode = isAdmin && !tenant.settings.referral_banner_dismissed_at
 
   const [{ data, courts, dayBookings, earlierUnpaid }, checklistState, referralCode] =
     await Promise.all([
@@ -139,7 +136,6 @@ export default async function DashboardPage() {
     role,
     referralCode,
     dismissedAt: tenant.settings.referral_banner_dismissed_at,
-    now,
   })
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''

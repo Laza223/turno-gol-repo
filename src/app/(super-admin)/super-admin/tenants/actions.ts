@@ -66,7 +66,7 @@ const REJECTIONS: Record<
   },
   invalid_referral: {
     field: 'referral',
-    message: 'El código no es válido o la promo de referidos ya terminó. Revisalo o dejalo vacío.',
+    message: 'El código no es válido. Revisalo o dejalo vacío.',
   },
 }
 

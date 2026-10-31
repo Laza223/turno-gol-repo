@@ -8,7 +8,6 @@ import {
 } from '@/modules/referrals/referral.service'
 import { getStaffSignupReferral } from '@/modules/staff/staff.service'
 import { createTenantWithTrial } from '@/modules/tenants/tenant.service'
-import { REFERRAL_PROMO_ENDS_AT } from '@/shared/constants'
 
 beforeAll(async () => {
   const sql = getSql()
@@ -22,7 +21,7 @@ afterAll(async () => {
 })
 
 describe('getStaffSignupReferral + resolveSignupReferrer — B2 contra Postgres real', () => {
-  it('lee el código y la fecha reales, y resuelve el tenant referidor', async () => {
+  it('lee el código real, y resuelve el tenant referidor', async () => {
     const referrer = await createTestTenant()
     const code = await ensureReferralCode(referrer.id)
     const staff = await createTestStaffUser()
@@ -41,30 +40,28 @@ describe('getStaffSignupReferral + resolveSignupReferrer — B2 contra Postgres 
 
     const resolved = await resolveSignupReferrer({
       code: signup?.signupReferralCode ?? null,
-      staffCreatedAt: signup?.createdAt ?? new Date(0),
     })
     expect(resolved).toBe(referrer.id)
   })
 
-  it('cuenta creada después del corte de la promo → no atribuye, aunque el código sea válido', async () => {
+  it('cuenta creada después del 31/10 (ya no hay corte) → sí atribuye', async () => {
     const referrer = await createTestTenant()
     const code = await ensureReferralCode(referrer.id)
     const staff = await createTestStaffUser()
 
     const sql = getSql()
-    const afterPromo = new Date(REFERRAL_PROMO_ENDS_AT.getTime() + 24 * 60 * 60 * 1000)
+    const afterOldCutoff = new Date('2026-11-02T12:00:00.000Z')
     await sql`
       UPDATE staff_users
-      SET signup_referral_code = ${code}, created_at = ${afterPromo.toISOString()}
+      SET signup_referral_code = ${code}, created_at = ${afterOldCutoff.toISOString()}
       WHERE id = ${staff.id}
     `
 
     const signup = await getStaffSignupReferral(staff.id)
     const resolved = await resolveSignupReferrer({
       code: signup?.signupReferralCode ?? null,
-      staffCreatedAt: signup?.createdAt ?? new Date(0),
     })
-    expect(resolved).toBeNull()
+    expect(resolved).toBe(referrer.id)
   })
 })
 
@@ -89,6 +86,26 @@ describe('createTenantWithTrial — referred_by_tenant_id (B2) contra Postgres r
       SELECT referred_by_tenant_id FROM tenants WHERE id = ${tenant.id}
     `
     expect(row.referred_by_tenant_id).toBe(referrer.id)
+  })
+
+  it('todo complejo nuevo nace con su propio código de referido (programa permanente)', async () => {
+    const staff = await createTestStaffUser()
+
+    const tenant = await createTenantWithTrial({
+      name: 'Complejo Con Codigo',
+      address: 'Calle 123',
+      city: 'CABA',
+      province: 'Buenos Aires',
+      phone: '1122334455',
+      email: 'con-codigo-test@test.local',
+      staffUserId: staff.id,
+    })
+
+    const sql = getSql()
+    const [row] = await sql<{ referral_code: string | null }[]>`
+      SELECT referral_code FROM tenants WHERE id = ${tenant.id}
+    `
+    expect(row.referral_code).toMatch(/^[A-HJKMNP-Z2-9]{8}$/)
   })
 
   it('el CHECK tenants_referred_by_not_self rechaza que un tenant sea su propio referidor', async () => {

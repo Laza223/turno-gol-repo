@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { REFERRAL_PROMO_ENDS_AT } from '@/shared/constants'
 
 const TENANT_ID = '11111111-1111-4111-8111-111111111111'
 
@@ -63,16 +62,5 @@ describe('generateReferralLinkAction', () => {
       error: 'Demasiados intentos.',
     })
     expect(h.ensureReferralCode).not.toHaveBeenCalled()
-  })
-
-  it('promo vencida → error, sin generar ni revalidar', async () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date(REFERRAL_PROMO_ENDS_AT.getTime() + 1000))
-    const { generateReferralLinkAction } = await load()
-
-    const res = await generateReferralLinkAction()
-    expect(res.success).toBe(false)
-    expect(h.ensureReferralCode).not.toHaveBeenCalled()
-    expect(h.revalidatePath).not.toHaveBeenCalled()
   })
 })

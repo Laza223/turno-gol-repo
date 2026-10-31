@@ -24,7 +24,6 @@ type Props = {
   /** Link completo (`https://…/r/CODE`) o `null` si todavía no se generó. */
   url: string | null
   tenantName: string
-  promoOpen: boolean
   referrals: ReferralPanelItem[]
   /** Meses que suma, con el criterio del tope (incluye referidos dados de baja). */
   months: number
@@ -42,22 +41,11 @@ const dateFormatter = new Intl.DateTimeFormat('es-AR', {
  * docs/decisions/2026-09-26-referidos.md): link para compartir y la lista de
  * a quién trajo, con el estado de cada premio.
  */
-export function ReferralPanel({
-  url,
-  tenantName,
-  promoOpen,
-  referrals,
-  months,
-  generateAction,
-}: Props) {
+export function ReferralPanel({ url, tenantName, referrals, months, generateAction }: Props) {
   return (
     <div className="space-y-3 lg:space-y-6">
       <section className="card-premium space-y-3 lg:space-y-4 rounded-lg p-4 sm:p-6">
-        {promoOpen ? (
-          <ShareBlock url={url} tenantName={tenantName} generateAction={generateAction} />
-        ) : (
-          <p className="text-sm text-muted-foreground">La promo cerró el 31/10.</p>
-        )}
+        <ShareBlock url={url} tenantName={tenantName} generateAction={generateAction} />
       </section>
 
       <section className="card-premium space-y-3 lg:space-y-4 rounded-lg p-4 sm:p-6">
@@ -70,9 +58,7 @@ export function ReferralPanel({
 
         {referrals.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {promoOpen
-              ? 'Todavía no invitaste a nadie. Cuando alguien se registre con tu link, aparece acá.'
-              : 'No invitaste a ningún complejo.'}
+            Todavía no invitaste a nadie. Cuando alguien se registre con tu link, aparece acá.
           </p>
         ) : (
           <ul className="divide-y divide-border">

@@ -4,6 +4,8 @@ import { getDb, getSql, getWorkerDb, withTenantContext, type DbTx } from '@/shar
 import { plans, tenants, tenantStaffMembers, tenantSubscriptions } from '@/shared/db/schema'
 import { insertAuditLog } from '@/shared/db/audit'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
+import { ensureReferralCode } from '@/modules/referrals/referral.service'
+import { captureMessage } from '@/lib/sentry'
 import { DEFAULT_CANCELLATION_HOURS_BEFORE, TRIAL_DAYS } from '@/shared/constants'
 import { generateSlug, RESERVED_SLUGS } from './tenant.utils'
 import type {
@@ -201,6 +203,19 @@ export async function createTenantWithTrial(
       tx,
     )
   })
+
+  // Programa de referidos permanente (docs/decisions/2026-10-31-referidos-permanentes.md):
+  // todo complejo nace con su código. Best-effort A PROPÓSITO y fuera de la
+  // transacción: el alta ya está commiteada y no debe fallar por el código;
+  // si esto falla queda el botón "Generar mi link" de /settings/invitar.
+  try {
+    await ensureReferralCode(tenant.id)
+  } catch (err) {
+    captureMessage('createTenantWithTrial: no se pudo generar el código de referido', {
+      level: 'warning',
+      extra: { tenantId: tenant.id, error: err instanceof Error ? err.message : String(err) },
+    })
+  }
 
   return tenant
 }

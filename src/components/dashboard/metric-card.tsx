@@ -13,8 +13,6 @@ interface MetricCardProps {
   footer?: ReactNode
   /** La card entera es el blanco (Fitts) — navega a la vista con el detalle. */
   href?: string
-  /** aria-label del link (ej. "Caja de hoy: $ 45.000 — ver caja"). */
-  ariaLabel?: string
 }
 
 /**
@@ -30,7 +28,6 @@ export function MetricCard({
   accent = 'emerald',
   footer,
   href,
-  ariaLabel,
 }: MetricCardProps) {
   const card = (
     <StatCard
@@ -47,7 +44,6 @@ export function MetricCard({
   return (
     <Link
       href={href}
-      aria-label={ariaLabel ?? label}
       className="block h-full rounded-xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       {card}

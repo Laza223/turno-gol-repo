@@ -154,7 +154,7 @@ describe('PlanillaBoard — mover un partido', () => {
 
     await waitFor(() => expect(movingBanner()).not.toBeNull())
     // 3 horas tomadas, ninguna ocupada.
-    const targets = board().getAllByRole('button', { name: /mover el partido acá/i })
+    const targets = board().getAllByRole('button', { name: /mover acá/i })
     expect(targets).toHaveLength(3)
 
     fireEvent.click(targets[0]!)
@@ -176,7 +176,7 @@ describe('PlanillaBoard — mover un partido', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: /^Ubicar/ })[0]!)
     await waitFor(() => expect(movingBanner()).not.toBeNull())
-    fireEvent.click(board().getAllByRole('button', { name: /mover el partido acá/i })[0]!)
+    fireEvent.click(board().getAllByRole('button', { name: /mover acá/i })[0]!)
 
     await waitFor(() => expect(reschedule).toHaveBeenCalled())
     expect(toastMock).toHaveBeenCalledWith(
@@ -198,7 +198,7 @@ describe('PlanillaBoard — mover un partido', () => {
     fireEvent.click(screen.getAllByRole('button', { name: /^Mover Los Pibes/ })[0]!)
     await waitFor(() => expect(movingBanner()).not.toBeNull())
     // El hueco donde está queda como 'current', así que los destinos son 2.
-    const targets = board().getAllByRole('button', { name: /mover el partido acá/i })
+    const targets = board().getAllByRole('button', { name: /mover acá/i })
     expect(targets).toHaveLength(2)
     fireEvent.click(targets[0]!)
 
@@ -227,7 +227,7 @@ describe('PlanillaBoard — mover un partido', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: /^Ubicar/ })[0]!)
     await waitFor(() => expect(movingBanner()).not.toBeNull())
-    fireEvent.click(board().getAllByRole('button', { name: /mover el partido acá/i })[0]!)
+    fireEvent.click(board().getAllByRole('button', { name: /mover acá/i })[0]!)
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/ya tiene otro partido/i)
     // Sigue en modo mover: el aviso de arriba no se fue.

@@ -96,7 +96,9 @@ export function VoyDemo() {
           className={joined ? `${s.hole} ${s.joined}` : s.hole}
           style={HOLE_POSITION}
           aria-pressed={joined}
-          aria-label="Voy: sumarme al partido de ejemplo"
+          aria-label={
+            joined ? 'Vos: ya estás en el partido de ejemplo' : 'Voy: sumarme al partido de ejemplo'
+          }
           onClick={join}
         >
           <span className={s.in}>{joined ? 'Vos' : 'Voy'}</span>

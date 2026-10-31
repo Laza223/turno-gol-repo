@@ -262,7 +262,7 @@ describe('BookingGrid — layout CSS Grid', () => {
     // Desde Fase 3 el placement vive en el propio botón: el slot ocupado ya no
     // necesita un div envolvente (el panel lateral reemplazó al popover que
     // colgaba de él), y es un nodo menos por celda en la vista más densa.
-    const cell = screen.getByLabelText(/Cancha 1 16:00–18:00/) as HTMLElement
+    const cell = screen.getByRole('button', { name: /Cancha 1 16:00–18:00/ }) as HTMLElement
     // Fila de header = 1; slot 16:00 con apertura 08:00 es la fila 10.
     expect(cell.style.gridRow).toBe('10 / span 2')
     // El slot 17:00 de esa cancha quedó cubierto: no hay botón libre.
@@ -299,7 +299,7 @@ describe('BookingGrid — layout CSS Grid', () => {
 
     // 09:00 está ocupado: el foco entra a la reserva (también es botón).
     fireEvent.keyDown(first, { key: 'ArrowDown' })
-    expect(document.activeElement?.getAttribute('aria-label')).toContain('09:00–11:00')
+    expect(document.activeElement?.textContent).toContain('09:00–11:00')
 
     // 10:00 está cubierto por el span → el siguiente foco es 11:00.
     fireEvent.keyDown(document.activeElement!, { key: 'ArrowDown' })

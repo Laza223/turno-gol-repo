@@ -23,10 +23,9 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Falta 1')).toBeVisible()
-    await expect(canvas.getByRole('button', { name: /Voy: sumarme/ })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    )
+    await expect(
+      canvas.getByRole('button', { name: /sumarme al partido|ya estás en el partido/ }),
+    ).toHaveAttribute('aria-pressed', 'false')
     await expect(canvas.queryByRole('button', { name: 'Reiniciar' })).not.toBeInTheDocument()
   },
 }
@@ -34,13 +33,14 @@ export const Default: Story = {
 export const TocarVoy: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: /Voy: sumarme/ }))
+    await userEvent.click(
+      canvas.getByRole('button', { name: /sumarme al partido|ya estás en el partido/ }),
+    )
     await expect(canvas.getByText(/¡Estamos los 10!/)).toBeVisible()
     await expect(canvas.getByText('Se juega')).toBeVisible()
-    await expect(canvas.getByRole('button', { name: /Voy: sumarme/ })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    )
+    await expect(
+      canvas.getByRole('button', { name: /sumarme al partido|ya estás en el partido/ }),
+    ).toHaveAttribute('aria-pressed', 'true')
     await expect(canvas.getByRole('button', { name: 'Reiniciar' })).toBeVisible()
   },
 }
@@ -48,9 +48,13 @@ export const TocarVoy: Story = {
 export const Reiniciar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: /Voy: sumarme/ }))
+    await userEvent.click(
+      canvas.getByRole('button', { name: /sumarme al partido|ya estás en el partido/ }),
+    )
     await userEvent.click(canvas.getByRole('button', { name: 'Reiniciar' }))
     await expect(canvas.getByText('Falta 1')).toBeVisible()
-    await expect(canvas.getByRole('button', { name: /Voy: sumarme/ })).toHaveFocus()
+    await expect(
+      canvas.getByRole('button', { name: /sumarme al partido|ya estás en el partido/ }),
+    ).toHaveFocus()
   },
 }

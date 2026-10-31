@@ -71,10 +71,8 @@ function TenantFilter({
 }
 
 /** Nombre accesible de la tarjeta: el tipo, el complejo, cuándo, qué partido es y el cupo (la tira de camisetas es decorativa). */
-function cardLabel(item: RivalBoardItem, type: string, now: Date): string {
-  const sello = item.hasStamp ? ', reservada en TurnoGol' : ''
-  const cupo = `${Math.min(item.confirmedCount, item.capacity)} de ${item.capacity} confirmados`
-  return `${type} en ${item.tenantName}, ${whenLabel(item.startsAt, now)}. ${formatLabel(item.format)}, ${RIVAL_LEVEL_LABELS[item.level]}${sello}, ${cupo}`
+function cupoLabel(item: RivalBoardItem): string {
+  return `${Math.min(item.confirmedCount, item.capacity)} de ${item.capacity} confirmados`
 }
 
 /**
@@ -100,7 +98,6 @@ function BoardCard({
     <li>
       <Link
         href={`/rival/partido/${item.id}`}
-        aria-label={cardLabel(item, type, now)}
         className="block h-full rounded-2xl border border-border bg-card p-4 shadow-xs transition-colors hover:border-input focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <div className="flex items-start justify-between gap-3">
@@ -124,6 +121,10 @@ function BoardCard({
         </p>
         {item.hasStamp && <StampBadge className="mt-2" />}
         <MiniShirts className="mt-3" capacity={item.capacity} confirmed={item.confirmedCount} />
+        {/* Sin aria-label (WCAG 2.5.3): el nombre del link es lo visible más el cupo y el cuándo. */}
+        <span className="sr-only">
+          {cupoLabel(item)}, {whenLabel(item.startsAt, now)}
+        </span>
       </Link>
     </li>
   )

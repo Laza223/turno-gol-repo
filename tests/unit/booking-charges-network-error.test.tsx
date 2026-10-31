@@ -84,7 +84,7 @@ describe('BookingCharges: un corte de red no convierte el reintento en otro cobr
     // No se puede cambiar el monto, el método ni sumar líneas: lo único que sale
     // es ESE cobro.
     expect(screen.getByLabelText('Monto')).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Método de pago' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /^Método de pago/ })).toBeDisabled()
     expect(screen.getByRole('button', { name: /Agregar pago dividido/ })).toBeDisabled()
     expect(screen.queryByRole('button', { name: /^Cobrar/ })).toBeNull()
 

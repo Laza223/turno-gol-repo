@@ -82,7 +82,7 @@ export const CobrarFiado: Story = {
     // SplitPaymentFields (Fase 1, D2): el método es el `SelectMenu` del design
     // system — un DropdownMenu de Radix, no un <select> nativo (2026-09-17).
     // El panel va portaled a document.body, fuera del diálogo.
-    await userEvent.click(dialog.getByRole('button', { name: 'Método de pago' }))
+    await userEvent.click(dialog.getByRole('button', { name: /^Método de pago/ }))
     await userEvent.click(await body.findByRole('menuitemradio', { name: 'Transferencia' }))
     await userEvent.click(dialog.getByRole('button', CONFIRMAR_COBRO))
 

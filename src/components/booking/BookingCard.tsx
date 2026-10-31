@@ -237,10 +237,6 @@ function BookingCardComponent({
       onClick={() => onDetailChange?.(booking.id)}
       aria-haspopup="dialog"
       aria-expanded={detailOpen}
-      // El sufijo "falta cobrar" se mantiene literal (no `money.long`, que
-      // solo dice "Falta" con pago parcial): un lector de pantalla necesita
-      // el verbo, no solo el número.
-      aria-label={`${courtName} ${timeStart}–${booking.timeEnd}: ${displayName ? `${displayName}, ${visual.label || 'confirmada'}` : visual.label || 'confirmada'}${hasAmount ? `, falta cobrar ${formatArs(visual.amountCents!)}` : ''}`}
       className={cn(
         // `bg-card` abajo y el tinte en el `<span>` de adentro: los tintes son
         // translúcidos, y sobre la grilla la línea de "ahora" (que pasa por
@@ -265,6 +261,12 @@ function BookingCardComponent({
           colored ? TONE_TINT[visual.tone] : 'bg-secondary/50 dark:bg-secondary',
         )}
       >
+        {/* WCAG 2.5.3: sin aria-label, el nombre es el contenido (lo visible) y el contexto que
+            la hoja no repite va en texto solo-lector. El "falta cobrar" va literal: un lector
+            necesita el verbo, no solo el número. */}
+        <span className="sr-only">
+          {courtName} {timeStart}–{booking.timeEnd}:{' '}
+        </span>
         <span
           lang="es"
           className="truncate text-xs leading-[1.2] font-semibold text-foreground @min-[3.5rem]:line-clamp-2 @min-[3.5rem]:whitespace-normal @min-[3.5rem]:hyphens-auto @min-[8.5rem]:text-sm"
@@ -292,6 +294,9 @@ function BookingCardComponent({
                 hasAmount && '@min-[3.75rem]:hidden @min-[7rem]:block',
               )}
             />
+          )}
+          {hasAmount && (
+            <span className="sr-only">{visual.label ? `${visual.label}, ` : ''}falta cobrar </span>
           )}
           <span className="hidden truncate @min-[3.75rem]:inline @min-[7rem]:hidden">
             {money.short}

@@ -491,10 +491,10 @@ function CourtItem({
           <button
             type="button"
             onClick={() => onEdit()}
-            aria-label={`Cambiar el precio de ${court.name}`}
             className="-mx-2 -my-1 max-w-full rounded-md px-2 py-1 text-left transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           >
             <PriceSummary summary={summary} />
+            <span className="sr-only">Cambiar el precio de {court.name}</span>
           </button>
         ) : (
           <PriceSummary summary={summary} />

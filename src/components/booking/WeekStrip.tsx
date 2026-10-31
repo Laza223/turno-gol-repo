@@ -125,7 +125,6 @@ export function WeekStrip({ date, todayArt, onNavigate }: Props) {
               <button
                 type="button"
                 onClick={() => onNavigate(day.date)}
-                aria-label={`${day.label} ${day.dayNum}${isToday ? ' (hoy)' : ''}`}
                 aria-current={selected ? 'date' : undefined}
                 className={cn(
                   'flex h-11 min-w-[52px] flex-col items-center justify-center rounded-lg px-2 transition-colors duration-150',
@@ -144,6 +143,7 @@ export function WeekStrip({ date, todayArt, onNavigate }: Props) {
                 <span className="mt-[3px] text-[15px] font-semibold leading-none tabular-nums">
                   {day.dayNum}
                 </span>
+                {isToday && <span className="sr-only">(hoy)</span>}
               </button>
             </li>
           )

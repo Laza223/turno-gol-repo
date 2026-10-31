@@ -173,7 +173,7 @@ export const ConBandaDeMadrugada: Story = {
   })(),
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const band = canvas.getByRole('button', { name: /Mostrar horarios sin turnos/ })
+    const band = canvas.getByRole('button', { name: /Sin turnos · Mostrar/ })
     await expect(band).toBeInTheDocument()
     await userEvent.click(band)
     await expect(args.onExpandMorning).toHaveBeenCalledOnce()

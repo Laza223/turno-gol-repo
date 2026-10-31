@@ -34,10 +34,10 @@ export const SinLink: Story = {}
 
 /** Con `href`: la card entera es un `<Link>` (Fitts) que navega a la vista de detalle. */
 export const ConLink: Story = {
-  args: { href: '/caja', ariaLabel: 'Caja de hoy: $ 45.000 — ver caja' },
+  args: { href: '/caja' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const link = canvas.getByRole('link', { name: 'Caja de hoy: $ 45.000 — ver caja' })
+    const link = canvas.getByRole('link', { name: /^Caja de hoy/ })
     await expect(link).toHaveAttribute('href', '/caja')
   },
 }

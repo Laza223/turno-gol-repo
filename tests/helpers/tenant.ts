@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { faker } from '@faker-js/faker'
 import type { Sql, TransactionSql } from 'postgres'
 import { withContextRollback } from '@/shared/db/client'
@@ -133,6 +134,11 @@ export async function createTestTenant(
   return rows[0]
 }
 
+// Único por construcción: faker solo repetía de a ratos (players_email_key).
+function uniqueEmail(provider: string): string {
+  return `${faker.internet.username().toLowerCase()}-${randomUUID().slice(0, 8)}@${provider}`
+}
+
 export type TestPlayer = { id: string; email: string }
 
 export async function createTestPlayer(
@@ -140,7 +146,7 @@ export async function createTestPlayer(
   overrides: Partial<{ email: string }> = {},
 ): Promise<TestPlayer> {
   const s = sql ?? adminSql()
-  const email = overrides.email ?? faker.internet.email({ provider: 'test.local' }).toLowerCase()
+  const email = overrides.email ?? uniqueEmail('test.local')
   const rows = await s<{ id: string; email: string }[]>`
     INSERT INTO players (email, first_name, last_name, agreed_to_terms_at, terms_version)
     VALUES (
@@ -162,7 +168,7 @@ export async function createTestStaffUser(
   overrides: Partial<{ email: string }> = {},
 ): Promise<TestStaff> {
   const s = sql ?? adminSql()
-  const email = overrides.email ?? faker.internet.email({ provider: 'staff.local' }).toLowerCase()
+  const email = overrides.email ?? uniqueEmail('staff.local')
   const rows = await s<{ id: string; email: string }[]>`
     INSERT INTO staff_users (email, first_name, last_name)
     VALUES (

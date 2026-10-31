@@ -53,11 +53,12 @@ runs:
       # registries de imágenes cortan las descargas (ver abajo).
       run: |
         mv supabase/migrations supabase/migrations.disabled
-        # `storage` sumado a la exclusión: el storage de imágenes del repo es
+        # `storage-api` sumado a la exclusión (la CLI 2.x lo llama así; `storage`
+        # no excluía nada): el storage de imágenes del repo es
         # Cloudflare R2, no Supabase Storage (ver CLAUDE.md), y `grep` confirma
         # cero referencias a `supabase...storage` fuera de R2 en src/ ni
         # tests/e2e/ — el servicio no tiene un solo consumidor acá.
-        start_stack() { supabase start -x studio,imgproxy,edge-runtime,logflare,vector,storage; }
+        start_stack() { supabase start -x studio,imgproxy,edge-runtime,logflare,vector,storage-api; }
         # El 2026-10-22, durante horas, ningún run levantaba el stack:
         # - ghcr.io (el que fijaba setup-cli v1; desde la CLI 2.108 elige la CLI)
         #   cortaba con `toomanyrequests`,

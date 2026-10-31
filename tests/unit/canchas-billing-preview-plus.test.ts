@@ -70,10 +70,10 @@ beforeEach(() => {
 })
 
 describe('createCourtAction — preview de la cuota al sumar una cancha', () => {
-  it('con Plus facturado de $15.000: 5 -> 6 canchas muestra $225.000 -> $270.000', async () => {
+  it('con Plus facturado de $12.000: 5 -> 6 canchas muestra $210.000 -> $252.000', async () => {
     vi.mocked(loadSub).mockResolvedValue({
       plus_enabled: true,
-      plus_price_per_court_cents: 1_500_000,
+      plus_price_per_court_cents: 1_200_000,
     } as never)
 
     const res = await createCourtAction(courtFormData())
@@ -81,13 +81,13 @@ describe('createCourtAction — preview de la cuota al sumar una cancha', () => 
     expect(res).toMatchObject({
       success: false,
       requiresBillingConfirmation: {
-        currentMonthlyCents: 22_500_000,
-        nextMonthlyCents: 27_000_000,
+        currentMonthlyCents: 21_000_000,
+        nextMonthlyCents: 25_200_000,
       },
     })
   })
 
-  it('Plus a precio de lista ($20.000): suma la lista por cancha', async () => {
+  it('Plus a precio de lista ($15.000): suma la lista por cancha', async () => {
     vi.mocked(loadSub).mockResolvedValue({
       plus_enabled: true,
       plus_price_per_court_cents: null,
@@ -97,8 +97,8 @@ describe('createCourtAction — preview de la cuota al sumar una cancha', () => 
 
     expect(res).toMatchObject({
       requiresBillingConfirmation: {
-        currentMonthlyCents: 25_000_000,
-        nextMonthlyCents: 30_000_000,
+        currentMonthlyCents: 22_500_000,
+        nextMonthlyCents: 27_000_000,
       },
     })
   })

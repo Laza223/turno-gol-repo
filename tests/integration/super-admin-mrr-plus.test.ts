@@ -7,7 +7,7 @@ import { cleanupAll, createTestTenant, ensureRoles } from '../helpers/tenant'
 
 /**
  * F6 (revisión Plus): el MRR del super-admin (lista y dashboard) incluye Plus.
- * Montos a mano: plan $30.000 por cancha, Plus de lista $20.000, anual 10% sobre
+ * Montos a mano: plan $30.000 por cancha, Plus de lista $15.000, anual 10% sobre
  * la suma, 5 canchas.
  */
 
@@ -60,16 +60,16 @@ describe('MRR del super-admin con Plus (F6)', () => {
   it('lista: sin Plus da igual que antes; con Plus de lista o especial lo suma; anual descuenta la suma', async () => {
     const sin = await seedActive('Sin Plus')
     const lista = await seedActive('Plus lista', { plusEnabled: true })
-    const especial = await seedActive('Plus especial', { plusEnabled: true, plusPrice: 1_500_000 })
+    const especial = await seedActive('Plus especial', { plusEnabled: true, plusPrice: 1_200_000 })
     const anual = await seedActive('Plus anual', { cycle: 'annual', plusEnabled: true })
     const anualSin = await seedActive('Anual sin Plus', { cycle: 'annual' })
     // Baja agendada: el débito ya no lo lleva (plus_enabled = false) aunque haya precio cargado.
-    const baja = await seedActive('Baja agendada', { plusPrice: 1_500_000 })
+    const baja = await seedActive('Baja agendada', { plusPrice: 1_200_000 })
 
     expect(await mrrOf(sin)).toBe(15_000_000) // 5 x 30.000
-    expect(await mrrOf(lista)).toBe(25_000_000) // 5 x (30.000 + 20.000)
-    expect(await mrrOf(especial)).toBe(22_500_000) // 5 x (30.000 + 15.000)
-    expect(await mrrOf(anual)).toBe(22_500_000) // 250.000 x 0,9
+    expect(await mrrOf(lista)).toBe(22_500_000) // 5 x (30.000 + 15.000)
+    expect(await mrrOf(especial)).toBe(21_000_000) // 5 x (30.000 + 12.000)
+    expect(await mrrOf(anual)).toBe(20_250_000) // 225.000 x 0,9
     expect(await mrrOf(anualSin)).toBe(13_500_000) // 150.000 x 0,9
     expect(await mrrOf(baja)).toBe(15_000_000)
   })
@@ -83,7 +83,7 @@ describe('MRR del super-admin con Plus (F6)', () => {
 
     const data = await getDashboardData()
 
-    // 15.000.00 + 25.000.00 + 22.500.00 centavos
-    expect(data.mrrCents).toBe(62_500_000)
+    // 15.000.00 + 22.500.00 + 20.250.00 centavos
+    expect(data.mrrCents).toBe(57_750_000)
   })
 })

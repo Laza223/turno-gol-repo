@@ -3,7 +3,7 @@ import { addDays, addMonths } from 'date-fns'
 
 // TurnoGol Plus en el monto del débito (decisión 2026-10-22, P3/P6/P7/P10).
 // Los montos esperados están escritos a mano a propósito, no derivados de la
-// fórmula: plan $30.000 por cancha, Plus de lista $20.000 por cancha.
+// fórmula: plan $30.000 por cancha, Plus de lista $15.000 por cancha.
 
 import {
   annualMonthlyEquivalent,
@@ -25,16 +25,8 @@ const PLAN = {
 }
 
 describe('PR1 — Plus en el monto del débito', () => {
-  it('5 canchas mensual: lista $250.000, especial $15.000 => $225.000', () => {
-    expect(PLUS_LIST_PER_COURT_CENTS).toBe(2_000_000)
-    expect(
-      computeSubscriptionAmount({
-        billedCourts: 5,
-        cycle: 'monthly',
-        plusPerCourtCents: 2_000_000,
-        ...PLAN,
-      }),
-    ).toBe(25_000_000)
+  it('5 canchas mensual: lista $225.000, especial $12.000 => $210.000', () => {
+    expect(PLUS_LIST_PER_COURT_CENTS).toBe(1_500_000)
     expect(
       computeSubscriptionAmount({
         billedCourts: 5,
@@ -43,6 +35,14 @@ describe('PR1 — Plus en el monto del débito', () => {
         ...PLAN,
       }),
     ).toBe(22_500_000)
+    expect(
+      computeSubscriptionAmount({
+        billedCourts: 5,
+        cycle: 'monthly',
+        plusPerCourtCents: 1_200_000,
+        ...PLAN,
+      }),
+    ).toBe(21_000_000)
   })
 
   it('sin Plus el monto es idéntico al del plan solo, para 1..20 canchas x ciclo', () => {
@@ -79,24 +79,24 @@ describe('PR1 — Plus en el monto del débito', () => {
 })
 
 describe('PR2 — el descuento anual va sobre la SUMA plan + Plus', () => {
-  it('Plus especial $15.000, 5 canchas, anual: ($150.000 + $75.000) x 0,9 x 12 = $2.430.000', () => {
+  it('Plus especial $12.000, 5 canchas, anual: ($150.000 + $60.000) x 0,9 x 12 = $2.268.000', () => {
     expect(
       computeSubscriptionAmount({
         billedCourts: 5,
         cycle: 'annual',
-        plusPerCourtCents: 1_500_000,
+        plusPerCourtCents: 1_200_000,
         ...PLAN,
       }),
-    ).toBe(243_000_000)
+    ).toBe(226_800_000)
     // chargePerCycleCents (lo que ve el dueño) coincide con lo que se manda a MP.
     expect(
       buildPriceBreakdown({
         billedCourts: 5,
         cycle: 'annual',
-        plusPerCourtCents: 1_500_000,
+        plusPerCourtCents: 1_200_000,
         ...PLAN,
       }).chargePerCycleCents,
-    ).toBe(243_000_000)
+    ).toBe(226_800_000)
   })
 })
 
@@ -133,8 +133,8 @@ describe('PR3 — precio impar: enteros y sin divergencia con la cotización', (
 
 describe('PR4 — precio especial (P10)', () => {
   it('NULL => lista; prendido con especial => el especial', () => {
-    expect(effectivePlusPerCourtCents(true, null)).toBe(2_000_000)
-    expect(effectivePlusPerCourtCents(true, 1_500_000)).toBe(1_500_000)
+    expect(effectivePlusPerCourtCents(true, null)).toBe(1_500_000)
+    expect(effectivePlusPerCourtCents(true, 1_200_000)).toBe(1_200_000)
   })
 
   it('Plus apagado => 0, aunque haya un especial guardado', () => {

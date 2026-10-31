@@ -84,6 +84,6 @@ export const ElegirPais: Story = {
     await userEvent.click(canvas.getByRole('button', { name: /Seleccionar código de país/ }))
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(await body.findByText('Uruguay'))
-    await expect(canvas.getByRole('button', { name: /Uruguay \(\+598\)/ })).toBeVisible()
+    await expect(canvas.getByRole('button', { name: /Uruguay \+598/ })).toBeVisible()
   },
 }

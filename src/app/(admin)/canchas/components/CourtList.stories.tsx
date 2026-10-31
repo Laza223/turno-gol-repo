@@ -75,7 +75,7 @@ export const PrecioEnLaFila: Story = {
   args: { initialCourts: [courtFutbol5()] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const price = canvas.getByRole('button', { name: 'Cambiar el precio de Cancha 1' })
+    const price = canvas.getByRole('button', { name: /Cambiar el precio de Cancha 1/ })
     await expect(price).toHaveTextContent(/9\.000/)
     await expect(price).toHaveTextContent(/desde las 18:00/)
     await userEvent.click(price)

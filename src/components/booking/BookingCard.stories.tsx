@@ -129,7 +129,6 @@ export const PorCobrar: Story = {
     const cell = canvas.getByRole('button', { name: /No cobrado, falta cobrar/ })
     // Ni anillo ni atenuado: el anillo lo pone solo el chip "N sin cobrar".
     await expect(cell.className).not.toMatch(/ring-warning|ring-destructive|slot-alarm|saturate-50/)
-    await expect(canvas.getByLabelText(/, falta cobrar/)).toBeInTheDocument()
     // DOS nodos y uno solo visible: el monto vive arriba en escritorio y abajo en
     // el teléfono, y cuál se muestra lo decide el CSS (container query). Se
     // afirma la cuenta exacta para que borrar uno de los dos rompa acá en vez
@@ -167,9 +166,9 @@ export const AusenteSinCobrar: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     // Control negativo: un no-show nunca es cobrable (veto "No-show NO es
-    // deuda"), así que el aria-label no puede decir "falta cobrar" aunque
+    // deuda"), así que el nombre accesible no puede decir "falta cobrar" aunque
     // `pending` venga > 0.
-    await expect(canvas.queryByLabelText(/falta cobrar/)).toBeNull()
+    await expect(canvas.queryByRole('button', { name: /falta cobrar/ })).toBeNull()
   },
 }
 

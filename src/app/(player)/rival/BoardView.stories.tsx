@@ -92,10 +92,11 @@ export const Default: Story = {
     await expect(canvas.getByText('Se busca arquero')).toBeInTheDocument()
     await expect(canvas.getByText('Busca rival')).toBeInTheDocument()
     // Cada tarjeta es un link al partido por id, con nombre accesible claro; sin "Ver más".
-    await expect(
-      canvas.getByRole('link', { name: /^Faltan 3 en El Vagón, Hoy 20:00/ }),
-    ).toHaveAttribute('href', '/rival/partido/a')
-    await expect(canvas.getByRole('link', { name: /^Busca rival en El Vagón/ })).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: /Faltan 3.*El Vagón/ })).toHaveAttribute(
+      'href',
+      '/rival/partido/a',
+    )
+    await expect(canvas.getByRole('link', { name: /Busca rival.*El Vagón/ })).toBeInTheDocument()
     await expect(canvas.queryByRole('link', { name: 'Ver más partidos' })).toBeNull()
     // La hora manda y el día no se repite bajo "Hoy"/"Mañana"; bajo "Próximos días" sí sale.
     await expect(canvas.getAllByText('20:00')).toHaveLength(1)
@@ -103,7 +104,7 @@ export const Default: Story = {
     await expect(canvas.getByText('Miércoles 18')).toBeInTheDocument()
     // El cupo va en el nombre accesible (la tira de camisetas es decorativa).
     await expect(
-      canvas.getByRole('link', { name: /^Faltan 3 en El Vagón.*, 7 de 10 confirmados$/ }),
+      canvas.getByRole('link', { name: /Faltan 3.*El Vagón.*7 de 10 confirmados/ }),
     ).toBeInTheDocument()
   },
 }

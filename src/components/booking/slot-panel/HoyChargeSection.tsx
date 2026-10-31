@@ -374,7 +374,7 @@ function TeamCard({
           type="button"
           onClick={() => onPlayerCharge(playerCents, line?.method ?? 'cash', team)}
           disabled={disabled}
-          aria-label={`Pagó uno del Equipo ${team}: ${formatArs(playerCents)}`}
+          aria-label={`Pagó uno · ${formatArs(playerCents)} del Equipo ${team}`}
           className="h-11 w-full rounded-lg border border-border bg-card text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 md:h-10"
         >
           Pagó uno · {formatArs(playerCents)}

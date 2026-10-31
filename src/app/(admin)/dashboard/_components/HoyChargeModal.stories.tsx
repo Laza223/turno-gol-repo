@@ -322,7 +322,7 @@ export const PagaPrimeroUnoDelEquipo2: Story = {
     const dialog = await openDialog()
     await userEvent.click(dialog.getByRole('radio', { name: 'Por equipo' }))
 
-    await userEvent.click(dialog.getByRole('button', { name: /Pagó uno del Equipo 2/ }))
+    await userEvent.click(dialog.getByRole('button', { name: /^Pagó uno .* del Equipo 2$/ }))
     await waitFor(() =>
       expect(args.actions.completeAndChargeBookingAction).toHaveBeenCalledWith(
         expect.objectContaining({ charges: [{ amount: 600_000, method: 'cash', team: 2 }] }),

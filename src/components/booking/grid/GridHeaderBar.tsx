@@ -82,7 +82,6 @@ function DateButton({
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label={`${label}. Elegir otra fecha`}
           className={cn(
             'flex min-w-0 items-center gap-1.5 rounded-lg transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
             compact ? 'h-11 flex-1 justify-center px-2 py-2' : 'h-9 shrink-0 px-3',
@@ -109,6 +108,7 @@ function DateButton({
             </span>
           )}
           <CalendarDays aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span className="sr-only">. Elegir otra fecha</span>
         </button>
       </PopoverTrigger>
       <PopoverContent align="center" className="w-auto p-3">
@@ -173,7 +173,7 @@ export function GridHeaderBar({
       type="button"
       onClick={onToggleHighlight}
       aria-pressed={highlightPending}
-      aria-label={`${pendingSummary.count} ${pendingSummary.count === 1 ? 'turno jugado' : 'turnos jugados'} sin cobrar: ${formatArs(pendingSummary.totalCents)}. Resaltar esos turnos`}
+      aria-label={`${pendingSummary.count} sin cobrar · ${formatArs(pendingSummary.totalCents)}. Resaltar esos turnos`}
       className={cn(
         // 44px en touch (MASTER §10): dejó de ser texto y ahora se toca. En
         // escritorio baja a 36 para entrar en la barra de 60.

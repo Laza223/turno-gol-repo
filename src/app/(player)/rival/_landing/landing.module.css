@@ -1233,7 +1233,8 @@ button.armalo {
   height: 100%;
 }
 .gdot {
-  --d: 26px;
+  /* Escala con el campo: en celulares bajos el campo se achica y 26 px fijos encimaban a los suplentes. */
+  --d: clamp(14px, calc(40 * var(--u)), 26px);
   --e: clamp(0, (var(--p, 1) - 0.18 - var(--i) * 0.025) / 0.4, 1);
   --s: calc(var(--e) * var(--e) * (3 - 2 * var(--e)));
   position: absolute;

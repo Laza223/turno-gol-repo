@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
+import { choiceChipClass } from '@/components/ui/segmented-control'
 import { cn } from '@/lib/utils'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 
@@ -284,20 +285,17 @@ export function BookingRescheduleDialog({
                     aria-checked={isSelected}
                     disabled={!s.available || isPending}
                     onClick={() => setSelected(s)}
+                    // La hora elegida con borde y tinte, no en verde sólido: el verde
+                    // es de "Mover turno" (DESIGN.md › Chips).
                     className={cn(
-                      'flex min-h-11 flex-col items-center justify-center rounded-md border px-1 py-1.5 text-xs font-semibold tabular-nums transition-colors md:min-h-10',
-                      isSelected
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border bg-card text-foreground hover:bg-accent',
-                      !s.available && 'cursor-not-allowed opacity-50 hover:bg-card',
+                      choiceChipClass(isSelected),
+                      'flex h-auto min-h-11 flex-col items-center justify-center rounded-md px-1 py-1.5 tabular-nums md:h-auto md:min-h-10',
+                      !s.available && 'opacity-50 hover:bg-card',
                     )}
                   >
                     <span>{s.timeStart}</span>
-                    {/* `opacity-80` SOLO en la ficha sin elegir. Sobre
-                        `bg-primary` el `text-primary-foreground` al 80% da
-                        4.16:1 y AA pide 4.5 — misma clase de bug que el `/80`
-                        de admin-sidebar.tsx. Sin elegir es texto casi negro
-                        sobre `bg-card`, donde el 80% sobra. */}
+                    {/* El precio de la elegida va pleno, como su hora; el de las
+                        demás, al 80%, que sobre `bg-card` sigue en AA. */}
                     <span className={cn('text-[10px] font-medium', !isSelected && 'opacity-80')}>
                       {current
                         ? 'Actual'

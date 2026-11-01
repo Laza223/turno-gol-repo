@@ -127,14 +127,16 @@ export function WeekStrip({ date, todayArt, onNavigate }: Props) {
                 onClick={() => onNavigate(day.date)}
                 aria-label={`${day.label} ${day.dayNum}${isToday ? ' (hoy)' : ''}`}
                 aria-current={selected ? 'date' : undefined}
+                // El día elegido con borde y tinte (DESIGN.md › Chips): en la Grilla
+                // el verde sólido es de lo cobrado. Hoy se distingue por el borde
+                // punteado, no solo por el color.
                 className={cn(
-                  'flex h-11 min-w-[52px] flex-col items-center justify-center rounded-lg px-2 transition-colors duration-150',
+                  'flex h-11 min-w-[52px] flex-col items-center justify-center rounded-lg border border-transparent px-2 transition-colors duration-150',
                   'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
                   selected
-                    ? // Token primary: emerald-700+blanco en light, emerald-500+slate-950 en dark (§2.4).
-                      'bg-primary text-primary-foreground'
+                    ? 'border-primary bg-primary/10 text-foreground'
                     : isToday
-                      ? 'bg-primary/10 text-emerald-800 ring-1 ring-inset ring-primary/50 hover:bg-primary/15 dark:text-emerald-300'
+                      ? 'border-dashed border-primary/60 text-emerald-800 hover:bg-accent dark:text-emerald-300'
                       : 'text-muted-foreground hover:bg-accent hover:text-foreground',
                 )}
               >
@@ -236,11 +238,11 @@ export function WeekStrip({ date, todayArt, onNavigate }: Props) {
                   onClick={() => selectCalendarDay(day)}
                   aria-current={isSelected ? 'date' : undefined}
                   className={cn(
-                    'text-xs min-h-11 md:min-h-9 flex items-center justify-center font-medium rounded-lg transition-all duration-150',
+                    'text-xs min-h-11 md:min-h-9 flex items-center justify-center font-medium rounded-lg border border-transparent transition-all duration-150',
                     isSelected
-                      ? 'bg-primary text-primary-foreground shadow-xs font-semibold'
+                      ? 'border-primary bg-primary/10 text-foreground font-semibold'
                       : isToday
-                        ? 'ring-1 ring-inset ring-primary/50 text-emerald-800 dark:text-emerald-300 hover:bg-accent'
+                        ? 'border-dashed border-primary/60 text-emerald-800 dark:text-emerald-300 hover:bg-accent'
                         : 'hover:bg-accent hover:text-accent-foreground text-foreground/90',
                   )}
                 >

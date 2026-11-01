@@ -18,7 +18,7 @@
  */
 import base from './eslint.config.mjs'
 
-export default [
+const hybridConfig = [
   ...base,
   {
     name: 'turnogol/hybrid-sin-tipos',
@@ -111,3 +111,5 @@ export default [
     },
   },
 ]
+
+export default hybridConfig

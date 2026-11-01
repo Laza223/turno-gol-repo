@@ -25,7 +25,7 @@ describe('quiz "¿De qué categoría sos?"', () => {
   })
 
   it('sigue la tabla del doc (docs/rival/landing.md, sección 2)', () => {
-    expect(startingCategory(0, 0)).toBe('Novena') // picados, 1 vez por semana
+    expect(startingCategory(0, 0)).toBe('Novena') // picados, 1 vez
     expect(startingCategory(0, 2)).toBe('Séptima')
     expect(startingCategory(1, 2)).toBe('Sexta')
     expect(startingCategory(2, 2)).toBe('Quinta')

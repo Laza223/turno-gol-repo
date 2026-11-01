@@ -1,3 +1,4 @@
+import { Share2 } from 'lucide-react'
 import s from './landing.module.css'
 import { StatusChip } from './StatusChip'
 
@@ -5,37 +6,37 @@ const FIGURITAS = [
   { edition: 'Debut', cls: s.fDebut, num: '7', club: 'Los Mismos de Siempre' },
   { edition: 'Plata', cls: s.fPlata, num: '4', club: 'Deportivo Rejunte' },
   { edition: 'Oro', cls: s.fOro, num: '10', club: 'La Banda del Rulo' },
-  { edition: 'Figura', cls: s.fFigura, num: '9', club: 'La vota el rival' },
+  { edition: 'Figura', cls: s.fFigura, num: '9', club: 'La votan los rivales' },
   { edition: 'Fundador', cls: s.fFundador, num: '1', club: 'Temporada Cero' },
 ] as const
 
 const TRAITS = [
-  ['La figura.', 'La vota el rival, así no se arregla entre amigos.'],
+  ['La figura.', 'La votan los del otro equipo, así que no se arregla entre amigos.'],
   [
     'La tapa.',
-    'La IA escribe la crónica de cada partido oficial, con titular de diario deportivo. Habla de clubes y resultados: no nombra a nadie.',
+    'Cada partido oficial tiene su titular de diario deportivo, escrito por la IA y listo para compartir. Habla de clubes y resultados: no nombra a nadie.',
   ],
   [
     'La figurita.',
-    'Tu carta: foto, dorsal, club y números verdaderos. Con ediciones que se ganan jugando: Debut, Plata, Oro, Campeón, Figura y Fundador.',
+    'La tuya: foto, dorsal, club y estadísticas de tus partidos oficiales. Con ediciones que se ganan jugando: Debut, Plata, Oro, Campeón, Figura y Fundador.',
   ],
   [
     'Tarjetas para todo.',
-    'Resultado, fichaje, ascenso, "¡Subí a Quinta!", la Corona. Con un botón: "Que se sepa".',
+    'Resultado, fichaje, ascenso, "¡Subí a Quinta!", la Corona. Las compartís con un botón: "Que se sepa".',
   ],
   [
     'Tu carrera.',
     'Ganados, empatados y perdidos, clásicos, títulos y logros con nombre de crónica, como Centenario o Matador de clásicos. Algunos están ocultos.',
   ],
-  ['Versus.', 'Tu carrera contra la de un amigo, si los dos aceptan.'],
-  ['Tu Temporada.', 'El resumen de tu año, para compartir.'],
+  ['Versus.', 'Compará tu carrera con la de un amigo, si los dos aceptan.'],
+  ['Tu Temporada.', 'El resumen de tu temporada y de tu año, para compartir.'],
 ] as const
 
 const WEEKLY = [
   ['El desafío de la semana.', 'Un reto nuevo para clubes y jugadores.'],
   [
     'El Diario de la Zona.',
-    'Los lunes, la edición de tu zona: resultados, la tabla, el clásico y la goleada.',
+    'El resumen de los lunes de tu zona: resultados, la tabla, el clásico y la goleada.',
   ],
 ] as const
 
@@ -69,7 +70,7 @@ export function TercerTiempoSection() {
             </h2>
             <p className={s.lede} style={{ marginTop: 10 }}>
               Después del partido viene lo mejor: el resultado, la figura y la tapa. Todo listo para
-              pegar en el grupo y en tu historia.
+              mandar al grupo y subir a tu historia.
             </p>
           </div>
           <div
@@ -89,7 +90,7 @@ export function TercerTiempoSection() {
                   Deportivo Rejunte le sacó la Corona a Los Mismos de Siempre en la noche del
                   jueves.
                 </p>
-                <span className={s.ej}>Ejemplo · la escribe la IA, sin nombrar a nadie</span>
+                <span className={s.ej}>Ejemplo · la escribe la IA</span>
               </article>
               {FIGURITAS.map((f) => (
                 <div key={f.edition} className={`${s.rivalFigurita} ${f.cls}`}>
@@ -104,12 +105,14 @@ export function TercerTiempoSection() {
               ))}
               <div className={s.story}>
                 <span className={s.ej} style={{ alignSelf: 'flex-start' }}>
-                  Ejemplo · tarjeta 9:16
+                  Ejemplo · para tu historia
                 </span>
                 <p className={s.big}>
                   ¡Subí a <span className={s.acc}>Quinta!</span>
                 </p>
-                <span className={s.share}>Que se sepa</span>
+                <span className={s.share} aria-hidden="true">
+                  <Share2 size={16} aria-hidden="true" /> Que se sepa
+                </span>
               </div>
             </div>
           </div>

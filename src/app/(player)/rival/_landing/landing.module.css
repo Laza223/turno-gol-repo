@@ -730,7 +730,7 @@ button.armalo {
 .root[data-motion] .hoy .steps {
   position: relative;
   flex: none;
-  min-height: 194px;
+  min-height: 218px;
 }
 .root[data-motion] .hoy .steps li {
   position: absolute;
@@ -1770,6 +1770,9 @@ button.armalo {
 }
 .story .share {
   display: inline-flex;
+  gap: 6px;
+  pointer-events: none;
+  cursor: default;
   min-height: 44px;
   align-items: center;
   justify-content: center;
@@ -2435,7 +2438,7 @@ button.armalo {
     width: min(100%, calc(27svh * 600 / 380));
   }
   .root[data-motion] .hoy .steps {
-    min-height: 176px;
+    min-height: 196px;
   }
   .steps p {
     font-size: 14px;

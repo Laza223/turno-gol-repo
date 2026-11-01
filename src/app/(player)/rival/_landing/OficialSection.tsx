@@ -6,17 +6,20 @@ const SHIELD_PATH = 'M50 4 92 18v38c0 28-18 46-42 56C26 102 8 84 8 56V18Z'
 
 const TRAITS = [
   ['La cartelera de la zona.', 'Los partidos que se vienen, con los dos escudos.'],
-  ['La tabla.', 'Por zona, formato y división. Aparece el club que quiere.'],
-  ['Divisiones y temporadas.', 'Ascensos, descensos y "¡Zafamos!".'],
+  ['La tabla.', 'Por zona, formato y división. Tu club aparece solo si lo elige.'],
+  [
+    'Divisiones y temporadas.',
+    'Cada temporada tu club juega por subir o por no bajar: ascensos, descensos y "¡Zafamos!".',
+  ],
   ['Clásicos.', 'Cuando dos clubes se cruzan seguido, nace el clásico, con su historial.'],
   [
     'La Corona del complejo.',
     'Un club la tiene y cualquiera lo desafía. Si le ganás, te la llevás.',
   ],
-  ['Desafío y revancha.', 'En un toque, por WhatsApp.'],
+  ['Desafío y revancha.', 'Lo proponés en un toque y se lo mandás por WhatsApp.'],
   [
     '¿Volverían a jugar?',
-    'Después del partido, cada equipo dice sí o no del rival. Lo bueno se ve; lo malo no se le muestra a otros jugadores.',
+    'Después del partido, cada equipo responde sí o no: ¿volverían a jugar con este rival? Lo bueno se ve; lo malo no se le muestra a otros jugadores.',
   ],
   ['El álbum de la zona.', 'Cada club que enfrentás, a tu álbum.'],
 ] as const
@@ -39,9 +42,9 @@ export function OficialSection() {
             Club contra club. Esto <span className={s.acc}>cuenta.</span>
           </h2>
           <p className={s.lede} style={{ marginTop: 12 }}>
-            El partido oficial es entre dos clubes, con turno en un complejo TurnoGol. Al final, los
-            dos capitanes confirman el resultado en un toque, o lo confirma el encargado. Si no
-            coinciden, no cuenta.
+            El partido oficial es entre dos clubes, en una cancha que usa TurnoGol, con turno en su
+            grilla. Al final, los dos capitanes confirman el resultado en un toque, o lo confirma el
+            encargado. Si no coinciden, queda en revisión y no cuenta.
           </p>
           <div className={`${s.board} ${s.rivalPizarra}`} style={{ marginTop: 18 }}>
             <p style={{ position: 'absolute', left: 14, top: 12 }}>
@@ -88,8 +91,8 @@ export function OficialSection() {
               </div>
             </div>
             <p className={s.status}>
-              <span className={s.old}>La Corona del complejo · Defensas: 2</span>
-              <span className={s.new}>Nuevo campeón de la Corona · Defensas: 0</span>
+              <span className={s.old}>La Corona del complejo · La defendió 2 veces</span>
+              <span className={s.new}>Nuevo campeón de la Corona · Todavía no la defendió</span>
             </p>
             <p className="sr-only">
               Ejemplo: Deportivo Rejunte le gana 4 a 3 a Los Mismos de Siempre y se lleva la Corona

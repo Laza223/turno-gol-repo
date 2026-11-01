@@ -412,7 +412,7 @@ export function CourtBlock({ form }: Props) {
       {form.showStamp ? (
         <div className="space-y-1">
           <StampBadge />
-          <p className={HELP}>Encontramos tu reserva a esa hora. Si se cae, te avisamos.</p>
+          <p className={HELP}>Encontramos tu reserva a esa hora.</p>
         </div>
       ) : (
         <CourtCheckbox form={form} />

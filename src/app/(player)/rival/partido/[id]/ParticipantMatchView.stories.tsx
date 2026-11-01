@@ -181,7 +181,7 @@ export const EnElBanco: Story = {
   play: async ({ canvasElement }) => {
     await expect(
       within(canvasElement).getByText(
-        'Quedaste en el banco. Si alguien se baja, entrás vos y te avisamos por mail.',
+        'Quedaste en el banco. Si alguien se baja, entrás vos: lo ves en Mis partidos.',
       ),
     ).toBeInTheDocument()
   },

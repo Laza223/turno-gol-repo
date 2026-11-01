@@ -7,17 +7,20 @@ import s from './landing.module.css'
 
 const TABS = [
   {
-    label: 'Faltan 3',
+    tab: 'Faltan jugadores',
+    title: 'Faltan 3',
     meta: 'Jueves 22:00 · Fútbol 7 · Tranqui',
-    text: 'Al partido le faltan jugadores. Te sumás con un pedido, y el organizador te acepta.',
+    text: 'Tocás «Pedir sumarme» y el organizador decide si entrás. Si te aceptan, podés escribirle por WhatsApp.',
   },
   {
-    label: 'Se busca arquero',
+    tab: 'Se busca arquero',
+    title: 'Se busca arquero',
     meta: 'Martes 20:00 · Fútbol 5 · Parejo',
-    text: 'El puesto que nadie quiere y todos necesitan. Si atajás, acá te buscan.',
+    text: 'Si atajás, acá te buscan. Podés pedir aviso por mail solo cuando busquen arquero.',
   },
   {
-    label: 'Busca rival',
+    tab: 'Busca rival',
+    title: 'Busca rival',
     meta: 'Sábado 18:00 · Fútbol 5 · Picante',
     text: 'Un equipo completo busca a otro equipo para jugar.',
   },
@@ -64,7 +67,7 @@ export function TablonTabs() {
       <div className={`${s.plate} ${s.rivalPizarra}`} data-reveal="">
         <span className={s.ring} aria-hidden="true" />
         <div className={s.tcard} style={{ opacity: faded ? 0 : 1 }} aria-live="polite">
-          <p className={s.t}>{card.label}</p>
+          <p className={s.t}>{card.title}</p>
           <p className={s.m}>
             {card.meta}
             <br />
@@ -77,6 +80,9 @@ export function TablonTabs() {
         <h3 className={s.display} id="tablon-h" style={{ fontSize: 'clamp(36px,4vw,56px)' }}>
           El tablón
         </h3>
+        <p style={{ color: 'var(--ink-2)', marginTop: 8 }}>
+          Partidos a los que les faltan jugadores o que buscan rival.
+        </p>
         <div
           className={s.tabs}
           role="tablist"
@@ -85,7 +91,7 @@ export function TablonTabs() {
         >
           {TABS.map((tab, i) => (
             <button
-              key={tab.label}
+              key={tab.tab}
               ref={(el) => {
                 tabRefs.current[i] = el
               }}
@@ -98,7 +104,7 @@ export function TablonTabs() {
               onClick={() => select(i)}
               onKeyDown={(e) => onKeyDown(e, i)}
             >
-              {tab.label}
+              {tab.tab}
             </button>
           ))}
         </div>
@@ -106,11 +112,12 @@ export function TablonTabs() {
           <p className={s.tabText}>{card.text}</p>
         </div>
         <p style={{ color: 'var(--ink-2)', marginTop: 10 }}>
-          Y si querés, te avisamos por mail cuando busquen gente en tu complejo.
+          Y si querés, te avisamos por mail cuando publiquen un partido al que le falten jugadores
+          en el complejo que elijas.
         </p>
         <div className={s.actionsCol}>
           <Link className={s.ghost} href="/rival/tablon">
-            Mirá el tablón
+            Buscá un partido
           </Link>
         </div>
       </div>

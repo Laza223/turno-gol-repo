@@ -18,7 +18,7 @@ export type Category = (typeof CATEGORY_LADDER)[number]
 /** Techo del arranque. */
 export const STARTING_CEILING: Category = 'Quinta'
 
-export const QUIZ_FREQUENCIES = ['1 vez por semana', '2 o 3', '4 o más'] as const
+export const QUIZ_FREQUENCIES = ['1 vez', '2 o 3', '4 o más'] as const
 export const QUIZ_BACKGROUNDS = [
   'Picados',
   'Liga amateur',

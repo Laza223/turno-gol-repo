@@ -18,7 +18,8 @@ export function MitadSection() {
           </svg>
         </div>
         <p className={s.b}>
-          De acá para allá, lo que viene. Todo lo que sigue dice &quot;Próximamente&quot; hasta que
+          De acá para allá, lo que viene: tener identidad de equipo, competir con resultados que
+          suman y compartir la historia. Todo lo que sigue dice &quot;Próximamente&quot; hasta que
           esté en la cancha.
         </p>
       </div>

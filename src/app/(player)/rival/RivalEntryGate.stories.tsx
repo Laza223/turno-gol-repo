@@ -43,7 +43,11 @@ export const Armar: Story = {
     const dialog = await openGate(canvasElement, 'Armar un partido')
     const modal = within(dialog)
     await expect(modal.getByRole('heading', { name: 'Entrá para armar tu partido' })).toBeVisible()
-    await expect(modal.getByText('Entrás y volvés a armarlo.')).toBeVisible()
+    await expect(
+      modal.getByText(
+        'Entrás con Google o con tu email. Si no tenés cuenta, se crea al toque. Después de entrar, armás tu partido.',
+      ),
+    ).toBeVisible()
     await expect(dialog.querySelector('input[name="next"]')).toHaveValue('/rival/nuevo')
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())

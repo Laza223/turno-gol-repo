@@ -31,9 +31,10 @@ export function GrupoClubSection() {
         <div className={`${s.stage} ${s.wrap}`}>
           <div className={s.split}>
             <div>
-              <h2 className={s.display} id="gc-h" style={{ fontSize: 'clamp(34px,4.4vw,64px)' }}>
+              <h2 className={s.display} id="gc-h" style={{ fontSize: 'clamp(26px,3.6vw,52px)' }}>
                 <span className={s.one}>
-                  El fijo es para <span className={s.acc}>jugar.</span>
+                  Los turnos fijos de la semana son para{' '}
+                  <span className={s.acc}>jugar tranqui.</span>
                 </span>{' '}
                 <span className={s.two}>El club, para competir.</span>
               </h2>
@@ -41,8 +42,8 @@ export function GrupoClubSection() {
                 <div className={`${s.col} ${s.groupC}`}>
                   <h3>El grupo</h3>
                   <p>
-                    El fijo de los miércoles, pecheras contra sin pechera. Muy pronto, cada picado
-                    va a sumar a tus partidos jugados, y nada más: sin tabla, sin goles, sin figura.
+                    El fijo de los miércoles, pecheras contra sin pechera. Cada picado va a sumar a
+                    tus partidos jugados, y nada más: sin tabla, sin goles, sin figura.
                   </p>
                 </div>
                 <div className={`${s.col} ${s.clubC}`}>
@@ -51,7 +52,8 @@ export function GrupoClubSection() {
                   </h3>
                   <p>
                     Un equipo serio que vive en TurnoGol: nombre, escudo, plantel, títulos y
-                    antigüedad. Juega contra otros clubes, y esos partidos sí cuentan.
+                    antigüedad. Juega contra otros clubes, y esos partidos suman a la tabla y a la
+                    categoría.
                   </p>
                 </div>
               </div>
@@ -134,9 +136,9 @@ export function GrupoClubSection() {
             </h3>
             <ul className={s.chalkList} style={{ marginTop: 18 }}>
               <li>
-                <b>La convocatoria</b> <StatusChip piece="groupMatch" />
+                <b>El partido del grupo</b> <StatusChip piece="groupMatch" />
                 <br />
-                El partido del grupo, con su link.
+                Cada uno confirma con Voy desde un link que pasás por WhatsApp.
               </li>
               <li>
                 <b>La formación</b> <StatusChip piece="formation" />
@@ -154,7 +156,7 @@ export function GrupoClubSection() {
           <div data-reveal="" style={cssVars({ '--rd': '90ms' })}>
             <p className={s.closer}>
               ¿Tu grupo juega en serio? Que tus partidos cuenten:{' '}
-              <span className={s.acc}>armá tu club.</span>
+              <span className={s.acc}>armá tu club.</span> <StatusChip piece="club" />
             </p>
           </div>
         </div>

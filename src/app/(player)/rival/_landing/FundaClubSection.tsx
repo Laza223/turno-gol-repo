@@ -102,16 +102,16 @@ const WORDS = splitWords(PARAGRAPH)
 
 const TRAITS = [
   ['El nombre.', 'La IA te propone nombres con humor de potrero, y vos elegís.'],
-  ['El escudo y la camiseta.', 'El escudo se arma de piezas.'],
-  ['El plantel.', 'Entra quien acepta la invitación. Un club por jugador.'],
+  ['El escudo y la camiseta.', 'Armás el escudo pieza por pieza.'],
+  ['El plantel.', 'Entra quien acepta la invitación. Estás en un club a la vez.'],
   ['Los dorsales.', 'El 10 se pelea.'],
   [
     'El mercado de pases.',
-    'Se cambia de club solo en las ventanas de cada temporada. Cada fichaje sale con su tarjeta: "Es oficial".',
+    'Cambiás de club solo en el período de pases de cada temporada. Cada fichaje sale con su tarjeta: "Es oficial".',
   ],
-  ['El palmarés.', 'Una estrella arriba del escudo por cada título.'],
+  ['Los títulos.', 'Una estrella arriba del escudo por cada uno.'],
   ['La hinchada.', 'Cualquiera puede seguir a tu club.'],
-  ['La historia.', 'La escribe la IA con los datos reales, sin nombrar a nadie.'],
+  ['La historia.', 'La IA la escribe con los datos del club y habla de equipos, no de personas.'],
 ] as const
 
 const EXAMPLE_NAMES = [

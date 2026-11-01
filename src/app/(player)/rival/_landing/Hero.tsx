@@ -20,6 +20,10 @@ export function Hero({ entry }: { entry: LandingEntry }) {
           unoptimized
           priority
         />
+        <p className={s.micro}>
+          La plataforma de los futboleros: armá tus partidos, encontrá rivales y sumate a los de
+          otros.
+        </p>
         <h1 className={`${s.display} ${s.heroH1}`}>
           <span className={s.ln}>Cada partido</span>{' '}
           <span className={`${s.ln} ${s.acc}`} style={cssVars({ '--li': 1 })}>
@@ -27,8 +31,9 @@ export function Hero({ entry }: { entry: LandingEntry }) {
           </span>
         </h1>
         <p className={s.lede}>
-          Armá el partido, cada uno toca Voy y, si falta 1, sale al tablón. Muy pronto, con tu club:
-          la tabla, la Corona y tu categoría.
+          Armá el partido, pasá el link por WhatsApp y que cada uno toque Voy: ves quiénes van y
+          cuántos faltan. ¿Falta gente? Publicalo en el tablón y quien busca partido puede pedir
+          sumarse. Próximamente: tu club, la tabla y tu categoría.
         </p>
       </div>
       <VoyDemo />
@@ -37,10 +42,12 @@ export function Hero({ entry }: { entry: LandingEntry }) {
           Armá tu partido
         </ArmarCta>
         <Link className={s.ghost} href="/rival/tablon">
-          Mirá el tablón
+          Buscá un partido
         </Link>
       </div>
-      <p className={s.note}>Con tu cuenta de TurnoGol. Solo mayores de 18.</p>
+      <p className={s.note}>
+        RIVAL es gratis para el jugador. Entrás con Google o con tu email. Solo mayores de 18.
+      </p>
     </section>
   )
 }

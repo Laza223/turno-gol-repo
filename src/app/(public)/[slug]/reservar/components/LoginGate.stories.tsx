@@ -313,7 +313,11 @@ export const RivalArmar: Story = {
     const root = await dialog()
     const modal = within(root)
     await expect(modal.getByRole('heading', { name: 'Entrá para armar tu partido' })).toBeVisible()
-    await expect(modal.getByText('Entrás y volvés a armarlo.')).toBeVisible()
+    await expect(
+      modal.getByText(
+        'Entrás con Google o con tu email. Si no tenés cuenta, se crea al toque. Después de entrar, armás tu partido.',
+      ),
+    ).toBeVisible()
     await expect(root).not.toHaveTextContent(/reserv|turno/i)
   },
 }
@@ -334,7 +338,7 @@ export const RivalArmarEnviado: Story = {
 
     await modal.findByRole('heading', { name: 'Revisá tu email' })
     await expect(
-      modal.getByText('Cuando lo toques, volvés a armar tu partido con tu cuenta.'),
+      modal.getByText('Cuando lo toques, entrás con tu cuenta y armás tu partido.'),
     ).toBeVisible()
   },
 }

@@ -26,7 +26,10 @@ export function CategoriaSection() {
             <h2 className={s.display} id="cat-h">
               ¿De qué <span className={s.acc}>categoría</span> sos?
             </h2>
-            <p className={s.lede}>Todos dicen que son de Primera. La cancha lo dice.</p>
+            <p className={s.lede}>
+              Todos dicen que son de Primera. La cancha lo dice. Es tu nivel de juego, de Novena a
+              la Selección de la zona.
+            </p>
           </div>
           <ol className={s.catIndex} data-cat-index="" aria-hidden="true">
             {INDEX_LABELS.map((name) => (
@@ -84,8 +87,9 @@ export function CategoriaSection() {
                 al lado. A los 10 partidos oficiales con tu club, se va el &quot;?&quot;.
               </li>
               <li>
-                <b>Subís en el momento. Bajás despacio.</b> Solo al cierre de la temporada, y como
-                mucho una categoría. Una mala noche no te manda abajo.
+                <b>Subís en el momento, con tus partidos oficiales. Bajás despacio:</b> solo al
+                cierre de la temporada, y como mucho una categoría. Una mala noche no te manda
+                abajo.
               </li>
               <li>
                 <b>Es tuya.</b> La ves vos. Pública, solo si querés.
@@ -96,7 +100,8 @@ export function CategoriaSection() {
               los mejores de cada temporada, entre los que eligieron mostrarse.
             </p>
             <p className={s.bridge} data-reveal="">
-              Sin club no hay categoría oficial.
+              Sin club no hay categoría oficial: solo la mueven los partidos oficiales, que se
+              juegan entre clubes.
             </p>
           </div>
           <CategoryQuiz />

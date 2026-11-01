@@ -82,7 +82,7 @@ La landing no puede prometer lo que no existe. Esta tabla manda: cada pieza de l
 | El dueño de complejo | "Tu cancha" y el link a `/para-complejos` |
 
 **Éxito:**
-- toca "Armá tu partido" o "Mirá el tablón";
+- toca "Armá tu partido" o "Buscá un partido";
 - se va sabiendo qué viene y por qué conviene jugar en un complejo TurnoGol.
 
 **Lo que no se puede medir y no se inventa:** cuántos usan RIVAL, cuántos clubes hay, testimonios.
@@ -96,13 +96,13 @@ Cada sección existe porque sostiene una afirmación. Si una sección no tiene a
 | 0 | RIVAL es tu fútbol contado como fútbol: cada partido cuenta | El lema, la cancha de noche y el botón a lo que ya anda |
 | 1 | Hoy ya armás el partido sin la encuesta del grupo | La demo de "Voy" con el contador, que es v1 real |
 | 2 | Vas a saber de qué categoría sos, y la cancha lo confirma | La escala y el quiz |
-| 3 | El fijo es para jugar; el club, para competir | Las dos columnas, grupo y club |
+| 3 | Los turnos fijos de la semana son para jugar tranqui; el club, para competir | Las dos columnas, grupo y club |
 | 4 | Tu club va a vivir en TurnoGol como uno de verdad | El escudo que se arma, los dorsales y el mercado de pases |
 | 5 | Entre clubes se juega por algo | La Corona, la cartelera y la tabla |
 | 6 | Lo que pasa en la cancha se cuenta y se comparte | La tapa, la figurita y "Que se sepa" |
 | 7 | (Sacada: el Crack del Día es de la home de TurnoGol, no de RIVAL) | — |
 | 8 | Tu cancha también juega | El estadio del complejo y "Pedí tu cancha" |
-| 9 | Se compite sin escrache | Las reglas, en voz alta |
+| 9 | Se compite sin escrache (el título público de la sección es «Antes de salir a la cancha», desde el 2026-11-01) | Las reglas, en voz alta |
 | 10 | Empezar ahora tiene algo que después no se repite | La Temporada Cero, más el botón |
 
 ## La estructura: la pizarra del DT
@@ -281,15 +281,16 @@ Medidas a 390 px. Los wireframes tienen unos 40 caracteres de ancho, que es el a
 **Copy:**
 - Microrrótulo: RIVAL powered by TurnoGol
 - h1: Cada partido **cuenta.**
-- Bajada: Armá el partido, cada uno toca Voy y, si falta 1, sale al tablón. Muy pronto, con tu club: la tabla, la Corona y tu categoría.
+- Apoyo (arriba del h1): La plataforma de los futboleros: armá tus partidos, encontrá rivales y sumate a los de otros.
+- Bajada: Armá el partido, pasá el link por WhatsApp y que cada uno toque Voy: ves quiénes van y cuántos faltan. ¿Falta gente? Publicalo en el tablón y quien busca partido puede pedir sumarse. Próximamente: tu club, la tabla y tu categoría.
 - Botón verde: **Armá tu partido** → `/rival/nuevo`
-- Secundario (`outline`): **Mirá el tablón** → `/rival/tablon`
+- Secundario (`outline`): **Buscá un partido** → `/rival/tablon`
 - En la pizarra:
   - "Ejemplo · Miércoles 21:00 · Fútbol 5";
   - el contador "Falta 1";
   - el botón "Voy", dentro del hueco.
-- Leyenda de la pizarra: Ejemplo. Hoy tocás Voy y entrás. Muy pronto, además, elegís tu puesto en la cancha.
-- Nota: Con tu cuenta de TurnoGol. Solo mayores de 18.
+- Leyenda de la pizarra: Ejemplo: tocá Voy y mirá cómo se llena. Así confirma cada uno cuando le pasan el link. Después de tocar: Así confirmás en un partido real. (La elección de puesto ya no se menciona acá: tiene su propio chip «Próximamente» más abajo.)
+- Nota: RIVAL es gratis para el jugador. Entrás con Google o con tu email. Solo mayores de 18.
 
 **La pizarra (lo que se puede tocar, v1 real):**
 - Una cancha de Fútbol 5 dibujada con tiza, vista desde arriba.
@@ -315,7 +316,7 @@ La leyenda lo dice con todas las letras. La demo no guarda nada ni toca la base.
 │ RIVAL POWERED BY TURNOGOL            │
 │ Cada partido                         │ ← 52 px, negra itálica
 │ cuenta.                              │ ← .hero-accent-text
-│ Armá el partido, cada uno toca Voy…  │ ← 16 px
+│ Armá el partido, pasá el link…       │ ← 16 px
 │ ╭────────── pizarra ─────────────╮   │
 │ │ Ejemplo · Mié 21:00 · F5       │   │
 │ │ Falta 1                        │   │ ← contador
@@ -328,7 +329,7 @@ La leyenda lo dice con todas las letras. La demo no guarda nada ni toca la base.
 │ │  └──────┴───────┴──────┘       │   │
 │ │ Ejemplo. Hoy tocás Voy y…      │   │
 │ ╰────────────────────────────────╯   │
-│ [ Armá tu partido ] [Mirá el tablón] │ ← 48 px: verde + outline
+│ [ Armá tu partido ] [Buscá partido]  │ ← 48 px: verde + outline
 │ Con tu cuenta de TurnoGol. +18.      │
 ├──────────────────────────────────────┤
 │ Explorar   RIVAL   Reservas   Cuenta │ ← PlayerBottomNav
@@ -363,19 +364,19 @@ A 844 px de alto, el h1, la bajada, la pizarra y los dos botones entran en el pr
 - h2: Chau, encuesta del **grupo.**
 - Bajada: Así se juega hoy en RIVAL, en cuatro movimientos.
 - **La jugada**, en cuatro pasos. Con movimiento se arman con el scroll sobre la pizarra (ver "La escena"); sin movimiento son paneles teñidos, de esmeralda oscuro a claro, sin números.
-  - **Armás el partido.** Complejo, día, hora, formato y nivel: Tranqui, Parejo o Picante. Si la cancha ya está reservada en TurnoGol, el partido lo dice.
-  - **Pasás el link al grupo.** Por WhatsApp, como siempre. El link muestra el partido y cuántos faltan.
-  - **Cada uno toca Voy.** El cupo es de verdad: cuando se llena, se llena. El que llega tarde va al banco y entra solo si alguien se baja. Bajarse es un toque, sin drama. Y el fijo de la semana se repite sin armarlo de cero.
-  - **¿Falta 1? Al tablón.** Publicás el mismo partido y se suma gente de afuera. Vos aceptás a cada uno, y recién ahí ve tu WhatsApp.
+  - **Armás el partido.** Elegís complejo, día, hora y nivel (Tranqui, Parejo o Picante, según cómo juega tu grupo), de Fútbol 4 a 11. La cancha tiene que estar ya reservada: armar el partido no la reserva.
+  - **Pasás el link al grupo.** Por WhatsApp, como siempre. Todos ven el complejo, la hora y cuántos faltan.
+  - **Cada uno toca Voy.** Voy confirma que juega. Si el cupo ya está completo, quedás en el banco (anotado por si alguien se baja). Si no podés ir, tocás Me bajo. Cuando termina, armás el de la semana que viene.
+  - **¿Falta alguien? Al tablón.** Publicás el mismo partido y quien busca partido puede pedir sumarse. Vos aceptás a cada uno, y recién ahí ve tu WhatsApp.
 - **El tablón** (la placa cuadrada de la ficha):
-  - h3: El tablón
-  - Pestañas de texto: **Faltan 3** · **Se busca arquero** · **Busca rival**.
+  - h3: El tablón. Bajada: Partidos a los que les faltan jugadores o que buscan rival.
+  - Pestañas de texto: **Faltan jugadores** · **Se busca arquero** · **Busca rival**. (La tarjeta de ejemplo de la placa sigue titulándose «Faltan 3».)
   - Cada pestaña cambia la tarjeta de ejemplo de la placa y su texto:
-    - Faltan 3: Al partido le faltan jugadores. Te sumás con un pedido, y el organizador te acepta.
-    - Se busca arquero: El puesto que nadie quiere y todos necesitan. Si atajás, acá te buscan.
+    - Faltan jugadores: Al partido le faltan jugadores. Tocás «Pedir sumarme» y el organizador decide si entrás. Si te aceptan, podés escribirle por WhatsApp.
+    - Se busca arquero: Si atajás, acá te buscan. Podés pedir aviso por mail solo cuando busquen arquero.
     - Busca rival: Un equipo completo busca a otro equipo para jugar.
-  - Una línea sobre el aviso por mail, que ya existe y se activa por complejo desde el tablón: "Y si querés, te avisamos por mail cuando busquen gente en tu complejo."
-  - La acción, abajo de la placa: **Mirá el tablón** (`outline`). No va un botón "Avisame" en la landing: el aviso se pide por complejo, y el complejo se elige en el tablón.
+  - Una línea sobre el aviso por mail, que ya existe y se activa por complejo desde el tablón: "Y si querés, te avisamos por mail cuando publiquen un partido al que le falten jugadores en el complejo que elijas."
+  - La acción, abajo de la placa: **Buscá un partido** (`outline`). No va un botón "Avisame" en la landing: el aviso se pide por complejo, y el complejo se elige en el tablón.
 
 En esta sección no hay botón verde: la acción principal ya está arriba, y las de la placa son `outline`.
 
@@ -406,7 +407,7 @@ En esta sección no hay botón verde: la acción principal ya está arriba, y la
 │ └──────────────────────────────────┘ │
 │ Faltan 3 · Se busca arquero · Busca… │ ← pestañas de texto
 │ Al partido le faltan jugadores…      │
-│ [ Mirá el tablón ]                   │ ← outline, 48 px
+│ [ Buscá un partido ]                 │ ← outline, 48 px
 │ Y si querés, te avisamos por mail…   │
 ```
 
@@ -446,14 +447,14 @@ Las tarjetas se turnan: hay una sola arriba de la cancha por paso. La del tabló
 
 **Copy:**
 - h2: ¿De qué **categoría** sos?
-- Gancho: Todos dicen que son de Primera. La cancha lo dice.
+- Gancho: Todos dicen que son de Primera. La cancha lo dice. Es tu nivel de juego, de Novena a la Selección de la zona.
 - La escala, de abajo hacia arriba: Novena · Octava · Séptima · Sexta · Quinta · Cuarta · Reserva · Primera, y arriba de todo, **Selección de la zona**.
 - Cómo funciona (3 líneas):
   - **Declarás y la cancha confirma.** Arrancás con tres preguntas y un "?" al lado. A los 10 partidos oficiales con tu club, se va el "?".
-  - **Subís en el momento. Bajás despacio.** Solo al cierre de la temporada, y como mucho una categoría. Una mala noche no te manda abajo.
+  - **Subís en el momento, con tus partidos oficiales. Bajás despacio.** Solo al cierre de la temporada, y como mucho una categoría. Una mala noche no te manda abajo.
   - **Es tuya.** La ves vos. Pública, solo si querés.
 - Selección: Arriba de Primera está la Selección de la zona: los mejores de cada temporada, entre los que eligieron mostrarse.
-- Puente a la sección 3: Sin club no hay categoría oficial.
+- Puente a la sección 3: Sin club no hay categoría oficial: solo la mueven los partidos oficiales, que se juegan entre clubes.
 
 Fuente de cada línea: `categorias.md`. El founder decidió la escala, el techo en Quinta, el "?" hasta 10 partidos, la visibilidad y el descenso blando. **No van al copy** los 11 lugares de la Selección: son propuesta (REQUIERE INPUT 8).
 
@@ -515,25 +516,25 @@ El puesto no cambia la categoría: queda para la figurita y la Selección.
 **Objetivo:** explicar el modelo de RIVAL, que es la decisión del 30/10, y por qué conviene armar un club.
 
 **Copy:**
-- h2: El fijo es para **jugar.** El club, para competir.
+- h2: Los turnos fijos de la semana son para **jugar tranqui.** El club, para competir. (Frase del dueño, 2026-11-01: reemplaza «El fijo es para jugar».)
 - Columna "El grupo":
-  - el texto: El fijo de los miércoles, pecheras contra sin pechera. Muy pronto, cada picado va a sumar a tus partidos jugados, y nada más: sin tabla, sin goles, sin figura. (Hoy el contador de la cuenta solo cuenta reservas propias; ver la tabla de estado.)
-  - **La convocatoria** [Ya disponible]: el partido del grupo, con su link.
+  - el texto: El fijo de los miércoles, pecheras contra sin pechera. Cada picado va a sumar a tus partidos jugados, y nada más: sin tabla, sin goles, sin figura. (Hoy el contador de la cuenta solo cuenta reservas propias; ver la tabla de estado. Abierto: si el picado tiene figura o tabla internas, ver `README.md`.)
+  - **El partido del grupo** [Ya disponible]: cada uno confirma con Voy desde un link que pasás por WhatsApp. (Antes «La convocatoria».)
   - **La formación** [Próximamente]: una cancha dibujada, cada uno toca su puesto y los huecos salen al tablón: "Faltan 2: un defensor y un delantero".
   - **Pan y queso** [Próximamente]: equipos parejos para el picado, sin mostrar el nivel de nadie.
-- Columna "El club" [Próximamente]: Un equipo serio que vive en TurnoGol: nombre, escudo, plantel, títulos y antigüedad. Juega contra otros clubes, y esos partidos sí cuentan.
-- Cierre: ¿Tu grupo juega en serio? Que tus partidos cuenten: **armá tu club.**
+- Columna "El club" [Próximamente]: Un equipo serio que vive en TurnoGol: nombre, escudo, plantel, títulos y antigüedad. Juega contra otros clubes, y esos partidos suman a la tabla y a la categoría.
+- Cierre [Próximamente]: ¿Tu grupo juega en serio? Que tus partidos cuenten: **armá tu club.**
 
 **La escena (fijada, unas 3 pantallas): el picado se ordena en club.**
 - Arranca con diez círculos sueltos por toda la cancha, pecheras y sin pechera mezclados: el fijo.
 - Con el scroll, cada uno viaja a su lugar (transform, con un escalonado corto): cinco titulares en formación en una mitad y cinco suplentes en la línea de afuera. Los de contorno se pintan del color del club.
 - A mitad de camino aparece el escudo de ejemplo en el círculo central y, del otro lado, un escudo punteado: otro club.
-- El titular cambia de peso: "El fijo es para jugar." se apaga y "El club, para competir." se prende. Abajo, el texto del grupo se cruza con el del club.
+- El titular cambia de peso: "Los turnos fijos de la semana son para jugar tranqui." se apaga y "El club, para competir." se prende. Abajo, el texto del grupo se cruza con el del club.
 
 **390 px:**
 
 ```
-│ El fijo es para jugar.               │
+│ Turnos fijos: para jugar tranqui.    │
 │ El club, para competir.              │ ← se prende con el scroll
 │ ╭──────── pizarra ──────────╮        │
 │ │  ●  ○    ●     ○    ●     │        │ ← arranca: el picado suelto
@@ -561,13 +562,13 @@ El puesto no cambia la categoría: queda para la figurita y la Selección.
 - Bajada: Nombre, escudo, camiseta y cancha de local. Desde el día que lo fundás, corre su historia.
 - Los rasgos (lista de 8, cada uno una línea):
   - **El nombre.** La IA te propone nombres con humor de potrero, y vos elegís.
-  - **El escudo y la camiseta.** El escudo se arma de piezas.
-  - **El plantel.** Entra quien acepta la invitación. Un club por jugador.
+  - **El escudo y la camiseta.** Armás el escudo pieza por pieza.
+  - **El plantel.** Entra quien acepta la invitación. Estás en un club a la vez.
   - **Los dorsales.** El 10 se pelea.
-  - **El mercado de pases.** Se cambia de club solo en las ventanas de cada temporada. Cada fichaje sale con su tarjeta: "Es oficial".
-  - **El palmarés.** Una estrella arriba del escudo por cada título.
+  - **El mercado de pases.** Cambiás de club solo en el período de pases de cada temporada. Cada fichaje sale con su tarjeta: "Es oficial".
+  - **Los títulos.** Una estrella arriba del escudo por cada uno.
   - **La hinchada.** Cualquiera puede seguir a tu club.
-  - **La historia.** La escribe la IA con los datos reales, sin nombrar a nadie.
+  - **La historia.** La IA la escribe con los datos del club y habla de equipos, no de personas.
 - Nombres de ejemplo, en una lista de 5 rotulada "Ejemplo" (REQUIERE INPUT 9):
   - Los Mismos de Siempre
   - Deportivo Rejunte
@@ -622,18 +623,18 @@ Cada [ ] es una ventanita de 1em de alto dentro del texto, con la pieza dibujada
 
 **Copy:**
 - h2: Club contra club. Esto **cuenta.**
-- Bajada: El partido oficial es entre dos clubes, con turno en un complejo TurnoGol. Al final, los dos capitanes confirman el resultado en un toque, o lo confirma el encargado. Si no coinciden, no cuenta.
+- Bajada: El partido oficial es entre dos clubes, en una cancha que usa TurnoGol, con turno en su grilla. Al final, los dos capitanes confirman el resultado en un toque, o lo confirma el encargado. Si no coinciden, queda en revisión y no cuenta.
 - Los rasgos:
   - **La cartelera de la zona.** Los partidos que se vienen, con los dos escudos.
-  - **La tabla.** Por zona, formato y división. Aparece el club que quiere.
-  - **Divisiones y temporadas.** Ascensos, descensos y "¡Zafamos!".
+  - **La tabla.** Por zona, formato y división. Tu club aparece solo si lo elige.
+  - **Divisiones y temporadas.** Cada temporada tu club juega por subir o por no bajar: ascensos, descensos y "¡Zafamos!".
   - **Clásicos.** Cuando dos clubes se cruzan seguido, nace el clásico, con su historial.
-  - **La Corona del complejo.** Un club la tiene y cualquiera lo desafía. Si le ganás, te la llevás.
-  - **Desafío y revancha.** En un toque, por WhatsApp.
-  - **¿Volverían a jugar?** Después del partido, cada equipo dice sí o no del rival. Lo bueno se ve; lo malo no se le muestra a otros jugadores. (El sistema sí lo usa, para no volver a emparejarlos y para moderar: README. Va a asesoría con el resto de la sección 9.)
+  - **La Corona del complejo.** Un club la tiene y cualquiera lo desafía. Si le ganás, te la llevás. El marcador dice «La defendió 2 veces» (antes «Defensas: 2»).
+  - **Desafío y revancha.** Lo proponés en un toque y se lo mandás por WhatsApp.
+  - **¿Volverían a jugar?** Después del partido, cada equipo responde sí o no: ¿volverían a jugar con este rival? Lo bueno se ve; lo malo no se le muestra a otros jugadores. (El sistema sí lo usa, para no volver a emparejarlos y para moderar: README. Va a asesoría con el resto de la sección 9.)
   - **El álbum de la zona.** Cada club que enfrentás, a tu álbum.
 
-**La demo de la Corona:** dos escudos de ejemplo, "Los Mismos de Siempre" contra "Deportivo Rejunte", con un marcador "Ejemplo". La Corona arranca sobre el primero, y con el scroll salta al segundo. "Defensas" vuelve a 0 y aparece "Nuevo campeón".
+**La demo de la Corona:** dos escudos de ejemplo, "Los Mismos de Siempre" contra "Deportivo Rejunte", con un marcador "Ejemplo". La Corona arranca sobre el primero, y con el scroll salta al segundo. el marcador pasa de "La defendió 2 veces" a "Todavía no la defendió" y aparece "Nuevo campeón".
 
 **390 px:**
 
@@ -666,7 +667,7 @@ Cada [ ] es una ventanita de 1em de alto dentro del texto, con la pieza dibujada
 **La escena (fijada, unas 2,8 pantallas):**
 - Primero el marcador rueda de 3–3 a 3–4: los dígitos suben, en 300 ms.
 - Después la Corona viaja de A a B por un arco de tiza, atada al scroll: la flecha se dibuja y la Corona se traslada.
-- Al llegar, "La Corona del complejo · Defensas: 2" pasa a "Nuevo campeón de la Corona · Defensas: 0". Si se scrollea para arriba, la Corona vuelve.
+- Al llegar, "La Corona del complejo · La defendió 2 veces" pasa a "Nuevo campeón de la Corona · Todavía no la defendió". Si se scrollea para arriba, la Corona vuelve.
 - Los rasgos van después de la escena.
 - Sin movimiento: la Corona sobre B y el marcador final.
 
@@ -676,18 +677,18 @@ Cada [ ] es una ventanita de 1em de alto dentro del texto, con la pieza dibujada
 
 **Copy:**
 - h2: Que se **sepa.**
-- Bajada: Después del partido viene lo mejor: el resultado, la figura y la tapa. Todo listo para pegar en el grupo y en tu historia.
+- Bajada: Después del partido viene lo mejor: el resultado, la figura y la tapa. Todo listo para mandar al grupo y subir a tu historia.
 - Los rasgos:
-  - **La figura.** La vota el rival, así no se arregla entre amigos.
-  - **La tapa.** La IA escribe la crónica de cada partido oficial, con titular de diario deportivo. Habla de clubes y resultados: no nombra a nadie.
-  - **La figurita.** Tu carta: foto, dorsal, club y números verdaderos. Con ediciones que se ganan jugando: Debut, Plata, Oro, Campeón, Figura y Fundador.
-  - **Tarjetas para todo.** Resultado, fichaje, ascenso, "¡Subí a Quinta!", la Corona. Con un botón: "Que se sepa".
-  - **Tu carrera.** Ganados, empatados y perdidos, clásicos, títulos y logros con nombre de crónica, como Centenario o Matador de clásicos. Algunos están ocultos.
-  - **Versus.** Tu carrera contra la de un amigo, si los dos aceptan.
-  - **Tu Temporada.** El resumen de tu año, para compartir.
+  - **La figura.** La votan los del otro equipo, así que no se arregla entre amigos.
+  - **La tapa.** Cada partido oficial tiene su titular de diario deportivo, escrito por la IA y listo para compartir. Habla de clubes y resultados: no nombra a nadie.
+  - **La figurita.** La tuya: foto, dorsal, club y estadísticas de tus partidos oficiales. Con ediciones que se ganan jugando: Debut, Plata, Oro, Campeón, Figura y Fundador.
+  - **Tarjetas para todo.** Resultado, fichaje, ascenso, "¡Subí a Quinta!", la Corona. Las compartís con un botón: "Que se sepa".
+  - **Tu carrera.** Tus ganados, empatados y perdidos, tus clásicos, tus títulos y tus logros, con nombre de crónica: Centenario, Matador de clásicos. Algunos están ocultos.
+  - **Versus.** Compará tu carrera con la de un amigo, si los dos aceptan.
+  - **Tu Temporada.** El resumen de tu temporada y de tu año, para compartir.
 - Y toda la semana (antes, sección 7):
   - **El desafío de la semana.** Un reto nuevo para clubes y jugadores.
-  - **El Diario de la Zona.** Los lunes, la edición de tu zona: resultados, la tabla, el clásico y la goleada.
+  - **El Diario de la Zona.** El resumen de los lunes de tu zona: resultados, la tabla, el clásico y la goleada.
 
 **La tapa de ejemplo** (`.rival-tapa`, con el rótulo "Ejemplo") va pegada a la pizarra con un imán, como el recorte que el DT pega en el vestuario:
 - titular: **SE TERMINÓ EL REINADO** (sale del README);
@@ -748,10 +749,10 @@ Los números de sección no se corren, para no romper las referencias del resto 
 - Bajada: Cada complejo TurnoGol tiene su página RIVAL: la Corona en juego, los clásicos que se juegan ahí y sus leyendas.
 - Rasgos:
   - **Leyenda de la cancha.** La gana el que más juega ahí. Premia la constancia, no el talento.
-  - **Complejo de la zona.** Cada mes, el complejo con más vida RIVAL.
+  - **Complejo de la zona.** Cada mes, el complejo con más partidos RIVAL, más clubes de local y mejor nota de los jugadores.
   - **Sede oficial RIVAL.** El sticker en la puerta, con QR.
-  - **Hora RIVAL.** El complejo publica partidos de la casa con la Corona en juego.
-- Bloque **Pedí tu cancha** [Próximamente]: ¿Jugás en un complejo sin TurnoGol? Pedilo, y le llevamos tu pedido. (El README suma "Fundador de la sede" para los que lo pidieron; no va al copy hasta decidir la marca: REQUIERE INPUT 15.)
+  - **Hora RIVAL.** El complejo publica partidos en horarios libres, con la Corona en juego.
+- Bloque **Pedí tu cancha** [Próximamente]: ¿Jugás en un complejo que todavía no usa TurnoGol? Pedilo y le hacemos llegar tu pedido. (El README suma "Fundador de la sede" para los que lo pidieron; no va al copy hasta decidir la marca: REQUIERE INPUT 15.)
 - Para dueños: ¿Tenés un complejo? **Conocé TurnoGol para complejos** → `/para-complejos`. Es un link, no un botón verde.
 
 Nunca se dice "te traemos jugadores" ni "llenamos tu cancha".
@@ -772,29 +773,31 @@ Nunca se dice "te traemos jugadores" ni "llenamos tu cancha".
 
 ### 9. Las reglas del vestuario
 
-**Estado:** sin chip. Son reglas que valen hoy en v1 y para todo lo que venga. **Objetivo:** confianza. Competir sin miedo al escrache es un diferencial, y la ley lo exige. Además, responde las preguntas que quedan.
+**Estado:** sin chip. Son reglas que valen hoy en v1 y para todo lo que venga. **Objetivo:** confianza. Competir sin miedo al escrache es un diferencial (sigue siéndolo como principio, ver `README.md`), y la ley lo exige. Además, responde las preguntas que quedan.
 
-**Copy:**
-- h2: Competir sin **escrache.**
-- Bajada: Las reglas del vestuario valen para todo RIVAL: lo que ya se juega y lo que viene.
+**Copy** (actualizado el 2026-11-01 con la auditoría de copys; ver [`2026-11-01-rival-copys-auditoria`](../decisions/2026-11-01-rival-copys-auditoria.md)):
+- h2: **Antes de salir a la cancha.** (antes «Competir sin escrache»: nombraba una amenaza antes de que el visitante la pensara).
+- Bajada: Cómo funciona RIVAL y qué pasa con tus datos, para lo que ya se juega y para lo que viene.
 - **Las preguntas**, con el plano de acordeón de baldosas de la ficha. Se abre una por vez (`<details name="rival-reglas">`), y la abierta pasa a esmeralda oscuro:
 
 | Pregunta | Respuesta |
 |---|---|
-| ¿Qué puedo usar hoy? | El partido del grupo y el tablón. Lo que dice "Próximamente" está en camino. |
-| ¿Cuándo llega lo que dice "Próximamente"? | Por partes y sin fecha. Cada parte sale cuando está lista, y acá pasa de "Próximamente" a "Ya disponible". |
-| ¿Quién va a ver mi categoría? | La categoría llega muy pronto, y la vas a ver vos. Mostrarla, aparecer en una tabla o mostrar tu figurita lo vas a elegir vos, y lo vas a poder volver a ocultar. |
-| ¿Se va a ver cuando me va mal? | No se le va a mostrar a otros jugadores. Cuando lleguen las tablas, lo bueno se ve y lo malo no: nadie ve a otro abajo de una tabla. |
-| ¿Qué partidos van a contar? | Para la tabla y la categoría, que llegan muy pronto, solo lo verificado: partidos entre clubes, con turno en un complejo TurnoGol y el resultado confirmado. |
-| ¿Alguien puede escribir algo sobre mí? | No. En RIVAL no hay comentarios ni notas de una persona a otra. Y la tapa, cuando llegue, va a hablar de clubes y resultados. |
-| ¿Cuánto sale? | Nada. RIVAL es gratis para el jugador. |
-
-Lo que todavía no existe se responde en futuro: la sección no lleva chip, pero no promete en presente nada que sea "Próximamente".
-| ¿Hay plata en juego? | No. Ni apuestas ni plata entre jugadores. |
+| ¿Qué puedo usar hoy? | Hoy podés armar un partido, pasar el link al grupo para que cada uno confirme, publicarlo en el tablón si les falta gente o rival, y pedir sumarte a los partidos de otros. Lo que dice "Próximamente" está en camino. |
+| ¿Hace falta tener equipo? | No. Armás el partido con tu grupo o te sumás a uno del tablón. El club es lo que viene. |
+| ¿Armar el partido reserva la cancha? | No: la cancha tiene que estar ya conseguida. Si la reservaste en TurnoGol, el partido lleva el sello «Reservada en TurnoGol»; si la tenés por otro lado, lo marcás al armarlo. |
+| ¿Cuándo llega lo que dice "Próximamente"? | Por etapas y todavía sin fecha. Cada una pasa de "Próximamente" a "Ya disponible" cuando está lista. |
+| ¿Quién va a ver mi categoría? | La categoría está en camino, y la vas a ver vos. Mostrarla, aparecer en una tabla o mostrar tu figurita lo vas a elegir vos, y lo vas a poder volver a ocultar. |
+| ¿Se va a ver cuando me va mal? | Tu rendimiento no se le muestra a otros jugadores. Las tablas de jugadores muestran solo a los de arriba, y tu posición la ves vos. |
+| ¿Qué partidos van a contar? | Para la tabla y la categoría, que están en camino, solo lo verificado: partidos entre clubes, con turno en un complejo TurnoGol y el resultado confirmado. |
+| ¿Alguien puede escribir algo sobre mí? | No. En RIVAL no hay comentarios ni notas de una persona a otra. Y los textos que escribe la IA (la tapa, la historia del club, el Diario de la Zona) hablan de clubes y resultados, no de jugadores. |
+| ¿Cuánto sale? | Usar RIVAL es gratis para el jugador. La reserva de la cancha es aparte y la maneja cada complejo. |
+| ¿Hay plata en juego? | No. En RIVAL no hay apuestas ni partidos por plata, y TurnoGol no cobra ni procesa pagos entre jugadores. |
 | ¿Desde qué edad? | Solo mayores de 18. |
-| ¿Qué pasa con mis datos? | Son tuyos: los podés ver, corregir, descargar o borrar (Ley 25.326). |
+| ¿Qué pasa con mis datos? | Son tuyos. Desde Mi cuenta podés ver y descargar lo que guardamos, corregir tus datos de perfil y borrar tu cuenta (Ley 25.326). Con links a `/configuracion#mis-datos` y `/eliminar-cuenta`. |
 
-- Link: Términos y privacidad.
+Lo que todavía no existe se responde en futuro: la sección no lleva chip, pero no promete en presente nada que sea "Próximamente". Ya no se usa «muy pronto»: contradecía el "sin fecha".
+
+- Links: Términos (`/terminos`) y Privacidad (`/privacidad`).
 
 Cada respuesta es un compromiso público y tiene que coincidir con los textos legales (REQUIERE INPUT 13).
 
@@ -817,7 +820,7 @@ Cada respuesta es un compromiso público y tiene que coincidir con los textos le
   - arriba a la izquierda, "Armá el partido de esta semana", y arriba a la derecha, una flecha;
   - el nombre accesible del link es "Armá el partido de esta semana";
   - es el único verde de esa pantalla.
-- Debajo, como link: Mirá el tablón.
+- Debajo, como link: Buscá un partido.
 
 Ese FOMO es real (`categorias.md`): la primera temporada ocurre una sola vez. No hay fecha ni cupo hasta que existan de verdad.
 
@@ -974,7 +977,7 @@ GSAP suma 46 KB comprimidos (`gsap` 28 KB y `ScrollTrigger` 18 KB). El LCP no em
 
 - **`/rival` se indexa** (REQUIERE INPUT 1). Hoy el tablón tiene `noindex`, y lo sigue teniendo en `/rival/tablon`.
 - **Title:** "RIVAL: cada partido cuenta | TurnoGol".
-- **Description:** "Armá el partido con tu grupo, encontrá al que falta y, muy pronto, jugá con tu club por la tabla, la Corona y tu categoría. El lado jugador de TurnoGol."
+- **Description:** "Armá el partido con tu grupo, encontrá al que falta y sumate a los de otros. Próximamente: jugá con tu club por la tabla, la Corona y tu categoría. El lado jugador de TurnoGol."
 - **Imagen OG:** con `opengraph-image.tsx`, como ya hacen los partidos (`/rival/p/[code]`). Es la pizarra con la cancha de tiza, el hueco "Falta 1", "Cada partido cuenta." y el logo.
 - Sale de `buildMetadata` (`src/lib/seo/metadata.ts`).
 
@@ -984,7 +987,7 @@ Son para decidir, no para vender. Mientras no estén medidas, no se usan en copy
 
 - Visitas a `/rival` y de dónde llegan: la barra inferior, la home, Instagram o el QR.
 - Cuántos tocan "Armá tu partido" y cuántos terminan armando el partido.
-- Cuántos tocan "Mirá el tablón".
+- Cuántos tocan "Buscá un partido".
 - Cuántos terminan el quiz.
 - Hasta dónde scrollean, por sección.
 
@@ -1095,6 +1098,7 @@ Las tres de referencia sirven si un día se quiere una voz de tapa distinta de A
 | 14 | Trazo de tiza | Se acepta la excepción, solo para la pizarra, el escudo y el "RIVAL" del pie. Con GSAP sale con DrawSVG, que anima lo mismo. |
 | 15 | Fundador | Va la marca, sin "para siempre": el sello y la edición Fundador de la figurita. Las reglas (quién la gana y dónde se ve) se escriben con la ola de clubes. "Fundador de la sede" se decide con "Pedí tu cancha" y no va en la landing. |
 | Crack del Día | Fuera de RIVAL | Es un jueguito de TurnoGol en la home, junto al buscador, y se juega con letras. Sale de la landing (sección 7). |
+| 17 | Auditoría de copys (2026-11-01) | Se aplica la auditoría externa de copys con los criterios del dueño. Resumen, lo rechazado y las reglas que siguen abiertas: [`docs/decisions/2026-11-01-rival-copys-auditoria.md`](../decisions/2026-11-01-rival-copys-auditoria.md). Cambian el segundo botón («Buscá un partido»), el título de las reglas («Antes de salir a la cancha») y las respuestas de la sección 9 (con OK explícito del dueño: la decisión 13 decía «tal cual»). |
 | 16 | Prode | Sale de la landing. El README ("Premios y prode") ya avisa que un concurso con premio necesita asesoría por Lealtad Comercial, y "Prode" puede ser marca de la Lotería `[VERIFICAR]`: se retoma con su ola, no en la landing. |
 
 ## REQUIERE INPUT (lo que queda)

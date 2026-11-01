@@ -184,7 +184,7 @@ describe('reportes — ocupación y CSV', () => {
     expect(court!.income).toBe(800000)
   })
 
-  it('la columna `fecha` del CSV usa el día operativo, no el UTC crudo', async () => {
+  it('la columna Fecha del CSV usa el día operativo, no el UTC crudo', async () => {
     const sql = getSql()
     const { tenant, staff } = await seedTenant(sql, DAY_HOURS, false)
 
@@ -202,6 +202,6 @@ describe('reportes — ocupación y CSV', () => {
     )
 
     expect(rows).toHaveLength(1)
-    expect(rows[0].fecha).toBe('2026-05-05')
+    expect(rows[0].date).toBe('2026-05-05')
   })
 })

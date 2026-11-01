@@ -7,7 +7,7 @@ import {
   calcAvailableMinutes,
   calcOccupancyPct,
   occupancyEndDate,
-  toCsv,
+  csvCell,
   aggregateByMethod,
   isReportEmpty,
 } from '@/modules/reports/report.utils'
@@ -196,71 +196,72 @@ describe('calcOccupancyPct', () => {
   })
 })
 
-describe('toCsv', () => {
-  it('returns empty string for empty array', () => {
-    expect(toCsv([])).toBe('')
+// `csvCell` con `,`: la defensa contra fórmulas no depende del separador. Con
+// `;` la cubre `csvLine` en data-export.test.ts.
+describe('csvCell', () => {
+  const cell = (v: unknown) => csvCell(v, ',')
+
+  it('leaves a plain value untouched', () => {
+    expect(cell('2026-05-01')).toBe('2026-05-01')
+    expect(cell(1000)).toBe('1000')
   })
 
-  it('writes header row and data row', () => {
-    const csv = toCsv([{ fecha: '2026-05-01', monto: 1000 }])
-    const lines = csv.split('\r\n')
-    expect(lines[0]).toBe('fecha,monto')
-    expect(lines[1]).toBe('2026-05-01,1000')
-  })
-
-  it('wraps values containing commas in double quotes', () => {
-    const csv = toCsv([{ desc: 'hola, mundo' }])
-    expect(csv).toContain('"hola, mundo"')
+  it('wraps values containing the separator in double quotes', () => {
+    expect(cell('hola, mundo')).toBe('"hola, mundo"')
   })
 
   it('escapes embedded double quotes as double-double-quotes', () => {
-    const csv = toCsv([{ desc: 'say "hi"' }])
-    expect(csv).toContain('"say ""hi"""')
+    expect(cell('say "hi"')).toBe('"say ""hi"""')
   })
 
   it('handles null and undefined values as empty strings', () => {
-    const csv = toCsv([{ a: null, b: undefined }])
-    const dataLine = csv.split('\r\n')[1]
-    expect(dataLine).toBe(',')
+    expect(cell(null)).toBe('')
+    expect(cell(undefined)).toBe('')
   })
 
   // CSV/formula injection (F13/F17/F19): a cell that opens with =, +, -, or @
   // must not survive as a live formula when the export is opened in Excel.
   it('neutralizes a leading = with a single-quote prefix, even when the value also needs CSV quoting', () => {
-    const csv = toCsv([{ desc: '=HYPERLINK("http://evil.example","x")' }])
-    const dataLine = csv.split('\r\n')[1]!
+    const out = cell('=HYPERLINK("http://evil.example","x")')
     // This value also contains a comma and embedded quotes, so RFC 4180
     // wraps the whole field in an outer CSV-quoted string — the raw file
     // text therefore starts with `"`, not `'`. That outer quoting is a
     // CSV-syntax concern only: once a spreadsheet app parses the CSV and
     // unwraps it, the actual CELL VALUE still starts with the neutralizing
     // `'`, which is what stops it from being read as a live formula.
-    expect(dataLine).toBe('"\'=HYPERLINK(""http://evil.example"",""x"")"')
-    expect(dataLine.startsWith('=')).toBe(false)
+    expect(out).toBe('"\'=HYPERLINK(""http://evil.example"",""x"")"')
+    expect(out.startsWith('=')).toBe(false)
   })
 
   it('neutralizes a leading +, -, and @', () => {
-    const csv = toCsv([{ a: '+1', b: '-1', c: '@cmd' }])
-    const dataLine = csv.split('\r\n')[1]!
-    expect(dataLine).toBe("'+1,'-1,'@cmd")
+    expect([cell('+1'), cell('-1+cmd'), cell('@cmd')]).toEqual(["'+1", "'-1+cmd", "'@cmd"])
+  })
+
+  // Un monto negativo de `pesosCell` (el gasto del CSV de caja) tiene que
+  // llegar a Excel como número: solo dígitos no pueden ser una fórmula.
+  it('lets a plain negative number through', () => {
+    expect(cell('-8000')).toBe('-8000')
+    expect(cell('-8000,50')).toBe('"-8000,50"')
+    expect(csvCell('-8000,50', ';')).toBe('-8000,50')
+  })
+
+  it('still neutralizes a minus followed by anything but a number', () => {
+    expect(csvCell('-8000,50+cmd', ';')).toBe("'-8000,50+cmd")
+    expect(csvCell('-2+3', ';')).toBe("'-2+3")
+    expect(csvCell('-8000.50', ';')).toBe("'-8000.50")
   })
 
   it('neutralizes a leading tab or carriage return (OWASP)', () => {
-    const csv = toCsv([{ a: '\t=1+1', b: '\r=1+1' }])
-    const dataLine = csv.slice(csv.indexOf('\r\n') + 2)
-    expect(dataLine).toBe(`'\t=1+1,"'\r=1+1"`)
+    expect(cell('\t=1+1')).toBe(`'\t=1+1`)
+    expect(cell('\r=1+1')).toBe(`"'\r=1+1"`)
   })
 
   it('does not touch a value that merely contains = elsewhere', () => {
-    const csv = toCsv([{ desc: 'total = 100' }])
-    const dataLine = csv.split('\r\n')[1]!
-    expect(dataLine).toBe('total = 100')
+    expect(cell('total = 100')).toBe('total = 100')
   })
 
   it('still quotes a formula-prefixed value that also has a comma', () => {
-    const csv = toCsv([{ desc: '=SUM(A1,A2)' }])
-    const dataLine = csv.split('\r\n')[1]!
-    expect(dataLine).toBe('"\'=SUM(A1,A2)"')
+    expect(cell('=SUM(A1,A2)')).toBe('"\'=SUM(A1,A2)"')
   })
 })
 

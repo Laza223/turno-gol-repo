@@ -52,7 +52,7 @@ Los artículos se citan como los trae el prompt (DNU 274/2019 y Ley 24.240). **N
 
 | Riesgo | P | I | Mitigación |
 |---|---|---|---|
-| **Una sola persona, $0, ~3 h por semana fuera del código.** La medición manual se abandona a la semana 3. | Alta | Alto (sin medición no hay aprendizaje) | El núcleo semanal está en 40-50 min. Si no se llega: **mínimo innegociable**, N01 + M01 en ChatGPT y Perplexity, 1 vez por semana (10 min). |
+| **Una sola persona y $0.** La medición la corre Claude (D14), pero un motor puede pedir login o CAPTCHA. | Media | Alto (sin medición no hay aprendizaje) | Claude no resuelve CAPTCHAs ni inicia sesión: anota "no medible sin sesión" y mide en los demás. **Mínimo innegociable**: N01 + M01 en dos motores por semana. |
 | **El plan no trae las 30 pruebas en semanas.** La visibilidad en IA tarda de semanas a meses, y la memoria de los modelos, años. | Alta | Alto | Decirlo claro (`00`). El canal de corto plazo sigue siendo founder-led (`docs/gtm/`). Este plan suma desde la Etapa 1. |
 | **Depender de un solo cliente para las pruebas** (El Vagón). | Alta | Alto | No pedirle reseñas antes de que active el plan. El primer pedido es el del link en su perfil de Google, que le suma reservas. |
 | **Sesiones de Claude Code que se pisan** (worktrees, ramas). | Media | Medio | Una V por sesión y en su worktree. Cada prompt de `08` lo dice. |

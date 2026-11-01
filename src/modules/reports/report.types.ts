@@ -38,12 +38,19 @@ export type WeekRevenue = {
   prevIncome: number
 }
 
+/**
+ * Un movimiento de caja para el CSV de Métricas, todavía en datos: los labels,
+ * los pesos y el signo los pone `revenue-csv.ts` al armar el archivo.
+ */
 export type CashFlowExportRow = {
-  fecha: string
-  tipo: string
-  categoria: string
-  monto_ars: number
-  metodo: string
-  descripcion: string
-  cancha: string
+  /** Día OPERATIVO del movimiento, `AAAA-MM-DD`. */
+  date: string
+  type: 'income' | 'adjustment' | 'expense'
+  category: string
+  /** Centavos, siempre positivo (`chk_cashflow_amount_positive`): el signo sale de `type`. */
+  amount: number
+  method: 'cash' | 'transfer' | 'mercadopago' | 'other'
+  description: string
+  /** `''` si el movimiento no es de un turno. */
+  courtName: string
 }

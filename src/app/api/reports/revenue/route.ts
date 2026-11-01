@@ -6,7 +6,7 @@ import { guard } from '@/shared/rate-limit/route-guard'
 import { badRequest, validationError } from '@/shared/api-error'
 import { withTenant } from '@/server/middleware/with-tenant'
 import { getCashFlowsForExport } from '@/modules/reports/report.service'
-import { toCsv } from '@/modules/reports/report.utils'
+import { buildRevenueCsv } from './revenue-csv'
 import { resolveCutoffMins } from '@/modules/tenants/tenant-operating-day'
 import { operatingDayRangeUtc } from '@/shared/time/operating-day'
 
@@ -90,7 +90,7 @@ export const GET = withTenant(
     const toDate = operatingDayRangeUtc(to, cutoffMins).toUtc
 
     const rows = await getCashFlowsForExport(tenantId, fromDate, toDate, cutoffMins, tx)
-    const csv = toCsv(rows as unknown as Record<string, unknown>[])
+    const csv = buildRevenueCsv(rows)
 
     return new NextResponse(csv, {
       headers: {

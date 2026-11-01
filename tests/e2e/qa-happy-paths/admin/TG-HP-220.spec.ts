@@ -6,17 +6,14 @@
  * real (si el mes está vacío se ve el vacío honesto y el botón "Exportar
  * CSV" ni siquiera se renderiza).
  *
- * OJO columna `monto_ars` del CSV: el manual QA (HAPPY_PATHS_MASTER.md
- * TG-HP-220) documenta un GAP diciendo que esa columna queda en CENTAVOS sin
- * dividir. Leyendo el código VIGENTE (report.service.ts, `getCashFlowsForExport`,
- * `monto_ars: r.amount`), el GAP tiene razón hoy: NO se divide por 100, sigue
- * en centavos. El assert de abajo tolera cualquiera de las dos convenciones
- * para no romper en falso si el código vuelve a cambiar (ver notes en
- * writeEvidence).
+ * Formato del CSV (2026-11-01, `revenue-csv.ts`): el mismo es-AR que
+ * Ajustes → Tus datos — BOM, `;`, encabezados en castellano y Monto en pesos
+ * con coma decimal. Cierra el GAP de TG-HP-220 (antes `,` y centavos).
  *
  * No-plata: se limpia el cash_flow sembrado en finally.
  * Evidencia: src/app/(admin)/analiticas/page.tsx,
  * src/app/api/reports/revenue/route.ts,
+ * src/app/api/reports/revenue/revenue-csv.ts,
  * src/modules/reports/report.service.ts (getCashFlowsForExport).
  */
 import { test, expect } from '../../fixtures'
@@ -30,7 +27,7 @@ test.describe('TG-HP-220 — reportes + exportar CSV', () => {
     adminStorageState,
   }) => {
     const description = `QA seed reportes TG-HP-220 ${Date.now()}`
-    const amountCents = 123_400 // $1234,00 — entero exacto en pesos, sin decimales.
+    const amountCents = 123_450 // $1234,50: con centavos, para ver la coma decimal.
 
     const seeded = await runSql<{ id: string; occurred_at: string }>(
       `INSERT INTO cash_flows (tenant_id, type, category, amount, method, description, registered_by, occurred_at)
@@ -77,31 +74,34 @@ test.describe('TG-HP-220 — reportes + exportar CSV', () => {
       expect(res.status()).toBe(200)
       expect(res.headers()['content-type']).toContain('text/csv')
 
-      const csvText = await res.text()
+      // BOM UTF-8: sin él, Excel lee el archivo como ANSI y rompe las tildes.
+      const body = await res.body()
+      expect(Array.from(body.subarray(0, 3))).toEqual([0xef, 0xbb, 0xbf])
+
+      const csvText = body.subarray(3).toString('utf8')
       const lines = csvText.split('\r\n').filter((l) => l.length > 0)
-      const header = lines[0]!.split(',')
+      const header = lines[0]!.split(';')
       expect(header).toEqual([
-        'fecha',
-        'tipo',
-        'categoria',
-        'monto_ars',
-        'metodo',
-        'descripcion',
-        'cancha',
+        'Fecha',
+        'Tipo',
+        'Categoría',
+        'Monto',
+        'Método',
+        'Descripción',
+        'Cancha',
       ])
 
-      const montoArsIdx = header.indexOf('monto_ars')
-      const descIdx = header.indexOf('descripcion')
+      const montoIdx = header.indexOf('Monto')
+      const descIdx = header.indexOf('Descripción')
       const ourRow = lines
         .slice(1)
-        .map((l) => l.split(','))
+        .map((l) => l.split(';'))
         .find((cols) => cols[descIdx] === description)
       expect(ourRow, `fila del CSV para "${description}" no encontrada`).toBeDefined()
-
-      const montoArsField = ourRow![montoArsIdx]!
-      const asPesos = String(amountCents / 100)
-      const asCentavosRaw = String(amountCents)
-      expect([asPesos, asCentavosRaw]).toContain(montoArsField)
+      expect(ourRow![header.indexOf('Tipo')]).toBe('Ingreso')
+      expect(ourRow![header.indexOf('Categoría')]).toBe('Otro ingreso')
+      expect(ourRow![header.indexOf('Método')]).toBe('Efectivo')
+      expect(ourRow![montoIdx]).toBe('1234,50')
 
       await writeEvidence('TG-HP-220', {
         status: 'pass',
@@ -110,10 +110,7 @@ test.describe('TG-HP-220 — reportes + exportar CSV', () => {
         description,
         csvHeader: header,
         csvRow: ourRow,
-        montoArsField,
-        montoArsConvention: montoArsField === asPesos ? 'pesos (dividido /100)' : 'centavos crudos',
-        notes:
-          'Código vigente (report.service.ts, getCashFlowsForExport) NO divide por 100: monto_ars queda en centavos crudos, tal como documenta el GAP manual de TG-HP-220.',
+        notes: 'CSV es-AR: BOM, `;` y Monto en pesos con coma decimal (revenue-csv.ts).',
       })
     } finally {
       await context.close()

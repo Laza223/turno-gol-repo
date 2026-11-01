@@ -41,6 +41,20 @@ export type PlayerLoginAction = (
 ) => Promise<PlayerLoginState>
 export type StartGoogleLoginFromIngresar = typeof startGoogleLoginFromIngresar
 
+/** Si se llega desde RIVAL (lo decide page.tsx con `next` ya sanitizado): `partidos` o el resto. */
+export type RivalIngreso = 'partidos' | 'general'
+
+const RIVAL_TITLE: Record<RivalIngreso, { h1: string; sub: string }> = {
+  partidos: {
+    h1: 'Entrá a tus partidos',
+    sub: 'Usá tu cuenta de TurnoGol para ver los partidos que organizás y en los que te sumaste.',
+  },
+  general: {
+    h1: 'Entrá a RIVAL',
+    sub: 'Usá tu cuenta de TurnoGol para seguir donde estabas.',
+  },
+}
+
 const callLogin = (action: PlayerLoginAction, prev: LoginState, formData: FormData) =>
   callMailAction(action, prev, formData, {
     scope: 'ingresar',
@@ -93,15 +107,22 @@ export function IngresarForm({
   action,
   googleAction,
   inAppBrowser = false,
+  rival,
 }: {
   action: PlayerLoginAction
   googleAction: StartGoogleLoginFromIngresar
   inAppBrowser?: boolean
+  rival?: RivalIngreso
 }) {
   return (
     <Suspense fallback={null}>
       <DeletedNotice />
-      <FormCard action={action} googleAction={googleAction} inAppBrowser={inAppBrowser} />
+      <FormCard
+        action={action}
+        googleAction={googleAction}
+        inAppBrowser={inAppBrowser}
+        rival={rival}
+      />
     </Suspense>
   )
 }
@@ -152,10 +173,12 @@ function FormCard({
   action,
   googleAction,
   inAppBrowser,
+  rival,
 }: {
   action: PlayerLoginAction
   googleAction: StartGoogleLoginFromIngresar
   inAppBrowser: boolean
+  rival?: RivalIngreso
 }) {
   const [state, formAction] = useActionState(
     (prev: LoginState, formData: FormData) => callLogin(action, prev, formData),
@@ -183,6 +206,7 @@ function FormCard({
         action={action}
         googleAction={googleAction}
         inAppBrowser={inAppBrowser}
+        rival={rival}
         onChangeEmail={() => setDiscarded(state)}
       />
     )
@@ -237,10 +261,18 @@ function FormCard({
     <>
       <div>
         <h1 className={AUTH_TITLE}>
-          Accedé a tu <span style={AUTH_ACCENT_STYLE}>cuenta</span>
+          {rival ? (
+            RIVAL_TITLE[rival].h1
+          ) : (
+            <>
+              Accedé a tu <span style={AUTH_ACCENT_STYLE}>cuenta</span>
+            </>
+          )}
         </h1>
         <p className="mt-2 text-pretty text-base text-muted-foreground">
-          Entrá para ver tus reservas y reservar sin cargar tus datos cada vez.
+          {rival
+            ? RIVAL_TITLE[rival].sub
+            : 'Entrá para ver tus reservas y reservar sin cargar tus datos cada vez.'}
         </p>
       </div>
       <div className="mt-8 space-y-6">
@@ -260,10 +292,22 @@ function FormCard({
       </div>
       {/* Acá y no en page.tsx: en el "enviado" ese lugar lo ocupa el bloque de primera vez. */}
       <p className="mt-8 text-sm text-muted-foreground">
-        ¿Primera vez en TurnoGol?{' '}
-        <Link href="/explorar" className={exploreLinkClass}>
-          Descubrí complejos y reservá tu cancha
-        </Link>
+        {rival ? (
+          <>
+            ¿Primera vez? Entrá con Google, o{' '}
+            <Link href="/rival/nuevo" className={exploreLinkClass}>
+              armá tu primer partido
+            </Link>{' '}
+            y la cuenta se crea sola.
+          </>
+        ) : (
+          <>
+            ¿Primera vez en TurnoGol?{' '}
+            <Link href="/explorar" className={exploreLinkClass}>
+              Descubrí complejos y reservá tu cancha
+            </Link>
+          </>
+        )}
       </p>
       <ComplejoLinks />
     </>
@@ -277,6 +321,7 @@ function SentPanel({
   action,
   googleAction,
   inAppBrowser,
+  rival,
   onChangeEmail,
 }: {
   email: string
@@ -285,6 +330,7 @@ function SentPanel({
   action: PlayerLoginAction
   googleAction: StartGoogleLoginFromIngresar
   inAppBrowser: boolean
+  rival?: RivalIngreso
   onChangeEmail: () => void
 }) {
   const heading = useRef<HTMLHeadingElement>(null)
@@ -326,18 +372,18 @@ function SentPanel({
           {inAppBrowser ? (
             <>
               ¿Primera vez?{' '}
-              <Link href="/explorar" className={exploreLinkClass}>
-                Reservá tu primer turno
+              <Link href={rival ? '/rival/nuevo' : '/explorar'} className={exploreLinkClass}>
+                {rival ? 'Armá tu primer partido' : 'Reservá tu primer turno'}
               </Link>{' '}
               y la cuenta se crea sola.
             </>
           ) : (
             <>
               ¿Primera vez? Entrá con Google o{' '}
-              <Link href="/explorar" className={exploreLinkClass}>
-                reservá tu primer turno
+              <Link href={rival ? '/rival/nuevo' : '/explorar'} className={exploreLinkClass}>
+                {rival ? 'armá tu primer partido' : 'reservá tu primer turno'}
               </Link>
-              : la cuenta se crea sola.
+              {rival ? ' y la cuenta se crea sola.' : ': la cuenta se crea sola.'}
             </>
           )}
         </p>

@@ -64,8 +64,8 @@ const RIVAL_COPY: Record<
   armar: {
     accent: 'armar',
     after: ' tu partido',
-    lead: 'Entrás y volvés a armarlo.',
-    sent: 'Cuando lo toques, volvés a armar tu partido con tu cuenta.',
+    lead: 'Entrás con Google o con tu email. Si no tenés cuenta, se crea al toque. Después de entrar, armás tu partido.',
+    sent: 'Cuando lo toques, entrás con tu cuenta y armás tu partido.',
   },
   pedir: {
     accent: 'pedir',
@@ -251,12 +251,21 @@ export default function LoginGate({
           defaultValue={values.email}
           onChange={() => setEditedAt(state)}
           aria-invalid={emailError ? 'true' : undefined}
-          aria-describedby={emailError ? 'gate-email-error' : undefined}
+          aria-describedby={
+            [emailError && 'gate-email-error', rival && 'gate-email-help']
+              .filter(Boolean)
+              .join(' ') || undefined
+          }
           className={AUTH_INPUT}
         />
         {emailError && (
           <p id="gate-email-error" role="alert" className={MAIL_ERROR_CLASS}>
             {emailError}
+          </p>
+        )}
+        {rival && (
+          <p id="gate-email-help" className="text-sm text-muted-foreground">
+            Te mandamos un enlace para entrar. Sin contraseña.
           </p>
         )}
       </div>

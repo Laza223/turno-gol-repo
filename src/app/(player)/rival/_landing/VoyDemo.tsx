@@ -107,7 +107,9 @@ export function VoyDemo() {
       <p className="sr-only">Ejemplo de partido de Fútbol 5: 9 confirmados, falta 1.</p>
       <div className={s.legendRow}>
         <p className={s.boardLegend}>
-          Ejemplo. Hoy tocás Voy y entrás. Muy pronto, además, elegís tu puesto en la cancha.
+          {joined
+            ? 'Así confirmás en un partido real.'
+            : 'Ejemplo: tocá Voy y mirá cómo se llena. Así confirma cada uno cuando le pasan el link.'}
         </p>
         {joined && (
           <button type="button" className={s.reset} onClick={reset}>

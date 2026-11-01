@@ -170,10 +170,10 @@ function EmptyBoard({ alert }: { alert: BoardAlertProps }) {
   return (
     <div className="rounded-3xl border border-border bg-card px-6 py-8 text-center shadow-xs lg:mx-auto lg:max-w-lg">
       <h2 className="font-display text-2xl font-black italic leading-tight tracking-tight text-foreground">
-        Por ahora no hay partidos en el tablón.
+        Todavía no hay partidos publicados.
       </h2>
       <p className="mx-auto mt-2 max-w-xs text-base text-muted-foreground">
-        Armá el tuyo y publicalo para que se sume quien busca jugar.
+        Cuando alguien publique uno, lo vas a ver acá. Mientras tanto, armá el tuyo.
       </p>
       {alert.alertTenants.length > 0 && (
         <div className="mt-5 w-full border-t border-border pt-5">
@@ -212,7 +212,7 @@ export function BoardView({
         eyebrow="RIVAL powered by TurnoGol"
         title="Sumate a un"
         accent="partido"
-        subtitle="O armá el tuyo, pasale el link al grupo y cada uno confirma con un toque."
+        subtitle="Buscá un partido para sumarte o un rival para tu equipo. ¿Organizás vos? Armá el tuyo y pasá el link al grupo."
       />
 
       <div className="flex flex-col gap-3">

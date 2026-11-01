@@ -76,7 +76,7 @@ export function TemporadaCeroSection({ entry }: { entry: LandingEntry }) {
       </ArmarCta>
       <p className={s.afterArmalo}>
         <Link className={s.link} href="/rival/tablon">
-          Mirá el tablón
+          Buscá un partido
         </Link>
       </p>
     </>

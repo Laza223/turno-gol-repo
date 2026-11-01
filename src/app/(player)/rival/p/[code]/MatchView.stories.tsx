@@ -129,7 +129,7 @@ export const ParticipanteEnElBanco: Story = {
     const canvas = within(canvasElement)
     await expect(
       canvas.getByText(
-        'Quedaste en el banco. Si alguien se baja, entrás vos y te avisamos por mail.',
+        'Quedaste en el banco. Si alguien se baja, entrás vos: lo ves en Mis partidos.',
       ),
     ).toBeInTheDocument()
     // Ya está adentro: no hay "Voy", sí "Me bajo".

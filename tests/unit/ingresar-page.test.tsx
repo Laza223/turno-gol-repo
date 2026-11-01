@@ -86,3 +86,41 @@ describe('IngresarPage — acceso jugador', () => {
     expect(screen.getByText('¿Querés entrar con Google?')).toBeTruthy()
   })
 })
+
+describe('IngresarPage — copy según el destino (next)', () => {
+  const h1 = () => screen.getByRole('heading', { level: 1 }).textContent
+
+  it('next=/rival/mis-partidos: "Entrá a tus partidos" y primera vez hacia /rival/nuevo', async () => {
+    const node = await IngresarPage({
+      searchParams: Promise.resolve({ next: '/rival/mis-partidos' }),
+    })
+    render(node)
+    expect(h1()).toBe('Entrá a tus partidos')
+    expect(screen.getByRole('link', { name: 'armá tu primer partido' }).getAttribute('href')).toBe(
+      '/rival/nuevo',
+    )
+    expect(screen.queryByRole('link', { name: /Descubrí complejos/i })).toBeNull()
+  })
+
+  it('next=/rival/tablon: "Entrá a RIVAL"', async () => {
+    render(await IngresarPage({ searchParams: Promise.resolve({ next: '/rival/tablon' }) }))
+    expect(h1()).toBe('Entrá a RIVAL')
+  })
+
+  it.each([
+    undefined,
+    '/mis-reservas',
+    '/rivalidad',
+    '//evil.com',
+    'https://evil.com',
+    '/\\evil.com',
+  ])('next=%s no activa RIVAL: sigue "Accedé a tu cuenta"', async (next) => {
+    render(await IngresarPage({ searchParams: Promise.resolve({ next }) }))
+    expect(h1()).toBe('Accedé a tu cuenta')
+  })
+
+  it('un next repetido (array) tampoco activa RIVAL', async () => {
+    render(await IngresarPage({ searchParams: Promise.resolve({ next: ['/rival/tablon', '/x'] }) }))
+    expect(h1()).toBe('Accedé a tu cuenta')
+  })
+})

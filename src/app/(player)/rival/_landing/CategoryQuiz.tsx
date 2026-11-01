@@ -41,16 +41,18 @@ function swap(update: () => void): Promise<void> {
 
 interface QuestionProps {
   legend: string
+  hint?: string
   name: string
   options: readonly string[]
   value: number | null
   onPick: (i: number) => void
 }
 
-function Question({ legend, name, options, value, onPick }: QuestionProps) {
+function Question({ legend, hint, name, options, value, onPick }: QuestionProps) {
   return (
     <fieldset>
       <legend>{legend}</legend>
+      {hint && <p style={{ color: 'var(--ink-3)', fontSize: 13 }}>{hint}</p>}
       <div className={s.opts}>
         {options.map((label, i) => (
           <label key={label}>
@@ -107,17 +109,18 @@ export function CategoryQuiz() {
         <StatusChip piece="category" />
         <h3 style={{ marginTop: 10 }}>Probá: ¿de qué categoría arrancarías?</h3>
         <p style={{ color: 'var(--ink-2)', marginTop: 6, fontSize: 15 }}>
-          La categoría todavía no existe. Esto es para que veas cómo va a ser.
+          Es un adelanto: la categoría todavía no existe. Probá cómo va a ser. Nadie arranca más
+          arriba de Quinta.
         </p>
         <Question
-          legend="¿Cuánto jugás?"
+          legend="¿Cuántas veces por semana jugás?"
           name="frequency"
           options={QUIZ_FREQUENCIES}
           value={answers.frequency}
           onPick={(i) => pick('frequency', i)}
         />
         <Question
-          legend="¿Dónde jugaste?"
+          legend="¿Cuál es lo más serio que jugaste?"
           name="background"
           options={QUIZ_BACKGROUNDS}
           value={answers.background}
@@ -125,6 +128,7 @@ export function CategoryQuiz() {
         />
         <Question
           legend="¿Tu puesto?"
+          hint="No cambia tu categoría: es para tu figurita."
           name="position"
           options={QUIZ_POSITIONS}
           value={answers.position}
@@ -141,10 +145,7 @@ export function CategoryQuiz() {
         <p className={s.big} ref={resultRef} tabIndex={-1}>
           Arrancarías en <b>{category ? `${category}?` : ''}</b>
         </p>
-        <p>
-          Nadie arranca más arriba de Quinta. El &quot;?&quot; se va con 10 partidos oficiales: la
-          cancha no miente. Tu puesto no cambia la categoría: queda para tu figurita.
-        </p>
+        <p>El &quot;?&quot; quiere decir provisoria: se va con 10 partidos oficiales.</p>
         <div className={s.row}>
           <button type="button" className={s.ghost} onClick={again}>
             Probar de nuevo

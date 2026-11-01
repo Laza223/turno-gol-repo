@@ -6,9 +6,12 @@ import { StatusChip } from './StatusChip'
 
 const TRAITS = [
   ['Leyenda de la cancha.', 'La gana el que más juega ahí. Premia la constancia, no el talento.'],
-  ['Complejo de la zona.', 'Cada mes, el complejo con más vida RIVAL.'],
+  [
+    'Complejo de la zona.',
+    'Cada mes, el complejo con más partidos RIVAL, más clubes de local y mejor nota de los jugadores.',
+  ],
   ['Sede oficial RIVAL.', 'El sticker en la puerta, con QR.'],
-  ['Hora RIVAL.', 'El complejo publica partidos de la casa con la Corona en juego.'],
+  ['Hora RIVAL.', 'El complejo publica partidos en horarios libres, con la Corona en juego.'],
 ] as const
 
 // Las cuatro canchas de las esquinas; la del medio es la ventana con la foto.
@@ -88,7 +91,10 @@ export function TuCanchaSection() {
               <h3>
                 Pedí tu cancha <StatusChip piece="requestCourt" />
               </h3>
-              <p>¿Jugás en un complejo sin TurnoGol? Pedilo, y le llevamos tu pedido.</p>
+              <p>
+                ¿Jugás en un complejo que todavía no usa TurnoGol? Pedilo y le hacemos llegar tu
+                pedido.
+              </p>
             </div>
             <p style={{ color: 'var(--ink-2)' }}>
               ¿Tenés un complejo?{' '}

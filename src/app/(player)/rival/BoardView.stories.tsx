@@ -151,9 +151,9 @@ export const Vacio: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(
-      canvas.getByRole('heading', { name: 'Por ahora no hay partidos en el tablón.' }),
+      canvas.getByRole('heading', { name: 'Todavía no hay partidos publicados.' }),
     ).toBeInTheDocument()
-    await expect(canvas.getByText(/Armá el tuyo y publicalo/)).toBeInTheDocument()
+    await expect(canvas.getByText(/Mientras tanto, armá el tuyo/)).toBeInTheDocument()
     // Un solo camino para armar: el verde de arriba.
     await expect(canvas.getAllByRole('link', { name: 'Armar un partido' })).toHaveLength(1)
   },

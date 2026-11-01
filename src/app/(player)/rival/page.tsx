@@ -14,7 +14,7 @@ export function generateMetadata(): Metadata {
   return {
     title: { absolute: 'RIVAL: cada partido cuenta | TurnoGol' },
     description:
-      'Armá el partido con tu grupo, encontrá al que falta y, muy pronto, jugá con tu club por la tabla, la Corona y tu categoría. El lado jugador de TurnoGol.',
+      'Armá el partido con tu grupo, encontrá al que falta y sumate a los de otros. Próximamente: jugá con tu club por la tabla, la Corona y tu categoría. El lado jugador de TurnoGol.',
     alternates: { canonical: absoluteUrl('/rival') },
   }
 }

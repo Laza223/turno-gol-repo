@@ -8,19 +8,19 @@ import { TablonTabs } from './TablonTabs'
 const STEPS = [
   {
     title: 'Armás el partido',
-    text: 'Complejo, día, hora, formato y nivel: Tranqui, Parejo o Picante. Si la cancha ya está reservada en TurnoGol, el partido lo dice.',
+    text: 'Elegís complejo, día, hora y nivel (Tranqui, Parejo o Picante, según cómo juega tu grupo), de Fútbol 4 a 11. La cancha tiene que estar ya reservada: armar el partido no la reserva.',
   },
   {
     title: 'Pasás el link al grupo',
-    text: 'Por WhatsApp, como siempre. El link muestra el partido y cuántos faltan.',
+    text: 'Por WhatsApp, como siempre. Todos ven el complejo, la hora y cuántos faltan.',
   },
   {
     title: 'Cada uno toca Voy',
-    text: 'El cupo es de verdad: cuando se llena, se llena. El que llega tarde va al banco y entra solo si alguien se baja. Bajarse es un toque, sin drama. Y el fijo de la semana se repite sin armarlo de cero.',
+    text: 'Voy confirma que juega. Si el cupo ya está completo, quedás en el banco (anotado por si alguien se baja). Si no podés ir, tocás Me bajo. Cuando termina, armás el de la semana que viene.',
   },
   {
-    title: '¿Falta 1? Al tablón.',
-    text: 'Publicás el mismo partido y se suma gente de afuera. Vos aceptás a cada uno, y recién ahí ve tu WhatsApp.',
+    title: '¿Falta alguien? Al tablón.',
+    text: 'Publicás el mismo partido y quien busca partido puede pedir sumarse. Vos aceptás a cada uno, y recién ahí ve tu WhatsApp.',
   },
 ] as const
 

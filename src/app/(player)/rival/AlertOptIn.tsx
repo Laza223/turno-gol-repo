@@ -6,7 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { SelectMenu } from '@/components/ui/select-menu'
 import { PORTAL_BUTTON_OUTLINE } from '@/components/world/PortalAuthFrame'
-import { type AlertAction, type AlertSubscription, useAlertOptIn } from './alert-opt-in-state'
+import {
+  ALERT_FREQUENCY,
+  type AlertAction,
+  type AlertSubscription,
+  useAlertOptIn,
+} from './alert-opt-in-state'
 import { FormError } from './FormError'
 import { RivalCheckbox } from './RivalCheckbox'
 
@@ -21,7 +26,7 @@ function SignedOutPrompt() {
         href={`/ingresar?next=${encodeURIComponent('/rival/tablon')}`}
         className="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4"
       >
-        Ingresá y activá el aviso
+        Entrá para activar el aviso
       </Link>
       .
     </p>
@@ -165,6 +170,11 @@ export function AlertOptIn({
       >
         Solo si buscan arquero
       </RivalCheckbox>
+
+      <p className="text-[13px] leading-5 text-muted-foreground">
+        Te escribimos cuando publiquen en ese complejo un partido al que le falten jugadores.{' '}
+        {ALERT_FREQUENCY}
+      </p>
 
       <AlertButtons
         pending={s.pending}

@@ -22,22 +22,26 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('group', { name: '¿Cuánto jugás?' })).toBeVisible()
-    await expect(canvas.getByRole('group', { name: '¿Dónde jugaste?' })).toBeVisible()
+    await expect(
+      canvas.getByRole('group', { name: '¿Cuántas veces por semana jugás?' }),
+    ).toBeVisible()
+    await expect(
+      canvas.getByRole('group', { name: '¿Cuál es lo más serio que jugaste?' }),
+    ).toBeVisible()
     await expect(canvas.getByRole('group', { name: '¿Tu puesto?' })).toBeVisible()
     await expect(canvas.getByText('No guardamos tus respuestas.')).toBeVisible()
   },
 }
 
-// Picados + 1 vez por semana = Novena; nadie arranca más arriba de Quinta.
+// Picados + 1 vez = Novena; nadie arranca más arriba de Quinta.
 export const Resultado: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByLabelText('1 vez por semana'))
+    await userEvent.click(canvas.getByLabelText('1 vez'))
     await userEvent.click(canvas.getByLabelText('Picados'))
     await userEvent.click(canvas.getByLabelText('Arquero'))
     await expect(canvas.getByText('Novena?')).toBeVisible()
-    await expect(canvas.getByText(/Nadie arranca más arriba de Quinta/)).toBeVisible()
+    await expect(canvas.getByText(/quiere decir provisoria/)).toBeVisible()
   },
 }
 
@@ -59,7 +63,9 @@ export const ProbarDeNuevo: Story = {
     await userEvent.click(canvas.getByLabelText('Defensor'))
     await expect(canvas.getByText('Séptima?')).toBeVisible()
     await userEvent.click(canvas.getByRole('button', { name: 'Probar de nuevo' }))
-    await expect(canvas.getByLabelText('1 vez por semana')).not.toBeChecked()
-    await expect(canvas.getByRole('group', { name: '¿Cuánto jugás?' })).toBeVisible()
+    await expect(canvas.getByLabelText('1 vez')).not.toBeChecked()
+    await expect(
+      canvas.getByRole('group', { name: '¿Cuántas veces por semana jugás?' }),
+    ).toBeVisible()
   },
 }

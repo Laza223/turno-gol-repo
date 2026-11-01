@@ -160,7 +160,7 @@ export function myStatusLine(status: RivalRosterEntry['status']): string | null 
     case 'confirmed':
       return 'Listo, estás adentro. Nos vemos en la cancha.'
     case 'bench':
-      return 'Quedaste en el banco. Si alguien se baja, entrás vos y te avisamos por mail.'
+      return 'Quedaste en el banco. Si alguien se baja, entrás vos: lo ves en Mis partidos.'
     case 'requested':
       return 'Pedido enviado. Te avisamos por mail si te aceptan.'
     case 'declined':

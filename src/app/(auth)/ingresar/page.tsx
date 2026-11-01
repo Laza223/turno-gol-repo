@@ -1,30 +1,44 @@
 import { headers } from 'next/headers'
 import { AUTH_ACCENT_STYLE, PortalAuthFrame } from '@/components/world/PortalAuthFrame'
 import { isInAppBrowser } from '@/lib/in-app-browser'
+import { sanitizeNext } from '@/lib/safe-redirect'
 import { playerLoginAction, startGoogleLoginFromIngresar } from './actions'
-import { IngresarForm } from './IngresarForm'
+import { IngresarForm, type RivalIngreso } from './IngresarForm'
 
 const HERO_IMG =
   'https://images.unsplash.com/photo-1517466787929-bc90951d0974?q=80&w=2000&auto=format&fit=crop'
 
-export default async function IngresarPage() {
+/** Quien viene de RIVAL (`next` ya sanitizado, mismo helper que la action) ve el ingreso en su idioma. */
+function rivalIngreso(next: unknown): RivalIngreso | undefined {
+  const path = sanitizeNext(next, '')
+  if (!/^\/rival(?:[/?#]|$)/.test(path) || path.includes('..')) return undefined
+  return path.startsWith('/rival/mis-partidos') ? 'partidos' : 'general'
+}
+
+export default async function IngresarPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ next?: string | string[] }>
+} = {}) {
+  const rival = rivalIngreso((await searchParams)?.next)
   // El navegador interno se resuelve acá, con el header, y baja como prop: así el orden de
   // Google y el email ya viene en el HTML y no salta al hidratar.
   const inAppBrowser = isInAppBrowser((await headers()).get('user-agent'))
 
   return (
-    <PortalAuthFrame aside={<ImagePane />}>
+    <PortalAuthFrame aside={<ImagePane rival={rival !== undefined} />}>
       <IngresarForm
         action={playerLoginAction}
         googleAction={startGoogleLoginFromIngresar}
         inAppBrowser={inAppBrowser}
+        rival={rival}
       />
     </PortalAuthFrame>
   )
 }
 
 /** La foto de La Previa: solo desde lg, decorativa (el título de la card ya dice dónde está). */
-function ImagePane() {
+function ImagePane({ rival }: { rival: boolean }) {
   return (
     <div aria-hidden className="relative isolate hidden overflow-hidden lg:block">
       {/* Fondo CSS y no next/image: es decorativa y el contenedor está oculto bajo lg (no se baja). */}
@@ -56,12 +70,14 @@ function ImagePane() {
               letterSpacing: '-0.03em',
             }}
           >
-            Tu próxima cancha
+            {rival ? 'Tu partido' : 'Tu próxima cancha'}
             <br />
             <span style={AUTH_ACCENT_STYLE}>te está esperando.</span>
           </p>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-slate-300">
-            Accedé con tu email y gestioná todas tus reservas. Ingreso seguro, sin contraseña.
+            {rival
+              ? 'Entrá con tu cuenta y seguí tus partidos. Ingreso seguro, sin contraseña.'
+              : 'Accedé con tu email y gestioná todas tus reservas. Ingreso seguro, sin contraseña.'}
           </p>
         </div>
       </div>

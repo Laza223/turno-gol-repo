@@ -41,6 +41,7 @@ export function HoyChargeModalHeader({
           courtName,
           `${timeStart}–${timeEnd}`,
           when && (
+            // oxlint-disable-next-line react/jsx-key -- MetaLine le pone key a cada parte
             <span
               className={cn(
                 late && cn('inline-flex items-center gap-1 font-medium', TONE_TEXT.destructive),

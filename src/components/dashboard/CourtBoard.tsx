@@ -240,6 +240,7 @@ function CourtRow({
         <MetaLine
           className="text-xs tabular-nums text-muted-foreground"
           parts={[
+            // oxlint-disable-next-line react/jsx-key -- MetaLine le pone key a cada parte
             due ? <span className={cn('font-medium', TONE_TEXT.destructive)}>{when}</span> : when,
             badge,
             note,

@@ -8,7 +8,7 @@ const outDir = path.resolve('public/brand-assets')
 
 function createServer() {
   return http.createServer((req, res) => {
-    let rawUrl = req.url.split('?')[0]
+    const rawUrl = req.url.split('?')[0]
     let filePath = path.join('storybook-static', rawUrl)
     if (filePath.endsWith('/') || filePath === 'storybook-static') {
       filePath = path.join(filePath, 'index.html')

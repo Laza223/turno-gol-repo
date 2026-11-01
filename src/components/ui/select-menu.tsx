@@ -77,6 +77,7 @@ export function SelectMenu({
               ? `${ariaLabel}: ${visibleText}`
               : ariaLabel
           }
+          // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- aria-invalid es global en ARIA 1.1 (mismo motivo que la directiva de arriba; Oxlint reporta en el atributo y ESLint en el <button>)
           aria-invalid={ariaInvalid}
           aria-describedby={ariaDescribedBy}
           className={cn(

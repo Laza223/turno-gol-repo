@@ -1,0 +1,326 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "nextjs", "jsx-a11y", "import"],
+  "categories": {
+    "correctness": "off"
+  },
+  "options": {
+    "typeAware": true
+  },
+  "ignorePatterns": [
+    ".next/**",
+    "node_modules/**",
+    "storybook-static/**",
+    "ds-bundle/**",
+    ".design-sync/**",
+    ".worktrees/**"
+  ],
+  "rules": {
+    "import/no-anonymous-default-export": "warn",
+    "jsx-a11y/alt-text": "warn",
+    "jsx-a11y/aria-props": "warn",
+    "jsx-a11y/aria-proptypes": "warn",
+    "jsx-a11y/aria-unsupported-elements": "warn",
+    "jsx-a11y/role-has-required-aria-props": "warn",
+    "jsx-a11y/role-supports-aria-props": "warn",
+    "nextjs/google-font-display": "warn",
+    "nextjs/google-font-preconnect": "warn",
+    "nextjs/inline-script-id": "error",
+    "nextjs/next-script-for-ga": "warn",
+    "nextjs/no-assign-module-variable": "error",
+    "nextjs/no-async-client-component": "warn",
+    "nextjs/no-before-interactive-script-outside-document": "warn",
+    "nextjs/no-css-tags": "warn",
+    "nextjs/no-document-import-in-page": "error",
+    "nextjs/no-duplicate-head": "error",
+    "nextjs/no-head-element": "warn",
+    "nextjs/no-head-import-in-document": "error",
+    "nextjs/no-img-element": "warn",
+    "nextjs/no-page-custom-font": "warn",
+    "nextjs/no-script-component-in-head": "error",
+    "nextjs/no-styled-jsx-in-document": "warn",
+    "nextjs/no-sync-scripts": "error",
+    "nextjs/no-title-in-document-head": "warn",
+    "nextjs/no-typos": "warn",
+    "nextjs/no-unwanted-polyfillio": "warn",
+    "no-array-constructor": "error",
+    "no-unused-expressions": "error",
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_",
+        "ignoreRestSiblings": true
+      }
+    ],
+    "no-var": "error",
+    "prefer-const": "error",
+    "prefer-rest-params": "error",
+    "prefer-spread": "error",
+    "react/display-name": "error",
+    "react/error-boundaries": "error",
+    "react/exhaustive-deps": "warn",
+    "react/globals": "error",
+    "react/immutability": "error",
+    "react/incompatible-library": "warn",
+    "react/jsx-key": "error",
+    "react/jsx-no-comment-textnodes": "error",
+    "react/jsx-no-duplicate-props": "error",
+    "react/jsx-no-undef": "error",
+    "react/no-children-prop": "error",
+    "react/no-danger-with-children": "error",
+    "react/no-direct-mutation-state": "error",
+    "react/no-find-dom-node": "error",
+    "react/no-is-mounted": "error",
+    "react/no-render-return-value": "error",
+    "react/no-string-refs": "error",
+    "react/no-unescaped-entities": "error",
+    "react/preserve-manual-memoization": "error",
+    "react/purity": "off",
+    "react/refs": "error",
+    "react/require-render-return": "error",
+    "react/rules-of-hooks": "error",
+    "react/set-state-in-effect": "error",
+    "react/set-state-in-render": "error",
+    "react/static-components": "error",
+    "react/unsupported-syntax": "warn",
+    "react/use-memo": "error",
+    "typescript/ban-ts-comment": "error",
+    "typescript/consistent-type-imports": [
+      "error",
+      {
+        "prefer": "type-imports"
+      }
+    ],
+    "typescript/no-duplicate-enum-values": "error",
+    "typescript/no-empty-object-type": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-extra-non-null-assertion": "error",
+    "typescript/no-floating-promises": "error",
+    "typescript/no-misused-new": "error",
+    "typescript/no-misused-promises": [
+      "error",
+      {
+        "checksVoidReturn": {
+          "attributes": false
+        }
+      }
+    ],
+    "typescript/no-namespace": "error",
+    "typescript/no-non-null-asserted-optional-chain": "error",
+    "typescript/no-require-imports": "error",
+    "typescript/no-this-alias": "error",
+    "typescript/no-unnecessary-type-constraint": "error",
+    "typescript/no-unsafe-declaration-merging": "error",
+    "typescript/no-unsafe-function-type": "error",
+    "typescript/no-wrapper-object-types": "error",
+    "typescript/prefer-as-const": "error",
+    "typescript/prefer-namespace-keyword": "error",
+    "typescript/triple-slash-reference": "error"
+  },
+  "overrides": [
+    {
+      "files": ["tests/**/*.ts", "tests/**/*.tsx"],
+      "rules": {
+        "typescript/consistent-type-imports": [
+          "error",
+          {
+            "prefer": "type-imports",
+            "disallowTypeAnnotations": false
+          }
+        ]
+      }
+    },
+    {
+      "files": ["**/*.js", "**/*.cjs"],
+      "rules": {
+        "typescript/no-require-imports": "off"
+      }
+    },
+    {
+      "files": ["src/**/*.stories.ts", "src/**/*.stories.tsx", "src/test/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "postgres",
+                  "drizzle-orm",
+                  "drizzle-orm/*",
+                  "pg-boss",
+                  "server-only",
+                  "@supabase/ssr"
+                ],
+                "allowTypeImports": true,
+                "message": "Módulo server-only: importarlo como VALOR mete un driver de Node en el bundle de browser de Storybook. `import type` sí."
+              },
+              {
+                "group": [
+                  "@/shared/db",
+                  "@/shared/db/*",
+                  "@/shared/jobs/*",
+                  "@/modules/*/*.service",
+                  "@/modules/*/queries"
+                ],
+                "allowTypeImports": true,
+                "message": "La capa de DB/servicios es server-only. Importá los TIPOS desde @/modules/**/*.types.ts."
+              },
+              {
+                "group": ["**/actions", "**/actions.ts"],
+                "allowTypeImports": true,
+                "message": "Las Server Actions se inyectan como PROP. `import type` sí."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/modules/**/*.ts", "src/shared/**/*.ts", "src/lib/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/app/**"],
+                "allowTypeImports": true,
+                "message": "Capa de dominio/infra importando la capa de ruteo."
+              },
+              {
+                "group": ["@/server/**"],
+                "allowTypeImports": true,
+                "message": "@/server es el composition root del runtime web: compone dominio, no lo provee."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/lib/**/*.ts", "src/lib/**/*.tsx"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/modules/**"],
+                "allowTypeImports": true,
+                "message": "@/lib no puede depender del dominio."
+              },
+              {
+                "group": ["@/app/**", "@/server/**"],
+                "allowTypeImports": true,
+                "message": "@/lib no importa hacia arriba."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/components/**/*.ts", "src/components/**/*.tsx"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/modules/**"],
+                "allowTypeImports": true,
+                "message": "Un componente reusable no puede depender del dominio como VALOR."
+              },
+              {
+                "group": ["@/app/**"],
+                "allowTypeImports": true,
+                "message": "Un componente en @/components importando de @/app está en el lugar equivocado."
+              },
+              {
+                "group": ["@/server/**"],
+                "allowTypeImports": true,
+                "message": "@/server es el composition root del runtime web: nada de UI puede importarlo."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/shared/**/*.ts", "src/shared/**/*.tsx"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/modules/**"],
+                "allowTypeImports": true,
+                "message": "@/shared es infraestructura y no puede conocer el dominio."
+              },
+              {
+                "group": ["@/server/**", "@/app/**"],
+                "allowTypeImports": true,
+                "message": "@/shared es la capa de más abajo: no importa hacia arriba."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/server/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["@/components/**", "@/hooks/**"],
+                "allowTypeImports": true,
+                "message": "@/server no renderiza nada."
+              },
+              {
+                "group": ["@/app/**"],
+                "allowTypeImports": true,
+                "message": "Capa de composición importando la capa de ruteo."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/shared/jobs/**/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@/shared/db/client",
+                "importNames": ["getDb", "getSql"],
+                "message": "En src/shared/jobs/** usá getWorkerDb/getWorkerSql (BYPASSRLS)."
+              }
+            ],
+            "patterns": [
+              {
+                "group": ["@/app/**"],
+                "allowTypeImports": true,
+                "message": "Capa de dominio/infra importando la capa de ruteo."
+              },
+              {
+                "group": ["@/server/**"],
+                "allowTypeImports": true,
+                "message": "@/server es el runtime WEB; src/shared/jobs es el de BACKGROUND."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

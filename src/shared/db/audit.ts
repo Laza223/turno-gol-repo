@@ -38,6 +38,7 @@ async function resolveImpersonationOverride(): Promise<{
     // impersonación") silently re-attributes a DIFFERENT person's audit
     // entries to the system admin who last impersonated, corrupting the
     // audit trail's non-repudiation guarantee.
+    // oxlint-disable-next-line no-restricted-imports -- import dinámico shared → modules: viola capas-shared y ESLint no lo ve. Deuda registrada en docs/tech-debt.md
     const { extractRealAuthUser } = await import('@/modules/auth/auth.middleware')
     const realUser = await extractRealAuthUser()
     if (!realUser || realUser.type !== 'system_admin') return null

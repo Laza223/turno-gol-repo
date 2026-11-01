@@ -47,6 +47,7 @@ export function withGeolocation(state: GeoState): Decorator {
         }
         Object.defineProperty(window.navigator, 'geolocation', { value: mock, configurable: true })
       }
+      // oxlint-disable-next-line react/set-state-in-effect -- flag de montaje de un decorador de Storybook. Deuda en docs/tech-debt.md
       setReady(true)
       // `defineProperty` crea una propiedad OWN que tapa el getter real de
       // `Navigator.prototype`; borrarla al desmontar restaura el prototype para

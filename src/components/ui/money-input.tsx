@@ -77,6 +77,7 @@ export const MoneyInput = React.forwardRef<HTMLInputElement, MoneyInputProps>(fu
   // form). El propio tipeo nunca pasa por acá: handleChange ya escribe el
   // display final, así que este effect no le pisa el cursor al usuario.
   React.useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- sincroniza el display con la prop; el patrón del repo es ajustar durante el render. No se toca acá (input de plata). Deuda en docs/tech-debt.md
     if (isControlled) setDisplay(centsToInputDisplay(valueCents ?? null))
   }, [isControlled, valueCents])
 

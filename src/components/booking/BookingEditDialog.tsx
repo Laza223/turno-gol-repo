@@ -5,7 +5,7 @@ import * as Sentry from '@sentry/nextjs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { MoneyInput } from '@/components/ui/money-input'
-import { SegmentedControl } from '@/components/ui/segmented-control'
+import { choiceChipClass, SegmentedControl } from '@/components/ui/segmented-control'
 import { toast } from '@/hooks/use-toast'
 import { priceForRange } from '@/lib/booking/pricing'
 import type { GridBooking } from '@/lib/booking/grid-cells'
@@ -292,11 +292,8 @@ export function BookingEditDialog({
                 aria-label="Precio del turno"
                 value={priceMode}
                 onValueChange={setPriceMode}
-                itemClassName={(active) =>
-                  active
-                    ? 'h-11 md:h-9 cursor-pointer rounded-lg border border-primary bg-primary text-xs font-semibold text-primary-foreground transition-colors'
-                    : 'h-11 md:h-9 cursor-pointer rounded-lg border border-border bg-card text-xs font-semibold transition-colors hover:bg-accent'
-                }
+                // Lo elegido con borde y tinte: el verde sólido es de "Guardar cambios".
+                itemClassName={choiceChipClass}
                 options={[
                   { value: 'priced', label: 'Tiene precio' },
                   { value: 'free', label: 'No se cobra' },

@@ -122,8 +122,12 @@ export function SplitPaymentFields({
       {lines.map((line, i) => (
         // Arriba y no al centro: el monto en palabras va debajo del campo y, centrado,
         // el método quedaba corrido hacia abajo respecto del monto.
-        <div key={line.id} className="flex items-start gap-2">
-          <div className="min-w-0 flex-1">
+        // Debajo de `md` el monto va en 16 px (regla de iOS) y en media tarjeta
+        // (cobro por equipo) no entraba al lado del medio de pago: "$ 24.00". Ahí
+        // el monto pide 7rem y, si no entran los dos, el medio de pago baja a su
+        // renglón a todo el ancho. Desde `md` la fila queda como siempre.
+        <div key={line.id} className="flex flex-wrap items-start gap-2">
+          <div className="min-w-0 flex-1 max-md:min-w-[7rem]">
             <MoneyInput
               id={`${idPrefix}-amount-${i + 1}`}
               valueCents={line.amountCents}
@@ -156,7 +160,7 @@ export function SplitPaymentFields({
             // md:text-sm` por la regla de iOS (zoomea los campos de menos de
             // 16px), pero esto es un `<button>`, no un campo donde se tipea —
             // iOS no lo zoomea y a 16px "Transferencia" no entra en 375px.
-            className="h-11 w-[9.75rem] shrink-0 rounded-lg bg-card text-sm md:h-10"
+            className="h-11 w-[9.75rem] shrink-0 rounded-lg bg-card text-sm max-md:grow md:h-10"
           />
           {lines.length > 1 && (
             <button

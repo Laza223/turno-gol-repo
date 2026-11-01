@@ -8,14 +8,13 @@ import { Label } from '@/components/ui/label'
 import { MoneyInput } from '@/components/ui/money-input'
 import { priceForDateSlot } from '@/lib/booking/pricing'
 import { endLabelFromMins, hhmmToMins } from '@/shared/time/operating-day'
-import { cn } from '@/lib/utils'
 import { ContactField } from './ContactField'
 import { ChargeSection } from './ChargeSection'
 import { Summary } from './Summary'
 import { usePlayerSearch } from './use-player-search'
 import { useSlotAvailability } from './use-slot-availability'
 import { freeStartTimes } from './time-options'
-import { selectClass } from './styles'
+import { readOnlyFieldClass, selectClass } from './styles'
 import type { ChargeChoice, DepositMethod, TypeFormProps } from './types'
 
 /** Turno — una hora de cancha para alguien: `spontaneous`, 60 min fijo. */
@@ -147,7 +146,7 @@ export function TurnoForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden lg:flex-row">
-      <div className="flex-1 space-y-5 overflow-y-auto p-4 lg:p-6">
+      <div className="flex-1 space-y-5 overflow-y-auto p-4 lg:space-y-8 lg:p-6">
         <section className="space-y-3">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Quién
@@ -189,9 +188,7 @@ export function TurnoForm({
             </div>
             <div className="space-y-1.5">
               <Label>Termina</Label>
-              <p className={cn(selectClass, 'flex items-center text-muted-foreground')}>
-                hasta {timeEnd} · 1 h
-              </p>
+              <p className={readOnlyFieldClass}>hasta {timeEnd} · 1 h</p>
             </div>
           </div>
           {taken && (

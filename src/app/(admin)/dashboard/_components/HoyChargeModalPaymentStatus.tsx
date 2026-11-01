@@ -13,7 +13,7 @@ const PRIMARY_BUTTON =
   'flex h-12 items-center justify-center gap-2 rounded-lg bg-primary text-base font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-60'
 
 const ACTION_BUTTON =
-  'flex h-11 flex-1 items-center justify-center gap-1.5 rounded-lg border text-sm font-semibold transition-colors disabled:opacity-60 md:h-10'
+  'flex h-11 flex-1 items-center justify-center gap-1.5 rounded-lg border text-sm font-medium transition-colors disabled:opacity-60 md:h-10'
 
 /**
  * Qué se muestra en el lugar del cobro: el formulario (`mode`), "Cobrado ✓"

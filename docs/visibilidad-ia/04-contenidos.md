@@ -66,7 +66,7 @@
   - `H2` Caja y buffet en la misma pantalla. Cubre: Hoy, la caja de la noche por método, stock con "Para reponer", fiado y vender desde cualquier vista.
   - `H2` Tus clientes. Cubre: la ficha, las etiquetas, "clientes que dejaron de venir" con WhatsApp precargado y RIVAL (B, "Ya disponible").
   - `H2` Tu equipo. Cubre: encargado con su usuario, push con horario silencioso y resúmenes.
-  - `H2` TurnoGol Plus: el asistente de WhatsApp con IA. Es extra ($20.000 por cancha) y "ya lo usa un complejo". No decir "incluido" ni "24/7 solo".
+  - `H2` TurnoGol Plus: el asistente de WhatsApp con IA. Es extra ($15.000 por cancha) y "ya lo usa un complejo". No decir "incluido" ni "24/7 solo".
   - `H2` Lo que no hacemos. Va ahí para que la IA no invente: solo fútbol (sin pádel ni básquet) y no cobramos comisión ni le cobramos al jugador.
   - `H2` Probalo 30 días. Cubre: sin tarjeta, sin permanencia y el CTA.
   - FAQ visible de 6 a 8 preguntas con FAQPage, por ejemplo: "¿Le cobran algo al jugador?", "¿Sirve para fútbol 7 y 11?", "¿Puedo cargar mis fijos de una planilla?" y "¿Qué pasa si no uso seña?".
@@ -89,7 +89,7 @@
   - Línea visible: "Precios en pesos argentinos (ARS), vigentes desde el DD/MM/2026". La fecha sale de la decisión del 20/10/2026 o del día en que se aplicó la migración 095.
   - Tabla HTML real de mensual contra anual para 1, 3, 5 y 10 canchas. Los montos se calculan con `monthlyListAmount` y `annualMonthlyEquivalent`; nunca se escriben a mano.
   - "Pagás por cada cancha, sin límite de cantidad", con la ayuda "elegí de 1 a 8 o escribí cuántas tenés".
-  - "Todo el sistema incluido" reemplaza a "Todas las funciones incluidas", y suma la línea "Opcional: TurnoGol Plus, asistente de WhatsApp con IA, $20.000 por cancha por mes".
+  - "Todo el sistema incluido" reemplaza a "Todas las funciones incluidas", y suma la línea "Opcional: TurnoGol Plus, asistente de WhatsApp con IA, $15.000 por cancha por mes".
   - Bloque "Sin comisión por reserva y sin cargo al jugador: la seña va directo a tu Mercado Pago".
   - **Sacar:**
     - "60 días", y poner lo que diga la decisión vigente sobre el vencimiento de la prueba (REQUIERE INPUT, ver `09`).
@@ -219,12 +219,12 @@ Una plantilla y contenido único por página. Cada una tiene:
 | Slug | H1 propuesto | Estado | Datos o constantes | Prompt objetivo |
 |---|---|---|---|---|
 | `reservas-online` | Reservas online las 24 h, sin que el jugador se baje una app | A | Ficha en pasos (`2026-10-29`), placa de historias, precio por jugador | "sistema para que reserven online sin app" |
-| `sena-mercado-pago` | Cobrá la seña por Mercado Pago, directo a tu cuenta | A | `deposit_percentage` 10-100, hold de 6 min, Mercado Pago desconectado → reserva sin seña | "cobrar señas online con Mercado Pago" |
+| `sena-opcional` (va última, D9) | Si querés, cobrás seña por Mercado Pago, directo a tu cuenta | A | `deposit_percentage` 10-100, hold de 6 min, Mercado Pago desconectado → reserva sin seña | "cobrar señas online con Mercado Pago" |
 | `turnos-fijos` | Tus fijos se repiten solos cada semana | A | Generador a las 03:00, control de pago por sesión, importar planilla | "app para turnos fijos" |
 | `cobro-por-equipo` | Cobrá la cancha por equipo y de a partes | A | `2026-09-15-cobro-por-equipo`, métodos mezclados, "No cobrado" en rojo, acreditación a las 24 h | "dividir el pago del turno" |
 | `caja-y-buffet` | La caja de la noche y el buffet, en la misma pantalla | A | Caja por método, stock mínimo, "Para reponer", fiado, vender desde cualquier vista | "caja del buffet de un complejo" |
 | `faltazos` | Qué hacer con el que te cuelga el turno | A | 2/90/14 por complejo, cancelación tardía opcional, seña | "cómo evito que falten" |
-| `asistente-whatsapp` | Un asistente con IA que contesta el WhatsApp de tu complejo | B (Plus, extra) | Qué hace y qué no, se calla 6 h si contestás vos, $20.000 por cancha | "bot de WhatsApp para reservas de canchas" |
+| `asistente-whatsapp` | Un asistente con IA que contesta el WhatsApp de tu complejo | B (Plus, extra) | Qué hace y qué no, se calla 6 h si contestás vos, $15.000 por cancha | "bot de WhatsApp para reservas de canchas" |
 | `rival` | RIVAL: tus jugadores arman el partido en tu cancha | B | Solo lo que dice "Ya disponible" en `docs/rival/landing.md`. Nada de la etapa D | "app para armar partidos de fútbol" |
 
 ### B-11 · `/integraciones/mercado-pago` — VIS-033
@@ -247,7 +247,7 @@ Una plantilla y contenido único por página. Cada una tiene:
 |---|---|---|
 | 1 | "Cómo cobrar la cancha por equipo en tu complejo de fútbol \| TurnoGol" | `/funciones/cobro-por-equipo` |
 | 2 | "Cómo cargar tus turnos fijos desde una planilla \| TurnoGol" | `/funciones/turnos-fijos` |
-| 3 | "Seña por Mercado Pago para canchas de fútbol: cómo funciona \| TurnoGol" | `/funciones/sena-mercado-pago` |
+| 3 | "Turnos fijos que se repiten solos en tu complejo de fútbol \| TurnoGol" | `/funciones/turnos-fijos` |
 | 4 | "La caja de la noche y el buffet de tu complejo, en el celu \| TurnoGol" | `/funciones/caja-y-buffet` |
 
 **Requisitos:**
@@ -280,7 +280,7 @@ Una plantilla y contenido único por página. Cada una tiene:
 
 ## Calendario de 90 días (01/11/2026 → 29/01/2027)
 
-Supone unas 3 horas por semana de Lázaro fuera del código y sesiones de Claude Code a demanda. No hay presupuesto.
+Lo ejecuta Claude Code (D14), incluida la medición. Lázaro solo hace los clics de sus cuentas y los pedidos a los complejos. No hay presupuesto.
 
 | Semana | Claude Code | Lázaro (fuera del código) |
 |---|---|---|

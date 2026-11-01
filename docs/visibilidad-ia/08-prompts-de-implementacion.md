@@ -37,7 +37,9 @@ Criterios de aceptación:
 - El CSV abre bien en Google Sheets: separador coma, UTF-8 sin BOM.
 - La foto técnica tiene una fila por URL, con evidencia (comando + output recortado).
 
-Al terminar, decile a Lázaro en 5 líneas cómo hacer su primera corrida semanal (unos 45 min) y la mensual (unas 2 h) esta semana, antes de la V1.
+5. Corré VOS la primera medición (D14): el núcleo semanal (8 preguntas × ChatGPT, Gemini, Perplexity y Copilot) en el navegador integrado, sin iniciar sesión, y cargá las filas en la planilla. Si un motor pide login o CAPTCHA, no lo resuelvas: anotalo como "no medible sin sesión" y seguí.
+
+Al terminar, decile a Lázaro en 5 líneas qué dio la línea base y qué clics de cuenta le quedan (Search Console, Vercel, GitHub).
 ```
 
 ---
@@ -145,7 +147,7 @@ Contexto: hoy el alta no guarda de dónde llega un complejo, más allá del cód
 
 Alcance:
 - VIS-008: un paso opcional, de un toque, en el ONBOARDING (no en /register, por la restricción L3 de docs/decisions/2026-09-27-landing-para-complejos.md). Opciones cerradas: Google · ChatGPT u otra IA · Instagram · Me lo recomendó otro complejo · Me escribieron de TurnoGol · YouTube · Otro. Además, guardar document.referrer y los utm_* del primer aterrizaje (cookie first-party de sesión, leída en el alta). Decidí con la skill convenciones-stack si va una columna nueva en tenants (migración nueva en src/shared/db/migrations/ con su espejo en supabase/migrations/; la aplica Lázaro, db:push y db:migrate están denegados) o una clave en tenants.settings. Que super-admin lo pueda ver.
-- VIS-023: solo con el OK explícito de Lázaro (pedilo al principio). En src/app/(auth)/register/page.tsx, reemplazar "Cobros automáticos con MercadoPago" por "Cobrás la seña por Mercado Pago, directo a tu cuenta", y sacar "menos de 2 minutos" y "Tu primera reserva online puede llegar esta semana".
+- VIS-023 (OK de Lázaro dado el 31/10): en src/app/(auth)/register/page.tsx, sacar "Cobros automáticos con MercadoPago" sin poner la seña en su lugar (D9: la seña es un opcional, nunca titular); el panel nombra la operación (fijos, cobro por equipo, caja y buffet, reservas 24/7). Sacar "menos de 2 minutos" y "Tu primera reserva online puede llegar esta semana".
 
 Reglas: skills convenciones-stack, migracion-segura (si hay migración) y protocolo-testing. Ley 25.326: el campo no guarda texto libre sobre personas. Sin commits sin pedido.
 
@@ -199,7 +201,7 @@ Arrancá en Plan Mode. Trabajá en un worktree propio.
 Contexto: las páginas de producto son lo que ChatGPT lee para describir una marca candidata, y una marca omitida puede aparecer cuando la pregunta trae un rasgo distintivo. Briefs B-10 (8 páginas /funciones/*), B-11 (/integraciones/mercado-pago) y B-12 (videos) de @docs/visibilidad-ia/04-contenidos.md. Tareas VIS-032, VIS-033 y VIS-035 de @docs/visibilidad-ia/03-plan-de-implementacion.md. Estados de cada función en @docs/visibilidad-ia/02-estrategia.md §3: solo A o B, con su etiqueta.
 
 Alcance:
-- Una plantilla compartida y 8 páginas con contenido único: reservas-online, sena-mercado-pago, turnos-fijos, cobro-por-equipo, caja-y-buffet, faltazos, asistente-whatsapp (Plus: extra de $20.000 por cancha; no decir "incluido" ni "24/7 solo") y rival (solo lo "Ya disponible" de docs/rival/landing.md). Antes de escribir cada página, verificá cada constante en el código (hold de 6 min, 2/90/14, generador de fijos, etc.).
+- Una plantilla compartida y 8 páginas con contenido único: turnos-fijos, cobro-por-equipo, caja-y-buffet, reservas-online, faltazos, asistente-whatsapp, sena-opcional (última, D9) (Plus: extra de $15.000 por cancha; no decir "incluido" ni "24/7 solo") y rival (D12: copy de todo RIVAL, pero publicá solo lo que ya anda en producción; verificalo en el código). Antes de escribir cada página, verificá cada constante en el código (hold de 6 min, 2/90/14, generador de fijos, etc.).
 - /integraciones/mercado-pago: la comisión y la acreditación de Mercado Pago se verifican en su web, con URL y fecha. Sin reembolso automático: lo hace el complejo y TurnoGol lo registra.
 - Videos: si Lázaro ya subió videos a YouTube, incrustalos (lite embed, sin cargar el iframe hasta el clic) con VideoObject y la transcripción visible.
 - Slugs en RESERVED_SLUGS antes de crear las rutas. Enlaces cruzados: cada función → 2 relacionadas + /precios. /para-complejos → cada función.

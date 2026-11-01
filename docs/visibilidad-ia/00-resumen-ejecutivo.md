@@ -27,7 +27,7 @@
 
 **La frase que tiene que repetir la IA** (`02-estrategia.md` §1):
 
-> TurnoGol es el sistema de gestión hecho solo para complejos de fútbol: tus jugadores reservan online las 24 horas sin bajarse una app, cobrás la seña (si querés) por Mercado Pago directo a tu cuenta, y manejás los turnos fijos, los cobros por equipo, la caja y el buffet desde el celular. Sin comisión por reserva y sin cargo al jugador.
+> TurnoGol es el sistema de gestión hecho solo para complejos de fútbol: manejás la noche entera desde el celular (turnos fijos que se repiten solos, cobro por equipo, caja y buffet) mientras tus jugadores reservan online las 24 horas, sin bajarse una app. Sin comisión por reserva y sin cargo al jugador.
 
 ## Lo que NO hay que hacer ahora (y por qué)
 
@@ -59,7 +59,7 @@ Detalle en `07`.
 1. **Repo público** que sale primero y expone precios de clientes (ya pasa). Mitigación: VIS-000 + la regla de PRs.
 2. **Confusión con TurnosGol.** Mitigación: consistencia de entidad y punto de control el 01/02/2027.
 3. **Prometer funciones que no existen** (cobro automático, recordatorios, RIVAL v2). Mitigación: los estados A/B/C/D en cada brief y grep en cada verificación.
-4. **Sostener la medición con 3 horas por semana.** Mitigación: un mínimo innegociable de 10 minutos por semana.
+4. **Sostener la medición.** La corre Claude en cada sesión (D14); el riesgo es que un motor pida login o CAPTCHA. Mitigación: se anota "no medible sin sesión" y se mide en los que dejan.
 5. **Depender de un solo cliente** (El Vagón). Mitigación: pedirle primero lo que le suma a él, el link en Google, y la reseña recién después de que active el plan.
 
 ## Mapa de los documentos

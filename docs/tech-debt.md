@@ -344,6 +344,10 @@ Lo de arriba es real y quedó arreglado, pero **no era lo que ponía rojo el che
 
 **Disparador de resolución**: antes de pasar `lint:hybrid` a CI, o cuando se agregue la primera regla nueva a `eslint.config.mjs` o a `.oxlintrc.json`.
 
+### RESUELTA (2026-11-01) — el híbrido deriva la lista de `.oxlintrc.json`
+
+[eslint.hybrid.config.mjs](eslint.hybrid.config.mjs) ya no lleva las 82 reglas a mano: usa `eslint-plugin-oxlint` 1.90.0 (versión exacta, la misma que `oxlint`), que lee `.oxlintrc.json` y apaga en ESLint lo que Oxlint cubre, con los overrides por archivo. Comparadas las reglas efectivas de ESLint archivo por archivo (2526 archivos de `src/`, `tests/` y `scripts/`): son idénticas a las de la lista manual, salvo `react/require-render-return`, que ahora corre también en ESLint (duplicada y barata). Ninguna regla quedó apagada en los dos linters, y las 49 canarias dan 39/39 y 10/10 como antes.
+
 ---
 
 ## `typescript` es un alias a TS 6 porque TS 7 no trae API programática

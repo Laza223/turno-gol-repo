@@ -159,6 +159,7 @@
     "drizzle-kit": "^0.31.11",
     "eslint": "^10.13.0",
     "eslint-config-next": "16.4.3",
+    "eslint-plugin-oxlint": "1.90.0",
     "happy-dom": "^21.0.4",
     "knip": "^6.43.0",
     "oxlint": "1.90.0",

@@ -348,11 +348,11 @@ Lo de arriba es real y quedó arreglado, pero **no era lo que ponía rojo el che
 
 ## `typescript` es un alias a TS 6 porque TS 7 no trae API programática
 
-**Qué es**: [package.json](package.json) declara `"typescript": "npm:@typescript/typescript6@6.0.2"` (paquete de compatibilidad: reexporta la API de TS 6 y solo trae el binario `tsc6`) y `"@typescript/native": "npm:typescript@7.0.2"` (el `tsc` nativo). `pnpm typecheck` corre TS 7; Next, `typescript-eslint` y knip importan `typescript` como librería y siguen viendo TS 6 por el alias. Hay dos TypeScript instalados.
+**Qué es**: [package.json](package.json) declara `"typescript": "npm:@typescript/typescript6@6.0.2"` (paquete de compatibilidad: envoltorio de 9 archivos que reexporta la API de TS 6 y solo trae el binario `tsc6`; el TS 6 real entra por su dependencia `@typescript/old: typescript@^6`, hoy 6.0.3 en el lockfile) y `"@typescript/native": "npm:typescript@7.0.2"` (el `tsc` nativo). `pnpm typecheck` corre TS 7; Next, `typescript-eslint` y knip importan `typescript` como librería y siguen viendo TS 6 por el alias. Hay dos TypeScript instalados.
 
 **Por qué existe**: decisión consciente (2026-11-01). TS 7.0 no incluye API programática; el anuncio oficial manda este alias para las herramientas que la usan. TS 7.1 sí la trae, hoy en beta (20/10/2026); no se evaluó si Next, `typescript-eslint` y knip ya la soportan.
 
-**Costo de no resolverla ahora**: `next build` hace su propia fase "Running TypeScript" con la API de TS 6: 77 s de los 133 s del build medidos el 2026-11-01, así que el deploy en Vercel no gana nada con TS 7. `typescript.ignoreBuildErrors` no se toca a propósito: sacaría el chequeo de tipos del deploy. Además el paquete de compatibilidad queda fijo en 6.0.2 y se actualiza a mano.
+**Costo de no resolverla ahora**: `next build` hace su propia fase "Running TypeScript" con la API de TS 6: 77 s de los 133 s del build medidos el 2026-11-01, así que el deploy en Vercel no gana nada con TS 7. `typescript.ignoreBuildErrors` no se toca a propósito: sacaría el chequeo de tipos del deploy. Además el envoltorio queda fijo en 6.0.2 y se actualiza a mano; el TS 6 de abajo entra por `^6` y lo fija el lockfile.
 
 **Costo estimado de resolverla**: ~1 hora: dejar un solo `typescript` real (`pnpm add -E -D typescript@<7.1.x>`), quitar `@typescript/native`, y correr el juez completo, `next build` y la prueba de paridad con canarias de tipos.
 

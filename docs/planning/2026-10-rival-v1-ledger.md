@@ -15,8 +15,8 @@ Es el esfuerzo de [`docs/decisions/2026-10-22-rival-v1.md`](../decisions/2026-10
 | 6      | Emails y alertas (4 mails: quiere sumarse, te aceptaron, se cayó el partido y alerta "hay partido" con baja de un toque)                                                  | #505 | Mergeado  |
 | 7      | `/super-admin/rival`                                                                                                                                                      | #503 | Mergeado  |
 | Cierre | `sonnet-release-verifier` sobre main integrado; el flag lo prende el dueño                                                                                                | —    | GO (2026-10-29, flag prendido) |
-| Visión | La cultura de RIVAL: decisión del 2026-10-29, `docs/rival/` (visión, catálogo y Crack del Día), regla `.claude/rules/rival.md` y enmiendas a F4, v1, la spec y las ideas. Solo documentos | — | Escrito, sin commitear |
-| Critique | Los 7 comandos de impeccable sobre todo RIVAL del jugador, con la bienvenida en dos momentos y el tablón después de crear ([decisión 2026-10-28](../decisions/2026-10-28-rival-bienvenida-y-tablon-despues-de-crear.md)) | — | En curso |
+| Visión | La cultura de RIVAL: decisión del 2026-10-29, `docs/rival/` (visión, catálogo y Crack del Día), regla `.claude/rules/rival.md` y enmiendas a F4, v1, la spec y las ideas. Solo documentos | #530 | Mergeado |
+| Critique | Los 7 comandos de impeccable sobre todo RIVAL del jugador, con la bienvenida en dos momentos y el tablón después de crear ([decisión 2026-10-28](../decisions/2026-10-28-rival-bienvenida-y-tablon-despues-de-crear.md)) | #517 | Mergeado |
 
 ## Delegaciones
 

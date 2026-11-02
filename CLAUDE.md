@@ -12,7 +12,7 @@ SaaS B2B de gestión para complejos de fútbol en Argentina (solo fútbol, nada 
 
 ```bash
 pnpm format:check   # NO `pnpm format`: ese reescribe, este falla
-pnpm lint           # ESLint sobre src/
+pnpm lint           # Oxlint + ESLint recortado sobre src/, tests/ y scripts/ (el ESLint completo: `pnpm lint:eslint`)
 pnpm typecheck      # correr también después de cada cambio, no solo al cerrar
 pnpm knip           # dead code: un export usado solo en su propio archivo voltea el job
 ```

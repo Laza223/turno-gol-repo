@@ -1,6 +1,7 @@
 // @ts-check
 /**
- * ESLint recortado para el lint híbrido (`pnpm lint:hybrid` = Oxlint + este).
+ * ESLint recortado para el lint híbrido (`pnpm lint` = Oxlint + este). El ESLint completo,
+ * con tipos y sin recortar, sigue en `pnpm lint:eslint` (`eslint.config.mjs`).
  *
  * Es `eslint.config.mjs` MÁS un bloque que saca el lint con tipos (ninguna regla tipada
  * queda activa acá, así que ESLint no arma el programa de TypeScript) y los bloques de

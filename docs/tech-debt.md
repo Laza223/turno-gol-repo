@@ -300,7 +300,9 @@ Lo de arriba es real y quedó arreglado, pero **no era lo que ponía rojo el che
 
 **Costo estimado de resolverla**: medio día. Mover `resolveImpersonationOverride` a `@/server` (o bajar `extractRealAuthUser` a `@/shared`) e inyectarlo en `insertAuditLog`. Toca auditoría y suplantación: va en su propio PR, con los tests de integración de impersonación.
 
-**Disparador de resolución**: la próxima vez que se toque `insertAuditLog` o la suplantación, o antes de pasar `lint:hybrid` a CI (ahí la directiva pasa a ser la única razón por la que el check queda verde).
+**Disparador de resolución**: la próxima vez que se toque `insertAuditLog` o la suplantación, o antes de pasar el lint híbrido a CI (ahí la directiva pasa a ser la única razón por la que el check queda verde).
+
+**Estado (2026-11-01)**: el segundo disparador se cumple con el PR que pasa `pnpm lint` al híbrido: desde ahí el CI corre Oxlint y la directiva es lo único que mantiene verde el check. Falta decidir si se resuelve antes o se deja con la directiva (decisión de Lazar).
 
 ---
 

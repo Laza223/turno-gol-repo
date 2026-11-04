@@ -7,14 +7,14 @@ export const contentType = 'image/png'
 export const alt = 'RIVAL powered by TurnoGol — Cada partido cuenta.'
 
 // Excepción documentada a DESIGN.md ("nada de hex inline"): satori no lee variables CSS ni tokens
-// de Tailwind. Es la pizarra oscura de la landing de RIVAL.
+// de Tailwind. Es la pizarra oscura de RIVAL.
 const BACKGROUND = '#0b1220'
 const INK = '#f8fafc'
 const EMERALD = '#34d399'
 
 /**
  * Vista previa de `/rival` (WhatsApp, etc.): pizarra oscura, el logo y la tesis. Sin datos, sin
- * red y sin consultar el flag: es estática. Las subrutas sin imagen propia (`/rival/tablon`...) la
+ * red y sin consultar el flag: es estática. Las subrutas sin imagen propia (`/rival/nuevo`...) la
  * heredan; `/rival/p/[code]` define la suya. Fuentes por defecto de satori; el logo ya tiene el
  * texto pasado a curvas, así que entra como imagen `data:` y no necesita ninguna.
  */

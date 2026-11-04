@@ -44,7 +44,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: absoluteUrl('/terminos'), lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
   ]
 
-  // La landing de RIVAL se indexa solo con el flag prendido: apagado es 404.
+  // El tablón de RIVAL (`/rival`) se indexa solo con el flag prendido: apagado es 404.
   if (await isRivalEnabled().catch(() => false)) {
     staticRoutes.push({
       url: absoluteUrl('/rival'),

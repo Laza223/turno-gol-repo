@@ -525,7 +525,7 @@ export async function subscribeRivalAlertAction(
   } catch (err) {
     return failure(err)
   }
-  revalidatePath('/rival/tablon')
+  revalidatePath('/rival')
   return { success: true }
 }
 
@@ -545,7 +545,7 @@ export async function unsubscribeMyRivalAlertAction(
   } catch (err) {
     return failure(err)
   }
-  revalidatePath('/rival/tablon')
+  revalidatePath('/rival')
   return { success: true }
 }
 

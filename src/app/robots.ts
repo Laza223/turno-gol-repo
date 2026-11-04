@@ -38,8 +38,8 @@ export default function robots(): MetadataRoute.Robots {
           '/sin-acceso',
           // Área del jugador. `(player)` también es route group.
           '/mis-reservas',
-          // `/rival` pelado es la landing (indexable) y, como prefijo, taparía un slug como
-          // `/rival-futbol`. Con la barra final se bloquea el tablón y el resto de las subrutas.
+          // `/rival` pelado es el tablón (indexable) y, como prefijo, taparía un slug como
+          // `/rival-futbol`. Con la barra final se bloquea el resto de las subrutas.
           '/rival/',
           '/perfil',
           '/configuracion',

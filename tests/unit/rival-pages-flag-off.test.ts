@@ -18,8 +18,6 @@ const mocks = vi.hoisted(() => ({
   peekAlertUnsub: vi.fn(),
 }))
 
-// next/font solo existe en el build de Next: la landing carga su Archivo propia.
-vi.mock('next/font/google', () => ({ Archivo: () => ({ variable: 'font-archivo' }) }))
 vi.mock('next/navigation', () => ({
   notFound: vi.fn(() => {
     throw new Error('NOT_FOUND')
@@ -62,7 +60,6 @@ vi.mock('@/app/(player)/rival/actions', () => ({
 }))
 
 import RivalPage from '@/app/(player)/rival/page'
-import RivalBoardPage from '@/app/(player)/rival/tablon/page'
 import MisPartidosPage from '@/app/(player)/rival/mis-partidos/page'
 import NuevoPartidoPage from '@/app/(player)/rival/nuevo/page'
 import RivalMatchPage from '@/app/(player)/rival/p/[code]/page'
@@ -71,7 +68,6 @@ import BajaPage from '@/app/(player)/rival/baja/page'
 
 const PAGES: Array<[string, () => Promise<unknown>]> = [
   ['/rival', () => RivalPage({ searchParams: Promise.resolve({}) })],
-  ['/rival/tablon', () => RivalBoardPage({ searchParams: Promise.resolve({}) })],
   ['/rival/nuevo', () => NuevoPartidoPage({ searchParams: Promise.resolve({}) })],
   ['/rival/mis-partidos', () => MisPartidosPage()],
   [

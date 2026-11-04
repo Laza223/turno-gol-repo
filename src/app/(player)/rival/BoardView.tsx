@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
-import PlayerHeroBand from '@/components/site/PlayerHeroBand'
 import { PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
 import { formatLabel } from '@/components/public/courtFacets'
 import { cn } from '@/lib/utils'
@@ -49,7 +48,7 @@ function TenantFilter({
       className="-mx-4 flex gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0"
     >
       <Link
-        href="/rival/tablon"
+        href="/rival"
         aria-current={selectedId === null ? 'page' : undefined}
         className={chip(selectedId === null)}
       >
@@ -58,7 +57,7 @@ function TenantFilter({
       {tenants.map((t) => (
         <Link
           key={t.id}
-          href={`/rival/tablon?complejo=${t.id}`}
+          href={`/rival?complejo=${t.id}`}
           title={t.name}
           aria-current={selectedId === t.id ? 'page' : undefined}
           className={chip(selectedId === t.id)}
@@ -201,38 +200,53 @@ export function BoardView({
   nextHref: string | null
   now: Date
   alert: BoardAlertProps
-  /** Sin sesión, "Armar un partido" abre el ingreso de RIVAL (crea la cuenta y vuelve a armar). */
+  /** Sin sesión, las entradas de intención abren el ingreso de RIVAL (crea la cuenta y vuelve a armar). */
   entry: BoardEntryProps
 }) {
   const groups = groupBoardByDay(items, now)
-  const armar = cn(RIVAL_CTA, 'w-full lg:w-fit lg:self-start')
+  const primary = cn(RIVAL_CTA, 'w-full lg:w-fit')
+  const secondary = cn(
+    buttonVariants({ variant: 'outline' }),
+    RIVAL_GHOST,
+    'w-full rounded-full px-6 lg:w-fit',
+  )
+  // Las dos intenciones de armar. `?necesito=` lo leerá el form de `nuevo/` (PR2); hoy se ignora. Sin sesión, el ingreso vuelve ahí.
+  const intents = [
+    { label: 'Me faltan jugadores', next: '/rival/nuevo?necesito=jugadores', className: primary },
+    { label: 'Busco rival', next: '/rival/nuevo?necesito=rival', className: secondary },
+  ] as const
   return (
     <div className="mx-auto max-w-lg space-y-5 px-4 py-6 lg:max-w-3xl">
-      <PlayerHeroBand
-        eyebrow="RIVAL powered by TurnoGol"
-        title="Sumate a un"
-        accent="partido"
-        subtitle="Buscá un partido para sumarte o un rival para tu equipo. ¿Organizás vos? Armá el tuyo y pasá el link al grupo."
-      />
+      <header className="space-y-1">
+        <h1 className="font-display text-3xl font-black italic leading-none tracking-tight text-foreground">
+          Partidos
+        </h1>
+        <p className="text-base text-muted-foreground">
+          Armá tu partido o sumate a uno en los complejos de TurnoGol.
+        </p>
+      </header>
 
-      <div className="flex flex-col gap-3">
-        {alert.signedIn ? (
-          <Link href="/rival/nuevo" className={armar}>
-            Armar un partido
-          </Link>
-        ) : (
-          <RivalEntryGate
-            next="/rival/nuevo"
-            label="Armar un partido"
-            purpose="armar"
-            sendMagicLink={entry.sendMagicLink}
-            startGoogle={entry.startGoogle}
-            inAppBrowser={entry.inAppBrowser}
-            className={armar}
-          />
+      <div className="flex flex-col gap-3 lg:flex-row">
+        {intents.map((intent) =>
+          alert.signedIn ? (
+            <Link key={intent.label} href={intent.next} className={intent.className}>
+              {intent.label}
+            </Link>
+          ) : (
+            <RivalEntryGate
+              key={intent.label}
+              next={intent.next}
+              label={intent.label}
+              purpose="armar"
+              sendMagicLink={entry.sendMagicLink}
+              startGoogle={entry.startGoogle}
+              inAppBrowser={entry.inAppBrowser}
+              className={intent.className}
+            />
+          ),
         )}
-        <RivalTabs current="tablon" />
       </div>
+      <RivalTabs current="tablon" />
 
       {groups.length === 0 && selectedTenantId === null ? (
         <EmptyBoard alert={alert} />

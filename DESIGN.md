@@ -592,19 +592,19 @@ Las specs de cada pantalla del portal (la ficha, confirmar e ingresar, la vuelta
 
 Lo de arriba es lo que comparten todas las pantallas. La spec de cada pantalla vive en el brief de su ruta, en `.impeccable/surfaces/`, y `impeccable context --target <ruta>` la carga solo cuando se trabaja en esa pantalla. Una pantalla nueva no suma su sección acá: va a su brief.
 
-| Pantalla                                                           | Brief                                                                                           |
-| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| La ficha del complejo y su reserva (La Reserva)                    | [`src-app-public-slug.md`](.impeccable/surfaces/src-app-public-slug.md)                         |
-| La vuelta de la reserva (`/reserva/[bookingId]`)                   | [`src-app-public-slug.md`](.impeccable/surfaces/src-app-public-slug.md)                         |
-| Confirmar la reserva y el ingreso del jugador                      | [`src-app-auth-ingresar.md`](.impeccable/surfaces/src-app-auth-ingresar.md)                     |
-| El grupo del jugador: Mis reservas, Mi cuenta y Eliminar la cuenta | [`src-app-player.md`](.impeccable/surfaces/src-app-player.md)                                   |
-| Grilla de turnos y Placa para historias                            | [`src-app-admin-grilla.md`](.impeccable/surfaces/src-app-admin-grilla.md)                       |
-| Agenda (`/reservas`)                                               | [`src-app-admin-reservas.md`](.impeccable/surfaces/src-app-admin-reservas.md)                   |
-| Tablero de Hoy                                                     | [`src-app-admin-dashboard.md`](.impeccable/surfaces/src-app-admin-dashboard.md)                 |
-| Canchas                                                            | [`src-app-admin-canchas.md`](.impeccable/surfaces/src-app-admin-canchas.md)                     |
-| Caja › Cuentas y Caja › Productos                                  | [`src-app-admin-caja.md`](.impeccable/surfaces/src-app-admin-caja.md)                           |
-| Métricas                                                           | [`src-app-admin-analiticas.md`](.impeccable/surfaces/src-app-admin-analiticas.md)               |
-| Superadmin (Pulso, Complejos y Jugadores)                          | [`src-app-super-admin-super-admin.md`](.impeccable/surfaces/src-app-super-admin-super-admin.md) |
+| Pantalla | Brief |
+|---|---|
+| La ficha del complejo y su reserva (La Reserva) | [`src-app-public-slug.md`](.impeccable/surfaces/src-app-public-slug.md) |
+| La vuelta de la reserva (`/reserva/[bookingId]`) | [`src-app-public-slug.md`](.impeccable/surfaces/src-app-public-slug.md) |
+| Confirmar la reserva y el ingreso del jugador | [`src-app-auth-ingresar.md`](.impeccable/surfaces/src-app-auth-ingresar.md) |
+| El grupo del jugador: Mis reservas, Mi cuenta y Eliminar la cuenta | [`src-app-player.md`](.impeccable/surfaces/src-app-player.md) |
+| Grilla de turnos y Placa para historias | [`src-app-admin-grilla.md`](.impeccable/surfaces/src-app-admin-grilla.md) |
+| Agenda (`/reservas`) | [`src-app-admin-reservas.md`](.impeccable/surfaces/src-app-admin-reservas.md) |
+| Tablero de Hoy | [`src-app-admin-dashboard.md`](.impeccable/surfaces/src-app-admin-dashboard.md) |
+| Canchas | [`src-app-admin-canchas.md`](.impeccable/surfaces/src-app-admin-canchas.md) |
+| Caja › Cuentas y Caja › Productos | [`src-app-admin-caja.md`](.impeccable/surfaces/src-app-admin-caja.md) |
+| Métricas | [`src-app-admin-analiticas.md`](.impeccable/surfaces/src-app-admin-analiticas.md) |
+| Superadmin (Pulso, Complejos y Jugadores) | [`src-app-super-admin-super-admin.md`](.impeccable/surfaces/src-app-super-admin-super-admin.md) |
 
 ## Do's and Don'ts
 

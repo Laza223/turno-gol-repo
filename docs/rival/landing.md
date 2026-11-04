@@ -2,6 +2,8 @@
 
 **Estado:** diseño para aprobar. No hay código de producción. **Fecha:** 2026-10-30. **Decide:** Lazar.
 
+> **Descartada el 2026-11-03** por [`2026-11-03-rival-simple-sin-landing.md`](../decisions/2026-11-03-rival-simple-sin-landing.md): RIVAL no se entendía y la landing vendía sobre todo lo que viene. `/rival` pasa a ser el tablón y la app no muestra nada "Próximamente". Este documento queda como archivo del diseño: las ideas de cada escena pueden volver como pantalla de su ola cuando exista. La visión sigue en [`README.md`](README.md).
+
 **Entregables:**
 - este documento;
 - el prototipo [`landing-prototipo/index.html`](landing-prototipo/index.html), que se abre en el navegador a 390 y a 1440 px y tampoco es código de producción.

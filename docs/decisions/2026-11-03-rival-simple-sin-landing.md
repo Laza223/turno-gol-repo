@@ -35,7 +35,7 @@ Lo que no se nombra acá sigue igual. La visión de [`docs/rival/README.md`](../
    - "Faltan N" = `capacity − confirmed_count − offline_count`. El cupo, el banco y "Se juega" cuentan igual.
    - Las lecturas del tablón devuelven `confirmed_count` ya sumado ("lugares cubiertos") y la tarjeta dice "Ya son X de N".
    - `filled_at` solo se estampa si cierra el cupo gente de la app (un confirmado además del organizador): un "Busco rival" no nace "completo". Decisión del 2026-11-03.
-   - Quien entra por el link del grupo (`invite`) con `offline_count > 0` entra confirmado y descuenta 1 de `offline_count` (tope en 0): es uno de los amigos de afuera ya contados, no ocupa un lugar libre. Vale también en "Busco rival" (los compañeros con cuenta no van al banco). Quien entra por el tablón (`board`) ocupa un lugar libre. Al bajarse no se devuelve: el lugar queda libre. Decisión de Lazar del 2026-11-03.
+   - Quien entra por el link del grupo (`invite`) con `offline_count > 0` entra confirmado y descuenta 1 de `offline_count` (tope en 0): es uno de los amigos de afuera ya contados, no ocupa un lugar libre. Vale también en "Busco rival" (los compañeros con cuenta no van al banco). Quien entra por el tablón (`board`) ocupa un lugar libre. Al bajarse no se devuelve: el lugar queda libre. Límite conocido: quien sale y vuelve a entrar por el link vuelve a descontar. Decisión de Lazar del 2026-11-03.
    - En "Busco rival", el equipo del capitán se da por completo.
    - Necesita una migración nueva, que aplica Lazar.
 

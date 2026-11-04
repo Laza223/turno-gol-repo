@@ -672,6 +672,16 @@ describe('2b. offline_count: el cupo cuenta confirmed_count + offline_count', ()
     expect((await matchRow(m.id))['confirmed_count']).toBe(4)
   })
 
+  it('2b.4c el mismo jugador con dos Voy simultáneos descuenta UNA vez (ON CONFLICT no deja efectos)', async () => {
+    const org = await newPlayer()
+    const m = await createMatch(org, { capacity: 10, offline: 2 })
+    const a = await newPlayer()
+    await Promise.all([join(a, m.code), join(a, m.code)])
+    const row = await matchRow(m.id)
+    expect(row['offline_count']).toBe(1)
+    expect(row['confirmed_count']).toBe(2)
+  })
+
   it('2b.5 Busco rival: el equipo completo cubre el cupo desde la creación, pero filled_at no se estampa (no es plantel real)', async () => {
     const org = await newPlayer()
     const m = await createMatch(org, { capacity: 5, offline: 4, seeking: 'rival' })

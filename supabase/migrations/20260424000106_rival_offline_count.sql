@@ -28,8 +28,9 @@
 --
 -- `filled_at` ("se llenó") solo se estampa cuando el cupo lo cierra gente de la app:
 -- hace falta al menos un confirmado además del organizador (v_count > 1). Un "Busco
--- rival" nace con el cupo cubierto por los de afuera y NO está "completo" en 0 minutos:
--- el monitor de super-admin (matchesFilled, medianMinutesToFill) mide plantel real.
+-- rival" nace con el cupo cubierto por los de afuera y NO está "completo" en 0 minutos
+-- (el monitor de super-admin no se contamina). Alcanza con una cuenta más: no garantiza un
+-- plantel mínimo.
 -- Con offline_count = 0 el criterio es el de siempre (capacity >= 2 implica v_count > 1).
 --
 -- Quien entra por el LINK del grupo (origin 'invite') con offline_count > 0 entra confirmado
@@ -37,7 +38,9 @@
 -- había contado (si no, se contaría dos veces y el tablón diría "Completo" con faltantes).
 -- Incluye "Busco rival": los compañeros con cuenta no van al banco. Quien entra por el
 -- tablón (origin 'board') ocupa un lugar libre y no descuenta. Al bajarse (left/removed) NO
--- se devuelve a offline_count: el lugar queda libre. Tope en 0.
+-- se devuelve a offline_count: el lugar queda libre. Tope en 0. El descuento vive en el AFTER
+-- INSERT (el ON CONFLICT DO NOTHING de rival_join_by_invite corre el BEFORE aunque la fila no
+-- entre). Límite conocido: salir y volver a entrar por el link vuelve a descontar.
 --
 -- Retención/ARCO: no agrega datos personales (es un entero).
 --
@@ -118,13 +121,12 @@ BEGIN
     NEW.role := 'player';
     IF m.offline_count > 0 THEN
       -- Quien entra por el link del grupo ocupa un lugar de "afuera": es uno de los amigos que el
-      -- organizador contó sin cuenta. Entra confirmado SIN usar un lugar libre y descuenta 1 de
-      -- offline_count (tope en 0), bajo el lock del partido que ya tiene esta transacción. Así no
-      -- se cuenta dos veces (una en el número y otra como cuenta). Es escritura interna: el
-      -- UPDATE sale de un trigger definer y corre como el dueño.
+      -- organizador contó sin cuenta. Entra confirmado SIN usar un lugar libre. El descuento de
+      -- offline_count lo hace el AFTER INSERT (trg_rival_participants_after), no este BEFORE:
+      -- el INSERT de rival_join_by_invite lleva ON CONFLICT DO NOTHING, que corre el BEFORE
+      -- aunque la fila no entre, y un doble envío del mismo jugador descontaría dos veces.
       NEW.status       := 'confirmed';
       NEW.confirmed_at := now();
-      UPDATE rival_matches SET offline_count = offline_count - 1 WHERE id = m.id;
     ELSE
       NEW.status := CASE WHEN v_count < m.capacity THEN 'confirmed' ELSE 'bench' END;
       IF NEW.status = 'confirmed' THEN
@@ -247,6 +249,7 @@ DECLARE
   m      rival_matches%ROWTYPE;
   v_count integer;
   v_next uuid;
+  v_off  integer;
 BEGIN
   -- La promoción de abajo dispara este mismo trigger: el lazo de afuera ya
   -- recuenta al final. Esto es solo cortar la recursión, no autoriza nada: una
@@ -258,6 +261,16 @@ BEGIN
 
   SELECT * INTO m FROM rival_matches WHERE id = NEW.match_id FOR UPDATE;
 
+  -- Alta por el link (confirmed) con lugares de afuera: ocupa uno. Solo corre si la fila se
+  -- insertó de verdad (un ON CONFLICT DO NOTHING no dispara el AFTER). El organizador no
+  -- descuenta (su fila la crea el AFTER del partido). Tope en 0.
+  v_off := m.offline_count;
+  IF TG_OP = 'INSERT' AND NEW.origin = 'invite' AND NEW.role = 'player'
+     AND NEW.status = 'confirmed' AND NEW.player_id <> m.organizer_player_id
+     AND v_off > 0 THEN
+    v_off := v_off - 1;
+  END IF;
+
   -- Al liberarse un lugar entra el primero del banco, por orden de llegada. Se
   -- saltea a quien tiene un ban vigente (decisión 7): sigue en el banco como
   -- estaba y entra el siguiente. El cupo cuenta también los lugares de fuera de la app.
@@ -265,7 +278,7 @@ BEGIN
     SELECT count(*) INTO v_count
       FROM rival_participants
       WHERE match_id = m.id AND role = 'player' AND status = 'confirmed';
-    EXIT WHEN v_count + m.offline_count >= m.capacity;
+    EXIT WHEN v_count + v_off >= m.capacity;
     SELECT id INTO v_next
       FROM rival_participants
       WHERE match_id = m.id AND role = 'player' AND status = 'bench'
@@ -283,10 +296,12 @@ BEGIN
     WHERE match_id = m.id AND role = 'player' AND status = 'confirmed';
   UPDATE rival_matches
     SET confirmed_count = v_count,
-        filled_at = CASE WHEN filled_at IS NULL AND v_count > 1 AND v_count + offline_count >= capacity THEN now() ELSE filled_at END
+        offline_count = v_off,
+        filled_at = CASE WHEN filled_at IS NULL AND v_count > 1 AND v_count + v_off >= capacity THEN now() ELSE filled_at END
     WHERE id = m.id
       AND (confirmed_count IS DISTINCT FROM v_count
-           OR (filled_at IS NULL AND v_count > 1 AND v_count + offline_count >= capacity));
+           OR offline_count IS DISTINCT FROM v_off
+           OR (filled_at IS NULL AND v_count > 1 AND v_count + v_off >= capacity));
 
   -- Aceptar al capitán cierra la búsqueda y saca el partido del tablón.
   IF NEW.role = 'rival_captain' AND NEW.status = 'confirmed' THEN

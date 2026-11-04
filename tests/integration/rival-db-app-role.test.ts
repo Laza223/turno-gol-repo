@@ -603,53 +603,73 @@ describe('2b. offline_count: el cupo cuenta confirmed_count + offline_count', ()
     expect((await matchRow(m.id))['offline_count']).toBe(6)
   })
 
-  it('2b.2 el último lugar: entra uno confirmed, el resto al banco, filled_at se escribe y sale del tablón', async () => {
+  it('2b.2 el último lugar: el link descuenta de afuera, el resto va al banco, filled_at al cerrar y sale del tablón', async () => {
     const org = await newPlayer()
-    const m = await createMatch(org, { capacity: 4, offline: 2, seeking: 'players' })
+    // 4 lugares: organizador (1) + 1 de afuera; quedan 2 libres.
+    const m = await createMatch(org, { capacity: 4, offline: 1, seeking: 'players' })
     const viewer = await newPlayer()
     expect(await boardRow(viewer, m.id)).toBeDefined()
-    expect((await matchRow(m.id))['filled_at']).toBeNull()
 
-    const a = await newPlayer()
-    const b = await newPlayer()
+    const a = await newPlayer() // ocupa el de afuera (descuenta)
+    const b = await newPlayer() // lugar libre
+    const c = await newPlayer() // lugar libre: cierra el cupo
+    const d = await newPlayer() // sin lugar: banco
     expect((await join(a, m.code))['status']).toBe('confirmed')
-    expect((await join(b, m.code))['status']).toBe('bench')
+    expect((await matchRow(m.id))['filled_at']).toBeNull()
+    expect((await join(b, m.code))['status']).toBe('confirmed')
+    expect((await join(c, m.code))['status']).toBe('confirmed')
     expect((await matchRow(m.id))['filled_at']).not.toBeNull()
     expect(await boardRow(viewer, m.id)).toBeUndefined()
+    expect((await join(d, m.code))['status']).toBe('bench')
   })
 
-  it('2b.3 una baja promueve al banco respetando los lugares de fuera de la app', async () => {
+  it('2b.3 una baja promueve al banco: el lugar liberado no vuelve a "afuera"', async () => {
     const org = await newPlayer()
-    const m = await createMatch(org, { capacity: 4, offline: 2 })
+    const m = await createMatch(org, { capacity: 3, offline: 1 })
     const a = await newPlayer()
     const b = await newPlayer()
     const c = await newPlayer()
-    await join(a, m.code)
-    await join(b, m.code)
+    await join(a, m.code) // descuenta el de afuera
+    await join(b, m.code) // cierra el cupo (org, a, b)
     await join(c, m.code)
     let st = await statuses(m.id)
-    expect([st[a], st[b], st[c]]).toEqual(['confirmed', 'bench', 'bench'])
+    expect([st[a], st[b], st[c]]).toEqual(['confirmed', 'confirmed', 'bench'])
+    expect((await matchRow(m.id))['offline_count']).toBe(0)
     await setStatus(a, await participantId(m.id, a), 'left')
     st = await statuses(m.id)
-    // Entra UNO (el primero del banco), no dos: el cupo sigue en 4 con los 2 de afuera.
-    expect([st[a], st[b], st[c]]).toEqual(['left', 'confirmed', 'bench'])
-    expect((await matchRow(m.id))['confirmed_count']).toBe(2)
+    // Entra el primero del banco; offline_count sigue en 0 (la baja no lo devuelve).
+    expect([st[a], st[b], st[c]]).toEqual(['left', 'confirmed', 'confirmed'])
+    expect((await matchRow(m.id))['offline_count']).toBe(0)
   })
 
-  it('2b.4 el pedido del tablón y aceptarlo respetan el cupo ya cubierto afuera', async () => {
+  it('2b.4 el pedido del tablón y aceptarlo respetan el cupo y NO descuentan de afuera', async () => {
     const org = await newPlayer()
     // Organizador + 2 de afuera = 3 de 3: no queda lugar.
     const full = await createMatch(org, { capacity: 3, offline: 2, seeking: 'players' })
     const p = await newPlayer()
     await rejectsRival('rival_full', request(p, full.id))
 
-    // Con un lugar libre el pedido entra; si entre tanto se cubre, aceptar da rival_full.
+    // Un lugar libre: el pedido entra y, al aceptarlo, ocupa ese lugar (offline no cambia).
     const m = await createMatch(org, { capacity: 4, offline: 2, seeking: 'players' })
     const asker = await newPlayer()
     const reqId = await request(asker, m.id)
-    const filler = await newPlayer()
-    await join(filler, m.code)
-    await rejectsRival('rival_full', setStatus(org, reqId, 'confirmed'))
+    await setStatus(org, reqId, 'confirmed')
+    const row = await matchRow(m.id)
+    expect(row['offline_count']).toBe(2)
+    expect(row['confirmed_count']).toBe(2)
+    expect(row['filled_at']).not.toBeNull()
+    // Lleno: otro pedido ya no entra.
+    await rejectsRival('rival_full', request(await newPlayer(), m.id))
+  })
+
+  it('2b.4b por el link se descuenta de a uno hasta 0 y después ocupa lugares libres', async () => {
+    const org = await newPlayer()
+    const m = await createMatch(org, { capacity: 10, offline: 2 })
+    for (const expected of [1, 0, 0]) {
+      await join(await newPlayer(), m.code)
+      expect((await matchRow(m.id))['offline_count']).toBe(expected)
+    }
+    expect((await matchRow(m.id))['confirmed_count']).toBe(4)
   })
 
   it('2b.5 Busco rival: el equipo completo cubre el cupo desde la creación, pero filled_at no se estampa (no es plantel real)', async () => {
@@ -659,6 +679,13 @@ describe('2b. offline_count: el cupo cuenta confirmed_count + offline_count', ()
     const viewer = await newPlayer()
     // "Busca rival" no se filtra por cupo: sigue en el tablón.
     expect(await boardRow(viewer, m.id)).toBeDefined()
+    // Los compañeros con cuenta que entran por el link ocupan un lugar de afuera: no van al banco.
+    const mates = await Promise.all([1, 2, 3, 4].map(() => newPlayer()))
+    for (const mate of mates) expect((await join(mate, m.code))['status']).toBe('confirmed')
+    const row = await matchRow(m.id)
+    expect(row['offline_count']).toBe(0)
+    expect(row['filled_at']).not.toBeNull()
+    expect((await join(await newPlayer(), m.code))['status']).toBe('bench')
   })
 
   it('2b.6 los CHECK: no negativo, menor que el cupo, y nada de sobrepasarlo', async () => {

@@ -86,8 +86,9 @@ function Stepper({
         size="icon"
         className="md:size-11 focus-visible:ring-offset-background"
         aria-label="Uno menos"
-        disabled={value <= min}
-        onClick={() => onChange(Math.max(min, value - 1))}
+        // aria-disabled y no disabled: al llegar al tope el foco no se cae al body.
+        aria-disabled={value <= min}
+        onClick={() => value > min && onChange(value - 1)}
       >
         <Minus className="size-4" aria-hidden />
       </Button>
@@ -104,8 +105,8 @@ function Stepper({
         id={id}
         className="md:size-11 focus-visible:ring-offset-background"
         aria-label="Uno más"
-        disabled={value >= max}
-        onClick={() => onChange(Math.min(max, value + 1))}
+        aria-disabled={value >= max}
+        onClick={() => value < max && onChange(value + 1)}
       >
         <Plus className="size-4" aria-hidden />
       </Button>

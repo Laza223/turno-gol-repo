@@ -32,6 +32,13 @@
 -- el monitor de super-admin (matchesFilled, medianMinutesToFill) mide plantel real.
 -- Con offline_count = 0 el criterio es el de siempre (capacity >= 2 implica v_count > 1).
 --
+-- Quien entra por el LINK del grupo (origin 'invite') con offline_count > 0 entra confirmado
+-- y descuenta 1 de offline_count: es uno de los amigos "de afuera" que el organizador ya
+-- había contado (si no, se contaría dos veces y el tablón diría "Completo" con faltantes).
+-- Incluye "Busco rival": los compañeros con cuenta no van al banco. Quien entra por el
+-- tablón (origin 'board') ocupa un lugar libre y no descuenta. Al bajarse (left/removed) NO
+-- se devuelve a offline_count: el lugar queda libre. Tope en 0.
+--
 -- Retención/ARCO: no agrega datos personales (es un entero).
 --
 -- Rollback (a mano): ver el bloque al final de este archivo.
@@ -40,11 +47,19 @@
 ALTER TABLE rival_matches
   ADD COLUMN IF NOT EXISTS offline_count integer NOT NULL DEFAULT 0;
 
-ALTER TABLE rival_matches
-  ADD CONSTRAINT rival_matches_offline_count_check
-    CHECK (offline_count >= 0 AND offline_count < capacity),
-  ADD CONSTRAINT rival_matches_filled_check
-    CHECK (confirmed_count + offline_count <= capacity);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'rival_matches_offline_count_check') THEN
+    ALTER TABLE rival_matches
+      ADD CONSTRAINT rival_matches_offline_count_check
+        CHECK (offline_count >= 0 AND offline_count < capacity);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'rival_matches_filled_check') THEN
+    ALTER TABLE rival_matches
+      ADD CONSTRAINT rival_matches_filled_check
+        CHECK (confirmed_count + offline_count <= capacity);
+  END IF;
+END $$;
 
 COMMENT ON COLUMN rival_matches.offline_count IS
   'Lugares cubiertos fuera de la app, sin contar al organizador (que ya es un participante confirmed). Un número: sin nombres ni datos de personas. Se fija al crear y no se edita.';
@@ -100,10 +115,21 @@ BEGIN
     WHERE match_id = m.id AND role = 'player' AND status = 'confirmed';
 
   IF NEW.origin = 'invite' THEN
-    NEW.role   := 'player';
-    NEW.status := CASE WHEN v_count < m.capacity THEN 'confirmed' ELSE 'bench' END;
-    IF NEW.status = 'confirmed' THEN
+    NEW.role := 'player';
+    IF m.offline_count > 0 THEN
+      -- Quien entra por el link del grupo ocupa un lugar de "afuera": es uno de los amigos que el
+      -- organizador contó sin cuenta. Entra confirmado SIN usar un lugar libre y descuenta 1 de
+      -- offline_count (tope en 0), bajo el lock del partido que ya tiene esta transacción. Así no
+      -- se cuenta dos veces (una en el número y otra como cuenta). Es escritura interna: el
+      -- UPDATE sale de un trigger definer y corre como el dueño.
+      NEW.status       := 'confirmed';
       NEW.confirmed_at := now();
+      UPDATE rival_matches SET offline_count = offline_count - 1 WHERE id = m.id;
+    ELSE
+      NEW.status := CASE WHEN v_count < m.capacity THEN 'confirmed' ELSE 'bench' END;
+      IF NEW.status = 'confirmed' THEN
+        NEW.confirmed_at := now();
+      END IF;
     END IF;
   ELSE
     IF NEW.status <> 'requested' THEN

@@ -28,6 +28,7 @@ import {
 } from './whatsapp-bot.prompt'
 import { buildBotTools, pauseChatForHuman } from './whatsapp-bot.tools'
 import { BOT_FEATURE_FLAG, isBotTenantOpen } from './whatsapp-bot.connection'
+import { transcribeUnheardAudios } from './whatsapp-bot.audio'
 
 /**
  * Un turno del bot: toma los mensajes pendientes de un chat, corre el agente y
@@ -71,9 +72,9 @@ const FALLBACK_REPLY =
   'Perdón, en este momento no puedo responderte. En un rato te contesta alguien del complejo.'
 
 /**
- * Audio que Kapso no transcribió (se acabó la cuota de transcripción, o falló):
- * el modelo no tiene nada que contestar, así que la respuesta es fija y no
- * gasta un turno ni depende de que el prompt lo recuerde.
+ * Audio que ni Kapso ni el respaldo de Groq pudieron transcribir
+ * (`whatsapp-bot.audio.ts`): el modelo no tiene nada que contestar, así que la
+ * respuesta es fija y no gasta un turno ni depende de que el prompt lo recuerde.
  */
 const UNHEARD_AUDIO_REPLY =
   'Por acá no puedo escuchar audios 🙏 ¿Me lo podés escribir? Con el mensaje te ayudo enseguida.'
@@ -266,6 +267,7 @@ export async function processWhatsappTurn(
     const history = await tx
       .select({
         id: whatsappMessages.id,
+        waMessageId: whatsappMessages.waMessageId,
         direction: whatsappMessages.direction,
         kind: whatsappMessages.kind,
         body: whatsappMessages.body,
@@ -407,7 +409,20 @@ export async function processWhatsappTurn(
     return 'disabled'
   }
 
-  const history = toAnthropicHistory(state.history)
+  // Audios que Kapso no transcribió (cuota del plan agotada, o falló): se
+  // intentan acá antes de que el modelo los vea.
+  const unheard = state.history.filter((r) => r.pending && r.kind === 'audio' && !r.body)
+  const heard =
+    unheard.length > 0
+      ? await transcribeUnheardAudios({
+          tenantId,
+          phoneNumberId: state.connection.phoneNumberId,
+          messages: unheard,
+        })
+      : new Map<string, string>()
+  const historyRows = state.history.map((r) => ({ ...r, body: heard.get(r.id) ?? r.body }))
+
+  const history = toAnthropicHistory(historyRows)
   if (history.at(-1)?.role !== 'user') {
     // Los pendientes quedaron fuera de la ventana del historial: no hay nada
     // que el modelo pueda contestar con sentido.
@@ -426,7 +441,7 @@ export async function processWhatsappTurn(
   let failed = false
   // Solo si TODO lo pendiente son audios sin transcribir: si vino con texto, el
   // modelo contesta el texto y el prompt le pide que el audio lo escriban.
-  const onlyUnheardAudio = state.history
+  const onlyUnheardAudio = historyRows
     .filter((r) => r.pending)
     .every((r) => r.kind === 'audio' && !r.body)
   if (onlyUnheardAudio) {

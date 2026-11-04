@@ -37,8 +37,12 @@ Se decide **a sabiendas** de dos cosas:
 
 - **Un solo proveedor: Anthropic**, con `claude-haiku-5-5`. Medido en el banco de pruebas (76 conversaciones, USD 0,10 / 0,50 por millón de tokens): USD 0,0014 por conversación en promedio y 0,0025 en el percentil 90.
 - Si falla: reintento, y si sigue fallando se pasa a humano.
-- Sin proveedores de respaldo, para no sumar subprocesadores por centavos de ahorro.
-- Los audios usan la transcripción que manda Kapso. Groq y OpenAI no se suman como subprocesadores.
+- Sin proveedores de respaldo para el modelo, para no sumar subprocesadores por centavos de ahorro.
+- Los audios usan la transcripción que manda Kapso. ~~Groq y OpenAI no se suman como subprocesadores.~~ **Cambia el 2026-11-04 (decisión del dueño):** **Groq** se suma como subprocesador, solo para transcribir audios (Whisper `whisper-large-v3-turbo`, plan gratis).
+  - Por qué: en el plan Free de Kapso la transcripción se corta al agotarse la cuota hasta el ciclo siguiente, y el plan pago (USD 25 por mes) hoy no se puede pagar. Sin transcripción, el bot le pide al jugador que escriba lo que dijo en el audio.
+  - Es solo un respaldo: si Kapso mandó el texto, Groq no se llama. A Groq le llega solo el audio, sin número ni nombre. Código en `src/modules/whatsapp-bot/whatsapp-bot.audio.ts`; se prende con `GROQ_API_KEY` en el worker.
+  - Topes: 3 audios por turno (la cuota gratis es compartida entre complejos), y se descarta el texto que Whisper inventa sobre silencio.
+  - Groq figura en `/privacidad` desde esa fecha. OpenAI sigue afuera.
 - **Sin texto libre configurable por el dueño** ("reglas del bot"), por el veto de texto libre sobre personas (Ley 25.326).
 
 ## W4 — Datos y privacidad

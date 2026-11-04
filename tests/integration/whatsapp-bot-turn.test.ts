@@ -6,6 +6,8 @@ import { DAY_KEYS } from '@/shared/time/week-days'
 import { addDays, artTodayStr } from '@/shared/dates/art'
 import type { NormalizedWhatsappEvent } from '@/lib/kapso/events.schema'
 import { sendWhatsappText } from '@/lib/kapso/client'
+import { fetchInboundAudio } from '@/lib/kapso/media'
+import { isGroqConfigured, transcribeAudio } from '@/lib/groq/transcribe'
 import { captureException } from '@/lib/sentry'
 import { notifyAdminPush } from '@/modules/notifications/push.service'
 import { BOT_FEATURE_FLAG } from '@/modules/whatsapp-bot/whatsapp-bot.connection'
@@ -35,6 +37,12 @@ import {
  */
 
 vi.mock('@/lib/kapso/client', () => ({ sendWhatsappText: vi.fn() }))
+vi.mock('@/lib/kapso/media', () => ({ fetchInboundAudio: vi.fn() }))
+vi.mock('@/lib/groq/transcribe', () => ({
+  MAX_AUDIO_BYTES: 25 * 1024 * 1024,
+  isGroqConfigured: vi.fn(),
+  transcribeAudio: vi.fn(),
+}))
 vi.mock('@/modules/notifications/push.service', () => ({ notifyAdminPush: vi.fn() }))
 vi.mock('@/lib/sentry', () => ({ captureException: vi.fn(), captureMessage: vi.fn() }))
 // `ToolInputError` y el resto del módulo quedan reales: lo importa `whatsapp-bot.tools`.
@@ -258,6 +266,10 @@ beforeEach(() => {
   vi.mocked(runAgent).mockReset()
   vi.mocked(notifyAdminPush).mockReset()
   vi.mocked(captureException).mockReset()
+  vi.mocked(fetchInboundAudio).mockReset()
+  vi.mocked(transcribeAudio).mockReset()
+  // Sin respaldo de Groq por defecto: los audios sin texto de Kapso quedan sin transcribir.
+  vi.mocked(isGroqConfigured).mockReturnValue(false)
   // `wa_message_id` es UNIQUE: cada envío simulado devuelve un id propio.
   vi.mocked(sendWhatsappText).mockImplementation(async () => ({
     waMessageId: waId('out'),
@@ -1015,6 +1027,140 @@ describe('processWhatsappTurn — cortes sin llamar al modelo', () => {
 
     expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId }, now)).toBe('replied')
     expect(runAgent).toHaveBeenCalledTimes(1)
+  })
+
+  it('audio sin texto de Kapso: lo transcribe Groq, lo contesta el modelo y queda guardado', async () => {
+    const s = await seed()
+    const chatId = await addChat(s)
+    const now = new Date()
+    const pending = await seedMessage(s, chatId, {
+      direction: 'inbound',
+      kind: 'audio',
+      body: null,
+      createdAt: ago(now, 30_000),
+    })
+    vi.mocked(isGroqConfigured).mockReturnValue(true)
+    vi.mocked(fetchInboundAudio).mockResolvedValue({
+      kind: 'file',
+      audio: new Blob(['ogg'], { type: 'audio/ogg' }),
+      filename: 'audio.ogg',
+    })
+    vi.mocked(transcribeAudio).mockResolvedValue('tenés turno hoy a las 21?')
+
+    expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId }, now)).toBe('replied')
+
+    expect(vi.mocked(fetchInboundAudio).mock.calls[0]![0]).toMatchObject({
+      phoneNumberId: s.phoneNumberId,
+    })
+    expect(runAgent).toHaveBeenCalledTimes(1)
+    const { history } = vi.mocked(runAgent).mock.calls[0]![0]
+    expect(JSON.stringify(history.at(-1))).toContain(
+      '[Audio, transcripto]: tenés turno hoy a las 21?',
+    )
+    const saved = byId(await readMessages(s.tenantId, chatId), pending)
+    expect(saved.body).toBe('tenés turno hoy a las 21?')
+    expect(saved.processed_at).toEqual(now)
+  })
+
+  it('audio con transcripción tardía de Kapso: la usa sin pasar por Groq', async () => {
+    const s = await seed()
+    const chatId = await addChat(s)
+    const now = new Date()
+    await seedMessage(s, chatId, {
+      direction: 'inbound',
+      kind: 'audio',
+      body: null,
+      createdAt: ago(now, 30_000),
+    })
+    vi.mocked(isGroqConfigured).mockReturnValue(true)
+    vi.mocked(fetchInboundAudio).mockResolvedValue({ kind: 'transcript', text: 'quiero reservar' })
+
+    expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId }, now)).toBe('replied')
+
+    expect(transcribeAudio).not.toHaveBeenCalled()
+    const { history } = vi.mocked(runAgent).mock.calls[0]![0]
+    expect(JSON.stringify(history.at(-1))).toContain('quiero reservar')
+  })
+
+  it('si la transcripción de respaldo falla, contesta que no escucha audios como antes', async () => {
+    const s = await seed()
+    const chatId = await addChat(s)
+    const now = new Date()
+    const pending = await seedMessage(s, chatId, {
+      direction: 'inbound',
+      kind: 'audio',
+      body: null,
+      createdAt: ago(now, 30_000),
+    })
+    vi.mocked(isGroqConfigured).mockReturnValue(true)
+    vi.mocked(fetchInboundAudio).mockRejectedValue(new Error('Kapso respondió 500'))
+
+    expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId }, now)).toBe('replied')
+
+    expect(runAgent).not.toHaveBeenCalled()
+    expect(vi.mocked(sendWhatsappText).mock.calls[0]![0].body).toMatch(/no puedo escuchar audios/)
+    const saved = byId(await readMessages(s.tenantId, chatId), pending)
+    expect(saved.body).toBeNull()
+    expect((await readChat(s.tenantId, chatId)).paused_until).toBeNull()
+  })
+
+  it('audio que Groq oye como silencio: contesta que no escucha audios', async () => {
+    const s = await seed()
+    const chatId = await addChat(s)
+    const now = new Date()
+    await seedMessage(s, chatId, {
+      direction: 'inbound',
+      kind: 'audio',
+      body: null,
+      createdAt: ago(now, 30_000),
+    })
+    vi.mocked(isGroqConfigured).mockReturnValue(true)
+    vi.mocked(fetchInboundAudio).mockResolvedValue({
+      kind: 'file',
+      audio: new Blob(['ogg'], { type: 'audio/ogg' }),
+      filename: 'audio.ogg',
+    })
+    vi.mocked(transcribeAudio).mockResolvedValue(null)
+
+    expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId }, now)).toBe('replied')
+
+    expect(runAgent).not.toHaveBeenCalled()
+    expect(vi.mocked(sendWhatsappText).mock.calls[0]![0].body).toMatch(/no puedo escuchar audios/)
+  })
+
+  it('ráfaga de audios: transcribe solo los 3 más recientes', async () => {
+    const s = await seed()
+    const chatId = await addChat(s)
+    const now = new Date()
+    const ids: string[] = []
+    for (let i = 5; i >= 1; i--) {
+      ids.push(
+        await seedMessage(s, chatId, {
+          direction: 'inbound',
+          kind: 'audio',
+          body: null,
+          createdAt: ago(now, i * 10_000),
+        }),
+      )
+    }
+    const waIds = await adminSql()<{ id: string; wa_message_id: string }[]>`
+      SELECT id, wa_message_id FROM whatsapp_messages WHERE id = ANY(${ids})
+    `
+    const waIdOf = new Map(waIds.map((r) => [r.id, r.wa_message_id]))
+    vi.mocked(isGroqConfigured).mockReturnValue(true)
+    vi.mocked(fetchInboundAudio).mockResolvedValue({ kind: 'transcript', text: 'hola' })
+
+    expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId }, now)).toBe('replied')
+
+    const fetched = vi.mocked(fetchInboundAudio).mock.calls.map((c) => c[0].waMessageId)
+    expect(fetched.sort()).toEqual(
+      ids
+        .slice(-3)
+        .map((id) => waIdOf.get(id)!)
+        .sort(),
+    )
+    const rows = await readMessages(s.tenantId, chatId)
+    expect(ids.map((id) => byId(rows, id).body)).toEqual([null, null, 'hola', 'hola', 'hola'])
   })
 
   it('sin pendientes: nothing_pending y no llama al modelo', async () => {

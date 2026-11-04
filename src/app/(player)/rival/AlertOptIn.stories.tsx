@@ -108,7 +108,7 @@ export const SinSesion: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('link', { name: 'Entrá para activar el aviso' })).toHaveAttribute(
       'href',
-      '/ingresar?next=%2Frival%2Ftablon',
+      '/ingresar?next=%2Frival',
     )
     await expect(canvas.queryByRole('button')).toBeNull()
   },

@@ -24,8 +24,7 @@ type Props = {
  * `variant="overlay"` se usa sobre el hero de la landing (markup preservado).
  */
 export default function PortalHeader({ variant = 'solid', signOutAction }: Props) {
-  const { session, staffPanelPath, rivalEnabled, rivalWelcomed } = usePortalSession()
-  const rivalHref = rivalWelcomed ? '/rival/tablon' : '/rival'
+  const { session, staffPanelPath, rivalEnabled } = usePortalSession()
 
   // Precedencia: el jugador gana siempre. En la práctica son cookies
   // mutuamente excluyentes (un solo auth user por navegador), pero el orden lo
@@ -47,7 +46,7 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
         Explorar
       </Link>
       {rivalEnabled && (
-        <Link href={rivalHref} className={navLink}>
+        <Link href="/rival" className={navLink}>
           <Swords className="h-[15px] w-[15px] sm:h-[17px] sm:w-[17px]" aria-hidden />
           Rival
         </Link>

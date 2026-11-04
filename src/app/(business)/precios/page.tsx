@@ -23,8 +23,6 @@ const HERO_CHIPS = [
 /** Solo features que existen en el producto (regla GTM: nada que no esté construido). */
 const INCLUDED = [
   'Reservas online 24/7 con tu link propio — el jugador no baja ninguna app',
-  'Señas por MercadoPago que van directo a tu cuenta',
-  'El que te cuelga el turno pierde la seña; si reincide, queda 14 días sin poder reservarte online',
   'Grilla en vivo desde el celular',
   'Aviso al instante con cada reserva (de madrugada espera a las 8)',
   'Caja completa: turnos, cantina con stock, gastos y cierre diario',
@@ -34,6 +32,8 @@ const INCLUDED = [
   'Usuarios para tu equipo, sin límite',
   'Tus datos exportables cuando quieras',
   'Soporte directo por WhatsApp, no un 0800',
+  'El que te cuelga el turno pierde la seña; si reincide, queda 14 días sin poder reservarte online',
+  'Si querés, señas por MercadoPago que van directo a tu cuenta',
 ]
 
 const STEPS = [
@@ -44,8 +44,8 @@ const STEPS = [
   },
   {
     n: '02',
-    t: 'Cobrá señas desde el primer día',
-    d: 'Conectás tu MercadoPago y cada reserva online entra señada. La plata va directo a tu cuenta: nunca pasa por nosotros.',
+    t: 'Publicá tu link y recibí reservas',
+    d: 'Tu complejo tiene su propia página. El jugador reserva online y vos no atendés el teléfono. Si querés pedir seña, se cobra por MercadoPago directo a tu cuenta.',
   },
   {
     n: '03',
@@ -133,7 +133,7 @@ function Hero() {
       <div className="relative z-10 mx-auto max-w-[880px] text-center">
         <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400 whitespace-nowrap">
           <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-          Precios claros
+          Lo que sale
           <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
         </div>
 

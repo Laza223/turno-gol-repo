@@ -78,7 +78,7 @@ export function HeroDesktop({ cities }: { cities: CityCount[] }) {
           className="mt-5 max-w-[620px] text-muted-foreground"
           style={{ fontSize: 'clamp(17px, 1.3vw, 21px)', lineHeight: '1.55' }}
         >
-          Mirá los turnos libres de hoy y reservá sin llamar a nadie.
+          Elegí complejo, día y horario. Reservás online en un minuto, sin llamar a nadie.
         </p>
 
         <div className="relative mt-9 w-full max-w-[1140px]">
@@ -86,7 +86,11 @@ export function HeroDesktop({ cities }: { cities: CityCount[] }) {
         </div>
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5">
-          {['Sin descargar ninguna app'].map((t) => (
+          {[
+            'Sin descargar ninguna app',
+            'Gratis, sin cuenta de entrada',
+            'Pagás en la cancha o con seña',
+          ].map((t) => (
             <span
               key={t}
               className="inline-flex items-center gap-2 text-[13px] font-medium text-muted-foreground"

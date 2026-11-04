@@ -11,9 +11,9 @@ import { listPublicCities, type CityCount } from '@/modules/tenants/search.servi
 import { Hero } from './home/Hero'
 
 export const metadata = buildMetadata({
-  title: 'TurnoGol — Reservá tu cancha de fútbol al instante',
+  title: 'TurnoGol — Reservá cancha de fútbol para hoy, sin llamar',
   description:
-    'Mirá los turnos libres de hoy y reservá tu cancha de fútbol online, sin llamar a nadie.',
+    'Elegí complejo, día y horario. Reservás en un minuto, sin app y sin llamar a nadie.',
   path: '/',
   titleAbsolute: true,
 })

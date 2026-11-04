@@ -30,7 +30,7 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent(
-      /chau, reserva de palabra\./i,
+      /chau cuaderno,\s*chau whatsapp\./i,
     )
     // "Probalo 30 días" está en el hero y en el cierre: los dos van a /register.
     const trials = canvas.getAllByRole('link', { name: /probalo 30 días/i })
@@ -44,7 +44,7 @@ export const Default: Story = {
       )
       await expect(wa).toHaveAttribute('target', '_blank')
     }
-    await expect(canvas.getByRole('heading', { name: 'Así viaja una seña.' })).toBeInTheDocument()
+    await expect(canvas.getByRole('heading', { name: '¿Te suena?' })).toBeInTheDocument()
     await expect(canvas.getByRole('link', { name: /ver precios/i })).toHaveAttribute(
       'href',
       '/precios',

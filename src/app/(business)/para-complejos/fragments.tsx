@@ -1,8 +1,9 @@
-import { ArrowRight, Link2, Wallet } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { Check, Globe } from 'lucide-react'
 import { BookingCard } from '@/components/booking/BookingCard'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import { formatArs } from '@/lib/format'
-import { TONE_BADGE, TONE_TEXT } from '@/lib/status-tone'
+import { TONE_BADGE } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
 import { ExampleTag } from './ExampleTag'
 
@@ -15,19 +16,50 @@ import { ExampleTag } from './ExampleTag'
  */
 
 const PRICE_CENTS = 3_000_000
-/** 30 %: el `deposit_percentage` por defecto de un complejo nuevo. */
-const DEPOSIT_CENTS = 900_000
+const PHONE_PRICE_CENTS = 1_500_000
 
-const slotPill =
-  'inline-flex h-10 min-w-16 items-center justify-center rounded-full border-[1.5px] border-emerald-400 px-2.5 text-base font-semibold tabular-nums text-foreground'
+const chip = 'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold'
 
-/** El celular del jugador en la página de un complejo, con el turno elegido y la seña por pagar. */
-export function SenaPhone() {
+function PhoneRow({
+  time,
+  title,
+  sub,
+  children,
+}: {
+  time: string
+  title: string
+  sub: string
+  children?: ReactNode
+}) {
+  return (
+    <div className="flex min-h-[52px] items-center gap-3 px-4 py-2">
+      <span className="w-11 shrink-0 text-sm font-semibold tabular-nums text-muted-foreground">
+        {time}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold text-foreground">{title}</span>
+        <span className="block truncate text-xs text-muted-foreground">{sub}</span>
+      </span>
+      {children}
+    </div>
+  )
+}
+
+function Paid() {
+  return (
+    <span className={cn(chip, TONE_BADGE.success)}>
+      Cobrado <Check className="h-3 w-3" aria-hidden />
+    </span>
+  )
+}
+
+/** El celular del dueño con la pantalla Hoy del panel: entra una reserva, se cobra un turno y sube la caja. */
+export function NochePhone() {
   return (
     <figure
       role="img"
-      aria-label={`Ejemplo: la página de un complejo en el celular del jugador, con el turno de las 20:00 elegido y una seña de ${formatArs(DEPOSIT_CENTS)} para pagar por MercadoPago`}
-      className="relative mx-auto w-full max-w-[340px]"
+      aria-label="Ejemplo: la pantalla Hoy del panel en el celular, con los turnos de la noche, una reserva online que entra, un cobro que se completa y la caja del día que sube"
+      className="relative mx-auto w-full max-w-[340px] lg:max-w-[380px]"
     >
       <div
         aria-hidden
@@ -35,105 +67,64 @@ export function SenaPhone() {
       />
       <div className="mockup-card rounded-[2.25rem] p-2.5">
         <div className="overflow-hidden rounded-[1.75rem] bg-background" aria-hidden>
-          <div className="border-b border-border px-4 py-2.5 text-center text-xs text-muted-foreground">
-            turnogol.app/tu-complejo
+          <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+            <span className="font-display text-xl font-black italic leading-none text-foreground">
+              Hoy
+            </span>
+            <ExampleTag />
           </div>
-          <div className="px-4 pt-5">
-            <p className="font-display text-[28px] font-black italic leading-none tracking-[-0.02em] text-foreground">
-              Tu complejo
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground">Cancha 2 · Fútbol 5 · Hoy</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {['19:00', '20:00', '21:00', '22:00'].map((t) => (
+          <div className="divide-y divide-border">
+            <PhoneRow time="19:00" title="Diego F. · Fijo" sub="Cancha 1">
+              <Paid />
+            </PhoneRow>
+            <PhoneRow time="20:00" title="Nico P." sub="Cancha 2">
+              <span className="grid justify-items-end">
                 <span
-                  key={t}
                   className={cn(
-                    slotPill,
-                    t === '20:00' && 'border-primary bg-primary text-primary-foreground',
+                    chip,
+                    TONE_BADGE.warning,
+                    'tg-noche-out col-start-1 row-start-1 whitespace-nowrap',
                   )}
                 >
-                  {t}
+                  Falta {formatArs(PHONE_PRICE_CENTS)}
                 </span>
-              ))}
+                <span className="tg-noche-in col-start-1 row-start-1">
+                  <Paid />
+                </span>
+              </span>
+            </PhoneRow>
+            <PhoneRow time="21:00" title="Seba L." sub="Cancha 1">
+              <Paid />
+            </PhoneRow>
+            <div className="relative">
+              <PhoneRow time="22:00" title="Libre" sub="Cancha 2" />
+              <div className="tg-noche-new absolute inset-0 bg-background">
+                <PhoneRow time="22:00" title="Nueva reserva · online" sub="Cancha 2">
+                  <span
+                    className={cn(
+                      'flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
+                      TONE_BADGE.info,
+                    )}
+                  >
+                    <Globe className="h-4 w-4" />
+                  </span>
+                </PhoneRow>
+              </div>
+              <div className="tg-noche-ring pointer-events-none absolute inset-1 rounded-xl border-2 border-emerald-400" />
             </div>
           </div>
-          <div className="mt-6 rounded-t-3xl border-t border-border bg-card px-4 pb-5 pt-5">
-            <p className="text-sm font-medium text-muted-foreground">Seña para reservar</p>
-            <p className="mt-1 font-display text-[40px] font-bold leading-none tabular-nums tracking-[-0.03em] text-foreground">
-              {formatArs(DEPOSIT_CENTS)}
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              de {formatArs(PRICE_CENTS)} · el resto, en la cancha
-            </p>
-            <div className="mt-4 flex items-center gap-3 rounded-xl border border-border p-3">
-              <span
-                className={cn(
-                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
-                  TONE_BADGE.info,
-                )}
-              >
-                <Wallet className="h-5 w-5" />
+          <div className="flex items-center justify-between gap-3 border-t border-border bg-card px-4 py-4">
+            <span className="text-sm font-medium text-muted-foreground">Caja de hoy</span>
+            <span className="grid justify-items-end font-display text-[28px] font-bold leading-none tabular-nums tracking-[-0.03em] text-foreground">
+              <span className="tg-noche-out col-start-1 row-start-1">{formatArs(7_500_000)}</span>
+              <span className="tg-noche-in col-start-1 row-start-1 text-emerald-300">
+                {formatArs(9_000_000)}
               </span>
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold text-foreground">MercadoPago</span>
-                <span className="block text-xs text-muted-foreground">
-                  Pagás la seña online ahora
-                </span>
-              </span>
-            </div>
-            <span className="mt-4 flex h-12 w-full items-center justify-center rounded-xl bg-primary text-base font-semibold text-primary-foreground">
-              Pagar seña
             </span>
           </div>
         </div>
       </div>
-      <ExampleTag className="absolute -right-2 top-6 bg-background" />
     </figure>
-  )
-}
-
-/** Paso 1: el link del complejo y sus horarios libres. */
-export function PageLinkFragment() {
-  return (
-    <div className="card-premium rounded-2xl p-5 sm:p-6" aria-hidden>
-      <div className="flex items-center justify-between gap-3">
-        <span className="inline-flex min-w-0 items-center gap-2 text-base font-semibold text-foreground">
-          <Link2 className="h-4 w-4 shrink-0 text-emerald-400" />
-          <span className="truncate">turnogol.app/tu-complejo</span>
-        </span>
-        <ExampleTag />
-      </div>
-      <p className="mt-5 text-sm font-medium text-muted-foreground">Libres hoy</p>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {['18:00', '19:00', '21:00', '23:00'].map((t) => (
-          <span key={t} className={slotPill}>
-            {t}
-          </span>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-/** Paso 3: la seña entra a la cuenta del complejo. */
-export function MoneyFragment() {
-  return (
-    <div className="card-premium rounded-2xl p-5 sm:p-6" aria-hidden>
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium text-muted-foreground">Seña · Cancha 2 · 20:00</span>
-        <ExampleTag />
-      </div>
-      <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-3">
-        <span className="font-display text-[40px] font-bold leading-none tabular-nums tracking-[-0.03em] text-emerald-300">
-          + {formatArs(DEPOSIT_CENTS)}
-        </span>
-        <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground" />
-        <span className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2">
-          <Wallet className={cn('h-4 w-4', TONE_TEXT.info)} />
-          <span className="text-sm font-semibold text-foreground">Tu cuenta de MercadoPago</span>
-        </span>
-      </div>
-    </div>
   )
 }
 
@@ -171,19 +162,18 @@ const GRID_BOOKINGS: Record<string, GridBooking> = {
     type: 'fixed',
     playerFirstName: 'Diego',
     playerLastName: 'F.',
+    totalPaid: PRICE_CENTS,
+    pending: 0,
   }),
   '1-20:00': exampleBooking('g2', 2, '20:00', '21:00', {
     playerFirstName: 'Nico',
     playerLastName: 'P.',
-    depositStatus: 'paid',
-    depositAmount: DEPOSIT_CENTS,
-    totalPaid: DEPOSIT_CENTS,
-    pending: PRICE_CENTS - DEPOSIT_CENTS,
+    totalPaid: PRICE_CENTS / 2,
+    pending: PRICE_CENTS / 2,
   }),
   '0-21:00': exampleBooking('g3', 1, '21:00', '22:00', {
     playerFirstName: 'Seba',
     playerLastName: 'L.',
-    depositStatus: 'paid',
     totalPaid: PRICE_CENTS,
     pending: 0,
   }),
@@ -195,14 +185,14 @@ const GRID_BOOKINGS: Record<string, GridBooking> = {
 }
 
 /**
- * Paso 4: un pedazo de la Grilla del panel con la `BookingCard` real. `inert`:
+ * Un pedazo de la Grilla del panel con la `BookingCard` real. `inert`:
  * son botones del panel, acá no abren nada ni reciben foco.
  */
 export function GridFragment() {
   return (
     <figure
       role="img"
-      aria-label="Ejemplo de la grilla del panel: la reserva de las 20:00 en la Cancha 2 aparece con la seña cobrada y lo que falta cobrar en la cancha"
+      aria-label="Ejemplo de la grilla del panel: turnos fijos, turnos cobrados y lo que falta cobrar en cada cancha"
       className="card-premium overflow-hidden rounded-2xl"
     >
       <div className="flex items-center justify-between gap-3 px-5 pb-3 pt-5 sm:px-6">
@@ -245,6 +235,10 @@ export function GridFragment() {
             />
           )),
         )}
+        <div
+          style={{ gridColumn: 3, gridRow: 5 }}
+          className="tg-noche-pulse pointer-events-none m-0.5 rounded-lg border-2 border-emerald-400"
+        />
       </div>
     </figure>
   )

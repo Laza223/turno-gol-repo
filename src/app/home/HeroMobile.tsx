@@ -80,7 +80,7 @@ export function HeroMobile({ cities }: { cities: CityCount[] }) {
             className="mx-auto mt-4 max-w-[540px] text-balance text-center text-muted-foreground"
             style={{ fontSize: 'clamp(15px, 1.5vw, 20px)', lineHeight: '1.5' }}
           >
-            Mirá los turnos libres de hoy y reservá sin llamar a nadie.
+            Elegí complejo, día y horario. Reservás online en un minuto, sin llamar a nadie.
           </p>
 
           {/* Buscador */}
@@ -90,7 +90,11 @@ export function HeroMobile({ cities }: { cities: CityCount[] }) {
 
           {/* Pills de confianza */}
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2.5">
-            {['Sin descargar ninguna app'].map((t) => (
+            {[
+              'Sin descargar ninguna app',
+              'Gratis, sin cuenta de entrada',
+              'Pagás en la cancha o con seña',
+            ].map((t) => (
               <span
                 key={t}
                 className="inline-flex items-center gap-2 text-[13px] font-medium text-muted-foreground"

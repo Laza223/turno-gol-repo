@@ -84,6 +84,7 @@ export default function Reveal({ children, className, delay = 0, style }: Props)
   return (
     <div
       ref={ref}
+      data-revealed={shown}
       style={delay ? { ...style, transitionDelay: `${delay}ms` } : style}
       className={cn(
         'transition-all duration-700 ease-out motion-reduce:translate-y-0! motion-reduce:opacity-100! motion-reduce:transition-none',

@@ -5,7 +5,6 @@ import { writeEvidence } from '../_qa/evidence'
  * TG-HP-005 — Landing B2B /para-complejos → CTA a /register.
  * Rol: Visitante (no auth). Prereq: ninguno — página 100% estática, sin fetch/DB.
  * Los CTAs son <Link> de navegación y un link externo a WhatsApp (sin forms, sin toast).
- * Evidence anchors: para-complejos/page.tsx:36-45,71-72,141,221,252,262-265.
  *
  * NOTA: el layout (business) comparte BusinessHeader + BusinessFooter en TODAS las
  * páginas de este route group, y ambos repiten "Empezar gratis" / "Ingresar" fuera
@@ -16,10 +15,10 @@ test.describe('TG-HP-005 — Landing B2B /para-complejos', () => {
   test('hero + CTAs navegan a /register y /precios, y WhatsApp abre el chat', async ({ page }) => {
     const main = page.locator('#main-content')
 
-    // Step 1-2: h1 "Chau, reserva de palabra."
+    // Step 1-2: h1 "Chau cuaderno, chau WhatsApp."
     await page.goto('/para-complejos')
     await expect(
-      page.getByRole('heading', { level: 1, name: /Chau, reserva de palabra\./ }),
+      page.getByRole('heading', { level: 1, name: /Chau cuaderno,\s*chau WhatsApp\./ }),
     ).toBeVisible()
 
     // Step 3: "Escribinos por WhatsApp" es externo (wa.me, pestaña nueva) — no se navega.
@@ -37,8 +36,8 @@ test.describe('TG-HP-005 — Landing B2B /para-complejos', () => {
     await page.goBack()
     await page.waitForURL(/\/para-complejos$/)
 
-    // Step 5: h2 "Así viaja una seña." (el recorrido de 4 pasos)
-    await expect(page.getByRole('heading', { name: 'Así viaja una seña.' })).toBeVisible()
+    // Step 5: h2 "¿Te suena?"
+    await expect(page.getByRole('heading', { name: '¿Te suena?' })).toBeVisible()
 
     // Step 6: el ancla "Funciones" del header (#features) existe en la página
     await expect(page.locator('#features')).toHaveCount(1)

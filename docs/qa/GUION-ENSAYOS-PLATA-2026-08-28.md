@@ -232,9 +232,9 @@ aplicaciones, asi que hoy no hay dano: es la desvinculacion de la app vieja.
 
 ## Bloque B — arrancar el reloj de 30 dias · ~30 min · $100
 
-Necesita a Tiziana con su MercadoPago a mano.
+Necesita a <jugadora de prueba> con su MercadoPago a mano.
 
-**B0. Prender el plan de prueba, con Tiziana ya lista para pagar.** — paso que el plan del 25/8 no menciona y sin el
+**B0. Prender el plan de prueba, con <jugadora de prueba> ya lista para pagar.** — paso que el plan del 25/8 no menciona y sin el
 cual los demas no se pueden hacer. El plan "Prueba interna — NO OFRECER" ($100/mes)
 esta en `is_active = false`, y las dos pantallas que lo listarian filtran por
 `is_active = true` (`billing.service.ts:97` y `super-admin/tenants.service.ts:180`),
@@ -256,13 +256,13 @@ Confirmar que devolvio **exactamente 1 fila** antes de seguir.
 | Panel de super admin                   | Si, pero ese sos vos                                                                                                 |
 
 Con dos complejos en produccion y los dos propios, la exposicion real de la ventana
-es nula. Aun asi, prendelo recien cuando Tiziana este por pagar y apagalo apenas
+es nula. Aun asi, prendelo recien cuando <jugadora de prueba> este por pagar y apagalo apenas
 termine: la ventana deberia durar minutos, no horas.
 
 **B1.** Entrar como admin de `complejo-titi`.
 
 **B2.** En `/settings/facturacion`, verificar que "Cuenta de MercadoPago para
-pagar" tenga cargado el mail de Tiziana. **Elite no sirve para esto**: su cuenta de
+pagar" tenga cargado el mail de <jugadora de prueba>. **Elite no sirve para esto**: su cuenta de
 MercadoPago es la misma que cobra las suscripciones, y MercadoPago rechaza que una
 cuenta se pague a si misma.
 
@@ -277,7 +277,7 @@ WHERE t.name ILIKE '%titi%';
 
 **B3.** Elegir el plan de $100 mensual.
 
-**B4.** Tiziana paga en el checkout de MercadoPago.
+**B4.** <jugadora de prueba> paga en el checkout de MercadoPago.
 
 **B5. La evidencia que cierra el bloque** — las tres cosas, no una:
 
@@ -313,7 +313,7 @@ de plan.
 **La excepcion, que importa para el ensayo de dunning (P-10)**: reactivar una
 suscripcion cancelada, suspendida o bloqueada **si** pasa por `loadPlan`
 (`billing.service.ts:283` y `:698`) y fallaria con `PlanNotFoundError` si el plan
-esta apagado. Si en algun momento hay que reactivar la de Tiziana, hay que volver a
+esta apagado. Si en algun momento hay que reactivar la de <jugadora de prueba>, hay que volver a
 prender el plan primero.
 
 Y anotar en `PLAN_HOY_2026-08-25.md` que A y B quedaron cerrados, con la fecha del
@@ -337,7 +337,7 @@ aplicacion vieja sigue cobrando por la vieja hasta que **reconecte**.
 
 | Complejo              | Cuenta MP         | `mp_connected_at` | Cobra por                                                                         |
 | --------------------- | ----------------- | ----------------- | --------------------------------------------------------------------------------- |
-| complejo titi         | TIZIANALISANTI.TL | 22/08 14:00       | **Suscripciones** (la vieja) — sus `payment.*` figuran en el historial de esa app |
+| complejo titi         | <usuario MP de prueba> | 22/08 14:00       | **Suscripciones** (la vieja) — sus `payment.*` figuran en el historial de esa app |
 | Complejo Elite Futbol | FEIJOOLAZARO      | 28/08 17:00       | Checkout Pro — su `174271786893` figura en el historial de esa app                |
 
 **Por eso el bloque C, tal como estaba escrito, no probaria Checkout Pro**: una sena
@@ -352,7 +352,7 @@ complejos. Medido en la base al terminar:
 | Complejo              | Cuenta MP                      | `mp_connected_at` | token + refresh |
 | --------------------- | ------------------------------ | ----------------- | --------------- |
 | Complejo Elite Futbol | FEIJOOLAZARO (381048203)       | 28/08 18:30       | si              |
-| complejo titi         | TIZIANALISANTI.TL (1059888348) | 28/08 18:12       | si              |
+| complejo titi         | <usuario MP de prueba> (<id MP de prueba>) | 28/08 18:12       | si              |
 
 **Lo que eso prueba, ademas de arreglar el caso**: dos autorizaciones nuevas
 completaron el flujo entero, asi que **un complejo nuevo ya puede conectar su
@@ -463,14 +463,14 @@ Por eso reconectar no es opcional ni "cuando se pueda": va en la misma sesion.
 4. **Reconectar los dos complejos**, y ojo que **son dos pasos, no uno**:
    **desvincular primero** y despues conectar. El callback tiene un guard (migr. 069) que rechaza con `mp_already_connected` si esa cuenta de MercadoPago ya
    figura en otro complejo — una cuenta cobra para UN solo complejo. Elite lo hace
-   Lazar con su cuenta; titi lo hace Tiziana con la suya (son cuentas distintas,
+   Lazar con su cuenta; titi lo hace <jugadora de prueba> con la suya (son cuentas distintas,
    asi que entre ellos no chocan).
 5. Verificar en la base que `mp_connected_at` de **ambos** quedo con la fecha de
    hoy.
 
 ### Como entrar como admin de Elite si tu mail es tambien el de SuperAdmin
 
-`lazarofeijoo2004@gmail.com` figura en **las dos tablas**: `staff_users` (admin
+`<email del dueño>` figura en **las dos tablas**: `staff_users` (admin
 activo de Complejo Elite Futbol) y `system_admins`. No son dos cuentas: es un solo
 usuario con los dos papeles, y `login/actions.ts:94` manda a `/super-admin` cuando
 el mail es system admin. Por eso el login nunca cae en el panel del complejo.
@@ -500,7 +500,7 @@ fila que exista, y forzarlo tiraria la trazabilidad de todo lo que hizo ese usua
 
 **`canceled` no bloquea el panel.** titi figura Cancelado, pero los estados que
 frenan al staff son `blocked`/`churned`/`deleted` (bloqueo) y `suspended`
-(solo lectura) — `tenant.lifecycle.ts:20-23`. Tiziana puede entrar y conectar su
+(solo lectura) — `tenant.lifecycle.ts:20-23`. <jugadora de prueba> puede entrar y conectar su
 MercadoPago igual.
 
 ### Resultado de la verificacion — 2026-08-28 18:06, FUNCIONA
@@ -540,7 +540,7 @@ complejo nuevo pueda conectarse — que es lo que bloquea vender.
    | `345699471468974`     | apunta a **TurnoGol Cobros** (Checkout Pro). Correcto: seguir al paso 2                                                                                                                                                       |
    | `1654083475779552`    | apunta a **TurnoGol** (Suscripciones). **Parar**: hay que corregir `MP_CLIENT_ID`/`MP_CLIENT_SECRET` en Vercel y redeployar ANTES de que ningun complejo reconecte, o quedaria autorizado otra vez a la aplicacion equivocada |
 
-2. **Tiziana reconecta**: entra como admin de titi a `/settings/facturacion` y usa
+2. **<jugadora de prueba> reconecta**: entra como admin de titi a `/settings/facturacion` y usa
    el boton de conectar MercadoPago (`/api/mp/oauth-start`). Eso reemplaza el token
    guardado por uno de la aplicacion nueva.
 3. **Confirmar que se reemplazo**: `mp_connected_at` de titi tiene que quedar con la
@@ -608,7 +608,7 @@ El circuito que **nunca habia funcionado**: hasta la manana del 2026-08-28 esa a
 devolvia 401 y sus avisos se descartaban.
 
 ```
-22:43:28  MP crea el evento — user_id 1059888348  ← la cuenta del COMPLEJO, no la master
+22:43:28  MP crea el evento — user_id <id MP de prueba>  ← la cuenta del COMPLEJO, no la master
 22:43:33  payment.deposit.approved      (mpPaymentId 176120451286)
 22:43:34  booking.transition.confirmed
 22:43:36  mp.webhook.processed  eventType=payment
@@ -618,7 +618,7 @@ El orden importa y es el discriminador: `booking.transition.confirmed` sale **de
 procesamiento del webhook, y **no hay ningun `payment.reconcile.confirmed`**. O sea la reserva
 la confirmo el aviso de MercadoPago, no el retorno del checkout ni el cron de rescate.
 
-El `user_id` distinto (1059888348 vs 381048203) es lo que confirma que las dos aplicaciones
+El `user_id` distinto (<id MP de prueba> vs 381048203) es lo que confirma que las dos aplicaciones
 conviven bien: cada circuito notifica desde su propia cuenta al mismo buzon, y `webhook-auth.ts`
 valida cada uno contra su clave.
 

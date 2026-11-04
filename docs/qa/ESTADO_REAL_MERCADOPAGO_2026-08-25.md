@@ -109,7 +109,7 @@ Cruzando cada pago con `processed_webhooks`, el patrón es perfecto:
 
 | Quién cobra | Cuenta MP | Webhooks recibidos |
 |---|---|---|
-| `complejo-titi` (señas) | `1059888348` (Tiziana) | **6 de 6** ✅ |
+| `complejo-titi` (señas) | `<id MP de prueba>` (<jugadora de prueba>) | **6 de 6** ✅ |
 | `Complejo Elite Futbol` (señas) | `381048203` (**la tuya**) | **0 de 2** ❌ |
 | Cuenta master (suscripción de titi) | `381048203` (**la tuya**) | llegaron ✅ |
 
@@ -134,12 +134,12 @@ conectado con tu propia cuenta:
 - **No puede cobrar señas de forma realista**: si pagás vos, es auto-pago otra vez
   y el webhook no llega — vas a ver "bugs" que no existen.
 
-**Todo el ensayo de plata va por `complejo-titi`**, que tiene la cuenta de Tiziana:
+**Todo el ensayo de plata va por `complejo-titi`**, que tiene la cuenta de <jugadora de prueba>:
 
 | Circuito | Quién paga | Quién cobra | ¿Sirve? |
 |---|---|---|---|
-| Suscripción SaaS | Tiziana | vos (master) | ✅ cuentas distintas |
-| Seña | vos (jugador) | Tiziana (complejo) | ✅ cuentas distintas |
+| Suscripción SaaS | <jugadora de prueba> | vos (master) | ✅ cuentas distintas |
+| Seña | vos (jugador) | <jugadora de prueba> (complejo) | ✅ cuentas distintas |
 
 Elite queda para lo que no toca plata: los relojes de trial y dunning simulados.
 
@@ -160,7 +160,7 @@ Es decir: **la API de reembolso respondió OK al menos una vez.**
 | Complejo | Cuenta MP | ¿Devolvió por API? |
 |---|---|---|
 | `complejo-elite-futbol` | `381048203` — **la master, dueña de las dos apps** | ✅ sí |
-| `complejo-titi` | `1059888348` — un tercero | ❌ 403 siempre |
+| `complejo-titi` | `<id MP de prueba>` — un tercero | ❌ 403 siempre |
 
 La diferencia no es la aplicación ni la fecha: es que **el único caso que
 funcionó es el de la cuenta que es dueña de la aplicación**. Es coherente con

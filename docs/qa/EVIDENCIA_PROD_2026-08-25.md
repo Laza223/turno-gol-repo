@@ -137,7 +137,7 @@ Por qué esto sugiere que la devolución automática **sí se completó** esa ve
 - Es la **única** fila de devolución con `mp_payment_id`. Las otras dos que están `approved` lo tienen en `NULL` y además **dejaron rastro de que las cerró un script** (`payment.refund_settled_manually`, `payment.late_payment_refunded_manually`). Ésta no tiene ese rastro.
 - No la pudo saldar el webhook: el último evento en `processed_webhooks` es de las 00:55:14, tres minutos **antes**.
 - Se creó a las 00:58:25, y `PR #203` recién se mergeó a las 02:45 UTC del 24/8 — o sea que el camino automático **todavía estaba vivo** y corría sincrónico al cancelar.
-- Los dos complejos están conectados a **cuentas de MercadoPago distintas** (`mpUserId` 381048203 vs 1059888348). Que una conceda el permiso y la otra no es posible, porque el permiso lo deriva el producto de la aplicación.
+- Los dos complejos están conectados a **cuentas de MercadoPago distintas** (`mpUserId` 381048203 vs <id MP de prueba>). Que una conceda el permiso y la otra no es posible, porque el permiso lo deriva el producto de la aplicación.
 
 **Lectura honesta.** Los 403 eran reales, pero probablemente eran de **una** conexión, no de todas. La conclusión "ninguna aplicación concede el permiso" se generalizó desde ahí.
 

@@ -1140,3 +1140,131 @@ html.dark:has([data-portal-fields]) {
     width: 100%;
   }
 }
+
+/* /para-complejos: el reposo de cada clase es el cuadro FINAL (así queda congelado con
+   prefers-reduced-motion); los keyframes parten del estado inicial. Solo opacity/transform/clip-path. */
+@keyframes tg-noche-new {
+  0%,
+  18% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  24%,
+  92% {
+    opacity: 1;
+    transform: none;
+  }
+  97%,
+  100% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes tg-noche-ring {
+  0%,
+  20% {
+    opacity: 0;
+    transform: scale(1);
+  }
+  21% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  27%,
+  100% {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+}
+@keyframes tg-noche-out {
+  0%,
+  46% {
+    opacity: 1;
+  }
+  52%,
+  94% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+@keyframes tg-noche-in {
+  0%,
+  46% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  52%,
+  92% {
+    opacity: 1;
+    transform: none;
+  }
+  97%,
+  100% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@keyframes tg-noche-pulse {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.08);
+  }
+}
+@keyframes tg-noche-strike {
+  from {
+    color: #e2e8f0;
+    text-decoration-color: transparent;
+  }
+  to {
+    color: #94a3b8;
+    text-decoration-color: #64748b;
+  }
+}
+@keyframes tg-noche-solution {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.tg-noche-new {
+  animation: tg-noche-new 10s ease-in-out infinite;
+}
+.tg-noche-ring {
+  opacity: 0;
+  animation: tg-noche-ring 10s ease-out infinite;
+}
+.tg-noche-out {
+  opacity: 0;
+  animation: tg-noche-out 10s ease-in-out infinite;
+}
+.tg-noche-in {
+  animation: tg-noche-in 10s ease-in-out infinite;
+}
+.tg-noche-pulse {
+  opacity: 0;
+}
+[data-revealed='true'] .tg-noche-pulse {
+  animation: tg-noche-pulse 600ms ease-out 500ms 2;
+}
+[data-revealed='true'] .tg-noche-strike {
+  animation: tg-noche-strike 400ms ease-out 1100ms both;
+}
+[data-revealed='true'] .tg-noche-solution {
+  animation: tg-noche-solution 500ms ease-out 1500ms both;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-revealed='true'] .tg-noche-strike,
+  [data-revealed='true'] .tg-noche-solution {
+    animation-delay: 0s;
+  }
+}

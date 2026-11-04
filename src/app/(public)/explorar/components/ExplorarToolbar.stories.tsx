@@ -1,7 +1,11 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, screen, userEvent, waitFor, within } from 'storybook/test'
+import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test'
 import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
+import { ZONA_STORAGE_KEY } from '@/lib/zona-storage'
 import ExplorarToolbar from './ExplorarToolbar'
+
+/** La zona vive en localStorage y el browser de Storybook se comparte entre stories: arrancar y dejar limpio. */
+const clearZona = () => localStorage.removeItem(ZONA_STORAGE_KEY)
 
 const meta = {
   title: 'Player/Explorar/ExplorarToolbar',
@@ -11,6 +15,10 @@ const meta = {
     nextjs: { appDirectory: true, navigation: { pathname: '/explorar' } },
   },
   args: { total: 12, sort: 'name' },
+  beforeEach: () => {
+    clearZona()
+    return clearZona
+  },
 } satisfies Meta<typeof ExplorarToolbar>
 
 export default meta
@@ -106,6 +114,37 @@ export const OrdenarPorDistanciaConGeolocalizacion: Story = {
         'distance',
       )
       await expect(getRouter().push).toHaveBeenCalledWith(expect.stringContaining('sort=distance'))
+    } finally {
+      Object.defineProperty(navigator, 'geolocation', { value: original, configurable: true })
+    }
+  },
+}
+
+/** Con la ubicación ya guardada, "Más cercano" no la vuelve a pedir y manda coordenadas de ~1 km. */
+export const OrdenarPorDistanciaConZonaGuardada: Story = {
+  beforeEach: () => {
+    localStorage.setItem(ZONA_STORAGE_KEY, JSON.stringify({ lat: -34.57, lng: -59.1 }))
+  },
+  play: async ({ canvasElement }) => {
+    await waitFor(() =>
+      expect(screen.queryAllByText(/no soporta geolocalización/i)).toHaveLength(0),
+    )
+    const canvas = within(canvasElement)
+    const original = navigator.geolocation
+    const getCurrentPosition = fn()
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: { getCurrentPosition },
+    })
+    try {
+      await userEvent.selectOptions(
+        canvas.getByRole('combobox', { name: /ordenar por/i }),
+        'distance',
+      )
+      await expect(getCurrentPosition).not.toHaveBeenCalled()
+      await expect(getRouter().push).toHaveBeenCalledWith(
+        expect.stringMatching(/sort=distance.*lat=-34\.57.*lng=-59\.10/),
+      )
     } finally {
       Object.defineProperty(navigator, 'geolocation', { value: original, configurable: true })
     }

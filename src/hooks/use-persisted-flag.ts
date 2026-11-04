@@ -88,18 +88,22 @@ function readRaw(key: string): string | null {
 export function usePersistedString(
   key: string,
   serverValue: string | null,
-): readonly [string | null, (next: string) => void] {
+): readonly [string | null, (next: string | ((prev: string | null) => string)) => void] {
   const getSnapshot = useCallback(() => readRaw(key), [key])
 
   const value = useSyncExternalStore(subscribe, getSnapshot, () => serverValue)
 
+  // Acepta una función `(prev) => next` que lee el valor VIGENTE (no el del último render):
+  // dos escritores seguidos —o dos componentes que comparten la clave— no se pisan.
+  // Además mantiene el setter estable, así que se puede usar en deps de un efecto.
   const setValue = useCallback(
-    (next: string) => {
+    (next: string | ((prev: string | null) => string)) => {
+      const resolved = typeof next === 'function' ? next(readRaw(key)) : next
       try {
-        localStorage.setItem(key, next)
+        localStorage.setItem(key, resolved)
         memory.delete(key)
       } catch {
-        memory.set(key, next)
+        memory.set(key, resolved)
       }
       notifyAll()
     },

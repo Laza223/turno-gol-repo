@@ -291,8 +291,9 @@ export async function leaveMatchAction(matchId: string): Promise<ActionResult> {
 }
 
 /**
- * Arma el partido y va a la vista del organizador. `mode` (`full` | `rival`, lo que eligió en
- * "¿Qué armás?") es solo una pista de presentación para `?creado=`: no es una regla ni se valida.
+ * Arma el partido y va a la vista del organizador. `intent` (lo que eligió en "¿Qué necesitás?")
+ * decide el cupo y si sale al tablón: el WhatsApp viaja en el mismo form y se publica en la
+ * misma transacción.
  */
 export async function createMatchAction(
   _prev: RivalFormResult,
@@ -307,12 +308,12 @@ export async function createMatchAction(
     const bookings = await listUpcomingConfirmedBookings(g.playerId)
     const parsed = parseNewMatchForm(Object.fromEntries(formData), bookings)
     if (!parsed.ok) return invalid(parsed)
-    ;({ inviteCode } = await createMatch(g.playerId, parsed.draft))
+    ;({ inviteCode } = await createMatch(g.playerId, parsed.draft, parsed.board))
   } catch (err) {
     return failure(err)
   }
   revalidatePath('/rival/mis-partidos')
-  redirect(`/rival/p/${inviteCode}?creado=${formData.get('mode') === 'rival' ? 'rival' : '1'}`)
+  redirect(`/rival/p/${inviteCode}?creado=1`)
 }
 
 /** Cancela un partido propio (el service filtra por organizador). La vista se refresca sola. */

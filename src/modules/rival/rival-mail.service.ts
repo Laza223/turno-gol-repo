@@ -129,7 +129,7 @@ async function processJoinRequest(
         AND m.status = 'open'
         AND m.hidden_at IS NULL
         AND m.starts_at > ${asTs(now)}
-        AND (m.seeking IS DISTINCT FROM 'players' OR m.confirmed_count < m.capacity)
+        AND (m.seeking IS DISTINCT FROM 'players' OR m.confirmed_count + m.offline_count < m.capacity)
     `),
   )
   if (!r) return { ids: [] }
@@ -256,7 +256,7 @@ async function processAlertPublish(
         AND m.hidden_at IS NULL
         AND m.starts_at > ${asTs(now)}
         AND m.seeking = 'players'
-        AND m.confirmed_count < m.capacity
+        AND m.confirmed_count + m.offline_count < m.capacity
     `),
   )
   if (!m) return { ids: [] }

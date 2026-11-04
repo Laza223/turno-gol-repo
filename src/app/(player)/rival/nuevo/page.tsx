@@ -5,12 +5,17 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { buildMetadata } from '@/lib/seo/metadata'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import {
+  getBoardPublishPrefill,
   getRepeatPrefill,
   getRivalWelcomeState,
   listEligibleTenants,
   listUpcomingConfirmedBookings,
 } from '@/modules/rival/rival.service'
-import { resolveRepeatPrefill, resolveReservaPrefill } from '@/modules/rival/rival-form'
+import {
+  intentFromNecesito,
+  resolveRepeatPrefill,
+  resolveReservaPrefill,
+} from '@/modules/rival/rival-form'
 import { welcomeNeeds } from '@/modules/rival/rival-join-rule'
 import { artNowParts } from '@/shared/dates/art'
 import { acceptRivalWelcomeAction, createMatchAction } from '../actions'
@@ -21,24 +26,29 @@ import { loadWelcomePhoto } from '../welcome-photo'
 export function generateMetadata(): Metadata {
   return buildMetadata({
     title: 'Armar un partido · RIVAL',
-    description: 'Armá tu partido y pasale el link al grupo.',
+    description: 'Armá tu partido: decí qué necesitás y salí al tablón.',
     path: '/rival/nuevo',
     noIndex: true,
   })
 }
 
 export default async function NuevoPartidoPage(props: {
-  searchParams: Promise<{ reserva?: string; desde?: string }>
+  searchParams: Promise<{ reserva?: string; desde?: string; necesito?: string }>
 }) {
   if (!(await isRivalEnabled())) notFound()
-  const [{ reserva, desde }, user] = await Promise.all([props.searchParams, extractAuthUser()])
+  const [{ reserva, desde, necesito }, user] = await Promise.all([
+    props.searchParams,
+    extractAuthUser(),
+  ])
   if (!user || user.type !== 'player') {
     // El `next` conserva la reserva: volver del login cae en la misma pantalla precargada.
     const back = reserva
       ? `/rival/nuevo?reserva=${encodeURIComponent(reserva)}`
       : desde
         ? `/rival/nuevo?desde=${encodeURIComponent(desde)}`
-        : '/rival/nuevo'
+        : necesito
+          ? `/rival/nuevo?necesito=${encodeURIComponent(necesito)}`
+          : '/rival/nuevo'
     redirect(`/ingresar?next=${encodeURIComponent(back)}`)
   }
 
@@ -61,7 +71,12 @@ export default async function NuevoPartidoPage(props: {
           dismissHref="/rival/tablon"
         />
       ) : (
-        <NewMatchSection playerId={user.playerId} reserva={reserva} desde={desde} />
+        <NewMatchSection
+          playerId={user.playerId}
+          reserva={reserva}
+          desde={desde}
+          necesito={necesito}
+        />
       )}
     </div>
   )
@@ -71,16 +86,19 @@ async function NewMatchSection({
   playerId,
   reserva,
   desde,
+  necesito,
 }: {
   playerId: string
   reserva?: string
   desde?: string
+  necesito?: string
 }) {
-  const [tenants, bookings, source] = await Promise.all([
+  const [tenants, bookings, source, whatsapp] = await Promise.all([
     listEligibleTenants(),
     listUpcomingConfirmedBookings(playerId),
     // `?desde=` solo precarga un partido PROPIO (el service devuelve null si no lo es).
     desde ? getRepeatPrefill(playerId, desde) : null,
+    getBoardPublishPrefill(playerId),
   ])
   const now = artNowParts()
   // La reserva se resuelve contra las del JUGADOR de la sesión: un id ajeno se ignora sin error.
@@ -109,6 +127,8 @@ async function NewMatchSection({
       today={now.date}
       nowTime={now.time}
       action={createMatchAction}
+      initialIntent={intentFromNecesito(necesito)}
+      whatsappPrefill={whatsapp.whatsapp}
     />
   )
 }

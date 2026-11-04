@@ -34,6 +34,7 @@ export function BoardFields({
   idPrefix,
   allowRival = true,
   lockSeeking = false,
+  compact = false,
   seeking,
   onSeekingChange,
   position,
@@ -50,6 +51,8 @@ export function BoardFields({
   allowRival?: boolean
   /** `true` si lo que se busca ya está decidido (el equipo que armó "busca rival"): no se pregunta. */
   lockSeeking?: boolean
+  /** `true` si lo que se busca ya lo decidió el form de afuera: solo WhatsApp y casillas. */
+  compact?: boolean
   seeking: BoardSeeking
   onSeekingChange: (v: BoardSeeking) => void
   position: BoardPosition
@@ -88,24 +91,26 @@ export function BoardFields({
       <input type="hidden" name="seeking" value={seeking} />
       {seeking === 'players' && <input type="hidden" name="seekingPosition" value={position} />}
 
-      <div className="flex flex-col gap-1.5">
-        {choose && (
-          <>
-            <p className="text-base font-medium text-foreground">¿Qué buscás?</p>
-            <ChipGroup
-              label="Qué buscás"
-              options={seekingOptions}
-              value={seeking}
-              onChange={(v) => onSeekingChange(v === 'rival' ? 'rival' : 'players')}
-              alwaysWrap
-            />
-          </>
-        )}
-        <p className={HELP}>{SEEKING_HELP[seeking]}</p>
-        {err('seeking')}
-      </div>
+      {!compact && (
+        <div className="flex flex-col gap-1.5">
+          {choose && (
+            <>
+              <p className="text-base font-medium text-foreground">¿Qué buscás?</p>
+              <ChipGroup
+                label="Qué buscás"
+                options={seekingOptions}
+                value={seeking}
+                onChange={(v) => onSeekingChange(v === 'rival' ? 'rival' : 'players')}
+                alwaysWrap
+              />
+            </>
+          )}
+          <p className={HELP}>{SEEKING_HELP[seeking]}</p>
+          {err('seeking')}
+        </div>
+      )}
 
-      {seeking === 'players' && (
+      {!compact && seeking === 'players' && (
         <div className="flex flex-col gap-1.5">
           <p className="text-base font-medium text-foreground">Posición que buscás</p>
           <ChipGroup
@@ -147,6 +152,7 @@ export function BoardFields({
         </div>
 
         <RivalCheckbox
+          id={`${idPrefix}-consent`}
           name="whatsappConsent"
           checked={consent}
           onChange={onConsentChange}

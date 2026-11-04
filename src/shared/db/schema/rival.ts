@@ -55,6 +55,8 @@ export const rivalMatches = pgTable(
     hiddenAt: timestamp('hidden_at', { withTimezone: true, mode: 'date' }),
     /** Recuento de role='player' confirmed, mantenido por trigger. */
     confirmedCount: integer('confirmed_count').notNull().default(0),
+    /** Lugares cubiertos fuera de la app, sin el organizador (migr. 106). Un número, sin personas. */
+    offlineCount: integer('offline_count').notNull().default(0),
     filledAt: timestamp('filled_at', { withTimezone: true, mode: 'date' }),
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },

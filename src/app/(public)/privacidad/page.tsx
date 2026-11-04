@@ -14,7 +14,7 @@ export default function PrivacidadPage() {
           Política de Privacidad
         </h1>
         <p className="text-sm text-muted-foreground">
-          Última actualización: 20 de octubre de 2026.
+          Última actualización: 4 de noviembre de 2026.
         </p>
       </header>
 
@@ -148,6 +148,10 @@ export default function PrivacidadPage() {
           <li>
             <strong>Kapso</strong> (Estados Unidos): conexión con la API de WhatsApp de Meta para
             recibir y enviar los mensajes del asistente.
+          </li>
+          <li>
+            <strong>Groq</strong> (Estados Unidos): pasa a texto los audios que le mandás al
+            asistente de WhatsApp. Recibe solo el audio, sin tu número ni tu nombre.
           </li>
         </ul>
         <p>

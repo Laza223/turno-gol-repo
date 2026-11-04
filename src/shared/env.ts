@@ -79,6 +79,10 @@ function makeSchema(isProd: boolean) {
     KAPSO_API_KEY: z.string().min(1).optional(),
     KAPSO_WEBHOOK_SECRET: minLen(16, 'KAPSO_WEBHOOK_SECRET').optional(),
     ANTHROPIC_API_KEY: z.string().min(1).optional(),
+    // Respaldo de la transcripción de audios del bot (Whisper en Groq, plan
+    // gratis): sin ella, un audio que Kapso no transcribió se contesta pidiendo
+    // que lo escriban.
+    GROQ_API_KEY: z.string().min(1).optional(),
   })
 }
 

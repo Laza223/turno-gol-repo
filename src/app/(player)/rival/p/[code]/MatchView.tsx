@@ -32,8 +32,6 @@ type Props = {
   shareUrl: string
   /** Recién creado (`?creado=`): el aviso del organizador y su acción verde arriba, antes del plantel. */
   justCreated: boolean
-  /** Qué armó: `rival` ("Mi equipo busca rival") hace de "Publicar en el tablón" el paso que sigue. */
-  createdAs?: 'full' | 'rival'
   now: Date
   /** `wa.me/?text=…` de "Avisar al grupo", armado en el servidor. */
   shareHref: string
@@ -68,7 +66,7 @@ type Props = {
  * La vista del partido por link (`/rival/p/[code]`), según quién mira (spec §5.2, §5.3, §6):
  * sin sesión no hay personas; con sesión, nombre corto y foto de los confirmados; el organizador
  * ve además el banco, los pedidos y la ficha. Un solo verde por vista, y es el paso que sigue: "Voy"
- * para el invitado, "Avisar al grupo" (o "Publicar en el tablón" si su equipo busca rival) para el
+ * para el invitado, "Avisar al grupo" para el
  * organizador, que recién armado lo ve antes que el plantel.
  */
 export function MatchView({
@@ -78,7 +76,6 @@ export function MatchView({
   roster,
   shareUrl,
   justCreated,
-  createdAs = 'full',
   now,
   shareHref,
   welcome,
@@ -110,9 +107,8 @@ export function MatchView({
     canLeave,
     full,
     lifted,
-    primary,
     created,
-  } = deriveMatchView({ match, roster, now, justCreated, createdAs })
+  } = deriveMatchView({ match, roster, now, justCreated })
   // Cada fila ofrece lo suyo: el organizador decide y saca; cualquiera con sesión denuncia.
   const rowActions: RowActionProps | undefined = signedIn
     ? {
@@ -131,7 +127,6 @@ export function MatchView({
       open={open}
       match={match}
       roster={roster}
-      primary={primary}
       shareUrl={shareUrl}
       shareHref={shareHref}
       whatsappPrefill={whatsappPrefill}

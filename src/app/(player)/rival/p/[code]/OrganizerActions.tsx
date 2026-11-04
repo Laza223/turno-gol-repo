@@ -15,11 +15,11 @@ type CancelAction = (matchId: string) => Promise<ActionResult>
 type PublishAction = (prev: RivalFormResult, formData: FormData) => Promise<RivalFormResult>
 
 /**
- * Acciones del organizador. Un solo verde, el paso que sigue (spec §5.3): "Avisar al grupo" (un
- * `<a href>` que arma el servidor con el texto del estado), o "Publicar en el tablón" cuando el
- * partido recién armado es de un equipo que busca rival (`primary="publish"`). El resto es
- * con forma de botón (outline): "Copiar link"; "Cancelar el partido" queda fantasma en tono destructivo. `part` parte la lista cuando el partido está
- * recién armado: el paso que sigue arriba (`main`) y "Cancelar el partido" abajo (`cancel`).
+ * Acciones del organizador. Un solo verde, siempre "Avisar al grupo" (spec §5.3; un `<a href>` que
+ * arma el servidor con el texto del estado). Debajo, "Copiar link" como link de texto y el tablón
+ * (publicar o sacar); "Cancelar el partido" queda fantasma en tono destructivo. `part` parte la
+ * lista cuando el partido está recién armado: lo de arriba (`main`) y "Cancelar el partido" abajo
+ * del plantel (`cancel`).
  */
 export function OrganizerActions({
   matchId,
@@ -28,7 +28,6 @@ export function OrganizerActions({
   boardLabel,
   whatsappPrefill,
   canSeekRival,
-  primary = 'share',
   part = 'all',
   cancelAction,
   publishAction,
@@ -43,8 +42,6 @@ export function OrganizerActions({
   whatsappPrefill: string | null
   /** Ver `PublishToBoard`. */
   canSeekRival: boolean
-  /** Cuál de las dos es la acción verde. */
-  primary?: 'share' | 'publish'
   part?: 'all' | 'main' | 'cancel'
   cancelAction: CancelAction
   publishAction: PublishAction
@@ -73,7 +70,7 @@ export function OrganizerActions({
       target="_blank"
       rel="noopener noreferrer"
       className={
-        primary === 'share' && !publishOpen
+        !publishOpen
           ? RIVAL_ACTION
           : cn(buttonVariants({ variant: 'outline' }), RIVAL_GHOST, RIVAL_SECONDARY, 'w-full gap-2')
       }
@@ -87,7 +84,6 @@ export function OrganizerActions({
       boardLabel={boardLabel}
       whatsappPrefill={whatsappPrefill}
       canSeekRival={canSeekRival}
-      primary={primary === 'publish'}
       onOpenChange={setPublishOpen}
       publishAction={publishAction}
       unpublishAction={unpublishAction}
@@ -99,25 +95,14 @@ export function OrganizerActions({
 
   return (
     <div className="space-y-4">
-      {showMain &&
-        (primary === 'publish' ? (
-          <>
-            {board}
-            {share}
-          </>
-        ) : (
-          <>
-            {share}
-            {board}
-          </>
-        ))}
       {showMain && (
         <>
+          {share}
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             onClick={copy}
-            className={cn(RIVAL_GHOST, RIVAL_SECONDARY, 'w-full gap-2')}
+            className="min-h-11 w-full gap-2 text-sm text-muted-foreground underline underline-offset-4 focus-visible:ring-offset-background"
           >
             {copied ? (
               <>
@@ -137,6 +122,7 @@ export function OrganizerActions({
               No pudimos copiarlo solo. Copialo desde acá: {shareUrl}
             </p>
           )}
+          {board}
         </>
       )}
       {showCancel && (

@@ -1,26 +1,23 @@
 import type { RivalPublicMatch, RivalRosterEntry } from '@/modules/rival/rival.types'
-import { canSeekRival } from './organizer-rules'
-
-export type OrganizerPrimary = 'publish' | 'share'
 
 /** Lo que dice el aviso de "recién armado" arriba del partido. */
-function createdCopy(
-  primary: OrganizerPrimary,
-  seeking: RivalPublicMatch['seeking'],
-): { title: string; line: string } {
-  if (primary === 'publish') {
+function createdCopy(seeking: RivalPublicMatch['seeking']): { title: string; line: string } {
+  if (seeking === 'players') {
     return {
-      title: 'Partido armado',
-      line: 'Publicalo en el tablón para que un equipo rival te encuentre.',
+      title: 'Ya está en el tablón',
+      line: 'Pasale el link al grupo: los que vengan con vos confirman con un toque.',
     }
   }
-  if (seeking === null) {
+  if (seeking === 'rival') {
     return {
-      title: 'Partido armado',
-      line: 'Pasale el link al grupo: cada uno confirma con un toque.',
+      title: 'Ya está en el tablón',
+      line: 'Mientras tanto, pasale el link a tu equipo.',
     }
   }
-  return { title: 'Ya está en el tablón', line: 'Pasale el link al grupo.' }
+  return {
+    title: 'Partido armado',
+    line: 'Pasale el link al grupo: cada uno confirma con un toque.',
+  }
 }
 
 function canLeaveMatch(
@@ -38,13 +35,11 @@ export function deriveMatchView({
   roster,
   now,
   justCreated,
-  createdAs,
 }: {
   match: RivalPublicMatch
   roster: RivalRosterEntry[]
   now: Date
   justCreated: boolean
-  createdAs: 'full' | 'rival'
 }) {
   const canceled = match.status === 'canceled'
   const ended = !canceled && match.startsAt.getTime() <= now.getTime()
@@ -55,9 +50,6 @@ export function deriveMatchView({
   const canLeave = canLeaveMatch(open, match.isOrganizer, me)
   // Recién armado y del organizador: su acción sube sobre el plantel (el resto de las veces va al final).
   const lifted = justCreated && match.isOrganizer && open
-  const wantsPublish =
-    lifted && createdAs === 'rival' && match.seeking === null && canSeekRival(match, roster)
-  const primary: OrganizerPrimary = wantsPublish ? 'publish' : 'share'
   return {
     canceled,
     ended,
@@ -70,7 +62,6 @@ export function deriveMatchView({
     canLeave,
     full: match.confirmedCount >= match.capacity,
     lifted,
-    primary,
-    created: createdCopy(primary, match.seeking),
+    created: createdCopy(match.seeking),
   }
 }

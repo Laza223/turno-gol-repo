@@ -32,6 +32,13 @@ export function generateMetadata(): Metadata {
   })
 }
 
+/** A dónde vuelve el login: conserva la reserva, el partido a repetir o la intención ya elegida. */
+function loginBackPath(q: { reserva?: string; desde?: string; necesito?: string }): string {
+  const entry = (['reserva', 'desde', 'necesito'] as const).find((k) => q[k])
+  const value = entry ? q[entry] : undefined
+  return entry && value ? `/rival/nuevo?${entry}=${encodeURIComponent(value)}` : '/rival/nuevo'
+}
+
 export default async function NuevoPartidoPage(props: {
   searchParams: Promise<{ reserva?: string; desde?: string; necesito?: string }>
 }) {
@@ -41,15 +48,8 @@ export default async function NuevoPartidoPage(props: {
     extractAuthUser(),
   ])
   if (!user || user.type !== 'player') {
-    // El `next` conserva la reserva: volver del login cae en la misma pantalla precargada.
-    const back = reserva
-      ? `/rival/nuevo?reserva=${encodeURIComponent(reserva)}`
-      : desde
-        ? `/rival/nuevo?desde=${encodeURIComponent(desde)}`
-        : necesito
-          ? `/rival/nuevo?necesito=${encodeURIComponent(necesito)}`
-          : '/rival/nuevo'
-    redirect(`/ingresar?next=${encodeURIComponent(back)}`)
+    // El `next` conserva la precarga: volver del login cae en la misma pantalla.
+    redirect(`/ingresar?next=${encodeURIComponent(loginBackPath({ reserva, desde, necesito }))}`)
   }
 
   const welcome = await getRivalWelcomeState(user.playerId)

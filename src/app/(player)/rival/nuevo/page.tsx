@@ -58,7 +58,7 @@ export default async function NuevoPartidoPage(props: {
           defaultZone={welcome.zone}
           action={acceptRivalWelcomeAction}
           photo={needs.identity ? await loadWelcomePhoto(user.playerId) : undefined}
-          dismissHref="/rival/tablon"
+          dismissHref="/rival"
         />
       ) : (
         <NewMatchSection playerId={user.playerId} reserva={reserva} desde={desde} />

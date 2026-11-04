@@ -23,7 +23,7 @@ function SignedOutPrompt() {
     <p className="text-base text-muted-foreground">
       ¿Querés que te avisemos cuando haya partido?{' '}
       <Link
-        href={`/ingresar?next=${encodeURIComponent('/rival/tablon')}`}
+        href={`/ingresar?next=${encodeURIComponent('/rival')}`}
         className="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4"
       >
         Entrá para activar el aviso
@@ -124,7 +124,7 @@ function AlertButtons({
 /**
  * "Avisame cuando haya" del tablón vacío (y del complejo filtrado sin partidos): un mail por día
  * como mucho, con baja de un toque.
- * Acción secundaria (outline): el único verde de la vista es "Armar un partido". Si ya hay alerta
+ * Acción secundaria (outline): el único verde de la vista es "Me faltan jugadores". Si ya hay alerta
  * en el complejo, el mismo botón la actualiza (upsert) y aparece "Dejar de avisarme".
  */
 export function AlertOptIn({

@@ -60,12 +60,10 @@ export function useBottomNavVisible(): boolean {
 export function PlayerBottomNav() {
   const pathname = usePathname()
   const visible = useBottomNavVisible()
-  const { rivalEnabled, rivalWelcomed } = usePortalSession()
+  const { rivalEnabled } = usePortalSession()
   if (!visible) return null
   // Con RIVAL prendido, Rival va segundo: Explorar · Rival · Reservas · Cuenta.
-  // Quien ya aceptó la bienvenida entra directo al tablón; el resto, a la landing.
-  const rivalItem = { ...RIVAL_ITEM, href: rivalWelcomed ? '/rival/tablon' : RIVAL_ITEM.href }
-  const items = rivalEnabled ? [NAV_ITEMS[0]!, rivalItem, ...NAV_ITEMS.slice(1)] : NAV_ITEMS
+  const items = rivalEnabled ? [NAV_ITEMS[0]!, RIVAL_ITEM, ...NAV_ITEMS.slice(1)] : NAV_ITEMS
   return (
     <nav
       aria-label="Navegación del jugador"

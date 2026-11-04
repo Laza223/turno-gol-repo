@@ -23,8 +23,8 @@ export const dynamic = 'force-dynamic'
 //
 // `rivalEnabled` es el flag global de RIVAL (spec §12): viaja acá y no en el
 // layout para que las páginas públicas sigan estáticas. Si no se puede leer,
-// queda apagado: RIVAL no aparece por error. `rivalWelcomed` (aceptó la bienvenida vigente) decide
-// si el nav manda a `/rival/tablon` o a la landing; solo se lee con sesión de jugador y flag prendido.
+// queda apagado: RIVAL no aparece por error. `rivalWelcomed` (aceptó la bienvenida vigente) se lee solo con
+// sesión de jugador y flag prendido.
 //
 // Va acá y no en un endpoint aparte por tres motivos: la portada ya hace este
 // fetch en cada carga y uno nuevo duplicaría requests en la página de más

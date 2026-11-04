@@ -34,7 +34,7 @@ describe('robots()', () => {
     for (const route of ['/mis-reservas', '/perfil', '/configuracion', '/rival/']) {
       expect(disallow, `falta la ruta de jugador ${route}`).toContain(route)
     }
-    // `/rival` pelado es la landing (indexable) y, como prefijo, bloquearía un slug como `/rival-futbol`.
+    // `/rival` pelado es el tablón (indexable) y, como prefijo, bloquearía un slug como `/rival-futbol`.
     expect(disallow).not.toContain('/rival')
     expect(disallow).not.toContain('/rival$')
     const blocked = (path: string) =>

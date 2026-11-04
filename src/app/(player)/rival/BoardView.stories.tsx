@@ -58,7 +58,7 @@ const meta = {
   component: BoardView,
   parameters: {
     layout: 'fullscreen',
-    nextjs: { appDirectory: true, navigation: { pathname: '/rival/tablon' } },
+    nextjs: { appDirectory: true, navigation: { pathname: '/rival' } },
   },
   args: {
     items,
@@ -86,7 +86,7 @@ export const Default: Story = {
     await expect(canvas.getByRole('heading', { name: 'Hoy' })).toBeInTheDocument()
     await expect(canvas.getByRole('heading', { name: 'Mañana' })).toBeInTheDocument()
     await expect(canvas.getByRole('heading', { name: 'Próximos días' })).toBeInTheDocument()
-    await expect(canvas.getByRole('heading', { name: 'Sumate a un partido' })).toBeInTheDocument()
+    await expect(canvas.getByRole('heading', { level: 1, name: 'Partidos' })).toBeInTheDocument()
     await expect(canvas.getByText('Faltan 3')).toBeInTheDocument()
     await expect(canvas.getByText('Falta 1')).toBeInTheDocument()
     await expect(canvas.getByText('Se busca arquero')).toBeInTheDocument()
@@ -109,27 +109,29 @@ export const Default: Story = {
   },
 }
 
-/** Sin sesión, "Armar un partido" abre el ingreso de RIVAL (no manda a /ingresar). */
+/** Sin sesión, "Me faltan jugadores" abre el ingreso de RIVAL (no manda a /ingresar). */
 export const SinSesion: Story = {
   args: { alert: { ...meta.args.alert, signedIn: false } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.queryByRole('link', { name: 'Armar un partido' })).toBeNull()
-    await userEvent.click(canvas.getByRole('button', { name: 'Armar un partido' }))
+    await expect(canvas.queryByRole('link', { name: 'Me faltan jugadores' })).toBeNull()
+    await userEvent.click(canvas.getByRole('button', { name: 'Me faltan jugadores' }))
     const dialog = await screen.findByRole('dialog')
-    await expect(dialog.querySelector('input[name="next"]')).toHaveValue('/rival/nuevo')
+    await expect(dialog.querySelector('input[name="next"]')).toHaveValue(
+      '/rival/nuevo?necesito=jugadores',
+    )
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   },
 }
 
 export const ConVerMas: Story = {
-  args: { nextHref: '/rival/tablon?despues=2026-03-18T22%3A30%3A00.000Z_d' },
+  args: { nextHref: '/rival?despues=2026-03-18T22%3A30%3A00.000Z_d' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('link', { name: 'Ver más partidos' })).toHaveAttribute(
       'href',
-      '/rival/tablon?despues=2026-03-18T22%3A30%3A00.000Z_d',
+      '/rival?despues=2026-03-18T22%3A30%3A00.000Z_d',
     )
   },
 }
@@ -154,8 +156,9 @@ export const Vacio: Story = {
       canvas.getByRole('heading', { name: 'Todavía no hay partidos publicados.' }),
     ).toBeInTheDocument()
     await expect(canvas.getByText(/Mientras tanto, armá el tuyo/)).toBeInTheDocument()
-    // Un solo camino para armar: el verde de arriba.
-    await expect(canvas.getAllByRole('link', { name: 'Armar un partido' })).toHaveLength(1)
+    // Las dos entradas de intención de arriba son los únicos caminos para armar.
+    await expect(canvas.getAllByRole('link', { name: 'Me faltan jugadores' })).toHaveLength(1)
+    await expect(canvas.getAllByRole('link', { name: 'Busco rival' })).toHaveLength(1)
   },
 }
 

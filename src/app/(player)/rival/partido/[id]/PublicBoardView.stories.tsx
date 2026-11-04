@@ -101,7 +101,7 @@ export const BuscaRival: Story = {
     // Un solo titular: con el equipo completo todavía no hay rival, no se juega.
     await expect(canvas.getAllByText('Busca rival')).toHaveLength(1)
     await expect(canvas.queryByText(/Se juega/)).toBeNull()
-    await expect(canvas.getByText('5 de 5 confirmados')).toBeInTheDocument()
+    await expect(canvas.getByText('Ya son 5 de 5')).toBeInTheDocument()
     // Quien pide es el capitán de otro equipo.
     await expect(
       canvas.getByRole('button', { name: 'Pedir jugar con mi equipo' }),

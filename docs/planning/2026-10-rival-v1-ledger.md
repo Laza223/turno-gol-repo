@@ -19,7 +19,7 @@ Es el esfuerzo de [`docs/decisions/2026-10-22-rival-v1.md`](../decisions/2026-10
 | Critique | Los 7 comandos de impeccable sobre todo RIVAL del jugador, con la bienvenida en dos momentos y el tablón después de crear ([decisión 2026-10-28](../decisions/2026-10-28-rival-bienvenida-y-tablon-despues-de-crear.md)) | #517 | Mergeado |
 | Simple 0 | Decisión [2026-11-03](../decisions/2026-11-03-rival-simple-sin-landing.md): sin landing, Armar por intención y "ya somos X"; enmiendas a `landing.md`, 10-22, 10-28 y 11-01 | — | En curso |
 | Simple 1 | `/rival` es el tablón con dos entradas de intención; `/rival/tablon` redirige; se borran `_landing/` y `rival-landing-status.ts`; GSAP sale si queda sin uso; limpiar `DESIGN.md` (oro de trofeo, fuente de la landing, el Do del movimiento largo) | — | Pendiente |
-| Simple 2 | Migración `offline_count` (cupo, banco, `filled_at` y tablón cuentan `confirmed + offline`) y Armar empezando por "¿Qué necesitás?", publicando al crear | — | Pendiente |
+| Simple 2 | Migración 106 `offline_count` (sin contar al organizador; cupo, banco, `filled_at` y tablón cuentan `confirmed + offline`) y Armar empezando por "¿Qué necesitás?", publicando al crear | #565 | En revisión |
 | Simple 3 | Vista del partido con una acción verde por estado y "Faltan N · Ya son X de Y" | — | Pendiente (después de Simple 2) |
 
 ## Delegaciones

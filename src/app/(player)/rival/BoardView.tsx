@@ -71,7 +71,7 @@ function TenantFilter({
 
 /** Nombre accesible de la tarjeta: el tipo, el complejo, cuándo, qué partido es y el cupo (la tira de camisetas es decorativa). */
 function cupoLabel(item: RivalBoardItem): string {
-  return `${Math.min(item.confirmedCount, item.capacity)} de ${item.capacity} confirmados`
+  return `Ya son ${Math.min(item.confirmedCount, item.capacity)} de ${item.capacity}`
 }
 
 /**

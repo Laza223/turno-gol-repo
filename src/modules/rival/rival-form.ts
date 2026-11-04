@@ -35,12 +35,34 @@ export type RivalFormResult =
       code?: string
     }
 
+/** Qué necesita el que arma: lo que decide capacidad, cupo de fuera de la app y si sale al tablón. */
+const NEW_MATCH_INTENTS = ['players', 'rival', 'group'] as const
+export type NewMatchIntent = (typeof NEW_MATCH_INTENTS)[number]
+
+/** `?necesito=jugadores|rival` -> el paso 1 preseleccionado. Cualquier otro valor se ignora. */
+export function intentFromNecesito(necesito: string | undefined): NewMatchIntent | null {
+  if (necesito === 'jugadores') return 'players'
+  if (necesito === 'rival') return 'rival'
+  return null
+}
+
 export type NewMatchFormResult =
-  | { ok: true; draft: RivalMatchDraft }
+  | { ok: true; draft: RivalMatchDraft; board: RivalBoardDraft | null }
   | { ok: false; error: string; field?: string; fieldErrors: RivalFieldErrors }
 
 /** Orden del form de armar: de él sale el primer error (`field`/`error`). */
-const FIELD_ORDER = ['tenantId', 'startsAt', 'format', 'capacity', 'level', 'courtDeclared']
+const FIELD_ORDER = [
+  'intent',
+  'missing',
+  'tenantId',
+  'startsAt',
+  'format',
+  'capacity',
+  'level',
+  'courtDeclared',
+  'whatsapp',
+  'whatsappConsent',
+]
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const TIME_RE = /^\d{2}:\d{2}$/
@@ -113,9 +135,36 @@ export function parseBoardForm(raw: Record<string, unknown>): BoardFormResult {
 }
 
 /**
- * Campos crudos del form (día y hora en ART) → borrador validado. La reserva se
- * vincula SOLO si es del organizador (`bookings`), del mismo complejo y a la misma
- * hora: el cliente no manda `bookingId`, así un id ajeno no existe como camino.
+ * Lo que sale del paso 1 ("¿Qué necesitás?"): cupo y lugares de fuera de la app.
+ * - Me faltan jugadores: juegan formato x 2; `offlineCount` = lugares ya cubiertos sin contar al
+ *   organizador (que entra solo como confirmado): capacidad - faltan - 1.
+ * - Busco rival: el equipo está completo (cupo = formato; el organizador y el resto, afuera).
+ * - Solo para mi grupo: como siempre, sin lugares de fuera de la app.
+ */
+function intentCapacity(
+  intent: NewMatchIntent | null,
+  raw: Record<string, unknown>,
+): { capacity: string | undefined; offlineCount: number; error?: string } {
+  const format = Number(text(raw.format))
+  const formatOk = Number.isInteger(format) && format >= 4 && format <= 11
+  const typed = text(raw.capacity) === '' ? undefined : text(raw.capacity)
+  if (!formatOk || intent === null || intent === 'group') {
+    return { capacity: typed, offlineCount: 0 }
+  }
+  if (intent === 'rival') return { capacity: String(format), offlineCount: format - 1 }
+  const capacity = format * 2
+  const missing = Number(text(raw.missing))
+  if (!Number.isInteger(missing) || missing < 1 || missing >= capacity) {
+    return { capacity: String(capacity), offlineCount: 0, error: 'Elegí cuántos te faltan.' }
+  }
+  return { capacity: String(capacity), offlineCount: capacity - missing - 1 }
+}
+
+/**
+ * Campos crudos del form (día y hora en ART) -> borrador validado, más la publicación si la
+ * intención sale al tablón. La reserva se vincula SOLO si es del organizador (`bookings`), del
+ * mismo complejo y a la misma hora: el cliente no manda `bookingId`, así un id ajeno no existe
+ * como camino.
  */
 export function parseNewMatchForm(
   raw: Record<string, unknown>,
@@ -125,6 +174,8 @@ export function parseNewMatchForm(
   const time = text(raw.time)
   const startsAt = DATE_RE.test(date) && TIME_RE.test(time) ? artInstantOf(date, time) : null
   const tenantId = text(raw.tenantId)
+  const intent = NEW_MATCH_INTENTS.find((i) => i === text(raw.intent)) ?? null
+  const slots = intentCapacity(intent, raw)
 
   const booking =
     startsAt && !Number.isNaN(startsAt.getTime())
@@ -135,19 +186,39 @@ export function parseNewMatchForm(
     tenantId,
     startsAt: startsAt ?? '',
     format: text(raw.format),
-    capacity: text(raw.capacity) === '' ? undefined : text(raw.capacity),
+    capacity: slots.capacity,
     level: text(raw.level),
     ...(booking ? { bookingId: booking.id } : {}),
     courtDeclared: !booking && ['on', 'true'].includes(text(raw.courtDeclared)),
+    offlineCount: slots.offlineCount,
   })
-  if (parsed.success) return { ok: true, draft: parsed.data }
 
-  const fieldErrors = collectFieldErrors(parsed.error.issues)
+  const fieldErrors: RivalFieldErrors = parsed.success
+    ? {}
+    : collectFieldErrors(parsed.error.issues)
+  if (intent === null) fieldErrors.intent = 'Elegí qué necesitás.'
+  if (slots.error) fieldErrors.missing ??= slots.error
   if (time === '') fieldErrors.startsAt = 'Elegí la hora.'
   // El superRefine del objeto no corre si falla otro campo: la cancha se chequea acá para que
   // el error de todos los campos llegue en un solo envío.
   if (!booking && !['on', 'true'].includes(text(raw.courtDeclared))) {
     fieldErrors.courtDeclared ??= COURT_REQUIRED_MESSAGE
+  }
+
+  // Me faltan jugadores y Busco rival salen al tablón al crear: el WhatsApp viaja en el mismo form.
+  let board: RivalBoardDraft | null = null
+  if (intent === 'players' || intent === 'rival') {
+    const boardParsed = parseBoardForm({
+      ...raw,
+      seeking: intent,
+      seekingPosition: ['on', 'true'].includes(text(raw.seekingGoalkeeper)) ? 'goalkeeper' : 'any',
+    })
+    if (boardParsed.ok) board = boardParsed.board
+    else Object.assign(fieldErrors, { ...boardParsed.fieldErrors, ...fieldErrors })
+  }
+
+  if (parsed.success && Object.keys(fieldErrors).length === 0) {
+    return { ok: true, draft: parsed.data, board }
   }
   const first = firstFieldError(fieldErrors, FIELD_ORDER)
   return {

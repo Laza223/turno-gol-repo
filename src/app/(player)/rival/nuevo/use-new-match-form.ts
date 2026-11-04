@@ -3,6 +3,7 @@ import { unstable_rethrow } from 'next/navigation'
 import { addDays } from '@/shared/dates/art'
 import { artInstantOf } from '@/modules/rival/rival-display'
 import { rivalHourOptions } from '@/modules/rival/rival-hours'
+import type { NewMatchIntent } from '@/modules/rival/rival-form'
 import {
   FIELD_IDS,
   FIELD_ORDER,
@@ -12,7 +13,6 @@ import {
   reportedErrors,
   type CreateAction,
   type Field,
-  type Mode,
 } from './new-match-form'
 import { useFieldErrors } from '../use-field-errors'
 import type { NewMatchFormProps } from './NewMatchForm'
@@ -98,7 +98,6 @@ function useMatchFields({
   )
   const [level, setLevel] = useState<string>(repeat?.level ?? 'parejo')
   const [courtDeclared, setCourtDeclared] = useState(false)
-  const [mode, setMode] = useState<Mode>('full')
   const [capacityOpen, setCapacityOpen] = useState(false)
   return {
     initial,
@@ -116,10 +115,32 @@ function useMatchFields({
     setLevel,
     courtDeclared,
     setCourtDeclared,
-    mode,
-    setMode,
     capacityOpen,
     setCapacityOpen,
+  }
+}
+
+/** Paso 1 ("¿Qué necesitás?") y el WhatsApp que viaja con él cuando la intención sale al tablón. */
+function useIntentFields(initialIntent: NewMatchIntent | null, whatsappPrefill: string | null) {
+  const [intent, setIntent] = useState<NewMatchIntent | null>(initialIntent)
+  const [missing, setMissing] = useState(1)
+  const [goalkeeper, setGoalkeeper] = useState(false)
+  const [whatsapp, setWhatsapp] = useState(whatsappPrefill ?? '')
+  const [consent, setConsent] = useState(false)
+  const [savePhone, setSavePhone] = useState(false)
+  return {
+    intent,
+    setIntent,
+    missing,
+    setMissing,
+    goalkeeper,
+    setGoalkeeper,
+    whatsapp,
+    setWhatsapp,
+    consent,
+    setConsent,
+    savePhone,
+    setSavePhone,
   }
 }
 
@@ -132,6 +153,8 @@ export function useNewMatchForm({
   today,
   nowTime,
   action,
+  initialIntent = null,
+  whatsappPrefill = null,
 }: NewMatchFormProps) {
   const [state, formAction, pending] = useActionState(useGuardedAction(action), INITIAL)
   const {
@@ -150,16 +173,26 @@ export function useNewMatchForm({
     setLevel,
     courtDeclared,
     setCourtDeclared,
-    mode,
-    setMode,
     capacityOpen,
     setCapacityOpen,
   } = useMatchFields({ tenants, prefill, repeat, today, nowTime })
+  const intentFields = useIntentFields(initialIntent, whatsappPrefill)
+  const { intent } = intentFields
 
   const locked = prefill !== null
   // Con un equipo que busca rival, el cupo es el formato: tu equipo, sin contar al rival.
-  const teamOnly = mode === 'rival'
-  const effectiveCapacity = teamOnly ? format : (capacity ?? format * 2)
+  const teamOnly = intent === 'rival'
+  // Me faltan jugadores: juegan formato x 2 y faltan entre 1 y todos menos vos. Solo "Solo para mi
+  // grupo" deja cambiar cuántos juegan.
+  const effectiveCapacity =
+    intent === 'group' ? (capacity ?? format * 2) : teamOnly ? format : format * 2
+  const maxMissing = format * 2 - 1
+  const missing = Math.min(intentFields.missing, maxMissing)
+  // El WhatsApp sale con el partido cuando la intención va al tablón.
+  const publishes = intent === 'players' || intent === 'rival'
+  // Guardar solo tiene sentido con un número que la cuenta todavía no tiene.
+  const typed = intentFields.whatsapp.trim()
+  const offerSave = typed !== '' && typed !== (whatsappPrefill ?? '').trim()
   const days = Array.from({ length: 8 }, (_, i) => addDays(today, i))
   const tenant = tenants.find((t) => t.id === tenantId)
   const hours = rivalHourOptions({
@@ -219,8 +252,11 @@ export function useNewMatchForm({
     setLevel,
     courtDeclared,
     setCourtDeclared,
-    mode,
-    setMode,
+    ...intentFields,
+    missing,
+    maxMissing,
+    publishes,
+    offerSave,
     showStamp,
     reported,
     fe,

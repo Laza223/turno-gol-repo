@@ -104,7 +104,7 @@ export const Default: Story = {
     await expect(canvas.getByText('Miércoles 18')).toBeInTheDocument()
     // El cupo va en el nombre accesible (la tira de camisetas es decorativa).
     await expect(
-      canvas.getByRole('link', { name: /Faltan 3.*El Vagón.*7 de 10 confirmados/ }),
+      canvas.getByRole('link', { name: /Faltan 3.*El Vagón.*Ya son 7 de 10/ }),
     ).toBeInTheDocument()
   },
 }

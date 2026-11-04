@@ -29,7 +29,10 @@ const base = {
   capacity: '',
   level: 'parejo',
   courtDeclared: 'on',
+  intent: 'group',
 }
+
+const WA = { whatsapp: '11 5555-1234', whatsappConsent: 'on' }
 
 describe('parseNewMatchForm', () => {
   it('arma el borrador: hora ART guardada como instante UTC y cupo = formato x 2', () => {
@@ -40,16 +43,81 @@ describe('parseNewMatchForm', () => {
     expect(r.draft.capacity).toBe(10)
     expect(r.draft.bookingId).toBeNull()
     expect(r.draft.courtDeclared).toBe(true)
-    expect(r.draft).not.toHaveProperty('board')
+    expect(r.draft.offlineCount).toBe(0)
+    expect(r.board).toBeNull()
   })
 
-  it('los campos del tablón no entran al borrador: se publica después, desde la vista del partido', () => {
+  it('Solo para mi grupo no publica: el WhatsApp suelto se ignora', () => {
     const r = parseNewMatchForm(
       { ...base, seeking: 'rival', whatsapp: '11 5555-1234', whatsappConsent: 'on' },
       [],
     )
     expect(r.ok).toBe(true)
-    if (r.ok) expect(r.draft).not.toHaveProperty('board')
+    if (r.ok) expect(r.board).toBeNull()
+  })
+
+  it('Me faltan jugadores: juegan formato x 2, el resto cubierto va como número y sale al tablón', () => {
+    const r = parseNewMatchForm({ ...base, intent: 'players', missing: '3', ...WA }, [])
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    // 10 lugares, faltan 3, el organizador es 1 y ya cuenta: 6 cubiertos fuera de la app.
+    expect(r.draft).toMatchObject({ capacity: 10, offlineCount: 6 })
+    expect(r.board).toEqual({
+      seeking: 'players',
+      seekingPosition: 'any',
+      whatsappDigits: '5491155551234',
+      savePhone: false,
+    })
+  })
+
+  it('Me faltan jugadores ignora un capacity suelto y "Se busca arquero" pide arquero', () => {
+    const r = parseNewMatchForm(
+      { ...base, intent: 'players', missing: '1', capacity: '4', seekingGoalkeeper: 'on', ...WA },
+      [],
+    )
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.draft).toMatchObject({ capacity: 10, offlineCount: 8 })
+      expect(r.board?.seekingPosition).toBe('goalkeeper')
+    }
+  })
+
+  it('cuántos faltan va de 1 a todos menos el organizador', () => {
+    for (const missing of ['', '0', '10', '-1', 'x', '2.5']) {
+      expect(parseNewMatchForm({ ...base, intent: 'players', missing, ...WA }, [])).toMatchObject({
+        ok: false,
+        field: 'missing',
+      })
+    }
+    expect(parseNewMatchForm({ ...base, intent: 'players', missing: '9', ...WA }, []).ok).toBe(true)
+  })
+
+  it('Busco rival: el cupo es el formato, el equipo está completo y sale como "rival"', () => {
+    const r = parseNewMatchForm({ ...base, intent: 'rival', ...WA, savePhone: 'on' }, [])
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    expect(r.draft).toMatchObject({ capacity: 5, offlineCount: 4 })
+    expect(r.board).toMatchObject({ seeking: 'rival', seekingPosition: null, savePhone: true })
+  })
+
+  it('las intenciones que publican piden WhatsApp y consentimiento en el mismo envío', () => {
+    const r = parseNewMatchForm({ ...base, intent: 'rival' }, [])
+    expect(r).toMatchObject({
+      ok: false,
+      field: 'whatsapp',
+      fieldErrors: {
+        whatsapp: 'Ingresá tu WhatsApp.',
+        whatsappConsent: 'Marcá la casilla para publicar: tu WhatsApp lo ve solo quien aceptes.',
+      },
+    })
+  })
+
+  it('sin elegir qué necesita, el primer error es el paso 1', () => {
+    expect(parseNewMatchForm({ ...base, intent: '' }, [])).toMatchObject({
+      ok: false,
+      field: 'intent',
+      error: 'Elegí qué necesitás.',
+    })
   })
 
   it('sin reserva que coincida, "Ya tengo la cancha" es obligatoria', () => {
@@ -66,7 +134,15 @@ describe('parseNewMatchForm', () => {
 
   it('un envío vacío informa todos los errores juntos, con el primero según el orden del form', () => {
     const r = parseNewMatchForm(
-      { tenantId: '', date: '2026-10-24', time: '', format: '5', level: '', courtDeclared: '' },
+      {
+        tenantId: '',
+        date: '2026-10-24',
+        time: '',
+        format: '5',
+        level: '',
+        courtDeclared: '',
+        intent: 'group',
+      },
       [],
     )
     expect(r).toMatchObject({

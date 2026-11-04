@@ -397,7 +397,7 @@ export const Vencido: Story = {
     await expect(canvas.getByText('Jugado')).toBeInTheDocument()
     // Un partido jugado no dice cuántos faltan.
     await expect(canvas.queryByText(/^Faltan/)).toBeNull()
-    await expect(canvas.getByText('7 de 10 confirmados')).toBeInTheDocument()
+    await expect(canvas.getByText('Ya son 7 de 10')).toBeInTheDocument()
     // Sin acciones: no se copia ni se cancela un partido que ya se jugó; se repite.
     await expect(canvas.queryByRole('button')).toBeNull()
     await expect(canvas.queryByRole('link', { name: 'Avisar al grupo' })).toBeNull()

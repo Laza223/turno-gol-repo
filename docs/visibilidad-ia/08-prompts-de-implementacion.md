@@ -46,6 +46,8 @@ Al terminar, decile a Lázaro en 5 líneas qué dio la línea base y qué clics 
 
 ## V1 — Técnico rápido, hotfix de claims, analítica y registro de decisiones
 
+> **Reemplazada el 2026-11-03 por V1a y V1b en `11-prompts-v1-con-auditoria.md`** (suma la auditoría del plugin y las respuestas del dueño). Queda acá como referencia.
+
 ```text
 Arrancá en Plan Mode. Trabajá en un worktree propio.
 

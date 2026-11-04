@@ -7,7 +7,6 @@ import type { ActionResult } from '@/shared/types/action-result'
 import type { RivalFormResult } from '../../actions'
 import { CanceledCard } from '../../MatchBits'
 import { RIVAL_ACTION } from '../../rival-classes'
-import type { OrganizerPrimary } from './match-view-state'
 import { canSeekRival } from './organizer-rules'
 import { OrganizerActions } from './OrganizerActions'
 import { myStatusLine, PeopleSection, type RowActionProps } from './People'
@@ -65,7 +64,6 @@ export function OrganizerPart({
   open,
   match,
   roster,
-  primary,
   shareUrl,
   shareHref,
   whatsappPrefill,
@@ -77,7 +75,6 @@ export function OrganizerPart({
   open: boolean
   match: RivalPublicMatch
   roster: RivalRosterEntry[]
-  primary: OrganizerPrimary
   shareUrl: string
   shareHref: string
   whatsappPrefill: string | null
@@ -95,7 +92,6 @@ export function OrganizerPart({
       boardLabel={match.seeking === null ? null : matchTypeLabel(match)}
       whatsappPrefill={whatsappPrefill}
       canSeekRival={canSeekRival(match, roster)}
-      primary={primary}
       cancelAction={cancelAction}
       publishAction={publishAction}
       unpublishAction={unpublishAction}

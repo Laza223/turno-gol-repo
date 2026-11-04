@@ -40,9 +40,7 @@ const FIELD_ERROR = 'text-[13px] leading-5 text-red-700 dark:text-red-300'
  * form en el lugar. Un partido publicado y uno sin publicar son dos ramas: la page vuelve a leer el
  * estado al terminar la action y el componente cambia de rama solo.
  *
- * `primary`: el partido recién armado de "Mi equipo busca rival". Publicar es ahí el paso que sigue
- * y el único verde de la vista (trigger y envío sólidos, sin preguntar qué busca); sin `primary` el
- * verde es "Avisar al grupo"; con el form abierto, en cambio, "Publicar" es la acción primaria
+ * El verde de la vista es "Avisar al grupo"; con el form abierto, en cambio, "Publicar" es la acción primaria
  * (`onOpenChange` avisa para bajar "Avisar al grupo" a secundaria).
  */
 export function PublishToBoard({
@@ -50,7 +48,6 @@ export function PublishToBoard({
   boardLabel,
   whatsappPrefill,
   canSeekRival,
-  primary = false,
   onOpenChange,
   publishAction,
   unpublishAction,
@@ -61,7 +58,6 @@ export function PublishToBoard({
   whatsappPrefill: string | null
   /** "Buscamos rival" solo con cupo = formato y sin capitán rival confirmado (spec §3). */
   canSeekRival: boolean
-  primary?: boolean
   /** Se llama al abrir y al cerrar el form de publicar. */
   onOpenChange?: (open: boolean) => void
   publishAction: PublishAction
@@ -88,7 +84,6 @@ export function PublishToBoard({
       matchId={matchId}
       whatsappPrefill={whatsappPrefill}
       canSeekRival={canSeekRival}
-      primary={primary}
       onOpenChange={onOpenChange}
       action={publishAction}
     />
@@ -170,14 +165,12 @@ function Publish({
   matchId,
   whatsappPrefill,
   canSeekRival,
-  primary,
   onOpenChange,
   action,
 }: {
   matchId: string
   whatsappPrefill: string | null
   canSeekRival: boolean
-  primary: boolean
   onOpenChange?: (open: boolean) => void
   action: PublishAction
 }) {
@@ -219,7 +212,7 @@ function Publish({
     onOpenChange?.(next)
   }
   const [state, formAction, pending] = useActionState(guarded, INITIAL)
-  const [seeking, setSeeking] = useState<BoardSeeking>(primary ? 'rival' : 'players')
+  const [seeking, setSeeking] = useState<BoardSeeking>('players')
   const [position, setPosition] = useState<BoardPosition>('any')
   const [whatsapp, setWhatsapp] = useState(whatsappPrefill ?? '')
   const [consent, setConsent] = useState(false)
@@ -228,26 +221,15 @@ function Publish({
   if (!open) {
     return (
       <div className="space-y-2">
-        {primary ? (
-          <Button
-            ref={triggerRef}
-            type="button"
-            onClick={() => toggle(true)}
-            className={PORTAL_BUTTON}
-          >
-            Publicar en el tablón
-          </Button>
-        ) : (
-          <Button
-            ref={triggerRef}
-            type="button"
-            variant="outline"
-            onClick={() => toggle(true)}
-            className={cn(RIVAL_GHOST, RIVAL_SECONDARY, 'w-full')}
-          >
-            Publicar en el tablón
-          </Button>
-        )}
+        <Button
+          ref={triggerRef}
+          type="button"
+          variant="outline"
+          onClick={() => toggle(true)}
+          className={cn(RIVAL_GHOST, RIVAL_SECONDARY, 'w-full')}
+        >
+          Publicar en el tablón
+        </Button>
       </div>
     )
   }
@@ -280,7 +262,6 @@ function Publish({
       <BoardFields
         idPrefix="publicar"
         allowRival={canSeekRival}
-        lockSeeking={primary}
         seeking={seeking}
         onSeekingChange={setSeeking}
         position={position}

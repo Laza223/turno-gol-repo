@@ -70,23 +70,6 @@ describe('PublishToBoard: "Buscamos rival" solo si se puede', () => {
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '11 5555 1234' } })
     expect(screen.getByLabelText('Guardar este número en mi cuenta')).toBeTruthy()
   })
-  it('recién armado "busca rival" (primary): publica sin preguntar qué busca', () => {
-    render(
-      <PublishToBoard
-        matchId="m1"
-        boardLabel={null}
-        whatsappPrefill={null}
-        canSeekRival
-        primary
-        publishAction={async () => ({ success: true })}
-        unpublishAction={ok}
-      />,
-    )
-    fireEvent.click(screen.getByRole('button', { name: 'Publicar en el tablón' }))
-    expect(screen.queryByText('Buscamos jugadores')).toBeNull()
-    expect(screen.getByText('Aparece en el tablón como "Busca rival".')).toBeTruthy()
-    expect(screen.queryByText('Cualquier posición')).toBeNull()
-  })
 })
 
 describe('PublishToBoard: un corte de red no rompe la vista', () => {

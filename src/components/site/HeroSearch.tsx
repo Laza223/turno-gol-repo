@@ -1,11 +1,13 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { CalendarDays, ChevronDown, Clock, MapPin, Search } from 'lucide-react'
+import { useMemo, useState, type FormEvent } from 'react'
+import { CalendarDays, ChevronDown, Clock, LocateFixed, MapPin, Search } from 'lucide-react'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import { useClientSnapshot } from '@/hooks/use-client-value'
-import { useNearestCity } from '@/hooks/use-nearest-city'
+import { useNearestCity, type NearestCityState } from '@/hooks/use-nearest-city'
+import { useSavedZona } from '@/hooks/use-saved-zona'
+import { markZonaApplied, type SavedZona } from '@/lib/zona-storage'
 import { addDays } from '@/shared/dates/art'
 import { todayART } from '@/shared/time/art-date'
 import { capitalizeFirst, formatDayHeader } from '@/lib/format'
@@ -51,6 +53,29 @@ function dayLabel(date: string, today: string): string {
   return capitalizeFirst(formatDayHeader(date))
 }
 
+/** Aviso de debajo del campo Localidad según cómo salió la ubicación (vacío = nada que decir). */
+function geoStatusMessage(status: NearestCityState['status'], usingZona: boolean): string {
+  if (status === 'denied') {
+    return 'No pudimos acceder a tu ubicación. Elegí tu localidad manualmente.'
+  }
+  if (usingZona) return 'Tu zona guardada. Cambiala cuando quieras.'
+  if (status === 'error') return 'No pudimos ubicarte. Elegí tu localidad manualmente.'
+  if (status === 'no_results') return 'No hay canchas cerca tuyo todavía. Elegí tu localidad.'
+  return ''
+}
+
+/** La opción de la lista que corresponde a la zona guardada (primero ciudad+provincia, luego solo ciudad). */
+function findZonaOption(
+  options: ComboboxOption[],
+  zona: SavedZona | null,
+): ComboboxOption | undefined {
+  if (!zona?.city) return undefined
+  return (
+    options.find((o) => o.value === `${zona.city}||${zona.province ?? ''}`) ??
+    options.find((o) => o.value === zona.city || o.value.startsWith(`${zona.city}||`))
+  )
+}
+
 /**
  * Buscador protagonista del hero (estilo ATC). Recolecta Localidad + Fecha + Hora y
  * redirige a /explorar con los filtros como query params. Solo fútbol, así que no hay
@@ -58,8 +83,9 @@ function dayLabel(date: string, today: string): string {
  * hoy y los próximos 6 (lo que un complejo deja reservar por defecto); la hora se reenvía
  * para el filtrado por disponibilidad (en /explorar).
  *
- * La localidad se pre-llena con geolocalización (ciudad del complejo más cercano,
- * datos propios — sin geocoding externo) solo mientras el usuario no toque el campo.
+ * La localidad sale de la zona guardada en el dispositivo (`useSavedZona`): la primera vez se
+ * consigue con el botón "Usar mi ubicación" (ciudad del complejo más cercano, datos propios —
+ * sin geocoding externo) o eligiéndola a mano, y de ahí en más no se vuelve a pedir nada.
  */
 export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
   const router = useRouter()
@@ -71,45 +97,53 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
   // en el cliente, todas las noches, para todos los usuarios. Con el offset fijo
   // de Argentina (sin DST) las dos puntas calculan lo mismo.
   const today = useClientSnapshot(todayART, todayART)
-  const [city, setCity] = useState('')
-  const [cityTouched, setCityTouched] = useState(false)
-  const [prefilled, setPrefilled] = useState(false)
+  // `null` = el usuario no eligió nada en esta visita: manda la zona guardada. Un string (aun
+  // vacío, "Todas las ciudades") es una elección explícita y gana siempre. Derivado en el
+  // render y no sincronizado con un efecto: no hay parpadeo ni setState encadenado.
+  const [pickedCity, setPickedCity] = useState<string | null>(null)
   const [date, setDate] = useState<string | null>(null)
   const [time, setTime] = useState('')
 
-  const nearest = useNearestCity()
+  const [zona, saveZona] = useSavedZona()
+  const { state: geo, locate, cancel } = useNearestCity()
   const cityOptions = useMemo(() => cityOptionsFrom(cities), [cities])
+  const zonaOption = findZonaOption(cityOptions, zona)
+  const city = pickedCity ?? zonaOption?.value ?? ''
+  const usingZona = zonaOption !== undefined && city === zonaOption.value
   const effectiveDate = date ?? today
   const days = useMemo(
     () => Array.from({ length: DAYS_AHEAD }, (_, i) => addDays(today, i)),
     [today],
   )
 
-  // Aplicar la ciudad detectada solo si el usuario todavía no eligió nada.
-  useEffect(() => {
-    if (nearest.status !== 'found' || cityTouched || city) return
-    // Foco pre-hidratación: si el usuario ya está parado en el campo (el focus
-    // ocurrió antes de que React montara, onFocusCapture no se enteró), no pisarlo.
-    if (typeof document !== 'undefined' && document.activeElement?.id.startsWith('hero-city')) {
-      // Este efecto NO adapta estado a un cambio de prop (ahí iría el ajuste
-      // durante el render): reacciona a un EVENTO asincrónico —la geolocalización
-      // resolvió— y decide consultando el DOM real (`document.activeElement`),
-      // que en render no existe. Dispara una vez y no encadena renders.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCityTouched(true)
-      return
+  // Poner el foco en el campo congela lo que se ve: si la zona (o una ubicación detectada) llega
+  // cuando el jugador ya está por escribir, no le cambia el valor debajo de los dedos.
+  function freezeCity() {
+    if (pickedCity === null) setPickedCity(city)
+  }
+
+  // Tocar el botón es pedir la ubicación de nuevo: vuelve a mandar lo que se detecte, no lo elegido antes.
+  function onLocate() {
+    setPickedCity(null)
+    locate()
+  }
+
+  function onCityChange(value: string) {
+    setPickedCity(value)
+    // Elegir a mano gana sobre una ubicación que todavía esté en camino.
+    cancel()
+    // Elegir una localidad a mano también fija la zona. Vaciar el campo ("Todas las
+    // ciudades") NO la borra: solo vale para esta búsqueda.
+    if (value) {
+      const [cityPart, provincePart] = value.split('||')
+      if (cityPart) saveZona({ city: cityPart, province: provincePart })
     }
-    const match =
-      cityOptions.find((o) => o.value === `${nearest.city}||${nearest.province}`) ??
-      cityOptions.find((o) => o.value === nearest.city || o.value.startsWith(`${nearest.city}||`))
-    if (match) {
-      setCity(match.value)
-      setPrefilled(true)
-    }
-  }, [nearest, cityTouched, city, cityOptions])
+  }
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    // Buscar sin localidad es pedir "todas": que /explorar no se la reemplace por la zona guardada.
+    if (!city) markZonaApplied()
     const params = new URLSearchParams()
     if (city) {
       // value is "{city}||{province}" to disambiguate homonyms; split for the URL.
@@ -123,19 +157,19 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
     router.push(qs ? `/explorar?${qs}` : '/explorar')
   }
 
-  const geoMessage =
-    nearest.status === 'denied'
-      ? 'No pudimos acceder a tu ubicación. Elegí tu localidad manualmente.'
-      : prefilled && !cityTouched
-        ? 'Localidad sugerida según tu ubicación.'
-        : ''
+  const geoMessage = geoStatusMessage(geo.status, usingZona)
+
+  // Con la zona ya guardada, o con la ubicación bloqueada/no soportada, el botón no tiene qué hacer.
+  const canLocate = !usingZona && geo.status !== 'denied' && geo.status !== 'unsupported'
+  const locating = geo.status === 'locating'
 
   // `md:text-base` pisa el `md:text-sm` del combobox: a 14 px desde `md` iOS zoomea al enfocar.
   const fieldClass =
     'h-[62px] w-full rounded-xl border border-input bg-background pl-11 pr-3 text-base md:text-base text-foreground shadow-xs transition-colors focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary'
 
-  const labelClass =
-    'mb-[9px] block font-logo text-[13px] font-bold uppercase tracking-wider text-muted-foreground'
+  const labelTextClass =
+    'font-logo text-[13px] font-bold uppercase tracking-wider text-muted-foreground'
+  const labelClass = `mb-[9px] block ${labelTextClass}`
 
   const vertical = layout === 'vertical'
   // Los ids terminan en `-v` en el layout vertical: los dos pueden convivir en el DOM.
@@ -147,29 +181,40 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
   const menuTriggerClass = `${fieldClass} flex items-center justify-between gap-1 text-left pr-9`
 
   const cityField = (
-    <div
-      className={vertical ? 'sm:col-span-2' : undefined}
-      onFocusCapture={() => setCityTouched(true)}
-    >
-      <label htmlFor={`hero-city${sfx}`} className={labelClass}>
-        Localidad
-      </label>
-      <Combobox
-        id={`hero-city${sfx}`}
-        options={cityOptions}
-        value={city}
-        onChange={(v) => {
-          setCity(v)
-          setCityTouched(true)
-        }}
-        placeholder="¿Dónde?"
-        emptyMessage="No encontramos esa localidad"
-        listboxLabel="Localidades"
-        clearOptionLabel="Todas las ciudades"
-        inputClassName={fieldClass}
-        aria-describedby={`hero-city${sfx}-status`}
-        leadingIcon={<MapPin className={iconClass} aria-hidden />}
-      />
+    <div className={vertical ? 'sm:col-span-2' : undefined}>
+      <div className="mb-[9px] flex items-center justify-between gap-3">
+        <label htmlFor={`hero-city${sfx}`} className={labelTextClass}>
+          Localidad
+        </label>
+        {canLocate && (
+          // -my-3.5 + min-h-11: el botón mide 44 px de alto para el dedo sin agrandar la fila
+          // de la etiqueta (los campos de al lado quedarían desalineados).
+          <button
+            type="button"
+            onClick={onLocate}
+            disabled={locating}
+            className="-my-3.5 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold text-emerald-700 transition-colors hover:text-emerald-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60 dark:text-emerald-400 dark:hover:text-emerald-300"
+          >
+            <LocateFixed className="h-4 w-4" aria-hidden />
+            {locating ? 'Buscando…' : 'Usar mi ubicación'}
+          </button>
+        )}
+      </div>
+      <div onFocusCapture={freezeCity}>
+        <Combobox
+          id={`hero-city${sfx}`}
+          options={cityOptions}
+          value={city}
+          onChange={onCityChange}
+          placeholder="¿Dónde?"
+          emptyMessage="No encontramos esa localidad"
+          listboxLabel="Localidades"
+          clearOptionLabel="Todas las ciudades"
+          inputClassName={fieldClass}
+          aria-describedby={`hero-city${sfx}-status`}
+          leadingIcon={<MapPin className={iconClass} aria-hidden />}
+        />
+      </div>
     </div>
   )
 

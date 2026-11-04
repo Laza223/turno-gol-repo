@@ -2,7 +2,9 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import { List, Map as MapIcon } from 'lucide-react'
+import { useSavedZona } from '@/hooks/use-saved-zona'
 import { useToast } from '@/hooks/use-toast'
+import { roundCoord } from '@/lib/zona-storage'
 import type { SortOption } from '@/modules/tenants/search.service'
 import { buildExplorarUrl } from './url'
 
@@ -24,6 +26,7 @@ export default function ExplorarToolbar({ total, sort }: Props) {
   const router = useRouter()
   const params = useSearchParams()
   const { toast } = useToast()
+  const [zona, saveZona] = useSavedZona()
 
   const view = params.get('view') === 'map' ? 'map' : 'list'
 
@@ -39,18 +42,33 @@ export default function ExplorarToolbar({ total, sort }: Props) {
 
   function setSort(value: string) {
     if (value === 'distance') {
-      // Cercanía requiere coordenadas del usuario.
+      // Cercanía requiere coordenadas del usuario. Si ya las tenemos guardadas (de "Usar mi
+      // ubicación" o de una vez anterior), se usan directo: nada de volver a pedir el permiso.
+      // Van con ~1 km de precisión (2 decimales): la URL se comparte y no debe delatar la casa.
+      if (zona?.lat !== undefined && zona.lng !== undefined) {
+        router.push(
+          buildExplorarUrl(params, {
+            sort: 'distance',
+            lat: zona.lat.toFixed(2),
+            lng: zona.lng.toFixed(2),
+          }),
+        )
+        return
+      }
       if (typeof navigator === 'undefined' || !navigator.geolocation) {
         toast({ title: 'Tu navegador no soporta geolocalización.', variant: 'destructive' })
         return
       }
       navigator.geolocation.getCurrentPosition(
         (pos) => {
+          const lat = roundCoord(pos.coords.latitude)
+          const lng = roundCoord(pos.coords.longitude)
+          saveZona({ lat, lng })
           router.push(
             buildExplorarUrl(params, {
               sort: 'distance',
-              lat: pos.coords.latitude.toFixed(6),
-              lng: pos.coords.longitude.toFixed(6),
+              lat: lat.toFixed(2),
+              lng: lng.toFixed(2),
             }),
           )
         },

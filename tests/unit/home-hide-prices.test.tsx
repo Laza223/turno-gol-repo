@@ -15,11 +15,19 @@ import { cityCounts, publicTenantCard } from '@/test/fixtures/tenant'
  */
 afterEach(() => {
   vi.unstubAllGlobals()
+  localStorage.clear()
   Object.defineProperty(navigator, 'geolocation', { configurable: true, value: undefined })
+  Object.defineProperty(navigator, 'permissions', { configurable: true, value: undefined })
 })
 
 describe('precios ocultos en la home', () => {
   it('ningún dato del complejo cercano (nombre, precio) llega al DOM', async () => {
+    // La home solo consulta la ubicación sola cuando el permiso YA está concedido (no hay cartel);
+    // en cualquier otro caso espera al botón "Usar mi ubicación".
+    Object.defineProperty(navigator, 'permissions', {
+      configurable: true,
+      value: { query: () => Promise.resolve({ state: 'granted' }) },
+    })
     Object.defineProperty(navigator, 'geolocation', {
       configurable: true,
       value: {

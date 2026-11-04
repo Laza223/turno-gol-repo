@@ -1,9 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
+import { ZONA_STORAGE_KEY } from '@/lib/zona-storage'
 import { cityCounts } from '@/test/fixtures/tenant'
 import { withGeolocation } from '@/test/storybook/with-geolocation'
 import HeroSearch from './HeroSearch'
+
+/** La zona vive en localStorage y el browser de Storybook se comparte entre stories: arrancar y dejar limpio. */
+const clearZona = () => localStorage.removeItem(ZONA_STORAGE_KEY)
 
 const meta = {
   title: 'Public/HeroSearch',
@@ -13,14 +17,22 @@ const meta = {
     nextjs: { appDirectory: true, navigation: { pathname: '/' } },
   },
   args: { cities: cityCounts() },
+  beforeEach: () => {
+    clearZona()
+    return clearZona
+  },
 } satisfies Meta<typeof HeroSearch>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Layout horizontal (landing) — geolocalización todavía resolviendo, sin mensaje. */
+/** Layout horizontal (landing) — primera visita: sin zona, sin mensaje y con el botón para ubicarse. */
 export const Horizontal: Story = {
   decorators: [withGeolocation('pending')],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('button', { name: 'Usar mi ubicación' })).toBeInTheDocument()
+  },
 }
 
 /** Layout vertical (banda de /explorar). */
@@ -29,8 +41,29 @@ export const Vertical: Story = {
   decorators: [withGeolocation('pending')],
 }
 
-/** Ciudad sugerida por geolocalización — mensaje "Localidad sugerida". */
-export const CiudadPrefillada: Story = {
+/** Zona ya guardada: el campo sale pre-llenado, no hay botón y NO se pide la ubicación. */
+export const ZonaGuardada: Story = {
+  decorators: [withGeolocation('pending')],
+  beforeEach: () => {
+    localStorage.setItem(
+      ZONA_STORAGE_KEY,
+      JSON.stringify({ city: 'La Plata', province: 'Buenos Aires' }),
+    )
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await waitFor(() =>
+      expect(canvas.getByText('Tu zona guardada. Cambiala cuando quieras.')).toBeInTheDocument(),
+    )
+    await expect(canvas.getByRole('combobox', { name: 'Localidad' })).toHaveValue(
+      'La Plata, Buenos Aires',
+    )
+    await expect(canvas.queryByRole('button', { name: 'Usar mi ubicación' })).toBeNull()
+  },
+}
+
+/** Tocar "Usar mi ubicación" con permiso: pre-llena la ciudad más cercana y la deja guardada. */
+export const UsarMiUbicacion: Story = {
   decorators: [withGeolocation('found')],
   parameters: {
     fetchMock: [
@@ -42,22 +75,29 @@ export const CiudadPrefillada: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Usar mi ubicación' }))
     await waitFor(() =>
-      expect(canvas.getByText('Localidad sugerida según tu ubicación.')).toBeInTheDocument(),
+      expect(canvas.getByText('Tu zona guardada. Cambiala cuando quieras.')).toBeInTheDocument(),
     )
+    await expect(canvas.getByRole('combobox', { name: 'Localidad' })).toHaveValue(
+      'La Plata, Buenos Aires',
+    )
+    await expect(canvas.queryByRole('button', { name: 'Usar mi ubicación' })).toBeNull()
   },
 }
 
-/** Geolocalización denegada — mensaje de error, el campo queda vacío. */
+/** Ubicación denegada al tocar el botón — mensaje de error, el campo queda vacío y no insiste. */
 export const GeolocalizacionDenegada: Story = {
   decorators: [withGeolocation('denied')],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: 'Usar mi ubicación' }))
     await waitFor(() =>
       expect(
         canvas.getByText('No pudimos acceder a tu ubicación. Elegí tu localidad manualmente.'),
       ).toBeInTheDocument(),
     )
+    await expect(canvas.queryByRole('button', { name: 'Usar mi ubicación' })).toBeNull()
   },
 }
 

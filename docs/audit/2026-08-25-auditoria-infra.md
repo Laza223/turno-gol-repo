@@ -166,7 +166,7 @@ los de Railway estén mal.
 | **M-11** ✅ | Un secreto de más en el runtime de Vercel — *cerrado el 2026-08-25, ver paso 3* | `SENTRY_READ_TOKEN` en Production y Preview | Solo lo lee `scripts/sentry-issues.ts`, que corre local contra `.env.production`. **Corrección respecto de la primera versión de este documento**: `SENTRY_AUTH_TOKEN` NO sobra — `next.config.ts:125` se lo pasa a `withSentryConfig` para subir los sourcemaps, así que el build lo necesita y se queda |
 | **M-13** ✅ | El dominio de las imágenes aceptaba **TLS 1.0** — *corregido el 2026-08-25* | R2 → `turnogol-media` → Dominios personalizados: `media.turnogol.app`, *TLS mínimo* pasó de **1.0** a **1.2**. Verificado en el cable: `curl --tls-max 1.0` no completa el handshake, `curl --tlsv1.2` responde 404 (el dominio vive; el 404 es porque el bucket está vacío) | TLS 1.0 está roto y deprecado desde 2021 |
 | **M-14** 🟢 | **Las imágenes no tienen backup — pero hoy no hay imágenes** | R2 → `turnogol-media`: *Tamaño del bucket* = **0 B**, cero objetos ("Tu bucket está listo. Agrega archivos para comenzar"). Contrastado contra la base de producción: `tenants.logo_url`/`cover_url` NULL en los 2 complejos, `courts.photos` vacío en las 4 canchas, `players.avatar_url` NULL en los 3 jugadores | Degradado de 🟡 a 🟢: no hay nada que perder todavía. **Y el remedio que este mismo informe proponía era el equivocado**: una *regla de bloqueo de bucket* vuelve los objetos inmutables durante la retención, y la app borra objetos en el uso normal (`deleteImage` en `src/shared/storage/r2.ts:78`, llamada al reemplazar logo/portada en `settings/perfil/actions.ts:33,114` y foto de cancha en `settings/canchas/actions.ts:318`) — o sea que la habría roto: cambiar el logo empezaría a fallar. Cuando haya contenido real, el backup va por otro lado (copia programada a un segundo bucket o a otro proveedor), no por bucket lock |
-| **M-15** ✅ | **Alertas de seguridad apagadas en el registrador** — *corregido el 2026-08-25* | Namecheap → Profile → Security → Alerts: pasó de **OFF** a las tres categorías en **ON** (*Account Access* = login/password/recuperación · *Account Contacts* = email y dirección primaria · *Domain Names* = contactos WHOIS y host records), con destino `lazarofeijoo2004@gmail.com`. Verificado recargando la página de cero, no contra el cartel de éxito | Si alguien cambia los nameservers o pide una transferencia del dominio, ahora llega un mail. Es la alarma del activo más difícil de recuperar |
+| **M-15** ✅ | **Alertas de seguridad apagadas en el registrador** — *corregido el 2026-08-25* | Namecheap → Profile → Security → Alerts: pasó de **OFF** a las tres categorías en **ON** (*Account Access* = login/password/recuperación · *Account Contacts* = email y dirección primaria · *Domain Names* = contactos WHOIS y host records), con destino `<email del dueño>`. Verificado recargando la página de cero, no contra el cartel de éxito | Si alguien cambia los nameservers o pide una transferencia del dominio, ahora llega un mail. Es la alarma del activo más difícil de recuperar |
 | **M-12** ✅ | Protección de contraseñas filtradas **apagada** en Supabase Auth — *cerrado el 2026-08-25, ver paso 2* | Advisor `auth_leaked_password_protection` | El staff entra con email+password. Prenderlo (chequeo contra HaveIBeenPwned) es gratis y de un click |
 
 ### 🟢 Bajo
@@ -842,7 +842,7 @@ Requiere generar un token de API de R2 con permiso de lectura/escritura de objet
 
 El panel `/super-admin` no lo podía abrir **nadie**. El guard es un triple chequeo (claim del JWT +
 fila activa en `system_admins` + allowlist `SYSTEM_ADMIN_EMAILS`) y fallaba en el primero: la fila
-de `lazarofeijoo2004@gmail.com` estaba activa desde antes, pero el usuario de autenticación nunca
+de `<email del dueño>` estaba activa desde antes, pero el usuario de autenticación nunca
 recibió `app_metadata.is_system_admin` — lo escribe sólo `scripts/seed-system-admin.ts`, y por
 diseño no hay superficie HTTP para auto-promoverse. Se completó el claim (`is_system_admin` +
 `system_admin_id`) preservando el resto de la identidad, y con eso el panel abre.
@@ -2359,7 +2359,7 @@ nslookup -type=TXT _dmarc.turnogol.app keenan.ns.cloudflare.com
 Los dos devuelven el valor nuevo.
 
 **Prueba de entrega end-to-end**: se disparó un magic link real
-(`/ingresar`) a `lazarofeijoo2004@gmail.com`. En Resend quedó `Delivered`
+(`/ingresar`) a `<email del dueño>`. En Resend quedó `Delivered`
 ("Tu acceso a TurnoGol"); en Gmail cayó directo en **Principal/Recibidos**,
 no en spam.
 

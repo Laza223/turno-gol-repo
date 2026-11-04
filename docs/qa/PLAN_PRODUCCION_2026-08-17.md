@@ -20,11 +20,11 @@ Hay **tres roles distintos** y solo dos cuentas disponibles. Alcanza, pero hay q
 
 La regla es una sola: **la cuenta de la pareja paga siempre, la tuya cobra siempre.** Así ningún ensayo cae en el caso "pagarte a vos mismo", que MercadoPago rechaza.
 
-**Verificar antes de empezar**: con qué cuenta quedó conectado el OAuth de `complejo-elite-padel`. Si por algún motivo quedó con la cuenta de tu pareja, P-03 se invierte (pagás vos) y todo lo demás sigue igual.
+**Verificar antes de empezar**: con qué cuenta quedó conectado el OAuth de `complejo-elite-padel`. Si por algún motivo quedó con la cuenta de <titular de la cuenta MP de prueba>, P-03 se invierte (pagás vos) y todo lo demás sigue igual.
 
 ### ⚠️ El preapproval de P-01 debita todos los meses
 
-La suscripción que abrís en P-01 queda atada a **la tarjeta de tu pareja** y le va a debitar $63.000 **cada mes, solo, hasta que la canceles**. No es un pago único.
+La suscripción que abrís en P-01 queda atada a **la tarjeta de <titular de la cuenta MP de prueba>** y le va a debitar $63.000 **cada mes, solo, hasta que la canceles**. No es un pago único.
 
 Consecuencia práctica: en cuanto cierres **P-02** (el débito del mes 2, día 31), **dá de baja la suscripción**. Y eso no es limpieza: es el ensayo **P-13**, que va abajo.
 
@@ -113,14 +113,14 @@ Doce, agrupados por lo que hace falta para ejecutarlos. El orden importa: el Gru
 | Qué | Cómo está hoy |
 |---|---|
 | Complejo candidato | `complejo-elite-futbol`, `trialing`, plan Predio, 2 canchas, trial hasta el 2026-09-16 |
-| Dueño | `lazarofeijoo2004@gmail.com` — **la cuenta master** |
+| Dueño | `<email del dueño>` — **la cuenta master** |
 | `tenant_subscriptions.mp_payer_email` | **`NULL`** |
 
 Con `mp_payer_email` en `NULL`, `resolvePayerEmail` cae al email del dueño (`billing.service.ts`), o sea que TurnoGol le va a pedir a MercadoPago que le cobre a la cuenta master **para pagarse a sí misma**. Eso rebota antes de que aparezca ninguna pantalla de pago.
 
-**El paso previo, entonces, es de UI y son 30 segundos**: `/settings/facturacion` → sección **"Cuenta de MercadoPago para pagar"** → poner el email de la cuenta de MercadoPago de tu pareja. Es el mismo campo que ya se usó en `complejo-titi` el 2026-08-19 (`lisantiziana@gmail.com`), así que el camino está probado. Hacerlo por la UI y no por SQL es a propósito: ese formulario es parte de lo que un dueño real va a tocar.
+**El paso previo, entonces, es de UI y son 30 segundos**: `/settings/facturacion` → sección **"Cuenta de MercadoPago para pagar"** → poner el email de la cuenta de MercadoPago de <titular de la cuenta MP de prueba>. Es el mismo campo que ya se usó en `complejo-titi` el 2026-08-19 (`<jugadora de prueba>`), así que el camino está probado. Hacerlo por la UI y no por SQL es a propósito: ese formulario es parte de lo que un dueño real va a tocar.
 
-**Cómo se dispara.** Entrar como dueño de `complejo-elite-futbol` → `/settings/facturacion` → setear el email pagador → elegir Predio mensual → pagar **desde la cuenta de MercadoPago de tu pareja**.
+**Cómo se dispara.** Entrar como dueño de `complejo-elite-futbol` → `/settings/facturacion` → setear el email pagador → elegir Predio mensual → pagar **desde la cuenta de MercadoPago de <titular de la cuenta MP de prueba>**.
 
 **Qué tiene que pasar, exacto.**
 - `tenants.status`: `trialing → active`
@@ -312,7 +312,7 @@ Este grupo no se "ejecuta": se **mira**. Son 15 workers, y hoy no hay evidencia 
 
 #### P-13 · Dar de baja tu propia suscripción
 
-**Qué prueba.** Dos cosas a la vez: que **le cortes el débito recurrente a la tarjeta de tu pareja**, y que el camino de baja funcione en producción. No es opcional ni es solo limpieza — la Res. 424/2020 exige que la baja sea tan fácil como el alta, y un cliente que no puede darse de baja es un reclamo.
+**Qué prueba.** Dos cosas a la vez: que **le cortes el débito recurrente a la tarjeta de <titular de la cuenta MP de prueba>**, y que el camino de baja funcione en producción. No es opcional ni es solo limpieza — la Res. 424/2020 exige que la baja sea tan fácil como el alta, y un cliente que no puede darse de baja es un reclamo.
 
 **Cuándo.** Apenas cierres P-02 (día 31). Ni antes — necesitás el débito del mes 2 para P-02 — ni después, porque cada mes que pase es otro débito.
 
@@ -324,7 +324,7 @@ Este grupo no se "ejecuta": se **mira**. Son 15 workers, y hoy no hay evidencia 
 - **Seguís entrando al panel hasta `current_period_end`** — pagaste el mes, lo usás. (Un lockout inmediato acá fue el bug ENS-26, arreglado y nunca verificado en producción.)
 - Al vencer el período: el sweep de dunning lo pasa a `blocked`, los abonados quedan `canceled` y las reservas futuras se eliminan.
 
-**Verificación de que el débito murió de verdad.** El día 61, mirar la tarjeta de tu pareja: **no tiene que haber un tercer débito**. Es el único cierre que vale.
+**Verificación de que el débito murió de verdad.** El día 61, mirar la tarjeta de <titular de la cuenta MP de prueba>: **no tiene que haber un tercer débito**. Es el único cierre que vale.
 
 ---
 
@@ -342,7 +342,7 @@ Este grupo no se "ejecuta": se **mira**. Son 15 workers, y hoy no hay evidencia 
 | **Día 8** | **P-10** día 7 → `suspended` |
 | **Día 15** | **P-10** día 14 → `blocked` |
 | **Día 31** | **P-02** — el débito automático del mes 2 |
-| **Día 31, inmediatamente después** | **P-13** — dar de baja, para cortarle el débito a la tarjeta de tu pareja |
+| **Día 31, inmediatamente después** | **P-13** — dar de baja, para cortarle el débito a la tarjeta de <titular de la cuenta MP de prueba> |
 | **Día 61** | Confirmar que **no hubo** un tercer débito |
 
 **Lectura honesta del calendario**: podés vender el día 5 asumiendo el riesgo de P-02 y del tramo largo de P-10, o esperar 31 días para saberlo todo. **Vender el día 5 es defendible** si arrancaste P-01 el día 1 y tenés el recordatorio puesto: el peor caso es que el mes 2 no cobre y lo arregles antes de que el cliente lo note. Vender sin P-01 arrancado no es defendible: no tenés forma de enterarte hasta que un cliente te reclame.
@@ -371,4 +371,4 @@ Los tres que quedan (**P-02**, **P-09**, el tramo largo de **P-10**) son de relo
 >
 > **Re-medido el 2026-08-25**: sigue sin arrancar, y ahora se sabe qué lo frena — `complejo-elite-futbol` tiene `mp_payer_email` en `NULL`, así que el preapproval saldría a nombre de la cuenta master y MercadoPago lo rechaza por auto-pago. Es un campo de la UI de facturación, 30 segundos; el detalle está en P-01.
 
-**P-13 no es de reloj: es una obligación con fecha.** Va el día 31 sí o sí, o le seguís debitando $63.000 por mes a la tarjeta de tu pareja.
+**P-13 no es de reloj: es una obligación con fecha.** Va el día 31 sí o sí, o le seguís debitando $63.000 por mes a la tarjeta de <titular de la cuenta MP de prueba>.

@@ -5,7 +5,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { CalendarDays, ChevronDown, Clock, LocateFixed, MapPin, Search } from 'lucide-react'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import { useClientSnapshot } from '@/hooks/use-client-value'
-import { useNearestCity } from '@/hooks/use-nearest-city'
+import { useNearestCity, type NearestCityState } from '@/hooks/use-nearest-city'
 import { useSavedZona } from '@/hooks/use-saved-zona'
 import { markZonaApplied, type SavedZona } from '@/lib/zona-storage'
 import { addDays } from '@/shared/dates/art'
@@ -51,6 +51,17 @@ function dayLabel(date: string, today: string): string {
   if (date === today) return 'Hoy'
   if (date === addDays(today, 1)) return 'Mañana'
   return capitalizeFirst(formatDayHeader(date))
+}
+
+/** Aviso de debajo del campo Localidad según cómo salió la ubicación (vacío = nada que decir). */
+function geoStatusMessage(status: NearestCityState['status'], usingZona: boolean): string {
+  if (status === 'denied') {
+    return 'No pudimos acceder a tu ubicación. Elegí tu localidad manualmente.'
+  }
+  if (usingZona) return 'Tu zona guardada. Cambiala cuando quieras.'
+  if (status === 'error') return 'No pudimos ubicarte. Elegí tu localidad manualmente.'
+  if (status === 'no_results') return 'No hay canchas cerca tuyo todavía. Elegí tu localidad.'
+  return ''
 }
 
 /** La opción de la lista que corresponde a la zona guardada (primero ciudad+provincia, luego solo ciudad). */
@@ -146,16 +157,7 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
     router.push(qs ? `/explorar?${qs}` : '/explorar')
   }
 
-  const geoMessage =
-    geo.status === 'denied'
-      ? 'No pudimos acceder a tu ubicación. Elegí tu localidad manualmente.'
-      : usingZona
-        ? 'Tu zona guardada. Cambiala cuando quieras.'
-        : geo.status === 'error'
-          ? 'No pudimos ubicarte. Elegí tu localidad manualmente.'
-          : geo.status === 'no_results'
-            ? 'No hay canchas cerca tuyo todavía. Elegí tu localidad.'
-            : ''
+  const geoMessage = geoStatusMessage(geo.status, usingZona)
 
   // Con la zona ya guardada, o con la ubicación bloqueada/no soportada, el botón no tiene qué hacer.
   const canLocate = !usingZona && geo.status !== 'denied' && geo.status !== 'unsupported'

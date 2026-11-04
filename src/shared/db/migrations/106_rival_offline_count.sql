@@ -26,6 +26,12 @@
 -- offline_count no lo edita el cliente: trg_rival_matches_bu lo congela (compara
 -- to_jsonb(NEW) - mutables). Solo se fija al INSERT, que el BEFORE INSERT no pisa.
 --
+-- `filled_at` ("se llenó") solo se estampa cuando el cupo lo cierra gente de la app:
+-- hace falta al menos un confirmado además del organizador (v_count > 1). Un "Busco
+-- rival" nace con el cupo cubierto por los de afuera y NO está "completo" en 0 minutos:
+-- el monitor de super-admin (matchesFilled, medianMinutesToFill) mide plantel real.
+-- Con offline_count = 0 el criterio es el de siempre (capacity >= 2 implica v_count > 1).
+--
 -- Retención/ARCO: no agrega datos personales (es un entero).
 --
 -- Rollback (a mano): ver el bloque al final de este archivo.
@@ -251,10 +257,10 @@ BEGIN
     WHERE match_id = m.id AND role = 'player' AND status = 'confirmed';
   UPDATE rival_matches
     SET confirmed_count = v_count,
-        filled_at = CASE WHEN filled_at IS NULL AND v_count + offline_count >= capacity THEN now() ELSE filled_at END
+        filled_at = CASE WHEN filled_at IS NULL AND v_count > 1 AND v_count + offline_count >= capacity THEN now() ELSE filled_at END
     WHERE id = m.id
       AND (confirmed_count IS DISTINCT FROM v_count
-           OR (filled_at IS NULL AND v_count + offline_count >= capacity));
+           OR (filled_at IS NULL AND v_count > 1 AND v_count + offline_count >= capacity));
 
   -- Aceptar al capitán cierra la búsqueda y saca el partido del tablón.
   IF NEW.role = 'rival_captain' AND NEW.status = 'confirmed' THEN

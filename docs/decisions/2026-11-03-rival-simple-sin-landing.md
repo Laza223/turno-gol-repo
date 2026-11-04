@@ -31,8 +31,11 @@ Lo que no se nombra acá sigue igual. La visión de [`docs/rival/README.md`](../
 
    Las dos primeras **publican al crear**, con el WhatsApp, su consentimiento y la casilla "Guardar este número" en el mismo form (las reglas de la decisión 4 del 2026-10-28 no cambian). Esto enmienda la decisión 3 del 2026-10-28: el tablón vuelve al momento de crear, pero como la intención misma y no como un interruptor. El P1 de aquella critique era sumar una segunda tarea, y acá no la hay. "Publicar en el tablón" desde la vista del partido queda solo para un partido "Solo para mi grupo" que después quiere salir.
 3. **"Ya somos X" es un número.** El organizador dice cuántos le faltan aunque sus amigos no tengan cuenta.
-   - Se guarda como un número de lugares cubiertos fuera de la app: `rival_matches.offline_count`, organizador incluido. No guarda nombres ni ningún dato de personas.
+   - Se guarda como un número de lugares cubiertos fuera de la app: `rival_matches.offline_count`, **sin contar al organizador** (ya es una fila `confirmed`; por eso, al armar, `offline_count = capacity − faltan − 1`, y en "Busco rival" `format − 1`). No guarda nombres ni ningún dato de personas.
    - "Faltan N" = `capacity − confirmed_count − offline_count`. El cupo, el banco y "Se juega" cuentan igual.
+   - Las lecturas del tablón devuelven `confirmed_count` ya sumado ("lugares cubiertos") y la tarjeta dice "Ya son X de N".
+   - `filled_at` solo se estampa si cierra el cupo gente de la app (un confirmado además del organizador): un "Busco rival" no nace "completo". Decisión del 2026-11-03.
+   - Límite aceptado: si amigos sin cuenta tocan "Voy" por el link, se suman a los de afuera y el tablón puede mostrar "Completo" con faltantes. Se mira con uso real.
    - En "Busco rival", el equipo del capitán se da por completo.
    - Necesita una migración nueva, que aplica Lazar.
 

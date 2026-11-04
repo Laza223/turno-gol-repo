@@ -44,7 +44,7 @@ export function ShirtGrid({
       )}
       <div
         role="img"
-        aria-label={`${filled} de ${capacity} confirmados`}
+        aria-label={`Ya son ${filled} de ${capacity}`}
         className="flex flex-wrap gap-2"
       >
         {Array.from({ length: capacity }, (_, i) => (
@@ -63,7 +63,7 @@ export function ShirtGrid({
         ))}
       </div>
       <p className="text-sm text-muted-foreground tabular-nums">
-        {filled} de {capacity} confirmados
+        Ya son {filled} de {capacity}
       </p>
     </div>
   )

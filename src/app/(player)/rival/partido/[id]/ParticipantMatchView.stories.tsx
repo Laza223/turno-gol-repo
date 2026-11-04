@@ -172,7 +172,7 @@ export const BuscaRivalEquipoCompleto: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getAllByText('Busca rival')).toHaveLength(1)
     await expect(canvas.queryByText(/Se juega/)).toBeNull()
-    await expect(canvas.getByText('5 de 5 confirmados')).toBeInTheDocument()
+    await expect(canvas.getByText('Ya son 5 de 5')).toBeInTheDocument()
   },
 }
 

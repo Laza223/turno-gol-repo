@@ -652,11 +652,10 @@ describe('2b. offline_count: el cupo cuenta confirmed_count + offline_count', ()
     await rejectsRival('rival_full', setStatus(org, reqId, 'confirmed'))
   })
 
-  it('2b.5 Busco rival: el equipo completo cubre el cupo desde la creación y filled_at ya está', async () => {
+  it('2b.5 Busco rival: el equipo completo cubre el cupo desde la creación, pero filled_at no se estampa (no es plantel real)', async () => {
     const org = await newPlayer()
     const m = await createMatch(org, { capacity: 5, offline: 4, seeking: 'rival' })
-    const row = await matchRow(m.id)
-    expect(row['filled_at']).not.toBeNull()
+    expect((await matchRow(m.id))['filled_at']).toBeNull()
     const viewer = await newPlayer()
     // "Busca rival" no se filtra por cupo: sigue en el tablón.
     expect(await boardRow(viewer, m.id)).toBeDefined()

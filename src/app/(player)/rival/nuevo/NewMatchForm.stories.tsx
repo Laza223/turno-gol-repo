@@ -33,6 +33,8 @@ const meta = {
     today: TODAY,
     nowTime: '15:30',
     action: fn(async (): Promise<RivalFormResult> => ({ success: true })),
+    // Las historias del paso 2 parten de "Solo para mi grupo"; el paso 1 tiene las suyas.
+    initialIntent: 'group',
   },
   decorators: [
     (Story) => (
@@ -49,8 +51,8 @@ type Story = StoryObj<typeof meta>
 export const SinReserva: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // "Partido completo" por defecto: el cupo arranca en formato x 2 y no hay nada del tablón.
-    await expect(canvas.getByRole('radio', { name: 'Partido completo' })).toBeChecked()
+    // "Solo para mi grupo": el cupo arranca en formato x 2 y no hay nada del tablón.
+    await expect(canvas.getByRole('radio', { name: /Solo para mi grupo/ })).toBeChecked()
     await expect(canvas.getByRole('status')).toHaveTextContent('10')
     await expect(canvas.queryByText('Tablón')).toBeNull()
     await expect(canvas.queryByLabelText('Tu WhatsApp')).toBeNull()
@@ -68,21 +70,54 @@ export const SinReserva: Story = {
   },
 }
 
-export const EquipoBuscaRival: Story = {
+export const PrimerPasoSinElegir: Story = {
+  args: { initialIntent: null },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('heading', { name: '¿Qué necesitás?' })).toBeInTheDocument()
+    await expect(canvas.queryByRole('heading', { name: 'Dónde y cuándo' })).toBeNull()
+    await expect(canvas.queryByRole('button', { name: /Armar/ })).toBeNull()
+  },
+}
+
+export const MeFaltanJugadores: Story = {
+  args: { initialIntent: null, whatsappPrefill: '11 5555-1234' },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('radio', { name: 'Mi equipo busca rival' }))
-    // Sin stepper (no hay controles muertos): el cupo es el formato.
-    await expect(canvas.queryByRole('status')).toBeNull()
-    await expect(canvas.queryByRole('button', { name: 'Uno más' })).toBeNull()
-    await expect(canvas.getByText('Tu equipo: 5')).toBeInTheDocument()
+    await userEvent.click(canvas.getByRole('radio', { name: /Me faltan jugadores/ }))
+    await expect(canvas.getByText('¿Cuántos te faltan?')).toBeInTheDocument()
+    await userEvent.click(canvas.getByRole('button', { name: 'Uno más' }))
+    await expect(canvas.getByRole('status')).toHaveTextContent('2')
+    await userEvent.click(canvas.getByRole('checkbox', { name: 'Se busca arquero' }))
     await userEvent.click(canvas.getByRole('checkbox', { name: 'Ya tengo la cancha' }))
     await userEvent.click(canvas.getByRole('radio', { name: '20:00' }))
-    await userEvent.click(canvas.getByRole('button', { name: 'Armar el partido' }))
+    await userEvent.click(canvas.getByRole('checkbox', { name: /Mi WhatsApp lo ve solo/ }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Armar y publicar' }))
     await waitFor(() => expect(args.action).toHaveBeenCalled())
     const fd = (args.action as ReturnType<typeof fn>).mock.calls[0]![1] as FormData
-    await expect(fd.get('mode')).toBe('rival')
-    await expect(fd.get('capacity')).toBe('5')
+    await expect(fd.get('intent')).toBe('players')
+    await expect(fd.get('missing')).toBe('2')
+    await expect(fd.get('seekingGoalkeeper')).toBe('on')
+    await expect(fd.get('whatsapp')).toBe('11 5555-1234')
+  },
+}
+
+export const BuscoRival: Story = {
+  args: { initialIntent: 'rival' },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    // Sin stepper de faltantes: el equipo ya está completo.
+    await expect(canvas.queryByText('¿Cuántos te faltan?')).toBeNull()
+    await expect(canvas.queryByRole('button', { name: 'Uno más' })).toBeNull()
+    await expect(canvas.getByLabelText('Tu WhatsApp')).toBeInTheDocument()
+    await userEvent.click(canvas.getByRole('checkbox', { name: 'Ya tengo la cancha' }))
+    await userEvent.click(canvas.getByRole('radio', { name: '20:00' }))
+    await userEvent.type(canvas.getByLabelText('Tu WhatsApp'), '11 5555-1234')
+    await userEvent.click(canvas.getByRole('checkbox', { name: /Mi WhatsApp lo ve solo/ }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Armar y publicar' }))
+    await waitFor(() => expect(args.action).toHaveBeenCalled())
+    const fd = (args.action as ReturnType<typeof fn>).mock.calls[0]![1] as FormData
+    await expect(fd.get('intent')).toBe('rival')
     await expect(fd.get('time')).toBe('20:00')
   },
 }

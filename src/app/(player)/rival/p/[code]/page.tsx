@@ -119,7 +119,6 @@ export default async function RivalMatchPage(props: {
           : undefined
       }
       justCreated={creado === '1' || creado === 'rival'}
-      createdAs={creado === 'rival' ? 'rival' : 'full'}
       now={nowDate()}
       whatsappPrefill={prefill?.whatsapp ?? null}
       cancelAction={cancelMatchAction}

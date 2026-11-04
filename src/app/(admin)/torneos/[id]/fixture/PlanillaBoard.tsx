@@ -616,7 +616,7 @@ function OpeningCell({
         type="button"
         onClick={() => onPlace(opening)}
         disabled={disabled}
-        aria-label={`Mover el partido acá: ${formatArtTime(opening.startsAt)}, ${courtLabel}`}
+        aria-label={`Mover acá: ${formatArtTime(opening.startsAt)}, ${courtLabel}`}
         className="flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-primary bg-primary/5 px-2 py-2 text-xs font-semibold text-emerald-800 transition-colors hover:bg-primary/10 disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring dark:border-emerald-400/60 dark:bg-emerald-500/10 dark:text-emerald-300 dark:hover:bg-emerald-500/20"
       >
         <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />

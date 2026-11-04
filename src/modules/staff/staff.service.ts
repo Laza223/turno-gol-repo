@@ -52,17 +52,17 @@ export async function getStaffContact(
 }
 
 /**
- * Código de referido con el que se registró esta cuenta + cuándo se creó, para
+ * Código de referido con el que se registró esta cuenta, para
  * `createTenantAction` (B2: `resolveSignupReferrer`). Mismo patrón de acceso
  * que `getStaffContact` — se llama en el mismo instante, antes de que exista
  * `app.current_tenant_id`, así que el pool bypass-capable es obligatorio.
  */
 export async function getStaffSignupReferral(
   staffUserId: string,
-): Promise<{ signupReferralCode: string | null; createdAt: Date } | null> {
+): Promise<{ signupReferralCode: string | null } | null> {
   const db = getWorkerDb()
   const rows = await db
-    .select({ signupReferralCode: staffUsers.signupReferralCode, createdAt: staffUsers.createdAt })
+    .select({ signupReferralCode: staffUsers.signupReferralCode })
     .from(staffUsers)
     .where(eq(staffUsers.id, staffUserId))
     .limit(1)

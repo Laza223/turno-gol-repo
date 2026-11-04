@@ -213,22 +213,19 @@ supabase migration list   # verifica qué quedó registrado en supabase_migratio
   SELECT id, status, mp_payment_id FROM payments ORDER BY created_at DESC LIMIT 5;  -- approved
   SELECT id, status FROM bookings ORDER BY created_at DESC LIMIT 5;                 -- confirmed
   ```
-- [ ] **Health `/api/status`**: `curl -s https://<dominio>/api/status | jq` → `{"status":"ok"}` con HTTP 200. Qué chequea REALMENTE (`src/app/api/status/route.ts:18-92`): `SELECT 1` a la DB, vitalidad de pg-boss vía `getQueueSize('send-email')` (tolera permission-denied), `PING` a Upstash, y **presencia** (no validez) de `MP_CLIENT_ID/SECRET`, `RESEND_API_KEY`, `SENTRY_DSN`. **Limitación**: corre dentro de la web (Vercel) — un 200 acá NO prueba que el worker de Railway esté vivo; para eso el ítem siguiente.
+- [ ] **Health `/api/status`**: `curl -s https://<dominio>/api/status | jq` → `{"status":"ok"}` con HTTP 200. Qué chequea REALMENTE (`src/app/api/status/route.ts:18-92`): `SELECT 1` a la DB, vitalidad de pg-boss vía `getQueue('send-email')` (tolera permission-denied), `PING` a Upstash, y **presencia** (no validez) de `MP_CLIENT_ID/SECRET`, `RESEND_API_KEY`, `SENTRY_DSN`. **Limitación**: corre dentro de la web (Vercel) — un 200 acá NO prueba que el worker de Railway esté vivo; para eso el ítem siguiente.
 - [ ] **Workers pg-boss procesando**: el worker `health-ping` corre cada 5 min en Railway (`src/shared/jobs/workers/health-ping.worker.ts:135-142`). Verificación por SQL (mismo query que usa `/api/admin/system-status`, `src/app/api/admin/system-status/route.ts:57-73`):
   ```sql
-  SELECT max(completedon) AS last FROM (
-    SELECT completedon FROM pgboss.job     WHERE name='health-ping' AND state='completed'
-    UNION ALL
-    SELECT completedon FROM pgboss.archive WHERE name='health-ping' AND state='completed'
-  ) pings;  -- esperado: < 10 minutos atrás
+  SELECT max(completed_on) AS last FROM pgboss_v12.job
+  WHERE name='health-ping' AND state='completed';  -- esperado: < 10 minutos atrás
   -- profundidad de colas / jobs trabados:
-  SELECT name, state, count(*) FROM pgboss.job GROUP BY 1,2 ORDER BY 1,2;
+  SELECT name, state, count(*) FROM pgboss_v12.job GROUP BY 1,2 ORDER BY 1,2;
   ```
-  UI equivalente: `/metricas` como admin (consume `GET /api/admin/system-status`: depth por cola + `lastHealthPing`). Logs: Railway → service → Logs, buscar `registered queue` (13 registros, `src/shared/jobs/workers/index.ts:17-34`).
+  UI equivalente: `/metricas` como admin (consume `GET /api/admin/system-status`: depth por cola + `lastHealthPing`). Logs: Railway → service → Logs, buscar `registered queue` (22 líneas por arranque, contando la de `(cron sweep)`; medido con pg-boss 12).
 - [ ] **Error rate en Sentry**: proyecto prod → Issues con `environment:production`; confirmar que llegan transacciones (tracesSampler activo: 0.5 webhooks, 0.3 bookings — `sentry.server.config.ts:51-57`) y que las 2 alertas (§4) están en verde.
 - [ ] **Cache / Upstash**: el código **SÍ usa Upstash Redis** — no es una discrepancia: (a) rate-limit `@upstash/ratelimit` (`src/shared/rate-limit/client.ts:1-33`), (b) cache de disponibilidad TTL 30 s (`src/shared/cache/slots-cache.ts:19,40-51`) y búsqueda cross-tenant (`slots-cache.ts:129-215`). Verificar: consola Upstash → Metrics con comandos creciendo; data browser con claves `slots:*` / `avail-search:*` / `rl:*`; sanity de rate-limit: 31 requests rápidos a un endpoint público desde la misma IP → 429 (`docs/operations/LAUNCH.md:48`).
 - [ ] **Realtime de la grilla**: dos sesiones admin del mismo tenant; crear una reserva en una → aparece sin refresh en la otra (publicación `supabase_realtime` de la migración 013).
-- [ ] **DLQ vacía a las 48 h**: `SELECT name, count(*) FROM pgboss.job WHERE state='failed' GROUP BY 1;` → idealmente 0 filas (los handlers de DLQ alertan a Sentry: `src/shared/jobs/workers/index.ts:31-33`).
+- [ ] **DLQ vacía a las 48 h**: `SELECT name, count(*) FROM pgboss_v12.job WHERE state='failed' GROUP BY 1;` → idealmente 0 filas. Solo `whatsapp-turn` pasa por la DLQ y alerta a Sentry (`src/shared/jobs/dlq.ts`); un job de otra cola que agota sus reintentos queda en `failed` sin avisar, y por eso se mira esta query.
 
 ---
 

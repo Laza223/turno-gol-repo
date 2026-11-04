@@ -1,70 +1,44 @@
 import { cn } from '@/lib/utils'
+import { LogoMark } from '@/components/ui/logo-mark'
 
 interface LogoProps {
-  variant?: 'vertical' | 'horizontal' | 'icon' | 'vector'
+  /** `horizontal`/`vertical`: logotipo "TURNOGOL". `icon`: isotipo TG. */
+  variant?: 'vertical' | 'horizontal' | 'icon'
+  /** Tamaño del logotipo: tabla fija, no se pisa con clases de texto sueltas. */
+  size?: 'sm' | 'md'
   className?: string
-  iconClassName?: string
   textClassName?: string
   /**
-   * Color del acento ("Gol"/"G"). Default: el emerald de siempre — sirve
+   * Color del acento ("Gol"). Default: el emerald de siempre — sirve
    * sobre `text-foreground`/blanco, donde el acento tiene que distinguirse
-   * del resto de la palabra. Si el logo va sobre un fondo YA emerald (p. ej.
-   * `bg-primary` del riel), pasar el mismo tono que `textClassName`: el
-   * default se funde con su propio fondo y la G desaparece (0:1 en light,
-   * donde `--primary` y este emerald-700 son el mismo color).
+   * del resto de la palabra.
    */
   accentClassName?: string
 }
 
+const SIZE = { sm: 'text-sm', md: 'text-2xl' } as const
+
 export function Logo({
   variant = 'horizontal',
+  size = 'md',
   className,
   textClassName = 'text-foreground',
   accentClassName = 'text-emerald-700 dark:text-emerald-400',
 }: LogoProps) {
-  if (variant === 'vector' || variant === 'icon') {
-    return (
-      <span
-        className={cn(
-          'font-display text-2xl uppercase italic font-black tracking-tighter',
-          textClassName,
-          className,
-        )}
-      >
-        T<span className={accentClassName}>G</span>
-      </span>
-    )
+  if (variant === 'icon') {
+    return <LogoMark className={className} markClassName={textClassName} />
   }
 
-  if (variant === 'horizontal') {
-    return (
-      <div className={cn('flex items-center gap-2', className)}>
-        <span
-          className={cn(
-            'font-display text-2xl uppercase italic font-black tracking-tighter',
-            textClassName,
-          )}
-        >
-          Turno<span className={accentClassName}>Gol</span>
-        </span>
-      </div>
-    )
-  }
-
-  if (variant === 'vertical') {
-    return (
-      <div className={cn('flex flex-col items-center justify-center gap-2', className)}>
-        <span
-          className={cn(
-            'font-display text-4xl sm:text-5xl uppercase italic font-black tracking-tighter',
-            textClassName,
-          )}
-        >
-          Turno<span className={accentClassName}>Gol</span>
-        </span>
-      </div>
-    )
-  }
-
-  return null
+  return (
+    <span
+      className={cn(
+        'inline-block font-display uppercase italic font-black tracking-tighter',
+        variant === 'vertical' ? 'text-center text-4xl sm:text-5xl' : SIZE[size],
+        textClassName,
+        className,
+      )}
+    >
+      Turno<span className={accentClassName}>Gol</span>
+    </span>
+  )
 }

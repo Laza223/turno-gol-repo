@@ -169,7 +169,7 @@ describe('ShirtGrid: headline', () => {
     render(<ShirtGrid capacity={5} confirmed={5} headline={null} />)
     expect(screen.queryByText(/Se juega/)).toBeNull()
     expect(screen.queryByRole('status')).toBeNull()
-    expect(screen.getByText('5 de 5 confirmados')).toBeTruthy()
+    expect(screen.getByText('Ya son 5 de 5')).toBeTruthy()
   })
 
   it('headline con texto reemplaza el titular, sin status', () => {
@@ -186,8 +186,8 @@ describe('ShirtGrid: headline', () => {
 
   it('el contador visible usa la misma cifra que el nombre accesible (tope en el cupo)', () => {
     render(<ShirtGrid capacity={5} confirmed={7} />)
-    expect(screen.getByText('5 de 5 confirmados')).toBeTruthy()
-    expect(screen.getByRole('img', { name: '5 de 5 confirmados' })).toBeTruthy()
+    expect(screen.getByText('Ya son 5 de 5')).toBeTruthy()
+    expect(screen.getByRole('img', { name: 'Ya son 5 de 5' })).toBeTruthy()
   })
 })
 

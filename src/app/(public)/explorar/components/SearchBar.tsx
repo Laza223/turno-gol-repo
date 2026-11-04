@@ -1,11 +1,13 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Clock, MapPin, Search, ChevronDown } from 'lucide-react'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import DatePicker from '@/components/ui/date-picker'
 import { useClientSnapshot } from '@/hooks/use-client-value'
+import { useSavedZona } from '@/hooks/use-saved-zona'
+import { markZonaApplied, wasZonaApplied } from '@/lib/zona-storage'
 import { todayART } from '@/shared/time/art-date'
 import {
   DropdownMenu,
@@ -89,6 +91,26 @@ export default function SearchBar({ cities }: Props) {
     setDate(dateFrom(params, today))
     setTime(params.get('time') ?? '')
   }
+
+  // Entrar a /explorar sin ningún filtro arranca en la zona guardada del jugador (la que dejó el
+  // hero o "Usar mi ubicación"): no vuelve a pedirle nada. Una sola vez por pestaña: entrar CON
+  // filtros ya cuenta como "aplicada" (marca de abajo), así que después quitar la ciudad o el
+  // último filtro deja la URL pelada y NO se le vuelve a imponer la zona.
+  // Es un efecto (y no un redirect del server) porque la zona vive en el dispositivo.
+  const [zona] = useSavedZona()
+  const zonaCity = zona?.city
+  const zonaProvince = zona?.province
+  useEffect(() => {
+    if (paramsKey !== '') {
+      markZonaApplied()
+      return
+    }
+    if (!zonaCity || wasZonaApplied()) return
+    markZonaApplied()
+    router.replace(
+      buildExplorarUrl(new URLSearchParams(), { city: zonaCity, province: zonaProvince }),
+    )
+  }, [zonaCity, zonaProvince, paramsKey, router])
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()

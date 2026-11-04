@@ -4,7 +4,7 @@
 
 ## Contexto mínimo (leer siempre)
 
-- TurnoGol: SaaS de gestión para complejos de fútbol en Argentina. Suscripción: $30.000 por cancha por mes, incluida la primera, sin techo; anual 10% off ($27.000 por cancha como equivalente mensual). TurnoGol Plus (asistente de WhatsApp) es un extra de $20.000 por cancha por mes. Trial 30 días sin tarjeta. No decir "+IVA" ni "precio final" hasta resolver D9. (Fuente de verdad: `src/modules/billing/pricing.ts` y [`2026-10-20-precio-uniforme-por-cancha.md`](../decisions/2026-10-20-precio-uniforme-por-cancha.md); cualquier otro precio necesita decisión escrita del dueño.)
+- TurnoGol: SaaS de gestión para complejos de fútbol en Argentina. Suscripción: $30.000 por cancha por mes, incluida la primera, sin techo; anual 10% off ($27.000 por cancha como equivalente mensual). TurnoGol Plus (asistente de WhatsApp) es un extra de $20.000 por cancha por mes. Trial 30 días sin tarjeta. Es precio final, sin IVA aparte ([decisión del 2026-10-31](../decisions/2026-10-31-iva-precio-final.md)). (Fuente de verdad: `src/modules/billing/pricing.ts` y [`2026-10-20-precio-uniforme-por-cancha.md`](../decisions/2026-10-20-precio-uniforme-por-cancha.md); cualquier otro precio necesita decisión escrita del dueño.)
 - Competidor principal: ATC Sports (multi-deporte, marketplace de jugadores establecido, más caro — verificar precio vigente antes de citarlo).
 - Estrategia: founder-led, hiperlocal, presencial. Gancho: el ausente y el teléfono. Docs 01-09 de esta carpeta son la doctrina.
 - Idioma: español rioplatense, voseo, cero corporate. Vocabulario y frases: [03-posicionamiento.md](./03-posicionamiento.md).

@@ -125,7 +125,6 @@ export function WeekStrip({ date, todayArt, onNavigate }: Props) {
               <button
                 type="button"
                 onClick={() => onNavigate(day.date)}
-                aria-label={`${day.label} ${day.dayNum}${isToday ? ' (hoy)' : ''}`}
                 aria-current={selected ? 'date' : undefined}
                 // El día elegido con borde y tinte (DESIGN.md › Chips): en la Grilla
                 // el verde sólido es de lo cobrado. Hoy se distingue por el borde
@@ -146,6 +145,7 @@ export function WeekStrip({ date, todayArt, onNavigate }: Props) {
                 <span className="mt-[3px] text-[15px] font-semibold leading-none tabular-nums">
                   {day.dayNum}
                 </span>
+                {isToday && <span className="sr-only">(hoy)</span>}
               </button>
             </li>
           )

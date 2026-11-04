@@ -275,7 +275,7 @@ DIAGNÓSTICO Y ACCIÓN:
 
   4. Verificar la cola de pg-boss
      → Supabase SQL Editor:
-        SELECT state, COUNT(*) FROM pgboss.job
+        SELECT state, COUNT(*) FROM pgboss_v12.job
         WHERE name = 'send-email'
         GROUP BY state;
      → Si hay muchos "failed" → revisar el error en la columna "output"
@@ -592,7 +592,7 @@ DIAGNÓSTICO:
   1. Railway Dashboard → servicio del worker → ver estado y logs.
      → ¿Está "Crashed"/"Stopped"? ¿Agotó los 10 reintentos de ON_FAILURE?
   2. ¿Cuántos jobs sin procesar hay en pg-boss?
-     SELECT name, state, count(*) FROM pgboss.job
+     SELECT name, state, count(*) FROM pgboss_v12.job
        WHERE state IN ('created','retry') GROUP BY name, state ORDER BY 3 DESC;
   3. ¿Cuántas reservas quedaron colgadas?
      SELECT count(*) FROM bookings
@@ -739,16 +739,16 @@ ORDER BY ts.current_period_end;
 
 -- Ver la cola de jobs pendientes
 SELECT name, state, COUNT(*)
-FROM pgboss.job
+FROM pgboss_v12.job
 WHERE state IN ('created', 'retry', 'active')
 GROUP BY name, state
 ORDER BY name;
 
 -- Ver errores recientes en workers
-SELECT name, state, output, completedon
-FROM pgboss.job
+SELECT name, state, output, completed_on
+FROM pgboss_v12.job
 WHERE state = 'failed'
-ORDER BY completedon DESC
+ORDER BY completed_on DESC
 LIMIT 20;
 
 -- Verificar que RLS está activo en todas las tablas aisladas
@@ -1163,7 +1163,9 @@ PASOS:
 
      NOTAS:
        → --format=custom permite restore selectivo
-       → --exclude-schema=pgboss excluye jobs (se recrean automáticamente)
+       → --exclude-schema=pgboss excluye el schema congelado de pg-boss 9.
+         El de la 12 (pgboss_v12) va en el backup: el worker no crea el
+         schema (lo crea la migración 104), solo sus tablas
        → --no-owner evita errores de roles al restaurar en otro proyecto
 
   3. Verificar el backup:

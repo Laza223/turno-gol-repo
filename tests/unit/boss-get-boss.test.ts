@@ -6,19 +6,40 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vite
  * opciones y qué pasa cuando `start()` falla o se cuelga.
  */
 type Fake = {
-  config: { noSupervisor?: boolean; noScheduling?: boolean; connectionTimeoutMillis?: number }
+  config: {
+    supervise?: boolean
+    schedule?: boolean
+    registerInstance?: boolean
+    queueCacheIntervalSeconds?: number
+    bamIntervalSeconds?: number
+    schema?: string
+    createSchema?: boolean
+    connectionTimeoutMillis?: number
+  }
   start: Mock
   stop: Mock
 }
 const h = vi.hoisted(() => ({
   made: [] as Fake[],
   start: async (): Promise<void> => {},
+  ensure: async (..._args: unknown[]): Promise<void> => {},
+  calls: [] as string[],
+}))
+
+vi.mock('@/shared/jobs/ensure-queues', () => ({
+  ensureQueues: (...args: unknown[]) => {
+    h.calls.push('ensureQueues:' + String(args[1]))
+    return h.ensure(...args)
+  },
 }))
 
 vi.mock('pg-boss', () => ({
-  default: class FakeBoss {
+  PgBoss: class FakeBoss {
     config: Fake['config']
-    start = vi.fn(() => h.start())
+    start = vi.fn(() => {
+      h.calls.push('start')
+      return h.start()
+    })
     stop = vi.fn(async () => {})
     on = vi.fn()
     constructor(config: Fake['config']) {
@@ -42,6 +63,8 @@ beforeEach(() => {
   vi.resetModules()
   h.made.length = 0
   h.start = async () => {}
+  h.ensure = async () => {}
+  h.calls.length = 0
   clearDevGlobal()
 })
 afterEach(() => {
@@ -71,8 +94,7 @@ describe('getBoss', () => {
     const results = await Promise.allSettled([getBoss(), getBoss()])
     expect(results.map((r) => r.status)).toEqual(['rejected', 'rejected'])
     expect(h.made).toHaveLength(1)
-    // `stop()` a secas NO cierra el pool de pg-boss 9.0.3: hace falta `destroy`.
-    expect(h.made[0].stop).toHaveBeenCalledWith({ graceful: false, destroy: true })
+    expect(h.made[0].stop).toHaveBeenCalledWith({ graceful: false })
 
     h.start = async () => {}
     expect(await getBoss()).toBe(h.made[1])
@@ -86,7 +108,7 @@ describe('getBoss', () => {
     const hung = expect(getBoss()).rejects.toMatchObject({ name: 'TimeoutError' })
     await vi.advanceTimersByTimeAsync(15_000)
     await hung
-    expect(h.made[0].stop).toHaveBeenCalledWith({ graceful: false, destroy: true })
+    expect(h.made[0].stop).toHaveBeenCalledWith({ graceful: false })
 
     h.start = async () => {}
     expect(await getBoss()).toBe(h.made[1])
@@ -105,24 +127,66 @@ describe('getBoss', () => {
     expect(h.made).toHaveLength(1)
   })
 
-  it.each([
-    ['producer', true, 10_000],
-    ['worker', false, undefined],
-  ] as const)(
-    'rol %s: noSupervisor y noScheduling = %s, connectionTimeoutMillis = %s',
-    async (role, flag, connectTimeout) => {
+  it('productor: ni supervisa, ni agenda, ni se registra, con intervalos altos y tope de conexión', async () => {
+    const getBoss = await load()
+    await getBoss('producer')
+    expect(h.made[0].config).toMatchObject({
+      supervise: false,
+      schedule: false,
+      registerInstance: false,
+      queueCacheIntervalSeconds: 3600,
+      bamIntervalSeconds: 3600,
+      connectionTimeoutMillis: 10_000,
+    })
+  })
+
+  it('worker: defaults de la 12 (no pasa ninguna de las opciones del productor)', async () => {
+    const getBoss = await load()
+    await getBoss('worker')
+    const { config } = h.made[0]
+    for (const key of [
+      'supervise',
+      'schedule',
+      'registerInstance',
+      'queueCacheIntervalSeconds',
+      'bamIntervalSeconds',
+      'connectionTimeoutMillis',
+    ] as const) {
+      expect(config).not.toHaveProperty(key)
+    }
+  })
+
+  it.each(['producer', 'worker'] as const)(
+    'rol %s: schema pgboss_v12 y createSchema false (turnogol_app no crea schemas)',
+    async (role) => {
       const getBoss = await load()
       await getBoss(role)
-      expect(Boolean(h.made[0].config.noSupervisor)).toBe(flag)
-      expect(Boolean(h.made[0].config.noScheduling)).toBe(flag)
-      expect(h.made[0].config.connectionTimeoutMillis).toBe(connectTimeout)
+      expect(h.made[0].config).toMatchObject({ schema: 'pgboss_v12', createSchema: false })
     },
   )
+
+  it('ensureQueues corre DESPUÉS de start() y con el rol, antes de resolver', async () => {
+    const getBoss = await load()
+    await getBoss('worker')
+    expect(h.calls).toEqual(['start', 'ensureQueues:worker'])
+  })
+
+  it('si ensureQueues falla: rechaza, cierra el pool y no queda memoizado', async () => {
+    h.ensure = async () => {
+      throw new Error('no queue')
+    }
+    const getBoss = await load()
+    await expect(getBoss()).rejects.toThrow('no queue')
+    expect(h.made[0].stop).toHaveBeenCalledWith({ graceful: false })
+    h.ensure = async () => {}
+    expect(await getBoss()).toBe(h.made[1])
+  })
 
   it('sin argumentos es productor', async () => {
     const getBoss = await load()
     await getBoss()
-    expect(h.made[0].config).toMatchObject({ noSupervisor: true, noScheduling: true })
+    expect(h.made[0].config).toMatchObject({ supervise: false, schedule: false })
+    expect(h.calls).toEqual(['start', 'ensureQueues:producer'])
   })
 
   it('pedir worker con un productor creado o arrancando falla fuerte y no crea otra instancia', async () => {

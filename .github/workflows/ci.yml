@@ -227,7 +227,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:15-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -350,7 +350,7 @@ jobs:
     # corre solo @critical en chromium (ver abajo), que entra holgado en el resto.
     timeout-minutes: 25
 
-    # NOTA: reemplaza el service container postgres:15-alpine (job anterior) por
+    # NOTA: reemplaza el service container postgres:17-alpine (job anterior) por
     # el stack completo de Supabase CLI local. Los e2e usan Supabase Auth REAL
     # (tests/e2e/_helpers/auth-state.ts: admin.generateLink + verifyOtp contra la
     # API de GoTrue), no solo Postgres — un Postgres pelado nunca alcanzó.

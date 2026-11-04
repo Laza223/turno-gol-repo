@@ -18,6 +18,7 @@ const h = vi.hoisted(() => ({
   getWorkerDb: vi.fn(),
   getQueueDepths: vi.fn(),
   workerExecute: vi.fn(),
+  appExecute: vi.fn(),
 }))
 
 // `withDisposableWorkerDb` abre su propio cliente worker: acá entrega el fake de
@@ -63,19 +64,23 @@ function sqlText(query: unknown): string {
     .join('')
 }
 
-const isQueueQuery = (query: unknown) => sqlText(query).includes('pgboss.job')
+// La de profundidad (`AS depth`); la de jobs fallidos (`AS failed`) es otra y devuelve vacío.
+const isQueueQuery = (query: unknown) =>
+  sqlText(query).includes('pgboss_v12.job') && sqlText(query).includes('AS depth')
 
 beforeEach(() => {
   vi.clearAllMocks()
-  h.getDb.mockReturnValue(makeChain([]))
+  // Las lecturas de pg-boss van por el pool de la APP (`getDb`): las tablas son de turnogol_app.
+  h.getDb.mockReturnValue({ ...makeChain([]), execute: h.appExecute })
+  h.appExecute.mockImplementation(async (query: unknown) =>
+    isQueueQuery(query) ? [{ name: 'send-email', depth: 3 }] : [],
+  )
   h.getWorkerDb.mockReturnValue({
     ...makeChain([{ mrr: '0' }]),
     execute: h.workerExecute,
   })
   // Por defecto el embudo (analytics_events) devuelve vacío; cada test decide qué pasa con las colas.
-  h.workerExecute.mockImplementation(async (query: unknown) =>
-    isQueueQuery(query) ? [{ name: 'send-email', depth: 3 }] : [],
-  )
+  h.workerExecute.mockImplementation(async () => [])
 })
 
 afterEach(() => {
@@ -83,14 +88,14 @@ afterEach(() => {
 })
 
 describe('getDashboardData — profundidad de colas', () => {
-  it('la lee con una query por el pool worker y NO arranca pg-boss', async () => {
+  it('la lee con una query por el pool de la app (no el worker) y NO arranca pg-boss', async () => {
     const { getDashboardData } = await import('@/modules/super-admin/dashboard.service')
 
     const data = await getDashboardData()
 
     expect(data.queues).toEqual([
       { queue: 'send-email', depth: 3 },
-      // Una cola sin filas pendientes cuenta 0, igual que boss.getQueueSize.
+      // Una cola sin filas pendientes cuenta 0, (no hay getQueueSize en la 12).
       { queue: 'push-send', depth: 0 },
     ])
     expect(h.getQueueDepths).not.toHaveBeenCalled()
@@ -99,6 +104,10 @@ describe('getDashboardData — profundidad de colas', () => {
   it('si la query de colas falla, degrada a "no disponible" y el resto del dashboard carga', async () => {
     h.getWorkerDb.mockReturnValue({
       ...makeChain([{ mrr: '350000' }]),
+      execute: h.workerExecute,
+    })
+    h.getDb.mockReturnValue({
+      ...makeChain([]),
       execute: vi.fn(async (query: unknown) => {
         if (isQueueQuery(query)) throw new Error('permission denied for table job')
         return []
@@ -117,8 +126,8 @@ describe('getDashboardData — profundidad de colas', () => {
 
   it('si la query de colas no vuelve nunca, el dashboard carga igual pasado el tope', async () => {
     vi.useFakeTimers()
-    h.getWorkerDb.mockReturnValue({
-      ...makeChain([{ mrr: '0' }]),
+    h.getDb.mockReturnValue({
+      ...makeChain([]),
       execute: vi.fn((query: unknown) =>
         isQueueQuery(query) ? new Promise<never>(() => {}) : Promise.resolve([]),
       ),
@@ -176,11 +185,7 @@ describe('getDashboardData — embudo de onboarding', () => {
   // caía a los 15 s — "/super-admin queda cargando".
   it('si las queries del embudo no vuelven nunca, el dashboard carga igual con el embudo en null', async () => {
     vi.useFakeTimers()
-    h.workerExecute.mockImplementation((query: unknown) =>
-      isQueueQuery(query)
-        ? Promise.resolve([{ name: 'send-email', depth: 3 }])
-        : new Promise<never>(() => {}),
-    )
+    h.workerExecute.mockImplementation(() => new Promise<never>(() => {}))
     const { getDashboardData } = await import('@/modules/super-admin/dashboard.service')
 
     const pending = getDashboardData()

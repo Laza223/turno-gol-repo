@@ -32,7 +32,12 @@ function frame(
 ) {
   return render(
     <PortalSessionProvider
-      initialValue={{ session, favoriteTenantIds: new Set(), staffPanelPath, rivalEnabled }}
+      initialValue={{
+        session,
+        favoriteTenantIds: new Set(),
+        staffPanelPath,
+        rivalEnabled,
+      }}
     >
       <PortalFrame header={<header>h</header>} footer={<footer>f</footer>}>
         <p>contenido</p>
@@ -66,7 +71,7 @@ describe('PortalFrame — barra inferior', () => {
     expect(hrefs).toEqual(['/explorar', '/rival', '/mis-reservas', '/configuracion'])
   })
 
-  it.each(['/rival', '/rival/nuevo', '/rival/p/ABC123'])(
+  it.each(['/rival', '/rival/tablon', '/rival/nuevo', '/rival/p/ABC123'])(
     'con RIVAL prendido, %s deja activo a Rival y a nadie más',
     (pathname) => {
       nav.pathname = pathname

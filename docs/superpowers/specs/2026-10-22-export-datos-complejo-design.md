@@ -99,7 +99,7 @@ Descartado:
 
 ## 7. Fuera de alcance
 
-- El CSV de caja de `/analiticas` tiene dos defectos que el diff no toca. Separa con `,`, así que en Excel es-AR abre todo en una columna. Y `monto_ars` sale en centavos (`report.service.ts:281`). Va como follow-up.
+- El CSV de caja de `/analiticas` tiene dos defectos que el diff no toca. Separa con `,`, así que en Excel es-AR abre todo en una columna. Y `monto_ars` sale en centavos (`report.service.ts:281`). Va como follow-up. **Resuelto el 2026-11-01**: el CSV de caja usa este mismo formato (`src/app/api/reports/revenue/revenue-csv.ts`), con encabezados en castellano y el gasto en negativo, por decisión de Lazar.
 - Export de cantina, torneos y cierres de caja.
 - Un export programado o por email.
 - El costo del export de clientes (§4) crece con la cantidad: con ~5.000 clientes son 100 queries pesadas en una sola acción. Si un complejo se acerca a ese número, va como follow-up una lectura de una sola pasada sobre la misma definición de cliente.

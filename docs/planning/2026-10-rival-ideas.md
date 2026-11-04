@@ -10,6 +10,8 @@
 - **[ola]**: va al roadmap;
 - **[veto]**: choca con un veto vigente.
 
+> **Enmendado el 2026-10-29** por [`2026-10-29-rival-cultura-de-turnogol.md`](../decisions/2026-10-29-rival-cultura-de-turnogol.md). Se levantan, con su condición: nivel numérico (como "la media"), G/E/P entre equipos, evaluar al rival (como "¿volverían a jugar?"), push, jugador del partido (como la figura), rankings y comparaciones (tablas con opt-in que muestran solo la parte de arriba), recordatorio ("El Día del Partido"), nombre del equipo (moderado), partido de la casa, canal de WhatsApp, torneos, "Los fijos de El Vagón" y feed agregado (contador y Diario semanal). Siguen vetados: escrache, karma canjeable, dividir la cancha y lo de "No se propone". La visión y el catálogo nuevos están en [`docs/rival/`](../rival/README.md).
+
 ## 1. Convocatoria del grupo (RSVP)
 
 **El hallazgo estratégico es que WhatsApp ya compite desde adentro del grupo.** Desde agosto de 2026 está desplegando encuestas con cierre programado y votantes ocultos ([WABetaInfo](https://wabetainfo.com/whatsapp-announces-three-new-features-for-group-chats/)). También tiene Eventos con Voy, Quizás y No voy, según prensa de 2024 que no se pudo verificar ([Lowyat](https://lowyat.net/2024/328466/whatsapp-events-group-chats)). Lo que no tiene es cupo duro, lista de espera, recordatorio a quien no votó y "repetir el de la semana pasada": ese es el lugar de RIVAL.

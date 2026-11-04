@@ -1,6 +1,7 @@
 import { getSql, getWorkerSql } from '@/shared/db/client'
 import { ENCRYPTION_KEY_PATTERN } from '@/shared/env'
 import { getBoss } from '@/shared/jobs/boss'
+import { QUEUE_SEND_EMAIL } from '@/shared/jobs/definitions'
 import { getRedis } from '@/shared/rate-limit/client'
 import { secretMatches } from '@/shared/security/secret-compare'
 import { captureException } from '@/lib/sentry'
@@ -43,7 +44,7 @@ async function checkPgBoss(): Promise<Check> {
   try {
     const boss = await getBoss()
     try {
-      await boss.getQueueSize('send-email')
+      await boss.getQueue(QUEUE_SEND_EMAIL)
     } catch (innerErr) {
       const msg = String((innerErr as Error).message ?? innerErr).toLowerCase()
       if (msg.includes('permission denied') || msg.includes('does not exist')) {
@@ -142,41 +143,23 @@ const HEARTBEAT_STALE_MS = HEARTBEAT_PERIOD_MS * HEARTBEAT_MISSES_ALLOWED
  * Último `health-ping` completado. Mismo criterio que `lastHealthPing` en
  * /api/admin/system-status.
  *
- * Va en DOS consultas y no en el `UNION ALL` que había antes, por costo medido
- * en producción (2026-08-25): `pgboss.archive` no tiene índice por `name` —solo
- * por `archivedon` e `id`— así que la rama del archivo era un **Seq Scan** que
- * descartaba 45.741 filas para quedarse con 2.012. Medido con EXPLAIN ANALYZE:
- * 12,35 ms y 1.908 buffers contra **0,43 ms y 83 buffers** mirando solo `job`
- * (que sí entra por `job_name`). En `pg_stat_statements` esa consulta promediaba
- * **354 ms**, la única propia en el top de lentas. Y empeora sola: el archivo
- * retiene 7 días de TODAS las colas.
- *
- * Mirar `job` primero es correcto porque el archiver corre recién a las 12 h
- * (`archiveCompletedAfterSeconds: 43200` en `boss.ts`), 48 veces el umbral de
- * 15 minutos con el que este chequeo grita. Verificado contra los datos reales:
- * `job` tenía los pings de las últimas 12 h y el más nuevo del archivo era de
- * hace 725 minutos.
- *
- * El archivo se consulta **solo si `job` no devuelve nada**, que es justo el
- * caso en que importa: worker muerto hace más de 12 h. Sin ese respaldo, ese
- * escenario devolvería "todavía no hay latidos" —o sea `ok`— en vez de `down`.
+ * Una sola consulta sobre `pgboss_v12.job`: pg-boss 12 no tiene tabla `archive` (lo
+ * completado vive 7 días en `job`, `deleteAfterSeconds` por cola), así que no hace
+ * falta el respaldo al archivo que tenía la 9 para el caso "worker muerto hace más de
+ * 12 h". Entra por el índice por `name`: medido 0,11 ms con 35 mil filas en `job`.
+ * Un worker muerto hace más de 7 días devuelve null (`ok` fail-open), igual que "todavía
+ * no hay latidos".
  */
 async function lastCompletedHealthPing(sql: ReturnType<typeof getSql>): Promise<string | null> {
   // `string` y no `Date`: drizzle muta los type parsers de esta instancia de
   // postgres-js, así que un timestamptz vuelve como texto. El caller ya envuelve
   // en `new Date(...)` y por eso este camino nunca se rompió — pero el tipo
   // mentía, y el mismo tipo mentiroso SÍ rompió /api/admin/system-status.
-  const fresh = await sql<{ last: string | null }[]>`
-    SELECT max(completedon) AS last FROM pgboss.job
+  const rows = await sql<{ last: string | null }[]>`
+    SELECT max(completed_on) AS last FROM pgboss_v12.job
     WHERE name = 'health-ping' AND state = 'completed'
   `
-  if (fresh[0]?.last) return fresh[0].last
-
-  const archived = await sql<{ last: string | null }[]>`
-    SELECT max(completedon) AS last FROM pgboss.archive
-    WHERE name = 'health-ping' AND state = 'completed'
-  `
-  return archived[0]?.last ?? null
+  return rows[0]?.last ?? null
 }
 
 /**
@@ -191,7 +174,7 @@ async function lastCompletedHealthPing(sql: ReturnType<typeof getSql>): Promise<
  * que exista un consumidor. Con el worker enterrado ese check pasa perfecto.
  *
  * El arreglo no agrega infraestructura: el latido ya se escribe en
- * `pgboss.job` cada 5 minutos, y acá se lo mira desde afuera. Si el último es
+ * `pgboss_v12.job` cada 5 minutos, y acá se lo mira desde afuera. Si el último es
  * viejo, el semáforo pasa a 503 y el monitor externo avisa. La sonda que moría
  * con el proceso pasa a ser justo la señal que se extraña desde afuera.
  *

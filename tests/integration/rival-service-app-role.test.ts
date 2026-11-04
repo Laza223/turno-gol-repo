@@ -511,6 +511,42 @@ describe('2. errores de dominio (ningún error de la base llega crudo)', () => {
     expect(await getBoardPublishPrefill(org)).toEqual({ whatsapp: '+54 1155551234' })
   })
 
+  it('2.4c createMatch con tablón publica en la misma transacción: contacto, offline_count y "Faltan N" real', async () => {
+    const su = adminSql()
+    const org = await welcomedPlayer('PubJunto')
+    // Me faltan 3 de 10: el organizador (1) + 6 de fuera de la app = 7 cubiertos.
+    const m = await createMatch(
+      org,
+      createRivalMatchSchema.parse({
+        tenantId: tenant.id,
+        startsAt: startsAtIn(48),
+        format: 5,
+        capacity: 10,
+        offlineCount: 6,
+        level: 'parejo',
+        courtDeclared: true,
+      }),
+      board('players', 'goalkeeper'),
+    )
+    const [row] = await su<
+      { on_board: boolean; seeking: string; position: string; offline: number; wa: string }[]
+    >`
+      SELECT m.on_board, m.seeking, m.seeking_position AS position, m.offline_count AS offline,
+             c.whatsapp_digits AS wa
+      FROM rival_matches m JOIN rival_match_contacts c ON c.match_id = m.id
+      WHERE m.id = ${m.id}
+    `
+    expect(row).toEqual({
+      on_board: true,
+      seeking: 'players',
+      position: 'goalkeeper',
+      offline: 6,
+      wa: '5491155551234',
+    })
+    const pub = await getPublicMatch(m.inviteCode)
+    expect(pub).toMatchObject({ capacity: 10, confirmedCount: 7 })
+  })
+
   it('2.5 tope de 3 partidos activos, tope de 5 pedidos, pedir a un partido que no está en el tablón', async () => {
     const org = await welcomedPlayer('Tope')
     for (let i = 0; i < 3; i++) await createMatch(org, draft({ hoursAhead: 24 + i }))

@@ -69,7 +69,7 @@ describe('assignReferrer', () => {
     expect(result).toEqual({ ok: false, reason: 'self' })
   })
 
-  it('0 filas afectadas (ya tiene referidor / premio en curso / fuera de promo) → not_eligible', async () => {
+  it('0 filas afectadas (ya tiene referidor / premio en curso) → not_eligible', async () => {
     h.selectRows = REFERRER_ROW
     h.updateRows = []
 

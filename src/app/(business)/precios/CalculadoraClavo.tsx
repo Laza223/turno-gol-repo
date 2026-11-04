@@ -200,9 +200,8 @@ export default function CalculadoraClavo() {
                 )}
               </p>
               <p className="mt-3 text-[15px] leading-relaxed text-slate-300">
-                Con la seña, el que no vino deja su parte.{' '}
                 <span className="font-semibold text-[#6ee7b7]">
-                  Y si falta dos veces, no reserva online por dos semanas.
+                  El que falta dos veces no reserva online por dos semanas.
                 </span>
               </p>
             </>

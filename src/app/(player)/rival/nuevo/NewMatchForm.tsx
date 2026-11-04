@@ -2,8 +2,15 @@
 
 import { useEffect, useRef } from 'react'
 import type { ScheduleSource } from '@/lib/schedule/open-status'
-import type { RepeatPrefill } from '@/modules/rival/rival-form'
-import { CourtBlock, MatchBlock, ModePicker, SubmitBar, WhereWhenBlock } from './NewMatchSections'
+import type { NewMatchIntent, RepeatPrefill } from '@/modules/rival/rival-form'
+import {
+  BoardBlock,
+  CourtBlock,
+  IntentBlock,
+  MatchBlock,
+  SubmitBar,
+  WhereWhenBlock,
+} from './NewMatchSections'
 import type { CreateAction } from './new-match-form'
 import { useNewMatchForm } from './use-new-match-form'
 
@@ -29,16 +36,20 @@ export type NewMatchFormProps = {
   today: string
   nowTime: string
   action: CreateAction
+  /** `?necesito=jugadores|rival` ya resuelto: preselecciona el paso 1. */
+  initialIntent?: NewMatchIntent | null
+  /** `players.phone` normalizado para precargar el WhatsApp. */
+  whatsappPrefill?: string | null
 }
 
 /**
- * "Armar un partido" en una sola pantalla (spec §3 y §5.1). Arriba, "¿Qué armás?" (partido
- * completo o equipo que busca rival: con rival el cupo es el formato); después tres bloques: dónde
- * y cuándo, el partido y la cancha. El tablón no se carga acá: se publica desde la vista del
- * partido. Con una reserva (`prefill`) el complejo, el día, la hora y el formato vienen
- * bloqueados. El sello se ve acá solo como aviso: el servidor vuelve a buscar la reserva por su
- * cuenta (el form no manda `bookingId`). Las horas se ofrecen según el horario del complejo, como
- * ayuda: el servidor no lo valida.
+ * "Armar un partido" en dos pasos, en una sola pantalla. Paso 1, "¿Qué necesitás?": Me faltan
+ * jugadores, Busco rival o Solo para mi grupo. Paso 2 (aparece al elegir): dónde y cuándo, el
+ * partido y la cancha; si la intención sale al tablón, también el WhatsApp, que se publica en
+ * la misma transacción. Con una reserva (`prefill`) el complejo, el día, la hora y el formato
+ * vienen bloqueados. El sello se ve acá solo como aviso: el servidor vuelve a buscar la reserva
+ * por su cuenta (el form no manda `bookingId`). Las horas se ofrecen según el horario del
+ * complejo, como ayuda: el servidor no lo valida.
  */
 export function NewMatchForm(props: NewMatchFormProps) {
   const form = useNewMatchForm(props)
@@ -48,22 +59,28 @@ export function NewMatchForm(props: NewMatchFormProps) {
   useEffect(() => {
     errorRef.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
   }, [form.response])
-  const { tenantId, date, validTime, format, capacity, teamOnly, level, mode } = form
+  const { tenantId, date, validTime, format, capacity, level, intent, missing } = form
   return (
     <form onSubmit={form.handleSubmit} noValidate className="space-y-7">
       <input type="hidden" name="tenantId" value={tenantId} />
       <input type="hidden" name="date" value={date} />
       <input type="hidden" name="time" value={validTime} />
       <input type="hidden" name="format" value={format} />
-      <input type="hidden" name="capacity" value={teamOnly ? format : (capacity ?? '')} />
+      <input type="hidden" name="capacity" value={intent === 'group' ? (capacity ?? '') : ''} />
       <input type="hidden" name="level" value={level} />
-      <input type="hidden" name="mode" value={mode} />
+      <input type="hidden" name="intent" value={intent ?? ''} />
+      <input type="hidden" name="missing" value={intent === 'players' ? missing : ''} />
 
-      <ModePicker form={form} />
-      <WhereWhenBlock form={form} />
-      <MatchBlock form={form} />
-      <CourtBlock form={form} />
-      <SubmitBar form={form} errorRef={errorRef} />
+      <IntentBlock form={form} />
+      {intent !== null && (
+        <>
+          <WhereWhenBlock form={form} />
+          <MatchBlock form={form} />
+          <CourtBlock form={form} />
+          {form.publishes && <BoardBlock form={form} />}
+          <SubmitBar form={form} errorRef={errorRef} />
+        </>
+      )}
     </form>
   )
 }

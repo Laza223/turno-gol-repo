@@ -29,6 +29,7 @@ export type RivalPublicMatch = {
   status: RivalMatchStatus
   seeking: RivalSeeking | null
   seekingPosition: RivalSeekingPosition | null
+  /** Lugares cubiertos: confirmados en la app + los de fuera de la app (`offline_count`). */
   confirmedCount: number
   filledAt: Date | null
   courtDeclared: boolean
@@ -49,6 +50,7 @@ export type RivalBoardItem = {
   level: RivalLevel
   seeking: RivalSeeking
   seekingPosition: RivalSeekingPosition | null
+  /** Lugares cubiertos: confirmados en la app + los de fuera de la app (`offline_count`). */
   confirmedCount: number
   hasStamp: boolean
 }

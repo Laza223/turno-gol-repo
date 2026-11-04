@@ -129,7 +129,7 @@ export const ParticipanteEnElBanco: Story = {
     const canvas = within(canvasElement)
     await expect(
       canvas.getByText(
-        'Quedaste en el banco. Si alguien se baja, entrás vos y te avisamos por mail.',
+        'Quedaste en el banco. Si alguien se baja, entrás vos: lo ves en Mis partidos.',
       ),
     ).toBeInTheDocument()
     // Ya está adentro: no hay "Voy", sí "Me bajo".
@@ -397,7 +397,7 @@ export const Vencido: Story = {
     await expect(canvas.getByText('Jugado')).toBeInTheDocument()
     // Un partido jugado no dice cuántos faltan.
     await expect(canvas.queryByText(/^Faltan/)).toBeNull()
-    await expect(canvas.getByText('7 de 10 confirmados')).toBeInTheDocument()
+    await expect(canvas.getByText('Ya son 7 de 10')).toBeInTheDocument()
     // Sin acciones: no se copia ni se cancela un partido que ya se jugó; se repite.
     await expect(canvas.queryByRole('button')).toBeNull()
     await expect(canvas.queryByRole('link', { name: 'Avisar al grupo' })).toBeNull()
@@ -514,11 +514,50 @@ export const OrganizadorPublicaEnElTablon: Story = {
   },
 }
 
-export const RecienCreadoBuscaRival: Story = {
+const recienArmado = (
+  seeking: RivalPublicMatch['seeking'],
+  title: string,
+  line: string,
+  boardHeading: string,
+): Story => ({
   args: {
     signedIn: true,
     justCreated: true,
-    createdAs: 'rival',
+    match: match({ isOrganizer: true, capacity: 5, confirmedCount: 3, seeking }),
+    roster: organizerRoster.slice(0, 1),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText(title)).toBeInTheDocument()
+    await expect(canvas.getByText(line)).toBeInTheDocument()
+    // El verde es siempre "Avisar al grupo"; copiar y el tablón van debajo.
+    await expect(canvas.getByRole('link', { name: 'Avisar al grupo' }).className).toContain(
+      'bg-primary',
+    )
+    await expect(canvas.getByRole('button', { name: 'Copiar link' })).toBeInTheDocument()
+    await expect(canvas.getByText(boardHeading)).toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: 'Cancelar el partido' })).toBeInTheDocument()
+  },
+})
+
+export const RecienArmadoBuscaJugadores: Story = recienArmado(
+  'players',
+  'Ya está en el tablón',
+  'Pasale el link al grupo: los que vengan con vos confirman con un toque.',
+  'En el tablón: Faltan 2',
+)
+
+export const RecienArmadoBuscaRival: Story = recienArmado(
+  'rival',
+  'Ya está en el tablón',
+  'Mientras tanto, pasale el link a tu equipo.',
+  'En el tablón: Busca rival',
+)
+
+export const RecienArmadoSoloElGrupo: Story = {
+  args: {
+    signedIn: true,
+    justCreated: true,
     match: match({ isOrganizer: true, capacity: 5, confirmedCount: 5 }),
     roster: organizerRoster.slice(0, 1),
   },
@@ -526,15 +565,15 @@ export const RecienCreadoBuscaRival: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Partido armado')).toBeInTheDocument()
     await expect(
-      canvas.getByText(/^Publicalo en el tablón para que un equipo rival/),
+      canvas.getByText('Pasale el link al grupo: cada uno confirma con un toque.'),
     ).toBeInTheDocument()
-    // El verde es publicar, no avisar al grupo: ese queda como acción secundaria.
-    await expect(canvas.getByRole('button', { name: 'Publicar en el tablón' })).toBeInTheDocument()
-    await expect(canvas.getByRole('link', { name: 'Avisar al grupo' })).toBeInTheDocument()
-    await userEvent.click(canvas.getByRole('button', { name: 'Publicar en el tablón' }))
-    // Ya se sabe qué busca: no se pregunta.
-    await expect(canvas.queryByRole('radio', { name: 'Buscamos jugadores' })).toBeNull()
-    await expect(canvas.getByText('Aparece en el tablón como "Busca rival".')).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: 'Avisar al grupo' }).className).toContain(
+      'bg-primary',
+    )
+    // Publicar ya no es verde: el verde es uno solo.
+    await expect(
+      canvas.getByRole('button', { name: 'Publicar en el tablón' }).className,
+    ).not.toContain('bg-primary')
   },
 }
 

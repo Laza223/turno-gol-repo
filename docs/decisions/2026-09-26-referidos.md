@@ -31,6 +31,7 @@ Plan de ejecución y estado: [`docs/planning/2026-09-26-referidos-ledger.md`](..
 
 - **Decisión:** cuenta como referido el complejo que **se registra hasta el 2026-10-31 a las 23:59 (hora argentina)**. El premio se gana cuando pague, aunque sea en noviembre o después.
 - **Después del 31/10** no se estira en silencio: se decide con datos si sigue, y eso queda en un decision doc nuevo. Una fecha que se corre quema la credibilidad en el grupo de dueños.
+- **Actualización 2026-10-31:** la fecha se eliminó: el programa es permanente y el código se genera para todos los complejos. Detalle: [`2026-10-31-referidos-permanentes.md`](2026-10-31-referidos-permanentes.md).
 - **Sin cupos:** no hay un límite real de cuántos complejos se pueden configurar por semana, así que no se usa escasez por cupos.
 
 ## R3 — Qué es "pagó su primer mes"

@@ -1,4 +1,4 @@
-import type PgBoss from 'pg-boss'
+import type { PgBoss } from 'pg-boss'
 import { sql as drizzleSql } from 'drizzle-orm'
 import { getWorkerSql, withTenantContext } from '@/shared/db/client'
 import { generateSlotDates } from '@/modules/abonados/slot-generator'

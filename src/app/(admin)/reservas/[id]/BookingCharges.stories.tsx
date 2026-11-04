@@ -183,7 +183,7 @@ export const Anticipo: Story = {
     await expect(amountInput).toHaveValue('10.500')
     await userEvent.clear(amountInput)
     await userEvent.type(amountInput, '6000')
-    await userEvent.click(canvas.getByRole('button', { name: 'Método de pago' }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Método de pago/ }))
     await userEvent.click(await body.findByRole('menuitemradio', { name: 'Transferencia' }))
     await userEvent.click(canvas.getByRole('button', { name: /^Cobrar .* por adelantado/ }))
 

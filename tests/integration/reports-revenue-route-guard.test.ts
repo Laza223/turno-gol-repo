@@ -100,7 +100,7 @@ describe('GET /api/reports/revenue — guard de rol + lifecycle (B10)', () => {
     asUser(makeStaffUser(inactiveStaffId))
     const res = await exportRevenue(csvRequest())
     expect(res.status).toBe(403)
-    expect(await res.text()).not.toContain('fecha,tipo')
+    expect(await res.text()).not.toContain('Fecha;Tipo')
   })
 
   it.each(['blocked', 'churned', 'deleted'])(
@@ -111,7 +111,7 @@ describe('GET /api/reports/revenue — guard de rol + lifecycle (B10)', () => {
       asUser(makeStaffUser(adminStaffId))
       const res = await exportRevenue(csvRequest())
       expect(res.status).toBe(403)
-      expect(await res.text()).not.toContain('fecha,tipo')
+      expect(await res.text()).not.toContain('Fecha;Tipo')
     },
   )
 
@@ -126,13 +126,19 @@ describe('GET /api/reports/revenue — guard de rol + lifecycle (B10)', () => {
     const res = await exportRevenue(csvRequest())
     expect(res.status).toBe(200)
     expect(res.headers.get('Content-Type')).toBe('text/csv; charset=utf-8')
+    // Formato es-AR (`revenue-csv.ts`): BOM + `;`. Sin esto, los `not.toContain`
+    // de los rechazos pasarían igual con un encabezado viejo.
+    // `res.text()` se come el BOM al decodificar: se mira en los bytes.
+    const bytes = new Uint8Array(await res.arrayBuffer())
+    expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf])
+    expect(new TextDecoder().decode(bytes)).toMatch(/^Fecha;Tipo;/)
   })
 
   it('rechaza al encargado: la plata del negocio en bloque es del dueño, como /analiticas', async () => {
     asUser(makeStaffUser(managerStaffId))
     const res = await exportRevenue(csvRequest())
     expect(res.status).toBe(403)
-    expect(await res.text()).not.toContain('fecha,tipo')
+    expect(await res.text()).not.toContain('Fecha;Tipo')
   })
 
   it('sigue rechazando un rango de fechas inválido', async () => {
@@ -162,7 +168,7 @@ describe('GET /api/reports/revenue — guard de rol + lifecycle (B10)', () => {
       asUser(makeStaffUser(adminStaffId))
       const res = await exportRevenue(rango('1900-01-01', '2999-12-31'))
       expect(res.status).toBe(400)
-      expect(await res.text()).not.toContain('fecha,tipo')
+      expect(await res.text()).not.toContain('Fecha;Tipo')
     })
 
     it('rechaza "hasta" anterior a "desde"', async () => {

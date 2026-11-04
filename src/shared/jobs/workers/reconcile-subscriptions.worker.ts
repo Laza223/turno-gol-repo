@@ -1,4 +1,4 @@
-import type PgBoss from 'pg-boss'
+import type { PgBoss } from 'pg-boss'
 import { sql as drizzleSql } from 'drizzle-orm'
 import type { Sql } from 'postgres'
 import { getWorkerDb, getWorkerSql, withTenantContext, type DbTx } from '@/shared/db/client'
@@ -938,8 +938,8 @@ export async function registerReconcileSubscriptionsWorker(boss: PgBoss): Promis
   // :20 y no en punto — reconcile-accounting-drift, retry-refunds y
   // onboarding-abandonment ya corren todos a las :00; separarlos es gratis.
   //
-  // El cuarto argumento son los SendOptions: sin él pg-boss registra el cron con
-  // retryLimit=0 y un 5xx de MP significa esperar hasta la hora siguiente. Este
+  // El cuarto argumento son los SendOptions: sin él el cron usa el default de la
+  // cola (retryLimit: 0) y un 5xx de MP significa esperar hasta la hora siguiente. Este
   // barrido es idempotente por construcción, así que reintentar es seguro.
   await boss.schedule(
     QUEUE_RECONCILE_SUBSCRIPTIONS,

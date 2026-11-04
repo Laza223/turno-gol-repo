@@ -18,11 +18,7 @@ export default function SiteFooter({ signedIn = false }: { signedIn?: boolean } 
     <footer className="border-t border-border bg-card/60 py-10 dark:border-white/5 dark:bg-slate-950">
       <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:flex-row sm:px-6 lg:px-8">
         <div className="flex items-center gap-2">
-          <Logo
-            variant="horizontal"
-            textClassName="text-foreground text-sm"
-            iconClassName="h-7 w-7"
-          />
+          <Logo variant="horizontal" size="sm" />
           <span className="text-xs text-muted-foreground">
             © {new Date().getFullYear()} · Argentina
           </span>

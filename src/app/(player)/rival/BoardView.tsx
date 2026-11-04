@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
-import PlayerHeroBand from '@/components/site/PlayerHeroBand'
 import { PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
 import { formatLabel } from '@/components/public/courtFacets'
 import { cn } from '@/lib/utils'
@@ -71,10 +70,8 @@ function TenantFilter({
 }
 
 /** Nombre accesible de la tarjeta: el tipo, el complejo, cuándo, qué partido es y el cupo (la tira de camisetas es decorativa). */
-function cardLabel(item: RivalBoardItem, type: string, now: Date): string {
-  const sello = item.hasStamp ? ', reservada en TurnoGol' : ''
-  const cupo = `${Math.min(item.confirmedCount, item.capacity)} de ${item.capacity} confirmados`
-  return `${type} en ${item.tenantName}, ${whenLabel(item.startsAt, now)}. ${formatLabel(item.format)}, ${RIVAL_LEVEL_LABELS[item.level]}${sello}, ${cupo}`
+function cupoLabel(item: RivalBoardItem): string {
+  return `Ya son ${Math.min(item.confirmedCount, item.capacity)} de ${item.capacity}`
 }
 
 /**
@@ -100,7 +97,6 @@ function BoardCard({
     <li>
       <Link
         href={`/rival/partido/${item.id}`}
-        aria-label={cardLabel(item, type, now)}
         className="block h-full rounded-2xl border border-border bg-card p-4 shadow-xs transition-colors hover:border-input focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <div className="flex items-start justify-between gap-3">
@@ -124,6 +120,10 @@ function BoardCard({
         </p>
         {item.hasStamp && <StampBadge className="mt-2" />}
         <MiniShirts className="mt-3" capacity={item.capacity} confirmed={item.confirmedCount} />
+        {/* Sin aria-label (WCAG 2.5.3): el nombre del link es lo visible más el cupo y el cuándo. */}
+        <span className="sr-only">
+          {cupoLabel(item)}, {whenLabel(item.startsAt, now)}
+        </span>
       </Link>
     </li>
   )
@@ -169,10 +169,10 @@ function EmptyBoard({ alert }: { alert: BoardAlertProps }) {
   return (
     <div className="rounded-3xl border border-border bg-card px-6 py-8 text-center shadow-xs lg:mx-auto lg:max-w-lg">
       <h2 className="font-display text-2xl font-black italic leading-tight tracking-tight text-foreground">
-        Por ahora no hay partidos en el tablón.
+        Todavía no hay partidos publicados.
       </h2>
       <p className="mx-auto mt-2 max-w-xs text-base text-muted-foreground">
-        Armá el tuyo y publicalo para que se sume quien busca jugar.
+        Cuando alguien publique uno, lo vas a ver acá. Mientras tanto, armá el tuyo.
       </p>
       {alert.alertTenants.length > 0 && (
         <div className="mt-5 w-full border-t border-border pt-5">
@@ -200,38 +200,53 @@ export function BoardView({
   nextHref: string | null
   now: Date
   alert: BoardAlertProps
-  /** Sin sesión, "Armar un partido" abre el ingreso de RIVAL (crea la cuenta y vuelve a armar). */
+  /** Sin sesión, las entradas de intención abren el ingreso de RIVAL (crea la cuenta y vuelve a armar). */
   entry: BoardEntryProps
 }) {
   const groups = groupBoardByDay(items, now)
-  const armar = cn(RIVAL_CTA, 'w-full lg:w-fit lg:self-start')
+  const primary = cn(RIVAL_CTA, 'w-full lg:w-fit')
+  const secondary = cn(
+    buttonVariants({ variant: 'outline' }),
+    RIVAL_GHOST,
+    'w-full rounded-full px-6 lg:w-fit',
+  )
+  // Las dos intenciones de armar. `?necesito=` lo leerá el form de `nuevo/` (PR2); hoy se ignora. Sin sesión, el ingreso vuelve ahí.
+  const intents = [
+    { label: 'Me faltan jugadores', next: '/rival/nuevo?necesito=jugadores', className: primary },
+    { label: 'Busco rival', next: '/rival/nuevo?necesito=rival', className: secondary },
+  ] as const
   return (
     <div className="mx-auto max-w-lg space-y-5 px-4 py-6 lg:max-w-3xl">
-      <PlayerHeroBand
-        eyebrow="RIVAL powered by TurnoGol"
-        title="Sumate a un"
-        accent="partido"
-        subtitle="O armá el tuyo, pasale el link al grupo y cada uno confirma con un toque."
-      />
+      <header className="space-y-1">
+        <h1 className="font-display text-3xl font-black italic leading-none tracking-tight text-foreground">
+          Partidos
+        </h1>
+        <p className="text-base text-muted-foreground">
+          Armá tu partido o sumate a uno en los complejos de TurnoGol.
+        </p>
+      </header>
 
-      <div className="flex flex-col gap-3">
-        {alert.signedIn ? (
-          <Link href="/rival/nuevo" className={armar}>
-            Armar un partido
-          </Link>
-        ) : (
-          <RivalEntryGate
-            next="/rival/nuevo"
-            label="Armar un partido"
-            purpose="armar"
-            sendMagicLink={entry.sendMagicLink}
-            startGoogle={entry.startGoogle}
-            inAppBrowser={entry.inAppBrowser}
-            className={armar}
-          />
+      <div className="flex flex-col gap-3 lg:flex-row">
+        {intents.map((intent) =>
+          alert.signedIn ? (
+            <Link key={intent.label} href={intent.next} className={intent.className}>
+              {intent.label}
+            </Link>
+          ) : (
+            <RivalEntryGate
+              key={intent.label}
+              next={intent.next}
+              label={intent.label}
+              purpose="armar"
+              sendMagicLink={entry.sendMagicLink}
+              startGoogle={entry.startGoogle}
+              inAppBrowser={entry.inAppBrowser}
+              className={intent.className}
+            />
+          ),
         )}
-        <RivalTabs current="tablon" />
       </div>
+      <RivalTabs current="tablon" />
 
       {groups.length === 0 && selectedTenantId === null ? (
         <EmptyBoard alert={alert} />

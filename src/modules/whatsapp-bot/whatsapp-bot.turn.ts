@@ -70,6 +70,14 @@ const BOT_ERROR_PAUSE_MS = 30 * 60 * 1000
 const FALLBACK_REPLY =
   'Perdón, en este momento no puedo responderte. En un rato te contesta alguien del complejo.'
 
+/**
+ * Audio que Kapso no transcribió (se acabó la cuota de transcripción, o falló):
+ * el modelo no tiene nada que contestar, así que la respuesta es fija y no
+ * gasta un turno ni depende de que el prompt lo recuerde.
+ */
+const UNHEARD_AUDIO_REPLY =
+  'Por acá no puedo escuchar audios 🙏 ¿Me lo podés escribir? Con el mensaje te ayudo enseguida.'
+
 export type TurnOutcome =
   'replied' | 'nothing_pending' | 'paused' | 'disabled' | 'handed_off_on_error' | 'rate_limited'
 
@@ -416,35 +424,44 @@ export async function processWhatsappTurn(
   let toolTrace: Anthropic.MessageParam[] = []
   let triedToBook = false
   let failed = false
-  try {
-    const courts = (await getPublicCourtCards(tenant)).map((c) => ({
-      ...c,
-      priceRules: tenant.hidePrices ? [] : (state.priceRules.get(c.id) ?? []),
-    }))
-    const result = await runAgent({
-      complexContext: [
-        buildComplexContext(tenant, courts, now),
-        buildChatBookings(tenant, state.chatBookings),
-        buildPhoneBookings(tenant, state.phoneBookings),
-      ].join('\n\n'),
-      history,
-      tools: buildBotTools(ctx, courts),
-    })
-    if (!result.text) throw new Error('El modelo no devolvió texto')
-    reply = result.text
-    usage = result.usage
-    toolTrace = result.trace
-    triedToBook = result.toolsCalled.includes('reservar')
-  } catch (err) {
-    // El modelo o una tool fallaron de verdad: se le avisa al jugador y la
-    // charla pasa a una persona en vez de dejarlo hablándole a la nada.
-    failed = true
-    captureException(err)
-    logger.error('whatsapp-bot: el turno falló, se pasa a una persona', {
-      module: 'whatsapp-bot',
-      tenantId,
-      error: err instanceof Error ? err.message : String(err),
-    })
+  // Solo si TODO lo pendiente son audios sin transcribir: si vino con texto, el
+  // modelo contesta el texto y el prompt le pide que el audio lo escriban.
+  const onlyUnheardAudio = state.history
+    .filter((r) => r.pending)
+    .every((r) => r.kind === 'audio' && !r.body)
+  if (onlyUnheardAudio) {
+    reply = UNHEARD_AUDIO_REPLY
+  } else {
+    try {
+      const courts = (await getPublicCourtCards(tenant)).map((c) => ({
+        ...c,
+        priceRules: tenant.hidePrices ? [] : (state.priceRules.get(c.id) ?? []),
+      }))
+      const result = await runAgent({
+        complexContext: [
+          buildComplexContext(tenant, courts, now),
+          buildChatBookings(tenant, state.chatBookings),
+          buildPhoneBookings(tenant, state.phoneBookings),
+        ].join('\n\n'),
+        history,
+        tools: buildBotTools(ctx, courts),
+      })
+      if (!result.text) throw new Error('El modelo no devolvió texto')
+      reply = result.text
+      usage = result.usage
+      toolTrace = result.trace
+      triedToBook = result.toolsCalled.includes('reservar')
+    } catch (err) {
+      // El modelo o una tool fallaron de verdad: se le avisa al jugador y la
+      // charla pasa a una persona en vez de dejarlo hablándole a la nada.
+      failed = true
+      captureException(err)
+      logger.error('whatsapp-bot: el turno falló, se pasa a una persona', {
+        module: 'whatsapp-bot',
+        tenantId,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
   }
 
   // El dueño pudo contestar desde su celular mientras corría el modelo: la del

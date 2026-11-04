@@ -27,11 +27,7 @@ export default function BusinessFooter() {
       <div className="mx-auto flex max-w-[1240px] flex-col items-center justify-between gap-4 px-6 sm:flex-row">
         <div className="flex items-center gap-2">
           <Link href="/" aria-label="TurnoGol — inicio" className={linkCls}>
-            <Logo
-              variant="horizontal"
-              textClassName="text-white text-sm"
-              iconClassName="h-7 w-7 bg-white/95"
-            />
+            <Logo variant="horizontal" size="sm" textClassName="text-white" />
           </Link>
           {/* slate-500 (#64748b) sobre #020617 da 4.23:1, bajo AA (4.5) — no es un
               idiom dark:, es fijo, así que sube a slate-400 (7.87:1). */}

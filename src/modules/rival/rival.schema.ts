@@ -123,10 +123,22 @@ export const createRivalMatchSchema = z
     bookingId: uuid.optional(),
     /** "Ya tengo la cancha": obligatoria si no hay reserva. No hay partidos sin cancha. */
     courtDeclared: z.boolean().default(false),
+    /**
+     * Lugares cubiertos fuera de la app, SIN contar al organizador (migr. 106): un número, sin
+     * datos de personas. Tiene que dejar al menos un lugar libre para el organizador.
+     */
+    offlineCount: z.coerce.number().int().min(0).default(0),
   })
   .superRefine((v, ctx) => {
     if (!v.bookingId && !v.courtDeclared) {
       ctx.addIssue({ code: 'custom', path: ['courtDeclared'], message: COURT_REQUIRED_MESSAGE })
+    }
+    if (v.offlineCount >= (v.capacity ?? v.format * 2)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['missing'],
+        message: 'Revisá cuántos faltan: no pueden ser más que los lugares del partido.',
+      })
     }
   })
   .transform((v) => ({
@@ -137,6 +149,7 @@ export const createRivalMatchSchema = z
     level: v.level,
     bookingId: v.bookingId ?? null,
     courtDeclared: v.courtDeclared,
+    offlineCount: v.offlineCount,
   }))
 
 /** Bienvenida RIVAL (§7), primer momento (alcanza para armar): el nombre y las reglas. */

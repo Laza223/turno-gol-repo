@@ -40,17 +40,17 @@ import type { Sql } from 'postgres'
  * TurnoGol Plus en el cobro (Fase A). Decisión: `docs/decisions/2026-10-22-cobro-turnogol-plus.md`.
  *
  * Los montos están escritos a mano (plan $30.000 por cancha, Plus de lista
- * $20.000 por cancha, anual 10% sobre la suma): un test que recalcula con la
+ * $15.000 por cancha, anual 10% sobre la suma): un test que recalcula con la
  * misma fórmula que el código no prueba nada. Las fechas salen de un `NOW`
  * inyectado, nunca del reloj.
  */
 
 const NOW = new Date('2027-03-10T12:00:00Z')
-/** 5 canchas: plan $150.000 + Plus 5 x $20.000. */
+/** 5 canchas: plan $150.000 + Plus 5 x $15.000. */
 const PLAN_5 = 15_000_000
-const WITH_PLUS_5 = 25_000_000
-/** Plus especial $15.000 por cancha. */
-const WITH_SPECIAL_5 = 22_500_000
+const WITH_PLUS_5 = 22_500_000
+/** Plus especial $12.000 por cancha. */
+const WITH_SPECIAL_5 = 21_000_000
 const PLUS_REASON_5 = 'TurnoGol — 5 canchas + Asistente de WhatsApp (mensual)'
 const PLAN_REASON_5 = 'TurnoGol — 5 canchas (mensual)'
 
@@ -265,8 +265,8 @@ describe('alta de Plus (AL1-AL6)', () => {
 
     await withTenantContext(t, (tx) => billingSubscribe(t, 2, 'monthly', gateway, tx, NOW))
     expect(gateway.preapprovalCalls).toHaveLength(1)
-    // 2 canchas: plan $60.000 + Plus 2 x $20.000.
-    expect(gateway.preapprovalCalls[0]!.amount).toBe(10_000_000)
+    // 2 canchas: plan $60.000 + Plus 2 x $15.000.
+    expect(gateway.preapprovalCalls[0]!.amount).toBe(9_000_000)
     expect(gateway.preapprovalCalls[0]!.reason).toBe(
       'TurnoGol — 2 canchas + Asistente de WhatsApp (mensual)',
     )
@@ -298,7 +298,7 @@ describe('alta de Plus (AL1-AL6)', () => {
     await withTenantContext(t, (tx) => billingSubscribe(t, 2, 'monthly', gateway, tx, NOW))
 
     expect(gateway.preapprovalCalls).toHaveLength(1)
-    expect(gateway.preapprovalCalls[0]!.amount).toBe(10_000_000)
+    expect(gateway.preapprovalCalls[0]!.amount).toBe(9_000_000)
   })
 
   it.each(['past_due', 'suspended', 'blocked', 'canceled', 'churned'] as const)(
@@ -325,7 +325,7 @@ describe('alta de Plus (AL1-AL6)', () => {
   it('AL6: cambiar el precio especial mueve el débito (mensual y anual) y el especial manda sobre la lista', async () => {
     const sql = getSql()
     const monthly = await seed(sql, 'active')
-    await enable(monthly, 1_500_000)
+    await enable(monthly, 1_200_000)
     expect(gateway.updatePreapprovalCalls.at(-1)!.amount).toBe(WITH_SPECIAL_5)
 
     const res = await enable(monthly, 1_800_000)
@@ -723,11 +723,11 @@ describe('todos los sitios que arman el monto llevan Plus (CB1-CB3)', () => {
 
     await runDunningSweep(NOW)
 
-    // 4 canchas: plan $120.000 + Plus 4 x $20.000.
+    // 4 canchas: plan $120.000 + Plus 4 x $15.000.
     expect(gateway.updatePreapprovalCalls).toEqual([
       {
         preapprovalId: `mp-preapp-${t}`,
-        amount: 20_000_000,
+        amount: 18_000_000,
         reason: 'TurnoGol — 4 canchas + Asistente de WhatsApp (mensual)',
       },
     ])
@@ -758,7 +758,7 @@ describe('todos los sitios que arman el monto llevan Plus (CB1-CB3)', () => {
     const trial = await seed(sql, 'trialing', {
       mpSubscriptionId: null,
       plusEnabled: true,
-      plusPrice: 1_500_000,
+      plusPrice: 1_200_000,
     })
     await withTenantContext(trial, (tx) => billingSubscribe(trial, 5, 'monthly', gateway, tx, NOW))
     expect(gateway.preapprovalCalls.at(-1)!.amount).toBe(WITH_SPECIAL_5)
@@ -767,7 +767,7 @@ describe('todos los sitios que arman el monto llevan Plus (CB1-CB3)', () => {
     const canceled = await seed(sql, 'canceled', {
       mpSubscriptionId: null,
       plusEnabled: true,
-      plusPrice: 1_500_000,
+      plusPrice: 1_200_000,
       scheduledDeletionAt: addDays(NOW, 30),
     })
     await withTenantContext(canceled, (tx) =>
@@ -821,10 +821,10 @@ describe('estado de Plus para el panel y la facturación', () => {
     const t = await seed(getSql(), 'active')
     expect((await getPlusAdminState(t)).kind).toBe('off')
 
-    await enable(t, 1_500_000)
+    await enable(t, 1_200_000)
     const billed = await getPlusAdminState(t)
     expect(billed.kind).toBe('billed')
-    expect(billed.pricePerCourtCents).toBe(1_500_000)
+    expect(billed.pricePerCourtCents).toBe(1_200_000)
     expect(billed.flagOn).toBe(true)
 
     await disable(t)
@@ -846,13 +846,13 @@ describe('estado de Plus para el panel y la facturación', () => {
   })
 
   it('getSubscriptionState expone Plus (enabled, precio efectivo, acceso, cotización)', async () => {
-    const t = await seed(getSql(), 'active', { plusEnabled: true, plusPrice: 1_500_000 })
+    const t = await seed(getSql(), 'active', { plusEnabled: true, plusPrice: 1_200_000 })
 
     const state = await withTenantContext(t, (tx) => getSubscriptionState(t, tx))
 
     expect(state!.plus).toEqual({
       enabled: true,
-      perCourtCents: 1_500_000,
+      perCourtCents: 1_200_000,
       accessUntil: null,
       quote: null,
     })

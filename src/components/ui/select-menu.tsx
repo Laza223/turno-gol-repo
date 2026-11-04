@@ -60,6 +60,7 @@ export function SelectMenu({
   'aria-describedby': ariaDescribedBy,
 }: Props) {
   const selected = options.find((o) => o.value === value)
+  const visibleText = selected?.label ?? placeholder
 
   return (
     <DropdownMenu modal={false}>
@@ -70,7 +71,13 @@ export function SelectMenu({
           type="button"
           id={id}
           disabled={disabled}
-          aria-label={ariaLabel}
+          // WCAG 2.5.3: el nombre tiene que contener el texto visible (el valor elegido).
+          aria-label={
+            ariaLabel && !ariaLabel.includes(visibleText)
+              ? `${ariaLabel}: ${visibleText}`
+              : ariaLabel
+          }
+          // oxlint-disable-next-line jsx-a11y/role-supports-aria-props -- aria-invalid es global en ARIA 1.1 (mismo motivo que la directiva de arriba; Oxlint reporta en el atributo y ESLint en el <button>)
           aria-invalid={ariaInvalid}
           aria-describedby={ariaDescribedBy}
           className={cn(
@@ -89,7 +96,7 @@ export function SelectMenu({
             </span>
           )}
           <span className={cn('truncate', !selected && 'text-muted-foreground')}>
-            {selected?.label ?? placeholder}
+            {visibleText}
           </span>
           <ChevronDown
             className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"

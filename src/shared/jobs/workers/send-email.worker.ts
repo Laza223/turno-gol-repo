@@ -1,4 +1,4 @@
-import type PgBoss from 'pg-boss'
+import type { PgBoss } from 'pg-boss'
 import { getWorkerSql } from '@/shared/db/client'
 import { QUEUE_SEND_EMAIL } from '../definitions'
 import {

@@ -104,6 +104,7 @@ function createForm(over: Record<string, string> = {}): FormData {
     format: '5',
     capacity: '',
     level: 'parejo',
+    intent: 'group',
     courtDeclared: 'on',
     ...over,
   }
@@ -186,23 +187,36 @@ describe('createMatchAction', () => {
     expect(draft.tenantId).toBe(TENANT)
   })
 
-  it('"Mi equipo busca rival" va a ?creado=rival; un mode raro es "partido completo"', async () => {
-    mocks.createMatch.mockResolvedValue({ id: MATCH, inviteCode: 'ABCDEFGHJK' })
-    await expect(
-      createMatchAction({ success: true }, createForm({ mode: 'rival', capacity: '5' })),
-    ).rejects.toThrow('REDIRECT:/rival/p/ABCDEFGHJK?creado=rival')
-    await expect(
-      createMatchAction({ success: true }, createForm({ mode: 'otra-cosa' })),
-    ).rejects.toThrow('REDIRECT:/rival/p/ABCDEFGHJK?creado=1')
+  it('Me faltan jugadores publica en la misma llamada: el service recibe el cupo y el tablón', async () => {
+    mocks.createMatch.mockResolvedValue({ id: MATCH, inviteCode: CODE })
+    const f = createForm({
+      intent: 'players',
+      missing: '3',
+      whatsapp: '11 5555-1234',
+      whatsappConsent: 'on',
+    })
+    await expect(createMatchAction(PREV, f)).rejects.toThrow(`REDIRECT:/rival/p/${CODE}?creado=1`)
+    const [, draft, board] = mocks.createMatch.mock.calls[0] as [string, unknown, unknown]
+    expect(draft).toMatchObject({ format: 5, capacity: 10, offlineCount: 6 })
+    expect(board).toMatchObject({ seeking: 'players', whatsappDigits: '5491155551234' })
   })
 
-  it('el tablón ya no se arma acá: los campos de tablón no llegan al borrador', async () => {
+  it('Busco rival publica como rival con el equipo completo', async () => {
+    mocks.createMatch.mockResolvedValue({ id: MATCH, inviteCode: CODE })
+    const f = createForm({ intent: 'rival', whatsapp: '11 5555-1234', whatsappConsent: 'on' })
+    await expect(createMatchAction(PREV, f)).rejects.toThrow('REDIRECT')
+    const [, draft, board] = mocks.createMatch.mock.calls[0] as [string, unknown, unknown]
+    expect(draft).toMatchObject({ capacity: 5, offlineCount: 4 })
+    expect(board).toMatchObject({ seeking: 'rival' })
+  })
+
+  it('Solo para mi grupo no publica: sin tablón aunque el form traiga WhatsApp', async () => {
     mocks.createMatch.mockResolvedValue({ id: MATCH, inviteCode: CODE })
     const f = createForm({ seeking: 'rival', whatsapp: '11 5555-1234', whatsappConsent: 'on' })
     await expect(createMatchAction(PREV, f)).rejects.toThrow('REDIRECT')
-    const draft = mocks.createMatch.mock.calls[0]?.[1] as Record<string, unknown>
-    expect(draft).not.toHaveProperty('board')
-    expect(draft).toMatchObject({ format: 5, capacity: 10 })
+    const [, draft, board] = mocks.createMatch.mock.calls[0] as [string, unknown, unknown]
+    expect(draft).toMatchObject({ format: 5, capacity: 10, offlineCount: 0 })
+    expect(board).toBeNull()
   })
 
   it('un error de validación vuelve con el campo y no toca el service', async () => {

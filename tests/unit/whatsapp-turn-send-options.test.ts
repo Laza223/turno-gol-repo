@@ -1,21 +1,38 @@
 import { describe, expect, it } from 'vitest'
-import { whatsappTurnSendOptions } from '@/shared/jobs/definitions'
+import {
+  QUEUE_DEFINITIONS,
+  QUEUE_WHATSAPP_TURN,
+  whatsappTurnSendOptions,
+} from '@/shared/jobs/definitions'
 
 describe('whatsappTurnSendOptions', () => {
-  // Revisión adversarial: con la cola singleton, un reintento pasa el job de
-  // `active` a `retry` y viola el índice único `job_singleton_queue` si ya hay
-  // otro job del mismo chat esperando: el job queda `active` para siempre y el
-  // `expire` de pg-boss falla en cada ciclo para todas las colas.
+  // Un reintento de pg-boss competiría con el cron de rescate por el mismo chat:
+  // el reintento real es `whatsapp-turn-rescue`.
   it('sin reintentos de pg-boss: el reintento es el cron de rescate', () => {
     expect(whatsappTurnSendOptions('chat-1')).toMatchObject({ retryLimit: 0 })
   })
 
-  it('cola singleton por chat, con debounce y visible para la DLQ', () => {
-    expect(whatsappTurnSendOptions('chat-1')).toMatchObject({
+  it('un job por chat, con debounce y vencimiento de 15 min; sin las opciones de la 9', () => {
+    const options = whatsappTurnSendOptions('chat-1')
+    expect(options).toEqual({
       singletonKey: 'chat-1',
-      useSingletonQueue: true,
       startAfter: 4,
-      onComplete: true,
+      retryLimit: 0,
+      expireInSeconds: 900,
+    })
+    // La 12 las ignora EN SILENCIO: no pueden volver.
+    expect(options).not.toHaveProperty('useSingletonQueue')
+    expect(options).not.toHaveProperty('onComplete')
+    expect(options).not.toHaveProperty('expireInMinutes')
+  })
+
+  it('la cola es stately (1 esperando + 1 corriendo por chat) y manda sus fallos a la DLQ', () => {
+    const def = QUEUE_DEFINITIONS.find((q) => q.name === QUEUE_WHATSAPP_TURN)
+    expect(def?.options).toMatchObject({
+      policy: 'stately',
+      retryLimit: 0,
+      expireInSeconds: 900,
+      deadLetter: 'dead-letter',
     })
   })
 })

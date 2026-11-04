@@ -1,6 +1,10 @@
+import type { Queue, SendOptions, WorkOptions } from 'pg-boss'
+import { QUEUE_PROCESS_MP_WEBHOOK } from './queue-names'
+
 /**
- * Centralized pg-boss queue names + send options + work (poll) options.
- * Retry config lives on SendOptions (per enqueue), not on WorkOptions (pg-boss v9).
+ * Centralized pg-boss queue names + queue registry + send options + work (poll) options.
+ * Retry config lives on SendOptions (per enqueue) y, como default, en `QUEUE_DEFINITIONS`;
+ * no en WorkOptions.
  */
 
 // ─── Queue names ─────────────────────────────────────────────────────────────
@@ -26,6 +30,63 @@ export const QUEUE_WHATSAPP_TURN = 'whatsapp-turn'
 export const QUEUE_WHATSAPP_TURN_RESCUE = 'whatsapp-turn-rescue'
 export const QUEUE_WHATSAPP_OPS_ALERTS = 'whatsapp-ops-alerts'
 export const QUEUE_RIVAL_MAIL = 'rival-mail'
+export const QUEUE_GENERATE_ABONADO_SLOTS = 'generate-abonado-slots'
+export const QUEUE_DEAD_LETTER = 'dead-letter'
+
+// ─── Registro de colas ───────────────────────────────────────────────────────
+// pg-boss 12 exige que la cola exista antes de `send`/`schedule` (`PGBOSS_QUEUE_NOT_FOUND`):
+// `ensureQueues` crea todas las de esta lista al arrancar. Una cola nueva SIEMPRE se agrega
+// acá — el test de completitud falla si un `send(QUEUE_*)` o un `work`/`schedule` apunta a
+// una que no figura.
+//
+// `retryLimit: 0` en todas: es el default que tenía la 9 (la 12 trae 2). Un tick de cron no
+// se reintenta —el "retry" es el próximo tick— y cada `send` sigue pasando su propio
+// `retryLimit`, que pisa este default por job.
+//
+// `deadLetter` SOLO en `whatsapp-turn`, que es lo que veía la DLQ de la 9 (era la única con
+// `onComplete`). Ampliarlo a otras colas es una decisión aparte.
+
+export type QueueDefinition = { name: string; options: Omit<Queue, 'name'> }
+
+const NO_RETRY = { retryLimit: 0 } as const
+
+export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
+  // La DLQ primero: `ensureQueues` la crea antes que el resto, porque `deadLetter` la referencia.
+  { name: QUEUE_DEAD_LETTER, options: NO_RETRY },
+  { name: QUEUE_PROCESS_MP_WEBHOOK, options: NO_RETRY },
+  { name: QUEUE_GENERATE_ABONADO_SLOTS, options: NO_RETRY },
+  { name: QUEUE_SEND_EMAIL, options: NO_RETRY },
+  { name: QUEUE_EXPIRE_TRIALS, options: NO_RETRY },
+  { name: QUEUE_AUTO_COMPLETE, options: NO_RETRY },
+  { name: QUEUE_AUTO_CREDIT_UNPAID, options: NO_RETRY },
+  { name: QUEUE_DUNNING_RETRY, options: NO_RETRY },
+  { name: QUEUE_DATA_RETENTION, options: NO_RETRY },
+  { name: QUEUE_EXPIRE_PENDING_BOOKING, options: NO_RETRY },
+  { name: QUEUE_EXPIRE_PENDING_BOOKING_SWEEP, options: NO_RETRY },
+  { name: QUEUE_REFRESH_MP_TOKENS, options: NO_RETRY },
+  { name: QUEUE_RECONCILE_PENDING_PAYMENTS, options: NO_RETRY },
+  { name: QUEUE_RECONCILE_ACCOUNTING_DRIFT, options: NO_RETRY },
+  { name: QUEUE_RETRY_PENDING_REFUNDS, options: NO_RETRY },
+  { name: QUEUE_PUSH_SEND, options: NO_RETRY },
+  { name: QUEUE_HEALTH_PING, options: NO_RETRY },
+  { name: QUEUE_DAILY_SUMMARY, options: NO_RETRY },
+  { name: QUEUE_ONBOARDING_ABANDONMENT, options: NO_RETRY },
+  { name: QUEUE_RECONCILE_SUBSCRIPTIONS, options: NO_RETRY },
+  {
+    name: QUEUE_WHATSAPP_TURN,
+    options: {
+      // Un job por chat: 1 esperando + 1 corriendo, nunca 2 activos del mismo `singletonKey`.
+      policy: 'stately',
+      retryLimit: 0,
+      // Más que el peor turno (ver `whatsappTurnSendOptions`).
+      expireInSeconds: 900,
+      deadLetter: QUEUE_DEAD_LETTER,
+    },
+  },
+  { name: QUEUE_WHATSAPP_TURN_RESCUE, options: NO_RETRY },
+  { name: QUEUE_WHATSAPP_OPS_ALERTS, options: NO_RETRY },
+  { name: QUEUE_RIVAL_MAIL, options: NO_RETRY },
+]
 
 // ─── Job payload types ────────────────────────────────────────────────────────
 
@@ -42,38 +103,41 @@ export type ExpirePendingBookingJobData = {
 export const DEFAULT_EXPIRY_SECONDS = 6 * 60
 
 // ─── Send options (retry config) ──────────────────────────────────────────────
+// `satisfies SendOptions`: pg-boss 12 ignora en silencio las opciones que ya no existen
+// (`expireInHours`, `teamSize`…), y solo el tipo las rechaza. Tipadas acá, una opción
+// inválida no compila.
 
 export const SEND_EMAIL_SEND_OPTIONS = {
   retryLimit: 3,
   retryDelay: 60,
   retryBackoff: true,
-  expireInHours: 24,
-} as const
+  expireInSeconds: 24 * 3600,
+} satisfies SendOptions
 
 export const EXPIRE_PENDING_BOOKING_SEND_OPTIONS = {
   retryLimit: 3,
   retryDelay: 30,
   retryBackoff: true,
   // Comfortably outlives the 6 min timer + retries so a rescheduled job isn't dropped.
-  expireInHours: 1,
-} as const
+  expireInSeconds: 3600,
+} satisfies SendOptions
 
 // ─── Reconciliación de suscripciones SaaS ─────────────────────────────────────
-// OJO: `boss.schedule(name, cron, data)` SIN cuarto argumento registra el cron
-// con retryLimit=0 — el "reintento" pasa a ser el próximo tick, una hora
-// después. Acá sí se pasan SendOptions porque el barrido es idempotente por
-// construcción (escritura convergente + guard de marca de agua), así que
+// OJO: `boss.schedule(name, cron, data)` SIN cuarto argumento usa el default de la
+// cola (`retryLimit: 0` en `QUEUE_DEFINITIONS`) — el "reintento" pasa a ser el próximo
+// tick, una hora después. Acá sí se pasan SendOptions porque el barrido es idempotente
+// por construcción (escritura convergente + guard de marca de agua), así que
 // reintentar ante un 5xx de MP es seguro y evita que un complejo que ya pagó
 // espere una hora más para que le arreglen la suscripción.
 //
-// `expireInHours: 2` deja lugar a los 2 reintentos con backoff sin que dos
+// `expireInSeconds: 2 h` deja lugar a los 2 reintentos con backoff sin que dos
 // corridas del cron horario se solapen.
 export const RECONCILE_SUBSCRIPTIONS_SEND_OPTIONS = {
   retryLimit: 2,
   retryDelay: 120,
   retryBackoff: true,
-  expireInHours: 2,
-} as const
+  expireInSeconds: 2 * 3600,
+} satisfies SendOptions
 
 // ─── Push notifications ───────────────────────────────────────────────────────
 
@@ -103,32 +167,23 @@ export const PUSH_SEND_SEND_OPTIONS = {
   retryLimit: 3,
   retryDelay: 30,
   retryBackoff: true,
-  expireInHours: 1,
-} as const
+  expireInSeconds: 3600,
+} satisfies SendOptions
 
 // ─── Bot de WhatsApp ──────────────────────────────────────────────────────────
 // Un turno del bot por chat. Los jugadores escriben en ráfagas ("hola" /
 // "tenés para hoy?" / "a las 21"): el job arranca 4 s después del primer
 // mensaje y contesta todo junto.
 //
-// Por qué `useSingletonQueue` y no `singletonKey` a secas: en pg-boss 9 la
-// `singletonKey` sola cubre también el estado `active`
-// (node_modules/pg-boss/src/plans.js, índice job_singletonKey), así que un
-// mensaje que llega MIENTRAS el turno corre perdía su job (`send` devuelve
-// null) y quedaba sin respuesta. Con la cola singleton queda 1 job esperando
-// además del que corre; el worker suma `enforceSingletonQueueActiveLimit` para
-// que no corran dos del mismo chat a la vez.
+// La exclusión por chat la da la POLÍTICA `stately` de la cola (`QUEUE_DEFINITIONS`,
+// índice `job_i3` de pg-boss 12): por `singletonKey` hay 1 job esperando + 1 corriendo.
+// Un mensaje que llega MIENTRAS el turno corre queda esperando (no se pierde) y `send`
+// devuelve null si ya hay uno esperando: ese job va a leer también los mensajes nuevos.
+// Con `localConcurrency: 4` nunca corren dos del mismo chat.
 //
-// `retryLimit: 0`, OBLIGATORIO con la cola singleton: el índice único
-// `job_singleton_queue` cubre los estados < `active`, y un reintento pasa el
-// job de `active` a `retry`. Si ya había otro job del mismo chat esperando, ese
-// UPDATE viola el índice: pg-boss se traga el error, el job queda `active` para
-// siempre (el chat muere) y el `expire` de mantenimiento falla en cada ciclo
-// para TODAS las colas. Sin reintentos, un fallo queda `failed`/`expired`, que
-// no entran en el índice. El reintento real es el cron `whatsapp-turn-rescue`.
-//
-// `onComplete: true`: sin esto pg-boss 9 no emite el evento de cierre y la DLQ
-// (`dlq.ts`) nunca ve el fallo.
+// `retryLimit: 0` sigue: el reintento real es el cron `whatsapp-turn-rescue`, que
+// re-encola todo entrante sin procesar de hace más de 30 s. Un reintento de pg-boss
+// competiría con ese rescate por el mismo chat.
 
 export type WhatsappTurnJobData = { tenantId: string; chatId: string }
 
@@ -137,21 +192,19 @@ const WHATSAPP_TURN_DEBOUNCE_SECONDS = 4
 export function whatsappTurnSendOptions(chatId: string) {
   return {
     singletonKey: chatId,
-    useSingletonQueue: true,
     startAfter: WHATSAPP_TURN_DEBOUNCE_SECONDS,
     retryLimit: 0,
     // Más que el peor turno: 5 llamadas al modelo × (30 s de timeout × 3
     // intentos del SDK) ≈ 8 min. Un job que vence con el handler vivo deja de
     // contar como activo y el rescate arrancaría otro turno del mismo chat.
-    expireInMinutes: 15,
-    onComplete: true,
-  } as const
+    expireInSeconds: 900,
+  } satisfies SendOptions
 }
 
 // ─── Mails de RIVAL ───────────────────────────────────────────────────────────
 // El job NO manda el mail: al despertar revalida contra la base y recién ahí inserta la
 // notificación (la manda `send-email`). Se difiere con `startAfter` para respetar la ventana
-// silenciosa 00-08 ART; por eso `expireInHours` cubre la espera más los reintentos.
+// silenciosa 00-08 ART; por eso `expireInSeconds` cubre la espera más los reintentos.
 // `ref` de cada tipo: participantId (join_request/accepted) o matchId (canceled/alert_publish).
 
 export type RivalMailJobData =
@@ -164,20 +217,19 @@ export const RIVAL_MAIL_SEND_OPTIONS = {
   retryLimit: 3,
   retryDelay: 60,
   retryBackoff: true,
-  expireInHours: 24,
-} as const
+  expireInSeconds: 24 * 3600,
+} satisfies SendOptions
 
 // ─── Poll tuning (WorkOptions) ─────────────────────────────────────────────────
 // D5 (auditoría de datos, 2026-07-23): en prod, el poller de pg-boss
-// (`WITH nextJob as (SELECT id FROM pgboss.job ...)`) resultó la TOP query
+// (`WITH nextJob as (SELECT id FROM pgboss_v12.job ...)`) resultó la TOP query
 // absoluta de la DB con la app sin tráfico — cada `boss.work()` sondea cada
-// `newJobCheckInterval` (default v9 = 2000ms, ver
-// node_modules/pg-boss/src/attorney.js `applyNewJobCheckInterval`). Las colas
-// que solo dispara `boss.schedule` (cron) no necesitan esa latencia: la
-// más frecuente corre cada 5 minutos, así que 30s de polling no le agrega
-// demora perceptible al primer job pero corta el volumen de sondeos ~15x.
+// `pollingIntervalSeconds` (default 2 s). Las colas que solo dispara
+// `boss.schedule` (cron) no necesitan esa latencia: la más frecuente corre cada
+// 5 minutos, así que 30s de polling no le agrega demora perceptible al primer job
+// pero corta el volumen de sondeos ~15x.
 // Aplicar SOLO a colas cron — las latency-sensitive (webhooks de MP, push,
 // email, expiración directa de reservas por-booking) quedan en el default.
 export const CRON_WORK_OPTIONS = {
-  newJobCheckIntervalSeconds: 30,
-} as const
+  pollingIntervalSeconds: 30,
+} satisfies WorkOptions

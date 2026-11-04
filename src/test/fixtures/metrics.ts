@@ -87,17 +87,17 @@ export const revenueReportFirstMonth = (): RevenueReport =>
     prevPeriod: null,
   })
 
-/** Fila de la exportación CSV de caja — `monto_ars` va en centavos (convención del repo). */
+/** Fila de la exportación CSV de caja — `amount` va en centavos (convención del repo). */
 export const cashFlowExportRow = (
   overrides: Partial<CashFlowExportRow> = {},
 ): CashFlowExportRow => ({
-  fecha: artDateString(hoursFromNow(-26)),
-  tipo: 'Ingreso',
-  categoria: 'Reserva',
-  monto_ars: 4500,
-  metodo: 'Mercado Pago',
-  descripcion: 'Seña turno 16:00 — Cancha 1',
-  cancha: 'Cancha 1',
+  date: artDateString(hoursFromNow(-26)),
+  type: 'income',
+  category: 'booking',
+  amount: 450000,
+  method: 'mercadopago',
+  description: 'Seña turno 16:00 — Cancha 1',
+  courtName: 'Cancha 1',
   ...overrides,
 })
 
@@ -229,30 +229,29 @@ export const systemStatusDbDown = (): SystemStatusFixture => ({
 export const cashFlowExportRows = (): CashFlowExportRow[] => [
   cashFlowExportRow(),
   cashFlowExportRow({
-    fecha: artDateString(hoursFromNow(-3)),
-    tipo: 'Ingreso',
-    categoria: 'Venta cantina',
-    monto_ars: 5000,
-    metodo: 'Efectivo',
-    descripcion: 'Venta cantina: Gatorade x2, Agua x1',
-    cancha: '—',
+    date: artDateString(hoursFromNow(-3)),
+    category: 'product_sale',
+    amount: 500000,
+    method: 'cash',
+    description: 'Venta cantina: Gatorade x2, Agua x1',
+    courtName: '',
   }),
   cashFlowExportRow({
-    fecha: artDateString(hoursFromNow(-5)),
-    tipo: 'Gasto',
-    categoria: 'Gasto operativo',
-    monto_ars: 8000,
-    metodo: 'Efectivo',
-    descripcion: 'Compra de pelotas y petos nuevos',
-    cancha: '—',
+    date: artDateString(hoursFromNow(-5)),
+    type: 'expense',
+    category: 'merchandise',
+    amount: 800000,
+    method: 'cash',
+    description: 'Compra de pelotas y petos nuevos',
+    courtName: '',
   }),
   cashFlowExportRow({
-    fecha: artDateString(hoursFromNow(-1)),
-    tipo: 'Ajuste',
-    categoria: 'Corrección no-show',
-    monto_ars: -4500,
-    metodo: 'Otro',
-    descripcion: 'Corrección: no-show cargado por error, se revierte la seña capturada',
-    cancha: 'Cancha 1',
+    date: artDateString(hoursFromNow(-1)),
+    type: 'adjustment',
+    category: 'no_show_correction',
+    amount: 450000,
+    method: 'other',
+    description: 'Corrección por ausencia cargada por error',
+    courtName: 'Cancha 1',
   }),
 ]

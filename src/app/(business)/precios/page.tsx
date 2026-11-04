@@ -32,8 +32,8 @@ const INCLUDED = [
   'Usuarios para tu equipo, sin límite',
   'Tus datos exportables cuando quieras',
   'Soporte directo por WhatsApp, no un 0800',
-  'El que te cuelga el turno pierde la seña; si reincide, queda 14 días sin poder reservarte online',
-  'Si querés, señas por MercadoPago que van directo a tu cuenta',
+  'El que reserva online y no viene, si reincide, queda 14 días sin poder reservarte',
+  'Si querés, seña online (viene apagada): la prendés vos y lo que cobrás va directo a vos',
 ]
 
 const STEPS = [
@@ -44,8 +44,8 @@ const STEPS = [
   },
   {
     n: '02',
-    t: 'Publicá tu link y recibí reservas',
-    d: 'Tu complejo tiene su propia página. El jugador reserva online y vos no atendés el teléfono. Si querés pedir seña, se cobra por MercadoPago directo a tu cuenta.',
+    t: 'Compartí tu link',
+    d: 'Tus clientes reservan solos a cualquier hora y el turno aparece en tu grilla. Sin que tengas que atender el teléfono.',
   },
   {
     n: '03',
@@ -60,8 +60,8 @@ const FAQ = [
     a: 'No. Reservan desde un link que abre una página, como ver un menú por QR. Tus fijos y los de siempre siguen igual: los cargás vos o tu encargado en dos toques. El link es para el que te escribe a las 11 de la noche preguntando si tenés cancha.',
   },
   {
-    q: '¿La seña no me espanta clientes?',
-    a: 'La manejás vos: elegís el porcentaje, o la apagás y usás TurnoGol solo para ordenar la grilla y la caja. Y pensalo al revés: el que no quiere dejar ni una seña, ¿qué tan seguro está de venir?',
+    q: '¿Tengo que cobrar seña?',
+    a: 'No. Viene apagada y TurnoGol funciona igual: reservas, grilla y caja. Si algún día querés, la prendés y elegís el porcentaje.',
   },
   {
     q: '¿Qué pasa con mis fijos de toda la vida?',
@@ -69,7 +69,7 @@ const FAQ = [
   },
   {
     q: '¿Hay comisión por reserva o permanencia?',
-    a: 'No y no. Pagás un precio fijo por mes según tus canchas. Cada reserva y cada seña van completas a tu MercadoPago. Y es mes a mes: si no te sirve, lo dejás.',
+    a: 'No y no. Pagás un precio fijo por mes según tus canchas. Lo que cobrás va directo a vos, completo. Y es mes a mes: si no te sirve, lo dejás.',
   },
   {
     q: '¿Me hace la factura? ¿Sirve para AFIP?',
@@ -77,7 +77,7 @@ const FAQ = [
   },
   {
     q: '¿Y si TurnoGol cierra? ¿Qué pasa con mis datos?',
-    a: 'Tus datos son tuyos y los exportás cuando quieras. La plata nunca pasa por nosotros: las señas van directo de tu cliente a tu MercadoPago. Si mañana desaparecemos, tu plata y tus clientes siguen siendo tuyos.',
+    a: 'Tus datos son tuyos y los exportás cuando quieras. La plata nunca pasa por nosotros: lo que cobrás va directo a vos. Si mañana desaparecemos, tu plata y tus clientes siguen siendo tuyos.',
   },
   {
     q: '¿Qué pasa cuando se terminan los 30 días gratis?',
@@ -133,7 +133,7 @@ function Hero() {
       <div className="relative z-10 mx-auto max-w-[880px] text-center">
         <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400 whitespace-nowrap">
           <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-          Lo que sale
+          Precios claros
           <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
         </div>
 

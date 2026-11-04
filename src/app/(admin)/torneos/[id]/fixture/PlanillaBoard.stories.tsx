@@ -73,9 +73,9 @@ export const MoviendoUnPartido: Story = {
     // De los 6 huecos quedan 2 destinos: las 20 están ocupadas en las dos
     // canchas, a las 21 la cancha 1 tiene partido y la cancha 2 la bloquea Los
     // Pibes (que juegan a esa hora en la otra). Libres, las dos de las 22.
-    await expect(
-      board(canvasElement).getAllByRole('button', { name: /mover el partido acá/i }),
-    ).toHaveLength(2)
+    await expect(board(canvasElement).getAllByRole('button', { name: /mover acá/i })).toHaveLength(
+      2,
+    )
     await expect(
       board(canvasElement).getByText('Los Pibes ya tiene otro partido a esa hora.'),
     ).toBeVisible()
@@ -97,7 +97,7 @@ export const UbicaEnUnHuecoLibre: Story = {
     )
     await canvas.findByRole('status')
     const targets = board(canvasElement).getAllByRole('button', {
-      name: /mover el partido acá/i,
+      name: /mover acá/i,
     })
     await userEvent.click(targets[0]!)
 
@@ -127,9 +127,7 @@ export const ErrorDelServidor: Story = {
       canvas.getByRole('button', { name: /ubicar los pibes vs real sociedad/i }),
     )
     await canvas.findByRole('status')
-    await userEvent.click(
-      board(canvasElement).getAllByRole('button', { name: /mover el partido acá/i })[0]!,
-    )
+    await userEvent.click(board(canvasElement).getAllByRole('button', { name: /mover acá/i })[0]!)
 
     await expect(await canvas.findByRole('alert')).toHaveTextContent(/ya tiene otro partido/i)
     // Sigue en modo mover: el aviso de arriba no se fue.

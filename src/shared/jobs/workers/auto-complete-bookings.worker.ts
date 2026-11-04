@@ -1,4 +1,4 @@
-import type PgBoss from 'pg-boss'
+import type { PgBoss } from 'pg-boss'
 import { getWorkerDb } from '@/shared/db/client'
 import { autoCompleteOverdueBookings } from '@/modules/bookings/booking.service'
 import type { BookingRow } from '@/modules/bookings/booking.types'

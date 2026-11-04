@@ -246,9 +246,16 @@ export function calcOccupancyPct(bookedMinutes: number, availableMinutes: number
 const FORMULA_PREFIX_RE = /^[=+\-@\t\r]/
 
 /**
- * Una celda CSV (RFC 4180) para el separador dado. La comparten `toCsv` (caja,
- * con `,`) y el export de datos del complejo (con `;`, ver `data-export.ts`):
- * la defensa contra fórmulas vive en un solo lugar.
+ * Un número negativo tal como lo escribe `pesosCell` (`-8000,50`). No puede
+ * ser una fórmula —son solo dígitos— y con el `'` adelante Excel lo lee como
+ * texto: el gasto del CSV de caja dejaba de sumar.
+ */
+const NEGATIVE_NUMBER_RE = /^-\d+(,\d+)?$/
+
+/**
+ * Una celda CSV (RFC 4180) para el separador dado. Todos los CSV del panel la
+ * usan a través de `csvLine` (`data-export.ts`): la defensa contra fórmulas
+ * vive en un solo lugar.
  */
 export function csvCell(v: unknown, separator: string): string {
   let s = String(v ?? '')
@@ -257,21 +264,11 @@ export function csvCell(v: unknown, separator: string): string {
   // formula when a staff member later opens the exported file — prefixing
   // with a single quote forces it to render as literal text instead
   // (OWASP CSV Injection guidance).
-  if (FORMULA_PREFIX_RE.test(s)) {
+  if (FORMULA_PREFIX_RE.test(s) && !NEGATIVE_NUMBER_RE.test(s)) {
     s = `'${s}`
   }
   if (s.includes(separator) || s.includes('"') || s.includes('\n') || s.includes('\r')) {
     return `"${s.replace(/"/g, '""')}"`
   }
   return s
-}
-
-/** Converts an array of objects to an RFC 4180 CSV string. Returns '' for empty input. */
-export function toCsv(rows: Record<string, unknown>[]): string {
-  if (rows.length === 0) return ''
-  const headers = Object.keys(rows[0])
-  return [
-    headers.join(','),
-    ...rows.map((row) => headers.map((h) => csvCell(row[h], ',')).join(',')),
-  ].join('\r\n')
 }

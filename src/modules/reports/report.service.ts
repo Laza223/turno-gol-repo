@@ -262,7 +262,7 @@ export async function getWeekRevenue(
 /**
  * Cash flows en `[from, to)` con el nombre de cancha resuelto por el join.
  *
- * `cutoffMins` no es opcional por comodidad: la columna `fecha` del CSV salía
+ * `cutoffMins` no es opcional por comodidad: la columna Fecha del CSV salía
  * de `occurredAt.toISOString().split('T')[0]`, o sea UTC crudo. Un cobro de las
  * 22:00 ART del día 5 se exportaba con fecha 6 — el mismo movimiento que
  * `/caja` muestra en el día 5. Dos papeles con fechas distintas para el mismo
@@ -298,12 +298,12 @@ export async function getCashFlowsForExport(
     .orderBy(cashFlows.occurredAt)
 
   return rows.map((r) => ({
-    fecha: operatingDateOf(r.occurredAt, cutoffMins),
-    tipo: r.type,
-    categoria: r.category,
-    monto_ars: r.amount,
-    metodo: r.method,
-    descripcion: r.description,
-    cancha: r.courtName ?? '',
+    date: operatingDateOf(r.occurredAt, cutoffMins),
+    type: r.type,
+    category: r.category,
+    amount: r.amount,
+    method: r.method,
+    description: r.description,
+    courtName: r.courtName ?? '',
   }))
 }

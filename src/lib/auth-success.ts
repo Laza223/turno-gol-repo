@@ -61,9 +61,9 @@ export function isRivalPath(next: string): boolean {
   return RIVAL_PATH_RE.test(next)
 }
 
-// Las pantallas de RIVAL sin id: la portada, armar y Mis partidos. Mismo cuidado que los otros: `?` o
+// Las pantallas de RIVAL sin id: la portada, el tablón, armar y Mis partidos. Mismo cuidado que los otros: `?` o
 // fin de path, sin sufijos ni barras.
-const RIVAL_HOME_RE = /^\/rival(?:\/nuevo|\/mis-partidos)?(?:\?|$)/
+const RIVAL_HOME_RE = /^\/rival(?:\/tablon|\/nuevo|\/mis-partidos)?(?:\?|$)/
 
 /**
  * ¿`next` es cualquier pantalla de RIVAL a la que se vuelve DIRECTO tras entrar? Suma, a los partidos de

@@ -33,9 +33,12 @@ function pickInitialTenantId(tenants: { id: string }[], defaultTenantId?: string
   return tenants.length === 1 ? tenants[0]!.id : ''
 }
 
+/** Frecuencia del aviso (una fila por día+jugador en `rival_alert_sends`). */
+export const ALERT_FREQUENCY = 'Un mail por día como máximo.'
+
 function successMessage(last: LastAction): string {
   return last === 'sub'
-    ? 'Listo, te avisamos por mail. Un mail por día como mucho y podés darte de baja con un toque.'
+    ? `Listo, te avisamos por mail. ${ALERT_FREQUENCY} Podés darte de baja con un toque.`
     : 'Listo, no te vamos a avisar más de ese complejo.'
 }
 

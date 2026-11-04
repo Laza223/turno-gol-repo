@@ -94,7 +94,7 @@ describe('PublicBoardView: qué verde sale y para quién', () => {
     // Un solo titular: "Busca rival" (el equipo completo todavía no tiene rival).
     expect(screen.getAllByText('Busca rival')).toHaveLength(1)
     expect(screen.queryByText(/Se juega/)).toBeNull()
-    expect(screen.getByText('5 de 5 confirmados')).toBeTruthy()
+    expect(screen.getByText('Ya son 5 de 5')).toBeTruthy()
   })
 
   it('"Busca rival": el ingreso y la tarjeta nombran lo mismo que el botón, no "tu lugar"', async () => {

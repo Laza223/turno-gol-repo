@@ -149,7 +149,7 @@ test.describe('visual — admin', () => {
     // de forma determinística (y deja /settings/* roto para el resto de la
     // corrida — ver 'settings de reservas @visual' más abajo, mismo síntoma).
     await page.goto('/canchas')
-    await expect(page.getByText('Cancha E2E 1')).toBeVisible()
+    await expect(page.getByText('Cancha E2E 1', { exact: true })).toBeVisible()
     // Shell de lista del admin: si se rompe, se rompen también /staff,
     // /jugadores y /abonados.
     await expect(page).toHaveScreenshot('admin-canchas.png')

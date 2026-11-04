@@ -17,28 +17,21 @@ vi.mock('@/shared/db/client', () => ({
 }))
 
 import { resolveSignupReferrer } from '@/modules/referrals/referral.service'
-import { REFERRAL_PROMO_ENDS_AT } from '@/shared/constants'
 
 const REFERRER_ID = '11111111-1111-4111-8111-111111111111'
 const REFERRER_ROW = [{ id: REFERRER_ID, name: 'Canchas del Sur' }]
 
-// El ÚLTIMO instante dentro de la promo y el PRIMERO fuera de ella
-// (REFERRAL_PROMO_ENDS_AT = 2026-10-31 23:59:59.999 ART = 2026-11-01T02:59:59.999Z).
-const INSIDE_PROMO = new Date(REFERRAL_PROMO_ENDS_AT.getTime())
-const OUTSIDE_PROMO = new Date(REFERRAL_PROMO_ENDS_AT.getTime() + 1)
-
 describe('resolveSignupReferrer', () => {
-  it('código válido y existente dentro de la promo → id del referidor', async () => {
+  it('código válido y existente → id del referidor', async () => {
     h.selectRows = REFERRER_ROW
     const result = await resolveSignupReferrer({
       code: 'AH2K9MZP',
-      staffCreatedAt: INSIDE_PROMO,
     })
     expect(result).toBe(REFERRER_ID)
   })
 
   it('sin código → null', async () => {
-    const result = await resolveSignupReferrer({ code: null, staffCreatedAt: INSIDE_PROMO })
+    const result = await resolveSignupReferrer({ code: null })
     expect(result).toBeNull()
   })
 
@@ -46,7 +39,6 @@ describe('resolveSignupReferrer', () => {
     h.selectRows = REFERRER_ROW // si igual tocara la DB, devolvería un id — probamos que no llega
     const result = await resolveSignupReferrer({
       code: 'minuscula',
-      staffCreatedAt: INSIDE_PROMO,
     })
     expect(result).toBeNull()
   })
@@ -55,20 +47,7 @@ describe('resolveSignupReferrer', () => {
     h.selectRows = []
     const result = await resolveSignupReferrer({
       code: 'AH2K9MZP',
-      staffCreatedAt: INSIDE_PROMO,
     })
-    expect(result).toBeNull()
-  })
-
-  it('cuenta creada dentro de la promo (2026-10-31 23:59:59.999 ART) → sí atribuye', async () => {
-    h.selectRows = REFERRER_ROW
-    const result = await resolveSignupReferrer({ code: 'AH2K9MZP', staffCreatedAt: INSIDE_PROMO })
-    expect(result).toBe(REFERRER_ID)
-  })
-
-  it('cuenta creada después del corte (2026-11-01 00:00:00.000 ART) → no atribuye', async () => {
-    h.selectRows = REFERRER_ROW
-    const result = await resolveSignupReferrer({ code: 'AH2K9MZP', staffCreatedAt: OUTSIDE_PROMO })
     expect(result).toBeNull()
   })
 
@@ -76,7 +55,6 @@ describe('resolveSignupReferrer', () => {
     h.selectRows = REFERRER_ROW
     const result = await resolveSignupReferrer({
       code: 'AH2K9MZP',
-      staffCreatedAt: INSIDE_PROMO,
       excludeTenantId: REFERRER_ID,
     })
     expect(result).toBeNull()

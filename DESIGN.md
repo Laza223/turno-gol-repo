@@ -391,6 +391,7 @@ Esmeralda de cancha sobre slate frío: un solo protagonista verde, neutros que c
 - **Línea de superficie** (`portal-border`, slate-200 #E2E8F0, en claro): separa superficies. Con 1,2:1 sobre blanco no delimita un control.
 - **Borde de campo** (`portal-input`, slate-500 #64748B, en claro · `portal-input-dark` #6B7C94 en oscuro): el borde de los campos y del botón `outline`. Llega a 3:1 contra el fondo (WCAG 1.4.11): 4,8:1 sobre blanco; en oscuro, 4,7:1 sobre el fondo, 4,3:1 sobre la tarjeta y 3,2:1 en hover (`border-input/80`).
 - **Ámbar de "Queda 1"** (`portal-last-fill` #FFFBEB, `portal-last-border` #FCD34D y `portal-last-text` #92400E en claro; en oscuro, ámbar al 10 % con borde al 40 % y texto #FCD34D): escalas amber 50, 300 y 800, escritas como clases de Tailwind en `HourGrid`. Solo la hora a la que queda una cancha; ver The Scarcity Amber Rule.
+- **Oro de trofeo** (#FCD34D y su luz #FEF3C7, solo en oscuro): únicamente en RIVAL, para las estrellas de un club, la Corona y la figurita Oro. Es un premio, no un estado ni escasez: no se usa en ningún otro lado, y el ámbar de "Queda 1" sigue siendo solo de la ficha (decisión del dueño del 2026-10-30).
 - **Foco** (`ring` = `primary`): emerald-700 en claro (5,6:1 sobre blanco; el emerald-500 del panel da 2,6:1) y emerald-500 en oscuro (7,8:1 sobre el fondo).
 - **Selección de texto:** tinte `primary` al 25 % con el texto en `foreground`, puesto una vez en `PortalWorld`.
 
@@ -424,7 +425,7 @@ Los rótulos sobre un tinte de estado usan la escala 800 en claro y 300 en oscur
 
 ## Typography
 
-**Display Font:** Archivo (variable, `font-display`, con fallback `ui-sans-serif, system-ui`)
+**Display Font:** Archivo (variable, `font-display`, con fallback `ui-sans-serif, system-ui`). La itálica es sintetizada.
 **Body Font:** Inter (variable, `font-sans`, el default del `<body>`)
 **Label/Mono Font:** Sora (`font-logo`), solo en microrrótulos de la web comercial y del login. La monoespaciada es la del sistema (`font-mono`, sin fuente propia) y solo muestra códigos que se copian o se tipean: la frase de `ConfirmDialog`, el código de referencia de `ErrorState`, el código de una reserva.
 

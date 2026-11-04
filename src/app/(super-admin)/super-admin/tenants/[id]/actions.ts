@@ -573,8 +573,7 @@ export type AssignReferrerResult = ActionResult<{ referrerName: string }>
 const ASSIGN_REFERRER_ERRORS: Record<'invalid_code' | 'self' | 'not_eligible', string> = {
   invalid_code: 'Ese código o link no es válido, o no pertenece a ningún complejo.',
   self: 'Un complejo no puede ser su propio referidor.',
-  not_eligible:
-    'No se pudo asignar: el complejo ya tiene referidor, ya tiene un premio en curso, o se creó después del corte de la promo.',
+  not_eligible: 'No se pudo asignar: el complejo ya tiene referidor o ya tiene un premio en curso.',
 }
 
 /**

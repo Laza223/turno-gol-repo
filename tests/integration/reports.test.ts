@@ -132,14 +132,15 @@ describe('getCashFlowsForExport', () => {
     )
     expect(rows.length).toBeGreaterThan(0)
     const row = rows[0]
-    expect(typeof row.fecha).toBe('string')
-    expect(row.fecha).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-    expect(typeof row.monto_ars).toBe('number')
-    expect(row).toHaveProperty('tipo')
-    expect(row).toHaveProperty('categoria')
-    expect(row).toHaveProperty('metodo')
-    expect(row).toHaveProperty('descripcion')
-    expect(row).toHaveProperty('cancha')
+    expect(typeof row.date).toBe('string')
+    expect(row.date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+    // Centavos: los pesos los arma el CSV (`revenue-csv.ts`), no el service.
+    expect(Number.isInteger(row.amount)).toBe(true)
+    expect(row).toHaveProperty('type')
+    expect(row).toHaveProperty('category')
+    expect(row).toHaveProperty('method')
+    expect(row).toHaveProperty('description')
+    expect(row).toHaveProperty('courtName')
   })
 
   it('returns empty array for period with no data', async () => {

@@ -12,6 +12,7 @@ import { ChipGroup, DayChips } from '@/app/(public)/[slug]/components/ChipGroups
 import { FixedCta } from '@/app/(public)/[slug]/reservar/components/ConfirmBookingButton'
 import { dayLabel } from '@/modules/rival/rival-display'
 import { FormError } from '../FormError'
+import { BoardFields } from '../BoardFields'
 import { RivalCheckbox } from '../RivalCheckbox'
 import { StampBadge } from '../MatchBits'
 import {
@@ -23,10 +24,10 @@ import {
   HELP,
   LEVEL_CHIPS,
   LEVEL_HELP,
+  BOARD_ID_PREFIX,
   MAX_CAPACITY,
   MIN_CAPACITY,
-  MODE_CHIPS,
-  MODE_HELP,
+  INTENT_OPTIONS,
   type Field,
 } from './new-match-form'
 import type { NewMatchFormState } from './use-new-match-form'
@@ -54,19 +55,175 @@ function FieldError({ form, field }: Props & { field: Field }) {
   )
 }
 
-/** Un modo, no una sección: control compacto sin título del peso de los bloques. */
-export function ModePicker({ form }: Props) {
+/** Un paso del form de un solo número ("Uno menos" / "Uno más"), con el valor al medio. */
+function Stepper({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+  id,
+  describedBy,
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  onChange: (v: number) => void
+  id?: string
+  describedBy?: string
+}) {
   return (
-    <div className="flex flex-col gap-2">
-      <ChipGroup
-        label="Qué armás"
-        options={MODE_CHIPS}
-        value={form.mode}
-        onChange={(v) => form.setMode(v === 'rival' ? 'rival' : 'full')}
-        alwaysWrap
-      />
-      <p className={HELP}>{MODE_HELP[form.mode]}</p>
+    <div
+      className="flex shrink-0 items-center gap-3"
+      role="group"
+      aria-label={label}
+      aria-describedby={describedBy}
+    >
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="md:size-11 focus-visible:ring-offset-background"
+        aria-label="Uno menos"
+        // aria-disabled y no disabled: al llegar al tope el foco no se cae al body.
+        aria-disabled={value <= min}
+        onClick={() => value > min && onChange(value - 1)}
+      >
+        <Minus className="size-4" aria-hidden />
+      </Button>
+      <output
+        aria-live="polite"
+        className="min-w-12 text-center font-display text-3xl font-black italic tabular-nums text-foreground"
+      >
+        {value}
+      </output>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        id={id}
+        className="md:size-11 focus-visible:ring-offset-background"
+        aria-label="Uno más"
+        aria-disabled={value >= max}
+        onClick={() => value < max && onChange(value + 1)}
+      >
+        <Plus className="size-4" aria-hidden />
+      </Button>
     </div>
+  )
+}
+
+/** "¿Cuántos te faltan?": solo con "Me faltan jugadores". Un número, sin nombres. */
+function MissingControl({ form }: Props) {
+  const { fe } = form
+  return (
+    <div className="space-y-3 rounded-2xl bg-muted/50 p-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p id="rival-faltan-titulo" className="text-base font-medium text-foreground">
+            ¿Cuántos te faltan?
+          </p>
+          <p className={HELP}>Para completar los {form.effectiveCapacity}.</p>
+        </div>
+        <Stepper
+          label="Cuántos te faltan"
+          value={form.missing}
+          min={1}
+          max={form.maxMissing}
+          id={FIELD_IDS.missing}
+          describedBy={fe.message('missing') ? `${FIELD_IDS.missing}-error` : undefined}
+          onChange={(v) => {
+            form.setMissing(v)
+            fe.clear('missing')
+          }}
+        />
+      </div>
+      <RivalCheckbox
+        checked={form.goalkeeper}
+        onChange={form.setGoalkeeper}
+        name="seekingGoalkeeper"
+      >
+        Se busca arquero
+      </RivalCheckbox>
+      <FieldError form={form} field="missing" />
+    </div>
+  )
+}
+
+/** Paso 1: tres opciones grandes. Las dos primeras salen al tablón al armar. */
+export function IntentBlock({ form }: Props) {
+  const { fe } = form
+  return (
+    <section aria-labelledby="rival-necesito-titulo" className="space-y-3">
+      <h2 id="rival-necesito-titulo" className={PORTAL_SECTION_TITLE}>
+        ¿Qué necesitás?
+      </h2>
+      <div
+        {...fe.controlProps('intent')}
+        role="radiogroup"
+        aria-labelledby="rival-necesito-titulo"
+        className="grid gap-2"
+      >
+        {INTENT_OPTIONS.map((o) => {
+          const on = form.intent === o.value
+          return (
+            <button
+              key={o.value}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              onClick={() => {
+                form.setIntent(o.value)
+                fe.clear('intent')
+              }}
+              className={cn(
+                'flex min-h-14 flex-col items-start justify-center rounded-2xl border-2 px-4 py-3 text-left transition-colors duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                on ? 'border-primary bg-primary/10' : 'border-border bg-card hover:border-input',
+              )}
+            >
+              <span className="text-base font-semibold text-foreground">{o.title}</span>
+              <span className={HELP}>{o.help}</span>
+            </button>
+          )
+        })}
+      </div>
+      <FieldError form={form} field="intent" />
+      {form.intent === 'players' && <MissingControl form={form} />}
+    </section>
+  )
+}
+
+/** El WhatsApp que viaja con el partido cuando sale al tablón. */
+export function BoardBlock({ form }: Props) {
+  const { fe } = form
+  return (
+    <Block id="rival-bloque-whatsapp" title="Contacto">
+      <BoardFields
+        idPrefix={BOARD_ID_PREFIX}
+        compact
+        lockSeeking
+        allowRival={form.intent === 'rival'}
+        seeking={form.intent === 'rival' ? 'rival' : 'players'}
+        onSeekingChange={() => undefined}
+        position={form.goalkeeper ? 'goalkeeper' : 'any'}
+        onPositionChange={() => undefined}
+        whatsapp={form.whatsapp}
+        onWhatsappChange={(v) => {
+          form.setWhatsapp(v)
+          fe.clear('whatsapp')
+        }}
+        consent={form.consent}
+        onConsentChange={(v) => {
+          form.setConsent(v)
+          fe.clear('whatsappConsent')
+        }}
+        savePhone={
+          form.offerSave ? { checked: form.savePhone, onChange: form.setSavePhone } : undefined
+        }
+        fieldError={(f) => fe.message(f as Field)}
+      />
+    </Block>
   )
 }
 
@@ -225,7 +382,7 @@ export function WhereWhenBlock({ form }: Props) {
 /** El cupo sale del formato (x 2): se muestra como dato y el stepper solo abre si se toca. */
 function CapacityControl({ form }: Props) {
   const { fe, effectiveCapacity } = form
-  if (form.teamOnly) return null
+  if (form.intent !== 'group') return null
   return (
     <div className="space-y-1.5">
       {form.capacityOpen || form.capacity !== null || form.reported.capacity ? (
@@ -412,7 +569,7 @@ export function CourtBlock({ form }: Props) {
       {form.showStamp ? (
         <div className="space-y-1">
           <StampBadge />
-          <p className={HELP}>Encontramos tu reserva a esa hora. Si se cae, te avisamos.</p>
+          <p className={HELP}>Encontramos tu reserva a esa hora.</p>
         </div>
       ) : (
         <CourtCheckbox form={form} />
@@ -450,7 +607,7 @@ export function SubmitBar({
           aria-busy={pending}
           className={cn(PORTAL_BUTTON, 'min-h-[52px]')}
         >
-          {pending ? 'Armando…' : 'Armar el partido'}
+          {pending ? 'Armando…' : form.publishes ? 'Armar y publicar' : 'Armar el partido'}
         </Button>
       </FixedCta>
     </>

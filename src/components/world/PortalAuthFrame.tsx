@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
-import Link from 'next/link'
-import { Logo } from '@/components/ui/logo'
+import { SiteHeaderShell } from '@/components/site/SiteHeaderShell'
 import { cn } from '@/lib/utils'
 
 /**
@@ -105,8 +104,9 @@ export function PortalAuthFrame({ children, aside }: { children: ReactNode; asid
       )}
       style={{ background: '#020617' }}
     >
+      <SiteHeaderShell />
       {aside}
-      <div className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden px-4 py-12 sm:px-6">
+      <div className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden px-4 pb-12 pt-28 sm:px-6">
         <div
           aria-hidden
           className="pointer-events-none absolute right-[-15%] top-[-10%] -z-10 h-[440px] w-[440px] rounded-full blur-md"
@@ -122,12 +122,6 @@ export function PortalAuthFrame({ children, aside }: { children: ReactNode; asid
           }}
         />
         <div className="w-full max-w-md">
-          <Link
-            href="/"
-            className="mx-auto mb-8 flex min-h-11 w-fit items-center rounded-md px-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            <Logo variant="horizontal" textClassName="text-white" />
-          </Link>
           <div className="rounded-2xl p-6 sm:p-8" style={AUTH_CARD_STYLE}>
             {children}
           </div>

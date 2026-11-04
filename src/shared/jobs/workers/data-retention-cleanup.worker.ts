@@ -1,4 +1,4 @@
-import type PgBoss from 'pg-boss'
+import type { PgBoss } from 'pg-boss'
 import { sql as drizzleSql } from 'drizzle-orm'
 import { getWorkerDb, getWorkerSql } from '@/shared/db/client'
 import { CRON_WORK_OPTIONS, QUEUE_DATA_RETENTION } from '../definitions'

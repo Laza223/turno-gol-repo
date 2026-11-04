@@ -108,11 +108,11 @@ controles internos.
 Self-hosted vía `next/font` (`src/app/layout.tsx`), expuestas como CSS vars
 que el `@theme` de `globals.css` mapea a utilidades:
 
-| Utilidad Tailwind | CSS var          | Fuente  | Uso                                                                  |
-| ----------------- | ---------------- | ------- | -------------------------------------------------------------------- |
-| `font-sans`       | `--font-inter`   | Inter   | Body copy, default de `<body>`                                       |
-| `font-display`    | `--font-archivo` | Archivo | Titulares (`h1`/`h2` de landing, `PageHeader`)                       |
-| `font-logo`       | `--font-sora`    | Sora    | Wordmark (`Logo`), micro-labels uppercase (`SearchBar` `labelClass`) |
+| Utilidad Tailwind | CSS var          | Fuente  | Uso                                                               |
+| ----------------- | ---------------- | ------- | ----------------------------------------------------------------- |
+| `font-sans`       | `--font-inter`   | Inter   | Body copy, default de `<body>`                                    |
+| `font-display`    | `--font-archivo` | Archivo | Titulares, y el logotipo `Logo` (900 itálica)                     |
+| `font-logo`       | `--font-sora`    | Sora    | Micro-labels uppercase (`SearchBar` `labelClass`). NO es la marca |
 
 <div style={{ display: 'grid', gap: 10 }}>
   <p className="font-sans" style={{ fontSize: 20 }}>
@@ -122,7 +122,7 @@ que el `@theme` de `globals.css` mapea a utilidades:
     font-display — Archivo — Reservá tu cancha en segundos
   </p>
   <p className="font-logo" style={{ fontSize: 20 }}>
-    font-logo — Sora — TurnoGol
+    font-logo — Sora — micro-labels
   </p>
 </div>
 

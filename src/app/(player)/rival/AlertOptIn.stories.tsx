@@ -44,7 +44,7 @@ export const GuardaYConfirma: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Avisarme por mail' }))
     await expect(await canvas.findByRole('status')).toHaveTextContent(
-      'Listo, te avisamos por mail. Un mail por día como mucho y podés darte de baja con un toque.',
+      'Listo, te avisamos por mail. Un mail por día como máximo. Podés darte de baja con un toque.',
     )
     await expect(args.action).toHaveBeenCalledTimes(1)
   },
@@ -106,7 +106,7 @@ export const SinSesion: Story = {
   args: { signedIn: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('link', { name: 'Ingresá y activá el aviso' })).toHaveAttribute(
+    await expect(canvas.getByRole('link', { name: 'Entrá para activar el aviso' })).toHaveAttribute(
       'href',
       '/ingresar?next=%2Frival',
     )

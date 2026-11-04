@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'
 
 const insertValues = vi.fn()
@@ -13,6 +13,13 @@ vi.mock('@/lib/sentry', () => ({ captureException: vi.fn(), captureMessage: vi.f
 vi.mock('@/shared/lib/logger', () => ({
   logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }))
+
+// El primer import() transforma el grafo del route (segundos con la CPU cargada):
+// hecho dentro de un `it` se come el testTimeout. Acá corre bajo el hookTimeout y
+// deja el transform en caché; el resetModules de abajo solo re-evalúa.
+beforeAll(async () => {
+  await import('@/app/api/webhooks/whatsapp/route')
+})
 
 beforeEach(() => {
   vi.resetModules()

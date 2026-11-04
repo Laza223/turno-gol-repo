@@ -14,7 +14,7 @@ import {
 import { sanitizeNext } from '@/lib/safe-redirect'
 import { TONE_TEXT } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
-import { Logo } from '@/components/ui/logo'
+import { SiteHeaderShell } from '@/components/site/SiteHeaderShell'
 import SuccessRedirect from '@/app/(auth)/verify/SuccessRedirect'
 import type { StartGoogleLoginFromIngresar } from '@/app/(auth)/ingresar/IngresarForm'
 
@@ -210,9 +210,10 @@ export function VerifyView({
 
   return (
     <div
-      className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden px-4 py-12"
+      className="relative isolate flex min-h-dvh items-center justify-center overflow-hidden px-4 pb-12 pt-28"
       style={{ background: '#020617' }}
     >
+      <SiteHeaderShell />
       <div
         aria-hidden
         className="pointer-events-none absolute right-[-10%] top-[-12%] h-[520px] w-[520px] rounded-full blur-md"
@@ -228,10 +229,6 @@ export function VerifyView({
         }}
       />
       <div className="relative w-full max-w-md">
-        <Link href="/" className="mb-8 flex items-center justify-center">
-          <Logo variant="horizontal" textClassName="text-white" />
-        </Link>
-
         <div className="rounded-2xl p-8 text-center" style={cardStyle}>
           {isSuccess ? (
             <SuccessState next={searchParams.next} intent={intent} />

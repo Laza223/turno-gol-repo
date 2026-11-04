@@ -85,7 +85,7 @@ describe('GET /api/admin/jobs (queue depth — B10 T7)', () => {
     expect(names).toEqual([...ALL_QUEUES].sort())
 
     // Depth from the real local pg-boss is a non-negative integer (queues may
-    // be empty → 0). A null depth would mean getQueueSize threw for that queue.
+    // be empty → 0). A null depth would mean the pgboss_v12.job read failed.
     for (const q of json.queues) {
       expect(q.depth).not.toBeNull()
       expect(typeof q.depth).toBe('number')

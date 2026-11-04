@@ -287,3 +287,79 @@ Lo de arriba es real y quedó arreglado, pero **no era lo que ponía rojo el che
 **Costo estimado de resolverla**: depende de la decisión, y **la decisión es de Lazar, no técnica**. Tres caminos, de menor a mayor: (a) dejarlo y agregar un aviso en el propio campo de que el jugador puede leerlo — minutos, ocho emisores a revisar; (b) sacarlo del payload del jugador y del export, dejándolo interno — chico, pero discutible contra el derecho de acceso, porque el dato existe igual; (c) reemplazarlo por una lista cerrada de motivos con un campo opcional que no salga del complejo — migración, los ocho emisores, y los tests que hoy escriben motivos libres.
 
 **Disparador de resolución**: la primera vez que un jugador pida su export de datos, o cuando entre un empleado nuevo que no sea el dueño. Hasta entonces el único que escribe motivos es él.
+
+---
+
+## `audit.ts` importa de `@/modules` con un `import()` dinámico, y ESLint no lo ve
+
+**Qué es**: [audit.ts:42](src/shared/db/audit.ts:42) hace `await import('@/modules/auth/auth.middleware')` desde `src/shared`, que es exactamente lo que `turnogol/capas-shared` prohíbe ("`@/shared` no puede conocer el dominio"). La regla de ESLint solo mira imports estáticos, así que el comentario de `eslint.config.mjs` ("frontera limpia desde B6, 0 violaciones") no es cierto para los dinámicos. Oxlint sí los mira: es la única instancia en `src/`, `tests/` y `scripts/`. Hoy lleva una directiva `oxlint-disable-next-line` con el motivo.
+
+**Por qué existe**: accidente descubierto el 2026-11-01 al probar Oxlint como reemplazo de ESLint. El import nació con el F16 (atar la cookie de suplantación a la sesión real, para que un cookie vencido no reatribuya la auditoría). Lo más probable es que sea dinámico por el mismo motivo que el de `next/headers` justo arriba (no cargar la cadena de auth en el bundle del worker), pero el archivo solo lo explica para `next/headers`.
+
+**Costo de no resolverla ahora**: ninguno funcional. Queda un hueco en la frontera `shared → modules` que el lint actual no detecta, en el código que garantiza el no repudio de la auditoría.
+
+**Costo estimado de resolverla**: medio día. Mover `resolveImpersonationOverride` a `@/server` (o bajar `extractRealAuthUser` a `@/shared`) e inyectarlo en `insertAuditLog`. Toca auditoría y suplantación: va en su propio PR, con los tests de integración de impersonación.
+
+**Disparador de resolución**: la próxima vez que se toque `insertAuditLog` o la suplantación, o antes de pasar el lint híbrido a CI (ahí la directiva pasa a ser la única razón por la que el check queda verde).
+
+**Estado (2026-11-01)**: el segundo disparador se cumple con el PR que pasa `pnpm lint` al híbrido: desde ahí el CI corre Oxlint y la directiva es lo único que mantiene verde el check. Falta decidir si se resuelve antes o se deja con la directiva (decisión de Lazar).
+
+---
+
+## `money-input.tsx` sincroniza el display con la prop dentro de un `useEffect`
+
+**Qué es**: [money-input.tsx:81](src/components/ui/money-input.tsx:81) hace `setDisplay(...)` dentro de un effect para reformatear cuando `valueCents` cambia desde afuera. Es el patrón que `eslint.config.mjs` ya manda evitar (ajustar durante el render contra el valor anterior). ESLint no lo reporta en este archivo, aunque sí lo marca en una canaria mínima con el mismo patrón (por qué no llega a este componente no se investigó). Oxlint sí lo marca; hoy lleva una directiva `oxlint-disable-next-line`.
+
+**Por qué existe**: el diseño es anterior a la regla (reformatear cuando el padre resetea el form). Se vio el 2026-11-01 al probar Oxlint, no antes, porque ESLint era ciego en este archivo.
+
+**Costo de no resolverla ahora**: un render extra cuando el valor cambia desde afuera, invisible para el usuario. El costo real es que el "trinquete en 0" de `react-hooks/set-state-in-effect` tiene un hueco justo en el input de plata.
+
+**Costo estimado de resolverla**: 2–3 horas. Es el input de plata y el manejo del cursor y del Backspace ya dio bugs de monto: hay que ampliar los tests de `MoneyInput` antes de tocarlo y probarlo a mano en la grilla.
+
+**Disparador de resolución**: la próxima vez que se toque `money-input.tsx` por cualquier motivo.
+
+---
+
+## `with-geolocation.tsx` usa `setReady(true)` dentro de un effect (decorador de Storybook)
+
+**Qué es**: [with-geolocation.tsx:51](src/test/storybook/with-geolocation.tsx:51) marca el decorador como listo con `setReady(true)` dentro del `useEffect`. Mismo hueco que `money-input.tsx`: ESLint no lo ve en este archivo, Oxlint sí, y hoy lleva una directiva `oxlint-disable-next-line`.
+
+**Por qué existe**: es un flag de montaje en infraestructura de tests. Se vio el 2026-11-01 al probar Oxlint.
+
+**Costo de no resolverla ahora**: ninguno en producción; el decorador solo corre en Storybook.
+
+**Costo estimado de resolverla**: ~30 minutos. `@/hooks/use-client-value` cubre el flag de montaje, pero el effect también hace `defineProperty` sobre `navigator.geolocation` y lo restaura al desmontar, así que hay que separar las dos cosas y correr las stories que lo usan.
+
+**Disparador de resolución**: la próxima vez que se toque `with-geolocation.tsx` o una story que dependa de geolocalización.
+
+---
+
+## `eslint.hybrid.config.mjs` lleva a mano la lista de reglas que Oxlint ya cubre
+
+**Qué es**: el ESLint recortado del lint híbrido ([eslint.hybrid.config.mjs](eslint.hybrid.config.mjs)) apaga 82 reglas a mano, la intersección entre `eslint.config.mjs` y `.oxlintrc.json` al 2026-11-01. Si `eslint.config.mjs` suma una regla que Oxlint también tiene, nadie la apaga en el híbrido y se corre dos veces; si `.oxlintrc.json` deja de cubrir una de las 82, queda sin cobertura en las dos.
+
+**Por qué existe**: decisión consciente. `eslint-plugin-oxlint` hace exactamente esto sola, pero es una tercera dependencia y la autorización de Lazar cubrió `oxlint` y `oxlint-tsgolint`.
+
+**Costo de no resolverla ahora**: bajo mientras `lint:hybrid` no sea el check de CI. Si lo pasa a serlo, la deriva silenciosa es el riesgo.
+
+**Costo estimado de resolverla**: ~1 hora: agregar `eslint-plugin-oxlint` (versión exacta, decisión de Lazar) y reemplazar el bloque de `off` por `buildFromOxlintConfigFile`.
+
+**Disparador de resolución**: antes de pasar `lint:hybrid` a CI, o cuando se agregue la primera regla nueva a `eslint.config.mjs` o a `.oxlintrc.json`.
+
+### RESUELTA (2026-11-01) — el híbrido deriva la lista de `.oxlintrc.json`
+
+[eslint.hybrid.config.mjs](eslint.hybrid.config.mjs) ya no lleva las 82 reglas a mano: usa `eslint-plugin-oxlint` 1.90.0 (versión exacta, la misma que `oxlint`), que lee `.oxlintrc.json` y apaga en ESLint lo que Oxlint cubre, con los overrides por archivo. Comparadas las reglas efectivas de ESLint archivo por archivo (2526 archivos de `src/`, `tests/` y `scripts/`): son idénticas a las de la lista manual, salvo `react/require-render-return`, que ahora corre también en ESLint (duplicada y barata). Ninguna regla quedó apagada en los dos linters, y las 49 canarias dan 39/39 y 10/10 como antes.
+
+---
+
+## `typescript` es un alias a TS 6 porque TS 7 no trae API programática
+
+**Qué es**: [package.json](package.json) declara `"typescript": "npm:@typescript/typescript6@6.0.2"` (paquete de compatibilidad: envoltorio de 9 archivos que reexporta la API de TS 6 y solo trae el binario `tsc6`; el TS 6 real entra por su dependencia `@typescript/old: typescript@^6`, hoy 6.0.3 en el lockfile) y `"@typescript/native": "npm:typescript@7.0.2"` (el `tsc` nativo). `pnpm typecheck` corre TS 7; Next, `typescript-eslint` y knip importan `typescript` como librería y siguen viendo TS 6 por el alias. Hay dos TypeScript instalados.
+
+**Por qué existe**: decisión consciente (2026-11-01). TS 7.0 no incluye API programática; el anuncio oficial manda este alias para las herramientas que la usan. TS 7.1 sí la trae, hoy en beta (20/10/2026); no se evaluó si Next, `typescript-eslint` y knip ya la soportan.
+
+**Costo de no resolverla ahora**: `next build` hace su propia fase "Running TypeScript" con la API de TS 6: 77 s de los 133 s del build medidos el 2026-11-01, así que el deploy en Vercel no gana nada con TS 7. `typescript.ignoreBuildErrors` no se toca a propósito: sacaría el chequeo de tipos del deploy. Además el envoltorio queda fijo en 6.0.2 y se actualiza a mano; el TS 6 de abajo entra por `^6` y lo fija el lockfile.
+
+**Costo estimado de resolverla**: ~1 hora: dejar un solo `typescript` real (`pnpm add -E -D typescript@<7.1.x>`), quitar `@typescript/native`, y correr el juez completo, `next build` y la prueba de paridad con canarias de tipos.
+
+**Disparador de resolución**: cuando Next, `typescript-eslint` y knip soporten la API de TypeScript 7.1 (que sus `peerDependencies` de `typescript` acepten 7.x).

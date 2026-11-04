@@ -127,17 +127,18 @@ async function seedMessage(
   chatId: string,
   args: {
     direction: 'inbound' | 'outbound' | 'owner'
-    body: string
+    body: string | null
     createdAt: Date
     processedAt?: Date | null
+    kind?: 'text' | 'audio'
   },
 ): Promise<string> {
   const rows = await adminSql()<{ id: string }[]>`
     INSERT INTO whatsapp_messages (
-      tenant_id, chat_id, direction, wa_message_id, body, processed_at, created_at
+      tenant_id, chat_id, direction, wa_message_id, kind, body, processed_at, created_at
     )
     VALUES (
-      ${s.tenantId}, ${chatId}, ${args.direction}, ${waId('seed')},
+      ${s.tenantId}, ${chatId}, ${args.direction}, ${waId('seed')}, ${args.kind ?? 'text'},
       ${args.body}, ${args.processedAt ?? null}, ${args.createdAt}
     )
     RETURNING id
@@ -969,6 +970,46 @@ describe('processWhatsappTurn — cortes sin llamar al modelo', () => {
     await seedMessage(s, chatId, {
       direction: 'inbound',
       body: 'hola',
+      createdAt: ago(now, 30_000),
+    })
+
+    expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId }, now)).toBe('replied')
+    expect(runAgent).toHaveBeenCalledTimes(1)
+  })
+
+  it('audio sin transcribir: contesta que no escucha audios, sin modelo y sin pausar el chat', async () => {
+    const s = await seed()
+    const chatId = await addChat(s)
+    const now = new Date()
+    const pending = await seedMessage(s, chatId, {
+      direction: 'inbound',
+      kind: 'audio',
+      body: null,
+      createdAt: ago(now, 30_000),
+    })
+
+    expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId }, now)).toBe('replied')
+
+    expect(runAgent).not.toHaveBeenCalled()
+    expect(sendWhatsappText).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(sendWhatsappText).mock.calls[0]![0].body).toMatch(/no puedo escuchar audios/)
+    expect(byId(await readMessages(s.tenantId, chatId), pending).processed_at).toEqual(now)
+    expect((await readChat(s.tenantId, chatId)).paused_until).toBeNull()
+  })
+
+  it('audio sin transcribir junto a un texto: lo contesta el modelo', async () => {
+    const s = await seed()
+    const chatId = await addChat(s)
+    const now = new Date()
+    await seedMessage(s, chatId, {
+      direction: 'inbound',
+      kind: 'audio',
+      body: null,
+      createdAt: ago(now, 40_000),
+    })
+    await seedMessage(s, chatId, {
+      direction: 'inbound',
+      body: 'hay turno a las 21?',
       createdAt: ago(now, 30_000),
     })
 

@@ -124,7 +124,6 @@ export async function createTenantAction(
     const signup = await getStaffSignupReferral(user.staffUserId)
     referredByTenantId = await resolveSignupReferrer({
       code: signup?.signupReferralCode ?? null,
-      staffCreatedAt: signup?.createdAt ?? new Date(),
       excludeTenantId: newTenantId,
     })
   } catch (err) {

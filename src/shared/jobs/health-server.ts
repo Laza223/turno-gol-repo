@@ -1,7 +1,8 @@
 import { createServer, type Server } from 'node:http'
-import type PgBoss from 'pg-boss'
+import type { PgBoss } from 'pg-boss'
 import { assertAppDbReachable, getWorkerSql } from '@/shared/db/client'
 import { logger } from '@/shared/lib/logger'
+import { QUEUE_SEND_EMAIL } from './definitions'
 
 /**
  * Un `GET /health` mínimo dentro del proceso de workers.
@@ -70,7 +71,7 @@ async function checkWorkerPool(): Promise<Check> {
 
 async function checkBoss(boss: PgBoss): Promise<Check> {
   try {
-    await boss.getQueueSize('send-email')
+    await boss.getQueue(QUEUE_SEND_EMAIL)
     return { name: 'pg-boss', ok: true }
   } catch (err) {
     // Mismo criterio que `/api/status`: en producción el rol NO puede

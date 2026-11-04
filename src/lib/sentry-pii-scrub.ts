@@ -144,42 +144,62 @@ export function scrubEvent(event: ScrubbableEvent): void {
 }
 
 /**
- * Tapado de una TRANSACCIÓN (traza de rendimiento) antes de mandarla.
+ * Tapado de un SPAN (traza de rendimiento) antes de mandarlo, para `beforeSendSpan`.
  *
- * `beforeSend` no ve transacciones: sin esto, el GET a `/<slug>/reservar?...&booking_intent=...`,
- * a `/verify?token=...` o con `?email=` salía con la URL entera en el nombre de la transacción y
- * en los atributos de los spans (`url.full`, `http.url`, `http.target`, `url.query`).
+ * `beforeSend` no ve trazas: sin esto, el GET a `/<slug>/reservar?...&booking_intent=...`,
+ * a `/verify?token=...` o con `?email=` salía con la URL entera en el nombre del span y en sus
+ * atributos (`url.full`, `http.url`, `http.target`, `url.query`).
  *
- * No hay `beforeSendSpan` aparte a propósito: en este modo los spans hijos viajan DENTRO de la
- * transacción, y esta función los recorre. Una segunda pasada duplicaría la lógica.
+ * Desde Sentry 11 las trazas viajan span por span (`traceLifecycle: 'stream'`, el default) y
+ * `beforeSendTransaction` no corre más: por eso el tapado es por span y no por transacción.
  */
-type ScrubbableSpan = { description?: unknown; data?: unknown }
-type ScrubbableTransaction = ScrubbableEvent & { transaction?: unknown; spans?: ScrubbableSpan[] }
+type ScrubbableStreamedSpan = { name: string; attributes: Record<string, unknown> }
 
 // Atributos de span que traen solo la query, sin `?` (ver `scrubBareQueryString`).
 const QUERY_ONLY_ATTRIBUTES: ReadonlySet<string> = new Set(['url.query', 'http.query'])
 
-function scrubSpanData(data: unknown): unknown {
-  const scrubbed = scrubObject(data)
-  if (scrubbed === null || typeof scrubbed !== 'object' || Array.isArray(scrubbed)) return scrubbed
-  const out = scrubbed as Record<string, unknown>
+function scrubSpanAttributes(attributes: Record<string, unknown>): Record<string, unknown> {
+  const out = scrubObject(attributes) as Record<string, unknown>
   for (const key of QUERY_ONLY_ATTRIBUTES) {
-    const value = (data as Record<string, unknown>)[key]
+    const value = attributes[key]
     if (typeof value === 'string') out[key] = scrubBareQueryString(value)
+    // Un atributo también puede llegar como `{ value, unit }`.
+    else if (value && typeof value === 'object' && 'value' in value) {
+      const inner = (value as { value: unknown }).value
+      if (typeof inner === 'string') out[key] = { ...value, value: scrubBareQueryString(inner) }
+    }
   }
   return out
 }
 
-export function scrubTransaction(event: ScrubbableTransaction): void {
-  scrubEvent(event)
-  if (typeof event.transaction === 'string') {
-    event.transaction = scrubQueryString(event.transaction)
-  }
-  if (Array.isArray(event.spans)) {
-    for (const span of event.spans) {
-      if (typeof span.description === 'string')
-        span.description = scrubQueryString(span.description)
-      if (span.data) span.data = scrubSpanData(span.data)
-    }
-  }
+export function scrubStreamedSpan(span: ScrubbableStreamedSpan): void {
+  span.name = scrubQueryString(span.name)
+  span.attributes = scrubSpanAttributes(span.attributes)
+}
+
+/**
+ * Opciones que comparten los cuatro `Sentry.init` (navegador, web, edge y workers).
+ *
+ * Sentry 11 cambió dos defaults que acá se dejan como en la 10:
+ * - `dataCollection`: sin configurarlo, la 11 manda cookies, cuerpos de request/response,
+ *   consultas SQL, datos de usuario y colas. Es el baseline "como la v10" de su guía de
+ *   migración (Ley 25.326: no sumar datos personales sin decidirlo).
+ * - `attachStacktrace`: la 11 adjunta el stack a cada `captureMessage`, y los `logger.error`
+ *   que van por `error-sink.ts` se agrupan por mensaje, no por stack.
+ */
+const V10_HTTP_DENY = ['forwarded', '-ip', 'remote-', 'via', '-user']
+
+export const SENTRY_SHARED_OPTIONS = {
+  attachStacktrace: false,
+  dataCollection: {
+    userInfo: false,
+    cookies: false,
+    httpHeaders: { request: { deny: V10_HTTP_DENY }, response: { deny: V10_HTTP_DENY } },
+    httpBodies: [],
+    urlQueryParams: { deny: V10_HTTP_DENY },
+    genAI: { inputs: false, outputs: false },
+    databaseQueryData: false,
+    queues: false,
+    graphQL: { document: false, variables: false },
+  },
 }

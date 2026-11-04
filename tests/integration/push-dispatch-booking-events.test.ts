@@ -1,6 +1,6 @@
 /**
  * Integration: los avisos push al admin de las reservas online y del plan SaaS llegan a
- * `pgboss.job` con el contexto real de la DB (cancha, día, hora) y respetando a quién
+ * `pgboss_v12.job` con el contexto real de la DB (cancha, día, hora) y respetando a quién
  * le toca cada uno.
  *
  * Requiere Supabase local (`pnpm supabase:start`) y las variables de DB en la misma línea
@@ -104,10 +104,10 @@ type PushJob = { subscription_id: string; dedupeKey?: string; payload: Record<st
 async function pushJobs(ctx: Ctx): Promise<PushJob[]> {
   const sql = getSql()
   const rows = await sql<{ data: PushJob }[]>`
-    SELECT data FROM pgboss.job
+    SELECT data FROM pgboss_v12.job
     WHERE name = 'push-send'
       AND data->>'subscription_id' IN (${ctx.ownerSub}, ${ctx.managerSub})
-    ORDER BY createdon
+    ORDER BY created_on
   `
   return rows.map((r) => r.data)
 }
@@ -122,12 +122,12 @@ beforeAll(async () => {
 }, 30_000)
 
 beforeEach(async () => {
-  await getSql()`DELETE FROM pgboss.job WHERE name = 'push-send'`
+  await getSql()`DELETE FROM pgboss_v12.job WHERE name = 'push-send'`
 })
 
 afterAll(async () => {
   try {
-    await getSql()`DELETE FROM pgboss.job WHERE name = 'push-send'`
+    await getSql()`DELETE FROM pgboss_v12.job WHERE name = 'push-send'`
     await stopBoss()
     await closeSql()
   } catch {

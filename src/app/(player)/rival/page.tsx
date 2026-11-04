@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { isInAppBrowser } from '@/lib/in-app-browser'
-import { buildMetadata } from '@/lib/seo/metadata'
+import { absoluteUrl } from '@/lib/seo/metadata'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import { listBoard, listBoardTenants, listEligibleTenants } from '@/modules/rival/rival.service'
 import { listMyAlerts } from '@/modules/rival/rival-alerts.service'
@@ -14,12 +14,14 @@ import { encodeBoardCursor, parseBoardCursor } from './board-cursor'
 import { sendRivalMagicLinkAction, startGoogleLoginFromRivalAction } from './p/[code]/login-actions'
 
 export function generateMetadata(): Metadata {
-  return buildMetadata({
-    title: 'RIVAL',
+  // Sin `openGraph` ni `twitter` a propósito (no `buildMetadata`): la imagen de vista previa la
+  // ponen `opengraph-image.tsx` y `twitter-image.tsx` de esta carpeta (URL con hash, no se puede
+  // escribir a mano) y cualquier `openGraph` propio de la página las pisa. Igual que `p/[code]`.
+  return {
+    title: { absolute: 'RIVAL: partidos para sumarte | TurnoGol' },
     description: 'Armá tu partido o sumate a uno en los complejos de TurnoGol.',
-    path: '/rival',
-    noIndex: true,
-  })
+    alternates: { canonical: absoluteUrl('/rival') },
+  }
 }
 
 // Sin loading.tsx en todo /rival: abriría un <Suspense> y el notFound() de abajo quedaría en
@@ -27,6 +29,7 @@ export function generateMetadata(): Metadata {
 
 const PAGE_SIZE = 20
 
+/** El tablón de RIVAL: la portada. Se indexa; sin el flag, 404 como el resto. */
 export default async function RivalPage(props: {
   searchParams: Promise<{ complejo?: string; despues?: string }>
 }) {
@@ -53,13 +56,16 @@ export default async function RivalPage(props: {
     playerId ? listMyAlerts(playerId) : Promise.resolve([]),
   ])
 
+  // El tablón se arma entero en el servidor (BoardView es Server Component): la hora es la del pedido.
+  const now = new Date()
+
   return (
     <BoardView
       items={board.items}
       tenants={tenants}
       selectedTenantId={selectedTenantId}
       nextHref={board.nextCursor ? `/rival?${next.toString()}` : null}
-      now={new Date()}
+      now={now}
       alert={{
         alertTenants: eligible.map((t) => ({ id: t.id, name: t.name })),
         signedIn: playerId !== null,

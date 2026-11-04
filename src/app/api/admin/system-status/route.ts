@@ -4,8 +4,7 @@ import { withAuth } from '@/server/middleware/with-auth'
 import { getSql } from '@/shared/db/client'
 import { captureException } from '@/lib/sentry'
 import { runCredentialProbes, type ProbeResult } from '@/shared/observability/credential-probes'
-import { getBoss } from '@/shared/jobs/boss'
-import { ALL_QUEUES } from '@/shared/jobs/dlq'
+import { getQueueDepths } from '@/shared/jobs/queue-stats'
 import { forbidden } from '@/shared/api-error'
 import { guard } from '@/shared/rate-limit/route-guard'
 
@@ -33,35 +32,19 @@ async function checkDb(): Promise<SystemStatus['db']> {
   }
 }
 
-/** Profundidad por cola; cada fallo degrada esa entrada a depth null (fail-open). */
+/** Profundidad por cola; si la lectura falla, cada entrada degrada a depth null (fail-open). */
 async function checkQueues(): Promise<SystemStatus['pgboss']> {
-  try {
-    const boss = await getBoss()
-    const queues = await Promise.all(
-      ALL_QUEUES.map(async (queue): Promise<QueueDepth> => {
-        try {
-          return { queue, depth: await boss.getQueueSize(queue) }
-        } catch {
-          return { queue, depth: null }
-        }
-      }),
-    )
-    return { queues }
-  } catch {
-    // pg-boss caído por completo: degradamos todas las colas, nunca 500.
-    return { queues: ALL_QUEUES.map((queue) => ({ queue, depth: null })) }
-  }
+  const entries = await getQueueDepths()
+  return { queues: entries.map(({ queue, depth }) => ({ queue, depth })) }
 }
 
 /**
  * Último health-ping completado, leído de las tablas internas de pg-boss.
  * Fail-open: cualquier error (permisos, schema ausente) → null.
  *
- * Dos consultas y no un `UNION ALL`, por el mismo costo medido que explica
- * `lastCompletedHealthPing` en /api/status: `pgboss.archive` no tiene índice
- * por `name`, así que incluirla siempre es un Seq Scan de decenas de miles de
- * filas (354 ms de promedio en `pg_stat_statements`). `job` retiene 12 h de
- * pings, y el archivo solo se toca si `job` vino vacío.
+ * Una sola consulta: pg-boss 12 no tiene tabla `archive` (lo completado vive 7
+ * días en `job`, `deleteAfterSeconds` por cola) y `job` entra por índice por
+ * `name` (medido 0,11 ms con 35 mil filas) — ya no existe el Seq Scan del archivo.
  *
  * OJO con el tipo de `last`: acá NO llega un `Date`. `getDb()` envuelve ESTA
  * MISMA instancia de postgres-js con drizzle, y drizzle le MUTA los type
@@ -75,17 +58,11 @@ async function checkQueues(): Promise<SystemStatus['pgboss']> {
 async function lastHealthPing(): Promise<string | null> {
   try {
     const sql = getSql()
-    const fresh = await sql<{ last: string | null }[]>`
-      SELECT max(completedon) AS last FROM pgboss.job
+    const rows = await sql<{ last: string | null }[]>`
+      SELECT max(completed_on) AS last FROM pgboss_v12.job
       WHERE name = 'health-ping' AND state = 'completed'
     `
-    if (fresh[0]?.last) return new Date(fresh[0].last).toISOString()
-
-    const archived = await sql<{ last: string | null }[]>`
-      SELECT max(completedon) AS last FROM pgboss.archive
-      WHERE name = 'health-ping' AND state = 'completed'
-    `
-    return archived[0]?.last ? new Date(archived[0].last).toISOString() : null
+    return rows[0]?.last ? new Date(rows[0].last).toISOString() : null
   } catch (err) {
     // Un catch MUDO es como se escondió el bug de arriba durante todo el
     // tiempo que existió. El error viaja a Sentry aunque la respuesta siga

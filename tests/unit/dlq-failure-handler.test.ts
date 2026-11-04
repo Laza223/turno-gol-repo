@@ -7,15 +7,16 @@ vi.mock('@sentry/nextjs', () => ({
 
 import * as Sentry from '@sentry/nextjs'
 import { ALL_QUEUES, attachFailureHandlers } from '@/shared/jobs/dlq'
+import { QUEUE_DEAD_LETTER, QUEUE_DEFINITIONS } from '@/shared/jobs/definitions'
 
-type Handler = (job: unknown) => unknown
+type Handler = (jobs: unknown[]) => unknown
 
-/** Fake pg-boss that records every onComplete subscription. */
+/** Fake pg-boss que registra el consumidor de la DLQ. */
 function makeFakeBoss() {
-  const handlers = new Map<string, Handler>()
+  const handlers = new Map<string, { options: unknown; handler: Handler }>()
   const boss = {
-    onComplete: vi.fn(async (name: string, handler: Handler): Promise<string> => {
-      handlers.set(name, handler)
+    work: vi.fn(async (name: string, options: unknown, handler: Handler): Promise<string> => {
+      handlers.set(name, { options, handler })
       return `worker-${name}`
     }),
   }
@@ -40,28 +41,31 @@ describe('attachFailureHandlers', () => {
     vi.restoreAllMocks()
   })
 
-  it('subscribes one onComplete handler per queue', async () => {
+  it('subscribes ONE consumer on the dead-letter queue, with metadata', async () => {
     const { boss, handlers } = makeFakeBoss()
     await attachFailureHandlers(boss as never)
-    expect(boss.onComplete).toHaveBeenCalledTimes(ALL_QUEUES.length)
-    for (const queue of ALL_QUEUES) {
-      expect(handlers.has(queue)).toBe(true)
-    }
+    expect(boss.work).toHaveBeenCalledTimes(1)
+    expect(handlers.get(QUEUE_DEAD_LETTER)?.options).toEqual({ includeMetadata: true })
   })
 
-  it('reports a failed completion to Sentry and logger.error', async () => {
+  it('reports a dead-lettered job to Sentry and logger.error', async () => {
     const { boss, handlers } = makeFakeBoss()
     await attachFailureHandlers(boss as never)
 
-    const queue = ALL_QUEUES[0]!
-    const handler = handlers.get(queue)!
-    handler({ id: 'j1', data: { state: 'failed', response: { message: 'boom' } } })
+    await handlers.get(QUEUE_DEAD_LETTER)!.handler([
+      {
+        id: 'dlq-1',
+        sourceName: 'whatsapp-turn',
+        sourceId: 'j1',
+        sourceOutput: { message: 'boom' },
+      },
+    ])
 
     expect(Sentry.captureException).toHaveBeenCalledTimes(1)
     const [errArg, ctxArg] = vi.mocked(Sentry.captureException).mock.calls[0]!
     expect(errArg).toBeInstanceOf(Error)
-    expect((errArg as Error).message).toContain('boom')
-    expect((ctxArg as { tags: Record<string, string> }).tags.queue).toBe(queue)
+    expect((errArg as Error).message).toBe('Job whatsapp-turn failed: boom')
+    expect((ctxArg as { tags: Record<string, string> }).tags.queue).toBe('whatsapp-turn')
     expect((ctxArg as { tags: Record<string, string> }).tags.job_id).toBe('j1')
 
     // logger.error emitted a structured line to stderr.
@@ -70,41 +74,42 @@ describe('attachFailureHandlers', () => {
     const entry = JSON.parse(line.trim()) as Record<string, unknown>
     expect(entry.level).toBe('error')
     expect(entry.message).toBe('job.failed')
-    expect(entry.queue).toBe(queue)
+    expect(entry.queue).toBe('whatsapp-turn')
     expect(entry.job_id).toBe('j1')
     expect(entry.error).toBe('boom')
   })
 
-  it('detects failure via the `failed` flag even when state is absent', async () => {
+  it('accepts a string output and a missing one', async () => {
     const { boss, handlers } = makeFakeBoss()
     await attachFailureHandlers(boss as never)
+    const { handler } = handlers.get(QUEUE_DEAD_LETTER)!
 
-    const handler = handlers.get(ALL_QUEUES[0]!)!
-    handler({ id: 'j3', data: { failed: true, response: 'string error' } })
+    await handler([{ id: 'd1', sourceName: 'q', sourceId: 'j3', sourceOutput: 'string error' }])
+    await handler([{ id: 'd2', sourceName: 'q', sourceId: 'j4', sourceOutput: null }])
 
-    expect(Sentry.captureException).toHaveBeenCalledTimes(1)
-    const [errArg] = vi.mocked(Sentry.captureException).mock.calls[0]!
-    expect((errArg as Error).message).toContain('string error')
+    const messages = vi
+      .mocked(Sentry.captureException)
+      .mock.calls.map((c) => (c[0] as Error).message)
+    expect(messages).toEqual(['Job q failed: string error', 'Job q failed: unknown error'])
   })
 
-  it('ignores a successful completion', async () => {
-    const { boss, handlers } = makeFakeBoss()
-    await attachFailureHandlers(boss as never)
-
-    const handler = handlers.get(ALL_QUEUES[0]!)!
-    handler({ id: 'j2', data: { state: 'completed', failed: false } })
-
-    expect(Sentry.captureException).not.toHaveBeenCalled()
-  })
-
-  it('logs a warning instead of throwing when a subscription fails', async () => {
+  it('logs a warning instead of throwing when the subscription fails', async () => {
     const boss = {
-      onComplete: vi.fn(async () => {
+      work: vi.fn(async () => {
         throw new Error('subscribe exploded')
       }),
     }
     await expect(attachFailureHandlers(boss as never)).resolves.toBeUndefined()
-    // One warn line per queue; warns go to stdout, but we only assert no throw.
-    expect(boss.onComplete).toHaveBeenCalledTimes(ALL_QUEUES.length)
+    expect(boss.work).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('ALL_QUEUES', () => {
+  it('es el registro sin la DLQ', () => {
+    expect(ALL_QUEUES).toEqual(
+      QUEUE_DEFINITIONS.map((q) => q.name).filter((n) => n !== QUEUE_DEAD_LETTER),
+    )
+    expect(ALL_QUEUES).toContain('daily-summary')
+    expect(ALL_QUEUES).toContain('reconcile-subscriptions')
   })
 })

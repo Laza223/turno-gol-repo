@@ -1,4 +1,4 @@
-import type PgBoss from 'pg-boss'
+import type { PgBoss } from 'pg-boss'
 import { getWorkerDb } from '@/shared/db/client'
 import { insertSystemAuditLogs } from '@/shared/db/audit'
 import { autoCreditBooking, findAutoCreditCandidates } from '@/modules/bookings/booking.auto-credit'

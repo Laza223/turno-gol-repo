@@ -1,4 +1,4 @@
-import type PgBoss from 'pg-boss'
+import type { PgBoss } from 'pg-boss'
 import { sql } from 'drizzle-orm'
 import { getWorkerDb } from '@/shared/db/client'
 import {
@@ -17,10 +17,10 @@ import { logger } from '@/shared/lib/logger'
 /**
  * Turnos del bot de WhatsApp.
  *
- * - `whatsapp-turn`: un job por chat (cola singleton, ver `whatsappTurnSendOptions`).
- *   `teamSize`/`teamConcurrency` > 1: cada turno espera al modelo varios
- *   segundos y los chats de todos los complejos no pueden quedar en fila de a
- *   uno. `enforceSingletonQueueActiveLimit` impide que corran dos del MISMO chat.
+ * - `whatsapp-turn`: un job por chat (política `stately` de la cola, ver `whatsappTurnSendOptions`).
+ *   `localConcurrency: 4`: cada turno espera al modelo varios segundos y los
+ *   chats de todos los complejos no pueden quedar en fila de a uno. La política
+ *   `stately` impide que corran dos del MISMO chat.
  * - `whatsapp-turn-rescue`: cada minuto busca entrantes sin procesar de hace
  *   más de 30 s (un envío a la cola que falló, un worker que murió en el
  *   medio) y les vuelve a encolar el turno. Sin esto, el jugador queda sin
@@ -63,12 +63,12 @@ export async function registerWhatsappTurnWorker(boss: PgBoss): Promise<void> {
 
   await boss.work<WhatsappTurnJobData>(
     QUEUE_WHATSAPP_TURN,
-    // `teamRefill`: sin esto pg-boss espera a que termine el lote ENTERO antes
-    // de buscar más, y un turno lento retiene las otras plazas.
-    { teamSize: 4, teamConcurrency: 4, teamRefill: true, enforceSingletonQueueActiveLimit: true },
-    async (job) => {
-      if (missingKeys.length > 0) return
-      const data = (Array.isArray(job) ? job[0]?.data : job.data) as WhatsappTurnJobData
+    // 4 turnos en paralelo, cada uno con su propio ciclo (un turno lento no retiene las otras
+    // plazas). Dos del mismo chat nunca corren a la vez: lo impide la política `stately`.
+    { localConcurrency: 4 },
+    async ([job]) => {
+      if (missingKeys.length > 0 || !job) return
+      const data = job.data
       const outcome = await processWhatsappTurn(data)
       logger.info('whatsapp-turn: turno procesado', {
         module: 'whatsapp-bot',

@@ -12,4 +12,6 @@ paths:
 
 Nuevas y existentes usan la baja desde el próximo cobro, respetando trial y períodos pagados. La migración 095 cambia solo el catálogo y no toca preapprovals: un débito ya autorizado sigue con su monto hasta bajarlo con `scripts/billing/reprice-subscriptions.ts` (el reconciliador lo marca como `subscription.amount_drift`). Detalle: `docs/operations/2026-10-20-baja-precio-saas.md`.
 
+TurnoGol Plus (asistente de WhatsApp) es un extra de **$15.000 por cancha por mes** de lista (`PLUS_LIST_PER_COURT_CENTS`, decisión del 2026-10-31), en el mismo débito; un precio especial por complejo pisa la lista y cambiar la constante no toca preapprovals existentes. Detalle: `docs/decisions/2026-10-22-cobro-turnogol-plus.md`.
+
 Otros cambios de precio necesitan decisión escrita del dueño: devolver "REQUIERE INPUT".

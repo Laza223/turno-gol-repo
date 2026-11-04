@@ -64,7 +64,6 @@ describe('createTenantAction — atribución de referidos (B2)', () => {
   it('con código válido, setea referred_by_tenant_id en el mismo insert', async () => {
     vi.mocked(getStaffSignupReferral).mockResolvedValueOnce({
       signupReferralCode: 'AH2K9MZP',
-      createdAt: new Date('2026-10-01T00:00:00.000Z'),
     })
     vi.mocked(resolveSignupReferrer).mockResolvedValueOnce('tenant-referrer-1')
 

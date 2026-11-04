@@ -37,6 +37,8 @@ El founder lo prioriza igual por dos razones: es lo que el dueño del piloto dij
 ## F4 — RIVAL v1 ("RIVAL powered by TurnoGol")
 
 > **Enmendada el 2026-10-22** por [`2026-10-22-rival-v1.md`](2026-10-22-rival-v1.md): RIVAL no tiene umbral de reversión. La revisión a 30 días sirve para elegir la próxima ola, no para decidir si se corta. La spec está en [`docs/superpowers/specs/2026-10-22-rival-v1-design.md`](../superpowers/specs/2026-10-22-rival-v1-design.md).
+>
+> **Enmendada el 2026-10-29** por [`2026-10-29-rival-cultura-de-turnogol.md`](2026-10-29-rival-cultura-de-turnogol.md): el "Perfil mínimo" ya no veta rankings ni puntajes para las próximas olas. Se levantan como tablas sobre partidos verificados, la media y la figura del partido, cada uno con su condición. Sigue vetado el texto libre sobre personas. Lo mismo vale para "Rankings" y "red social o feed" en "Lo que sigue congelado": las tablas y el Diario semanal se pueden diseñar; un feed de publicaciones, no.
 
 - **Qué es:** la sección de comunidad del portal del jugador. Trae las dos cosas:
   - **El partido del grupo:** una convocatoria con link para el grupo de WhatsApp, donde cada uno confirma en un toque y el organizador ve "7/10 confirmados".

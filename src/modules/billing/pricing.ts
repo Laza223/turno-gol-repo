@@ -11,7 +11,7 @@ import type { BillingCycle } from './billing.types'
  *   Anual: 10% off. Sin bandas, sin techo, sin descuento por volumen.
  *
  * TurnoGol Plus (Asistente de WhatsApp, `docs/decisions/2026-10-22-cobro-turnogol-plus.md`)
- * viaja en el MISMO débito: $20.000 por cancha facturada y por mes de lista (P3),
+ * viaja en el MISMO débito: $15.000 por cancha facturada y por mes de lista (P3, D11),
  * o un precio especial por complejo. En el anual el 10% se aplica a la SUMA
  * plan + Plus (P6).
  *
@@ -23,8 +23,8 @@ import type { BillingCycle } from './billing.types'
  * se puede testear y reusar (UI incluida) sin arrastrar el schema.
  */
 
-/** Precio de lista de TurnoGol Plus: $20.000 por cancha facturada y por mes (P3). Centavos ARS. */
-export const PLUS_LIST_PER_COURT_CENTS = 2_000_000
+/** Precio de lista de TurnoGol Plus: $15.000 por cancha facturada y por mes (D11, 2026-10-31). Centavos ARS. */
+export const PLUS_LIST_PER_COURT_CENTS = 1_500_000
 
 /** Centavos ARS. Cero canchas no existe: el piso del modelo es una cancha. */
 export type PricingParams = {

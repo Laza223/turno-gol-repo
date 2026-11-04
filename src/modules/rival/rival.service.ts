@@ -167,12 +167,44 @@ async function requireProfile(
   }
 }
 
-/** Arma un partido solo del grupo. Al tablón se sube después, con `publishToBoard`. */
+/**
+ * Guarda el WhatsApp del organizador (con consentimiento por publicación) y, si lo pidió,
+ * `players.phone`. Va en la misma transacción que sube el partido al tablón.
+ */
+async function saveBoardContact(
+  tx: DbTx,
+  playerId: string,
+  matchId: string,
+  board: RivalBoardDraft,
+): Promise<void> {
+  await tx
+    .insert(rivalMatchContacts)
+    .values({ matchId, whatsappDigits: board.whatsappDigits })
+    .onConflictDoUpdate({
+      target: rivalMatchContacts.matchId,
+      set: { whatsappDigits: board.whatsappDigits },
+    })
+
+  // `phone_hint8` es una columna GENERATED: se recalcula sola con el UPDATE.
+  if (board.savePhone) {
+    await tx
+      .update(players)
+      .set({ phone: playerPhoneOf(board.whatsappDigits) })
+      .where(eq(players.id, playerId))
+  }
+}
+
+/**
+ * Arma un partido. Sin `board` es solo del grupo (al tablón se sube después con `publishToBoard`);
+ * con `board` ("Me faltan jugadores", "Busco rival") sale al tablón en la MISMA transacción, con
+ * su WhatsApp: si algo falla no queda un partido a medio publicar.
+ */
 export async function createMatch(
   playerId: string,
   draft: RivalMatchDraft,
+  board: RivalBoardDraft | null = null,
 ): Promise<{ id: string; inviteCode: string }> {
-  return inPlayerContext(playerId, async (tx) => {
+  const match = await inPlayerContext(playerId, async (tx) => {
     await requireWelcome(tx, playerId)
 
     // Mismo filtro de visibilidad que la búsqueda pública: nada de partidos en
@@ -184,7 +216,7 @@ export async function createMatch(
       .limit(1)
     if (!tenant) throw new RivalError('rival_tenant_unavailable')
 
-    const [match] = await tx
+    const [created] = await tx
       .insert(rivalMatches)
       .values({
         tenantId: draft.tenantId,
@@ -194,12 +226,19 @@ export async function createMatch(
         startsAt: draft.startsAt,
         format: draft.format,
         capacity: draft.capacity,
+        offlineCount: draft.offlineCount,
         level: draft.level,
+        ...(board
+          ? { onBoard: true, seeking: board.seeking, seekingPosition: board.seekingPosition }
+          : {}),
       })
       .returning({ id: rivalMatches.id, inviteCode: rivalMatches.inviteCode })
-    if (!match) throw new RivalError('rival_forbidden')
-    return match
+    if (!created) throw new RivalError('rival_forbidden')
+    if (board) await saveBoardContact(tx, playerId, created.id, board)
+    return created
   })
+  if (board) await scheduleRivalMail({ type: 'alert_publish', matchId: match.id })
+  return match
 }
 
 /**
@@ -227,22 +266,7 @@ export async function publishToBoard(
       .where(and(eq(rivalMatches.id, matchId), eq(rivalMatches.organizerPlayerId, playerId)))
       .returning({ id: rivalMatches.id })
     if (updated.length === 0) throw new RivalError('rival_not_found')
-
-    await tx
-      .insert(rivalMatchContacts)
-      .values({ matchId, whatsappDigits: board.whatsappDigits })
-      .onConflictDoUpdate({
-        target: rivalMatchContacts.matchId,
-        set: { whatsappDigits: board.whatsappDigits },
-      })
-
-    // `phone_hint8` es una columna GENERATED: se recalcula sola con el UPDATE.
-    if (board.savePhone) {
-      await tx
-        .update(players)
-        .set({ phone: playerPhoneOf(board.whatsappDigits) })
-        .where(eq(players.id, playerId))
-    }
+    await saveBoardContact(tx, playerId, matchId, board)
   })
   await scheduleRivalMail({ type: 'alert_publish', matchId })
 }

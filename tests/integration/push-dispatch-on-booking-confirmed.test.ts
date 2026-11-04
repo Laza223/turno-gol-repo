@@ -60,14 +60,14 @@ describe('push-dispatch integration', () => {
     const subId = subRows[0]!.id
 
     // Clear any existing push-send jobs to get a clean count.
-    await sql`DELETE FROM pgboss.job WHERE name = 'push-send'`
+    await sql`DELETE FROM pgboss_v12.job WHERE name = 'push-send'`
 
     const result = await notifyAdminPush(tenant.id, SAMPLE_PAYLOAD)
     expect(result.enqueued).toBe(1)
 
-    // Assert 1 row in pgboss.job with name='push-send'.
+    // Assert 1 row in pgboss_v12.job with name='push-send'.
     const jobs = await sql<{ id: string; data: unknown }[]>`
-      SELECT id, data FROM pgboss.job
+      SELECT id, data FROM pgboss_v12.job
       WHERE name = 'push-send'
         AND data->>'subscription_id' = ${subId}
     `
@@ -78,6 +78,6 @@ describe('push-dispatch integration', () => {
 
     // Cleanup
     await sql`DELETE FROM push_subscriptions WHERE id = ${subId}`
-    await sql`DELETE FROM pgboss.job WHERE name = 'push-send'`
+    await sql`DELETE FROM pgboss_v12.job WHERE name = 'push-send'`
   })
 })

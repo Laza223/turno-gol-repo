@@ -49,6 +49,13 @@ export async function deleteFreshAdminTenants(
     await sql`DELETE FROM daily_cash_opens WHERE tenant_id = ${tid}`
     await sql`DELETE FROM cash_flows WHERE tenant_id = ${tid}`
     await sql`DELETE FROM daily_cash_closes WHERE tenant_id = ${tid}`
+    // Reseñas y RIVAL cuelgan de la reserva: van antes de `bookings` (ver la nota
+    // equivalente en seed-e2e.ts). rival_match_contacts / rival_reports /
+    // rival_alert_sends caen por CASCADE con rival_matches.
+    await sql`DELETE FROM reviews WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM rival_participants WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM rival_alert_subscriptions WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM rival_matches WHERE tenant_id = ${tid}`
     // payments.booking_id -> bookings.id es la pata inversa del FK circular que bookings
     // tiene con payments (004_isolated_tables.sql): hay que anularlo antes o el DELETE de
     // bookings viola payments_booking_id_fkey.
@@ -74,6 +81,11 @@ export async function deleteFreshAdminTenants(
     // Misma trampa que en seed-e2e.ts: la FK de analytics_events (migr. 072)
     // no es CASCADE, y el tenant que dejó el wizard sí tiene tráfico propio.
     await sql`DELETE FROM analytics_events WHERE tenant_id = ${tid}`
+    // Ídem para el bot de WhatsApp (096) y los favoritos (017): FK NO ACTION.
+    await sql`DELETE FROM player_favorites WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM whatsapp_messages WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM whatsapp_chats WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM whatsapp_connections WHERE tenant_id = ${tid}`
     await sql`DELETE FROM tenants WHERE id = ${tid}`
     deleted.push(tid)
   }

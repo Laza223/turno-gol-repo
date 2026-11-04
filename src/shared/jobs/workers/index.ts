@@ -1,4 +1,4 @@
-import type PgBoss from 'pg-boss'
+import type { PgBoss } from 'pg-boss'
 import { registerMpWebhookWorker } from './process-mp-webhook.worker'
 import { registerGenerateAbonadoSlotsWorker } from './generate-abonado-slots.worker'
 import { registerSendEmailWorker } from './send-email.worker'

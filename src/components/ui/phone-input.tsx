@@ -128,7 +128,6 @@ export function PhoneInput({
             <button
               type="button"
               disabled={disabled}
-              aria-label={`Seleccionar código de país. Actual: ${country.name} (${country.dialCode})`}
               className={cn(
                 'flex items-center gap-1.5 rounded-l-lg border border-r-0 border-input bg-muted/40 px-3 text-sm font-medium text-foreground transition-colors hover:bg-muted/80 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:z-10 disabled:cursor-not-allowed disabled:opacity-50 h-11 md:h-10 select-none',
                 error && 'border-red-500 dark:border-red-400',
@@ -140,6 +139,7 @@ export function PhoneInput({
               <span className="font-semibold text-xs text-muted-foreground">
                 {country.dialCode}
               </span>
+              <span className="sr-only">Seleccionar código de país. Actual: {country.name}</span>
               <ChevronDown
                 className="h-3.5 w-3.5 text-muted-foreground transition-transform duration-200"
                 style={{ transform: isOpen ? 'rotate(180deg)' : undefined }}

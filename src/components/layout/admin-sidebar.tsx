@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Logo } from '@/components/ui/logo'
+import { LogoMark } from '@/components/ui/logo-mark'
 import {
   LayoutDashboard,
   CalendarDays,
@@ -445,17 +445,9 @@ function SidebarRail({
       <Link
         href="/dashboard"
         aria-label="TurnoGol"
-        className="mb-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-primary text-primary-foreground outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+        className="mb-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-[10px] bg-slate-950 outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
       >
-        {/* accentClassName = textClassName: la G por defecto es emerald, y este
-            badge YA es `bg-primary` (emerald) — con el default la G se funde
-            contra su propio fondo (invisible en claro, borrosa en oscuro). */}
-        <Logo
-          variant="icon"
-          className="text-[15px]"
-          textClassName="text-primary-foreground"
-          accentClassName="text-primary-foreground"
-        />
+        <LogoMark className="h-5" />
       </Link>
 
       {/* Vender desde cualquier vista (2026-10-26): no es un destino sino una acción, así

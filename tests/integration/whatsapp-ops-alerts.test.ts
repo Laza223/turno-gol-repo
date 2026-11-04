@@ -511,12 +511,36 @@ describe('runWhatsappOpsAlerts: salud de los números (Kapso mockeado)', () => {
     expect(await audits(tenant.id)).toEqual([])
   })
 
+  it('degraded: sin mail ni tocar la conexión, y el log sale una vez por día y por número', async () => {
+    const info = vi.spyOn(logger, 'info').mockImplementation(() => {})
+    const degradedLogs = () =>
+      info.mock.calls.filter(([msg]) => msg === 'whatsapp: número degradado').length
+    kapso({
+      health: () =>
+        json({
+          status: 'degraded',
+          checks: { messaging_health: { passed: false, overall_status: 'LIMITED' } },
+        }),
+    })
+
+    await tick(0)
+    await tick(1)
+    await tick(2)
+    expect(sent).toEqual([])
+    expect(await connectionStatus(tenant.id)).toBe('connected')
+    expect(degradedLogs()).toBe(1)
+    expect(info).toHaveBeenCalledWith(
+      'whatsapp: número degradado',
+      expect.objectContaining({ tenantId: tenant.id, failing: ['messaging_health'] }),
+    )
+    expect(await alertKeys(getSql())).toEqual([`wa-degradado:${tenant.id}:pn-${tenant.id}:${DAY}`])
+
+    // Al día siguiente vuelve a dejar una línea: sigue degradado.
+    await tick(24 * 12)
+    expect(degradedLogs()).toBe(2)
+  })
+
   it.each([
-    [
-      'degraded',
-      () =>
-        json({ status: 'degraded', checks: { messaging_health: { overall_status: 'LIMITED' } } }),
-    ],
     ['status error', () => json({ status: 'error', error: 'Service temporarily unavailable' })],
     ['500', () => json({ error: 'boom' }, 500)],
     [

@@ -64,9 +64,13 @@ export function AccountMenu({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
           ) : (
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-              {initials(firstName, lastName)}
-            </span>
+            // Iniciales por CSS (`content: attr()`): no son texto del DOM, así que el nombre
+            // accesible "Cuenta de X" contiene todo lo visible (WCAG 2.5.3).
+            <span
+              aria-hidden
+              data-initials={initials(firstName, lastName)}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground before:content-[attr(data-initials)]"
+            />
           )}
           <span className="max-w-24 truncate text-sm font-medium sm:max-w-32">{firstName}</span>
           <ChevronDown className="h-4 w-4 opacity-70" aria-hidden />

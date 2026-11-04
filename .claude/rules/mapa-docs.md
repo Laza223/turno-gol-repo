@@ -10,4 +10,4 @@ paths:
 - **Técnica**: doc11 13 ADRs · doc12 tenant isolation · doc13 SQL completo · doc14 tech stack (**DESACTUALIZADO** — el stack real es el del CLAUDE.md) · doc15 API contracts
 - **Calidad y ops**: doc16 testing (aislamiento BLOQUEANTE) · doc17 observabilidad · doc18 privacy Ley 25.326 · doc19 runbook · doc20 design system (**superado**: la única autoridad de diseño es `DESIGN.md`, en la raíz; el MASTER, la gramática de interacción y las specs por página anteriores están archivados en `docs/archive/design-system/`)
 
-Subcarpetas fuera de `docs/spec/`: `business/`, `decisions/`, `operations/`, `qa/`, `audit/`, `planning/`, `superpowers/`, `archive/`. Mapa completo: `docs/README.md`.
+Subcarpetas fuera de `docs/spec/`: `business/`, `decisions/`, `rival/` (visión de RIVAL y catálogo de ideas), `operations/`, `qa/`, `audit/`, `planning/`, `superpowers/`, `archive/`. Mapa completo: `docs/README.md`.

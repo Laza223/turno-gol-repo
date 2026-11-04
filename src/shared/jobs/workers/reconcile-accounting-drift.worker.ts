@@ -1,4 +1,4 @@
-import type PgBoss from 'pg-boss'
+import type { PgBoss } from 'pg-boss'
 import type { Sql } from 'postgres'
 import { getWorkerSql, withTenantContext } from '@/shared/db/client'
 import { insertSystemAuditLog } from '@/shared/db/audit'

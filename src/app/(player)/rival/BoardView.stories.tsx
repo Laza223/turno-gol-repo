@@ -86,16 +86,17 @@ export const Default: Story = {
     await expect(canvas.getByRole('heading', { name: 'Hoy' })).toBeInTheDocument()
     await expect(canvas.getByRole('heading', { name: 'Mañana' })).toBeInTheDocument()
     await expect(canvas.getByRole('heading', { name: 'Próximos días' })).toBeInTheDocument()
-    await expect(canvas.getByRole('heading', { name: 'Sumate a un partido' })).toBeInTheDocument()
+    await expect(canvas.getByRole('heading', { level: 1, name: 'Partidos' })).toBeInTheDocument()
     await expect(canvas.getByText('Faltan 3')).toBeInTheDocument()
     await expect(canvas.getByText('Falta 1')).toBeInTheDocument()
     await expect(canvas.getByText('Se busca arquero')).toBeInTheDocument()
     await expect(canvas.getByText('Busca rival')).toBeInTheDocument()
     // Cada tarjeta es un link al partido por id, con nombre accesible claro; sin "Ver más".
-    await expect(
-      canvas.getByRole('link', { name: /^Faltan 3 en El Vagón, Hoy 20:00/ }),
-    ).toHaveAttribute('href', '/rival/partido/a')
-    await expect(canvas.getByRole('link', { name: /^Busca rival en El Vagón/ })).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: /Faltan 3.*El Vagón/ })).toHaveAttribute(
+      'href',
+      '/rival/partido/a',
+    )
+    await expect(canvas.getByRole('link', { name: /Busca rival.*El Vagón/ })).toBeInTheDocument()
     await expect(canvas.queryByRole('link', { name: 'Ver más partidos' })).toBeNull()
     // La hora manda y el día no se repite bajo "Hoy"/"Mañana"; bajo "Próximos días" sí sale.
     await expect(canvas.getAllByText('20:00')).toHaveLength(1)
@@ -103,20 +104,22 @@ export const Default: Story = {
     await expect(canvas.getByText('Miércoles 18')).toBeInTheDocument()
     // El cupo va en el nombre accesible (la tira de camisetas es decorativa).
     await expect(
-      canvas.getByRole('link', { name: /^Faltan 3 en El Vagón.*, 7 de 10 confirmados$/ }),
+      canvas.getByRole('link', { name: /Faltan 3.*El Vagón.*Ya son 7 de 10/ }),
     ).toBeInTheDocument()
   },
 }
 
-/** Sin sesión, "Armar un partido" abre el ingreso de RIVAL (no manda a /ingresar). */
+/** Sin sesión, "Me faltan jugadores" abre el ingreso de RIVAL (no manda a /ingresar). */
 export const SinSesion: Story = {
   args: { alert: { ...meta.args.alert, signedIn: false } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.queryByRole('link', { name: 'Armar un partido' })).toBeNull()
-    await userEvent.click(canvas.getByRole('button', { name: 'Armar un partido' }))
+    await expect(canvas.queryByRole('link', { name: 'Me faltan jugadores' })).toBeNull()
+    await userEvent.click(canvas.getByRole('button', { name: 'Me faltan jugadores' }))
     const dialog = await screen.findByRole('dialog')
-    await expect(dialog.querySelector('input[name="next"]')).toHaveValue('/rival/nuevo')
+    await expect(dialog.querySelector('input[name="next"]')).toHaveValue(
+      '/rival/nuevo?necesito=jugadores',
+    )
     await userEvent.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   },
@@ -150,11 +153,12 @@ export const Vacio: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(
-      canvas.getByRole('heading', { name: 'Por ahora no hay partidos en el tablón.' }),
+      canvas.getByRole('heading', { name: 'Todavía no hay partidos publicados.' }),
     ).toBeInTheDocument()
-    await expect(canvas.getByText(/Armá el tuyo y publicalo/)).toBeInTheDocument()
-    // Un solo camino para armar: el verde de arriba.
-    await expect(canvas.getAllByRole('link', { name: 'Armar un partido' })).toHaveLength(1)
+    await expect(canvas.getByText(/Mientras tanto, armá el tuyo/)).toBeInTheDocument()
+    // Las dos entradas de intención de arriba son los únicos caminos para armar.
+    await expect(canvas.getAllByRole('link', { name: 'Me faltan jugadores' })).toHaveLength(1)
+    await expect(canvas.getAllByRole('link', { name: 'Busco rival' })).toHaveLength(1)
   },
 }
 

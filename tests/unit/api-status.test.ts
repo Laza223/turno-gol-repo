@@ -57,7 +57,7 @@ describe('GET /api/status', () => {
     const sqlMock = vi.fn().mockResolvedValue([{ '?column?': 1 }])
     ;(getSql as unknown as ReturnType<typeof vi.fn>).mockReturnValue(sqlMock)
     ;(getBoss as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-      getQueueSize: vi.fn().mockResolvedValue(0),
+      getQueue: vi.fn().mockResolvedValue(0),
     })
 
     const res = await GET(pedir())
@@ -74,7 +74,7 @@ describe('GET /api/status', () => {
     const sqlMock = vi.fn().mockRejectedValue(new Error('connect ECONNREFUSED'))
     ;(getSql as unknown as ReturnType<typeof vi.fn>).mockReturnValue(sqlMock)
     ;(getBoss as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-      getQueueSize: vi.fn().mockResolvedValue(0),
+      getQueue: vi.fn().mockResolvedValue(0),
     })
 
     const res = await GET(pedir())
@@ -89,7 +89,7 @@ describe('GET /api/status', () => {
     const sqlMock = vi.fn().mockResolvedValue([{ '?column?': 1 }])
     ;(getSql as unknown as ReturnType<typeof vi.fn>).mockReturnValue(sqlMock)
     ;(getBoss as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-      getQueueSize: vi.fn().mockRejectedValue(new Error('permission denied for schema pgboss')),
+      getQueue: vi.fn().mockRejectedValue(new Error('permission denied for schema pgboss')),
     })
 
     const res = await GET(pedir())
@@ -118,7 +118,7 @@ describe('GET /api/status', () => {
     const sqlMock = vi.fn().mockResolvedValue([{ '?column?': 1 }])
     ;(getSql as unknown as ReturnType<typeof vi.fn>).mockReturnValue(sqlMock)
     ;(getBoss as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-      getQueueSize: vi.fn().mockResolvedValue(0),
+      getQueue: vi.fn().mockResolvedValue(0),
     })
 
     const res = await GET(pedir())
@@ -131,7 +131,7 @@ describe('GET /api/status', () => {
     const sqlMock = vi.fn().mockResolvedValue([{ '?column?': 1 }])
     ;(getSql as unknown as ReturnType<typeof vi.fn>).mockReturnValue(sqlMock)
     ;(getBoss as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-      getQueueSize: vi.fn().mockResolvedValue(0),
+      getQueue: vi.fn().mockResolvedValue(0),
     })
 
     const res = await GET(pedir())
@@ -145,7 +145,7 @@ describe('GET /api/status', () => {
     const sqlMock = vi.fn().mockResolvedValue([{ '?column?': 1 }])
     ;(getSql as unknown as ReturnType<typeof vi.fn>).mockReturnValue(sqlMock)
     ;(getBoss as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-      getQueueSize: vi.fn().mockResolvedValue(0),
+      getQueue: vi.fn().mockResolvedValue(0),
     })
     ;(getRedis as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       ping: vi.fn().mockRejectedValue(new Error('redis unreachable')),
@@ -164,7 +164,7 @@ describe('GET /api/status', () => {
     const sqlMock = vi.fn().mockResolvedValue([{ '?column?': 1 }])
     ;(getSql as unknown as ReturnType<typeof vi.fn>).mockReturnValue(sqlMock)
     ;(getBoss as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-      getQueueSize: vi.fn().mockResolvedValue(0),
+      getQueue: vi.fn().mockResolvedValue(0),
     })
 
     const res = await GET(pedir())
@@ -185,7 +185,7 @@ describe('GET /api/status', () => {
       vi.fn().mockResolvedValue([{ '?column?': 1 }]),
     )
     ;(getBoss as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-      getQueueSize: vi.fn().mockResolvedValue(0),
+      getQueue: vi.fn().mockResolvedValue(0),
     })
   }
 
@@ -335,7 +335,7 @@ describe('GET /api/status', () => {
         vi.fn().mockResolvedValue([{ '?column?': 1 }]),
       )
       ;(getBoss as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-        getQueueSize: vi.fn().mockResolvedValue(0),
+        getQueue: vi.fn().mockResolvedValue(0),
       })
       ;(getRedis as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
         ping: vi.fn().mockRejectedValue(new Error('redis unreachable')),
@@ -448,7 +448,7 @@ describe('GET /api/status', () => {
       })
       ;(getSql as unknown as ReturnType<typeof vi.fn>).mockReturnValue(fn)
       ;(getBoss as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-        getQueueSize: vi.fn().mockResolvedValue(0),
+        getQueue: vi.fn().mockResolvedValue(0),
       })
       return fn
     }

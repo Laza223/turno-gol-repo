@@ -103,7 +103,7 @@ describe('POST /api/admin/push/test (F9 T4)', () => {
     `
 
     // Clear any existing push-send jobs for a clean count.
-    await sql`DELETE FROM pgboss.job WHERE name = 'push-send'`
+    await sql`DELETE FROM pgboss_v12.job WHERE name = 'push-send'`
 
     asUser(makeAdminUser(tenantId, staffUserId))
 
@@ -114,14 +114,14 @@ describe('POST /api/admin/push/test (F9 T4)', () => {
     expect(json.success).toBe(true)
     expect(json.dispatched).toBe(2)
 
-    // Assert 2 rows in pgboss.job with name='push-send'.
+    // Assert 2 rows in pgboss_v12.job with name='push-send'.
     const jobs = await sql<{ id: string }[]>`
-      SELECT id FROM pgboss.job WHERE name = 'push-send'
+      SELECT id FROM pgboss_v12.job WHERE name = 'push-send'
     `
     expect(jobs).toHaveLength(2)
 
     // Cleanup.
     await sql`DELETE FROM push_subscriptions WHERE endpoint IN (${ep1}, ${ep2})`
-    await sql`DELETE FROM pgboss.job WHERE name = 'push-send'`
+    await sql`DELETE FROM pgboss_v12.job WHERE name = 'push-send'`
   })
 })

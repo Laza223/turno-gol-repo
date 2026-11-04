@@ -91,7 +91,7 @@ test.describe('TG-HP-210 — agregar cobro parcial', () => {
       const amountInput = page.locator('#hoy-cobro-amount-1')
       await expect(amountInput).toHaveValue('2.000')
       await amountInput.fill(String(partialCharge / 100))
-      await page.getByRole('button', { name: 'Método de pago' }).click()
+      await page.getByRole('button', { name: /^Método de pago/ }).click()
       await page.getByRole('menuitemradio', { name: 'Transferencia' }).click()
 
       // El turno todavía no empezó: `chargeMode` es 'advance' y el CTA dice

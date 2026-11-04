@@ -333,7 +333,7 @@ describe('reconcileSubscriptions — desfasaje de monto del preapproval', () => 
         expect.objectContaining({
           action: 'subscription.amount_drift',
           metadata: expect.objectContaining({
-            expectedCents: PLAN_ONLY + 2_000_000,
+            expectedCents: PLAN_ONLY + 1_500_000,
             actualCents: PLAN_ONLY,
           }),
         }),
@@ -353,7 +353,7 @@ describe('reconcileSubscriptions — desfasaje de monto del preapproval', () => 
     it('baja agendada (plus_access_until) con drift: también avisa por mail', async () => {
       await run(
         withPlus({ plusEnabled: false, plusAccessUntil: '2027-01-01T00:00:00Z' }),
-        PLAN_ONLY + 2_000_000,
+        PLAN_ONLY + 1_500_000,
       )
 
       expect(mockSendOpsAlerts).toHaveBeenCalledTimes(1)
@@ -368,14 +368,14 @@ describe('reconcileSubscriptions — desfasaje de monto del preapproval', () => 
     })
 
     it('sin Plus el drift sigue sin mail', async () => {
-      await run(withPlus({ plusEnabled: false }), PLAN_ONLY + 2_000_000)
+      await run(withPlus({ plusEnabled: false }), PLAN_ONLY + 1_500_000)
 
       expect(mockInsertAudit).toHaveBeenCalledTimes(1)
       expect(mockSendOpsAlerts).not.toHaveBeenCalled()
     })
 
     it('Plus prendido y el débito ya lo lleva: sin alerta', async () => {
-      await run(withPlus({ plusEnabled: true }), PLAN_ONLY + 2_000_000)
+      await run(withPlus({ plusEnabled: true }), PLAN_ONLY + 1_500_000)
 
       expect(mockInsertAudit).not.toHaveBeenCalled()
       expect(mockCaptureMessage).not.toHaveBeenCalled()
@@ -397,7 +397,7 @@ describe('reconcileSubscriptions — desfasaje de monto del preapproval', () => 
     })
 
     it('baja aplicada en la base pero MP todavía cobra Plus: alerta', async () => {
-      await run(withPlus({ plusEnabled: false }), PLAN_ONLY + 2_000_000)
+      await run(withPlus({ plusEnabled: false }), PLAN_ONLY + 1_500_000)
 
       expect(mockInsertAudit).toHaveBeenCalledWith(
         expect.anything(),

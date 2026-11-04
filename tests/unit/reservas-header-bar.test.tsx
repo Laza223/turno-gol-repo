@@ -34,7 +34,7 @@ function renderBar(overrides: Partial<React.ComponentProps<typeof ReservasHeader
 
 /** Radix DropdownMenu abre con teclado (Enter); el pointerdown real de un mouse no se simula bien en happy-dom (mismo gotcha que staff-actions-role-menu.test.tsx). */
 async function openCourtSelect() {
-  const trigger = screen.getAllByLabelText('Filtrar por cancha')[0]!
+  const trigger = screen.getAllByLabelText(/^Filtrar por cancha/)[0]!
   fireEvent.keyDown(trigger, { key: 'Enter' })
   await waitFor(() => screen.getByRole('menu'))
 }

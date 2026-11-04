@@ -33,6 +33,8 @@ vi.mock('@/modules/auth/system-admin.guards', () => ({
 }))
 vi.mock('@/shared/lib/logger', () => ({ logger: { error: h.logError } }))
 
+import SuperAdminPulsoPage from '@/app/(super-admin)/super-admin/page'
+
 afterEach(() => {
   vi.useRealTimers()
   vi.clearAllMocks()
@@ -44,7 +46,6 @@ describe('SuperAdminPulsoPage — tope de tiempo por sección', () => {
     h.getDashboardData.mockReturnValue(new Promise<never>(() => {}))
     h.getPlatformActivity.mockReturnValue(new Promise<never>(() => {}))
     h.listReferralRewardsForReview.mockReturnValue(new Promise<never>(() => {}))
-    const { default: SuperAdminPulsoPage } = await import('@/app/(super-admin)/super-admin/page')
 
     // No espera a las lecturas: resuelve de inmediato con el árbol.
     const tree = await SuperAdminPulsoPage({ searchParams: Promise.resolve({}) })

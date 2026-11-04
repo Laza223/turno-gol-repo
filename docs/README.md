@@ -14,6 +14,7 @@ Mapa de toda la documentación del proyecto. La **fuente de verdad** son los 19 
 | [`marketing/`](./marketing) | Estrategia de contenido SEO/web + research (keywords, competidores, foros) | **Vigente** (SEO activado 2026-07-12) |
 | [`operations/`](./operations) | **Manual del dueño** + **checklist de infraestructura (qué pagar y dónde)**, lanzamiento, migraciones, soporte de navegadores | Vigente |
 | [`planning/`](./planning) | Deploy playbook, pricing, cambios de reglas de negocio, icebox de features | Vigente |
+| [`rival/`](./rival) | RIVAL, la cultura del jugador: visión, catálogo de ideas por mundo y etapa, Crack del Día (decisión del 2026-10-29) | Vigente — visión, sin construir más allá de v1 |
 | [`decisions/`](./decisions) | Decisiones de sistema y de seguridad transversales | Vigente |
 | [`qa/`](./qa) | Triage de fixes, decisiones pendientes, inventario de vistas | Vigente |
 | [`storybook/`](./storybook) | Storybook: arquitectura y decisiones, guía para escribir stories, inventario de cobertura (300/300 archivos), reporte de QA con los bugs de a11y encontrados | Vigente |

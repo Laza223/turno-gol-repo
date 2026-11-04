@@ -22,6 +22,9 @@ vi.mock('next/navigation', () => ({
   notFound: vi.fn(() => {
     throw new Error('NOT_FOUND')
   }),
+  permanentRedirect: vi.fn((url: string) => {
+    throw new Error(`PERMANENT:${url}`)
+  }),
   redirect: vi.fn((url: string) => {
     throw new Error(`REDIRECT:${url}`)
   }),

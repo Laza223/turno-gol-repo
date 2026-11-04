@@ -1,23 +1,34 @@
 import { FORMAT_OPTIONS } from '@/components/public/courtFacets'
 import { RIVAL_LEVEL_LABELS } from '@/modules/rival/rival-display'
 import { RIVAL_LEVELS } from '@/modules/rival/rival.schema'
+import type { NewMatchIntent } from '@/modules/rival/rival-form'
 import type { RivalFormResult } from '../actions'
 
 export type CreateAction = (prev: RivalFormResult, formData: FormData) => Promise<RivalFormResult>
-export type Mode = 'full' | 'rival'
+
+/** Prefijo de los ids del WhatsApp (`BoardFields`): el hook enfoca el campo con error por su id. */
+export const BOARD_ID_PREFIX = 'rival-nuevo'
 
 export const INITIAL: RivalFormResult = { success: true }
 /** Los campos del form con su error propio, en el orden en que aparecen. */
 export const FIELD_ORDER = [
+  'intent',
+  'missing',
   'tenantId',
   'startsAt',
   'format',
   'capacity',
   'level',
   'courtDeclared',
+  'whatsapp',
+  'whatsappConsent',
 ] as const
 export type Field = (typeof FIELD_ORDER)[number]
 export const FIELD_IDS: Record<Field, string> = {
+  intent: 'rival-necesito',
+  missing: 'rival-faltan',
+  whatsapp: `${BOARD_ID_PREFIX}-whatsapp`,
+  whatsappConsent: `${BOARD_ID_PREFIX}-consent`,
   tenantId: 'rival-complejo',
   startsAt: 'rival-hora',
   format: 'rival-formato',
@@ -40,14 +51,12 @@ export const LEVEL_HELP: Record<string, string> = {
   parejo: 'Se juega en serio, sin pasarse.',
   picante: 'Se juega a ganar.',
 }
-export const MODE_CHIPS = [
-  { value: 'full', label: 'Partido completo' },
-  { value: 'rival', label: 'Mi equipo busca rival' },
+/** Paso 1: lo que el usuario necesita. Las dos primeras salen al tablón al crear. */
+export const INTENT_OPTIONS: { value: NewMatchIntent; title: string; help: string }[] = [
+  { value: 'players', title: 'Me faltan jugadores', help: 'Sale al tablón y se suman.' },
+  { value: 'rival', title: 'Busco rival', help: 'Tu equipo está completo.' },
+  { value: 'group', title: 'Solo para mi grupo', help: 'Le pasás el link por WhatsApp.' },
 ]
-export const MODE_HELP: Record<Mode, string> = {
-  full: 'Armás el partido y le pasás el link a tu grupo.',
-  rival: 'Tu equipo ya está: buscás con quién jugar.',
-}
 /** Mismo molde que un chip de `ChipGroup` (píldora de 44 px): "Otra hora" es uno más del grupo. */
 export const CHIP_BUTTON =
   'inline-flex min-h-11 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-full border border-border bg-card px-4 text-sm font-medium tabular-nums text-foreground transition-colors duration-150 hover:border-input focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background'

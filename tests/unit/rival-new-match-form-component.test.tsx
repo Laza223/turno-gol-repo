@@ -48,6 +48,7 @@ function renderForm(
       today="2026-03-14"
       nowTime={nowTime}
       action={action}
+      initialIntent="group"
     />,
   )
 }
@@ -139,6 +140,7 @@ describe('NewMatchForm — errores por campo', () => {
         today="2026-03-14"
         nowTime="15:30"
         action={vi.fn(async () => EMPTY)}
+        initialIntent="group"
       />,
     )
 
@@ -198,31 +200,81 @@ describe('NewMatchForm — fallo de red', () => {
   })
 })
 
-describe('NewMatchForm — qué armás', () => {
-  it('"Mi equipo busca rival" saca el stepper, fija el cupo en el formato y lo manda en `mode`', async () => {
-    const { container } = renderForm(async () => ({ success: true }), false)
-    expect(screen.getByRole('status').textContent).toBe('10')
-    expect(hidden(container, 'mode')).toBe('full')
-    fireEvent.click(screen.getByRole('radio', { name: 'Mi equipo busca rival' }))
-    expect(screen.queryByRole('status')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Uno más' })).toBeNull()
-    expect(screen.getByText('Tu equipo: 5')).toBeTruthy()
-    expect(hidden(container, 'mode')).toBe('rival')
-    expect(hidden(container, 'capacity')).toBe('5')
+describe('NewMatchForm — qué necesitás', () => {
+  const renderIntent = (initialIntent: 'players' | 'rival' | 'group' | null = null) =>
+    render(
+      <NewMatchForm
+        tenants={[TENANT]}
+        bookings={[]}
+        prefill={null}
+        today="2026-03-14"
+        nowTime="15:30"
+        action={async () => ({ success: true })}
+        initialIntent={initialIntent}
+        whatsappPrefill="11 5555-1234"
+      />,
+    )
+
+  it('arranca con las tres opciones y nada más: el resto aparece al elegir', () => {
+    renderIntent()
+    expect(screen.getByRole('heading', { name: '¿Qué necesitás?' })).toBeTruthy()
+    for (const name of [/Me faltan jugadores/, /Busco rival/, /Solo para mi grupo/]) {
+      expect(screen.getByRole('radio', { name })).toBeTruthy()
+    }
+    expect(screen.queryByText('Dónde y cuándo')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Armar/ })).toBeNull()
   })
 
-  it('el cupo se muestra como dato y el stepper abre solo con "Cambiar"', () => {
-    renderForm(async () => ({ success: true }), false)
+  it('Me faltan jugadores: pregunta cuántos, ofrece arquero y pide el WhatsApp en el mismo form', () => {
+    const { container } = renderIntent()
+    fireEvent.click(screen.getByRole('radio', { name: /Me faltan jugadores/ }))
+    expect(screen.getByText('¿Cuántos te faltan?')).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toBe('1')
+    expect(screen.getByRole('checkbox', { name: 'Se busca arquero' })).toBeTruthy()
+    expect(screen.getByLabelText('Tu WhatsApp')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Armar y publicar' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Uno más' }))
+    expect(screen.getByRole('status').textContent).toBe('2')
+    expect(hidden(container, 'intent')).toBe('players')
+    expect(hidden(container, 'missing')).toBe('2')
+    expect(hidden(container, 'capacity')).toBe('')
+  })
+
+  it('al achicar el formato, cuántos faltan nunca supera los lugares menos el organizador', () => {
+    const { container } = renderIntent('players')
+    for (let i = 0; i < 12; i++) fireEvent.click(screen.getByRole('button', { name: 'Uno más' }))
+    expect(hidden(container, 'missing')).toBe('9')
+    fireEvent.click(screen.getByRole('radio', { name: '4' }))
+    expect(hidden(container, 'missing')).toBe('7')
+  })
+
+  it('Busco rival: sin stepper de faltantes, con WhatsApp y el equipo completo', () => {
+    const { container } = renderIntent()
+    fireEvent.click(screen.getByRole('radio', { name: /Busco rival/ }))
+    expect(screen.queryByText('¿Cuántos te faltan?')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Uno más' })).toBeNull()
+    expect(screen.getByLabelText('Tu WhatsApp')).toBeTruthy()
+    expect(hidden(container, 'intent')).toBe('rival')
+    expect(hidden(container, 'missing')).toBe('')
+  })
+
+  it('Solo para mi grupo no pide WhatsApp; el cupo se muestra como dato y abre con "Cambiar"', () => {
+    const { container } = renderIntent('group')
+    expect(screen.queryByLabelText('Tu WhatsApp')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Armar el partido' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Uno más' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Cambiar cuántos juegan' }))
     fireEvent.click(screen.getByRole('button', { name: 'Uno más' }))
     expect(screen.getByRole('status').textContent).toBe('11')
+    expect(hidden(container, 'capacity')).toBe('11')
   })
 
-  it('el form ya no pide nada del tablón', () => {
-    renderForm(async () => ({ success: true }), false)
-    expect(screen.queryByText('Tablón')).toBeNull()
-    expect(screen.queryByLabelText('Tu WhatsApp')).toBeNull()
+  it('?necesito= preselecciona el paso 1 y precarga el WhatsApp de la cuenta', () => {
+    renderIntent('rival')
+    expect(screen.getByRole('radio', { name: /Busco rival/ }).getAttribute('aria-checked')).toBe(
+      'true',
+    )
+    expect((screen.getByLabelText('Tu WhatsApp') as HTMLInputElement).value).toBe('11 5555-1234')
   })
 })
 
@@ -282,6 +334,7 @@ describe('NewMatchForm — la hora', () => {
         today="2026-03-14"
         nowTime="15:30"
         action={async () => ({ success: true })}
+        initialIntent="group"
       />,
     )
     expect(hidden(container, 'time')).toBe('')

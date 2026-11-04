@@ -216,7 +216,7 @@ export function SuperAdminLayoutShell({
             variant="ghost"
             className="gap-2 text-muted-foreground hover:text-foreground"
             onClick={handleSignOut}
-            aria-label="Cerrar sesión"
+            aria-label="Salir: cerrar sesión"
           >
             <LogOut className="h-4 w-4" />
             <span>Salir</span>

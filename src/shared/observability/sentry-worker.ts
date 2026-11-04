@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/nextjs'
-import { scrubEvent, scrubTransaction } from '@/lib/sentry-pii-scrub'
+import { SENTRY_SHARED_OPTIONS, scrubEvent, scrubStreamedSpan } from '@/lib/sentry-pii-scrub'
 import { isValidDsn, isDroppableDomainError } from '@/lib/sentry-event-filter'
 import { logger } from '@/shared/lib/logger'
 import { registerSentryErrorSink } from './error-sink'
@@ -33,6 +33,7 @@ export function initWorkerSentry(): boolean {
     // hora durante días sin que Sentry viera un solo evento (2026-08-22).
     registerSentryErrorSink()
     Sentry.init({
+      ...SENTRY_SHARED_OPTIONS,
       dsn,
       environment: process.env.NODE_ENV,
       release: process.env.RAILWAY_GIT_COMMIT_SHA ?? process.env.VERCEL_GIT_COMMIT_SHA,
@@ -49,10 +50,10 @@ export function initWorkerSentry(): boolean {
         scrubEvent(event)
         return event
       },
-      beforeSendTransaction(event) {
-        if (process.env.NODE_ENV !== 'production') return null
-        scrubTransaction(event)
-        return event
+      // Sin `tracesSampleRate` el worker no traza; el tapado queda por si alguien la prende.
+      beforeSendSpan(span) {
+        scrubStreamedSpan(span)
+        return span
       },
     })
     return true

@@ -15,7 +15,7 @@ export default function TerminosPage() {
           Términos y Condiciones
         </h1>
         <p className="text-sm text-muted-foreground">
-          Última actualización: 28 de septiembre de 2026.
+          Última actualización: 31 de octubre de 2026.
         </p>
       </header>
 
@@ -169,8 +169,8 @@ export default function TerminosPage() {
         </p>
         <ul className="list-disc space-y-2 pl-6">
           <li>
-            <strong>Quién participa.</strong> Los complejos con cuenta en TurnoGol a los que se les
-            habilitó un link de referidos (turnogol.app/r/…). El complejo que comparte el link es el{' '}
+            <strong>Quién participa.</strong> Todos los complejos con cuenta en TurnoGol tienen su
+            link de referidos (turnogol.app/r/…). El complejo que comparte el link es el{' '}
             <em>referidor</em>; el complejo nuevo que llega por ese link es el <em>referido</em>.
           </li>
           <li>
@@ -200,9 +200,9 @@ export default function TerminosPage() {
             cada caso.
           </li>
           <li>
-            <strong>Vigencia.</strong> Participan los complejos referidos que creen su cuenta{' '}
-            <strong>hasta el 31 de octubre de 2026 a las 23:59</strong> (hora de Argentina). El pago
-            de la primera mensualidad puede ocurrir después de esa fecha.
+            <strong>Vigencia.</strong> El programa no tiene fecha de cierre: participan los
+            complejos referidos que creen su cuenta mientras el programa esté vigente. El pago de la
+            primera mensualidad puede ocurrir después.
           </li>
           <li>
             <strong>El referido.</strong> El complejo referido arranca con el mismo período de
@@ -219,8 +219,8 @@ export default function TerminosPage() {
             cuenta del referidor esté vigente.
           </li>
           <li>
-            <strong>Cambios.</strong> TurnoGol puede modificar o finalizar el programa. Los meses ya
-            ganados antes del cambio se respetan.
+            <strong>Cambios.</strong> TurnoGol puede modificar o finalizar el programa en cualquier
+            momento. Los meses ya ganados antes del cambio o del cierre se respetan.
           </li>
         </ul>
       </section>

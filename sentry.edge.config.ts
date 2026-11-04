@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/nextjs'
 import { isValidDsn, isDroppableDomainError } from '@/lib/sentry-event-filter'
-import { scrubEvent, scrubTransaction } from '@/lib/sentry-pii-scrub'
+import { SENTRY_SHARED_OPTIONS, scrubEvent, scrubStreamedSpan } from '@/lib/sentry-pii-scrub'
 
 const dsn = process.env.SENTRY_DSN
 
@@ -21,6 +21,7 @@ if (dsn && !isValidDsn(dsn)) {
 
 if (isValidDsn(dsn)) {
   Sentry.init({
+    ...SENTRY_SHARED_OPTIONS,
     dsn,
     tracesSampleRate: 0.1,
     beforeSend(event, hint) {
@@ -30,9 +31,9 @@ if (isValidDsn(dsn)) {
       scrubEvent(event)
       return event
     },
-    beforeSendTransaction(event) {
-      scrubTransaction(event)
-      return event
+    beforeSendSpan(span) {
+      scrubStreamedSpan(span)
+      return span
     },
   })
 }

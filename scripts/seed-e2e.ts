@@ -14,7 +14,7 @@ import { deleteFreshAdminTenants } from '../tests/e2e/_helpers/fresh-tenant-clea
 // down for turnogol_app (audit immutability) — the running app must never
 // delete those rows, but resetting E2E fixtures between runs needs to. So,
 // like a migration, it connects with the well-known local/CI Postgres
-// superuser (same default CI's postgres:15-alpine service and local
+// superuser (same default CI's postgres:17-alpine service and local
 // Supabase both use on :54322 — see .github/workflows/ci.yml) instead of
 // DATABASE_URL/getSql() — production code never takes this path.
 const SEED_ADMIN_URL = 'postgres://postgres:postgres@127.0.0.1:54322/postgres'
@@ -80,6 +80,15 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM daily_cash_opens WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM cash_flows WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM daily_cash_closes WHERE tenant_id = ${E2E.tenantId}`
+  // Reseñas (016) y RIVAL (099) cuelgan de la reserva, así que van ANTES de
+  // `bookings`: reviews.booking_id es NO ACTION (un residuo bloquea el DELETE de
+  // la reserva) y rival_matches.booking_id es SET NULL (borrar el partido primero
+  // evita ese UPDATE en cascada). rival_match_contacts / rival_reports /
+  // rival_alert_sends no tienen tenant_id: caen por CASCADE con rival_matches.
+  await sql`DELETE FROM reviews WHERE tenant_id = ${E2E.tenantId}`
+  await sql`DELETE FROM rival_participants WHERE tenant_id = ${E2E.tenantId}`
+  await sql`DELETE FROM rival_alert_subscriptions WHERE tenant_id = ${E2E.tenantId}`
+  await sql`DELETE FROM rival_matches WHERE tenant_id = ${E2E.tenantId}`
   await sql`UPDATE payments SET booking_id = NULL WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM bookings WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM payments WHERE tenant_id = ${E2E.tenantId}`
@@ -108,6 +117,16 @@ async function cleanup(sql: SqlClient): Promise<void> {
   // igual. Misma clase que la trampa del wipe de retención: cada tabla nueva
   // con tenant_id se paga acá.
   await sql`DELETE FROM analytics_events WHERE tenant_id = ${E2E.tenantId}`
+  // Misma trampa para el bot de WhatsApp (migr. 096) y los favoritos (017): FK a
+  // tenants NO ACTION, así que una fila residual revienta el DELETE de tenants
+  // con 23503 — y como el seed ya borró los usuarios auth, la DB local queda sin
+  // usuarios e2e. En CI no se ve (la DB nace vacía). Mensajes antes que chats
+  // (messages.chat_id → chats); bookings.whatsapp_chat_id no tiene FK, así que
+  // el chat no depende del orden respecto de las reservas.
+  await sql`DELETE FROM player_favorites WHERE tenant_id = ${E2E.tenantId}`
+  await sql`DELETE FROM whatsapp_messages WHERE tenant_id = ${E2E.tenantId}`
+  await sql`DELETE FROM whatsapp_chats WHERE tenant_id = ${E2E.tenantId}`
+  await sql`DELETE FROM whatsapp_connections WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM tenants WHERE id = ${E2E.tenantId}`
   await sql`DELETE FROM audit_logs WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM notifications WHERE tenant_id = ${E2E.depositTenantId}`
@@ -117,6 +136,11 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM daily_cash_opens WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM cash_flows WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM daily_cash_closes WHERE tenant_id = ${E2E.depositTenantId}`
+  // Ver la nota del bloque equivalente del tenant principal.
+  await sql`DELETE FROM reviews WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM rival_participants WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM rival_alert_subscriptions WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM rival_matches WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`UPDATE payments SET booking_id = NULL WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM bookings WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM payments WHERE tenant_id = ${E2E.depositTenantId}`
@@ -135,6 +159,10 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM tenant_subscriptions WHERE tenant_id = ${E2E.depositTenantId}`
   // Ver la nota del bloque equivalente del tenant principal.
   await sql`DELETE FROM analytics_events WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM player_favorites WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM whatsapp_messages WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM whatsapp_chats WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM whatsapp_connections WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM tenants WHERE id = ${E2E.depositTenantId}`
   await sql`DELETE FROM players WHERE id = ${E2E.playerId} OR email = ${E2E.playerEmail}`
   await sql`DELETE FROM staff_users WHERE id = ${E2E.staffUserId} OR email = ${E2E.adminEmail}`

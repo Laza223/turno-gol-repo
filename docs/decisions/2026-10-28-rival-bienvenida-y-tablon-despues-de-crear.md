@@ -6,6 +6,8 @@
 
 **Enmienda** las decisiones 1, 5 y 11 de [`2026-10-22-rival-v1.md`](2026-10-22-rival-v1.md) y los §5.1, §5.2, §5.7 y §7 de la spec [`2026-10-22-rival-v1-design.md`](../superpowers/specs/2026-10-22-rival-v1-design.md). Lo que no se nombra acá sigue igual.
 
+**Enmendada el 2026-11-03** por [`2026-11-03-rival-simple-sin-landing.md`](2026-11-03-rival-simple-sin-landing.md) en la decisión 3: Armar empieza por "¿Qué necesitás?" (Me faltan jugadores, Busco rival, Solo para mi grupo) y las dos primeras publican en el tablón al crear, con el WhatsApp en el mismo form. "Publicar en el tablón" desde la vista queda para un partido solo del grupo que después quiere salir.
+
 ## Decisiones
 
 1. **La bienvenida se parte en dos momentos.**

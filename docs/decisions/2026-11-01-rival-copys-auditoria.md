@@ -4,6 +4,8 @@
 
 **Enmienda** el copy de [`docs/rival/landing.md`](../rival/landing.md) (decisiones 1 a 16) y las respuestas de su sección 9, que la decisión 13 había dejado «tal cual». Lo que no se nombra acá sigue igual.
 
+**Enmendada el 2026-11-03** por [`2026-11-03-rival-simple-sin-landing.md`](2026-11-03-rival-simple-sin-landing.md): se saca la landing, así que las decisiones 1 (botón «Buscá un partido» del hero), 9 (escenas intactas) y 10 (apoyo del hero) quedan sin superficie. Las decisiones 2, 3, 7 y 8 siguen vigentes en la app.
+
 ## Qué dice la auditoría y qué se encontró
 
 Acierta en lo grueso:

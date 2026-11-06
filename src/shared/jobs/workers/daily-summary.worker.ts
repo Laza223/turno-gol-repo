@@ -1,12 +1,14 @@
 import type { PgBoss } from 'pg-boss'
-import { and, eq, gt, sql as drizzleSql } from 'drizzle-orm'
-import { getWorkerSql, withTenantContext } from '@/shared/db/client'
+import { and, eq, sql as drizzleSql } from 'drizzle-orm'
+import { getWorkerSql, withTenantContext, type DbTx } from '@/shared/db/client'
 import { notifications } from '@/shared/db/schema'
 import { getHoyData } from '@/modules/home/home.service'
-import { addDays } from '@/shared/dates/art'
+import { addDays, artNowParts } from '@/shared/dates/art'
 import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
 import { notifyAdminPush } from '@/modules/notifications/push.service'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
+import { enqueueStaffAgendaChange } from '@/modules/notifications/staff-agenda.service'
+import { isStaffNotificationsEnabled } from '@/modules/notifications/staff-notification.service'
 import { getWeekRevenue } from '@/modules/reports/report.service'
 import { buildWeeklySummary, weeklySummaryWeekStart } from '@/modules/reports/weekly-summary'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
@@ -59,7 +61,7 @@ function dateLabelMedium(date: string): string {
  * AYER — así el resumen y la pantalla "Hoy" nunca pueden divergir en cómo
  * calculan "cobrado"/"ocupación".
  */
-export async function runDailySummarySweep(): Promise<void> {
+export async function runDailySummarySweep(opts?: { scheduled?: boolean }): Promise<void> {
   const sql = getWorkerSql()
   const tenants = await sql<
     Array<{
@@ -87,10 +89,21 @@ export async function runDailySummarySweep(): Promise<void> {
     weeklySummaryEmailOptIn: t.weekly_summary_email_opt_in === true,
   }))
 
+  // El tick ahora es por minuto para recuperar agenda y detectar cambios. El
+  // legado conserva su horario; el semanal recupera un tick perdido desde08.
+  const summaryDue = !opts?.scheduled || artNowParts().time === '08:00'
+  const weeklyDue = !opts?.scheduled || artNowParts().time >= '08:00'
   for (const tenant of list) {
     try {
       // react-doctor-disable-next-line react-doctor/async-await-in-loop
-      await sendTenantSummary(tenant)
+      const v2 = await withTenantContext(tenant.id, (tx) =>
+        isStaffNotificationsEnabled(tenant.id, tx),
+      )
+      if (v2) {
+        await withTenantContext(tenant.id, (tx) => enqueueStaffAgendaChange(tenant.id, tx))
+      } else if (summaryDue) {
+        await sendTenantSummary(tenant)
+      }
     } catch (err) {
       logger.warn('daily-summary: failed for tenant', {
         module: 'daily-summary.worker',
@@ -99,7 +112,7 @@ export async function runDailySummarySweep(): Promise<void> {
       })
     }
 
-    if (!tenant.weeklySummaryEmailOptIn) continue
+    if (!tenant.weeklySummaryEmailOptIn || !weeklyDue) continue
     // try propio: que falle el diario (un push caído) no se lleve puesto el
     // semanal, que no depende de él.
     try {
@@ -127,31 +140,41 @@ async function sendWeeklySummary(tenant: SummaryTenant): Promise<void> {
   const weekStart = weeklySummaryWeekStart(operatingDateOf(new Date(), cutoffMins))
   if (!weekStart) return
 
-  const revenue = await getWeekRevenue(tenant.id, weekStart, cutoffMins)
-  // Decisión de Lazar (2026-10-22): una semana sin ingresos no manda mail.
-  if (revenue.income <= 0) return
-  await withTenantContext(tenant.id, async (tx) => {
-    // Un barrido que vuelve a correr el mismo lunes (disparo manual, doble
-    // worker) no le manda dos veces la semana al dueño.
-    const alreadySent = await tx
+  const alreadyQueued = async (tx: DbTx) => {
+    const rows = await tx
       .select({ id: notifications.id })
       .from(notifications)
       .where(
         and(
           eq(notifications.tenantId, tenant.id),
           eq(notifications.triggerEvent, WEEKLY_TRIGGER),
-          gt(notifications.createdAt, drizzleSql`now() - interval '6 days'`),
+          drizzleSql`(
+            ${notifications.content}->>'weekStart' = ${weekStart}
+            OR (${notifications.content}->>'weekStart' IS NULL
+              AND ${notifications.createdAt} > now() - interval '6 days')
+          )`,
         ),
       )
       .limit(1)
-    if (alreadySent.length > 0) return
+    return rows.length > 0
+  }
+  // El barrido es por minuto: evitar recalcular ingresos si ya quedó encolado.
+  if (await withTenantContext(tenant.id, alreadyQueued)) return
+  const revenue = await getWeekRevenue(tenant.id, weekStart, cutoffMins)
+  // Decisión de Lazar (2026-10-22): una semana sin ingresos no manda mail.
+  if (revenue.income <= 0) return
+  await withTenantContext(tenant.id, async (tx) => {
+    await tx.execute(drizzleSql`
+      SELECT pg_advisory_xact_lock(hashtext(${'weekly-summary:' + tenant.id}), hashtext(${weekStart}))
+    `)
+    if (await alreadyQueued(tx)) return
 
     await enqueueTenantOwnerNotification(
       {
         tenantId: tenant.id,
         templateName: 'daily_summary',
         triggerEvent: WEEKLY_TRIGGER,
-        content: buildWeeklySummary(weekStart, revenue),
+        content: { ...buildWeeklySummary(weekStart, revenue), weekStart },
       },
       tx,
       { onlyRole: 'admin' },
@@ -211,13 +234,11 @@ async function sendTenantSummary(tenant: SummaryTenant): Promise<void> {
 }
 
 export async function registerDailySummaryWorker(boss: PgBoss): Promise<void> {
-  // 08:00 ART = 11:00 UTC. Mismo horario al que el horario silencioso de push
-  // (push-quiet-hours.ts, QUIET_HOURS_END=8) libera cualquier push de
-  // madrugada — programar el cron más temprano (ej. 07:00) solo demoraría la
-  // entrega real 1 hora sin cambiar nada para el usuario.
-  await boss.schedule(QUEUE_DAILY_SUMMARY, '0 11 * * *', {})
+  // La agenda decide en TX si ya se avisó; reinicios o ticks repetidos no la
+  // duplican. No depende de que un proceso esté vivo justo a las 08:00.
+  await boss.schedule(QUEUE_DAILY_SUMMARY, '* * * * *', {})
   await boss.work(QUEUE_DAILY_SUMMARY, CRON_WORK_OPTIONS, async () => {
-    await runDailySummarySweep()
+    await runDailySummarySweep({ scheduled: true })
   })
   logger.info('registered queue', { module: 'workers', queue: QUEUE_DAILY_SUMMARY })
 }

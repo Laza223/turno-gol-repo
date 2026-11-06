@@ -27,7 +27,9 @@ const shared = globalThis as {
 shared.__pristineEnv ??= { object: process.env, values: { ...process.env } }
 const pristineEnv = shared.__pristineEnv
 
-const envTest = path.resolve(process.cwd(), '.env.test')
+// Un esfuerzo puede usar una DB descartable sin reescribir .env.test ni tocar
+// los datos locales del dueño. El default de CI y de la suite no cambia.
+const envTest = path.resolve(process.cwd(), process.env.TURNOGOL_TEST_ENV_FILE ?? '.env.test')
 if (existsSync(envTest)) {
   config({ path: envTest, override: true })
 }

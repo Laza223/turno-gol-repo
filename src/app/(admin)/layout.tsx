@@ -193,6 +193,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         trialEndsAt={tenant.trialEndsAt?.toISOString() ?? null}
         periodEnd={sub?.currentPeriodEnd?.toISOString() ?? null}
         userEmail={user.email}
+        pushIdentity={`${tenant.id}:${user.staffUserId}`}
         signOut={signOutAction}
         tournamentsEnabled={tournamentsEnabled}
         staffRole={staffRole ?? 'manager'}

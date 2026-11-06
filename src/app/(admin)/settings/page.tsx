@@ -189,11 +189,11 @@ export default async function SettingsPage() {
           href: '/settings/equipo#tu-usuario',
         },
         {
-          label: 'Resumen diario',
-          effect: 'Lo que entró ayer, a las 8.',
-          value: s.daily_summary_email_opt_in ? 'También por email' : 'Solo notificación',
+          label: 'Notificaciones',
+          effect: 'Reservas y avisos en este dispositivo.',
+          value: 'Activar y probar',
           icon: BellRing,
-          href: '/settings/equipo#tu-usuario',
+          href: '/notificaciones',
         },
         {
           label: 'Resumen semanal',

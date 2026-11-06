@@ -158,6 +158,33 @@ describe('happy path', () => {
 })
 
 describe('endpoint allowlist (F6/F10 SSRF defense)', () => {
+  it('accepts Apple push subdomains without accepting lookalike hosts', () => {
+    expect(isAllowedPushEndpoint('https://region.push.apple.com/abc')).toBe(true)
+    expect(isAllowedPushEndpoint('https://web.push.apple.com.evil.test/abc')).toBe(false)
+    expect(isAllowedPushEndpoint('https://evilpush.apple.com/abc')).toBe(false)
+  })
+
+  it('bounds the request and provider retention by the event expiration', async () => {
+    mockWebpush.sendNotification.mockResolvedValueOnce({ statusCode: 201 })
+    const expiresAt = new Date(Date.now() + 60_000).toISOString()
+    await sendPushNotification(validSub, { ...validPayload, expiresAt })
+    expect(mockWebpush.sendNotification).toHaveBeenCalledWith(validSub, expect.any(String), {
+      timeout: 10_000,
+      TTL: expect.any(Number),
+    })
+    const options = mockWebpush.sendNotification.mock.calls[0]![2] as { TTL: number }
+    expect(options.TTL).toBeGreaterThan(0)
+    expect(options.TTL).toBeLessThanOrEqual(60)
+  })
+
+  it('treats 404 as an expired subscription too', async () => {
+    mockWebpush.sendNotification.mockRejectedValueOnce({ statusCode: 404 })
+    expect(await sendPushNotification(validSub, validPayload)).toEqual({
+      success: false,
+      gone: true,
+      statusCode: 404,
+    })
+  })
   it('isAllowedPushEndpoint accepts known push-service hosts', () => {
     expect(isAllowedPushEndpoint('https://fcm.googleapis.com/fcm/send/abc')).toBe(true)
     expect(isAllowedPushEndpoint('https://updates.push.services.mozilla.com/wpush/v2/abc')).toBe(

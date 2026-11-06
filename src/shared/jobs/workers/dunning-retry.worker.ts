@@ -154,6 +154,7 @@ export async function runDunningSweep(now: Date = new Date()): Promise<void> {
             templateName: 'subscription_suspended',
             triggerEvent: 'sweep.past_due_to_suspended',
             content: {
+              notificationEventKey: artTodayStr(),
               ownerName: ownerName(ownerMap, id),
               tenantName: tenantName(ownerMap, id),
             },
@@ -187,6 +188,7 @@ export async function runDunningSweep(now: Date = new Date()): Promise<void> {
             templateName: 'subscription_blocked',
             triggerEvent: 'sweep.suspended_to_blocked',
             content: {
+              notificationEventKey: artTodayStr(),
               ownerName: ownerName(ownerMap, id),
               tenantName: tenantName(ownerMap, id),
             },

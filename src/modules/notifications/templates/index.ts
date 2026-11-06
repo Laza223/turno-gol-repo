@@ -8,6 +8,7 @@ import {
 } from './booking-canceled-by-complex'
 import { renderBookingRescheduled, type BookingRescheduledData } from './booking-rescheduled'
 import { renderAdminNewBooking, type AdminNewBookingData } from './admin-new-booking'
+import { renderStaffAlert, type StaffAlertData } from './staff-alert'
 import { renderTrialWelcome, type TrialWelcomeData } from './trial-welcome'
 import { renderTrialEnding, type TrialEndingData } from './trial-ending'
 import { renderTrialExpired, type TrialExpiredData } from './trial-expired'
@@ -79,6 +80,7 @@ type TemplateDataMap = {
   booking_canceled_by_complex: BookingCanceledByComplexData
   booking_rescheduled: BookingRescheduledData
   admin_new_booking: AdminNewBookingData
+  staff_alert: StaffAlertData
   trial_welcome: TrialWelcomeData
   trial_ending: TrialEndingData
   trial_expired: TrialExpiredData
@@ -111,6 +113,7 @@ const RENDERERS: { [K in TemplateName]: (data: TemplateDataMap[K]) => EmailConte
   booking_canceled_by_complex: renderBookingCanceledByComplex,
   booking_rescheduled: renderBookingRescheduled,
   admin_new_booking: renderAdminNewBooking,
+  staff_alert: renderStaffAlert,
   trial_welcome: renderTrialWelcome,
   trial_ending: renderTrialEnding,
   trial_expired: renderTrialExpired,

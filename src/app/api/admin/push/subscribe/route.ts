@@ -1,87 +1,39 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { z } from 'zod'
-import { sql } from 'drizzle-orm'
 import { withTenant } from '@/server/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
-import { withTenantContext } from '@/shared/db/client'
-import { pushSubscriptions } from '@/shared/db/schema'
 import { badRequest, forbidden, validationError } from '@/shared/api-error'
-import { isAllowedPushEndpoint } from '@/lib/web-push'
+import { getImpersonationSession } from '@/modules/auth/impersonation.server'
+import { savePushSubscription } from '@/modules/notifications/push-subscription.service'
+import { pushSubscriptionSchema } from '@/modules/notifications/push-subscription.schema'
+import { isInsufficientPrivilege } from '@/shared/db/pg-errors'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-const subscribeSchema = z.object({
-  // Allowlisted to known push-service vendors (security scan F6) — a
-  // syntactically valid URL isn't enough, since any authenticated staff
-  // member can call this route directly (not only via the real browser
-  // PushManager.subscribe flow) and an unrestricted endpoint lets the
-  // worker be made to POST a VAPID-signed request anywhere (SSRF).
-  endpoint: z
-    .url('endpoint must be a valid URL')
-    .max(2000, 'endpoint too long')
-    .refine(isAllowedPushEndpoint, 'endpoint host is not a recognized push service'),
-  keys: z.object({
-    p256dh: z.string().min(80, 'p256dh must be at least 80 chars').max(200),
-    auth: z.string().min(16, 'auth must be at least 16 chars').max(200),
-  }),
-  userAgent: z.string().max(500).optional(),
-})
-
+// Compatibilidad con PWAs ya instaladas. La nueva pantalla usa Server Actions.
 export const POST = withTenant(async (req: NextRequest, user) => {
   const throttled = await guard('adminCrud', user.tenantId!)
   if (throttled) return throttled
-
+  if (!user.staffUserId || (await getImpersonationSession()))
+    return forbidden('Activá las notificaciones desde tu propia cuenta.')
   let body: unknown
   try {
     body = await req.json()
   } catch {
     return badRequest('JSON inválido.', { code: 'INVALID_JSON' })
   }
-
-  const parsed = subscribeSchema.safeParse(body)
-  if (!parsed.success) {
-    return validationError(parsed.error)
+  const parsed = pushSubscriptionSchema.safeParse(body)
+  if (!parsed.success) return validationError(parsed.error)
+  let subscriptionId: string | null
+  try {
+    subscriptionId = await savePushSubscription(user.tenantId!, user.staffUserId, parsed.data)
+  } catch (error) {
+    if (isInsufficientPrivilege(error))
+      return forbidden('La suscripción pertenece a otra sesión. Volvé a habilitarla.')
+    throw error
   }
-
-  const { endpoint, keys, userAgent } = parsed.data
-  if (!user.staffUserId) {
-    return forbidden('Acceso denegado.', { code: 'NO_STAFF_USER_ID' })
-  }
-  const tenantId = user.tenantId!
-  const staffUserId = user.staffUserId
-
-  // push_subscriptions es tenant-scoped y tiene policy de escritura
-  // (push_subs_modify, 014_push_subscriptions.sql) — pero esa policy exige
-  // app.current_tenant_id seteado. El getSql() plano usado antes acá no lo
-  // seteaba, así que bajo FORCE RLS (036) + el rol restringido (turnogol_app,
-  // PR #30) el INSERT violaba RLS (WITH CHECK contra un current_setting vacío).
-  // withTenantContext resuelve esto seteando el contexto en la misma transacción.
-  const [row] = await withTenantContext(tenantId, (tx) =>
-    tx
-      .insert(pushSubscriptions)
-      .values({
-        tenantId,
-        staffUserId,
-        endpoint,
-        p256dhKey: keys.p256dh,
-        authKey: keys.auth,
-        userAgent: userAgent ?? null,
-      })
-      .onConflictDoUpdate({
-        target: pushSubscriptions.endpoint,
-        set: {
-          tenantId,
-          staffUserId,
-          p256dhKey: keys.p256dh,
-          authKey: keys.auth,
-          userAgent: userAgent ?? null,
-          lastUsedAt: sql`now()`,
-        },
-      })
-      .returning({ id: pushSubscriptions.id }),
-  )
-
-  return NextResponse.json({ success: true, subscriptionId: row!.id })
+  if (!subscriptionId)
+    return forbidden('La suscripción pertenece a otra sesión. Desactivala y volvé a habilitarla.')
+  return NextResponse.json({ success: true, subscriptionId })
 })

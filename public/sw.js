@@ -1,138 +1,142 @@
-/* TurnoGol Push Service Worker (Fase F9)
- *
- * Scope: registered with { scope: '/' } from PushNotificationManager. NO puede
- * ser '/admin/': `(admin)` es un route group de Next y no aparece en la URL, así
- * que ese scope no controlaba ninguna página y clients.matchAll() venía vacío.
- *
- * Handles:
- *  - 'install' / 'activate' — skipWaiting + clients.claim for fast updates.
- *  - 'push'                 — receives push payload. Broadcasts {id} on
- *                             'notif-dedupe' channel. First open tab that
- *                             acks within 100ms shows in-app toast. If no
- *                             ack → fallback to native showNotification.
- *  - 'notificationclick'    — focus existing /admin tab matching origin or
- *                             open a new window at payload.url.
- *
- * NO 'fetch' listener — this SW must NOT intercept network requests; the
- * grilla (F3) realtime depends on direct fetch. Only push + notification
- * lifecycle.
+/* Push de TurnoGol. Sin fetch handler: no intercepta la red de la grilla.
+ * userVisibleOnly exige una notificación del sistema por cada push, también
+ * cuando una pestaña está abierta. Un ACK de la página nunca la reemplaza.
  */
+self.addEventListener('install', () => self.skipWaiting())
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()))
 
-self.addEventListener('install', (event) => {
-  self.skipWaiting()
-})
+function targetUrl(value) {
+  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//'))
+    return '/dashboard'
+  try {
+    const url = new URL(value, self.location.origin)
+    const allowed = [
+      '/dashboard',
+      '/grilla',
+      '/reservas',
+      '/caja',
+      '/settings/facturacion',
+      '/settings/whatsapp',
+      '/notificaciones',
+      '/whatsapp',
+    ]
+    return url.origin === self.location.origin &&
+      allowed.some((path) => url.pathname === path || url.pathname.startsWith(path + '/'))
+      ? url.pathname + url.search + url.hash
+      : '/dashboard'
+  } catch {
+    return '/dashboard'
+  }
+}
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim())
-})
+async function receipt(payload, stage) {
+  if (
+    !payload.deliveryId ||
+    !payload.receiptToken ||
+    payload.receiptUrl !== '/api/public/push/receipt'
+  )
+    return
+  try {
+    await fetch(payload.receiptUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ deliveryId: payload.deliveryId, token: payload.receiptToken, stage }),
+      credentials: 'omit',
+    })
+  } catch {
+    /* Offline: el recibo es evidencia opcional, nunca una condición de entrega. */
+  }
+}
 
 self.addEventListener('push', (event) => {
-  if (!event.data) return
   let payload
   try {
-    payload = event.data.json()
-  } catch (e) {
-    payload = { type: 'unknown', courtName: 'Notificación' }
+    payload = event.data ? event.data.json() : {}
+  } catch {
+    payload = {}
   }
-  // El id agrupa el aviso en la pestaña (seen-set de PushNotificationManager) y es
-  // el `tag` nativo, que REEMPLAZA a otro con el mismo tag sin sonar: tiene que ser
-  // distinto por evento. Con el bookingId a secas, la cancelación de una reserva
-  // pisaba el aviso de su alta; y sin bookingId, el 2do aviso del mismo tipo
-  // (otro chat que pide una persona) moría contra el 1ro mientras la pestaña seguía abierta.
+  if (!payload || typeof payload !== 'object') payload = {}
   const kind = payload.type || 'push'
-  const id = payload.bookingId ? `${kind}:${payload.bookingId}` : `${kind}:${Date.now()}`
-  const showFallback = async () => {
-    const bc = new BroadcastChannel('notif-dedupe')
-    const acked = await new Promise((resolve) => {
-      let resolved = false
-      const timer = setTimeout(() => {
-        if (!resolved) { resolved = true; resolve(false) }
-      }, 150)
-      bc.onmessage = (msg) => {
-        if (resolved) return
-        const data = msg.data || {}
-        if (data.id === id && data.ack === true) {
-          resolved = true
-          clearTimeout(timer)
-          resolve(true)
-        }
-      }
-      // Include payload so listeners can show a payload-specific toast
-      // (courtName, dateLabel, timeLabel) instead of generic copy.
-      bc.postMessage({
-        id,
-        title: payload.title,
-        body: payload.body,
-        courtName: payload.courtName,
-        dateLabel: payload.dateLabel,
-        timeLabel: payload.timeLabel,
-        summaryLabel: payload.summaryLabel,
-        url: payload.url,
-        type: payload.type,
-      })
-    })
-    bc.close()
-    if (acked) return
-    // daily_summary (D8, Fase 2): resumen diario, no una reserva nueva —
-    // title/body propios, si no cae en el fallback "Nueva reserva" incorrecto.
-    const isDailySummary = payload.type === 'daily_summary'
-    // Bot de WhatsApp: un chat pasó a una persona (motivo de un enum cerrado,
-    // nunca texto del jugador). Mismo criterio que daily_summary: copy propio.
-    const isWhatsappHandoff = payload.type === 'whatsapp_handoff'
-    // mp_disconnected: el permiso OAuth de MercadoPago murió; copy fijo.
-    const isMpDisconnected = payload.type === 'mp_disconnected'
-    // Los tipos nuevos traen `title`/`body` armados en el servidor
-    // (push.service.ts) y mandan sobre esta cadena: agregar un aviso no obliga a
-    // tocar acá ni en PushNotificationManager. La cadena queda para los payloads
-    // viejos (jobs ya encolados antes del deploy).
-    const title =
-      payload.title ||
-      (isMpDisconnected
+  const id =
+    payload.eventId ||
+    (payload.bookingId ? `${kind}:${payload.bookingId}` : `${kind}:${Date.now()}`)
+  const expired =
+    typeof payload.expiresAt === 'string' && new Date(payload.expiresAt).getTime() <= Date.now()
+  const summary = kind === 'daily_summary'
+  const mp = kind === 'mp_disconnected'
+  const handoff = kind === 'whatsapp_handoff'
+  const title = expired
+    ? 'TurnoGol actualizado'
+    : payload.title ||
+      (mp
         ? 'MercadoPago se desconectó'
-        : isDailySummary
+        : summary
           ? 'Resumen de ayer'
-          : isWhatsappHandoff
+          : handoff
             ? 'WhatsApp: te necesitan en un chat'
             : payload.courtName
               ? `Nueva reserva — ${payload.courtName}`
               : 'Nueva reserva')
-    const body =
-      typeof payload.body === 'string'
-        ? payload.body
-        : isMpDisconnected
-          ? 'Las reservas online entran sin seña hasta que se reconecte.'
-          : isDailySummary || isWhatsappHandoff
-            ? payload.summaryLabel || ''
-            : [payload.dateLabel, payload.timeLabel].filter(Boolean).join(' · ')
-    const url = payload.url || (isMpDisconnected ? '/dashboard' : '/grilla')
-    await self.registration.showNotification(title, {
-      body,
-      icon: '/favicon.ico',
-      badge: '/favicon.ico',
-      tag: id,
-      renotify: false,
-      data: { url, payload },
-    })
-  }
-  event.waitUntil(showFallback())
+  const body = expired
+    ? 'La agenda cambió. Abrí TurnoGol para ver los datos actuales.'
+    : typeof payload.body === 'string'
+      ? payload.body
+      : mp
+        ? 'Las reservas online entran sin seña hasta que se reconecte.'
+        : summary || handoff
+          ? payload.summaryLabel || ''
+          : [payload.dateLabel, payload.timeLabel].filter(Boolean).join(' · ')
+  const url = expired ? '/dashboard' : targetUrl(payload.url || (mp ? '/dashboard' : '/grilla'))
+  event.waitUntil(
+    (async () => {
+      await self.registration.showNotification(title, {
+        body,
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        tag: String(id),
+        renotify: false,
+        data: { url, payload },
+      })
+      // La nativa ya se mostró. No emitir otro sonido/toast en cada pestaña.
+      try {
+        if (typeof BroadcastChannel !== 'undefined') {
+          const bc = new BroadcastChannel('notif-dedupe')
+          bc.postMessage({ id, nativeDisplayed: true })
+          bc.close()
+        }
+      } catch {
+        /* BroadcastChannel no está disponible en todos los dispositivos. */
+      }
+      await receipt(payload, 'processed')
+    })(),
+  )
 })
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const targetUrl = (event.notification.data && event.notification.data.url) || '/grilla'
-  event.waitUntil((async () => {
-    const allClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-    for (const client of allClients) {
-      if (client.url.indexOf(self.location.origin) === 0 && 'focus' in client) {
-        await client.focus()
-        if ('navigate' in client) {
-          try { await client.navigate(targetUrl) } catch (_e) { /* swallow */ }
+  const data = event.notification.data || {}
+  event.waitUntil(
+    (async () => {
+      // No esperar al recibo antes de abrir: el teléfono puede estar sin conexión.
+      const report = receipt(data.payload || {}, 'opened')
+      const url = targetUrl(data.url)
+      const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      for (const client of clients) {
+        if (new URL(client.url).origin === self.location.origin && 'focus' in client) {
+          await client.focus()
+          if ('navigate' in client) {
+            try {
+              await client.navigate(url)
+            } catch {
+              /* El foco sigue funcionando offline. */
+            }
+          }
+          await report
+          return
         }
-        return
       }
-    }
-    if (self.clients.openWindow) {
-      await self.clients.openWindow(targetUrl)
-    }
-  })())
+      if (self.clients.openWindow) await self.clients.openWindow(url)
+      await report
+    })(),
+  )
 })

@@ -1,4 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const deferredSend = vi.hoisted(() => vi.fn().mockResolvedValue('deferred-job'))
+vi.mock('@/shared/jobs/boss', () => ({ getBoss: async () => ({ send: deferredSend }) }))
 
 vi.mock('@/shared/db/client', () => ({
   getWorkerSql: vi.fn(),
@@ -87,9 +90,32 @@ function makeJobWithDedupe(dedupeKey: string, subscriptionId = 'sub-uuid-1'): Jo
 
 beforeEach(() => {
   vi.clearAllMocks()
+  const daytime = new Date()
+  daytime.setUTCHours(15, 0, 0, 0)
+  vi.useFakeTimers({ toFake: ['Date'], now: daytime })
 })
+afterEach(() => vi.useRealTimers())
 
 describe('handlePushSendJob', () => {
+  it('defers legacy retries crossing midnight without claiming or sending', async () => {
+    const midnight = new Date()
+    midnight.setUTCHours(3, 1, 0, 0)
+    vi.setSystemTime(midnight)
+    const sql = makeSqlStub([SUB_ROW])
+    mockGetSql.mockReturnValue(sql)
+    const job = makeJobWithDedupe('legacy-event')
+    await handlePushSendJob(job)
+    expect(mockSendPush).not.toHaveBeenCalled()
+    expect(sql).toHaveBeenCalledTimes(1)
+    const at = new Date(midnight)
+    at.setUTCHours(11, 0, 0, 0)
+    expect(deferredSend).toHaveBeenCalledWith(
+      'push-send',
+      job.data,
+      expect.objectContaining({ startAfter: at }),
+    )
+  })
+
   it('returns silently (no throw, no DB write) when subscription row is missing', async () => {
     const sql = makeSqlStub([]) // SELECT returns empty
     mockGetSql.mockReturnValue(sql)

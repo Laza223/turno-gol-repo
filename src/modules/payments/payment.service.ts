@@ -486,6 +486,7 @@ export async function dispatchPaymentInfo(
           tenantId,
           templateName: 'admin_external_refund_detected',
           content: {
+            notificationEventKey: info.mpPaymentId,
             bookingId: info.externalReference,
             amountArs: formatArs(info.amount),
             reconciled,
@@ -764,6 +765,7 @@ async function handleApproved(
         tenantId,
         templateName: 'admin_late_payment',
         content: {
+          notificationEventKey: info.mpPaymentId,
           bookingId: info.externalReference,
           amountArs: formatArs(info.amount),
           currentStatus: row.status,
@@ -840,6 +842,7 @@ async function handleApproved(
           tenantId,
           templateName: 'admin_late_payment',
           content: {
+            notificationEventKey: info.mpPaymentId,
             bookingId: info.externalReference,
             amountArs: formatArs(info.amount),
             currentStatus: row.status,

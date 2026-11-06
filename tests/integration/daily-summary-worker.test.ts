@@ -3,6 +3,7 @@ import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import { getBoss, stopBoss } from '@/shared/jobs/boss'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { runDailySummarySweep } from '@/shared/jobs/workers/daily-summary.worker'
+import * as reportService from '@/modules/reports/report.service'
 import { artDateOf } from '@/shared/time/art-date'
 import { addDays } from '@/shared/dates/art'
 import {
@@ -282,5 +283,23 @@ describe('daily-summary.worker — resumen semanal', () => {
     const { tenant } = await seedWeeklyTenant(false)
     await runSweepAt(MONDAY_8AM_ART)
     expect(await weeklyNotifications(tenant.id)).toHaveLength(0)
+  }, 30_000)
+
+  it('recupera el semanal a las 08:01 y el siguiente tick no recalcula ni duplica', async () => {
+    const { tenant } = await seedWeeklyTenant(true)
+    const revenue = vi.spyOn(reportService, 'getWeekRevenue')
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date(MONDAY_8AM_ART.getTime() + 60_000) })
+    try {
+      await runDailySummarySweep({ scheduled: true })
+      expect(await weeklyNotifications(tenant.id)).toHaveLength(1)
+      expect(revenue.mock.calls.filter(([id]) => id === tenant.id)).toHaveLength(1)
+      vi.setSystemTime(new Date(MONDAY_8AM_ART.getTime() + 120_000))
+      await runDailySummarySweep({ scheduled: true })
+      expect(await weeklyNotifications(tenant.id)).toHaveLength(1)
+      expect(revenue.mock.calls.filter(([id]) => id === tenant.id)).toHaveLength(1)
+    } finally {
+      vi.useRealTimers()
+      revenue.mockRestore()
+    }
   }, 30_000)
 })

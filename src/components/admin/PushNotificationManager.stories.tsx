@@ -20,7 +20,10 @@ import { PushNotificationManager } from './PushNotificationManager'
  * cada story queda determinista y no muta el estado real del browser del
  * runner.
  */
-type FakeSubscription = { endpoint: string }
+type FakeSubscription = {
+  endpoint: string
+  toJSON?: () => { endpoint: string; keys: { p256dh: string; auth: string } }
+}
 type FakeRegistration = {
   pushManager: { getSubscription: () => Promise<FakeSubscription | undefined> }
 }
@@ -75,6 +78,19 @@ const meta = {
   title: 'Admin/Layout/PushNotificationManager',
   component: PushNotificationManager,
   parameters: { layout: 'fullscreen' },
+  args: {
+    actions: {
+      subscribe: fn().mockResolvedValue({ success: true, subscriptionId: 'story-device' }),
+      unsubscribe: fn().mockResolvedValue({ success: true }),
+      test: fn().mockResolvedValue({ success: true }),
+      status: fn().mockResolvedValue({
+        success: true,
+        acceptedAt: null,
+        processedAt: null,
+        openedAt: null,
+      }),
+    },
+  },
   decorators: [
     // `fixed bottom-[...] left-4` escapa al viewport del canvas sin un
     // containing block propio — mismo truco que admin-header/admin-sidebar.
@@ -100,6 +116,7 @@ export const SinSuscribir: Story = {
   beforeEach: () => {
     getRegistrationSpy = fn(async () => undefined)
     return stubPushApis({
+      permission: 'granted',
       getRegistration: getRegistrationSpy as PushApiOverrides['getRegistration'],
     })
   },
@@ -198,10 +215,17 @@ export const YaSuscripto: Story = {
   beforeEach: () => {
     getRegistrationSpy = fn(async () => ({
       pushManager: {
-        getSubscription: async () => ({ endpoint: 'https://fcm.googleapis.com/fake/abc123' }),
+        getSubscription: async () => ({
+          endpoint: 'https://fcm.googleapis.com/fake/abc123',
+          toJSON: () => ({
+            endpoint: 'https://fcm.googleapis.com/fake/abc123',
+            keys: { p256dh: 'x'.repeat(88), auth: 'x'.repeat(24) },
+          }),
+        }),
       },
     }))
     return stubPushApis({
+      permission: 'granted',
       getRegistration: getRegistrationSpy as PushApiOverrides['getRegistration'],
     })
   },
@@ -223,8 +247,8 @@ export const YaSuscripto: Story = {
 
 /**
  * Permiso denegado por el usuario (`Notification.permission === 'denied'`
- * desde el arranque): el efecto corta ANTES de tocar `serviceWorker` —
- * `getRegistration` nunca se llama. Sin prompt ni botón.
+ * desde el arranque): se revisa el SW para revocar la suscripción vieja.
+ * Sin prompt ni botón; las instrucciones quedan en la pantalla permanente.
  */
 export const PermisoDenegado: Story = {
   beforeEach: () => {
@@ -240,6 +264,6 @@ export const PermisoDenegado: Story = {
     await expect(
       canvas.queryByRole('button', { name: 'Habilitar notificaciones' }),
     ).not.toBeInTheDocument()
-    await expect(getRegistrationSpy).not.toHaveBeenCalled()
+    await expect(getRegistrationSpy).toHaveBeenCalledWith('/')
   },
 }

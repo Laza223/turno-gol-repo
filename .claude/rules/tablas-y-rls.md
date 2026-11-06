@@ -16,4 +16,6 @@ paths:
 - **`analytics_events`** (migr. 072): destino durable de `track.*`. `tenant_id` NULLABLE — el tráfico público no tiene complejo, y la policy de INSERT acepta NULL por eso; la de SELECT sigue estricta. Append-only (sin UPDATE + REVOKE). **No guarda identificadores de persona** (`PII_KEYS` filtra `playerId`/`staffUserId`/`endpoint`), lo que la mantiene fuera del régimen de datos personales. La escribe el pool BYPASSRLS vía `after()`. `breadcrumbs.ts` es isomórfico y **NO la importa**: el sink se registra al revés, desde `instrumentation.ts` y `run-workers.ts`.
 - **RLS dual** en `bookings` y `player_tenant_relationships`: policy para admin (`app.current_tenant_id`) + policy para jugador (`app.current_player_id`). Policy Realtime solo en `bookings`.
 
+- **`staff_agenda_state`** (migr. 107): cache operacional aislada por tenant, PK `tenant_id`, ENABLE+FORCE RLS con policy de tenant y grants app/worker explícitos. Guarda fecha operativa, primera reserva y revisión; no datos de personas. `notifications` ahora también registra intenciones push y `push_send_log` sus resultados por dispositivo, conservando el régimen deny-all del sistema para la app.
+
 Cómo setear contexto, defensa en profundidad y checklist de tabla nueva: skill `convenciones-stack`.

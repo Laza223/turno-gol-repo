@@ -22,6 +22,7 @@ import { markNoShow, revertNoShow } from './booking.service'
 import { invalidateAvailSearch } from '@/shared/cache/slots-cache'
 import { rowToBookingRow } from './booking.mappers'
 import { enqueueNotification } from '@/modules/notifications/notification.service'
+import { enqueueBookingStaffNotification } from '@/modules/notifications/booking-staff-notification.service'
 import { captureMessage } from '@/lib/sentry'
 import { DEFAULT_CANCELLATION_HOURS_BEFORE } from '@/shared/constants'
 import {
@@ -480,6 +481,7 @@ export async function cancelByPlayer(
     })
   }
 
+  await enqueueBookingStaffNotification(b.tenant_id, bookingId, 'canceled', tx, lateCancel)
   return { booking: bookingRow, notificationIds, lateCancel }
 }
 
@@ -573,6 +575,7 @@ export async function cancelByGuest(
 
   await invalidateAvailSearch(b.date)
 
+  await enqueueBookingStaffNotification(b.tenant_id, bookingId, 'canceled', tx, lateCancel)
   return {
     booking: rowToBookingRow(row),
     notificationIds: [],

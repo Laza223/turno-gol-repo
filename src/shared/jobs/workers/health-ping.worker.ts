@@ -9,6 +9,7 @@ import { getSql } from '@/shared/db/client'
 import { getBoss } from '@/shared/jobs/boss'
 import { CRON_WORK_OPTIONS, QUEUE_HEALTH_PING, QUEUE_SEND_EMAIL } from '../definitions'
 import { logger } from '@/shared/lib/logger'
+import { getStaffNotificationHealth } from '@/modules/notifications/staff-notification.service'
 
 type PingStatus = 'ok' | 'down'
 type PingResult = {
@@ -17,6 +18,21 @@ type PingResult = {
   latencyMs?: number
   error?: string
   note?: string
+}
+
+async function pingStaffNotifications(): Promise<PingResult> {
+  try {
+    const { delayed, failed } = await getStaffNotificationHealth()
+    return delayed || failed
+      ? {
+          name: 'staff-notifications',
+          status: 'down',
+          error: `${delayed} delayed; ${failed} failed`,
+        }
+      : { name: 'staff-notifications', status: 'ok' }
+  } catch (err) {
+    return { name: 'staff-notifications', status: 'down', error: (err as Error).message }
+  }
 }
 
 const FETCH_TIMEOUT_MS = 5000
@@ -160,6 +176,7 @@ async function runHealthPing(): Promise<PingResult[]> {
     pingSupabaseAuth(),
     pingResend(),
     pingMercadoPago(),
+    pingStaffNotifications(),
   ])
 
   const down = results.filter((r) => r.status === 'down')

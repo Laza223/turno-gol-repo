@@ -19,7 +19,7 @@ export async function GET(): Promise<Response> {
   const outcome = await enforce('vapidPublic', ip)
   if (!outcome.ok) return rateLimit429(outcome)
 
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+  const publicKey = process.env.VAPID_PUBLIC_KEY ?? process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
   if (!publicKey) {
     return internal('Las notificaciones push no están configuradas.', {
       code: 'VAPID_NOT_CONFIGURED',

@@ -143,6 +143,9 @@ export const RECONCILE_SUBSCRIPTIONS_SEND_OPTIONS = {
 
 export type PushSendJobData = {
   subscription_id: string
+  /** Durable v2 intention and per-device delivery; absent on legacy jobs. */
+  notificationId?: string
+  deliveryId?: string
   payload: {
     type: string
     bookingId?: string

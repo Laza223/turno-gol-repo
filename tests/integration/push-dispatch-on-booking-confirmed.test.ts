@@ -9,7 +9,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql } from '@/shared/db/client'
 import { getBoss, stopBoss } from '@/shared/jobs/boss'
 import { notifyAdminPush } from '@/modules/notifications/push.service'
-import { cleanupAll, createTestStaffUser, createTestTenant, ensureRoles } from '../helpers/tenant'
+import {
+  cleanupAll,
+  createTestStaffUser,
+  createTestTenant,
+  ensureRoles,
+  linkStaffToTenant,
+} from '../helpers/tenant'
 
 const SAMPLE_PAYLOAD = {
   type: 'booking.confirmed_online',
@@ -44,6 +50,7 @@ describe('push-dispatch integration', () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
 
     // Insert a push_subscriptions row for this tenant/staff.
     const subRows = await sql<{ id: string }[]>`

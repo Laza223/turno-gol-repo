@@ -79,16 +79,18 @@ const meta = {
   component: PushNotificationManager,
   parameters: { layout: 'fullscreen' },
   args: {
+    // Storybook restaura los mocks antes de cada story: conservar la respuesta
+    // como implementación inicial, también al resincronizar una suscripción.
     actions: {
-      subscribe: fn().mockResolvedValue({ success: true, subscriptionId: 'story-device' }),
-      unsubscribe: fn().mockResolvedValue({ success: true }),
-      test: fn().mockResolvedValue({ success: true }),
-      status: fn().mockResolvedValue({
-        success: true,
+      subscribe: fn(async () => ({ success: true as const, subscriptionId: 'story-device' })),
+      unsubscribe: fn(async () => ({ success: true as const })),
+      test: fn(async () => ({ success: true as const })),
+      status: fn(async () => ({
+        success: true as const,
         acceptedAt: null,
         processedAt: null,
         openedAt: null,
-      }),
+      })),
     },
   },
   decorators: [
@@ -233,6 +235,13 @@ export const YaSuscripto: Story = {
     const canvas = within(canvasElement)
     // Scope '/' (no '/admin/'): ver comment en la story SinSuscribir.
     await expect(getRegistrationSpy).toHaveBeenCalledWith('/')
+    await expect(meta.args.actions.subscribe).toHaveBeenCalledWith(
+      expect.objectContaining({ endpoint: 'https://fcm.googleapis.com/fake/abc123' }),
+    )
+    await expect(meta.args.actions.subscribe.mock.results.at(-1)?.value).resolves.toEqual({
+      success: true,
+      subscriptionId: 'story-device',
+    })
     await expect(canvas.queryByText('¿Habilitar notificaciones?')).not.toBeInTheDocument()
     // Scopeado al botón del propio componente (no `queryByRole('button')` a
     // secas): el `<Toaster />` global del preview puede tener un toast ajeno

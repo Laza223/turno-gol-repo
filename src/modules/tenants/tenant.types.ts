@@ -59,9 +59,6 @@ export type TenantSettings = {
   checklist_dismissed_at?: string
   /** ISO timestamp: cuándo el admin cerró el aviso de referidos de Hoy. Descarte persistente, no vuelve a mostrarse. */
   referral_banner_dismissed_at?: string
-  /** D8 (Fase 2, resumen diario): opt-in explícito, default false — el push
-   *  al admin con PWA es el default gratis, el email tiene costo por tenant×día. */
-  daily_summary_email_opt_in?: boolean
   /** Resumen semanal por mail (los lunes, solo administradores): opt-in
    *  explícito, default false. Lo lee `daily-summary.worker.ts`. */
   weekly_summary_email_opt_in?: boolean
@@ -141,7 +138,7 @@ export type UpdateTenantSettingsInput = Partial<
     | 'booking_min_advance_hours'
     | 'late_cancel_hours'
     | 'auto_complete_minutes'
-    | 'daily_summary_email_opt_in'
+    | 'weekly_summary_email_opt_in'
     | 'hide_public_prices'
   >
 >

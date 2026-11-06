@@ -23,7 +23,7 @@ export type PushPayload = {
 
 export type SendPushResult =
   | { success: true; statusCode: number }
-  | { success: false; gone: true; statusCode: 410 }
+  | { success: false; gone: true; statusCode: 404 | 410 }
   | { success: false; gone: false; statusCode: number; error: string }
 
 const MAX_PAYLOAD_BYTES = 4 * 1024 // 4KB
@@ -58,6 +58,7 @@ export function isAllowedPushEndpoint(endpoint: string): boolean {
   const host = url.hostname.toLowerCase()
   return (
     (ALLOWED_PUSH_HOSTS as readonly string[]).includes(host) ||
+    host.endsWith('.push.apple.com') ||
     host.endsWith(ALLOWED_PUSH_HOST_SUFFIX)
   )
 }
@@ -88,7 +89,6 @@ export async function sendPushNotification(
   if (!isAllowedPushEndpoint(subscription.endpoint)) {
     logger.error('push send blocked: endpoint host not allowlisted', {
       module: 'web-push',
-      endpoint: subscription.endpoint,
     })
     return {
       success: false,
@@ -108,7 +108,14 @@ export async function sendPushNotification(
     }
   }
   try {
-    const result = await webpush.sendNotification(subscription, json)
+    const expiresAt = typeof payload.expiresAt === 'string' ? Date.parse(payload.expiresAt) : NaN
+    const TTL = Number.isFinite(expiresAt)
+      ? Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000))
+      : 24 * 60 * 60
+    if (TTL === 0) {
+      return { success: false, gone: false, statusCode: 0, error: 'notification expired' }
+    }
+    const result = await webpush.sendNotification(subscription, json, { timeout: 10_000, TTL })
     const statusCode = result.statusCode ?? 200
     track.notification('notification.push.sent', {
       statusCode,
@@ -126,18 +133,17 @@ export async function sendPushNotification(
       (typeof e.body === 'string' && e.body) ||
       (typeof e.message === 'string' && e.message) ||
       'unknown'
-    if (statusCode === 410) {
+    if (statusCode === 410 || statusCode === 404) {
       // Subscription expired/revoked — caller MUST delete the row.
       track.notification('notification.push.failed', {
-        statusCode: 410,
+        statusCode,
         reason: 'gone',
         endpoint: subscription.endpoint,
       })
       logger.warn('push subscription gone (410)', {
-        endpoint: subscription.endpoint,
         module: 'web-push',
       })
-      return { success: false, gone: true, statusCode: 410 }
+      return { success: false, gone: true, statusCode }
     }
     track.notification('notification.push.failed', {
       statusCode,

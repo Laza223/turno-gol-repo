@@ -24,8 +24,7 @@ function chipClass(active: boolean): string {
 }
 
 /**
- * Form de "Avisos" (D8, Fase 2): opt-in de email del resumen diario y, desde
- * 2026-10-22, del semanal. La action llega por PROP, no por import — mismo
+ * Opt-in de email del resumen semanal. La agenda diaria es sólo push. La action llega por PROP, no por import — mismo
  * motivo que ReservasPolicyForm ('use server' arrastra drizzle/postgres al
  * bundle de Storybook).
  *
@@ -36,7 +35,6 @@ function chipClass(active: boolean): string {
  */
 export function AvisosForm({ s, action }: { s: TenantSettings; action: UpdateAvisosSettings }) {
   const [state, formAction] = useActionState(action, INITIAL_STATE)
-  const [optIn, setOptIn] = useState(s.daily_summary_email_opt_in === true)
   const [weeklyOptIn, setWeeklyOptIn] = useState(s.weekly_summary_email_opt_in === true)
   const [didSubmit, setDidSubmit] = useState(false)
 
@@ -46,46 +44,6 @@ export function AvisosForm({ s, action }: { s: TenantSettings; action: UpdateAvi
       onSubmit={() => setDidSubmit(true)}
       className="space-y-3 lg:space-y-6 max-w-lg"
     >
-      <fieldset className="space-y-3">
-        {/* El título del bloque ("Resúmenes") lo pone la página, un `<h3>` en
-            "Tu usuario". */}
-        <legend className="text-sm font-medium text-foreground">Diario</legend>
-        {/* Llega como push a TODA suscripción del complejo (`notifyAdminPush`) y
-            el email va a hasta 5 del equipo, encargado incluido
-            (`enqueueTenantOwnerNotification` sin `onlyRole`, `LIMIT 5`). Por eso
-            dice "hasta 5" y no "todo el equipo": con seis activos, uno no lo
-            recibe. */}
-        <p className="text-sm text-muted-foreground">
-          A las 8, lo que entró ayer y cuánto se ocupó. Llega como notificación a quien las tenga
-          prendidas; por email, a hasta 5 personas del equipo.
-        </p>
-        {/* MEJORA-UX QA: eran 2 <button> sueltos, sin `role`/`aria-checked` —
-            un lector de pantalla los anunciaba como botones sueltos, sin
-            forma de saber cuál está activo. `RadioGroupPrimitive` (Radix, ya
-            usado en el repo vía RadioChip) da radiogroup + roving tabindex +
-            flechas gratis, SIN heredar el estilo apilado de `RadioChip` —
-            son los mismos className de siempre, solo cambia el elemento. */}
-        <RadioGroupPrimitive.Root
-          aria-label="Resumen diario"
-          className="flex gap-2"
-          value={optIn ? 'email' : 'push'}
-          onValueChange={(v) => setOptIn(v === 'email')}
-          // Mismo motivo que en SegmentedControl (ver radix-form-detach.ts): sin
-          // desasociar el grupo del form, el reset automático de React 19 al
-          // terminar la Server Action vuelve la opción a la de montaje y el
-          // dueño ve "no se guardó" sobre un guardado que sí funcionó.
-          form={RADIX_DETACHED_FORM_ID}
-        >
-          <RadioGroupPrimitive.Item value="email" className={chipClass(optIn)}>
-            También por email
-          </RadioGroupPrimitive.Item>
-          <RadioGroupPrimitive.Item value="push" className={chipClass(!optIn)}>
-            Solo notificación
-          </RadioGroupPrimitive.Item>
-        </RadioGroupPrimitive.Root>
-        <input type="hidden" name="dailySummaryEmailOptIn" value={optIn ? 'true' : 'false'} />
-      </fieldset>
-
       <fieldset className="space-y-3">
         <legend className="text-sm font-medium text-foreground">Semanal</legend>
         {/* `onlyRole: 'admin'` en `daily-summary.worker.ts`: trae lo mismo que

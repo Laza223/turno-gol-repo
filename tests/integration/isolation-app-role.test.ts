@@ -101,6 +101,7 @@ const TENANT_SCOPED_DECLARADA = [
   'player_tenant_relationships',
   'players',
   'push_subscriptions',
+  'staff_agenda_state',
   'staff_users',
   'stock_movements',
   'tenant_player_bans',
@@ -131,6 +132,11 @@ const PLAYER_SCOPED_DECLARADA = [
   'rival_reports',
   'tenant_player_bans',
 ]
+
+/** La agenda es un singleton por complejo: su UUID de fila es tenant_id. */
+function rowKey(table: string): 'id' | 'tenant_id' {
+  return table === 'staff_agenda_state' ? 'tenant_id' : 'id'
+}
 
 /** Celdas medidas, para el informe. */
 type Cell = {
@@ -320,6 +326,11 @@ beforeAll(async () => {
          RETURNING id`,
     )
     await one(
+      'staff_agenda_state',
+      su`INSERT INTO staff_agenda_state (tenant_id, operating_date)
+         VALUES (${tenant.id}, CURRENT_DATE) RETURNING tenant_id AS id`,
+    )
+    await one(
       'player_favorites',
       su`INSERT INTO player_favorites (player_id, tenant_id)
          VALUES (${seed.playerId}, ${tenant.id}) RETURNING id`,
@@ -406,7 +417,9 @@ beforeAll(async () => {
   for (const t of tenantTables) {
     const id = rowB[t]
     if (!id) continue
-    const r = (await su.unsafe(`SELECT to_jsonb(x) AS j FROM ${t} x WHERE x.id = $1`, [id]))[0]
+    const r = (
+      await su.unsafe(`SELECT to_jsonb(x) AS j FROM ${t} x WHERE x.${rowKey(t)} = $1`, [id])
+    )[0]
     rowJsonB[t] = (r as unknown as { j: Record<string, unknown> }).j
   }
 }, 180_000)
@@ -549,7 +562,7 @@ describe('0. controles', () => {
         : { kind: 'player', id: A.playerId }
       const n = await rowCount(
         ctx,
-        drizzleSql`SELECT id FROM ${drizzleSql.identifier(t)} WHERE id = ${id}::uuid`,
+        drizzleSql`SELECT ${drizzleSql.identifier(rowKey(t))} FROM ${drizzleSql.identifier(t)} WHERE ${drizzleSql.identifier(rowKey(t))} = ${id}::uuid`,
       )
       if (n !== 1) invisibles.push(`${t} (${n} filas, contexto ${ctx.kind})`)
     }
@@ -595,7 +608,7 @@ describe('1. grilla cross-tenant (contexto de A contra filas de B)', () => {
     it.for(tenantTablesLazy())('%s', async (t) => {
       const n = await rowCount(
         { kind: 'tenant', id: tenantA.id },
-        drizzleSql`SELECT id FROM ${drizzleSql.identifier(t)} WHERE id = ${rowB[t]!}::uuid`,
+        drizzleSql`SELECT ${drizzleSql.identifier(rowKey(t))} FROM ${drizzleSql.identifier(t)} WHERE ${drizzleSql.identifier(rowKey(t))} = ${rowB[t]!}::uuid`,
       )
       const abierta = OPEN_READ_DECLARADA.includes(t)
       record({
@@ -627,7 +640,7 @@ describe('1. grilla cross-tenant (contexto de A contra filas de B)', () => {
         n = await rowCount(
           { kind: 'tenant', id: tenantA.id },
           drizzleSql`UPDATE ${drizzleSql.identifier(t)} SET tenant_id = tenant_id
-                     WHERE id = ${rowB[t]!}::uuid RETURNING id`,
+                     WHERE ${drizzleSql.identifier(rowKey(t))} = ${rowB[t]!}::uuid RETURNING ${drizzleSql.identifier(rowKey(t))}`,
         )
       } catch (e) {
         // 42501 acá es el privilegio revocado, no la policy: también aísla,
@@ -654,7 +667,7 @@ describe('1. grilla cross-tenant (contexto de A contra filas de B)', () => {
       try {
         n = await rowCount(
           { kind: 'tenant', id: tenantA.id },
-          drizzleSql`DELETE FROM ${drizzleSql.identifier(t)} WHERE id = ${rowB[t]!}::uuid RETURNING id`,
+          drizzleSql`DELETE FROM ${drizzleSql.identifier(t)} WHERE ${drizzleSql.identifier(rowKey(t))} = ${rowB[t]!}::uuid RETURNING ${drizzleSql.identifier(rowKey(t))}`,
         )
       } catch (e) {
         expect(pgCode(e)).toBe('42501')
@@ -735,7 +748,7 @@ describe('1. grilla cross-tenant (contexto de A contra filas de B)', () => {
     it.for(tenantTablesLazy())('%s', async (t) => {
       const n = await rowCount(
         { kind: 'none' },
-        drizzleSql`SELECT id FROM ${drizzleSql.identifier(t)} WHERE id = ${rowB[t]!}::uuid`,
+        drizzleSql`SELECT ${drizzleSql.identifier(rowKey(t))} FROM ${drizzleSql.identifier(t)} WHERE ${drizzleSql.identifier(rowKey(t))} = ${rowB[t]!}::uuid`,
       )
       const abierta = OPEN_READ_DECLARADA.includes(t)
       record({
@@ -776,6 +789,7 @@ function tenantTablesLazy(): string[] {
     'rival_alert_subscriptions',
     'rival_matches',
     'rival_participants',
+    'staff_agenda_state',
     'stock_movements',
     'tenant_player_bans',
     'tenant_staff_members',

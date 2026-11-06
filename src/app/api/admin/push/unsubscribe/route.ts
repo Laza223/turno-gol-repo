@@ -7,6 +7,7 @@ import { guard } from '@/shared/rate-limit/route-guard'
 import { withTenantContext } from '@/shared/db/client'
 import { pushSubscriptions } from '@/shared/db/schema'
 import { badRequest, forbidden, validationError } from '@/shared/api-error'
+import { getImpersonationSession } from '@/modules/auth/impersonation.server'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -18,6 +19,8 @@ const unsubscribeSchema = z.object({
 export const POST = withTenant(async (req: NextRequest, user) => {
   const throttled = await guard('adminCrud', user.tenantId!)
   if (throttled) return throttled
+  if (await getImpersonationSession())
+    return forbidden('Las notificaciones se administran desde tu propia cuenta.')
 
   let body: unknown
   try {

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { Bell } from 'lucide-react'
 import { Logo } from '@/components/ui/logo'
 import { ADMIN_HEADER_SLOT_ID } from './admin-header-slot'
 
@@ -44,6 +45,13 @@ export function AdminHeader({ tenantName, homeHref = '/dashboard' }: AdminHeader
           segmento, la semana y el chip de lo pendiente. Vacío no ocupa nada
           visible, pero el `flex-1` mantiene el resto del header a la derecha. */}
       <div id={ADMIN_HEADER_SLOT_ID} className="flex min-w-0 flex-1 items-center gap-3" />
+      <Link
+        href="/notificaciones"
+        aria-label="Notificaciones"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <Bell className="h-5 w-5" aria-hidden="true" />
+      </Link>
     </header>
   )
 }

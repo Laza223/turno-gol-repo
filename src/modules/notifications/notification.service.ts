@@ -10,6 +10,7 @@ import {
 } from '@/shared/jobs/definitions'
 import type { StaffRole } from '@/modules/staff/roles'
 import type { TemplateName } from './templates'
+import { enqueueStaffTemplateNotification } from './staff-template-notification'
 
 export type EnqueueNotificationParams = {
   tenantId: string | null
@@ -87,6 +88,8 @@ export async function enqueueTenantOwnerNotification(
   tx: DbTx,
   opts?: { onlyRole?: StaffRole },
 ): Promise<string[]> {
+  const staffEvents = await enqueueStaffTemplateNotification(params, tx, opts)
+  if (staffEvents !== null) return staffEvents
   const roleFilter = opts?.onlyRole ? drizzleSql`AND tsm.role = ${opts.onlyRole}` : drizzleSql``
   const rows = (await tx.execute(
     drizzleSql`
@@ -240,7 +243,7 @@ export async function reclaimStalledSendingNotifications(): Promise<ReclaimedNot
       END,
       last_error = ${STALLED_ERROR},
       sending_since = NULL
-    WHERE status = 'sending'
+    WHERE status = 'sending' AND channel = 'email'
       AND coalesce(sending_since, queued_at)
           < now() - make_interval(mins => ${SENDING_STALE_AFTER_MINUTES})
     RETURNING id, status

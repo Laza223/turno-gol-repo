@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { jsonb } from '../jsonb'
 import { tenants } from './tenants'
 import { notificationChannelEnum, notificationStatusEnum, recipientTypeEnum } from './enums'
@@ -21,6 +21,11 @@ export const notifications = pgTable(
     status: notificationStatusEnum('status').notNull().default('queued'),
     content: jsonb('content').notNull(),
     templateName: text('template_name'),
+    eventKey: text('event_key'),
+    availableAt: timestamp('available_at', { withTimezone: true, mode: 'date' })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true, mode: 'date' }),
 
     attemptCount: integer('attempt_count').notNull().default(1),
     lastError: text('last_error'),
@@ -36,6 +41,12 @@ export const notifications = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   },
   (table) => ({
+    eventRecipientChannelIdx: uniqueIndex('idx_notifications_event_recipient_channel').on(
+      table.tenantId,
+      table.recipientId,
+      table.channel,
+      table.eventKey,
+    ),
     tenantStatusIdx: index('idx_notifications_tenant_status').on(table.tenantId, table.status),
     recipientIdx: index('idx_notifications_recipient').on(table.recipientId),
     triggerIdx: index('idx_notifications_trigger').on(table.triggerEvent),

@@ -171,6 +171,9 @@ const ALLOW_READ_ONLY_FUERA_DE_PAGES = [
   // `requireCajaContext`, el guard de las pages de Caja. Lo envuelve, así que
   // una acción que lo llamara abriría una escritura: ver el test de abajo.
   'src/app/(admin)/caja/queries.ts',
+  // Decisión 2026-11-06: administrar el dispositivo no modifica la operación
+  // del complejo. En solo lectura debe poder recibir/probar avisos de su plan.
+  'src/app/(admin)/notificaciones/actions.ts',
 ]
 
 const ROOT = process.cwd()

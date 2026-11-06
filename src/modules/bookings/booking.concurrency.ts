@@ -6,6 +6,7 @@ import { assertTransition } from './booking.state-machine'
 import type { TransitionResult } from './booking.types'
 import { invalidateAvailSearch } from '@/shared/cache/slots-cache'
 import { track } from '@/shared/observability'
+import { enqueueBookingStaffNotification } from '@/modules/notifications/booking-staff-notification.service'
 
 /**
  * Conditional UPDATE primitive for race-safe transitions out of pending_payment.
@@ -43,6 +44,7 @@ export async function transitionFromPendingPayment(
   const row = rowToBookingRow(rows[0]!)
 
   if (newStatus === 'confirmed') {
+    await enqueueBookingStaffNotification(row.tenantId, bookingId, 'confirmed', tx)
     // pending_payment -> confirmed keeps the slot occupied, so no cache change.
     track.booking('booking.transition.confirmed', { bookingId })
   } else {

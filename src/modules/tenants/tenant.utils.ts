@@ -37,6 +37,7 @@ export function bookingMinAdvanceHours(
 }
 
 export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
+  'notificaciones',
   // raíz
   'api',
   'home',

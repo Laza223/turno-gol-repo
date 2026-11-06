@@ -23,7 +23,13 @@ import { sendPushNotification } from '@/lib/web-push'
 import { handlePushSendJob } from '@/shared/jobs/workers/push.worker'
 import { closeSql, getSql } from '@/shared/db/client'
 import { type PushSendJobData } from '@/shared/jobs/definitions'
-import { cleanupAll, createTestStaffUser, createTestTenant, ensureRoles } from '../helpers/tenant'
+import {
+  cleanupAll,
+  createTestStaffUser,
+  createTestTenant,
+  ensureRoles,
+  linkStaffToTenant,
+} from '../helpers/tenant'
 
 beforeAll(async () => {
   const sql = getSql()
@@ -62,6 +68,7 @@ describe('push.worker idempotencia por dedupeKey (F3, hallazgo D4)', () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
 
     // Seed 1 push_subscriptions row (misma mecánica que push-worker-410-cleanup.test.ts).
     const subRows = await sql<{ id: string }[]>`
@@ -121,6 +128,7 @@ describe('push.worker idempotencia por dedupeKey (F3, hallazgo D4)', () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const staff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenant.id, staff.id)
 
     const subRows = await sql<{ id: string }[]>`
       INSERT INTO push_subscriptions (tenant_id, staff_user_id, endpoint, p256dh_key, auth_key)

@@ -14,6 +14,8 @@ import {
   enqueueTenantOwnerNotification,
 } from '@/modules/notifications/notification.service'
 import { assertWithinPaidPeriod } from './paid-period.guard'
+import { enqueueBookingStaffNotification } from '@/modules/notifications/booking-staff-notification.service'
+import { isStaffNotificationsEnabled } from '@/modules/notifications/staff-notification.service'
 import {
   BookingDateOutOfRangeError,
   BookingNotInConfirmedError,
@@ -734,22 +736,28 @@ async function createOnlineBookingImpl(
       )
     }
 
-    await enqueueTenantOwnerNotification(
-      {
-        tenantId,
-        templateName: 'admin_new_booking',
-        content: {
-          courtName: court.name,
-          date: dateFormatted,
-          timeStart,
-          timeEnd,
-          playerName: playerFirstName,
-          ...(playerPhone ? { playerPhone } : {}),
+    if (await isStaffNotificationsEnabled(tenantId, tx)) {
+      if (booking.status === 'confirmed') {
+        await enqueueBookingStaffNotification(tenantId, booking.id, 'confirmed', tx)
+      }
+    } else {
+      await enqueueTenantOwnerNotification(
+        {
+          tenantId,
+          templateName: 'admin_new_booking',
+          content: {
+            courtName: court.name,
+            date: dateFormatted,
+            timeStart,
+            timeEnd,
+            playerName: playerFirstName,
+            ...(playerPhone ? { playerPhone } : {}),
+          },
+          triggerEvent: 'booking.admin_new_booking',
         },
-        triggerEvent: 'booking.admin_new_booking',
-      },
-      tx,
-    )
+        tx,
+      )
+    }
 
     await afterOnlineInsert(
       booking,

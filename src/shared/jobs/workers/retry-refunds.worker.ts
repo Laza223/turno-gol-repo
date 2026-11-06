@@ -82,8 +82,12 @@ export async function remindPendingRefunds(): Promise<{ reminded: number }> {
       -- todos los días sería spam.
       AND NOT EXISTS (
         SELECT 1 FROM notifications n
-        WHERE n.template_name = ${REMINDER_TEMPLATE}
-          AND n.content ->> 'refundPaymentId' = p.id::text
+        WHERE n.tenant_id = p.tenant_id AND (
+          (n.template_name = ${REMINDER_TEMPLATE}
+            AND n.content ->> 'refundPaymentId' = p.id::text)
+          OR (n.channel = 'push' AND n.trigger_event = 'payment.refund.still_pending'
+            AND n.event_key = 'payment.refund.still_pending:' || p.id::text)
+        )
       )
     ORDER BY p.created_at ASC
     LIMIT 100

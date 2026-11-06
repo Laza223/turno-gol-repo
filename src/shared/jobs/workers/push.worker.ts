@@ -4,8 +4,20 @@ import { sendPushNotification } from '@/lib/web-push'
 import { logger } from '@/shared/lib/logger'
 import { track } from '@/shared/observability'
 import { QUEUE_PUSH_SEND, type PushSendJobData } from '../definitions'
+import { sendStaffPushDelivery } from '@/modules/notifications/staff-push-delivery.service'
+import { quietHoursReleaseAt } from '@/modules/notifications/push-quiet-hours'
+import { getBoss } from '../boss'
+import { PUSH_SEND_SEND_OPTIONS } from '../definitions'
 
 export async function handlePushSendJob(job: Job<PushSendJobData>): Promise<void> {
+  if (job.data.notificationId && job.data.deliveryId) {
+    await sendStaffPushDelivery(
+      job.data.notificationId,
+      job.data.deliveryId,
+      job.data.subscription_id,
+    )
+    return
+  }
   const { subscription_id, payload, dedupeKey } = job.data
   // Only subscription_id is known here (no tenant in the job payload) — the
   // lookup can't set app.current_tenant_id before it knows which tenant this
@@ -17,11 +29,19 @@ export async function handlePushSendJob(job: Job<PushSendJobData>): Promise<void
       endpoint: string
       p256dh_key: string
       auth_key: string
+      timezone: string
     }[]
   >`
-    SELECT id, endpoint, p256dh_key, auth_key
+    SELECT id, endpoint, p256dh_key, auth_key,
+      (SELECT timezone FROM tenants WHERE tenants.id = push_subscriptions.tenant_id) AS timezone
     FROM push_subscriptions
     WHERE id = ${subscription_id}
+      AND EXISTS (SELECT 1 FROM tenant_staff_members tsm
+        WHERE tsm.tenant_id = push_subscriptions.tenant_id
+          AND tsm.staff_user_id = push_subscriptions.staff_user_id AND tsm.is_active = true)
+      AND (${!payload.type.startsWith('plan.') && payload.type !== 'mp_disconnected'} OR EXISTS (
+        SELECT 1 FROM tenant_staff_members tsm WHERE tsm.tenant_id = push_subscriptions.tenant_id
+          AND tsm.staff_user_id = push_subscriptions.staff_user_id AND tsm.is_active = true AND tsm.role = 'admin'))
     LIMIT 1
   `
   const sub = rows[0]
@@ -30,6 +50,16 @@ export async function handlePushSendJob(job: Job<PushSendJobData>): Promise<void
       module: 'push.worker',
       subscriptionId: subscription_id,
     })
+    return
+  }
+
+  const releaseAt =
+    payload.type === 'test'
+      ? null
+      : quietHoursReleaseAt(new Date(), sub.timezone ?? 'America/Argentina/Buenos_Aires')
+  if (releaseAt) {
+    const boss = await getBoss()
+    await boss.send(QUEUE_PUSH_SEND, job.data, { ...PUSH_SEND_SEND_OPTIONS, startAfter: releaseAt })
     return
   }
 

@@ -20,6 +20,7 @@ export default function robots(): MetadataRoute.Robots {
           // tests/unit/admin-routes-reachable.test.ts: una página admin nueva
           // que no quede cubierta acá rompe ese test.
           '/dashboard',
+          '/notificaciones',
           '/grilla',
           '/reservas',
           '/caja',

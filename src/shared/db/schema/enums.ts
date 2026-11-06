@@ -196,7 +196,7 @@ export const tournamentEventTypeEnum = pgEnum('tournament_event_type', [
 // ─── Notification ───────────────────────────────────────────────
 export const recipientTypeEnum = pgEnum('recipient_type', ['player', 'staff', 'tenant_owner'])
 
-export const notificationChannelEnum = pgEnum('notification_channel', ['email'])
+export const notificationChannelEnum = pgEnum('notification_channel', ['email', 'push'])
 
 export const notificationStatusEnum = pgEnum('notification_status', [
   'queued',

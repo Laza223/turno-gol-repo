@@ -11,6 +11,7 @@ import { AdminBottomNav } from './admin-bottom-nav'
 import { AdminHeader } from './admin-header'
 import { StatusBanner, type ReadOnlyNotice } from './status-banner'
 import { PushNotificationManagerLoader } from '@/components/admin/PushNotificationManagerLoader'
+import { disableCurrentPush } from '@/components/admin/push-browser'
 
 /** Días de prueba que le quedan al complejo, o null si no está en prueba. */
 function trialDaysLeft(tenantStatus: string, trialEndsAt: string | null): number | null {
@@ -26,6 +27,7 @@ interface AdminLayoutShellProps {
   periodEnd: string | null
   userEmail: string
   signOut: () => Promise<never>
+  pushIdentity?: string
   /** Banner rojo de impersonación (solo en sesiones del super admin). */
   impersonationBanner?: ReactNode
   /** Feature flag 'tournaments' resuelto server-side para este complejo. */
@@ -48,6 +50,7 @@ export function AdminLayoutShell({
   periodEnd,
   userEmail,
   signOut,
+  pushIdentity,
   impersonationBanner,
   tournamentsEnabled,
   staffRole,
@@ -70,6 +73,8 @@ export function AdminLayoutShell({
 
   function handleSignOut() {
     startTransition(async () => {
+      window.dispatchEvent(new Event('turnogol:push-signout'))
+      await disableCurrentPush().catch(() => {})
       await signOut()
     })
   }
@@ -148,7 +153,9 @@ export function AdminLayoutShell({
           >
             {/* Va acá, en flujo y dentro del contenedor de la página, y no como
                 overlay fijo: ver el comentario del propio componente. */}
-            <PushNotificationManagerLoader />
+            {!impersonationBanner && pathname !== '/notificaciones' && (
+              <PushNotificationManagerLoader identityKey={pushIdentity} />
+            )}
             {children}
           </main>
         </div>

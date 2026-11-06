@@ -6,6 +6,10 @@ import { notifyAdminPush } from '@/modules/notifications/push.service'
 import { logger } from '@/shared/lib/logger'
 import { captureException } from '@/lib/sentry'
 import type { MpGrantRevokedError } from './payment.errors'
+import {
+  enqueueStaffNotification,
+  isStaffNotificationsEnabled,
+} from '@/modules/notifications/staff-notification.service'
 
 /** Qué camino comprobó que el permiso de MP ya no sirve. Va al audit log. */
 export type MpDisconnectDetectedBy = 'webhook' | 'refresh_on_401' | 'cron'
@@ -53,6 +57,7 @@ export async function markMpDisconnected(input: {
   const at = new Date()
 
   let marked: boolean
+  let durableNotification = false
   try {
     marked = await withTenantContext(tenantId, async (tx) => {
       const rows = await tx
@@ -76,6 +81,24 @@ export async function markMpDisconnected(input: {
         resourceId: tenantId,
         metadata: { detected_by: detectedBy, mp_error: mpError },
       })
+      if (await isStaffNotificationsEnabled(tenantId, tx)) {
+        const title = 'MercadoPago se desconectó'
+        const body = 'Las reservas online entran sin seña hasta que lo reconectes.'
+        await enqueueStaffNotification(
+          {
+            tenantId,
+            eventKey: `mp.disconnected:${at.toISOString()}`,
+            type: 'mp_disconnected',
+            audience: 'owners',
+            policy: 'push_preferred',
+            payload: { type: 'mp_disconnected', title, body, url: '/dashboard' },
+            email: { templateName: 'staff_alert', content: { title, body, url: '/dashboard' } },
+            expiresAt: new Date(at.getTime() + 24 * 60 * 60 * 1000),
+          },
+          tx,
+        )
+        durableNotification = true
+      }
       return true
     })
   } catch (err) {
@@ -99,6 +122,7 @@ export async function markMpDisconnected(input: {
     mpError,
   })
 
+  if (durableNotification) return true
   try {
     await notifyAdminPush(tenantId, {
       type: 'mp_disconnected',

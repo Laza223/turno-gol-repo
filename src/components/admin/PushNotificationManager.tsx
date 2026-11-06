@@ -3,10 +3,19 @@
 import { useEffect, useRef, useState } from 'react'
 import * as Sentry from '@sentry/nextjs'
 import { Bell, X } from 'lucide-react'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 import { toast } from '@/hooks/use-toast'
 import { fetchWithTimeout, withTimeout } from '@/shared/utils/async'
+import {
+  disableCurrentPush,
+  PUSH_IDENTITY_KEY,
+  syncPushSubscription,
+  type PushDeviceActions,
+} from './push-browser'
 
-type Status = 'idle' | 'unsupported' | 'denied' | 'unsubscribed' | 'subscribed' | 'pending'
+type Status =
+  'idle' | 'unsupported' | 'install_required' | 'denied' | 'unsubscribed' | 'subscribed' | 'pending'
 
 const SW_PATH = '/sw.js'
 // Scope '/' y no '/admin/': `(admin)` es un route GROUP de Next, así que las URLs
@@ -69,33 +78,32 @@ async function fetchVapidKey(): Promise<string | null> {
   }
 }
 
-async function subscribeOnServer(sub: PushSubscription): Promise<boolean> {
-  try {
-    const json = sub.toJSON()
-    const res = await fetchWithTimeout('/api/admin/push/subscribe', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        endpoint: json.endpoint,
-        keys: json.keys,
-        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
-      }),
-    })
-    return res.ok
-  } catch {
-    return false
-  }
-}
+type Props = { settings?: boolean; identityKey?: string; actions?: PushDeviceActions }
 
-export function PushNotificationManager() {
+export function PushNotificationManager({ settings = false, identityKey, actions }: Props) {
   const [status, setStatus] = useState<Status>('idle')
   const [dismissed, setDismissed] = useState<boolean>(() => isDismissedRecently())
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const bcRef = useRef<BroadcastChannel | null>(null)
+  const [subscriptionId, setSubscriptionId] = useState<string | null>(null)
+  const [message, setMessage] = useState('')
+  const [testing, setTesting] = useState(false)
+  const stopped = useRef(false)
 
-  // Initial: detect support + permission state.
+  // Revalidar también al volver a la PWA: permiso local y fila del servidor son cosas distintas.
   useEffect(() => {
     if (typeof window === 'undefined') return
+    const iphone =
+      /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+    const installed =
+      window.matchMedia?.('(display-mode: standalone)').matches ||
+      (navigator as Navigator & { standalone?: boolean }).standalone
+    if (iphone && !installed) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStatus('install_required')
+      return
+    }
     if (
       !('serviceWorker' in navigator) ||
       !('PushManager' in window) ||
@@ -110,26 +118,66 @@ export function PushNotificationManager() {
       setStatus('unsupported')
       return
     }
-    if (Notification.permission === 'denied') {
-      setStatus('denied')
-      return
-    }
-    // Check current subscription. Fire-and-forget: the IIFE swallows all errors
-    // internally (catch → 'unsubscribed'), so it can never reject.
-    void (async () => {
+    stopped.current = false
+    let syncing = false
+    const sync = async () => {
+      if (syncing || stopped.current) return
+      syncing = true
       try {
         const reg = await navigator.serviceWorker.getRegistration(SW_SCOPE)
-        if (!reg) {
-          setStatus('unsubscribed')
-          return
+        // update() actualiza también instalaciones de antes del arreglo de userVisibleOnly.
+        if (reg?.update) void reg.update().catch(() => {})
+        if (Notification.permission === 'denied') {
+          await disableCurrentPush(actions).catch(() => {})
+          if (!stopped.current) setStatus('denied')
+        } else if (Notification.permission !== 'granted') {
+          if (!stopped.current) setStatus('unsubscribed')
+        } else {
+          const sub = await reg?.pushManager.getSubscription()
+          let previous: string | null = null
+          try {
+            previous = localStorage.getItem(PUSH_IDENTITY_KEY)
+          } catch {
+            /* Storage bloqueado. */
+          }
+          if (sub && identityKey && previous && previous !== identityKey) {
+            await disableCurrentPush(actions)
+            if (!stopped.current) setStatus('unsubscribed')
+          } else {
+            const id = sub ? await syncPushSubscription(sub, actions) : null
+            if (stopped.current) return
+            setSubscriptionId(id)
+            setStatus(id ? 'subscribed' : 'unsubscribed')
+            if (id && identityKey) {
+              try {
+                localStorage.setItem(PUSH_IDENTITY_KEY, identityKey)
+              } catch {
+                /* Storage bloqueado. */
+              }
+            }
+          }
         }
-        const sub = await reg.pushManager.getSubscription()
-        setStatus(sub ? 'subscribed' : 'unsubscribed')
       } catch {
-        setStatus('unsubscribed')
+        if (!stopped.current) setStatus('unsubscribed')
+      } finally {
+        syncing = false
       }
-    })()
-  }, [])
+    }
+    const visible = () => {
+      if (document.visibilityState === 'visible') void sync()
+    }
+    const signout = () => {
+      stopped.current = true
+    }
+    void sync()
+    document.addEventListener('visibilitychange', visible)
+    window.addEventListener('turnogol:push-signout', signout)
+    return () => {
+      stopped.current = true
+      document.removeEventListener('visibilitychange', visible)
+      window.removeEventListener('turnogol:push-signout', signout)
+    }
+  }, [identityKey, actions])
 
   // Multi-tab dedupe listener: when SW receives push, it broadcasts {id} on
   // the channel. The first tab to ack {id, ack:true} wins and shows the toast
@@ -144,6 +192,7 @@ export function PushNotificationManager() {
       const data = (msg.data || {}) as {
         id?: string
         ack?: boolean
+        nativeDisplayed?: boolean
         title?: string
         body?: string
         courtName?: string
@@ -153,7 +202,7 @@ export function PushNotificationManager() {
         url?: string
         type?: string
       }
-      if (!data.id || data.ack) return
+      if (!data.id || data.ack || data.nativeDisplayed) return
       if (seen.has(data.id)) return
       seen.add(data.id)
       // Claim the show: ack first, then render.
@@ -281,8 +330,10 @@ export function PushNotificationManager() {
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
       })
-      const ok = await subscribeOnServer(sub)
-      if (!ok) {
+      const id = await syncPushSubscription(sub, actions)
+      if (!id) {
+        // La suscripción puede pertenecer a una sesión anterior: no apropiársela.
+        await sub.unsubscribe()
         setStatus('unsubscribed')
         toast({
           title: 'No pudimos guardar tu suscripción',
@@ -290,6 +341,14 @@ export function PushNotificationManager() {
           variant: 'destructive',
         })
         return
+      }
+      setSubscriptionId(id)
+      if (identityKey) {
+        try {
+          localStorage.setItem(PUSH_IDENTITY_KEY, identityKey)
+        } catch {
+          /* Storage bloqueado. */
+        }
       }
       setStatus('subscribed')
       toast({
@@ -318,9 +377,124 @@ export function PushNotificationManager() {
     setDismissed(true)
   }
 
+  async function disable() {
+    setStatus('pending')
+    try {
+      await disableCurrentPush(actions)
+      setSubscriptionId(null)
+      setStatus('unsubscribed')
+      setMessage('Desactivadas en este dispositivo.')
+    } catch {
+      setStatus('unsubscribed')
+      setMessage('Revisá los permisos del dispositivo y volvé a comprobar.')
+    }
+  }
+
+  async function testDevice() {
+    if (!actions || !subscriptionId) return
+    setTesting(true)
+    setMessage('Enviando la prueba a este dispositivo…')
+    try {
+      const since = Date.now()
+      const result = await actions.test(subscriptionId)
+      if (!result.success) {
+        setMessage(result.error)
+        return
+      }
+      setMessage('Prueba encolada. Bloqueá la pantalla y esperá la notificación.')
+      // El outbox recuperable barre cada minuto; dar tiempo a un tick completo.
+      for (let i = 0; i < 40; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 3000))
+        if (stopped.current) return
+        const state = await actions.status(subscriptionId, result.notificationId)
+        if (!state.success) {
+          setMessage(state.error)
+          return
+        }
+        if (state.openedAt && new Date(state.openedAt).getTime() >= since) {
+          setMessage(
+            result.notificationId
+              ? 'Abriste la notificación de prueba en este dispositivo.'
+              : 'Abriste una notificación en este dispositivo. Comprobá que sea la prueba.',
+          )
+          return
+        }
+        if (state.processedAt && new Date(state.processedAt).getTime() >= since) {
+          setMessage(
+            result.notificationId
+              ? 'El dispositivo procesó la prueba. Revisá el centro de notificaciones.'
+              : 'El dispositivo procesó un aviso. Revisá la prueba en el centro de notificaciones.',
+          )
+          return
+        }
+        if (state.acceptedAt && new Date(state.acceptedAt).getTime() >= since)
+          setMessage(
+            result.notificationId
+              ? 'El proveedor aceptó la prueba; falta confirmación del dispositivo.'
+              : 'El proveedor aceptó un aviso; falta comprobar la prueba en este dispositivo.',
+          )
+      }
+    } catch {
+      setMessage('No pudimos comprobar la prueba. Revisá tu conexión y volvé a intentar.')
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  if (settings) {
+    const instructions =
+      status === 'install_required'
+        ? 'En iPhone o iPad necesitás iOS 16.4 o posterior. En Safari tocá Compartir → Agregar a inicio y abrí TurnoGol desde ese ícono. Después habilitá las notificaciones acá.'
+        : status === 'denied'
+          ? 'Las notificaciones están bloqueadas. Permitilas en Ajustes → Notificaciones → TurnoGol (iPhone) o en los permisos del sitio y del navegador (Android), y volvé a abrir la app.'
+          : status === 'unsupported'
+            ? 'Este navegador no permite notificaciones. Probá con Safari en una PWA de iPhone, o Chrome en Android.'
+            : status === 'subscribed'
+              ? 'Este dispositivo tiene permiso y su suscripción está guardada en TurnoGol. Probá que aparezca el aviso con la pantalla bloqueada.'
+              : status === 'idle'
+                ? 'Comprobando permiso y conexión con TurnoGol…'
+                : 'Habilitá las notificaciones para enterarte de las reservas aunque TurnoGol esté cerrada.'
+    return (
+      <section
+        className="card-premium max-w-2xl space-y-4 p-5 sm:p-6"
+        aria-label="Notificaciones de este dispositivo"
+      >
+        <h2 className="text-lg font-semibold">Este dispositivo</h2>
+        <p className="text-sm text-muted-foreground">{instructions}</p>
+        <div className="flex flex-wrap gap-3">
+          {(status === 'unsubscribed' || status === 'pending') && (
+            <Button onClick={enable} disabled={status === 'pending'}>
+              {status === 'pending' ? 'Habilitando…' : 'Habilitar notificaciones'}
+            </Button>
+          )}
+          {status === 'subscribed' && (
+            <>
+              <Button onClick={testDevice} disabled={testing}>
+                {testing ? 'Comprobando prueba…' : 'Probar en este teléfono'}
+              </Button>
+              <Button variant="outline" onClick={disable}>
+                Desactivar en este dispositivo
+              </Button>
+            </>
+          )}
+        </div>
+        {message && (
+          <p className="text-sm" role="status">
+            {message}
+          </p>
+        )}
+        <p className="text-xs text-muted-foreground">
+          No molestar o Enfoque pueden silenciar los avisos. Cada teléfono o computadora necesita su
+          propia activación.
+        </p>
+      </section>
+    )
+  }
+
   if (
     dismissed ||
     status === 'unsupported' ||
+    status === 'install_required' ||
     status === 'denied' ||
     status === 'subscribed' ||
     status === 'idle'
@@ -363,6 +537,9 @@ export function PushNotificationManager() {
       <p className="min-w-0 flex-1 text-xs font-semibold text-foreground sm:text-sm">
         ¿Habilitar notificaciones?
       </p>
+      <Link href="/notificaciones" className="text-xs underline">
+        Ver estado
+      </Link>
       <button
         type="button"
         onClick={enable}

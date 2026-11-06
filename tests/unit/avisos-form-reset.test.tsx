@@ -33,32 +33,21 @@ vi.mock('react-dom', async (importOriginal) => {
 
 import { AvisosForm } from '@/app/(admin)/settings/perfil/AvisosForm'
 
-const SIN_EMAIL = { daily_summary_email_opt_in: false } as unknown as TenantSettings
+const SIN_EMAIL = { weekly_summary_email_opt_in: false } as unknown as TenantSettings
 const noopAction = vi.fn(async () => ({ success: true as const }))
 
 afterEach(() => cleanup())
 
 describe('AvisosForm — el reset del form no pisa la selección', () => {
-  it('mantiene "También por email" después de que React resetea el form', () => {
+  it('no ofrece el resumen diario por email', () => {
     formState.mockReturnValue({ success: true })
     const { container } = render(<AvisosForm s={SIN_EMAIL} action={noopAction} />)
 
-    fireEvent.click(screen.getByRole('radio', { name: 'También por email' }))
-    expect(screen.getByRole('radio', { name: 'También por email' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    )
-
-    fireEvent.reset(container.querySelector('form')!)
-
-    expect(screen.getByRole('radio', { name: 'También por email' })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    )
-    expect(container.querySelector('input[name="dailySummaryEmailOptIn"]')).toHaveValue('true')
+    expect(screen.queryByRole('radiogroup', { name: 'Resumen diario' })).toBeNull()
+    expect(container.querySelector('input[name="dailySummaryEmailOptIn"]')).toBeNull()
   })
 
-  it('mantiene el semanal "Por email" después del reset, sin tocar el diario', () => {
+  it('mantiene el semanal "Por email" después del reset', () => {
     formState.mockReturnValue({ success: true })
     const { container } = render(<AvisosForm s={SIN_EMAIL} action={noopAction} />)
 
@@ -67,6 +56,6 @@ describe('AvisosForm — el reset del form no pisa la selección', () => {
 
     expect(screen.getByRole('radio', { name: 'Por email' })).toHaveAttribute('aria-checked', 'true')
     expect(container.querySelector('input[name="weeklySummaryEmailOptIn"]')).toHaveValue('true')
-    expect(container.querySelector('input[name="dailySummaryEmailOptIn"]')).toHaveValue('false')
+    expect(container.querySelector('input[name="dailySummaryEmailOptIn"]')).toBeNull()
   })
 })

@@ -28,6 +28,7 @@ describe('GET /api/admin/push/vapid', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.stubEnv('VAPID_PUBLIC_KEY', undefined)
   })
 
   afterEach(() => {
@@ -54,5 +55,12 @@ describe('GET /api/admin/push/vapid', () => {
     expect(res.status).toBe(500)
     const json = (await res.json()) as { error: { code: string } }
     expect(json.error.code).toBe('VAPID_NOT_CONFIGURED')
+  })
+
+  it('uses the sender public key when a different legacy client key remains', async () => {
+    vi.stubEnv('VAPID_PUBLIC_KEY', REAL_KEY)
+    vi.stubEnv('NEXT_PUBLIC_VAPID_PUBLIC_KEY', 'legacy-key')
+    const response = await GET()
+    expect(await response.json()).toEqual({ publicKey: REAL_KEY })
   })
 })

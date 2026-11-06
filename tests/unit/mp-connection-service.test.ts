@@ -1,4 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+vi.mock('@/modules/notifications/staff-notification.service', () => ({
+  isStaffNotificationsEnabled: vi.fn().mockResolvedValue(false),
+  enqueueStaffNotification: vi.fn(),
+}))
 
 // `markMpDisconnected`: el push sale una sola vez, DESPUÉS del commit, y solo
 // si esta llamada hizo la transición. El compare-and-set contra Postgres real

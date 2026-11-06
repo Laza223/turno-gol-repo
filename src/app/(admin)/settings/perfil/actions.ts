@@ -405,7 +405,6 @@ export async function updateUserEmailAction(newEmail: string): Promise<UpdateEma
 export type AvisosActionResult = { success: true } | { success: false; error: string }
 
 const avisosSchema = z.object({
-  dailySummaryEmailOptIn: z.boolean(),
   weeklySummaryEmailOptIn: z.boolean(),
 })
 
@@ -421,7 +420,6 @@ export async function updateAvisosSettingsAction(
   if (limited) return { success: false, error: limited }
 
   const parsed = avisosSchema.safeParse({
-    dailySummaryEmailOptIn: formData.get('dailySummaryEmailOptIn') === 'true',
     weeklySummaryEmailOptIn: formData.get('weeklySummaryEmailOptIn') === 'true',
   })
   if (!parsed.success) {
@@ -429,7 +427,6 @@ export async function updateAvisosSettingsAction(
   }
 
   const patch = {
-    daily_summary_email_opt_in: parsed.data.dailySummaryEmailOptIn,
     weekly_summary_email_opt_in: parsed.data.weeklySummaryEmailOptIn,
   }
 

@@ -1,4 +1,5 @@
 import type { PgBoss } from 'pg-boss'
+import * as Sentry from '@sentry/nextjs'
 import { getWorkerSql } from '@/shared/db/client'
 import { QUEUE_SEND_EMAIL } from '../definitions'
 import {
@@ -14,12 +15,13 @@ import {
 import { getEmailProvider } from '@/modules/notifications/email.provider'
 import { renderTemplate, isTemplateName } from '@/modules/notifications/templates'
 import { logger } from '@/shared/lib/logger'
+import { processQueuedStaffNotifications } from '@/modules/notifications/staff-notification.service'
 
 /**
  * Process a single notification. Exported for direct use in tests.
  */
 async function processSingleNotification(notif: NotificationRow): Promise<void> {
-  if (notif.status === 'sent') return
+  if (notif.status === 'sent' || notif.channel !== 'email') return
 
   const MAX_ATTEMPTS = 3
 
@@ -95,7 +97,8 @@ export async function processQueuedNotifications(): Promise<void> {
   // Fetch up to 50 queued notifications (attempt_count ≤ 3 → includes final attempt)
   const rows = await sql<{ id: string }[]>`
     SELECT id FROM notifications
-    WHERE status = 'queued'
+    WHERE status = 'queued' AND channel = 'email'
+      AND available_at <= now() AND (expires_at IS NULL OR expires_at > now())
       AND attempt_count <= 3
     ORDER BY queued_at
     LIMIT 50
@@ -121,6 +124,16 @@ export async function registerSendEmailWorker(boss: PgBoss): Promise<void> {
   // Route handlers INSERT notifications (status='queued'); this worker dispatches them.
   await boss.schedule(QUEUE_SEND_EMAIL, '* * * * *', {})
   await boss.work(QUEUE_SEND_EMAIL, async () => {
+    await Sentry.withMonitor(
+      'staff-notification-dispatch',
+      () => processQueuedStaffNotifications(),
+      {
+        schedule: { type: 'crontab', value: '* * * * *' },
+        checkinMargin: 2,
+        maxRuntime: 1,
+        timezone: 'UTC',
+      },
+    )
     await processQueuedNotifications()
   })
   logger.info('registered queue (cron sweep)', { module: 'workers', queue: QUEUE_SEND_EMAIL })

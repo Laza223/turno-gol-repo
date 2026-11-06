@@ -35,6 +35,7 @@ import {
 } from './push-payloads'
 import type { StaffRole } from '@/modules/staff/roles'
 import { logger } from '@/shared/lib/logger'
+import { enqueueStaffNotification, isStaffNotificationsEnabled } from './staff-notification.service'
 
 const DEFAULT_TIMEZONE = 'America/Argentina/Buenos_Aires'
 
@@ -91,6 +92,12 @@ export async function notifyAdminPush(
   const subs = await sql<{ id: string }[]>`
     SELECT ps.id FROM push_subscriptions ps
     WHERE ps.tenant_id = ${tenantId} ${roleFilter}
+      AND EXISTS (
+        SELECT 1 FROM tenant_staff_members active_staff
+        WHERE active_staff.tenant_id = ps.tenant_id
+          AND active_staff.staff_user_id = ps.staff_user_id
+          AND active_staff.is_active = true
+      )
   `
   if (subs.length === 0) {
     return { enqueued: 0 }
@@ -136,11 +143,44 @@ export async function notifyStaffPush(
   tenantId: string,
   staffUserId: string,
   payload: AdminPushPayload,
-): Promise<{ enqueued: number }> {
+  subscriptionId?: string,
+): Promise<{ enqueued: number; notificationId?: string }> {
+  const durable = await withTenantContext(tenantId, async (tx) => {
+    if (!(await isStaffNotificationsEnabled(tenantId, tx))) return null
+    const ids = await enqueueStaffNotification(
+      {
+        tenantId,
+        eventKey: `test:${crypto.randomUUID()}`,
+        type: 'test',
+        audience: 'staff',
+        recipientId: staffUserId,
+        ...(subscriptionId ? { subscriptionId } : {}),
+        policy: 'push_only',
+        payload: {
+          ...payload,
+          type: 'test',
+          title: 'Prueba de TurnoGol',
+          body: 'Las notificaciones están llegando a este dispositivo.',
+        },
+        notBefore: new Date(),
+        expiresAt: new Date(Date.now() + 5 * 60_000),
+      },
+      tx,
+    )
+    return { enqueued: ids.length, notificationId: ids[0] }
+  })
+  if (durable) return durable
   const sql = getWorkerSql()
   const subs = await sql<{ id: string }[]>`
-    SELECT id FROM push_subscriptions
-    WHERE tenant_id = ${tenantId} AND staff_user_id = ${staffUserId}
+    SELECT ps.id FROM push_subscriptions ps
+    WHERE ps.tenant_id = ${tenantId} AND ps.staff_user_id = ${staffUserId}
+      AND (${subscriptionId ?? null}::uuid IS NULL OR ps.id = ${subscriptionId ?? null}::uuid)
+      AND EXISTS (
+        SELECT 1 FROM tenant_staff_members active_staff
+        WHERE active_staff.tenant_id = ps.tenant_id
+          AND active_staff.staff_user_id = ps.staff_user_id
+          AND active_staff.is_active = true
+      )
   `
   if (subs.length === 0) return { enqueued: 0 }
   const boss = await getBoss()
@@ -177,6 +217,7 @@ export async function notifyAdminBookingConfirmed(
   bookingId: string,
 ): Promise<void> {
   try {
+    if (await withTenantContext(tenantId, (tx) => isStaffNotificationsEnabled(tenantId, tx))) return
     const ctx = await loadBookingPushContext(tenantId, bookingId)
     await notifyAdminPush(tenantId, {
       type: 'booking.confirmed_online',
@@ -213,6 +254,7 @@ export async function notifyAdminBookingCanceled(
   opts: { late: boolean },
 ): Promise<void> {
   try {
+    if (await withTenantContext(tenantId, (tx) => isStaffNotificationsEnabled(tenantId, tx))) return
     const ctx = await loadBookingPushContext(tenantId, bookingId)
     await notifyAdminPush(tenantId, bookingCanceledPayload({ bookingId, late: opts.late, ...ctx }))
   } catch (err) {
@@ -235,6 +277,7 @@ export async function notifyOwnerPlanEvent(
   dedupeId: string,
 ): Promise<void> {
   try {
+    if (await withTenantContext(tenantId, (tx) => isStaffNotificationsEnabled(tenantId, tx))) return
     await notifyAdminPush(tenantId, planPushPayload(event, dedupeId), { onlyRole: 'admin' })
   } catch (err) {
     logger.error('push dispatch for plan event failed', {

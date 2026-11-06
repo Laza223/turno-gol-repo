@@ -7,6 +7,8 @@ import { isPublicPortalOpen, publicBookingAdvanceDays } from '@/modules/tenants/
 import { bookingMinAdvanceHours } from '@/modules/tenants/tenant.utils'
 import type { OpeningHours, TenantSettings } from '@/modules/tenants/tenant.types'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
+import { enqueueBookingStaffNotification } from '@/modules/notifications/booking-staff-notification.service'
+import { isStaffNotificationsEnabled } from '@/modules/notifications/staff-notification.service'
 import { dayKeyOf } from '@/lib/booking/pricing'
 import { captureMessage } from '@/lib/sentry'
 import {
@@ -324,23 +326,29 @@ async function createWhatsappBookingImpl(
 
     // Aviso al admin: el mismo mail que la reserva online. El push sale del caller
     // (whatsapp-bot.tools.ts), ya commiteada la tx.
-    await enqueueTenantOwnerNotification(
-      {
-        tenantId,
-        templateName: 'admin_new_booking',
-        content: {
-          courtName: slot.court.name,
-          // Operativo (`input.date`), igual que en el portal.
-          date: input.date.split('-').reverse().join('/'),
-          timeStart: input.timeStart,
-          timeEnd: timeEnd.slice(0, 5),
-          playerName: guestName,
-          playerPhone: input.guestPhone,
+    if (await isStaffNotificationsEnabled(tenantId, tx)) {
+      if (booking.status === 'confirmed') {
+        await enqueueBookingStaffNotification(tenantId, booking.id, 'confirmed', tx)
+      }
+    } else {
+      await enqueueTenantOwnerNotification(
+        {
+          tenantId,
+          templateName: 'admin_new_booking',
+          content: {
+            courtName: slot.court.name,
+            // Operativo (`input.date`), igual que en el portal.
+            date: input.date.split('-').reverse().join('/'),
+            timeStart: input.timeStart,
+            timeEnd: timeEnd.slice(0, 5),
+            playerName: guestName,
+            playerPhone: input.guestPhone,
+          },
+          triggerEvent: 'booking.admin_new_booking',
         },
-        triggerEvent: 'booking.admin_new_booking',
-      },
-      tx,
-    )
+        tx,
+      )
+    }
 
     await afterOnlineInsert(
       booking,

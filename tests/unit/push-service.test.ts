@@ -10,6 +10,11 @@ vi.mock('@/shared/jobs/boss', () => ({
   getBoss: vi.fn(),
 }))
 
+vi.mock('@/modules/notifications/staff-notification.service', () => ({
+  isStaffNotificationsEnabled: vi.fn().mockResolvedValue(false),
+  enqueueStaffNotification: vi.fn(),
+}))
+
 vi.mock('@/shared/lib/logger', () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
@@ -26,7 +31,7 @@ import { QUEUE_PUSH_SEND } from '@/shared/jobs/definitions'
 
 const mockSql = getWorkerSql as ReturnType<typeof vi.fn>
 const mockGetBoss = getBoss as ReturnType<typeof vi.fn>
-const mockWithTenantContext = withTenantContext as ReturnType<typeof vi.fn>
+const mockWithTenantContext = vi.mocked(withTenantContext)
 
 function makeBossStub() {
   return { send: vi.fn().mockResolvedValue(undefined) }
@@ -40,6 +45,9 @@ function makeSqlStub(rows: Array<{ id: string }>) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockWithTenantContext.mockImplementation(async (_tenantId, callback) =>
+    callback({} as Parameters<Parameters<typeof withTenantContext>[1]>[0]),
+  )
 })
 
 describe('notifyAdminPush', () => {
@@ -263,7 +271,11 @@ describe('notifyAdminBookingCanceled', () => {
     mockSql.mockReturnValue(makeSqlStub([{ id: 'sub-1' }]))
     const boss = makeBossStub()
     mockGetBoss.mockResolvedValue(boss)
-    mockWithTenantContext.mockResolvedValue(rows)
+    mockWithTenantContext.mockImplementation(async (_tenantId, callback) =>
+      callback({ execute: vi.fn().mockResolvedValue(rows) } as unknown as Parameters<
+        Parameters<typeof withTenantContext>[1]
+      >[0]),
+    )
 
     await notifyAdminBookingCanceled('tenant-1', 'b-1', { late: true })
 

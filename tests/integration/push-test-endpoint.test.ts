@@ -10,12 +10,15 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import type { AuthUser } from '@/modules/auth/types'
 
 // Auth boundary mock — must be hoisted before route import.
-vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: vi.fn() }))
+vi.mock('@/modules/auth/auth.middleware', () => ({
+  extractAuthUser: vi.fn(),
+  extractRealAuthUser: vi.fn(),
+}))
 
 // Tenant status check in withTenant hits real DB — we don't need to mock it
 // because we'll create a real tenant.
 
-import { extractAuthUser } from '@/modules/auth/auth.middleware'
+import { extractAuthUser, extractRealAuthUser } from '@/modules/auth/auth.middleware'
 import { closeSql, getSql } from '@/shared/db/client'
 import { getBoss, stopBoss } from '@/shared/jobs/boss'
 import { POST as testPush } from '@/app/api/admin/push/test/route'
@@ -27,7 +30,10 @@ import {
   linkStaffToTenant,
 } from '../helpers/tenant'
 
-const asUser = (user: AuthUser | null) => vi.mocked(extractAuthUser).mockResolvedValue(user)
+const asUser = (user: AuthUser | null) => {
+  vi.mocked(extractAuthUser).mockResolvedValue(user)
+  vi.mocked(extractRealAuthUser).mockResolvedValue(user)
+}
 
 // Shared test data created in beforeAll.
 let tenantId: string
@@ -77,6 +83,55 @@ function makeAdminUser(tId: string, sId: string): AuthUser {
 }
 
 describe('POST /api/admin/push/test (F9 T4)', () => {
+  it('rechaza un dispositivo de otro miembro del complejo sin encolar el aviso', async () => {
+    const sql = getSql()
+    const otherStaff = await createTestStaffUser(sql)
+    await linkStaffToTenant(sql, tenantId, otherStaff.id)
+    const [subscription] = await sql<{ id: string }[]>`
+      INSERT INTO push_subscriptions (tenant_id,staff_user_id,endpoint,p256dh_key,auth_key)
+      VALUES (${tenantId},${otherStaff.id},${`https://fcm.googleapis.com/device-${crypto.randomUUID()}`},'key','auth') RETURNING id
+    `
+    await sql`DELETE FROM pgboss_v12.job WHERE name = 'push-send'`
+    asUser(makeAdminUser(tenantId, staffUserId))
+    const response = await testPush(
+      new Request('http://localhost/api/admin/push/test', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ subscriptionId: subscription!.id }),
+      }) as never,
+    )
+    expect(response.status).toBe(403)
+    // Cola operacional: se consulta como admin deliberadamente, no es dato tenant-scoped.
+    expect(await sql`SELECT id FROM pgboss_v12.job WHERE name='push-send'`).toHaveLength(0)
+    await sql`DELETE FROM push_subscriptions WHERE id=${subscription!.id}`
+  })
+
+  it('la prueba focalizada encola solamente el dispositivo elegido', async () => {
+    const sql = getSql()
+    const subs = await sql<{ id: string }[]>`
+      INSERT INTO push_subscriptions (tenant_id,staff_user_id,endpoint,p256dh_key,auth_key) VALUES
+      (${tenantId},${staffUserId},${`https://fcm.googleapis.com/device-${crypto.randomUUID()}`},'key','auth'),
+      (${tenantId},${staffUserId},${`https://fcm.googleapis.com/device-${crypto.randomUUID()}`},'key','auth') RETURNING id
+    `
+    await sql`DELETE FROM pgboss_v12.job WHERE name='push-send'`
+    asUser(makeAdminUser(tenantId, staffUserId))
+    const response = await testPush(
+      new Request('http://localhost/api/admin/push/test', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ subscriptionId: subs[0]!.id }),
+      }) as never,
+    )
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ success: true, dispatched: 1 })
+    // El id de dispositivo pertenece al payload de infraestructura de pg-boss.
+    const jobs = await sql<
+      { data: { subscription_id: string } }[]
+    >`SELECT data FROM pgboss_v12.job WHERE name='push-send'`
+    expect(jobs.map((job) => job.data.subscription_id)).toEqual([subs[0]!.id])
+    for (const sub of subs) await sql`DELETE FROM push_subscriptions WHERE id=${sub.id}`
+    await sql`DELETE FROM pgboss_v12.job WHERE name='push-send'`
+  })
   it('Case 1: admin has 0 subscriptions → returns {success:true, dispatched: 0}', async () => {
     asUser(makeAdminUser(tenantId, staffUserId))
 

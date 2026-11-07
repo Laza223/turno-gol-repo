@@ -17,7 +17,8 @@ import { GridOverlays } from './grid/GridOverlays'
 import { ClosedDayEmptyState, GridOfflineBanner, NoCourtsEmptyState } from './grid/GridEmptyStates'
 import { moveGridFocus } from './grid/grid-keyboard-nav'
 import type { RenderCanteenDialog, RenderChargeModal, SlotPanelActions } from './slot-panel/actions'
-import { sumPendingCents, type GridBooking } from '@/lib/booking/grid-cells'
+import { addDays, sumPendingCents, type GridBooking } from '@/lib/booking/grid-cells'
+import { nightCutoffMins } from '@/shared/time/operating-day'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import type {
@@ -151,6 +152,18 @@ export function BookingGrid({
   const [highlightPending, setHighlightPending] = useState(false)
   const [storyOpen, setStoryOpen] = useState(false)
   const [manyOpen, setManyOpen] = useState(false)
+  // "Esta noche": el día operativo vigente. En un complejo que cierra pasada la
+  // medianoche, a la 01:00 el día que se juega sigue siendo el de ayer.
+  const viewingTonight = useMemo(() => {
+    if (!artNow.date) return false
+    const [h, m] = artNow.time.split(':').map(Number)
+    const nowMins = (h ?? 0) * 60 + (m ?? 0)
+    const tonight =
+      nowMins < nightCutoffMins(openingHours, closesNextDay)
+        ? addDays(artNow.date, -1)
+        : artNow.date
+    return date === tonight
+  }, [artNow.date, artNow.time, date, openingHours, closesNextDay])
 
   const showOfflineBanner = useOfflineBannerDelay(status)
 
@@ -242,7 +255,7 @@ export function BookingGrid({
         highlightPending={highlightPending}
         onToggleHighlight={() => setHighlightPending((v) => !v)}
         onOpenStory={renderStoryDialog ? () => setStoryOpen(true) : undefined}
-        onOpenChargeMany={renderChargeMany ? () => setManyOpen(true) : undefined}
+        onOpenChargeMany={renderChargeMany && viewingTonight ? () => setManyOpen(true) : undefined}
       />
 
       {actions}

@@ -28,7 +28,7 @@ type Props = {
   onToggleHighlight: () => void
   /** Abre la placa de turnos libres para historias. Sin esto el botón no se dibuja (stories, tests). */
   onOpenStory?: () => void
-  /** "Cobrar los N": abre las tarjetas de los turnos en rojo. Solo se ofrece mirando hoy. */
+  /** "Cobrar los N": abre las tarjetas de los turnos en rojo. El padre solo lo pasa mirando la noche vigente (día operativo). */
   onOpenChargeMany?: () => void
 }
 
@@ -202,7 +202,7 @@ export function GridHeaderBar({
 
   // Con 2 o más en rojo y mirando hoy: cobrarlos de una, sin abrir un modal por turno.
   const chargeManyButton =
-    isToday && hasPending && pendingSummary.count >= 2 && onOpenChargeMany ? (
+    hasPending && pendingSummary.count >= 2 && onOpenChargeMany ? (
       <button
         type="button"
         onClick={onOpenChargeMany}

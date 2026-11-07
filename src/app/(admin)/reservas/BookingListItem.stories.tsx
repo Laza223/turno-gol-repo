@@ -302,8 +302,8 @@ export const Bloqueo: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getAllByText('Bloqueo').at(-1)!).toBeVisible()
-    // Un bloqueo no habla de plata: ni "Sin cargo" ni un monto.
-    await expect(canvas.queryByText('Sin cargo')).toBeNull()
+    // Un bloqueo no habla de plata: ni "No se cobra" ni un monto.
+    await expect(canvas.queryByText('No se cobra')).toBeNull()
     await expect(canvas.queryByText(/\$/)).toBeNull()
   },
 }

@@ -381,12 +381,12 @@ export default function ReserveSection({
   const dayName = cur.date ? capitalizeFirst(dayLong(cur.date)) : ''
   const hora = selected?.time ?? cur.hora ?? ''
   const withRoom = rows.filter((r) => r.freeCount > 0).length
-  const takenMessage = `Las ${cur.hora} se ocuparon.`
+  const takenMessage = `Ya se ocupó el horario ${cur.hora}.`
   const help =
     step === 1
       ? advanceDays === 0
         ? 'Reservás solo para hoy'
-        : `Reservás hasta ${plural(advanceDays, 'día', 'días')} antes`
+        : `Podés reservar hasta ${plural(advanceDays, 'día', 'días')} adelante`
       : step === 2
         ? `${dayName} · Debajo de cada hora, cuántas canchas quedan libres.`
         : `${dayName} · ${hora} a ${endOf(hora)} · ${

@@ -73,13 +73,13 @@ describe('agendaMoneyCell — la plata de una fila de la Agenda, en una sola lec
     })
   })
 
-  it('bloqueo: no dice nada de plata; evento a $0: "Sin cargo"', () => {
+  it('bloqueo: no dice nada de plata; evento a $0: "No se cobra"', () => {
     expect(agendaMoneyCell(row({ type: 'block', priceSnapshot: 0, pending: 0 }), true)).toEqual({
       text: '',
       tone: 'neutral',
     })
     expect(agendaMoneyCell(row({ priceSnapshot: 0, pending: 0 }), true)).toEqual({
-      text: 'Sin cargo',
+      text: 'No se cobra',
       tone: 'neutral',
     })
   })

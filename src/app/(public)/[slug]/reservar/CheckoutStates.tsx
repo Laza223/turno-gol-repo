@@ -23,10 +23,18 @@ const NOTICE_LINK = cn(
  * Aviso del checkout, en el badge dual de La Previa: relleno rojo OPACO en claro (un `/10`
  * translúcido compone contra el fondo del portal y daba 3,3:1) y tinte sobre el vidrio en oscuro.
  * Todo lo que se avisa acá frena la reserva, así que es un error y no una advertencia: el ámbar es
- * de la escasez ("Queda 1") y de nada más. Dice qué pasó y deja una salida (un aviso sin salida
+ * de la escasez ("Queda 1") y de nada más. Dice qué pasó y deja una salida, salvo que ya esté en el lugar correcto (un aviso sin salida
  * obliga a usar el "atrás" del navegador).
  */
-function Notice({ href, action, children }: { href: string; action: string; children: ReactNode }) {
+function Notice({
+  href,
+  action,
+  children,
+}: {
+  href?: string
+  action?: string
+  children: ReactNode
+}) {
   return (
     <div
       role="alert"
@@ -38,9 +46,11 @@ function Notice({ href, action, children }: { href: string; action: string; chil
       />
       <div>
         <p className="text-base text-red-700 dark:text-red-300">{children}</p>
-        <Link href={href} className={NOTICE_LINK}>
-          {action}
-        </Link>
+        {href && action && (
+          <Link href={href} className={NOTICE_LINK}>
+            {action}
+          </Link>
+        )}
       </div>
     </div>
   )
@@ -101,39 +111,38 @@ export function CheckoutErrorBanner({
   }
   if (error === 'too_many_holds') {
     return (
-      <Notice href={turnHref} action="Elegir otro turno">
-        Tenés reservas esperando el pago de la seña en este complejo. Si no las pagás, se liberan
-        solas en unos minutos; después podés reservar otra.
+      // Otro turno daría el mismo error: la salida es pagar o ver la reserva que está esperando.
+      <Notice href="/mis-reservas" action="Ver mis reservas">
+        Tenés reservas esperando el pago de la seña en este complejo. Pagalas o esperá unos minutos
+        a que se liberen.
       </Notice>
     )
   }
   if (error === 'rate_limited') {
     return (
-      <Notice href={turnHref} action="Elegir otro turno">
-        Estás yendo muy rápido. Esperá unos segundos e intentá de nuevo.
-      </Notice>
+      // Ya está en el turno correcto: no hay adónde ir, solo esperar y volver a tocar el botón.
+      <Notice>Estás yendo muy rápido. Esperá unos segundos e intentá de nuevo.</Notice>
     )
   }
   if (error === 'unavailable') {
     return (
       <Notice href={turnHref} action="Elegir otro turno">
-        No pudimos reservar este turno. Probá con otro horario o con otra cancha.
+        Este turno no se pudo reservar. Puede que alguien lo haya tomado. Probá con otro horario u
+        otra cancha.
       </Notice>
     )
   }
   if (error === 'date_out_of_range') {
     return (
       <Notice href={turnHref} action="Elegir otro turno">
-        Ese turno ya no se puede reservar: quedó fuera de la fecha disponible para reservar online.
-        Elegí otro turno.
+        Ese día ya no se puede reservar online. Elegí otro turno.
       </Notice>
     )
   }
   if (error === 'too_soon') {
     return (
       <Notice href={turnHref} action="Elegir otro turno">
-        Ese turno empieza muy pronto: este complejo pide reservar con más anticipación. Elegí otro
-        turno.
+        Este complejo pide reservar con más anticipación. Elegí un turno más adelante.
       </Notice>
     )
   }

@@ -356,7 +356,7 @@ export function EarlierUnpaidBanner({
             </DialogTitle>
             <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
               Se jugaron en días anteriores y no se anotó el cobro. Si nadie lo anota, a las 24 h de
-              terminado se da por cobrado en efectivo.
+              terminado el sistema lo registra como cobrado en efectivo, aunque no se haya cobrado.
             </p>
           </div>
           <ol className="divide-y divide-border">

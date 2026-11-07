@@ -386,10 +386,10 @@ describe('gridMoneyVisual — celda de la Grilla, variante "Entra entera" (el co
     expect(v.amountCents).toBeNull()
   })
 
-  it('precio 0 (escuelita, torneo interno): neutral, "Sin cargo"', () => {
+  it('precio 0 (escuelita, torneo interno): neutral, "No se cobra"', () => {
     const v = gridMoneyVisual(moneyFacts({ priceSnapshot: 0 }))
     expect(v.key).toBe('free_event')
-    expect(v.label).toBe('Sin cargo')
+    expect(v.label).toBe('No se cobra')
     expect(v.tone).toBe('neutral')
     expect(v.amountCents).toBeNull()
   })

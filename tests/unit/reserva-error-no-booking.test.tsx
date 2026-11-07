@@ -122,7 +122,7 @@ describe('ReservaErrorPage — qué pasó con el turno', () => {
     expect(screen.getByText('El pago no se procesó')).toBeTruthy()
     // El plazo es la hora del reloj (ART), nunca "poco tiempo" ni una cuenta regresiva.
     expect(
-      screen.getByText(/Tu turno sigue guardado: podés pagar hasta las \d\d:\d\d/),
+      screen.getByText(/Tu turno sigue guardado. Podés pagar hasta las \d\d:\d\d/),
     ).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Reintentar pago' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Elegir otro turno' }).getAttribute('href')).toBe(

@@ -331,7 +331,7 @@ export function EventoForm({
           </div>
           {repeatMode === 'once' && taken && (
             <p role="alert" className="text-xs text-amber-700 dark:text-amber-400">
-              Este turno acaba de ser tomado.
+              Ese horario ya se ocupó. Elegí otro para seguir.
             </p>
           )}
         </section>

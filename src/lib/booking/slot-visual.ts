@@ -518,7 +518,7 @@ export function gridMoneyVisual(facts: GridMoneyFacts): GridMoneyVisual {
   if (facts.priceSnapshot === 0) {
     return {
       key: 'free_event',
-      label: 'Sin cargo',
+      label: 'No se cobra',
       icon: Gift,
       tone: 'neutral',
       striped: false,

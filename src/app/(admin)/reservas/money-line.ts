@@ -33,12 +33,12 @@ export function agendaMoneyCell(
   // "Bloqueo" ya lo explican). Un evento a $0 (escuelita, cortesía) sí es un
   // turno, y ahí "Sin cargo" responde "¿cuánto se cobra?".
   if (b.type === 'block') return { text: '', tone: 'neutral' }
-  if (b.priceSnapshot === 0) return { text: 'Sin cargo', tone: 'neutral' }
+  if (b.priceSnapshot === 0) return { text: 'No se cobra', tone: 'neutral' }
   if (typeof b.pending !== 'number') return { text: formatArs(b.priceSnapshot), tone: 'neutral' }
   if (b.pending <= 0) {
     return (b.totalPaid ?? 0) > 0
       ? { text: 'Pagado', tone: 'success' }
-      : { text: 'Sin costo', tone: 'neutral' }
+      : { text: 'No se cobra', tone: 'neutral' }
   }
   if (ended) {
     // Nada cobrado todavía: el monto completo. Cobro parcial (seña o mostrador):

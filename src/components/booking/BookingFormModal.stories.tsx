@@ -58,7 +58,7 @@ export const Turno: Story = {
   play: async ({ canvasElement, args }) => {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.type(body.getByLabelText('¿A nombre de quién?'), 'Juan Pérez')
-    await userEvent.click(body.getByRole('button', { name: /Reservar/ }))
+    await userEvent.click(body.getByRole('button', { name: /Agendar turno/ }))
     await waitFor(() => expect(args.createBookingAction).toHaveBeenCalled())
     const payload = (args.createBookingAction as ReturnType<typeof fn>).mock.calls[0]![0] as Record<
       string,
@@ -167,7 +167,9 @@ export const TurnoTomado: Story = {
   },
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
-    await expect(await body.findByText('Este turno acaba de ser tomado.')).toBeInTheDocument()
+    await expect(
+      await body.findByText('Ese horario ya se ocupó. Elegí otro para seguir.'),
+    ).toBeInTheDocument()
   },
 }
 
@@ -176,15 +178,15 @@ export const ErrorDelServidor: Story = {
   args: {
     createBookingAction: fn(async () => ({
       success: false as const,
-      error: 'Este turno acaba de ser tomado.',
+      error: 'Ese horario ya se ocupó. Elegí otro para seguir.',
     })),
   },
   play: async ({ canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.type(body.getByLabelText('¿A nombre de quién?'), 'Juan Pérez')
-    await userEvent.click(body.getByRole('button', { name: /Reservar/ }))
+    await userEvent.click(body.getByRole('button', { name: /Agendar turno/ }))
     await expect(await body.findByRole('alert')).toHaveTextContent(
-      'Este turno acaba de ser tomado.',
+      'Ese horario ya se ocupó. Elegí otro para seguir.',
     )
   },
 }

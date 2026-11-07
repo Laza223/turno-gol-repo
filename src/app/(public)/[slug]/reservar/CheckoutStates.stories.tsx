@@ -92,9 +92,9 @@ export const DemasiadosHolds: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('alert')).toHaveTextContent(/esperando el pago de la seña/i)
-    await expect(canvas.getByRole('link', { name: 'Elegir otro turno' })).toHaveAttribute(
+    await expect(canvas.getByRole('link', { name: 'Ver mis reservas' })).toHaveAttribute(
       'href',
-      '/club-norte?date=2026-03-14&hora=21%3A00&formato=5',
+      '/mis-reservas',
     )
   },
 }
@@ -112,7 +112,7 @@ export const NoDisponible: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('alert')).toHaveTextContent(
-      'No pudimos reservar este turno. Probá con otro horario o con otra cancha.',
+      'Este turno no se pudo reservar. Puede que alguien lo haya tomado. Probá con otro horario u otra cancha.',
     )
   },
 }

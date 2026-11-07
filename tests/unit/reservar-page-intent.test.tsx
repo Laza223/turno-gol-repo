@@ -101,7 +101,7 @@ const emailToken = (over: Partial<BookingIntentFields> = {}, email = EMAIL, now 
 const hiddenIntent = (root: HTMLElement) =>
   root.querySelector<HTMLInputElement>('form input[type="hidden"][name="booking_intent"]')?.value
 const confirmando = () => screen.queryByText('Confirmando tu reserva…')
-const HINT = 'Tocá Reservar para terminar.'
+const HINT = 'Tocá "Reservar" para terminar tu reserva.'
 const hint = () => screen.queryByText(HINT)
 /** Todo lo que la page le pasa al cliente (props de los elementos), sin las claves internas de React. */
 const clientProps = (ui: unknown) => {

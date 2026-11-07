@@ -46,7 +46,9 @@ describe('CheckoutErrorBanner — alertas de error de checkout (#22)', () => {
   // MEJORA-UX QA: los banners eran solo texto, sin salida. Cada aviso dice qué hacer y lleva ahí:
   // a la ficha con el día, la hora y el formato que eligió (a esa hora puede haber otra cancha libre);
   // el bloqueado, a otro complejo (otro turno daría el mismo error).
-  const OTRO_TURNO = CODES.filter((code) => code !== 'banned')
+  const OTRO_TURNO = CODES.filter(
+    (code) => code !== 'banned' && code !== 'too_many_holds' && code !== 'rate_limited',
+  )
 
   it.each(OTRO_TURNO)(
     '"Elegir otro turno" conserva el día, la hora y el formato para error=%s',
@@ -55,6 +57,19 @@ describe('CheckoutErrorBanner — alertas de error de checkout (#22)', () => {
       expect(screen.getByRole('link', { name: 'Elegir otro turno' })).toHaveAttribute('href', TURN)
     },
   )
+
+  it('error=too_many_holds lleva a Mis reservas, donde está la reserva por pagar', () => {
+    render(<CheckoutErrorBanner turnHref={TURN} error="too_many_holds" />)
+    expect(screen.getByRole('link', { name: 'Ver mis reservas' })).toHaveAttribute(
+      'href',
+      '/mis-reservas',
+    )
+  })
+
+  it('error=rate_limited no ofrece irse: ya está en el turno correcto', () => {
+    render(<CheckoutErrorBanner turnHref={TURN} error="rate_limited" />)
+    expect(screen.queryByRole('link')).toBeNull()
+  })
 
   it('error=banned ofrece buscar otro complejo, no otro turno de este', () => {
     render(<CheckoutErrorBanner turnHref={TURN} error="banned" />)

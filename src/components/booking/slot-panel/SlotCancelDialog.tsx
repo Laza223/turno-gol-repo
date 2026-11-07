@@ -96,14 +96,14 @@ export function SlotCancelDialog({
   } else if (hasEnded) {
     cancelRefundWarning = 'El turno ya se jugó: la seña queda para el complejo (sin reembolso).'
   } else if (!cancelType) {
-    cancelRefundWarning = `Hay una seña de ${formatArs(booking.depositAmount ?? 0)} pagada: el reembolso depende de quién cancela (elegí una opción abajo).`
+    cancelRefundWarning = `Hay una seña de ${formatArs(booking.depositAmount ?? 0)} pagada. Si cancela el complejo, la devolvés vos. Si cancela el jugador, depende de la política (elegí quién cancela abajo).`
   } else if (cancelType === 'complejo') {
     cancelRefundWarning =
       booking.paymentMethod === 'mercadopago'
         ? `La seña de ${formatArs(booking.depositAmount ?? 0)} queda para devolver: hacelo vos desde tu MercadoPago (no es automático) — si la devolvés ahí, el sistema la marca sola.`
         : `La seña de ${formatArs(booking.depositAmount ?? 0)} queda para devolver: la devolvés vos (efectivo o transferencia) y la marcás en Caja → Cuentas.`
   } else {
-    cancelRefundWarning = `Se aplica la política de cancelación: reembolso de ${formatArs(booking.depositAmount ?? 0)} si está dentro del plazo, retención si no.`
+    cancelRefundWarning = `Se aplica la política de cancelación: se devuelve la seña de ${formatArs(booking.depositAmount ?? 0)} si está dentro del plazo, y si no, queda en el complejo.`
   }
 
   return (

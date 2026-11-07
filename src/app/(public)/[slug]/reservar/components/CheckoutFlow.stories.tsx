@@ -168,7 +168,7 @@ export const VinculoQueNoValio: Story = {
   render: (args) => <Screen {...args} summary={{ ...summary, hidePrices: true }} />,
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const line = canvas.getByText('Tocá Reservar para terminar.')
+    const line = canvas.getByText('Tocá "Reservar" para terminar tu reserva.')
     await expect(line).toBeVisible()
     await expect(getComputedStyle(line).fontSize).toBe('16px')
     await expect(canvas.queryByRole('status')).not.toBeInTheDocument()

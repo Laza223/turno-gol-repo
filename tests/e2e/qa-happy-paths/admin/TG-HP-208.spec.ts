@@ -14,7 +14,7 @@ import { openCreateModal } from '../../_helpers/grid'
  * TG-HP-208 — Crear reserva MANUAL desde grilla (offline / "de palabra").
  * Rol: Admin o manager — requireOperatorStaff.
  * Prereq: Tenant Demo, Cancha E2E 1 online, fecha de mañana (ART), slot 20:00 libre.
- * Flujo: /grilla → click celda libre 20:00 → modal "Nueva reserva" (Turno,
+ * Flujo: /grilla → click celda libre 20:00 → modal "Nuevo turno" (Turno,
  *   default) → nombre/teléfono → Confirmar → toast + booking visible en grilla.
  * Caso de plata: NO (reserva manual = status confirmed sin payments, spec §doc7).
  * Evidence anchors: src/app/(admin)/reservas/actions.ts:78-148,
@@ -51,10 +51,10 @@ test.describe('TG-HP-208 — Reserva manual desde grilla (de palabra)', () => {
       // el turno que todavía no pagó nada, así que no hace falta tocar nada más.
 
       // Step 6: confirmar.
-      await page.getByRole('button', { name: /Reservar/ }).click()
+      await page.getByRole('button', { name: /Agendar turno/ }).click()
 
       // Toast + cierre del modal.
-      await expect(page.getByText('Reserva creada', { exact: true })).toBeVisible({
+      await expect(page.getByText('Turno agendado', { exact: true })).toBeVisible({
         timeout: 10_000,
       })
       await expect(page.getByRole('dialog')).not.toBeVisible({ timeout: 5_000 })

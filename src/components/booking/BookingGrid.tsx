@@ -84,6 +84,18 @@ type Props = {
    * botón de la barra no aparece.
    */
   renderStoryDialog?: (args: { onClose: () => void }) => ReactNode
+  /**
+   * "Cobrar los N": las tarjetas de los turnos en rojo de hoy. Se inyecta (como
+   * los anteriores) porque vive bajo `@/app`; se monta solo mientras está abierto.
+   */
+  renderChargeMany?: (args: {
+    bookings: GridBooking[]
+    courts: CourtRow[]
+    nowMs: number
+    onMutated: () => void
+    onOpenBooking: (bookingId: string) => void
+    onClose: () => void
+  }) => ReactNode
   actions?: React.ReactNode
 }
 
@@ -103,6 +115,7 @@ export function BookingGrid({
   renderCanteenDialog,
   renderChargeModal,
   renderStoryDialog,
+  renderChargeMany,
   actions,
 }: Props) {
   // #29: artNow se auto-refresca cada minuto para que isSlotPast no quede
@@ -137,6 +150,7 @@ export function BookingGrid({
   // la grilla: la celda "No cobrado" no lo lleva sola.
   const [highlightPending, setHighlightPending] = useState(false)
   const [storyOpen, setStoryOpen] = useState(false)
+  const [manyOpen, setManyOpen] = useState(false)
 
   const showOfflineBanner = useOfflineBannerDelay(status)
 
@@ -228,6 +242,7 @@ export function BookingGrid({
         highlightPending={highlightPending}
         onToggleHighlight={() => setHighlightPending((v) => !v)}
         onOpenStory={renderStoryDialog ? () => setStoryOpen(true) : undefined}
+        onOpenChargeMany={renderChargeMany ? () => setManyOpen(true) : undefined}
       />
 
       {actions}
@@ -294,6 +309,16 @@ export function BookingGrid({
       />
 
       {storyOpen && renderStoryDialog?.({ onClose: () => setStoryOpen(false) })}
+
+      {manyOpen &&
+        renderChargeMany?.({
+          bookings,
+          courts,
+          nowMs,
+          onMutated: () => void refetch(),
+          onOpenBooking: setDetailBookingId,
+          onClose: () => setManyOpen(false),
+        })}
     </div>
   )
 }

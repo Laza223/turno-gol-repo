@@ -3,6 +3,7 @@ import {
   buildChargeQueue,
   buildCourtBoard,
   hasEndedAt,
+  listToChargeNow,
   startLabel,
   type BoardBooking,
 } from '@/lib/dashboard/today-board'
@@ -302,5 +303,41 @@ describe('buildCourtBoard', () => {
     const next = booking({ id: 'next', start: '20:00', end: '21:00' })
     const board = buildCourtBoard([block, next], BOARD_COURTS, ART(DAY, '19:30'))
     expect(board.tiles[0]?.focus).toMatchObject({ kind: 'next', booking: { id: 'next' } })
+  })
+})
+
+describe('listToChargeNow', () => {
+  const NOW = ART(DAY, '22:30')
+  const ids = (list: BoardBooking[]) => list.map((b) => b.id)
+
+  it('lista los jugados con saldo, en el orden de las canchas', () => {
+    const c2 = booking({ id: 'c2', courtId: 'c2', start: '20:00', end: '21:00' })
+    const c1 = booking({ id: 'c1', courtId: 'c1', start: '21:00', end: '22:00' })
+    const done = booking({
+      id: 'done',
+      courtId: 'c3',
+      start: '19:00',
+      end: '20:00',
+      status: 'completed',
+    })
+    expect(ids(listToChargeNow([c2, done, c1], COURTS, NOW))).toEqual(['c1', 'c2', 'done'])
+  })
+
+  it('deja afuera lo que no es para cobrar ahora', () => {
+    const playing = booking({ id: 'playing', start: '22:00', end: '23:00' })
+    const block = booking({ id: 'block', start: '20:00', end: '21:00', type: 'block' })
+    const torneo = booking({ id: 'torneo', start: '20:00', end: '21:00', type: 'tournament' })
+    const paid = booking({ id: 'paid', start: '20:00', end: '21:00', pending: 0 })
+    const unknown = booking({ id: 'unknown', start: '20:00', end: '21:00', pending: null })
+    const noShow = booking({ id: 'noshow', start: '20:00', end: '21:00', status: 'no_show' })
+    expect(listToChargeNow([playing, block, torneo, paid, unknown, noShow], COURTS, NOW)).toEqual(
+      [],
+    )
+  })
+
+  it('una cancha que ya no está en la lista va al final', () => {
+    const gone = booking({ id: 'gone', courtId: 'zz', start: '20:00', end: '21:00' })
+    const c2 = booking({ id: 'c2', courtId: 'c2', start: '20:00', end: '21:00' })
+    expect(ids(listToChargeNow([gone, c2], COURTS, NOW))).toEqual(['c2', 'gone'])
   })
 })

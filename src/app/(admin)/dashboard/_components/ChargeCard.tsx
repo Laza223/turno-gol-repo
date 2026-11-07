@@ -48,6 +48,7 @@ export function ChargeCard({
   actions,
   onMutated,
   onOpenFull,
+  onBusyChange,
   extraActions,
 }: {
   booking: GridBooking
@@ -59,6 +60,8 @@ export function ChargeCard({
   onMutated: () => void
   /** "Ver todo el turno": abre el modal completo de este turno. */
   onOpenFull: () => void
+  /** Avisa si esta tarjeta tiene un cobro en curso (o esperando sus datos nuevos). */
+  onBusyChange?: (bookingId: string, busy: boolean) => void
   /** Hueco para acciones extra bajo "Cobrar" (p. ej. "Dar por perdido"). */
   extraActions?: ReactNode
 }) {
@@ -66,10 +69,21 @@ export function ChargeCard({
   const [otherOpen, setOtherOpen] = useState(false)
   const [otherCents, setOtherCents] = useState<number | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
-  // El turno con el que se mandó el último cobro: mientras siga siendo ESTE
-  // objeto, los datos nuevos todavía no llegaron.
-  const [awaitingFor, setAwaitingFor] = useState<GridBooking | null>(null)
-  const awaiting = awaitingFor === booking
+  // La plata del turno cuando se mandó el último cobro: mientras no cambie, los
+  // datos nuevos todavía no llegaron. Se compara por plata y no por identidad del
+  // objeto: la Grilla reemplaza todos los turnos en cada sondeo y soltaría el
+  // bloqueo antes de tiempo.
+  const [awaitingFor, setAwaitingFor] = useState<{ pending: number; totalPaid: number } | null>(
+    null,
+  )
+  const awaiting =
+    awaitingFor !== null &&
+    awaitingFor.pending === (booking.pending ?? 0) &&
+    awaitingFor.totalPaid === (booking.totalPaid ?? 0)
+  // Tras un cobro exitoso la clave de idempotencia se rota: sin esto, un segundo
+  // "Pagó uno" por el mismo monto y medio viajaría con la misma clave y el
+  // servidor lo tomaría por reintento (aviso verde y plata que no entra).
+  const [rotateKey, setRotateKey] = useState(false)
 
   useEffect(() => {
     if (!awaitingFor) return
@@ -82,14 +96,25 @@ export function ChargeCard({
     hasEnded: hasBookingEnded(booking, nowMs),
     actions,
     notifyMutated: () => {
-      setAwaitingFor(booking)
+      setAwaitingFor({ pending: booking.pending ?? 0, totalPaid: booking.totalPaid ?? 0 })
       setOtherOpen(false)
       setOtherCents(null)
       onMutated()
     },
-    resetLastId: () => {},
+    resetLastId: () => setRotateKey(true),
   })
   const { isPending, error, mode, pending, retryTotal } = charges
+  if (rotateKey) {
+    setRotateKey(false)
+    charges.setIdempotencyKey(crypto.randomUUID())
+  }
+
+  // Avisa al diálogo que hay un cobro en curso: no se puede cerrar a la mitad.
+  const busy = isPending || awaiting
+  useEffect(() => {
+    onBusyChange?.(booking.id, busy)
+    return () => onBusyChange?.(booking.id, false)
+  }, [booking.id, busy, onBusyChange])
 
   const name = rowDisplayName(booking)
   const header = (

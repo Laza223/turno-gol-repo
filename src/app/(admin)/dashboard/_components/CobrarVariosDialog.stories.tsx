@@ -260,3 +260,28 @@ export const Telefono: Story = {
   args: scenario(rojos(3)),
   parameters: { viewport: { defaultViewport: 'mobile-primary' } },
 }
+
+/**
+ * Dos "Pagó uno" iguales seguidos sobre el mismo turno viajan con claves de
+ * idempotencia distintas: con la misma, el servidor tomaría el segundo por un
+ * reintento del primero y la plata no entraría (aviso verde y caja sin el cobro).
+ */
+export const DosPagoUnoSeguidosUsanClavesDistintas: Story = {
+  args: scenario(rojos(2)),
+  play: async ({ args }) => {
+    const dialog = await openDialog()
+    const pagoUno = () =>
+      card(dialog, 'Juan').getByRole('button', { name: /Pagó uno · \$\s6\.000/ })
+    await userEvent.click(pagoUno())
+    await waitFor(() =>
+      expect(args.actions.completeAndChargeBookingAction).toHaveBeenCalledTimes(1),
+    )
+    // Espera a que el refresco simulado traiga el saldo nuevo y destrabe la tarjeta.
+    await waitFor(() => expect(card(dialog, 'Juan').getByText(/Falta \$\s54\.000/)).toBeVisible())
+    await userEvent.click(pagoUno())
+    await waitFor(() => expect(args.actions.chargeDebtAction).toHaveBeenCalledTimes(1))
+    const first = args.actions.completeAndChargeBookingAction.mock.calls[0]![0]
+    const second = args.actions.chargeDebtAction.mock.calls[0]![0]
+    await expect(second.clientIdempotencyKey).not.toEqual(first.clientIdempotencyKey)
+  },
+}

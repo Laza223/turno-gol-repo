@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import type { SlotPanelActions } from '@/components/booking/slot-panel/actions'
 import type { GridBooking } from '@/lib/booking/grid-cells'
@@ -42,6 +42,12 @@ export function CobrarVariosDialog({
   onClose: () => void
 }) {
   const current = listToChargeNow(bookings, courts, nowMs)
+  // Tarjetas con un cobro en curso: mientras haya alguna, el diálogo no se cierra.
+  const busy = useRef(new Set<string>())
+  const onBusyChange = useCallback((id: string, isBusy: boolean) => {
+    if (isBusy) busy.current.add(id)
+    else busy.current.delete(id)
+  }, [])
   const [pinnedIds, setPinnedIds] = useState<string[]>(() => current.map((b) => b.id))
 
   // Los que se ponen en rojo con el diálogo abierto se suman al final.
@@ -63,6 +69,8 @@ export function CobrarVariosDialog({
       open
       onOpenChange={(open) => {
         if (open) return
+        // Igual que el modal de un turno: un cierre por error dejaría el resultado sin mirar.
+        if (busy.current.size > 0) return
         // Al cerrar se refresca siempre: un cobro cortado por la red pudo haber
         // entrado, y el aviso de reintento vive en las tarjetas que se desmontan.
         onMutated()
@@ -95,6 +103,7 @@ export function CobrarVariosDialog({
                 actions={actions}
                 onMutated={onMutated}
                 onOpenFull={() => onOpenBooking(booking.id)}
+                onBusyChange={onBusyChange}
               />
             </li>
           ))}

@@ -195,6 +195,9 @@ async function loadFutureSessions(
       depositAmount: r.deposit_amount,
       depositStatus: r.deposit_status,
       chargesTotal: chargesByBooking.get(r.id) ?? 0,
+      // Solo se lee `totalPaid`, que no incluye lo dado por perdido. Y un turno
+      // dado por perdido ya está `completed`: no entra en las fechas futuras.
+      writtenOff: 0,
     }).totalPaid,
   }))
 }

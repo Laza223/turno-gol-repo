@@ -138,6 +138,8 @@ Gobernanza:
 
 Tan simple que un niño lo entienda (regla explícita del dueño). Portal jugador: cero fricción, tipo ecommerce. Admin: denso pero obvio. Son las dos personalidades del design system ([`DESIGN.md`](DESIGN.md), única autoridad de diseño). Nada de configurabilidad "por las dudas".
 
+**Texto visible**: cada vez que agregues o edites texto visible en TurnoGol, usá la skill `turnogol-copy`. Antes de redactar, verificá quién lo lee, en qué estado aparece y qué hace realmente el botón. Leé el título, la descripción y el botón juntos. Si la descripción repite el título, sacala. Si aporta un dato que cambia la decisión del usuario, decilo en palabras concretas.
+
 ## Comunicación
 
 Respuestas directas, sin introducciones ni conclusiones. Código y comandos, no explicaciones previas. Si hay ambigüedad entre docs, señalarla. Si falta info, preguntar antes de inventar.

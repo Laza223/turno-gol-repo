@@ -6,7 +6,7 @@ paths:
 
 # Inventario de tablas y su régimen de RLS
 
-- **Tablas aisladas** (tenant_id + RLS): courts, bookings, abonados, payments, cash_flows, daily_cash_opens, daily_cash_closes, tenant_subscriptions, notifications, audit_logs, tenant_player_bans, tenant_staff_members, push_subscriptions, analytics_events, canteen_products, canteen_tabs, stock_movements, tournaments, tournament_teams, tournament_team_players, tournament_stages, tournament_matches, tournament_match_events, whatsapp_connections, whatsapp_chats, whatsapp_messages (migr. 096 — el webhook resuelve el complejo por `whatsapp_connections.phone_number_id` desde el pool worker, porque todavía no hay contexto)
+- **Tablas aisladas** (tenant_id + RLS): courts, bookings, abonados, payments, cash_flows, daily_cash_opens, daily_cash_closes, tenant_subscriptions, notifications, audit_logs, tenant_player_bans, tenant_staff_members, push_subscriptions, analytics_events, canteen_products, canteen_tabs, stock_movements, tournaments, tournament_teams, tournament_team_players, tournament_stages, tournament_matches, tournament_match_events, booking_write_offs, whatsapp_connections, whatsapp_chats, whatsapp_messages (migr. 096 — el webhook resuelve el complejo por `whatsapp_connections.phone_number_id` desde el pool worker, porque todavía no hay contexto)
 - **Globales sin RLS** (sin tenant_id y sin policies): tenants, plans, price_versions, processed_webhooks. El rol de la app las lee y escribe, pero **no las borra** y el catálogo comercial es de sólo lectura (migr. 085).
 - **Globales CON RLS** (sin tenant_id, pero con policies + FORCE): players, staff_users. Medido el 2026-09-05 — la lectura de un jugador desde el panel depende de que exista la relación con el complejo.
 - **Híbridas** (tenant_id + RLS por jugador): player_tenant_relationships (dual staff/player), reviews (lectura pública + insert del jugador dueño del booking), player_favorites (por `app.current_player_id`)
@@ -17,5 +17,7 @@ paths:
 - **RLS dual** en `bookings` y `player_tenant_relationships`: policy para admin (`app.current_tenant_id`) + policy para jugador (`app.current_player_id`). Policy Realtime solo en `bookings`.
 
 - **`staff_agenda_state`** (migr. 107): cache operacional aislada por tenant, PK `tenant_id`, ENABLE+FORCE RLS con policy de tenant y grants app/worker explícitos. Guarda fecha operativa, primera reserva y revisión; no datos de personas. `notifications` ahora también registra intenciones push y `push_send_log` sus resultados por dispositivo, conservando el régimen deny-all del sistema para la app.
+
+- **`booking_write_offs`** (migr. 108, "Dar por perdido"): aislada por tenant, una fila por turno (`booking_id` UNIQUE, FK sin CASCADE: el wipe de retención la borra antes que `bookings`). ENABLE+FORCE RLS con policy de tenant; `turnogol_app` solo SELECT, INSERT y DELETE (sin UPDATE: se crea o se borra). Sin columna de motivo (Ley 25.326). Es tabla propia y no columna de `bookings` porque el trigger `enforce_booking_invariants_fn` bloquea todo UPDATE de un turno `completed`.
 
 Cómo setear contexto, defensa en profundidad y checklist de tabla nueva: skill `convenciones-stack`.

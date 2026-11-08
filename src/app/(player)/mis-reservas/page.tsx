@@ -315,6 +315,12 @@ export default async function MisReservasPage(props: {
         now,
       ),
       refund: refundContactFor(r),
+      cancellation_policy_hours: r.cancellation_policy_hours,
+      tenant_contact: {
+        whatsapp: r.tenant_whatsapp,
+        phone: r.tenant_phone,
+        email: r.tenant_email,
+      },
     }
   })
 

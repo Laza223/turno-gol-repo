@@ -46,6 +46,7 @@ function booking(
     depositAmount,
     depositStatus,
     chargesTotal,
+    writtenOff: 0, // la story no ejercita el perdido
   })
   // Positivo = todavía no terminó (modo 'advance'); negativo = ya terminó (modo
   // 'finish'). Sin efecto sobre 'completed' (modo 'settle' no mira `hasEnded`).

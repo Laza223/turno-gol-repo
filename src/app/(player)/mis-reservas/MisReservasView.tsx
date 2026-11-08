@@ -19,6 +19,8 @@ import { StatusBadge, type StatusBadgeVisual } from '@/components/ui/status-badg
 import PlayerHeroBand from '@/components/site/PlayerHeroBand'
 import { buildFichaHref, buildReservaHref } from '@/lib/booking/reserve-url'
 import { formatArs } from '@/lib/format'
+import { bookingCode } from '@/lib/booking-code'
+import { resolveTenantContact, type TenantContactSource } from '@/lib/tenant-contact'
 import { TONE_BADGE, TONE_TEXT, TONE_TINT } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
 import { addDays } from '@/shared/dates/art'
@@ -86,6 +88,10 @@ export type MisReservasBookingRow = {
    * `deposit_status` — ver `refundContactFor` en page.tsx.
    */
   refund?: RefundContactInfo
+  /** Horas de anticipación que pide el complejo para devolver la seña. */
+  cancellation_policy_hours?: number
+  /** Contacto público del complejo, para "Escribir al complejo". */
+  tenant_contact?: TenantContactSource
 }
 
 const AR_TZ = 'America/Argentina/Buenos_Aires'
@@ -120,11 +126,15 @@ function dateBlockClass(tone: StatusBadgeVisual['tone']): string {
   return cn(TONE_TINT[tone], TONE_TEXT[tone])
 }
 
-/** "Hoy", "Mañana" o el día ("vie 3 oct"). `today` es el día ART de hoy. */
+/**
+ * "Hoy", "Mañana" o el día ("vie 3 oct"). `today` es el día ART de hoy. Si el turno es de otro
+ * año se suma ("vie 13 mar 2026"): en el historial el mismo día y mes puede ser de dos años.
+ */
 function dayLabel(date: string, today: string): string {
   if (date === today) return 'Hoy'
   if (date === addDays(today, 1)) return 'Mañana'
-  return formatDate(date)
+  const year = date.slice(0, 4)
+  return year === today.slice(0, 4) ? formatDate(date) : `${formatDate(date)} ${year}`
 }
 
 /** `/mis-reservas?…` preservando el tab. `?pagina=` es 1-based en la URL. */
@@ -184,20 +194,25 @@ function statusNote(b: MisReservasBookingRow): string | null {
   }
 }
 
-/** Cómo se paga: la seña propia se ve siempre; el monto del turno, solo si el complejo no lo oculta. */
+/**
+ * Cuánto se pagó y cuánto falta: la seña propia se ve siempre; el monto del turno, solo si el
+ * complejo no lo oculta (sin monto no se puede calcular lo que falta).
+ */
 function payNote(b: MisReservasBookingRow): string[] {
-  const parts: string[] = []
+  const price = b.price_snapshot != null && PRICE_STATUSES.has(b.status) ? b.price_snapshot : null
   if (b.status === 'confirmed') {
-    parts.push(
-      isDepositPaid(b.deposit_status)
-        ? `Señada, ${formatArs(b.deposit_amount)}`
-        : 'Pagás en el complejo',
-    )
+    // Fragmentos cortos: cada uno no se parte y entre uno y otro la línea puede saltar (320 px).
+    if (!isDepositPaid(b.deposit_status)) {
+      return price != null
+        ? ['Se paga en el complejo', `Turno ${formatArs(price)}`]
+        : ['Se paga en el complejo']
+    }
+    const paid = `Seña pagada ${formatArs(b.deposit_amount)}`
+    if (price == null) return [paid, 'Resto en el complejo']
+    const rest = price - b.deposit_amount
+    return rest > 0 ? [paid, `Falta ${formatArs(rest)}`] : [paid]
   }
-  if (b.price_snapshot != null && PRICE_STATUSES.has(b.status)) {
-    parts.push(`Turno ${formatArs(b.price_snapshot)}`)
-  }
-  return parts
+  return price != null ? [`Turno ${formatArs(price)}`] : []
 }
 
 /** Acción sin borde (cancelar, reseña, reservar de nuevo): 44 px de toque; la primera de la fila se alinea con el borde de la tarjeta. */
@@ -268,6 +283,17 @@ function BookingCard({
   const canCancel = b.status === 'confirmed' && !b.ended
   const canReview = b.status === 'completed' && !b.has_review
   const canReserveAgain = RESERVE_AGAIN_STATUSES.has(b.status)
+  // Escribirle al complejo: en turnos por jugar o ya jugados que quedaron raros (esperando seña,
+  // ausente). Si nada sirve para marcar, no se ofrece: un link roto se lee como "escribí y nadie recibió".
+  const contact =
+    b.tenant_contact &&
+    (b.status === 'confirmed' || b.status === 'pending_payment' || b.status === 'no_show')
+      ? resolveTenantContact(
+          b.tenant_contact,
+          `Hola ${b.tenant_name}, te escribo por mi turno en ${b.court_name} del ${formatDate(b.starts_on)} a las ${b.time_start.slice(0, 5)}. Código ${bookingCode(b.id)}.`,
+        )
+      : null
+  const contactHref = contact ? (contact.whatsappUrl ?? contact.telHref ?? contact.mailto) : null
   const showShare = featured && b.share_href != null
   const showDirections = featured && b.directions_href != null
   const showRival =
@@ -283,7 +309,8 @@ function BookingCard({
     canReserveAgain ||
     showShare ||
     showDirections ||
-    showRival
+    showRival ||
+    contactHref != null
 
   const title = (
     <>
@@ -455,6 +482,21 @@ function BookingCard({
               Armar el partido
             </Link>
           )}
+          {contactHref && (
+            <a
+              href={contactHref}
+              target={contactHref.startsWith('http') ? '_blank' : undefined}
+              rel="noopener noreferrer"
+              aria-describedby={describedBy}
+              data-ghost
+              className={cn(GHOST, 'text-foreground')}
+            >
+              <MessageCircle className="size-4 shrink-0" aria-hidden />
+              {contact?.whatsappUrl || contact?.mailto === contactHref
+                ? 'Escribir al complejo'
+                : 'Llamar al complejo'}
+            </a>
+          )}
           {canCancel && (
             <CancelBookingButton
               bookingId={b.id}
@@ -465,6 +507,8 @@ function BookingCard({
               depositAmountCents={b.deposit_amount}
               lateCancel={b.late_cancel ?? null}
               tenantName={b.tenant_name}
+              policyHours={b.cancellation_policy_hours}
+              isFixed={b.type === 'fixed'}
               describedBy={describedBy}
               action={cancelAction}
             />
@@ -552,7 +596,7 @@ export function MisReservasView({
         subtitle={
           upcomingCount > 0
             ? `Tenés ${upcomingCount} turno${upcomingCount === 1 ? '' : 's'} por jugar.`
-            : 'Consultá tus próximas reservas y tu historial de partidos.'
+            : 'Tus turnos por jugar y los que ya pasaron.'
         }
       />
 
@@ -586,7 +630,7 @@ export function MisReservasView({
             // criterio que el libro de movimientos de Cuentas).
             <EmptyCard
               title="Esa página no existe"
-              description={`${tab === 'proximos' ? 'Tus próximas reservas' : 'Tu historial'} tiene menos que lo que pide este link.`}
+              description={`Volvé al principio de ${tab === 'proximos' ? 'Próximos' : 'Historial'}.`}
               action={
                 <Link href={pageHref(tab, 0)} className={EMPTY_CARD_CTA}>
                   Volver al principio
@@ -595,11 +639,15 @@ export function MisReservasView({
             />
           ) : (
             <EmptyCard
-              title={tab === 'proximos' ? 'Todavía no tenés reservas' : 'Historial vacío'}
+              title={
+                tab === 'proximos'
+                  ? 'No tenés turnos por jugar'
+                  : 'Todavía no hay turnos en tu historial'
+              }
               description={
                 tab === 'proximos'
-                  ? 'Encontrá tu próxima cancha y reservá al instante.'
-                  : 'Acá van a aparecer tus partidos jugados.'
+                  ? 'Elegí un complejo y reservá tu próximo turno.'
+                  : 'Acá vas a ver tus turnos jugados y cancelados.'
               }
               action={
                 <Link href="/explorar" className={EMPTY_CARD_CTA}>

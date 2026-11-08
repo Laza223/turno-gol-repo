@@ -134,7 +134,7 @@ export const TurnoFijo: Story = {
   },
   play: async ({ canvasElement }) => {
     const d = within(canvasElement.ownerDocument.body)
-    await expect(await d.findByText(/se mantiene el precio del contrato/)).toBeTruthy()
+    await expect(await d.findByText(/se mueve solo este turno/i)).toBeTruthy()
 
     // Las fichas muestran el precio del contrato ($24.000) y NUNCA el de la
     // franja destino ($28.000): mostrarlo sería mostrar un número que el

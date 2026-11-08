@@ -9,6 +9,7 @@ import { MoneyInput } from '@/components/ui/money-input'
 import { choiceChipClass, SegmentedControl } from '@/components/ui/segmented-control'
 import { toast } from '@/hooks/use-toast'
 import { priceForRange } from '@/lib/booking/pricing'
+import { formatDayHeader } from '@/lib/format'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { CourtPricingData } from '@/modules/courts/court.types'
 import type { ActionResult } from '@/shared/types/action-result'
@@ -254,7 +255,8 @@ export function BookingEditDialog({
 
             {isGuest && isAbonadoSession && (
               <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-foreground">
-                Turno fijo: este nombre es sólo para esta fecha, no cambia el contacto del abonado.
+                Turno fijo. Este nombre vale solo para el {formatDayHeader(booking.date)}. No cambia
+                el contacto del turno fijo.
               </p>
             )}
 
@@ -312,7 +314,8 @@ export function BookingEditDialog({
               )}
               {isAbonadoSession && (
                 <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-foreground">
-                  Turno fijo: este precio es sólo para esta fecha, no cambia el contrato.
+                  Turno fijo. Este precio vale solo para el {formatDayHeader(booking.date)}. Las
+                  otras semanas siguen con el precio de siempre.
                 </p>
               )}
               {isAbonadoSession && (

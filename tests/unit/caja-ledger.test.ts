@@ -75,7 +75,7 @@ describe('toLedgerRow', () => {
     const row = toLedgerRow(
       cf({ category: 'product_sale', description: 'Fiado cobrado — Cachi', counterpartName: null }),
     )
-    expect(row).toMatchObject({ kind: 'fiado', text: 'Fiado cobrado — Cachi' })
+    expect(row).toMatchObject({ kind: 'fiado', text: 'Fiado cobrado · Cachi' })
   })
 
   it('un gasto sale en negativo y con su rubro al lado', () => {

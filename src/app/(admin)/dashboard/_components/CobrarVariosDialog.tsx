@@ -6,6 +6,7 @@ import type { SlotPanelActions } from '@/components/booking/slot-panel/actions'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import { listToChargeNow } from '@/lib/dashboard/today-board'
 import { formatArs } from '@/lib/format'
+import { WriteOffButton } from '@/components/booking/slot-panel/WriteOffButton'
 import { ChargeCard } from './ChargeCard'
 import type { HoyCourt } from './HoyChargeModal'
 
@@ -104,6 +105,24 @@ export function CobrarVariosDialog({
                 onMutated={onMutated}
                 onOpenFull={() => onOpenBooking(booking.id)}
                 onBusyChange={onBusyChange}
+                extraActions={
+                  // Toda tarjeta acá ya terminó y debe plata: solo falta que la
+                  // pantalla haya cableado las acciones (Hoy y la Grilla lo hacen).
+                  actions.writeOffBookingAction &&
+                  actions.undoWriteOffAction &&
+                  (booking.pending ?? 0) > 0 ? (
+                    <WriteOffButton
+                      bookingId={booking.id}
+                      pendingCents={booking.pending ?? 0}
+                      paidCents={booking.totalPaid ?? 0}
+                      actions={{
+                        writeOffBookingAction: actions.writeOffBookingAction,
+                        undoWriteOffAction: actions.undoWriteOffAction,
+                      }}
+                      onDone={onMutated}
+                    />
+                  ) : undefined
+                }
               />
             </li>
           ))}

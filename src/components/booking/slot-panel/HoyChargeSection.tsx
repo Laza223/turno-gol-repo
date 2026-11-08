@@ -444,7 +444,7 @@ function PlayersTab({
           disabled={disabled || amount <= 0}
           className={cn(PRIMARY_BUTTON, 'h-12 text-base')}
         >
-          {isPending ? 'Procesando…' : `Pagó uno — ${formatArs(amount)}`}
+          {isPending ? 'Procesando…' : `Pagó uno · ${formatArs(amount)}`}
         </button>
       </div>
     </div>

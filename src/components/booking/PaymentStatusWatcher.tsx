@@ -250,6 +250,9 @@ export function PaymentStatusView({
   contact?: ReserveRequest | null
 }) {
   const reserveAgainHref = buildReserveAgainHref(tenantSlug, date)
+  // Con "Pagar la seña" a la vista todavía no hay un pago que confirmar: la page no ofrece pagar si
+  // MercadoPago ya trajo uno.
+  const payOffered = Boolean(pay && bookingId)
 
   if (status === 'expired') {
     return (
@@ -310,7 +313,7 @@ export function PaymentStatusView({
       <PortalResult
         icon={failed ? AlertTriangle : Clock}
         tone={failed ? 'destructive' : 'neutral'}
-        title={failed ? 'No pudimos verificar tu pago' : 'Se acabó el tiempo'}
+        title={failed ? 'No pudimos verificar tu pago' : 'Todavía no llegó la confirmación'}
         actions={
           <>
             <PortalResultLink href="/mis-reservas">Ver mis reservas</PortalResultLink>
@@ -335,7 +338,7 @@ export function PaymentStatusView({
     <PortalResult
       icon={Loader2}
       spin
-      title="Confirmando tu pago…"
+      title={payOffered ? 'Esperando tu pago…' : 'Confirmando tu pago…'}
       actions={
         pay && bookingId ? (
           <form action={pay.action}>
@@ -347,7 +350,11 @@ export function PaymentStatusView({
         ) : undefined
       }
     >
-      <p>Esto puede tardar unos segundos.</p>
+      <p>
+        {payOffered
+          ? 'Si ya pagaste, se confirma en unos segundos.'
+          : 'Esto puede tardar unos segundos.'}
+      </p>
       {turn && <ReservaTurnLines {...turn} />}
       {showDelayNote && (
         <p className="text-sm">

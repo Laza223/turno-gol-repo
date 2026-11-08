@@ -19,13 +19,18 @@ import type { ReservaDetail } from '../queries'
  * ya combinado) y ninguna función de `charge-copy.ts` ni `useSlotCharges` los
  * lee — solo los usan el popover de la grilla y sus rutas, que acá no aplican.
  */
-export function toGridBooking(detail: ReservaDetail, chargesTotal: number): GridBooking {
+export function toGridBooking(
+  detail: ReservaDetail,
+  chargesTotal: number,
+  writtenOff: number,
+): GridBooking {
   const depositStatus = detail.depositStatus as DepositStatus
   const { totalPaid, pending } = summarizeBookingCharges({
     priceSnapshot: detail.priceSnapshot,
     depositAmount: detail.depositAmount,
     depositStatus,
     chargesTotal,
+    writtenOff,
   })
 
   return {
@@ -45,6 +50,7 @@ export function toGridBooking(detail: ReservaDetail, chargesTotal: number): Grid
     depositAmount: detail.depositAmount,
     totalPaid,
     pending,
+    writtenOff,
     startsAtMs: detail.startsAt ? new Date(detail.startsAt).getTime() : null,
     endsAtMs: detail.endsAt ? new Date(detail.endsAt).getTime() : null,
   }

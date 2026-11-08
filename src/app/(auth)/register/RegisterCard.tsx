@@ -7,6 +7,7 @@ import { CheckCircle2, Mail } from 'lucide-react'
 import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
 import type { RegisterState } from './actions'
 import { PhoneInput } from '@/components/ui/phone-input'
+import { SUPPORT_WHATSAPP_URL } from '@/shared/constants'
 import { readStoredReferralCode, storeReferralCode } from '@/lib/referral-storage'
 
 const initial: RegisterState = { status: 'idle' }
@@ -220,16 +221,18 @@ function ConfirmState({ email }: { email: string | null }) {
         ) : (
           <>Te enviamos un email.</>
         )}{' '}
-        Hacé click en el enlace para activar tu cuenta; después entrás con tu contraseña.
+        Tocá el enlace del mail para activar tu cuenta. Después ingresá con tu contraseña.
       </p>
       <p className="mt-6 text-xs text-muted-foreground">
-        ¿No llegó? Revisá spam. Podés volver a{' '}
-        <Link
-          href="/register"
+        ¿No llegó? Revisá spam. Si sigue sin llegar,{' '}
+        <a
+          href={SUPPORT_WHATSAPP_URL}
+          target="_blank"
+          rel="noopener noreferrer"
           className="font-semibold text-emerald-700 dark:text-emerald-400 hover:underline"
         >
-          registrarte
-        </Link>
+          escribinos por WhatsApp
+        </a>
         .
       </p>
     </div>

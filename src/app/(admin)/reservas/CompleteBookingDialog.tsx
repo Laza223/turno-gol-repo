@@ -64,6 +64,8 @@ export default function CompleteBookingDialog({
     depositAmount: booking.depositAmount,
     depositStatus: booking.depositStatus,
     chargesTotal: booking.chargesTotal,
+    // El diálogo solo completa turnos `confirmed`: no puede haber perdido.
+    writtenOff: 0,
   })
 
   const hasDebt = summary.pending > 0

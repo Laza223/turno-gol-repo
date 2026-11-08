@@ -5,7 +5,7 @@ import { formatArs } from '@/lib/format'
 
 type MoneyCellInput = Pick<
   ReservaListRow,
-  'pending' | 'totalPaid' | 'status' | 'priceSnapshot' | 'type' | 'depositAmount'
+  'pending' | 'totalPaid' | 'writtenOff' | 'status' | 'priceSnapshot' | 'type' | 'depositAmount'
 >
 
 const row = (o: Partial<MoneyCellInput> = {}): MoneyCellInput => ({
@@ -73,13 +73,13 @@ describe('agendaMoneyCell — la plata de una fila de la Agenda, en una sola lec
     })
   })
 
-  it('bloqueo: no dice nada de plata; evento a $0: "Sin cargo"', () => {
+  it('bloqueo: no dice nada de plata; evento a $0: "No se cobra"', () => {
     expect(agendaMoneyCell(row({ type: 'block', priceSnapshot: 0, pending: 0 }), true)).toEqual({
       text: '',
       tone: 'neutral',
     })
     expect(agendaMoneyCell(row({ priceSnapshot: 0, pending: 0 }), true)).toEqual({
-      text: 'Sin cargo',
+      text: 'No se cobra',
       tone: 'neutral',
     })
   })
@@ -89,5 +89,25 @@ describe('agendaMoneyCell — la plata de una fila de la Agenda, en una sola lec
       text: formatArs(1_500_000),
       tone: 'neutral',
     })
+  })
+})
+
+describe('agendaMoneyCell — dado por perdido', () => {
+  it('saldo en cero por un perdido: "Perdido $X" neutral, NUNCA "Pagado" en verde', () => {
+    expect(
+      agendaMoneyCell(
+        row({ status: 'completed', pending: 0, totalPaid: 1_000_000, writtenOff: 500_000 }),
+        true,
+      ),
+    ).toEqual({ text: `Perdido ${formatArs(500_000)}`, tone: 'neutral' })
+  })
+
+  it('sin perdido, saldo en cero sigue siendo "Pagado"', () => {
+    expect(
+      agendaMoneyCell(
+        row({ status: 'completed', pending: 0, totalPaid: 1_500_000, writtenOff: 0 }),
+        true,
+      ),
+    ).toEqual({ text: 'Pagado', tone: 'success' })
   })
 })

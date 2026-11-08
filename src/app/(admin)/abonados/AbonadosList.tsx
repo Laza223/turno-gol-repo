@@ -36,6 +36,7 @@ const AbonadoEditDialog = dynamic(
 )
 
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+const DAY_LABELS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
 
 /** Returns today in ART (UTC-3) as YYYY-MM-DD */
 function todayART(): string {
@@ -167,9 +168,8 @@ export function AbonadosList({
         <div className="flex items-center gap-2">
           <Info className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
           <span>
-            <strong>¿El cliente avisa que no viene un día puntual?</strong> Cancelá únicamente el
-            turno de ese día desde la <strong>Grilla</strong> o la <strong>Agenda</strong> sin dar
-            de baja el turno fijo permanente. Para cambiar el precio, el cliente o el horario de
+            <strong>¿Avisan que no vienen un día?</strong> Cancelá solo ese turno desde la{' '}
+            <strong>Grilla</strong> o la <strong>Agenda</strong>. El turno fijo sigue. Para cambiar
             todas las fechas, usá <strong>Editar turno fijo</strong>.
           </span>
         </div>
@@ -177,7 +177,7 @@ export function AbonadosList({
           href="/grilla"
           className="shrink-0 font-semibold underline text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100"
         >
-          Ir a Grilla →
+          Ir a la Grilla
         </Link>
       </div>
 
@@ -297,7 +297,7 @@ function useAbonadoActions(a: AbonadoRow, actions: AbonadoServerActions) {
     }
     const n = res.slotsGenerated ?? 0
     toast({
-      title: `Reactivado. Se generaron ${n} turno${n !== 1 ? 's' : ''} futuro${n !== 1 ? 's' : ''}.`,
+      title: `Turno fijo reactivado. Se cargaron ${n} turno${n !== 1 ? 's' : ''}.`,
       variant: 'success',
     })
     return { success: true }
@@ -309,7 +309,15 @@ function useAbonadoActions(a: AbonadoRow, actions: AbonadoServerActions) {
     if (!res.success) {
       return { success: false, error: res.error }
     }
-    toast({ title: 'Abonado cancelado.', variant: 'default' })
+    const kept = res.keptDates?.length ?? 0
+    toast({
+      title: 'Turno fijo cancelado',
+      description:
+        kept > 0
+          ? `${kept === 1 ? '1 fecha tiene' : `${kept} fechas tienen`} un cobro cargado y no se borró. Cancelala desde la Grilla.`
+          : undefined,
+      variant: 'default',
+    })
     return { success: true }
   }
 
@@ -358,6 +366,7 @@ function AbonadoActionDialogs({
   return createPortal(
     <AbonadoDialogs
       abonadoId={a.id}
+      abonadoLabel={`${a.contactName}, ${DAY_LABELS[a.dayOfWeek]} ${formatTime(a.timeStart)}`}
       dialog={actions.state.dialog}
       cancelFromDate={actions.state.cancelFromDate}
       onCancelFromDateChange={actions.setCancelFromDate}
@@ -412,7 +421,7 @@ function AbonadoTableRow({
                 onClick={() => actions.openDialog('cancel-single')}
                 className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Cómo cancelar una fecha
+                Cancelar una sola fecha
               </button>
               <button
                 type="button"
@@ -495,7 +504,7 @@ function AbonadoCard({
                 onClick={() => actions.openDialog('cancel-single')}
                 className={`${actionButtonClass} text-blue-600 dark:text-blue-400`}
               >
-                Cómo cancelar una fecha
+                Cancelar una sola fecha
               </button>
             </>
           )}

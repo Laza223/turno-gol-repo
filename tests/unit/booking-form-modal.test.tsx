@@ -98,7 +98,7 @@ describe('BookingFormModal — Turno (default)', () => {
     renderModal()
 
     fireEvent.change(body().getByLabelText('¿A nombre de quién?'), { target: { value: 'Juan' } })
-    fireEvent.click(submitButton(/Reservar/))
+    fireEvent.click(submitButton(/Agendar turno/))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
     const payload = createBookingAction.mock.calls[0]![0]
@@ -122,8 +122,8 @@ describe('BookingFormModal — Turno (default)', () => {
     renderModal()
 
     fireEvent.change(body().getByLabelText('¿A nombre de quién?'), { target: { value: 'Juan' } })
-    fireEvent.click(body().getByRole('radio', { name: 'Todo' }))
-    fireEvent.click(submitButton(/Reservar/))
+    fireEvent.click(body().getByRole('radio', { name: 'Cobré todo' }))
+    fireEvent.click(submitButton(/Agendar turno/))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
     const confirmedCall = gridSpy.mock.calls.find(([ev]) => ev === 'create_modal.confirmed')
@@ -139,7 +139,7 @@ describe('BookingFormModal — Turno (default)', () => {
 
   it('sin nombre no llama al server', () => {
     renderModal()
-    fireEvent.click(submitButton(/Reservar/))
+    fireEvent.click(submitButton(/Agendar turno/))
     expect(createBookingAction).not.toHaveBeenCalled()
     expect(alertText()).toMatch(/Poné a nombre de quién/)
   })
@@ -149,8 +149,8 @@ describe('BookingFormModal — Turno (default)', () => {
     renderModal()
 
     fireEvent.change(body().getByLabelText('¿A nombre de quién?'), { target: { value: 'Juan' } })
-    fireEvent.click(body().getByRole('radio', { name: 'Todo' }))
-    fireEvent.click(submitButton(/Reservar/))
+    fireEvent.click(body().getByRole('radio', { name: 'Cobré todo' }))
+    fireEvent.click(submitButton(/Agendar turno/))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
     expect(createBookingAction.mock.calls[0]![0]).toMatchObject({
@@ -165,11 +165,11 @@ describe('BookingFormModal — Turno (default)', () => {
     renderModal()
 
     fireEvent.change(body().getByLabelText('¿A nombre de quién?'), { target: { value: 'Juan' } })
-    fireEvent.click(body().getByRole('radio', { name: 'Todo' }))
+    fireEvent.click(body().getByRole('radio', { name: 'Cobré todo' }))
     // Precio de la grilla ($10.000) baja a $5.000 DESPUÉS de precargar "Todo".
     fireEvent.click(body().getByRole('button', { name: 'Cambiar' }))
     fireEvent.change(body().getByLabelText('Precio del turno'), { target: { value: '5000' } })
-    fireEvent.click(submitButton(/Reservar/))
+    fireEvent.click(submitButton(/Agendar turno/))
 
     await waitFor(() => expect(createBookingAction).toHaveBeenCalled())
     const payload = createBookingAction.mock.calls[0]![0]

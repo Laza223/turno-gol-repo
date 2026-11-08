@@ -47,7 +47,7 @@ export const DentroDeVentana: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('heading', { name: 'El pago no se procesó' })).toBeInTheDocument()
     await expect(
-      canvas.getByText(/Tu turno sigue guardado: podés pagar hasta las 20:14/),
+      canvas.getByText(/Tu turno sigue guardado. Podés pagar hasta las 20:14/),
     ).toBeInTheDocument()
     await expect(canvas.getByText(/^Sábado, 14 de marzo ·/).closest('p')).toHaveTextContent(
       'Sábado, 14 de marzo · 21:00 a 22:00 Cancha 2',

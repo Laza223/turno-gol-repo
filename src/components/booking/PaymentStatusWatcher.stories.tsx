@@ -189,7 +189,9 @@ export const TiempoAgotado: Story = {
   args: { expiresAt: minutesFromNow(-10).toISOString() },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await waitFor(() => expect(canvas.getByText('Se acabó el tiempo')).toBeInTheDocument())
+    await waitFor(() =>
+      expect(canvas.getByText('Todavía no llegó la confirmación')).toBeInTheDocument(),
+    )
     // No promete mail ni reembolso: dice dónde mirar y a quién escribir.
     await expect(canvas.getByText(/En Mis reservas ves si el turno quedó confirmado/)).toBeVisible()
     await expect(canvas.getByText(/escribile al complejo/)).toBeVisible()
@@ -241,7 +243,7 @@ export const ConPagoAbierto: Story = {
   },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('heading', { name: 'Confirmando tu pago…' })).toBeInTheDocument()
+    await expect(canvas.getByRole('heading', { name: 'Esperando tu pago…' })).toBeInTheDocument()
     await expect(canvas.getByText(/^Sábado, 14 de marzo ·/).closest('p')).toHaveTextContent(
       'Sábado, 14 de marzo · 21:00 a 22:00 Cancha 2 · Complejo Fénix',
     )

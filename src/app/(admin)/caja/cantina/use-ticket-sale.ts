@@ -100,7 +100,7 @@ export function useTicketSale({
       )
       if (!res) return
       if (res.success) {
-        toast({ title: `Venta registrada — ${formatArs(res.total)}`, variant: 'success' })
+        toast({ title: `Venta registrada. ${formatArs(res.total)}`, variant: 'success' })
         setLines([])
         setMethod('cash')
         router.refresh()

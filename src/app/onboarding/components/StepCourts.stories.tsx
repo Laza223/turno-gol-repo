@@ -120,7 +120,7 @@ export const VariosBorradores: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /agregar otra cancha/i }))
     await expect(
-      canvas.getByText('Copiamos los datos de la anterior — cambiá solo lo distinto.'),
+      canvas.getByText('Copiamos los datos de la anterior. Cambiá solo lo distinto.'),
     ).toBeInTheDocument()
     // 2 borradores → ambos se pueden quitar (canRemove = drafts.length > 1).
     await expect(canvas.getAllByRole('button', { name: /quitar/i })).toHaveLength(2)

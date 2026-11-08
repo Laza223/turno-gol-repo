@@ -78,7 +78,8 @@ export default async function OnboardingListoPage() {
 
           <ListoRevealItem>
             <p className="mt-6 text-xs text-muted-foreground">
-              En tu panel te dejamos una checklist con lo que falta para el 100%.
+              Los jugadores reservan sin seña. Si querés cobrarla, conectá MercadoPago desde la
+              checklist de tu panel.
             </p>
             <Link
               href="/dashboard"

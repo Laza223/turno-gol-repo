@@ -157,6 +157,7 @@ describe('venta de cantina cargada a un turno', () => {
       depositAmount: 0,
       depositStatus: 'not_required',
       chargesTotal: detalle.chargesTotal,
+      writtenOff: 0,
     })
     expect(totalPaid).toBe(0)
     expect(pending).toBe(PRICE)

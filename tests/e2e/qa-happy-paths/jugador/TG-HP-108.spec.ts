@@ -57,18 +57,18 @@ test.describe('TG-HP-108 — Cancelar reserva dentro de plazo → reembolso', ()
 
       await card.getByRole('button', { name: 'Cancelar' }).click()
 
-      // Dialog: título + consecuencia concreta (seña pagada → "Se te devuelve la seña de $50.")
-      await expect(page.getByRole('heading', { name: '¿Cancelar esta reserva?' })).toBeVisible()
+      // Dialog: título + consecuencia concreta (seña pagada → "El complejo te tiene que devolver la seña de $50.")
+      await expect(page.getByRole('heading', { name: '¿Cancelar este turno?' })).toBeVisible()
       await expect(page.getByText(/se te devuelve la seña de \$\s?50/i)).toBeVisible()
 
       await page.locator('#cancel-reason').fill('QA TG-HP-108: cancelación con reembolso')
 
-      const confirmBtn = page.getByRole('button', { name: 'Sí, cancelar' })
+      const confirmBtn = page.getByRole('button', { name: 'Cancelar turno' })
       await confirmBtn.click()
       // Anti-doble-submit: disabled={isPending} en confirm-dialog.tsx:41,119 (useTransition).
       // Feedback: sin toast — el dialog se cierra y router.refresh() reactualiza la lista.
 
-      await expect(page.getByRole('heading', { name: '¿Cancelar esta reserva?' })).not.toBeVisible({
+      await expect(page.getByRole('heading', { name: '¿Cancelar este turno?' })).not.toBeVisible({
         timeout: 8_000,
       })
 

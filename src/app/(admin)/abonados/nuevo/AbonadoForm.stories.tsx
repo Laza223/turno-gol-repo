@@ -128,7 +128,7 @@ export const VistaPreviaConFechas: Story = {
     await expect(await canvas.findByText('Vista previa de fechas')).toBeVisible()
     await expect(canvas.getByText('Ocupado')).toBeVisible()
     await expect(canvas.getAllByText('Libre')).toHaveLength(3)
-    await expect(canvas.getByRole('button', { name: 'Confirmar y Crear Abonado' })).toBeEnabled()
+    await expect(canvas.getByRole('button', { name: 'Crear turno fijo' })).toBeEnabled()
   },
 }
 
@@ -147,7 +147,7 @@ export const VistaPreviaSinTurnosDisponibles: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: 'Continuar' }))
 
     await expect(await canvas.findByRole('alert')).toHaveTextContent(/no se creará ningún turno/i)
-    await expect(canvas.getByRole('button', { name: 'Confirmar y Crear Abonado' })).toBeDisabled()
+    await expect(canvas.getByRole('button', { name: 'Crear turno fijo' })).toBeDisabled()
   },
 }
 
@@ -177,7 +177,7 @@ export const ConfirmarCreaElAbonado: Story = {
     await userEvent.click(await canvas.findByRole('button', { name: 'Continuar' }))
     await canvas.findByText('Vista previa de fechas')
 
-    await userEvent.click(canvas.getByRole('button', { name: 'Confirmar y Crear Abonado' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Crear turno fijo' }))
     await expect(args.submitAction).toHaveBeenCalledTimes(1)
   },
 }

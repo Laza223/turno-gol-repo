@@ -215,7 +215,7 @@ describe('BookingEditDialog', () => {
   // nombre — corregirlo en una sesión de abonado sin jugador vinculado sólo
   // aplica a esta fecha, el worker rolling la vuelve a generar con
   // `abonados.contact_name`.
-  it('sesión de abonado sin jugador: avisa que el nombre es sólo para esta fecha', async () => {
+  it('sesión de abonado sin jugador: avisa que el nombre vale solo para esta fecha', async () => {
     render(
       <BookingEditDialog
         open
@@ -237,9 +237,7 @@ describe('BookingEditDialog', () => {
 
     await screen.findByLabelText('Nombre')
     expect(
-      screen.getByText(
-        'Turno fijo: este nombre es sólo para esta fecha, no cambia el contacto del abonado.',
-      ),
+      screen.getByText(/Este nombre vale solo para el .*No cambia el contacto del turno fijo\./),
     ).toBeInTheDocument()
   })
 
@@ -263,13 +261,11 @@ describe('BookingEditDialog', () => {
 
     await screen.findByLabelText('Nombre')
     expect(
-      screen.queryByText(
-        'Turno fijo: este nombre es sólo para esta fecha, no cambia el contacto del abonado.',
-      ),
+      screen.queryByText(/Este nombre vale solo para el .*No cambia el contacto del turno fijo\./),
     ).toBeNull()
   })
 
-  it('sesión de abonado: avisa que el precio es sólo para esta fecha, no para el contrato', async () => {
+  it('sesión de abonado: avisa que el precio vale solo para esta fecha', async () => {
     render(
       <BookingEditDialog
         open
@@ -289,7 +285,7 @@ describe('BookingEditDialog', () => {
 
     await screen.findByRole('button', { name: 'Guardar cambios' })
     expect(
-      screen.getByText('Turno fijo: este precio es sólo para esta fecha, no cambia el contrato.'),
+      screen.getByText(/Este precio vale solo para el .*Las otras semanas siguen/),
     ).toBeInTheDocument()
   })
 
@@ -313,7 +309,7 @@ describe('BookingEditDialog', () => {
 
     await screen.findByRole('button', { name: 'Guardar cambios' })
     expect(
-      screen.queryByText('Turno fijo: este precio es sólo para esta fecha, no cambia el contrato.'),
+      screen.queryByText(/Este precio vale solo para el .*Las otras semanas siguen/),
     ).toBeNull()
   })
 

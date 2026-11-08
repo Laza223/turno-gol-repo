@@ -223,8 +223,8 @@ export function BookingRescheduleDialog({
 
         {keepsContractPrice && (
           <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-foreground">
-            Turno fijo: se mantiene el precio del contrato ({formatArs(booking.priceSnapshot)}) sin
-            importar el horario al que lo muevas.
+            Turno fijo. Se mueve solo este turno y sigue costando {formatArs(booking.priceSnapshot)}
+            , aunque ese horario tenga otra tarifa. Las otras semanas no cambian.
           </p>
         )}
         {keepsContractPrice && (

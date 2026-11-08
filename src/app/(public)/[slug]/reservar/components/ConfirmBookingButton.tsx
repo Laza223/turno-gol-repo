@@ -72,7 +72,9 @@ export default function ConfirmBookingButton(props: {
         </>
       )}
       {props.intentDegraded && (
-        <p className="mb-3 text-base text-muted-foreground">Tocá {props.label} para terminar.</p>
+        <p className="mb-3 text-base text-muted-foreground">
+          Tocá &quot;{props.label}&quot; para terminar tu reserva.
+        </p>
       )}
 
       <FixedCta>

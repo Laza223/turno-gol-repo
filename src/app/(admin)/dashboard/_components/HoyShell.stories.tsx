@@ -233,3 +233,31 @@ export const UnTurnoDeAyerPagadoMuestraCobrado: Story = {
     await waitFor(() => expect(dialog.getByText('Cobrado ✓')).toBeVisible())
   },
 }
+
+/**
+ * Con 2 o más turnos en rojo, el total del encabezado es el botón "Cobrar los N":
+ * abre las tarjetas, y "Ver todo el turno" abre el modal completo ENCIMA sin
+ * cerrar las tarjetas.
+ */
+export const CobrarVariosAbreLasTarjetasYElModalSeApila: Story = {
+  args: { initial: LISTA, controllerRef: { current: null } },
+  play: async ({ canvasElement }) => {
+    const board = within(canvasElement)
+    await userEvent.click(board.getByRole('button', { name: /Cobrar los 2 · \$\s120\.000/ }))
+    const cards = await openDialog()
+    await expect(cards.getByRole('group', { name: /Lucía Méndez/ })).toBeVisible()
+    await expect(cards.getByRole('group', { name: /Pablo Ruiz/ })).toBeVisible()
+
+    await userEvent.click(
+      within(cards.getByRole('group', { name: /Pablo Ruiz/ })).getByRole('button', {
+        name: 'Ver todo el turno',
+      }),
+    )
+    // El de abajo queda aria-hidden mientras el de encima está abierto: por eso `hidden`.
+    await waitFor(() => expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(2))
+    const top = screen.getAllByRole('dialog')
+    await expect(top).toHaveLength(1)
+    await expect(within(top[0]!).getByText('Pablo Ruiz')).toBeVisible()
+    await expect(within(top[0]!).queryByRole('group', { name: /Lucía Méndez/ })).toBeNull()
+  },
+}

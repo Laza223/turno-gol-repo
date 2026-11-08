@@ -47,3 +47,37 @@ export const createAbonadoSchema = z
     message: 'Ingresá un teléfono de contacto',
     path: ['contactPhone'],
   })
+
+/**
+ * Editar un turno fijo en TODAS sus fechas futuras. Todo opcional, pero al menos
+ * un campo. `playerId` no entra a propósito: cambiar o desvincular la cuenta de
+ * un fijo cambia quién ve la reserva y toca datos personales (decisión del
+ * 2026-11-08, ver el spec). El precio del fijo es siempre > 0 (chk_abonado_price_positive);
+ * una fecha suelta sí puede valer 0, pero eso se corrige fecha por fecha.
+ */
+export const updateAbonadoSchema = z
+  .object({
+    courtId: uuid.optional(),
+    contactName: boundedText(120).trim().min(1, 'Ingresá el nombre').optional(),
+    contactPhone: boundedText(40).trim().min(1, 'Ingresá un teléfono de contacto').optional(),
+    dayOfWeek: z
+      .number()
+      .int()
+      .min(0, 'Elegí un día válido')
+      .max(6, 'Elegí un día válido')
+      .optional(),
+    timeStart: hhmm.optional(),
+    timeEnd: hhmmEnd.optional(),
+    pricePerSession: z.number().int().positive('El precio tiene que ser mayor a cero').optional(),
+  })
+  .refine((d) => Object.values(d).some((v) => v !== undefined), {
+    message: 'No cambiaste nada.',
+  })
+  .refine((d) => (d.timeStart === undefined) === (d.timeEnd === undefined), {
+    message: 'Para cambiar el horario elegí desde y hasta.',
+    path: ['timeEnd'],
+  })
+  .refine((d) => d.timeStart === undefined || d.timeEnd === undefined || d.timeEnd > d.timeStart, {
+    message: 'El horario de fin tiene que ser posterior al de inicio.',
+    path: ['timeEnd'],
+  })

@@ -57,6 +57,9 @@ const CANCELED_ABONADO = makeAbonado({
 const reactivateAbonadoAction = vi.fn()
 const cancelAbonadoAction = vi.fn()
 const previewAbonadoSlotsAction = vi.fn()
+const previewUpdateAbonadoAction = vi.fn()
+const updateAbonadoAction = vi.fn()
+const COURTS = [{ id: 'cccccccc-0000-0000-0000-000000000001', name: 'Cancha 1' }]
 
 function renderList(abonados: AbonadoRow[], filterLabel?: string) {
   return render(
@@ -66,6 +69,9 @@ function renderList(abonados: AbonadoRow[], filterLabel?: string) {
       reactivateAction={reactivateAbonadoAction}
       cancelAction={cancelAbonadoAction}
       previewSlotsAction={previewAbonadoSlotsAction}
+      courts={COURTS}
+      previewUpdateAction={previewUpdateAbonadoAction}
+      updateAction={updateAbonadoAction}
     />,
   )
 }
@@ -99,6 +105,14 @@ describe('AbonadosList — rendering', () => {
     expect(screen.queryByRole('button', { name: 'Pausar' })).toBeNull()
   })
 
+  it('only an active row offers "Editar turno fijo"', () => {
+    renderList([ACTIVE_ABONADO])
+    expect(screen.getAllByRole('button', { name: 'Editar turno fijo' }).length).toBeGreaterThan(0)
+    cleanup()
+    renderList([PAUSED_ABONADO, CANCELED_ABONADO])
+    expect(screen.queryByRole('button', { name: 'Editar turno fijo' })).toBeNull()
+  })
+
   it('paused row shows Reactivar + Cancelar buttons', () => {
     renderList([PAUSED_ABONADO])
     expect(screen.getAllByRole('button', { name: 'Reactivar' }).length).toBeGreaterThan(0)
@@ -129,6 +143,9 @@ describe('AbonadosList — H054 toast on create', () => {
         reactivateAction={reactivateAbonadoAction}
         cancelAction={cancelAbonadoAction}
         previewSlotsAction={previewAbonadoSlotsAction}
+        courts={COURTS}
+        previewUpdateAction={previewUpdateAbonadoAction}
+        updateAction={updateAbonadoAction}
       />,
     )
     expect(toast).toHaveBeenCalledWith({ title: 'Turno fijo creado.', variant: 'success' })

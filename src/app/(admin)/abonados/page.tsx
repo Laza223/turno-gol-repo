@@ -7,10 +7,16 @@ import { Pager } from '@/components/ui/pager'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { getAbonados, countAbonados } from '@/modules/abonados/abonado.service'
+import { listCourts } from '@/modules/courts/court.service'
 import type { AbonadoStatus } from '@/modules/abonados/abonado.types'
 import { AbonadosList } from './AbonadosList'
 import { ClientesTabs } from '@/app/(admin)/jugadores/ClientesTabs'
-import { reactivateAbonadoAction, cancelAbonadoAction } from './actions'
+import {
+  reactivateAbonadoAction,
+  cancelAbonadoAction,
+  previewUpdateAbonadoAction,
+  updateAbonadoAction,
+} from './actions'
 import { previewAbonadoSlotsAction } from './nuevo/actions'
 
 const VALID_STATUSES: AbonadoStatus[] = ['active', 'paused', 'canceled']
@@ -54,8 +60,8 @@ export default async function AbonadosPage(props: {
   const justCreated = searchParams.created === '1'
   const page = parseAbonadosPage(searchParams.pagina)
 
-  const { abonados, total } = await withTenantContext(tenant.id, async (tx) => {
-    const [rows, count] = await Promise.all([
+  const { abonados, total, courts } = await withTenantContext(tenant.id, async (tx) => {
+    const [rows, count, courtRows] = await Promise.all([
       getAbonados(tenant.id, { status: statusFilter }, tx, {
         limit: PAGE_SIZE,
         offset: page * PAGE_SIZE,
@@ -64,8 +70,13 @@ export default async function AbonadosPage(props: {
       // que getAbonados, aparte, para que "N turnos fijos" nunca hable solo
       // del largo de esta página.
       countAbonados(tenant.id, { status: statusFilter }, tx),
+      listCourts(tenant.id, tx),
     ])
-    return { abonados: rows, total: count }
+    return {
+      abonados: rows,
+      total: count,
+      courts: courtRows.map((c) => ({ id: c.id, name: c.name })),
+    }
   })
 
   const totalWord = total === 1 ? '1 turno fijo' : `${total} turnos fijos`
@@ -166,6 +177,9 @@ export default async function AbonadosPage(props: {
               reactivateAction={reactivateAbonadoAction}
               cancelAction={cancelAbonadoAction}
               previewSlotsAction={previewAbonadoSlotsAction}
+              courts={courts}
+              previewUpdateAction={previewUpdateAbonadoAction}
+              updateAction={updateAbonadoAction}
             />
             <Pager
               label="Paginación de turnos fijos"

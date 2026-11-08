@@ -24,7 +24,7 @@ import type {
   CreateAbonadoInput,
 } from './abonado.types'
 
-function rowToAbonadoRow(r: typeof abonados.$inferSelect): AbonadoRow {
+export function rowToAbonadoRow(r: typeof abonados.$inferSelect): AbonadoRow {
   return {
     id: r.id,
     tenantId: r.tenantId,
@@ -49,7 +49,7 @@ function artToday(): string {
   return new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10)
 }
 
-async function getClosedDates(tenantId: string, tx: DbTx): Promise<string[]> {
+export async function getClosedDates(tenantId: string, tx: DbTx): Promise<string[]> {
   const rows = await tx
     .select({ closedDates: tenants.closedDates })
     .from(tenants)
@@ -98,7 +98,7 @@ export async function checkAbonadoSlotConflict(
  * ninguna otra transacción puede insertar un booking que el chequeo optimista de
  * solapamiento (`findAbonadoBookingOverlaps`) todavía no vio.
  */
-async function lockCourtRow(courtId: string, tx: DbTx): Promise<void> {
+export async function lockCourtRow(courtId: string, tx: DbTx): Promise<void> {
   await tx.execute(sql`SELECT id FROM courts WHERE id = ${courtId} FOR UPDATE`)
 }
 
@@ -157,6 +157,9 @@ async function insertBookingsForSlots(
     // grilla (BookingCard.bookingDisplayName mira guestName antes que
     // playerFirstName) — criterio obligatorio del evento semanal sin cuenta.
     guestName: abonado.playerId ? null : abonado.contactName,
+    // Mismo criterio que el nombre: sin cuenta, el teléfono del fijo viaja a cada
+    // fecha (deudas y WhatsApp leen `guest_phone`, no el del fijo).
+    guestPhone: abonado.playerId ? null : abonado.contactPhone,
     priceSnapshot: abonado.pricePerSession,
     depositAmount: 0,
     depositStatus: 'not_required' as const,

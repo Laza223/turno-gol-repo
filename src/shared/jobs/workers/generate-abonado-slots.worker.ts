@@ -29,6 +29,7 @@ export async function runRollingSlotGeneration(): Promise<void> {
       court_id: string
       player_id: string | null
       contact_name: string
+      contact_phone: string | null
       day_of_week: number
       time_start: string
       time_end: string
@@ -40,7 +41,7 @@ export async function runRollingSlotGeneration(): Promise<void> {
       closed_dates: string[] | null
     }[]
   >`
-    SELECT a.id, a.tenant_id, a.court_id, a.player_id, a.contact_name,
+    SELECT a.id, a.tenant_id, a.court_id, a.player_id, a.contact_name, a.contact_phone,
            a.day_of_week, a.time_start, a.time_end,
            a.price_per_session, a.starts_on::text, a.ends_on::text,
            t.status AS tenant_status,
@@ -152,11 +153,12 @@ export async function runRollingSlotGeneration(): Promise<void> {
           // (abonado.service.ts): BookingCard.bookingDisplayName mira guestName
           // antes que playerFirstName.
           const guestName = abonado.player_id ? null : abonado.contact_name
+          const guestPhone = abonado.player_id ? null : abonado.contact_phone
           return drizzleSql`(
             ${abonado.tenant_id}, ${abonado.court_id}, ${abonado.player_id ?? null}, ${abonado.id},
             ${dateStr}::date, ${abonado.time_start}::time, ${abonado.time_end}::time,
             ${startsAt.toISOString()}::timestamptz, ${endsAt.toISOString()}::timestamptz,
-            'fixed', 'confirmed', ${abonado.price_per_session}, 0, 'not_required', ${guestName}
+            'fixed', 'confirmed', ${abonado.price_per_session}, 0, 'not_required', ${guestName}, ${guestPhone}
           )`
         }),
         drizzleSql`, `,
@@ -170,7 +172,7 @@ export async function runRollingSlotGeneration(): Promise<void> {
           tenant_id, court_id, player_id, abonado_id,
           date, time_start, time_end,
           starts_at, ends_at,
-          type, status, price_snapshot, deposit_amount, deposit_status, guest_name
+          type, status, price_snapshot, deposit_amount, deposit_status, guest_name, guest_phone
         ) VALUES ${values}
         ON CONFLICT DO NOTHING
         RETURNING id

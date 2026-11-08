@@ -8,16 +8,24 @@ import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { enforce } from '@/shared/rate-limit/apply'
 import { createAbonado, reactivateAbonado, cancelAbonado } from '@/modules/abonados/abonado.service'
-import { createAbonadoSchema } from '@/modules/abonados/abonado.schema'
+import { previewUpdateAbonado, updateAbonado } from '@/modules/abonados/abonado.update'
+import { createAbonadoSchema, updateAbonadoSchema } from '@/modules/abonados/abonado.schema'
 import {
   AbonadoConflictError,
+  AbonadoMoveConflictError,
+  AbonadoNotEditableError,
   AbonadoNotFoundError,
   AbonadoAlreadyCanceledError,
   ReactivationConflictError,
   CourtNotFoundError,
   PlayerNotClientError,
 } from '@/modules/abonados/abonado.errors'
-import type { AbonadoRow, CreateAbonadoInput } from '@/modules/abonados/abonado.types'
+import type {
+  AbonadoRow,
+  CreateAbonadoInput,
+  UpdateAbonadoCounts,
+  UpdateAbonadoPreview,
+} from '@/modules/abonados/abonado.types'
 import {
   searchTenantPlayers,
   type PlayerSearchResult,
@@ -134,6 +142,113 @@ export async function cancelAbonadoAction(
 
   revalidatePath('/abonados')
   return { success: true, abonado }
+}
+
+const updateAbonadoRequestSchema = z.object({ id: uuid, changes: updateAbonadoSchema })
+
+export type UpdateAbonadoActionResult =
+  | { success: true; abonado: AbonadoRow; counts: UpdateAbonadoCounts }
+  | { success: false; error: string; conflictDates?: string[]; fixedConflict?: boolean }
+
+export type PreviewUpdateAbonadoActionResult =
+  { success: true; preview: UpdateAbonadoPreview } | { success: false; error: string }
+
+/** Errores de dominio de editar un turno fijo, con el texto que ve el encargado. */
+function updateAbonadoErrorMessage(err: unknown): string | null {
+  if (err instanceof AbonadoNotFoundError) return 'No encontramos ese turno fijo.'
+  if (err instanceof AbonadoAlreadyCanceledError) return 'Ese turno fijo ya estaba cancelado.'
+  if (err instanceof CourtNotFoundError) return 'No encontramos esa cancha.'
+  if (
+    err instanceof AbonadoNotEditableError ||
+    err instanceof AbonadoConflictError ||
+    err instanceof AbonadoMoveConflictError
+  ) {
+    return err.message
+  }
+  return null
+}
+
+/**
+ * Editar un turno fijo en TODAS sus fechas futuras (spec 2026-11-08). El `catch`
+ * va FUERA del contexto transaccional: atrapar adentro y devolver un objeto
+ * commitearía lo escrito antes del throw.
+ */
+export async function updateAbonadoAction(
+  id: string,
+  changes: unknown,
+): Promise<UpdateAbonadoActionResult> {
+  const parsed = updateAbonadoRequestSchema.safeParse({ id, changes })
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? 'Revisá los datos del turno fijo.',
+    }
+  }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  let outcome: Awaited<ReturnType<typeof updateAbonado>>
+  try {
+    outcome = await withTenantContext(tenant.id, (tx) =>
+      updateAbonado(tenant.id, parsed.data.id, user.staffUserId!, parsed.data.changes, tx),
+    )
+  } catch (err) {
+    const message = updateAbonadoErrorMessage(err)
+    if (message === null) throw err
+    return err instanceof AbonadoMoveConflictError
+      ? {
+          success: false,
+          error: message,
+          conflictDates: err.conflictDates,
+          fixedConflict: err.fixedConflict,
+        }
+      : { success: false, error: message }
+  }
+
+  revalidatePath('/abonados')
+  // Las fechas del fijo viven en la grilla: precio, nombre y horario cambian ahí.
+  revalidatePath('/grilla')
+  const { abonado, ...counts } = outcome
+  return { success: true, abonado, counts }
+}
+
+/**
+ * Vista previa de "Editar turno fijo": cuántas fechas cambian y cuáles chocan.
+ * Balde propio (`adminAvailabilityCheck`): dispara mientras el encargado teclea
+ * y compartir el límite de mutaciones lo dejaría sin cupo para guardar.
+ */
+export async function previewUpdateAbonadoAction(
+  id: string,
+  changes: unknown,
+): Promise<PreviewUpdateAbonadoActionResult> {
+  const parsed = updateAbonadoRequestSchema.safeParse({ id, changes })
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? 'Revisá los datos del turno fijo.',
+    }
+  }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const outcome = await enforce('adminAvailabilityCheck', tenant.id)
+  if (!outcome.ok) return { success: false, error: 'Demasiadas consultas. Esperá un momento.' }
+
+  try {
+    const preview = await withTenantContext(tenant.id, (tx) =>
+      previewUpdateAbonado(tenant.id, parsed.data.id, parsed.data.changes, tx),
+    )
+    return { success: true, preview }
+  } catch (err) {
+    const message = updateAbonadoErrorMessage(err)
+    if (message === null) throw err
+    return { success: false, error: message }
+  }
 }
 
 const searchAbonadoPlayersSchema = z.object({

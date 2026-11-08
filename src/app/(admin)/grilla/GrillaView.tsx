@@ -30,6 +30,14 @@ const StoryShareDialog = dynamic(
   { ssr: false },
 )
 
+const CobrarVariosDialog = dynamic(
+  () =>
+    import('@/app/(admin)/dashboard/_components/CobrarVariosDialog').then(
+      (m) => m.CobrarVariosDialog,
+    ),
+  { ssr: false },
+)
+
 const HoyChargeModal = dynamic(
   () => import('@/app/(admin)/dashboard/_components/HoyChargeModal').then((m) => m.HoyChargeModal),
   { ssr: false },
@@ -37,7 +45,7 @@ const HoyChargeModal = dynamic(
 
 type Props = Omit<
   ComponentProps<typeof BookingGrid>,
-  'renderCanteenDialog' | 'renderChargeModal' | 'renderStoryDialog'
+  'renderCanteenDialog' | 'renderChargeModal' | 'renderStoryDialog' | 'renderChargeMany'
 > & {
   /** Sin esto la grilla funciona igual, sólo que el panel no ofrece cantina. */
   canteen?: {
@@ -84,6 +92,22 @@ export function GrillaView({
                 {...args}
                 listCatalogAction={canteen.listCatalogAction}
                 sellTicketAction={canteen.sellTicketAction}
+              />
+            )
+          : undefined
+      }
+      // Sin acciones (stories/tests) no hay con qué cobrar: no se ofrece el botón.
+      renderChargeMany={
+        gridProps.slotPanelActions
+          ? (args) => (
+              <CobrarVariosDialog
+                bookings={args.bookings}
+                courts={args.courts}
+                nowMs={args.nowMs}
+                actions={gridProps.slotPanelActions!}
+                onMutated={args.onMutated}
+                onOpenBooking={args.onOpenBooking}
+                onClose={args.onClose}
               />
             )
           : undefined

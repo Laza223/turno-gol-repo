@@ -50,6 +50,7 @@ export function CourtBoard({
   dayIsClosed,
   canManageCourts,
   onOpenBooking,
+  onChargeMany,
 }: {
   board: CourtBoardData
   courts: QueueCourt[]
@@ -59,6 +60,8 @@ export function CourtBoard({
   /** Solo el dueño puede activar canchas: al Encargado no se le ofrece un link que rebota. */
   canManageCourts: boolean
   onOpenBooking: (bookingId: string) => void
+  /** "Cobrar los N": con 2 o más turnos en rojo el total pasa a ser este botón. */
+  onChargeMany?: () => void
 }) {
   const courtOf = courtLookup(courts)
   const late = board.lateCount > 0
@@ -73,7 +76,16 @@ export function CourtBoard({
         <h2 id="turnos-titulo" className="text-base font-semibold text-foreground">
           Turnos de hoy
         </h2>
-        {late ? (
+        {late && onChargeMany && board.lateCount >= 2 ? (
+          <button
+            type="button"
+            onClick={onChargeMany}
+            aria-haspopup="dialog"
+            className="inline-flex min-h-11 items-center rounded-lg bg-destructive px-3 text-sm font-semibold tabular-nums text-white transition-colors hover:bg-destructive/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          >
+            Cobrar los {board.lateCount} · {formatArs(board.lateCents)}
+          </button>
+        ) : late ? (
           <p className={cn('text-sm font-semibold tabular-nums', TONE_TEXT.destructive)}>
             {board.lateCount === 1 ? '1 sin cobrar' : `${board.lateCount} sin cobrar`} ·{' '}
             {formatArs(board.lateCents)}

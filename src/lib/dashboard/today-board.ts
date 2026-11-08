@@ -16,7 +16,7 @@
  * de madrugada de un complejo `closes_next_day` hacen que comparar strings de
  * hora dé la respuesta equivocada (`slotHasPassed`, operating-day.ts).
  */
-import type { GridBooking } from '@/lib/booking/grid-cells'
+import { isPendingCollection, type GridBooking } from '@/lib/booking/grid-cells'
 import { relativeTimeEs } from '@/lib/format'
 
 /** Un turno del día con sus instantes físicos en milisegundos. */
@@ -93,6 +93,31 @@ export function buildChargeQueue(
   )
   upcoming.sort((a, b) => a.startsAtMs - b.startsAtMs || byCourt(a, b))
   return { now, upcoming, anyStarted }
+}
+
+/**
+ * Los turnos en rojo de esta noche, para "Cobrar varios": el mismo criterio que
+ * el chip "N sin cobrar" de la Grilla (`isPendingCollection`) y que `lateCount`
+ * de Hoy, menos los de torneo (se pagan con la inscripción). En el orden de las
+ * canchas; una cancha que ya no está en la lista va al final.
+ */
+export function listToChargeNow<T extends GridBooking>(
+  bookings: readonly T[],
+  courts: ReadonlyArray<{ id: string }>,
+  nowMs: number,
+): T[] {
+  const order = new Map(courts.map((c, i) => [c.id, i]))
+  const rank = (b: T) => order.get(b.courtId) ?? courts.length
+  return bookings
+    .filter((b) => b.type !== 'tournament' && isPendingCollection(b, nowMs))
+    .sort(
+      (a, b) =>
+        rank(a) - rank(b) ||
+        // Dentro de una cancha, el que se jugó primero va primero.
+        (a.startsAtMs ?? 0) - (b.startsAtMs ?? 0) ||
+        a.timeStart.localeCompare(b.timeStart) ||
+        a.id.localeCompare(b.id),
+    )
 }
 
 /** Qué muestra una cancha: el turno para cobrar, el que se juega o el próximo. */

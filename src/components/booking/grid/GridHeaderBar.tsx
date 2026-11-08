@@ -28,6 +28,8 @@ type Props = {
   onToggleHighlight: () => void
   /** Abre la placa de turnos libres para historias. Sin esto el botón no se dibuja (stories, tests). */
   onOpenStory?: () => void
+  /** "Cobrar los N": abre las tarjetas de los turnos en rojo. El padre solo lo pasa mirando la noche vigente (día operativo). */
+  onOpenChargeMany?: () => void
 }
 
 /**
@@ -158,6 +160,7 @@ export function GridHeaderBar({
   highlightPending,
   onToggleHighlight,
   onOpenStory,
+  onOpenChargeMany,
 }: Props) {
   const isToday = todayArt !== '' && date === todayArt
   const hasPending = !!pendingSummary && pendingSummary.count > 0
@@ -196,6 +199,19 @@ export function GridHeaderBar({
       <span className="font-medium tabular-nums">· {formatArs(pendingSummary.totalCents)}</span>
     </button>
   ) : null
+
+  // Con 2 o más en rojo y mirando hoy: cobrarlos de una, sin abrir un modal por turno.
+  const chargeManyButton =
+    hasPending && pendingSummary.count >= 2 && onOpenChargeMany ? (
+      <button
+        type="button"
+        onClick={onOpenChargeMany}
+        aria-haspopup="dialog"
+        className="inline-flex h-11 shrink-0 items-center rounded-full bg-destructive px-3.5 text-sm font-semibold whitespace-nowrap text-white transition-colors hover:bg-destructive/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 lg:h-9"
+      >
+        Cobrar los {pendingSummary.count}
+      </button>
+    ) : null
 
   const storyLabel = 'Compartir turnos libres en una historia'
 
@@ -316,6 +332,7 @@ export function GridHeaderBar({
             {todayButton}
           </div>
           {pendingChip}
+          {chargeManyButton}
           {storyButton}
           {moreMenu}
         </div>
@@ -366,8 +383,9 @@ export function GridHeaderBar({
         </div>
 
         {(hasPending || onOpenStory) && (
-          <div className="mt-1 flex items-center justify-center gap-2">
+          <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
             {pendingChip}
+            {chargeManyButton}
             {storyButtonPhone}
           </div>
         )}

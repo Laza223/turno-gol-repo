@@ -201,15 +201,16 @@ function statusNote(b: MisReservasBookingRow): string | null {
 function payNote(b: MisReservasBookingRow): string[] {
   const price = b.price_snapshot != null && PRICE_STATUSES.has(b.status) ? b.price_snapshot : null
   if (b.status === 'confirmed') {
+    // Fragmentos cortos: cada uno no se parte y entre uno y otro la línea puede saltar (320 px).
     if (!isDepositPaid(b.deposit_status)) {
-      return [
-        price != null ? `Se paga en el complejo ${formatArs(price)}` : 'Se paga en el complejo',
-      ]
+      return price != null
+        ? ['Se paga en el complejo', `Turno ${formatArs(price)}`]
+        : ['Se paga en el complejo']
     }
     const paid = `Seña pagada ${formatArs(b.deposit_amount)}`
-    if (price == null) return [paid, 'El resto se paga en el complejo']
+    if (price == null) return [paid, 'Resto en el complejo']
     const rest = price - b.deposit_amount
-    return rest > 0 ? [paid, `Falta ${formatArs(rest)} en el complejo`] : [paid]
+    return rest > 0 ? [paid, `Falta ${formatArs(rest)}`] : [paid]
   }
   return price != null ? [`Turno ${formatArs(price)}`] : []
 }

@@ -193,7 +193,7 @@ describe('MisReservasView — seña, pago y precios ocultos', () => {
 
   it('con precios visibles muestra el monto del turno', () => {
     renderView([row({ id: 'a' })])
-    expect(within(card('a')).getByText(/Se paga en el complejo \$\s15\.000/)).toBeInTheDocument()
+    expect(within(card('a')).getByText(/Turno \$\s15\.000/)).toBeInTheDocument()
   })
 
   it('con precios ocultos no hay ningún monto del turno en el DOM ni en un aria-label, pero la seña propia sí', () => {
@@ -329,7 +329,7 @@ describe('MisReservasView — cómo se lee el turno (ronda 2)', () => {
 
   it('cada monto va en un fragmento que no se parte', () => {
     renderView([row({ id: 'a', deposit_status: 'paid', deposit_amount: 500000 })])
-    for (const re of [/Seña pagada \$\s5\.000/, /Falta \$\s10\.000 en el complejo/]) {
+    for (const re of [/Seña pagada \$\s5\.000/, /Falta \$\s10\.000/]) {
       expect(within(card('a')).getByText(re)).toHaveClass('whitespace-nowrap')
     }
   })

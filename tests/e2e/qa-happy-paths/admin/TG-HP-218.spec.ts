@@ -107,7 +107,7 @@ test.describe('TG-HP-218 — crear abonado', () => {
       })
       await expect(page.getByText(/^\d+ turnos? libres?$/)).toBeVisible()
 
-      const createButton = page.getByRole('button', { name: 'Confirmar y Crear Abonado' })
+      const createButton = page.getByRole('button', { name: 'Crear turno fijo' })
       await expect(createButton).toBeEnabled()
       await createButton.click()
 

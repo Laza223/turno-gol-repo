@@ -3,7 +3,7 @@
  *
  * Happy path + 3 edge cases for the admin abonados UI (T1+T2):
  *   #1  Happy — create with preview: /abonados/nuevo → fill form → "Continuar"
- *              → 8 dates listed with "Libre" badges → "Confirmar y Crear Abonado" → redirect
+ *              → 8 dates listed with "Libre" badges → "Crear turno fijo" → redirect
  *              to /abonados, row visible with "Activo" badge.
  *   #2  Edge — preview with conflict: service-role pre-inserts an overlapping confirmed
  *              booking on one of the candidate dates → preview shows "Ocupado" badge for
@@ -247,7 +247,7 @@ test.describe('Abonados CRUD', () => {
       await expect(okBadges).toHaveCount(8)
       await expect(page.getByText('8 turnos libres')).toBeVisible()
 
-      await page.getByRole('button', { name: 'Confirmar y Crear Abonado' }).click()
+      await page.getByRole('button', { name: 'Crear turno fijo' }).click()
       await page.waitForURL('**/abonados')
 
       // Row visible with Activo badge. La lista renderiza tabla (desktop) +
@@ -351,7 +351,7 @@ test.describe('Abonados CRUD', () => {
       const cancelFrom = dates[2]!
 
       await page.goto('/abonados')
-      // La fila también tiene "Cómo cancelar una fecha" (cancelación puntual de
+      // La fila también tiene "Cancelar una sola fecha" (cancelación puntual de
       // un día, texto completamente distinto) — el nombre completo de este botón
       // ya no colisiona por substring.
       const cancelBtn = page.getByRole('button', { name: 'Cancelar turno fijo' }).first()
@@ -412,7 +412,7 @@ test.describe('Abonados CRUD', () => {
       const reactivateDialog = page.getByRole('dialog')
       await expect(reactivateDialog).toBeVisible()
       // wait for preview to load
-      await expect(reactivateDialog.getByText(/Se generarán/i)).toBeVisible({ timeout: 10000 })
+      await expect(reactivateDialog.getByText(/Se cargan/i)).toBeVisible({ timeout: 10000 })
       await reactivateDialog.getByRole('button', { name: 'Reactivar' }).click()
       await expect(reactivateDialog).toBeHidden()
 

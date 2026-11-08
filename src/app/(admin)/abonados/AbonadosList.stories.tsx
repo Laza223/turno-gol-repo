@@ -81,9 +81,9 @@ export const ReactivarConVistaPrevia: Story = {
     // El "2" va en un <strong> aparte: getByText por defecto solo mira los text
     // nodes DIRECTOS de un elemento (no agrega texto de hijos), así que hay que
     // matchear el inicio y verificar el contenido completo con toHaveTextContent.
-    await waitFor(() => expect(dialog.getByText(/se generarán/i)).toBeVisible())
-    await expect(dialog.getByText(/se generarán/i)).toHaveTextContent(
-      'Se generarán 2 turnos futuros (1 fecha ya ocupada se va a saltar).',
+    await waitFor(() => expect(dialog.getByText(/se cargan/i)).toBeVisible())
+    await expect(dialog.getByText(/se cargan/i)).toHaveTextContent(
+      'Se cargan 2 turnos desde hoy (1 fecha está ocupada y se saltea).',
     )
     await expect(dialog.getByText('Ocupado')).toBeVisible()
   },

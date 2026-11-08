@@ -5,7 +5,7 @@ import type { ActionResult } from '@/shared/types/action-result'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { RadioChip, RadioChipGroup } from '@/components/ui/radio-chip'
 import { toast } from '@/hooks/use-toast'
-import { formatArs } from '@/lib/format'
+import { formatArs, formatDayHeader } from '@/lib/format'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { SlotPanelActions } from './actions'
 import type { RefundOutcome } from '@/modules/bookings/refund-outcome'
@@ -111,7 +111,11 @@ export function SlotCancelDialog({
       open={open}
       onOpenChange={onOpenChange}
       title="Cancelar reserva"
-      description={`${label}, ${booking.timeStart}–${booking.timeEnd}. Esta acción cancela el turno y libera el horario. Ingresá el motivo.`}
+      description={
+        booking.type === 'fixed'
+          ? `${label}, ${formatDayHeader(booking.date)}, ${booking.timeStart}–${booking.timeEnd}. Cancelás solo este turno. El turno fijo sigue activo las demás semanas. Ingresá el motivo.`
+          : `${label}, ${booking.timeStart}–${booking.timeEnd}. Esta acción cancela el turno y libera el horario. Ingresá el motivo.`
+      }
       variant="destructive"
       confirmLabel="Cancelar reserva"
       cancelLabel="Volver"

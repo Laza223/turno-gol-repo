@@ -108,6 +108,19 @@ export default function ProfileRest({
       )}
 
       {reviews.total > 0 && <ReviewsSection tenantId={tenant.id} {...reviews} />}
+
+      {/* Pie de la ficha (VIS-026): cada complejo cliente es una puerta hacia TurnoGol para
+          otro dueño. Enlace interno normal, sin keywords repetidas. */}
+      <p className="flex flex-wrap items-center justify-center gap-x-1.5 border-t border-border pt-4 text-center text-[13px] text-muted-foreground">
+        <span>Reservas con TurnoGol</span>
+        <span aria-hidden="true">·</span>
+        <Link
+          href="/para-complejos"
+          className="inline-flex min-h-11 items-center font-medium text-emerald-700 underline-offset-4 hover:underline dark:text-emerald-400"
+        >
+          ¿Tenés un complejo? Probalo
+        </Link>
+      </p>
     </>
   )
 }

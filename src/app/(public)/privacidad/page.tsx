@@ -134,7 +134,8 @@ export default function PrivacidadPage() {
           </li>
           <li>
             <strong>Vercel</strong> (Estados Unidos): hosting de la aplicación web. Procesa logs de
-            request (IP, user agent) por hasta 30 días.
+            request (IP, user agent) por hasta 30 días. También provee la medición de visitas
+            descrita en el punto 7.
           </li>
           <li>
             <strong>Upstash</strong> (Estados Unidos): rate limiting para prevenir abuso de
@@ -254,12 +255,21 @@ export default function PrivacidadPage() {
           TurnoGol usa <strong>únicamente cookies esenciales</strong> para el funcionamiento del
           servicio: la sesión de autenticación gestionada por Supabase Auth y, en las sesiones del
           equipo de soporte, una cookie firmada de acceso temporal al panel de un complejo. No
-          utilizamos cookies de tracking publicitario ni de analytics de terceros (Google Analytics,
-          Facebook Pixel, etc.).
+          utilizamos cookies de tracking publicitario (Google Ads, Facebook Pixel, etc.).
         </p>
         <p>
-          Por eso no mostramos un banner de cookies: solo usamos cookies funcionales estrictamente
-          necesarias, exceptuadas del requisito de consentimiento.
+          En las páginas públicas (portada, precios, páginas de los complejos y guías) medimos las
+          visitas con <strong>Vercel Web Analytics</strong>, para saber qué páginas se usan y
+          mejorarlas. No usa cookies de terceros: identifica al visitante con un código generado a
+          partir de la solicitud, que se descarta a las 24 horas, y solo guarda datos agregados
+          (página, origen de la visita, país o ciudad, tipo de dispositivo y navegador). No lo cruza
+          con tu cuenta ni con otros sitios. No medimos el panel del complejo ni las pantallas de
+          ingreso, y a la dirección de cada página le sacamos todo lo que viene después del signo de
+          pregunta.
+        </p>
+        <p>
+          No mostramos un banner de cookies porque las cookies que usamos son funcionales y
+          estrictamente necesarias, exceptuadas del requisito de consentimiento.
         </p>
         <p>
           En cuanto a seguridad, aplicamos las medidas correspondientes al{' '}

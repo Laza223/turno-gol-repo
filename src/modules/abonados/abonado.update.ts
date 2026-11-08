@@ -517,10 +517,11 @@ export async function updateAbonado(
     },
   })
 
+  const sessionById = new Map(sessions.map((s) => [s.id, s]))
   const touchedDates = new Set<string>()
   for (const t of move.targets) {
     touchedDates.add(t.date)
-    const from = sessions.find((s) => s.id === t.id)
+    const from = sessionById.get(t.id)
     if (from) touchedDates.add(from.date)
   }
   for (const d of touchedDates) await invalidateAvailSearch(d)

@@ -64,16 +64,16 @@ test.describe('Player bookings', () => {
 
       // Click cancel button on the booking row → ConfirmDialog opens
       await page.getByRole('button', { name: 'Cancelar' }).first().click()
-      await expect(page.getByRole('heading', { name: '¿Cancelar esta reserva?' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: '¿Cancelar este turno?' })).toBeVisible()
 
       // Type a reason into the textarea inside the dialog
       await page.locator('textarea#cancel-reason').fill('Test E2E cancel')
 
       // Confirm cancellation
-      await page.getByRole('button', { name: 'Sí, cancelar' }).click()
+      await page.getByRole('button', { name: 'Cancelar turno' }).click()
 
       // Wait for dialog to close
-      await expect(page.getByRole('heading', { name: '¿Cancelar esta reserva?' })).not.toBeVisible()
+      await expect(page.getByRole('heading', { name: '¿Cancelar este turno?' })).not.toBeVisible()
 
       // Una cancelada ya no vive en "Próximos": desde cd3f0787 esa tab filtra
       // por UPCOMING_PLAYABLE_STATUSES (confirmed | pending_payment), así que
@@ -168,7 +168,7 @@ test.describe('Player bookings', () => {
       }
 
       await page.goto('/mis-reservas')
-      await expect(page.getByText('Todavía no tenés reservas')).toBeVisible()
+      await expect(page.getByText('No tenés turnos por jugar')).toBeVisible()
     } finally {
       await ctx.close()
     }
@@ -203,16 +203,16 @@ test.describe('Player bookings', () => {
 
       // Click cancel button on the booking row → ConfirmDialog opens.
       await page.getByRole('button', { name: 'Cancelar' }).first().click()
-      await expect(page.getByRole('heading', { name: '¿Cancelar esta reserva?' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: '¿Cancelar este turno?' })).toBeVisible()
 
       // Fill cancellation reason.
       await page.locator('textarea#cancel-reason').fill('test player cancel with deposit')
 
       // Confirm cancellation.
-      await page.getByRole('button', { name: 'Sí, cancelar' }).click()
+      await page.getByRole('button', { name: 'Cancelar turno' }).click()
 
       // Wait for dialog to close.
-      await expect(page.getByRole('heading', { name: '¿Cancelar esta reserva?' })).not.toBeVisible()
+      await expect(page.getByRole('heading', { name: '¿Cancelar este turno?' })).not.toBeVisible()
 
       // Mismo corte de tabs que en el spec de arriba: la cancelada sale de
       // "Próximos" y aparece en "Historial". Acotado al slot 21:00 de ESTE spec.

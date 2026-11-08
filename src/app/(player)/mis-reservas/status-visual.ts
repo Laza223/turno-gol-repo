@@ -69,7 +69,7 @@ export function playerBookingVisual(status: string, depositStatus: string): Stat
   const lostDeposit = status === 'canceled_no_refund' && isDepositPaid(depositStatus)
   return {
     icon: base.icon,
-    label: lostDeposit ? 'Cancelada (sin reembolso)' : base.label,
+    label: lostDeposit ? 'Cancelada. Perdiste la seña' : base.label,
     // El ámbar del portal es solo de "Queda 1" (DESIGN.md, The Scarcity Amber Rule): la espera de la
     // seña se dice con el texto de la tarjeta, no con un tono de aviso.
     tone: status === 'pending_payment' ? 'neutral' : (TONO_DEL_JUGADOR[status] ?? base.tone),

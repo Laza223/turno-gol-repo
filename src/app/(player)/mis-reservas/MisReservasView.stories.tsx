@@ -131,7 +131,7 @@ export const ProximosVacio: Story = {
   args: { tab: 'proximos', upcomingCount: 0, bookings: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Todavía no tenés reservas')).toBeInTheDocument()
+    await expect(canvas.getByText('No tenés turnos por jugar')).toBeInTheDocument()
     await expect(canvas.getByRole('link', { name: /explorar complejos/i })).toHaveAttribute(
       'href',
       '/explorar',
@@ -179,7 +179,7 @@ export const HistorialTodosLosEstados: Story = {
     await expect(canvas.getAllByText('Jugada')).toHaveLength(2)
     await expect(canvas.getByText('Ausente')).toBeInTheDocument()
     await expect(canvas.getByText('Cancelada', { exact: true })).toBeInTheDocument()
-    await expect(canvas.getByText('Cancelada (sin reembolso)')).toBeInTheDocument()
+    await expect(canvas.getByText('Cancelada. Perdiste la seña')).toBeInTheDocument()
     await expect(canvas.getByText('Expirada')).toBeInTheDocument()
     // Solo la reserva 'completed' sin reseña propia muestra el botón.
     await expect(canvas.getAllByRole('button', { name: /dejar reseña/i })).toHaveLength(1)
@@ -187,7 +187,7 @@ export const HistorialTodosLosEstados: Story = {
 }
 
 /**
- * MEJORA-UX QA (mobile 375px): el badge "Cancelada (sin reembolso)" es
+ * MEJORA-UX QA (mobile 375px): el badge "Cancelada. Perdiste la seña" es
  * `shrink-0` y no cedía — el nombre de cancha/complejo (`min-w-0`, mismo
  * ancho compartido) se llevaba lo que sobraba: "Cancha E2E 3" quedaba en
  * "Can…" y "E2E Complejo Demo" en "E2E (". `flex-wrap` en el header de la
@@ -223,7 +223,7 @@ export const BadgeLargoNoAngostaElNombre: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const name = canvas.getByText(/Cancha E2E 3/)
-    const badge = canvas.getByText('Cancelada (sin reembolso)')
+    const badge = canvas.getByText('Cancelada. Perdiste la seña')
     await expect(name).toHaveTextContent('Cancha E2E 3')
     // Línea distinta (wrap real), no compartiendo fila con el badge largo.
     const gap = Math.abs(name.getBoundingClientRect().top - badge.getBoundingClientRect().top)
@@ -260,7 +260,7 @@ export const HistorialVacio: Story = {
   args: { tab: 'historial', upcomingCount: 0, bookings: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Historial vacío')).toBeInTheDocument()
+    await expect(canvas.getByText('Todavía no hay turnos en tu historial')).toBeInTheDocument()
   },
 }
 
@@ -376,7 +376,7 @@ export const UnaReserva: Story = {
     await expect(canvas.getByRole('heading', { level: 1, name: 'Mis reservas' })).toBeVisible()
     await expect(canvas.getByText('Hoy')).toBeVisible()
     await expect(canvas.getByText('18:00 a 19:00')).toBeVisible()
-    await expect(canvas.getByText(/Señada, \$\s5\.000/)).toBeVisible()
+    await expect(canvas.getByText(/Seña pagada \$\s5\.000/)).toBeVisible()
     await expect(canvas.getByRole('link', { name: 'Avisarle al grupo' })).toBeVisible()
     await expect(canvas.getByRole('link', { name: 'Cómo llegar' })).toBeVisible()
     await expect(canvas.getByRole('link', { name: /18:00 a 19:00/ })).toHaveAttribute(
@@ -423,8 +423,8 @@ export const ProximosTodosLosEstados: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/Señada, \$\s5\.000/)).toBeVisible()
-    await expect(canvas.getAllByText(/Pagás en el complejo/).length).toBeGreaterThan(0)
+    await expect(canvas.getByText(/Seña pagada \$\s5\.000/)).toBeVisible()
+    await expect(canvas.getAllByText(/Se paga en el complejo/).length).toBeGreaterThan(0)
     await expect(canvas.getByText(/el turno se libera/)).toBeVisible()
     await expect(canvas.getByText('Este turno ya terminó.')).toBeVisible()
     // El turno ya terminado no se cancela; los otros tres confirmados sí.
@@ -491,7 +491,7 @@ export const PreciosOcultos: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.queryByText(/Turno \$/)).toBeNull()
     await expect(canvas.queryByText(/15\.000/)).toBeNull()
-    await expect(canvas.getByText(/Señada, \$\s5\.000/)).toBeVisible()
+    await expect(canvas.getByText(/Seña pagada \$\s5\.000/)).toBeVisible()
     await expect(canvas.getByText('Devolución pendiente')).toBeVisible()
   },
 }
@@ -684,7 +684,7 @@ export const ContrasteMedido: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const medidos: Array<[string, HTMLElement]> = [
-      ['seña', canvas.getByText(/Señada, \$\s5\.000/)],
+      ['seña', canvas.getByText(/Seña pagada \$\s5\.000/)],
       ['esperando seña', canvas.getByText(/el turno se libera/)],
       ['ausente (texto)', canvas.getByText(/No te presentaste/)],
       ['ausente (badge)', canvas.getByText('Ausente')],

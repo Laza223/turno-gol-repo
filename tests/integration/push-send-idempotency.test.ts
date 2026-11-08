@@ -51,6 +51,9 @@ afterAll(async () => {
   }
 })
 
+// El payload es de tipo 'test' a propósito: es el único que NO pasa por el horario silencioso
+// (00 a 08 hs locales). Con un tipo real, a esas horas el worker reprograma el job en vez de
+// enviarlo y la prueba de idempotencia dependía del reloj de quien la corría.
 describe('push.worker idempotencia por dedupeKey (F3, hallazgo D4)', () => {
   // El mock de sendPushNotification es compartido por los 2 `it` de este
   // archivo — sin este clear, el conteo de llamadas del 2do test arrastra
@@ -87,7 +90,7 @@ describe('push.worker idempotencia por dedupeKey (F3, hallazgo D4)', () => {
 
     const jobData: PushSendJobData = {
       subscription_id: subId,
-      payload: { type: 'booking.confirmed_online', bookingId: 'b-idempotency-test' },
+      payload: { type: 'test' },
       dedupeKey,
     }
 
@@ -148,7 +151,7 @@ describe('push.worker idempotencia por dedupeKey (F3, hallazgo D4)', () => {
       name: 'push-send',
       data: {
         subscription_id: subId,
-        payload: { type: 'booking.confirmed_online', bookingId: 'b-distinct-1' },
+        payload: { type: 'test' },
         dedupeKey: `push:booking-confirmed:b-distinct-1:${subId}`,
       },
     } as Job<PushSendJobData>)
@@ -158,7 +161,7 @@ describe('push.worker idempotencia por dedupeKey (F3, hallazgo D4)', () => {
       name: 'push-send',
       data: {
         subscription_id: subId,
-        payload: { type: 'booking.confirmed_online', bookingId: 'b-distinct-2' },
+        payload: { type: 'test' },
         dedupeKey: `push:booking-confirmed:b-distinct-2:${subId}`,
       },
     } as Job<PushSendJobData>)

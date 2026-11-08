@@ -77,7 +77,9 @@ export const ReactivateNoSlots: Story = {
   args: { dialog: 'reactivate', reactivatePreviewDates: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
-    await waitFor(() => expect(canvas.getByText(/no se encontraron fechas futuras/i)).toBeVisible())
+    await waitFor(() =>
+      expect(canvas.getByText(/no hay fechas futuras para cargar/i)).toBeVisible(),
+    )
   },
 }
 

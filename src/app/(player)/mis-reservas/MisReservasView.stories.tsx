@@ -179,7 +179,7 @@ export const HistorialTodosLosEstados: Story = {
     await expect(canvas.getAllByText('Jugada')).toHaveLength(2)
     await expect(canvas.getByText('Ausente')).toBeInTheDocument()
     await expect(canvas.getByText('Cancelada', { exact: true })).toBeInTheDocument()
-    await expect(canvas.getByText('Cancelada. Perdiste la seña')).toBeInTheDocument()
+    await expect(canvas.getByText('Cancelada (sin reembolso)')).toBeInTheDocument()
     await expect(canvas.getByText('Expirada')).toBeInTheDocument()
     // Solo la reserva 'completed' sin reseña propia muestra el botón.
     await expect(canvas.getAllByRole('button', { name: /dejar reseña/i })).toHaveLength(1)
@@ -187,7 +187,7 @@ export const HistorialTodosLosEstados: Story = {
 }
 
 /**
- * MEJORA-UX QA (mobile 375px): el badge "Cancelada. Perdiste la seña" es
+ * MEJORA-UX QA (mobile 375px): el badge "Cancelada (sin reembolso)" es
  * `shrink-0` y no cedía — el nombre de cancha/complejo (`min-w-0`, mismo
  * ancho compartido) se llevaba lo que sobraba: "Cancha E2E 3" quedaba en
  * "Can…" y "E2E Complejo Demo" en "E2E (". `flex-wrap` en el header de la
@@ -223,7 +223,7 @@ export const BadgeLargoNoAngostaElNombre: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const name = canvas.getByText(/Cancha E2E 3/)
-    const badge = canvas.getByText('Cancelada. Perdiste la seña')
+    const badge = canvas.getByText('Cancelada (sin reembolso)')
     await expect(name).toHaveTextContent('Cancha E2E 3')
     // Línea distinta (wrap real), no compartiendo fila con el badge largo.
     const gap = Math.abs(name.getBoundingClientRect().top - badge.getBoundingClientRect().top)

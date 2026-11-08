@@ -49,7 +49,7 @@ describe('lo que el jugador ve distinto, a propósito', () => {
   it('distingue las dos cancelaciones porque es su plata', () => {
     expect(playerBookingVisual('canceled_refunded', 'refunded').label).toBe('Cancelada')
     expect(playerBookingVisual('canceled_no_refund', 'captured').label).toBe(
-      'Cancelada. Perdiste la seña',
+      'Cancelada (sin reembolso)',
     )
     // El complejo las lee como una sola: para su caja el turno se liberó y punto.
     expect(soloEstado('canceled_no_refund').label).toBe('Cancelada')
@@ -58,7 +58,7 @@ describe('lo que el jugador ve distinto, a propósito', () => {
   it('"sin reembolso" solo si había seña pagada: sin ella es "Cancelada" a secas', () => {
     for (const deposit of ['paid', 'captured']) {
       expect(playerBookingVisual('canceled_no_refund', deposit).label, deposit).toBe(
-        'Cancelada. Perdiste la seña',
+        'Cancelada (sin reembolso)',
       )
     }
     for (const deposit of ['not_required', 'pending', 'refunded']) {

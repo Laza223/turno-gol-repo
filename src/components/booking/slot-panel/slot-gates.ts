@@ -22,6 +22,8 @@ export type SlotGates = {
   canSellCanteen: boolean
   canEdit: boolean
   canReschedule: boolean
+  /** Turno ya jugado al que le falta plata: se puede cerrar con lo que entró. */
+  canWriteOff: boolean
 }
 
 export function slotGates({
@@ -93,6 +95,14 @@ export function slotGates({
     Boolean(actions?.listRescheduleSlotsAction && actions?.rescheduleBookingAction) &&
     hasCourts
 
+  // "Dar por perdido": turno de un cliente que ya terminó (jugado, o confirmado
+  // con el horario cumplido) y al que le falta plata.
+  const canWriteOff =
+    isClientBooking &&
+    (booking.status === 'completed' || (booking.status === 'confirmed' && hasEnded)) &&
+    (booking.pending ?? 0) > 0 &&
+    Boolean(actions?.writeOffBookingAction && actions?.undoWriteOffAction)
+
   return {
     isClientBooking,
     canMarkNoShow,
@@ -102,5 +112,6 @@ export function slotGates({
     canSellCanteen,
     canEdit,
     canReschedule,
+    canWriteOff,
   }
 }

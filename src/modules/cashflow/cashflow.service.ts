@@ -417,6 +417,33 @@ export async function countCashFlows(
   return [...rows][0]?.n ?? 0
 }
 
+/**
+ * Lo dado por perdido en el día operativo: el mismo corte que `getDaySummary`
+ * y `getCashFlows`, contado por el momento en que se tocó el botón
+ * (`booking_write_offs.created_at`), igual que la plata cobrada cuenta por
+ * cuándo entró. Solo turnos que siguen `completed` (uno pasado a ausente
+ * borra su perdido, pero el filtro protege el total ante cualquier resto).
+ */
+export async function getWrittenOffForDay(
+  tenantId: string,
+  date: string,
+  cutoffMins: number,
+  tx: DbTx,
+): Promise<{ totalCents: number; count: number }> {
+  const day = operatingDayRangeUtc(date, cutoffMins)
+  const rows = await tx.execute<{ totalCents: number; count: number }>(
+    sql`SELECT COALESCE(SUM(w.amount), 0)::int AS "totalCents", COUNT(*)::int AS count
+        FROM booking_write_offs w
+        JOIN bookings b ON b.id = w.booking_id AND b.tenant_id = w.tenant_id
+        WHERE w.tenant_id = ${tenantId}
+          AND b.status = 'completed'
+          AND w.created_at >= ${day.fromUtc.toISOString()}
+          AND w.created_at < ${day.toUtc.toISOString()}`,
+  )
+  const row = [...rows][0]
+  return { totalCents: row?.totalCents ?? 0, count: row?.count ?? 0 }
+}
+
 export async function getDaySummary(
   tenantId: string,
   date: string,

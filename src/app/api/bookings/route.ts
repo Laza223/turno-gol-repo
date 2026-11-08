@@ -92,15 +92,17 @@ export const GET = withTenant(
     )
 
     const data = pageRows.map((r) => {
-      const { totalPaid, pending } = summarizeBookingCharges({
+      const { totalPaid, pending, writtenOff } = summarizeBookingCharges({
         priceSnapshot: r.booking.priceSnapshot,
         depositAmount: r.booking.depositAmount,
         depositStatus: r.booking.depositStatus,
         chargesTotal: chargesByBooking.get(r.booking.id)?.total ?? 0,
+        writtenOff: chargesByBooking.get(r.booking.id)?.writtenOff ?? 0,
       })
       return {
         total_paid: totalPaid,
         pending,
+        written_off: writtenOff,
         id: r.booking.id,
         court_id: r.booking.courtId,
         court: r.courtName ? { name: r.courtName } : null,

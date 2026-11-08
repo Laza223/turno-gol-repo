@@ -67,6 +67,9 @@ export function HoyShell({
   const router = useRouter()
   const [isRefreshing, startRefresh] = useTransition()
   const [openId, setOpenId] = useState<string | null>(null)
+  // Turnos dados por perdido desde el modal, para que uno de un día anterior que
+  // se fue de la lista no se lea como cobrado (`settledCopy`).
+  const [lostById, setLostById] = useState<Record<string, number>>({})
   const [lastSeen, setLastSeen] = useState<{ booking: BoardBooking; earlier: boolean } | null>(null)
 
   // Antes de hidratar el hook devuelve 0, y entre ticks su valor puede ir por
@@ -88,7 +91,7 @@ export function HoyShell({
   const openBooking =
     fresh ??
     (openId && lastSeen?.booking.id === openId && lastSeen.earlier && earlierComplete
-      ? settledCopy(lastSeen.booking)
+      ? settledCopy(lastSeen.booking, lostById[lastSeen.booking.id] ?? 0)
       : null)
   // El turno abierto de hoy dejó de existir (se canceló, se reprogramó a otro
   // día): se cierra el modal en vez de dejarlo mostrando un turno fantasma.
@@ -175,6 +178,7 @@ export function HoyShell({
           onMutated={() => startRefresh(() => router.refresh())}
           cancellationPolicyHours={cancellationPolicyHours}
           lateCancelHours={lateCancelHours}
+          onWrittenOff={(id, cents) => setLostById((prev) => ({ ...prev, [id]: cents }))}
         />
       )}
     </div>
@@ -182,7 +186,9 @@ export function HoyShell({
 }
 
 /** El turno como se vio la última vez, pero saldado: lo que se cobró fue lo que faltaba. */
-function settledCopy(booking: BoardBooking): BoardBooking {
+function settledCopy(booking: BoardBooking, writtenOffCents: number): BoardBooking {
+  // Dado por perdido: sin saldo, pero lo que falta NO se cobró.
+  if (writtenOffCents > 0) return { ...booking, pending: 0, writtenOff: writtenOffCents }
   const pending = booking.pending ?? 0
   return { ...booking, pending: 0, totalPaid: (booking.totalPaid ?? 0) + pending }
 }

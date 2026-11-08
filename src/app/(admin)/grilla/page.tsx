@@ -30,7 +30,11 @@ import {
 } from '@/app/(admin)/reservas/actions'
 import { getBookingEditDetailAction } from '@/app/(admin)/reservas/edit-detail-actions'
 import { createAbonadoAction } from '@/app/(admin)/abonados/actions'
-import { chargeDebtAction } from '@/app/(admin)/caja/deudas/actions'
+import {
+  chargeDebtAction,
+  undoWriteOffAction,
+  writeOffBookingAction,
+} from '@/app/(admin)/caja/deudas/actions'
 import { listCanteenForBookingAction, sellTicketAction } from '@/app/(admin)/caja/cantina/actions'
 import { listDayGridBookings } from '@/app/(admin)/reservas/queries'
 import { artTodayStr } from '@/shared/dates/art'
@@ -98,6 +102,8 @@ export default async function GrillaPage(props: {
         searchPlayersAction={searchBookingPlayersAction}
         slotPanelActions={{
           chargeDebtAction,
+          writeOffBookingAction,
+          undoWriteOffAction,
           completeAndChargeBookingAction,
           addBookingChargeAction,
           confirmDepositPaymentAction,

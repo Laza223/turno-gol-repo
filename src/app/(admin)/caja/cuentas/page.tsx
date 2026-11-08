@@ -1,6 +1,11 @@
 import Link from 'next/link'
 import { withTenantContext } from '@/shared/db/client'
-import { countCashFlows, getCashFlows, getDaySummary } from '@/modules/cashflow/cashflow.service'
+import {
+  countCashFlows,
+  getCashFlows,
+  getDaySummary,
+  getWrittenOffForDay,
+} from '@/modules/cashflow/cashflow.service'
 import { getStreetMoney, sumStreetMoney } from '@/modules/cashflow/street-money.service'
 import {
   DEFAULT_STREET_MONEY_WINDOW,
@@ -63,9 +68,9 @@ export default async function CajaCuentasPage(props: {
   const day = parseCajaDay(searchParams.dia, today)
   const isToday = day === today
 
-  const { summary, movRows, movTotal, streetMoneyRows, refunds, lowStock } =
+  const { summary, movRows, movTotal, streetMoneyRows, refunds, lowStock, writtenOff } =
     await withTenantContext(tenant.id, async (tx) => {
-      const [s, cf, n, sm, rf, ls] = await Promise.all([
+      const [s, cf, n, sm, rf, ls, wo] = await Promise.all([
         getDaySummary(tenant.id, day, cutoffMins, tx),
         getCashFlows(tenant.id, day, cutoffMins, tx, {
           limit: MOVEMENTS_PAGE_SIZE,
@@ -77,6 +82,7 @@ export default async function CajaCuentasPage(props: {
         listPendingRefunds(tenant.id, tx),
         // Cuentas no carga el catálogo: el aviso de stock sale de un COUNT.
         lowStockCount(tenant.id, tx),
+        getWrittenOffForDay(tenant.id, day, cutoffMins, tx),
       ])
       return {
         summary: s,
@@ -85,6 +91,7 @@ export default async function CajaCuentasPage(props: {
         streetMoneyRows: sm,
         refunds: rf,
         lowStock: ls,
+        writtenOff: wo,
       }
     })
 
@@ -135,7 +142,7 @@ export default async function CajaCuentasPage(props: {
 
       <PendingRefundsList rows={refunds} action={markRefundSettledAction} />
 
-      <NightSummary heading={heading} summary={summary} />
+      <NightSummary heading={heading} summary={summary} writtenOff={writtenOff} />
 
       <CuentasPending
         rows={streetMoneyRows}

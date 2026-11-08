@@ -7,6 +7,7 @@ import {
   Gift,
   HandCoins,
   HelpCircle,
+  MinusCircle,
   Repeat,
   Trophy,
   UserX,
@@ -22,6 +23,7 @@ import {
   TONE_TINT_STRONG,
   type StatusTone,
 } from '@/lib/status-tone'
+import { formatArs } from '@/lib/format'
 import type { BookingStatus, BookingType, DepositStatus } from '@/modules/bookings/booking.types'
 
 /**
@@ -69,6 +71,8 @@ export type SlotFacts = {
   pending?: number | null
   /** Total cobrado en centavos: seña contada + cobros de mostrador. */
   totalPaid?: number | null
+  /** Lo dado por perdido ("Dar por perdido"), en centavos; ya restado de `pending`. */
+  writtenOff?: number | null
   /**
    * ¿Ya pasó `ends_at` (el instante físico de fin del turno)? Solo cambia algo
    * para `confirmed`: el auto-complete tarda ~30 min en pasarlo a `completed`,
@@ -435,6 +439,7 @@ type GridMoneyStateKey =
   | 'free_event'
   | 'no_data'
   | 'paid'
+  | 'written_off'
   | 'pending_charge'
   | 'fixed'
   | 'live'
@@ -532,6 +537,19 @@ export function gridMoneyVisual(facts: GridMoneyFacts): GridMoneyVisual {
       key: 'no_data',
       label: '',
       icon: null,
+      tone: 'neutral',
+      striped: false,
+      amountCents: null,
+      partial: false,
+    }
+  }
+  if (facts.pending === 0 && (facts.writtenOff ?? 0) > 0) {
+    // Se cerró con lo que entró: lo que faltaba NO es plata cobrada, así que
+    // nunca el verde de "Pagado".
+    return {
+      key: 'written_off',
+      label: `Perdido ${formatArs(facts.writtenOff ?? 0)}`,
+      icon: MinusCircle,
       tone: 'neutral',
       striped: false,
       amountCents: null,

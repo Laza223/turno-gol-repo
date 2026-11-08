@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react'
+import { formatArs } from '@/lib/format'
 import { AdminHeaderSlot } from '@/components/layout/admin-header-slot'
 import type { RevenueReport } from '@/modules/reports/report.types'
 import { ExportCsvButton } from './ExportCsvButton'
@@ -19,6 +20,7 @@ export function AnaliticasView({
   canSeeSystem,
   stepper,
   csv,
+  writtenOff,
 }: {
   report: RevenueReport
   /** 'YYYY-MM' elegido. */
@@ -30,6 +32,8 @@ export function AnaliticasView({
   stepper: Omit<ComponentProps<typeof MonthStepper>, 'className'>
   /** Días operativos del mes, inclusive, para el export. */
   csv: { from: string; to: string }
+  /** Lo dado por perdido en el mes (aparte de lo cobrado); sin nada no se dibuja. */
+  writtenOff?: { totalCents: number; count: number }
 }) {
   return (
     <div className="space-y-3 lg:space-y-5">
@@ -48,6 +52,16 @@ export function AnaliticasView({
         <MonthEmpty month={month} isCurrent={isCurrent} />
       ) : (
         <MonthBoard report={report} month={month} isCurrent={isCurrent} />
+      )}
+
+      {writtenOff && writtenOff.count > 0 && (
+        <p className="px-1 text-sm text-muted-foreground">
+          Dado por perdido en el mes:{' '}
+          <span className="font-medium tabular-nums text-foreground">
+            {formatArs(writtenOff.totalCents)}
+          </span>{' '}
+          en {writtenOff.count === 1 ? '1 turno' : `${writtenOff.count} turnos`}
+        </p>
       )}
 
       {/* Un bloque ausente no deja hueco: `empty:hidden` (sin hijos no hay fila). */}

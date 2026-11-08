@@ -524,6 +524,8 @@ export type PlayerBookingRow = {
   /** Saldo pendiente y total cobrado en centavos — derivados abajo con `summarizeBookingCharges`. */
   pending: number
   totalPaid: number
+  /** Dado por perdido (2026-11-07): sin saldo, pero no se cobró entero. */
+  writtenOff: number
 }
 
 /** Historial de reservas por página en la ficha del jugador. */
@@ -571,7 +573,9 @@ export async function getPlayerBookingHistory(
     ORDER BY b.date DESC, b.starts_at DESC, b.id DESC
     LIMIT ${limit} OFFSET ${offset}
   `)
-  const list = rows as unknown as Array<Omit<PlayerBookingRow, 'pending' | 'totalPaid'>>
+  const list = rows as unknown as Array<
+    Omit<PlayerBookingRow, 'pending' | 'totalPaid' | 'writtenOff'>
+  >
   const charges = await sumBookingChargesByBooking(
     tenantId,
     list.map((r) => r.id),
@@ -583,8 +587,14 @@ export async function getPlayerBookingHistory(
       depositAmount: r.depositAmount,
       depositStatus: r.depositStatus,
       chargesTotal: charges.get(r.id)?.total ?? 0,
+      writtenOff: charges.get(r.id)?.writtenOff ?? 0,
     })
-    return { ...r, pending: money.pending, totalPaid: money.totalPaid }
+    return {
+      ...r,
+      pending: money.pending,
+      totalPaid: money.totalPaid,
+      writtenOff: money.writtenOff,
+    }
   })
 }
 

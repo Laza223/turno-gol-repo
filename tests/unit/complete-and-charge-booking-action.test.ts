@@ -98,6 +98,7 @@ describe('completeAndChargeBookingAction', () => {
     mockTx([
       [], // FOR UPDATE lock del booking (Hallazgo C)
       [], // getBookingCharges: sin cobros previos
+      [{ writtenOff: 0 }], // getBookingCharges: sin perdido
     ])
 
     const res = await completeAndChargeBookingAction({
@@ -117,6 +118,7 @@ describe('completeAndChargeBookingAction', () => {
     mockTx([
       [], // FOR UPDATE lock del booking (Hallazgo C)
       [], // getBookingCharges: sin cobros previos
+      [{ writtenOff: 0 }], // getBookingCharges: sin perdido
     ])
     vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-1' } as never)
 
@@ -144,7 +146,7 @@ describe('completeAndChargeBookingAction', () => {
   // `team` opcional (1 o 2) que se persiste como `bookingTeam`.
   it('acepta team 1/2 y lo manda a createCashFlow como bookingTeam', async () => {
     vi.mocked(completeBooking).mockResolvedValue(fakeBooking({ priceSnapshot: 100_00 }) as never)
-    mockTx([[], []])
+    mockTx([[], [], [{ writtenOff: 0 }]])
     vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-team' } as never)
 
     const res = await completeAndChargeBookingAction({
@@ -179,6 +181,7 @@ describe('completeAndChargeBookingAction', () => {
     const tx = mockTx([
       [], // FOR UPDATE lock del booking
       [], // getBookingCharges: sin cobros previos
+      [{ writtenOff: 0 }], // getBookingCharges: sin perdido
     ])
     vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-locked' } as never)
 

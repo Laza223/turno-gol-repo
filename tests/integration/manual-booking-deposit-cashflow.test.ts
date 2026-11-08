@@ -238,6 +238,7 @@ describe('createManualBooking — la seña cobrada en el mostrador entra a Caja'
       depositAmount: booking.depositAmount,
       depositStatus: booking.depositStatus,
       chargesTotal: charges.chargesTotal,
+      writtenOff: 0,
     })
     expect(summary.totalPaid).toBe(DEPOSIT)
     expect(summary.pending).toBe(PRICE - DEPOSIT)

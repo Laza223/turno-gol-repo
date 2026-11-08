@@ -11,6 +11,7 @@ describe('summarizeBookingCharges — Tarea #8: saldo del turno', () => {
       depositAmount: 16_500_00,
       depositStatus: 'paid',
       chargesTotal: 0,
+      writtenOff: 0,
     })
     expect(s.depositCounted).toBe(16_500_00)
     expect(s.totalPaid).toBe(16_500_00)
@@ -23,6 +24,7 @@ describe('summarizeBookingCharges — Tarea #8: saldo del turno', () => {
       depositAmount: 16_500_00,
       depositStatus: 'paid',
       chargesTotal: 20_000_00,
+      writtenOff: 0,
     })
     expect(s.totalPaid).toBe(36_500_00)
     expect(s.pending).toBe(18_500_00)
@@ -34,6 +36,7 @@ describe('summarizeBookingCharges — Tarea #8: saldo del turno', () => {
       depositAmount: 16_500_00,
       depositStatus: 'paid',
       chargesTotal: 38_500_00,
+      writtenOff: 0,
     })
     expect(s.pending).toBe(0)
   })
@@ -44,6 +47,7 @@ describe('summarizeBookingCharges — Tarea #8: saldo del turno', () => {
       depositAmount: 16_500_00,
       depositStatus: 'refunded',
       chargesTotal: 0,
+      writtenOff: 0,
     })
     expect(s.depositCounted).toBe(0)
     expect(s.pending).toBe(55_000_00)
@@ -55,6 +59,7 @@ describe('summarizeBookingCharges — Tarea #8: saldo del turno', () => {
       depositAmount: 16_500_00,
       depositStatus: 'captured',
       chargesTotal: 0,
+      writtenOff: 0,
     })
     expect(s.depositCounted).toBe(16_500_00)
     expect(s.pending).toBe(38_500_00)
@@ -66,6 +71,7 @@ describe('summarizeBookingCharges — Tarea #8: saldo del turno', () => {
       depositAmount: 0,
       depositStatus: 'not_required',
       chargesTotal: 0,
+      writtenOff: 0,
     })
     expect(s.depositCounted).toBe(0)
     expect(s.pending).toBe(50_000_00)
@@ -77,7 +83,33 @@ describe('summarizeBookingCharges — Tarea #8: saldo del turno', () => {
       depositAmount: 0,
       depositStatus: 'not_required',
       chargesTotal: 60_000_00,
+      writtenOff: 0,
     })
+    expect(s.pending).toBe(0)
+  })
+
+  it('parcial + perdido → pendiente 0; lo perdido NO cuenta como cobrado', () => {
+    const s = summarizeBookingCharges({
+      priceSnapshot: 50_000_00,
+      depositAmount: 0,
+      depositStatus: 'not_required',
+      chargesTotal: 30_000_00,
+      writtenOff: 20_000_00,
+    })
+    expect(s.totalPaid).toBe(30_000_00)
+    expect(s.writtenOff).toBe(20_000_00)
+    expect(s.pending).toBe(0)
+  })
+
+  it('perdido de todo el turno sin cobros → totalPaid 0 y pendiente 0', () => {
+    const s = summarizeBookingCharges({
+      priceSnapshot: 50_000_00,
+      depositAmount: 0,
+      depositStatus: 'not_required',
+      chargesTotal: 0,
+      writtenOff: 50_000_00,
+    })
+    expect(s.totalPaid).toBe(0)
     expect(s.pending).toBe(0)
   })
 })

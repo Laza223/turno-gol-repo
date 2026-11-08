@@ -79,6 +79,7 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM canteen_products WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM daily_cash_opens WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM cash_flows WHERE tenant_id = ${E2E.tenantId}`
+  await sql`DELETE FROM booking_write_offs WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM daily_cash_closes WHERE tenant_id = ${E2E.tenantId}`
   // Reseñas (016) y RIVAL (099) cuelgan de la reserva, así que van ANTES de
   // `bookings`: reviews.booking_id es NO ACTION (un residuo bloquea el DELETE de
@@ -135,6 +136,7 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM canteen_products WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM daily_cash_opens WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM cash_flows WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM booking_write_offs WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM daily_cash_closes WHERE tenant_id = ${E2E.depositTenantId}`
   // Ver la nota del bloque equivalente del tenant principal.
   await sql`DELETE FROM reviews WHERE tenant_id = ${E2E.depositTenantId}`

@@ -17,7 +17,7 @@ import type { ReservaListRow } from './queries'
 export function agendaMoneyCell(
   b: Pick<
     ReservaListRow,
-    'pending' | 'totalPaid' | 'status' | 'priceSnapshot' | 'type' | 'depositAmount'
+    'pending' | 'totalPaid' | 'writtenOff' | 'status' | 'priceSnapshot' | 'type' | 'depositAmount'
   >,
   ended: boolean,
 ): { text: string; tone: StatusTone } {
@@ -35,6 +35,10 @@ export function agendaMoneyCell(
   if (b.type === 'block') return { text: '', tone: 'neutral' }
   if (b.priceSnapshot === 0) return { text: 'Sin cargo', tone: 'neutral' }
   if (typeof b.pending !== 'number') return { text: formatArs(b.priceSnapshot), tone: 'neutral' }
+  // Dado por perdido: nunca el verde de "Pagado" — lo que falta no entró.
+  if (b.pending <= 0 && (b.writtenOff ?? 0) > 0) {
+    return { text: `Perdido ${formatArs(b.writtenOff ?? 0)}`, tone: 'neutral' }
+  }
   if (b.pending <= 0) {
     return (b.totalPaid ?? 0) > 0
       ? { text: 'Pagado', tone: 'success' }

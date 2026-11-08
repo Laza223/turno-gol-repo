@@ -213,7 +213,7 @@ type MovePlan = {
   targets: MoveTarget[]
   conflictDates: string[]
   fixedConflict: boolean
-  /** Fechas que se quedan en el horario anterior (ya pasaron o quedan después del fin del fijo). */
+  /** Fechas que se quedan como están: ya pasaron, están en un día cerrado, se movieron a mano o quedan después del fin del fijo. */
   notMoved: number
 }
 
@@ -234,8 +234,12 @@ function isSlotChange(abonado: AbonadoRow, input: UpdateAbonadoInput): boolean {
  * cuenta por fecha, no por horario, y un fijo con dos horarios no se entiende).
  *
  * El día de la semana corre cada fecha al próximo día nuevo, nunca hacia atrás.
- * Una fecha que ya habría pasado (por ejemplo hoy, moviendo a una hora anterior)
- * o que quedaría después del `ends_on` del fijo no se mueve ni frena nada.
+ * No se mueven ni frenan nada (se cuentan en `notMoved`) las fechas que:
+ *  - ya habrían pasado (por ejemplo hoy, moviendo a una hora anterior);
+ *  - quedarían después del `ends_on` del fijo;
+ *  - caen en un día que el complejo cerró (decisión 2026-11-08);
+ *  - alguien movió a mano a otra cancha, día u horario: no coinciden con el
+ *    slot actual del fijo y se respetan igual que un precio puesto a mano.
  */
 async function planMove(
   tenantId: string,
@@ -275,6 +279,16 @@ async function planMove(
   const targets: MoveTarget[] = []
   let notMoved = 0
   for (const s of sessions) {
+    const sessionDow = new Date(`${s.date}T00:00:00Z`).getUTCDay()
+    if (
+      s.courtId !== abonado.courtId ||
+      sessionDow !== abonado.dayOfWeek ||
+      hhmm(s.timeStart) !== hhmm(abonado.timeStart) ||
+      hhmm(s.timeEnd) !== hhmm(abonado.timeEnd)
+    ) {
+      notMoved++
+      continue
+    }
     const date = addDays(s.date, shift)
     if (endsOn !== null && date > endsOn) {
       notMoved++
@@ -287,7 +301,11 @@ async function planMove(
       notMoved++
       continue
     }
-    if (closed.has(date) || (cutoff !== null && date > cutoff)) {
+    if (closed.has(date)) {
+      notMoved++
+      continue
+    }
+    if (cutoff !== null && date > cutoff) {
       conflictDates.add(date)
       continue
     }

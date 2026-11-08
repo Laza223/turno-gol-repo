@@ -345,6 +345,43 @@ describe('updateAbonado — día, horario y cancha', () => {
     expect(dates).toEqual(['2030-01-11', '2030-01-18', '2030-01-21'])
   })
 
+  it('respeta una fecha que alguien movió a mano a otro horario', async () => {
+    const { sql, tenant, staff, abonado } = await setup()
+    const before = await sessionsOf(abonado.id)
+    // La tercera fecha (21/01) ya estaba movida a las 15:00 (18:00 UTC).
+    await sql`
+      UPDATE bookings
+      SET time_start = '15:00', time_end = '16:00',
+          starts_at = '2030-01-21T18:00:00Z', ends_at = '2030-01-21T19:00:00Z'
+      WHERE id = ${before[2]!.id}
+    `
+
+    const out = await edit(tenant.id, staff.id, abonado.id, {
+      timeStart: '16:00',
+      timeEnd: '17:00',
+    })
+
+    expect(out.moved).toBe(7)
+    const after = await sessionsOf(abonado.id)
+    expect(after[2]!.time_start.slice(0, 5)).toBe('15:00')
+    expect(after.filter((s) => s.time_start.slice(0, 5) === '16:00')).toHaveLength(7)
+  })
+
+  it('saltea una fecha en un día que el complejo cerró y mueve las demás', async () => {
+    const { sql, tenant, staff, abonado } = await setup()
+    await sql`UPDATE tenants SET closed_dates = ARRAY['2030-01-14']::date[] WHERE id = ${tenant.id}`
+
+    const out = await edit(tenant.id, staff.id, abonado.id, {
+      timeStart: '16:00',
+      timeEnd: '17:00',
+    })
+
+    expect(out.moved).toBe(7)
+    const after = await sessionsOf(abonado.id)
+    expect(after.find((s) => s.date === '2030-01-14')!.time_start.slice(0, 5)).toBe('14:00')
+    expect(after.filter((s) => s.time_start.slice(0, 5) === '16:00')).toHaveLength(7)
+  })
+
   it('avisa del choque con otro fijo aunque este no tenga fechas por venir', async () => {
     const { sql, tenant, staff, courtId, abonado } = await setup()
     await withTenantContext(tenant.id, (tx) =>

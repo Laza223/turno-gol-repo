@@ -366,8 +366,8 @@ export function AbonadoEditDialog({
             {previewData && previewData.notMoved > 0 && !blocked && (
               <p className="text-amber-700 dark:text-amber-300">
                 {previewData.notMoved === 1
-                  ? '1 fecha se queda en el horario anterior porque ya pasó o es posterior al fin del turno fijo.'
-                  : `${previewData.notMoved} fechas se quedan en el horario anterior porque ya pasaron o son posteriores al fin del turno fijo.`}
+                  ? '1 fecha se queda en su horario actual porque ya pasó, está en un día cerrado, se movió a mano o es posterior al fin del turno fijo.'
+                  : `${previewData.notMoved} fechas se quedan en su horario actual porque ya pasaron, están en un día cerrado, se movieron a mano o son posteriores al fin del turno fijo.`}
               </p>
             )}
             {previewData && previewData.keptOwnPrice > 0 && (

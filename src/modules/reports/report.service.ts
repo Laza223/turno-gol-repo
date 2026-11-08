@@ -2,6 +2,7 @@ import { and, eq, inArray, isNotNull, lt, gte, sql } from 'drizzle-orm'
 import { withTenantContext, type DbTx } from '@/shared/db/client'
 import { cashFlows, bookings, courts } from '@/shared/db/schema'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
+import type { CancelReason } from '@/shared/cancel-reasons'
 import type {
   RevenueReport,
   CourtReport,
@@ -262,6 +263,35 @@ export async function getWrittenOffForMonth(
     )
     const row = [...rows][0]
     return { totalCents: row?.totalCents ?? 0, count: row?.count ?? 0 }
+  })
+}
+
+/**
+ * Por qué se cayeron los turnos en el mes: cancelaciones con motivo cerrado
+ * (`canceled_reason_code`, migr. 109), por `canceled_at` y con el MISMO período
+ * que `getRevenueReport`. Las anteriores a la 109 y las del bot no tienen código
+ * y no entran. De mayor a menor.
+ */
+export async function getCancelReasonsForMonth(
+  tenantId: string,
+  month: string,
+  cutoffMins: number,
+): Promise<{ total: number; byReason: Array<{ reason: CancelReason; count: number }> }> {
+  const { fromUtc, toUtc } = getMonthBounds(month, cutoffMins)
+  return withTenantContext(tenantId, async (tx) => {
+    const rows = await tx.execute<{ reason: CancelReason; count: number }>(
+      sql`SELECT canceled_reason_code AS reason, COUNT(*)::int AS count
+          FROM bookings
+          WHERE tenant_id = ${tenantId}
+            AND status IN ('canceled_refunded', 'canceled_no_refund')
+            AND canceled_reason_code IS NOT NULL
+            AND canceled_at >= ${fromUtc.toISOString()}
+            AND canceled_at < ${toUtc.toISOString()}
+          GROUP BY canceled_reason_code
+          ORDER BY count DESC, canceled_reason_code`,
+    )
+    const byReason = [...rows]
+    return { total: byReason.reduce((sum, r) => sum + r.count, 0), byReason }
   })
 }
 

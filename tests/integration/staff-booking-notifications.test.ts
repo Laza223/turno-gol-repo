@@ -124,7 +124,7 @@ describe('emisores reales de reservas con notificaciones v2', () => {
     const ctx = await setup()
     const booking = await create(ctx)
     await playerTx(ctx, async (tx) => {
-      await cancelByPlayer(booking.id, ctx.playerId, undefined, tx)
+      await cancelByPlayer(booking.id, ctx.playerId, 'other', tx)
       const queued = await tx.execute(drizzleSql`
         SELECT id FROM notifications WHERE tenant_id=${ctx.tenantId}
           AND trigger_event='booking.canceled_by_player' AND channel='push'
@@ -132,7 +132,7 @@ describe('emisores reales de reservas con notificaciones v2', () => {
       expect(queued).toHaveLength(2)
     })
     const replay = await playerTx(ctx, (tx) =>
-      cancelByPlayer(booking.id, ctx.playerId, undefined, tx),
+      cancelByPlayer(booking.id, ctx.playerId, 'other', tx),
     )
     expect(replay.replayed).toBe(true)
     expect(
@@ -161,7 +161,7 @@ describe('emisores reales de reservas con notificaciones v2', () => {
     const booking = await create(ctx)
     await expect(
       playerTx(ctx, async (tx) => {
-        await cancelByPlayer(booking.id, ctx.playerId, undefined, tx)
+        await cancelByPlayer(booking.id, ctx.playerId, 'other', tx)
         throw new Error('rollback cancelación')
       }),
     ).rejects.toThrow('rollback cancelación')

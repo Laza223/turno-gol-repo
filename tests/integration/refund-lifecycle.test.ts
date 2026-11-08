@@ -119,9 +119,7 @@ describe('devolución de una seña cobrada fuera de MercadoPago', () => {
   it('cancelar deja la deuda registrada y visible para el complejo', async () => {
     const { tenantId, bookingId, playerId } = await setupConfirmedBookingWithCashDeposit()
 
-    await withTenantContext(tenantId, (tx) =>
-      cancelByPlayer(bookingId, playerId, 'no puedo ir', tx),
-    )
+    await withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, 'rain', tx))
 
     // Exactamente una fila de refund, con el medio real de la seña. Antes de
     // esto no se creaba ninguna: el complejo debía plata y no había registro.
@@ -149,7 +147,7 @@ describe('devolución de una seña cobrada fuera de MercadoPago', () => {
     const { tenantId, bookingId, playerId, staffUserId } =
       await setupConfirmedBookingWithCashDeposit()
 
-    await withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, undefined, tx))
+    await withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, 'other', tx))
 
     const before = await withTenantContext(tenantId, (tx) =>
       getBookingDetail(tenantId, bookingId, tx),
@@ -195,7 +193,7 @@ describe('devolución de una seña cobrada fuera de MercadoPago', () => {
   it('deja un audit log con quién saldó, cuánto y por qué medio', async () => {
     const { tenantId, bookingId, playerId, staffUserId } =
       await setupConfirmedBookingWithCashDeposit()
-    await withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, undefined, tx))
+    await withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, 'other', tx))
     const [refund] = await refundRows(bookingId)
 
     await withTenantContext(tenantId, (tx) =>
@@ -224,7 +222,7 @@ describe('el tilde es idempotente', () => {
   it('dos tildes concurrentes dejan un solo audit log', async () => {
     const { tenantId, bookingId, playerId, staffUserId } =
       await setupConfirmedBookingWithCashDeposit()
-    await withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, undefined, tx))
+    await withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, 'other', tx))
     const [refund] = await refundRows(bookingId)
 
     const settle = () =>
@@ -257,7 +255,7 @@ describe('el recordatorio cubre las devoluciones de cualquier medio', () => {
    */
   it('una devolucion en efectivo de mas de 7 dias dispara el recordatorio', async () => {
     const { tenantId, bookingId, playerId } = await setupConfirmedBookingWithCashDeposit()
-    await withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, undefined, tx))
+    await withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, 'other', tx))
 
     const sql = getSql()
     await sql`
@@ -277,7 +275,7 @@ describe('el recordatorio cubre las devoluciones de cualquier medio', () => {
 
   it('una devolucion reciente no molesta a nadie', async () => {
     const { tenantId, bookingId, playerId } = await setupConfirmedBookingWithCashDeposit()
-    await withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, undefined, tx))
+    await withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, 'other', tx))
 
     const result = await remindPendingRefunds()
     expect(result.reminded).toBe(0)
@@ -318,7 +316,7 @@ describe('lista y contador de devoluciones coinciden', () => {
 
   it('una devolución que nunca pasó por MercadoPago aparece enseguida en las dos', async () => {
     const { tenantId, bookingId, playerId } = await setupConfirmedBookingWithCashDeposit()
-    await withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, undefined, tx))
+    await withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, 'other', tx))
 
     const listed = await withTenantContext(tenantId, (tx) => listPendingRefunds(tenantId, tx))
     const counted = await withTenantContext(tenantId, (tx) => countPendingRefunds(tenantId, tx))

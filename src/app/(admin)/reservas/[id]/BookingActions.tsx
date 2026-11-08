@@ -9,6 +9,8 @@ import { toast } from '@/hooks/use-toast'
 import { useNowMs } from '@/hooks/use-now'
 import { formatArs } from '@/lib/format'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
+import { CANCEL_REASONS, type CancelReason } from '@/shared/cancel-reasons'
+import { CancelReasonPicker } from '@/components/booking/CancelReasonPicker'
 import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
 import { getRefundOutcome } from '@/modules/bookings/refund-outcome'
 import { refundOutcomeText } from '@/components/booking/slot-panel/refund-outcome-text'
@@ -25,7 +27,7 @@ type CancellationType = 'complejo' | 'jugador'
 type SimpleBookingFn = (bookingId: string) => Promise<BookingActionResult>
 type CancelBookingFn = (
   bookingId: string,
-  reason: string,
+  reasonCode: CancelReason,
   cancellationType: CancellationType,
 ) => Promise<BookingActionResult>
 /** `releaseBlockAction` no devuelve `booking`: la fila ya no existe tras el DELETE. */
@@ -415,7 +417,7 @@ function ConfirmedActions({
   const [noShowOpen, setNoShowOpen] = useState(false)
   const [completeDialogOpen, setCompleteDialogOpen] = useState(false)
   const [cancelType, setCancelType] = useState<CancellationType | null>(null)
-  const [reason, setReason] = useState('')
+  const [reason, setReason] = useState<CancelReason | null>(null)
 
   const hasPaidDeposit = depositStatus === 'paid' && depositAmount > 0
   const bookingStartUtcMs = startsAt
@@ -436,9 +438,8 @@ function ConfirmedActions({
 
   async function onConfirmCancel(): Promise<ActionResult> {
     if (!cancelType) return { success: false, error: 'Indicá quién cancela la reserva.' }
-    if (reason.trim().length < 3)
-      return { success: false, error: 'Ingresá un motivo (mínimo 3 caracteres).' }
-    const res = await cancelBookingAction(bookingId, reason.trim(), cancelType)
+    if (!reason) return { success: false, error: 'Elegí por qué se cancela.' }
+    const res = await cancelBookingAction(bookingId, reason, cancelType)
     if (res.success) {
       toast({ title: 'Reserva cancelada', variant: 'success' })
       router.refresh()
@@ -510,7 +511,7 @@ function ConfirmedActions({
         <button
           type="button"
           onClick={() => {
-            setReason('')
+            setReason(null)
             setCancelType(null)
             setCancelOpen(true)
           }}
@@ -524,7 +525,7 @@ function ConfirmedActions({
         open={cancelOpen}
         onOpenChange={setCancelOpen}
         title="Cancelar reserva"
-        description="Primero indicá por qué se cancela. Eso define si corresponde reembolsar la seña."
+        description="Primero indicá quién cancela. Eso define si corresponde reembolsar la seña."
         variant="destructive"
         confirmLabel="Cancelar reserva"
         cancelLabel="Volver"
@@ -561,18 +562,7 @@ function ConfirmedActions({
             {refundPreview}
           </div>
 
-          <div className="space-y-1">
-            <label htmlFor="cancel-reason" className="text-xs font-medium text-foreground">
-              Motivo (obligatorio)
-            </label>
-            <textarea
-              id="cancel-reason"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={2}
-              className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
-            />
-          </div>
+          <CancelReasonPicker reasons={CANCEL_REASONS} value={reason} onChange={setReason} />
         </div>
       </ConfirmDialog>
 

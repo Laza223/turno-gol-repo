@@ -179,7 +179,7 @@ describe('cancelByAdmin — idempotencia del reintento', () => {
     })
 
     const first = await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(bookingId, staff.id, 'lluvia', 'complejo', tx),
+      cancelByAdmin(bookingId, staff.id, 'rain', 'complejo', tx),
     )
     expect(first.replayed).toBeUndefined()
     const before = await writes(tenant.id, bookingId, player.id)
@@ -193,7 +193,7 @@ describe('cancelByAdmin — idempotencia del reintento', () => {
     const trackSpy = vi.spyOn(track, 'booking')
     try {
       const replay = await withTenantContext(tenant.id, (tx) =>
-        cancelByAdmin(bookingId, staff.id, 'lluvia', 'complejo', tx),
+        cancelByAdmin(bookingId, staff.id, 'rain', 'complejo', tx),
       )
       expect(replay.replayed).toBe(true)
       expect(replay.notificationIds).toEqual([])
@@ -206,9 +206,9 @@ describe('cancelByAdmin — idempotencia del reintento', () => {
   })
 
   for (const [label, who, reason, type] of [
-    ['otro staff', 'other', 'lluvia', 'complejo'],
-    ['mismo staff, otro motivo', 'staff', 'cancha rota', 'complejo'],
-    ['mismo staff, otro tipo', 'staff', 'lluvia', 'jugador'],
+    ['otro staff', 'other', 'rain', 'complejo'],
+    ['mismo staff, otro motivo', 'staff', 'court_unavailable', 'complejo'],
+    ['mismo staff, otro tipo', 'staff', 'rain', 'jugador'],
   ] as const) {
     it(`${label}: error de estado (BookingNotCancelableError) y nada escrito`, async () => {
       const ctx = await setup()
@@ -220,7 +220,7 @@ describe('cancelByAdmin — idempotencia del reintento', () => {
         timeEnd: '10:00',
       })
       await withTenantContext(ctx.tenant.id, (tx) =>
-        cancelByAdmin(bookingId, ctx.staff.id, 'lluvia', 'complejo', tx),
+        cancelByAdmin(bookingId, ctx.staff.id, 'rain', 'complejo', tx),
       )
       const before = await writes(ctx.tenant.id, bookingId, ctx.player.id)
 
@@ -244,11 +244,11 @@ describe('cancelByAdmin — idempotencia del reintento', () => {
       timeStart: '10:00',
       timeEnd: '11:00',
     })
-    await withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, undefined, tx))
+    await withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, 'other', tx))
 
     await expect(
       withTenantContext(tenant.id, (tx) =>
-        cancelByAdmin(bookingId, staff.id, 'lluvia', 'complejo', tx),
+        cancelByAdmin(bookingId, staff.id, 'rain', 'complejo', tx),
       ),
     ).rejects.toMatchObject({ name: 'BookingNotCancelableError', canceledBy: 'player' })
   })
@@ -268,7 +268,7 @@ describe('cancelByAdmin — idempotencia del reintento', () => {
     const outcomes = await Promise.all(
       [0, 1].map(() =>
         withTenantContext(tenant.id, (tx) =>
-          cancelByAdmin(bookingId, staff.id, 'lluvia', 'complejo', tx),
+          cancelByAdmin(bookingId, staff.id, 'rain', 'complejo', tx),
         ),
       ),
     )
@@ -297,7 +297,7 @@ describe('cancelByAdmin — idempotencia del reintento', () => {
 
     // 'jugador' aplica la política: +500 días queda adentro del default de 12 h.
     const outcome = await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(bookingId, staff.id, 'pidió cancelar', 'jugador', tx),
+      cancelByAdmin(bookingId, staff.id, 'rival_no_show', 'jugador', tx),
     )
     expect(outcome.booking.status).toBe('canceled_refunded')
   })

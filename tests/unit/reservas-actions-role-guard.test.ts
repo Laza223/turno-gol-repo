@@ -112,10 +112,16 @@ describe('reservas actions — staff sin membresía activa (rol null) es rechaza
   })
 
   it('cancelBookingAction NO resuelve el gateway MP ni cancela sin rol', async () => {
-    const res = await cancelBookingAction('b-1', 'lluvia torrencial', 'complejo')
+    const res = await cancelBookingAction('b-1', 'rain', 'complejo')
     expect(res.success).toBe(false)
     expect(vi.mocked(getDb)).not.toHaveBeenCalled()
     expect(vi.mocked(resolveTenantGateway)).not.toHaveBeenCalled()
+    expect(vi.mocked(cancelByAdmin)).not.toHaveBeenCalled()
+  })
+
+  it('cancelBookingAction rechaza un motivo fuera de la lista sin cancelar', async () => {
+    const res = await cancelBookingAction('b-1', 'porque sí' as never, 'complejo')
+    expect(res).toEqual({ success: false, error: 'Elegí por qué se cancela.' })
     expect(vi.mocked(cancelByAdmin)).not.toHaveBeenCalled()
   })
 
@@ -153,12 +159,12 @@ describe('reservas actions — manager (Encargado) opera con normalidad (cruce #
       booking: { id: 'b-1' },
       notificationIds: [],
     } as never)
-    const res = await cancelBookingAction('b-1', 'lluvia torrencial', 'jugador')
+    const res = await cancelBookingAction('b-1', 'rain', 'jugador')
     expect(res.success).toBe(true)
     expect(vi.mocked(cancelByAdmin)).toHaveBeenCalledWith(
       'b-1',
       'staff-1',
-      'lluvia torrencial',
+      'rain',
       'jugador',
       FAKE_TX,
     )

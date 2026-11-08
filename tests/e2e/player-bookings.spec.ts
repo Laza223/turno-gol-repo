@@ -66,8 +66,8 @@ test.describe('Player bookings', () => {
       await page.getByRole('button', { name: 'Cancelar' }).first().click()
       await expect(page.getByRole('heading', { name: '¿Cancelar este turno?' })).toBeVisible()
 
-      // Type a reason into the textarea inside the dialog
-      await page.locator('textarea#cancel-reason').fill('Test E2E cancel')
+      // Pick a reason inside the dialog
+      await page.getByRole('radio', { name: 'Llueve' }).click()
 
       // Confirm cancellation
       await page.getByRole('button', { name: 'Cancelar turno' }).click()
@@ -101,7 +101,7 @@ test.describe('Player bookings', () => {
 
       expect(error).toBeNull()
       expect(row?.status).toMatch(/^canceled_(refunded|no_refund)$/)
-      expect(row?.canceled_reason).toBe('Test E2E cancel')
+      expect(row?.canceled_reason).toBe('Llueve')
       expect(row?.canceled_by).toBe('player')
     } finally {
       await ctx.close()
@@ -206,7 +206,7 @@ test.describe('Player bookings', () => {
       await expect(page.getByRole('heading', { name: '¿Cancelar este turno?' })).toBeVisible()
 
       // Fill cancellation reason.
-      await page.locator('textarea#cancel-reason').fill('test player cancel with deposit')
+      await page.getByRole('radio', { name: 'Llueve' }).click()
 
       // Confirm cancellation.
       await page.getByRole('button', { name: 'Cancelar turno' }).click()
@@ -235,7 +235,7 @@ test.describe('Player bookings', () => {
 
       expect(error).toBeNull()
       expect(row?.status).toMatch(/^canceled_(refunded|no_refund)$/)
-      expect(row?.canceled_reason).toBe('test player cancel with deposit')
+      expect(row?.canceled_reason).toBe('Llueve')
       expect(row?.canceled_by).toBe('player')
     } finally {
       await ctx.close()

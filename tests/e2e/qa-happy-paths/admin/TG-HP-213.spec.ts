@@ -107,7 +107,7 @@ test.describe('TG-HP-213 — cancelar reserva con / sin refund', () => {
       // BookingActions.tsx) pero las dos ramas arrancan con el mismo prefijo:
       // TurnoGol no reembolsa por API, la devuelve el complejo.
       await expect(page.getByText(/La seña de .* queda para devolver/i)).toBeVisible()
-      await page.locator('#cancel-reason').fill('rotura de la cancha, mantenimiento programado')
+      await page.getByRole('radio', { name: 'Cancha no disponible' }).click()
 
       await page.getByRole('dialog').getByRole('button', { name: 'Cancelar reserva' }).click()
 
@@ -127,9 +127,7 @@ test.describe('TG-HP-213 — cancelar reserva con / sin refund', () => {
 
       expect(error).toBeNull()
       expect(row?.status).toBe('canceled_refunded')
-      expect(row?.canceled_reason).toBe(
-        'Cancelado por el complejo: rotura de la cancha, mantenimiento programado',
-      )
+      expect(row?.canceled_reason).toBe('Cancelado por el complejo: Cancha no disponible')
       expect(row?.canceled_by).toBe('admin')
       expect(row?.deposit_status).toBe('refunded')
 
@@ -179,7 +177,7 @@ test.describe('TG-HP-213 — cancelar reserva con / sin refund', () => {
 
       await page.getByRole('radio', { name: /El jugador pidió cancelar/i }).click()
       await expect(page.getByText(/fuera del plazo de cancelación/i)).toBeVisible()
-      await page.locator('#cancel-reason').fill('el jugador avisó que no puede venir')
+      await page.getByRole('radio', { name: 'Lesión o imprevisto' }).click()
 
       await page.getByRole('dialog').getByRole('button', { name: 'Cancelar reserva' }).click()
 
@@ -199,9 +197,7 @@ test.describe('TG-HP-213 — cancelar reserva con / sin refund', () => {
 
       expect(error).toBeNull()
       expect(row?.status).toBe('canceled_no_refund')
-      expect(row?.canceled_reason).toBe(
-        'Cancelado a pedido del jugador: el jugador avisó que no puede venir',
-      )
+      expect(row?.canceled_reason).toBe('Cancelado a pedido del jugador: Lesión o imprevisto')
       expect(row?.canceled_by).toBe('admin')
       expect(row?.deposit_status).toBe('captured')
 

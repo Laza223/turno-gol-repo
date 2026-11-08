@@ -384,7 +384,7 @@ describe('cancelByPlayer — Hallazgo 8: inactive tenant guard', () => {
       await sql`UPDATE tenants SET status = ${status} WHERE id = ${tenant.id}`
 
       await expect(
-        withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, 'no va más', tx)),
+        withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, 'rain', tx)),
       ).rejects.toBeInstanceOf(TenantInactiveError)
 
       // Booking untouched; no refund attempted against the dead MP account.
@@ -430,7 +430,7 @@ describe('cancelByPlayer — 4A: in-policy, deposit paid', () => {
     // MercadoPago (ese camino se eliminó, devolvía 403 siempre). La fila queda
     // 'pending' hasta que el complejo la salde.
     await withTenantContext(tenant.id, (tx) =>
-      cancelByPlayer(bookingId, player.id, 'ya no puedo', tx),
+      cancelByPlayer(bookingId, player.id, 'no_players', tx),
     )
 
     expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
@@ -446,8 +446,12 @@ describe('cancelByPlayer — 4A: in-policy, deposit paid', () => {
     // canceled_by / canceled_reason deben persistir en la fila del booking.
     expect(await getBookingCancelMeta(bookingId)).toEqual({
       canceled_by: 'player',
-      canceled_reason: 'ya no puedo',
+      canceled_reason: 'No juntamos gente',
     })
+    // El código cerrado (migr. 109) es lo que cuenta Métricas.
+    const [coded] =
+      await getSql()`SELECT canceled_reason_code FROM bookings WHERE id = ${bookingId}`
+    expect(coded!.canceled_reason_code).toBe('no_players')
 
     const audits = await getAuditLogs(bookingId)
     const cancelAudit = audits.find((a) => a.action === 'booking.canceled')
@@ -489,7 +493,7 @@ describe('cancelByPlayer — 4B: out-of-policy, deposit paid', () => {
     await linkPaymentToBooking(bookingId, paymentId)
 
     await withTenantContext(tenant.id, async (tx) => {
-      await cancelByPlayer(bookingId, player.id, undefined, tx)
+      await cancelByPlayer(bookingId, player.id, 'other', tx)
     })
 
     expect(await getBookingStatus(bookingId)).toBe('canceled_no_refund')
@@ -520,7 +524,7 @@ describe('cancelByPlayer — 4A: no deposit', () => {
     })
 
     await withTenantContext(tenant.id, async (tx) => {
-      await cancelByPlayer(bookingId, player.id, undefined, tx)
+      await cancelByPlayer(bookingId, player.id, 'other', tx)
     })
 
     // Bug: sin seña pagada (deposit_status='not_required'), 'canceled_refunded'
@@ -563,7 +567,9 @@ describe('cancelByPlayer — 07-cancelbyplayer-noshow-guard: turno ya terminado'
     const bookingId = rows[0]!.id
 
     await expect(
-      withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, 'no pude ir', tx)),
+      withTenantContext(tenant.id, (tx) =>
+        cancelByPlayer(bookingId, player.id, 'rival_no_show', tx),
+      ),
     ).rejects.toBeInstanceOf(BookingAlreadyEndedError)
 
     // El booking queda intacto: nada de canceled_no_refund con la seña
@@ -607,7 +613,7 @@ describe('cancelByAdmin — Tarea #3: complejo cancela → reembolso forzado', (
     await linkPaymentToBooking(bookingId, paymentId)
 
     await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(bookingId, staff.id, 'mantenimiento', 'complejo', tx),
+      cancelByAdmin(bookingId, staff.id, 'reschedule', 'complejo', tx),
     )
 
     expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
@@ -619,12 +625,15 @@ describe('cancelByAdmin — Tarea #3: complejo cancela → reembolso forzado', (
     // canceled_reason incluye el tipo de cancelación (Tarea #3).
     expect(await getBookingCancelMeta(bookingId)).toEqual({
       canceled_by: 'admin',
-      canceled_reason: 'Cancelado por el complejo: mantenimiento',
+      canceled_reason: 'Cancelado por el complejo: Cambiamos de día u horario',
     })
-    // El rastro guarda el tipo de cancelación y el reason crudo.
+    const [coded] =
+      await getSql()`SELECT canceled_reason_code FROM bookings WHERE id = ${bookingId}`
+    expect(coded!.canceled_reason_code).toBe('reschedule')
+    // El rastro guarda el tipo de cancelación y el código del motivo.
     const meta = await getCancelAuditMetadata(bookingId, 'booking.canceled_by_admin')
     expect(meta).toMatchObject({
-      reason: 'mantenimiento',
+      reasonCode: 'reschedule',
       cancellationType: 'complejo',
       shouldRefund: true,
     })
@@ -666,7 +675,7 @@ describe('cancelByAdmin — Tarea #3: complejo cancela → reembolso forzado', (
     await linkPaymentToBooking(bookingId, paymentId)
 
     await withTenantContext(tenant.id, async (tx) => {
-      await cancelByAdmin(bookingId, staff.id, 'cancha rota', 'complejo', tx)
+      await cancelByAdmin(bookingId, staff.id, 'injury_or_issue', 'complejo', tx)
     })
 
     // Aunque la política diría retener, el complejo reembolsa.
@@ -714,7 +723,7 @@ describe('cancelByAdmin — Tarea #3: jugador pidió cancelar → política', ()
     await linkPaymentToBooking(bookingId, paymentId)
 
     await withTenantContext(tenant.id, async (tx) => {
-      await cancelByAdmin(bookingId, staff.id, 'no puede ir', 'jugador', tx)
+      await cancelByAdmin(bookingId, staff.id, 'rain', 'jugador', tx)
     })
 
     expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
@@ -745,7 +754,7 @@ describe('cancelByAdmin — Tarea #3: jugador pidió cancelar → política', ()
     })
 
     await withTenantContext(tenant.id, async (tx) => {
-      await cancelByAdmin(bookingId, staff.id, 'avisó tarde', 'jugador', tx)
+      await cancelByAdmin(bookingId, staff.id, 'no_players', 'jugador', tx)
     })
 
     expect(await getBookingStatus(bookingId)).toBe('canceled_no_refund')
@@ -754,7 +763,7 @@ describe('cancelByAdmin — Tarea #3: jugador pidió cancelar → política', ()
     expect(await countCashFlows(bookingId)).toBe(0)
     expect(await getBookingCancelMeta(bookingId)).toEqual({
       canceled_by: 'admin',
-      canceled_reason: 'Cancelado a pedido del jugador: avisó tarde',
+      canceled_reason: 'Cancelado a pedido del jugador: No juntamos gente',
     })
   })
 })
@@ -1339,7 +1348,7 @@ describe('Guard: cancel terminal booking', () => {
 
     await expect(
       withTenantContext(tenant.id, async (tx) => {
-        await cancelByAdmin(bookingId, staff.id, 'test', 'jugador', tx)
+        await cancelByAdmin(bookingId, staff.id, 'rival_no_show', 'jugador', tx)
       }),
     ).rejects.toBeInstanceOf(BookingNotInConfirmedError)
   })
@@ -1384,7 +1393,9 @@ describe('cancelByPlayer — ownership guard (IDOR)', () => {
     await linkPaymentToBooking(bookingId, paymentId)
 
     await expect(
-      withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, attacker.id, 'no es mía', tx)),
+      withTenantContext(tenant.id, (tx) =>
+        cancelByPlayer(bookingId, attacker.id, 'reschedule', tx),
+      ),
     ).rejects.toBeInstanceOf(BookingNotOwnedByPlayerError)
 
     // Booking del dueño intacto; sin refund contra la cuenta del dueño.
@@ -1420,7 +1431,9 @@ describe('cancelByPlayer — state guard', () => {
     await sql`UPDATE bookings SET status = 'canceled_no_refund' WHERE id = ${bookingId}`
 
     await expect(
-      withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, 'sin actor', tx)),
+      withTenantContext(tenant.id, (tx) =>
+        cancelByPlayer(bookingId, player.id, 'injury_or_issue', tx),
+      ),
     ).rejects.toBeInstanceOf(BookingNotInConfirmedError)
 
     // Estado terminal preservado (sin re-escritura a otro canceled_*).
@@ -1434,7 +1447,7 @@ describe('cancelByPlayer — state guard', () => {
     const ghostId = '00000000-0000-0000-0000-0000000000aa'
 
     await expect(
-      withTenantContext(tenant.id, (tx) => cancelByPlayer(ghostId, player.id, undefined, tx)),
+      withTenantContext(tenant.id, (tx) => cancelByPlayer(ghostId, player.id, 'other', tx)),
     ).rejects.toBeInstanceOf(BookingNotInConfirmedError)
   })
 })
@@ -1474,7 +1487,7 @@ describe('cancelByPlayer — idempotencia del reintento', () => {
       await linkPaymentToBooking(bookingId, paymentId)
 
       const first = await withTenantContext(tenant.id, (tx) =>
-        cancelByPlayer(bookingId, player.id, 'primero', tx),
+        cancelByPlayer(bookingId, player.id, 'rain', tx),
       )
       expect(first.replayed).toBeUndefined()
 
@@ -1494,11 +1507,11 @@ describe('cancelByPlayer — idempotencia del reintento', () => {
       const trackSpy = vi.spyOn(track, 'booking')
       try {
         const replay = await withTenantContext(tenant.id, (tx) =>
-          cancelByPlayer(bookingId, player.id, 'reintento', tx),
+          cancelByPlayer(bookingId, player.id, 'no_players', tx),
         )
         expect(replay.replayed).toBe(true)
         expect(replay.notificationIds).toEqual([])
-        expect(replay.booking).toMatchObject({ id: bookingId, status, canceledReason: 'primero' })
+        expect(replay.booking).toMatchObject({ id: bookingId, status, canceledReason: 'Llueve' })
         expect(trackSpy).not.toHaveBeenCalled()
       } finally {
         trackSpy.mockRestore()
@@ -1524,12 +1537,12 @@ describe('cancelByPlayer — idempotencia del reintento', () => {
       timeEnd: '05:00',
     })
     await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(bookingId, staff.id, 'lluvia', 'complejo', tx),
+      cancelByAdmin(bookingId, staff.id, 'rival_no_show', 'complejo', tx),
     )
     const auditsBefore = (await getAuditLogs(bookingId)).length
 
     const err = await withTenantContext(tenant.id, (tx) =>
-      cancelByPlayer(bookingId, player.id, undefined, tx),
+      cancelByPlayer(bookingId, player.id, 'other', tx),
     ).catch((e: unknown) => e)
 
     expect(err).toBeInstanceOf(BookingNotCancelableError)
@@ -1553,10 +1566,10 @@ describe('cancelByPlayer — idempotencia del reintento', () => {
       timeStart: '05:00',
       timeEnd: '06:00',
     })
-    await withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, owner.id, undefined, tx))
+    await withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, owner.id, 'other', tx))
 
     await expect(
-      withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, stranger.id, undefined, tx)),
+      withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, stranger.id, 'other', tx)),
     ).rejects.toBeInstanceOf(BookingNotOwnedByPlayerError)
   })
 
@@ -1578,7 +1591,7 @@ describe('cancelByPlayer — idempotencia del reintento', () => {
     })
 
     const outcome = await withTenantContext(tenant.id, (tx) =>
-      cancelByPlayer(bookingId, player.id, undefined, tx),
+      cancelByPlayer(bookingId, player.id, 'other', tx),
     )
     expect(outcome.booking.status).toBe('canceled_refunded')
   })
@@ -1618,7 +1631,9 @@ describe('cancelByAdmin — inactive tenant guard (H8, paridad con cancelByPlaye
     await sql`UPDATE tenants SET status = 'blocked' WHERE id = ${tenant.id}`
 
     await expect(
-      withTenantContext(tenant.id, (tx) => cancelByAdmin(bookingId, staff.id, 'x', 'complejo', tx)),
+      withTenantContext(tenant.id, (tx) =>
+        cancelByAdmin(bookingId, staff.id, 'reschedule', 'complejo', tx),
+      ),
     ).rejects.toBeInstanceOf(TenantInactiveError)
     expect(await countPaymentsByType(bookingId, 'refund')).toBe(0)
   })
@@ -1661,7 +1676,7 @@ describe('cancelByPlayer — in-policy con seña paga', () => {
     })
     await linkPaymentToBooking(bookingId, paymentId) // seña MP (payment_id seteado)
 
-    await withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, undefined, tx))
+    await withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, 'other', tx))
 
     expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
     expect(await getBookingDepositStatus(bookingId)).toBe('refunded')
@@ -1691,7 +1706,7 @@ describe('cancelByPlayer — in-policy con seña paga', () => {
     })
 
     await withTenantContext(tenant.id, (tx) =>
-      cancelByPlayer(bookingId, player.id, 'me arrepentí', tx),
+      cancelByPlayer(bookingId, player.id, 'injury_or_issue', tx),
     )
 
     // Sin payment_id MP no hay nada que reembolsar por API, pero el booking
@@ -1753,7 +1768,7 @@ describe('cancelByPlayer — in-policy con seña paga', () => {
     // acumula entre tests (mismo patrón que el resto del archivo, ver 4A: usa
     // toContainEqual/deltas, nunca toHaveLength(0) absoluto). Capturamos el
     // largo ANTES para verificar que ESTA cancelación no agregó nada.
-    await withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, undefined, tx))
+    await withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, 'other', tx))
 
     expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
     expect(await getBookingDepositStatus(bookingId)).toBe('refunded')
@@ -1794,7 +1809,7 @@ describe('cancelByPlayer — in-policy con seña paga', () => {
     await linkPaymentToBooking(bookingId, paymentId)
 
     await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(bookingId, staff.id, 'mantenimiento', 'complejo', tx),
+      cancelByAdmin(bookingId, staff.id, 'reschedule', 'complejo', tx),
     )
 
     expect(await getBookingStatus(bookingId)).toBe('canceled_refunded')
@@ -1806,12 +1821,12 @@ describe('cancelByPlayer — in-policy con seña paga', () => {
 
 // ─── GAP (auditoría): contenido del metadata del audit log de cancelación ──
 // Los tests verificaban action/actor_type/actor_id del audit log, pero NUNCA el
-// jsonb `metadata` ({ reason, inPolicy, depositStatus }). Ese rastro es la
+// jsonb `metadata` ({ reasonCode, inPolicy, depositStatus }). Ese rastro es la
 // evidencia de compliance (Ley 25.326): un bug que registre inPolicy o
 // depositStatus equivocados —o pierda el reason— dejaría un audit trail
 // mentiroso sin romper ningún test. Acá fijamos el contenido exacto.
 describe('cancelByPlayer — audit trail metadata', () => {
-  it('cancelación in-policy con seña MP: metadata = { reason, inPolicy:true, depositStatus:refunded } y canceled_at seteado', async () => {
+  it('cancelación in-policy con seña MP: metadata = { reasonCode, inPolicy:true, depositStatus:refunded } y canceled_at seteado', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
@@ -1838,13 +1853,11 @@ describe('cancelByPlayer — audit trail metadata', () => {
     })
     await linkPaymentToBooking(bookingId, paymentId)
 
-    await withTenantContext(tenant.id, (tx) =>
-      cancelByPlayer(bookingId, player.id, 'reembolso ok', tx),
-    )
+    await withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, 'rain', tx))
 
     const meta = await getCancelAuditMetadata(bookingId, 'booking.canceled')
     expect(meta).toMatchObject({
-      reason: 'reembolso ok',
+      reasonCode: 'rain',
       inPolicy: true,
       depositStatus: 'refunded',
     })
@@ -1871,7 +1884,7 @@ describe('cancelByPlayer — audit trail metadata', () => {
     expect(fieldRows[0]!.in_policy).toBe(true)
   })
 
-  it('cancelación out-of-policy sin reason: metadata = { reason:null, inPolicy:false, depositStatus:captured }', async () => {
+  it('cancelación out-of-policy con motivo Otro: metadata = { reasonCode, inPolicy:false, depositStatus:captured }', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     const player = await createTestPlayer(sql)
@@ -1898,10 +1911,10 @@ describe('cancelByPlayer — audit trail metadata', () => {
     })
     await linkPaymentToBooking(bookingId, paymentId)
 
-    await withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, undefined, tx))
+    await withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, 'other', tx))
 
     const meta = await getCancelAuditMetadata(bookingId, 'booking.canceled')
-    expect(meta).toMatchObject({ reason: null, inPolicy: false, depositStatus: 'captured' })
+    expect(meta).toMatchObject({ reasonCode: 'other', inPolicy: false, depositStatus: 'captured' })
   })
 })
 
@@ -1993,7 +2006,7 @@ describe('notificaciones al jugador en cancelaciones (doc7 Flujo 4)', () => {
     })
 
     await withTenantContext(tenant.id, (tx) =>
-      cancelByPlayer(bookingId, player.id, 'no puedo ir', tx),
+      cancelByPlayer(bookingId, player.id, 'no_players', tx),
     )
 
     const notifs = await getNotificationsByTemplate(tenant.id, 'booking_canceled')
@@ -2002,7 +2015,7 @@ describe('notificaciones al jugador en cancelaciones (doc7 Flujo 4)', () => {
     expect(notifs[0]!.recipient_id).toBe(player.id)
     expect(notifs[0]!.content).toMatchObject({
       canceledBy: 'player',
-      reason: 'no puedo ir',
+      reason: 'No juntamos gente',
       timeStart: '09:00',
       timeEnd: '10:00',
     })
@@ -2029,7 +2042,7 @@ describe('notificaciones al jugador en cancelaciones (doc7 Flujo 4)', () => {
     })
 
     await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(bookingId, staff.id, 'avisó por teléfono', 'jugador', tx),
+      cancelByAdmin(bookingId, staff.id, 'rival_no_show', 'jugador', tx),
     )
 
     const notifs = await getNotificationsByTemplate(tenant.id, 'booking_canceled')
@@ -2038,7 +2051,7 @@ describe('notificaciones al jugador en cancelaciones (doc7 Flujo 4)', () => {
     expect(notifs[0]!.recipient_id).toBe(player.id)
     expect(notifs[0]!.content).toMatchObject({
       canceledBy: 'admin',
-      reason: 'avisó por teléfono',
+      reason: 'El otro equipo no viene',
     })
     // Cuando cancela el jugador (aunque lo tipee el admin) NO es el template
     // "por el complejo".
@@ -2077,7 +2090,7 @@ describe('notificaciones al jugador en cancelaciones (doc7 Flujo 4)', () => {
     await linkPaymentToBooking(bookingId, paymentId)
 
     await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(bookingId, staff.id, 'cancha rota', 'complejo', tx),
+      cancelByAdmin(bookingId, staff.id, 'injury_or_issue', 'complejo', tx),
     )
     expect(await countPaymentsByType(bookingId, 'refund')).toBe(1)
 
@@ -2105,7 +2118,7 @@ describe('notificaciones al jugador en cancelaciones (doc7 Flujo 4)', () => {
     })
 
     await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(bookingId, staff.id, 'complejo cerrado', 'complejo', tx),
+      cancelByAdmin(bookingId, staff.id, 'reschedule', 'complejo', tx),
     )
 
     expect(await getNotificationsByTemplate(tenant.id, 'booking_canceled')).toHaveLength(0)
@@ -2168,7 +2181,7 @@ describe('cancelByAdmin — B3: turno ya terminado, nunca reembolsa (ni con comp
     })
 
     await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(bookingId, staff.id, 'se olvidaron de cerrar el turno', 'complejo', tx),
+      cancelByAdmin(bookingId, staff.id, 'injury_or_issue', 'complejo', tx),
     )
 
     // Guard B3 gana: aunque 'complejo' normalmente fuerza el reembolso, el

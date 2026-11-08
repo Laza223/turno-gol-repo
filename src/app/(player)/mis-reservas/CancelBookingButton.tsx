@@ -6,6 +6,8 @@ import * as Sentry from '@sentry/nextjs'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
+import { CancelReasonPicker } from '@/components/booking/CancelReasonPicker'
+import { PLAYER_CANCEL_REASONS, type CancelReason } from '@/shared/cancel-reasons'
 import { lateCancelPlayerText, type LateCancelPenalty } from '@/modules/bookings/late-cancel'
 import { useRefundDialog } from './RefundDialogProvider'
 import type { PlayerBookingActionResult } from './actions'
@@ -13,7 +15,7 @@ import type { PlayerBookingActionResult } from './actions'
 /** Firma de la Server Action que ejecuta la cancelación. */
 export type CancelMyBookingAction = (
   bookingId: string,
-  reason?: string,
+  reasonCode: CancelReason,
 ) => Promise<PlayerBookingActionResult>
 
 /** ENS-2: consecuencia concreta de cancelar AHORA (getCancellationPreview). */
@@ -86,7 +88,7 @@ export function CancelBookingButton({
 }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [reason, setReason] = useState('')
+  const [reason, setReason] = useState<CancelReason | null>(null)
   // El diálogo de la devolución NO se renderiza acá: la Server Action revalida
   // /mis-reservas y esta tarjeta desaparece de "Próximos", con lo que React la
   // desmonta y se lleva puesto cualquier diálogo que fuera hijo suyo. Lo
@@ -94,9 +96,10 @@ export function CancelBookingButton({
   const showRefundDialog = useRefundDialog()
 
   async function handleConfirm() {
+    if (!reason) return { success: false as const, error: 'Elegí por qué cancelás.' }
     let result: PlayerBookingActionResult
     try {
-      result = await action(bookingId, reason.trim() || undefined)
+      result = await action(bookingId, reason)
     } catch (err) {
       // La action LANZA cuando la respuesta no vuelve (4G que se corta): la reserva
       // pudo haberse cancelado igual. Se refresca la lista y se dice la verdad;
@@ -129,7 +132,10 @@ export function CancelBookingButton({
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setReason(null)
+          setOpen(true)
+        }}
         aria-describedby={describedBy}
         data-ghost
         className="inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-red-700 transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring dark:text-red-300"
@@ -182,20 +188,12 @@ export function CancelBookingButton({
         variant="destructive"
         onConfirm={handleConfirm}
       >
-        <div className="space-y-1">
-          <label htmlFor="cancel-reason" className="text-sm font-medium text-foreground">
-            Motivo (opcional)
-          </label>
-          <textarea
-            id="cancel-reason"
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            maxLength={500}
-            rows={2}
-            placeholder="Ej: no puedo ir, lluvia, equivocación de horario..."
-            className="w-full resize-none rounded-md border border-input bg-card px-3 py-2 text-base text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
-          />
-        </div>
+        <CancelReasonPicker
+          reasons={PLAYER_CANCEL_REASONS}
+          value={reason}
+          onChange={setReason}
+          legend="¿Por qué cancelás?"
+        />
       </ConfirmDialog>
     </>
   )

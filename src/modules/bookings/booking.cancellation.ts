@@ -13,6 +13,7 @@ import {
   type LateCancelStrikeResult,
 } from '@/modules/relationships/ptr.service'
 import { isLateCancel } from './late-cancel'
+import { CANCEL_REASON_LABELS, type CancelReason } from '@/shared/cancel-reasons'
 import {
   guestLateCancelStatus,
   PHONE_HINT_DIGITS,
@@ -304,7 +305,7 @@ type SettledCancellation = {
  */
 async function settlePlayerSideCancellation(
   b: LockedBooking,
-  reason: string | undefined,
+  reasonCode: CancelReason | undefined,
   tx: DbTx,
 ): Promise<SettledCancellation> {
   const bookingId = b.id
@@ -375,7 +376,8 @@ async function settlePlayerSideCancellation(
       status: targetStatus,
       canceledBy: 'player',
       canceledAt: new Date(),
-      canceledReason: reason ?? null,
+      canceledReason: reasonCode ? CANCEL_REASON_LABELS[reasonCode] : null,
+      canceledReasonCode: reasonCode ?? null,
       canceledLate: lateCancel,
       depositStatus: newDepositStatus,
       updatedAt: new Date(),
@@ -389,7 +391,7 @@ async function settlePlayerSideCancellation(
 export async function cancelByPlayer(
   bookingId: string,
   playerId: string,
-  reason: string | undefined,
+  reasonCode: CancelReason,
   tx: DbTx,
 ): Promise<CancellationOutcome> {
   const b = await lockBooking(bookingId, tx)
@@ -417,7 +419,7 @@ export async function cancelByPlayer(
 
   const { row, inPolicy, depositStatus, lateCancel } = await settlePlayerSideCancellation(
     b,
-    reason,
+    reasonCode,
     tx,
   )
 
@@ -431,7 +433,7 @@ export async function cancelByPlayer(
     resourceType: 'booking',
     resourceId: bookingId,
     metadata: {
-      reason: reason ?? null,
+      reasonCode,
       inPolicy,
       depositStatus,
       ...lateCancelAudit(strike),
@@ -464,7 +466,7 @@ export async function cancelByPlayer(
           tenantEmail: names.tenantEmail,
           canceledBy: 'player',
           bookingCode: bookingCode(bookingId),
-          ...(reason ? { reason } : {}),
+          reason: CANCEL_REASON_LABELS[reasonCode],
         },
         triggerEvent: 'booking.canceled',
       },
@@ -644,7 +646,7 @@ const CANCELLATION_TYPE_LABEL: Record<AdminCancellationType, string> = {
 export async function cancelByAdmin(
   bookingId: string,
   staffUserId: string,
-  reason: string,
+  reasonCode: CancelReason,
   cancellationType: AdminCancellationType,
   tx: DbTx,
 ): Promise<CancellationOutcome> {
@@ -664,7 +666,7 @@ export async function cancelByAdmin(
       b.tenant_id,
       'booking.canceled_by_admin',
       staffUserId,
-      { reason, cancellationType },
+      { reasonCode, cancellationType },
       tx,
     ))
   ) {
@@ -736,7 +738,8 @@ export async function cancelByAdmin(
     }
   }
 
-  const storedReason = `${CANCELLATION_TYPE_LABEL[cancellationType]}: ${reason}`
+  const reasonLabel = CANCEL_REASON_LABELS[reasonCode]
+  const storedReason = `${CANCELLATION_TYPE_LABEL[cancellationType]}: ${reasonLabel}`
 
   const updated = await tx
     .update(bookings)
@@ -745,6 +748,7 @@ export async function cancelByAdmin(
       canceledBy: 'admin',
       canceledAt: new Date(),
       canceledReason: storedReason,
+      canceledReasonCode: reasonCode,
       canceledLate: lateCancel,
       depositStatus: newDepositStatus,
       updatedAt: new Date(),
@@ -763,7 +767,7 @@ export async function cancelByAdmin(
     resourceType: 'booking',
     resourceId: bookingId,
     metadata: {
-      reason,
+      reasonCode,
       cancellationType,
       inPolicy,
       shouldRefund,
@@ -825,7 +829,7 @@ export async function cancelByAdmin(
                   tenantEmail: names.tenantEmail,
                   canceledBy: 'admin',
                   bookingCode: bookingCode(bookingId),
-                  reason,
+                  reason: reasonLabel,
                 },
                 triggerEvent: 'booking.canceled_by_admin',
               },

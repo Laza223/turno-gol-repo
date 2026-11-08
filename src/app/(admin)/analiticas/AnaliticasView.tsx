@@ -6,6 +6,7 @@ import { ExportCsvButton } from './ExportCsvButton'
 import MetricsDashboard from './MetricsDashboard'
 import { MethodSummary, MonthBoard, MonthEmpty } from './MonthBoard'
 import { MonthStepper } from './MonthStepper'
+import { CancelReasonsCard, type CancelReasonsSummary } from './CancelReasonsCard'
 
 /**
  * Lo que dibuja `/analiticas`, separado de la página para que la story use la
@@ -21,6 +22,7 @@ export function AnaliticasView({
   stepper,
   csv,
   writtenOff,
+  cancelReasons,
 }: {
   report: RevenueReport
   /** 'YYYY-MM' elegido. */
@@ -34,6 +36,8 @@ export function AnaliticasView({
   csv: { from: string; to: string }
   /** Lo dado por perdido en el mes (aparte de lo cobrado); sin nada no se dibuja. */
   writtenOff?: { totalCents: number; count: number }
+  /** Por qué se cancelaron turnos en el mes; sin cancelaciones con motivo no se dibuja. */
+  cancelReasons?: CancelReasonsSummary
 }) {
   return (
     <div className="space-y-3 lg:space-y-5">
@@ -67,6 +71,7 @@ export function AnaliticasView({
       {/* Un bloque ausente no deja hueco: `empty:hidden` (sin hijos no hay fila). */}
       <div className="grid grid-cols-1 items-start gap-3 lg:gap-5 empty:hidden lg:grid-cols-2">
         {!isEmpty && <MethodSummary report={report} />}
+        {cancelReasons && cancelReasons.total > 0 && <CancelReasonsCard summary={cancelReasons} />}
         {(isCurrent || canSeeSystem) && (
           <MetricsDashboard canSeeSystem={canSeeSystem} showRecent={isCurrent} />
         )}

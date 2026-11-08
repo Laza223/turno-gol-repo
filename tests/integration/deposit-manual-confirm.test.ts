@@ -170,7 +170,7 @@ describe('confirmManualDepositPayment — seña confirmada a mano tras un checko
     // (el viejo pago 'pending' de MP quedó desvinculado), así que se resuelve
     // como reembolso offline, sin tocar MP.
     const canceled = await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(bookingId, staff.id, 'el complejo necesita el turno', 'complejo', tx),
+      cancelByAdmin(bookingId, staff.id, 'rain', 'complejo', tx),
     )
     expect(canceled.booking.status).toBe('canceled_refunded')
     expect(canceled.booking.depositStatus).toBe('refunded')

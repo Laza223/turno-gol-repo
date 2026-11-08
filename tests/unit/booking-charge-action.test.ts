@@ -153,6 +153,7 @@ describe('addBookingChargeAction', () => {
       [bookingRow({ priceSnapshot: 100_000_00 })], // SELECT booking
       [], // FOR UPDATE lock del booking (Hallazgo C)
       [], // getBookingCharges: sin cobros previos
+      [{ writtenOff: 0 }], // getBookingCharges: sin perdido
     ])
     vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-1' } as never)
 
@@ -182,6 +183,7 @@ describe('addBookingChargeAction', () => {
       [bookingRow({ priceSnapshot: 100_00 })], // pendiente = $100
       [], // FOR UPDATE lock del booking (Hallazgo C)
       [], // sin cobros previos
+      [{ writtenOff: 0 }], // sin perdido
     ])
 
     const res = await addBookingChargeAction({
@@ -204,6 +206,7 @@ describe('addBookingChargeAction', () => {
       [bookingRow({ priceSnapshot: 100_00 })],
       [], // FOR UPDATE lock del booking (Hallazgo C)
       [],
+      [{ writtenOff: 0 }],
     ])
     vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-2' } as never)
 
@@ -222,6 +225,7 @@ describe('addBookingChargeAction', () => {
       [bookingRow({ priceSnapshot: 50_000_00, depositAmount: 50_000_00, depositStatus: 'paid' })],
       [], // FOR UPDATE lock del booking (Hallazgo C)
       [], // sin cobros de mostrador; la seña ya cubre el precio entero
+      [{ writtenOff: 0 }], // sin perdido
     ])
 
     const res = await addBookingChargeAction({
@@ -250,6 +254,7 @@ describe('addBookingChargeAction', () => {
           occurredAt: '2026-01-01',
         },
       ],
+      [{ writtenOff: 0 }], // sin perdido
     ])
 
     const res = await addBookingChargeAction({
@@ -268,6 +273,7 @@ describe('addBookingChargeAction', () => {
       [bookingRow({ priceSnapshot: 100_00 })],
       [], // FOR UPDATE lock del booking (Hallazgo C)
       [], // sin cobros previos
+      [{ writtenOff: 0 }], // sin perdido
     ])
     vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-line' } as never)
 
@@ -302,6 +308,7 @@ describe('addBookingChargeAction', () => {
       [bookingRow({ priceSnapshot: 100_00 })],
       [], // FOR UPDATE lock del booking (Hallazgo C)
       [],
+      [{ writtenOff: 0 }], // sin perdido
     ])
 
     const res = await addBookingChargeAction({
@@ -319,7 +326,7 @@ describe('addBookingChargeAction', () => {
   // Decisión del dueño 2026-09-25 (cobro por equipo): cada línea acepta un
   // `team` opcional (1 o 2) que se persiste como `bookingTeam`.
   it('acepta team 1/2 y lo manda a createCashFlow como bookingTeam', async () => {
-    mockTx([[bookingRow({ priceSnapshot: 100_00 })], [], []])
+    mockTx([[bookingRow({ priceSnapshot: 100_00 })], [], [], [{ writtenOff: 0 }]])
     vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-team' } as never)
 
     const res = await addBookingChargeAction({
@@ -346,7 +353,7 @@ describe('addBookingChargeAction', () => {
   })
 
   it('sin team, createCashFlow lo recibe igual que antes (sin bookingTeam)', async () => {
-    mockTx([[bookingRow({ priceSnapshot: 100_00 })], [], []])
+    mockTx([[bookingRow({ priceSnapshot: 100_00 })], [], [], [{ writtenOff: 0 }]])
     vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-no-team' } as never)
 
     const res = await addBookingChargeAction({
@@ -372,6 +379,7 @@ describe('addBookingChargeAction', () => {
       [], // idempotency key: no existe todavía
       [], // FOR UPDATE lock del booking (Hallazgo C)
       [], // getBookingCharges: sin cobros previos
+      [{ writtenOff: 0 }], // getBookingCharges: sin perdido
     ])
     vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-multi' } as never)
 
@@ -435,6 +443,7 @@ describe('addBookingChargeAction', () => {
       [], // idempotency key: no existe todavía
       [], // FOR UPDATE lock del booking (Hallazgo C)
       [], // getBookingCharges: sin cobros previos
+      [{ writtenOff: 0 }], // getBookingCharges: sin perdido
     ])
 
     const res = await addBookingChargeAction({
@@ -457,6 +466,7 @@ describe('addBookingChargeAction', () => {
       [bookingRow({ priceSnapshot: 100_00 })], // SELECT booking
       [], // FOR UPDATE lock del booking
       [], // getBookingCharges: sin cobros previos
+      [{ writtenOff: 0 }], // getBookingCharges: sin perdido
     ])
     vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-locked' } as never)
 
@@ -526,6 +536,7 @@ describe('addBookingChargeAction', () => {
           occurredAt: '2026-01-01',
         },
       ], // getBookingCharges: la línea 0 ya cobró el pendiente entero
+      [{ writtenOff: 0 }], // getBookingCharges: sin perdido
     ])
 
     const res = await addBookingChargeAction({

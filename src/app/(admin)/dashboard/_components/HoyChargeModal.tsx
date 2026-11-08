@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast'
 import { newChargeLine } from '@/components/admin/SplitPaymentFields'
 import { useSlotCharges } from '@/components/booking/slot-panel/use-slot-charges'
 import { SlotPriceSummary } from '@/components/booking/slot-panel/SlotPriceSummary'
+import { WriteOffButton } from '@/components/booking/slot-panel/WriteOffButton'
 import { slotGates } from '@/components/booking/slot-panel/slot-gates'
 import type { RenderCanteenDialog, SlotPanelActions } from '@/components/booking/slot-panel/actions'
 import { gridSlotVisual } from '@/lib/booking/slot-visual'
@@ -79,6 +80,7 @@ export function HoyChargeModal({
   hasEnded: hasEndedFallback,
   cancellationPolicyHours = null,
   lateCancelHours = 0,
+  onWrittenOff,
 }: {
   booking: ChargeBooking
   courtName: string
@@ -116,6 +118,11 @@ export function HoyChargeModal({
    */
   cancellationPolicyHours?: number | null
   lateCancelHours?: number
+  /**
+   * Se dio por perdido (o se deshizo, con 0). Hoy lo usa para que un turno de un
+   * día anterior que se va de la lista no se lea como "Cobrado ✓".
+   */
+  onWrittenOff?: (bookingId: string, writtenOffCents: number) => void
 }) {
   const hasEnded =
     typeof booking.endsAtMs === 'number'
@@ -197,6 +204,8 @@ export function HoyChargeModal({
   // el único costo real de un no-show (veto de producto, CLAUDE.md).
   const settled = pending === 0 && booking.priceSnapshot > 0 && booking.status !== 'no_show'
   const isTournament = booking.type === 'tournament'
+  // Dado por perdido: el turno se cerró sin cobrar todo. Nunca "Cobrado ✓".
+  const lostCents = pending === 0 ? (booking.writtenOff ?? 0) : 0
   // Se jugó y no se cobró: el mismo rojo de "No cobrado" en la Grilla y en Hoy.
   const late = (hasEnded || booking.status === 'completed') && pending > 0 && mode !== null
 
@@ -322,6 +331,7 @@ export function HoyChargeModal({
               retryTotal={retryTotal}
               onRetry={retryUnconfirmedCharge}
               settled={settled}
+              lostCents={lostCents}
               onClose={onClose}
               next={next ? { ...next, onOpen: goNext } : undefined}
               canConfirmDeposit={canConfirmDeposit}
@@ -329,6 +339,23 @@ export function HoyChargeModal({
               onMutated={onMutated}
               isTournament={isTournament}
             />
+
+            {gates.canWriteOff && actions.writeOffBookingAction && actions.undoWriteOffAction && (
+              <WriteOffButton
+                bookingId={booking.id}
+                pendingCents={pending}
+                paidCents={booking.totalPaid ?? 0}
+                actions={{
+                  writeOffBookingAction: actions.writeOffBookingAction,
+                  undoWriteOffAction: actions.undoWriteOffAction,
+                }}
+                disabled={locked}
+                onDone={(cents) => {
+                  onWrittenOff?.(booking.id, cents)
+                  onMutated()
+                }}
+              />
+            )}
 
             <HoyChargeModalActions
               gates={gates}

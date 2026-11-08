@@ -130,7 +130,7 @@ export function TurnoForm({
         }
         trackConfirmed({ withPlayer: !!playerId, withDeposit: chargeChoice !== 'none' })
         toast({
-          title: 'Reserva creada',
+          title: 'Turno agendado',
           description: `${slot.courtName} · ${timeStart}–${timeEnd}`,
           variant: 'success',
         })
@@ -193,7 +193,7 @@ export function TurnoForm({
           </div>
           {taken && (
             <p role="alert" className="text-xs text-amber-700 dark:text-amber-400">
-              Este turno acaba de ser tomado.
+              Ese horario ya se ocupó. Elegí otro para seguir.
             </p>
           )}
         </section>
@@ -205,7 +205,9 @@ export function TurnoForm({
           {gridPrice == null ? (
             <div className="space-y-1.5">
               <Label htmlFor="turno-precio">Precio del turno</Label>
-              <p className="text-xs text-muted-foreground">Sin precio en la grilla.</p>
+              <p className="text-xs text-muted-foreground">
+                Este horario no tiene precio cargado. Ingresalo para seguir.
+              </p>
               <MoneyInput
                 id="turno-precio"
                 valueCents={manualPriceCents}
@@ -281,9 +283,7 @@ export function TurnoForm({
         durationLabel="1 h"
         totalCents={effectivePrice}
         collectedCents={chargeChoice !== 'none' ? (chargeAmount ?? 0) : 0}
-        primaryLabel={
-          effectivePrice != null ? `Reservar · ${formatArs(effectivePrice)}` : 'Reservar'
-        }
+        primaryLabel="Agendar turno"
         onCancel={onClose}
         isPending={isPending}
         disabled={isPending || taken || priceMissing}

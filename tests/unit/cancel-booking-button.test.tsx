@@ -63,7 +63,7 @@ describe('CancelBookingButton — la action lanza (se perdió la respuesta)', ()
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
     const dialog = await screen.findByRole('dialog')
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Sí, cancelar' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancelar turno' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(toast).toHaveBeenCalledWith({

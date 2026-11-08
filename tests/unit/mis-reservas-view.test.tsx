@@ -182,13 +182,13 @@ describe('MisReservasView — cada tarjeta se abre', () => {
 describe('MisReservasView — seña, pago y precios ocultos', () => {
   it('señada se marca como tal, con el monto de la seña', () => {
     renderView([row({ id: 'a', deposit_status: 'paid', deposit_amount: 500000 })])
-    expect(within(card('a')).getByText(/Señada, \$\s5\.000/)).toBeInTheDocument()
-    expect(within(card('a')).queryByText(/Pagás en el complejo/)).toBeNull()
+    expect(within(card('a')).getByText(/Seña pagada \$\s5\.000/)).toBeInTheDocument()
+    expect(within(card('a')).queryByText(/Se paga en el complejo/)).toBeNull()
   })
 
-  it('sin seña dice "Pagás en el complejo"', () => {
+  it('sin seña dice "Se paga en el complejo"', () => {
     renderView([row({ id: 'a' })])
-    expect(within(card('a')).getByText(/Pagás en el complejo/)).toBeInTheDocument()
+    expect(within(card('a')).getByText(/Se paga en el complejo/)).toBeInTheDocument()
   })
 
   it('con precios visibles muestra el monto del turno', () => {
@@ -228,7 +228,7 @@ describe('MisReservasView — seña, pago y precios ocultos', () => {
       expect(el.getAttribute('aria-label')).not.toMatch(/\$/)
     }
     // La seña propia y la devolución siguen a la vista.
-    expect(within(card('a')).getByText(/Señada, \$\s5\.000/)).toBeInTheDocument()
+    expect(within(card('a')).getByText(/Seña pagada \$\s5\.000/)).toBeInTheDocument()
     expect(within(card('b')).getByText('Devolución pendiente')).toBeInTheDocument()
     expect(within(card('b')).getByText(/\$\s5\.000/)).toBeInTheDocument()
   })
@@ -329,7 +329,7 @@ describe('MisReservasView — cómo se lee el turno (ronda 2)', () => {
 
   it('cada monto va en un fragmento que no se parte', () => {
     renderView([row({ id: 'a', deposit_status: 'paid', deposit_amount: 500000 })])
-    for (const re of [/Señada, \$\s5\.000/, /Turno \$\s15\.000/]) {
+    for (const re of [/Seña pagada \$\s5\.000/, /Falta \$\s10\.000/]) {
       expect(within(card('a')).getByText(re)).toHaveClass('whitespace-nowrap')
     }
   })
@@ -424,5 +424,30 @@ describe('MisReservasView — "Armar el partido" (RIVAL)', () => {
     cleanup()
     renderView([row({ status: 'completed' })], { tab: 'historial', rivalEnabled: true })
     expect(armar(card('b-1'))).toBeNull()
+  })
+})
+
+describe('MisReservasView — escribirle al complejo', () => {
+  const tenant_contact = { whatsapp: null, phone: '3415550000', email: 'hola@demo.test' }
+
+  it('una próxima trae "Escribir al complejo" con el turno ya escrito en el mensaje', () => {
+    renderView([row({ id: 'a', tenant_contact })])
+    const link = within(card('a')).getByRole('link', { name: 'Escribir al complejo' })
+    expect(link.getAttribute('href')).toMatch(/^https:\/\/wa\.me\//)
+    expect(decodeURIComponent(link.getAttribute('href')!)).toMatch(/Cancha 2/)
+  })
+
+  it('una cancelada o jugada no lo ofrece, y sin contacto cargado tampoco', () => {
+    renderView([row({ id: 'a', status: 'canceled_no_refund', tenant_contact }), row({ id: 'b' })], {
+      tab: 'historial',
+    })
+    expect(within(card('a')).queryByRole('link', { name: /complejo/ })).toBeNull()
+    expect(within(card('b')).queryByRole('link', { name: 'Escribir al complejo' })).toBeNull()
+  })
+
+  it('con otro año el día lleva el año, con el actual no', () => {
+    renderView([row({ id: 'a', date: '2025-03-20' }), row({ id: 'b', date: '2026-03-20' })])
+    expect(within(card('a')).getByText('jue 20 mar 2025')).toBeInTheDocument()
+    expect(within(card('b')).getByText('vie 20 mar')).toBeInTheDocument()
   })
 })

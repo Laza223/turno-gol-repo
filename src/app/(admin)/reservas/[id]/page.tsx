@@ -87,7 +87,7 @@ export default async function ReservaDetailPage(props: Props) {
         {charges && (
           <div>
             <BookingCharges
-              booking={toGridBooking(booking, charges.chargesTotal)}
+              booking={toGridBooking(booking, charges.chargesTotal, charges.writtenOff)}
               refundState={booking.refundState}
               charges={charges.charges}
               chargesTotal={charges.chargesTotal}
@@ -126,6 +126,7 @@ export default async function ReservaDetailPage(props: Props) {
                 depositAmount: booking.depositAmount,
                 depositStatus: booking.depositStatus,
                 chargesTotal: charges?.chargesTotal ?? 0,
+                writtenOff: charges?.writtenOff ?? 0,
               }),
             }}
             // H063: Precio/Seña ya se muestran en "Cobros de turno" (la otra

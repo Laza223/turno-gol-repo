@@ -81,7 +81,7 @@ export const Default: Story = {
       'aria-pressed',
       'true',
     )
-    await expect(canvas.getByRole('button', { name: 'Reserva' })).toHaveAttribute(
+    await expect(canvas.getByRole('button', { name: 'Cobro de turno' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )

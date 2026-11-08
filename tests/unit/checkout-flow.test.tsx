@@ -217,7 +217,7 @@ describe('confirmación sola (el vínculo ya lo verificó la page)', () => {
     const props = flowProps({ intentDegraded: true })
     const { container } = render(<CheckoutFlow {...props} />)
 
-    expect(screen.getByText('Tocá Reservar para terminar.')).toBeTruthy()
+    expect(screen.getByText('Tocá "Reservar" para terminar tu reserva.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Reservar' })).toBeTruthy()
     expect(hidden(container)).toBeNull()
     expect(screen.queryByRole('status')).toBeNull()
@@ -226,7 +226,7 @@ describe('confirmación sola (el vínculo ya lo verificó la page)', () => {
 
   it('sin vínculo fallido no hay línea de ayuda', () => {
     render(<CheckoutFlow {...flowProps()} />)
-    expect(screen.queryByText('Tocá Reservar para terminar.')).toBeNull()
+    expect(screen.queryByText('Tocá "Reservar" para terminar tu reserva.')).toBeNull()
   })
 
   it('sin token: el form es el de siempre, no se envía nada solo', () => {

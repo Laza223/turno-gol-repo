@@ -239,7 +239,8 @@ describe('abonado service', () => {
       cancelAbonado(tenant.id, abonado.id, fromDate, staff.id, tx),
     )
 
-    expect(canceled.status).toBe('canceled')
+    expect(canceled.abonado.status).toBe('canceled')
+    expect(canceled.keptDates).toEqual([])
 
     // Past booking preserved
     const pastRows = await sql<{ n: number }[]>`

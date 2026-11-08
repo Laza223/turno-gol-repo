@@ -144,6 +144,8 @@ async function collectedSoFar(
     depositAmount: booking.deposit_amount,
     depositStatus: booking.deposit_status,
     chargesTotal,
+    // Solo se usa totalPaid y el turno es `confirmed` (sin perdido posible).
+    writtenOff: 0,
   })
   return totalPaid
 }

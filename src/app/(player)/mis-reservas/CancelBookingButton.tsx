@@ -33,8 +33,12 @@ type Props = {
   depositAmountCents: number
   /** Cancelar AHORA cuenta como tardía (complejo sin seña); `hours` = umbral del complejo. */
   lateCancel?: (LateCancelPenalty & { hours: number }) | null
-  /** Nombre del complejo, para el aviso de bloqueo. */
+  /** Nombre del complejo: identifica el turno y arma el aviso de bloqueo. */
   tenantName?: string
+  /** Horas de anticipación que pide el complejo para devolver la seña. */
+  policyHours?: number
+  /** Turno de un fijo: cancelar alcanza solo a esta fecha. */
+  isFixed?: boolean
   /** Ids del contexto de la tarjeta (cuándo y dónde): el botón sigue llamándose "Cancelar" a secas. */
   describedBy?: string
   /**
@@ -49,10 +53,18 @@ type Props = {
 
 /** ENS-2: reemplaza el texto abstracto ("si estás en el plazo... fuera del
  * plazo...") por la consecuencia concreta de cancelar ESTE turno. */
-function depositPreviewText(outcome: CancellationOutcome, amountCents: number): string {
+function depositPreviewText(
+  outcome: CancellationOutcome,
+  amountCents: number,
+  policyHours?: number,
+): string {
   if (outcome === 'no_deposit') return 'No hay seña que devolver.'
-  if (outcome === 'refund') return `Se te devuelve la seña de ${formatArs(amountCents)}.`
-  return `Perdés la seña de ${formatArs(amountCents)}.`
+  // La devolución la hace el complejo a mano: TurnoGol solo registra que corresponde.
+  if (outcome === 'refund')
+    return `El complejo te tiene que devolver la seña de ${formatArs(amountCents)}. Después de cancelar te mostramos cómo pedírsela.`
+  return policyHours
+    ? `El complejo se queda con la seña de ${formatArs(amountCents)} porque faltan menos de ${policyHours} h.`
+    : `El complejo se queda con la seña de ${formatArs(amountCents)}.`
 }
 
 const LOST_RESPONSE_ERROR =
@@ -67,6 +79,8 @@ export function CancelBookingButton({
   depositAmountCents,
   lateCancel,
   tenantName,
+  policyHours,
+  isFixed,
   describedBy,
   action,
 }: Props) {
@@ -126,14 +140,28 @@ export function CancelBookingButton({
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}
-        title="¿Cancelar esta reserva?"
+        title="¿Cancelar este turno?"
         description={
           <>
-            Reserva en <strong>{courtName}</strong> el <strong>{dateLabel}</strong>, de{' '}
+            Turno en <strong>{courtName}</strong>
+            {tenantName ? (
+              <>
+                {' '}
+                de <strong>{tenantName}</strong>
+              </>
+            ) : null}
+            , el <strong>{dateLabel}</strong>, de{' '}
             <strong className="tabular-nums">{timeLabel}</strong>.
+            {isFixed && (
+              <>
+                <br />
+                <br />
+                Cancelás solo este turno. Tu turno fijo sigue las demás semanas.
+              </>
+            )}
             <br />
             <br />
-            {depositPreviewText(cancellationOutcome, depositAmountCents)}
+            {depositPreviewText(cancellationOutcome, depositAmountCents, policyHours)}
             {lateCancel && (
               <>
                 <br />
@@ -149,7 +177,7 @@ export function CancelBookingButton({
             )}
           </>
         }
-        confirmLabel="Sí, cancelar"
+        confirmLabel="Cancelar turno"
         cancelLabel="Volver"
         variant="destructive"
         onConfirm={handleConfirm}

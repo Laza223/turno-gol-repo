@@ -11,13 +11,14 @@ import {
 import { toast } from '@/hooks/use-toast'
 import { useUnconfirmedSubmit } from '@/hooks/use-unconfirmed-submit'
 import { UnconfirmedRetry } from '@/components/admin/UnconfirmedRetry'
+import { WriteOffButton } from '@/components/booking/slot-panel/WriteOffButton'
 import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
 import type { StreetMoneyRow } from '@/modules/cashflow/street-money.service'
 // Server Actions importadas directamente (mismo patrón que deudas/ChargeDebtDialog.tsx,
 // que tampoco tiene story de Storybook — TabDialog SÍ la pasa por prop porque
 // rompe Storybook al arrastrar drizzle/node:async_hooks al bundle).
-import { chargeDebtAction } from './actions'
+import { chargeDebtAction, undoWriteOffAction, writeOffBookingAction } from './actions'
 import { settleTabAction } from '../cantina/actions'
 import { registerInscriptionPaymentAction } from '../../torneos/actions'
 import { refocusOpenDialog } from './refocus-open-dialog'
@@ -57,6 +58,7 @@ export function StreetMoneyChargeDialog({
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [lines, setLines] = useState<ChargeLine[]>([])
+  const linesTotal = lines.reduce((sum, l) => sum + (l.amountCents ?? 0), 0)
   const attempt = useUnconfirmedSubmit<ChargeAttempt>()
   const retry = attempt.retryPayload
 
@@ -116,7 +118,7 @@ export function StreetMoneyChargeDialog({
       if (!res) return
       if (res.success) {
         toast({
-          title: `Cobro registrado — ${charged.debtorName}`,
+          title: `Cobro registrado a ${charged.debtorName}`,
           description: `${formatArs(totalCents)} · ${totalCents >= charged.pendingCents ? 'saldado' : 'pago parcial'}.`,
           variant: 'success',
         })
@@ -182,7 +184,7 @@ export function StreetMoneyChargeDialog({
     <Dialog open={row !== null} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md" onCloseAutoFocus={refocusOpenDialog}>
         <DialogHeader>
-          <DialogTitle>Cobrar — {(retry?.row ?? row).debtorName}</DialogTitle>
+          <DialogTitle>Cobrar a {(retry?.row ?? row).debtorName}</DialogTitle>
         </DialogHeader>
         {retry && (
           <UnconfirmedRetry
@@ -197,6 +199,10 @@ export function StreetMoneyChargeDialog({
             {ORIGIN_LABEL[row.origin]} · pendiente{' '}
             <span className="font-semibold text-foreground">{formatArs(row.pendingCents)}</span>
           </p>
+
+          {row.origin === 'canteen_tab' && (
+            <p className="text-xs text-muted-foreground">Un fiado se cobra entero.</p>
+          )}
 
           <SplitPaymentFields
             lines={lines}
@@ -214,6 +220,22 @@ export function StreetMoneyChargeDialog({
             </p>
           )}
 
+          {/* Solo turnos: lo que no se piensa cobrar se da por perdido y sale de acá. */}
+          {row.origin === 'booking' && (
+            <WriteOffButton
+              bookingId={row.refId}
+              pendingCents={row.pendingCents}
+              paidCents={row.paidCents}
+              actions={{ writeOffBookingAction, undoWriteOffAction }}
+              disabled={isPending}
+              onDone={() => {
+                setLastRefId(null)
+                onClose()
+                router.refresh()
+              }}
+            />
+          )}
+
           <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
             <button
               type="button"
@@ -229,7 +251,7 @@ export function StreetMoneyChargeDialog({
               disabled={isPending}
               className="h-10 px-5 rounded-lg bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-60"
             >
-              {isPending ? 'Registrando…' : 'Cobrar'}
+              {isPending ? 'Registrando…' : `Cobrar ${formatArs(linesTotal)}`}
             </button>
           </div>
         </div>

@@ -17,11 +17,11 @@ function clockLabel(at: Date): string {
 function lineFor(item: WhileAwayItem): string {
   switch (item.kind) {
     case 'booking_online':
-      return `Reserva online — ${item.courtName} ${item.timeLabel}`
+      return `Reserva online. ${item.courtName}, ${item.timeLabel}`
     case 'cancellation':
-      return `Cancelación — ${item.courtName} ${item.timeLabel}`
+      return `Cancelación. ${item.courtName}, ${item.timeLabel}`
     case 'deposit_paid':
-      return `Seña acreditada — ${formatArs(item.amountCents)}`
+      return `Seña acreditada. ${formatArs(item.amountCents)}`
   }
 }
 

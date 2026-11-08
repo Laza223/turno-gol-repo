@@ -192,6 +192,7 @@ const PENDING: StreetMoneyRow[] = [
     refId: `b${i}`,
     debtorName: name,
     pendingCents: cents,
+    paidCents: 0,
     since: daysAgo(ago, start),
     courtName: court,
     date,
@@ -209,6 +210,7 @@ type PageProps = {
   summary: DaySummary
   pending: StreetMoneyRow[]
   rows: LedgerRow[]
+  writtenOff?: { totalCents: number; count: number }
   onCharge: (row: StreetMoneyRow) => void
 }
 
@@ -219,6 +221,7 @@ function CuentasPage({
   summary,
   pending,
   rows,
+  writtenOff,
   onCharge,
 }: PageProps) {
   const stepper = {
@@ -246,7 +249,7 @@ function CuentasPage({
           actions={<DayStepper {...stepper} className="hidden lg:flex" />}
         />
         <DayStepper {...stepper} className="-mx-2 lg:hidden" />
-        <NightSummary heading={heading} summary={summary} />
+        <NightSummary heading={heading} summary={summary} writtenOff={writtenOff} />
         <PendingLines
           rows={pending}
           nowMs={NOW_MS}
@@ -315,6 +318,15 @@ export const LaNoche: Story = {
     if (!table) throw new Error('falta la tabla del libro')
     await expect(within(table).queryByText('AMSTEL x2')).toBeNull()
     await expect(within(table).getAllByText('Nahuel Vega')).toHaveLength(2)
+  },
+}
+
+/** Se dio por perdido algo en la noche: una línea aparte de lo que entró, con "en N turnos" si son varios. */
+export const SeDioPorPerdido: Story = {
+  args: { writtenOff: { totalCents: 1_250_000, count: 2 } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText(/Se dio por perdido \$\s12\.500 en 2 turnos/)).toBeVisible()
   },
 }
 

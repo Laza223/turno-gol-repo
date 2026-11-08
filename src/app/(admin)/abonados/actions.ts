@@ -24,13 +24,20 @@ import {
 } from '@/modules/players/player-search.service'
 
 export type AbonadoActionResult =
-  | { success: true; abonado: AbonadoRow; slotsGenerated?: number; conflictDates?: string[] }
+  | {
+      success: true
+      abonado: AbonadoRow
+      slotsGenerated?: number
+      conflictDates?: string[]
+      /** Cancelar: fechas con plata cargada que NO se borraron. */
+      keptDates?: string[]
+    }
   | { success: false; error: string }
 
 export async function createAbonadoAction(input: CreateAbonadoInput): Promise<AbonadoActionResult> {
   const parsed = createAbonadoSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: 'Datos inválidos.' }
+    return { success: false, error: 'Revisá los datos del turno fijo.' }
   }
   const auth = await requireOperatorStaff()
   if (!auth.ok) return { success: false, error: auth.error }
@@ -53,7 +60,7 @@ export async function createAbonadoAction(input: CreateAbonadoInput): Promise<Ab
       return { success: false, error: err.message }
     }
     if (err instanceof CourtNotFoundError) {
-      return { success: false, error: 'Cancha no encontrada.' }
+      return { success: false, error: 'No encontramos esa cancha.' }
     }
     if (err instanceof PlayerNotClientError) {
       return { success: false, error: err.message }
@@ -112,7 +119,7 @@ export async function cancelAbonadoAction(
   fromDate: string,
 ): Promise<AbonadoActionResult> {
   const parsed = z.object({ id: uuid, fromDate: dateStr }).safeParse({ id, fromDate })
-  if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
+  if (!parsed.success) return { success: false, error: 'Revisá la fecha elegida.' }
   const auth = await requireOperatorStaff()
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
@@ -120,9 +127,9 @@ export async function cancelAbonadoAction(
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
-  let abonado: AbonadoRow
+  let canceled: { abonado: AbonadoRow; keptDates: string[] }
   try {
-    abonado = await withTenantContext(tenant.id, (tx) =>
+    canceled = await withTenantContext(tenant.id, (tx) =>
       cancelAbonado(tenant.id, parsed.data.id, parsed.data.fromDate, user.staffUserId!, tx),
     )
   } catch (err) {
@@ -133,7 +140,9 @@ export async function cancelAbonadoAction(
   }
 
   revalidatePath('/abonados')
-  return { success: true, abonado }
+  // Las sesiones borradas salen de la grilla; las que se conservaron también cambian.
+  revalidatePath('/grilla')
+  return { success: true, abonado: canceled.abonado, keptDates: canceled.keptDates }
 }
 
 const searchAbonadoPlayersSchema = z.object({

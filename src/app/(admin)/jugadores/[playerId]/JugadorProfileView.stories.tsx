@@ -59,6 +59,7 @@ const bookingRow = (overrides: Partial<PlayerBookingRow> = {}): PlayerBookingRow
   refundState: 'none',
   pending: 0,
   totalPaid: 1_500_000,
+  writtenOff: 0,
   ...overrides,
 })
 

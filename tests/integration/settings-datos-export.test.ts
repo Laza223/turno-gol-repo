@@ -263,6 +263,7 @@ describe('listBookingsForExport — lo cobrado', () => {
         depositAmount: 1350000,
         depositStatus: 'paid',
         chargesTotal: detail.chargesTotal,
+        writtenOff: 0,
       }).totalPaid,
     )
   }, 60_000)

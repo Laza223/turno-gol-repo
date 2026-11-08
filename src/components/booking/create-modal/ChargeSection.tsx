@@ -7,9 +7,9 @@ import { PaymentMethodChips } from '@/components/ui/payment-method-chips'
 import type { ChargeChoice, DepositMethod } from './types'
 
 const CHOICES: Array<{ value: ChargeChoice; label: string }> = [
-  { value: 'none', label: 'No cobré' },
-  { value: 'partial', label: 'Una parte' },
-  { value: 'full', label: 'Todo' },
+  { value: 'none', label: 'No cobré todavía' },
+  { value: 'partial', label: 'Cobré una parte' },
+  { value: 'full', label: 'Cobré todo' },
 ]
 
 /**
@@ -77,6 +77,9 @@ export function ChargeSection({
         itemClassName={choiceChipClass}
         options={CHOICES}
       />
+      {choice === 'partial' && (
+        <p className="text-xs text-muted-foreground">Se anota como seña de este turno.</p>
+      )}
       {choice !== 'none' && (
         // Sin caja propia: el método y el monto quedan pegados a la elección por
         // cercanía. Una caja más adentro de la columna era ruido, y su padding

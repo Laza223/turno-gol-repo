@@ -1,8 +1,9 @@
 import Link from 'next/link'
-import { ArrowRight, CheckCircle2, Trophy } from 'lucide-react'
+import { ArrowRight, CheckCircle2, MinusCircle, Trophy } from 'lucide-react'
 import type { ChargeLine } from '@/components/admin/SplitPaymentFields'
 import { CobrarSenaButton, type ConfirmDepositFn } from '@/components/booking/CobrarSenaButton'
 import type { ChargeMode } from '@/components/booking/slot-panel/charge-copy'
+import { formatArs } from '@/lib/format'
 import type { MethodKey } from '@/lib/payment-method'
 import { TONE_BADGE } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
@@ -35,6 +36,7 @@ export function HoyChargeModalPaymentStatus({
   retryTotal,
   onRetry,
   settled,
+  lostCents,
   onClose,
   next,
   canConfirmDeposit,
@@ -57,6 +59,8 @@ export function HoyChargeModalPaymentStatus({
   onRetry: () => void
   /** Un ausente nunca "Cobrado ✓": ver comentario homólogo en `HoyChargeModal`. */
   settled: boolean
+  /** Lo dado por perdido si el turno se cerró así (0 si no): en su lugar va "Perdido $X". */
+  lostCents: number
   onClose: () => void
   /** Con el turno saldado, "Cobrar el siguiente" pasa a ser el botón principal. */
   next?: NextToCharge
@@ -92,11 +96,20 @@ export function HoyChargeModalPaymentStatus({
             role="status"
             className={cn(
               'flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold',
-              TONE_BADGE.success,
+              lostCents > 0 ? TONE_BADGE.neutral : TONE_BADGE.success,
             )}
           >
-            <CheckCircle2 aria-hidden className="h-4 w-4" />
-            Cobrado ✓
+            {lostCents > 0 ? (
+              <>
+                <MinusCircle aria-hidden className="h-4 w-4" />
+                Perdido {formatArs(lostCents)}
+              </>
+            ) : (
+              <>
+                <CheckCircle2 aria-hidden className="h-4 w-4" />
+                Cobrado ✓
+              </>
+            )}
           </p>
           {next ? (
             // El siguiente de la cola, en grande: con cinco turnos para cobrar, el

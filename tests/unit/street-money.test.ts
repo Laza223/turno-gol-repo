@@ -7,6 +7,7 @@ function bookingRow(pendingCents: number, since = new Date('2026-07-01')): Stree
     refId: '11111111-1111-4111-8111-111111111111',
     debtorName: 'Tomás',
     pendingCents,
+    paidCents: 0,
     since,
     courtName: 'Cancha 1',
     date: '2026-07-01',

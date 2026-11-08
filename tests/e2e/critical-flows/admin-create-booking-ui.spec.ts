@@ -4,7 +4,7 @@
  * Rediseño 2026-09-14 (pages/grilla.md §3bis): el alta rápida se eliminó —
  * tocar una celda libre abre DIRECTO el modal único, con "Turno" ya elegido.
  *
- * Flujo cubierto: click cell libre en grilla → modal "Nueva reserva" (Turno) →
+ * Flujo cubierto: click cell libre en grilla → modal "Nuevo turno" (Turno) →
  * nombre + Enter → submit → booking visible en grilla + confirmado en DB.
  */
 
@@ -53,13 +53,13 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
       await page.getByLabel('Teléfono').fill('11 2345-6789')
 
       // Submit — botón "Reservar" (+ monto de la grilla).
-      await page.getByRole('button', { name: /Reservar/ }).click()
+      await page.getByRole('button', { name: /Agendar turno/ }).click()
 
       // Toast success.
       // exact:true — the aria-live announcement renders
       // "Notification Reserva creadaCancha E2E 1…" which substring-matches
       // and trips strict mode.
-      await expect(page.getByText('Reserva creada', { exact: true })).toBeVisible({
+      await expect(page.getByText('Turno agendado', { exact: true })).toBeVisible({
         timeout: 10_000,
       })
 
@@ -121,7 +121,7 @@ test.describe('admin create booking UI — flow 1 doc7', () => {
       // Enter confirma — sin tocar el botón.
       await nombre.press('Enter')
 
-      await expect(page.getByText('Reserva creada', { exact: true })).toBeVisible({
+      await expect(page.getByText('Turno agendado', { exact: true })).toBeVisible({
         timeout: 10_000,
       })
       await expect(page.getByText(/E2E Quick Enter/i)).toBeVisible({ timeout: 10_000 })

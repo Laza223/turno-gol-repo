@@ -13,7 +13,7 @@ import { PhoneInput } from '@/components/ui/phone-input'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import DatePicker from '@/components/ui/date-picker'
 import { MoneyInput } from '@/components/ui/money-input'
-import { formatArs } from '@/lib/format'
+import { formatArs, formatDayHeader } from '@/lib/format'
 import { todayART } from '@/shared/time/art-date'
 import {
   END_OF_DAY_MINS,
@@ -146,7 +146,8 @@ export function PreviewSlotsView({
             Vista previa de fechas
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Revisá los turnos recurrentes que se generarán para este abonado.
+            Estas son las fechas que se cargan ahora. Después el sistema suma más solo mientras el
+            turno fijo siga activo.
           </p>
         </div>
         <Badge variant={noSlots ? 'destructive' : conflicts.length > 0 ? 'warning' : 'success'}>
@@ -161,8 +162,8 @@ export function PreviewSlotsView({
             <span className="font-semibold">Atención:</span> Hay {conflicts.length} fecha
             {conflicts.length !== 1 ? 's' : ''} que ya{' '}
             {conflicts.length === 1 ? 'está ocupada' : 'están ocupadas'} por otra reserva.{' '}
-            {conflicts.length === 1 ? 'Esa fecha se saltará' : 'Esas fechas se saltarán'} al crear
-            el abonado.
+            {conflicts.length === 1 ? 'Esa fecha se saltea' : 'Esas fechas se saltean'} al crear el
+            turno fijo.
           </div>
         </div>
       )}
@@ -188,7 +189,7 @@ export function PreviewSlotsView({
               key={d}
               className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-accent/40 transition-colors"
             >
-              <span className="text-sm font-medium text-foreground">{d}</span>
+              <span className="text-sm font-medium text-foreground">{formatDayHeader(d)}</span>
               {isConflict ? (
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-800 dark:text-amber-400 bg-amber-500/15 px-2.5 py-0.5 rounded-full">
                   <AlertTriangle className="h-3 w-3" />
@@ -223,12 +224,12 @@ export function PreviewSlotsView({
           {isConfirming ? (
             <>
               <TgBallSpinner size="xs" aria-hidden />
-              Guardando abonado...
+              Creando turno fijo…
             </>
           ) : (
             <>
               <CheckCircle2 className="h-4 w-4" />
-              Confirmar y Crear Abonado
+              Crear turno fijo
             </>
           )}
         </button>
@@ -350,11 +351,6 @@ export default function AbonadoForm({
   const formattedPrice = useMemo(() => {
     if (!pricePerSessionCents || pricePerSessionCents <= 0) return '$ 0'
     return formatArs(pricePerSessionCents)
-  }, [pricePerSessionCents])
-
-  const formattedMonthly = useMemo(() => {
-    if (!pricePerSessionCents || pricePerSessionCents <= 0) return '$ 0'
-    return formatArs(pricePerSessionCents * 4)
   }, [pricePerSessionCents])
 
   function handlePreviewSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -731,7 +727,7 @@ export default function AbonadoForm({
             <div className="flex items-center justify-between pb-3 border-b border-border">
               <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-primary" />
-                Resumen de Suscripción
+                Resumen del turno fijo
               </h3>
               <Badge variant="outline" className="text-[10px] font-mono uppercase tracking-wider">
                 Recurrente
@@ -785,20 +781,14 @@ export default function AbonadoForm({
               <div className="flex items-center justify-between py-1 border-b border-border/40">
                 <span className="text-muted-foreground flex items-center gap-1.5">
                   <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />{' '}
-                  Tarifa / turno
+                  Precio por semana
                 </span>
                 <span className="font-bold text-foreground text-sm">{formattedPrice}</span>
               </div>
 
               <div className="rounded-xl bg-accent/40 p-3 space-y-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Estimación mensual (~4 turnos):</span>
-                  <span className="font-bold text-emerald-800 dark:text-emerald-400 text-sm">
-                    {formattedMonthly}
-                  </span>
-                </div>
                 <p className="text-[10px] text-muted-foreground leading-relaxed">
-                  Al continuar, se verificará la disponibilidad para generar los turnos.
+                  Al continuar, revisamos qué fechas están libres antes de crear el turno fijo.
                 </p>
               </div>
             </div>

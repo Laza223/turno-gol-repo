@@ -40,7 +40,7 @@ export const AbreModal: Story = {
     // RegisterMovementModal entra por next/dynamic: timeout largo.
     const dialog = await body.findByRole('dialog', {}, { timeout: 15_000 })
     await waitFor(() => expect(dialog).toBeVisible())
-    await expect(body.getByRole('heading', { name: 'Agregar movimiento' })).toBeVisible()
+    await expect(body.getByRole('heading', { name: 'Registrar movimiento' })).toBeVisible()
   },
 }
 

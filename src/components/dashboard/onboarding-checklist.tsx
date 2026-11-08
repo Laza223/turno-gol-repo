@@ -19,6 +19,8 @@ const MINIMIZED_STORAGE_KEY = 'tg-hint-checklist-minimized'
 interface ChecklistItem {
   key: keyof ChecklistState
   label: string
+  /** Texto del link mientras el paso está pendiente. Por defecto "Revisar". */
+  linkLabel?: string
   /** Texto mientras el paso está PENDIENTE, si difiere del completado (H061-QA:
    *  "MercadoPago conectado" al lado de un círculo vacío se lee como un estado
    *  ya logrado — el participio se reserva para cuando el ítem está tildado). */
@@ -45,7 +47,8 @@ const ITEMS: ChecklistItem[] = [
     label: 'MercadoPago conectado',
     // Mismo texto que el CTA de Ajustes → Reservas y seña: un solo término
     // para la misma acción, no uno nuevo acá.
-    pendingLabel: 'Conectar MercadoPago',
+    pendingLabel: 'Conectar MercadoPago (opcional, para cobrar seña)',
+    linkLabel: 'Conectar',
     href: '/settings/reservas#mercado-pago',
     adminOnly: true,
   },
@@ -214,7 +217,7 @@ export function OnboardingChecklist({
             </span>
           )}
           <p className="text-sm font-medium text-emerald-900 dark:text-emerald-100">
-            {allDone ? '¡Tu complejo está 100% listo!' : 'Configuración del complejo'}
+            {allDone ? '¡Tu complejo está 100% listo!' : 'Primeros pasos de tu complejo'}
           </p>
         </div>
         <Button
@@ -229,7 +232,7 @@ export function OnboardingChecklist({
     )
   }
 
-  function renderItem({ key, label, pendingLabel, href, action }: ChecklistItem) {
+  function renderItem({ key, label, pendingLabel, linkLabel, href, action }: ChecklistItem) {
     const done = state[key]
     return (
       <li key={key} className="flex items-center gap-3 py-2.5">
@@ -279,7 +282,7 @@ export function OnboardingChecklist({
             href={href}
             className="flex items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-900 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors"
           >
-            Configurar
+            {linkLabel ?? 'Revisar'}
             <ExternalLink className="h-3 w-3" aria-hidden="true" />
           </a>
         )}
@@ -309,7 +312,7 @@ export function OnboardingChecklist({
             <Rocket className="h-4.5 w-4.5" />
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-foreground">Configuración del complejo</h2>
+            <h2 className="text-sm font-semibold text-foreground">Primeros pasos de tu complejo</h2>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {completed} de {total} completados
             </p>

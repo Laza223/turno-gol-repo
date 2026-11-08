@@ -240,6 +240,32 @@ export async function getRevenueReport(
 }
 
 /**
+ * Lo dado por perdido en el mes (`booking_write_offs.created_at`), con el MISMO
+ * período que `getRevenueReport` (`getMonthBounds`). Aparte de `income`: lo
+ * perdido no es plata cobrada. Solo turnos que siguen `completed`.
+ */
+export async function getWrittenOffForMonth(
+  tenantId: string,
+  month: string,
+  cutoffMins: number,
+): Promise<{ totalCents: number; count: number }> {
+  const { fromUtc, toUtc } = getMonthBounds(month, cutoffMins)
+  return withTenantContext(tenantId, async (tx) => {
+    const rows = await tx.execute<{ totalCents: number; count: number }>(
+      sql`SELECT COALESCE(SUM(w.amount), 0)::int AS "totalCents", COUNT(*)::int AS count
+          FROM booking_write_offs w
+          JOIN bookings b ON b.id = w.booking_id AND b.tenant_id = w.tenant_id
+          WHERE w.tenant_id = ${tenantId}
+            AND b.status = 'completed'
+            AND w.created_at >= ${fromUtc.toISOString()}
+            AND w.created_at < ${toUtc.toISOString()}`,
+    )
+    const row = [...rows][0]
+    return { totalCents: row?.totalCents ?? 0, count: row?.count ?? 0 }
+  })
+}
+
+/**
  * Lo que entró en la semana operativa que arranca en `weekStart` y en la
  * anterior, para el resumen semanal por mail. Sale de `fetchPeriodAgg`, la
  * misma agregación que Métricas: el mail y la pantalla no pueden contar

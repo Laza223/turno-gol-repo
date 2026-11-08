@@ -84,6 +84,8 @@ type MockedActions = SlotPanelActions & {
   chargeDebtAction: ReturnType<typeof fn>
   completeAndChargeBookingAction: ReturnType<typeof fn>
   addBookingChargeAction: ReturnType<typeof fn>
+  writeOffBookingAction: ReturnType<typeof fn>
+  undoWriteOffAction: ReturnType<typeof fn>
 }
 
 /**
@@ -106,6 +108,11 @@ function makeActions(charged: Pending, fail?: string, networkError = false): Moc
     chargeDebtAction: fn(collect),
     completeAndChargeBookingAction: fn(collect),
     addBookingChargeAction: fn(collect),
+    writeOffBookingAction: fn(async (input: { expectedPendingCents: number }) => ({
+      success: true as const,
+      amount: input.expectedPendingCents,
+    })),
+    undoWriteOffAction: fn(async () => ({ success: true as const })),
     markNoShowAction: fn(async () => ({ success: true as const })),
     revertNoShowAction: fn(async () => ({ success: true as const })),
     cancelBookingAction: fn(async () => ({ success: true as const })),
@@ -468,7 +475,7 @@ export const ConSenaLaMitadNoLaIncluye: Story = {
   play: async () => {
     const dialog = await openDialog()
     await waitFor(() =>
-      expect(dialog.getByText(/Precio \$\s60\.000 · Cobrado \$\s12\.000/)).toBeVisible(),
+      expect(dialog.getByText(/Precio \$\s60\.000 · Seña pagada \$\s12\.000/)).toBeVisible(),
     )
     await userEvent.click(dialog.getByRole('radio', { name: 'Por equipo' }))
     // $48.000 en el mostrador: $24.000 cada equipo (no $30.000).
@@ -627,5 +634,49 @@ export const HoraDeTorneo: Story = {
     await expect(dialog.getByText(/Esta hora la ocupa un torneo/)).toBeVisible()
     await expect(dialog.getByRole('link', { name: 'Ir al torneo' })).toBeVisible()
     await expect(dialog.queryByRole('button', { name: /Ausente/ })).toBeNull()
+  },
+}
+
+/** Jugado y con $25.000 sin cobrar: se ofrece "Dar por perdido", con confirmación y el monto que se vio. */
+export const DarPorPerdidoPideConfirmacion: Story = {
+  args: scenario(terminado({ status: 'completed', totalPaid: 3_500_000, pending: 2_500_000 })),
+  play: async ({ args }) => {
+    const dialog = await openDialog()
+    await userEvent.click(dialog.getByRole('button', { name: 'Dar por perdido' }))
+
+    const body = within(document.body)
+    const confirm = await body.findByRole('dialog', { name: /¿Dar por perdidos/ })
+    await expect(confirm).toHaveTextContent(/El turno se cierra con lo que entró \(\$\s35\.000\)/)
+    await expect(args.actions.writeOffBookingAction).not.toHaveBeenCalled()
+
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Dar por perdido' }))
+    await waitFor(() =>
+      expect(args.actions.writeOffBookingAction).toHaveBeenCalledWith({
+        bookingId: 'b1',
+        expectedPendingCents: 2_500_000,
+      }),
+    )
+  },
+}
+
+/** Si el turno todavía no terminó no hay nada que dar por perdido. */
+export const DarPorPerdidoOcultoSiNoTermino: Story = {
+  args: scenario(enJuego({ totalPaid: 1_000_000, pending: 5_000_000 })),
+  play: async () => {
+    const dialog = await openDialog()
+    await expect(dialog.queryByRole('button', { name: 'Dar por perdido' })).toBeNull()
+  },
+}
+
+/** Dado por perdido: "Perdido $X" en tono neutro, nunca "Cobrado ✓" ni el botón. */
+export const TurnoPerdido: Story = {
+  args: scenario(
+    terminado({ status: 'completed', totalPaid: 3_500_000, pending: 0, writtenOff: 2_500_000 }),
+  ),
+  play: async () => {
+    const dialog = await openDialog()
+    await expect(dialog.getByText(/Perdido \$\s25\.000/)).toBeVisible()
+    await expect(dialog.queryByText('Cobrado ✓')).toBeNull()
+    await expect(dialog.queryByRole('button', { name: 'Dar por perdido' })).toBeNull()
   },
 }

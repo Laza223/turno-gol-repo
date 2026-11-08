@@ -97,6 +97,23 @@ describe('cancelAbonado — el DELETE de sesiones futuras nunca toca una ya juga
   })
 })
 
+// cash_flows y payments apuntan a bookings sin ON DELETE: borrar una sesión con
+// plata cargada revienta con violación de FK y el fijo no se cancelaba. El
+// DELETE las excluye, y `keptDates` dice cuáles quedaron.
+describe('cancelAbonado — no borra sesiones con plata cargada', () => {
+  it('el DELETE excluye las sesiones con cash_flows o payments', async () => {
+    const statements: string[] = []
+    const tx = makeTx((arg) => statements.push(sqlText(arg)))
+
+    const res = await cancelAbonado('tenant-1', 'abonado-1', '2026-09-03', 'staff-1', tx)
+
+    const del = statements.find((s) => /DELETE FROM bookings/.test(s))
+    expect(del).toMatch(/NOT EXISTS \(SELECT 1 FROM cash_flows/)
+    expect(del).toMatch(/NOT EXISTS \(SELECT 1 FROM payments/)
+    expect(res.keptDates).toEqual([])
+  })
+})
+
 // El corte se liga como parámetro desde JS y NO como `NOW()` de Postgres: la
 // otra mitad del WHERE ya sale del reloj de la app (`artToday()`), y mezclar
 // los dos relojes rompe todo test que simule el tiempo — `vi.setSystemTime`

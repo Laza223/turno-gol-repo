@@ -132,7 +132,7 @@ describe('SlotCancelDialog — aviso de seña (getRefundOutcome inyectado)', () 
     const gridBooking = bookingFixture({ startsAtMs: undefined, endsAtMs: undefined })
     renderDialog({ gridBooking, hasEnded: false })
     expect(screen.getByRole('dialog')).toHaveTextContent(
-      'Hay una seña de $ 4.500 pagada: el reembolso depende de quién cancela (elegí una opción abajo).',
+      'Hay una seña de $ 4.500 pagada. Si cancela el complejo, la devolvés vos. Si cancela el jugador, depende de la política (elegí quién cancela abajo).',
     )
   })
 

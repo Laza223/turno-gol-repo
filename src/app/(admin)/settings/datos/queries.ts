@@ -95,6 +95,7 @@ export async function listBookingsForExport(
         depositAmount: r.depositAmount,
         depositStatus: r.depositStatus,
         chargesTotal: charges.get(r.id)?.total ?? 0,
+        writtenOff: charges.get(r.id)?.writtenOff ?? 0,
       }).totalPaid,
     })),
     nextCursor:

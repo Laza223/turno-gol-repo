@@ -10,7 +10,7 @@
  * Falla si la DB no está disponible: sin base no hay señal que dar.
  */
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock web-push BEFORE importing the worker so the module resolver picks up
 // the mock instead of the real lib. Hoisting is handled by vitest.
@@ -51,12 +51,25 @@ afterAll(async () => {
   }
 })
 
+// El payload es de tipo 'test' a propósito: es el único que NO pasa por el horario silencioso
+// (00 a 08 hs locales). Con un tipo real, a esas horas el worker reprograma el job en vez de
+// enviarlo y la prueba de idempotencia dependía del reloj de quien la corría.
 describe('push.worker idempotencia por dedupeKey (F3, hallazgo D4)', () => {
   // El mock de sendPushNotification es compartido por los 2 `it` de este
   // archivo — sin este clear, el conteo de llamadas del 2do test arrastra
   // las del 1ro (ambos comparten el mismo spy vi.fn() del vi.mock de arriba).
   beforeEach(() => {
     vi.mocked(sendPushNotification).mockClear()
+    // El worker respeta el horario silencioso (00–08 locales, push-quiet-hours.ts):
+    // corrido de noche, reprograma el push para las 08:00 y no envía nada. Se fija
+    // el reloj al mediodía de Argentina. Solo `Date`: los timers reales siguen
+    // (el driver de Postgres los necesita).
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-06-15T15:00:00Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('2 entregas del mismo job (dedupeKey igual) → 1 solo send real, 1 fila en push_send_log', async () => {
@@ -87,7 +100,7 @@ describe('push.worker idempotencia por dedupeKey (F3, hallazgo D4)', () => {
 
     const jobData: PushSendJobData = {
       subscription_id: subId,
-      payload: { type: 'booking.confirmed_online', bookingId: 'b-idempotency-test' },
+      payload: { type: 'test' },
       dedupeKey,
     }
 
@@ -148,7 +161,7 @@ describe('push.worker idempotencia por dedupeKey (F3, hallazgo D4)', () => {
       name: 'push-send',
       data: {
         subscription_id: subId,
-        payload: { type: 'booking.confirmed_online', bookingId: 'b-distinct-1' },
+        payload: { type: 'test' },
         dedupeKey: `push:booking-confirmed:b-distinct-1:${subId}`,
       },
     } as Job<PushSendJobData>)
@@ -158,7 +171,7 @@ describe('push.worker idempotencia por dedupeKey (F3, hallazgo D4)', () => {
       name: 'push-send',
       data: {
         subscription_id: subId,
-        payload: { type: 'booking.confirmed_online', bookingId: 'b-distinct-2' },
+        payload: { type: 'test' },
         dedupeKey: `push:booking-confirmed:b-distinct-2:${subId}`,
       },
     } as Job<PushSendJobData>)

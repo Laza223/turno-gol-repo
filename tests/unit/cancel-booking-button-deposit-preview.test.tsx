@@ -41,12 +41,12 @@ describe('CancelBookingButton — consecuencia concreta de cancelar (ENS-2)', ()
 
   it('dentro de la ventana de reembolso: dice el monto que se devuelve', () => {
     const dialog = open({ cancellationOutcome: 'refund', depositAmountCents: 450_000 })
-    expect(dialog).toHaveTextContent('Se te devuelve la seña de $ 4.500.')
+    expect(dialog).toHaveTextContent('El complejo te tiene que devolver la seña de $ 4.500.')
   })
 
   it('fuera de la ventana de reembolso: dice el monto que se pierde', () => {
     const dialog = open({ cancellationOutcome: 'no_refund', depositAmountCents: 450_000 })
-    expect(dialog).toHaveTextContent('Perdés la seña de $ 4.500.')
+    expect(dialog).toHaveTextContent('El complejo se queda con la seña de $ 4.500.')
   })
 
   it('ya no muestra la explicación abstracta de la política', () => {

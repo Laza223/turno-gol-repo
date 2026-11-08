@@ -55,6 +55,7 @@ import { rescheduleBooking, type RescheduleOutcome } from '@/modules/bookings/bo
 import { editBooking } from '@/modules/bookings/booking.edit'
 import { validateApiOutput } from '@/shared/api-output'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
+import { WRITTEN_OFF_CHARGE_ERROR } from '@/modules/bookings/booking.write-off'
 import { artNowParts, addDays } from '@/shared/dates/art'
 import { slotHasPassed } from '@/shared/time/operating-day'
 // OJO: hay dos DAY_KEYS exportados con órdenes distintos. Este es el
@@ -125,13 +126,16 @@ export async function createBookingAction(data: unknown): Promise<CreateBookingA
     )
   } catch (err) {
     if (err instanceof SlotTakenError) {
-      return { success: false, error: 'Este turno acaba de ser tomado.' }
+      return { success: false, error: 'Ese horario ya se ocupó. Elegí otro para seguir.' }
     }
     if (err instanceof CourtOfflineError) {
       return { success: false, error: 'La cancha no está disponible.' }
     }
     if (err instanceof PriceUnavailableError) {
-      return { success: false, error: 'No hay precio configurado para este horario.' }
+      return {
+        success: false,
+        error: 'Este horario no tiene precio cargado. Ingresalo para seguir.',
+      }
     }
     if (err instanceof BookingValidationError) {
       // Tarea #6: turnos de 60 min (los bloques sí pueden durar varias horas).
@@ -762,7 +766,10 @@ export async function rescheduleBookingAction(
       return { success: false, error: 'La cancha no está disponible.' }
     }
     if (err instanceof PriceUnavailableError) {
-      return { success: false, error: 'No hay precio configurado para ese horario.' }
+      return {
+        success: false,
+        error: 'Este horario no tiene precio cargado. Ingresalo para seguir.',
+      }
     }
     if (err instanceof BookingValidationError) {
       return { success: false, error: err.message }
@@ -911,14 +918,18 @@ export async function addBookingChargeAction(
       // necesita el lock.
       await tx.execute(sql`SELECT id FROM bookings WHERE id = ${bookingId} FOR UPDATE`)
 
-      const { chargesTotal } = await getBookingCharges(tenant.id, bookingId, tx)
+      const { chargesTotal, writtenOff } = await getBookingCharges(tenant.id, bookingId, tx)
       const { pending } = summarizeBookingCharges({
         priceSnapshot: booking.priceSnapshot,
         depositAmount: booking.depositAmount,
         depositStatus: booking.depositStatus,
         chargesTotal,
+        writtenOff,
       })
       if (pending <= 0) {
+        if (writtenOff > 0) {
+          return { success: false as const, error: WRITTEN_OFF_CHARGE_ERROR }
+        }
         return { success: false as const, error: 'Este turno ya está pagado por completo.' }
       }
       if (newCharging > pending) {
@@ -1078,6 +1089,8 @@ export async function completeAndChargeBookingAction(
           depositAmount: completed.depositAmount,
           depositStatus: completed.depositStatus,
           chargesTotal,
+          // Recién completado en esta tx: no puede tener un perdido todavía.
+          writtenOff: 0,
         })
 
         // Revisión del PR #326: esta función había quedado afuera de

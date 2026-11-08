@@ -180,8 +180,9 @@ export function StepCourts({
             Tus canchas
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Con una cancha y su precio ya podés recibir reservas online. Sumá una foto si la tenés a
-            mano: es lo primero que mira el jugador.
+            Con una cancha y su precio por turno ya podés recibir reservas online. Después podés
+            ajustar el precio por franja desde Canchas. Sumá una foto si la tenés a mano, es lo
+            primero que mira el jugador.
           </p>
         </div>
 
@@ -217,7 +218,7 @@ export function StepCourts({
           </Button>
           {drafts.length > 1 && (
             <p className="-mt-2 text-xs text-muted-foreground">
-              Copiamos los datos de la anterior — cambiá solo lo distinto.
+              Copiamos los datos de la anterior. Cambiá solo lo distinto.
             </p>
           )}
 

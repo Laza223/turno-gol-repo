@@ -76,13 +76,13 @@ export const Abierto: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
-    await expect(await screen.findByText('¿Cancelar esta reserva?')).toBeInTheDocument()
+    await expect(await screen.findByText('¿Cancelar este turno?')).toBeInTheDocument()
     const field = screen.getByLabelText(/motivo \(opcional\)/i)
     await expect(field).toBeInTheDocument()
     await expect(field).toHaveClass('text-base')
     // ENS-2: la consecuencia concreta de cancelar AHORA (no más "en el plazo/fuera del plazo" en abstracto).
     await expect(
-      screen.getByText(hasText('Se te devuelve la seña de $ 1.500.')),
+      screen.getByText(hasText('El complejo te tiene que devolver la seña de $ 1.500.')),
     ).toBeInTheDocument()
   },
 }
@@ -129,7 +129,9 @@ export const AbiertoFueraDePlazo: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
-    await expect(await screen.findByText(hasText('Perdés la seña de $ 1.500.'))).toBeInTheDocument()
+    await expect(
+      await screen.findByText(hasText('El complejo se queda con la seña de $ 1.500.')),
+    ).toBeInTheDocument()
   },
 }
 
@@ -145,7 +147,7 @@ export const ErrorAlCancelar: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
     const dialog = await screen.findByRole('dialog')
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Sí, cancelar' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancelar turno' }))
     const alert = await screen.findByRole('alert')
     await expect(alert).toHaveTextContent('Demasiadas solicitudes. Esperá un momento.')
     await expect(parseFloat(getComputedStyle(alert).fontSize)).toBeGreaterThanOrEqual(13)
@@ -172,7 +174,7 @@ export const ErrorDeRed: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
     const dialog = await screen.findByRole('dialog')
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Sí, cancelar' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancelar turno' }))
     await expect(
       await screen.findByText(/No pudimos confirmar si se canceló.*si sigue, probá de nuevo/),
     ).toBeInTheDocument()
@@ -199,7 +201,7 @@ export const YaCanceladaPorElComplejo: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
     const dialog = await screen.findByRole('dialog')
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Sí, cancelar' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancelar turno' }))
     await expect(
       await screen.findByText('El complejo ya canceló esta reserva.'),
     ).toBeInTheDocument()
@@ -228,10 +230,10 @@ export const CanceladoOk: Story = {
       within(dialog).getByLabelText(/motivo \(opcional\)/i),
       'Se suspendió por lluvia',
     )
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Sí, cancelar' }))
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Cancelar turno' }))
     await expect(args.action).toHaveBeenCalledWith('booking-1', 'Se suspendió por lluvia')
     await waitFor(async () =>
-      expect(screen.queryByText('¿Cancelar esta reserva?')).not.toBeInTheDocument(),
+      expect(screen.queryByText('¿Cancelar este turno?')).not.toBeInTheDocument(),
     )
   },
 }

@@ -513,6 +513,8 @@ export async function wipeTenant(
     await tx.execute(drizzleSql`DELETE FROM canteen_tabs WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM canteen_products WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM cash_flows WHERE tenant_id = ${tenantId}`)
+    // "Dar por perdido" (migr. 108): FK a bookings sin CASCADE, va antes que bookings.
+    await tx.execute(drizzleSql`DELETE FROM booking_write_offs WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM payments WHERE tenant_id = ${tenantId}`)
     // Tenant-scoped rows whose FK to tenants is ON DELETE CASCADE never
     // fires here (we soft-anonymize the tenants row instead of deleting it)

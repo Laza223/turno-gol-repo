@@ -90,10 +90,10 @@ describe('AbonadosList — rendering', () => {
     expect(screen.getAllByText('Cancelado').length).toBeGreaterThan(0)
   })
 
-  it('active row shows "Cómo cancelar una fecha" + "Cancelar turno fijo", and no Pausar (regresión: el botón se eliminó)', () => {
+  it('active row shows "Cancelar una sola fecha" + "Cancelar turno fijo", and no Pausar (regresión: el botón se eliminó)', () => {
     renderList([ACTIVE_ABONADO])
     expect(
-      screen.getAllByRole('button', { name: 'Cómo cancelar una fecha' }).length,
+      screen.getAllByRole('button', { name: 'Cancelar una sola fecha' }).length,
     ).toBeGreaterThan(0)
     expect(screen.getAllByRole('button', { name: 'Cancelar turno fijo' }).length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: 'Pausar' })).toBeNull()
@@ -278,7 +278,7 @@ describe('AbonadosList — Reactivate action', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getByText(/Se generarán/)).toBeTruthy()
+      expect(screen.getByText(/Se cargan/)).toBeTruthy()
     })
   })
 
@@ -300,7 +300,7 @@ describe('AbonadosList — Reactivate action', () => {
     await waitFor(() => expect(screen.getByText('Reactivar turno fijo')).toBeTruthy())
 
     await waitFor(() => {
-      expect(screen.getByText(/Se generarán/)).toBeTruthy()
+      expect(screen.getByText(/Se cargan/)).toBeTruthy()
     })
 
     // Dialog abierto: único "Reactivar" accesible es el confirm del dialog.

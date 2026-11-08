@@ -153,7 +153,7 @@ export function WizardChrome({ children }: Props) {
 
         {/* Anti-ansiedad (doc10 §4): que nada es irreversible. */}
         <p className="relative text-xs leading-relaxed text-slate-400">
-          Todo se puede cambiar después desde Ajustes.
+          Casi todo se puede cambiar después en Ajustes. El nombre y el link no.
         </p>
       </aside>
 
@@ -186,7 +186,7 @@ export function WizardChrome({ children }: Props) {
           />
           {currentStep === 1 && (
             <p className="mt-2 text-xs text-muted-foreground">
-              Todo se puede cambiar después desde Ajustes.
+              Casi todo se puede cambiar después en Ajustes. El nombre y el link no.
             </p>
           )}
         </header>

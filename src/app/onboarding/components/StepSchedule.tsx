@@ -82,7 +82,7 @@ export function StepSchedule({ hours, closesNextDay, action }: Props) {
             Horarios
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Ya cargamos un horario típico — cambiá solo lo que sea distinto en tu complejo.
+            Ya cargamos un horario típico. Cambiá solo lo que sea distinto en tu complejo.
           </p>
         </div>
 

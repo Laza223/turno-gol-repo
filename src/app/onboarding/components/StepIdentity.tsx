@@ -208,7 +208,9 @@ export function StepIdentity({ action, defaultValues, geocodeAction }: Props) {
                   turnogol.app/
                   <strong className="text-emerald-700 dark:text-emerald-400">{slug}</strong>
                 </span>
-                {isEdit && ' — no cambia aunque le cambies el nombre al complejo.'}
+                {isEdit
+                  ? '. No cambia aunque le cambies el nombre al complejo.'
+                  : '. Después no se puede cambiar.'}
               </p>
             )}
           </div>

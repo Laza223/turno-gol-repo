@@ -5,7 +5,7 @@ import {
   streetMoneyCutoffDate,
   type StreetMoneyWindow,
 } from '@/modules/cashflow/street-money-window'
-import { summarizeBookingCharges } from './booking.charges'
+import { summarizeBookingCharges, writtenOffCentsSql } from './booking.charges'
 
 /**
  * Turnos completados con saldo pendiente ("deuda de turno"). Vivía en
@@ -33,6 +33,7 @@ export type DebtRow = {
   depositAmount: number
   depositStatus: string
   chargesTotal: number
+  writtenOff: number
   depositCounted: number
   totalPaid: number
   pending: number
@@ -81,7 +82,8 @@ export async function getDebts(
             AND cf.category = 'booking'
             AND cf.description <> ('Seña — turno ' || b.id::text)
         ), 0
-      )::int AS "chargesTotal"
+      )::int AS "chargesTotal",
+      ${writtenOffCentsSql(sql`b.id`)}::int AS "writtenOff"
     FROM bookings b
     JOIN courts c ON b.court_id = c.id
     LEFT JOIN players p ON b.player_id = p.id
@@ -101,7 +103,7 @@ export async function getDebts(
             AND cf.description <> ('Seña — turno ' || b.id::text)
         ), 0
       )
-    ) > 0
+    ) - ${writtenOffCentsSql(sql`b.id`)} > 0
     ORDER BY b.date DESC, b.starts_at DESC
   `)
 
@@ -126,6 +128,7 @@ export async function getDebts(
       completedByStaff: string | null
       completedByStaffName: string | null
       chargesTotal: number
+      writtenOff: number
     }>
   ).map((r) => {
     const contactName = r.guestName || r.playerName || null
@@ -135,6 +138,7 @@ export async function getDebts(
       depositAmount: r.depositAmount,
       depositStatus: r.depositStatus,
       chargesTotal: r.chargesTotal,
+      writtenOff: r.writtenOff,
     })
 
     return {

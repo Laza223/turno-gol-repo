@@ -109,6 +109,24 @@ export const Jugada: Story = {
   },
 }
 
+/** Dado por perdido: "Perdido $X" en tono neutro — nunca el verde de "Pagado". */
+export const Perdido: Story = {
+  args: {
+    booking: {
+      ...toGridBooking(bookingCompleted()),
+      totalPaid: 300000,
+      pending: 0,
+      writtenOff: 500000,
+    },
+    isPast: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getAllByText(/Perdido \$\s5\.000/).length).toBeGreaterThan(0)
+    await expect(canvas.queryByText('Pagado')).toBeNull()
+  },
+}
+
 /**
  * El turno se jugó y quedó plata sin cobrar: rojo (`destructive`). Es lo
  * normal de la media hora que sigue al partido, así que no lleva anillo ni

@@ -119,10 +119,18 @@ export default function BookingCharges({
         depositAmount: booking.depositAmount ?? 0,
         depositStatus: booking.depositStatus ?? 'not_required',
         chargesTotal,
+        writtenOff: booking.writtenOff ?? 0,
       }),
-    [booking.priceSnapshot, booking.depositAmount, booking.depositStatus, chargesTotal],
+    [
+      booking.priceSnapshot,
+      booking.depositAmount,
+      booking.depositStatus,
+      booking.writtenOff,
+      chargesTotal,
+    ],
   )
-  const isPaidInFull = pendingAmount === 0
+  // Dado por perdido (2026-11-07): saldo 0 pero no se pagó entero.
+  const balance = balanceLabel(pendingAmount, booking.writtenOff ?? 0)
   // Solo la ETIQUETA. `summarizeBookingCharges` de arriba sigue recibiendo el
   // `depositStatus` crudo: los totales son plata, no texto.
   const depositDisplayStatus = resolveDepositDisplayStatus(
@@ -189,10 +197,8 @@ export default function BookingCharges({
         </div>
         <div className="flex items-center justify-between">
           <dt className="font-medium text-foreground">Saldo pendiente</dt>
-          <dd
-            className={`text-lg font-semibold tabular-nums ${isPaidInFull ? 'text-emerald-800 dark:text-emerald-400' : 'text-amber-800 dark:text-amber-400'}`}
-          >
-            {isPaidInFull ? 'Pagado completo' : formatArs(pendingAmount)}
+          <dd className={`text-lg font-semibold tabular-nums ${balance.className}`}>
+            {balance.text}
           </dd>
         </div>
       </dl>
@@ -248,4 +254,30 @@ export default function BookingCharges({
       )}
     </section>
   )
+}
+
+/** El renglón "Saldo pendiente": pagado entero, dado por perdido (2026-11-07) o lo que falta. */
+function balanceLabel(
+  pendingCents: number,
+  writtenOffCents: number,
+): { text: string; className: string; paidInFull: boolean } {
+  if (pendingCents === 0 && writtenOffCents === 0) {
+    return {
+      text: 'Pagado completo',
+      className: 'text-emerald-800 dark:text-emerald-400',
+      paidInFull: true,
+    }
+  }
+  if (writtenOffCents > 0) {
+    return {
+      text: `Perdido ${formatArs(writtenOffCents)}`,
+      className: 'text-muted-foreground',
+      paidInFull: false,
+    }
+  }
+  return {
+    text: formatArs(pendingCents),
+    className: 'text-amber-800 dark:text-amber-400',
+    paidInFull: false,
+  }
 }

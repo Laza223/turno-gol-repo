@@ -1212,3 +1212,62 @@ describe('R. player_own_payments_select (migración 079)', () => {
     expect((row as { status: string }).status).not.toBe('rejected')
   })
 })
+
+// ─── R. booking_write_offs (migración 108, "Dar por perdido") ─────────────
+// Aislamiento clásico por tenant_id (como N/O) y sin UPDATE: un perdido se
+// crea o se borra. DELETE sí está permitido (deshacer, o limpiarlo al pasar a ausente).
+describe('R. booking_write_offs (migración 108)', () => {
+  let writeOffA: string
+
+  beforeAll(async () => {
+    const sql = getSql()
+    const rows = await sql<{ id: string }[]>`
+      INSERT INTO booking_write_offs (tenant_id, booking_id, amount, written_off_by)
+      VALUES (${tenantA.id}, ${A.bookingId}, ${1000}, ${A.staffUserId})
+      RETURNING id
+    `
+    writeOffA = rows[0]!.id
+  })
+
+  it('tenant B no ve el perdido de A (cross-tenant SELECT)', async () => {
+    const rows = await withContext(
+      { role: 'turnogol_app', tenantId: tenantB.id },
+      (tx) => tx<{ id: string }[]>`SELECT id FROM booking_write_offs WHERE id = ${writeOffA}`,
+    )
+    expect(rows.length).toBe(0)
+  })
+
+  it('tenant A SÍ ve su perdido (smoke positivo)', async () => {
+    const rows = await withContext(
+      { role: 'turnogol_app', tenantId: tenantA.id },
+      (tx) => tx<{ id: string }[]>`SELECT id FROM booking_write_offs WHERE id = ${writeOffA}`,
+    )
+    expect(rows.length).toBe(1)
+  })
+
+  it('tenant B no puede insertar con tenant_id de A (spoof)', async () => {
+    await expect(
+      withContextRollback(
+        { role: 'turnogol_app', tenantId: tenantB.id },
+        (tx) =>
+          tx`INSERT INTO booking_write_offs (tenant_id, booking_id, amount, written_off_by)
+             VALUES (${tenantA.id}, ${B.bookingId}, 1000, ${B.staffUserId})`,
+      ),
+    ).rejects.toThrow(/row-level security policy for table "booking_write_offs"/i)
+  })
+
+  it('turnogol_app NO puede UPDATE un perdido propio (sin GRANT de UPDATE)', async () => {
+    await expect(
+      withContextRollback({ role: 'turnogol_app', tenantId: tenantA.id }, (tx) =>
+        tx.unsafe(`UPDATE booking_write_offs SET amount = 1 WHERE id = $1`, [writeOffA]),
+      ),
+    ).rejects.toThrow(/permission denied/i)
+  })
+
+  it('tenant B no puede borrar el perdido de A (cross-tenant DELETE = 0 filas)', async () => {
+    const rows = await withContextRollback({ role: 'turnogol_app', tenantId: tenantB.id }, (tx) =>
+      tx.unsafe(`DELETE FROM booking_write_offs WHERE id = $1 RETURNING id`, [writeOffA]),
+    )
+    expect(rows.length).toBe(0)
+  })
+})

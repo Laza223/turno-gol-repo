@@ -1,3 +1,5 @@
+import { sql, type SQL } from 'drizzle-orm'
+
 /**
  * Tarea #8 — "Cobros de turno": resume cuánto se pagó de un booking y cuánto
  * falta. Lógica pura para poder testearla sin DB; el wiring (query + action)
@@ -13,12 +15,25 @@ export function summarizeBookingCharges(opts: {
   depositAmount: number
   depositStatus: string
   chargesTotal: number
-}): { depositCounted: number; totalPaid: number; pending: number } {
+  /** Lo que el staff resignó con "Dar por perdido" (`booking_write_offs`); 0 si no hay. */
+  writtenOff: number
+}): { depositCounted: number; totalPaid: number; pending: number; writtenOff: number } {
   const depositCounted =
     opts.depositStatus === 'paid' || opts.depositStatus === 'captured' ? opts.depositAmount : 0
   const totalPaid = depositCounted + opts.chargesTotal
-  const pending = Math.max(0, opts.priceSnapshot - totalPaid)
-  return { depositCounted, totalPaid, pending }
+  // Lo perdido NO es plata cobrada: totalPaid no lo incluye, solo baja lo que falta.
+  const pending = Math.max(0, opts.priceSnapshot - totalPaid - opts.writtenOff)
+  return { depositCounted, totalPaid, pending, writtenOff: opts.writtenOff }
+}
+
+/**
+ * Fragmento SQL del monto dado por perdido de un turno (subquery escalar, 0 si
+ * no hay fila). Es EL espejo SQL de `writtenOff` en `summarizeBookingCharges`:
+ * todo SQL de saldo lo usa, así el predicado no diverge entre pantallas.
+ * `bookingIdCol` es la columna del booking en la query externa (`b.id`).
+ */
+export function writtenOffCentsSql(bookingIdCol: SQL): SQL {
+  return sql`COALESCE((SELECT w.amount FROM booking_write_offs w WHERE w.booking_id = ${bookingIdCol}), 0)`
 }
 
 /**

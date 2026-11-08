@@ -13,6 +13,13 @@ import {
   resolveIdempotentCharges,
 } from '@/modules/cashflow/cashflow.service'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
+import {
+  undoWriteOffBooking,
+  writeOffBooking,
+  WRITTEN_OFF_CHARGE_ERROR,
+} from '@/modules/bookings/booking.write-off'
+import { BookingValidationError } from '@/modules/bookings/booking.errors'
+import type { ActionResult } from '@/shared/types/action-result'
 import { formatArs } from '@/lib/format'
 import { getBookingCharges } from '@/app/(admin)/reservas/queries'
 
@@ -107,15 +114,19 @@ export async function chargeDebtAction(input: ChargeDebtInput): Promise<ChargeDe
       // un reintento sin líneas nuevas no necesita el lock ni la validación.
       await tx.execute(sql`SELECT id FROM bookings WHERE id = ${bookingId} FOR UPDATE`)
 
-      const { chargesTotal } = await getBookingCharges(tenant.id, bookingId, tx)
+      const { chargesTotal, writtenOff } = await getBookingCharges(tenant.id, bookingId, tx)
       const { pending } = summarizeBookingCharges({
         priceSnapshot: booking.priceSnapshot,
         depositAmount: booking.depositAmount,
         depositStatus: booking.depositStatus,
         chargesTotal,
+        writtenOff,
       })
 
       if (pending <= 0) {
+        if (writtenOff > 0) {
+          return { success: false as const, error: WRITTEN_OFF_CHARGE_ERROR }
+        }
         return { success: false as const, error: 'Esta reserva ya no tiene saldo pendiente.' }
       }
 
@@ -161,4 +172,81 @@ export async function chargeDebtAction(input: ChargeDebtInput): Promise<ChargeDe
   }
 
   return result
+}
+
+const writeOffSchema = z.object({
+  bookingId: uuid,
+  /** El saldo que vio el staff: si cambió en el medio, se rechaza en vez de resignar otro número. */
+  expectedPendingCents: moneyCents.refine((v) => v > 0, 'El monto debe ser mayor a 0.'),
+})
+
+export type WriteOffBookingInput = z.input<typeof writeOffSchema>
+
+export type WriteOffBookingResult = ActionResult<{ amount: number }>
+
+/** "Dar por perdido": el staff resigna lo que falta de un turno jugado. Ver `booking.write-off.ts`. */
+export async function writeOffBookingAction(
+  input: WriteOffBookingInput,
+): Promise<WriteOffBookingResult> {
+  const parsed = writeOffSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const { bookingId, expectedPendingCents } = parsed.data
+  // El error de dominio ESCAPA de withTenantContext (rollback real: si el turno
+  // se completó en esta tx, no queda completado a medias) y se mapea afuera.
+  try {
+    const { amount } = await withTenantContext(tenant.id, (tx) =>
+      writeOffBooking(tenant.id, user.staffUserId, bookingId, expectedPendingCents, tx),
+    )
+    revalidateAfterWriteOff(bookingId)
+    return { success: true, amount }
+  } catch (err) {
+    if (err instanceof BookingValidationError) return { success: false, error: err.message }
+    throw err
+  }
+}
+
+export type UndoWriteOffResult = ActionResult
+
+/** Deshace un "Dar por perdido" (la UI solo lo ofrece en el aviso, en el momento). */
+export async function undoWriteOffAction(input: {
+  bookingId: string
+}): Promise<UndoWriteOffResult> {
+  const parsed = z.object({ bookingId: uuid }).safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const { bookingId } = parsed.data
+  try {
+    await withTenantContext(tenant.id, (tx) =>
+      undoWriteOffBooking(tenant.id, user.staffUserId, bookingId, tx),
+    )
+  } catch (err) {
+    if (err instanceof BookingValidationError) return { success: false, error: err.message }
+    throw err
+  }
+  revalidateAfterWriteOff(bookingId)
+  return { success: true }
+}
+
+function revalidateAfterWriteOff(bookingId: string): void {
+  revalidatePath('/caja/cuentas')
+  revalidatePath('/caja')
+  revalidatePath('/reservas')
+  revalidatePath(`/reservas/${bookingId}`)
 }

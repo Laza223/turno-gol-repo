@@ -35,7 +35,16 @@ function Figures({ items, className }: { items: Figure[]; className?: string }) 
  * ver `.claude/rules/caja.md`). Los tres métodos van siempre, aunque den cero,
  * para que el dueño no tenga que buscar dónde quedó cada uno.
  */
-export function NightSummary({ heading, summary }: { heading: string; summary: DaySummary }) {
+export function NightSummary({
+  heading,
+  summary,
+  writtenOff,
+}: {
+  heading: string
+  summary: DaySummary
+  /** Lo que se dio por perdido en el día: aparte de lo que entró, y solo si hay algo. */
+  writtenOff?: { totalCents: number; count: number }
+}) {
   const byMethod = summary.collectedByMethod
   const methods: Figure[] = [
     { label: METHOD_LABELS.cash, cents: byMethod.cash ?? 0 },
@@ -72,6 +81,12 @@ export function NightSummary({ heading, summary }: { heading: string; summary: D
         <p className="mt-0.5 text-xs text-muted-foreground">
           Sin descontar gastos. Incluye señas de turnos de otros días.
         </p>
+        {writtenOff && writtenOff.count > 0 && (
+          <p className="mt-1 text-sm tabular-nums text-muted-foreground">
+            Se dio por perdido {formatArs(writtenOff.totalCents)}
+            {writtenOff.count > 1 ? ` en ${writtenOff.count} turnos` : ''}
+          </p>
+        )}
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:gap-8">
         <Figures items={methods} />

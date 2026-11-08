@@ -46,7 +46,19 @@ export type ChargeInput = {
   team?: 1 | 2
 }
 
-export type SlotPanelActions = {
+/**
+ * "Dar por perdido" (docs/decisions/2026-11-07-cobrar-varios-y-dar-por-perdido.md):
+ * las dos acciones van juntas — sin el "Deshacer" del aviso no se ofrece el botón.
+ */
+export type WriteOffActions = {
+  writeOffBookingAction: (input: {
+    bookingId: string
+    expectedPendingCents: number
+  }) => Promise<ActionResult<{ amount: number }>>
+  undoWriteOffAction: (input: { bookingId: string }) => Promise<ActionResult>
+}
+
+export type SlotPanelActions = Partial<WriteOffActions> & {
   /** Turno ya jugado con saldo: cobra lo que falta. Admite método mixto. */
   chargeDebtAction: (input: {
     bookingId: string

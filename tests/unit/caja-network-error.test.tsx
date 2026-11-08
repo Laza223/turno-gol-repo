@@ -7,7 +7,11 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: 
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
 vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn() }))
 // StreetMoneyChargeDialog importa las Server Actions directo (no por prop).
-vi.mock('@/app/(admin)/caja/deudas/actions', () => ({ chargeDebtAction: vi.fn() }))
+vi.mock('@/app/(admin)/caja/deudas/actions', () => ({
+  chargeDebtAction: vi.fn(),
+  writeOffBookingAction: vi.fn(),
+  undoWriteOffAction: vi.fn(),
+}))
 vi.mock('@/app/(admin)/caja/cantina/actions', () => ({ settleTabAction: vi.fn() }))
 vi.mock('@/app/(admin)/torneos/actions', () => ({ registerInscriptionPaymentAction: vi.fn() }))
 
@@ -292,6 +296,7 @@ describe('StreetMoneyChargeDialog', () => {
       refId: '11111111-1111-4111-8111-111111111111',
       debtorName: 'Martina Sosa',
       pendingCents: 2_400_000,
+      paidCents: 0,
       since: new Date('2026-06-10T21:00:00Z'),
       courtName: 'Cancha 1',
       date: '2026-06-10',

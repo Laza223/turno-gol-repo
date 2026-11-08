@@ -189,6 +189,7 @@ describe('Tarea #8 — cobros de turno vinculados al booking', () => {
       depositAmount: 16_500_00,
       depositStatus: 'paid',
       chargesTotal: charges.chargesTotal,
+      writtenOff: 0,
     })
     expect(summary.totalPaid).toBe(55_000_00)
     expect(summary.pending).toBe(0)
@@ -343,6 +344,7 @@ describe('Tarea #8 — cobros de turno vinculados al booking', () => {
       depositAmount: 16_500_00,
       depositStatus: 'paid',
       chargesTotal: charges.chargesTotal,
+      writtenOff: 0,
     })
     expect(summary.totalPaid).toBe(36_500_00)
     expect(summary.pending).toBe(18_500_00)

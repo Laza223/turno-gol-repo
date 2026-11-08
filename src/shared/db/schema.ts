@@ -26,6 +26,7 @@ export * from './schema/whatsapp-messages'
 export * from './schema/tournament-matches'
 // Después de tournament-matches: el acta lo referencia con FK compuesta.
 export * from './schema/tournament-match-events'
+export * from './schema/booking-write-offs'
 export * from './schema/payments'
 export * from './schema/cash-flows'
 export * from './schema/daily-cash-closes'

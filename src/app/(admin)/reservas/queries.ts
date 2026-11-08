@@ -5,6 +5,7 @@ import {
   DEPOSIT_CASHFLOW_DESCRIPTION_PREFIX,
   depositCashFlowDescription,
   summarizeBookingCharges,
+  writtenOffCentsSql,
 } from '@/modules/bookings/booking.charges'
 import type {
   BookingStatus,
@@ -73,6 +74,8 @@ export type ReservaListRow = {
    */
   pending?: number | null
   totalPaid?: number | null
+  /** Lo dado por perdido del turno ("Dar por perdido"); ya está restado de `pending`. */
+  writtenOff?: number | null
   /**
    * `COALESCE(guest_name teléfono, jugador teléfono)`, texto plano (ninguno
    * cifrado) — mismo par de columnas que ya usa `searchCond` para buscar por
@@ -379,6 +382,8 @@ export type BookingCharges = {
   charges: BookingChargeRow[]
   /** Suma de los cobros de mostrador (cash_flows income) del turno, en centavos. */
   chargesTotal: number
+  /** Lo dado por perdido del turno (`booking_write_offs`), 0 si no hay. */
+  writtenOff: number
 }
 
 /**
@@ -418,7 +423,11 @@ export async function getBookingCharges(
   `)
   const charges = rows as unknown as BookingChargeRow[]
   const chargesTotal = charges.reduce((sum, c) => sum + c.amount, 0)
-  return { charges, chargesTotal }
+  const lostRows = await tx.execute(sql`
+    SELECT ${writtenOffCentsSql(sql`${bookingId}::uuid`)}::int AS "writtenOff"
+  `)
+  const writtenOff = (lostRows as unknown as Array<{ writtenOff: number }>)[0]?.writtenOff ?? 0
+  return { charges, chargesTotal, writtenOff }
 }
 
 /**
@@ -434,10 +443,12 @@ export async function getBookingCharges(
  * grilla deja de coincidir con el que muestra el detalle del turno.
  *
  * Devuelve un Map en centavos con el total y lo atribuido a cada equipo
- * (`booking_team`, decisión del dueño 2026-09-25); un booking sin cobros
- * simplemente no aparece.
+ * (`booking_team`, decisión del dueño 2026-09-25) y lo dado por perdido. Un
+ * booking sin cobros NI perdido no aparece; uno perdido con $0 cobrado SÍ (por
+ * eso parte de `wanted` con LEFT JOIN a cash_flows, no al revés): sin eso su
+ * `writtenOff` se perdía y el turno volvía a verse en rojo.
  */
-export type BookingChargesSum = { total: number; team1: number; team2: number }
+export type BookingChargesSum = { total: number; team1: number; team2: number; writtenOff: number }
 
 export async function sumBookingChargesByBooking(
   tenantId: string,
@@ -457,20 +468,28 @@ export async function sumBookingChargesByBooking(
     WITH wanted (booking_id, deposit_desc) AS (
       VALUES ${sql.join(pairs, sql`, `)}
     )
-    SELECT cf.booking_id AS "bookingId",
+    SELECT w.booking_id AS "bookingId",
            COALESCE(SUM(cf.amount), 0)::int AS total,
            COALESCE(SUM(cf.amount) FILTER (WHERE cf.booking_team = 1), 0)::int AS team1,
-           COALESCE(SUM(cf.amount) FILTER (WHERE cf.booking_team = 2), 0)::int AS team2
-    FROM cash_flows cf
-    JOIN wanted w ON w.booking_id = cf.booking_id
-    WHERE cf.tenant_id = ${tenantId}
+           COALESCE(SUM(cf.amount) FILTER (WHERE cf.booking_team = 2), 0)::int AS team2,
+           ${writtenOffCentsSql(sql`w.booking_id`)}::int AS "writtenOff"
+    FROM wanted w
+    JOIN bookings b ON b.id = w.booking_id AND b.tenant_id = ${tenantId}
+    LEFT JOIN cash_flows cf ON cf.booking_id = w.booking_id
+      AND cf.tenant_id = ${tenantId}
       AND cf.type = 'income'
       AND cf.category = 'booking'
       AND cf.description <> w.deposit_desc
-    GROUP BY cf.booking_id
+    GROUP BY w.booking_id
+    HAVING COUNT(cf.id) > 0 OR ${writtenOffCentsSql(sql`w.booking_id`)} > 0
   `)
   const list = rows as unknown as Array<{ bookingId: string } & BookingChargesSum>
-  return new Map(list.map((r) => [r.bookingId, { total: r.total, team1: r.team1, team2: r.team2 }]))
+  return new Map(
+    list.map((r) => [
+      r.bookingId,
+      { total: r.total, team1: r.team1, team2: r.team2, writtenOff: r.writtenOff },
+    ]),
+  )
 }
 
 /** Un turno del día tal como lo dibujan la grilla y Hoy, más sus instantes físicos. */
@@ -528,11 +547,12 @@ async function selectGridBookingsWithBalance(
 
   return rows.map((r) => {
     const sum = charges.get(r.id)
-    const { totalPaid, pending } = summarizeBookingCharges({
+    const { totalPaid, pending, writtenOff } = summarizeBookingCharges({
       priceSnapshot: r.priceSnapshot,
       depositAmount: r.depositAmount,
       depositStatus: r.depositStatus,
       chargesTotal: sum?.total ?? 0,
+      writtenOff: sum?.writtenOff ?? 0,
     })
     return {
       id: r.id,
@@ -555,6 +575,7 @@ async function selectGridBookingsWithBalance(
       createdAt: r.createdAt,
       totalPaid,
       pending,
+      writtenOff,
       team1Paid: sum?.team1 ?? 0,
       team2Paid: sum?.team2 ?? 0,
     }
@@ -632,7 +653,8 @@ export async function listUnpaidGridBookingsBefore(
                        AND cf.category = 'booking'
                        AND cf.description <> (${DEPOSIT_CASHFLOW_DESCRIPTION_PREFIX}::text || b.id::text)
                    ), 0
-                 ) AS pending
+                 )
+               - ${writtenOffCentsSql(sql`b.id`)} AS pending
       FROM bookings b
       LEFT JOIN cash_flows cf ON cf.booking_id = b.id AND cf.tenant_id = b.tenant_id
       WHERE b.tenant_id = ${tenantId}

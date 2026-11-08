@@ -103,6 +103,7 @@ describe('chargeDebtAction', () => {
       [bookingRow({ priceSnapshot: 100_00 })], // SELECT booking
       [], // FOR UPDATE lock del booking (Hallazgo C)
       [], // getBookingCharges: sin cobros previos
+      [{ writtenOff: 0 }], // getBookingCharges: sin perdido
     ])
     const res = await chargeDebtAction({
       bookingId: BOOKING_ID,
@@ -116,7 +117,7 @@ describe('chargeDebtAction', () => {
   })
 
   it('acepta y registra un cobro dentro del saldo pendiente', async () => {
-    mockTx([[bookingRow({ priceSnapshot: 100_00 })], [], []])
+    mockTx([[bookingRow({ priceSnapshot: 100_00 })], [], [], [{ writtenOff: 0 }]])
     vi.mocked(chargeSplitPayment).mockResolvedValue([{ id: 'cf-1' }] as never)
 
     const res = await chargeDebtAction({
@@ -146,7 +147,7 @@ describe('chargeDebtAction', () => {
   // Decisión del dueño 2026-09-25 (cobro por equipo): cada línea acepta un
   // `team` opcional (1 o 2) que viaja al service como `bookingTeam`.
   it('acepta team 1/2 y lo manda a chargeSplitPayment como bookingTeam', async () => {
-    mockTx([[bookingRow({ priceSnapshot: 100_00 })], [], []])
+    mockTx([[bookingRow({ priceSnapshot: 100_00 })], [], [], [{ writtenOff: 0 }]])
     vi.mocked(chargeSplitPayment).mockResolvedValue([{ id: 'cf-team' }] as never)
 
     const res = await chargeDebtAction({
@@ -175,7 +176,7 @@ describe('chargeDebtAction', () => {
   })
 
   it('sin team, chargeSplitPayment lo recibe igual que antes (sin bookingTeam)', async () => {
-    mockTx([[bookingRow({ priceSnapshot: 100_00 })], [], []])
+    mockTx([[bookingRow({ priceSnapshot: 100_00 })], [], [], [{ writtenOff: 0 }]])
     vi.mocked(chargeSplitPayment).mockResolvedValue([{ id: 'cf-no-team' }] as never)
 
     const res = await chargeDebtAction({
@@ -203,6 +204,7 @@ describe('chargeDebtAction', () => {
       [bookingRow({ priceSnapshot: 100_00 })], // SELECT booking
       [], // FOR UPDATE lock del booking
       [], // getBookingCharges: sin cobros previos
+      [{ writtenOff: 0 }], // getBookingCharges: sin perdido
     ])
     vi.mocked(chargeSplitPayment).mockResolvedValue([{ id: 'cf-locked' }] as never)
 

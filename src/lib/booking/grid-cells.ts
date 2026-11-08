@@ -42,6 +42,9 @@ export type GridBooking = {
   // inventa.
   totalPaid?: number | null
   pending?: number | null
+  // Lo dado por perdido del turno ("Dar por perdido"), en centavos. Ya está
+  // restado de `pending`; no cuenta como cobrado. Opcional como `pending`.
+  writtenOff?: number | null
   // Cuánto de `totalPaid` se atribuyó a cada equipo (decisión del dueño
   // 2026-09-25, cobro por equipo): centavos, o `null`/ausente en cobros sin
   // atribuir. Opcionales: Realtime crudo y fixtures viejas no los traen — ahí

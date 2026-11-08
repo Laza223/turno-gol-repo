@@ -44,6 +44,7 @@ describe('toGridBooking', () => {
     const grid = toGridBooking(
       detail({ depositAmount: 1_800_000, depositStatus: 'paid', priceSnapshot: 6_000_000 }),
       0,
+      0,
     )
     expect(grid.totalPaid).toBe(1_800_000)
     expect(grid.pending).toBe(4_200_000)
@@ -55,25 +56,26 @@ describe('toGridBooking', () => {
     const grid = toGridBooking(
       detail({ depositAmount: 1_800_000, depositStatus: 'paid', priceSnapshot: 6_000_000 }),
       2_000_000, // chargesTotal
+      0, // writtenOff
     )
     expect(grid.totalPaid).toBe(3_800_000)
     expect(grid.pending).toBe(2_200_000)
   })
 
   it('turno completed: el status pasa igual, `chargeMode` es cosa del consumidor', () => {
-    const grid = toGridBooking(detail({ status: 'completed' }), 0)
+    const grid = toGridBooking(detail({ status: 'completed' }), 0, 0)
     expect(grid.status).toBe('completed')
     expect(grid.pending).toBe(6_000_000)
   })
 
   it('sin starts_at/ends_at: los instantes físicos quedan null, no inventa una hora', () => {
-    const grid = toGridBooking(detail({ startsAt: null, endsAt: null }), 0)
+    const grid = toGridBooking(detail({ startsAt: null, endsAt: null }), 0, 0)
     expect(grid.startsAtMs).toBeNull()
     expect(grid.endsAtMs).toBeNull()
   })
 
   it('con starts_at/ends_at: convierte a milisegundos', () => {
-    const grid = toGridBooking(detail(), 0)
+    const grid = toGridBooking(detail(), 0, 0)
     expect(grid.startsAtMs).toBe(Date.parse('2026-09-16T23:00:00.000Z'))
     expect(grid.endsAtMs).toBe(Date.parse('2026-09-17T00:00:00.000Z'))
   })

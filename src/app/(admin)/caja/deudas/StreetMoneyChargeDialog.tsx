@@ -11,13 +11,14 @@ import {
 import { toast } from '@/hooks/use-toast'
 import { useUnconfirmedSubmit } from '@/hooks/use-unconfirmed-submit'
 import { UnconfirmedRetry } from '@/components/admin/UnconfirmedRetry'
+import { WriteOffButton } from '@/components/booking/slot-panel/WriteOffButton'
 import { formatArs } from '@/lib/format'
 import { PAYMENT_METHOD_OPTIONS } from '@/lib/payment-method'
 import type { StreetMoneyRow } from '@/modules/cashflow/street-money.service'
 // Server Actions importadas directamente (mismo patrón que deudas/ChargeDebtDialog.tsx,
 // que tampoco tiene story de Storybook — TabDialog SÍ la pasa por prop porque
 // rompe Storybook al arrastrar drizzle/node:async_hooks al bundle).
-import { chargeDebtAction } from './actions'
+import { chargeDebtAction, undoWriteOffAction, writeOffBookingAction } from './actions'
 import { settleTabAction } from '../cantina/actions'
 import { registerInscriptionPaymentAction } from '../../torneos/actions'
 import { refocusOpenDialog } from './refocus-open-dialog'
@@ -217,6 +218,22 @@ export function StreetMoneyChargeDialog({
             <p role="alert" className="text-xs text-red-700 dark:text-red-400">
               {error}
             </p>
+          )}
+
+          {/* Solo turnos: lo que no se piensa cobrar se da por perdido y sale de acá. */}
+          {row.origin === 'booking' && (
+            <WriteOffButton
+              bookingId={row.refId}
+              pendingCents={row.pendingCents}
+              paidCents={row.paidCents}
+              actions={{ writeOffBookingAction, undoWriteOffAction }}
+              disabled={isPending}
+              onDone={() => {
+                setLastRefId(null)
+                onClose()
+                router.refresh()
+              }}
+            />
           )}
 
           <div className="flex justify-end gap-2 pt-2 border-t border-border/60">

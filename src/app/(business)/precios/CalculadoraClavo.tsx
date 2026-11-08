@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { track } from '@vercel/analytics'
 import { Minus, Plus } from 'lucide-react'
 import { formatArs } from '@/lib/format'
 import { PLANS } from './plans-data'
@@ -23,12 +24,22 @@ export default function CalculadoraClavo() {
   const perdidaCents = turnoArs === null ? null : turnoArs * 100 * clavos * WEEKS_PER_MONTH
   const desdeCents = PLANS[0]!.priceMonthly
 
+  // Un solo evento por visita y sin montos: alcanza para saber si la usan.
+  const trackedRef = useRef(false)
+  function markUsed(campo: 'turno' | 'ausentes') {
+    if (trackedRef.current) return
+    trackedRef.current = true
+    track('calculadora_usada', { campo })
+  }
+
   function selectPreset(preset: number) {
+    markUsed('turno')
     setTurnoArs(preset)
     setCustomInput('')
   }
 
   function onTurnoInput(raw: string) {
+    markUsed('turno')
     setCustomInput(raw)
     const digits = raw.replace(/\D/g, '')
     if (digits === '') {
@@ -117,7 +128,10 @@ export default function CalculadoraClavo() {
             <div className="mt-3 inline-flex items-center gap-4 rounded-full border border-white/10 bg-white/4 p-1.5">
               <button
                 type="button"
-                onClick={() => setClavos((c) => Math.max(0, c - 1))}
+                onClick={() => {
+                  markUsed('ausentes')
+                  setClavos((c) => Math.max(0, c - 1))
+                }}
                 disabled={clavos === 0}
                 aria-label="Un turno colgado menos por semana"
                 className="flex h-11 w-11 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/8 hover:text-white disabled:opacity-35 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
@@ -132,7 +146,10 @@ export default function CalculadoraClavo() {
               </span>
               <button
                 type="button"
-                onClick={() => setClavos((c) => Math.min(MAX_CLAVOS, c + 1))}
+                onClick={() => {
+                  markUsed('ausentes')
+                  setClavos((c) => Math.min(MAX_CLAVOS, c + 1))
+                }}
                 disabled={clavos === MAX_CLAVOS}
                 aria-label="Un turno colgado más por semana"
                 className="flex h-11 w-11 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/8 hover:text-white disabled:opacity-35 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"

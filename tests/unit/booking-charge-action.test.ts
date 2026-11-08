@@ -151,7 +151,7 @@ describe('addBookingChargeAction', () => {
   it('reserva confirmada sin cobros previos: crea un cashflow income/booking vinculado al booking', async () => {
     mockTx([
       [bookingRow({ priceSnapshot: 100_000_00 })], // SELECT booking
-      [], // FOR UPDATE lock del booking (Hallazgo C)
+      [bookingRow({ priceSnapshot: 100_000_00 })], // FOR UPDATE lock del booking (Hallazgo C)
       [], // getBookingCharges: sin cobros previos
       [{ writtenOff: 0 }], // getBookingCharges: sin perdido
     ])
@@ -181,7 +181,7 @@ describe('addBookingChargeAction', () => {
   it('rechaza un cobro que supera el saldo pendiente', async () => {
     mockTx([
       [bookingRow({ priceSnapshot: 100_00 })], // pendiente = $100
-      [], // FOR UPDATE lock del booking (Hallazgo C)
+      [bookingRow({ priceSnapshot: 100_00 })], // FOR UPDATE lock del booking (Hallazgo C)
       [], // sin cobros previos
       [{ writtenOff: 0 }], // sin perdido
     ])
@@ -204,7 +204,7 @@ describe('addBookingChargeAction', () => {
   it('acepta un cobro exactamente igual al saldo pendiente', async () => {
     mockTx([
       [bookingRow({ priceSnapshot: 100_00 })],
-      [], // FOR UPDATE lock del booking (Hallazgo C)
+      [bookingRow({ priceSnapshot: 100_00 })], // FOR UPDATE lock del booking (Hallazgo C)
       [],
       [{ writtenOff: 0 }],
     ])
@@ -223,7 +223,7 @@ describe('addBookingChargeAction', () => {
   it('rechaza cualquier cobro si el turno ya está pagado por completo', async () => {
     mockTx([
       [bookingRow({ priceSnapshot: 50_000_00, depositAmount: 50_000_00, depositStatus: 'paid' })],
-      [], // FOR UPDATE lock del booking (Hallazgo C)
+      [bookingRow({ priceSnapshot: 50_000_00, depositAmount: 50_000_00, depositStatus: 'paid' })], // FOR UPDATE lock del booking (Hallazgo C)
       [], // sin cobros de mostrador; la seña ya cubre el precio entero
       [{ writtenOff: 0 }], // sin perdido
     ])
@@ -244,7 +244,7 @@ describe('addBookingChargeAction', () => {
   it('descuenta cobros de mostrador ya registrados antes de validar el nuevo', async () => {
     mockTx([
       [bookingRow({ priceSnapshot: 100_00 })],
-      [], // FOR UPDATE lock del booking (Hallazgo C)
+      [bookingRow({ priceSnapshot: 100_00 })], // FOR UPDATE lock del booking (Hallazgo C)
       [
         {
           id: 'cf-prev',
@@ -271,7 +271,7 @@ describe('addBookingChargeAction', () => {
   it('acepta varias líneas y suma su total contra el pendiente', async () => {
     mockTx([
       [bookingRow({ priceSnapshot: 100_00 })],
-      [], // FOR UPDATE lock del booking (Hallazgo C)
+      [bookingRow({ priceSnapshot: 100_00 })], // FOR UPDATE lock del booking (Hallazgo C)
       [], // sin cobros previos
       [{ writtenOff: 0 }], // sin perdido
     ])
@@ -306,7 +306,7 @@ describe('addBookingChargeAction', () => {
   it('rechaza si la SUMA de las líneas supera el pendiente, aunque cada una quepa individualmente', async () => {
     mockTx([
       [bookingRow({ priceSnapshot: 100_00 })],
-      [], // FOR UPDATE lock del booking (Hallazgo C)
+      [bookingRow({ priceSnapshot: 100_00 })], // FOR UPDATE lock del booking (Hallazgo C)
       [],
       [{ writtenOff: 0 }], // sin perdido
     ])
@@ -326,7 +326,12 @@ describe('addBookingChargeAction', () => {
   // Decisión del dueño 2026-09-25 (cobro por equipo): cada línea acepta un
   // `team` opcional (1 o 2) que se persiste como `bookingTeam`.
   it('acepta team 1/2 y lo manda a createCashFlow como bookingTeam', async () => {
-    mockTx([[bookingRow({ priceSnapshot: 100_00 })], [], [], [{ writtenOff: 0 }]])
+    mockTx([
+      [bookingRow({ priceSnapshot: 100_00 })],
+      [bookingRow({ priceSnapshot: 100_00 })], // FOR UPDATE
+      [],
+      [{ writtenOff: 0 }],
+    ])
     vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-team' } as never)
 
     const res = await addBookingChargeAction({
@@ -353,7 +358,12 @@ describe('addBookingChargeAction', () => {
   })
 
   it('sin team, createCashFlow lo recibe igual que antes (sin bookingTeam)', async () => {
-    mockTx([[bookingRow({ priceSnapshot: 100_00 })], [], [], [{ writtenOff: 0 }]])
+    mockTx([
+      [bookingRow({ priceSnapshot: 100_00 })],
+      [bookingRow({ priceSnapshot: 100_00 })], // FOR UPDATE
+      [],
+      [{ writtenOff: 0 }],
+    ])
     vi.mocked(createCashFlow).mockResolvedValue({ id: 'cf-no-team' } as never)
 
     const res = await addBookingChargeAction({
@@ -377,7 +387,7 @@ describe('addBookingChargeAction', () => {
     mockTx([
       [bookingRow({ priceSnapshot: 100_00 })],
       [], // idempotency key: no existe todavía
-      [], // FOR UPDATE lock del booking (Hallazgo C)
+      [bookingRow({ priceSnapshot: 100_00 })], // FOR UPDATE lock del booking (Hallazgo C)
       [], // getBookingCharges: sin cobros previos
       [{ writtenOff: 0 }], // getBookingCharges: sin perdido
     ])
@@ -441,7 +451,7 @@ describe('addBookingChargeAction', () => {
     mockTx([
       [bookingRow({ priceSnapshot: 100_00 })],
       [], // idempotency key: no existe todavía
-      [], // FOR UPDATE lock del booking (Hallazgo C)
+      [bookingRow({ priceSnapshot: 100_00 })], // FOR UPDATE lock del booking (Hallazgo C)
       [], // getBookingCharges: sin cobros previos
       [{ writtenOff: 0 }], // getBookingCharges: sin perdido
     ])
@@ -464,7 +474,7 @@ describe('addBookingChargeAction', () => {
     const dialect = new PgDialect()
     const tx = mockTx([
       [bookingRow({ priceSnapshot: 100_00 })], // SELECT booking
-      [], // FOR UPDATE lock del booking
+      [bookingRow({ priceSnapshot: 100_00 })], // FOR UPDATE lock del booking
       [], // getBookingCharges: sin cobros previos
       [{ writtenOff: 0 }], // getBookingCharges: sin perdido
     ])
@@ -526,7 +536,7 @@ describe('addBookingChargeAction', () => {
     mockTx([
       [bookingRow({ priceSnapshot: 100_00 })], // SELECT booking: pendiente total $100
       [{ key: `${KEY}-0`, amount: 100_00, method: 'cash' }], // solo la línea 0 existe; la 1 es nueva
-      [], // FOR UPDATE lock del booking (hay línea nueva que valida)
+      [bookingRow({ priceSnapshot: 100_00 })], // FOR UPDATE lock del booking (hay línea nueva que valida)
       [
         {
           id: 'cf-line0',

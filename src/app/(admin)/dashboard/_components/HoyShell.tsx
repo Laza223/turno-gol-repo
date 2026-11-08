@@ -11,6 +11,7 @@ import type { SlotPanelActions } from '@/components/booking/slot-panel/actions'
 import { useNowMsAfterHydration } from '@/hooks/use-now'
 import { rowDisplayName } from '@/lib/dashboard/day-bookings'
 import { buildCourtBoard, type BoardBooking } from '@/lib/dashboard/today-board'
+import { CobrarVariosDialog } from './CobrarVariosDialog'
 import { HoyChargeModal, type HoyCourt } from './HoyChargeModal'
 
 /** Cada cuánto se refresca Hoy solo. Sin esto "Terminó hace N min" y "ahora" quedan
@@ -67,6 +68,8 @@ export function HoyShell({
   const router = useRouter()
   const [isRefreshing, startRefresh] = useTransition()
   const [openId, setOpenId] = useState<string | null>(null)
+  // "Cobrar los N": las tarjetas de los turnos en rojo, en un diálogo aparte.
+  const [manyOpen, setManyOpen] = useState(false)
   const [lastSeen, setLastSeen] = useState<{ booking: BoardBooking; earlier: boolean } | null>(null)
 
   // Antes de hidratar el hook devuelve 0, y entre ticks su valor puede ir por
@@ -110,7 +113,7 @@ export function HoyShell({
 
   // Con un modal abierto NO se refresca: revalidar por debajo de alguien que está
   // tipeando un monto le cambia el saldo a mitad de cobro.
-  const paused = openId !== null
+  const paused = openId !== null || manyOpen
   useEffect(() => {
     if (paused) return
     const refreshIfVisible = () => {
@@ -144,6 +147,7 @@ export function HoyShell({
         dayIsClosed={dayIsClosed}
         canManageCourts={canManageCourts}
         onOpenBooking={openUnlessRefreshing}
+        onChargeMany={() => !isRefreshing && setManyOpen(true)}
       />
 
       {earlier.count > 0 && (
@@ -153,6 +157,18 @@ export function HoyShell({
           pendingCents={earlier.pendingCents}
           courts={courts}
           onOpenBooking={openUnlessRefreshing}
+        />
+      )}
+
+      {manyOpen && (
+        <CobrarVariosDialog
+          bookings={bookings}
+          courts={courts}
+          nowMs={nowMs}
+          actions={actions}
+          onMutated={() => startRefresh(() => router.refresh())}
+          onOpenBooking={openUnlessRefreshing}
+          onClose={() => setManyOpen(false)}
         />
       )}
 

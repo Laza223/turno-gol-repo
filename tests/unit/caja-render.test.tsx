@@ -117,10 +117,10 @@ describe('RegisterMovementModal — chips', () => {
       />,
     )
 
-    expect(pressed('Reserva')).toBe('true') // default
+    expect(pressed('Cobro de turno')).toBe('true') // default
     fireEvent.click(screen.getByRole('button', { name: 'Ajuste' }))
     expect(pressed('Corrección por ausencia')).toBe('true')
     fireEvent.click(screen.getByRole('button', { name: 'Ingreso' }))
-    expect(pressed('Reserva')).toBe('true')
+    expect(pressed('Cobro de turno')).toBe('true')
   })
 })

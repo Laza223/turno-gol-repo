@@ -205,7 +205,7 @@ test.describe('Caja redesign', () => {
     await tabDialog.getByLabel('¿A nombre de quién?').fill(debtorName)
     await tabDialog.getByRole('button', { name: /^Anotar fiado/ }).click()
 
-    await expect(page.getByText(`Fiado anotado — ${debtorName}`).first()).toBeVisible()
+    await expect(page.getByText(`Fiado anotado a nombre de ${debtorName}`).first()).toBeVisible()
 
     // Los fiados se cobran en Cuentas. La línea "N fiados abiertos · Cobrar en
     // Cuentas" vivía en la pantalla Vender de Caja y se fue con ella
@@ -224,7 +224,7 @@ test.describe('Caja redesign', () => {
     // Cobrarlo en efectivo (método default del diálogo). El diálogo de cobro se
     // abre ENCIMA del de la lista, que sigue abierto: se lo ubica por título.
     await fiadoRow.getByRole('button', { name: /^Cobrar/ }).click()
-    const settleDialog = page.getByRole('dialog', { name: `Cobrar — ${debtorName}` })
+    const settleDialog = page.getByRole('dialog', { name: `Cobrar a ${debtorName}` })
     await expect(settleDialog).toBeVisible()
     // `/^Cobrar/` matchearia tambien el atajo "Cobrar todo en efectivo" que
     // SplitPaymentFields muestra desde 2026-09-09: dos matches = strict mode
@@ -241,7 +241,7 @@ test.describe('Caja redesign', () => {
     await expect(listDialog).toBeHidden()
 
     // El cobro generó el movimiento, en el libro de la misma pantalla.
-    const movementRow = page.getByRole('row').filter({ hasText: `Fiado cobrado — ${debtorName}` })
+    const movementRow = page.getByRole('row').filter({ hasText: `Fiado cobrado · ${debtorName}` })
     await expect(movementRow).toBeVisible({ timeout: 10_000 })
   })
 })

@@ -178,7 +178,7 @@ export function NightLedger({
                     {g.rows.length === 1 ? 'movimiento' : 'movimientos'}
                   </th>
                   <td className="px-5 py-1.5 text-right text-xs font-medium tabular-nums text-muted-foreground">
-                    {formatArs(g.netCents)}
+                    neto {formatArs(g.netCents)}
                   </td>
                 </tr>
                 {g.rows.map((row) => (

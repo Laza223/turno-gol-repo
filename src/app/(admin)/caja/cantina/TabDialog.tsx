@@ -98,7 +98,7 @@ export function TabDialog({
       )
       if (!res) return
       if (res.success) {
-        toast({ title: `Fiado anotado — ${res.debtorName}`, variant: 'success' })
+        toast({ title: `Fiado anotado a nombre de ${res.debtorName}`, variant: 'success' })
         onSuccess()
         onOpenChange(false)
         router.refresh()
@@ -148,10 +148,11 @@ export function TabDialog({
             disabled={tabPending}
             className="h-12 w-full rounded-md bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
           >
-            {tabPending ? 'Anotando…' : `Anotar fiado — ${formatArs(total)}`}
+            {tabPending ? 'Anotando…' : `Anotar fiado · ${formatArs(total)}`}
           </button>
           <p className="text-xs text-muted-foreground">
-            El stock sale ahora. La plata entra cuando lo cobrás desde “Fiados abiertos”.
+            El stock sale ahora. La plata entra cuando lo cobrás en Caja, Cuentas, “Fiados sin
+            cobrar”.
           </p>
         </div>
       </DialogContent>

@@ -4,6 +4,7 @@ import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { SITE_URL, SITE_NAME, SITE_LOCALE, DEFAULT_OG_IMAGE } from '@/lib/seo/metadata'
 import { WebVitalsReporter } from '@/components/perf/WebVitalsReporter'
+import { SiteAnalytics } from '@/components/analytics/SiteAnalytics'
 import ThemeProvider from '@/components/theme/ThemeProvider'
 import NextTopLoader from 'nextjs-toploader'
 
@@ -78,6 +79,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <Toaster />
           <WebVitalsReporter />
+          <SiteAnalytics />
         </ThemeProvider>
       </body>
     </html>

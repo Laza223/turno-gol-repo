@@ -916,13 +916,31 @@ export async function addBookingChargeAction(
       // (payment.service.ts) y completeAndChargeBookingAction. Solo corre
       // cuando hay algo NUEVO para cobrar — un reintento sin líneas nuevas no
       // necesita el lock.
-      await tx.execute(sql`SELECT id FROM bookings WHERE id = ${bookingId} FOR UPDATE`)
+      // Precio y seña se RELEEN con el lock tomado: la lectura de arriba fue sin
+      // lock y otra tx (editBooking, edición masiva de un turno fijo) pudo
+      // cambiarlos y commitear mientras esperábamos. Mismo patrón que
+      // completeAndChargeBookingAction (RETURNING posterior al lock).
+      const lockedRows = await tx.execute(sql`
+        SELECT price_snapshot AS "priceSnapshot", deposit_amount AS "depositAmount",
+               deposit_status AS "depositStatus"
+        FROM bookings WHERE id = ${bookingId} FOR UPDATE
+      `)
+      const locked = (
+        lockedRows as unknown as Array<{
+          priceSnapshot: number
+          depositAmount: number
+          depositStatus: string
+        }>
+      )[0]
+      if (!locked) {
+        return { success: false as const, error: 'La reserva no existe.' }
+      }
 
       const { chargesTotal, writtenOff } = await getBookingCharges(tenant.id, bookingId, tx)
       const { pending } = summarizeBookingCharges({
-        priceSnapshot: booking.priceSnapshot,
-        depositAmount: booking.depositAmount,
-        depositStatus: booking.depositStatus,
+        priceSnapshot: locked.priceSnapshot,
+        depositAmount: locked.depositAmount,
+        depositStatus: locked.depositStatus,
         chargesTotal,
         writtenOff,
       })

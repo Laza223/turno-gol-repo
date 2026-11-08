@@ -192,6 +192,48 @@ describe('idempotencia de cobros de turno contra Postgres real', () => {
     expect(await caja(bookingId)).toEqual({ total: 60_00, rows: 1 })
   })
 
+  it('el precio baja entre la lectura inicial y el FOR UPDATE → el cobro se valida contra el precio nuevo', async () => {
+    const { sql, bookingId } = await setup()
+
+    let release!: () => void
+    const gate = new Promise<void>((r) => (release = r))
+    let lockTaken!: () => void
+    const locked = new Promise<void>((r) => (lockTaken = r))
+
+    // editBooking en vuelo: tiene el lock y va a bajar el precio a $80, pero
+    // todavía no commiteó, así que el cobro lee $100 sin lock y se frena.
+    const edicion = sql.begin(async (t) => {
+      await t`SELECT id FROM bookings WHERE id = ${bookingId} FOR UPDATE`
+      lockTaken()
+      await gate
+      await t`SELECT set_config('app.booking_edit', 'on', true)`
+      await t`UPDATE bookings SET price_snapshot = ${80_00} WHERE id = ${bookingId}`
+    })
+    await locked
+
+    const cobro = addBookingChargeAction({
+      bookingId,
+      charges: [{ amount: 100_00, method: 'cash' }],
+      clientIdempotencyKey: randomUUID(),
+    })
+
+    for (let i = 0; i < 200; i++) {
+      const [w] = await sql<{ n: string }[]>`
+        SELECT COUNT(*)::text AS n FROM pg_stat_activity
+        WHERE wait_event_type = 'Lock' AND query ILIKE '%FOR UPDATE%' AND pid <> pg_backend_pid()
+      `
+      if (Number(w!.n) > 0) break
+      await new Promise((r) => setTimeout(r, 25))
+    }
+    release()
+    await edicion
+
+    const res = await cobro
+    expect(res.success).toBe(false)
+    if (!res.success) expect(res.error).toMatch(/supera lo pendiente/i)
+    expect(await caja(bookingId)).toEqual({ total: 0, rows: 0 })
+  })
+
   it('saldar deuda: reenviar el cobro que ya saldó el turno no se rechaza como "sin saldo"', async () => {
     const { bookingId } = await setup('completed')
     const key = randomUUID()

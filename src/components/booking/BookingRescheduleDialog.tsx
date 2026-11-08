@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import * as Sentry from '@sentry/nextjs'
+import Link from 'next/link'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { toast } from '@/hooks/use-toast'
@@ -225,6 +226,14 @@ export function BookingRescheduleDialog({
             Turno fijo. Se mueve solo este turno y sigue costando {formatArs(booking.priceSnapshot)}
             , aunque ese horario tenga otra tarifa. Las otras semanas no cambian.
           </p>
+        )}
+        {keepsContractPrice && (
+          <Link
+            href="/abonados"
+            className="inline-block text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+          >
+            Cambiar todas las fechas
+          </Link>
         )}
 
         <div className="grid gap-3 sm:grid-cols-2">

@@ -25,6 +25,28 @@ const meta = {
       dates: ['2026-03-17', '2026-03-24', '2026-03-31'],
       conflicts: [],
     })),
+    courts: [
+      { id: 'court-1', name: 'Cancha 1' },
+      { id: 'court-2', name: 'Cancha 2' },
+    ],
+    previewUpdateAction: fn(async () => ({
+      success: true as const,
+      preview: {
+        futureSessions: 8,
+        priceUpdated: 7,
+        keptOwnPrice: 1,
+        keptPaid: 0,
+        moved: 0,
+        notMoved: 0,
+        conflictDates: [],
+        fixedConflict: false,
+      },
+    })),
+    updateAction: fn(async () => ({
+      success: true as const,
+      abonado: abonado(),
+      counts: { futureSessions: 8, priceUpdated: 7, keptOwnPrice: 1, keptPaid: 0, moved: 0 },
+    })),
   },
 } satisfies Meta<typeof AbonadosList>
 

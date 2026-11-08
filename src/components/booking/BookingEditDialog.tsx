@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import * as Sentry from '@sentry/nextjs'
+import Link from 'next/link'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { MoneyInput } from '@/components/ui/money-input'
@@ -316,6 +317,14 @@ export function BookingEditDialog({
                   Turno fijo. Este precio vale solo para el {formatDayHeader(booking.date)}. Las
                   otras semanas siguen con el precio de siempre.
                 </p>
+              )}
+              {isAbonadoSession && (
+                <Link
+                  href="/abonados"
+                  className="inline-block text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  Cambiar todas las fechas
+                </Link>
               )}
             </div>
 

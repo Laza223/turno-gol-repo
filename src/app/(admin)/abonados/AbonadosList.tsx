@@ -16,6 +16,11 @@ import { Th, Td, Tr } from '@/components/ui/table'
 import { formatArs, formatTime } from '@/lib/format'
 import { AbonadoStatusBadge } from './status-visual'
 import { toast } from '@/hooks/use-toast'
+import type {
+  EditableCourt,
+  PreviewUpdateAbonado,
+  UpdateAbonadoFromDialog,
+} from './AbonadoEditDialog'
 
 // The reactivate/cancel dialogs pull in the Radix-backed ConfirmDialog and
 // are only needed once an admin clicks a row action. Lazy-load the whole subtree
@@ -24,6 +29,11 @@ import { toast } from '@/hooks/use-toast'
 const AbonadoDialogs = dynamic(() => import('./AbonadoDialogs').then((m) => m.AbonadoDialogs), {
   ssr: false,
 })
+// Mismo criterio para "Editar turno fijo": se baja recién al abrirlo.
+const AbonadoEditDialog = dynamic(
+  () => import('./AbonadoEditDialog').then((m) => m.AbonadoEditDialog),
+  { ssr: false },
+)
 
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const DAY_LABELS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
@@ -40,7 +50,7 @@ function defaultCancelDate(): string {
   return d.toISOString().slice(0, 10)
 }
 
-type DialogKind = 'reactivate' | 'cancel' | 'cancel-single' | null
+type DialogKind = 'reactivate' | 'cancel' | 'cancel-single' | 'edit' | null
 
 type RowState = {
   dialog: DialogKind
@@ -85,6 +95,10 @@ type Props = {
   reactivateAction: ReactivateAbonadoAction
   cancelAction: CancelAbonadoAction
   previewSlotsAction: PreviewAbonadoSlotsAction
+  /** Canchas del complejo, para el selector de "Editar turno fijo". */
+  courts: EditableCourt[]
+  previewUpdateAction: PreviewUpdateAbonado
+  updateAction: UpdateAbonadoFromDialog
 }
 
 export function AbonadosList({
@@ -94,6 +108,9 @@ export function AbonadosList({
   reactivateAction,
   cancelAction,
   previewSlotsAction,
+  courts,
+  previewUpdateAction,
+  updateAction,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -152,7 +169,8 @@ export function AbonadosList({
           <Info className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
           <span>
             <strong>¿Avisan que no vienen un día?</strong> Cancelá solo ese turno desde la{' '}
-            <strong>Grilla</strong> o la <strong>Agenda</strong>. El turno fijo sigue.
+            <strong>Grilla</strong> o la <strong>Agenda</strong>. El turno fijo sigue. Para cambiar
+            todas las fechas, usá <strong>Editar turno fijo</strong>.
           </span>
         </div>
         <Link
@@ -184,6 +202,9 @@ export function AbonadosList({
                   reactivateAction={reactivateAction}
                   cancelAction={cancelAction}
                   previewSlotsAction={previewSlotsAction}
+                  courts={courts}
+                  previewUpdateAction={previewUpdateAction}
+                  updateAction={updateAction}
                 />
               ))}
             </tbody>
@@ -198,6 +219,9 @@ export function AbonadosList({
                 reactivateAction={reactivateAction}
                 cancelAction={cancelAction}
                 previewSlotsAction={previewSlotsAction}
+                courts={courts}
+                previewUpdateAction={previewUpdateAction}
+                updateAction={updateAction}
               />
             ))}
           </ul>
@@ -211,6 +235,9 @@ type AbonadoServerActions = {
   reactivateAction: ReactivateAbonadoAction
   cancelAction: CancelAbonadoAction
   previewSlotsAction: PreviewAbonadoSlotsAction
+  courts: EditableCourt[]
+  previewUpdateAction: PreviewUpdateAbonado
+  updateAction: UpdateAbonadoFromDialog
 }
 
 /**
@@ -314,11 +341,28 @@ function useAbonadoActions(a: AbonadoRow, actions: AbonadoServerActions) {
 function AbonadoActionDialogs({
   abonado: a,
   actions,
+  server,
 }: {
   abonado: AbonadoRow
   actions: ReturnType<typeof useAbonadoActions>
+  server: AbonadoServerActions
 }) {
   if (actions.state.dialog === null) return null
+  if (actions.state.dialog === 'edit') {
+    return createPortal(
+      <AbonadoEditDialog
+        open
+        onOpenChange={(open) => {
+          if (!open) actions.closeDialog()
+        }}
+        abonado={a}
+        courts={server.courts}
+        previewAction={server.previewUpdateAction}
+        updateAction={server.updateAction}
+      />,
+      document.body,
+    )
+  }
   return createPortal(
     <AbonadoDialogs
       abonadoId={a.id}
@@ -366,6 +410,14 @@ function AbonadoTableRow({
               <button
                 type="button"
                 disabled={actions.isPending}
+                onClick={() => actions.openDialog('edit')}
+                className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Editar turno fijo
+              </button>
+              <button
+                type="button"
+                disabled={actions.isPending}
                 onClick={() => actions.openDialog('cancel-single')}
                 className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -404,7 +456,7 @@ function AbonadoTableRow({
         </Td>
       </Tr>
 
-      <AbonadoActionDialogs abonado={a} actions={actions} />
+      <AbonadoActionDialogs abonado={a} actions={actions} server={serverActions} />
     </>
   )
 }
@@ -437,14 +489,24 @@ function AbonadoCard({
       {(isActive || isPaused) && (
         <div className="flex flex-wrap gap-2">
           {isActive && (
-            <button
-              type="button"
-              disabled={actions.isPending}
-              onClick={() => actions.openDialog('cancel-single')}
-              className={`${actionButtonClass} text-blue-600 dark:text-blue-400`}
-            >
-              Cancelar una sola fecha
-            </button>
+            <>
+              <button
+                type="button"
+                disabled={actions.isPending}
+                onClick={() => actions.openDialog('edit')}
+                className={`${actionButtonClass} text-blue-600 dark:text-blue-400`}
+              >
+                Editar turno fijo
+              </button>
+              <button
+                type="button"
+                disabled={actions.isPending}
+                onClick={() => actions.openDialog('cancel-single')}
+                className={`${actionButtonClass} text-blue-600 dark:text-blue-400`}
+              >
+                Cancelar una sola fecha
+              </button>
+            </>
           )}
           {isPaused && (
             <button
@@ -466,7 +528,7 @@ function AbonadoCard({
           </button>
         </div>
       )}
-      <AbonadoActionDialogs abonado={a} actions={actions} />
+      <AbonadoActionDialogs abonado={a} actions={actions} server={serverActions} />
     </li>
   )
 }

@@ -39,3 +39,24 @@ export class PlayerNotClientError extends Error {
     this.name = 'PlayerNotClientError'
   }
 }
+
+export class AbonadoNotEditableError extends Error {
+  name = 'AbonadoNotEditableError'
+  constructor() {
+    super('Solo se puede editar un turno fijo activo.')
+  }
+}
+
+export class AbonadoMoveConflictError extends Error {
+  name = 'AbonadoMoveConflictError'
+  constructor(
+    readonly conflictDates: string[],
+    readonly fixedConflict: boolean,
+  ) {
+    super(
+      fixedConflict
+        ? 'Ya existe un turno fijo activo en ese horario.'
+        : 'Hay fechas que no se pueden usar en el nuevo horario. Liberalas o elegí otro horario.',
+    )
+  }
+}

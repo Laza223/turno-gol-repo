@@ -323,6 +323,17 @@ describe('listToChargeNow', () => {
     expect(ids(listToChargeNow([c2, done, c1], COURTS, NOW))).toEqual(['c1', 'c2', 'done'])
   })
 
+  it('en una misma cancha va primero el que se jugó antes, sin importar el id', () => {
+    const late = booking({ id: 'a-late', courtId: 'c1', start: '21:00', end: '22:00' })
+    const early = booking({ id: 'z-early', courtId: 'c1', start: '19:00', end: '20:00' })
+    const mid = booking({ id: 'm-mid', courtId: 'c1', start: '20:00', end: '21:00' })
+    expect(ids(listToChargeNow([late, early, mid], COURTS, NOW))).toEqual([
+      'z-early',
+      'm-mid',
+      'a-late',
+    ])
+  })
+
   it('deja afuera lo que no es para cobrar ahora', () => {
     const playing = booking({ id: 'playing', start: '22:00', end: '23:00' })
     const block = booking({ id: 'block', start: '20:00', end: '21:00', type: 'block' })

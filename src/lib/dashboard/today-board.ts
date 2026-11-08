@@ -110,7 +110,14 @@ export function listToChargeNow<T extends GridBooking>(
   const rank = (b: T) => order.get(b.courtId) ?? courts.length
   return bookings
     .filter((b) => b.type !== 'tournament' && isPendingCollection(b, nowMs))
-    .sort((a, b) => rank(a) - rank(b) || a.id.localeCompare(b.id))
+    .sort(
+      (a, b) =>
+        rank(a) - rank(b) ||
+        // Dentro de una cancha, el que se jugó primero va primero.
+        (a.startsAtMs ?? 0) - (b.startsAtMs ?? 0) ||
+        a.timeStart.localeCompare(b.timeStart) ||
+        a.id.localeCompare(b.id),
+    )
 }
 
 /** Qué muestra una cancha: el turno para cobrar, el que se juega o el próximo. */

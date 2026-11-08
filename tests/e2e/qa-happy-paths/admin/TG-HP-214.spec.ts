@@ -32,7 +32,7 @@ test.describe('TG-HP-214 — caja: agregar movimiento', () => {
       // movimiento" (src/app/(admin)/caja/cuentas/page.tsx).
       await page.getByRole('button', { name: 'Registrar movimiento' }).click()
       await expect(page.getByRole('dialog')).toBeVisible({ timeout: 5_000 })
-      await expect(page.getByRole('heading', { name: 'Agregar movimiento' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Registrar movimiento' })).toBeVisible()
 
       // Mock data del manual: Ingreso / Otro ingreso / Efectivo son los chips
       // seleccionados — Ingreso y Efectivo SÍ vienen por default

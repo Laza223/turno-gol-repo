@@ -475,7 +475,7 @@ export const ConSenaLaMitadNoLaIncluye: Story = {
   play: async () => {
     const dialog = await openDialog()
     await waitFor(() =>
-      expect(dialog.getByText(/Precio \$\s60\.000 · Cobrado \$\s12\.000/)).toBeVisible(),
+      expect(dialog.getByText(/Precio \$\s60\.000 · Seña pagada \$\s12\.000/)).toBeVisible(),
     )
     await userEvent.click(dialog.getByRole('radio', { name: 'Por equipo' }))
     // $48.000 en el mostrador: $24.000 cada equipo (no $30.000).

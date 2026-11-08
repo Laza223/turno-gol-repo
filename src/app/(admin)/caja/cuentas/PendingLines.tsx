@@ -33,7 +33,7 @@ const COPY: Record<StreetMoneyOrigin, Copy> = {
     many: 'turnos no cobrados',
     title: 'Turnos no cobrados',
     description:
-      'Se jugaron y no se anotó el cobro. Podés darlos por perdidos desde el cobro. Lo que nadie toca se da por cobrado en efectivo a las 24 h.',
+      'Se jugaron y no se anotó el cobro. Podés darlos por perdidos desde el cobro. Si nadie lo anota, a las 24 h de terminado el sistema lo registra como cobrado en efectivo, aunque no se haya cobrado.',
     red: true,
   },
   tournament: {

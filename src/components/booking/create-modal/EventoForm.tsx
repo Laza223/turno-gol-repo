@@ -177,9 +177,9 @@ export function EventoForm({
           toast({
             title: 'Evento semanal creado',
             description:
-              `${result.slotsGenerated ?? 0} fechas` +
+              `${result.slotsGenerated ?? 0} fechas agendadas.` +
               (conflicts.length > 0
-                ? ` — Fechas ocupadas: ${conflicts.map(toDdMm).join(', ')}`
+                ? ` Se saltearon por estar ocupadas: ${conflicts.map(toDdMm).join(', ')}.`
                 : ''),
             variant: 'success',
           })
@@ -331,7 +331,7 @@ export function EventoForm({
           </div>
           {repeatMode === 'once' && taken && (
             <p role="alert" className="text-xs text-amber-700 dark:text-amber-400">
-              Este turno acaba de ser tomado.
+              Ese horario ya se ocupó. Elegí otro para seguir.
             </p>
           )}
         </section>

@@ -165,7 +165,7 @@ test.describe('Reserva que se confirma sola al volver del ingreso', () => {
       await expect(page.getByRole('heading', { name: 'Entrá para reservar' })).toHaveCount(0)
       await expect(page.getByText('Confirmando tu reserva…')).toHaveCount(0)
       // Y la pantalla dice qué hacer: la promesa de "queda confirmada" no se cumplió.
-      await expect(page.getByText('Tocá Reservar para terminar.')).toBeVisible()
+      await expect(page.getByText('Tocá "Reservar" para terminar tu reserva.')).toBeVisible()
       // Dar tiempo a que un envío indebido ocurra antes de mirar la base.
       await page.waitForTimeout(1500)
       expect(await bookingsOf(email, date, time)).toHaveLength(0)
@@ -202,7 +202,7 @@ test.describe('Reserva que se confirma sola al volver del ingreso', () => {
       await page.goto(next)
       await expect(page.getByRole('button', { name: 'Reservar' })).toBeVisible()
       await expect(page.getByText('Confirmando tu reserva…')).toHaveCount(0)
-      await expect(page.getByText('Tocá Reservar para terminar.')).toBeVisible()
+      await expect(page.getByText('Tocá "Reservar" para terminar tu reserva.')).toBeVisible()
       await page.waitForTimeout(1500)
       await expect(page).toHaveURL(new RegExp(`/${TENANT_SLUG}/reservar`))
       const rows = await runSql<{ n: string }>(

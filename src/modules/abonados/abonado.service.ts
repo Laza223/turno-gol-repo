@@ -377,7 +377,7 @@ export async function cancelAbonado(
   fromDate: string,
   staffUserId: string,
   tx: DbTx,
-): Promise<AbonadoRow> {
+): Promise<{ abonado: AbonadoRow; keptDates: string[] }> {
   const existing = await tx
     .select()
     .from(abonados)
@@ -396,13 +396,31 @@ export async function cancelAbonado(
   // simule el tiempo: vi.setSystemTime congela el de JS y no el del server).
   const nowIso = new Date().toISOString()
 
+  // Una sesión con plata cargada (cobro en caja o pago) NO se borra: `cash_flows`
+  // y `payments` apuntan a `bookings` sin ON DELETE, así que el DELETE entero
+  // reventaba con una violación de FK y el fijo no se cancelaba. Esas fechas
+  // quedan en la grilla y se devuelven en `keptDates` para avisarlo.
   await tx.execute(sql`
-    DELETE FROM bookings
-    WHERE abonado_id = ${abonadoId}
-      AND date >= ${fromDate}::date
-      AND starts_at >= ${nowIso}::timestamptz
-      AND status IN ('confirmed','pending_payment')
+    DELETE FROM bookings b
+    WHERE b.abonado_id = ${abonadoId}
+      AND b.date >= ${fromDate}::date
+      AND b.starts_at >= ${nowIso}::timestamptz
+      AND b.status IN ('confirmed','pending_payment')
+      AND NOT EXISTS (SELECT 1 FROM cash_flows cf WHERE cf.booking_id = b.id)
+      AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.booking_id = b.id)
   `)
+
+  // Lo que quedó en pie con el mismo filtro de arriba: son las que tienen plata.
+  const keptRows = await tx.execute<{ date_str: string }>(sql`
+    SELECT b.date::text AS date_str
+    FROM bookings b
+    WHERE b.abonado_id = ${abonadoId}
+      AND b.date >= ${fromDate}::date
+      AND b.starts_at >= ${nowIso}::timestamptz
+      AND b.status IN ('confirmed','pending_payment')
+    ORDER BY b.date
+  `)
+  const keptDates = [...keptRows].map((r) => r.date_str)
 
   const updated = await tx
     .update(abonados)
@@ -417,10 +435,10 @@ export async function cancelAbonado(
     action: 'abonado.canceled',
     resourceType: 'abonado',
     resourceId: abonadoId,
-    metadata: { fromDate },
+    metadata: { fromDate, keptDates },
   })
 
-  return rowToAbonadoRow(updated[0]!)
+  return { abonado: rowToAbonadoRow(updated[0]!), keptDates }
 }
 
 /**

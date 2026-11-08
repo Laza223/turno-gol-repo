@@ -3,6 +3,7 @@
 import type { ActionResult } from '@/shared/types/action-result'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import DatePicker from '@/components/ui/date-picker'
+import { formatDayHeader } from '@/lib/format'
 
 type DialogKind = 'reactivate' | 'cancel' | 'cancel-single' | null
 
@@ -16,6 +17,8 @@ function todayART(): string {
 
 export type AbonadoDialogsProps = {
   abonadoId: string
+  /** Quién es el fijo, para que el diálogo diga a cuál se refiere: "Cachi, martes 21:00". */
+  abonadoLabel: string
   dialog: DialogKind
   cancelFromDate: string
   onCancelFromDateChange: (date: string) => void
@@ -36,6 +39,7 @@ export type AbonadoDialogsProps = {
  */
 export function AbonadoDialogs({
   abonadoId,
+  abonadoLabel,
   dialog,
   cancelFromDate,
   onCancelFromDateChange,
@@ -77,12 +81,13 @@ export function AbonadoDialogs({
         title="Cancelar turno fijo"
         description={
           <div className="space-y-2">
+            <p className="font-medium text-foreground">Fijo de {abonadoLabel}.</p>
             <p>
-              Esta acción es permanente. Se eliminarán todas las reservas futuras desde la fecha
-              elegida.
+              El turno fijo pasa a Cancelado y no se puede reactivar. Se borran sus turnos desde la
+              fecha elegida. Los anteriores quedan en la grilla.
             </p>
             <p className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">
-              Las reservas futuras desde esa fecha serán borradas sin posibilidad de recuperación.
+              Un turno con un cobro cargado no se borra. Después lo cancelás desde la Grilla.
             </p>
           </div>
         }
@@ -97,7 +102,7 @@ export function AbonadoDialogs({
             htmlFor={`cancel-date-${abonadoId}`}
             className="text-xs font-medium text-foreground"
           >
-            Cancelar desde
+            Borrar turnos desde
           </label>
           <DatePicker
             id={`cancel-date-${abonadoId}`}
@@ -106,6 +111,9 @@ export function AbonadoDialogs({
             min={todayART()}
             placeholder="Seleccionar fecha"
           />
+          <p className="text-xs text-muted-foreground">
+            Empieza dentro de 7 días. Los turnos de antes de esa fecha siguen en la grilla.
+          </p>
         </div>
       </ConfirmDialog>
 
@@ -114,26 +122,22 @@ export function AbonadoDialogs({
         onOpenChange={(open) => {
           if (!open) onClose()
         }}
-        title="Cancelar una fecha puntual"
+        title="Cancelar una sola fecha"
         description={
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Para cancelar únicamente el turno de una fecha específica (ej: este martes) sin dar de
-              baja el turno fijo permanente:
+              Se hace desde el turno de ese día, en la <strong>Grilla</strong> o en la{' '}
+              <strong>Agenda</strong>.
             </p>
             <ol className="list-decimal list-inside space-y-1.5 text-xs text-foreground bg-muted/40 p-3 rounded-xl border border-border">
+              <li>Buscá el día que avisaron que no vienen.</li>
+              <li>Abrí el turno de ese horario.</li>
               <li>
-                Ingresá a la <strong>Grilla</strong> o a la <strong>Agenda</strong>.
-              </li>
-              <li>Buscá la fecha del día que avisaron que no asistirán.</li>
-              <li>
-                Hacé clic en el turno de ese horario y seleccioná{' '}
-                <strong>“Cancelar reserva”</strong>.
+                Elegí <strong>“Cancelar reserva”</strong>.
               </li>
             </ol>
             <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
-              ✓ La cancha quedará libre para esa fecha puntual y el turno fijo continuará activo
-              para todas las demás semanas.
+              La cancha queda libre ese día. El turno fijo sigue activo las demás semanas.
             </p>
           </div>
         }
@@ -166,16 +170,12 @@ function ReactivatePreview({
   if (error) {
     return (
       <p className="text-sm text-red-600 dark:text-red-400" role="alert">
-        No se pudo cargar la vista previa: {error}
+        No pudimos revisar las fechas. {error}
       </p>
     )
   }
   if (dates.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        No se encontraron fechas futuras para generar.
-      </p>
-    )
+    return <p className="text-sm text-muted-foreground">No hay fechas futuras para cargar.</p>
   }
 
   const available = dates.filter((d) => !conflicts.includes(d))
@@ -184,15 +184,15 @@ function ReactivatePreview({
   return (
     <div className="space-y-2">
       <p className="text-sm">
-        Se generarán <strong>{available.length}</strong> turno{available.length !== 1 ? 's' : ''}{' '}
-        futuro{available.length !== 1 ? 's' : ''}
+        Se cargan <strong>{available.length}</strong> turno{available.length !== 1 ? 's' : ''} desde
+        hoy
         {conflicts.length > 0 && (
           <span className="text-amber-700 dark:text-amber-300">
             {' '}
             (
             {conflicts.length === 1
-              ? '1 fecha ya ocupada se va a saltar'
-              : `${conflicts.length} fechas ya ocupadas se van a saltar`}
+              ? '1 fecha está ocupada y se saltea'
+              : `${conflicts.length} fechas están ocupadas y se saltean`}
             )
           </span>
         )}
@@ -201,7 +201,7 @@ function ReactivatePreview({
       <ul className="max-h-40 overflow-y-auto space-y-1">
         {dates.map((d) => (
           <li key={d} className="flex items-center justify-between text-xs">
-            <span>{d}</span>
+            <span>{formatDayHeader(d)}</span>
             {conflictSet.has(d) ? (
               <span className="rounded-full bg-amber-100 dark:bg-amber-500/15 px-2 py-0.5 text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">
                 Ocupado

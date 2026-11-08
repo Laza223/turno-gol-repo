@@ -40,7 +40,8 @@ export function GridLegend() {
           "¿qué significa cada color?") no lo explica por sí sola. Sin esta
           línea el dueño ve un $ sin saber si es el precio o el saldo. */}
       <p className="mt-2 text-xs text-muted-foreground">
-        El monto en la celda es lo que falta cobrar de ese turno.
+        El monto en la celda es lo que falta cobrar. Si ya hay una seña o un cobro, dice
+        &quot;Falta&quot;.
       </p>
     </>
   )

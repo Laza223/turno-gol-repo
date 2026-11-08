@@ -126,13 +126,16 @@ export async function createBookingAction(data: unknown): Promise<CreateBookingA
     )
   } catch (err) {
     if (err instanceof SlotTakenError) {
-      return { success: false, error: 'Este turno acaba de ser tomado.' }
+      return { success: false, error: 'Ese horario ya se ocupó. Elegí otro para seguir.' }
     }
     if (err instanceof CourtOfflineError) {
       return { success: false, error: 'La cancha no está disponible.' }
     }
     if (err instanceof PriceUnavailableError) {
-      return { success: false, error: 'No hay precio configurado para este horario.' }
+      return {
+        success: false,
+        error: 'Este horario no tiene precio cargado. Ingresalo para seguir.',
+      }
     }
     if (err instanceof BookingValidationError) {
       // Tarea #6: turnos de 60 min (los bloques sí pueden durar varias horas).
@@ -763,7 +766,10 @@ export async function rescheduleBookingAction(
       return { success: false, error: 'La cancha no está disponible.' }
     }
     if (err instanceof PriceUnavailableError) {
-      return { success: false, error: 'No hay precio configurado para ese horario.' }
+      return {
+        success: false,
+        error: 'Este horario no tiene precio cargado. Ingresalo para seguir.',
+      }
     }
     if (err instanceof BookingValidationError) {
       return { success: false, error: err.message }

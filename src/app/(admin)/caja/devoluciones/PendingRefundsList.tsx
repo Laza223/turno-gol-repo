@@ -186,7 +186,7 @@ export function PendingRefundsList({
                   type="button"
                   onClick={() => setSettling(row)}
                   // H105: el nombre accesible dice a quién y cuánto.
-                  aria-label={`Ya devolví ${formatArs(row.amountCents)} — ${row.debtorName}`}
+                  aria-label={`Ya devolví ${formatArs(row.amountCents)} a ${row.debtorName}`}
                   className="inline-flex h-11 items-center rounded-lg border border-border px-3 text-xs font-semibold text-foreground transition-colors hover:bg-accent md:h-9"
                 >
                   Ya devolví
@@ -206,9 +206,9 @@ export function PendingRefundsList({
       />
 
       <p className="text-xs text-muted-foreground">
-        Devolvés por donde quieras — MercadoPago, transferencia o efectivo. Acá solo queda
-        registrado que ya lo hiciste; si devolvés desde el panel de MercadoPago, la fila desaparece
-        sola cuando ellos nos avisan.
+        Podés devolver por MercadoPago, transferencia o efectivo. Acá solo queda registrado que ya
+        lo hiciste. Si devolvés desde el panel de MercadoPago, la fila desaparece sola cuando
+        MercadoPago nos avisa.
       </p>
 
       <MarkRefundSettledDialog row={settling} onClose={() => setSettling(null)} action={action} />

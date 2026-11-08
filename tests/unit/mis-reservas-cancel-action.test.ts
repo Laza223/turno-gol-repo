@@ -89,7 +89,8 @@ describe('cancelMyBookingAction — TenantInactiveError (#31)', () => {
     // Error de estado: definitivo (`stale`) y refresca la lista.
     expect(result).toEqual({
       success: false,
-      error: 'El turno ya terminó. Contactá al complejo.',
+      error:
+        'El turno ya terminó. Si hay algo para aclarar, escribile al complejo desde su tarjeta.',
       stale: true,
     })
     expect(revalidatePath).toHaveBeenCalledWith('/mis-reservas')
@@ -265,7 +266,7 @@ describe('cancelMyBookingAction — TenantInactiveError (#31)', () => {
 })
 
 const NOT_CANCELABLE_DEFAULT =
-  'Esta reserva ya no se puede cancelar desde acá. Escribile al complejo.'
+  'Este turno ya no se puede cancelar desde acá. Escribile al complejo desde su tarjeta.'
 
 describe('cancelMyBookingAction — la reserva ya no se puede cancelar', () => {
   // Una fila por `booking_status`: si el enum suma un valor, el primer test se pone rojo.

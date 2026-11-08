@@ -25,6 +25,7 @@ export type LedgerRow = {
 }
 
 const FIADO_PREFIX = 'Fiado cobrado — '
+const FIADO_SHOWN = 'Fiado cobrado · '
 const CANTINA_PREFIX = /^Cantina:\s*/
 
 /**
@@ -69,7 +70,13 @@ export function toLedgerRow(cf: CashFlowListRow): LedgerRow {
 
   if (cf.category === 'product_sale') {
     if (cf.description.startsWith(FIADO_PREFIX)) {
-      return { ...base, kind: 'fiado', text: cf.description, detail: null }
+      // El texto guardado lleva raya larga: se muestra con un punto medio, sin tocar lo guardado.
+      return {
+        ...base,
+        kind: 'fiado',
+        text: cf.description.replace(FIADO_PREFIX, FIADO_SHOWN),
+        detail: null,
+      }
     }
     return {
       ...base,

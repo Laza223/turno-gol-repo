@@ -3,7 +3,7 @@ import { METHOD_LABELS } from '@/lib/payment-method'
 import { TONE_TEXT } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
 import type { GridBooking } from '@/lib/booking/grid-cells'
-import { chargeSplit } from './charge-copy'
+import { chargeSplit, counterPaidCents } from './charge-copy'
 
 type Props = {
   booking: GridBooking
@@ -29,8 +29,20 @@ export function SlotPriceSummary({ booking, capacity, late = false }: Props) {
   if (booking.type !== 'tournament' && booking.priceSnapshot !== 0) {
     detail.push(`Precio ${formatArs(booking.priceSnapshot)}`)
   }
-  if (paid !== null && booking.priceSnapshot !== 0) detail.push(`Cobrado ${formatArs(paid)}`)
-  if (booking.paymentMethod) detail.push(METHOD_LABELS[booking.paymentMethod])
+  // La seña se nombra aparte: mezclada en "Cobrado" el encargado no sabe si falta la seña o el resto.
+  const depositPaid =
+    (booking.depositStatus === 'paid' || booking.depositStatus === 'captured') &&
+    (booking.depositAmount ?? 0) > 0
+      ? (booking.depositAmount ?? 0)
+      : 0
+  if (depositPaid > 0 && booking.priceSnapshot !== 0) {
+    const how = booking.paymentMethod ? ` (${METHOD_LABELS[booking.paymentMethod]})` : ''
+    detail.push(`Seña pagada ${formatArs(depositPaid)}${how}`)
+    detail.push(`Cobrado en el complejo ${formatArs(counterPaidCents(booking))}`)
+  } else {
+    if (paid !== null && booking.priceSnapshot !== 0) detail.push(`Cobrado ${formatArs(paid)}`)
+    if (booking.paymentMethod) detail.push(METHOD_LABELS[booking.paymentMethod])
+  }
 
   return (
     // Sin recuadro: es el primer bloque del panel y lo que tiene que gritar es
@@ -42,7 +54,7 @@ export function SlotPriceSummary({ booking, capacity, late = false }: Props) {
         // tuvo precio, no un pago de cero pesos.
         <p>
           <span className="block text-xs font-medium text-muted-foreground">Precio</span>
-          <span className="block text-2xl font-bold tabular-nums text-foreground">Sin costo</span>
+          <span className="block text-2xl font-bold tabular-nums text-foreground">No se cobra</span>
         </p>
       ) : pending !== null && pending > 0 ? (
         <p>

@@ -40,7 +40,7 @@ const STEPS = [
   {
     n: '01',
     t: 'Probalo gratis 30 días',
-    d: 'Sin tarjeta. Cargás canchas y horarios en unos 20 minutos, y si te trabás te lo dejamos andando nosotros.',
+    d: 'Sin tarjeta. Cargás canchas y horarios en menos de 10 minutos, y si te trabás te lo dejamos andando nosotros.',
   },
   {
     n: '02',
@@ -406,8 +406,8 @@ function FinalCta() {
             Empezá hoy. Gratis.
           </h2>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-400">
-            En 20 minutos tenés la grilla andando y el link de reservas listo para mandar por
-            WhatsApp. Si no te sirve, lo dejás y no pasó nada.
+            En menos de 10 minutos tenés la grilla andando y el link de reservas listo para mandar
+            por WhatsApp. Si no te sirve, lo dejás y no pasó nada.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link

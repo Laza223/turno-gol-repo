@@ -6,7 +6,6 @@ import { toast } from '@/hooks/use-toast'
 import { formatArs, formatDateLong } from '@/lib/format'
 import { Label } from '@/components/ui/label'
 import { MoneyInput } from '@/components/ui/money-input'
-import { choiceChipClass, SegmentedControl } from '@/components/ui/segmented-control'
 import { priceForRange } from '@/lib/booking/pricing'
 import { ContactField } from './ContactField'
 import { DateRangeFields } from './DateRangeFields'
@@ -54,7 +53,6 @@ export function TurnoFijoForm({
 
   const [startsOn, setStartsOn] = useState(slot.date)
   const [endsOn, setEndsOn] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState<'' | 'cash' | 'transfer'>('')
 
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -98,7 +96,6 @@ export function TurnoFijoForm({
       pricePerSession: effectivePrice!,
       startsOn,
       ...(endsOn ? { endsOn } : {}),
-      ...(paymentMethod ? { paymentMethod } : {}),
     }
 
     setError(null)
@@ -116,8 +113,10 @@ export function TurnoFijoForm({
         toast({
           title: 'Turno fijo creado',
           description:
-            `${result.slotsGenerated ?? 0} turnos agendados` +
-            (conflicts.length > 0 ? ` — Fechas ocupadas: ${conflicts.map(toDdMm).join(', ')}` : ''),
+            `${result.slotsGenerated ?? 0} turnos agendados.` +
+            (conflicts.length > 0
+              ? ` Se saltearon por estar ocupadas: ${conflicts.map(toDdMm).join(', ')}.`
+              : ''),
           variant: 'success',
         })
         onSuccess()
@@ -183,7 +182,7 @@ export function TurnoFijoForm({
 
         <section className="space-y-3">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Precio y cobro
+            Precio
           </h4>
           {suggestedPrice == null ? (
             <div className="space-y-1.5">
@@ -231,23 +230,6 @@ export function TurnoFijoForm({
             min={slot.date}
             dayOfWeek={dayOfWeek}
           />
-
-          <div className="space-y-1.5">
-            <Label htmlFor="fijo-pago">
-              ¿Cómo paga? <span className="font-normal text-muted-foreground">(opcional)</span>
-            </Label>
-            <SegmentedControl<'' | 'cash' | 'transfer'>
-              className="grid grid-cols-2 gap-1.5"
-              aria-label="¿Cómo paga?"
-              value={paymentMethod}
-              onValueChange={setPaymentMethod}
-              itemClassName={choiceChipClass}
-              options={[
-                { value: 'cash', label: 'Efectivo' },
-                { value: 'transfer', label: 'Transferencia' },
-              ]}
-            />
-          </div>
         </section>
       </div>
 

@@ -15,6 +15,7 @@ const meta = {
   parameters: { layout: 'padded' },
   args: {
     abonadoId: uid(501),
+    abonadoLabel: 'Cachi, martes 21:00',
     dialog: null,
     cancelFromDate: '2026-03-21',
     onCancelFromDateChange: fn(),
@@ -53,8 +54,8 @@ export const ReactivateWithConflicts: Story = {
     // toBeVisible() (no toHaveTextContent, que ignora opacidad) es lo que de
     // verdad consume la ventana de la animación de entrada.
     await waitFor(() => expect(canvas.getByText('Ocupado')).toBeVisible())
-    await expect(canvas.getByText(/se generarán/i)).toHaveTextContent(
-      'Se generarán 3 turnos futuros (1 fecha ya ocupada se va a saltar).',
+    await expect(canvas.getByText(/se cargan/i)).toHaveTextContent(
+      'Se cargan 3 turnos desde hoy (1 fecha está ocupada y se saltea).',
     )
     await expect(canvas.getAllByText('Libre')).toHaveLength(3)
   },
@@ -76,7 +77,9 @@ export const ReactivateNoSlots: Story = {
   args: { dialog: 'reactivate', reactivatePreviewDates: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement.ownerDocument.body)
-    await waitFor(() => expect(canvas.getByText(/no se encontraron fechas futuras/i)).toBeVisible())
+    await waitFor(() =>
+      expect(canvas.getByText(/no hay fechas futuras para cargar/i)).toBeVisible(),
+    )
   },
 }
 

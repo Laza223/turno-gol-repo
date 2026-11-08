@@ -42,7 +42,7 @@ const CATEGORIES: Record<CfType, { value: string; label: string }[]> = {
   // /caja/productos terminan contradiciéndose. El ENUM sigue existiendo
   // (categoryLabel sigue traduciendo el histórico) — esto es solo UI.
   income: [
-    { value: 'booking', label: 'Reserva' },
+    { value: 'booking', label: 'Cobro de turno' },
     { value: 'other', label: 'Otro ingreso' },
   ],
   // La UI nunca ofrece 'operating_expense' (legacy, solo display en historial —
@@ -164,7 +164,7 @@ export function RegisterMovementModal({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="w-[95vw] max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Agregar movimiento</DialogTitle>
+          <DialogTitle>Registrar movimiento</DialogTitle>
         </DialogHeader>
         {retry && (
           <UnconfirmedRetry
@@ -218,6 +218,20 @@ export function RegisterMovementModal({
                 </div>
               </fieldset>
 
+              {type === 'income' && category === 'booking' && (
+                <p className="text-xs text-muted-foreground">
+                  Suma plata a la caja, pero no marca ningún turno como cobrado. Para cobrar un
+                  turno, abrilo desde Hoy o la Grilla.
+                </p>
+              )}
+              {type === 'adjustment' && (
+                <p className="text-xs text-muted-foreground">Suma a lo que entró en el día.</p>
+              )}
+              {type === 'expense' && (
+                <p className="text-xs text-muted-foreground">
+                  No baja el número de “Entró hoy”. Se resta del medio con el que pagaste.
+                </p>
+              )}
               {type === 'income' && (
                 <p className="text-xs text-muted-foreground">
                   ¿Vendiste algo de la cantina?{' '}
@@ -236,7 +250,7 @@ export function RegisterMovementModal({
             <div className="space-y-3">
               <fieldset>
                 <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Método de pago
+                  {type === 'expense' ? '¿Con qué pagaste?' : 'Método de pago'}
                 </legend>
                 <PaymentMethodChips
                   className="grid grid-cols-2 gap-2"

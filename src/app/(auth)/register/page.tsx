@@ -65,11 +65,7 @@ function ImagePane() {
             </li>
             <li className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-emerald-400" aria-hidden />
-              Cobros automáticos con MercadoPago
-            </li>
-            <li className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" aria-hidden />
-              Configuración en menos de 2 minutos
+              Canchas y horarios cargados en menos de 10 minutos
             </li>
           </ul>
         </div>

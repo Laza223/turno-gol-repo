@@ -228,8 +228,8 @@ export function StepFirstBooking({ date, courts, action, finishAction }: Props) 
             Tu primera reserva
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Cargá un turno de hoy que ya tengas, como uno que te pidieron por WhatsApp. Queda en tu
-            grilla de verdad.
+            Es opcional. Cargá un turno de hoy que ya tengas, como uno que te pidieron por WhatsApp.
+            Queda en tu grilla.
           </p>
         </div>
 

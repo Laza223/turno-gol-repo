@@ -60,7 +60,7 @@ export function NightSummary({
   // Torneos, otros ingresos y ajustes: lo que entró y no es ni turno ni cantina.
   const otros = summary.collected - turnos - cantina
   const origins: Figure[] = [
-    { label: 'Turnos', cents: turnos },
+    { label: 'Turnos y señas', cents: turnos },
     { label: 'Cantina', cents: cantina },
     ...(otros > 0 ? [{ label: 'Otros', cents: otros }] : []),
     ...(summary.totalExpense > 0
@@ -77,6 +77,9 @@ export function NightSummary({
         <p className="text-sm text-muted-foreground">{heading}</p>
         <p className="font-display text-3xl font-bold tabular-nums tracking-tight text-foreground">
           {formatArs(summary.collected)}
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Sin descontar gastos. Incluye señas de turnos de otros días.
         </p>
         {writtenOff && writtenOff.count > 0 && (
           <p className="mt-1 text-sm tabular-nums text-muted-foreground">

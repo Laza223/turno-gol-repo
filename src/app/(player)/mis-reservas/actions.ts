@@ -131,7 +131,7 @@ async function requirePlayer() {
 const EMAIL_DISPATCH_TIMEOUT_MS = 15_000
 
 const NOT_CANCELABLE_DEFAULT =
-  'Esta reserva ya no se puede cancelar desde acá. Escribile al complejo.'
+  'Este turno ya no se puede cancelar desde acá. Escribile al complejo desde su tarjeta.'
 
 /** Qué le pasó a la reserva (todo `booking_status` menos `confirmed`). `canceledBy: 'player'` no llega: es su replay. */
 function notCancelableCopy(status: BookingStatus, canceledBy: CancellationActor | null): string {
@@ -224,7 +224,9 @@ export async function cancelMyBookingAction(
     // 07-cancelbyplayer-noshow-guard: el turno ya terminó — no es una
     // cancelación, es una ausencia; se resuelve con el complejo.
     if (err instanceof BookingAlreadyEndedError) {
-      return staleError('El turno ya terminó. Contactá al complejo.')
+      return staleError(
+        'El turno ya terminó. Si hay algo para aclarar, escribile al complejo desde su tarjeta.',
+      )
     }
     // #31: el complejo en estado blocked/deleted hace que cancelByPlayer lance
     // TenantInactiveError. Sin este catch se propagaba como error no controlado

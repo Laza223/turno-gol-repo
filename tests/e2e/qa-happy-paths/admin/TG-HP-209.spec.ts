@@ -71,8 +71,8 @@ test.describe('TG-HP-209 — Grilla realtime sin reload', () => {
       await pageA.getByLabel('¿A nombre de quién?').fill('E2E QA-209 Realtime')
       await pageA.getByLabel('Teléfono').fill('11 0000-0209')
       // "No cobré" viene preseleccionado: alcanza con el nombre para confirmar.
-      await pageA.getByRole('button', { name: /Reservar/ }).click()
-      await expect(pageA.getByText('Reserva creada', { exact: true })).toBeVisible({
+      await pageA.getByRole('button', { name: /Agendar turno/ }).click()
+      await expect(pageA.getByText('Turno agendado', { exact: true })).toBeVisible({
         timeout: 10_000,
       })
 

@@ -37,7 +37,7 @@ afterEach(() => {
 })
 
 describe('PaymentStatusWatcher — no quedar colgado (#45/#46/#48)', () => {
-  it('al agotarse el tiempo sin transición pasa a "Se acabó el tiempo" (#45/#48)', async () => {
+  it('al agotarse el tiempo sin transición pasa a "Todavía no llegó la confirmación" (#45/#48)', async () => {
     global.fetch = vi.fn(async () => jsonResponse('pending_payment')) as never
     // expiró hace 6s → ms = -6000 + 5000 = -1000 ≤ 0 al montar
     const past = new Date(Date.now() - 6000).toISOString()
@@ -49,7 +49,7 @@ describe('PaymentStatusWatcher — no quedar colgado (#45/#46/#48)', () => {
       await vi.advanceTimersByTimeAsync(10)
     })
 
-    expect(screen.getByText('Se acabó el tiempo')).toBeTruthy()
+    expect(screen.getByText('Todavía no llegó la confirmación')).toBeTruthy()
     expect(screen.queryByText('Confirmando tu pago…')).toBeNull()
     // Gris: que MercadoPago tarde no es una falla (rojo es "No pudimos verificar tu pago").
     expect(container.querySelector('svg')?.getAttribute('class')).toContain(TONE_TEXT.neutral)

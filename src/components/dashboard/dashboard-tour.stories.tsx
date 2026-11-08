@@ -24,7 +24,7 @@ const meta = {
           Ir a la grilla
         </button>
         <div data-tour-id="tour-checklist" className="rounded-xl border border-border p-4 text-sm">
-          Configuración del complejo
+          Primeros pasos de tu complejo
         </div>
         <button
           type="button"

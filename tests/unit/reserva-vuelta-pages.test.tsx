@@ -176,7 +176,7 @@ describe('pendiente', () => {
   it('pending_payment: la espera con el turno y "Pagar la seña" hasta una hora, sin cuenta regresiva', async () => {
     execute.mockResolvedValue([pendingRow()])
     const { container } = render(await ReservaPendientePage(params))
-    expect(screen.getByRole('heading', { name: 'Confirmando tu pago…' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Esperando tu pago…' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Pagar la seña' })).toBeTruthy()
     expect(
       screen.getByText(/^¿No llegaste a pagar\? Podés pagar hasta las \d\d:\d\d\.$/),

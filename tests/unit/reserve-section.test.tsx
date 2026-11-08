@@ -148,7 +148,7 @@ describe('ReserveSection: el paso sale de la URL', () => {
       '¿Qué día querés jugar?',
     )
     expect(screen.getByText('Paso 1 de 3')).toBeTruthy()
-    expect(screen.getByText('Reservás hasta 6 días antes')).toBeTruthy()
+    expect(screen.getByText('Podés reservar hasta 6 días adelante')).toBeTruthy()
     expect(dayRows()).toHaveLength(7)
     expect(dayRows()[0]!.textContent).toContain('Hoy')
     expect(dayRows()[0]!.textContent).toContain(dayLong(today))
@@ -1684,10 +1684,10 @@ describe('ReserveSection: ronda 3 — frescura, día fuera de ventana y hora ocu
     expired()
 
     fireEvent.click(hour('21:00'))
-    expect(await screen.findByText('Las 21:00 se ocuparon.')).toBeTruthy()
+    expect(await screen.findByText('Ya se ocupó el horario 21:00.')).toBeTruthy()
 
     expect(screen.getByRole('status').textContent).toContain(
-      'Las 21:00 se ocuparon. Elegí otra hora.',
+      'Ya se ocupó el horario 21:00. Elegí otra hora.',
     )
     expect(screen.queryByRole('list', { name: /^Canchas libres/ })).toBeNull()
 
@@ -1704,7 +1704,7 @@ describe('ReserveSection: ronda 3 — frescura, día fuera de ventana y hora ocu
         <ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />,
       )
       await findHour('18:00')
-      expect(screen.queryByText(/se ocuparon/)).toBeNull()
+      expect(screen.queryByText(/Ya se ocupó el horario/)).toBeNull()
       view.unmount()
     }
   })
@@ -1724,7 +1724,7 @@ describe('ReserveSection: ronda 3 — frescura, día fuera de ventana y hora ocu
     fireEvent.click(screen.getByRole('radio', { name: 'Fútbol 7' }))
     await waitFor(() => expect(hourButtons()).toHaveLength(1))
 
-    expect(screen.queryByText(/se ocuparon/)).toBeNull()
+    expect(screen.queryByText(/Ya se ocupó el horario/)).toBeNull()
   })
 
   it('400 date_out_of_range: dice que ese día ya no se puede reservar y ofrece "Ver hoy", sin reintentar', async () => {

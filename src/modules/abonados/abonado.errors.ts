@@ -7,29 +7,29 @@ export class AbonadoConflictError extends Error {
 
 export class AbonadoNotFoundError extends Error {
   name = 'AbonadoNotFoundError'
-  constructor(id: string) {
-    super(`Abonado ${id} no encontrado.`)
+  constructor(public readonly abonadoId: string) {
+    super('No encontramos ese turno fijo.')
   }
 }
 
 export class AbonadoAlreadyCanceledError extends Error {
   name = 'AbonadoAlreadyCanceledError'
   constructor() {
-    super('El abonado ya fue cancelado.')
+    super('Ese turno fijo ya estaba cancelado.')
   }
 }
 
 export class ReactivationConflictError extends Error {
   name = 'ReactivationConflictError'
   constructor() {
-    super('Este horario ya tiene un turno fijo activo. Cancelalo primero.')
+    super('Ese horario ya tiene un turno fijo activo. Cancelalo antes de reactivar este.')
   }
 }
 
 export class CourtNotFoundError extends Error {
   name = 'CourtNotFoundError'
-  constructor(courtId: string) {
-    super(`Cancha ${courtId} no encontrada.`)
+  constructor(public readonly courtId: string) {
+    super('No encontramos esa cancha.')
   }
 }
 

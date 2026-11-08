@@ -188,7 +188,7 @@ export function BookingErrorCard({
       <p>El pago fue rechazado o cancelado.</p>
       <p>
         {payUntil
-          ? `Tu turno sigue guardado: podés pagar hasta las ${payUntil} con otro medio de pago.`
+          ? `Tu turno sigue guardado. Podés pagar hasta las ${payUntil}, con otro medio de pago.`
           : 'Tu turno sigue guardado. Podés intentar de nuevo con otro medio de pago.'}
       </p>
       {startsOn && turn && <ReservaTurnLines startsOn={startsOn} {...turn} />}

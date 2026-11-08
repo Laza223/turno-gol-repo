@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
+import { formatDayHeader } from '@/lib/format'
 
 import AbonadoForm, { PreviewSlotsView } from '@/app/(admin)/abonados/nuevo/AbonadoForm'
 
@@ -143,9 +144,9 @@ describe('AbonadoForm — normaliza fin de turno a medianoche (ENS-13)', () => {
     // La confirmación posterior también debe mandar '24:00', no '00:00'.
     submitNewAbonado.mockResolvedValue({ status: 'idle' })
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Confirmar y Crear Abonado' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Crear turno fijo' })).toBeTruthy()
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar y Crear Abonado' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Crear turno fijo' }))
 
     await waitFor(() => {
       expect(submitNewAbonado).toHaveBeenCalledTimes(1)
@@ -191,7 +192,7 @@ describe('AbonadoForm — preview phase', () => {
 
     // Assert all 8 dates are rendered
     for (const d of MOCK_DATES) {
-      expect(screen.getByText(d)).toBeTruthy()
+      expect(screen.getByText(formatDayHeader(d))).toBeTruthy()
     }
 
     // 7 OK badges, 1 Conflicto badge
@@ -207,7 +208,7 @@ describe('AbonadoForm — preview phase', () => {
 
     // Confirm button enabled
     const confirmBtn = screen.getByRole('button', {
-      name: 'Confirmar y Crear Abonado',
+      name: 'Crear turno fijo',
     }) as HTMLButtonElement
     expect(confirmBtn.disabled).toBe(false)
 
@@ -253,7 +254,7 @@ describe('AbonadoForm — preview phase', () => {
     expect(screen.getByText(/No se creará ningún turno/)).toBeTruthy()
 
     const confirmBtn = screen.getByRole('button', {
-      name: 'Confirmar y Crear Abonado',
+      name: 'Crear turno fijo',
     }) as HTMLButtonElement
     expect(confirmBtn.disabled).toBe(true)
   })
@@ -292,10 +293,10 @@ describe('AbonadoForm — preview phase', () => {
     await fillFormAndSubmit()
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Confirmar y Crear Abonado' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Crear turno fijo' })).toBeTruthy()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar y Crear Abonado' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Crear turno fijo' }))
 
     await waitFor(() => {
       expect(submitNewAbonado).toHaveBeenCalledTimes(1)
@@ -335,10 +336,10 @@ describe('AbonadoForm — preview phase', () => {
     await fillFormAndSubmit()
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Confirmar y Crear Abonado' })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Crear turno fijo' })).toBeTruthy()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirmar y Crear Abonado' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Crear turno fijo' }))
 
     await waitFor(() => {
       const alert = screen.getByRole('alert')

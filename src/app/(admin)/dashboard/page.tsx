@@ -29,7 +29,11 @@ import {
   revertNoShowAction,
 } from '@/app/(admin)/reservas/actions'
 import { getBookingEditDetailAction } from '@/app/(admin)/reservas/edit-detail-actions'
-import { chargeDebtAction } from '@/app/(admin)/caja/deudas/actions'
+import {
+  chargeDebtAction,
+  undoWriteOffAction,
+  writeOffBookingAction,
+} from '@/app/(admin)/caja/deudas/actions'
 import { trackStoryExportAction } from '@/app/(admin)/grilla/actions'
 import { HoyHeaderSlot } from './HoyHeaderSlot'
 import { HoyShell } from './_components/HoyShell'
@@ -245,6 +249,8 @@ export default async function DashboardPage() {
           lateCancelHours={tenant.settings.late_cancel_hours ?? 0}
           actions={{
             chargeDebtAction,
+            writeOffBookingAction,
+            undoWriteOffAction,
             completeAndChargeBookingAction,
             addBookingChargeAction,
             confirmDepositPaymentAction,

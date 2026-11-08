@@ -128,6 +128,12 @@ export async function setupTenant(
     actorType: 'staff',
     resourceId: bookingId,
   })
+  // "Dar por perdido" (migr. 108): FK a bookings sin CASCADE; obliga al wipe a
+  // borrarlo ANTES que bookings.
+  await sql`
+    INSERT INTO booking_write_offs (tenant_id, booking_id, amount, written_off_by)
+    VALUES (${tenant.id}, ${bookingId}, 1000, ${staff.id})
+  `
   await insertAbonado(sql, tenant.id, courtId)
   await insertBan(sql, { tenantId: tenant.id, playerId: player.id, bannedBy: staff.id })
   await insertDailyCashClose(sql, { tenantId: tenant.id, closedBy: staff.id })
@@ -275,6 +281,7 @@ export type ChildCounts = {
   bookings: number
   payments: number
   cashFlows: number
+  bookingWriteOffs: number
   notifications: number
   auditLogs: number
   abonados: number
@@ -316,6 +323,7 @@ export async function countChildren(sql: Sql, tenantId: string): Promise<ChildCo
       (SELECT COUNT(*) FROM bookings WHERE tenant_id = ${tenantId})::text AS bookings,
       (SELECT COUNT(*) FROM payments WHERE tenant_id = ${tenantId})::text AS payments,
       (SELECT COUNT(*) FROM cash_flows WHERE tenant_id = ${tenantId})::text AS "cashFlows",
+      (SELECT COUNT(*) FROM booking_write_offs WHERE tenant_id = ${tenantId})::text AS "bookingWriteOffs",
       (SELECT COUNT(*) FROM notifications WHERE tenant_id = ${tenantId})::text AS notifications,
       (SELECT COUNT(*) FROM audit_logs WHERE tenant_id = ${tenantId})::text AS "auditLogs",
       (SELECT COUNT(*) FROM abonados WHERE tenant_id = ${tenantId})::text AS abonados,
@@ -349,6 +357,7 @@ export async function countChildren(sql: Sql, tenantId: string): Promise<ChildCo
     bookings: Number(r.bookings),
     payments: Number(r.payments),
     cashFlows: Number(r.cashFlows),
+    bookingWriteOffs: Number(r.bookingWriteOffs),
     notifications: Number(r.notifications),
     auditLogs: Number(r.auditLogs),
     abonados: Number(r.abonados),
@@ -384,6 +393,7 @@ export const ZERO: ChildCounts = {
   bookings: 0,
   payments: 0,
   cashFlows: 0,
+  bookingWriteOffs: 0,
   notifications: 0,
   auditLogs: 0,
   abonados: 0,
@@ -419,6 +429,7 @@ export const FULL: ChildCounts = {
   payments: 1,
   // Dos: el cobro del turno y el de la inscripción del torneo (migr. 066).
   cashFlows: 2,
+  bookingWriteOffs: 1,
   notifications: 1,
   auditLogs: 1,
   abonados: 1,

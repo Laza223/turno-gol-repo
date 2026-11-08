@@ -219,7 +219,15 @@ function CourtRow({
   }
   // Pagado entero (pedido del dueño, 2026-09-25): la fila en verde, igual que el
   // rojo de lo que hay que cobrar. Un torneo no se cobra por turno: sin color.
-  const paid = !due && pending === 0 && booking.type !== 'tournament'
+  // Dado por perdido (2026-11-07): sin saldo pero NO pagado — tono neutro, nunca el verde.
+  const lost = !due && pending === 0 && (booking.writtenOff ?? 0) > 0
+  const paid = !due && !lost && pending === 0 && booking.type !== 'tournament'
+  if (lost)
+    pay = (
+      <span className={cn('text-sm font-semibold', TONE_TEXT.neutral)}>
+        Perdido {formatArs(booking.writtenOff ?? 0)}
+      </span>
+    )
   if (paid) pay = <span className={cn('text-sm font-semibold', TONE_TEXT.success)}>Pagado</span>
 
   const name =

@@ -37,7 +37,13 @@ const TYPE_LABELS: Record<string, string> = {
 function paymentStatus(
   b: Pick<
     PlayerBookingRow,
-    'status' | 'depositAmount' | 'depositStatus' | 'refundState' | 'pending' | 'totalPaid'
+    | 'status'
+    | 'depositAmount'
+    | 'depositStatus'
+    | 'refundState'
+    | 'pending'
+    | 'totalPaid'
+    | 'writtenOff'
   >,
 ): { text: string; tone: 'paid' | 'pending' | 'neutral' } | null {
   if (b.status === 'canceled_refunded' || b.status === 'canceled_no_refund') {
@@ -49,6 +55,8 @@ function paymentStatus(
   }
   if (b.status === 'no_show' || b.status === 'expired') return null
   if (b.pending > 0) return { text: 'Pendiente', tone: 'pending' }
+  // Dado por perdido: nunca el verde de cobrado.
+  if (b.writtenOff > 0) return { text: 'Perdido', tone: 'neutral' }
   if (b.totalPaid > 0) return { text: 'Cobrado', tone: 'paid' }
   return null
 }

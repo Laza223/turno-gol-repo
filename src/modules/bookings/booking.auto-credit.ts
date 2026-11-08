@@ -5,6 +5,7 @@ import {
   DEPOSIT_CASHFLOW_DESCRIPTION_PREFIX,
   depositCashFlowDescription,
   summarizeBookingCharges,
+  writtenOffCentsSql,
 } from './booking.charges'
 
 /**
@@ -46,7 +47,8 @@ const tenantStatusList = sql.join(
 /**
  * Turnos de TODOS los complejos vivos que ya pasaron el plazo con saldo. Es el
  * mismo cálculo de saldo que `getDebts` (booking.debts.ts): precio, menos la
- * seña si se pagó, menos los cobros de turno que no son la fila de la seña.
+ * seña si se pagó, menos los cobros de turno que no son la fila de la seña,
+ * menos lo dado por perdido (jamás se acredita un perdido).
  * Cross-tenant: se corre con el pool del worker (BYPASSRLS).
  */
 export async function findAutoCreditCandidates(tx: DbTx): Promise<AutoCreditCandidate[]> {
@@ -70,7 +72,7 @@ export async function findAutoCreditCandidates(tx: DbTx): Promise<AutoCreditCand
             AND cf.description <> (${DEPOSIT_CASHFLOW_DESCRIPTION_PREFIX} || b.id::text)
         ), 0
       )
-    ) > 0
+    ) - ${writtenOffCentsSql(sql`b.id`)} > 0
     ORDER BY b.tenant_id, b.ends_at
   `)
   return rows as unknown as AutoCreditCandidate[]
@@ -113,6 +115,16 @@ export async function autoCreditBooking(
   )[0]
   if (!booking) return 0
 
+  // Lo perdido se relee en un statement APARTE, después del lock: un subselect en
+  // el mismo `SELECT … FOR UPDATE` se evalúa con el snapshot de antes de esperar
+  // el lock, y un "Dar por perdido" que se confirmó mientras tanto (solo inserta
+  // en `booking_write_offs`, no toca `bookings`) quedaría invisible y se
+  // acreditaría en efectivo igual.
+  const lost = await tx.execute(
+    sql`SELECT ${writtenOffCentsSql(sql`${bookingId}::uuid`)}::int AS "writtenOff"`,
+  )
+  const writtenOff = (lost as unknown as Array<{ writtenOff: number }>)[0]?.writtenOff ?? 0
+
   const charged = await tx.execute(sql`
     SELECT COALESCE(SUM(amount), 0)::int AS "chargesTotal"
     FROM cash_flows
@@ -122,7 +134,7 @@ export async function autoCreditBooking(
   `)
   const chargesTotal = (charged as unknown as Array<{ chargesTotal: number }>)[0]?.chargesTotal ?? 0
 
-  const { pending } = summarizeBookingCharges({ ...booking, chargesTotal })
+  const { pending } = summarizeBookingCharges({ ...booking, chargesTotal, writtenOff })
   if (pending <= 0) return 0
 
   await createCashFlow(

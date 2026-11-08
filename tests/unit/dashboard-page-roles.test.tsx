@@ -102,7 +102,11 @@ vi.mock('@/app/(admin)/reservas/actions', () => ({
 vi.mock('@/app/(admin)/reservas/edit-detail-actions', () => ({
   getBookingEditDetailAction: vi.fn(),
 }))
-vi.mock('@/app/(admin)/caja/deudas/actions', () => ({ chargeDebtAction: vi.fn() }))
+vi.mock('@/app/(admin)/caja/deudas/actions', () => ({
+  chargeDebtAction: vi.fn(),
+  writeOffBookingAction: vi.fn(),
+  undoWriteOffAction: vi.fn(),
+}))
 vi.mock('@/app/(admin)/grilla/actions', () => ({ trackStoryExportAction: vi.fn() }))
 
 /** Un bloque de UI reemplazado por un marcador: `stub('Nombre', 'id')` → `{ Nombre: () => <div data-testid="id" /> }`. */

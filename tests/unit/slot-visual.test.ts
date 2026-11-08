@@ -13,6 +13,7 @@ import {
   type GridMoneyFacts,
   type SlotFacts,
 } from '@/lib/booking/slot-visual'
+import { formatArs } from '@/lib/format'
 import { TONE_ACCENT } from '@/lib/status-tone'
 
 const base: SlotFacts = { status: 'confirmed', type: 'spontaneous' }
@@ -555,3 +556,23 @@ const GRID_LEGEND_SAMPLES: Partial<Record<string, SlotFacts>> = {
   tournament: facts({ type: 'tournament' }),
   block: facts({ type: 'block' }),
 }
+
+describe('gridMoneyVisual — dado por perdido', () => {
+  it('pending 0 con perdido: "Perdido $X", neutral, nunca el verde de "Pagado"', () => {
+    const v = gridMoneyVisual(
+      moneyFacts({ status: 'completed', pending: 0, totalPaid: 1_500_000, writtenOff: 500_000 }),
+    )
+    expect(v.key).toBe('written_off')
+    expect(v.label).toBe(`Perdido ${formatArs(500_000)}`)
+    expect(v.tone).toBe('neutral')
+    expect(v.amountCents).toBeNull()
+  })
+
+  it('pending 0 sin perdido sigue siendo "Pagado"', () => {
+    const v = gridMoneyVisual(
+      moneyFacts({ status: 'completed', pending: 0, totalPaid: 2_000_000, writtenOff: 0 }),
+    )
+    expect(v.key).toBe('paid')
+    expect(v.tone).toBe('success')
+  })
+})

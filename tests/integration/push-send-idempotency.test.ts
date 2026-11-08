@@ -10,7 +10,7 @@
  * Falla si la DB no está disponible: sin base no hay señal que dar.
  */
 
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Mock web-push BEFORE importing the worker so the module resolver picks up
 // the mock instead of the real lib. Hoisting is handled by vitest.
@@ -57,6 +57,16 @@ describe('push.worker idempotencia por dedupeKey (F3, hallazgo D4)', () => {
   // las del 1ro (ambos comparten el mismo spy vi.fn() del vi.mock de arriba).
   beforeEach(() => {
     vi.mocked(sendPushNotification).mockClear()
+    // El worker respeta el horario silencioso (00–08 locales, push-quiet-hours.ts):
+    // corrido de noche, reprograma el push para las 08:00 y no envía nada. Se fija
+    // el reloj al mediodía de Argentina. Solo `Date`: los timers reales siguen
+    // (el driver de Postgres los necesita).
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-06-15T15:00:00Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('2 entregas del mismo job (dedupeKey igual) → 1 solo send real, 1 fila en push_send_log', async () => {

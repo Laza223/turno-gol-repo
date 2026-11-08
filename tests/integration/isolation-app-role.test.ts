@@ -88,6 +88,7 @@ const TENANT_SCOPED_DECLARADA = [
   'abonados',
   'analytics_events',
   'audit_logs',
+  'booking_write_offs',
   'bookings',
   'canteen_products',
   'canteen_tabs',
@@ -352,6 +353,12 @@ beforeAll(async () => {
       su`INSERT INTO rival_alert_subscriptions (player_id, tenant_id)
          VALUES (${seed.playerId}, ${tenant.id}) RETURNING id`,
     )
+    // "Dar por perdido" (migr. 108): cuelga de la reserva sembrada.
+    await one(
+      'booking_write_offs',
+      su`INSERT INTO booking_write_offs (tenant_id, booking_id, amount, written_off_by)
+         VALUES (${tenant.id}, ${seed.bookingId}, 1000, ${seed.staffUserId}) RETURNING id`,
+    )
     await one(
       'canteen_products',
       su`INSERT INTO canteen_products (tenant_id, name, price, stock)
@@ -513,6 +520,8 @@ describe('0. controles', () => {
     // se pone rojo ANTES de que la grilla mida nada.
     const recortes: Record<string, string> = {
       audit_logs: 'INSERT,SELECT',
+      // Migración 108 ("Dar por perdido"): se crea o se borra, nunca se edita.
+      booking_write_offs: 'DELETE,INSERT,SELECT',
       daily_cash_closes: 'INSERT,SELECT',
       stock_movements: 'INSERT,SELECT',
       canteen_products: 'INSERT,SELECT,UPDATE',
@@ -772,6 +781,7 @@ function tenantTablesLazy(): string[] {
     'abonados',
     'analytics_events',
     'audit_logs',
+    'booking_write_offs',
     'bookings',
     'canteen_products',
     'canteen_tabs',

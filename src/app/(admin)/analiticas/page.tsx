@@ -1,6 +1,6 @@
 import { requireAdminStaff } from '@/modules/staff/guards'
 import { resolveSystemAdmin } from '@/modules/auth/system-admin.guards'
-import { getRevenueReport } from '@/modules/reports/report.service'
+import { getRevenueReport, getWrittenOffForMonth } from '@/modules/reports/report.service'
 import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
 import {
   getMonthBounds,
@@ -66,13 +66,16 @@ export default async function AnaliticasPage(props: {
   const isCurrent = month === thisMonth
   const bounds = getMonthBounds(month, cutoffMins)
 
-  const report = await getRevenueReport(
-    tenant.id,
-    month,
-    tenant.openingHours,
-    tenant.closedDates,
-    tenant.closesNextDay,
-  )
+  const [report, writtenOff] = await Promise.all([
+    getRevenueReport(
+      tenant.id,
+      month,
+      tenant.openingHours,
+      tenant.closedDates,
+      tenant.closesNextDay,
+    ),
+    getWrittenOffForMonth(tenant.id, month, cutoffMins),
+  ])
 
   const isEmpty = isReportEmpty(report)
 
@@ -98,6 +101,7 @@ export default async function AnaliticasPage(props: {
       canSeeSystem={canSeeSystem}
       stepper={stepper}
       csv={{ from: csvFrom, to: csvTo }}
+      writtenOff={writtenOff}
     />
   )
 }

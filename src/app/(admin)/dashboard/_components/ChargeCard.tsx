@@ -126,6 +126,23 @@ export function ChargeCard({
     </div>
   )
 
+  // Dado por perdido: sin saldo, pero nunca el verde de cobrado.
+  const lostCents = booking.writtenOff ?? 0
+  if (pending <= 0 && lostCents > 0) {
+    return (
+      <div
+        role="group"
+        aria-label={`${name}, ${courtName}`}
+        className="flex flex-col gap-3 rounded-xl border border-border bg-muted/30 p-4 dark:bg-muted/40"
+      >
+        {header}
+        <p role="status" className="px-3 py-2.5 text-sm font-semibold text-muted-foreground">
+          Perdido {formatArs(lostCents)}
+        </p>
+      </div>
+    )
+  }
+
   if (pending <= 0) {
     return (
       <div

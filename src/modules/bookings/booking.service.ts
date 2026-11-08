@@ -919,7 +919,7 @@ export async function autoCompleteOverdueBookings(
 // ─── markNoShow ─────────────────────────────────────────────────────
 export async function markNoShow(
   bookingId: string,
-  _staffUserId: string,
+  staffUserId: string,
   tx: DbTx,
 ): Promise<BookingRow> {
   // Dos caminos, ambos sólo para admin:
@@ -950,7 +950,25 @@ export async function markNoShow(
     if (!row.within_correction_window) {
       throw new NoShowCorrectionWindowExpiredError(bookingId)
     }
-    return applyNoShow(bookingId, 'completed', tx)
+    const noShow = await applyNoShow(bookingId, 'completed', tx)
+    // Un turno ausente no se "pierde": si estaba dado por perdido, el perdido se
+    // borra en la MISMA tx. Si después se revierte a jugado, no vuelve (se decide de nuevo).
+    const cleared = await tx.execute(sql`
+      DELETE FROM booking_write_offs WHERE booking_id = ${bookingId} RETURNING amount
+    `)
+    const clearedRow = (cleared as unknown as Array<{ amount: number }>)[0]
+    if (clearedRow) {
+      await insertAuditLog(tx, {
+        tenantId: noShow.tenantId,
+        actorId: staffUserId,
+        actorType: 'staff',
+        action: 'booking.write_off_cleared_by_no_show',
+        resourceType: 'booking',
+        resourceId: bookingId,
+        metadata: { amountCents: clearedRow.amount },
+      })
+    }
+    return noShow
   }
 
   // RI #5 (fase D4, doc6 §3): exige que el turno haya TERMINADO (ends_at

@@ -31,6 +31,8 @@ type BookingStreetMoneyRow = {
   refId: string
   debtorName: string
   pendingCents: number
+  /** Lo que ya entró del turno (seña + cobros): con eso se cierra si se da por perdido. */
+  paidCents: number
   /** Cuándo se jugó el turno: el momento en que empezó a ser deuda. */
   since: Date
   courtName: string
@@ -108,6 +110,7 @@ export async function getStreetMoney(
       refId: d.id,
       debtorName: d.contactName ?? 'Sin nombre',
       pendingCents: d.pending,
+      paidCents: d.totalPaid,
       since: new Date(d.startsAt),
       courtName: d.courtName,
       date: d.date,

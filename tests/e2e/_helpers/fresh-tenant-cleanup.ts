@@ -48,6 +48,7 @@ export async function deleteFreshAdminTenants(
     await sql`DELETE FROM canteen_products WHERE tenant_id = ${tid}`
     await sql`DELETE FROM daily_cash_opens WHERE tenant_id = ${tid}`
     await sql`DELETE FROM cash_flows WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM booking_write_offs WHERE tenant_id = ${tid}`
     await sql`DELETE FROM daily_cash_closes WHERE tenant_id = ${tid}`
     // Reseñas y RIVAL cuelgan de la reserva: van antes de `bookings` (ver la nota
     // equivalente en seed-e2e.ts). rival_match_contacts / rival_reports /

@@ -213,7 +213,7 @@ describe('cancelBookingAction — replay y mail en after()', () => {
       replayed: true,
     } as never)
 
-    const res = await cancelBookingAction(BOOKING_ID, 'lluvia', 'complejo')
+    const res = await cancelBookingAction(BOOKING_ID, 'rain', 'complejo')
 
     expect(res).toEqual({ success: true, booking: canceled })
     expect(after).not.toHaveBeenCalled()
@@ -224,7 +224,7 @@ describe('cancelBookingAction — replay y mail en after()', () => {
       new BookingNotCancelableError(BOOKING_ID, 'canceled_no_refund', 'player'),
     )
 
-    expect(await cancelBookingAction(BOOKING_ID, 'lluvia', 'complejo')).toEqual({
+    expect(await cancelBookingAction(BOOKING_ID, 'rain', 'complejo')).toEqual({
       success: false,
       error: NOT_CONFIRMED,
     })
@@ -238,7 +238,7 @@ describe('cancelBookingAction — replay y mail en after()', () => {
       notificationIds: ['n-1'],
     } as never)
 
-    const res = await cancelBookingAction(BOOKING_ID, 'lluvia', 'complejo')
+    const res = await cancelBookingAction(BOOKING_ID, 'rain', 'complejo')
 
     expect(res.success).toBe(true)
     expect(after).toHaveBeenCalledTimes(1)

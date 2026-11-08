@@ -620,7 +620,7 @@ describe('createDepositPayment → webhook approval → cancelByPlayer — re-li
     // RefundInvalidStateError por encontrar mp_payment_id=NULL en la fila que
     // payment_id todavía apuntaba.
     const canceled = await withTenantContext(tenant.id, (tx) =>
-      cancelByPlayer(bookingId, player.id, 'me arrepentí', tx),
+      cancelByPlayer(bookingId, player.id, 'rain', tx),
     )
     expect(canceled.booking.status).toBe('canceled_refunded')
 

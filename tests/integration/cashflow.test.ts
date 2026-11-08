@@ -400,9 +400,7 @@ describe('cashflow service', () => {
 
     const beforeCount = await countCashFlows(tenant.id)
 
-    await withTenantContext(tenant.id, (tx) =>
-      cancelByPlayer(bookingId, player.id, 'test refund', tx),
-    )
+    await withTenantContext(tenant.id, (tx) => cancelByPlayer(bookingId, player.id, 'rain', tx))
 
     // La devolución queda registrada como fila de `payments`…
     const refunds = await sql<{ n: string }[]>`

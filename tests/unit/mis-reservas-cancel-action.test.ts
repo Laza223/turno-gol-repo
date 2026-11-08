@@ -71,10 +71,23 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+describe('cancelMyBookingAction — motivo de lista cerrada', () => {
+  it.each([
+    ['texto libre', 'porque sí'],
+    ['ausente', undefined],
+    ['de uso exclusivo del complejo', 'court_unavailable'],
+    ['de uso exclusivo del complejo (evento)', 'complex_event'],
+  ])('rechaza un reasonCode %s sin llamar a cancelByPlayer', async (_label, reasonCode) => {
+    const result = await cancelMyBookingAction(VALID_UUID, reasonCode as never)
+    expect(result).toEqual({ success: false, error: 'Datos inválidos.' })
+    expect(cancelByPlayer).not.toHaveBeenCalled()
+  })
+})
+
 describe('cancelMyBookingAction — TenantInactiveError (#31)', () => {
   it('devuelve un error amigable cuando el complejo esta inactivo', async () => {
     vi.mocked(cancelByPlayer).mockRejectedValueOnce(new TenantInactiveError('tenant-1', 'blocked'))
-    const result = await cancelMyBookingAction(VALID_UUID)
+    const result = await cancelMyBookingAction(VALID_UUID, 'other')
     // Transitorio: sin `stale` (queda inline en el diálogo) y sin revalidar.
     expect(result).toEqual({
       success: false,
@@ -85,7 +98,7 @@ describe('cancelMyBookingAction — TenantInactiveError (#31)', () => {
 
   it('07-cancelbyplayer-noshow-guard: mapea BookingAlreadyEndedError a un error amigable', async () => {
     vi.mocked(cancelByPlayer).mockRejectedValueOnce(new BookingAlreadyEndedError(VALID_UUID))
-    const result = await cancelMyBookingAction(VALID_UUID)
+    const result = await cancelMyBookingAction(VALID_UUID, 'other')
     // Error de estado: definitivo (`stale`) y refresca la lista.
     expect(result).toEqual({
       success: false,
@@ -100,7 +113,7 @@ describe('cancelMyBookingAction — TenantInactiveError (#31)', () => {
     vi.mocked(cancelByPlayer).mockRejectedValueOnce(
       new BookingNotOwnedByPlayerError(VALID_UUID, 'player-1'),
     )
-    const result = await cancelMyBookingAction(VALID_UUID)
+    const result = await cancelMyBookingAction(VALID_UUID, 'other')
     expect(result).toEqual({
       success: false,
       error: 'No tenés permiso para cancelar esta reserva.',
@@ -125,7 +138,7 @@ describe('cancelMyBookingAction — TenantInactiveError (#31)', () => {
       pendingRefund: undefined,
       notificationIds: [],
     } as never)
-    const result = await cancelMyBookingAction(VALID_UUID)
+    const result = await cancelMyBookingAction(VALID_UUID, 'other')
     expect(result.success).toBe(true)
     if (!result.success) throw new Error('expected success')
     expect(result.booking.id).toBe('booking-1')
@@ -155,7 +168,7 @@ describe('cancelMyBookingAction — TenantInactiveError (#31)', () => {
       pendingRefund: undefined,
       notificationIds: [],
     } as never)
-    const result = await cancelMyBookingAction(VALID_UUID)
+    const result = await cancelMyBookingAction(VALID_UUID, 'other')
     expect(result.success).toBe(true)
     if (!result.success) throw new Error('expected success')
     expect(result.refund).toEqual({
@@ -200,7 +213,7 @@ describe('cancelMyBookingAction — TenantInactiveError (#31)', () => {
       pendingRefund: undefined,
       notificationIds: [],
     } as never)
-    const result = await cancelMyBookingAction(VALID_UUID)
+    const result = await cancelMyBookingAction(VALID_UUID, 'other')
     expect(result.success).toBe(true)
     if (!result.success) throw new Error('expected success')
     expect(result.refund).toBeUndefined()
@@ -241,7 +254,7 @@ describe('cancelMyBookingAction — TenantInactiveError (#31)', () => {
       pendingRefund: undefined,
       notificationIds: [],
     } as never)
-    const result = await cancelMyBookingAction(VALID_UUID)
+    const result = await cancelMyBookingAction(VALID_UUID, 'other')
     expect(result.success).toBe(true)
     if (!result.success) throw new Error('expected success')
     expect(result.booking).toEqual({
@@ -292,7 +305,7 @@ describe('cancelMyBookingAction — la reserva ya no se puede cancelar', () => {
       vi.mocked(cancelByPlayer).mockRejectedValueOnce(
         new BookingNotCancelableError(VALID_UUID, status, canceledBy),
       )
-      expect(await cancelMyBookingAction(VALID_UUID)).toEqual({
+      expect(await cancelMyBookingAction(VALID_UUID, 'other')).toEqual({
         success: false,
         error,
         stale: true,
@@ -303,7 +316,7 @@ describe('cancelMyBookingAction — la reserva ya no se puede cancelar', () => {
 
   it('BookingNotInConfirmedError pelado (la reserva desapareció) cae al copy por defecto', async () => {
     vi.mocked(cancelByPlayer).mockRejectedValueOnce(new BookingNotInConfirmedError(VALID_UUID))
-    expect(await cancelMyBookingAction(VALID_UUID)).toEqual({
+    expect(await cancelMyBookingAction(VALID_UUID, 'other')).toEqual({
       success: false,
       error: NOT_CANCELABLE_DEFAULT,
       stale: true,
@@ -338,7 +351,7 @@ describe('cancelMyBookingAction — replay y despacho del mail', () => {
       notificationIds: ['n-1'],
       replayed: true,
     } as never)
-    const result = await cancelMyBookingAction(VALID_UUID)
+    const result = await cancelMyBookingAction(VALID_UUID, 'other')
     expect(result).toEqual({
       success: true,
       booking: expect.objectContaining({ id: 'booking-1', status: 'canceled_refunded' }),
@@ -352,7 +365,7 @@ describe('cancelMyBookingAction — replay y despacho del mail', () => {
     vi.mocked(dispatchEmail).mockImplementation(() => new Promise(() => {}))
     vi.mocked(cancelByPlayer).mockResolvedValueOnce(OUTCOME_CON_MAILS)
 
-    const result = await cancelMyBookingAction(VALID_UUID)
+    const result = await cancelMyBookingAction(VALID_UUID, 'other')
 
     expect(result.success).toBe(true)
     // Dos callbacks: el push al admin y el mail al jugador.
@@ -377,7 +390,7 @@ describe('cancelMyBookingAction — replay y despacho del mail', () => {
     vi.mocked(dispatchEmail).mockRejectedValue(new Error('pg-boss caído'))
     vi.mocked(cancelByPlayer).mockResolvedValueOnce(OUTCOME_CON_MAILS)
 
-    expect((await cancelMyBookingAction(VALID_UUID)).success).toBe(true)
+    expect((await cancelMyBookingAction(VALID_UUID, 'other')).success).toBe(true)
     await runAfterCallbacks()
 
     expect(captureMessage).toHaveBeenCalledWith('email dispatch failed after player cancellation', {
@@ -389,7 +402,7 @@ describe('cancelMyBookingAction — replay y despacho del mail', () => {
   it('el push al admin va en after() con el tenant de la reserva y sin late por defecto', async () => {
     vi.mocked(cancelByPlayer).mockResolvedValueOnce(OUTCOME_CON_MAILS)
 
-    await cancelMyBookingAction(VALID_UUID)
+    await cancelMyBookingAction(VALID_UUID, 'other')
     expect(notifyAdminBookingCanceled).not.toHaveBeenCalled() // corre después de la respuesta
     await runAfterCallbacks()
 
@@ -404,7 +417,7 @@ describe('cancelMyBookingAction — replay y despacho del mail', () => {
       lateCancel: true,
     } as never)
 
-    await cancelMyBookingAction(VALID_UUID)
+    await cancelMyBookingAction(VALID_UUID, 'other')
     await runAfterCallbacks()
 
     expect(notifyAdminBookingCanceled).toHaveBeenCalledWith('tenant-1', VALID_UUID, { late: true })

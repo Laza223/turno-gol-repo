@@ -82,6 +82,7 @@ import {
 } from '@/modules/bookings/booking.errors'
 import type { BookingRow } from '@/modules/bookings/booking.types'
 import type { ActionResult } from '@/shared/types/action-result'
+import { cancelReasonSchema, type CancelReason } from '@/shared/cancel-reasons'
 
 export type BookingActionResult =
   { success: true; booking: BookingRow } | { success: false; error: string }
@@ -508,11 +509,11 @@ export async function revertNoShowAction(bookingId: string): Promise<BookingActi
 
 export async function cancelBookingAction(
   bookingId: string,
-  reason: string,
+  reasonCode: CancelReason,
   cancellationType: AdminCancellationType,
 ): Promise<BookingActionResult> {
-  if (!reason || reason.trim().length < 3) {
-    return { success: false, error: 'El motivo debe tener al menos 3 caracteres.' }
+  if (!cancelReasonSchema.safeParse(reasonCode).success) {
+    return { success: false, error: 'Elegí por qué se cancela.' }
   }
   if (cancellationType !== 'complejo' && cancellationType !== 'jugador') {
     return { success: false, error: 'Indicá quién cancela la reserva.' }
@@ -533,7 +534,7 @@ export async function cancelBookingAction(
   let outcome: CancellationOutcome
   try {
     outcome = await withTenantContext(tenant.id, (tx) =>
-      cancelByAdmin(bookingId, staffUserId, reason, cancellationType, tx),
+      cancelByAdmin(bookingId, staffUserId, reasonCode, cancellationType, tx),
     )
   } catch (err) {
     if (err instanceof BookingNotInConfirmedError) {

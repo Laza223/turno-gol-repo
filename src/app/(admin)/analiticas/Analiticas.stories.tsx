@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, within } from 'storybook/test'
 import { AdminLayoutShell } from '@/components/layout/admin-layout-shell'
@@ -125,11 +126,13 @@ function Page({
   month,
   isCurrent,
   canSeeSystem = false,
+  cancelReasons,
 }: {
   report: RevenueReport
   month: string
   isCurrent: boolean
   canSeeSystem?: boolean
+  cancelReasons?: ComponentProps<typeof AnaliticasView>['cancelReasons']
 }) {
   const isEmpty = report.income === 0 && report.adjustment === 0 && report.bookingCount === 0
   const [y, m] = month.split('-').map(Number)
@@ -164,6 +167,7 @@ function Page({
           nextHref: isCurrent ? null : '/analiticas?month=siguiente',
         }}
         csv={{ from: `${month}-01`, to: `${month}-28` }}
+        cancelReasons={cancelReasons}
       />
     </AdminLayoutShell>
   )
@@ -180,6 +184,33 @@ const meta = {
 
 export default meta
 type Story = StoryObj<typeof meta>
+
+/** El bloque "Por qué se cayeron turnos": motivos cerrados, de más a menos. */
+export const ConMotivosDeCancelacion: Story = {
+  render: () => (
+    <Page
+      report={LOADED}
+      month="2026-03"
+      isCurrent
+      cancelReasons={{
+        total: 9,
+        byReason: [
+          { reason: 'rain', count: 4 },
+          { reason: 'no_players', count: 3 },
+          { reason: 'court_unavailable', count: 1 },
+          { reason: 'other', count: 1 },
+        ],
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('heading', { name: 'Por qué se cayeron turnos' })).toBeVisible()
+    await expect(canvas.getByText('Se cancelaron 9 turnos en el mes.')).toBeVisible()
+    await expect(canvas.getByText('Llueve')).toBeVisible()
+    await expect(canvas.getByText('No juntamos gente')).toBeVisible()
+  },
+}
 
 /**
  * Mes en curso con doce canchas y ajustes: lo que entró hasta hoy, febrero

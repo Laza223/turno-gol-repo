@@ -270,11 +270,9 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
 
       const [adminRes, playerRes, expiryRes] = await Promise.allSettled([
         withTenantContext(tenantId, (tx) =>
-          cancelByAdmin(bookingId, staffId, 'admin cancela', 'complejo', tx),
+          cancelByAdmin(bookingId, staffId, 'rain', 'complejo', tx),
         ),
-        withTenantContext(tenantId, (tx) =>
-          cancelByPlayer(bookingId, playerId, 'player cancela', tx),
-        ),
+        withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, 'no_players', tx)),
         withTenantContext(tenantId, (tx) => expirePendingBooking(bookingId, tx)),
       ])
 
@@ -336,9 +334,9 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
 
     const [adminRes, playerRes, expiryRes] = await Promise.allSettled([
       withTenantContext(tenantId, (tx) =>
-        cancelByAdmin(bookingId, staffId, 'admin', 'complejo', tx),
+        cancelByAdmin(bookingId, staffId, 'rival_no_show', 'complejo', tx),
       ),
-      withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, 'player', tx)),
+      withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, 'reschedule', tx)),
       withTenantContext(tenantId, (tx) => expirePendingBooking(bookingId, tx)),
     ])
 
@@ -389,7 +387,7 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
 
     // Cancelación inicial: lleva el booking al estado terminal canceled_refunded.
     await withTenantContext(tenantId, (tx) =>
-      cancelByPlayer(bookingId, playerId, 'cancela primero', tx),
+      cancelByPlayer(bookingId, playerId, 'injury_or_issue', tx),
     )
 
     expect((await getBooking(bookingId)).status).toBe('canceled_refunded')
@@ -399,11 +397,9 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
     // Tormenta de reintentos sobre el booking ya terminal.
     const [adminRes, playerRes, expiryRes] = await Promise.allSettled([
       withTenantContext(tenantId, (tx) =>
-        cancelByAdmin(bookingId, staffId, 'reintento admin', 'complejo', tx),
+        cancelByAdmin(bookingId, staffId, 'rain', 'complejo', tx),
       ),
-      withTenantContext(tenantId, (tx) =>
-        cancelByPlayer(bookingId, playerId, 'reintento player', tx),
-      ),
+      withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, 'no_players', tx)),
       withTenantContext(tenantId, (tx) => expirePendingBooking(bookingId, tx)),
     ])
 
@@ -458,11 +454,9 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
 
       const [adminRes, playerRes] = await Promise.allSettled([
         withTenantContext(tenantId, (tx) =>
-          cancelByAdmin(bookingId, staffId, 'complejo con refund', 'complejo', tx),
+          cancelByAdmin(bookingId, staffId, 'rival_no_show', 'complejo', tx),
         ),
-        withTenantContext(tenantId, (tx) =>
-          cancelByPlayer(bookingId, playerId, 'player sin refund', tx),
-        ),
+        withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, 'reschedule', tx)),
       ])
 
       // Exactamente uno gana; el otro ve un booking no-confirmado.
@@ -524,8 +518,10 @@ describe('concurrent cancellation — conditional transition lets exactly one wi
     })
 
     const [click1, click2] = await Promise.allSettled([
-      withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, 'click 1', tx)),
-      withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, 'click 2', tx)),
+      withTenantContext(tenantId, (tx) =>
+        cancelByPlayer(bookingId, playerId, 'injury_or_issue', tx),
+      ),
+      withTenantContext(tenantId, (tx) => cancelByPlayer(bookingId, playerId, 'rain', tx)),
     ])
 
     // Las DOS terminan bien: una cancela de verdad y la otra, que esperó el lock,

@@ -1,4 +1,5 @@
 import type { ActionResult } from '@/shared/types/action-result'
+import type { CancelReason } from '@/shared/cancel-reasons'
 import type { ChargeLine } from '@/components/admin/SplitPaymentFields'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { CourtRow } from '@/modules/courts/court.types'
@@ -89,7 +90,7 @@ export type SlotPanelActions = Partial<WriteOffActions> & {
    */
   cancelBookingAction?: (
     bookingId: string,
-    reason: string,
+    reasonCode: CancelReason,
     cancellationType: 'complejo' | 'jugador',
   ) => Promise<ActionResult>
   /**

@@ -6,7 +6,8 @@ import { redirect } from 'next/navigation'
 import { bookingCode } from '@/lib/booking-code'
 import { sql } from 'drizzle-orm'
 import { z } from 'zod'
-import { uuid, boundedText } from '@/shared/validation/primitives'
+import { uuid } from '@/shared/validation/primitives'
+import { cancelReasonSchema, PLAYER_CANCEL_REASONS } from '@/shared/cancel-reasons'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { enforce } from '@/shared/rate-limit'
 import { withPlayerContext, withTenantContext } from '@/shared/db/client'
@@ -22,11 +23,13 @@ import {
 } from '@/modules/bookings/booking.errors'
 import type { BookingRow, BookingStatus, CancellationActor } from '@/modules/bookings/booking.types'
 import { captureMessage } from '@/lib/sentry'
+import type { CancelReason } from '@/shared/cancel-reasons'
 import { withTimeout } from '@/shared/utils/async'
 
 const cancelSchema = z.object({
   bookingId: uuid,
-  reason: boundedText(500).optional(),
+  // El jugador no elige 'cancha no disponible' ni 'evento del complejo': son del complejo.
+  reasonCode: cancelReasonSchema.refine((r) => PLAYER_CANCEL_REASONS.includes(r)),
 })
 
 /**
@@ -161,9 +164,9 @@ function staleError(error: string): PlayerBookingActionResult {
 
 export async function cancelMyBookingAction(
   bookingId: string,
-  reason?: string,
+  reasonCode: CancelReason,
 ): Promise<PlayerBookingActionResult> {
-  const parsed = cancelSchema.safeParse({ bookingId, reason })
+  const parsed = cancelSchema.safeParse({ bookingId, reasonCode })
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
   const user = await requirePlayer()
 
@@ -208,7 +211,7 @@ export async function cancelMyBookingAction(
   let outcome: CancellationOutcome
   try {
     outcome = await withTenantContext(pre.tenant_id, (tx) =>
-      cancelByPlayer(parsed.data.bookingId, user.playerId, parsed.data.reason, tx),
+      cancelByPlayer(parsed.data.bookingId, user.playerId, parsed.data.reasonCode, tx),
     )
   } catch (err) {
     if (err instanceof BookingNotOwnedByPlayerError) {

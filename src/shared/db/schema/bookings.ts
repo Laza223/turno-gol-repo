@@ -20,6 +20,7 @@ import { staffUsers } from './staff-users'
 import {
   bookingStatusEnum,
   bookingTypeEnum,
+  cancelReasonEnum,
   cancellationActorEnum,
   depositStatusEnum,
   paymentMethodEnum,
@@ -78,6 +79,8 @@ export const bookings = pgTable(
     whatsappChatId: uuid('whatsapp_chat_id'),
 
     canceledReason: text('canceled_reason'),
+    // Migr. 109: motivo cerrado (lista en shared/cancel-reasons.ts). NULL = anterior a la 109 o del bot.
+    canceledReasonCode: cancelReasonEnum('canceled_reason_code'),
     canceledBy: cancellationActorEnum('canceled_by'),
     canceledAt: timestamp('canceled_at', { withTimezone: true, mode: 'date' }),
     // Migr. 098: la cancelación contó como tardía (sin seña) para la escalera de

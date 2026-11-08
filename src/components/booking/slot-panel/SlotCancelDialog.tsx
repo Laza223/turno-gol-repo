@@ -5,6 +5,8 @@ import type { ActionResult } from '@/shared/types/action-result'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { RadioChip, RadioChipGroup } from '@/components/ui/radio-chip'
 import { toast } from '@/hooks/use-toast'
+import { CancelReasonPicker } from '@/components/booking/CancelReasonPicker'
+import { CANCEL_REASONS, type CancelReason } from '@/shared/cancel-reasons'
 import { formatArs, formatDayHeader } from '@/lib/format'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { SlotPanelActions } from './actions'
@@ -53,23 +55,21 @@ export function SlotCancelDialog({
   onCancelled: () => void
 }) {
   const [cancelType, setCancelType] = useState<CancelType | null>(null)
-  const [cancelReason, setCancelReason] = useState('')
+  const [cancelReason, setCancelReason] = useState<CancelReason | null>(null)
   const [wasOpen, setWasOpen] = useState(false)
 
   if (open && !wasOpen) {
     setWasOpen(true)
     setCancelType(null)
-    setCancelReason('')
+    setCancelReason(null)
   } else if (!open && wasOpen) {
     setWasOpen(false)
   }
 
   async function onConfirmCancel(): Promise<ActionResult> {
     if (!cancelType) return { success: false, error: 'Indicá quién cancela la reserva.' }
-    if (cancelReason.trim().length < 3) {
-      return { success: false, error: 'Ingresá un motivo (mínimo 3 caracteres).' }
-    }
-    const res = await cancelAction(booking.id, cancelReason.trim(), cancelType)
+    if (!cancelReason) return { success: false, error: 'Elegí por qué se cancela.' }
+    const res = await cancelAction(booking.id, cancelReason, cancelType)
     if (res.success) {
       // H093: mismo toast que BookingActions.tsx/QuickActions.tsx tras la
       // MISMA acción — acá se cerraba en silencio.
@@ -113,8 +113,8 @@ export function SlotCancelDialog({
       title="Cancelar reserva"
       description={
         booking.type === 'fixed'
-          ? `${label}, ${formatDayHeader(booking.date)}, ${booking.timeStart}–${booking.timeEnd}. Cancelás solo este turno. El turno fijo sigue activo las demás semanas. Ingresá el motivo.`
-          : `${label}, ${booking.timeStart}–${booking.timeEnd}. Esta acción cancela el turno y libera el horario. Ingresá el motivo.`
+          ? `${label}, ${formatDayHeader(booking.date)}, ${booking.timeStart}–${booking.timeEnd}. Cancelás solo este turno. El turno fijo sigue activo las demás semanas. Elegí el motivo.`
+          : `${label}, ${booking.timeStart}–${booking.timeEnd}. Esta acción cancela el turno y libera el horario. Elegí el motivo.`
       }
       variant="destructive"
       confirmLabel="Cancelar reserva"
@@ -151,21 +151,11 @@ export function SlotCancelDialog({
             {cancelRefundWarning}
           </div>
         )}
-        <div className="space-y-1">
-          <label
-            htmlFor={`slot-cancel-reason-${booking.id}`}
-            className="text-xs font-medium text-foreground"
-          >
-            Motivo (obligatorio)
-          </label>
-          <textarea
-            id={`slot-cancel-reason-${booking.id}`}
-            value={cancelReason}
-            onChange={(e) => setCancelReason(e.target.value)}
-            rows={2}
-            className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
-          />
-        </div>
+        <CancelReasonPicker
+          reasons={CANCEL_REASONS}
+          value={cancelReason}
+          onChange={setCancelReason}
+        />
       </div>
     </ConfirmDialog>
   )

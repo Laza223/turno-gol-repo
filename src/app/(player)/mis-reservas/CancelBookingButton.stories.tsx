@@ -77,9 +77,10 @@ export const Abierto: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
     await expect(await screen.findByText('¿Cancelar este turno?')).toBeInTheDocument()
-    const field = screen.getByLabelText(/motivo \(opcional\)/i)
-    await expect(field).toBeInTheDocument()
-    await expect(field).toHaveClass('text-base')
+    await expect(screen.getByRole('radio', { name: 'Llueve' })).toBeInTheDocument()
+    await expect(
+      screen.queryByRole('radio', { name: 'Cancha no disponible' }),
+    ).not.toBeInTheDocument()
     // ENS-2: la consecuencia concreta de cancelar AHORA (no más "en el plazo/fuera del plazo" en abstracto).
     await expect(
       screen.getByText(hasText('El complejo te tiene que devolver la seña de $ 1.500.')),
@@ -147,6 +148,7 @@ export const ErrorAlCancelar: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
     const dialog = await screen.findByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'Llueve' }))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Cancelar turno' }))
     const alert = await screen.findByRole('alert')
     await expect(alert).toHaveTextContent('Demasiadas solicitudes. Esperá un momento.')
@@ -174,6 +176,7 @@ export const ErrorDeRed: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
     const dialog = await screen.findByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'Llueve' }))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Cancelar turno' }))
     await expect(
       await screen.findByText(/No pudimos confirmar si se canceló.*si sigue, probá de nuevo/),
@@ -201,6 +204,7 @@ export const YaCanceladaPorElComplejo: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
     const dialog = await screen.findByRole('dialog')
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'Llueve' }))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Cancelar turno' }))
     await expect(
       await screen.findByText('El complejo ya canceló esta reserva.'),
@@ -226,12 +230,9 @@ export const CanceladoOk: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Cancelar' }))
     const dialog = await screen.findByRole('dialog')
-    await userEvent.type(
-      within(dialog).getByLabelText(/motivo \(opcional\)/i),
-      'Se suspendió por lluvia',
-    )
+    await userEvent.click(within(dialog).getByRole('radio', { name: 'Llueve' }))
     await userEvent.click(within(dialog).getByRole('button', { name: 'Cancelar turno' }))
-    await expect(args.action).toHaveBeenCalledWith('booking-1', 'Se suspendió por lluvia')
+    await expect(args.action).toHaveBeenCalledWith('booking-1', 'rain')
     await waitFor(async () =>
       expect(screen.queryByText('¿Cancelar este turno?')).not.toBeInTheDocument(),
     )

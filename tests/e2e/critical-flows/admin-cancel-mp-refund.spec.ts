@@ -103,7 +103,7 @@ test.describe('admin cancel booking with paid MP deposit — flow 3 doc7', () =>
       // decide el reembolso), independiente de la política horaria — evita que
       // el resultado dependa de cancellationPolicyHours / la hora del test.
       await page.getByRole('radio', { name: /El complejo necesita cancelar/i }).click()
-      await page.locator('#cancel-reason').fill('test refund E2E')
+      await page.getByRole('radio', { name: 'Llueve' }).click()
 
       // Submit the cancellation.
       await page.getByRole('button', { name: 'Cancelar reserva' }).click()
@@ -128,7 +128,7 @@ test.describe('admin cancel booking with paid MP deposit — flow 3 doc7', () =>
       expect(error).toBeNull()
       expect(row?.status).toBe('canceled_refunded')
       // cancelByAdmin antepone la etiqueta del tipo de cancelación (Tarea #3).
-      expect(row?.canceled_reason).toBe('Cancelado por el complejo: test refund E2E')
+      expect(row?.canceled_reason).toBe('Cancelado por el complejo: Llueve')
       expect(row?.canceled_by).toBe('admin')
     } finally {
       await context.close()

@@ -229,8 +229,8 @@ test.describe('reservas — edge: cancel with paid deposit', () => {
       ).toBeVisible()
       await expect(page.getByRole('radio', { name: /El jugador pidió cancelar/i })).toBeVisible()
 
-      // The reason textarea must be present.
-      await expect(page.locator('#cancel-reason')).toBeVisible()
+      // The reason picker must be present.
+      await expect(page.getByRole('radio', { name: 'Llueve' })).toBeVisible()
 
       // Choose "jugador" — future date is well within any cancellation policy
       // window, so this refunds (cash → informational, not automatic). ENS-2:
@@ -244,7 +244,7 @@ test.describe('reservas — edge: cancel with paid deposit', () => {
       await expect(page.locator('.rounded-md.bg-amber-50')).toBeVisible()
       await expect(page.getByText(/queda para devolver/i)).toBeVisible()
 
-      await page.locator('#cancel-reason').fill('Cancelación de prueba E2E con reembolso')
+      await page.getByRole('radio', { name: 'Llueve' }).click()
       await page.getByRole('button', { name: 'Cancelar reserva' }).click()
 
       // After success the dialog closes and status updates to Cancelada.
@@ -302,13 +302,12 @@ test.describe('reservas — edge: cancel blocked without reason', () => {
       // before reason, and skipping it would surface a different error.
       await page.getByRole('radio', { name: /El complejo necesita cancelar/i }).click()
 
-      // Leave #cancel-reason empty and click confirm.
-      // (We don't fill the textarea — it's blank by default)
+      // Leave the reason picker without a choice and click confirm.
       await page.getByRole('button', { name: 'Cancelar reserva' }).click()
 
-      // Error message should appear (onConfirmCancel returns { success: false, error: 'Ingresá un motivo...' }).
+      // Error message should appear (onConfirmCancel returns { success: false, error: 'Elegí por qué se cancela.' }).
       await expect(page.getByRole('alert')).toBeVisible({ timeout: 5_000 })
-      await expect(page.getByRole('alert')).toContainText(/Ingresá un motivo/i)
+      await expect(page.getByRole('alert')).toContainText(/Elegí por qué se cancela/i)
 
       // Dialog must stay open — booking still confirmed.
       // Use heading role (dialog also has confirm button with same label).

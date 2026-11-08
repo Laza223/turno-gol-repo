@@ -132,7 +132,7 @@ describe('cancelación tardía sin seña', () => {
     const ctx = await setup(LATE_HOURS)
     const [b1, b2, b3] = [await book(ctx, 1), await book(ctx, 2), await book(ctx, 3)]
     const cancel = (id: string) =>
-      withTenantContext(ctx.tenant.id, (tx) => cancelByPlayer(id, ctx.player.id, undefined, tx))
+      withTenantContext(ctx.tenant.id, (tx) => cancelByPlayer(id, ctx.player.id, 'other', tx))
 
     await cancel(b1)
     expect(await getCanceledLate(b1)).toBe(true)
@@ -155,8 +155,8 @@ describe('cancelación tardía sin seña', () => {
     const ctx = await setup(0)
     const [b1, b2] = [await book(ctx, 1), await book(ctx, 2)]
     await withTenantContext(ctx.tenant.id, async (tx) => {
-      await cancelByPlayer(b1, ctx.player.id, undefined, tx)
-      await cancelByPlayer(b2, ctx.player.id, undefined, tx)
+      await cancelByPlayer(b1, ctx.player.id, 'other', tx)
+      await cancelByPlayer(b2, ctx.player.id, 'other', tx)
     })
     expect(await getCanceledLate(b1)).toBe(false)
     expect(await getCanceledLate(b2)).toBe(false)
@@ -167,7 +167,7 @@ describe('cancelación tardía sin seña', () => {
     const ctx = await setup(LATE_HOURS)
     const ids = [await book(ctx, 1, 'captured'), await book(ctx, 2, 'captured')]
     await withTenantContext(ctx.tenant.id, async (tx) => {
-      for (const id of ids) await cancelByPlayer(id, ctx.player.id, undefined, tx)
+      for (const id of ids) await cancelByPlayer(id, ctx.player.id, 'other', tx)
     })
     for (const id of ids) expect(await getCanceledLate(id)).toBe(false)
     expect(await getBan(ctx.tenant.id, ctx.player.id)).toBeNull()
@@ -184,7 +184,7 @@ describe('cancelación tardía sin seña', () => {
       await book(ctx, 3),
     ]
     const adminCancel = (id: string, type: 'jugador' | 'complejo') =>
-      withTenantContext(ctx.tenant.id, (tx) => cancelByAdmin(id, staff.id, 'motivo', type, tx))
+      withTenantContext(ctx.tenant.id, (tx) => cancelByAdmin(id, staff.id, 'rain', type, tx))
 
     await adminCancel(byComplex, 'complejo')
     expect(await getCanceledLate(byComplex)).toBe(false)
@@ -222,7 +222,7 @@ describe('cancelación tardía sin seña', () => {
       )
     `
     const b = await book(ctx, 1)
-    await withTenantContext(ctx.tenant.id, (tx) => cancelByPlayer(b, ctx.player.id, undefined, tx))
+    await withTenantContext(ctx.tenant.id, (tx) => cancelByPlayer(b, ctx.player.id, 'other', tx))
     expect(await getCanceledLate(b)).toBe(true)
     expect(await getBan(ctx.tenant.id, ctx.player.id)).toBeNull() // cuenta como la 1ra: solo aviso
   })
@@ -231,8 +231,8 @@ describe('cancelación tardía sin seña', () => {
     const ctx = await setup(LATE_HOURS)
     const [b1, b2] = [await book(ctx, 1), await book(ctx, 2)]
     await withTenantContext(ctx.tenant.id, async (tx) => {
-      await cancelByPlayer(b1, ctx.player.id, undefined, tx)
-      await cancelByPlayer(b2, ctx.player.id, undefined, tx)
+      await cancelByPlayer(b1, ctx.player.id, 'other', tx)
+      await cancelByPlayer(b2, ctx.player.id, 'other', tx)
     })
     expect(await getBan(ctx.tenant.id, ctx.player.id)).not.toBeNull()
 
@@ -258,7 +258,7 @@ describe('cancelación tardía sin seña', () => {
     const ids = [await book(ctx, 1), await book(ctx, 2)]
     await sql`UPDATE bookings SET abonado_id = ${abonado[0]!.id} WHERE id = ANY(${ids})`
     await withTenantContext(ctx.tenant.id, async (tx) => {
-      for (const id of ids) await cancelByPlayer(id, ctx.player.id, undefined, tx)
+      for (const id of ids) await cancelByPlayer(id, ctx.player.id, 'other', tx)
     })
     for (const id of ids) expect(await getCanceledLate(id)).toBe(false)
     expect(await getBan(ctx.tenant.id, ctx.player.id)).toBeNull()
@@ -268,8 +268,8 @@ describe('cancelación tardía sin seña', () => {
     const ctx = await setup(LATE_HOURS)
     const [b1, b2, b3] = [await book(ctx, 1), await book(ctx, 2), await book(ctx, 3)]
     await withTenantContext(ctx.tenant.id, async (tx) => {
-      await cancelByPlayer(b1, ctx.player.id, undefined, tx)
-      await cancelByPlayer(b2, ctx.player.id, undefined, tx)
+      await cancelByPlayer(b1, ctx.player.id, 'other', tx)
+      await cancelByPlayer(b2, ctx.player.id, 'other', tx)
     })
     expect(await getBan(ctx.tenant.id, ctx.player.id)).not.toBeNull()
 
@@ -277,7 +277,7 @@ describe('cancelación tardía sin seña', () => {
     expect(await getBan(ctx.tenant.id, ctx.player.id)).toBeNull()
 
     // Empieza de cero: la próxima tardía es la 1ra (solo aviso), no la 3ra.
-    await withTenantContext(ctx.tenant.id, (tx) => cancelByPlayer(b3, ctx.player.id, undefined, tx))
+    await withTenantContext(ctx.tenant.id, (tx) => cancelByPlayer(b3, ctx.player.id, 'other', tx))
     expect(await getBan(ctx.tenant.id, ctx.player.id)).toBeNull()
   })
 })

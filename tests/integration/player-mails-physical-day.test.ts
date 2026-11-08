@@ -119,8 +119,8 @@ describe('mails al jugador — día físico', () => {
     const madrugada = await insertBooking({ date: d, timeStart: '00:00', timeEnd: '01:00' })
     const noche = await insertBooking({ date: d, timeStart: '20:00', timeEnd: '21:00' })
 
-    await withTenantContext(tenantId, (tx) => cancelByPlayer(madrugada, playerId, undefined, tx))
-    await withTenantContext(tenantId, (tx) => cancelByPlayer(noche, playerId, undefined, tx))
+    await withTenantContext(tenantId, (tx) => cancelByPlayer(madrugada, playerId, 'other', tx))
+    await withTenantContext(tenantId, (tx) => cancelByPlayer(noche, playerId, 'other', tx))
 
     const dates = (await mailDates('booking_canceled')).map((c) => [c.timeStart, c.date])
     expect(dates).toContainEqual(['00:00', ddmmyyyy(addDays(d, 1))])
@@ -133,10 +133,10 @@ describe('mails al jugador — día físico', () => {
     const noche = await insertBooking({ date: d, timeStart: '20:00', timeEnd: '21:00' })
 
     await withTenantContext(tenantId, (tx) =>
-      cancelByAdmin(madrugada, staffUserId, 'lluvia', 'complejo', tx),
+      cancelByAdmin(madrugada, staffUserId, 'rain', 'complejo', tx),
     )
     await withTenantContext(tenantId, (tx) =>
-      cancelByAdmin(noche, staffUserId, 'lluvia', 'complejo', tx),
+      cancelByAdmin(noche, staffUserId, 'rain', 'complejo', tx),
     )
 
     const dates = (await mailDates('booking_canceled_by_complex')).map((c) => [c.timeStart, c.date])

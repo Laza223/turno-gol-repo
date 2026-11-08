@@ -68,6 +68,18 @@ export const depositStatusEnum = pgEnum('deposit_status', [
 
 export const cancellationActorEnum = pgEnum('cancellation_actor', ['player', 'admin', 'system'])
 
+// Migr. 109: motivo de cancelación cerrado. La lista vive en shared/cancel-reasons.ts.
+export const cancelReasonEnum = pgEnum('cancel_reason', [
+  'rain',
+  'no_players',
+  'rival_no_show',
+  'reschedule',
+  'injury_or_issue',
+  'court_unavailable',
+  'complex_event',
+  'other',
+])
+
 // ─── Abonado ────────────────────────────────────────────────────
 export const abonadoStatusEnum = pgEnum('abonado_status', ['active', 'paused', 'canceled'])
 

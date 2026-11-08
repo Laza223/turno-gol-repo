@@ -166,9 +166,7 @@ describe('reserva online confirmada sin seña', () => {
 
 describe('cancelación del jugador', () => {
   const cancelAsPlayer = (ctx: Ctx, bookingId: string) =>
-    withTenantContext(ctx.tenant.id, (tx) =>
-      cancelByPlayer(bookingId, ctx.player.id, undefined, tx),
-    )
+    withTenantContext(ctx.tenant.id, (tx) => cancelByPlayer(bookingId, ctx.player.id, 'other', tx))
 
   it('cancelación común: un push por dispositivo, late: false, abre la grilla de ese día', async () => {
     const ctx = await setup(0)
@@ -229,7 +227,7 @@ describe('cancelación del jugador', () => {
     const booking = await book(ctx, 1)
 
     await withTenantContext(ctx.tenant.id, (tx) =>
-      cancelByAdmin(booking.id, ctx.owner.id, 'motivo', 'complejo', tx),
+      cancelByAdmin(booking.id, ctx.owner.id, 'rain', 'complejo', tx),
     )
 
     expect(await pushJobs(ctx)).toHaveLength(0)

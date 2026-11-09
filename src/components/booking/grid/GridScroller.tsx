@@ -1,10 +1,17 @@
 'use client'
 
-import { useEffect, useState, type KeyboardEvent, type MutableRefObject } from 'react'
+import {
+  useEffect,
+  useState,
+  type KeyboardEvent,
+  type MutableRefObject,
+  type PointerEvent,
+} from 'react'
 import { cn } from '@/lib/utils'
 import { BookingCard } from '../BookingCard'
 import { MorningCollapseBand } from './MorningCollapseBand'
-import { hasBookingEnded, isPendingCollection } from '@/lib/booking/grid-cells'
+import { hasBookingEnded, isPendingCollection, type GridBooking } from '@/lib/booking/grid-cells'
+import type { DragTarget } from '@/lib/booking/grid-drag'
 import type { GridCells } from '@/hooks/use-grid-layout'
 import type { CourtRow } from '@/modules/courts/court.types'
 
@@ -37,6 +44,11 @@ type Props = {
   onSlotClick: (courtId: string, slotTime: string) => void
   onGridKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void
   onExpandMorning: () => void
+  /** Arrastre para mover (useGridDrag). Sin `onDragPointerDown` la grilla no arrastra. */
+  canDrag?: (booking: GridBooking, slotTime: string) => boolean
+  draggingId?: string | null
+  dropTarget?: DragTarget | null
+  onDragPointerDown?: (e: PointerEvent<HTMLElement>, booking: GridBooking) => void
 }
 
 /** "Cancha 3" → "C3" para la columna angosta del teléfono; otro nombre, igual. */
@@ -85,6 +97,10 @@ export function GridScroller({
   onSlotClick,
   onGridKeyDown,
   onExpandMorning,
+  canDrag,
+  draggingId = null,
+  dropTarget = null,
+  onDragPointerDown,
 }: Props) {
   // Canchas que no entran (teléfono con más de 6, o un escritorio angosto): un
   // degradé + pastilla "N canchas →" en el borde derecho, MIENTRAS falte
@@ -123,7 +139,10 @@ export function GridScroller({
         role="region"
         aria-label={ariaLabel}
         className={cn(
-          'h-full overflow-auto overscroll-x-contain snap-x snap-proximity rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(2,6,23,0.04),0_8px_24px_-12px_rgba(2,6,23,0.10)] dark:shadow-[0_24px_50px_-34px_rgba(0,0,0,0.9)]',
+          // Sin snap mientras se arrastra: el auto-scroll de a 14 px volvía al
+          // mismo punto de encaje y la grilla no avanzaba.
+          draggingId ? 'snap-none' : 'snap-x snap-proximity',
+          'h-full overflow-auto overscroll-x-contain rounded-xl border border-border bg-card shadow-[0_1px_2px_rgba(2,6,23,0.04),0_8px_24px_-12px_rgba(2,6,23,0.10)] dark:shadow-[0_24px_50px_-34px_rgba(0,0,0,0.9)]',
           'transition-opacity duration-150 motion-reduce:transition-none',
           'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
           isNavPending && 'opacity-90',
@@ -258,6 +277,9 @@ export function GridScroller({
                     courtName={court.name}
                     detailOpen={detailBookingId === cell.booking.id}
                     onDetailChange={onDetailChange}
+                    canDrag={canDrag?.(cell.booking, slotTime) ?? false}
+                    dragging={draggingId === cell.booking.id}
+                    onDragPointerDown={onDragPointerDown}
                   />
                 )
               }
@@ -278,6 +300,28 @@ export function GridScroller({
                 />
               )
             }),
+          )}
+
+          {/* Hueco bajo el puntero mientras se arrastra un turno: verde si se
+              puede soltar, rojo si no. Va último en el DOM para pintar encima. */}
+          {dropTarget && (
+            <div
+              aria-hidden
+              data-testid="drop-target"
+              data-valid={dropTarget.valid}
+              style={{
+                gridColumn: dropTarget.courtIndex + 2,
+                gridRow: dropTarget.row + rowOffset,
+              }}
+              className={cn(
+                // `relative z-10`: las tarjetas de turno son `relative`, y sin esto
+                // pintan encima del marco rojo del destino ocupado.
+                'pointer-events-none relative z-10 m-[2px] rounded-md border-2',
+                dropTarget.valid
+                  ? 'border-primary bg-primary/10'
+                  : 'border-destructive/70 bg-destructive/10',
+              )}
+            />
           )}
         </div>
       </div>

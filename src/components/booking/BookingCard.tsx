@@ -48,6 +48,14 @@ type BookingCardProps = {
   /** Panel lateral de detalle+acciones (solo slots ocupados): lo controla BookingGrid, uno a la vez. */
   detailOpen?: boolean
   onDetailChange?: (bookingId: string | null) => void
+  /**
+   * El turno se puede mover arrastrándolo (`isDraggableBooking`). Sin
+   * `onDragPointerDown` no hace nada: stories y tests viejos siguen igual.
+   */
+  canDrag?: boolean
+  /** Es el turno que se está arrastrando ahora: queda atenuado en su lugar. */
+  dragging?: boolean
+  onDragPointerDown?: (e: React.PointerEvent<HTMLElement>, booking: GridBooking) => void
 }
 
 /** Posición explícita en la grilla CSS: rowOffset deja lugar a la columna de horas, la fila de headers y la banda de colapso. */
@@ -144,6 +152,9 @@ function BookingCardComponent({
   onSlotClick,
   detailOpen = false,
   onDetailChange,
+  canDrag = false,
+  dragging = false,
+  onDragPointerDown,
 }: BookingCardProps) {
   if (!booking) {
     const interactive = !isPast && !!onSlotClick && !!courtId
@@ -235,9 +246,16 @@ function BookingCardComponent({
       data-col={col}
       data-row={row}
       onClick={() => onDetailChange?.(booking.id)}
+      onPointerDown={
+        canDrag && onDragPointerDown ? (e) => onDragPointerDown(e, booking) : undefined
+      }
       aria-haspopup="dialog"
       aria-expanded={detailOpen}
       className={cn(
+        // Arrastrable: sin selección de texto ni menú de "mantener apretado" de
+        // iOS/Android, que se comerían el long-press del arrastre táctil.
+        canDrag && 'select-none [-webkit-touch-callout:none]',
+        dragging && 'opacity-40',
         // `bg-card` abajo y el tinte en el `<span>` de adentro: los tintes son
         // translúcidos, y sobre la grilla la línea de "ahora" (que pasa por
         // DEBAJO de las tarjetas) se veía a través de ellas tachando nombres.

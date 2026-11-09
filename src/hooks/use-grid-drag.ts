@@ -16,8 +16,12 @@ const MOUSE_THRESHOLD_PX = 4
 /** Touch: hay que mantener apretado, quieto, este tiempo; si no, es scroll. */
 const LONG_PRESS_MS = 350
 const TOUCH_SLOP_PX = 8
-/** Cerca del borde de la grilla, el arrastre la scrollea. */
-const EDGE_PX = 48
+/**
+ * Cerca del borde de la grilla, el arrastre la scrollea. Angosto a propósito:
+ * con 48 px, soltar en la última fila visible ya scrolleaba y el turno caía
+ * una hora más tarde de lo que se veía al soltar.
+ */
+const EDGE_PX = 20
 const EDGE_SPEED_PX = 14
 
 export type DragState = {
@@ -29,10 +33,11 @@ export type DragState = {
 
 type Params = {
   scrollRef: React.RefObject<HTMLDivElement | null>
-  courts: CourtRow[]
+  /** Columnas: canchas (vista por día) o días (vista por semana) — ver `resolveDropTarget`. */
+  courts: Pick<CourtRow, 'id' | 'status'>[]
   visibleSlots: string[]
   cells: Map<string, CellState>
-  isSlotPast: (slotTime: string) => boolean
+  isSlotPast: (slotTime: string, columnId: string) => boolean
   /** Soltó sobre un hueco válido. El server decide si de verdad se puede. */
   onDrop: (booking: GridBooking, target: DragTarget) => void
 }

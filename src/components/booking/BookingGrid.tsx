@@ -103,6 +103,8 @@ type Props = {
     onClose: () => void
   }) => ReactNode
   actions?: React.ReactNode
+  /** "Día | Semana": se reenvía a la barra (GridHeaderBar). */
+  viewToggle?: ReactNode
 }
 
 export function BookingGrid({
@@ -123,6 +125,7 @@ export function BookingGrid({
   renderStoryDialog,
   renderChargeMany,
   actions,
+  viewToggle,
 }: Props) {
   // #29: artNow se auto-refresca cada minuto para que isSlotPast no quede
   // congelado en una grilla abierta sin recargar.
@@ -309,6 +312,7 @@ export function BookingGrid({
         onToggleHighlight={() => setHighlightPending((v) => !v)}
         onOpenStory={renderStoryDialog ? () => setStoryOpen(true) : undefined}
         onOpenChargeMany={renderChargeMany && viewingTonight ? () => setManyOpen(true) : undefined}
+        viewToggle={viewToggle}
       />
 
       {actions}
@@ -381,7 +385,11 @@ export function BookingGrid({
       {drag && (
         <GridDragGhost
           drag={drag}
-          courtName={drag.target ? (courtNameById.get(drag.target.courtId) ?? null) : null}
+          targetLabel={
+            drag.target
+              ? `${courtNameById.get(drag.target.courtId) ?? 'Cancha'} · ${drag.target.slotTime}`
+              : null
+          }
         />
       )}
 

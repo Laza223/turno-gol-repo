@@ -175,7 +175,7 @@ export function buildBookingsIndex(bookings: GridBooking[]): Map<string, GridBoo
 
 export function computeCells(
   slots: string[],
-  courts: CourtRow[],
+  courts: Pick<CourtRow, 'id'>[],
   bookingsByKey: Map<string, GridBooking>,
 ): Map<string, CellState> {
   const cells = new Map<string, CellState>()

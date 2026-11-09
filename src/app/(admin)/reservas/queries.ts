@@ -605,6 +605,25 @@ export async function listDayGridBookings(
 }
 
 /**
+ * Los turnos de UNA cancha entre `from` y `to` (inclusive, días operativos),
+ * para la vista por semana de la Grilla. Misma definición de saldo y de
+ * estados que `listDayGridBookings`: solo cambia el rango y que sea una cancha.
+ */
+export async function listCourtRangeGridBookings(
+  tenantId: string,
+  courtId: string,
+  from: string,
+  to: string,
+  tx: DbTx,
+): Promise<DayGridBooking[]> {
+  return selectGridBookingsWithBalance(
+    tenantId,
+    sql`${bookings.courtId} = ${courtId}::uuid AND ${bookings.date} BETWEEN ${from}::date AND ${to}::date AND ${bookings.status} IN ('confirmed', 'pending_payment', 'completed', 'no_show')`,
+    tx,
+  )
+}
+
+/**
  * Turnos JUGADOS y no cobrados de días ANTERIORES a `date`, para que Hoy los
  * pueda seguir mostrando después de la medianoche (en vez de que se pierdan de
  * vista en cuanto cambia el día operativo).

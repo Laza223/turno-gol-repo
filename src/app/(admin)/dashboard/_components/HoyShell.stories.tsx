@@ -257,7 +257,8 @@ export const CobrarVariosAbreLasTarjetasYElModalSeApila: Story = {
     await waitFor(() => expect(screen.getAllByRole('dialog', { hidden: true })).toHaveLength(2))
     const top = screen.getAllByRole('dialog')
     await expect(top).toHaveLength(1)
-    await expect(within(top[0]!).getByText('Pablo Ruiz')).toBeVisible()
+    // El modal de encima entra con una animación de opacidad: `toBeVisible` justo al montarse falla según la carga del runner.
+    await waitFor(() => expect(within(top[0]!).getByText('Pablo Ruiz')).toBeVisible())
     await expect(within(top[0]!).queryByRole('group', { name: /Lucía Méndez/ })).toBeNull()
   },
 }

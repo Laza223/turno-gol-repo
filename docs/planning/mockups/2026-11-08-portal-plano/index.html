@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup · Home del portal (plano)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
+<script>
+  // Tema del celular; ?theme=light|dark lo fuerza para las capturas.
+  (function () {
+    var p = new URLSearchParams(location.search).get('theme');
+    var dark = p ? p === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    if (new URLSearchParams(location.search).get('full')) document.documentElement.dataset.full = '1';
+  })();
+</script>
+<link rel="stylesheet" href="portal.css">
+</head>
+<body class="has-tabbar">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36z"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 3 20 12 6 21z"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+</svg>
+
+<header class="topbar">
+  <div class="wrap">
+    <a class="logo" href="#">TURNO<b>GOL</b></a>
+    <nav class="nav">
+      <a class="nav-link" href="#">Explorar canchas</a>
+      <a class="nav-link" href="#">Para complejos</a>
+      <button class="btn-ghost">Ingresar</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="hero-photo" aria-hidden="true"></div>
+    <div class="wrap hero-copy">
+      <h1>Tu partido empieza en TurnoGol</h1>
+      <p>Mirá los turnos libres de hoy y reservá sin llamar a nadie.</p>
+    </div>
+  </section>
+
+  <div class="wrap finder">
+    <form class="finder-card" aria-label="Buscar canchas de fútbol" onsubmit="location.href='explorar.html'+location.search;return false">
+      <div class="field">
+        <span class="field-label">Localidad</span>
+        <button type="button" class="select">
+          <svg class="icon"><use href="#i-pin"/></svg>
+          <span class="value">Luján<small>, Buenos Aires</small></span>
+          <svg class="icon chev"><use href="#i-chev"/></svg>
+        </button>
+      </div>
+      <div class="field">
+        <span class="field-label">Cancha</span>
+        <div class="chips" role="group" aria-label="Tipo de cancha">
+          <button type="button" class="chip" aria-pressed="true">Fútbol 5</button>
+          <button type="button" class="chip" aria-pressed="false">Fútbol 6</button>
+          <button type="button" class="chip" aria-pressed="false">Fútbol 7</button>
+          <button type="button" class="chip" aria-pressed="false">Fútbol 8</button>
+          <button type="button" class="chip" aria-pressed="false">Fútbol 11</button>
+        </div>
+      </div>
+      <button class="btn-primary" type="submit"><svg class="icon"><use href="#i-search"/></svg>Buscar canchas</button>
+    </form>
+    <p class="noapp">Sin descargar ninguna app</p>
+  </div>
+
+  <section class="section wrap" aria-labelledby="clubs-t">
+    <p class="clubs-label" id="clubs-t">Complejos donde ya se reserva con TurnoGol</p>
+    <div class="clubs">
+      <div class="club"><div class="club-logo">LC</div><span>La Canchita</span></div>
+      <div class="club"><div class="club-logo">B5</div><span>Basílica F5</span></div>
+      <div class="club"><div class="club-logo">EO</div><span>El Oeste</span></div>
+      <div class="club"><div class="club-logo">CS</div><span>Club Social</span></div>
+      <div class="club"><div class="club-logo">LR</div><span>Las Rosas</span></div>
+      <div class="club"><div class="club-logo">TF</div><span>Tercer Tiempo</span></div>
+      <div class="club"><div class="club-logo">PN</div><span>Potrero Norte</span></div>
+    </div>
+  </section>
+
+  <section class="section wrap" aria-labelledby="videos-t">
+    <div class="section-head">
+      <h2 id="videos-t">Los dueños lo cuentan</h2>
+    </div>
+    <div class="videos">
+      <a class="video" href="#" style="background-image:url('../../../../public/bg-hero-2.webp')">
+        <span class="play"><svg class="icon"><use href="#i-play"/></svg></span>
+        <span class="who"><b>“Ya no atiendo el teléfono a la noche”</b><span>Martín · La Canchita</span></span>
+      </a>
+      <a class="video" href="#" style="background-image:url('../../../../public/bg-how-it-works.webp')">
+        <span class="play"><svg class="icon"><use href="#i-play"/></svg></span>
+        <span class="who"><b>“Me reservan mientras duermo”</b><span>Lucía · Basílica F5</span></span>
+      </a>
+      <a class="video" href="#" style="background-image:url('../../../../public/bg-owner.webp')">
+        <span class="play"><svg class="icon"><use href="#i-play"/></svg></span>
+        <span class="who"><b>“Veo cómo va la noche desde el celu”</b><span>Diego · El Oeste</span></span>
+      </a>
+      <a class="video" href="#" style="background-image:url('../../../../public/hero-bg.webp')">
+        <span class="play"><svg class="icon"><use href="#i-play"/></svg></span>
+        <span class="who"><b>“Me encuentran gente de otros barrios”</b><span>Pablo · Club Social</span></span>
+      </a>
+    </div>
+  </section>
+
+  <section class="owners" aria-labelledby="owners-t">
+    <div class="wrap">
+      <div>
+        <h2 id="owners-t">Tus jugadores reservan solos. Tu noche se ordena sola.</h2>
+        <p>Grilla, cobros y caja en un solo lugar. Y tu complejo aparece en este buscador.</p>
+      </div>
+      <div class="cta-col">
+        <a class="btn-light" href="#">Conocer TurnoGol para complejos <svg class="icon"><use href="#i-arrow"/></svg></a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <span class="logo">TURNO<b>GOL</b></span>
+    <a href="#">Explorar canchas</a>
+    <a href="#">Para complejos</a>
+    <a href="#">Términos</a>
+    <a href="#">Privacidad</a>
+  </div>
+</footer>
+
+<div class="mock-tag">MOCKUP · logos, videos y nombres de ejemplo</div>
+
+<nav class="tabbar" aria-label="Navegación">
+  <a href="#" aria-current="page"><svg class="icon"><use href="#i-compass"/></svg>Explorar</a>
+  <a href="#"><svg class="icon"><use href="#i-cal"/></svg>Reservas</a>
+  <a href="#"><svg class="icon"><use href="#i-user"/></svg>Cuenta</a>
+</nav>
+
+</body>
+</html>

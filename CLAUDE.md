@@ -156,7 +156,7 @@ Respuestas directas, sin introducciones ni conclusiones. Código y comandos, no 
 - Los vetos de producto de arriba y el de texto libre sobre personas (Ley 25.326). Se cambian solo con decisión escrita del dueño.
 - Cualquier cambio de precio, seña por defecto o lifecycle necesita decisión escrita del dueño.
 - Lo que llega a prod: efecto sobre El Vagón y OK del dueño antes.
-- Portal en La Previa salvo la ficha `/[slug]`, que sigue en La Reserva ([`docs/decisions/2026-10-20-vuelve-la-previa.md`](docs/decisions/2026-10-20-vuelve-la-previa.md)), con precios ocultos por complejo. RIVAL va detrás del flag `rival`. Autoridad visual: [`DESIGN.md`](DESIGN.md); contexto de producto: [`PRODUCT.md`](PRODUCT.md).
+- **Portal plano y limpio en claro y oscuro** ([`docs/decisions/2026-11-08-portal-plano-dos-temas.md`](docs/decisions/2026-11-08-portal-plano-dos-temas.md), supera a La Previa del 2026-10-20). Se migra por fases (P1 a P4); hasta P4 lo que no migró sigue en La Previa y `DESIGN.md` todavía la describe. Precios ocultos por complejo. RIVAL va detrás del flag `rival`. Autoridad visual: [`DESIGN.md`](DESIGN.md); contexto de producto: [`PRODUCT.md`](PRODUCT.md).
 
 **PREGUNTAR ANTES**
 - Decisiones de negocio: **NO aplicarlas** — reportarlas como "REQUIERE INPUT" con pregunta numerada al dueño.

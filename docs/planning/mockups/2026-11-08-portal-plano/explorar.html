@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mockup · Buscador del portal (plano)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
+<script>
+  (function () {
+    var q = new URLSearchParams(location.search);
+    var p = q.get('theme');
+    var dark = p ? p === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    if (new URLSearchParams(location.search).get('full')) document.documentElement.dataset.full = '1';
+    document.documentElement.dataset.sheet = q.get('sheet') === '1' ? 'open' : 'closed';
+  })();
+</script>
+<link rel="stylesheet" href="portal.css">
+<style>
+  html[data-sheet='closed'] .sheet, html[data-sheet='closed'] .sheet-backdrop { display: none; }
+</style>
+</head>
+<body class="has-tabbar">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36z"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15M9 3.236v15"/></symbol>
+  <symbol id="i-locate" viewBox="0 0 24 24"><path d="M2 12h3M19 12h3M12 2v3M12 19v3"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+</svg>
+
+<header class="topbar solid">
+  <div class="wrap">
+    <a class="logo" href="index.html">TURNO<b>GOL</b></a>
+    <nav class="nav">
+      <a class="nav-link" href="#">Mis reservas</a>
+      <a class="nav-link" href="#">Para complejos</a>
+      <button class="btn-ghost">Ingresar</button>
+    </nav>
+  </div>
+</header>
+
+<div class="searchbar">
+  <div class="wrap">
+    <button type="button" class="select" onclick="document.documentElement.dataset.sheet='open'">
+      <svg class="icon"><use href="#i-pin"/></svg>
+      <span class="value">Luján<small>, Buenos Aires</small></span>
+      <svg class="icon chev"><use href="#i-chev"/></svg>
+    </button>
+    <div class="chips scroll" role="group" aria-label="Tipo de cancha">
+      <button type="button" class="chip" aria-pressed="false">Todas</button>
+      <button type="button" class="chip" aria-pressed="true">Fútbol 5</button>
+      <button type="button" class="chip" aria-pressed="false">Fútbol 6</button>
+      <button type="button" class="chip" aria-pressed="false">Fútbol 7</button>
+      <button type="button" class="chip" aria-pressed="false">Fútbol 8</button>
+      <button type="button" class="chip" aria-pressed="false">Fútbol 11</button>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+  <div class="results-head">
+    <h1>6 complejos en Luján</h1>
+    <button class="btn-outline"><svg class="icon sm"><use href="#i-map"/></svg>Mapa</button>
+  </div>
+
+  <div class="cards">
+    <article class="tcard">
+      <div class="tcard-photo" style="background-image:url('../../../../public/bg-hero-2.webp');background-position:50% 65%"></div>
+      <div class="tcard-body">
+        <div class="tcard-top"><h2>La Canchita</h2><span class="price">desde <b class="tnum">$36.000</b></span></div>
+        <p class="addr"><svg class="icon sm"><use href="#i-pin"/></svg>San Martín 1240 · <span class="tnum">a 1,2 km</span></p>
+        <div class="formats"><span class="fmt">Fútbol 5</span><span class="fmt">Fútbol 7</span></div>
+        <p class="slots-label">Libres hoy</p>
+        <div class="slots"><button class="slot">19:00</button><button class="slot">20:00</button><button class="slot">22:00</button><button class="slot more">+3</button></div>
+      </div>
+    </article>
+
+    <article class="tcard">
+      <div class="tcard-photo" style="background-image:url('../../../../public/bg-how-it-works.webp');background-position:50% 60%"></div>
+      <div class="tcard-body">
+        <div class="tcard-top"><h2>Basílica F5</h2><span class="price">desde <b class="tnum">$32.000</b></span></div>
+        <p class="addr"><svg class="icon sm"><use href="#i-pin"/></svg>Av. Constitución 880 · <span class="tnum">a 2,4 km</span></p>
+        <div class="formats"><span class="fmt">Fútbol 5</span></div>
+        <p class="slots-label">Libres hoy</p>
+        <div class="slots"><button class="slot">18:00</button><button class="slot">23:00</button></div>
+      </div>
+    </article>
+
+    <article class="tcard">
+      <div class="tcard-photo" style="background-image:url('../../../../public/hero-bg.webp');background-position:50% 55%"></div>
+      <div class="tcard-body">
+        <div class="tcard-top"><h2>Club Social El Oeste</h2></div>
+        <p class="addr"><svg class="icon sm"><use href="#i-pin"/></svg>Mitre 455 · <span class="tnum">a 3,1 km</span></p>
+        <div class="formats"><span class="fmt">Fútbol 5</span><span class="fmt">Fútbol 8</span><span class="fmt">Fútbol 11</span></div>
+        <p class="noslots">Hoy no le quedan turnos. Mirá otros días en su página.</p>
+      </div>
+    </article>
+
+    <article class="tcard">
+      <div class="tcard-photo" style="background-image:url('../../../../public/bg-owner.webp');background-position:50% 50%"></div>
+      <div class="tcard-body">
+        <div class="tcard-top"><h2>Las Rosas Fútbol</h2><span class="price">desde <b class="tnum">$34.000</b></span></div>
+        <p class="addr"><svg class="icon sm"><use href="#i-pin"/></svg>Ruta 5 km 66 · <span class="tnum">a 4,8 km</span></p>
+        <div class="formats"><span class="fmt">Fútbol 5</span><span class="fmt">Fútbol 6</span></div>
+        <p class="slots-label">Libres hoy</p>
+        <div class="slots"><button class="slot">20:00</button><button class="slot">21:00</button><button class="slot">23:00</button></div>
+      </div>
+    </article>
+
+    <article class="tcard">
+      <div class="tcard-photo" style="background-image:url('../../../../public/bg-hero-desktop.webp');background-position:30% 60%"></div>
+      <div class="tcard-body">
+        <div class="tcard-top"><h2>Tercer Tiempo</h2></div>
+        <p class="addr"><svg class="icon sm"><use href="#i-pin"/></svg>Lavalle 2010 · <span class="tnum">a 5,0 km</span></p>
+        <div class="formats"><span class="fmt">Fútbol 5</span></div>
+        <p class="slots-label">Libres hoy</p>
+        <div class="slots"><button class="slot">19:00</button><button class="slot">00:00</button></div>
+      </div>
+    </article>
+
+    <article class="tcard">
+      <div class="tcard-photo" style="background-image:url('../../../../public/bg-hero-2.webp');background-position:50% 30%"></div>
+      <div class="tcard-body">
+        <div class="tcard-top"><h2>Potrero Norte</h2><span class="price">desde <b class="tnum">$30.000</b></span></div>
+        <p class="addr"><svg class="icon sm"><use href="#i-pin"/></svg>Belgrano 300 · <span class="tnum">a 6,3 km</span></p>
+        <div class="formats"><span class="fmt">Fútbol 5</span><span class="fmt">Fútbol 7</span></div>
+        <p class="slots-label">Libres hoy</p>
+        <div class="slots"><button class="slot">18:00</button><button class="slot">19:00</button><button class="slot">21:00</button><button class="slot more">+2</button></div>
+      </div>
+    </article>
+  </div>
+</main>
+
+<div class="mock-tag">MOCKUP · complejos, precios y horarios de ejemplo</div>
+
+<nav class="tabbar" aria-label="Navegación">
+  <a href="#" aria-current="page"><svg class="icon"><use href="#i-compass"/></svg>Explorar</a>
+  <a href="#"><svg class="icon"><use href="#i-cal"/></svg>Reservas</a>
+  <a href="#"><svg class="icon"><use href="#i-user"/></svg>Cuenta</a>
+</nav>
+
+<div class="sheet-backdrop" onclick="document.documentElement.dataset.sheet='closed'"></div>
+<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-t">
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <h2 id="sheet-t">Elegí la localidad</h2>
+    <button class="icon-btn" aria-label="Cerrar" onclick="document.documentElement.dataset.sheet='closed'"><svg class="icon"><use href="#i-x"/></svg></button>
+  </div>
+  <p class="hint">Te mostramos Luján porque es la más cercana a tu conexión.</p>
+  <div class="input"><svg class="icon"><use href="#i-search"/></svg><span>Buscá tu localidad</span></div>
+  <button class="opt locate"><svg class="icon"><use href="#i-locate"/></svg>Usar mi ubicación exacta</button>
+  <button class="opt" role="radio" aria-checked="true"><b>Luján</b><span class="n tnum">6 complejos</span><svg class="icon check"><use href="#i-check"/></svg></button>
+  <button class="opt" role="radio" aria-checked="false">General Rodríguez<span class="n tnum">3 complejos</span></button>
+  <button class="opt" role="radio" aria-checked="false">Mercedes<span class="n tnum">2 complejos</span></button>
+  <button class="opt" role="radio" aria-checked="false">Moreno<span class="n tnum">4 complejos</span></button>
+</div>
+
+</body>
+</html>

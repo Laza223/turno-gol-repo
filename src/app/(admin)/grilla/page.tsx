@@ -11,6 +11,8 @@ import { safeDateParam } from '@/shared/validation/calendar-date'
 import type { GridBooking } from '@/components/booking/BookingGrid'
 import { GrillaView } from './GrillaView'
 import { GrillaTabs } from './GrillaTabs'
+import { DayWeekToggle, GrillaViewSwitch } from './GrillaViewSwitch'
+import { addDays, mondayOf } from '@/lib/booking/grid-cells'
 import { trackStoryExportAction } from './actions'
 import { SettingsAccessNotice } from '@/app/(admin)/settings/SettingsAccessNotice'
 import {
@@ -36,12 +38,12 @@ import {
   writeOffBookingAction,
 } from '@/app/(admin)/caja/deudas/actions'
 import { listCanteenForBookingAction, sellTicketAction } from '@/app/(admin)/caja/cantina/actions'
-import { listDayGridBookings } from '@/app/(admin)/reservas/queries'
+import { listCourtRangeGridBookings, listDayGridBookings } from '@/app/(admin)/reservas/queries'
 import { artTodayStr } from '@/shared/dates/art'
 import { DEFAULT_CANCELLATION_HOURS_BEFORE } from '@/shared/constants'
 
 export default async function GrillaPage(props: {
-  searchParams: Promise<{ date?: string; notice?: string }>
+  searchParams: Promise<{ date?: string; notice?: string; view?: string; court?: string }>
 }) {
   const searchParams = await props.searchParams
   // `/onboarding` y no `/login` en el rechazo: es el destino que esta página ya
@@ -58,13 +60,32 @@ export default async function GrillaPage(props: {
   // aparece otro motivo de rebote con aviso, se suma acá.
   const showAdminOnlyNotice = searchParams.notice === SETTINGS_ADMIN_ONLY_NOTICE
 
-  const { courts, dayBookings } = await withTenantContext(tenant.id, async (tx) => {
-    const [courtList, bookingRows] = await Promise.all([
-      listCourts(tenant.id, tx),
-      listDayGridBookings(tenant.id, dateStr, tx),
-    ])
-    return { courts: courtList, dayBookings: bookingRows }
+  // Vista por semana (`?view=week&court=<id>`): UNA cancha, siete días. La cancha
+  // sale del link si es una de las del complejo; si no, la primera en línea.
+  const wantsWeek = searchParams.view === 'week'
+  const weekMonday = mondayOf(dateStr)
+
+  const { courts, dayBookings, weekCourt } = await withTenantContext(tenant.id, async (tx) => {
+    const courtList = await listCourts(tenant.id, tx)
+    const weekCourt = wantsWeek
+      ? (courtList.find((c) => c.id === searchParams.court) ??
+        courtList.find((c) => c.status === 'online') ??
+        courtList[0])
+      : undefined
+    const bookingRows = weekCourt
+      ? await listCourtRangeGridBookings(
+          tenant.id,
+          weekCourt.id,
+          weekMonday,
+          addDays(weekMonday, 6),
+          tx,
+        )
+      : await listDayGridBookings(tenant.id, dateStr, tx)
+    return { courts: courtList, dayBookings: bookingRows, weekCourt }
   })
+  // Cancha que ofrece el selector aunque se esté mirando el día (para pasar a la semana).
+  const switchCourtId =
+    weekCourt?.id ?? courts.find((c) => c.status === 'online')?.id ?? courts[0]?.id
 
   // El loader compartido con Hoy trae también los instantes físicos del turno:
   // desde el paso 3 (docs/decisions/2026-09-24-navegacion-panel.md) la Grilla
@@ -83,8 +104,22 @@ export default async function GrillaPage(props: {
         description={showAdminOnlyNotice ? SETTINGS_ADMIN_ONLY_NOTICE_DESCRIPTION : undefined}
       />
       <GrillaTabs active="/grilla" />
+      {switchCourtId && (
+        <GrillaViewSwitch
+          view={weekCourt ? 'week' : 'day'}
+          date={dateStr}
+          courtId={switchCourtId}
+          courts={courts.map((c) => ({ id: c.id, name: c.name }))}
+        />
+      )}
       <GrillaView
-        key={dateStr}
+        key={weekCourt ? `week:${weekCourt.id}:${weekMonday}` : dateStr}
+        week={weekCourt ? { court: weekCourt } : undefined}
+        viewToggle={
+          switchCourtId ? (
+            <DayWeekToggle view="day" date={dateStr} courtId={switchCourtId} />
+          ) : undefined
+        }
         courts={courts}
         initialBookings={initialBookings}
         date={dateStr}

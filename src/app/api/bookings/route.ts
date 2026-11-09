@@ -29,6 +29,13 @@ export const GET = withTenant(
   async (req: NextRequest, user, tx) => {
     const { searchParams } = new URL(req.url)
     const dateParam = searchParams.get('date') ?? artTodayStr()
+    // `date_to` (opcional) vuelve la consulta un rango [date, date_to]: la vista
+    // por semana de la grilla. Se acota a 7 días y se valida el formato.
+    const dateToParam = searchParams.get('date_to')
+    const isIsoDate = (s: string) => /^\d{4}-\d{2}-\d{2}$/.test(s)
+    if (dateToParam && !(isIsoDate(dateToParam) && isIsoDate(dateParam))) {
+      return NextResponse.json({ error: 'Fecha inválida' }, { status: 400 })
+    }
     const courtId = searchParams.get('court_id')
     const status = searchParams.get('status')
     const cursorParam = searchParams.get('cursor')
@@ -39,7 +46,9 @@ export const GET = withTenant(
 
     const filters = [
       eq(bookings.tenantId, tenantId),
-      sql`${bookings.date} = ${dateParam}::date`,
+      dateToParam
+        ? sql`${bookings.date} BETWEEN ${dateParam}::date AND LEAST(${dateToParam}::date, ${dateParam}::date + 6)`
+        : sql`${bookings.date} = ${dateParam}::date`,
       ...(courtId ? [eq(bookings.courtId, courtId)] : []),
       ...(status ? [sql`${bookings.status} = ${status}::booking_status`] : []),
     ]

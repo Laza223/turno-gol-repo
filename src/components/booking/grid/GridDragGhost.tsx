@@ -6,7 +6,14 @@ import type { DragState } from '@/hooks/use-grid-drag'
  * es y, si está sobre un hueco, a dónde va. `pointer-events-none` es lo que
  * deja a `elementFromPoint` ver la celda de abajo en vez de a este cartel.
  */
-export function GridDragGhost({ drag, courtName }: { drag: DragState; courtName: string | null }) {
+export function GridDragGhost({
+  drag,
+  targetLabel,
+}: {
+  drag: DragState
+  /** A dónde cae, ya armado por la vista (cancha y hora, o día y hora). */
+  targetLabel: string | null
+}) {
   const { booking, target } = drag
   const who =
     booking.guestName ??
@@ -30,11 +37,7 @@ export function GridDragGhost({ drag, courtName }: { drag: DragState; courtName:
           target && !target.valid ? 'text-red-700 dark:text-red-300' : 'text-muted-foreground',
         )}
       >
-        {target
-          ? target.valid
-            ? `${courtName} · ${target.slotTime}`
-            : 'Ahí no se puede'
-          : 'Soltalo en un hueco libre'}
+        {target ? (target.valid ? targetLabel : 'Ahí no se puede') : 'Soltalo en un hueco libre'}
       </p>
     </div>
   )

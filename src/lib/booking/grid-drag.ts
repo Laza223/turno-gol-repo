@@ -43,10 +43,16 @@ export function slotRange(
 export function resolveDropTarget(
   pos: { col: number; row: number },
   ctx: {
-    courts: CourtRow[]
+    /**
+     * Las columnas de la grilla. En la vista por día son las canchas; en la de
+     * semana son los días (`id` = la fecha), y `status: 'offline'` marca el
+     * día cerrado.
+     */
+    courts: Pick<CourtRow, 'id' | 'status'>[]
     visibleSlots: string[]
     cells: Map<string, CellState>
-    isSlotPast: (slotTime: string) => boolean
+    /** ¿La celda no se puede usar? (ya pasó, o el día no abre a esa hora). */
+    isSlotPast: (slotTime: string, columnId: string) => boolean
   },
 ): DragTarget | null {
   const court = ctx.courts[pos.col]
@@ -58,7 +64,7 @@ export function resolveDropTarget(
     courtIndex: pos.col,
     row: pos.row,
     slotTime,
-    valid: free && court.status === 'online' && !ctx.isSlotPast(slotTime),
+    valid: free && court.status === 'online' && !ctx.isSlotPast(slotTime, court.id),
   }
 }
 

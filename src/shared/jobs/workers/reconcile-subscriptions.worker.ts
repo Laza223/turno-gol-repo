@@ -91,7 +91,7 @@ type Candidate = SubSnapshotRow & {
 /** Núcleo: los dos estados donde vive un complejo que pagó y no se aplicó. */
 const CORE_STATUSES: readonly SubscriptionStatus[] = ['trialing', 'past_due']
 /** Rescate post-terminal. Ver `rescuePostTerminalSubscriptions`. */
-const POST_TERMINAL_STATUSES: readonly SubscriptionStatus[] = ['suspended', 'blocked']
+const POST_TERMINAL_STATUSES: readonly SubscriptionStatus[] = ['suspended', 'blocked', 'free']
 /** Ventana del rescate post-terminal: un `blocked` viejo no es un aviso perdido. */
 const POST_TERMINAL_WINDOW_DAYS = 30
 /**
@@ -493,7 +493,11 @@ async function reconcileOne(
     } else if (fresh.status === 'past_due') {
       await transitionPastDueToActive(cand.tenantId, decision.paidAt, decision.periodEnd, tx)
       template = 'subscription_renewed'
-    } else if (fresh.status === 'suspended' || fresh.status === 'blocked') {
+    } else if (
+      fresh.status === 'suspended' ||
+      fresh.status === 'blocked' ||
+      fresh.status === 'free'
+    ) {
       await transitionToActiveFromAny(cand.tenantId, decision.periodStart, decision.periodEnd, tx)
       template = 'subscription_renewed'
     } else {

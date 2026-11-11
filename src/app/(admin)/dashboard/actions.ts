@@ -7,6 +7,8 @@ import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { tenants } from '@/shared/db/schema'
 import { track } from '@/shared/observability/breadcrumbs'
+import { resumeFreeOnlineBooking } from '@/modules/bookings/free-online-pause'
+import type { ActionResult } from '@/shared/types/action-result'
 
 export type MarkSharedResult = { success: true } | { success: false; error: string }
 
@@ -28,7 +30,7 @@ export type MarkSharedResult = { success: true } | { success: false; error: stri
 export async function markPublicLinkSharedAction(
   channel: 'whatsapp' | 'copy' = 'copy',
 ): Promise<MarkSharedResult> {
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -56,7 +58,7 @@ export type MarkTourSeenResult = { success: true } | { success: false; error: st
 
 /** Persiste `admin_tour_seen_at`: el tour de coachmarks del dashboard no vuelve a mostrarse. */
 export async function markTourSeenAction(): Promise<MarkTourSeenResult> {
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -92,7 +94,7 @@ export type MarkChecklistDismissedResult = { success: true } | { success: false;
  * complejo.
  */
 export async function markChecklistDismissedAction(): Promise<MarkChecklistDismissedResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -128,7 +130,7 @@ export type MarkReferralBannerDismissedResult =
  * para todo el complejo.
  */
 export async function markReferralBannerDismissedAction(): Promise<MarkReferralBannerDismissedResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -150,5 +152,25 @@ export async function markReferralBannerDismissedAction(): Promise<MarkReferralB
   })
 
   revalidatePath('/dashboard')
+  return { success: true }
+}
+
+/**
+ * Plan gratis en pausa (freemium, decisión 3): el dueño avisa que ya marcó sus
+ * ocupados en la grilla y la reserva online vuelve a abrirse. Solo el dueño: en
+ * gratis el encargado no entra.
+ */
+export async function resumeOnlineBookingAction(): Promise<ActionResult> {
+  const auth = await requireAdminStaffAction({ allowFree: true })
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  await withTenantContext(tenant.id, (tx) => resumeFreeOnlineBooking(tenant.id, tx))
+
+  revalidatePath('/dashboard')
+  revalidatePath('/grilla')
   return { success: true }
 }

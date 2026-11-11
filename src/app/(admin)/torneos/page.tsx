@@ -20,7 +20,7 @@ export default async function TorneosPage() {
   // según `role` para no mandarlo a un rebote sin explicación — y el rol lo
   // devuelve el guard, sin una segunda lectura de tenant_staff_members.
   const auth = await requireOperatorStaff({ allowReadOnly: true })
-  if (!auth.ok) redirect('/login')
+  if (!auth.ok) redirect(auth.reason === 'plan' ? '/reactivar' : '/login')
   const { tenant, role } = auth
 
   // La ruta también está detrás del flag: esconder el item del menú no alcanza,

@@ -27,12 +27,12 @@ const POLICIES: Partial<Record<TemplateName, TemplatePolicy>> = {
   },
   trial_ending: {
     title: 'Tu prueba está por terminar',
-    body: 'Activá tu plan para seguir usando TurnoGol sin cortes.',
+    body: 'Activá el plan para seguir anotando tus turnos, fijos y caja.',
     plan: true,
   },
   trial_expired: {
     title: 'Terminó tu prueba',
-    body: 'Activá tu plan para seguir usando TurnoGol.',
+    body: 'Pasaste al plan gratis. Tus jugadores te siguen reservando online.',
     plan: true,
   },
   dunning_payment_failed: {
@@ -45,9 +45,9 @@ const POLICIES: Partial<Record<TemplateName, TemplatePolicy>> = {
     body: 'Regularizá el pago para volver a operar.',
     plan: true,
   },
-  subscription_blocked: {
-    title: 'Tu cuenta está bloqueada',
-    body: 'Regularizá el pago para recuperar el acceso. Tus datos siguen guardados.',
+  plan_downgraded_free: {
+    title: 'Tu complejo pasó al plan gratis',
+    body: 'Tus jugadores te siguen reservando online. Para anotar la noche, activá el plan.',
     plan: true,
   },
   tenant_deletion_warning: {

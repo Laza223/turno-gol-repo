@@ -131,6 +131,7 @@ export function GrillaView({
         slotPanelActions={gridProps.slotPanelActions}
         renderCanteenDialog={renderCanteenDialog}
         renderChargeModal={renderChargeModal}
+        freePlan={gridProps.freePlan}
       />
     )
   }

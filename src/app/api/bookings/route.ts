@@ -5,6 +5,7 @@ import { bookings, courts, players } from '@/shared/db/schema'
 import { sumBookingChargesByBooking } from '@/app/(admin)/reservas/queries'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { artTodayStr } from '@/shared/dates/art'
+import { isOnlineBooking } from '@/lib/booking/free-plan-mask'
 import type { NextRequest } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -100,7 +101,40 @@ export const GET = withTenant(
       tx,
     )
 
+    // Plan gratis (freemium, decisión 4): el enmascarado de la grilla se aplica
+    // también acá, en el servidor. Si solo lo hiciera el cliente, un fetch a
+    // este endpoint devolvería nombres, teléfonos y plata de lo que la grilla
+    // muestra como "Ocupado". Mismo criterio que `maskGridBookingForFreePlan`.
+    const tenantRows = (await tx.execute(
+      sql`SELECT status::text AS status FROM tenants WHERE id = ${tenantId} LIMIT 1`,
+    )) as unknown as Array<{ status: string }>
+    const freePlan = tenantRows[0]?.status === 'free'
+
     const data = pageRows.map((r) => {
+      const row = toApiRow(r)
+      if (!freePlan) return row
+      const online = isOnlineBooking({
+        type: r.booking.type,
+        createdByStaff: r.booking.createdByStaff,
+      })
+      return {
+        ...row,
+        total_paid: 0,
+        pending: 0,
+        written_off: 0,
+        player_id: online ? row.player_id : null,
+        player: online ? row.player : null,
+        guest_name: online || r.booking.type === 'block' ? row.guest_name : 'Ocupado',
+        guest_phone: online ? row.guest_phone : null,
+        price_snapshot: online ? row.price_snapshot : 0,
+        deposit_amount: 0,
+        deposit_status: 'not_required' as const,
+        payment_method: null,
+        notes_internal: null,
+      }
+    })
+
+    function toApiRow(r: (typeof pageRows)[number]) {
       const { totalPaid, pending, writtenOff } = summarizeBookingCharges({
         priceSnapshot: r.booking.priceSnapshot,
         depositAmount: r.booking.depositAmount,
@@ -146,7 +180,7 @@ export const GET = withTenant(
         starts_at: r.booking.startsAt,
         ends_at: r.booking.endsAt,
       }
-    })
+    }
 
     return NextResponse.json({
       data,
@@ -161,5 +195,5 @@ export const GET = withTenant(
   // endpoints: la grilla lo llama cada 30 segundos por pestaña abierta, así que
   // era un viaje a Upstash con una conexión del pool tomada, en loop y por cada
   // tablet del mostrador.
-  { rateLimit: 'adminCrud' },
+  { rateLimit: 'adminCrud', allowFree: true },
 )

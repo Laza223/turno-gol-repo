@@ -13,8 +13,6 @@ import {
 } from '@/modules/billing/billing.service'
 import { onPaymentApproved, onPaymentRejected } from '@/modules/billing/dunning.service'
 import {
-  CANCELED_BLOCKED_DELETION_DAYS,
-  CHURNED_DELETION_DAYS,
   transitionTrialingToActive,
   transitionToCanceled,
 } from '@/modules/billing/lifecycle.service'
@@ -283,7 +281,7 @@ describe('lifecycle FSM', () => {
     expect(await fetchSubStatus(tenantId)).toBe('active')
   })
 
-  it('canceled → blocked sweep when period_end < NOW', async () => {
+  it('canceled → free sweep when period_end < NOW (sin borrado agendado)', async () => {
     const sql = getSql()
     const { tenantId } = await seedActiveTenant(sql)
 
@@ -301,7 +299,8 @@ describe('lifecycle FSM', () => {
 
     await runDunningSweep()
 
-    expect(await fetchTenantStatus(sql, tenantId)).toBe('blocked')
+    // Freemium (2026-11-08): la baja voluntaria termina en el plan gratis, no en blocked.
+    expect(await fetchTenantStatus(sql, tenantId)).toBe('free')
     const rows = await asApp(
       tenantId,
       (tx) =>
@@ -309,14 +308,14 @@ describe('lifecycle FSM', () => {
         SELECT scheduled_deletion_at FROM tenant_subscriptions WHERE tenant_id = ${tenantId}
       `,
     )
-    expect(rows[0]!.scheduled_deletion_at).not.toBeNull()
+    expect(rows[0]!.scheduled_deletion_at).toBeNull()
   })
 })
 
-// ─── Test A: 3 webhook payment.rejected → blocked → churned ────────────────
+// ─── Test A: mora → past_due → suspended → free (freemium 2026-11-08) ──────
 
-describe('Test A — dunning escalation drives blocked → churned', () => {
-  it('rejected → past_due; sweep at d7 → suspended; d14 → blocked; d90 → churned', async () => {
+describe('Test A — la mora termina en el plan gratis, no en blocked/churned', () => {
+  it('rejected → past_due; sweep at d7 → suspended; d14 → free; d90 sigue free sin borrado', async () => {
     const sql = getSql()
     const { tenantId } = await seedActiveTenant(sql)
 
@@ -341,31 +340,26 @@ describe('Test A — dunning escalation drives blocked → churned', () => {
     await runDunningSweep()
     expect(await fetchTenantStatus(sql, tenantId)).toBe('suspended')
 
-    // Force 14d + sweep → blocked
+    // Force 14d + sweep → free
     await sql`
       UPDATE tenant_subscriptions SET dunning_started_at = NOW() - INTERVAL '14 days'
       WHERE tenant_id = ${tenantId}
     `
     await runDunningSweep()
-    expect(await fetchTenantStatus(sql, tenantId)).toBe('blocked')
+    expect(await fetchTenantStatus(sql, tenantId)).toBe('free')
 
-    // Force 90d + sweep → churned, scheduled_deletion_at ≈ NOW + CHURNED_DELETION_DAYS
+    // 90d + sweep: el gratis no churnea ni se agenda para borrar por falta de pago.
     await sql`
       UPDATE tenant_subscriptions SET dunning_started_at = NOW() - INTERVAL '90 days'
       WHERE tenant_id = ${tenantId}
     `
     await runDunningSweep()
-    expect(await fetchTenantStatus(sql, tenantId)).toBe('churned')
+    expect(await fetchTenantStatus(sql, tenantId)).toBe('free')
     // tenants es tabla GLOBAL sin RLS: se queda en el pool de siempre.
     const rows = await sql<{ scheduled_deletion_at: Date | string | null }[]>`
       SELECT scheduled_deletion_at FROM tenants WHERE id = ${tenantId}
     `
-    const delAtRaw = rows[0]!.scheduled_deletion_at
-    expect(delAtRaw).not.toBeNull()
-    const delAt = new Date(delAtRaw as unknown as string)
-    const inDays = (delAt.getTime() - Date.now()) / 86_400_000
-    expect(inDays).toBeGreaterThan(CHURNED_DELETION_DAYS - 0.5)
-    expect(inDays).toBeLessThan(CHURNED_DELETION_DAYS + 0.5)
+    expect(rows[0]!.scheduled_deletion_at).toBeNull()
   })
 })
 
@@ -516,7 +510,7 @@ describe('Test B2 — changeBilledCourts en TRIAL: se aplica en el acto', () => 
 // ─── Test C: voluntary cancel happy path ───────────────────────────────────
 
 describe('Test C — voluntary cancel', () => {
-  it('cancel → preapproval canceled, period_end intact; sweep at end → blocked + CANCELED_BLOCKED_DELETION_DAYS', async () => {
+  it('cancel → preapproval canceled, period_end intact; sweep at end → free, sin borrado agendado (freemium)', async () => {
     const sql = getSql()
     const { tenantId } = await seedActiveTenant(sql, {
       currentPeriodEnd: new Date(Date.now() + 86_400_000), // tomorrow
@@ -558,17 +552,13 @@ describe('Test C — voluntary cancel', () => {
     `
     await runDunningSweep()
 
-    expect(await fetchTenantStatus(sql, tenantId)).toBe('blocked')
+    expect(await fetchTenantStatus(sql, tenantId)).toBe('free')
+    expect(await fetchSubStatus(tenantId)).toBe('free')
     // tenants es tabla GLOBAL sin RLS: se queda en el pool de siempre.
     const finalRows = await sql<{ scheduled_deletion_at: Date | string | null }[]>`
       SELECT scheduled_deletion_at FROM tenants WHERE id = ${tenantId}
     `
-    const delAtRaw = finalRows[0]!.scheduled_deletion_at
-    expect(delAtRaw).not.toBeNull()
-    const delAt = new Date(delAtRaw as unknown as string)
-    const inDays = (delAt.getTime() - Date.now()) / 86_400_000
-    expect(inDays).toBeGreaterThan(CANCELED_BLOCKED_DELETION_DAYS - 1)
-    expect(inDays).toBeLessThan(CANCELED_BLOCKED_DELETION_DAYS + 1)
+    expect(finalRows[0]!.scheduled_deletion_at).toBeNull()
   })
 })
 

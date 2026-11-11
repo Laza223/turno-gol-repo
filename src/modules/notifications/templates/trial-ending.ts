@@ -17,7 +17,7 @@ export function renderTrialEnding(data: TrialEndingData): EmailContent {
   <h2 style="color:#d97706">Tu prueba gratuita está por vencer</h2>
   <p>Hola ${escapeHtml(data.ownerName)},</p>
   <p>Tu período de prueba de <strong>${escapeHtml(data.tenantName)}</strong> en TurnoGol vence en <strong>${data.daysLeft} día${data.daysLeft === 1 ? '' : 's'}</strong>.</p>
-  <p>Para seguir usando TurnoGol sin interrupciones, activá tu suscripción desde el panel:</p>
+  <p>Si no activás el plan, el complejo pasa al plan gratis. Tus jugadores te siguen reservando online, hasta 20 turnos por mes, pero dejás de poder anotar tus turnos, los fijos y la caja.</p>
   <p style="text-align:center;margin:24px 0">
     <a href="${appLink('/settings/facturacion')}" style="background:#0369a1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Activar suscripción →</a>
   </p>
@@ -25,6 +25,6 @@ export function renderTrialEnding(data: TrialEndingData): EmailContent {
   <p style="color:#64748b;font-size:14px">— El equipo de TurnoGol</p>
 </body>
 </html>`
-  const text = `Tu prueba gratuita está por vencer\n\nHola ${data.ownerName},\n\nTu período de prueba de ${data.tenantName} vence en ${data.daysLeft} día${data.daysLeft === 1 ? '' : 's'}.\n\nActivá tu suscripción en: ${appLink('/settings/facturacion')}\n\n— El equipo de TurnoGol`
+  const text = `Tu prueba gratuita está por vencer\n\nHola ${data.ownerName},\n\nTu período de prueba de ${data.tenantName} vence en ${data.daysLeft} día${data.daysLeft === 1 ? '' : 's'}.\n\nSi no activás el plan, pasás al plan gratis y dejás de poder anotar tus turnos, los fijos y la caja. Activalo en: ${appLink('/settings/facturacion')}\n\n— El equipo de TurnoGol`
   return { subject, html, text }
 }

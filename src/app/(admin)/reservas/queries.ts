@@ -1,4 +1,5 @@
 import { and, eq, sql, type SQL } from 'drizzle-orm'
+import { isOnlineBooking, maskGridBookingForFreePlan } from '@/lib/booking/free-plan-mask'
 import type { DbTx } from '@/shared/db/client'
 import { bookings, players } from '@/shared/db/schema'
 import {
@@ -104,6 +105,16 @@ export type ReservaListFilters = {
   q?: string
   /** H110 — filtra por cancha (courts.id). La page valida contra las canchas reales del tenant antes de llegar acá. */
   courtId?: string
+  /**
+   * Plan gratis (freemium): solo las reservas online. Lo que anotó el staff y los
+   * fijos se ven como "Ocupado" en la grilla, pero no se listan con su detalle.
+   */
+  onlineOnly?: boolean
+}
+
+function onlineOnlyCond(onlineOnly: boolean | undefined): SQL {
+  if (!onlineOnly) return sql``
+  return sql`AND b.type = 'spontaneous' AND b.created_by_staff IS NULL`
 }
 
 function scopeCond(scope: ReservaScope, now: Date): SQL {
@@ -250,6 +261,7 @@ export async function listTenantBookings(
       ${statusCond(filters.status)}
       ${searchCond(filters.q)}
       ${courtCond(filters.courtId)}
+      ${onlineOnlyCond(filters.onlineOnly)}
     ${orderBy}
     LIMIT ${RESERVAS_PAGE_SIZE + 1} OFFSET ${safePage * RESERVAS_PAGE_SIZE}
   `)
@@ -283,6 +295,7 @@ export async function countTenantBookingsByStatus(
       ${scopeCond(filters.scope, filters.now)}
       ${searchCond(filters.q)}
       ${courtCond(filters.courtId)}
+      ${onlineOnlyCond(filters.onlineOnly)}
     GROUP BY 1
   `)
   const counts: Record<string, number> = {}
@@ -293,6 +306,8 @@ export async function countTenantBookingsByStatus(
 }
 
 export type ReservaDetail = ReservaListRow & {
+  /** Reserva online del jugador (`type='spontaneous'` sin `created_by_staff`). */
+  isOnline?: boolean
   notesPlayer: string | null
   notesInternal: string | null
   playerPhone: string | null
@@ -353,6 +368,7 @@ export async function getBookingDetail(
            COALESCE((t.settings->'cancellation_policy'->>'hours_before')::int, ${DEFAULT_CANCELLATION_HOURS_BEFORE}::int) AS "cancellationPolicyHours",
            COALESCE((t.settings->>'late_cancel_hours')::int, 0) AS "lateCancelHours",
            b.abonado_id AS "abonadoId",
+           (b.type = 'spontaneous' AND b.created_by_staff IS NULL) AS "isOnline",
            b.starts_at AS "startsAt", b.ends_at AS "endsAt", b.updated_at AS "updatedAt",
            c.name AS "courtName",
            CASE WHEN p.id IS NULL THEN NULL ELSE (p.first_name || ' ' || p.last_name) END AS "playerName",
@@ -500,6 +516,15 @@ export type DayGridBooking = GridBooking & {
   endsAt: Date
 }
 
+export type GridBookingsOptions = {
+  /**
+   * Plan gratis (freemium, decisión 4): lo que anotó el staff y los fijos se ven
+   * como "Ocupado", sin nombre ni precio; las reservas online, con el nombre del
+   * jugador. Sin cobros: la caja es del plan pago, así que no hay saldo pendiente.
+   */
+  freePlan?: boolean
+}
+
 /**
  * Núcleo compartido de `listDayGridBookings`/`listUnpaidGridBookingsBefore`:
  * el SELECT de turnos + el saldo (misma `sumBookingChargesByBooking` +
@@ -510,6 +535,7 @@ async function selectGridBookingsWithBalance(
   tenantId: string,
   extraWhere: SQL,
   tx: DbTx,
+  opts: GridBookingsOptions = {},
 ): Promise<DayGridBooking[]> {
   const rows = await tx
     .select({
@@ -532,6 +558,7 @@ async function selectGridBookingsWithBalance(
       createdAt: bookings.createdAt,
       playerFirstName: players.firstName,
       playerLastName: players.lastName,
+      createdByStaff: bookings.createdByStaff,
     })
     .from(bookings)
     .leftJoin(players, eq(bookings.playerId, players.id))
@@ -545,41 +572,51 @@ async function selectGridBookingsWithBalance(
     tx,
   )
 
-  return rows.map((r) => {
-    const sum = charges.get(r.id)
-    const { totalPaid, pending, writtenOff } = summarizeBookingCharges({
-      priceSnapshot: r.priceSnapshot,
-      depositAmount: r.depositAmount,
-      depositStatus: r.depositStatus,
-      chargesTotal: sum?.total ?? 0,
-      writtenOff: sum?.writtenOff ?? 0,
+  return rows
+    .map((r) => {
+      const sum = charges.get(r.id)
+      const { totalPaid, pending, writtenOff } = summarizeBookingCharges({
+        priceSnapshot: r.priceSnapshot,
+        depositAmount: r.depositAmount,
+        depositStatus: r.depositStatus,
+        chargesTotal: sum?.total ?? 0,
+        writtenOff: sum?.writtenOff ?? 0,
+      })
+      return {
+        id: r.id,
+        courtId: r.courtId,
+        date: (r.date as Date).toISOString().slice(0, 10),
+        timeStart: r.timeStart.slice(0, 5),
+        timeEnd: r.timeEnd.slice(0, 5),
+        startsAt: r.startsAt,
+        endsAt: r.endsAt,
+        status: r.status as BookingStatus,
+        type: r.type as BookingType,
+        tournamentId: r.tournamentId ?? null,
+        guestName: r.guestName ?? null,
+        playerFirstName: r.playerFirstName ?? null,
+        playerLastName: r.playerLastName ?? null,
+        priceSnapshot: r.priceSnapshot,
+        paymentMethod: r.paymentMethod as PaymentMethodValue | null,
+        depositStatus: r.depositStatus as DepositStatus,
+        depositAmount: r.depositAmount,
+        createdAt: r.createdAt,
+        totalPaid,
+        pending,
+        writtenOff,
+        team1Paid: sum?.team1 ?? 0,
+        team2Paid: sum?.team2 ?? 0,
+      }
     })
-    return {
-      id: r.id,
-      courtId: r.courtId,
-      date: (r.date as Date).toISOString().slice(0, 10),
-      timeStart: r.timeStart.slice(0, 5),
-      timeEnd: r.timeEnd.slice(0, 5),
-      startsAt: r.startsAt,
-      endsAt: r.endsAt,
-      status: r.status as BookingStatus,
-      type: r.type as BookingType,
-      tournamentId: r.tournamentId ?? null,
-      guestName: r.guestName ?? null,
-      playerFirstName: r.playerFirstName ?? null,
-      playerLastName: r.playerLastName ?? null,
-      priceSnapshot: r.priceSnapshot,
-      paymentMethod: r.paymentMethod as PaymentMethodValue | null,
-      depositStatus: r.depositStatus as DepositStatus,
-      depositAmount: r.depositAmount,
-      createdAt: r.createdAt,
-      totalPaid,
-      pending,
-      writtenOff,
-      team1Paid: sum?.team1 ?? 0,
-      team2Paid: sum?.team2 ?? 0,
-    }
-  })
+    .map((row, i) =>
+      opts.freePlan
+        ? {
+            ...maskGridBookingForFreePlan(row, isOnlineBooking(rows[i]!)),
+            team1Paid: 0,
+            team2Paid: 0,
+          }
+        : row,
+    )
 }
 
 /**
@@ -596,11 +633,13 @@ export async function listDayGridBookings(
   tenantId: string,
   date: string,
   tx: DbTx,
+  opts: GridBookingsOptions = {},
 ): Promise<DayGridBooking[]> {
   return selectGridBookingsWithBalance(
     tenantId,
     sql`${bookings.date} = ${date}::date AND ${bookings.status} IN ('confirmed', 'pending_payment', 'completed', 'no_show')`,
     tx,
+    opts,
   )
 }
 
@@ -615,11 +654,13 @@ export async function listCourtRangeGridBookings(
   from: string,
   to: string,
   tx: DbTx,
+  opts: GridBookingsOptions = {},
 ): Promise<DayGridBooking[]> {
   return selectGridBookingsWithBalance(
     tenantId,
     sql`${bookings.courtId} = ${courtId}::uuid AND ${bookings.date} BETWEEN ${from}::date AND ${to}::date AND ${bookings.status} IN ('confirmed', 'pending_payment', 'completed', 'no_show')`,
     tx,
+    opts,
   )
 }
 

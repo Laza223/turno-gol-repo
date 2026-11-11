@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { isFreePlan } from '@/modules/tenants/tenant.lifecycle'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import {
   SETTINGS_ADMIN_ONLY_NOTICE,
@@ -48,8 +49,8 @@ export default async function GrillaPage(props: {
   const searchParams = await props.searchParams
   // `/onboarding` y no `/login` en el rechazo: es el destino que esta página ya
   // tenía para "sin complejo resuelto" y se preserva tal cual.
-  const auth = await requireOperatorStaff({ allowReadOnly: true })
-  if (!auth.ok) redirect('/onboarding')
+  const auth = await requireOperatorStaff({ allowReadOnly: true, allowFree: true })
+  if (!auth.ok) redirect(auth.reason === 'plan' ? '/reactivar' : '/onboarding')
   const { tenant } = auth
 
   const todayArt = artTodayStr()
@@ -60,6 +61,7 @@ export default async function GrillaPage(props: {
   // aparece otro motivo de rebote con aviso, se suma acá.
   const showAdminOnlyNotice = searchParams.notice === SETTINGS_ADMIN_ONLY_NOTICE
 
+  const freePlan = isFreePlan(tenant)
   // Vista por semana (`?view=week&court=<id>`): UNA cancha, siete días. La cancha
   // sale del link si es una de las del complejo; si no, la primera en línea.
   const wantsWeek = searchParams.view === 'week'
@@ -79,8 +81,9 @@ export default async function GrillaPage(props: {
           weekMonday,
           addDays(weekMonday, 6),
           tx,
+          { freePlan },
         )
-      : await listDayGridBookings(tenant.id, dateStr, tx)
+      : await listDayGridBookings(tenant.id, dateStr, tx, { freePlan })
     return { courts: courtList, dayBookings: bookingRows, weekCourt }
   })
   // Cancha que ofrece el selector aunque se esté mirando el día (para pasar a la semana).
@@ -134,6 +137,7 @@ export default async function GrillaPage(props: {
         action={createBookingAction}
         createAbonadoAction={createAbonadoAction}
         checkAvailabilityAction={checkSlotAvailabilityAction}
+        freePlan={freePlan}
         searchPlayersAction={searchBookingPlayersAction}
         slotPanelActions={{
           chargeDebtAction,
@@ -144,8 +148,9 @@ export default async function GrillaPage(props: {
           confirmDepositPaymentAction,
           markNoShowAction,
           revertNoShowAction,
-          listRescheduleSlotsAction,
-          rescheduleBookingAction,
+          // Plan gratis: mover un turno es del plan. Sin estas dos acciones la
+          // grilla no ofrece arrastrar ni reprogramar (el server lo rechaza igual).
+          ...(freePlan ? {} : { listRescheduleSlotsAction, rescheduleBookingAction }),
           cancelBookingAction,
           releaseBlockAction,
           editBookingAction,

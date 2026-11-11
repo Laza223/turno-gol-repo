@@ -40,7 +40,7 @@ export async function updateReservasPolicyAction(
   _prevState: PolicyActionResult,
   formData: FormData,
 ): Promise<PolicyActionResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 

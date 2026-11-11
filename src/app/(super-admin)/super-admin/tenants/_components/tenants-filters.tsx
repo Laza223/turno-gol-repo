@@ -17,6 +17,7 @@ const STATUS_LABELS: Record<TenantStatus, string> = {
   canceled: 'Cancelado',
   churned: 'Perdido',
   deleted: 'Eliminado',
+  free: 'Gratis',
 }
 
 /**

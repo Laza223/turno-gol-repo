@@ -1,7 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { AlertTriangle, XCircle } from 'lucide-react'
+import type { ActionResult } from '@/shared/types/action-result'
+import { FREE_ONLINE_BOOKINGS_PER_MONTH } from '@/shared/constants'
+import { ResumeOnlineButton } from './resume-online-button'
+import { AlertTriangle, Info, XCircle } from 'lucide-react'
 import type { StaffRole } from '@/modules/staff/roles'
 
 /**
@@ -13,12 +16,16 @@ import type { StaffRole } from '@/modules/staff/roles'
  * alto de un renglón de trabajo.
  */
 /**
- * Por qué el complejo está en solo lectura y hasta cuándo. Lo arma el layout
- * de (admin) desde `tenant_subscriptions`: `trial` = prueba vencida sin pago
- * (`dunning_started_at` vacío), `dunning` = mora. `until` es la fecha en que
- * pasa a bloqueado, solo para la prueba (ISO UTC).
+ * Por qué el complejo está en solo lectura y hasta cuándo. Desde el freemium
+ * (2026-11-08) el único origen es la mora: la prueba vencida baja al plan gratis.
  */
-export type ReadOnlyNotice = { origin: 'trial' | 'dunning'; until: string | null }
+export type ReadOnlyNotice = { origin: 'dunning'; until: string | null }
+
+/**
+ * Plan gratis: si llegó al tope de reservas online del mes o si la reserva
+ * online está en pausa por cancelaciones. Lo arma el layout de (admin).
+ */
+export type FreePlanNotice = { capReached: boolean; paused: boolean }
 
 interface StatusBannerProps {
   tenantStatus: string
@@ -27,6 +34,10 @@ interface StatusBannerProps {
   readOnly?: ReadOnlyNotice | null
   /** Rol del staff logueado: solo el dueño ve el botón de pagar. */
   staffRole?: StaffRole
+  /** Solo para `free`. */
+  freePlan?: FreePlanNotice | null
+  /** "Ya marqué mis ocupados" de la pausa del plan gratis (llega por prop). */
+  resumeOnlineAction?: () => Promise<ActionResult>
   /**
    * Override para Storybook/tests: por default lee `NEXT_PUBLIC_SERVICE_DEGRADED`
    * (deploy-playbook.md — toggle sin redeploy de código). Nadie en la app real
@@ -68,6 +79,8 @@ export function StatusBanner({
   periodEnd,
   readOnly,
   staffRole,
+  freePlan,
+  resumeOnlineAction,
   serviceDegraded = process.env.NEXT_PUBLIC_SERVICE_DEGRADED === 'true',
 }: StatusBannerProps) {
   // Priority 1: Service degraded
@@ -131,7 +144,6 @@ export function StatusBanner({
   // salida es `/reactivar`, que es solo del dueño: el encargado lee a quién
   // avisarle en lugar de un botón que lo rebotaría.
   if (tenantStatus === 'suspended') {
-    const isTrial = readOnly?.origin === 'trial'
     return (
       <div
         role="status"
@@ -139,8 +151,8 @@ export function StatusBanner({
       >
         <XCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" aria-hidden="true" />
         <span className="flex-1">
-          {isTrial ? 'Tu prueba terminó.' : 'Tu cuenta está suspendida por falta de pago.'} El panel
-          quedó en solo lectura: podés ver todo, pero no cargar ni cambiar nada.
+          Tu cuenta está suspendida por falta de pago. El panel quedó en solo lectura: podés ver
+          todo, pero no cargar ni cambiar nada.
           {readOnly?.until && (
             <>
               {' '}
@@ -155,9 +167,49 @@ export function StatusBanner({
             href="/reactivar"
             className={ctaClass('hover:text-red-900 dark:hover:text-red-300')}
           >
-            {isTrial ? 'Activar plan' : 'Regularizar pago'}
+            Regularizar pago
           </Link>
         )}
+      </div>
+    )
+  }
+
+  // Priority 5: plan gratis (freemium, 2026-11-08). En gratis solo entra el
+  // dueño, así que el botón no depende del rol. La pausa manda sobre el tope:
+  // es lo único que el dueño puede destrabar sin pagar.
+  if (tenantStatus === 'free') {
+    if (freePlan?.paused) {
+      return (
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-3 px-4 py-3 bg-amber-50 border-b border-amber-200 text-sm text-amber-800 dark:bg-amber-500/10 dark:border-amber-500/25 dark:text-amber-200"
+        >
+          <AlertTriangle
+            className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400"
+            aria-hidden="true"
+          />
+          <span className="flex-1">
+            Pausamos tus reservas online porque cancelaste varias este mes. Marcá en la grilla los
+            horarios que ya están ocupados y avisanos.
+          </span>
+          {resumeOnlineAction && <ResumeOnlineButton action={resumeOnlineAction} />}
+        </div>
+      )
+    }
+    return (
+      <div
+        role="status"
+        className="flex items-center gap-3 px-4 py-3 bg-sky-50 border-b border-sky-200 text-sm text-sky-900 dark:bg-sky-500/10 dark:border-sky-500/25 dark:text-sky-100"
+      >
+        <Info className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden="true" />
+        <span className="flex-1">
+          {freePlan?.capReached
+            ? `Tus jugadores ya te reservaron ${FREE_ONLINE_BOOKINGS_PER_MONTH} turnos online este mes. Pasá al plan para que sigan reservando.`
+            : 'Estás en el plan gratis. Tus jugadores te reservan online. Anotar tus turnos, los fijos y la caja es con el plan.'}
+        </span>
+        <Link href="/reactivar" className={ctaClass('hover:text-sky-950 dark:hover:text-sky-50')}>
+          Pasar al plan
+        </Link>
       </div>
     )
   }

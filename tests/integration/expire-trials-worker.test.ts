@@ -56,7 +56,7 @@ async function seedTrialingTenant(
 }
 
 /**
- * Un complejo cuya prueba ya venció y está en solo lectura (`suspended`).
+ * Un complejo del lifecycle anterior: prueba vencida en solo lectura (`suspended`).
  * `dunningStartedAt` lo convierte en el `suspended` de la mora, que este
  * barrido no tiene que tocar.
  */
@@ -106,10 +106,10 @@ afterEach(async () => {
 
 afterAll(async () => closeSql())
 
-// Decisión 2026-10-22: al vencer la prueba el complejo pasa a solo lectura
-// (`suspended`), no a `blocked`.
+// Freemium (2026-11-08): al vencer la prueba el complejo pasa al plan gratis
+// (`free`), no a solo lectura ni a `blocked`.
 describe('runExpireTrials', () => {
-  it('pasa a solo lectura tenant + tenant_subscriptions + audit log en una sola transacción', async () => {
+  it('pasa al plan gratis tenant + tenant_subscriptions + audit log en una sola transacción', async () => {
     const s = getSql()
     const past = new Date(Date.now() - 24 * 60 * 60 * 1000)
     const tenant = await seedTrialingTenant(s, planId, past)
@@ -119,18 +119,17 @@ describe('runExpireTrials', () => {
     const tenantRows = await s<{ status: string }[]>`
       SELECT status FROM tenants WHERE id = ${tenant.id}
     `
-    expect(tenantRows[0].status).toBe('suspended')
+    expect(tenantRows[0].status).toBe('free')
 
     const subRows = await s<{ status: string; dunning_started_at: Date | null }[]>`
       SELECT status, dunning_started_at FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
     `
-    expect(subRows[0].status).toBe('suspended')
-    // Sin esto el panel lo leería como mora y el barrido de bloqueo no lo vería.
+    expect(subRows[0].status).toBe('free')
     expect(subRows[0].dunning_started_at).toBeNull()
 
     const auditRows = await s<{ action: string; resource_id: string }[]>`
       SELECT action, resource_id FROM audit_logs
-      WHERE action = 'tenant.trial_expired' AND resource_id = ${tenant.id}
+      WHERE action = 'tenant.downgraded_to_free' AND resource_id = ${tenant.id}
     `
     expect(auditRows).toHaveLength(1)
   })
@@ -141,12 +140,12 @@ describe('runExpireTrials', () => {
     await expect(runExpireTrials()).resolves.toBeUndefined()
 
     const auditRows = await s<{ id: string }[]>`
-      SELECT id FROM audit_logs WHERE action = 'tenant.trial_expired'
+      SELECT id FROM audit_logs WHERE action = 'tenant.downgraded_to_free'
     `
     expect(auditRows).toHaveLength(0)
   })
 
-  it('atomicidad per-tenant: si el audit falla, SU transacción revierte y el tenant NO queda blocked colgado (pero el worker no rechaza)', async () => {
+  it('atomicidad per-tenant: si el audit falla, SU transacción revierte y el tenant NO queda a medio pasar (pero el worker no rechaza)', async () => {
     const s = getSql()
     const past = new Date(Date.now() - 24 * 60 * 60 * 1000)
     const tenant = await seedTrialingTenant(s, planId, past)
@@ -195,20 +194,20 @@ describe('runExpireTrials', () => {
     `
     expect(auditARows).toHaveLength(0)
 
-    // B: no se vio afectado por el fallo de A, quedó en solo lectura normalmente.
+    // B: no se vio afectado por el fallo de A, quedó en gratis normalmente.
     const tenantBRows = await s<{ status: string }[]>`
       SELECT status FROM tenants WHERE id = ${tenantB.id}
     `
-    expect(tenantBRows[0].status).toBe('suspended')
+    expect(tenantBRows[0].status).toBe('free')
 
     const subBRows = await s<{ status: string }[]>`
       SELECT status FROM tenant_subscriptions WHERE tenant_id = ${tenantB.id}
     `
-    expect(subBRows[0].status).toBe('suspended')
+    expect(subBRows[0].status).toBe('free')
 
     const auditBRows = await s<{ action: string; resource_id: string }[]>`
       SELECT action, resource_id FROM audit_logs
-      WHERE action = 'tenant.trial_expired' AND resource_id = ${tenantB.id}
+      WHERE action = 'tenant.downgraded_to_free' AND resource_id = ${tenantB.id}
     `
     expect(auditBRows).toHaveLength(1)
   })
@@ -232,12 +231,12 @@ describe('runExpireTrials — margen para el que ya activó el plan', () => {
     expect(await statusOf(s, tenant.id)).toEqual({ tenant: 'trialing', sub: 'trialing' })
     const auditRows = await s<{ id: string }[]>`
       SELECT id FROM audit_logs
-      WHERE action = 'tenant.trial_expired' AND resource_id = ${tenant.id}
+      WHERE action = 'tenant.downgraded_to_free' AND resource_id = ${tenant.id}
     `
     expect(auditRows).toHaveLength(0)
   })
 
-  it('con débito pedido y el margen de 3 días ya pasado: pasa a solo lectura igual', async () => {
+  it('con débito pedido y el margen de 3 días ya pasado: pasa al plan gratis igual', async () => {
     const s = getSql()
     const tenant = await seedTrialingTenant(
       s,
@@ -248,10 +247,10 @@ describe('runExpireTrials — margen para el que ya activó el plan', () => {
 
     await runExpireTrials()
 
-    expect(await statusOf(s, tenant.id)).toEqual({ tenant: 'suspended', sub: 'suspended' })
+    expect(await statusOf(s, tenant.id)).toEqual({ tenant: 'free', sub: 'free' })
   })
 
-  it('en la misma corrida, el que nunca activó el plan pasa a solo lectura y el que sí espera', async () => {
+  it('en la misma corrida, el que nunca activó el plan pasa a gratis y el que sí espera', async () => {
     const s = getSql()
     const vencio = new Date(Date.now() - DAY_MS)
     const sinPlan = await seedTrialingTenant(s, planId, vencio)
@@ -259,55 +258,30 @@ describe('runExpireTrials — margen para el que ya activó el plan', () => {
 
     await runExpireTrials()
 
-    expect(await statusOf(s, sinPlan.id)).toEqual({ tenant: 'suspended', sub: 'suspended' })
+    expect(await statusOf(s, sinPlan.id)).toEqual({ tenant: 'free', sub: 'free' })
     expect(await statusOf(s, conPlan.id)).toEqual({ tenant: 'trialing', sub: 'trialing' })
   })
 })
 
-// Fin del solo lectura: a los 14 días de vencida la prueba (17 si ya tocó
-// "Activar"), `suspended` → `blocked`. Es la misma fecha que `trialReadOnlyEndsAt`
-// le muestra al dueño en el aviso del panel.
-describe('runExpireTrials — fin del solo lectura de la prueba', () => {
-  it('a los 14 días de vencida la prueba: lo bloquea, con audit', async () => {
+// Backfill del lifecycle anterior (condición C4 del ADR): los complejos que
+// quedaron en solo lectura o bloqueados sin pagar pasan al plan gratis, sin mail.
+describe('runExpireTrials — backfill del lifecycle anterior a gratis', () => {
+  it('suspended de prueba vencida (sin dunning_started_at): pasa a gratis, con audit', async () => {
     const s = getSql()
-    const tenant = await seedReadOnlyTenant(s, planId, new Date(Date.now() - 14 * DAY_MS - 60_000))
+    const tenant = await seedReadOnlyTenant(s, planId, new Date(Date.now() - 3 * DAY_MS))
 
     await runExpireTrials()
 
-    expect(await statusOf(s, tenant.id)).toEqual({ tenant: 'blocked', sub: 'blocked' })
+    expect(await statusOf(s, tenant.id)).toEqual({ tenant: 'free', sub: 'free' })
     const auditRows = await s<{ metadata: { reason: string } }[]>`
       SELECT metadata FROM audit_logs
-      WHERE action = 'tenant.blocked' AND resource_id = ${tenant.id}
+      WHERE action = 'tenant.downgraded_to_free' AND resource_id = ${tenant.id}
     `
     expect(auditRows).toHaveLength(1)
-    expect(auditRows[0].metadata.reason).toBe('trial_read_only_ended')
+    expect(auditRows[0].metadata.reason).toBe('legacy_trial_read_only')
   })
 
-  it('a los 13 días: sigue en solo lectura', async () => {
-    const s = getSql()
-    const tenant = await seedReadOnlyTenant(s, planId, new Date(Date.now() - 13 * DAY_MS))
-
-    await runExpireTrials()
-
-    expect(await statusOf(s, tenant.id)).toEqual({ tenant: 'suspended', sub: 'suspended' })
-  })
-
-  it('con débito pedido: el margen de 3 días se suma al solo lectura (16 días: sigue, 17: se bloquea)', async () => {
-    const s = getSql()
-    const sigue = await seedReadOnlyTenant(s, planId, new Date(Date.now() - 16 * DAY_MS), {
-      mpSubscriptionId: PREAPPROVAL_ID,
-    })
-    const corta = await seedReadOnlyTenant(s, planId, new Date(Date.now() - 17 * DAY_MS - 60_000), {
-      mpSubscriptionId: '6d7395b04ff15f41a455f765580f744c',
-    })
-
-    await runExpireTrials()
-
-    expect(await statusOf(s, sigue.id)).toEqual({ tenant: 'suspended', sub: 'suspended' })
-    expect(await statusOf(s, corta.id)).toEqual({ tenant: 'blocked', sub: 'blocked' })
-  })
-
-  it('el suspended de la mora (con dunning_started_at) no lo toca: lo bloquea su propio barrido', async () => {
+  it('el suspended de la mora (con dunning_started_at) no lo toca: lo baja su propio barrido', async () => {
     const s = getSql()
     const tenant = await seedReadOnlyTenant(s, planId, new Date(Date.now() - 60 * DAY_MS), {
       dunningStartedAt: new Date(Date.now() - 5 * DAY_MS),
@@ -322,17 +296,40 @@ describe('runExpireTrials — fin del solo lectura de la prueba', () => {
     expect(auditRows).toHaveLength(0)
   })
 
-  it('el que llega tarde a la prueba vencida no salta a blocked en la misma corrida', async () => {
-    // Cron caído más días que el solo lectura: el bloqueo corre ANTES de
-    // expirar, así que este complejo tiene al menos un día para mirar.
+  it('blocked sin borrado agendado: pasa a gratis', async () => {
+    const s = getSql()
+    const tenant = await seedReadOnlyTenant(s, planId, new Date(Date.now() - 30 * DAY_MS))
+    await s`UPDATE tenants SET status = 'blocked' WHERE id = ${tenant.id}`
+    await s`UPDATE tenant_subscriptions SET status = 'blocked'::subscription_status WHERE tenant_id = ${tenant.id}`
+
+    await runExpireTrials()
+
+    expect(await statusOf(s, tenant.id)).toEqual({ tenant: 'free', sub: 'free' })
+  })
+
+  it('blocked con borrado agendado (baja voluntaria vieja): no lo toca', async () => {
+    const s = getSql()
+    const tenant = await seedReadOnlyTenant(s, planId, new Date(Date.now() - 30 * DAY_MS))
+    await s`UPDATE tenants SET status = 'blocked' WHERE id = ${tenant.id}`
+    await s`
+      UPDATE tenant_subscriptions
+      SET status = 'blocked'::subscription_status, scheduled_deletion_at = NOW() + INTERVAL '30 days'
+      WHERE tenant_id = ${tenant.id}
+    `
+
+    await runExpireTrials()
+
+    expect(await statusOf(s, tenant.id)).toEqual({ tenant: 'blocked', sub: 'blocked' })
+  })
+
+  it('la prueba vencida hace 20 días pasa directo a gratis y se queda ahí', async () => {
     const s = getSql()
     const tenant = await seedTrialingTenant(s, planId, new Date(Date.now() - 20 * DAY_MS))
 
     await runExpireTrials()
-    expect(await statusOf(s, tenant.id)).toEqual({ tenant: 'suspended', sub: 'suspended' })
+    expect(await statusOf(s, tenant.id)).toEqual({ tenant: 'free', sub: 'free' })
 
-    // La corrida siguiente sí lo bloquea.
     await runExpireTrials()
-    expect(await statusOf(s, tenant.id)).toEqual({ tenant: 'blocked', sub: 'blocked' })
+    expect(await statusOf(s, tenant.id)).toEqual({ tenant: 'free', sub: 'free' })
   })
 })

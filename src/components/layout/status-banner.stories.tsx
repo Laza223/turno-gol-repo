@@ -30,34 +30,29 @@ export const Suspended: Story = {
   args: { tenantStatus: 'suspended', periodEnd: null },
 }
 
-/**
- * Solo lectura por prueba vencida (decisión 2026-10-22): fecha de corte y, para
- * el dueño, el botón de activar. El encargado lee a quién avisarle.
- */
-export const PruebaVencidaDueno: Story = {
-  args: {
-    tenantStatus: 'suspended',
-    periodEnd: null,
-    readOnly: { origin: 'trial', until: daysFromNow(9).toISOString() },
-    staffRole: 'admin',
-  },
+/** Plan gratis (freemium): banda informativa con el botón para pasar al plan. */
+export const Gratis: Story = {
+  args: { tenantStatus: 'free', periodEnd: null },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('link', { name: 'Activar plan' })).toBeVisible()
+    await expect(canvas.getByRole('link', { name: 'Pasar al plan' })).toBeVisible()
   },
 }
 
-export const PruebaVencidaEncargado: Story = {
+export const GratisConTope: Story = {
+  args: { tenantStatus: 'free', periodEnd: null, freePlan: { capReached: true, paused: false } },
+}
+
+export const GratisEnPausa: Story = {
   args: {
-    tenantStatus: 'suspended',
+    tenantStatus: 'free',
     periodEnd: null,
-    readOnly: { origin: 'trial', until: daysFromNow(9).toISOString() },
-    staffRole: 'manager',
+    freePlan: { capReached: false, paused: true },
+    resumeOnlineAction: async () => ({ success: true }),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/Avisale al dueño del complejo/)).toBeVisible()
-    await expect(canvas.queryByRole('link')).toBeNull()
+    await expect(canvas.getByRole('button', { name: 'Ya marqué mis ocupados' })).toBeVisible()
   },
 }
 

@@ -10,6 +10,8 @@ export const tenantStatusEnum = pgEnum('tenant_status', [
   'canceled',
   'churned',
   'deleted',
+  // Plan gratis del freemium (migr. 110, docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
+  'free',
 ])
 
 export const subscriptionStatusEnum = pgEnum('subscription_status', [
@@ -20,6 +22,7 @@ export const subscriptionStatusEnum = pgEnum('subscription_status', [
   'blocked',
   'canceled',
   'churned',
+  'free',
 ])
 
 export const billingCycleEnum = pgEnum('billing_cycle', ['monthly', 'annual'])

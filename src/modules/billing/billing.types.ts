@@ -9,10 +9,19 @@
 import type { MpPaymentStatus } from '@/modules/payments/payment.types'
 
 export type TenantStatus =
-  'trialing' | 'active' | 'past_due' | 'suspended' | 'blocked' | 'canceled' | 'churned' | 'deleted'
+  | 'trialing'
+  | 'active'
+  | 'past_due'
+  | 'suspended'
+  | 'blocked'
+  | 'canceled'
+  | 'churned'
+  | 'deleted'
+  | 'free'
 
 /**
- * Los 8 estados de `tenant_status`, en el orden del FSM (doc4 §2). Vive acá
+ * Los 9 estados de `tenant_status`, en el orden del enum (doc4 §2). `free` es el
+ * plan gratis (migr. 110). Vive acá
  * (módulo puro, sin imports de valor) y no en `super-admin/tenants.service.ts`
  * porque ese archivo importa drizzle-orm/@/shared/db/client — cualquier
  * consumidor de solo la lista de estados (ej. `TenantsFilters`, un componente
@@ -28,6 +37,7 @@ export const TENANT_STATUSES = [
   'canceled',
   'churned',
   'deleted',
+  'free',
 ] as const satisfies readonly TenantStatus[]
 
 export function isTenantStatus(value: string): value is TenantStatus {

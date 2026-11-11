@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import { isFreePlan } from '@/modules/tenants/tenant.lifecycle'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { CalendarX, CalendarDays } from 'lucide-react'
@@ -50,8 +51,8 @@ function now(): Date {
 
 export default async function ReservasPage(props: Props) {
   const searchParams = await props.searchParams
-  const auth = await requireOperatorStaff({ allowReadOnly: true })
-  if (!auth.ok) redirect('/login')
+  const auth = await requireOperatorStaff({ allowReadOnly: true, allowFree: true })
+  if (!auth.ok) redirect(auth.reason === 'plan' ? '/reactivar' : '/login')
   const { tenant } = auth
 
   const today = artTodayStr()
@@ -83,6 +84,7 @@ export default async function ReservasPage(props: Props) {
         ...(status ? { status } : {}),
         ...(q ? { q } : {}),
         ...(courtId ? { courtId } : {}),
+        onlineOnly: isFreePlan(tenant),
       },
       tx,
       page,
@@ -90,7 +92,13 @@ export default async function ReservasPage(props: Props) {
 
     const byStatus = await countTenantBookingsByStatus(
       tenant.id,
-      { scope, now: instant, ...(q ? { q } : {}), ...(courtId ? { courtId } : {}) },
+      {
+        scope,
+        now: instant,
+        ...(q ? { q } : {}),
+        ...(courtId ? { courtId } : {}),
+        onlineOnly: isFreePlan(tenant),
+      },
       tx,
     )
     // El saldo pendiente es insumo de la plata de TODAS las filas (`agendaMoneyCell`),

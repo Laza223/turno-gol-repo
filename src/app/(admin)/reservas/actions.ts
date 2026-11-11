@@ -11,6 +11,9 @@ import { insertAuditLog } from '@/shared/db/audit'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { enforce } from '@/shared/rate-limit/apply'
 import { paidPeriodErrorMessage } from '@/modules/bookings/paid-period.guard'
+import { freePlanBookingError } from '@/modules/bookings/free-plan-block'
+import { evaluateFreeOnlinePause } from '@/modules/bookings/free-online-pause'
+import { isFreePlan } from '@/modules/tenants/tenant.lifecycle'
 import {
   createManualBooking,
   completeBooking,
@@ -94,7 +97,7 @@ export type BookingChargeActionResult =
 
 export async function createBookingAction(data: unknown): Promise<CreateBookingActionResult> {
   // Cruce #1: rol leído de DB — solo admin/manager operan reservas.
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
 
@@ -114,6 +117,11 @@ export async function createBookingAction(data: unknown): Promise<CreateBookingA
   const parsed = createManualBookingSchema.safeParse(dataWithStaff)
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
+  }
+
+  if (isFreePlan(tenant)) {
+    const freeError = freePlanBookingError(parsed.data)
+    if (freeError) return { success: false, error: freeError }
   }
 
   // Regla de la clase (rediseño Caja/Cantina): el catch va FUERA del contexto
@@ -190,7 +198,7 @@ export type CheckSlotAvailabilityResult = { available: boolean }
 export async function checkSlotAvailabilityAction(
   input: CheckSlotAvailabilityInput,
 ): Promise<CheckSlotAvailabilityResult> {
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowFree: true })
   if (!auth.ok) return { available: true }
   const { tenant } = auth
 
@@ -379,7 +387,7 @@ export async function confirmDepositPaymentAction(
 }
 
 export async function completeBookingAction(bookingId: string): Promise<BookingActionResult> {
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
 
@@ -424,7 +432,7 @@ export async function completeBookingAction(bookingId: string): Promise<BookingA
 }
 
 export async function markNoShowAction(bookingId: string): Promise<BookingActionResult> {
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
 
@@ -471,7 +479,7 @@ export async function markNoShowAction(bookingId: string): Promise<BookingAction
  * confirmar y queda en el audit_log.
  */
 export async function revertNoShowAction(bookingId: string): Promise<BookingActionResult> {
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
 
@@ -519,7 +527,7 @@ export async function cancelBookingAction(
     return { success: false, error: 'Indicá quién cancela la reserva.' }
   }
 
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
 
@@ -555,6 +563,17 @@ export async function cancelBookingAction(
     { bookingId, tenantId: tenant.id },
   )
 
+  // Plan gratis: 5 online canceladas por el dueño en el mes pausan la reserva
+  // online. Transacción aparte, con la cancelación ya commiteada [C5]; si falla,
+  // la cancelación igual quedó hecha.
+  if (isFreePlan(tenant)) {
+    try {
+      await evaluateFreeOnlinePause(tenant.id)
+    } catch (err) {
+      captureException(err)
+    }
+  }
+
   return { success: true, booking: outcome.booking }
 }
 
@@ -568,7 +587,7 @@ export async function releaseBlockAction(bookingId: string): Promise<ActionResul
   const parsed = uuid.safeParse(bookingId)
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
 
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
 

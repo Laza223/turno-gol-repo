@@ -142,7 +142,7 @@ export async function createCourtAction(
   formData: FormData,
   confirmBillingChange = false,
 ): Promise<CourtActionResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -225,7 +225,7 @@ export async function updateCourtAction(
   courtId: string,
   formData: FormData,
 ): Promise<CourtActionResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -293,7 +293,7 @@ export async function toggleCourtStatusAction(
   status: 'online' | 'offline',
   confirmBillingChange = false,
 ): Promise<CourtActionResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -353,7 +353,7 @@ export type CourtDeactivationImpactResult =
 export async function getCourtDeactivationImpactAction(
   courtId: string,
 ): Promise<CourtDeactivationImpactResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -406,7 +406,7 @@ export async function uploadCourtPhotoAction(
   courtId: string,
   formData: FormData,
 ): Promise<CourtPhotoActionResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -465,7 +465,7 @@ export async function removeCourtPhotoAction(
   courtId: string,
   url: string,
 ): Promise<CourtPhotoActionResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -508,7 +508,7 @@ export async function reorderCourtPhotosAction(
   courtId: string,
   urls: string[],
 ): Promise<CourtPhotoActionResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -543,7 +543,7 @@ export async function reorderCourtPhotosAction(
  * jugador; el precio y la seña se siguen calculando igual.
  */
 export async function setPublicPricesVisibilityAction(visible: boolean): Promise<ActionResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 

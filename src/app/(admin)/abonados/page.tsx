@@ -48,7 +48,7 @@ export default async function AbonadosPage(props: {
 }) {
   const searchParams = await props.searchParams
   const auth = await requireOperatorStaff({ allowReadOnly: true })
-  if (!auth.ok) redirect('/login')
+  if (!auth.ok) redirect(auth.reason === 'plan' ? '/reactivar' : '/login')
   const { tenant } = auth
 
   const statusFilter = VALID_STATUSES.includes(searchParams.status as AbonadoStatus)

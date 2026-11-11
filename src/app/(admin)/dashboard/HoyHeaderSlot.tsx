@@ -2,7 +2,7 @@
 
 import { ShoppingBag } from 'lucide-react'
 import { AdminHeaderSlot } from '@/components/layout/admin-header-slot'
-import { useVender } from '@/components/layout/vender-context'
+import { useOptionalVender } from '@/components/layout/vender-context'
 
 /**
  * Lo único que Hoy le pide al armazón: el día operativo en el hueco de la
@@ -28,29 +28,33 @@ export function HoyHeaderSlot({
   /** "jue 24 sep": en el teléfono, al lado del logo, la larga quedaba en "jue 24 d…". */
   shortDateLabel: string
 }) {
-  const { setOpen, prefetch } = useVender()
+  // En el plan gratis el layout no monta la cantina (`WithVender enabled={false}`):
+  // sin provider no hay botón, y la fecha ocupa el hueco.
+  const vender = useOptionalVender()
   return (
     <AdminHeaderSlot>
       <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
         <span className="tracking-tight sm:hidden">{shortDateLabel}</span>
         <span className="max-sm:hidden">{dateLabel}</span>
       </p>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        onPointerEnter={prefetch}
-        onFocus={prefetch}
-        onTouchStart={prefetch}
-        // Solo el ícono en el teléfono: con el logo y el menú de tema a los costados, un botón
-        // con texto le dejaba a la fecha ~25 px y la aplastaba. El nombre accesible es el mismo.
-        // Solo debajo de `lg` (2026-10-26): desde `lg` el riel ya tiene el botón "Vender" en todas
-        // las vistas. En el teléfono no hay riel, así que este sigue siendo el acceso.
-        aria-keyshortcuts="V"
-        className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-auto sm:px-3.5 md:h-10 lg:hidden"
-      >
-        <ShoppingBag aria-hidden className="h-4 w-4" />
-        <span className="max-sm:sr-only">Vender</span>
-      </button>
+      {vender && (
+        <button
+          type="button"
+          onClick={() => vender.setOpen(true)}
+          onPointerEnter={vender.prefetch}
+          onFocus={vender.prefetch}
+          onTouchStart={vender.prefetch}
+          // Solo el ícono en el teléfono: con el logo y el menú de tema a los costados, un botón
+          // con texto le dejaba a la fecha ~25 px y la aplastaba. El nombre accesible es el mismo.
+          // Solo debajo de `lg` (2026-10-26): desde `lg` el riel ya tiene el botón "Vender" en todas
+          // las vistas. En el teléfono no hay riel, así que este sigue siendo el acceso.
+          aria-keyshortcuts="V"
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center gap-1.5 rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:w-auto sm:px-3.5 md:h-10 lg:hidden"
+        >
+          <ShoppingBag aria-hidden className="h-4 w-4" />
+          <span className="max-sm:sr-only">Vender</span>
+        </button>
+      )}
     </AdminHeaderSlot>
   )
 }

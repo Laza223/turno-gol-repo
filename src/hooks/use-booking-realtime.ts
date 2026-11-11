@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
+import { isOnlineBooking, maskGridBookingForFreePlan } from '@/lib/booking/free-plan-mask'
 import type { GridBooking } from '@/components/booking/BookingGrid'
 import type {
   BookingStatus,
@@ -30,6 +31,7 @@ type ApiResponse = {
     payment_method: PaymentMethodValue | null
     deposit_status: DepositStatus
     deposit_amount: number
+    created_by_staff?: string | null
     total_paid: number
     pending: number
     written_off?: number
@@ -157,7 +159,10 @@ export function useBookingRealtime(opts: {
   /** Solo los turnos de esta cancha (vista por semana). Sin esto, todas. */
   courtId?: string
   initialBookings: GridBooking[]
+  /** Plan gratis: toda fila nueva pasa por `maskGridBookingForFreePlan`. */
+  freePlan?: boolean
 }): { bookings: GridBooking[]; status: RealtimeStatus; refetch: () => Promise<void> } {
+  const freePlan = opts.freePlan === true
   const { date, dateTo = opts.date, courtId } = opts
   const [bookings, setBookings] = useState<GridBooking[]>(opts.initialBookings)
   const [status, setStatus] = useState<RealtimeStatus>('CONNECTING')
@@ -170,6 +175,18 @@ export function useBookingRealtime(opts: {
   // perdido eventos.
   const needsCatchUpRef = useRef(false)
 
+  // Plan gratis: el payload de Realtime trae la fila entera (nombre, precio).
+  const maskRealtime = useCallback(
+    (row: RawRow): GridBooking => {
+      const b = normalizeRealtimeRow(row)
+      if (!freePlan) return b
+      const createdByStaff =
+        typeof row['created_by_staff'] === 'string' ? row['created_by_staff'] : null
+      return maskGridBookingForFreePlan(b, isOnlineBooking({ type: b.type, createdByStaff }))
+    },
+    [freePlan],
+  )
+
   const fetchFromApi = useCallback(async () => {
     try {
       const range = dateTo !== date ? `&date_to=${dateTo}` : ''
@@ -177,11 +194,21 @@ export function useBookingRealtime(opts: {
       const res = await fetch(`/api/bookings?date=${date}${range}${court}&limit=200`)
       if (!res.ok) return
       const json = (await res.json()) as ApiResponse
-      setBookings(json.data.map(normalizeApiRow))
+      setBookings(
+        json.data.map((row) => {
+          const b = normalizeApiRow(row)
+          return freePlan
+            ? maskGridBookingForFreePlan(
+                b,
+                isOnlineBooking({ type: row.type, createdByStaff: row.created_by_staff ?? null }),
+              )
+            : b
+        }),
+      )
     } catch {
       // retry on next tick
     }
-  }, [date, dateTo, courtId])
+  }, [date, dateTo, courtId, freePlan])
 
   // Debounced authoritative refetch: collapses rapid INSERT/UPDATE bursts into
   // one round-trip so player names (absent from the realtime payload) get backfilled.
@@ -222,7 +249,7 @@ export function useBookingRealtime(opts: {
               setBookings((prev) => prev.filter((b) => b.id !== deletedId))
             } else if (payload.eventType === 'INSERT') {
               if (!newRow['id']) return
-              const normalized = normalizeRealtimeRow(newRow)
+              const normalized = maskRealtime(newRow)
               setBookings((prev) => {
                 const idx = prev.findIndex((b) => b.id === normalized.id)
                 if (idx >= 0) {
@@ -236,7 +263,7 @@ export function useBookingRealtime(opts: {
               scheduleReconcile()
             } else if (payload.eventType === 'UPDATE') {
               if (!newRow['id']) return
-              const normalized = normalizeRealtimeRow(newRow)
+              const normalized = maskRealtime(newRow)
               setBookings((prev) => {
                 const idx = prev.findIndex((b) => b.id === normalized.id)
                 if (idx >= 0) {
@@ -316,7 +343,7 @@ export function useBookingRealtime(opts: {
         reconcileRef.current = null
       }
     }
-  }, [opts.tenantId, date, dateTo, courtId, fetchFromApi, scheduleReconcile])
+  }, [opts.tenantId, date, dateTo, courtId, fetchFromApi, scheduleReconcile, maskRealtime])
 
   return { bookings, status, refetch: fetchFromApi }
 }

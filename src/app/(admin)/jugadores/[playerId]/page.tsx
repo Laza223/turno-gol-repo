@@ -34,7 +34,7 @@ export default async function JugadorProfilePage(props: Props) {
   const params = await props.params
   const searchParams = await props.searchParams
   const auth = await requireOperatorStaff({ allowReadOnly: true })
-  if (!auth.ok) redirect('/dashboard')
+  if (!auth.ok) redirect(auth.reason === 'plan' ? '/reactivar' : '/dashboard')
   const { tenant } = auth
 
   // getPlayerProfile bindea playerId a SQL crudo (uuid): sin este guard,

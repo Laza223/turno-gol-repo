@@ -1110,7 +1110,9 @@ export async function reactivate(
   // pedir uno nuevo acá arriesgaría un doble cobro si el viejo también termina
   // aprobándose. onPaymentApproved ya reactiva sea cual sea el origen
   // (transitionToActiveFromAny) una vez que ESE pago se acredita.
-  const allowed: SubscriptionStatus[] = ['canceled', 'churned', 'suspended', 'blocked']
+  // Freemium: `free` es el estado del que no paga, así que es el origen más
+  // común de "activar el plan" (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
+  const allowed: SubscriptionStatus[] = ['canceled', 'churned', 'suspended', 'blocked', 'free']
   if (!allowed.includes(sub.status)) {
     throw new ReactivateNotAllowedError(tenantId, sub.status)
   }

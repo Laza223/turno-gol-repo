@@ -26,7 +26,7 @@ export async function trackStoryExportAction(input: unknown): Promise<ActionResu
   const parsed = storyExportSchema.safeParse(input)
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
 
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 

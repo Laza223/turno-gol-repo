@@ -49,7 +49,7 @@ import { SettingsIndex, type SettingsIndexGroup } from './SettingsIndex'
  * vez de romper la portada.
  */
 export default async function SettingsPage() {
-  const { user, tenant } = await requireAdminStaff({ allowReadOnly: true })
+  const { user, tenant } = await requireAdminStaff({ allowReadOnly: true, allowFree: true })
   const s = tenant.settings
 
   let sub: Awaited<ReturnType<typeof getSubscriptionState>> | null = null
@@ -279,6 +279,7 @@ function cuotaTone(sub: Awaited<ReturnType<typeof getSubscriptionState>> | null)
     case 'trialing':
       return 'success'
     case 'past_due':
+    case 'free':
       return 'warning'
     case 'suspended':
     case 'blocked':

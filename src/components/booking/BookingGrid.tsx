@@ -72,6 +72,8 @@ type Props = {
   createAbonadoAction: CreateAbonadoAction
   /** Reenviada al BookingFormModal — opcional, ver el comentario ahí. */
   checkAvailabilityAction?: CheckSlotAvailabilityAction
+  /** Plan gratis: el alta solo marca el horario como ocupado (freemium). */
+  freePlan?: boolean
   /** Reenviada al BookingFormModal — opcional, ver el comentario ahí. */
   searchPlayersAction?: SearchBookingPlayersAction
   /**
@@ -118,6 +120,7 @@ export function BookingGrid({
   action,
   createAbonadoAction,
   checkAvailabilityAction,
+  freePlan = false,
   searchPlayersAction,
   slotPanelActions,
   renderCanteenDialog,
@@ -142,7 +145,12 @@ export function BookingGrid({
 
   const { dismissed: hintDismissed, dismiss: dismissHint } = useDismissibleHint(HINT_STORAGE_KEY)
 
-  const { bookings, status, refetch } = useBookingRealtime({ tenantId, date, initialBookings })
+  const { bookings, status, refetch } = useBookingRealtime({
+    tenantId,
+    date,
+    initialBookings,
+    freePlan,
+  })
 
   // Del lado del cliente, sobre `bookings` (no `initialBookings`): calcularlo en
   // el server dejaría el número congelado y contradiciendo la grilla apenas
@@ -367,6 +375,7 @@ export function BookingGrid({
         createBookingAction={action}
         createAbonadoAction={createAbonadoAction}
         checkAvailabilityAction={checkAvailabilityAction}
+        freePlan={freePlan}
         searchPlayersAction={searchPlayersAction}
         detailBooking={detailBooking}
         courtName={

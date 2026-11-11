@@ -1,5 +1,6 @@
 'use client'
 
+import { FREE_ONLINE_BOOKINGS_PER_MONTH } from '@/shared/constants'
 import type { ActionResult } from '@/shared/types/action-result'
 import { useState } from 'react'
 import Link from 'next/link'
@@ -48,14 +49,9 @@ function formatDate(iso: string): string {
  * (fetch directo al route handler) + `ConfirmDialog` con motivo obligatorio
  * (mismo patrón que `BanPlayerControls`/`BookingActions`).
  *
- * Los "60 días" de conservación son el número que ya usan el mail de
- * cancelación (`subscription-canceled.ts`) y el FAQ de `/precios`. El
- * `scheduled_deletion_at` real que fija `transitionCanceledToBlocked` es
- * `CANCELED_BLOCKED_DELETION_DAYS` = 97 días desde el bloqueo (90d de
- * retención, que es lo que prometen `/terminos` y `/privacidad`, + 7d de
- * margen interno para que corra el worker de wipe). B1 lo subió de 67: el
- * margen interno no se le promete al dueño, así que "60 días" sigue siendo
- * verdad — es un piso, no una promesa exacta, y ahora está holgado.
+ * Freemium (2026-11-08): al vencer lo pagado, la cuenta baja al plan gratis
+ * (`transitionToFree`, origen `cancel_period_ended`) y no se borra. Borrar del
+ * todo es un pedido por mail a privacidad@, a mano.
  */
 export function CancelSubscriptionSection({ status, accessUntil, context = 'settings' }: Props) {
   const router = useRouter()
@@ -83,16 +79,16 @@ export function CancelSubscriptionSection({ status, accessUntil, context = 'sett
 
   // Hasta el fin del período el panel y la página siguen como siempre
   // (`(admin)/layout.tsx` saca a `canceled` del bloqueo y `isPublicPortalOpen`
-  // deja la página abierta); el barrido diario lo pasa a `blocked` cuando vence
-  // (`dunning-retry.worker.ts`) y ahí se cortan los dos.
+  // deja la página abierta); el barrido diario lo pasa al plan gratis cuando
+  // vence (`dunning-retry.worker.ts`).
   const intro =
     context === 'reactivar'
-      ? '¿No querés seguir pagando en vez de regularizar el pago? Podés dar de baja la suscripción — tu cuenta pasa a bloqueada y tus datos se conservan 60 días por si querés reactivar más adelante.'
-      : `Seguís usando todo hasta el ${formatDate(accessUntil)}, cuando termina lo que ya pagaste. Después se cortan el panel y la reserva por internet, y guardamos tus datos 60 días por si volvés.`
+      ? '¿No querés seguir pagando? Podés dar de baja la suscripción. Tu complejo pasa al plan gratis y tus datos quedan guardados por si volvés.'
+      : `Seguís usando todo hasta el ${formatDate(accessUntil)}, cuando termina lo que ya pagaste. Después pasás al plan gratis: seguís apareciendo y tus jugadores te reservan online, hasta ${FREE_ONLINE_BOOKINGS_PER_MONTH} turnos por mes.`
 
   const confirmDescription =
     context === 'reactivar'
-      ? 'Tu cuenta va a quedar bloqueada y tus datos se conservan 60 días para reactivar cuando quieras.'
+      ? 'Tu complejo pasa al plan gratis. Tus fijos, tu caja y tus jugadores quedan guardados para cuando vuelvas.'
       : undefined
 
   const consequences =
@@ -101,8 +97,8 @@ export function CancelSubscriptionSection({ status, accessUntil, context = 'sett
       : [
           'Dejamos de cobrarte la cuota.',
           `Seguís usando todo hasta el ${formatDate(accessUntil)}, y tu página sigue tomando reservas.`,
-          'Después se cortan el panel y la reserva por internet.',
-          'Guardamos tus datos 60 días por si volvés.',
+          'Después pasás al plan gratis: anotar tus turnos, los fijos y la caja deja de estar.',
+          'Tus datos quedan guardados para cuando vuelvas.',
         ]
 
   async function onConfirm(): Promise<ActionResult> {

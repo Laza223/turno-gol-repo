@@ -31,7 +31,10 @@ export const Default: Story = {
     await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent(
       /lo que te deja un turno/i,
     )
-    await expect(canvas.getByRole('heading', { name: 'TurnoGol' })).toBeInTheDocument()
+    // Los tres planes por nombre de función (freemium 2026-11-08).
+    await expect(canvas.getByRole('heading', { name: 'Completo' })).toBeInTheDocument()
+    await expect(canvas.getByRole('heading', { name: 'Gratis' })).toBeInTheDocument()
+    await expect(canvas.getByRole('heading', { name: 'Completo + WhatsApp' })).toBeInTheDocument()
   },
 }
 

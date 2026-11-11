@@ -13,20 +13,19 @@ test.describe('TG-HP-006 — Precios', () => {
     // Step 3: radiogroup "¿Cuántas canchas tenés?" → opción "3" → anuncio aria-live
     const courtsGroup = page.getByRole('radiogroup', { name: '¿Cuántas canchas tenés?' })
     await courtsGroup.getByRole('radio', { name: '3', exact: true }).click()
-    await expect(page.getByText('Para 3 canchas, tu plan es')).toBeVisible()
-    await expect(page.getByText('Para 3 canchas, tu plan es')).toContainText('TurnoGol')
+    await expect(page.getByText('Precios para 3 canchas.')).toBeVisible()
 
     await expect(page.getByText(/\$\s90\.000$/)).toBeVisible()
     await page.getByRole('spinbutton', { name: 'Cantidad exacta de canchas' }).fill('12')
     await expect(page.getByText(/\$\s360\.000$/)).toBeVisible()
     await courtsGroup.getByRole('radio', { name: '3', exact: true }).click()
-    // Step 4: ciclo "Anual" → card activa (badge "Para tus canchas") con precio tachado + ahorro
+    // Step 4: ciclo "Anual" → card de Completo (badge "Recomendado") con precio tachado + ahorro
     const cycleGroup = page.getByRole('radiogroup', { name: 'Ciclo de facturación' })
     await cycleGroup.getByRole('radio', { name: /Anual/i }).click()
     await expect(page.getByText(/\$\s81\.000$/)).toBeVisible()
     await expect(page.getByText(/\$\s972\.000$/)).toBeVisible()
-    const activeCard = page.locator('div').filter({ hasText: 'Para tus canchas' }).last()
-    await expect(activeCard.getByText('Para tus canchas')).toBeVisible()
+    const activeCard = page.locator('div').filter({ hasText: 'Recomendado' }).last()
+    await expect(activeCard.getByText('Recomendado')).toBeVisible()
     await expect(activeCard.locator('s')).toBeVisible() // precio mensual tachado
     await expect(activeCard.getByText(/Ahorrás .* al año/)).toBeVisible()
 

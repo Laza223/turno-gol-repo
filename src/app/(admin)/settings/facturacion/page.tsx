@@ -14,7 +14,7 @@ import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { listCourts } from '@/modules/courts/court.service'
 import { buildPriceBreakdown } from '@/modules/billing/pricing'
 import { CANCELABLE } from '@/modules/billing/cancelable-statuses'
-import { READ_ONLY_TENANT_STATUSES } from '@/modules/tenants/tenant.lifecycle'
+import { isFreePlan, READ_ONLY_TENANT_STATUSES } from '@/modules/tenants/tenant.lifecycle'
 import { formatArs } from '@/lib/format'
 import { SUPPORT_EMAIL } from '@/shared/constants'
 import { CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -94,12 +94,15 @@ function BillingDisclosure({
  * `/settings/facturacion` porque la usan los mails de cobro ya mandados.
  */
 export default async function FacturacionPage() {
-  const { tenant } = await requireAdminStaff({ allowReadOnly: true })
+  const { tenant } = await requireAdminStaff({ allowReadOnly: true, allowFree: true })
   // En solo lectura esta pantalla no tiene nada que ofrecer (la cuota no se
   // activa ni se cambia desde acá en `suspended`): la salida es /reactivar. Es
   // también a donde llega el botón del mail "Tu prueba gratuita terminó",
   // que apunta a esta URL.
   if (READ_ONLY_TENANT_STATUSES.has(tenant.status)) redirect('/reactivar')
+  // Plan gratis: no hay cuota que mostrar ni cambiar; pasar al plan es /reactivar.
+  // `allowFree` en el guard es para llegar acá y redirigir, no para mostrar la cuota.
+  if (isFreePlan(tenant)) redirect('/reactivar')
 
   let sub: Awaited<ReturnType<typeof getSubscriptionState>> | null = null
 

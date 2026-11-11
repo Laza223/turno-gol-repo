@@ -12,8 +12,8 @@ import {
 } from './actions'
 
 export default async function NotificationsPage() {
-  const auth = await requireOperatorStaff({ allowReadOnly: true })
-  if (!auth.ok) redirect('/dashboard')
+  const auth = await requireOperatorStaff({ allowReadOnly: true, allowFree: true })
+  if (!auth.ok) redirect(auth.reason === 'plan' ? '/reactivar' : '/dashboard')
   const impersonating = await getImpersonationSession()
   return (
     <div className="space-y-5">

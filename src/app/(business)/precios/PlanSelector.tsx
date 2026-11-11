@@ -167,7 +167,7 @@ const PRICE_STYLE = {
 }
 
 const SECONDARY_CTA =
-  'group inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 text-sm font-bold text-white transition-all duration-300 hover:bg-white/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 active:scale-[0.97] whitespace-nowrap'
+  'group inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 text-sm font-bold text-white transition-[background-color,transform] duration-300 hover:bg-white/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 active:scale-[0.97] whitespace-nowrap'
 
 function FeatureList({ items }: { items: readonly string[] }) {
   return (

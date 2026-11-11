@@ -152,12 +152,18 @@ function normalizeApiRow(row: ApiResponse['data'][number]): GridBooking {
 
 export function useBookingRealtime(opts: {
   tenantId: string
+  /** Día operativo; en la vista por semana, el primer día del rango. */
   date: string
+  /** Último día del rango (vista por semana). Sin esto, el hook sigue un solo día. */
+  dateTo?: string
+  /** Solo los turnos de esta cancha (vista por semana). Sin esto, todas. */
+  courtId?: string
   initialBookings: GridBooking[]
   /** Plan gratis: toda fila nueva pasa por `maskGridBookingForFreePlan`. */
   freePlan?: boolean
 }): { bookings: GridBooking[]; status: RealtimeStatus; refetch: () => Promise<void> } {
   const freePlan = opts.freePlan === true
+  const { date, dateTo = opts.date, courtId } = opts
   const [bookings, setBookings] = useState<GridBooking[]>(opts.initialBookings)
   const [status, setStatus] = useState<RealtimeStatus>('CONNECTING')
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -183,7 +189,9 @@ export function useBookingRealtime(opts: {
 
   const fetchFromApi = useCallback(async () => {
     try {
-      const res = await fetch(`/api/bookings?date=${opts.date}&limit=200`)
+      const range = dateTo !== date ? `&date_to=${dateTo}` : ''
+      const court = courtId ? `&court_id=${courtId}` : ''
+      const res = await fetch(`/api/bookings?date=${date}${range}${court}&limit=200`)
       if (!res.ok) return
       const json = (await res.json()) as ApiResponse
       setBookings(
@@ -200,7 +208,7 @@ export function useBookingRealtime(opts: {
     } catch {
       // retry on next tick
     }
-  }, [opts.date, freePlan])
+  }, [date, dateTo, courtId, freePlan])
 
   // Debounced authoritative refetch: collapses rapid INSERT/UPDATE bursts into
   // one round-trip so player names (absent from the realtime payload) get backfilled.
@@ -231,7 +239,10 @@ export function useBookingRealtime(opts: {
             const oldDate =
               typeof oldRow['date'] === 'string' ? (oldRow['date'] as string).slice(0, 10) : null
 
-            if (newDate !== opts.date && oldDate !== opts.date) return
+            // YYYY-MM-DD compara bien como texto: el rango es [date, dateTo].
+            const inRange = (d: string | null) => d !== null && d >= date && d <= dateTo
+            if (!inRange(newDate) && !inRange(oldDate)) return
+            if (courtId && newRow['court_id'] !== courtId && oldRow['court_id'] !== courtId) return
 
             if (payload.eventType === 'DELETE') {
               const deletedId = (oldRow['id'] as string | undefined) ?? ''
@@ -332,7 +343,7 @@ export function useBookingRealtime(opts: {
         reconcileRef.current = null
       }
     }
-  }, [opts.tenantId, opts.date, fetchFromApi, scheduleReconcile, maskRealtime])
+  }, [opts.tenantId, date, dateTo, courtId, fetchFromApi, scheduleReconcile, maskRealtime])
 
   return { bookings, status, refetch: fetchFromApi }
 }

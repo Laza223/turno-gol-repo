@@ -14,6 +14,11 @@ import { GridHeaderBar } from './grid/GridHeaderBar'
 import { FirstBookingHint } from './grid/FirstBookingHint'
 import { GridScroller } from './grid/GridScroller'
 import { GridOverlays } from './grid/GridOverlays'
+import { GridDragGhost } from './grid/GridDragGhost'
+import { BookingMoveDialog, type MoveRequest } from './BookingMoveDialog'
+import { useGridDrag } from '@/hooks/use-grid-drag'
+import { isDraggableBooking, slotRange, type DragTarget } from '@/lib/booking/grid-drag'
+import { slotGates } from './slot-panel/slot-gates'
 import { ClosedDayEmptyState, GridOfflineBanner, NoCourtsEmptyState } from './grid/GridEmptyStates'
 import { moveGridFocus } from './grid/grid-keyboard-nav'
 import type { RenderCanteenDialog, RenderChargeModal, SlotPanelActions } from './slot-panel/actions'
@@ -100,6 +105,8 @@ type Props = {
     onClose: () => void
   }) => ReactNode
   actions?: React.ReactNode
+  /** "Día | Semana": se reenvía a la barra (GridHeaderBar). */
+  viewToggle?: ReactNode
 }
 
 export function BookingGrid({
@@ -121,6 +128,7 @@ export function BookingGrid({
   renderStoryDialog,
   renderChargeMany,
   actions,
+  viewToggle,
 }: Props) {
   // #29: artNow se auto-refresca cada minuto para que isSlotPast no quede
   // congelado en una grilla abierta sin recargar.
@@ -234,6 +242,54 @@ export function BookingGrid({
 
   const courtNameById = useMemo(() => new Map(courts.map((c) => [c.id, c.name])), [courts])
 
+  // Mover arrastrando: soltar sobre un hueco libre abre la confirmación. Solo
+  // con las acciones de reprogramar inyectadas (stories y tests viejos no
+  // arrastran) — es el mismo gate que el botón "Reprogramar" del panel.
+  const [moveRequest, setMoveRequest] = useState<MoveRequest | null>(null)
+  const listRescheduleSlots = slotPanelActions?.listRescheduleSlotsAction
+  const rescheduleBooking = slotPanelActions?.rescheduleBookingAction
+
+  const canDragBooking = useCallback(
+    (booking: GridBooking, slotTime: string) =>
+      isDraggableBooking(booking, {
+        canReschedule: slotGates({
+          booking,
+          hasEnded: false,
+          actions: slotPanelActions,
+          hasCourts: courts.length > 0,
+          hasCanteen: false,
+        }).canReschedule,
+        started: isSlotPast(slotTime),
+      }),
+    [slotPanelActions, courts.length, isSlotPast],
+  )
+
+  const handleDropBooking = useCallback(
+    (booking: GridBooking, target: DragTarget) => {
+      const range = slotRange(slots, target.slotTime)
+      const to = courtNameById.get(target.courtId)
+      if (!range || !to) return
+      setMoveRequest({
+        booking,
+        fromCourtName: courtNameById.get(booking.courtId) ?? 'Cancha',
+        toCourtId: target.courtId,
+        toCourtName: to,
+        date,
+        ...range,
+      })
+    },
+    [slots, courtNameById, date],
+  )
+
+  const { drag, onCardPointerDown } = useGridDrag({
+    scrollRef: gridScrollRef,
+    courts,
+    visibleSlots,
+    cells,
+    isSlotPast,
+    onDrop: handleDropBooking,
+  })
+
   const handleGridKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) =>
       moveGridFocus(e, { cols: courts.length, rows: visibleSlots.length }),
@@ -264,6 +320,7 @@ export function BookingGrid({
         onToggleHighlight={() => setHighlightPending((v) => !v)}
         onOpenStory={renderStoryDialog ? () => setStoryOpen(true) : undefined}
         onOpenChargeMany={renderChargeMany && viewingTonight ? () => setManyOpen(true) : undefined}
+        viewToggle={viewToggle}
       />
 
       {actions}
@@ -300,6 +357,10 @@ export function BookingGrid({
             onSlotClick={handleSlotClick}
             onGridKeyDown={handleGridKeyDown}
             onExpandMorning={() => setShowMorning(true)}
+            canDrag={listRescheduleSlots && rescheduleBooking ? canDragBooking : undefined}
+            draggingId={drag?.booking.id ?? null}
+            dropTarget={drag?.target ?? null}
+            onDragPointerDown={onCardPointerDown}
           />
         </div>
       )}
@@ -329,6 +390,30 @@ export function BookingGrid({
         nowMs={nowMs}
         renderChargeModal={renderChargeModal}
       />
+
+      {drag && (
+        <GridDragGhost
+          drag={drag}
+          targetLabel={
+            drag.target
+              ? `${courtNameById.get(drag.target.courtId) ?? 'Cancha'} · ${drag.target.slotTime}`
+              : null
+          }
+        />
+      )}
+
+      {moveRequest && listRescheduleSlots && rescheduleBooking && (
+        <BookingMoveDialog
+          request={moveRequest}
+          listSlotsAction={listRescheduleSlots}
+          rescheduleAction={rescheduleBooking}
+          onClose={() => setMoveRequest(null)}
+          onSuccess={() => {
+            setMoveRequest(null)
+            handleSlotMutated()
+          }}
+        />
+      )}
 
       {storyOpen && renderStoryDialog?.({ onClose: () => setStoryOpen(false) })}
 

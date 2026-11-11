@@ -19,7 +19,7 @@ import { InvalidTransitionError } from './billing.errors'
  */
 
 const PAST_DUE_TO_SUSPENDED_DAYS = 7
-const SUSPENDED_TO_BLOCKED_DAYS = 14
+const SUSPENDED_TO_FREE_DAYS = 14
 const BLOCKED_TO_CHURNED_DAYS = 90
 
 /**
@@ -35,9 +35,6 @@ const BLOCKED_TO_CHURNED_DAYS = 90
  * la fila en el momento de la transición.
  */
 export const CHURNED_DELETION_DAYS = 90
-
-/** 90d de retención (arriba) + 7d de espera del wipe. Se mueve CON el de arriba. */
-export const CANCELED_BLOCKED_DELETION_DAYS = CHURNED_DELETION_DAYS + 7
 
 type AffectedRow = { id: string }
 
@@ -184,31 +181,88 @@ export async function transitionPastDueToSuspended(tenantId: string, tx: DbTx): 
   })
 }
 
-// ─── suspended → blocked (sweep, ≥ 14d in dunning) ──────────────────────────
+// ─── * → free (el que no paga baja al plan gratis) ──────────────────────────
+// Freemium (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md): la prueba
+// vencida, el final de la mora y la baja voluntaria al vencer lo pagado terminan
+// en `free` en vez de `blocked`. Cada origen repite en el WHERE el gate que lo
+// habilita, así un caller que se equivoque de origen no mueve la fila.
+// `scheduled_deletion_at` se limpia SIEMPRE: un `free` no se borra por falta de
+// pago (solo por inactividad, `data-retention-cleanup.worker.ts`), y el wipe
+// borraría a cualquier `free` que llegara con el borrado agendado.
 
-export async function transitionSuspendedToBlocked(tenantId: string, tx: DbTx): Promise<void> {
+export type FreeDowngradeOrigin =
+  /** `trialing` con la prueba vencida (el worker ya aplicó el margen de "Activar"). */
+  | 'trial_expired'
+  /** `suspended` por mora, ≥ 14 días desde el primer cobro fallido. */
+  | 'dunning_ended'
+  /** `canceled` con el período pagado vencido. */
+  | 'cancel_period_ended'
+  /** `suspended` sin mora: la prueba vencida en solo lectura del lifecycle anterior. */
+  | 'legacy_trial_read_only'
+  /** `blocked` sin borrado agendado: prueba vencida o mora del lifecycle anterior. */
+  | 'legacy_blocked'
+
+const FREE_DOWNGRADE_SOURCE: Record<
+  FreeDowngradeOrigin,
+  'trialing' | 'suspended' | 'canceled' | 'blocked'
+> = {
+  trial_expired: 'trialing',
+  dunning_ended: 'suspended',
+  cancel_period_ended: 'canceled',
+  legacy_trial_read_only: 'suspended',
+  legacy_blocked: 'blocked',
+}
+
+function freeDowngradeGate(origin: FreeDowngradeOrigin) {
+  switch (origin) {
+    case 'trial_expired':
+      return sql`TRUE`
+    case 'dunning_ended':
+      return sql`dunning_started_at <= NOW() - (${SUSPENDED_TO_FREE_DAYS} || ' days')::interval`
+    case 'cancel_period_ended':
+      return sql`current_period_end < NOW()`
+    case 'legacy_trial_read_only':
+      return sql`dunning_started_at IS NULL`
+    case 'legacy_blocked':
+      return sql`scheduled_deletion_at IS NULL`
+  }
+}
+
+export async function transitionToFree(
+  tenantId: string,
+  origin: FreeDowngradeOrigin,
+  tx: DbTx,
+): Promise<void> {
+  const from = FREE_DOWNGRADE_SOURCE[origin]
   const subResult = await tx.execute(sql`
     UPDATE tenant_subscriptions
-    SET status = 'blocked'::subscription_status, updated_at = NOW()
+    SET status = 'free'::subscription_status,
+        dunning_started_at = NULL,
+        scheduled_deletion_at = NULL,
+        pending_billed_courts = NULL,
+        pending_change_at = NULL,
+        updated_at = NOW()
     WHERE tenant_id = ${tenantId}
-      AND status = 'suspended'
-      AND dunning_started_at <= NOW() - (${SUSPENDED_TO_BLOCKED_DAYS} || ' days')::interval
+      AND status = ${from}
+      AND ${freeDowngradeGate(origin)}
     RETURNING id
   `)
   if (rowsAffected(subResult) === 0) {
-    throw new InvalidTransitionError(tenantId, 'suspended', 'blocked')
+    throw new InvalidTransitionError(tenantId, from, 'free')
   }
   await tx.execute(sql`
     UPDATE tenants
-    SET status = 'blocked'::tenant_status, updated_at = NOW()
-    WHERE id = ${tenantId} AND status = 'suspended'
+    SET status = 'free'::tenant_status,
+        scheduled_deletion_at = NULL,
+        updated_at = NOW()
+    WHERE id = ${tenantId} AND status = ${from}
   `)
   await insertSystemAuditLog(tx, {
     tenantId,
-    action: 'tenant.blocked',
+    action: 'tenant.downgraded_to_free',
     resourceType: 'tenant',
     resourceId: tenantId,
-    metadata: { reason: 'dunning_day_14' },
+    metadata: { from, reason: origin },
   })
 }
 
@@ -292,52 +346,7 @@ export async function transitionToCanceled(
   })
 }
 
-// ─── canceled → blocked (sweep when period_end < NOW; sets deletion_at +CANCELED_BLOCKED_DELETION_DAYSd)
-
-export async function transitionCanceledToBlocked(tenantId: string, tx: DbTx): Promise<void> {
-  // B5 (huérfano MP↔DB): NO nulear `mp_subscription_id` acá. El único camino
-  // a `status='canceled'` es `cancel()`/`cancelSubscriptionForSupport`, que ya
-  // dejan `mp_subscription_id = NULL` al cancelar voluntariamente. Por lo
-  // tanto una fila `canceled` con `mp_subscription_id` NO-nulo es SIEMPRE una
-  // reactivación en curso (`reactivate()` acepta `canceled` como origen y
-  // escribe un preapproval NUEVO sin cambiar el status, a la espera del
-  // webhook). Pisarlo con NULL en este sweep borraba la referencia al
-  // preapproval recién creado: `onPaymentApproved` no matcheaba después y el
-  // pago quedaba huérfano. Al preservarlo: si el pago llega, `onPaymentApproved`
-  // (acepta `blocked` vía `transitionToActiveFromAny`) activa correctamente;
-  // si nunca llega, el retention worker cancela el preapproval en MP antes de
-  // borrar la fila (data-retention-cleanup.worker.ts). Caso ya-abandonado (id
-  // ya NULL por `cancel()`) es no-op.
-  const subResult = await tx.execute(sql`
-    UPDATE tenant_subscriptions
-    SET status = 'blocked'::subscription_status,
-        scheduled_deletion_at = NOW() + (${CANCELED_BLOCKED_DELETION_DAYS} || ' days')::interval,
-        updated_at = NOW()
-    WHERE tenant_id = ${tenantId}
-      AND status = 'canceled'
-      AND current_period_end < NOW()
-    RETURNING id
-  `)
-  if (rowsAffected(subResult) === 0) {
-    throw new InvalidTransitionError(tenantId, 'canceled', 'blocked')
-  }
-  await tx.execute(sql`
-    UPDATE tenants
-    SET status = 'blocked'::tenant_status,
-        scheduled_deletion_at = NOW() + (${CANCELED_BLOCKED_DELETION_DAYS} || ' days')::interval,
-        updated_at = NOW()
-    WHERE id = ${tenantId} AND status = 'canceled'
-  `)
-  await insertSystemAuditLog(tx, {
-    tenantId,
-    action: 'tenant.canceled_period_ended',
-    resourceType: 'tenant',
-    resourceId: tenantId,
-    metadata: { deletionInDays: CANCELED_BLOCKED_DELETION_DAYS },
-  })
-}
-
-// ─── {canceled,churned,blocked,past_due,suspended} → active ────────────────
+// ─── {canceled,churned,blocked,past_due,suspended,free} → active ───────────
 // Reactivate before deletion. Caller (billing.reactivate) has already updated
 // plan_id, billing_cycle, mp_subscription_id at preapproval-creation time.
 
@@ -360,13 +369,13 @@ export async function transitionToActiveFromAny(
         cancellation_reason = NULL,
         updated_at = NOW()
     WHERE tenant_id = ${tenantId}
-      AND status IN ('canceled', 'churned', 'blocked', 'past_due', 'suspended')
+      AND status IN ('canceled', 'churned', 'blocked', 'past_due', 'suspended', 'free')
     RETURNING id
   `)
   if (rowsAffected(subResult) === 0) {
     throw new InvalidTransitionError(
       tenantId,
-      'canceled|churned|blocked|past_due|suspended',
+      'canceled|churned|blocked|past_due|suspended|free',
       'active',
     )
   }
@@ -376,7 +385,7 @@ export async function transitionToActiveFromAny(
         scheduled_deletion_at = NULL,
         updated_at = NOW()
     WHERE id = ${tenantId}
-      AND status IN ('canceled', 'churned', 'blocked', 'past_due', 'suspended')
+      AND status IN ('canceled', 'churned', 'blocked', 'past_due', 'suspended', 'free')
   `)
   await insertSystemAuditLog(tx, {
     tenantId,

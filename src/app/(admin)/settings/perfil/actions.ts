@@ -45,7 +45,7 @@ export async function setTenantImageAction(
   kind: 'logo' | 'cover',
   formData: FormData,
 ): Promise<TenantImageActionResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -102,7 +102,7 @@ export async function removeTenantImageAction(
   kind: 'logo' | 'cover',
   previousUrl: string | null,
 ): Promise<{ success: true } | { success: false; error: string }> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -162,7 +162,7 @@ export async function updateTenantProfileAction(
   _prevState: UpdateTenantProfileResult,
   formData: FormData,
 ): Promise<UpdateTenantProfileResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -217,7 +217,7 @@ export async function updateTenantLocationAction(
   _prevState: UpdateTenantLocationResult,
   formData: FormData,
 ): Promise<UpdateTenantLocationResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -333,7 +333,7 @@ const IMPERSONATION_EMAIL_BLOCK_MESSAGE =
   'Estás impersonando este complejo: el email de login lo tiene que cambiar el dueño desde su propia cuenta, en Ajustes → Vos y tu equipo.'
 
 export async function updateUserEmailAction(newEmail: string): Promise<UpdateEmailActionResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -412,7 +412,7 @@ export async function updateAvisosSettingsAction(
   _prevState: AvisosActionResult,
   formData: FormData,
 ): Promise<AvisosActionResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 

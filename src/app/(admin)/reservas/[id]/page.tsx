@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import { isFreePlan } from '@/modules/tenants/tenant.lifecycle'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { isUuid } from '@/shared/validation/primitives'
@@ -34,8 +35,8 @@ type Props = { params: Promise<{ id: string }> }
 
 export default async function ReservaDetailPage(props: Props) {
   const params = await props.params
-  const auth = await requireOperatorStaff({ allowReadOnly: true })
-  if (!auth.ok) redirect('/login')
+  const auth = await requireOperatorStaff({ allowReadOnly: true, allowFree: true })
+  if (!auth.ok) redirect(auth.reason === 'plan' ? '/reactivar' : '/login')
   const { tenant } = auth
 
   // getBookingDetail/getBookingCharges bindean el id a SQL crudo: sin este
@@ -53,6 +54,8 @@ export default async function ReservaDetailPage(props: Props) {
     return { booking: detail, charges: c }
   })
   if (!booking) notFound()
+  // Plan gratis: el detalle de lo que anotó el staff o de un fijo es del plan pago.
+  if (isFreePlan(tenant) && !booking.isOnline) redirect('/reactivar')
 
   return (
     // 2026-09-17 (pedido del dueño): la página usaba 672px, pegada a la

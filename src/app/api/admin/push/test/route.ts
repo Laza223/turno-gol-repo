@@ -19,52 +19,55 @@ export const runtime = 'nodejs'
  *
  * Returns: { success: true, dispatched: number }
  */
-export const POST = withTenant(async (req, user) => {
-  const throttled = await guard('adminCrud', user.tenantId!)
-  if (throttled) return throttled
-  if (await getImpersonationSession())
-    return forbidden('Probá las notificaciones desde tu propia cuenta.')
+export const POST = withTenant(
+  async (req, user) => {
+    const throttled = await guard('adminCrud', user.tenantId!)
+    if (throttled) return throttled
+    if (await getImpersonationSession())
+      return forbidden('Probá las notificaciones desde tu propia cuenta.')
 
-  if (!user.staffUserId) {
-    return forbidden('Acceso denegado.', { code: 'NO_STAFF_USER_ID' })
-  }
-  const tenantId = user.tenantId!
-  const staffUserId = user.staffUserId
-  let subscriptionId: string | undefined
-  const text = await req.text()
-  if (text) {
-    let body: unknown
-    try {
-      body = JSON.parse(text)
-    } catch {
-      return badRequest('JSON inválido.')
+    if (!user.staffUserId) {
+      return forbidden('Acceso denegado.', { code: 'NO_STAFF_USER_ID' })
     }
-    const parsed = z.object({ subscriptionId: z.uuid() }).safeParse(body)
-    if (!parsed.success) return badRequest('Dispositivo inválido.')
-    subscriptionId = parsed.data.subscriptionId
-    if (!(await findOwnPushSubscription(tenantId, staffUserId, subscriptionId)))
-      return forbidden('Este dispositivo no pertenece a tu cuenta.')
-  }
+    const tenantId = user.tenantId!
+    const staffUserId = user.staffUserId
+    let subscriptionId: string | undefined
+    const text = await req.text()
+    if (text) {
+      let body: unknown
+      try {
+        body = JSON.parse(text)
+      } catch {
+        return badRequest('JSON inválido.')
+      }
+      const parsed = z.object({ subscriptionId: z.uuid() }).safeParse(body)
+      if (!parsed.success) return badRequest('Dispositivo inválido.')
+      subscriptionId = parsed.data.subscriptionId
+      if (!(await findOwnPushSubscription(tenantId, staffUserId, subscriptionId)))
+        return forbidden('Este dispositivo no pertenece a tu cuenta.')
+    }
 
-  const { enqueued, notificationId } = await notifyStaffPush(
-    tenantId,
-    staffUserId,
-    {
-      type: 'test',
-      title: 'Las notificaciones de TurnoGol',
-      body: 'La prueba llegó a este dispositivo. Tocá para volver a TurnoGol.',
-      courtName: 'Test',
-      dateLabel: 'ahora',
-      timeLabel: 'mismo',
-      // Sin el prefijo `/admin`: es un route group, no un segmento de URL.
-      url: '/grilla',
-    },
-    subscriptionId,
-  )
+    const { enqueued, notificationId } = await notifyStaffPush(
+      tenantId,
+      staffUserId,
+      {
+        type: 'test',
+        title: 'Las notificaciones de TurnoGol',
+        body: 'La prueba llegó a este dispositivo. Tocá para volver a TurnoGol.',
+        courtName: 'Test',
+        dateLabel: 'ahora',
+        timeLabel: 'mismo',
+        // Sin el prefijo `/admin`: es un route group, no un segmento de URL.
+        url: '/grilla',
+      },
+      subscriptionId,
+    )
 
-  return NextResponse.json({
-    success: true,
-    dispatched: enqueued,
-    ...(notificationId ? { notificationId } : {}),
-  })
-})
+    return NextResponse.json({
+      success: true,
+      dispatched: enqueued,
+      ...(notificationId ? { notificationId } : {}),
+    })
+  },
+  { allowFree: true },
+)

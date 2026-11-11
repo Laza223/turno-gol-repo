@@ -45,6 +45,11 @@ type Props = {
   createAbonadoAction: CreateAbonadoAction
   checkAvailabilityAction?: CheckSlotAvailabilityAction
   searchPlayersAction?: SearchBookingPlayersAction
+  /**
+   * Plan gratis (freemium): sin selector de tipo, solo "Marcar ocupado" (sin
+   * nombre, teléfono ni precio). El server lo valida igual (`freePlanBookingError`).
+   */
+  freePlan?: boolean
 }
 
 /**
@@ -70,8 +75,9 @@ export function BookingFormModal({
   createAbonadoAction,
   checkAvailabilityAction,
   searchPlayersAction,
+  freePlan = false,
 }: Props) {
-  const [kind, setKind] = useState<BookingKind>('turno')
+  const [kind, setKind] = useState<BookingKind>(freePlan ? 'bloqueo' : 'turno')
   const resolvedRef = useRef(false)
   const openedAtRef = useRef(0)
   // `create_modal.abandoned` se emite en el cleanup del efecto de montaje
@@ -151,7 +157,7 @@ export function BookingFormModal({
           <div className="flex items-center justify-between gap-3 border-b border-border p-4 lg:px-6">
             <div className="min-w-0">
               <Dialog.Title className="text-lg font-semibold tracking-tight text-foreground">
-                Nuevo turno
+                {freePlan ? 'Marcar ocupado' : 'Nuevo turno'}
               </Dialog.Title>
               <Dialog.Description className="truncate text-sm text-muted-foreground">
                 {slot.courtName} · {formatDateLong(slot.date)} · {slot.timeStart}
@@ -164,11 +170,17 @@ export function BookingFormModal({
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-            <TypePicker value={kind} onChange={setKind} />
-            {kind === 'turno' && <TurnoForm key="turno" {...formProps} />}
-            {kind === 'fijo' && <TurnoFijoForm key="fijo" {...formProps} />}
-            {kind === 'evento' && <EventoForm key="evento" {...formProps} />}
-            {kind === 'bloqueo' && <BloqueoForm key="bloqueo" {...formProps} />}
+            {freePlan ? (
+              <BloqueoForm key="ocupado" {...formProps} freePlan />
+            ) : (
+              <>
+                <TypePicker value={kind} onChange={setKind} />
+                {kind === 'turno' && <TurnoForm key="turno" {...formProps} />}
+                {kind === 'fijo' && <TurnoFijoForm key="fijo" {...formProps} />}
+                {kind === 'evento' && <EventoForm key="evento" {...formProps} />}
+                {kind === 'bloqueo' && <BloqueoForm key="bloqueo" {...formProps} />}
+              </>
+            )}
           </div>
         </Dialog.Content>
       </Dialog.Portal>

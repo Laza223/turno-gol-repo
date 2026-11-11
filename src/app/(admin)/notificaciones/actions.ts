@@ -18,7 +18,7 @@ import type { PushDeviceActions } from '@/components/admin/push-browser'
 import { isInsufficientPrivilege } from '@/shared/db/pg-errors'
 
 async function authorize() {
-  const auth = await requireOperatorStaff({ allowReadOnly: true })
+  const auth = await requireOperatorStaff({ allowReadOnly: true, allowFree: true })
   if (!auth.ok) return auth
   if (await getImpersonationSession())
     return {

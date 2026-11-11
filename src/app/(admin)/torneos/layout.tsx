@@ -22,7 +22,7 @@ import { TOURNAMENTS_FLAG } from '@/modules/tournaments/tournament.flags'
  */
 export default async function TorneosLayout({ children }: { children: ReactNode }) {
   const auth = await requireOperatorStaff({ allowReadOnly: true })
-  if (!auth.ok) redirect('/login')
+  if (!auth.ok) redirect(auth.reason === 'plan' ? '/reactivar' : '/login')
   if (!(await isFeatureEnabled(TOURNAMENTS_FLAG, auth.tenant.id))) notFound()
   return children
 }

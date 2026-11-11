@@ -84,6 +84,14 @@ function Hero() {
           <p className="mt-3 text-sm text-muted-foreground sm:mt-4">
             Sin tarjeta. Te ayudamos a dejarlo andando.
           </p>
+          {/* Freemium (2026-11-08): el gratis va de puerta de entrada, nunca de
+              titular sobre la noche. */}
+          <p className="mt-4 text-sm text-muted-foreground">
+            Aparecé gratis donde los jugadores de tu zona buscan cancha.{' '}
+            <Link href="/precios" className="font-semibold text-foreground underline">
+              Ver los planes
+            </Link>
+          </p>
         </div>
         <NochePhone />
       </div>

@@ -13,7 +13,7 @@ export default async function NuevoTorneoPage() {
   // rebote del manager va a `/torneos` (mantener el contexto del módulo), no al
   // `/dashboard` que impone `requireAdminStaff`.
   const auth = await requireOperatorStaff({ allowReadOnly: true })
-  if (!auth.ok) redirect('/login')
+  if (!auth.ok) redirect(auth.reason === 'plan' ? '/reactivar' : '/login')
   const { tenant, role } = auth
 
   if (!(await isFeatureEnabled(TOURNAMENTS_FLAG, tenant.id))) notFound()

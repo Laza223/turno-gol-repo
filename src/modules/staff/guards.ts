@@ -4,6 +4,7 @@ import { getImpersonationSession } from '@/modules/auth/impersonation.server'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import {
   BLOCKED_TENANT_STATUSES,
+  isFreePlan,
   READ_ONLY_TENANT_STATUSES,
 } from '@/modules/tenants/tenant.lifecycle'
 import type { StaffUser } from '@/modules/auth/types'
@@ -38,7 +39,7 @@ type AdminStaff = {
  * `blocked` por falta de pago podía seguir creando reservas o moviendo caja
  * invocando la action por POST directo.
  */
-type LifecycleGate = 'open' | 'read_only' | 'blocked'
+type LifecycleGate = 'open' | 'read_only' | 'blocked' | 'free'
 
 /**
  * Cómo le pega el lifecycle a ESTA sesión. La impersonación de SuperAdmin
@@ -51,7 +52,9 @@ export async function lifecycleGateForStaff(tenant: TenantRow): Promise<Lifecycl
     ? 'blocked'
     : READ_ONLY_TENANT_STATUSES.has(tenant.status)
       ? 'read_only'
-      : 'open'
+      : isFreePlan(tenant)
+        ? 'free'
+        : 'open'
   if (gate === 'open') return gate
   const impersonating = await getImpersonationSession()
   return impersonating === null ? gate : 'open'
@@ -60,6 +63,15 @@ export async function lifecycleGateForStaff(tenant: TenantRow): Promise<Lifecycl
 /** Lo que ve el staff cuando una escritura choca con el solo lectura. */
 const READ_ONLY_ERROR =
   'El complejo está en solo lectura: podés ver todo, pero no cargar ni cambiar nada hasta que se active el plan.'
+
+/**
+ * Lo que ve el staff cuando toca una función paga con el complejo en el plan
+ * gratis (freemium, docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
+ */
+const FREE_PLAN_ERROR =
+  'Esto es con el plan. Activalo para anotar tus turnos, fijos, caja y jugadores.'
+/** El encargado no entra en el plan gratis: el segundo usuario es del plan pago. */
+const FREE_PLAN_MANAGER_ERROR = 'El encargado entra con el plan. Avisale al dueño del complejo.'
 
 type LifecycleOptions = {
   /**
@@ -70,6 +82,15 @@ type LifecycleOptions = {
    * `tests/unit/caja-solo-lectura.test.ts`.
    */
   allowReadOnly?: boolean
+  /**
+   * Un complejo en el plan gratis (`free`) pasa. Opt-in, igual que
+   * `allowReadOnly`: el default es que toda función es del plan pago, así una
+   * acción nueva que se olvida de pedirlo queda cerrada para el gratis (bug
+   * visible) en vez de regalar algo pago (plata que se escapa). Lo que el
+   * gratis puede hacer lo fija la lista cerrada de `tests/unit/allow-free-guard.test.ts`.
+   * El encargado no pasa nunca: en gratis entra solo el dueño.
+   */
+  allowFree?: boolean
 }
 
 /**
@@ -84,7 +105,12 @@ export type StaffActionAuth =
       tenant: TenantRow
       role: StaffRole
     }
-  | { ok: false; error: string }
+  | {
+      ok: false
+      error: string
+      /** `plan`: la función es del plan pago y el complejo está en gratis. */
+      reason?: 'plan'
+    }
 
 async function requireStaffWithRole(
   allowed: readonly StaffRole[],
@@ -118,6 +144,10 @@ async function requireStaffWithRole(
       return { ok: false, error: 'El complejo está bloqueado por falta de pago.' }
     }
     if (gate === 'read_only' && !opts?.allowReadOnly) return { ok: false, error: READ_ONLY_ERROR }
+    if (gate === 'free') {
+      if (role !== 'admin') return { ok: false, error: FREE_PLAN_MANAGER_ERROR, reason: 'plan' }
+      if (!opts?.allowFree) return { ok: false, error: FREE_PLAN_ERROR, reason: 'plan' }
+    }
   }
 
   return { ok: true, user: { ...user, staffUserId: user.staffUserId }, tenant, role }
@@ -222,6 +252,8 @@ export async function requireAdminStaff(
   const gate = await lifecycleGateForStaff(tenant)
   if (gate === 'blocked') redirect('/suspended')
   if (gate === 'read_only' && !opts?.allowReadOnly) redirect('/reactivar')
+  // Plan gratis: lo pago lleva a la salida de pago, que muestra qué incluye.
+  if (gate === 'free' && !opts?.allowFree) redirect('/reactivar')
 
   return { user: { ...user, staffUserId: user.staffUserId }, tenant }
 }

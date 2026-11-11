@@ -57,7 +57,7 @@ export async function updateHorariosAction(
   _prevState: HorariosActionResult,
   formData: FormData,
 ): Promise<HorariosActionResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -189,7 +189,7 @@ export async function addClosedDateAction(
     return { success: false, error: 'Fecha inválida.' }
   }
 
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -219,7 +219,7 @@ export async function removeClosedDateAction(
 ): Promise<HorariosActionResult> {
   const date = formData.get('date') as string
 
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 

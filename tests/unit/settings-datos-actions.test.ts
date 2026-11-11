@@ -103,9 +103,9 @@ describe('export de datos — autorización', () => {
     await exportAbonadosAction()
     await exportClientsAction()
     expect(vi.mocked(requireAdminStaffAction).mock.calls).toEqual([
-      [{ allowReadOnly: true }],
-      [{ allowReadOnly: true }],
-      [{ allowReadOnly: true }],
+      [{ allowReadOnly: true, allowFree: true }],
+      [{ allowReadOnly: true, allowFree: true }],
+      [{ allowReadOnly: true, allowFree: true }],
     ])
   })
 

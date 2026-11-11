@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import {
-  CANCELED_BLOCKED_DELETION_DAYS,
-  CHURNED_DELETION_DAYS,
-} from '@/modules/billing/lifecycle.service'
+import { CHURNED_DELETION_DAYS } from '@/modules/billing/lifecycle.service'
 
 /**
  * Candado de B1 — regresión "el código borra antes de lo que los términos prometen".
@@ -40,7 +37,7 @@ describe('la retención del código coincide con lo que promete el texto legal',
   it('/terminos — "se conservan N días tras la baja"', () => {
     const days = retentionDaysPromisedIn(
       read('src/app/(public)/terminos/page.tsx'),
-      'Los datos del complejo se conservan',
+      'conservan sus datos',
     )
     expect(
       CHURNED_DELETION_DAYS,
@@ -59,18 +56,15 @@ describe('la retención del código coincide con lo que promete el texto legal',
     ).toBe(days)
   })
 
-  it('el plazo de la baja por cancelación deja margen sobre la retención, nunca al revés', () => {
-    // El +7 es el margen para que el sweep semanal alcance a correr. Lo que no
-    // puede pasar nunca es que el camino de cancelación borre ANTES que el de
-    // churn: sería la misma incoherencia por otra puerta.
-    expect(CANCELED_BLOCKED_DELETION_DAYS).toBeGreaterThan(CHURNED_DELETION_DAYS)
-    expect(CANCELED_BLOCKED_DELETION_DAYS - CHURNED_DELETION_DAYS).toBe(7)
-  })
-
-  it('el mail de cancelación y el FAQ prometen menos de lo que el código conserva', () => {
-    // `/precios` y `subscription-canceled.ts` dicen "60 días" para la baja
-    // voluntaria. Es un piso: mientras el código conserve MÁS, la promesa se
-    // cumple. Si alguien bajara la constante por debajo, esto va rojo.
-    expect(CANCELED_BLOCKED_DELETION_DAYS).toBeGreaterThanOrEqual(60)
+  // Freemium (2026-11-08): el gratis abandonado se borra a los
+  // CHURNED_DELETION_DAYS del aviso (`scheduleInactiveFreeDeletion`); los
+  // términos lo dicen con número. La baja voluntaria ya no agenda borrado: pasa
+  // al plan gratis.
+  it('/terminos — el gratis inactivo se elimina N días después del aviso', () => {
+    const days = retentionDaysPromisedIn(
+      read('src/app/(public)/terminos/page.tsx'),
+      'si no vuelve a entrar, sus datos se eliminan',
+    )
+    expect(CHURNED_DELETION_DAYS).toBe(days)
   })
 })

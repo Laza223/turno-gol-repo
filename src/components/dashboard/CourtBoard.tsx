@@ -51,6 +51,7 @@ export function CourtBoard({
   canManageCourts,
   onOpenBooking,
   onChargeMany,
+  freePlan = false,
 }: {
   board: CourtBoardData
   courts: QueueCourt[]
@@ -62,6 +63,11 @@ export function CourtBoard({
   onOpenBooking: (bookingId: string) => void
   /** "Cobrar los N": con 2 o más turnos en rojo el total pasa a ser este botón. */
   onChargeMany?: () => void
+  /**
+   * Plan gratis: no hay caja, así que el tablero no habla de plata. Sin esto un
+   * turno enmascarado (saldo en 0) se leía "Pagado" y el título "Todo cobrado".
+   */
+  freePlan?: boolean
 }) {
   const courtOf = courtLookup(courts)
   const late = board.lateCount > 0
@@ -90,7 +96,7 @@ export function CourtBoard({
             {board.lateCount === 1 ? '1 sin cobrar' : `${board.lateCount} sin cobrar`} ·{' '}
             {formatArs(board.lateCents)}
           </p>
-        ) : anyStarted && board.queue.now.length === 0 ? (
+        ) : !freePlan && anyStarted && board.queue.now.length === 0 ? (
           <p
             className={cn(
               'inline-flex items-center gap-1.5 text-sm font-medium',
@@ -140,6 +146,7 @@ export function CourtBoard({
                 court={courtOf(tile.courtId)}
                 nowMs={nowMs}
                 onOpenBooking={onOpenBooking}
+                freePlan={freePlan}
               />
             </li>
           ))}
@@ -166,11 +173,13 @@ function CourtRow({
   court,
   nowMs,
   onOpenBooking,
+  freePlan,
 }: {
   tile: CourtTile
   court: QueueCourt | undefined
   nowMs: number
   onOpenBooking: (bookingId: string) => void
+  freePlan: boolean
 }) {
   const courtName = court?.name ?? 'Cancha'
   const focus = tile.focus
@@ -221,7 +230,7 @@ function CourtRow({
   // rojo de lo que hay que cobrar. Un torneo no se cobra por turno: sin color.
   // Dado por perdido (2026-11-07): sin saldo pero NO pagado — tono neutro, nunca el verde.
   const lost = !due && pending === 0 && (booking.writtenOff ?? 0) > 0
-  const paid = !due && !lost && pending === 0 && booking.type !== 'tournament'
+  const paid = !freePlan && !due && !lost && pending === 0 && booking.type !== 'tournament'
   if (lost)
     pay = (
       <span className={cn('text-sm font-semibold', TONE_TEXT.neutral)}>

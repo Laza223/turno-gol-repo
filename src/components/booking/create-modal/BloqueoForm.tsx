@@ -1,6 +1,8 @@
 'use client'
 
 import { useRef, useState, useTransition } from 'react'
+import Link from 'next/link'
+import { FREE_PLAN_BLOCK_REASONS } from '@/shared/constants'
 import * as Sentry from '@sentry/nextjs'
 import { toast } from '@/hooks/use-toast'
 import { formatDateLong } from '@/lib/format'
@@ -13,8 +15,14 @@ import { readOnlyFieldClass, selectClass } from './styles'
 import type { TypeFormProps } from './types'
 
 const REASONS = ['Mantenimiento', 'Cancha cerrada', 'Otro'] as const
+type Reason = (typeof REASONS)[number] | (typeof FREE_PLAN_BLOCK_REASONS)[number]
 
-/** Bloquear cancha — nadie puede usarla: NUNCA carga plata ni datos de contacto. */
+/**
+ * Bloquear cancha — nadie puede usarla: NUNCA carga plata ni datos de contacto.
+ *
+ * En el plan gratis es la única alta ("Marcar ocupado"): motivos cerrados, sin
+ * "Otro" libre, y el pedido de pasar al plan para anotar quién juega.
+ */
 export function BloqueoForm({
   slot,
   courtBookings,
@@ -23,19 +31,21 @@ export function BloqueoForm({
   onClose,
   onSuccess,
   trackConfirmed,
-}: TypeFormProps) {
+  freePlan = false,
+}: TypeFormProps & { freePlan?: boolean }) {
+  const reasons: readonly Reason[] = freePlan ? FREE_PLAN_BLOCK_REASONS : REASONS
   const timeStart = slot.timeStart
   const endOptions = endTimeOptions({ slots: daySlots, startTime: timeStart, courtBookings })
   const [timeEnd, setTimeEnd] = useState(endOptions[0]!)
 
-  const [reason, setReason] = useState<(typeof REASONS)[number]>('Mantenimiento')
+  const [reason, setReason] = useState<Reason>(freePlan ? 'Ocupado' : 'Mantenimiento')
   const [customReason, setCustomReason] = useState('')
   const customInputRef = useRef<HTMLInputElement>(null)
 
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
-  function pickReason(next: (typeof REASONS)[number]) {
+  function pickReason(next: Reason) {
     setReason(next)
     if (next === 'Otro') setTimeout(() => customInputRef.current?.focus(), 0)
   }
@@ -70,7 +80,7 @@ export function BloqueoForm({
         }
         trackConfirmed()
         toast({
-          title: 'Turno bloqueado',
+          title: freePlan ? 'Horario marcado como ocupado' : 'Turno bloqueado',
           description: `${slot.courtName} · ${timeStart}–${timeEnd}`,
           variant: 'success',
         })
@@ -94,7 +104,7 @@ export function BloqueoForm({
             Motivo
           </h4>
           <div className="flex flex-wrap gap-1.5">
-            {REASONS.map((r) => (
+            {reasons.map((r) => (
               <button
                 key={r}
                 type="button"
@@ -119,6 +129,14 @@ export function BloqueoForm({
                 placeholder="Ej: Alquiler para evento privado"
               />
             </div>
+          )}
+          {freePlan && (
+            <p className="text-sm text-muted-foreground">
+              ¿Querés anotar quién juega y cuánto paga? Eso es con el plan.{' '}
+              <Link href="/reactivar" className="font-semibold text-foreground underline">
+                Ver el plan
+              </Link>
+            </p>
           )}
         </section>
 
@@ -158,7 +176,7 @@ export function BloqueoForm({
         durationLabel={durationLabel}
         totalCents={null}
         collectedCents={0}
-        primaryLabel="Bloquear cancha"
+        primaryLabel={freePlan ? 'Marcar ocupado' : 'Bloquear cancha'}
         onCancel={onClose}
         isPending={isPending}
         disabled={isPending}

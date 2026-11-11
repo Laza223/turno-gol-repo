@@ -6,7 +6,12 @@ import { DEFAULT_CANCELLATION_HOURS_BEFORE, SLOT_DURATION_MINUTES } from '@/shar
 import { track, withSpan } from '@/shared/observability'
 import { effectiveCloseMins, normalizeRangeToOpenDay } from '@/shared/time/operating-day'
 import { holdExpiresAtIso } from '@/lib/booking/hold'
-import { publicBookingAdvanceDays } from './tenant.lifecycle'
+import {
+  effectiveAllowOnlineBooking,
+  isFreePlan,
+  publicBookingAdvanceDays,
+} from './tenant.lifecycle'
+import { VISIBLE_TENANT_STATUSES } from './search.service'
 import { arePublicPricesHidden, bookingMinAdvanceHours } from './tenant.utils'
 import type { OpeningHours, TenantSettings } from './tenant.types'
 
@@ -349,7 +354,10 @@ export async function listTopPublicTenantSlugs(limit = 50): Promise<string[]> {
       LEFT JOIN bookings b
         ON b.tenant_id = t.id
        AND b.created_at >= now() - interval '60 days'
-      WHERE t.status IN ('active', 'trialing')
+      WHERE t.status::text IN (${sql.join(
+        VISIBLE_TENANT_STATUSES.map((st) => sql`${st}`),
+        sql`, `,
+      )})
         AND t.marketplace_visible = true
       GROUP BY t.id
       ORDER BY count(b.id) DESC, t.name ASC
@@ -396,6 +404,9 @@ async function _getPublicTenant(slug: string): Promise<PublicTenant | null> {
       longitude: true,
       // Instante, no credencial: dice si la seña online se puede cobrar.
       mpDisconnectedAt: true,
+      // Plan gratis: mes en que llegó al tope y pausa (freemium).
+      onlineCapMonth: true,
+      onlinePausedAt: true,
       // NEVER: email, mpAccessToken, mpRefreshToken, mpUserId, mpPublicKey
     },
   })
@@ -438,11 +449,17 @@ async function _getPublicTenant(slug: string): Promise<PublicTenant | null> {
     status: row.status,
     canceledPeriodEnd,
     timezone: row.timezone,
-    allowOnlineBooking: s.allow_online_booking ?? true,
+    // Plan gratis: tope del mes o pausa → la ficha pasa a WhatsApp/Llamar.
+    allowOnlineBooking: effectiveAllowOnlineBooking({
+      status: row.status,
+      allowOnlineBookingSetting: s.allow_online_booking ?? true,
+      onlineCapMonth: row.onlineCapMonth,
+      onlinePausedAt: row.onlinePausedAt,
+    }),
     // Con MP marcado como desconectado la reserva online entra sin seña
     // (decisión 2026-10-22, `depositUnpayable` en reservar/actions.ts): el
-    // checkout y el bot no la pueden anunciar.
-    requiresDeposit: (s.requires_deposit ?? false) && !row.mpDisconnectedAt,
+    // checkout y el bot no la pueden anunciar. El plan gratis no cobra seña.
+    requiresDeposit: (s.requires_deposit ?? false) && !row.mpDisconnectedAt && !isFreePlan(row),
     depositPercentage: s.deposit_percentage ?? 30,
     hidePrices: arePublicPricesHidden(s),
     acceptsCash: s.accepts_cash ?? true,

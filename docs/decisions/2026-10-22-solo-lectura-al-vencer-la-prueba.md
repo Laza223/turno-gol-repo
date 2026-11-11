@@ -1,5 +1,7 @@
 # Solo lectura al vencer la prueba
 
+> **Superada el 2026-11-08 por el freemium** ([`2026-11-08-freemium.md`](2026-11-08-freemium.md), [`2026-11-08-freemium-spec-y-estado-free.md`](2026-11-08-freemium-spec-y-estado-free.md)): la prueba vencida pasa al plan gratis (`free`), no a solo lectura ni a `blocked`. `suspended` queda solo para la mora, entre el día 7 y el 14.
+
 **Estado**: aprobada por Lazar el 2026-10-22. Respondió por select las 4 preguntas y en las cuatro eligió la opción recomendada. Supera, para el vencimiento de la prueba, el diagrama de doc4 §2 ("No paga, día 31 → BLOCKED"). El mismo día, después de #487, sumó dos decisiones: las devoluciones se pueden marcar en solo lectura, y va un mail al entrar en solo lectura (pendiente de programar).
 
 ## Decisión

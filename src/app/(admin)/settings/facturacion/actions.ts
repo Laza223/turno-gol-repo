@@ -37,7 +37,7 @@ export type DisconnectMpResult = { success: true } | { success: false; error: st
  * su nombre, que es lo que el dueño está pidiendo.
  */
 export async function disconnectMercadoPagoAction(): Promise<DisconnectMpResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant, user } = auth
 

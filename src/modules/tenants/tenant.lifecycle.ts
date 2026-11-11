@@ -5,7 +5,9 @@
  * - READ_ONLY → 403 en métodos que escriben; el admin conserva lectura y el
  *               jugador sigue viendo sus reservas.
  * - canceled  → acceso completo hasta `current_period_end` (el sweep lo pasa a
- *               `blocked` en ese momento).
+ *               `free` en ese momento).
+ * - free      → plan gratis: panel abierto, pero cada función paga la corta su
+ *               guard (`isFreePlan`, opt-in `allowFree` en `staff/guards.ts`).
  * - active / trialing / past_due → acceso completo.
  *
  * Vive acá y no en el middleware que las estrenó (`@/server/middleware/with-tenant`)
@@ -15,7 +17,6 @@
  * importando `@/server` desde `@/modules` — la dirección al revés (B6).
  */
 import { artDateOf, todayART } from '@/shared/time/art-date'
-import { SUBSCRIBED_TRIAL_GRACE_DAYS, TRIAL_READ_ONLY_DAYS } from '@/shared/constants'
 
 /** Estados en los que el complejo no tiene acceso a nada. */
 export const BLOCKED_TENANT_STATUSES = new Set(['blocked', 'churned', 'deleted'])
@@ -23,20 +24,43 @@ export const BLOCKED_TENANT_STATUSES = new Set(['blocked', 'churned', 'deleted']
 /** Estados en los que el complejo puede leer pero no escribir. */
 export const READ_ONLY_TENANT_STATUSES = new Set(['suspended'])
 
-const DAY_MS = 86_400_000
+/**
+ * ¿El complejo está en el plan gratis? Es LA pregunta que hacen los guards y las
+ * pantallas: "gratis" se pregunta acá y en ningún otro lado, así un plan futuro
+ * no reabre cada guard (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
+ */
+export function isFreePlan(tenant: { status: string }): boolean {
+  return tenant.status === 'free'
+}
+
+/** Mes calendario ART ('YYYY-MM') de un instante. Es la unidad del tope de reservas online. */
+export function artMonthOf(instant: Date = new Date()): string {
+  return artDateOf(instant).slice(0, 7)
+}
 
 /**
- * Hasta cuándo dura el solo lectura de un complejo cuya prueba venció sin pago
- * (decisión 2026-10-22). Entra en `suspended` el día que vence la prueba, o
- * `SUBSCRIBED_TRIAL_GRACE_DAYS` después si ya tocó "Activar", y pasa a
- * `blocked` `TRIAL_READ_ONLY_DAYS` más tarde.
+ * ¿La reserva online del portal está abierta para este complejo? El setting del
+ * dueño, y en el plan gratis además: que no haya llegado al tope del mes
+ * (`online_cap_month` es el mes en que llegó) ni esté pausado por cancelar
+ * reservas online. Las superficies públicas (ficha, `/explorar`, imagen de
+ * horarios) pasan solas al estado "sin reserva online" con WhatsApp/Llamar.
  *
- * Es la misma cuenta que hace `runExpireTrials` en SQL para decidir el
- * bloqueo. Acá se usa para mostrarle la fecha al dueño en el aviso.
+ * La autoridad del tope es el COUNT del alta online (`assertFreeOnlineCap`):
+ * esto es el cache para no listar un CTA que el alta va a rechazar.
  */
-export function trialReadOnlyEndsAt(trialEndsAt: Date, hasSubscription: boolean): Date {
-  const days = TRIAL_READ_ONLY_DAYS + (hasSubscription ? SUBSCRIBED_TRIAL_GRACE_DAYS : 0)
-  return new Date(trialEndsAt.getTime() + days * DAY_MS)
+export function effectiveAllowOnlineBooking(
+  tenant: {
+    status: string
+    allowOnlineBookingSetting: boolean
+    onlineCapMonth: string | null
+    onlinePausedAt: Date | null
+  },
+  now: Date = new Date(),
+): boolean {
+  if (!tenant.allowOnlineBookingSetting) return false
+  if (!isFreePlan(tenant)) return true
+  if (tenant.onlinePausedAt !== null) return false
+  return tenant.onlineCapMonth !== artMonthOf(now)
 }
 
 // ─── Superficie pública (portal del jugador) ────────────────────────────────

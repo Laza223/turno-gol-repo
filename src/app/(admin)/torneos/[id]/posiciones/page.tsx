@@ -33,7 +33,7 @@ export default async function TorneoPosicionesPage(props: { params: Promise<{ id
   // torneo; ahora lo devuelve el guard, así que esa lectura desaparece en vez de
   // paralelizarse.
   const auth = await requireOperatorStaff({ allowReadOnly: true })
-  if (!auth.ok) redirect('/login')
+  if (!auth.ok) redirect(auth.reason === 'plan' ? '/reactivar' : '/login')
   const { tenant, role } = auth
 
   if (!(await isFeatureEnabled(TOURNAMENTS_FLAG, tenant.id))) notFound()

@@ -40,7 +40,7 @@ export default async function TorneoDetailPage(props: { params: Promise<{ id: st
   // El rol define si se puede publicar; el panel igual muestra el estado. Lo
   // devuelve el guard, sin una segunda lectura de tenant_staff_members.
   const auth = await requireOperatorStaff({ allowReadOnly: true })
-  if (!auth.ok) redirect('/login')
+  if (!auth.ok) redirect(auth.reason === 'plan' ? '/reactivar' : '/login')
   const { tenant, role } = auth
 
   if (!(await isFeatureEnabled(TOURNAMENTS_FLAG, tenant.id))) notFound()

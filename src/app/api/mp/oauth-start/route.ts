@@ -5,6 +5,7 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import {
   BLOCKED_TENANT_STATUSES,
+  isFreePlan,
   READ_ONLY_TENANT_STATUSES,
 } from '@/modules/tenants/tenant.lifecycle'
 
@@ -37,6 +38,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.redirect(new URL('/suspended', req.url))
   }
   if (READ_ONLY_TENANT_STATUSES.has(tenant.status)) {
+    return NextResponse.redirect(new URL('/reactivar', req.url))
+  }
+  // Plan gratis: sin seña online, no hay nada que cobrar con MP (freemium).
+  if (isFreePlan(tenant)) {
     return NextResponse.redirect(new URL('/reactivar', req.url))
   }
 

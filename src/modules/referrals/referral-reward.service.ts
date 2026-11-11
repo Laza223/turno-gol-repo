@@ -179,6 +179,10 @@ type RewardApplication = 'extend_trial' | 'manual'
  * con un checkout que nunca se pagó (El Vagón). Para eso el id que se miró en
  * MP tiene que ser el mismo que sigue guardado: si cambió en el medio (activó
  * el plan), lo que dijo MP ya no vale.
+ *
+ * Un referidor en el plan gratis (`free`) cae en `manual`: el mes queda
+ * aprobado y se le devuelve el primer cobro cuando pase al plan (freemium,
+ * decisión 8 de docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
  */
 export function decideRewardApplication(input: {
   referrerStatus: TenantStatus

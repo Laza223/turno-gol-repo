@@ -30,15 +30,18 @@ export function AdminBottomNav({
   tournamentsEnabled,
   staffRole,
   setupAlerts = NO_SETUP_ALERTS,
+  freePlan = false,
 }: {
   onOpenMore: () => void
   moreOpen: boolean
   tournamentsEnabled?: boolean
   staffRole?: StaffRole
   setupAlerts?: SetupAlerts
+  /** Plan gratis: lo del plan pago queda detrás de "Más" (va al final de la lista). */
+  freePlan?: boolean
 }) {
   const pathname = usePathname()
-  const visible = visibleNavItems({ tournamentsEnabled, staffRole })
+  const visible = visibleNavItems({ tournamentsEnabled, staffRole, freePlan })
   const primary = visible.slice(0, 3)
   // Configuración no está en `NAV_ITEMS`: vive en el cajón y solo la ve el dueño.
   const moreItems = [...visible.slice(3), ...(staffRole === 'admin' ? [CONFIG_ITEM] : [])]
@@ -60,7 +63,7 @@ export function AdminBottomNav({
         const active = isNavItemActive(item, pathname)
         return (
           <Link
-            key={item.href}
+            key={item.label}
             href={item.href}
             aria-current={active ? 'page' : undefined}
             className={cn(

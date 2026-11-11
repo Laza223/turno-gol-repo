@@ -8,27 +8,27 @@ export type TrialExpiredData = {
 }
 
 /**
- * Día 31: el trial venció y `runExpireTrials` acaba de bloquear el tenant
- * (doc7 Flujo 7, cronograma). No promete un plazo de retención de datos: esa
- * transición no fija `scheduled_deletion_at` (a diferencia de
- * `canceled→blocked` / `blocked→churned`), así que decir "tus datos se
- * guardan N días" acá sería una promesa que el sistema no cumple.
+ * Día 31: terminó la prueba sin pago y `runExpireTrials` pasó el complejo al
+ * plan gratis (freemium, docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
+ * No se bloquea: sigue en el mapa con hasta 20 reservas online por mes y deja de
+ * poder anotar la noche. Lo cargado queda guardado (no hay borrado agendado).
  */
 export function renderTrialExpired(data: TrialExpiredData): EmailContent {
-  const subject = `Tu prueba gratuita terminó — ${data.tenantName}`
+  const subject = `Terminó tu prueba. ${data.tenantName} sigue en TurnoGol gratis`
   const html = `
 <!DOCTYPE html>
 <html lang="es">
 <body style="font-family:sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1e293b">
-  <h2 style="color:#dc2626">Tu prueba gratuita terminó</h2>
+  <h2>Terminó tu prueba</h2>
   <p>Hola ${escapeHtml(data.ownerName)},</p>
-  <p>El período de prueba de <strong>${escapeHtml(data.tenantName)}</strong> en TurnoGol terminó. Suscribite para seguir usando TurnoGol.</p>
+  <p><strong>${escapeHtml(data.tenantName)}</strong> pasó al plan gratis. Tus jugadores te siguen encontrando y reservando online, hasta 20 turnos por mes.</p>
+  <p>Desde hoy no podés anotar tus turnos, los fijos, la caja ni tus jugadores. Todo lo que cargaste quedó guardado y vuelve apenas actives el plan.</p>
   <p style="text-align:center;margin:24px 0">
-    <a href="${appLink('/settings/facturacion')}" style="background:#0369a1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Suscribirme →</a>
+    <a href="${appLink('/reactivar')}" style="background:#0369a1;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Activar el plan</a>
   </p>
-  <p style="color:#64748b;font-size:14px">— El equipo de TurnoGol</p>
+  <p style="color:#64748b;font-size:14px">El equipo de TurnoGol</p>
 </body>
 </html>`
-  const text = `Tu prueba gratuita terminó\n\nHola ${data.ownerName},\n\nEl período de prueba de ${data.tenantName} en TurnoGol terminó. Suscribite para seguir usando TurnoGol: ${appLink('/settings/facturacion')}\n\n— El equipo de TurnoGol`
+  const text = `Terminó tu prueba\n\nHola ${data.ownerName},\n\n${data.tenantName} pasó al plan gratis. Tus jugadores te siguen reservando online, hasta 20 turnos por mes.\n\nDesde hoy no podés anotar tus turnos, los fijos, la caja ni tus jugadores. Todo quedó guardado. Activá el plan en ${appLink('/reactivar')}\n\nEl equipo de TurnoGol`
   return { subject, html, text }
 }

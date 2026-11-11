@@ -16,11 +16,11 @@ export function renderSubscriptionCanceled(data: SubscriptionCanceledData): Emai
   <h2 style="color:#475569">Suscripción cancelada</h2>
   <p>Hola ${escapeHtml(data.ownerName)},</p>
   <p>Cancelamos la suscripción de <strong>${escapeHtml(data.tenantName)}</strong>.</p>
-  <p>Tu acceso completo continúa hasta <strong>${data.accessUntil}</strong>. Después tu cuenta entra en modo restringido y los datos quedan disponibles 60 días para reactivar.</p>
+  <p>Tu acceso completo continúa hasta <strong>${data.accessUntil}</strong>. Después tu complejo pasa al plan gratis: seguís en el buscador, tus jugadores te reservan online y tus datos quedan guardados para cuando vuelvas.</p>
   <p style="color:#64748b;font-size:14px">¿Cambiaste de idea? Reactivá desde el panel.</p>
   <p style="color:#64748b;font-size:14px">— El equipo de TurnoGol</p>
 </body>
 </html>`
-  const text = `Suscripción cancelada\n\nHola ${data.ownerName},\n\nCancelamos la suscripción de ${data.tenantName}.\n\nTu acceso completo continúa hasta ${data.accessUntil}. Después la cuenta entra en modo restringido (60 días para reactivar).\n\n— El equipo de TurnoGol`
+  const text = `Suscripción cancelada\n\nHola ${data.ownerName},\n\nCancelamos la suscripción de ${data.tenantName}.\n\nTu acceso completo continúa hasta ${data.accessUntil}. Después tu complejo pasa al plan gratis y tus datos quedan guardados para cuando vuelvas.\n\n— El equipo de TurnoGol`
   return { subject, html, text }
 }

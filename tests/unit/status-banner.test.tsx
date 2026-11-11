@@ -51,45 +51,9 @@ describe('StatusBanner — ramas existentes (regresión)', () => {
   })
 })
 
-// Decisión 2026-10-22: `suspended` es solo lectura. El aviso distingue la
-// prueba vencida de la mora, muestra la fecha de corte de la prueba y solo el
-// dueño ve el botón (`/reactivar` es solo suyo).
+// `suspended` es solo lectura (decisión 2026-10-22). Desde el freemium es solo
+// la mora: la prueba vencida baja al plan gratis. Solo el dueño ve el botón.
 describe('StatusBanner — solo lectura (suspended)', () => {
-  // 03:00 UTC = medianoche ART: en UTC ya es el 20, en ART también.
-  const TRIAL_UNTIL = '2026-12-20T03:00:00.000Z'
-
-  it('prueba vencida, dueño: dice que la prueba terminó, la fecha de corte y "Activar plan"', () => {
-    render(
-      <StatusBanner
-        tenantStatus="suspended"
-        periodEnd={null}
-        serviceDegraded={false}
-        readOnly={{ origin: 'trial', until: TRIAL_UNTIL }}
-        staffRole="admin"
-      />,
-    )
-    expect(screen.getByRole('status').textContent).toMatch(/Tu prueba terminó/)
-    expect(screen.getByRole('status').textContent).toMatch(/solo lectura/)
-    expect(screen.getByText('20 de diciembre')).toBeTruthy()
-    const link = screen.getByRole('link', { name: 'Activar plan' })
-    expect(link.getAttribute('href')).toBe('/reactivar')
-    expect(screen.queryByText(/Avisale al dueño/)).toBeNull()
-  })
-
-  it('prueba vencida, encargado: sin botón, le dice que le avise al dueño', () => {
-    render(
-      <StatusBanner
-        tenantStatus="suspended"
-        periodEnd={null}
-        serviceDegraded={false}
-        readOnly={{ origin: 'trial', until: TRIAL_UNTIL }}
-        staffRole="manager"
-      />,
-    )
-    expect(screen.getByRole('status').textContent).toMatch(/Avisale al dueño del complejo/)
-    expect(screen.queryByRole('link')).toBeNull()
-  })
-
   it('mora, dueño: habla de la falta de pago, sin fecha, con "Regularizar pago"', () => {
     render(
       <StatusBanner
@@ -112,10 +76,49 @@ describe('StatusBanner — solo lectura (suspended)', () => {
         tenantStatus="suspended"
         periodEnd={null}
         serviceDegraded={false}
-        readOnly={{ origin: 'trial', until: '2026-12-21T02:00:00.000Z' }}
+        readOnly={{ origin: 'dunning', until: '2026-12-21T02:00:00.000Z' }}
         staffRole="admin"
       />,
     )
     expect(screen.getByText('20 de diciembre')).toBeTruthy()
+  })
+})
+
+// Plan gratis (freemium, 2026-11-08): banda informativa, con el tope del mes y
+// la pausa por cancelaciones. En gratis solo entra el dueño.
+describe('StatusBanner — plan gratis', () => {
+  it('sin tope ni pausa: cuenta qué es el gratis y ofrece pasar al plan', () => {
+    render(<StatusBanner tenantStatus="free" periodEnd={null} serviceDegraded={false} />)
+    expect(screen.getByRole('status').textContent).toMatch(/Estás en el plan gratis/)
+    expect(screen.getByRole('link', { name: 'Pasar al plan' }).getAttribute('href')).toBe(
+      '/reactivar',
+    )
+  })
+
+  it('con el tope del mes: dice que los jugadores ya reservaron 20 turnos', () => {
+    render(
+      <StatusBanner
+        tenantStatus="free"
+        periodEnd={null}
+        serviceDegraded={false}
+        freePlan={{ capReached: true, paused: false }}
+      />,
+    )
+    expect(screen.getByRole('status').textContent).toMatch(/ya te reservaron 20 turnos online/)
+  })
+
+  it('en pausa: pide marcar los ocupados y muestra el botón para reanudar', () => {
+    render(
+      <StatusBanner
+        tenantStatus="free"
+        periodEnd={null}
+        serviceDegraded={false}
+        freePlan={{ capReached: true, paused: true }}
+        resumeOnlineAction={async () => ({ success: true })}
+      />,
+    )
+    expect(screen.getByRole('status').textContent).toMatch(/Pausamos tus reservas online/)
+    expect(screen.getByRole('button', { name: 'Ya marqué mis ocupados' })).toBeTruthy()
+    expect(screen.queryByRole('link')).toBeNull()
   })
 })

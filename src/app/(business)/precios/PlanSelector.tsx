@@ -5,12 +5,19 @@ import { useState } from 'react'
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import { formatArs } from '@/lib/format'
 import { Input } from '@/components/ui/input'
+import { PLUS_LIST_PER_COURT_CENTS } from '@/modules/billing/pricing'
+import { FREE_ONLINE_BOOKINGS_PER_MONTH, SUPPORT_WHATSAPP_URL } from '@/shared/constants'
 import { annualSavings, planForCourts, type BillingCycle, type PlanCard } from './plans-data'
 
 /** Accesos rápidos; el campo permite cualquier cantidad exacta. */
 const COURT_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8] as const
 
-/** Selector de cantidad exacta de canchas y ciclo de facturación. */
+/**
+ * Selector de cantidad exacta de canchas y ciclo de facturación, con los tres
+ * planes lado a lado (decisión 2026-11-08, "tres planes"): Gratis, Completo
+ * (destacado, el que se vende) y Completo + WhatsApp (el ancla). Los montos no
+ * cambian: Completo es el precio por cancha y WhatsApp suma el Plus de lista.
+ */
 export default function PlanSelector() {
   const [courts, setCourts] = useState(3)
   const [courtInput, setCourtInput] = useState('3')
@@ -113,28 +120,166 @@ export default function PlanSelector() {
 
         {/* Anuncio del plan resultante (refuerzo + screen readers) */}
         <p aria-live="polite" className="text-center text-[15px] text-slate-400">
-          Para {courts} {courts === 1 ? 'cancha' : 'canchas'}, tu plan es{' '}
-          <span className="font-semibold text-[#6ee7b7]">{active.name}</span>.
+          Precios para {courts} {courts === 1 ? 'cancha' : 'canchas'}.
         </p>
       </div>
 
-      {/* Cards */}
-      <div className="mx-auto mt-10 max-w-[560px]">
-        <PlanCardView plan={active} cycle={cycle} isActive />
+      {/* Cards: en el celular, Completo primero (es el que se vende). */}
+      <div className="mx-auto mt-10 grid max-w-[1180px] grid-cols-1 gap-6 md:grid-cols-3 md:items-stretch">
+        <div className="order-2 md:order-1">
+          <FreeCardView />
+        </div>
+        <div className="order-1 md:order-2">
+          <PlanCardView plan={active} cycle={cycle} isActive />
+        </div>
+        <div className="order-3">
+          <WhatsappCardView plan={active} courts={courts} cycle={cycle} />
+        </div>
       </div>
 
-      {/* Anti-miedo a elegir mal: no hay funciones recortadas */}
       <div className="mt-8 flex justify-center">
         <p
-          className="inline-flex max-w-[640px] items-center gap-3 rounded-2xl border border-emerald-500/20 px-5 py-3.5 text-center text-[14.5px] leading-snug text-slate-300"
+          className="inline-flex max-w-[680px] items-center gap-3 rounded-2xl border border-emerald-500/20 px-5 py-3.5 text-center text-[14.5px] leading-snug text-slate-300"
           style={{ background: 'rgba(16,185,129,.06)' }}
         >
           <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" aria-hidden />
           <span>
-            <span className="font-semibold text-white">Todas las canchas tienen todo.</span> Pagás
-            por cantidad de canchas, no por funcionalidades.
+            <span className="font-semibold text-white">
+              Todos arrancan con 30 días de Completo.
+            </span>{' '}
+            Si después no pagás, seguís en Gratis y tus datos quedan guardados.
           </span>
         </p>
+      </div>
+    </div>
+  )
+}
+
+const CARD_IDLE_STYLE = {
+  borderRadius: '20px',
+  background: 'linear-gradient(180deg, rgba(15,23,42,.6), rgba(2,6,23,.7))',
+}
+
+const PRICE_STYLE = {
+  fontSize: 'clamp(38px, 3.6vw, 46px)',
+  letterSpacing: '-0.02em',
+  lineHeight: 1,
+}
+
+const SECONDARY_CTA =
+  'group inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 text-sm font-bold text-white transition-all duration-300 hover:bg-white/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 active:scale-[0.97] whitespace-nowrap'
+
+function FeatureList({ items }: { items: readonly string[] }) {
+  return (
+    <ul className="mt-5 flex-1 space-y-2.5">
+      {items.map((item) => (
+        <li key={item} className="flex items-start gap-2.5 text-[14px] leading-snug text-slate-300">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" aria-hidden />
+          {item}
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+const FREE_FEATURES = [
+  'Aparecés en el buscador de TurnoGol y en RIVAL',
+  `Tus jugadores te reservan online, hasta ${FREE_ONLINE_BOOKINGS_PER_MONTH} turnos por mes`,
+  'Marcás en la grilla los horarios ocupados',
+  'Sin vencimiento',
+] as const
+
+const FULL_FEATURES = [
+  'Reservas online sin tope',
+  'Anotás tus turnos con nombre y precio',
+  'Fijos, caja, cantina y jugadores',
+  'Tu encargado entra con su usuario',
+  'Métricas y soporte por WhatsApp',
+] as const
+
+function FreeCardView() {
+  return (
+    <div
+      className="relative flex h-full flex-col border border-white/9 p-7"
+      style={CARD_IDLE_STYLE}
+    >
+      <h2 className="font-display text-2xl font-bold text-[#f8fafc]">Gratis</h2>
+      <div className="mt-6 flex items-baseline gap-2">
+        <span className="font-display font-black tabular-nums text-[#f8fafc]" style={PRICE_STYLE}>
+          {formatArs(0)}
+        </span>
+        <span className="text-sm font-medium text-slate-400">/mes</span>
+      </div>
+      <div className="mt-2 text-[13px] text-slate-400">Para aparecer donde buscan cancha</div>
+      <FeatureList items={FREE_FEATURES} />
+      <div className="mt-6">
+        <Link href="/register" className={SECONDARY_CTA}>
+          Empezar gratis
+        </Link>
+        <p className="mt-3 text-center text-xs text-slate-500">
+          Las condiciones del gratis pueden cambiar con 30 días de aviso
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function WhatsappCardView({
+  plan,
+  courts,
+  cycle,
+}: {
+  plan: PlanCard
+  courts: number
+  cycle: BillingCycle
+}) {
+  const plus = PLUS_LIST_PER_COURT_CENTS * courts
+  const monthly = cycle === 'monthly'
+  return (
+    <div
+      className="relative flex h-full flex-col border border-white/9 p-7"
+      style={CARD_IDLE_STYLE}
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="font-display text-2xl font-bold text-[#f8fafc]">Completo + WhatsApp</h2>
+      </div>
+      <div className="mt-6">
+        {monthly ? (
+          <div className="flex items-baseline gap-2">
+            <span
+              className="font-display font-black tabular-nums text-[#f8fafc]"
+              style={PRICE_STYLE}
+            >
+              {formatArs(plan.priceMonthly + plus)}
+            </span>
+            <span className="text-sm font-medium text-slate-400">/mes</span>
+          </div>
+        ) : (
+          <div className="font-display text-xl font-bold text-[#f8fafc]">
+            Completo + {formatArs(plus)}/mes
+          </div>
+        )}
+        <div className="mt-2 text-[13px] text-slate-400">
+          {formatArs(PLUS_LIST_PER_COURT_CENTS)} más por cancha
+        </div>
+      </div>
+      <FeatureList
+        items={[
+          'Todo lo de Completo',
+          'Un asistente atiende tu WhatsApp y toma reservas a cualquier hora',
+          'Responde con tus horarios y precios reales',
+        ]}
+      />
+      <div className="mt-6">
+        <a
+          href={SUPPORT_WHATSAPP_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={SECONDARY_CTA}
+        >
+          Escribinos
+        </a>
+        <p className="mt-3 text-center text-xs text-slate-500">Lo sumás cuando quieras</p>
       </div>
     </div>
   )
@@ -169,12 +314,12 @@ function PlanCardView({
     >
       {isActive && (
         <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-emerald-500 px-4 py-1.5 text-[11px] font-bold uppercase tracking-[.08em] text-slate-950 shadow-[0_6px_20px_rgba(16,185,129,.45)]">
-          Para tus canchas
+          Recomendado
         </span>
       )}
 
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="font-display text-2xl font-bold text-[#f8fafc]">{plan.name}</h2>
+        <h2 className="font-display text-2xl font-bold text-[#f8fafc]">Completo</h2>
         <span className="text-[13px] font-semibold text-slate-400">{plan.rangeLabel}</span>
       </div>
 
@@ -226,7 +371,7 @@ function PlanCardView({
         )}
       </div>
 
-      <p className="mt-5 flex-1 text-[14.5px] leading-relaxed text-slate-400">{plan.sizeLine}</p>
+      <FeatureList items={FULL_FEATURES} />
 
       <div className="mt-6">
         <Link

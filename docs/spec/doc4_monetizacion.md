@@ -111,88 +111,41 @@ facturadas. Esta tabla es ilustrativa, no es la fuente — la fuente es
 ## 2. Lifecycle Completo del Tenant — Máquina de Estados Autoritativa
 
 > [!IMPORTANT]
-> Esta es LA máquina de estados del tenant. Tiene **8 estados**.
+> Esta es LA máquina de estados del tenant. Tiene **9 estados** desde el freemium del 2026-11-08
+> ([`docs/decisions/2026-11-08-freemium.md`](../decisions/2026-11-08-freemium.md) y
+> [`2026-11-08-freemium-spec-y-estado-free.md`](../decisions/2026-11-08-freemium-spec-y-estado-free.md)).
 > Cualquier otro doc que muestre menos estados o transiciones diferentes está desactualizado.
 
 ```
-                    ┌──────────────┐
-     Registro ────→│   TRIALING   │ (30 días, acceso completo)
-                    └──────┬───────┘
-                           │
-              ┌────────────┤────────────┐
-              │            │            │
-         [Paga]    [No paga, día 31]    │
-              │            │            │
-              ▼            ▼            │
-       ┌──────────┐  ┌──────────┐      │
-       │  ACTIVE  │  │SUSPENDED │      │
-       └────┬─────┘  │(solo lect│      │
-            │        │14d→BLOCK)│      │
-     [Cobro falla]   └────┬─────┘      │
-            │              │            │
-            ▼         [Paga dentro     │
-     ┌──────────┐    de 60 días]       │
-     │ PAST_DUE │──────────┘            │
-     └────┬─────┘                       │
-          │                             │
-   [7 días sin pago]                    │
-          │                             │
-          ▼                             │
-   ┌────────────┐                       │
-   │ SUSPENDED  │ (solo lectura admin;  │
-   │            │  jugadores siguen)    │
-   └────┬───────┘                       │
-        │                               │
-  [14 días sin pago]                    │
-        │                               │
-        ▼                               │
-   ┌──────────┐                         │
-   │ BLOCKED  │ (sin acceso total)      │
-   └────┬─────┘                         │
-        │                               │
-  [90 días sin pago]                    │
-        │                               │
-        ▼                               │
-   ┌──────────┐                         │
-   │ CHURNED  │◄────────────────────────┘
-   └────┬─────┘   (60 días post-trial sin pagar)
-        │
-  [7 días más]
-        │
-        ▼
-   ┌──────────┐
-   │ DELETED  │ (datos eliminados/anonimizados)
-   └──────────┘
+trialing ──(vence sin pago; +3 días si tocó "Activar")──────────────► free
+active ──[cobro falla]──► past_due (7 d, completo) ──► suspended (solo lectura hasta el día 14) ──► free
+active ──[cancela]──► canceled ──[vence lo pagado]──► free
+free ──[entra el pago]──► active
+free ──[6 meses sin entrar al panel ni reservas nuevas]──► aviso por mail + borrado a los 90 días
+                                                           (entrar al panel lo cancela)
 
- En CUALQUIER momento antes de CHURNED:
-   [Paga] ────→ ACTIVE (datos restaurados)
+Heredados (anteriores al freemium): blocked ──► churned ──► deleted.
+Los `suspended` de prueba vencida y los `blocked` de prueba vencida pasan a `free` en la
+primera corrida de `runExpireTrials`, sin mail.
 
- CANCELACIÓN VOLUNTARIA:
-   ACTIVE ──[cancela]──→ CANCELED ──[fin período]──→ BLOCKED ──[60d]──→ CHURNED ──[7d]──→ DELETED
+En CUALQUIER momento antes de borrar: [Paga] ──► ACTIVE (datos restaurados)
 ```
 
 > [!NOTE]
-> **BLOCKED → CHURNED (ruta dunning) = 90 días**, contados desde el primer cobro fallido
-> (`dunning_started_at`; `BLOCKED_TO_CHURNED_DAYS = 90` en
-> `src/modules/billing/lifecycle.service.ts:23`): BLOCKED cae el día 14, CHURNED el día 90,
-> DELETED el día 97. La ruta de cancelación voluntaria usa una constante distinta
-> (`CANCELED_BLOCKED_DELETION_DAYS = 67`, 60 días de retención + 7 días de espera de borrado,
-> contados desde el bloqueo) y no pasa por un estado `churned` explícito antes de eliminarse.
->
-> Decisión de auditoría 2026-07-21: reducir la ruta de dunning a 60 días para simplificar los
-> crons de churn y alinear con la minimización de datos — **implementación de código PENDIENTE**
-> (`lifecycle.service.ts` sigue en 90; `BLOCKED_TO_CHURNED_DAYS` no fue tocado).
+> **Plan gratis (`free`)**. El complejo sigue en el buscador, en RIVAL y con su página; los
+> jugadores le reservan online hasta `FREE_ONLINE_BOOKINGS_PER_MONTH = 20` turnos por mes ART
+> (cuenta en `src/modules/bookings/free-online-cap.ts`). Sin seña online ni bot de WhatsApp. El
+> dueño solo marca horarios como ocupados; caja, jugadores, fijos, encargado y métricas completas
+> son del plan pago y sus datos quedan guardados. Cinco reservas online canceladas por el dueño en
+> el mes pausan la reserva online hasta que toque "Ya marqué mis ocupados". Los guards lo preguntan
+> con `isFreePlan(tenant)` y cada función lo abre con `allowFree` (opt-in, como `allowReadOnly`).
+> `free` no vence ni se borra por falta de pago: lo limpia solo la regla de inactividad de
+> `data-retention-cleanup`.
 
 > [!NOTE]
-> **Prueba vencida → SUSPENDED (solo lectura) 14 días → BLOCKED** (decisión 2026-10-22,
-> [`docs/decisions/2026-10-22-solo-lectura-al-vencer-la-prueba.md`](../decisions/2026-10-22-solo-lectura-al-vencer-la-prueba.md)).
-> Hasta esa fecha la prueba vencida pasaba directo a BLOCKED. Ahora `runExpireTrials`
-> (`src/shared/jobs/workers/expire-trials.worker.ts`) la deja en `suspended` el día que vence
-> `trial_ends_at` (3 días después si ya tocó "Activar", `SUBSCRIBED_TRIAL_GRACE_DAYS`) y la pasa a
-> `blocked` `TRIAL_READ_ONLY_DAYS = 14` días más tarde. Es el mismo `suspended` de la mora, con el
-> mismo comportamiento de la tabla de abajo; se distingue por `tenant_subscriptions.dunning_started_at`
-> vacío, y cada uno lo bloquea su propio barrido. Dueño y encargado entran a mirar; las reservas
-> online se cortan (`isPublicPortalOpen`). La salida es "Activar plan" en `/reactivar` → ACTIVE.
+> **Superada**: la prueba vencida ya no pasa por `suspended` ni por `blocked`
+> ([`docs/decisions/2026-10-22-solo-lectura-al-vencer-la-prueba.md`](../decisions/2026-10-22-solo-lectura-al-vencer-la-prueba.md)
+> quedó superada por el freemium). `TRIAL_READ_ONLY_DAYS` y `trialReadOnlyEndsAt` se eliminaron.
 
 ### Estados y comportamiento del sistema
 
@@ -204,6 +157,7 @@ facturadas. Esta tabla es ilustrativa, no es la fuente — la fuente es
 | `suspended` | Solo lectura | Puede ver reservas, no crear nuevas | Reintento manual | Aviso de suspensión | 🔴 Rojo |
 | `blocked` | Sin acceso | Sin acceso | No | Re-activación | ⚫ Gris oscuro |
 | `canceled` | Completo hasta fin período | Completo hasta fin período | No (canceló) | Offboarding + retención | ⚫ Gris |
+| `free` | Solo el dueño: grilla con "ocupado", reservas online, canchas, ajustes | Reserva online hasta 20 por mes, sin seña | No | Aviso al pasar a gratis; inactividad | 🔵 Azul |
 | `churned` | Sin acceso | Sin acceso | No | Re-activación (30, 60 días) | ⚫ Negro |
 | `deleted` | N/A | N/A | N/A | N/A | N/A |
 

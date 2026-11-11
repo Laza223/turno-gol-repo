@@ -314,3 +314,12 @@ export class TooManyActiveHoldsError extends Error {
     this.name = 'TooManyActiveHoldsError'
   }
 }
+
+// Freemium: el complejo del plan gratis llegó a las reservas online del mes
+// (`FREE_ONLINE_BOOKINGS_PER_MONTH`) o tiene la reserva online en pausa.
+export class FreeOnlineCapReachedError extends Error {
+  constructor(public readonly tenantId: string) {
+    super(`Tenant ${tenantId} reached the free plan online booking cap for this month`)
+    this.name = 'FreeOnlineCapReachedError'
+  }
+}

@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { isFreePlan } from '@/modules/tenants/tenant.lifecycle'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import {
   SETTINGS_ADMIN_ONLY_NOTICE,
@@ -46,8 +47,8 @@ export default async function GrillaPage(props: {
   const searchParams = await props.searchParams
   // `/onboarding` y no `/login` en el rechazo: es el destino que esta página ya
   // tenía para "sin complejo resuelto" y se preserva tal cual.
-  const auth = await requireOperatorStaff({ allowReadOnly: true })
-  if (!auth.ok) redirect('/onboarding')
+  const auth = await requireOperatorStaff({ allowReadOnly: true, allowFree: true })
+  if (!auth.ok) redirect(auth.reason === 'plan' ? '/reactivar' : '/onboarding')
   const { tenant } = auth
 
   const todayArt = artTodayStr()
@@ -61,7 +62,7 @@ export default async function GrillaPage(props: {
   const { courts, dayBookings } = await withTenantContext(tenant.id, async (tx) => {
     const [courtList, bookingRows] = await Promise.all([
       listCourts(tenant.id, tx),
-      listDayGridBookings(tenant.id, dateStr, tx),
+      listDayGridBookings(tenant.id, dateStr, tx, { freePlan: isFreePlan(tenant) }),
     ])
     return { courts: courtList, dayBookings: bookingRows }
   })
@@ -99,6 +100,7 @@ export default async function GrillaPage(props: {
         action={createBookingAction}
         createAbonadoAction={createAbonadoAction}
         checkAvailabilityAction={checkSlotAvailabilityAction}
+        freePlan={isFreePlan(tenant)}
         searchPlayersAction={searchBookingPlayersAction}
         slotPanelActions={{
           chargeDebtAction,

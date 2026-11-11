@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // Hallazgo #1 (campaña de mutación, docs/qa/TEST_AUDIT.md): el mail de baja
 // armaba `daysRemaining`/`deletionDate` con literales viejos (7 y 67) en vez
-// de leer CHURNED_DELETION_DAYS (90) y CANCELED_BLOCKED_DELETION_DAYS (97) de
+// de leer CHURNED_DELETION_DAYS (90) de
 // lifecycle.service — mientras la MISMA transacción escribía
 // scheduled_deletion_at con el valor correcto. Este test verifica que el
 // contenido del mail (`enqueueTenantOwnerNotification`) coincide con las
@@ -22,9 +22,8 @@ vi.mock('@/modules/billing/lifecycle.service', async (importOriginal) => {
   return {
     ...actual,
     transitionPastDueToSuspended: vi.fn(),
-    transitionSuspendedToBlocked: vi.fn(),
     transitionBlockedToChurned: vi.fn(),
-    transitionCanceledToBlocked: vi.fn(),
+    transitionToFree: vi.fn(),
   }
 })
 
@@ -48,10 +47,7 @@ vi.mock('@/shared/db/client', () => ({
 
 import { runDunningSweep } from '@/shared/jobs/workers/dunning-retry.worker'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
-import {
-  CHURNED_DELETION_DAYS,
-  CANCELED_BLOCKED_DELETION_DAYS,
-} from '@/modules/billing/lifecycle.service'
+import { CHURNED_DELETION_DAYS } from '@/modules/billing/lifecycle.service'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -77,7 +73,8 @@ describe('runDunningSweep — el mail de baja usa las constantes reales de reten
     expect(payload.content.daysRemaining).toBe(CHURNED_DELETION_DAYS)
   })
 
-  it('canceled→blocked: content.daysRemaining coincide con CANCELED_BLOCKED_DELETION_DAYS (97)', async () => {
+  // Freemium (2026-11-08): la baja vencida pasa al plan gratis, no se agenda borrado.
+  it('canceled→free: avisa el pase al plan gratis, sin fecha de borrado', async () => {
     sqlMock = makeSqlMock([
       [], // pastDueRows
       [], // suspendedRows
@@ -91,8 +88,9 @@ describe('runDunningSweep — el mail de baja usa las constantes reales de reten
 
     expect(enqueueTenantOwnerNotification).toHaveBeenCalledTimes(1)
     const [payload] = (enqueueTenantOwnerNotification as ReturnType<typeof vi.fn>).mock
-      .calls[0] as [{ templateName: string; content: { daysRemaining: number } }]
-    expect(payload.templateName).toBe('tenant_deletion_warning')
-    expect(payload.content.daysRemaining).toBe(CANCELED_BLOCKED_DELETION_DAYS)
+      .calls[0] as [{ templateName: string; content: { reason: string; daysRemaining?: number } }]
+    expect(payload.templateName).toBe('plan_downgraded_free')
+    expect(payload.content.reason).toBe('canceled')
+    expect(payload.content.daysRemaining).toBeUndefined()
   })
 })

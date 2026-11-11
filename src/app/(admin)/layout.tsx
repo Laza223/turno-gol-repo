@@ -3,15 +3,17 @@ import { eq } from 'drizzle-orm'
 import type { ReactNode } from 'react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { resolveImpersonatedStaffContext } from '@/modules/auth/impersonation.server'
-import { getStaffTenant } from '@/modules/tenants/tenant.service'
+import { after } from 'next/server'
+import { getStaffTenant, touchStaffSeen } from '@/modules/tenants/tenant.service'
 import type { TenantRow } from '@/modules/tenants/tenant.types'
 import { getProfileGaps } from '@/modules/tenants/setup-gaps'
 import { NO_SETUP_ALERTS, type SetupAlerts } from '@/components/layout/setup-alerts'
-import type { ReadOnlyNotice } from '@/components/layout/status-banner'
+import type { FreePlanNotice, ReadOnlyNotice } from '@/components/layout/status-banner'
 import {
+  artMonthOf,
   BLOCKED_TENANT_STATUSES,
+  isFreePlan,
   READ_ONLY_TENANT_STATUSES,
-  trialReadOnlyEndsAt,
 } from '@/modules/tenants/tenant.lifecycle'
 import { countCourtsWithoutPhotos } from '@/modules/courts/court.service'
 import { withTenantContext } from '@/shared/db/client'
@@ -30,6 +32,7 @@ import {
 } from '@/app/(admin)/caja/cantina/actions'
 import { VenderProvider } from '@/app/(admin)/dashboard/_components/VenderProvider'
 import { stopImpersonationAction } from '@/app/(super-admin)/super-admin/tenants/[id]/actions'
+import { resumeOnlineBookingAction } from '@/app/(admin)/dashboard/actions'
 
 /**
  * Lo que el dueño todavía no completó y el jugador sí nota (canchas sin foto,
@@ -65,25 +68,30 @@ function loadSubscriptionSummary(tenantId: string): Promise<SubscriptionSummary 
 }
 
 /**
- * Por qué el complejo está en solo lectura (decisión 2026-10-22). La mora entra
- * a `suspended` siempre con `dunning_started_at` cargado (`runDunningSweep`);
- * sin él, es la prueba vencida de `runExpireTrials`, y ahí se sabe la fecha en
- * que pasa a bloqueado.
+ * Solo lectura (`suspended`): desde el freemium es solo la mora, entre el día 7 y
+ * el 14 (la prueba vencida baja directo al plan gratis).
  */
-function readOnlyNotice(tenant: TenantRow, sub: SubscriptionSummary | null): ReadOnlyNotice | null {
+function readOnlyNotice(tenant: TenantRow): ReadOnlyNotice | null {
   if (!READ_ONLY_TENANT_STATUSES.has(tenant.status)) return null
-  if (sub?.dunningStartedAt || !tenant.trialEndsAt) return { origin: 'dunning', until: null }
+  return { origin: 'dunning', until: null }
+}
+
+/** Plan gratis: tope de reservas online del mes y pausa por cancelaciones. */
+function freePlanNotice(tenant: TenantRow): FreePlanNotice | null {
+  if (!isFreePlan(tenant)) return null
   return {
-    origin: 'trial',
-    until: trialReadOnlyEndsAt(tenant.trialEndsAt, !!sub?.mpSubscriptionId).toISOString(),
+    capReached: tenant.onlineCapMonth === artMonthOf(),
+    paused: tenant.onlinePausedAt !== null,
   }
 }
 
 /**
  * El modal de Vender vive acá y no en Hoy: se abre desde cualquier vista del panel
  * (botón del riel o tecla V), así que no hace falta volver a Hoy para vender.
+ * En el plan gratis no hay cantina: sin proveedor no hay botón ni tecla V.
  */
-function WithVender({ children }: { children: ReactNode }) {
+function WithVender({ children, enabled = true }: { children: ReactNode; enabled?: boolean }) {
+  if (!enabled) return <>{children}</>
   return (
     <VenderProvider
       loadCatalogAction={loadVenderCatalogAction}
@@ -120,7 +128,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           }
           staffRole="admin"
           setupAlerts={impAlerts}
-          readOnly={readOnlyNotice(imp.tenant, impSub)}
+          readOnly={readOnlyNotice(imp.tenant)}
         >
           {children}
         </AdminLayoutShell>
@@ -139,6 +147,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   const tenant = await getStaffTenant(user.staffUserId, user.tenantId)
   if (!tenant) redirect('/login')
+
+  // Uso del panel: mide el gratis abandonado y cancela su borrado si vuelve
+  // (freemium, decisión 7). Fuera del render y sin tirar nunca.
+  after(() => touchStaffSeen(tenant.id))
 
   // Billing-driven hard lock: tenants in these terminal/restricted states cannot
   // access the admin panel regardless of the kill-switch flag (#64).
@@ -168,7 +180,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   // En solo lectura el wizard no puede guardar nada: un complejo cuya prueba
   // venció sin terminar el onboarding va directo a la salida.
   if (tenant.settings.onboarding_completed !== true) {
-    redirect(READ_ONLY_TENANT_STATUSES.has(tenant.status) ? '/reactivar' : '/onboarding')
+    // El gratis tampoco: sus guards no abren el wizard (freemium).
+    redirect(
+      READ_ONLY_TENANT_STATUSES.has(tenant.status) || isFreePlan(tenant)
+        ? '/reactivar'
+        : '/onboarding',
+    )
   }
 
   // Independientes entre sí: van en paralelo. El flag de torneos nace global en
@@ -186,7 +203,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const setupAlerts = staffRole === 'admin' ? alerts : NO_SETUP_ALERTS
 
   return (
-    <WithVender>
+    <WithVender enabled={!isFreePlan(tenant)}>
       <AdminLayoutShell
         tenantName={tenant.name}
         tenantStatus={tenant.status}
@@ -198,7 +215,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         tournamentsEnabled={tournamentsEnabled}
         staffRole={staffRole ?? 'manager'}
         setupAlerts={setupAlerts}
-        readOnly={readOnlyNotice(tenant, sub)}
+        readOnly={readOnlyNotice(tenant)}
+        freePlan={freePlanNotice(tenant)}
+        resumeOnlineAction={resumeOnlineBookingAction}
       >
         {children}
       </AdminLayoutShell>

@@ -14,9 +14,17 @@ import { tenant, tenantSettings } from './tenant'
  */
 
 export type SaTenantStatus =
-  'trialing' | 'active' | 'past_due' | 'suspended' | 'blocked' | 'canceled' | 'churned' | 'deleted'
+  | 'trialing'
+  | 'active'
+  | 'past_due'
+  | 'suspended'
+  | 'blocked'
+  | 'canceled'
+  | 'churned'
+  | 'deleted'
+  | 'free'
 
-/** Los 8 estados de `tenant_status`, en el orden del FSM (doc4 §2). */
+/** Los 9 estados de `tenant_status`, en el orden del FSM (doc4 §2). */
 export const SA_TENANT_STATUSES: readonly SaTenantStatus[] = [
   'trialing',
   'active',
@@ -26,6 +34,7 @@ export const SA_TENANT_STATUSES: readonly SaTenantStatus[] = [
   'canceled',
   'churned',
   'deleted',
+  'free',
 ]
 
 export type SaBillingCycle = 'monthly' | 'annual'
@@ -100,6 +109,7 @@ const ZERO_BY_STATUS: Record<SaTenantStatus, number> = {
   canceled: 0,
   churned: 0,
   deleted: 0,
+  free: 0,
 }
 
 /** Embudo con caída típica: 1→2→3→4 decreciente, algo de activación. */

@@ -75,6 +75,8 @@ function tenantRow(status: TenantRow['status']): TenantRow {
     mpDisconnectedAt: null,
     latitude: null,
     longitude: null,
+    onlineCapMonth: null,
+    onlinePausedAt: null,
   }
 }
 
@@ -294,5 +296,73 @@ describe('requireAdminStaff — page/action guard, redirige a /suspended', () =>
     const result = await requireAdminStaff()
 
     expect(result.tenant.status).toBe('churned')
+  })
+})
+
+// Freemium (2026-11-08): `free` entra solo donde la función pide `allowFree`, y
+// solo el dueño. El encargado rebota siempre; la impersonación pasa.
+describe('plan gratis (free)', () => {
+  const FREE_PLAN_ERROR =
+    'Esto es con el plan. Activalo para anotar tus turnos, fijos, caja y jugadores.'
+  const FREE_PLAN_MANAGER_ERROR = 'El encargado entra con el plan. Avisale al dueño del complejo.'
+
+  it('sin allowFree (una función del plan pago): el dueño rebota con reason plan', async () => {
+    vi.mocked(extractAuthUser).mockResolvedValue(staffUser())
+    vi.mocked(getStaffTenant).mockResolvedValue(tenantRow('free'))
+    vi.mocked(getStaffRole).mockResolvedValue('admin')
+
+    expect(await requireOperatorStaff({ allowReadOnly: true })).toEqual({
+      ok: false,
+      error: FREE_PLAN_ERROR,
+      reason: 'plan',
+    })
+    expect(await requireAdminStaffAction()).toEqual({
+      ok: false,
+      error: FREE_PLAN_ERROR,
+      reason: 'plan',
+    })
+  })
+
+  it('con allowFree: el dueño pasa', async () => {
+    vi.mocked(extractAuthUser).mockResolvedValue(staffUser())
+    vi.mocked(getStaffTenant).mockResolvedValue(tenantRow('free'))
+    vi.mocked(getStaffRole).mockResolvedValue('admin')
+
+    expect((await requireOperatorStaff({ allowFree: true })).ok).toBe(true)
+    expect((await requireAdminStaffAction({ allowFree: true })).ok).toBe(true)
+  })
+
+  it('el encargado rebota aun con allowFree', async () => {
+    vi.mocked(extractAuthUser).mockResolvedValue(staffUser())
+    vi.mocked(getStaffTenant).mockResolvedValue(tenantRow('free'))
+    vi.mocked(getStaffRole).mockResolvedValue('manager')
+
+    expect(await requireOperatorStaff({ allowFree: true })).toEqual({
+      ok: false,
+      error: FREE_PLAN_MANAGER_ERROR,
+      reason: 'plan',
+    })
+  })
+
+  it('impersonando, el super admin pasa sin allowFree', async () => {
+    vi.mocked(extractAuthUser).mockResolvedValue(staffUser())
+    vi.mocked(getStaffTenant).mockResolvedValue(tenantRow('free'))
+    vi.mocked(getStaffRole).mockResolvedValue('admin')
+    vi.mocked(getImpersonationSession).mockResolvedValue({
+      systemAdminId: 'sa-1',
+      tenantId: TENANT_ID,
+    })
+
+    expect((await requireOperatorStaff()).ok).toBe(true)
+  })
+
+  it('requireAdminStaff (page): sin allowFree redirige a /reactivar; con allowFree entra', async () => {
+    vi.mocked(extractAuthUser).mockResolvedValue(staffUser())
+    vi.mocked(getStaffTenant).mockResolvedValue(tenantRow('free'))
+    vi.mocked(getStaffRole).mockResolvedValue('admin')
+
+    await expect(requireAdminStaff({ allowReadOnly: true })).rejects.toThrow('REDIRECT:/reactivar')
+    const result = await requireAdminStaff({ allowReadOnly: true, allowFree: true })
+    expect(result.tenant.status).toBe('free')
   })
 })

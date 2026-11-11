@@ -140,6 +140,18 @@ export const tenants = pgTable(
       mode: 'date',
     }),
 
+    // Plan gratis del freemium (migr. 111). `online_cap_month`: mes ART
+    // ('YYYY-MM') en que llegó al tope de reservas online; cache de las
+    // superficies públicas, la autoridad es el COUNT del alta online.
+    // `online_paused_at`: pausa por cancelar muchas reservas online; NULL = no.
+    // `online_pause_reset_at`: cuándo confirmó sus "ocupado"; las cancelaciones
+    // anteriores no cuentan. `last_staff_seen_at`: última visita al panel (una
+    // escritura por día como mucho), mide el gratis abandonado.
+    onlineCapMonth: text('online_cap_month'),
+    onlinePausedAt: timestamp('online_paused_at', { withTimezone: true, mode: 'date' }),
+    onlinePauseResetAt: timestamp('online_pause_reset_at', { withTimezone: true, mode: 'date' }),
+    lastStaffSeenAt: timestamp('last_staff_seen_at', { withTimezone: true, mode: 'date' }),
+
     scheduledDeletionAt: timestamp('scheduled_deletion_at', {
       withTimezone: true,
       mode: 'date',

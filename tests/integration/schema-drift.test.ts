@@ -81,6 +81,15 @@ const DB_ONLY_TABLES_ALLOWLIST = new Set<string>([])
 // dispara falla, ver comentario arriba).
 const KNOWN_DB_ONLY_COLUMNS = new Set<string>([...KNOWN_DEAD_BUT_NOT_DRIFTED_COLUMNS])
 
+// Labels de enum que la DB tiene y Drizzle todavía no (`enum.label`). TEMPORAL:
+// el freemium entra en dos PRs para que la migración llegue a prod antes que el
+// código. Este PR suma 'free' en la DB (migr. 110); el siguiente lo declara en
+// enums.ts y BORRA esta lista. No sumar entradas permanentes acá.
+const KNOWN_DB_ONLY_ENUM_LABELS = new Set<string>([
+  'tenant_status.free',
+  'subscription_status.free',
+])
+
 // ─── Mapeo de tipo base (elemento de array) → udt_name de Postgres ─────
 // Solo los tipos base que el schema usa hoy dentro de `.array()`
 // (courts.photos, tenants.closed_dates/court_surfaces/court_formats).
@@ -306,7 +315,9 @@ describe('D5 #6 — schema drift Drizzle vs DB migrada', () => {
           dbLabels,
           `enum '${en.enumName}' no existe en la DB (pg_enum, schema public)`,
         ).toBeDefined()
-        expect([...en.enumValues]).toEqual(dbLabels)
+        expect([...en.enumValues]).toEqual(
+          dbLabels?.filter((l) => !KNOWN_DB_ONLY_ENUM_LABELS.has(`${en.enumName}.${l}`)),
+        )
       })
     }
 

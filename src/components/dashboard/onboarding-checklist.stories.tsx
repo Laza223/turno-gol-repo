@@ -70,7 +70,8 @@ export const Pendiente: Story = {
 
 /** Cuaderno o equipos fijos: pide pasar los fijos a la grilla y lleva a Turnos fijos. */
 export const ConCuaderno: Story = {
-  args: { state: PENDING_STATE, bookingIntake: 'notebook' },
+  // Con los turnos sin cargar: si el paso ya estuviera hecho, quedaría plegado entre los completados.
+  args: { state: { ...PENDING_STATE, hasStaffBookings: false }, bookingIntake: 'notebook' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Pasá tus equipos fijos a la grilla')).toBeInTheDocument()

@@ -28,6 +28,7 @@ const h = vi.hoisted(() => {
   const workerDb = { insert: staffUserInsert }
   return {
     extractAuthUser: vi.fn(),
+    requireVerifiedOwnerEmail: vi.fn(),
     getStaffTenant: vi.fn(),
     adminRateLimited: vi.fn(),
     inviteUserByEmail: vi.fn(),
@@ -48,6 +49,10 @@ vi.mock('next/navigation', () => ({
   },
 }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
+vi.mock('@/modules/auth/email-verification.service', () => ({
+  INVITE_NOT_VERIFIED_MESSAGE: 'Confirmá tu mail para invitar a tu equipo.',
+  requireVerifiedOwnerEmail: h.requireVerifiedOwnerEmail,
+}))
 vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: h.extractAuthUser }))
 vi.mock('@/modules/tenants/tenant.service', () => ({ getStaffTenant: h.getStaffTenant }))
 vi.mock('@/shared/rate-limit/server-action', () => ({ adminRateLimited: h.adminRateLimited }))
@@ -85,6 +90,7 @@ const NOT_ACTIVE_ERROR = { success: false, error: 'El complejo no está activo.'
 
 beforeEach(() => {
   vi.resetAllMocks()
+  h.requireVerifiedOwnerEmail.mockResolvedValue({ ok: true })
   h.extractAuthUser.mockResolvedValue({
     type: 'staff',
     staffUserId: 'inviter-1',

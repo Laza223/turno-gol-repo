@@ -2,20 +2,21 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { CalendarCheck, CheckCircle2 } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
-import { hasAnyBooking } from '@/modules/onboarding/onboarding.service'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 import { markPublicLinkSharedAction } from '@/app/(admin)/dashboard/actions'
 import { WizardShell } from '../components/WizardShell'
+import { SIGNUP_ACCENT_CLASS, SIGNUP_TITLE_CLASS } from '../components/signup-style'
 import { ShareActions } from './ShareActions'
 import { ListoReveal, ListoRevealItem } from './ListoReveal'
 
 /**
  * Cierre peak-end del wizard (pages/onboarding.md §6.4): el complejo quedó
  * online y la acción que dispara el Aha Moment (compartir el link) está acá,
- * no enterrada en un dashboard mudo. La checklist del dashboard toma la posta.
+ * no enterrada en un dashboard mudo. La primera reserva y la seña pasaron a la
+ * checklist del panel, que toma la posta.
  */
 export default async function OnboardingListoPage() {
   const user = await extractAuthUser()
@@ -27,10 +28,6 @@ export default async function OnboardingListoPage() {
   if (!settings.onboarding_completed) redirect('/onboarding')
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? null
-  // Un tenant recién creado no tiene reservas propias: si hay al menos una acá,
-  // solo puede ser la que el dueño acaba de cargar en el paso 4 (skippable —
-  // por eso se chequea, en vez de asumir que siempre existe).
-  const firstBookingCreated = await hasAnyBooking(tenant.id)
 
   return (
     <WizardShell>
@@ -38,34 +35,19 @@ export default async function OnboardingListoPage() {
       <ListoReveal>
         <div className="text-center">
           <ListoRevealItem big>
-            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 dark:bg-emerald-500/15">
-              <CheckCircle2
-                className="h-9 w-9 text-emerald-700 dark:text-emerald-400"
-                aria-hidden
-              />
+            <span className="reserva-success-badge mx-auto flex h-20 w-20 items-center justify-center rounded-full">
+              <CheckCircle2 className="h-10 w-10 text-emerald-300" aria-hidden />
             </span>
           </ListoRevealItem>
 
           <ListoRevealItem>
-            <h2
-              tabIndex={-1}
-              className="mt-4 text-2xl font-bold tracking-tight text-foreground focus:outline-hidden"
-            >
-              ¡Tu complejo está online!
+            <h2 tabIndex={-1} className={`mt-5 ${SIGNUP_TITLE_CLASS}`}>
+              ¡Tu complejo está <span className={SIGNUP_ACCENT_CLASS}>online</span>!
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {tenant.name} ya puede recibir reservas. Ahora compartí el link con tus clientes.
+            <p className="mt-2 text-base text-muted-foreground">
+              {tenant.name} ya puede recibir reservas. Mandale el link a tus jugadores.
             </p>
           </ListoRevealItem>
-
-          {firstBookingCreated && (
-            <ListoRevealItem>
-              <p className="mt-4 flex items-center justify-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-400">
-                <CalendarCheck className="h-4 w-4 shrink-0" aria-hidden />
-                Tu primera reserva ya está en la grilla.
-              </p>
-            </ListoRevealItem>
-          )}
 
           <ListoRevealItem>
             <ShareActions
@@ -77,13 +59,15 @@ export default async function OnboardingListoPage() {
           </ListoRevealItem>
 
           <ListoRevealItem>
-            <p className="mt-6 text-xs text-muted-foreground">
-              Los jugadores reservan sin seña. Si querés cobrarla, conectá MercadoPago desde la
-              checklist de tu panel.
+            <p className="mt-6 text-sm text-muted-foreground">
+              Los nombres de las canchas, tu logo y los precios por día los cambiás cuando quieras.
             </p>
             <Link
               href="/dashboard"
-              className={cn(buttonVariants({ variant: 'ghost' }), 'mt-2 h-11 w-full md:h-10')}
+              className={cn(
+                buttonVariants({ variant: 'ghost' }),
+                'mt-2 h-12 w-full text-base md:h-12',
+              )}
             >
               Ir a mi panel
             </Link>

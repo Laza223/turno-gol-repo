@@ -9,8 +9,9 @@ import {
   syncStaffUserEmail,
   OrphanedStaffSessionError,
 } from '@/modules/auth/auth.service'
+import { claimUnverifiedAccountWithGoogle } from '@/modules/auth/email-verification.service'
 import { hasStaffOrAdminClaims, isPlayerAccount } from '@/modules/auth/account-kind'
-import { getOrCreatePlayer } from '@/modules/players/player.service'
+import { getOrCreatePlayer, playerExistsByEmail } from '@/modules/players/player.service'
 import { sanitizeNext } from '@/lib/safe-redirect'
 import { isBookingPath, isRivalReturnPath, parseVia, successVerifyPath } from '@/lib/auth-success'
 import { logger } from '@/shared/lib/logger'
@@ -20,6 +21,10 @@ import {
   GOOGLE_TERMS_COOKIE_NAME,
   verifyGoogleTermsCookie,
 } from '@/shared/security/google-terms-cookie'
+import {
+  OWNER_INTENT_COOKIE_NAME,
+  verifyOwnerIntentCookie,
+} from '@/shared/security/owner-intent-cookie'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -155,6 +160,78 @@ async function provisionPlayerAndRedirect(
   return NextResponse.redirect(new URL(successVerifyPath(next, 'login'), req.url))
 }
 
+/**
+ * Google con intención "owner" (cookie firmada, ver owner-intent-cookie.ts): la cuenta es de
+ * un complejo, no de un jugador. Nunca mezcla roles: si el mail ya es de un jugador se cierra
+ * la sesión de este intento y se vuelve a /register. Una cuenta que ya es staff entra a su
+ * panel; una nueva sigue a /register/finalizar, que crea el complejo con el borrador.
+ */
+async function provisionOwnerAndRedirect(
+  req: NextRequest,
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  user: User,
+): Promise<NextResponse> {
+  const redirectRegisterError = async (code: string): Promise<NextResponse> => {
+    // `local`: no cierra el panel que esta cuenta tenga abierto en otro dispositivo.
+    await supabase.auth.signOut({ scope: 'local' })
+    return NextResponse.redirect(new URL(`/register?error=${code}`, req.url))
+  }
+
+  const email = user.email
+  if (!email) return redirectRegisterError('oauth_failed')
+
+  const meta: Record<string, unknown> = user.app_metadata ?? {}
+  const isStaff = Boolean(meta.staff_user_id || meta.tenant_id)
+  const isPlayer =
+    meta.is_player === true ||
+    typeof meta.player_id === 'string' ||
+    (!isStaff && (await playerExistsByEmail(email)))
+  if (isPlayer) {
+    logger.warn('Cuenta de jugador intentó el alta de un complejo', {
+      module: 'auth-callback',
+      authUserId: user.id,
+    })
+    return redirectRegisterError('player_account')
+  }
+
+  // Google probó el mail: si la cuenta existía sin verificar (alta por mail), la contraseña
+  // original se invalida y se cierran las otras sesiones, así quien ocupó el mail no entra más.
+  const googleVerified = (user.identities ?? []).some(
+    (i) => i.provider === 'google' && i.identity_data?.email_verified === true,
+  )
+  const staffUserId = typeof meta.staff_user_id === 'string' ? meta.staff_user_id : null
+  if (isStaff && googleVerified && staffUserId) {
+    try {
+      if (await claimUnverifiedAccountWithGoogle(staffUserId, user.id)) {
+        await supabase.auth.signOut({ scope: 'others' })
+      }
+    } catch (err) {
+      logger.error('No se pudo reclamar la cuenta sin verificar', {
+        module: 'auth-callback',
+        authUserId: user.id,
+        error: err instanceof Error ? err.message : String(err),
+      })
+      return redirectRegisterError('provision_failed')
+    }
+  }
+
+  let path: string
+  try {
+    ;({ path } = await provisionAndRouteStaff(user))
+  } catch (err) {
+    logger.error('No se pudo provisionar al dueño en el callback', {
+      module: 'auth-callback',
+      authUserId: user.id,
+      error: err instanceof Error ? err.message : String(err),
+    })
+    return redirectRegisterError('provision_failed')
+  }
+  // Sin complejo todavía: el alta se cierra en /register/finalizar con el borrador del celular.
+  return NextResponse.redirect(
+    new URL(path === '/onboarding' ? '/register/finalizar' : path, req.url),
+  )
+}
+
 export async function GET(req: NextRequest): Promise<NextResponse> {
   return withSpan('auth.callback', 'auth.session.exchange', () => handleAuthCallback(req))
 }
@@ -215,6 +292,19 @@ async function handleAuthCallback(req: NextRequest): Promise<NextResponse> {
     const cookieStore = await cookies()
     const termsCookie = verifyGoogleTermsCookie(cookieStore.get(GOOGLE_TERMS_COOKIE_NAME)?.value)
     cookieStore.delete(GOOGLE_TERMS_COOKIE_NAME)
+
+    // Intención "owner": firmada, de un solo uso (se borra siempre) y sin efecto sobre
+    // cuentas de super admin, que siguen su camino de siempre.
+    const ownerIntent = verifyOwnerIntentCookie(cookieStore.get(OWNER_INTENT_COOKIE_NAME)?.value)
+    cookieStore.delete(OWNER_INTENT_COOKIE_NAME)
+    // La cookie vale solo para el viaje que la puso (`next` de startGoogleOwnerSignupAction).
+    if (
+      ownerIntent &&
+      sanitizeNext(params.get('next')) === '/register/finalizar' &&
+      data.user.app_metadata?.is_system_admin !== true
+    ) {
+      return provisionOwnerAndRedirect(req, supabase, data.user)
+    }
 
     return provisionPlayerAndRedirect(req, supabase, data.user, {
       agreedTerms: termsCookie !== null,

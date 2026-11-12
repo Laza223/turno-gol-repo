@@ -114,6 +114,8 @@ export async function createAssistedTenant(
       lastName: input.lastName,
       phone: input.phone,
       signupReferralCode: referralCode,
+      // Lo cargó el super-admin con el mail ya confirmado en Auth.
+      emailVerifiedAt: new Date(),
     })
 
     const tenant = await createTenantWithTrial({

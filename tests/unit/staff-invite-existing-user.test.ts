@@ -22,6 +22,7 @@ const h = vi.hoisted(() => {
   const workerDb = { insert: staffUserInsert }
   return {
     extractAuthUser: vi.fn(),
+    requireVerifiedOwnerEmail: vi.fn(),
     getStaffTenant: vi.fn(),
     adminRateLimited: vi.fn(),
     inviteUserByEmail: vi.fn(),
@@ -45,6 +46,10 @@ vi.mock('next/navigation', () => ({
   },
 }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
+vi.mock('@/modules/auth/email-verification.service', () => ({
+  INVITE_NOT_VERIFIED_MESSAGE: 'Confirmá tu mail para invitar a tu equipo.',
+  requireVerifiedOwnerEmail: h.requireVerifiedOwnerEmail,
+}))
 vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: h.extractAuthUser }))
 vi.mock('@/modules/tenants/tenant.service', () => ({ getStaffTenant: h.getStaffTenant }))
 vi.mock('@/shared/rate-limit/server-action', () => ({ adminRateLimited: h.adminRateLimited }))
@@ -88,6 +93,7 @@ const ALREADY = {
 
 beforeEach(() => {
   vi.resetAllMocks()
+  h.requireVerifiedOwnerEmail.mockResolvedValue({ ok: true })
   h.extractAuthUser.mockResolvedValue({
     type: 'staff',
     staffUserId: 'inviter-1',
@@ -190,6 +196,21 @@ describe('inviteStaffAction — falla al grabar los claims', () => {
 
     expect(res.success).toBe(false)
     expect(h.rolledBack).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('inviteStaffAction — mail del dueño sin verificar', () => {
+  it('rechaza la invitación y no manda ningún mail a terceros', async () => {
+    h.requireVerifiedOwnerEmail.mockResolvedValue({
+      ok: false,
+      error: 'Confirmá tu mail para invitar a tu equipo.',
+    })
+
+    const res = await inviteStaffAction(makeForm('new@x.com'))
+
+    expect(res).toEqual({ success: false, error: 'Confirmá tu mail para invitar a tu equipo.' })
+    expect(h.inviteUserByEmail).not.toHaveBeenCalled()
+    expect(h.staffUserInsert).not.toHaveBeenCalled()
   })
 })
 

@@ -1,26 +1,29 @@
 import type { WizardStep } from './onboarding.types'
 
 /**
- * Los 4 pasos del wizard. El orden importa y no es arbitrario: los precios que
- * genera el paso Canchas se calculan sobre los horarios ya confirmados en el paso
- * anterior (`validatePricingRulesCoverage`). Al revés, el dueño validaría precios
- * contra horarios que todavía no vio.
+ * Los 5 pasos persistidos del wizard "por toques". Cada paso es una RUTA que agrupa
+ * una o más pantallas que el cliente muestra de a una (una pregunta por pantalla);
+ * el server guarda al final de la ruta. El orden no es arbitrario:
  *
- * El `slug` es la URL. Antes el paso no estaba en la URL —se calculaba de DB en
- * cada render— y por eso el botón atrás del navegador no hacía nada: los 4 pasos
- * vivían en `/onboarding`. Nombres y no números porque una URL debería decir dónde
- * estás, igual que el resto del admin (`/grilla`, `/caja`).
+ * - `canchas` va antes que `horarios` porque con el alta asistida
+ *   (`onboarding_step: 1`) el dueño tiene que aterrizar en `canchas` con el
+ *   complejo ya creado.
+ * - `precios` va después de `horarios`: las reglas de precio se calculan sobre los
+ *   horarios ya confirmados (`validatePricingRulesCoverage`). Recién ahí se crean
+ *   las canchas.
+ *
+ * `/onboarding/resumen` y `/onboarding/listo` NO están acá: son el cierre, no pasos
+ * que se completen.
+ *
+ * El `slug` es la URL: el botón atrás del navegador funciona porque cada paso tiene
+ * la suya.
  */
 export const WIZARD_STEPS = [
-  { n: 1, slug: 'complejo', label: 'Tu complejo', hint: 'Nombre y ubicación' },
-  { n: 2, slug: 'horarios', label: 'Horarios', hint: 'Cuándo abrís' },
-  { n: 3, slug: 'canchas', label: 'Canchas', hint: 'Canchas y precios' },
-  // Fase 5 del refactor: reemplaza al paso "Señas" (OAuth de MP, que empujaba
-  // al dueño fuera de la app en el peor momento — §A.2 del plan). La seña se
-  // mudó a la checklist del dashboard (/settings/facturacion ya tiene su
-  // propia card de conexión); este paso cierra con la primera reserva
-  // cargada en la grilla real, el gesto que el dueño va a repetir todos los días.
-  { n: 4, slug: 'reserva', label: 'Primera reserva', hint: 'Cargá tu primer turno' },
+  { n: 1, slug: 'complejo', label: 'Tu complejo', hint: 'Nombre y dirección' },
+  { n: 2, slug: 'canchas', label: 'Canchas', hint: 'Cuántas y de qué tipo' },
+  { n: 3, slug: 'horarios', label: 'Horarios', hint: 'Cuándo abrís' },
+  { n: 4, slug: 'precios', label: 'Precios', hint: 'Cuánto cobrás' },
+  { n: 5, slug: 'tu-complejo', label: 'Tu día a día', hint: 'Cómo trabajás' },
 ] as const
 
 /** Número de paso a partir del slug de la URL. `null` si el slug no existe. */
@@ -35,15 +38,31 @@ export function stepPath(n: number): string {
   return step ? `/onboarding/${step.slug}` : '/onboarding'
 }
 
+/** Resumen "¿Está todo bien?": solo se llega con los 5 pasos hechos. */
+export const SUMMARY_PATH = '/onboarding/resumen'
+
 /**
- * Paso visible a partir de la URL completa (Fase 6, `WizardChrome`): a
- * diferencia de `stepFromSlug`, nunca devuelve `null` — el rail necesita
- * SIEMPRE un paso para dibujarse, incluso en `/onboarding` (bare, redirige
- * antes de pintar nada) o `/onboarding/listo` (paso 5, fuera de `WIZARD_STEPS`
- * porque es el cierre, no un paso real del formulario).
+ * Paso visible a partir de la URL completa (`WizardChrome`): a diferencia de
+ * `stepFromSlug`, nunca devuelve `null` — el chrome necesita SIEMPRE un paso para
+ * dibujarse, incluso en `/onboarding` (bare, redirige antes de pintar nada),
+ * `/onboarding/resumen` o `/onboarding/listo` (ambos 6: el cierre).
  */
 export function stepFromPathname(pathname: string): WizardStep {
-  if (pathname.startsWith('/onboarding/listo')) return 5
+  if (pathname.startsWith('/onboarding/listo') || pathname.startsWith(SUMMARY_PATH)) return 6
   const slug = pathname.split('/').filter(Boolean).pop() ?? ''
   return stepFromSlug(slug) ?? 1
+}
+
+/**
+ * A dónde va el dueño al terminar el paso `n`. Normalmente al siguiente; el último
+ * paso va al resumen. Si ya había terminado los 5 (volvió con "Cambiar" desde el
+ * resumen) y edita Complejo, Precios o Tu complejo, vuelve directo al resumen.
+ * Canchas y Horarios NO acortan: cambiar la cantidad o el horario invalida los
+ * precios ya cargados, así que el dueño pasa de nuevo por Precios (guardarlos
+ * baja `onboarding_step` a ese paso, ver `stepToStore`).
+ */
+export function pathAfterStep(n: number, completedBefore: number): string {
+  if (n >= 5) return SUMMARY_PATH
+  if ((n === 1 || n === 4) && completedBefore >= 5) return SUMMARY_PATH
+  return stepPath(n + 1)
 }

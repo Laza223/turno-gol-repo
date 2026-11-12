@@ -67,6 +67,20 @@ export type TenantSettings = {
    *  predio que alquila controla cuánto cobra (2026-10-14). Leer con
    *  `arePublicPricesHidden`, nunca directo. */
   hide_public_prices?: boolean
+  /** Alta por toques: cantidad de canchas por formato (`{ "5": 2, "7": 1 }`),
+   *  elegida en el paso Canchas. Las canchas reales se crean recién en Precios. */
+  onboarding_draft_courts?: Record<string, number>
+  /** Alta por toques: precios que cargó el dueño por formato, en centavos.
+   *  Permite reabrir Precios desde el resumen con lo que ya puso. */
+  onboarding_draft_prices?: Record<string, { dayPrice: number; nightPrice?: number }>
+  /** Alta por toques: hora de corte día/noche de esos precios (0-23). */
+  onboarding_draft_cut_hour?: number
+  /** Cómo toma los turnos hoy. Personaliza la checklist del panel. */
+  booking_intake?: 'notebook' | 'whatsapp' | 'other_app' | 'new'
+  /** ¿Tiene equipos que juegan fijo todas las semanas? */
+  has_fixed_teams?: boolean
+  /** ¿Vende en buffet o kiosco? Ausente cuenta como true. */
+  canteen_enabled?: boolean
 }
 
 export type CreateTenantInput = {
@@ -140,6 +154,13 @@ export type UpdateTenantSettingsInput = Partial<
     | 'auto_complete_minutes'
     | 'weekly_summary_email_opt_in'
     | 'hide_public_prices'
+    | 'onboarding_step'
+    | 'onboarding_draft_courts'
+    | 'onboarding_draft_prices'
+    | 'onboarding_draft_cut_hour'
+    | 'booking_intake'
+    | 'has_fixed_teams'
+    | 'canteen_enabled'
   >
 >
 

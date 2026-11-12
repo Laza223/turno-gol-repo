@@ -82,6 +82,16 @@ export async function resetPasswordAction(
     return { status: 'error', message: 'No pudimos actualizar la contraseña. Probá de nuevo.' }
   }
 
+  // Quien recupera la cuenta echa a las demás sesiones: si alguien ocupó este mail
+  // antes de que el dueño real lo confirmara, pierde el acceso. Best-effort.
+  try {
+    const { error: signOutErr } = await supabase.auth.signOut({ scope: 'others' })
+    if (signOutErr)
+      captureException(signOutErr, { tags: { flow: 'reset_password_signout_others' } })
+  } catch (err) {
+    captureException(err, { tags: { flow: 'reset_password_signout_others' } })
+  }
+
   // Cambio forzado: limpiar el flag (null = delete en GoTrue) y refrescar la
   // sesión para que el próximo request entre sin el redirect a /reset-password.
   if (user.app_metadata?.force_password_change === true) {

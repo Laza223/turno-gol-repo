@@ -1268,3 +1268,45 @@ html.dark:has([data-portal-fields]) {
     animation-delay: 0s;
   }
 }
+
+/* ─── Alta del complejo (/register y /onboarding/*): La Previa ─────────────
+   Siempre oscuro, como el marco de ingreso: losa nocturna con dos resplandores
+   esmeralda, tarjeta de vidrio y la ficha "tu complejo se va armando". El marco
+   lleva además `dark dark-surface` para que los tokens resuelvan en oscuro. */
+.signup-frame {
+  background: #020617;
+}
+.signup-glow-top {
+  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.2), transparent 72%);
+}
+.signup-glow-bottom {
+  background: radial-gradient(closest-side, rgba(5, 150, 105, 0.13), transparent 72%);
+}
+.signup-glass {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.72), rgba(2, 6, 23, 0.85));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 0 60px rgba(16, 185, 129, 0.12),
+    0 40px 80px -42px rgba(0, 0, 0, 0.9);
+  /* Sin backdrop-filter: haría de contenedor de la barra fija de "Siguiente" y la metería en la tarjeta. */
+}
+/* Una opción encendida del alta (cancha con cantidad, dato nuevo de la ficha). */
+.signup-lit {
+  border-color: rgba(52, 211, 153, 0.55);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.16), rgba(16, 185, 129, 0.04));
+  box-shadow: 0 0 28px -6px rgba(16, 185, 129, 0.45);
+}
+/* El dato que entra a la ficha: un pulso corto, una vez. */
+@keyframes signup-pop {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.signup-pop {
+  animation: signup-pop 320ms ease-out both;
+}

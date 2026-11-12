@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { fetchWithTimeout } from '@/shared/utils/async'
 import { captureException } from '@/lib/sentry'
+import { PROVINCES } from './tenant.geo'
 
 /**
  * Buscador de dirección server-side contra Georef, la API oficial de
@@ -12,7 +13,15 @@ import { captureException } from '@/lib/sentry'
  * elegir, nunca se autocompleta a ciegas: Georef puede devolver otra
  * localidad ("San Martin 850" con localidad "Lujan" devolvió Tigre).
  */
-export type GeocodeCandidate = { label: string; lat: number; lng: number }
+export type GeocodeCandidate = {
+  label: string
+  lat: number
+  lng: number
+  /** Localidad que Georef normaliza (`localidad_censal`, o el departamento si falta). */
+  city?: string
+  /** Provincia con el nombre de `PROVINCES` (Georef dice "Ciudad Autónoma de Buenos Aires"; acá, "CABA"). */
+  province?: string
+}
 
 const GEOREF_URL = 'https://apis.datos.gob.ar/georef/api/direcciones'
 const TIMEOUT_MS = 5000
@@ -23,15 +32,32 @@ const MAX_RESULTS = 5
  * de un tercero, y un campo extra o ausente no debe tirar el parseo entero
  * abajo — sólo el resultado puntual que no alcanza a armar un candidato.
  */
+const georefNameSchema = z.object({ nombre: z.string().nullish() }).partial().nullish()
+
 const georefResultSchema = z.object({
   nomenclatura: z.string(),
   ubicacion: z.object({ lat: z.number(), lon: z.number() }).partial().optional(),
+  localidad_censal: georefNameSchema,
+  departamento: georefNameSchema,
+  provincia: georefNameSchema,
 })
 
+// El endpoint de direcciones devuelve la lista en `direcciones`; `results` es la
+// forma que este parser asumía antes. Se aceptan las dos.
 const georefResponseSchema = z.object({
   cantidad: z.number().optional(),
+  direcciones: z.array(z.unknown()).optional(),
   results: z.array(z.unknown()).optional(),
 })
+
+const plain = (v: string) => v.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().trim()
+
+/** Nombre de provincia de Georef → el de `PROVINCES`. Si no se reconoce, queda el de Georef. */
+function normalizeProvince(name: string): string {
+  const n = plain(name)
+  if (n.startsWith('ciudad autonoma')) return 'CABA'
+  return PROVINCES.find((p) => n.startsWith(plain(p))) ?? name
+}
 
 /**
  * Parser puro: testeable sin red. Nunca tira — cualquier forma inesperada
@@ -44,12 +70,20 @@ export function parseGeorefResponse(json: unknown): GeocodeCandidate[] {
   if (!parsed.success) return []
 
   const candidates: GeocodeCandidate[] = []
-  for (const raw of parsed.data.results ?? []) {
+  for (const raw of parsed.data.direcciones ?? parsed.data.results ?? []) {
     const result = georefResultSchema.safeParse(raw)
     if (!result.success) continue
     const { lat, lon } = result.data.ubicacion ?? {}
     if (typeof lat !== 'number' || typeof lon !== 'number') continue
-    candidates.push({ label: result.data.nomenclatura, lat, lng: lon })
+    const city = result.data.localidad_censal?.nombre ?? result.data.departamento?.nombre
+    const province = result.data.provincia?.nombre
+    candidates.push({
+      label: result.data.nomenclatura,
+      lat,
+      lng: lon,
+      ...(city ? { city } : {}),
+      ...(province ? { province: normalizeProvince(province) } : {}),
+    })
   }
   return candidates.slice(0, MAX_RESULTS)
 }

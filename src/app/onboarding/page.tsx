@@ -1,14 +1,14 @@
 import { redirect } from 'next/navigation'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
-import { resolveWizardStep } from '@/modules/onboarding/onboarding.service'
-import { stepPath } from '@/modules/onboarding/onboarding.steps'
+import { isWizardComplete, resolveWizardStep } from '@/modules/onboarding/onboarding.service'
+import { stepPath, SUMMARY_PATH } from '@/modules/onboarding/onboarding.steps'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 
 /**
  * `/onboarding` ya no renderiza: resuelve dónde quedó el dueño y manda al paso.
- * Los pasos viven en `/onboarding/[paso]` — antes los cuatro compartían esta misma
- * URL, que es por lo que el botón atrás del navegador no hacía nada.
+ * Los pasos viven en `/onboarding/[paso]`: cada uno con su URL, para que el botón
+ * atrás del navegador funcione.
  *
  * Una sola query: antes preguntaba dos veces lo mismo (`resolveStaffTenants` para
  * saber si había tenant y después `getStaffTenant` para traerlo).
@@ -23,5 +23,7 @@ export default async function OnboardingPage() {
   const settings = tenant.settings as TenantSettings
   if (settings.onboarding_completed) redirect('/dashboard')
 
+  // Con los 5 pasos hechos lo que falta es confirmar en el resumen.
+  if (isWizardComplete(settings)) redirect(SUMMARY_PATH)
   redirect(stepPath(resolveWizardStep(settings)))
 }

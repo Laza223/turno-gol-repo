@@ -22,6 +22,14 @@ vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: vi.fn() }))
 vi.mock('@/modules/auth/auth.service', () => ({ resolveStaffTenants: vi.fn(async () => []) }))
 vi.mock('@/modules/tenants/tenant.service', () => ({ getStaffTenant: vi.fn() }))
 vi.mock('@/modules/staff/staff.service', () => ({ getStaffRole: vi.fn() }))
+// El mail del dueño: la página ofrece reenviar el link si todavía no lo confirmó.
+vi.mock('@/modules/auth/email-verification.service', () => ({
+  getEmailVerificationState: vi.fn(async () => ({ email: 'dueno@test.local', verified: true })),
+}))
+vi.mock('@/app/(admin)/actions/email-verification', () => ({
+  resendVerificationEmailAction: vi.fn(),
+  changeUnverifiedEmailAction: vi.fn(),
+}))
 // listCourts (llamada desde ReactivarPage para defaultCourts) hace
 // tx.select().from(courts).where(...).orderBy(...) — el tx fake tiene que
 // implementar esa cadena, no un objeto vacío.

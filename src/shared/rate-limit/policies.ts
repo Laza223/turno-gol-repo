@@ -19,6 +19,9 @@ export const POLICIES = {
   // debería crear cuentas en masa) + email-confirm + bajo volumen de altas.
   // Fail closed: ante outage de Upstash, frenar el alta automatizada.
   authRegister: { limit: 5, window: '10 m', keyBy: 'ip', failMode: 'closed' },
+  // Mail de verificación del dueño: la clave es el staff_user_id. Frena el reenvío en loop
+  // (cada envío sale por Resend). Fail closed: sin Upstash no se manda.
+  authEmailVerify: { limit: 3, window: '10 m', keyBy: 'email', failMode: 'closed' },
   publicAvailability: { limit: 30, window: '60 s', keyBy: 'ip', failMode: 'open' },
   // Placa 9:16 de turnos libres (`/api/public/story`): cada request renderiza un
   // PNG (~1 s de CPU en la función), no lee un JSON. El diálogo de la Grilla pide

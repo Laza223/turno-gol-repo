@@ -5,6 +5,7 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { resolveImpersonatedStaffContext } from '@/modules/auth/impersonation.server'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import type { TenantRow } from '@/modules/tenants/tenant.types'
+import { isCanteenEnabled } from '@/modules/tenants/tenant.utils'
 import { getProfileGaps } from '@/modules/tenants/setup-gaps'
 import { NO_SETUP_ALERTS, type SetupAlerts } from '@/components/layout/setup-alerts'
 import type { ReadOnlyNotice } from '@/components/layout/status-banner'
@@ -22,6 +23,12 @@ import { tenantSubscriptions } from '@/shared/db/schema'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { AdminLayoutShell } from '@/components/layout/admin-layout-shell'
 import { ImpersonationBanner } from '@/components/layout/impersonation-banner'
+import { EmailVerifyBanner } from '@/components/layout/email-verify-banner'
+import { getEmailVerificationState } from '@/modules/auth/email-verification.service'
+import {
+  changeUnverifiedEmailAction,
+  resendVerificationEmailAction,
+} from '@/app/(admin)/actions/email-verification'
 import { signOutAction } from '@/app/(admin)/actions/auth'
 import {
   createTabAction,
@@ -83,7 +90,10 @@ function readOnlyNotice(tenant: TenantRow, sub: SubscriptionSummary | null): Rea
  * El modal de Vender vive acá y no en Hoy: se abre desde cualquier vista del panel
  * (botón del riel o tecla V), así que no hace falta volver a Hoy para vender.
  */
-function WithVender({ children }: { children: ReactNode }) {
+function WithVender({ enabled, children }: { enabled: boolean; children: ReactNode }) {
+  // Sin buffet (`canteen_enabled === false`) el proveedor no se monta: sin él el riel y Hoy
+  // no pintan "Vender" (`useOptionalVender`) y la tecla V no existe.
+  if (!enabled) return children
   return (
     <VenderProvider
       loadCatalogAction={loadVenderCatalogAction}
@@ -107,7 +117,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       loadSetupAlerts(imp.tenant),
     ])
     return (
-      <WithVender>
+      <WithVender enabled={isCanteenEnabled(imp.tenant.settings)}>
         <AdminLayoutShell
           tenantName={imp.tenant.name}
           tenantStatus={imp.tenant.status}
@@ -174,7 +184,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   // Independientes entre sí: van en paralelo. El flag de torneos nace global en
   // false (migr. 062) y se prende por complejo con una fila de override, así el
   // módulo se pilotea sin redeploy. Cachea 60s in-process (feature-flags.ts).
-  const [sub, tournamentsEnabled, staffRole, alerts] = await Promise.all([
+  const [sub, tournamentsEnabled, staffRole, alerts, emailState] = await Promise.all([
     loadSubscriptionSummary(tenant.id),
     isFeatureEnabled(TOURNAMENTS_FLAG, tenant.id),
     getStaffRole(tenant.id, user.staffUserId),
@@ -182,11 +192,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     // cada carga del panel. Solo el dueño ve los avisos (el encargado no tiene Canchas
     // ni Configuración), así que para el resto se descartan abajo.
     loadSetupAlerts(tenant),
+    getEmailVerificationState(user.staffUserId),
   ])
   const setupAlerts = staffRole === 'admin' ? alerts : NO_SETUP_ALERTS
 
   return (
-    <WithVender>
+    <WithVender enabled={isCanteenEnabled(tenant.settings)}>
       <AdminLayoutShell
         tenantName={tenant.name}
         tenantStatus={tenant.status}
@@ -199,6 +210,15 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         staffRole={staffRole ?? 'manager'}
         setupAlerts={setupAlerts}
         readOnly={readOnlyNotice(tenant, sub)}
+        emailBanner={
+          staffRole === 'admin' && emailState && !emailState.verified ? (
+            <EmailVerifyBanner
+              email={emailState.email}
+              resendAction={resendVerificationEmailAction}
+              changeEmailAction={changeUnverifiedEmailAction}
+            />
+          ) : null
+        }
       >
         {children}
       </AdminLayoutShell>

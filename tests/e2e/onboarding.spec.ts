@@ -1,44 +1,96 @@
 import { test, expect } from './fixtures'
+import { answerComplexQuestions } from './_helpers/public-signup'
 
 /**
- * E2E: Onboarding wizard for new complex registration.
+ * E2E: alta por toques de un complejo nuevo.
  *
- * Flow: /register (email+password+confirm) → email de confirmación →
- * /onboarding (4-step wizard) → /dashboard.
+ * Alta pública (TG-HP-202 hace el recorrido completo contra la DB): /register, sin sesión,
+ * complejo primero y cuenta al final, con el borrador en localStorage.
+ * Wizard por rutas (alta asistida y tenants a mitad de camino): /onboarding (5 pasos, una
+ * pregunta por pantalla) → /onboarding/resumen → /onboarding/listo ("Compartir mi link")
+ * → /dashboard.
  *
- * El alta requiere confirmar el email (enable_confirmations), así que arrancamos
- * desde /register (validación de form) y /onboarding (pasos del wizard) por
- * separado, usando el storage state del fresh admin.
+ * El alta pública y el wizard se prueban por separado: el wizard arranca con el
+ * storage state del fresh admin. La dirección se carga "a mano" para no depender
+ * de Georef (un tercero) en el e2e.
  */
 
 test.describe('onboarding', () => {
-  test.describe('registration form', () => {
-    test('renders registration form with required fields', async ({ page }) => {
+  test.describe('alta pública en /register', () => {
+    test('arranca por el complejo, sin pedir cuenta', async ({ page }) => {
       await page.goto('/register')
 
-      await expect(page.getByRole('heading', { name: /cre[áa] tu cuenta/i })).toBeVisible()
-      await expect(page.getByLabel(/^nombre$/i)).toBeVisible()
-      await expect(page.getByLabel(/apellido/i)).toBeVisible()
-      await expect(page.getByLabel(/email/i)).toBeVisible()
-      await expect(page.getByLabel(/celular/i)).toBeVisible()
-      await expect(page.getByLabel(/^contraseña$/i)).toBeVisible()
-      await expect(page.getByLabel(/repetir contraseña/i)).toBeVisible()
-      await expect(page.getByRole('button', { name: /crear cuenta/i })).toBeVisible()
+      await expect(page.getByRole('heading', { name: '¿Cómo se llama tu complejo?' })).toBeVisible({
+        timeout: 15_000,
+      })
+      await expect(page.getByText(/paso 1 de 4/i)).toBeVisible()
+      await expect(page.getByLabel(/nombre del complejo/i)).toBeVisible()
+      await expect(page.getByLabel(/contraseña/i)).toHaveCount(0)
+      await expect(page.getByRole('button', { name: 'Siguiente' })).toBeVisible()
     })
 
-    test('shows validation errors on empty submit', async ({ page }) => {
+    test('no avanza con el nombre vacío', async ({ page }) => {
       await page.goto('/register')
-      await page.getByRole('button', { name: /crear cuenta/i }).click()
-      // HTML5 required validation prevents submission, or server-side errors show
-      // Either way the page stays on /register
-      await expect(page).toHaveURL(/\/register/)
+      await page.getByRole('button', { name: 'Siguiente' }).click()
+      await expect(page.getByText('Escribí el nombre de tu complejo.')).toBeVisible()
+    })
+
+    test('retoma donde quedó: el borrador sobrevive a recargar', async ({ page }) => {
+      await page.goto('/register')
+      await page.getByLabel(/nombre del complejo/i).fill('Complejo Borrador')
+      await page.getByRole('button', { name: 'Siguiente' }).click()
+      await page.getByRole('button', { name: /escribir ciudad y provincia a mano/i }).click()
+      await page.getByLabel('Dirección').fill('Av. Test 123')
+      await page.getByLabel('Ciudad').fill('Luján')
+      await page.getByRole('combobox', { name: /provincia/i }).click()
+      await page.getByRole('option', { name: 'Buenos Aires' }).click()
+      await page.getByRole('button', { name: 'Siguiente' }).click()
+      await expect(page.getByRole('heading', { name: '¿Qué canchas tenés?' })).toBeVisible()
+
+      await page.reload()
+      await expect(page.getByRole('heading', { name: '¿Qué canchas tenés?' })).toBeVisible({
+        timeout: 15_000,
+      })
+      await expect(page.getByText(/paso 2 de 4/i)).toBeVisible()
+    })
+
+    test('la última pantalla ofrece Google (recomendado) y email, y pide el celular', async ({
+      page,
+    }) => {
+      await answerComplexQuestions(page, 'Complejo Cuenta')
+      await expect(page.getByRole('button', { name: /continuar con google/i })).toBeVisible()
+      await expect(page.getByText('Recomendado · más rápido, sin contraseña')).toBeVisible()
+      await expect(page.getByRole('button', { name: /continuar con email/i })).toBeVisible()
+
+      // Sin celular no se abre Google.
+      await page.getByRole('button', { name: /continuar con google/i }).click()
+      await expect(page.getByText(/escribí un celular válido/i)).toBeVisible()
     })
 
     test('has link to login for existing users', async ({ page }) => {
-      await page.goto('/register')
+      await answerComplexQuestions(page, 'Complejo Login')
       const loginLink = page.getByRole('link', { name: /^ingresar$/i })
       await expect(loginLink).toBeVisible()
       await expect(loginLink).toHaveAttribute('href', '/login')
+    })
+
+    test('/register/finalizar sin borrador manda a empezar', async ({ page }) => {
+      await page.goto('/register/finalizar')
+      await expect(
+        page.getByRole('heading', { name: 'No encontramos las respuestas de tu complejo' }),
+      ).toBeVisible({ timeout: 15_000 })
+      await expect(page.getByRole('link', { name: 'Cargar mi complejo' })).toHaveAttribute(
+        'href',
+        '/register',
+      )
+    })
+
+    test('?error=player_account muestra el aviso de mail de jugador', async ({ page }) => {
+      await answerComplexQuestions(page, 'Complejo Jugador')
+      await page.goto('/register?error=player_account')
+      await expect(
+        page.getByText('Ese mail ya es de una cuenta de jugador. Usá otro mail para tu complejo.'),
+      ).toBeVisible({ timeout: 15_000 })
     })
   })
 
@@ -48,122 +100,120 @@ test.describe('onboarding', () => {
       await expect(page).toHaveURL(/\/login/)
     })
 
-    test('step 1 renders complex identity form', async ({ page, freshAdminStorageState }) => {
-      await page.context().addCookies(JSON.parse(freshAdminStorageState).cookies)
-      await page.goto('/onboarding')
-
-      // Fresh admin always lands on /onboarding step 1. El label de progreso
-      // existe en el rail desktop y en el header mobile (uno visible por
-      // viewport) → .first().
-      await expect(page.getByText(/paso \d+ de 4/i).first()).toBeVisible()
-    })
-
-    test('wizard shows single progress indicator with goal gradient', async ({
+    test('arranca con una pregunta por pantalla y el progreso en 5 pasos', async ({
       page,
       freshAdminStorageState,
     }) => {
       await page.context().addCookies(JSON.parse(freshAdminStorageState).cookies)
       await page.goto('/onboarding')
 
-      // "Paso 1 de 4": la cuenta arranca regalada (MASTER §9).
-      await expect(page.getByText(/paso 1 de 4/i).first()).toBeVisible()
+      // El label de progreso existe en el rail desktop y en el header mobile
+      // (uno visible por viewport) → .first().
+      await expect(page.getByText(/paso 1 de 5/i).first()).toBeVisible()
+      await expect(page.getByRole('heading', { name: '¿Cómo se llama tu complejo?' })).toBeVisible({
+        timeout: 10_000,
+      })
+      await expect(page.getByRole('button', { name: 'Siguiente' })).toBeVisible()
+    })
+
+    test('el resumen no se abre sin haber hecho los 5 pasos', async ({
+      page,
+      freshAdminStorageState,
+    }) => {
+      await page.context().addCookies(JSON.parse(freshAdminStorageState).cookies)
+      await page.goto('/onboarding/resumen')
+      await expect(page).toHaveURL(/\/onboarding\/(complejo|canchas)/, { timeout: 10_000 })
     })
   })
 
-  test.describe.serial('full wizard flow (step 1 - identity)', () => {
-    test('step 1 has all complex identity fields', async ({ page, freshAdminStorageState }) => {
-      await page.context().addCookies(JSON.parse(freshAdminStorageState).cookies)
-      await page.goto('/onboarding')
-
-      // Step 1 must render — if the full-wizard test below ran first and
-      // persisted a tenant, the seed-e2e cleanup (T1) reverts that on next
-      // run, but the serial() above guarantees order within this describe.
-      //
-      // `level: 2`: sin nombre tipeado, el preview (`PublicCardPreview`, Fase
-      // 3) muestra un <h3> placeholder con el MISMO texto "Tu complejo" — sin
-      // el nivel, el locator resuelve a 2 elementos (strict mode violation).
-      const heading = page.getByRole('heading', { level: 2, name: /tu complejo/i })
-      await expect(heading).toBeVisible({ timeout: 10_000 })
-      await expect(page.getByPlaceholder(/complejo san mart/i)).toBeVisible()
-      await expect(page.getByPlaceholder(/corrientes/i)).toBeVisible()
-      await expect(page.getByRole('button', { name: /continuar/i })).toBeVisible()
-    })
-
-    test('completes full 4-step wizard and lands on /onboarding/listo', async ({
+  test.describe.serial('full wizard flow', () => {
+    test('completa los 5 pasos, corrige desde el resumen y llega a /onboarding/listo', async ({
       page,
       freshAdminStorageState,
     }) => {
       await page.context().addCookies(JSON.parse(freshAdminStorageState).cookies)
       await page.goto('/onboarding')
-      await expect(page).toHaveURL(/\/onboarding/)
 
-      // Step 1: identidad del complejo. `level: 2`: ver comentario de arriba
-      // (el preview también dice "Tu complejo" mientras el nombre está vacío).
-      await expect(page.getByRole('heading', { level: 2, name: /tu complejo/i })).toBeVisible({
+      // Paso 1, pantalla 1: el nombre. Equivocado a propósito: se corrige desde el
+      // resumen, y el assert final del dashboard prueba que el UPDATE persistió.
+      await expect(page.getByRole('heading', { name: '¿Cómo se llama tu complejo?' })).toBeVisible({
         timeout: 10_000,
       })
-      // Nombre "equivocado" a propósito: se corrige más abajo con "Volver", y
-      // el assert final del dashboard es el que prueba que el UPDATE persistió.
-      await page.getByPlaceholder(/complejo san mart/i).fill('Complejo Wizard Borrador')
-      await page.getByPlaceholder(/av\. corrientes/i).fill('Av. Test 123')
-      await page.getByPlaceholder(/luj[aá]n/i).fill('Buenos Aires')
-      // Provincia es un Combobox (Fase 4, reemplaza el <select> de 24 opciones).
-      // Sin teléfono/email: el paso ya no los pide, se derivan de la cuenta
-      // staff que se registró en /register (doc10 §2).
+      await page.getByLabel(/nombre del complejo/i).fill('Complejo Wizard Borrador')
+      await page.getByRole('button', { name: 'Siguiente' }).click()
+
+      // Paso 1, pantalla 2: la dirección. Sin Georef: ciudad y provincia a mano.
+      await expect(page.getByRole('heading', { name: /¿dónde queda/i })).toBeVisible()
+      await page.getByRole('button', { name: /escribir ciudad y provincia a mano/i }).click()
+      await page.getByLabel('Dirección').fill('Av. Test 123')
+      await page.getByLabel('Ciudad').fill('Buenos Aires')
       await page.getByRole('combobox', { name: /provincia/i }).click()
       await page.getByRole('option', { name: 'Buenos Aires' }).click()
-      await page.getByRole('button', { name: /continuar/i }).click()
+      await page.getByRole('button', { name: 'Siguiente' }).click()
 
-      // Step 2: horarios (general + excepciones). Los defaults llegan saneados
-      // (cierres de madrugada → 00:00), así que Continuar sin tocar nada es
-      // válido — antes fallaba con "cierre posterior a apertura".
-      await expect(page.getByText(/paso 2 de 4/i).first()).toBeVisible({ timeout: 10_000 })
+      // Paso 2: canchas. Fútbol 5 arranca en 1, así que alcanza con seguir.
+      await expect(page.getByText(/paso 2 de 5/i).first()).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByRole('heading', { name: '¿Qué canchas tenés?' })).toBeVisible()
+      await page.getByRole('button', { name: 'Siguiente' }).click()
 
-      // "Volver" desde Horarios: era el único paso sin salida hacia atrás, así
-      // que un nombre mal tipeado no se podía corregir ni acá ni después
-      // (ninguna pantalla de Configuración edita estos campos). El paso 1 ahora
-      // acepta la revisita y EDITA en vez de crear un segundo complejo.
-      await page.getByRole('link', { name: /^volver$/i }).click()
+      // Paso 3: horarios. De 08 a 00 por defecto, válido sin tocar nada.
+      await expect(page.getByText(/paso 3 de 5/i).first()).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByRole('heading', { name: '¿A qué hora abrís y cerrás?' })).toBeVisible()
+
+      // "Atrás" vuelve al paso anterior; el paso ya hecho se puede reenviar.
+      await page.getByRole('link', { name: 'Atrás' }).click()
+      await expect(page).toHaveURL(/\/onboarding\/canchas/, { timeout: 10_000 })
+      await page.getByRole('button', { name: 'Siguiente' }).click()
+      await expect(page).toHaveURL(/\/onboarding\/horarios/, { timeout: 10_000 })
+      await page.getByRole('button', { name: 'Siguiente' }).click()
+
+      // Paso 4: precios. Un solo formato, así que el título no nombra el formato.
+      await expect(page.getByText(/paso 4 de 5/i).first()).toBeVisible({ timeout: 10_000 })
+      await expect(page.getByRole('heading', { name: '¿Cuánto cobrás el turno?' })).toBeVisible()
+      await page.getByRole('textbox', { name: /precio del turno/i }).fill('20000')
+      await expect(page.getByText('Un turno de 60 minutos: $20.000')).toBeVisible()
+      await page.getByRole('button', { name: 'Siguiente' }).click()
+
+      // Paso 5: tres preguntas de un toque, cada opción avanza sola.
+      await expect(page.getByText(/paso 5 de 5/i).first()).toBeVisible({ timeout: 10_000 })
+      await page.getByRole('radio', { name: 'Por WhatsApp' }).click()
+      await expect(page.getByRole('heading', { name: /equipos que juegan fijo/i })).toBeVisible()
+      await page.getByRole('radio', { name: 'Sí' }).click()
+      await expect(page.getByRole('heading', { name: '¿Tenés buffet o kiosco?' })).toBeVisible()
+      await page.getByRole('radio', { name: 'No' }).click()
+
+      // Resumen: bloques con "Cambiar". Corrige el nombre y vuelve al resumen.
+      await expect(page).toHaveURL(/\/onboarding\/resumen/, { timeout: 15_000 })
+      await expect(page.getByRole('heading', { name: '¿Está todo bien?' })).toBeVisible()
+      await expect(page.getByText('Complejo Wizard Borrador')).toBeVisible()
+      await page.getByRole('link', { name: 'Cambiar', exact: true }).first().click()
       await expect(page).toHaveURL(/\/onboarding\/complejo/, { timeout: 10_000 })
-      await expect(page.getByPlaceholder(/complejo san mart/i)).toHaveValue(
-        'Complejo Wizard Borrador',
-      )
-      await expect(page.getByPlaceholder(/av\. corrientes/i)).toHaveValue('Av. Test 123')
+      await expect(page.getByLabel(/nombre del complejo/i)).toHaveValue('Complejo Wizard Borrador')
 
-      const slugAntes = await page.locator('p:has-text("Tu link público") strong').innerText()
-      await page.getByPlaceholder(/complejo san mart/i).fill('Complejo Wizard E2E')
+      const link = page.locator('p:has-text("Tu link va a ser") strong')
+      const slugAntes = await link.innerText()
+      await page.getByLabel(/nombre del complejo/i).fill('Complejo Wizard E2E')
       // El link público NO se recalcula al renombrar: ya pudo viajar por WhatsApp.
-      await expect(page.locator('p:has-text("Tu link público") strong')).toHaveText(slugAntes)
-      await page.getByRole('button', { name: /guardar y continuar/i }).click()
+      await expect(link).toHaveText(slugAntes)
+      await page.getByRole('button', { name: 'Siguiente' }).click()
+      await page.getByRole('button', { name: 'Guardar' }).click()
 
-      await expect(page.getByText(/paso 2 de 4/i).first()).toBeVisible({ timeout: 10_000 })
-      // exact: el resumen del panel colapsado, sin excepciones, dice "Todos los
-      // días con el horario general" — sin exact:true, strict mode matchea los dos.
-      await expect(page.getByText('Todos los días', { exact: true })).toBeVisible()
-      await page.getByRole('button', { name: /continuar/i }).click()
+      await expect(page).toHaveURL(/\/onboarding\/resumen/, { timeout: 15_000 })
+      await expect(page.getByText('Complejo Wizard E2E')).toBeVisible()
+      await page.getByRole('button', { name: /abrir mi complejo/i }).click()
 
-      // Step 3: canchas inline — nombre precargado, solo falta el precio
-      await expect(page.getByText(/paso 3 de 4/i).first()).toBeVisible({ timeout: 10_000 })
-      await expect(page.getByRole('heading', { name: /tus canchas/i })).toBeVisible()
-      await page.getByPlaceholder(/20\.000/).fill('20.000')
-      await page.getByRole('button', { name: /^continuar$/i }).click()
-
-      // Step 4: primera reserva — "Saltar por ahora" (el click a un slot real
-      // depende de la hora del día en que corre el runner: ver el comentario
-      // de TG-HP-203.spec.ts sobre la ventana muerta cerca de medianoche ART).
-      await expect(page.getByText(/paso 4 de 4/i).first()).toBeVisible({ timeout: 10_000 })
-      await expect(page.getByRole('heading', { name: /tu primera reserva/i })).toBeVisible()
-      await page.getByRole('button', { name: /saltar por ahora/i }).click()
-
-      // Cierre peak-end: link público + compartir (el Aha Moment empieza acá)
+      // Cierre peak-end: "Compartir mi link" es la acción principal. Sin primera
+      // reserva ni MercadoPago en esta pantalla: pasaron a la checklist del panel.
       await expect(page).toHaveURL(/\/onboarding\/listo/, { timeout: 15_000 })
       await expect(page.getByRole('heading', { name: /tu complejo está online/i })).toBeVisible({
         timeout: 10_000,
       })
+      await expect(page.getByText(/compartir mi link/i).first()).toBeVisible()
       await expect(page.getByRole('button', { name: /copiar link/i })).toBeVisible()
+      await expect(page.getByText(/primera reserva/i)).toHaveCount(0)
+      await expect(page.getByText(/mercadopago/i)).toHaveCount(0)
 
-      // "Ir a mi panel" aterriza en el dashboard con el tenant creado y sus
-      // canchas listas (la checklist ya arranca con canchas + horarios hechos)
+      // "Ir a mi panel" aterriza en el dashboard con el tenant creado.
       await page.getByRole('link', { name: /ir a mi panel/i }).click()
       await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 })
       await expect(page.getByText(/Complejo Wizard E2E/i).first()).toBeVisible({ timeout: 10_000 })

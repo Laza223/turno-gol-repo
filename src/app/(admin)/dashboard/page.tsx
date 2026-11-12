@@ -280,6 +280,8 @@ export default async function DashboardPage() {
             action={markPublicLinkSharedAction}
             onDismiss={markChecklistDismissedAction}
             staffRole={role}
+            bookingIntake={tenant.settings.booking_intake}
+            hasFixedTeams={tenant.settings.has_fixed_teams === true}
           />
         </div>
       )}

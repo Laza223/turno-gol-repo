@@ -332,7 +332,7 @@ export async function updateTenantSettings(
   // escalar (`"{...}"`), no como objeto. Tras el save, `settings->>'key'` y
   // `tenant.settings.key` devuelven null/undefined → la config del complejo queda
   // corrupta. Se escribe con el cliente porsager + `sql.json()` (single-encode).
-  // Las hermanas updateOnboardingStep/completeOnboarding tienen el MISMO bug.
+  // La hermana completeOnboarding tiene el MISMO bug.
   const sql = getSql()
   const rows = await sql<{ settings: TenantSettings }[]>`
     SELECT settings FROM tenants WHERE id = ${tenantId} LIMIT 1
@@ -342,24 +342,6 @@ export async function updateTenantSettings(
   await sql`
     UPDATE tenants
     SET settings = ${sql.json(merged as unknown as Parameters<typeof sql.json>[0])},
-        updated_at = NOW()
-    WHERE id = ${tenantId}
-  `
-}
-
-export async function updateOnboardingStep(tenantId: string, step: number): Promise<void> {
-  // Mismo bug de doble-encode jsonb que updateTenantSettings: el write via
-  // drizzle `.set({ settings })` guardaba la columna como JSON-string escalar.
-  // Se escribe con porsager + sql.json() (single-encode).
-  const sql = getSql()
-  const rows = await sql<{ settings: TenantSettings }[]>`
-    SELECT settings FROM tenants WHERE id = ${tenantId} LIMIT 1
-  `
-  if (!rows.length) throw new Error('Tenant not found')
-  const settings = { ...rows[0]!.settings, onboarding_step: step }
-  await sql`
-    UPDATE tenants
-    SET settings = ${sql.json(settings as unknown as Parameters<typeof sql.json>[0])},
         updated_at = NOW()
     WHERE id = ${tenantId}
   `

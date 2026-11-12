@@ -24,11 +24,10 @@ describe('inputMode coverage (regression guard)', () => {
     expect(file).toMatch(/<PhoneInput/)
   })
 
-  // El form de registro se extrajo de page.tsx a RegisterCard.tsx (la page quedó
-  // como shell que le inyecta la Server Action). El markup del teléfono vive ahí.
+  // El alta pública pide el celular en su última pantalla (StepCuenta), junto al mail.
   it('register form uses PhoneInput component', () => {
     const file = readFileSync(
-      path.join(projectRoot, 'src/app/(auth)/register/RegisterCard.tsx'),
+      path.join(projectRoot, 'src/app/(auth)/register/StepCuenta.tsx'),
       'utf8',
     )
     expect(file).toMatch(/<PhoneInput/)

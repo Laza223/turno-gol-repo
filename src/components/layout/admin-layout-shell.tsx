@@ -31,6 +31,8 @@ interface AdminLayoutShellProps {
   pushIdentity?: string
   /** Banner rojo de impersonación (solo en sesiones del super admin). */
   impersonationBanner?: ReactNode
+  /** Aviso "Confirmá tu mail", solo para el dueño con el mail sin verificar. */
+  emailBanner?: ReactNode
   /** Feature flag 'tournaments' resuelto server-side para este complejo. */
   tournamentsEnabled?: boolean
   /** Rol del staff logueado, leído de la DB server-side. Sin valor se trata como
@@ -57,6 +59,7 @@ export function AdminLayoutShell({
   signOut,
   pushIdentity,
   impersonationBanner,
+  emailBanner,
   tournamentsEnabled,
   staffRole,
   setupAlerts = NO_SETUP_ALERTS,
@@ -144,6 +147,8 @@ export function AdminLayoutShell({
             freePlan={freePlan}
             resumeOnlineAction={resumeOnlineAction}
           />
+
+          {emailBanner}
 
           {/* Page content — slate gradient suave sobre el shell oscuro */}
           {/* El `pb` de mobile reserva el alto de AdminBottomNav (3.5rem) más el

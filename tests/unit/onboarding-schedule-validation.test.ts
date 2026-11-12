@@ -17,19 +17,25 @@ vi.mock('@/shared/rate-limit/server-action', () => ({
 }))
 vi.mock('@/modules/tenants/tenant.service', () => ({
   createTenantWithTrial: vi.fn(),
-  getStaffTenant: vi.fn(async () => ({ id: 'tenant-1' })),
-  updateOnboardingStep: vi.fn(),
+  getStaffTenant: vi.fn(async () => ({ id: 'tenant-1', settings: { onboarding_step: 2 } })),
+  updateTenantSettings: vi.fn(),
   completeOnboarding: vi.fn(),
 }))
-// caza-bugs #7: saveWizardScheduleAction ahora pasa por requireAdminStaffAction,
-// que resuelve el rol vía getStaffRole (DB) — mockeado 'admin' (happy path de
-// este archivo). Ver onboarding-role-guard.test.ts para el caso manager.
+// caza-bugs #7: saveWizardScheduleAction pasa por requireAdminStaffAction, que
+// resuelve el rol vía getStaffRole (DB) — mockeado 'admin' (happy path de este
+// archivo). Ver onboarding-role-guard.test.ts para el caso manager.
 vi.mock('@/modules/staff/staff.service', () => ({
   getStaffRole: vi.fn(async () => 'admin'),
 }))
+const set = vi.fn()
 const withTenantContext = vi.fn(async (_tenantId: string, fn: (tx: unknown) => Promise<unknown>) =>
   fn({
-    update: () => ({ set: () => ({ where: vi.fn(async () => undefined) }) }),
+    update: () => ({
+      set: (values: unknown) => {
+        set(values)
+        return { where: vi.fn(async () => undefined) }
+      },
+    }),
   }),
 )
 vi.mock('@/shared/db/client', () => ({
@@ -43,92 +49,76 @@ vi.mock('next/navigation', () => ({
   }),
 }))
 
-import { updateOnboardingStep } from '@/modules/tenants/tenant.service'
+import { updateTenantSettings } from '@/modules/tenants/tenant.service'
 import { saveWizardScheduleAction } from '@/app/onboarding/actions'
-
-const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
-const PREV = { success: true } as const
-
-// Contrato FormData del form de horarios (mismo que /settings/horarios):
-// `${day}_open` / `${day}_close` + `${day}_closed`='on' + `closes_next_day`='on'.
-function scheduleFormData(
-  overrides: Partial<
-    Record<(typeof DAYS)[number], { open: string; close: string; closed?: boolean }>
-  > = {},
-  closesNextDay = false,
-): FormData {
-  const fd = new FormData()
-  for (const d of DAYS) {
-    const day = overrides[d] ?? { open: '08:00', close: '23:00' }
-    fd.set(`${d}_open`, day.open)
-    fd.set(`${d}_close`, day.close)
-    if (day.closed) fd.set(`${d}_closed`, 'on')
-  }
-  if (closesNextDay) fd.set('closes_next_day', 'on')
-  return fd
-}
+import { buildUniformWeek, wizardHoursFrom } from '@/modules/onboarding/onboarding.service'
 
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('saveWizardScheduleAction — horariosSchema canónico (pages/onboarding.md §4)', () => {
-  it('acepta un día abierto con cierre <= apertura y deriva closes_next_day sin que nadie lo active', async () => {
-    // Rediseño de Configuración (2026-09): closes_next_day ya no es un
-    // checkbox que el usuario pueda olvidar activar — horariosFormDataToInput
-    // lo deriva siempre de los pares open/close (ver
-    // tests/unit/opening-hours-validation.test.ts). El caso que antes esta
-    // prueba rechazaba ("Lunes: el horario de cierre debe ser posterior...")
-    // ya no puede fallar: es justamente el error que el rediseño elimina.
-    const res = await saveWizardScheduleAction(
-      PREV,
-      scheduleFormData({ mon: { open: '22:00', close: '08:00' } }),
+describe('saveWizardScheduleAction: horariosSchema canónico (pages/onboarding.md §4)', () => {
+  it('08 a 00 es el default: medianoche, sin closesNextDay', async () => {
+    const res = await saveWizardScheduleAction({ openHour: 8, closeHour: 0 })
+    expect(res).toEqual({ success: true, next: '/onboarding/precios' })
+    expect(set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        closesNextDay: false,
+        openingHours: expect.objectContaining({
+          mon: { open: '08:00', close: '00:00', closed: false },
+          sun: { open: '08:00', close: '00:00', closed: false },
+        }),
+      }),
     )
-    expect(res).toEqual({ success: true, next: '/onboarding/canchas' })
-    expect(withTenantContext).toHaveBeenCalledTimes(1)
+    // Era el paso 2 hecho; Horarios (3) lo sube.
+    expect(updateTenantSettings).toHaveBeenCalledWith('tenant-1', { onboarding_step: 3 })
   })
 
-  it('la misma madrugada mandando closes_next_day en el FormData también es válida (el server lo ignora e igual deriva true)', async () => {
-    const res = await saveWizardScheduleAction(
-      PREV,
-      scheduleFormData({ mon: { open: '22:00', close: '02:00' } }, true),
-    )
-    expect(res).toEqual({ success: true, next: '/onboarding/canchas' })
-    expect(withTenantContext).toHaveBeenCalledTimes(1)
+  it('cerrar de madrugada prende closesNextDay', async () => {
+    const res = await saveWizardScheduleAction({ openHour: 10, closeHour: 2 })
+    expect(res.success).toBe(true)
+    expect(set).toHaveBeenCalledWith(expect.objectContaining({ closesNextDay: true }))
   })
 
-  it("cierre '00:00' cuenta como medianoche y es válido sin flag (bug del wizard v1)", async () => {
-    const res = await saveWizardScheduleAction(
-      PREV,
-      scheduleFormData({ mon: { open: '08:00', close: '00:00' } }),
-    )
-    expect(res).toEqual({ success: true, next: '/onboarding/canchas' })
+  it('cerrar a las 23 es el mismo día', async () => {
+    const res = await saveWizardScheduleAction({ openHour: 8, closeHour: 23 })
+    expect(res.success).toBe(true)
+    expect(set).toHaveBeenCalledWith(expect.objectContaining({ closesNextDay: false }))
   })
 
-  it('rechaza un formato de hora inválido', async () => {
-    const res = await saveWizardScheduleAction(
-      PREV,
-      scheduleFormData({ tue: { open: '8am', close: '23:00' } }),
-    )
-    expect(res.success).toBe(false)
+  it('rechaza un cierre que no es posterior a la apertura ni de madrugada', async () => {
+    const res = await saveWizardScheduleAction({ openHour: 18, closeHour: 12 })
+    expect(res).toEqual({
+      success: false,
+      error: 'El cierre tiene que ser después de la apertura.',
+    })
     expect(withTenantContext).not.toHaveBeenCalled()
   })
 
-  it('rechaza la semana con todos los días cerrados', async () => {
-    const allClosed = Object.fromEntries(
-      DAYS.map((d) => [d, { open: '08:00', close: '23:00', closed: true }]),
-    )
-    const res = await saveWizardScheduleAction(PREV, scheduleFormData(allClosed))
-    expect(res).toEqual({ success: false, error: 'Abrí al menos un día de la semana.' })
+  it('rechaza horas fuera de rango y tipos inválidos', async () => {
+    expect((await saveWizardScheduleAction({ openHour: 25, closeHour: 0 })).success).toBe(false)
+    expect((await saveWizardScheduleAction({ openHour: '8', closeHour: 0 })).success).toBe(false)
+    expect((await saveWizardScheduleAction(null)).success).toBe(false)
+    expect(withTenantContext).not.toHaveBeenCalled()
+  })
+})
+
+describe('buildUniformWeek / wizardHoursFrom', () => {
+  it('el mismo horario los 7 días', () => {
+    const { openingHours, closesNextDay } = buildUniformWeek(9, 1)
+    expect(Object.keys(openingHours)).toHaveLength(7)
+    expect(openingHours.sat).toEqual({ open: '09:00', close: '01:00', closed: false })
+    expect(closesNextDay).toBe(true)
   })
 
-  it('no exige cierre > apertura en un día cerrado y avanza al paso 2', async () => {
-    const res = await saveWizardScheduleAction(
-      PREV,
-      scheduleFormData({ sun: { open: '10:00', close: '08:00', closed: true } }),
-    )
-    expect(res).toEqual({ success: true, next: '/onboarding/canchas' })
-    expect(withTenantContext).toHaveBeenCalledTimes(1)
-    expect(updateOnboardingStep).toHaveBeenCalledWith('tenant-1', 2)
+  it('el round trip devuelve las mismas horas', () => {
+    const { openingHours } = buildUniformWeek(10, 3)
+    expect(wizardHoursFrom(openingHours)).toEqual({ openHour: 10, closeHour: 3 })
+  })
+
+  it('vuelve a 08 a 00 si el horario guardado no se puede expresar con horas enteras', () => {
+    const { openingHours } = buildUniformWeek(8, 0)
+    openingHours.mon = { open: '08:30', close: '23:00', closed: false }
+    expect(wizardHoursFrom(openingHours)).toEqual({ openHour: 8, closeHour: 0 })
   })
 })

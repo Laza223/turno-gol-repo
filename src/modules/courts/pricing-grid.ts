@@ -312,6 +312,66 @@ export function uniformRulesFromOpeningHours(
     .map((g) => ({ days: g.days, from: g.from, to: g.to, price: priceCents }))
 }
 
+/**
+ * Precio de día y de noche con UN corte, para el wizard de alta ("¿A la noche
+ * cobrás distinto?"). Parte los rangos de `uniformRulesFromOpeningHours` en
+ * `cutHhmm`: [apertura, corte) cobra `dayPriceCents` y [corte, cierre) cobra
+ * `nightPriceCents`.
+ *
+ * - La franja de madrugada (después de 00:00 en un `closesNextDay`) es noche y
+ *   queda en el día OPERATIVO, igual que en la uniforme. `buildTemplateGrid`
+ *   con `dayNight` no sirve acá: no modela `closesNextDay`.
+ * - Corte fuera del horario abierto de un día: ese día es todo día o todo noche.
+ * - Con noche igual a día devuelve exactamente la uniforme (sin partir nada).
+ */
+export function dayNightRulesFromOpeningHours(
+  openingHours: OpeningHours,
+  closesNextDay: boolean,
+  dayPriceCents: number,
+  nightPriceCents: number,
+  cutHhmm: string,
+): PricingRule[] {
+  const uniform = uniformRulesFromOpeningHours(openingHours, closesNextDay, dayPriceCents)
+  if (nightPriceCents === dayPriceCents) return uniform
+
+  const cutM = hhmmToMins(cutHhmm)
+  const endMins = (hhmm: string) => (hhmm === '00:00' ? 24 * 60 : hhmmToMins(hhmm))
+  type Segment = { day: DayKey; from: string; to: string; price: number }
+  const segments: Segment[] = []
+
+  for (const rule of uniform) {
+    const fromM = hhmmToMins(rule.from)
+    const toM = endMins(rule.to)
+    for (const day of rule.days as DayKey[]) {
+      const isDawn = closesNextDay && rule.from === '00:00' && openingHours[day]?.open !== '00:00'
+      if (isDawn || cutM <= fromM) {
+        segments.push({ day, from: rule.from, to: rule.to, price: nightPriceCents })
+      } else if (cutM >= toM) {
+        segments.push({ day, from: rule.from, to: rule.to, price: dayPriceCents })
+      } else {
+        segments.push({ day, from: rule.from, to: cutHhmm, price: dayPriceCents })
+        segments.push({ day, from: cutHhmm, to: rule.to, price: nightPriceCents })
+      }
+    }
+  }
+
+  const groups = new Map<string, PricingRule>()
+  for (const seg of segments) {
+    const key = `${seg.from}|${seg.to}|${seg.price}`
+    const g = groups.get(key)
+    if (g) g.days.push(seg.day)
+    else groups.set(key, { days: [seg.day], from: seg.from, to: seg.to, price: seg.price })
+  }
+  return Array.from(groups.values())
+    .map((g) => ({
+      ...g,
+      days: [...g.days].sort(
+        (a, b) => DAY_KEYS.indexOf(a as DayKey) - DAY_KEYS.indexOf(b as DayKey),
+      ),
+    }))
+    .sort((a, b) => hhmmToMins(a.from) - hhmmToMins(b.from) || endMins(a.to) - endMins(b.to))
+}
+
 export type RuleDescription = {
   /** "Lun a Jue", "Sáb y Dom", "Todos los días". */
   daysLabel: string

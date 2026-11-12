@@ -22,6 +22,14 @@ vi.mock('next/navigation', () => ({
 // `requireAdminStaff()`, que además lee el rol contra `tenant_staff_members`.
 // Se mockea el guard y no las dos funciones de abajo: es lo que la page llama.
 vi.mock('@/modules/staff/guards', () => ({ requireAdminStaff: vi.fn() }))
+// El mail del dueño: la página ofrece reenviar el link si todavía no lo confirmó.
+vi.mock('@/modules/auth/email-verification.service', () => ({
+  getEmailVerificationState: vi.fn(async () => ({ email: 'dueno@test.local', verified: true })),
+}))
+vi.mock('@/app/(admin)/actions/email-verification', () => ({
+  resendVerificationEmailAction: vi.fn(),
+  changeUnverifiedEmailAction: vi.fn(),
+}))
 // listCourts (llamada desde FacturacionPage para defaultCourts) hace
 // tx.select().from(courts).where(...).orderBy(...) — el tx fake tiene que
 // implementar esa cadena, no un objeto vacío.

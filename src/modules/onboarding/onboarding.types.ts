@@ -24,21 +24,10 @@ export type WizardActionResult =
   { success: true; next?: string; hardNavigate?: boolean } | { success: false; error: string }
 
 /**
- * Paso visible del wizard. 1..4 son pasos reales; 5 es la pantalla de cierre
- * (`/onboarding/listo`), que reusa el mismo shell con todos los pasos tildados.
- * Era un `number` suelto con la convención documentada solo en un comentario.
+ * Paso visible del wizard. 1..5 son pasos reales (`WIZARD_STEPS`); 6 es el cierre
+ * (`/onboarding/resumen` y `/onboarding/listo`), que reusa el mismo chrome con
+ * todos los pasos tildados.
  */
-export type WizardStep = 1 | 2 | 3 | 4 | 5
+export type WizardStep = 1 | 2 | 3 | 4 | 5 | 6
 
-export const LAST_WIZARD_STEP = 4 satisfies WizardStep
-
-/**
- * Contrato de `createOnboardingFirstBookingAction` (Fase 5, paso 4 nuevo).
- * Distinto de `WizardActionResult`: esta acción nunca navega —el turno
- * aparece inline en la grilla del propio paso— así que no hay `next`, y en
- * cambio hace falta devolver qué slot quedó ocupado para que el cliente lo
- * pinte como tomado sin releer el server.
- */
-export type CreateFirstBookingResult =
-  | { success: true; booking: { courtId: string; timeStart: string; timeEnd: string } }
-  | { success: false; error: string }
+export const LAST_WIZARD_STEP = 5 satisfies WizardStep

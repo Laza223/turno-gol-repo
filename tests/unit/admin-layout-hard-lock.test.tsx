@@ -28,6 +28,8 @@ vi.mock('@/shared/db/client', () => ({
   withTenantContext: vi.fn(async () => ({
     currentPeriodEnd: new Date('2026-09-13T12:00:00.000Z'),
   })),
+  // `getEmailVerificationState` lee `staff_users` con el pool worker: sin filas = sin banner.
+  getWorkerSql: vi.fn(() => async () => []),
 }))
 vi.mock('@/shared/kill-switch', () => ({ redirectIfTenantSuspended: vi.fn(async () => undefined) }))
 vi.mock('@/shared/db/schema', () => ({ tenantSubscriptions: {} }))
@@ -67,6 +69,7 @@ import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { resolveImpersonatedStaffContext } from '@/modules/auth/impersonation.server'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { withTenantContext } from '@/shared/db/client'
+import { useOptionalVender } from '@/components/layout/vender-context'
 
 const STAFF_USER = {
   type: 'staff',
@@ -85,6 +88,10 @@ function tenant(status: string) {
     trialEndsAt: null,
     settings: { onboarding_completed: true },
   }
+}
+
+function VenderProbe() {
+  return <p data-testid="vender">{useOptionalVender() ? 'con-vender' : 'sin-vender'}</p>
 }
 
 beforeEach(() => {
@@ -163,6 +170,21 @@ describe('AdminLayout — hard lock por tenant_status', () => {
     } as never)
 
     await expect(AdminLayout({ children: <p>contenido</p> })).rejects.toThrow('REDIRECT:/reactivar')
+  })
+
+  it('canteen_enabled sin definir: monta Vender (los complejos de hoy no cambian)', async () => {
+    vi.mocked(getStaffTenant).mockResolvedValue(tenant('active') as never)
+    render(await AdminLayout({ children: <VenderProbe /> }))
+    expect(screen.getByTestId('vender').textContent).toBe('con-vender')
+  })
+
+  it('canteen_enabled false: no monta Vender', async () => {
+    vi.mocked(getStaffTenant).mockResolvedValue({
+      ...tenant('active'),
+      settings: { onboarding_completed: true, canteen_enabled: false },
+    } as never)
+    render(await AdminLayout({ children: <VenderProbe /> }))
+    expect(screen.getByTestId('vender').textContent).toBe('sin-vender')
   })
 
   it('active: NO redirige (caso base, regresión)', async () => {

@@ -56,18 +56,24 @@ export function CajaTabs({
   active,
   actions,
   lowStock = 0,
+  canteenEnabled = true,
 }: {
   active: string
   actions?: ReactNode
   /** Productos activos que piden reposición (`countLowStock` / `lowStockCount`). */
   lowStock?: number
+  /** Sin buffet (`canteen_enabled === false`) no hay pestaña Productos. */
+  canteenEnabled?: boolean
 }) {
+  const baseTabs = canteenEnabled
+    ? CAJA_TABS
+    : CAJA_TABS.filter((t) => t.href !== '/caja/productos')
   const tabs =
-    lowStock > 0
-      ? CAJA_TABS.map((t) =>
+    lowStock > 0 && canteenEnabled
+      ? baseTabs.map((t) =>
           t.href === '/caja/productos' ? { ...t, badge: <LowStockDot count={lowStock} /> } : t,
         )
-      : CAJA_TABS
+      : baseTabs
 
   return (
     <AdminHeaderSlot>

@@ -8,22 +8,20 @@ import { suppressPushPrompt } from '../_qa/session'
 const FRESH_STAFF_USER_ID = '00000000-0000-4000-8000-000000000005'
 
 /**
- * TG-HP-203 — Onboarding wizard (4 pasos), camino "Saltar por ahora".
- * Rol: Admin (dueño) — requireAdminStaffAction en pasos 2-4.
+ * TG-HP-203: Wizard por rutas `/onboarding/[paso]` (5 pasos + resumen). Sigue vigente para el
+ * alta asistida del super-admin y para quien quedó a mitad de camino; el alta pública de
+ * /register (complejo primero, cuenta al final) la cubre TG-HP-202.
+ * Rol: Admin (dueño). requireAdminStaffAction en los pasos 2-5.
  * Prereq: sesión de e2e-admin-fresh@turnogol.test (0 tenants) → freshAdminStorageState.
- * Flujo: Paso 1 Identidad → Paso 2 Horarios (default) → Paso 3 Canchas (precio) →
- *   Paso 4 Primera reserva ("Saltar por ahora") → /onboarding/listo → /dashboard.
- * "Saltar por ahora" a propósito, no cargar el turno: la grilla del paso 4 sale
- * de los slots LIBRES DE HOY (getFirstBookingSlots), así que ejercitar el click
- * dependería de la hora del día en que corre el runner (ventana muerta cerca de
- * medianoche ART, mismo tipo de flakiness que ya documenta
- * current-date-utc-ventana-muerta-art). Ese camino interactivo lo cubren las
- * stories de Storybook (StepFirstBooking.stories.tsx) + el unit de la action.
- * Evidence anchors: src/app/onboarding/[paso]/page.tsx, actions.ts:42-254,
- *   StepIdentity.tsx, StepCourts.tsx, StepFirstBooking.tsx.
+ * Flujo: Paso 1 Complejo (nombre y dirección) → Paso 2 Canchas (Fútbol 5 = 1) →
+ *   Paso 3 Horarios (08 a 00) → Paso 4 Precios → Paso 5 Tu complejo (3 toques) →
+ *   Resumen → /onboarding/listo → /dashboard.
+ * La dirección se carga "a mano" para no depender de Georef (un tercero).
+ * Evidence anchors: src/app/onboarding/[paso]/page.tsx, actions.ts, resumen/page.tsx,
+ *   StepComplejo.tsx, StepCanchas.tsx, StepHorarios.tsx, StepPrecios.tsx, StepTuComplejo.tsx.
  */
-test.describe('TG-HP-203 — Onboarding wizard 4 pasos', () => {
-  test('fresh admin completes the 4-step wizard and lands on /dashboard with tenant + court created', async ({
+test.describe('TG-HP-203 — Onboarding wizard 5 pasos', () => {
+  test('fresh admin completes the 5-step wizard and lands on /dashboard with tenant + court created', async ({
     browser,
     freshAdminStorageState,
   }) => {
@@ -51,37 +49,43 @@ test.describe('TG-HP-203 — Onboarding wizard 4 pasos', () => {
       await page.goto('/onboarding')
       await expect(page).toHaveURL(/\/onboarding/)
 
-      // ── Paso 1 — Tu complejo ──────────────────────────────────────────
-      // `level: 2`: sin nombre tipeado, el preview (`PublicCardPreview`, Fase
-      // 3) muestra un <h3> placeholder con el MISMO texto "Tu complejo" — sin
-      // el nivel, el locator resuelve a 2 elementos (strict mode violation).
-      await expect(page.getByRole('heading', { level: 2, name: /Tu complejo/i })).toBeVisible({
+      // ── Paso 1 — Tu complejo: nombre y dirección ─────────────────────
+      await expect(page.getByRole('heading', { name: '¿Cómo se llama tu complejo?' })).toBeVisible({
         timeout: 10_000,
       })
-      await page.locator('#identity-name').fill(tenantName)
-      await page.locator('#identity-address').fill('Av. Test QA 203')
-      await page.locator('#identity-city').fill('Luján')
-      // Provincia es un Combobox (Fase 4, reemplaza el <select> de 24 opciones).
-      // Sin teléfono/email: el paso ya no los pide, se derivan de la cuenta
-      // staff que se registró en /register (doc10 §2).
-      await page.locator('#identity-province').click()
+      await page.getByLabel(/nombre del complejo/i).fill(tenantName)
+      await page.getByRole('button', { name: 'Siguiente' }).click()
+      await expect(page.getByRole('heading', { name: /¿Dónde queda/i })).toBeVisible()
+      await page.getByRole('button', { name: /escribir ciudad y provincia a mano/i }).click()
+      await page.getByLabel('Dirección').fill('Av. Test QA 203')
+      await page.getByLabel('Ciudad').fill('Luján')
+      await page.getByRole('combobox', { name: /provincia/i }).click()
       await page.getByRole('option', { name: 'Buenos Aires' }).click()
-      await page.getByRole('button', { name: /Continuar/i }).click()
+      await page.getByRole('button', { name: 'Siguiente' }).click()
 
-      // ── Paso 2 — Horarios (defaults saneados, Continuar sin tocar nada) ─
-      await expect(page.getByText(/Paso 2 de 4/i).first()).toBeVisible({ timeout: 10_000 })
-      await page.getByRole('button', { name: /Continuar/i }).click()
+      // ── Paso 2 — Canchas (Fútbol 5 = 1 por defecto) ──────────────────
+      await expect(page.getByText(/Paso 2 de 5/i).first()).toBeVisible({ timeout: 10_000 })
+      await page.getByRole('button', { name: 'Siguiente' }).click()
 
-      // ── Paso 3 — Canchas (draft precargado, solo falta el precio) ──────
-      await expect(page.getByText(/Paso 3 de 4/i).first()).toBeVisible({ timeout: 10_000 })
-      await expect(page.getByRole('heading', { name: /Tus canchas/i })).toBeVisible()
-      await page.getByPlaceholder(/20\.000/).fill('20.000')
-      await page.getByRole('button', { name: /^Continuar$/i }).click()
+      // ── Paso 3 — Horarios (08 a 00 por defecto) ──────────────────────
+      await expect(page.getByText(/Paso 3 de 5/i).first()).toBeVisible({ timeout: 10_000 })
+      await page.getByRole('button', { name: 'Siguiente' }).click()
 
-      // ── Paso 4 — Tu primera reserva: "Saltar por ahora" ─────────────────
-      await expect(page.getByText(/Paso 4 de 4/i).first()).toBeVisible({ timeout: 10_000 })
-      await expect(page.getByRole('heading', { name: /Tu primera reserva/i })).toBeVisible()
-      await page.getByRole('button', { name: /Saltar por ahora/i }).click()
+      // ── Paso 4 — Precios ─────────────────────────────────────────────
+      await expect(page.getByText(/Paso 4 de 5/i).first()).toBeVisible({ timeout: 10_000 })
+      await page.getByRole('textbox', { name: /precio del turno/i }).fill('20000')
+      await page.getByRole('button', { name: 'Siguiente' }).click()
+
+      // ── Paso 5 — Tu complejo: tres toques, cada opción avanza sola ───
+      await expect(page.getByText(/Paso 5 de 5/i).first()).toBeVisible({ timeout: 10_000 })
+      await page.getByRole('radio', { name: 'En un cuaderno o planilla' }).click()
+      await page.getByRole('radio', { name: 'Sí' }).click()
+      await page.getByRole('radio', { name: 'No' }).click()
+
+      // ── Resumen ──────────────────────────────────────────────────────
+      await expect(page).toHaveURL(/\/onboarding\/resumen/, { timeout: 15_000 })
+      await expect(page.getByRole('heading', { name: '¿Está todo bien?' })).toBeVisible()
+      await page.getByRole('button', { name: /abrir mi complejo/i }).click()
 
       // ── Cierre peak-end ──────────────────────────────────────────────
       await expect(page).toHaveURL(/\/onboarding\/listo/, { timeout: 15_000 })
@@ -93,7 +97,7 @@ test.describe('TG-HP-203 — Onboarding wizard 4 pasos', () => {
       await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 })
       await expect(page.getByText(tenantName).first()).toBeVisible({ timeout: 10_000 })
 
-      // DB: tenant + tenant_staff_members + cancha creados por las 4 Server Actions.
+      // DB: tenant + tenant_staff_members + cancha creados por las Server Actions del wizard.
       const sql = getSql()
       try {
         const tenantRows = (await sql`
@@ -104,12 +108,20 @@ test.describe('TG-HP-203 — Onboarding wizard 4 pasos', () => {
         `) as unknown as Array<{
           id: string
           name: string
-          settings: { onboarding_completed?: boolean }
+          settings: {
+            onboarding_completed?: boolean
+            booking_intake?: string
+            has_fixed_teams?: boolean
+            canteen_enabled?: boolean
+          }
           opening_hours: unknown
         }>
         expect(tenantRows).toHaveLength(1)
         const tenant = tenantRows[0]!
         expect(tenant.settings.onboarding_completed).toBe(true)
+        expect(tenant.settings.booking_intake).toBe('notebook')
+        expect(tenant.settings.has_fixed_teams).toBe(true)
+        expect(tenant.settings.canteen_enabled).toBe(false)
 
         const courtRows = (await sql`
           SELECT id, name, pricing FROM courts WHERE tenant_id = ${tenant.id}
@@ -123,9 +135,8 @@ test.describe('TG-HP-203 — Onboarding wizard 4 pasos', () => {
           tenantRow: tenant,
           courtRow: courtRows[0],
           dbWrites:
-            'tenants (Paso 1) + tenant_staff_members + opening_hours UPDATE (Paso 2) + courts INSERT (Paso 3) + settings.onboarding_completed=true (Paso 4)',
-          notes:
-            'Camino "Saltar por ahora" — settings.onboarding_completed marcado por finishOnboardingAction.',
+            'tenants + tenant_staff_members (Paso 1) + settings.onboarding_draft_courts (Paso 2) + opening_hours UPDATE (Paso 3) + courts INSERT (Paso 4) + settings.booking_intake/has_fixed_teams/canteen_enabled (Paso 5) + settings.onboarding_completed=true (resumen)',
+          notes: 'settings.onboarding_completed marcado por finishOnboardingAction.',
         })
       } finally {
         await sql.end({ timeout: 5 })

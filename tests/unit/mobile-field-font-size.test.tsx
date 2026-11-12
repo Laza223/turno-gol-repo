@@ -68,11 +68,6 @@ describe('Piso de 16px en campos — constantes compartidas', () => {
   // que darían falsos positivos con className dinámico.
   const SHARED_FIELD_CONSTS: Array<{ file: string; needle: string; what: string }> = [
     {
-      file: 'src/app/onboarding/components/wizard-styles.ts',
-      needle: 'export const fieldClass',
-      what: 'campos de los 4 pasos del wizard',
-    },
-    {
       file: 'src/components/world/PortalAuthFrame.tsx',
       needle: 'const PORTAL_INPUT',
       what: 'email del login de jugador',

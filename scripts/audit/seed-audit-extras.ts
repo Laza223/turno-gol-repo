@@ -174,8 +174,8 @@ async function cleanupAuthUsers(): Promise<void> {
 /** (a) Manager (Encargado) — mismo patrón que scripts/seed-e2e.ts. */
 async function seedManager(sql: SqlClient): Promise<void> {
   await sql`
-    INSERT INTO staff_users (id, email, first_name, last_name)
-    VALUES (${EXTRAS.managerStaffUserId}, ${EXTRAS.managerEmail}, ${'Rodrigo'}, ${'Encargado'})
+    INSERT INTO staff_users (id, email, first_name, last_name, email_verified_at)
+    VALUES (${EXTRAS.managerStaffUserId}, ${EXTRAS.managerEmail}, ${'Rodrigo'}, ${'Encargado'}, now())
   `
   await sql`
     INSERT INTO tenant_staff_members (tenant_id, staff_user_id, role)

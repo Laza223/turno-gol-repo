@@ -6,14 +6,14 @@ import { OnboardingChecklist } from '@/components/dashboard/onboarding-checklist
 // La Server Action entra por PROP (ver el comentario en onboarding-checklist.tsx):
 // ya no hace falta mockear el módulo './actions' para evitar arrastrar drizzle.
 // Provide a baseline state where the copy button is rendered (not minimized).
-// 7 items total: accountCreated, complexData, hasCourts, hasSchedule,
+// 6 items total: accountCreated, hasCourts, hasSchedule, hasStaffBookings,
 // mpConnected, publicLinkShared, firstBookingReceived.
 // Set publicLinkShared=false so the "copy-link" action button is visible.
-// 5/7 completed → not minimized.
+// 4/6 completed → not minimized.
 const baseProps = {
   state: {
     accountCreated: true,
-    complexData: true,
+    hasStaffBookings: true,
     hasCourts: true,
     hasSchedule: true,
     mpConnected: true,

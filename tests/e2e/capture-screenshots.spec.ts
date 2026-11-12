@@ -291,7 +291,7 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await expect(authPage.getByText(/revisá tu email/i)).toBeVisible({ timeout: 10000 })
     await takeShot(authPage, 'auth_onboarding', 'login_jugador_revisa_email')
 
-    // 4-Step Onboarding Wizard (using fresh admin context)
+    // Onboarding por toques, 5 pasos (using fresh admin context)
     const freshAdminPage = await freshAdminCtx.newPage()
     freshAdminPage.on('console', (msg) => {
       console.log(`[FreshAdmin Browser Console] ${msg.type()}: ${msg.text()}`)
@@ -302,68 +302,62 @@ test.describe('UX Audit Screenshot Capturer', () => {
 
     await freshAdminPage.goto('/onboarding')
 
-    // Step 1: complex identity. `level: 2`: sin nombre tipeado, el preview
-    // (`PublicCardPreview`, Fase 3) muestra un <h3> placeholder con el MISMO
-    // texto "Tu complejo" — sin el nivel, el locator resuelve a 2 elementos.
+    // `filter({ visible: true })`, no `.first()`: el label de progreso se pinta DOS
+    // veces — en el <aside> (hidden, lg:flex) y en el <header> (lg:hidden). En DOM
+    // order el primero es el del aside, que en viewport mobile está oculto. Este
+    // spec corre en chromium Y en mobile-chrome.
+    const progress = (n: number) =>
+      freshAdminPage
+        .getByText(new RegExp(`paso ${n} de 5`, 'i'))
+        .filter({ visible: true })
+        .first()
+
+    // Paso 1: nombre y dirección (una pregunta por pantalla)
     await expect(
-      freshAdminPage.getByRole('heading', { level: 2, name: /tu complejo/i }),
-    ).toBeVisible({
-      timeout: 20000,
-    })
+      freshAdminPage.getByRole('heading', { name: '¿Cómo se llama tu complejo?' }),
+    ).toBeVisible({ timeout: 20000 })
     await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_1')
-    await freshAdminPage.locator('#identity-name').fill('Complejo UX Audit')
-    await freshAdminPage.locator('#identity-address').fill('Calle Audit 555')
-    await freshAdminPage.locator('#identity-city').fill('Luján')
-    // Provincia es un Combobox (Fase 4, reemplaza el <select> de 24 opciones).
-    // Sin teléfono/email: el paso ya no los pide, se derivan de la cuenta staff.
-    await freshAdminPage.locator('#identity-province').click()
+    await freshAdminPage.getByLabel(/nombre del complejo/i).fill('Complejo UX Audit')
+    await freshAdminPage.getByRole('button', { name: 'Siguiente' }).click()
+    await expect(freshAdminPage.getByRole('heading', { name: /¿dónde queda/i })).toBeVisible()
+    await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_1_direccion')
+    // A mano: no depende de Georef (un tercero) en el e2e.
+    await freshAdminPage
+      .getByRole('button', { name: /escribir ciudad y provincia a mano/i })
+      .click()
+    await freshAdminPage.getByLabel('Dirección').fill('Calle Audit 555')
+    await freshAdminPage.getByLabel('Ciudad').fill('Luján')
+    await freshAdminPage.getByRole('combobox', { name: /provincia/i }).click()
     await freshAdminPage.getByRole('option', { name: 'Buenos Aires' }).click()
-    await freshAdminPage.getByRole('button', { name: /continuar/i }).click()
+    await freshAdminPage.getByRole('button', { name: 'Siguiente' }).click()
 
-    // Step 2: horarios (general + excepciones; defaults saneados → Continuar directo)
-    // `filter({ visible: true })`, no `.first()`: WizardShell pinta el label del paso DOS
-    // veces — en el <aside> (hidden, lg:flex) y en el <header> (lg:hidden). En DOM order el
-    // primero es el del aside, que en viewport mobile está oculto, asi que `.first()` daba
-    // "resolved to <p>...</p>" pero hidden. Este spec corre en chromium Y en mobile-chrome.
-    await expect(
-      freshAdminPage
-        .getByText(/paso 2 de 4/i)
-        .filter({ visible: true })
-        .first(),
-    ).toBeVisible({ timeout: 15000 })
+    // Paso 2: canchas (Fútbol 5 = 1 por defecto)
+    await expect(progress(2)).toBeVisible({ timeout: 15000 })
     await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_2')
-    await freshAdminPage.getByRole('button', { name: /continuar/i }).click()
+    await freshAdminPage.getByRole('button', { name: 'Siguiente' }).click()
 
-    // Step 3: canchas inline (nombre precargado; solo falta el precio)
-    await expect(
-      freshAdminPage
-        .getByText(/paso 3 de 4/i)
-        .filter({ visible: true })
-        .first(),
-    ).toBeVisible({ timeout: 15000 })
-    await freshAdminPage.getByPlaceholder(/20\.000/).fill('20.000')
+    // Paso 3: horarios (08 a 00 por defecto)
+    await expect(progress(3)).toBeVisible({ timeout: 15000 })
     await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_3')
-    await freshAdminPage.getByRole('button', { name: /continuar/i }).click()
+    await freshAdminPage.getByRole('button', { name: 'Siguiente' }).click()
 
-    // Step 4: primera reserva (grilla de slots de hoy)
-    try {
-      await expect(
-        freshAdminPage
-          .getByText(/paso 4 de 4/i)
-          .filter({ visible: true })
-          .first(),
-      ).toBeVisible({ timeout: 15000 })
-    } catch (err) {
-      console.log('=== STEP 4 VISIBILITY FAILURE DETAILS ===')
-      console.log('Current URL:', freshAdminPage.url())
-      console.log('HTML Body Content:')
-      console.log(await freshAdminPage.locator('body').innerHTML())
-      throw err
-    }
+    // Paso 4: precios
+    await expect(progress(4)).toBeVisible({ timeout: 15000 })
+    await freshAdminPage.getByRole('textbox', { name: /precio del turno/i }).fill('20000')
     await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_4')
-    // "Saltar por ahora": el click a un slot real depende de la hora del día
-    // en que corre el runner (ver TG-HP-203.spec.ts).
-    await freshAdminPage.getByRole('button', { name: /saltar por ahora/i }).click()
+    await freshAdminPage.getByRole('button', { name: 'Siguiente' }).click()
+
+    // Paso 5: tres preguntas de un toque
+    await expect(progress(5)).toBeVisible({ timeout: 15000 })
+    await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_5')
+    await freshAdminPage.getByRole('radio', { name: 'Por WhatsApp' }).click()
+    await freshAdminPage.getByRole('radio', { name: 'Sí' }).click()
+    await freshAdminPage.getByRole('radio', { name: 'No' }).click()
+
+    // Resumen: "¿Está todo bien?"
+    await expect(freshAdminPage).toHaveURL(/\/onboarding\/resumen/, { timeout: 20000 })
+    await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_resumen')
+    await freshAdminPage.getByRole('button', { name: /abrir mi complejo/i }).click()
 
     // Cierre peak-end del wizard → panel
     await expect(freshAdminPage).toHaveURL(/\/onboarding\/listo/, { timeout: 20000 })

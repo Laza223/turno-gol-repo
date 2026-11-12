@@ -1,5 +1,5 @@
 import { cache } from 'react'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, isNotNull, isNull } from 'drizzle-orm'
 import { getWorkerDb } from '@/shared/db/client'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
 import type { StaffRole } from './roles'
@@ -156,20 +156,39 @@ export async function upsertStaffUser(
   email: string,
   firstName: string,
   lastName: string,
-): Promise<{ id: string }> {
+): Promise<{ id: string; unverified: boolean }> {
   const db = getWorkerDb()
   const lower = email.toLowerCase()
   const [row] = await db
     .insert(staffUsers)
-    .values({ email: lower, firstName, lastName })
+    .values({ email: lower, firstName, lastName, emailVerifiedAt: new Date() })
     .onConflictDoUpdate({
       target: staffUsers.email,
       set: { firstName, lastName },
+      // Una cuenta que nunca confirmó su mail no se toca: quien la creó pudo
+      // haber escrito un mail ajeno (squatting). El caller rechaza la invitación.
+      setWhere: isNotNull(staffUsers.emailVerifiedAt),
     })
     .returning({ id: staffUsers.id })
 
-  if (!row) throw new Error('upsertStaffUser: insert/update returned no row')
-  return row
+  if (row) return { id: row.id, unverified: false }
+  const [existing] = await db
+    .select({ id: staffUsers.id })
+    .from(staffUsers)
+    .where(and(eq(staffUsers.email, lower), isNull(staffUsers.emailVerifiedAt)))
+    .limit(1)
+  if (!existing) throw new Error('upsertStaffUser: insert/update returned no row')
+  return { id: existing.id, unverified: true }
+}
+
+/** ¿Ya hay una cuenta con este mail que nunca lo confirmó? (pool worker, `staff_users` es global). */
+export async function isStaffEmailUnverified(email: string): Promise<boolean> {
+  const rows = await getWorkerDb()
+    .select({ id: staffUsers.id })
+    .from(staffUsers)
+    .where(and(eq(staffUsers.email, email.toLowerCase()), isNull(staffUsers.emailVerifiedAt)))
+    .limit(1)
+  return rows.length > 0
 }
 
 /**

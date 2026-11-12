@@ -170,11 +170,12 @@ export async function createTestStaffUser(
   const s = sql ?? adminSql()
   const email = overrides.email ?? uniqueEmail('staff.local')
   const rows = await s<{ id: string; email: string }[]>`
-    INSERT INTO staff_users (email, first_name, last_name)
+    INSERT INTO staff_users (email, first_name, last_name, email_verified_at)
     VALUES (
       ${email},
       ${faker.person.firstName()},
-      ${faker.person.lastName()}
+      ${faker.person.lastName()},
+      now()
     )
     RETURNING id, email
   `

@@ -13,7 +13,8 @@ const FILES = [
   'src/app/(player)/configuracion/ProfileForm.tsx',
   'src/app/(public)/explorar/components/SearchBar.tsx',
   'src/app/(public)/[slug]/reservar/components/LoginGate.tsx',
-  'src/app/onboarding/components/StepIdentity.tsx',
+  'src/app/onboarding/components/StepComplejo.tsx',
+  'src/components/ui/choice-cards.tsx',
 ]
 
 describe('No raw focus:ring in updated files (regression guard)', () => {

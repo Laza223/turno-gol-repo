@@ -28,8 +28,8 @@ export function HoyHeaderSlot({
   /** "jue 24 sep": en el teléfono, al lado del logo, la larga quedaba en "jue 24 d…". */
   shortDateLabel: string
 }) {
-  // En el plan gratis el layout no monta la cantina (`WithVender enabled={false}`):
-  // sin provider no hay botón, y la fecha ocupa el hueco.
+  // Sin proveedor no hay botón: el complejo no vende en buffet (`canteen_enabled === false`)
+  // o está en el plan gratis, que no tiene cantina. La fecha ocupa el hueco.
   const vender = useOptionalVender()
   return (
     <AdminHeaderSlot>

@@ -59,6 +59,61 @@ describe('parseGeorefResponse', () => {
     ])
   })
 
+  it('lee la lista de `direcciones` (lo que devuelve Georef hoy) con localidad y provincia', () => {
+    const real = {
+      cantidad: 1,
+      direcciones: [
+        {
+          nomenclatura: 'SAN MARTIN 850, Rosario, Santa Fe',
+          localidad_censal: { id: '82084270', nombre: 'Rosario' },
+          departamento: { id: '82084', nombre: 'Rosario' },
+          provincia: { id: '82', nombre: 'Santa Fe' },
+          ubicacion: { lat: -32.9473, lon: -60.6368 },
+        },
+      ],
+    }
+    expect(parseGeorefResponse(real)).toEqual([
+      {
+        label: 'SAN MARTIN 850, Rosario, Santa Fe',
+        lat: -32.9473,
+        lng: -60.6368,
+        city: 'Rosario',
+        province: 'Santa Fe',
+      },
+    ])
+  })
+
+  it('normaliza la provincia al nombre de PROVINCES (CABA) y cae al departamento si falta la localidad', () => {
+    const caba = {
+      direcciones: [
+        {
+          nomenclatura: 'AV CORRIENTES 1234, Comuna 1, Ciudad Autónoma de Buenos Aires',
+          departamento: { nombre: 'Comuna 1' },
+          provincia: { nombre: 'Ciudad Autónoma de Buenos Aires' },
+          ubicacion: { lat: -34.6, lon: -58.38 },
+        },
+      ],
+    }
+    expect(parseGeorefResponse(caba)[0]).toMatchObject({ city: 'Comuna 1', province: 'CABA' })
+  })
+
+  it('una provincia con acento o nombre largo se reconoce; una desconocida queda como la dio Georef', () => {
+    const mk = (provincia: string) => ({
+      direcciones: [
+        {
+          nomenclatura: 'X 1',
+          provincia: { nombre: provincia },
+          ubicacion: { lat: 1, lon: 2 },
+        },
+      ],
+    })
+    expect(parseGeorefResponse(mk('Córdoba'))[0]?.province).toBe('Córdoba')
+    expect(
+      parseGeorefResponse(mk('Tierra del Fuego, Antártida e Islas del Atlántico Sur'))[0]?.province,
+    ).toBe('Tierra del Fuego')
+    expect(parseGeorefResponse(mk('Narnia'))[0]?.province).toBe('Narnia')
+  })
+
   it('JSON basura no tira: devuelve []', () => {
     expect(parseGeorefResponse('esto no es un objeto')).toEqual([])
     expect(parseGeorefResponse(null)).toEqual([])

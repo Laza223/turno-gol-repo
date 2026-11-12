@@ -1,51 +1,98 @@
-import { and, eq, isNull } from 'drizzle-orm'
 import type { z } from 'zod'
-import type { DbTx } from '@/shared/db/client'
+import { and, eq, sql } from 'drizzle-orm'
 import { withTenantContext } from '@/shared/db/client'
-import { bookings, tenants } from '@/shared/db/schema'
-import { updateOnboardingStep } from '@/modules/tenants/tenant.service'
-import type { OpeningHours, TenantRow, TenantSettings } from '@/modules/tenants/tenant.types'
+import { abonados, bookings, courts, tenants } from '@/shared/db/schema'
+import { updateTenantSettings } from '@/modules/tenants/tenant.service'
+import type {
+  OpeningHours,
+  OpeningHoursDay,
+  TenantRow,
+  TenantSettings,
+} from '@/modules/tenants/tenant.types'
+import { DAY_KEYS, type DayKey } from '@/shared/time/week-days'
 import {
-  appendCourtPhoto,
   createCourt,
   getCourtCountAndBilled,
   listCourts,
+  toggleStatus,
+  updateCourt,
   validatePricingRulesCoverage,
 } from '@/modules/courts/court.service'
 import { changeBilledCourts } from '@/modules/billing/billing.service'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
-import { keyFromPublicUrl } from '@/shared/storage/r2-config'
 import { createCourtSchema } from '@/modules/courts/court.schema'
-import { uniformRulesFromOpeningHours } from '@/modules/courts/pricing-grid'
-import type { CourtRow } from '@/modules/courts/court.types'
-import { createManualBooking, getAvailableSlots } from '@/modules/bookings/booking.service'
 import {
-  SlotTakenError,
-  CourtOfflineError,
-  PriceUnavailableError,
-  BookingValidationError,
-} from '@/modules/bookings/booking.errors'
-import type { AvailableSlot } from '@/modules/bookings/booking.types'
-import { artNowParts } from '@/shared/dates/art'
-import { slotHasPassed } from '@/shared/time/operating-day'
-import { DAY_KEYS } from '@/lib/booking/grid-cells'
-import type { CreateFirstBookingResult, WizardActionResult, WizardStep } from './onboarding.types'
+  dayNightRulesFromOpeningHours,
+  mostFrequentRulePrice,
+  uniformRulesFromOpeningHours,
+} from '@/modules/courts/pricing-grid'
+import type { CourtRow, PricingRule } from '@/modules/courts/court.types'
+import type { WizardActionResult, WizardStep } from './onboarding.types'
 import { LAST_WIZARD_STEP } from './onboarding.types'
-import type { WizardCourtDraftInput, WizardFirstBookingInput } from './onboarding.schema'
+import {
+  DEFAULT_CUT_HOUR,
+  WIZARD_FORMATS,
+  wizardScheduleSchema,
+  type WizardPricesInput,
+  type WizardProfileInput,
+} from './onboarding.schema'
 
 /**
  * Paso visible a partir de lo guardado en DB.
  *
  * `settings.onboarding_step` es el ÚLTIMO paso completado, no el actual: por eso
- * el +1. Un tenant recién creado (step 1 = identidad hecha) aterriza en Horarios.
+ * el +1. Un tenant recién creado (step 1 = complejo hecho) aterriza en Canchas, y
+ * el alta asistida (`createAssistedTenant`, `onboarding_step: 1`) también.
+ *
+ * Tenants que estaban a mitad del wizard VIEJO (1 complejo, 2 horarios, 3 canchas,
+ * 4 reserva): el valor guardado se reinterpreta con el orden nuevo
+ * (1 complejo, 2 canchas, 3 horarios, 4 precios, 5 tu-complejo).
+ * - step 1: sin cambios, cae en Canchas.
+ * - step 2 (tenía horarios, sin canchas): cae en Horarios y los ve ya cargados.
+ *   Como no hay borrador de canchas, Precios lo manda a Canchas
+ *   (`[paso]/page.tsx`) y recién ahí elige cuántas.
+ * Cambiar Canchas u Horarios BAJA el paso guardado a ese paso (`stepToStore`): los
+ * precios dependen de la cantidad y del horario, así que Precios vuelve a ser
+ * obligatorio y el resumen no se abre hasta repasarlo.
+ *
+ * - step 3 (tenía canchas creadas): cae en Precios. Sin borrador, la cantidad por
+ *   formato se deduce de las canchas que ya existen (`readDraftCounts`) y los
+ *   precios de sus reglas (`readDraftPrices`). Al guardar, `createOnboardingCourts`
+ *   reutiliza esas canchas (por nombre y, si no coincide, por orden) en vez de
+ *   duplicarlas.
  */
 export function resolveWizardStep(settings: TenantSettings): WizardStep {
   const completed = settings.onboarding_step ?? 1
   return Math.min(completed + 1, LAST_WIZARD_STEP) as WizardStep
 }
 
+/** ¿Hizo los 5 pasos? Es la puerta de `/onboarding/resumen`. */
+export function isWizardComplete(settings: TenantSettings): boolean {
+  return (settings.onboarding_step ?? 1) >= LAST_WIZARD_STEP
+}
+
 /**
- * Paso 2 — persistir horarios. `closesNextDay` va a su propia columna, NO adentro
+ * Paso a guardar al terminar el paso `n`. Complejo, Precios y Tu complejo nunca
+ * bajan: volver con "Cambiar" y reenviar no obliga a repetir los siguientes.
+ * Canchas (2) y Horarios (3) sí bajan al propio paso: cambian la cantidad o el
+ * horario, y los precios ya cargados dejan de valer hasta repasarlos.
+ */
+export function stepToStore(settings: TenantSettings, n: number): number {
+  if (n === 2 || n === 3) return n
+  return Math.max(settings.onboarding_step ?? 1, n)
+}
+
+/** Paso Canchas: guarda la cantidad por formato. Todavía no crea canchas. */
+export async function saveOnboardingCourtCounts(
+  tenantId: string,
+  counts: Record<string, number>,
+  step: number,
+): Promise<void> {
+  await updateTenantSettings(tenantId, { onboarding_draft_courts: counts, onboarding_step: step })
+}
+
+/**
+ * Paso Horarios: persistir. `closesNextDay` va a su propia columna, NO adentro
  * del jsonb `opening_hours`: el motor de precios y los generadores de slots lo
  * leen de la columna.
  */
@@ -53,6 +100,7 @@ export async function saveOnboardingSchedule(
   tenantId: string,
   openingHours: OpeningHours,
   closesNextDay: boolean,
+  step: number,
 ): Promise<void> {
   await withTenantContext(tenantId, async (tx) => {
     await tx
@@ -60,56 +108,125 @@ export async function saveOnboardingSchedule(
       .set({ openingHours, closesNextDay, updatedAt: new Date() })
       .where(eq(tenants.id, tenantId))
   })
-  await updateOnboardingStep(tenantId, 2)
+  await updateTenantSettings(tenantId, { onboarding_step: step })
+}
+
+const DEFAULT_OPEN_HOUR = 8
+const DEFAULT_CLOSE_HOUR = 0
+
+const hh = (hour: number) => `${String(hour).padStart(2, '0')}:00`
+
+/**
+ * El mismo horario los 7 días, de hora entera. `closeHour` 0 es medianoche; un
+ * cierre que no es posterior a la apertura (1 a 4) cae en la madrugada del día
+ * siguiente y prende `closesNextDay`. La validez final la decide `horariosSchema`.
+ */
+export function buildUniformWeek(
+  openHour: number,
+  closeHour: number,
+): { openingHours: Record<DayKey, OpeningHoursDay>; closesNextDay: boolean } {
+  const day: OpeningHoursDay = { open: hh(openHour), close: hh(closeHour), closed: false }
+  const openingHours = {} as Record<DayKey, OpeningHoursDay>
+  for (const key of DAY_KEYS) openingHours[key] = { ...day }
+  return { openingHours, closesNextDay: closeHour !== 0 && closeHour <= openHour }
 }
 
 /**
- * ¿Esta key de R2 es una foto de borrador DE ESTE complejo?
- *
- * La URL la manda el cliente, así que sin este corte `courts.photos` sería una
- * entrada de URLs arbitrarias. El prefijo del tenant solo no alcanza: dejaría
- * colar cualquier otro objeto suyo (su logo, su portada). Por eso la forma
- * completa, incluido el UUID y la extensión que escribe la Server Action.
+ * Horas que muestra el paso Horarios: las del primer día abierto del complejo, o
+ * 08 a 00 si no se pueden expresar con un solo par de horas enteras.
  */
-const DRAFT_PHOTO_KEY = /^[0-9a-f-]{36}\/court-drafts\/[0-9a-f-]{36}\.webp$/i
+export function wizardHoursFrom(openingHours: OpeningHours): {
+  openHour: number
+  closeHour: number
+} {
+  const fallback = { openHour: DEFAULT_OPEN_HOUR, closeHour: DEFAULT_CLOSE_HOUR }
+  const first = DAY_KEYS.map((k) => openingHours[k]).find((d) => d && !d.closed)
+  if (!first) return fallback
+  const openHour = Number(first.open.slice(0, 2))
+  const closeHour = Number(first.close.slice(0, 2))
+  if (!first.open.endsWith(':00') || !first.close.endsWith(':00')) return fallback
+  if (!Number.isInteger(openHour) || !Number.isInteger(closeHour)) return fallback
+  if (!wizardScheduleSchema.safeParse({ openHour, closeHour }).success) return fallback
+  return { openHour, closeHour }
+}
 
-export function isOwnDraftPhotoKey(tenantId: string, key: string): boolean {
-  return DRAFT_PHOTO_KEY.test(key) && key.startsWith(`${tenantId}/court-drafts/`)
+/** Paso Tu complejo: guarda las tres respuestas. */
+export async function saveOnboardingProfile(
+  tenantId: string,
+  profile: WizardProfileInput,
+  step: number,
+): Promise<void> {
+  await updateTenantSettings(tenantId, {
+    booking_intake: profile.bookingIntake,
+    has_fixed_teams: profile.hasFixedTeams,
+    canteen_enabled: profile.canteenEnabled,
+    onboarding_step: step,
+  })
+}
+
+/** Cantidad de canchas por formato: el borrador, o lo que ya existe si no hay. */
+export function readDraftCounts(
+  settings: TenantSettings,
+  courts: readonly Pick<CourtRow, 'format'>[],
+): Record<string, number> {
+  if (settings.onboarding_draft_courts) return settings.onboarding_draft_courts
+  const counts: Record<string, number> = {}
+  for (const c of courts) {
+    if (!(WIZARD_FORMATS as readonly number[]).includes(c.format)) continue
+    counts[String(c.format)] = (counts[String(c.format)] ?? 0) + 1
+  }
+  return counts
+}
+
+type DraftPrices = Record<string, { dayPrice: number; nightPrice?: number }>
+
+/** Precios por formato: el borrador, o lo deducido de las reglas de la primera cancha de cada formato. */
+export function readDraftPrices(
+  settings: TenantSettings,
+  courts: readonly Pick<CourtRow, 'format' | 'pricing'>[],
+): DraftPrices {
+  if (settings.onboarding_draft_prices) return settings.onboarding_draft_prices
+  const out: DraftPrices = {}
+  for (const c of courts) {
+    const key = String(c.format)
+    if (out[key]) continue
+    const price = mostFrequentRulePrice(c.pricing.rules)
+    if (price != null) out[key] = { dayPrice: price }
+  }
+  return out
+}
+
+type PlannedCourt = { name: string; format: number; rules: PricingRule[] }
+
+function hasNightPrice(f: { dayPrice: number; nightPrice?: number }): boolean {
+  return f.nightPrice !== undefined && f.nightPrice !== f.dayPrice
 }
 
 /**
- * URL de foto de borrador válida para este complejo, o `null`.
- *
- * `null` NO es un error: la foto es opcional y la cancha se crea igual. Ese es
- * también el camino cuando R2 no está configurado (local, e2e), donde
- * `keyFromPublicUrl` devuelve null porque no hay host contra el cual comparar.
+ * Canchas a crear a partir de los precios cargados: "Cancha 1…N" numeradas en todo
+ * el complejo (formatos de menor a mayor) y reglas sobre los horarios YA
+ * confirmados. Pura: no toca la DB. Con precio de noche distinto, parte el día en
+ * el corte; si no, un precio uniforme.
  */
-function ownDraftPhotoUrl(tenantId: string, url: string | undefined): string | null {
-  if (!url) return null
-  const key = keyFromPublicUrl(url)
-  if (!key || !isOwnDraftPhotoKey(tenantId, key)) return null
-  return url
-}
+export function planWizardCourts(
+  tenant: Pick<TenantRow, 'openingHours' | 'closesNextDay'>,
+  input: WizardPricesInput,
+): { ok: true; courts: PlannedCourt[] } | { ok: false; error: string } {
+  const courts: PlannedCourt[] = []
+  const cutHhmm = `${String(input.cutHour ?? DEFAULT_CUT_HOUR).padStart(2, '0')}:00`
+  const formats = [...input.formats].sort((a, b) => a.format - b.format)
 
-/**
- * Convierte los drafts del paso 3 en inputs validados de cancha, generando las
- * reglas de precio uniformes sobre los horarios YA confirmados en el paso 2.
- *
- * Es una función pura sobre el tenant: no toca la DB. Devuelve el primer error
- * legible que encuentre — el wizard muestra uno por vez, no una lista.
- */
-function buildCourtInputsFromDrafts(
-  tenant: Pick<TenantRow, 'id' | 'openingHours' | 'closesNextDay'>,
-  drafts: readonly WizardCourtDraftInput[],
-): { ok: true; inputs: z.infer<typeof createCourtSchema>[] } | { ok: false; error: string } {
-  const inputs: z.infer<typeof createCourtSchema>[] = []
-
-  for (const draft of drafts) {
-    const rules = uniformRulesFromOpeningHours(
-      tenant.openingHours,
-      tenant.closesNextDay,
-      draft.priceCents,
-    )
+  for (const row of formats) {
+    const rules =
+      row.nightPrice !== undefined && hasNightPrice(row)
+        ? dayNightRulesFromOpeningHours(
+            tenant.openingHours,
+            tenant.closesNextDay,
+            row.dayPrice,
+            row.nightPrice,
+            cutHhmm,
+          )
+        : uniformRulesFromOpeningHours(tenant.openingHours, tenant.closesNextDay, row.dayPrice)
     if (rules.length === 0) {
       return {
         ok: false,
@@ -117,23 +234,39 @@ function buildCourtInputsFromDrafts(
           'Tus horarios no tienen días abiertos. Volvé al paso Horarios y abrí al menos un día.',
       }
     }
-
-    const photo = ownDraftPhotoUrl(tenant.id, draft.photoUrl)
-    const courtParsed = createCourtSchema.safeParse({
-      name: draft.name,
-      surfaceType: draft.surfaceType,
-      isCovered: draft.isCovered,
-      format: draft.format,
-      pricing: { rules },
-      photos: photo ? [photo] : [],
-    })
-    if (!courtParsed.success) {
-      return { ok: false, error: courtParsed.error.issues[0]?.message ?? 'Datos inválidos' }
+    for (let i = 0; i < row.count; i++) {
+      courts.push({ name: `Cancha ${courts.length + 1}`, format: row.format, rules })
     }
+  }
+  return { ok: true, courts }
+}
 
-    // Backstop de cobertura (mismo gate que /canchas): un hueco entre
-    // reglas es una hora operativa que nadie puede reservar online.
-    const coverage = validatePricingRulesCoverage(rules, tenant.openingHours, tenant.closesNextDay)
+type CourtInput = z.infer<typeof createCourtSchema>
+
+function buildCourtInputs(
+  tenant: Pick<TenantRow, 'openingHours' | 'closesNextDay'>,
+  planned: readonly PlannedCourt[],
+): { ok: true; inputs: CourtInput[] } | { ok: false; error: string } {
+  const inputs: CourtInput[] = []
+  for (const court of planned) {
+    const parsed = createCourtSchema.safeParse({
+      name: court.name,
+      surfaceType: 'synthetic_grass',
+      isCovered: false,
+      format: court.format,
+      pricing: { rules: court.rules },
+      photos: [],
+    })
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
+    }
+    // Backstop de cobertura (mismo gate que /canchas): un hueco entre reglas es
+    // una hora operativa que nadie puede reservar online.
+    const coverage = validatePricingRulesCoverage(
+      court.rules,
+      tenant.openingHours,
+      tenant.closesNextDay,
+    )
     if (!coverage.valid) {
       const sample = coverage.gaps
         .slice(0, 3)
@@ -141,68 +274,95 @@ function buildCourtInputsFromDrafts(
         .join(', ')
       return { ok: false, error: `Precios sin cubrir: ${sample}` }
     }
-
-    inputs.push(courtParsed.data)
+    inputs.push(parsed.data)
   }
-
   return { ok: true, inputs }
 }
 
+/** ¿La cancha tiene alguna reserva o turno fijo? Si sí, no se puede borrar. */
+async function hasReservations(
+  tx: Parameters<Parameters<typeof withTenantContext>[1]>[0],
+  courtId: string,
+): Promise<boolean> {
+  const [booking] = await tx
+    .select({ id: bookings.id })
+    .from(bookings)
+    .where(eq(bookings.courtId, courtId))
+    .limit(1)
+  if (booking) return true
+  const [abonado] = await tx
+    .select({ id: abonados.id })
+    .from(abonados)
+    .where(eq(abonados.courtId, courtId))
+    .limit(1)
+  return !!abonado
+}
+
+const norm = (name: string) => name.trim().toLocaleLowerCase('es')
+
 /**
- * Paso 3 — crear las canchas y avanzar el wizard.
+ * Paso Precios: crea las canchas y guarda los precios cargados.
  *
- * Idempotente por nombre: volver con "Atrás" y reenviar, o un doble POST, dejaba
- * tres "Cancha 1" idénticas, todas `online` y reservables (🔴 QA 2026-08-13).
- * Saltear las que ya existen resiste el reenvío sin impedir que una revisita
- * agregue canchas nuevas.
+ * Idempotente: volver con "Cambiar" y reenviar, o un doble POST, no duplica. Cada
+ * cancha planeada reutiliza una existente (primero por nombre, "Cancha 2"; si no
+ * coincide, como en los complejos del wizard viejo con nombres propios, por orden
+ * de creación entre las que sobraron) y le actualiza formato y precios. Crea las
+ * que faltan. Si la cantidad bajó, borra las sobrantes sin reservas (con reservas
+ * las apaga), y solo mientras el onboarding no esté cerrado. Serializado por
+ * complejo: dos envíos a la vez no duplican canchas.
  */
 export async function createOnboardingCourts(
-  tenant: Pick<TenantRow, 'id' | 'openingHours' | 'closesNextDay'>,
-  drafts: readonly WizardCourtDraftInput[],
+  tenant: Pick<TenantRow, 'id' | 'openingHours' | 'closesNextDay' | 'settings'>,
+  input: WizardPricesInput,
+  step: number,
 ): Promise<WizardActionResult> {
-  const built = buildCourtInputsFromDrafts(tenant, drafts)
+  const plan = planWizardCourts(tenant, input)
+  if (!plan.ok) return { success: false, error: plan.error }
+  const built = buildCourtInputs(tenant, plan.courts)
   if (!built.ok) return { success: false, error: built.error }
 
-  const result = await withTenantContext(tenant.id, async (tx) => {
-    const { onlineCourts } = await getCourtCountAndBilled(tenant.id, tx)
+  await withTenantContext(tenant.id, async (tx) => {
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtextextended(${`onboarding-courts:${tenant.id}`}, 0))`,
+    )
+    const existing = await listCourts(tenant.id, tx)
+    const byName = new Map(existing.map((c) => [norm(c.name), c]))
+    const used = new Set<string>()
+    const unmatched: CourtInput[] = []
+    const matches: { court: CourtRow; data: CourtInput }[] = []
 
-    // Continuar sin drafts es válido en una revisita ("Volver") si ya hay canchas.
-    if (built.inputs.length === 0 && onlineCourts === 0) {
-      return { success: false as const, error: 'Agregá al menos una cancha para continuar.' }
+    for (const data of built.inputs) {
+      const court = byName.get(norm(data.name))
+      if (court) {
+        used.add(court.id)
+        matches.push({ court, data })
+      } else {
+        unmatched.push(data)
+      }
+    }
+    const free = existing.filter((c) => !used.has(c.id))
+    for (const data of unmatched) {
+      const court = free.shift()
+      if (court) matches.push({ court, data })
+      else await createCourt(tenant.id, data, tx)
+    }
+    for (const { court, data } of matches) {
+      await updateCourt(court.id, tenant.id, { format: data.format, pricing: data.pricing }, tx)
+      // Una sobrante que se había apagado y el dueño volvió a pedir.
+      if (court.status === 'offline') await toggleStatus(court.id, tenant.id, 'online', tx)
     }
 
-    const existingNames = new Set(
-      (await listCourts(tenant.id, tx)).map((c) => c.name.trim().toLocaleLowerCase('es')),
-    )
-    const toCreate = built.inputs.filter(
-      (data) => !existingNames.has(data.name.trim().toLocaleLowerCase('es')),
-    )
-    // Reenvío ("Volver" + Continuar, o doble POST) con una foto recién subida:
-    // la cancha ya existe y el filtro de arriba la saltea entera, así que la
-    // foto se perdía en silencio y el objeto quedaba huérfano. Si la existente
-    // no tiene ninguna, se le agrega.
-    const skippedWithPhoto = built.inputs.filter(
-      (data) =>
-        existingNames.has(data.name.trim().toLocaleLowerCase('es')) && data.photos?.[0] != null,
-    )
-
-    // Acá vivía el techo del plan ("Tu plan soporta hasta N canchas. Hacé
-    // upgrade para agregar más."). Con precio lineal por cancha no hay techo
-    // (decisión 2026-09-17, P3): en el alta el complejo carga las canchas que
-    // tiene y ESO define su cuota. Trabar el wizard acá dejaba al complejo más
-    // grande que el plan default sin salida in-app.
-    for (const data of toCreate) {
-      await createCourt(tenant.id, data, tx)
-    }
-
-    if (skippedWithPhoto.length > 0) {
-      const existing = await listCourts(tenant.id, tx)
-      for (const data of skippedWithPhoto) {
-        const court = existing.find(
-          (c) => c.name.trim().toLocaleLowerCase('es') === data.name.trim().toLocaleLowerCase('es'),
-        )
-        if (court && court.photos.length === 0) {
-          await appendCourtPhoto(court.id, tenant.id, data.photos![0]!, tx)
+    // Bajó la cantidad: las que quedaron sin usar sobran. Con reservas no se
+    // borran (FK): se apagan para que no cuenten ni se puedan reservar.
+    if (tenant.settings.onboarding_completed !== true) {
+      for (const court of free) {
+        if (court.status === 'offline') continue
+        if (await hasReservations(tx, court.id)) {
+          await toggleStatus(court.id, tenant.id, 'offline', tx)
+        } else {
+          await tx
+            .delete(courts)
+            .where(and(eq(courts.id, court.id), eq(courts.tenantId, tenant.id)))
         }
       }
     }
@@ -217,118 +377,19 @@ export async function createOnboardingCourts(
     if (after.billedCourts !== null && after.onlineCourts > after.billedCourts) {
       await changeBilledCourts(tenant.id, after.onlineCourts, getBillingGateway(), tx)
     }
-
-    return { success: true as const }
   })
 
-  if (!result.success) return result
-
-  await updateOnboardingStep(tenant.id, 3)
+  const prices: DraftPrices = {}
+  for (const f of input.formats) {
+    prices[String(f.format)] = hasNightPrice(f)
+      ? { dayPrice: f.dayPrice, nightPrice: f.nightPrice }
+      : { dayPrice: f.dayPrice }
+  }
+  const anyNight = input.formats.some(hasNightPrice)
+  await updateTenantSettings(tenant.id, {
+    onboarding_draft_prices: prices,
+    ...(anyNight ? { onboarding_draft_cut_hour: input.cutHour ?? DEFAULT_CUT_HOUR } : {}),
+    onboarding_step: step,
+  })
   return { success: true }
-}
-
-export type FirstBookingCourtSlots = { courtId: string; courtName: string; slots: AvailableSlot[] }
-
-/**
- * Paso 4 — slots reales de HOY para las canchas ya creadas, para que el
- * dueño toque un horario y cargue su primer turno en la grilla de verdad
- * (§D del plan: es el único momento en que ya existen los tres requisitos
- * duros de `createManualBooking` — cancha online, precio y horario confirmados).
- *
- * Solo "hoy": es una previa liviana, no un selector de fecha (eso ya existe
- * en /reservas). Si hoy no queda ningún horario libre —cerrado, pasado, o ya
- * todo tomado— `courts[].slots` sale vacío y el paso muestra el estado vacío
- * en vez de fingir una grilla con horas que ya no se pueden tocar.
- */
-export async function getFirstBookingSlots(
-  tenant: Pick<TenantRow, 'id' | 'openingHours' | 'closesNextDay'>,
-  existingCourts: readonly Pick<CourtRow, 'id' | 'name'>[],
-  tx: DbTx,
-): Promise<{ date: string; courts: FirstBookingCourtSlots[] }> {
-  const { date, time } = artNowParts()
-  const dayKey = DAY_KEYS[new Date(`${date}T12:00:00Z`).getUTCDay()]!
-  const openHhmm = tenant.openingHours[dayKey as keyof OpeningHours]?.open ?? '08:00'
-
-  const courts: FirstBookingCourtSlots[] = []
-  for (const court of existingCourts) {
-    const raw = await getAvailableSlots(tenant.id, court.id, date, tx)
-    const slots = raw.filter(
-      (s) =>
-        s.available &&
-        !slotHasPassed({
-          date,
-          timeStart: s.timeStart,
-          openHhmm,
-          closesNextDay: tenant.closesNextDay,
-          nowDate: date,
-          nowTime: time,
-        }),
-    )
-    courts.push({ courtId: court.id, courtName: court.name, slots })
-  }
-  return { date, courts }
-}
-
-/**
- * Crea la reserva manual del paso 4. Delgado alrededor de `createManualBooking`
- * (type `'spontaneous'`, `staffUserId` resuelto server-side por el guard —
- * nunca del cliente): la única razón de que exista es traducir sus excepciones
- * de dominio al mismo vocabulario de error que ya usa la grilla real
- * (`createBookingAction`, reservas/actions.ts), porque acá no hay grilla con
- * Realtime que la haga sobrar sola en un reintento.
- */
-export async function createOnboardingFirstBooking(
-  tenantId: string,
-  staffUserId: string,
-  input: WizardFirstBookingInput,
-  tx: DbTx,
-): Promise<CreateFirstBookingResult> {
-  try {
-    const created = await createManualBooking(
-      tenantId,
-      { ...input, type: 'spontaneous', staffUserId },
-      tx,
-    )
-    return {
-      success: true,
-      booking: {
-        courtId: created.courtId,
-        timeStart: created.timeStart,
-        timeEnd: created.timeEnd,
-      },
-    }
-  } catch (err) {
-    if (err instanceof SlotTakenError) {
-      return { success: false, error: 'Este turno acaba de ser tomado.' }
-    }
-    if (err instanceof CourtOfflineError) {
-      return { success: false, error: 'La cancha no está disponible.' }
-    }
-    if (err instanceof PriceUnavailableError) {
-      return { success: false, error: 'No hay precio configurado para este horario.' }
-    }
-    if (err instanceof BookingValidationError) {
-      return { success: false, error: err.message }
-    }
-    throw err
-  }
-}
-
-/**
- * ¿Ya existe alguna reserva para este tenant? Recién creado, un tenant no
- * tiene ninguna — así que "hay al menos una" en este punto del wizard solo
- * puede ser la que el propio dueño acaba de cargar en el paso 4. Se usa en
- * `/onboarding/listo` para el reconocimiento del cierre ("Tu primera reserva
- * ya está en la grilla"), sin necesitar una columna nueva que marque "esta
- * reserva la creó el wizard".
- */
-export async function hasAnyBooking(tenantId: string): Promise<boolean> {
-  return withTenantContext(tenantId, async (tx) => {
-    const rows = await tx
-      .select({ id: bookings.id })
-      .from(bookings)
-      .where(and(eq(bookings.tenantId, tenantId), isNull(bookings.canceledAt)))
-      .limit(1)
-    return rows.length > 0
-  })
 }

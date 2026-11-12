@@ -1,3 +1,5 @@
+import { redirect } from 'next/navigation'
+import { isCanteenEnabled } from '@/modules/tenants/tenant.utils'
 import { withTenantContext } from '@/shared/db/client'
 import { listProducts } from '@/modules/canteen/canteen.service'
 import { countLedger, getLedger } from '@/modules/canteen/stock.service'
@@ -47,6 +49,8 @@ export default async function CajaProductosPage(props: {
 
   // `role` viene del contexto de Caja, que ya lo leyó en su guard.
   const { tenant, role, cutoffMins, today } = await requireCajaContext()
+  // Sin buffet (`canteen_enabled === false`) no hay catálogo que mirar; se reactiva en Ajustes.
+  if (!isCanteenEnabled(tenant.settings)) redirect('/caja/cuentas')
 
   const weekRange = { from: addDays(today, -6), to: today }
   const reportRange = range === 7 ? weekRange : { from: addDays(today, -29), to: today }

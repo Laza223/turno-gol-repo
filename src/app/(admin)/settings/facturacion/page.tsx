@@ -20,6 +20,11 @@ import { SUPPORT_EMAIL } from '@/shared/constants'
 import { CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { HashOpenCollapsible } from './HashOpenCollapsible'
 import { SettingsHeader } from '../SettingsHeader'
+import {
+  changeUnverifiedEmailAction,
+  resendVerificationEmailAction,
+} from '@/app/(admin)/actions/email-verification'
+import { getEmailVerificationState } from '@/modules/auth/email-verification.service'
 import { CuotaSection } from './CuotaSection'
 import { PriceBreakdown } from './PriceBreakdown'
 import { firstCuotaPricing } from './cuota-pricing'
@@ -94,7 +99,7 @@ function BillingDisclosure({
  * `/settings/facturacion` porque la usan los mails de cobro ya mandados.
  */
 export default async function FacturacionPage() {
-  const { tenant } = await requireAdminStaff({ allowReadOnly: true, allowFree: true })
+  const { tenant, user } = await requireAdminStaff({ allowReadOnly: true, allowFree: true })
   // En solo lectura esta pantalla no tiene nada que ofrecer (la cuota no se
   // activa ni se cambia desde acá en `suspended`): la salida es /reactivar. Es
   // también a donde llega el botón del mail "Tu prueba gratuita terminó",
@@ -117,6 +122,16 @@ export default async function FacturacionPage() {
   // aunque no haya fila de suscripción: `getBillingPayerEmail` tolera el caso
   // y la sección igual muestra de dónde sale el default.
   const payer = await withTenantContext(tenant.id, (tx) => getBillingPayerEmail(tenant.id, tx))
+
+  const emailState = await getEmailVerificationState(user.staffUserId)
+  const verifyEmail =
+    emailState && !emailState.verified
+      ? {
+          email: emailState.email,
+          resendAction: resendVerificationEmailAction,
+          changeEmailAction: changeUnverifiedEmailAction,
+        }
+      : undefined
 
   // Las canchas PRENDIDAS son el piso de la cuota: facturar por menos sería
   // operar de más pagando de menos (el server lo rechaza con DOWNGRADE_BLOCKED).
@@ -202,6 +217,7 @@ export default async function FacturacionPage() {
               periodEnd={new Date(sub.currentPeriodEnd).toISOString()}
               billingCycle={sub.billingCycle}
               plusPerCourtCents={plusBilledPerCourt}
+              verifyEmail={verifyEmail}
             />
           ) : (
             <section className="card-premium rounded-xl p-4 lg:p-6">

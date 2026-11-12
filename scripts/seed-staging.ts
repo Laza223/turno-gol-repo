@@ -108,8 +108,8 @@ async function seedTenantAndCourt(sql: SqlClient): Promise<void> {
 
 async function seedStaffAdmin(sql: SqlClient): Promise<void> {
   await sql`
-    INSERT INTO staff_users (id, email, first_name, last_name)
-    VALUES (${STAGING.staffUserId}, ${STAGING.adminEmail}, ${'Staging'}, ${'Admin'})
+    INSERT INTO staff_users (id, email, first_name, last_name, email_verified_at)
+    VALUES (${STAGING.staffUserId}, ${STAGING.adminEmail}, ${'Staging'}, ${'Admin'}, now())
     ON CONFLICT (id) DO NOTHING
   `
   await sql`

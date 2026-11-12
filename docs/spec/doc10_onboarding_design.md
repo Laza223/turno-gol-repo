@@ -9,14 +9,23 @@
 > Este documento se enfoca en la **estrategia de diseño** y las **decisiones de UX**.
 
 > [!WARNING]
-> **§2 (mockups paso a paso) SUPERSEDED por el refactor 2026-08-16** —
-> la UI actual (orden de pasos, contenido de cada uno, paso 4 = primera reserva en vez de MP, fotos
-> fuera del wizard) es la del código en `src/app/onboarding/` y quedó descripta en
-> `docs/archive/design-system/pages/onboarding.md` (archivada el 2026-09-23: la autoridad de diseño
-> es `DESIGN.md`, en la raíz). Los mockups de acá ya no coinciden con el código y no se deben usar como referencia de implementación.
-> **Siguen vigentes**: §1 (Aha Moment, cadena de valor, métricas de éxito), §3 (WhatsApp share, ya
-> implementado en `ShareActions`), §4 (anti-patterns), §6 (razonamiento de negocio) — es estrategia,
-> no describe pantallas.
+> **§2 (los mockups paso a paso) quedó SUPERSEDED dos veces.** Primero lo reemplazó el refactor del 2026-08-16.
+> Después, el **alta por toques del 2026-11-08**, cuya spec es
+> [`docs/superpowers/specs/2026-11-08-alta-por-toques-design.md`](../superpowers/specs/2026-11-08-alta-por-toques-design.md)
+> y su decisión, [`docs/decisions/2026-11-08-alta-por-toques.md`](../decisions/2026-11-08-alta-por-toques.md).
+>
+> Hoy el alta funciona así:
+> - **Una pregunta por pantalla, con valores por defecto.** Se tipean 7 datos: los 4 de la cuenta, el nombre del complejo, la dirección y un precio por formato.
+> - **El mail no bloquea.** Se verifica después, con un aviso en el panel.
+> - **Cierra en "Compartir mi link".** La primera reserva ya no es un paso del wizard: pasó a la checklist.
+>
+> La fuente de verdad de las pantallas es el código de `src/app/onboarding/`. Los mockups de §2 no se usan.
+>
+> **Siguen vigentes:**
+> - §1 (el Aha Moment, ajustado abajo);
+> - §3 (la checklist, ajustada abajo);
+> - §4 (anti-patterns);
+> - §6 (razonamiento de negocio, ajustado abajo).
 
 ---
 
@@ -29,14 +38,19 @@ Todo el onboarding está diseñado para llegar a este momento lo más rápido po
 ### Cadena de valor del Aha Moment
 
 ```
-Registro (1 min)
-  → Wizard (15-20 min)
+Cuenta (1 min, sin esperar el mail)
+  → Alta por toques (~2-3 min)
     → Complejo live con link público
-      → Dueño comparte link por WA a sus contactos
+      → "Compartir mi link": el dueño lo manda por WA ← cierre del alta (2026-11-08)
         → UN JUGADOR RESERVA ONLINE ← Aha Moment 🎯
           → Dueño recibe notificación por email: "Tenés una nueva reserva"
             → Dueño entiende el valor de TurnoGol
 ```
+
+**Cambio del 2026-11-08 (founder).** El alta ya no obliga a cargar una "primera reserva" manual.
+- **Termina en compartir el link.** Esa es la acción que el dueño puede hacer en el momento y la que lleva a que reserve un jugador.
+- **El Aha Moment no cambia:** sigue siendo la primera reserva ONLINE, y la checklist del panel guía hacia ella.
+- **Cargar turnos a mano** (el cuaderno, los equipos fijos) pasó a ser un ítem de la checklist, con un texto que depende de cómo dijo que toma los turnos hoy.
 
 ### Métricas de éxito del onboarding
 
@@ -203,11 +217,11 @@ Registro (1 min)
 │  Progreso de configuración: ████████░░ 75%               │
 │                                                          │
 │  ✅ Cuenta creada                                        │
-│  ✅ Datos del complejo                                   │
 │  ✅ Canchas configuradas (3)                             │
 │  ✅ Horarios definidos                                   │
-│  ⬜ MercadoPago conectado                                │
 │  ⬜ Link compartido                                      │
+│  ⬜ Cargá tus turnos en la grilla (o tus equipos fijos)  │
+│  ⬜ MercadoPago conectado (opcional)                     │
 │  ⬜ Primera reserva online recibida ← 🎯 ¡Tu objetivo!  │
 │                                                          │
 │  ────────────────────────────────────────────────────     │
@@ -273,11 +287,11 @@ DÍA 7
 - **Para el Staff (Marcelo/Rodrigo)**: Usamos email + contraseña por seguridad, control de accesos por roles (admin/manager) y estabilidad de sesión en la administración del complejo. Al ser su herramienta diaria, la memorización de la contraseña no representa una fricción en el funnel.
 - **Para los Jugadores (Tomás/Agustín)**: Usamos magic link por email y OAuth (Google) para minimizar la fricción en la reserva. Apple Sign-In no está implementado (ver ADR-002, doc11): fue una opción evaluada, no la decisión tomada. En compras espontáneas, obligar a recordar contraseñas es la causa #1 de abandono. Magic link permite reservar en menos de 1 minuto sin fricción de registro.
 
-### ¿Por qué 4 pasos y no 7?
-- Cada paso adicional pierde ~15% de completados.
-- 4 pasos × 85% retención = 52% completa el wizard.
-- 7 pasos × 85% retención = 32% completa el wizard.
-- La diferencia es 20 puntos porcentuales de conversión. No negociable.
+### ¿Por qué más pantallas y no menos? (2026-11-08)
+- El modelo de "4 pasos" medía **formularios**: lo que se cae es el tipeo y la duda, no el toque.
+- El alta por toques tiene más pantallas, pero cada una es una sola pregunta con un valor por defecto. La mayoría se resuelve con "Siguiente".
+- Del alta de Canchería (la referencia) se toma esto: 11 pantallas en unos 2 minutos, y se tipea solo el precio.
+- La regla que manda ahora es **cuántos datos se tipean** (7 contra 13) y **que nada bloquee** (el mail).
 
 ### ¿Por qué no pedir fotos del complejo en el wizard?
 - Las fotos requieren que el dueño las tenga en el celular (muchos no las tienen).
@@ -285,10 +299,11 @@ DÍA 7
 - No son necesarias para el Aha Moment.
 - Se pueden agregar después desde Settings sin fricción.
 
-### ¿Por qué pre-cargar precios?
-- La pregunta "¿cuánto cobrar?" genera parálisis de decisión.
-- Los precios default ($8-15k según franja) son razonables para el 80% del mercado argentino.
-- El dueño edita solo lo que difiere. Ahorra 5 minutos y reduce ansiedad.
+### ¿Por qué se pide un precio por formato? (2026-11-08)
+- Un precio inventado por nosotros sale publicado en el portal: es peor que preguntar.
+- Se pide UNO por formato, con eco en vivo ("Un turno de 60 minutos: $X").
+- Opcionalmente se pregunta "¿a la noche cobrás distinto?", que entra en el modelo de precio por franja.
+- El resto (precio por día, por cancha) se ajusta después en `/canchas`.
 
 ### ¿Por qué el botón de "Compartir por WhatsApp" es tan prominente?
 - Es la acción que cierra la cadena de valor: sin jugadores reservando, no hay Aha Moment.

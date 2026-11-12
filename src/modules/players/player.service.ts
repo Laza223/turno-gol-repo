@@ -12,6 +12,17 @@ export type GetOrCreatePlayerOpts = {
 }
 
 /**
+ * ¿Hay un jugador con ese mail? El alta de dueños lo usa para no mezclar roles: una
+ * cuenta de complejo no puede ser también jugador con el mismo mail.
+ */
+export async function playerExistsByEmail(email: string): Promise<boolean> {
+  const rows = await getWorkerSql()`
+    SELECT 1 FROM players WHERE email = ${email.toLowerCase()} LIMIT 1
+  `
+  return rows.length > 0
+}
+
+/**
  * Idempotent provisioning by email (global `players` table). Runs before any
  * `player_id` is known (that's what it's resolving), so there is no
  * `app.current_player_id` to set — same shape as `getOrCreateStaffUser` in

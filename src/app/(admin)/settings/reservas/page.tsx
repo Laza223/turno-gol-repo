@@ -3,7 +3,9 @@ import { withTenantContext } from '@/shared/db/client'
 import { listCourts } from '@/modules/courts/court.service'
 import { effectiveCloseMins, hhmmToMins } from '@/shared/time/operating-day'
 import { ReservasPolicyForm } from './ReservasPolicyForm'
-import { updateReservasPolicyAction } from './actions'
+import { setCanteenEnabledAction, updateReservasPolicyAction } from './actions'
+import { CanteenSwitch } from './CanteenSwitch'
+import { isCanteenEnabled } from '@/modules/tenants/tenant.utils'
 import { MercadoPagoSenaSection } from './MercadoPagoSenaSection'
 import { disconnectMercadoPagoAction } from '../facturacion/actions'
 import { SettingsHeader } from '../SettingsHeader'
@@ -80,6 +82,10 @@ export default async function ReservasPolicyPage(
         conflictTenant={searchParams?.complejo}
         disconnectAction={disconnectMercadoPagoAction}
       />
+
+      <div className="card-premium rounded-lg p-4 lg:p-6">
+        <CanteenSwitch initialEnabled={isCanteenEnabled(s)} action={setCanteenEnabledAction} />
+      </div>
     </div>
   )
 }

@@ -18,7 +18,6 @@ vi.mock('@/shared/rate-limit/server-action', () => ({
 vi.mock('@/modules/tenants/tenant.service', () => ({
   createTenantWithTrial: vi.fn(async () => ({ id: 'tenant-new' })),
   getStaffTenant: vi.fn(async () => null),
-  updateOnboardingStep: vi.fn(),
   completeOnboarding: vi.fn(),
   updateTenant: vi.fn(),
 }))
@@ -60,14 +59,14 @@ describe('createTenantAction — idempotencia (#35)', () => {
   it('no crea un tenant duplicado si el staff ya tiene uno', async () => {
     vi.mocked(getStaffTenant).mockResolvedValueOnce({ id: 'tenant-existing' } as never)
     const res = await createTenantAction({ success: true }, validForm())
-    expect(res).toEqual({ success: true, next: '/onboarding/horarios', hardNavigate: true })
+    expect(res).toEqual({ success: true, next: '/onboarding/canchas', hardNavigate: true })
     expect(createTenantWithTrial).not.toHaveBeenCalled()
   })
 
   it('crea el tenant cuando el staff todavia no tiene ninguno', async () => {
     vi.mocked(getStaffTenant).mockResolvedValueOnce(null)
     const res = await createTenantAction({ success: true }, validForm())
-    expect(res).toEqual({ success: true, next: '/onboarding/horarios', hardNavigate: true })
+    expect(res).toEqual({ success: true, next: '/onboarding/canchas', hardNavigate: true })
     expect(createTenantWithTrial).toHaveBeenCalledTimes(1)
   })
 })

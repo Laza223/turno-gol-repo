@@ -16,6 +16,7 @@ import { listPendingRefunds } from '@/modules/payments/refund.service'
 import { track } from '@/shared/observability/breadcrumbs'
 import { Pager } from '@/components/ui/pager'
 import { CajaTabs } from '../components/CajaTabs'
+import { isCanteenEnabled } from '@/modules/tenants/tenant.utils'
 import { AddMovementButton } from '../cantina/AddMovementButton'
 import { PendingRefundsList } from '../devoluciones/PendingRefundsList'
 import { markRefundSettledAction } from '../devoluciones/actions'
@@ -136,6 +137,7 @@ export default async function CajaCuentasPage(props: {
       <CajaTabs
         active="/caja/cuentas"
         lowStock={lowStock}
+        canteenEnabled={isCanteenEnabled(tenant.settings)}
         actions={<DayStepper {...stepper} className="hidden lg:flex" />}
       />
       <DayStepper {...stepper} className="-mx-2 lg:hidden" />

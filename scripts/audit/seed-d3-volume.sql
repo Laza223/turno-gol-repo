@@ -56,8 +56,8 @@ DELETE FROM staff_users WHERE email LIKE 'd3seed%';
 DELETE FROM players WHERE email LIKE 'd3seed%';
 
 -- ─── Staff (1 owner por tenant; el heavy usa el suyo como registered_by) ────
-INSERT INTO staff_users (id, email, first_name, last_name)
-SELECT gen_random_uuid(), 'd3seed-staff-' || n || '@example.com', 'Staff', 'D3-' || n
+INSERT INTO staff_users (id, email, first_name, last_name, email_verified_at)
+SELECT gen_random_uuid(), 'd3seed-staff-' || n || '@example.com', 'Staff', 'D3-' || n, now()
 FROM generate_series(0, 200) n;
 
 -- ─── Tenants: 1 heavy + 200 de fondo (geo ~AMBA para el Haversine) ──────────

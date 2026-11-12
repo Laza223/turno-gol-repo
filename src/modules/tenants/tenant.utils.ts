@@ -36,6 +36,14 @@ export function bookingMinAdvanceHours(
   return typeof h === 'number' && Number.isInteger(h) && h > 0 && h <= 48 ? h : 0
 }
 
+/**
+ * ¿El complejo vende en buffet o kiosco? (`settings.canteen_enabled`). Ausente
+ * cuenta como sí: los complejos que ya existen no cambian. Único punto de lectura de la key.
+ */
+export function isCanteenEnabled(settings: Pick<TenantSettings, 'canteen_enabled'>): boolean {
+  return settings.canteen_enabled !== false
+}
+
 export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   'notificaciones',
   // raíz

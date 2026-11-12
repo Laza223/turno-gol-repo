@@ -16,9 +16,17 @@ import {
 } from '@/modules/tenants/tenant.lifecycle'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
 import { DEFAULT_INVITE_ROLE, STAFF_ROLES } from '@/modules/staff/roles'
-import { isStaffMemberOfTenant, upsertStaffUser } from '@/modules/staff/staff.service'
+import {
+  isStaffEmailUnverified,
+  isStaffMemberOfTenant,
+  upsertStaffUser,
+} from '@/modules/staff/staff.service'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createAdminClient } from '@/lib/supabase/admin'
+import {
+  INVITE_NOT_VERIFIED_MESSAGE,
+  requireVerifiedOwnerEmail,
+} from '@/modules/auth/email-verification.service'
 import { captureException } from '@/lib/sentry'
 
 type AuthUserLite = {
@@ -202,6 +210,9 @@ async function assertActorIsAdmin(
   return null
 }
 
+const INVITEE_NOT_VERIFIED_ERROR =
+  'Esa cuenta todavía no confirmó su mail. Pedile que lo confirme y volvé a invitarla.'
+
 export async function inviteStaffAction(formData: FormData): Promise<StaffActionResult> {
   const { user, tenant } = await requireStaffTenant()
   if (!tenant) return { success: false, error: 'Tenant no encontrado.' }
@@ -211,6 +222,9 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
+
+  const verified = await requireVerifiedOwnerEmail(user.staffUserId, INVITE_NOT_VERIFIED_MESSAGE)
+  if (!verified.ok) return { success: false, error: verified.error }
 
   const parsed = inviteSchema.safeParse({
     email: formData.get('email'),
@@ -267,6 +281,8 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
       error: 'No pudimos crear el usuario. Volvé a intentar en un momento.',
     }
   }
+
+  if (staffUser.unverified) return { success: false, error: INVITEE_NOT_VERIFIED_ERROR }
 
   // Fase 3 (pool de tenant): vincula al tenant (con policies propias) + invita.
   // Si el envío de la invitación falla, se lanza InviteDeliveryError (en vez
@@ -534,6 +550,9 @@ export async function resendInviteAction(email: string): Promise<StaffActionResu
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }
 
+  const verified = await requireVerifiedOwnerEmail(user.staffUserId, INVITE_NOT_VERIFIED_MESSAGE)
+  if (!verified.ok) return { success: false, error: verified.error }
+
   // Fase 3 #12: el email no debe ser arbitrario; tiene que pertenecer a un
   // miembro (activo O inactivo) del tenant actual antes de disparar
   // inviteUserByEmail. El único punto de entrada de esta acción en la UI
@@ -556,6 +575,11 @@ export async function resendInviteAction(email: string): Promise<StaffActionResu
   const isMember = await isStaffMemberOfTenant(tenant.id, normalizedEmail)
   if (!isMember) {
     return { success: false, error: 'Este email no es miembro del complejo.' }
+  }
+
+  // Misma regla que al invitar: una cuenta sin mail confirmado no se reinvita.
+  if (await isStaffEmailUnverified(normalizedEmail)) {
+    return { success: false, error: INVITEE_NOT_VERIFIED_ERROR }
   }
 
   const adminClient = createAdminClient()

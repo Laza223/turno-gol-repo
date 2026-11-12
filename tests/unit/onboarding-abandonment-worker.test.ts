@@ -76,7 +76,7 @@ describe('runOnboardingAbandonmentSweep', () => {
       expect.objectContaining({
         tenantId: 'tenant-1',
         templateName: 'onboarding_abandoned',
-        content: expect.objectContaining({ ownerName: 'Marcelo', lastStepLabel: 'Horarios' }),
+        content: expect.objectContaining({ ownerName: 'Marcelo', lastStepLabel: 'Canchas' }),
       }),
       tx,
     )

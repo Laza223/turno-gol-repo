@@ -6,10 +6,12 @@ import { useRouter } from 'next/navigation'
 import { ArrowRight, CalendarClock, Minus, Plus } from 'lucide-react'
 import { formatArs, formatPct } from '@/lib/format'
 import { Button } from '@/components/ui/button'
+import { EmailVerifyBanner } from '@/components/layout/email-verify-banner'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import { buildPriceBreakdown, type PricingParams } from '@/modules/billing/pricing'
 import type { BillingCycle } from '@/modules/billing/billing.types'
 import { SUPPORT_EMAIL } from '@/shared/constants'
+import type { ActionResult } from '@/shared/types/action-result'
 import { PriceBreakdown } from './PriceBreakdown'
 
 /**
@@ -68,6 +70,15 @@ type CuotaSectionProps = {
    * vez de mostrar el monto sin Plus mientras el débito lo cobra (pasó en /reactivar).
    */
   plusPerCourtCents: number
+  /**
+   * Mail del dueño y acciones para confirmarlo. Si el server contesta
+   * `EMAIL_NOT_VERIFIED`, se ofrece reenviar acá mismo, sin ir a buscar el banner.
+   */
+  verifyEmail?: {
+    email: string
+    resendAction: () => Promise<ActionResult>
+    changeEmailAction: (newEmail: string) => Promise<ActionResult<{ notice?: string }>>
+  }
 }
 
 type Phase = 'idle' | 'loading' | 'error' | 'done'
@@ -114,6 +125,7 @@ export function CuotaSection({
   periodEnd = null,
   billingCycle = 'monthly',
   plusPerCourtCents,
+  verifyEmail,
 }: CuotaSectionProps) {
   const router = useRouter()
 
@@ -424,6 +436,12 @@ export function CuotaSection({
               Cargar mi cuenta de MercadoPago <ArrowRight className="h-3.5 w-3.5" aria-hidden />
             </a>
           )}
+        </div>
+      )}
+
+      {phase === 'error' && errorCode === 'EMAIL_NOT_VERIFIED' && verifyEmail && (
+        <div className="overflow-hidden rounded-lg border border-amber-500/30">
+          <EmailVerifyBanner {...verifyEmail} inPanel={false} />
         </div>
       )}
 

@@ -76,4 +76,10 @@ describe('CajaTabs', () => {
     render(<CajaTabs active="/caja/cuentas" lowStock={0} />)
     expect(screen.getByRole('link', { name: 'Productos' })).toBeInTheDocument()
   })
+
+  it('sin buffet (canteenEnabled=false): no hay pestaña Productos ni punto de stock', () => {
+    render(<CajaTabs active="/caja/cuentas" lowStock={3} canteenEnabled={false} />)
+    expect(screen.queryByRole('link', { name: /productos/i })).toBeNull()
+    expect(screen.getByRole('link', { name: /cuentas/i })).toBeTruthy()
+  })
 })

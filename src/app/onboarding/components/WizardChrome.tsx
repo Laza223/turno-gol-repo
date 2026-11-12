@@ -9,15 +9,10 @@ import { SegmentedProgress } from '@/components/ui/progress'
 import { WIZARD_STEPS, stepFromPathname } from '@/modules/onboarding/onboarding.steps'
 import { LAST_WIZARD_STEP } from '@/modules/onboarding/onboarding.types'
 
-type Props = { children: React.ReactNode }
+import { SignupFrame } from './SignupFrame'
+import { STEP_TRANSITION, STEP_VARIANTS } from './step-transition'
 
-const VARIANTS = {
-  // `direction` > 0 = avanzando (entra desde la derecha, se lee "← "); < 0 =
-  // volviendo (entra desde la izquierda, se lee "→ ") — plan de refactor §F.
-  enter: (direction: number) => ({ x: direction > 0 ? 24 : -24, opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (direction: number) => ({ x: direction > 0 ? -24 : 24, opacity: 0 }),
-}
+type Props = { children: React.ReactNode }
 
 /**
  * Chrome persistente del wizard: rail de marca (desktop) + header de progreso
@@ -36,7 +31,11 @@ export function WizardChrome({ children }: Props) {
   const pathname = usePathname()
   const currentStep = stepFromPathname(pathname)
   const isDone = currentStep > LAST_WIZARD_STEP
-  const progressLabel = isDone ? '¡Listo!' : `Paso ${currentStep} de ${LAST_WIZARD_STEP}`
+  const progressLabel = !isDone
+    ? `Paso ${currentStep} de ${LAST_WIZARD_STEP}`
+    : pathname.startsWith('/onboarding/listo')
+      ? '¡Listo!'
+      : 'Revisá y terminá'
 
   // Dirección de la transición: "ajustar estado durante el render" (patrón de
   // react.dev, no un efecto — leer `ref.current` en render está prohibido por
@@ -122,7 +121,7 @@ export function WizardChrome({ children }: Props) {
   }, [])
 
   return (
-    <div className="grid min-h-dvh lg:grid-cols-[240px_1fr]">
+    <SignupFrame className="grid lg:grid-cols-[240px_1fr]">
       <SiteHeaderShell />
       {/* Rail de marca: superficie always-dark (como el pane de register), no
           vista de tarea — por eso colores literales y no tokens theme-adaptive.
@@ -171,11 +170,11 @@ export function WizardChrome({ children }: Props) {
       {/* El header mobile es banner, no contenido: vive afuera de <main> para que
           el skip link ("#main-content") lo salte. El wrapper es la columna
           derecha del grid y lleva el gradiente. */}
-      <div className="content-area-gradient">
+      <div className="min-w-0">
         {/* Header mobile: el ÚNICO indicador en pantallas chicas. */}
-        <header className="border-b border-border px-4 pb-3 pt-24 lg:hidden">
+        <header className="mx-auto w-full max-w-lg px-4 pt-24 lg:hidden">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-muted-foreground tabular-nums">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-emerald-300 tabular-nums">
               {progressLabel}
             </p>
           </div>
@@ -193,17 +192,22 @@ export function WizardChrome({ children }: Props) {
 
         {/* tabIndex -1: el skip link necesita un destino enfocable (si no, el
             foco se queda en el link en varios browsers). */}
-        <main id="main-content" ref={mainRef} tabIndex={-1} className="focus:outline-hidden">
+        <main
+          id="main-content"
+          ref={mainRef}
+          tabIndex={-1}
+          className="focus:outline-hidden lg:pt-24"
+        >
           <h1 className="sr-only">Configurá tu complejo</h1>
           <AnimatePresence mode="wait" initial={false} custom={direction}>
             <m.div
               key={pathname}
               custom={direction}
-              variants={VARIANTS}
+              variants={STEP_VARIANTS}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ type: 'tween', duration: 0.25, ease: 'easeOut' }}
+              transition={STEP_TRANSITION}
               onAnimationComplete={focusStepTitle}
             >
               {children}
@@ -211,6 +215,6 @@ export function WizardChrome({ children }: Props) {
           </AnimatePresence>
         </main>
       </div>
-    </div>
+    </SignupFrame>
   )
 }

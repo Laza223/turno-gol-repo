@@ -28,32 +28,34 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Paso2 = {
+export const Paso3 = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/onboarding/horarios' } } },
-  args: { children: <StepPlaceholder title="Cargá tus horarios" /> },
+  args: { children: <StepPlaceholder title="¿A qué hora abrís y cerrás?" /> },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     // El label aparece TRES veces: rail desktop + header mobile (una copia
     // visible según el viewport vía CSS cada una) + la región viva oculta
     // (aria-live, plan §J) que anuncia el cambio de paso a un lector de
     // pantalla sin depender del foco.
-    await expect(canvas.getAllByText('Paso 2 de 4').length).toBe(3)
+    await expect(canvas.getAllByText('Paso 3 de 5').length).toBe(3)
     const current = canvas.getByText('Horarios').closest('li')
     await expect(current).toHaveAttribute('aria-current', 'step')
-    const done = canvas.getByText('Tu complejo').closest('li')
+    const done = canvas.getByText('Canchas').closest('li')
     await expect(done).not.toHaveAttribute('aria-current')
   },
 } satisfies Story
 
 /** El paso nuevo entra animado (Fase 6, AnimatePresence): el contenido queda visible igual. */
-export const Paso4 = {
-  parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/onboarding/reserva' } } },
-  args: { children: <StepPlaceholder title="Tu primera reserva" /> },
+export const Paso5 = {
+  parameters: {
+    nextjs: { appDirectory: true, navigation: { pathname: '/onboarding/tu-complejo' } },
+  },
+  args: { children: <StepPlaceholder title="¿Cómo tomás los turnos hoy?" /> },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const heading = canvas.getByRole('heading', { name: 'Tu primera reserva' })
+    const heading = canvas.getByRole('heading', { name: '¿Cómo tomás los turnos hoy?' })
     await expect(heading).toBeVisible()
-    await expect(canvas.getAllByText('Paso 4 de 4').length).toBe(3)
+    await expect(canvas.getAllByText('Paso 5 de 5').length).toBe(3)
 
     // Fase 8: un montaje inicial (carga dura — login, F5) no le roba el foco
     // al navegador; solo las transiciones DESPUÉS de la primera lo mueven al
@@ -68,12 +70,22 @@ export const Paso4 = {
   },
 } satisfies Story
 
-/** /onboarding/listo: paso 5, fuera de WIZARD_STEPS — "¡Listo!" en vez de "Paso N de 4". */
+/** /onboarding/listo: fuera de WIZARD_STEPS — "¡Listo!" en vez de "Paso N de 5". */
 export const Listo = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/onboarding/listo' } } },
   args: { children: <StepPlaceholder title="¡Tu complejo está online!" /> },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getAllByText('¡Listo!').length).toBeGreaterThan(0)
+  },
+} satisfies Story
+
+/** /onboarding/resumen: todos los pasos hechos, todavía sin cerrar. */
+export const Resumen = {
+  parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/onboarding/resumen' } } },
+  args: { children: <StepPlaceholder title="¿Está todo bien?" /> },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getAllByText('Revisá y terminá').length).toBeGreaterThan(0)
   },
 } satisfies Story

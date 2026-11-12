@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { withTenant } from '@/server/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
+import { requireVerifiedOwnerEmail } from '@/modules/auth/email-verification.service'
 import { changeBilledCourtsSchema } from '@/modules/billing/billing.schema'
 import { changeBilledCourts } from '@/modules/billing/billing.service'
 import {
@@ -16,6 +17,7 @@ import {
   badRequest,
   businessRule,
   conflict,
+  forbidden,
   notFound,
   validationError,
 } from '@/shared/api-error'
@@ -39,6 +41,10 @@ export const POST = withTenant(
   async (req: NextRequest, user, tx) => {
     const throttled = await guard('adminCrud', user.tenantId!)
     if (throttled) return throttled
+
+    // Plata: el payer de MP es este mail, así que primero tiene que estar probado.
+    const verified = await requireVerifiedOwnerEmail(user.staffUserId!)
+    if (!verified.ok) return forbidden(verified.error, { code: 'EMAIL_NOT_VERIFIED' })
 
     // Kill switch heredado de `/api/billing/upgrade` (migr. 067). Sigue siendo
     // plata real por un camino que se toca cada vez que alguien agrega una

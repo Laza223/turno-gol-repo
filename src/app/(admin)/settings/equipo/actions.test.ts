@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type * as EmailVerificationModule from '@/modules/auth/email-verification.service'
 
 // Guards de mutacion de staff (Fase 3 #12/#14). Mockeamos toda la
 // infraestructura (auth, tenant, rate-limit, DB, Supabase admin) para
@@ -22,7 +23,14 @@ vi.mock('@/lib/supabase/admin', () => ({
 // resendInviteAction pega a la DB de verdad en un test unitario.
 vi.mock('@/modules/staff/staff.service', () => ({
   isStaffMemberOfTenant: vi.fn(),
+  isStaffEmailUnverified: vi.fn(),
   upsertStaffUser: vi.fn(),
+}))
+// El guard de mail verificado lee `staff_users` con el pool worker. Acá se da
+// por verificado: el caso "sin verificar" lo prueba staff-invite-existing-user.
+vi.mock('@/modules/auth/email-verification.service', async (importOriginal) => ({
+  ...(await importOriginal<typeof EmailVerificationModule>()),
+  requireVerifiedOwnerEmail: vi.fn().mockResolvedValue({ ok: true }),
 }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
 vi.mock('next/navigation', () => ({ redirect: vi.fn() }))
@@ -38,7 +46,11 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { withTenantContext } from '@/shared/db/client'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { isStaffMemberOfTenant, upsertStaffUser } from '@/modules/staff/staff.service'
+import {
+  isStaffEmailUnverified,
+  isStaffMemberOfTenant,
+  upsertStaffUser,
+} from '@/modules/staff/staff.service'
 
 const STAFF_USER = {
   type: 'staff' as const,
@@ -247,5 +259,32 @@ describe('inviteStaffAction — rollback ante fallo real de entrega (03-invite-s
       error:
         'No pudimos enviar la invitación por email. Verificá que el email esté bien escrito y probá de nuevo en unos minutos.',
     })
+  })
+})
+
+describe('squatting de mail: no se vincula una cuenta sin confirmar', () => {
+  const MSG = 'Esa cuenta todavía no confirmó su mail. Pedile que lo confirme y volvé a invitarla.'
+
+  it('inviteStaffAction rechaza si el mail ya tiene una cuenta sin verificar y no vincula', async () => {
+    vi.mocked(withTenantContext).mockResolvedValueOnce({ success: true })
+    vi.mocked(upsertStaffUser).mockResolvedValue({ id: 'staffuser-9', unverified: true })
+
+    const res = await inviteStaffAction(inviteForm())
+
+    expect(res).toEqual({ success: false, error: MSG })
+    expect(withTenantContext).toHaveBeenCalledTimes(1) // solo el preflight, nunca la Fase 3
+    expect(inviteUserByEmail).not.toHaveBeenCalled()
+  })
+
+  it('resendInviteAction rechaza si la cuenta no confirmó su mail', async () => {
+    vi.mocked(withTenantContext).mockResolvedValue(null)
+    vi.mocked(isStaffMemberOfTenant).mockResolvedValue(true)
+    vi.mocked(isStaffEmailUnverified).mockResolvedValue(true)
+
+    const res = await resendInviteAction('miembro@test.local')
+
+    expect(res).toEqual({ success: false, error: MSG })
+    expect(inviteUserByEmail).not.toHaveBeenCalled()
+    expect(resetPasswordForEmail).not.toHaveBeenCalled()
   })
 })

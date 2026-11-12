@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { withBillingTenant } from '@/server/middleware/with-tenant'
 import { guard } from '@/shared/rate-limit/route-guard'
+import { requireVerifiedOwnerEmail } from '@/modules/auth/email-verification.service'
 import { reactivateSchema } from '@/modules/billing/billing.schema'
 import { reactivate } from '@/modules/billing/billing.service'
 import {
@@ -11,7 +12,14 @@ import {
   SubscriptionNotFoundError,
 } from '@/modules/billing/billing.errors'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
-import { badRequest, businessRule, conflict, notFound, validationError } from '@/shared/api-error'
+import {
+  badRequest,
+  businessRule,
+  conflict,
+  forbidden,
+  notFound,
+  validationError,
+} from '@/shared/api-error'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,6 +28,10 @@ export const POST = withBillingTenant(
   async (req: NextRequest, user, tx) => {
     const throttled = await guard('adminCrud', user.tenantId!)
     if (throttled) return throttled
+
+    // Plata: el payer de MP es este mail, así que primero tiene que estar probado.
+    const verified = await requireVerifiedOwnerEmail(user.staffUserId!)
+    if (!verified.ok) return forbidden(verified.error, { code: 'EMAIL_NOT_VERIFIED' })
 
     let body: unknown
     try {

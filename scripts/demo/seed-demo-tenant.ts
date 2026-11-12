@@ -185,16 +185,16 @@ async function seedTenant(sql: SqlClient): Promise<void> {
 
 async function seedStaffAndPlayer(sql: SqlClient): Promise<void> {
   await sql`
-    INSERT INTO staff_users (id, email, first_name, last_name)
-    VALUES (${DEMO.staffUserId}, ${DEMO.adminEmail}, ${'Marcelo'}, ${'Gómez'})
+    INSERT INTO staff_users (id, email, first_name, last_name, email_verified_at)
+    VALUES (${DEMO.staffUserId}, ${DEMO.adminEmail}, ${'Marcelo'}, ${'Gómez'}, now())
   `
   await sql`
     INSERT INTO tenant_staff_members (tenant_id, staff_user_id, role)
     VALUES (${DEMO.tenantId}, ${DEMO.staffUserId}, 'admin')
   `
   await sql`
-    INSERT INTO staff_users (id, email, first_name, last_name)
-    VALUES (${DEMO.freshStaffUserId}, ${DEMO.freshEmail}, ${'Nuevo'}, ${'Dueño'})
+    INSERT INTO staff_users (id, email, first_name, last_name, email_verified_at)
+    VALUES (${DEMO.freshStaffUserId}, ${DEMO.freshEmail}, ${'Nuevo'}, ${'Dueño'}, now())
   `
   await sql`
     INSERT INTO players (id, email, first_name, last_name, status, agreed_to_terms_at, terms_version)

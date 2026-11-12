@@ -1,8 +1,12 @@
+import { randomUUID } from 'node:crypto'
 import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { PlayerVia } from '@/lib/auth-success'
 import { getWorkerSql } from '@/shared/db/client'
+import { isUniqueViolation } from '@/shared/db/pg-errors'
+import { captureException } from '@/lib/sentry'
+import { sendVerificationEmail } from '@/modules/auth/email-verification.service'
 import { track } from '@/shared/observability'
 import { referralCodeSchema } from '@/modules/referrals/referral.schema'
 
@@ -173,43 +177,99 @@ export async function signInWithPassword(
   return { ok: true, user: data.user }
 }
 
+export type SignUpStaffResult =
+  | { ok: true; path: string; staffUserId: string; authUserId: string }
+  | { ok: false; error: string; code?: string }
+
 /**
- * Alta de staff por email + contraseña. Con `enable_confirmations=true` Supabase
- * NO crea sesión: manda el email de confirmación (template `signup`/token_hash) y
- * el callback provisiona al hacer click. El perfil viaja en `options.data` igual
- * que el flujo OTP previo y lo persiste `getOrCreateStaffUser` en el callback.
+ * Alta del dueño sin esperar la confirmación del mail (alta por toques). Mismo
+ * patrón que `createAssistedTenant`: `staff_users` primero (con `email_verified_at`
+ * NULL), después la cuenta de Auth ya confirmada y con `staff_user_id` en el
+ * `app_metadata`, y recién ahí el login que deja las cookies. El mail se prueba con
+ * nuestro token (`email-verification.service`): su envío es best-effort y un fallo
+ * no frena el alta, el banner del panel permite reenviarlo.
+ *
+ * Si algo falla a mitad de camino se deshace lo ya creado, así el alta se puede
+ * reintentar con el mismo mail.
  */
-export async function signUpStaff(
-  params: {
-    email: string
-    password: string
-    firstName: string
-    lastName: string
-    phone: string
-    /** Código de referido (B2), ya validado por el caller con `referralCodeSchema`.
-     *  `null`/omitido = alta sin referido. Viaja en `user_metadata` porque
-     *  `provisionAndRouteStaff` corre recién en el callback de confirmación,
-     *  no en este `signUp`. */
-    referralCode?: string | null
-  },
-  emailRedirectTo: string,
-): Promise<{ ok: true } | { ok: false; error: string; code?: string }> {
-  const supabase = await createClient()
-  const { error } = await supabase.auth.signUp({
+export async function signUpStaff(params: {
+  email: string
+  password: string
+  firstName: string
+  phone: string
+  /** Código de referido (B2), ya validado por el caller con `referralCodeSchema`. */
+  referralCode?: string | null
+}): Promise<SignUpStaffResult> {
+  const sql = getWorkerSql()
+  const staffUserId = randomUUID()
+
+  try {
+    // `last_name` es NOT NULL y el alta ya no lo pide.
+    await sql`
+      INSERT INTO staff_users (id, email, first_name, last_name, phone, signup_referral_code)
+      VALUES (${staffUserId}, ${params.email}, ${params.firstName}, '', ${params.phone}, ${params.referralCode ?? null})
+    `
+  } catch (err) {
+    if (isUniqueViolation(err, 'staff_users_email')) {
+      return { ok: false, error: 'email_exists', code: 'email_exists' }
+    }
+    throw err
+  }
+
+  const admin = createAdminClient()
+  const { data, error } = await admin.auth.admin.createUser({
     email: params.email,
     password: params.password,
-    options: {
-      emailRedirectTo,
-      data: {
-        first_name: params.firstName,
-        last_name: params.lastName,
-        phone: params.phone,
-        ...(params.referralCode ? { referral_code: params.referralCode } : {}),
-      },
+    email_confirm: true,
+    user_metadata: {
+      first_name: params.firstName,
+      phone: params.phone,
+      ...(params.referralCode ? { referral_code: params.referralCode } : {}),
     },
+    app_metadata: { staff_user_id: staffUserId },
   })
-  if (error) return { ok: false, error: error.message, code: error.code }
-  return { ok: true }
+  if (error || !data.user) {
+    await deleteStaffRow(staffUserId)
+    return { ok: false, error: error?.message ?? 'createUser sin usuario', code: error?.code }
+  }
+  const authUserId = data.user.id
+
+  try {
+    const signedIn = await signInWithPassword(params.email, params.password)
+    if (!signedIn.ok) throw new Error('signUpStaff: el login posterior al alta falló')
+    // Misma resolución que el login: marca el ingreso, deja los claims y refresca la sesión.
+    const { path } = await provisionAndRouteStaff(signedIn.user)
+    // Best-effort y recién con la sesión armada: el envío tarda un viaje a Resend.
+    try {
+      await sendVerificationEmail(staffUserId)
+    } catch (err) {
+      captureException(err, { tags: { flow: 'signup_verify_mail' } })
+    }
+    return { ok: true, path, staffUserId, authUserId }
+  } catch (err) {
+    captureException(err, { tags: { flow: 'signup_undo' }, extra: { authUserId, staffUserId } })
+    await undoStaffSignup(authUserId, staffUserId)
+    return { ok: false, error: 'signup_failed', code: 'signup_failed' }
+  }
+}
+
+/**
+ * Deshace un alta de dueño que NO llegó a tener complejo: borra `staff_users` y la
+ * cuenta de Auth, así el mismo mail se puede volver a usar. Best-effort. Con un
+ * complejo creado no se usa: la FK de la membresía lo frena a propósito.
+ */
+export async function undoStaffSignup(authUserId: string, staffUserId: string): Promise<void> {
+  await deleteStaffRow(staffUserId)
+  const { error } = await createAdminClient().auth.admin.deleteUser(authUserId)
+  if (error) captureException(error, { tags: { flow: 'signup_undo' }, extra: { authUserId } })
+}
+
+async function deleteStaffRow(staffUserId: string): Promise<void> {
+  try {
+    await getWorkerSql()`DELETE FROM staff_users WHERE id = ${staffUserId}`
+  } catch (err) {
+    captureException(err, { tags: { flow: 'signup_undo' }, extra: { staffUserId } })
+  }
 }
 
 export type StaffTenantRow = {
@@ -300,8 +360,8 @@ async function getOrCreateStaffUser(
   `
   if (existing.length > 0) return existing[0]
   const created = await sql<{ id: string }[]>`
-    INSERT INTO staff_users (email, first_name, last_name, phone, signup_referral_code)
-    VALUES (${lower}, ${firstName}, ${lastName}, ${phone}, ${signupReferralCode})
+    INSERT INTO staff_users (email, first_name, last_name, phone, signup_referral_code, email_verified_at)
+    VALUES (${lower}, ${firstName}, ${lastName}, ${phone}, ${signupReferralCode}, now())
     RETURNING id
   `
   return created[0]
@@ -345,11 +405,17 @@ export async function isStaffEmailTaken(
  * cambio (`updateUserEmailAction`) — recién en la confirmación el email nuevo
  * es real; sincronizarlo antes dejaría el login roto con el email viejo
  * mientras la confirmación está pendiente.
+ *
+ * Confirmar el cambio prueba la casilla nueva (la doble confirmación de GoTrue),
+ * así que de paso queda verificada y se descarta cualquier link pendiente.
  */
 export async function syncStaffUserEmail(staffUserId: string, email: string): Promise<void> {
   const sql = getWorkerSql()
   const lower = email.trim().toLowerCase()
-  await sql`UPDATE staff_users SET email = ${lower} WHERE id = ${staffUserId}`
+  await sql`
+    UPDATE staff_users
+    SET email = ${lower}, email_verified_at = now(), email_verify_token_hash = NULL
+    WHERE id = ${staffUserId}`
 }
 
 /**
@@ -369,9 +435,17 @@ export async function provisionAndRouteStaff(user: User): Promise<{ path: string
   const familyName = typeof userMeta.family_name === 'string' ? userMeta.family_name : null
   const firstNameMeta = typeof userMeta.first_name === 'string' ? userMeta.first_name : null
   const lastNameMeta = typeof userMeta.last_name === 'string' ? userMeta.last_name : null
+  // Google trae `full_name`/`name` y a veces no `given_name`; el alta con mail manda `first_name`.
+  const fullName =
+    typeof userMeta.full_name === 'string'
+      ? userMeta.full_name
+      : typeof userMeta.name === 'string'
+        ? userMeta.name
+        : null
+  const [fullFirst, ...fullRest] = fullName ? fullName.trim().split(/\s+/) : []
   const phoneMeta = typeof userMeta.phone === 'string' ? userMeta.phone : null
-  const firstName = firstNameMeta ?? givenName ?? email.split('@')[0]
-  const lastName = lastNameMeta ?? familyName ?? ''
+  const firstName = firstNameMeta ?? givenName ?? (fullFirst || null) ?? email.split('@')[0]
+  const lastName = lastNameMeta ?? familyName ?? fullRest.join(' ')
 
   // Programa de referidos (B2): revalidado acá aunque `registerAction` ya lo
   // validó antes de mandarlo — `user_metadata` no es de confiar sin repreguntar,

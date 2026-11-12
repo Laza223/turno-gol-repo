@@ -6,6 +6,7 @@ import { resolveImpersonatedStaffContext } from '@/modules/auth/impersonation.se
 import { after } from 'next/server'
 import { getStaffTenant, touchStaffSeen } from '@/modules/tenants/tenant.service'
 import type { TenantRow } from '@/modules/tenants/tenant.types'
+import { isCanteenEnabled } from '@/modules/tenants/tenant.utils'
 import { getProfileGaps } from '@/modules/tenants/setup-gaps'
 import { NO_SETUP_ALERTS, type SetupAlerts } from '@/components/layout/setup-alerts'
 import type { FreePlanNotice, ReadOnlyNotice } from '@/components/layout/status-banner'
@@ -24,6 +25,12 @@ import { tenantSubscriptions } from '@/shared/db/schema'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { AdminLayoutShell } from '@/components/layout/admin-layout-shell'
 import { ImpersonationBanner } from '@/components/layout/impersonation-banner'
+import { EmailVerifyBanner } from '@/components/layout/email-verify-banner'
+import { getEmailVerificationState } from '@/modules/auth/email-verification.service'
+import {
+  changeUnverifiedEmailAction,
+  resendVerificationEmailAction,
+} from '@/app/(admin)/actions/email-verification'
 import { signOutAction } from '@/app/(admin)/actions/auth'
 import {
   createTabAction,
@@ -90,8 +97,10 @@ function freePlanNotice(tenant: TenantRow): FreePlanNotice | null {
  * (botón del riel o tecla V), así que no hace falta volver a Hoy para vender.
  * En el plan gratis no hay cantina: sin proveedor no hay botón ni tecla V.
  */
-function WithVender({ children, enabled = true }: { children: ReactNode; enabled?: boolean }) {
-  if (!enabled) return <>{children}</>
+function WithVender({ enabled, children }: { enabled: boolean; children: ReactNode }) {
+  // Sin buffet (`canteen_enabled === false`) o en el plan gratis el proveedor no se monta:
+  // sin él el riel y Hoy no pintan "Vender" (`useOptionalVender`) y la tecla V no existe.
+  if (!enabled) return children
   return (
     <VenderProvider
       loadCatalogAction={loadVenderCatalogAction}
@@ -115,7 +124,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       loadSetupAlerts(imp.tenant),
     ])
     return (
-      <WithVender>
+      <WithVender enabled={isCanteenEnabled(imp.tenant.settings) && !isFreePlan(imp.tenant)}>
         <AdminLayoutShell
           tenantName={imp.tenant.name}
           tenantStatus={imp.tenant.status}
@@ -191,7 +200,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   // Independientes entre sí: van en paralelo. El flag de torneos nace global en
   // false (migr. 062) y se prende por complejo con una fila de override, así el
   // módulo se pilotea sin redeploy. Cachea 60s in-process (feature-flags.ts).
-  const [sub, tournamentsEnabled, staffRole, alerts] = await Promise.all([
+  const [sub, tournamentsEnabled, staffRole, alerts, emailState] = await Promise.all([
     loadSubscriptionSummary(tenant.id),
     isFeatureEnabled(TOURNAMENTS_FLAG, tenant.id),
     getStaffRole(tenant.id, user.staffUserId),
@@ -199,11 +208,12 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     // cada carga del panel. Solo el dueño ve los avisos (el encargado no tiene Canchas
     // ni Configuración), así que para el resto se descartan abajo.
     loadSetupAlerts(tenant),
+    getEmailVerificationState(user.staffUserId),
   ])
   const setupAlerts = staffRole === 'admin' ? alerts : NO_SETUP_ALERTS
 
   return (
-    <WithVender enabled={!isFreePlan(tenant)}>
+    <WithVender enabled={isCanteenEnabled(tenant.settings) && !isFreePlan(tenant)}>
       <AdminLayoutShell
         tenantName={tenant.name}
         tenantStatus={tenant.status}
@@ -218,6 +228,15 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         readOnly={readOnlyNotice(tenant)}
         freePlan={freePlanNotice(tenant)}
         resumeOnlineAction={resumeOnlineBookingAction}
+        emailBanner={
+          staffRole === 'admin' && emailState && !emailState.verified ? (
+            <EmailVerifyBanner
+              email={emailState.email}
+              resendAction={resendVerificationEmailAction}
+              changeEmailAction={changeUnverifiedEmailAction}
+            />
+          ) : null
+        }
       >
         {children}
       </AdminLayoutShell>

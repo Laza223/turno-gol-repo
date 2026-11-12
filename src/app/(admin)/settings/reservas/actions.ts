@@ -131,3 +131,34 @@ export async function updateReservasPolicyAction(
   revalidatePath('/settings/reservas')
   return { success: true }
 }
+
+/**
+ * Prende o apaga el buffet o kiosco (`settings.canteen_enabled`): apagado, el panel
+ * esconde Vender y Productos. No borra el catálogo ni las ventas. Solo el dueño.
+ */
+export async function setCanteenEnabledAction(enabled: boolean): Promise<PolicyActionResult> {
+  const auth = await requireAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  if (typeof enabled !== 'boolean') return { success: false, error: 'Datos inválidos.' }
+
+  // El objeto va SIN JSON.stringify (ver `updateReservasPolicyAction`).
+  const patch = { canteen_enabled: enabled }
+  await withTenantContext(tenant.id, async (tx) => {
+    await tx
+      .update(tenants)
+      .set({
+        settings: sql`settings || ${patch}::jsonb`,
+        updatedAt: new Date(),
+      })
+      .where(eq(tenants.id, tenant.id))
+  })
+
+  // El layout del panel decide el riel y la tecla V: hay que volver a renderizarlo.
+  revalidatePath('/', 'layout')
+  return { success: true }
+}

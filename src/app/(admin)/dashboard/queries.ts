@@ -1,4 +1,4 @@
-import { and, count, eq, isNull } from 'drizzle-orm'
+import { and, count, eq, isNotNull, isNull, notInArray } from 'drizzle-orm'
 import { getDb, withTenantContext } from '@/shared/db/client'
 import { bookings, courts, tenants } from '@/shared/db/schema'
 import { hasOperableDay } from '@/shared/time/operating-day'
@@ -6,9 +6,10 @@ import type { TenantRow, TenantSettings } from '@/modules/tenants/tenant.types'
 
 export interface ChecklistState {
   accountCreated: boolean
-  complexData: boolean
   hasCourts: boolean
   hasSchedule: boolean
+  /** Alguna reserva no cancelada cargada por el staff (`created_by_staff` no nulo). */
+  hasStaffBookings: boolean
   mpConnected: boolean
   publicLinkShared: boolean
   firstBookingReceived: boolean
@@ -21,7 +22,7 @@ export async function getChecklistState(
 ): Promise<ChecklistState> {
   const tenantId = tenant.id
   return withTenantContext(tenantId, async (tx) => {
-    const [courtsCount, firstBooking] = await Promise.all([
+    const [courtsCount, firstBooking, staffBooking] = await Promise.all([
       tx
         .select({ value: count() })
         .from(courts)
@@ -44,15 +45,23 @@ export async function getChecklistState(
         )
         .limit(1)
         .then((r) => r[0] ?? null),
+
+      tx
+        .select({ id: bookings.id })
+        .from(bookings)
+        .where(
+          and(
+            eq(bookings.tenantId, tenantId),
+            isNotNull(bookings.createdByStaff),
+            notInArray(bookings.status, ['canceled_refunded', 'canceled_no_refund']),
+          ),
+        )
+        .limit(1)
+        .then((r) => r[0] ?? null),
     ])
 
     return {
       accountCreated: true,
-      // Constante a propósito, no un chequeo pendiente: `name`, `address`,
-      // `city`, `province`, `phone` y `email` son NOT NULL en `tenants`, así que
-      // un complejo sin datos no existe. Un chequeo acá no podría dar false
-      // nunca — sería teatro.
-      complexData: true,
       hasCourts: courtsCount > 0,
       // Esto SÍ puede dar false: estaba hardcodeado a `true` y por eso decía
       // "Horarios definidos ✓" a un complejo cuyos siete días quedaron cerrados
@@ -60,6 +69,7 @@ export async function getChecklistState(
       // Configuración. La checklist responde "¿puedo recibir reservas?": un
       // complejo sin un día operable no puede, y tiene que verlo.
       hasSchedule: hasOperableDay(tenant.openingHours, tenant.closesNextDay),
+      hasStaffBookings: staffBooking !== null,
       mpConnected,
       publicLinkShared: settings.public_link_shared === true,
       firstBookingReceived: firstBooking !== null,

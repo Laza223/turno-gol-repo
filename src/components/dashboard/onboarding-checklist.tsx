@@ -12,6 +12,7 @@ import type {
   MarkChecklistDismissedResult,
 } from '@/app/(admin)/dashboard/actions'
 import type { StaffRole } from '@/modules/staff/roles'
+import type { TenantSettings } from '@/modules/tenants/tenant.types'
 
 /** localStorage key para el estado plegado/desplegado (bidireccional: se lee al hidratar y se escribe en cada toggle). */
 const MINIMIZED_STORAGE_KEY = 'tg-hint-checklist-minimized'
@@ -34,7 +35,6 @@ interface ChecklistItem {
 
 const ITEMS: ChecklistItem[] = [
   { key: 'accountCreated', label: 'Cuenta creada' },
-  { key: 'complexData', label: 'Datos del complejo completados' },
   {
     key: 'hasCourts',
     label: 'Al menos una cancha configurada',
@@ -56,6 +56,31 @@ const ITEMS: ChecklistItem[] = [
   { key: 'firstBookingReceived', label: 'Primera reserva online recibida' },
 ]
 
+type Intake = NonNullable<TenantSettings['booking_intake']>
+
+/**
+ * Orden y texto según cómo toma los turnos hoy el complejo (alta por toques):
+ * - cargar los turnos a mano entra antes de MercadoPago; con cuaderno o equipos
+ *   fijos se pide pasar los fijos y el link va a Turnos fijos;
+ * - con WhatsApp o "recién abro", compartir el link va primero;
+ * - la primera reserva online sigue siendo el objetivo y queda última.
+ */
+function buildItems(intake: Intake | undefined, hasFixedTeams: boolean): ChecklistItem[] {
+  const fixed = hasFixedTeams || intake === 'notebook'
+  const load: ChecklistItem = {
+    key: 'hasStaffBookings',
+    label: 'Turnos cargados en la grilla',
+    pendingLabel: fixed ? 'Pasá tus equipos fijos a la grilla' : 'Cargá tus turnos en la grilla',
+    linkLabel: 'Cargar',
+    href: fixed ? '/abonados' : '/grilla',
+  }
+  const [account, courts, schedule, mp, shared, first] = ITEMS
+  const linkFirst = intake === 'whatsapp' || intake === 'new'
+  return linkFirst
+    ? [account, shared, courts, schedule, load, mp, first]
+    : [account, courts, schedule, load, mp, shared, first]
+}
+
 interface OnboardingChecklistProps {
   state: ChecklistState
   tenantSlug: string
@@ -72,6 +97,9 @@ interface OnboardingChecklistProps {
   /** Rol del staff logueado: oculta del conteo los pasos admin-only (Configuración) para el manager.
    *  Sin valor se trata como no-admin (mismo criterio que `staffRole` en AdminSidebar). */
   staffRole?: StaffRole
+  /** `settings.booking_intake` / `has_fixed_teams`: ordena y redacta los pasos. */
+  bookingIntake?: TenantSettings['booking_intake']
+  hasFixedTeams?: boolean
 }
 
 /**
@@ -86,11 +114,15 @@ export function OnboardingChecklist({
   action,
   onDismiss,
   staffRole,
+  bookingIntake,
+  hasFixedTeams = false,
 }: OnboardingChecklistProps) {
   // El manager no puede completar los pasos de Configuración (guard server-side
   // ya se lo bloquea): se excluyen del conteo para no mostrarle un "N de 7"
   // imposible de completar al 100%.
-  const visibleItems = ITEMS.filter((i) => !i.adminOnly || staffRole === 'admin')
+  const visibleItems = buildItems(bookingIntake, hasFixedTeams).filter(
+    (i) => !i.adminOnly || staffRole === 'admin',
+  )
   const pendingItems = visibleItems.filter((i) => !state[i.key])
   const doneItems = visibleItems.filter((i) => state[i.key])
   const completed = doneItems.length

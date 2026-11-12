@@ -1,59 +1,97 @@
 import { z } from 'zod'
-import { uuid, dateStr, hhmm, hhmmEnd } from '@/shared/validation/primitives'
 
 /**
- * Drafts de canchas del paso 3. El precio es UNO por cancha (modo uniforme,
- * `pages/onboarding.md` §5); el ajuste por franja horaria vive en `/canchas`.
- *
- * Estaba declarado inline dentro de la Server Action.
- *
- * `photoUrl` es la foto opcional que el dueño subió en el paso (la cancha
- * todavía no existe cuando sube, así que el archivo viaja como URL). Acá solo se
- * valida la FORMA: que sea del propio complejo lo decide `ownDraftPhotoUrl` en
- * el service, que es el único que conoce el tenantId — sin ese corte, esto sería
- * una entrada de URLs arbitrarias a `courts.photos`.
+ * Formatos que ofrece el alta por toques. `courts.format` es un entero (Fútbol 5 =
+ * 5). Los demás formatos (4, 6, 9, 10) se cargan después desde `/canchas`.
  */
-export const wizardCourtsSchema = z.object({
-  courts: z
+export const WIZARD_FORMATS = [5, 7, 8, 11] as const
+
+export const MAX_WIZARD_COURTS = 20
+
+/** Corte día/noche por defecto del paso Precios ("desde las 18"). */
+export const DEFAULT_CUT_HOUR = 18
+
+const wizardFormat = z
+  .number()
+  .int()
+  .refine((v) => (WIZARD_FORMATS as readonly number[]).includes(v), 'Formato inválido')
+
+/**
+ * Paso Canchas: cantidad por formato, entre 1 y 20 en total. Llega como
+ * `{ "5": 2, "7": 1 }` (la forma en que se guarda en
+ * `settings.onboarding_draft_courts`); los formatos en 0 se descartan.
+ */
+export const wizardCourtCountsSchema = z
+  .record(z.string(), z.number().int().min(0).max(MAX_WIZARD_COURTS))
+  .superRefine((counts, ctx) => {
+    for (const key of Object.keys(counts)) {
+      if (!(WIZARD_FORMATS as readonly number[]).includes(Number(key))) {
+        ctx.addIssue({ code: 'custom', message: 'Formato inválido' })
+      }
+    }
+  })
+  .transform((counts) => {
+    const out: Record<string, number> = {}
+    for (const [format, count] of Object.entries(counts)) if (count > 0) out[format] = count
+    return out
+  })
+  .refine((counts) => Object.values(counts).reduce((a, b) => a + b, 0) >= 1, {
+    message: 'Elegí al menos una cancha.',
+  })
+  .refine((counts) => Object.values(counts).reduce((a, b) => a + b, 0) <= MAX_WIZARD_COURTS, {
+    message: `Máximo ${MAX_WIZARD_COURTS} canchas. Después podés cargar más desde Canchas.`,
+  })
+
+/**
+ * Paso Horarios: apertura y cierre en hora entera, el mismo horario los 7 días.
+ * `closeHour` 0 = medianoche; 1-4 = madrugada del día siguiente; el resto, mismo día.
+ */
+export const wizardScheduleSchema = z
+  .object({
+    openHour: z.number().int().min(0).max(23),
+    closeHour: z.number().int().min(0).max(23),
+  })
+  .refine((v) => v.closeHour === 0 || v.closeHour <= 4 || v.closeHour > v.openHour, {
+    message: 'El cierre tiene que ser después de la apertura.',
+    path: ['closeHour'],
+  })
+
+/** Tope razonable de un turno: $1.000.000. Atrapa un cero de más al tipear. */
+const MAX_PRICE_CENTS = 100_000_000
+
+const priceCents = z.number().int().positive('Cargá cuánto cobrás el turno.').max(MAX_PRICE_CENTS)
+
+/**
+ * Paso Precios: un precio por formato (turno de 60 min), con precio de noche
+ * opcional a partir de `cutHour`. Montos en centavos.
+ */
+export const wizardPricesSchema = z.object({
+  formats: z
     .array(
       z.object({
-        name: z
-          .string()
-          .trim()
-          .min(1, 'Poné un nombre a cada cancha')
-          .max(100, 'Máximo 100 caracteres'),
-        format: z.number().int(),
-        surfaceType: z.enum(['synthetic_grass', 'natural_grass', 'cement', 'tile']),
-        isCovered: z.boolean(),
-        priceCents: z.number().int().positive('Cargá el precio por turno de cada cancha'),
-        photoUrl: z.url().max(500).optional(),
+        format: wizardFormat,
+        count: z.number().int().min(1).max(MAX_WIZARD_COURTS),
+        dayPrice: priceCents,
+        nightPrice: priceCents.optional(),
       }),
     )
-    .max(20, 'Máximo 20 canchas por vez'),
+    .min(1, 'Elegí al menos una cancha.')
+    .refine((rows) => new Set(rows.map((r) => r.format)).size === rows.length, 'Formato repetido')
+    .refine((rows) => rows.reduce((a, r) => a + r.count, 0) <= MAX_WIZARD_COURTS, {
+      message: `Máximo ${MAX_WIZARD_COURTS} canchas.`,
+    }),
+  cutHour: z.number().int().min(1).max(23).optional(),
 })
 
-type WizardCourtsInput = z.infer<typeof wizardCourtsSchema>
-export type WizardCourtDraftInput = WizardCourtsInput['courts'][number]
+export type WizardPricesInput = z.infer<typeof wizardPricesSchema>
 
-/**
- * Paso 4 — cargar la primera reserva sobre un slot real de la grilla ya
- * generada (§D del plan de refactor). `date` viaja desde el cliente porque el
- * slot que clickeó viene de la grilla que el SERVER le mandó al renderizar el
- * paso (`getFirstBookingSlots`) — no es un valor que el dueño elige a mano, es
- * el eco de lo que ya vio. `createManualBooking` revalida solapamiento y
- * disponibilidad igual que cualquier otra reserva manual: un `date` viejo
- * (pestaña abierta desde ayer) simplemente no matchea ningún slot disponible.
- */
-export const wizardFirstBookingSchema = z.object({
-  courtId: uuid,
-  date: dateStr,
-  timeStart: hhmm,
-  timeEnd: hhmmEnd,
-  guestName: z
-    .string()
-    .trim()
-    .min(1, 'Poné a nombre de quién va el turno.')
-    .max(200, 'Máximo 200 caracteres'),
+/** Paso Tu complejo: tres respuestas de opción. */
+export const wizardProfileSchema = z.object({
+  bookingIntake: z.enum(['notebook', 'whatsapp', 'other_app', 'new'], {
+    error: 'Elegí cómo tomás los turnos hoy.',
+  }),
+  hasFixedTeams: z.boolean({ error: 'Contanos si tenés equipos fijos.' }),
+  canteenEnabled: z.boolean({ error: 'Contanos si tenés buffet o kiosco.' }),
 })
 
-export type WizardFirstBookingInput = z.infer<typeof wizardFirstBookingSchema>
+export type WizardProfileInput = z.infer<typeof wizardProfileSchema>

@@ -26,7 +26,7 @@ const markDismissed: DismissAction = async () => ({ success: true })
 
 const PENDING_STATE: ChecklistState = {
   accountCreated: true,
-  complexData: true,
+  hasStaffBookings: true,
   hasCourts: true,
   hasSchedule: true,
   mpConnected: false,
@@ -63,9 +63,19 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Pasos pendientes (5/7): siempre visibles con su CTA, los completados plegados. */
+/** Pasos pendientes (4/6): siempre visibles con su CTA, los completados plegados. */
 export const Pendiente: Story = {
   args: { state: PENDING_STATE },
+}
+
+/** Cuaderno o equipos fijos: pide pasar los fijos a la grilla y lleva a Turnos fijos. */
+export const ConCuaderno: Story = {
+  // Con los turnos sin cargar: si el paso ya estuviera hecho, quedaría plegado entre los completados.
+  args: { state: { ...PENDING_STATE, hasStaffBookings: false }, bookingIntake: 'notebook' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Pasá tus equipos fijos a la grilla')).toBeInTheDocument()
+  },
 }
 
 /** 100% completo: card minimizada a una sola fila. */
@@ -73,7 +83,7 @@ export const Completo: Story = {
   args: {
     state: {
       accountCreated: true,
-      complexData: true,
+      hasStaffBookings: true,
       hasCourts: true,
       hasSchedule: true,
       mpConnected: true,
@@ -130,7 +140,7 @@ export const VerCompletados: Story = {
       ...PENDING_STATE,
       hasCourts: true,
       hasSchedule: true,
-      complexData: true,
+      hasStaffBookings: true,
       accountCreated: true,
     },
   },

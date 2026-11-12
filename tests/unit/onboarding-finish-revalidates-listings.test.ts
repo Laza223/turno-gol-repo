@@ -46,13 +46,6 @@ vi.mock('@/modules/courts/court.service', () => ({
   listCourts: vi.fn(async () => []),
   validatePricingRulesCoverage: vi.fn(() => ({ valid: true, gaps: [] })),
 }))
-// `hasAnyBooking` toca `tx.select(...)` directo: sin este mock la acción explota
-// contra el `{}` que `withTenantContext` devuelve como tx falso.
-vi.mock('@/modules/onboarding/onboarding.service', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/modules/onboarding/onboarding.service')>()
-  return { ...actual, hasAnyBooking: vi.fn(async () => true) }
-})
-
 import { updateTag } from 'next/cache'
 import { finishOnboardingAction } from '@/app/onboarding/actions'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
@@ -62,7 +55,7 @@ import { withTenantContext } from '@/shared/db/client'
 import { PUBLIC_CITIES_TAG, PUBLIC_TENANTS_TAG } from '@/shared/cache/public-listings'
 
 const STAFF_USER = { type: 'staff', id: 'auth-1', staffUserId: 'staff-1', email: 'staff@test.com' }
-const TENANT = { id: 'tenant-1', slug: 'demo' }
+const TENANT = { id: 'tenant-1', slug: 'demo', settings: { onboarding_step: 5 } }
 
 beforeEach(() => {
   vi.clearAllMocks()

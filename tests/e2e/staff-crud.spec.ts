@@ -98,6 +98,7 @@ test.describe('Staff CRUD', () => {
         first_name: 'Segundo',
         last_name: 'Admin',
         status: 'active',
+        email_verified_at: new Date().toISOString(),
       })
       await supabase.from('tenant_staff_members').insert({
         id: memberId,
@@ -160,6 +161,7 @@ test.describe('Staff CRUD', () => {
         first_name: 'Reinvitado',
         last_name: 'E2E',
         status: 'active',
+        email_verified_at: new Date().toISOString(),
       })
       await supabase.from('tenant_staff_members').insert({
         tenant_id: TENANT_ID,

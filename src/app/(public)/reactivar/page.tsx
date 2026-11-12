@@ -10,6 +10,11 @@ import { plans } from '@/shared/db/schema'
 import { getBillingPayerEmail, getSubscriptionState } from '@/modules/billing/billing.service'
 import { listCourts } from '@/modules/courts/court.service'
 import type { PricingParams } from '@/modules/billing/pricing'
+import {
+  changeUnverifiedEmailAction,
+  resendVerificationEmailAction,
+} from '@/app/(admin)/actions/email-verification'
+import { getEmailVerificationState } from '@/modules/auth/email-verification.service'
 import { CuotaSection } from '@/app/(admin)/settings/facturacion/CuotaSection'
 import { firstCuotaPricing } from '@/app/(admin)/settings/facturacion/cuota-pricing'
 import { CancelSubscriptionSection } from '@/app/(admin)/settings/facturacion/CancelSubscriptionSection'
@@ -165,6 +170,16 @@ export default async function ReactivarPage() {
   const deadlinePassed = deadline ? new Date(deadline).getTime() <= Date.now() : false
   const canReactivate = REACTIVATE_ELIGIBLE.has(tenant.status) && !deadlinePassed
 
+  const emailState = canReactivate ? await getEmailVerificationState(user.staffUserId) : null
+  const verifyEmail =
+    emailState && !emailState.verified
+      ? {
+          email: emailState.email,
+          resendAction: resendVerificationEmailAction,
+          changeEmailAction: changeUnverifiedEmailAction,
+        }
+      : undefined
+
   const pricing = canReactivate ? await loadCuotaPricing() : null
   // Plus EFECTIVO que se factura, igual que /settings/facturacion: `reactivate()`
   // vuelve a cobrar con el Plus de la suscripción, así que la pantalla tiene que
@@ -201,6 +216,7 @@ export default async function ReactivarPage() {
           billedCourts={sub?.billedCourts ?? 1}
           billingCycle={sub?.billingCycle ?? 'monthly'}
           plusPerCourtCents={plusBilledPerCourt}
+          verifyEmail={verifyEmail}
         />
       )}
 

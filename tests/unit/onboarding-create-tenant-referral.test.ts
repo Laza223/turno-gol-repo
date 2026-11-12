@@ -22,7 +22,6 @@ vi.mock('@/shared/rate-limit/server-action', () => ({
 vi.mock('@/modules/tenants/tenant.service', () => ({
   createTenantWithTrial: vi.fn(async () => ({ id: 'tenant-new' })),
   getStaffTenant: vi.fn(async () => null),
-  updateOnboardingStep: vi.fn(),
   completeOnboarding: vi.fn(),
   updateTenant: vi.fn(),
 }))
@@ -69,7 +68,7 @@ describe('createTenantAction — atribución de referidos (B2)', () => {
 
     const res = await createTenantAction({ success: true }, validForm())
 
-    expect(res).toEqual({ success: true, next: '/onboarding/horarios', hardNavigate: true })
+    expect(res).toEqual({ success: true, next: '/onboarding/canchas', hardNavigate: true })
     expect(createTenantWithTrial).toHaveBeenCalledWith(
       expect.objectContaining({ referredByTenantId: 'tenant-referrer-1' }),
     )
@@ -80,7 +79,7 @@ describe('createTenantAction — atribución de referidos (B2)', () => {
 
     const res = await createTenantAction({ success: true }, validForm())
 
-    expect(res).toEqual({ success: true, next: '/onboarding/horarios', hardNavigate: true })
+    expect(res).toEqual({ success: true, next: '/onboarding/canchas', hardNavigate: true })
     expect(createTenantWithTrial).toHaveBeenCalledWith(
       expect.objectContaining({ referredByTenantId: null }),
     )
@@ -93,7 +92,7 @@ describe('createTenantAction — atribución de referidos (B2)', () => {
 
     const res = await createTenantAction({ success: true }, validForm())
 
-    expect(res).toEqual({ success: true, next: '/onboarding/horarios', hardNavigate: true })
+    expect(res).toEqual({ success: true, next: '/onboarding/canchas', hardNavigate: true })
     expect(createTenantWithTrial).toHaveBeenCalledWith(
       expect.objectContaining({ referredByTenantId: null }),
     )

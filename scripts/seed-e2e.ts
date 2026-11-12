@@ -321,24 +321,24 @@ async function seedDepositTenantAndCourt(sql: SqlClient): Promise<void> {
 
 async function seedStaffAndPlayer(sql: SqlClient): Promise<void> {
   await sql`
-    INSERT INTO staff_users (id, email, first_name, last_name)
-    VALUES (${E2E.staffUserId}, ${E2E.adminEmail}, ${'E2E'}, ${'Admin'})
+    INSERT INTO staff_users (id, email, first_name, last_name, email_verified_at)
+    VALUES (${E2E.staffUserId}, ${E2E.adminEmail}, ${'E2E'}, ${'Admin'}, now())
   `
   await sql`
     INSERT INTO tenant_staff_members (tenant_id, staff_user_id, role)
     VALUES (${E2E.tenantId}, ${E2E.staffUserId}, 'admin')
   `
   await sql`
-    INSERT INTO staff_users (id, email, first_name, last_name)
-    VALUES (${E2E.secondStaffUserId}, ${E2E.secondAdminEmail}, ${'E2E'}, ${'Admin2'})
+    INSERT INTO staff_users (id, email, first_name, last_name, email_verified_at)
+    VALUES (${E2E.secondStaffUserId}, ${E2E.secondAdminEmail}, ${'E2E'}, ${'Admin2'}, now())
   `
   await sql`
     INSERT INTO tenant_staff_members (tenant_id, staff_user_id, role)
     VALUES (${E2E.tenantId}, ${E2E.secondStaffUserId}, 'admin')
   `
   await sql`
-    INSERT INTO staff_users (id, email, first_name, last_name)
-    VALUES (${E2E.managerStaffUserId}, ${E2E.managerEmail}, ${'E2E'}, ${'Manager'})
+    INSERT INTO staff_users (id, email, first_name, last_name, email_verified_at)
+    VALUES (${E2E.managerStaffUserId}, ${E2E.managerEmail}, ${'E2E'}, ${'Manager'}, now())
   `
   await sql`
     INSERT INTO tenant_staff_members (tenant_id, staff_user_id, role)
@@ -382,8 +382,8 @@ async function seedFreshAdminStaff(sql: SqlClient): Promise<void> {
   // guard defensivo que protege el caso real de un staff invitado sin
   // completar el perfil).
   await sql`
-    INSERT INTO staff_users (id, email, first_name, last_name, phone)
-    VALUES (${E2E.freshStaffUserId}, ${E2E.freshAdminEmail}, ${'Fresh'}, ${'Admin'}, ${'+5491100000099'})
+    INSERT INTO staff_users (id, email, first_name, last_name, phone, email_verified_at)
+    VALUES (${E2E.freshStaffUserId}, ${E2E.freshAdminEmail}, ${'Fresh'}, ${'Admin'}, ${'+5491100000099'}, now())
   `
   // NO tenant_staff_members insert — fresh admin has 0 tenants → enters wizard.
 }

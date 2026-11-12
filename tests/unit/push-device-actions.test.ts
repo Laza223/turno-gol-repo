@@ -56,7 +56,7 @@ beforeEach(() => {
 describe('acciones de notificaciones del dispositivo', () => {
   it('el encargado puede probar su teléfono también en solo lectura', async () => {
     expect(await testPushAction(device)).toEqual({ success: true, notificationId: notification })
-    expect(mocks.auth).toHaveBeenCalledWith({ allowReadOnly: true })
+    expect(mocks.auth).toHaveBeenCalledWith({ allowReadOnly: true, allowFree: true })
     expect(mocks.send).toHaveBeenCalledWith(
       tenant,
       staff,

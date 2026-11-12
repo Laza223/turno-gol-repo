@@ -170,7 +170,7 @@ describe('aviso de fin de prueba', () => {
 
     expect(await warnings(s, tenant.id)).toHaveLength(0)
     const rows = await s<{ status: string }[]>`SELECT status FROM tenants WHERE id = ${tenant.id}`
-    expect(rows[0]!.status).toBe('suspended')
+    expect(rows[0]!.status).toBe('free')
   })
 
   it('avisar no toca el estado: el complejo sigue operando hasta que venza', async () => {

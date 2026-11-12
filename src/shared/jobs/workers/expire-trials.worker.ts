@@ -1,14 +1,10 @@
 import type { PgBoss } from 'pg-boss'
 import { sql } from 'drizzle-orm'
 import { getWorkerDb, getWorkerSql } from '@/shared/db/client'
-import { insertSystemAuditLog } from '@/shared/db/audit'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { notifyOwnerPlanEvent } from '@/modules/notifications/push.service'
-import {
-  SUBSCRIBED_TRIAL_GRACE_DAYS,
-  TRIAL_ENDING_WARNING_DAYS,
-  TRIAL_READ_ONLY_DAYS,
-} from '@/shared/constants'
+import { SUBSCRIBED_TRIAL_GRACE_DAYS, TRIAL_ENDING_WARNING_DAYS } from '@/shared/constants'
+import { transitionToFree, type FreeDowngradeOrigin } from '@/modules/billing/lifecycle.service'
 import { CRON_WORK_OPTIONS, QUEUE_EXPIRE_TRIALS } from '../definitions'
 import { logger } from '@/shared/lib/logger'
 
@@ -144,79 +140,41 @@ async function warnEndingTrials(): Promise<void> {
 }
 
 /**
- * Fin del solo lectura de la prueba: `suspended` → `blocked` a los
- * `TRIAL_READ_ONLY_DAYS` (decisión 2026-10-22,
- * `docs/decisions/2026-10-22-solo-lectura-al-vencer-la-prueba.md`).
+ * Backfill del freemium (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md,
+ * condición C4 del ADR: lo hace el worker, no la migración). Los complejos que el
+ * lifecycle anterior dejó sin pagar pasan al plan gratis, SIN mail:
  *
- * Solo toma los `suspended` SIN `dunning_started_at`: ese es el que dejó la
- * prueba vencida de abajo. El de la mora entra a `suspended` siempre con
- * `dunning_started_at` (`transitionPastDueToSuspended`) y lo pasa a `blocked`
- * su propio barrido (`runDunningSweep`), contando desde el primer cobro
- * fallido. Si los dos barridos tomaran la misma fila, uno de ellos contaría
- * los días desde la fecha equivocada.
+ * - `suspended` sin `dunning_started_at`: la prueba vencida en solo lectura.
+ * - `blocked` sin `scheduled_deletion_at`: prueba vencida o mora que terminó
+ *   bloqueada. Los `blocked` con borrado agendado (baja voluntaria vieja) se
+ *   quedan como están: eligieron irse con las reglas de entonces.
  *
- * La cuenta es la de `trialReadOnlyEndsAt` (tenant.lifecycle.ts), la misma
- * fecha que el aviso del panel le muestra al dueño: `trial_ends_at` más los
- * días de solo lectura, más el margen de "Activar" si tiene
- * `mp_subscription_id`.
- *
- * No manda mail: el único template de bloqueo (`subscription_blocked`) habla
- * de la mora ("14 días sin regularizar el pago", "90 días para reactivar").
- * El dueño ve la fecha de corte en el aviso del panel desde el primer día.
+ * Cuando ya no quede ninguno, la query no devuelve filas y esto es un no-op.
  */
-async function blockEndedTrialReadOnly(): Promise<void> {
+async function moveLegacyUnpaidToFree(): Promise<void> {
   const readSql = getWorkerSql()
-  const candidates = await readSql<{ id: string }[]>`
-    SELECT t.id
+  const candidates = await readSql<{ id: string; status: 'suspended' | 'blocked' }[]>`
+    SELECT t.id, t.status::text AS status
     FROM tenants t
     JOIN tenant_subscriptions ts ON ts.tenant_id = t.id
-    WHERE t.status = 'suspended'
-      AND ts.status = 'suspended'
-      AND ts.dunning_started_at IS NULL
-      AND t.trial_ends_at IS NOT NULL
-      AND t.trial_ends_at < NOW() - make_interval(
-        days => ${TRIAL_READ_ONLY_DAYS}::int
-          + CASE WHEN ts.mp_subscription_id IS NULL THEN 0 ELSE ${SUBSCRIBED_TRIAL_GRACE_DAYS}::int END
-      )
+    WHERE (t.status = 'suspended' AND ts.status = 'suspended' AND ts.dunning_started_at IS NULL)
+       OR (t.status = 'blocked' AND ts.status = 'blocked' AND ts.scheduled_deletion_at IS NULL)
   `
-
   if (candidates.length === 0) return
 
   const db = getWorkerDb()
-
   for (const t of candidates) {
+    const origin: FreeDowngradeOrigin =
+      t.status === 'suspended' ? 'legacy_trial_read_only' : 'legacy_blocked'
     try {
-      await db.transaction(async (tx) => {
-        // Orden A de locks: tenant_subscriptions ANTES que tenants (ver Fase 0).
-        // El `dunning_started_at IS NULL` se repite: si entre la lectura y acá
-        // arrancó la mora, la fila ya no es de este barrido.
-        const res = await tx.execute(sql`
-          UPDATE tenant_subscriptions
-          SET status = 'blocked', updated_at = NOW()
-          WHERE tenant_id = ${t.id} AND status = 'suspended' AND dunning_started_at IS NULL
-          RETURNING id
-        `)
-        if ((res as unknown as Array<{ id: string }>).length === 0) return
-
-        await tx.execute(sql`
-          UPDATE tenants
-          SET status = 'blocked', updated_at = NOW()
-          WHERE id = ${t.id} AND status = 'suspended'
-        `)
-        await insertSystemAuditLog(tx, {
-          tenantId: t.id,
-          action: 'tenant.blocked',
-          resourceType: 'tenant',
-          resourceId: t.id,
-          metadata: { reason: 'trial_read_only_ended' },
-        })
-      })
-      logger.info('blocked tenant after trial read-only', {
+      await db.transaction((tx) => transitionToFree(t.id, origin, tx))
+      logger.info('legacy unpaid tenant moved to free', {
         module: 'expire-trials',
         tenantId: t.id,
+        origin,
       })
     } catch (err) {
-      logger.error('failed trial read-only block for tenant', {
+      logger.error('failed legacy move to free', {
         module: 'expire-trials',
         tenantId: t.id,
         error: err instanceof Error ? err.message : String(err),
@@ -226,10 +184,11 @@ async function blockEndedTrialReadOnly(): Promise<void> {
 }
 
 /**
- * Pasa a solo lectura (`suspended`) los tenants trialing con trial_ends_at
- * vencido y sincroniza su tenant_subscriptions + audit log. Hasta 2026-10-22
- * los pasaba directo a `blocked`; ahora miran sus datos, los exportan y pueden
- * pagar, pero no operan ni reciben reservas online (decisión 2026-10-22).
+ * Pasa al plan gratis (`free`) los tenants trialing con trial_ends_at vencido y
+ * sincroniza su tenant_subscriptions + audit log (`transitionToFree`). Hasta
+ * 2026-10-22 los pasaba a `blocked`, después a solo lectura; desde el freemium
+ * siguen en el mapa con el plan gratis
+ * (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
  *
  * La lectura de candidatos corre en el pool worker (BYPASSRLS, cross-tenant —
  * Fable 5 P0, no scopeable a un solo app.current_tenant_id). Cada tenant abre
@@ -243,14 +202,12 @@ async function blockEndedTrialReadOnly(): Promise<void> {
  * - Avisa primero a los que están por vencer (`warnEndingTrials`): si expirara
  *   primero, un complejo que cruzó la línea entre dos corridas quedaría en
  *   solo lectura sin haber recibido nunca el aviso.
- * - El fin del solo lectura (`blockEndedTrialReadOnly`) va ANTES de expirar:
- *   un complejo que llega tarde a `suspended` (cron caído más días que el solo
- *   lectura) tiene al menos un día para mirar antes de bloquearse, en vez de
- *   pasar a `blocked` en la misma corrida.
+ * - El backfill del lifecycle anterior (`moveLegacyUnpaidToFree`) no depende
+ *   de las otras dos fases.
  */
 export async function runExpireTrials(): Promise<void> {
   await warnEndingTrials()
-  await blockEndedTrialReadOnly()
+  await moveLegacyUnpaidToFree()
 
   const readSql = getWorkerSql()
   // `owner_name` por LATERAL, igual que en `warnEndingTrials`: evita un SELECT
@@ -291,31 +248,18 @@ export async function runExpireTrials(): Promise<void> {
     try {
       const expired = await db.transaction(async (tx) => {
         // Orden A de locks: tenant_subscriptions ANTES que tenants (ver Fase 0).
-        const res = await tx.execute(sql`
-          UPDATE tenant_subscriptions
-          SET status = 'suspended', updated_at = NOW()
-          WHERE tenant_id = ${t.id} AND status = 'trialing'
-          RETURNING id
+        // El estado se relee bajo lock: si entre la lectura y acá el cobro
+        // entró (`onPaymentApproved` → `active`), la fila ya no es de este
+        // barrido y no se toca.
+        const fresh = await tx.execute(sql`
+          SELECT status FROM tenant_subscriptions WHERE tenant_id = ${t.id} FOR UPDATE
         `)
-        const updated = res as unknown as Array<{ id: string }>
-        if (updated.length === 0) return false
+        if ((fresh as unknown as Array<{ status: string }>)[0]?.status !== 'trialing') return false
 
-        await tx.execute(sql`
-          UPDATE tenants
-          SET status = 'suspended', updated_at = NOW()
-          WHERE id = ${t.id} AND status = 'trialing'
-        `)
-        await insertSystemAuditLog(tx, {
-          tenantId: t.id,
-          action: 'tenant.trial_expired',
-          resourceType: 'tenant',
-          resourceId: t.id,
-          metadata: { reason: 'trial_ends_at_passed', status: 'suspended' },
-        })
+        await transitionToFree(t.id, 'trial_expired', tx)
 
-        // doc7 Flujo 7: día 31, el complejo se entera de que la prueba terminó.
-        // El template no dice "bloqueado" ni promete un plazo: vale igual
-        // para el solo lectura.
+        // doc7 Flujo 7: día 31, el complejo se entera de que la prueba terminó
+        // y de que sigue en TurnoGol con el plan gratis.
         await enqueueTenantOwnerNotification(
           {
             tenantId: t.id,
@@ -332,7 +276,7 @@ export async function runExpireTrials(): Promise<void> {
       })
       // La prueba vence una sola vez por complejo: `dedupeId` fijo.
       if (expired) await notifyOwnerPlanEvent(t.id, { event: 'trial_expired' }, 'expired')
-      logger.info('tenant trial expired, now read-only', {
+      logger.info('tenant trial expired, now on free plan', {
         module: 'expire-trials',
         tenantId: t.id,
         tenantName: t.name,

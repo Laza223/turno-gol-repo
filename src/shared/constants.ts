@@ -94,17 +94,36 @@ export const TRIAL_ENDING_WARNING_DAYS = [1, 7] as const
 export const SUBSCRIBED_TRIAL_GRACE_DAYS = 3
 
 /**
- * Días que un complejo con la prueba vencida pasa en solo lectura (`suspended`)
- * antes de que `expire-trials` lo pase a `blocked`. Mismo escalón que la mora
- * (`suspended → blocked` a los 14 días), decisión del dueño 2026-10-22
- * (`docs/decisions/2026-10-22-solo-lectura-al-vencer-la-prueba.md`).
+ * Plan gratis del freemium (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
  *
- * Se cuentan desde que entra en solo lectura: `trial_ends_at`, más
- * `SUBSCRIBED_TRIAL_GRACE_DAYS` si ya tocó "Activar". La fecha la calcula
- * `trialReadOnlyEndsAt` (tenant.lifecycle.ts), y el worker repite la misma
- * cuenta en SQL.
+ * Reservas online que un complejo gratis (`tenants.status = 'free'`) recibe por
+ * mes calendario ART. Al llegar, la ficha pasa a "Reservá por WhatsApp" hasta el
+ * mes siguiente. Cuentan las reservas online creadas en el mes, menos las que
+ * vencieron sin pagar y las que canceló el jugador: las que cancela el dueño
+ * cuentan, así el tope no se esquiva cancelando. Decisión de Lazar: 20.
  */
-export const TRIAL_READ_ONLY_DAYS = 14
+export const FREE_ONLINE_BOOKINGS_PER_MONTH = 20
+/**
+ * Plan gratis: los únicos motivos con los que el dueño marca un horario. Lista
+ * cerrada: un motivo libre sería un nombre de persona encubierto. La valida
+ * `freePlanBookingError` (modules/bookings/free-plan-block.ts).
+ */
+export const FREE_PLAN_BLOCK_REASONS = ['Ocupado', 'Mantenimiento', 'Cancha cerrada'] as const
+
+/**
+ * Reservas online canceladas por el dueño en el mes que pausan las reservas
+ * online de un complejo gratis, hasta que confirme que marcó sus "ocupado".
+ * Cancelar online seguido es la señal de que toma reservas por teléfono sin
+ * marcarlas, y el que paga la doble reserva es el jugador. Decisión de Lazar: 5.
+ */
+export const FREE_ONLINE_CANCEL_PAUSE_THRESHOLD = 5
+
+/**
+ * Días sin uso (sin visitas al panel y sin reservas nuevas) tras los que un
+ * complejo gratis recibe el aviso de borrado. El borrado es `CHURNED_DELETION_DAYS`
+ * después, el mismo plazo de la baja en los términos. Decisión de Lazar: 6 meses.
+ */
+export const FREE_INACTIVE_DAYS = 180
 
 /**
  * Canales oficiales de soporte de TurnoGol (B9).

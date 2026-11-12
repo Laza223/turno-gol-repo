@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { isFreePlan } from '@/modules/tenants/tenant.lifecycle'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
@@ -73,8 +74,8 @@ export default async function DashboardPage() {
   // rebota al manager A `/dashboard`, que es ESTA página, así que sería un loop
   // de redirects. El guard operator deja pasar a los dos y devuelve el rol ya
   // leído, que es lo que hace falta para decidir qué bloques ve cada uno.
-  const auth = await requireOperatorStaff({ allowReadOnly: true })
-  if (!auth.ok) redirect('/login')
+  const auth = await requireOperatorStaff({ allowReadOnly: true, allowFree: true })
+  if (!auth.ok) redirect(auth.reason === 'plan' ? '/reactivar' : '/login')
   const { tenant, role } = auth
 
   // Hoy es la pantalla del mostrador y la ve también el Encargado (decisión del
@@ -82,6 +83,7 @@ export default async function DashboardPage() {
   // era solo del admin (D5) y el manager rebotaba a /grilla. Lo que sigue siendo
   // solo del dueño es la configuración: el checklist de arranque y el tour.
   const isAdmin = role === 'admin'
+  const freePlan = isFreePlan(tenant)
   const wantsChecklist = isAdmin && !tenant.settings.checklist_dismissed_at
 
   const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
@@ -111,13 +113,27 @@ export default async function DashboardPage() {
             mpDisconnectedAt: tenant.mpDisconnectedAt,
           }),
           listCourts(tenant.id, tx),
-          listDayGridBookings(tenant.id, date, tx),
+          listDayGridBookings(tenant.id, date, tx, { freePlan }),
           // Lo que se jugó en días anteriores y nadie cobró, con el mismo saldo que
-          // Caja › Cuentas: Hoy lo muestra debajo de "Cobrar ahora".
-          listUnpaidGridBookingsBefore(tenant.id, date, tx, { limit: EARLIER_UNPAID_LIMIT }),
+          // Caja › Cuentas: Hoy lo muestra debajo de "Cobrar ahora". En el plan
+          // gratis no hay caja, así que no hay nada que cobrar.
+          freePlan
+            ? { bookings: [], count: 0, pendingCents: 0 }
+            : listUnpaidGridBookingsBefore(tenant.id, date, tx, { limit: EARLIER_UNPAID_LIMIT }),
         ])
         return {
-          data: hoy,
+          // Plan gratis (decisión 4): sin caja ni nombres de lo que no entró online.
+          // Las cancelaciones y las señas no dicen si la reserva era online, así
+          // que se van enteras; lo que pide atención (MP, señas, devoluciones) es
+          // todo del plan pago.
+          data: freePlan
+            ? {
+                ...hoy,
+                numbers: { ...hoy.numbers, collectedTodayCents: 0 },
+                whileYouWereAway: hoy.whileYouWereAway.filter((i) => i.kind === 'booking_online'),
+                needsAttention: [],
+              }
+            : hoy,
           courts: courtRows,
           dayBookings: bookingRows,
           earlierUnpaid: earlierRows,
@@ -242,6 +258,7 @@ export default async function DashboardPage() {
           dayIsClosed={dayIsClosed}
           // Solo el dueño puede activar canchas (Configuración es suya).
           canManageCourts={isAdmin}
+          freePlan={freePlan}
           serverNowMs={now.getTime()}
           cancellationPolicyHours={
             tenant.settings.cancellation_policy?.hours_before ?? DEFAULT_CANCELLATION_HOURS_BEFORE

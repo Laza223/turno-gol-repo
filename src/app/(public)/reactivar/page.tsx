@@ -38,7 +38,7 @@ export const metadata: Metadata = {
 }
 
 /** Estados desde los que billing.service.reactivate() permite pedir un preapproval nuevo. */
-const REACTIVATE_ELIGIBLE = new Set(['canceled', 'churned', 'suspended', 'blocked'])
+const REACTIVATE_ELIGIBLE = new Set(['canceled', 'churned', 'suspended', 'blocked', 'free'])
 
 const STATUS_COPY: Record<string, { title: string; description: string }> = {
   past_due: {
@@ -60,6 +60,12 @@ const STATUS_COPY: Record<string, { title: string; description: string }> = {
     title: 'Tu cuenta fue dada de baja',
     description:
       'Por falta de pago prolongada, tu cuenta fue dada de baja. Todavía podés reactivarla y recuperar tus datos antes de que se eliminen.',
+  },
+  // Plan gratis (freemium): llega acá al tocar algo del plan pago o "Pasar al plan".
+  free: {
+    title: 'Esto es con el plan',
+    description:
+      'Con el plan anotás tus turnos con nombre y precio, cargás los fijos, llevás la caja y sumás a tu encargado. Tus jugadores reservan online sin tope.',
   },
   canceled: {
     title: 'Cancelaste tu suscripción',
@@ -128,9 +134,13 @@ export default async function ReactivarPage() {
   if (role !== 'admin') {
     return (
       <section className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center px-6 py-16 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Cuenta pausada</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">
+          {tenant.status === 'free' ? 'El encargado entra con el plan' : 'Cuenta pausada'}
+        </h1>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          Pedile al dueño del complejo que regularice el pago para volver a operar.
+          {tenant.status === 'free'
+            ? 'Avisale al dueño del complejo. Cuando active el plan, vas a poder entrar al panel.'
+            : 'Pedile al dueño del complejo que regularice el pago para volver a operar.'}
         </p>
         {variosComplejos && <SwitchTenantLink />}
       </section>
@@ -252,6 +262,17 @@ export default async function ReactivarPage() {
         2026-10-22 la prueba vencida iba directo a `blocked`, que tampoco la
         mostraba.
       */}
+      {tenant.status === 'free' && (
+        <div className="flex flex-col items-center">
+          <Link
+            href="/dashboard"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
+            Volver al panel
+          </Link>
+        </div>
+      )}
+
       {sub && CANCELABLE.has(sub.status) && !trialReadOnly && (
         <CancelSubscriptionSection
           status={sub.status}

@@ -187,6 +187,7 @@ export type TenantRow = {
     | 'canceled'
     | 'churned'
     | 'deleted'
+    | 'free'
   trialEndsAt: Date | null
   settings: TenantSettings
   openingHours: OpeningHours
@@ -203,4 +204,8 @@ export type TenantRow = {
    *  drizzle la devuelve como string). `null` = todavía sin cargar. */
   latitude: number | null
   longitude: number | null
+  /** Plan gratis: mes ART (`YYYY-MM`) en que llegó al tope de reservas online. */
+  onlineCapMonth: string | null
+  /** Plan gratis: reserva online en pausa por cancelaciones del dueño. */
+  onlinePausedAt: Date | null
 }

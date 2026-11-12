@@ -39,8 +39,14 @@ vi.mock('@/shared/lib/logger', () => ({
 
 type SqlTag = (strings: TemplateStringsArray, ...values: unknown[]) => Promise<unknown[]>
 
+// El barrido del gratis inactivo (freemium, `scheduleInactiveFreeDeletion`) corre
+// antes del wipe con su propia query: acá no devuelve candidatos, así este test
+// sigue midiendo solo el cableado del wipe.
 function makeSqlTag(rows: unknown[]): SqlTag {
-  return (() => Promise.resolve(rows)) as unknown as SqlTag
+  return ((strings: TemplateStringsArray) =>
+    Promise.resolve(
+      strings.join('').includes("t.status = 'free'") ? [] : rows,
+    )) as unknown as SqlTag
 }
 
 const TRAP = () => {

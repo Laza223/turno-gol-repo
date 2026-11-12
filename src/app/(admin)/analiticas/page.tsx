@@ -1,4 +1,9 @@
 import { requireAdminStaff } from '@/modules/staff/guards'
+import Link from 'next/link'
+import { withTenantContext } from '@/shared/db/client'
+import { artMonthOf, isFreePlan } from '@/modules/tenants/tenant.lifecycle'
+import { countOnlineThisMonth } from '@/modules/bookings/free-online-cap'
+import { FREE_ONLINE_BOOKINGS_PER_MONTH } from '@/shared/constants'
 import { resolveSystemAdmin } from '@/modules/auth/system-admin.guards'
 import {
   getCancelReasonsForMonth,
@@ -56,7 +61,15 @@ export default async function AnaliticasPage(props: {
   const searchParams = await props.searchParams
   // El Encargado rebota a /dashboard (default de requireAdminStaff), que ahora
   // también es suya: no hay loop.
-  const { tenant } = await requireAdminStaff({ allowReadOnly: true })
+  const { tenant } = await requireAdminStaff({ allowReadOnly: true, allowFree: true })
+
+  // Plan gratis: vista mínima. Las métricas del negocio son del plan pago.
+  if (isFreePlan(tenant)) {
+    const online = await withTenantContext(tenant.id, (tx) =>
+      countOnlineThisMonth(tenant.id, artMonthOf(), tx),
+    )
+    return <FreePlanMetrics onlineThisMonth={online} />
+  }
 
   const systemAdmin = await resolveSystemAdmin()
   const canSeeSystem = systemAdmin !== null
@@ -109,5 +122,30 @@ export default async function AnaliticasPage(props: {
       writtenOff={writtenOff}
       cancelReasons={cancelReasons}
     />
+  )
+}
+
+function FreePlanMetrics({ onlineThisMonth }: { onlineThisMonth: number }) {
+  return (
+    <section className="mx-auto max-w-xl space-y-4 py-6">
+      <h1 className="text-2xl font-bold tracking-tight text-foreground">Métricas</h1>
+      <p className="text-4xl font-bold tabular-nums text-foreground">
+        {onlineThisMonth}
+        <span className="text-base font-medium text-muted-foreground">
+          {' '}
+          de {FREE_ONLINE_BOOKINGS_PER_MONTH}
+        </span>
+      </p>
+      <p className="text-sm text-muted-foreground">
+        Reservas online que entraron este mes. En el plan gratis tus jugadores pueden reservar hasta{' '}
+        {FREE_ONLINE_BOOKINGS_PER_MONTH} turnos por mes.
+      </p>
+      <p className="text-sm text-muted-foreground">
+        Con el plan ves cuánto facturaste, la ocupación por cancha y por qué se cayeron turnos.{' '}
+        <Link href="/reactivar" className="font-semibold text-foreground underline">
+          Ver el plan
+        </Link>
+      </p>
+    </section>
   )
 }

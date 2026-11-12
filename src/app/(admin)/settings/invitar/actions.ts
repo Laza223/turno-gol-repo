@@ -11,7 +11,7 @@ import type { ActionResult } from '@/shared/types/action-result'
  * (idempotente). Respaldo: el alta ya lo genera, esto cubre si esa generación falló.
  */
 export async function generateReferralLinkAction(): Promise<ActionResult> {
-  const auth = await requireAdminStaffAction()
+  const auth = await requireAdminStaffAction({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 

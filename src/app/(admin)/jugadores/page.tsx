@@ -27,7 +27,7 @@ export default async function JugadoresPage(props: {
   // Constraint: el módulo se protege con requireOperatorStaff (admin + manager).
   // El encargado ve también "Dejaron de venir": atiende a los clientes en el día.
   const auth = await requireOperatorStaff({ allowReadOnly: true })
-  if (!auth.ok) redirect('/dashboard')
+  if (!auth.ok) redirect(auth.reason === 'plan' ? '/reactivar' : '/dashboard')
   const { tenant } = auth
 
   const q = searchParams.q?.trim() || undefined

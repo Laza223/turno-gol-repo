@@ -59,16 +59,16 @@ describe('bookingCanceledPayload', () => {
 
 describe('planPushPayload', () => {
   const cases: Array<[PlanPushEvent, string, string]> = [
-    [{ event: 'trial_ending', daysLeft: 3 }, 'Tu prueba termina en 3 días', 'Activá tu plan'],
-    [{ event: 'trial_ending', daysLeft: 1 }, 'Tu prueba termina mañana', 'Activá tu plan'],
-    [{ event: 'trial_expired' }, 'Terminó tu prueba', 'Activá tu plan'],
+    [{ event: 'trial_ending', daysLeft: 3 }, 'Tu prueba termina en 3 días', 'Activá el plan'],
+    [{ event: 'trial_ending', daysLeft: 1 }, 'Tu prueba termina mañana', 'Activá el plan'],
+    [{ event: 'trial_expired' }, 'Terminó tu prueba', 'Pasaste al plan gratis'],
     [
       { event: 'payment_failed', retryDate: '28/10' },
       'No pudimos cobrar tu plan',
       'Vamos a reintentar el 28/10',
     ],
     [{ event: 'suspended' }, 'Tu cuenta quedó en solo lectura', 'Regularizá el pago'],
-    [{ event: 'blocked' }, 'Bloqueamos el acceso a tu cuenta', 'Tus datos siguen guardados'],
+    [{ event: 'downgraded_free' }, 'Tu complejo pasó al plan gratis', 'Tus jugadores te siguen'],
     [
       { event: 'deletion_warning', deletionDate: '30/11', daysRemaining: 7 },
       'Tus datos se eliminan en 7 días',

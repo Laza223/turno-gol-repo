@@ -45,6 +45,8 @@ export type GridBooking = {
   // Lo dado por perdido del turno ("Dar por perdido"), en centavos. Ya está
   // restado de `pending`; no cuenta como cobrado. Opcional como `pending`.
   writtenOff?: number | null
+  // Plan gratis: la celda no muestra cobro ni precio (lo pone `maskGridBookingForFreePlan`).
+  moneyHidden?: boolean
   // Cuánto de `totalPaid` se atribuyó a cada equipo (decisión del dueño
   // 2026-09-25, cobro por equipo): centavos, o `null`/ausente en cobros sin
   // atribuir. Opcionales: Realtime crudo y fixtures viejas no los traen — ahí
@@ -175,7 +177,7 @@ export function buildBookingsIndex(bookings: GridBooking[]): Map<string, GridBoo
 
 export function computeCells(
   slots: string[],
-  courts: CourtRow[],
+  courts: Pick<CourtRow, 'id'>[],
   bookingsByKey: Map<string, GridBooking>,
 ): Map<string, CellState> {
   const cells = new Map<string, CellState>()

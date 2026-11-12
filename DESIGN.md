@@ -324,6 +324,8 @@ components:
 
 # Design System: TurnoGol
 
+> **Portal en migración (2026-11-08).** [`docs/decisions/2026-11-08-portal-plano-dos-temas.md`](docs/decisions/2026-11-08-portal-plano-dos-temas.md) supera a La Previa: el portal pasa a plano y limpio en claro y oscuro, con una sola tipografía (Archivo), chips en píldora y la barra inferior flotante. El contrato visual por ahora es el mockup [`docs/planning/mockups/2026-11-08-portal-plano/`](docs/planning/mockups/2026-11-08-portal-plano/README.md). Este archivo se reescribe en la fase P4; hasta entonces, lo que dice del portal describe lo que todavía no migró.
+
 ## Overview
 
 **Creative North Star: "El Mostrador y La Previa"**

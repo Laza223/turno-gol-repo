@@ -45,12 +45,12 @@ describe('transitionToActiveFromAny — recovery de dunning (ENS-20)', () => {
 
     const subUpdateText = sqlText(vi.mocked(tx.execute).mock.calls[0]![0])
     expect(subUpdateText).toContain(
-      "status IN ('canceled', 'churned', 'blocked', 'past_due', 'suspended')",
+      "status IN ('canceled', 'churned', 'blocked', 'past_due', 'suspended', 'free')",
     )
 
     const tenantUpdateText = sqlText(vi.mocked(tx.execute).mock.calls[1]![0])
     expect(tenantUpdateText).toContain(
-      "status IN ('canceled', 'churned', 'blocked', 'past_due', 'suspended')",
+      "status IN ('canceled', 'churned', 'blocked', 'past_due', 'suspended', 'free')",
     )
   })
 

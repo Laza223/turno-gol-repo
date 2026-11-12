@@ -48,7 +48,7 @@ export type PlanPushEvent =
   | { event: 'trial_expired' }
   | { event: 'payment_failed'; retryDate: string }
   | { event: 'suspended' }
-  | { event: 'blocked' }
+  | { event: 'downgraded_free' }
   | { event: 'deletion_warning'; deletionDate: string; daysRemaining: number }
 
 function planCopy(e: PlanPushEvent): { title: string; body: string } {
@@ -57,12 +57,12 @@ function planCopy(e: PlanPushEvent): { title: string; body: string } {
       return {
         title:
           e.daysLeft <= 1 ? 'Tu prueba termina mañana' : `Tu prueba termina en ${e.daysLeft} días`,
-        body: 'Activá tu plan para seguir usando TurnoGol sin cortes.',
+        body: 'Activá el plan para seguir anotando tus turnos, fijos y caja.',
       }
     case 'trial_expired':
       return {
         title: 'Terminó tu prueba',
-        body: 'Activá tu plan para seguir usando TurnoGol.',
+        body: 'Pasaste al plan gratis. Tus jugadores te siguen reservando online.',
       }
     case 'payment_failed':
       return {
@@ -74,10 +74,10 @@ function planCopy(e: PlanPushEvent): { title: string; body: string } {
         title: 'Tu cuenta quedó en solo lectura',
         body: 'No pudimos cobrar el plan. Regularizá el pago para volver a operar.',
       }
-    case 'blocked':
+    case 'downgraded_free':
       return {
-        title: 'Bloqueamos el acceso a tu cuenta',
-        body: 'Tus datos siguen guardados. Regularizá el pago para recuperarla.',
+        title: 'Tu complejo pasó al plan gratis',
+        body: 'Tus jugadores te siguen reservando online. Para anotar la noche, activá el plan.',
       }
     case 'deletion_warning':
       return {

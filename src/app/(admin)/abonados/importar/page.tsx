@@ -14,7 +14,7 @@ import { importAbonadosAction, previewAbonadoImportAction } from './actions'
 
 export default async function ImportarFijosPage() {
   const auth = await requireOperatorStaff({ allowReadOnly: true })
-  if (!auth.ok) redirect('/login')
+  if (!auth.ok) redirect(auth.reason === 'plan' ? '/reactivar' : '/login')
   const { tenant } = auth
 
   const courts = await withTenantContext(tenant.id, (tx) => listCourts(tenant.id, tx))

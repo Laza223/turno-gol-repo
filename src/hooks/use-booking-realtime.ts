@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
+import { isOnlineBooking, maskGridBookingForFreePlan } from '@/lib/booking/free-plan-mask'
 import type { GridBooking } from '@/components/booking/BookingGrid'
 import type {
   BookingStatus,
@@ -30,6 +31,7 @@ type ApiResponse = {
     payment_method: PaymentMethodValue | null
     deposit_status: DepositStatus
     deposit_amount: number
+    created_by_staff?: string | null
     total_paid: number
     pending: number
     written_off?: number
@@ -150,9 +152,18 @@ function normalizeApiRow(row: ApiResponse['data'][number]): GridBooking {
 
 export function useBookingRealtime(opts: {
   tenantId: string
+  /** Día operativo; en la vista por semana, el primer día del rango. */
   date: string
+  /** Último día del rango (vista por semana). Sin esto, el hook sigue un solo día. */
+  dateTo?: string
+  /** Solo los turnos de esta cancha (vista por semana). Sin esto, todas. */
+  courtId?: string
   initialBookings: GridBooking[]
+  /** Plan gratis: toda fila nueva pasa por `maskGridBookingForFreePlan`. */
+  freePlan?: boolean
 }): { bookings: GridBooking[]; status: RealtimeStatus; refetch: () => Promise<void> } {
+  const freePlan = opts.freePlan === true
+  const { date, dateTo = opts.date, courtId } = opts
   const [bookings, setBookings] = useState<GridBooking[]>(opts.initialBookings)
   const [status, setStatus] = useState<RealtimeStatus>('CONNECTING')
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -164,16 +175,40 @@ export function useBookingRealtime(opts: {
   // perdido eventos.
   const needsCatchUpRef = useRef(false)
 
+  // Plan gratis: el payload de Realtime trae la fila entera (nombre, precio).
+  const maskRealtime = useCallback(
+    (row: RawRow): GridBooking => {
+      const b = normalizeRealtimeRow(row)
+      if (!freePlan) return b
+      const createdByStaff =
+        typeof row['created_by_staff'] === 'string' ? row['created_by_staff'] : null
+      return maskGridBookingForFreePlan(b, isOnlineBooking({ type: b.type, createdByStaff }))
+    },
+    [freePlan],
+  )
+
   const fetchFromApi = useCallback(async () => {
     try {
-      const res = await fetch(`/api/bookings?date=${opts.date}&limit=200`)
+      const range = dateTo !== date ? `&date_to=${dateTo}` : ''
+      const court = courtId ? `&court_id=${courtId}` : ''
+      const res = await fetch(`/api/bookings?date=${date}${range}${court}&limit=200`)
       if (!res.ok) return
       const json = (await res.json()) as ApiResponse
-      setBookings(json.data.map(normalizeApiRow))
+      setBookings(
+        json.data.map((row) => {
+          const b = normalizeApiRow(row)
+          return freePlan
+            ? maskGridBookingForFreePlan(
+                b,
+                isOnlineBooking({ type: row.type, createdByStaff: row.created_by_staff ?? null }),
+              )
+            : b
+        }),
+      )
     } catch {
       // retry on next tick
     }
-  }, [opts.date])
+  }, [date, dateTo, courtId, freePlan])
 
   // Debounced authoritative refetch: collapses rapid INSERT/UPDATE bursts into
   // one round-trip so player names (absent from the realtime payload) get backfilled.
@@ -204,14 +239,17 @@ export function useBookingRealtime(opts: {
             const oldDate =
               typeof oldRow['date'] === 'string' ? (oldRow['date'] as string).slice(0, 10) : null
 
-            if (newDate !== opts.date && oldDate !== opts.date) return
+            // YYYY-MM-DD compara bien como texto: el rango es [date, dateTo].
+            const inRange = (d: string | null) => d !== null && d >= date && d <= dateTo
+            if (!inRange(newDate) && !inRange(oldDate)) return
+            if (courtId && newRow['court_id'] !== courtId && oldRow['court_id'] !== courtId) return
 
             if (payload.eventType === 'DELETE') {
               const deletedId = (oldRow['id'] as string | undefined) ?? ''
               setBookings((prev) => prev.filter((b) => b.id !== deletedId))
             } else if (payload.eventType === 'INSERT') {
               if (!newRow['id']) return
-              const normalized = normalizeRealtimeRow(newRow)
+              const normalized = maskRealtime(newRow)
               setBookings((prev) => {
                 const idx = prev.findIndex((b) => b.id === normalized.id)
                 if (idx >= 0) {
@@ -225,7 +263,7 @@ export function useBookingRealtime(opts: {
               scheduleReconcile()
             } else if (payload.eventType === 'UPDATE') {
               if (!newRow['id']) return
-              const normalized = normalizeRealtimeRow(newRow)
+              const normalized = maskRealtime(newRow)
               setBookings((prev) => {
                 const idx = prev.findIndex((b) => b.id === normalized.id)
                 if (idx >= 0) {
@@ -305,7 +343,7 @@ export function useBookingRealtime(opts: {
         reconcileRef.current = null
       }
     }
-  }, [opts.tenantId, opts.date, fetchFromApi, scheduleReconcile])
+  }, [opts.tenantId, date, dateTo, courtId, fetchFromApi, scheduleReconcile, maskRealtime])
 
   return { bookings, status, refetch: fetchFromApi }
 }

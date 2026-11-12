@@ -1,4 +1,5 @@
 import {
+  Gift,
   AlertCircle,
   Ban,
   CheckCircle2,
@@ -43,6 +44,7 @@ const TENANT_STATUS_VISUALS: Record<TenantStatus, StatusBadgeVisual> = {
   canceled: { icon: XCircle, label: 'Cancelado', tone: 'neutral' },
   churned: { icon: TrendingDown, label: 'Perdido', tone: 'destructive' },
   deleted: { icon: Trash2, label: 'Eliminado', tone: 'neutral' },
+  free: { icon: Gift, label: 'Gratis', tone: 'info' },
 }
 
 /**

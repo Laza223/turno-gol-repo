@@ -8,6 +8,21 @@ import { isMpAlreadyCancelledPreapprovalError } from '@/modules/payments/mp-toke
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import { isR2Configured } from '@/shared/storage/r2-config'
 import { RIVAL_AVATAR_PREFIX } from '@/modules/players/player-photo.service'
+import { CHURNED_DELETION_DAYS } from '@/modules/billing/lifecycle.service'
+import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
+import { insertSystemAuditLog } from '@/shared/db/audit'
+import { FREE_INACTIVE_DAYS } from '@/shared/constants'
+import { artDateOf } from '@/shared/time/art-date'
+
+/**
+ * Estados que el wipe puede borrar con `scheduled_deletion_at` vencido. LISTA
+ * BLANCA a propósito (condición C6 del ADR del freemium): antes era
+ * `NOT IN ('deleted','active','trialing')` y un estado nuevo entraba solo a la
+ * lista de borrables. Son los únicos que hoy fechan el borrado: `churned` (mora
+ * del lifecycle anterior), `blocked` (baja voluntaria del lifecycle anterior) y
+ * `free` (gratis sin uso, `scheduleInactiveFreeDeletion`).
+ */
+const WIPEABLE_TENANT_STATUSES = ['churned', 'blocked', 'free'] as const
 
 /**
  * Sentinel de actor de sistema (mismo valor que `SYSTEM_ACTOR_ID` en
@@ -474,7 +489,10 @@ export async function wipeTenant(
     // scheduled_deletion_at como string en JS, ver raw-sql-execute-date-string).
     const tenantRows = await tx.execute(drizzleSql`
       SELECT (
-        status NOT IN ('deleted', 'active', 'trialing')
+        status::text IN (${drizzleSql.join(
+          WIPEABLE_TENANT_STATUSES.map((st) => drizzleSql`${st}`),
+          drizzleSql`, `,
+        )})
         AND scheduled_deletion_at IS NOT NULL
         AND scheduled_deletion_at <= NOW()
       ) AS eligible
@@ -631,6 +649,106 @@ export async function wipeTenant(
   return 'wiped'
 }
 
+/**
+ * Freemium, decisión 7 (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md):
+ * un complejo gratis sin uso en `FREE_INACTIVE_DAYS` (nadie entró al panel y no
+ * se creó ninguna reserva) recibe el aviso de borrado y queda agendado a
+ * `CHURNED_DELETION_DAYS`, el plazo de la baja en los términos. Entrar al panel
+ * lo cancela (`touchStaffSeen`, layout de `(admin)`).
+ *
+ * Sin `last_staff_seen_at` (nunca entró desde que existe la columna) cuenta la
+ * fecha de alta, así un complejo recién migrado no se agenda de un día para otro.
+ * Idempotente: solo toma los que no tienen borrado agendado.
+ */
+export async function scheduleInactiveFreeDeletion(): Promise<void> {
+  const sql = getWorkerSql()
+  const candidates = await sql<{ id: string; name: string; owner_name: string | null }[]>`
+    SELECT t.id, t.name, o.first_name AS owner_name
+    FROM tenants t
+    LEFT JOIN LATERAL (
+      SELECT su.first_name
+      FROM tenant_staff_members tsm
+      JOIN staff_users su ON su.id = tsm.staff_user_id
+      WHERE tsm.tenant_id = t.id AND tsm.is_active = true AND tsm.role = 'admin'
+      LIMIT 1
+    ) o ON TRUE
+    WHERE t.status = 'free'
+      AND t.scheduled_deletion_at IS NULL
+      -- Se cuenta desde lo último entre la visita al panel y la baja a gratis:
+      -- un complejo que el backfill pasó a gratis hoy (sin last_staff_seen_at,
+      -- columna nueva) no se agenda por su created_at de hace meses.
+      AND GREATEST(
+            COALESCE(t.last_staff_seen_at, t.created_at),
+            COALESCE(
+              (SELECT MAX(al.created_at) FROM audit_logs al
+               WHERE al.tenant_id = t.id AND al.action = 'tenant.downgraded_to_free'),
+              t.created_at
+            )
+          ) < NOW() - make_interval(days => ${FREE_INACTIVE_DAYS}::int)
+      AND NOT EXISTS (
+        SELECT 1 FROM bookings b
+        WHERE b.tenant_id = t.id
+          AND b.created_at >= NOW() - make_interval(days => ${FREE_INACTIVE_DAYS}::int)
+      )
+  `
+  if (candidates.length === 0) return
+
+  const db = getWorkerDb()
+  for (const t of candidates) {
+    try {
+      const deletionDate = new Date(Date.now() + CHURNED_DELETION_DAYS * 86_400_000)
+      // react-doctor-disable-next-line react-doctor/async-await-in-loop
+      await db.transaction(async (tx) => {
+        const res = await tx.execute(drizzleSql`
+          UPDATE tenants
+          SET scheduled_deletion_at = ${deletionDate.toISOString()}::timestamptz,
+              updated_at = NOW()
+          WHERE id = ${t.id} AND status = 'free' AND scheduled_deletion_at IS NULL
+          RETURNING id
+        `)
+        if ((res as unknown as Array<{ id: string }>).length === 0) return
+        await insertSystemAuditLog(tx, {
+          tenantId: t.id,
+          action: 'tenant.free_inactive_deletion_scheduled',
+          resourceType: 'tenant',
+          resourceId: t.id,
+          metadata: { inactiveDays: FREE_INACTIVE_DAYS, deletionInDays: CHURNED_DELETION_DAYS },
+        })
+        await enqueueTenantOwnerNotification(
+          {
+            tenantId: t.id,
+            templateName: 'tenant_deletion_warning',
+            triggerEvent: 'sweep.free_inactive',
+            content: {
+              ownerName: t.owner_name ?? 'Hola',
+              tenantName: t.name,
+              deletionDate: ddmmyyyyArt(deletionDate),
+              daysRemaining: CHURNED_DELETION_DAYS,
+              freeInactive: true,
+            },
+          },
+          tx,
+        )
+      })
+      logger.info('inactive free tenant scheduled for deletion', {
+        module: 'data-retention',
+        tenantId: t.id,
+      })
+    } catch (err) {
+      logger.error('failed scheduling inactive free tenant', {
+        module: 'data-retention',
+        tenantId: t.id,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
+}
+
+/** dd/mm/aaaa en ART, el formato del mail de aviso de borrado. */
+function ddmmyyyyArt(d: Date): string {
+  return artDateOf(d).split('-').reverse().join('/')
+}
+
 export async function runDataRetentionCleanup(): Promise<void> {
   const sql = getWorkerSql()
   const gateway = getBillingGateway()
@@ -722,11 +840,20 @@ export async function runDataRetentionCleanup(): Promise<void> {
     })
   }
 
+  try {
+    await scheduleInactiveFreeDeletion()
+  } catch (err) {
+    logger.error('schedule inactive free deletion failed (non-fatal, retried next run)', {
+      module: 'data-retention',
+      error: err instanceof Error ? err.message : String(err),
+    })
+  }
+
   const targets = await sql<{ id: string }[]>`
     SELECT id FROM tenants
     WHERE scheduled_deletion_at IS NOT NULL
       AND scheduled_deletion_at <= NOW()
-      AND status NOT IN ('deleted', 'active', 'trialing')
+      AND status::text = ANY(${WIPEABLE_TENANT_STATUSES as unknown as string[]})
   `
   const ids = targets.map((r) => r.id)
   if (ids.length === 0) return

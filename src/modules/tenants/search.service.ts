@@ -1,4 +1,5 @@
 import { and, asc, eq, ilike, inArray, sql, type SQL } from 'drizzle-orm'
+import { artMonthOf, effectiveAllowOnlineBooking } from './tenant.lifecycle'
 import { getDb, getWorkerDb } from '@/shared/db/client'
 import { courts, reviews, tenants } from '@/shared/db/schema'
 import { track, withSpan } from '@/shared/observability'
@@ -85,7 +86,13 @@ export type SearchResult = { results: PublicTenantCard[]; total: number }
 export type CityCount = { city: string; province: string; count: number }
 
 // Estados de tenant visibles en superficies públicas (search + availability).
-export const VISIBLE_TENANT_STATUSES = ['active', 'trialing'] as const
+// `free` (plan gratis del freemium) aparece igual que la prueba: es justamente lo
+// que el gratis regala (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
+// Sin verificación previa por decisión de Lazar (decisión 6). Lo heredan
+// SEARCHABLE, `publicTenantVisibilityConds`, el sitemap, `listPublicCities`, la
+// disponibilidad cruzada y `listTopPublicTenantSlugs`. Las funciones RIVAL del
+// tablón (migr. 111) repiten la lista en SQL: se mueven juntas.
+export const VISIBLE_TENANT_STATUSES = ['active', 'trialing', 'free'] as const
 
 /**
  * Estados LISTABLES en descubrimiento (búsqueda, selector de ciudad,
@@ -158,6 +165,10 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
     // Clave ausente = habilitado (coincide con el default del card mapping).
     conds.push(
       sql`COALESCE((${tenants.settings} ->> 'allow_online_booking')::boolean, true) = true`,
+    )
+    // Plan gratis topeado o en pausa: no toma reservas online este mes.
+    conds.push(
+      sql`NOT (${tenants.status}::text = 'free' AND (${tenants.onlinePausedAt} IS NOT NULL OR ${tenants.onlineCapMonth} IS NOT DISTINCT FROM ${artMonthOf()}))`,
     )
   }
 
@@ -248,6 +259,9 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
         logoUrl: tenants.logoUrl,
         coverUrl: tenants.coverUrl,
         settings: tenants.settings,
+        status: tenants.status,
+        onlineCapMonth: tenants.onlineCapMonth,
+        onlinePausedAt: tenants.onlinePausedAt,
         fromPriceCents: visibleFromPriceCentsSql,
         fromPricePerPlayerCents: visibleFromPricePerPlayerCentsSql,
         amenities: tenants.amenities,
@@ -280,7 +294,12 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
     province: r.province,
     logoUrl: r.logoUrl,
     coverUrl: r.coverUrl,
-    allowOnlineBooking: (r.settings as TenantSettings).allow_online_booking ?? true,
+    allowOnlineBooking: effectiveAllowOnlineBooking({
+      status: r.status,
+      allowOnlineBookingSetting: (r.settings as TenantSettings).allow_online_booking ?? true,
+      onlineCapMonth: r.onlineCapMonth,
+      onlinePausedAt: r.onlinePausedAt,
+    }),
     fromPriceCents: r.fromPriceCents ?? null,
     fromPricePerPlayerCents: r.fromPricePerPlayerCents ?? null,
     amenities: (r.amenities ?? {}) as Record<string, boolean>,

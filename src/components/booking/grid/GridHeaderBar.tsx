@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { CalendarDays, ChevronLeft, ChevronRight, Ellipsis, Share2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatArs } from '@/lib/format'
@@ -30,6 +30,8 @@ type Props = {
   onOpenStory?: () => void
   /** "Cobrar los N": abre las tarjetas de los turnos en rojo. El padre solo lo pasa mirando la noche vigente (día operativo). */
   onOpenChargeMany?: () => void
+  /** "Día | Semana" (lo arma la página): va a la derecha de la barra de escritorio. */
+  viewToggle?: ReactNode
 }
 
 /**
@@ -161,6 +163,7 @@ export function GridHeaderBar({
   onToggleHighlight,
   onOpenStory,
   onOpenChargeMany,
+  viewToggle,
 }: Props) {
   const isToday = todayArt !== '' && date === todayArt
   const hasPending = !!pendingSummary && pendingSummary.count > 0
@@ -331,6 +334,7 @@ export function GridHeaderBar({
             </Tooltip>
             {todayButton}
           </div>
+          {viewToggle}
           {pendingChip}
           {chargeManyButton}
           {storyButton}

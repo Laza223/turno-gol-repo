@@ -4,9 +4,8 @@ import { insertAuditLog } from '@/shared/db/audit'
 import {
   transitionActiveToPastDue,
   transitionBlockedToChurned,
-  transitionCanceledToBlocked,
   transitionPastDueToSuspended,
-  transitionSuspendedToBlocked,
+  transitionToFree,
   transitionToActiveFromAny,
   transitionTrialingToActive,
 } from '@/modules/billing/lifecycle.service'
@@ -78,11 +77,12 @@ export class PlanAlreadyAssignedError extends Error {
  *   past_due → active     transitionToActiveFromAny
  *   past_due → suspended  transitionPastDueToSuspended (gate: dunning ≥ 7d)
  *   suspended→ active     transitionToActiveFromAny
- *   suspended→ blocked    transitionSuspendedToBlocked (gate: dunning ≥ 14d)
+ *   suspended→ free       transitionToFree 'dunning_ended' (gate: dunning ≥ 14d)
  *   blocked  → active     transitionToActiveFromAny
  *   blocked  → churned    transitionBlockedToChurned (gate: dunning ≥ 90d)
  *   canceled → active     transitionToActiveFromAny
- *   canceled → blocked    transitionCanceledToBlocked (gate: period_end vencido)
+ *   canceled → free       transitionToFree 'cancel_period_ended' (gate: period_end vencido)
+ *   free     → active     transitionToActiveFromAny
  *   churned  → active     transitionToActiveFromAny
  *
  * `canceled` como DESTINO se maneja con `cancelSubscriptionForSupport` (además
@@ -102,11 +102,12 @@ export const FORCEABLE_TRANSITIONS: Record<TenantStatus, readonly TenantStatus[]
   trialing: ['active'],
   active: ['past_due'],
   past_due: ['active', 'suspended'],
-  suspended: ['active', 'blocked'],
+  suspended: ['active', 'free'],
   blocked: ['active', 'churned'],
-  canceled: ['active', 'blocked'],
+  canceled: ['active', 'free'],
   churned: ['active'],
   deleted: [],
+  free: ['active'],
 }
 
 /** Estados desde los que `reactivateTenant` (transitionToActiveFromAny) aplica. */
@@ -116,6 +117,7 @@ export const REACTIVATABLE_STATUSES: readonly TenantStatus[] = [
   'blocked',
   'past_due',
   'suspended',
+  'free',
 ]
 
 // ─── Helpers internos ────────────────────────────────────────────────────────
@@ -286,12 +288,12 @@ export async function forceTenantStatus(
       case 'suspended':
         await transitionPastDueToSuspended(tenantId, tx)
         break
-      case 'blocked':
-        if (from === 'canceled') {
-          await transitionCanceledToBlocked(tenantId, tx)
-        } else {
-          await transitionSuspendedToBlocked(tenantId, tx)
-        }
+      case 'free':
+        await transitionToFree(
+          tenantId,
+          from === 'canceled' ? 'cancel_period_ended' : 'dunning_ended',
+          tx,
+        )
         break
       case 'churned':
         await transitionBlockedToChurned(tenantId, tx)

@@ -7,6 +7,11 @@ export type TenantDeletionWarningData = {
   tenantName: string
   deletionDate: string // "15/05/2026"
   daysRemaining: number
+  /**
+   * Complejo del plan gratis sin uso (freemium, decisión 7): no tiene nada que
+   * reactivar, alcanza con entrar al panel para que el borrado se cancele.
+   */
+  freeInactive?: boolean
 }
 
 export function renderTenantDeletionWarning(data: TenantDeletionWarningData): EmailContent {
@@ -19,13 +24,23 @@ export function renderTenantDeletionWarning(data: TenantDeletionWarningData): Em
   <p>Hola ${escapeHtml(data.ownerName)},</p>
   <p>Tu cuenta <strong>${escapeHtml(data.tenantName)}</strong> está marcada para eliminación definitiva el <strong>${data.deletionDate}</strong>.</p>
   <p>Esta acción es irreversible: borraremos reservas, pagos, jugadores y configuración (Ley 25.326).</p>
-  <p>Si querés conservar tus datos, reactivá la suscripción antes de esa fecha:</p>
+  ${
+    data.freeInactive
+      ? `<p>Pasaron 6 meses sin que nadie entre al panel ni lleguen reservas. Si querés seguir en TurnoGol, entrá a tu panel antes de esa fecha y cancelamos el borrado.</p>
+  <p style="text-align:center;margin:24px 0">
+    <a href="${appLink('/dashboard')}" style="background:#dc2626;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Entrar al panel</a>
+  </p>`
+      : `<p>Si querés conservar tus datos, reactivá la suscripción antes de esa fecha:</p>
   <p style="text-align:center;margin:24px 0">
     <a href="${appLink('/settings/facturacion')}" style="background:#dc2626;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600">Reactivar cuenta →</a>
-  </p>
+  </p>`
+  }
   <p style="color:#64748b;font-size:14px">— El equipo de TurnoGol</p>
 </body>
 </html>`
-  const text = `Tus datos se eliminan en ${data.daysRemaining} días\n\nHola ${data.ownerName},\n\nTu cuenta ${data.tenantName} se elimina el ${data.deletionDate}. Reactivá antes en: ${appLink('/settings/facturacion')}\n\n— El equipo de TurnoGol`
+  const next = data.freeInactive
+    ? `Entrá a tu panel antes de esa fecha y cancelamos el borrado: ${appLink('/dashboard')}`
+    : `Reactivá antes en: ${appLink('/settings/facturacion')}`
+  const text = `Tus datos se eliminan en ${data.daysRemaining} días\n\nHola ${data.ownerName},\n\nTu cuenta ${data.tenantName} se elimina el ${data.deletionDate}. ${next}\n\n— El equipo de TurnoGol`
   return { subject, html, text }
 }

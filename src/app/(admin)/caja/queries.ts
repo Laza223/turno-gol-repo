@@ -16,7 +16,7 @@ import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
  */
 export async function requireCajaContext() {
   const auth = await requireOperatorStaff({ allowReadOnly: true })
-  if (!auth.ok) redirect('/login')
+  if (!auth.ok) redirect(auth.reason === 'plan' ? '/reactivar' : '/login')
   const { user, tenant, role } = auth
 
   const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)

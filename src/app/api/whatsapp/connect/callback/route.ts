@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { lifecycleGateForStaff } from '@/modules/staff/guards'
+import { isFreePlan } from '@/modules/tenants/tenant.lifecycle'
 import { SETTINGS_ADMIN_ONLY_NOTICE } from '@/modules/staff/roles'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
@@ -54,6 +55,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const gate = await lifecycleGateForStaff(tenant)
   if (gate === 'blocked') return to('/suspended')
   if (gate === 'read_only') return to('/reactivar')
+  // Plan gratis: el asistente de WhatsApp es del plan (el bot ya calla en free).
+  if (isFreePlan(tenant)) return to('/reactivar')
   // El rol se relee de la DB: el claim del JWT nunca se confía. El encargado
   // rebota igual que en settings/layout.tsx, con el aviso de Ajustes.
   if ((await getStaffRole(tenant.id, user.staffUserId)) !== 'admin') {

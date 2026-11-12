@@ -39,6 +39,7 @@ export function GridOverlays({
   createBookingAction,
   createAbonadoAction,
   checkAvailabilityAction,
+  freePlan = false,
   searchPlayersAction,
   detailBooking,
   courtName,
@@ -60,6 +61,7 @@ export function GridOverlays({
   createBookingAction: CreateBookingAction
   createAbonadoAction: CreateAbonadoAction
   checkAvailabilityAction?: CheckSlotAvailabilityAction
+  freePlan?: boolean
   searchPlayersAction?: SearchBookingPlayersAction
   detailBooking: GridBooking | null
   courtName: string
@@ -90,6 +92,7 @@ export function GridOverlays({
           createBookingAction={createBookingAction}
           createAbonadoAction={createAbonadoAction}
           checkAvailabilityAction={checkAvailabilityAction}
+          freePlan={freePlan}
           searchPlayersAction={searchPlayersAction}
         />
       )}

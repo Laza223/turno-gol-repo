@@ -423,11 +423,14 @@ export async function onPaymentApproved(
     sub.status === 'suspended' ||
     sub.status === 'blocked' ||
     sub.status === 'churned' ||
-    sub.status === 'canceled'
+    sub.status === 'canceled' ||
+    // Freemium: el gratis que paga (un checkout pendiente que MP cobró tarde,
+    // o el que pasa al plan desde /reactivar) vuelve a `active`.
+    sub.status === 'free'
   ) {
     await transitionToActiveFromAny(tenantId, paidAt, newPeriodEnd, tx)
     template = 'subscription_renewed'
-  } else {
+  } else if (sub.status === 'active') {
     // active — no transition, solo extiende el período.
     await tx.execute(sql`
       UPDATE tenant_subscriptions
@@ -437,6 +440,12 @@ export async function onPaymentApproved(
       WHERE tenant_id = ${tenantId} AND status = 'active'
     `)
     template = 'subscription_renewed'
+  } else {
+    // Un estado que esta cadena no conoce: antes caía en la rama de `active` y
+    // el UPDATE no tocaba ninguna fila, con el cobro hecho y el complejo sin
+    // activar (así pasaba con `free`, condición C1 del ADR del freemium). Que
+    // falle fuerte: el webhook reintenta y el reconciliador lo levanta.
+    throw new Error(`onPaymentApproved: estado de suscripción inesperado '${sub.status}'`)
   }
 
   // Si este complejo llegó por un referido, su primer cobro real le gana el

@@ -10,12 +10,12 @@ import { PLANS } from './plans-data'
 // La base pública sale del mismo catálogo que la calculadora.
 export const metadata = buildMetadata({
   title: 'Precios — TurnoGol para complejos de fútbol',
-  description: `Un precio de ${formatArs(PLANS[0]!.priceMonthly)} por cancha al mes. Sin comisión por reserva, sin permanencia. 30 días gratis, sin tarjeta.`,
+  description: `Plan Gratis para aparecer donde buscan cancha, y Completo a ${formatArs(PLANS[0]!.priceMonthly)} por cancha al mes. Sin comisión por reserva, sin permanencia. 30 días de Completo gratis, sin tarjeta.`,
   path: '/precios',
 })
 
 const HERO_CHIPS = [
-  '30 días gratis, sin tarjeta',
+  '30 días de Completo gratis, sin tarjeta',
   'Mes a mes, sin permanencia',
   'Sin comisión por reserva',
 ]
@@ -50,7 +50,7 @@ const STEPS = [
   {
     n: '03',
     t: 'Seguí solo si te sirve',
-    d: 'Mes a mes, sin permanencia. Si lo dejás, exportás tus datos y no pagás nada más.',
+    d: 'Mes a mes, sin permanencia. Si no pagás, quedás en el plan Gratis: seguís apareciendo y tus jugadores te siguen reservando online.',
   },
 ]
 
@@ -81,7 +81,11 @@ const FAQ = [
   },
   {
     q: '¿Qué pasa cuando se terminan los 30 días gratis?',
-    a: 'Elegís tu plan y cargás el medio de pago. Como no pedimos tarjeta para empezar, no hay ningún cobro sorpresa: si no seguís, no pagás nada y tus datos quedan disponibles 60 días por si volvés.',
+    a: 'Si activás Completo, seguís igual. Si no, pasás al plan Gratis: seguís en el buscador y tus jugadores te reservan online, hasta 20 turnos por mes. Tus fijos, tu caja y tus jugadores quedan guardados para cuando vuelvas. Como no pedimos tarjeta para empezar, no hay ningún cobro sorpresa.',
+  },
+  {
+    q: '¿El plan Gratis vence?',
+    a: 'No. Mientras lo uses, sigue. Si pasan 6 meses sin que entres al panel ni te lleguen reservas, te avisamos por mail y, si no volvés, borramos la cuenta a los 90 días. Las condiciones del Gratis pueden cambiar, siempre con 30 días de aviso.',
   },
 ]
 
@@ -167,11 +171,11 @@ function Hero() {
           className="mx-auto mt-6 max-w-[560px] text-slate-400"
           style={{ fontSize: 'clamp(15px, 1.4vw, 18px)', lineHeight: '1.55' }}
         >
-          Eso sale TurnoGol: un precio fijo según cuántas canchas tenés.{' '}
+          Eso sale Completo: un precio fijo según cuántas canchas tenés.{' '}
           <span className="font-semibold text-slate-200">
             Sin comisión por reserva, sin permanencia, sin sorpresas.
           </span>{' '}
-          El primer mes es gratis.
+          El primer mes es gratis, y si no seguís, quedás en el plan Gratis.
         </p>
 
         <ul className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-[13px] text-slate-400">
@@ -252,10 +256,10 @@ function TodoIncluido() {
                 letterSpacing: '-0.025em',
               }}
             >
-              Todo esto, para todas tus canchas.
+              Todo esto viene en Completo.
             </h2>
             <p className="mt-[14px] text-base leading-[1.55] text-slate-400">
-              Todas las funciones incluidas. Pagás por la cantidad exacta de canchas.
+              Para todas tus canchas. Pagás por la cantidad exacta de canchas.
             </p>
           </div>
         </Reveal>

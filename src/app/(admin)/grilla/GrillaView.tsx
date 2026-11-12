@@ -3,6 +3,12 @@
 import type { ComponentProps } from 'react'
 import dynamic from 'next/dynamic'
 import { BookingGrid } from '@/components/booking/BookingGrid'
+import { WeekGrid } from '@/components/booking/WeekGrid'
+import type {
+  RenderCanteenDialog,
+  RenderChargeModal,
+} from '@/components/booking/slot-panel/actions'
+import type { CourtRow } from '@/modules/courts/court.types'
 import type { ListCanteenCatalog, SellTicketForBooking } from './_components/BookingCanteenDialog'
 import type { TrackStoryExport } from './_components/StoryShareDialog'
 
@@ -61,6 +67,8 @@ type Props = Omit<
     bookingAdvanceDays: number
     trackAction: TrackStoryExport
   }
+  /** Vista por semana de esta cancha (en vez de la vista por día). */
+  week?: { court: CourtRow }
 }
 
 export function GrillaView({
@@ -68,8 +76,66 @@ export function GrillaView({
   cancellationPolicyHours,
   lateCancelHours = 0,
   storyShare,
+  week,
   ...gridProps
 }: Props) {
+  const renderCanteenDialog: RenderCanteenDialog | undefined = canteen
+    ? (args) => (
+        <BookingCanteenDialog
+          {...args}
+          listCatalogAction={canteen.listCatalogAction}
+          sellTicketAction={canteen.sellTicketAction}
+        />
+      )
+    : undefined
+
+  // Sin acciones (stories/tests que no las cablean) el modal no puede ofrecer
+  // nada de todos modos: mismo criterio que `slotPanelActions` opcional en
+  // BookingGrid — no se ofrece detalle, no se rompe nada.
+  const renderChargeModal: RenderChargeModal = (args) =>
+    args.actions && (
+      <HoyChargeModal
+        booking={args.booking}
+        courtName={args.courtName}
+        courts={args.courts}
+        dayBookings={args.dayBookings}
+        daySlots={args.daySlots}
+        nowMs={args.nowMs}
+        isRefreshing={args.isRefreshing}
+        hasEnded={args.hasEnded}
+        actions={args.actions}
+        renderCanteenDialog={args.renderCanteenDialog}
+        onClose={args.onClose}
+        onMutated={args.onMutated}
+        cancellationPolicyHours={cancellationPolicyHours}
+        lateCancelHours={lateCancelHours}
+      />
+    )
+
+  // Vista por semana: una cancha, siete días. Comparte alta, panel y cobro con la del día.
+  if (week) {
+    return (
+      <WeekGrid
+        court={week.court}
+        courts={gridProps.courts}
+        initialBookings={gridProps.initialBookings}
+        date={gridProps.date}
+        tenantId={gridProps.tenantId}
+        openingHours={gridProps.openingHours}
+        closedDates={gridProps.closedDates}
+        closesNextDay={gridProps.closesNextDay}
+        action={gridProps.action}
+        createAbonadoAction={gridProps.createAbonadoAction}
+        checkAvailabilityAction={gridProps.checkAvailabilityAction}
+        searchPlayersAction={gridProps.searchPlayersAction}
+        slotPanelActions={gridProps.slotPanelActions}
+        renderCanteenDialog={renderCanteenDialog}
+        renderChargeModal={renderChargeModal}
+        freePlan={gridProps.freePlan}
+      />
+    )
+  }
+
   return (
     <BookingGrid
       {...gridProps}
@@ -85,17 +151,7 @@ export function GrillaView({
             )
           : undefined
       }
-      renderCanteenDialog={
-        canteen
-          ? (args) => (
-              <BookingCanteenDialog
-                {...args}
-                listCatalogAction={canteen.listCatalogAction}
-                sellTicketAction={canteen.sellTicketAction}
-              />
-            )
-          : undefined
-      }
+      renderCanteenDialog={renderCanteenDialog}
       // Sin acciones (stories/tests) no hay con qué cobrar: no se ofrece el botón.
       renderChargeMany={
         gridProps.slotPanelActions
@@ -112,29 +168,7 @@ export function GrillaView({
             )
           : undefined
       }
-      renderChargeModal={(args) =>
-        // Sin acciones (stories/tests que no las cablean) el modal no puede
-        // ofrecer nada de todos modos: mismo criterio que `slotPanelActions`
-        // opcional en BookingGrid — no se ofrece detalle, no se rompe nada.
-        args.actions && (
-          <HoyChargeModal
-            booking={args.booking}
-            courtName={args.courtName}
-            courts={args.courts}
-            dayBookings={args.dayBookings}
-            daySlots={args.daySlots}
-            nowMs={args.nowMs}
-            isRefreshing={args.isRefreshing}
-            hasEnded={args.hasEnded}
-            actions={args.actions}
-            renderCanteenDialog={args.renderCanteenDialog}
-            onClose={args.onClose}
-            onMutated={args.onMutated}
-            cancellationPolicyHours={cancellationPolicyHours}
-            lateCancelHours={lateCancelHours}
-          />
-        )
-      }
+      renderChargeModal={renderChargeModal}
     />
   )
 }

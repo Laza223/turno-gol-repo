@@ -7,7 +7,8 @@ import { render, screen } from '@testing-library/react'
 // `blocked` sigue en el hard-lock. Cubre acceso normal para `canceled`, y
 // redirect a /suspended para blocked/churned/deleted.
 // Decisión 2026-10-22: `suspended` es solo lectura y entra al panel con el
-// aviso (`readOnly`): trial si no hay `dunning_started_at`, mora si lo hay.
+// aviso (`readOnly`). Desde el freemium (2026-11-08) es solo la mora; la prueba
+// vencida baja a `free`, que entra al panel con su banda.
 
 vi.mock('next/navigation', () => ({
   redirect: vi.fn((url: string) => {
@@ -16,7 +17,12 @@ vi.mock('next/navigation', () => ({
 }))
 vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: vi.fn() }))
 vi.mock('@/modules/auth/impersonation.server', () => ({ resolveImpersonatedStaffContext: vi.fn() }))
-vi.mock('@/modules/tenants/tenant.service', () => ({ getStaffTenant: vi.fn() }))
+vi.mock('@/modules/tenants/tenant.service', () => ({
+  getStaffTenant: vi.fn(),
+  touchStaffSeen: vi.fn(async () => undefined),
+}))
+vi.mock('next/server', () => ({ after: vi.fn() }))
+vi.mock('@/app/(admin)/dashboard/actions', () => ({ resumeOnlineBookingAction: vi.fn() }))
 vi.mock('@/modules/staff/staff.service', () => ({ getStaffRole: vi.fn(async () => 'admin') }))
 vi.mock('@/shared/db/client', () => ({
   withTenantContext: vi.fn(async () => ({
@@ -31,16 +37,19 @@ vi.mock('@/components/layout/admin-layout-shell', () => ({
   AdminLayoutShell: ({
     tenantStatus,
     readOnly,
+    freePlan,
     children,
   }: {
     tenantStatus: string
     readOnly?: unknown
+    freePlan?: unknown
     children: React.ReactNode
   }) => (
     <div
       data-testid="admin-shell"
       data-tenant-status={tenantStatus}
       data-read-only={JSON.stringify(readOnly ?? null)}
+      data-free-plan={JSON.stringify(freePlan ?? null)}
     >
       {children}
     </div>
@@ -107,27 +116,31 @@ describe('AdminLayout — hard lock por tenant_status', () => {
     await expect(AdminLayout({ children: <p>contenido</p> })).rejects.toThrow('REDIRECT:/suspended')
   })
 
-  it('suspended por prueba vencida: entra en solo lectura con la fecha de corte', async () => {
+  it('free: entra al panel con la banda del plan gratis (tope del mes y pausa)', async () => {
     vi.mocked(getStaffTenant).mockResolvedValue({
-      ...tenant('suspended'),
-      trialEndsAt: new Date('2026-12-06T03:00:00.000Z'),
+      ...tenant('free'),
+      onlineCapMonth: null,
+      onlinePausedAt: new Date('2026-11-05T12:00:00.000Z'),
     } as never)
-    vi.mocked(withTenantContext).mockResolvedValueOnce({
-      currentPeriodEnd: null,
-      mpSubscriptionId: null,
-      dunningStartedAt: null,
-    })
 
     render(await AdminLayout({ children: <p>contenido</p> }))
 
     const shell = screen.getByTestId('admin-shell')
-    expect(shell.getAttribute('data-tenant-status')).toBe('suspended')
-    // trial_ends_at + TRIAL_READ_ONLY_DAYS (14), sin el margen de "Activar".
-    expect(JSON.parse(shell.getAttribute('data-read-only') ?? 'null')).toEqual({
-      origin: 'trial',
-      until: '2026-12-20T03:00:00.000Z',
+    expect(shell.getAttribute('data-tenant-status')).toBe('free')
+    expect(JSON.parse(shell.getAttribute('data-free-plan') ?? 'null')).toEqual({
+      capReached: false,
+      paused: true,
     })
     expect(screen.getByText('contenido')).toBeTruthy()
+  })
+
+  it('free con el onboarding sin terminar: va a /reactivar, no al wizard', async () => {
+    vi.mocked(getStaffTenant).mockResolvedValue({
+      ...tenant('free'),
+      settings: { onboarding_completed: false },
+    } as never)
+
+    await expect(AdminLayout({ children: <p>contenido</p> })).rejects.toThrow('REDIRECT:/reactivar')
   })
 
   it('suspended por mora: entra en solo lectura, sin fecha de corte de la prueba', async () => {

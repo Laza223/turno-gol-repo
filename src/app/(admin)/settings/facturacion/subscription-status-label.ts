@@ -2,7 +2,7 @@ import type { SubscriptionStatus } from '@/modules/billing/billing.types'
 
 /**
  * Estado de la suscripción en criollo. El dueño no tiene por qué saber qué es
- * `past_due`; los 7 estados son los de `SubscriptionStatus` (sin `deleted`).
+ * `past_due`; los 8 estados son los de `SubscriptionStatus` (sin `deleted`).
  * Lo leen Suscripción y la portada de Ajustes.
  */
 export const SUBSCRIPTION_STATUS_LABEL: Record<SubscriptionStatus, string> = {
@@ -13,4 +13,5 @@ export const SUBSCRIPTION_STATUS_LABEL: Record<SubscriptionStatus, string> = {
   blocked: 'Bloqueada',
   canceled: 'Cancelada',
   churned: 'Dada de baja',
+  free: 'Plan gratis',
 }

@@ -3,7 +3,7 @@ import { tenants, tenantSubscriptions, whatsappConnections } from '@/shared/db/s
 import { insertAuditLog, insertSystemAuditLog } from '@/shared/db/audit'
 import { withTenantContext, type Db, type DbTx } from '@/shared/db/client'
 import { isFeatureEnabled } from '@/shared/feature-flags'
-import { isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
+import { isFreePlan, isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
 import { isUniqueViolation } from '@/shared/db/pg-errors'
 import { logger } from '@/shared/lib/logger'
 import {
@@ -33,6 +33,10 @@ export const BOT_FEATURE_FLAG = 'whatsapp_bot'
  * respuestas pagas por TurnoGol. `tenants` es global; la suscripción está bajo
  * RLS, por eso se lee dentro del contexto del complejo. El período pago solo
  * cuenta cuando el estado es `canceled`.
+ *
+ * En el plan gratis (`free`) el bot se calla siempre: es del plan pago (Plus) y
+ * reserva sin pasar por el tope de reservas online del gratis (condición C2 del
+ * ADR, docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
  */
 export async function isBotTenantOpen(tenantId: string, now: Date): Promise<boolean> {
   const [row] = await withTenantContext(tenantId, (tx) =>
@@ -44,6 +48,7 @@ export async function isBotTenantOpen(tenantId: string, now: Date): Promise<bool
       .limit(1),
   )
   if (!row) return false
+  if (isFreePlan(row)) return false
   return isPublicPortalOpen(row.status, row.status === 'canceled' ? row.periodEnd : null, now)
 }
 

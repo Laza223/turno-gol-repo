@@ -102,6 +102,8 @@ Decisiones ya tomadas que un modelo tendería a re-proponer "de buena fe". Cada 
 
 - Qué contiene cada doc (doc1 a doc20) y el mapa de subcarpetas: `.claude/rules/mapa-docs.md`, que se carga al tocar `docs/**`.
 
+Para retomar el trabajo desde cero (sesión nueva o de otra cuenta): [`docs/planning/2026-11-13-traspaso-sesiones-7-al-13-nov.md`](docs/planning/2026-11-13-traspaso-sesiones-7-al-13-nov.md) resume qué se hizo del 7 al 13/11, qué quedó abierto y qué no está en el repo a propósito.
+
 Drift conocido: doc6/doc12/doc13 todavía dicen "19 tablas / 12 RLS"; el schema creció. Ante contradicción entre docs, señalarla explícitamente en vez de elegir en silencio.
 
 ## Skill routing

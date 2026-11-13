@@ -62,7 +62,7 @@ Torneos y cámaras se les venden a complejos que ya están adentro, así que van
   - el alta termina en compartir el link (sale el paso obligatorio de primera reserva);
   - se oculta lo que el complejo dice que no usa;
   - la prueba sigue contando desde el alta.
-- **Recomendación, sin decidir: no sumar "Entrar con Google" al alta.** Google bloquea su login dentro del navegador de Instagram, que es justo por donde llega el tráfico de la bio y los anuncios.
+- **"Entrar con Google" en el alta: sí, junto al mail.** Lo eligió el founder por select después del video ("Google recomendado y mail"). El mail queda siempre, porque Google bloquea su login dentro del navegador de Instagram, que es por donde llega el tráfico de la bio y los anuncios.
 
 ## REQUIERE INPUT
 

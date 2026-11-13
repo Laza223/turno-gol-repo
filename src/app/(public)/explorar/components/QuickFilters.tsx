@@ -4,11 +4,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { SlidersHorizontal, Umbrella, Zap } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { formatLabel } from '@/components/public/courtFacets'
+import { FORMAT_OPTIONS } from '@/components/public/courtFacets'
 import ExplorarFilters from './ExplorarFilters'
 import { buildExplorarUrl } from './url'
-
-const QUICK_FORMATS = [5, 7, 11] as const
 
 function csv(v: string | null): string[] {
   return v ? v.split(',').filter(Boolean) : []
@@ -51,7 +49,7 @@ export default function QuickFilters() {
 
   return (
     <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none [&::-webkit-scrollbar]:hidden">
-      {QUICK_FORMATS.map((f) => {
+      {FORMAT_OPTIONS.map((f) => {
         const on = formats.includes(String(f))
         return (
           <button
@@ -59,9 +57,14 @@ export default function QuickFilters() {
             type="button"
             aria-pressed={on}
             onClick={() => setParam('formats', toggleCsv(formats, String(f)))}
-            className={`${chipBase} ${on ? chipOn : chipOff}`}
+            className={`${chipBase} tabular-nums ${on ? chipOn : chipOff}`}
           >
-            {formatLabel(f)}
+            {/* Corto ("F7"): son los 8 formatos y tienen que entrar en la fila sin tapar el resto. */}
+            <span>
+              <span aria-hidden>F</span>
+              <span className="sr-only">Fútbol </span>
+              {f}
+            </span>
           </button>
         )
       })}

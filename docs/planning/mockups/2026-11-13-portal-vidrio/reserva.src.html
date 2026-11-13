@@ -1,0 +1,70 @@
+<!--@page title="Tu reserva en La Canchita | TurnoGol" desc="El estado de tu reserva." on="reservas" user="1"-->
+<main class="page" id="main">
+  <div class="wrap wrap--s" data-top>
+
+    <section class="done" data-v="lista" aria-labelledby="ok-t">
+      <span class="badge rise"><!--i:check--></span>
+      <h1 class="h1 rise" style="--i:1" id="ok-t">¡Reserva confirmada!</h1>
+      <p class="sub rise" style="--i:2">Jueves 12 de noviembre, de 19:00 a 20:00, en La Canchita.</p>
+      <div class="ticket glass rise" style="--i:3">
+        <div class="sum__top"><img src="assets/img/t-canchita.webp" alt=""><div><b>La Canchita</b><span>Av. Constitución, Luján</span></div></div>
+        <dl class="kv">
+          <div><dt>Cancha</dt><dd>Cancha 2 · Fútbol 5</dd></div>
+          <div><dt>Día</dt><dd>Jueves 12 de noviembre</dd></div>
+          <div><dt>Hora</dt><dd>19:00 a 20:00</dd></div>
+          <div><dt>Pago</dt><dd>Seña pagada, el resto en el complejo</dd></div>
+        </dl>
+        <div class="ticket__cut" aria-hidden="true"></div>
+        <div class="code"><span>Código de reserva</span><b>K7M2QF</b></div>
+      </div>
+      <div class="acts rise" style="--i:4">
+        <button class="btn btn--full btn--still" type="button"><!--i:wa-->Avisarle al grupo</button>
+        <a class="btn btn--glass btn--full btn--still" href="rival-nuevo.html"><!--i:swords-->Armar el partido</a>
+      </div>
+      <div class="links" style="justify-content:center;margin-top:16px">
+        <a class="link" href="#main"><!--i:pin-->Cómo llegar</a>
+        <a class="link" href="mis-reservas.html"><!--i:cal-->Ver mis reservas</a>
+      </div>
+    </section>
+
+    <section class="done" data-v="pendiente" aria-labelledby="pe-t">
+      <span class="badge badge--warn"><!--i:clock--></span>
+      <h1 class="h1" id="pe-t">Falta pagar la seña</h1>
+      <p class="sub">Tu turno queda guardado mientras corre el tiempo. Si no se paga, se libera.</p>
+      <div class="ticket glass">
+        <div class="code"><span>Tiempo para pagar</span><b class="count">09:41</b></div>
+        <div class="ticket__cut" aria-hidden="true"></div>
+        <dl class="kv">
+          <div><dt>Turno</dt><dd>Jueves 12 · 19:00 · Cancha 2</dd></div>
+          <div class="is-key"><dt>Seña a pagar ahora</dt><dd>$10.800</dd></div>
+          <div><dt>Resto en el complejo</dt><dd>$25.200</dd></div>
+        </dl>
+      </div>
+      <div class="acts"><button class="btn btn--full" type="button">Pagar la seña<!--i:arrow--></button></div>
+    </section>
+
+    <section class="done" data-v="error" aria-labelledby="er-t">
+      <span class="badge badge--bad"><!--i:x--></span>
+      <h1 class="h1" id="er-t">El pago no se procesó</h1>
+      <p class="sub">El pago fue rechazado o cancelado. Tu turno sigue guardado. Podés intentar de nuevo con otro medio de pago.</p>
+      <div class="ticket glass">
+        <dl class="kv">
+          <div><dt>Turno</dt><dd>Jueves 12 · 19:00 · Cancha 2</dd></div>
+          <div class="is-key"><dt>Seña a pagar ahora</dt><dd>$10.800</dd></div>
+        </dl>
+      </div>
+      <div class="acts">
+        <button class="btn btn--full" type="button">Reintentar el pago</button>
+        <a class="btn btn--glass btn--full" href="complejo.html">Elegir otro turno</a>
+      </div>
+    </section>
+
+    <div class="mock" role="group" aria-label="Estados del mockup">
+      <b>Solo en el mockup. Estados de esta pantalla</b>
+      <button type="button" data-go="lista" aria-pressed="true">Confirmada</button>
+      <button type="button" data-go="pendiente" aria-pressed="false">Falta la seña</button>
+      <button type="button" data-go="error" aria-pressed="false">Pago rechazado</button>
+    </div>
+  </div>
+</main>
+<!--@end tab="reservas"-->

@@ -1,5 +1,7 @@
 # Decisión: el portal del jugador pasa a plano y limpio, en claro y oscuro
 
+> **Superada en parte el 2026-11-13** por [`2026-11-13-portal-vidrio.md`](2026-11-13-portal-vidrio.md): el look pasa a vidrio y las fases P1 a P4 se reemplazan por el plan nuevo. Siguen los dos temas, el buscador de Localidad y Cancha, la localidad por IP, Archivo y los precios ocultos por complejo.
+
 **Fecha:** 2026-11-08. **Decide:** Lazar (founder), con el mockup a la vista ("me encantó"). **Insumo:** el análisis de DeporTurnos (`docs/planning/2026-11-08-referencia-deporturnos.md`, todavía sin commitear en el checkout principal) y el mockup de [`docs/planning/mockups/2026-11-08-portal-plano/`](../planning/mockups/2026-11-08-portal-plano/README.md), aprobado con un solo cambio: la barra inferior flotante.
 
 ## Qué se decide

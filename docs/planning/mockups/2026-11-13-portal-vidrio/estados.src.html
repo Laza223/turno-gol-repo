@@ -1,0 +1,39 @@
+<!--@page title="Página no encontrada | TurnoGol" desc="Estados de error del portal." on="none"-->
+<main class="state" id="main" data-top>
+  <div data-v="404" class="done">
+    <p class="big rise" aria-hidden="true">404</p>
+    <h1 class="h1 rise" style="--i:1">Página no encontrada</h1>
+    <p class="sub rise" style="--i:2">Puede que el link esté mal escrito o que la página ya no exista.</p>
+    <div class="links rise" style="--i:3"><a class="btn" href="buscador.html">Buscar canchas</a><a class="link" href="home.html">Volver al inicio</a></div>
+  </div>
+
+  <div data-v="complejo" class="done">
+    <span class="badge badge--warn"><!--i:search--></span>
+    <h1 class="h1">Complejo no encontrado</h1>
+    <p class="sub">Puede que haya cambiado su link o que ya no esté en TurnoGol.</p>
+    <div class="links"><a class="btn" href="buscador.html">Buscar otro complejo</a></div>
+  </div>
+
+  <div data-v="error" class="done">
+    <span class="badge badge--bad"><!--i:alert--></span>
+    <h1 class="h1">Algo salió mal</h1>
+    <p class="sub">Falló algo de nuestro lado. Probá de nuevo en un momento.</p>
+    <div class="links"><button class="btn" type="button">Probar de nuevo</button><a class="link" href="home.html">Volver al inicio</a></div>
+  </div>
+
+  <div data-v="pausa" class="done">
+    <span class="badge badge--warn"><!--i:clock--></span>
+    <h1 class="h1">Este complejo no está disponible</h1>
+    <p class="sub">No se puede reservar acá por ahora. Mientras tanto, mirá otros complejos de tu zona.</p>
+    <div class="links"><a class="btn" href="buscador.html">Buscar otro complejo</a></div>
+  </div>
+
+  <div class="mock" role="group" aria-label="Estados del mockup" style="justify-content:center">
+    <b>Solo en el mockup. Estados de esta pantalla</b>
+    <button type="button" data-go="404" aria-pressed="true">Página no encontrada</button>
+    <button type="button" data-go="complejo" aria-pressed="false">Complejo no encontrado</button>
+    <button type="button" data-go="error" aria-pressed="false">Error</button>
+    <button type="button" data-go="pausa" aria-pressed="false">Complejo en pausa</button>
+  </div>
+</main>
+<!--@end tab="explorar"-->

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es-AR" data-theme="dark" data-sheet="none">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ingresar | TurnoGol</title>
+<meta name="description" content="Entrá con tu email y gestioná todas tus reservas. Ingreso seguro, sin contraseña.">
+<meta name="theme-color" content="#020617">
+<script src="glass.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="glass.css">
+<link rel="stylesheet" href="glass-app.css">
+</head>
+<body>
+<div class="ambient" aria-hidden="true"></div>
+<a class="skip" href="#main">Ir al contenido</a>
+
+<header class="top">
+  <a class="logo" href="home.html" aria-label="TurnoGol, inicio">Turno<b>Gol</b></a>
+  <nav class="top__links" aria-label="Principal">
+    <a href="buscador.html">Explorar</a><a href="rival.html">Rival</a><a href="mis-reservas.html">Reservas</a><a href="para-complejos.html">Complejos</a>
+  </nav>
+  <div class="top__r">
+    <button class="theme glass" type="button" id="theme" aria-label="Cambiar a tema claro"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.930 4.930l1.410 1.410M17.660 17.660l1.410 1.410M2 12h2M20 12h2M6.340 17.660l-1.410 1.410M19.070 4.930l-1.410 1.410"/></svg></button>
+    <a class="top__in" href="ingresar.html">Ingresar</a>
+  </div>
+</header>
+<main class="stage" id="main" style="min-height:100svh">
+  <div class="bg" aria-hidden="true">
+    <img data-for="dark" src="assets/img/bg-night.webp" alt="">
+    <img data-for="light" src="assets/img/bg-day.webp" alt="">
+    <div class="bg__blur"></div><div class="bg__veil"></div><div class="bg__glow"></div>
+  </div>
+
+  <div class="auth" data-top>
+    <div data-v="entrar" class="stack" style="justify-items:center;gap:20px">
+      <div class="rise"><h1>Entrá a TurnoGol</h1><p class="sub">Entrá para ver tus reservas y reservar sin cargar tus datos cada vez.</p></div>
+      <section class="auth__card glass rise" style="--i:1" aria-label="Ingresar">
+        <button class="btn btn--glass btn--full btn--still" type="button"><svg class="gg" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" stroke="none" d="M22.560 12.250c0-.780-.070-1.530-.200-2.250H12v4.260h5.920a5.060 5.060 0 0 1-2.200 3.320v2.770h3.570c2.080-1.920 3.270-4.740 3.270-8.100z"/><path fill="#34A853" stroke="none" d="M12 23c2.970 0 5.460-.980 7.280-2.660l-3.570-2.770c-.980.660-2.230 1.060-3.710 1.060-2.860 0-5.290-1.930-6.160-4.530H2.180v2.840A11 11 0 0 0 12 23z"/><path fill="#FBBC05" stroke="none" d="M5.840 14.090a6.600 6.600 0 0 1 0-4.180V7.070H2.180a11 11 0 0 0 0 9.860z"/><path fill="#EA4335" stroke="none" d="M12 5.380c1.620 0 3.060.560 4.210 1.640l3.150-3.150C17.450 2.090 14.970 1 12 1A11 11 0 0 0 2.180 7.070l3.660 2.840c.870-2.600 3.300-4.530 6.160-4.530z"/></svg>Continuar con Google</button>
+        <div class="or">o</div>
+        <div class="fld"><label for="em">Email</label><input class="inputf" id="em" type="email" inputmode="email" autocomplete="email" placeholder="vos@ejemplo.com"><p class="small">Sin contraseña: te mandamos un enlace para entrar.</p></div>
+        <button class="btn btn--full" type="button" data-go="mail">Mandame el enlace</button>
+      </section>
+      <div class="auth__alt glass rise" style="--i:2"><p>¿Tenés un complejo?</p><div class="links" style="justify-content:center"><a class="link" href="para-complejos.html">Entrar a mi panel</a><a class="link" href="para-complejos.html">Registrar mi complejo</a></div></div>
+    </div>
+
+    <div data-v="mail" class="stack" style="justify-items:center;gap:20px">
+      <span class="badge"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 6L2 7"/></svg></span>
+      <div><h1>Revisá tu email</h1><p class="sub">Te mandamos un enlace a vos@ejemplo.com. Tocalo desde este celu y entrás.</p></div>
+      <section class="auth__card glass" aria-label="Si no llegó">
+        <p class="small">¿No llegó? Revisá la carpeta de correo no deseado o que el email esté bien escrito.</p>
+        <div class="links"><button class="link" type="button" data-go="entrar">Usar otro email</button><button class="link" type="button">Mandar otro enlace</button></div>
+      </section>
+    </div>
+
+    <div data-v="vencido" class="stack" style="justify-items:center;gap:20px">
+      <span class="badge badge--warn"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg></span>
+      <div><h1>Este enlace venció</h1><p class="sub">Los enlaces de acceso sirven una sola vez y por un rato. Pedí uno nuevo para entrar.</p></div>
+      <button class="btn" type="button" data-go="entrar">Pedir un enlace nuevo</button>
+    </div>
+
+    <div data-v="terminos" class="stack" style="justify-items:center;gap:20px">
+      <div><h1>Un último paso</h1><p class="sub">Confirmá esto para terminar de crear tu cuenta.</p></div>
+      <section class="auth__card glass" aria-label="Términos">
+        <label class="checkrow"><input type="checkbox" checked><span>Tengo 18 años o más y acepto los términos y condiciones.</span></label>
+        <a class="link" href="legal.html" style="justify-self:start">Leer los términos y condiciones</a>
+        <a class="btn btn--full" href="mis-reservas.html">Aceptar y seguir</a>
+      </section>
+    </div>
+
+    <div class="mock" role="group" aria-label="Estados del mockup" style="margin-top:8px;width:min(100%,440px);background:linear-gradient(180deg,var(--win-a),var(--win-b))">
+      <b>Solo en el mockup. Estados de esta pantalla</b>
+      <button type="button" data-go="entrar" aria-pressed="true">Ingresar</button>
+      <button type="button" data-go="mail" aria-pressed="false">Enlace enviado</button>
+      <button type="button" data-go="vencido" aria-pressed="false">Enlace vencido</button>
+      <button type="button" data-go="terminos" aria-pressed="false">Cuenta nueva</button>
+    </div>
+  </div>
+</main>
+
+<nav class="tabbar glass" aria-label="Navegación del jugador">
+  <a href="buscador.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m16.240 7.760-2.120 6.360-6.360 2.120 2.120-6.360z"/></svg>Explorar</a>
+  <a href="rival.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.500 17.500 3 6V3h3l11.500 11.500M13 19l6-6M16 16l4 4M19 21l2-2M9.500 6.500 21 18v3h-3L6.500 9.500M11 5 5 11M8 8 4 4M5 3 3 5"/></svg>Rival</a>
+  <a href="mis-reservas.html"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Reservas</a>
+  <a href="cuenta.html" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>Cuenta</a>
+</nav>
+</body>
+</html>

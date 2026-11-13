@@ -1,0 +1,54 @@
+<!--@page title="Ingresar | TurnoGol" desc="Entrá con tu email y gestioná todas tus reservas. Ingreso seguro, sin contraseña." on="cuenta"-->
+<main class="stage" id="main" style="min-height:100svh">
+  <div class="bg" aria-hidden="true">
+    <img data-for="dark" src="assets/img/bg-night.webp" alt="">
+    <img data-for="light" src="assets/img/bg-day.webp" alt="">
+    <div class="bg__blur"></div><div class="bg__veil"></div><div class="bg__glow"></div>
+  </div>
+
+  <div class="auth" data-top>
+    <div data-v="entrar" class="stack" style="justify-items:center;gap:20px">
+      <div class="rise"><h1>Entrá a TurnoGol</h1><p class="sub">Entrá para ver tus reservas y reservar sin cargar tus datos cada vez.</p></div>
+      <section class="auth__card glass rise" style="--i:1" aria-label="Ingresar">
+        <button class="btn btn--glass btn--full btn--still" type="button"><!--i:google-->Continuar con Google</button>
+        <div class="or">o</div>
+        <div class="fld"><label for="em">Email</label><input class="inputf" id="em" type="email" inputmode="email" autocomplete="email" placeholder="vos@ejemplo.com"><p class="small">Sin contraseña: te mandamos un enlace para entrar.</p></div>
+        <button class="btn btn--full" type="button" data-go="mail">Mandame el enlace</button>
+      </section>
+      <div class="auth__alt glass rise" style="--i:2"><p>¿Tenés un complejo?</p><div class="links" style="justify-content:center"><a class="link" href="para-complejos.html">Entrar a mi panel</a><a class="link" href="para-complejos.html">Registrar mi complejo</a></div></div>
+    </div>
+
+    <div data-v="mail" class="stack" style="justify-items:center;gap:20px">
+      <span class="badge"><!--i:mail--></span>
+      <div><h1>Revisá tu email</h1><p class="sub">Te mandamos un enlace a vos@ejemplo.com. Tocalo desde este celu y entrás.</p></div>
+      <section class="auth__card glass" aria-label="Si no llegó">
+        <p class="small">¿No llegó? Revisá la carpeta de correo no deseado o que el email esté bien escrito.</p>
+        <div class="links"><button class="link" type="button" data-go="entrar">Usar otro email</button><button class="link" type="button">Mandar otro enlace</button></div>
+      </section>
+    </div>
+
+    <div data-v="vencido" class="stack" style="justify-items:center;gap:20px">
+      <span class="badge badge--warn"><!--i:clock--></span>
+      <div><h1>Este enlace venció</h1><p class="sub">Los enlaces de acceso sirven una sola vez y por un rato. Pedí uno nuevo para entrar.</p></div>
+      <button class="btn" type="button" data-go="entrar">Pedir un enlace nuevo</button>
+    </div>
+
+    <div data-v="terminos" class="stack" style="justify-items:center;gap:20px">
+      <div><h1>Un último paso</h1><p class="sub">Confirmá esto para terminar de crear tu cuenta.</p></div>
+      <section class="auth__card glass" aria-label="Términos">
+        <label class="checkrow"><input type="checkbox" checked><span>Tengo 18 años o más y acepto los términos y condiciones.</span></label>
+        <a class="link" href="legal.html" style="justify-self:start">Leer los términos y condiciones</a>
+        <a class="btn btn--full" href="mis-reservas.html">Aceptar y seguir</a>
+      </section>
+    </div>
+
+    <div class="mock" role="group" aria-label="Estados del mockup" style="margin-top:8px;width:min(100%,440px);background:linear-gradient(180deg,var(--win-a),var(--win-b))">
+      <b>Solo en el mockup. Estados de esta pantalla</b>
+      <button type="button" data-go="entrar" aria-pressed="true">Ingresar</button>
+      <button type="button" data-go="mail" aria-pressed="false">Enlace enviado</button>
+      <button type="button" data-go="vencido" aria-pressed="false">Enlace vencido</button>
+      <button type="button" data-go="terminos" aria-pressed="false">Cuenta nueva</button>
+    </div>
+  </div>
+</main>
+<!--@end tab="cuenta"-->

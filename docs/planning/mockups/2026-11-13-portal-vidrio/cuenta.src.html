@@ -1,0 +1,89 @@
+<!--@page title="Mi cuenta | TurnoGol" desc="Tus datos, tus favoritos y tu perfil en Rival." on="cuenta" user="1"-->
+<main class="page" id="main">
+  <div class="wrap wrap--m" data-top>
+
+    <div class="stack" data-v="cuenta" style="gap:14px">
+      <header class="rise"><p class="eyebrow">Tu cuenta</p><h1 class="h1">Mi cuenta</h1></header>
+
+      <section class="me glass rise" style="--i:1" aria-label="Quién sos">
+        <span class="avatar" aria-hidden="true">N</span>
+        <div><b>Nico Fernández</b><span>vos@ejemplo.com</span></div>
+      </section>
+      <div class="stats rise" style="--i:2">
+        <div class="stat glass"><b>14</b><span>Partidos jugados</span></div>
+        <div class="stat glass"><b>3</b><span>Complejos visitados</span></div>
+      </div>
+
+      <section class="panel glass stack" aria-labelledby="da-t" data-reveal>
+        <h2 class="h2" id="da-t">Tus datos</h2>
+        <div class="form2">
+          <div class="fld"><label for="fn">Nombre</label><input class="inputf" id="fn" value="Nico" autocomplete="given-name"></div>
+          <div class="fld"><label for="ln">Apellido</label><input class="inputf" id="ln" value="Fernández" autocomplete="family-name"></div>
+          <div class="fld"><label for="ph">Teléfono</label><input class="inputf" id="ph" type="tel" inputmode="tel" placeholder="Para que el complejo te contacte por un turno"></div>
+          <div class="fld"><label for="ar">Zona donde jugás</label><input class="inputf" id="ar" placeholder="Ej: Palermo, Villa Crespo"></div>
+          <div class="fld span2"><label for="ml">Email</label><input class="inputf" id="ml" value="vos@ejemplo.com" readonly><p class="small">El email no se puede cambiar.</p></div>
+        </div>
+        <button class="btn" type="button">Guardar cambios</button>
+      </section>
+
+      <section class="panel glass stack" aria-labelledby="ri-t" data-reveal>
+        <h2 class="h2" id="ri-t">Tu perfil en Rival</h2>
+        <p class="small">Tu foto la ve quien tenga el link de un partido tuyo y haya iniciado sesión.</p>
+        <div class="links"><span class="avatar avatar--s" aria-hidden="true">N</span><button class="link" type="button">Cambiar la foto</button></div>
+      </section>
+
+      <section class="panel glass stack" aria-labelledby="fa-t" data-reveal>
+        <h2 class="h2" id="fa-t">Tus favoritos</h2>
+        <div>
+          <div class="rowl"><img src="assets/img/t-canchita.webp" alt=""><a href="complejo.html"><b>La Canchita</b><span>Luján · Fútbol 5 y 7</span></a><button class="link link--icon" type="button" aria-label="Quitar La Canchita de favoritos"><!--i:heart--></button></div>
+          <div class="rowl"><img src="assets/img/t-potrero.webp" alt=""><a href="complejo.html"><b>Potrero Norte</b><span>Luján · Fútbol 5 y 7</span></a><button class="link link--icon" type="button" aria-label="Quitar Potrero Norte de favoritos"><!--i:heart--></button></div>
+        </div>
+      </section>
+
+      <section class="panel glass stack" aria-labelledby="te-t" data-reveal>
+        <h2 class="h2" id="te-t">Tema</h2>
+        <div class="seg" role="tablist" aria-label="Tema" style="background:var(--inner);border:1px solid var(--inner-line)">
+          <button type="button" role="tab" aria-selected="false" data-theme-set="light">Claro</button>
+          <button type="button" role="tab" aria-selected="true" data-theme-set="dark">Oscuro</button>
+        </div>
+      </section>
+
+      <section class="panel glass stack" aria-labelledby="dp-t" data-reveal>
+        <h2 class="h2" id="dp-t">Tus datos personales</h2>
+        <p class="small">Bajá una copia de lo que guardamos de vos en TurnoGol: tu perfil, tus reservas y tus partidos. Es tu derecho de acceso, según la Ley 25.326.</p>
+        <button class="link" type="button" style="justify-self:start"><!--i:download-->Descargar mis datos</button>
+      </section>
+
+      <section class="panel glass stack" aria-labelledby="ba-t" data-reveal>
+        <h2 class="h2" id="ba-t">Salir o darte de baja</h2>
+        <p class="small">Si ya no vas a usar TurnoGol, podés borrar tu cuenta.</p>
+        <div class="links"><a class="link" href="ingresar.html"><!--i:out-->Cerrar sesión</a><button class="link link--bad" type="button" data-go="eliminar">Eliminar la cuenta</button></div>
+      </section>
+    </div>
+
+    <div class="stack" data-v="eliminar" style="gap:14px">
+      <button class="back" type="button" data-go="cuenta" style="justify-self:start"><!--i:back-->Volver a Mi cuenta</button>
+      <header><h1 class="h1">Eliminar mi cuenta</h1><p class="sub">Esta acción es irreversible.</p></header>
+      <section class="panel glass stack" aria-labelledby="qp-t">
+        <h2 class="h2" id="qp-t">Qué se borra y qué queda</h2>
+        <p>Borramos tu nombre, tu email, tu teléfono y tu foto.</p>
+        <div class="note note--warn"><span><b>Tenés 2 turnos por jugar.</b> Si eliminás tu cuenta, quedan sin titular. Te conviene cancelarlos antes.</span><a class="btn" href="mis-reservas.html">Ver mis reservas</a></div>
+      </section>
+      <section class="panel glass stack" aria-labelledby="cp-t">
+        <h2 class="h2" id="cp-t">¿Querés una copia de tus datos?</h2>
+        <p class="small">Descargala antes de eliminar la cuenta: después ya no vas a poder.</p>
+        <button class="link" type="button" style="justify-self:start"><!--i:download-->Descargar mis datos</button>
+      </section>
+      <button class="btn btn--bad btn--full" type="button" data-open="baja">Eliminar mi cuenta</button>
+    </div>
+  </div>
+</main>
+
+<div class="backdrop" data-close></div>
+<div class="sheet sheet--c" id="sheet-baja" role="dialog" aria-modal="true" aria-labelledby="bj-t">
+  <div class="grab"></div>
+  <div class="sheet__head"><h2 id="bj-t">¿Eliminar tu cuenta TurnoGol?</h2><button class="icon-btn" type="button" aria-label="Cerrar" data-close><!--i:x--></button></div>
+  <p class="hint">Se borran tu nombre, tu email, tu teléfono y tu foto. No se puede deshacer.</p>
+  <div class="sheet__foot"><button class="btn btn--glass" type="button" data-close>Volver</button><a class="btn btn--bad" href="ingresar.html">Sí, eliminar</a></div>
+</div>
+<!--@end tab="cuenta"-->

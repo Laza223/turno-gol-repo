@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="es-AR" data-theme="dark" data-sheet="none">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Precios: TurnoGol para complejos de fútbol</title>
+<meta name="description" content="Plan Gratis para aparecer donde buscan cancha, y Completo por cancha al mes. Sin comisión por reserva, sin permanencia.">
+<meta name="theme-color" content="#020617">
+<script src="glass.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="glass.css">
+<link rel="stylesheet" href="glass-app.css">
+</head>
+<body>
+<div class="ambient" aria-hidden="true"></div>
+<a class="skip" href="#main">Ir al contenido</a>
+
+<header class="top">
+  <a class="logo" href="home.html" aria-label="TurnoGol, inicio">Turno<b>Gol</b></a>
+  <nav class="top__links" aria-label="Principal">
+    <a href="buscador.html">Explorar</a><a href="rival.html">Rival</a><a href="mis-reservas.html">Reservas</a><a href="para-complejos.html" aria-current="page">Complejos</a>
+  </nav>
+  <div class="top__r">
+    <button class="theme glass" type="button" id="theme" aria-label="Cambiar a tema claro"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.930 4.930l1.410 1.410M17.660 17.660l1.410 1.410M2 12h2M20 12h2M6.340 17.660l-1.410 1.410M19.070 4.930l-1.410 1.410"/></svg></button>
+    <a class="top__in" href="ingresar.html">Ingresar</a>
+  </div>
+</header>
+<main id="main">
+  <section class="hero hero--short" aria-labelledby="h-t">
+    <h1 class="rise" id="h-t">Un precio por cancha. <em>Sin comisión.</em></h1>
+    <p class="lead rise" style="--i:1">Empezás gratis y pasás a Completo cuando te sirva. Lo que cobrás va directo a vos.</p>
+    <ul class="feats rise" style="--i:2;justify-content:center">
+      <li class="feat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>30 días de Completo gratis, sin tarjeta</li><li class="feat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Mes a mes, sin permanencia</li><li class="feat"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Sin comisión por reserva</li>
+    </ul>
+  </section>
+
+  <section class="sec sec--flow" aria-label="Planes">
+    <div class="wrap">
+      <div class="seg glass" role="tablist" aria-label="Ciclo de facturación" style="width:min(100%,360px);margin:0 auto 20px">
+        <button type="button" role="tab" aria-selected="true" data-go="ciclo:mes" data-put="#p-c|$30.000;;#p-w|$45.000;;#n-c|por cancha, por mes;;#n-w|por cancha, por mes">Mensual</button>
+        <button type="button" role="tab" aria-selected="false" data-go="ciclo:anio" data-put="#p-c|$27.000;;#p-w|$40.500;;#n-c|por cancha, por mes, pagando el año;;#n-w|por cancha, por mes, pagando el año">Anual, 10% menos</button>
+      </div>
+      <span data-v="ciclo:mes" hidden></span><span data-v="ciclo:anio" hidden></span>
+      <div class="plans">
+        <article class="plan glass" data-reveal>
+          <div class="plan__n">Gratis</div>
+          <p class="plan__p">$0</p><p class="small">Hasta 20 reservas online por mes</p>
+          <ul class="ticks">
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Aparecés en el buscador de TurnoGol y en Rival</li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Tus jugadores te reservan online</li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Marcás en la grilla los horarios ocupados</li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Sin vencimiento</li>
+          </ul>
+          <a class="btn btn--glass btn--full" href="#main">Empezar gratis</a>
+        </article>
+        <article class="plan plan--top glass" data-reveal>
+          <div class="plan__n">Completo<span class="tag">30 días gratis</span></div>
+          <p class="plan__p" id="p-c">$30.000</p><p class="small" id="n-c">por cancha, por mes</p>
+          <ul class="ticks">
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Reservas online sin tope</li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Anotás tus turnos con nombre y precio</li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Fijos, caja, cantina y jugadores</li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Tu encargado entra con su usuario</li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Métricas y soporte por WhatsApp</li>
+          </ul>
+          <a class="btn btn--full" href="#main">Probalo 30 días<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+        </article>
+        <article class="plan glass" data-reveal>
+          <div class="plan__n">Completo + WhatsApp</div>
+          <p class="plan__p" id="p-w">$45.000</p><p class="small" id="n-w">por cancha, por mes</p>
+          <ul class="ticks">
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Todo lo de Completo</li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Un asistente atiende tu WhatsApp y toma reservas a cualquier hora</li>
+            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Responde con tus horarios y precios reales</li>
+          </ul>
+          <a class="btn btn--glass btn--full btn--still" href="#main"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.900 20A9 9 0 1 0 4 16.100L2 22Z"/></svg>Escribinos por WhatsApp</a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec sec--flow" aria-labelledby="ti-t">
+    <div class="wrap">
+      <div class="sec__head" data-reveal><h2 id="ti-t">Completo trae todo, <span>sin módulos aparte.</span></h2></div>
+      <div class="panel glass" data-reveal>
+        <ul class="ticks ticks--2">
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Reservas online 24/7 con tu link propio. El jugador no baja ninguna app</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Grilla en vivo desde el celular</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Aviso en el celu con cada reserva (de madrugada espera a las 8)</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Caja completa: turnos, cantina con stock, gastos y cierre diario</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Abonados y fijos que se repiten solos, con control de pagos</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Ficha de cada jugador: historial y ausencias</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Métricas de ocupación y facturación</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Usuarios para tu equipo, sin límite</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Tus datos exportables cuando quieras</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Soporte directo por WhatsApp, no un 0800</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>El que reserva online y no viene, si reincide, queda 14 días sin poder reservarte</li>
+          <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Si querés, seña online (viene apagada): la prendés vos y lo que cobrás va directo a vos</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec sec--flow" aria-labelledby="rc-t">
+    <div class="wrap">
+      <div class="sec__head" data-reveal><h2 id="rc-t">Empezar no te cuesta nada.</h2></div>
+      <div class="trio">
+        <div class="glass" data-reveal><i>01</i><b>Probalo gratis 30 días</b><p>Sin tarjeta. Cargás canchas y horarios en menos de 10 minutos, y si te trabás te lo dejamos andando nosotros.</p></div>
+        <div class="glass" data-reveal><i>02</i><b>Compartí tu link</b><p>Tus clientes reservan solos a cualquier hora y el turno aparece en tu grilla. Sin que tengas que atender el teléfono.</p></div>
+        <div class="glass" data-reveal><i>03</i><b>Seguí solo si te sirve</b><p>Mes a mes, sin permanencia. Si no pagás, quedás en el plan Gratis: seguís apareciendo y tus jugadores te siguen reservando online.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec sec--flow" aria-labelledby="fq-t">
+    <div class="wrap wrap--m">
+      <div class="sec__head" data-reveal><h2 id="fq-t">Preguntas de dueños</h2></div>
+      <div class="faq">
+        <details class="qa glass" open><summary>¿Mis clientes tienen que bajarse una app?<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><p>No. Reservan desde un link que abre una página, como ver un menú por QR. Tus fijos y los de siempre siguen igual: los cargás vos o tu encargado en dos toques.</p></details>
+        <details class="qa glass"><summary>¿Tengo que cobrar seña?<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><p>No. Viene apagada y TurnoGol funciona igual: reservas, grilla y caja. Si algún día querés, la prendés y elegís el porcentaje.</p></details>
+        <details class="qa glass"><summary>¿Qué pasa con mis fijos de toda la vida?<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><p>Se cargan una vez y se repiten solos todas las semanas. Ves quién pagó y quién debe, y nadie pierde su horario. El cobro lo registrás vos cuando te pagan, como siempre.</p></details>
+        <details class="qa glass"><summary>¿Hay comisión por reserva o permanencia?<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><p>No y no. Pagás un precio fijo por mes según tus canchas. Lo que cobrás va directo a vos, completo. Y es mes a mes: si no te sirve, lo dejás.</p></details>
+        <details class="qa glass"><summary>¿Me hace la factura? ¿Sirve para AFIP?<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><p>No, facturación fiscal no hace. Eso sigue con tu contador, como hoy. Lo que te da es el control interno: cuánto entró, cuánto salió y por dónde.</p></details>
+        <details class="qa glass"><summary>¿Qué pasa cuando se terminan los 30 días gratis?<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><p>Si activás Completo, seguís igual. Si no, pasás al plan Gratis: seguís en el buscador y tus jugadores te reservan online, hasta 20 turnos por mes. Tus fijos, tu caja y tus jugadores quedan guardados.</p></details>
+        <details class="qa glass"><summary>¿El plan Gratis vence?<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><p>No. Mientras lo uses, sigue. Si pasan 6 meses sin que entres al panel ni te lleguen reservas, te avisamos por mail y, si no volvés, borramos la cuenta a los 90 días.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec sec--flow" aria-labelledby="ci-t">
+    <div class="wrap">
+      <div class="cta glass" data-reveal>
+        <div><h2 id="ci-t">Probalo 30 días en tu complejo.</h2><p class="lead2">Sin tarjeta. Te ayudamos a configurarlo por WhatsApp.</p></div>
+        <a class="btn" href="#main">Probalo 30 días<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+      </div>
+    </div>
+  </section>
+</main>
+<footer class="closing" style="padding-top:0">
+  <div class="wrap">
+    <p class="word" aria-hidden="true">Turno<b>Gol</b></p>
+    <div class="foot">
+      <div class="foot__brand"><a class="logo" href="home.html" aria-label="TurnoGol, inicio">Turno<b>Gol</b></a><p>Turnos de fútbol para reservar online, en los complejos de tu zona.</p></div>
+      <div><h3>Jugadores</h3><ul><li><a href="buscador.html">Buscar canchas</a></li><li><a href="rival.html">Tablón de Rival</a></li></ul></div>
+      <div><h3>Complejos</h3><ul><li><a href="para-complejos.html">TurnoGol para complejos</a></li><li><a href="precios.html">Planes</a></li><li><a href="blog.html">Blog</a></li></ul></div>
+      <div><h3>Ayuda</h3><ul><li><a href="articulo.html">Términos</a></li><li><a href="articulo.html">Privacidad</a></li><li><a href="para-complejos.html">Escribinos</a></li></ul></div>
+    </div>
+    <div class="legal"><span>&copy; 2026 TurnoGol</span><a href="credits.html">Fotos vía Wikimedia Commons</a></div>
+  </div>
+</footer>
+
+</body>
+</html>

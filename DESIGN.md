@@ -324,7 +324,9 @@ components:
 
 # Design System: TurnoGol
 
-> **Portal en migración (2026-11-08).** [`docs/decisions/2026-11-08-portal-plano-dos-temas.md`](docs/decisions/2026-11-08-portal-plano-dos-temas.md) supera a La Previa: el portal pasa a plano y limpio en claro y oscuro, con una sola tipografía (Archivo), chips en píldora y la barra inferior flotante. El contrato visual por ahora es el mockup [`docs/planning/mockups/2026-11-08-portal-plano/`](docs/planning/mockups/2026-11-08-portal-plano/README.md). Este archivo se reescribe en la fase P4; hasta entonces, lo que dice del portal describe lo que todavía no migró.
+> **Portal en migración a vidrio (2026-11-13).** [`docs/decisions/2026-11-13-portal-vidrio.md`](docs/decisions/2026-11-13-portal-vidrio.md) supera la nota de abajo: el portal pasa a vidrio en claro y oscuro. Para las pantallas del portal mandan, en este orden, esa decisión, la [dirección de diseño y movimiento](docs/planning/2026-11-13-portal-vidrio-direccion.md) y el mockup [`docs/planning/mockups/2026-11-13-portal-vidrio/`](docs/planning/mockups/2026-11-13-portal-vidrio/README.md). Este archivo se reescribe en la fase F9 del [plan](docs/planning/2026-11-13-portal-vidrio-plan.md). Para el panel sigue mandando sin cambios.
+>
+> **Nota anterior (2026-11-08), superada.** [`docs/decisions/2026-11-08-portal-plano-dos-temas.md`](docs/decisions/2026-11-08-portal-plano-dos-temas.md) supera a La Previa: el portal pasa a plano y limpio en claro y oscuro, con una sola tipografía (Archivo), chips en píldora y la barra inferior flotante. El contrato visual por ahora es el mockup [`docs/planning/mockups/2026-11-08-portal-plano/`](docs/planning/mockups/2026-11-08-portal-plano/README.md). Este archivo se reescribe en la fase P4; hasta entonces, lo que dice del portal describe lo que todavía no migró.
 
 ## Overview
 
@@ -648,6 +650,6 @@ Lo de arriba es lo que comparten todas las pantallas. La spec de cada pantalla v
 - **Don't** esconder las horas completas ni los días cerrados: se ven, deshabilitados y dichos ("Completo" tachado, "Cerrado").
 - **Don't** usar `CourtCard` en una página del portal: es la tarjeta del panel y del onboarding; la ficha usa `CourtTile`.
 - **Don't** elegir las columnas de las horas con `md:grid-cols-*`: la reserva mide 384 px en escritorio y seis columnas no entran.
-- **Don't** agregar librerías de animación (la única excepción es `/onboarding`, con `motion` en `LazyMotion`) ni loops infinitos fuera del skeleton, de la web comercial y del punto de "Cobrar $X" en Hoy.
+- **Don't** agregar librerías de animación (las excepciones son `/onboarding` y, desde el 2026-11-13, el portal: `motion` en `LazyMotion`, con los límites de [`docs/planning/2026-11-13-portal-vidrio-direccion.md`](docs/planning/2026-11-13-portal-vidrio-direccion.md); el panel sigue sin librería) ni loops infinitos fuera del skeleton, de la web comercial y del punto de "Cobrar $X" en Hoy.
 - **Don't** usar el placeholder como rótulo, emojis como íconos estructurales ni fechas ISO o anglicismos de dashboard ("Revenue", "Booking") frente al usuario.
 - **Don't** mostrar un número verificable que no salga de datos reales (prueba social, escasez, contadores): lo trucho descubierto destruye la confianza para pagar la seña y es publicidad engañosa (Ley 24.240).

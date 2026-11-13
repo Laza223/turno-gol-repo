@@ -1,0 +1,86 @@
+<!--@page title="Fútbol 5, hoy 19:00 en La Canchita · Rival | TurnoGol" desc="Un partido de Rival en La Canchita, Luján." on="rival" user="1"-->
+<main class="page" id="main">
+  <div class="wrap wrap--m stack" style="gap:14px" data-top>
+    <a class="back" href="rival.html" style="justify-self:start"><!--i:back-->Volver</a>
+
+    <header class="mhead rise">
+      <div class="match__k"><span class="tag">Faltan 3</span><span class="tag tag--rival">Fútbol 5</span><span class="tag tag--rival">Reservada en TurnoGol</span></div>
+      <h1 class="h1">Hoy, 19:00</h1>
+      <p class="sub" style="margin-top:0">La Canchita · Av. Constitución, Luján</p>
+      <div class="links"><a class="link" href="complejo.html"><!--i:pin-->Ver el complejo</a><button class="link link--icon" type="button" aria-label="Compartir el partido"><!--i:share--></button></div>
+    </header>
+
+    <section class="panel glass stack rise" style="--i:1" aria-labelledby="qv-t">
+      <div class="head2"><h2 class="h2" id="qv-t">Quiénes van</h2><span class="small">7 de 10</span></div>
+      <div class="match__bar"><i style="width:70%"></i></div>
+      <ul class="shirts" aria-label="Lugares del partido">
+        <li class="shirt on"><!--i:shirt-->Nico</li><li class="shirt on"><!--i:shirt-->Fede</li><li class="shirt on"><!--i:shirt-->Tomi</li><li class="shirt on"><!--i:shirt-->Lucho</li><li class="shirt on"><!--i:shirt-->Santi</li>
+        <li class="shirt on"><!--i:shirt-->Mati</li><li class="shirt on"><!--i:shirt-->Juli</li><li class="shirt"><!--i:shirt-->Libre</li><li class="shirt"><!--i:shirt-->Libre</li><li class="shirt"><!--i:shirt-->Libre</li>
+      </ul>
+    </section>
+
+    <!-- lo ve quien llega desde el tablón -->
+    <div class="stack" data-v="publico">
+      <section class="panel glass stack" aria-labelledby="pd-t">
+        <div><h2 class="h2" id="pd-t">Sumate a este partido</h2><p class="small" style="margin-top:6px">Quien lo organiza ve tu pedido. Si te acepta, te llega un mail con su WhatsApp para coordinar.</p></div>
+        <button class="btn btn--full" type="button" data-go="pedido">Pedir sumarme</button>
+        <button class="btn btn--glass btn--full" type="button" data-go="pedido">Pedir jugar con mi equipo</button>
+      </section>
+    </div>
+
+    <div class="stack" data-v="pedido">
+      <section class="panel glass done" aria-labelledby="pe-t">
+        <span class="badge"><!--i:check--></span>
+        <h2 class="h2" id="pe-t">Pedido enviado</h2>
+        <p class="sub">Te avisamos por mail si te aceptan.</p>
+        <div class="links" style="margin-top:16px;justify-content:center"><a class="link" href="rival.html">Volver al tablón</a><button class="link link--bad" type="button" data-go="publico">Retirar el pedido</button></div>
+      </section>
+    </div>
+
+    <div class="stack" data-v="adentro">
+      <section class="panel glass stack" aria-labelledby="ad-t">
+        <div><h2 class="h2" id="ad-t">Estás adentro</h2><p class="small" style="margin-top:6px">Nos vemos en la cancha. Coordiná el resto con quien organiza.</p></div>
+        <button class="btn btn--full btn--still" type="button"><!--i:wa-->Escribirle a quien organiza</button>
+        <div class="links"><button class="link" type="button"><!--i:share-->Avisar al grupo</button><button class="link link--bad push" type="button" data-go="publico">Bajarme del partido</button></div>
+      </section>
+    </div>
+
+    <!-- lo ve quien armó el partido -->
+    <div class="stack" data-v="organizador">
+      <section class="panel glass stack" aria-labelledby="pp-t">
+        <div class="head2"><h2 class="h2" id="pp-t">Pedidos para sumarse</h2><span class="tag tag--warn">2 sin responder</span></div>
+        <div>
+          <div class="req"><span class="avatar" aria-hidden="true">G</span><div><b>Gonza</b><span>Pide sumarse · juega de arquero</span></div><div class="links"><button class="link link--go" type="button">Aceptar</button><button class="link" type="button">Ahora no</button></div></div>
+          <div class="req"><span class="avatar" aria-hidden="true">R</span><div><b>Rama</b><span>Pide sumarse</span></div><div class="links"><button class="link link--go" type="button">Aceptar</button><button class="link" type="button">Ahora no</button></div></div>
+        </div>
+      </section>
+      <section class="panel glass stack" aria-labelledby="bn-t">
+        <div><h2 class="h2" id="bn-t">El banco</h2><p class="small" style="margin-top:6px">Si alguien se baja, entra el primero del banco.</p></div>
+        <div class="req"><span class="avatar" aria-hidden="true">P</span><div><b>Pato</b><span>Primero del banco</span></div></div>
+      </section>
+      <section class="panel glass stack" aria-labelledby="tp-t">
+        <h2 class="h2" id="tp-t">Tu partido</h2>
+        <div class="links"><button class="link link--go" type="button"><!--i:wa-->Avisar al grupo</button><button class="link" type="button"><!--i:copy-->Copiar link</button><button class="link" type="button">Sacar del tablón</button></div>
+        <hr class="rule">
+        <button class="link link--bad" type="button" data-open="caer" style="justify-self:start">Cancelar el partido</button>
+      </section>
+    </div>
+
+    <div class="mock" role="group" aria-label="Estados del mockup">
+      <b>Solo en el mockup. Quién mira el partido</b>
+      <button type="button" data-go="publico" aria-pressed="true">Desde el tablón</button>
+      <button type="button" data-go="pedido" aria-pressed="false">Pedido enviado</button>
+      <button type="button" data-go="adentro" aria-pressed="false">Ya adentro</button>
+      <button type="button" data-go="organizador" aria-pressed="false">Quien organiza</button>
+    </div>
+  </div>
+</main>
+
+<div class="backdrop" data-close></div>
+<div class="sheet sheet--c" id="sheet-caer" role="dialog" aria-modal="true" aria-labelledby="cp-t">
+  <div class="grab"></div>
+  <div class="sheet__head"><h2 id="cp-t">¿Cancelar el partido?</h2><button class="icon-btn" type="button" aria-label="Cerrar" data-close><!--i:x--></button></div>
+  <p class="hint">Les avisamos por mail a los 7 que ya están adentro. La reserva de la cancha no se cancela: eso se hace desde Mis reservas.</p>
+  <div class="sheet__foot"><button class="btn btn--glass" type="button" data-close>No, lo dejo</button><a class="btn btn--bad" href="rival.html?view=vacio">Sí, cancelar</a></div>
+</div>
+<!--@end tab="rival"-->

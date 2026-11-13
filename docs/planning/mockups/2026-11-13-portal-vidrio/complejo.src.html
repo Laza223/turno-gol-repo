@@ -1,0 +1,129 @@
+<!--@page title="La Canchita, Luján: reservá tu cancha | TurnoGol" desc="Reservá una cancha en La Canchita, Luján." on="explorar"-->
+<main class="cx" id="main">
+  <div class="cx__bg" aria-hidden="true"><img src="assets/img/photo-f62050290-960.webp" alt=""></div>
+  <div class="wrap cx__grid">
+
+    <header class="cx__head glass rise">
+      <div>
+        <h1>La Canchita</h1>
+        <p class="cx__facts"><span>Av. Constitución, Luján</span><span>4 canchas · Fútbol 5 y 7</span></p>
+        <div class="cx__state">
+          <span class="open">Abierto · hasta la 01:00</span>
+          <span class="rating"><!--i:star-->4,7 <span>(32)</span></span>
+        </div>
+      </div>
+      <div class="links">
+        <a class="link" href="#main"><!--i:pin-->Cómo llegar</a>
+        <a class="link" href="#main"><!--i:wa-->WhatsApp</a>
+        <button class="link link--icon push" type="button" aria-label="Compartir"><!--i:share--></button>
+        <button class="link link--icon" type="button" aria-label="Guardar en favoritos"><!--i:heart--></button>
+      </div>
+    </header>
+
+    <section class="reserve glass rise" style="--i:1" aria-labelledby="rs-t">
+      <div><h2 class="q" id="rs-t">Reservá tu turno</h2><p class="day">Elegí el día y tocá una hora. Podés reservar hasta 6 días adelante.</p></div>
+
+      <div class="daystrip" role="group" aria-label="Día" data-pick>
+        <button class="dayp" type="button" aria-pressed="true" aria-label="Hoy, jueves 12. Hay lugar"><small>Hoy</small><b>12</b><i></i></button>
+        <button class="dayp" type="button" aria-pressed="false" aria-label="Viernes 13. Hay lugar"><small>Vie</small><b>13</b><i></i></button>
+        <button class="dayp" type="button" aria-disabled="true" aria-label="Sábado 14. Completo"><small>Sáb</small><b>14</b><em>Lleno</em></button>
+        <button class="dayp" type="button" aria-pressed="false" aria-label="Domingo 15. Hay lugar"><small>Dom</small><b>15</b><i></i></button>
+        <button class="dayp" type="button" aria-disabled="true" aria-label="Lunes 16. Cerrado"><small>Lun</small><b>16</b><em>Cerrado</em></button>
+        <button class="dayp" type="button" aria-pressed="false" aria-label="Martes 17. Hay lugar"><small>Mar</small><b>17</b><i></i></button>
+        <button class="dayp" type="button" aria-pressed="false" aria-label="Miércoles 18. Hay lugar"><small>Mié</small><b>18</b><i></i></button>
+      </div>
+
+      <div class="chips" role="group" aria-label="Tamaño de cancha" data-pick>
+        <button class="chipb" type="button" aria-pressed="true">Todas</button>
+        <button class="chipb" type="button" aria-pressed="false">Fútbol 5</button>
+        <button class="chipb" type="button" aria-pressed="false">Fútbol 7</button>
+      </div>
+
+      <span data-v="bar:off" hidden></span>
+      <div class="hgrid" role="group" aria-label="Hora" data-pick>
+        <button class="hourb" type="button" aria-disabled="true"><b>17:00</b><span>Lleno</span></button>
+        <button class="hourb" type="button" aria-pressed="false" data-go="bar:on" data-put="#when|Hoy, jueves 12 · 18:00 a 19:00"><b>18:00</b><span>3 libres</span></button>
+        <button class="hourb" type="button" aria-pressed="false" data-go="bar:on" data-put="#when|Hoy, jueves 12 · 19:00 a 20:00"><b>19:00</b><span>2 libres</span></button>
+        <button class="hourb last" type="button" aria-pressed="false" data-go="bar:on" data-put="#when|Hoy, jueves 12 · 20:00 a 21:00"><b>20:00</b><span>Queda 1</span></button>
+        <button class="hourb" type="button" aria-disabled="true"><b>21:00</b><span>Lleno</span></button>
+        <button class="hourb" type="button" aria-pressed="false" data-go="bar:on" data-put="#when|Hoy, jueves 12 · 22:00 a 23:00"><b>22:00</b><span>2 libres</span></button>
+        <button class="hourb" type="button" aria-pressed="false" data-go="bar:on" data-put="#when|Hoy, jueves 12 · 23:00 a 00:00"><b>23:00</b><span>4 libres</span></button>
+        <button class="hourb" type="button" aria-pressed="false" data-go="bar:on" data-put="#when|Hoy, jueves 12 · 00:00 a 01:00"><b>00:00</b><span>4 libres</span></button>
+      </div>
+      <p class="legend">Debajo de cada hora, cuántas canchas quedan libres.</p>
+    </section>
+
+    <div class="cx__rest stack">
+      <section class="blk" aria-labelledby="pa-t" data-reveal>
+        <div class="head2"><h2 class="h2" id="pa-t">Partidos abiertos</h2><a class="link" href="rival.html">Ver el tablón</a></div>
+        <div class="board board--full" style="margin-top:0">
+          <a class="match glass" href="rival-partido.html">
+            <div class="match__k"><span class="tag">Falta 1</span><span class="match__t">Fútbol 5 · hoy 21:00</span></div>
+            <span class="match__m">Ya son 9 de 10</span>
+            <span class="match__bar"><i style="width:90%"></i></span>
+            <span class="match__cta">Pedir sumarme</span>
+          </a>
+          <a class="match glass" href="rival-partido.html">
+            <div class="match__k"><span class="tag tag--rival">Busca rival</span><span class="match__t">Fútbol 7 · sábado 20:00</span></div>
+            <span class="match__m">Un equipo de 7 armado</span>
+            <span class="match__bar"><i style="width:50%"></i></span>
+            <span class="match__cta">Pedir jugar</span>
+          </a>
+        </div>
+      </section>
+
+      <section class="blk" aria-label="Canchas" data-reveal>
+        <h2 class="h2">Canchas</h2>
+        <div class="tiles">
+          <div class="tile glass"><b>Cancha 1</b><span>Fútbol 5 · Techada</span></div>
+          <div class="tile glass"><b>Cancha 2</b><span>Fútbol 5 · Techada</span></div>
+          <div class="tile glass"><b>Cancha 3</b><span>Fútbol 5 · Descubierta</span></div>
+          <div class="tile glass"><b>Cancha 4</b><span>Fútbol 7 · Descubierta</span></div>
+        </div>
+      </section>
+
+      <section class="blk" aria-label="Fotos del complejo" data-reveal>
+        <h2 class="h2">Fotos</h2>
+        <div class="gallery">
+          <img src="assets/img/card-canchita.webp" alt="Cancha de fútbol 5 techada, de noche">
+          <img src="assets/img/photo-f18142854-500.webp" alt="Cancha de césped sintético con torres de luz encendidas">
+          <img src="assets/img/card-potrero.webp" alt="Arco de una cancha de fútbol iluminada">
+        </div>
+      </section>
+
+      <section class="blk" aria-label="Reseñas" data-reveal>
+        <h2 class="h2">Reseñas</h2>
+        <div class="rev glass">
+          <span class="rev__n">4,7</span>
+          <div class="rev__l"><span class="stars" role="img" aria-label="4,7 de 5"><!--i:star--><!--i:star--><!--i:star--><!--i:star--><!--i:star--></span><span class="small">32 reseñas verificadas</span></div>
+          <a class="link" href="#main">Dejar una reseña</a>
+        </div>
+      </section>
+
+      <section class="blk" aria-label="Horarios" data-reveal>
+        <h2 class="h2">Horarios</h2>
+        <dl class="week glass">
+          <div><dt>Lunes</dt><dd>Cerrado</dd></div>
+          <div><dt>Martes a jueves</dt><dd>17:00 a 01:00</dd></div>
+          <div><dt>Viernes y sábado</dt><dd>16:00 a 02:00</dd></div>
+          <div><dt>Domingo</dt><dd>16:00 a 00:00</dd></div>
+        </dl>
+        <p class="by">Reservas con TurnoGol</p>
+      </section>
+    </div>
+  </div>
+</main>
+
+<aside class="rbar" data-v="bar:on" aria-label="Tu turno">
+  <div class="grab"></div>
+  <div class="rbar__top">
+    <div class="rbar__when"><span>Tu turno</span><b id="when">Hoy, jueves 12 · 19:00 a 20:00</b></div>
+    <button class="icon-btn" type="button" aria-label="Cerrar y elegir otra hora" data-go="bar:off"><!--i:x--></button>
+  </div>
+  <div class="copts" role="radiogroup" aria-label="Cancha" data-pick>
+    <button class="copt" type="button" role="radio" aria-checked="true" data-put="#total|$36.000"><i></i><span><b>Cancha 2</b><span>Fútbol 5 · Techada</span></span><em>$36.000</em></button>
+    <button class="copt" type="button" role="radio" aria-checked="false" data-put="#total|$52.000"><i></i><span><b>Cancha 4</b><span>Fútbol 7 · Descubierta</span></span><em>$52.000</em></button>
+  </div>
+  <a class="btn btn--full" href="reservar.html">Reservar · <span id="total">$36.000</span><!--i:arrow--></a>
+</aside>
+<!--@end tab="explorar"-->

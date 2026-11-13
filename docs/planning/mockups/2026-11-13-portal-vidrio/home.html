@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="es-AR" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TurnoGol: tu cancha, a un toque</title>
+<meta name="description" content="Buscá canchas de Fútbol 4 a 11 en tu localidad, mirá los horarios libres de hoy de cada complejo y reservá desde el celu.">
+<meta name="theme-color" content="#020617">
+<script src="glass.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="glass.css">
+<link rel="stylesheet" href="glass-app.css">
+</head>
+<body>
+<div class="ambient" aria-hidden="true"></div>
+<a class="skip" href="#top">Ir al contenido</a>
+
+<header class="top">
+  <a class="logo" href="#top" aria-label="TurnoGol, inicio">Turno<b>Gol</b></a>
+  <nav class="top__links" aria-label="Principal">
+    <a href="buscador.html">Explorar</a><a href="rival.html">Rival</a><a href="mis-reservas.html">Reservas</a><a href="para-complejos.html">Complejos</a>
+  </nav>
+  <div class="top__r">
+    <button class="theme glass" type="button" id="theme" aria-label="Cambiar a tema claro">
+      <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+    </button>
+    <a class="top__in" href="ingresar.html">Ingresar</a>
+  </div>
+</header>
+
+<main id="top">
+  <div class="stage">
+    <div class="bg" aria-hidden="true">
+      <img data-for="dark" src="assets/img/bg-night.webp" alt="">
+      <img data-for="light" src="assets/img/bg-day.webp" alt="">
+      <div class="bg__blur"></div>
+      <div class="bg__veil"></div>
+      <div class="bg__glow"></div>
+    </div>
+
+    <section class="hero" aria-labelledby="hero-h">
+      <h1 class="rise" id="hero-h" style="--i:0">Tu cancha, <em>a un toque.</em></h1>
+      <p class="lead rise" style="--i:1">Elegí localidad y cancha. Ves los horarios libres y reservás desde el celu, sin llamar a nadie.</p>
+
+      <form class="search glass rise" style="--i:2" action="buscador.html" role="search" aria-label="Buscar canchas de fútbol">
+        <button class="field" type="button" aria-label="Localidad: Luján. Cambiar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12s-8-7-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span class="field__t"><span class="field__l">Localidad</span><span class="field__v">Luján</span></span>
+          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <button class="field" type="button" aria-label="Cancha: Fútbol 5. Cambiar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M12 5v14"/><circle cx="12" cy="12" r="2.5"/></svg>
+          <span class="field__t"><span class="field__l">Cancha</span><span class="field__v">Fútbol 5</span></span>
+          <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <button class="btn go" type="submit">Buscar canchas<span class="go__i" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span></button>
+      </form>
+
+      <div class="win glass rise" style="--i:3" role="img" aria-label="La búsqueda de TurnoGol con complejos de Luján y sus horarios libres de hoy">
+        <div class="win__bar" aria-hidden="true">
+          <span class="chip"><svg viewBox="0 0 24 24"><path d="M20 10c0 5-8 12-8 12s-8-7-8-12a8 8 0 0 1 16 0Z"/></svg>Luján</span>
+          <span class="chip">Fútbol 5</span>
+          <span class="win__n"><b>6 complejos</b> con Fútbol 5</span>
+        </div>
+        <div class="cards" aria-hidden="true">
+          <div class="card"><div class="card__ph"><img src="assets/img/card-canchita.webp" alt=""></div>
+            <div class="card__b"><span class="card__n">La Canchita</span><span class="card__m">a 1,2 km · Fútbol 5 y 7</span>
+              <div class="slots"><span class="slot">19:00</span><span class="slot">20:00</span></div></div></div>
+          <div class="card"><div class="card__ph"><img src="assets/img/photo-f18142854-500.webp" alt=""></div>
+            <div class="card__b"><span class="card__n">Basílica F5</span><span class="card__m">a 2,4 km · Fútbol 5</span>
+              <div class="slots"><span class="slot">18:00</span><span class="slot">23:00</span></div></div></div>
+          <div class="card"><div class="card__ph"><img src="assets/img/card-rosas.webp" alt=""></div>
+            <div class="card__b"><span class="card__n">Las Rosas Fútbol</span><span class="card__m">a 4,8 km · Fútbol 5 y 6</span>
+              <div class="slots"><span class="slot">20:00</span><span class="slot">21:00</span></div></div></div>
+          <div class="card"><div class="card__ph"><img src="assets/img/card-potrero.webp" alt=""></div>
+            <div class="card__b"><span class="card__n">Potrero Norte</span><span class="card__m">a 6,3 km · Fútbol 5 y 7</span>
+              <div class="slots"><span class="slot">21:00</span><span class="slot">22:00</span></div></div></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="sec sec--glow" id="reservar" aria-labelledby="reservar-h">
+    <div class="wrap">
+      <div class="sec__head" data-reveal>
+        <h2 id="reservar-h">Reservás en una pantalla. <span>Elegís el día, tocás una hora y confirmás.</span></h2>
+      </div>
+      <div class="app glass" data-reveal role="img" aria-label="La página de un complejo: los días en una fila, los horarios de hoy y el botón Reservar con la cancha y el precio">
+        <div class="app__bar" aria-hidden="true"><span>← Explorar</span><b>La Canchita</b><span>Abierto</span></div>
+        <div class="app__grid" aria-hidden="true">
+          <div class="app__list">
+            <div class="row is-on"><img src="assets/img/t-canchita.webp" alt=""><div><b>La Canchita</b><span>5 horarios libres hoy</span></div></div>
+            <div class="row"><img src="assets/img/t-basilica.webp" alt=""><div><b>Basílica F5</b><span>2 horarios libres hoy</span></div></div>
+            <div class="row"><img src="assets/img/t-rosas.webp" alt=""><div><b>Las Rosas Fútbol</b><span>3 horarios libres hoy</span></div></div>
+            <div class="row"><img src="assets/img/t-potrero.webp" alt=""><div><b>Potrero Norte</b><span>4 horarios libres hoy</span></div></div>
+          </div>
+          <div class="app__main">
+            <p class="q">Reservá tu turno</p>
+            <div class="daystrip">
+              <div class="dayp" aria-pressed="true"><small>Hoy</small><b>12</b><i></i></div>
+              <div class="dayp"><small>Vie</small><b>13</b><i></i></div>
+              <div class="dayp" aria-disabled="true"><small>Sáb</small><b>14</b><em>Lleno</em></div>
+              <div class="dayp"><small>Dom</small><b>15</b><i></i></div>
+              <div class="dayp" aria-disabled="true"><small>Lun</small><b>16</b><em>Cerrado</em></div>
+              <div class="dayp"><small>Mar</small><b>17</b><i></i></div>
+              <div class="dayp"><small>Mié</small><b>18</b><i></i></div>
+            </div>
+            <div class="hgrid">
+              <div class="hourb" aria-disabled="true"><b>18:00</b><span>Lleno</span></div>
+              <div class="hourb"><b>19:00</b><span>2 libres</span></div>
+              <div class="hourb" aria-pressed="true"><b>20:00</b><span>1 libre</span></div>
+              <div class="hourb" aria-disabled="true"><b>21:00</b><span>Lleno</span></div>
+              <div class="hourb"><b>22:00</b><span>2 libres</span></div>
+              <div class="hourb"><b>23:00</b><span>3 libres</span></div>
+              <div class="hourb"><b>00:00</b><span>1 libre</span></div>
+              <div class="hourb" aria-disabled="true"><b>01:00</b><span>Lleno</span></div>
+            </div>
+            <div class="app__go">
+              <div><span>Hoy, jueves 12 · 20:00 a 21:00</span><b>Cancha 2 · Fútbol 5</b></div>
+              <span class="btn">Reservar · $36.000</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec sec--glow sec--glow-l" id="rival" aria-labelledby="rival-h">
+    <div class="wrap split">
+      <div data-reveal>
+        <h2 id="rival-h">Rival, el tablón de partidos de tu zona</h2>
+        <p class="lead2">Si te faltan jugadores, publicás cuántos. Si tenés equipo, buscás rival. Los que juegan cerca piden sumarse y, cuando los aceptás, arreglan por WhatsApp.</p>
+        <a class="btn btn--glass" href="rival.html">Ver el tablón</a>
+      </div>
+      <div class="board" data-reveal role="img" aria-label="El tablón de Rival con sus dos botones para armar un partido y los partidos publicados">
+        <div class="board__head" aria-hidden="true"><span>Me faltan jugadores</span><span>Busco rival</span></div>
+        <div class="match glass" aria-hidden="true">
+          <div class="match__k"><span class="tag">Falta 1</span><span class="match__t">Fútbol 5 · hoy 21:00</span></div>
+          <span class="match__m">La Canchita · ya son 9 de 10</span>
+          <span class="match__bar"><i style="width:90%"></i></span>
+          <span class="match__cta">Pedir sumarme</span>
+        </div>
+        <div class="match glass" aria-hidden="true">
+          <div class="match__k"><span class="tag">Faltan 3</span><span class="match__t">Fútbol 7 · sábado 19:00</span></div>
+          <span class="match__m">Las Rosas Fútbol · ya son 11 de 14</span>
+          <span class="match__bar"><i style="width:78%"></i></span>
+          <span class="match__cta">Pedir sumarme</span>
+        </div>
+        <div class="match glass" aria-hidden="true">
+          <div class="match__k"><span class="tag tag--rival">Busca rival</span><span class="match__t">Fútbol 5 · domingo 20:00</span></div>
+          <span class="match__m">Basílica F5 · equipo de 5 completo</span>
+          <span class="match__bar"><i style="width:50%"></i></span>
+          <span class="match__cta">Pedir sumarme</span>
+        </div>
+        <div class="match glass" aria-hidden="true">
+          <div class="match__k"><span class="tag">Faltan 2</span><span class="match__t">Fútbol 6 · viernes 22:00</span></div>
+          <span class="match__m">Las Rosas Fútbol · ya son 10 de 12</span>
+          <span class="match__bar"><i style="width:83%"></i></span>
+          <span class="match__cta">Pedir sumarme</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="duenos" aria-labelledby="duenos-h">
+    <div class="wrap">
+      <div class="sec__head" data-reveal>
+        <h2 id="duenos-h">Dueños de complejos, en video</h2>
+        <p>Cómo les cambió la noche desde que sus jugadores reservan solos.</p>
+      </div>
+      <div class="videos" data-reveal>
+        <!-- cuatro lugares para los videos verticales reales de los dueños: cada póster es un reemplazo hasta tener el archivo -->
+        <div class="video"><video poster="assets/img/p-1.webp" preload="none" muted playsinline aria-label="Video de un dueño de complejo"></video></div>
+        <div class="video"><video poster="assets/img/p-2.webp" preload="none" muted playsinline aria-label="Video de un dueño de complejo"></video></div>
+        <div class="video"><video poster="assets/img/p-3.webp" preload="none" muted playsinline aria-label="Video de un dueño de complejo"></video></div>
+        <div class="video"><video poster="assets/img/p-4.webp" preload="none" muted playsinline aria-label="Video de un dueño de complejo"></video></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="closing" id="contact" aria-labelledby="close-h">
+  <div class="wrap">
+    <div class="cta glass" data-reveal>
+      <div>
+        <h2 id="close-h">Tus jugadores reservan solos. Tu noche se ordena sola.</h2>
+        <p class="lead2">Agenda, cobros y caja del complejo en el mismo lugar donde te encuentran. Empezás gratis.</p>
+      </div>
+      <a class="btn" href="para-complejos.html">Ver TurnoGol para complejos<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+    </div>
+    <p class="word" aria-hidden="true">Turno<b>Gol</b></p>
+    <div class="foot">
+      <div class="foot__brand">
+        <a class="logo" href="#top" aria-label="TurnoGol, volver arriba">Turno<b>Gol</b></a>
+        <p>Turnos de fútbol para reservar online, en los complejos de tu zona.</p>
+      </div>
+      <div><h3>Jugadores</h3><ul><li><a href="buscador.html">Buscar canchas</a></li><li><a href="rival.html">Tablón de Rival</a></li></ul></div>
+      <div><h3>Complejos</h3><ul><li><a href="#duenos">Videos de dueños</a></li><li><a href="precios.html">Planes</a></li></ul></div>
+      <div><h3>Ayuda</h3><ul><li><a href="#reservar">Cómo se reserva</a></li><li><a href="#contact">Escribinos</a></li></ul></div>
+    </div>
+    <div class="legal">
+      <span>&copy; 2026 TurnoGol</span>
+      <a href="credits.html">Fotos vía Wikimedia Commons</a>
+    </div>
+  </div>
+</footer>
+
+<nav class="tabbar glass" aria-label="Navegación del jugador">
+  <a href="buscador.html" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36z"/></svg>Explorar</a>
+  <a href="rival.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M9.5 6.5 21 18v3h-3L6.5 9.5M11 5 5 11M8 8 4 4M5 3 3 5"/></svg>Rival</a>
+  <a href="mis-reservas.html"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Reservas</a>
+  <a href="cuenta.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>Cuenta</a>
+</nav>
+</body>
+</html>

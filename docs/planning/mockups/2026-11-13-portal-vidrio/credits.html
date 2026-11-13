@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="es-AR" data-type="software" data-radius="round" data-buttons="tonal" data-motion>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Canchas de fútbol en Luján: photograph credits</title>
+<meta name="description" content="The photographers, licences and source pages of the photographs on the Canchas de fútbol en Luján website.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="site-kind" content="software">
+<meta name="page-type" content="software">
+<script>
+  (function () {
+    var q = new URLSearchParams(location.search);
+    var t = q.get('theme');
+    var dark = t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    if (q.get('full')) document.documentElement.dataset.full = '1';
+    document.documentElement.dataset.sheet = q.get('sheet') || 'none';
+  })();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/system.css">
+<link rel="stylesheet" href="assets/motion/motion.css">
+<link rel="stylesheet" href="assets/layout/layout.css">
+<style>
+:root {
+  --p-bg: #ffffff; --p-surface: #f1f2f3; --p-ink: #0f172a; --p-muted: #5f6674;
+  --p-accent: #04775b; --p-accent-ink: #ffffff; --p-action: #04775b; --p-action-ink: #ffffff;
+  --p-inv-bg: #0f172a; --p-inv-surface: #1c2437; --p-inv-ink: #ffffff; --p-inv-muted: #9a9ea8;
+  --p-inv-accent: #04775b; --p-inv-accent-ink: #ffffff; --p-inv-action: #04775b; --p-inv-action-ink: #ffffff;
+  --font-display: "Archivo", system-ui, sans-serif;
+  --font-text: "Archivo", system-ui, sans-serif;
+  --display-weight: 500;
+  --display-tracking: -0.025em;
+  --display-stretch: 110%;
+}
+</style>
+<link rel="stylesheet" href="portal-ui.css">
+<style>
+  body { background: var(--bg); color: var(--ink); }
+  .ex { padding-top: calc(var(--nav) + var(--s-5)); padding-bottom: var(--s-9); }
+  html[data-full] .ex { padding-bottom: var(--s-5); }
+  .ex-bar { display: flex; gap: var(--s-3); align-items: center; }
+  .ex-bar .tg-search { margin: 0; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); width: min(560px, 100%); padding: 4px; }
+  .ex-bar .tg-field { min-height: 52px; }
+  .ex-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); margin: var(--s-6) 0 var(--s-4); }
+  .ex-head h1 { font-family: var(--font-display); font-stretch: var(--display-stretch); font-weight: 500; letter-spacing: -0.025em; font-size: clamp(24px, 1.2vw + 18px, 34px); line-height: 1.1; margin: 0; }
+  .ex-head p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+  .ex-map { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 var(--s-4); border-radius: 999px; border: 1px solid var(--line-strong); background: var(--bg); color: var(--ink); font: 500 15px var(--font-text); white-space: nowrap; flex: none; }
+  .ex-map svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .ex-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-5); }
+  @media (max-width: 1279px) { .ex-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  /* en el celu, dos tarjetas por fila (decisión del dueño) */
+  @media (max-width: 767px) { .ex-grid { grid-template-columns: 1fr 1fr; gap: var(--s-3); } }
+  .ex .tg-card__b { gap: 6px; padding: var(--s-3) var(--s-3) var(--s-4); }
+  .ex .tg-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 6px; }
+  .ex .tg-slot { height: 44px; font-size: 14px; padding: 0; }
+  .tg-slots__l { font-size: 13px; font-weight: 500; color: var(--ink); margin-top: 4px; }
+  @media (max-width: 767px) {
+    .ex .tg-card__n { font-size: 15px; }
+    .ex .tg-card__b { padding: 10px 10px 12px; }
+    .ex-head h1 { font-size: 24px; }
+    .ex-bar .tg-search { width: 100%; }
+  }
+
+  /* la hoja de abajo (celu) o el panel flotante (compu): Cancha y Localidad */
+  .sheet-backdrop, .sheet { display: none; }
+  html[data-sheet="cancha"] .sheet-backdrop, html[data-sheet="localidad"] .sheet-backdrop { display: block; }
+  html[data-sheet="cancha"] #sheet-cancha, html[data-sheet="localidad"] #sheet-localidad { display: block; }
+  .sheet-backdrop { position: fixed; inset: 0; z-index: 40; background: rgb(2 6 23 / .5); }
+  .sheet { position: fixed; z-index: 41; inset: auto 0 0; max-height: 88dvh; overflow: auto; background: var(--bg); color: var(--ink);
+    border-radius: 24px 24px 0 0; padding: 10px var(--s-5) calc(var(--s-5) + env(safe-area-inset-bottom)); }
+  html[data-theme="dark"] .sheet { background: #0b1222; }
+  .sheet .grab { width: 40px; height: 4px; border-radius: 4px; background: var(--line-strong); margin: 0 auto var(--s-4); }
+  .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
+  .sheet h2 { margin: 0; font-family: var(--font-display); font-stretch: var(--display-stretch); font-weight: 500; font-size: 22px; letter-spacing: -0.02em; }
+  .sheet .hint { margin: 6px 0 var(--s-4); color: var(--muted); font-size: 14px; line-height: 1.45; }
+  .icon-btn { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 999px; border: 0; background: color-mix(in oklab, var(--ink) 7%, var(--bg)); color: var(--ink); }
+  .icon-btn svg, .opt svg, .fmt svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* el select de cancha: tarjetas de Fútbol 4 a 11, de a varias, con cuántos complejos tiene cada una */
+  .fmt-any { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 56px; padding: 0 var(--s-4); margin-bottom: var(--s-2);
+    border-radius: 16px; border: 1px solid var(--line); background: transparent; color: var(--ink); font: 500 16px var(--font-text); text-align: left; }
+  .fmt-any span { color: var(--muted); font-weight: 400; font-size: 14px; }
+  .fmt-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); }
+  .fmt { position: relative; display: grid; gap: 2px; align-content: center; min-height: 76px; padding: var(--s-3) var(--s-4); border-radius: 16px;
+    border: 1px solid var(--line); background: transparent; color: var(--ink); text-align: left; font-family: var(--font-text); }
+  .fmt b { font-family: var(--font-display); font-stretch: var(--display-stretch); font-weight: 500; font-size: 18px; letter-spacing: -0.01em; }
+  .fmt span { font-size: 13px; color: var(--muted); }
+  .fmt .ck { position: absolute; top: 12px; right: 12px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 999px; border: 1.5px solid var(--line-strong); }
+  .fmt .ck svg { width: 14px; height: 14px; opacity: 0; }
+  .fmt[aria-checked="true"] { border-color: var(--tg-green); background: var(--tg-green-soft); box-shadow: inset 0 0 0 1px var(--tg-green); }
+  .fmt[aria-checked="true"] .ck { background: var(--tg-green); border-color: var(--tg-green); color: var(--bg); }
+  .fmt[aria-checked="true"] .ck svg { opacity: 1; }
+  .fmt[aria-disabled="true"] { color: var(--muted); border-style: dashed; }
+  .fmt[aria-disabled="true"] b { color: var(--muted); }
+  .sheet-foot { display: grid; grid-template-columns: auto 1fr; gap: var(--s-3); margin-top: var(--s-5); }
+  .sheet-foot .btn { height: 52px; }
+
+  /* localidad */
+  .field-l { display: block; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+  .input { display: flex; align-items: center; gap: var(--s-3); height: 52px; padding: 0 var(--s-4); border-radius: 14px; border: 1px solid var(--line-strong); color: var(--muted); font-size: 16px; }
+  .input svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+  .opt { display: flex; align-items: center; gap: var(--s-3); width: 100%; min-height: 56px; padding: 0 var(--s-2); border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); font: 400 16px var(--font-text); text-align: left; }
+  .opt .n { margin-left: auto; font-size: 14px; color: var(--muted); }
+  .opt.locate { color: var(--tg-green); font-weight: 500; margin-top: var(--s-2); }
+  .opt[aria-checked="true"] { font-weight: 500; color: var(--tg-green); }
+  .opt .check { color: var(--tg-green); }
+
+  @media (min-width: 768px) {
+    .sheet { inset: calc(var(--nav) + 88px) auto auto max(var(--gut), 50% - 640px); width: 440px; border-radius: 20px; padding: var(--s-5);
+      border: 1px solid var(--line); box-shadow: 0 24px 60px -24px rgb(2 6 23 / .45); }
+    #sheet-cancha { left: calc(max(var(--gut), 50% - 640px) + 280px); }
+    .sheet .grab { display: none; }
+    .sheet-backdrop { background: rgb(2 6 23 / .18); }
+  }
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="wrap nav__bar">
+    <a class="skip-link" href="#main">Ir al contenido</a>
+    <a class="nav__logo tg-logo" href="index.html" aria-label="TurnoGol, inicio">Turno<b>Gol</b></a>
+    <nav class="nav__links" aria-label="Principal">
+      <div class="nav__item"><a class="nav__link" href="explorar.html" aria-current="page">Explorar</a></div>
+      <div class="nav__item"><a class="nav__link" href="index.html#rival">Rival</a></div>
+      <div class="nav__item"><a class="nav__link" href="index.html#reservar">Reservas</a></div>
+      <div class="nav__item"><a class="nav__link" href="index.html#duenos">Complejos</a></div>
+    </nav>
+    <div class="nav__actions"><a class="nav__link" href="index.html#contact">Ingresar</a></div>
+  </div>
+</header>
+
+<main class="ex" id="main">
+  <p><a class="link" href="index.html">Canchas de fútbol en Luján</a></p>
+  <section class="credits-list" id="credits" aria-labelledby="credits-h">
+    <h1 id="credits-h">Photograph credits</h1>
+    <ul>
+      <li><a href="https://commons.wikimedia.org/wiki/File:Soccer_at_night_(Unsplash).jpg">Abigail Keenan akeenster</a>, <a href="http://creativecommons.org/publicdomain/zero/1.0/deed.en">CC0</a></li>
+      <li><a href="https://commons.wikimedia.org/wiki/File:%C3%85lidhem_soccer_field.JPG">Oxiq</a>, <a href="http://creativecommons.org/publicdomain/zero/1.0/deed.en">CC0</a></li>
+      <li><a href="https://commons.wikimedia.org/wiki/File:Soccer_field_floodlights_(30959631068).jpg">Enoch Leung from Canada</a>, <a href="https://creativecommons.org/licenses/by-sa/2.0">CC BY-SA 2.0</a></li>
+      <li><a href="https://commons.wikimedia.org/wiki/File:Soccer_goal_construction_with_night_sky_clouds_(Unsplash).jpg">Mitchell Lawler dalawler</a>, <a href="http://creativecommons.org/publicdomain/zero/1.0/deed.en">CC0</a></li>
+    </ul>
+  </section>
+</main>
+
+<nav class="tabbar" aria-label="Navegación del jugador">
+  <a href="explorar.html" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36z"/></svg>Explorar</a>
+  <a href="index.html#rival"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M9.5 6.5 21 18v3h-3L6.5 9.5M11 5 5 11M8 8 4 4M5 3 3 5"/></svg>Rival</a>
+  <a href="index.html#reservar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Reservas</a>
+  <a href="index.html#contact"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>Cuenta</a>
+</nav>
+
+<div class="sheet-backdrop" onclick="document.documentElement.dataset.sheet='none'"></div>
+
+<div class="sheet" id="sheet-cancha" role="dialog" aria-modal="true" aria-labelledby="cancha-t">
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <h2 id="cancha-t">Tamaño de cancha</h2>
+    <button class="icon-btn" type="button" aria-label="Cerrar" onclick="document.documentElement.dataset.sheet='none'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+  </div>
+  <p class="hint">Podés marcar más de uno. Al lado de cada tamaño ves cuántos complejos de Luján lo tienen.</p>
+  <button class="fmt-any" type="button" role="checkbox" aria-checked="false">Cualquier tamaño<span>8 complejos</span></button>
+  <div class="fmt-grid" role="group" aria-label="Tamaños de cancha">
+    <button class="fmt" type="button" role="checkbox" aria-checked="false" aria-disabled="true"><b>Fútbol 4</b><span>Ninguno en Luján</span><i class="ck"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></i></button>
+    <button class="fmt" type="button" role="checkbox" aria-checked="true"><b>Fútbol 5</b><span>6 complejos</span><i class="ck"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></i></button>
+    <button class="fmt" type="button" role="checkbox" aria-checked="false"><b>Fútbol 6</b><span>2 complejos</span><i class="ck"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></i></button>
+    <button class="fmt" type="button" role="checkbox" aria-checked="false"><b>Fútbol 7</b><span>3 complejos</span><i class="ck"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></i></button>
+    <button class="fmt" type="button" role="checkbox" aria-checked="false"><b>Fútbol 8</b><span>1 complejo</span><i class="ck"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></i></button>
+    <button class="fmt" type="button" role="checkbox" aria-checked="false" aria-disabled="true"><b>Fútbol 9</b><span>Ninguno en Luján</span><i class="ck"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></i></button>
+    <button class="fmt" type="button" role="checkbox" aria-checked="false" aria-disabled="true"><b>Fútbol 10</b><span>Ninguno en Luján</span><i class="ck"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></i></button>
+    <button class="fmt" type="button" role="checkbox" aria-checked="false"><b>Fútbol 11</b><span>1 complejo</span><i class="ck"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></i></button>
+  </div>
+  <div class="sheet-foot">
+    <button class="btn btn--secondary" type="button">Borrar</button>
+    <button class="btn btn--primary" type="button" onclick="document.documentElement.dataset.sheet='none'">Ver 6 complejos</button>
+  </div>
+</div>
+
+<div class="sheet" id="sheet-localidad" role="dialog" aria-modal="true" aria-labelledby="loc-t">
+  <div class="grab"></div>
+  <div class="sheet-head">
+    <h2 id="loc-t">Elegí la localidad</h2>
+    <button class="icon-btn" type="button" aria-label="Cerrar" onclick="document.documentElement.dataset.sheet='none'"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+  </div>
+  <p class="hint">Te mostramos Luján porque es la zona de tu conexión. La que elijas queda guardada para la próxima.</p>
+  <label class="field-l" for="loc-q">Localidad</label>
+  <div class="input"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><span id="loc-q">Por ejemplo, Mercedes</span></div>
+  <button class="opt locate" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h3M19 12h3M12 2v3M12 19v3"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/></svg>Usar mi ubicación exacta</button>
+  <div role="radiogroup" aria-label="Localidades con complejos">
+    <button class="opt" type="button" role="radio" aria-checked="true">Luján<span class="n">8 complejos</span><svg class="check" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></button>
+    <button class="opt" type="button" role="radio" aria-checked="false">General Rodríguez<span class="n">3 complejos</span></button>
+    <button class="opt" type="button" role="radio" aria-checked="false">Mercedes<span class="n">2 complejos</span></button>
+    <button class="opt" type="button" role="radio" aria-checked="false">Moreno<span class="n">4 complejos</span></button>
+  </div>
+</div>
+
+<script type="module" src="assets/system.js"></script>
+<script type="module" src="assets/motion/motion.js"></script>
+</body>
+</html>

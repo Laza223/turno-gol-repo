@@ -1,0 +1,64 @@
+<!--@page title="Confirmá tu turno en La Canchita | TurnoGol" desc="Revisá el turno y confirmá tu reserva." on="explorar"-->
+<main class="page" id="main">
+  <div class="wrap wrap--s stack" data-top>
+    <a class="back" href="complejo.html"><!--i:back-->Volver</a>
+
+    <section class="sum glass rise" aria-label="Tu turno" data-v="entrar mail pagar reservar">
+      <div class="sum__top"><img src="assets/img/t-canchita.webp" alt=""><div><b>La Canchita</b><span>Av. Constitución, Luján</span></div></div>
+      <dl class="kv">
+        <div><dt>Cancha</dt><dd>Cancha 2 · Fútbol 5</dd></div>
+        <div><dt>Día</dt><dd>Jueves 12 de noviembre</dd></div>
+        <div><dt>Hora</dt><dd>19:00 a 20:00</dd></div>
+      </dl>
+      <hr class="rule">
+      <dl class="kv" data-v="entrar mail pagar">
+        <div><dt>Precio del turno</dt><dd>$36.000</dd></div>
+        <div class="is-key"><dt>Seña a pagar ahora</dt><dd>$10.800</dd></div>
+        <div><dt>Resto en el complejo</dt><dd>$25.200</dd></div>
+      </dl>
+      <dl class="kv" data-v="reservar">
+        <div class="is-key"><dt>Precio del turno</dt><dd>$36.000</dd></div>
+        <div><dt>Cómo se paga</dt><dd>En el complejo</dd></div>
+      </dl>
+    </section>
+
+    <section class="panel glass stack rise" style="--i:1" data-v="entrar" aria-labelledby="in-t">
+      <div><h1 class="h2" id="in-t">Entrá para confirmar</h1><p class="small" style="margin-top:6px">Ingreso seguro, sin contraseña. Entrás y volvés a este turno.</p></div>
+      <button class="btn btn--glass btn--full btn--still" type="button" data-go="pagar"><!--i:google-->Continuar con Google</button>
+      <div class="or">o</div>
+      <div class="fld"><label for="em">Email</label><input class="inputf" id="em" type="email" inputmode="email" autocomplete="email" placeholder="vos@ejemplo.com"></div>
+      <button class="btn btn--full" type="button" data-go="mail">Continuar con mi email</button>
+    </section>
+
+    <section class="panel glass stack rise" style="--i:1" data-v="mail" aria-labelledby="ml-t">
+      <div><h1 class="h2" id="ml-t">Revisá tu email</h1><p class="sub">Te mandamos un enlace a vos@ejemplo.com. Cuando lo toques, volvés a esta pantalla con tu cuenta y ahí pagás la seña.</p></div>
+      <div class="links"><button class="link" type="button" data-go="entrar">Usar otro email</button><button class="link" type="button">Mandar otro enlace</button></div>
+    </section>
+
+    <div class="stack rise" style="--i:1" data-v="pagar">
+      <button class="btn btn--full" type="button">Pagar seña<!--i:arrow--></button>
+      <p class="small center">La seña se paga con MercadoPago. Podés cancelar desde Mis reservas.</p>
+    </div>
+
+    <div class="stack rise" style="--i:1" data-v="reservar">
+      <a class="btn btn--full" href="reserva.html">Reservar<!--i:arrow--></a>
+      <p class="small center">Podés cancelar desde Mis reservas.</p>
+    </div>
+
+    <section class="empty glass" data-v="ocupado" aria-labelledby="oc-t">
+      <h1 class="h2" id="oc-t">Ese turno ya no está disponible</h1>
+      <p class="sub">Otra persona lo reservó o ya pasó la hora. Elegí otro horario.</p>
+      <a class="btn" href="complejo.html">Elegir otro turno</a>
+    </section>
+
+    <div class="mock" role="group" aria-label="Estados del mockup">
+      <b>Solo en el mockup. Estados de esta pantalla</b>
+      <button type="button" data-go="entrar" aria-pressed="true">Sin cuenta</button>
+      <button type="button" data-go="mail" aria-pressed="false">Enlace enviado</button>
+      <button type="button" data-go="pagar" aria-pressed="false">Con seña</button>
+      <button type="button" data-go="reservar" aria-pressed="false">Sin seña</button>
+      <button type="button" data-go="ocupado" aria-pressed="false">Turno ocupado</button>
+    </div>
+  </div>
+</main>
+<!--@end tab="explorar"-->

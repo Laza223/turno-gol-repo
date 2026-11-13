@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="es-AR" data-theme="dark" data-sheet="none">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Rival: partidos para sumarte | TurnoGol</title>
+<meta name="description" content="Armá tu partido o sumate a uno en los complejos de TurnoGol.">
+<meta name="theme-color" content="#020617">
+<script src="glass.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,400..900;1,62..125,400..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="glass.css">
+<link rel="stylesheet" href="glass-app.css">
+</head>
+<body>
+<div class="ambient" aria-hidden="true"></div>
+<a class="skip" href="#main">Ir al contenido</a>
+
+<header class="top">
+  <a class="logo" href="home.html" aria-label="TurnoGol, inicio">Turno<b>Gol</b></a>
+  <nav class="top__links" aria-label="Principal">
+    <a href="buscador.html">Explorar</a><a href="rival.html" aria-current="page">Rival</a><a href="mis-reservas.html">Reservas</a><a href="para-complejos.html">Complejos</a>
+  </nav>
+  <div class="top__r">
+    <button class="theme glass" type="button" id="theme" aria-label="Cambiar a tema claro"><svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg><svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.930 4.930l1.410 1.410M17.660 17.660l1.410 1.410M2 12h2M20 12h2M6.340 17.660l-1.410 1.410M19.070 4.930l-1.410 1.410"/></svg></button>
+    <a class="top__in" href="cuenta.html">Cuenta</a>
+  </div>
+</header>
+<main class="page" id="main">
+  <div class="wrap wrap--m" data-top>
+    <header class="head2 rise">
+      <div><p class="eyebrow">Rival</p><h1 class="h1">Partidos en Luján</h1><p class="sub">Armá tu partido o sumate a uno en los complejos de TurnoGol.</p></div>
+      <a class="btn" href="rival-nuevo.html"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg>Armar un partido</a>
+    </header>
+
+    <div class="seg glass rise" style="--i:1;margin-top:20px" role="tablist" aria-label="Secciones de Rival">
+      <button type="button" role="tab" aria-selected="true" data-go="tab:tablon">Tablón</button>
+      <button type="button" role="tab" aria-selected="false" data-go="tab:mios">Mis partidos</button>
+    </div>
+
+    <div data-v="tab:tablon">
+      <div class="chips rise" style="--i:2;margin-top:16px" role="group" aria-label="Qué buscás" data-pick>
+        <button class="chipb" type="button" aria-pressed="true">Todos</button>
+        <button class="chipb" type="button" aria-pressed="false">Me faltan jugadores</button>
+        <button class="chipb" type="button" aria-pressed="false">Busco rival</button>
+      </div>
+
+      <div data-v="lleno">
+        <p class="group">Hoy</p>
+        <div class="board board--full" style="margin-top:8px">
+          <a class="match glass" href="rival-partido.html">
+            <div class="match__k"><span class="tag">Falta 1</span><span class="match__t">Fútbol 5 · 21:00</span></div>
+            <span class="match__m">La Canchita · ya son 9 de 10</span>
+            <span class="match__bar"><i style="width:90%"></i></span>
+            <span class="match__cta">Pedir sumarme</span>
+          </a>
+          <a class="match glass" href="rival-partido.html">
+            <div class="match__k"><span class="tag tag--rival">Busca rival</span><span class="match__t">Fútbol 7 · 22:00</span></div>
+            <span class="match__m">Potrero Norte · un equipo de 7 armado</span>
+            <span class="match__bar"><i style="width:50%"></i></span>
+            <span class="match__cta">Pedir jugar</span>
+          </a>
+        </div>
+        <p class="group">Próximos días</p>
+        <div class="board board--full" style="margin-top:8px">
+          <a class="match glass" href="rival-partido.html">
+            <div class="match__k"><span class="tag">Faltan 3</span><span class="match__t">Fútbol 5 · sábado 20:00</span></div>
+            <span class="match__m">Las Rosas Fútbol · ya son 7 de 10</span>
+            <span class="match__bar"><i style="width:70%"></i></span>
+            <span class="match__cta">Pedir sumarme</span>
+          </a>
+          <a class="match glass" href="rival-partido.html">
+            <div class="match__k"><span class="tag">Falta un arquero</span><span class="match__t">Fútbol 6 · domingo 19:00</span></div>
+            <span class="match__m">Basílica F5 · ya son 11 de 12</span>
+            <span class="match__bar"><i style="width:92%"></i></span>
+            <span class="match__cta">Pedir sumarme</span>
+          </a>
+        </div>
+      </div>
+
+      <section class="empty glass" data-v="vacio" style="margin-top:16px" aria-labelledby="ev-t">
+        <h2 class="h2" id="ev-t">Hoy no hay partidos en el tablón</h2>
+        <p class="sub">Armá el tuyo y avisá qué te falta. Aparece acá para los que juegan en Luján.</p>
+        <a class="btn" href="rival-nuevo.html">Armar un partido</a>
+      </section>
+
+      <section class="panel glass stack" style="margin-top:22px" aria-labelledby="av-t" data-reveal>
+        <div><h2 class="h2" id="av-t">Avisame cuando haya partido</h2><p class="small" style="margin-top:6px">Te llega un mail cuando alguien publica un partido en el complejo que elijas.</p></div>
+        <button class="pickbtn" type="button">Elegí un complejo<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <div class="chips" role="group" aria-label="Avisame cuando haya" data-pick>
+          <button class="chipb" type="button" aria-pressed="true">Me faltan jugadores</button>
+          <button class="chipb" type="button" aria-pressed="false">Busco rival</button>
+        </div>
+        <button class="link" type="button" style="justify-self:start"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.300 21a1.940 1.940 0 0 0 3.400 0"/></svg>Avisarme por mail</button>
+      </section>
+    </div>
+
+    <div data-v="tab:mios">
+      <p class="group">Próximos</p>
+      <div class="board board--full" style="margin-top:8px">
+        <a class="match glass" href="rival-partido.html?view=organizador">
+          <div class="match__k"><span class="tag">Organizás vos</span><span class="match__t">Fútbol 5 · hoy 19:00</span></div>
+          <span class="match__m">La Canchita · ya son 7 de 10 · 2 pedidos sin responder</span>
+          <span class="match__bar"><i style="width:70%"></i></span>
+          <span class="match__cta">Ver pedidos</span>
+        </a>
+        <a class="match glass" href="rival-partido.html?view=adentro">
+          <div class="match__k"><span class="tag">Estás adentro</span><span class="match__t">Fútbol 7 · martes 22:00</span></div>
+          <span class="match__m">Potrero Norte · ya son 12 de 14</span>
+          <span class="match__bar"><i style="width:86%"></i></span>
+          <span class="match__cta match__cta--off">Ver</span>
+        </a>
+        <a class="match glass" href="rival-partido.html?view=pedido">
+          <div class="match__k"><span class="tag tag--warn">Pedido enviado</span><span class="match__t">Fútbol 5 · sábado 20:00</span></div>
+          <span class="match__m">Las Rosas Fútbol · te avisamos por mail si te aceptan</span>
+          <span class="match__cta match__cta--off">Ver</span>
+        </a>
+      </div>
+      <p class="group">Ya pasaron</p>
+      <div class="board board--full" style="margin-top:8px">
+        <div class="match glass bk is-past" style="gap:8px 14px">
+          <div class="match__k"><span class="tag tag--off">Jugás</span><span class="match__t">Fútbol 5 · jueves 5 de noviembre</span></div>
+          <span class="match__m">La Canchita</span>
+        </div>
+        <div class="match glass bk is-past" style="gap:8px 14px">
+          <div class="match__k"><span class="tag tag--bad">Se cayó</span><span class="match__t">Fútbol 7 · sábado 31 de octubre</span></div>
+          <span class="match__m">Potrero Norte</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mock" role="group" aria-label="Estados del mockup">
+      <b>Solo en el mockup. Estados del tablón</b>
+      <button type="button" data-go="lleno" aria-pressed="true">Con partidos</button>
+      <button type="button" data-go="vacio" aria-pressed="false">Sin partidos</button>
+    </div>
+  </div>
+</main>
+
+<nav class="tabbar glass" aria-label="Navegación del jugador">
+  <a href="buscador.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m16.240 7.760-2.120 6.360-6.360 2.120 2.120-6.360z"/></svg>Explorar</a>
+  <a href="rival.html" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.500 17.500 3 6V3h3l11.500 11.500M13 19l6-6M16 16l4 4M19 21l2-2M9.500 6.500 21 18v3h-3L6.500 9.500M11 5 5 11M8 8 4 4M5 3 3 5"/></svg>Rival</a>
+  <a href="mis-reservas.html"><svg viewBox="0 0 24 24" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Reservas</a>
+  <a href="cuenta.html"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>Cuenta</a>
+</nav>
+</body>
+</html>

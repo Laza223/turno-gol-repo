@@ -1,5 +1,7 @@
 # Decisión: en el celular, la reserva de la ficha va en tres pasos (día, hora y cancha)
 
+> **Superada en su forma el 2026-11-13** por [`2026-11-13-portal-vidrio.md`](2026-11-13-portal-vidrio.md): la ficha deja los tres pasos y reserva en una sola pantalla. Sigue lo que esta decisión resolvió por debajo: el día, la hora y el tamaño viven en la URL, y los estados sin lugar, cerrado y con error se conservan.
+
 **Fecha:** 2026-10-29. **Decide:** Lazar (founder). Motivo: en `/[slug]` el jugador elige la hora y ve "5 libres" en letra chica. Después la página baja sola y aparecen las canchas en filas que parecen texto. Alguien que no se lleva bien con el celular no entiende cuál es el próximo toque.
 
 ## Qué se decide

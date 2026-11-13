@@ -1,0 +1,64 @@
+<!--@page title="Armar un partido · Rival | TurnoGol" desc="Armá tu partido: decí qué necesitás y salí al tablón." on="rival" user="1"-->
+<main class="page" id="main">
+  <div class="wrap wrap--m stack" style="gap:14px" data-top>
+    <a class="back" href="rival.html" style="justify-self:start"><!--i:back-->Volver</a>
+    <header class="rise"><p class="eyebrow">Rival</p><h1 class="h1">Armá tu partido</h1><p class="sub">Decí qué necesitás y salí al tablón.</p></header>
+
+    <section class="panel glass stack rise" style="--i:1" aria-labelledby="dc-t">
+      <h2 class="h2" id="dc-t">Dónde y cuándo</h2>
+      <button class="pickbtn" type="button" aria-label="Complejo: La Canchita. Cambiar"><span>La Canchita <span class="small">· Luján</span></span><!--i:down--></button>
+      <p class="q2" id="d-l">Día</p>
+      <div class="chips" role="group" aria-labelledby="d-l" data-pick>
+        <button class="chipb" type="button" aria-pressed="true">Hoy</button>
+        <button class="chipb" type="button" aria-pressed="false">Mañana</button>
+        <button class="chipb" type="button" aria-pressed="false">Sáb 14</button>
+        <button class="chipb" type="button" aria-pressed="false">Dom 15</button>
+        <button class="chipb" type="button" aria-pressed="false">Mar 17</button>
+      </div>
+      <p class="q2" id="h-l">Hora</p>
+      <div class="chips" role="group" aria-labelledby="h-l" data-pick>
+        <button class="chipb" type="button" aria-pressed="true">19:00</button>
+        <button class="chipb" type="button" aria-pressed="false">20:00</button>
+        <button class="chipb" type="button" aria-pressed="false">22:00</button>
+        <button class="chipb" type="button" aria-pressed="false">Otra hora</button>
+      </div>
+      <div class="note"><span><b style="color:var(--slot-ink)">Encontramos tu reserva a esa hora.</b> Cancha 2, Fútbol 5. El partido sale como "Reservada en TurnoGol".</span></div>
+    </section>
+
+    <section class="panel glass stack" aria-labelledby="pa-t" data-reveal>
+      <h2 class="h2" id="pa-t">El partido</h2>
+      <p class="q2" id="f-l">Fútbol de</p>
+      <p class="small">En total, los dos equipos. Vos incluido.</p>
+      <div class="chips" role="group" aria-labelledby="f-l" data-pick>
+        <button class="chipb" type="button" aria-pressed="false">8</button>
+        <button class="chipb" type="button" aria-pressed="true">10</button>
+        <button class="chipb" type="button" aria-pressed="false">12</button>
+        <button class="chipb" type="button" aria-pressed="false">14</button>
+        <button class="chipb" type="button" aria-pressed="false">Otro</button>
+      </div>
+      <p class="q2" id="q-l">¿Qué buscás?</p>
+      <div class="chips" role="group" aria-labelledby="q-l" data-pick>
+        <button class="chipb" type="button" aria-pressed="true">Buscamos jugadores</button>
+        <button class="chipb" type="button" aria-pressed="false">Buscamos rival</button>
+      </div>
+      <p class="q2" id="c-l">¿Cuántos te faltan?</p>
+      <div class="stepper" role="group" aria-labelledby="c-l" data-stepper data-min="1" data-max="9">
+        <button type="button" data-d="-1" aria-label="Uno menos"><!--i:minus--></button><output aria-live="polite">3</output><button type="button" data-d="1" aria-label="Uno más"><!--i:plus--></button>
+      </div>
+      <p class="q2" id="p-l">Posición que buscás</p>
+      <div class="chips" role="group" aria-labelledby="p-l" data-pick>
+        <button class="chipb" type="button" aria-pressed="true">Cualquier posición</button>
+        <button class="chipb" type="button" aria-pressed="false">Un arquero</button>
+      </div>
+    </section>
+
+    <section class="panel glass stack" aria-label="Publicación" data-reveal>
+      <label class="checkrow"><input type="checkbox" checked><span><b>Publicar en el tablón</b><br><span class="small">Aparece en el tablón y cualquiera puede pedir sumarse.</span></span></label>
+      <div class="fld"><label for="wa">Tu WhatsApp</label><input class="inputf" id="wa" type="tel" inputmode="tel" placeholder="Solo lo ve a quien aceptes"></div>
+      <label class="checkrow"><input type="checkbox"><span>Guardar este número en mi cuenta</span></label>
+    </section>
+
+    <div class="sticky-cta"><a class="btn btn--full" href="rival-partido.html?view=organizador">Armar y publicar<!--i:arrow--></a></div>
+  </div>
+</main>
+<!--@end tab="rival"-->

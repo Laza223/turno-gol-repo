@@ -1,0 +1,102 @@
+<!--@page title="Tus reservas | TurnoGol" desc="Tus turnos por jugar y los que ya pasaron." on="reservas" user="1"-->
+<main class="page" id="main">
+  <div class="wrap wrap--m" data-top>
+    <header class="rise">
+      <p class="eyebrow">Tu actividad</p>
+      <h1 class="h1">Tus reservas</h1>
+      <p class="sub">Tus turnos por jugar y los que ya pasaron.</p>
+    </header>
+
+    <div class="seg glass rise" style="--i:1;margin-top:20px" role="tablist" aria-label="Reservas">
+      <button type="button" role="tab" aria-selected="true" data-go="tab:prox">Próximos</button>
+      <button type="button" role="tab" aria-selected="false" data-go="tab:hist">Historial</button>
+    </div>
+
+    <div class="list" data-v="tab:prox">
+      <div data-v="lleno" class="list" style="margin-top:0">
+        <article class="bk glass rise" style="--i:2">
+          <div class="bk__top"><span class="tag">Confirmada</span><span class="bk__when">Hoy · 19:00 a 20:00</span></div>
+          <div class="bk__main"><img src="assets/img/t-canchita.webp" alt=""><div><b>La Canchita</b><span>Cancha 2 · Fútbol 5 · Av. Constitución, Luján</span></div></div>
+          <p class="bk__pay">Seña pagada. Resto en el complejo: $25.200</p>
+          <div class="links">
+            <a class="link" href="#main"><!--i:pin-->Cómo llegar</a>
+            <button class="link" type="button"><!--i:wa-->Avisarle al grupo</button>
+            <a class="link" href="rival-nuevo.html"><!--i:swords-->Armar el partido</a>
+            <button class="link link--bad push" type="button" data-open="cancelar">Cancelar</button>
+          </div>
+        </article>
+
+        <article class="bk glass rise" style="--i:3">
+          <div class="bk__top"><span class="tag tag--warn">Falta la seña</span><span class="bk__when">Sábado 14 · 21:00 a 22:00</span></div>
+          <div class="bk__main"><img src="assets/img/t-rosas.webp" alt=""><div><b>Las Rosas Fútbol</b><span>Cancha 1 · Fútbol 6 · Las Rosas, Luján</span></div></div>
+          <div class="note note--warn"><span><b>Falta pagar la seña.</b> Si no se paga a tiempo, el turno se libera.</span><a class="btn" href="reserva.html?view=pendiente">Pagar la seña</a></div>
+        </article>
+
+        <article class="bk glass rise" style="--i:4">
+          <div class="bk__top"><span class="tag">Confirmada</span><span class="bk__when">Martes 17 · 22:00 a 23:00</span></div>
+          <div class="bk__main"><img src="assets/img/t-potrero.webp" alt=""><div><b>Potrero Norte</b><span>Cancha 3 · Fútbol 7 · Barrio Norte, Luján</span></div></div>
+          <p class="bk__pay">Se paga en el complejo: $48.000</p>
+          <div class="links">
+            <a class="link" href="#main"><!--i:pin-->Cómo llegar</a>
+            <button class="link" type="button"><!--i:wa-->Avisarle al grupo</button>
+            <button class="link link--bad push" type="button" data-open="cancelar">Cancelar</button>
+          </div>
+        </article>
+      </div>
+
+      <section class="empty glass" data-v="vacio" aria-labelledby="em-t">
+        <h2 class="h2" id="em-t">No tenés turnos por jugar</h2>
+        <p class="sub">Elegí un complejo y reservá tu próximo turno.</p>
+        <a class="btn" href="buscador.html">Explorar complejos</a>
+      </section>
+    </div>
+
+    <div class="list" data-v="tab:hist">
+      <article class="bk glass is-past">
+        <div class="bk__top"><span class="tag tag--off">Jugada</span><span class="bk__when">Jueves 5 de noviembre · 20:00</span></div>
+        <div class="bk__main"><img src="assets/img/t-canchita.webp" alt=""><div><b>La Canchita</b><span>Cancha 2 · Fútbol 5</span></div></div>
+        <div class="links"><a class="link" href="complejo.html">Reservar de nuevo</a><button class="link" type="button"><!--i:star-->Dejar una reseña</button></div>
+      </article>
+      <article class="bk glass is-past">
+        <div class="bk__top"><span class="tag tag--bad">Cancelada</span><span class="bk__when">Sábado 31 de octubre · 18:00</span></div>
+        <div class="bk__main"><img src="assets/img/t-basilica.webp" alt=""><div><b>Basílica F5</b><span>Cancha 1 · Fútbol 5</span></div></div>
+        <p class="bk__pay">La cancelaste vos.</p>
+        <div class="links"><a class="link" href="complejo.html">Reservar de nuevo</a></div>
+      </article>
+      <article class="bk glass is-past">
+        <div class="bk__top"><span class="tag tag--off">Jugada</span><span class="bk__when">Martes 27 de octubre · 21:00</span></div>
+        <div class="bk__main"><img src="assets/img/t-potrero.webp" alt=""><div><b>Potrero Norte</b><span>Cancha 3 · Fútbol 7</span></div></div>
+        <div class="links"><a class="link" href="complejo.html">Reservar de nuevo</a><button class="link" type="button"><!--i:star-->Dejar una reseña</button></div>
+      </article>
+    </div>
+
+    <div class="mock" role="group" aria-label="Estados del mockup">
+      <b>Solo en el mockup. Estados de esta pantalla</b>
+      <button type="button" data-go="lleno" aria-pressed="true">Con turnos</button>
+      <button type="button" data-go="vacio" aria-pressed="false">Sin turnos</button>
+      <button type="button" data-open="cancelar">Cancelar un turno</button>
+    </div>
+  </div>
+</main>
+
+<div class="backdrop" data-close></div>
+<div class="sheet sheet--c" id="sheet-cancelar" role="dialog" aria-modal="true" aria-labelledby="ca-t">
+  <div class="grab"></div>
+  <div class="sheet__head">
+    <h2 id="ca-t">¿Cancelar este turno?</h2>
+    <button class="icon-btn" type="button" aria-label="Cerrar" data-close><!--i:x--></button>
+  </div>
+  <p class="hint">Martes 17 de noviembre, 22:00, en Potrero Norte. No hay seña que devolver.</p>
+  <span class="label" id="ca-l">¿Por qué cancelás?</span>
+  <div role="radiogroup" aria-labelledby="ca-l" data-pick>
+    <button class="opt" type="button" role="radio" aria-checked="true">No juntamos gente</button>
+    <button class="opt" type="button" role="radio" aria-checked="false">Me surgió otra cosa</button>
+    <button class="opt" type="button" role="radio" aria-checked="false">Por el clima</button>
+    <button class="opt" type="button" role="radio" aria-checked="false">Otro motivo</button>
+  </div>
+  <div class="sheet__foot">
+    <button class="btn btn--glass" type="button" data-close>Volver</button>
+    <button class="btn btn--bad" type="button" data-close>Cancelar turno</button>
+  </div>
+</div>
+<!--@end tab="reservas"-->

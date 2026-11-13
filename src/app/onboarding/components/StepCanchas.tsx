@@ -21,9 +21,10 @@ type Props = {
 const DEFAULT_COUNTS: Record<string, number> = { '5': 1 }
 
 /**
- * Una pantalla: "¿Qué canchas tenés?" con un contador por formato. Fútbol 5 arranca
- * en 1 y los demás en 0, así que un complejo de una sola cancha toca "Siguiente".
- * Las canchas se crean recién en Precios, cuando ya están los horarios.
+ * Una pantalla: "¿Qué canchas tenés?". Arriba, los 8 formatos (Fútbol 4 al 11) para
+ * tocar; abajo, un contador por cada formato elegido. Fútbol 5 arranca elegido con 1,
+ * así que un complejo de una sola cancha toca "Siguiente". Las canchas se crean recién
+ * en Precios, cuando ya están los horarios.
  */
 export function StepCanchas({ initialCounts, action, onBack }: Props) {
   const [counts, setCounts] = useState<Record<string, number>>(
@@ -33,16 +34,19 @@ export function StepCanchas({ initialCounts, action, onBack }: Props) {
   const [isPending, startTransition] = useTransition()
   const navigate = useWizardNavigation()
 
-  const total = WIZARD_FORMATS.reduce((sum, f) => sum + (counts[String(f)] ?? 0), 0)
+  const chosen = WIZARD_FORMATS.filter((f) => (counts[String(f)] ?? 0) > 0)
+  const total = chosen.reduce((sum, f) => sum + (counts[String(f)] ?? 0), 0)
 
   // Lo que se está armando, en vivo: "2 de Fútbol 5, 1 de Fútbol 7".
-  const summary = WIZARD_FORMATS.filter((f) => (counts[String(f)] ?? 0) > 0)
-    .map((f) => `${counts[String(f)]} de Fútbol ${f}`)
-    .join(', ')
+  const summary = chosen.map((f) => `${counts[String(f)]} de Fútbol ${f}`).join(', ')
 
   function set(format: number, value: number) {
     setError(null)
     setCounts((prev) => ({ ...prev, [String(format)]: value }))
+  }
+
+  function toggle(format: number) {
+    set(format, (counts[String(format)] ?? 0) > 0 ? 0 : 1)
   }
 
   function submit() {
@@ -69,45 +73,75 @@ export function StepCanchas({ initialCounts, action, onBack }: Props) {
     <StepScreen
       title="¿Qué canchas tenés?"
       accent="canchas"
-      description="Elegí cuántas hay de cada tipo."
+      description="Tocá los tipos que tenés y elegí cuántas hay de cada uno."
       onNext={submit}
       isPending={isPending}
       error={error}
       onBack={onBack}
       backHref={stepPath(1)}
     >
-      <ul className="space-y-2.5">
+      <ul aria-label="Formatos" className="grid grid-cols-4 gap-2">
         {WIZARD_FORMATS.map((format) => {
-          const count = counts[String(format)] ?? 0
+          const on = (counts[String(format)] ?? 0) > 0
           return (
-            <li
-              key={format}
-              className={cn(
-                'relative flex items-center justify-between gap-3 overflow-hidden rounded-xl border py-2.5 pl-4 pr-2.5 transition-colors',
-                count > 0 ? 'signup-lit' : 'border-white/10 bg-white/3',
-              )}
-            >
-              <PitchLines
+            <li key={format}>
+              <button
+                type="button"
+                aria-pressed={on}
+                onClick={() => toggle(format)}
                 className={cn(
-                  'pointer-events-none absolute inset-y-0 left-0 h-full w-40',
-                  count > 0 ? 'text-emerald-300/25' : 'text-white/8',
+                  'relative flex h-16 w-full flex-col items-center justify-center overflow-hidden rounded-xl border transition-[background-color,border-color,scale] duration-150 active:scale-[0.96] motion-reduce:active:scale-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400',
+                  on ? 'signup-lit' : 'border-white/10 bg-white/3 hover:bg-white/6',
                 )}
-              />
-              <span className="relative font-display text-lg font-black italic text-white">
-                Fútbol {format}
-              </span>
-              <QuantityStepper
-                className="relative"
-                label={`canchas de Fútbol ${format}`}
-                value={count}
-                onChange={(v) => set(format, v)}
-                min={0}
-                max={MAX_WIZARD_COURTS}
-              />
+              >
+                <span
+                  className={cn(
+                    'text-[11px] font-medium leading-none',
+                    on ? 'text-emerald-200' : 'text-muted-foreground',
+                  )}
+                >
+                  Fútbol
+                </span>{' '}
+                <span
+                  className={cn(
+                    'mt-1 font-display text-2xl font-black italic leading-none tabular-nums',
+                    on ? 'text-white' : 'text-white/70',
+                  )}
+                >
+                  {format}
+                </span>
+              </button>
             </li>
           )
         })}
       </ul>
+
+      {chosen.length > 0 && (
+        <ul className="mt-4 space-y-2.5">
+          {chosen.map((format) => (
+            <li
+              key={format}
+              className="signup-pop relative flex items-center justify-between gap-3 overflow-hidden rounded-xl border border-white/10 bg-white/3 py-2 pl-4 pr-2"
+            >
+              <PitchLines className="pointer-events-none absolute inset-y-0 left-0 h-full w-40 text-emerald-300/15" />
+              <span className="relative text-sm text-muted-foreground">
+                Canchas de{' '}
+                <span className="font-display text-lg font-black italic text-white">
+                  Fútbol {format}
+                </span>
+              </span>
+              <QuantityStepper
+                className="relative"
+                label={`canchas de Fútbol ${format}`}
+                value={counts[String(format)] ?? 0}
+                onChange={(v) => set(format, v)}
+                min={1}
+                max={MAX_WIZARD_COURTS}
+              />
+            </li>
+          ))}
+        </ul>
+      )}
 
       <p aria-live="polite" className="mt-4 flex items-baseline gap-2 text-base text-foreground">
         <span className="font-display text-3xl font-black italic tabular-nums text-emerald-300">

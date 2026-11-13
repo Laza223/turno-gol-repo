@@ -1,10 +1,8 @@
 import { z } from 'zod'
+import { COURT_FORMATS } from '@/modules/courts/court.schema'
 
-/**
- * Formatos que ofrece el alta por toques. `courts.format` es un entero (Fútbol 5 =
- * 5). Los demás formatos (4, 6, 9, 10) se cargan después desde `/canchas`.
- */
-export const WIZARD_FORMATS = [5, 7, 8, 11] as const
+/** Formatos que ofrece el alta: los mismos 8 de `/canchas` (Fútbol 4 al 11). */
+export const WIZARD_FORMATS = COURT_FORMATS
 
 export const MAX_WIZARD_COURTS = 20
 

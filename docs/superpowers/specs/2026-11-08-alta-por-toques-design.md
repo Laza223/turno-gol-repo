@@ -23,7 +23,7 @@ Insumos: `docs/planning/2026-11-08-onboarding-referencia-cancheria.md`, `docs/de
 | 1 | **Creá tu cuenta** (`/register`) | nombre, mail, celular, contraseña con "ver" | — | 4 |
 | 2 | ¿Cómo se llama tu complejo? | input | — | 1 |
 | 3 | ¿Dónde queda? | buscador Georef, se elige un candidato. Ciudad y provincia salen del candidato | — | 1 |
-| 4 | ¿Qué canchas tenés? | stepper − N + por formato (F5, F7, F8, F11) | F5 = 1 | no |
+| 4 | ¿Qué canchas tenés? | formatos F4 a F11 para tocar y un stepper − N + por cada formato elegido | F5 = 1 | no |
 | 5 | ¿A qué hora abrís y cerrás? "Si un día es distinto, lo cambiás después." | 2 selects, el cierre llega hasta las 04 (pasado medianoche = `closes_next_day`) | 08 a 00 | no |
 | 6 | ¿Cuánto cobrás el turno de Fútbol 5? (una pantalla por formato elegido) | teclado numérico con eco ("Un turno de 60 min: $X"). "¿A la noche cobrás distinto?" No/Sí; con Sí, precio de noche y "desde las" (select) | No; corte 18 hs | el precio |
 | 7 | ¿Cómo tomás los turnos hoy? | 4 opciones: cuaderno o planilla, WhatsApp, otra app, recién abro | — | no |

@@ -116,8 +116,10 @@ describe('wizardCourtCountsSchema', () => {
     expect(wizardCourtCountsSchema.safeParse({ '5': 15, '7': 6 }).success).toBe(false)
   })
 
-  it('rechaza formatos que el alta no ofrece, negativos y decimales', () => {
-    expect(wizardCourtCountsSchema.safeParse({ '9': 1 }).success).toBe(false)
+  it('acepta los 8 formatos (Fútbol 4 al 11) y rechaza el resto, negativos y decimales', () => {
+    expect(wizardCourtCountsSchema.safeParse({ '4': 1, '9': 1, '11': 1 }).success).toBe(true)
+    expect(wizardCourtCountsSchema.safeParse({ '3': 1 }).success).toBe(false)
+    expect(wizardCourtCountsSchema.safeParse({ '12': 1 }).success).toBe(false)
     expect(wizardCourtCountsSchema.safeParse({ '5': -1 }).success).toBe(false)
     expect(wizardCourtCountsSchema.safeParse({ '5': 1.5 }).success).toBe(false)
   })
@@ -171,7 +173,7 @@ describe('wizardPricesSchema', () => {
 
   it('rechaza formatos repetidos, desconocidos y más de 20 canchas', () => {
     expect(wizardPricesSchema.safeParse({ formats: [base, base] }).success).toBe(false)
-    expect(wizardPricesSchema.safeParse({ formats: [{ ...base, format: 9 }] }).success).toBe(false)
+    expect(wizardPricesSchema.safeParse({ formats: [{ ...base, format: 12 }] }).success).toBe(false)
     expect(
       wizardPricesSchema.safeParse({
         formats: [

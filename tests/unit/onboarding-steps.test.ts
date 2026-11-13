@@ -148,9 +148,9 @@ describe('readDraftCounts / readDraftPrices (tenants del wizard viejo)', () => {
     })
   })
 
-  it('sin borrador, deduce la cantidad de las canchas existentes y ignora formatos que el alta no ofrece', () => {
+  it('sin borrador, deduce la cantidad de las canchas existentes y cuenta todos los formatos', () => {
     const courts = [{ format: 5 }, { format: 5 }, { format: 7 }, { format: 9 }]
-    expect(readDraftCounts(settings({}), courts)).toEqual({ '5': 2, '7': 1 })
+    expect(readDraftCounts(settings({}), courts)).toEqual({ '5': 2, '7': 1, '9': 1 })
   })
 
   it('sin borrador, deduce el precio de la primera cancha de cada formato', () => {

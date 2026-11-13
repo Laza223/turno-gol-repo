@@ -4,7 +4,7 @@ const HHMM_RE = /^([01]\d|2[0-3]):[0-5]\d$/
 const HHMM_OR_MIDNIGHT_RE = /^([01]\d|2[0-3]):[0-5]\d$|^00:00$/
 const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 // Cambio #17: los 8 formatos de fútbol en Argentina (Fútbol 4 al 11).
-const VALID_FORMATS = [4, 5, 6, 7, 8, 9, 10, 11] as const
+export const COURT_FORMATS = [4, 5, 6, 7, 8, 9, 10, 11] as const
 
 const pricingRuleSchema = z.object({
   days: z.array(z.enum(DAY_KEYS)).min(1, 'Al menos un día requerido'),
@@ -29,7 +29,7 @@ export const createCourtSchema = z.object({
     .number()
     .int()
     .refine(
-      (v): v is (typeof VALID_FORMATS)[number] => (VALID_FORMATS as readonly number[]).includes(v),
+      (v): v is (typeof COURT_FORMATS)[number] => (COURT_FORMATS as readonly number[]).includes(v),
       'Formato inválido: debe ser Fútbol 4 a 11',
     ),
   pricing: courtPricingSchema,

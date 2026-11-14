@@ -15,10 +15,10 @@ function dayParts(date: string): { weekday: number; day: number } {
 // Todo lo de este dibujo es un EJEMPLO (complejos, estados, cancha y precio) y lo dice la etiqueta:
 // es cómo se ve la ficha, nunca datos de un complejo real (decisión del dueño, 2026-11-14).
 const COMPLEJOS = [
-  { name: 'La Canchita', free: 5, photo: '/bg-hero-2.webp' },
-  { name: 'Basílica F5', free: 2, photo: '/bg-owner.webp' },
-  { name: 'Las Rosas Fútbol', free: 3, photo: '/hero-bg.webp' },
-  { name: 'Potrero Norte', free: 4, photo: '/bg-how-it-works.webp' },
+  { name: 'Complejo del Parque', free: 5, photo: '/bg-hero-2.webp' },
+  { name: 'Fútbol Centro', free: 2, photo: '/bg-owner.webp' },
+  { name: 'Club del Barrio', free: 3, photo: '/hero-bg.webp' },
+  { name: 'Canchas del Sur', free: 4, photo: '/bg-how-it-works.webp' },
 ] as const
 
 /** Estado de cada uno de los siete días de la fila: 2 lleno, 4 cerrado. */
@@ -59,11 +59,11 @@ export function ReservaDibujo({ today }: { today: string }) {
           <div
             className="home-app glass-painted"
             role="img"
-            aria-label="Ejemplo de la página de un complejo: los días en una fila, los horarios de hoy y el botón Reservar con la cancha y el precio"
+            aria-label="Ejemplo de la página de un complejo: los días en una fila, los horarios de hoy y el botón Reservar con la cancha"
           >
             <div className="home-app__bar" aria-hidden>
               <span>← Explorar</span>
-              <b>La Canchita</b>
+              <b>Complejo del Parque</b>
               <span>Abierto</span>
             </div>
             <div className="home-app__grid" aria-hidden>
@@ -119,7 +119,7 @@ export function ReservaDibujo({ today }: { today: string }) {
                     </span>
                     <b>Cancha 2 · Fútbol 5</b>
                   </div>
-                  <span className="home-btn">Reservar · $36.000</span>
+                  <span className="home-btn">Reservar</span>
                 </div>
               </div>
             </div>

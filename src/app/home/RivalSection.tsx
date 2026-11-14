@@ -9,26 +9,26 @@ const PARTIDOS = [
   {
     tag: 'Falta 1',
     what: 'Fútbol 5 · hoy 21:00',
-    where: 'La Canchita · ya son 9 de 10',
+    where: 'Complejo del Parque · ya son 9 de 10',
     fill: 0.9,
   },
   {
     tag: 'Faltan 3',
     what: 'Fútbol 7 · sábado 19:00',
-    where: 'Las Rosas Fútbol · ya son 11 de 14',
+    where: 'Club del Barrio · ya son 11 de 14',
     fill: 0.78,
   },
   {
     tag: 'Busca rival',
     rival: true,
     what: 'Fútbol 5 · domingo 20:00',
-    where: 'Basílica F5 · equipo de 5 completo',
+    where: 'Fútbol Centro · equipo de 5 completo',
     fill: 0.5,
   },
   {
     tag: 'Faltan 2',
     what: 'Fútbol 6 · viernes 22:00',
-    where: 'Las Rosas Fútbol · ya son 10 de 12',
+    where: 'Club del Barrio · ya son 10 de 12',
     fill: 0.83,
   },
 ] as const

@@ -19,8 +19,10 @@ import heroClaro from './fotos/hero-claro.webp'
  * Hero de la home (portal de vidrio, F2; `home.html`). Un solo árbol para todos los anchos y un
  * solo `<h1>`. La foto apila cuatro capas (dirección §3.4): la foto, un desenfoque que se apaga
  * hacia abajo, el velo del color del tema y los resplandores. La de oscuro y la de claro van por
- * clase del tema, las dos en `lazy`: así el navegador baja solo la que se ve (la otra queda en
- * `display: none`), con `fetchPriority="high"` porque es lo más grande de la pantalla.
+ * clase del tema. Las dos van con `preload` (un `<link>` en el `<head>`) y `fetchPriority="high"`:
+ * la foto es el LCP de la home. Con `lazy` se descubría tarde y el LCP pasaba de 0,96 s (main antes
+ * de F2) a 1,70 s; con `preload` quedó en 1,03 s (build local, CPU 4×, 4G, 2026-11-14). Se bajan
+ * las dos aunque se vea una (31 KB + 39 KB): el tema se sabe recién en el cliente.
  *
  * El movimiento está en `home.css`.
  */
@@ -33,6 +35,7 @@ export function Hero({ cities }: { cities: CityCount[] }) {
           src={heroNoche}
           alt=""
           sizes="100vw"
+          preload
           fetchPriority="high"
           placeholder="blur"
           className="home-bg__img hidden dark:block"
@@ -41,6 +44,7 @@ export function Hero({ cities }: { cities: CityCount[] }) {
           src={heroClaro}
           alt=""
           sizes="100vw"
+          preload
           fetchPriority="high"
           placeholder="blur"
           className="home-bg__img home-bg__img--claro dark:hidden"

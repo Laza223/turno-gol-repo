@@ -95,9 +95,14 @@ export async function waitForHeaderSlot(page: Page): Promise<void> {
  * `PortalSessionProvider` termina de pedir `/api/player/session`. Sin esta espera la foto sale con
  * "Ingresar" en vez del avatar, o con la barra inferior a medio aparecer: la misma carrera que
  * `waitForHeaderSlot` en el panel.
+ *
+ * Desde el portal de vidrio (F1) el menú de cuenta solo está en la cabecera desde 768 px: en el
+ * celular la cuenta vive en la barra inferior, así que ahí la señal de sesión es la barra.
  */
 export async function waitForPlayerSession(page: Page): Promise<void> {
-  await expect(page.getByRole('button', { name: /^Cuenta de / })).toBeVisible({
-    timeout: 15_000,
-  })
+  await expect(
+    page
+      .getByRole('button', { name: /^Cuenta de / })
+      .or(page.getByRole('navigation', { name: 'Navegación del jugador' })),
+  ).toBeVisible({ timeout: 15_000 })
 }

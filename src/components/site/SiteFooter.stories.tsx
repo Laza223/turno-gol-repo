@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
 import SiteFooter from './SiteFooter'
+import { PortalSessionProvider } from './PortalSessionProvider'
 import {
   CONTACT_EMAIL,
   CONTACT_INSTAGRAM_HANDLE,
@@ -10,40 +11,51 @@ import {
   contactWhatsappUrl,
 } from '@/lib/contact'
 
-/** Footer del portal del jugador — theme-adaptive vía tokens, estático. */
+/**
+ * Pie del portal de vidrio: la palabra gigante, la marca y tres columnas, sobre la luz del portal.
+ * "Tablón de Rival" aparece solo con el flag. Es de servidor; el link de Rival lee el flag del
+ * `PortalSessionProvider`.
+ */
 const meta = {
   title: 'Player/SiteFooter',
   component: SiteFooter,
   parameters: { layout: 'fullscreen' },
+  decorators: [
+    (Story) => (
+      <div data-portal-glass className="portal-ambient relative isolate pt-10">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof SiteFooter>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
 /**
- * Los tres canales de contacto reemplazaron al link "Contacto" (un `mailto:`
- * suelto). El assert mira los `href` contra los helpers y no contra literales:
- * si mañana cambia el número, la story no tiene que enterarse.
+ * Los tres canales de contacto y las tres columnas. Los `href` de contacto se comparan contra los
+ * helpers y no contra literales: si mañana cambia el número, la story no tiene que enterarse.
  */
 export const Default: Story = {
-  parameters: {
-    nextjs: {
-      appDirectory: true,
-      navigation: { pathname: '/explorar', query: { city: 'rosario' } },
-    },
-  },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // "Ingresar" vuelve a la página actual.
-    await expect(canvas.getByRole('link', { name: 'Ingresar' })).toHaveAttribute(
-      'href',
-      '/ingresar?next=%2Fexplorar%3Fcity%3Drosario',
-    )
-    // Pie de todo el portal: el dueño del complejo llega a su página también desde el celu.
-    await expect(canvas.getByRole('link', { name: 'Para complejos' })).toHaveAttribute(
-      'href',
-      '/para-complejos',
-    )
+    for (const title of ['Jugadores', 'Complejos', 'Ayuda']) {
+      await expect(canvas.getByRole('heading', { name: title })).toBeVisible()
+    }
+    for (const [name, href] of [
+      ['Buscar canchas', '/explorar'],
+      ['TurnoGol para complejos', '/para-complejos'],
+      ['Precios', '/precios'],
+      ['Blog', '/blog'],
+      ['Términos', '/terminos'],
+      ['Privacidad', '/privacidad'],
+      ['Escribinos', contactWhatsappUrl()],
+    ] as const) {
+      await expect(canvas.getByRole('link', { name })).toHaveAttribute('href', href)
+    }
+    // Sin el flag no hay Rival, y el "Ingresar" del pie anterior ya no está.
+    await expect(canvas.queryByRole('link', { name: 'Tablón de Rival' })).toBeNull()
+    await expect(canvas.queryByRole('link', { name: 'Ingresar' })).toBeNull()
     // Navegación real, no texto corrido: 44 px de alto en todos los links y canales.
     for (const link of canvas.getAllByRole('link')) {
       await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
@@ -58,23 +70,39 @@ export const Default: Story = {
       'href',
       contactMailtoUrl(),
     )
-    // El link viejo se fue: si vuelve, es que alguien deshizo el grupo.
-    await expect(canvas.queryByRole('link', { name: 'Contacto' })).toBeNull()
   },
 }
 
-/** Con la sesión sembrada por el server no se ofrece "Ingresar"; el resto del footer sigue igual. */
-export const ConSesion: Story = {
-  args: { signedIn: true },
+/** Con el flag de RIVAL prendido aparece "Tablón de Rival" en Jugadores. */
+export const ConRival: Story = {
+  decorators: [
+    (Story) => (
+      <PortalSessionProvider
+        initialValue={{
+          session: null,
+          favoriteTenantIds: new Set(),
+          staffPanelPath: null,
+          rivalEnabled: true,
+        }}
+      >
+        <Story />
+      </PortalSessionProvider>
+    ),
+  ],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.queryByRole('link', { name: 'Ingresar' })).toBeNull()
-    for (const link of canvas.getAllByRole('link')) {
-      await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
-    }
-    await expect(canvas.getByRole('link', { name: 'Privacidad' })).toHaveAttribute(
+    await expect(canvas.getByRole('link', { name: 'Tablón de Rival' })).toHaveAttribute(
       'href',
-      '/privacidad',
+      '/rival',
     )
+  },
+}
+
+/** En el celu: la marca arriba a todo el ancho y las columnas de a dos, sin desbordar. */
+export const Celu: Story = {
+  globals: { viewport: { value: 'mobile-primary', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const doc = canvasElement.ownerDocument.documentElement
+    await expect(doc.scrollWidth).toBeLessThanOrEqual(window.innerWidth)
   },
 }

@@ -291,7 +291,7 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
           href={listHref}
           // bottom con safe-area: sobre el home indicator del iPhone el FAB
           // quedaba pegado al borde de gestos y era difícil de acertar.
-          className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] left-1/2 z-30 inline-flex h-11 max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-5 text-sm font-bold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_30px_rgba(16,185,129,0.3)] transition-all duration-200 hover:brightness-105 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_12px_36px_rgba(16,185,129,0.4)] active:scale-[0.97] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 lg:hidden whitespace-nowrap"
+          className="fixed bottom-[calc(var(--portal-tabbar-space)+12px)] left-1/2 z-30 inline-flex h-11 max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-5 text-sm font-bold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_30px_rgba(16,185,129,0.3)] transition-all duration-200 hover:brightness-105 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_12px_36px_rgba(16,185,129,0.4)] active:scale-[0.97] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 lg:hidden whitespace-nowrap"
         >
           <List className="h-4 w-4" aria-hidden /> Ver lista
         </Link>

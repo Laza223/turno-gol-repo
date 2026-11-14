@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
+import { withPortalGlass } from '../../../.storybook/decorators/with-portal-glass'
 import ThemeToggle from './ThemeToggle'
 
 /**
@@ -116,5 +117,45 @@ export const Portal: Story = {
     await expect(relleno(otro)).toBe(false)
     await expect(anillo(marcados[0]!)).toBe(false)
     await expect(relleno(marcados[0]!)).toBe(true)
+  },
+}
+
+/**
+ * Variante de vidrio (menú de la cuenta del portal): el control segmentado de vidrio, 44 px y 15 px. UNA píldora marca
+ * la elegida y se desliza a la nueva (con "reducir movimiento", cambia sin deslizar). La elegida va
+ * además en el verde de "lugar": el estado no se dice solo con la posición. El panel sigue con la de
+ * siempre.
+ */
+export const Vidrio: Story = {
+  args: { variant: 'glass' },
+  decorators: [
+    (Story) => (
+      <div className="w-80">
+        <Story />
+      </div>
+    ),
+    withPortalGlass(),
+  ],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const radios = canvas.getAllByRole('radio')
+    for (const radio of radios) {
+      await expect(radio.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
+      await expect(getComputedStyle(radio).fontSize).toBe('15px')
+    }
+    const oscuro = canvas.getByRole('radio', { name: 'Oscuro' })
+    await userEvent.click(oscuro)
+    await expect(oscuro).toHaveAttribute('aria-checked', 'true')
+    const pills = canvasElement.querySelectorAll<HTMLElement>('.segmented-pill')
+    await expect(pills).toHaveLength(1)
+    // La píldora queda exactamente debajo de la elegida.
+    await waitFor(() => {
+      const pill = pills[0]!.getBoundingClientRect()
+      const item = oscuro.getBoundingClientRect()
+      return expect(Math.abs(pill.left - item.left)).toBeLessThanOrEqual(1)
+    })
+    const color = (r: HTMLElement) => getComputedStyle(r).color
+    const claro = canvas.getByRole('radio', { name: 'Claro' })
+    await waitFor(() => expect(color(oscuro)).not.toBe(color(claro)))
   },
 }

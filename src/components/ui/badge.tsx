@@ -3,6 +3,8 @@ import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 import { TONE_BADGE } from '@/lib/status-tone'
 
+const GLASS_TAG = 'h-7 px-3 py-0 text-[13px]'
+
 const badgeVariants = cva(
   'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2',
   {
@@ -32,6 +34,12 @@ const badgeVariants = cva(
         ),
         warning: cn('border-transparent', TONE_BADGE.warning),
         outline: 'text-foreground border-border',
+        // ── Portal de vidrio (`.tag` del mockup): 28 px, 13 px semibold. El verde es "hay lugar".
+        glass: `${GLASS_TAG} border-portal-slot-line bg-portal-slot text-portal-slot-ink`,
+        'glass-neutral': `${GLASS_TAG} border-portal-inner-line bg-portal-inner text-portal-ink`,
+        'glass-off': `${GLASS_TAG} border-portal-inner-line bg-portal-inner text-portal-soft`,
+        'glass-warn': `${GLASS_TAG} border-portal-warn-line bg-portal-warn-bg text-portal-warn`,
+        'glass-bad': `${GLASS_TAG} border-portal-bad-line bg-portal-bad-bg text-portal-bad`,
       },
     },
     defaultVariants: {

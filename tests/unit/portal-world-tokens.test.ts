@@ -18,8 +18,11 @@ const read = (rel: string) => readFileSync(path.join(projectRoot, rel), 'utf8')
  * sha256 de las declaraciones de `:root`, `.dark`, `.dark-surface` y `@theme` de globals.css,
  * sin comentarios ni espacios, con `!important`. Si se cambian tokens del panel A PROPÓSITO, se
  * actualiza este hash en el mismo PR (el mensaje del test imprime el valor nuevo).
+ *
+ * 2026-11-13 (portal de vidrio, F1): `@theme` suma los 18 colores `--color-portal-*`, que apuntan a
+ * tokens que solo existen con el marcador `[data-portal-glass]`. Ninguna declaración del panel cambió.
  */
-const PANEL_TOKENS_SHA256 = 'b7cf114bc1dd3d4f6e4c808d7fe464dc7ee495392e260ee74bf0a376d65e4da5'
+const PANEL_TOKENS_SHA256 = '6eb3038a8b04ec0117982819a4ec676052725c0dd13f2ad6dd95f87382668860'
 
 const PANEL_SELECTORS = [':root', '.dark', '.dark-surface']
 

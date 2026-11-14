@@ -22,8 +22,8 @@ const bar = (root: HTMLElement) => root.querySelector<HTMLElement>('[data-fixed-
 
 // Debajo de `md` el botón es una barra fija. Solo existe para jugadores, que siempre tienen la
 // barra inferior: tiene que ubicarse por encima de ella DESDE EL PRIMER RENDER, sin esperar a que
-// la sesión se hidrate (un fetch), o saltaría 57 px cuando llega.
-const ABOVE_BOTTOM_NAV = 'bottom-[calc(3.5rem+1px+env(safe-area-inset-bottom))]'
+// la sesión se hidrate (un fetch), o saltaría el alto de la barra cuando llega.
+const ABOVE_BOTTOM_NAV = 'bottom-(--portal-tabbar-space)'
 
 describe('ConfirmBookingButton — la barra fija', () => {
   it('sin sesión hidratada ya está por encima del lugar de la barra inferior', () => {

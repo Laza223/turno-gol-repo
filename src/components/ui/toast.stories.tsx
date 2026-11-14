@@ -9,6 +9,7 @@ import {
   ToastTitle,
   ToastViewport,
 } from './toast'
+import { withPortalGlass } from '../../../.storybook/decorators/with-portal-glass'
 
 /**
  * @radix-ui/react-toast puro. Necesita `ToastProvider` + `ToastViewport`
@@ -130,5 +131,29 @@ export const Cerrable: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Cerrar' }))
     await expect(canvas.getByRole('button', { name: 'Reabrir toast' })).toBeVisible()
+  },
+}
+
+/**
+ * Portal de vidrio: dentro del portal (`data-portal-glass`) el aviso es de vidrio y baja desde
+ * arriba con el resorte de la hoja. El panel sigue con el de siempre.
+ */
+export const PortalVidrio: Story = {
+  args: { open: true, duration: Infinity, variant: 'success' },
+  decorators: [withPortalGlass()],
+  render: (args) => (
+    <Toast {...args}>
+      <div className="grid gap-1">
+        <ToastTitle>Turno reservado</ToastTitle>
+        <ToastDescription>Sábado a las 20:00, cancha 2.</ToastDescription>
+      </div>
+      <ToastClose />
+    </Toast>
+  ),
+  play: async ({ canvasElement }) => {
+    const toast = canvasElement.ownerDocument.querySelector<HTMLElement>('[data-toast]')!
+    await expect(toast).toHaveAttribute('data-variant', 'success')
+    await expect(getComputedStyle(toast).borderRadius).toBe('24px')
+    await expect(getComputedStyle(toast).backdropFilter).toContain('blur(30px)')
   },
 }

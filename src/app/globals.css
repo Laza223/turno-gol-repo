@@ -264,6 +264,28 @@
   --animate-tg-ball-bounce: tg-ball-bounce 1.2s cubic-bezier(0.33, 1, 0.68, 1) infinite;
   --animate-tg-ball-shadow: tg-ball-shadow 1.2s cubic-bezier(0.33, 1, 0.68, 1) infinite;
   --animate-card-fade-in: card-fade-in 0.4s ease-out both;
+
+  /* Portal de vidrio (decisión 2026-11-13): los colores `portal-*` (`text-portal-ink`,
+     `bg-portal-inner`…) apuntan a los tokens del portal, que solo existen con el marcador
+     `[data-portal-glass]` en la página (ver más abajo). Ningún token del panel cambia. */
+  --color-portal-bg: var(--portal-bg);
+  --color-portal-ink: var(--portal-ink);
+  --color-portal-muted: var(--portal-muted);
+  --color-portal-soft: var(--portal-soft);
+  --color-portal-green: var(--portal-green);
+  --color-portal-on-green: var(--portal-on-green);
+  --color-portal-inner: var(--portal-inner);
+  --color-portal-inner-line: var(--portal-inner-line);
+  --color-portal-slot: var(--portal-slot-bg);
+  --color-portal-slot-line: var(--portal-slot-line);
+  --color-portal-slot-ink: var(--portal-slot-ink);
+  --color-portal-bar-on: var(--portal-bar-on);
+  --color-portal-warn: var(--portal-warn);
+  --color-portal-warn-bg: var(--portal-warn-bg);
+  --color-portal-warn-line: var(--portal-warn-line);
+  --color-portal-bad: var(--portal-bad);
+  --color-portal-bad-bg: var(--portal-bad-bg);
+  --color-portal-bad-line: var(--portal-bad-line);
 }
 
 /*
@@ -560,11 +582,11 @@ html:has([data-world='portal']) .player-shell-bg {
    celular. Sin esto, tabular a un radio o un link que quedó detrás de la barra no lo trae a la vista:
    el navegador lo da por visible porque está dentro del viewport (WCAG 2.4.11, foco no oculto).
    `scroll-padding-bottom` en `html` reserva el mismo alto que el relleno de `PortalFrame`: barra
-   inferior (3.5rem + 1 px) + área segura + 77 px de la barra fija. Desde `md` el botón está en el
-   flujo y no hay barra inferior. Si cambia uno de los dos números, cambia el otro.
+   inferior (`--portal-tabbar-space`, área segura incluida) + 77 px de la barra fija. Desde `md` el
+   botón está en el flujo y no hay barra inferior. Si cambia uno de los dos números, cambia el otro.
    Compuerta: story `FocoNoQuedaTapadoPorLaBarra` (CheckoutFlow). */
 html:has([data-fixed-cta]) {
-  scroll-padding-bottom: calc(3.5rem + 1px + env(safe-area-inset-bottom) + 77px);
+  scroll-padding-bottom: calc(var(--portal-tabbar-space) + 77px);
 }
 @media (width >= 48rem) {
   html:has([data-fixed-cta]) {
@@ -1309,4 +1331,842 @@ html.dark:has([data-portal-fields]) {
 }
 .signup-pop {
   animation: signup-pop 320ms ease-out both;
+}
+
+/* ─── Portal de vidrio (decisión 2026-11-13) ──────────────────────────────────
+   Tokens, receta y piezas del cromo del portal del jugador. Valores del mockup
+   (docs/planning/mockups/2026-11-13-portal-vidrio/glass.css y glass-app.css) y de la
+   dirección (docs/planning/2026-11-13-portal-vidrio-direccion.md, §3 y §4).
+
+   Nombres propios (`--portal-*`, `--glass-*`, `--dur-*`, `--spring-*`, `--ease-hoja`…), y solo
+   con el marcador `[data-portal-glass]` en la página (lo ponen `PortalFrame` y la home), igual
+   que el mundo de La Previa: el panel no los ve y no cambia ni un color. Van en `html` y no en el
+   contenedor marcado para que también los lean el menú de la cuenta, la hoja y los avisos, que
+   Radix monta fuera de él. Claro sin más; oscuro con la clase `.dark` de next-themes. El `--ease-out`/`--ease-in` de la dirección va como `--portal-ease-*`:
+   Tailwind ya usa esos dos nombres para sus utilidades `ease-out`/`ease-in` en toda la app.
+
+   OJO: `backdrop-filter` vuelve al elemento el bloque contenedor de sus descendientes
+   `position: fixed` (lo mismo que evita `.signup-glass`). Nada fijo adentro del vidrio real. */
+@layer base {
+  html:has([data-portal-glass]) {
+    --portal-bg: #f3f6f3;
+    --portal-ink: #0b1220;
+    --portal-muted: #2c3848;
+    --portal-soft: #4d5868;
+    --portal-green: #04775b;
+    --portal-on-green: #ffffff;
+    --portal-btn-a: #058467;
+    --portal-btn-b: #046b52;
+    --portal-btn-glow: rgb(4 119 91 / 0.45);
+    --portal-veil: 243 246 243;
+    --portal-glow: 16 160 118;
+    --glass-a: rgb(255 255 255 / 0.82);
+    --glass-b: rgb(255 255 255 / 0.58);
+    --glass-line: rgb(255 255 255 / 0.95);
+    --glass-hi: rgb(255 255 255 / 1);
+    --glass-shadow: 0 0 0 1px rgb(15 23 42 / 0.05), 0 30px 60px -34px rgb(15 23 42 / 0.45);
+    --portal-inner: rgb(255 255 255 / 0.74);
+    --portal-inner-line: rgb(15 23 42 / 0.09);
+    --portal-slot-bg: #e4f3ed;
+    --portal-slot-line: #a3d3c1;
+    --portal-slot-ink: #04674f;
+    --portal-bar-a: rgb(255 255 255 / 0.96);
+    --portal-bar-b: rgb(255 255 255 / 0.9);
+    --portal-bar-on: rgb(4 119 91 / 0.1);
+    --portal-sheet-a: rgb(255 255 255 / 0.93);
+    --portal-sheet-b: rgb(246 249 246 / 0.97);
+    --portal-win-a: rgb(255 255 255 / 0.86);
+    --portal-win-b: rgb(255 255 255 / 0.72);
+    --portal-warn: #7c4a03;
+    --portal-warn-bg: #fdf3d7;
+    --portal-warn-line: #e9c877;
+    --portal-bad: #a3122d;
+    --portal-bad-bg: #fde8ec;
+    --portal-bad-line: #f0a9b6;
+    --portal-bad-a: #d92d4b;
+    --portal-bad-b: #b3173a;
+    /* La banda del brillo de carga: sobre el vidrio blanco hace falta casi blanco para verse. */
+    --portal-shimmer: rgb(255 255 255 / 0.75);
+
+    /* Movimiento (dirección §4.3). Los resortes llevan su duración: ya están medidos en el
+       tiempo. `--ease-*` es la curva sola, para combinarla con otra duración o usarla desde
+       Tailwind (`ease-(--ease-toque)`). */
+    --dur-1: 120ms;
+    --dur-2: 200ms;
+    --dur-3: 320ms;
+    --dur-4: 700ms;
+    --portal-ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --portal-ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --ease-hoja: linear(
+      0,
+      0.042,
+      0.134,
+      0.253,
+      0.373,
+      0.49,
+      0.592,
+      0.682,
+      0.756,
+      0.817,
+      0.864,
+      0.902,
+      0.931,
+      0.952,
+      0.968,
+      0.979,
+      0.987,
+      0.993,
+      0.997,
+      0.999,
+      1,
+      1.001,
+      1
+    );
+    --ease-pildora: linear(
+      0,
+      0.069,
+      0.216,
+      0.385,
+      0.545,
+      0.68,
+      0.787,
+      0.866,
+      0.923,
+      0.96,
+      0.984,
+      0.998,
+      1.005,
+      1.008,
+      1.009,
+      1.008,
+      1.007,
+      1.005,
+      1.004,
+      1.003,
+      1.002,
+      1.001,
+      1
+    );
+    --ease-toque: linear(
+      0,
+      0.103,
+      0.313,
+      0.548,
+      0.751,
+      0.897,
+      0.993,
+      1.043,
+      1.062,
+      1.06,
+      1.049,
+      1.034,
+      1.02,
+      1.01,
+      1.002,
+      0.998,
+      0.996,
+      0.996,
+      0.997,
+      0.997,
+      0.998,
+      0.999,
+      1
+    );
+    --spring-hoja: 380ms var(--ease-hoja);
+    --spring-pildora: 440ms var(--ease-pildora);
+    --spring-toque: 480ms var(--ease-toque);
+
+    /* Lo que ocupa la barra de abajo del celu: 12 px de aire + 66 px de píldora + área segura.
+       Lo reservan `PortalFrame`, la home, `ConfirmBookingButton` y el scroll-padding de abajo. */
+    --portal-tabbar-space: calc(78px + env(safe-area-inset-bottom));
+  }
+
+  html.dark:has([data-portal-glass]) {
+    --portal-bg: #020617;
+    --portal-ink: #f8fafc;
+    --portal-muted: #d5dce6;
+    --portal-soft: #b6c0cf;
+    --portal-green: #34d399;
+    --portal-on-green: #022c22;
+    --portal-btn-a: #43e0a3;
+    --portal-btn-b: #10b981;
+    --portal-btn-glow: rgb(16 185 129 / 0.55);
+    --portal-veil: 2 6 23;
+    --portal-glow: 16 185 129;
+    --glass-a: rgb(255 255 255 / 0.14);
+    --glass-b: rgb(255 255 255 / 0.05);
+    --glass-line: rgb(255 255 255 / 0.17);
+    --glass-hi: rgb(255 255 255 / 0.26);
+    --glass-shadow: 0 30px 60px -30px rgb(0 0 0 / 0.9);
+    --portal-inner: rgb(255 255 255 / 0.07);
+    --portal-inner-line: rgb(255 255 255 / 0.11);
+    --portal-slot-bg: rgb(16 185 129 / 0.14);
+    --portal-slot-line: rgb(52 211 153 / 0.46);
+    --portal-slot-ink: #6ee7b7;
+    --portal-bar-a: rgb(15 23 42 / 0.74);
+    --portal-bar-b: rgb(2 6 23 / 0.62);
+    --portal-bar-on: rgb(16 185 129 / 0.2);
+    --portal-sheet-a: rgb(30 41 59 / 0.86);
+    --portal-sheet-b: rgb(15 23 42 / 0.93);
+    --portal-win-a: rgb(30 41 59 / 0.58);
+    --portal-win-b: rgb(2 6 23 / 0.66);
+    --portal-warn: #fcd34d;
+    --portal-warn-bg: rgb(251 191 36 / 0.12);
+    --portal-warn-line: rgb(251 191 36 / 0.4);
+    --portal-bad: #fda4af;
+    --portal-bad-bg: rgb(244 63 94 / 0.14);
+    --portal-bad-line: rgb(251 113 133 / 0.45);
+    --portal-bad-a: #e11d48;
+    --portal-bad-b: #be123c;
+    --portal-shimmer: rgb(255 255 255 / 0.1);
+  }
+}
+
+@layer components {
+  /* La receta (dirección §3.2). `--tw-shadow` y no `box-shadow` pelado: así el anillo de foco y
+     las sombras de Tailwind se suman a la del vidrio en vez de borrarla. */
+  .glass,
+  .glass-painted {
+    background: linear-gradient(180deg, var(--glass-a), var(--glass-b));
+    border: 1px solid var(--glass-line);
+    --tw-shadow: inset 0 1px 0 var(--glass-hi), var(--glass-shadow);
+    box-shadow:
+      var(--tw-inset-shadow, 0 0 #0000), var(--tw-inset-ring-shadow, 0 0 #0000),
+      var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+  }
+  /* Vidrio real: solo lo que tiene foto o contenido pasando por detrás (§3.3). Lo que se repite
+     en una lista va pintado (`.glass-painted`), sin desenfoque: a la vista queda igual. */
+  .glass {
+    -webkit-backdrop-filter: blur(26px) saturate(180%);
+    backdrop-filter: blur(26px) saturate(180%);
+  }
+
+  /* La luz de fondo: tres resplandores fijos detrás del contenido. `isolation` deja la capa -1
+     arriba del fondo del propio elemento. */
+  .portal-ambient {
+    position: relative;
+    isolation: isolate;
+    background-color: var(--portal-bg);
+  }
+  .portal-ambient::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(46% 36% at -4% 22%, rgb(var(--portal-glow) / 0.22), transparent 70%),
+      radial-gradient(44% 34% at 104% 56%, rgb(var(--portal-glow) / 0.18), transparent 70%),
+      radial-gradient(54% 30% at 34% 104%, rgb(var(--portal-glow) / 0.14), transparent 70%);
+  }
+
+  /* ── Cabecera: solo el logo en el celu; píldora de vidrio fija en la compu. Las piezas del
+     cromo van en Archivo (dirección §3.5); las pantallas pasan a Archivo en su fase. */
+  .portal-top {
+    position: relative;
+    font-family: var(--font-display);
+    z-index: 50;
+    display: flex;
+    justify-content: center;
+    padding: calc(14px + env(safe-area-inset-top)) 16px 0;
+    pointer-events: none;
+  }
+  .portal-top[data-variant='overlay'] {
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+  }
+  .portal-top__bar {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 44px;
+    pointer-events: auto;
+  }
+  /* Con el acceso "Ir a mi panel" el celu no tiene barra de abajo: el link va a la derecha y
+     el logo se corre a la izquierda para que entren los dos. */
+  .portal-top__bar[data-align='start'] {
+    justify-content: space-between;
+  }
+  .portal-top__bg {
+    display: none;
+  }
+  .portal-top__r {
+    display: contents;
+  }
+  .portal-top__bar[data-align='start'] .portal-top__r {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .portal-top__theme {
+    position: absolute;
+    right: 0;
+    top: 0;
+  }
+  .portal-top__bar[data-align='start'] .portal-top__theme {
+    position: static;
+  }
+  .portal-top__link,
+  .portal-top__in {
+    display: inline-flex;
+    align-items: center;
+    height: 44px;
+    border-radius: 999px;
+    font-size: 15px;
+    line-height: 1;
+    color: var(--portal-ink);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color var(--dur-2) var(--portal-ease-out);
+  }
+  .portal-top__link {
+    padding: 0 16px;
+    font-weight: 500;
+  }
+  .portal-top__link:hover,
+  .portal-top__link[aria-current='page'] {
+    background: var(--portal-inner);
+  }
+  .portal-top__in {
+    padding: 0 20px;
+    font-weight: 600;
+    background: var(--portal-inner);
+    border: 1px solid var(--portal-inner-line);
+  }
+  .portal-top__in:hover {
+    background: var(--portal-bar-on);
+  }
+  .portal-top__link:focus-visible,
+  .portal-top__in:focus-visible,
+  .portal-top__logo:focus-visible {
+    outline: 2px solid var(--portal-green);
+    outline-offset: 3px;
+  }
+  @media (width >= 48rem) {
+    .portal-top {
+      position: sticky;
+      top: 0;
+      padding: 16px 24px 0;
+    }
+    .portal-top[data-variant='overlay'] {
+      position: fixed;
+    }
+    .portal-top__bar,
+    .portal-top__bar[data-align='start'] {
+      justify-content: space-between;
+      width: min(1120px, 100%);
+      min-height: 60px;
+      padding: 0 8px 0 26px;
+    }
+    /* Dos capas de fondo: la de reposo y la condensada. Pasados los 8 px de scroll las dos se
+       achican de 60 a 54 px (`scale`) y la condensada, más opaca y con sombra, aparece por
+       opacidad. Solo transform y opacity (§4.7). */
+    .portal-top__bg {
+      display: block;
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      border-radius: 999px;
+      transition:
+        scale var(--dur-3) var(--portal-ease-out),
+        opacity var(--dur-3) var(--portal-ease-out);
+    }
+    .portal-top__bg--on {
+      opacity: 0;
+      border: 1px solid var(--glass-line);
+      background: linear-gradient(180deg, var(--portal-win-a), var(--portal-win-b));
+      box-shadow:
+        inset 0 1px 0 var(--glass-hi),
+        0 18px 40px -18px rgb(2 6 23 / 0.55);
+    }
+    .portal-top[data-condensed] .portal-top__bg {
+      scale: 1 0.9;
+    }
+    .portal-top[data-condensed] .portal-top__bg--on {
+      opacity: 1;
+    }
+    .portal-top__nav {
+      position: absolute;
+      left: 50%;
+      translate: -50% 0;
+      display: flex;
+      gap: 6px;
+    }
+    .portal-top__r,
+    .portal-top__bar[data-align='start'] .portal-top__r {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .portal-top__theme {
+      position: static;
+    }
+  }
+
+  /* ── Barra de abajo: píldora flotante con el ítem activo deslizándose. */
+  .portal-tabbar {
+    position: fixed;
+    z-index: 40;
+    font-family: var(--font-display);
+    inset-inline: 0;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    margin-inline: auto;
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    gap: 2px;
+    width: min(400px, calc(100% - 24px));
+    height: 66px;
+    padding: 5px;
+    border-radius: 999px;
+    border: 1px solid var(--glass-line);
+    background: linear-gradient(180deg, var(--portal-bar-a), var(--portal-bar-b));
+    box-shadow:
+      inset 0 1px 0 var(--glass-hi),
+      var(--glass-shadow);
+    -webkit-backdrop-filter: blur(26px) saturate(180%);
+    backdrop-filter: blur(26px) saturate(180%);
+    transition:
+      translate var(--dur-2) var(--portal-ease-out),
+      visibility 0s;
+  }
+  .portal-tabbar__item {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    min-width: 0;
+    border-radius: 999px;
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 500;
+    color: var(--portal-ink);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .portal-tabbar__item[aria-current='page'] {
+    color: var(--portal-slot-ink);
+    font-weight: 600;
+  }
+  .portal-tabbar__item:focus-visible {
+    outline: 2px solid var(--portal-green);
+    outline-offset: -2px;
+  }
+  .portal-tabbar__item svg {
+    width: 22px;
+    height: 22px;
+    stroke-width: 1.9;
+  }
+  /* El ícono de la pestaña nueva hace su toque (0,86 → 1). Solo al cambiar de pestaña. */
+  .portal-tabbar__item[data-just-activated] svg {
+    animation: portal-toque-icono var(--spring-toque) both;
+  }
+  @keyframes portal-toque-icono {
+    from {
+      scale: 0.86;
+    }
+  }
+  /* La píldora: un solo elemento que se traslada. Entre pantallas la mueve la transición de
+     vista (`portal-tabbar-pill`, ver PlayerBottomNav). */
+  .portal-tabbar__pill {
+    position: absolute;
+    top: 5px;
+    bottom: 5px;
+    left: 5px;
+    width: calc((100% - 10px - (var(--n) - 1) * 2px) / var(--n));
+    translate: calc(var(--i) * (100% + 2px)) 0;
+    border-radius: 999px;
+    background: var(--portal-bar-on);
+  }
+  /* Baja y sale cuando sube una hoja (§4.5) o hay un campo con foco en el celu (§5.7). */
+  html:has([data-glass-sheet][data-state='open']) .portal-tabbar,
+  html:has(
+      :is(
+        input:not(
+          [type='checkbox'],
+          [type='radio'],
+          [type='range'],
+          [type='button'],
+          [type='submit'],
+          [type='reset']
+        ),
+        textarea,
+        select,
+        [contenteditable='true']
+      ):focus
+    )
+    .portal-tabbar {
+    translate: 0 calc(100% + 24px);
+    /* Oculta también para el teclado y los lectores de pantalla, recién cuando terminó de bajar. */
+    visibility: hidden;
+    transition:
+      translate var(--dur-2) var(--portal-ease-in),
+      visibility 0s var(--dur-2);
+  }
+
+  /* ── Control segmentado: la opción elegida la marca una sola píldora que se desliza. */
+  .segmented-pill {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 4px;
+    width: calc((100% - 8px - (var(--n) - 1) * 4px) / var(--n));
+    translate: calc(var(--i) * (100% + 4px)) 0;
+    border-radius: 999px;
+    background: var(--portal-bar-on);
+    box-shadow: inset 0 0 0 1px var(--portal-slot-line);
+    transition: translate var(--spring-pildora);
+  }
+  .segmented-pill[data-empty] {
+    opacity: 0;
+  }
+
+  /* ── Hoja de abajo (celu) o panel centrado (compu). La sube y la baja CSS sobre `translate`;
+     el arrastre lo pone `motion` sobre `transform`. Son propiedades distintas: se suman. */
+  .glass-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: rgb(2 6 23 / 0.55);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    animation: portal-fade-in var(--dur-2) var(--portal-ease-out) both;
+  }
+  .glass-sheet-backdrop[data-state='closed'] {
+    animation: portal-fade-out var(--dur-2) var(--portal-ease-in) both;
+  }
+  .glass-sheet {
+    position: fixed;
+    z-index: 50;
+    inset: auto 0 0;
+    font-family: var(--font-display);
+    display: flex;
+    flex-direction: column;
+    max-height: 88dvh;
+    padding: 10px 20px calc(20px + env(safe-area-inset-bottom));
+    border-radius: 32px 32px 0 0;
+    color: var(--portal-ink);
+    background: linear-gradient(180deg, var(--portal-sheet-a), var(--portal-sheet-b));
+    border: 1px solid var(--glass-line);
+    border-bottom: 0;
+    box-shadow:
+      inset 0 1px 0 var(--glass-hi),
+      0 -30px 60px -30px rgb(0 0 0 / 0.6);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    backdrop-filter: blur(30px) saturate(180%);
+    animation: glass-sheet-up var(--spring-hoja) both;
+  }
+  .glass-sheet[data-state='closed'] {
+    animation: glass-sheet-down var(--dur-2) var(--portal-ease-in) both;
+  }
+  .glass-sheet:focus-visible {
+    outline: none;
+  }
+  /* La manija y la cabecera: de ahí se arrastra (no del cuerpo, que scrollea). */
+  .glass-sheet__grab {
+    flex: none;
+    margin: -10px -20px 0;
+    padding: 10px 20px 0;
+    touch-action: none;
+    cursor: grab;
+  }
+  .glass-sheet__grab::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 4px;
+    margin: 0 auto 14px;
+    border-radius: 4px;
+    background: var(--portal-inner-line);
+  }
+  .glass-sheet__body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  @keyframes glass-sheet-up {
+    from {
+      translate: 0 100%;
+    }
+  }
+  @keyframes glass-sheet-down {
+    to {
+      translate: 0 100%;
+    }
+  }
+  @keyframes portal-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes portal-fade-out {
+    to {
+      opacity: 0;
+    }
+  }
+  @media (width >= 48rem) {
+    .glass-sheet-backdrop {
+      background: rgb(2 6 23 / 0.28);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+    .glass-sheet {
+      inset: 50% auto auto 50%;
+      translate: -50% -50%;
+      width: min(480px, calc(100% - 48px));
+      max-height: min(88dvh, 720px);
+      padding: 20px;
+      border-radius: 28px;
+      border-bottom: 1px solid var(--glass-line);
+      box-shadow:
+        inset 0 1px 0 var(--glass-hi),
+        0 30px 70px -28px rgb(0 0 0 / 0.7);
+      animation: glass-panel-in var(--spring-hoja) both;
+    }
+    .glass-sheet[data-state='closed'] {
+      animation: portal-fade-out 150ms var(--portal-ease-in) both;
+    }
+    .glass-sheet__grab {
+      margin: 0;
+      padding: 0;
+      cursor: auto;
+    }
+    .glass-sheet__grab::before {
+      display: none;
+    }
+    @keyframes glass-panel-in {
+      from {
+        opacity: 0;
+        translate: -50% calc(-50% + 12px);
+      }
+    }
+  }
+
+  /* ── Esqueleto de vidrio: la misma forma que lo que reemplaza y una banda de luz que la cruza
+     cada 1,4 s. Es el único bucle permitido en la app (§4.4). */
+  .skeleton-glass {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, var(--glass-a), var(--glass-b));
+    border: 1px solid var(--glass-line);
+    box-shadow: inset 0 1px 0 var(--glass-hi);
+  }
+  .skeleton-glass::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    translate: -100% 0;
+    background: linear-gradient(
+      100deg,
+      transparent 20%,
+      var(--portal-shimmer) 50%,
+      transparent 80%
+    );
+    animation: portal-shimmer 1.4s var(--portal-ease-out) infinite;
+  }
+  @keyframes portal-shimmer {
+    to {
+      translate: 100% 0;
+    }
+  }
+
+  /* ── El pie: la palabra gigante del mockup (`.word`). */
+  .portal-word {
+    margin-top: 40px;
+    text-align: center;
+    white-space: nowrap;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 900;
+    font-size: min(calc((100vw - 40px) / 6.3), 178px);
+    line-height: 0.9;
+    letter-spacing: -0.05em;
+    text-transform: uppercase;
+    color: var(--portal-ink);
+  }
+  @media (width >= 48rem) {
+    .portal-word {
+      font-size: min(calc((100vw - 48px) / 6.3), 178px);
+    }
+  }
+  @media (width >= 64rem) {
+    .portal-word {
+      margin-top: 56px;
+      font-size: min(calc((100vw - 96px) / 6.3), 178px);
+    }
+  }
+}
+
+/* ── Avisos de vidrio: dentro del portal bajan desde arriba con el resorte de la hoja. Va sin
+   capa a propósito: tiene que ganarle a las utilidades del aviso (`bg-card`, `animate-in`…).
+   El relleno es el de la hoja (casi opaco): un aviso puede aparecer encima del velo de un diálogo
+   y el texto tiene que seguir en AA. Fuera del portal (el panel) no cambia nada.
+   `backwards` y no `both` en la entrada: terminada, no retiene `translate` y el deslizar para
+   descartar sigue andando. */
+html:has([data-portal-glass]) [data-toast-viewport] {
+  top: 0;
+  bottom: auto;
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  max-width: 420px;
+  padding: calc(12px + env(safe-area-inset-top)) 12px 12px;
+}
+html:has([data-portal-glass]) [data-toast] {
+  font-family: var(--font-display);
+  border-radius: 24px;
+  color: var(--portal-ink);
+  border: 1px solid var(--glass-line);
+  background: linear-gradient(180deg, var(--portal-sheet-a), var(--portal-sheet-b));
+  box-shadow:
+    inset 0 1px 0 var(--glass-hi),
+    0 24px 50px -24px rgb(2 6 23 / 0.6);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+}
+html:has([data-portal-glass]) [data-toast][data-state='open'] {
+  animation: portal-toast-in var(--spring-hoja) backwards;
+}
+html:has([data-portal-glass]) [data-toast][data-state='closed'] {
+  animation: portal-toast-out var(--dur-2) var(--portal-ease-in) both;
+}
+html:has([data-portal-glass]) [data-toast] [toast-close] {
+  color: var(--portal-soft);
+}
+html:has([data-portal-glass]) [data-toast][data-variant='success'] > svg {
+  color: var(--portal-slot-ink);
+}
+html:has([data-portal-glass]) [data-toast][data-variant='destructive'] > svg,
+html:has([data-portal-glass]) [data-toast][data-variant='destructive'] [data-toast-title] {
+  color: var(--portal-bad);
+}
+@keyframes portal-toast-in {
+  from {
+    opacity: 0;
+    translate: 0 -110%;
+  }
+}
+@keyframes portal-toast-out {
+  to {
+    opacity: 0;
+    translate: 0 -40%;
+  }
+}
+
+/* Cambio de tema: el tema nuevo se abre en círculo desde el botón (ThemeButton). Las dos capas
+   de la raíz quedan quietas y el `clip-path` del círculo lo anima el botón. La navegación usa la
+   misma raíz: hasta la fase 9 (fundido entre pantallas) cambia de golpe, como hoy. */
+html:has([data-portal-glass])::view-transition-old(root),
+html:has([data-portal-glass])::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+/* La píldora de la barra de abajo viaja de una pestaña a otra con su resorte. */
+::view-transition-group(.portal-pill) {
+  animation-duration: 440ms;
+  animation-timing-function: var(--ease-pildora);
+}
+::view-transition-old(.portal-pill),
+::view-transition-new(.portal-pill) {
+  animation: none;
+}
+/* Mientras dura una transición de vista el dedo sigue llegando a la página (§4.1, regla 2). */
+html:has([data-portal-glass])::view-transition {
+  pointer-events: none;
+}
+
+/* Sin desenfoque disponible, o con "reducir transparencia": el vidrio pasa a un relleno casi
+   opaco del color del tema y se sigue leyendo (§4.6). */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .glass-pop,
+  .portal-top__bg,
+  .portal-tabbar,
+  .glass-sheet,
+  html:has([data-portal-glass]) [data-toast] {
+    background: color-mix(in srgb, var(--portal-bg) 86%, var(--portal-ink));
+  }
+  /* En la compu el botón de tema va plano dentro de la píldora: no se rellena. */
+  @media (width >= 48rem) {
+    .portal-top .portal-top__theme:not(:hover) {
+      background: transparent;
+    }
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass-pop,
+  .glass-painted,
+  .portal-top__bg,
+  .portal-tabbar,
+  .glass-sheet,
+  .skeleton-glass,
+  html:has([data-portal-glass]) [data-toast] {
+    background: color-mix(in srgb, var(--portal-bg) 86%, var(--portal-ink));
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  @media (width >= 48rem) {
+    .portal-top .portal-top__theme:not(:hover) {
+      background: transparent;
+    }
+  }
+}
+/* "Más contraste": bordes más fuertes y vidrio opaco. */
+@media (prefers-contrast: more) {
+  .glass,
+  .glass-pop,
+  .glass-painted,
+  .portal-top__bg,
+  .portal-tabbar,
+  .glass-sheet,
+  html:has([data-portal-glass]) [data-toast] {
+    background: var(--portal-bg);
+    border-color: color-mix(in srgb, var(--portal-ink) 55%, transparent);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  @media (width >= 48rem) {
+    .portal-top .portal-top__theme {
+      border-color: transparent;
+    }
+    .portal-top .portal-top__theme:not(:hover) {
+      background: transparent;
+    }
+  }
+}
+
+/* "Reducir movimiento" (§4.4, última columna). La regla global de arriba ya lleva casi a cero
+   toda animación; acá va lo que cambia de forma y no solo de duración. */
+@media (prefers-reduced-motion: reduce) {
+  /* La hoja: fundido de 150 ms, sin subir desde abajo. El `!important` le gana al de la regla
+     global (más específico). */
+  .glass-sheet {
+    animation-name: portal-fade-in !important;
+    animation-duration: 150ms !important;
+  }
+  .glass-sheet[data-state='closed'] {
+    animation-name: portal-fade-out !important;
+  }
+  /* Esqueleto: quieto y más opaco. */
+  .skeleton-glass::after {
+    display: none;
+  }
+  .skeleton-glass {
+    background: var(--glass-a);
+  }
+  /* La píldora cambia sin deslizar. */
+  ::view-transition-group(.portal-pill) {
+    animation: none;
+  }
+  .segmented-pill {
+    transition: none;
+  }
 }

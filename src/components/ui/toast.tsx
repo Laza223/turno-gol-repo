@@ -26,6 +26,8 @@ const ToastViewport = React.forwardRef<
     // selector sin crear una live region nueva que duplique los anuncios de la
     // que Radix Toast ya maneja por su cuenta.
     aria-live="off"
+    // Dentro del portal de vidrio los avisos bajan desde arriba (globals.css, "Avisos de vidrio").
+    data-toast-viewport=""
     className={cn(
       'fixed bottom-0 right-0 z-100 flex max-h-dvh w-full flex-col gap-2 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:max-w-sm',
       className,
@@ -78,6 +80,8 @@ const Toast = React.forwardRef<
 >(({ className, variant, ...props }, ref) => (
   <ToastPrimitives.Root
     ref={ref}
+    data-toast=""
+    data-variant={variant ?? 'default'}
     className={cn(toastVariants({ variant }), className)}
     {...props}
   />
@@ -122,7 +126,12 @@ const ToastTitle = React.forwardRef<
   React.ElementRef<typeof ToastPrimitives.Title>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitives.Title>
 >(({ className, ...props }, ref) => (
-  <ToastPrimitives.Title ref={ref} className={cn('text-sm font-semibold', className)} {...props} />
+  <ToastPrimitives.Title
+    ref={ref}
+    data-toast-title=""
+    className={cn('text-sm font-semibold', className)}
+    {...props}
+  />
 ))
 ToastTitle.displayName = ToastPrimitives.Title.displayName
 

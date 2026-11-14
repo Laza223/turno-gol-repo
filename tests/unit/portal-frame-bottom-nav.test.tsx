@@ -109,20 +109,24 @@ describe('PortalFrame — barra inferior', () => {
   it('reserva el alto de la barra aunque no haya sesión', () => {
     const { container } = frame(null)
     expect((container.firstElementChild as HTMLElement).className).toContain(
-      'pb-[calc(3.5rem+1px+env(safe-area-inset-bottom))]',
+      'pb-(--portal-tabbar-space)',
     )
   })
 
   it('con sesión de complejo (staffPanelPath) no hay barra ni relleno', () => {
     const { container } = frame(null, '/dashboard')
     expect(screen.queryByRole('navigation', { name: 'Navegación del jugador' })).toBeNull()
-    expect((container.firstElementChild as HTMLElement).className).not.toContain('pb-[calc')
+    expect((container.firstElementChild as HTMLElement).className).not.toContain(
+      '--portal-tabbar-space',
+    )
   })
 
   it.each(['/suspended', '/reactivar'])('en %s no hay barra ni relleno', (pathname) => {
     nav.pathname = pathname
     const { container } = frame(null)
     expect(screen.queryByRole('navigation', { name: 'Navegación del jugador' })).toBeNull()
-    expect((container.firstElementChild as HTMLElement).className).not.toContain('pb-[calc')
+    expect((container.firstElementChild as HTMLElement).className).not.toContain(
+      '--portal-tabbar-space',
+    )
   })
 })

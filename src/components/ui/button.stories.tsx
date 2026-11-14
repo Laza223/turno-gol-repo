@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
+import { MapPin } from 'lucide-react'
+import { withPortalGlass } from '../../../.storybook/decorators/with-portal-glass'
 import { Button } from './button'
 
 /**
@@ -80,5 +82,55 @@ export const Interactivo: Story = {
     const button = canvas.getByRole('button', { name: 'Confirmar' })
     await userEvent.click(button)
     await expect(args.onClick).toHaveBeenCalledOnce()
+  },
+}
+
+/**
+ * Portal de vidrio (decisión 2026-11-13): las píldoras del portal sobre su luz y una foto. 52 px el
+ * principal y 44 px el resto; el foco es un contorno verde de 2 px, sin la banda del `ring-offset`.
+ * El panel no las usa.
+ */
+export const PortalPildoras: Story = {
+  decorators: [withPortalGlass()],
+  render: () => (
+    <div className="flex max-w-md flex-wrap items-center gap-3">
+      <Button variant="pill" size="pill">
+        Reservar
+      </Button>
+      <Button variant="pill-glass" size="pill">
+        Ver horarios
+      </Button>
+      <Button variant="pill-danger" size="pill-sm">
+        Cancelar turno
+      </Button>
+      <Button variant="pill-link" size="pill-sm">
+        <MapPin aria-hidden />
+        Cómo llegar
+      </Button>
+      <Button variant="pill-chip" size="pill-sm" aria-pressed>
+        Fútbol 5
+      </Button>
+      <Button variant="pill-chip" size="pill-sm" aria-pressed={false}>
+        Fútbol 7
+      </Button>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const principal = canvas.getByRole('button', { name: 'Reservar' })
+    await expect(Math.round(principal.getBoundingClientRect().height)).toBe(52)
+    for (const name of ['Cancelar turno', 'Cómo llegar', 'Fútbol 5', 'Fútbol 7']) {
+      const button = canvas.getByRole('button', { name })
+      await expect(Math.round(button.getBoundingClientRect().height)).toBe(44)
+    }
+    // El chip elegido pasa al verde; el otro sigue en vidrio interior.
+    const elegido = getComputedStyle(canvas.getByRole('button', { name: 'Fútbol 5' }))
+    const otro = getComputedStyle(canvas.getByRole('button', { name: 'Fútbol 7' }))
+    await expect(elegido.backgroundImage).toContain('gradient')
+    await expect(otro.backgroundImage).toBe('none')
+    await userEvent.tab()
+    await expect(principal).toHaveFocus()
+    await expect(getComputedStyle(principal).outlineStyle).toBe('solid')
+    await expect(getComputedStyle(principal).outlineWidth).toBe('2px')
   },
 }

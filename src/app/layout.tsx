@@ -14,8 +14,10 @@ const inter = Inter({
   display: 'swap',
 })
 
+// Con el eje de ancho: el portal de vidrio estira los titulares al 104 % (dirección §3.5).
 const archivo = Archivo({
   subsets: ['latin'],
+  axes: ['wdth'],
   variable: '--font-archivo',
   display: 'swap',
 })

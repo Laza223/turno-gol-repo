@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
+import { withPortalGlass } from '../../../.storybook/decorators/with-portal-glass'
 import { Skeleton } from './skeleton'
 
 /**
@@ -54,4 +55,24 @@ export const Composicion: Story = {
       <Skeleton className="h-4 w-3/4" aria-hidden />
     </div>
   ),
+}
+
+/**
+ * Portal de vidrio: el esqueleto tiene la forma de la tarjeta que viene, en vidrio, con un brillo
+ * que cruza (1,4 s). Con "reducir movimiento" queda quieto.
+ */
+export const PortalVidrio: Story = {
+  decorators: [withPortalGlass()],
+  render: () => (
+    <div className="grid w-80 gap-3">
+      <Skeleton variant="glass" className="h-40" label="Cargando complejos…" />
+      <Skeleton variant="glass" className="h-24" aria-hidden />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const status = canvas.getByRole('status', { name: 'Cargando complejos…' })
+    await expect(status).toHaveClass('skeleton-glass')
+    await expect(status).not.toHaveClass('skeleton')
+  },
 }

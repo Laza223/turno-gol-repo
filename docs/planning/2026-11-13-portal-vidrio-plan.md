@@ -16,8 +16,8 @@ Este cuadro es el registro del esfuerzo. Quien cierra una fase lo actualiza en e
 
 | Fase | Qué | Estado | PR |
 | --- | --- | --- | --- |
-| F0 | Decisión, mockup, dirección, plan y punteros | Escrito el 2026-11-13, sin commitear | |
-| F1 | Cimientos y cromo | Pendiente | |
+| F0 | Decisión, mockup, dirección, plan y punteros | Hecho | #590 |
+| F1 | Cimientos y cromo | En revisión desde el 2026-11-13 | |
 | F2 | Home | Pendiente | |
 | F3 | Buscador `/explorar` | Pendiente | |
 | F4 | Ficha del complejo | Pendiente | |
@@ -29,7 +29,19 @@ Este cuadro es el registro del esfuerzo. Quien cierra una fase lo actualiza en e
 
 **Gotchas encontrados** (se agregan acá a medida que aparecen):
 
-- Ninguno todavía.
+- **Medición del desenfoque (F1, paso 8).** Banco `Player/Banco de vidrio` (`PortalGlassBudget.stories.tsx`): cabecera, barra, ocho tarjetas con fotos detrás y, en otra variante, una hoja abierta. A 393 × 851 con DPR 3 y la CPU frenada 4×, el scroll dio 60 cuadros por segundo (rAF) y 0 cuadros descartados por el compositor (`PipelineReporter` en el trace), con vidrio real y con vidrio pintado, con la GPU de la máquina y con GPU por software (SwiftShader). No baja de 50: no se fuerza el vidrio pintado en las listas y sigue valiendo el presupuesto de la dirección (§4.7). Límites: el freno de CPU no frena la GPU y no se midió en un Android de gama baja real.
+- **Vidrio real sobre una foto clara.** En el banco, una cancha iluminada detrás de la tarjeta lleva la etiqueta verde de "Libre" casi al color del fondo. Donde una tarjeta tenga foto detrás (F2 a F4), oscurecer la foto o usar vidrio pintado, y medir el contraste sobre el fondo pintado, no sobre el token.
+- **Los tokens del portal solo existen con el marcador.** Van en `html:has([data-portal-glass])` y `html.dark:has([data-portal-glass])` (como el mundo de La Previa), no en `:root`: el panel no los ve. Una pantalla o pieza del portal sin `PortalFrame` ni la home alrededor necesita el marcador. `@theme` suma los colores `portal-*` y por eso cambió el hash de `tests/unit/portal-world-tokens.test.ts`.
+- **El panel también usa `ThemeToggle variant="portal"`** (cajón del celu en `admin-sidebar.tsx`). Por eso `portal` quedó como en main y el control de vidrio es `variant="glass"`. `/configuracion` pasa a `glass` en F6.
+- **`backdrop-filter` crea un bloque contenedor.** Un `position: fixed` dentro de un `.glass` se ubica contra el vidrio y no contra la ventana. Por eso el menú de la cuenta, la hoja y los avisos van en portal de Radix, fuera del vidrio.
+- **Tokens con prefijo.** `--muted` ya existe en shadcn y `--ease-out` es un token de Tailwind. Los del portal van como `--portal-*` y `--glass-*`, y en Tailwind como `portal-*` (`text-portal-ink`, `bg-portal-inner`).
+- **Respaldos de accesibilidad sin capa.** Los bloques de "reducir transparencia", "más contraste" y sin `backdrop-filter` van fuera de `@layer` para ganarle a las utilidades. Un vidrio armado con utilidades necesita una clase en esas listas (`.glass-pop`, el menú de la cuenta). Lo mismo los avisos de `[data-toast]`.
+- **La transición de vista de la raíz está apagada en el portal** (`animation: none`) hasta F9. El tema anima su círculo con un `clip-path` desde el botón y la píldora de la barra viaja con su propio `view-transition-name`.
+- **Archivo con el eje de ancho.** `layout.tsx` carga `axes: ['wdth']`. El cromo (cabecera, barra, pie, hoja, avisos y menú de la cuenta) va en Archivo; cada pantalla pasa a Archivo en su fase.
+- **Cabecera entre 768 y 1023 px.** Con sesión, Rival y un nombre largo, los links pisaban el chip de la cuenta. En ese rango el chip muestra solo el avatar.
+- **La hoja sobrevive al cierre.** `GlassSheetContent` no se desmonta al cerrar (solo lo de adentro del portal): el desplazamiento del arrastre se vuelve a cero en cada apertura. El runner de stories corre con "reducir movimiento", que apaga el arrastre: esto se prueba a mano.
+- **Medir tiempos.** El navegador de Playwright MCP, con la ventana en segundo plano en Windows, corre rAF a 1 cuadro por segundo: cualquier tiempo medido ahí es falso. Medir con un Chromium headless propio.
+- **Stories.** El runner arranca a 414 px de ancho: una story de compu necesita `globals: { viewport: { value: 'desktop' } }`. El preview fija el tema también en un `div` contenedor, así que un `dark:` dentro de una story sigue a ese `div` y no a `html`.
 
 ## Reglas de trabajo
 

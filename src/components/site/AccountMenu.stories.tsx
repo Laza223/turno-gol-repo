@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
+import { withPortalGlass } from '../../../.storybook/decorators/with-portal-glass'
 import { AccountMenu } from './AccountMenu'
 
 /**
@@ -13,6 +14,7 @@ const meta = {
   title: 'Player/AccountMenu',
   component: AccountMenu,
   parameters: { layout: 'centered' },
+  decorators: [withPortalGlass()],
   args: {
     firstName: 'Tomás',
     lastName: 'Ibáñez',
@@ -25,18 +27,8 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const VariantSolid: Story = {}
-
-export const VariantOverlay: Story = {
-  args: { variant: 'overlay' },
-  decorators: [
-    (Story) => (
-      <div className="rounded-full bg-slate-950 p-4">
-        <Story />
-      </div>
-    ),
-  ],
-}
+/** El chip de la cuenta dentro de la píldora de la cabecera, sobre una foto. */
+export const Default: Story = {}
 
 export const ConAvatar: Story = {
   args: { avatarUrl: '/bg-owner.png' },
@@ -45,7 +37,7 @@ export const ConAvatar: Story = {
 export const MenuAbierto: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // El disparador `solid` es plano (sin ring ni fondo) y de 44 px de alto.
+    // El chip de la cuenta mide 44 px de alto.
     const disparador = canvas.getByRole('button', { name: 'Cuenta de Tomás' })
     await expect(disparador.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
     await userEvent.click(disparador)
@@ -56,7 +48,7 @@ export const MenuAbierto: Story = {
     await waitFor(() => expect(body.getByRole('link', { name: /mis reservas/i })).toBeVisible())
     await expect(body.getByRole('link', { name: /cuenta/i })).toBeVisible()
     await expect(body.getByText('Tema')).toBeVisible()
-    // El ThemeToggle del menú es el del portal: segmentos de 44 px; "Tema" sin mayúsculas y el correo en 13 px o más.
+    // El ThemeToggle del menú es el de vidrio: segmentos de 44 px; "Tema" sin mayúsculas y el correo en 13 px o más.
     for (const radio of body.getAllByRole('radio')) {
       await expect(radio.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
     }

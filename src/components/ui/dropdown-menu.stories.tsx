@@ -13,8 +13,8 @@ import {
  * rápidas de una reserva en la lista de /reservas): trigger icon-only con
  * `MoreVertical` + items de texto, uno de ellos `disabled`.
  *
- * Las stories usan `modal={false}`, igual que LOS CINCO consumidores reales del repo
- * (StaffActions, QuickActions, ShareButton, HeroSearch, SearchBar). No es una
+ * Las stories usan `modal={false}`, igual que LOS CUATRO consumidores reales del repo
+ * (StaffActions, QuickActions, ShareButton, SearchBar). No es una
  * concesión al test: es el uso real.
  *
  * El default de Radix (`modal=true`) llama `hideOthers()` y marca aria-hidden todo el

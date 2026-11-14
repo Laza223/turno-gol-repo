@@ -103,10 +103,6 @@ async function locateNearest(maxDistanceKm: number): Promise<LocateOutcome> {
  * guarda en el dispositivo (`useSavedZona`) para no volver a preguntar. La única excepción
  * es que el permiso YA esté concedido: ahí consultarla no muestra ningún cartel.
  * Los estados de fallo (denied/unsupported/error) son informativos, nunca bloqueantes.
- *
- * Ojo: el hero de la home renderiza `HeroMobile` y `HeroDesktop` a la vez (solo uno se ve),
- * así que este hook corre dos veces por carga. Con el permiso concedido son dos consultas
- * iguales y sin cartel; el botón solo existe en la instancia visible.
  */
 export function useNearestCity(opts?: { maxDistanceKm?: number }): {
   state: NearestCityState
@@ -158,8 +154,8 @@ export function useNearestCity(opts?: { maxDistanceKm?: number }): {
 
     return () => {
       cancelled = true
-      // Apareció una zona (la eligió a mano, o la guardó la otra instancia del hero): una
-      // detección automática que siga en vuelo no tiene que pisarla.
+      // Apareció una zona (la eligió a mano): una detección automática que siga en vuelo no
+      // tiene que pisarla.
       latestRun.current += 1
     }
   }, [supported, hasZona, locate])

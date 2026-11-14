@@ -158,7 +158,7 @@ export function StaffActions({
           que deba bloquear la página. Con el default (modal=true) Radix llama
           hideOthers() y marca aria-hidden todo el árbol fuera del portal —incluido el
           propio trigger, que sigue siendo focuseable— violando aria-hidden-focus (axe).
-          Mismo criterio que ShareButton, HeroSearch y SearchBar. */}
+          Mismo criterio que ShareButton y SearchBar. */}
       <DropdownMenu modal={false}>
         <Tooltip>
           <TooltipTrigger asChild>

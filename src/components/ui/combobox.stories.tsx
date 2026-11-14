@@ -7,7 +7,7 @@ import Combobox, { type ComboboxOption } from './combobox'
 /**
  * El propio `<input>` de Combobox NO trae estilos — solo aplica el
  * `inputClassName` que le pase el caller (`role="combobox"` desnudo). Su
- * único uso real (SearchBar.tsx / HeroSearch.tsx) lo compone con el mismo
+ * único uso real (SearchBar.tsx) lo compone con el mismo
  * `fieldClass` que usan los demás inputs del buscador público; se reproduce
  * ese mismo recipe acá para no mostrar un combobox "roto" sin borde.
  */

@@ -80,8 +80,7 @@ export function tenantMatchesRequestedSlot(
  * apagado) si falta la hora o si no validan — params de URL son input de usuario
  * y un link viejo/malformado no debe romper la página.
  *
- * Una hora sin día es "hoy" (calendario ART): la home omite `date` cuando el día
- * elegido es hoy (HeroSearch.tsx) y el buscador de /explorar también puede
+ * Una hora sin día es "hoy" (calendario ART): el buscador de /explorar puede
  * mandar solo la hora. Un `date` presente pero inválido NO se reemplaza por hoy.
  */
 export function parseAvailabilitySearchParams(sp: {

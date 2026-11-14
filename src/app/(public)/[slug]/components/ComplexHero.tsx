@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import { MapPin, MessageCircle, Phone } from 'lucide-react'
-import { formatsLabel } from '@/app/home/nearby'
+import { formatsLabel } from '@/lib/formats-label'
 import FavoriteButton from '@/components/public/FavoriteButton'
 import RatingStars from '@/components/public/RatingStars'
 import ShareButton from '@/components/public/ShareButton'

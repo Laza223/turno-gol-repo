@@ -18,7 +18,7 @@ Este cuadro es el registro del esfuerzo. Quien cierra una fase lo actualiza en e
 | --- | --- | --- | --- |
 | F0 | Decisión, mockup, dirección, plan y punteros | Hecho | #590 |
 | F1 | Cimientos y cromo | Hecho el 2026-11-14 | #592 |
-| F2 | Home | En revisión desde el 2026-11-14 | |
+| F2 | Home | En revisión desde el 2026-11-14 | #593 |
 | F3 | Buscador `/explorar` | Pendiente | |
 | F4 | Ficha del complejo | Pendiente | |
 | F5 | Confirmar el turno y vuelta de la reserva | Pendiente | |

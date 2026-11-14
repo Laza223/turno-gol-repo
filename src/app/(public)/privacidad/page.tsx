@@ -14,7 +14,7 @@ export default function PrivacidadPage() {
           Política de Privacidad
         </h1>
         <p className="text-sm text-muted-foreground">
-          Última actualización: 4 de noviembre de 2026.
+          Última actualización: 14 de noviembre de 2026.
         </p>
       </header>
 
@@ -55,7 +55,8 @@ export default function PrivacidadPage() {
           </li>
           <li>
             Dirección IP y datos del dispositivo (para seguridad, rate limiting y prevención de
-            fraude).
+            fraude). En la página de inicio, la IP también se usa para sugerirte una localidad
+            cercana con complejos. No guardamos esa ubicación.
           </li>
           <li>
             Declaración jurada de mayoría de edad (+18 años) y aceptación de los Términos y

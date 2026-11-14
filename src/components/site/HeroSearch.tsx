@@ -271,7 +271,7 @@ export default function HeroSearch({ cities, onZonaChange, reflejo = false, clas
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Por ejemplo, Mercedes"
+              placeholder="Escribí tu localidad"
               autoComplete="off"
               aria-describedby={`${ids}-status`}
               className="h-13 w-full rounded-[18px] border border-portal-inner-line bg-portal-inner pr-4 pl-12 text-base text-portal-ink placeholder:text-portal-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-portal-green"

@@ -51,7 +51,7 @@ function dateFrom(params: { get(name: string): string | null }, today: string): 
 export default function SearchBar({ cities }: Props) {
   const router = useRouter()
   const params = useSearchParams()
-  // Mismo criterio que HeroSearch: ART explícito. Acá `today` solo es el `min`
+  // ART explícito. Acá `today` solo es el `min`
   // del calendario, pero con el huso del runtime el piso del selector era el día
   // UTC — de 21:00 a 00:00 ART el jugador no podía elegir "hoy".
   const today = useClientSnapshot(todayART, todayART)

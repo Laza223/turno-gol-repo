@@ -1,0 +1,1073 @@
+/* Home del portal de vidrio (F2). Medidas y composición de `home.html` (glass.css y la parte de la
+   home de glass-app.css); movimiento de la dirección §4.5. Solo la carga la home: los tokens son
+   los de F1 (`--portal-*`, `--glass-*`, `--dur-*`, `--spring-*`) y acá no se define ninguno nuevo
+   en :root, .dark ni @theme. */
+
+@layer components {
+  .home {
+    --home-gut: 20px;
+    font-family: var(--font-display);
+  }
+  @media (width >= 48rem) {
+    .home {
+      --home-gut: 24px;
+    }
+  }
+  @media (width >= 64rem) {
+    .home {
+      --home-gut: 48px;
+    }
+  }
+  .home-wrap {
+    width: min(1120px, calc(100% - 2 * var(--home-gut)));
+    margin-inline: auto;
+  }
+
+  /* ── Hero: la foto, un desenfoque que se apaga hacia abajo, el velo y los resplandores. */
+  .home-stage {
+    position: relative;
+    isolation: isolate;
+    min-height: calc(100svh + 96px);
+    overflow: clip;
+  }
+  .home-bg {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+  .home-bg__img {
+    position: absolute;
+    left: 0;
+    top: 25.5svh;
+    width: 100%;
+    height: 80svh;
+    object-fit: cover;
+    object-position: 50% 50%;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 24%, #000 80%, transparent 98%);
+    mask-image: linear-gradient(180deg, transparent 0, #000 24%, #000 80%, transparent 98%);
+  }
+  .home-bg__img--claro {
+    filter: brightness(1.12) saturate(0.96);
+  }
+  .home-bg__blur {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 80svh;
+    -webkit-backdrop-filter: blur(30px) saturate(130%);
+    backdrop-filter: blur(30px) saturate(130%);
+    -webkit-mask-image: linear-gradient(180deg, #000 0, #000 62%, transparent 100%);
+    mask-image: linear-gradient(180deg, #000 0, #000 62%, transparent 100%);
+  }
+  .home-bg__veil {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 100svh;
+    background: linear-gradient(
+      180deg,
+      rgb(var(--portal-veil) / 0.92) 0%,
+      rgb(var(--portal-veil) / 0.76) 36%,
+      rgb(var(--portal-veil) / 0.42) 66%,
+      rgb(var(--portal-veil) / 0) 86%
+    );
+  }
+  .home-bg__glow {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 100svh;
+    background:
+      radial-gradient(56% 34% at -10% 46%, rgb(var(--portal-glow) / 0.32), transparent 70%),
+      radial-gradient(56% 34% at 110% 66%, rgb(var(--portal-glow) / 0.28), transparent 70%),
+      radial-gradient(70% 24% at 50% -8%, rgb(var(--portal-glow) / 0.16), transparent 70%);
+  }
+
+  .home-hero {
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: calc(76px + env(safe-area-inset-top)) 20px calc(104px + env(safe-area-inset-bottom));
+  }
+  .home-title {
+    font-weight: 700;
+    font-size: clamp(44px, 12.6vw, 60px);
+    line-height: 1;
+    font-stretch: 104%;
+    letter-spacing: -0.04em;
+    color: var(--portal-ink);
+  }
+  .home-title__line {
+    display: block;
+  }
+  .home-title__line > * {
+    display: inline-block;
+  }
+  .home-title em {
+    position: relative;
+    font-style: normal;
+    color: var(--portal-green);
+  }
+  html.dark .home-title em {
+    text-shadow: 0 0 46px rgb(16 185 129 / 0.5);
+  }
+  /* Anchos de línea del mockup pasados a `em`: con el Archivo de `next/font` el `ch` (el ancho
+     del "0") mide un 6 % más que con el del mockup y las líneas cortaban en otro lugar. 1ch del
+     mockup = 0.539em. */
+  .home-lead {
+    margin-top: 14px;
+    max-width: 17.8em;
+    font-size: 17px;
+    line-height: 1.45;
+    color: var(--portal-muted);
+    text-wrap: pretty;
+  }
+  .home-search {
+    width: min(100%, 440px);
+    margin-top: 20px;
+  }
+  /* El reflejo (pieza "Reflejo"): una banda de luz cruza la tarjeta una vez. Sin animación no va. */
+  .hero-search__shine {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .hero-search__shine::after {
+    content: '';
+    position: absolute;
+    inset: -20% auto -20% 0;
+    width: 45%;
+    background: linear-gradient(
+      100deg,
+      transparent 0%,
+      rgb(255 255 255 / 0.18) 50%,
+      transparent 100%
+    );
+    transform: translateX(-120%);
+    opacity: 0;
+  }
+  /* Píldora del color del velo: debajo de la ventana cae sobre el pasto iluminado de la foto y,
+     sin fondo propio (o con el vidrio, que satura el verde), no llegaba a AA (1,2:1 medido). */
+  .home-owner {
+    margin-top: 14px;
+    padding-inline: 16px;
+    border: 1px solid var(--glass-line);
+    border-radius: 999px;
+    background: rgb(var(--portal-veil) / 0.92);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    font-size: 13px;
+    color: var(--portal-soft);
+  }
+  .home-owner a {
+    display: inline-block;
+    padding-block: 14px;
+    font-weight: 600;
+    color: var(--portal-green);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+  .home-owner a:focus-visible {
+    outline: 2px solid var(--portal-green);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* ── La ventana: complejos de la localidad con sus horarios de hoy. */
+  .home-win.glass {
+    width: min(100%, 440px);
+    margin-top: 14px;
+    padding: 12px;
+    border-radius: 32px;
+    text-align: left;
+    background: linear-gradient(180deg, var(--portal-win-a), var(--portal-win-b));
+  }
+  .home-win__bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .home-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: var(--portal-inner);
+    border: 1px solid var(--portal-inner-line);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--portal-ink);
+  }
+  .home-chip svg {
+    width: 15px;
+    height: 15px;
+    color: var(--portal-green);
+  }
+  .home-win__n {
+    display: none;
+    margin-left: auto;
+    padding-right: 6px;
+    font-size: 14px;
+    color: var(--portal-soft);
+  }
+  .home-win__n b {
+    font-weight: 600;
+    color: var(--portal-ink);
+  }
+  .home-cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .home-card {
+    min-width: 0;
+    border-radius: 22px;
+    overflow: hidden;
+    background: var(--portal-inner);
+    border: 1px solid var(--portal-inner-line);
+  }
+  .home-card:nth-child(n + 3) {
+    display: none;
+  }
+  .home-card__link {
+    display: block;
+    color: var(--portal-ink);
+    text-decoration: none;
+    border-radius: inherit;
+  }
+  .home-card__link:focus-visible {
+    outline: 2px solid var(--portal-green);
+    outline-offset: -2px;
+  }
+  .home-card__ph {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: var(--portal-inner-line);
+  }
+  .home-card__ph img {
+    object-fit: cover;
+    transition: transform 600ms var(--portal-ease-out);
+  }
+  .home-card__link:hover .home-card__ph img {
+    transform: scale(1.03);
+  }
+  .home-card__b {
+    display: grid;
+    gap: 3px;
+    padding: 10px 12px;
+  }
+  .home-card__n {
+    font-size: 16px;
+    line-height: 20px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .home-card__m {
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--portal-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .home-card__none {
+    margin-top: 7px;
+    font-size: 13px;
+    line-height: 18px;
+    color: var(--portal-soft);
+  }
+  .home-slots {
+    display: flex;
+    gap: 6px;
+    min-height: 32px;
+    margin-top: 7px;
+    overflow: hidden;
+  }
+  .home-slot {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    height: 32px;
+    padding: 0 11px;
+    border-radius: 999px;
+    background: var(--portal-slot-bg);
+    border: 1px solid var(--portal-slot-line);
+    color: var(--portal-slot-ink);
+    font-size: 13px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Secciones. */
+  .home-sec {
+    position: relative;
+    isolation: isolate;
+    overflow-x: clip;
+    padding: 56px 0;
+  }
+  .home-sec--glow::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    right: -12%;
+    top: 18%;
+    width: 64%;
+    height: 64%;
+    pointer-events: none;
+    background: radial-gradient(closest-side, rgb(var(--portal-glow) / 0.26), transparent);
+  }
+  .home-sec--glow-l::before {
+    right: auto;
+    left: -12%;
+  }
+  .home-sec__head {
+    max-width: 900px;
+    margin-bottom: 28px;
+  }
+  .home-h2 {
+    font-weight: 700;
+    font-size: clamp(32px, 4.6vw, 56px);
+    line-height: 1.04;
+    font-stretch: 104%;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+    color: var(--portal-ink);
+  }
+  .home-h2 span {
+    color: var(--portal-soft);
+  }
+  .home-lead2 {
+    margin-top: 14px;
+    max-width: 24.8em;
+    font-size: 18px;
+    line-height: 1.5;
+    color: var(--portal-muted);
+    text-wrap: pretty;
+  }
+  /* La marca de "esto es un ejemplo" de los dibujos (como `ExampleTag` en /para-complejos). */
+  .home-example-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+  }
+  .home-tag {
+    display: inline-flex;
+    align-items: center;
+    height: 28px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--portal-slot-bg);
+    border: 1px solid var(--portal-slot-line);
+    color: var(--portal-slot-ink);
+  }
+  .home-tag--neutral {
+    background: var(--portal-inner);
+    border-color: var(--portal-inner-line);
+    color: var(--portal-ink);
+  }
+  .home-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 52px;
+    padding: 0 26px;
+    border-radius: 999px;
+    font-size: 16px;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--portal-on-green);
+    background: linear-gradient(180deg, var(--portal-btn-a), var(--portal-btn-b));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.45),
+      0 14px 30px -12px var(--portal-btn-glow);
+  }
+
+  /* La ficha dibujada ("Reservás en una pantalla"). */
+  .home-app {
+    border-radius: 32px;
+    overflow: hidden;
+    text-align: left;
+    color: var(--portal-ink);
+  }
+  .home-app__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    height: 52px;
+    padding: 0 20px;
+    font-size: 14px;
+    color: var(--portal-soft);
+    border-bottom: 1px solid var(--portal-inner-line);
+  }
+  .home-app__bar b {
+    color: var(--portal-ink);
+    font-weight: 600;
+  }
+  .home-app__list {
+    display: none;
+  }
+  .home-app__main {
+    display: grid;
+    align-content: start;
+    gap: 14px;
+    padding: 20px;
+    min-width: 0;
+  }
+  .home-app__q {
+    font-weight: 700;
+    font-size: 26px;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+  }
+  /* En el dibujo la fila no scrollea (no es un control): se corta en el borde. */
+  .home-daystrip {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 64px;
+    gap: 8px;
+    margin-inline: -20px;
+    padding: 2px 20px;
+    overflow: hidden;
+  }
+  .home-dayp {
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 3px;
+    height: 84px;
+    border-radius: 22px;
+    border: 1px solid var(--portal-inner-line);
+    background: var(--portal-inner);
+  }
+  .home-dayp small {
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 600;
+    color: var(--portal-muted);
+  }
+  .home-dayp b {
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .home-dayp i {
+    width: 6px;
+    height: 6px;
+    margin-top: 3px;
+    border-radius: 50%;
+    background: var(--portal-green);
+  }
+  .home-dayp em {
+    font-style: normal;
+    font-size: 13px;
+    line-height: 16px;
+    color: var(--portal-soft);
+  }
+  .home-dayp[data-picked] {
+    border-color: transparent;
+    color: var(--portal-on-green);
+    background: linear-gradient(180deg, var(--portal-btn-a), var(--portal-btn-b));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.45),
+      0 14px 30px -14px var(--portal-btn-glow);
+  }
+  .home-dayp[data-picked] small {
+    color: var(--portal-on-green);
+  }
+  .home-dayp[data-picked] i {
+    background: var(--portal-on-green);
+  }
+  .home-dayp[data-off] {
+    background: transparent;
+    border-style: dashed;
+  }
+  .home-dayp[data-off] b {
+    color: var(--portal-soft);
+  }
+  .home-hgrid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .home-hourb {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 2px;
+    aspect-ratio: 1 / 0.88;
+    border-radius: 20px;
+    border: 1px solid var(--portal-slot-line);
+    background: var(--portal-slot-bg);
+    font-variant-numeric: tabular-nums;
+  }
+  .home-hourb b {
+    font-size: 18px;
+    line-height: 22px;
+    font-weight: 600;
+    color: var(--portal-slot-ink);
+  }
+  .home-hourb span {
+    font-size: 13px;
+    line-height: 16px;
+    color: var(--portal-muted);
+  }
+  .home-hourb[data-picked] {
+    border-color: transparent;
+    background: linear-gradient(180deg, var(--portal-btn-a), var(--portal-btn-b));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.45),
+      0 14px 30px -14px var(--portal-btn-glow);
+  }
+  .home-hourb[data-picked] b,
+  .home-hourb[data-picked] span {
+    color: var(--portal-on-green);
+  }
+  .home-hourb[data-off] {
+    background: transparent;
+    border: 1px dashed var(--portal-inner-line);
+  }
+  .home-hourb[data-off] b {
+    color: var(--portal-soft);
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+  }
+  .home-hourb[data-off] span {
+    color: var(--portal-soft);
+  }
+  .home-app__go {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    border-radius: 24px;
+    background: var(--portal-inner);
+    border: 1px solid var(--portal-inner-line);
+  }
+  .home-app__go div span {
+    display: block;
+    font-size: 14px;
+    color: var(--portal-soft);
+    font-variant-numeric: tabular-nums;
+  }
+  .home-app__go b {
+    display: block;
+    font-size: 18px;
+    line-height: 1.25;
+    font-weight: 600;
+  }
+
+  /* El tablón de Rival dibujado. */
+  .home-split {
+    display: grid;
+    gap: 28px;
+  }
+  .home-board {
+    display: grid;
+    gap: 10px;
+    text-align: left;
+  }
+  .home-board__head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 2px;
+  }
+  .home-board__head span {
+    display: inline-flex;
+    align-items: center;
+    height: 44px;
+    padding: 0 18px;
+    border-radius: 999px;
+    font-size: 15px;
+    font-weight: 600;
+    background: var(--portal-inner);
+    border: 1px solid var(--portal-inner-line);
+    color: var(--portal-ink);
+  }
+  .home-board__head span:first-child {
+    color: var(--portal-on-green);
+    border-color: transparent;
+    background: linear-gradient(180deg, var(--portal-btn-a), var(--portal-btn-b));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45);
+  }
+  .home-match {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px 14px;
+    padding: 16px;
+    border-radius: 24px;
+    color: var(--portal-ink);
+  }
+  .home-match:nth-child(n + 5) {
+    display: none;
+  }
+  .home-match__k {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .home-match__t {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .home-match__m {
+    grid-column: 1 / -1;
+    font-size: 14px;
+    color: var(--portal-soft);
+  }
+  .home-match__bar {
+    grid-column: 1 / -1;
+    height: 6px;
+    border-radius: 6px;
+    background: var(--portal-inner-line);
+    overflow: hidden;
+  }
+  /* La barra crece en `scaleX` desde la izquierda: solo se anima `transform` (§4.7). */
+  .home-match__bar i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--portal-green);
+    transform-origin: left;
+    transform: scaleX(var(--fill, 1));
+  }
+  .home-match__cta {
+    grid-row: 1;
+    grid-column: 2;
+    display: inline-flex;
+    align-items: center;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--portal-on-green);
+    background: linear-gradient(180deg, var(--portal-btn-a), var(--portal-btn-b));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45);
+  }
+
+  /* El cierre para complejos. */
+  .home-closing {
+    position: relative;
+    isolation: isolate;
+    padding: 56px 0 0;
+  }
+  .home-cta {
+    display: grid;
+    gap: 24px;
+    padding: 28px 24px;
+    border-radius: 36px;
+  }
+  .home-cta .home-h2 {
+    font-size: clamp(28px, 3.4vw, 44px);
+  }
+  .home-cta > a {
+    justify-self: start;
+  }
+
+  @media (width >= 40rem) {
+    .home-title {
+      font-size: 64px;
+    }
+    .home-lead {
+      font-size: 18px;
+      max-width: 24.8em;
+    }
+    .home-search,
+    .home-win.glass {
+      width: min(100%, 600px);
+    }
+    .home-win.glass {
+      padding: 14px;
+    }
+    .home-win__n {
+      display: block;
+    }
+    .home-cards {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    .home-card:nth-child(3) {
+      display: block;
+    }
+    .home-match {
+      padding: 16px 20px;
+    }
+    .home-match:nth-child(n + 5) {
+      display: grid;
+    }
+    .home-match__m,
+    .home-match__bar {
+      grid-column: 1;
+    }
+    .home-match__cta {
+      grid-row: 1 / span 3;
+    }
+    .home-match__t {
+      font-size: 18px;
+    }
+    .home-app__go {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      padding: 14px 14px 14px 20px;
+    }
+  }
+  @media (width >= 48rem) {
+    .home-bg__img {
+      top: 15svh;
+      height: 96svh;
+    }
+    .home-hero {
+      padding: 132px 24px 72px;
+    }
+    .home-search {
+      width: min(100%, 720px);
+      margin-top: 32px;
+    }
+    .home-win.glass {
+      margin-top: 40px;
+    }
+    .home-sec {
+      padding: 72px 0;
+    }
+    .home-sec__head {
+      margin-bottom: 40px;
+    }
+    .home-cta {
+      padding: 48px;
+    }
+    .home-closing {
+      padding-top: 72px;
+    }
+  }
+  @media (width >= 64rem) {
+    .home-title {
+      font-size: clamp(76px, 6.4vw, 96px);
+    }
+    .home-title__line {
+      display: inline-block;
+    }
+    .home-lead {
+      margin-top: 20px;
+      font-size: 20px;
+      max-width: 30.2em;
+    }
+    .home-win.glass {
+      width: min(100%, 1120px);
+      padding: 16px;
+      border-radius: 36px;
+    }
+    .home-win__bar {
+      margin-bottom: 14px;
+    }
+    .home-cards {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .home-card:nth-child(4) {
+      display: block;
+    }
+    .home-card__ph {
+      aspect-ratio: 16 / 10;
+    }
+    .home-card__b {
+      padding: 14px;
+    }
+    .home-sec {
+      min-height: 100svh;
+      display: grid;
+      align-items: center;
+      padding: 104px 0 56px;
+    }
+    .home-lead2 {
+      font-size: 20px;
+    }
+    .home-app__grid {
+      display: grid;
+      grid-template-columns: 340px minmax(0, 1fr);
+    }
+    .home-app__list {
+      display: grid;
+      align-content: start;
+      gap: 8px;
+      padding: 16px;
+      border-right: 1px solid var(--portal-inner-line);
+    }
+    .home-row {
+      display: grid;
+      grid-template-columns: 56px minmax(0, 1fr);
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+      border-radius: 18px;
+    }
+    .home-row img {
+      display: block;
+      width: 56px;
+      height: 56px;
+      border-radius: 14px;
+      object-fit: cover;
+    }
+    .home-row b {
+      display: block;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    .home-row span {
+      font-size: 14px;
+      color: var(--portal-soft);
+    }
+    .home-row[data-on] {
+      background: var(--portal-slot-bg);
+      box-shadow: inset 0 0 0 1px var(--portal-slot-line);
+    }
+    .home-app__main {
+      gap: 20px;
+      padding: 40px 48px 48px;
+    }
+    .home-app__q {
+      font-size: 34px;
+    }
+    .home-daystrip {
+      grid-auto-columns: minmax(0, 1fr);
+      margin-inline: 0;
+      padding-inline: 0;
+    }
+    .home-hgrid {
+      max-width: 520px;
+      gap: 10px;
+    }
+    .home-split {
+      grid-template-columns: 5fr 6fr;
+      gap: 80px;
+      align-items: center;
+    }
+    .home-cta {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 48px;
+      padding: 56px;
+      border-radius: 44px;
+    }
+    .home-cta > a {
+      justify-self: end;
+    }
+  }
+}
+
+/* ── Movimiento de la home (dirección §4.5). Solo `transform` y `opacity`; nada arranca escondido
+   del todo (la foto y el titular son el LCP). Con "reducir movimiento" no hay nada de esto: el
+   contenido aparece directo. `html[data-home-seen]` apaga la entrada cuando se vuelve a la home
+   por navegación interna (lo pone `HomeEntry`). */
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-home-seen]) .home-bg__img {
+    animation: home-asentar 1400ms var(--portal-ease-out) both;
+  }
+  @keyframes home-asentar {
+    from {
+      transform: scale(1.06);
+    }
+  }
+
+  /* El titular entra por línea: cada una sube dentro de su renglón, que la recorta mientras dura
+     la entrada (después el recorte se va, para no cortar el resplandor). Arranca a medio renglón
+     y no invisible: el titular puede ser el LCP. */
+  html:not([data-home-seen]) .home-title__line {
+    animation: home-recorte calc(var(--dur-4) + var(--l, 0) * 90ms) step-end both;
+  }
+  html:not([data-home-seen]) .home-title__line > * {
+    animation: home-linea var(--dur-4) var(--portal-ease-out) both;
+    animation-delay: calc(var(--l, 0) * 90ms);
+  }
+  @keyframes home-recorte {
+    from {
+      clip-path: inset(-0.6em -1em 0 -1em);
+    }
+    to {
+      clip-path: none;
+    }
+  }
+  @keyframes home-linea {
+    from {
+      transform: translateY(55%);
+    }
+  }
+
+  /* "a un toque." florece una vez cuando termina de entrar (pieza "Floración"). */
+  html:not([data-home-seen]) .home-title em::before {
+    content: '';
+    position: absolute;
+    inset: -40% -12%;
+    z-index: -1;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgb(var(--portal-glow) / 0.5), transparent);
+    opacity: 0;
+    pointer-events: none;
+    animation: home-florecer 900ms var(--portal-ease-out) 790ms both;
+  }
+  @keyframes home-florecer {
+    40% {
+      opacity: 0.5;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  /* Subtítulo, buscador, ventana y la línea del dueño suben escalonados (pieza "Subir"). */
+  html:not([data-home-seen]) .home-rise {
+    animation: home-subir var(--dur-4) var(--portal-ease-out) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+  @keyframes home-subir {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+  }
+  /* La ventana llega con sus datos, después de la entrada: sube sola, sin esperar el escalonado. */
+  .home-win.home-rise {
+    animation: home-subir var(--dur-4) var(--portal-ease-out) both;
+  }
+
+  /* El reflejo cruza el buscador a los 900 ms, una vez por sesión (`data-shine`). */
+  .hero-search[data-shine] .hero-search__shine::after {
+    animation: home-reflejo 900ms var(--portal-ease-out) 900ms both;
+  }
+  @keyframes home-reflejo {
+    0% {
+      opacity: 1;
+      transform: translateX(-120%);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(330%);
+    }
+  }
+
+  /* Atado al scroll: la foto va un 6 % más lenta que la página y el velo se cierra. */
+  @supports (animation-timeline: scroll()) {
+    .home-bg {
+      animation: home-foto-lenta linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 100svh;
+    }
+    @keyframes home-foto-lenta {
+      to {
+        transform: translateY(6svh);
+      }
+    }
+    .home-bg__veil::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgb(var(--portal-veil));
+      opacity: 0;
+      animation: home-velo linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 100svh;
+    }
+    @keyframes home-velo {
+      to {
+        opacity: 0.55;
+      }
+    }
+  }
+
+  /* Las secciones aparecen al llegar (pieza "Aparecer al bajar"), una sola vez por scroll. */
+  @supports (animation-timeline: view()) {
+    .home-reveal {
+      animation: home-aparecer linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 34%;
+    }
+    @keyframes home-aparecer {
+      from {
+        opacity: 0;
+        transform: translateY(26px);
+      }
+    }
+    /* En la ficha dibujada, las horas entran escalonadas y la elegida hace su toque al final. */
+    .home-hourb {
+      animation: home-hora linear both;
+      animation-timeline: view();
+      animation-range: entry calc(10% + var(--h, 0) * 4%) entry calc(40% + var(--h, 0) * 4%);
+    }
+    @keyframes home-hora {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+    }
+    .home-hourb[data-picked] {
+      animation: home-toque linear both;
+      animation-timeline: view();
+      animation-range: entry 50% entry 90%;
+    }
+    @keyframes home-toque {
+      0% {
+        opacity: 0;
+        transform: scale(0.9);
+      }
+      45% {
+        opacity: 1;
+        transform: scale(1.06);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+    /* En Rival, las barras de avance crecen. */
+    .home-match__bar i {
+      animation: home-crecer linear both;
+      animation-timeline: view();
+      animation-range: entry 20% cover 38%;
+    }
+    @keyframes home-crecer {
+      from {
+        transform: scaleX(0);
+      }
+    }
+  }
+}
+
+/* Sin desenfoque disponible: el velo se cierra más para que el texto se siga leyendo. Fuera de
+   capa, como los respaldos de F1. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .home-bg__veil {
+    background: linear-gradient(
+      180deg,
+      rgb(var(--portal-veil) / 0.96) 0%,
+      rgb(var(--portal-veil) / 0.9) 60%,
+      rgb(var(--portal-veil) / 0.3) 92%
+    );
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .home-bg__blur {
+    display: none;
+  }
+  .home-bg__veil {
+    background: linear-gradient(
+      180deg,
+      rgb(var(--portal-veil) / 0.96) 0%,
+      rgb(var(--portal-veil) / 0.9) 60%,
+      rgb(var(--portal-veil) / 0.3) 92%
+    );
+  }
+}

@@ -1,59 +1,51 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useMemo, useState, type FormEvent } from 'react'
-import { CalendarDays, ChevronDown, Clock, LocateFixed, MapPin, Search } from 'lucide-react'
-import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
-import { useClientSnapshot } from '@/hooks/use-client-value'
+import { useEffect, useId, useState, type FormEvent, type ReactNode } from 'react'
+import { Check, ChevronDown, LocateFixed, MapPin, Search } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { GlassSheetContent } from '@/components/ui/glass-sheet'
+import { Sheet } from '@/components/ui/sheet'
+import { useHydrated } from '@/hooks/use-client-value'
+import { useIpZona } from '@/hooks/use-ip-zona'
 import { useNearestCity, type NearestCityState } from '@/hooks/use-nearest-city'
 import { useSavedZona } from '@/hooks/use-saved-zona'
 import { markZonaApplied, type SavedZona } from '@/lib/zona-storage'
-import { addDays } from '@/shared/dates/art'
-import { todayART } from '@/shared/time/art-date'
-import { capitalizeFirst, formatDayHeader } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import type { CityCount } from '@/modules/tenants/search.service'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { formatsLabel } from '@/lib/formats-label'
 
-type Props = { cities: CityCount[]; layout?: 'horizontal' | 'vertical' }
+export type SearchZona = { city: string; province: string }
 
-const HOURS = Array.from({ length: 16 }, (_, i) => `${String(i + 8).padStart(2, '0')}:00`)
-/** Hoy + 6: la anticipación de reserva por defecto de un complejo (`booking_advance_days`). */
-const DAYS_AHEAD = 7
+type Props = {
+  cities: CityCount[]
+  /** La localidad que muestra el campo (la ventana de complejos de la home la usa). */
+  onZonaChange?: (zona: SearchZona | null) => void
+  /** El reflejo que cruza la tarjeta una vez por sesión (dirección §4.5, home). */
+  reflejo?: boolean
+  className?: string
+}
+
+/** Los tamaños de cancha que existen (`court_format`): Fútbol 4 a 11. */
+const FORMATS = [4, 5, 6, 7, 8, 9, 10, 11] as const
+
+/** Una vez por sesión: el reflejo no se repite al volver a la home. */
+const REFLEJO_KEY = 'turnogol:home-reflejo'
 
 /** value compuesto "{city}||{province}" para desambiguar homónimos al armar la URL. */
-function cityOptionsFrom(cities: CityCount[]): ComboboxOption[] {
-  return cities.map((c) => ({
-    value: c.province ? `${c.city}||${c.province}` : c.city,
-    label: c.province ? `${c.city}, ${c.province}` : c.city,
-  }))
+function cityValue(c: { city: string; province?: string }): string {
+  return c.province ? `${c.city}||${c.province}` : c.city
 }
 
-/** El del botón: corto, para que entre en la columna ("Mié 22"). El menú usa `dayLabel`. */
-function shortDayLabel(date: string, today: string): string {
-  if (date === today) return 'Hoy'
-  if (date === addDays(today, 1)) return 'Mañana'
-  const [y, m, d] = date.split('-').map(Number)
-  // UTC de punta a punta: la fecha es de calendario, así el server y el navegador dan el mismo día.
-  const short = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).toLocaleDateString('es-AR', {
-    weekday: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  })
-  return capitalizeFirst(short.replace(/\./g, '').replace(',', ''))
+function cityLabel(c: CityCount): string {
+  return c.province ? `${c.city}, ${c.province}` : c.city
 }
 
-function dayLabel(date: string, today: string): string {
-  if (date === today) return 'Hoy'
-  if (date === addDays(today, 1)) return 'Mañana'
-  return capitalizeFirst(formatDayHeader(date))
+function countLabel(n: number): string {
+  return n === 1 ? '1 complejo' : `${n} complejos`
 }
 
-/** Aviso de debajo del campo Localidad según cómo salió la ubicación (vacío = nada que decir). */
+/** Aviso de la hoja de Localidad según cómo salió la ubicación (vacío = nada que decir). */
 function geoStatusMessage(status: NearestCityState['status'], usingZona: boolean): string {
   if (status === 'denied') {
     return 'No pudimos acceder a tu ubicación. Elegí tu localidad manualmente.'
@@ -64,65 +56,94 @@ function geoStatusMessage(status: NearestCityState['status'], usingZona: boolean
   return ''
 }
 
-/** La opción de la lista que corresponde a la zona guardada (primero ciudad+provincia, luego solo ciudad). */
-function findZonaOption(
-  options: ComboboxOption[],
-  zona: SavedZona | null,
-): ComboboxOption | undefined {
+/** La ciudad de la lista que corresponde a la zona (primero ciudad+provincia, luego solo ciudad). */
+function findCity(
+  cities: CityCount[],
+  zona: Pick<SavedZona, 'city' | 'province'> | null,
+): CityCount | undefined {
   if (!zona?.city) return undefined
   return (
-    options.find((o) => o.value === `${zona.city}||${zona.province ?? ''}`) ??
-    options.find((o) => o.value === zona.city || o.value.startsWith(`${zona.city}||`))
+    cities.find((c) => c.city === zona.city && c.province === (zona.province ?? '')) ??
+    cities.find((c) => c.city === zona.city)
   )
 }
 
+// Las filas de la hoja de Localidad: 56 px de alto y el verde de lo elegido.
+const optionRow =
+  'flex min-h-14 w-full cursor-pointer items-center gap-3 border-b border-portal-inner-line px-2 text-base text-portal-ink has-checked:font-semibold has-checked:text-portal-slot-ink has-focus-visible:rounded-xl has-focus-visible:outline-2 has-focus-visible:outline-offset-1 has-focus-visible:outline-portal-green'
+// Lo elegido en la hoja de Cancha: borde y relleno verdes (`.fmt[aria-checked]` del mockup).
+const checkedCard =
+  'has-checked:border-portal-green has-checked:bg-portal-slot-bg has-checked:shadow-[inset_0_0_0_1px_var(--portal-green)] has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-portal-green'
+
 /**
- * Buscador protagonista del hero (estilo ATC). Recolecta Localidad + Fecha + Hora y
- * redirige a /explorar con los filtros como query params. Solo fútbol, así que no hay
- * selector de deporte; buscar un club por nombre vive en /explorar. La fecha se elige entre
- * hoy y los próximos 6 (lo que un complejo deja reservar por defecto); la hora se reenvía
- * para el filtrado por disponibilidad (en /explorar).
+ * Buscador del hero de la home, en vidrio (portal de vidrio, F2: `home.html` y las hojas de
+ * `buscador.html`). Pide Localidad y Cancha y lleva a /explorar con los filtros en la URL
+ * (`city`, `province`, `formats`). Solo fútbol; buscar un club por nombre vive en /explorar.
  *
- * La localidad sale de la zona guardada en el dispositivo (`useSavedZona`): la primera vez se
- * consigue con el botón "Usar mi ubicación" (ciudad del complejo más cercano, datos propios —
- * sin geocoding externo) o eligiéndola a mano, y de ahí en más no se vuelve a pedir nada.
+ * Cada campo abre su hoja (`GlassSheetContent`): abajo en el celu, panel centrado en la compu.
+ * Son las piezas que F3 reusa en /explorar, donde suman cuántos complejos tiene cada tamaño (un
+ * dato que hoy no llega).
+ *
+ * La localidad sale, en este orden, de lo elegido en esta visita, la zona guardada en el
+ * dispositivo (`useSavedZona`), la zona de la conexión (`useIpZona`, que nunca se guarda) y, si no
+ * hay nada, queda vacía. La zona se guarda al elegir una localidad a mano o con "Usar mi ubicación
+ * exacta" (la ciudad del complejo más cercano, datos propios, sin geocoding externo); de ahí en
+ * más no se vuelve a pedir nada.
  */
-export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
+export default function HeroSearch({ cities, onZonaChange, reflejo = false, className }: Props) {
   const router = useRouter()
-  // ART explícito, NO el huso del runtime. `todayLocal()` (getTimezoneOffset)
-  // devolvía el día del SERVIDOR en el HTML (UTC en Vercel) y el día del
-  // NAVEGADOR al hidratar: entre las 21:00 y las 00:00 ART son días distintos,
-  // así que el campo llegaba con una fecha en el HTML y otra al hidratar
-  // → "Hydration failed … text didn't match" y React regenerando el hero entero
-  // en el cliente, todas las noches, para todos los usuarios. Con el offset fijo
-  // de Argentina (sin DST) las dos puntas calculan lo mismo.
-  const today = useClientSnapshot(todayART, todayART)
-  // `null` = el usuario no eligió nada en esta visita: manda la zona guardada. Un string (aun
-  // vacío, "Todas las ciudades") es una elección explícita y gana siempre. Derivado en el
-  // render y no sincronizado con un efecto: no hay parpadeo ni setState encadenado.
+  const ids = useId()
+  // `null` = el usuario no eligió nada en esta visita: manda la zona. Un string (aun vacío,
+  // "Todas las ciudades") es una elección explícita y gana siempre. Derivado en el render y no
+  // sincronizado con un efecto: no hay parpadeo ni setState encadenado.
   const [pickedCity, setPickedCity] = useState<string | null>(null)
-  const [date, setDate] = useState<string | null>(null)
-  const [time, setTime] = useState('')
+  const [formats, setFormats] = useState<number[]>([])
+  const [sheet, setSheet] = useState<'localidad' | 'cancha' | null>(null)
+  const [query, setQuery] = useState('')
+  const [shine, setShine] = useState(false)
 
   const [zona, saveZona] = useSavedZona()
   const { state: geo, locate, cancel } = useNearestCity()
-  const cityOptions = useMemo(() => cityOptionsFrom(cities), [cities])
-  const zonaOption = findZonaOption(cityOptions, zona)
-  const city = pickedCity ?? zonaOption?.value ?? ''
-  const usingZona = zonaOption !== undefined && city === zonaOption.value
-  const effectiveDate = date ?? today
-  const days = useMemo(
-    () => Array.from({ length: DAYS_AHEAD }, (_, i) => addDays(today, i)),
-    [today],
-  )
+  const hydrated = useHydrated()
+  const zonaCity = findCity(cities, zona)
+  // La zona de la conexión se pide solo sin una guardada (un pedido por carga de página).
+  const ipZona = useIpZona(hydrated && !zona?.city)
+  const ipCity = zonaCity ? undefined : findCity(cities, ipZona)
 
-  // Poner el foco en el campo congela lo que se ve: si la zona (o una ubicación detectada) llega
-  // cuando el jugador ya está por escribir, no le cambia el valor debajo de los dedos.
-  function freezeCity() {
+  const city = pickedCity ?? (zonaCity ? cityValue(zonaCity) : ipCity ? cityValue(ipCity) : '')
+  const current = cities.find((c) => cityValue(c) === city)
+  const usingZona = zonaCity !== undefined && city === cityValue(zonaCity)
+  const usingIp = !usingZona && ipCity !== undefined && city === cityValue(ipCity)
+
+  const zonaCityName = current?.city
+  const zonaProvince = current?.province
+  useEffect(() => {
+    onZonaChange?.(
+      zonaCityName !== undefined ? { city: zonaCityName, province: zonaProvince ?? '' } : null,
+    )
+  }, [zonaCityName, zonaProvince, onZonaChange])
+
+  useEffect(() => {
+    if (!reflejo) return
+    try {
+      if (sessionStorage.getItem(REFLEJO_KEY)) return
+      sessionStorage.setItem(REFLEJO_KEY, '1')
+    } catch {
+      // Storage bloqueado: el reflejo sale igual, una vez por carga.
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- dato del navegador, una vez al montar
+    setShine(true)
+  }, [reflejo])
+
+  // Abrir la hoja congela lo que se ve: si la zona (o una ubicación detectada) llega cuando el
+  // jugador ya está eligiendo, no le cambia el valor debajo de los dedos.
+  function openLocalidad() {
     if (pickedCity === null) setPickedCity(city)
+    setQuery('')
+    setSheet('localidad')
   }
 
-  // Tocar el botón es pedir la ubicación de nuevo: vuelve a mandar lo que se detecte, no lo elegido antes.
+  // Tocar el botón es pedir la ubicación de nuevo: vuelve a mandar lo que se detecte.
   function onLocate() {
     setPickedCity(null)
     locate()
@@ -132,227 +153,313 @@ export default function HeroSearch({ cities, layout = 'horizontal' }: Props) {
     setPickedCity(value)
     // Elegir a mano gana sobre una ubicación que todavía esté en camino.
     cancel()
-    // Elegir una localidad a mano también fija la zona. Vaciar el campo ("Todas las
-    // ciudades") NO la borra: solo vale para esta búsqueda.
+    // Elegir una localidad a mano también fija la zona. "Todas las ciudades" NO la borra: solo
+    // vale para esta búsqueda.
     if (value) {
       const [cityPart, provincePart] = value.split('||')
       if (cityPart) saveZona({ city: cityPart, province: provincePart })
     }
+    setSheet(null)
   }
 
-  function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault()
+  function toggleFormat(f: number) {
+    setFormats((prev) =>
+      prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f].sort((a, b) => a - b),
+    )
+  }
+
+  function search() {
     // Buscar sin localidad es pedir "todas": que /explorar no se la reemplace por la zona guardada.
     if (!city) markZonaApplied()
     const params = new URLSearchParams()
     if (city) {
-      // value is "{city}||{province}" to disambiguate homonyms; split for the URL.
       const [cityPart, provincePart] = city.split('||')
       if (cityPart) params.set('city', cityPart)
       if (provincePart) params.set('province', provincePart)
     }
-    if (effectiveDate !== today) params.set('date', effectiveDate)
-    if (time) params.set('time', time)
+    if (formats.length) params.set('formats', formats.join(','))
     const qs = params.toString()
+    setSheet(null)
     router.push(qs ? `/explorar?${qs}` : '/explorar')
   }
 
-  const geoMessage = geoStatusMessage(geo.status, usingZona)
+  function onSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    search()
+  }
 
+  const ipMessage = usingIp
+    ? `Te mostramos ${current?.city} por la zona desde donde te conectás. La que elijas queda guardada para la próxima.`
+    : ''
+  const geoMessage = geoStatusMessage(geo.status, usingZona) || ipMessage
   // Con la zona ya guardada, o con la ubicación bloqueada/no soportada, el botón no tiene qué hacer.
   const canLocate = !usingZona && geo.status !== 'denied' && geo.status !== 'unsupported'
   const locating = geo.status === 'locating'
 
-  // `md:text-base` pisa el `md:text-sm` del combobox: a 14 px desde `md` iOS zoomea al enfocar.
-  const fieldClass =
-    'h-[62px] w-full rounded-xl border border-input bg-background pl-11 pr-3 text-base md:text-base text-foreground shadow-xs transition-colors focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary'
+  // El campo cerrado tiene lugar para una palabra en el celu (~80 px): "Todas las ciudades" y
+  // "Cualquier tamaño" se cortaban. Las opciones de las hojas conservan el nombre largo.
+  const localidadValue = current ? current.city : pickedCity === '' ? 'Todas' : null
+  const canchaValue = formatsLabel(formats) ?? 'Todas'
 
-  const labelTextClass =
-    'font-logo text-[13px] font-bold uppercase tracking-wider text-muted-foreground'
-  const labelClass = `mb-[9px] block ${labelTextClass}`
+  const q = query.trim().toLocaleLowerCase('es')
+  const visibleCities = q
+    ? cities.filter((c) => cityLabel(c).toLocaleLowerCase('es').includes(q))
+    : cities
 
-  const vertical = layout === 'vertical'
-  // Los ids terminan en `-v` en el layout vertical: los dos pueden convivir en el DOM.
-  const sfx = vertical ? '-v' : ''
-  const iconClass =
-    'pointer-events-none absolute left-3.5 top-1/2 z-10 h-[19px] w-[19px] -translate-y-1/2 text-emerald-700 dark:text-emerald-400'
-  const chevronClass =
-    'pointer-events-none absolute right-3 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-muted-foreground'
-  const menuTriggerClass = `${fieldClass} flex items-center justify-between gap-1 text-left pr-9`
-
-  const cityField = (
-    <div className={vertical ? 'sm:col-span-2' : undefined}>
-      <div className="mb-[9px] flex items-center justify-between gap-3">
-        <label htmlFor={`hero-city${sfx}`} className={labelTextClass}>
-          Localidad
-        </label>
-        {canLocate && (
-          // -my-3.5 + min-h-11: el botón mide 44 px de alto para el dedo sin agrandar la fila
-          // de la etiqueta (los campos de al lado quedarían desalineados).
-          <button
-            type="button"
-            onClick={onLocate}
-            disabled={locating}
-            className="-my-3.5 inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold text-emerald-700 transition-colors hover:text-emerald-800 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60 dark:text-emerald-400 dark:hover:text-emerald-300"
-          >
-            <LocateFixed className="h-4 w-4" aria-hidden />
-            {locating ? 'Buscando…' : 'Usar mi ubicación'}
-          </button>
-        )}
-      </div>
-      <div onFocusCapture={freezeCity}>
-        <Combobox
-          id={`hero-city${sfx}`}
-          options={cityOptions}
-          value={city}
-          onChange={onCityChange}
-          placeholder="¿Dónde?"
-          emptyMessage="No encontramos esa localidad"
-          listboxLabel="Localidades"
-          clearOptionLabel="Todas las ciudades"
-          inputClassName={fieldClass}
-          aria-describedby={`hero-city${sfx}-status`}
-          leadingIcon={<MapPin className={iconClass} aria-hidden />}
-        />
-      </div>
-    </div>
-  )
-
-  // modal={false} en los dos menús: selectores livianos dentro de un form de búsqueda, no un
-  // diálogo — con el default (modal=true) Radix llama hideOthers() y aria-hidea el resto del
-  // form (incluido "Buscar canchas") mientras el menú está abierto o cerrándose.
-  const dateField = (
-    <div>
-      <label htmlFor={`hero-date${sfx}`} className={labelClass}>
-        Fecha
-      </label>
-      <div className="relative">
-        <CalendarDays className={iconClass} aria-hidden />
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <button type="button" id={`hero-date${sfx}`} className={menuTriggerClass}>
-              <span className="truncate">{shortDayLabel(effectiveDate, today)}</span>
-              <ChevronDown className={chevronClass} aria-hidden />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-[200px]">
-            {days.map((d) => (
-              <DropdownMenuItem key={d} onSelect={() => setDate(d)} className="cursor-pointer">
-                {dayLabel(d, today)}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
-  )
-
-  const timeField = (
-    <div>
-      <label htmlFor={`hero-time${sfx}`} className={labelClass}>
-        Hora
-      </label>
-      <div className="relative">
-        <Clock className={iconClass} aria-hidden />
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <button type="button" id={`hero-time${sfx}`} className={menuTriggerClass}>
-              <span className={`truncate ${!time ? 'text-muted-foreground' : 'text-foreground'}`}>
-                {time || 'Cualquiera'}
-              </span>
-              <ChevronDown className={chevronClass} aria-hidden />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="max-h-60 w-[200px] overflow-y-auto">
-            <DropdownMenuItem onSelect={() => setTime('')} className="cursor-pointer">
-              Cualquier horario
-            </DropdownMenuItem>
-            {HOURS.map((h) => (
-              <DropdownMenuItem key={h} onSelect={() => setTime(h)} className="cursor-pointer">
-                {h}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
-  )
-
-  const submitButton = (
-    <button
-      type="submit"
-      className="group relative overflow-hidden inline-flex h-[62px] w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 px-7 text-base font-bold text-slate-950 border border-emerald-400/20 shadow-[0_4px_20px_rgba(16,185,129,0.3),inset_0_1px_0_rgba(255,255,255,0.4)] transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-[0_8px_30px_rgba(16,185,129,0.5),inset_0_1px_0_rgba(255,255,255,0.5)] active:scale-[0.98] after:absolute after:inset-0 after:-translate-x-full after:bg-gradient-to-r after:from-transparent after:via-white/30 after:to-transparent after:transition-transform after:duration-1000 hover:after:translate-x-full whitespace-nowrap"
-    >
-      <Search
-        className="h-[19px] w-[19px] group-hover:scale-110 transition-transform duration-300"
-        aria-hidden
-      />
-      Buscar canchas
-    </button>
-  )
-
-  const status = (
-    <p
-      id={`hero-city${sfx}-status`}
-      aria-live="polite"
-      className="mt-2 min-h-4 text-xs text-muted-foreground"
-    >
-      {geoMessage}
-    </p>
-  )
-
-  const pulse = (
-    <span className="relative flex h-[9px] w-[9px] shrink-0">
-      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-      <span className="relative inline-flex h-[9px] w-[9px] rounded-full bg-emerald-500" />
-    </span>
-  )
-
-  const eyebrowClass =
-    'font-logo text-[12.5px] font-bold uppercase tracking-[.045em] text-emerald-800 dark:text-emerald-300'
-
-  if (vertical) {
-    return (
+  return (
+    <>
       <form
         onSubmit={onSubmit}
         aria-label="Buscar canchas de fútbol"
-        className="search-card relative rounded-[22px] p-5 sm:p-7"
+        data-shine={shine ? '' : undefined}
+        className={cn(
+          'hero-search glass relative grid w-full grid-cols-2 gap-2 rounded-[32px] p-2 text-left font-display md:grid-cols-[1fr_1fr_auto] md:rounded-full',
+          className,
+        )}
       >
-        {/* Localidad en fila propia + Fecha/Hora a la par: a 640-1023px, 3 columnas iguales le
-            dejaban a Fecha/Hora ~160px y el texto truncaba. A 2 columnas quedan en ~246px. */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {cityField}
-          {dateField}
-          {timeField}
-          <div className="sm:col-span-2">{submitButton}</div>
-        </div>
-
-        {status}
+        <span aria-hidden className="hero-search__shine" />
+        <Field
+          label="Localidad"
+          value={localidadValue}
+          placeholder="¿Dónde?"
+          icon={<MapPin aria-hidden />}
+          onClick={openLocalidad}
+        />
+        <Field
+          label="Cancha"
+          value={canchaValue}
+          icon={<CanchaIcon />}
+          onClick={() => setSheet('cancha')}
+          divided
+        />
+        <button
+          type="submit"
+          className="relative col-span-2 inline-flex h-14 items-center justify-center rounded-full bg-linear-to-b from-(--portal-btn-a) to-(--portal-btn-b) px-14 text-[17px] font-semibold whitespace-nowrap text-portal-on-green shadow-[inset_0_1px_0_rgb(255_255_255/.45),0_14px_30px_-12px_var(--portal-btn-glow)] transition-[scale,filter] duration-480 ease-(--ease-toque) hover:brightness-106 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-portal-green active:scale-[.985] active:duration-(--dur-1) motion-reduce:active:scale-100 md:col-span-1 md:h-15 md:pr-[62px] md:pl-7"
+        >
+          Buscar canchas
+          <span
+            aria-hidden
+            className="absolute top-2 right-2 grid size-10 place-items-center rounded-full bg-[rgb(2_44_34/.18)] shadow-[inset_0_1px_0_rgb(255_255_255/.28)] md:top-2.5 md:right-2.5"
+          >
+            <Search className="size-5" strokeWidth={2.4} />
+          </span>
+        </button>
       </form>
-    )
-  }
 
+      <Sheet open={sheet === 'localidad'} onOpenChange={(open) => !open && setSheet(null)}>
+        <GlassSheetContent title="Elegí la localidad">
+          <p
+            id={`${ids}-status`}
+            aria-live="polite"
+            className="mt-1.5 mb-4 min-h-5 text-[15px] leading-[1.45] text-portal-soft"
+          >
+            {geoMessage}
+          </p>
+          <label
+            htmlFor={`${ids}-q`}
+            className="mb-1.5 block text-sm font-semibold text-portal-ink"
+          >
+            Localidad
+          </label>
+          <div className="relative">
+            <Search
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-portal-soft"
+            />
+            <input
+              id={`${ids}-q`}
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Por ejemplo, Mercedes"
+              autoComplete="off"
+              aria-describedby={`${ids}-status`}
+              className="h-13 w-full rounded-[18px] border border-portal-inner-line bg-portal-inner pr-4 pl-12 text-base text-portal-ink placeholder:text-portal-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-portal-green"
+            />
+          </div>
+          {canLocate && (
+            <button
+              type="button"
+              onClick={onLocate}
+              disabled={locating}
+              className="mt-2 flex min-h-14 w-full items-center gap-3 border-b border-portal-inner-line px-2 text-left text-base font-semibold text-portal-slot-ink focus-visible:rounded-xl focus-visible:outline-2 focus-visible:outline-portal-green disabled:opacity-60"
+            >
+              <LocateFixed className="size-5" aria-hidden />
+              {locating ? 'Buscando…' : 'Usar mi ubicación exacta'}
+            </button>
+          )}
+          <fieldset className="mt-1">
+            <legend className="sr-only">Localidades con complejos</legend>
+            <label className={optionRow}>
+              <input
+                type="radio"
+                name={`${ids}-city`}
+                className="sr-only"
+                checked={city === ''}
+                onChange={() => onCityChange('')}
+                onClick={() => city === '' && onCityChange('')}
+              />
+              Todas las ciudades
+              {city === '' && <Check className="ml-auto size-5" aria-hidden />}
+            </label>
+            {visibleCities.map((c) => {
+              const value = cityValue(c)
+              const checked = city === value
+              return (
+                <label key={value} className={optionRow}>
+                  <input
+                    type="radio"
+                    name={`${ids}-city`}
+                    className="sr-only"
+                    checked={checked}
+                    onChange={() => onCityChange(value)}
+                    // Un radio ya marcado no dispara `change`: tocarlo igual confirma la localidad
+                    // (la que puso la conexión queda guardada) y cierra la hoja.
+                    onClick={() => checked && onCityChange(value)}
+                  />
+                  {cityLabel(c)}
+                  <span className="ml-auto text-sm font-normal text-portal-soft">
+                    {countLabel(c.count)}
+                  </span>
+                  {checked && <Check className="size-5 shrink-0" aria-hidden />}
+                </label>
+              )
+            })}
+            {visibleCities.length === 0 && (
+              <p className="py-4 text-base text-portal-soft">No encontramos esa localidad</p>
+            )}
+          </fieldset>
+        </GlassSheetContent>
+      </Sheet>
+
+      <Sheet open={sheet === 'cancha'} onOpenChange={(open) => !open && setSheet(null)}>
+        <GlassSheetContent title="Tamaño de cancha">
+          <p className="mt-1.5 mb-4 text-[15px] leading-[1.45] text-portal-soft">
+            Podés marcar más de uno.
+          </p>
+          <fieldset>
+            <legend className="sr-only">Tamaños de cancha</legend>
+            <label
+              className={cn(
+                'mb-2 flex min-h-14 w-full cursor-pointer items-center rounded-[20px] border border-portal-inner-line bg-portal-inner px-4 text-base font-semibold text-portal-ink',
+                checkedCard,
+              )}
+            >
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={formats.length === 0}
+                onChange={() => setFormats([])}
+              />
+              Cualquier tamaño
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {FORMATS.map((f) => (
+                <label
+                  key={f}
+                  className={cn(
+                    'group relative grid min-h-19 cursor-pointer content-center rounded-[20px] border border-portal-inner-line bg-portal-inner px-4 py-3 text-portal-ink transition-[background-color,border-color] duration-(--dur-2)',
+                    checkedCard,
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={formats.includes(f)}
+                    onChange={() => toggleFormat(f)}
+                  />
+                  <span className="text-lg leading-[22px] font-semibold tracking-[-0.01em]">
+                    Fútbol {f}
+                  </span>
+                  <span
+                    aria-hidden
+                    className="absolute top-3 right-3 grid size-5.5 place-items-center rounded-full border-[1.5px] border-portal-soft text-portal-on-green group-has-checked:border-transparent group-has-checked:bg-linear-to-b group-has-checked:from-(--portal-btn-a) group-has-checked:to-(--portal-btn-b)"
+                  >
+                    <Check
+                      className="size-3.5 opacity-0 group-has-checked:opacity-100"
+                      strokeWidth={3}
+                    />
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <div className="mt-5 grid grid-cols-[auto_1fr] gap-3">
+            <Button type="button" variant="pill-glass" size="pill" onClick={() => setFormats([])}>
+              Borrar
+            </Button>
+            <Button type="button" variant="pill" size="pill" onClick={search}>
+              Buscar canchas
+            </Button>
+          </div>
+        </GlassSheetContent>
+      </Sheet>
+    </>
+  )
+}
+
+function Field({
+  label,
+  value,
+  placeholder,
+  icon,
+  onClick,
+  divided = false,
+}: {
+  label: string
+  value: string | null
+  placeholder?: string
+  icon: ReactNode
+  onClick: () => void
+  divided?: boolean
+}) {
+  const shown = value ?? placeholder ?? ''
   return (
-    <form
-      onSubmit={onSubmit}
-      aria-label="Buscar canchas de fútbol"
-      className="search-card relative rounded-3xl p-6 sm:p-[34px]"
+    <button
+      type="button"
+      aria-haspopup="dialog"
+      onClick={onClick}
+      aria-label={`${label}: ${shown}. Cambiar`}
+      className={cn(
+        'relative grid min-h-15 cursor-pointer grid-cols-[22px_minmax(0,1fr)_16px] items-center gap-x-2.5 rounded-3xl px-3 text-left text-portal-ink transition-colors duration-(--dur-2) hover:bg-portal-inner focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-portal-green md:rounded-full md:pr-4.5 md:pl-5 [&>svg:first-child]:size-5.5 [&>svg:first-child]:text-portal-green',
+        divided &&
+          'before:absolute before:top-3 before:bottom-3 before:-left-1 before:w-px before:bg-portal-inner-line',
+      )}
     >
-      <div className="mb-[18px] flex flex-wrap items-center justify-between gap-3">
-        <div className={`inline-flex items-center gap-[9px] ${eyebrowClass}`}>
-          {pulse}
-          Encontrá tu próxima cancha
-        </div>
-      </div>
+      {icon}
+      <span className="grid min-w-0">
+        <span className="text-[13px] leading-4 text-portal-soft">{label}</span>{' '}
+        {/* El espacio separa las dos líneas para el lector y para axe ("Localidad Luján", no
+            "LocalidadLuján"); en la grilla no ocupa lugar. */}
+        <span
+          className={cn(
+            'truncate text-[17px] leading-[22px] font-semibold',
+            !value && 'text-portal-soft',
+          )}
+        >
+          {shown}
+        </span>
+      </span>
+      <ChevronDown className="size-4 text-portal-soft" aria-hidden />
+    </button>
+  )
+}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1.1fr_auto] lg:items-end lg:gap-5">
-        <div className="sm:col-span-2 lg:col-span-1">{cityField}</div>
-        {dateField}
-        {timeField}
-        <div className="sm:col-span-2 lg:col-span-1">{submitButton}</div>
-      </div>
-
-      {status}
-    </form>
+/** La cancha vista de arriba: el ícono del campo Cancha del mockup. */
+function CanchaIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M12 5v14" />
+      <circle cx="12" cy="12" r="2.5" />
+    </svg>
   )
 }

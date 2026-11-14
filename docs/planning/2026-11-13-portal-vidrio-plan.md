@@ -17,8 +17,8 @@ Este cuadro es el registro del esfuerzo. Quien cierra una fase lo actualiza en e
 | Fase | Qué | Estado | PR |
 | --- | --- | --- | --- |
 | F0 | Decisión, mockup, dirección, plan y punteros | Hecho | #590 |
-| F1 | Cimientos y cromo | En revisión desde el 2026-11-13 | #592 |
-| F2 | Home | Pendiente | |
+| F1 | Cimientos y cromo | Hecho el 2026-11-14 | #592 |
+| F2 | Home | En revisión desde el 2026-11-14 | #593 |
 | F3 | Buscador `/explorar` | Pendiente | |
 | F4 | Ficha del complejo | Pendiente | |
 | F5 | Confirmar el turno y vuelta de la reserva | Pendiente | |
@@ -42,6 +42,18 @@ Este cuadro es el registro del esfuerzo. Quien cierra una fase lo actualiza en e
 - **La hoja sobrevive al cierre.** `GlassSheetContent` no se desmonta al cerrar (solo lo de adentro del portal): el desplazamiento del arrastre se vuelve a cero en cada apertura. El runner de stories corre con "reducir movimiento", que apaga el arrastre: esto se prueba a mano.
 - **Medir tiempos.** El navegador de Playwright MCP, con la ventana en segundo plano en Windows, corre rAF a 1 cuadro por segundo: cualquier tiempo medido ahí es falso. Medir con un Chromium headless propio.
 - **Stories.** El runner arranca a 414 px de ancho: una story de compu necesita `globals: { viewport: { value: 'desktop' } }`. El preview fija el tema también en un `div` contenedor, así que un `dark:` dentro de una story sigue a ese `div` y no a `html`.
+- **Scroll de la home (F2).** Hero con foto, buscador y ventana en vidrio real, `animation-timeline` en la foto y el velo: a 393 × 851, DPR 3 y CPU 4× dio 54 cuadros por segundo en tres corridas (rAF, Chromium headless, `next dev`). No baja de 50: el desenfoque de la foto queda como `backdrop-filter`.
+- **Texto sobre la foto (F2).** Debajo de la ventana, la línea "¿Tenés un complejo?" cae sobre el pasto iluminado: 1,2:1 sin fondo y casi igual con `.glass`, porque el `saturate(180%)` aviva el verde. Va en una píldora del color del velo al 92 %. El contraste se mide con todo el texto transparente y el píxel más desfavorable de la caja de cada texto (no con el token).
+- **`ch` de Archivo (F2).** Con `next/font`, el `ch` de Archivo mide un 6 % más que en el mockup y los renglones cortaban distinto. Los anchos de línea de la home van en `em`.
+- **`buttonVariants` sin `cn` (F2).** Las variantes `pill` heredan `rounded-lg` y `text-sm` de la base y, sin `twMerge`, les ganan: un `Link` con `buttonVariants({ variant: 'pill' })` va siempre envuelto en `cn(...)`.
+- **Campo con dos renglones (F2).** Un botón con `aria-label` y dos `span` pegados ("Localidad" / "Luján") da `label-content-name-mismatch` en axe: lee "LocalidadLuján". Un `{' '}` entre los dos lo arregla y en la grilla no ocupa lugar.
+- **`useIpZona` guarda la respuesta en el módulo (F2).** En un archivo de stories, todas las stories tienen que mockear `/api/public/zona` igual; los tests unitarios mockean el hook. En e2e, los checkbox de las hojas son `sr-only`: se toca la etiqueta (`getByRole('dialog').getByText('Fútbol 5', { exact: true })`).
+- **Fotos importadas desde `src/` (F2).** Un `import` desde `public/` funciona en Next, pero sirve la foto dos veces y Vite (Storybook) lo marca. Las del hero viven en `src/app/home/fotos/`.
+- **La ventana de la home gasta del balde de la ficha (F2).** Todo `/api/public/*` comparte la política `publicAvailability`: 30 pedidos por minuto por IP, contados antes del CDN. La ventana pide la búsqueda y los horarios solo de las tarjetas que entran a ese ancho: 3 pedidos en el celu y 5 en la compu, más `/api/public/zona` si no hay zona guardada. Antes la home no pedía nada. Una pantalla de F3 o F4 que sume pedidos desde el cliente tiene que contar contra ese mismo balde.
+- **Un radio marcado no dispara `change` (F2).** En la hoja de localidad, tocar la opción que ya viene marcada (la de la conexión) no hacía nada: ni guardaba la zona ni cerraba la hoja. Las opciones llevan también un `onClick` que confirma cuando ya están marcadas. Lo mismo vale para cualquier hoja de elección única de F3 a F7.
+- **`localStorage` entre archivos de test (F2).** Los archivos de Vitest comparten worker y `localStorage` no se limpia entre archivos: una zona guardada por un test hace que otro archivo arranque con zona y no busque la ubicación. El síntoma parece un timeout (falla a veces, según el orden). Cada archivo que guarde la zona la limpia en `afterEach`, y cada uno que necesite arrancar sin zona la limpia en `beforeEach`.
+- **Campos cerrados del buscador (F2).** En el celu, el valor de cada campo tiene unos 80 px: "Todas las ciudades" y "Cualquier tamaño" se cortaban. El campo dice "Todas" y las hojas conservan el nombre largo.
+- **e2e locales de F2.** `qa-happy-paths/publico/` 007, 008 y 009 fallan también en main: esperan textos viejos de privacidad y términos, con fecha del 25 de mayo, y otro mail de soporte. No son de esta fase. Para correr e2e en un worktree sin `.env.local` hay que pasar `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` de `supabase status -o env`, y `E2E_BASE_URL` si el dev no está en `:3000`.
 
 ## Reglas de trabajo
 
@@ -105,7 +117,7 @@ Lo que usan todas las demás fases. Sale junto con el cromo para que nada quede 
 ## F2. Home
 
 1. Hero: foto de fondo con las cuatro capas, titular "Tu cancha, a un toque.", subtítulo, buscador de vidrio y ventana con complejos reales de la localidad. Si no hay complejos para mostrar, la ventana no aparece.
-2. Fotos: las de TurnoGol que ya están en `public/`. Los reemplazos de Wikimedia no se copian.
+2. Fotos: las de TurnoGol que ya están en `public/`. Los reemplazos de Wikimedia no se copian. *Cambió el 2026-11-14:* Lazar aprobó las dos fotos CC0 del mockup para el hero hasta tener fotos propias (ver la decisión); las miniaturas del dibujo siguen siendo de TurnoGol.
 3. Sección "Reservás en una pantalla", con la ficha nueva dibujada.
 4. Sección de Rival, solo con el flag `rival`.
 5. Videos de dueños: solo si hay videos reales. Si no hay, la sección no se muestra.

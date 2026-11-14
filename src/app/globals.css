@@ -850,30 +850,7 @@ html.dark:has([data-portal-fields]) {
 }
 
 /* ─── Landing "La Previa" (theme-adaptive) ─────────────────────────────────
-   Light = mediodía de partido: crema emerald + elevación. Dark = partido
-   nocturno: slab #020617 + glow (lenguaje del resto del portal). Las fotos
-   de ambiente son dark-only (el JSX las oculta en light); en light la firma
-   la ponen las líneas de cal (PitchLines). */
-.landing-hero {
-  background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 46%, #ecfdf5 100%);
-}
-.dark .landing-hero {
-  background: #020617;
-}
-
-/* Scrim del hero desktop (foto full-bleed, dark-only): oscurece arriba/abajo
-   para que el headline y la search card centrados mantengan AA sobre la
-   foto sin depender de un mask que la diluya como en el hero mobile. */
-.dark .hero-desktop-scrim {
-  background: linear-gradient(
-    180deg,
-    rgba(2, 6, 23, 0.75) 0%,
-    rgba(2, 6, 23, 0.35) 38%,
-    rgba(2, 6, 23, 0.55) 78%,
-    rgba(2, 6, 23, 0.88) 100%
-  );
-}
-
+   Quedan las piezas que reusan /explorar, la reserva y el alta del complejo. */
 /* Nav flotante del hero (pill). Light = blanco elevado; dark = glass oscuro. */
 .overlay-nav {
   background: rgba(255, 255, 255, 0.88);
@@ -890,12 +867,6 @@ html.dark:has([data-portal-fields]) {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 18px 50px -28px rgba(0, 0, 0, 0.9);
-}
-
-/* Partícula flotante del hero (decorativa, dark-only en el JSX). */
-.hero-particle {
-  background: #34d399;
-  box-shadow: 0 0 16px 4px rgba(52, 211, 153, 0.6);
 }
 
 /* Pill "en vivo" (status). AA §2.4: texto emerald-800 en light, #6ee7b7 dark. */

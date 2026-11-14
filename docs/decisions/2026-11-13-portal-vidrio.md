@@ -35,7 +35,7 @@ Los valores concretos (colores, tamaños, radios, desenfoques) son los del mocku
 
 - **Rendimiento del desenfoque.** `backdrop-filter` cuesta en celulares modestos. El plan define dos niveles de vidrio y un presupuesto de capas. Se mide en la primera fase.
 - **La ficha cambia para los jugadores de complejos que ya están en producción.** Cada fase necesita el OK de Lazar antes de mergear.
-- **Fotos propias.** El hero necesita una foto de noche y otra de día o de atardecer. Los reemplazos de Wikimedia del mockup no van a producción.
+- **Fotos propias.** El hero necesita una foto de noche y otra de día o de atardecer. Los reemplazos de Wikimedia del mockup no van a producción. *Actualización 2026-11-14:* Lazar aprobó usar en la home las dos fotos CC0 de Wikimedia del mockup hasta tener fotos propias. El crédito queda en el código (`src/app/home/Hero.tsx`) y no se muestra en la web.
 - **Navegadores sin `backdrop-filter`.** El vidrio pasa a casi opaco y se sigue leyendo. Hay que probarlo.
 - **Pantallas sin mockup:** torneos, referidos, reactivar cuenta, la baja de avisos de Rival y el ingreso del complejo. El plan dice qué se hace con cada una.
 - **La localidad por IP y la ISR de la home**, heredado del 2026-11-08: se resuelve al migrar la home.

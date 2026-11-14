@@ -156,8 +156,8 @@ describe('parseAvailabilitySearchParams', () => {
     expect(parseAvailabilitySearchParams({})).toBeNull()
   })
 
-  // La home manda /explorar?time=20:00 sin `date` cuando el día elegido es hoy
-  // (HeroSearch.tsx). Antes el par incompleto apagaba el filtro en silencio.
+  // /explorar?time=20:00 sin `date` es "hoy". Antes el par incompleto apagaba el
+  // filtro en silencio.
   describe('hora sin día', () => {
     afterEach(() => {
       vi.useRealTimers()

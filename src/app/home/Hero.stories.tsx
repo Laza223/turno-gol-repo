@@ -1,47 +1,130 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, within } from 'storybook/test'
-import { cityCounts } from '@/test/fixtures/tenant'
+import { expect, waitFor, within } from 'storybook/test'
+import { ZONA_STORAGE_KEY } from '@/lib/zona-storage'
+import { availabilityResponse } from '@/test/fixtures/public'
+import { cityCounts, publicTenantCard } from '@/test/fixtures/tenant'
 import { withGeolocation } from '@/test/storybook/with-geolocation'
+import { withHome } from '../../../.storybook/decorators/with-home'
 import { Hero } from './Hero'
 
+const clearZona = () => localStorage.removeItem(ZONA_STORAGE_KEY)
+
+const CABA = { city: 'Ciudad Autónoma de Buenos Aires', province: 'CABA' }
+
+const COMPLEJOS = [
+  publicTenantCard({
+    id: 'a',
+    slug: 'la-canchita',
+    name: 'La Canchita',
+    coverUrl: '/bg-hero-2.webp',
+  }),
+  publicTenantCard({
+    id: 'b',
+    slug: 'basilica-f5',
+    name: 'Basílica F5',
+    coverUrl: '/bg-owner.webp',
+  }),
+  publicTenantCard({ id: 'c', slug: 'las-rosas', name: 'Las Rosas Fútbol', coverUrl: null }),
+]
+
 /**
- * `page.tsx` (HomePage) envuelve todas las secciones de la landing en
- * `<div className="landing-hero min-h-dvh text-foreground">` — esa clase es la
- * que pinta el degradé claro / el navy #020617 oscuro (mismo fondo hardcodeado
- * que `(business)/para-complejos`, donde `emerald-400` es el idiom correcto).
- * Reproducirlo acá no es decoración: sin él el hero se ve sobre `bg-background`
- * y el contraste medido no es el real.
+ * El visitante llega desde CABA según su conexión (`/api/public/zona`). Va en todas las stories del
+ * archivo: `useIpZona` guarda la respuesta a nivel de módulo, así que tiene que ser la misma.
+ */
+const ZONA_POR_IP = { match: '/api/public/zona', json: { zona: CABA } }
+
+/**
+ * El hero de la home (portal de vidrio, F2): la foto en capas, el titular, el buscador y la ventana
+ * con los complejos reales de la localidad. Ningún precio llega a la home.
  */
 const meta = {
   title: 'Public/Landing/Hero',
   component: Hero,
-  parameters: { layout: 'fullscreen' },
-  decorators: [
-    withGeolocation('pending'),
-    (Story) => (
-      <div className="landing-hero min-h-dvh text-foreground">
-        <Story />
-      </div>
-    ),
-  ],
+  parameters: {
+    layout: 'fullscreen',
+    nextjs: { appDirectory: true, navigation: { pathname: '/' } },
+    fetchMock: [
+      ZONA_POR_IP,
+      { match: '/api/public/search', json: { results: COMPLEJOS, total: 34 } },
+      { match: '/api/public/availability', json: availabilityResponse() },
+    ],
+  },
+  decorators: [withGeolocation('pending'), withHome],
+  args: { cities: cityCounts() },
+  beforeEach: () => {
+    clearZona()
+    return clearZona
+  },
 } satisfies Meta<typeof Hero>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Default: Story = {
-  args: { cities: cityCounts() },
+/** En el celu: la localidad sale de la conexión y la ventana muestra sus complejos con horarios. */
+export const Celu: Story = {
+  globals: { viewport: { value: 'mobile-primary', isRotated: false } },
   play: async ({ canvasElement }) => {
-    // La barra esconde "Para complejos" bajo sm: en el celu la entrada del dueño es esta línea.
-    // Solo existe en HeroMobile (un único link en el DOM aunque los dos heros se sirvan). `hidden`:
-    // el browser del runner es ancho y `sm:hidden` la saca del árbol de accesibilidad acá.
+    const canvas = within(canvasElement)
     await expect(
-      within(canvasElement).getByRole('link', { name: 'Sumalo a TurnoGol', hidden: true }),
-    ).toHaveAttribute('href', '/para-complejos')
+      canvas.getByRole('heading', { level: 1, name: 'Tu cancha, a un toque.' }),
+    ).toBeVisible()
+    const ventana = await canvas.findByRole('region', {
+      name: `Complejos de ${CABA.city} con sus horarios libres de hoy`,
+    })
+    await waitFor(() => expect(within(ventana).getAllByText('20:00').length).toBeGreaterThan(0))
+    await expect(within(ventana).getByRole('link', { name: /La Canchita/ })).toHaveAttribute(
+      'href',
+      '/la-canchita',
+    )
+    // Los precios del complejo nunca llegan a la home.
+    await expect(canvasElement.textContent).not.toContain('$')
+    // En el celu la cabecera es solo el logo: la entrada del dueño va al pie del hero.
+    const dueno = canvas.getByRole('link', { name: 'Sumalo a TurnoGol' })
+    await expect(dueno).toHaveAttribute('href', '/para-complejos')
+    await expect(dueno.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
   },
 }
 
-/** `loadCities()` degrada a `[]` si `listPublicCities()` tira — el combobox queda sin opciones. */
+/** En la compu: la ventana con sus tarjetas en fila; la línea del dueño no está (va en la cabecera). */
+export const Compu: Story = {
+  globals: { viewport: { value: 'desktop', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const ventana = await canvas.findByRole('region', { name: /^Complejos de / })
+    await expect(within(ventana).getByText('34 complejos')).toBeVisible()
+    await expect(canvas.queryByRole('link', { name: 'Sumalo a TurnoGol' })).toBeNull()
+  },
+}
+
+/** Una localidad sin complejos con reserva online: la ventana no aparece (no se inventan datos). */
+export const SinComplejosEnLaZona: Story = {
+  globals: { viewport: { value: 'mobile-primary', isRotated: false } },
+  parameters: {
+    fetchMock: [
+      ZONA_POR_IP,
+      {
+        match: '/api/public/search',
+        json: { results: [publicTenantCard({ id: 'x', allowOnlineBooking: false })], total: 1 },
+      },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await waitFor(() =>
+      expect(canvas.getByRole('button', { name: /^Localidad: Ciudad Autónoma/ })).toBeVisible(),
+    )
+    await new Promise((r) => setTimeout(r, 200))
+    await expect(canvas.queryByRole('region', { name: /^Complejos de / })).toBeNull()
+  },
+}
+
+/** `loadCities()` degrada a `[]` si `listPublicCities()` tira: el buscador queda sin localidades. */
 export const SinCiudades: Story = {
   args: { cities: [] },
+  globals: { viewport: { value: 'mobile-primary', isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('button', { name: 'Localidad: ¿Dónde?. Cambiar' })).toBeVisible()
+    await expect(canvas.queryByRole('region', { name: /^Complejos de / })).toBeNull()
+  },
 }

@@ -23,10 +23,11 @@ test.describe('Tema del celular en la home', () => {
         await page.emulateMedia({ colorScheme: opposite })
         await expect(html).toHaveClass(new RegExp(`\\b${opposite}\\b`))
         await expect(html).toHaveCSS('color-scheme', opposite)
-        await expect(page.locator('.landing-hero')).toHaveCSS(
-          'background-image',
-          opposite === 'dark' ? 'none' : /linear-gradient/,
-        )
+        // Cada tema muestra su foto del hero y esconde la otra (`display: none`).
+        const noche = page.locator('.home-bg__img:not(.home-bg__img--claro)')
+        const claro = page.locator('.home-bg__img--claro')
+        await expect(opposite === 'dark' ? noche : claro).toBeVisible()
+        await expect(opposite === 'dark' ? claro : noche).toBeHidden()
 
         await page.reload()
         await expect(html).toHaveClass(new RegExp(`\\b${opposite}\\b`))

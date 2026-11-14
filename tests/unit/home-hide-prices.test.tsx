@@ -1,18 +1,28 @@
 // @vitest-environment happy-dom
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, waitFor } from '@testing-library/react'
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+// Las fotos del hero son imports estáticos (en vitest llegan como string, sin width/height).
+vi.mock('next/image', () => ({ default: () => null }))
 
 import { Hero } from '@/app/home/Hero'
 import { cityCounts, publicTenantCard } from '@/test/fixtures/tenant'
 
 /**
- * El hero no muestra datos de complejos: la geolocalización solo se usa para sugerir la
- * localidad (`useNearestCity` lee `city`/`province` y descarta el resto). Por eso un complejo
- * que oculta precios (`fromPriceCents: null`) no puede filtrar nada a la home. Control: el
- * resultado del API trae un nombre y la home entera no tiene ningún `$` (no hay precios inventados).
+ * La home muestra, en la ventana del hero, los complejos reales de la localidad (nombre, formatos,
+ * horas libres de hoy), pero NUNCA sus precios: ni "Turno desde" ni ningún monto, aunque el API los
+ * mande. Control doble: el complejo del API trae precio (`fromPriceCents`) y aun así aparece solo
+ * su nombre, sin ningún `$` en el hero. (El dibujo de "Reservás en una pantalla", más abajo, lleva
+ * un precio de ejemplo rotulado "Ejemplo": no es el de ningún complejo y no entra acá.)
  */
+// Los archivos de test comparten worker: una zona guardada por otro archivo haría que la home no
+// busque la ubicación y la ventana no aparezca. Se arranca siempre sin zona.
+beforeEach(() => {
+  localStorage.clear()
+  sessionStorage.clear()
+})
+
 afterEach(() => {
   vi.unstubAllGlobals()
   localStorage.clear()
@@ -21,9 +31,9 @@ afterEach(() => {
 })
 
 describe('precios ocultos en la home', () => {
-  it('ningún dato del complejo cercano (nombre, precio) llega al DOM', async () => {
+  it('el complejo cercano aparece por nombre, pero ningún precio llega al DOM', async () => {
     // La home solo consulta la ubicación sola cuando el permiso YA está concedido (no hay cartel);
-    // en cualquier otro caso espera al botón "Usar mi ubicación".
+    // en cualquier otro caso espera al botón "Usar mi ubicación exacta".
     Object.defineProperty(navigator, 'permissions', {
       configurable: true,
       value: { query: () => Promise.resolve({ state: 'granted' }) },
@@ -40,7 +50,13 @@ describe('precios ocultos en la home', () => {
         ok: true,
         json: async () => ({
           results: [
-            publicTenantCard({ id: 'a', slug: 'a', name: 'Cancha Secreta', fromPriceCents: null }),
+            publicTenantCard({
+              id: 'a',
+              slug: 'a',
+              name: 'Cancha Secreta',
+              fromPriceCents: 900000,
+              fromPricePerPlayerCents: 90000,
+            }),
           ],
           total: 1,
           url,
@@ -50,12 +66,12 @@ describe('precios ocultos en la home', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const { container } = render(<Hero cities={cityCounts()} />)
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    // La ventana de la home lo muestra (con la zona detectada); lo que nunca muestra es plata.
+    await waitFor(() => expect(container.textContent).toContain('Cancha Secreta'))
     await new Promise((r) => setTimeout(r, 0))
 
-    expect(container.textContent).not.toContain('Cancha Secreta')
     expect(container.textContent).not.toContain('Turno desde')
     expect(container.textContent).not.toContain('$')
-    expect(container.querySelector('[aria-label*="Cancha Secreta"]')).toBeNull()
+    expect(container.textContent).not.toMatch(/\d{1,3}\.\d{3}/)
   })
 })

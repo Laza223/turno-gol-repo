@@ -6,7 +6,7 @@ import DatePicker from './date-picker'
 /**
  * Botón trigger con estilos propios (no depende de un `inputClassName`
  * externo, a diferencia de Combobox/PhoneInput) — se muestra suelto, como en
- * los forms que lo usan (AddClosedDateForm, HeroSearch). El reloj congelado
+ * los forms que lo usan (AddClosedDateForm). El reloj congelado
  * del preview (`FROZEN_NOW` = sáb 14-mar-2026) hace determinista el botón
  * "Hoy" y el mes con el que abre el calendario cuando no hay `value`.
  */

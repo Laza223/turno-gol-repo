@@ -107,13 +107,13 @@ Fixtures usadas: Tenant Demo `e2e-complejo-demo` (`requires_deposit:false`, `dep
 - **Prerrequisitos:** Ninguno (página pública, ISR `revalidate=300`, sin cookies de sesión requeridas).
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/`.
-  2. Esperar a que renderice el h1 "Tu partido empieza en TurnoGol" (`src/app/home/HeroDesktop.tsx`; en el celular, `HeroMobile` usa un `<p role="heading">` y el h1 real queda en el árbol de escritorio).
+  2. Esperar a que renderice el h1 "Tu cancha, a un toque." (`src/app/home/Hero.tsx`: un solo árbol y un solo h1 para todos los anchos).
   3. Verificar la barra del portal (variante `overlay`, la pastilla flotante) con el link "Explorar" y el CTA "Ingresar" (`src/components/site/PortalHeader.tsx`); "Para complejos" está en la misma barra (desde `sm`).
-  4. En el formulario "Buscar canchas de fútbol" (`src/components/site/HeroSearch.tsx`, `aria-label` en las dos orientaciones), abrir el selector "Hora" (id `hero-time` más el sufijo de la orientación) y elegir `20:00`. "Zona" (combobox `hero-city…`) y "Día" (selector `hero-date…`) son opcionales: el día arranca en "Hoy".
-  5. Click en el botón "Buscar canchas".
-  6. Esperar la navegación a `/explorar?...` con los query params que se hayan elegido (`city`/`province`, `date` si no es hoy, `time`).
+  4. En el formulario "Buscar canchas de fútbol" (`src/components/site/HeroSearch.tsx`), tocar el campo "Cancha" (botón con `aria-haspopup="dialog"`, abre la hoja "Tamaño de cancha") y marcar "Fútbol 5" (clickear la etiqueta: el input es `sr-only`). "Localidad" es opcional: se precarga con la zona guardada o la de la conexión, y si no hay ninguna queda "¿Dónde?". Ya no hay Fecha ni Hora.
+  5. Click en "Buscar canchas" (el de la hoja o el del formulario).
+  6. Esperar la navegación a `/explorar?...` con los query params que se hayan elegido (`city`/`province`, `formats`; p. ej. `formats=5`).
 - **Comportamiento de componentes:**
-  - Loading: la home NO tiene `loading.tsx` propio — es un Server Component (`export default async function HomePage`, `src/app/page.tsx`). Es solo el hero (titular, subtítulo, buscador): no hay "cerca tuyo", ni "Los mejor valorados", ni "Cómo funciona", ni franja de dueños (decisión del 2026-10-20).
+  - Loading: la home NO tiene `loading.tsx` propio — es un Server Component (`export default async function HomePage`, `src/app/page.tsx`). Desde F2 del portal de vidrio (2026-11-14): hero (titular, subtítulo, buscador y la ventana con los complejos de la localidad, que se carga en el cliente), "Reservás en una pantalla", Rival (solo con el flag `rival`) y el cierre para complejos.
   - Anti-doble-submit: no aplica — el submit del buscador es un `router.push` client-side, sin estado de loading.
   - Feedback: no hay toast; el resultado es una navegación a `/explorar?...`.
   - La barra inferior del celular (Explorar · Reservas · Cuenta) se ve también sin sesión.
@@ -123,10 +123,9 @@ Fixtures usadas: Tenant Demo `e2e-complejo-demo` (`requires_deposit:false`, `dep
   - Externos: ninguno.
   - UI-sin-reload: el submit del buscador es `router.push` (Next Client Router), no un fetch a route handler.
 - **Evidencia (archivo):**
-  - `src/app/page.tsx` — Server Component `HomePage`, sin `'use client'`; arma su cromo (`SiteNav variant="overlay"`, `SiteFooter`, `PlayerBottomNav`) y el único `<main id="main-content">`, sobre `.landing-hero`. No monta `PortalWorld`.
-  - `src/app/home/Hero.tsx` — `HeroMobile` (< `lg`) y `HeroDesktop` (`lg` en adelante), dos árboles gateados por CSS.
-  - `src/app/home/HeroDesktop.tsx` — h1 "Tu partido empieza en TurnoGol" (con "TurnoGol" en `.hero-accent-text`).
-  - `src/components/site/HeroSearch.tsx` — `aria-label="Buscar canchas de fútbol"`, rótulos "Zona", "Día", "Hora", botón "Buscar canchas" y el `router.push` a `/explorar?${qs}`.
+  - `src/app/page.tsx` — Server Component `HomePage`, sin `'use client'`; arma su cromo (`SiteNav variant="overlay"`, `SiteFooter`, `PlayerBottomNav`) y el único `<main id="main-content">`. No monta `PortalWorld`.
+  - `src/app/home/Hero.tsx` — h1 "Tu cancha, a un toque.", subtítulo y fotos `.home-bg__img` (noche en oscuro, `--claro` en claro).
+  - `src/components/site/HeroSearch.tsx` — `aria-label="Buscar canchas de fútbol"`, campos "Localidad" y "Cancha" (hojas `GlassSheetContent`), botón "Buscar canchas" y el `router.push` a `/explorar?${qs}`.
   - `src/components/site/PortalHeader.tsx` — links "Explorar" e "Ingresar" (deslogueado), este último a `/ingresar?next=<página actual>` (`IngresarLink`).
 
 ---

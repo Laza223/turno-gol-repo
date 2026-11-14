@@ -100,16 +100,13 @@ describe('Piso de 16px en campos — constantes compartidas', () => {
     expect(code.match(/<Input\s/g)).toHaveLength(1)
   })
 
-  it('HeroSearch: los campos del buscador no bajan de 16px en el teléfono', () => {
-    const file = read('src/components/site/HeroSearch.tsx')
-    const code = stripComments(file)
-    // La fecha vieja llegó a tener `text-[15px]`, bajado a propósito para ganar
-    // ancho. 15 < 16 → iOS hace zoom al enfocar.
-    expect(code).not.toMatch(/text-\[15px\]/)
-    // Derivar una clase con .replace() sobre un literal fallaba en silencio si
-    // alguien reordenaba `fieldClass`: devolvía el original sin error.
-    expect(code).not.toMatch(/fieldClass\.replace\(/)
-    expect(code).toMatch(/const fieldClass\s*=\s*\n?\s*'[^']*\btext-base\b/)
+  it('HeroSearch: el campo de búsqueda de la hoja de Localidad no baja de 16 px en el teléfono', () => {
+    const code = stripComments(read('src/components/site/HeroSearch.tsx'))
+    // El <input type="search"> de la hoja: 15 o 14 px (< 16) hacen que iOS zoomee al enfocar.
+    const input = code.match(/<input\s+id=\{`\$\{ids\}-q`\}[\s\S]*?\/>/)
+    expect(input, 'no se encontró el input de búsqueda de la hoja de Localidad').not.toBeNull()
+    expect(input![0]).toMatch(/\btext-base\b/)
+    expect(input![0]).not.toMatch(/\btext-(sm|xs|\[1\d?px\])\b/)
   })
 })
 

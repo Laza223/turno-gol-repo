@@ -3,6 +3,7 @@
 import { useTheme } from 'next-themes'
 import { Monitor, Moon, Sun } from 'lucide-react'
 import { useHydrated } from '@/hooks/use-client-value'
+import { SegmentedControl } from '@/components/ui/segmented-control'
 
 const OPTIONS = [
   { value: 'system', label: 'Sistema', Icon: Monitor },
@@ -10,17 +11,44 @@ const OPTIONS = [
   { value: 'dark', label: 'Oscuro', Icon: Moon },
 ] as const
 
+type ThemeValue = (typeof OPTIONS)[number]['value']
+
+const GLASS_OPTIONS = OPTIONS.map(({ value, label }) => ({ value, label }))
+
+const isThemeValue = (v: string | undefined): v is ThemeValue => OPTIONS.some((o) => o.value === v)
+
 /**
  * Segmented control de tema (Sistema/Claro/Oscuro). Guardia `mounted` porque
  * el tema resuelto solo se conoce client-side: hasta hidratar, render neutro
  * para no romper la hidratación (next-themes).
+ *
+ * `glass`: el control segmentado del portal de vidrio (decisión 2026-11-13), con una píldora que
+ * se desliza a la opción elegida. Lo usa el menú de la cuenta (cromo, F1); `/configuracion` pasa a
+ * él en su fase. `portal` sigue igual: lo usan esa página y el cajón del panel en el celu.
  */
-export default function ThemeToggle({ variant = 'panel' }: { variant?: 'panel' | 'portal' }) {
+export default function ThemeToggle({
+  variant = 'panel',
+}: {
+  variant?: 'panel' | 'portal' | 'glass'
+}) {
   const portal = variant === 'portal'
   const { theme, setTheme } = useTheme()
   const mounted = useHydrated()
 
   const current = mounted ? theme : undefined
+
+  if (variant === 'glass') {
+    return (
+      <SegmentedControl
+        variant="glass"
+        aria-label="Tema de la aplicación"
+        value={isThemeValue(current) ? current : undefined}
+        onValueChange={setTheme}
+        options={GLASS_OPTIONS}
+        className="w-full"
+      />
+    )
+  }
 
   return (
     <div

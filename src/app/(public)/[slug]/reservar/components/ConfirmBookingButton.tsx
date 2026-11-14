@@ -14,7 +14,7 @@ export function FixedCta({ children }: { children: ReactNode }) {
     <div
       data-fixed-cta
       className={cn(
-        'fixed inset-x-0 bottom-[calc(3.5rem+1px+env(safe-area-inset-bottom))] z-30 border-t border-border bg-card px-4 pt-3 pb-3 dark:bg-background',
+        'fixed inset-x-0 bottom-(--portal-tabbar-space) z-30 border-t border-border bg-card px-4 pt-3 pb-3 dark:bg-background',
         'md:static md:z-auto md:border-0 md:bg-transparent md:p-0 dark:md:bg-transparent',
       )}
     >
@@ -26,8 +26,8 @@ export function FixedCta({ children }: { children: ReactNode }) {
 /**
  * El botón de acción, con sesión (sin sesión es el mismo botón y abre el ingreso: ver
  * `CheckoutFlow`). En el celular va fijo abajo (52 px) y SIEMPRE por encima de la
- * barra inferior del jugador (56 px de ítems + 1 px de borde + el área segura del iPhone, la misma
- * medida que reserva `PortalFrame`): este botón solo existe para jugadores, que siempre la tienen,
+ * barra inferior del jugador (`--portal-tabbar-space`: 12 px de aire + la píldora de 66 px + el área
+ * segura del iPhone, la misma medida que reserva `PortalFrame`): este botón solo existe para jugadores, que siempre la tienen,
  * así que no espera a que la sesión se hidrate y no salta cuando llega. Desde `md` la barra
  * inferior no existe y el botón queda en el flujo, dentro de la columna. Un solo envío: pendiente,
  * "Procesando…" y deshabilitado. Dice "Reservar", o "Pagar seña" si hay seña (`label`).

@@ -31,24 +31,27 @@ describe('PlayerBottomNav a11y', () => {
     expect(inactive.getAttribute('aria-current')).toBeNull()
   })
 
-  // El activo no se dice solo con color: verde, semibold y una marca `primary` arriba del
-  // ícono. La marca es decorativa (aria-hidden): el lector ya tiene aria-current.
+  // El activo no se dice solo con color: verde, semibold (CSS sobre `aria-current`) y la píldora
+  // de la barra parada en su posición. La píldora es decorativa (aria-hidden): el lector ya tiene
+  // aria-current. Es una sola para toda la barra, así que se desliza de una pestaña a otra.
   it.each([
-    ['/explorar', 'Explorar'],
-    ['/mis-reservas', 'Reservas'],
-    ['/configuracion', 'Cuenta'],
-    ['/perfil', 'Cuenta'],
-    ['/eliminar-cuenta', 'Cuenta'],
-  ])('en %s solo %s lleva la marca primary y el semibold', (pathname, activo) => {
+    ['/explorar', 'Explorar', 0],
+    ['/mis-reservas', 'Reservas', 1],
+    ['/configuracion', 'Cuenta', 2],
+    ['/perfil', 'Cuenta', 2],
+    ['/eliminar-cuenta', 'Cuenta', 2],
+  ])('en %s solo %s queda activo y la píldora va a su lugar', (pathname, activo, indice) => {
     vi.mocked(usePathname).mockReturnValue(pathname)
-    render(<PlayerBottomNav />)
+    const { container } = render(<PlayerBottomNav />)
     const links = screen.getAllByRole('link')
     expect(links).toHaveLength(3)
     for (const link of links) {
-      const esActivo = link.textContent === activo
-      expect(link.querySelector('span[aria-hidden="true"].bg-primary') !== null).toBe(esActivo)
-      expect(link.className.includes('font-semibold')).toBe(esActivo)
+      expect(link.getAttribute('aria-current') === 'page').toBe(link.textContent === activo)
     }
+    const pills = container.querySelectorAll('[data-tabbar-pill]')
+    expect(pills).toHaveLength(1)
+    expect(pills[0]!.getAttribute('aria-hidden')).toBe('true')
+    expect((pills[0] as HTMLElement).style.getPropertyValue('--i')).toBe(String(indice))
   })
 })
 

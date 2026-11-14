@@ -239,7 +239,7 @@ export const ConSenaOcultaNavegadorInterno: Story = {
 
 /**
  * Con sesión, en un celular de 390 px: la barra fija de confirmar no tapa nada. `PortalFrame`
- * suma su alto (77 px) al de la barra inferior (57 px), así que al final del scroll el link más
+ * suma su alto (77 px) al de la barra inferior (78 px: 12 de aire + 66 de píldora), así que al final del scroll el link más
  * bajo del pie queda por encima del borde superior de la barra. Sin esa regla el pie termina
  * 77 px más abajo y la barra lo cubre.
  */
@@ -270,7 +270,7 @@ export const BarraFijaNoTapaElPie: Story = {
  * WCAG 2.4.11 (foco no oculto): en un celular bajito, tabular a un link del pie que quedó detrás de
  * la barra fija lo trae a la vista POR ENCIMA de ella. Sin el `scroll-padding-bottom` de `html` (globals.css)
  * el navegador lo da por visible —está dentro del viewport— y la barra lo tapa. Ese relleno es el
- * mismo alto que reserva `PortalFrame` (57 + 77 px); si uno cambia, el otro también.
+ * mismo alto que reserva `PortalFrame` (78 + 77 px); si uno cambia, el otro también.
  */
 export const FocoNoQuedaTapadoPorLaBarra: Story = {
   globals: { viewport: { value: 'celularBajito', isRotated: false } },
@@ -288,8 +288,8 @@ export const FocoNoQuedaTapadoPorLaBarra: Story = {
     const bar = canvasElement.querySelector('[data-fixed-cta]')!
     const frame = bar.closest('.player-shell-bg')!
     // El mismo alto en los dos lados: lo que reserva el marco y lo que reserva el scroll.
-    await expect(getComputedStyle(frame).paddingBottom).toBe('134px')
-    await expect(getComputedStyle(document.documentElement).scrollPaddingBottom).toBe('134px')
+    await expect(getComputedStyle(frame).paddingBottom).toBe('155px')
+    await expect(getComputedStyle(document.documentElement).scrollPaddingBottom).toBe('155px')
 
     const link = canvasElement.querySelector<HTMLElement>('footer a')!
     window.scrollTo({ top: 0, behavior: 'instant' })
@@ -343,11 +343,11 @@ export const BarraFijaSinSesionHidratada: Story = {
     ).not.toBeNull()
     const bar = canvasElement.querySelector('[data-fixed-cta]')!
     await expect(getComputedStyle(bar).position).toBe('fixed')
-    // …y la barra fija está donde va: 57 px (3.5rem + 1 px) arriba del borde.
-    await expect(window.innerHeight - bar.getBoundingClientRect().bottom).toBeCloseTo(57, 1)
-    // Y el marco ya reservó barra inferior + barra fija: 57 + 77 px.
+    // …y la barra fija está donde va: 78 px (12 de aire + la píldora de 66) arriba del borde.
+    await expect(window.innerHeight - bar.getBoundingClientRect().bottom).toBeCloseTo(78, 1)
+    // Y el marco ya reservó barra inferior + barra fija: 78 + 77 px.
     const frame = bar.closest('.player-shell-bg')!
-    await expect(getComputedStyle(frame).paddingBottom).toBe('134px')
+    await expect(getComputedStyle(frame).paddingBottom).toBe('155px')
     window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })
     const footerLinks = [...canvasElement.querySelectorAll('footer a')]
     const lowest = Math.max(...footerLinks.map((a) => a.getBoundingClientRect().bottom))

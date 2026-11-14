@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import * as RadioGroupPrimitive from '@radix-ui/react-radio-group'
 import { cn } from '@/lib/utils'
 import { RADIX_DETACHED_FORM_ID } from './radix-form-detach'
@@ -45,6 +45,10 @@ export function choiceChipClass(active: boolean): string {
  * `RadioGroupPrimitive.Item` renderiza un `<button type="button">`, así que el
  * swap es 1:1 con el `<button>` de antes.
  */
+/** Opción del control de vidrio: 44 px, el texto de la elegida en el verde de "lugar". */
+const GLASS_ITEM =
+  'relative z-[1] grid h-11 place-items-center rounded-full px-4 text-[15px] leading-none font-semibold whitespace-nowrap text-portal-ink transition-colors duration-(--dur-2) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-portal-green disabled:cursor-not-allowed disabled:opacity-60 data-[state=checked]:text-portal-slot-ink'
+
 export function SegmentedControl<T extends string>({
   value,
   onValueChange,
@@ -52,20 +56,37 @@ export function SegmentedControl<T extends string>({
   itemClassName,
   className,
   disabled,
+  variant,
   'aria-label': ariaLabel,
 }: {
-  value: T
+  /** `undefined` = ninguna elegida todavía (por ejemplo, el tema antes de hidratar). */
+  value: T | undefined
   onValueChange: (value: T) => void
   options: readonly SegmentedControlOption<T>[]
-  itemClassName: (active: boolean) => string
+  /** Estilo de cada opción. Con `variant="glass"` lo pone el control. */
+  itemClassName?: (active: boolean) => string
   className?: string
   disabled?: boolean
+  /**
+   * `glass`: el control segmentado del portal de vidrio (decisión 2026-11-13). Una sola píldora
+   * marca la opción elegida y se desliza de una a otra con el resorte `píldora` (dirección §4.4);
+   * con "reducir movimiento" cambia sin deslizar.
+   */
+  variant?: 'glass'
   'aria-label'?: string
 }) {
+  const glass = variant === 'glass'
+  const index = options.findIndex((opt) => opt.value === value)
   return (
     <RadioGroupPrimitive.Root
-      className={className}
-      value={value}
+      className={cn(
+        glass && 'glass relative grid auto-cols-fr grid-flow-col gap-1 rounded-full p-1',
+        className,
+      )}
+      style={glass ? ({ '--i': index, '--n': options.length } as CSSProperties) : undefined}
+      // `null` y no `undefined`: con `undefined` Radix lo toma como no controlado y avisa al pasar
+      // a controlado cuando llega el valor (el tema, al hidratar).
+      value={value ?? null}
       onValueChange={(v) => onValueChange(v as T)}
       disabled={disabled}
       aria-label={ariaLabel}
@@ -75,11 +96,14 @@ export function SegmentedControl<T extends string>({
       // el valor lo manda el `<input type="hidden">` del consumidor, no Radix.
       form={RADIX_DETACHED_FORM_ID}
     >
+      {glass && (
+        <span aria-hidden data-empty={index < 0 ? '' : undefined} className="segmented-pill" />
+      )}
       {options.map((opt) => (
         <RadioGroupPrimitive.Item
           key={opt.value}
           value={opt.value}
-          className={itemClassName(value === opt.value)}
+          className={glass ? GLASS_ITEM : (itemClassName?.(value === opt.value) ?? '')}
         >
           {opt.label}
         </RadioGroupPrimitive.Item>

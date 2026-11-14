@@ -126,12 +126,16 @@ describe('SiteFooter (legal links)', () => {
     expect(text).toMatch(/Términos/)
   })
 
-  it('ofrece "Ingresar" salvo con la sesión sembrada (signedIn), sin tocar el resto', () => {
-    expect(collectText(SiteFooter())).toMatch(/Ingresar/)
-    const text = collectText(SiteFooter({ signedIn: true }))
-    expect(text).not.toMatch(/Ingresar/)
-    expect(text).toMatch(/Privacidad/)
-    expect(text).toMatch(/Términos/)
+  it('lleva las tres columnas del pie del portal de vidrio con sus destinos', () => {
+    const tree = SiteFooter()
+    const text = collectText(tree)
+    for (const label of ['Jugadores', 'Complejos', 'Ayuda', 'Buscar canchas', 'Escribinos']) {
+      expect(text).toMatch(label)
+    }
+    const hrefs = collectHrefs(tree)
+    for (const href of ['/explorar', '/para-complejos', '/precios', '/blog']) {
+      expect(hrefs).toContain(href)
+    }
   })
 
   it('renders the brand via the Logo component', () => {

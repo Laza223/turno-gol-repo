@@ -3,9 +3,9 @@ import PitchLines from './PitchLines'
 
 /**
  * SVG decorativo puro (`currentColor`, `aria-hidden`): el color sale del
- * contenedor. Se reproducen los DOS usos reales — `SearchBand` (`variant="band"`,
- * dentro de `.player-hero-band`) y `EmptyResults` (`variant="empty"`, contenedor
- * cuadrado neutro) — para no mostrarlo "pelado" sobre un fondo que no existe en la app.
+ * contenedor. `variant="band"` y `variant="empty"` eran de /explorar (`SearchBand` y
+ * `EmptyResults`), que dejó de usarlas con el portal de vidrio (F3); hoy solo el alta
+ * del complejo usa la variante por defecto.
  */
 const meta = {
   title: 'Public/PitchLines',
@@ -16,7 +16,7 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Uso real en `SearchBand`: banda ancha, líneas apenas visibles a la derecha. */
+/** La banda ancha que usaba `SearchBand` de /explorar: líneas apenas visibles a la derecha. */
 export const Band: Story = {
   render: () => (
     <section className="player-hero-band relative isolate overflow-hidden rounded-3xl border px-9 py-9">

@@ -1,53 +1,42 @@
 import { Skeleton } from '@/components/ui/skeleton'
+import './explorar.css'
 
+/** Carga de /explorar: la barra, el encabezado y 8 tarjetas con la forma de las reales. */
 export default function Loading() {
   return (
-    <div
-      className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 sm:px-6 lg:px-8"
-      aria-busy="true"
-    >
-      {/* Banda hero (misma silueta que SearchBand) */}
-      <div className="player-hero-band rounded-3xl border px-5 py-7 sm:px-9 sm:py-9">
-        <Skeleton className="h-7 w-56 rounded-full" />
-        <Skeleton className="mt-4 h-10 w-80 max-w-full" />
-        <Skeleton className="mt-3 h-4 w-96 max-w-full" />
-        <Skeleton className="mt-6 h-20 w-full rounded-2xl" />
-      </div>
-
-      <div className="space-y-6">
-        {/* Toolbar */}
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-5 w-28" />
-          <Skeleton className="h-9 w-48" />
+    <div className="portal-ambient min-h-svh" aria-busy="true">
+      <div className="mx-auto w-full max-w-[1320px] px-4 pt-4 pb-10 sm:px-6 md:pt-10 lg:px-8">
+        <Skeleton
+          variant="glass"
+          label="Cargando complejos…"
+          className="h-[76px] rounded-[32px] md:w-[560px] md:rounded-full"
+        />
+        <div className="mt-6 mb-4 flex items-end justify-between gap-4 md:mt-8 md:mb-5" aria-hidden>
+          <div className="min-w-0 flex-1">
+            <Skeleton
+              variant="glass"
+              aria-hidden
+              className="h-8 w-64 max-w-full rounded-xl md:h-10"
+            />
+            <Skeleton variant="glass" aria-hidden className="mt-2 h-4 w-80 max-w-full rounded-lg" />
+          </div>
+          <Skeleton variant="glass" aria-hidden className="h-11 w-26 shrink-0 rounded-full" />
         </div>
-
-        <div className="lg:grid lg:grid-cols-[256px_minmax(0,1fr)] lg:gap-6">
-          {/* Sidebar de filtros */}
-          <Skeleton className="hidden h-[640px] rounded-2xl bg-card border border-border lg:block" />
-
-          {/* Grilla de cards */}
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="overflow-hidden rounded-2xl border border-border border-t-2 border-t-emerald-500/40 bg-card shadow-xs"
-              >
-                <Skeleton className="aspect-video w-full rounded-none" />
-                <div className="flex flex-col gap-2 p-4">
-                  <div className="flex justify-between">
-                    <Skeleton className="h-5 w-2/3" />
-                    <Skeleton className="h-5 w-12" />
-                  </div>
-                  <Skeleton className="h-4 w-1/2" />
-                  <Skeleton className="h-5 w-24" />
-                  <div className="flex justify-between pt-2">
-                    <Skeleton className="h-4 w-16" />
-                    <Skeleton className="h-6 w-20" />
-                  </div>
+        <div className="ex-grid" aria-hidden>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="glass-painted overflow-hidden rounded-3xl">
+              <Skeleton variant="glass" aria-hidden className="aspect-4/3 w-full rounded-none" />
+              <div className="flex flex-col gap-2 px-3 pt-3 pb-3.5 md:px-3.5 md:pt-3.5 md:pb-4">
+                <Skeleton variant="glass" aria-hidden className="h-4 w-3/4 rounded-md" />
+                <Skeleton variant="glass" aria-hidden className="h-3 w-1/2 rounded-md" />
+                <Skeleton variant="glass" aria-hidden className="h-3 w-2/5 rounded-md" />
+                <div className="mt-2 grid grid-cols-[repeat(auto-fill,minmax(62px,1fr))] gap-1.5">
+                  <Skeleton variant="glass" aria-hidden className="h-11 rounded-full" />
+                  <Skeleton variant="glass" aria-hidden className="h-11 rounded-full" />
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

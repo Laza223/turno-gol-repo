@@ -1,55 +1,52 @@
-import { Suspense } from 'react'
+import { Suspense, ViewTransition } from 'react'
 import Link from 'next/link'
 import { unstable_cache } from 'next/cache'
+import * as Sentry from '@sentry/nextjs'
+import { List, Map as MapIcon } from 'lucide-react'
+import { eq } from 'drizzle-orm'
 import { PUBLIC_CITIES_TAG, PUBLIC_TENANTS_TAG } from '@/shared/cache/public-listings'
 import {
-  getCourtPhotosByTenant,
   effectiveSort,
+  getCourtPhotosByTenant,
   listPublicCities,
+  listPublicFormatSets,
   searchPublicTenants,
-  type SortOption,
 } from '@/modules/tenants/search.service'
 import {
-  findAvailableTenantIds,
-  findFreeSlotPillsByTenant,
-  parseAvailabilitySearchParams,
-  type SlotPill,
+  findTodayFreeSlotsByTenant,
+  type TodayFreeSlots,
 } from '@/modules/tenants/availability-search.service'
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
+import { formatsLabel } from '@/lib/formats-label'
+import { cn } from '@/lib/utils'
+import { buttonVariants } from '@/components/ui/button'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { withPlayerContext } from '@/shared/db/client'
 import { playerFavorites } from '@/shared/db/schema'
-import { eq } from 'drizzle-orm'
-import { List } from 'lucide-react'
-import TenantCard from './components/TenantCard'
-import ExplorarToolbar from './components/ExplorarToolbar'
-import ExplorarFilters from './components/ExplorarFilters'
-import ExplorarSplitView from './components/ExplorarSplitView'
-import SearchBand from './components/SearchBand'
-import QuickFilters from './components/QuickFilters'
-import EmptyResults from './components/EmptyResults'
 import JsonLd from '@/components/seo/JsonLd'
 import { buildBreadcrumbList } from '@/lib/seo/structured-data'
+import TenantCard from './components/TenantCard'
+import ExplorarSearch from './components/ExplorarSearch'
+import ExplorarSplitView from './components/ExplorarSplitView'
+import EmptyResults from './components/EmptyResults'
+import FirstEntry from './components/FirstEntry'
+import { buildExplorarUrl } from './components/url'
+import './explorar.css'
 
 // Esta página es SIEMPRE dinámica, por dos causas independientes: lee
 // `searchParams` y los favoritos del jugador leen cookies. El cacheo acá es de
-// DATOS: la carga inicial sin filtros y el listado de ciudades salen de
-// unstable_cache (5 min) en vez de pegarle a la DB de búsqueda en cada visita.
-// Las dos entradas están etiquetadas, así que un cambio en el panel del
+// DATOS: la carga inicial sin filtros, el listado de ciudades y los tamaños por
+// localidad salen de unstable_cache (5 min) en vez de pegarle a la DB en cada
+// visita. Las entradas están etiquetadas, así que un cambio en el panel del
 // complejo las refresca sin esperar el TTL (`@/shared/cache/public-listings`).
-// El comentario original atribuía esto a una "limitación de Next 14"; el repo
-// corre Next 16 y esa premisa nunca se revalidó — cambiar la estrategia de
-// esta página (PPR / Cache Components) es una discusión aparte, no un
-// subproducto de la auditoría de performance.
 export const metadata = buildMetadata({
   title: 'Complejos de fútbol con reserva online',
   description:
-    'Descubrí complejos de fútbol en tu ciudad con los horarios libres a la vista. Filtrá por superficie, formato y precio. Reservá al instante.',
+    'Descubrí complejos de fútbol en tu ciudad con los horarios libres de hoy a la vista. Elegí la localidad y el tamaño de cancha, y reservá al instante.',
   path: '/explorar',
 })
 
 const PAGE_SIZE = 12
-const SORTS: SortOption[] = ['name', 'price', 'rating', 'distance']
 
 // Camino caliente de /explorar: la primera carga sin ningún filtro es idéntica
 // para todos los visitantes → cacheada 5 min en el Data Cache. OJO: nada que
@@ -67,25 +64,38 @@ const listPublicCitiesCached = unstable_cache(() => listPublicCities(), ['explor
   tags: [PUBLIC_CITIES_TAG],
 })
 
+// Los tamaños de cada complejo de una localidad (la hoja de Cancha): la clave incluye la localidad,
+// por eso solo se cachean las localidades que existen (una ciudad inventada en la URL no crea una
+// entrada de caché por valor).
+const listPublicFormatSetsCached = unstable_cache(
+  (city: string, province: string) =>
+    listPublicFormatSets({ city: city || undefined, province: province || undefined }),
+  ['explorar-format-sets'],
+  { revalidate: 300, tags: [PUBLIC_TENANTS_TAG] },
+)
+
 type SP = Record<string, string | undefined>
 
-function csv(v: string | undefined): string[] {
-  return v ? v.split(',').filter(Boolean) : []
-}
+/**
+ * Los únicos parámetros que lee el buscador (decisión de Lazar del 2026-11-14): Localidad, Cancha,
+ * nombre, ubicación, vista y página. Un link viejo con fecha, hora, superficie, precio u orden
+ * abre igual: esos filtros se ignoran.
+ */
+const KNOWN_PARAMS = ['city', 'province', 'formats', 'q', 'lat', 'lng', 'view', 'offset'] as const
+
 function num(v: string | undefined): number | undefined {
   if (!v) return undefined
   const n = Number(v)
   return Number.isFinite(n) ? n : undefined
 }
 
-/** Construye una URL de /explorar preservando los filtros actuales (server-side). */
-function pageUrl(sp: SP, offset: number): string {
+function knownParams(sp: SP): URLSearchParams {
   const p = new URLSearchParams()
-  for (const [k, v] of Object.entries(sp)) {
-    if (v && k !== 'offset') p.set(k, v)
+  for (const k of KNOWN_PARAMS) {
+    const v = sp[k]
+    if (v) p.set(k, v)
   }
-  p.set('offset', String(offset))
-  return `/explorar?${p.toString()}`
+  return p
 }
 
 async function getPlayerFavoriteIds(playerId: string): Promise<Set<string>> {
@@ -102,200 +112,187 @@ async function getPlayerFavoriteIds(playerId: string): Promise<Set<string>> {
   }
 }
 
+/** "6 complejos en Luján" / "1 complejo" (encabezado de `buscador.html`). */
+function headline(total: number, city: string | undefined): string {
+  const n = total === 1 ? '1 complejo' : `${total} complejos`
+  return city ? `${n} en ${city}` : n
+}
+
 export default async function ExplorarPage(props: { searchParams: Promise<SP> }) {
   const searchParams = await props.searchParams
+  const params = knownParams(searchParams)
   const offset = Math.max(num(searchParams.offset) ?? 0, 0)
   const view = searchParams.view === 'map' ? 'map' : 'list'
-  const sort = SORTS.includes(searchParams.sort as SortOption)
-    ? (searchParams.sort as SortOption)
-    : undefined
   // En el mapa mostramos más pines de una (sin paginar).
   const limit = view === 'map' ? 50 : PAGE_SIZE
+  const city = searchParams.city || undefined
+  const province = searchParams.province || undefined
+  const q = searchParams.q?.trim() || undefined
+  const lat = num(searchParams.lat)
+  const lng = num(searchParams.lng)
 
   const authUser = await extractAuthUser().catch(() => null)
   const playerId = authUser?.type === 'player' ? authUser.playerId : null
   const favoriteIds = playerId ? await getPlayerFavoriteIds(playerId) : new Set<string>()
 
-  const formats = csv(searchParams.formats).reduce<number[]>((acc, v) => {
-    const n = Number(v)
-    if (Number.isFinite(n)) acc.push(n)
-    return acc
-  }, [])
+  const formats = (searchParams.formats ?? '')
+    .split(',')
+    .map(Number)
+    .filter((n) => Number.isInteger(n) && n > 0)
 
-  // Disponibilidad real: con hora válida en la URL (y fecha, o sin ella = hoy ART),
-  // la búsqueda queda restringida a complejos con al menos una cancha libre a esa
-  // hora (cacheado 30s en Upstash). Sin hora, el comportamiento es el histórico.
-  const avail = parseAvailabilitySearchParams({
-    date: searchParams.date,
-    time: searchParams.time,
-  })
-  const tenantIds = avail
-    ? await findAvailableTenantIds({
-        ...avail,
-        ...(formats.length ? { formats } : {}),
-      })
-    : undefined
-
-  // Búsqueda default = vista lista, primera página y CERO filtros/orden/geo/
-  // disponibilidad: es el grueso del tráfico y es idéntica para todos.
+  // Búsqueda default = vista lista, primera página y CERO filtros/geo: es el grueso del tráfico y
+  // es idéntica para todos.
   const isDefaultSearch =
     view === 'list' &&
     offset === 0 &&
-    !sort &&
-    !avail &&
     formats.length === 0 &&
-    !searchParams.q &&
-    !searchParams.city &&
-    !searchParams.province &&
-    searchParams.online !== '1' &&
-    !searchParams.surfaces &&
-    !searchParams.amenities &&
-    num(searchParams.minPrice) === undefined &&
-    num(searchParams.maxPrice) === undefined &&
-    num(searchParams.lat) === undefined &&
-    num(searchParams.lng) === undefined
+    !q &&
+    !city &&
+    !province &&
+    lat === undefined &&
+    lng === undefined
 
   const [{ results, total }, cities] = await Promise.all([
     isDefaultSearch
       ? getDefaultSearchCached()
       : searchPublicTenants({
-          q: searchParams.q,
-          city: searchParams.city,
-          province: searchParams.province,
-          onlineOnly: searchParams.online === '1',
-          surfaces: csv(searchParams.surfaces),
+          q,
+          city,
+          province,
           formats,
-          amenities: csv(searchParams.amenities),
-          minPriceCents: num(searchParams.minPrice),
-          maxPriceCents: num(searchParams.maxPrice),
-          sort,
-          lat: num(searchParams.lat),
-          lng: num(searchParams.lng),
+          lat,
+          lng,
+          // Con la ubicación en la URL (la zona del jugador), los más cercanos primero.
+          sort: effectiveSort('distance', lat, lng),
           limit,
           offset,
-          ...(tenantIds !== undefined ? { tenantIds } : {}),
         }),
     listPublicCitiesCached(),
   ])
+  const knownCity =
+    !city || cities.some((c) => c.city === city && (!province || c.province === province))
+  const formatSets = knownCity
+    ? await listPublicFormatSetsCached(city ?? '', province ?? '')
+    : await listPublicFormatSets({ city, province })
 
   const hasMore = view === 'list' && offset + PAGE_SIZE < total
 
-  // Extras de las cards (solo la vista lista las renderiza), en paralelo y
-  // fail-open: sin fotos la card cae al coverUrl; sin pills no muestra turnos.
+  // Extras de las tarjetas (solo la vista lista las renderiza), en paralelo y fail-open: sin
+  // fotos la tarjeta cae a la portada. Si los horarios fallan (null), la tarjeta no dice nada de
+  // hoy: "no le quedan horarios" sería mentira.
   const wantCardExtras = view === 'list' && results.length > 0
-  const [photosByTenant, pillsByTenant] = await Promise.all([
+  const [photosByTenant, todayByTenant] = await Promise.all([
     wantCardExtras
-      ? getCourtPhotosByTenant(results.map((t) => t.id)).catch(
+      ? getCourtPhotosByTenant(results.filter((t) => !t.coverUrl).map((t) => t.id)).catch(
           () => ({}) as Record<string, string[]>,
         )
       : ({} as Record<string, string[]>),
-    wantCardExtras && avail
-      ? findFreeSlotPillsByTenant({
-          tenantIds: results.reduce<string[]>((acc, t) => {
-            if (t.allowOnlineBooking) acc.push(t.id)
-            return acc
-          }, []),
-          date: avail.date,
-          time: avail.time,
+    wantCardExtras
+      ? findTodayFreeSlotsByTenant({
+          tenantIds: results.filter((t) => t.allowOnlineBooking).map((t) => t.id),
           ...(formats.length ? { formats } : {}),
-        }).catch(() => ({}) as Record<string, SlotPill[]>)
-      : ({} as Record<string, SlotPill[]>),
+        }).catch((err: unknown) => {
+          Sentry.captureException(err, { tags: { section: 'explorar.today-slots' } })
+          return null
+        })
+      : ({} as Record<string, TodayFreeSlots>),
   ])
 
-  const _listHrefParams = new URLSearchParams()
-  for (const [k, v] of Object.entries(searchParams)) {
-    if (v && k !== 'view' && k !== 'offset') _listHrefParams.set(k, v)
-  }
-  const listHref = `/explorar${_listHrefParams.toString() ? `?${_listHrefParams.toString()}` : ''}`
+  const sizes = formatsLabel(formats)
+  const subtitle = [
+    sizes ? `Con cancha de ${sizes}.` : null,
+    q ? `Que se llaman “${q}”.` : null,
+    view === 'list' ? 'Los horarios son los libres de hoy.' : null,
+  ]
+    .filter(Boolean)
+    .join(' ')
+  const listHref = buildExplorarUrl(params, { view: undefined })
+  const mapHref = buildExplorarUrl(params, { view: 'map' })
+  const pageHref = buildExplorarUrl(
+    params,
+    { offset: String(offset + PAGE_SIZE) },
+    { resetOffset: false },
+  )
+  // La lista cambia con un fundido cruzado al cambiar un filtro (`key` = la búsqueda).
+  const searchKey = buildExplorarUrl(params, { offset: undefined, view: undefined })
+  const pillLink = cn(
+    buttonVariants({ variant: 'pill-glass', size: 'pill-sm' }),
+    'glass shrink-0 gap-2 px-[18px]',
+  )
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-      <JsonLd
-        data={buildBreadcrumbList([
-          { name: 'Inicio', url: absoluteUrl('/') },
-          { name: 'Explorar', url: absoluteUrl('/explorar') },
-        ])}
-      />
-      <SearchBand cities={cities} />
-
-      {/* El margen negativo tiene que acompañar al padding en cada breakpoint:
-          con `-mx-4` fijo y `px-4 sm:px-6 lg:px-8`, la banda sobresalía del
-          contenedor apenas la pantalla pasaba `sm`. */}
-      <div className="relative -mx-4 space-y-2 border-b border-border bg-card px-4 py-2.5 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <Suspense fallback={<div className="h-16" />}>
-          <QuickFilters />
-          <ExplorarToolbar
-            total={total}
-            sort={effectiveSort(sort, num(searchParams.lat), num(searchParams.lng))}
-          />
+    <div className="portal-ambient min-h-svh">
+      <div className="mx-auto w-full max-w-[1320px] px-4 pt-4 pb-10 sm:px-6 md:pt-10 lg:px-8">
+        <JsonLd
+          data={buildBreadcrumbList([
+            { name: 'Inicio', url: absoluteUrl('/') },
+            { name: 'Explorar', url: absoluteUrl('/explorar') },
+          ])}
+        />
+        <Suspense
+          fallback={<div className="glass h-[76px] rounded-[32px] md:w-[560px] md:rounded-full" />}
+        >
+          <ExplorarSearch cities={cities} formatSets={formatSets} />
         </Suspense>
-      </div>
 
-      <div className={view === 'map' ? '' : 'lg:grid lg:grid-cols-[256px_minmax(0,1fr)] lg:gap-6'}>
-        {view === 'list' && (
-          <aside className="hidden lg:block">
-            <div className="sticky top-20 rounded-2xl border border-border bg-card p-5 shadow-xs">
-              <Suspense fallback={<div className="h-40 animate-pulse rounded-xl bg-muted" />}>
-                <ExplorarFilters idPrefix="sidebar-" />
-              </Suspense>
-            </div>
-          </aside>
-        )}
-
-        <div className="min-w-0">
-          {view === 'map' ? (
-            <ExplorarSplitView results={results} favoritedIds={Array.from(favoriteIds)} />
-          ) : results.length === 0 ? (
-            <EmptyResults
-              avail={avail ? { date: avail.date, time: avail.time } : null}
-              outOfRange={offset > 0}
-            />
+        <div className="mt-6 mb-4 flex items-end justify-between gap-4 md:mt-8 md:mb-5">
+          <div className="min-w-0">
+            <h1 className="font-display text-[clamp(26px,2.4vw+16px,40px)] leading-[1.05] font-bold tracking-[-0.035em] text-portal-ink [font-stretch:104%]">
+              {headline(total, city)}
+            </h1>
+            {subtitle && (
+              <p className="mt-1.5 text-[15px] leading-[1.4] text-portal-soft">{subtitle}</p>
+            )}
+          </div>
+          {view === 'list' ? (
+            <Link href={mapHref} className={pillLink}>
+              <MapIcon className="size-[18px]" aria-hidden />
+              Mapa
+            </Link>
           ) : (
-            <>
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {results.map((t) => {
-                  const pills = pillsByTenant[t.id]
-                  return (
-                    <TenantCard
-                      key={t.id}
-                      tenant={t}
-                      initialFavorited={favoriteIds.has(t.id)}
-                      photos={photosByTenant[t.id] ?? []}
-                      date={avail?.date}
-                      slotPills={
-                        avail && pills?.length ? { date: avail.date, slots: pills } : undefined
-                      }
-                    />
-                  )
-                })}
-              </div>
-
-              {hasMore && (
-                <div className="mt-10 flex justify-center">
-                  <Link
-                    href={pageUrl(searchParams, offset + PAGE_SIZE)}
-                    className="inline-flex h-11 items-center rounded-full border border-border bg-card px-7 text-sm font-semibold text-foreground shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-emerald-400/60 hover:text-emerald-700 dark:hover:text-emerald-400 hover:shadow-md motion-reduce:hover:translate-y-0"
-                  >
-                    Ver más complejos
-                  </Link>
-                </div>
-              )}
-            </>
+            <Link href={listHref} className={pillLink}>
+              <List className="size-[18px]" aria-hidden />
+              Lista
+            </Link>
           )}
         </div>
-      </div>
 
-      {/* FAB mobile: solo visible en vista mapa en pantallas < lg */}
-      {view === 'map' && (
-        <Link
-          href={listHref}
-          // bottom con safe-area: sobre el home indicator del iPhone el FAB
-          // quedaba pegado al borde de gestos y era difícil de acertar.
-          className="fixed bottom-[calc(var(--portal-tabbar-space)+12px)] left-1/2 z-30 inline-flex h-11 max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 px-5 text-sm font-bold text-slate-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_8px_30px_rgba(16,185,129,0.3)] transition-all duration-200 hover:brightness-105 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_12px_36px_rgba(16,185,129,0.4)] active:scale-[0.97] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 lg:hidden whitespace-nowrap"
-        >
-          <List className="h-4 w-4" aria-hidden /> Ver lista
-        </Link>
-      )}
+        {view === 'map' ? (
+          <ExplorarSplitView results={results} favoritedIds={Array.from(favoriteIds)} />
+        ) : results.length === 0 ? (
+          <EmptyResults outOfRange={offset > 0} />
+        ) : (
+          <>
+            <ViewTransition
+              key={searchKey}
+              name="explorar-lista"
+              share="explorar-fundido"
+              default="none"
+            >
+              <FirstEntry className="ex-grid">
+                {results.map((t, i) => (
+                  <TenantCard
+                    key={t.id}
+                    tenant={t}
+                    index={i}
+                    initialFavorited={favoriteIds.has(t.id)}
+                    photo={t.coverUrl ?? photosByTenant[t.id]?.[0] ?? null}
+                    today={todayByTenant ? (todayByTenant[t.id] ?? null) : undefined}
+                  />
+                ))}
+              </FirstEntry>
+            </ViewTransition>
+
+            {hasMore && (
+              <div className="mt-10 flex justify-center">
+                <Link href={pageHref} className={cn(pillLink, 'px-7')}>
+                  Ver más complejos
+                </Link>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   )
 }

@@ -130,45 +130,21 @@ Fixtures usadas: Tenant Demo `e2e-complejo-demo` (`requires_deposit:false`, `dep
 
 ---
 
-## TG-HP-002 — Explorar `/explorar`: buscar cancha cross-tenant con filtros
+## TG-HP-002 — Explorar `/explorar`: buscar cancha cross-tenant
+
+Reescrito en la F3 del portal de vidrio (2026-11-14): el buscador pide solo Localidad y Cancha, y el nombre del complejo se busca desde la hoja de Localidad. Superficie, techado, solo online, precio, servicios, orden, fecha y hora salieron (decisión de Lazar del 2026-11-14). Un link viejo con esos parámetros abre igual y los ignora.
+
 - **Rol:** Visitante (no autenticado)
-- **Prerrequisitos:** Al menos un tenant público visible (Demo y Seña sirven). Sin filtros, la carga inicial usa `getDefaultSearchCached()` (cacheada 5 min, `src/app/(public)/explorar/page.tsx:50-54`).
+- **Prerrequisitos:** Al menos un tenant público visible (Demo y Seña sirven). Sin filtros, la carga inicial usa `getDefaultSearchCached()` (cacheada 5 min, `src/app/(public)/explorar/page.tsx`).
 - **Flujo de navegación (UI steps):**
   1. Navegar a `http://localhost:3000/explorar`.
-  2. Esperar el render de la banda "Encontrá tu cancha ideal" (`src/app/(public)/explorar/components/SearchBand.tsx:36`).
-  3. En la barra de búsqueda (aria-label "Buscar canchas", `src/app/(public)/explorar/components/SearchBar.tsx:106`), completar "Buscar" (id `exp-q`) con `demo` (`src/app/(public)/explorar/components/SearchBar.tsx:112-125`).
-  4. Click en el botón submit (aria-label "Buscar", `src/app/(public)/explorar/components/SearchBar.tsx:213-220`).
-  5. En la fila de chips rápidos, click en el chip "Fútbol 5" (`src/app/(public)/explorar/components/QuickFilters.tsx:53-65`, `formatLabel(5)` → "Fútbol 5", `src/components/public/courtFacets.ts:27-29`).
-  6. Click en el chip "Sintético" (`src/app/(public)/explorar/components/QuickFilters.tsx:68-75`).
-  7. Click en "Todos los filtros" para abrir el drawer (`src/app/(public)/explorar/components/QuickFilters.tsx:99-108`).
-  8. Dentro del drawer, tildar el checkbox "Techado" bajo el fieldset "Cerramiento" (`src/app/(public)/explorar/components/ExplorarFilters.tsx:117-124`).
-  9. Tildar "Césped natural" bajo "Superficie" (`src/app/(public)/explorar/components/ExplorarFilters.tsx:127-142`, label de `SURFACE_LABELS`, `src/components/public/courtFacets.ts:9-14`).
-  10. Completar "Precio mínimo" (id `min-price`) con `5000` y "Precio máximo" (id `max-price`) con `20000` (`src/app/(public)/explorar/components/ExplorarFilters.tsx:192-230`).
-  11. Tildar "Solo con reserva online" (`src/app/(public)/explorar/components/ExplorarFilters.tsx:233-237`).
-  12. Click en "Aplicar filtros" (`src/app/(public)/explorar/components/ExplorarFilters.tsx:240-246`).
-  13. Cambiar el orden con el `<select>` "Ordenar por" (sr-only) a la opción "Precio más bajo" (`src/app/(public)/explorar/components/ExplorarToolbar.tsx:11-15,70-84`).
-  14. Click en el toggle "Mapa" (`src/app/(public)/explorar/components/ExplorarToolbar.tsx:97-105`) y verificar el FAB "Ver lista" (`src/app/(public)/explorar/page.tsx:273-279`).
-- **Filtros reales existentes** (evidencia): Cerramiento → Techado (`ExplorarFilters.tsx:118-123`); Superficie → Sintético / Césped natural / Cemento / Baldosa (`courtFacets.ts:9-14`); Formato → Fútbol 4 a Fútbol 11 (`courtFacets.ts:25`, `ExplorarFilters.tsx:145-167`); Servicios → Iluminación, Estacionamiento, Duchas, Vestuario, Parrilla, Bar, WiFi (`components/public/amenities.tsx:29-36`, excluye `techado` que va en Cerramiento — `ExplorarFilters.tsx:11`); Precio por turno (ARS) → min/max (`ExplorarFilters.tsx:192-230`); "Solo con reserva online" (`ExplorarFilters.tsx:233-237`); orden por Nombre (A-Z) / Precio más bajo / Mejor valorado / Más cercano (`ExplorarToolbar.tsx:10-15`); vista Lista/Mapa (`ExplorarToolbar.tsx:87-106`); chips rápidos: Fútbol 5/7/11, Sintético, Techado, Online (`QuickFilters.tsx:11,53-95`).
-- **Comportamiento de componentes:**
-  - Loading: `src/app/(public)/explorar/loading.tsx:1-51` (skeleton de banda + toolbar + sidebar + 6 cards). También hay `<Suspense fallback={<div className="h-16" />}>` para `QuickFilters`+`ExplorarToolbar` y `<Suspense fallback={<div className="h-40 animate-pulse rounded-xl bg-muted" />}>` para `ExplorarFilters` (`src/app/(public)/explorar/page.tsx:211-225`).
-  - Anti-doble-submit: no hay disabled explícito en "Aplicar filtros" ni en el submit de `SearchBar`; ambos disparan `router.push` (`ExplorarFilters.tsx:83-92`, `SearchBar.tsx:87-95`).
-  - Feedback: sin resultados, la página muestra `EmptyResults` con h2 "Sin resultados para tu búsqueda" (o "Sin disponibilidad en ese horario" si hay `date`+`time`) y CTA "Limpiar búsqueda" → `/explorar` (`src/app/(public)/explorar/components/EmptyResults.tsx:16-29`). El ordenar por "Más cercano" sin geolocalización dispara un toast destructivo "Tu navegador no soporta geolocalización." o "Activá la ubicación para ordenar por cercanía." (`ExplorarToolbar.tsx:34,48-51`).
-- **Validación de datos:**
-  - DB: ninguna escritura; lectura vía `searchPublicTenants(...)` con los filtros de la URL (`src/app/(public)/explorar/page.tsx:148-167`).
-  - API/Action: no hay Server Action; todos los filtros viajan como query params y la página server-side vuelve a ejecutar `searchPublicTenants` en cada navegación (`src/app/(public)/explorar/page.tsx:95-169`).
-  - Externos: ninguno (el sort "Más cercano" usa `navigator.geolocation` del browser, no un servicio externo).
-  - UI-sin-reload: NO hay fetch a route handler — cada filtro hace `router.push(buildExplorarUrl(...))` (`src/app/(public)/explorar/components/url.ts` + `ExplorarFilters.tsx:83-92`), que es una navegación Next (Server Component re-renderiza `ExplorarPage` con los nuevos `searchParams`).
-- **Evidencia (path:línea):**
-  - `src/app/(public)/explorar/components/SearchBand.tsx:36` — h1 "Encontrá tu cancha ideal".
-  - `src/app/(public)/explorar/components/SearchBar.tsx:112,130` — labels "Buscar" / "Localidad".
-  - `src/app/(public)/explorar/components/QuickFilters.tsx:74,84,94` — labels "Sintético" / "Techado" / "Online".
-  - `src/app/(public)/explorar/components/QuickFilters.tsx:102` — texto "Todos los filtros".
-  - `src/app/(public)/explorar/components/ExplorarFilters.tsx:118,128,146,171,193,236,245,252` — legends/labels/botones "Cerramiento" / "Superficie" / "Formato" / "Servicios" / "Precio por turno (ARS)" / "Solo con reserva online" / "Aplicar filtros" / "Limpiar".
-  - `src/app/(public)/explorar/components/ExplorarToolbar.tsx:10-15` — opciones de sort.
-  - `src/app/(public)/explorar/components/EmptyResults.tsx:16,28` — h2 "Sin resultados para tu búsqueda" / CTA "Limpiar búsqueda".
-  - `src/app/(public)/explorar/loading.tsx:1` — skeleton dedicado.
-
----
+  2. Ver el encabezado "N complejos" (con localidad: "N complejos en {localidad}") y la barra `role=search` "Filtrar canchas" (`explorar/components/ExplorarSearch.tsx`).
+  3. Tocar el campo "Cancha" y, en la hoja "Tamaño de cancha", la etiqueta "Fútbol 5" (los checkbox son `sr-only`). Cada tamaño muestra cuántos complejos lo tienen; los que no tienen ninguno están apagados (`src/components/site/SearchSheets.tsx`, `CanchaSheet`).
+  4. Tocar "Ver N complejos": la URL pasa a `formats=5`.
+  5. Tocar el campo "Localidad", escribir `demo` en el buscador de la hoja y tocar "Buscar complejos que se llamen “demo”": la URL pasa a `q=demo` sin localidad.
+  6. Tocar "Mapa": `view=map` conserva los filtros; "Lista" vuelve.
+- **Validación de datos:** la lista muestra "E2E Complejo Demo"; cada tarjeta con reserva online muestra los horarios libres de hoy (`findTodayFreeSlotsByTenant`).
+- **Evidencia:** `tests/e2e/qa-happy-paths/publico/TG-HP-002.spec.ts`.
 
 ## TG-HP-003 — Perfil público del complejo `/e2e-complejo-sena`
 - **Rol:** Visitante (no autenticado)
@@ -402,7 +378,6 @@ Fixtures usadas: Tenant Demo `e2e-complejo-demo` (`requires_deposit:false`, `dep
 
 ## GAPS
 
-- **TG-HP-002**: el contrato pide "listá los filtros reales que existen" — están listados en el caso, pero el filtro "Formato" completo (Fútbol 4 a 11) no se ejercita paso a paso en el flujo (solo se cubren los quick-chips 5/7/11); un sub-agente que quiera cubrir Fútbol 4/6/8/9/10 debe abrir el drawer y usar los botones de `ExplorarFilters.tsx:145-167` directamente.
 - **TG-HP-003**: el perfil calcula `today` client-side (`useArtNow`, `Date.now() - 3h`). TG-HP-004 ya no es una vista aparte (la semanal se sacó; es un redirect), así que la comparación de fechas entre dos vistas dejó de aplicar.
 - **TG-HP-010**: no se ubicó una página o mock que dispare el estado `LoadingState` (spinner "Verificando tu enlace…") de forma determinística sin backend real — ese estado solo ocurre en el instante entre el mount y el redirect del callback de Supabase (no hay un query param que lo fuerce, ver `verify/VerifyView.tsx:229-237`: sin `status=success` y sin `error` cae ahí, pero eso es exactamente "ningún param" — se puede navegar a `/verify` a secas para verlo, pero es una vista transitoria real, no un estado controlable por query param como los otros dos).
 - No se redactó ningún caso para `/reservar` (formulario de reserva, checkout con/sin seña) — está fuera de los 10 IDs pedidos (TG-HP-001 a TG-HP-010 son estrictamente los listados en el contrato); si el bloque de reserva/checkout es un lote aparte, no está cubierto acá.

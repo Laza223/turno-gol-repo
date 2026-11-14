@@ -28,8 +28,8 @@ import './ExplorarMap'
  * `ExplorarMap.stories.tsx`). Los tiles salen
  * offline vía el decorator global `withOfflineTiles` (`.storybook/preview.tsx`).
  *
- * No tiene un toggle propio (el botón Lista/Mapa vive en `ExplorarToolbar`, ya
- * cubierto en su propio story): lo que sí es exclusivo de este componente es el
+ * No tiene un toggle propio (el botón Mapa/Lista vive en el encabezado de
+ * `explorar/page.tsx`): lo que sí es exclusivo de este componente es el
  * hover de una fila de la lista resaltando su pin en el mapa (`onMouseEnter` →
  * `activeId` → `ExplorarMap`), cubierto en `HoverResaltaPinEnMapa`.
  */

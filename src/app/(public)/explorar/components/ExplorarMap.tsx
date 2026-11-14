@@ -104,9 +104,9 @@ export default function ExplorarMap({
 
   if (located.length === 0) {
     return (
-      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card text-muted-foreground">
+      <div className="glass-painted flex h-[60vh] flex-col items-center justify-center gap-3 rounded-[28px] text-portal-soft">
         <MapPin className="h-10 w-10" aria-hidden />
-        <p className="max-w-xs text-center text-sm">
+        <p className="max-w-xs text-center text-[15px]">
           Los complejos de esta búsqueda todavía no tienen ubicación cargada en el mapa.
         </p>
       </div>
@@ -127,7 +127,7 @@ export default function ExplorarMap({
     // isolate: los panes internos de Leaflet usan z-index 400+; sin un stacking
     // context propio taparían cualquier dropdown de la página (p. ej. el combobox
     // de localidad, que el <select> nativo anterior no sufría por ser popup del OS).
-    <div className="isolate h-[70vh] overflow-hidden rounded-2xl border border-border shadow-xs">
+    <div className="glass-painted isolate h-[60vh] overflow-hidden rounded-[28px] lg:h-[70vh]">
       {/* dragging: en el celular un dedo sobre el mapa tiene que scrollear la página, no
           arrastrar el mapa; queda el gesto de dos dedos (touchZoom). `tap` no existe en
           Leaflet 1.9 (lo reemplazó `tapHold`). */}

@@ -72,11 +72,6 @@ describe('Piso de 16px en campos — constantes compartidas', () => {
       needle: 'const PORTAL_INPUT',
       what: 'email del login de jugador',
     },
-    {
-      file: 'src/app/(public)/explorar/components/SearchBar.tsx',
-      needle: 'const fieldClass',
-      what: 'los 4 campos del buscador de /explorar',
-    },
   ]
 
   for (const { file, needle, what } of SHARED_FIELD_CONSTS) {
@@ -100,8 +95,8 @@ describe('Piso de 16px en campos — constantes compartidas', () => {
     expect(code.match(/<Input\s/g)).toHaveLength(1)
   })
 
-  it('HeroSearch: el campo de búsqueda de la hoja de Localidad no baja de 16 px en el teléfono', () => {
-    const code = stripComments(read('src/components/site/HeroSearch.tsx'))
+  it('SearchSheets: el campo de búsqueda de la hoja de Localidad (home y /explorar) no baja de 16 px en el teléfono', () => {
+    const code = stripComments(read('src/components/site/SearchSheets.tsx'))
     // El <input type="search"> de la hoja: 15 o 14 px (< 16) hacen que iOS zoomee al enfocar.
     const input = code.match(/<input\s+id=\{`\$\{ids\}-q`\}[\s\S]*?\/>/)
     expect(input, 'no se encontró el input de búsqueda de la hoja de Localidad').not.toBeNull()

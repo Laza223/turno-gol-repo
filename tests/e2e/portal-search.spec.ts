@@ -11,12 +11,13 @@ test.describe('portal search (/explorar)', () => {
     await expect(page.getByText('E2E Complejo Demo')).toBeVisible()
   })
 
-  test('search input filters to the demo tenant', async ({ page }) => {
+  test('buscar por nombre desde la hoja de Localidad filtra al complejo demo', async ({ page }) => {
     await page.goto('/explorar')
-    const input = page.getByPlaceholder(/buscar|ciudad|complejo/i).first()
-    await input.fill('demo')
-    // Trigger search (URL update may be debounced; press Enter to commit)
-    await input.press('Enter')
+    await page.getByRole('button', { name: /^Localidad:/ }).click()
+    const sheet = page.getByRole('dialog')
+    await sheet.getByRole('searchbox', { name: 'Localidad' }).fill('demo')
+    await sheet.getByRole('button', { name: /Buscar complejos que se llamen/ }).click()
+    await page.waitForURL((url) => url.searchParams.get('q') === 'demo')
     await expect(page.getByText('E2E Complejo Demo')).toBeVisible()
   })
 

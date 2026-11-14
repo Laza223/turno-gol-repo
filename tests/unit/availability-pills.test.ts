@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   pickFreeSlotPills,
+  todayFreeSlots,
   type CourtOccupancy,
 } from '@/modules/tenants/availability-search.service'
 
@@ -43,5 +44,26 @@ describe('pickFreeSlotPills', () => {
       { courtId: 'c1', busy: [{ startMins: 23 * 60, endMins: 24 * 60 }] },
     ]
     expect(pickFreeSlotPills(['23:00'], 60, courts, 3)).toEqual([])
+  })
+})
+
+describe('todayFreeSlots', () => {
+  const pill = (time: string) => ({ time, courtId: 'c1', durationMins: 60 })
+
+  it('muestra los 3 primeros y cuenta el resto en "+N"', () => {
+    const free = ['19:00', '20:00', '21:00', '22:00', '23:00', '00:00'].map(pill)
+    expect(todayFreeSlots('2026-06-15', free)).toEqual({
+      date: '2026-06-15',
+      pills: free.slice(0, 3),
+      more: 3,
+    })
+  })
+
+  it('con 3 o menos no hay "+N"', () => {
+    expect(todayFreeSlots('2026-06-15', [pill('20:00')])?.more).toBe(0)
+  })
+
+  it('sin horarios libres devuelve null', () => {
+    expect(todayFreeSlots('2026-06-15', [])).toBeNull()
   })
 })

@@ -18,8 +18,8 @@ Este cuadro es el registro del esfuerzo. Quien cierra una fase lo actualiza en e
 | --- | --- | --- | --- |
 | F0 | Decisión, mockup, dirección, plan y punteros | Hecho | #590 |
 | F1 | Cimientos y cromo | Hecho el 2026-11-14 | #592 |
-| F2 | Home | En revisión desde el 2026-11-14 | #593 |
-| F3 | Buscador `/explorar` | Pendiente | |
+| F2 | Home | Hecho el 2026-11-14 | #593, #594, #595, #596 |
+| F3 | Buscador `/explorar` | En revisión desde el 2026-11-14 | #597 |
 | F4 | Ficha del complejo | Pendiente | |
 | F5 | Confirmar el turno y vuelta de la reserva | Pendiente | |
 | F6 | Mis reservas, Cuenta e Ingresar | Pendiente | |
@@ -54,6 +54,16 @@ Este cuadro es el registro del esfuerzo. Quien cierra una fase lo actualiza en e
 - **`localStorage` entre archivos de test (F2).** Los archivos de Vitest comparten worker y `localStorage` no se limpia entre archivos: una zona guardada por un test hace que otro archivo arranque con zona y no busque la ubicación. El síntoma parece un timeout (falla a veces, según el orden). Cada archivo que guarde la zona la limpia en `afterEach`, y cada uno que necesite arrancar sin zona la limpia en `beforeEach`.
 - **Campos cerrados del buscador (F2).** En el celu, el valor de cada campo tiene unos 80 px: "Todas las ciudades" y "Cualquier tamaño" se cortaban. El campo dice "Todas" y las hojas conservan el nombre largo.
 - **e2e locales de F2.** `qa-happy-paths/publico/` 007, 008 y 009 fallan también en main: esperan textos viejos de privacidad y términos, con fecha del 25 de mayo, y otro mail de soporte. No son de esta fase. Para correr e2e en un worktree sin `.env.local` hay que pasar `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` de `supabase status -o env`, y `E2E_BASE_URL` si el dev no está en `:3000`.
+- **Filtros de /explorar (F3, decisión de Lazar del 2026-11-14).** Quedan Localidad, Cancha (de a varias) y Mapa, como en el mockup, más la búsqueda por nombre (`q`) adentro de la hoja de Localidad. Salen superficie, techado, solo online, precio, servicios, orden, fecha y hora. Un link viejo con esos parámetros abre igual y la página los ignora (`KNOWN_PARAMS` en `explorar/page.tsx`). Buscar por nombre suelta la localidad (un complejo de otra ciudad daba 0) y elegir una localidad suelta el nombre.
+- **Datos nuevos de F3, leídos en el servidor.** `listPublicFormatSets` (los tamaños de cada complejo de la localidad, cacheado solo para localidades que existen: una ciudad inventada en la URL no crea una entrada de caché) y `findTodayFreeSlotsByTenant` (hasta 3 horarios libres de hoy y el "+N", que cuenta solo horarios con cancha libre). No suman pedidos al balde de `/api/public/*`. Los conteos por tamaño no se suman: un complejo con Fútbol 5 y 7 cuenta una vez en "Ver N complejos" (`matchingCount`).
+- **"Hoy" es el día calendario ART (F3).** Como la ventana de la home. Entre la medianoche y el cierre, un complejo que cierra pasada la medianoche no ofrece en la tarjeta el turno que le queda del día operativo anterior.
+- **Horarios que fallan no son "sin horarios" (F3).** Si `findTodayFreeSlotsByTenant` falla, la tarjeta no dice nada de hoy (se avisa a Sentry). Decir "Hoy no le quedan horarios" sería mentir.
+- **Sin coordenadas en la URL (F3).** La zona guardada lleva coordenadas de ~1 km, pero /explorar escribe en la URL solo `city` y `province`: la URL se comparte. Ordenar por cercanía queda para un link que ya traiga `lat` y `lng`.
+- **Las hojas de la home y de /explorar son las mismas (F3).** Viven en `src/components/site/SearchSheets.tsx`. La de Cancha muestra cuántos complejos tiene cada tamaño solo si recibe `formatSets` (/explorar); en la home queda como en F2.
+- **Grilla de 4 desde 1200 px (F3).** `min-[1200px]:grid-cols-4` de Tailwind no ganaba contra `md:grid-cols-3`: la grilla de tarjetas vive en `explorar.css` (`.ex-grid`).
+- **Stretched link y horarios (F3).** La lista de horarios va arriba del link de la tarjeta con `pointer-events-none` y cada píldora con `pointer-events-auto`: el hueco al lado de las píldoras sigue abriendo la ficha.
+- **e2e locales de F3.** Sin `.env.local`, `next dev` no arranca (`validateServerEnv`) y `/api/status` da 503 sin `SENTRY_DSN`: hay que pasar además `DATABASE_URL` y `WORKER_DATABASE_URL` locales y placeholders de `IMPERSONATION_COOKIE_SECRET`, `ENCRYPTION_KEY` (64 hex), `MP_CLIENT_ID`, `MP_CLIENT_SECRET`, `RESEND_API_KEY` y `SENTRY_DSN`, como el `webServer` de `playwright.config.ts`. Firefox y WebKit no están instalados en la máquina: `cross-browser/` no corre local.
+- **Medir contraste en píldoras (F3).** Con el píxel más desfavorable de toda la caja, el borde verde de la píldora y las esquinas fuera del radio daban falsos 3,5:1. Se mide adentro del radio (6 px arriba y abajo, medio alto a los costados).
 
 ## Reglas de trabajo
 

@@ -6,17 +6,17 @@ import EmptyResults from '@/app/(public)/explorar/components/EmptyResults'
 afterEach(() => cleanup())
 
 describe('EmptyResults', () => {
-  it('sin búsqueda temporal muestra el mensaje genérico + reset', () => {
-    render(<EmptyResults avail={null} />)
+  it('sin resultados muestra el mensaje genérico y el reset', () => {
+    render(<EmptyResults />)
     expect(screen.getByText(/No encontramos complejos/)).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Limpiar búsqueda' }).getAttribute('href')).toBe(
       '/explorar',
     )
   })
 
-  it('con fecha+hora muestra el mensaje de disponibilidad formateado', () => {
-    render(<EmptyResults avail={{ date: '2026-06-15', time: '19:00' }} />)
-    expect(screen.getByText(/15\/06\/2026/)).toBeTruthy()
-    expect(screen.getByText(/19:00/)).toBeTruthy()
+  it('fuera de rango dice que se terminó la lista', () => {
+    render(<EmptyResults outOfRange />)
+    expect(screen.getByRole('heading', { name: 'No hay más complejos para mostrar' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Volver al principio' })).toBeTruthy()
   })
 })

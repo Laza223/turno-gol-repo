@@ -372,3 +372,23 @@ export async function listPublicCities(): Promise<CityCount[]> {
   `)
   return rows as unknown as CityCount[]
 }
+
+/**
+ * Los tamaños de cancha (`court_formats`) de cada complejo visible de la localidad, uno por
+ * complejo. La hoja de Cancha de /explorar saca de acá cuántos complejos tiene cada tamaño y
+ * cuántos quedan con varios marcados: los tamaños se pisan entre sí y no se pueden sumar.
+ * Misma visibilidad y mismo filtro de localidad que searchPublicTenants.
+ */
+export async function listPublicFormatSets(params: {
+  city?: string
+  province?: string
+}): Promise<number[][]> {
+  const conds = publicTenantVisibilityConds()
+  if (params.city) conds.push(eq(tenants.city, params.city))
+  if (params.province) conds.push(eq(tenants.province, params.province))
+  const rows = await getDb()
+    .select({ formats: tenants.courtFormats })
+    .from(tenants)
+    .where(and(...conds))
+  return rows.map((r) => r.formats ?? [])
+}

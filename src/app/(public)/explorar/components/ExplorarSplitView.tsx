@@ -6,9 +6,8 @@ import TenantCard from './TenantCard'
 import ExplorarMapLoader from './ExplorarMapLoader'
 
 /**
- * Vista mapa = split lista + mapa. Desktop: lista (scroll) izquierda + mapa
- * sticky derecha. Mobile: el toggle Lista/Mapa del Toolbar decide; acá se
- * muestra el mapa full-width con la lista colapsada arriba.
+ * Vista mapa = split lista + mapa. Compu: lista (scroll) a la izquierda + mapa sticky a la
+ * derecha. Celu: el mapa arriba y la lista abajo; el botón "Lista" del encabezado vuelve.
  */
 export default function ExplorarSplitView({
   results,
@@ -21,8 +20,8 @@ export default function ExplorarSplitView({
   const [activeId, setActiveId] = useState<string | null>(null)
 
   return (
-    <div className="lg:grid lg:grid-cols-2 lg:gap-4">
-      <div className="order-2 max-h-[calc(100vh-12rem)] space-y-3 overflow-y-auto pr-1 lg:order-1">
+    <div className="flex flex-col lg:grid lg:grid-cols-2 lg:gap-4">
+      <div className="order-2 space-y-3 lg:order-1 lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto lg:pr-1">
         {results.map((tn) => (
           <div
             key={tn.id}

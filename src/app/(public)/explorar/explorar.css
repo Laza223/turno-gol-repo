@@ -1,0 +1,98 @@
+/* /explorar (portal de vidrio F3). La grilla del mockup: dos tarjetas por fila en el celu, tres
+   desde 768 px y cuatro desde 1200 px (`buscador.html`, `.grid`). */
+.ex-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (min-width: 768px) {
+  .ex-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+@media (min-width: 1200px) {
+  .ex-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Movimiento (dirección §4.5). Solo transform y opacity. */
+
+/* Apretar: la tarjeta responde al dedo y vuelve con el resorte toque. */
+.ex-card {
+  transition: scale var(--spring-toque);
+}
+.ex-card:has(> div > h3 a:active),
+.ex-card:active:not(:has(button:active, .ex-slot:active)) {
+  scale: 0.985;
+  transition-duration: var(--dur-1);
+}
+.ex-slot {
+  transition: scale var(--spring-toque);
+}
+.ex-slot:active {
+  scale: 0.96;
+  transition-duration: var(--dur-1);
+}
+
+@media (hover: hover) {
+  .ex-card .ex-card__img {
+    transition: transform 250ms var(--portal-ease-out);
+  }
+  .ex-card:hover .ex-card__img {
+    transform: scale(1.03);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Escalonado: hasta 8 tarjetas, 40 ms entre una y otra; las demás entran con la octava. */
+  .ex-grid[data-entrada] > .ex-card {
+    animation: ex-subir var(--dur-3) var(--portal-ease-out) both;
+    animation-delay: calc(var(--i, 0) * 40ms);
+  }
+  @keyframes ex-subir {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+  }
+
+  /* Al cambiar un filtro, la lista hace un fundido cruzado de 180 ms. */
+  ::view-transition-old(.explorar-fundido),
+  ::view-transition-new(.explorar-fundido) {
+    animation-duration: 180ms;
+  }
+
+  /* Hoja de Cancha: el tilde de cada tamaño hace su toque al marcarlo. */
+  .search-fmt:has(:checked) .search-fmt__ck {
+    animation: search-toque var(--spring-toque) both;
+  }
+  @keyframes search-toque {
+    from {
+      scale: 0.6;
+    }
+  }
+
+  /* El número del botón ("Ver 6 complejos") cambia por reemplazo: entra desde abajo. */
+  .search-replace {
+    animation: search-reemplazo 180ms var(--portal-ease-out) both;
+  }
+  @keyframes search-reemplazo {
+    from {
+      opacity: 0;
+      transform: translateY(60%);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ex-card,
+  .ex-slot {
+    transition: none;
+  }
+  .ex-card:active,
+  .ex-slot:active {
+    scale: 1;
+  }
+}

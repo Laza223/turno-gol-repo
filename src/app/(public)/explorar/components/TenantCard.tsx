@@ -1,272 +1,184 @@
+import { ViewTransition, type CSSProperties } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { MapPin, Zap } from 'lucide-react'
 import type { PublicTenantCard } from '@/modules/tenants/search.service'
-import type { SlotPill } from '@/modules/tenants/availability-search.service'
-import { formatArs, formatPerPlayerArs } from '@/lib/format'
+import type { TodayFreeSlots } from '@/modules/tenants/availability-search.service'
+import { formatArs } from '@/lib/format'
+import { formatsLabel } from '@/lib/formats-label'
 import { buildFichaHref, buildReservarHref } from '@/lib/booking/reserve-url'
-import { activeAmenities, AMENITIES } from '@/components/public/amenities'
-import { formatLabel, surfaceLabel } from '@/components/public/courtFacets'
-import RatingStars from '@/components/public/RatingStars'
 import FavoriteButton from '@/components/public/FavoriteButton'
-import TenantCardCarousel from './TenantCardCarousel'
+import { cn } from '@/lib/utils'
+
+/** La distancia como se lee en la tarjeta: "a 1,2 km". */
+function distanceLabel(km: number): string {
+  return `a ${km.toLocaleString('es-AR', { maximumFractionDigits: 1 })} km`
+}
 
 /**
- * Tarjeta de complejo para /explorar (tema "Matchday"). Patrón stretched-link:
- * el <Link> del título cubre toda la card con ::after; favorito y carrusel son
- * hermanos con z-index para que el HTML sea válido. Overlays sobre la foto:
- * SOLO badge online + favorito (precio y rating viven en el body).
+ * Tarjeta de complejo de /explorar en vidrio pintado (portal de vidrio, F3: `.xcard` de
+ * `buscador.html`). Patrón stretched-link: el link del nombre cubre la tarjeta con `::after`; el
+ * favorito y los horarios van arriba con z-index para que el HTML sea válido.
  *
- * `date`: el día buscado. Si viene, el link al complejo lo lleva (`?date=`) y la ficha abre ese día.
+ * `today`: los horarios libres de hoy (`findTodayFreeSlotsByTenant`). `null` = hoy no le quedan;
+ * sin el dato (la lectura falló) la tarjeta no dice nada de hoy. Un complejo sin reserva online no
+ * muestra horarios.
  */
 export default function TenantCard({
   tenant,
   initialFavorited = false,
-  photos = [],
-  slotPills,
-  date,
+  today,
+  photo = tenant.coverUrl,
+  index = 0,
   variant = 'grid',
 }: {
   tenant: PublicTenantCard
   initialFavorited?: boolean
-  photos?: string[]
-  slotPills?: { date: string; slots: SlotPill[] }
-  date?: string
+  today?: TodayFreeSlots | null
+  /** La portada o, sin portada, la primera foto de una cancha. */
+  photo?: string | null
+  /** El orden en la grilla, para la entrada escalonada (tope de 8). */
+  index?: number
   variant?: 'grid' | 'compact'
 }) {
-  if (variant === 'compact')
-    return <TenantCardCompact tenant={tenant} initialFavorited={initialFavorited} />
-
-  const fromPrice = tenant.fromPriceCents != null ? formatArs(tenant.fromPriceCents) : null
-  const perPlayer = formatPerPlayerArs(tenant.fromPricePerPlayerCents)
-  const amenities = activeAmenities(tenant.amenities).slice(0, 4)
-  const formats = tenant.courtFormats.slice(0, 3)
-  const surfaces = tenant.courtSurfaces.slice(0, 1)
-  const allPhotos = Array.from(
-    new Set([tenant.coverUrl, ...photos].filter((p): p is string => Boolean(p))),
-  )
-  const fichaHref = buildFichaHref(tenant.slug, date ? { date } : {})
+  const fichaHref = buildFichaHref(tenant.slug, {})
+  const meta = [
+    tenant.distanceKm != null ? distanceLabel(tenant.distanceKm) : null,
+    formatsLabel(tenant.courtFormats),
+  ]
+    .filter(Boolean)
+    .join(' · ')
+  const price = tenant.fromPriceCents != null ? formatArs(tenant.fromPriceCents) : null
+  const compact = variant === 'compact'
 
   return (
-    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-border border-t-2 border-t-emerald-500 bg-card shadow-xs transition-all duration-300 hover:-translate-y-1 hover:border-emerald-400/60 hover:shadow-xl hover:shadow-emerald-500/10 active:scale-[0.99] focus-within:ring-2 focus-within:ring-emerald-500 focus-within:ring-offset-2 motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:hover:shadow-emerald-500/15">
-      <div className="relative aspect-video w-full overflow-hidden bg-muted">
-        {allPhotos.length > 0 ? (
-          <TenantCardCarousel photos={allPhotos} name={tenant.name} href={fichaHref} />
-        ) : (
-          <div
-            className="relative flex h-full w-full items-center justify-center overflow-hidden"
-            style={{
-              background:
-                'radial-gradient(130% 130% at 78% 0%, rgba(16,185,129,.45), transparent 58%), linear-gradient(140deg, #065f46, #022c22)',
-            }}
-          >
+    <article
+      className={cn(
+        'ex-card glass-painted group relative flex min-w-0 overflow-hidden rounded-3xl text-portal-ink has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-portal-green',
+        compact ? 'flex-row gap-3 p-2.5' : 'flex-col',
+      )}
+      style={{ '--i': Math.min(index, 8) } as CSSProperties}
+    >
+      <div
+        className={cn(
+          'relative shrink-0 overflow-hidden bg-portal-inner',
+          compact ? 'h-20 w-28 rounded-2xl' : 'aspect-4/3 w-full',
+        )}
+      >
+        {/* La foto lleva su nombre de transición: F9 la conecta con la portada de la ficha. */}
+        <ViewTransition name={`complejo-foto-${tenant.slug}`} share="complejo-foto" default="none">
+          {photo ? (
+            <Image
+              src={photo}
+              alt={`Cancha de ${tenant.name}`}
+              fill
+              sizes={
+                compact
+                  ? '112px'
+                  : '(width >= 1200px) 300px, (width >= 768px) 33vw, (width >= 640px) 290px, 50vw'
+              }
+              className="ex-card__img object-cover"
+            />
+          ) : (
             <div
               aria-hidden
-              className="absolute inset-0"
-              style={{
-                backgroundImage:
-                  'linear-gradient(90deg, rgba(255,255,255,.05) 1px, transparent 1px), linear-gradient(rgba(255,255,255,.05) 1px, transparent 1px)',
-                backgroundSize: '28px 28px',
-              }}
-            />
-            <span className="font-display text-5xl font-black italic tracking-tight text-white/16">
+              className="flex size-full items-center justify-center bg-linear-to-br from-portal-slot to-portal-inner text-3xl font-bold tracking-tight text-portal-slot-ink"
+            >
               {tenant.name.slice(0, 2).toUpperCase()}
-            </span>
-          </div>
+            </div>
+          )}
+        </ViewTransition>
+        {!compact && (
+          <FavoriteButton
+            tenantId={tenant.id}
+            initialFavorited={initialFavorited}
+            className="absolute top-2 right-2 z-20 md:size-11"
+          />
         )}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 z-10 bg-linear-to-t from-slate-950/35 via-transparent to-transparent"
-        />
-        {tenant.allowOnlineBooking && (
-          <span className="absolute left-3 top-3 z-20 inline-flex items-center gap-1.5 rounded-full bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground shadow-md shadow-emerald-900/30">
-            <Zap className="h-3 w-3" aria-hidden />
-            Reservá online
-          </span>
+      </div>
+
+      <div
+        className={cn(
+          'flex min-w-0 flex-1 flex-col gap-[3px]',
+          compact ? 'justify-center pr-12' : 'px-3 pt-3 pb-3.5 md:px-3.5 md:pt-3.5 md:pb-4',
         )}
+      >
+        <h3 className="text-base leading-5 font-semibold tracking-[-0.01em] [overflow-wrap:anywhere]">
+          <Link
+            href={fichaHref}
+            className="after:absolute after:inset-0 after:z-10 focus-visible:outline-hidden"
+          >
+            {tenant.name}
+          </Link>
+        </h3>
+        {meta && <p className="truncate text-[13px] leading-[18px] text-portal-soft">{meta}</p>}
+        <p className="text-[13px] leading-[18px] text-portal-soft tabular-nums">
+          {price ? (
+            <>
+              desde <b className="font-semibold text-portal-ink">{price}</b>
+            </>
+          ) : (
+            'Precio en su página'
+          )}
+        </p>
+
+        {!compact &&
+          (!tenant.allowOnlineBooking ? (
+            <p className="mt-2 text-[13px] leading-[18px] text-portal-soft">
+              No toma reservas online. En su página ves cómo reservar.
+            </p>
+          ) : today === undefined ? null : (
+            <>
+              <p className="mt-2 text-[13px] leading-[18px] font-semibold">Hoy</p>
+              {today ? (
+                <ul
+                  aria-label="Horarios libres de hoy"
+                  // Solo las píldoras quedan arriba del link de la tarjeta: el hueco a su lado
+                  // sigue abriendo la ficha.
+                  className="pointer-events-none relative z-20 mt-1 grid grid-cols-[repeat(auto-fill,minmax(62px,1fr))] gap-1.5"
+                >
+                  {today.pills.map((s) => (
+                    <li key={s.time} className="pointer-events-auto">
+                      <Link
+                        href={buildReservarHref(tenant.slug, {
+                          courtId: s.courtId,
+                          date: today.date,
+                          time: s.time,
+                        })}
+                        aria-label={`Reservar a las ${s.time}`}
+                        className="ex-slot flex h-11 items-center justify-center rounded-full border border-portal-slot-line bg-portal-slot text-sm font-semibold text-portal-slot-ink tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-portal-green"
+                      >
+                        {s.time}
+                      </Link>
+                    </li>
+                  ))}
+                  {today.more > 0 && (
+                    <li className="pointer-events-auto">
+                      <Link
+                        href={fichaHref}
+                        aria-label={`Ver ${today.more} horarios más de hoy`}
+                        className="ex-slot flex h-11 items-center justify-center rounded-full border border-portal-inner-line text-sm font-semibold text-portal-soft tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-portal-green"
+                      >
+                        +{today.more}
+                      </Link>
+                    </li>
+                  )}
+                </ul>
+              ) : (
+                <p className="mt-1 text-[13px] leading-[18px] text-portal-soft">
+                  Hoy no le quedan horarios. Mirá otros días en su página.
+                </p>
+              )}
+            </>
+          ))}
+      </div>
+
+      {compact && (
         <FavoriteButton
           tenantId={tenant.id}
           initialFavorited={initialFavorited}
-          className="absolute right-3 top-3 z-20"
+          className="absolute top-1/2 right-2 z-20 -translate-y-1/2 md:size-11"
         />
-      </div>
-
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="text-base font-semibold text-foreground transition-colors group-hover:text-emerald-700 dark:group-hover:text-emerald-400">
-            <Link
-              href={fichaHref}
-              className="after:absolute after:inset-0 focus-visible:outline-hidden"
-            >
-              {tenant.name}
-            </Link>
-          </h3>
-          {tenant.reviewCount > 0 && (
-            <span className="shrink-0 pt-0.5">
-              <RatingStars rating={tenant.avgRating} count={tenant.reviewCount} />
-            </span>
-          )}
-        </div>
-
-        <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-          <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          <span className="truncate">
-            {tenant.city}, {tenant.province}
-            {tenant.distanceKm != null && (
-              <span className="tabular-nums"> · a {tenant.distanceKm} km</span>
-            )}
-          </span>
-        </p>
-
-        {(formats.length > 0 || surfaces.length > 0) && (
-          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-            {formats.map((f) => (
-              <span
-                key={`f-${f}`}
-                className="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20"
-              >
-                {formatLabel(f)}
-              </span>
-            ))}
-            {surfaces.map((s) => (
-              <span key={`s-${s}`} className="text-xs text-muted-foreground">
-                · {surfaceLabel(s)}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {tenant.allowOnlineBooking && slotPills && slotPills.slots.length > 0 && (
-          <div
-            role="group"
-            aria-label={`Turnos libres el ${slotPills.date.split('-').reverse().join('/')}`}
-            className="relative z-10 flex flex-wrap gap-1.5 pt-0.5"
-          >
-            {slotPills.slots.map((s) => (
-              <Link
-                key={s.time}
-                href={buildReservarHref(tenant.slug, {
-                  courtId: s.courtId,
-                  date: slotPills.date,
-                  time: s.time,
-                })}
-                aria-label={`Reservar a las ${s.time}`}
-                className="inline-flex items-center rounded-md bg-primary px-2.5 py-1 text-xs font-semibold tabular-nums text-primary-foreground shadow-xs transition-[background-color,scale] hover:bg-primary/90 active:scale-95 motion-reduce:active:scale-100"
-              >
-                {s.time}
-              </Link>
-            ))}
-          </div>
-        )}
-
-        <div className="mt-auto flex items-end justify-between gap-2 pt-2">
-          {amenities.length > 0 ? (
-            <ul className="flex flex-wrap items-center gap-2 text-muted-foreground">
-              {amenities.map((key) => {
-                const { label, Icon } = AMENITIES[key]
-                return (
-                  <li key={key} title={label} className="inline-flex items-center">
-                    <Icon className="h-4 w-4" aria-hidden />
-                    <span className="sr-only">{label}</span>
-                  </li>
-                )
-              })}
-            </ul>
-          ) : (
-            <span />
-          )}
-          {/* El número grande es lo que pone CADA UNO: es como el jugador
-              piensa el precio. El total del turno queda abajo porque es lo que
-              se cobra de verdad y lo que filtra el buscador. Un solo "desde"
-              gobierna las dos líneas: los dos son mínimos del complejo. */}
-          {(perPlayer ?? fromPrice) && (
-            <div className="text-right">
-              <p className="flex items-baseline justify-end gap-1">
-                <span className="font-logo text-[10px] font-bold uppercase tracking-[.06em] text-muted-foreground">
-                  desde
-                </span>
-                <span className="font-display text-2xl font-bold text-emerald-700 tabular-nums dark:text-emerald-400">
-                  {perPlayer ?? fromPrice}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {perPlayer ? 'por jugador' : '/turno'}
-                </span>
-              </p>
-              {perPlayer && fromPrice && (
-                <p className="text-[11px] tabular-nums text-muted-foreground">
-                  {fromPrice} el turno
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </article>
-  )
-}
-
-function TenantCardCompact({
-  tenant,
-  initialFavorited = false,
-}: {
-  tenant: PublicTenantCard
-  initialFavorited?: boolean
-}) {
-  const fromPrice = tenant.fromPriceCents != null ? formatArs(tenant.fromPriceCents) : null
-  const perPlayer = formatPerPlayerArs(tenant.fromPricePerPlayerCents)
-  return (
-    <article className="group relative flex gap-3 rounded-xl border border-border bg-card p-2.5 shadow-xs transition-colors hover:border-emerald-400/60 focus-within:ring-2 focus-within:ring-emerald-500">
-      <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-muted">
-        {tenant.coverUrl ? (
-          <Image
-            src={tenant.coverUrl}
-            alt={`Cancha de ${tenant.name}`}
-            fill
-            sizes="112px"
-            className="object-cover"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-emerald-50 to-muted text-lg font-bold text-emerald-600/40 dark:from-emerald-500/10 dark:text-emerald-300">
-            {tenant.name.slice(0, 2).toUpperCase()}
-          </div>
-        )}
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="truncate text-sm font-semibold text-foreground">
-            <Link href={`/${tenant.slug}`} className="after:absolute after:inset-0">
-              {tenant.name}
-            </Link>
-          </h3>
-          {tenant.reviewCount > 0 && (
-            <span className="shrink-0">
-              <RatingStars rating={tenant.avgRating} count={tenant.reviewCount} />
-            </span>
-          )}
-        </div>
-        <p className="truncate text-xs text-muted-foreground">
-          {tenant.city}, {tenant.province}
-        </p>
-        {/* La card compacta (split view del mapa) tiene 3 líneas de alto: entra
-            un solo precio. Va el por jugador, que es el que muestra el pin del
-            mapa de al lado; el total queda para lectores de pantalla. */}
-        {(perPlayer ?? fromPrice) && (
-          <p className="mt-auto flex items-baseline gap-1">
-            <span className="font-display text-base font-bold text-emerald-700 tabular-nums dark:text-emerald-400">
-              {perPlayer ?? fromPrice}
-            </span>
-            <span className="whitespace-nowrap text-xs text-muted-foreground">
-              {perPlayer ? 'por jugador' : '/turno'}
-            </span>
-            {perPlayer && fromPrice && <span className="sr-only">desde {fromPrice} el turno</span>}
-          </p>
-        )}
-      </div>
-      <FavoriteButton
-        tenantId={tenant.id}
-        initialFavorited={initialFavorited}
-        className="absolute right-2 top-2 z-20"
-      />
+      )}
     </article>
   )
 }

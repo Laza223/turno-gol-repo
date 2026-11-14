@@ -37,7 +37,7 @@ export const AMENITIES: Record<AmenityKey, { label: string; Icon: LucideIcon }> 
 }
 
 /** Orden de presentación (los más relevantes para elegir cancha primero). */
-export const AMENITY_ORDER: AmenityKey[] = [
+const AMENITY_ORDER: AmenityKey[] = [
   'techado',
   'iluminacion',
   'estacionamiento',

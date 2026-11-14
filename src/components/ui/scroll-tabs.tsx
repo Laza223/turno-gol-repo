@@ -28,7 +28,7 @@ type Props = {
 
 /**
  * Tab bar de links con scroll horizontal propio en mobile (receta
- * QuickFilters/WeekStrip): los tabs nunca desbordan la página a 360px
+ * WeekStrip): los tabs nunca desbordan la página a 360px
  * (MASTER §12 "sin scroll horizontal a 375px") y mantienen touch de 44px
  * (§10) vía min-h-11 md:min-h-9.
  *

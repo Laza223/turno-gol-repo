@@ -1,17 +1,15 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
-import type { PublicTenantCard } from '@/modules/tenants/search.service'
+import { publicTenantCard } from '@/test/fixtures/tenant'
 
-// next/image necesita config de runtime: lo simplificamos a un <img> marcado,
-// para poder asertar que TODAS las imágenes de la card pasan por next/image.
+// next/image necesita config de runtime: lo simplificamos a un <img> marcado.
 vi.mock('next/image', () => ({
   default: ({ fill: _fill, ...props }: { fill?: boolean } & Record<string, unknown>) => {
     // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
     return <img data-next-image {...(props as Record<string, never>)} />
   },
 }))
-
 // El botón de favorito usa hooks de toast/fetch que no aportan a estos tests.
 vi.mock('@/components/public/FavoriteButton', () => ({ default: () => null }))
 
@@ -20,279 +18,91 @@ import { buildReservarHref } from '@/lib/booking/reserve-url'
 
 afterEach(() => cleanup())
 
-const baseTenant: PublicTenantCard = {
+const tenant = publicTenantCard({
   id: 't1',
   slug: 'el-potrero',
   name: 'El Potrero',
-  address: 'Av. Siempreviva 742',
-  city: 'Rosario',
-  province: 'Santa Fe',
-  logoUrl: null,
   coverUrl: null,
   allowOnlineBooking: true,
-  fromPriceCents: null,
-  fromPricePerPlayerCents: null,
-  amenities: {},
-  avgRating: 0,
-  reviewCount: 0,
-  distanceKm: null,
-  latitude: null,
-  longitude: null,
-  courtSurfaces: [],
-  courtFormats: [],
+  fromPriceCents: 3_600_000,
+  courtFormats: [5, 7],
+  distanceKm: 1.2,
+})
+
+const today = {
+  date: '2026-06-15',
+  pills: [
+    { time: '19:00', courtId: 'c1', durationMins: 60 },
+    { time: '20:00', courtId: 'c2', durationMins: 60 },
+    { time: '22:00', courtId: 'c1', durationMins: 60 },
+  ],
+  more: 3,
 }
 
-// Los slides van dentro de <Link aria-hidden> (el link real es el título), así
-// que getAllByRole('img') no los ve: consultamos el DOM directo.
-function imgs(container: HTMLElement): HTMLImageElement[] {
-  return Array.from(container.querySelectorAll('img'))
-}
+describe('TenantCard (vidrio)', () => {
+  it('el nombre lleva a la ficha y la foto pasa por next/image con su alt', () => {
+    const { container } = render(<TenantCard tenant={tenant} photo="https://x/foto.webp" />)
+    expect(screen.getByRole('link', { name: 'El Potrero' }).getAttribute('href')).toBe(
+      '/el-potrero',
+    )
+    const img = container.querySelector('img')
+    expect(img?.hasAttribute('data-next-image')).toBe(true)
+    expect(img?.getAttribute('alt')).toBe('Cancha de El Potrero')
+  })
 
-describe('TenantCard — carrusel de fotos', () => {
-  it('sin fotos ni cover muestra el fallback con iniciales y ninguna imagen', () => {
-    const { container } = render(<TenantCard tenant={baseTenant} photos={[]} />)
+  it('sin foto muestra las iniciales', () => {
+    render(<TenantCard tenant={tenant} />)
     expect(screen.getByText('EL')).toBeTruthy()
-    expect(imgs(container)).toHaveLength(0)
   })
 
-  it('con una sola foto renderiza la imagen sin controles de carrusel', () => {
+  it('la línea de distancia y tamaños, y el precio "desde" por turno', () => {
+    render(<TenantCard tenant={tenant} />)
+    expect(screen.getByText('a 1,2 km · Fútbol 5 y 7')).toBeTruthy()
+    expect(screen.getByText(/desde/).textContent).toMatch(/desde \$\s?36\.000/)
+  })
+
+  it('con precios ocultos dice "Precio en su página" y no muestra ningún $', () => {
     const { container } = render(
-      <TenantCard tenant={{ ...baseTenant, coverUrl: '/cover.jpg' }} photos={[]} />,
+      <TenantCard tenant={{ ...tenant, fromPriceCents: null, fromPricePerPlayerCents: null }} />,
     )
-    const images = imgs(container)
-    expect(images).toHaveLength(1)
-    expect(images[0].getAttribute('alt')).toBe('Cancha de El Potrero')
-    expect(screen.queryByRole('button', { name: 'Foto siguiente' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Foto anterior' })).toBeNull()
+    expect(screen.getByText('Precio en su página')).toBeTruthy()
+    expect(container.textContent).not.toMatch(/\$/)
   })
 
-  it('con 3 fotos renderiza los 3 slides y los controles, y el track es focuseable', () => {
-    const { container } = render(
-      <TenantCard
-        tenant={{ ...baseTenant, coverUrl: '/cover.jpg' }}
-        photos={['/a.jpg', '/b.jpg']}
-      />,
+  it('los horarios de hoy reservan esa hora en esa cancha y "+3" lleva a la ficha', () => {
+    render(<TenantCard tenant={tenant} today={today} />)
+    expect(screen.getByRole('list', { name: 'Horarios libres de hoy' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Reservar a las 20:00' }).getAttribute('href')).toBe(
+      buildReservarHref('el-potrero', { courtId: 'c2', date: '2026-06-15', time: '20:00' }),
     )
-    expect(imgs(container)).toHaveLength(3)
-    expect(screen.getByRole('button', { name: 'Foto anterior' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Foto siguiente' })).toBeTruthy()
-    const track = screen.getByLabelText('Fotos de El Potrero')
-    expect(track.getAttribute('tabindex')).toBe('0')
+    const more = screen.getByRole('link', { name: 'Ver 3 horarios más de hoy' })
+    expect(more.textContent).toBe('+3')
+    expect(more.getAttribute('href')).toBe('/el-potrero')
   })
 
-  it('con 6 fotos trunca a 5 slides y muestra el contador "+1"', () => {
-    const { container } = render(
-      <TenantCard
-        tenant={{ ...baseTenant, coverUrl: '/1.jpg' }}
-        photos={['/2.jpg', '/3.jpg', '/4.jpg', '/5.jpg', '/6.jpg']}
-      />,
-    )
-    expect(imgs(container)).toHaveLength(5)
-    expect(screen.getByText('+1')).toBeTruthy()
+  it('si la lectura de horarios falló, no dice nada de hoy (no miente "sin horarios")', () => {
+    render(<TenantCard tenant={tenant} />)
+    expect(screen.queryByText('Hoy')).toBeNull()
+    expect(screen.queryByText(/Hoy no le quedan horarios/)).toBeNull()
   })
 
-  it('deduplica el cover repetido entre las fotos de canchas', () => {
-    const { container } = render(
-      <TenantCard tenant={{ ...baseTenant, coverUrl: '/a.jpg' }} photos={['/a.jpg', '/b.jpg']} />,
-    )
-    expect(imgs(container)).toHaveLength(2)
+  it('sin horarios hoy lo dice y manda a la ficha', () => {
+    render(<TenantCard tenant={tenant} today={null} />)
+    expect(
+      screen.getByText('Hoy no le quedan horarios. Mirá otros días en su página.'),
+    ).toBeTruthy()
   })
 
-  it('todas las imágenes pasan por next/image (no <img> crudo) y con lazy loading', () => {
-    const { container } = render(
-      <TenantCard tenant={{ ...baseTenant, coverUrl: '/1.jpg' }} photos={['/2.jpg', '/3.jpg']} />,
-    )
-    const images = imgs(container)
-    expect(images.length).toBeGreaterThan(0)
-    for (const img of images) {
-      expect(img.hasAttribute('data-next-image')).toBe(true)
-      expect(img.getAttribute('loading')).toBe('lazy')
-    }
-  })
-})
-
-describe('TenantCard — píldoras de turnos libres', () => {
-  const pills = {
-    date: '2026-06-15',
-    slots: [
-      { time: '18:00', courtId: 'c9', durationMins: 60 },
-      { time: '19:00', courtId: 'c9', durationMins: 60 },
-    ],
-  }
-
-  it('renderiza las píldoras como links directos a la reserva con court+fecha+hora+duración', () => {
-    render(<TenantCard tenant={baseTenant} slotPills={pills} />)
-    const link = screen.getByRole('link', { name: 'Reservar a las 18:00' })
-    expect(link.getAttribute('href')).toBe(
-      '/el-potrero/reservar?court=c9&date=2026-06-15&time=18:00&dur=60',
-    )
-    expect(screen.getByRole('link', { name: 'Reservar a las 19:00' })).toBeTruthy()
-    expect(screen.getByRole('group', { name: 'Turnos libres el 15/06/2026' })).toBeTruthy()
-  })
-
-  it('sin búsqueda temporal (sin slotPills) la card no muestra turnos', () => {
-    render(<TenantCard tenant={baseTenant} />)
-    expect(screen.queryByText('18:00')).toBeNull()
+  it('sin reserva online no muestra horarios aunque lleguen', () => {
+    render(<TenantCard tenant={{ ...tenant, allowOnlineBooking: false }} today={today} />)
     expect(screen.queryByRole('link', { name: /Reservar a las/ })).toBeNull()
+    expect(
+      screen.getByText('No toma reservas online. En su página ves cómo reservar.'),
+    ).toBeTruthy()
   })
 
-  it('si el complejo no acepta reserva online no muestra píldoras aunque lleguen', () => {
-    render(<TenantCard tenant={{ ...baseTenant, allowOnlineBooking: false }} slotPills={pills} />)
-    expect(screen.queryByText('18:00')).toBeNull()
+  it('sin distancia la línea muestra solo los tamaños', () => {
+    render(<TenantCard tenant={{ ...tenant, distanceKm: null }} />)
+    expect(screen.getByText('Fútbol 5 y 7')).toBeTruthy()
   })
-})
-
-describe('TenantCard — body (rediseño Matchday)', () => {
-  it('el número grande es el precio POR JUGADOR y el total queda como línea secundaria', () => {
-    render(
-      <TenantCard
-        tenant={{ ...baseTenant, fromPriceCents: 1200000, fromPricePerPlayerCents: 120000 }}
-      />,
-    )
-    const perPlayer = screen.getByText(/\$\s?1\.200$/)
-    expect(perPlayer.className).toContain('font-display')
-    expect(screen.getByText('por jugador')).toBeTruthy()
-    expect(screen.getByText(/\$\s?12\.000 el turno/)).toBeTruthy()
-  })
-
-  it('sin el por-jugador denormalizado cae al total del turno', () => {
-    render(
-      <TenantCard
-        tenant={{ ...baseTenant, fromPriceCents: 1200000, fromPricePerPlayerCents: null }}
-      />,
-    )
-    expect(screen.getByText(/\$\s?12\.000/)).toBeTruthy()
-    expect(screen.getByText('/turno')).toBeTruthy()
-    expect(screen.queryByText('por jugador')).toBeNull()
-  })
-
-  it('sin precio no rompe ni muestra "/turno"', () => {
-    render(<TenantCard tenant={{ ...baseTenant, fromPriceCents: null }} />)
-    expect(screen.queryByText('/turno')).toBeNull()
-    expect(screen.queryByText('por jugador')).toBeNull()
-  })
-
-  it('muestra el rating en el body cuando hay reseñas', () => {
-    render(<TenantCard tenant={{ ...baseTenant, avgRating: 4.8, reviewCount: 123 }} />)
-    // RatingStars renderiza el número y el conteo
-    expect(screen.getByText(/4[.,]8/)).toBeTruthy()
-  })
-
-  it('muestra los formatos como chips de "Fútbol N"', () => {
-    render(<TenantCard tenant={{ ...baseTenant, courtFormats: [5, 7] }} />)
-    expect(screen.getByText('Fútbol 5')).toBeTruthy()
-    expect(screen.getByText('Fútbol 7')).toBeTruthy()
-  })
-
-  it('muestra el badge "Reservá online" cuando corresponde', () => {
-    render(<TenantCard tenant={{ ...baseTenant, allowOnlineBooking: true }} />)
-    expect(screen.getByText('Reservá online')).toBeTruthy()
-  })
-})
-
-describe('TenantCard — variante compact', () => {
-  it('muestra nombre, precio por jugador y link al perfil; sin controles de carrusel', () => {
-    render(
-      <TenantCard
-        tenant={{
-          ...baseTenant,
-          coverUrl: '/c.jpg',
-          fromPriceCents: 950000,
-          fromPricePerPlayerCents: 90000,
-        }}
-        variant="compact"
-      />,
-    )
-    expect(screen.getByRole('link', { name: /El Potrero/ }).getAttribute('href')).toBe(
-      '/el-potrero',
-    )
-    // La card compacta tiene 3 líneas: entra un solo precio, el por jugador.
-    expect(screen.getByText(/\$\s?900$/)).toBeTruthy()
-    expect(screen.getByText('por jugador')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Foto siguiente' })).toBeNull()
-  })
-})
-
-describe('TenantCard — links', () => {
-  it('el link de cada horario sale de buildReservarHref (no se concatena a mano)', () => {
-    render(
-      <TenantCard
-        tenant={baseTenant}
-        slotPills={{
-          date: '2026-06-15',
-          slots: [{ time: '18:00', courtId: 'c9', durationMins: 60 }],
-        }}
-      />,
-    )
-    const href = screen.getByRole('link', { name: 'Reservar a las 18:00' }).getAttribute('href')
-    expect(href).toBe(
-      buildReservarHref('el-potrero', { courtId: 'c9', date: '2026-06-15', time: '18:00' }),
-    )
-    // La misma URL que se concatenaba a mano: pasar al helper no cambia ningún link.
-    expect(href).toBe('/el-potrero/reservar?court=c9&date=2026-06-15&time=18:00&dur=60')
-  })
-
-  it('con día buscado, el título lleva ?date= a la ficha; sin día, va pelado', () => {
-    const { rerender } = render(<TenantCard tenant={baseTenant} date="2026-06-15" />)
-    expect(screen.getByRole('link', { name: 'El Potrero' }).getAttribute('href')).toBe(
-      '/el-potrero?date=2026-06-15',
-    )
-    rerender(<TenantCard tenant={baseTenant} />)
-    expect(screen.getByRole('link', { name: 'El Potrero' }).getAttribute('href')).toBe(
-      '/el-potrero',
-    )
-  })
-
-  it('con día buscado, el carrusel también lleva a la ficha de ese día', () => {
-    const { container } = render(
-      <TenantCard tenant={{ ...baseTenant, coverUrl: '/c.jpg' }} date="2026-06-15" />,
-    )
-    expect(container.querySelector('a[aria-hidden]')?.getAttribute('href')).toBe(
-      '/el-potrero?date=2026-06-15',
-    )
-  })
-})
-
-describe('TenantCard — precios ocultos (hide_public_prices)', () => {
-  const hidden = { ...baseTenant, fromPriceCents: null, fromPricePerPlayerCents: null }
-  const slotPills = {
-    date: '2026-06-15',
-    slots: [{ time: '18:00', courtId: 'c9', durationMins: 60 }],
-  }
-
-  /** Todo el texto del DOM y el valor de todo atributo de accesibilidad / texto alternativo. */
-  function domText(container: HTMLElement): string {
-    const attrs = Array.from(container.querySelectorAll('*')).flatMap((el) =>
-      ['aria-label', 'title', 'alt'].map((a) => el.getAttribute(a) ?? ''),
-    )
-    return `${container.textContent}\n${attrs.join('\n')}`
-  }
-
-  it.each(['grid', 'compact'] as const)(
-    'variante %s: sin precio no hay "$" en ningún lado',
-    (variant) => {
-      const { container } = render(
-        <TenantCard
-          tenant={hidden}
-          variant={variant}
-          slotPills={variant === 'grid' ? slotPills : undefined}
-        />,
-      )
-      expect(domText(container)).not.toContain('$')
-      expect(screen.queryByText(/por jugador|\/turno|el turno/)).toBeNull()
-    },
-  )
-
-  it.each(['grid', 'compact'] as const)(
-    'variante %s (control): con precio sí aparece',
-    (variant) => {
-      const { container } = render(
-        <TenantCard
-          tenant={{ ...baseTenant, fromPriceCents: 1200000, fromPricePerPlayerCents: 120000 }}
-          variant={variant}
-        />,
-      )
-      expect(domText(container)).toContain('$')
-    },
-  )
 })

@@ -4,31 +4,39 @@ import { cleanup, render, screen } from '@testing-library/react'
 import type { PublicTenantCard } from '@/modules/tenants/search.service'
 import { publicTenantCard } from '@/test/fixtures/tenant'
 
-// El cableado de /explorar: la página es quien le pasa a los hijos el día (hora sin día = hoy
-// ART), el orden realmente aplicado y el prefijo de ids del sidebar. Los hijos tienen sus
-// propios tests; acá se renderiza la página con lo de afuera mockeado.
-const findAvailableTenantIds = vi.fn(async (_p: { date: string; time: string }) => [] as string[])
-const searchPublicTenants = vi.fn(async () => ({ results: [] as PublicTenantCard[], total: 0 }))
+// El cableado de /explorar: qué parámetros lee la página, qué le pide a la búsqueda y qué
+// horarios de hoy pide. Los hijos tienen sus propios tests; acá se renderiza la página con lo de
+// afuera mockeado.
+type SearchArgs = Record<string, unknown>
+const searchPublicTenants = vi.fn(async (_p: SearchArgs) => ({
+  results: [] as PublicTenantCard[],
+  total: 0,
+}))
+const findTodayFreeSlotsByTenant = vi.fn(
+  async (_p: { tenantIds: string[]; formats?: number[] }) => ({}),
+)
 
 vi.mock('next/cache', () => ({ unstable_cache: <T,>(fn: T) => fn }))
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(''),
+vi.mock('next/image', () => ({
+  default: ({ fill: _fill, ...props }: { fill?: boolean } & Record<string, unknown>) => {
+    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+    return <img {...(props as Record<string, never>)} />
+  },
 }))
 vi.mock('@/modules/tenants/search.service', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/modules/tenants/search.service')>()),
-  searchPublicTenants: () => searchPublicTenants(),
+  searchPublicTenants: (p: SearchArgs) => searchPublicTenants(p),
   listPublicCities: async () => [],
+  listPublicFormatSets: async () => [],
   getCourtPhotosByTenant: async () => ({}),
 }))
-vi.mock('@/modules/tenants/availability-search.service', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/modules/tenants/availability-search.service')>()),
-  findAvailableTenantIds: (p: { date: string; time: string }) => findAvailableTenantIds(p),
-  findFreeSlotPillsByTenant: async () => ({}),
+vi.mock('@/modules/tenants/availability-search.service', () => ({
+  findTodayFreeSlotsByTenant: (p: { tenantIds: string[]; formats?: number[] }) =>
+    findTodayFreeSlotsByTenant(p),
 }))
 vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: async () => null }))
-vi.mock('@/app/(public)/explorar/components/SearchBand', () => ({ default: () => null }))
-vi.mock('@/app/(public)/explorar/components/QuickFilters', () => ({ default: () => null }))
+vi.mock('@/components/public/FavoriteButton', () => ({ default: () => null }))
+vi.mock('@/app/(public)/explorar/components/ExplorarSearch', () => ({ default: () => null }))
 vi.mock('@/app/(public)/explorar/components/EmptyResults', () => ({ default: () => null }))
 
 import ExplorarPage from '@/app/(public)/explorar/page'
@@ -38,55 +46,95 @@ async function renderPage(sp: Record<string, string>) {
 }
 
 beforeEach(() => {
-  findAvailableTenantIds.mockClear()
-  vi.useFakeTimers({ toFake: ['Date'] })
-  vi.setSystemTime(new Date('2026-06-11T01:30:00.000Z')) // 22:30 ART del 10
+  searchPublicTenants.mockClear()
+  findTodayFreeSlotsByTenant.mockClear()
 })
-afterEach(() => {
-  cleanup()
-  vi.useRealTimers()
-})
+afterEach(() => cleanup())
 
 describe('ExplorarPage: cableado', () => {
-  it('hora sin día filtra por disponibilidad de hoy (ART)', async () => {
-    await renderPage({ time: '20:00' })
-    expect(findAvailableTenantIds).toHaveBeenCalledWith({ date: '2026-06-10', time: '20:00' })
+  it('ignora los filtros que salieron (fecha, hora, superficie, precio, orden)', async () => {
+    await renderPage({
+      city: 'Luján',
+      date: '2026-06-10',
+      time: '20:00',
+      surfaces: 'synthetic_grass',
+      amenities: 'techado',
+      online: '1',
+      minPrice: '100',
+      sort: 'price',
+    })
+    const args = searchPublicTenants.mock.calls[0]![0]
+    expect(args).toMatchObject({ city: 'Luján', sort: 'name' })
+    for (const k of ['surfaces', 'amenities', 'onlineOnly', 'minPriceCents', 'tenantIds']) {
+      expect(args).not.toHaveProperty(k)
+    }
   })
 
-  it('hora sin día: el link de la card abre la ficha en el día buscado', async () => {
+  it('con la ubicación en la URL ordena por cercanía', async () => {
+    await renderPage({ city: 'Luján', lat: '-34.57', lng: '-59.11' })
+    expect(searchPublicTenants.mock.calls[0]![0]).toMatchObject({
+      sort: 'distance',
+      lat: -34.57,
+      lng: -59.11,
+    })
+  })
+
+  it('el encabezado dice cuántos complejos hay en la localidad y con qué tamaño', async () => {
+    searchPublicTenants.mockResolvedValueOnce({
+      results: [publicTenantCard({ id: 't1', slug: 'a', name: 'A' })],
+      total: 6,
+    })
+    await renderPage({ city: 'Luján', formats: '5' })
+    expect(screen.getByRole('heading', { level: 1, name: '6 complejos en Luján' })).toBeTruthy()
+    expect(
+      screen.getByText('Con cancha de Fútbol 5. Los horarios son los libres de hoy.'),
+    ).toBeTruthy()
+  })
+
+  it('pide los horarios de hoy solo de los complejos con reserva online, con el tamaño', async () => {
+    searchPublicTenants.mockResolvedValueOnce({
+      results: [
+        publicTenantCard({ id: 't1', slug: 'a', name: 'A', allowOnlineBooking: true }),
+        publicTenantCard({ id: 't2', slug: 'b', name: 'B', allowOnlineBooking: false }),
+      ],
+      total: 2,
+    })
+    await renderPage({ formats: '5,7' })
+    expect(findTodayFreeSlotsByTenant).toHaveBeenCalledWith({ tenantIds: ['t1'], formats: [5, 7] })
+  })
+
+  it('si los horarios de hoy fallan, la tarjeta no dice que no quedan', async () => {
+    searchPublicTenants.mockResolvedValueOnce({
+      results: [publicTenantCard({ id: 't1', slug: 'a', name: 'A', allowOnlineBooking: true })],
+      total: 1,
+    })
+    findTodayFreeSlotsByTenant.mockRejectedValueOnce(new Error('worker pool caído'))
+    await renderPage({})
+    expect(screen.queryByText(/Hoy no le quedan horarios/)).toBeNull()
+  })
+
+  it('una ciudad inventada en la URL no rompe la página', async () => {
+    await renderPage({ city: 'Ciudad que no existe' })
+    expect(
+      screen.getByRole('heading', { level: 1, name: '0 complejos en Ciudad que no existe' }),
+    ).toBeTruthy()
+  })
+
+  it('el link de la tarjeta abre la ficha sin día', async () => {
     searchPublicTenants.mockResolvedValueOnce({
       results: [publicTenantCard({ id: 't1', slug: 'el-potrero', name: 'El Potrero' })],
       total: 1,
     })
-    await renderPage({ time: '20:00' })
+    await renderPage({ date: '2026-06-10', time: '20:00', q: 'potrero' })
     expect(screen.getByRole('link', { name: 'El Potrero' }).getAttribute('href')).toBe(
-      '/el-potrero?date=2026-06-10',
+      '/el-potrero',
     )
   })
 
-  it('sin hora no filtra por disponibilidad', async () => {
-    await renderPage({})
-    expect(findAvailableTenantIds).not.toHaveBeenCalled()
-  })
-
-  it('sort=distance sin ubicación: el select muestra el orden aplicado (nombre)', async () => {
-    await renderPage({ sort: 'distance' })
-    expect(
-      (screen.getByRole('combobox', { name: /ordenar por/i }) as HTMLSelectElement).value,
-    ).toBe('name')
-  })
-
-  it('sort=distance con ubicación: el select dice "Más cercano"', async () => {
-    await renderPage({ sort: 'distance', lat: '-34.6', lng: '-58.4' })
-    expect(
-      (screen.getByRole('combobox', { name: /ordenar por/i }) as HTMLSelectElement).value,
-    ).toBe('distance')
-  })
-
-  it('el sidebar monta los filtros con ids propios (el drawer queda con #min-price)', async () => {
-    await renderPage({})
-    expect(document.getElementById('sidebar-min-price')).not.toBeNull()
-    expect(document.getElementById('sidebar-max-price')).not.toBeNull()
-    expect(document.getElementById('min-price')).toBeNull()
+  it('el botón Mapa conserva los filtros', async () => {
+    await renderPage({ city: 'Luján', formats: '5', sort: 'price' })
+    expect(screen.getByRole('link', { name: 'Mapa' }).getAttribute('href')).toBe(
+      '/explorar?city=Luj%C3%A1n&formats=5&view=map',
+    )
   })
 })

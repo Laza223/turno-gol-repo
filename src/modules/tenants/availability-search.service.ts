@@ -9,8 +9,6 @@ import type { OpeningHours, TenantSettings } from './tenant.types'
 import { bookingMinAdvanceHours } from './tenant.utils'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { addDays, artTodayStr } from '@/shared/dates/art'
-import { hhmmToMins, normalizeRangeToOpenDay } from '@/shared/time/operating-day'
-import { dateStr, hhmm } from '@/shared/validation/primitives'
 
 /**
  * Cross-tenant availability search: which complejos have at least one free
@@ -73,25 +71,6 @@ export function tenantMatchesRequestedSlot(
   })
 
   return slots.some((s) => s.time === time && s.status === 'free')
-}
-
-/**
- * Valida el par fecha+hora que llega por URL a /explorar. Devuelve null (filtro
- * apagado) si falta la hora o si no validan — params de URL son input de usuario
- * y un link viejo/malformado no debe romper la página.
- *
- * Una hora sin día es "hoy" (calendario ART): el buscador de /explorar puede
- * mandar solo la hora. Un `date` presente pero inválido NO se reemplaza por hoy.
- */
-export function parseAvailabilitySearchParams(sp: {
-  date?: string
-  time?: string
-}): { date: string; time: string } | null {
-  if (!sp.time) return null
-  const date = dateStr.safeParse(sp.date || artTodayStr())
-  const time = hhmm.safeParse(sp.time)
-  if (!date.success || !time.success) return null
-  return { date: date.data, time: time.data }
 }
 
 // ─── Cross-tenant query ───────────────────────────────────────────────────────
@@ -259,8 +238,6 @@ export type CourtOccupancy = {
   busy: Array<{ startMins: number; endMins: number }>
 }
 
-const PILLS_PER_TENANT = 3
-
 /**
  * Asigna a cada horario candidato la primera cancha sin solapamiento (puro).
  * `courts` viene ordenado (created_at): la elección es determinística.
@@ -282,66 +259,54 @@ export function pickFreeSlotPills(
   return pills
 }
 
+/** Horarios que se muestran en la tarjeta; el resto se cuenta en `more` ("+N"). */
+const PILLS_PER_CARD = 3
+
+export type TodayFreeSlots = { date: string; pills: SlotPill[]; more: number }
+
 /**
- * Horarios libres desde la hora buscada, comparando en el eje del DÍA OPERATIVO
- * y no como texto (puro, exportado para test).
- *
- * En un complejo que cierra a la 01:00, el turno de las 00:00 sucede DESPUÉS
- * del de las 23:00 aunque `'00:00' < '23:00'`. Comparando las etiquetas, una
- * búsqueda "desde las 20:00" descartaba justo los turnos de madrugada, que son
- * los que el complejo más necesita vender.
+ * Lo que muestra la tarjeta (puro, exportado para test): los primeros 3 horarios libres y cuántos
+ * más quedan. `free` ya pasó por la ocupación real (pickFreeSlotPills): el "+N" no cuenta
+ * horarios ocupados. Sin horarios libres, null.
  */
-export function freeTimesFrom(
-  slots: readonly { time: string; status: string }[],
-  fromTime: string,
-  openHhmm: string,
-  closesNextDay: boolean,
-): string[] {
-  const openMins = hhmmToMins(openHhmm)
-  // Punto (no rango): start===end, reusamos el helper canónico de día operativo
-  // en vez de reimplementar el mismo desplazamiento acá.
-  const toOpenDayMins = (hhmm: string): number => {
-    const mins = hhmmToMins(hhmm)
-    return normalizeRangeToOpenDay(mins, mins, openMins, closesNextDay).startMins
+export function todayFreeSlots(date: string, free: SlotPill[]): TodayFreeSlots | null {
+  if (free.length === 0) return null
+  return {
+    date,
+    pills: free.slice(0, PILLS_PER_CARD),
+    more: Math.max(free.length - PILLS_PER_CARD, 0),
   }
-  const fromMins = toOpenDayMins(fromTime)
-  return slots
-    .filter((s) => s.status === 'free' && toOpenDayMins(s.time) >= fromMins)
-    .map((s) => s.time)
 }
 
 /**
- * Hasta 3 turnos libres por tenant a partir de la hora buscada (tenantId →
- * pills), para mostrar como badges clickeables en las cards de /explorar.
- * Mismas semánticas puras que la grilla del perfil (generateSlots) + una sola
- * query cross-tenant de courts/bookings — mismo motivo que loadAvailableTenantIds
- * para usar el pool worker (bypass-capable): sin él, 0 filas siempre bajo RLS.
- * Sin cache propio: corre solo sobre la página visible (≤12 tenants); puede
- * divergir ~30s del filtro cacheado de findAvailableTenantIds, en cuyo caso
- * la card simplemente no muestra pills.
+ * Los horarios libres de HOY por complejo (tenantId → hasta 3 pills y cuántos más), para la
+ * tarjeta de /explorar (portal de vidrio, F3: "Los horarios son los libres de hoy").
+ * Mismas semánticas puras que la grilla del perfil (generateSlots, que ya saca lo que pasó y la
+ * anticipación mínima) + una sola query cross-tenant de courts/bookings, con el pool worker
+ * (bypass-capable) por el mismo motivo que loadAvailableTenantIds: sin él, 0 filas bajo RLS.
+ * Sin cache propio: corre solo sobre la página visible (≤12 tenants).
+ *
+ * "Hoy" es el día calendario ART, como la ventana de la home: pasada la medianoche, un complejo
+ * que cierra a la 01:00 no muestra el turno de las 00:00 del día operativo anterior.
  */
-export async function findFreeSlotPillsByTenant(params: {
+export async function findTodayFreeSlotsByTenant(params: {
   tenantIds: string[]
-  date: string // YYYY-MM-DD (validated upstream)
-  time: string // HH:MM (validated upstream)
   formats?: number[]
-}): Promise<Record<string, SlotPill[]>> {
+}): Promise<Record<string, TodayFreeSlots>> {
   return withSpan('search.availability.pills', 'db.query.search', () =>
-    loadFreeSlotPillsByTenant(params),
+    loadFreeSlotPillsByTenant({ ...params, date: artTodayStr() }),
   )
 }
 
 async function loadFreeSlotPillsByTenant({
   tenantIds,
   date,
-  time,
   formats,
 }: {
   tenantIds: string[]
   date: string
-  time: string
   formats?: number[]
-}): Promise<Record<string, SlotPill[]>> {
+}): Promise<Record<string, TodayFreeSlots>> {
   if (tenantIds.length === 0) return {}
   const db = getWorkerDb()
   const rows = await db
@@ -362,8 +327,8 @@ async function loadFreeSlotPillsByTenant({
     nowMins: artNow.getUTCHours() * 60 + artNow.getUTCMinutes(),
   }
 
-  // Horarios candidatos por tenant (grilla pura, sin ocupación): libres por
-  // agenda y >= la hora buscada.
+  // Horarios candidatos por tenant (grilla pura, sin ocupación): los libres por agenda que
+  // todavía no pasaron. generateSlots los devuelve en el orden del día operativo.
   const candidates = new Map<string, { times: string[]; durationMins: number }>()
   for (const row of rows) {
     const s = row.settings as TenantSettings
@@ -389,12 +354,7 @@ async function loadFreeSlotPillsByTenant({
       nowMins: now.nowMins,
       minLeadMins: bookingMinAdvanceHours(s) * 60,
     })
-    const times = freeTimesFrom(
-      slots,
-      time,
-      dayHours?.open ?? '08:00',
-      (row.closesNextDay ?? false) as boolean,
-    )
+    const times = slots.filter((slot) => slot.status === 'free').map((slot) => slot.time)
     if (times.length > 0) candidates.set(row.id, { times, durationMins })
   }
   if (candidates.size === 0) return {}
@@ -451,18 +411,20 @@ async function loadFreeSlotPillsByTenant({
     }
   }
 
-  const out: Record<string, SlotPill[]> = {}
+  const out: Record<string, TodayFreeSlots> = {}
   for (const [tenantId, { times, durationMins }] of Array.from(candidates.entries())) {
     const courtMap = courtsByTenant.get(tenantId)
     if (!courtMap) continue
     const courtList = Array.from(courtMap.values())
-    const pills = pickFreeSlotPills(times, durationMins, courtList, PILLS_PER_TENANT)
-    if (pills.length > 0) out[tenantId] = pills
+    const slots = todayFreeSlots(
+      date,
+      pickFreeSlotPills(times, durationMins, courtList, times.length),
+    )
+    if (slots) out[tenantId] = slots
   }
 
   track.search('search.availability.pills', {
     date,
-    time,
     tenants: tenantIds.length,
     withPills: Object.keys(out).length,
   })

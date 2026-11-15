@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 //
 // La pantalla de confirmar sin el servidor: resumen + UN botón de acción + política de cancelación.
-// Sin sesión el botón abre el ingreso (modal). Lo que importa de esta capa: el `formato` y el `pay`
+// Sin sesión, en lugar del botón va el ingreso, dentro de la pantalla (portal de vidrio F5). Lo que importa de esta capa: el `formato` y el `pay`
 // de un link viejo viajan (`next` del ingreso, form de confirmar) y con `hidePrices` no hay un monto.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
@@ -92,13 +92,13 @@ describe('pantalla de confirmar con precios ocultos', () => {
 })
 
 describe('el botón de acción es uno solo', () => {
-  it.each([true, false])('sin seña dice "Reservar" (con sesión: %s)', (isPlayer) => {
-    render(<CheckoutFlow {...flowProps({ isPlayer })} />)
+  it('sin seña dice "Reservar"', () => {
+    render(<CheckoutFlow {...flowProps()} />)
     expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Reservar'])
   })
 
-  it.each([true, false])('con seña y monto dice "Pagar seña · $" (con sesión: %s)', (isPlayer) => {
-    render(<CheckoutFlow {...flowProps({ isPlayer, withDeposit: true, depositAmount: 600_000 })} />)
+  it('con seña y monto dice "Pagar seña · $"', () => {
+    render(<CheckoutFlow {...flowProps({ withDeposit: true, depositAmount: 600_000 })} />)
     expect(screen.getByRole('button', { name: /^Pagar seña · \$\s?6\.000/ })).toBeTruthy()
   })
 
@@ -113,16 +113,24 @@ describe('el botón de acción es uno solo', () => {
     expect(screen.queryAllByRole('radio')).toHaveLength(0)
   })
 
-  it('sin sesión el botón abre el ingreso en un diálogo; con sesión no hay diálogo', async () => {
+  it('sin sesión el ingreso está en la pantalla, sin botón de reservar ni diálogo; con sesión, al revés', () => {
     const sin = render(<CheckoutFlow {...flowProps({ isPlayer: false })} />)
+    expect(screen.getByRole('region', { name: 'Entrá para reservar' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^(Reservar|Pagar seña)/ })).toBeNull()
     expect(screen.queryByRole('dialog')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Reservar' }))
-    expect(await screen.findByRole('dialog', { name: /Entrá para reservar/ })).toBeTruthy()
     sin.unmount()
 
     render(<CheckoutFlow {...flowProps()} />)
     fireEvent.click(screen.getByRole('button', { name: 'Reservar' }))
+    expect(screen.queryByRole('region', { name: 'Entrá para reservar' })).toBeNull()
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('sin sesión la regla de cancelación se lee igual, debajo del ingreso', () => {
+    render(<CheckoutFlow {...flowProps({ isPlayer: false })} />)
+    const nota = screen.getByText('Podés cancelar desde Mis reservas.')
+    const panel = screen.getByRole('region', { name: 'Entrá para reservar' })
+    expect(panel.compareDocumentPosition(nota) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })
 
@@ -177,11 +185,10 @@ describe('pay y formato sobreviven', () => {
     expect(field(container, 'pay')).toBeUndefined()
   })
 
-  it('sin sesión: el next del ingreso (email y Google) lleva el formato y el pay', async () => {
+  it('sin sesión: el next del ingreso (email y Google) lleva el formato y el pay', () => {
     render(<CheckoutFlow {...flowProps({ isPlayer: false, pay: 'transfer' })} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Reservar' }))
-    const dialog = await screen.findByRole('dialog')
-    const nexts = Array.from(dialog.querySelectorAll<HTMLInputElement>('input[name="next"]')).map(
+    const panel = screen.getByRole('region', { name: 'Entrá para reservar' })
+    const nexts = Array.from(panel.querySelectorAll<HTMLInputElement>('input[name="next"]')).map(
       (i) => i.value,
     )
     const expected =
@@ -238,25 +245,22 @@ describe('confirmación sola (el vínculo ya lo verificó la page)', () => {
     expect(props.createAction).not.toHaveBeenCalled()
   })
 
-  it('sin sesión el token no hace nada: el botón abre el ingreso y no se envía nada', async () => {
+  it('sin sesión el token no hace nada: se ve el ingreso y no se envía nada', () => {
     const props = flowProps({ isPlayer: false, autoConfirmToken: TOKEN })
     const { container } = render(<CheckoutFlow {...props} />)
 
     expect(hidden(container)).toBeNull()
     expect(props.createAction).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'Reservar' }))
-    expect(await screen.findByRole('heading', { name: 'Entrá para reservar' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Entrá para reservar' })).toBeTruthy()
   })
 
-  it('el ingreso sin seña promete confirmar; con seña, no', async () => {
+  it('el ingreso sin seña promete confirmar; con seña, no', () => {
     const sinSena = render(<CheckoutFlow {...flowProps({ isPlayer: false })} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Reservar' }))
-    expect(await screen.findByText('Entrás y la reserva queda confirmada.')).toBeTruthy()
+    expect(screen.getByText('Entrás y la reserva queda confirmada.')).toBeTruthy()
     sinSena.unmount()
 
     render(<CheckoutFlow {...flowProps({ isPlayer: false, withDeposit: true })} />)
-    fireEvent.click(screen.getByRole('button', { name: /Pagar seña/ }))
-    await screen.findByRole('dialog')
+    expect(screen.getByRole('region', { name: 'Entrá para reservar' })).toBeTruthy()
     expect(screen.queryByText('Entrás y la reserva queda confirmada.')).toBeNull()
   })
 })

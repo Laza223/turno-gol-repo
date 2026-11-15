@@ -1,12 +1,12 @@
 import type { ComponentProps } from 'react'
+import '@/components/booking/reserva.css'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test'
+import { expect, fn, waitFor, within } from 'storybook/test'
 import PortalFrame from '@/components/site/PortalFrame'
 import PortalHeader from '@/components/site/PortalHeader'
 import { PortalSessionProvider } from '@/components/site/PortalSessionProvider'
 import SiteFooter from '@/components/site/SiteFooter'
 import ReservaShell from '@/components/booking/ReservaDarkShell'
-import { RESERVAR_COLUMN } from '../CheckoutStates'
 import BookingSummary, { type BookingSummaryData } from './BookingSummary'
 import CheckoutFlow from './CheckoutFlow'
 
@@ -29,16 +29,10 @@ const signOut = fn(async () => {})
 function Screen(props: ComponentProps<typeof CheckoutFlow> & { summary: BookingSummaryData }) {
   const { summary: data, ...flow } = props
   return (
-    <ReservaShell>
-      <div className={`${RESERVAR_COLUMN} pb-12`}>
-        <h1 className="font-display text-3xl font-black italic tracking-tight text-foreground">
-          Confirmá tu <span className="hero-accent-text">reserva</span>
-        </h1>
-        <div className="mt-6 space-y-8">
-          <BookingSummary data={data} />
-          <CheckoutFlow {...flow} hidePrices={data.hidePrices} />
-        </div>
-      </div>
+    <ReservaShell className="rv-stack">
+      <h1 className="rv-h2">Confirmá tu reserva</h1>
+      <BookingSummary data={data} />
+      <CheckoutFlow {...flow} hidePrices={data.hidePrices} />
     </ReservaShell>
   )
 }
@@ -177,7 +171,7 @@ export const VinculoQueNoValio: Story = {
   },
 }
 
-/** Lo mismo sin sesión: el mismo botón, que abre el ingreso (Google y email) en un modal. */
+/** Lo mismo sin sesión: en lugar del botón, el ingreso (Google y email) dentro de la pantalla. */
 export const ElVagonSinSesion: Story = {
   args: { isPlayer: false },
   render: (args) => <Screen {...args} summary={{ ...summary, hidePrices: true }} />,
@@ -185,13 +179,11 @@ export const ElVagonSinSesion: Story = {
     const canvas = within(canvasElement)
     await expect(canvasElement.textContent).not.toContain('$')
     await expect(canvas.queryByRole('dialog')).not.toBeInTheDocument()
-    await userEvent.click(canvas.getByRole('button', { name: 'Reservar' }))
-    const opened = await screen.findByRole('dialog')
-    // Radix lo abre con un fade-in: durante la animación `toBeVisible` lo lee con opacidad 0.
-    await Promise.all(opened.getAnimations({ subtree: true }).map((a) => a.finished))
-    const modal = within(opened)
-    await expect(modal.getByRole('heading', { name: 'Entrá para reservar' })).toBeVisible()
-    await expect(modal.getByRole('button', { name: 'Continuar con Google' })).toBeEnabled()
+    await expect(canvas.queryByRole('button', { name: 'Reservar' })).not.toBeInTheDocument()
+    const panel = within(canvas.getByRole('region', { name: 'Entrá para reservar' }))
+    await expect(panel.getByRole('button', { name: 'Continuar con Google' })).toBeEnabled()
+    await expect(panel.getByRole('button', { name: 'Continuar con mi email' })).toBeEnabled()
+    await expect(canvas.getByText('Podés cancelar desde Mis reservas.')).toBeVisible()
   },
 }
 
@@ -229,21 +221,25 @@ export const ConSenaOcultaNavegadorInterno: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvasElement.textContent).not.toContain('$')
-    // El resumen no dice cómo se paga; lo dice la nota debajo del botón.
+    // El resumen no dice cómo se paga; lo dice la nota debajo del ingreso.
     await expect(
       canvas.getByText('Pagás una seña online con MercadoPago; el resto, en el complejo.'),
     ).toBeVisible()
-    await expect(canvas.getByRole('button', { name: 'Pagar seña' })).toBeEnabled()
+    // En el navegador de Instagram el email va primero y el aviso reemplaza a Google.
+    const panel = within(canvas.getByRole('region', { name: 'Entrá para reservar' }))
+    await expect(panel.getAllByRole('button')[0]).toHaveTextContent('Continuar con mi email')
+    await expect(
+      panel.queryByRole('button', { name: 'Continuar con Google' }),
+    ).not.toBeInTheDocument()
   },
 }
 
 /**
- * Con sesión, en un celular de 390 px: la barra fija de confirmar no tapa nada. `PortalFrame`
- * suma su alto (77 px) al de la barra inferior (78 px: 12 de aire + 66 de píldora), así que al final del scroll el link más
- * bajo del pie queda por encima del borde superior de la barra. Sin esa regla el pie termina
- * 77 px más abajo y la barra lo cubre.
+ * Con sesión, en un celular de 390 px (`reservar.html`): el botón va en el flujo, debajo del
+ * resumen, y a la vista sin bajar. No es una barra fija: el marco solo reserva la barra inferior
+ * (78 px: 12 de aire + 66 de píldora), sin los 77 px que sumaba la barra de confirmar.
  */
-export const BarraFijaNoTapaElPie: Story = {
+export const BotonEnElFlujoEnElCelular: Story = {
   globals: { viewport: { value: 'celular390', isRotated: false } },
   parameters: {
     viewport: {
@@ -254,103 +250,30 @@ export const BarraFijaNoTapaElPie: Story = {
   },
   render: (args) => <Screen {...args} summary={{ ...summary, hidePrices: true }} />,
   play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
     await expect(window.innerWidth).toBe(390)
-    const bar = canvasElement.querySelector('[data-fixed-cta]')!
-    await expect(getComputedStyle(bar).position).toBe('fixed')
-    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })
-    const barTop = bar.getBoundingClientRect().top
-    const footerLinks = [...canvasElement.querySelectorAll('footer a')]
-    await expect(footerLinks.length).toBeGreaterThan(0)
-    const lowest = Math.max(...footerLinks.map((a) => a.getBoundingClientRect().bottom))
-    await expect(lowest).toBeLessThanOrEqual(barTop)
-  },
-}
-
-/**
- * WCAG 2.4.11 (foco no oculto): en un celular bajito, tabular a un link del pie que quedó detrás de
- * la barra fija lo trae a la vista POR ENCIMA de ella. Sin el `scroll-padding-bottom` de `html` (globals.css)
- * el navegador lo da por visible —está dentro del viewport— y la barra lo tapa. Ese relleno es el
- * mismo alto que reserva `PortalFrame` (78 + 77 px); si uno cambia, el otro también.
- */
-export const FocoNoQuedaTapadoPorLaBarra: Story = {
-  globals: { viewport: { value: 'celularBajito', isRotated: false } },
-  parameters: {
-    viewport: {
-      options: {
-        celularBajito: { name: 'celular bajito', styles: { width: '390px', height: '520px' } },
-      },
-    },
-  },
-  render: (args) => <Screen {...args} summary={{ ...summary, hidePrices: true }} />,
-  play: async ({ canvasElement }) => {
-    await expect(window.innerWidth).toBe(390)
-    await expect(window.innerHeight).toBe(520)
-    const bar = canvasElement.querySelector('[data-fixed-cta]')!
-    const frame = bar.closest('.player-shell-bg')!
-    // El mismo alto en los dos lados: lo que reserva el marco y lo que reserva el scroll.
-    await expect(getComputedStyle(frame).paddingBottom).toBe('155px')
-    await expect(getComputedStyle(document.documentElement).scrollPaddingBottom).toBe('155px')
-
-    const link = canvasElement.querySelector<HTMLElement>('footer a')!
-    window.scrollTo({ top: 0, behavior: 'instant' })
-
-    for (let i = 0; i < 40 && document.activeElement !== link; i++) await userEvent.tab()
-    await expect(document.activeElement).toBe(link)
-    await expect(link.getBoundingClientRect().bottom).toBeLessThanOrEqual(
-      bar.getBoundingClientRect().top,
+    await expect(canvasElement.querySelector('[data-fixed-cta]')).toBeNull()
+    const button = canvas.getByRole('button', { name: 'Reservar' })
+    await expect(getComputedStyle(button).position).not.toBe('fixed')
+    const frame = button.closest('.player-shell-bg')!
+    await expect(getComputedStyle(frame).paddingBottom).toBe('78px')
+    // A la vista sin bajar, por encima de la barra inferior.
+    const nav = canvasElement.querySelector('nav[aria-label="Navegación del jugador"]')!
+    await expect(button.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      nav.getBoundingClientRect().top,
     )
   },
 }
 
-/**
- * Desde `md` el botón está en el flujo y no hay barra inferior: el marco no reserva nada. `:has()`
- * pesa más que `md:pb-0`, así que sin el `md:has-[...]:pb-0` quedaría el relleno del celular.
- */
+/** Desde `md` no hay barra inferior: el marco no reserva nada abajo. */
 export const BotonEnElFlujoDesdeMd: Story = {
   globals: { viewport: { value: 'tablet', isRotated: false } },
   render: (args) => <Screen {...args} summary={{ ...summary, hidePrices: true }} />,
   play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
     await expect(window.innerWidth).toBe(768)
-    const bar = canvasElement.querySelector('[data-fixed-cta]')!
-    await expect(getComputedStyle(bar).position).toBe('static')
-    const frame = bar.closest('.player-shell-bg')!
+    await expect(canvasElement.querySelector('[data-fixed-cta]')).toBeNull()
+    const frame = canvas.getByRole('button', { name: 'Reservar' }).closest('.player-shell-bg')!
     await expect(getComputedStyle(frame).paddingBottom).toBe('0px')
-    // Y el `scroll-padding` de `html` (para el foco) también vuelve a 0.
-    await expect(getComputedStyle(document.documentElement).scrollPaddingBottom).toBe('0px')
-  },
-}
-
-/**
- * La sesión del cliente todavía no se hidrató (llega con un fetch): la barra inferior va siempre,
- * así que ya está en el DOM, la barra fija está encima de ella y el marco ya reservó su alto.
- */
-export const BarraFijaSinSesionHidratada: Story = {
-  globals: { viewport: { value: 'celular390', isRotated: false } },
-  parameters: {
-    sesionHidratada: false,
-    viewport: {
-      options: {
-        celular390: { name: 'celular 390', styles: { width: '390px', height: '844px' } },
-      },
-    },
-  },
-  render: (args) => <Screen {...args} summary={{ ...summary, hidePrices: true }} />,
-  play: async ({ canvasElement }) => {
-    await expect(window.innerWidth).toBe(390)
-    // La barra inferior va siempre, también sin sesión hidratada…
-    await expect(
-      canvasElement.querySelector('nav[aria-label="Navegación del jugador"]'),
-    ).not.toBeNull()
-    const bar = canvasElement.querySelector('[data-fixed-cta]')!
-    await expect(getComputedStyle(bar).position).toBe('fixed')
-    // …y la barra fija está donde va: 78 px (12 de aire + la píldora de 66) arriba del borde.
-    await expect(window.innerHeight - bar.getBoundingClientRect().bottom).toBeCloseTo(78, 1)
-    // Y el marco ya reservó barra inferior + barra fija: 78 + 77 px.
-    const frame = bar.closest('.player-shell-bg')!
-    await expect(getComputedStyle(frame).paddingBottom).toBe('155px')
-    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })
-    const footerLinks = [...canvasElement.querySelectorAll('footer a')]
-    const lowest = Math.max(...footerLinks.map((a) => a.getBoundingClientRect().bottom))
-    await expect(lowest).toBeLessThanOrEqual(bar.getBoundingClientRect().top)
   },
 }

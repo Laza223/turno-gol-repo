@@ -1,6 +1,5 @@
 import { AlertTriangle, CalendarCheck, Clock, XCircle } from 'lucide-react'
 import { SubmitButton } from '@/components/ui/submit-button'
-import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
 import {
   PortalResult,
   PortalResultContact,
@@ -75,6 +74,7 @@ export function BookingErrorCard({
   retryAction: typeof retryDepositPaymentAction
 }) {
   const reserveAgainHref = buildReserveAgainHref(tenantSlug, date)
+  const turnLines = startsOn && turn ? <ReservaTurnLines startsOn={startsOn} {...turn} /> : null
 
   if (view === 'canceled') {
     return (
@@ -112,6 +112,7 @@ export function BookingErrorCard({
       <PortalResult
         icon={Clock}
         title="Tenés un pago en revisión"
+        turn={turnLines}
         actions={
           <>
             <PortalResultLink href="/mis-reservas">Ver mis reservas</PortalResultLink>
@@ -121,7 +122,6 @@ export function BookingErrorCard({
       >
         <p>MercadoPago todavía está revisando un pago de esta reserva.</p>
         <p>Si se aprueba, el turno queda confirmado. Lo ves en Mis reservas.</p>
-        {startsOn && turn && <ReservaTurnLines startsOn={startsOn} {...turn} />}
       </PortalResult>
     )
   }
@@ -132,6 +132,7 @@ export function BookingErrorCard({
         icon={AlertTriangle}
         tone="destructive"
         title="El pago no se procesó"
+        turn={turnLines}
         actions={
           <>
             <PortalResultLink href={reserveAgainHref}>Elegir otro turno</PortalResultLink>
@@ -141,7 +142,6 @@ export function BookingErrorCard({
       >
         <p>El pago fue rechazado o cancelado.</p>
         <p>Por ahora no se puede reintentar el pago desde acá. Escribile al complejo.</p>
-        {startsOn && turn && <ReservaTurnLines startsOn={startsOn} {...turn} />}
       </PortalResult>
     )
   }
@@ -170,11 +170,17 @@ export function BookingErrorCard({
       icon={AlertTriangle}
       tone="destructive"
       title="El pago no se procesó"
+      turn={turnLines}
       actions={
         <>
           <form action={retryAction}>
             <input type="hidden" name="bookingId" value={bookingId} />
-            <SubmitButton className={PORTAL_BUTTON} pendingLabel="Reintentando…">
+            <SubmitButton
+              variant="pill"
+              size="pill"
+              className="rv-go w-full"
+              pendingLabel="Reintentando…"
+            >
               Reintentar pago
             </SubmitButton>
           </form>
@@ -191,7 +197,6 @@ export function BookingErrorCard({
           ? `Tu turno sigue guardado. Podés pagar hasta las ${payUntil}, con otro medio de pago.`
           : 'Tu turno sigue guardado. Podés intentar de nuevo con otro medio de pago.'}
       </p>
-      {startsOn && turn && <ReservaTurnLines startsOn={startsOn} {...turn} />}
     </PortalResult>
   )
 }

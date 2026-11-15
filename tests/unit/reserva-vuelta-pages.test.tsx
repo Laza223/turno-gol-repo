@@ -17,6 +17,9 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
   usePathname: () => '/reserva/x/pendiente',
 }))
+vi.mock('next/headers', () => ({
+  cookies: async () => ({ get: () => undefined }),
+}))
 vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser }))
 vi.mock('@/app/(public)/[slug]/reservar/actions', () => ({
   retryDepositPaymentAction: vi.fn(),

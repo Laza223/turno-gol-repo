@@ -8,7 +8,6 @@ import {
   PortalResultContact,
   PortalResultLink,
 } from '@/components/world/PortalResult'
-import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
 import { SubmitButton } from '@/components/ui/submit-button'
 import { ReservaTurnLines } from '@/components/booking/ReservaTurnLines'
 import {
@@ -339,11 +338,17 @@ export function PaymentStatusView({
       icon={Loader2}
       spin
       title={payOffered ? 'Esperando tu pago…' : 'Confirmando tu pago…'}
+      turn={turn ? <ReservaTurnLines {...turn} /> : undefined}
       actions={
         pay && bookingId ? (
           <form action={pay.action}>
             <input type="hidden" name="bookingId" value={bookingId} />
-            <SubmitButton className={PORTAL_BUTTON} pendingLabel="Abriendo MercadoPago…">
+            <SubmitButton
+              variant="pill"
+              size="pill"
+              className="rv-go w-full"
+              pendingLabel="Abriendo MercadoPago…"
+            >
               Pagar la seña
             </SubmitButton>
           </form>
@@ -355,7 +360,6 @@ export function PaymentStatusView({
           ? 'Si ya pagaste, se confirma en unos segundos.'
           : 'Esto puede tardar unos segundos.'}
       </p>
-      {turn && <ReservaTurnLines {...turn} />}
       {showDelayNote && (
         <p className="text-sm">
           ¿Tarda? Si se confirma, te llega un email. También lo ves en Mis reservas.

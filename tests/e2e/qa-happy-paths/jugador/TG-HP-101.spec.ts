@@ -45,9 +45,8 @@ test.describe('TG-HP-101 — Alta jugador nuevo al reservar', () => {
       await page.goto(reservarUrl(date))
       await expect(page.getByRole('heading', { name: 'Confirmá tu reserva' })).toBeVisible()
 
-      // Sin sesión → el botón de acción abre LoginGate (modal). Solo email: el nombre se deriva
+      // Sin sesión → el ingreso está en la pantalla (LoginPanel). Solo email: el nombre se deriva
       // del email en el servidor y el +18 es una frase (clickwrap), sin casilla.
-      await page.getByRole('button', { name: 'Reservar' }).click()
       await expect(page.getByRole('heading', { name: 'Entrá para reservar' })).toBeVisible()
       await expect(page.getByLabel('Nombre')).toHaveCount(0)
       await expect(page.getByLabel('Apellido')).toHaveCount(0)

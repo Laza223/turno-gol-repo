@@ -1,11 +1,12 @@
+import '@/components/booking/reserva.css'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, spyOn, userEvent, within } from 'storybook/test'
 import DownloadReceiptButton from './DownloadReceiptButton'
 
 /**
  * Botón único (sin variantes de estado visual): dispara `window.print()` y
- * restaura `document.title` en un `finally`. Vive dentro de la tarjeta
- * `reserva-receipt-card` de la página de éxito — se reproduce ese fondo.
+ * restaura `document.title` en un `finally`. Vive dentro del ticket de vidrio de la reserva
+ * confirmada (portal de vidrio F5): se reproduce ese fondo.
  */
 const meta = {
   title: 'Player/BookingSuccess/DownloadReceiptButton',
@@ -16,8 +17,10 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="reserva-receipt-card w-full max-w-xs rounded-2xl p-5">
-        <Story />
+      <div data-portal-glass className="portal-ambient p-6 text-portal-ink">
+        <div className="rv-ticket glass-painted w-80">
+          <Story />
+        </div>
       </div>
     ),
   ],

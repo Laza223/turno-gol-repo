@@ -2,7 +2,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import ConfirmBookingButton from '@/app/(public)/[slug]/reservar/components/ConfirmBookingButton'
-import { PortalSessionProvider } from '@/components/site/PortalSessionProvider'
 
 afterEach(() => cleanup())
 
@@ -18,47 +17,21 @@ const props = {
   action: vi.fn(async () => {}),
 }
 
-const bar = (root: HTMLElement) => root.querySelector<HTMLElement>('[data-fixed-cta]')!
-
-// Debajo de `md` el botón es una barra fija. Solo existe para jugadores, que siempre tienen la
-// barra inferior: tiene que ubicarse por encima de ella DESDE EL PRIMER RENDER, sin esperar a que
-// la sesión se hidrate (un fetch), o saltaría el alto de la barra cuando llega.
-const ABOVE_BOTTOM_NAV = 'bottom-(--portal-tabbar-space)'
-
-describe('ConfirmBookingButton — la barra fija', () => {
-  it('sin sesión hidratada ya está por encima del lugar de la barra inferior', () => {
+// Portal de vidrio F5 (`reservar.html`): el botón va en el flujo, debajo del resumen, y ya no es una
+// barra fija. Sin `data-fixed-cta`, `PortalFrame` no suma relleno abajo (eso queda para RIVAL).
+describe('ConfirmBookingButton — en el flujo', () => {
+  it('no es una barra fija ni le avisa al marco', () => {
     const { container } = render(<ConfirmBookingButton {...props} />)
-    expect(bar(container).className).toContain(ABOVE_BOTTOM_NAV)
+    expect(container.querySelector('[data-fixed-cta]')).toBeNull()
+    expect(container.innerHTML).not.toContain('fixed')
   })
 
-  it('con la sesión hidratada queda exactamente donde estaba: no salta', () => {
-    const sinSesion = render(<ConfirmBookingButton {...props} />)
-    const antes = bar(sinSesion.container).className
-    sinSesion.unmount()
-
-    const { container } = render(
-      <PortalSessionProvider
-        initialValue={{
-          session: {
-            playerId: 'p1',
-            firstName: 'Tomás',
-            lastName: 'Ibáñez',
-            avatarUrl: null,
-            email: 'tomas@example.com',
-          },
-          favoriteTenantIds: new Set(),
-          staffPanelPath: null,
-        }}
-      >
-        <ConfirmBookingButton {...props} />
-      </PortalSessionProvider>,
-    )
-    expect(bar(container).className).toBe(antes)
-  })
-
-  it('desde md vuelve al flujo, sin barra', () => {
-    const { container } = render(<ConfirmBookingButton {...props} />)
-    expect(bar(container).className).toMatch(/md:static/)
+  it('es la píldora verde de 52 px, a todo el ancho', () => {
+    render(<ConfirmBookingButton {...props} />)
+    const button = screen.getByRole('button', { name: 'Reservar' })
+    expect(button.className).toContain('h-13')
+    expect(button.className).toContain('w-full')
+    expect(button.className).toContain('rounded-full')
   })
 })
 

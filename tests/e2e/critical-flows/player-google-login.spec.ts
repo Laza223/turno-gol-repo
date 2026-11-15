@@ -34,7 +34,7 @@ test.describe('Google login (botón, sin completar el flujo externo)', () => {
     }
   })
 
-  test('checkout: el botón abre el ingreso; "Continuar con Google" habilitado, sin casilla y con el +18 en una frase @critical', async ({
+  test('checkout: el ingreso está en la pantalla; "Continuar con Google" habilitado, sin casilla y con el +18 en una frase @critical', async ({
     browser,
   }) => {
     const ctx = await browser.newContext()
@@ -42,27 +42,24 @@ test.describe('Google login (botón, sin completar el flujo externo)', () => {
       const page = await ctx.newPage()
       await page.goto(reservarUrl())
 
-      // Sin sesión el botón de acción (no hay casilla de +18) abre el ingreso en un modal.
-      await page.getByRole('button', { name: /^(Reservar|Pagar seña)/ }).click()
-      const dialog = page.getByRole('dialog', { name: /Entrá para reservar/ })
-      await expect(dialog).toBeVisible()
+      // Sin sesión el ingreso va dentro de la pantalla de confirmar (F5 del vidrio), no en un modal.
+      const panel = page.getByRole('region', { name: /Entrá para reservar/ })
+      await expect(panel).toBeVisible()
+      await expect(page.getByRole('dialog')).toHaveCount(0)
 
-      const googleButton = dialog.getByRole('button', { name: /continuar con google/i })
+      const googleButton = panel.getByRole('button', { name: /continuar con google/i })
       await expect(googleButton).toBeVisible()
       await expect(googleButton).toBeEnabled()
 
       // Clickwrap (decisión 2026-10-21): tocar Google es aceptar; no hay casilla que se pueda
       // olvidar. El servidor exige `terms` igual (tests/unit/reservar-gate-actions.test.ts).
-      await expect(dialog.getByRole('checkbox')).toHaveCount(0)
-      await expect(dialog.getByText(/declarás que sos mayor de 18 años/)).toBeVisible()
-      await expect(dialog.getByRole('link', { name: /términos y condiciones/i })).toHaveAttribute(
+      await expect(panel.getByRole('checkbox')).toHaveCount(0)
+      await expect(panel.getByText(/declarás que sos mayor de 18 años/)).toBeVisible()
+      await expect(panel.getByRole('link', { name: /términos y condiciones/i })).toHaveAttribute(
         'href',
         '/terminos',
       )
 
-      // Esc cierra el modal y deja la pantalla de confirmar.
-      await page.keyboard.press('Escape')
-      await expect(dialog).toBeHidden()
       await expect(page).toHaveURL(/\/reservar\?/)
     } finally {
       await ctx.close()

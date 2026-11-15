@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { sql } from 'drizzle-orm'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
@@ -7,6 +8,7 @@ import { holdExpiresAtIso } from '@/lib/booking/hold'
 import { buildIngresarForReservaHref } from '@/lib/booking/reserve-url'
 import { absoluteUrl } from '@/lib/seo/metadata'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
+import { CELEBRATED_COOKIE } from '@/lib/booking/celebrate'
 import PaymentStatusWatcher from '@/components/booking/PaymentStatusWatcher'
 import { ReservaNotFound } from '../ReservaNotFound'
 import { BookingSuccessCard } from './BookingSuccessCard'
@@ -30,6 +32,8 @@ type BookingRow = {
   city: string
   latitude: string | null
   longitude: string | null
+  coverUrl: string | null
+  logoUrl: string | null
   timeStart: string
   timeEnd: string
   date: string
@@ -55,6 +59,8 @@ async function loadBooking(bookingId: string, playerId: string): Promise<Booking
              t.city AS "city",
              t.latitude AS "latitude",
              t.longitude AS "longitude",
+             t.cover_url AS "coverUrl",
+             t.logo_url AS "logoUrl",
              COALESCE((t.settings ->> 'hide_public_prices')::boolean, false) AS "hidePrices"
       FROM bookings b
       JOIN courts c ON c.id = b.court_id
@@ -101,12 +107,14 @@ export default async function ReservaExitoPage(props: Props) {
   }
 
   const rivalEnabled = await isRivalEnabled().catch(() => false)
+  const celebrated = (await cookies()).get(CELEBRATED_COOKIE)?.value === params.bookingId
 
   return (
     <BookingSuccessCard
       bookingId={params.bookingId}
       complexUrl={absoluteUrl(`/${booking.tenantSlug}`)}
       rivalEnabled={rivalEnabled}
+      celebrated={celebrated}
       booking={{
         tenantName: booking.tenantName,
         tenantSlug: booking.tenantSlug,
@@ -123,6 +131,7 @@ export default async function ReservaExitoPage(props: Props) {
         depositAmount: booking.depositAmount,
         depositStatus: booking.depositStatus,
         hidePrices: booking.hidePrices,
+        imageUrl: booking.coverUrl ?? booking.logoUrl ?? null,
       }}
     />
   )

@@ -3,7 +3,6 @@
 import { useEffect } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import * as Sentry from '@sentry/nextjs'
-import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
 import { PortalResult, PortalResultLink } from '@/components/world/PortalResult'
 import { Button } from '@/components/ui/button'
 
@@ -31,7 +30,7 @@ export default function ReservaError({
       title="No pudimos cargar esta página"
       actions={
         <>
-          <Button type="button" onClick={reset} className={PORTAL_BUTTON}>
+          <Button type="button" onClick={reset} variant="pill" size="pill" className="w-full">
             Reintentar
           </Button>
           <PortalResultLink href="/mis-reservas" variant="outline">

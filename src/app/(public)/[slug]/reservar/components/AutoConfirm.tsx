@@ -67,7 +67,7 @@ export default function AutoConfirm({
   }, [slug, court, date, time, onConfirming])
 
   return (
-    <p ref={status} role="status" className="mb-3 min-h-6 text-base text-muted-foreground">
+    <p ref={status} role="status" className="rv-sub mb-3 mt-0 min-h-6">
       {confirming ? 'Confirmando tu reserva…' : null}
     </p>
   )

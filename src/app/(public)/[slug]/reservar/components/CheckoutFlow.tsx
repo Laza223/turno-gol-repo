@@ -1,14 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
+import type { CSSProperties } from 'react'
 import { buildReservarHref, type PayMethod } from '@/lib/booking/reserve-url'
 import { formatArs } from '@/lib/format'
-import { cn } from '@/lib/utils'
 import type { createBookingAndCheckout, sendPlayerMagicLink } from '../actions'
-import ConfirmBookingButton, { FixedCta } from './ConfirmBookingButton'
-import LoginGate, { type StartGoogleLoginFromReservar } from './LoginGate'
+import ConfirmBookingButton from './ConfirmBookingButton'
+import { LoginPanel, type StartGoogleLoginFromReservar } from './LoginGate'
 
 /**
  * La política de cancelación en una línea, sacada de la regla real del complejo. Con seña se dice
@@ -28,10 +25,10 @@ function cancellationNote(hours: number, withDeposit: boolean, lateCancelHours: 
 }
 
 /**
- * Lo que va debajo del resumen: UN botón de acción y, junto a él, la regla de cancelación. Con seña
- * dice "Pagar seña" (con el monto si el complejo muestra sus precios); sin seña, "Reservar". Es el
- * mismo botón con y sin sesión: con sesión envía la reserva, sin sesión abre el ingreso (un modal,
- * `LoginGate`) y el `next` del ingreso lleva la reserva para que sobreviva a la vuelta.
+ * Lo que va debajo del resumen (`reservar.html`). Con sesión: UN botón de acción y, debajo, la
+ * regla de cancelación. Con seña dice "Pagar seña" (con el monto si el complejo muestra sus
+ * precios); sin seña, "Reservar". Sin sesión: el ingreso, dentro de la pantalla (`LoginPanel`), y el
+ * `next` del ingreso lleva la reserva para que sobreviva a la vuelta.
  *
  * Ya no se elige cómo se paga en el complejo: sin seña la reserva se crea sin método presencial.
  * `pay` solo existe para no romper un link viejo con `?pay=`: si viene, viaja igual.
@@ -86,59 +83,53 @@ export default function CheckoutFlow({
   sendLinkAction: typeof sendPlayerMagicLink
   googleAction: StartGoogleLoginFromReservar
 }) {
-  const [loginOpen, setLoginOpen] = useState(false)
   const label = withDeposit
     ? depositAmount && !hidePrices
       ? `Pagar seña · ${formatArs(depositAmount)}`
       : 'Pagar seña'
     : 'Reservar'
 
-  return (
-    <>
-      {isPlayer ? (
-        <ConfirmBookingButton
-          slug={slug}
-          court={court}
-          date={date}
-          time={time}
-          dur={dur}
-          formato={formato}
-          pay={pay}
-          label={label}
-          autoConfirmToken={autoConfirmToken}
-          intentDegraded={intentDegraded}
-          action={createAction}
-        />
-      ) : (
-        <>
-          <FixedCta>
-            <Button
-              type="button"
-              aria-haspopup="dialog"
-              className={cn(PORTAL_BUTTON, 'min-h-[52px]')}
-              onClick={() => setLoginOpen(true)}
-            >
-              {label}
-            </Button>
-          </FixedCta>
-          <LoginGate
-            open={loginOpen}
-            onOpenChange={setLoginOpen}
-            next={buildReservarHref(slug, { courtId: court, date, time, formato, pay })}
-            action={sendLinkAction}
-            googleAction={googleAction}
-            inAppBrowser={inAppBrowser}
-            withDeposit={withDeposit}
-          />
-        </>
+  // La regla de cancelación se lee antes de entrar y antes de pagar: va con y sin sesión.
+  const notes = (
+    <div className="rv-small grid gap-1 text-center">
+      {withDeposit && hidePrices && (
+        <p>Pagás una seña online con MercadoPago; el resto, en el complejo.</p>
       )}
-      {/* Debajo del botón (en el celular el botón va fijo abajo y esto queda sobre él, en el flujo). */}
-      <div className="space-y-1 text-sm text-muted-foreground">
-        {withDeposit && hidePrices && (
-          <p>Pagás una seña online con MercadoPago; el resto, en el complejo.</p>
-        )}
-        <p>{cancellationNote(cancellationHours, withDeposit, lateCancelHours)}</p>
-      </div>
-    </>
+      <p>{cancellationNote(cancellationHours, withDeposit, lateCancelHours)}</p>
+    </div>
+  )
+
+  if (!isPlayer) {
+    return (
+      <>
+        <LoginPanel
+          next={buildReservarHref(slug, { courtId: court, date, time, formato, pay })}
+          action={sendLinkAction}
+          googleAction={googleAction}
+          inAppBrowser={inAppBrowser}
+          withDeposit={withDeposit}
+        />
+        {notes}
+      </>
+    )
+  }
+
+  return (
+    <div className="rv-stack rv-rise" style={{ '--i': 1 } as CSSProperties}>
+      <ConfirmBookingButton
+        slug={slug}
+        court={court}
+        date={date}
+        time={time}
+        dur={dur}
+        formato={formato}
+        pay={pay}
+        label={label}
+        autoConfirmToken={autoConfirmToken}
+        intentDegraded={intentDegraded}
+        action={createAction}
+      />
+      {notes}
+    </div>
   )
 }

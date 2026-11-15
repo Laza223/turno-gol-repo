@@ -1,12 +1,16 @@
-import { CalendarDays, Clock, Goal, MapPin, Wallet } from 'lucide-react'
+import Image from 'next/image'
 import { formatLabel } from '@/components/public/courtFacets'
 import { formatArs, formatDateLong } from '@/lib/format'
+import { cn } from '@/lib/utils'
+import '@/components/booking/reserva.css'
 
 export type BookingSummaryData = {
   tenantName: string
   /** Si el complejo no la cargó, se dice solo la ciudad. */
   address?: string
   city: string
+  /** La portada del complejo (o su logo): la miniatura de 64 px. Sin ella va el nombre solo. */
+  imageUrl?: string | null
   courtName: string
   /** Jugadores por lado de la cancha (`courts.format`): "Cancha 2 · Fútbol 5". */
   courtFormat?: number
@@ -23,49 +27,39 @@ export type BookingSummaryData = {
   payNote?: string
 }
 
-const ROW = 'flex items-start gap-3'
-const ICON = 'mt-0.5 size-5 shrink-0 text-emerald-700 dark:text-emerald-400'
-
 /**
- * Resumen del turno en la pantalla de confirmar y en la reserva confirmada: QUIÉN, CUÁNDO, DÓNDE y,
- * si el complejo los muestra, la plata. Misma receta que el comprobante (`.reserva-receipt-card`):
- * en claro, tarjeta blanca elevada con tinte esmeralda; en oscuro, vidrio con resplandor. Con
- * `hidePrices` no sale ningún monto, en ningún texto ni atributo, y tampoco dice cómo se paga: eso
- * lo dice la nota que va junto al botón de reservar.
+ * Miniatura, nombre y dirección del complejo (`.sum__top` del mockup). El nombre es un h2: la
+ * pantalla tiene su propio h1. La foto es decorativa: el nombre ya está escrito al lado.
  */
-export default function BookingSummary({ data }: { data: BookingSummaryData }) {
-  const rest = Math.max(data.price - data.depositAmount, 0)
+export function SummaryHead({ data }: { data: BookingSummaryData }) {
   const where = [data.address, data.city].filter(Boolean).join(', ')
   return (
-    <section
-      aria-label="Tu turno"
-      className="reserva-receipt-card relative overflow-hidden rounded-2xl p-5"
-    >
-      <h2 className="font-display text-xl font-bold leading-7 text-foreground">
-        {data.tenantName}
-      </h2>
-      <p className="mt-1 flex items-start gap-2 text-sm text-muted-foreground">
-        <MapPin
-          className="mt-0.5 size-4 shrink-0 text-emerald-700 dark:text-emerald-400"
-          aria-hidden
-        />
+    <div className="rv-head">
+      {data.imageUrl && <Image src={data.imageUrl} alt="" width={64} height={64} sizes="64px" />}
+      <div>
+        <h2>
+          <b>{data.tenantName}</b>
+        </h2>
         <span>{where}</span>
-      </p>
-      {/* <div>, no <dl>: son filas ícono+texto, no pares término/definición (axe definition-list). */}
-      <div className="mt-4 space-y-3 border-t border-border pt-4 text-base text-foreground dark:border-white/10">
-        <div className={ROW}>
-          <CalendarDays className={ICON} aria-hidden />
-          <span>{formatDateLong(data.date)}</span>
-        </div>
-        <div className={ROW}>
-          <Clock className={ICON} aria-hidden />
-          <span className="tabular-nums">
-            {data.timeStart} a {data.timeEnd}
-          </span>
-        </div>
-        <div className={ROW}>
-          <Goal className={ICON} aria-hidden />
-          <span>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * QUÉ y CUÁNDO, y la plata si el complejo la muestra, en pares de clave y valor (`.kv`). Con
+ * `hidePrices` no sale ningún monto, en ningún texto ni atributo, y tampoco dice cómo se paga en
+ * confirmar: eso lo dice la nota que va junto al botón. En la reserva confirmada lo dice `payNote`.
+ */
+export function SummaryRows({ data }: { data: BookingSummaryData }) {
+  const rest = Math.max(data.price - data.depositAmount, 0)
+  const withDeposit = data.depositAmount > 0
+  return (
+    <>
+      <dl className="rv-kv">
+        <div>
+          <dt>Cancha</dt>
+          <dd>
             {data.courtName}
             {data.courtFormat ? (
               <>
@@ -74,37 +68,67 @@ export default function BookingSummary({ data }: { data: BookingSummaryData }) {
                 <span className="whitespace-nowrap">{formatLabel(data.courtFormat)}</span>
               </>
             ) : null}
-          </span>
+          </dd>
+        </div>
+        <div>
+          <dt>Día</dt>
+          <dd>{formatDateLong(data.date)}</dd>
+        </div>
+        <div>
+          <dt>Hora</dt>
+          <dd>
+            {data.timeStart} a {data.timeEnd}
+          </dd>
         </div>
         {data.payNote && (
-          <div className={ROW}>
-            <Wallet className={ICON} aria-hidden />
-            <span>{data.payNote}</span>
+          <div>
+            <dt>Pago</dt>
+            <dd>{data.payNote}</dd>
           </div>
         )}
-      </div>
+      </dl>
       {!data.hidePrices && (
-        <div className="mt-4 space-y-2 border-t border-border pt-4 text-base dark:border-white/10">
-          <div className="flex justify-between gap-4 text-muted-foreground">
-            <span>Precio del turno</span>
-            <span className="tabular-nums text-foreground">{formatArs(data.price)}</span>
-          </div>
-          {data.depositAmount > 0 && (
-            <>
-              <div className="flex items-baseline justify-between gap-4 font-semibold text-foreground">
-                <span>{data.depositPaid ? 'Seña pagada' : 'Seña a pagar ahora'}</span>
-                <span className="font-display text-2xl font-bold tabular-nums text-emerald-700 dark:text-emerald-400">
-                  {formatArs(data.depositAmount)}
-                </span>
-              </div>
-              <div className="flex justify-between gap-4 text-sm text-muted-foreground">
-                <span>Resto en el complejo</span>
-                <span className="tabular-nums">{formatArs(rest)}</span>
-              </div>
-            </>
-          )}
-        </div>
+        <>
+          <hr className="rv-rule" />
+          <dl className="rv-kv">
+            <div className={cn(!withDeposit && 'is-key')}>
+              <dt>Precio del turno</dt>
+              <dd>{formatArs(data.price)}</dd>
+            </div>
+            {withDeposit && (
+              <>
+                <div className="is-key">
+                  <dt>{data.depositPaid ? 'Seña pagada' : 'Seña a pagar ahora'}</dt>
+                  <dd>{formatArs(data.depositAmount)}</dd>
+                </div>
+                <div>
+                  <dt>Resto en el complejo</dt>
+                  <dd>{formatArs(rest)}</dd>
+                </div>
+              </>
+            )}
+          </dl>
+        </>
       )}
+    </>
+  )
+}
+
+/**
+ * Resumen del turno en la pantalla de confirmar (`.sum` del mockup): vidrio pintado, porque detrás
+ * no pasa nada que desenfocar. La reserva confirmada arma su ticket con las mismas dos piezas.
+ */
+export default function BookingSummary({
+  data,
+  className,
+}: {
+  data: BookingSummaryData
+  className?: string
+}) {
+  return (
+    <section aria-label="Tu turno" className={cn('rv-sum glass-painted', className)}>
+      <SummaryHead data={data} />
+      <SummaryRows data={data} />
     </section>
   )
 }

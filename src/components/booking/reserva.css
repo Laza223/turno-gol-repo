@@ -1,0 +1,482 @@
+/* Confirmar el turno y la vuelta de la reserva en vidrio (portal de vidrio F5: `reservar.html`,
+   `reserva.html` y la sección "confirmar el turno, reserva lista" de `glass-app.css`). Tokens
+   `--portal-*` y `--glass-*` de globals.css: fuera del portal no existen. El vidrio (`.glass`,
+   `.glass-painted`) y sus respaldos salen de globals.css. Solo se animan transform y opacity. */
+
+@layer components {
+  /* ── Columna: 480 px como mucho (`.wrap--s`). */
+  .rv-col {
+    width: min(480px, calc(100% - 2 * 20px));
+    margin-inline: auto;
+    padding: 16px 0 48px;
+    color: var(--portal-ink);
+    font-family: var(--font-display);
+  }
+  @media (min-width: 768px) {
+    .rv-col {
+      padding-top: 40px;
+      padding-bottom: 96px;
+    }
+  }
+  .rv-stack {
+    display: grid;
+    gap: 12px;
+  }
+
+  .rv-h1 {
+    font-size: clamp(30px, 2.4vw + 20px, 44px);
+    font-weight: 700;
+    line-height: 1.05;
+    font-stretch: 104%;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+  }
+  .rv-h2 {
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.1;
+    font-stretch: 104%;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+  .rv-sub {
+    margin-top: 8px;
+    font-size: 16px;
+    line-height: 1.45;
+    color: var(--portal-muted);
+    text-wrap: pretty;
+  }
+  .rv-small {
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--portal-soft);
+    text-wrap: pretty;
+  }
+
+  /* ── Volver (`.back`). */
+  .rv-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    justify-self: start;
+    height: 44px;
+    margin-left: -10px;
+    padding: 0 14px 0 10px;
+    border-radius: 999px;
+    color: var(--portal-ink);
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color var(--dur-2) var(--portal-ease-out);
+  }
+  .rv-back:hover {
+    background: var(--portal-inner);
+  }
+  .rv-back:focus-visible {
+    outline: 2px solid var(--portal-green);
+    outline-offset: 2px;
+  }
+  .rv-back svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* ── El resumen del turno (`.sum`) y el ticket. */
+  .rv-sum {
+    display: grid;
+    gap: 16px;
+    padding: 18px;
+    border-radius: 32px;
+  }
+  .rv-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+  }
+  .rv-head img {
+    flex: none;
+    display: block;
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    object-fit: cover;
+  }
+  .rv-head > div {
+    min-width: 0;
+  }
+  .rv-head b {
+    display: block;
+    font-size: 19px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
+  }
+  .rv-head span {
+    display: block;
+    font-size: 14px;
+    color: var(--portal-soft);
+    overflow-wrap: anywhere;
+  }
+  .rv-kv {
+    display: grid;
+    gap: 10px;
+  }
+  .rv-kv > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 16px;
+  }
+  .rv-kv dt {
+    flex: none;
+    color: var(--portal-soft);
+  }
+  .rv-kv dd {
+    margin: 0;
+    font-weight: 600;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .rv-kv .is-key dd {
+    color: var(--portal-slot-ink);
+    font-size: 18px;
+  }
+  .rv-rule {
+    height: 1px;
+    margin: 4px 0;
+    border: 0;
+    background: var(--portal-inner-line);
+  }
+
+  /* ── Panel (ingreso) y separador. El campo va con utilidades en `LoginGate`. */
+  .rv-panel {
+    display: grid;
+    gap: 12px;
+    padding: 20px;
+    border-radius: 28px;
+  }
+  @media (min-width: 768px) {
+    .rv-panel {
+      padding: 28px;
+    }
+  }
+  .rv-or {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: var(--portal-soft);
+  }
+  .rv-or::before,
+  .rv-or::after {
+    content: '';
+    height: 1px;
+    background: var(--portal-inner-line);
+  }
+  .rv-panel label {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .rv-err {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--portal-bad);
+  }
+  .rv-link {
+    color: var(--portal-green);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+
+  /* ── Aviso que frena la reserva: vidrio pintado con el tinte del error. */
+  .rv-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 24px;
+    border: 1px solid var(--portal-bad-line);
+    background: var(--portal-bad-bg);
+    color: var(--portal-bad);
+  }
+  .rv-notice svg {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    margin-top: 2px;
+  }
+
+  /* ── Estado sin turno (`.empty`). */
+  .rv-empty {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    padding: 40px 20px;
+    border-radius: 32px;
+    text-align: center;
+  }
+  .rv-empty .rv-sub {
+    margin-top: 0;
+  }
+
+  /* ── Pantalla de resultado (`.done`): insignia, título, qué pasó y la salida. */
+  .rv-done {
+    display: grid;
+    justify-items: center;
+    text-align: center;
+  }
+  .rv-done > .rv-sub {
+    max-width: 40ch;
+  }
+  .rv-badge {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 76px;
+    height: 76px;
+    margin-bottom: 18px;
+    border-radius: 50%;
+    color: var(--portal-on-green);
+    background: linear-gradient(180deg, var(--portal-btn-a), var(--portal-btn-b));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.5),
+      0 0 0 10px rgb(var(--portal-glow) / 0.14),
+      0 24px 50px -14px var(--portal-btn-glow);
+  }
+  .rv-badge svg {
+    width: 36px;
+    height: 36px;
+    stroke-width: 2.6;
+  }
+  .rv-badge--bad {
+    color: #fff;
+    background: linear-gradient(180deg, var(--portal-bad-a), var(--portal-bad-b));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.35),
+      0 0 0 10px rgb(225 29 72 / 0.12),
+      0 24px 50px -14px rgb(225 29 72 / 0.55);
+  }
+  /* Lo que no es una falla ni un festejo (esperando, ya pasó): vidrio neutro. */
+  .rv-badge--neutral {
+    color: var(--portal-ink);
+    background: var(--portal-inner);
+    border: 1px solid var(--portal-inner-line);
+    box-shadow: 0 0 0 10px var(--portal-inner);
+  }
+  .rv-ticket {
+    display: grid;
+    gap: 16px;
+    width: 100%;
+    margin-top: 24px;
+    padding: 20px;
+    border-radius: 32px;
+    text-align: left;
+  }
+  .rv-cut {
+    height: 1px;
+    margin: 2px -20px;
+    border-top: 2px dashed var(--portal-inner-line);
+  }
+  .rv-code {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .rv-code > span {
+    font-size: 14px;
+    color: var(--portal-soft);
+  }
+  .rv-code b {
+    font:
+      700 24px/1 ui-monospace,
+      'SF Mono',
+      Menlo,
+      Consolas,
+      monospace;
+    letter-spacing: 0.08em;
+  }
+  .rv-acts {
+    display: grid;
+    gap: 10px;
+    width: 100%;
+    margin-top: 20px;
+  }
+  .rv-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .rv-map {
+    width: 100%;
+    margin-top: 20px;
+    overflow: hidden;
+    border-radius: 28px;
+  }
+
+  /* ── Entradas (pieza Subir): un bloque entra desde 14 px abajo con fundido. */
+  .rv-rise {
+    animation: rv-rise var(--dur-4) var(--portal-ease-out) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+  @keyframes rv-rise {
+    from {
+      opacity: 0;
+      translate: 0 14px;
+    }
+  }
+
+  /* Reemplazo: lo nuevo entra desde abajo (el formulario ya se fue). */
+  .rv-swap {
+    animation: rv-swap 180ms var(--portal-ease-out) both;
+  }
+  @keyframes rv-swap {
+    from {
+      opacity: 0;
+      translate: 0 60%;
+    }
+  }
+  /* Toque de una pieza chica (el sobre de "Revisá tu email"). */
+  .rv-tap {
+    animation: rv-tap var(--spring-toque) both;
+  }
+  @keyframes rv-tap {
+    from {
+      scale: 0.86;
+    }
+  }
+
+  /* "Procesando…": el brillo de carga adentro del botón mientras envía. */
+  .rv-go {
+    position: relative;
+    overflow: hidden;
+  }
+  .rv-go[aria-busy='true']::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    translate: -100% 0;
+    background: linear-gradient(
+      100deg,
+      transparent 20%,
+      rgb(255 255 255 / 0.35) 50%,
+      transparent 80%
+    );
+    animation: portal-shimmer 1.4s var(--portal-ease-out) infinite;
+    pointer-events: none;
+  }
+
+  /* ── La reserva confirmada (dirección §4.5): la línea de tiempo, una vez por visita. */
+  .rv-celebrate .rv-badge {
+    animation: rv-badge var(--spring-toque) both;
+  }
+  @keyframes rv-badge {
+    from {
+      scale: 0.6;
+    }
+  }
+  /* Floración: el resplandor crece una vez detrás de la insignia y queda en su reposo. */
+  .rv-badge::before {
+    content: '';
+    position: absolute;
+    inset: -26px;
+    z-index: -1;
+    border-radius: 50%;
+    background: radial-gradient(closest-side, rgb(var(--portal-glow) / 0.55), transparent);
+    opacity: 0.2;
+    pointer-events: none;
+  }
+  .rv-badge--bad::before,
+  .rv-badge--neutral::before {
+    content: none;
+  }
+  .rv-celebrate .rv-badge::before {
+    animation: rv-bloom 900ms var(--portal-ease-out) both;
+  }
+  @keyframes rv-bloom {
+    0% {
+      opacity: 0;
+    }
+    40% {
+      opacity: 0.5;
+    }
+  }
+  /* Trazo: el tilde se dibuja (el path lleva `pathLength="1"`). */
+  .rv-celebrate .rv-tick {
+    stroke-dasharray: 1;
+    animation: rv-trace var(--dur-3) var(--portal-ease-out) 120ms both;
+  }
+  @keyframes rv-trace {
+    from {
+      stroke-dashoffset: 1;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  .rv-celebrate .rv-at-title {
+    animation: rv-rise var(--dur-4) var(--portal-ease-out) 200ms both;
+  }
+  /* El ticket se imprime: sale de una ranura (`.rv-slot` recorta) de arriba hacia abajo y baja
+     8 px. Solo `transform`: no se anima el recorte. */
+  /* La ranura deja aire a los costados (16 px, menos que el margen de la columna) y abajo para que no corte la sombra del ticket. */
+  .rv-slot {
+    width: calc(100% + 32px);
+    margin: 24px -16px -48px;
+    padding: 0 16px 48px;
+    overflow: hidden;
+  }
+  .rv-slot > .rv-ticket {
+    margin-top: 0;
+  }
+  .rv-celebrate .rv-slot > .rv-ticket {
+    animation: rv-print 520ms var(--portal-ease-out) 420ms both;
+  }
+  @keyframes rv-print {
+    0% {
+      translate: 0 calc(-100% - 8px);
+    }
+    100% {
+      translate: 0 0;
+    }
+  }
+  .rv-celebrate .rv-code b > span {
+    animation: rv-letter var(--dur-2) var(--portal-ease-out) both;
+    animation-delay: calc(760ms + var(--n, 0) * 30ms);
+  }
+  @keyframes rv-letter {
+    from {
+      opacity: 0;
+    }
+  }
+  .rv-celebrate .rv-at-acts {
+    animation: rv-rise var(--dur-4) var(--portal-ease-out) 900ms both;
+  }
+  /* Ya la vio en esta visita: queda en el estado final, sin volver a festejar. */
+  .rv-celebrate[data-seen] *,
+  .rv-celebrate[data-seen] *::before {
+    animation: none !important;
+  }
+}
+
+/* "Reducir movimiento": todo en su estado final, sin desplazarse (§4.4, última columna). */
+@media (prefers-reduced-motion: reduce) {
+  .rv-rise,
+  .rv-swap,
+  .rv-tap,
+  .rv-celebrate *,
+  .rv-celebrate *::before {
+    animation: none !important;
+  }
+  .rv-go[aria-busy='true']::after {
+    display: none;
+  }
+}

@@ -1,6 +1,7 @@
+import '@/components/booking/reserva.css'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
-import { CheckoutErrorBanner, RESERVAR_COLUMN } from './CheckoutStates'
+import { CheckoutErrorBanner } from './CheckoutStates'
 
 /**
  * `CheckoutErrorBanner` vive en la columna de `reservar/page.tsx`, arriba de `BookingSummary`,
@@ -15,8 +16,8 @@ const meta = {
 
   decorators: [
     (Story) => (
-      <div className="min-h-dvh bg-background text-foreground">
-        <div className={RESERVAR_COLUMN}>
+      <div data-portal-glass className="portal-ambient min-h-dvh text-portal-ink">
+        <div className="rv-col">
           <Story />
         </div>
       </div>

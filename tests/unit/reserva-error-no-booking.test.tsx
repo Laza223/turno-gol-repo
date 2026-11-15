@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
-import { TONE_TEXT } from '@/lib/status-tone'
 import { HOLD_TTL_SECONDS } from '@/lib/booking/hold'
 
 const { extractAuthUser, execute } = vi.hoisted(() => ({
@@ -138,7 +137,7 @@ describe('ReservaErrorPage — qué pasó con el turno', () => {
     expect(contact.getAttribute('rel')).toBe('noopener noreferrer')
     expect(screen.queryByRole('link', { name: 'Reservar de nuevo' })).toBeNull()
     // Rojo: el pago falló.
-    expect(container.querySelector('svg')?.getAttribute('class')).toContain(TONE_TEXT.destructive)
+    expect(container.querySelector('.rv-badge')?.className).toContain('rv-badge--bad')
     // Dice qué turno quedó guardado (día, hora y cancha) sin mostrar cuánto falta para que venza.
     expect(screen.getByText(/^Martes, 18 de junio ·/).closest('p')?.textContent).toBe(
       'Martes, 18 de junio · 20:00 a 21:00 Cancha 2',
@@ -153,7 +152,7 @@ describe('ReservaErrorPage — qué pasó con el turno', () => {
       execute.mockResolvedValue(row(status, new Date('2020-01-01T00:00:00Z')))
       const { container } = await renderPage()
       expect(screen.getByText(/el turno ya no está guardado/)).toBeTruthy()
-      expect(container.querySelector('svg')?.getAttribute('class')).toContain(TONE_TEXT.destructive)
+      expect(container.querySelector('.rv-badge')?.className).toContain('rv-badge--bad')
       expect(screen.queryByRole('button', { name: 'Reintentar pago' })).toBeNull()
       expect(screen.getByRole('link', { name: 'Reservar de nuevo' }).getAttribute('href')).toBe(
         '/cancha-x?date=2030-06-17',
@@ -212,8 +211,8 @@ describe('ReservaErrorPage — qué pasó con el turno', () => {
       const { container } = await renderPage()
       expect(screen.getByRole('heading', { name: 'Reserva cancelada' })).toBeTruthy()
       // Gris: cancelar no es una falla del pago.
-      expect(container.querySelector('svg')?.getAttribute('class')).toContain(TONE_TEXT.neutral)
-      expect(container.querySelector('svg')?.getAttribute('class')).not.toContain('text-red-700')
+      expect(container.querySelector('.rv-badge')?.className).toContain('rv-badge--neutral')
+      expect(container.querySelector('.rv-badge')?.className).not.toContain('rv-badge--bad')
       expect(screen.queryByRole('button', { name: 'Reintentar pago' })).toBeNull()
     },
   )

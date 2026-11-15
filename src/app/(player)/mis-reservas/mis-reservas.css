@@ -1,0 +1,10 @@
+/* Mis reservas en vidrio: lo que `portal-app.css` no cubre. `.pa-bk--past` y `.glass-painted` pesan
+   lo mismo y el orden de las hojas lo decide el empaquetador: con las dos clases juntas la tarjeta
+   pasada gana siempre (solo el borde, sin relleno ni sombra). */
+@layer components {
+  .pa-bk.pa-bk--past {
+    background: transparent;
+    box-shadow: none;
+    border-color: var(--portal-inner-line);
+  }
+}

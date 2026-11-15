@@ -1,3 +1,4 @@
+import '@/components/world/portal-app.css'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, screen, userEvent, waitFor, within } from 'storybook/test'
 import { LeaveReviewButton } from './LeaveReviewButton'
@@ -27,12 +28,11 @@ async function settleToasts() {
 
 /**
  * Sin Server Action: hace `fetch('/api/player/reviews', {method:'POST'})`
- * directo. El Dialog (Radix) monta en un portal fuera de canvasElement: las
+ * directo. La hoja de vidrio (Radix) monta en un portal fuera de canvasElement: las
  * assertions post-apertura usan `screen`. El Toaster ya está montado global
  * en el preview (ver .storybook/preview.tsx) — no hace falta montarlo acá.
- * El botón vive dentro de la card blanca (`bg-card`) de cada turno en
- * `MisReservasView` (nunca directo sobre el fondo gris de `<body>`,
- * `bg-background`) — el decorator reproduce esa card.
+ * El botón vive dentro de la tarjeta de vidrio pintado de cada turno en
+ * `MisReservasView` — el decorator reproduce esa tarjeta, con los tokens del portal.
  */
 const meta = {
   title: 'Player/MisReservas/LeaveReviewButton',
@@ -40,10 +40,12 @@ const meta = {
   parameters: { layout: 'centered' },
   args: { bookingId: 'booking-5', tenantName: 'Complejo Fénix' },
   decorators: [
-    // El diálogo monta en <body>, fuera del decorador.
+    // La hoja monta en <body>, fuera del decorador.
     (Story) => (
-      <div className="rounded-xl border border-border bg-card p-4">
-        <Story />
+      <div data-portal-glass className="portal-ambient p-6 text-portal-ink">
+        <div className="pa-links glass-painted rounded-[28px] p-4">
+          <Story />
+        </div>
       </div>
     ),
   ],

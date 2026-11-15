@@ -5,7 +5,7 @@ import { BellRing } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { SelectMenu } from '@/components/ui/select-menu'
-import { PORTAL_BUTTON_OUTLINE } from '@/components/world/PortalAuthFrame'
+import { PORTAL_BUTTON_OUTLINE } from '@/components/world/portal-auth-styles'
 import {
   ALERT_FREQUENCY,
   type AlertAction,

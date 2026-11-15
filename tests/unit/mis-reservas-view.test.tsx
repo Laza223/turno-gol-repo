@@ -367,27 +367,100 @@ describe('MisReservasView — cómo se lee el turno (ronda 2)', () => {
   })
 })
 
-describe('MisReservasView — acciones livianas y alineadas (ronda 2)', () => {
-  it('"Reservar de nuevo" es un link sin borde, de 44 px', () => {
+describe('MisReservasView — acciones de la tarjeta en vidrio', () => {
+  it('"Reservar de nuevo" es una píldora interior (pill-link) de 44 px', () => {
     renderView([row({ id: 'a', status: 'completed', has_review: true })], { tab: 'historial' })
     const link = within(card('a')).getByRole('link', { name: 'Reservar de nuevo' })
-    expect(link.className).not.toMatch(/(^|\s)border(\s|$)/)
+    expect(link.className).toMatch(/bg-portal-inner/)
     expect(link.className).toMatch(/min-h-11/)
   })
 
-  it('las acciones sin borde van marcadas para alinear la primera con el borde de la fila', () => {
+  it('las acciones van en `.pa-links` y "Cancelar" se empuja a la derecha, en rojo', () => {
     renderView([row({ id: 'a' }), row({ id: 'b', status: 'completed', has_review: false })])
-    const cancel = within(card('b')).getByRole('button', { name: 'Dejar reseña' })
+    const review = within(card('b')).getByRole('button', { name: 'Dejar reseña' })
+    expect(review).toHaveAttribute('data-ghost')
+    expect(review.parentElement!.className).toMatch(/(^|\s)pa-links(\s|$)/)
+    const cancel = within(card('a')).getByRole('button', { name: 'Cancelar' })
     expect(cancel).toHaveAttribute('data-ghost')
-    expect(cancel.parentElement!.className).toMatch(/\[&>\[data-ghost\]:first-child\]:-ml-3/)
-    // Un botón sin borde después de uno con borde (Cancelar junto a "Cómo llegar") se va a la
-    // derecha: si baja de renglón no queda sangrado por su propio relleno.
-    expect(cancel.parentElement!.className).toMatch(
-      /\[&>:not\(\[data-ghost\]\)~\[data-ghost\]\]:ml-auto/,
+    expect(cancel.parentElement!.className).toMatch(/(^|\s)pa-links(\s|$)/)
+    expect(cancel.className).toMatch(/(^|\s)pa-push(\s|$)/)
+    expect(cancel.className).toMatch(/text-portal-bad/)
+    expect(cancel.className).not.toMatch(/text-portal-ink/)
+  })
+})
+
+describe('MisReservasView — piel de vidrio', () => {
+  it('un solo h1 "Mis reservas" y la bajada', () => {
+    renderView([row()])
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+    expect(screen.getByRole('heading', { level: 1, name: 'Mis reservas' })).toBeInTheDocument()
+    expect(screen.getByText('Tenés 1 turno por jugar.')).toBeInTheDocument()
+  })
+
+  it('las pestañas son un control de vidrio con la píldora en la activa', () => {
+    renderView([row()], { tab: 'historial' })
+    const nav = screen.getByRole('navigation', { name: 'Tus reservas' })
+    expect(nav.className).toMatch(/pa-seg/)
+    const pill = nav.querySelector<HTMLElement>('.segmented-pill')!
+    expect(pill).toHaveAttribute('aria-hidden', 'true')
+    expect(pill.style.getPropertyValue('--i')).toBe('1')
+    expect(pill.style.getPropertyValue('--n')).toBe('2')
+  })
+
+  it('cada tarjeta es una `li` de vidrio pintado; las pasadas van sin relleno', () => {
+    renderView([row({ id: 'a' }), row({ id: 'b', status: 'completed' })])
+    expect(card('a').className).toMatch(/pa-bk glass-painted/)
+    expect(card('a').className).not.toMatch(/pa-bk--past/)
+    expect(card('b').className).toMatch(/pa-bk--past/)
+  })
+
+  it('la etiqueta de estado toma el tono del sistema: confirmada y jugada verdes, cancelada y "Turno fijo" apagadas', () => {
+    renderView(
+      [
+        row({ id: 'a', type: 'fixed' }),
+        row({ id: 'b', status: 'completed' }),
+        row({ id: 'c', status: 'canceled_refunded', canceled_by: 'player' }),
+      ],
+      { tab: 'historial' },
     )
-    expect(within(card('a')).getByRole('button', { name: 'Cancelar' })).toHaveAttribute(
-      'data-ghost',
+    expect(within(card('a')).getByText('Confirmada').className).toBe('pa-tag')
+    expect(within(card('a')).getByText('Turno fijo').className).toMatch(/pa-tag--off/)
+    expect(within(card('b')).getByText('Jugada').className).toBe('pa-tag')
+    expect(within(card('c')).getByText('Cancelada').className).toMatch(/pa-tag--off/)
+  })
+
+  it('la seña pendiente es una nota de aviso con "Pagar la seña" adentro', () => {
+    renderView([row({ id: 'a', status: 'pending_payment', share_href: null, pay_deposit: 'open' })])
+    const note = within(card('a')).getByText(/Falta pagar la seña/).parentElement!
+    expect(note.className).toMatch(/pa-note--warn/)
+    expect(within(note).getByRole('button', { name: 'Pagar la seña' })).toBeInTheDocument()
+  })
+
+  it('el "cuándo" y el nombre del complejo con su inicial como foto', () => {
+    renderView([row({ id: 'a' })])
+    const c = within(card('a'))
+    expect(c.getByText('Complejo Demo')).toHaveClass('pa-bk__name')
+    expect(card('a').querySelector('.pa-bk__pic')).toHaveTextContent('C')
+  })
+
+  it('vacío: sección de vidrio con su h2, la bajada y "Explorar complejos"', () => {
+    renderView([], { tab: 'proximos' })
+    const empty = screen.getByRole('region', { name: 'No tenés turnos por jugar' })
+    expect(empty.className).toMatch(/rv-empty glass-painted/)
+    expect(within(empty).getByRole('link', { name: 'Explorar complejos' })).toHaveAttribute(
+      'href',
+      '/explorar',
     )
+  })
+
+  it('cancelar abre la hoja de vidrio con el motivo en filas de una sola elección', async () => {
+    renderView([row({ id: 'a' })])
+    fireEvent.click(within(card('a')).getByRole('button', { name: 'Cancelar' }))
+    const dialog = await screen.findByRole('dialog')
+    const group = within(dialog).getByRole('radiogroup')
+    expect(within(group).getAllByRole('radio').length).toBeGreaterThan(1)
+    expect(within(group).getAllByRole('radio')[0]!.className).toMatch(/pa-opt/)
+    expect(within(dialog).getByText('¿Por qué cancelás?')).toBeInTheDocument()
   })
 })
 

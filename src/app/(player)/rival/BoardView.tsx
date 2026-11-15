@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
-import { PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
+import { PORTAL_SECTION_TITLE } from '@/components/world/portal-auth-styles'
 import { formatLabel } from '@/components/public/courtFacets'
 import { cn } from '@/lib/utils'
 import {

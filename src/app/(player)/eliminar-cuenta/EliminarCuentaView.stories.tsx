@@ -17,7 +17,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="min-h-dvh bg-background text-foreground">
+      <div data-portal-glass className="portal-ambient min-h-dvh text-portal-ink">
         <Story />
       </div>
     ),
@@ -73,7 +73,7 @@ export const VariasReservasFuturas: Story = {
   },
 }
 
-/** El botón de alarma es el único rojo sólido, mide 44 px o más y no queda pegado a la descarga. */
+/** El botón de alarma es el único `pill-danger`, mide 44 px o más y no queda pegado a la descarga. */
 export const BotonDeAlarma: Story = {
   args: { futureConfirmedCount: 0 },
   play: async ({ canvasElement }) => {
@@ -81,10 +81,10 @@ export const BotonDeAlarma: Story = {
     const boton = canvas.getByRole('button', { name: 'Eliminar mi cuenta' })
     const caja = boton.getBoundingClientRect()
     await expect(caja.height).toBeGreaterThanOrEqual(44)
-    await expect(boton).toHaveClass('bg-red-600')
     const rojos = [...canvasElement.querySelectorAll('button')].filter((b) =>
-      b.classList.contains('bg-red-600'),
+      b.className.includes('--portal-bad'),
     )
+    await expect(rojos[0]).toBe(boton)
     await expect(rojos).toHaveLength(1)
     const descarga = canvas.getByRole('button', { name: 'Descargar mis datos' })
     await expect(caja.top - descarga.getBoundingClientRect().bottom).toBeGreaterThanOrEqual(16)
@@ -106,7 +106,10 @@ export const ErrorDeExport: Story = {
   },
 }
 
-/** Contraste MEDIDO de los textos y del botón de alarma. Corre en claro y en oscuro. */
+/**
+ * Contraste MEDIDO de los textos. Corre en claro y en oscuro. Los botones de degradé ("Ver mis
+ * reservas", el de alarma) no entran: `paintedContrast` no lee un degradado.
+ */
 export const ContrasteMedido: Story = {
   args: { futureConfirmedCount: 2 },
   play: async ({ canvasElement }) => {
@@ -116,9 +119,7 @@ export const ContrasteMedido: Story = {
       ['se borran', canvas.getByText(/tu vínculo con los complejos/)],
       ['ley', canvas.getByText(/Ley 25\.326/)],
       ['aviso de reservas', canvas.getByText(/quedan sin titular/)],
-      ['ver reservas', canvas.getByRole('link', { name: 'Ver mis reservas' })],
       ['descargar', canvas.getByRole('button', { name: 'Descargar mis datos' })],
-      ['eliminar', canvas.getByRole('button', { name: 'Eliminar mi cuenta' })],
     ]
     for (const [nombre, el] of medidos) {
       const ratio = await paintedContrast(el)

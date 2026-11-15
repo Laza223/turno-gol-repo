@@ -6,7 +6,7 @@ import { DataExportButton } from './DataExportButton'
  * Sin Server Action: hace `fetch('/api/player/data-export')` directo. Se
  * mockea con `parameters.fetchMock` (decorator `withFetch`, ver
  * .storybook/decorators/with-fetch.tsx) — no hay MSW en este repo.
- * El botón es `outline`: la única acción verde de Mi cuenta es "Guardar cambios".
+ * El botón es `pill-link` (la acción secundaria del portal de vidrio).
  */
 const meta = {
   title: 'Player/Configuracion/DataExportButton',
@@ -14,7 +14,7 @@ const meta = {
   parameters: { layout: 'padded' },
   decorators: [
     (Story) => (
-      <div className="max-w-sm bg-background p-4 text-foreground">
+      <div data-portal-glass className="portal-ambient max-w-sm p-4 text-portal-ink">
         <Story />
       </div>
     ),

@@ -23,8 +23,8 @@ const isThemeValue = (v: string | undefined): v is ThemeValue => OPTIONS.some((o
  * para no romper la hidratación (next-themes).
  *
  * `glass`: el control segmentado del portal de vidrio (decisión 2026-11-13), con una píldora que
- * se desliza a la opción elegida. Lo usa el menú de la cuenta (cromo, F1); `/configuracion` pasa a
- * él en su fase. `portal` sigue igual: lo usan esa página y el cajón del panel en el celu.
+ * se desliza a la opción elegida. Lo usan el menú de la cuenta (cromo, F1) y `/configuracion` (F6).
+ * `portal` sigue igual: lo usa el cajón del panel en el celu.
  */
 export default function ThemeToggle({
   variant = 'panel',

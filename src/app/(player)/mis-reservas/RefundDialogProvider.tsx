@@ -1,7 +1,8 @@
 'use client'
 
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { GlassSheetContent } from '@/components/ui/glass-sheet'
+import { Sheet } from '@/components/ui/sheet'
 import { RefundContactPanel } from './RefundContactPanel'
 import type { RefundContactInfo } from './actions'
 
@@ -35,14 +36,11 @@ export function RefundDialogProvider({ children }: { children: ReactNode }) {
   return (
     <RefundDialogContext.Provider value={show}>
       {children}
-      <Dialog open={refund !== null} onOpenChange={(v) => !v && setRefund(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reserva cancelada</DialogTitle>
-          </DialogHeader>
+      <Sheet open={refund !== null} onOpenChange={(v) => !v && setRefund(null)}>
+        <GlassSheetContent title="Reserva cancelada">
           {refund && <RefundContactPanel refund={refund} />}
-        </DialogContent>
-      </Dialog>
+        </GlassSheetContent>
+      </Sheet>
     </RefundDialogContext.Provider>
   )
 }

@@ -1,27 +1,18 @@
-import type { ReactNode } from 'react'
+import type { CSSProperties } from 'react'
 import Link from 'next/link'
-import {
-  Activity,
-  Download,
-  Heart,
-  LogOut,
-  Shirt,
-  SunMoon,
-  User,
-  UserX,
-  type LucideIcon,
-} from 'lucide-react'
-import PlayerHeroBand from '@/components/site/PlayerHeroBand'
+import { LogOut } from 'lucide-react'
 import {
   PlayerPhotoField,
   type PhotoRemoveAction,
   type PhotoUploadAction,
 } from '@/components/rival/PlayerPhotoField'
-import { Button } from '@/components/ui/button'
-import { PORTAL_LINK, PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
+import { Button, buttonVariants } from '@/components/ui/button'
+import Reveal from '@/components/site/Reveal'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { initials } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import '@/components/booking/reserva.css'
+import '@/components/world/portal-app.css'
 import ActivityStats from './ActivityStats'
 import { DataExportButton } from './DataExportButton'
 import FavoritesList, { type FavoriteRow } from './FavoritesList'
@@ -42,22 +33,10 @@ type RivalPhotoProps = {
   removeAction: PhotoRemoveAction
 }
 
-/** Un bloque de la página: tarjeta con el ícono en su cajita arriba y el contenido de la sección abajo. */
-function SectionCard({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-      <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20">
-        <Icon className="size-5" aria-hidden />
-      </div>
-      {children}
-    </div>
-  )
-}
-
 /**
- * Vista presentacional de /configuracion: la Cuenta del jugador en una sola página, en el orden en
- * que se usa (quién sos, tus datos, favoritos, actividad, tema y salir, descargar tus datos y
- * darte de baja). Extraída de page.tsx (que solo aporta auth y las consultas) para poder aislarla
+ * Vista presentacional de /configuracion: la Cuenta del jugador en una sola página, en el orden del
+ * portal de vidrio (`cuenta.html`, decisión de Lazar del 2026-11-15): quién sos, tu actividad, tus
+ * datos, tu perfil en RIVAL, favoritos, tema, tus datos personales, y salir o darte de baja. Extraída de page.tsx (que solo aporta auth y las consultas) para poder aislarla
  * en Storybook; las dos Server Actions entran por PROP por la misma razón que en `ProfileForm`.
  */
 export function ConfiguracionView({
@@ -83,135 +62,132 @@ export function ConfiguracionView({
 }) {
   const fullName = `${profile.firstName} ${profile.lastName}`.trim()
 
+  const rise = (i: number) => ({ '--i': i }) as CSSProperties
+
   return (
-    <div className="mx-auto max-w-lg space-y-5 px-4 py-6">
-      <PlayerHeroBand eyebrow="Tu cuenta" title="Mi" accent="cuenta">
+    <div className="portal-ambient min-h-[88vh]">
+      <div className="pa-col rv-stack gap-3.5">
+        <header className="rv-rise">
+          <p className="pa-eyebrow">Tu cuenta</p>
+          <h1 className="rv-h1">Mi cuenta</h1>
+        </header>
+
         <section
           aria-labelledby="quien-sos-titulo"
-          className="mt-4 flex min-w-0 items-center gap-4"
+          className="pa-me glass-painted rv-rise"
+          style={rise(1)}
         >
           <h2 id="quien-sos-titulo" className="sr-only">
             Quién sos
           </h2>
-          <div
-            aria-hidden
-            className="hero-avatar-fallback flex size-16 shrink-0 items-center justify-center rounded-full font-display text-xl font-black italic text-emerald-700 ring-1 ring-emerald-500/30 dark:text-emerald-200 dark:ring-emerald-400/30"
-          >
+          <span aria-hidden className="pa-avatar">
             {initials(profile.firstName, profile.lastName)}
-          </div>
+          </span>
           <div className="min-w-0">
-            <p className="break-words font-display text-xl font-black italic tracking-tight text-foreground">
-              {fullName}
-            </p>
-            <p className="break-all text-base text-muted-foreground">{email}</p>
-            <p className="mt-1 text-sm text-muted-foreground">El email no se puede cambiar.</p>
+            <b className="pa-me__name">{fullName}</b>
+            <span className="pa-me__mail block">{email}</span>
+            <p className="rv-small mt-1">El email no se puede cambiar.</p>
           </div>
         </section>
-      </PlayerHeroBand>
 
-      <SectionCard icon={User}>
-        <section id="tus-datos" aria-labelledby="tus-datos-titulo" className="scroll-mt-20">
-          <h2 id="tus-datos-titulo" className={PORTAL_SECTION_TITLE}>
-            Tus datos
-          </h2>
-          <div className="mt-4">
-            <ProfileForm defaultValues={profile} action={updateProfileAction} />
-          </div>
-          <p className="mt-4 text-sm text-muted-foreground">
-            Te mandamos siempre un mail cuando se confirma o se cancela una reserva, cuando cambia
-            el horario y cuando se vence la seña.
-          </p>
-        </section>
-      </SectionCard>
+        <div className="rv-rise" style={rise(2)}>
+          <ActivityStats {...activity} />
+        </div>
 
-      {rivalPhoto && (
-        <SectionCard icon={Shirt}>
-          <section aria-labelledby="rival-perfil-titulo">
-            <h2 id="rival-perfil-titulo" className={PORTAL_SECTION_TITLE}>
-              Tu perfil en RIVAL
+        <Reveal>
+          <section
+            id="tus-datos"
+            aria-labelledby="tus-datos-titulo"
+            className="rv-panel glass-painted scroll-mt-20"
+          >
+            <h2 id="tus-datos-titulo" className="rv-h2">
+              Tus datos
             </h2>
-            <div className="mt-4">
+            <ProfileForm defaultValues={profile} action={updateProfileAction} />
+            <p className="rv-small">
+              Te mandamos siempre un mail cuando se confirma o se cancela una reserva, cuando cambia
+              el horario y cuando se vence la seña.
+            </p>
+          </section>
+        </Reveal>
+
+        {rivalPhoto && (
+          <Reveal>
+            <section aria-labelledby="rival-perfil-titulo" className="rv-panel glass-painted">
+              <h2 id="rival-perfil-titulo" className="rv-h2">
+                Tu perfil en RIVAL
+              </h2>
               <PlayerPhotoField
                 url={rivalPhoto.url}
                 initials={initials(profile.firstName, profile.lastName)}
                 uploadAction={rivalPhoto.uploadAction}
                 removeAction={rivalPhoto.removeAction}
               />
-            </div>
-            <p className="mt-4 text-sm text-muted-foreground">
-              Tu foto la ve quien tenga el link de un partido tuyo y haya iniciado sesión, y el
-              organizador. Podés quitarla cuando quieras.
-            </p>
+              <p className="rv-small">
+                Tu foto la ve quien tenga el link de un partido tuyo y haya iniciado sesión, y el
+                organizador. Podés quitarla cuando quieras.
+              </p>
+            </section>
+          </Reveal>
+        )}
+
+        <Reveal>
+          <FavoritesList favorites={favorites} />
+        </Reveal>
+
+        <Reveal>
+          <section aria-labelledby="tema-titulo" className="rv-panel glass-painted">
+            <h2 id="tema-titulo" className="rv-h2">
+              Tema
+            </h2>
+            <ThemeToggle variant="glass" />
           </section>
-        </SectionCard>
-      )}
+        </Reveal>
 
-      <SectionCard icon={Heart}>
-        <FavoritesList favorites={favorites} />
-      </SectionCard>
-
-      <SectionCard icon={Activity}>
-        <ActivityStats {...activity} />
-      </SectionCard>
-
-      <SectionCard icon={SunMoon}>
-        <section aria-labelledby="tema-titulo">
-          <h2 id="tema-titulo" className={PORTAL_SECTION_TITLE}>
-            Tema y sesión
-          </h2>
-          <div className="mt-3">
-            <ThemeToggle variant="portal" />
-          </div>
-          <form action={signOutAction} className="mt-4">
-            <Button
-              type="submit"
-              variant="outline"
-              className="h-auto min-h-11 w-full gap-2 shadow-none hover:translate-y-0 hover:shadow-none active:scale-100 focus-visible:ring-offset-background sm:w-auto md:h-auto"
-            >
-              <LogOut className="size-4" aria-hidden />
-              Salir
-            </Button>
-          </form>
-        </section>
-      </SectionCard>
-
-      <SectionCard icon={Download}>
-        <section id="mis-datos" aria-labelledby="mis-datos-titulo" className="scroll-mt-20">
-          <h2 id="mis-datos-titulo" className={PORTAL_SECTION_TITLE}>
-            Tus datos personales
-          </h2>
-          <p className="mt-2 text-base text-muted-foreground">
-            Bajá una copia de lo que guardamos de vos en TurnoGol: tu perfil, tus reservas y tus
-            pagos.
-          </p>
-          <div className="mt-4">
-            <DataExportButton />
-          </div>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Es tu derecho de acceso, según la Ley 25.326.
-          </p>
-        </section>
-      </SectionCard>
-
-      <SectionCard icon={UserX}>
-        <section aria-labelledby="baja-titulo">
-          <h2 id="baja-titulo" className={PORTAL_SECTION_TITLE}>
-            Darte de baja
-          </h2>
-          <p className="mt-2 text-base text-muted-foreground">
-            Si ya no vas a usar TurnoGol, podés borrar tu cuenta.
-          </p>
-          <Link
-            href="/eliminar-cuenta"
-            className={cn(
-              PORTAL_LINK,
-              '-mx-2 mt-2 inline-flex min-h-11 items-center px-2 text-base font-medium text-foreground underline underline-offset-4',
-            )}
+        <Reveal>
+          <section
+            id="mis-datos"
+            aria-labelledby="mis-datos-titulo"
+            className="rv-panel glass-painted scroll-mt-20"
           >
-            Eliminar la cuenta
-          </Link>
-        </section>
-      </SectionCard>
+            <h2 id="mis-datos-titulo" className="rv-h2">
+              Tus datos personales
+            </h2>
+            <p className="rv-sub mt-0">
+              Bajá una copia de lo que guardamos de vos en TurnoGol: tu perfil, tus reservas y tus
+              pagos.
+            </p>
+            <DataExportButton />
+            <p className="rv-small">Es tu derecho de acceso, según la Ley 25.326.</p>
+          </section>
+        </Reveal>
+
+        <Reveal>
+          <section aria-labelledby="baja-titulo" className="rv-panel glass-painted">
+            <h2 id="baja-titulo" className="rv-h2">
+              Salir o darte de baja
+            </h2>
+            <p className="rv-small">Si ya no vas a usar TurnoGol, podés borrar tu cuenta.</p>
+            <div className="pa-links">
+              <form action={signOutAction}>
+                <Button type="submit" variant="pill-link" size="pill-sm">
+                  <LogOut aria-hidden />
+                  Salir
+                </Button>
+              </form>
+              <Link
+                href="/eliminar-cuenta"
+                className={cn(
+                  buttonVariants({ variant: 'pill-link', size: 'pill-sm' }),
+                  'border-portal-bad-line bg-portal-bad-bg text-portal-bad [&_svg]:text-portal-bad',
+                )}
+              >
+                Eliminar la cuenta
+              </Link>
+            </div>
+          </section>
+        </Reveal>
+      </div>
     </div>
   )
 }

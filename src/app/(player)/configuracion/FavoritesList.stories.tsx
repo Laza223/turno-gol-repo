@@ -22,7 +22,7 @@ const meta = {
   parameters: { layout: 'padded' },
   decorators: [
     (Story) => (
-      <div className="max-w-[35rem] bg-background p-4 text-foreground">
+      <div data-portal-glass className="portal-ambient max-w-[35rem] p-4 text-portal-ink">
         <Story />
       </div>
     ),

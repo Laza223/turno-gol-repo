@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { signOutAction } from '@/modules/auth/sign-out.action'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { sanitizeNext } from '@/lib/safe-redirect'
 import { PortalAuthFrame } from '@/components/world/PortalAuthFrame'
@@ -20,7 +21,7 @@ export default async function AceptarTerminosPage({ searchParams }: Props) {
   const safeNext = sanitizeNext(next ?? null)
 
   return (
-    <PortalAuthFrame>
+    <PortalAuthFrame signOutAction={signOutAction}>
       <AceptarTerminosForm action={acceptTermsAction} next={safeNext} />
     </PortalAuthFrame>
   )

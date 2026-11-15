@@ -1,0 +1,84 @@
+/* La foto de fondo del portal de vidrio (dirección §3.4), en capas: la foto, un desenfoque que se
+   apaga hacia abajo, el velo del color del tema y los resplandores. La usan la home (F2) y la
+   pantalla de ingresar (F6) con `HeroBackdrop`. Las reglas van con `:where()` (especificidad
+   cero): cada pantalla ubica la foto con su propia clase (`home.css`, `portal-app.css`) sin
+   depender del orden en que se cargan los CSS. */
+
+@layer components {
+  :where(.hero-bg) {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+  :where(.hero-bg__img) {
+    position: absolute;
+    left: 0;
+    top: 25.5svh;
+    width: 100%;
+    height: 80svh;
+    object-fit: cover;
+    object-position: 50% 50%;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 24%, #000 80%, transparent 98%);
+    mask-image: linear-gradient(180deg, transparent 0, #000 24%, #000 80%, transparent 98%);
+  }
+  :where(.hero-bg__img--claro) {
+    filter: brightness(1.12) saturate(0.96);
+  }
+  :where(.hero-bg__blur) {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 80svh;
+    -webkit-backdrop-filter: blur(30px) saturate(130%);
+    backdrop-filter: blur(30px) saturate(130%);
+    -webkit-mask-image: linear-gradient(180deg, #000 0, #000 62%, transparent 100%);
+    mask-image: linear-gradient(180deg, #000 0, #000 62%, transparent 100%);
+  }
+  :where(.hero-bg__veil) {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 100svh;
+    background: linear-gradient(
+      180deg,
+      rgb(var(--portal-veil) / 0.92) 0%,
+      rgb(var(--portal-veil) / 0.76) 36%,
+      rgb(var(--portal-veil) / 0.42) 66%,
+      rgb(var(--portal-veil) / 0) 86%
+    );
+  }
+  :where(.hero-bg__glow) {
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 100svh;
+    background:
+      radial-gradient(56% 34% at -10% 46%, rgb(var(--portal-glow) / 0.32), transparent 70%),
+      radial-gradient(56% 34% at 110% 66%, rgb(var(--portal-glow) / 0.28), transparent 70%),
+      radial-gradient(70% 24% at 50% -8%, rgb(var(--portal-glow) / 0.16), transparent 70%);
+  }
+}
+
+/* Sin desenfoque disponible: el velo se cierra más para que el texto se siga leyendo. Fuera de
+   capa, como los respaldos de F1. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .hero-bg__veil {
+    background: linear-gradient(
+      180deg,
+      rgb(var(--portal-veil) / 0.96) 0%,
+      rgb(var(--portal-veil) / 0.9) 60%,
+      rgb(var(--portal-veil) / 0.3) 92%
+    );
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .hero-bg__blur {
+    display: none;
+  }
+  .hero-bg__veil {
+    background: linear-gradient(
+      180deg,
+      rgb(var(--portal-veil) / 0.96) 0%,
+      rgb(var(--portal-veil) / 0.9) 60%,
+      rgb(var(--portal-veil) / 0.3) 92%
+    );
+  }
+}

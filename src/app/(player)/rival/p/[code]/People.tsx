@@ -1,4 +1,4 @@
-import { PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
+import { PORTAL_SECTION_TITLE } from '@/components/world/portal-auth-styles'
 import type { RivalPublicMatch, RivalRosterEntry } from '@/modules/rival/rival.types'
 import type { ActionResult } from '@/shared/types/action-result'
 import type { RivalReportReason } from '@/modules/rival/rival.schema'

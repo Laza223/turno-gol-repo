@@ -7,6 +7,17 @@ import { cleanup, render, screen } from '@testing-library/react'
 vi.mock('@/app/(auth)/verify/SuccessRedirect', () => ({
   default: ({ next }: { next: string }) => <div data-testid="redirect" data-next={next} />,
 }))
+// La foto del hero (next/image con import estático) no se resuelve en happy-dom.
+vi.mock('@/components/world/HeroBackdrop', () => ({
+  HeroBackdrop: () => <div data-hero-backdrop />,
+}))
+// El cromo del portal (cabecera, barra de abajo, sesión) tiene sus propios tests: acá no importa.
+vi.mock('@/components/site/PortalHeader', () => ({ default: () => <header data-portal-header /> }))
+vi.mock('@/components/site/PlayerBottomNav', () => ({ PlayerBottomNav: () => null }))
+vi.mock('@/components/site/PortalSessionProvider', () => ({
+  PortalSessionProvider: ({ children }: { children: React.ReactNode }) => children,
+}))
+vi.mock('@/modules/auth/sign-out.action', () => ({ signOutAction: vi.fn() }))
 // La page importa la Server Action de Google de /ingresar (arrastra supabase/db).
 vi.mock('@/app/(auth)/ingresar/actions', () => ({ startGoogleLoginFromIngresar: vi.fn() }))
 

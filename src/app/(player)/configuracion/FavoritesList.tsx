@@ -1,9 +1,11 @@
 'use client'
 
+import '@/components/booking/reserva.css'
+import '@/components/world/portal-app.css'
 import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
-import { PORTAL_LINK, PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
+import { PORTAL_LINK } from '@/components/world/portal-auth-styles'
 import { cn } from '@/lib/utils'
 import { rejectionMessage } from '@/shared/lib/rejection-message'
 
@@ -25,10 +27,6 @@ function toggle(tenantId: string): Promise<Response> {
 }
 
 const REMOVE_ERROR = 'No pudimos quitarlo de tus favoritos. Probá de nuevo.'
-
-/** Acción sin borde del portal (la misma receta que "Cancelar" en Mis reservas): 44 px de toque. */
-const GHOST =
-  'inline-flex min-h-11 shrink-0 items-center rounded-md px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:text-muted-foreground'
 
 /**
  * Los complejos guardados del jugador: una fila por complejo, con su nombre, su localidad y un
@@ -86,54 +84,50 @@ export default function FavoritesList({ favorites }: { favorites: FavoriteRow[] 
   }
 
   return (
-    <section id="favoritos" aria-labelledby="favoritos-titulo" className="scroll-mt-20">
+    <section
+      id="favoritos"
+      aria-labelledby="favoritos-titulo"
+      className="rv-panel glass-painted scroll-mt-20"
+    >
       <h2
         id="favoritos-titulo"
         ref={headingRef}
         tabIndex={-1}
-        className={cn(PORTAL_SECTION_TITLE, 'focus-visible:outline-hidden')}
+        className="rv-h2 focus-visible:outline-hidden"
       >
         Favoritos
       </h2>
 
       {visible.length === 0 ? (
-        <div className="mt-3">
-          <p className="text-base text-muted-foreground">
+        <div className="grid justify-items-start gap-3">
+          <p className="rv-sub mt-0">
             Todavía no guardaste ningún complejo. Tocá el corazón en la página de un complejo para
             tenerlo acá.
           </p>
           <Link
             href="/explorar"
-            className={cn(
-              buttonVariants({ variant: 'outline' }),
-              'mt-4 h-auto min-h-11 md:h-auto shadow-none hover:translate-y-0 hover:shadow-none active:scale-100 focus-visible:ring-offset-background',
-            )}
+            className={cn(buttonVariants({ variant: 'pill-link', size: 'pill-sm' }))}
           >
             Explorar complejos
           </Link>
         </div>
       ) : (
-        <ul className="mt-2 divide-y divide-border border-y border-border">
+        <ul>
           {visible.map((f) => (
-            <li key={f.id} className="flex items-center gap-2">
-              <Link
-                href={`/${f.slug}`}
-                className={cn(
-                  PORTAL_LINK,
-                  'flex min-h-14 min-w-0 flex-1 flex-col justify-center py-2',
-                )}
-              >
-                <span className="break-words text-base font-medium text-foreground">{f.name}</span>
-                {f.city && (
-                  <span className="break-words text-sm text-muted-foreground">{f.city}</span>
-                )}
+            <li key={f.id} className="pa-rowl">
+              <Link href={`/${f.slug}`} className={cn(PORTAL_LINK, 'min-w-0 py-1')}>
+                <span className="pa-rowl__name">{f.name}</span>
+                {f.city && <span className="pa-rowl__meta">{f.city}</span>}
               </Link>
               <button
                 type="button"
                 onClick={() => remove(f)}
                 disabled={pendingId !== null}
                 aria-label={`Quitar ${f.name} de favoritos`}
-                className={GHOST}
+                className={cn(
+                  buttonVariants({ variant: 'pill-link', size: 'pill-sm' }),
+                  'disabled:text-portal-soft',
+                )}
               >
                 Quitar
               </button>
@@ -142,11 +136,11 @@ export default function FavoritesList({ favorites }: { favorites: FavoriteRow[] 
         </ul>
       )}
 
-      <p role="status" className="mt-2 text-sm text-muted-foreground">
+      <p role="status" className="rv-small empty:-mt-3">
         {message}
       </p>
       {error && (
-        <p role="alert" className="mt-2 text-[13px] leading-5 text-red-700 dark:text-red-300">
+        <p role="alert" className="text-[13px] leading-5 text-portal-bad">
           {error}
         </p>
       )}

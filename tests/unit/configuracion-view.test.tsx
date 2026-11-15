@@ -27,12 +27,12 @@ describe('ConfiguracionView — Mi cuenta en una sola página', () => {
     ])
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
       'Quién sos',
+      'Tu actividad',
       'Tus datos',
       'Favoritos',
-      'Tu actividad',
-      'Tema y sesión',
+      'Tema',
       'Tus datos personales',
-      'Darte de baja',
+      'Salir o darte de baja',
     ])
   })
 
@@ -79,15 +79,22 @@ describe('ConfiguracionView — Mi cuenta en una sola página', () => {
     expect(within(seccion).getByRole('button', { name: 'Descargar mis datos' })).toBeTruthy()
     expect(seccion.textContent).not.toMatch(/ARCO/)
     const ley = within(seccion).getByText(/Ley 25\.326/)
-    expect(ley.className).toContain('text-sm')
+    expect(ley.className).toContain('rv-small')
     expect(seccion.lastElementChild).toBe(ley)
   })
 
-  it('eliminar la cuenta es un link sobrio, sin tarjeta roja', () => {
+  it('eliminar la cuenta es un link sobrio (no un botón sólido rojo) junto a Salir, en la misma sección', () => {
     const { container } = renderView()
     const link = screen.getByRole('link', { name: 'Eliminar la cuenta' })
     expect(link.getAttribute('href')).toBe('/eliminar-cuenta')
+    expect(link.className).not.toMatch(/pill-danger|bg-red-|from-\(--portal-bad/)
     expect(container.innerHTML).not.toMatch(/bg-red-|border-red-/)
+    const seccion = screen
+      .getByRole('heading', { name: 'Salir o darte de baja' })
+      .closest('section')!
+    expect(within(seccion).getByRole('button', { name: 'Salir' })).toBeTruthy()
+    expect(within(seccion).getByText(/podés borrar tu cuenta/)).toBeTruthy()
+    expect(seccion.contains(link)).toBe(true)
   })
 
   it('sin favoritos ni partidos hay salida a Explorar y a reservar', () => {
@@ -115,10 +122,35 @@ describe('ConfiguracionView — Mi cuenta en una sola página', () => {
     expect(seccion.textContent).toMatch(/quitarla cuando quieras/)
   })
 
-  it('trae la banda hero de La Previa con el avatar de iniciales y cada sección en tarjeta', () => {
+  it('trae "Quién sos" en vidrio con el avatar de iniciales y cada sección en un panel de vidrio', () => {
     const { container } = renderView()
-    expect(container.querySelector('.player-hero-band')).not.toBeNull()
-    expect(container.querySelector('.hero-avatar-fallback')).not.toBeNull()
-    expect(container.querySelectorAll('.rounded-2xl.bg-card').length).toBeGreaterThanOrEqual(6)
+    const quien = screen.getByRole('heading', { name: 'Quién sos' }).closest('section')!
+    expect(quien.className).toContain('pa-me')
+    expect(quien.className).toContain('glass-painted')
+    expect(quien.querySelector('.pa-avatar')?.textContent).toBe('TI')
+    // Datos, favoritos, tema, datos personales y baja: 5 paneles (sin RIVAL).
+    expect(container.querySelectorAll('section.rv-panel.glass-painted')).toHaveLength(5)
+    expect(container.querySelectorAll('.pa-stat.glass-painted')).toHaveLength(3)
+    expect(container.querySelector('.player-hero-band')).toBeNull()
+  })
+
+  it('con RIVAL el panel de la foto va entre Tus datos y Favoritos', () => {
+    renderView({
+      rivalPhoto: {
+        url: null,
+        uploadAction: vi.fn(async () => ({ success: true as const, url: null })),
+        removeAction: vi.fn(async () => ({ success: true as const, url: null })),
+      },
+    })
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
+      'Quién sos',
+      'Tu actividad',
+      'Tus datos',
+      'Tu perfil en RIVAL',
+      'Favoritos',
+      'Tema',
+      'Tus datos personales',
+      'Salir o darte de baja',
+    ])
   })
 })

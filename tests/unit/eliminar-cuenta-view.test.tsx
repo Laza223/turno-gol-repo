@@ -60,13 +60,18 @@ describe('EliminarCuentaView', () => {
     expect(screen.getByRole('button', { name: 'Descargar mis datos' })).toBeTruthy()
   })
 
-  it('trae las tarjetas de aviso roja, naranja y ámbar, y un solo botón rojo', () => {
+  it('trae el aviso de irreversible, el de reservas por jugar, los paneles de vidrio y un solo botón de riesgo', () => {
     const { container } = renderView(2)
-    expect(container.querySelector('.border-red-300.bg-red-50')).not.toBeNull()
-    expect(container.querySelector('.border-orange-300.bg-orange-50')).not.toBeNull()
-    expect(container.querySelector('.border-amber-200.bg-amber-50')).not.toBeNull()
-    expect(container.querySelectorAll('button.bg-red-600')).toHaveLength(1)
-    expect(screen.getByRole('heading', { level: 1 }).className).toMatch(/italic/)
+    expect(container.querySelector('.pa-note--bad')?.textContent).toMatch(/irreversible/)
+    expect(container.querySelector('.pa-note--warn')?.textContent).toMatch(/por jugar/)
+    expect(container.querySelectorAll('section.rv-panel.glass-painted')).toHaveLength(2)
+    const peligro = [...container.querySelectorAll('button')].filter((b) =>
+      b.className.includes('--portal-bad'),
+    )
+    expect(peligro).toHaveLength(1)
+    expect(peligro[0]!.textContent).toBe('Eliminar mi cuenta')
+    expect(screen.getByRole('heading', { level: 1 }).className).toContain('rv-h1')
+    expect(container.querySelector('.player-hero-band, .bg-red-600, .border-red-300')).toBeNull()
   })
 
   it('el email confirma sin importar mayúsculas ni espacios, y el campo se arma para un email', async () => {
@@ -90,11 +95,11 @@ describe('EliminarCuentaView', () => {
     await waitFor(() => expect(confirmar.disabled).toBe(true))
   })
 
-  it('tiene una salida visible: "Volver a Mi cuenta", de 44 px', () => {
+  it('tiene una salida visible: "Volver a Mi cuenta" (.rv-back, 44 px por CSS)', () => {
     renderView(0)
     const link = screen.getByRole('link', { name: 'Volver a Mi cuenta' })
     expect(link.getAttribute('href')).toBe('/configuracion')
-    expect(link.className).toContain('min-h-11')
+    expect(link.className).toContain('rv-back')
   })
 
   it('el copy no promete de más: no dice "se borran tus datos" (reservas y pagos quedan, sin tu nombre)', async () => {

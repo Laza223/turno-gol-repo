@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
+import { PORTAL_BUTTON } from '@/components/world/portal-auth-styles'
 import { FixedCta } from '@/app/(public)/[slug]/reservar/components/ConfirmBookingButton'
 import { cn } from '@/lib/utils'
 import type { RivalFormResult } from '../actions'

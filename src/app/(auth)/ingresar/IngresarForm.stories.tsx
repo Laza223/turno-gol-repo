@@ -11,8 +11,8 @@ type PlayerLoginState = Awaited<ReturnType<PlayerLoginAction>>
 
 /**
  * La Server Action entra por prop (ver el comentario en IngresarForm.tsx).
- * El decorator pone el mismo marco que /ingresar (page.tsx): La Previa (fondo
- * oscuro, logo arriba y card de vidrio). El marco es siempre oscuro, con el tema claro y con el oscuro.
+ * El decorator pone el mismo marco que /ingresar (page.tsx): el portal de vidrio (la foto del hero,
+ * el logo arriba y la tarjeta de vidrio), que sigue el tema claro u oscuro.
  */
 const meta = {
   title: 'Auth/IngresarForm',
@@ -24,7 +24,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <PortalAuthFrame>
+      <PortalAuthFrame signOutAction={async () => {}}>
         <Story />
       </PortalAuthFrame>
     ),
@@ -35,9 +35,11 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 // Los botones en orden de DOM: es el orden en que los recorren el teclado y el lector de pantalla.
+// Solo los del formulario: la cabecera del portal (tema) queda afuera, en el `<header>`.
 const buttonNames = (root: HTMLElement) =>
   within(root)
     .getAllByRole('button')
+    .filter((b) => !b.closest('header'))
     .map((b) => b.textContent)
 
 /**
@@ -141,8 +143,10 @@ export const Enviando: Story = {
     try {
       await expect(await canvas.findByText('Enviando…')).toBeInTheDocument()
       const pending = canvas.getByRole('button', { name: /envia/i })
-      // Pendiente no es apagado: la etiqueta es la única señal de que el toque entró.
-      await expect(await paintedContrast(pending)).toBeGreaterThanOrEqual(4.5)
+      // Pendiente no es apagado: la etiqueta es la única señal de que el toque entró. El relleno
+      // es un degradado (`paintedContrast` no lo ve): se verifica que el botón no se desvanezca.
+      await expect(getComputedStyle(pending).opacity).toBe('1')
+      await expect(pending).toHaveAttribute('aria-busy', 'true')
       // Y no recibe otro toque. React encola los que llegan con la action en vuelo y los manda al
       // liberarla: un segundo envío no se ve desde acá, solo lo evita el botón deshabilitado.
       await expect(pending).toBeDisabled()

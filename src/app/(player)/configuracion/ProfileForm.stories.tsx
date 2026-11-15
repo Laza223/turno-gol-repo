@@ -22,8 +22,10 @@ const meta = {
   args: { defaultValues },
   decorators: [
     (Story) => (
-      <div className="max-w-[35rem] bg-card p-5 text-foreground">
-        <Story />
+      <div data-portal-glass className="portal-ambient max-w-[35rem] p-4 text-portal-ink">
+        <div className="rv-panel glass-painted">
+          <Story />
+        </div>
       </div>
     ),
   ],

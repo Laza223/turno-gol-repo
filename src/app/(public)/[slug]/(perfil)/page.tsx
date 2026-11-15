@@ -12,7 +12,7 @@ import { listPublicTournaments } from '@/modules/tournaments/tournament-public.s
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import { listBoard } from '@/modules/rival/rival.service'
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
-import { PORTAL_TITLE } from '@/components/world/PortalAuthFrame'
+import { PORTAL_TITLE } from '@/components/world/portal-auth-styles'
 import { trackProfileViewedAction } from './actions'
 import ComplexHero from '../components/ComplexHero'
 import ProfileLayout from '../components/ProfileLayout'

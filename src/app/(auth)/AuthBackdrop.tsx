@@ -5,8 +5,8 @@
  * y estático a propósito — el fondo no compite con el form.
  *
  * Login y register NO lo usan: tienen su propio diseño (foto + glows). Ingresar, aceptar-terminos
- * y los estados de jugador de verify tampoco: viven en el mundo del portal (PortalAuthFrame),
- * plano, sin foto ni glows.
+ * y los estados de jugador de verify tampoco: viven en el portal de vidrio (PortalAuthFrame), con
+ * la foto del hero de fondo.
  */
 export function AuthBackdrop() {
   return (

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { rejectionMessage } from '@/shared/lib/rejection-message'
 
@@ -62,20 +63,22 @@ export function DataExportButton() {
     <div className="space-y-2">
       <Button
         type="button"
-        variant="outline"
+        variant="pill-link"
+        size="pill-sm"
         onClick={handleDownload}
         disabled={status === 'loading'}
-        className="h-auto min-h-11 w-full shadow-none hover:translate-y-0 hover:shadow-none active:scale-100 focus-visible:ring-offset-background disabled:opacity-100 disabled:text-muted-foreground sm:w-auto md:h-auto"
+        className="disabled:opacity-100 disabled:text-portal-soft"
       >
+        <Download aria-hidden />
         {status === 'loading' ? 'Generando…' : 'Descargar mis datos'}
       </Button>
       {/* Región viva siempre montada: "Generando…" y "Listo" se anuncian sin mover el foco. */}
-      <p aria-live="polite" role="status" className="text-sm text-muted-foreground">
+      <p aria-live="polite" role="status" className="text-sm text-portal-soft">
         {status === 'loading' && 'Estamos armando tu archivo.'}
         {status === 'done' && `Listo, se descargó ${filename}.`}
       </p>
       {status === 'error' && error && (
-        <p role="alert" className="text-[13px] leading-5 text-red-700 dark:text-red-300">
+        <p role="alert" className="text-[13px] leading-5 text-portal-bad">
           {error}
         </p>
       )}

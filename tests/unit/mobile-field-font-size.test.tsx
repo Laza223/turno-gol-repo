@@ -68,7 +68,7 @@ describe('Piso de 16px en campos — constantes compartidas', () => {
   // que darían falsos positivos con className dinámico.
   const SHARED_FIELD_CONSTS: Array<{ file: string; needle: string; what: string }> = [
     {
-      file: 'src/components/world/PortalAuthFrame.tsx',
+      file: 'src/components/world/portal-auth-styles.ts',
       needle: 'const PORTAL_INPUT',
       what: 'email del login de jugador',
     },
@@ -87,16 +87,18 @@ describe('Piso de 16px en campos — constantes compartidas', () => {
     })
   }
 
-  it('LoginGate: el email usa AUTH_INPUT (PORTAL_INPUT) en el modal y text-base en el panel de vidrio', () => {
+  it('LoginGate: el email usa AUTH_INPUT (PORTAL_INPUT) en el modal y GLASS_INPUT en el panel de vidrio', () => {
     const code = stripComments(read('src/app/(public)/[slug]/reservar/components/LoginGate.tsx'))
     // El único campo de texto (el email) toma la clase de la piel (`skin.input`): una clase propia
     // en un campo nuevo es justo donde se cuela el `text-sm` de 14px.
     expect(code.match(/<Input\s/g)).toHaveLength(1)
     expect(code).toMatch(/className=\{skin\.input\}/)
     expect(code).toMatch(/input: AUTH_INPUT,/)
-    // La piel de vidrio: 16 px también desde md (la base de `Input` baja a `md:text-sm`).
-    const glass = code.match(/glass: \{[\s\S]*?input:\s*'([^']+)'/)
-    expect(glass, 'no se encontró el campo de la piel de vidrio').not.toBeNull()
+    // La piel de vidrio: GLASS_INPUT, 16 px también desde md (la base de `Input` baja a `md:text-sm`).
+    expect(code).toMatch(/glass: \{\s*input: GLASS_INPUT,/)
+    const frame = read('src/components/world/portal-auth-styles.ts')
+    const glass = frame.match(/export const GLASS_INPUT =\s*'([^']+)'/)
+    expect(glass, 'no se encontró GLASS_INPUT').not.toBeNull()
     expect(glass![1].split(' ')).toContain('text-base')
     expect(glass![1].split(' ')).toContain('md:text-base')
   })

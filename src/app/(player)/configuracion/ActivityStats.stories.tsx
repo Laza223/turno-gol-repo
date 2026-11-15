@@ -9,7 +9,7 @@ const meta = {
   parameters: { layout: 'padded' },
   decorators: [
     (Story) => (
-      <div className="max-w-[35rem] bg-background p-4 text-foreground">
+      <div data-portal-glass className="portal-ambient max-w-[35rem] p-4 text-portal-ink">
         <Story />
       </div>
     ),
@@ -36,7 +36,9 @@ export const Activo: Story = {
 export const UnaSemanaDeRacha: Story = {
   args: { played: 1, venues: 1, streakWeeks: 1 },
   play: async ({ canvasElement }) => {
-    await expect(within(canvasElement).getByText('1 semana')).toBeInTheDocument()
+    await expect(within(canvasElement).getByText('Racha').nextElementSibling).toHaveTextContent(
+      '1 semana',
+    )
   },
 }
 

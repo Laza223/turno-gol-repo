@@ -2,7 +2,7 @@
 
 import { useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
+import { PORTAL_SECTION_TITLE } from '@/components/world/portal-auth-styles'
 import { IdentityFields, ProfileFields } from './welcome-card/WelcomeFields'
 import { RulesBlock, WelcomeFooter } from './welcome-card/WelcomeFooter'
 import {

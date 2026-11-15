@@ -6,7 +6,7 @@ import { InAppBrowserNotice } from './InAppBrowserNotice'
 
 /**
  * El aviso que va en lugar de "Continuar con Google" en el navegador interno de una app, sobre el
- * marco de /ingresar (siempre oscuro). En un celular de 390 px, el ancho donde llega el jugador
+ * marco de /ingresar (portal de vidrio). En un celular de 390 px, el ancho donde llega el jugador
  * desde Instagram. El portapapeles se reemplaza en cada story: el del navegador de las pruebas
  * pide permiso.
  */
@@ -14,10 +14,11 @@ const meta = {
   title: 'Auth/InAppBrowserNotice',
   component: InAppBrowserNotice,
   parameters: { layout: 'fullscreen' },
+  args: { glass: true },
   globals: { viewport: { value: 'celular390', isRotated: false } },
   decorators: [
     (Story) => (
-      <PortalAuthFrame>
+      <PortalAuthFrame signOutAction={async () => {}}>
         <Story />
       </PortalAuthFrame>
     ),

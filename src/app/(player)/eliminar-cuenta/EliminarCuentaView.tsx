@@ -1,7 +1,12 @@
+import type { CSSProperties } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, CalendarClock, Info } from 'lucide-react'
-import { PORTAL_LINK } from '@/components/world/PortalAuthFrame'
+import { ArrowLeft } from 'lucide-react'
+import Reveal from '@/components/site/Reveal'
+import { buttonVariants } from '@/components/ui/button'
+import { PORTAL_LINK } from '@/components/world/portal-auth-styles'
 import { cn } from '@/lib/utils'
+import '@/components/booking/reserva.css'
+import '@/components/world/portal-app.css'
 import { DataExportButton } from '../configuracion/DataExportButton'
 import { DeleteAccountForm, type RequestDeleteAccountAction } from './DeleteAccountForm'
 
@@ -26,113 +31,81 @@ export function EliminarCuentaView({
   action: RequestDeleteAccountAction
 }) {
   return (
-    <div className="mx-auto max-w-lg space-y-5 px-4 py-6">
-      <div>
-        <Link
-          href="/configuracion"
-          className={cn(
-            PORTAL_LINK,
-            '-mx-2 inline-flex min-h-11 items-center px-2 text-base font-medium text-foreground underline underline-offset-4',
-          )}
-        >
-          Volver a Mi cuenta
-        </Link>
-        <h1 className="mt-1 font-display text-2xl font-black italic tracking-tight text-foreground">
-          Eliminar mi cuenta
-        </h1>
-      </div>
+    <div className="portal-ambient min-h-[88vh]">
+      <div className="pa-col rv-stack gap-3.5">
+        <header className="rv-rise grid justify-items-start gap-1.5">
+          <Link href="/configuracion" className={cn(PORTAL_LINK, 'rv-back')}>
+            <ArrowLeft aria-hidden />
+            Volver a Mi cuenta
+          </Link>
+          <h1 className="rv-h1">Eliminar mi cuenta</h1>
+        </header>
 
-      {/* Aviso rojo: irreversible */}
-      <div className="flex items-start gap-2 rounded-2xl border border-red-300 bg-red-50 p-4 dark:border-red-400/20 dark:bg-red-500/10">
-        <AlertTriangle
-          className="mt-0.5 size-5 shrink-0 text-red-600 dark:text-red-300"
-          aria-hidden
-        />
-        <p className="text-sm text-red-800 dark:text-red-300">
-          <span className="font-bold text-red-700 dark:text-red-300">
-            Esta acción es irreversible:
-          </span>{' '}
-          una vez eliminada, no podemos recuperar tu cuenta.
+        {/* Aviso rojo: irreversible */}
+        <p className="pa-note pa-note--bad rv-rise" style={{ '--i': 1 } as CSSProperties}>
+          <span>
+            <strong>Esta acción es irreversible:</strong> una vez eliminada, no podemos recuperar tu
+            cuenta.
+          </span>
         </p>
-      </div>
 
-      <section
-        aria-labelledby="que-pasa-titulo"
-        className="space-y-3 rounded-2xl border border-border bg-card p-5 shadow-xs"
-      >
-        <h2 id="que-pasa-titulo" className="text-base font-semibold text-foreground">
-          Qué se borra y qué queda
-        </h2>
-        <ul className="list-disc space-y-1 pl-5 text-base text-muted-foreground">
-          <li>
-            <span className="text-foreground">Borramos</span> tu nombre, tu email, tu teléfono y tu
-            vínculo con los complejos.
-          </li>
-          <li>
-            <span className="text-foreground">Quedan</span> tus reservas y tus pagos, en el registro
-            de cada complejo, sin tu nombre.
-          </li>
-        </ul>
-        <p className="text-sm text-muted-foreground">
-          Lo hacemos según la Ley 25.326 (derecho de supresión).
-        </p>
-      </section>
-
-      {futureConfirmedCount > 0 && (
         <section
-          aria-labelledby="por-jugar-titulo"
-          className="flex items-start gap-2 rounded-2xl border border-orange-300 bg-orange-50 p-4 dark:border-orange-400/20 dark:bg-orange-500/10"
+          aria-labelledby="que-pasa-titulo"
+          className="rv-panel glass-painted rv-rise"
+          style={{ '--i': 2 } as CSSProperties}
         >
-          <CalendarClock
-            className="mt-0.5 size-5 shrink-0 text-orange-700 dark:text-orange-300"
-            aria-hidden
-          />
-          <div className="space-y-1">
-            <h2
-              id="por-jugar-titulo"
-              className="text-base font-semibold text-orange-800 dark:text-orange-300"
-            >
-              Tenés {confirmedBookings(futureConfirmedCount)} por jugar
-            </h2>
-            <p className="text-base text-orange-800 dark:text-orange-300">
-              Si eliminás tu cuenta, quedan sin titular. Te conviene cancelarlas antes, así el
-              complejo puede liberar el turno.
-            </p>
-            <Link
-              href="/mis-reservas"
-              className={cn(
-                PORTAL_LINK,
-                '-mx-2 inline-flex min-h-11 items-center px-2 text-base font-semibold text-orange-800 underline underline-offset-4 dark:text-orange-300',
-              )}
-            >
-              Ver mis reservas
-            </Link>
-          </div>
-        </section>
-      )}
-
-      <section
-        aria-labelledby="copia-titulo"
-        className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-500/10"
-      >
-        <Info className="mt-0.5 size-5 shrink-0 text-amber-700 dark:text-amber-300" aria-hidden />
-        <div className="min-w-0 flex-1 space-y-1">
-          <h2
-            id="copia-titulo"
-            className="text-base font-semibold text-amber-900 dark:text-amber-300"
-          >
-            ¿Querés una copia de tus datos?
+          <h2 id="que-pasa-titulo" className="rv-h2">
+            Qué se borra y qué queda
           </h2>
-          <p className="text-base text-amber-900 dark:text-amber-300">
-            Descargala antes de eliminar la cuenta: después ya no vas a poder.
-          </p>
-          <div className="pt-2">
-            <DataExportButton />
-          </div>
-        </div>
-      </section>
+          <ul className="list-disc space-y-1 pl-5 text-base text-portal-muted">
+            <li>
+              <span className="text-portal-ink">Borramos</span> tu nombre, tu email, tu teléfono y
+              tu vínculo con los complejos.
+            </li>
+            <li>
+              <span className="text-portal-ink">Quedan</span> tus reservas y tus pagos, en el
+              registro de cada complejo, sin tu nombre.
+            </li>
+          </ul>
+          <p className="rv-small">Lo hacemos según la Ley 25.326 (derecho de supresión).</p>
+          {futureConfirmedCount > 0 && (
+            <section aria-labelledby="por-jugar-titulo" className="pa-note pa-note--warn">
+              <div className="grid gap-1">
+                <h2 id="por-jugar-titulo" className="text-base font-semibold text-portal-warn">
+                  Tenés {confirmedBookings(futureConfirmedCount)} por jugar
+                </h2>
+                <p>
+                  Si eliminás tu cuenta, quedan sin titular. Te conviene cancelarlas antes, así el
+                  complejo puede liberar el turno.
+                </p>
+              </div>
+              <Link
+                href="/mis-reservas"
+                className={cn(
+                  buttonVariants({ variant: 'pill', size: 'pill-sm' }),
+                  'justify-self-start',
+                )}
+              >
+                Ver mis reservas
+              </Link>
+            </section>
+          )}
+        </section>
 
-      <DeleteAccountForm confirmEmail={confirmEmail} action={action} />
+        <Reveal>
+          <section aria-labelledby="copia-titulo" className="rv-panel glass-painted">
+            <h2 id="copia-titulo" className="rv-h2">
+              ¿Querés una copia de tus datos?
+            </h2>
+            <p className="rv-small">
+              Descargala antes de eliminar la cuenta: después ya no vas a poder.
+            </p>
+            <DataExportButton />
+          </section>
+        </Reveal>
+
+        <DeleteAccountForm confirmEmail={confirmEmail} action={action} />
+      </div>
     </div>
   )
 }

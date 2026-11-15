@@ -1,27 +1,16 @@
-import { Fragment, type ReactNode } from 'react'
+import { Fragment, type CSSProperties } from 'react'
 import Link from 'next/link'
-import {
-  CalendarX,
-  Compass,
-  CreditCard,
-  MapPin,
-  MessageCircle,
-  Navigation,
-  RotateCcw,
-  Swords,
-} from 'lucide-react'
+import { Compass, CreditCard, MessageCircle, Navigation, RotateCcw, Swords } from 'lucide-react'
 import { isInRivalStartWindow } from '@/modules/rival/rival-window'
 import { formatLabel } from '@/components/public/courtFacets'
 import { buttonVariants } from '@/components/ui/button'
 import { SubmitButton } from '@/components/ui/submit-button'
 import { Pager } from '@/components/ui/pager'
-import { StatusBadge, type StatusBadgeVisual } from '@/components/ui/status-badge'
-import PlayerHeroBand from '@/components/site/PlayerHeroBand'
 import { buildFichaHref, buildReservaHref } from '@/lib/booking/reserve-url'
 import { formatArs } from '@/lib/format'
 import { bookingCode } from '@/lib/booking-code'
 import { resolveTenantContact, type TenantContactSource } from '@/lib/tenant-contact'
-import { TONE_BADGE, TONE_TEXT, TONE_TINT } from '@/lib/status-tone'
+import type { StatusTone } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
 import { addDays } from '@/shared/dates/art'
 import { playerBookingVisual, isDepositPaid } from './status-visual'
@@ -32,6 +21,9 @@ import { CancelBookingButton, type CancelMyBookingAction } from './CancelBooking
 import { LeaveReviewButton } from './LeaveReviewButton'
 import type { retryDepositPaymentAction } from '@/app/(public)/[slug]/reservar/actions'
 import type { DepositPayState } from '@/lib/booking/hold'
+import '@/components/world/portal-app.css'
+import '@/components/booking/reserva.css'
+import './mis-reservas.css'
 
 /** Entra por prop: `.../reservar/actions` es `'use server'` y no se importa como valor acá. */
 export type PayDepositAction = typeof retryDepositPaymentAction
@@ -108,22 +100,15 @@ function formatDate(dateStr: string): string {
   return `${pick('weekday')} ${pick('day')} ${pick('month')}`
 }
 
-/** Partes para el bloque-fecha de la tarjeta (día grande + mes/día-semana chico). */
-function dateParts(dateStr: string): { weekday: string; day: string; month: string } {
-  const d = new Date(`${dateStr}T12:00:00Z`)
-  return {
-    weekday: d.toLocaleDateString('es-AR', { weekday: 'short', timeZone: AR_TZ }),
-    day: d.toLocaleDateString('es-AR', { day: '2-digit', timeZone: AR_TZ }),
-    month: d.toLocaleDateString('es-AR', { month: 'short', timeZone: AR_TZ }),
-  }
-}
-
-/**
- * El bloque-fecha toma el MISMO tono que el badge: el tinte de fondo y el color del label salen
- * de la tabla del sistema, así la tarjeta no puede decir una cosa en el badge y otra en el bloque.
- */
-function dateBlockClass(tone: StatusBadgeVisual['tone']): string {
-  return cn(TONE_TINT[tone], TONE_TEXT[tone])
+/** El tono del sistema (`status-visual.ts`) pasado a la etiqueta de vidrio (`.pa-tag`). */
+const TAG_BY_TONE: Record<StatusTone, string> = {
+  success: '',
+  brand: '',
+  info: '',
+  warning: 'pa-tag--warn',
+  destructive: 'pa-tag--bad',
+  neutral: 'pa-tag--off',
+  plus: 'pa-tag--off',
 }
 
 /**
@@ -215,46 +200,21 @@ function payNote(b: MisReservasBookingRow): string[] {
   return price != null ? [`Turno ${formatArs(price)}`] : []
 }
 
-/** Acción sin borde (cancelar, reseña, reservar de nuevo): 44 px de toque; la primera de la fila se alinea con el borde de la tarjeta. */
-const GHOST =
-  'inline-flex min-h-11 items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
+/** Acción de la tarjeta (`.link` del mockup): píldora interior de 44 px de toque. */
+// Las acciones de la tarjeta van como en el mockup (`.bk .links .link`: 14 px, padding 14): entran de a dos por renglón a 390 px.
+const LINK = cn(
+  buttonVariants({ variant: 'pill-link', size: 'pill-sm' }),
+  'min-h-11 px-3.5 text-sm',
+)
 
-/** Botón de una acción de tarjeta: 44 px de toque, plano (sin sombra ni levante). */
-const ACTION =
-  'h-auto min-h-11 md:h-auto gap-2 whitespace-normal px-4 py-2 text-sm shadow-none hover:shadow-none hover:translate-y-0 active:scale-100 focus-visible:ring-offset-background'
-
-/** Botón de las tarjetas vacías (CTA "Explorar complejos" / "Volver al principio"): 44 px. */
-const EMPTY_CARD_CTA =
-  'inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25'
-
-/** Tarjeta vacía compartida: "no tenés nada" y "esa página no existe" son el mismo molde con distinto texto. */
-function EmptyCard({
-  title,
-  description,
-  action,
-}: {
-  title: string
-  description: string
-  action: ReactNode
-}) {
-  return (
-    <div className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card px-6 py-14 text-center shadow-xs">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20">
-        <CalendarX className="h-8 w-8" aria-hidden />
-      </div>
-      <div className="space-y-1">
-        <h2 className="font-display text-lg font-bold tracking-tight text-foreground">{title}</h2>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </div>
-      {action}
-    </div>
-  )
-}
+/** Entrada escalonada: cabecera, control y las primeras tarjetas; del décimo en adelante, juntas. */
+const rise = (i: number) => ({ '--i': Math.min(i, 10) }) as CSSProperties
 
 function BookingCard({
   b,
   today,
   featured,
+  index,
   rivalEnabled,
   cancelAction,
   payDepositAction,
@@ -263,6 +223,8 @@ function BookingCard({
   today: string
   /** La próxima: la primera de Próximos. Trae dirección, "Avisarle al grupo" y "Cómo llegar". */
   featured: boolean
+  /** Lugar en la lista: ordena la entrada escalonada. */
+  index: number
   /** Flag de RIVAL: suma "Armar el partido" a la próxima. Apagado, no renderiza nada. */
   rivalEnabled: boolean
   cancelAction: CancelMyBookingAction
@@ -278,11 +240,15 @@ function BookingCard({
   const href = b.status === 'confirmed' ? buildReservaHref(b.id, 'exito') : null
   const note = statusNote(b)
   const pay = payNote(b)
-  const canPayDeposit =
-    b.status === 'pending_payment' && b.pay_deposit === 'open' && payDepositAction != null
+  const pendingPayment = b.status === 'pending_payment'
+  const canPayDeposit = pendingPayment && b.pay_deposit === 'open' && payDepositAction != null
   const canCancel = b.status === 'confirmed' && !b.ended
   const canReview = b.status === 'completed' && !b.has_review
   const canReserveAgain = RESERVE_AGAIN_STATUSES.has(b.status)
+  // Las que ya pasaron van sin relleno, solo el borde.
+  const past = canReserveAgain
+  // La "foto" del complejo: su inicial (la query no trae imagen).
+  const initial = Array.from(b.tenant_name.trim())[0]?.toUpperCase() ?? ''
   // Escribirle al complejo: en turnos por jugar o ya jugados que quedaron raros (esperando seña,
   // ausente). Si nada sirve para marcar, no se ofrece: un link roto se lee como "escribí y nadie recibió".
   const contact =
@@ -303,7 +269,6 @@ function BookingCard({
     !b.ended &&
     isInRivalStartWindow(b.starts_on, today)
   const hasActions =
-    canPayDeposit ||
     canCancel ||
     canReview ||
     canReserveAgain ||
@@ -314,118 +279,101 @@ function BookingCard({
 
   const title = (
     <>
-      <span className="block text-sm font-medium text-muted-foreground">
-        {dayLabel(b.starts_on, today)}
-      </span>
-      <span
-        className={cn(
-          'block font-semibold tabular-nums text-foreground',
-          featured ? 'text-2xl leading-8' : 'text-lg leading-7',
-        )}
-      >
-        {when}
-      </span>
+      <span>{dayLabel(b.starts_on, today)}</span>
+      {' · '}
+      <span className="whitespace-nowrap">{when}</span>
     </>
   )
 
-  const dp = dateParts(b.starts_on)
-
   return (
     <li
-      className={cn(
-        'relative rounded-2xl border border-border bg-card p-4 shadow-xs transition-all duration-200 motion-reduce:hover:translate-y-0',
-        href &&
-          'hover:-translate-y-0.5 hover:border-emerald-400/50 hover:shadow-lg hover:shadow-emerald-500/10',
-      )}
+      className={cn('pa-bk glass-painted rv-rise', past && 'pa-bk--past')}
+      style={rise(index + 2)}
     >
-      <div className="flex gap-4">
-        {/* Bloque-fecha: lo lee el título ("Hoy", "Mañana" o el día), acá es solo adorno. */}
-        <div
-          aria-hidden
-          className={cn(
-            'flex w-14 shrink-0 flex-col items-center justify-center self-start rounded-xl py-2 ring-1 ring-inset ring-border',
-            dateBlockClass(visual.tone),
-          )}
-        >
-          <span className="font-logo text-[13px] font-bold uppercase leading-4 tracking-wide">
-            {dp.weekday}
-          </span>
-          <span className="font-display text-xl font-black italic leading-none tabular-nums">
-            {dp.day}
-          </span>
-          <span className="font-logo text-[13px] font-bold uppercase leading-4 tracking-wide">
-            {dp.month}
-          </span>
+      <div className="pa-bk__top">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={cn('pa-tag', TAG_BY_TONE[visual.tone])}>{visual.label}</span>
+          {b.type === 'fixed' && <span className="pa-tag pa-tag--off">Turno fijo</span>}
         </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-            <div id={whenId} className="min-w-0">
-              {href ? (
-                // Vínculo extendido: el `::after` cubre la tarjeta entera y las acciones de abajo
-                // quedan por encima (`z-10`), así no hay nada interactivo adentro de un <a>.
-                <Link
-                  href={href}
-                  className="rounded-sm after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-hidden focus-visible:after:ring-2 focus-visible:after:ring-ring"
-                >
-                  {title}
-                </Link>
-              ) : (
-                title
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {b.type === 'fixed' && (
-                <span
-                  className={cn(
-                    'inline-flex items-center rounded-full px-2 py-0.5 text-[13px] font-medium',
-                    TONE_BADGE.neutral,
-                  )}
-                >
-                  Turno fijo
-                </span>
-              )}
-              <StatusBadge visual={visual} className="max-w-full text-[13px]" />
-            </div>
-          </div>
-
-          <div id={whereId} className="mt-2 break-words">
-            <p className="text-base font-medium text-foreground">
-              {b.court_name} · {formatLabel(b.court_format)}
-            </p>
-            <p className="flex items-start gap-1 text-sm text-muted-foreground">
-              <MapPin
-                className="mt-0.5 size-3.5 shrink-0 text-emerald-700 dark:text-emerald-400"
-                aria-hidden
-              />
-              {b.tenant_name}
-            </p>
-            {featured && b.address !== '' && (
-              <p className="text-sm text-muted-foreground">{b.address}</p>
-            )}
-          </div>
-
-          {(pay.length > 0 || note) && (
-            <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-              {pay.length > 0 && (
-                <p className="tabular-nums">
-                  {pay.map((part, i) => (
-                    <Fragment key={part}>
-                      {i > 0 && ' · '}
-                      <span className="whitespace-nowrap">{part}</span>
-                    </Fragment>
-                  ))}
-                </p>
-              )}
-              {note && <p>{note}</p>}
-            </div>
+        <div id={whenId} className="pa-bk__when">
+          {href ? (
+            // Vínculo extendido: el `::after` cubre la tarjeta entera y las acciones de abajo
+            // quedan por encima (`z-10`), así no hay nada interactivo adentro de un <a>.
+            <Link
+              href={href}
+              className="rounded-sm after:absolute after:inset-0 after:rounded-[28px] focus-visible:outline-hidden focus-visible:after:outline-2 focus-visible:after:outline-solid focus-visible:after:outline-portal-green"
+            >
+              {title}
+            </Link>
+          ) : (
+            title
           )}
         </div>
       </div>
 
+      <div id={whereId} className="pa-bk__main">
+        <span aria-hidden className="pa-bk__pic">
+          {initial}
+        </span>
+        <div className="min-w-0">
+          <span className="pa-bk__name">{b.tenant_name}</span>
+          <span className="pa-bk__meta">
+            <span>
+              {b.court_name} · {formatLabel(b.court_format)}
+            </span>
+            {featured && b.address !== '' && (
+              <>
+                {' · '}
+                <span>{b.address}</span>
+              </>
+            )}
+          </span>
+        </div>
+      </div>
+
+      {pay.length > 0 && (
+        <p className="pa-bk__pay tabular-nums">
+          {pay.map((part, i) => (
+            <Fragment key={part}>
+              {i > 0 && ' · '}
+              <span className="whitespace-nowrap">{part}</span>
+            </Fragment>
+          ))}
+        </p>
+      )}
+
+      {note &&
+        (pendingPayment ? (
+          <div
+            className={cn(
+              'pa-note relative z-10',
+              b.pay_deposit !== 'processing' && 'pa-note--warn',
+            )}
+          >
+            <span>{note}</span>
+            {canPayDeposit && (
+              <form action={payDepositAction}>
+                <input type="hidden" name="bookingId" value={b.id} />
+                <SubmitButton
+                  variant="pill"
+                  size="pill-sm"
+                  aria-describedby={describedBy}
+                  className="min-h-11"
+                  pendingLabel="Abriendo MercadoPago…"
+                >
+                  <CreditCard className="size-4.5 shrink-0" aria-hidden />
+                  Pagar la seña
+                </SubmitButton>
+              </form>
+            )}
+          </div>
+        ) : (
+          <p className="pa-bk__pay">{note}</p>
+        ))}
+
       {b.refund && (
-        <div className="relative z-10 mt-3 rounded-lg border border-border bg-muted p-3">
-          <p className="mb-2 text-base font-semibold text-foreground">
+        <div className="pa-note relative z-10">
+          <p className="text-base font-semibold text-portal-ink">
             {b.refund.state === 'pending' ? 'Devolución pendiente' : 'Devolución confirmada'}
           </p>
           <RefundContactPanel refund={b.refund} />
@@ -433,19 +381,18 @@ function BookingCard({
       )}
 
       {hasActions && (
-        <div className="relative z-10 mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3 [&>[data-ghost]:first-child]:-ml-3 [&>:not([data-ghost])~[data-ghost]]:ml-auto">
-          {canPayDeposit && (
-            <form action={payDepositAction}>
-              <input type="hidden" name="bookingId" value={b.id} />
-              <SubmitButton
-                aria-describedby={describedBy}
-                className={cn(buttonVariants(), ACTION)}
-                pendingLabel="Abriendo MercadoPago…"
-              >
-                <CreditCard className="size-4 shrink-0" aria-hidden />
-                Pagar la seña
-              </SubmitButton>
-            </form>
+        <div className="pa-links relative z-10">
+          {showDirections && (
+            <a
+              href={b.directions_href!}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-describedby={describedBy}
+              className={LINK}
+            >
+              <Navigation aria-hidden />
+              Cómo llegar
+            </a>
           )}
           {showShare && (
             <a
@@ -453,22 +400,10 @@ function BookingCard({
               target="_blank"
               rel="noopener noreferrer"
               aria-describedby={describedBy}
-              className={cn(buttonVariants(), ACTION)}
+              className={LINK}
             >
-              <MessageCircle className="size-4 shrink-0" aria-hidden />
+              <MessageCircle aria-hidden />
               Avisarle al grupo
-            </a>
-          )}
-          {showDirections && (
-            <a
-              href={b.directions_href!}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-describedby={describedBy}
-              className={cn(buttonVariants({ variant: 'outline' }), ACTION)}
-            >
-              <Navigation className="size-4 shrink-0" aria-hidden />
-              Cómo llegar
             </a>
           )}
           {showRival && (
@@ -476,9 +411,9 @@ function BookingCard({
               href={`/rival/nuevo?reserva=${b.id}`}
               aria-describedby={describedBy}
               data-ghost
-              className={cn(GHOST, 'text-foreground')}
+              className={LINK}
             >
-              <Swords className="size-4 shrink-0" aria-hidden />
+              <Swords aria-hidden />
               Armar el partido
             </Link>
           )}
@@ -489,13 +424,31 @@ function BookingCard({
               rel="noopener noreferrer"
               aria-describedby={describedBy}
               data-ghost
-              className={cn(GHOST, 'text-foreground')}
+              className={LINK}
             >
-              <MessageCircle className="size-4 shrink-0" aria-hidden />
+              <MessageCircle aria-hidden />
               {contact?.whatsappUrl || contact?.mailto === contactHref
                 ? 'Escribir al complejo'
                 : 'Llamar al complejo'}
             </a>
+          )}
+          {canReview && (
+            <LeaveReviewButton
+              bookingId={b.id}
+              tenantName={b.tenant_name}
+              describedBy={describedBy}
+            />
+          )}
+          {canReserveAgain && (
+            <Link
+              href={buildFichaHref(b.tenant_slug, { date: b.date, formato: b.court_format })}
+              aria-describedby={describedBy}
+              data-ghost
+              className={LINK}
+            >
+              <RotateCcw aria-hidden />
+              Reservar de nuevo
+            </Link>
           )}
           {canCancel && (
             <CancelBookingButton
@@ -513,24 +466,6 @@ function BookingCard({
               action={cancelAction}
             />
           )}
-          {canReview && (
-            <LeaveReviewButton
-              bookingId={b.id}
-              tenantName={b.tenant_name}
-              describedBy={describedBy}
-            />
-          )}
-          {canReserveAgain && (
-            <Link
-              href={buildFichaHref(b.tenant_slug, { date: b.date, formato: b.court_format })}
-              aria-describedby={describedBy}
-              data-ghost
-              className={cn(GHOST, 'text-foreground')}
-            >
-              <RotateCcw className="size-4 shrink-0" aria-hidden />
-              Reservar de nuevo
-            </Link>
-          )}
         </div>
       )}
     </li>
@@ -538,10 +473,9 @@ function BookingCard({
 }
 
 /**
- * Vista presentacional de /mis-reservas: banda hero, pestañas
- * próximos/historial, empty state y la lista de tarjetas. La primera de Próximos es la próxima
- * y se lee sola. Extraída de page.tsx (que solo aporta auth + la query cruda) para poder
- * aislarla en Storybook.
+ * Vista presentacional de /mis-reservas en vidrio: cabecera, pestañas próximos/historial, estado
+ * vacío y la lista de tarjetas. La primera de Próximos es la próxima y se lee sola. Extraída de
+ * page.tsx (que solo aporta auth + la query cruda) para poder aislarla en Storybook.
  */
 export function MisReservasView({
   bookings,
@@ -572,15 +506,6 @@ export function MisReservasView({
   /** Flag global de RIVAL (lo lee la page en el server). */
   rivalEnabled?: boolean
 }) {
-  const tabClass = (active: boolean) =>
-    cn(
-      'flex min-h-11 flex-1 items-center justify-center rounded-full py-2 text-center text-sm font-semibold transition-all duration-150',
-      'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
-      active
-        ? 'bg-primary text-primary-foreground shadow-md shadow-emerald-600/25 dark:shadow-emerald-500/25'
-        : 'text-muted-foreground hover:text-foreground',
-    )
-
   // La próxima: la primera confirmada que todavía no terminó (un turno de hoy ya jugado no lo es).
   const featuredIndex =
     tab === 'proximos' && page === 0
@@ -588,83 +513,98 @@ export function MisReservasView({
       : -1
 
   return (
-    <div className="mx-auto max-w-lg space-y-5 px-4 py-6">
-      <PlayerHeroBand
-        eyebrow="Tu actividad"
-        title="Mis"
-        accent="reservas"
-        subtitle={
-          upcomingCount > 0
-            ? `Tenés ${upcomingCount} turno${upcomingCount === 1 ? '' : 's'} por jugar.`
-            : 'Tus turnos por jugar y los que ya pasaron.'
-        }
-      />
+    <div className="portal-ambient min-h-[88vh]">
+      <div className="pa-col">
+        <header className="rv-rise" style={rise(0)}>
+          <p className="pa-eyebrow">Tu actividad</p>
+          <h1 className="rv-h1">Mis reservas</h1>
+          <p className="rv-sub">
+            {upcomingCount > 0
+              ? `Tenés ${upcomingCount} turno${upcomingCount === 1 ? '' : 's'} por jugar.`
+              : 'Tus turnos por jugar y los que ya pasaron.'}
+          </p>
+        </header>
 
-      {/* Tabs como segmented control (píldora) */}
-      <nav
-        aria-label="Tus reservas"
-        className="flex gap-1 rounded-full border border-border bg-card p-1 shadow-xs"
-      >
-        <Link
-          href="/mis-reservas?tab=proximos"
-          aria-current={tab === 'proximos' ? 'page' : undefined}
-          className={tabClass(tab === 'proximos')}
+        {/* Pestañas: dos links (viven en la URL) en un control con la píldora que se traslada. */}
+        <nav
+          aria-label="Tus reservas"
+          className="pa-seg glass-painted rv-rise mt-5"
+          style={rise(1)}
         >
-          Próximos
-        </Link>
-        <Link
-          href="/mis-reservas?tab=historial"
-          aria-current={tab === 'historial' ? 'page' : undefined}
-          className={tabClass(tab === 'historial')}
-        >
-          Historial
-        </Link>
-      </nav>
+          <span
+            aria-hidden
+            className="segmented-pill"
+            style={{ '--i': tab === 'proximos' ? 0 : 1, '--n': 2 } as CSSProperties}
+          />
+          <Link
+            href="/mis-reservas?tab=proximos"
+            aria-current={tab === 'proximos' ? 'page' : undefined}
+          >
+            Próximos
+          </Link>
+          <Link
+            href="/mis-reservas?tab=historial"
+            aria-current={tab === 'historial' ? 'page' : undefined}
+          >
+            Historial
+          </Link>
+        </nav>
 
-      <div>
         {bookings.length === 0 ? (
+          // Página fuera de rango (link viejo/compartido a una página que ya no existe): no es "no
+          // tenés reservas", es "esa página no existe" — decir lo primero con el tab lleno de filas
+          // sería mentir (mismo criterio que el libro de movimientos de Cuentas).
           page > 0 ? (
-            // Página fuera de rango (link viejo/compartido a una página que ya
-            // no existe): no es "no tenés reservas", es "esa página no existe" —
-            // decir lo primero con el tab lleno de filas sería mentir (mismo
-            // criterio que el libro de movimientos de Cuentas).
-            <EmptyCard
-              title="Esa página no existe"
-              description={`Volvé al principio de ${tab === 'proximos' ? 'Próximos' : 'Historial'}.`}
-              action={
-                <Link href={pageHref(tab, 0)} className={EMPTY_CARD_CTA}>
-                  Volver al principio
-                </Link>
-              }
-            />
+            <section
+              className="rv-empty glass-painted rv-rise mt-5"
+              style={rise(2)}
+              aria-labelledby="mis-reservas-vacio"
+            >
+              <h2 className="rv-h2" id="mis-reservas-vacio">
+                Esa página no existe
+              </h2>
+              <p className="rv-sub">{`Volvé al principio de ${tab === 'proximos' ? 'Próximos' : 'Historial'}.`}</p>
+              <Link
+                href={pageHref(tab, 0)}
+                className={cn(buttonVariants({ variant: 'pill', size: 'pill' }), 'mt-3')}
+              >
+                Volver al principio
+              </Link>
+            </section>
           ) : (
-            <EmptyCard
-              title={
-                tab === 'proximos'
+            <section
+              className="rv-empty glass-painted rv-rise mt-5"
+              style={rise(2)}
+              aria-labelledby="mis-reservas-vacio"
+            >
+              <h2 className="rv-h2" id="mis-reservas-vacio">
+                {tab === 'proximos'
                   ? 'No tenés turnos por jugar'
-                  : 'Todavía no hay turnos en tu historial'
-              }
-              description={
-                tab === 'proximos'
+                  : 'Todavía no hay turnos en tu historial'}
+              </h2>
+              <p className="rv-sub">
+                {tab === 'proximos'
                   ? 'Elegí un complejo y reservá tu próximo turno.'
-                  : 'Acá vas a ver tus turnos jugados y cancelados.'
-              }
-              action={
-                <Link href="/explorar" className={EMPTY_CARD_CTA}>
-                  <Compass className="size-4" aria-hidden />
-                  Explorar complejos
-                </Link>
-              }
-            />
+                  : 'Acá vas a ver tus turnos jugados y cancelados.'}
+              </p>
+              <Link
+                href="/explorar"
+                className={cn(buttonVariants({ variant: 'pill', size: 'pill' }), 'mt-3')}
+              >
+                <Compass className="size-5" aria-hidden />
+                Explorar complejos
+              </Link>
+            </section>
           )
         ) : (
-          <ul className="space-y-3">
+          <ul className="pa-list">
             {bookings.map((b, i) => (
               <BookingCard
                 key={b.id}
                 b={b}
                 today={today}
                 featured={i === featuredIndex}
+                index={i}
                 rivalEnabled={rivalEnabled}
                 cancelAction={cancelAction}
                 payDepositAction={payDepositAction}
@@ -672,26 +612,26 @@ export function MisReservasView({
             ))}
           </ul>
         )}
-      </div>
 
-      {/* B10 — antes la query traía 200 reservas y el corte próximos/historial
-          se hacía en JS. Como el orden es por fecha descendente, lo que se
-          perdía era la COLA DEL HISTORIAL: un jugador de años no llegaba a sus
-          reservas más viejas y nada se lo decía. Paginador compartido (con
-          total): nunca se dibuja con una sola página, y con la lista vacía
-          (`bookings.length === 0`, arriba) ninguna rama llega hasta acá. */}
-      {bookings.length > 0 && (
-        <div>
-          <Pager
-            label="Paginación de reservas"
-            page={page}
-            total={total}
-            pageSize={pageSize}
-            shown={bookings.length}
-            hrefFor={(p) => pageHref(tab, p)}
-          />
-        </div>
-      )}
+        {/* B10 — antes la query traía 200 reservas y el corte próximos/historial
+            se hacía en JS. Como el orden es por fecha descendente, lo que se
+            perdía era la COLA DEL HISTORIAL: un jugador de años no llegaba a sus
+            reservas más viejas y nada se lo decía. Paginador compartido (con
+            total): nunca se dibuja con una sola página, y con la lista vacía
+            (`bookings.length === 0`, arriba) ninguna rama llega hasta acá. */}
+        {bookings.length > 0 && (
+          <div className="mt-6">
+            <Pager
+              label="Paginación de reservas"
+              page={page}
+              total={total}
+              pageSize={pageSize}
+              shown={bookings.length}
+              hrefFor={(p) => pageHref(tab, p)}
+            />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

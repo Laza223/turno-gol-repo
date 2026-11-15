@@ -5,7 +5,7 @@ import { AceptarTerminosForm } from './AceptarTerminosForm'
 
 /**
  * La Server Action entra por prop. El decorator pone el mismo marco que /aceptar-terminos
- * (page.tsx): La Previa (fondo oscuro, logo arriba y card de vidrio).
+ * (page.tsx): el portal de vidrio (foto del hero, logo arriba y tarjeta de vidrio).
  */
 const meta = {
   title: 'Auth/AceptarTerminosForm',
@@ -14,7 +14,7 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <PortalAuthFrame>
+      <PortalAuthFrame signOutAction={async () => {}}>
         <Story />
       </PortalAuthFrame>
     ),

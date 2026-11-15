@@ -8,11 +8,13 @@ test.describe('public availability', () => {
     // <title> es un nodo de texto mas del documento. Apuntamos al h1, que es lo
     // que el test quiere verificar: el nombre visible para el usuario.
     await expect(page.getByRole('heading', { level: 1, name: 'E2E Complejo Demo' })).toBeVisible()
-    // La reserva arranca en el paso 1 (la lista de días); tocar uno lleva al paso 2 con, tras el
-    // fetch, al menos una hora (HH:MM).
+    // La reserva es una sola pantalla: la fila de días arriba y las horas del día elegido abajo.
+    // Se toca mañana (hoy puede no tener horas si el test corre tarde) y, tras el fetch, aparece
+    // al menos una hora (HH:MM).
     const reserva = page.getByRole('region', { name: 'Reservá tu turno' })
-    await expect(reserva.getByRole('list', { name: 'Día' })).toBeVisible()
-    await reserva.getByRole('button', { name: /^Mañana/ }).click()
+    const dias = reserva.getByRole('group', { name: 'Día' })
+    await expect(dias).toBeVisible()
+    await dias.getByRole('button').nth(1).click()
     await expect(reserva.getByRole('group', { name: 'Hora' })).toBeVisible()
     await expect(reserva.getByRole('button', { name: /^\d{2}:\d{2}/ }).first()).toBeVisible()
   })

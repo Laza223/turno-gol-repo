@@ -1,9 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, within } from 'storybook/test'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import TenantGallery from './TenantGallery'
 
-// 6 fotos: 1 principal + 4 thumbnails + la 6ta se resume en el badge "+1" del último thumbnail.
+// 6 fotos: todas en la tira, una tarjeta por foto.
 const PHOTOS = [
   '/bg-hero-desktop.png',
   '/bg-hero-2.png',
@@ -13,7 +12,7 @@ const PHOTOS = [
   '/bg-hero-desktop.png',
 ]
 
-/** En el perfil va plana, en la columna del complejo (`page.tsx`), debajo de las canchas. */
+/** En el perfil va en la columna del complejo, debajo de las canchas: tira con snap en el celu. */
 const meta = {
   title: 'Player/TenantProfile/TenantGallery',
   component: TenantGallery,
@@ -21,11 +20,11 @@ const meta = {
   args: { name: 'Complejo Fénix' },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="max-w-2xl bg-background p-4">
+      <div data-portal-glass className="portal-ambient p-4 text-portal-ink">
+        <div className="max-w-2xl">
           <Story />
         </div>
-      </PortalWorld>
+      </div>
     ),
   ],
 } satisfies Meta<typeof TenantGallery>
@@ -38,35 +37,21 @@ export const SinFotos: Story = {
   args: { photos: [] },
 }
 
-/** 1 sola foto: sin fila de thumbnails. */
+/** 1 sola foto: una tarjeta. */
 export const UnaFoto: Story = {
   args: { photos: [PHOTOS[0]!] },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.getByRole('img', { name: /foto principal/i })).toBeInTheDocument()
+    await expect(within(canvasElement).getAllByRole('button')).toHaveLength(1)
   },
 }
 
-/** 2 fotos: lado a lado en todos los anchos (apiladas en el celular quedaban dos tiras finas). */
-export const DosFotos: Story = {
-  args: { photos: PHOTOS.slice(0, 2) },
-  play: async ({ canvasElement }) => {
-    const [first, second] = within(canvasElement).getAllByRole('button')
-    const a = first!.getBoundingClientRect()
-    const b = second!.getBoundingClientRect()
-    await expect(b.top).toBe(a.top)
-    await expect(b.left).toBeGreaterThan(a.right)
-  },
-}
-
-/** Varias fotos: foto principal + thumbnails, badge "+N" en la última. */
+/** Varias fotos: una tarjeta por foto (la tira se desliza en el celu y son 3 columnas desde 1024 px). */
 export const VariasFotos: Story = {
   args: { photos: PHOTOS },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.getByText('+1')).toBeInTheDocument()
-    // En el celular las miniaturas no entran: este botón (solo bajo 640 px, oculto acá) avisa y abre la galería.
-    await expect(canvas.getByText('Ver 6 fotos')).toBeInTheDocument()
+    const buttons = within(canvasElement).getAllByRole('button')
+    await expect(buttons).toHaveLength(6)
+    await expect(getComputedStyle(buttons[0]!.closest('ul')!).scrollSnapType).toContain('x')
   },
 }
 
@@ -75,7 +60,7 @@ export const LightboxAbierto: Story = {
   args: { photos: PHOTOS },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('img', { name: /foto principal/i }))
+    await userEvent.click(canvas.getByRole('img', { name: /foto 1$/i }))
 
     const dialog = within(canvas.getByRole('dialog', { name: /fotos de complejo fénix/i }))
     await expect(dialog.getByText('1 / 6')).toBeInTheDocument()

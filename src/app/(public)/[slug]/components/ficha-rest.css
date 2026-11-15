@@ -1,0 +1,128 @@
+/* Ficha del complejo en vidrio (portal de vidrio F4): la portada de fondo, los bloques del resto y
+   cómo aparecen. El vidrio mismo (`.glass`, `.glass-painted`) y sus respaldos de "reducir
+   transparencia" salen de globals.css. Solo se animan transform y opacity. */
+
+/* La portada: detrás de la cabecera, enmascarada hacia abajo y velada arriba para que el texto
+   llegue a AA sobre cualquier foto (`.cx__bg` del mockup). Es decorativa: el nombre del
+   complejo ya está en el h1. */
+.fr-bg {
+  position: absolute;
+  inset: 0 0 auto 0;
+  z-index: -1;
+  height: 430px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.fr-bg img {
+  object-fit: cover;
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 46%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0, #000 46%, transparent 100%);
+}
+.fr-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgb(var(--portal-veil) / 0.96) 0,
+    rgb(var(--portal-veil) / 0.9) 60px,
+    rgb(var(--portal-veil) / 0.2) 150px,
+    rgb(var(--portal-veil) / 0) 60%
+  );
+}
+@media (min-width: 768px) {
+  .fr-bg {
+    height: 520px;
+  }
+}
+
+/* Títulos y bloques del resto (`.h2` y `.blk`). */
+.fr-h2 {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-stretch: 104%;
+  letter-spacing: -0.03em;
+  color: var(--portal-ink);
+}
+.fr-blk {
+  display: grid;
+  gap: 14px;
+  padding: 8px 0;
+}
+
+/* Fotos: tira que se desliza con snap en el celu (78 % del ancho, 46 % desde 640 px) y tres
+   columnas desde 1024 px. El padding de 4 px deja lugar al foco, que el scroll recortaría. */
+.fr-gallery {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 78%;
+  gap: 10px;
+  margin-inline: -16px;
+  padding: 4px 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  list-style: none;
+}
+.fr-gallery::-webkit-scrollbar {
+  display: none;
+}
+.fr-gallery > li {
+  scroll-snap-align: center;
+}
+@media (min-width: 640px) {
+  .fr-gallery {
+    grid-auto-columns: 46%;
+    margin-inline: -24px;
+    padding-inline: 24px;
+  }
+}
+@media (min-width: 1024px) {
+  .fr-gallery {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-inline: 0;
+    padding-inline: 4px;
+    overflow: visible;
+  }
+}
+
+/* Aparición (dirección §4.5): la portada se asienta de 1,08 a 1, la tarjeta del nombre sube y
+   cada bloque aparece al bajar. Con "reducir movimiento" todo se ve directo. La portada es el
+   LCP: nunca arranca escondida, solo agrandada. `backwards` y no `both`: al terminar no queda una
+   animación de transform activa, que haría de bloque contenedor de un `fixed` (el visor de fotos). */
+@media (prefers-reduced-motion: no-preference) {
+  .fr-bg img {
+    animation: fr-asentar 900ms var(--portal-ease-out) backwards;
+  }
+  .fr-head {
+    animation: fr-subir 700ms var(--portal-ease-out) backwards;
+  }
+  @keyframes fr-asentar {
+    from {
+      transform: scale(1.08);
+    }
+  }
+  @keyframes fr-subir {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+  }
+  /* Sin `animation-timeline` el bloque se ve entero, sin animar. */
+  @supports (animation-timeline: view()) {
+    .fr-reveal {
+      animation: fr-aparecer linear backwards;
+      animation-timeline: view();
+      animation-range: entry 0% entry 34%;
+    }
+    @keyframes fr-aparecer {
+      from {
+        opacity: 0;
+        transform: translateY(26px);
+      }
+    }
+  }
+}

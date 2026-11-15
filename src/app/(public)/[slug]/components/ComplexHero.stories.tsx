@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
 import { PortalSessionProvider } from '@/components/site/PortalSessionProvider'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import { publicTenant } from '@/test/fixtures/public'
 import ComplexHero from './ComplexHero'
 
@@ -19,11 +18,11 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="mx-auto max-w-[390px] bg-background p-4 text-foreground">
+      <div data-portal-glass className="portal-ambient text-portal-ink">
+        <div className="relative mx-auto max-w-[414px] px-4 pt-20 pb-4">
           <Story />
         </div>
-      </PortalWorld>
+      </div>
     ),
   ],
 } satisfies Meta<typeof ComplexHero>
@@ -35,7 +34,8 @@ export const ConPortada: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('heading', { level: 1, name: 'Complejo Fénix' })).toBeVisible()
-    await expect(canvas.getByRole('img', { name: 'Portada de Complejo Fénix' })).toBeVisible()
+    // La portada es decorativa (el nombre ya está en el h1): fondo con alt vacío.
+    await expect(canvasElement.querySelector('.fr-bg img')).not.toBeNull()
     await expect(await canvas.findByText('Abierto · hasta las 00:00')).toBeVisible()
     // Los datos son una línea apagada, no chips que parezcan botones; y no hay chip de horario.
     await expect(canvas.getByText('5 canchas · Fútbol 5 y 7')).toBeVisible()
@@ -58,9 +58,7 @@ export const ConPortada: Story = {
 export const SinPortada: Story = {
   args: { tenant: publicTenant({ coverUrl: null }) },
   play: async ({ canvasElement }) => {
-    await expect(
-      within(canvasElement).queryByRole('img', { name: /Portada/ }),
-    ).not.toBeInTheDocument()
+    await expect(canvasElement.querySelector('.fr-bg')).toBeNull()
   },
 }
 

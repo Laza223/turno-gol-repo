@@ -31,33 +31,30 @@ const rest = (courts: Parameters<typeof ProfileRest>[0]['courts']) =>
     />,
   )
 
-describe('ProfileRest: fotos', () => {
-  it('la galería no repite las fotos que ya se ven en las fichas de cancha', () => {
+// Portal de vidrio (F4): las canchas son fichas de texto y TODAS sus fotos van a la galería.
+describe('ProfileRest: canchas y fotos', () => {
+  it('lista todas las canchas, con o sin foto, y la galería junta sus fotos sin repetir', () => {
     rest([
       publicCourtCard({ id: 'c1', name: 'Cancha 1', photos: ['/a.png', '/b.png'] }),
-      publicCourtCard({ id: 'c2', name: 'Cancha 2', photos: ['/c.png'] }),
+      publicCourtCard({ id: 'c2', name: 'Cancha 2', photos: ['/a.png', '/c.png'] }),
       publicCourtCard({ id: 'c3', name: 'Cancha 3', photos: [] }),
     ])
 
-    const srcs = screen.getAllByRole('img').map((img) => img.getAttribute('src'))
-    expect(srcs.filter((src) => src === '/a.png')).toHaveLength(1) // la ficha, no la galería
-    expect(srcs).toContain('/b.png') // la foto que sobra va a la galería
-    expect(screen.getByRole('region', { name: 'Fotos del complejo' }).textContent).toContain('(1)')
-    expect(screen.getByRole('region', { name: 'Canchas' }).textContent).toContain('(2)')
+    const canchas = screen.getByRole('region', { name: 'Canchas' })
+    expect(canchas.textContent).toContain('(3)')
+    expect(canchas.textContent).toContain('Cancha 3')
+    expect(canchas.querySelector('img')).toBeNull()
+    const fotos = screen.getByRole('region', { name: 'Fotos del complejo' })
+    const srcs = [...fotos.querySelectorAll('img')].map((img) => img.getAttribute('src'))
+    expect(srcs).toEqual(['/a.png', '/b.png', '/c.png'])
+    expect(fotos.textContent).toContain('(3)')
   })
 
-  it('si no sobra ninguna foto, el bloque Fotos no aparece', () => {
-    rest([publicCourtCard({ id: 'c1', name: 'Cancha 1', photos: ['/a.png'] })])
+  it('sin ninguna foto, el bloque Fotos no aparece', () => {
+    rest([publicCourtCard({ id: 'c1', name: 'Cancha 1', photos: [] })])
 
     expect(screen.getByRole('region', { name: 'Canchas' })).toBeTruthy()
     expect(screen.queryByRole('region', { name: 'Fotos del complejo' })).toBeNull()
-  })
-
-  it('el alt de la ficha es el nombre de la cancha, sin repetir "Cancha"', () => {
-    rest([publicCourtCard({ id: 'c1', name: 'Cancha 1', photos: ['/a.png'] })])
-
-    expect(screen.getByRole('img', { name: 'Cancha 1' })).toBeTruthy()
-    expect(screen.queryByRole('img', { name: /Cancha Cancha/ })).toBeNull()
   })
 })
 

@@ -1758,6 +1758,7 @@ html.dark:has([data-portal-fields]) {
   }
   /* Baja y sale cuando sube una hoja (§4.5) o hay un campo con foco en el celu (§5.7). */
   html:has([data-glass-sheet][data-state='open']) .portal-tabbar,
+  html:has([data-reserve-bar][data-state='open']) .portal-tabbar,
   html:has(
       :is(
         input:not(

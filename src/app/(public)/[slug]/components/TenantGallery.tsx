@@ -2,14 +2,16 @@
 
 import Image from 'next/image'
 import { useCallback, useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, Images, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { useScrollLock } from '@/hooks/use-scroll-lock'
+import './ficha-rest.css'
 
 type Props = { photos: string[]; name: string }
 
 /**
  * Galería de fotos del complejo con lightbox accesible (teclado: Esc / ← / →).
- * No renderiza nada si no hay fotos. Layout: 1 foto grande + hasta 4 thumbnails.
+ * No renderiza nada si no hay fotos. Layout (portal de vidrio): tira con scroll-snap en el celu y
+ * tres columnas desde 1024 px (`.fr-gallery`); cada foto abre el visor en su lugar.
  */
 export default function TenantGallery({ photos, name }: Props) {
   const [open, setOpen] = useState(false)
@@ -104,114 +106,27 @@ export default function TenantGallery({ photos, name }: Props) {
     )
   }
 
-  if (photos.length === 1) {
-    return (
-      <>
-        <div className="rounded-xl bg-muted" style={{ height: 'clamp(200px, 32vw, 340px)' }}>
-          <button
-            type="button"
-            onClick={() => openAt(0)}
-            className="relative h-full w-full overflow-hidden rounded-xl focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          >
-            <Image
-              src={photos[0]!}
-              alt={`${name} — foto principal`}
-              fill
-              sizes="(max-width: 1400px) 100vw, 1400px"
-              className="object-cover"
-            />
-          </button>
-        </div>
-        {renderLightbox()}
-      </>
-    )
-  }
-
-  if (photos.length === 2) {
-    return (
-      <>
-        <div className="grid grid-cols-2 gap-2" style={{ height: 'clamp(200px, 32vw, 340px)' }}>
-          {photos.map((p, i) => (
+  return (
+    <>
+      <ul className="fr-gallery">
+        {photos.map((p, i) => (
+          <li key={p}>
             <button
-              key={p + i}
               type="button"
               onClick={() => openAt(i)}
-              className="relative h-full w-full overflow-hidden rounded-xl bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="relative block aspect-4/3 w-full overflow-hidden rounded-3xl border border-(--glass-line) bg-portal-inner focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-portal-green"
             >
               <Image
                 src={p}
                 alt={`${name} — foto ${i + 1}`}
                 fill
-                sizes="50vw"
+                sizes="(min-width: 1024px) 33vw, (min-width: 640px) 46vw, 78vw"
                 className="object-cover"
               />
             </button>
-          ))}
-        </div>
-        {renderLightbox()}
-      </>
-    )
-  }
-
-  const main = photos[0]!
-  const thumbs = photos.slice(1, 5)
-  const extra = photos.length - 5
-
-  return (
-    <>
-      <div
-        className="relative grid grid-cols-4 grid-rows-2 gap-2"
-        style={{ height: 'clamp(220px, 38vw, 380px)' }}
-      >
-        <button
-          type="button"
-          onClick={() => openAt(0)}
-          className="relative col-span-4 row-span-2 overflow-hidden rounded-xl bg-muted sm:col-span-2 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
-          <Image
-            src={main}
-            alt={`${name} — foto principal`}
-            fill
-            sizes="(max-width: 640px) 100vw, 50vw"
-            className="object-cover"
-          />
-        </button>
-        {thumbs.map((p, i) => {
-          const isThreePhotos = photos.length === 3
-          return (
-            <button
-              key={p + i}
-              type="button"
-              onClick={() => openAt(i + 1)}
-              className={`relative hidden overflow-hidden rounded-xl bg-muted sm:block focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-                isThreePhotos ? 'col-span-2 row-span-1' : 'col-span-1 row-span-1'
-              }`}
-            >
-              <Image
-                src={p}
-                alt={`${name} — foto ${i + 2}`}
-                fill
-                sizes={isThreePhotos ? '50vw' : '25vw'}
-                className="object-cover"
-              />
-              {i === thumbs.length - 1 && extra > 0 && (
-                <span className="absolute inset-0 flex items-center justify-center bg-slate-950/55 text-lg font-semibold text-white">
-                  +{extra}
-                </span>
-              )}
-            </button>
-          )
-        })}
-        {/* En el celular las miniaturas no entran: este botón avisa que hay más y abre la galería. */}
-        <button
-          type="button"
-          onClick={() => openAt(0)}
-          className="absolute bottom-2 right-2 inline-flex min-h-11 min-w-11 items-center gap-2 rounded-xl border border-border bg-card px-3 text-sm font-semibold text-foreground sm:hidden focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        >
-          <Images className="size-4" aria-hidden />
-          Ver {photos.length} fotos
-        </button>
-      </div>
+          </li>
+        ))}
+      </ul>
       {renderLightbox()}
     </>
   )

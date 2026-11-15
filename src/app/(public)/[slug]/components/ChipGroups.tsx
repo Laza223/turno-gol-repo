@@ -31,6 +31,10 @@ type Option = { value: string; label: string; note?: string; disabled?: boolean 
 const CHIP =
   'group inline-flex min-h-11 shrink-0 flex-col items-center justify-center whitespace-nowrap rounded-full border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors duration-150 hover:border-input focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:font-semibold data-[state=checked]:text-primary-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:text-muted-foreground'
 
+/** Chip del portal de vidrio (`.chipb` del mockup): píldora interior que, elegida, pasa al verde. */
+const CHIP_GLASS =
+  'group inline-flex h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-portal-inner-line bg-portal-inner px-4.5 text-[15px] font-semibold text-portal-ink transition-[scale,background-color,border-color] duration-(--dur-2) hover:bg-portal-bar-on focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-portal-green active:scale-[.96] motion-reduce:active:scale-100 data-[state=checked]:border-transparent data-[state=checked]:bg-linear-to-b data-[state=checked]:from-(--portal-btn-a) data-[state=checked]:to-(--portal-btn-b) data-[state=checked]:text-portal-on-green'
+
 /**
  * Grupo de opción única (RadioGroup de Radix: flechas, un solo tab stop). El relleno verde y el
  * tilde marcan lo elegido: nunca solo color. El `p-1 -m-1` deja lugar para el anillo de foco, que
@@ -49,6 +53,7 @@ export function ChipGroup({
   wrap = false,
   alwaysWrap = false,
   tabular = false,
+  glass = false,
   className,
   'aria-invalid': ariaInvalid,
   'aria-describedby': ariaDescribedBy,
@@ -65,6 +70,8 @@ export function ChipGroup({
   alwaysWrap?: boolean
   /** Dígitos de ancho fijo en los chips (horas: 19:00 y 20:00 no deben bailar). */
   tabular?: boolean
+  /** Piel del portal de vidrio (la ficha del complejo). */
+  glass?: boolean
   /** Se suma al final: quien monta puede pasar a grilla (`grid grid-cols-3 overflow-visible`). */
   className?: string
   /** Error del grupo; `aria-describedby` apunta al mensaje que lo explica. */
@@ -106,7 +113,7 @@ export function ChipGroup({
           key={o.value}
           value={o.value}
           disabled={o.disabled}
-          className={cn(CHIP, tabular && 'tabular-nums')}
+          className={cn(glass ? CHIP_GLASS : CHIP, tabular && 'tabular-nums')}
         >
           <span className="inline-flex items-center gap-1">
             <RadioGroup.Indicator>
@@ -177,6 +184,8 @@ export function FormatChips({
       options={options}
       value={value === null ? 'all' : String(value)}
       onChange={(v) => onChange(v === 'all' ? null : Number(v))}
+      alwaysWrap
+      glass
     />
   )
 }

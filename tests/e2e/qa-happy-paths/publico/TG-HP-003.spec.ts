@@ -6,7 +6,7 @@ import { writeEvidence } from '../_qa/evidence'
  * Rol: Visitante (no auth). Prereq: tenant `e2e-complejo-sena` seedeado (status 'active',
  * requires_deposit:true 50%, cancha Seña 1, opening_hours 08:00-23:00 todos los días).
  * No DB write. La reserva (ReserveSection) es 100% client-side (fetch a /api/public/availability).
- * Evidence anchors: ComplexHero.tsx, ReserveSection.tsx, HourGrid.tsx, CourtRows.tsx.
+ * Evidence anchors: ComplexHero.tsx, ReserveSection.tsx, HourGrid.tsx, ReserveBar.tsx.
  *
  * NOTA: "Cómo llegar" (target=_blank a Google Maps) y el link de contacto (wa.me o tel:) se
  * verifican por `href`, sin click — clickearlos dispara navegación externa real / el
@@ -32,14 +32,14 @@ test.describe('TG-HP-003 — Perfil público del complejo', () => {
     const contactLink = page.getByRole('link', { name: /^(WhatsApp|Llamar)$/ })
     await expect(contactLink).toHaveAttribute('href', /^(https:\/\/wa\.me\/|tel:)/)
 
-    // Step 5: la reserva arranca en el paso 1: una fila por día, sin ninguno elegido.
-    // No se elige hoy acá: si el test corre tarde a la noche (cierre 23:00 del fixture) todas las
+    // Step 5: la reserva es una pantalla: fila de días con hoy elegido de entrada.
+    // No se reserva hoy acá: si el test corre tarde a la noche (cierre 23:00 del fixture) todas las
     // horas pueden haber pasado; mañana nunca tiene horas pasadas.
     const reserva = page.getByRole('region', { name: 'Reservá tu turno' })
-    const dias = reserva.getByRole('list', { name: 'Día' })
-    await expect(dias.getByRole('button').first()).toHaveAttribute('aria-pressed', 'false')
+    const dias = reserva.getByRole('group', { name: 'Día' })
+    await expect(dias.getByRole('button').first()).toHaveAttribute('aria-pressed', 'true')
 
-    // Step 6: elegir mañana (paso 2) — pide la disponibilidad del día
+    // Step 6: elegir mañana — pide la disponibilidad del día
     const nextDayFetch = page.waitForResponse(
       (r) =>
         r.url().includes('/api/public/availability') && r.url().includes('slug=e2e-complejo-sena'),
@@ -47,14 +47,16 @@ test.describe('TG-HP-003 — Perfil público del complejo', () => {
     await dias.getByRole('button').nth(1).click()
     await nextDayFetch
 
-    // Step 7: elegir la primera hora con lugar (paso 3) → aparecen las canchas libres a esa hora
+    // Step 7: elegir la primera hora con lugar → sube la barra "Tu turno" con las canchas libres
+    // (radio, la primera elegida) y el botón "Reservar"
     const horas = reserva.getByRole('group', { name: 'Hora' })
     await horas.getByRole('button', { disabled: false }).first().click()
-    const canchas = reserva.getByRole('list', { name: /^Canchas libres a las \d{2}:\d{2}$/ })
-    await expect(canchas).toBeVisible()
+    const barra = page.getByRole('complementary', { name: 'Tu turno' })
+    await expect(barra.getByRole('radiogroup', { name: 'Cancha' })).toBeVisible()
+    await expect(barra.getByRole('radio').first()).toBeChecked()
 
-    // Step 8: tocar una cancha → navega a /reservar con court/date/time/dur
-    await canchas.getByRole('link').first().click()
+    // Step 8: "Reservar" → navega a /reservar con court/date/time/dur
+    await barra.getByRole('link', { name: /^Reservar/ }).click()
     await page.waitForURL(/\/e2e-complejo-sena\/reservar\?/)
     const reservarUrl = new URL(page.url())
     expect(reservarUrl.pathname).toBe('/e2e-complejo-sena/reservar')
@@ -71,7 +73,7 @@ test.describe('TG-HP-003 — Perfil público del complejo', () => {
         'none (getPublicTenant/getPublicCourtCards + fetch client-side a /api/public/availability, ambos lectura)',
       notes:
         'Cómo llegar / contacto verificados por atributo href, sin click (evita abrir Google Maps real / wa.me / protocol-handler tel: en CI). ' +
-        'Día siguiente → primera hora con lugar → primera cancha → /reservar.',
+        'Día siguiente → primera hora con lugar → barra con la primera cancha → Reservar → /reservar.',
     })
   })
 })

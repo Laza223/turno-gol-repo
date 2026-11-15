@@ -2,10 +2,9 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, within } from 'storybook/test'
 import { uid } from '@/test/fixtures/ids'
 import { reviewItem, reviews } from '@/test/fixtures/public'
-import { PortalWorld } from '@/components/world/PortalWorld'
 import ReviewsSection from './ReviewsSection'
 
-/** En el perfil va plana, en la columna del complejo (`page.tsx`). */
+/** En el perfil va en la columna del complejo, con la tarjeta resumen y la lista en vidrio pintado. */
 const meta = {
   title: 'Player/TenantProfile/ReviewsSection',
   component: ReviewsSection,
@@ -13,11 +12,11 @@ const meta = {
   args: { tenantId: uid(1) },
   decorators: [
     (Story) => (
-      <PortalWorld>
-        <div className="max-w-2xl bg-background p-4">
+      <div data-portal-glass className="portal-ambient p-4 text-portal-ink">
+        <div className="max-w-2xl">
           <Story />
         </div>
-      </PortalWorld>
+      </div>
     ),
   ],
 } satisfies Meta<typeof ReviewsSection>
@@ -31,6 +30,7 @@ export const ConResenas: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getAllByText('Reseña verificada')).toHaveLength(3)
+    await expect(canvas.getByRole('link', { name: 'Dejar una reseña' })).toBeVisible()
     await expect(canvas.queryByRole('button', { name: /ver más reseñas/i })).not.toBeInTheDocument()
   },
 }

@@ -9,6 +9,8 @@ import {
 import { isPublicPortalIndexable, isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
 import { getAverageRating, getReviewsByTenant } from '@/modules/reviews/review.service'
 import { listPublicTournaments } from '@/modules/tournaments/tournament-public.service'
+import { isRivalEnabled } from '@/modules/rival/rival.flags'
+import { listBoard } from '@/modules/rival/rival.service'
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
 import { PORTAL_TITLE } from '@/components/world/PortalAuthFrame'
 import { trackProfileViewedAction } from './actions'
@@ -55,15 +57,21 @@ export default async function PublicComplexPage(props: Props) {
     )
   }
 
-  // Datos complementarios (rating, canchas, reseñas, torneos). Resilientes: si
+  // Datos complementarios (rating, canchas, reseñas, torneos, partidos abiertos). Resilientes: si
   // fallan, la página igual renderiza con la reserva y la cabecera.
-  const [summary, courtCards, reviewsPage, tournaments] = await Promise.all([
+  const [summary, courtCards, reviewsPage, tournaments, openMatches] = await Promise.all([
     getAverageRating(tenant.id).catch(() => ({ average: 0, count: 0 })),
     getPublicCourtCards(tenant).catch(() => []),
     getReviewsByTenant(tenant.id, 10, 0).catch(() => ({ reviews: [], total: 0 })),
     // Devuelve [] con el flag apagado, que es el caso de casi todos: la sección
     // no aparece y el complejo no paga nada por una feature que no usa.
     listPublicTournaments(tenant.id).catch(() => []),
+    // Partidos de RIVAL publicados en este complejo: solo con el flag `rival` prendido. Sin
+    // flag, sin partidos o con un fallo, la sección no aparece (`OpenMatches` devuelve null).
+    isRivalEnabled()
+      .then((on) => (on ? listBoard({ tenantId: tenant.id, limit: 4 }) : null))
+      .then((page) => page?.items ?? [])
+      .catch(() => []),
   ])
 
   const formats = [...new Set(courtCards.map((c) => c.format))].sort((a, b) => a - b)
@@ -111,6 +119,7 @@ export default async function PublicComplexPage(props: Props) {
               total: reviewsPage.total,
               average: summary.average,
             }}
+            openMatches={openMatches}
           />
         }
       />

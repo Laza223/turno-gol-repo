@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { PORTAL_BUTTON_OUTLINE } from '@/components/world/PortalAuthFrame'
 import { cn } from '@/lib/utils'
 import type { DayFailure } from './reserve-data'
 
@@ -18,7 +17,11 @@ export type NextDay =
   | { status: 'failed'; onRetry: () => void }
   | { status: 'none'; reviewed: number; label?: string }
 
-const SHORT_BUTTON = `${PORTAL_BUTTON_OUTLINE} sm:w-auto`
+/** Enlace en píldora del portal de vidrio (`.link` del mockup), a lo ancho en el celu. */
+const SHORT_BUTTON = cn(
+  buttonVariants({ variant: 'pill-link', size: 'pill-sm' }),
+  'w-full sm:w-auto',
+)
 
 /** Qué se dice (y si tiene sentido reintentar) según por qué no cargó el día. */
 const FAILURE_COPY: Record<DayFailure, { title: (day: string) => string; hint: string }> = {
@@ -100,35 +103,39 @@ export default function DayEmptyState({
   return (
     <div
       role={kind === 'error' ? 'alert' : undefined}
-      className="rounded-xl border border-border bg-muted p-4"
+      className="rounded-3xl border border-portal-inner-line bg-portal-inner p-4 text-portal-ink"
     >
-      <p className="text-base font-semibold text-foreground">{title}</p>
-      {hint && <p className="mt-1 text-sm text-muted-foreground">{hint}</p>}
+      <p className="text-base font-semibold">{title}</p>
+      {hint && <p className="mt-1 text-sm text-portal-soft">{hint}</p>}
       {hasActions && (
         // min-h-11: la fila reserva el alto de un botón, así "Buscando…" → botón no mueve la página.
         <div className="mt-3 flex min-h-11 flex-col justify-center gap-2 sm:flex-row sm:items-center sm:justify-start">
           {retry && (
-            <Button type="button" variant="outline" onClick={retry} className={SHORT_BUTTON}>
+            <Button
+              type="button"
+              variant="pill-link"
+              size="pill-sm"
+              onClick={retry}
+              className="w-full sm:w-auto"
+            >
               Reintentar
             </Button>
           )}
           {gone && (
-            <Link
-              href="/explorar"
-              className={cn(buttonVariants({ variant: 'outline' }), SHORT_BUTTON)}
-            >
+            <Link href="/explorar" className={SHORT_BUTTON}>
               Buscar otro complejo
             </Link>
           )}
           {nextDay?.status === 'searching' && (
-            <p className="text-sm text-muted-foreground">Buscando el próximo día con lugar…</p>
+            <p className="text-sm text-portal-soft">Buscando el próximo día con lugar…</p>
           )}
           {nextDay?.status === 'found' && (
             <Button
               type="button"
-              variant="outline"
+              variant="pill-link"
+              size="pill-sm"
               onClick={nextDay.onSelect}
-              className={SHORT_BUTTON}
+              className="w-full sm:w-auto"
             >
               {nextDay.label}
             </Button>
@@ -136,9 +143,10 @@ export default function DayEmptyState({
           {nextDay?.status === 'failed' && (
             <Button
               type="button"
-              variant="outline"
+              variant="pill-link"
+              size="pill-sm"
               onClick={nextDay.onRetry}
-              className={SHORT_BUTTON}
+              className="w-full sm:w-auto"
             >
               Reintentar
             </Button>
@@ -149,7 +157,7 @@ export default function DayEmptyState({
               {...(contact.href.startsWith('http')
                 ? { target: '_blank', rel: 'noopener noreferrer' }
                 : {})}
-              className={cn(buttonVariants({ variant: 'outline' }), SHORT_BUTTON)}
+              className={SHORT_BUTTON}
             >
               {contact.label}
             </a>

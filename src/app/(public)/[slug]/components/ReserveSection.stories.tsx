@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { PortalWorld } from '@/components/world/PortalWorld'
 import { addDays } from '@/shared/dates/art'
 import { openingHours } from '@/test/fixtures/tenant'
@@ -14,12 +14,14 @@ import {
   todayArt,
   weeklyAvailabilityResponse,
 } from '@/test/fixtures/public'
+import { withPortalGlass } from '../../../../../.storybook/decorators/with-portal-glass'
 import ReserveSection, { ReserveSkeleton } from './ReserveSection'
 
 /**
- * La reserva de la ficha del complejo, a ~384 px: el ancho de la columna lateral en escritorio y
- * un celular grande. El reloj de Storybook está congelado el sábado 14-mar-2026 15:30 ART, así
- * que "hoy" es esa fecha y las horas de la fixture (16:00 a 00:00) quedan todas por delante.
+ * La reserva de la ficha del complejo en una pantalla (portal de vidrio, F4), a ~400 px: un
+ * celular. El reloj de Storybook está congelado el sábado 14-mar-2026 15:30 ART, así que "hoy" es
+ * esa fecha y las horas de la fixture (16:00 a 00:00) quedan todas por delante. La barra de
+ * "Reservar" va en un portal a `<body>`: se busca ahí y no dentro del canvas.
  */
 const meta = {
   title: 'Player/TenantProfile/ReserveSection',
@@ -32,11 +34,12 @@ const meta = {
   decorators: [
     (Story) => (
       <PortalWorld>
-        <div className="mx-auto max-w-sm bg-background p-4 text-foreground">
+        <div className="mx-auto max-w-[400px]">
           <Story />
         </div>
       </PortalWorld>
     ),
+    withPortalGlass(),
   ],
 } satisfies Meta<typeof ReserveSection>
 
@@ -45,12 +48,12 @@ type Story = StoryObj<typeof meta>
 
 const DAY_ROUTE = '/api/public/availability'
 const WEEK_ROUTE = '/api/public/availability/week'
-/** La semana del paso 1. Va PRIMERO en cada `fetchMock`: `DAY_ROUTE` es prefijo de esta ruta. */
+/** La semana de la fila de días. Va PRIMERO en cada `fetchMock`: `DAY_ROUTE` es prefijo de esta ruta. */
 const WEEK = { match: WEEK_ROUTE, json: weeklyAvailabilityResponse(todayArt()) }
 
 /**
- * Sin semana: si trajera el día, el paso 2 arrancaría con esas horas y un fallo del pedido del día
- * no se vería (se muestra lo último que se sabe). Para probar el error, la semana también falla.
+ * Sin semana: si trajera el día, las horas arrancarían con ella y un fallo del pedido del día no
+ * se vería (se muestra lo último que se sabe). Para probar el error, la semana también falla.
  */
 const NO_WEEK = { match: WEEK_ROUTE, json: {}, status: 500 }
 
@@ -66,18 +69,15 @@ function fullDay() {
   }
 }
 
-/** Paso 1: elige "Hoy" y deja la pregunta de la hora en pantalla. */
-async function openDay(canvasElement: HTMLElement) {
-  const canvas = within(canvasElement)
-  await userEvent.click(await canvas.findByRole('button', { name: /^Hoy/ }))
-}
+/** La barra de "Reservar", que vive en `<body>`. */
+const findBar = (canvasElement: HTMLElement) =>
+  within(canvasElement.ownerDocument.body).findByRole('complementary', { name: 'Tu turno' })
 
-/** Pasos 1 y 2: elige "Hoy", elige la hora y devuelve la lista de canchas libres a esa hora. */
+/** Toca la hora y devuelve la barra que sube. */
 async function pickHour(canvasElement: HTMLElement, time: string) {
   const canvas = within(canvasElement)
-  await openDay(canvasElement)
   await userEvent.click(await canvas.findByRole('button', { name: new RegExp(`^${time}`) }))
-  return within(await canvas.findByRole('list', { name: `Canchas libres a las ${time}` }))
+  return within(await findBar(canvasElement))
 }
 
 export const Default: Story = {
@@ -89,28 +89,46 @@ export const Default: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // Paso 1: la pregunta del día, sin "Volver".
-    await expect(
-      await canvas.findByRole('heading', { name: '¿Qué día querés jugar?' }),
-    ).toBeVisible()
-    await expect(canvas.queryByRole('button', { name: 'Volver' })).not.toBeInTheDocument()
-    await openDay(canvasElement)
-    // Paso 2: las horas.
+    await expect(await canvas.findByRole('heading', { name: 'Reservá tu turno' })).toBeVisible()
+    // Hoy viene elegido.
+    await expect(canvas.getByRole('button', { name: /^Hoy, sábado 14/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
     const hours = within(await canvas.findByRole('group', { name: 'Hora' })).getAllByRole('button')
     // El día operativo va en orden del servidor: la madrugada al final.
     await expect(hours.at(-1)).toHaveTextContent('00:00')
     await expect(canvas.getByRole('button', { name: /^19:00/ })).toBeDisabled()
-    await userEvent.click(canvas.getByRole('button', { name: /^21:00/ }))
-    // Paso 3: las canchas.
-    const list = within(await canvas.findByRole('list', { name: 'Canchas libres a las 21:00' }))
-    await expect(list.getAllByRole('link')).toHaveLength(5)
+    const bar = await pickHour(canvasElement, '21:00')
+    await expect(bar.getAllByRole('radio')).toHaveLength(5)
+    await expect(bar.getByRole('link')).toHaveTextContent(/^Reservar/)
     await expect(canvas.getByRole('status')).toHaveTextContent('21:00: 5 canchas libres')
-    // Volver deja la hora elegida, a la vista.
-    await userEvent.click(canvas.getByRole('button', { name: 'Volver' }))
-    await expect(await canvas.findByRole('button', { name: /^21:00/ })).toHaveAttribute(
-      'aria-pressed',
-      'true',
+    // La X cierra la barra y la hora queda libre para elegir otra.
+    await userEvent.click(bar.getByRole('button', { name: 'Cerrar y elegir otra hora' }))
+    await waitFor(() =>
+      expect(
+        within(canvasElement.ownerDocument.body).queryByRole('complementary', {
+          name: 'Tu turno',
+        }),
+      ).not.toBeInTheDocument(),
     )
+  },
+}
+
+/** La barra abierta, como llega un link a una hora (`?date=&hora=`): para mirarla quieta. */
+export const BarraAbierta: Story = {
+  parameters: {
+    nextjs: {
+      appDirectory: true,
+      navigation: { pathname: '/complejo-fenix', query: { date: todayArt(), hora: '21:00' } },
+    },
+    fetchMock: [WEEK, { match: DAY_ROUTE, json: availabilityResponse() }],
+  },
+  play: async ({ canvasElement }) => {
+    const bar = within(await findBar(canvasElement))
+    // Entra con un fundido: se espera a que termine.
+    await waitFor(() => expect(bar.getByText(/Hoy, sábado 14 · 21:00 a 22:00/)).toBeVisible())
+    await expect(bar.getAllByRole('radio')[0]).toHaveAttribute('aria-checked', 'true')
   },
 }
 
@@ -127,13 +145,12 @@ export const ErrorDeCarga: Story = {
   parameters: { fetchMock: [NO_WEEK, { match: DAY_ROUTE, json: {}, status: 500 }] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await openDay(canvasElement)
     await expect(await canvas.findByRole('alert')).toHaveTextContent(
       'No pudimos cargar los horarios del sábado 14',
     )
     await expect(canvas.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument()
-    // Se sigue en el paso 2: se puede volver a elegir otro día.
-    await expect(canvas.getByRole('button', { name: 'Volver' })).toBeInTheDocument()
+    // La fila de días sigue a mano: se puede elegir otro día.
+    await expect(canvas.getByRole('group', { name: 'Día' })).toBeVisible()
   },
 }
 
@@ -142,7 +159,6 @@ export const ErrorPorDemasiadasConsultas: Story = {
   parameters: { fetchMock: [NO_WEEK, { match: DAY_ROUTE, json: {}, status: 429 }] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await openDay(canvasElement)
     const alert = await canvas.findByRole('alert')
     await expect(alert).toHaveTextContent('Hubo demasiadas consultas seguidas')
     await expect(alert).toHaveTextContent('Esperá unos segundos')
@@ -156,7 +172,6 @@ export const ComplejoNoDisponible: Story = {
   parameters: { fetchMock: [NO_WEEK, { match: DAY_ROUTE, json: {}, status: 404 }] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await openDay(canvasElement)
     const alert = await canvas.findByRole('alert')
     await expect(alert).toHaveTextContent('Este complejo no está disponible')
     await expect(alert).toHaveTextContent('No se puede reservar acá por ahora.')
@@ -175,7 +190,6 @@ export const DiaFueraDeVentana: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await openDay(canvasElement)
     const alert = await canvas.findByRole('alert')
     await expect(alert).toHaveTextContent('Ese día ya no se puede reservar')
     await expect(alert).not.toHaveTextContent('de nuestro lado')
@@ -184,34 +198,20 @@ export const DiaFueraDeVentana: Story = {
   },
 }
 
-/** Paso 1: el día cerrado se ve deshabilitado y dicho con palabras. */
+/** Hoy cerrado: el día se ve apagado y dicho con palabras, y la salida es el próximo día abierto. */
 export const DiaCerrado: Story = {
   args: { tenant: publicTenant({ closedDates: [todayArt()] }) },
   parameters: { fetchMock: [WEEK, { match: DAY_ROUTE, json: availabilityResponseCourts(2) }] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole('button', { name: /^Hoy.*Cerrado/ })).toBeDisabled()
-    await expect(canvas.getByRole('button', { name: /^Mañana/ })).toBeEnabled()
-  },
-}
-
-/** Entrando por un link a un día cerrado (paso 2): lo dice y ofrece el próximo día abierto. */
-export const DiaCerradoPorLink: Story = {
-  args: { tenant: publicTenant({ closedDates: [todayArt()] }) },
-  parameters: {
-    nextjs: {
-      appDirectory: true,
-      navigation: { pathname: '/complejo-fenix', query: { date: todayArt() } },
-    },
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
+    await expect(canvas.getByRole('button', { name: /^Domingo 15/ })).toBeEnabled()
     await expect(await canvas.findByText('Cerrado el sábado 14')).toBeVisible()
     await expect(canvas.getByRole('button', { name: 'Ver el domingo 15' })).toBeInTheDocument()
   },
 }
 
-/** Paso 1 con la semana cargada: Hay lugar, Completo, Sin horarios y Cerrado, siempre con palabras. */
+/** La semana cargada: Hay lugar, Completo, Sin horarios y Cerrado, siempre con palabras. */
 export const SemanaConEstados: Story = {
   args: { tenant: publicTenant({ closedDates: [addDays(todayArt(), 2)] }) },
   parameters: {
@@ -225,12 +225,13 @@ export const SemanaConEstados: Story = {
           ),
         },
       },
+      { match: DAY_ROUTE, json: availabilityResponseCourts(2) },
     ],
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole('button', { name: /^Hoy.*Hay lugar/ })).toBeEnabled()
-    await expect(canvas.getByRole('button', { name: /^Mañana.*Completo/ })).toBeDisabled()
+    await expect(canvas.getByRole('button', { name: /^Domingo 15.*Completo/ })).toBeDisabled()
     await expect(canvas.getByRole('button', { name: /Cerrado/ })).toBeDisabled()
     await expect(canvas.getByRole('button', { name: /Sin horarios/ })).toBeDisabled()
   },
@@ -246,7 +247,6 @@ export const DiaCompleto: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await openDay(canvasElement)
     await expect(await canvas.findByText('No quedan horarios el sábado 14')).toBeVisible()
     await expect(
       await canvas.findByRole('button', { name: 'Ver el domingo 15' }),
@@ -266,7 +266,6 @@ export const BusquedaDeOtroDiaFallida: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await openDay(canvasElement)
     await expect(await canvas.findByText('No pudimos buscar otro día.')).toBeVisible()
     await expect(canvas.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument()
     await expect(canvas.queryByText(/No hay lugar/)).not.toBeInTheDocument()
@@ -292,7 +291,6 @@ export const SinLugarEnLaSemana: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await openDay(canvasElement)
     await expect(await canvas.findByText('No hay lugar en los próximos 6 días.')).toBeVisible()
     await expect(canvas.getByRole('link', { name: 'Consultar por WhatsApp' })).toHaveAttribute(
       'href',
@@ -306,7 +304,6 @@ export const SinCanchas: Story = {
   parameters: { fetchMock: [WEEK, { match: DAY_ROUTE, json: availabilityResponseNoCourts() }] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await openDay(canvasElement)
     await expect(
       await canvas.findByText('Este complejo todavía no tiene canchas para reservar'),
     ).toBeVisible()
@@ -320,7 +317,6 @@ export const Senando: Story = {
   parameters: { fetchMock: [WEEK, { match: DAY_ROUTE, json: availabilityResponseWithHold() }] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await openDay(canvasElement)
     const held = await canvas.findByRole('button', { name: /^20:00/ })
     await expect(held).toBeDisabled()
     await expect(held).toHaveTextContent('Señando')
@@ -329,16 +325,16 @@ export const Senando: Story = {
   },
 }
 
-/** Sin reserva online cada cancha abre WhatsApp con el pedido ya escrito. */
+/** Sin reserva online el botón de la barra abre WhatsApp con el pedido ya escrito. */
 export const SinReservaOnline: Story = {
   args: { tenant: publicTenantNoOnlineBooking() },
   parameters: { fetchMock: [WEEK, { match: DAY_ROUTE, json: availabilityResponseCourts(3) }] },
   play: async ({ canvasElement }) => {
-    const list = await pickHour(canvasElement, '21:00')
-    const links = list.getAllByRole('link')
-    await expect(links).toHaveLength(3)
-    await expect(links[0]).toHaveAttribute('href', expect.stringMatching(/^https:\/\/wa\.me\//))
-    await expect(links[0]).toHaveTextContent('WhatsApp')
+    const bar = await pickHour(canvasElement, '21:00')
+    await expect(bar.getAllByRole('radio')).toHaveLength(3)
+    const link = bar.getByRole('link')
+    await expect(link).toHaveAttribute('href', expect.stringMatching(/^https:\/\/wa\.me\//))
+    await expect(link).toHaveTextContent('Consultar por WhatsApp')
   },
 }
 
@@ -349,25 +345,28 @@ export const PreciosOcultos: Story = {
     fetchMock: [WEEK, { match: DAY_ROUTE, json: availabilityResponseCourts(3, { price: null }) }],
   },
   play: async ({ canvasElement }) => {
-    await pickHour(canvasElement, '21:00')
-    await expect(canvasElement.textContent).not.toContain('$')
-    const labels = [...canvasElement.querySelectorAll('[aria-label]')].map((el) =>
+    const bar = await pickHour(canvasElement, '21:00')
+    const body = canvasElement.ownerDocument.body
+    await expect(body.textContent).not.toContain('$')
+    await expect(bar.getByRole('link')).toHaveTextContent(/^Reservar$/)
+    const labels = [...body.querySelectorAll('[aria-label]')].map((el) =>
       el.getAttribute('aria-label'),
     )
     await expect(labels.filter((label) => label?.includes('$'))).toEqual([])
   },
 }
 
-/** Control de la anterior: con los precios visibles el monto sale en cada fila. */
+/** Control de la anterior: con los precios visibles el monto sale en cada cancha y en el botón. */
 export const PreciosVisibles: Story = {
   parameters: { fetchMock: [WEEK, { match: DAY_ROUTE, json: availabilityResponse() }] },
   play: async ({ canvasElement }) => {
-    const list = await pickHour(canvasElement, '20:00')
-    await expect(list.getAllByRole('link')[0]).toHaveTextContent('13.000')
+    const bar = await pickHour(canvasElement, '20:00')
+    await expect(bar.getAllByRole('radio')[0]).toHaveTextContent('13.000')
+    await expect(bar.getByRole('link')).toHaveTextContent('13.000')
   },
 }
 
-/** El filtro de formato acota las horas sin volver a pedir el día. */
+/** El filtro de tamaño acota las horas sin volver a pedir el día. */
 export const FiltroPorFormato: Story = {
   parameters: {
     fetchMock: [
@@ -377,17 +376,15 @@ export const FiltroPorFormato: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await openDay(canvasElement)
     await userEvent.click(await canvas.findByRole('radio', { name: 'Fútbol 7' }))
-    // 20:00 solo queda libre en la primera cancha (Fútbol 5): sin ese formato, no hay hora.
+    // 20:00 solo queda libre en la primera cancha (Fútbol 5): sin ese tamaño, no hay hora.
     await expect(await canvas.findByRole('button', { name: /^20:00/ })).toBeDisabled()
-    await userEvent.click(canvas.getByRole('button', { name: /^21:00/ }))
-    const list = within(await canvas.findByRole('list', { name: 'Canchas libres a las 21:00' }))
-    await expect(list.getAllByRole('link')).toHaveLength(2)
+    const bar = await pickHour(canvasElement, '21:00')
+    await expect(bar.getAllByRole('radio')).toHaveLength(2)
   },
 }
 
-/** Mismo componente con 1, 3, 5, 10 y 16 canchas: la lista crece, la página no se rompe. */
+/** Mismo componente con 1, 3, 5, 10 y 16 canchas: la barra crece y scrollea, la página no se rompe. */
 function conCanchas(count: number): Story {
   return {
     parameters: {
@@ -398,14 +395,12 @@ function conCanchas(count: number): Story {
     },
     play: async ({ canvasElement }) => {
       const canvas = within(canvasElement)
-      await openDay(canvasElement)
       // Con una sola cancha la hora libre es "Libre" (no es escasez); con varias libres, "N libres".
       await expect(await canvas.findByRole('button', { name: /^21:00/ })).toHaveTextContent(
         count === 1 ? 'Libre' : `${count} libres`,
       )
-      await userEvent.click(canvas.getByRole('button', { name: /^21:00/ }))
-      const list = within(await canvas.findByRole('list', { name: 'Canchas libres a las 21:00' }))
-      await expect(list.getAllByRole('link')).toHaveLength(count)
+      const bar = await pickHour(canvasElement, '21:00')
+      await expect(bar.getAllByRole('radio')).toHaveLength(count)
     },
   }
 }
@@ -447,12 +442,11 @@ export const ElVagon: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await openDay(canvasElement)
     const hours = within(await canvas.findByRole('group', { name: 'Hora' })).getAllByRole('button')
     await expect(hours.at(-1)).toHaveTextContent('00:00')
-    await userEvent.click(canvas.getByRole('button', { name: /^00:00/ }))
-    const list = within(await canvas.findByRole('list', { name: 'Canchas libres a las 00:00' }))
-    await expect(list.getAllByRole('link')).toHaveLength(5)
-    await expect(canvasElement.textContent).not.toContain('$')
+    const bar = await pickHour(canvasElement, '00:00')
+    await expect(bar.getAllByRole('radio')).toHaveLength(5)
+    await waitFor(() => expect(bar.getByText(/00:00 a 01:00/)).toBeVisible())
+    await expect(canvasElement.ownerDocument.body.textContent).not.toContain('$')
   },
 }

@@ -2,10 +2,10 @@ import type { CSSProperties, ReactNode } from 'react'
 import Link from 'next/link'
 import { MessageCircle, Phone, type LucideIcon } from 'lucide-react'
 import ReservaShell from '@/components/booking/ReservaDarkShell'
-import { buttonVariants } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { StatusTone } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
+import { RESULT_ALT, RESULT_GO } from './portal-result-classes'
 import type { ReserveRequest } from '@/lib/booking/reserve-url'
 
 /** La insignia según el tono: verde el festejo, roja la falla y de vidrio lo que no es ninguna de las dos. */
@@ -14,17 +14,6 @@ const BADGE = {
   destructive: 'rv-badge rv-badge--bad',
   success: 'rv-badge',
 } as const
-
-/** La salida principal: la píldora verde de 52 px, a todo el ancho. */
-export const RESULT_GO = cn(buttonVariants({ variant: 'pill', size: 'pill' }), 'w-full')
-/**
- * La otra salida: la píldora de vidrio del mockup, pintada (sin desenfoque): detrás solo está la
- * luz de fondo, y el vidrio real queda para la cabecera y la barra (dirección §3.3).
- */
-export const RESULT_ALT = cn(
-  buttonVariants({ variant: 'pill-glass', size: 'pill' }),
-  'w-full backdrop-filter-none',
-)
 
 /**
  * Una pantalla de resultado del portal (el pago se está confirmando, no se procesó, la reserva ya

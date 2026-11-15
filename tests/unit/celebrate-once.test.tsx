@@ -13,9 +13,22 @@ function media({ coarse = false, reduce = false } = {}) {
   }))
 }
 
-function clearCookie() {
-  document.cookie = `${CELEBRATED_COOKIE}=; path=/reserva; max-age=0`
-  document.cookie = `${CELEBRATED_COOKIE}=; max-age=0`
+/**
+ * Un jar de cookies propio: el `path=/reserva` de la marca depende de la URL de happy-dom, que no es
+ * la misma en todos los entornos. Lo que importa acá es qué escribe el componente y qué lee.
+ */
+let jar = new Map<string, string>()
+function installJar() {
+  jar = new Map()
+  Object.defineProperty(document, 'cookie', {
+    configurable: true,
+    get: () => [...jar].map(([k, v]) => `${k}=${v}`).join('; '),
+    set: (raw: string) => {
+      const [pair] = raw.split(';')
+      const eq = pair.indexOf('=')
+      jar.set(pair.slice(0, eq).trim(), pair.slice(eq + 1))
+    },
+  })
 }
 
 const box = (container: HTMLElement) => container.firstElementChild as HTMLElement
@@ -24,15 +37,14 @@ describe('CelebrateOnce: festeja una vez por visita', () => {
   let vibrate: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
-    // La cookie va con `path=/reserva`: la pantalla vive ahí.
-    window.history.replaceState({}, '', `/reserva/${ID}/exito`)
-    clearCookie()
+    installJar()
     vibrate = vi.fn()
     Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true })
   })
   afterEach(() => {
     cleanup()
-    clearCookie()
+    // Vuelve el `document.cookie` de happy-dom (el del prototipo).
+    Reflect.deleteProperty(document, 'cookie')
     vi.unstubAllGlobals()
   })
 

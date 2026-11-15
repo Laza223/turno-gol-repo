@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { MessageCircle, Swords } from 'lucide-react'
-import { RESULT_ALT, RESULT_GO } from '@/components/world/PortalResult'
+import { RESULT_ALT, RESULT_GO } from '@/components/world/portal-result-classes'
 import { isInRivalStartWindow } from '@/modules/rival/rival-window'
 import { bookingCode } from '@/lib/booking-code'
 import { buildGroupShareHref, buildGroupShareText } from '@/lib/booking/group-share'

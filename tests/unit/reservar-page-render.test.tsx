@@ -4,7 +4,7 @@
 // con lo que dice la URL y el complejo. Los componentes de abajo (resumen, pago, ingreso) tienen
 // sus tests; acá importa el cableado: qué llega a cada uno desde el tenant y la query.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import { availabilityResponse, publicTenant } from '@/test/fixtures/public'
 
 const mocks = vi.hoisted(() => ({
@@ -210,36 +210,33 @@ describe('ReservarPage — formato y el camino de vuelta', () => {
     expect(href).toBe(`/complejo-fenix?date=${DATE}&hora=${hora}&formato=5`)
   })
 
-  it('con el hueco entre bloques en 32 px (`space-y-8`)', async () => {
+  it('los bloques van en la pila de vidrio (`rv-stack`, 12 px como en `reservar.html`)', async () => {
     const { container } = await renderPage()
-    expect(container.querySelector('.space-y-8')).toBeTruthy()
+    expect(container.querySelector('.rv-stack')).toBeTruthy()
   })
 })
 
 describe('ReservarPage — la sesión y el navegador', () => {
-  it('con sesión: el botón de confirmar y la barra fija; sin el ingreso', async () => {
+  it('con sesión: el botón de confirmar en el flujo; sin el ingreso', async () => {
     const { container } = await renderPage()
     expect(screen.getByRole('button', { name: 'Reservar' })).toBeTruthy()
-    expect(screen.queryByRole('dialog')).toBeNull()
-    expect(container.querySelector('[data-fixed-cta]')).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'Entrá para reservar' })).toBeNull()
+    expect(container.querySelector('[data-fixed-cta]')).toBeNull()
   })
 
-  it('sin sesión: el mismo botón en la barra fija abre el ingreso, con Google primero; el next conserva cancha, día, hora, formato y pay', async () => {
+  it('sin sesión: el ingreso en la pantalla, con Google primero; el next conserva cancha, día, hora, formato y pay', async () => {
     mocks.extractAuthUser.mockResolvedValue(null)
-    const { container } = await renderPage({ formato: '5', pay: 'transfer' })
+    await renderPage({ formato: '5', pay: 'transfer' })
 
-    // Cerrado: solo el botón, en la barra fija, y el modal sin montar.
-    expect(container.querySelector('[data-fixed-cta]')).toBeTruthy()
+    // Ni botón de reservar ni modal: el ingreso ya está a la vista.
+    expect(screen.queryByRole('button', { name: /^(Reservar|Pagar seña)/ })).toBeNull()
     expect(screen.queryByRole('dialog')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Reservar' }))
-
-    const dialog = await screen.findByRole('dialog', { name: /Entrá para reservar/ })
-    const names = within(dialog)
+    const panel = screen.getByRole('region', { name: 'Entrá para reservar' })
+    const names = within(panel)
       .getAllByRole('button')
       .map((b) => b.textContent)
-      .filter((t) => t && t !== 'Cerrar')
     expect(names).toEqual(['Continuar con Google', 'Continuar con mi email'])
-    const next = dialog.querySelector<HTMLInputElement>('input[name="next"]')!.value
+    const next = panel.querySelector<HTMLInputElement>('input[name="next"]')!.value
     expect(next).toBe(
       `/complejo-fenix/reservar?court=${cancha1!.id}&date=${DATE}&time=20:00&dur=60&formato=5&pay=transfer`,
     )
@@ -249,15 +246,13 @@ describe('ReservarPage — la sesión y el navegador', () => {
     mocks.extractAuthUser.mockResolvedValue(null)
     mocks.userAgent.current = 'Mozilla/5.0 (iPhone) AppleWebKit/605 Mobile/15E148 Instagram 300.0.0'
     await renderPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Reservar' }))
 
-    const dialog = await screen.findByRole('dialog')
-    const names = within(dialog)
+    const panel = screen.getByRole('region', { name: 'Entrá para reservar' })
+    const names = within(panel)
       .getAllByRole('button')
       .map((b) => b.textContent)
-      .filter((t) => t && t !== 'Cerrar')
     expect(names).toEqual(['Continuar con mi email', 'Copiar enlace'])
-    expect(within(dialog).getByText('¿Querés entrar con Google?')).toBeTruthy()
+    expect(within(panel).getByText('¿Querés entrar con Google?')).toBeTruthy()
   })
 })
 
@@ -279,16 +274,14 @@ describe('ReservarPage — quién es: solo un jugador envía la reserva', () => 
       'un super admin logueado',
       { type: 'system_admin', id: 'u2', email: 'sa@example.com', systemAdminId: 'u2' },
     ],
-  ])('%s ve el botón que abre el ingreso, no el que envía la reserva', async (_name, user) => {
+  ])('%s ve el ingreso, no el botón que envía la reserva', async (_name, user) => {
     mocks.extractAuthUser.mockResolvedValue(user)
     const { container } = await renderPage()
 
-    // El botón no es de submit (no hay form de confirmar) y abre el ingreso.
-    const button = screen.getByRole('button', { name: 'Reservar' })
-    expect(button.getAttribute('type')).toBe('button')
-    expect(container.querySelector('form')).toBeNull()
-    fireEvent.click(button)
-    expect(await screen.findByRole('dialog', { name: /Entrá para reservar/ })).toBeTruthy()
+    // No hay form de confirmar (el que lleva la cancha): solo los del ingreso.
+    expect(screen.queryByRole('button', { name: 'Reservar' })).toBeNull()
+    expect(container.querySelector('form input[name="court"]')).toBeNull()
+    expect(screen.getByRole('region', { name: 'Entrá para reservar' })).toBeTruthy()
   })
 })
 

@@ -8,7 +8,7 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <div className="min-h-dvh bg-background text-foreground">
+      <div data-portal-glass className="portal-ambient min-h-dvh text-portal-ink">
         <Story />
       </div>
     ),

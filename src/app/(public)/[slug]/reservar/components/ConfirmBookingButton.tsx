@@ -2,13 +2,17 @@
 
 import type { ReactNode } from 'react'
 import { SubmitButton } from '@/components/ui/submit-button'
-import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
 import { BOOKING_INTENT_PARAM, type PayMethod } from '@/lib/booking/reserve-url'
 import { cn } from '@/lib/utils'
 import type { createBookingAndCheckout } from '../actions'
 import AutoConfirm from './AutoConfirm'
 
-/** Contenedor del botón de acción: ver `ConfirmBookingButton`. Lo comparten con y sin sesión. */
+/**
+ * Botón fijo abajo en el celular, por encima de la barra inferior del jugador
+ * (`--portal-tabbar-space`); desde `md` queda en el flujo. Lo usa RIVAL: la pantalla de confirmar
+ * ya no lo fija (portal de vidrio F5). `data-fixed-cta` es el aviso a `PortalFrame`: mientras esté
+ * montado el marco suma su alto real (1 px de borde + 12 + 52 + 12 px) a su padding inferior.
+ */
 export function FixedCta({ children }: { children: ReactNode }) {
   return (
     <div
@@ -24,17 +28,10 @@ export function FixedCta({ children }: { children: ReactNode }) {
 }
 
 /**
- * El botón de acción, con sesión (sin sesión es el mismo botón y abre el ingreso: ver
- * `CheckoutFlow`). En el celular va fijo abajo (52 px) y SIEMPRE por encima de la
- * barra inferior del jugador (`--portal-tabbar-space`: 12 px de aire + la píldora de 66 px + el área
- * segura del iPhone, la misma medida que reserva `PortalFrame`): este botón solo existe para jugadores, que siempre la tienen,
- * así que no espera a que la sesión se hidrate y no salta cuando llega. Desde `md` la barra
- * inferior no existe y el botón queda en el flujo, dentro de la columna. Un solo envío: pendiente,
- * "Procesando…" y deshabilitado. Dice "Reservar", o "Pagar seña" si hay seña (`label`).
- *
- * `data-fixed-cta` es el aviso a `PortalFrame`: mientras este contenedor esté montado el marco suma
- * su alto real (1 px de borde + 12 + 52 + 12 px) a su padding inferior, así el pie no queda tapado.
- * Si cambia el relleno o el alto del botón, cambia también esa cuenta en `PortalFrame`.
+ * El botón de acción, con sesión (sin sesión, en su lugar va el ingreso: ver `CheckoutFlow`). Va en
+ * el flujo, debajo del resumen, como en `reservar.html`: la píldora verde de 52 px. Un solo envío:
+ * pendiente, "Procesando…" con el brillo de carga adentro y deshabilitado. Dice "Reservar", o
+ * "Pagar seña" si hay seña (`label`).
  */
 export default function ConfirmBookingButton(props: {
   slug: string
@@ -72,16 +69,13 @@ export default function ConfirmBookingButton(props: {
         </>
       )}
       {props.intentDegraded && (
-        <p className="mb-3 text-base text-muted-foreground">
-          Tocá &quot;{props.label}&quot; para terminar tu reserva.
-        </p>
+        <p className="rv-sub mb-3 mt-0">Tocá &quot;{props.label}&quot; para terminar tu reserva.</p>
       )}
 
-      <FixedCta>
-        <SubmitButton className={cn(PORTAL_BUTTON, 'min-h-[52px]')} pendingLabel="Procesando…">
-          {props.label}
-        </SubmitButton>
-      </FixedCta>
+      {/* En el flujo, debajo del resumen (`reservar.html`): no va fijo abajo. */}
+      <SubmitButton variant="pill" size="pill" className="rv-go w-full" pendingLabel="Procesando…">
+        {props.label}
+      </SubmitButton>
     </form>
   )
 }

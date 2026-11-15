@@ -33,8 +33,7 @@ const newEmail = () => `e2e-intent-${randomUUID().slice(0, 8)}@turnogol.test`
 /** Llena el ingreso de /reservar y pide el enlace. Devuelve el enlace del mail. */
 async function requestLink(page: Page, email: string, date: string, time: string) {
   await page.goto(reservarUrl(date, time))
-  // Sin sesión el botón de acción abre el ingreso en un modal.
-  await page.getByRole('button', { name: 'Reservar' }).click()
+  // Sin sesión el ingreso va dentro de la pantalla de confirmar.
   await expect(page.getByRole('heading', { name: 'Entrá para reservar' })).toBeVisible()
   // Sin seña: la línea de apoyo promete la confirmación.
   await expect(page.getByText('Entrás y la reserva queda confirmada.')).toBeVisible()

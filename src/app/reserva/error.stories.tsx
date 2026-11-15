@@ -42,7 +42,7 @@ export const ConDigest: Story = {
     // No promete nada sobre el pago.
     await expect(canvasElement).not.toHaveTextContent(/a salvo|no perdiste|escribinos/i)
     // Rojo: es un error de la pantalla.
-    await expect(canvasElement.querySelector('svg')).toHaveClass('text-red-700')
+    await expect(canvasElement.querySelector('.rv-badge')).toHaveClass('rv-badge--bad')
     await expect(canvas.getByText('3f9a21bc')).toBeInTheDocument()
     await expect(canvas.getByRole('link', { name: 'Ver mis reservas' })).toHaveAttribute(
       'href',

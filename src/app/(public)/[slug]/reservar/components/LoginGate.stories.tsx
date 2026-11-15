@@ -22,7 +22,7 @@ const sent = async (): Promise<GateState> => ({
 function Controlled(args: React.ComponentProps<typeof LoginGate>) {
   const [open, setOpen] = useState(true)
   return (
-    <div className="min-h-dvh bg-background text-foreground">
+    <div data-portal-glass className="portal-ambient min-h-dvh text-portal-ink">
       <button type="button" onClick={() => setOpen(true)}>
         Abrir ingreso
       </button>

@@ -101,7 +101,8 @@ describe('CheckoutErrorBanner — alertas de error de checkout (#22)', () => {
   it.each(CODES)('error=%s: el aviso no usa ámbar (es un error, no una advertencia)', (code) => {
     const { container } = render(<CheckoutErrorBanner turnHref={TURN} error={code} />)
     expect(container.innerHTML).not.toMatch(/amber|yellow|orange/)
-    expect(container.querySelector('svg')?.getAttribute('class')).toContain('text-red-700')
+    // El tinte del error del portal (`--portal-bad-*`), no el de la escasez.
+    expect(container.querySelector('[role="alert"]')?.className).toContain('rv-notice')
   })
 
   it('los links de salida llevan el anillo de foco del mundo, no el contorno del navegador', () => {

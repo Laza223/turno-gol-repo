@@ -1,3 +1,4 @@
+import '@/components/booking/reserva.css'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, within } from 'storybook/test'
 import { PlayerBottomNav } from '@/components/site/PlayerBottomNav'
@@ -27,8 +28,8 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="min-h-dvh bg-background px-4 py-4 text-foreground">
-        <div className="mx-auto max-w-[35rem]">
+      <div data-portal-glass className="portal-ambient min-h-dvh text-portal-ink">
+        <div className="rv-col">
           <Story />
         </div>
       </div>

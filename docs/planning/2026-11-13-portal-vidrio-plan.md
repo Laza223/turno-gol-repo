@@ -20,8 +20,8 @@ Este cuadro es el registro del esfuerzo. Quien cierra una fase lo actualiza en e
 | F1 | Cimientos y cromo | Hecho el 2026-11-14 | #592 |
 | F2 | Home | Hecho el 2026-11-14 | #593, #594, #595, #596 |
 | F3 | Buscador `/explorar` | Hecho el 2026-11-14 | #597 |
-| F4 | Ficha del complejo | En revisión desde el 2026-11-15 | #598 |
-| F5 | Confirmar el turno y vuelta de la reserva | Pendiente | |
+| F4 | Ficha del complejo | Hecho el 2026-11-15 | #598 |
+| F5 | Confirmar el turno y vuelta de la reserva | En revisión desde el 2026-11-15 | |
 | F6 | Mis reservas, Cuenta e Ingresar | Pendiente | |
 | F7 | Rival | Pendiente | |
 | F8 | Páginas para complejos, blog, legales y errores | Pendiente | |
@@ -72,6 +72,14 @@ Este cuadro es el registro del esfuerzo. Quien cierra una fase lo actualiza en e
 - **Fila de días en la compu (F4).** `booking_advance_days` llega a 60: desde 1024 px se ven 7 días (`calc((100% - 6 * 8px) / 7)`) y el resto se desliza, en vez de 7 columnas `1fr` que se aplastaban.
 - **Pedidos de la ficha (F4).** Al entrar se piden la semana y el día (2 contra el balde de `publicAvailability`); antes, 1 hasta elegir un día. Cada día nuevo suma 1.
 - **e2e locales de F4.** `supabase status -o env` devuelve CRLF en Git Bash (`tr -d ''`). Para reusar un dev en otro puerto, Playwright necesita una config sin `webServer` (si no, intenta levantar `pnpm dev` en :3000 y choca). TG-HP-101, 104, 106, 108 y el modal de la grilla de `field-font-size` fallan en el dev local del worktree; F4 no toca esas pantallas (104 espera el monto 1 del mock de MP).
+- **Ingreso dentro de la pantalla (F5).** En `/[slug]/reservar`, sin sesión, el ingreso es `LoginPanel`: una región con su h2 "Entrá para reservar", no un modal. El modal `LoginGate` sigue para Rival, y los dos comparten `GateBody` con una piel por `look` (`SKIN`). Los e2e y tests buscan `region`, no `dialog`. El monto de la seña sin sesión queda solo en el resumen: el botón "Pagar seña · $X" aparece con sesión.
+- **`DialogHeading` y el `id` (F5).** Si se le pasa `id={undefined}` a `DialogTitle` de Radix, pisa el id que genera y el diálogo queda sin nombre accesible. Hay que sacar `id` de las props, no mandarlo vacío.
+- **`PortalResult` es compartido (F5).** También lo usan Rival, `/explorar`, Mis reservas y los `error.tsx` del jugador. La columna pasó de 560 a 480 px y la piel a vidrio en todas esas pantallas. Sus botones van con `variant="pill" size="pill"`. `RESULT_GO` en el `className` de un `Button` NO alcanza: el variant `default` deja `md:h-10` y su sombra debajo.
+- **El ticket se imprime con `transform` (F5).** Sale de una ranura (`.rv-slot`, `overflow: hidden`) con `translateY`, sin `clip-path` (§4.7). La ranura se ensancha 16 px por lado y 48 abajo, con márgenes negativos, para no cortar la sombra. A 390 px no desborda.
+- **Festejo una vez (F5).** `CelebrateOnce` guarda la última reserva festejada en la cookie `tg_celebrated` (`path=/reserva`), no en `sessionStorage`. Así el servidor pinta `data-seen` al recargar y el festejo no arranca y se corta al hidratar. Un `ref` evita que el doble montaje de StrictMode lo apague en dev.
+- **Utilidades contra clases de componente (F5).** Las utilidades de `Input` le ganan a una clase de `@layer components` como `.rv-input`, así que la piel del campo va en utilidades, `md:` incluido. El borde del email en vidrio es `border-portal-soft/70`: medido sobre el píxel da 3,39:1 en claro y 5,47:1 en oscuro. `portal-inner-line` daba 1,2:1.
+- **Dev del worktree con `preview_start` (F5).** En `launch.json`, `bash` es el de WSL: hay que usar `C:/Program Files/Git/bin/bash.exe` con un script que respete `PORT`.
+- **e2e locales de F5.** Fallan también en main (comparado contra un worktree de `origin/main` en :3107): `player-intent-confirm` (4 de 5) y TG-HP-101, por timeout al volver del magic link en el dev local. `booking-flow` S3 y TG-HP-106 esperan "Confirmando tu pago…", pero desde #575 la pantalla dice "Esperando tu pago…" cuando ofrece pagar. Como los e2e no corren en PRs, nadie lo vio.
 
 ## Reglas de trabajo
 

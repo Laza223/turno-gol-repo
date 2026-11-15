@@ -1,19 +1,15 @@
+import type { CSSProperties } from 'react'
 import Link from 'next/link'
-import { CheckCircle2, MessageCircle, Swords } from 'lucide-react'
-import { buttonVariants } from '@/components/ui/button'
-import {
-  PORTAL_BUTTON,
-  PORTAL_BUTTON_OUTLINE,
-  PORTAL_COLUMN,
-} from '@/components/world/PortalAuthFrame'
+import { MessageCircle, Swords } from 'lucide-react'
+import { RESULT_ALT, RESULT_GO } from '@/components/world/PortalResult'
 import { isInRivalStartWindow } from '@/modules/rival/rival-window'
 import { bookingCode } from '@/lib/booking-code'
 import { buildGroupShareHref, buildGroupShareText } from '@/lib/booking/group-share'
-import { cn } from '@/lib/utils'
-import BookingSummary from '@/app/(public)/[slug]/reservar/components/BookingSummary'
+import { SummaryHead, SummaryRows } from '@/app/(public)/[slug]/reservar/components/BookingSummary'
 import ReservaShell from '@/components/booking/ReservaDarkShell'
 import BookingReceipt from '@/components/booking/BookingReceipt'
 import BookingSuccessExtras from '@/components/booking/BookingSuccessExtras'
+import CelebrateOnce from '@/components/booking/CelebrateOnce'
 import DownloadReceiptButton from '@/components/booking/DownloadReceiptButton'
 
 export type ConfirmedBooking = {
@@ -36,14 +32,19 @@ export type ConfirmedBooking = {
   depositStatus: string
   /** El complejo oculta sus precios (`settings.hide_public_prices`): sin montos. */
   hidePrices: boolean
+  /** La portada del complejo, o su logo: la miniatura del ticket. `null` = el nombre solo. */
+  imageUrl?: string | null
 }
 
 /**
- * La reserva confirmada, en La Previa: el badge con resplandor esmeralda, el título con degradé y el
- * código en la tarjeta-comprobante de vidrio. Una sola acción principal, "Avisarle al grupo" (un link a
- * WhatsApp con el turno escrito, sin montos); debajo, las secundarias en una lista plana y, al
- * pie y más chicos, el código y el comprobante. Con los precios ocultos no hay ningún monto en el
- * DOM, tampoco en el link de WhatsApp ni en el comprobante.
+ * La reserva confirmada, en vidrio (`reserva.html`, portal de vidrio F5): la insignia verde, el
+ * título y el ticket con el turno y el código, cortado como un pase. Una sola acción principal,
+ * "Avisarle al grupo" (un link a WhatsApp con el turno escrito, sin montos); debajo, las
+ * secundarias en la fila de enlaces y el mini mapa. Con los precios ocultos no hay ningún monto en
+ * el DOM, tampoco en el link de WhatsApp ni en el comprobante.
+ *
+ * Es el momento de la app: la coreografía de la dirección §4.5 (insignia, tilde, título, ticket que
+ * se imprime, código letra por letra y botones) es CSS y corre una vez por visita (`CelebrateOnce`).
  *
  * El caso `status !== 'confirmed'` (jugador vuelto de MP antes del webhook) lo maneja
  * `PaymentStatusWatcher`. `complexUrl` lo arma la page con el origen de la app.
@@ -53,6 +54,7 @@ export function BookingSuccessCard({
   booking,
   complexUrl,
   rivalEnabled = false,
+  celebrated = false,
 }: {
   bookingId: string
   booking: ConfirmedBooking
@@ -60,6 +62,8 @@ export function BookingSuccessCard({
   complexUrl: string
   /** Flag global de RIVAL: suma "Armar el partido" como acción secundaria. Apagado, nada. */
   rivalEnabled?: boolean
+  /** Esta reserva ya festejó en esta sesión del navegador (cookie): se muestra quieta. */
+  celebrated?: boolean
 }) {
   const timeStart = booking.timeStart.slice(0, 5)
   const timeEnd = booking.timeEnd.slice(0, 5)
@@ -85,69 +89,100 @@ export function BookingSuccessCard({
     }),
   )
 
+  const code = bookingCode(bookingId)
+  const summary = {
+    tenantName: booking.tenantName,
+    address: booking.address,
+    city: booking.city,
+    imageUrl: booking.imageUrl,
+    courtName: booking.courtName,
+    courtFormat: booking.courtFormat,
+    date: booking.startsOn,
+    timeStart,
+    timeEnd,
+    price: booking.priceSnapshot,
+    depositAmount: booking.depositAmount,
+    hidePrices: booking.hidePrices,
+    depositPaid: true,
+    payNote,
+  }
+
   return (
     <ReservaShell>
-      <div className={cn(PORTAL_COLUMN, 'pb-12 pt-6 sm:pt-12')}>
-        <div className="flex flex-col items-center text-center">
-          {/* Celebración: un solo aro que se disipa, una vez — sin loops. */}
-          <span className="reserva-success-badge flex size-20 animate-slot-pulse items-center justify-center rounded-full text-emerald-700 motion-reduce:animate-none dark:text-emerald-400">
-            <CheckCircle2 className="size-10" aria-hidden />
-          </span>
-          <h1 className="mt-5 text-balance font-display text-3xl font-black italic leading-tight tracking-tight text-foreground">
-            ¡Reserva <span className="hero-accent-text">confirmada!</span>
-          </h1>
+      <CelebrateOnce
+        bookingId={bookingId}
+        seen={celebrated}
+        className="rv-done rv-celebrate pt-6 md:pt-10"
+      >
+        <span className="rv-badge">
+          {/* El tilde se traza (`pathLength` = 1): es el `Check` de lucide dibujado a mano. */}
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path className="rv-tick" d="M20 6 9 17l-5-5" pathLength={1} />
+          </svg>
+        </span>
+        <h1 className="rv-h1 rv-at-title">¡Reserva confirmada!</h1>
+
+        {/* El ticket se imprime: sale de la ranura de arriba hacia abajo (`.rv-slot` recorta). */}
+        <div className="rv-slot">
+          <section aria-label="Tu turno" className="rv-ticket glass-painted">
+            <SummaryHead data={summary} />
+            <SummaryRows data={summary} />
+            <div className="rv-cut" aria-hidden />
+            <section aria-label="Código de la reserva" className="grid gap-1">
+              <div className="rv-code">
+                <span>Código de reserva</span>
+                {/* Letra por letra a la vista; el lector de pantalla lee el código entero. */}
+                <b>
+                  <span className="sr-only">{code}</span>
+                  {Array.from(code).map((ch, i) => (
+                    <span key={i} aria-hidden style={{ '--n': i } as CSSProperties}>
+                      {ch}
+                    </span>
+                  ))}
+                </b>
+              </div>
+              <p className="rv-small">
+                Si el complejo te lo pide, con este código encuentra tu reserva.
+              </p>
+              <div className="mt-2">
+                <DownloadReceiptButton
+                  fileName={`comprobante-${booking.tenantSlug}-${booking.startsOn}`}
+                />
+              </div>
+            </section>
+          </section>
         </div>
 
-        <div className="mt-6">
-          <BookingSummary
-            data={{
-              tenantName: booking.tenantName,
-              address: booking.address,
-              city: booking.city,
-              courtName: booking.courtName,
-              courtFormat: booking.courtFormat,
-              date: booking.startsOn,
-              timeStart,
-              timeEnd,
-              price: booking.priceSnapshot,
-              depositAmount: booking.depositAmount,
-              hidePrices: booking.hidePrices,
-              depositPaid: true,
-              payNote,
-            }}
-          />
-        </div>
-
-        <div className="mt-8">
+        <div className="rv-acts rv-at-acts">
           <a
             href={shareHref}
             target="_blank"
             rel="noopener noreferrer"
             aria-describedby="share-hint"
-            className={cn(buttonVariants(), PORTAL_BUTTON, 'gap-2')}
+            className={RESULT_GO}
           >
             <MessageCircle className="size-5 shrink-0" aria-hidden />
             Avisarle al grupo
           </a>
-          <p id="share-hint" className="mt-2 text-sm text-muted-foreground">
+          <p id="share-hint" className="rv-small">
             Se abre WhatsApp con el turno escrito, para que lo mandes a tu grupo.
           </p>
           {rivalEnabled && isInRivalStartWindow(booking.startsOn) && (
-            <Link
-              href={`/rival/nuevo?reserva=${bookingId}`}
-              className={cn(
-                buttonVariants({ variant: 'outline' }),
-                PORTAL_BUTTON_OUTLINE,
-                'mt-4 gap-2',
-              )}
-            >
+            <Link href={`/rival/nuevo?reserva=${bookingId}`} className={RESULT_ALT}>
               <Swords className="size-5 shrink-0" aria-hidden />
               Armar el partido
             </Link>
           )}
         </div>
 
-        <div className="mt-8">
+        <div className="rv-at-acts w-full">
           <BookingSuccessExtras
             tenantName={booking.tenantName}
             courtName={booking.courtName}
@@ -161,38 +196,22 @@ export function BookingSuccessCard({
             longitude={booking.longitude}
           />
         </div>
+      </CelebrateOnce>
 
-        <section
-          aria-label="Código de la reserva"
-          className="reserva-receipt-card mt-8 overflow-hidden rounded-2xl p-5"
-        >
-          <p className="text-sm text-muted-foreground">Código de reserva</p>
-          <p className="mt-1 font-mono text-xl font-semibold tracking-widest text-foreground">
-            {bookingCode(bookingId)}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Si el complejo te lo pide, con este código encuentra tu reserva.
-          </p>
-          <DownloadReceiptButton
-            fileName={`comprobante-${booking.tenantSlug}-${booking.startsOn}`}
-          />
-        </section>
-
-        <BookingReceipt
-          bookingId={bookingId}
-          tenantName={booking.tenantName}
-          address={booking.address}
-          city={booking.city}
-          courtName={booking.courtName}
-          date={booking.startsOn}
-          timeStart={booking.timeStart}
-          timeEnd={booking.timeEnd}
-          priceSnapshot={booking.priceSnapshot}
-          depositAmount={booking.depositAmount}
-          depositStatus={booking.depositStatus}
-          hidePrices={booking.hidePrices}
-        />
-      </div>
+      <BookingReceipt
+        bookingId={bookingId}
+        tenantName={booking.tenantName}
+        address={booking.address}
+        city={booking.city}
+        courtName={booking.courtName}
+        date={booking.startsOn}
+        timeStart={booking.timeStart}
+        timeEnd={booking.timeEnd}
+        priceSnapshot={booking.priceSnapshot}
+        depositAmount={booking.depositAmount}
+        depositStatus={booking.depositStatus}
+        hidePrices={booking.hidePrices}
+      />
     </ReservaShell>
   )
 }

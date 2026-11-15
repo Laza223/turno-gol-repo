@@ -13,7 +13,6 @@ vi.mock('next/navigation', () => ({
 }))
 
 import PaymentStatusWatcher from '@/components/booking/PaymentStatusWatcher'
-import { TONE_TEXT } from '@/lib/status-tone'
 
 function jsonResponse(status: string) {
   return new Response(
@@ -52,7 +51,7 @@ describe('PaymentStatusWatcher — no quedar colgado (#45/#46/#48)', () => {
     expect(screen.getByText('Todavía no llegó la confirmación')).toBeTruthy()
     expect(screen.queryByText('Confirmando tu pago…')).toBeNull()
     // Gris: que MercadoPago tarde no es una falla (rojo es "No pudimos verificar tu pago").
-    expect(container.querySelector('svg')?.getAttribute('class')).toContain(TONE_TEXT.neutral)
+    expect(container.querySelector('.rv-badge')?.className).toContain('rv-badge--neutral')
     // Si el pago se aprueba después del hold la reserva NO se confirma sola y no sale el mail de
     // confirmación (sale el de la devolución de la seña, que no es una confirmación):
     // la pantalla manda a mirar Mis reservas y al complejo, sin prometer nada.
@@ -79,7 +78,7 @@ describe('PaymentStatusWatcher — no quedar colgado (#45/#46/#48)', () => {
 
     expect(screen.getByText('No pudimos verificar tu pago')).toBeTruthy()
     // Rojo: la verificación falló.
-    expect(container.querySelector('svg')?.getAttribute('class')).toContain(TONE_TEXT.destructive)
+    expect(container.querySelector('.rv-badge')?.className).toContain('rv-badge--bad')
     expect(screen.getByRole('link', { name: 'Ver mis reservas' })).toBeTruthy()
     expect(container.textContent).toContain('En Mis reservas ves si el turno quedó confirmado.')
     expect(container.textContent).not.toMatch(/email|te avisamos|te confirmamos|acredite/i)
@@ -194,9 +193,9 @@ describe('PaymentStatusWatcher — estados terminales', () => {
       ),
     ).toBeTruthy()
     // Gris: expirar no es una falla de la pantalla (en /error, donde el pago falló, va en rojo).
-    const icon = document.querySelector('svg')?.getAttribute('class')
-    expect(icon).toContain(TONE_TEXT.neutral)
-    expect(icon).not.toContain('text-red-700')
+    const badge = document.querySelector('.rv-badge')?.className
+    expect(badge).toContain('rv-badge--neutral')
+    expect(badge).not.toContain('rv-badge--bad')
     expect(screen.getByRole('link', { name: 'Reservar de nuevo' }).getAttribute('href')).toBe(
       '/club-norte?date=2026-10-17',
     )

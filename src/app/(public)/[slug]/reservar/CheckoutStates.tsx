@@ -3,25 +3,21 @@ import Link from 'next/link'
 import { AlertTriangle } from 'lucide-react'
 import ReservaShell from '@/components/booking/ReservaDarkShell'
 import { buttonVariants } from '@/components/ui/button'
-import { PORTAL_BUTTON, PORTAL_COLUMN, PORTAL_LINK } from '@/components/world/PortalAuthFrame'
+import { PORTAL_LINK } from '@/components/world/PortalAuthFrame'
 import { buildFichaHref } from '@/lib/booking/reserve-url'
 import { formatDayHeader } from '@/lib/format'
 import { cn } from '@/lib/utils'
-
-/** La columna de la pantalla de confirmar y de su carga: ~560 px en el celular y en escritorio. */
-export const RESERVAR_COLUMN = PORTAL_COLUMN
 
 export type CheckoutErrorCode =
   'banned' | 'too_many_holds' | 'rate_limited' | 'unavailable' | 'date_out_of_range' | 'too_soon'
 
 const NOTICE_LINK = cn(
   PORTAL_LINK,
-  'inline-flex min-h-11 items-center text-sm font-semibold text-emerald-700 underline underline-offset-4 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300',
+  'inline-flex min-h-11 items-center text-sm font-semibold text-portal-ink underline underline-offset-4',
 )
 
 /**
- * Aviso del checkout, en el badge dual de La Previa: relleno rojo OPACO en claro (un `/10`
- * translúcido compone contra el fondo del portal y daba 3,3:1) y tinte sobre el vidrio en oscuro.
+ * Aviso del checkout, en vidrio pintado con el tinte del error (`--portal-bad-*`, `.rv-notice`).
  * Todo lo que se avisa acá frena la reserva, así que es un error y no una advertencia: el ámbar es
  * de la escasez ("Queda 1") y de nada más. Dice qué pasó y deja una salida, salvo que ya esté en el lugar correcto (un aviso sin salida
  * obliga a usar el "atrás" del navegador).
@@ -36,16 +32,10 @@ function Notice({
   children: ReactNode
 }) {
   return (
-    <div
-      role="alert"
-      className="flex items-start gap-3 rounded-xl bg-red-50 p-4 ring-1 ring-inset ring-destructive/25 dark:bg-red-500/10 dark:ring-red-500/30"
-    >
-      <AlertTriangle
-        className="mt-0.5 size-5 shrink-0 text-red-700 dark:text-red-300"
-        aria-hidden
-      />
+    <div role="alert" className="rv-notice">
+      <AlertTriangle aria-hidden />
       <div>
-        <p className="text-base text-red-700 dark:text-red-300">{children}</p>
+        <p className="text-base">{children}</p>
         {href && action && (
           <Link href={href} className={NOTICE_LINK}>
             {action}
@@ -183,7 +173,8 @@ const INVALID: Record<CheckoutInvalidKind, { title: string; message?: string; ct
 }
 
 /**
- * Estado inválido de la pantalla de confirmar (complejo sin reservas online, datos faltantes,
+ * Estado inválido de la pantalla de confirmar, en vidrio (`.empty` del estado "ocupado" de
+ * `reservar.html`: título, qué pasó y la salida). Complejo sin reservas online, datos faltantes,
  * turno inexistente o ya no libre). `ReservarPage` lo usa antes de validar el slot. La salida de
  * "no encontramos" y "ya no está" es la misma ficha que el "Volver" (`turnHref`): con el día, la
  * hora y el formato que eligió, no la ficha pelada. La de "se ocupó mientras entrabas" es la ficha
@@ -211,19 +202,19 @@ export function CheckoutInvalidState({
   const label = kind === 'taken-on-return' && date ? `${cta} del ${formatDayHeader(date)}` : cta
   return (
     <ReservaShell>
-      <div className={cn(RESERVAR_COLUMN, 'pb-12')}>
-        <div className="flex min-h-[50dvh] flex-col justify-center">
-          <div className="flex size-16 items-center justify-center rounded-full bg-red-50 text-red-700 ring-1 ring-inset ring-red-700/25 dark:bg-red-500/12 dark:text-red-300 dark:ring-red-400/35">
-            <AlertTriangle className="size-8" aria-hidden />
-          </div>
-          <h1 className="mt-5 text-balance font-display text-3xl font-black italic leading-tight tracking-tight text-foreground">
+      <div className="grid min-h-[50dvh] content-center">
+        <section aria-labelledby="checkout-invalid-title" className="rv-empty glass-painted">
+          <h1 id="checkout-invalid-title" className="rv-h2">
             {title}
           </h1>
-          {message && <p className="mt-2 text-pretty text-base text-muted-foreground">{message}</p>}
-          <Link href={href} className={cn(buttonVariants(), PORTAL_BUTTON, 'mt-8')}>
+          {message && <p className="rv-sub">{message}</p>}
+          <Link
+            href={href}
+            className={cn(buttonVariants({ variant: 'pill', size: 'pill' }), 'mt-3')}
+          >
             {label}
           </Link>
-        </div>
+        </section>
       </div>
     </ReservaShell>
   )

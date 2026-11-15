@@ -1,6 +1,6 @@
+import '@/components/booking/reserva.css'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
-import { RESERVAR_COLUMN } from '../CheckoutStates'
 import BookingSummary, { type BookingSummaryData } from './BookingSummary'
 
 const base: BookingSummaryData = {
@@ -23,8 +23,8 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <div className="min-h-dvh bg-background text-foreground">
-        <div className={RESERVAR_COLUMN}>
+      <div data-portal-glass className="portal-ambient min-h-dvh text-portal-ink">
+        <div className="rv-col">
           <Story />
         </div>
       </div>

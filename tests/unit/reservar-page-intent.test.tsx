@@ -5,7 +5,7 @@
 // dispara el cliente con un envío del form y la action re-verifica. Cada degradación deja la
 // pantalla normal con el botón visible y la razón en `checkout.intent_degraded`.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { availabilityResponse, publicTenant } from '@/test/fixtures/public'
 import {
   BOOKING_INTENT_COOKIE_NAME,
@@ -302,8 +302,7 @@ describe('ReservarPage — degrada a la pantalla normal, con el botón, y deja l
   it('sin sesión: el ingreso de siempre, sin señal ni confirmación', async () => {
     mocks.extractAuthUser.mockResolvedValue(null)
     await renderPage({ booking_intent: emailToken() })
-    fireEvent.click(screen.getByRole('button', { name: 'Reservar' }))
-    expect(await screen.findByRole('heading', { name: 'Entrá para reservar' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Entrá para reservar' })).toBeTruthy()
     expect(confirmando()).toBeNull()
     expect(degraded()).toEqual([])
   })

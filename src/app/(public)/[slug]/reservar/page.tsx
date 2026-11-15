@@ -30,7 +30,7 @@ import {
   sendPlayerMagicLink,
   startGoogleLoginFromReservar,
 } from './actions'
-import { CheckoutErrorBanner, CheckoutInvalidState, RESERVAR_COLUMN } from './CheckoutStates'
+import { CheckoutErrorBanner, CheckoutInvalidState } from './CheckoutStates'
 import { track } from '@/shared/observability'
 import { findOwnLiveBookingOrNull } from './own-booking'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
@@ -229,71 +229,59 @@ export default async function ReservarPage(props: Props) {
       : null
 
   return (
-    <ReservaShell>
-      {/* El botón de acción es una barra fija abajo en el celular (con y sin sesión): `PortalFrame`
-        suma su alto a su relleno inferior (ver `data-fixed-cta`), así que la columna no lleva nada extra. */}
-      <div className={cn(RESERVAR_COLUMN, 'pb-12')}>
-        <Link
-          href={turnHref}
-          className={cn(
-            PORTAL_LINK,
-            '-ml-1 inline-flex min-h-11 items-center gap-1 rounded-md px-1 text-base font-semibold text-emerald-700 underline underline-offset-4 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300',
-          )}
-        >
-          <ArrowLeft className="size-4" aria-hidden />
-          Volver
-        </Link>
-        <h1 className="mt-2 font-display text-3xl font-black italic tracking-tight text-foreground">
-          Confirmá tu <span className="hero-accent-text">reserva</span>
-        </h1>
+    <ReservaShell className="rv-stack">
+      <Link href={turnHref} className={cn(PORTAL_LINK, 'rv-back')}>
+        <ArrowLeft aria-hidden />
+        Volver
+      </Link>
+      <h1 className="rv-h2">Confirmá tu reserva</h1>
 
-        <div className="mt-6 space-y-8">
-          <CheckoutErrorBanner
-            turnHref={turnHref}
-            error={searchParams.error}
-            until={searchParams.until}
-            reason={banReason ?? undefined}
-          />
+      <CheckoutErrorBanner
+        turnHref={turnHref}
+        error={searchParams.error}
+        until={searchParams.until}
+        reason={banReason ?? undefined}
+      />
 
-          <BookingSummary
-            data={{
-              tenantName: tenant.name,
-              address: tenant.address,
-              city: tenant.city,
-              courtName: courtData.name,
-              courtFormat: courtData.format,
-              date,
-              timeStart: time,
-              timeEnd,
-              price,
-              depositAmount,
-              hidePrices: tenant.hidePrices,
-            }}
-          />
+      <BookingSummary
+        className="rv-rise"
+        data={{
+          tenantName: tenant.name,
+          address: tenant.address,
+          city: tenant.city,
+          imageUrl: tenant.coverUrl ?? tenant.logoUrl,
+          courtName: courtData.name,
+          courtFormat: courtData.format,
+          date,
+          timeStart: time,
+          timeEnd,
+          price,
+          depositAmount,
+          hidePrices: tenant.hidePrices,
+        }}
+      />
 
-          <CheckoutFlow
-            slug={params.slug}
-            court={court}
-            date={date}
-            time={time}
-            dur={durNum}
-            formato={formato}
-            pay={pay}
-            withDeposit={depositAmount > 0}
-            depositAmount={tenant.hidePrices ? undefined : depositAmount}
-            hidePrices={tenant.hidePrices}
-            cancellationHours={tenant.cancellationHoursBefore}
-            lateCancelHours={tenant.lateCancelHours ?? 0}
-            isPlayer={isPlayer}
-            autoConfirmToken={autoConfirmToken}
-            intentDegraded={intentDegraded}
-            inAppBrowser={inAppBrowser}
-            createAction={createBookingAndCheckout}
-            sendLinkAction={sendPlayerMagicLink}
-            googleAction={startGoogleLoginFromReservar}
-          />
-        </div>
-      </div>
+      <CheckoutFlow
+        slug={params.slug}
+        court={court}
+        date={date}
+        time={time}
+        dur={durNum}
+        formato={formato}
+        pay={pay}
+        withDeposit={depositAmount > 0}
+        depositAmount={tenant.hidePrices ? undefined : depositAmount}
+        hidePrices={tenant.hidePrices}
+        cancellationHours={tenant.cancellationHoursBefore}
+        lateCancelHours={tenant.lateCancelHours ?? 0}
+        isPlayer={isPlayer}
+        autoConfirmToken={autoConfirmToken}
+        intentDegraded={intentDegraded}
+        inAppBrowser={inAppBrowser}
+        createAction={createBookingAndCheckout}
+        sendLinkAction={sendPlayerMagicLink}
+        googleAction={startGoogleLoginFromReservar}
+      />
     </ReservaShell>
   )
 }

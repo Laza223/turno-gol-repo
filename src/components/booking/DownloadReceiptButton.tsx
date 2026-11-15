@@ -1,7 +1,7 @@
 'use client'
 
 import { FileDown } from 'lucide-react'
-import { PORTAL_LINK } from '@/components/world/PortalAuthFrame'
+import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 /**
@@ -26,10 +26,7 @@ export default function DownloadReceiptButton({ fileName }: { fileName: string }
     <button
       type="button"
       onClick={handlePrint}
-      className={cn(
-        PORTAL_LINK,
-        'mt-2 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-emerald-700 underline underline-offset-4 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300',
-      )}
+      className={cn(buttonVariants({ variant: 'pill-link', size: 'pill-sm' }))}
     >
       <FileDown className="size-4" aria-hidden />
       Descargar comprobante

@@ -21,7 +21,7 @@ export function ReservaTurnLines({
   tenantName?: string
 }) {
   return (
-    <p className="font-medium text-foreground">
+    <p className="font-semibold text-portal-ink tabular-nums">
       <span className="block">
         {formatDateLong(startsOn)} ·{' '}
         <span className="whitespace-nowrap">

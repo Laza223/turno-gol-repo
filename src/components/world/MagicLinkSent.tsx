@@ -1,5 +1,7 @@
 'use client'
 
+import type { ComponentProps } from 'react'
+
 import { useActionState } from 'react'
 import { unstable_rethrow } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
@@ -128,6 +130,7 @@ export function ResendLinkForm({
   sentAt,
   scope,
   resentNotice,
+  button,
 }: {
   /** La action del formulario, cualquiera sea su estado: acá solo importa que mande y qué conteste. */
   action: (prev: never, formData: FormData) => Promise<MailActionState>
@@ -136,6 +139,8 @@ export function ResendLinkForm({
   sentAt: number
   scope: string
   resentNotice: string
+  /** El botón con otra piel (la píldora del portal de vidrio, F5). Sin esto, el `outline` de La Previa. */
+  button?: Pick<ComponentProps<typeof SubmitButton>, 'variant' | 'size' | 'className'>
 }) {
   const [state, formAction] = useActionState<MailState<MailActionState>, FormData>(
     (prev, formData) =>
@@ -155,8 +160,9 @@ export function ResendLinkForm({
         <input key={name} type="hidden" name={name} value={value} />
       ))}
       <SubmitButton
-        variant="outline"
-        className={cn(PORTAL_BUTTON_OUTLINE, 'tabular-nums')}
+        variant={button ? button.variant : 'outline'}
+        size={button?.size}
+        className={cn(button ? button.className : PORTAL_BUTTON_OUTLINE, 'tabular-nums')}
         pendingLabel="Reenviando…"
         disabled={waiting}
       >

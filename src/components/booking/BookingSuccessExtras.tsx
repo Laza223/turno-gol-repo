@@ -3,13 +3,14 @@
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { CalendarPlus, Navigation, Ticket } from 'lucide-react'
+import { buttonVariants } from '@/components/ui/button'
 import { buildDirectionsHref } from '@/lib/booking/directions'
 import { cn } from '@/lib/utils'
 import { buildBookingIcs } from './booking-ics'
 
 const BookingMiniMap = dynamic(() => import('./BookingMiniMap'), {
   ssr: false,
-  loading: () => <div className="h-44 w-full animate-pulse bg-muted" aria-hidden />,
+  loading: () => <div className="skeleton-glass h-44 w-full" aria-hidden />,
 })
 
 type Props = {
@@ -27,20 +28,14 @@ type Props = {
   longitude: number | null
 }
 
-/**
- * Fila de la lista de secundarias: 48 px, el foco adentro (el contenedor recorta). Cada fila dice
- * su acción; ninguna compite con "Avisarle al grupo".
- */
-const ROW = cn(
-  'flex min-h-12 w-full items-center gap-3 px-4 py-3 text-left text-base font-semibold text-foreground',
-  'hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring dark:hover:bg-white/8',
-)
-const ROW_ICON = 'size-5 shrink-0 text-emerald-700 dark:text-emerald-400'
+/** Enlace en píldora (`.link` del mockup): 44 px, con el ícono en verde. */
+const LINK = cn(buttonVariants({ variant: 'pill-link', size: 'pill-sm' }))
 
 /**
- * Las acciones secundarias de la reserva confirmada: el mini-mapa de la ubicación (si el complejo
- * cargó coordenadas), Cómo llegar (si hay dirección o coordenadas), Agregar al calendario (un `.ics`
- * armado en el navegador) y Ver mis reservas.
+ * Las acciones secundarias de la reserva confirmada, en la fila de enlaces del mockup: Cómo llegar
+ * (si hay dirección o coordenadas), Agregar al calendario (un `.ics` armado en el navegador) y Ver
+ * mis reservas. Debajo, el mini mapa de la ubicación si el complejo cargó coordenadas, en vidrio
+ * pintado. Ninguna compite con "Avisarle al grupo".
  */
 export default function BookingSuccessExtras(props: Props) {
   const { tenantName, courtName, slug, startsOn, timeStart, timeEnd, address, city } = props
@@ -76,28 +71,28 @@ export default function BookingSuccessExtras(props: Props) {
   }
 
   return (
-    <div className="space-y-3">
-      {props.latitude != null && props.longitude != null && (
-        <div className="overflow-hidden rounded-xl border border-border shadow-xs">
-          <BookingMiniMap lat={props.latitude} lng={props.longitude} label={tenantName} />
-        </div>
-      )}
-      <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card dark:divide-white/10 dark:bg-white/4">
+    <>
+      <div className="rv-links">
         {mapsUrl && (
-          <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className={ROW}>
-            <Navigation className={ROW_ICON} aria-hidden />
+          <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className={LINK}>
+            <Navigation aria-hidden />
             Cómo llegar
           </a>
         )}
-        <button type="button" onClick={addToCalendar} className={ROW}>
-          <CalendarPlus className={ROW_ICON} aria-hidden />
+        <button type="button" onClick={addToCalendar} className={LINK}>
+          <CalendarPlus aria-hidden />
           Agregar al calendario
         </button>
-        <Link href="/mis-reservas" className={ROW}>
-          <Ticket className={ROW_ICON} aria-hidden />
+        <Link href="/mis-reservas" className={LINK}>
+          <Ticket aria-hidden />
           Ver mis reservas
         </Link>
       </div>
-    </div>
+      {props.latitude != null && props.longitude != null && (
+        <div className="rv-map glass-painted">
+          <BookingMiniMap lat={props.latitude} lng={props.longitude} label={tenantName} />
+        </div>
+      )}
+    </>
   )
 }

@@ -8,7 +8,7 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <div className="min-h-dvh bg-background text-foreground">
+      <div data-portal-glass className="portal-ambient min-h-dvh text-portal-ink">
         <Story />
       </div>
     ),
@@ -19,22 +19,17 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 /**
- * Skeleton fijo de la pantalla de confirmar, sobre el cascarón de La Previa. Mismo ritmo que la
- * página real (`page.tsx`) para que al cargar nada se mueva: la misma columna, 32 px entre bloques,
- * 8 px entre el botón y la regla de cancelación y 48 px al pie.
+ * Esqueleto de la pantalla de confirmar, en vidrio (F5). Mismo ritmo que la página real
+ * (`page.tsx`) para que al cargar nada se mueva: la columna de 480 px y 12 px entre bloques.
  */
 export const Default: Story = {
   play: async ({ canvasElement }) => {
-    const column = canvasElement.querySelector<HTMLElement>('[aria-busy="true"]')!
-    const style = getComputedStyle(column)
-    await expect(style.maxWidth).toBe('560px')
-    await expect(style.paddingBottom).toBe('48px')
-
-    const gap = (a: Element, b: Element) =>
-      b.getBoundingClientRect().top - a.getBoundingClientRect().bottom
-    const [summary, action] = [...column.lastElementChild!.children]
-    await expect(gap(summary!, action!)).toBeCloseTo(32, 1)
-    const [button, rule] = [...action!.children]
-    await expect(gap(button!, rule!)).toBeCloseTo(8, 1)
+    const column = canvasElement.querySelector<HTMLElement>('.rv-col')!
+    await expect(
+      getComputedStyle(column).maxWidth === 'none' ? column.offsetWidth : 0,
+    ).toBeLessThanOrEqual(480)
+    const stack = canvasElement.querySelector<HTMLElement>('[aria-busy="true"]')!
+    await expect(getComputedStyle(stack).rowGap).toBe('12px')
+    await expect(stack.querySelectorAll('.skeleton-glass').length).toBeGreaterThanOrEqual(4)
   },
 }

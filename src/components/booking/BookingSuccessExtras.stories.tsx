@@ -1,7 +1,7 @@
+import '@/components/booking/reserva.css'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
 import { tenant } from '@/test/fixtures/tenant'
-import { PORTAL_COLUMN } from '@/components/world/PortalAuthFrame'
 import BookingSuccessExtras from './BookingSuccessExtras'
 
 const t = tenant()
@@ -29,8 +29,8 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="min-h-dvh bg-background text-foreground">
-        <div className={PORTAL_COLUMN}>
+      <div data-portal-glass className="portal-ambient min-h-dvh text-portal-ink">
+        <div className="rv-col">
           <Story />
         </div>
       </div>

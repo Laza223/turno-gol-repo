@@ -87,12 +87,18 @@ describe('Piso de 16px en campos — constantes compartidas', () => {
     })
   }
 
-  it('LoginGate (reservar): el email usa AUTH_INPUT (PORTAL_INPUT), que ya arranca en 16px', () => {
+  it('LoginGate: el email usa AUTH_INPUT (PORTAL_INPUT) en el modal y text-base en el panel de vidrio', () => {
     const code = stripComments(read('src/app/(public)/[slug]/reservar/components/LoginGate.tsx'))
-    // El único campo de texto (el email) lleva la constante: una clase propia en un campo nuevo
-    // es justo donde se cuela el `text-sm` de 14px.
-    expect(code.match(/className=\{AUTH_INPUT\}/g)).toHaveLength(1)
+    // El único campo de texto (el email) toma la clase de la piel (`skin.input`): una clase propia
+    // en un campo nuevo es justo donde se cuela el `text-sm` de 14px.
     expect(code.match(/<Input\s/g)).toHaveLength(1)
+    expect(code).toMatch(/className=\{skin\.input\}/)
+    expect(code).toMatch(/input: AUTH_INPUT,/)
+    // La piel de vidrio: 16 px también desde md (la base de `Input` baja a `md:text-sm`).
+    const glass = code.match(/glass: \{[\s\S]*?input:\s*'([^']+)'/)
+    expect(glass, 'no se encontró el campo de la piel de vidrio').not.toBeNull()
+    expect(glass![1].split(' ')).toContain('text-base')
+    expect(glass![1].split(' ')).toContain('md:text-base')
   })
 
   it('SearchSheets: el campo de búsqueda de la hoja de Localidad (home y /explorar) no baja de 16 px en el teléfono', () => {

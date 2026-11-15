@@ -4,8 +4,9 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { BadgeCheck, Star } from 'lucide-react'
 import RatingStars from '@/components/public/RatingStars'
-import { Button } from '@/components/ui/button'
-import { PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import './ficha-rest.css'
 
 type ReviewItem = {
   id: string
@@ -51,23 +52,53 @@ export default function ReviewsSection({ tenantId, initial, total, average }: Pr
   }
 
   return (
-    <section aria-label="Reseñas" className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className={PORTAL_SECTION_TITLE}>Reseñas</h2>
-        <RatingStars rating={average} count={total} variant="full" className="text-foreground" />
+    <section aria-label="Reseñas" className="fr-blk fr-reveal">
+      <h2 className="fr-h2">Reseñas</h2>
+
+      {/* La tarjeta resumen (`.rev` del mockup). El número grande es decorativo: las estrellas
+          ya dicen el promedio y la cantidad. */}
+      <div className="glass-painted flex flex-wrap items-center justify-between gap-3 rounded-3xl px-4.5 py-4 text-portal-ink">
+        <span
+          aria-hidden
+          className="font-display text-[40px] leading-none font-bold tracking-[-0.03em] tabular-nums"
+        >
+          {average.toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+        </span>
+        <div className="mr-auto grid gap-1">
+          <RatingStars
+            rating={average}
+            count={total}
+            variant="full"
+            className="[&>span:last-child]:sr-only"
+          />
+          <span aria-hidden className="text-sm text-portal-soft">
+            {total} {total === 1 ? 'reseña' : 'reseñas'}
+          </span>
+        </div>
+        {/* Las reseñas son verificadas (atadas a un turno jugado), así que no hay un formulario
+            acá: se dejan desde el historial del jugador. Esta página es estática/cacheada: no
+            puede saber si quien mira jugó, por eso el enlace es fijo y `/mis-reservas` pide el
+            ingreso si hace falta. */}
+        <Link
+          href="/mis-reservas?tab=historial"
+          className={cn(buttonVariants({ variant: 'pill-link', size: 'pill-sm' }))}
+        >
+          <Star aria-hidden />
+          Dejar una reseña
+        </Link>
       </div>
 
-      <ul className="divide-y divide-border">
+      <ul className="glass-painted divide-y divide-portal-inner-line overflow-hidden rounded-3xl text-portal-ink">
         {reviews.map((r) => (
-          <li key={r.id} className="py-4 first:pt-0">
+          <li key={r.id} className="px-4.5 py-4">
             <div className="flex items-center justify-between gap-3">
-              <RatingStars rating={r.rating} variant="full" className="text-foreground" />
-              <span className="text-[13px] text-muted-foreground tabular-nums">
+              <RatingStars rating={r.rating} variant="full" />
+              <span className="text-[13px] text-portal-soft tabular-nums">
                 {dateFmt.format(new Date(r.createdAt))}
               </span>
             </div>
-            {r.comment && <p className="mt-2 text-base leading-6 text-foreground">{r.comment}</p>}
-            <p className="mt-2 inline-flex items-center gap-1 text-[13px] text-emerald-700 dark:text-emerald-400">
+            {r.comment && <p className="mt-2 text-base leading-6">{r.comment}</p>}
+            <p className="mt-2 inline-flex items-center gap-1 text-[13px] font-medium text-portal-slot-ink">
               <BadgeCheck className="size-4" aria-hidden />
               Reseña verificada
             </p>
@@ -78,33 +109,20 @@ export default function ReviewsSection({ tenantId, initial, total, average }: Pr
       {hasMore && (
         <Button
           type="button"
-          variant="outline"
+          variant="pill-link"
+          size="pill-sm"
           onClick={loadMore}
           disabled={loading}
-          className="w-full shadow-none sm:w-auto md:h-11"
+          className="w-full sm:w-auto"
         >
           {loading ? 'Cargando…' : 'Ver más reseñas'}
         </Button>
       )}
 
-      {/* Las reseñas son verificadas (atadas a un turno jugado), así que no hay un
-          formulario acá: se dejan desde el historial del jugador. Sin esta línea la
-          sección no decía cómo reseñar y parecía que no se podía. Esta página es
-          estática/cacheada: no puede saber si quien mira jugó, por eso el enlace es
-          fijo y `/mis-reservas` pide el ingreso si hace falta. */}
-      <div className="flex flex-col gap-2 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-[13px] leading-5 text-muted-foreground">
-          Solo reseñan quienes ya jugaron acá. Un rato después de tu turno aparece «Dejar reseña» en
-          tu historial de reservas.
-        </p>
-        <Link
-          href="/mis-reservas?tab=historial"
-          className="inline-flex h-11 shrink-0 items-center gap-1.5 self-start rounded-md px-3 text-sm font-medium text-emerald-700 transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:text-emerald-400 sm:self-auto"
-        >
-          <Star className="size-4" aria-hidden />
-          Dejar una reseña
-        </Link>
-      </div>
+      <p className="px-1 text-[13px] leading-5 text-portal-soft">
+        Solo reseñan quienes ya jugaron acá. Un rato después de tu turno aparece «Dejar reseña» en
+        tu historial de reservas.
+      </p>
     </section>
   )
 }

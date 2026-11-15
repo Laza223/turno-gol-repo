@@ -1,6 +1,7 @@
 'use client'
 
-import { Check, ChevronRight } from 'lucide-react'
+import './ficha.css'
+import { useEffect, useRef } from 'react'
 import { summarizeHours } from '@/lib/booking/hour-summary'
 import { capitalizeFirst } from '@/lib/format'
 import type { WeeklyAvailabilityResponse } from '@/modules/tenants/public.service'
@@ -16,18 +17,24 @@ const STATUS_LABEL: Record<DayStatus, string> = {
   closed: 'Cerrado',
 }
 
-// Elegido, el texto va en blanco pleno: al 80 % sobre el verde no llega a AA en el tema claro.
-const DAY =
-  'group flex min-h-16 w-full items-center gap-3 rounded-xl border border-input bg-card px-4 py-2 text-left text-foreground transition-colors duration-150 hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:text-muted-foreground'
+const SHORT_WEEKDAY = new Intl.DateTimeFormat('es-AR', { weekday: 'short', timeZone: 'UTC' })
+
+/** "2026-10-16" → "Vie" (sin el punto que algunos ICU ponen a la abreviatura). */
+const weekdayShort = (date: string) =>
+  capitalizeFirst(SHORT_WEEKDAY.format(new Date(`${date}T12:00:00Z`)).replace('.', ''))
 
 /**
- * Paso 1: un día por fila, a lo ancho. A la derecha el estado, siempre con palabras ("Hay lugar",
- * "Completo", "Sin horarios", "Cerrado"). "Cerrado" sale del horario del complejo y se sabe al
- * instante; el resto sale de la semana que se pide por detrás: sin datos, con error o más allá de
- * lo que trae, la fila queda habilitada y sin estado (la fila no cambia de alto cuando llega).
+ * La fila de días, de hoy a la anticipación del complejo (`.daystrip` de `ficha.css`). Cada día es
+ * un botón con `aria-pressed`: la abreviatura ("Hoy", "Vie"), el número y, debajo, un punto verde
+ * si hay lugar o el estado con palabras ("Completo", "Sin horarios", "Cerrado"). El nombre
+ * accesible lo dice entero: "Viernes 16. Hay lugar" (texto `sr-only`).
  *
- * El estado cuenta todas las canchas, sin el filtro de formato: el filtro vive en el paso 2 y acá
- * no se ve, así que un "Completo" por formato dejaría un día con lugar deshabilitado sin explicación.
+ * "Cerrado" sale del horario del complejo y se sabe al instante; el resto sale de la semana que se
+ * pide por detrás: sin datos, con error o más allá de lo que trae, el día queda habilitado y sin
+ * estado. Un día sin lugar no se puede elegir.
+ *
+ * El estado cuenta todas las canchas, sin el filtro de tamaño: un "Completo" por tamaño dejaría
+ * apagado un día con lugar en otra cancha, sin que se vea por qué.
  */
 export default function DayList({
   today,
@@ -39,8 +46,8 @@ export default function DayList({
 }: {
   today: string
   advanceDays: number
-  /** El día elegido antes (al volver desde el paso 2). */
-  value: string | null
+  /** El día elegido. */
+  value: string
   week: WeeklyAvailabilityResponse | 'error' | undefined
   isClosed: (date: string) => boolean
   onPick: (date: string) => void
@@ -53,50 +60,45 @@ export default function DayList({
     return rows.length === 0 ? 'none' : rows.some((r) => r.freeCount > 0) ? 'room' : 'full'
   }
 
+  // Si se entra con un día lejano (link compartido), la fila se corre hasta que se vea. Solo al
+  // montar y solo en horizontal: `scrollIntoView` movería también la página.
+  const strip = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const row = strip.current
+    const chosen = row?.querySelector('[aria-pressed=true]')
+    if (!row || !(chosen instanceof HTMLElement)) return
+    const overflow = chosen.offsetLeft + chosen.offsetWidth - (row.scrollLeft + row.clientWidth)
+    if (overflow > 0) row.scrollLeft += overflow + 18
+  }, [])
+
   return (
-    <ul aria-label="Día" className="flex flex-col gap-2">
+    <div ref={strip} role="group" aria-label="Día" className="daystrip">
       {Array.from({ length: advanceDays + 1 }, (_, i) => addDays(today, i)).map((date, i) => {
         const status = statusOf(date)
-        const chosen = date === value
-        const disabled = status !== null && status !== 'room'
         const long = dayLong(date)
+        const name = i === 0 ? `Hoy, ${long}` : capitalizeFirst(long)
         return (
-          <li key={date}>
-            <button
-              type="button"
-              aria-pressed={chosen}
-              disabled={disabled}
-              onClick={() => onPick(date)}
-              className={DAY}
-            >
-              <span className="min-w-0 flex-1">
-                {i < 2 ? (
-                  <>
-                    <span className="block text-lg font-semibold leading-6">
-                      {i === 0 ? 'Hoy' : 'Mañana'}
-                    </span>
-                    <span className="block text-sm leading-5 opacity-80 group-aria-pressed:opacity-100">
-                      {long}
-                    </span>
-                  </>
-                ) : (
-                  <span className="block text-lg font-semibold leading-6">
-                    {capitalizeFirst(long)}
-                  </span>
-                )}
-              </span>
-              {chosen && <Check className="size-5" aria-hidden />}
-              {status && <span className="text-sm font-semibold">{STATUS_LABEL[status]}</span>}
-              {!disabled && (
-                <ChevronRight
-                  className="size-5 opacity-70 group-aria-pressed:opacity-100"
-                  aria-hidden
-                />
-              )}
-            </button>
-          </li>
+          <button
+            key={date}
+            type="button"
+            className="dayp"
+            aria-pressed={date === value}
+            disabled={status !== null && status !== 'room'}
+            onClick={() => onPick(date)}
+          >
+            {/* Lo visible es abreviado ("Dom 15"); el lector de pantalla lee el día entero. Con un
+                `aria-label` axe marca que el texto visible no está en el nombre. */}
+            <small aria-hidden>{i === 0 ? 'Hoy' : weekdayShort(date)}</small>
+            <b aria-hidden>{Number(date.slice(8))}</b>
+            {status === 'room' ? (
+              <i aria-hidden />
+            ) : (
+              status && <em aria-hidden>{STATUS_LABEL[status]}</em>
+            )}
+            <span className="sr-only">{status ? `${name}. ${STATUS_LABEL[status]}` : name}</span>
+          </button>
         )
       })}
-    </ul>
+    </div>
   )
 }

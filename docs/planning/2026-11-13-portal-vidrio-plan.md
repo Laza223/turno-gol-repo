@@ -19,8 +19,8 @@ Este cuadro es el registro del esfuerzo. Quien cierra una fase lo actualiza en e
 | F0 | Decisión, mockup, dirección, plan y punteros | Hecho | #590 |
 | F1 | Cimientos y cromo | Hecho el 2026-11-14 | #592 |
 | F2 | Home | Hecho el 2026-11-14 | #593, #594, #595, #596 |
-| F3 | Buscador `/explorar` | En revisión desde el 2026-11-14 | #597 |
-| F4 | Ficha del complejo | Pendiente | |
+| F3 | Buscador `/explorar` | Hecho el 2026-11-14 | #597 |
+| F4 | Ficha del complejo | En revisión desde el 2026-11-15 | |
 | F5 | Confirmar el turno y vuelta de la reserva | Pendiente | |
 | F6 | Mis reservas, Cuenta e Ingresar | Pendiente | |
 | F7 | Rival | Pendiente | |
@@ -64,6 +64,14 @@ Este cuadro es el registro del esfuerzo. Quien cierra una fase lo actualiza en e
 - **Stretched link y horarios (F3).** La lista de horarios va arriba del link de la tarjeta con `pointer-events-none` y cada píldora con `pointer-events-auto`: el hueco al lado de las píldoras sigue abriendo la ficha.
 - **e2e locales de F3.** Sin `.env.local`, `next dev` no arranca (`validateServerEnv`) y `/api/status` da 503 sin `SENTRY_DSN`: hay que pasar además `DATABASE_URL` y `WORKER_DATABASE_URL` locales y placeholders de `IMPERSONATION_COOKIE_SECRET`, `ENCRYPTION_KEY` (64 hex), `MP_CLIENT_ID`, `MP_CLIENT_SECRET`, `RESEND_API_KEY` y `SENTRY_DSN`, como el `webServer` de `playwright.config.ts`. Firefox y WebKit no están instalados en la máquina: `cross-browser/` no corre local.
 - **Medir contraste en píldoras (F3).** Con el píxel más desfavorable de toda la caja, el borde verde de la píldora y las esquinas fuera del radio daban falsos 3,5:1. Se mide adentro del radio (6 px arriba y abajo, medio alto a los costados).
+- **La reserva de la ficha es una pantalla (F4).** Elegir hora empuja una entrada con la marca `tgReserve` (el Atrás cierra la barra); día y tamaño reemplazan. Lo que se toca con la barra empujada y la cierra (otro día, un tamaño sin lugar a esa hora) se guarda en `pending` y se aplica en el `popstate`; un tamaño elegido con la barra abierta se conserva al cerrarla, porque la entrada a la que se vuelve tiene el de antes.
+- **La barra va en portal a `<body>` (F4).** Dentro de `.reserve.glass` el `fixed` quedaba contra el vidrio. Los tokens siguen porque viven en `html:has([data-portal-glass])`. En stories se busca en `canvasElement.ownerDocument.body` y su visibilidad con `waitFor` (entra con fundido).
+- **`sr-only` que estira la página (F4).** El nombre largo de cada día es un `sr-only` (absoluto): sin `position: relative` en `.dayp` se ubicaba contra un ancestro de afuera de la fila deslizable y la página medía 111 px de más a 390.
+- **Nombre accesible de los días (F4).** Un `aria-label` largo ("Domingo 15. Hay lugar") sobre el texto visible "Dom 15" da `label-content-name-mismatch` en axe: lo visible va `aria-hidden` y el nombre en un `sr-only`. Los tests miran `textContent`.
+- **`react-hooks/refs` (F4).** El compilador marca leer `ref.current` en funciones que se usan durante el render: `pendingBack` y `pending` son estado, no refs.
+- **Fila de días en la compu (F4).** `booking_advance_days` llega a 60: desde 1024 px se ven 7 días (`calc((100% - 6 * 8px) / 7)`) y el resto se desliza, en vez de 7 columnas `1fr` que se aplastaban.
+- **Pedidos de la ficha (F4).** Al entrar se piden la semana y el día (2 contra el balde de `publicAvailability`); antes, 1 hasta elegir un día. Cada día nuevo suma 1.
+- **e2e locales de F4.** `supabase status -o env` devuelve CRLF en Git Bash (`tr -d ''`). Para reusar un dev en otro puerto, Playwright necesita una config sin `webServer` (si no, intenta levantar `pnpm dev` en :3000 y choca). TG-HP-101, 104, 106, 108 y el modal de la grilla de `field-font-size` fallan en el dev local del worktree; F4 no toca esas pantallas (104 espera el monto 1 del mock de MP).
 
 ## Reglas de trabajo
 

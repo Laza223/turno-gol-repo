@@ -7,9 +7,10 @@ import type { PublicTenant } from '@/modules/tenants/public.service'
 import { DAY_KEYS, DAY_LABELS_LONG } from '@/shared/time/week-days'
 
 /**
- * Los horarios por día, con el de hoy resaltado. Es una isla de cliente porque la página es ISR:
- * cuál es "hoy" lo sabe solo el reloj del visitante; antes de hidratar ningún día se resalta (el
- * resaltado es solo fondo y negrita, no cambia el alto). El cierre a medianoche sale "00:00".
+ * Los horarios por día en vidrio pintado (`dl.week` del mockup), con el de hoy resaltado. Es una
+ * isla de cliente porque la página es ISR: cuál es "hoy" lo sabe solo el reloj del visitante; antes
+ * de hidratar ningún día se resalta (el resaltado es solo fondo y negrita, no cambia el alto). El
+ * cierre a medianoche sale "00:00".
  */
 export default function OpeningHoursList({
   openingHours,
@@ -22,7 +23,7 @@ export default function OpeningHoursList({
   return (
     <dl
       data-testid="opening-hours"
-      className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card"
+      className="glass-painted grid overflow-hidden rounded-3xl px-4.5 py-1.5 text-portal-ink"
     >
       {DAY_KEYS.filter((key) => openingHours[key]).map((key) => {
         const day = openingHours[key]
@@ -32,20 +33,19 @@ export default function OpeningHoursList({
             key={key}
             aria-current={isToday ? 'date' : undefined}
             className={cn(
-              'flex items-center justify-between gap-4 px-4 py-2.5',
-              isToday && 'bg-muted font-semibold',
+              'flex items-center justify-between gap-4 py-3 text-base not-first:border-t not-first:border-portal-inner-line',
+              isToday && 'font-semibold',
             )}
           >
-            <dt className="text-sm text-foreground">
+            <dt className={isToday ? 'text-portal-ink' : 'text-portal-muted'}>
               {DAY_LABELS_LONG[key]}
-              {isToday && <span className="ml-2 text-[13px] font-normal">hoy</span>}
-            </dt>
-            <dd
-              className={cn(
-                'text-sm tabular-nums',
-                isToday ? 'text-foreground' : 'text-muted-foreground',
+              {isToday && (
+                <span className="ml-2 rounded-full bg-portal-slot px-2 py-0.5 text-[13px] font-semibold text-portal-slot-ink">
+                  hoy
+                </span>
               )}
-            >
+            </dt>
+            <dd className="font-semibold tabular-nums">
               {day.closed ? 'Cerrado' : `${wallClock(day.open)} – ${wallClock(day.close)}`}
             </dd>
           </div>

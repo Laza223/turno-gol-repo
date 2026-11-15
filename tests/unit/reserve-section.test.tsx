@@ -14,8 +14,8 @@ import type {
 } from '@/modules/tenants/public.service'
 
 // La reserva es 100% client-side (la página del perfil es ISR): lee ?date= con useSearchParams y
-// pide el día en mount. Acá se controlan los params y el fetch. Sin `date` es el paso 1 (días);
-// con `date`, el 2 (horas); con `date` y `hora`, el 3 (canchas).
+// pide el día en mount. Acá se controlan los params y el fetch. Es UNA pantalla: los días en una
+// fila, las horas y, con `hora`, la barra de "Reservar" con las canchas libres a esa hora.
 const { searchParamsRef, trackMock } = vi.hoisted(() => ({
   searchParamsRef: { current: new URLSearchParams() },
   trackMock: vi.fn(async () => {}),
@@ -25,7 +25,7 @@ vi.mock('next/navigation', () => ({ useSearchParams: () => searchParamsRef.curre
 const today = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString().slice(0, 10)
 const tomorrow = addDays(today, 1)
 
-/** Entrar por un link al paso 2 (o al 3 con `hora`) de un día. */
+/** Entrar por un link a un día (o con `hora`, con la barra abierta). */
 const atDay = (date = today, extra: Record<string, string> = {}) => {
   searchParamsRef.current = new URLSearchParams({ date, ...extra })
 }
@@ -38,7 +38,7 @@ beforeEach(() => {
   // happy-dom no propaga replaceState/pushState a location.search: se espía la llamada.
   replaceState = vi.spyOn(window.history, 'replaceState').mockImplementation(() => undefined)
   pushState = vi.spyOn(window.history, 'pushState').mockImplementation(() => undefined)
-  atDay() // casi todo se prueba desde el paso 2; el paso 1 lo pide explícito
+  atDay() // casi todo se prueba con el día en la URL; sin `date` se pide explícito
 })
 afterEach(() => {
   cleanup()
@@ -46,8 +46,6 @@ afterEach(() => {
   vi.unstubAllGlobals()
   vi.useRealTimers()
   Reflect.deleteProperty(document, 'visibilityState') // vuelve el getter del prototipo
-  Reflect.deleteProperty(document, 'startViewTransition')
-  delete document.documentElement.dataset.reserveStep
   searchParamsRef.current = new URLSearchParams()
 })
 
@@ -89,8 +87,8 @@ const json = (body: unknown, status = 200) =>
 
 /**
  * `/api/public/availability?date=` → lo que devuelva `byDate` ('fail' = 500, un número = ese status);
- * `/week` → `week` (o lo que devuelva la función según el número de pedido; 'fail' = 500). Ojo: el
- * paso 1 también pide la semana desde hoy, y cuenta como pedido.
+ * `/week` → `week` (o lo que devuelva la función según el número de pedido; 'fail' = 500). Ojo: la
+ * pantalla siempre pide también la semana desde hoy, y cuenta como pedido.
  */
 type WeekReply = WeeklyAvailabilityResponse | 'fail'
 function mockApi(
@@ -125,89 +123,87 @@ function mockApi(
 const hourButtons = () => within(screen.getByRole('group', { name: 'Hora' })).getAllByRole('button')
 const hour = (time: string) => screen.getByRole('button', { name: new RegExp(`^${time}`) })
 const findHour = (time: string) => screen.findByRole('button', { name: new RegExp(`^${time}`) })
-const dayRows = () => within(screen.getByRole('list', { name: 'Día' })).getAllByRole('button')
-const courtList = (time: string) =>
-  screen.getByRole('list', { name: `Canchas libres a las ${time}` })
-const heading = () => screen.getByRole('heading', { level: 2 })
-/** Vuelve al paso 1 y elige el día `i` de la lista (0 = hoy): cambiar de día desde el paso 2. */
-function switchTo(i: number) {
-  fireEvent.click(screen.getByRole('button', { name: 'Volver' }))
-  fireEvent.click(dayRows()[i]!)
-}
+const dayRows = () => within(screen.getByRole('group', { name: 'Día' })).getAllByRole('button')
+const bar = () => screen.getByRole('complementary', { name: 'Tu turno' })
+const findBar = () => screen.findByRole('complementary', { name: 'Tu turno' })
+const queryBar = () => screen.queryByRole('complementary', { name: 'Tu turno' })
+const courtRadios = () => within(bar()).getAllByRole('radio')
+const cta = () => within(bar()).getByRole('link')
+const closeBar = () =>
+  fireEvent.click(screen.getByRole('button', { name: 'Cerrar y elegir otra hora' }))
+/** Cambiar de día tocándolo en la fila (0 = hoy). */
+const switchTo = (i: number) => fireEvent.click(dayRows()[i]!)
 const eveningCourt = (id: string, name: string, format = 5) =>
   court(id, name, [slot('18:00'), slot('19:00', 'occupied'), slot('21:00')], format)
+const region = () => screen.getByRole('region', { name: 'Reservá tu turno' })
 
-describe('ReserveSection: el paso sale de la URL', () => {
-  it('sin ?date= es el paso 1: la lista de días, sin pedir ningún día', async () => {
+describe('ReserveSection: el estado sale de la URL', () => {
+  it('sin ?date= se ve hoy elegido y se piden la semana y las horas de hoy', async () => {
     searchParamsRef.current = new URLSearchParams()
     const fetchMock = mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]))
 
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
 
-    expect((await screen.findByRole('heading', { level: 2 })).textContent).toBe(
-      '¿Qué día querés jugar?',
-    )
-    expect(screen.getByText('Paso 1 de 3')).toBeTruthy()
-    expect(screen.getByText('Podés reservar hasta 6 días adelante')).toBeTruthy()
+    await findHour('18:00')
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Reservá tu turno')
+    expect(
+      screen.getByText('Elegí el día y tocá una hora. Podés reservar hasta 6 días adelante.'),
+    ).toBeTruthy()
     expect(dayRows()).toHaveLength(7)
     expect(dayRows()[0]!.textContent).toContain('Hoy')
-    expect(dayRows()[0]!.textContent).toContain(dayLong(today))
-    expect(dayRows()[1]!.textContent).toContain('Mañana')
+    expect(dayRows()[0]!.textContent).toContain(`Hoy, ${dayLong(today)}`)
+    expect(dayRows()[0]!.getAttribute('aria-pressed')).toBe('true')
     expect(dayRows()[2]!.textContent).toContain(capitalizeFirst(dayLong(addDays(today, 2))))
-    expect(screen.queryByRole('button', { name: 'Volver' })).toBeNull()
-    // Solo la semana: los días se piden cuando se elige uno.
-    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
-      `/api/public/availability/week?slug=cancha-x&start=${today}`,
-    ])
+    expect(fetchMock.mock.calls.map(([url]) => String(url)).sort()).toEqual(
+      [
+        `/api/public/availability/week?slug=cancha-x&start=${today}`,
+        `/api/public/availability?slug=cancha-x&date=${today}`,
+      ].sort(),
+    )
+    expect(queryBar()).toBeNull()
   })
 
-  it('?date= válido es el paso 2 de ese día: pide sus horas con el fetch exacto', async () => {
+  it('?date= válido elige ese día y pide sus horas con el fetch exacto', async () => {
     atDay(tomorrow)
     const fetchMock = mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]))
 
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
 
     await findHour('18:00')
-    expect(heading().textContent).toBe('¿A qué hora?')
-    expect(screen.getByText('Paso 2 de 3')).toBeTruthy()
-    expect(
-      screen.getByText(
-        `${capitalizeFirst(dayLong(tomorrow))} · Debajo de cada hora, cuántas canchas quedan libres.`,
-      ),
-    ).toBeTruthy()
+    expect(dayRows()[1]!.getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByText('Debajo de cada hora, cuántas canchas quedan libres.')).toBeTruthy()
     expect(fetchMock).toHaveBeenCalledWith(
       `/api/public/availability?slug=cancha-x&date=${tomorrow}`,
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
   })
 
-  it('?date= fuera de la ventana reservable (o vencido) vuelve al paso 1', async () => {
+  it('?date= fuera de la ventana reservable (o vencido) vuelve a hoy', async () => {
     // bookingAdvanceDays = 6 → +30 días queda afuera.
     atDay(addDays(today, 30))
     mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]))
 
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
 
-    expect((await screen.findByRole('heading', { level: 2 })).textContent).toBe(
-      '¿Qué día querés jugar?',
-    )
+    await findHour('18:00')
     expect(dayRows()).toHaveLength(7)
+    expect(dayRows()[0]!.getAttribute('aria-pressed')).toBe('true')
   })
 
-  it('?date= y ?hora= es el paso 3: las canchas libres a esa hora', async () => {
+  it('?date= y ?hora= (un link al paso de canchas de antes) abre la barra con esa hora', async () => {
     atDay(today, { hora: '21:00' })
     mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]))
 
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
 
-    await screen.findByRole('list', { name: 'Canchas libres a las 21:00' })
-    expect(heading().textContent).toBe('¿En qué cancha?')
-    expect(screen.getByText('Paso 3 de 3')).toBeTruthy()
-    expect(
-      screen.getByText(
-        `${capitalizeFirst(dayLong(today))} · 21:00 a 22:00 · Tocá la cancha y seguís a confirmar.`,
-      ),
-    ).toBeTruthy()
+    await findBar()
+    expect(hour('21:00').getAttribute('aria-pressed')).toBe('true')
+    expect(bar().textContent).toContain(`Hoy, ${dayLong(today)} · 21:00 a 22:00`)
+    expect(cta().getAttribute('href')).toBe(
+      `/cancha-x/reservar?court=c1&date=${today}&time=21:00&dur=60`,
+    )
+    // Al entrar por un link el foco no se roba.
+    expect(document.activeElement).toBe(document.body)
   })
 
   it('el turno de las 23:00 termina "24:00" y el de las 00:00, "01:00" (como confirmar)', async () => {
@@ -220,8 +216,10 @@ describe('ReserveSection: el paso sale de la URL', () => {
         trackViewed={trackMock}
       />,
     )
-    await screen.findByRole('list', { name: 'Canchas libres a las 23:00' })
-    expect(screen.getByText(/· 23:00 a 24:00 ·/)).toBeTruthy()
+    await findBar()
+    expect(bar().textContent).toContain('· 23:00 a 24:00')
+    fireEvent.click(hour('00:00'))
+    expect(bar().textContent).toContain('· 00:00 a 01:00')
   })
 
   it('el turno de las 00:00 de un complejo que cierra a la 01:00 va DESPUÉS de las 23:00', async () => {
@@ -303,120 +301,160 @@ describe('ReserveSection: el paso sale de la URL', () => {
   })
 })
 
-describe('ReserveSection: avanzar y volver', () => {
-  it('día → hora → cancha: cada toque empuja un paso al historial con la marca', async () => {
+describe('ReserveSection: elegir y cerrar', () => {
+  it('el día reemplaza la URL; la hora empuja una entrada con la marca y abre la barra', async () => {
     searchParamsRef.current = new URLSearchParams()
     mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]))
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
 
-    await screen.findByRole('list', { name: 'Día' })
-    fireEvent.click(dayRows()[1]!)
-    expect(pushState).toHaveBeenLastCalledWith(
-      { tgReserve: true },
+    await findHour('18:00')
+    switchTo(1)
+    expect(replaceState).toHaveBeenLastCalledWith(
+      null,
       '',
       expect.stringContaining(`date=${tomorrow}`),
     )
-    expect(heading().textContent).toBe('¿A qué hora?')
-    expect(screen.getByText('Paso 2 de 3')).toBeTruthy()
+    expect(pushState).not.toHaveBeenCalled()
+    expect(dayRows()[1]!.getAttribute('aria-pressed')).toBe('true')
 
-    fireEvent.click(await findHour('21:00'))
+    await waitFor(() => expect(hour('21:00').hasAttribute('disabled')).toBe(false))
+    fireEvent.click(hour('21:00'))
+    expect(pushState).toHaveBeenCalledTimes(1)
     expect(pushState).toHaveBeenLastCalledWith(
       { tgReserve: true },
       '',
-      expect.stringContaining('hora=21%3A00'),
+      expect.stringMatching(new RegExp(`date=${tomorrow}.*hora=21%3A00`)),
     )
-    expect(heading().textContent).toBe('¿En qué cancha?')
-    expect(pushState).toHaveBeenCalledTimes(2)
-    expect(replaceState).not.toHaveBeenCalled()
-    const link = within(courtList('21:00')).getByRole('link')
-    expect(link.getAttribute('href')).toBe(
+    expect(cta().getAttribute('href')).toBe(
       `/cancha-x/reservar?court=c1&date=${tomorrow}&time=21:00&dur=60`,
     )
   })
 
-  it('"Volver" con una entrada empujada por la ficha hace history.back() y no toca la URL', async () => {
+  it('cerrar la barra con una entrada empujada por la ficha hace history.back() y no toca la URL', async () => {
     atDay(today, { hora: '21:00' })
     vi.spyOn(window.history, 'state', 'get').mockReturnValue({ tgReserve: true })
     const back = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
     mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]))
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
-    await screen.findByRole('list', { name: 'Canchas libres a las 21:00' })
+    await findBar()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Volver' }))
+    closeBar()
 
     expect(back).toHaveBeenCalledTimes(1)
     expect(replaceState).not.toHaveBeenCalled()
     expect(pushState).not.toHaveBeenCalled()
   })
 
-  it('"Volver" tras entrar por un link reemplaza la URL por el paso anterior, sin salir del sitio', async () => {
+  it('cerrar la barra tras entrar por un link reemplaza la URL sin la hora, sin salir del sitio', async () => {
     atDay(today, { hora: '21:00' })
     const back = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
     mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]))
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
-    await screen.findByRole('list', { name: 'Canchas libres a las 21:00' })
+    await findBar()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Volver' }))
+    closeBar()
 
     expect(back).not.toHaveBeenCalled()
     expect(replaceState).toHaveBeenLastCalledWith(null, '', expect.not.stringContaining('hora='))
-    expect(heading().textContent).toBe('¿A qué hora?')
-    // La hora que se había elegido sigue a la vista, elegida.
-    expect(hour('21:00').getAttribute('aria-pressed')).toBe('true')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Volver' }))
-    expect(replaceState).toHaveBeenLastCalledWith(null, '', expect.not.stringContaining('date='))
-    expect(heading().textContent).toBe('¿Qué día querés jugar?')
-    // Y el día también.
+    expect(queryBar()).toBeNull()
+    // El día sigue elegido y la hora queda libre para elegir otra; el foco vuelve a ella.
     expect(dayRows()[0]!.getAttribute('aria-pressed')).toBe('true')
-    expect(dayRows()[1]!.getAttribute('aria-pressed')).toBe('false')
+    expect(hour('21:00').getAttribute('aria-pressed')).toBe('false')
+    expect(document.activeElement).toBe(hour('21:00'))
   })
 
-  it('"Volver" en un paso 3 recargado cuya hora ya no existe (se ve el 2) va al paso 1, no al historial', async () => {
-    atDay(today, { hora: '20:00' })
-    vi.spyOn(window.history, 'state', 'get').mockReturnValue({ tgReserve: true })
-    const back = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
+  it('Esc cierra la barra', async () => {
+    atDay(today, { hora: '21:00' })
     mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]))
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
-    await findHour('21:00')
-    expect(heading().textContent).toBe('¿A qué hora?')
+    await findBar()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Volver' }))
+    fireEvent.keyDown(window, { key: 'Escape' })
 
-    // El historial volvería al paso 2, el mismo que ya se ve: "Volver" parecería no hacer nada.
-    expect(back).not.toHaveBeenCalled()
-    expect(replaceState).toHaveBeenLastCalledWith(
-      { tgReserve: true },
-      '',
-      expect.not.stringContaining('date='),
-    )
-    expect(heading().textContent).toBe('¿Qué día querés jugar?')
+    expect(queryBar()).toBeNull()
   })
 
-  it('el atrás del navegador (popstate) cambia de paso según la URL', async () => {
+  it('el atrás del navegador (popstate) abre y cierra la barra según la URL', async () => {
     atDay(today, { hora: '21:00' })
     const happyDom = (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM
     mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]))
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
-    await screen.findByRole('list', { name: 'Canchas libres a las 21:00' })
+    await findBar()
 
     happyDom.setURL(`http://localhost:3000/cancha-x?date=${today}`)
     await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
-    expect(heading().textContent).toBe('¿A qué hora?')
-    expect(hour('21:00').getAttribute('aria-pressed')).toBe('true')
+    expect(queryBar()).toBeNull()
+    expect(hour('21:00').getAttribute('aria-pressed')).toBe('false')
 
     happyDom.setURL('http://localhost:3000/cancha-x')
     await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
-    expect(heading().textContent).toBe('¿Qué día querés jugar?')
+    expect(dayRows()[0]!.getAttribute('aria-pressed')).toBe('true')
 
     happyDom.setURL(`http://localhost:3000/cancha-x?date=${tomorrow}&hora=21%3A00`)
     await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
-    await screen.findByRole('list', { name: 'Canchas libres a las 21:00' })
-    expect(heading().textContent).toBe('¿En qué cancha?')
+    await findBar()
+    expect(dayRows()[1]!.getAttribute('aria-pressed')).toBe('true')
     happyDom.setURL('http://localhost:3000/')
   })
 
-  it('el filtro de formato reemplaza la URL (no la empuja) y conserva la marca de la entrada', async () => {
+  it('tocar otro día con la barra empujada la cierra por el historial y después cambia el día', async () => {
+    atDay(today, { hora: '21:00' })
+    vi.spyOn(window.history, 'state', 'get').mockReturnValue({ tgReserve: true })
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
+    const happyDom = (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM
+    mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]))
+    render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
+    await findBar()
+
+    switchTo(1)
+    expect(back).toHaveBeenCalledTimes(1)
+    expect(replaceState).not.toHaveBeenCalled()
+
+    happyDom.setURL(`http://localhost:3000/cancha-x?date=${today}`)
+    await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
+    expect(queryBar()).toBeNull()
+    expect(dayRows()[1]!.getAttribute('aria-pressed')).toBe('true')
+    expect(replaceState).toHaveBeenLastCalledWith(
+      { tgReserve: true },
+      '',
+      expect.stringContaining(`date=${tomorrow}`),
+    )
+    happyDom.setURL('http://localhost:3000/')
+  })
+
+  it('con la barra abierta, otra hora reemplaza la URL: el atrás sigue cerrando de una vez', async () => {
+    mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]))
+    render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
+
+    fireEvent.click(await findHour('21:00'))
+    fireEvent.click(hour('21:00')) // doble toque: no empuja otra entrada
+    fireEvent.click(hour('18:00'))
+
+    expect(pushState).toHaveBeenCalledTimes(1)
+    expect(replaceState).toHaveBeenLastCalledWith(null, '', expect.stringContaining('hora=18%3A00'))
+    expect(bar().textContent).toContain('18:00 a 19:00')
+  })
+
+  it('un doble toque en la X vuelve una sola vez; tras volver del bfcache no queda trabada', async () => {
+    atDay(today, { hora: '21:00' })
+    vi.spyOn(window.history, 'state', 'get').mockReturnValue({ tgReserve: true })
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
+    mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]))
+    render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
+    await findBar()
+
+    closeBar()
+    closeBar()
+    expect(back).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      window.dispatchEvent(new Event('pageshow'))
+    })
+    closeBar()
+    expect(back).toHaveBeenCalledTimes(2)
+  })
+
+  it('el filtro de tamaño reemplaza la URL (no la empuja) y conserva la marca de la entrada', async () => {
     vi.spyOn(window.history, 'state', 'get').mockReturnValue({ tgReserve: true })
     mockApi((date) =>
       dayOf(date, [
@@ -438,26 +476,89 @@ describe('ReserveSection: avanzar y volver', () => {
     expect(pushState).not.toHaveBeenCalled()
   })
 
-  it('al avanzar, el foco va al título del paso nuevo y se anuncia', async () => {
-    searchParamsRef.current = new URLSearchParams()
+  it('el tamaño elegido con la barra abierta se conserva al cerrarla por el historial', async () => {
+    atDay(today, { hora: '19:00' })
+    vi.spyOn(window.history, 'state', 'get').mockReturnValue({ tgReserve: true })
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
+    const happyDom = (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM
+    mockApi((date) =>
+      dayOf(date, [
+        court('c1', 'Cancha 1', [slot('18:00'), slot('19:00')], 5),
+        court('c2', 'Cancha 2', [slot('19:00')], 7),
+      ]),
+    )
+    render(<ReserveSection tenant={tenantWith()} formats={[5, 7]} trackViewed={trackMock} />)
+    await findBar()
+
+    // 19:00 sigue con lugar en Fútbol 7: la barra queda abierta.
+    fireEvent.click(screen.getByRole('radio', { name: 'Fútbol 7' }))
+    await waitFor(() => expect(hourButtons()).toHaveLength(1))
+    closeBar()
+    expect(back).toHaveBeenCalledTimes(1)
+
+    // La entrada a la que se vuelve no tenía el filtro: se conserva el elegido.
+    happyDom.setURL(`http://localhost:3000/cancha-x?date=${today}`)
+    await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
+    expect(queryBar()).toBeNull()
+    expect(screen.getByRole('radio', { name: 'Fútbol 7' }).getAttribute('aria-checked')).toBe(
+      'true',
+    )
+    expect(hourButtons()).toHaveLength(1)
+    expect(replaceState).toHaveBeenLastCalledWith(
+      { tgReserve: true },
+      '',
+      expect.stringContaining('formato=7'),
+    )
+    happyDom.setURL('http://localhost:3000/')
+  })
+
+  it('un tamaño sin lugar a esa hora cierra la barra por el historial (sin entrada colgada)', async () => {
+    atDay(today, { hora: '18:00' })
+    vi.spyOn(window.history, 'state', 'get').mockReturnValue({ tgReserve: true })
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
+    const happyDom = (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM
+    mockApi((date) =>
+      dayOf(date, [
+        court('c1', 'Cancha 1', [slot('18:00')], 5),
+        court('c2', 'Cancha 2', [slot('19:00')], 7),
+      ]),
+    )
+    render(<ReserveSection tenant={tenantWith()} formats={[5, 7]} trackViewed={trackMock} />)
+    await findBar()
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Fútbol 7' }))
+    expect(back).toHaveBeenCalledTimes(1)
+    expect(replaceState).not.toHaveBeenCalled()
+
+    happyDom.setURL(`http://localhost:3000/cancha-x?date=${today}`)
+    await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
+    expect(queryBar()).toBeNull()
+    expect(screen.getByRole('radio', { name: 'Fútbol 7' }).getAttribute('aria-checked')).toBe(
+      'true',
+    )
+    expect(replaceState).toHaveBeenLastCalledWith(
+      { tgReserve: true },
+      '',
+      expect.stringContaining('formato=7'),
+    )
+    happyDom.setURL('http://localhost:3000/')
+  })
+
+  it('al tocar una hora el foco entra a la barra (la cancha elegida) y se anuncia', async () => {
     mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]))
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
-    await screen.findByRole('list', { name: 'Día' })
+    await findHour('18:00')
     // En la carga el foco no se roba.
     expect(document.activeElement).toBe(document.body)
 
-    fireEvent.click(dayRows()[0]!)
+    fireEvent.click(hour('21:00'))
 
-    await waitFor(() => expect(document.activeElement).toBe(heading()))
-    expect(heading().getAttribute('tabindex')).toBe('-1')
-    await findHour('18:00')
-    expect(screen.getByRole('status').textContent).toBe(
-      `Paso 2 de 3. ¿A qué hora? ${capitalizeFirst(dayLong(today))}: 2 horarios con lugar.`,
-    )
+    await waitFor(() => expect(document.activeElement).toBe(courtRadios()[0]))
+    expect(screen.getByRole('status').textContent).toBe('21:00: 1 cancha libre.')
   })
 })
 
-describe('ReserveSection: la lista de días', () => {
+describe('ReserveSection: la fila de días', () => {
   it('cada día dice su estado con palabras: Hay lugar, Completo, Sin horarios y Cerrado', async () => {
     searchParamsRef.current = new URLSearchParams()
     const room = [court('c1', 'Cancha 1', [slot('18:00')])]
@@ -509,19 +610,17 @@ describe('ReserveSection: la lista de días', () => {
 
   it('si la semana falla los días quedan habilitados y sin estado', async () => {
     searchParamsRef.current = new URLSearchParams()
-    const fetchMock = mockApi(() => 'fail', 'fail')
+    mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]), 'fail')
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
 
-    const region = screen.getByRole('region', { name: 'Reservá tu turno' })
-    await waitFor(() => expect(region.getAttribute('data-state')).toBe('ready'))
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(region().getAttribute('data-state')).toBe('ready'))
     for (const row of dayRows()) {
       expect(row.hasAttribute('disabled')).toBe(false)
       expect(row.textContent).not.toMatch(/Hay lugar|Completo|Sin horarios/)
     }
   })
 
-  it('el estado de los días cuenta todas las canchas: el filtro de formato no se ve en el paso 1', async () => {
+  it('el estado de los días cuenta todas las canchas, no solo el tamaño elegido', async () => {
     searchParamsRef.current = new URLSearchParams({ formato: '7' })
     const days = [
       {
@@ -535,13 +634,13 @@ describe('ReserveSection: la lista de días', () => {
     mockApi((date) => dayOf(date, []), { startDate: today, days })
     render(<ReserveSection tenant={tenantWith()} formats={[5, 7]} trackViewed={trackMock} />)
 
-    // La F7 está ocupada pero la F5 no: el día tiene lugar y se puede elegir (el filtro está en el 2).
+    // La F7 está ocupada pero la F5 no: el día tiene lugar y se puede elegir.
     await waitFor(() => expect(dayRows()[0]!.textContent).toContain('Hay lugar'))
     expect(dayRows()[0]!.hasAttribute('disabled')).toBe(false)
   })
 })
 
-describe('ReserveSection: la semana alimenta el paso 2', () => {
+describe('ReserveSection: la semana alimenta las horas', () => {
   it('si la semana ya trajo ese día, las horas salen sin esqueleto mientras el día se refresca', async () => {
     searchParamsRef.current = new URLSearchParams()
     const week: WeeklyAvailabilityResponse = {
@@ -558,7 +657,7 @@ describe('ReserveSection: la semana alimenta el paso 2', () => {
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
     await waitFor(() => expect(dayRows()[1]!.textContent).toContain('Hay lugar'))
 
-    fireEvent.click(dayRows()[1]!)
+    switchTo(1)
 
     // Las horas ya están, antes de que responda el día.
     expect(hour('18:00')).toBeTruthy()
@@ -573,8 +672,8 @@ describe('ReserveSection: la semana alimenta el paso 2', () => {
   })
 })
 
-describe('ReserveSection: hora → cancha', () => {
-  it('elegir una hora lista las canchas libres a esa hora con link a confirmar', async () => {
+describe('ReserveSection: la barra y las canchas', () => {
+  it('lista las canchas libres a esa hora, la primera elegida; cambiar de cancha cambia el link y el precio', async () => {
     mockApi((date) =>
       dayOf(date, [
         court('c1', 'Cancha 1', [slot('21:00', 'free', 1500000)]),
@@ -586,19 +685,23 @@ describe('ReserveSection: hora → cancha', () => {
     render(<ReserveSection tenant={tenantWith()} formats={[5, 7]} trackViewed={trackMock} />)
     fireEvent.click(await findHour('21:00'))
 
-    const links = within(courtList('21:00')).getAllByRole('link')
-    expect(links.map((l) => l.getAttribute('href'))).toEqual([
+    const radios = courtRadios()
+    expect(radios).toHaveLength(2)
+    expect(radios[1]!.textContent).toContain('Cancha 3')
+    expect(radios[1]!.textContent).toContain('Fútbol 7')
+    expect(radios[1]!.textContent).toContain('18.000')
+    expect(radios[0]!.getAttribute('aria-checked')).toBe('true')
+    expect(cta().getAttribute('href')).toBe(
       `/cancha-x/reservar?court=c1&date=${today}&time=21:00&dur=60`,
-      `/cancha-x/reservar?court=c3&date=${today}&time=21:00&dur=60`,
-    ])
-    expect(links[1]!.textContent).toContain('Cancha 3')
-    expect(links[1]!.textContent).toContain('Fútbol 7')
-    expect(links[1]!.textContent).toContain('18.000')
-    expect(pushState).toHaveBeenLastCalledWith(
-      { tgReserve: true },
-      '',
-      expect.stringContaining('hora=21%3A00'),
     )
+    expect(cta().textContent).toContain('Reservar · $')
+    expect(cta().textContent).toContain('15.000')
+
+    fireEvent.click(radios[1]!)
+    expect(cta().getAttribute('href')).toBe(
+      `/cancha-x/reservar?court=c3&date=${today}&time=21:00&dur=60`,
+    )
+    expect(cta().textContent).toContain('18.000')
   })
 
   it.each([1, 3, 5, 10, 16])('con %i cancha(s) libres a la hora, las lista todas', async (n) => {
@@ -612,18 +715,17 @@ describe('ReserveSection: hora → cancha', () => {
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
     fireEvent.click(await findHour('21:00'))
 
-    expect(within(courtList('21:00')).getAllByRole('link')).toHaveLength(n)
+    expect(courtRadios()).toHaveLength(n)
   })
 
-  it('?hora= que no existe (o está completa) no elige nada y muestra el paso 2; una válida va al paso 3', async () => {
+  it('?hora= que no existe (o está completa) no abre la barra; una válida, sí', async () => {
     atDay(today, { hora: '03:00' })
     mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]))
     const first = render(
       <ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />,
     )
     await findHour('18:00')
-    expect(heading().textContent).toBe('¿A qué hora?')
-    expect(screen.queryByRole('list', { name: /^Canchas libres/ })).toBeNull()
+    expect(queryBar()).toBeNull()
     first.unmount()
 
     // 19:00 existe pero está completa.
@@ -632,17 +734,15 @@ describe('ReserveSection: hora → cancha', () => {
       <ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />,
     )
     await findHour('18:00')
-    expect(heading().textContent).toBe('¿A qué hora?')
-    expect(screen.queryByRole('list', { name: /^Canchas libres/ })).toBeNull()
+    expect(queryBar()).toBeNull()
     second.unmount()
 
     atDay(today, { hora: '18:00' })
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
-    expect(await screen.findByRole('list', { name: 'Canchas libres a las 18:00' })).toBeTruthy()
-    expect(heading().textContent).toBe('¿En qué cancha?')
+    expect(await findBar()).toBeTruthy()
   })
 
-  it('sin reserva online cada cancha abre WhatsApp con el pedido escrito', async () => {
+  it('sin reserva online el botón abre WhatsApp con el pedido escrito de la cancha elegida', async () => {
     mockApi((date) => dayOf(date, [court('c1', 'Cancha 1', [slot('21:00', 'free', 1200000)])]))
 
     render(
@@ -654,18 +754,33 @@ describe('ReserveSection: hora → cancha', () => {
     )
     fireEvent.click(await findHour('21:00'))
 
-    const link = within(courtList('21:00')).getByRole('link')
+    const link = cta()
     expect(link.getAttribute('href')).toMatch(/^https:\/\/wa\.me\//)
     expect(decodeURIComponent(link.getAttribute('href')!)).toContain(
       'a las 21:00 (Cancha 1, Fútbol 5).',
     )
     expect(link.getAttribute('target')).toBe('_blank')
-    expect(link.textContent).toContain('WhatsApp')
+    expect(link.textContent).toBe('Consultar por WhatsApp')
     expect(link.getAttribute('href')).not.toContain('/reservar')
-    expect(screen.getByText(/Tocá la cancha y le escribís al complejo\./)).toBeTruthy()
   })
 
-  it('el filtro de formato deja solo las horas de ese formato, sin volver a pedir el día', async () => {
+  it('sin reserva online ni número de WhatsApp válido, el botón llama al complejo', async () => {
+    mockApi((date) => dayOf(date, [court('c1', 'Cancha 1', [slot('21:00')])]))
+    render(
+      <ReserveSection
+        tenant={tenantWith({ allowOnlineBooking: false, phone: '4444' })}
+        formats={[5]}
+        trackViewed={trackMock}
+      />,
+    )
+    fireEvent.click(await findHour('21:00'))
+    const link = cta()
+    expect(link.getAttribute('href')).toMatch(/^tel:/)
+    expect(link.textContent).toBe('Llamar al complejo')
+    expect(link.hasAttribute('target')).toBe(false)
+  })
+
+  it('el filtro de tamaño deja solo las horas de ese tamaño, sin volver a pedir el día', async () => {
     const fetchMock = mockApi((date) =>
       dayOf(date, [
         court('c1', 'Cancha 1', [slot('18:00')], 5),
@@ -688,35 +803,31 @@ describe('ReserveSection: hora → cancha', () => {
     await waitFor(() => expect(hourButtons()).toHaveLength(2))
   })
 
-  it('con el filtro elegido, el link de cada cancha a confirmar lleva el formato; con "Todos", no', async () => {
+  it('con el filtro elegido, el link a confirmar lleva el tamaño; con "Todos", no', async () => {
     mockApi((date) =>
       dayOf(date, [
         court('c1', 'Cancha 1', [slot('19:00')], 7),
         court('c2', 'Cancha 2', [slot('19:00')], 5),
       ]),
     )
-    const links = () =>
-      within(courtList('19:00'))
-        .getAllByRole('link')
-        .map((a) => a.getAttribute('href')!)
 
     render(<ReserveSection tenant={tenantWith()} formats={[5, 7]} trackViewed={trackMock} />)
     await findHour('19:00')
     fireEvent.click(screen.getByRole('radio', { name: 'Fútbol 7' }))
     fireEvent.click(await findHour('19:00'))
-    expect(links()).toHaveLength(1)
-    expect(links()[0]).toContain('/reservar?court=c1')
-    expect(links()[0]).toContain('formato=7')
+    expect(courtRadios()).toHaveLength(1)
+    expect(cta().getAttribute('href')).toContain('/reservar?court=c1')
+    expect(cta().getAttribute('href')).toContain('formato=7')
     cleanup()
 
-    // Con "Todos" no viaja ningún formato.
+    // Con "Todos" no viaja ningún tamaño.
     render(<ReserveSection tenant={tenantWith()} formats={[5, 7]} trackViewed={trackMock} />)
     fireEvent.click(await findHour('19:00'))
-    expect(links()).toHaveLength(2)
-    for (const href of links()) expect(href).not.toContain('formato')
+    expect(courtRadios()).toHaveLength(2)
+    expect(cta().getAttribute('href')).not.toContain('formato')
   })
 
-  it('con un solo formato no hay filtro de formato', async () => {
+  it('con un solo tamaño no hay filtro de tamaño', async () => {
     mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]))
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
     await findHour('18:00')
@@ -726,14 +837,14 @@ describe('ReserveSection: hora → cancha', () => {
 
 describe('ReserveSection: precios ocultos (hidePrices)', () => {
   // El servidor ya manda `price: null` con hidePrices; acá se FUERZA un precio para probar la
-  // segunda llave de CourtRows: ningún monto sale aunque el dato llegue.
+  // segunda llave de la barra: ningún monto sale aunque el dato llegue.
   const priced = (date: string) =>
     dayOf(date, [
       court('c1', 'Cancha 1', [slot('21:00', 'free', 1500000)]),
       court('c2', 'Cancha 2', [slot('21:00', 'free', 1800000)]),
     ])
 
-  it('no hay ningún $ en el texto ni en un aria-label, ni con la lista abierta', async () => {
+  it('no hay ningún $ en el texto ni en un aria-label, ni con la barra abierta', async () => {
     mockApi(priced)
 
     render(
@@ -744,10 +855,11 @@ describe('ReserveSection: precios ocultos (hidePrices)', () => {
       />,
     )
     fireEvent.click(await findHour('21:00'))
-    await screen.findByRole('list', { name: 'Canchas libres a las 21:00' })
+    await findBar()
 
     expect(document.body.textContent).not.toContain('$')
     expect(document.body.textContent).not.toMatch(/15\.000|18\.000/)
+    expect(cta().textContent).toBe('Reservar')
     const labels = [...document.querySelectorAll('[aria-label]')].map((el) =>
       el.getAttribute('aria-label'),
     )
@@ -755,14 +867,14 @@ describe('ReserveSection: precios ocultos (hidePrices)', () => {
     expect(labels.filter((label) => label!.includes('$'))).toEqual([])
   })
 
-  it('control: con los precios visibles el monto sale en la fila', async () => {
+  it('control: con los precios visibles el monto sale en la cancha y en el botón', async () => {
     mockApi(priced)
 
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
     fireEvent.click(await findHour('21:00'))
 
-    const list = await screen.findByRole('list', { name: 'Canchas libres a las 21:00' })
-    expect(list.textContent).toContain('15.000')
+    expect((await findBar()).textContent).toContain('18.000')
+    expect(cta().textContent).toContain('15.000')
   })
 })
 
@@ -791,12 +903,13 @@ describe('ReserveSection: días sin lugar', () => {
       `/api/public/availability?slug=cancha-x&date=${dayAfter}`,
       expect.anything(),
     )
-    // Sale con push, al paso 2 de ese día.
-    expect(pushState).toHaveBeenLastCalledWith(
-      { tgReserve: true },
+    // Elegir día es un filtro: reemplaza.
+    expect(replaceState).toHaveBeenLastCalledWith(
+      null,
       '',
       expect.stringContaining(`date=${dayAfter}`),
     )
+    expect(pushState).not.toHaveBeenCalled()
   })
 
   it('con el día completo ofrece el próximo día con lugar (una consulta a la semana)', async () => {
@@ -819,26 +932,28 @@ describe('ReserveSection: días sin lugar', () => {
       `/api/public/availability/week?slug=cancha-x&start=${tomorrow}`,
       expect.anything(),
     )
-    // Con otro día al que ir, nueve "Completo" no dicen más que el título: no hay grilla.
+    // Con otro día al que ir, nueve "Completo" no dicen más que el aviso: no hay grilla.
     expect(screen.queryByRole('group', { name: 'Hora' })).toBeNull()
     fireEvent.click(button)
     await findHour('18:00')
-    expect(
-      screen.getByText(new RegExp(`^${capitalizeFirst(dayLong(addDays(today, 2)))} · Debajo`)),
-    ).toBeTruthy()
+    expect(dayRows()[2]!.getAttribute('aria-pressed')).toBe('true')
   })
 
   it('si en la ventana no queda lugar en ningún día, lo dice y ofrece hablar con el complejo', async () => {
     const full = (date: string) =>
       dayOf(date, [court('c1', 'Cancha 1', [slot('18:00', 'occupied')])])
     // La ventana de 6 días deja 6 días por revisar después de hoy: el texto dice el número real.
-    mockApi(full, {
-      startDate: tomorrow,
-      days: Array.from({ length: 6 }, (_, i) => {
-        const date = addDays(tomorrow, i)
-        return { date, courts: full(date).courts }
-      }),
-    })
+    mockApi(full, (call) =>
+      call === 1
+        ? { startDate: today, days: [] }
+        : {
+            startDate: tomorrow,
+            days: Array.from({ length: 6 }, (_, i) => {
+              const date = addDays(tomorrow, i)
+              return { date, courts: full(date).courts }
+            }),
+          },
+    )
 
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
 
@@ -859,7 +974,7 @@ describe('ReserveSection: días sin lugar', () => {
 })
 
 describe('ReserveSection: anuncio y métrica', () => {
-  it('un role=status oculto anuncia el paso y, al elegir hora, las canchas libres', async () => {
+  it('un role=status oculto anuncia el día y, al elegir hora, las canchas libres', async () => {
     mockApi((date) =>
       dayOf(date, [
         court('c1', 'Cancha 1', [slot('18:00'), slot('21:00')], 5),
@@ -873,15 +988,13 @@ describe('ReserveSection: anuncio y métrica', () => {
     const status = screen.getByRole('status')
     expect(status.className).toContain('sr-only')
     expect(status.getAttribute('aria-live')).toBe('polite')
-    expect(status.textContent).toBe(
-      `Paso 2 de 3. ¿A qué hora? ${capitalizeFirst(dayLong(today))}: 2 horarios con lugar.`,
-    )
+    expect(status.textContent).toBe(`${capitalizeFirst(dayLong(today))}: 2 horarios con lugar.`)
 
     fireEvent.click(hour('21:00'))
-    expect(status.textContent).toBe('Paso 3 de 3. ¿En qué cancha? 21:00: 2 canchas libres.')
+    expect(status.textContent).toBe('21:00: 2 canchas libres.')
   })
 
-  it('profile.viewed sale una vez por pestaña y complejo, con la primera carga de la semana', async () => {
+  it('profile.viewed sale una vez por pestaña y complejo, con las primeras horas', async () => {
     searchParamsRef.current = new URLSearchParams()
     mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]))
 
@@ -892,7 +1005,7 @@ describe('ReserveSection: anuncio y métrica', () => {
     expect(trackMock).toHaveBeenCalledWith('cancha-x', false)
 
     // Cambiar de día y volver a montar en la misma pestaña no repite el evento.
-    fireEvent.click(dayRows()[1]!)
+    switchTo(1)
     await findHour('18:00')
     first.unmount()
     atDay(tomorrow)
@@ -910,20 +1023,19 @@ describe('ReserveSection: anuncio y métrica', () => {
     await waitFor(() => expect(trackMock).toHaveBeenCalledWith('cancha-x', true))
   })
 
-  it('profile.viewed no sale si las horas no cargaron', async () => {
+  it('profile.viewed no sale si las horas no cargaron, aunque la semana sí', async () => {
     mockApi(() => 'fail')
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
     await screen.findByRole('alert')
+    await act(async () => {})
     expect(trackMock).not.toHaveBeenCalled()
   })
 
-  it('profile.viewed no sale si la semana del paso 1 falló', async () => {
+  it('profile.viewed sale aunque la semana falle, si las horas llegaron', async () => {
     searchParamsRef.current = new URLSearchParams()
-    mockApi(() => 'fail', 'fail')
+    mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]), 'fail')
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
-    const region = screen.getByRole('region', { name: 'Reservá tu turno' })
-    await waitFor(() => expect(region.getAttribute('data-state')).toBe('ready'))
-    expect(trackMock).not.toHaveBeenCalled()
+    await waitFor(() => expect(trackMock).toHaveBeenCalledTimes(1))
   })
 })
 
@@ -995,7 +1107,7 @@ function pendingFetch() {
 /** Los pedidos de UN día (no los de la semana). */
 const dayCalls = (calls: ReturnType<typeof pendingFetch>) =>
   calls.filter((c) => !c.url.includes('/week'))
-/** Los pedidos de la semana que busca "otro día con lugar" (no la del paso 1, desde hoy). */
+/** Los pedidos de la semana que busca "otro día con lugar" (no la de la fila, desde hoy). */
 const searchCalls = (calls: ReturnType<typeof pendingFetch>) =>
   calls.filter((c) => c.url.includes('/week') && !c.url.includes(`start=${today}`))
 
@@ -1177,9 +1289,9 @@ describe('ReserveSection: datos vencidos', () => {
     await waitFor(() => expect(fetched(fetchMock, tomorrow)).toBe(2))
   })
 
-  it('pasada la medianoche, el día elegido que ya pasó vuelve al paso 1 y limpia la URL', async () => {
+  it('pasada la medianoche, el día elegido que ya pasó vuelve a hoy y limpia la URL', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
-    // La URL (que el navegador ya había actualizado) también trae hora y formato: tampoco mandan,
+    // La URL (que el navegador ya había actualizado) también trae hora y tamaño: tampoco mandan,
     // y se borran de la barra de direcciones junto con el día (lo demás se conserva).
     const happyDom = (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM
     happyDom.setURL(`http://localhost:3000/cancha-x?date=${today}&hora=18%3A00&formato=7&utm=x`)
@@ -1193,19 +1305,17 @@ describe('ReserveSection: datos vencidos', () => {
     await findHour('21:00')
     fireEvent.click(screen.getByRole('radio', { name: 'Fútbol 7' }))
     fireEvent.click(await findHour('21:00'))
-    expect(courtList('21:00')).toBeTruthy()
+    expect(bar()).toBeTruthy()
 
     // Dos días después `today` ya es pasado: el reloj de la app avisa en el próximo minuto.
     vi.setSystemTime(Date.now() + 2 * 24 * 60 * 60 * 1000)
     await act(() => vi.advanceTimersByTimeAsync(60_000))
 
-    expect(heading().textContent).toBe('¿Qué día querés jugar?')
-    expect(screen.queryByRole('list', { name: /^Canchas libres/ })).toBeNull()
+    expect(queryBar()).toBeNull()
     expect(replaceState).toHaveBeenLastCalledWith(null, '', '/cancha-x?utm=x')
-    // Nada del día viejo se hereda al día nuevo: ni la hora ni el formato.
+    // Nada del día viejo se hereda al día nuevo: ni la hora ni el tamaño.
     const newToday = addDays(today, 2)
-    expect(dayRows()[0]!.getAttribute('aria-pressed')).toBe('false')
-    fireEvent.click(dayRows()[0]!)
+    expect(dayRows()[0]!.getAttribute('aria-pressed')).toBe('true')
     await waitFor(() => expect(fetched(fetchMock, newToday)).toBe(1))
     await findHour('21:00')
     expect(hourButtons().every((b) => b.getAttribute('aria-pressed') === 'false')).toBe(true)
@@ -1281,7 +1391,7 @@ describe('ReserveSection: la búsqueda de otro día', () => {
   })
 
   it('si la búsqueda falla no afirma que no hay lugar: lo dice y deja reintentar', async () => {
-    // Pedido 1 = la semana del paso 1; 2 = la búsqueda (falla); 3 = el reintento.
+    // Pedido 1 = la semana de la fila; 2 = la búsqueda (falla); 3 = el reintento.
     mockApi(fullDay, (call) => (call <= 2 ? 'fail' : week()))
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
 
@@ -1299,7 +1409,7 @@ describe('ReserveSection: la búsqueda de otro día', () => {
 
     expect(await screen.findByText('Es el último día para reservar.')).toBeTruthy()
     expect(screen.queryByText(/próximos/)).toBeNull()
-    // Solo la semana del paso 1; ninguna búsqueda después del último día.
+    // Solo la semana de la fila; ninguna búsqueda después del último día.
     expect(
       fetchMock.mock.calls
         .map(([url]) => String(url))
@@ -1354,12 +1464,12 @@ describe('ReserveSection: la búsqueda de otro día', () => {
     )
     await waitFor(() => expect(searchCalls(calls)).toHaveLength(1))
 
-    // Irse al paso 1 aborta la búsqueda en vuelo; ese rechazo no es un fallo de la búsqueda.
-    fireEvent.click(screen.getByRole('button', { name: 'Volver' }))
+    // Irse a otro día aborta la búsqueda en vuelo; ese rechazo no es un fallo de la búsqueda.
+    switchTo(1)
     await waitFor(() => expect(searchCalls(calls)[0]!.signal.aborted).toBe(true))
     await act(async () => {})
 
-    fireEvent.click(dayRows()[0]!)
+    switchTo(0)
     await waitFor(() => expect(searchCalls(calls)).toHaveLength(2)) // se vuelve a buscar
     expect(screen.queryByText('No pudimos buscar otro día.')).toBeNull()
   })
@@ -1374,7 +1484,7 @@ describe('ReserveSection: una sola cancha, estado de la reserva y avisos', () =>
     const alone = await findHour('18:00')
     expect(alone.textContent).toContain('Libre')
     expect(alone.textContent).not.toContain('Queda 1')
-    expect(alone.className).not.toContain('warning')
+    expect(alone.dataset.state).toBe('only')
     one.unmount()
 
     mockApi((date) =>
@@ -1386,28 +1496,29 @@ describe('ReserveSection: una sola cancha, estado de la reserva y avisos', () =>
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
     const scarce = await findHour('18:00')
     expect(scarce.textContent).toContain('Queda 1')
-    expect(scarce.className).toContain('bg-warning')
+    // El ámbar de `ficha.css` cuelga de este estado.
+    expect(scarce.dataset.state).toBe('last')
   })
 
-  it('"Señando" no usa ámbar: borde punteado y texto normal', async () => {
+  it('"Señando" tiene su propio estado (borde punteado), no el de "Queda 1"', async () => {
     mockApi(heldDay)
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
     const held = await findHour('20:00')
-    expect(held.className).toContain('border-dotted')
-    expect(held.className).not.toContain('warning')
+    expect(held.dataset.state).toBe('held')
   })
 
-  it('las horas son botones con aria-pressed (no radios) y la elegida lleva tilde', async () => {
+  it('las horas son botones con aria-pressed (no radios)', async () => {
     mockApi(freeDay)
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
     const btn = await findHour('18:00')
     expect(btn.getAttribute('type')).toBe('button')
     expect(btn.getAttribute('aria-pressed')).toBe('false')
     expect(screen.queryByRole('radio', { name: /^18:00/ })).toBeNull()
+    fireEvent.click(btn)
+    expect(btn.getAttribute('aria-pressed')).toBe('true')
   })
 
-  it('data-state: loading → ready, closed, error (y el paso 1)', async () => {
-    const region = () => screen.getByRole('region', { name: 'Reservá tu turno' })
+  it('data-state: loading → ready, closed y error', async () => {
     mockApi(freeDay)
     const ready = render(
       <ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />,
@@ -1415,6 +1526,7 @@ describe('ReserveSection: una sola cancha, estado de la reserva y avisos', () =>
     expect(region().getAttribute('data-state')).toBe('loading')
     await findHour('18:00')
     expect(region().getAttribute('data-state')).toBe('ready')
+    expect(region().getAttribute('aria-busy')).toBe('false')
     ready.unmount()
 
     const closed = render(
@@ -1428,22 +1540,11 @@ describe('ReserveSection: una sola cancha, estado de la reserva y avisos', () =>
     closed.unmount()
 
     mockApi(() => 'fail')
-    const failed = render(
-      <ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />,
-    )
-    await waitFor(() => expect(region().getAttribute('data-state')).toBe('error'))
-    failed.unmount()
-
-    // Paso 1: loading hasta que la semana llegó.
-    searchParamsRef.current = new URLSearchParams()
-    mockApi(freeDay)
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
-    expect(region().getAttribute('data-state')).toBe('loading')
-    await waitFor(() => expect(region().getAttribute('data-state')).toBe('ready'))
-    expect(region().getAttribute('aria-busy')).toBe('false')
+    await waitFor(() => expect(region().getAttribute('data-state')).toBe('error'))
   })
 
-  it('sin anticipación, la pista dice que se reserva solo para hoy', async () => {
+  it('sin anticipación, la ayuda dice que se reserva solo para hoy', async () => {
     searchParamsRef.current = new URLSearchParams()
     mockApi(freeDay)
     render(
@@ -1453,8 +1554,9 @@ describe('ReserveSection: una sola cancha, estado de la reserva y avisos', () =>
         trackViewed={trackMock}
       />,
     )
-    expect(await screen.findByText('Reservás solo para hoy')).toBeTruthy()
+    expect(await screen.findByText('Tocá una hora. Reservás solo para hoy.')).toBeTruthy()
     expect(screen.queryByText(/0 días/)).toBeNull()
+    expect(dayRows()).toHaveLength(1)
   })
 
   it('profile.viewed también sale si el primer día cargado está cerrado', async () => {
@@ -1485,153 +1587,7 @@ describe('ReserveSection: una sola cancha, estado de la reserva y avisos', () =>
   })
 })
 
-describe('ReserveSection: scroll y transición entre pasos', () => {
-  const scroll = vi.fn()
-  const originalScroll = Element.prototype.scrollIntoView
-  afterEach(async () => {
-    // La alineación se repite en el próximo cuadro: que no caiga en el test siguiente.
-    await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())))
-    Element.prototype.scrollIntoView = originalScroll
-  })
-  /** `mobile`: debajo de lg; `reduce`: prefers-reduced-motion. */
-  const media = ({ mobile, reduce }: { mobile: boolean; reduce: boolean }) =>
-    vi.spyOn(window, 'matchMedia').mockImplementation(
-      (query) =>
-        ({
-          matches: query.includes('reduced-motion')
-            ? reduce
-            : query.includes('max-width') && mobile,
-        }) as MediaQueryList,
-    )
-
-  beforeEach(() => {
-    scroll.mockClear()
-    Element.prototype.scrollIntoView = scroll
-    mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]))
-  })
-
-  it('en el celular, al avanzar alinea la sección al instante (la barra queda bajo el header)', async () => {
-    media({ mobile: true, reduce: false })
-    render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
-    fireEvent.click(await findHour('21:00'))
-
-    expect(scroll).toHaveBeenCalledTimes(1)
-    expect(scroll).toHaveBeenCalledWith({ block: 'start', behavior: 'instant' })
-    expect(scroll.mock.contexts[0]).toBe(screen.getByRole('region', { name: 'Reservá tu turno' }))
-  })
-
-  it('al volver por el historial alinea otra vez en el próximo cuadro (el navegador restaura el scroll de esa entrada)', async () => {
-    media({ mobile: true, reduce: false })
-    atDay(today)
-    const happyDom = (window as unknown as { happyDOM: { setURL(url: string): void } }).happyDOM
-    render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
-    await findHour('21:00')
-
-    happyDom.setURL('http://localhost:3000/cancha-x')
-    await act(async () => window.dispatchEvent(new PopStateEvent('popstate')))
-    expect(heading().textContent).toBe('¿Qué día querés jugar?')
-    await waitFor(() => expect(scroll).toHaveBeenCalledTimes(2))
-    for (const ctx of scroll.mock.contexts) {
-      expect(ctx).toBe(screen.getByRole('region', { name: 'Reservá tu turno' }))
-    }
-    happyDom.setURL('http://localhost:3000/')
-  })
-
-  it('desde lg (la reserva es la columna lateral) no mueve la página', async () => {
-    media({ mobile: false, reduce: false })
-    render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
-    fireEvent.click(await findHour('21:00'))
-
-    await screen.findByRole('list', { name: 'Canchas libres a las 21:00' })
-    expect(scroll).not.toHaveBeenCalled()
-  })
-
-  it('un paso que ya viene en la URL no mueve la página al cargar', async () => {
-    media({ mobile: true, reduce: false })
-    atDay(today, { hora: '21:00' })
-    render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
-
-    await screen.findByRole('list', { name: 'Canchas libres a las 21:00' })
-    expect(scroll).not.toHaveBeenCalled()
-  })
-
-  it('con View Transition: marca la dirección en <html> mientras dura y la limpia al terminar', async () => {
-    media({ mobile: false, reduce: false })
-    const seen: Array<string | undefined> = []
-    const start = vi.fn((update: () => void) => {
-      seen.push(document.documentElement.dataset.reserveStep)
-      update()
-      return { finished: Promise.resolve() }
-    })
-    Object.defineProperty(document, 'startViewTransition', { configurable: true, value: start })
-    render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
-
-    fireEvent.click(await findHour('21:00'))
-    await waitFor(() => expect(document.documentElement.dataset.reserveStep).toBeUndefined())
-    expect(start).toHaveBeenCalledTimes(1)
-    expect(seen).toEqual(['forward'])
-    expect(heading().textContent).toBe('¿En qué cancha?')
-
-    fireEvent.click(screen.getByRole('button', { name: 'Volver' }))
-    await waitFor(() => expect(heading().textContent).toBe('¿A qué hora?'))
-    expect(seen).toEqual(['forward', 'back'])
-  })
-
-  it('un doble toque cambia un solo paso: no empuja otra entrada ni vuelve dos veces', async () => {
-    media({ mobile: false, reduce: false })
-    // La View Transition aplica el paso recién cuando se llama a `run` (como el navegador, que
-    // primero saca la foto de la pantalla vieja).
-    let run = () => {}
-    const start = vi.fn((update: () => void) => ({
-      finished: new Promise<void>((resolve) => {
-        run = () => {
-          update()
-          resolve()
-        }
-      }),
-    }))
-    Object.defineProperty(document, 'startViewTransition', { configurable: true, value: start })
-    vi.spyOn(window.history, 'state', 'get').mockReturnValue({ tgReserve: true })
-    const back = vi.spyOn(window.history, 'back').mockImplementation(() => undefined)
-    render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
-
-    // Las horas siguen en pantalla mientras el paso cambia: el segundo toque cae sobre ellas.
-    fireEvent.click(await findHour('21:00'))
-    fireEvent.click(hour('21:00'))
-    fireEvent.click(hour('18:00'))
-    expect(pushState).toHaveBeenCalledTimes(1)
-    expect(start).toHaveBeenCalledTimes(1)
-
-    await act(async () => run())
-    expect(heading().textContent).toBe('¿En qué cancha?')
-
-    // "Volver" espera el popstate: el segundo toque no retrocede otro paso.
-    fireEvent.click(screen.getByRole('button', { name: 'Volver' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Volver' }))
-    expect(back).toHaveBeenCalledTimes(1)
-
-    // Una página que vuelve del bfcache a mitad de un "Volver" no queda trabada.
-    act(() => {
-      window.dispatchEvent(new Event('pageshow'))
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Volver' }))
-    expect(back).toHaveBeenCalledTimes(2)
-  })
-
-  it('con "reducir movimiento" cambia al instante, sin View Transition', async () => {
-    media({ mobile: false, reduce: true })
-    const start = vi.fn()
-    Object.defineProperty(document, 'startViewTransition', { configurable: true, value: start })
-    render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
-
-    fireEvent.click(await findHour('21:00'))
-
-    expect(start).not.toHaveBeenCalled()
-    expect(heading().textContent).toBe('¿En qué cancha?')
-  })
-})
-
-describe('ReserveSection: ronda 3 — frescura, día fuera de ventana y hora ocupada', () => {
+describe('ReserveSection: frescura, día fuera de ventana y hora ocupada', () => {
   const expired = () => vi.setSystemTime(Date.now() + 130_000)
 
   it('un refresco que falla no tapa las horas que ya se ven', async () => {
@@ -1672,7 +1628,7 @@ describe('ReserveSection: ronda 3 — frescura, día fuera de ventana y hora ocu
     expect(fetched(fetchMock, today)).toBe(1)
   })
 
-  it('si la hora elegida se ocupa en el refresco, lo dice en lugar de la lista, lo anuncia y deja elegir otra', async () => {
+  it('si la hora elegida se ocupa en el refresco, la barra lo dice, lo anuncia y deja elegir otra', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
     mockApi((date, call) =>
       dayOf(date, [
@@ -1686,17 +1642,20 @@ describe('ReserveSection: ronda 3 — frescura, día fuera de ventana y hora ocu
     fireEvent.click(hour('21:00'))
     expect(await screen.findByText('Ya se ocupó el horario 21:00.')).toBeTruthy()
 
-    expect(screen.getByRole('status').textContent).toContain(
+    // La barra no se cierra sola: sacude (`data-taken`) y ya no ofrece canchas ni el botón.
+    expect(bar().hasAttribute('data-taken')).toBe(true)
+    expect(screen.getByRole('status').textContent).toBe(
       'Ya se ocupó el horario 21:00. Elegí otra hora.',
     )
-    expect(screen.queryByRole('list', { name: /^Canchas libres/ })).toBeNull()
+    expect(within(bar()).queryAllByRole('radio')).toHaveLength(0)
+    expect(within(bar()).queryByRole('link')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Elegir otra hora' }))
-    expect(heading().textContent).toBe('¿A qué hora?')
+    expect(queryBar()).toBeNull()
     expect(hour('18:00').getAttribute('aria-pressed')).toBe('false')
   })
 
-  it('sin hora elegida antes (URL con una hora que no existe o completa) no dice "se ocuparon"', async () => {
+  it('sin hora elegida antes (URL con una hora que no existe o completa) no dice "se ocupó"', async () => {
     mockApi((date) => dayOf(date, [eveningCourt('c1', 'Cancha 1')]))
     for (const hora of ['03:00', '19:00']) {
       atDay(today, { hora })
@@ -1709,7 +1668,7 @@ describe('ReserveSection: ronda 3 — frescura, día fuera de ventana y hora ocu
     }
   })
 
-  it('si la hora desaparece porque cambió el filtro de formato, no dice que se ocupó', async () => {
+  it('si la hora deja de servir porque cambió el tamaño, no dice que se ocupó: cierra la barra', async () => {
     atDay(today, { hora: '18:00' })
     mockApi((date) =>
       dayOf(date, [
@@ -1718,13 +1677,14 @@ describe('ReserveSection: ronda 3 — frescura, día fuera de ventana y hora ocu
       ]),
     )
     render(<ReserveSection tenant={tenantWith()} formats={[5, 7]} trackViewed={trackMock} />)
-    await screen.findByRole('list', { name: 'Canchas libres a las 18:00' })
-    fireEvent.click(screen.getByRole('button', { name: 'Volver' }))
+    await findBar()
 
     fireEvent.click(screen.getByRole('radio', { name: 'Fútbol 7' }))
     await waitFor(() => expect(hourButtons()).toHaveLength(1))
 
     expect(screen.queryByText(/Ya se ocupó el horario/)).toBeNull()
+    expect(queryBar()).toBeNull()
+    expect(replaceState).toHaveBeenLastCalledWith(null, '', expect.not.stringContaining('hora='))
   })
 
   it('400 date_out_of_range: dice que ese día ya no se puede reservar y ofrece "Ver hoy", sin reintentar', async () => {
@@ -1740,8 +1700,8 @@ describe('ReserveSection: ronda 3 — frescura, día fuera de ventana y hora ocu
 
     fireEvent.click(screen.getByRole('button', { name: 'Ver hoy' }))
     expect(await findHour('18:00')).toBeTruthy()
-    expect(pushState).toHaveBeenLastCalledWith(
-      { tgReserve: true },
+    expect(replaceState).toHaveBeenLastCalledWith(
+      null,
       '',
       expect.stringContaining(`date=${today}`),
     )

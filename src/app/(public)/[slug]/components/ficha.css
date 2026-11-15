@@ -1,0 +1,526 @@
+/* La reserva de la ficha en una pantalla (portal de vidrio, F4: `complejo.html` y `glass-app.css`).
+   Días en una fila, horas en cuadrados y la barra de "Reservar" que sube desde abajo. Tokens
+   `--portal-*` y `--glass-*` del portal (globals.css): fuera del portal no existen. */
+
+@layer components {
+  .reserve {
+    display: grid;
+    gap: 16px;
+    padding: 18px;
+    border-radius: 32px;
+    color: var(--portal-ink);
+    font-family: var(--font-display);
+  }
+  @media (min-width: 768px) {
+    .reserve {
+      padding: 24px;
+    }
+  }
+
+  /* ── Fila de días: deslizable en el celu, siete columnas iguales desde 1024 px. */
+  .daystrip {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 64px;
+    gap: 8px;
+    margin-inline: -18px;
+    padding: 4px 18px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    scroll-snap-type: x proximity;
+    scroll-padding-inline: 18px;
+  }
+  .daystrip::-webkit-scrollbar {
+    display: none;
+  }
+  @media (min-width: 768px) {
+    .daystrip {
+      margin-inline: -24px;
+      padding-inline: 24px;
+      scroll-padding-inline: 24px;
+    }
+  }
+  /* Siete días a la vista desde la compu; con más anticipación (configurable hasta 60) el resto
+     se desliza, igual que en el celu, en vez de aplastar las columnas. */
+  @media (min-width: 1024px) {
+    .daystrip {
+      grid-auto-columns: calc((100% - 6 * 8px) / 7);
+      margin-inline: 0;
+      padding-inline: 0;
+      scroll-padding-inline: 0;
+    }
+  }
+  /* `relative`: el nombre `sr-only` (absoluto) se queda adentro de la fila deslizable. Sin esto
+     se ubicaba contra un ancestro de afuera y estiraba la página a lo ancho. */
+  .dayp {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 3px;
+    height: 84px;
+    padding: 0;
+    border-radius: 22px;
+    border: 1px solid var(--portal-inner-line);
+    background: var(--portal-inner);
+    color: var(--portal-ink);
+    cursor: pointer;
+    scroll-snap-align: start;
+    transition:
+      scale var(--spring-toque),
+      border-color var(--dur-2) var(--portal-ease-out);
+  }
+  .dayp small {
+    font-size: 13px;
+    line-height: 16px;
+    font-weight: 600;
+    color: var(--portal-muted);
+  }
+  .dayp b {
+    font-size: 24px;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .dayp i {
+    width: 6px;
+    height: 6px;
+    margin-top: 3px;
+    border-radius: 50%;
+    background: var(--portal-green);
+  }
+  .dayp em {
+    max-width: 58px;
+    font-style: normal;
+    font-size: 12px;
+    line-height: 14px;
+    text-align: center;
+    color: var(--portal-soft);
+  }
+  .dayp[aria-pressed='true'] {
+    border-color: transparent;
+    color: var(--portal-on-green);
+    background: linear-gradient(180deg, var(--portal-btn-a), var(--portal-btn-b));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.45),
+      0 14px 30px -14px var(--portal-btn-glow);
+  }
+  .dayp[aria-pressed='true'] small,
+  .dayp[aria-pressed='true'] em {
+    color: var(--portal-on-green);
+  }
+  .dayp[aria-pressed='true'] i {
+    background: var(--portal-on-green);
+  }
+  .dayp:disabled {
+    cursor: default;
+    background: transparent;
+    border-style: dashed;
+  }
+  .dayp:disabled:not([aria-pressed='true']) b {
+    color: var(--portal-soft);
+  }
+  /* El día elegido sin lugar (hoy, que viene elegido aunque ya no le queden horarios): sin el
+     relleno verde, que dice "hay lugar", pero marcado con el borde verde punteado. */
+  .dayp:disabled[aria-pressed='true'] {
+    color: var(--portal-ink);
+    background: transparent;
+    border: 1.5px dashed var(--portal-green);
+    box-shadow: none;
+  }
+  .dayp:disabled[aria-pressed='true'] small,
+  .dayp:disabled[aria-pressed='true'] em {
+    color: var(--portal-soft);
+  }
+
+  /* ── Horas en cuadrados, cuatro por fila. */
+  .hgrid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .hourb {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 2px;
+    aspect-ratio: 1 / 0.88;
+    min-height: 64px;
+    padding: 0;
+    border-radius: 20px;
+    border: 1px solid var(--portal-slot-line);
+    background: var(--portal-slot-bg);
+    color: var(--portal-ink);
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+    transition: scale var(--spring-toque);
+  }
+  .hourb b {
+    font-size: 18px;
+    line-height: 22px;
+    font-weight: 600;
+    color: var(--portal-slot-ink);
+  }
+  .hourb span {
+    font-size: 13px;
+    line-height: 16px;
+    color: var(--portal-muted);
+  }
+  /* "Queda 1": la única escasez real, en ámbar. */
+  .hourb[data-state='last'] {
+    border-color: var(--portal-warn-line);
+    background: var(--portal-warn-bg);
+  }
+  .hourb[data-state='last'] span {
+    color: var(--portal-warn);
+    font-weight: 600;
+  }
+  /* "Señando" no es una alerta: es una espera, con borde punteado. */
+  .hourb[data-state='held'] {
+    background: transparent;
+    border: 1px dotted var(--portal-soft);
+  }
+  .hourb[data-state='held'] b {
+    color: var(--portal-soft);
+  }
+  .hourb[data-state='held'] span {
+    color: var(--portal-ink);
+    font-weight: 600;
+  }
+  .hourb[data-state='full'] {
+    cursor: default;
+    background: transparent;
+    border: 1px dashed var(--portal-inner-line);
+  }
+  .hourb[data-state='full'] b {
+    color: var(--portal-soft);
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+  }
+  .hourb[data-state='full'] span {
+    color: var(--portal-soft);
+  }
+  .hourb[aria-pressed='true'] {
+    border-color: transparent;
+    background: linear-gradient(180deg, var(--portal-btn-a), var(--portal-btn-b));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.45),
+      0 14px 30px -14px var(--portal-btn-glow);
+  }
+  .hourb[aria-pressed='true'] b,
+  .hourb[aria-pressed='true'] span {
+    color: var(--portal-on-green);
+  }
+  .hourb:disabled {
+    cursor: default;
+  }
+
+  .dayp:focus-visible,
+  .hourb:focus-visible,
+  .copt:focus-visible {
+    outline: 2px solid var(--portal-green);
+    outline-offset: 3px;
+  }
+
+  /* ── La barra de "Reservar": fija abajo en el celu; píldora flotante desde 768 px y ancha desde
+     1280 px. Va en un portal a <body>: dentro de un `.glass` el `fixed` se ubicaría contra el
+     vidrio y no contra la ventana. El arrastre lo pone `motion` sobre `transform`; la subida va
+     por `translate`, así no se pisan. */
+  .rbar {
+    position: fixed;
+    z-index: 45;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: grid;
+    gap: 12px;
+    padding: 10px 20px calc(16px + env(safe-area-inset-bottom));
+    border-radius: 32px 32px 0 0;
+    font-family: var(--font-display);
+    color: var(--portal-ink);
+    background: linear-gradient(180deg, var(--portal-sheet-a), var(--portal-sheet-b));
+    border: 1px solid var(--glass-line);
+    border-bottom: 0;
+    box-shadow:
+      inset 0 1px 0 var(--glass-hi),
+      0 -30px 60px -30px rgb(0 0 0 / 0.6);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    backdrop-filter: blur(30px) saturate(180%);
+  }
+  .rbar__grab {
+    margin: -10px -20px -4px;
+    padding: 10px 20px 4px;
+    touch-action: none;
+    cursor: grab;
+  }
+  .rbar__grab::before {
+    content: '';
+    display: block;
+    width: 40px;
+    height: 4px;
+    margin: 0 auto;
+    border-radius: 4px;
+    background: var(--portal-inner-line);
+  }
+  .rbar__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    /* El arrastre también arranca desde la cabecera: sin esto el navegador se queda el gesto. */
+    touch-action: none;
+  }
+  .rbar__when span {
+    display: block;
+    font-size: 14px;
+    color: var(--portal-soft);
+  }
+  .rbar__when b {
+    display: block;
+    font-size: 22px;
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .copts {
+    display: grid;
+    gap: 8px;
+    max-height: 40dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    margin: -3px;
+    padding: 3px;
+  }
+  .copt {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    min-height: 60px;
+    padding: 8px 16px 8px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--portal-inner-line);
+    background: var(--portal-inner);
+    color: var(--portal-ink);
+    text-align: left;
+    cursor: pointer;
+  }
+  .copt__dot {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1.5px solid var(--portal-soft);
+  }
+  .copt__name {
+    display: block;
+    font-size: 16px;
+    line-height: 20px;
+    font-weight: 600;
+  }
+  .copt__meta {
+    display: block;
+    font-size: 14px;
+    line-height: 18px;
+    color: var(--portal-soft);
+  }
+  .copt__price {
+    font-size: 16px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .copt[aria-checked='true'] {
+    border-color: var(--portal-green);
+    background: var(--portal-slot-bg);
+    box-shadow: inset 0 0 0 1px var(--portal-green);
+  }
+  .copt[aria-checked='true'] .copt__dot {
+    border: 7px solid var(--portal-green);
+    background: var(--portal-on-green);
+  }
+  .rbar__note {
+    font-size: 15px;
+    line-height: 1.4;
+    color: var(--portal-soft);
+  }
+
+  @media (min-width: 768px) {
+    .rbar {
+      left: 50%;
+      right: auto;
+      bottom: 20px;
+      width: 480px;
+      margin-left: -240px;
+      padding: 16px 20px 20px;
+      border-radius: 30px;
+      border-bottom: 1px solid var(--glass-line);
+      box-shadow:
+        inset 0 1px 0 var(--glass-hi),
+        0 30px 70px -28px rgb(0 0 0 / 0.7);
+    }
+    .rbar__grab {
+      display: none;
+    }
+  }
+  /* En la compu, una píldora ancha: cuándo, las canchas en dos columnas, el botón y cerrar. */
+  @media (min-width: 1280px) {
+    .rbar {
+      width: min(1120px, calc(100vw - 96px));
+      margin-left: calc(min(1120px, 100vw - 96px) / -2);
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 16px;
+      padding: 12px 12px 12px 28px;
+      border-radius: 999px;
+    }
+    .rbar__top {
+      display: contents;
+    }
+    .rbar__when {
+      order: 1;
+    }
+    .rbar__close {
+      order: 4;
+    }
+    .copts {
+      order: 2;
+      grid-template-columns: 1fr 1fr;
+      max-height: none;
+      overflow: visible;
+    }
+    .copt {
+      min-height: 56px;
+      border-radius: 999px;
+      padding: 6px 20px 6px 14px;
+    }
+    .rbar__cta {
+      order: 3;
+      width: auto;
+    }
+    .rbar__note {
+      order: 2;
+    }
+  }
+
+  /* Lo que la barra tapa: el final de la página queda alcanzable con la barra abierta. */
+  html:has([data-reserve-bar]) #main-content {
+    padding-bottom: 300px;
+  }
+  @media (min-width: 1280px) {
+    html:has([data-reserve-bar]) #main-content {
+      padding-bottom: 110px;
+    }
+  }
+}
+
+/* Movimiento (dirección §4.5, "Ficha del complejo"). Solo transform y opacity. */
+@media (prefers-reduced-motion: no-preference) {
+  .dayp:active,
+  .hourb:not(:disabled):active {
+    scale: 0.96;
+    transition-duration: var(--dur-1);
+  }
+  /* Elegir: la pieza hace su toque y se llena de verde. */
+  .dayp[aria-pressed='true'],
+  .hourb[aria-pressed='true'] {
+    animation: ficha-toque var(--spring-toque) both;
+  }
+  /* Las horas nuevas entran escalonadas a 24 ms (tope de 10). */
+  .hgrid[data-entrada] > .hourb {
+    animation: ficha-entra var(--dur-2) var(--portal-ease-out) both;
+    animation-delay: calc(var(--i, 0) * 24ms);
+  }
+  .hgrid[data-entrada] > .hourb[aria-pressed='true'] {
+    animation:
+      ficha-entra var(--dur-2) var(--portal-ease-out) both,
+      ficha-toque var(--spring-toque) both;
+  }
+  /* El esqueleto de horas aparece recién si la disponibilidad tarda más de 150 ms. */
+  .ficha-hours-skeleton {
+    animation: ficha-aparece 1ms 150ms both;
+  }
+  /* La barra sube con el resorte hoja. */
+  .rbar {
+    animation: ficha-sube var(--spring-hoja) both;
+  }
+  /* El horario se ocupó mientras tanto: la barra sacude 6 px una vez. */
+  .rbar[data-taken] {
+    animation: ficha-sacude 360ms var(--portal-ease-out) both;
+  }
+  /* El precio del botón cambia por reemplazo: el nuevo entra desde abajo. */
+  .ficha-reemplazo {
+    display: inline-block;
+    animation: ficha-reemplazo 180ms var(--portal-ease-out) both;
+  }
+  @keyframes ficha-toque {
+    from {
+      scale: 0.96;
+    }
+  }
+  @keyframes ficha-entra {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
+  @keyframes ficha-aparece {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes ficha-sube {
+    from {
+      translate: 0 104%;
+    }
+  }
+  @keyframes ficha-sacude {
+    20% {
+      translate: -6px 0;
+    }
+    50% {
+      translate: 6px 0;
+    }
+    80% {
+      translate: -3px 0;
+    }
+  }
+  @keyframes ficha-reemplazo {
+    from {
+      opacity: 0;
+      transform: translateY(60%);
+    }
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rbar {
+    animation: portal-fade-in 150ms var(--portal-ease-out) both;
+  }
+}
+
+/* Respaldos de accesibilidad: fuera de `@layer` para ganarle a las utilidades (gotcha F1). */
+@media (prefers-reduced-transparency: reduce) {
+  .rbar {
+    background: color-mix(in srgb, var(--portal-bg) 86%, var(--portal-ink));
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-contrast: more) {
+  .rbar {
+    background: var(--portal-bg);
+    border-color: color-mix(in srgb, var(--portal-ink) 55%, transparent);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .dayp,
+  .hourb,
+  .copt {
+    border-color: color-mix(in srgb, var(--portal-ink) 55%, transparent);
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .rbar {
+    background: color-mix(in srgb, var(--portal-bg) 94%, var(--portal-ink));
+  }
+}

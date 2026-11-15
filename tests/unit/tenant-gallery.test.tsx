@@ -17,36 +17,24 @@ afterEach(() => cleanup())
 
 const photos = (n: number) => Array.from({ length: n }, (_, i) => `/bg-${i}.png`)
 
-// En el celular las miniaturas van ocultas (`hidden sm:block`): sin este botón "Fotos (3)" mostraba
-// una sola foto y nada decía que había más.
-describe('TenantGallery: botón "Ver N fotos" del celular', () => {
-  it('con tres fotos o más hay un botón con la cantidad, tocable (44 px) y solo bajo sm', () => {
-    render(<TenantGallery photos={photos(3)} name="Cancha X" />)
-
-    const button = screen.getByRole('button', { name: 'Ver 3 fotos' })
-    expect(button.classList.contains('min-h-11')).toBe(true)
-    expect(button.classList.contains('min-w-11')).toBe(true)
-    expect(button.classList.contains('sm:hidden')).toBe(true)
-    // Fondo sólido, sin vidrio ni sombra.
-    expect(button.classList.contains('bg-card')).toBe(true)
-    expect(button.className).not.toMatch(/backdrop-blur|shadow/)
-  })
-
-  it('abre la galería en la primera foto', () => {
+// Portal de vidrio (F4): cada foto se ve en la fila (deslizable en el celu) y es un botón que abre
+// el visor en esa foto. El viejo "Ver N fotos" del celular ya no hace falta.
+describe('TenantGallery', () => {
+  it('cada foto es un botón que abre el visor en esa foto', () => {
     render(<TenantGallery photos={photos(6)} name="Cancha X" />)
     expect(screen.queryByRole('dialog')).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ver 6 fotos' }))
+    const thumbs = screen.getAllByRole('button')
+    expect(thumbs).toHaveLength(6)
+    fireEvent.click(thumbs[0]!)
 
     expect(screen.getByRole('dialog', { name: 'Fotos de Cancha X' })).toBeTruthy()
     expect(screen.getByText('1 / 6')).toBeTruthy()
   })
 
-  it('con una o dos fotos no hay botón: ya se ven todas', () => {
-    for (const n of [1, 2]) {
-      const view = render(<TenantGallery photos={photos(n)} name="Cancha X" />)
-      expect(screen.queryByRole('button', { name: /^Ver \d+ fotos$/ })).toBeNull()
-      view.unmount()
-    }
+  it('abrir otra foto arranca el visor en ella', () => {
+    render(<TenantGallery photos={photos(6)} name="Cancha X" />)
+    fireEvent.click(screen.getAllByRole('button')[3]!)
+    expect(screen.getByText('4 / 6')).toBeTruthy()
   })
 })

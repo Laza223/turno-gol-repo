@@ -91,9 +91,9 @@ describe('ComplexHero favorito (#40)', () => {
     expect(saved.classList.contains('dark:text-red-400')).toBe(true)
     expect(saved.classList.contains('bg-red-500/10')).toBe(true)
     // ...y el neutro solo vale mientras NO está guardado (variante aria-pressed=false).
-    expect(saved.classList.contains('text-foreground')).toBe(false)
-    expect(saved.classList.contains('bg-transparent')).toBe(false)
-    expect(saved.classList.contains('aria-[pressed=false]:text-foreground')).toBe(true)
+    expect(saved.classList.contains('text-portal-ink')).toBe(false)
+    expect(saved.classList.contains('bg-portal-inner')).toBe(false)
+    expect(saved.classList.contains('aria-[pressed=false]:text-portal-ink')).toBe(true)
   })
 
   it('sin guardar, Guardar y Compartir se ven iguales: borde y texto neutros', () => {
@@ -102,12 +102,13 @@ describe('ComplexHero favorito (#40)', () => {
     )
     const share = screen.getByRole('button', { name: 'Compartir' })
 
-    expect(share.classList.contains('text-foreground')).toBe(true)
-    expect(share.classList.contains('border-border')).toBe(true)
+    // La píldora interior del portal de vidrio (F4), la misma de los enlaces de la cabecera.
+    expect(share.classList.contains('text-portal-ink')).toBe(true)
+    expect(share.classList.contains('border-portal-inner-line')).toBe(true)
     expect(
       screen
         .getByRole('button', { name: 'Guardar en favoritos' })
-        .classList.contains('aria-[pressed=false]:border-border'),
+        .classList.contains('aria-[pressed=false]:border-portal-inner-line'),
     ).toBe(true)
   })
 

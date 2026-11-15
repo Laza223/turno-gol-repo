@@ -3,6 +3,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, within } from 'storybook/test'
 import { PortalWorld } from '@/components/world/PortalWorld'
 import type { HourRow } from '@/lib/booking/hour-summary'
+import { withPortalGlass } from '../../../../../.storybook/decorators/with-portal-glass'
 import HourGrid from './HourGrid'
 
 const court = (id: string) => ({ id, name: `Cancha ${id}`, format: 5, price: null })
@@ -26,18 +27,19 @@ const meta = {
   decorators: [
     (Story) => (
       <PortalWorld>
-        <div className="mx-auto max-w-sm bg-background p-4 text-foreground">
+        <div className="reserve glass mx-auto max-w-[400px]">
           <Story />
         </div>
       </PortalWorld>
     ),
+    withPortalGlass(),
   ],
 } satisfies Meta<typeof HourGrid>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Elegir una hora: relleno verde y tilde (nunca solo color), y las deshabilitadas no responden. */
+/** Elegir una hora: se llena de verde, y las que no tienen lugar no responden. */
 export const Interactiva: Story = {
   render: function Render(args) {
     const [value, setValue] = useState<string | null>(null)

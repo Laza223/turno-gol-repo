@@ -21,7 +21,7 @@ Este cuadro es el registro del esfuerzo. Quien cierra una fase lo actualiza en e
 | F2 | Home | Hecho el 2026-11-14 | #593, #594, #595, #596 |
 | F3 | Buscador `/explorar` | Hecho el 2026-11-14 | #597 |
 | F4 | Ficha del complejo | Hecho el 2026-11-15 | #598 |
-| F5 | Confirmar el turno y vuelta de la reserva | En revisión desde el 2026-11-15 | |
+| F5 | Confirmar el turno y vuelta de la reserva | En revisión desde el 2026-11-15 | #599 |
 | F6 | Mis reservas, Cuenta e Ingresar | Pendiente | |
 | F7 | Rival | Pendiente | |
 | F8 | Páginas para complejos, blog, legales y errores | Pendiente | |

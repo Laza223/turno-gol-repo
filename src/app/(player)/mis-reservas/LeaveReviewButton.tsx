@@ -3,15 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Star } from 'lucide-react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import { Button, buttonVariants } from '@/components/ui/button'
+import { GlassSheetContent } from '@/components/ui/glass-sheet'
+import { Sheet, SheetTrigger } from '@/components/ui/sheet'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
+import '@/components/world/portal-app.css'
 
 type Props = {
   bookingId: string
@@ -62,24 +59,23 @@ export function LeaveReviewButton({ bookingId, tenantName, describedBy }: Props)
   const shown = hover || rating
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
         <button
           type="button"
           aria-describedby={describedBy}
           data-ghost
-          className="inline-flex min-h-11 items-center gap-1.5 rounded-md px-3 text-sm font-medium text-emerald-700 transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring dark:text-emerald-400"
+          className={cn(
+            buttonVariants({ variant: 'pill-link', size: 'pill-sm' }),
+            'min-h-11 px-3.5 text-sm',
+          )}
         >
-          <Star className="h-4 w-4" aria-hidden />
+          <Star aria-hidden />
           Dejar reseña
         </button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>¿Cómo estuvo {tenantName}?</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4">
+      </SheetTrigger>
+      <GlassSheetContent title={`¿Cómo estuvo ${tenantName}?`}>
+        <div className="grid gap-4 text-portal-ink">
           <div
             className="flex justify-center gap-1"
             role="radiogroup"
@@ -95,12 +91,12 @@ export function LeaveReviewButton({ bookingId, tenantName, describedBy }: Props)
                 aria-label={`${n} estrella${n === 1 ? '' : 's'}`}
                 onClick={() => setRating(n)}
                 onMouseEnter={() => setHover(n)}
-                className="flex size-11 items-center justify-center rounded-md focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex size-11 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-portal-green"
               >
                 <Star
                   className={cn(
                     'h-8 w-8',
-                    n <= shown ? 'fill-primary text-primary' : 'text-muted-foreground',
+                    n <= shown ? 'fill-portal-green text-portal-green' : 'text-portal-soft',
                   )}
                   aria-hidden
                 />
@@ -108,8 +104,8 @@ export function LeaveReviewButton({ bookingId, tenantName, describedBy }: Props)
             ))}
           </div>
 
-          <div className="space-y-1">
-            <label htmlFor="review-comment" className="text-sm font-medium text-foreground">
+          <div className="grid gap-1.5">
+            <label htmlFor="review-comment" className="text-sm font-semibold">
               Comentario (opcional)
             </label>
             <textarea
@@ -119,23 +115,23 @@ export function LeaveReviewButton({ bookingId, tenantName, describedBy }: Props)
               maxLength={500}
               rows={3}
               placeholder="¿Qué te pareció la cancha, el lugar, la atención?"
-              className="w-full resize-none rounded-md border border-input bg-card px-3 py-2 text-base text-foreground placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
+              className="w-full resize-none rounded-[18px] border border-portal-soft/70 bg-portal-inner px-4 py-3 text-base text-portal-ink placeholder:text-portal-soft focus-visible:border-portal-green focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-portal-green"
             />
-            <p className="text-right text-sm text-muted-foreground tabular-nums">
-              {comment.length}/500
-            </p>
+            <p className="text-right text-sm text-portal-soft tabular-nums">{comment.length}/500</p>
           </div>
 
-          <button
+          <Button
             type="button"
+            variant="pill"
+            size="pill"
             onClick={submit}
             disabled={pending}
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-100"
+            className="w-full disabled:opacity-100"
           >
             {pending ? 'Enviando…' : 'Publicar reseña'}
-          </button>
+          </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </GlassSheetContent>
+    </Sheet>
   )
 }

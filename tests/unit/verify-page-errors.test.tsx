@@ -3,6 +3,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { VerifyView } from '@/app/(auth)/verify/VerifyView'
 
+// La foto del hero (next/image con import estático) no se resuelve en happy-dom.
+vi.mock('@/components/world/HeroBackdrop', () => ({
+  HeroBackdrop: () => <div data-hero-backdrop />,
+}))
+// El cromo del portal (cabecera, barra de abajo, sesión) tiene sus propios tests: acá no importa.
+vi.mock('@/components/site/PortalHeader', () => ({ default: () => <header data-portal-header /> }))
+vi.mock('@/components/site/PlayerBottomNav', () => ({ PlayerBottomNav: () => null }))
+vi.mock('@/components/site/PortalSessionProvider', () => ({
+  PortalSessionProvider: ({ children }: { children: React.ReactNode }) => children,
+}))
+vi.mock('@/modules/auth/sign-out.action', () => ({ signOutAction: vi.fn() }))
+
 // Cada código de error de /verify dice qué pasó y qué hacer. El reintento del
 // JUGADOR va a /ingresar y /login queda como link chico. `expired`, `invalid` y
 // `exchange_failed` los emiten también los links de staff (alta, invitación,
@@ -14,7 +26,13 @@ afterEach(() => cleanup())
 const googleAction = vi.fn(async (_formData: FormData) => {})
 
 function renderView(searchParams: Record<string, string>) {
-  return render(<VerifyView searchParams={searchParams} googleAction={googleAction} />)
+  return render(
+    <VerifyView
+      searchParams={searchParams}
+      googleAction={googleAction}
+      signOutAction={vi.fn(async () => {})}
+    />,
+  )
 }
 
 describe('VerifyView — códigos compartidos con el staff', () => {
@@ -145,12 +163,11 @@ describe('VerifyView — errores solo de jugador', () => {
   it('oauth_cancelled no es una falla: ícono neutro y no el rojo de los errores', () => {
     renderView({ error: 'oauth_cancelled' })
 
-    // El ícono vive dentro del badge circular que precede al título.
-    const icon = screen.getByRole('heading', { level: 1 }).previousElementSibling!
-      .firstElementChild!
-    expect(icon.getAttribute('class')).toContain('lucide-info')
-    expect(icon.getAttribute('class')).toContain('text-muted-foreground')
-    expect(icon.getAttribute('class')).not.toContain('text-red')
+    // El ícono vive dentro de la insignia que precede al título: de vidrio neutro, no la roja.
+    const badge = screen.getByRole('heading', { level: 1 }).previousElementSibling!
+    expect(badge.firstElementChild!.getAttribute('class')).toContain('lucide-info')
+    expect(badge.className).toContain('rv-badge--neutral')
+    expect(badge.className).not.toContain('rv-badge--bad')
   })
 
   it.each([
@@ -162,11 +179,10 @@ describe('VerifyView — errores solo de jugador', () => {
   ])('%s %o sí es una falla: sigue en rojo', (error, extra) => {
     renderView({ error, ...extra })
 
-    // El ícono vive dentro del badge circular que precede al título.
-    const icon = screen.getByRole('heading', { level: 1 }).previousElementSibling!
-      .firstElementChild!
-    expect(icon.getAttribute('class')).toContain('text-red-700')
-    expect(icon.getAttribute('class')).not.toContain('lucide-info')
+    // El ícono vive dentro de la insignia que precede al título: la roja.
+    const badge = screen.getByRole('heading', { level: 1 }).previousElementSibling!
+    expect(badge.className).toContain('rv-badge--bad')
+    expect(badge.firstElementChild!.getAttribute('class')).not.toContain('lucide-info')
   })
 
   it.each([

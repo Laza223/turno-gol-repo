@@ -30,10 +30,11 @@ import {
   AUTH_CARD_STYLE,
   AUTH_INPUT,
   AUTH_TITLE,
+  GLASS_INPUT,
   PORTAL_BUTTON,
   PORTAL_BUTTON_OUTLINE,
   PORTAL_LINK,
-} from '@/components/world/PortalAuthFrame'
+} from '@/components/world/portal-auth-styles'
 import { echoFields } from '@/shared/forms/echo'
 import { cn } from '@/lib/utils'
 import type { GateState, sendPlayerMagicLink } from '../actions'
@@ -126,11 +127,7 @@ const SKIN = {
     legal: 'text-pretty text-sm text-muted-foreground',
   },
   glass: {
-    // Utilidades y no `.rv-input`: las de `Input` (capa de utilidades) le ganarían a una clase de componentes.
-    // El borde llega a 3:1 sobre el panel (WCAG 1.4.11, como el `--input` del modal): la línea
-    // interior del vidrio (`portal-inner-line`) da 1,2:1 y el campo se pierde.
-    input:
-      'h-13 rounded-[18px] border-portal-soft/70 bg-portal-inner hover:border-portal-soft/70 px-4 text-base text-portal-ink shadow-none placeholder:text-portal-soft focus-visible:border-portal-green focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-portal-green md:h-13 md:text-base',
+    input: GLASS_INPUT,
     go: { variant: 'pill', size: 'pill', className: 'rv-go w-full' },
     alt: { variant: 'pill-glass', size: 'pill', className: 'w-full backdrop-filter-none' },
     ghost: { variant: 'pill-link', size: 'pill-sm' },

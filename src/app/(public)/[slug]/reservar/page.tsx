@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { notFound, redirect, RedirectType } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import ReservaShell from '@/components/booking/ReservaDarkShell'
-import { PORTAL_LINK } from '@/components/world/PortalAuthFrame'
+import { PORTAL_LINK } from '@/components/world/portal-auth-styles'
 import { buildMetadata } from '@/lib/seo/metadata'
 import {
   buildFichaHref,

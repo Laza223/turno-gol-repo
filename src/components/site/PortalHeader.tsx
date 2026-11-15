@@ -27,6 +27,8 @@ function useScrolledPast(px: number): boolean {
   return past
 }
 
+const AUTH_PATHS = ['/ingresar', '/verify', '/aceptar-terminos']
+
 const isCurrent = (pathname: string, href: string) =>
   pathname === href || pathname.startsWith(`${href}/`)
 
@@ -50,6 +52,9 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
   // Precedencia: el jugador gana siempre. En la práctica son cookies mutuamente excluyentes (un
   // solo auth user por navegador), pero el orden lo deja determinístico.
   const staffOnly = !session && staffPanelPath !== null
+  // En el ingreso mismo (/ingresar, /verify, /aceptar-terminos) "Ingresar" se apuntaría a sí mismo
+  // y dejaría ese `next`: después de entrar, el jugador volvería al formulario o al error.
+  const onAuthPage = AUTH_PATHS.some((p) => isCurrent(pathname, p))
 
   const links = [
     { href: '/explorar', label: 'Explorar', show: true },
@@ -103,7 +108,7 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
             <Link href={staffPanelPath} className="portal-top__in">
               Ir a mi panel
             </Link>
-          ) : (
+          ) : onAuthPage ? null : (
             <IngresarLink className="portal-top__in hidden md:inline-flex">Ingresar</IngresarLink>
           )}
         </div>

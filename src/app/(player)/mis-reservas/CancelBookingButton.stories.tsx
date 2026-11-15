@@ -1,3 +1,4 @@
+import '@/components/world/portal-app.css'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { getRouter } from '@storybook/nextjs-vite/navigation.mock'
 import { expect, fn, screen, userEvent, waitFor, within } from 'storybook/test'
@@ -19,13 +20,12 @@ async function settleToasts() {
 
 /**
  * La Server Action entra por prop (ver el comentario en CancelBookingButton.tsx).
- * ConfirmDialog (Radix) monta en un portal fuera de canvasElement: las
+ * La hoja de vidrio (Radix) monta en un portal fuera de canvasElement: las
  * assertions post-apertura usan `screen`.
  *
- * El decorator reproduce el `bg-card` (blanco) de la fila de reserva en
- * MisReservasView.tsx: el botón nunca vive suelto sobre `bg-background`
- * (slate ~#DDE3EC), y ahí `text-red-600` da 3.88:1 (falla AA) contra el
- * 4.83:1 que da sobre `bg-card`.
+ * El decorator reproduce la tarjeta de vidrio pintado de la fila de reserva en
+ * MisReservasView.tsx (`data-portal-glass` prende los tokens del portal): el botón
+ * nunca vive suelto, y su rojo se mide contra ese fondo.
  */
 const meta = {
   title: 'Player/MisReservas/CancelBookingButton',
@@ -43,10 +43,12 @@ const meta = {
     depositAmountCents: 150_000,
   },
   decorators: [
-    // El diálogo monta en <body>, fuera del decorador.
+    // La hoja monta en <body>, fuera del decorador.
     (Story) => (
-      <div className="rounded-xl border border-border bg-card p-4">
-        <Story />
+      <div data-portal-glass className="portal-ambient p-6 text-portal-ink">
+        <div className="pa-links glass-painted rounded-[28px] p-4">
+          <Story />
+        </div>
       </div>
     ),
   ],
@@ -61,7 +63,7 @@ export const Cerrado: Story = {
 
 /**
  * El texto del preview de seña (`depositPreviewText`) no vive en un nodo
- * propio: es el último hijo-texto directo del `description` de ConfirmDialog,
+ * propio: es el último hijo-texto directo del `description` de la hoja,
  * después de `<strong>`s y dos `<br/>`. `getByText` con un string exacto
  * concatena TODO el texto directo del contenedor (`getNodeText`, ignora los
  * `<strong>`/`<br/>` pero no el resto de los textos hermanos), así que nunca

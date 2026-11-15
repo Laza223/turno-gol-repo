@@ -16,7 +16,7 @@ describe('ActivityStats', () => {
 
   it('la racha usa la unidad correcta (singular)', () => {
     render(<ActivityStats played={10} venues={4} streakWeeks={1} />)
-    expect(screen.getByText('1 semana')).toBeTruthy()
+    expect(screen.getByText('Racha').nextElementSibling?.textContent).toBe('1 semana')
   })
 
   it('con partidos no hay salida a reservar: ya reservó', () => {

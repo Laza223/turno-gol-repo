@@ -1,82 +1,71 @@
-import type { ReactNode } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
-
-/** La misma tarjeta con cajita de ícono que `SectionCard` en `ConfiguracionView`. */
-function Card({ children }: { children: ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-xs">
-      <Skeleton aria-hidden className="mb-3 size-10 rounded-xl" />
-      {children}
-    </div>
-  )
-}
-
-/** Título de bloque: la altura (28 px) de un `h2` de `PORTAL_SECTION_TITLE`. */
-const H2 = <Skeleton aria-hidden className="h-7 w-40" />
+import '@/components/booking/reserva.css'
+import '@/components/world/portal-app.css'
 
 /**
- * Esqueleto de Mi cuenta con el ritmo de la página entera: la banda hero y las seis tarjetas
- * (datos, favoritos, actividad, tema y sesión, datos personales, baja), cada una con las alturas
- * MEDIDAS del real. Cada tarjeta es `p-5` (resta 42 px al ancho útil), así que los `min-[Npx]` son
- * los anchos de VIEWPORT donde el texto real salta de línea (Chromium, paso de 1 px). La story `AlturaDelEsqueleto` lo compara con `ConfiguracionView` (dos favoritos,
- * con partidos): si cambia una tarjeta, se vuelve a medir.
+ * Esqueleto de Mi cuenta en vidrio, con el ritmo de la página entera: cabecera, "Quién sos",
+ * las tres tarjetas de actividad y los cinco paneles (datos, favoritos, tema, datos personales,
+ * baja), cada uno con las alturas MEDIDAS de `ConfiguracionView` (dos favoritos, con partidos).
+ * Los `min-[Npx]` son los anchos de VIEWPORT donde el texto real salta de línea (Chromium). La
+ * story `AlturaDelEsqueleto` lo compara con la vista real: si cambia un panel, se vuelve a medir.
  */
 export default function Loading() {
   return (
-    <div className="mx-auto max-w-lg space-y-5 px-4 py-6" role="status" aria-label="Cargando…">
-      <Skeleton
-        aria-hidden
-        className="h-[246px] w-full rounded-3xl min-[360px]:h-[226px] min-[380px]:h-[202px] min-[500px]:h-[207px] min-[580px]:h-[211px]"
-      />
-
-      <Card>
-        {H2}
-        <div className="mt-4 space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Skeleton aria-hidden className="h-[72px] w-full" />
-            <Skeleton aria-hidden className="h-[72px] w-full" />
+    <div className="portal-ambient min-h-[88vh]" role="status" aria-label="Cargando…">
+      <div className="pa-col rv-stack gap-3.5">
+        {/* Cabecera: eyebrow + título */}
+        <div aria-hidden className="grid gap-1.5">
+          <div className="flex h-[21px] items-center">
+            <Skeleton variant="glass" className="h-3.5 w-24 rounded-lg" />
           </div>
-          <Skeleton aria-hidden className="h-[72px] w-full" />
-          <Skeleton aria-hidden className="h-[72px] w-full" />
-          <Skeleton aria-hidden className="mt-2 h-11 w-full sm:w-40" />
+          <Skeleton
+            variant="glass"
+            className="h-[calc(clamp(30px,2.4vw+20px,44px)*1.05)] w-48 rounded-xl"
+          />
         </div>
-        <Skeleton aria-hidden className="mt-4 h-20 w-full min-[373px]:h-[60px] min-[512px]:h-10" />
-      </Card>
-
-      <Card>
-        {H2}
-        <Skeleton aria-hidden className="mt-2 h-[131px] w-full" />
-      </Card>
-
-      <Card>
-        {H2}
-        <Skeleton aria-hidden className="mt-2 h-[134px] w-full" />
-      </Card>
-
-      <Card>
-        {H2}
-        <Skeleton aria-hidden className="mt-3 h-[54px] w-full" />
-        <Skeleton aria-hidden className="mt-4 h-11 w-full sm:w-24" />
-      </Card>
-
-      <Card>
-        {H2}
+        {/* Quién sos */}
         <Skeleton
+          variant="glass"
           aria-hidden
-          className="mt-2 h-[72px] w-full min-[383px]:h-[60px] min-[427px]:h-12"
+          className="h-[154px] w-full rounded-[32px] min-[355px]:h-[134px] min-[370px]:h-[111px]"
         />
-        <Skeleton aria-hidden className="mt-4 mb-2 h-11 w-full sm:w-44" />
+        {/* Tu actividad */}
         <Skeleton
+          variant="glass"
           aria-hidden
-          className="mt-3 h-[72px] w-full min-[332px]:h-12 min-[383px]:h-10 min-[427px]:h-7 min-[360px]:w-64"
+          className="h-[332px] w-full rounded-3xl min-[330px]:h-[252px] min-[380px]:h-[231px] min-[480px]:h-[150px] min-[570px]:h-[130px]"
         />
-      </Card>
-
-      <Card>
-        {H2}
-        <Skeleton aria-hidden className="mt-2 h-12 w-full min-[477px]:h-6" />
-        <Skeleton aria-hidden className="mt-2 h-11 w-40" />
-      </Card>
+        {/* Tus datos */}
+        <Skeleton
+          variant="glass"
+          aria-hidden
+          className="h-[606px] w-full rounded-[28px] min-[370px]:h-[585px] min-[500px]:h-[565px] min-[640px]:max-[767px]:h-[371px] md:h-[387px]"
+        />
+        {/* Favoritos */}
+        <Skeleton
+          variant="glass"
+          aria-hidden
+          className="h-[240px] w-full rounded-[28px] md:h-[256px]"
+        />
+        {/* Tema */}
+        <Skeleton
+          variant="glass"
+          aria-hidden
+          className="h-[134px] w-full rounded-[28px] md:h-[150px]"
+        />
+        {/* Tus datos personales */}
+        <Skeleton
+          variant="glass"
+          aria-hidden
+          className="h-[290px] w-full rounded-[28px] min-[340px]:h-[266px] min-[380px]:h-[246px] min-[425px]:h-[223px] md:max-[799px]:h-[239px] min-[800px]:h-[216px]"
+        />
+        {/* Salir o darte de baja */}
+        <Skeleton
+          variant="glass"
+          aria-hidden
+          className="h-[229px] w-full rounded-[28px] min-[350px]:h-[177px] min-[425px]:h-[157px] md:h-[173px]"
+        />
+      </div>
     </div>
   )
 }

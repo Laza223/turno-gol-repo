@@ -86,6 +86,18 @@ describe('ProfileForm', () => {
     expect(data.get('last_name')).toBe('')
   })
 
+  it('al guardar el botón traza un tilde que se va a los 1,2 s; "Guardado" queda', async () => {
+    renderForm({ success: true })
+    const boton = screen.getByRole('button', { name: 'Guardar cambios' })
+    expect(boton.querySelector('.pa-tick')).toBeNull()
+    guardar()
+    await waitFor(() => expect(boton.querySelector('.pa-tick')).not.toBeNull())
+    await waitFor(() => expect(boton.querySelector('.pa-tick')).toBeNull(), { timeout: 2500 })
+    expect(screen.getByRole('status').textContent).toBe('Guardado')
+    // El tilde es decoración: el nombre del botón no cambia.
+    expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBe(boton)
+  })
+
   it('no dice "Guardado" mientras la action sigue pendiente', async () => {
     let release: (r: UpdateProfileResult) => void = () => {}
     const action = vi.fn(

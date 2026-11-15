@@ -1,24 +1,17 @@
 'use client'
 
-import { Suspense, useActionState, useEffect, useRef, useState } from 'react'
+import { Suspense, useActionState, useEffect, useRef, useState, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SubmitButton } from '@/components/ui/submit-button'
 import { GoogleIcon } from '@/components/icons/GoogleIcon'
 import { InAppBrowserNotice } from '@/components/world/InAppBrowserNotice'
+import { GLASS_INPUT, PORTAL_LINK } from '@/components/world/portal-auth-styles'
 import {
-  AUTH_ACCENT_STYLE,
-  AUTH_INPUT,
-  AUTH_TITLE,
-  PORTAL_BUTTON,
-  PORTAL_BUTTON_OUTLINE,
-} from '@/components/world/PortalAuthFrame'
-import {
-  MAIL_ERROR_CLASS,
   ResendLinkForm,
   callMailAction,
   errorOf,
@@ -66,8 +59,19 @@ const callLogin = (action: PlayerLoginAction, prev: LoginState, formData: FormDa
  * El padding vertical en un elemento EN LÍNEA no cambia el alto del renglón ni el layout, pero
  * agranda el área que recibe el toque a 44 px o más (también en cada fragmento si el link parte).
  */
-const exploreLinkClass =
-  'py-3.5 font-semibold text-emerald-700 underline underline-offset-4 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300'
+const exploreLinkClass = cn(PORTAL_LINK, 'rv-link py-4')
+
+/** El botón de Google y el email, en vidrio: el mismo criterio que el ingreso de `/reservar`. */
+const GOOGLE_BUTTON = {
+  variant: 'pill-glass',
+  size: 'pill',
+  className: 'w-full backdrop-filter-none',
+} as const
+const GHOST_BUTTON = {
+  variant: 'pill-link',
+  size: 'pill-sm',
+  className: 'disabled:opacity-100 disabled:text-portal-muted',
+} as const
 
 /**
  * Puerta del complejo: /ingresar es el login del JUGADOR, y desde el celu la barra no trae "Para
@@ -76,12 +80,11 @@ const exploreLinkClass =
  * llega). Links planos y no `IngresarLink`: el destino no es /ingresar. Cada uno mide 44 px.
  */
 function ComplejoLinks() {
-  const linkClass =
-    'inline-flex min-h-11 items-center font-semibold text-emerald-700 underline underline-offset-4 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300'
+  const linkClass = cn(PORTAL_LINK, 'rv-link inline-flex min-h-11 items-center')
   return (
-    <div className="mt-6 border-t border-border pt-4 text-sm text-muted-foreground">
+    <div className="pa-auth__alt glass rv-rise" style={{ '--i': 2 } as CSSProperties}>
       <p>¿Tenés un complejo?</p>
-      <div className="flex flex-wrap items-center gap-x-5">
+      <div className="flex flex-wrap items-center justify-center gap-x-5">
         <Link href="/login" className={linkClass}>
           Entrar a mi panel
         </Link>
@@ -133,12 +136,12 @@ function DeletedNotice() {
   return (
     <div
       role="status"
-      className="mb-6 flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm"
+      className="pa-auth__alt glass rv-rise flex items-start justify-start gap-3 text-left text-sm"
     >
-      <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-emerald-300" aria-hidden />
+      <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-portal-green" aria-hidden />
       <div>
-        <p className="font-semibold text-emerald-200">Tu cuenta fue eliminada</p>
-        <p className="mt-0.5 text-emerald-100/80">
+        <p className="font-semibold text-portal-ink">Tu cuenta fue eliminada</p>
+        <p className="mt-0.5 text-portal-muted">
           Lamentamos verte partir. Podés volver cuando quieras.
         </p>
       </div>
@@ -157,12 +160,8 @@ function GoogleForm({
   return (
     <form action={googleAction}>
       <input type="hidden" name="next" value={next} />
-      <SubmitButton
-        variant="outline"
-        className={PORTAL_BUTTON_OUTLINE}
-        pendingLabel="Abriendo Google…"
-      >
-        <GoogleIcon className="mr-2 size-5" />
+      <SubmitButton {...GOOGLE_BUTTON} pendingLabel="Abriendo Google…">
+        <GoogleIcon className="size-5" />
         Continuar con Google
       </SubmitButton>
     </form>
@@ -215,10 +214,10 @@ function FormCard({
   const error = errorOf(state)
 
   const emailForm = (
-    <form action={formAction} className="space-y-4" noValidate>
+    <form action={formAction} className="grid gap-3" noValidate>
       <input type="hidden" name="next" value={next} />
-      <div className="space-y-2">
-        <Label htmlFor="email" className="text-base">
+      <div className="grid gap-1.5">
+        <Label htmlFor="email" className="text-sm font-semibold text-portal-ink">
           Email
         </Label>
         <Input
@@ -234,53 +233,54 @@ function FormCard({
           defaultValue={state.status === 'idle' ? undefined : state.email}
           aria-invalid={state.status === 'error' ? 'true' : undefined}
           aria-describedby={error ? 'email-error email-help' : 'email-help'}
-          className={AUTH_INPUT}
+          className={GLASS_INPUT}
         />
         {error && (
-          <p id="email-error" role="alert" className={MAIL_ERROR_CLASS}>
+          <p id="email-error" role="alert" className="rv-err">
             {error}
           </p>
         )}
-        <p id="email-help" className="text-sm text-muted-foreground">
+        <p id="email-help" className="rv-small">
           Sin contraseña: te mandamos un enlace para entrar.
         </p>
       </div>
-      <SubmitButton className={PORTAL_BUTTON} pendingLabel="Enviando…">
+      <SubmitButton
+        variant="pill"
+        size="pill"
+        className="rv-go w-full disabled:opacity-100"
+        pendingLabel="Enviando…"
+      >
         Mandame el enlace
       </SubmitButton>
     </form>
   )
 
   const divider = (
-    <div aria-hidden className="flex items-center gap-3 text-sm text-muted-foreground">
-      <div className="h-px flex-1 bg-border" />o<div className="h-px flex-1 bg-border" />
+    <div aria-hidden className="rv-or">
+      o
     </div>
   )
 
   return (
     <>
-      <div>
-        <h1 className={AUTH_TITLE}>
-          {rival ? (
-            RIVAL_TITLE[rival].h1
-          ) : (
-            <>
-              Accedé a tu <span style={AUTH_ACCENT_STYLE}>cuenta</span>
-            </>
-          )}
-        </h1>
-        <p className="mt-2 text-pretty text-base text-muted-foreground">
+      <div className="rv-rise">
+        <h1 className="pa-auth__title">{rival ? RIVAL_TITLE[rival].h1 : 'Accedé a tu cuenta'}</h1>
+        <p className="pa-auth__lead">
           {rival
             ? RIVAL_TITLE[rival].sub
             : 'Entrá para ver tus reservas y reservar sin cargar tus datos cada vez.'}
         </p>
       </div>
-      <div className="mt-8 space-y-6">
+      <section
+        aria-label="Ingresar"
+        className="pa-auth__card glass rv-rise"
+        style={{ '--i': 1 } as CSSProperties}
+      >
         {inAppBrowser ? (
           <>
             {emailForm}
             {divider}
-            <InAppBrowserNotice />
+            <InAppBrowserNotice glass />
           </>
         ) : (
           <>
@@ -289,26 +289,26 @@ function FormCard({
             {emailForm}
           </>
         )}
-      </div>
-      {/* Acá y no en page.tsx: en el "enviado" ese lugar lo ocupa el bloque de primera vez. */}
-      <p className="mt-8 text-sm text-muted-foreground">
-        {rival ? (
-          <>
-            ¿Primera vez? Entrá con Google, o{' '}
-            <Link href="/rival/nuevo" className={exploreLinkClass}>
-              armá tu primer partido
-            </Link>{' '}
-            y la cuenta se crea sola.
-          </>
-        ) : (
-          <>
-            ¿Primera vez en TurnoGol?{' '}
-            <Link href="/explorar" className={exploreLinkClass}>
-              Descubrí complejos y reservá tu cancha
-            </Link>
-          </>
-        )}
-      </p>
+        {/* Acá y no en page.tsx: en el "enviado" ese lugar lo ocupa el bloque de primera vez. */}
+        <p className="rv-small mt-3">
+          {rival ? (
+            <>
+              ¿Primera vez? Entrá con Google, o{' '}
+              <Link href="/rival/nuevo" className={exploreLinkClass}>
+                armá tu primer partido
+              </Link>{' '}
+              y la cuenta se crea sola.
+            </>
+          ) : (
+            <>
+              ¿Primera vez en TurnoGol?{' '}
+              <Link href="/explorar" className={exploreLinkClass}>
+                Descubrí complejos y reservá tu cancha
+              </Link>
+            </>
+          )}
+        </p>
+      </section>
       <ComplejoLinks />
     </>
   )
@@ -340,56 +340,63 @@ function SentPanel({
   }, [])
 
   return (
-    <>
-      <h1 ref={heading} tabIndex={-1} className={cn(AUTH_TITLE, 'outline-hidden')}>
-        Revisá tu email
-      </h1>
-      {/* La action contesta "sent" aunque ese email no tenga cuenta (no revela quién tiene): el
-          texto no afirma que el mail salió. */}
-      <p className="mt-2 break-words text-base text-muted-foreground">
-        Si <strong className="font-semibold text-foreground">{email}</strong> tiene cuenta, te
-        enviamos un enlace para entrar.
-      </p>
-      <p className="mt-2 text-pretty text-sm text-muted-foreground">
-        ¿No llegó? Revisá la carpeta de correo no deseado o que el email esté bien escrito.
-      </p>
-      <div className="mt-8 space-y-3">
-        <ResendLinkForm
-          action={action}
-          fields={{ email, next }}
-          sentAt={sentAt}
-          scope="ingresar"
-          resentNotice="Listo: si ese email tiene cuenta, te llega otro enlace. Usá el del último correo."
-        />
-        <Button type="button" variant="ghost" className={PORTAL_BUTTON} onClick={onChangeEmail}>
-          Usar otro email
-        </Button>
-      </div>
-      {/* Para el que entra por primera vez: sin cuenta no hay mail, y acá se lo dice. El gap de
-          14 px deja aire entre el área de toque del link (padding vertical) y el botón de Google. */}
-      <div className="mt-10 space-y-3.5">
-        <p className="text-pretty text-sm text-muted-foreground">
-          {inAppBrowser ? (
-            <>
-              ¿Primera vez?{' '}
-              <Link href={rival ? '/rival/nuevo' : '/explorar'} className={exploreLinkClass}>
-                {rival ? 'Armá tu primer partido' : 'Reservá tu primer turno'}
-              </Link>{' '}
-              y la cuenta se crea sola.
-            </>
-          ) : (
-            <>
-              ¿Primera vez? Entrá con Google o{' '}
-              <Link href={rival ? '/rival/nuevo' : '/explorar'} className={exploreLinkClass}>
-                {rival ? 'armá tu primer partido' : 'reservá tu primer turno'}
-              </Link>
-              {rival ? ' y la cuenta se crea sola.' : ': la cuenta se crea sola.'}
-            </>
-          )}
+    <div className="rv-swap grid w-full justify-items-center gap-5">
+      <span className="rv-badge rv-tap mb-0">
+        <Mail aria-hidden />
+      </span>
+      <div>
+        <h1 ref={heading} tabIndex={-1} className="pa-auth__title outline-hidden">
+          Revisá tu email
+        </h1>
+        {/* La action contesta "sent" aunque ese email no tenga cuenta (no revela quién tiene): el
+            texto no afirma que el mail salió. */}
+        <p className="pa-auth__lead break-words">
+          Si <strong className="font-semibold text-portal-ink">{email}</strong> tiene cuenta, te
+          enviamos un enlace para entrar.
         </p>
-        {!inAppBrowser && <GoogleForm googleAction={googleAction} next={next} />}
       </div>
+      <section aria-label="Si no llegó" className="pa-auth__card glass">
+        <p className="rv-small">
+          ¿No llegó? Revisá la carpeta de correo no deseado o que el email esté bien escrito.
+        </p>
+        <div className="flex flex-wrap items-start gap-2">
+          <ResendLinkForm
+            action={action}
+            fields={{ email, next }}
+            sentAt={sentAt}
+            scope="ingresar"
+            button={GHOST_BUTTON}
+            resentNotice="Listo: si ese email tiene cuenta, te llega otro enlace. Usá el del último correo."
+          />
+          <Button type="button" {...GHOST_BUTTON} onClick={onChangeEmail}>
+            Usar otro email
+          </Button>
+        </div>
+        {/* Para el que entra por primera vez: sin cuenta no hay mail, y acá se lo dice. */}
+        <div className="grid gap-4 border-t border-portal-inner-line pt-3.5">
+          <p className="rv-small">
+            {inAppBrowser ? (
+              <>
+                ¿Primera vez?{' '}
+                <Link href={rival ? '/rival/nuevo' : '/explorar'} className={exploreLinkClass}>
+                  {rival ? 'Armá tu primer partido' : 'Reservá tu primer turno'}
+                </Link>{' '}
+                y la cuenta se crea sola.
+              </>
+            ) : (
+              <>
+                ¿Primera vez? Entrá con Google o{' '}
+                <Link href={rival ? '/rival/nuevo' : '/explorar'} className={exploreLinkClass}>
+                  {rival ? 'armá tu primer partido' : 'reservá tu primer turno'}
+                </Link>
+                {rival ? ' y la cuenta se crea sola.' : ': la cuenta se crea sola.'}
+              </>
+            )}
+          </p>
+          {!inAppBrowser && <GoogleForm googleAction={googleAction} next={next} />}
+        </div>
+      </section>
       <ComplejoLinks />
-    </>
+    </div>
   )
 }

@@ -67,8 +67,9 @@ const meta = {
     pageSize: 20,
   },
   decorators: [
+    // `data-portal-glass` prende los tokens del portal (en la app lo pone `PortalFrame`).
     (Story) => (
-      <div className="min-h-dvh bg-background">
+      <div data-portal-glass className="min-h-dvh text-portal-ink">
         <Story />
       </div>
     ),
@@ -775,14 +776,29 @@ export const AlturaDelEsqueleto: Story = {
   ),
   play: async ({ canvasElement }) => {
     const real = canvasElement.querySelectorAll('#real li')
-    const esqueleto = canvasElement.querySelectorAll('#esqueleto .rounded-2xl')
+    const esqueleto = canvasElement.querySelectorAll('#esqueleto [data-sk="card"]')
     // [0] es la próxima; [1] una compacta.
-    const alto = (el: Element | undefined) => el!.getBoundingClientRect().height
-    await expect(Math.abs(alto(esqueleto[0]) - alto(real[0]))).toBeLessThanOrEqual(8)
-    await expect(Math.abs(alto(esqueleto[1]) - alto(real[1]))).toBeLessThanOrEqual(8)
-    const hero = (root: string, sel: string) => alto(canvasElement.querySelector(`${root} ${sel}`)!)
+    const alto = (el: Element | null | undefined) => el!.getBoundingClientRect().height
+    const dif = (a: Element | null | undefined, b: Element | null | undefined) =>
+      Math.abs(alto(a) - alto(b))
     await expect(
-      Math.abs(hero('#esqueleto', '.rounded-3xl') - hero('#real', 'section.rounded-3xl')),
+      dif(esqueleto[0], real[0]),
+      `próxima ${alto(esqueleto[0])} vs ${alto(real[0])}`,
+    ).toBeLessThanOrEqual(8)
+    await expect(
+      dif(esqueleto[1], real[1]),
+      `compacta ${alto(esqueleto[1])} vs ${alto(real[1])}`,
+    ).toBeLessThanOrEqual(8)
+    const sk = (name: string) => canvasElement.querySelector(`#esqueleto [data-sk="${name}"]`)
+    const head = canvasElement.querySelector('#real header')
+    const seg = canvasElement.querySelector('#real nav')
+    await expect(
+      dif(sk('head'), head),
+      `cabecera ${alto(sk('head'))} vs ${alto(head)}`,
+    ).toBeLessThanOrEqual(8)
+    await expect(
+      dif(sk('seg'), seg),
+      `control ${alto(sk('seg'))} vs ${alto(seg)}`,
     ).toBeLessThanOrEqual(8)
   },
 }

@@ -6,7 +6,7 @@ import { DeleteAccountForm } from './DeleteAccountForm'
 
 /**
  * La Server Action entra por prop (ver el comentario en DeleteAccountForm.tsx).
- * ConfirmDialog (Radix) monta su contenido en un portal fuera de canvasElement:
+ * GlassConfirmSheet (Radix) monta su contenido en un portal fuera de canvasElement:
  * las assertions post-apertura usan `screen` (todo document.body), no `within`.
  */
 const meta = {
@@ -21,7 +21,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="bg-background p-4 text-foreground">
+      <div data-portal-glass className="portal-ambient p-4 text-portal-ink">
         <Story />
       </div>
     ),
@@ -111,7 +111,7 @@ const EMAIL_LARGO = 'maria.de.los.angeles.fernandez.de.kirchner@dominio-muy-larg
 
 /**
  * Un email de 60+ caracteres: el rótulo parte de renglón sin ensanchar el diálogo, y el contraste
- * MEDIDO (claro y oscuro) del rótulo, de la ayuda y del confirmar deshabilitado da AA.
+ * MEDIDO (claro y oscuro) del rótulo y de la ayuda da AA (el confirmar es un degradado: no se mide).
  */
 export const EmailLargoYContraste: Story = {
   args: {
@@ -130,7 +130,6 @@ export const EmailLargoYContraste: Story = {
     const medidos: Array<[string, HTMLElement]> = [
       ['rótulo', rotulo],
       ['ayuda', within(dialog).getByText(/se activa cuando escribís/)],
-      ['confirmar deshabilitado', confirmar],
     ]
     for (const [nombre, el] of medidos) {
       await expect(await paintedContrast(el), nombre).toBeGreaterThanOrEqual(4.5)

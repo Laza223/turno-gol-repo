@@ -1,0 +1,495 @@
+/* Mis reservas, Cuenta e Ingresar en vidrio (portal de vidrio F6: `mis-reservas.html`,
+   `cuenta.html`, `ingresar.html` y las secciones "Mis reservas" e "ingresar y cuenta" de
+   `glass-app.css`). Los títulos, la bajada, el panel, el separador "o", los avisos y las entradas
+   son los de F5 (`src/components/booking/reserva.css`: `.rv-h1`, `.rv-sub`, `.rv-panel`,
+   `.rv-rise`…): acá va solo lo que esas pantallas no tenían. Tokens `--portal-*` y `--glass-*` de
+   globals.css (solo existen con `data-portal-glass`). Solo se anima transform y opacity
+   (dirección §4.7). */
+
+@layer components {
+  /* ── Columna de 760 px (`.wrap--m`). */
+  .pa-col {
+    width: min(760px, calc(100% - 2 * 20px));
+    margin-inline: auto;
+    padding: 16px 0 48px;
+    color: var(--portal-ink);
+    font-family: var(--font-display);
+  }
+  @media (min-width: 768px) {
+    .pa-col {
+      width: min(760px, calc(100% - 2 * 24px));
+      padding-top: 40px;
+      padding-bottom: 96px;
+    }
+  }
+  .pa-eyebrow {
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--portal-slot-ink);
+  }
+
+  /* ── Control segmentado hecho de links (Próximos e Historial viven en la URL). La píldora es la
+     misma `.segmented-pill` del control de radios: un solo elemento que se traslada. */
+  .pa-seg {
+    position: relative;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 999px;
+  }
+  .pa-seg a {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    height: 44px;
+    padding: 0 16px;
+    border-radius: 999px;
+    color: var(--portal-ink);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color var(--dur-2) var(--portal-ease-out);
+  }
+  .pa-seg a[aria-current='page'] {
+    color: var(--portal-slot-ink);
+  }
+  .pa-seg a:focus-visible {
+    outline: 2px solid var(--portal-green);
+    outline-offset: 2px;
+  }
+
+  /* ── Etiqueta de estado (`.tag`). */
+  .pa-tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid var(--portal-slot-line);
+    background: var(--portal-slot-bg);
+    color: var(--portal-slot-ink);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .pa-tag--off {
+    border-color: var(--portal-inner-line);
+    background: var(--portal-inner);
+    color: var(--portal-soft);
+  }
+  .pa-tag--warn {
+    border-color: var(--portal-warn-line);
+    background: var(--portal-warn-bg);
+    color: var(--portal-warn);
+  }
+  .pa-tag--bad {
+    border-color: var(--portal-bad-line);
+    background: var(--portal-bad-bg);
+    color: var(--portal-bad);
+  }
+
+  /* ── Nota dentro de una tarjeta (`.note`). */
+  .pa-note {
+    display: grid;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--portal-inner-line);
+    background: var(--portal-inner);
+    font-size: 15px;
+    line-height: 1.45;
+    color: var(--portal-muted);
+  }
+  .pa-note--warn {
+    border-color: var(--portal-warn-line);
+    background: var(--portal-warn-bg);
+    color: var(--portal-ink);
+  }
+  .pa-note--warn b,
+  .pa-note--warn strong {
+    color: var(--portal-warn);
+  }
+  .pa-note--bad {
+    border-color: var(--portal-bad-line);
+    background: var(--portal-bad-bg);
+    color: var(--portal-ink);
+  }
+  .pa-note--bad b,
+  .pa-note--bad strong {
+    color: var(--portal-bad);
+  }
+
+  /* ── Lista de tarjetas y la tarjeta de una reserva (`.bk`). */
+  .pa-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 20px;
+  }
+  .pa-bk {
+    position: relative;
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 28px;
+  }
+  .pa-bk__top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+  }
+  .pa-bk__when {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--portal-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .pa-bk__main {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    align-items: center;
+    gap: 14px;
+  }
+  .pa-bk__pic {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    border: 1px solid var(--portal-inner-line);
+    background: var(--portal-inner);
+    color: var(--portal-ink);
+    font-size: 22px;
+    font-weight: 700;
+    object-fit: cover;
+  }
+  .pa-bk__name {
+    display: block;
+    font-size: 19px;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    overflow-wrap: anywhere;
+  }
+  .pa-bk__meta {
+    font-size: 14px;
+    color: var(--portal-soft);
+    overflow-wrap: anywhere;
+  }
+  .pa-bk__pay {
+    font-size: 15px;
+    color: var(--portal-muted);
+  }
+  /* Las pasadas: sin relleno, solo el borde (`.bk.is-past`). */
+  .pa-bk--past {
+    background: transparent;
+    box-shadow: none;
+    border: 1px solid var(--portal-inner-line);
+  }
+  .pa-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+  .pa-links > .pa-push {
+    margin-left: auto;
+  }
+
+  /* ── Opciones de una sola elección dentro de una hoja (`.opt`). */
+  .pa-opt {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 56px;
+    padding: 0 8px;
+    border-bottom: 1px solid var(--portal-inner-line);
+    color: var(--portal-ink);
+    font-size: 16px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .pa-opt[aria-checked='true'],
+  .pa-opt:has(input:checked) {
+    color: var(--portal-slot-ink);
+    font-weight: 600;
+  }
+  .pa-opt:focus-visible,
+  .pa-opt:has(input:focus-visible) {
+    outline: 2px solid var(--portal-green);
+    outline-offset: -2px;
+    border-radius: 14px;
+  }
+
+  /* ── Cuenta: quién sos, actividad, favoritos. */
+  .pa-me {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    align-items: center;
+    gap: 16px;
+    padding: 18px;
+    border-radius: 32px;
+  }
+  .pa-me__name {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    overflow-wrap: anywhere;
+  }
+  .pa-me__mail {
+    font-size: 15px;
+    color: var(--portal-soft);
+    overflow-wrap: anywhere;
+  }
+  .pa-avatar {
+    display: grid;
+    place-items: center;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--portal-on-green);
+    background: linear-gradient(180deg, var(--portal-btn-a), var(--portal-btn-b));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.45),
+      0 0 0 6px rgb(var(--portal-glow) / 0.14);
+  }
+  .pa-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+  }
+  .pa-stat {
+    display: grid;
+    gap: 2px;
+    padding: 16px 18px;
+    border-radius: 24px;
+  }
+  .pa-stat dd {
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .pa-stat dt {
+    order: 2;
+    font-size: 14px;
+    color: var(--portal-soft);
+  }
+  .pa-form {
+    display: grid;
+    gap: 14px;
+  }
+  @media (min-width: 640px) {
+    .pa-form {
+      grid-template-columns: 1fr 1fr;
+    }
+    .pa-form .pa-span2 {
+      grid-column: 1 / -1;
+    }
+  }
+  .pa-fld {
+    display: grid;
+    gap: 6px;
+  }
+  .pa-fld > label {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .pa-rowl {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+  }
+  .pa-rowl + .pa-rowl {
+    border-top: 1px solid var(--portal-inner-line);
+  }
+  .pa-rowl__name {
+    display: block;
+    font-size: 17px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+  .pa-rowl__meta {
+    font-size: 14px;
+    color: var(--portal-soft);
+  }
+
+  /* "Guardar cambios" confirma trazando un tilde adentro del botón (dirección §4.5). */
+  .pa-tick path {
+    stroke-dasharray: 24;
+    stroke-dashoffset: 0;
+    animation: pa-trazo var(--dur-3) var(--portal-ease-out) both;
+  }
+  @keyframes pa-trazo {
+    from {
+      stroke-dashoffset: 24;
+    }
+  }
+
+  /* Insignia ámbar del enlace vencido (`.badge--warn`): va junto a `.rv-badge` de F5. */
+  .rv-badge.pa-badge--warn {
+    color: #3b2503;
+    background: linear-gradient(180deg, #fde68a, #f59e0b);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.5),
+      0 0 0 10px rgb(245 158 11 / 0.14),
+      0 24px 50px -14px rgb(245 158 11 / 0.55);
+  }
+  .rv-badge.pa-badge--warn::before {
+    content: none;
+  }
+
+  /* ── Ingresar: la foto del hero detrás y la tarjeta centrada (`.auth`). */
+  .pa-auth {
+    position: relative;
+    isolation: isolate;
+    min-height: 100svh;
+    overflow: clip;
+    color: var(--portal-ink);
+    font-family: var(--font-display);
+  }
+  .pa-auth .hero-bg__img {
+    top: 30svh;
+    height: 76svh;
+  }
+  .pa-auth__col {
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 20px;
+    min-height: 100svh;
+    padding: calc(88px + env(safe-area-inset-top)) 20px calc(112px + env(safe-area-inset-bottom));
+    text-align: center;
+  }
+  @media (min-width: 768px) {
+    .pa-auth .hero-bg__img {
+      top: 15svh;
+      height: 96svh;
+    }
+    .pa-auth__col {
+      padding: 132px 24px 72px;
+    }
+  }
+  .pa-auth__title {
+    font-size: clamp(34px, 9.6vw, 52px);
+    font-weight: 700;
+    line-height: 1.02;
+    font-stretch: 104%;
+    letter-spacing: -0.04em;
+    text-wrap: balance;
+  }
+  .pa-auth__lead {
+    max-width: 36ch;
+    margin: 8px auto 0;
+    font-size: 16px;
+    line-height: 1.45;
+    color: var(--portal-muted);
+    text-wrap: pretty;
+  }
+  .pa-auth__card {
+    display: grid;
+    gap: 14px;
+    width: min(100%, 440px);
+    padding: 22px;
+    border-radius: 32px;
+    text-align: left;
+  }
+  .pa-auth__alt {
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    width: min(100%, 440px);
+    padding: 16px;
+    border-radius: 28px;
+    font-size: 15px;
+  }
+
+  /* Sobre la foto, el relleno de la ventana (como el buscador de la home y la cabecera de la
+     ficha): con el del vidrio común la foto se transparentaba y los links quedaban en 3,8:1. */
+  .pa-auth__card.glass,
+  .pa-auth__alt.glass {
+    background: linear-gradient(180deg, var(--portal-win-a), var(--portal-win-b));
+  }
+
+  /* Los links sobre la foto van en el verde de "lugar" (`--portal-slot-ink`): con el verde de
+     acción, en claro, la foto que se cuela por el vidrio los dejaba en 4,1:1 medido sobre el píxel. */
+  .pa-auth .rv-link {
+    color: var(--portal-slot-ink);
+  }
+
+  /* Casilla de aceptar (`.checkrow`) sobre el checkbox nativo. */
+  .pa-checkrow {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    align-items: start;
+    gap: 12px;
+    min-height: 44px;
+    padding: 10px 0;
+    font-size: 16px;
+    line-height: 1.4;
+    cursor: pointer;
+  }
+  .pa-checkrow input {
+    appearance: none;
+    width: 28px;
+    height: 28px;
+    margin: 0;
+    border-radius: 9px;
+    border: 1.5px solid var(--portal-soft);
+    background: var(--portal-inner);
+    cursor: pointer;
+  }
+  .pa-checkrow input:focus-visible {
+    outline: 2px solid var(--portal-green);
+    outline-offset: 2px;
+  }
+  .pa-checkrow input:checked {
+    border-color: transparent;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E"),
+      linear-gradient(180deg, var(--portal-btn-a), var(--portal-btn-b));
+    background-size: 18px, auto;
+    background-repeat: no-repeat;
+    background-position: center;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45);
+  }
+  html.dark .pa-checkrow input:checked {
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23022c22' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6 9 17l-5-5'/%3E%3C/svg%3E"),
+      linear-gradient(180deg, var(--portal-btn-a), var(--portal-btn-b));
+  }
+
+  /* Entrada de Ingresar: la foto se asienta (la misma de la home, sin el reflejo). */
+  .pa-auth .hero-bg__img {
+    animation: pa-asentar 1400ms var(--portal-ease-out) both;
+  }
+  @keyframes pa-asentar {
+    from {
+      transform: scale(1.06);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pa-auth .hero-bg__img,
+  .pa-tick path {
+    animation: none !important;
+  }
+}

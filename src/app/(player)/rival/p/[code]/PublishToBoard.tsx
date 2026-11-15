@@ -12,7 +12,7 @@ import {
 import { unstable_rethrow } from 'next/navigation'
 import { Megaphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
+import { PORTAL_BUTTON } from '@/components/world/portal-auth-styles'
 import { cn } from '@/lib/utils'
 import { RIVAL_OFFLINE_MESSAGE } from '@/modules/rival/rival-copy'
 import type { ActionResult } from '@/shared/types/action-result'

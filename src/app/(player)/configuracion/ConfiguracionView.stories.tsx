@@ -42,7 +42,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="min-h-dvh bg-background text-foreground">
+      <div data-portal-glass className="portal-ambient min-h-dvh text-portal-ink">
         <Story />
       </div>
     ),
@@ -60,12 +60,12 @@ export const Completa: Story = {
     const titulos = canvas.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
     await expect(titulos).toEqual([
       'Quién sos',
+      'Tu actividad',
       'Tus datos',
       'Favoritos',
-      'Tu actividad',
-      'Tema y sesión',
+      'Tema',
       'Tus datos personales',
-      'Darte de baja',
+      'Salir o darte de baja',
     ])
     // Los bloques a los que redirige /perfil existen.
     for (const id of ['tus-datos', 'favoritos', 'actividad']) {
@@ -82,7 +82,7 @@ export const Completa: Story = {
   },
 }
 
-/** RIVAL prendido y storage configurado: aparece la tarjeta de la foto, entre Tus datos y Favoritos. */
+/** RIVAL prendido y storage configurado: aparece el panel de la foto, entre Tus datos y Favoritos. */
 export const ConPerfilRival: Story = {
   args: {
     rivalPhoto: {
@@ -94,7 +94,12 @@ export const ConPerfilRival: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const titulos = canvas.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
-    await expect(titulos.slice(0, 3)).toEqual(['Quién sos', 'Tus datos', 'Tu perfil en RIVAL'])
+    await expect(titulos.slice(0, 4)).toEqual([
+      'Quién sos',
+      'Tu actividad',
+      'Tus datos',
+      'Tu perfil en RIVAL',
+    ])
     await expect(canvas.getByRole('button', { name: 'Cambiar foto' })).toBeInTheDocument()
     await expect(canvas.getByText(/Podés quitarla cuando quieras/)).toBeInTheDocument()
     const ratio = await paintedContrast(canvas.getByText(/Podés quitarla cuando quieras/))
@@ -189,7 +194,10 @@ export const ErrorDeExport: Story = {
   },
 }
 
-/** Contraste MEDIDO (lo que se pinta) de los textos de la página. Corre en claro y en oscuro. */
+/**
+ * Contraste MEDIDO (lo que se pinta) de los textos de la página. Corre en claro y en oscuro. Los
+ * botones de degradé (`pill`, "Guardar cambios") no entran: `paintedContrast` no lee un degradado.
+ */
 export const ContrasteMedido: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -205,7 +213,6 @@ export const ContrasteMedido: Story = {
       ['descargar', canvas.getByRole('button', { name: 'Descargar mis datos' })],
       ['ley', canvas.getByText(/Es tu derecho de acceso/)],
       ['eliminar', canvas.getByRole('link', { name: 'Eliminar la cuenta' })],
-      ['guardar', canvas.getByRole('button', { name: 'Guardar cambios' })],
     ]
     for (const [nombre, el] of medidos) {
       const ratio = await paintedContrast(el)

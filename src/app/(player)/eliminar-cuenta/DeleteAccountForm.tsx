@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Button } from '@/components/ui/button'
+import { GlassConfirmSheet } from '@/components/world/GlassConfirmSheet'
 import type { DeleteAccountResult } from './actions'
 
 /** Firma de la Server Action que ejecuta la baja. */
@@ -28,15 +29,17 @@ export function DeleteAccountForm({
   return (
     <>
       {/* El único botón rojo de la pantalla. */}
-      <button
+      <Button
         type="button"
+        variant="pill-danger"
+        size="pill"
         onClick={() => setOpen(true)}
-        className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-red-600 px-4 text-sm font-semibold text-white shadow-md shadow-red-600/25 transition-[background-color,scale] hover:bg-red-700 active:scale-[0.98] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="w-full"
       >
         Eliminar mi cuenta
-      </button>
+      </Button>
 
-      <ConfirmDialog
+      <GlassConfirmSheet
         open={open}
         onOpenChange={setOpen}
         title="¿Eliminar tu cuenta TurnoGol?"

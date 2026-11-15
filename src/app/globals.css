@@ -722,7 +722,7 @@ html:has([data-fixed-cta]) {
    Puente visual con el home. Light = gradiente crema + tinte/glow emerald +
    elevación suave (sin translucidez). Dark = gradiente slate-950 + sombra honda.
    Inline-style no responde a `.dark`; por eso vive en CSS. La espejan
-   PlayerHeroBand y la banda inline de /mis-reservas. */
+   PlayerHeroBand (Rival). */
 .player-hero-band {
   background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 62%);
   border-color: rgba(16, 185, 129, 0.18);
@@ -764,14 +764,6 @@ html:has([data-fixed-cta]) {
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-}
-
-/* Avatar fallback (iniciales) de la banda de perfil. */
-.hero-avatar-fallback {
-  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.22), rgba(255, 255, 255, 0.5));
-}
-.dark .hero-avatar-fallback {
-  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.28), rgba(2, 6, 23, 0.4));
 }
 
 /* Campos del grupo del jugador (Mi cuenta, Eliminar cuenta, diálogos de Mis reservas): el

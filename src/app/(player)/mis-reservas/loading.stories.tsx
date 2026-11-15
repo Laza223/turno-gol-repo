@@ -7,7 +7,7 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <div className="min-h-dvh bg-background text-foreground">
+      <div data-portal-glass className="min-h-dvh text-portal-ink">
         <Story />
       </div>
     ),
@@ -17,5 +17,5 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Título, pestañas y tres tarjetas (la primera, la próxima, más alta), en la columna de la lista. */
+/** Cabecera, control de pestañas y tres tarjetas de vidrio (la primera, la próxima, más alta), en la columna de la lista. */
 export const Default: Story = {}

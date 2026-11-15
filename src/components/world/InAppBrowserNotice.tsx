@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { Copy, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { PORTAL_BUTTON_OUTLINE } from '@/components/world/PortalAuthFrame'
+import { PORTAL_BUTTON_OUTLINE } from '@/components/world/portal-auth-styles'
+import { cn } from '@/lib/utils'
 
 /**
  * Va en lugar de "Continuar con Google" en el navegador interno de una app (Instagram,
@@ -12,8 +13,10 @@ import { PORTAL_BUTTON_OUTLINE } from '@/components/world/PortalAuthFrame'
  * abrir la página en el navegador con el menú de la app, o copiar el enlace y pegarlo. Se copia la
  * URL de ese momento, con el turno elegido y el `next`. El email, que sí anda, va arriba.
  * Lo usan /ingresar y el ingreso de /reservar: otra variante del ingreso tiene que reusarlo.
+ * `glass`: la piel del portal de vidrio (tokens `portal-*`, que solo existen bajo `data-portal-glass`);
+ * sin eso queda la de La Previa.
  */
-export function InAppBrowserNotice() {
+export function InAppBrowserNotice({ glass = false }: { glass?: boolean }) {
   const [copy, setCopy] = useState<'idle' | 'copied' | 'failed'>('idle')
 
   async function copyLink() {
@@ -27,22 +30,46 @@ export function InAppBrowserNotice() {
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-border bg-muted p-4">
+    <div
+      className={cn(
+        'space-y-3 border p-4',
+        glass
+          ? 'rounded-[20px] border-portal-inner-line bg-portal-inner'
+          : 'rounded-xl border-border bg-muted',
+      )}
+    >
       <div className="space-y-1">
-        <p className="text-base font-semibold text-foreground">¿Querés entrar con Google?</p>
-        <p className="text-pretty text-sm text-muted-foreground">
+        <p className={cn('text-base font-semibold', glass ? 'text-portal-ink' : 'text-foreground')}>
+          ¿Querés entrar con Google?
+        </p>
+        <p
+          className={cn(
+            'text-pretty text-sm',
+            glass ? 'text-portal-muted' : 'text-muted-foreground',
+          )}
+        >
           No funciona dentro de esta app. Tocá{' '}
           <MoreHorizontal className="inline size-4 align-[-0.2em]" aria-hidden />
           <span className="sr-only">los tres puntos</span> arriba a la derecha y elegí abrir en el
           navegador. O copiá el enlace y pegalo en Chrome o Safari.
         </p>
       </div>
-      <Button type="button" variant="outline" className={PORTAL_BUTTON_OUTLINE} onClick={copyLink}>
-        <Copy className="mr-2 size-4" aria-hidden />
+      <Button
+        type="button"
+        {...(glass
+          ? ({
+              variant: 'pill-glass',
+              size: 'pill',
+              className: 'w-full backdrop-filter-none',
+            } as const)
+          : ({ variant: 'outline', className: PORTAL_BUTTON_OUTLINE } as const))}
+        onClick={copyLink}
+      >
+        <Copy className={glass ? 'size-4' : 'mr-2 size-4'} aria-hidden />
         Copiar enlace
       </Button>
       {copy !== 'idle' && (
-        <p role="status" className="text-sm text-muted-foreground">
+        <p role="status" className={glass ? 'rv-small' : 'text-sm text-muted-foreground'}>
           {copy === 'copied'
             ? 'Enlace copiado. Pegalo en Chrome o Safari.'
             : 'No se pudo copiar. Usá los tres puntos de arriba a la derecha.'}

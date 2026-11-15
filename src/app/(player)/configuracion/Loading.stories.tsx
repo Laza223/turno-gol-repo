@@ -11,7 +11,7 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <div className="min-h-dvh bg-background">
+      <div data-portal-glass className="portal-ambient min-h-dvh text-portal-ink">
         <Story />
       </div>
     ),
@@ -67,13 +67,14 @@ export const AlturaDelEsqueleto: Story = {
     const esqueleto = canvasElement.querySelector('[data-t="esqueleto"]')!
     const real = canvasElement.querySelector('[data-t="real"]')!
     const tops = (root: Element) =>
-      [...root.querySelectorAll(':scope > div > div.rounded-2xl')].map(
+      [...root.querySelectorAll(':scope .pa-col > *')].map(
         (b) => b.getBoundingClientRect().top - root.getBoundingClientRect().top,
       )
     const a = tops(esqueleto)
     const b = tops(real)
-    await expect(a).toHaveLength(6)
-    await expect(b).toHaveLength(6)
+    // Cabecera, Quién sos, actividad y los cinco paneles.
+    await expect(a).toHaveLength(8)
+    await expect(b).toHaveLength(8)
     for (let i = 0; i < a.length; i++) {
       await expect(Math.abs(a[i]! - b[i]!), `bloque ${i + 1}`).toBeLessThanOrEqual(8)
     }

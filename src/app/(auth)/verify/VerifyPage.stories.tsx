@@ -23,14 +23,14 @@ import { VerifyView } from './VerifyView'
 const meta = {
   title: 'Auth/VerifyPage',
   component: VerifyView,
-  args: { googleAction: fn(async () => {}) },
+  args: { googleAction: fn(async () => {}), signOutAction: fn(async () => {}) },
   parameters: { layout: 'fullscreen' },
 } satisfies Meta<typeof VerifyView>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-// Solo los estados del jugador montan el marco de La Previa; los del staff siguen con su marco oscuro.
+// Solo los estados del jugador montan el marco del portal de vidrio; los del staff siguen con su marco oscuro.
 const inAuthFrame = (root: HTMLElement) => root.querySelector('[data-auth-frame]') !== null
 
 export const Cargando: Story = {

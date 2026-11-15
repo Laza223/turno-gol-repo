@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { buttonVariants } from '@/components/ui/button'
-import { PORTAL_BUTTON_OUTLINE, PORTAL_TITLE } from '@/components/world/PortalAuthFrame'
+import { PORTAL_BUTTON_OUTLINE, PORTAL_TITLE } from '@/components/world/portal-auth-styles'
 import { PortalWorld } from '@/components/world/PortalWorld'
 import { cn } from '@/lib/utils'
 

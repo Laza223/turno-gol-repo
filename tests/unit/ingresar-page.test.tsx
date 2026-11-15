@@ -8,6 +8,17 @@ import { cleanup, render, screen } from '@testing-library/react'
 const mocks = vi.hoisted(() => ({ userAgent: '' }))
 
 vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn() }))
+// La foto del hero (next/image con import estático) no se resuelve en happy-dom.
+vi.mock('@/components/world/HeroBackdrop', () => ({
+  HeroBackdrop: () => <div data-hero-backdrop />,
+}))
+// El cromo del portal (cabecera, barra de abajo, sesión) tiene sus propios tests: acá no importa.
+vi.mock('@/components/site/PortalHeader', () => ({ default: () => <header data-portal-header /> }))
+vi.mock('@/components/site/PlayerBottomNav', () => ({ PlayerBottomNav: () => null }))
+vi.mock('@/components/site/PortalSessionProvider', () => ({
+  PortalSessionProvider: ({ children }: { children: React.ReactNode }) => children,
+}))
+vi.mock('@/modules/auth/sign-out.action', () => ({ signOutAction: vi.fn() }))
 
 const searchStr = vi.fn(() => '')
 vi.mock('next/navigation', () => ({
@@ -44,19 +55,25 @@ describe('IngresarPage — acceso jugador', () => {
     expect(screen.getByRole('button', { name: /mandame el enlace/i })).toBeTruthy()
   })
 
-  it('monta el look de La Previa: marco oscuro y título en Archivo negra itálica', async () => {
+  it('monta el portal de vidrio: marcador, tema propio, foto del hero y tarjeta de vidrio', async () => {
     const { container } = await renderPage()
     const frame = container.querySelector('[data-auth-frame]')
-    expect(frame?.classList.contains('dark')).toBe(true)
-    expect(container.querySelector('[data-world]')).toBeNull()
+    expect(frame?.hasAttribute('data-portal-glass')).toBe(true)
+    // Sigue el tema (claro u oscuro): ya no fuerza `dark` ni pinta el fondo a mano.
+    expect(frame?.classList.contains('dark')).toBe(false)
+    expect(frame?.getAttribute('style')).toBeNull()
+    expect(container.querySelector('[data-hero-backdrop]')).not.toBeNull()
+    // Sin el panel lateral con la foto de Unsplash.
+    expect(container.querySelector('[style*="unsplash"]')).toBeNull()
+    expect(screen.queryByText(/te está esperando/)).toBeNull()
+    expect(container.querySelector('.pa-auth__card.glass')).not.toBeNull()
     const title = screen.getByRole('heading', { level: 1, name: 'Accedé a tu cuenta' })
-    expect(title.className).toMatch(/\bfont-black\b/)
-    expect(title.className).toMatch(/\bitalic\b/)
-    // 48 px y 16 px en el celular aunque el fondo sea de vidrio; el borde sigue siendo `border-input`
-    // (3:1) del primitivo: la receta vieja de `border-white/10` no pasaba AA.
+    expect(title.className).toMatch(/\bpa-auth__title\b/)
+    // 52 px (`h-13`) y 16 px en el celular: GLASS_INPUT, con borde de campo (3:1).
     const email = screen.getByLabelText(/email/i)
-    expect(email.className).toMatch(/\bh-12\b/)
+    expect(email.className).toMatch(/\bh-13\b/)
     expect(email.className).toMatch(/\btext-base\b/)
+    expect(email.className).toMatch(/\bmd:text-base\b/)
     expect(email.className).not.toMatch(/border-white|ring-emerald-500/)
   })
 

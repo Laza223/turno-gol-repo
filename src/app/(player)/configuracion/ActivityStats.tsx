@@ -1,6 +1,7 @@
 import Link from 'next/link'
+import '@/components/booking/reserva.css'
+import '@/components/world/portal-app.css'
 import { buttonVariants } from '@/components/ui/button'
-import { PORTAL_SECTION_TITLE } from '@/components/world/PortalAuthFrame'
 import { cn } from '@/lib/utils'
 
 /**
@@ -18,35 +19,37 @@ export default function ActivityStats({
   streakWeeks: number
 }) {
   const rows = [
-    { label: 'Partidos jugados', value: String(played) },
-    { label: 'Complejos visitados', value: String(venues) },
-    { label: 'Racha', value: `${streakWeeks} ${streakWeeks === 1 ? 'semana' : 'semanas'}` },
+    { label: 'Partidos jugados', value: String(played), unit: '' },
+    { label: 'Complejos visitados', value: String(venues), unit: '' },
+    {
+      label: 'Racha',
+      value: String(streakWeeks),
+      unit: streakWeeks === 1 ? ' semana' : ' semanas',
+    },
   ]
 
   return (
-    <section id="actividad" aria-labelledby="actividad-titulo" className="scroll-mt-20">
-      <h2 id="actividad-titulo" className={PORTAL_SECTION_TITLE}>
+    <section id="actividad" aria-labelledby="actividad-titulo" className="scroll-mt-20 grid gap-3">
+      <h2 id="actividad-titulo" className="rv-h2">
         Tu actividad
       </h2>
-      <dl className="mt-2 divide-y divide-border border-y border-border">
-        {rows.map(({ label, value }) => (
-          <div key={label} className="flex min-h-11 items-center justify-between gap-4 py-2">
-            <dt className="text-base text-muted-foreground">{label}</dt>
-            <dd className="text-base font-semibold tabular-nums text-foreground">{value}</dd>
+      <dl className="pa-stats">
+        {rows.map(({ label, value, unit }) => (
+          <div key={label} className="pa-stat glass-painted">
+            <dt>{label}</dt>
+            <dd>
+              {value}
+              {unit && <span className="text-base font-semibold text-portal-soft">{unit}</span>}
+            </dd>
           </div>
         ))}
       </dl>
       {played === 0 && (
-        <div className="mt-3">
-          <p className="text-base text-muted-foreground">
-            Cuando juegues tu primer partido, lo vas a ver acá.
-          </p>
+        <div className="grid justify-items-start gap-3">
+          <p className="rv-sub mt-0">Cuando juegues tu primer partido, lo vas a ver acá.</p>
           <Link
             href="/explorar"
-            className={cn(
-              buttonVariants({ variant: 'outline' }),
-              'mt-4 h-auto min-h-11 md:h-auto shadow-none hover:translate-y-0 hover:shadow-none active:scale-100 focus-visible:ring-offset-background',
-            )}
+            className={cn(buttonVariants({ variant: 'pill-link', size: 'pill-sm' }))}
           >
             Reservar una cancha
           </Link>

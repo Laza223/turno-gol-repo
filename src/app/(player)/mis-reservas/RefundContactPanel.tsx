@@ -1,7 +1,9 @@
 'use client'
 
 import { MessageCircle, Phone, Mail } from 'lucide-react'
+import { buttonVariants } from '@/components/ui/button'
 import { formatArs } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { resolveTenantContact } from '@/lib/tenant-contact'
 import type { RefundContactInfo } from './actions'
 
@@ -70,41 +72,37 @@ export function RefundContactPanel({ refund }: { refund: RefundContactInfo }) {
     message,
   )
 
-  const linkClass =
-    'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring'
-
-  // Los tres canales son del mismo peso y planos: borde de control (`input`) sobre `card`, así se
-  // despegan del aviso `muted` donde viven. El verde sólido es del CTA de la pantalla.
-  const outlineClass = `${linkClass} border border-input bg-card text-foreground hover:bg-accent`
+  // Los tres canales son del mismo peso: píldoras interiores de 44 px.
+  const outlineClass = cn(buttonVariants({ variant: 'pill-link', size: 'pill-sm' }), 'min-h-11')
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-portal-muted">
         {settled ? (
           refund.settledMethod === 'mercadopago' ? (
             <>
               MercadoPago ya procesó la devolución de{' '}
-              <strong className="text-foreground">{formatArs(refund.amountCents)}</strong>. Puede
+              <strong className="text-portal-ink">{formatArs(refund.amountCents)}</strong>. Puede
               tardar unos días hábiles en aparecer en tu cuenta.
             </>
           ) : (
             <>
-              <strong className="text-foreground">{refund.tenantName}</strong> marcó que te devolvió{' '}
-              <strong className="text-foreground">{formatArs(refund.amountCents)}</strong>
+              <strong className="text-portal-ink">{refund.tenantName}</strong> marcó que te devolvió{' '}
+              <strong className="text-portal-ink">{formatArs(refund.amountCents)}</strong>
               {refund.settledMethod ? ` ${METHOD_LABEL[refund.settledMethod]}` : ''}
               {settledOnLabel(refund.settledAt)}. Si no te llegó, escribiles.
             </>
           )
         ) : (
           <>
-            <strong className="text-foreground">{refund.tenantName}</strong> te tiene que devolver{' '}
-            <strong className="text-foreground">{formatArs(refund.amountCents)}</strong>. Escribiles
+            <strong className="text-portal-ink">{refund.tenantName}</strong> te tiene que devolver{' '}
+            <strong className="text-portal-ink">{formatArs(refund.amountCents)}</strong>. Escribiles
             para coordinar cómo.
           </>
         )}
       </p>
 
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-portal-muted">
         Código de tu reserva: <span className="font-mono font-semibold">{refund.bookingCode}</span>
       </p>
 
@@ -119,19 +117,19 @@ export function RefundContactPanel({ refund }: { refund: RefundContactInfo }) {
             rel="noopener noreferrer"
             className={outlineClass}
           >
-            <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
+            <MessageCircle aria-hidden />
             Escribir por WhatsApp
           </a>
         )}
         {contact.telHref && (
           <a href={contact.telHref} className={outlineClass}>
-            <Phone className="h-4 w-4 shrink-0" aria-hidden />
+            <Phone aria-hidden />
             {contact.phoneLabel}
           </a>
         )}
         {contact.mailto && (
           <a href={contact.mailto} className={outlineClass}>
-            <Mail className="h-4 w-4 shrink-0" aria-hidden />
+            <Mail aria-hidden />
             Email
           </a>
         )}

@@ -1,3 +1,4 @@
+import '@/components/world/portal-app.css'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, within } from 'storybook/test'
 import { RefundContactPanel } from './RefundContactPanel'
@@ -13,6 +14,16 @@ const meta = {
   title: 'Player/MisReservas/RefundContactPanel',
   component: RefundContactPanel,
   parameters: { layout: 'padded' },
+  decorators: [
+    // El panel vive en la nota de la tarjeta y en la hoja "Reserva cancelada" (tokens del portal).
+    (Story) => (
+      <div data-portal-glass className="portal-ambient p-4 text-portal-ink">
+        <div className="pa-note">
+          <Story />
+        </div>
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof RefundContactPanel>
 
 export default meta

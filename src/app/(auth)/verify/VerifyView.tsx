@@ -1,9 +1,11 @@
+import type { CSSProperties } from 'react'
 import Link from 'next/link'
-import { AlertCircle, CheckCircle2, Info } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Clock, Info } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import { SubmitButton } from '@/components/ui/submit-button'
 import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
-import { AUTH_TITLE, PORTAL_BUTTON, PortalAuthFrame } from '@/components/world/PortalAuthFrame'
+import { PortalAuthFrame } from '@/components/world/PortalAuthFrame'
+import { PORTAL_LINK } from '@/components/world/portal-auth-styles'
 import {
   isRivalReturnPath,
   parseIntent,
@@ -12,7 +14,6 @@ import {
   type SuccessIntent,
 } from '@/lib/auth-success'
 import { sanitizeNext } from '@/lib/safe-redirect'
-import { TONE_TEXT } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
 import { SiteHeaderShell } from '@/components/site/SiteHeaderShell'
 import SuccessRedirect from '@/app/(auth)/verify/SuccessRedirect'
@@ -33,6 +34,8 @@ type ErrorCopy = {
   google?: true
   /** No es una falla sino una decisión del jugador: ícono neutro en vez del rojo de los errores. */
   neutral?: true
+  /** El enlace venció: no es un error del jugador ni nuestro. Insignia ámbar con el reloj (`ingresar.html`). */
+  expired?: true
 }
 
 /** Botón principal cuando el error es del staff: el reintento es el login del panel. */
@@ -56,6 +59,7 @@ const ERROR_COPY: Record<string, ErrorCopy> = {
     title: 'Este enlace venció',
     message: 'Los enlaces de acceso sirven una sola vez y por un rato. Pedí uno nuevo para entrar.',
     cta: 'Pedir un enlace nuevo',
+    expired: true,
   },
   invalid: {
     title: 'No pudimos leer el enlace',
@@ -148,7 +152,7 @@ const cardStyle = {
   boxShadow: '0 0 60px rgba(16,185,129,.12), 0 40px 80px -42px rgba(0,0,0,.9)',
 } as const
 
-// Solo lo usan los estados del staff (marco oscuro de siempre); el jugador usa PORTAL_BUTTON.
+// Solo lo usan los estados del staff (marco oscuro de siempre).
 const ctaClass =
   'mt-6 inline-flex h-12 items-center justify-center rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary/90 hover:shadow-xl hover:shadow-emerald-600/35 motion-reduce:hover:translate-y-0'
 
@@ -178,27 +182,29 @@ function resolveError(code: string, via: PlayerVia | null) {
  * renderizarla. La page queda como un cascarón (page.tsx) que resuelve la Promise
  * y delega en este componente sincrónico, que es el que la story monta.
  *
- * La Server Action de Google entra por PROP y se importa en page.tsx, no acá: la
- * story monta este archivo, y un módulo 'use server' importado como valor arrastra
- * postgres al bundle del browser de Storybook.
+ * Las Server Actions (Google y salir, que usa la cabecera del portal) entran por PROP y se
+ * importan en page.tsx, no acá: la story monta este archivo, y un módulo 'use server'
+ * importado como valor arrastra postgres al bundle del browser de Storybook.
  */
 export function VerifyView({
   searchParams,
   googleAction,
+  signOutAction,
 }: {
   searchParams: VerifySearchParams
   googleAction: StartGoogleLoginFromIngresar
+  signOutAction: () => Promise<void>
 }) {
   const isSuccess = searchParams.status === 'success'
   const errCode = searchParams.error
   const intent = parseIntent(searchParams.intent)
   const error = !isSuccess && errCode ? resolveError(errCode, parseVia(searchParams.via)) : null
 
-  // De quién es el estado. El jugador vive en el marco de La Previa (PortalAuthFrame); el staff, y la pantalla sin
+  // De quién es el estado. El jugador vive en el marco del portal de vidrio (PortalAuthFrame); el staff, y la pantalla sin
   // parámetros (que no sabe de quién es), siguen con el marco oscuro de siempre.
   if (isSuccess ? intent !== 'signup' : error && !error.toStaff) {
     return (
-      <PortalAuthFrame>
+      <PortalAuthFrame signOutAction={signOutAction}>
         {error ? (
           <PlayerError copy={error.copy} next={searchParams.next} googleAction={googleAction} />
         ) : (
@@ -330,45 +336,33 @@ function ErrorState({ copy }: { copy: ErrorCopy }) {
   )
 }
 
-// ─── Jugador: el marco de La Previa (PortalAuthFrame): fondo oscuro, resplandores y card de vidrio ───
+// ─── Jugador: el marco del portal de vidrio (PortalAuthFrame): la foto del hero y la columna centrada ───
 
-/** Ícono de estado (color + ícono + texto) sobre el título, centrado en su badge, como en La Previa. */
-const playerIconClass = 'size-7'
+const playerCta = (className?: string) =>
+  cn(buttonVariants({ variant: 'pill', size: 'pill' }), 'w-full max-w-[360px]', className)
 
 function PlayerSuccess({ next, intent }: { next: string | undefined; intent: SuccessIntent }) {
   const safeNext = sanitizeNext(next)
   const copy = successCopy(intent, safeNext)
   return (
-    <div className="text-center">
-      <div className="relative mx-auto mb-5 flex h-16 w-16 items-center justify-center">
-        <span
-          aria-hidden
-          className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500/30 motion-reduce:hidden"
-        />
-        <span
-          className="relative flex h-16 w-16 items-center justify-center rounded-full"
-          style={{
-            background: 'radial-gradient(closest-side, rgba(16,185,129,.28), rgba(2,6,23,.4))',
-            border: '1px solid rgba(16,185,129,.4)',
-            boxShadow: '0 0 50px rgba(16,185,129,.45)',
-          }}
-        >
-          <CheckCircle2 className="size-7 text-emerald-300" aria-hidden />
+    <>
+      <div className="rv-done rv-rise">
+        <span className="rv-badge rv-tap">
+          <CheckCircle2 aria-hidden />
         </span>
+        <h1 className="pa-auth__title">{copy.title}</h1>
+        <p className="pa-auth__lead">{copy.subtitle}</p>
       </div>
-      <h1 className={AUTH_TITLE}>{copy.title}</h1>
-      <p className="mt-2 text-base text-muted-foreground">{copy.subtitle}</p>
-      <Link href={safeNext} className={cn(buttonVariants(), PORTAL_BUTTON, 'mt-8')}>
+      <Link href={safeNext} className={playerCta('rv-rise')} style={{ '--i': 1 } as CSSProperties}>
         {copy.cta}
       </Link>
-      <p className="mt-6 text-sm text-muted-foreground">
-        ¿Abriste el enlace en otro dispositivo? Volvé a la pantalla donde empezaste para seguir.
-      </p>
-      <SuccessRedirect
-        next={safeNext}
-        className="mt-2 text-sm tabular-nums text-muted-foreground"
-      />
-    </div>
+      <div className="pa-auth__alt glass rv-rise" style={{ '--i': 2 } as CSSProperties}>
+        <p>
+          ¿Abriste el enlace en otro dispositivo? Volvé a la pantalla donde empezaste para seguir.
+        </p>
+        <SuccessRedirect next={safeNext} className="text-sm tabular-nums text-portal-muted" />
+      </div>
+    </>
   )
 }
 
@@ -385,25 +379,32 @@ function PlayerError({
   // El destino original sobrevive al reintento solo si el callback lo mandó.
   const ingresarHref = next ? `/ingresar?next=${encodeURIComponent(safeNext)}` : '/ingresar'
   return (
-    <div className="text-center">
-      <div
-        className={cn(
-          'mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full ring-8',
-          copy.neutral ? 'bg-white/5 ring-white/5' : 'bg-red-500/15 ring-red-500/10',
-        )}
-      >
-        {copy.neutral ? (
-          <Info className={cn(playerIconClass, TONE_TEXT.neutral)} aria-hidden />
-        ) : (
-          <AlertCircle className={cn(playerIconClass, TONE_TEXT.destructive)} aria-hidden />
-        )}
+    <>
+      <div className="rv-done rv-rise">
+        <span
+          className={cn(
+            'rv-badge rv-tap',
+            copy.neutral ? 'rv-badge--neutral' : copy.expired ? 'pa-badge--warn' : 'rv-badge--bad',
+          )}
+        >
+          {copy.neutral ? (
+            <Info aria-hidden />
+          ) : copy.expired ? (
+            <Clock aria-hidden />
+          ) : (
+            <AlertCircle aria-hidden />
+          )}
+        </span>
+        <h1 className="pa-auth__title">{copy.title}</h1>
+        {/* role="alert" para que el lector de pantalla anuncie el motivo del fallo. */}
+        <p role="alert" className="pa-auth__lead">
+          {copy.message}
+        </p>
       </div>
-      <h1 className={AUTH_TITLE}>{copy.title}</h1>
-      {/* role="alert" para que el lector de pantalla anuncie el motivo del fallo. */}
-      <p role="alert" className="mt-2 text-base text-muted-foreground">
-        {copy.message}
-      </p>
-      <div className="mt-8 space-y-3">
+      <div
+        className="rv-rise grid w-full max-w-[360px] gap-3"
+        style={{ '--i': 1 } as CSSProperties}
+      >
         {copy.google ? (
           <>
             {/* Reusa la action de Google de /ingresar; `select_account` abre el selector de
@@ -411,34 +412,38 @@ function PlayerError({
             <form action={googleAction}>
               <input type="hidden" name="next" value={safeNext} />
               <input type="hidden" name="select_account" value="1" />
-              <SubmitButton className={PORTAL_BUTTON} pendingLabel="Abriendo Google…">
+              <SubmitButton
+                variant="pill"
+                size="pill"
+                className="rv-go w-full disabled:opacity-100"
+                pendingLabel="Abriendo Google…"
+              >
                 {copy.cta}
               </SubmitButton>
             </form>
             <Link
               href={ingresarHref}
-              className={cn(buttonVariants({ variant: 'outline' }), PORTAL_BUTTON)}
+              className={cn(buttonVariants({ variant: 'pill-glass', size: 'pill' }), 'w-full')}
             >
               Entrar con mi email
             </Link>
           </>
         ) : (
-          <Link href={ingresarHref} className={cn(buttonVariants(), PORTAL_BUTTON)}>
+          <Link href={ingresarHref} className={playerCta()}>
             {copy.cta}
           </Link>
         )}
       </div>
-      {/* La otra puerta: el error de un jugador ofrece el panel. Subrayado siempre y con el
-          área táctil llevada a 44 px por padding que el margen negativo saca del layout. */}
-      <p className="mt-6 text-sm text-muted-foreground">
-        ¿Sos del complejo?{' '}
-        <Link
-          href="/login"
-          className="-my-3.5 inline-block py-3.5 font-medium text-emerald-700 underline underline-offset-4 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"
-        >
-          Entrá al panel
-        </Link>
+      {/* La otra puerta: el error de un jugador ofrece el panel. El padding vertical lleva el
+          área táctil a 44 px sin mover el layout. */}
+      <p className="pa-auth__alt glass rv-rise" style={{ '--i': 2 } as CSSProperties}>
+        <span>
+          ¿Sos del complejo?{' '}
+          <Link href="/login" className={cn(PORTAL_LINK, 'rv-link inline-block py-3')}>
+            Entrá al panel
+          </Link>
+        </span>
       </p>
-    </div>
+    </>
   )
 }

@@ -30,8 +30,14 @@ const NAV_ITEMS = [
     href: '/configuracion',
     label: 'Cuenta',
     Icon: UserRound,
+    // El ingreso del jugador también es Cuenta (`ingresar.html`): sin sesión, Cuenta lleva ahí.
     match: (p: string) =>
-      p.startsWith('/configuracion') || p.startsWith('/perfil') || p.startsWith('/eliminar-cuenta'),
+      p.startsWith('/configuracion') ||
+      p.startsWith('/perfil') ||
+      p.startsWith('/eliminar-cuenta') ||
+      p.startsWith('/ingresar') ||
+      p.startsWith('/aceptar-terminos') ||
+      p.startsWith('/verify'),
   },
 ]
 

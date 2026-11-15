@@ -3,9 +3,12 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import * as Sentry from '@sentry/nextjs'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { buttonVariants } from '@/components/ui/button'
+import { GlassConfirmSheet } from '@/components/world/GlassConfirmSheet'
+import '@/components/world/portal-app.css'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { CancelReasonPicker } from '@/components/booking/CancelReasonPicker'
 import { PLAYER_CANCEL_REASONS, type CancelReason } from '@/shared/cancel-reasons'
 import { lateCancelPlayerText, type LateCancelPenalty } from '@/modules/bookings/late-cancel'
@@ -138,12 +141,16 @@ export function CancelBookingButton({
         }}
         aria-describedby={describedBy}
         data-ghost
-        className="inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-red-700 transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring dark:text-red-300"
+        className={cn(
+          buttonVariants({ variant: 'pill-link', size: 'pill-sm' }),
+          // `.link--bad` del mockup: el riesgo se dice con el tinte, no con un botón sólido.
+          'pa-push min-h-11 border-portal-bad-line bg-portal-bad-bg px-3.5 text-sm text-portal-bad',
+        )}
       >
         Cancelar
       </button>
 
-      <ConfirmDialog
+      <GlassConfirmSheet
         open={open}
         onOpenChange={setOpen}
         title="¿Cancelar este turno?"
@@ -193,8 +200,9 @@ export function CancelBookingButton({
           value={reason}
           onChange={setReason}
           legend="¿Por qué cancelás?"
+          look="glass"
         />
-      </ConfirmDialog>
+      </GlassConfirmSheet>
     </>
   )
 }

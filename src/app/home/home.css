@@ -30,57 +30,6 @@
     min-height: calc(100svh + 96px);
     overflow: clip;
   }
-  .home-bg {
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    pointer-events: none;
-  }
-  .home-bg__img {
-    position: absolute;
-    left: 0;
-    top: 25.5svh;
-    width: 100%;
-    height: 80svh;
-    object-fit: cover;
-    object-position: 50% 50%;
-    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 24%, #000 80%, transparent 98%);
-    mask-image: linear-gradient(180deg, transparent 0, #000 24%, #000 80%, transparent 98%);
-  }
-  .home-bg__img--claro {
-    filter: brightness(1.12) saturate(0.96);
-  }
-  .home-bg__blur {
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 80svh;
-    -webkit-backdrop-filter: blur(30px) saturate(130%);
-    backdrop-filter: blur(30px) saturate(130%);
-    -webkit-mask-image: linear-gradient(180deg, #000 0, #000 62%, transparent 100%);
-    mask-image: linear-gradient(180deg, #000 0, #000 62%, transparent 100%);
-  }
-  .home-bg__veil {
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 100svh;
-    background: linear-gradient(
-      180deg,
-      rgb(var(--portal-veil) / 0.92) 0%,
-      rgb(var(--portal-veil) / 0.76) 36%,
-      rgb(var(--portal-veil) / 0.42) 66%,
-      rgb(var(--portal-veil) / 0) 86%
-    );
-  }
-  .home-bg__glow {
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 100svh;
-    background:
-      radial-gradient(56% 34% at -10% 46%, rgb(var(--portal-glow) / 0.32), transparent 70%),
-      radial-gradient(56% 34% at 110% 66%, rgb(var(--portal-glow) / 0.28), transparent 70%),
-      radial-gradient(70% 24% at 50% -8%, rgb(var(--portal-glow) / 0.16), transparent 70%);
-  }
-
   .home-hero {
     min-height: 100svh;
     display: flex;
@@ -728,7 +677,7 @@
     }
   }
   @media (width >= 48rem) {
-    .home-bg__img {
+    .hero-bg__img {
       top: 15svh;
       height: 96svh;
     }
@@ -875,7 +824,7 @@
    contenido aparece directo. `html[data-home-seen]` apaga la entrada cuando se vuelve a la home
    por navegación interna (lo pone `HomeEntry`). */
 @media (prefers-reduced-motion: no-preference) {
-  html:not([data-home-seen]) .home-bg__img {
+  html:not([data-home-seen]) .hero-bg__img {
     animation: home-asentar 1400ms var(--portal-ease-out) both;
   }
   @keyframes home-asentar {
@@ -962,7 +911,7 @@
 
   /* Atado al scroll: la foto va un 6 % más lenta que la página y el velo se cierra. */
   @supports (animation-timeline: scroll()) {
-    .home-bg {
+    .hero-bg {
       animation: home-foto-lenta linear both;
       animation-timeline: scroll(root);
       animation-range: 0 100svh;
@@ -972,7 +921,7 @@
         transform: translateY(6svh);
       }
     }
-    .home-bg__veil::after {
+    .hero-bg__veil::after {
       content: '';
       position: absolute;
       inset: 0;
@@ -1043,31 +992,5 @@
         transform: scaleX(0);
       }
     }
-  }
-}
-
-/* Sin desenfoque disponible: el velo se cierra más para que el texto se siga leyendo. Fuera de
-   capa, como los respaldos de F1. */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .home-bg__veil {
-    background: linear-gradient(
-      180deg,
-      rgb(var(--portal-veil) / 0.96) 0%,
-      rgb(var(--portal-veil) / 0.9) 60%,
-      rgb(var(--portal-veil) / 0.3) 92%
-    );
-  }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .home-bg__blur {
-    display: none;
-  }
-  .home-bg__veil {
-    background: linear-gradient(
-      180deg,
-      rgb(var(--portal-veil) / 0.96) 0%,
-      rgb(var(--portal-veil) / 0.9) 60%,
-      rgb(var(--portal-veil) / 0.3) 92%
-    );
   }
 }

@@ -1,7 +1,7 @@
 // Las clases de los botones de RIVAL. Viven fuera de MatchBits para que ese archivo exporte solo
 // componentes (Fast Refresh).
 import { buttonVariants } from '@/components/ui/button'
-import { PORTAL_BUTTON } from '@/components/world/PortalAuthFrame'
+import { PORTAL_BUTTON } from '@/components/world/portal-auth-styles'
 import { cn } from '@/lib/utils'
 import { TONE_TEXT } from '@/lib/status-tone'
 

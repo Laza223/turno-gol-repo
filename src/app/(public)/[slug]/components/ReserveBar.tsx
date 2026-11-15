@@ -254,5 +254,7 @@ export default function ReserveBar({
     </LazyMotion>
   )
 
-  return createPortal(bar, document.body)
+  // Solo se monta en el cliente (necesita la hora de ART, que no existe en el servidor); la guarda
+  // deja explícito que el portal nunca corre en un render del servidor.
+  return typeof document === 'undefined' ? null : createPortal(bar, document.body)
 }

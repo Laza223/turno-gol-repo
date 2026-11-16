@@ -19,6 +19,9 @@ vi.mock('@/shared/db/client', () => ({ withTenantContext: vi.fn(), getDb: vi.fn(
 vi.mock('@/shared/rate-limit/server-action', () => ({ adminRateLimited: vi.fn() }))
 vi.mock('@/modules/bookings/booking.service', () => ({ createManualBooking: vi.fn() }))
 vi.mock('@/modules/bookings/booking.edit', () => ({ editBooking: vi.fn() }))
+vi.mock('@/modules/bookings/free-plan-fijo', () => ({ isThirdWeekInARow: vi.fn() }))
+vi.mock('@/shared/api-output', () => ({ validateApiOutput: vi.fn() }))
+vi.mock('@/lib/sentry', () => ({ captureException: vi.fn(), captureMessage: vi.fn() }))
 
 import { createBookingAction, editBookingAction } from '@/app/(admin)/reservas/actions'
 import { editBooking } from '@/modules/bookings/booking.edit'
@@ -30,6 +33,8 @@ import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { createManualBooking } from '@/modules/bookings/booking.service'
 import { SlotTakenError } from '@/modules/bookings/booking.errors'
+import { isThirdWeekInARow } from '@/modules/bookings/free-plan-fijo'
+import { captureException } from '@/lib/sentry'
 import {
   FREE_PLAN_BOOKING_ERROR,
   FREE_PLAN_DURATION_ERROR,
@@ -132,5 +137,58 @@ describe('editBookingAction en el plan gratis', () => {
     asTenant('active')
     await editBookingAction({ bookingId: BOOKING_ID, priceOverride: 2_500_000 })
     expect(vi.mocked(editBooking)).toHaveBeenCalledTimes(1)
+  })
+})
+
+// "¿Es un fijo?" (freemium v2): tercera semana seguida del mismo nombre a la misma hora.
+describe('createBookingAction: aviso de fijo en el plan gratis', () => {
+  const BOOKING = { id: '44444444-4444-4444-8444-444444444444' }
+
+  beforeEach(() => {
+    vi.mocked(createManualBooking).mockResolvedValue(BOOKING as never)
+  })
+
+  it('avisa cuando es la tercera semana seguida', async () => {
+    asTenant('free')
+    vi.mocked(isThirdWeekInARow).mockResolvedValue(true)
+    const res = await createBookingAction(TURNO)
+    expect(res).toEqual({ success: true, booking: BOOKING, looksLikeFijo: true })
+    expect(vi.mocked(isThirdWeekInARow)).toHaveBeenCalledWith(
+      'tenant-1',
+      { date: '2027-03-15', timeStart: '20:00', guestName: 'Juan' },
+      expect.anything(),
+    )
+  })
+
+  it('sin repetición no avisa', async () => {
+    asTenant('free')
+    vi.mocked(isThirdWeekInARow).mockResolvedValue(false)
+    const res = await createBookingAction(TURNO)
+    expect(res).toEqual({ success: true, booking: BOOKING })
+  })
+
+  it('en el plan pago no busca', async () => {
+    asTenant('active')
+    await createBookingAction(TURNO)
+    expect(vi.mocked(isThirdWeekInARow)).not.toHaveBeenCalled()
+  })
+
+  it('un bloqueo no busca', async () => {
+    asTenant('free')
+    await createBookingAction({
+      ...TURNO,
+      type: 'block',
+      guestName: 'Ocupado',
+      guestPhone: undefined,
+    })
+    expect(vi.mocked(isThirdWeekInARow)).not.toHaveBeenCalled()
+  })
+
+  it('si la búsqueda falla, el turno igual queda anotado', async () => {
+    asTenant('free')
+    vi.mocked(isThirdWeekInARow).mockRejectedValue(new Error('db caída'))
+    const res = await createBookingAction(TURNO)
+    expect(res).toEqual({ success: true, booking: BOOKING })
+    expect(vi.mocked(captureException)).toHaveBeenCalledTimes(1)
   })
 })

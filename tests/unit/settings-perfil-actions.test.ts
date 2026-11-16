@@ -20,6 +20,10 @@ vi.mock('@/shared/storage/r2', () => ({
   publicUrl: vi.fn((key: string) => `https://media.turnogol.com/${key}`),
   keyFromPublicUrl: vi.fn((url: string) => url.replace('https://media.turnogol.com/', '')),
 }))
+// La recompresión real (sharp) se prueba en compress-image.test.ts; acá pasa los bytes tal cual.
+vi.mock('@/shared/images/compress-image', () => ({
+  compressUpload: vi.fn(async (bytes: Uint8Array) => bytes),
+}))
 vi.mock('next/headers', () => ({ headers: () => new Headers({ origin: 'http://localhost:3000' }) }))
 vi.mock('@/modules/auth/auth.service', () => ({ isStaffEmailTaken: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
@@ -40,6 +44,7 @@ import { getStaffTenant, updateTenant } from '@/modules/tenants/tenant.service'
 import { getStaffRole } from '@/modules/staff/staff.service'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { isR2Configured, putImage, deleteImage } from '@/shared/storage/r2'
+import { compressUpload } from '@/shared/images/compress-image'
 import { isStaffEmailTaken } from '@/modules/auth/auth.service'
 import { createClient } from '@/lib/supabase/server'
 import { getImpersonationSession } from '@/modules/auth/impersonation.server'
@@ -76,6 +81,27 @@ describe('setTenantImageAction — guard de rol', () => {
 describe('setTenantImageAction — admin', () => {
   beforeEach(() => {
     vi.mocked(getStaffRole).mockResolvedValue('admin')
+  })
+
+  it('recomprime con la medida de cada imagen; si no es una imagen, no sube', async () => {
+    vi.mocked(compressUpload).mockResolvedValueOnce(null)
+    const res = await setTenantImageAction('cover', fakeFormData())
+    expect(res).toEqual({
+      success: false,
+      error: 'La imagen no se pudo leer. Probá con otra en PNG, JPG o WebP.',
+    })
+    expect(vi.mocked(compressUpload)).toHaveBeenCalledWith(expect.any(Uint8Array), 'cover')
+    expect(vi.mocked(putImage)).not.toHaveBeenCalled()
+  })
+
+  it('si sharp no carga, mensaje amable y no sube', async () => {
+    vi.mocked(compressUpload).mockRejectedValueOnce(new Error('sharp no cargó'))
+    const res = await setTenantImageAction('logo', fakeFormData())
+    expect(res).toEqual({
+      success: false,
+      error: 'No pudimos subir la imagen. Probá de nuevo en un momento.',
+    })
+    expect(vi.mocked(putImage)).not.toHaveBeenCalled()
   })
 
   it('sube el archivo y actualiza logoUrl, y revalida perfil admin + perfil público', async () => {

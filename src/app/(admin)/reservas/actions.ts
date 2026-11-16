@@ -13,6 +13,7 @@ import { enforce } from '@/shared/rate-limit/apply'
 import { paidPeriodErrorMessage } from '@/modules/bookings/paid-period.guard'
 import { FREE_PLAN_EDIT_ERROR, freePlanBookingError } from '@/modules/bookings/free-plan-block'
 import { evaluateFreeOnlinePause } from '@/modules/bookings/free-online-pause'
+import { isThirdWeekInARow } from '@/modules/bookings/free-plan-fijo'
 import { isFreePlan } from '@/modules/tenants/tenant.lifecycle'
 import {
   createManualBooking,
@@ -90,7 +91,14 @@ import { cancelReasonSchema, type CancelReason } from '@/shared/cancel-reasons'
 export type BookingActionResult =
   { success: true; booking: BookingRow } | { success: false; error: string }
 
-export type CreateBookingActionResult = BookingActionResult
+export type CreateBookingActionResult =
+  | {
+      success: true
+      booking: BookingRow
+      /** Gratis: tercera semana seguida del mismo nombre a la misma hora ("¿Es un fijo?"). */
+      looksLikeFijo?: boolean
+    }
+  | { success: false; error: string }
 
 export type BookingChargeActionResult =
   { success: true; cashFlow: CashFlowRow } | { success: false; error: string }
@@ -178,7 +186,28 @@ export async function createBookingAction(data: unknown): Promise<CreateBookingA
   // would otherwise still show the slot as free even after success.
   revalidatePath('/reservas')
   revalidatePath('/grilla')
-  return { success: true, booking }
+  const looksLikeFijo = isFreePlan(tenant) ? await freePlanLooksLikeFijo(tenant.id, input) : false
+  return { success: true, booking, ...(looksLikeFijo ? { looksLikeFijo } : {}) }
+}
+
+/**
+ * "¿Es un fijo?" va aparte del alta y nunca la hace fallar: el turno ya quedó
+ * anotado, el aviso es un extra.
+ */
+async function freePlanLooksLikeFijo(
+  tenantId: string,
+  input: { type: string; date: string; timeStart: string; guestName?: string },
+): Promise<boolean> {
+  if (input.type !== 'spontaneous' || !input.guestName) return false
+  const guestName = input.guestName
+  try {
+    return await withTenantContext(tenantId, (tx) =>
+      isThirdWeekInARow(tenantId, { date: input.date, timeStart: input.timeStart, guestName }, tx),
+    )
+  } catch (err) {
+    captureException(err)
+    return false
+  }
 }
 
 const checkSlotAvailabilitySchema = z.object({

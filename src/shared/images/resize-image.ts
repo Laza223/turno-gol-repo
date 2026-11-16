@@ -1,12 +1,8 @@
 'use client'
 
-export type ImagePreset = 'logo' | 'cover' | 'court'
+import { PRESET_CONFIG, type ImagePreset } from './image-presets'
 
-export const PRESET_CONFIG: Record<ImagePreset, { aspect: number; maxWidth: number }> = {
-  logo: { aspect: 1, maxWidth: 512 },
-  cover: { aspect: 16 / 9, maxWidth: 1600 },
-  court: { aspect: 4 / 3, maxWidth: 1280 },
-}
+export { PRESET_CONFIG, type ImagePreset }
 
 /**
  * Redimensiona `file` al aspecto/ancho del preset con center-crop, re-encodea

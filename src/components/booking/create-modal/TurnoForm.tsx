@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import * as Sentry from '@sentry/nextjs'
+import { useRouter } from 'next/navigation'
 import { toast } from '@/hooks/use-toast'
 import { formatArs, formatDateLong } from '@/lib/format'
 import { Label } from '@/components/ui/label'
@@ -38,6 +39,7 @@ export function TurnoForm({
   trackConfirmed,
   freePlan = false,
 }: TypeFormProps & { freePlan?: boolean }) {
+  const router = useRouter()
   const [timeStart, setTimeStart] = useState(slot.timeStart)
   const timeEnd = endLabelFromMins(hhmmToMins(timeStart) + 60)
 
@@ -140,11 +142,25 @@ export function TurnoForm({
           return
         }
         trackConfirmed({ withPlayer: !!playerId, withDeposit: chargeChoice !== 'none' })
-        toast({
-          title: 'Turno agendado',
-          description: `${slot.courtName} · ${timeStart}–${timeEnd}`,
-          variant: 'success',
-        })
+        toast(
+          result.looksLikeFijo
+            ? {
+                // "¿Es un fijo?" (freemium v2): tercera semana seguida del mismo
+                // nombre a la misma hora. Con el plan, el fijo se carga solo.
+                title: 'Turno agendado',
+                description: `Es la tercera semana seguida de ${trimmedName} a las ${timeStart}. ¿Es un fijo? Con el plan se carga solo.`,
+                variant: 'success',
+                action: {
+                  label: 'Ver el plan',
+                  onClick: () => router.push('/reactivar'),
+                },
+              }
+            : {
+                title: 'Turno agendado',
+                description: `${slot.courtName} · ${timeStart}–${timeEnd}`,
+                variant: 'success',
+              },
+        )
         onSuccess(result.booking)
       } catch (err) {
         Sentry.captureException(err)

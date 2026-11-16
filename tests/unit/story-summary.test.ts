@@ -4,6 +4,7 @@ import {
   buildStoryModel,
   freeHoursOf,
   STORY_FAILURE_MESSAGES,
+  storyTenantLogoUrl,
 } from '@/modules/tenants/story-summary'
 import { MAX_HOURS } from '@/lib/story-image/model'
 
@@ -270,5 +271,22 @@ describe('buildStoryModel — llamado a reservar y URL', () => {
     expect(Object.keys(model(one)).sort()).toEqual(
       ['cta', 'dayWord', 'hiddenHours', 'hours', 'kicker', 'portalHost', 'tenantName'].sort(),
     )
+  })
+})
+
+describe('storyTenantLogoUrl', () => {
+  const logoUrl = 'https://img.turnogol.app/t1/logo-1.webp'
+
+  it('con el plan devuelve el logo del complejo', () => {
+    expect(storyTenantLogoUrl({ status: 'active', logoUrl })).toBe(logoUrl)
+    expect(storyTenantLogoUrl({ status: 'trialing', logoUrl })).toBe(logoUrl)
+  })
+
+  it('en gratis no hay logo del complejo', () => {
+    expect(storyTenantLogoUrl({ status: 'free', logoUrl })).toBeNull()
+  })
+
+  it('sin logo cargado, null', () => {
+    expect(storyTenantLogoUrl({ status: 'active', logoUrl: null })).toBeNull()
   })
 })

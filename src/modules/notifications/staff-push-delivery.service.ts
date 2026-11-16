@@ -2,7 +2,7 @@ import { getWorkerSql } from '@/shared/db/client'
 import { sendPushNotification } from '@/lib/web-push'
 import { logger } from '@/shared/lib/logger'
 import type { StaffNotificationContent } from './staff-notification.types'
-import { createPushReceiptToken } from './push-receipt.service'
+import { pushReceiptFields } from './push-receipt.service'
 import { quietHoursReleaseAt } from './push-quiet-hours'
 
 /** Claim con lease: un crash antes de enviar se puede retomar, sin perder la intención. */
@@ -59,9 +59,9 @@ export async function sendStaffPushDelivery(
       {
         ...row.content.payload,
         eventId: notificationId,
-        deliveryId,
-        receiptToken: createPushReceiptToken(deliveryId, expiresAt),
-        receiptUrl: '/api/public/push/receipt',
+        // Sin PUSH_RECEIPT_SECRET el aviso sale igual, sin recibo: el recibo es
+        // evidencia opcional y nunca puede frenar la entrega.
+        ...pushReceiptFields(deliveryId, expiresAt),
         expiresAt: expiresAt.toISOString(),
       },
     )

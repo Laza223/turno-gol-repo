@@ -19,6 +19,7 @@ function targetUrl(value) {
       '/settings/whatsapp',
       '/notificaciones',
       '/whatsapp',
+      '/mis-reservas',
     ]
     return url.origin === self.location.origin &&
       allowed.some((path) => url.pathname === path || url.pathname.startsWith(path + '/'))
@@ -62,39 +63,51 @@ self.addEventListener('push', (event) => {
     (payload.bookingId ? `${kind}:${payload.bookingId}` : `${kind}:${Date.now()}`)
   const expired =
     typeof payload.expiresAt === 'string' && new Date(payload.expiresAt).getTime() <= Date.now()
-  const summary = kind === 'daily_summary'
   const mp = kind === 'mp_disconnected'
+  const player = kind === 'player.reminder'
   const handoff = kind === 'whatsapp_handoff'
   const title = expired
-    ? 'TurnoGol actualizado'
+    ? player
+      ? 'Tus turnos en TurnoGol'
+      : 'TurnoGol actualizado'
     : payload.title ||
       (mp
         ? 'MercadoPago se desconectó'
-        : summary
-          ? 'Resumen de ayer'
-          : handoff
-            ? 'WhatsApp: te necesitan en un chat'
-            : payload.courtName
-              ? `Nueva reserva — ${payload.courtName}`
-              : 'Nueva reserva')
+        : handoff
+          ? 'WhatsApp: te necesitan en un chat'
+          : payload.courtName
+            ? `Nueva reserva — ${payload.courtName}`
+            : 'Nueva reserva')
   const body = expired
-    ? 'La agenda cambió. Abrí TurnoGol para ver los datos actuales.'
+    ? player
+      ? 'Mirá tus próximos turnos en Mis reservas.'
+      : 'La agenda cambió. Abrí TurnoGol para ver los datos actuales.'
     : typeof payload.body === 'string'
       ? payload.body
       : mp
         ? 'Las reservas online entran sin seña hasta que se reconecte.'
-        : summary || handoff
+        : handoff
           ? payload.summaryLabel || ''
           : [payload.dateLabel, payload.timeLabel].filter(Boolean).join(' · ')
-  const url = expired ? '/dashboard' : targetUrl(payload.url || (mp ? '/dashboard' : '/grilla'))
+  const url = expired
+    ? player
+      ? '/mis-reservas'
+      : '/dashboard'
+    : targetUrl(payload.url || (mp ? '/dashboard' : '/grilla'))
   event.waitUntil(
     (async () => {
+      // Urgente (reserva, cancelación, primera del día, recordatorio): queda fija
+      // hasta que la toquen y vibra donde el sistema lo permite. El sonido lo
+      // decide el teléfono (canal del sitio en Android, ajustes de la app en iOS).
+      const urgent = payload.urgent === true && !expired
       await self.registration.showNotification(title, {
         body,
         icon: '/icon-192.png',
         badge: '/icon-192.png',
         tag: String(id),
         renotify: false,
+        requireInteraction: urgent,
+        ...(urgent ? { vibrate: [200, 100, 200, 100, 400] } : {}),
         data: { url, payload },
       })
       // La nativa ya se mostró. No emitir otro sonido/toast en cada pestaña.

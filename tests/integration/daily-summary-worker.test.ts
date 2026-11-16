@@ -16,10 +16,9 @@ import {
 } from '../helpers/tenant'
 
 /**
- * D8 (Fase 2 — docs/planning/2026-08-01-decisiones-de-fase-v2.md §3): el
- * resumen diario reusa getHoyData con date=AYER. Este archivo verifica que
- * el sweep encola push SIEMPRE (si hay suscripción) y encola email SOLO si
- * el tenant activó el opt-in — nunca al revés.
+ * El resumen del día anterior (push y mail) se eliminó el 2026-11-16
+ * (docs/decisions/2026-11-16-push-urgente-permiso-y-recordatorio-jugador.md).
+ * El barrido sigue vivo para la agenda del día y el resumen semanal.
  */
 
 beforeAll(async () => {
@@ -82,38 +81,8 @@ async function seedTenantWithYesterdayActivity(
   return { tenant, staffId: staff.id, subId: subRows[0]!.id }
 }
 
-describe('daily-summary.worker — resumen diario (D8)', () => {
-  it('encola push siempre; NO encola email si el tenant no activó el opt-in', async () => {
-    const sql = getSql()
-    const { tenant, subId } = await seedTenantWithYesterdayActivity(false)
-    await sql`DELETE FROM pgboss_v12.job WHERE name = 'push-send'`
-
-    await runDailySummarySweep()
-
-    const jobs = await sql<{ data: unknown }[]>`
-      SELECT data FROM pgboss_v12.job WHERE name = 'push-send' AND data->>'subscription_id' = ${subId}
-    `
-    expect(jobs).toHaveLength(1)
-    const jobData = jobs[0]!.data as {
-      payload: { type: string; summaryLabel: string }
-      dedupeKey?: string
-    }
-    expect(jobData.payload.type).toBe('daily_summary')
-    expect(jobData.payload.summaryLabel).toContain('9.000')
-    // Hallazgo de revisión adversarial: sin dedupeKey, un retry de pg-boss
-    // (retryLimit=3 real en push-send) duplicaría el push visible al admin —
-    // push.worker.ts solo reclama push_send_log si dedupeKey viene seteada.
-    expect(jobData.dedupeKey).toMatch(
-      new RegExp(`^push:daily-summary:${tenant.id}:\\d{4}-\\d{2}-\\d{2}:${subId}$`),
-    )
-
-    const notifs = await sql<{ id: string }[]>`
-      SELECT id FROM notifications WHERE tenant_id = ${tenant.id} AND template_name = 'daily_summary'
-    `
-    expect(notifs).toHaveLength(0)
-  }, 30_000)
-
-  it('encola push Y notificación de email cuando el tenant activó el opt-in', async () => {
+describe('daily-summary.worker — sin resumen de ayer (decisión 2026-11-16)', () => {
+  it('no encola push ni mail del día anterior, aunque haya actividad y opt-in viejo', async () => {
     const sql = getSql()
     const { tenant, subId } = await seedTenantWithYesterdayActivity(true)
     await sql`DELETE FROM pgboss_v12.job WHERE name = 'push-send'`
@@ -123,43 +92,13 @@ describe('daily-summary.worker — resumen diario (D8)', () => {
     const jobs = await sql<{ id: string }[]>`
       SELECT id FROM pgboss_v12.job WHERE name = 'push-send' AND data->>'subscription_id' = ${subId}
     `
-    expect(jobs).toHaveLength(1)
-
-    const notifs = await sql<{ template_name: string; content: unknown }[]>`
-      SELECT template_name, content FROM notifications
+    expect(jobs).toHaveLength(0)
+    const notifs = await sql<{ id: string }[]>`
+      SELECT id FROM notifications
       WHERE tenant_id = ${tenant.id} AND template_name = 'daily_summary'
+        AND trigger_event <> 'weekly_summary.sweep'
     `
-    expect(notifs).toHaveLength(1)
-    const content = notifs[0]!.content as { collectedArs: string }
-    expect(content.collectedArs).toContain('9.000')
-  }, 30_000)
-
-  it('no procesa tenants bloqueados', async () => {
-    const sql = getSql()
-    const { tenant, subId } = await seedTenantWithYesterdayActivity(false)
-    await sql`UPDATE tenants SET status = 'blocked' WHERE id = ${tenant.id}`
-    await sql`DELETE FROM pgboss_v12.job WHERE name = 'push-send'`
-
-    await runDailySummarySweep()
-
-    const jobs = await sql<{ id: string }[]>`
-      SELECT id FROM pgboss_v12.job WHERE name = 'push-send' AND data->>'subscription_id' = ${subId}
-    `
-    expect(jobs).toHaveLength(0)
-  }, 30_000)
-
-  it('no procesa tenants suspendidos (el nombre del test anterior lo prometía sin probarlo — hallazgo de revisión adversarial)', async () => {
-    const sql = getSql()
-    const { tenant, subId } = await seedTenantWithYesterdayActivity(false)
-    await sql`UPDATE tenants SET status = 'suspended' WHERE id = ${tenant.id}`
-    await sql`DELETE FROM pgboss_v12.job WHERE name = 'push-send'`
-
-    await runDailySummarySweep()
-
-    const jobs = await sql<{ id: string }[]>`
-      SELECT id FROM pgboss_v12.job WHERE name = 'push-send' AND data->>'subscription_id' = ${subId}
-    `
-    expect(jobs).toHaveLength(0)
+    expect(notifs).toHaveLength(0)
   }, 30_000)
 })
 

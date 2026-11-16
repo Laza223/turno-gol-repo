@@ -113,102 +113,96 @@ type Story = StoryObj<typeof meta>
 /** Spy compartido: se reasigna en el `beforeEach` de cada story y se lee en su `play`. */
 let getRegistrationSpy: ReturnType<typeof fn>
 
-/** Sin suscripción previa (`getRegistration` no encuentra nada): aparece el prompt. */
+// Deben reflejar MODAL_SEEN_KEY de PushNotificationManager.tsx. En el browser real
+// de Storybook `localStorage` persiste entre stories: cada story limpia lo suyo.
+const SEEN_UNSUBSCRIBED = 'turnogol:notif-modal-seen:unsubscribed'
+const SEEN_DENIED = 'turnogol:notif-modal-seen:denied'
+function clearSeen() {
+  localStorage.removeItem(SEEN_UNSUBSCRIBED)
+  localStorage.removeItem(SEEN_DENIED)
+}
+
+/**
+ * Primera vez en el panel, sin suscripción: se abre el modal propio. El diálogo
+ * del navegador NO se pide hasta tocar "Habilitar notificaciones". El modal vive
+ * en un portal, por eso se busca en `document.body` y no en el canvas.
+ */
 export const SinSuscribir: Story = {
   beforeEach: () => {
+    clearSeen()
     getRegistrationSpy = fn(async () => undefined)
-    return stubPushApis({
+    const restore = stubPushApis({
       permission: 'granted',
       getRegistration: getRegistrationSpy as PushApiOverrides['getRegistration'],
     })
+    return () => {
+      restore()
+      clearSeen()
+    }
   },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(await canvas.findByText('¿Habilitar notificaciones?')).toBeVisible()
-    const button = canvas.getByRole('button', { name: 'Habilitar notificaciones' })
-    await expect(button).toBeVisible()
+  play: async () => {
+    const body = within(document.body)
+    await expect(await body.findByText('Activá las notificaciones')).toBeVisible()
+    const button = body.getByRole('button', { name: 'Habilitar notificaciones' })
     await expect(button).not.toBeDisabled()
-    await expect(canvas.getByRole('button', { name: 'Cerrar' })).toBeVisible()
     // Scope '/' (no '/admin/'): `(admin)` es un route group de Next, no aparece
-    // en la URL — ver el comment de SW_SCOPE en PushNotificationManager.tsx y
-    // el fix adb1729 ("el destino de las notificaciones apuntaba a un 404").
+    // en la URL — ver el comment de SW_SCOPE en PushNotificationManager.tsx.
     await expect(getRegistrationSpy).toHaveBeenCalledWith('/')
+    await userEvent.click(body.getByRole('button', { name: 'Ahora no' }))
   },
 }
 
-// Debe reflejar DISMISS_KEY de PushNotificationManager.tsx (no se exporta, mismo
-// patrón que SOUND_ENABLED_KEY: ninguna story de este archivo importa internals).
-const DISMISS_KEY = 'turnogol:notif-banner-dismissed-at'
-
-/**
- * ENS-11: el botón "Cerrar" (X) desmonta el banner por completo — no lo
- * oculta con `visibility`/`display` — así no queda residuo interceptando
- * clicks de botones reales debajo suyo. La persistencia real en `localStorage`
- * (timestamp + ventana de 7 días) se cubre en
- * `tests/unit/push-notification-dismiss.test.tsx`; este `play` corre en un
- * browser real (Playwright) donde `localStorage` persiste entre stories del
- * mismo archivo, así que limpia `DISMISS_KEY` antes (por si una corrida
- * previa quedó a mitad) y después (para no contaminar `Pendiente` /
- * `YaSuscripto`, que también esperan ver el banner al montar).
- */
-export const Descartado: Story = {
+/** Ya vio el modal en este dispositivo: queda el cartel, sin "Cerrar", que lo vuelve a abrir. */
+export const CartelSinActivar: Story = {
   beforeEach: () => {
-    localStorage.removeItem(DISMISS_KEY)
-    getRegistrationSpy = fn(async () => undefined)
-    const restorePushApis = stubPushApis({
-      getRegistration: getRegistrationSpy as PushApiOverrides['getRegistration'],
-    })
+    localStorage.setItem(SEEN_UNSUBSCRIBED, String(Date.now()))
+    const restore = stubPushApis({ getRegistration: async () => undefined })
     return () => {
-      restorePushApis()
-      localStorage.removeItem(DISMISS_KEY)
+      restore()
+      clearSeen()
     }
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const closeButton = await canvas.findByRole('button', { name: 'Cerrar' })
-    await userEvent.click(closeButton)
-    await expect(canvas.queryByText('¿Habilitar notificaciones?')).not.toBeInTheDocument()
     await expect(
-      canvas.queryByRole('button', { name: 'Habilitar notificaciones' }),
-    ).not.toBeInTheDocument()
+      await canvas.findByText('No tenés las notificaciones activadas en este dispositivo.'),
+    ).toBeVisible()
+    await expect(canvas.queryByRole('button', { name: 'Cerrar' })).not.toBeInTheDocument()
+    await userEvent.click(canvas.getByRole('button', { name: 'Activar' }))
+    const body = within(document.body)
+    await expect(await body.findByText('Activá las notificaciones')).toBeVisible()
+    await userEvent.click(body.getByRole('button', { name: 'Ahora no' }))
   },
 }
 
 /**
- * Click en "Habilitar": el botón pasa a deshabilitado con label "Habilitando…"
- * de inmediato (`setStatus('pending')` es la primera línea de `enable()`,
- * antes de cualquier `await`). `requestPermission` se stubea para resolver
- * `'default'` (el usuario cierra/ignora el diálogo del navegador) a los 80ms:
- * ese camino de `enable()` vuelve a `setStatus('unsubscribed')` SIN llamar a
- * `toast(...)` (a diferencia de cualquier falla más adelante — registro de SW,
- * VAPID, subscribe — que sí dispara un toast). Se elige a propósito para no
- * dejar un toast vivo en el `<Toaster />` global (module-level, compartido
- * entre stories): un toast así sobrevive a esta story y contamina el DOM que
- * ve el scan de a11y de la SIGUIENTE (comprobado empíricamente — un toast
- * "destructive" quedaba a mitad de la animación de cierre, con contraste real
- * pero de un componente ajeno, y rompía `YaSuscripto`).
- *
- * El `play` espera a que el botón se recupere antes de terminar, para no dejar
- * la promesa de `requestPermission` resolviéndose después de que este test
- * ya haya cerrado.
+ * Click en "Habilitar": el botón pasa a "Habilitando…" de inmediato y
+ * `requestPermission` resuelve `'default'` (cerró el diálogo del navegador) a
+ * los 80ms. Ese camino no dispara toast (un toast vivo contamina el scan de a11y
+ * de la story siguiente): el modal se cierra y queda el cartel con "Activar".
  */
 export const Pendiente: Story = {
-  beforeEach: () =>
-    stubPushApis({
+  beforeEach: () => {
+    clearSeen()
+    const restore = stubPushApis({
       getRegistration: async () => undefined,
       requestPermission: () =>
         new Promise<NotificationPermission>((resolve) => {
           setTimeout(() => resolve('default'), 80)
         }),
-    }),
+    })
+    return () => {
+      restore()
+      clearSeen()
+    }
+  },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    const button = await canvas.findByRole('button', { name: 'Habilitar notificaciones' })
+    const body = within(document.body)
+    const button = await body.findByRole('button', { name: 'Habilitar notificaciones' })
     await userEvent.click(button)
-    const pendingButton = await canvas.findByRole('button', { name: 'Habilitando…' })
-    await expect(pendingButton).toBeDisabled()
-    const recoveredButton = await canvas.findByRole('button', { name: 'Habilitar notificaciones' })
-    await expect(recoveredButton).not.toBeDisabled()
+    await expect(await body.findByRole('button', { name: 'Habilitando…' })).toBeDisabled()
+    const canvas = within(canvasElement)
+    await expect(await canvas.findByRole('button', { name: 'Activar' })).not.toBeDisabled()
   },
 }
 
@@ -242,7 +236,8 @@ export const YaSuscripto: Story = {
       success: true,
       subscriptionId: 'story-device',
     })
-    await expect(canvas.queryByText('¿Habilitar notificaciones?')).not.toBeInTheDocument()
+    await expect(canvas.queryByRole('status')).not.toBeInTheDocument()
+    await expect(within(document.body).queryByRole('dialog')).not.toBeInTheDocument()
     // Scopeado al botón del propio componente (no `queryByRole('button')` a
     // secas): el `<Toaster />` global del preview puede tener un toast ajeno
     // en camino de desmontarse (dismiss + 200ms de animación, ver
@@ -255,24 +250,30 @@ export const YaSuscripto: Story = {
 }
 
 /**
- * Permiso denegado por el usuario (`Notification.permission === 'denied'`
- * desde el arranque): se revisa el SW para revocar la suscripción vieja.
- * Sin prompt ni botón; las instrucciones quedan en la pantalla permanente.
+ * Permiso denegado desde el arranque: se revisa el SW para revocar la
+ * suscripción vieja y el modal explica cómo desbloquear. No hay botón
+ * "Habilitar": el navegador ya no deja volver a pedir el permiso.
  */
 export const PermisoDenegado: Story = {
   beforeEach: () => {
+    clearSeen()
     getRegistrationSpy = fn(async () => undefined)
-    return stubPushApis({
+    const restore = stubPushApis({
       permission: 'denied',
       getRegistration: getRegistrationSpy as PushApiOverrides['getRegistration'],
     })
+    return () => {
+      restore()
+      clearSeen()
+    }
   },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    await expect(canvas.queryByText('¿Habilitar notificaciones?')).not.toBeInTheDocument()
+  play: async () => {
+    const body = within(document.body)
+    await expect(await body.findByText('Las notificaciones están bloqueadas')).toBeVisible()
     await expect(
-      canvas.queryByRole('button', { name: 'Habilitar notificaciones' }),
+      body.queryByRole('button', { name: 'Habilitar notificaciones' }),
     ).not.toBeInTheDocument()
     await expect(getRegistrationSpy).toHaveBeenCalledWith('/')
+    await userEvent.click(body.getByRole('button', { name: 'Ahora no' }))
   },
 }

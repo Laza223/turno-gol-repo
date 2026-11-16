@@ -150,6 +150,8 @@ export async function anonymizePlayer(playerId: string): Promise<void> {
         )
     `)
     await tx.execute(sql`DELETE FROM rival_alert_subscriptions WHERE player_id = ${playerId}`)
+    // Sus dispositivos dejan de recibir recordatorios (migr. 113).
+    await tx.execute(sql`DELETE FROM player_push_subscriptions WHERE player_id = ${playerId}`)
 
     await tx.execute(sql`
       UPDATE players

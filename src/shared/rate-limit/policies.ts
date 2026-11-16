@@ -38,6 +38,9 @@ export const POLICIES = {
   profileViewed: { limit: 10, window: '60 s', keyBy: 'ip', failMode: 'open' },
   adminCrud: { limit: 100, window: '60 s', keyBy: 'tenant', failMode: 'open' },
   playerBooking: { limit: 20, window: '60 s', keyBy: 'player', failMode: 'open' },
+  // Alta y baja del push del jugador (migr. 113): la resincronización corre al
+  // abrir el portal y al volver a la pestaña; 20/60s alcanza con holgura.
+  playerPush: { limit: 20, window: '60 s', keyBy: 'player', failMode: 'open' },
   // Polling endpoint for deposit payment confirmation (every ~3s = 20 req/min).
   // playerBooking (20/60s) has zero headroom; a dedicated bucket gives 3x slack.
   bookingStatus: { limit: 60, window: '60 s', keyBy: 'player', failMode: 'open' },

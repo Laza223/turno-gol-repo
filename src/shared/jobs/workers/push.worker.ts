@@ -18,6 +18,10 @@ export async function handlePushSendJob(job: Job<PushSendJobData>): Promise<void
     )
     return
   }
+  if (job.data.audience === 'player') {
+    await handlePlayerPushSend(job.data)
+    return
+  }
   const { subscription_id, payload, dedupeKey } = job.data
   // Only subscription_id is known here (no tenant in the job payload) — the
   // lookup can't set app.current_tenant_id before it knows which tenant this
@@ -130,6 +134,47 @@ export async function handlePushSendJob(job: Job<PushSendJobData>): Promise<void
   }
   await releaseClaim()
   throw new Error(`push send failed: statusCode=${result.statusCode} ${result.error}`)
+}
+
+/**
+ * Push del jugador (migr. 113): recordatorios de turno. El horario silencioso lo
+ * resuelve quien encola (`player-reminders`); acá solo se envía. Sin dedupeKey:
+ * el claim por turno y tipo ya vive en `player_reminder_sends`, y un reintento
+ * tras un fallo de envío prefiere reenviar antes que perder el aviso.
+ */
+async function handlePlayerPushSend(data: PushSendJobData): Promise<void> {
+  const sql = getWorkerSql()
+  const rows = await sql<{ id: string; endpoint: string; p256dh_key: string; auth_key: string }[]>`
+    SELECT s.id, s.endpoint, s.p256dh_key, s.auth_key
+    FROM player_push_subscriptions s
+    JOIN players p ON p.id = s.player_id AND p.status = 'active'
+    WHERE s.id = ${data.subscription_id}
+      -- Un reintento puede llegar después de una cancelación o de que empezó el turno.
+      AND (${data.payload.bookingId ?? null}::uuid IS NULL OR EXISTS (
+        SELECT 1 FROM bookings b WHERE b.id = ${data.payload.bookingId ?? null}::uuid
+          AND b.player_id = s.player_id AND b.status = 'confirmed' AND b.starts_at > now()))
+    LIMIT 1
+  `
+  const sub = rows[0]
+  if (!sub) return
+  const result = await sendPushNotification(
+    { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } },
+    data.payload,
+  )
+  if (result.success) {
+    await sql`UPDATE player_push_subscriptions SET last_used_at = now() WHERE id = ${sub.id}`
+    return
+  }
+  if (result.gone) {
+    await sql`DELETE FROM player_push_subscriptions WHERE id = ${sub.id}`
+    track.notification('notification.push.failed', {
+      statusCode: 410,
+      reason: 'subscription_deleted',
+      endpoint: sub.endpoint,
+    })
+    return
+  }
+  throw new Error(`player push send failed: statusCode=${result.statusCode} ${result.error}`)
 }
 
 export async function registerPushSendWorker(boss: PgBoss): Promise<void> {

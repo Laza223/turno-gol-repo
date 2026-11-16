@@ -57,21 +57,15 @@ describe('barrido de agenda y compatibilidad', () => {
     expect(mocks.hoy).not.toHaveBeenCalled()
   })
 
-  it('flag apagado conserva el resumen legacy mientras se pilota', async () => {
+  it('flag apagado tampoco manda el resumen de ayer: se eliminó (decisión 2026-11-16)', async () => {
     mocks.enabled.mockResolvedValue(false)
     await runDailySummarySweep()
     expect(mocks.agenda).not.toHaveBeenCalled()
-    expect(mocks.push).toHaveBeenCalledWith(
-      'tenant',
-      expect.objectContaining({ type: 'daily_summary' }),
-    )
-    expect(mocks.email).toHaveBeenCalledWith(
-      expect.objectContaining({ templateName: 'daily_summary' }),
-      expect.anything(),
-    )
+    expect(mocks.push).not.toHaveBeenCalled()
+    expect(mocks.email).not.toHaveBeenCalled()
   })
 
-  it('agenda se barre cada minuto y legacy conserva su horario diario', async () => {
+  it('agenda se barre cada minuto', async () => {
     const boss = { schedule: vi.fn(), work: vi.fn() } as unknown as PgBoss
     await registerDailySummaryWorker(boss)
     expect(boss.schedule).toHaveBeenCalledWith('daily-summary', '* * * * *', {})

@@ -171,10 +171,43 @@ describe('endpoint allowlist (F6/F10 SSRF defense)', () => {
     expect(mockWebpush.sendNotification).toHaveBeenCalledWith(validSub, expect.any(String), {
       timeout: 10_000,
       TTL: expect.any(Number),
+      urgency: expect.any(String),
     })
     const options = mockWebpush.sendNotification.mock.calls[0]![2] as { TTL: number }
     expect(options.TTL).toBeGreaterThan(0)
     expect(options.TTL).toBeLessThanOrEqual(60)
+  })
+
+  it('reserva, cancelación, agenda y recordatorio salen con Urgency high y marca urgente', async () => {
+    for (const type of [
+      'booking.confirmed_online',
+      'booking.canceled_by_player',
+      'agenda.daily',
+      'player.reminder',
+    ]) {
+      mockWebpush.sendNotification.mockClear()
+      mockWebpush.sendNotification.mockResolvedValueOnce({ statusCode: 201 })
+      await sendPushNotification(validSub, { ...validPayload, type })
+      const [, body, options] = mockWebpush.sendNotification.mock.calls[0]! as [
+        unknown,
+        string,
+        { urgency: string },
+      ]
+      expect(options.urgency).toBe('high')
+      expect(JSON.parse(body)).toMatchObject({ urgent: true })
+    }
+  })
+
+  it('el resto sale con Urgency normal y sin marca urgente', async () => {
+    mockWebpush.sendNotification.mockResolvedValueOnce({ statusCode: 201 })
+    await sendPushNotification(validSub, { ...validPayload, type: 'mp_disconnected' })
+    const [, body, options] = mockWebpush.sendNotification.mock.calls[0]! as [
+      unknown,
+      string,
+      { urgency: string },
+    ]
+    expect(options.urgency).toBe('normal')
+    expect(JSON.parse(body)).not.toHaveProperty('urgent')
   })
 
   it('treats 404 as an expired subscription too', async () => {

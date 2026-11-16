@@ -1,0 +1,255 @@
+/* Notas, comparativas y legales en vidrio (F8): `articulo.html` y `blog.html` del mockup (`.page`,
+   `.prose`, `.cmp`, `.posts`, `.post` de `glass-app.css`). Lo usan `ArticleShell`, el índice del
+   blog y /terminos y /privacidad. Tokens de F1; acá no se define ninguno. */
+
+@layer components {
+  /* Debajo de la cabecera de complejos, que flota (`data-variant="overlay"`). */
+  .ar-page {
+    padding: calc(84px + env(safe-area-inset-top)) 0 calc(56px + env(safe-area-inset-bottom));
+    font-family: var(--font-display);
+  }
+  /* Debajo de la cabecera del portal, que ocupa su lugar (legales). */
+  .ar-page--solid {
+    padding-top: 24px;
+  }
+  .ar-col {
+    display: grid;
+    gap: 18px;
+    width: min(760px, calc(100% - 40px));
+    margin-inline: auto;
+  }
+  .ar-eyebrow {
+    margin-bottom: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--portal-slot-ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .ar-h1 {
+    font-weight: 700;
+    font-size: clamp(30px, 2.4vw + 20px, 44px);
+    line-height: 1.05;
+    font-stretch: 104%;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+    color: var(--portal-ink);
+  }
+  .ar-sub {
+    margin-top: 8px;
+    font-size: 16px;
+    line-height: 1.45;
+    color: var(--portal-muted);
+    text-wrap: pretty;
+  }
+
+  /* El cuerpo: un vidrio pintado con los estilos de título, párrafo, lista, tabla y link. */
+  .ar-prose {
+    display: grid;
+    gap: 16px;
+    padding: 24px 20px;
+    border-radius: 32px;
+    font-size: 17px;
+    line-height: 1.65;
+    color: var(--portal-muted);
+  }
+  .ar-prose > * {
+    margin: 0;
+  }
+  .ar-prose h2 {
+    margin-top: 12px;
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 1.15;
+    font-stretch: 104%;
+    letter-spacing: -0.03em;
+    color: var(--portal-ink);
+  }
+  .ar-prose h3 {
+    margin-top: 8px;
+    font-weight: 700;
+    font-size: 19px;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: var(--portal-ink);
+  }
+  .ar-prose p,
+  .ar-prose li {
+    max-width: 68ch;
+  }
+  .ar-prose ul,
+  .ar-prose ol {
+    display: grid;
+    gap: 8px;
+    padding-left: 20px;
+  }
+  .ar-prose ul {
+    list-style: disc;
+  }
+  .ar-prose ol {
+    list-style: decimal;
+  }
+  .ar-prose li::marker {
+    color: var(--portal-soft);
+  }
+  .ar-prose strong {
+    font-weight: 600;
+    color: var(--portal-ink);
+  }
+  .ar-prose a {
+    font-weight: 600;
+    color: var(--portal-slot-ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .ar-prose a:focus-visible {
+    outline: 2px solid var(--portal-green);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  .ar-prose code {
+    padding: 1px 6px;
+    border-radius: 8px;
+    border: 1px solid var(--portal-inner-line);
+    background: var(--portal-inner);
+    font-size: 0.88em;
+    color: var(--portal-ink);
+  }
+  /* Tablas de las notas (MDX con GFM): la `.cmp` del mockup. */
+  .ar-prose table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    overflow: hidden;
+    border: 1px solid var(--portal-inner-line);
+    border-radius: 24px;
+    font-size: 15px;
+    line-height: 1.35;
+  }
+  .ar-prose th,
+  .ar-prose td {
+    padding: 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  .ar-prose th {
+    font-weight: 600;
+    color: var(--portal-ink);
+    background: var(--portal-inner);
+  }
+  .ar-prose tr + tr td,
+  .ar-prose tbody tr:first-child td {
+    border-top: 1px solid var(--portal-inner-line);
+  }
+  .ar-prose td + td,
+  .ar-prose th + th {
+    border-left: 1px solid var(--portal-inner-line);
+  }
+
+  /* El cierre de cada nota: un vidrio con la salida a WhatsApp. */
+  .ar-cta {
+    display: grid;
+    gap: 14px;
+    justify-items: start;
+    padding: 24px 20px;
+    border-radius: 32px;
+  }
+  .ar-cta h2 {
+    font-weight: 700;
+    font-size: clamp(24px, 2vw + 16px, 32px);
+    line-height: 1.1;
+    font-stretch: 104%;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+    color: var(--portal-ink);
+  }
+  .ar-cta p {
+    font-size: 17px;
+    line-height: 1.5;
+    color: var(--portal-muted);
+  }
+
+  /* El índice del blog. */
+  .ar-posts {
+    display: grid;
+    gap: 14px;
+  }
+  .ar-post {
+    position: relative;
+    display: grid;
+    align-content: start;
+    gap: 6px;
+    padding: 18px 20px 22px;
+    border-radius: 28px;
+    color: var(--portal-ink);
+    transition: transform var(--dur-2) var(--portal-ease-out);
+  }
+  .ar-post:hover {
+    transform: translateY(-2px);
+  }
+  .ar-post:has(a:focus-visible) {
+    outline: 2px solid var(--portal-green);
+    outline-offset: 3px;
+  }
+  .ar-post h2 {
+    font-weight: 700;
+    font-size: 21px;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  /* Toda la tarjeta abre la nota: el link del título se estira sobre ella. */
+  .ar-post h2 a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .ar-post h2 a::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+  .ar-post h2 a:focus-visible {
+    outline: none;
+  }
+  .ar-post p {
+    color: var(--portal-muted);
+  }
+  .ar-post time,
+  .ar-post span {
+    font-size: 14px;
+    color: var(--portal-soft);
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (width >= 40rem) {
+    .ar-posts {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  @media (width >= 48rem) {
+    .ar-page {
+      padding-top: 116px;
+      padding-bottom: 96px;
+    }
+    .ar-page--solid {
+      padding-top: 40px;
+    }
+  }
+  @media (width >= 64rem) {
+    .ar-prose {
+      padding: 48px 56px;
+    }
+    .ar-cta {
+      padding: 40px 56px;
+    }
+    .ar-posts {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ar-post:hover {
+    transform: none;
+  }
+}

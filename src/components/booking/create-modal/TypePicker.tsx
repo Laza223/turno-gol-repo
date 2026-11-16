@@ -37,11 +37,15 @@ const TYPES: Array<{ value: BookingKind; title: string; hint: string; icon: Luci
 export function TypePicker({
   value,
   onChange,
+  kinds,
 }: {
   value: BookingKind
   onChange: (v: BookingKind) => void
+  /** Los tipos que se ofrecen (el plan gratis no tiene Turno fijo ni Evento). Default: los 4. */
+  kinds?: readonly BookingKind[]
 }) {
   const hintId = useId()
+  const types = kinds ? TYPES.filter((t) => kinds.includes(t.value)) : TYPES
   return (
     <>
       {/* El mismo margen de 16 px que el formulario de abajo (12 + el `p-1` del
@@ -61,7 +65,7 @@ export function TypePicker({
               'flex shrink-0 items-center gap-1.5 whitespace-nowrap md:h-11',
             )
           }
-          options={TYPES.map((t) => ({
+          options={types.map((t) => ({
             value: t.value,
             label: (
               <span className="flex items-center gap-1.5">
@@ -80,7 +84,7 @@ export function TypePicker({
         className="hidden w-60 shrink-0 flex-col gap-2 border-r border-border p-4 lg:flex"
       >
         <h3 className="px-1 text-sm font-semibold text-foreground">¿Qué vas a agendar?</h3>
-        {TYPES.map((t) => (
+        {types.map((t) => (
           <RadioGroupPrimitive.Item
             key={t.value}
             value={t.value}

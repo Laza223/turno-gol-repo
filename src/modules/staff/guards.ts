@@ -69,7 +69,7 @@ const READ_ONLY_ERROR =
  * gratis (freemium, docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
  */
 const FREE_PLAN_ERROR =
-  'Esto es con el plan. Activalo para anotar tus turnos, fijos, caja y jugadores.'
+  'Esto es con el plan. Activalo para tener los cobros, la caja, los fijos y tu encargado.'
 /** El encargado no entra en el plan gratis: el segundo usuario es del plan pago. */
 const FREE_PLAN_MANAGER_ERROR = 'El encargado entra con el plan. Avisale al dueño del complejo.'
 

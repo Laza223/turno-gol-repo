@@ -1,5 +1,5 @@
 import { CalendarX } from 'lucide-react'
-import GlobalNotFound from '@/app/not-found'
+import { NotFoundView } from '@/components/world/NotFoundView'
 import { PortalResult, PortalResultLink } from '@/components/world/PortalResult'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
 
@@ -9,7 +9,7 @@ import { isRivalEnabled } from '@/modules/rival/rival.flags'
  * sitio: sin flag, RIVAL es como si no existiera y no se delata con textos ni links.
  */
 export async function MatchNotFound() {
-  if (!(await isRivalEnabled())) return <GlobalNotFound />
+  if (!(await isRivalEnabled())) return <NotFoundView />
   return (
     <PortalResult
       icon={CalendarX}

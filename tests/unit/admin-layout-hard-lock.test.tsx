@@ -127,10 +127,7 @@ describe('AdminLayout — hard lock por tenant_status', () => {
 
     const shell = screen.getByTestId('admin-shell')
     expect(shell.getAttribute('data-tenant-status')).toBe('free')
-    expect(JSON.parse(shell.getAttribute('data-free-plan') ?? 'null')).toEqual({
-      capReached: false,
-      paused: true,
-    })
+    expect(JSON.parse(shell.getAttribute('data-free-plan') ?? 'null')).toEqual({ paused: true })
     expect(screen.getByText('contenido')).toBeTruthy()
   })
 

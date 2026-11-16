@@ -18,6 +18,10 @@ vi.mock('@/modules/auth/auth.middleware', () => ({ extractAuthUser: mocks.extrac
 vi.mock('@/shared/rate-limit', () => ({ enforce: mocks.enforce }))
 vi.mock('@/modules/rival/rival.flags', () => ({ isRivalEnabled: mocks.isRivalEnabled }))
 vi.mock('@/shared/storage/r2-config', () => ({ isR2Configured: mocks.isR2Configured }))
+// La recompresión real (sharp) se prueba en compress-image.test.ts; acá pasa los bytes tal cual.
+vi.mock('@/shared/images/compress-image', () => ({
+  compressUpload: vi.fn(async (bytes: Uint8Array) => bytes),
+}))
 vi.mock('@/modules/players/player-photo.service', () => ({
   validatePhotoUpload: mocks.validatePhotoUpload,
   setPlayerPhoto: mocks.setPlayerPhoto,
@@ -25,6 +29,7 @@ vi.mock('@/modules/players/player-photo.service', () => ({
 }))
 
 import { removeRivalPhotoAction, uploadRivalPhotoAction } from '@/app/(player)/rival/photo-actions'
+import { compressUpload } from '@/shared/images/compress-image'
 
 function formWith(file?: Blob): FormData {
   const fd = new FormData()
@@ -91,6 +96,14 @@ describe('uploadRivalPhotoAction', () => {
     mocks.validatePhotoUpload.mockReturnValue({ ok: false, error: 'La foto pesa demasiado.' })
     const res = await uploadRivalPhotoAction(formWith(photo()))
     expect(res).toEqual({ success: false, error: 'La foto pesa demasiado.' })
+    expect(mocks.setPlayerPhoto).not.toHaveBeenCalled()
+  })
+
+  it('el server la recomprime como el logo; si no es una imagen, no sube', async () => {
+    vi.mocked(compressUpload).mockResolvedValueOnce(null)
+    const res = await uploadRivalPhotoAction(formWith(photo()))
+    expect(res).toEqual({ success: false, error: 'La foto tiene que ser una imagen válida' })
+    expect(vi.mocked(compressUpload)).toHaveBeenCalledWith(expect.any(Uint8Array), 'logo')
     expect(mocks.setPlayerPhoto).not.toHaveBeenCalled()
   })
 

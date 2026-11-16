@@ -21,6 +21,8 @@ const ALLOWED = new Set([
   'src/app/(admin)/reservas/(list)/page.tsx',
   'src/app/(admin)/reservas/[id]/page.tsx',
   'src/app/(admin)/reservas/actions.ts',
+  // Corregir nombre y teléfono de un turno (freemium v2, decisión del 2026-11-16).
+  'src/app/(admin)/reservas/edit-detail-actions.ts',
   'src/app/(admin)/settings/datos/actions.ts',
   'src/app/(admin)/settings/datos/page.tsx',
   'src/app/(admin)/settings/equipo/actions.ts',

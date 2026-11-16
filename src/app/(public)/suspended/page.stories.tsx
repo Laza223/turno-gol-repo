@@ -9,6 +9,13 @@ const meta = {
   title: 'Public/SuspendedPage',
   component: SuspendedView,
   parameters: { layout: 'fullscreen' },
+  decorators: [
+    (Story) => (
+      <div data-portal-glass className="portal-ambient min-h-dvh text-portal-ink">
+        <Story />
+      </div>
+    ),
+  ],
   args: { mostrarCambioDeComplejo: false },
 } satisfies Meta<typeof SuspendedView>
 

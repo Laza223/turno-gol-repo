@@ -46,11 +46,14 @@ type Props = {
   checkAvailabilityAction?: CheckSlotAvailabilityAction
   searchPlayersAction?: SearchBookingPlayersAction
   /**
-   * Plan gratis (freemium): sin selector de tipo, solo "Marcar ocupado" (sin
-   * nombre, teléfono ni precio). El server lo valida igual (`freePlanBookingError`).
+   * Plan gratis (freemium v2): Turno con nombre y teléfono, sin precio, cobro,
+   * nota ni jugador vinculado, y Bloquear cancha. El Turno fijo y el Evento son
+   * del plan. El server lo valida igual (`freePlanBookingError`).
    */
   freePlan?: boolean
 }
+
+const FREE_PLAN_KINDS = ['turno', 'bloqueo'] as const satisfies readonly BookingKind[]
 
 /**
  * Modal único de alta desde la grilla (pages/grilla.md §3bis, decisión
@@ -77,7 +80,7 @@ export function BookingFormModal({
   searchPlayersAction,
   freePlan = false,
 }: Props) {
-  const [kind, setKind] = useState<BookingKind>(freePlan ? 'bloqueo' : 'turno')
+  const [kind, setKind] = useState<BookingKind>('turno')
   const resolvedRef = useRef(false)
   const openedAtRef = useRef(0)
   // `create_modal.abandoned` se emite en el cleanup del efecto de montaje
@@ -135,7 +138,8 @@ export function BookingFormModal({
     pricing,
     isSlotPast,
     checkAvailabilityAction,
-    searchPlayersAction,
+    // Gratis: el turno no se vincula a un jugador (la ficha de jugadores es del plan).
+    searchPlayersAction: freePlan ? undefined : searchPlayersAction,
     createBookingAction,
     createAbonadoAction,
     onClose,
@@ -157,7 +161,7 @@ export function BookingFormModal({
           <div className="flex items-center justify-between gap-3 border-b border-border p-4 lg:px-6">
             <div className="min-w-0">
               <Dialog.Title className="text-lg font-semibold tracking-tight text-foreground">
-                {freePlan ? 'Marcar ocupado' : 'Nuevo turno'}
+                Nuevo turno
               </Dialog.Title>
               <Dialog.Description className="truncate text-sm text-muted-foreground">
                 {slot.courtName} · {formatDateLong(slot.date)} · {slot.timeStart}
@@ -170,17 +174,15 @@ export function BookingFormModal({
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-            {freePlan ? (
-              <BloqueoForm key="ocupado" {...formProps} freePlan />
-            ) : (
-              <>
-                <TypePicker value={kind} onChange={setKind} />
-                {kind === 'turno' && <TurnoForm key="turno" {...formProps} />}
-                {kind === 'fijo' && <TurnoFijoForm key="fijo" {...formProps} />}
-                {kind === 'evento' && <EventoForm key="evento" {...formProps} />}
-                {kind === 'bloqueo' && <BloqueoForm key="bloqueo" {...formProps} />}
-              </>
-            )}
+            <TypePicker
+              value={kind}
+              onChange={setKind}
+              {...(freePlan ? { kinds: FREE_PLAN_KINDS } : {})}
+            />
+            {kind === 'turno' && <TurnoForm key="turno" {...formProps} freePlan={freePlan} />}
+            {!freePlan && kind === 'fijo' && <TurnoFijoForm key="fijo" {...formProps} />}
+            {!freePlan && kind === 'evento' && <EventoForm key="evento" {...formProps} />}
+            {kind === 'bloqueo' && <BloqueoForm key="bloqueo" {...formProps} freePlan={freePlan} />}
           </div>
         </Dialog.Content>
       </Dialog.Portal>

@@ -96,13 +96,20 @@ function TypeChip({ label }: { label: string }) {
  * arriba, nombre · chip de tipo abajo. Ancho (`lg:`): columnas fijas, con el
  * teléfono como segunda línea del nombre.
  */
-export function BookingListItem({ booking }: { booking: ReservaListRow }) {
+export function BookingListItem({
+  booking,
+  moneyHidden = false,
+}: {
+  booking: ReservaListRow
+  /** Plan gratis: la fila no habla de plata (`agendaMoneyCell`). */
+  moneyHidden?: boolean
+}) {
   const ended = reservaHasEnded(booking, nowMs())
   const live = reservaIsLive(booking, nowMs())
   const isBlock = booking.type === 'block'
   const name = clientName(booking)
   const timeRange = `${formatTime(booking.timeStart)}–${formatTime(booking.timeEnd)}`
-  const money = agendaMoneyCell(booking, ended)
+  const money = agendaMoneyCell(booking, ended, moneyHidden)
   const chip = typeChip(booking)
 
   const ariaLabel = buildAriaLabel({ timeRange, courtName: booking.courtName, name, live, money })

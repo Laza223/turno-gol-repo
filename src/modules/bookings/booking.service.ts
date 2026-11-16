@@ -1,5 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm'
-import { assertFreeOnlineCap, markFreeCapIfReached } from './free-online-cap'
+import { assertFreeOnlineNotPaused } from './free-online-pause'
 import { bookings, courts, tenants } from '@/shared/db/schema'
 import { checkPlayerBanned } from '@/modules/bans/ban.service'
 import type { DbTx } from '@/shared/db/client'
@@ -642,9 +642,8 @@ async function createOnlineBookingImpl(
     )
   }
 
-  // Freemium: tope mensual de reservas online del plan gratis. Su lock es por
-  // complejo y va antes del de holds (por jugador) y del de la cancha.
-  const isFree = await assertFreeOnlineCap(tenantId, tx)
+  // Freemium: un complejo gratis con la reserva online en pausa no recibe altas.
+  await assertFreeOnlineNotPaused(tenantId, tx)
 
   // INV-ABUSE-001: tope duro de holds activos (pending_payment) sin pagar
   // por jugador+tenant. Advisory lock (mismo patrón que
@@ -700,8 +699,6 @@ async function createOnlineBookingImpl(
 
     const booking = rowToBookingRow(inserted[0]!)
     await ensurePTR(input.playerId, tenantId, tx)
-    // [C5] después del INSERT: la cuenta ya incluye esta fila.
-    if (isFree) await markFreeCapIfReached(tenantId, tx)
 
     const playerRows = (await tx.execute(sql`
       SELECT first_name, phone FROM players WHERE id = ${input.playerId} LIMIT 1

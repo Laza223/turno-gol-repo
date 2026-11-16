@@ -11,14 +11,9 @@ import {
 } from '@/lib/contact'
 
 /**
- * Fondo `#020617` hardcodeado — superficie SIEMPRE oscura (landing B2B
- * `/para-complejos`), independiente del theme del viewer. No hay estados: es
- * estático.
- *
- * El shell real (src/app/(business)/layout.tsx) envuelve TODO en
- * `className="dark"` — sin eso, `dark:text-emerald-400` del Logo no aplica
- * cuando el theme del viewer es claro (default) y "Gol" queda en
- * `text-emerald-700` sobre #020617 → 3.67:1, bajo AA. Reproducir el wrapper acá.
+ * Portal de vidrio (F8): el pie va sin fondo propio, sobre la luz de fondo de la página, y sigue
+ * el tema. El decorador reproduce el wrapper del layout de `(business)`: el marcador de vidrio y
+ * `portal-ambient`. No hay estados: es estático.
  */
 const meta = {
   title: 'Public/BusinessFooter',
@@ -26,7 +21,7 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <div className="dark" style={{ background: '#020617' }}>
+      <div data-portal-glass className="portal-ambient text-portal-ink">
         <Story />
       </div>
     ),
@@ -36,7 +31,7 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Mismos tres canales que el pie del portal, en el clima oscuro fijo. */
+/** Mismos tres canales que el pie del portal. */
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)

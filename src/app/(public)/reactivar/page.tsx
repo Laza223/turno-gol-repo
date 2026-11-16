@@ -22,6 +22,10 @@ import { CANCELABLE } from '@/modules/billing/cancelable-statuses'
 import { MpPayerEmailSection } from '@/app/(admin)/settings/facturacion/MpPayerEmailSection'
 import { updateMpPayerEmailAction } from '@/app/(admin)/settings/facturacion/actions'
 import { SUPPORT_EMAIL } from '@/shared/constants'
+import '@/components/world/portal-app.css'
+import '@/components/booking/reserva.css'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { SwitchTenantLink } from '@/app/(public)/SwitchTenantLink'
 import { resolveStaffTenants } from '@/modules/auth/auth.service'
 
@@ -65,7 +69,7 @@ const STATUS_COPY: Record<string, { title: string; description: string }> = {
   free: {
     title: 'Esto es con el plan',
     description:
-      'Con el plan anotás tus turnos con nombre y precio, cargás los fijos, llevás la caja y sumás a tu encargado. Tus jugadores reservan online sin tope.',
+      'Con el plan anotás el precio y quién pagó, ves lo que falta cobrar, los fijos se cargan solos, llevás la caja y sumás a tu encargado.',
   },
   canceled: {
     title: 'Cancelaste tu suscripción',
@@ -88,6 +92,12 @@ const DEFAULT_COPY = {
   title: 'Tu cuenta necesita atención',
   description: 'Contactá a soporte para regularizar tu cuenta.',
 }
+
+/** Salidas de la pantalla: la píldora verde (principal) y la de vidrio. */
+const PILL_GO = cn(buttonVariants({ variant: 'pill', size: 'pill' }))
+const PILL_GLASS = cn(buttonVariants({ variant: 'pill-glass', size: 'pill' }))
+/** El panel de vidrio pintado que envuelve a cada sección de facturación del panel. */
+const PANEL = 'glass-painted rounded-[28px] p-5'
 
 function formatDate(d: Date | string): string {
   return new Date(d).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -133,17 +143,23 @@ export default async function ReactivarPage() {
 
   if (role !== 'admin') {
     return (
-      <section className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center px-6 py-16 text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          {tenant.status === 'free' ? 'El encargado entra con el plan' : 'Cuenta pausada'}
-        </h1>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          {tenant.status === 'free'
-            ? 'Avisale al dueño del complejo. Cuando active el plan, vas a poder entrar al panel.'
-            : 'Pedile al dueño del complejo que regularice el pago para volver a operar.'}
-        </p>
-        {variosComplejos && <SwitchTenantLink />}
-      </section>
+      <div className="portal-ambient">
+        <section className="pa-col text-center">
+          <h1 className="rv-h1">
+            {tenant.status === 'free' ? 'El encargado entra con el plan' : 'Cuenta pausada'}
+          </h1>
+          <p className="rv-sub">
+            {tenant.status === 'free'
+              ? 'Avisale al dueño del complejo. Cuando active el plan, vas a poder entrar al panel.'
+              : 'Pedile al dueño del complejo que regularice el pago para volver a operar.'}
+          </p>
+          {variosComplejos && (
+            <div className="mt-6 grid justify-items-center">
+              <SwitchTenantLink className={PILL_GLASS} />
+            </div>
+          )}
+        </section>
+      </div>
     )
   }
 
@@ -194,60 +210,59 @@ export default async function ReactivarPage() {
   const payer = await withTenantContext(tenant.id, (tx) => getBillingPayerEmail(tenant.id, tx))
 
   return (
-    <section className="mx-auto flex min-h-[70vh] max-w-4xl flex-col justify-center gap-6 px-6 py-16">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">{copy.title}</h1>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{copy.description}</p>
+    <div className="portal-ambient">
+      <section className="pa-col grid gap-6">
+        <div className="text-center">
+          <h1 className="rv-h1">{copy.title}</h1>
+          <p className="rv-sub">{copy.description}</p>
 
-        {deadline && (
-          <p className="mt-2 text-sm font-semibold text-red-600 dark:text-red-400">
-            {deadlinePassed
-              ? `El plazo para reactivar venció el ${formatDate(deadline)}.`
-              : `Tenés hasta el ${formatDate(deadline)} para reactivar antes de que se eliminen tus datos.`}
-          </p>
-        )}
-      </div>
-
-      {canReactivate && pricing && (
-        <CuotaSection
-          pricing={pricing}
-          mode="reactivate"
-          onlineCourts={onlineCourts}
-          billedCourts={sub?.billedCourts ?? 1}
-          billingCycle={sub?.billingCycle ?? 'monthly'}
-          plusPerCourtCents={plusBilledPerCourt}
-          verifyEmail={verifyEmail}
-        />
-      )}
-
-      {canReactivate && pricing && (
-        <MpPayerEmailSection
-          currentEmail={payer.override}
-          ownerEmail={payer.ownerEmail}
-          action={updateMpPayerEmailAction}
-        />
-      )}
-
-      {(!canReactivate || !pricing) && (
-        <div className="flex flex-col items-center gap-3 text-center">
-          <a
-            href={`mailto:${SUPPORT_EMAIL}`}
-            className="inline-flex h-11 items-center rounded-lg bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Contactar a soporte
-          </a>
-          {tenant.status === 'past_due' && (
-            <Link
-              href="/dashboard"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground"
-            >
-              Volver al panel
-            </Link>
+          {deadline && (
+            <p className="mt-2 text-sm font-semibold text-portal-bad">
+              {deadlinePassed
+                ? `El plazo para reactivar venció el ${formatDate(deadline)}.`
+                : `Tenés hasta el ${formatDate(deadline)} para reactivar antes de que se eliminen tus datos.`}
+            </p>
           )}
         </div>
-      )}
 
-      {/*
+        {canReactivate && pricing && (
+          <div className={PANEL}>
+            <CuotaSection
+              pricing={pricing}
+              mode="reactivate"
+              onlineCourts={onlineCourts}
+              billedCourts={sub?.billedCourts ?? 1}
+              billingCycle={sub?.billingCycle ?? 'monthly'}
+              plusPerCourtCents={plusBilledPerCourt}
+              verifyEmail={verifyEmail}
+            />
+          </div>
+        )}
+
+        {canReactivate && pricing && (
+          <div className={PANEL}>
+            <MpPayerEmailSection
+              currentEmail={payer.override}
+              ownerEmail={payer.ownerEmail}
+              action={updateMpPayerEmailAction}
+            />
+          </div>
+        )}
+
+        {(!canReactivate || !pricing) && (
+          <div className="flex flex-col items-center gap-3 text-center">
+            <a href={`mailto:${SUPPORT_EMAIL}`} className={PILL_GO}>
+              Contactar a soporte
+            </a>
+            {tenant.status === 'past_due' && (
+              <Link href="/dashboard" className={PILL_GLASS}>
+                Volver al panel
+              </Link>
+            )}
+          </div>
+        )}
+
+        {/*
         Fix 2 (R2-4 residual): el backend ya acepta `cancel()` para
         `suspended` (`withBillingTenant`, ver `/api/billing/cancel`), pero
         `/settings/facturacion` manda a todo `suspended` acá — sin esto, un
@@ -262,30 +277,30 @@ export default async function ReactivarPage() {
         2026-10-22 la prueba vencida iba directo a `blocked`, que tampoco la
         mostraba.
       */}
-      {tenant.status === 'free' && (
-        <div className="flex flex-col items-center">
-          <Link
-            href="/dashboard"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground"
-          >
-            Volver al panel
-          </Link>
-        </div>
-      )}
+        {tenant.status === 'free' && (
+          <div className="flex flex-col items-center">
+            <Link href="/dashboard" className={PILL_GLASS}>
+              Volver al panel
+            </Link>
+          </div>
+        )}
 
-      {sub && CANCELABLE.has(sub.status) && !trialReadOnly && (
-        <CancelSubscriptionSection
-          status={sub.status}
-          accessUntil={new Date(sub.currentPeriodEnd).toISOString()}
-          context="reactivar"
-        />
-      )}
+        {sub && CANCELABLE.has(sub.status) && !trialReadOnly && (
+          <div className={PANEL}>
+            <CancelSubscriptionSection
+              status={sub.status}
+              accessUntil={new Date(sub.currentPeriodEnd).toISOString()}
+              context="reactivar"
+            />
+          </div>
+        )}
 
-      {variosComplejos && (
-        <div className="flex flex-col items-center">
-          <SwitchTenantLink />
-        </div>
-      )}
-    </section>
+        {variosComplejos && (
+          <div className="flex flex-col items-center">
+            <SwitchTenantLink className={PILL_GLASS} />
+          </div>
+        )}
+      </section>
+    </div>
   )
 }

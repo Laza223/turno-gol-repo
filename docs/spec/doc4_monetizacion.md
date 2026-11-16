@@ -132,12 +132,15 @@ En CUALQUIER momento antes de borrar: [Paga] ──► ACTIVE (datos restaurados
 ```
 
 > [!NOTE]
-> **Plan gratis (`free`)**. El complejo sigue en el buscador, en RIVAL y con su página; los
-> jugadores le reservan online hasta `FREE_ONLINE_BOOKINGS_PER_MONTH = 20` turnos por mes ART
-> (cuenta en `src/modules/bookings/free-online-cap.ts`). Sin seña online ni bot de WhatsApp. El
-> dueño solo marca horarios como ocupados; caja, jugadores, fijos, encargado y métricas completas
-> son del plan pago y sus datos quedan guardados. Cinco reservas online canceladas por el dueño en
-> el mes pausan la reserva online hasta que toque "Ya marqué mis ocupados". Los guards lo preguntan
+> **Plan gratis (`free`)**, corte v2 del 2026-11-15
+> ([`docs/decisions/2026-11-15-freemium-corte-v2.md`](../decisions/2026-11-15-freemium-corte-v2.md)):
+> "gratis es quién juega; el plan es quién pagó". El complejo sigue en el buscador, en RIVAL y con
+> su página, y los jugadores le reservan online sin tope. Sin seña online ni bot de WhatsApp. El
+> dueño anota sus turnos de una hora con nombre y teléfono, en $0 y sin notas ni jugador vinculado
+> (`src/modules/bookings/free-plan-block.ts`); la plata no se le muestra. Precio, cobros, caja,
+> jugadores, fijos, eventos, encargado y métricas completas son del plan pago y sus datos quedan
+> guardados. Cinco reservas online canceladas por el dueño en el mes pausan la reserva online hasta
+> que toque "Ya anoté mis turnos". Los guards lo preguntan
 > con `isFreePlan(tenant)` y cada función lo abre con `allowFree` (opt-in, como `allowReadOnly`).
 > `free` no vence ni se borra por falta de pago: lo limpia solo la regla de inactividad de
 > `data-retention-cleanup`.
@@ -157,7 +160,7 @@ En CUALQUIER momento antes de borrar: [Paga] ──► ACTIVE (datos restaurados
 | `suspended` | Solo lectura | Puede ver reservas, no crear nuevas | Reintento manual | Aviso de suspensión | 🔴 Rojo |
 | `blocked` | Sin acceso | Sin acceso | No | Re-activación | ⚫ Gris oscuro |
 | `canceled` | Completo hasta fin período | Completo hasta fin período | No (canceló) | Offboarding + retención | ⚫ Gris |
-| `free` | Solo el dueño: grilla con "ocupado", reservas online, canchas, ajustes | Reserva online hasta 20 por mes, sin seña | No | Aviso al pasar a gratis; inactividad | 🔵 Azul |
+| `free` | Solo el dueño: grilla con turnos con nombre y sin plata, reservas online, canchas, ajustes | Reserva online sin tope, sin seña | No | Aviso al pasar a gratis; inactividad | 🔵 Azul |
 | `churned` | Sin acceso | Sin acceso | No | Re-activación (30, 60 días) | ⚫ Negro |
 | `deleted` | N/A | N/A | N/A | N/A | N/A |
 

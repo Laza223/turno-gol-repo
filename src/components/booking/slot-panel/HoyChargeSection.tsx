@@ -370,8 +370,9 @@ function TeamCard({
         onClick={() => onCharge(lines, team)}
         disabled={disabled || amount <= 0}
         // El nombre accesible contiene el texto visible ("Cobrar $24.000"): quien
-        // maneja por voz activa el botón diciendo lo que ve (WCAG 2.5.3).
-        aria-label={`Cobrar ${formatArs(amount)} al Equipo ${team}`}
+        // maneja por voz activa el botón diciendo lo que ve (WCAG 2.5.3). Mientras
+        // procesa, el texto visible es "Procesando…" y va también al nombre.
+        aria-label={`${isPending ? 'Procesando… ' : ''}Cobrar ${formatArs(amount)} al Equipo ${team}`}
         className={cn(PRIMARY_BUTTON, 'h-11 text-sm md:h-10')}
       >
         {isPending ? 'Procesando…' : `Cobrar ${formatArs(amount)}`}

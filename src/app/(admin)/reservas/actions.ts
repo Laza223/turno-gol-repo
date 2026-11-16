@@ -11,8 +11,9 @@ import { insertAuditLog } from '@/shared/db/audit'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { enforce } from '@/shared/rate-limit/apply'
 import { paidPeriodErrorMessage } from '@/modules/bookings/paid-period.guard'
-import { freePlanBookingError } from '@/modules/bookings/free-plan-block'
+import { FREE_PLAN_EDIT_ERROR, freePlanBookingError } from '@/modules/bookings/free-plan-block'
 import { evaluateFreeOnlinePause } from '@/modules/bookings/free-online-pause'
+import { isThirdWeekInARow } from '@/modules/bookings/free-plan-fijo'
 import { isFreePlan } from '@/modules/tenants/tenant.lifecycle'
 import {
   createManualBooking,
@@ -90,7 +91,14 @@ import { cancelReasonSchema, type CancelReason } from '@/shared/cancel-reasons'
 export type BookingActionResult =
   { success: true; booking: BookingRow } | { success: false; error: string }
 
-export type CreateBookingActionResult = BookingActionResult
+export type CreateBookingActionResult =
+  | {
+      success: true
+      booking: BookingRow
+      /** Gratis: tercera semana seguida del mismo nombre a la misma hora ("¿Es un fijo?"). */
+      looksLikeFijo?: boolean
+    }
+  | { success: false; error: string }
 
 export type BookingChargeActionResult =
   { success: true; cashFlow: CashFlowRow } | { success: false; error: string }
@@ -119,6 +127,12 @@ export async function createBookingAction(data: unknown): Promise<CreateBookingA
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
   }
 
+  // Plan gratis: el turno va con nombre y sin plata. El precio se guarda en $0
+  // ("No se cobra") en vez de tomar la tarifa: al pasar al plan no aparece como
+  // deuda vieja, y un horario sin tarifa cargada no frena el alta.
+  const input = isFreePlan(tenant)
+    ? { ...parsed.data, ...(parsed.data.type === 'spontaneous' ? { priceOverride: 0 } : {}) }
+    : parsed.data
   if (isFreePlan(tenant)) {
     const freeError = freePlanBookingError(parsed.data)
     if (freeError) return { success: false, error: freeError }
@@ -131,7 +145,7 @@ export async function createBookingAction(data: unknown): Promise<CreateBookingA
   let booking: BookingRow
   try {
     booking = await withTenantContext(tenant.id, (tx) =>
-      createManualBooking(tenant.id, { ...parsed.data, staffUserId }, tx),
+      createManualBooking(tenant.id, { ...input, staffUserId }, tx),
     )
   } catch (err) {
     if (err instanceof SlotTakenError) {
@@ -172,7 +186,28 @@ export async function createBookingAction(data: unknown): Promise<CreateBookingA
   // would otherwise still show the slot as free even after success.
   revalidatePath('/reservas')
   revalidatePath('/grilla')
-  return { success: true, booking }
+  const looksLikeFijo = isFreePlan(tenant) ? await freePlanLooksLikeFijo(tenant.id, input) : false
+  return { success: true, booking, ...(looksLikeFijo ? { looksLikeFijo } : {}) }
+}
+
+/**
+ * "¿Es un fijo?" va aparte del alta y nunca la hace fallar: el turno ya quedó
+ * anotado, el aviso es un extra.
+ */
+async function freePlanLooksLikeFijo(
+  tenantId: string,
+  input: { type: string; date: string; timeStart: string; guestName?: string },
+): Promise<boolean> {
+  if (input.type !== 'spontaneous' || !input.guestName) return false
+  const guestName = input.guestName
+  try {
+    return await withTenantContext(tenantId, (tx) =>
+      isThirdWeekInARow(tenantId, { date: input.date, timeStart: input.timeStart, guestName }, tx),
+    )
+  } catch (err) {
+    captureException(err)
+    return false
+  }
 }
 
 const checkSlotAvailabilitySchema = z.object({
@@ -1231,9 +1266,18 @@ export async function editBookingAction(
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
   }
 
-  const auth = await requireOperatorStaff()
+  // Plan gratis (freemium v2, decisión de Lazar del 2026-11-16): corrige el
+  // nombre y el teléfono de un turno ya anotado. La duración y el precio son
+  // del plan.
+  const auth = await requireOperatorStaff({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
+  if (
+    isFreePlan(tenant) &&
+    (parsed.data.timeEnd !== undefined || parsed.data.priceOverride !== undefined)
+  ) {
+    return { success: false, error: FREE_PLAN_EDIT_ERROR }
+  }
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }

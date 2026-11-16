@@ -45,7 +45,7 @@ interface AdminLayoutShellProps {
   readOnly?: ReadOnlyNotice | null
   /** Plan gratis: tope del mes y pausa; lo arma el layout. */
   freePlan?: FreePlanNotice | null
-  /** "Ya marqué mis ocupados" (plan gratis en pausa). */
+  /** "Ya anoté mis turnos" (plan gratis en pausa). */
   resumeOnlineAction?: () => Promise<ActionResult>
 }
 

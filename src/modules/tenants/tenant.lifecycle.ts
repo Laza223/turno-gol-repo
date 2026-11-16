@@ -33,34 +33,30 @@ export function isFreePlan(tenant: { status: string }): boolean {
   return tenant.status === 'free'
 }
 
-/** Mes calendario ART ('YYYY-MM') de un instante. Es la unidad del tope de reservas online. */
+/** Mes calendario ART ('YYYY-MM') de un instante. Lo usan la pausa y las Métricas del gratis. */
 export function artMonthOf(instant: Date = new Date()): string {
   return artDateOf(instant).slice(0, 7)
 }
 
 /**
  * ¿La reserva online del portal está abierta para este complejo? El setting del
- * dueño, y en el plan gratis además: que no haya llegado al tope del mes
- * (`online_cap_month` es el mes en que llegó) ni esté pausado por cancelar
- * reservas online. Las superficies públicas (ficha, `/explorar`, imagen de
- * horarios) pasan solas al estado "sin reserva online" con WhatsApp/Llamar.
+ * dueño, y en el plan gratis además: que no esté pausado por cancelar reservas
+ * online. Las reservas online del gratis no tienen tope (ajuste del 2026-11-16,
+ * docs/decisions/2026-11-15-freemium-corte-v2.md). Las superficies públicas
+ * (ficha, `/explorar`, imagen de horarios) pasan solas al estado "sin reserva
+ * online" con WhatsApp/Llamar.
  *
- * La autoridad del tope es el COUNT del alta online (`assertFreeOnlineCap`):
- * esto es el cache para no listar un CTA que el alta va a rechazar.
+ * La autoridad es `assertFreeOnlineNotPaused` en el alta online: esto es el
+ * cache para no listar un CTA que el alta va a rechazar.
  */
-export function effectiveAllowOnlineBooking(
-  tenant: {
-    status: string
-    allowOnlineBookingSetting: boolean
-    onlineCapMonth: string | null
-    onlinePausedAt: Date | null
-  },
-  now: Date = new Date(),
-): boolean {
+export function effectiveAllowOnlineBooking(tenant: {
+  status: string
+  allowOnlineBookingSetting: boolean
+  onlinePausedAt: Date | null
+}): boolean {
   if (!tenant.allowOnlineBookingSetting) return false
   if (!isFreePlan(tenant)) return true
-  if (tenant.onlinePausedAt !== null) return false
-  return tenant.onlineCapMonth !== artMonthOf(now)
+  return tenant.onlinePausedAt === null
 }
 
 // ─── Superficie pública (portal del jugador) ────────────────────────────────

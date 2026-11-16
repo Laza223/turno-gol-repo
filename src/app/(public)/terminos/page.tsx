@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { REFERRAL_REWARD_CAP } from '@/shared/constants'
+import '@/components/site/article.css'
 
 export const metadata: Metadata = {
   title: 'Términos y Condiciones',
@@ -9,335 +10,330 @@ export const metadata: Metadata = {
 
 export default function TerminosPage() {
   return (
-    <article className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-      <header className="mb-10 space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-          Términos y Condiciones
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Última actualización: 8 de noviembre de 2026.
-        </p>
-      </header>
+    <div className="portal-ambient">
+      <article className="ar-page ar-page--solid">
+        <div className="ar-col">
+          <header>
+            <h1 className="ar-h1">Términos y Condiciones</h1>
+            <p className="ar-sub">Última actualización: 8 de noviembre de 2026.</p>
+          </header>
+          <div className="ar-prose glass-painted">
+            <section className="grid gap-4">
+              <h2>1. Objeto del servicio</h2>
+              <p>
+                TurnoGol es una plataforma SaaS de gestión de complejos deportivos de fútbol en
+                Argentina. Funcionamos como <strong>intermediario tecnológico</strong> entre los
+                complejos (canchas) y los jugadores que reservan turnos.{' '}
+                <strong>TurnoGol no es la cancha</strong>: cada complejo es propietario y
+                responsable de su predio, su infraestructura y la prestación del servicio físico de
+                alquiler de cancha.
+              </p>
+              <p>
+                TurnoGol tampoco procesa dinero. Los pagos (señas de reservas y suscripciones SaaS)
+                se ejecutan a través de <strong>MercadoPago</strong>, que es el procesador de pagos
+                autorizado y regulado por las normas argentinas correspondientes.
+              </p>
+              <p>
+                Estos Términos y Condiciones regulan el uso de la plataforma por parte de jugadores
+                (usuarios B2C) y complejos clientes (usuarios B2B).
+              </p>
+            </section>
 
-      <section className="space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">1. Objeto del servicio</h2>
-        <p>
-          TurnoGol es una plataforma SaaS de gestión de complejos deportivos de fútbol en Argentina.
-          Funcionamos como <strong>intermediario tecnológico</strong> entre los complejos (canchas)
-          y los jugadores que reservan turnos. <strong>TurnoGol no es la cancha</strong>: cada
-          complejo es propietario y responsable de su predio, su infraestructura y la prestación del
-          servicio físico de alquiler de cancha.
-        </p>
-        <p>
-          TurnoGol tampoco procesa dinero. Los pagos (señas de reservas y suscripciones SaaS) se
-          ejecutan a través de <strong>MercadoPago</strong>, que es el procesador de pagos
-          autorizado y regulado por las normas argentinas correspondientes.
-        </p>
-        <p>
-          Estos Términos y Condiciones regulan el uso de la plataforma por parte de jugadores
-          (usuarios B2C) y complejos clientes (usuarios B2B).
-        </p>
-      </section>
+            <section className="grid gap-4">
+              <h2>2. Responsabilidad del complejo</h2>
+              <p>
+                El complejo deportivo, en su calidad de prestador del servicio físico, es
+                responsable de:
+              </p>
+              <ul>
+                <li>
+                  Tener la cancha disponible en el horario reservado, en condiciones razonables de
+                  uso.
+                </li>
+                <li>
+                  Gestionar directamente con el jugador eventuales reembolsos, no-shows, disputas
+                  por estado de la cancha, clima, cancelaciones por fuerza mayor, etc.
+                </li>
+                <li>
+                  Cumplir con la normativa fiscal argentina aplicable: emisión de comprobantes y
+                  facturación AFIP. Conforme al ADR-011,{' '}
+                  <strong>la facturación está fuera del alcance de TurnoGol</strong> en la versión
+                  v1; cada complejo factura por sus propios medios.
+                </li>
+                <li>
+                  Mantener actualizada la configuración de su predio en la plataforma (precios,
+                  disponibilidad, política de cancelación).
+                </li>
+                <li>
+                  Cumplir con los derechos ARCO de los jugadores respecto de los datos que TurnoGol
+                  procesa por cuenta del complejo.
+                </li>
+              </ul>
+            </section>
 
-      <section className="mt-10 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">2. Responsabilidad del complejo</h2>
-        <p>
-          El complejo deportivo, en su calidad de prestador del servicio físico, es responsable de:
-        </p>
-        <ul className="list-disc space-y-1 pl-6">
-          <li>
-            Tener la cancha disponible en el horario reservado, en condiciones razonables de uso.
-          </li>
-          <li>
-            Gestionar directamente con el jugador eventuales reembolsos, no-shows, disputas por
-            estado de la cancha, clima, cancelaciones por fuerza mayor, etc.
-          </li>
-          <li>
-            Cumplir con la normativa fiscal argentina aplicable: emisión de comprobantes y
-            facturación AFIP. Conforme al ADR-011,{' '}
-            <strong>la facturación está fuera del alcance de TurnoGol</strong> en la versión v1;
-            cada complejo factura por sus propios medios.
-          </li>
-          <li>
-            Mantener actualizada la configuración de su predio en la plataforma (precios,
-            disponibilidad, política de cancelación).
-          </li>
-          <li>
-            Cumplir con los derechos ARCO de los jugadores respecto de los datos que TurnoGol
-            procesa por cuenta del complejo.
-          </li>
-        </ul>
-      </section>
+            <section className="grid gap-4">
+              <h2>3. Declaración jurada de mayoría de edad</h2>
+              <p>
+                Al crear una cuenta en TurnoGol como jugador, declarás bajo juramento ser mayor de
+                18 años. Esta declaración se registra en tu perfil junto con la versión vigente de
+                los Términos y Condiciones aceptados, conforme al ADR-012. Reservar una cancha sin
+                tener la mayoría de edad es responsabilidad exclusiva del usuario y puede dar lugar
+                a la suspensión de la cuenta.
+              </p>
+            </section>
 
-      <section className="mt-10 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">
-          3. Declaración jurada de mayoría de edad
-        </h2>
-        <p>
-          Al crear una cuenta en TurnoGol como jugador, declarás bajo juramento ser mayor de 18
-          años. Esta declaración se registra en tu perfil junto con la versión vigente de los
-          Términos y Condiciones aceptados, conforme al ADR-012. Reservar una cancha sin tener la
-          mayoría de edad es responsabilidad exclusiva del usuario y puede dar lugar a la suspensión
-          de la cuenta.
-        </p>
-      </section>
+            <section className="grid gap-4">
+              <h2>4. Pagos</h2>
+              <p>
+                Cuando reservás online, la <strong>seña</strong> se procesa a través de MercadoPago
+                y va directamente a la cuenta de MercadoPago del complejo (conectada vía OAuth).
+                TurnoGol <strong>no intermedia ese dinero</strong>: no recibe, no retiene y no
+                remite los fondos.
+              </p>
+              <p>
+                La <strong>suscripción SaaS</strong> que paga el complejo a TurnoGol (mensual o
+                anual, ver punto 6) también se procesa por MercadoPago, mediante el sistema de
+                suscripciones recurrentes.
+              </p>
+              <p>
+                Cualquier disputa sobre un cobro debe iniciarse en primer lugar con el complejo
+                correspondiente. Si la operación involucra una controversia sobre el procesamiento
+                del pago, podés presentar la disputa en MercadoPago o, eventualmente, ante la
+                Dirección Nacional de Defensa al Consumidor.
+              </p>
+            </section>
 
-      <section className="mt-10 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">4. Pagos</h2>
-        <p>
-          Cuando reservás online, la <strong>seña</strong> se procesa a través de MercadoPago y va
-          directamente a la cuenta de MercadoPago del complejo (conectada vía OAuth). TurnoGol{' '}
-          <strong>no intermedia ese dinero</strong>: no recibe, no retiene y no remite los fondos.
-        </p>
-        <p>
-          La <strong>suscripción SaaS</strong> que paga el complejo a TurnoGol (mensual o anual, ver
-          punto 6) también se procesa por MercadoPago, mediante el sistema de suscripciones
-          recurrentes.
-        </p>
-        <p>
-          Cualquier disputa sobre un cobro debe iniciarse en primer lugar con el complejo
-          correspondiente. Si la operación involucra una controversia sobre el procesamiento del
-          pago, podés presentar la disputa en MercadoPago o, eventualmente, ante la Dirección
-          Nacional de Defensa al Consumidor.
-        </p>
-      </section>
+            <section className="grid gap-4">
+              <h2>5. Cancelaciones</h2>
+              <p>
+                La política de cancelación y reembolso de cada reserva la define{' '}
+                <strong>el complejo</strong>, no TurnoGol. Generalmente existe una ventana mínima de
+                cancelación (por ejemplo, 2 horas antes del turno) configurable por cada complejo.
+                Fuera de esa ventana, la cancelación puede no generar reembolso de la seña.
+              </p>
+              <p>
+                Si necesitás cancelar una reserva, hacelo desde tu panel de jugador o contactá al
+                complejo. TurnoGol pone a disposición la herramienta técnica de cancelación, pero la
+                decisión sobre el reembolso es del complejo.
+              </p>
+            </section>
 
-      <section className="mt-10 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">5. Cancelaciones</h2>
-        <p>
-          La política de cancelación y reembolso de cada reserva la define{' '}
-          <strong>el complejo</strong>, no TurnoGol. Generalmente existe una ventana mínima de
-          cancelación (por ejemplo, 2 horas antes del turno) configurable por cada complejo. Fuera
-          de esa ventana, la cancelación puede no generar reembolso de la seña.
-        </p>
-        <p>
-          Si necesitás cancelar una reserva, hacelo desde tu panel de jugador o contactá al
-          complejo. TurnoGol pone a disposición la herramienta técnica de cancelación, pero la
-          decisión sobre el reembolso es del complejo.
-        </p>
-      </section>
+            <section className="grid gap-4">
+              <h2>6. Suscripciones SaaS (clientes B2B)</h2>
+              <p>
+                TurnoGol tiene un plan pago y un plan gratis. En el plan pago{' '}
+                <strong>el importe de la suscripción se calcula por cantidad de canchas</strong>: un
+                importe por la primera cancha, más un importe fijo por cada cancha adicional, con
+                todas las funciones y sin límite máximo de canchas. El asistente de WhatsApp es un
+                adicional con su propio importe por cancha.
+              </p>
+              <p>
+                <strong>Plan gratis.</strong> El complejo que no tiene una suscripción paga vigente
+                (al terminar la prueba, al vencer lo pagado tras una baja o al terminar el período
+                de cobro fallido) pasa al plan gratis, sin cargo. Incluye la página pública del
+                complejo, su aparición en el buscador de TurnoGol, la reserva online de los
+                jugadores sin tope mensual y la carga de turnos con el nombre y el teléfono de quien
+                juega. No incluye los precios ni los cobros de los turnos, las notas, los turnos
+                fijos, la caja, la ficha de jugadores, los usuarios para el equipo ni la seña
+                online. Los datos de esas funciones se conservan y vuelven a estar disponibles al
+                activar el plan pago. TurnoGol puede pausar la reserva online de un complejo del
+                plan gratis que cancela reiteradamente reservas de jugadores, hasta que el complejo
+                actualice los horarios ocupados.
+              </p>
+              <p>
+                Las condiciones del plan gratis pueden cambiar. Si cambian, lo avisamos por email al
+                menos 30 días antes.
+              </p>
+              <p>
+                El complejo elige el ciclo de facturación, <strong>mensual o anual</strong>; el
+                ciclo anual se cobra por adelantado con un descuento sobre el importe mensual. Los
+                importes vigentes se muestran siempre en el panel del complejo antes de confirmar la
+                suscripción, con el detalle de cómo se componen.
+              </p>
+              <p>
+                <strong>
+                  Cambiar la cantidad de canchas facturadas nunca genera un cargo proporcional a
+                  mitad de período.
+                </strong>{' '}
+                Vale en los dos sentidos: lo que resta del período en curso no se modifica y el
+                importe nuevo rige a partir del cobro siguiente. Mientras una cancha esté habilitada
+                para recibir reservas, debe estar incluida en la facturación: no es posible reducir
+                la cantidad de canchas facturadas por debajo de las canchas activas sin
+                desactivarlas primero.
+              </p>
+              <p>
+                El cobro se debita por MercadoPago. Los complejos pueden cancelar su suscripción en
+                cualquier momento; tras la cancelación, la cuenta sigue activa hasta el final del
+                período facturado y después pasa al plan gratis. Si hay un cobro fallido, la cuenta
+                pasa por los estados <em>past_due</em> y <em>suspended</em> y después al plan
+                gratis. Para eliminar la cuenta y sus datos, el complejo lo pide por email a
+                privacidad@turnogol.app.
+              </p>
+              {/* retention-matches-legal-promise.test.ts busca la frase de abajo en el fuente, en una sola línea. */}
+              {/* prettier-ignore */}
+              <p>
+                Si un complejo del plan gratis pasa 6 meses sin que nadie entre a su panel y sin
+                recibir reservas nuevas, le avisamos por email y,
+                si no vuelve a entrar, sus datos se eliminan 90 días después del aviso. Las cuentas dadas de baja antes de la
+                existencia del plan gratis conservan sus datos 90 días tras la baja (estado{' '}
+                <em>churned</em>) para permitir reactivación, y luego se anonimizan o eliminan.
+              </p>
+            </section>
 
-      <section className="mt-10 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">
-          6. Suscripciones SaaS (clientes B2B)
-        </h2>
-        <p>
-          TurnoGol tiene un plan pago y un plan gratis. En el plan pago{' '}
-          <strong>el importe de la suscripción se calcula por cantidad de canchas</strong>: un
-          importe por la primera cancha, más un importe fijo por cada cancha adicional, con todas
-          las funciones y sin límite máximo de canchas. El asistente de WhatsApp es un adicional con
-          su propio importe por cancha.
-        </p>
-        <p>
-          <strong>Plan gratis.</strong> El complejo que no tiene una suscripción paga vigente (al
-          terminar la prueba, al vencer lo pagado tras una baja o al terminar el período de cobro
-          fallido) pasa al plan gratis, sin cargo. Incluye la página pública del complejo, su
-          aparición en el buscador de TurnoGol y la reserva online de los jugadores hasta un tope
-          mensual de reservas que se informa en turnogol.app/precios. No incluye la carga de turnos
-          con datos del cliente, los turnos fijos, la caja, la ficha de jugadores, los usuarios para
-          el equipo ni la seña online. Los datos de esas funciones se conservan y vuelven a estar
-          disponibles al activar el plan pago. TurnoGol puede pausar la reserva online de un
-          complejo del plan gratis que cancela reiteradamente reservas de jugadores, hasta que el
-          complejo actualice los horarios ocupados.
-        </p>
-        <p>
-          Las condiciones del plan gratis pueden cambiar. Si cambian, lo avisamos por email al menos
-          30 días antes.
-        </p>
-        <p>
-          El complejo elige el ciclo de facturación, <strong>mensual o anual</strong>; el ciclo
-          anual se cobra por adelantado con un descuento sobre el importe mensual. Los importes
-          vigentes se muestran siempre en el panel del complejo antes de confirmar la suscripción,
-          con el detalle de cómo se componen.
-        </p>
-        <p>
-          <strong>
-            Cambiar la cantidad de canchas facturadas nunca genera un cargo proporcional a mitad de
-            período.
-          </strong>{' '}
-          Vale en los dos sentidos: lo que resta del período en curso no se modifica y el importe
-          nuevo rige a partir del cobro siguiente. Mientras una cancha esté habilitada para recibir
-          reservas, debe estar incluida en la facturación: no es posible reducir la cantidad de
-          canchas facturadas por debajo de las canchas activas sin desactivarlas primero.
-        </p>
-        <p>
-          El cobro se debita por MercadoPago. Los complejos pueden cancelar su suscripción en
-          cualquier momento; tras la cancelación, la cuenta sigue activa hasta el final del período
-          facturado y después pasa al plan gratis. Si hay un cobro fallido, la cuenta pasa por los
-          estados <em>past_due</em> y <em>suspended</em> y después al plan gratis. Para eliminar la
-          cuenta y sus datos, el complejo lo pide por email a privacidad@turnogol.app.
-        </p>
-        <p>
-          Si un complejo del plan gratis pasa 6 meses sin que nadie entre a su panel y sin recibir
-          reservas nuevas, le avisamos por email y, si no vuelve a entrar, sus datos se eliminan 90
-          días después del aviso. Las cuentas dadas de baja antes de la existencia del plan gratis
-          conservan sus datos 90 días tras la baja (estado <em>churned</em>) para permitir
-          reactivación, y luego se anonimizan o eliminan.
-        </p>
-      </section>
-
-      {/* `id="referidos"`: el aviso de referidos de Hoy enlaza acá (`/terminos#referidos`).
+            {/* `id="referidos"`: el aviso de referidos de Hoy enlaza acá (`/terminos#referidos`).
           Reglas: docs/decisions/2026-09-26-referidos.md. */}
-      <section id="referidos" className="mt-10 scroll-mt-24 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">
-          7. Programa de referidos (clientes B2B)
-        </h2>
-        <p>
-          Los complejos clientes pueden recomendar TurnoGol a otros complejos y obtener{' '}
-          <strong>hasta {REFERRAL_REWARD_CAP} meses de suscripción bonificados</strong>. Este punto
-          explica cómo funciona.
-        </p>
-        <ul className="list-disc space-y-2 pl-6">
-          <li>
-            <strong>Quién participa.</strong> Todos los complejos con cuenta en TurnoGol tienen su
-            link de referidos (turnogol.app/r/…). El complejo que comparte el link es el{' '}
-            <em>referidor</em>; el complejo nuevo que llega por ese link es el <em>referido</em>.
-          </li>
-          <li>
-            <strong>Cómo se registra un referido.</strong> El referido tiene que crear su cuenta
-            desde el link del referidor o, si nos contacta directamente, indicar en ese primer
-            contacto de parte de qué complejo viene. Un complejo no puede referirse a sí mismo. Si
-            el titular de un complejo abre otro complejo con su propio link, ese complejo cuenta
-            como referido siempre que pague su propia suscripción.
-          </li>
-          <li>
-            <strong>Beneficio.</strong> Por cada complejo referido que{' '}
-            <strong>pague su primera mensualidad</strong> a través de MercadoPago, el referidor
-            obtiene <strong>un mes de su suscripción bonificado</strong>, con un máximo de{' '}
-            {REFERRAL_REWARD_CAP} meses por referidor. Los referidos que se sumen después de
-            alcanzado ese máximo se dan de alta normalmente, pero ya no generan meses para el
-            referidor.
-          </li>
-          <li>
-            <strong>Cuándo se acredita.</strong> El mes se acredita una vez que el pago de la
-            primera mensualidad del referido queda aprobado. Registrarse, usar el período de prueba
-            o tener la cuenta activada sin un pago no genera el beneficio.
-          </li>
-          <li>
-            <strong>Cómo se aplica.</strong> Si el referidor todavía está en su período de prueba,
-            el mes se suma a esa prueba. Si ya paga su suscripción, se bonifica el importe de una
-            mensualidad sobre sus próximos cobros; TurnoGol le informa cómo y cuándo se aplica en
-            cada caso.
-          </li>
-          <li>
-            <strong>Vigencia.</strong> El programa no tiene fecha de cierre: participan los
-            complejos referidos que creen su cuenta mientras el programa esté vigente. El pago de la
-            primera mensualidad puede ocurrir después.
-          </li>
-          <li>
-            <strong>El referido.</strong> El complejo referido arranca con el mismo período de
-            prueba gratuito que cualquier complejo nuevo y paga el mismo importe de suscripción.
-          </li>
-          <li>
-            <strong>Verificación.</strong> TurnoGol revisa cada referido antes de acreditar el
-            beneficio y puede rechazarlo si detecta cuentas duplicadas, complejos inexistentes,
-            pagos revertidos o cualquier uso abusivo del programa.
-          </li>
-          <li>
-            <strong>Carácter del beneficio.</strong> Los meses bonificados no tienen valor en
-            dinero, no se pueden canjear ni transferir a otra cuenta, y solo se aplican mientras la
-            cuenta del referidor esté vigente.
-          </li>
-          <li>
-            <strong>Cambios.</strong> TurnoGol puede modificar o finalizar el programa en cualquier
-            momento. Los meses ya ganados antes del cambio o del cierre se respetan.
-          </li>
-        </ul>
-      </section>
+            <section id="referidos" className="grid scroll-mt-24 gap-4">
+              <h2>7. Programa de referidos (clientes B2B)</h2>
+              <p>
+                Los complejos clientes pueden recomendar TurnoGol a otros complejos y obtener{' '}
+                <strong>hasta {REFERRAL_REWARD_CAP} meses de suscripción bonificados</strong>. Este
+                punto explica cómo funciona.
+              </p>
+              <ul>
+                <li>
+                  <strong>Quién participa.</strong> Todos los complejos con cuenta en TurnoGol
+                  tienen su link de referidos (turnogol.app/r/…). El complejo que comparte el link
+                  es el <em>referidor</em>; el complejo nuevo que llega por ese link es el{' '}
+                  <em>referido</em>.
+                </li>
+                <li>
+                  <strong>Cómo se registra un referido.</strong> El referido tiene que crear su
+                  cuenta desde el link del referidor o, si nos contacta directamente, indicar en ese
+                  primer contacto de parte de qué complejo viene. Un complejo no puede referirse a
+                  sí mismo. Si el titular de un complejo abre otro complejo con su propio link, ese
+                  complejo cuenta como referido siempre que pague su propia suscripción.
+                </li>
+                <li>
+                  <strong>Beneficio.</strong> Por cada complejo referido que{' '}
+                  <strong>pague su primera mensualidad</strong> a través de MercadoPago, el
+                  referidor obtiene <strong>un mes de su suscripción bonificado</strong>, con un
+                  máximo de {REFERRAL_REWARD_CAP} meses por referidor. Los referidos que se sumen
+                  después de alcanzado ese máximo se dan de alta normalmente, pero ya no generan
+                  meses para el referidor.
+                </li>
+                <li>
+                  <strong>Cuándo se acredita.</strong> El mes se acredita una vez que el pago de la
+                  primera mensualidad del referido queda aprobado. Registrarse, usar el período de
+                  prueba o tener la cuenta activada sin un pago no genera el beneficio.
+                </li>
+                <li>
+                  <strong>Cómo se aplica.</strong> Si el referidor todavía está en su período de
+                  prueba, el mes se suma a esa prueba. Si ya paga su suscripción, se bonifica el
+                  importe de una mensualidad sobre sus próximos cobros; TurnoGol le informa cómo y
+                  cuándo se aplica en cada caso.
+                </li>
+                <li>
+                  <strong>Vigencia.</strong> El programa no tiene fecha de cierre: participan los
+                  complejos referidos que creen su cuenta mientras el programa esté vigente. El pago
+                  de la primera mensualidad puede ocurrir después.
+                </li>
+                <li>
+                  <strong>El referido.</strong> El complejo referido arranca con el mismo período de
+                  prueba gratuito que cualquier complejo nuevo y paga el mismo importe de
+                  suscripción.
+                </li>
+                <li>
+                  <strong>Verificación.</strong> TurnoGol revisa cada referido antes de acreditar el
+                  beneficio y puede rechazarlo si detecta cuentas duplicadas, complejos
+                  inexistentes, pagos revertidos o cualquier uso abusivo del programa.
+                </li>
+                <li>
+                  <strong>Carácter del beneficio.</strong> Los meses bonificados no tienen valor en
+                  dinero, no se pueden canjear ni transferir a otra cuenta, y solo se aplican
+                  mientras la cuenta del referidor esté vigente.
+                </li>
+                <li>
+                  <strong>Cambios.</strong> TurnoGol puede modificar o finalizar el programa en
+                  cualquier momento. Los meses ya ganados antes del cambio o del cierre se respetan.
+                </li>
+              </ul>
+            </section>
 
-      <section className="mt-10 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">8. Suspensión y baja de cuenta</h2>
-        <p>TurnoGol puede suspender o dar de baja una cuenta de jugador en los siguientes casos:</p>
-        <ul className="list-disc space-y-1 pl-6">
-          <li>Fraude o uso indebido de medios de pago.</li>
-          <li>
-            Ban global del jugador en el sistema (estado <em>banned</em>) ante conductas graves o
-            reiteradas.
-          </li>
-          <li>
-            Bans específicos aplicados por un complejo respecto de un jugador (no afectan la cuenta
-            global, solo la posibilidad de reservar en ese complejo).
-          </li>
-          <li>Solicitud judicial o requerimiento legítimo de autoridad competente.</li>
-        </ul>
-        <p>
-          Si considerás que una suspensión fue incorrecta, podés apelarla escribiendo a{' '}
-          <a
-            className="text-emerald-700 dark:text-emerald-300 hover:underline"
-            href="mailto:privacidad@turnogol.app"
-          >
-            privacidad@turnogol.app
-          </a>
-          .
-        </p>
-      </section>
+            <section className="grid gap-4">
+              <h2>8. Suspensión y baja de cuenta</h2>
+              <p>
+                TurnoGol puede suspender o dar de baja una cuenta de jugador en los siguientes
+                casos:
+              </p>
+              <ul>
+                <li>Fraude o uso indebido de medios de pago.</li>
+                <li>
+                  Ban global del jugador en el sistema (estado <em>banned</em>) ante conductas
+                  graves o reiteradas.
+                </li>
+                <li>
+                  Bans específicos aplicados por un complejo respecto de un jugador (no afectan la
+                  cuenta global, solo la posibilidad de reservar en ese complejo).
+                </li>
+                <li>Solicitud judicial o requerimiento legítimo de autoridad competente.</li>
+              </ul>
+              <p>
+                Si considerás que una suspensión fue incorrecta, podés apelarla escribiendo a{' '}
+                <a href="mailto:privacidad@turnogol.app">privacidad@turnogol.app</a>.
+              </p>
+            </section>
 
-      <section className="mt-10 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">9. Limitación de responsabilidad</h2>
-        <p>
-          Sin perjuicio del derecho del consumidor aplicable conforme a la ley argentina, TurnoGol{' '}
-          <strong>no responde por</strong>:
-        </p>
-        <ul className="list-disc space-y-1 pl-6">
-          <li>
-            Disputas entre el jugador y el complejo respecto a la prestación física del servicio (no
-            disponibilidad de la cancha, estado del campo, conflictos en el lugar).
-          </li>
-          <li>
-            Inconvenientes con la API o el sistema de MercadoPago que estén fuera de nuestro control
-            (intermitencias, demoras de acreditación, contracargos).
-          </li>
-          <li>
-            Interrupciones del servicio menores o iguales al SLA del 0,5% mensual previsto en
-            nuestros requisitos no funcionales (doc5).
-          </li>
-          <li>
-            Daños indirectos, lucro cesante o pérdida de oportunidad derivados del uso o
-            imposibilidad de uso de la plataforma.
-          </li>
-        </ul>
-        <p>
-          Hacemos nuestros mejores esfuerzos para mantener el servicio disponible, seguro y
-          actualizado, aplicando las medidas de seguridad correspondientes al nivel medio de la
-          Disposición 11/2006 de la DNPDP.
-        </p>
-      </section>
+            <section className="grid gap-4">
+              <h2>9. Limitación de responsabilidad</h2>
+              <p>
+                Sin perjuicio del derecho del consumidor aplicable conforme a la ley argentina,
+                TurnoGol <strong>no responde por</strong>:
+              </p>
+              <ul>
+                <li>
+                  Disputas entre el jugador y el complejo respecto a la prestación física del
+                  servicio (no disponibilidad de la cancha, estado del campo, conflictos en el
+                  lugar).
+                </li>
+                <li>
+                  Inconvenientes con la API o el sistema de MercadoPago que estén fuera de nuestro
+                  control (intermitencias, demoras de acreditación, contracargos).
+                </li>
+                <li>
+                  Interrupciones del servicio menores o iguales al SLA del 0,5% mensual previsto en
+                  nuestros requisitos no funcionales (doc5).
+                </li>
+                <li>
+                  Daños indirectos, lucro cesante o pérdida de oportunidad derivados del uso o
+                  imposibilidad de uso de la plataforma.
+                </li>
+              </ul>
+              <p>
+                Hacemos nuestros mejores esfuerzos para mantener el servicio disponible, seguro y
+                actualizado, aplicando las medidas de seguridad correspondientes al nivel medio de
+                la Disposición 11/2006 de la DNPDP.
+              </p>
+            </section>
 
-      <section className="mt-10 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">10. Ley aplicable y jurisdicción</h2>
-        <p>
-          Estos Términos se rigen por las leyes de la <strong>República Argentina</strong>.
-          Cualquier controversia que no pueda resolverse de buena fe será sometida a los tribunales
-          ordinarios de la <strong>Ciudad Autónoma de Buenos Aires</strong>, sin perjuicio de las
-          jurisdicciones que correspondan en favor del consumidor conforme a la Ley 24.240 de
-          Defensa del Consumidor.
-        </p>
-      </section>
+            <section className="grid gap-4">
+              <h2>10. Ley aplicable y jurisdicción</h2>
+              <p>
+                Estos Términos se rigen por las leyes de la <strong>República Argentina</strong>.
+                Cualquier controversia que no pueda resolverse de buena fe será sometida a los
+                tribunales ordinarios de la <strong>Ciudad Autónoma de Buenos Aires</strong>, sin
+                perjuicio de las jurisdicciones que correspondan en favor del consumidor conforme a
+                la Ley 24.240 de Defensa del Consumidor.
+              </p>
+            </section>
 
-      <section className="mt-10 space-y-4 text-foreground">
-        <h2 className="text-xl font-semibold text-foreground">11. Cambios en estos términos</h2>
-        <p>
-          Si modificamos los Términos y Condiciones te lo informaremos por email (al menos 30 días
-          antes para cambios sustanciales). La nueva versión tiene efecto a partir de la fecha de
-          actualización indicada al inicio del documento y de tu próxima aceptación expresa al
-          ingresar a tu cuenta. Si no estás de acuerdo, podés dar de baja la cuenta antes de la
-          entrada en vigencia.
-        </p>
-        <p>
-          La versión vigente está siempre disponible en{' '}
-          <Link className="text-emerald-700 dark:text-emerald-300 hover:underline" href="/terminos">
-            turnogol.app/terminos
-          </Link>
-          . Para consultas, escribinos a{' '}
-          <a
-            className="text-emerald-700 dark:text-emerald-300 hover:underline"
-            href="mailto:privacidad@turnogol.app"
-          >
-            privacidad@turnogol.app
-          </a>
-          .
-        </p>
-      </section>
-    </article>
+            <section className="grid gap-4">
+              <h2>11. Cambios en estos términos</h2>
+              <p>
+                Si modificamos los Términos y Condiciones te lo informaremos por email (al menos 30
+                días antes para cambios sustanciales). La nueva versión tiene efecto a partir de la
+                fecha de actualización indicada al inicio del documento y de tu próxima aceptación
+                expresa al ingresar a tu cuenta. Si no estás de acuerdo, podés dar de baja la cuenta
+                antes de la entrada en vigencia.
+              </p>
+              <p>
+                La versión vigente está siempre disponible en{' '}
+                <Link href="/terminos">turnogol.app/terminos</Link>. Para consultas, escribinos a{' '}
+                <a href="mailto:privacidad@turnogol.app">privacidad@turnogol.app</a>.
+              </p>
+            </section>
+          </div>
+        </div>
+      </article>
+    </div>
   )
 }

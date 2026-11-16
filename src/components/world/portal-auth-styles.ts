@@ -5,13 +5,6 @@
  */
 
 /**
- * Título de las pantallas de ingreso: Archivo 800 recta, 28 px. El tracking es de -0,01 em y no
- * `tracking-tight`: en Archivo 800 ese achica los espacios entre palabras hasta pegarlas.
- */
-export const PORTAL_TITLE =
-  'font-display text-[28px] font-extrabold leading-9 tracking-[-0.01em] text-foreground'
-
-/**
  * Botón de las pantallas de ingreso: 48 px a todo el ancho, plano (sin sombra ni levante al
  * hover ni al apretar) y con el foco separado por el color del fondo, sin la banda blanca del
  * `ring-offset` por defecto en oscuro. Se pasa por `className` al `Button` / `buttonVariants`

@@ -14,11 +14,14 @@ import Link from 'next/link'
  * solo complejo `/select-tenant` es una lista de un elemento y el link sería
  * ruido para la enorme mayoría de los dueños.
  */
-export function SwitchTenantLink() {
+export function SwitchTenantLink({ className }: { className?: string }) {
   return (
     <Link
       href="/select-tenant"
-      className="mt-2 inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground hover:text-foreground md:min-h-0"
+      className={
+        className ??
+        'mt-2 inline-flex min-h-11 items-center text-sm font-medium text-muted-foreground hover:text-foreground md:min-h-0'
+      }
     >
       Cambiar de complejo
     </Link>

@@ -38,16 +38,16 @@ function Dolor({ hora, texto }: { hora?: string; texto: string }) {
 
 export function Escenas() {
   return (
-    <ul className="mt-10 space-y-4 sm:mt-12">
+    <ul className="pc-scenes">
       {ESCENAS.map((e) => (
         <li key={e.dolor}>
-          <Reveal className="card-premium grid grid-cols-1 gap-3 rounded-2xl p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:items-center lg:gap-6">
-            <p className="tg-noche-strike text-lg font-medium leading-[1.4] text-slate-400 line-through decoration-slate-500 decoration-2 lg:text-xl">
+          <Reveal className="pc-scene glass-painted">
+            <p className="pc-scene__pain tg-noche-strike">
               <Dolor hora={e.hora} texto={e.dolor} />
             </p>
-            <ArrowRight className="hidden h-5 w-5 text-slate-500 lg:block" aria-hidden />
-            <p className="tg-noche-solution flex items-start gap-2.5 text-lg font-semibold leading-[1.4] text-white lg:text-xl">
-              <Check className="mt-1 h-5 w-5 shrink-0 text-emerald-400" aria-hidden />
+            <ArrowRight className="pc-scene__arrow" aria-hidden />
+            <p className="pc-scene__fix tg-noche-solution">
+              <Check aria-hidden />
               {e.solucion}
             </p>
           </Reveal>

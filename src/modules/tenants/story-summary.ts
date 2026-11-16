@@ -1,6 +1,7 @@
 import { MAX_HOURS, type StoryHour, type StoryModel } from '@/lib/story-image/model'
 import { addDays } from '@/shared/dates/art'
 import type { AvailabilityResponse, PublicTenant } from './public.service'
+import { isFreePlan } from './tenant.lifecycle'
 
 /** Por qué no se puede armar la placa de un día. */
 export type StoryFailure = 'no_courts' | 'closed' | 'over' | 'full' | 'taken'
@@ -97,6 +98,16 @@ function scanHours(courts: Courts): { allHours: StoryHour[]; anyUpcoming: boolea
 
 export function freeHoursOf(availability: AvailabilityResponse): StoryHour[] {
   return scanHours(availability.courts).allHours
+}
+
+/**
+ * Logo del complejo para la placa: con el plan va primero; en gratis la placa
+ * lleva solo el de TurnoGol (decisión 2026-11-15-freemium-corte-v2, punto 4).
+ */
+export function storyTenantLogoUrl(
+  tenant: Pick<PublicTenant, 'status' | 'logoUrl'>,
+): string | null {
+  return isFreePlan(tenant) ? null : tenant.logoUrl
 }
 
 /**

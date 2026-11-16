@@ -15,8 +15,11 @@ import { render, fireEvent, waitFor, within } from '@testing-library/react'
 import { generateTimeSlots } from '@/lib/booking/grid-cells'
 import { BookingFormModal } from '@/components/booking/BookingFormModal'
 import type { GridBooking } from '@/lib/booking/grid-cells'
+import { toast } from '@/hooks/use-toast'
 
 vi.mock('@/hooks/use-toast', () => ({ toast: vi.fn() }))
+// El aviso "¿Es un fijo?" del gratis lleva a /reactivar con el router de Next.
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
 const createBookingAction = vi.fn()
 const createAbonadoAction = vi.fn()
@@ -200,6 +203,40 @@ describe('BookingFormModal — Turno (default)', () => {
     const startSelect = body().getByLabelText('Empieza') as HTMLSelectElement
     const options = Array.from(startSelect.options).map((o) => o.value)
     expect(options).not.toContain('19:00')
+  })
+})
+
+// "¿Es un fijo?" (freemium v2): el server avisa que es la tercera semana seguida
+// del mismo nombre a esa hora y el toast ofrece ver el plan.
+describe('BookingFormModal — plan gratis, aviso de fijo', () => {
+  it('con looksLikeFijo el toast pregunta si es un fijo y ofrece el plan', async () => {
+    createBookingAction.mockResolvedValueOnce({
+      success: true,
+      booking: { id: 'b' },
+      looksLikeFijo: true,
+    })
+    renderModal({ freePlan: true })
+    fireEvent.change(body().getByLabelText('¿A nombre de quién?'), { target: { value: ' Juan ' } })
+    fireEvent.click(submitButton(/Agendar turno/))
+
+    await waitFor(() => expect(toast).toHaveBeenCalled())
+    const shown = vi.mocked(toast).mock.calls.at(-1)![0]
+    expect(shown.description).toBe(
+      'Es la tercera semana seguida de Juan a las 18:00. ¿Es un fijo? Con el plan se carga solo.',
+    )
+    expect(shown.action?.label).toBe('Ver el plan')
+  })
+
+  it('sin looksLikeFijo el toast es el de siempre', async () => {
+    createBookingAction.mockResolvedValueOnce({ success: true, booking: { id: 'b' } })
+    renderModal({ freePlan: true })
+    fireEvent.change(body().getByLabelText('¿A nombre de quién?'), { target: { value: 'Juan' } })
+    fireEvent.click(submitButton(/Agendar turno/))
+
+    await waitFor(() => expect(toast).toHaveBeenCalled())
+    const shown = vi.mocked(toast).mock.calls.at(-1)![0]
+    expect(shown.description).toBe('Cancha 1 · 18:00–19:00')
+    expect(shown.action).toBeUndefined()
   })
 })
 

@@ -39,20 +39,16 @@ export const Gratis: Story = {
   },
 }
 
-export const GratisConTope: Story = {
-  args: { tenantStatus: 'free', periodEnd: null, freePlan: { capReached: true, paused: false } },
-}
-
 export const GratisEnPausa: Story = {
   args: {
     tenantStatus: 'free',
     periodEnd: null,
-    freePlan: { capReached: false, paused: true },
+    freePlan: { paused: true },
     resumeOnlineAction: async () => ({ success: true }),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: 'Ya marqué mis ocupados' })).toBeVisible()
+    await expect(canvas.getByRole('button', { name: 'Ya anoté mis turnos' })).toBeVisible()
   },
 }
 

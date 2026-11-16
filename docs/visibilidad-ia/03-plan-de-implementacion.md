@@ -706,6 +706,6 @@ Prompts en `08`:
 |---|---|---|---|
 | Explore: auditoría técnica repo + prod | Rutas, render, metadata, robots, sitemap, JSON-LD, hosting, analítica, prod sin JS | ~256.000 | Base de `01` §1 y §7: robots por prefijo, streaming oculto, logo 404, cero analítica, sin Cloudflare, prod = main |
 | Explore: copy, precios y docs | Copy de cada página, claims, precio, fees, fichas, alta, docs que condicionan | ~333.000 | Base de `01` §2: claims falsos, sin fees al jugador (verificado), decisiones que no se pisan |
-| Explore: competencia y marca | Estado de Vibe, CanchaFija, Clubin, ATC, TurnosGol; marca; consultas; listas | ~192.000 | Base de `02` §6: el repo público sale primero, precios comparados, Clubo no existe |
+| Explore: competencia y marca | Estado de Vibe, CanchaFija, Clubin, ATC, TurnosGol; marca; consultas; listas | ~192.000 | Base de `02` §6: el repo público sale primero, precios comparados, ~~Clubo no existe~~ (error: sí existe, corregido el 15/11/2026 en `02` §6) |
 | Explore: inventario de producto | Todas las funciones con su estado (A/B/C/D) y RIVAL | ~303.000 | Base de `02` §3: unas 35 funciones en A, Plus y RIVAL en B, frases prohibidas |
 | sonnet-adversarial-reviewer: revisión de los 10 docs | Contradicciones, claims sin fuente, promesas C/D, líneas rojas, orden y viabilidad | ~211k tokens. PEDIR CAMBIOS: 3 altos (hotfix de claims, greps, datos de cliente en repo público) y 12 medios. Se aplicaron los altos y los medios de texto; los de orden de semanas y diagrama quedan anotados en `09` | (se completa al cerrar) |

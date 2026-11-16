@@ -31,6 +31,13 @@ const match = (o: Partial<RivalBoardItem> = {}): RivalBoardItem => ({
 const meta = {
   title: 'Player/Rival/PublicBoardView',
   component: PublicBoardView,
+  decorators: [
+    (Story) => (
+      <div data-portal-glass className="portal-ambient min-h-dvh text-portal-ink">
+        <Story />
+      </div>
+    ),
+  ],
   parameters: {
     layout: 'fullscreen',
     nextjs: { appDirectory: true, navigation: { pathname: '/rival/partido/m1' } },

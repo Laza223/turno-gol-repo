@@ -19,7 +19,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="w-80 bg-background p-4 text-foreground">
+      <div data-portal-glass className="portal-ambient w-80 p-4 text-portal-ink">
         <Story />
       </div>
     ),

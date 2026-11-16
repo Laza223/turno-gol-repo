@@ -1,0 +1,46 @@
+/* Tablón y Mis partidos en vidrio (F7): lo que `rival.css` no cubre. Tokens `--portal-*` de globals.css. */
+
+@layer components {
+  /* Una tarjeta ya jugada: sin relleno, solo el borde (como `.pa-bk--past` de Mis reservas). */
+  .ri-match.rb-past {
+    background: transparent;
+    box-shadow: none;
+    border: 1px solid var(--portal-inner-line);
+  }
+
+  /* La hora de una fila de Mis partidos es el link de toda la tarjeta (área de toque entera). */
+  .rb-stretch {
+    color: inherit;
+    text-decoration: none;
+  }
+  .rb-stretch::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 24px;
+  }
+  .rb-stretch:focus-visible {
+    outline: none;
+  }
+  .rb-stretch:focus-visible::after {
+    outline: 2px solid var(--portal-green);
+    outline-offset: 2px;
+  }
+
+  /* "Pedir jugar con mi equipo" es largo: la píldora se parte en dos líneas en vez de empujar. */
+  .ri-match .ri-match__cta {
+    height: auto;
+    min-height: 40px;
+    max-width: 10rem;
+    padding: 6px 16px;
+    line-height: 1.15;
+    text-align: center;
+    white-space: normal;
+  }
+  /* La barra queda bajo el texto, no bajo la píldora de la derecha. */
+  @media (min-width: 768px) {
+    .ri-match .ri-bar {
+      grid-column: 1;
+    }
+  }
+}

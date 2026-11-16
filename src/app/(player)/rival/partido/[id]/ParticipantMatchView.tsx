@@ -5,6 +5,7 @@ import type { RivalMyMatch, RivalRosterEntry } from '@/modules/rival/rival.types
 import type { ActionResult } from '@/shared/types/action-result'
 import { CanceledCard, MatchHeader } from '../../MatchBits'
 import { RIVAL_ACTION } from '../../rival-classes'
+import { RivalScreen } from '../../RivalScreen'
 import { LeaveMatch } from '../../p/[code]/LeaveMatch'
 import { myStatusLine, PeopleSection, type RowActionProps } from '../../p/[code]/People'
 import { ReportMatchButton } from '../../p/[code]/ReportButton'
@@ -65,8 +66,8 @@ export function ParticipantMatchView({
   const rowActions: RowActionProps = { matchId: match.id, match, roster, reportPlayerAction }
 
   return (
-    <div className="mx-auto max-w-lg space-y-8 px-4 py-6">
-      <div className="space-y-3">
+    <RivalScreen>
+      <div className="grid gap-3.5">
         <MatchHeader
           tenantName={match.tenantName}
           startsAt={match.startsAt}
@@ -80,7 +81,7 @@ export function ParticipantMatchView({
         {canceled ? (
           <CanceledCard signedIn />
         ) : (
-          <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+          <section className="rv-panel glass-painted rv-rise">
             {/* Buscando rival el equipo completo no significa "Se juega": el titular es "Busca rival". */}
             <ShirtGrid
               capacity={match.capacity}
@@ -88,7 +89,7 @@ export function ParticipantMatchView({
               ended={ended}
               headline={match.seeking === 'rival' ? matchTypeLabel(match) : undefined}
             />
-            {open && line && <p className="mt-4 text-base text-foreground">{line}</p>}
+            {open && line && <p className="rv-sub">{line}</p>}
           </section>
         )}
       </div>
@@ -97,8 +98,8 @@ export function ParticipantMatchView({
         <>
           {/* El único verde, justo debajo del cupo: no queda detrás de la lista de personas. */}
           {showContact && (
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Al escribirle, va a ver tu número.</p>
+            <div className="grid gap-2">
+              <p className="rv-small">Al escribirle, va a ver tu número.</p>
               <a
                 href={contactLink}
                 target="_blank"
@@ -136,6 +137,6 @@ export function ParticipantMatchView({
       )}
 
       <ReportMatchButton matchId={match.id} reportAction={reportMatchAction} />
-    </div>
+    </RivalScreen>
   )
 }

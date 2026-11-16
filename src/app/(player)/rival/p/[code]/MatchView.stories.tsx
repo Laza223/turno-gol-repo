@@ -56,9 +56,19 @@ const roster = [
   person({ participantId: 'b', shortName: 'Beto R.' }),
 ]
 
+// La marca del verde (variante `pill`); con espacios, para que `aria-pressed:from-…` de los chips no cuente.
+const GREEN = /(^|\s)from-\(--portal-btn-a\)(\s|$)/
+
 const meta = {
   title: 'Player/Rival/MatchView',
   component: MatchView,
+  decorators: [
+    (Story) => (
+      <div data-portal-glass className="portal-ambient min-h-dvh text-portal-ink">
+        <Story />
+      </div>
+    ),
+  ],
   parameters: {
     layout: 'fullscreen',
     nextjs: { appDirectory: true, navigation: { pathname: '/rival/p/ABCDEFGHJK' } },
@@ -531,9 +541,7 @@ const recienArmado = (
     await expect(canvas.getByText(title)).toBeInTheDocument()
     await expect(canvas.getByText(line)).toBeInTheDocument()
     // El verde es siempre "Avisar al grupo"; copiar y el tablón van debajo.
-    await expect(canvas.getByRole('link', { name: 'Avisar al grupo' }).className).toContain(
-      'bg-primary',
-    )
+    await expect(canvas.getByRole('link', { name: 'Avisar al grupo' }).className).toMatch(GREEN)
     await expect(canvas.getByRole('button', { name: 'Copiar link' })).toBeInTheDocument()
     await expect(canvas.getByText(boardHeading)).toBeInTheDocument()
     await expect(canvas.getByRole('button', { name: 'Cancelar el partido' })).toBeInTheDocument()
@@ -567,13 +575,11 @@ export const RecienArmadoSoloElGrupo: Story = {
     await expect(
       canvas.getByText('Pasale el link al grupo: cada uno confirma con un toque.'),
     ).toBeInTheDocument()
-    await expect(canvas.getByRole('link', { name: 'Avisar al grupo' }).className).toContain(
-      'bg-primary',
-    )
+    await expect(canvas.getByRole('link', { name: 'Avisar al grupo' }).className).toMatch(GREEN)
     // Publicar ya no es verde: el verde es uno solo.
     await expect(
       canvas.getByRole('button', { name: 'Publicar en el tablón' }).className,
-    ).not.toContain('bg-primary')
+    ).not.toMatch(GREEN)
   },
 }
 
@@ -676,7 +682,7 @@ export const PublicarConExitoVuelveElVerde: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Publicar en el tablón' }))
     // Con el form abierto, "Avisar al grupo" baja a secundaria.
-    await expect(canvas.getByRole('link', { name: 'Avisar al grupo' })).toHaveClass('border-input')
+    await expect(canvas.getByRole('link', { name: 'Avisar al grupo' })).toHaveClass('glass')
     await userEvent.click(canvas.getByRole('radio', { name: 'Un arquero' }))
     await userEvent.click(
       canvas.getByRole('checkbox', {
@@ -687,9 +693,7 @@ export const PublicarConExitoVuelveElVerde: Story = {
     await waitFor(() => expect(args.publishAction).toHaveBeenCalled())
     const publicado = await canvas.findByText(/^En el tablón:/)
     // El form se fue sin pasar por "Ahora no": vuelve el único verde y el foco queda en la card.
-    await expect(canvas.getByRole('link', { name: 'Avisar al grupo' })).not.toHaveClass(
-      'border-input',
-    )
+    await expect(canvas.getByRole('link', { name: 'Avisar al grupo' })).not.toHaveClass('glass')
     await waitFor(() => expect(publicado.closest('[tabindex="-1"]')).toHaveFocus())
   },
 }

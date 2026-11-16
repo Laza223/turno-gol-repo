@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { SelectMenu } from '@/components/ui/select-menu'
 import { ChipGroup, DayChips } from '@/app/(public)/[slug]/components/ChipGroups'
-import { MiniShirts } from '@/app/(player)/rival/MatchBits'
+import { CupoBar } from '@/app/(player)/rival/MatchBits'
 import { RIVAL_ACTION, RIVAL_GHOST } from '@/app/(player)/rival/rival-classes'
 import { RivalCheckbox } from '@/app/(player)/rival/RivalCheckbox'
 import { ShirtGrid } from '@/app/(player)/rival/p/[code]/ShirtGrid'
@@ -191,33 +191,43 @@ describe('ShirtGrid: headline', () => {
   })
 })
 
-describe('MiniShirts', () => {
-  it('pinta capacity camisetas, rellenas hasta confirmed, y es decorativa', () => {
-    const { container } = render(<MiniShirts capacity={10} confirmed={3} />)
+describe('CupoBar', () => {
+  it('es decorativa y llena la barra en la proporción del cupo', () => {
+    const { container } = render(<CupoBar capacity={10} filled={3} />)
     const root = container.firstElementChild as HTMLElement
     expect(root.getAttribute('aria-hidden')).toBe('true')
-    const shirts = [...root.querySelectorAll('svg')]
-    expect(shirts).toHaveLength(10)
-    expect(shirts.filter((s) => s.getAttribute('class')?.includes('fill-emerald'))).toHaveLength(3)
+    expect(root.querySelector('i')?.style.getPropertyValue('--fill')).toBe('0.3')
   })
 
-  it('con más confirmados que cupo no pasa del cupo', () => {
-    const { container } = render(<MiniShirts capacity={4} confirmed={9} />)
-    const shirts = [...container.querySelectorAll('svg')]
-    expect(shirts).toHaveLength(4)
-    expect(shirts.every((s) => s.getAttribute('class')?.includes('fill-emerald'))).toBe(true)
+  it('con más confirmados que cupo no pasa de llena', () => {
+    const { container } = render(<CupoBar capacity={4} filled={9} />)
+    expect(container.querySelector('i')?.style.getPropertyValue('--fill')).toBe('1')
+  })
+})
+
+describe('ShirtGrid: camisetas', () => {
+  it('pinta capacity camisetas y enciende hasta confirmed, con tope en el cupo', () => {
+    const { container, rerender } = render(<ShirtGrid capacity={10} confirmed={3} />)
+    const on = () => container.querySelectorAll('.ri-shirt.is-on').length
+    expect(container.querySelectorAll('.ri-shirt')).toHaveLength(10)
+    expect(on()).toBe(3)
+    rerender(<ShirtGrid capacity={4} confirmed={9} />)
+    expect(on()).toBe(4)
   })
 })
 
 describe('constantes de botón de RIVAL', () => {
-  it('RIVAL_ACTION es el rectángulo del portal: sin píldora, a todo el ancho', () => {
-    expect(RIVAL_ACTION).toContain('min-h-12')
+  it('RIVAL_ACTION es la píldora verde del portal, a todo el ancho', () => {
+    expect(RIVAL_ACTION).toMatch(/(^|\s)from-\(--portal-btn-a\)(\s|$)/)
+    expect(RIVAL_ACTION).toContain('rounded-full')
+    expect(RIVAL_ACTION).toContain('h-13')
     expect(RIVAL_ACTION).toContain('w-full')
-    expect(RIVAL_ACTION).not.toContain('rounded-full')
   })
 
-  it('RIVAL_GHOST separa el foco con el color del fondo y no fija ancho', () => {
-    expect(RIVAL_GHOST).toContain('focus-visible:ring-offset-background')
+  it('RIVAL_GHOST es el link en píldora de 44 px, sin verde y sin ancho fijo', () => {
+    expect(RIVAL_GHOST).toContain('h-11')
+    expect(RIVAL_GHOST).toContain('bg-portal-inner')
+    expect(RIVAL_GHOST).not.toMatch(/(^|\s)from-\(--portal-btn-a\)(\s|$)/)
     expect(RIVAL_GHOST).not.toContain('w-full')
   })
 })

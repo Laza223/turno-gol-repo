@@ -4,8 +4,6 @@ import { unstable_rethrow } from 'next/navigation'
 import { startTransition, useEffect, useRef, useState, useTransition, type FormEvent } from 'react'
 import { FixedCta } from '@/app/(public)/[slug]/reservar/components/ConfirmBookingButton'
 import { Button } from '@/components/ui/button'
-import { PORTAL_BUTTON } from '@/components/world/portal-auth-styles'
-import { cn } from '@/lib/utils'
 import { RIVAL_OFFLINE_MESSAGE, voyLabel } from '@/modules/rival/rival-copy'
 import type { RivalFormResult } from '../../actions'
 import { FormError } from '../../FormError'
@@ -147,8 +145,10 @@ export function VoyPanel({
         <Button
           ref={voyRef}
           type="button"
+          variant="pill"
+          size="pill"
           onClick={() => setOpened(true)}
-          className={cn(PORTAL_BUTTON, 'min-h-[52px]')}
+          className="rv-go w-full"
         >
           {voyLabel(full)}
         </Button>
@@ -163,9 +163,11 @@ export function VoyPanel({
       <FixedCta>
         <Button
           type="submit"
+          variant="pill"
+          size="pill"
           disabled={pending}
           aria-busy={pending}
-          className={cn(PORTAL_BUTTON, 'min-h-[52px]')}
+          className="rv-go w-full"
         >
           {pending ? 'Sumándote…' : voyLabel(full)}
         </Button>

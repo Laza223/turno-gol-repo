@@ -14,27 +14,14 @@ import Link from 'next/link'
 import { Mail } from 'lucide-react'
 import { GoogleIcon } from '@/components/icons/GoogleIcon'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { Title as DialogPrimitiveTitle } from '@radix-ui/react-dialog'
+import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SubmitButton } from '@/components/ui/submit-button'
 import { InAppBrowserNotice } from '@/components/world/InAppBrowserNotice'
-import {
-  MAIL_ERROR_CLASS,
-  ResendLinkForm,
-  callMailAction,
-  type MailState,
-} from '@/components/world/MagicLinkSent'
-import {
-  AUTH_ACCENT_STYLE,
-  AUTH_CARD_STYLE,
-  AUTH_INPUT,
-  AUTH_TITLE,
-  GLASS_INPUT,
-  PORTAL_BUTTON,
-  PORTAL_BUTTON_OUTLINE,
-  PORTAL_LINK,
-} from '@/components/world/portal-auth-styles'
+import { ResendLinkForm, callMailAction, type MailState } from '@/components/world/MagicLinkSent'
+import { GLASS_INPUT, PORTAL_LINK } from '@/components/world/portal-auth-styles'
 import { echoFields } from '@/shared/forms/echo'
 import { cn } from '@/lib/utils'
 import type { GateState, sendPlayerMagicLink } from '../actions'
@@ -106,45 +93,26 @@ const echo = (fd: FormData): GateEcho => ({
 const GOOGLE_OFFLINE_MESSAGE = 'No pudimos abrir Google. Revisá tu conexión y probá de nuevo.'
 
 /**
- * Las dos pieles del ingreso. `dialog`: el modal de La Previa que usa RIVAL. `glass`: el panel de
- * vidrio de la pantalla de confirmar (portal de vidrio F5, `reservar.html`).
+ * La piel del ingreso: el vidrio de la pantalla de confirmar (portal de vidrio F5, `reservar.html`).
+ * Desde F7 también la usa el modal de RIVAL; la de La Previa se fue con él.
  */
-type Look = 'dialog' | 'glass'
-
 const SKIN = {
-  dialog: {
-    input: AUTH_INPUT,
-    go: { className: PORTAL_BUTTON },
-    alt: { variant: 'outline', className: cn(PORTAL_BUTTON_OUTLINE, 'bg-white/4') },
-    ghost: { variant: 'ghost', className: PORTAL_BUTTON },
-    help: 'text-sm text-muted-foreground',
-    lead: 'mt-2 text-pretty text-base text-muted-foreground',
-    divider: 'flex items-center gap-3 text-sm text-muted-foreground',
-    link: cn(
-      PORTAL_LINK,
-      'font-semibold text-emerald-400 underline underline-offset-4 hover:text-emerald-300',
-    ),
-    legal: 'text-pretty text-sm text-muted-foreground',
-  },
-  glass: {
-    input: GLASS_INPUT,
-    go: { variant: 'pill', size: 'pill', className: 'rv-go w-full' },
-    alt: { variant: 'pill-glass', size: 'pill', className: 'w-full backdrop-filter-none' },
-    ghost: { variant: 'pill-link', size: 'pill-sm' },
-    help: 'rv-small',
-    lead: 'rv-small mt-1.5',
-    divider: 'rv-or',
-    link: cn(PORTAL_LINK, 'rv-link'),
-    legal: 'rv-small',
-  },
+  input: GLASS_INPUT,
+  go: { variant: 'pill', size: 'pill', className: 'rv-go w-full' },
+  alt: { variant: 'pill-glass', size: 'pill', className: 'w-full backdrop-filter-none' },
+  // "Reenviar en N s" deshabilitado: la cuenta regresiva ya dice que todavía no se puede; con la
+  // opacidad de `disabled` el texto bajaba a 3,6:1 sobre la hoja.
+  ghost: { variant: 'pill-link', size: 'pill-sm', className: 'disabled:opacity-100' },
+  help: 'rv-small',
+  lead: 'rv-small mt-1.5',
+  divider: 'rv-or',
+  link: cn(PORTAL_LINK, 'rv-link'),
+  legal: 'rv-small',
 } as const satisfies Record<
-  Look,
-  Record<
-    'go' | 'alt' | 'ghost',
-    Pick<ComponentProps<typeof SubmitButton>, 'variant' | 'size' | 'className'>
-  > &
-    Record<'input' | 'help' | 'lead' | 'divider' | 'link' | 'legal', string>
->
+  'go' | 'alt' | 'ghost',
+  Pick<ComponentProps<typeof SubmitButton>, 'variant' | 'size' | 'className'>
+> &
+  Record<'input' | 'help' | 'lead' | 'divider' | 'link' | 'legal', string>
 
 /**
  * El estado de los dos envíos (email y Google). Vive en quien lo llama y no en el contenido: en el
@@ -196,7 +164,7 @@ function useGate(
 
 type Gate = ReturnType<typeof useGate>
 
-/** El título de cada piel: `DialogTitle` en el modal (nombra el diálogo) y un h2 en el panel. */
+/** El título de cada piel: el `Title` de Radix en el modal (nombra el diálogo) y un h2 en el panel. */
 type TitleProps = {
   children: ReactNode
   className?: string
@@ -220,7 +188,6 @@ type TitleProps = {
  */
 function GateBody({
   gate,
-  look,
   Title,
   titleId,
   next,
@@ -231,7 +198,6 @@ function GateBody({
   purpose,
 }: {
   gate: Gate
-  look: Look
   Title: (props: TitleProps) => ReactNode
   titleId?: string
   next: string
@@ -241,8 +207,7 @@ function GateBody({
   rival: boolean
   purpose: RivalGatePurpose
 }) {
-  const skin = SKIN[look]
-  const glass = look === 'glass'
+  const skin = SKIN
   const rivalCopy = RIVAL_COPY[purpose]
   const scope = rival ? 'rival' : 'reservar'
   const {
@@ -289,7 +254,7 @@ function GateBody({
       : null
   const googleSendError = state === googleState ? sendError : null
   const emailSendError = state === googleState ? null : sendError
-  const errorClass = glass ? 'rv-err' : MAIL_ERROR_CLASS
+  const errorClass = 'rv-err'
 
   const hidden = (
     <>
@@ -306,7 +271,6 @@ function GateBody({
         : 'Cuando lo toques, tu reserva queda confirmada.'
     return (
       <SentPanel
-        look={look}
         Title={Title}
         titleId={titleId}
         email={emailState.email}
@@ -322,12 +286,10 @@ function GateBody({
   }
 
   const emailForm = (
-    <form action={emailDispatch} className={glass ? 'grid gap-3' : 'space-y-4'} noValidate>
+    <form action={emailDispatch} className="grid gap-3" noValidate>
       {hidden}
-      <div className={glass ? 'grid gap-1.5' : 'space-y-2'}>
-        <Label htmlFor="gate-email" className={glass ? undefined : 'text-base'}>
-          Email
-        </Label>
+      <div className="grid gap-1.5">
+        <Label htmlFor="gate-email">Email</Label>
         <Input
           ref={emailRef}
           id="gate-email"
@@ -372,11 +334,11 @@ function GateBody({
   )
 
   const googleBlock = (
-    <div className={glass ? 'grid gap-3' : 'space-y-3'}>
+    <div className="grid gap-3">
       <form action={googleDispatch}>
         {hidden}
         <SubmitButton {...skin.alt} pendingLabel="Abriendo Google…">
-          <GoogleIcon className={glass ? 'size-5' : 'mr-2 size-5'} />
+          <GoogleIcon className="size-5" />
           Continuar con Google
         </SubmitButton>
       </form>
@@ -388,33 +350,18 @@ function GateBody({
     </div>
   )
 
-  const divider = glass ? (
+  const divider = (
     <div aria-hidden className={skin.divider}>
       o
-    </div>
-  ) : (
-    <div aria-hidden className={skin.divider}>
-      <div className="h-px flex-1 bg-border" />o<div className="h-px flex-1 bg-border" />
     </div>
   )
 
   return (
-    <div className={glass ? 'grid gap-3' : 'space-y-6'}>
+    <div className="grid gap-3">
       <div>
-        {/* `pr-6`: deja libre el lugar de la X del diálogo (el título RIVAL llega hasta ahí a 390 px). */}
-        <Title id={titleId} className={glass ? 'rv-h2' : cn(AUTH_TITLE, 'pr-6')}>
-          {rival ? (
-            <>
-              Entrá para <span style={AUTH_ACCENT_STYLE}>{rivalCopy.accent}</span>
-              {rivalCopy.after}
-            </>
-          ) : glass ? (
-            'Entrá para reservar'
-          ) : (
-            <>
-              Entrá para <span style={AUTH_ACCENT_STYLE}>reservar</span>
-            </>
-          )}
+        {/* `pr-12`: en el modal deja libre el lugar de la X (el título RIVAL llega hasta ahí a 390 px). */}
+        <Title id={titleId} className={cn('rv-h2', rival && 'pr-12')}>
+          {rival ? `Entrá para ${rivalCopy.accent}${rivalCopy.after}` : 'Entrá para reservar'}
         </Title>
         {rival ? (
           <p className={skin.lead}>{rivalCopy.lead}</p>
@@ -455,33 +402,28 @@ function GateBody({
 }
 
 /**
- * El modal de ingreso en La Previa: siempre oscuro (`dark` + `dark-surface` resuelven los tokens en
- * oscuro con cualquier tema, y el `--input` de campo llega a 3:1 sobre el vidrio). En el celular es
- * una hoja que sube desde abajo y desde `md` una tarjeta centrada; el panel scrollea si el teclado
- * le come el alto. La X de cierre del primitivo se agranda a 44 px.
+ * El modal de ingreso de RIVAL en vidrio (portal de vidrio F7): en el celular es una hoja que sube
+ * desde abajo y desde `md` una tarjeta centrada; el panel scrollea si el teclado le come el alto.
+ * Relleno de la hoja de vidrio (`--portal-sheet-*`): opaco, porque detrás pasa la página y el borde
+ * de los campos tiene que llegar a 3:1. `glass-pop` lo suma a los respaldos de accesibilidad. La X
+ * de cierre del primitivo se agranda a 44 px.
  */
 const GATE_CONTENT = cn(
-  'dark dark-surface text-foreground [--input:215.4_16.3%_50%]',
-  'top-auto bottom-0 left-0 max-h-[92dvh] w-full max-w-none translate-x-0 rounded-b-none rounded-t-2xl p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]',
-  'md:top-1/2 md:bottom-auto md:left-1/2 md:max-h-[90dvh] md:w-[calc(100%-2rem)] md:max-w-md md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-2xl md:p-8',
+  'glass-pop border-(--glass-line) bg-(--portal-bg) bg-linear-to-b from-(--portal-sheet-a) to-(--portal-sheet-b) font-display text-portal-ink shadow-[inset_0_1px_0_var(--glass-hi),var(--glass-shadow)] backdrop-blur-none',
+  'top-auto bottom-0 left-0 max-h-[92dvh] w-full max-w-none translate-x-0 rounded-b-none rounded-t-[32px] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]',
+  'md:top-1/2 md:bottom-auto md:left-1/2 md:max-h-[90dvh] md:w-[calc(100%-2rem)] md:max-w-md md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[32px] md:p-8',
   'data-[state=open]:slide-in-from-left-0 data-[state=closed]:slide-out-to-left-0 data-[state=open]:slide-in-from-bottom-10 data-[state=closed]:slide-out-to-bottom-10',
   'md:data-[state=open]:slide-in-from-left-1/2 md:data-[state=closed]:slide-out-to-left-1/2 md:data-[state=open]:slide-in-from-bottom-0 md:data-[state=closed]:slide-out-to-bottom-0',
-  '[&>button]:right-3 [&>button]:top-3 [&>button]:flex [&>button]:size-11 [&>button]:items-center [&>button]:justify-center [&>button]:p-0 [&>button]:text-white [&>button]:opacity-100',
+  '[&>button]:right-4 [&>button]:top-4 [&>button]:grid [&>button]:size-11 [&>button]:place-items-center [&>button]:rounded-full [&>button]:border [&>button]:border-portal-inner-line [&>button]:bg-portal-inner [&>button]:p-0 [&>button]:text-portal-ink [&>button]:opacity-100',
 )
 
 /**
- * El vidrio de La Previa pero opaco: el velo del Dialog es `bg-black/50` con tema claro y la
- * página clara se transparentaba, el borde de los campos bajaba a 2,6:1. Opaco, lo más claro
- * detrás del contenido es slate-900, que es contra lo que miden las stories (`onGlass`).
+ * Sin `id`: un `id={undefined}` pisaría el que Radix le da para nombrar el diálogo. El `Title` de
+ * Radix y no el `DialogTitle` del panel: sus utilidades (`text-lg font-semibold leading-none`) le
+ * ganarían a `.rv-h2`, que vive en `@layer components`.
  */
-const GATE_CARD_STYLE = {
-  ...AUTH_CARD_STYLE,
-  background: 'linear-gradient(180deg, #0f172a, #020617)',
-} as const
-
-/** Sin `id`: un `id={undefined}` pisaría el que Radix le da para nombrar el diálogo. */
 function DialogHeading({ children, id: _id, ...props }: TitleProps) {
-  return <DialogTitle {...props}>{children}</DialogTitle>
+  return <DialogPrimitiveTitle {...props}>{children}</DialogPrimitiveTitle>
 }
 
 function PanelHeading({ children, ...props }: TitleProps) {
@@ -515,10 +457,9 @@ export default function LoginGate({
   const gate = useGate(action, googleAction, rival ? 'rival' : 'reservar')
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={GATE_CONTENT} style={GATE_CARD_STYLE}>
+      <DialogContent className={GATE_CONTENT}>
         <GateBody
           gate={gate}
-          look="dialog"
           Title={DialogHeading}
           next={next}
           action={action}
@@ -560,7 +501,6 @@ export function LoginPanel({
     >
       <GateBody
         gate={gate}
-        look="glass"
         Title={PanelHeading}
         titleId="gate-title"
         next={next}
@@ -582,7 +522,6 @@ export function LoginPanel({
  * sobre haciendo su toque.
  */
 function SentPanel({
-  look,
   Title,
   titleId,
   email,
@@ -594,7 +533,6 @@ function SentPanel({
   action,
   onChangeEmail,
 }: {
-  look: Look
   Title: (props: TitleProps) => ReactNode
   titleId?: string
   email: string
@@ -610,55 +548,33 @@ function SentPanel({
   useEffect(() => {
     heading.current?.focus()
   }, [])
-  const glass = look === 'glass'
-  const skin = SKIN[look]
+  const skin = SKIN
 
   return (
-    <div className={glass ? 'rv-swap grid gap-3' : undefined}>
-      {glass && (
-        <span className="rv-tap grid size-12 place-items-center rounded-full border border-portal-inner-line bg-portal-inner text-portal-green">
-          <Mail className="size-6" aria-hidden />
-        </span>
-      )}
-      <Title
-        ref={heading}
-        id={titleId}
-        tabIndex={-1}
-        className={glass ? 'rv-h2 outline-hidden' : cn(AUTH_TITLE, 'outline-hidden')}
-      >
-        {glass ? (
-          'Revisá tu email'
-        ) : (
-          <>
-            Revisá tu <span style={AUTH_ACCENT_STYLE}>email</span>
-          </>
-        )}
+    <div className="rv-swap grid gap-3">
+      <span className="rv-tap grid size-12 place-items-center rounded-full border border-portal-inner-line bg-portal-inner text-portal-green">
+        <Mail className="size-6" aria-hidden />
+      </span>
+      <Title ref={heading} id={titleId} tabIndex={-1} className="rv-h2 outline-hidden">
+        Revisá tu email
       </Title>
-      <div className={glass ? 'grid gap-2' : undefined}>
-        <p
-          className={
-            glass
-              ? 'break-words text-base text-portal-ink'
-              : 'mt-3 break-words text-base text-foreground'
-          }
-        >
+      <div className="grid gap-2">
+        <p className="break-words text-base text-portal-ink">
           Te mandamos un enlace a <strong className="font-semibold">{email}</strong>.
         </p>
-        <p className={glass ? 'rv-sub mt-0' : 'mt-2 text-pretty text-base text-muted-foreground'}>
-          {sentMessage}
-        </p>
-        <p className={glass ? 'rv-small' : 'mt-2 text-pretty text-sm text-muted-foreground'}>
+        <p className="rv-sub mt-0">{sentMessage}</p>
+        <p className="rv-small">
           ¿No llegó? Revisá la carpeta de correo no deseado o que el email esté bien escrito.
         </p>
       </div>
-      <div className={glass ? 'flex flex-wrap items-start gap-2' : 'mt-6 space-y-3'}>
+      <div className="flex flex-wrap items-start gap-2">
         <ResendLinkForm
           action={action}
           fields={{ email, firstName, next, terms: 'on' }}
           sentAt={sentAt}
           scope={scope}
           resentNotice="Listo: te mandamos otro enlace. Usá el del último correo."
-          button={glass ? skin.ghost : undefined}
+          button={skin.ghost}
         />
         <Button type="button" {...skin.ghost} onClick={onChangeEmail}>
           Usar otro email

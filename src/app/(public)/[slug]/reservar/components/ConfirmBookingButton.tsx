@@ -11,15 +11,19 @@ import AutoConfirm from './AutoConfirm'
  * Botón fijo abajo en el celular, por encima de la barra inferior del jugador
  * (`--portal-tabbar-space`); desde `md` queda en el flujo. Lo usa RIVAL: la pantalla de confirmar
  * ya no lo fija (portal de vidrio F5). `data-fixed-cta` es el aviso a `PortalFrame`: mientras esté
- * montado el marco suma su alto real (1 px de borde + 12 + 52 + 12 px) a su padding inferior.
+ * montado el marco suma su alto real (1 + 12 + 52 + 12 + 1 px: el borde va en los cuatro lados) a su padding inferior.
+ *
+ * En el celu es vidrio real (portal de vidrio F7): flota sobre la lista que pasa por detrás, como la
+ * barra de "Reservar" de la ficha. Armado con utilidades, así que lleva `glass-pop` para entrar en
+ * los respaldos sin desenfoque, con "reducir transparencia" y con "más contraste".
  */
 export function FixedCta({ children }: { children: ReactNode }) {
   return (
     <div
       data-fixed-cta
       className={cn(
-        'fixed inset-x-0 bottom-(--portal-tabbar-space) z-30 border-t border-border bg-card px-4 pt-3 pb-3 dark:bg-background',
-        'md:static md:z-auto md:border-0 md:bg-transparent md:p-0 dark:md:bg-transparent',
+        'glass-pop fixed inset-x-2 bottom-(--portal-tabbar-space) z-30 rounded-[28px] border border-(--glass-line) bg-linear-to-b from-(--glass-a) to-(--glass-b) p-3 shadow-[inset_0_1px_0_var(--glass-hi),var(--glass-shadow)] backdrop-blur-[26px] backdrop-saturate-[1.8]',
+        'md:static md:z-auto md:rounded-none md:border-0 md:bg-none md:p-0 md:shadow-none md:backdrop-filter-none',
       )}
     >
       {children}

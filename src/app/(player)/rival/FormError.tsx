@@ -1,9 +1,9 @@
 import Link from 'next/link'
 import { IngresarLink } from '@/components/site/IngresarLink'
 
-const ERROR = 'text-[13px] leading-5 text-red-700 dark:text-red-300'
+const ERROR = 'text-sm font-semibold leading-5 text-portal-bad'
 const LINK =
-  'inline-flex min-h-11 items-center text-[13px] font-medium underline underline-offset-4'
+  'inline-flex min-h-11 items-center text-sm font-semibold text-portal-slot-ink underline underline-offset-4'
 /** Topes y envíos sin confirmar: se resuelven mirando Mis partidos. */
 const MY_MATCHES_CODES: ReadonlySet<string> = new Set([
   'rival_limit_active',

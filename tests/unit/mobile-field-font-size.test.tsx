@@ -31,9 +31,6 @@ const read = (rel: string) => readFileSync(path.join(projectRoot, rel), 'utf8')
 const stripComments = (source: string) =>
   source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
 
-/** `text-base` (16px) en mobile con cascada `md:` que recupera densidad desktop. */
-const MOBILE_FIRST_FIELD = /\btext-base\b[\s\S]{0,40}?\bmd:text-(sm|xs|\[15px\])\b/
-
 describe('Piso de 16px en campos — primitivos', () => {
   it('Input renderiza text-base + md:text-sm', () => {
     const { container } = render(<Input placeholder="x" />)
@@ -62,40 +59,15 @@ describe('Piso de 16px en campos — primitivos', () => {
   })
 })
 
-describe('Piso de 16px en campos — constantes compartidas', () => {
-  // Allowlist explícita: cada entrada es una const que alimenta uno o más
-  // <input>/<textarea>. Preferimos enumerar a heurísticas sobre todo src/,
-  // que darían falsos positivos con className dinámico.
-  const SHARED_FIELD_CONSTS: Array<{ file: string; needle: string; what: string }> = [
-    {
-      file: 'src/components/world/portal-auth-styles.ts',
-      needle: 'const PORTAL_INPUT',
-      what: 'email del login de jugador',
-    },
-  ]
-
-  for (const { file, needle, what } of SHARED_FIELD_CONSTS) {
-    it(`${file} — ${what}`, () => {
-      const source = read(file)
-      const start = source.indexOf(needle)
-      expect(start, `no se encontró \`${needle}\` en ${file}`).toBeGreaterThan(-1)
-      // La declaración entera (puede ocupar varias líneas).
-      const declaration = source.slice(start, source.indexOf('\n\n', start))
-      expect(declaration, `\`${needle}\` debe declarar text-base + md:text-*`).toMatch(
-        MOBILE_FIRST_FIELD,
-      )
-    })
-  }
-
-  it('LoginGate: el email usa AUTH_INPUT (PORTAL_INPUT) en el modal y GLASS_INPUT en el panel de vidrio', () => {
+describe('Piso de 16px en campos — campos compartidos', () => {
+  it('LoginGate: el email usa GLASS_INPUT en el modal de RIVAL y en el panel de vidrio', () => {
     const code = stripComments(read('src/app/(public)/[slug]/reservar/components/LoginGate.tsx'))
     // El único campo de texto (el email) toma la clase de la piel (`skin.input`): una clase propia
     // en un campo nuevo es justo donde se cuela el `text-sm` de 14px.
     expect(code.match(/<Input\s/g)).toHaveLength(1)
     expect(code).toMatch(/className=\{skin\.input\}/)
-    expect(code).toMatch(/input: AUTH_INPUT,/)
-    // La piel de vidrio: GLASS_INPUT, 16 px también desde md (la base de `Input` baja a `md:text-sm`).
-    expect(code).toMatch(/glass: \{\s*input: GLASS_INPUT,/)
+    // La piel única (vidrio desde F7): GLASS_INPUT, 16 px también desde md (la base de `Input` baja a `md:text-sm`).
+    expect(code).toMatch(/const SKIN = \{\s*input: GLASS_INPUT,/)
     const frame = read('src/components/world/portal-auth-styles.ts')
     const glass = frame.match(/export const GLASS_INPUT =\s*'([^']+)'/)
     expect(glass, 'no se encontró GLASS_INPUT').not.toBeNull()

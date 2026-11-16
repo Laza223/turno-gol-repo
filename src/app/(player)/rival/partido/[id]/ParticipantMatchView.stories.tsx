@@ -62,6 +62,13 @@ const CONTACT_LINK = '#whatsapp-del-organizador'
 const meta = {
   title: 'Player/Rival/ParticipantMatchView',
   component: ParticipantMatchView,
+  decorators: [
+    (Story) => (
+      <div data-portal-glass className="portal-ambient min-h-dvh text-portal-ink">
+        <Story />
+      </div>
+    ),
+  ],
   parameters: {
     layout: 'fullscreen',
     nextjs: { appDirectory: true, navigation: { pathname: '/rival/partido/m1' } },

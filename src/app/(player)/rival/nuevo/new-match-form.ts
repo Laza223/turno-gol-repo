@@ -38,8 +38,8 @@ export const FIELD_IDS: Record<Field, string> = {
 }
 /** Campos que la reserva fijada oculta: su error no tiene dónde pintarse y sale arriba del botón. */
 export const LOCKED_FIELDS = ['tenantId', 'startsAt', 'format'] as const
-export const FIELD_ERROR = 'text-[13px] leading-5 text-red-700 dark:text-red-300'
-export const HELP = 'text-[13px] leading-5 text-muted-foreground'
+export const FIELD_ERROR = 'text-sm font-semibold text-portal-bad'
+export const HELP = 'rv-small text-portal-soft'
 /** Crear NO es idempotente: si la respuesta se perdió, el partido pudo haberse armado igual. */
 export const UNCONFIRMED =
   'No pudimos confirmar si se armó el partido. Mirá en Mis partidos antes de volver a intentar.'
@@ -57,11 +57,6 @@ export const INTENT_OPTIONS: { value: NewMatchIntent; title: string; help: strin
   { value: 'rival', title: 'Busco rival', help: 'Tu equipo está completo.' },
   { value: 'group', title: 'Solo para mi grupo', help: 'Le pasás el link por WhatsApp.' },
 ]
-/** Mismo molde que un chip de `ChipGroup` (píldora de 44 px): "Otra hora" es uno más del grupo. */
-export const CHIP_BUTTON =
-  'inline-flex min-h-11 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-full border border-border bg-card px-4 text-sm font-medium tabular-nums text-foreground transition-colors duration-150 hover:border-input focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background'
-export const CHIP_BUTTON_ON =
-  'border-primary bg-primary font-semibold text-primary-foreground hover:border-primary'
 export const MIN_CAPACITY = 2
 export const MAX_CAPACITY = 22
 

@@ -1,4 +1,3 @@
-import { PORTAL_SECTION_TITLE } from '@/components/world/portal-auth-styles'
 import type { RivalPublicMatch, RivalRosterEntry } from '@/modules/rival/rival.types'
 import type { ActionResult } from '@/shared/types/action-result'
 import type { RivalReportReason } from '@/modules/rival/rival.schema'
@@ -20,12 +19,9 @@ function initialsOf(shortName: string): string {
 function Avatar({ entry }: { entry: RivalRosterEntry }) {
   return entry.avatarUrl ? (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={entry.avatarUrl} alt="" className="size-10 shrink-0 rounded-full object-cover" />
+    <img src={entry.avatarUrl} alt="" className="ri-avatar" />
   ) : (
-    <span
-      aria-hidden
-      className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted font-display text-sm font-black italic text-foreground"
-    >
+    <span aria-hidden className="ri-avatar">
       {initialsOf(entry.shortName)}
     </span>
   )
@@ -50,7 +46,7 @@ export type RowActionProps = {
   ) => Promise<ActionResult>
 }
 
-/** Lo que el organizador decide en la fila (la denuncia va en la línea del nombre, no acá). */
+/** Lo que el organizador decide en la fila; la denuncia va al lado, en el mismo contenedor. */
 function RowActions({ entry, actions }: { entry: RivalRosterEntry; actions: RowActionProps }) {
   if (entry.isMe) return null
   const { organizer } = actions
@@ -58,7 +54,7 @@ function RowActions({ entry, actions }: { entry: RivalRosterEntry; actions: RowA
   const remove = organizer && (entry.status === 'confirmed' || entry.status === 'bench')
   if (!decide && !remove) return null
   return (
-    <div className="flex flex-wrap items-center gap-x-1 pb-1 pl-[52px]">
+    <>
       {decide && (
         <RequestRowActions
           participantId={entry.participantId}
@@ -73,16 +69,16 @@ function RowActions({ entry, actions }: { entry: RivalRosterEntry; actions: RowA
           removeAction={organizer.removeAction}
         />
       )}
-    </div>
+    </>
   )
 }
 
 function PersonName({ entry }: { entry: RivalRosterEntry }) {
   return (
-    <p className="break-words text-base font-medium text-foreground">
+    <p className="break-words font-semibold text-portal-ink">
       {entry.role === 'rival_captain' ? 'Equipo rival: ' : ''}
       {entry.shortName}
-      {entry.isMe && <span className="font-normal text-muted-foreground"> (vos)</span>}
+      {entry.isMe && <span className="font-normal text-portal-soft"> (vos)</span>}
     </p>
   )
 }
@@ -114,18 +110,18 @@ function PersonRow({
 }) {
   const facts = rowFacts(entry, detail)
   return (
-    <li className="py-2">
-      <div className="flex items-start gap-3">
-        <Avatar entry={entry} />
-        <div className="min-w-0 flex-1">
-          <PersonName entry={entry} />
-          {facts.length > 0 && (
-            <p className="text-sm tabular-nums text-muted-foreground">{facts.join(' · ')}</p>
-          )}
-        </div>
-        <ReportSlot entry={entry} actions={actions} />
+    <li className="ri-req">
+      <Avatar entry={entry} />
+      <div className="min-w-0">
+        <PersonName entry={entry} />
+        {facts.length > 0 && <p className="rv-small tabular-nums">{facts.join(' · ')}</p>}
       </div>
-      {actions && <RowActions entry={entry} actions={actions} />}
+      {actions && !entry.isMe && (
+        <div className="pa-links ri-req__actions">
+          <RowActions entry={entry} actions={actions} />
+          <ReportSlot entry={entry} actions={actions} />
+        </div>
+      )}
     </li>
   )
 }
@@ -143,9 +139,9 @@ export function PeopleSection({
 }) {
   if (entries.length === 0) return null
   return (
-    <section aria-label={title} className="space-y-1">
-      <h2 className={PORTAL_SECTION_TITLE}>{title}</h2>
-      <ul className="divide-y divide-border">
+    <section aria-label={title} className="rv-panel glass-painted rv-rise gap-1">
+      <h2 className="rv-h2">{title}</h2>
+      <ul>
         {entries.map((e) => (
           <PersonRow key={e.participantId} entry={e} detail={detail} actions={actions} />
         ))}

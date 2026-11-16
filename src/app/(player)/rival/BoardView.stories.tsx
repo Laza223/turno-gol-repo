@@ -75,6 +75,13 @@ const meta = {
     },
     entry: { sendMagicLink: fn(idle), startGoogle: fn(idle) },
   },
+  decorators: [
+    (Story) => (
+      <div data-portal-glass className="portal-ambient min-h-dvh text-portal-ink">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof BoardView>
 
 export default meta
@@ -99,12 +106,12 @@ export const Default: Story = {
     await expect(canvas.getByRole('link', { name: /Busca rival.*El Vagón/ })).toBeInTheDocument()
     await expect(canvas.queryByRole('link', { name: 'Ver más partidos' })).toBeNull()
     // La hora manda y el día no se repite bajo "Hoy"/"Mañana"; bajo "Próximos días" sí sale.
-    await expect(canvas.getAllByText('20:00')).toHaveLength(1)
-    await expect(canvas.queryByText('Hoy 20:00')).toBeNull()
-    await expect(canvas.getByText('Miércoles 18')).toBeInTheDocument()
-    // El cupo va en el nombre accesible (la tira de camisetas es decorativa).
+    await expect(canvas.getAllByText(/· 20:00$/)).toHaveLength(1)
+    await expect(canvas.queryByText('Hoy 20:00', { ignore: '.sr-only' })).toBeNull()
+    await expect(canvas.getByText(/Miércoles 18 · /, { ignore: '.sr-only' })).toBeInTheDocument()
+    // El cupo va en el nombre accesible (la barra es decorativa).
     await expect(
-      canvas.getByRole('link', { name: /Faltan 3.*El Vagón.*Ya son 7 de 10/ }),
+      canvas.getByRole('link', { name: /Faltan 3.*El Vagón.*ya son 7 de 10/ }),
     ).toBeInTheDocument()
   },
 }

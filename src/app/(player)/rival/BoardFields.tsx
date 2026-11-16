@@ -3,13 +3,14 @@
 import { ChipGroup } from '@/app/(public)/[slug]/components/ChipGroups'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { GLASS_INPUT } from '@/components/world/portal-auth-styles'
 import { RivalCheckbox } from './RivalCheckbox'
 
 export type BoardSeeking = 'players' | 'rival'
 export type BoardPosition = 'any' | 'goalkeeper'
 
-const FIELD_ERROR = 'text-[13px] leading-5 text-red-700 dark:text-red-300'
-const HELP = 'text-[13px] leading-5 text-muted-foreground'
+const FIELD_ERROR = 'text-sm font-semibold leading-5 text-portal-bad'
+const HELP = 'text-sm leading-5 text-portal-soft'
 
 const SEEKING_OPTIONS = [
   { value: 'players', label: 'Buscamos jugadores' },
@@ -92,16 +93,17 @@ export function BoardFields({
       {seeking === 'players' && <input type="hidden" name="seekingPosition" value={position} />}
 
       {!compact && (
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           {choose && (
             <>
-              <p className="text-base font-medium text-foreground">¿Qué buscás?</p>
+              <p className="ri-q">¿Qué buscás?</p>
               <ChipGroup
                 label="Qué buscás"
                 options={seekingOptions}
                 value={seeking}
                 onChange={(v) => onSeekingChange(v === 'rival' ? 'rival' : 'players')}
                 alwaysWrap
+                glass
               />
             </>
           )}
@@ -111,14 +113,15 @@ export function BoardFields({
       )}
 
       {!compact && seeking === 'players' && (
-        <div className="flex flex-col gap-1.5">
-          <p className="text-base font-medium text-foreground">Posición que buscás</p>
+        <div className="flex flex-col gap-2">
+          <p className="ri-q">Posición que buscás</p>
           <ChipGroup
             label="Posición que buscás"
             options={POSITION_OPTIONS}
             value={position}
             onChange={(v) => onPositionChange(v === 'goalkeeper' ? 'goalkeeper' : 'any')}
             alwaysWrap
+            glass
           />
           {err('seekingPosition')}
         </div>
@@ -127,7 +130,7 @@ export function BoardFields({
       {/* Un mismo tema: qué se hace con tu número. Primero la que obliga, después la opcional. */}
       <div className="space-y-1">
         <div className="space-y-1.5">
-          <Label htmlFor={`${idPrefix}-whatsapp`} className="text-base">
+          <Label htmlFor={`${idPrefix}-whatsapp`} className="text-sm font-semibold text-portal-ink">
             Tu WhatsApp
           </Label>
           <Input
@@ -139,7 +142,7 @@ export function BoardFields({
             value={whatsapp}
             onChange={(e) => onWhatsappChange(e.target.value)}
             placeholder="11 2345 6789"
-            className="h-12 rounded-lg text-base placeholder:text-muted-foreground md:h-12 md:text-base"
+            className={GLASS_INPUT}
             aria-invalid={fieldError('whatsapp') ? true : undefined}
             aria-describedby={
               fieldError('whatsapp') ? errorId('whatsapp') : `${idPrefix}-whatsapp-ayuda`

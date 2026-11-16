@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { GlassConfirmSheet } from '@/components/world/GlassConfirmSheet'
 import { cn } from '@/lib/utils'
 import type { ActionResult } from '@/shared/types/action-result'
 import { RIVAL_GHOST_DESTRUCTIVE } from '../../rival-classes'
@@ -30,13 +30,14 @@ export function LeaveMatch({
     <>
       <Button
         type="button"
-        variant="ghost"
+        variant="pill-link"
+        size="pill-sm"
         onClick={() => setOpen(true)}
         className={cn(RIVAL_GHOST_DESTRUCTIVE, 'w-full')}
       >
         {requested ? 'Cancelar pedido' : 'Me bajo'}
       </Button>
-      <ConfirmDialog
+      <GlassConfirmSheet
         open={open}
         onOpenChange={setOpen}
         title={requested ? '¿Cancelás tu pedido?' : '¿Te bajás del partido?'}

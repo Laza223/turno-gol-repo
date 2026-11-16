@@ -17,7 +17,7 @@ const meta = {
   args: { retry: fn() },
   decorators: [
     (Story) => (
-      <div className="min-h-dvh bg-background text-foreground">
+      <div data-portal-glass className="min-h-dvh text-portal-ink">
         <Story />
       </div>
     ),

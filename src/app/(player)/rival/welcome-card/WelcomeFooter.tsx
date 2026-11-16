@@ -1,6 +1,5 @@
 import Link from 'next/link'
-import { Button, buttonVariants } from '@/components/ui/button'
-import { PORTAL_BUTTON } from '@/components/world/portal-auth-styles'
+import { Button } from '@/components/ui/button'
 import { FixedCta } from '@/app/(public)/[slug]/reservar/components/ConfirmBookingButton'
 import { cn } from '@/lib/utils'
 import type { RivalFormResult } from '../actions'
@@ -11,13 +10,13 @@ import { CONDUCT, type WelcomeNeeds } from './welcome-copy'
 /** Un solo bloque, arriba del botón: lo que se acepta se lee antes de tocar. */
 function ConsentNote({ needs }: { needs: WelcomeNeeds }) {
   return (
-    <p className="text-sm leading-5 text-muted-foreground">
+    <p className="rv-small">
       {needs.identity ? (
         <>
           Al tocar, aceptás las reglas de RIVAL y los{' '}
           <Link
             href="/terminos"
-            className="font-medium text-emerald-700 underline underline-offset-4 dark:text-emerald-400"
+            className="font-semibold text-portal-slot-ink underline underline-offset-4"
           >
             Términos
           </Link>
@@ -36,10 +35,8 @@ function ConsentNote({ needs }: { needs: WelcomeNeeds }) {
 export function RulesBlock({ needs }: { needs: WelcomeNeeds }) {
   return (
     <div className="space-y-1.5">
-      <h3 className="font-display text-lg font-extrabold leading-6 text-foreground">
-        Las reglas de RIVAL
-      </h3>
-      <ol className="list-decimal space-y-0.5 pl-5 text-sm leading-5 text-foreground">
+      <h3 className="text-lg font-semibold leading-6 text-portal-ink">Las reglas de RIVAL</h3>
+      <ol className="list-decimal space-y-0.5 pl-5 text-[15px] leading-6 text-portal-ink">
         {CONDUCT.map((rule) => (
           <li key={rule}>{rule}</li>
         ))}
@@ -59,14 +56,20 @@ function DismissAction({
   const dismissClass = cn(RIVAL_GHOST, 'w-full')
   if (onDismiss) {
     return (
-      <Button type="button" variant="ghost" className={dismissClass} onClick={onDismiss}>
+      <Button
+        type="button"
+        variant="pill-link"
+        size="pill-sm"
+        className={dismissClass}
+        onClick={onDismiss}
+      >
         Ahora no
       </Button>
     )
   }
   if (!dismissHref) return null
   return (
-    <Link href={dismissHref} className={cn(buttonVariants({ variant: 'ghost' }), dismissClass)}>
+    <Link href={dismissHref} className={dismissClass}>
       Ahora no
     </Link>
   )
@@ -97,7 +100,9 @@ export function WelcomeFooter({
       type="submit"
       disabled={pending}
       aria-busy={pending}
-      className={cn(PORTAL_BUTTON, pinSubmit && 'min-h-[52px]')}
+      variant="pill"
+      size="pill"
+      className="rv-go w-full"
     >
       {pending ? 'Guardando…' : submitLabel}
     </Button>
@@ -110,9 +115,7 @@ export function WelcomeFooter({
       {pinSubmit ? (
         <FixedCta>
           {needs.identity && (
-            <p className="mb-2 text-center text-sm leading-5 text-muted-foreground">
-              Al tocar, aceptás las reglas de RIVAL.
-            </p>
+            <p className="rv-small mb-2 text-center">Al tocar, aceptás las reglas de RIVAL.</p>
           )}
           {submit}
         </FixedCta>

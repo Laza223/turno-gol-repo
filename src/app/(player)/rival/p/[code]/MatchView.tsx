@@ -6,6 +6,7 @@ import type { RivalPublicMatch, RivalRosterEntry } from '@/modules/rival/rival.t
 import type { ActionResult } from '@/shared/types/action-result'
 import type { RivalFormResult } from '../../actions'
 import { MatchHeader } from '../../MatchBits'
+import { RivalScreen } from '../../RivalScreen'
 import { DropIntentParam } from './DropIntentParam'
 import { LeaveMatch } from './LeaveMatch'
 import { deriveMatchView } from './match-view-state'
@@ -137,9 +138,9 @@ export function MatchView({
   )
 
   return (
-    <div className="mx-auto max-w-lg space-y-8 px-4 py-6">
+    <RivalScreen>
       <DropIntentParam param={intentParam} />
-      <div className="space-y-3">
+      <div className="grid gap-3.5">
         {lifted && <CreatedBanner title={created.title} line={created.line} />}
         <MatchHeader
           tenantName={match.tenantName}
@@ -208,6 +209,6 @@ export function MatchView({
           )}
         </>
       )}
-    </div>
+    </RivalScreen>
   )
 }

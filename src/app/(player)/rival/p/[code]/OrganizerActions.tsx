@@ -2,13 +2,18 @@
 
 import { useState } from 'react'
 import { Check, Copy, Share2 } from 'lucide-react'
-import { buttonVariants, Button } from '@/components/ui/button'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Button } from '@/components/ui/button'
+import { GlassConfirmSheet } from '@/components/world/GlassConfirmSheet'
 import { cn } from '@/lib/utils'
 import type { ActionResult } from '@/shared/types/action-result'
 import type { RivalFormResult } from '../../actions'
-import { RIVAL_ACTION, RIVAL_GHOST, RIVAL_GHOST_DESTRUCTIVE } from '../../rival-classes'
-import { PublishToBoard, RIVAL_SECONDARY } from './PublishToBoard'
+import {
+  RIVAL_ACTION,
+  RIVAL_GHOST,
+  RIVAL_GHOST_DESTRUCTIVE,
+  RIVAL_SECONDARY,
+} from '../../rival-classes'
+import { PublishToBoard } from './PublishToBoard'
 
 /** Firma de la Server Action (por prop, no por import: ver convenciones-stack). */
 type CancelAction = (matchId: string) => Promise<ActionResult>
@@ -69,11 +74,7 @@ export function OrganizerActions({
       href={shareHref}
       target="_blank"
       rel="noopener noreferrer"
-      className={
-        !publishOpen
-          ? RIVAL_ACTION
-          : cn(buttonVariants({ variant: 'outline' }), RIVAL_GHOST, RIVAL_SECONDARY, 'w-full gap-2')
-      }
+      className={publishOpen ? RIVAL_SECONDARY : RIVAL_ACTION}
     >
       <Share2 className="size-4 shrink-0" aria-hidden /> Avisar al grupo
     </a>
@@ -93,58 +94,65 @@ export function OrganizerActions({
   const showMain = part !== 'cancel'
   const showCancel = part !== 'main'
 
+  const cancel = (
+    <>
+      <Button
+        type="button"
+        variant="pill-link"
+        size="pill-sm"
+        onClick={() => setConfirmOpen(true)}
+        className={cn(RIVAL_GHOST_DESTRUCTIVE, 'w-full')}
+      >
+        Cancelar el partido
+      </Button>
+      <GlassConfirmSheet
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="¿Cancelar el partido?"
+        description="El link va a mostrar que el partido se cayó y nadie más se va a poder sumar. A quienes ya se sumaron les avisamos por mail."
+        confirmLabel="Sí, cancelar"
+        cancelLabel="No, lo dejo"
+        variant="destructive"
+        onConfirm={() => cancelAction(matchId)}
+      />
+    </>
+  )
+
+  // Recién armado, "Cancelar el partido" queda solo debajo del plantel: sin panel propio.
+  if (!showMain) return cancel
   return (
-    <div className="space-y-4">
-      {showMain && (
-        <>
-          {share}
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={copy}
-            className="min-h-11 w-full gap-2 text-sm text-muted-foreground underline underline-offset-4 focus-visible:ring-offset-background"
-          >
-            {copied ? (
-              <>
-                <Check className="size-4 shrink-0" aria-hidden /> Link copiado
-              </>
-            ) : (
-              <>
-                <Copy className="size-4 shrink-0" aria-hidden /> Copiar link
-              </>
-            )}
-          </Button>
-          <p role="status" className="sr-only">
-            {copied ? 'Link copiado' : ''}
-          </p>
-          {copyFailed && (
-            <p className="break-all rounded-xl bg-muted/50 p-3 text-sm text-foreground">
-              No pudimos copiarlo solo. Copialo desde acá: {shareUrl}
-            </p>
+    <div className="rv-panel glass-painted rv-rise">
+      {share}
+      <div className="pa-links">
+        <Button
+          type="button"
+          variant="pill-link"
+          size="pill-sm"
+          onClick={copy}
+          className={RIVAL_GHOST}
+        >
+          {copied ? (
+            <>
+              <Check className="size-4 shrink-0" aria-hidden /> Link copiado
+            </>
+          ) : (
+            <>
+              <Copy className="size-4 shrink-0" aria-hidden /> Copiar link
+            </>
           )}
-          {board}
-        </>
+        </Button>
+      </div>
+      <p role="status" className="sr-only">
+        {copied ? 'Link copiado' : ''}
+      </p>
+      {copyFailed && (
+        <p className="pa-note break-all">No pudimos copiarlo solo. Copialo desde acá: {shareUrl}</p>
       )}
+      {board}
       {showCancel && (
         <>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setConfirmOpen(true)}
-            className={cn(RIVAL_GHOST_DESTRUCTIVE, 'w-full')}
-          >
-            Cancelar el partido
-          </Button>
-          <ConfirmDialog
-            open={confirmOpen}
-            onOpenChange={setConfirmOpen}
-            title="¿Cancelar el partido?"
-            description="El link va a mostrar que el partido se cayó y nadie más se va a poder sumar. A quienes ya se sumaron les avisamos por mail."
-            confirmLabel="Sí, cancelar"
-            cancelLabel="No, lo dejo"
-            variant="destructive"
-            onConfirm={() => cancelAction(matchId)}
-          />
+          <hr className="rv-rule" />
+          {cancel}
         </>
       )}
     </div>

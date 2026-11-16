@@ -3,6 +3,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SelectMenu } from '@/components/ui/select-menu'
 import { PlayerPhotoField } from '@/components/rival/PlayerPhotoField'
+import { GLASS_INPUT } from '@/components/world/portal-auth-styles'
+import { cn } from '@/lib/utils'
+import { RIVAL_PICK, RIVAL_PICK_MENU } from '../rival-classes'
 import { initials } from '@/lib/format'
 import {
   FIELD_ERROR,
@@ -22,7 +25,7 @@ function FieldGroup({ id, title, children }: { id: string; title?: string; child
       className="space-y-3"
     >
       {title && (
-        <h3 id={id} className="font-display text-lg font-extrabold leading-6 text-foreground">
+        <h3 id={id} className="text-lg font-semibold leading-6 text-portal-ink">
           {title}
         </h3>
       )}
@@ -43,7 +46,7 @@ function NameField({
   const message = fe.message('firstName')
   return (
     <div className="space-y-1.5">
-      <Label htmlFor="rival-nombre" className="text-base">
+      <Label htmlFor="rival-nombre" className="text-sm font-semibold text-portal-ink">
         Tu nombre
       </Label>
       <Input
@@ -57,11 +60,14 @@ function NameField({
           onChange(e.target.value)
           fe.clear('firstName')
         }}
-        className="h-12 rounded-lg text-base md:h-12 md:text-base aria-invalid:border-destructive aria-invalid:focus-visible:border-destructive"
+        className={cn(
+          GLASS_INPUT,
+          'aria-invalid:border-portal-bad aria-invalid:focus-visible:outline-portal-bad',
+        )}
         aria-invalid={message ? true : undefined}
         aria-describedby={message ? 'rival-nombre-ayuda rival-nombre-error' : 'rival-nombre-ayuda'}
       />
-      <p id="rival-nombre-ayuda" className="text-sm leading-5 text-muted-foreground">
+      <p id="rival-nombre-ayuda" className="rv-small">
         Los demás ven solo tu nombre y la inicial del apellido.
       </p>
       {message && (
@@ -126,7 +132,7 @@ export function ProfileFields({
     <FieldGroup id="rival-grupo-organizador" title={grouped ? 'Para el organizador' : undefined}>
       {needs.position && (
         <div className="space-y-1.5">
-          <Label htmlFor="rival-posicion-select" className="text-base">
+          <Label htmlFor="rival-posicion-select" className="text-sm font-semibold text-portal-ink">
             Tu posición
           </Label>
           <SelectMenu
@@ -136,13 +142,14 @@ export function ProfileFields({
             onChange={onPositionChange}
             options={POSITION_OPTIONS}
             placeholder="Elegí tu posición"
-            className="rounded-lg bg-card md:text-base"
+            className={RIVAL_PICK}
+            contentClassName={RIVAL_PICK_MENU}
           />
         </div>
       )}
 
       <div className="space-y-1.5">
-        <Label htmlFor="rival-zona" className="text-base">
+        <Label htmlFor="rival-zona" className="text-sm font-semibold text-portal-ink">
           Tu zona
         </Label>
         <SelectMenu
@@ -155,7 +162,8 @@ export function ProfileFields({
           }}
           options={ZONE_OPTIONS}
           placeholder="Elegí tu zona"
-          className="rounded-lg bg-card md:text-base"
+          className={RIVAL_PICK}
+          contentClassName={RIVAL_PICK_MENU}
           aria-invalid={zoneMessage ? true : undefined}
           aria-describedby={zoneMessage ? 'rival-zona-error' : undefined}
         />

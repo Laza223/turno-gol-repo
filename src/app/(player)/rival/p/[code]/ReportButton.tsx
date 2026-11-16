@@ -3,8 +3,8 @@
 import { startTransition, useState } from 'react'
 import { Flag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { RadioChip, RadioChipGroup } from '@/components/ui/radio-chip'
+import { GlassConfirmSheet } from '@/components/world/GlassConfirmSheet'
 import { cn } from '@/lib/utils'
 import { RIVAL_REPORT_REASON_LABELS } from '@/modules/rival/rival-display'
 import { RIVAL_REPORT_REASONS, type RivalReportReason } from '@/modules/rival/rival.schema'
@@ -20,6 +20,10 @@ type ReportPlayerAction = (
 ) => Promise<ActionResult>
 
 const THANKS = 'Gracias. Lo vamos a revisar.'
+
+/** El chip de motivo con la piel de vidrio (sobre la hoja `GlassConfirmSheet`). */
+const REASON_CHIP =
+  'min-h-12 rounded-2xl border-portal-inner-line bg-portal-inner text-[15px] text-portal-ink hover:bg-portal-bar-on focus-visible:ring-2 focus-visible:ring-portal-green focus-visible:ring-offset-0 data-[state=checked]:border-portal-green data-[state=checked]:bg-portal-slot [&>span:first-child]:border-portal-soft [&>span:first-child]:group-data-[state=checked]:border-portal-green [&>span:first-child_span]:bg-portal-green [&>span:last-child>span]:text-portal-ink'
 
 /**
  * El botón fantasma + el diálogo de motivos. Una denuncia enviada deja el agradecimiento en su lugar.
@@ -45,7 +49,7 @@ function ReportDialogButton({
 
   if (sent) {
     return (
-      <p role="status" className={cn('py-2 text-sm text-muted-foreground', iconOnly && 'shrink-0')}>
+      <p role="status" className={cn('rv-small py-2', iconOnly && 'shrink-0')}>
         {iconOnly ? (
           <>
             Gracias.<span className="sr-only"> Lo vamos a revisar.</span>
@@ -69,13 +73,11 @@ function ReportDialogButton({
     <>
       <Button
         type="button"
-        variant="ghost"
+        variant="pill-link"
+        size="pill-sm"
         onClick={() => setOpen(true)}
         aria-label={iconOnly ? label : undefined}
-        className={cn(
-          RIVAL_GHOST_QUIET,
-          iconOnly ? '-my-2 shrink-0 gap-1 self-center px-3' : 'w-full',
-        )}
+        className={cn(RIVAL_GHOST_QUIET, iconOnly ? 'shrink-0 gap-1' : 'w-full')}
       >
         {iconOnly ? (
           <>
@@ -86,7 +88,7 @@ function ReportDialogButton({
           label
         )}
       </Button>
-      <ConfirmDialog
+      <GlassConfirmSheet
         open={open}
         onOpenChange={(next) => {
           setOpen(next)
@@ -100,12 +102,12 @@ function ReportDialogButton({
       >
         <RadioChipGroup aria-label="Motivo" value={reason} onValueChange={setReason}>
           {reasons.map((r) => (
-            <RadioChip key={r} value={r}>
+            <RadioChip key={r} value={r} className={REASON_CHIP}>
               {RIVAL_REPORT_REASON_LABELS[r]}
             </RadioChip>
           ))}
         </RadioChipGroup>
-      </ConfirmDialog>
+      </GlassConfirmSheet>
     </>
   )
 }
@@ -120,7 +122,8 @@ export function ReportMatchButton({
 }) {
   return (
     // Aparte de las acciones propias: una línea y aire, para que nadie la toque buscando "Me bajo".
-    <div className="border-t border-border pt-4">
+    <div className="grid gap-2">
+      <hr className="rv-rule" />
       <ReportDialogButton
         label="Denunciar el partido"
         title="Denunciar el partido"

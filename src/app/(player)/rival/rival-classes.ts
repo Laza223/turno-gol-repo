@@ -1,43 +1,57 @@
-// Las clases de los botones de RIVAL. Viven fuera de MatchBits para que ese archivo exporte solo
-// componentes (Fast Refresh).
+// Las clases de los botones de RIVAL en vidrio. Viven fuera de MatchBits para que ese archivo exporte
+// solo componentes (Fast Refresh).
+//
+// Son las variantes `pill*` de `Button` ya resueltas, para un `<Link>` o un `<a>`. En un `<Button>`,
+// pasar la MISMA variante y talla (`variant="pill-link" size="pill-sm"`) y esta clase en `className`:
+// con otra variante, `twMerge` deja colgadas las clases de esa (el `hover:` del fantasma, el verde
+// del default).
 import { buttonVariants } from '@/components/ui/button'
-import { PORTAL_BUTTON } from '@/components/world/portal-auth-styles'
 import { cn } from '@/lib/utils'
-import { TONE_TEXT } from '@/lib/status-tone'
 
 /**
- * CTA primario de las PÁGINAS DE LISTA (el tablón y el vacío de Mis partidos): 44 px, el único
- * verde de la vista. Dentro de la vista de un partido la acción primaria es `RIVAL_ACTION`.
+ * La acción principal (Voy, Avisar al grupo, Armar otro, Me faltan jugadores): la píldora verde de
+ * 52 px, a todo el ancho. Es el único verde de la vista (dirección §3.6). Variante `pill`/`pill`.
  */
-export const RIVAL_CTA =
-  'inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-[color,background-color,border-color,opacity,translate,scale] duration-200 hover:-translate-y-0.5 hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 dark:shadow-emerald-500/25'
+export const RIVAL_ACTION = cn(buttonVariants({ variant: 'pill', size: 'pill' }), 'w-full')
 
 /**
- * La acción primaria DENTRO de la vista de un partido (Voy, Avisar al grupo, Armar otro…): el
- * rectángulo plano de 48 px del portal, a todo el ancho. Ícono (`size-4`) + texto, con su hueco.
- * Se usa como `className` de un `<Link>`, un `<a>` o un `<Button>`.
+ * La acción de al lado de la principal (Busco rival, Ver el tablón, Publicar en el tablón): la
+ * píldora de vidrio de 52 px. Variante `pill-glass`/`pill`.
  */
-export const RIVAL_ACTION = cn(buttonVariants(), PORTAL_BUTTON, 'gap-2')
+export const RIVAL_SECONDARY = cn(buttonVariants({ variant: 'pill-glass', size: 'pill' }), 'w-full')
 
 /**
- * El botón fantasma de RIVAL (11 de alto, 14 px medium): sin ancho ni padding, que pone quien lo
- * usa (`cn(RIVAL_GHOST, 'w-full')`, `'px-3'`). El `ring-offset-background` evita la banda blanca
- * del foco en oscuro; se usa con `variant="ghost"` u `"outline"`.
+ * La acción chica (Aceptar, Esta vez no, Copiar link, Ahora no): el `.link` del mockup, 44 px, sin
+ * ancho fijo. Variante `pill-link`/`pill-sm`.
  */
-export const RIVAL_GHOST = 'h-11 md:h-11 text-sm font-medium focus-visible:ring-offset-background'
+export const RIVAL_GHOST = buttonVariants({ variant: 'pill-link', size: 'pill-sm' })
 
 /**
- * Salida destructiva PROPIA (Cancelar el partido, Me bajo, Cancelar pedido): el fantasma con el texto
- * en tono destructive, para que no se lea igual que "Ahora no" (que queda neutro).
+ * Salida de riesgo PROPIA (Cancelar el partido, Me bajo, Cancelar pedido): el link con el tinte de
+ * riesgo, para que no se lea igual que "Ahora no". Variante `pill-link`/`pill-sm`.
  */
 export const RIVAL_GHOST_DESTRUCTIVE = cn(
   RIVAL_GHOST,
-  TONE_TEXT.destructive,
-  'hover:bg-destructive/10 hover:text-red-700 dark:hover:text-red-300',
+  'border-portal-bad-line bg-portal-bad-bg text-portal-bad hover:bg-portal-bad-bg hover:brightness-105',
 )
 
-/** La moderación (Denunciar): más chica y apagada que las acciones propias; el alto sigue en 44 px. */
+/**
+ * La moderación (Denunciar): sin borde ni relleno, más chica y apagada que las acciones propias; el
+ * alto sigue en 44 px. Variante `pill-link`/`pill-sm`.
+ */
 export const RIVAL_GHOST_QUIET = cn(
   RIVAL_GHOST,
-  'text-[13px] font-normal text-muted-foreground hover:text-foreground',
+  'border-transparent bg-transparent px-3 text-[13px] font-medium text-portal-soft hover:bg-portal-inner hover:text-portal-ink',
 )
+
+/**
+ * Elegir de una lista (`.pickbtn` del mockup): el gatillo de `SelectMenu` en vidrio, por
+ * `className`. Utilidades y no una clase de componentes: las del gatillo le ganarían. El borde es el
+ * de `GLASS_INPUT` (3:1 sobre el panel).
+ */
+export const RIVAL_PICK =
+  'h-14 rounded-[18px] border-portal-soft/70 bg-portal-inner text-base font-semibold text-portal-ink shadow-none hover:bg-portal-bar-on md:text-base focus-visible:border-portal-green focus-visible:ring-0 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-portal-green aria-invalid:border-portal-bad aria-invalid:focus-visible:border-portal-bad'
+
+/** El menú que abre `RIVAL_PICK` (`contentClassName`): el relleno de la hoja de vidrio. */
+export const RIVAL_PICK_MENU =
+  'rounded-[20px] border-(--glass-line) bg-linear-to-b from-(--portal-sheet-a) to-(--portal-sheet-b) p-1.5 font-display text-portal-ink shadow-(--glass-shadow) [&_[role=menuitemradio]]:min-h-11 [&_[role=menuitemradio]]:rounded-xl [&_[role=menuitemradio]]:text-[15px] [&_[role=menuitemradio][data-highlighted]]:bg-portal-bar-on [&_[role=menuitemradio][data-highlighted]]:text-portal-ink'

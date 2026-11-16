@@ -1,0 +1,372 @@
+/* Rival en vidrio (portal de vidrio F7: `rival.html`, `rival-nuevo.html`, `rival-partido.html` y la
+   sección "Rival" de `glass-app.css`). Los títulos, paneles, vacíos, etiquetas, notas, links y
+   casillas son los de F5 y F6 (`reserva.css`: `.rv-*`; `portal-app.css`: `.pa-*`): acá va solo lo
+   que esas pantallas no tenían. Tokens `--portal-*` y `--glass-*` de globals.css (solo existen con
+   `data-portal-glass`). Solo se anima transform y opacity (dirección §4.7). */
+
+@layer components {
+  /* ── Cabecera con acción a la derecha (`.head2`). */
+  .ri-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  /* ── Grupo del tablón: Hoy, Mañana, Próximos días (`.group`). */
+  .ri-group {
+    margin: 22px 4px 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--portal-soft);
+  }
+
+  /* ── Chips que son links (el filtro por complejo vive en la URL): el `.chipb` del mockup con
+     `aria-current` en vez de `aria-pressed`. */
+  .ri-chip {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    height: 44px;
+    padding: 0 18px;
+    border-radius: 999px;
+    border: 1px solid var(--portal-inner-line);
+    background: var(--portal-inner);
+    color: var(--portal-ink);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    text-decoration: none;
+    transition: background-color var(--dur-2) var(--portal-ease-out);
+  }
+  .ri-chip:hover {
+    background: var(--portal-bar-on);
+  }
+  .ri-chip[aria-current='page'] {
+    border-color: transparent;
+    color: var(--portal-on-green);
+    background: linear-gradient(180deg, var(--portal-btn-a), var(--portal-btn-b));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45);
+  }
+  .ri-chip:focus-visible {
+    outline: 2px solid var(--portal-green);
+    outline-offset: 2px;
+  }
+
+  /* ── Tarjeta de un partido (`.match`): vidrio pintado, se repite en una lista. */
+  .ri-match {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px 14px;
+    padding: 16px;
+    border-radius: 24px;
+    color: var(--portal-ink);
+    text-decoration: none;
+    transition: translate 250ms var(--portal-ease-out);
+  }
+  a.ri-match:hover {
+    translate: 0 -2px;
+  }
+  a.ri-match:focus-visible {
+    outline: 2px solid var(--portal-green);
+    outline-offset: 2px;
+  }
+  .ri-match__k {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .ri-match__t {
+    font-size: 16px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .ri-match__m {
+    grid-column: 1 / -1;
+    min-width: 0;
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--portal-soft);
+    overflow-wrap: anywhere;
+  }
+  .ri-match__cta {
+    grid-row: 1;
+    grid-column: 2;
+    display: inline-flex;
+    align-items: center;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--portal-on-green);
+    background: linear-gradient(180deg, var(--portal-btn-a), var(--portal-btn-b));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45);
+  }
+  .ri-match__cta--off {
+    color: var(--portal-ink);
+    background: var(--portal-inner);
+    border: 1px solid var(--portal-inner-line);
+    box-shadow: none;
+  }
+  @media (min-width: 768px) {
+    .ri-match {
+      padding: 16px 20px;
+    }
+    .ri-match__m,
+    .ri-match__bar {
+      grid-column: 1;
+    }
+    .ri-match__cta {
+      grid-row: 1 / span 3;
+    }
+    .ri-match__t {
+      font-size: 18px;
+    }
+  }
+
+  /* Etiqueta neutra ("Busca rival", formato, nivel): `.tag--rival` del mockup, al lado de `.pa-tag`. */
+  .pa-tag.ri-tag--neutral {
+    border-color: var(--portal-inner-line);
+    background: var(--portal-inner);
+    color: var(--portal-ink);
+  }
+
+  /* ── Barra de avance del cupo. Crece una vez al entrar en pantalla (pieza Aparecer al bajar):
+     `scaleX` desde la izquierda, nunca el ancho. Sin `animation-timeline`, queda llena. */
+  .ri-bar {
+    grid-column: 1 / -1;
+    display: block;
+    height: 6px;
+    border-radius: 6px;
+    background: var(--portal-inner-line);
+    overflow: hidden;
+  }
+  .ri-bar > i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--portal-green);
+    transform-origin: left center;
+    transform: scaleX(var(--fill, 0));
+  }
+  @supports (animation-timeline: view()) {
+    .ri-bar > i {
+      animation: ri-crecer linear both;
+      animation-timeline: view();
+      animation-range: entry 20% cover 38%;
+    }
+  }
+  @keyframes ri-crecer {
+    from {
+      transform: scaleX(0);
+    }
+  }
+
+  /* ── Quiénes van: las camisetas (`.shirts`). Las llenas se encienden en orden, 40 ms entre una y
+     otra, cada una con su toque. Una que se llena después (aceptar un pedido) se vuelve a montar con
+     otra `key` y hace su toque sola. */
+  .ri-shirts {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .ri-shirt {
+    display: grid;
+    place-items: center;
+    height: 56px;
+    border-radius: 18px;
+    border: 1px dashed var(--portal-soft);
+    color: var(--portal-soft);
+  }
+  .ri-shirt svg {
+    width: 26px;
+    height: 26px;
+    stroke-width: 1.6;
+  }
+  .ri-shirt.is-on {
+    border-style: solid;
+    border-color: var(--portal-slot-line);
+    background: var(--portal-slot-bg);
+    color: var(--portal-slot-ink);
+    animation: ri-toque var(--spring-toque) both;
+    animation-delay: calc(min(var(--i, 0), 10) * 40ms);
+  }
+  .ri-shirt.is-on svg {
+    fill: rgb(var(--portal-glow) / 0.28);
+  }
+  @keyframes ri-toque {
+    from {
+      transform: scale(0.86);
+    }
+  }
+  @media (min-width: 768px) {
+    .ri-shirts {
+      gap: 10px;
+    }
+  }
+
+  /* ── Contador con − y + (`.stepper`). */
+  .ri-stepper {
+    display: inline-grid;
+    grid-template-columns: 52px 64px 52px;
+    align-items: center;
+    justify-items: center;
+    padding: 4px;
+    border-radius: 999px;
+    border: 1px solid var(--portal-inner-line);
+    background: var(--portal-inner);
+  }
+  .ri-stepper button {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--portal-bar-on);
+    color: var(--portal-slot-ink);
+    cursor: pointer;
+    transition: scale var(--dur-1) var(--portal-ease-out);
+  }
+  .ri-stepper button:active {
+    scale: 0.96;
+  }
+  .ri-stepper button:disabled,
+  .ri-stepper button[aria-disabled='true'] {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+  .ri-stepper button:focus-visible {
+    outline: 2px solid var(--portal-green);
+    outline-offset: 2px;
+  }
+  .ri-stepper button svg {
+    width: 20px;
+    height: 20px;
+    stroke-width: 2.4;
+  }
+  .ri-stepper output {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Pregunta dentro de un panel (`.q2`). */
+  .ri-q {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  /* ── Una de las tres intenciones de "Armá tu partido": tarjeta con título y bajada. */
+  .ri-intent {
+    display: grid;
+    gap: 4px;
+    width: 100%;
+    min-height: 64px;
+    padding: 14px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--portal-inner-line);
+    background: var(--portal-inner);
+    color: var(--portal-ink);
+    text-align: left;
+    cursor: pointer;
+    transition:
+      background-color var(--dur-2) var(--portal-ease-out),
+      border-color var(--dur-2) var(--portal-ease-out),
+      scale var(--dur-1) var(--portal-ease-out);
+  }
+  .ri-intent:active {
+    scale: 0.985;
+  }
+  .ri-intent[aria-checked='true'] {
+    border-color: var(--portal-slot-line);
+    background: var(--portal-slot-bg);
+    box-shadow: inset 0 0 0 1px var(--portal-green);
+  }
+  .ri-intent:focus-visible {
+    outline: 2px solid var(--portal-green);
+    outline-offset: 2px;
+  }
+  .ri-intent b {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .ri-intent span {
+    font-size: 14px;
+    line-height: 1.4;
+    color: var(--portal-soft);
+  }
+
+  /* ── Una persona: pedido, plantel o banco (`.req`). */
+  .ri-req {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: center;
+    gap: 8px 12px;
+    padding: 10px 0;
+  }
+  .ri-req + .ri-req {
+    border-top: 1px solid var(--portal-inner-line);
+  }
+  .ri-req__actions {
+    grid-column: 1 / -1;
+  }
+  @media (min-width: 640px) {
+    .ri-req {
+      grid-template-columns: 44px minmax(0, 1fr) auto;
+    }
+    .ri-req__actions {
+      grid-column: auto;
+      justify-content: flex-end;
+    }
+  }
+  .ri-avatar {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    overflow: hidden;
+    border-radius: 50%;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--portal-on-green);
+    background: linear-gradient(180deg, var(--portal-btn-a), var(--portal-btn-b));
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.45);
+  }
+  .ri-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* ── La casilla de RIVAL sobre `.pa-checkrow`: con error, el borde en el tono de riesgo. */
+  .ri-checkrow input[aria-invalid='true'] {
+    border-color: var(--portal-bad);
+  }
+
+  /* ── Cabecera de un partido (`.mhead`). */
+  .ri-mhead {
+    display: grid;
+    gap: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ri-bar > i,
+  .ri-shirt.is-on {
+    animation: none !important;
+  }
+  a.ri-match:hover {
+    translate: none;
+  }
+}

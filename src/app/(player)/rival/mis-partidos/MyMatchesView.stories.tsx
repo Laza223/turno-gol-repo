@@ -39,6 +39,13 @@ const meta = {
     nextjs: { appDirectory: true, navigation: { pathname: '/rival/mis-partidos' } },
   },
   args: { now: NOW },
+  decorators: [
+    (Story) => (
+      <div data-portal-glass className="portal-ambient min-h-dvh text-portal-ink">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof MyMatchesView>
 
 export default meta

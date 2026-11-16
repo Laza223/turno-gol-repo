@@ -7,7 +7,7 @@ export type TrialWelcomeData = {
   /**
    * Días de prueba, SOLO cuando el alta los fija explícitamente (alta asistida
    * del super-admin para un piloto). El self-signup lo omite A PROPÓSITO: su
-   * trial nace de 30 días y a los pilotos se les extiende DESPUÉS desde
+   * trial nace de `TRIAL_DAYS` y a los pilotos se les extiende DESPUÉS desde
    * soporte, cuando este mail ya salió. Decir un número que va a dejar de ser
    * cierto en horas es peor que no decirlo — el copy anterior tenía "30 días"
    * fijo y le contradecía al primer piloto lo que se le había prometido.
@@ -25,12 +25,12 @@ export function renderTrialWelcome(data: TrialWelcomeData): EmailContent {
   const days = typeof data.trialDays === 'number' && data.trialDays > 0 ? data.trialDays : null
   const trialHtml =
     days === null
-      ? 'Tu prueba gratuita ya está activa: podés ver hasta cuándo va en Ajustes → Suscripción.'
-      : `Tenés ${days === 1 ? '1 día' : `${days} días`} de prueba gratuita para explorar todas las funcionalidades.`
+      ? 'Te regalamos la prueba del plan Completo, con los fijos que se cargan solos, los cobros, la caja de la noche y el usuario para tu encargado. Hasta cuándo va lo ves en Ajustes → Suscripción.'
+      : `Te regalamos ${days === 1 ? '1 día de prueba' : `${days} días de prueba`} del plan Completo, con los fijos que se cargan solos, los cobros, la caja de la noche y el usuario para tu encargado.`
   const trialText =
     days === null
-      ? 'Tu prueba gratuita ya está activa: podés ver hasta cuándo va en Ajustes → Suscripción.'
-      : `Tenés ${days === 1 ? '1 día' : `${days} días`} de prueba gratuita.`
+      ? 'Te regalamos la prueba del plan Completo. Hasta cuándo va lo ves en Ajustes → Suscripción.'
+      : `Te regalamos ${days === 1 ? '1 día de prueba' : `${days} días de prueba`} del plan Completo.`
 
   const html = `
 <!DOCTYPE html>
@@ -42,13 +42,13 @@ export function renderTrialWelcome(data: TrialWelcomeData): EmailContent {
   <p>Te recomendamos empezar por:</p>
   <ol>
     <li>Configurar tus canchas y precios</li>
-    <li>Conectar tu cuenta de MercadoPago para recibir señas</li>
+    <li>Cargar tus turnos fijos una sola vez</li>
     <li>Compartir tu link de reservas con tus jugadores</li>
   </ol>
   <p style="color:#64748b;font-size:14px">Si tenés dudas, respondé este mail y te ayudamos.</p>
   <p style="color:#64748b;font-size:14px">— El equipo de TurnoGol</p>
 </body>
 </html>`
-  const text = `¡Bienvenido a TurnoGol!\n\nHola ${data.ownerName},\n\nTu complejo ${data.tenantName} ya está activo. ${trialText}\n\nEmpezá por:\n1. Configurar tus canchas y precios\n2. Conectar tu cuenta de MercadoPago\n3. Compartir tu link de reservas\n\n— El equipo de TurnoGol`
+  const text = `¡Bienvenido a TurnoGol!\n\nHola ${data.ownerName},\n\nTu complejo ${data.tenantName} ya está activo. ${trialText}\n\nEmpezá por:\n1. Configurar tus canchas y precios\n2. Cargar tus turnos fijos una sola vez\n3. Compartir tu link de reservas\n\n— El equipo de TurnoGol`
   return { subject, html, text }
 }

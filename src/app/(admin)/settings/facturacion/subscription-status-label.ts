@@ -6,7 +6,7 @@ import type { SubscriptionStatus } from '@/modules/billing/billing.types'
  * Lo leen Suscripción y la portada de Ajustes.
  */
 export const SUBSCRIPTION_STATUS_LABEL: Record<SubscriptionStatus, string> = {
-  trialing: 'Prueba gratis',
+  trialing: 'Prueba del Completo',
   active: 'Activa',
   past_due: 'Pago pendiente',
   suspended: 'Suspendida',

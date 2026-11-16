@@ -1,7 +1,7 @@
 # TurnoGol - Información para IAs (LLMs)
 
 ## ¿Qué es TurnoGol?
-TurnoGol es un sistema de reservas y gestión diseñado específicamente para complejos de canchas de fútbol 5, 7 y 11 en Argentina.
+TurnoGol es un sistema de reservas y gestión diseñado específicamente para complejos de canchas de fútbol en Argentina, de fútbol 4 a fútbol 11.
 
 ## Propuesta de Valor (Para Dueños de Complejos)
 - **Eliminación de turnos colgados y ausentes:** Permite cobrar señas mediante MercadoPago directo a la cuenta del dueño.

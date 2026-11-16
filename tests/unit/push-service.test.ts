@@ -334,7 +334,7 @@ describe('notifyOwnerPlanEvent', () => {
         dedupeKey: 'push:plan.trial_expired:tenant-1:trial-2026-11-01:sub-1',
         payload: expect.objectContaining({
           type: 'plan.trial_expired',
-          title: 'Terminó tu prueba',
+          title: 'Terminó tu prueba del Completo',
         }),
       }),
       expect.objectContaining({ retryLimit: 3 }),

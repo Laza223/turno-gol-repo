@@ -85,7 +85,7 @@ export async function createTenantWithTrial(
 ): Promise<{ id: string; slug: string }> {
   const db = getDb()
   const slug = await generateUniqueSlug(input.name)
-  // El default (30) es el del self-signup y el del alta asistida, y no se toca.
+  // El default (`TRIAL_DAYS`, 14) es el del self-signup y el del alta asistida, y no se toca.
   // Si algún día llega `input.trialDays`, el MISMO número alimenta
   // `trial_ends_at`, `current_period_end` y el copy del mail de bienvenida: son
   // tres lugares que un cliente puede comparar entre sí.
@@ -195,7 +195,7 @@ export async function createTenantWithTrial(
           ownerName: ownerRows[0]?.first_name ?? 'Hola',
           tenantName: input.name,
           // Solo cuando el alta fijó los días explícitamente. El self-signup NO los
-          // manda: su trial de 30 se extiende después desde soporte y el mail ya
+          // manda: su trial de `TRIAL_DAYS` se extiende después desde soporte y el mail ya
           // salió — ver el comentario de `TrialWelcomeData`.
           ...(input.trialDays !== undefined ? { trialDays: input.trialDays } : {}),
         },

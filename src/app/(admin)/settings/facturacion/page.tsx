@@ -347,14 +347,14 @@ export default async function FacturacionPage() {
             {sub.status === 'trialing' ? (
               <section className="card-premium rounded-xl p-4 lg:p-6">
                 <h2 className="text-base font-semibold text-foreground">Dar de baja TurnoGol</h2>
-                {/* Sin cuota activada: `expire-trials` pasa el complejo a solo
-                    lectura el día que vence la prueba, sin cobrar nada. Con la cuota ya
+                {/* Sin cuota activada: `expire-trials` baja el complejo al plan
+                    gratis el día que vence la prueba, sin cobrar nada. Con la cuota ya
                     activada hay un preapproval que MercadoPago cobra ese día, y en
                     `trialing` no se puede cancelar desde la app (`CANCELABLE`). */}
                 <p className="mt-1 text-sm text-muted-foreground">
                   {liveMpSubscriptionId
                     ? `Para darte de baja antes del primer cobro, escribinos a ${SUPPORT_EMAIL}.`
-                    : `Estás en la prueba gratis hasta el ${formatDate(tenant.trialEndsAt)}. Si no activás la cuota, no se te cobra nada: ese día el panel queda en solo lectura y se corta la reserva por internet.`}
+                    : `Estás en la prueba del plan Completo hasta el ${formatDate(tenant.trialEndsAt)}. Si no activás la cuota, no se te cobra nada. Ese día pasás al plan gratis y lo que cargaste queda guardado.`}
                 </p>
               </section>
             ) : (

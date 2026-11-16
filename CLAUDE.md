@@ -86,6 +86,7 @@ Decisiones ya tomadas que un modelo tendería a re-proponer "de buena fe". Cada 
 - **NO hay recordatorio 24hs al jugador en v1** (worker y template eliminados; se reconstruye con WhatsApp post-v1). La excepción es "El Día del Partido" de RIVAL, opt-in y solo para partidos de RIVAL (decisión del 2026-10-29).
 - **El jugador NO tiene Realtime en v1** (polling/refresh) — Realtime es solo para la grilla admin.
 - Push al admin respeta **horario silencioso** (00–08 locales se agenda para las 08:00 vía `startAfter`, `push-quiet-hours.ts`) — toda notificación nueva pasa por ahí.
+- **Afuera TurnoGol se vende gratis**: ningún copy público anuncia la prueba (`TRIAL_DAYS` = 14 del Completo, se descubre adentro) ni dice "30 días gratis"; la única mención es la de los términos. Y nunca "fútbol 5, 7 y 11": sirve de fútbol 4 a fútbol 11. Decisión: `docs/decisions/2026-11-16-se-vende-gratis-prueba-14-dias.md`.
 - **Facturación AFIP: fuera de scope v1** (ADR-011). Consentimiento v1 = `players.agreed_to_terms_at` + `audit_logs`; **NO existe tabla `consent_records`**. +18: ADR-012.
 
 ## Multi-tenancy

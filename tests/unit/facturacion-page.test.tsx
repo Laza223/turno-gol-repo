@@ -166,12 +166,12 @@ describe('/settings/facturacion — CancelSubscriptionSection por estado', () =>
   // Desde el precio lineal por cancha (2026-09-17) la página ya no nombra un
   // plan — el "Predio · todavía no se cobra" de antes ahora es el estado de
   // `SUBSCRIPTION_STATUS_LABEL` calificado igual.
-  it('trialing: muestra "Prueba gratis · todavía no se cobra" y NO muestra el botón de cancelar', async () => {
+  it('trialing: muestra "Prueba del Completo · todavía no se cobra" y NO muestra el botón de cancelar', async () => {
     vi.mocked(getSubscriptionState).mockResolvedValue(sub('trialing') as never)
 
     render(await FacturacionPage())
 
-    expect(screen.getByText('Prueba gratis · todavía no se cobra')).toBeTruthy()
+    expect(screen.getByText('Prueba del Completo · todavía no se cobra')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Dar de baja' })).toBeNull()
   })
 

@@ -1,0 +1,230 @@
+/* /para-complejos en vidrio (F8). Medidas de `glass-app.css` ("páginas para complejos": .scenes,
+   .scene, .night, .agenda, .c-*). Lo genérico (hero, secciones, cierre, etiquetas) viene de
+   `../business.css`. Movimiento: solo `opacity`/`transform`, una vez, y solo sin "reducir
+   movimiento"; con reducir movimiento el reposo ya es el estado final. */
+
+@layer components {
+  /* La foto del hero, ubicada como en el mockup (`.bg img`): más abajo en el celu. */
+  .pc-stage .hero-bg__img {
+    top: 25.5svh;
+    height: 80svh;
+  }
+  /* Las líneas finas caen sobre la foto: píldora del color del velo (como `.home-owner`). */
+  .pc-fine {
+    display: inline-block;
+    max-width: 100%;
+    margin-top: 10px;
+    padding: 6px 16px;
+    border-radius: 999px;
+    background: rgb(var(--portal-veil) / 0.92);
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--portal-muted);
+  }
+  .pc-fine a {
+    display: inline-block;
+    padding-block: 12px;
+    margin-block: -12px;
+    font-weight: 600;
+    color: var(--portal-ink);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+
+  .pc-scenes {
+    display: grid;
+    gap: 10px;
+  }
+  .pc-scene {
+    display: grid;
+    gap: 8px;
+    padding: 18px 20px;
+    border-radius: 24px;
+  }
+  .pc-scene__pain {
+    font-size: 17px;
+    line-height: 1.4;
+    color: var(--portal-soft);
+    text-decoration: line-through;
+    text-decoration-thickness: 1.5px;
+    text-decoration-color: var(--portal-soft);
+  }
+  .pc-scene__fix {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 18px;
+    line-height: 1.4;
+    font-weight: 600;
+    color: var(--portal-ink);
+  }
+  .pc-scene__fix svg {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    margin-top: 3px;
+    color: var(--portal-green);
+    stroke-width: 2.6;
+  }
+  .pc-scene__arrow {
+    display: none;
+    width: 20px;
+    height: 20px;
+    color: var(--portal-soft);
+  }
+
+  .pc-night {
+    padding: 14px;
+    border-radius: 32px;
+    overflow: hidden;
+  }
+  .pc-night__bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px 12px;
+    padding: 4px 6px 14px;
+    font-size: 14px;
+    color: var(--portal-soft);
+  }
+  .pc-night__bar b {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--portal-ink);
+  }
+  .pc-agenda {
+    display: grid;
+    grid-template-columns: 48px repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .pc-agenda > span {
+    display: grid;
+    align-content: center;
+    min-height: 54px;
+    padding: 6px 8px;
+    border-radius: 14px;
+    font-size: 13px;
+    line-height: 16px;
+    overflow: hidden;
+    color: var(--portal-ink);
+  }
+  .pc-agenda .pc-hd {
+    min-height: 30px;
+    font-weight: 600;
+    color: var(--portal-soft);
+  }
+  .pc-agenda .pc-t {
+    padding: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--portal-soft);
+  }
+  .pc-agenda b {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pc-agenda .pc-ok {
+    background: var(--portal-slot);
+    border: 1px solid var(--portal-slot-line);
+  }
+  .pc-agenda .pc-fix {
+    background: var(--portal-inner);
+    border: 1px solid var(--portal-inner-line);
+  }
+  .pc-agenda .pc-free {
+    border: 1px dashed var(--portal-inner-line);
+    color: var(--portal-soft);
+  }
+  .pc-agenda .pc-due {
+    background: var(--portal-bad-bg);
+    border: 1px solid var(--portal-bad-line);
+  }
+  .pc-agenda .pc-due i {
+    font-style: normal;
+    font-weight: 600;
+    color: var(--portal-bad);
+  }
+
+  @media (width >= 40rem) {
+    .pc-agenda > span {
+      padding: 8px 12px;
+      font-size: 14px;
+    }
+  }
+  @media (width >= 48rem) {
+    .pc-stage .hero-bg__img {
+      top: 15svh;
+      height: 96svh;
+    }
+  }
+  @media (width >= 64rem) {
+    /* Como el mockup: el titular va en dos renglones también en la compu. */
+    .pc-stage .bz-title__line {
+      display: block;
+    }
+    .pc-scene {
+      grid-template-columns: minmax(0, 1fr) 20px minmax(0, 1fr);
+      align-items: center;
+      gap: 24px;
+      padding: 20px 28px;
+    }
+    .pc-scene__arrow {
+      display: block;
+    }
+    .pc-night {
+      padding: 20px;
+    }
+  }
+}
+
+/* Las escenas: el tachado y la solución entran cuando la escena se revela (`Reveal`). El reposo
+   es el cuadro final, así que con "reducir movimiento" quedan tachadas y a la vista. */
+@media (prefers-reduced-motion: no-preference) {
+  .pc-scene[data-revealed='true'] .tg-noche-strike {
+    animation: pc-tachar 400ms ease-out 1100ms both;
+  }
+  .pc-scene[data-revealed='true'] .tg-noche-solution {
+    animation: pc-solucion 500ms ease-out 1500ms both;
+  }
+  @keyframes pc-solucion {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+  @keyframes pc-tachar {
+    from {
+      color: var(--portal-ink);
+      text-decoration-color: transparent;
+    }
+  }
+
+  /* La agenda: las celdas se encienden por fila (--r) y la que quedó sin cobrar late una vez. */
+  [data-revealed='true'] .pc-agenda > span {
+    animation: pc-celda 420ms var(--portal-ease-out) both;
+    animation-delay: calc(300ms + var(--r, 0) * 140ms);
+  }
+  [data-revealed='true'] .pc-agenda > span.pc-due {
+    animation:
+      pc-celda 420ms var(--portal-ease-out) both,
+      pc-late 700ms ease-out both;
+    animation-delay: calc(300ms + var(--r, 0) * 140ms), 1100ms;
+  }
+  @keyframes pc-celda {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+  @keyframes pc-late {
+    40% {
+      transform: scale(1.05);
+    }
+  }
+}

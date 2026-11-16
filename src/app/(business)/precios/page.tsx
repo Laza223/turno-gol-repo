@@ -1,11 +1,15 @@
+import type { CSSProperties, ReactNode } from 'react'
 import Link from 'next/link'
-import { ArrowRight, CheckCircle2, ChevronDown } from 'lucide-react'
+import { ArrowRight, Check, ChevronDown } from 'lucide-react'
 import { buildMetadata } from '@/lib/seo/metadata'
 import { formatArs } from '@/lib/format'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import Reveal from '@/components/site/Reveal'
 import CalculadoraClavo from './CalculadoraClavo'
 import PlanSelector from './PlanSelector'
 import { PLANS } from './plans-data'
+import './precios.css'
 
 // La base pública sale del mismo catálogo que la calculadora.
 export const metadata = buildMetadata({
@@ -117,84 +121,60 @@ export default function PreciosPage() {
   )
 }
 
+/** Cabecera de cada sección: eyebrow en verde de lugar, título y, si hay, la bajada. */
+function SectionHead({ eyebrow, title, lead }: { eyebrow: string; title: string; lead?: string }) {
+  return (
+    <Reveal>
+      <div className="bz-head">
+        <p className="bz-eyebrow">{eyebrow}</p>
+        <h2 className="bz-h2">{title}</h2>
+        {lead && <p className="bz-lead2">{lead}</p>}
+      </div>
+    </Reveal>
+  )
+}
+
+function Section({ children, wide = true }: { children: ReactNode; wide?: boolean }) {
+  return (
+    <section className="bz-sec">
+      <div className={wide ? 'bz-wrap' : 'bz-wrap bz-wrap--m'}>{children}</div>
+    </section>
+  )
+}
+
 function Hero() {
   return (
-    <section className="relative overflow-hidden px-6 pb-4 pt-[150px]">
-      {/* KIT-GLOW-R */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute right-[-10%] top-[-30%] z-0 h-[640px] w-[640px] animate-tg-drift rounded-full blur-sm motion-reduce:animate-none"
-        style={{
-          background: 'radial-gradient(closest-side, rgba(16,185,129,.22), transparent 70%)',
-        }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute bottom-[-40%] left-[-12%] z-0 h-[520px] w-[520px] rounded-full"
-        style={{ background: 'radial-gradient(closest-side, rgba(5,150,105,.1), transparent 72%)' }}
-      />
-
-      <div className="relative z-10 mx-auto max-w-[880px] text-center">
-        <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400 whitespace-nowrap">
-          <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-          Precios claros
-          <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-        </div>
-
-        <h1
-          className="mt-[18px] font-display font-black italic text-[#f8fafc]"
-          style={{
-            fontSize: 'clamp(38px, 4.8vw, 64px)',
-            lineHeight: '0.98',
-            letterSpacing: '-0.03em',
-            textShadow: '0 12px 60px rgba(0,0,0,.5)',
-          }}
-        >
-          Lo que te deja un turno,
-          <br />
-          <span
-            style={{
-              background: 'linear-gradient(100deg, #6ee7b7, #34d399 45%, #10b981)',
-              WebkitBackgroundClip: 'text',
-              backgroundClip: 'text',
-              color: 'transparent',
-              paddingRight: '0.15em',
-              boxDecorationBreak: 'clone',
-              WebkitBoxDecorationBreak: 'clone',
-            }}
-          >
-            una vez al mes.
-          </span>
-        </h1>
-
-        <p
-          className="mx-auto mt-6 max-w-[560px] text-slate-400"
-          style={{ fontSize: 'clamp(15px, 1.4vw, 18px)', lineHeight: '1.55' }}
-        >
-          Eso sale Completo: un precio fijo según cuántas canchas tenés.{' '}
-          <span className="font-semibold text-slate-200">
-            Sin comisión por reserva, sin permanencia, sin sorpresas.
-          </span>{' '}
-          El primer mes es gratis, y si no seguís, quedás en el plan Gratis.
-        </p>
-
-        <ul className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-[13px] text-slate-400">
-          {HERO_CHIPS.map((t) => (
-            <li key={t} className="flex items-center gap-2 font-medium">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" aria-hidden />
-              {t}
-            </li>
-          ))}
-        </ul>
-      </div>
+    <section className="bz-hero bz-hero--short">
+      <p className="bz-eyebrow bz-rise">Precios claros</p>
+      <h1 className="bz-title">
+        <span className="bz-title__line" style={{ '--l': 0 } as CSSProperties}>
+          <span>Lo que te deja un turno,</span>
+        </span>{' '}
+        <span className="bz-title__line" style={{ '--l': 1 } as CSSProperties}>
+          <em>una vez al mes.</em>
+        </span>
+      </h1>
+      <p className="bz-lead bz-rise" style={{ '--i': 1 } as CSSProperties}>
+        Eso sale Completo: un precio fijo según cuántas canchas tenés.{' '}
+        <strong>Sin comisión por reserva, sin permanencia, sin sorpresas.</strong> El primer mes es
+        gratis, y si no seguís, quedás en el plan Gratis.
+      </p>
+      <ul className="bz-feats bz-rise justify-center" style={{ '--i': 2 } as CSSProperties}>
+        {HERO_CHIPS.map((t) => (
+          <li key={t} className="bz-feat">
+            <Check aria-hidden />
+            {t}
+          </li>
+        ))}
+      </ul>
     </section>
   )
 }
 
 function Planes() {
   return (
-    <section className="relative z-10 px-6 py-14 sm:py-16">
-      <div className="mx-auto max-w-[1240px]">
+    <section className="bz-sec">
+      <div className="bz-wrap">
         <Reveal>
           <PlanSelector />
         </Reveal>
@@ -205,237 +185,119 @@ function Planes() {
 
 function CuentaDelClavo() {
   return (
-    <section className="relative z-10 px-6 py-16 sm:py-24">
-      <div className="mx-auto max-w-[1080px]">
-        <Reveal>
-          <div className="mx-auto mb-10 max-w-[640px] text-center">
-            <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400 whitespace-nowrap">
-              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-              Hacé tu cuenta
-              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-            </div>
-            <h2
-              className="mt-[14px] font-display font-black italic text-[#f8fafc]"
-              style={{
-                fontSize: 'clamp(30px, 3.6vw, 46px)',
-                lineHeight: '1.02',
-                letterSpacing: '-0.025em',
-              }}
-            >
-              ¿Cuánto te cuesta el que no viene?
-            </h2>
-            <p className="mt-[14px] text-base leading-[1.55] text-slate-400">
-              Con tus números, no con los nuestros.
-            </p>
-          </div>
-        </Reveal>
-        <Reveal delay={80}>
-          <CalculadoraClavo />
-        </Reveal>
-      </div>
-    </section>
+    <Section>
+      <SectionHead
+        eyebrow="Hacé tu cuenta"
+        title="¿Cuánto te cuesta el que no viene?"
+        lead="Con tus números, no con los nuestros."
+      />
+      <Reveal delay={80}>
+        <CalculadoraClavo />
+      </Reveal>
+    </Section>
   )
 }
 
 function TodoIncluido() {
   return (
-    <section className="relative z-10 px-6 py-16 sm:py-24">
-      <div className="mx-auto max-w-[1080px]">
-        <Reveal>
-          <div className="mx-auto mb-10 max-w-[640px] text-center">
-            <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400 whitespace-nowrap">
-              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-              Sin letra chica
-              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-            </div>
-            <h2
-              className="mt-[14px] font-display font-black italic text-[#f8fafc]"
-              style={{
-                fontSize: 'clamp(30px, 3.6vw, 46px)',
-                lineHeight: '1.02',
-                letterSpacing: '-0.025em',
-              }}
-            >
-              Todo esto viene en Completo.
-            </h2>
-            <p className="mt-[14px] text-base leading-[1.55] text-slate-400">
-              Para todas tus canchas. Pagás por la cantidad exacta de canchas.
-            </p>
-          </div>
-        </Reveal>
-        <div className="grid grid-cols-1 gap-x-10 gap-y-4 sm:grid-cols-2">
-          {INCLUDED.map((item, i) => (
-            <Reveal key={item} delay={Math.min(i * 40, 240)}>
-              <div
-                className="flex items-start gap-3 rounded-2xl border border-white/[.07] px-5 py-4"
-                style={{ background: 'rgba(15,23,42,.4)' }}
-              >
-                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-400" aria-hidden />
-                <span className="text-[14.5px] leading-relaxed text-slate-300">{item}</span>
-              </div>
-            </Reveal>
-          ))}
+    <Section>
+      <SectionHead
+        eyebrow="Sin letra chica"
+        title="Todo esto viene en Completo."
+        lead="Para todas tus canchas. Pagás por la cantidad exacta de canchas."
+      />
+      <Reveal>
+        <div className="glass-painted rounded-[32px] p-6 sm:p-8">
+          <ul className="bz-ticks pr-ticks2">
+            {INCLUDED.map((item) => (
+              <li key={item}>
+                <Check aria-hidden />
+                {item}
+              </li>
+            ))}
+          </ul>
         </div>
-      </div>
-    </section>
+      </Reveal>
+    </Section>
   )
 }
 
 function RiesgoCero() {
   return (
-    <section className="relative z-10 px-6 py-16 sm:py-24">
-      <div className="mx-auto max-w-[880px]">
-        <Reveal>
-          <div className="mx-auto mb-10 max-w-[640px] text-center">
-            <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400 whitespace-nowrap">
-              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-              Riesgo cero
-              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-            </div>
-            <h2
-              className="mt-[14px] font-display font-black italic text-[#f8fafc]"
-              style={{
-                fontSize: 'clamp(30px, 3.6vw, 46px)',
-                lineHeight: '1.02',
-                letterSpacing: '-0.025em',
-              }}
-            >
-              Empezar no te cuesta nada.
-            </h2>
-          </div>
-        </Reveal>
-        <ol className="space-y-5">
-          {STEPS.map((step, i) => (
-            <li key={step.n}>
-              <Reveal
-                delay={i * 70}
-                className="flex gap-4 rounded-2xl border border-white/[.07] p-5"
-                style={{ background: 'rgba(15,23,42,.4)' }}
-              >
-                <span
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] font-logo text-sm font-bold text-emerald-400"
-                  style={{
-                    background: 'rgba(16,185,129,.12)',
-                    border: '1px solid rgba(16,185,129,.3)',
-                    boxShadow: 'inset 0 0 16px rgba(16,185,129,.15)',
-                  }}
-                >
-                  {step.n}
-                </span>
-                <div>
-                  <h3 className="font-display text-base font-bold text-[#f8fafc]">{step.t}</h3>
-                  <p className="mt-1 text-sm leading-relaxed text-slate-400">{step.d}</p>
-                </div>
-              </Reveal>
+    <Section>
+      <SectionHead eyebrow="Riesgo cero" title="Empezar no te cuesta nada." />
+      <Reveal>
+        <ol className="pr-trio">
+          {STEPS.map((step) => (
+            <li key={step.n} className="glass-painted">
+              <i>{step.n}</i>
+              <h3>{step.t}</h3>
+              <p>{step.d}</p>
             </li>
           ))}
         </ol>
-      </div>
-    </section>
+      </Reveal>
+    </Section>
   )
 }
 
 function Faq() {
   return (
-    <section className="relative z-10 px-6 py-16 sm:py-24">
-      <div className="mx-auto max-w-[880px]">
-        <Reveal>
-          <div className="mx-auto mb-10 max-w-[640px] text-center">
-            <div className="inline-flex items-center gap-[9px] font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400 whitespace-nowrap">
-              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-              Preguntas de vestuario
-              <span className="inline-block h-[1.5px] w-[22px] rounded-[2px] bg-emerald-400" />
-            </div>
-            <h2
-              className="mt-[14px] font-display font-black italic text-[#f8fafc]"
-              style={{
-                fontSize: 'clamp(30px, 3.6vw, 46px)',
-                lineHeight: '1.02',
-                letterSpacing: '-0.025em',
-              }}
-            >
-              Lo que preguntan todos antes de arrancar.
-            </h2>
-          </div>
-        </Reveal>
-        <div className="space-y-3">
-          {FAQ.map(({ q, a }, i) => (
-            <Reveal key={q} delay={Math.min(i * 50, 250)}>
-              <details
-                className="group border border-white/9 px-6 py-5 transition-colors hover:border-emerald-400/30"
-                style={{
-                  borderRadius: '16px',
-                  background: 'linear-gradient(180deg, rgba(15,23,42,.6), rgba(2,6,23,.7))',
-                }}
-              >
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-left font-display text-[15.5px] font-bold text-[#f8fafc] [&::-webkit-details-marker]:hidden">
-                  {q}
-                  <ChevronDown
-                    className="h-5 w-5 shrink-0 text-emerald-400 transition-transform duration-200 group-open:rotate-180 motion-reduce:transition-none"
-                    aria-hidden
-                  />
-                </summary>
-                <p className="mt-3 animate-faq-in text-[14.5px] leading-relaxed text-slate-400 motion-reduce:animate-none">
-                  {a}
-                </p>
-              </details>
-            </Reveal>
-          ))}
-        </div>
+    <Section wide={false}>
+      <SectionHead
+        eyebrow="Preguntas de vestuario"
+        title="Lo que preguntan todos antes de arrancar."
+      />
+      <div className="pr-faq">
+        {FAQ.map(({ q, a }, i) => (
+          <Reveal key={q} delay={Math.min(i * 50, 250)}>
+            <details className="pr-qa glass-painted">
+              <summary>
+                {q}
+                <ChevronDown aria-hidden />
+              </summary>
+              <p>{a}</p>
+            </details>
+          </Reveal>
+        ))}
       </div>
-    </section>
+    </Section>
   )
 }
 
 function FinalCta() {
   return (
-    <section className="relative z-10 overflow-hidden py-20 sm:py-28">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-[-1]"
-        style={{
-          background: 'radial-gradient(ellipse at top, rgba(16,185,129,.20), transparent 60%)',
-        }}
-      />
-      <div className="relative mx-auto max-w-[900px] px-6 text-center">
-        <Reveal>
-          <h2
-            className="font-display font-black italic text-[#f8fafc]"
-            style={{
-              fontSize: 'clamp(32px, 4vw, 52px)',
-              lineHeight: '1.02',
-              letterSpacing: '-0.025em',
-            }}
-          >
-            Empezá hoy. Gratis.
-          </h2>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-slate-400">
-            En menos de 10 minutos tenés la grilla andando y el link de reservas listo para mandar
-            por WhatsApp. Si no te sirve, lo dejás y no pasó nada.
-          </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+    <Section>
+      <Reveal>
+        <div className="bz-cta glass-painted">
+          <div>
+            <h2 className="bz-h2">Empezá hoy. Gratis.</h2>
+            <p className="bz-lead2">
+              En menos de 10 minutos tenés la grilla andando y el link de reservas listo para mandar
+              por WhatsApp. Si no te sirve, lo dejás y no pasó nada.
+            </p>
+            <p className="bz-fine">Sin tarjeta · Sin permanencia · Tus datos son tuyos</p>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row">
             <Link
               href="/register"
-              className="group inline-flex h-12 items-center justify-center gap-2 rounded-full border border-emerald-400/60 bg-emerald-500/5 px-6 text-xs font-bold text-emerald-400 shadow-[0_0_16px_rgba(16,185,129,0.15)] transition-all duration-300 hover:bg-emerald-500/15 hover:border-emerald-400 hover:shadow-[0_0_24px_rgba(16,185,129,0.3)] active:scale-[0.97] sm:px-8 sm:text-sm whitespace-nowrap"
+              className={cn(buttonVariants({ variant: 'pill', size: 'pill' }), 'whitespace-nowrap')}
             >
               Empezar 30 días gratis
-              <ArrowRight
-                className="h-[18px] w-[18px] transition-transform duration-300 group-hover:translate-x-1 motion-reduce:group-hover:translate-x-0"
-                aria-hidden
-              />
+              <ArrowRight aria-hidden />
             </Link>
             <Link
               href="/para-complejos"
-              className="inline-flex h-12 items-center justify-center rounded-full border border-white/15 bg-white/5 px-8 text-sm font-semibold text-white transition-colors hover:bg-white/10"
+              className={cn(
+                buttonVariants({ variant: 'pill-glass', size: 'pill' }),
+                'whitespace-nowrap',
+              )}
             >
               Ver cómo funciona
             </Link>
           </div>
-          <p className="mt-6 text-[13px] text-slate-500">
-            Sin tarjeta · Sin permanencia · Tus datos son tuyos
-          </p>
-        </Reveal>
-      </div>
-    </section>
+        </div>
+      </Reveal>
+    </Section>
   )
 }

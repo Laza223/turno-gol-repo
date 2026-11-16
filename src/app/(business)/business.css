@@ -1,0 +1,315 @@
+/* Páginas para complejos en vidrio (F8): /para-complejos, /precios, el blog, las comparativas y los
+   referidos. Medidas de `glass.css` (hero, secciones, cierre) y de la sección "páginas para
+   complejos" de `glass-app.css`. Lo carga el layout de `(business)`. Los tokens son los de F1
+   (`--portal-*`, `--glass-*`, `--dur-*`): acá no se define ninguno nuevo.
+
+   Lo propio de cada página vive en su carpeta (`para-complejos.css`, `precios.css`). */
+
+@layer components {
+  .bz {
+    --bz-gut: 20px;
+    font-family: var(--font-display);
+  }
+  @media (width >= 48rem) {
+    .bz {
+      --bz-gut: 24px;
+    }
+  }
+  @media (width >= 64rem) {
+    .bz {
+      --bz-gut: 48px;
+    }
+  }
+  .bz-wrap {
+    width: min(1120px, calc(100% - 2 * var(--bz-gut)));
+    margin-inline: auto;
+  }
+  .bz-wrap--m {
+    width: min(760px, calc(100% - 2 * var(--bz-gut)));
+  }
+
+  /* ── Hero: la foto de `HeroBackdrop` detrás, el texto centrado arriba. La cabecera flota encima
+     (`data-variant="overlay"`), por eso el relleno de arriba. */
+  .bz-stage {
+    position: relative;
+    isolation: isolate;
+    min-height: calc(100svh + 96px);
+    overflow: clip;
+  }
+  .bz-hero {
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: calc(76px + env(safe-area-inset-top)) 20px calc(104px + env(safe-area-inset-bottom));
+  }
+  /* Sin foto (precios, blog, referidos): solo lo que ocupa el texto. */
+  .bz-hero--short {
+    min-height: 0;
+    padding-bottom: 40px;
+  }
+  .bz-title {
+    font-weight: 700;
+    font-size: clamp(44px, 12.6vw, 60px);
+    line-height: 1;
+    font-stretch: 104%;
+    letter-spacing: -0.04em;
+    text-wrap: balance;
+    color: var(--portal-ink);
+  }
+  .bz-title__line {
+    display: block;
+  }
+  .bz-title__line > * {
+    display: inline-block;
+  }
+  .bz-title em {
+    font-style: normal;
+    color: var(--portal-green);
+  }
+  html.dark .bz-title em {
+    text-shadow: 0 0 46px rgb(16 185 129 / 0.5);
+  }
+  /* Un titular largo (precios, referidos) va un punto más chico que el de la foto. */
+  .bz-hero--short .bz-title {
+    font-size: clamp(40px, 10.6vw, 56px);
+  }
+  .bz-lead {
+    margin-top: 14px;
+    max-width: 17.8em;
+    font-size: 17px;
+    line-height: 1.45;
+    color: var(--portal-muted);
+    text-wrap: pretty;
+  }
+  .bz-lead strong {
+    font-weight: 600;
+    color: var(--portal-ink);
+  }
+  .bz-ctas {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 24px;
+  }
+  .bz-fine {
+    margin-top: 14px;
+    font-size: 15px;
+    line-height: 1.45;
+    color: var(--portal-muted);
+  }
+  .bz-fine a {
+    font-weight: 600;
+    color: var(--portal-ink);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
+  .bz-eyebrow {
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--portal-slot-ink);
+  }
+
+  /* ── Secciones. */
+  .bz-sec {
+    position: relative;
+    isolation: isolate;
+    overflow-x: clip;
+    padding: 56px 0;
+  }
+  .bz-sec--glow::before {
+    content: '';
+    position: absolute;
+    z-index: -1;
+    right: -12%;
+    top: 18%;
+    width: 64%;
+    height: 64%;
+    pointer-events: none;
+    background: radial-gradient(closest-side, rgb(var(--portal-glow) / 0.26), transparent);
+  }
+  .bz-sec--glow-l::before {
+    right: auto;
+    left: -12%;
+  }
+  .bz-head {
+    max-width: 900px;
+    margin-bottom: 28px;
+  }
+  .bz-h2 {
+    font-weight: 700;
+    font-size: clamp(32px, 4.6vw, 56px);
+    line-height: 1.04;
+    font-stretch: 104%;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+    color: var(--portal-ink);
+  }
+  .bz-h2 span {
+    color: var(--portal-soft);
+  }
+  .bz-lead2 {
+    margin-top: 14px;
+    max-width: 24.8em;
+    font-size: 18px;
+    line-height: 1.5;
+    color: var(--portal-muted);
+    text-wrap: pretty;
+  }
+
+  /* ── Piezas. */
+  .bz-cta {
+    display: grid;
+    gap: 24px;
+    padding: 28px 24px;
+    border-radius: 36px;
+  }
+  .bz-cta .bz-h2 {
+    font-size: clamp(28px, 3.4vw, 44px);
+  }
+  .bz-feats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 20px;
+  }
+  .bz-feat {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: 999px;
+    border: 1px solid var(--portal-inner-line);
+    background: var(--portal-inner);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--portal-ink);
+  }
+  .bz-feat svg {
+    flex: none;
+    width: 16px;
+    height: 16px;
+    color: var(--portal-green);
+    stroke-width: 2.6;
+  }
+  .bz-ticks {
+    display: grid;
+    gap: 10px;
+  }
+  .bz-ticks li {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr);
+    gap: 10px;
+    font-size: 16px;
+    line-height: 1.4;
+    color: var(--portal-ink);
+  }
+  .bz-ticks svg {
+    width: 20px;
+    height: 20px;
+    margin-top: 1px;
+    color: var(--portal-green);
+    stroke-width: 2.6;
+  }
+
+  @media (width >= 40rem) {
+    .bz-title {
+      font-size: 64px;
+    }
+    .bz-lead {
+      font-size: 18px;
+      max-width: 24.8em;
+    }
+  }
+  @media (width >= 48rem) {
+    .bz-hero {
+      padding: 132px 24px 72px;
+    }
+    .bz-hero--short {
+      padding-bottom: 40px;
+    }
+    .bz-sec {
+      padding: 72px 0;
+    }
+    .bz-head {
+      margin-bottom: 40px;
+    }
+    .bz-cta {
+      padding: 48px;
+    }
+  }
+  @media (width >= 64rem) {
+    .bz-title {
+      font-size: clamp(76px, 6.4vw, 96px);
+    }
+    .bz-title__line {
+      display: inline-block;
+    }
+    .bz-hero--short .bz-title {
+      font-size: clamp(56px, 5vw, 72px);
+    }
+    .bz-lead {
+      margin-top: 20px;
+      font-size: 20px;
+      max-width: 30.2em;
+    }
+    .bz-lead2 {
+      font-size: 20px;
+    }
+    /* Las secciones de la presentación ocupan una pantalla; las de flujo (precios), lo que miden. */
+    .bz-sec--full {
+      min-height: 100svh;
+      display: grid;
+      align-items: center;
+      padding: 104px 0 56px;
+    }
+    .bz-cta {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      gap: 48px;
+      padding: 56px;
+      border-radius: 44px;
+    }
+  }
+}
+
+/* ── Movimiento (dirección §4.4: Subir). Solo `transform` y `opacity`; el titular no arranca
+   invisible porque puede ser el LCP: cada línea sube dentro de su renglón. Con "reducir
+   movimiento" no hay nada de esto y todo aparece directo. Las secciones aparecen al bajar con
+   `Reveal`, como antes. */
+@media (prefers-reduced-motion: no-preference) {
+  .bz-title__line {
+    animation: bz-recorte calc(var(--dur-4) + var(--l, 0) * 90ms) step-end both;
+  }
+  .bz-title__line > * {
+    animation: bz-linea var(--dur-4) var(--portal-ease-out) both;
+    animation-delay: calc(var(--l, 0) * 90ms);
+  }
+  @keyframes bz-recorte {
+    from {
+      clip-path: inset(-0.6em -1em 0 -1em);
+    }
+    to {
+      clip-path: none;
+    }
+  }
+  @keyframes bz-linea {
+    from {
+      transform: translateY(55%);
+    }
+  }
+  .bz-rise {
+    animation: bz-subir var(--dur-4) var(--portal-ease-out) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+  @keyframes bz-subir {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+  }
+}

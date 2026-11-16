@@ -12,6 +12,13 @@ const meta = {
   title: 'Public/ErrorBoundary',
   component: PublicError,
   parameters: { layout: 'fullscreen' },
+  decorators: [
+    (Story) => (
+      <div data-portal-glass className="portal-ambient min-h-dvh text-portal-ink">
+        <Story />
+      </div>
+    ),
+  ],
   args: { reset: fn() },
 } satisfies Meta<typeof PublicError>
 

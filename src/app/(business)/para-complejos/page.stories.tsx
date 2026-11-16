@@ -4,11 +4,10 @@ import BusinessLayout from '../layout'
 import ParaComplejosPage from './page'
 
 /**
- * Página 100% estática (sin fetch/auth) — landing B2B, SIEMPRE superficie
- * oscura (`(business)/layout.tsx` fija `background:#020617` + clase `dark` a
- * mano, no es un tema conmutable). `emerald-400` sobre ese fondo es correcto.
- * Montamos el `BusinessLayout` real (no una copia) para que la clase `dark`,
- * el contraste y el espaciado del fold se vean representativos.
+ * Página 100% estática (sin fetch/auth) — landing B2B en vidrio: sigue el tema
+ * del visitante (el layout pone el marcador `data-portal-glass`, el fondo y la
+ * cabecera). Montamos el `BusinessLayout` real (no una copia) para que el
+ * contraste y el espaciado del fold se vean representativos en claro y oscuro.
  */
 const meta = {
   title: 'Public/ParaComplejos',

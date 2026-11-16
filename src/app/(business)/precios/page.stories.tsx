@@ -6,8 +6,8 @@ import PreciosPage from './page'
 /**
  * Página estática (sin fetch/auth) — compone PlanSelector y CalculadoraClavo
  * ('use client', ya storyadas por separado), un FAQ con `<details>` nativo y
- * JSON-LD estático. Siempre superficie oscura (`(business)/layout.tsx`, clase
- * `dark` a mano). Montamos el `BusinessLayout` real, no una copia.
+ * JSON-LD estático. Sigue el tema del visitante (portal de vidrio). Montamos el
+ * `BusinessLayout` real, no una copia.
  */
 const meta = {
   title: 'Public/Precios',
@@ -52,7 +52,7 @@ export const FaqAbierta: Story = {
     await waitFor(() => expect(question).toBeVisible())
     await expect(canvas.queryByText(/reservan desde un link/i)).not.toBeVisible()
     await userEvent.click(question)
-    // La respuesta entra con `animate-faq-in` (fade-up, 0.2s): esperamos a que
+    // La respuesta entra con un fundido corto (`pr-qa-in`): esperamos a que
     // termine para no leer opacity a mitad de la animación.
     await waitFor(() => expect(canvas.getByText(/reservan desde un link/i)).toBeVisible())
   },

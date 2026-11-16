@@ -2,53 +2,54 @@ import Link from 'next/link'
 import { Logo } from '@/components/ui/logo'
 import { ContactChannels } from './ContactChannels'
 
-// MEJORA-UX QA (WCAG 2.5.5, ≥44px): medían 16px de alto en mobile — mismo fix
-// ya aplicado en el componente hermano `SiteFooter.tsx` (min-h-11, se retrae
-// en sm+ porque ahí ya no son dedo sino mouse).
+// Navegación real, no texto corrido: 44 px de alto (WCAG 2.5.5), como en `SiteFooter`.
 const linkCls =
-  'inline-flex min-h-11 items-center transition-colors hover:text-white focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 rounded sm:min-h-0'
+  'inline-flex min-h-11 items-center rounded-sm text-portal-ink underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-portal-green'
 
-// Los canales son íconos: mismo mínimo táctil, pero cuadrado (sin texto que dé
-// el ancho). El color lo hereda de la fila (`text-slate-400`, ya calibrado a
-// 7.87:1 sobre #020617) y el hover lo lleva a blanco como el resto.
+// Los canales son íconos: mismo mínimo táctil, pero cuadrado.
 const channelCls =
-  'inline-flex min-h-11 min-w-11 items-center justify-center transition-colors hover:text-white focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-emerald-400 focus-visible:ring-offset-1 focus-visible:ring-offset-slate-950 rounded sm:min-h-9 sm:min-w-9'
+  'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-portal-soft transition-colors hover:text-portal-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-portal-green'
 
+/**
+ * Pie de las páginas para complejos. Portal de vidrio (F8): el look de `SiteFooter` (la palabra
+ * gigante, sin fondo propio, sobre la luz de fondo de la página) con los links del dueño de
+ * siempre: Precios, Ingresar → /login, Empezar gratis → /register, legales y canales.
+ */
 export default function BusinessFooter() {
   return (
-    <footer className="relative border-t border-white/8 py-12" style={{ background: '#020617' }}>
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-px"
-        style={{
-          background: 'linear-gradient(90deg, transparent, rgba(16,185,129,.4), transparent)',
-        }}
-      />
-      <div className="mx-auto flex max-w-[1240px] flex-col items-center justify-between gap-4 px-6 sm:flex-row">
-        <div className="flex items-center gap-2">
-          <Link href="/" aria-label="TurnoGol — inicio" className={linkCls}>
-            <Logo variant="horizontal" size="sm" textClassName="text-white" />
+    <footer className="pb-10 font-display">
+      <div className="mx-auto w-[min(1120px,calc(100%-40px))] md:w-[min(1120px,calc(100%-48px))] lg:w-[min(1120px,calc(100%-96px))]">
+        <p aria-hidden className="portal-word">
+          Turno<span className="text-portal-green">Gol</span>
+        </p>
+        <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <Link
+            href="/"
+            aria-label="TurnoGol — inicio"
+            className={`${linkCls} self-start hover:no-underline sm:self-auto`}
+          >
+            <Logo variant="horizontal" />
           </Link>
-          {/* slate-500 (#64748b) sobre #020617 da 4.23:1, bajo AA (4.5) — no es un
-              idiom dark:, es fijo, así que sube a slate-400 (7.87:1). */}
-          <span className="text-xs text-slate-400">© {new Date().getFullYear()} · Argentina</span>
+          <div className="flex flex-wrap gap-x-6 text-base">
+            <Link href="/precios" className={linkCls}>
+              Precios
+            </Link>
+            <Link href="/login" className={linkCls}>
+              Ingresar
+            </Link>
+            <Link href="/register" className={linkCls}>
+              Empezar gratis
+            </Link>
+            <Link href="/privacidad" className={linkCls}>
+              Privacidad
+            </Link>
+            <Link href="/terminos" className={linkCls}>
+              Términos
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-0 text-xs text-slate-400 sm:gap-y-2">
-          <Link href="/precios" className={linkCls}>
-            Precios
-          </Link>
-          <Link href="/login" className={linkCls}>
-            Ingresar
-          </Link>
-          <Link href="/register" className={linkCls}>
-            Empezar gratis
-          </Link>
-          <Link href="/privacidad" className={linkCls}>
-            Privacidad
-          </Link>
-          <Link href="/terminos" className={linkCls}>
-            Términos
-          </Link>
+        <div className="mt-7 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-portal-inner-line pt-5 text-sm text-portal-soft">
+          <span>© {new Date().getFullYear()} · Argentina</span>
           <ContactChannels linkClassName={channelCls} />
         </div>
       </div>

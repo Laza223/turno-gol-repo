@@ -12,12 +12,16 @@ vi.mock('@/modules/tenants/public.service', () => ({
 vi.mock('@/lib/story-image/render', () => ({
   renderStoryPng: vi.fn(),
 }))
+vi.mock('@/lib/story-image/tenant-logo', () => ({
+  loadTenantLogo: vi.fn(),
+}))
 vi.mock('@/lib/sentry', () => ({
   captureException: vi.fn(),
 }))
 
 import { getPublicAvailability, getPublicTenant } from '@/modules/tenants/public.service'
 import { renderStoryPng } from '@/lib/story-image/render'
+import { loadTenantLogo } from '@/lib/story-image/tenant-logo'
 import { captureException } from '@/lib/sentry'
 import { GET } from '@/app/api/public/story/route'
 
@@ -66,6 +70,7 @@ beforeEach(() => {
   vi.mocked(getPublicTenant).mockResolvedValue(TENANT as never)
   vi.mocked(getPublicAvailability).mockResolvedValue(availability([slot('23:00')]))
   vi.mocked(renderStoryPng).mockResolvedValue(PNG_BYTES)
+  vi.mocked(loadTenantLogo).mockResolvedValue('data:image/png;base64,TENANT')
 })
 
 describe('GET /api/public/story', () => {
@@ -85,6 +90,47 @@ describe('GET /api/public/story', () => {
     expect(model.hours).toEqual([{ time: '23:00', freeCourts: 1 }])
     expect(model.portalHost).toMatch(/\/m10$/)
     expect(model.cta).toBe('RESERVÁ TU CANCHA')
+  })
+
+  // Decisión 2026-11-15-freemium-corte-v2, punto 4: con el plan va primero el
+  // logo del complejo; en gratis la placa lleva solo el de TurnoGol.
+  it('con el plan le pasa al render el logo del complejo', async () => {
+    const logoUrl = 'https://img.turnogol.app/t1/logo-1.webp'
+    vi.mocked(getPublicTenant).mockResolvedValue({ ...TENANT, logoUrl } as never)
+    await GET(req(`?slug=m10&date=${TODAY}`))
+    expect(loadTenantLogo).toHaveBeenCalledWith(logoUrl)
+    expect(vi.mocked(renderStoryPng).mock.calls[0][1]).toBe('data:image/png;base64,TENANT')
+  })
+
+  it('si la placa no sale con el logo, sale sin él', async () => {
+    vi.mocked(getPublicTenant).mockResolvedValue({
+      ...TENANT,
+      logoUrl: 'https://img.turnogol.app/t1/logo-1.webp',
+    } as never)
+    vi.mocked(renderStoryPng).mockRejectedValueOnce(new Error('satori'))
+    const res = await GET(req(`?slug=m10&date=${TODAY}`))
+    expect(res.status).toBe(200)
+    expect(renderStoryPng).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(renderStoryPng).mock.calls[1]).toHaveLength(1)
+    expect(captureException).toHaveBeenCalledTimes(1)
+  })
+
+  it('en gratis no baja el logo del complejo aunque tenga uno', async () => {
+    vi.mocked(getPublicTenant).mockResolvedValue({
+      ...TENANT,
+      status: 'free',
+      logoUrl: 'https://img.turnogol.app/t1/logo-1.webp',
+    } as never)
+    await GET(req(`?slug=m10&date=${TODAY}`))
+    expect(loadTenantLogo).not.toHaveBeenCalled()
+    expect(vi.mocked(renderStoryPng).mock.calls[0][1]).toBeNull()
+  })
+
+  it('sin logo cargado la placa sale con el de TurnoGol solo', async () => {
+    vi.mocked(getPublicTenant).mockResolvedValue({ ...TENANT, logoUrl: null } as never)
+    await GET(req(`?slug=m10&date=${TODAY}`))
+    expect(loadTenantLogo).not.toHaveBeenCalled()
+    expect(vi.mocked(renderStoryPng).mock.calls[0][1]).toBeNull()
   })
 
   it('la URL de la placa es la pública del complejo: NEXT_PUBLIC_APP_URL y, sin ella, el origin del request', async () => {

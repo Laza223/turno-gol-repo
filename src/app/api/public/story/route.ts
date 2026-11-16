@@ -3,9 +3,14 @@ import { z } from 'zod'
 import { dateStr, hhmm, slug } from '@/shared/validation/primitives'
 import { getPublicAvailability, getPublicTenant } from '@/modules/tenants/public.service'
 import { isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
-import { buildStoryModel, STORY_FAILURE_MESSAGES } from '@/modules/tenants/story-summary'
+import {
+  buildStoryModel,
+  STORY_FAILURE_MESSAGES,
+  storyTenantLogoUrl,
+} from '@/modules/tenants/story-summary'
 import { MAX_HOURS } from '@/lib/story-image/model'
 import { renderStoryPng } from '@/lib/story-image/render'
+import { loadTenantLogo } from '@/lib/story-image/tenant-logo'
 import { buildPublicLinkUrl } from '@/lib/utils'
 import { addDays, artNowParts } from '@/shared/dates/art'
 import { captureException } from '@/lib/sentry'
@@ -92,7 +97,17 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    const png = await renderStoryPng(result.model)
+    const logoUrl = storyTenantLogoUrl(tenant)
+    const tenantLogo = logoUrl ? await loadTenantLogo(logoUrl) : null
+    let png: ArrayBuffer
+    try {
+      png = await renderStoryPng(result.model, tenantLogo)
+    } catch (err) {
+      // El logo del complejo es un extra: si con él no sale, sale sin él.
+      if (!tenantLogo) throw err
+      captureException(err)
+      png = await renderStoryPng(result.model)
+    }
     return new Response(png, {
       headers: {
         'Content-Type': 'image/png',

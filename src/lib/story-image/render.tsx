@@ -23,6 +23,11 @@ const LABEL_SIZE = 40
 const CTA_HEIGHT = 100
 const LOGO_WIDTH = 285
 const LOGO_HEIGHT = 65 // el PNG es 1156×264
+// Con el plan, el logo del complejo va primero (junto al nombre) y el de TurnoGol
+// queda más chico (decisión 2026-11-15-freemium-corte-v2).
+const TENANT_LOGO_SIZE = 160
+const TENANT_LOGO_GAP = 28
+const SMALL_LOGO_SCALE = 0.6
 
 // Excepción documentada a DESIGN.md ("nada de hex inline"): satori no lee
 // variables CSS ni tokens de Tailwind, así que los valores de marca se repiten
@@ -136,8 +141,8 @@ function nameEm(name: string): number {
 }
 
 // Una sola línea si entra; si no, baja hasta un piso legible y recién ahí envuelve.
-function nameSize(name: string): number {
-  return Math.max(44, Math.min(88, Math.floor(CONTENT_WIDTH / nameEm(name))))
+function nameSize(name: string, width: number): number {
+  return Math.max(44, Math.min(88, Math.floor(width / nameEm(name))))
 }
 
 function urlSize(length: number): number {
@@ -187,8 +192,20 @@ function HourRow({ hour }: { hour: StoryHour }) {
   )
 }
 
-function StoryPlate({ model, logoUri }: { model: StoryModel; logoUri: string }) {
+function StoryPlate({
+  model,
+  logoUri,
+  tenantLogoUri,
+}: {
+  model: StoryModel
+  logoUri: string
+  tenantLogoUri: string | null
+}) {
   const firstLine = `${model.dayWord} SE`
+  const nameWidth = tenantLogoUri
+    ? CONTENT_WIDTH - TENANT_LOGO_SIZE - TENANT_LOGO_GAP
+    : CONTENT_WIDTH
+  const brandScale = tenantLogoUri ? SMALL_LOGO_SCALE : 1
 
   return (
     <div
@@ -247,19 +264,30 @@ function StoryPlate({ model, logoUri }: { model: StoryModel; logoUri: string }) 
               <div style={{ color: EMERALD_SOFT }}>.</div>
             </div>
           </div>
-          <div
-            style={{
-              ...DISPLAY,
-              marginTop: 26,
-              fontSize: nameSize(model.tenantName),
-              lineHeight: 1.05,
-              // Una palabra sola más ancha que la placa (sin espacios donde cortar)
-              // se parte en vez de salirse por el borde.
-              wordBreak: 'break-word',
-              color: TEXT,
-            }}
-          >
-            {model.tenantName}
+          <div style={{ display: 'flex', alignItems: 'center', marginTop: 26 }}>
+            {tenantLogoUri ? (
+              <img
+                src={tenantLogoUri}
+                width={TENANT_LOGO_SIZE}
+                height={TENANT_LOGO_SIZE}
+                alt=""
+                style={{ borderRadius: 32, marginRight: TENANT_LOGO_GAP, flexShrink: 0 }}
+              />
+            ) : null}
+            <div
+              style={{
+                ...DISPLAY,
+                width: nameWidth,
+                fontSize: nameSize(model.tenantName, nameWidth),
+                lineHeight: 1.05,
+                // Una palabra sola más ancha que la placa (sin espacios donde cortar)
+                // se parte en vez de salirse por el borde.
+                wordBreak: 'break-word',
+                color: TEXT,
+              }}
+            >
+              {model.tenantName}
+            </div>
           </div>
           <div
             style={{ display: 'flex', alignItems: 'center', width: CONTENT_WIDTH, marginTop: 26 }}
@@ -335,8 +363,8 @@ function StoryPlate({ model, logoUri }: { model: StoryModel; logoUri: string }) 
           </div>
           <img
             src={logoUri}
-            width={LOGO_WIDTH}
-            height={LOGO_HEIGHT}
+            width={Math.round(LOGO_WIDTH * brandScale)}
+            height={Math.round(LOGO_HEIGHT * brandScale)}
             alt=""
             style={{ marginTop: 20 }}
           />
@@ -354,11 +382,14 @@ function StoryPlate({ model, logoUri }: { model: StoryModel; logoUri: string }) 
  * el error llega cuando la respuesta ya salió con 200. Esperando el buffer, el
  * fallo salta dentro del try/catch de la ruta.
  */
-export async function renderStoryPng(model: StoryModel): Promise<ArrayBuffer> {
+export async function renderStoryPng(
+  model: StoryModel,
+  /** Logo del complejo como data URI PNG (`loadTenantLogo`); `null` en gratis o si no cargó. */
+  tenantLogoUri: string | null = null,
+): Promise<ArrayBuffer> {
   const { fonts, logoUri } = await loadAssets()
-  return new ImageResponse(<StoryPlate model={model} logoUri={logoUri} />, {
-    width: WIDTH,
-    height: HEIGHT,
-    fonts,
-  }).arrayBuffer()
+  return new ImageResponse(
+    <StoryPlate model={model} logoUri={logoUri} tenantLogoUri={tenantLogoUri} />,
+    { width: WIDTH, height: HEIGHT, fonts },
+  ).arrayBuffer()
 }

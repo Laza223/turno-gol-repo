@@ -6,6 +6,10 @@ vi.mock('@/modules/staff/guards', () => ({
   requireOperatorStaff: vi.fn(),
 }))
 vi.mock('@/shared/db/client', () => ({ withTenantContext: vi.fn() }))
+// La recompresión real (sharp) se prueba en compress-image.test.ts; acá pasa los bytes tal cual.
+vi.mock('@/shared/images/compress-image', () => ({
+  compressUpload: vi.fn(async (bytes: Uint8Array) => bytes),
+}))
 vi.mock('@/shared/rate-limit/server-action', () => ({ adminRateLimited: vi.fn() }))
 vi.mock('@/shared/storage/r2', () => ({
   isR2Configured: vi.fn().mockReturnValue(true),
@@ -36,6 +40,7 @@ import { requireAdminStaffAction } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { putImage, deleteImage, isR2Configured } from '@/shared/storage/r2'
+import { compressUpload } from '@/shared/images/compress-image'
 import {
   getCourtById,
   appendCourtPhoto,
@@ -88,6 +93,31 @@ describe('uploadCourtPhotoAction', () => {
     // nueva tardaba hasta 5 minutos en verse ahí.
     expect(vi.mocked(updateTag)).toHaveBeenCalledWith('public-tenants')
     expect(vi.mocked(revalidatePath)).toHaveBeenCalledWith('/')
+  })
+
+  it('si el archivo no es una imagen, avisa y no sube', async () => {
+    vi.mocked(compressUpload).mockResolvedValueOnce(null)
+    const fd = new FormData()
+    fd.set('file', new Blob([new Uint8Array([1, 2, 3])], { type: 'image/webp' }))
+    const res = await uploadCourtPhotoAction('court-1', fd)
+    expect(res).toEqual({
+      success: false,
+      error: 'La imagen no se pudo leer. Probá con otra en PNG, JPG o WebP.',
+    })
+    expect(vi.mocked(compressUpload)).toHaveBeenCalledWith(expect.any(Uint8Array), 'court')
+    expect(vi.mocked(putImage)).not.toHaveBeenCalled()
+  })
+
+  it('si sharp no carga, mensaje amable y no sube', async () => {
+    vi.mocked(compressUpload).mockRejectedValueOnce(new Error('sharp no cargó'))
+    const fd = new FormData()
+    fd.set('file', new Blob([new Uint8Array([1, 2, 3])], { type: 'image/webp' }))
+    const res = await uploadCourtPhotoAction('court-1', fd)
+    expect(res).toEqual({
+      success: false,
+      error: 'No pudimos subir la imagen. Probá de nuevo en un momento.',
+    })
+    expect(vi.mocked(putImage)).not.toHaveBeenCalled()
   })
 
   it('cancha inexistente devuelve error sin subir', async () => {

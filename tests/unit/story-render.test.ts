@@ -1,4 +1,5 @@
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
+import sharp from 'sharp'
 import { renderStoryPng } from '@/lib/story-image/render'
 import type { StoryModel } from '@/lib/story-image/model'
 import { buildStoryModel } from '@/modules/tenants/story-summary'
@@ -93,6 +94,31 @@ describe('renderStoryPng', () => {
     'genera un PNG 1080×1920 válido: %s',
     async (_name, m) => {
       expectStoryPng(await renderStoryPng(m))
+    },
+    TIMEOUT,
+  )
+
+  // Con el plan (decisión 2026-11-15-freemium-corte-v2, punto 4) el logo del
+  // complejo va junto al nombre. Se mira un píxel del medio del logo: satori
+  // deja en blanco sin avisar un formato que no dibuja (pasó con el WebP).
+  it(
+    'dibuja el logo del complejo junto al nombre',
+    async () => {
+      const red = await sharp({
+        create: { width: 320, height: 320, channels: 3, background: { r: 255, g: 0, b: 0 } },
+      })
+        .png()
+        .toBuffer()
+      const png = await renderStoryPng(model(), `data:image/png;base64,${red.toString('base64')}`)
+      expectStoryPng(png)
+      const { data, info } = await sharp(Buffer.from(png))
+        .raw()
+        .toBuffer({ resolveWithObject: true })
+      const at = (x: number, y: number) => {
+        const i = (y * info.width + x) * info.channels
+        return [data[i], data[i + 1], data[i + 2]]
+      }
+      expect(at(152, 706)).toEqual([255, 0, 0])
     },
     TIMEOUT,
   )

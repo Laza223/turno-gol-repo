@@ -2,6 +2,7 @@
 
 import type { ActionResult } from '@/shared/types/action-result'
 import { useState } from 'react'
+import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { Dialog, DialogContent } from '@/components/ui/dialog'
 import { toast } from '@/hooks/use-toast'
@@ -210,6 +211,17 @@ export function HoyChargeModal({
     canReschedule: baseGates.canReschedule && !moneyHidden,
     canWriteOff: baseGates.canWriteOff && !moneyHidden,
   }
+  // "¿Se cobró?" (freemium v2): el turno ya se jugó y en gratis no hay dónde
+  // anotar el cobro. Solo turnos que se jugaron: ni bloqueos, ni torneos, ni
+  // ausentes o cancelados.
+  const chargeNudge =
+    moneyHidden &&
+    hasEnded &&
+    booking.type !== 'block' &&
+    booking.type !== 'tournament' &&
+    (booking.status === 'confirmed' ||
+      booking.status === 'completed' ||
+      booking.status === 'pending_payment')
   const visual = gridSlotVisual({ ...booking, ended: hasEnded })
   const name = rowDisplayName(booking)
   // Un ausente nunca "Cobrado ✓": la seña capturada no es "se cobró todo", es
@@ -355,6 +367,18 @@ export function HoyChargeModal({
                 onMutated={onMutated}
                 isTournament={isTournament}
               />
+            )}
+
+            {chargeNudge && (
+              <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm">
+                <p className="font-semibold text-foreground">¿Se cobró?</p>
+                <p className="mt-1 text-muted-foreground">
+                  Con el plan anotás quién pagó y ves lo que falta cobrar.{' '}
+                  <Link href="/reactivar" className="font-semibold text-foreground underline">
+                    Ver el plan
+                  </Link>
+                </p>
+              </div>
             )}
 
             {gates.canWriteOff && actions.writeOffBookingAction && actions.undoWriteOffAction && (

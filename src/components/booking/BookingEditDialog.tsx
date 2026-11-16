@@ -120,7 +120,11 @@ export function BookingEditDialog({
   // Duración: sólo un evento `spontaneous` cargado por el staff (nunca una
   // reserva online, D2) — mismo predicado que el server (`created_by_staff
   // IS NOT NULL`).
-  const canEditDuration = booking.type === 'spontaneous' && detail?.createdByStaff != null
+  // Plan gratis (`moneyHidden`, freemium v2): solo nombre y teléfono. La
+  // duración y el precio son del plan, y el server los rechaza.
+  const moneyHidden = booking.moneyHidden === true
+  const canEditDuration =
+    !moneyHidden && booking.type === 'spontaneous' && detail?.createdByStaff != null
 
   // Sesión de abonado: a diferencia de reprogramar (que SIEMPRE conserva el
   // precio del contrato, BookingRescheduleDialog), acá SÍ se puede tocar —
@@ -183,16 +187,18 @@ export function BookingEditDialog({
     const durationChanged = canEditDuration && timeEnd !== booking.timeEnd
     if (durationChanged) input.timeEnd = timeEnd
 
-    const effectivePrice = priceMode === 'free' ? 0 : priceCents
-    if (effectivePrice == null) {
-      setError('Ingresá el precio del turno.')
-      return
-    }
-    // El server EXIGE priceOverride cuando la duración cambia (ver
-    // booking.edit.ts) — mandarlo siempre que cambia el precio o la duración
-    // evita un rechazo evitable.
-    if (durationChanged || effectivePrice !== booking.priceSnapshot) {
-      input.priceOverride = effectivePrice
+    if (!moneyHidden) {
+      const effectivePrice = priceMode === 'free' ? 0 : priceCents
+      if (effectivePrice == null) {
+        setError('Ingresá el precio del turno.')
+        return
+      }
+      // El server EXIGE priceOverride cuando la duración cambia (ver
+      // booking.edit.ts) — mandarlo siempre que cambia el precio o la duración
+      // evita un rechazo evitable.
+      if (durationChanged || effectivePrice !== booking.priceSnapshot) {
+        input.priceOverride = effectivePrice
+      }
     }
 
     startTransition(async () => {
@@ -288,45 +294,47 @@ export function BookingEditDialog({
               </div>
             )}
 
-            <div className="space-y-2">
-              <Label>Precio</Label>
-              <SegmentedControl
-                className="grid grid-cols-2 gap-1.5"
-                aria-label="Precio del turno"
-                value={priceMode}
-                onValueChange={setPriceMode}
-                // Lo elegido con borde y tinte: el verde sólido es de "Guardar cambios".
-                itemClassName={choiceChipClass}
-                options={[
-                  { value: 'priced', label: 'Tiene precio' },
-                  { value: 'free', label: 'No se cobra' },
-                ]}
-              />
-              {priceMode === 'priced' && (
-                <MoneyInput
-                  id="edit-booking-price"
+            {!moneyHidden && (
+              <div className="space-y-2">
+                <Label>Precio</Label>
+                <SegmentedControl
+                  className="grid grid-cols-2 gap-1.5"
                   aria-label="Precio del turno"
-                  valueCents={priceCents}
-                  onValueChange={setPriceCents}
-                  minCents={0}
-                  disabled={isPending}
+                  value={priceMode}
+                  onValueChange={setPriceMode}
+                  // Lo elegido con borde y tinte: el verde sólido es de "Guardar cambios".
+                  itemClassName={choiceChipClass}
+                  options={[
+                    { value: 'priced', label: 'Tiene precio' },
+                    { value: 'free', label: 'No se cobra' },
+                  ]}
                 />
-              )}
-              {isAbonadoSession && (
-                <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-foreground">
-                  Turno fijo. Este precio vale solo para el {formatDayHeader(booking.date)}. Las
-                  otras semanas siguen con el precio de siempre.
-                </p>
-              )}
-              {isAbonadoSession && (
-                <Link
-                  href="/abonados"
-                  className="inline-block text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
-                >
-                  Cambiar todas las fechas
-                </Link>
-              )}
-            </div>
+                {priceMode === 'priced' && (
+                  <MoneyInput
+                    id="edit-booking-price"
+                    aria-label="Precio del turno"
+                    valueCents={priceCents}
+                    onValueChange={setPriceCents}
+                    minCents={0}
+                    disabled={isPending}
+                  />
+                )}
+                {isAbonadoSession && (
+                  <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs text-foreground">
+                    Turno fijo. Este precio vale solo para el {formatDayHeader(booking.date)}. Las
+                    otras semanas siguen con el precio de siempre.
+                  </p>
+                )}
+                {isAbonadoSession && (
+                  <Link
+                    href="/abonados"
+                    className="inline-block text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+                  >
+                    Cambiar todas las fechas
+                  </Link>
+                )}
+              </div>
+            )}
 
             {error && (
               <p role="alert" className="text-xs text-red-700 dark:text-red-300">

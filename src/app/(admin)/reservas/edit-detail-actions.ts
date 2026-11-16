@@ -28,7 +28,9 @@ export async function getBookingEditDetailAction(
   const parsed = uuid.safeParse(bookingId)
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
 
-  const auth = await requireOperatorStaff()
+  // Plan gratis: puede corregir nombre y teléfono (editBookingAction). Esto solo
+  // lee el teléfono y quién cargó el turno, nada de plata.
+  const auth = await requireOperatorStaff({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 

@@ -404,8 +404,7 @@ async function _getPublicTenant(slug: string): Promise<PublicTenant | null> {
       longitude: true,
       // Instante, no credencial: dice si la seña online se puede cobrar.
       mpDisconnectedAt: true,
-      // Plan gratis: mes en que llegó al tope y pausa (freemium).
-      onlineCapMonth: true,
+      // Plan gratis: pausa de la reserva online por cancelaciones (freemium).
       onlinePausedAt: true,
       // NEVER: email, mpAccessToken, mpRefreshToken, mpUserId, mpPublicKey
     },
@@ -449,11 +448,10 @@ async function _getPublicTenant(slug: string): Promise<PublicTenant | null> {
     status: row.status,
     canceledPeriodEnd,
     timezone: row.timezone,
-    // Plan gratis: tope del mes o pausa → la ficha pasa a WhatsApp/Llamar.
+    // Plan gratis en pausa → la ficha pasa a WhatsApp/Llamar.
     allowOnlineBooking: effectiveAllowOnlineBooking({
       status: row.status,
       allowOnlineBookingSetting: s.allow_online_booking ?? true,
-      onlineCapMonth: row.onlineCapMonth,
       onlinePausedAt: row.onlinePausedAt,
     }),
     // Con MP marcado como desconectado la reserva online entra sin seña

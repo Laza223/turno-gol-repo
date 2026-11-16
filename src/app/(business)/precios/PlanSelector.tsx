@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import { GLASS_INPUT } from '@/components/world/portal-auth-styles'
 import { PLUS_LIST_PER_COURT_CENTS } from '@/modules/billing/pricing'
-import { FREE_ONLINE_BOOKINGS_PER_MONTH, SUPPORT_WHATSAPP_URL } from '@/shared/constants'
+import { SUPPORT_WHATSAPP_URL } from '@/shared/constants'
 import { annualSavings, planForCourts, type BillingCycle, type PlanCard } from './plans-data'
 import './precios.css'
 
@@ -144,16 +144,16 @@ function FeatureList({ items }: { items: readonly string[] }) {
 }
 
 const FREE_FEATURES = [
+  'Anotás tus turnos en la grilla con nombre y teléfono',
+  'Tus jugadores te reservan online, sin tope',
   'Aparecés en el buscador de TurnoGol y en RIVAL',
-  `Tus jugadores te reservan online, hasta ${FREE_ONLINE_BOOKINGS_PER_MONTH} turnos por mes`,
-  'Marcás en la grilla los horarios ocupados',
   'Sin vencimiento',
 ] as const
 
 const FULL_FEATURES = [
-  'Reservas online sin tope',
-  'Anotás tus turnos con nombre y precio',
-  'Fijos, caja, cantina y jugadores',
+  'Anotás quién pagó y ves lo que falta cobrar',
+  'Cargás el fijo una vez y aparece solo en tu grilla todas las semanas',
+  'Caja de la noche, cantina y jugadores',
   'Tu encargado entra con su usuario',
   'Métricas y soporte por WhatsApp',
 ] as const

@@ -131,14 +131,14 @@ export default function TerminosPage() {
                 <strong>Plan gratis.</strong> El complejo que no tiene una suscripción paga vigente
                 (al terminar la prueba, al vencer lo pagado tras una baja o al terminar el período
                 de cobro fallido) pasa al plan gratis, sin cargo. Incluye la página pública del
-                complejo, su aparición en el buscador de TurnoGol y la reserva online de los
-                jugadores hasta un tope mensual de reservas que se informa en turnogol.app/precios.
-                No incluye la carga de turnos con datos del cliente, los turnos fijos, la caja, la
-                ficha de jugadores, los usuarios para el equipo ni la seña online. Los datos de esas
-                funciones se conservan y vuelven a estar disponibles al activar el plan pago.
-                TurnoGol puede pausar la reserva online de un complejo del plan gratis que cancela
-                reiteradamente reservas de jugadores, hasta que el complejo actualice los horarios
-                ocupados.
+                complejo, su aparición en el buscador de TurnoGol, la reserva online de los
+                jugadores sin tope mensual y la carga de turnos con el nombre y el teléfono de quien
+                juega. No incluye los precios ni los cobros de los turnos, las notas, los turnos
+                fijos, la caja, la ficha de jugadores, los usuarios para el equipo ni la seña
+                online. Los datos de esas funciones se conservan y vuelven a estar disponibles al
+                activar el plan pago. TurnoGol puede pausar la reserva online de un complejo del
+                plan gratis que cancela reiteradamente reservas de jugadores, hasta que el complejo
+                actualice los horarios ocupados.
               </p>
               <p>
                 Las condiciones del plan gratis pueden cambiar. Si cambian, lo avisamos por email al

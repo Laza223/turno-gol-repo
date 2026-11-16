@@ -85,7 +85,7 @@ const FAQ = [
   },
   {
     q: '¿Qué pasa cuando se terminan los 30 días gratis?',
-    a: 'Si activás Completo, seguís igual. Si no, pasás al plan Gratis: seguís en el buscador y tus jugadores te reservan online, hasta 20 turnos por mes. Tus fijos, tu caja y tus jugadores quedan guardados para cuando vuelvas. Como no pedimos tarjeta para empezar, no hay ningún cobro sorpresa.',
+    a: 'Si activás Completo, seguís igual. Si no, pasás al plan Gratis. Seguís anotando tus turnos, seguís en el buscador y tus jugadores te reservan online, sin tope. Tus fijos, tu caja y tus jugadores quedan guardados para cuando vuelvas. Como no pedimos tarjeta para empezar, no hay ningún cobro sorpresa.',
   },
   {
     q: '¿El plan Gratis vence?',

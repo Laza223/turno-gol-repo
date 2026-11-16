@@ -101,10 +101,11 @@ export const GET = withTenant(
       tx,
     )
 
-    // Plan gratis (freemium, decisión 4): el enmascarado de la grilla se aplica
-    // también acá, en el servidor. Si solo lo hiciera el cliente, un fetch a
-    // este endpoint devolvería nombres, teléfonos y plata de lo que la grilla
-    // muestra como "Ocupado". Mismo criterio que `maskGridBookingForFreePlan`.
+    // Plan gratis (freemium v2): el enmascarado de la grilla se aplica también
+    // acá, en el servidor. Si solo lo hiciera el cliente, un fetch a este
+    // endpoint devolvería la plata y las notas que el panel gratis no muestra.
+    // Los nombres y teléfonos sí van: anotar quién juega es gratis. Mismo
+    // criterio que `maskGridBookingForFreePlan`.
     const tenantRows = (await tx.execute(
       sql`SELECT status::text AS status FROM tenants WHERE id = ${tenantId} LIMIT 1`,
     )) as unknown as Array<{ status: string }>
@@ -122,10 +123,6 @@ export const GET = withTenant(
         total_paid: 0,
         pending: 0,
         written_off: 0,
-        player_id: online ? row.player_id : null,
-        player: online ? row.player : null,
-        guest_name: online || r.booking.type === 'block' ? row.guest_name : 'Ocupado',
-        guest_phone: online ? row.guest_phone : null,
         price_snapshot: online ? row.price_snapshot : 0,
         deposit_amount: 0,
         deposit_status: 'not_required' as const,

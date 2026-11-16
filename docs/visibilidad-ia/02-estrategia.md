@@ -83,8 +83,8 @@ TurnoGol no es un sistema de reservas con extras. Es **el sistema de la noche de
 | Placa de turnos libres lista para historias y estados | A | `src/app/api/public/story` | Raro |
 | Encargado con su usuario, sin acceso a Ajustes ni Métricas; usuarios sin límite | A | `src/modules/staff/roles.ts` | Común |
 | Push con cada reserva; de 00 a 08 espera a las 8 | A | `push-quiet-hours.ts` | Poco común |
-| **TurnoGol Plus**: asistente con IA que contesta el WhatsApp del complejo con tus horarios, muestra turnos libres y reserva en el chat. Extra de $15.000 por cancha | B (en vivo en un complejo) | `2026-10-20-bot-whatsapp.md`, `pricing.ts:27` | Raro en el rubro |
-| **RIVAL**: tus jugadores arman el partido en tu cancha y lo cierran por WhatsApp; ven cuántos faltan y se bajan sin drama | B (flag global prendido el 29/10/2026) | `docs/decisions/2026-10-29-rival-cultura-de-turnogol.md`, `docs/rival/README.md` | **No** |
+| **TurnoGol Plus**: asistente con IA que contesta el WhatsApp del complejo con tus horarios, muestra turnos libres y reserva en el chat. Extra de $15.000 por cancha | B (en vivo en un complejo) | `2026-10-20-bot-whatsapp.md`, `pricing.ts:27` | Ya no es raro: Clubo, Cancheria y Complejo ofrecen bot o asistente de WhatsApp (leído el 15/11/2026, ver `docs/gtm/research/2026-11-15-competidores-con-freemium.md`) |
+| **RIVAL**: tus jugadores arman el partido en tu cancha y lo cierran por WhatsApp; ven cuántos faltan y se bajan sin drama | B (flag global prendido el 29/10/2026) | `docs/decisions/2026-10-29-rival-cultura-de-turnogol.md`, `docs/rival/README.md` | Armar partido (Falta Uno, convocatoria) lo tienen ATC, CanchaFija y Dónde Juego. Lo propio de RIVAL es el partido oficial club contra club; que ninguno lo tenga no está verificado (15/11/2026) |
 
 **Lo que NO se dice**, porque es estado C o D, está vetado o es falso:
 - Cobro automático o débito de los fijos.
@@ -106,7 +106,7 @@ Precios al 30/10/2026 para 3 canchas por mes (fuentes en §6):
 
 | | TurnoGol | Clubin | CanchaFija | Vibe | ATC |
 |---|---|---|---|---|---|
-| Precio | $90.000 | $45.000 | $18.000 | $0 + $1.000 al jugador por pago | USD 50 |
+| Precio | $90.000 | $45.000 | $18.000 | $0 + $1.000 al jugador por pago | $71.000 (en pesos, 15/11; el 30/10 se relevó USD 50) |
 
 TurnoGol es el más caro de los que cobran en pesos. El precio no se toca (D5), así que la respuesta tiene que estar en la página:
 
@@ -190,9 +190,9 @@ Se renderiza en el servidor con `src/components/seo/JsonLd.tsx` y `src/lib/seo/s
 | **Vibe** (vibe.com.ar) | "Sistema de gestión gratis para complejos deportivos \| Vibe" | $0 para el complejo + $1.000 al jugador por pago online ([guía propia](https://vibe.com.ar/guias/vibe-o-atc-sports-en-que-se-diferencian)) | [Capterra](https://www.capterra.com/p/10045949/Vibe/), 0 reseñas | SoftwareApplication, FAQPage, Organization, WebSite | Title con la pregunta exacta, gancho de precio, 6 guías del 8 al 11/10 (3 comparativas con nombre) |
 | **CanchaFija** (canchafija.com.ar) | "CanchaFija \| Reservá Canchas Online en Argentina" | $10.000 (1 cancha) a $60.000 (15 canchas); 3 canchas, $18.000 ([precios](https://canchafija.com.ar/precios)) | No encontré | Organization, WebSite, SoftwareApplication ×2, FAQPage | `/software-para-canchas-de-futbol` y un directorio de cientos de fichas `/t/<complejo>` |
 | **Clubin** (clubinarg.com) | "Software de gestión de clubes deportivos \| Clubin Argentina" | $45.000 (1-3 canchas), $60.000 (4-6), $84.000 (7+), "actualizados a octubre de 2026" ([complejos](https://clubinarg.com/complejos-deportivos)) | No encontré | Solo WebSite | Precio con fecha, comparativa de 13 plataformas, 8 páginas `clubin-vs-X` |
-| **ATC Sports** (atcsports.io) | "Tu próximo partido, a un link de distancia - ATC" | USD 50 (1-3), USD 80 (4-6), USD 100 (7+) ([software](https://atcsports.io/software-gestion-deportiva)) | Prensa (Forbes) | Ninguno | Tamaño y marca. **No apareció** en la respuesta de ChatGPT |
+| **ATC Sports** (atcsports.io) | "Tu próximo partido, a un link de distancia - ATC" | $71.000 (1-3), $111.000 (4-6), $145.000 (7+), anual −20%, leído en pesos el 15/11/2026 ([software](https://atcsports.io/software-gestion-deportiva)). El 30/10 se relevó USD 50, 80 y 100 con búsquedas desde EE.UU.: la página puede mostrar la moneda según el país del visitante (no verificado) | Prensa (Forbes) | Ninguno | Tamaño y marca. **No apareció** en la respuesta de ChatGPT |
 | **TurnosGol** (turnosgol.com.ar) | "TurnosGol \| Sistema de Reservas y Gestión para Canchas de Fútbol" | USD 500 inicial (1 cancha) o USD 50/mes + USD 10 por cancha extra ([home](https://www.turnosgol.com.ar/)) | No encontré | SoftwareApplication, Organization, FAQPage | Nombre a una letra del nuestro, mismo nicho |
-| **Clubo** | — | — | — | — | **No existe** dominio ni producto |
+| **Clubo** ([clubo.com.ar](https://www.clubo.com.ar/)) | "Clubo - Gestiona tu predio deportivo" | $25.000 por cancha de fútbol, $19.000 por cancha de otros deportes; anual −20%; primer mes gratis (leído el 15/11/2026) | No encontré | No leído | Precio publicado y bot de WhatsApp. Nota: el relevamiento del 30/10 lo dio por inexistente (búsqueda desde EE.UU.); es un error, ver `docs/gtm/research/2026-11-15-competidores-con-freemium.md` |
 | Otros que rankean | Canchero, CanchaYa (desde $40.000), ReservaSimple ($18.999), Reservalo, CanchaManager, Turnito, Turnopy | | | | |
 
 **Huecos donde no hay un producto argentino de canchas bien posicionado** (relevamiento del 30/10/2026, búsquedas desde EE.UU.):

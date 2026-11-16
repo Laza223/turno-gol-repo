@@ -197,12 +197,25 @@ export function HoyChargeModal({
     hasCourts: courts.length > 0,
     hasCanteen: Boolean(renderCanteenDialog),
   })
-  const gates = { ...baseGates, canMarkNoShow: baseGates.canMarkNoShow && allowNoShow }
+  // Plan gratis (freemium v2): la máscara marca el turno con `moneyHidden`. El
+  // modal dice quién juega y nada de plata: sin precio, cobro, "Cobrado ✓" ni
+  // "dar por perdido". Mover es del plan. Editar sí, pero solo nombre y
+  // teléfono de un invitado (decisión del 2026-11-16): a la reserva de un
+  // jugador no le queda nada para corregir en gratis.
+  const moneyHidden = booking.moneyHidden === true
+  const gates = {
+    ...baseGates,
+    canMarkNoShow: baseGates.canMarkNoShow && allowNoShow,
+    canEdit: baseGates.canEdit && (!moneyHidden || !booking.playerFirstName),
+    canReschedule: baseGates.canReschedule && !moneyHidden,
+    canWriteOff: baseGates.canWriteOff && !moneyHidden,
+  }
   const visual = gridSlotVisual({ ...booking, ended: hasEnded })
   const name = rowDisplayName(booking)
   // Un ausente nunca "Cobrado ✓": la seña capturada no es "se cobró todo", es
   // el único costo real de un no-show (veto de producto, CLAUDE.md).
-  const settled = pending === 0 && booking.priceSnapshot > 0 && booking.status !== 'no_show'
+  const settled =
+    !moneyHidden && pending === 0 && booking.priceSnapshot > 0 && booking.status !== 'no_show'
   const isTournament = booking.type === 'tournament'
   // Dado por perdido: el turno se cerró sin cobrar todo. Nunca "Cobrado ✓".
   const lostCents = pending === 0 ? (booking.writtenOff ?? 0) : 0
@@ -308,37 +321,41 @@ export function HoyChargeModal({
           )}
 
           <div className="flex flex-col gap-4 p-5">
-            <SlotPriceSummary booking={booking} capacity={court?.capacity} late={late} />
+            {!moneyHidden && (
+              <SlotPriceSummary booking={booking} capacity={court?.capacity} late={late} />
+            )}
 
-            <HoyChargeModalPaymentStatus
-              booking={booking}
-              mode={mode}
-              capacity={court?.capacity}
-              lines={lines}
-              // F-010 (QA prod 2026-08-17): sin esto, corregir el monto dejaba el
-              // error de sobrecobro viejo en pantalla, contradiciendo lo que el
-              // usuario ve mientras toca plata.
-              onLinesChange={(next) => {
-                setError(null)
-                setLines(next)
-              }}
-              error={error}
-              isPending={isPending}
-              locked={locked}
-              onSubmit={submitCharge}
-              onPartialCharge={submitPartialCharge}
-              onTeamCharge={submitTeamCharge}
-              retryTotal={retryTotal}
-              onRetry={retryUnconfirmedCharge}
-              settled={settled}
-              lostCents={lostCents}
-              onClose={onClose}
-              next={next ? { ...next, onOpen: goNext } : undefined}
-              canConfirmDeposit={canConfirmDeposit}
-              confirmDepositPaymentAction={actions.confirmDepositPaymentAction}
-              onMutated={onMutated}
-              isTournament={isTournament}
-            />
+            {!moneyHidden && (
+              <HoyChargeModalPaymentStatus
+                booking={booking}
+                mode={mode}
+                capacity={court?.capacity}
+                lines={lines}
+                // F-010 (QA prod 2026-08-17): sin esto, corregir el monto dejaba el
+                // error de sobrecobro viejo en pantalla, contradiciendo lo que el
+                // usuario ve mientras toca plata.
+                onLinesChange={(next) => {
+                  setError(null)
+                  setLines(next)
+                }}
+                error={error}
+                isPending={isPending}
+                locked={locked}
+                onSubmit={submitCharge}
+                onPartialCharge={submitPartialCharge}
+                onTeamCharge={submitTeamCharge}
+                retryTotal={retryTotal}
+                onRetry={retryUnconfirmedCharge}
+                settled={settled}
+                lostCents={lostCents}
+                onClose={onClose}
+                next={next ? { ...next, onOpen: goNext } : undefined}
+                canConfirmDeposit={canConfirmDeposit}
+                confirmDepositPaymentAction={actions.confirmDepositPaymentAction}
+                onMutated={onMutated}
+                isTournament={isTournament}
+              />
+            )}
 
             {gates.canWriteOff && actions.writeOffBookingAction && actions.undoWriteOffAction && (
               <WriteOffButton

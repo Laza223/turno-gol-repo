@@ -11,7 +11,7 @@ import { insertAuditLog } from '@/shared/db/audit'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { enforce } from '@/shared/rate-limit/apply'
 import { paidPeriodErrorMessage } from '@/modules/bookings/paid-period.guard'
-import { freePlanBookingError } from '@/modules/bookings/free-plan-block'
+import { FREE_PLAN_EDIT_ERROR, freePlanBookingError } from '@/modules/bookings/free-plan-block'
 import { evaluateFreeOnlinePause } from '@/modules/bookings/free-online-pause'
 import { isFreePlan } from '@/modules/tenants/tenant.lifecycle'
 import {
@@ -1237,9 +1237,18 @@ export async function editBookingAction(
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
   }
 
-  const auth = await requireOperatorStaff()
+  // Plan gratis (freemium v2, decisión de Lazar del 2026-11-16): corrige el
+  // nombre y el teléfono de un turno ya anotado. La duración y el precio son
+  // del plan.
+  const auth = await requireOperatorStaff({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
+  if (
+    isFreePlan(tenant) &&
+    (parsed.data.timeEnd !== undefined || parsed.data.priceOverride !== undefined)
+  ) {
+    return { success: false, error: FREE_PLAN_EDIT_ERROR }
+  }
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }

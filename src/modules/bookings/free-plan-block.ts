@@ -13,6 +13,10 @@ import { hhmmToMins } from '@/shared/time/operating-day'
 export const FREE_PLAN_BOOKING_ERROR =
   'En el plan gratis anotás quién juega. El precio, los cobros y las notas son con el plan.'
 
+/** Editar un turno en gratis: solo el nombre y el teléfono (decisión del 2026-11-16). */
+export const FREE_PLAN_EDIT_ERROR =
+  'En el plan gratis podés corregir el nombre y el teléfono. La duración y el precio son con el plan.'
+
 /** El Evento de varias horas es del plan: en gratis el turno es de una hora, como en la grilla. */
 export const FREE_PLAN_DURATION_ERROR =
   'En el plan gratis el turno es de una hora. Los eventos de varias horas son con el plan.'

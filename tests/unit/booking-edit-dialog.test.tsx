@@ -145,7 +145,7 @@ describe('BookingEditDialog', () => {
   })
 
   it('guarda: llama a editAction con bookingId y el nombre editado', async () => {
-    const editAction = vi.fn(async () => ({ success: true as const }))
+    const editAction = vi.fn(async (_input: unknown) => ({ success: true as const }))
     const onSuccess = vi.fn()
     const guest = bookingGuest()
 
@@ -181,7 +181,7 @@ describe('BookingEditDialog', () => {
   // 🟡 Hallazgo 7 (auditoría 2026-09-16): vaciar el campo de teléfono tiene que
   // mandarse como '' (no omitirse) — es la señal de "borrarlo a propósito".
   it('vacía el teléfono: llama a editAction con guestPhone: ""', async () => {
-    const editAction = vi.fn(async () => ({ success: true as const }))
+    const editAction = vi.fn(async (_input: unknown) => ({ success: true as const }))
     const guest = bookingGuest()
 
     render(
@@ -345,5 +345,41 @@ describe('BookingEditDialog', () => {
       ),
     )
     expect(onSuccess).not.toHaveBeenCalled()
+  })
+})
+
+// Plan gratis (freemium v2, decisión del 2026-11-16): solo nombre y teléfono.
+describe('BookingEditDialog en el plan gratis', () => {
+  it('no ofrece duración ni precio y guarda solo nombre y teléfono', async () => {
+    const editAction = vi.fn(async (_input: unknown) => ({ success: true as const }))
+    render(
+      <BookingEditDialog
+        open
+        onOpenChange={vi.fn()}
+        booking={{ ...toGridBooking(bookingGuest()), priceSnapshot: 0, moneyHidden: true }}
+        dayBookings={[]}
+        daySlots={DAY_SLOTS}
+        getDetailAction={vi.fn(async () => ({
+          success: true as const,
+          guestPhone: '+54 9 11 4444-5555',
+          createdByStaff: staffManager().id,
+        }))}
+        editAction={editAction}
+        onSuccess={vi.fn()}
+      />,
+    )
+
+    const name = (await screen.findByLabelText('Nombre')) as HTMLInputElement
+    expect(screen.queryByText('Precio')).toBeNull()
+    expect(screen.queryByLabelText('Hasta')).toBeNull()
+
+    fireEvent.change(name, { target: { value: 'Juan Pérez' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }))
+
+    await waitFor(() => expect(editAction).toHaveBeenCalledTimes(1))
+    const input = editAction.mock.calls[0]![0] as Record<string, unknown>
+    expect(input).toMatchObject({ guestName: 'Juan Pérez', guestPhone: '+54 9 11 4444-5555' })
+    expect(input).not.toHaveProperty('priceOverride')
+    expect(input).not.toHaveProperty('timeEnd')
   })
 })

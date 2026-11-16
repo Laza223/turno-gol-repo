@@ -18,8 +18,10 @@ vi.mock('@/modules/staff/staff.service', () => ({ getStaffRole: vi.fn() }))
 vi.mock('@/shared/db/client', () => ({ withTenantContext: vi.fn(), getDb: vi.fn() }))
 vi.mock('@/shared/rate-limit/server-action', () => ({ adminRateLimited: vi.fn() }))
 vi.mock('@/modules/bookings/booking.service', () => ({ createManualBooking: vi.fn() }))
+vi.mock('@/modules/bookings/booking.edit', () => ({ editBooking: vi.fn() }))
 
-import { createBookingAction } from '@/app/(admin)/reservas/actions'
+import { createBookingAction, editBookingAction } from '@/app/(admin)/reservas/actions'
+import { editBooking } from '@/modules/bookings/booking.edit'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { getImpersonationSession } from '@/modules/auth/impersonation.server'
 import { getStaffTenant } from '@/modules/tenants/tenant.service'
@@ -31,6 +33,7 @@ import { SlotTakenError } from '@/modules/bookings/booking.errors'
 import {
   FREE_PLAN_BOOKING_ERROR,
   FREE_PLAN_DURATION_ERROR,
+  FREE_PLAN_EDIT_ERROR,
 } from '@/modules/bookings/free-plan-block'
 
 const STAFF_USER = {
@@ -95,5 +98,39 @@ describe('createBookingAction en el plan gratis', () => {
     const res = await createBookingAction({ ...TURNO, timeEnd: '23:00' })
     expect(res).toEqual({ success: false, error: FREE_PLAN_DURATION_ERROR })
     expect(vi.mocked(createManualBooking)).not.toHaveBeenCalled()
+  })
+})
+
+// Decisión del 2026-11-16: el gratis corrige el nombre y el teléfono de un turno
+// ya anotado; la duración y el precio son del plan.
+describe('editBookingAction en el plan gratis', () => {
+  const BOOKING_ID = '33333333-3333-4333-8333-333333333333'
+
+  beforeEach(() => {
+    vi.mocked(editBooking).mockRejectedValue(new SlotTakenError())
+  })
+
+  it('deja corregir nombre y teléfono', async () => {
+    asTenant('free')
+    await editBookingAction({ bookingId: BOOKING_ID, guestName: 'Juan Pérez', guestPhone: '11' })
+    expect(vi.mocked(editBooking)).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(editBooking).mock.calls[0]![2]).toMatchObject({ guestName: 'Juan Pérez' })
+  })
+
+  it.each([
+    ['el precio', { priceOverride: 2_500_000 }],
+    ['el precio en 0', { priceOverride: 0 }],
+    ['la duración', { timeEnd: '22:00' }],
+  ])('rechaza %s', async (_label, extra) => {
+    asTenant('free')
+    const res = await editBookingAction({ bookingId: BOOKING_ID, guestName: 'Juan', ...extra })
+    expect(res).toEqual({ success: false, error: FREE_PLAN_EDIT_ERROR })
+    expect(vi.mocked(editBooking)).not.toHaveBeenCalled()
+  })
+
+  it('en el plan pago el precio sigue pasando', async () => {
+    asTenant('active')
+    await editBookingAction({ bookingId: BOOKING_ID, priceOverride: 2_500_000 })
+    expect(vi.mocked(editBooking)).toHaveBeenCalledTimes(1)
   })
 })

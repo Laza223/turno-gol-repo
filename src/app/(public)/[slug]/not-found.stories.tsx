@@ -6,6 +6,13 @@ const meta = {
   title: 'Player/TenantProfile/NotFound',
   component: TenantNotFound,
   parameters: { layout: 'fullscreen' },
+  decorators: [
+    (Story) => (
+      <div data-portal-glass className="portal-ambient min-h-dvh text-portal-ink">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof TenantNotFound>
 
 export default meta

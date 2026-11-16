@@ -6,9 +6,9 @@ import { contactWhatsappUrl } from '@/lib/contact'
 /**
  * Server Component puro y sincrónico: sin estado, sin fetch, sin browser APIs.
  * Las páginas reales que lo consumen (`(business)/blog/[slug]/page.tsx`,
- * `(business)/alternativas-alquila-tu-cancha/page.tsx`) lo envuelven en
- * `min-h-screen bg-gray-50` — se reproduce acá porque el header/CTA final del
- * artículo no traen fondo propio (heredan el del contenedor de la página).
+ * `(business)/alternativas-alquila-tu-cancha/page.tsx`) lo envuelven en el layout de
+ * `(business)`, con el marcador de vidrio y la luz de fondo: se reproduce acá porque el
+ * artículo no trae fondo propio.
  */
 const meta = {
   title: 'Public/ArticleShell',
@@ -16,7 +16,7 @@ const meta = {
   parameters: { layout: 'fullscreen' },
   decorators: [
     (Story) => (
-      <div className="min-h-screen bg-gray-50">
+      <div data-portal-glass className="portal-ambient min-h-screen text-portal-ink">
         <Story />
       </div>
     ),
@@ -39,14 +39,6 @@ type Story = StoryObj<typeof meta>
 
 /**
  * Caso base: título + descripción + fecha, como llega desde el frontmatter del MDX.
- *
- * BUG DE PRODUCCIÓN (no corregido acá — fuera del alcance de este paquete):
- * `ArticleShell.tsx:35` renderiza la fecha con `text-gray-400` sobre el fondo real
- * de la página (`bg-gray-50`, reproducido en el decorator de este meta) → contraste
- * medido 2.42:1, bajo el mínimo AA de 4.5:1 para texto normal. axe lo marca acá
- * (no es un artefacto del decorator: el fondo es el mismo que usan
- * `(business)/blog/[slug]/page.tsx` y las páginas de comparativas). Esta story se
- * deja roja a propósito — no se debilita la aserción de a11y para taparlo.
  */
 export const Default: Story = {
   args: { date: '2026-07-12' },
@@ -101,7 +93,7 @@ export const TituloLargo: Story = {
 
 /**
  * Contenido rico del MDX: varios párrafos, headings y una lista — confirma
- * que la tipografía en cascada de `.prose` (`prose-lg prose-blue`) aplica.
+ * que los estilos de `.ar-prose` (`article.css`) aplican.
  */
 export const ContenidoRico: Story = {
   args: {
@@ -127,9 +119,9 @@ export const ContenidoRico: Story = {
     await expect(
       canvas.getByRole('heading', { level: 2, name: '¿Por qué cambiar de sistema?' }),
     ).toBeVisible()
-    // Scopeado a `.prose`: el `<ol>` del Toaster global también matchea el rol
+    // Scopeado a `.ar-prose`: el `<ol>` del Toaster global también matchea el rol
     // implícito "list" (es una lista ordenada vacía, siempre montada por el preview).
-    const prose = within(canvasElement.querySelector('.prose') as HTMLElement)
+    const prose = within(canvasElement.querySelector('.ar-prose') as HTMLElement)
     await expect(prose.getByRole('list')).toBeVisible()
     await expect(prose.getAllByRole('listitem')).toHaveLength(3)
   },

@@ -4,7 +4,11 @@ import { useRef, useState } from 'react'
 import { track } from '@vercel/analytics'
 import { Minus, Plus } from 'lucide-react'
 import { formatArs } from '@/lib/format'
+import { cn } from '@/lib/utils'
+import { buttonVariants } from '@/components/ui/button'
+import { GLASS_INPUT } from '@/components/world/portal-auth-styles'
 import { PLANS } from './plans-data'
+import './precios.css'
 
 const TURNO_PRESETS = [20000, 25000, 30000, 40000] as const
 const WEEKS_PER_MONTH = 4 // conservador: 4 semanas por mes
@@ -53,29 +57,12 @@ export default function CalculadoraClavo() {
   }
 
   return (
-    <div
-      className="relative overflow-hidden border border-white/10 p-7 sm:p-10"
-      style={{
-        borderRadius: '24px',
-        background: 'linear-gradient(180deg, rgba(15,23,42,.78), rgba(2,6,23,.9))',
-        boxShadow: '0 0 60px rgba(16,185,129,.12), 0 40px 80px -40px rgba(0,0,0,.9)',
-      }}
-    >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute right-[-20%] top-[-40%] h-[420px] w-[420px] rounded-full blur-[10px]"
-        style={{
-          background: 'radial-gradient(closest-side, rgba(16,185,129,.14), transparent 70%)',
-        }}
-      />
-      <div className="relative grid grid-cols-1 gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
+    <div className="glass-painted rounded-[32px] p-6 sm:p-10">
+      <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
         {/* Inputs */}
         <div className="space-y-7">
           <div>
-            <label
-              htmlFor="turno-input"
-              className="font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400"
-            >
+            <label htmlFor="turno-input" className="text-[15px] font-semibold text-portal-slot-ink">
               ¿A cuánto está tu turno?
             </label>
             <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -87,11 +74,10 @@ export default function CalculadoraClavo() {
                     type="button"
                     onClick={() => selectPreset(preset)}
                     aria-pressed={selected}
-                    className={`h-11 rounded-full px-4 text-sm font-semibold tabular-nums transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 ${
-                      selected
-                        ? 'bg-emerald-500 text-slate-950'
-                        : 'border border-white/10 bg-white/4 text-slate-300 hover:bg-white/8 hover:text-white'
-                    }`}
+                    className={cn(
+                      buttonVariants({ variant: 'pill-chip', size: 'pill-sm' }),
+                      'tabular-nums',
+                    )}
                   >
                     {formatArs(preset * 100)}
                   </button>
@@ -100,7 +86,7 @@ export default function CalculadoraClavo() {
               <div className="relative">
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500"
+                  className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[15px] font-semibold text-portal-soft"
                 >
                   $
                 </span>
@@ -112,20 +98,20 @@ export default function CalculadoraClavo() {
                   value={customInput}
                   onChange={(e) => onTurnoInput(e.target.value)}
                   placeholder="Otro"
-                  className="h-11 w-[110px] rounded-full border border-white/10 bg-white/4 pl-8 pr-4 text-sm font-semibold tabular-nums text-white placeholder:text-slate-500 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                  className={cn(
+                    GLASS_INPUT,
+                    'h-11 w-[130px] rounded-full pr-4 pl-8 text-[15px] font-semibold tabular-nums outline-hidden md:h-11 md:text-[15px]',
+                  )}
                 />
               </div>
             </div>
           </div>
 
           <div>
-            <span
-              id="clavos-label"
-              className="font-logo text-[12.5px] font-bold uppercase tracking-[.12em] text-emerald-400"
-            >
+            <span id="clavos-label" className="text-[15px] font-semibold text-portal-slot-ink">
               ¿Cuántos turnos te cuelgan por semana?
             </span>
-            <div className="mt-3 inline-flex items-center gap-4 rounded-full border border-white/10 bg-white/4 p-1.5">
+            <div className="mt-3 inline-flex items-center gap-4 rounded-full border border-portal-inner-line bg-portal-inner p-1.5">
               <button
                 type="button"
                 onClick={() => {
@@ -134,13 +120,13 @@ export default function CalculadoraClavo() {
                 }}
                 disabled={clavos === 0}
                 aria-label="Un turno colgado menos por semana"
-                className="flex h-11 w-11 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/8 hover:text-white disabled:opacity-35 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                className={cn(buttonVariants({ variant: 'pill-chip', size: 'pill-icon' }))}
               >
                 <Minus className="h-4 w-4" aria-hidden />
               </button>
               <span
                 aria-labelledby="clavos-label"
-                className="min-w-[2ch] text-center font-display text-2xl font-bold tabular-nums text-white"
+                className="min-w-[2ch] text-center text-2xl font-bold text-portal-ink tabular-nums"
               >
                 {clavos}
               </span>
@@ -152,7 +138,7 @@ export default function CalculadoraClavo() {
                 }}
                 disabled={clavos === MAX_CLAVOS}
                 aria-label="Un turno colgado más por semana"
-                className="flex h-11 w-11 items-center justify-center rounded-full text-slate-300 transition-colors hover:bg-white/8 hover:text-white disabled:opacity-35 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
+                className={cn(buttonVariants({ variant: 'pill-chip', size: 'pill-icon' }))}
               >
                 <Plus className="h-4 w-4" aria-hidden />
               </button>
@@ -163,61 +149,47 @@ export default function CalculadoraClavo() {
         {/* Resultado */}
         <output
           aria-live="polite"
-          className="block border-t border-white/10 pt-8 lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0"
+          className="block border-t border-portal-inner-line pt-8 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-10"
         >
           {clavos === 0 ? (
-            <p className="text-lg leading-relaxed text-slate-300">
+            <p className="text-lg leading-relaxed text-portal-ink">
               ¿Ninguno? Bien ahí, sos la excepción.{' '}
-              <span className="text-slate-400">
+              <span className="text-portal-muted">
                 TurnoGol igual te ordena la grilla, la caja y el teléfono, desde{' '}
-                <span className="font-semibold text-white">{formatArs(desdeCents)}/mes</span>.
+                <span className="font-semibold text-portal-ink">{formatArs(desdeCents)}/mes</span>.
               </span>
             </p>
           ) : perdidaCents === null ? (
             <>
-              <div className="font-logo text-[12px] font-bold uppercase tracking-widest text-slate-500">
-                Se te van por mes
-              </div>
-              <div
-                className="mt-1 font-display font-black tabular-nums text-slate-500"
-                style={{
-                  fontSize: 'clamp(40px, 4.5vw, 56px)',
-                  letterSpacing: '-0.02em',
-                  lineHeight: 1,
-                }}
-              >
+              <div className="text-[15px] font-semibold text-portal-muted">Se te van por mes</div>
+              <div className="mt-1 text-[clamp(40px,4.5vw,56px)] leading-none font-bold tracking-[-0.035em] text-portal-soft tabular-nums">
                 —
               </div>
-              <p className="mt-4 text-[15px] leading-relaxed text-slate-400">
+              <p className="mt-4 text-[15px] leading-relaxed text-portal-muted">
                 Ingresá el precio de tu turno para ver cuánto perdés.
               </p>
             </>
           ) : (
             <>
-              <div className="font-logo text-[12px] font-bold uppercase tracking-widest text-slate-500">
-                Se te van por mes
-              </div>
+              <div className="text-[15px] font-semibold text-portal-muted">Se te van por mes</div>
+              {/* La pérdida cambia por reemplazo (`key`): nunca cuenta de un monto al otro. */}
               <div
-                className="mt-1 font-display font-black tabular-nums text-red-400"
-                style={{
-                  fontSize: 'clamp(40px, 4.5vw, 56px)',
-                  letterSpacing: '-0.02em',
-                  lineHeight: 1,
-                }}
+                key={perdidaCents}
+                className="pr-swap mt-1 text-[clamp(40px,4.5vw,56px)] leading-none font-bold tracking-[-0.035em] text-portal-bad tabular-nums"
               >
                 {formatArs(perdidaCents)}
               </div>
-              <p className="mt-4 text-[15px] leading-relaxed text-slate-400">
+              <p className="mt-4 text-[15px] leading-relaxed text-portal-muted">
                 TurnoGol sale desde{' '}
-                <span className="font-semibold text-white">{formatArs(desdeCents)}/mes</span>
+                <span className="font-semibold text-portal-ink">{formatArs(desdeCents)}/mes</span>
                 {perdidaCents > desdeCents ? (
                   <> — menos que lo que te llevan los turnos colgados.</>
                 ) : (
                   <>.</>
                 )}
               </p>
-              <p className="mt-3 text-[15px] leading-relaxed text-slate-300">
-                <span className="font-semibold text-[#6ee7b7]">
+              <p className="mt-3 text-[15px] leading-relaxed">
+                <span className="font-semibold text-portal-slot-ink">
                   El que falta dos veces no reserva online por dos semanas.
                 </span>
               </p>

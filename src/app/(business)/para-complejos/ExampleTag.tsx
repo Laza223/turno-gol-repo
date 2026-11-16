@@ -5,7 +5,7 @@ export function ExampleTag({ className }: { className?: string }) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full border border-border px-2.5 py-0.5 text-xs font-medium text-muted-foreground',
+        'inline-flex items-center rounded-full border border-portal-inner-line px-2.5 py-0.5 text-xs font-medium text-portal-soft',
         className,
       )}
     >

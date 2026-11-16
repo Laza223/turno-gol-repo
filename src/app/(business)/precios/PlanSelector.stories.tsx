@@ -1,16 +1,20 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, within } from 'storybook/test'
+import '@/app/(business)/business.css'
+import './precios.css'
 import PlanSelector from './PlanSelector'
 
-/** Vive en la sección "Planes" de /precios, sobre el fondo oscuro fijo (`(business)/layout.tsx`). */
+/** Vive en la sección "Planes" de /precios, sobre la luz del portal de vidrio (`(business)/layout.tsx`), en claro y oscuro. */
 const meta = {
   title: 'Public/Precios/PlanSelector',
   component: PlanSelector,
   parameters: { layout: 'padded', backgrounds: { disable: true } },
   decorators: [
     (Story) => (
-      <div className="mx-auto max-w-[1240px] text-slate-300" style={{ background: '#020617' }}>
-        <Story />
+      <div data-portal-glass className="bz portal-ambient p-6 text-portal-ink">
+        <div className="bz-wrap" style={{ maxWidth: 1240 }}>
+          <Story />
+        </div>
       </div>
     ),
   ],

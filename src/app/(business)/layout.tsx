@@ -2,16 +2,14 @@ import type { ReactNode } from 'react'
 import BusinessHeader from '@/components/site/BusinessHeader'
 import BusinessFooter from '@/components/site/BusinessFooter'
 import { PortalSessionProvider } from '@/components/site/PortalSessionProvider'
+import './business.css'
 
 export default function BusinessLayout({ children }: { children: ReactNode }) {
   return (
-    // `dark`: esta superficie es SIEMPRE oscura (bg #020617 a mano, no sigue el
-    // tema del sitio). Sin la clase, `dark:text-emerald-400` del Logo compartido
-    // no aplica cuando el visitante tiene el sitio en tema claro (default =
-    // system) y el texto queda en `text-emerald-700` sobre #020617 → 3.67:1,
-    // bajo AA. Ver ThemeProvider.tsx: "las páginas always-dark se blindan con
-    // su propio wrapper .dark de layout".
-    <div className="dark min-h-dvh text-slate-300" style={{ background: '#020617' }}>
+    // Portal de vidrio (decisión 2026-11-13, F8): estas páginas siguen el tema del visitante como
+    // el resto del portal. El marcador prende los tokens de vidrio, y la luz de fondo es la de toda
+    // página del portal. Sin barra de abajo: son páginas para el dueño, no para el jugador.
+    <div data-portal-glass className="bz portal-ambient min-h-dvh text-portal-ink">
       {/* El provider envuelve SOLO al header, igual que en la home
           (src/app/page.tsx): hidrata la sesión después de montar, así que estas
           páginas siguen siendo estáticas y nada del árbol server lee cookies.

@@ -7,8 +7,8 @@ import { PortalSessionProvider } from './PortalSessionProvider'
  * `position: fixed` respecto del viewport: un wrapper `position: relative`
  * simple NO lo contiene. Se fuerza un containing block nuevo con `transform`
  * (truco estándar) + una caja con altura fija, así el pill no tapa los
- * controles del canvas de Storybook. Fondo siempre oscuro (`rgba(8,15,32,.62)`
- * + blur) — independiente del theme del viewer.
+ * controles del canvas de Storybook. Portal de vidrio (F8): el marcador prende los tokens y la
+ * píldora sigue el tema de la story.
  */
 const meta = {
   title: 'Public/BusinessHeader',
@@ -17,8 +17,9 @@ const meta = {
   decorators: [
     (Story) => (
       <div
-        style={{ transform: 'translateZ(0)', height: 160, background: '#0b1220' }}
-        className="relative isolate overflow-hidden"
+        data-portal-glass
+        style={{ transform: 'translateZ(0)', height: 160 }}
+        className="portal-ambient relative isolate overflow-hidden text-portal-ink"
       >
         <Story />
       </div>

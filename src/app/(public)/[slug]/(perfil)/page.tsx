@@ -12,7 +12,8 @@ import { listPublicTournaments } from '@/modules/tournaments/tournament-public.s
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import { listBoard } from '@/modules/rival/rival.service'
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
-import { PORTAL_TITLE } from '@/components/world/portal-auth-styles'
+import { PauseCircle } from 'lucide-react'
+import { PortalResult } from '@/components/world/PortalResult'
 import { trackProfileViewedAction } from './actions'
 import ComplexHero from '../components/ComplexHero'
 import ProfileLayout from '../components/ProfileLayout'
@@ -46,14 +47,9 @@ export default async function PublicComplexPage(props: Props) {
   // Con ISR puede servirse stale hasta 300s tras el cambio de estado (aceptable).
   if (!isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd)) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <div className="max-w-md space-y-3">
-          <h1 className={PORTAL_TITLE}>{tenant.name}</h1>
-          <p className="text-base text-muted-foreground">
-            Este complejo no está disponible temporalmente.
-          </p>
-        </div>
-      </div>
+      <PortalResult icon={PauseCircle} tone="neutral" title={tenant.name}>
+        <p>Este complejo no está disponible temporalmente.</p>
+      </PortalResult>
     )
   }
 

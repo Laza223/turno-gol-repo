@@ -119,7 +119,6 @@ describe('AdminLayout — hard lock por tenant_status', () => {
   it('free: entra al panel con la banda del plan gratis (tope del mes y pausa)', async () => {
     vi.mocked(getStaffTenant).mockResolvedValue({
       ...tenant('free'),
-      onlineCapMonth: null,
       onlinePausedAt: new Date('2026-11-05T12:00:00.000Z'),
     } as never)
 

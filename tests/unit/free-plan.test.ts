@@ -11,7 +11,7 @@ import { visibleNavItems } from '@/components/layout/admin-sidebar'
 import { gridMoneyVisual } from '@/lib/booking/slot-visual'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 
-// Freemium (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
+// Freemium (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md y su corte v2).
 
 describe('isFreePlan', () => {
   it.each(['trialing', 'active', 'past_due', 'suspended', 'blocked', 'canceled', 'churned'])(
@@ -32,65 +32,61 @@ describe('artMonthOf: el mes es el de Argentina, no el de UTC', () => {
 
 describe('effectiveAllowOnlineBooking', () => {
   const NOW = new Date('2026-11-15T15:00:00Z')
-  const base = {
-    status: 'free',
-    allowOnlineBookingSetting: true,
-    onlineCapMonth: null,
-    onlinePausedAt: null,
-  }
+  const base = { status: 'free', allowOnlineBookingSetting: true, onlinePausedAt: null }
 
   it('el ajuste apagado manda para todos', () => {
     expect(
-      effectiveAllowOnlineBooking(
-        { ...base, status: 'active', allowOnlineBookingSetting: false },
-        NOW,
-      ),
+      effectiveAllowOnlineBooking({ ...base, status: 'active', allowOnlineBookingSetting: false }),
     ).toBe(false)
   })
-  it('un pago ignora tope y pausa', () => {
-    expect(
-      effectiveAllowOnlineBooking(
-        { ...base, status: 'active', onlineCapMonth: '2026-11', onlinePausedAt: NOW },
-        NOW,
-      ),
-    ).toBe(true)
+  it('un pago ignora la pausa', () => {
+    expect(effectiveAllowOnlineBooking({ ...base, status: 'active', onlinePausedAt: NOW })).toBe(
+      true,
+    )
   })
-  it('gratis sin tope ni pausa: abierta', () => {
-    expect(effectiveAllowOnlineBooking(base, NOW)).toBe(true)
-  })
-  it('gratis topeado este mes: cerrada', () => {
-    expect(effectiveAllowOnlineBooking({ ...base, onlineCapMonth: '2026-11' }, NOW)).toBe(false)
-  })
-  it('gratis topeado el mes pasado: abierta otra vez', () => {
-    expect(effectiveAllowOnlineBooking({ ...base, onlineCapMonth: '2026-10' }, NOW)).toBe(true)
+  it('gratis sin pausa: abierta, sin tope (freemium v2)', () => {
+    expect(effectiveAllowOnlineBooking(base)).toBe(true)
   })
   it('gratis en pausa: cerrada', () => {
-    expect(effectiveAllowOnlineBooking({ ...base, onlinePausedAt: NOW }, NOW)).toBe(false)
+    expect(effectiveAllowOnlineBooking({ ...base, onlinePausedAt: NOW })).toBe(false)
   })
 })
 
-describe('freePlanBookingError: en gratis solo ocupado, sin datos de nadie', () => {
+// Freemium v2 (docs/decisions/2026-11-15-freemium-corte-v2.md): "gratis es quién
+// juega; el plan es quién pagó".
+describe('freePlanBookingError: en gratis se anota quién juega, sin plata ni notas', () => {
   const block = { type: 'block' as const }
+  const turno = { type: 'spontaneous' as const, guestName: 'Juan' }
 
-  it.each(FREE_PLAN_BLOCK_REASONS)('acepta el motivo cerrado %s', (guestName) => {
+  it('acepta un turno con nombre', () => {
+    expect(freePlanBookingError(turno)).toBeNull()
+  })
+  it('acepta un turno con nombre y teléfono, en $0', () => {
+    expect(
+      freePlanBookingError({ ...turno, guestPhone: '1122334455', priceOverride: 0 }),
+    ).toBeNull()
+  })
+  it.each(FREE_PLAN_BLOCK_REASONS)('acepta el bloqueo con el motivo cerrado %s', (guestName) => {
     expect(freePlanBookingError({ ...block, guestName })).toBeNull()
   })
-  it('sin motivo cuenta como Ocupado', () => {
+  it('un bloqueo sin motivo cuenta como Ocupado', () => {
     expect(freePlanBookingError(block)).toBeNull()
   })
-  it('acepta precio y seña en 0 explícito', () => {
-    expect(freePlanBookingError({ ...block, priceOverride: 0, depositAmount: 0 })).toBeNull()
-  })
   it.each([
-    ['un turno con nombre', { type: 'spontaneous' as const, guestName: 'Juan' }],
-    ['un motivo libre', { ...block, guestName: 'Juan Pérez' }],
-    ['un teléfono', { ...block, guestPhone: '1122334455' }],
-    ['un jugador', { ...block, playerId: '33333333-3333-4333-8333-333333333333' }],
-    ['una nota interna', { ...block, notesInternal: 'Paga el lunes' }],
-    ['una nota al jugador', { ...block, notesPlayer: 'Traé pelota' }],
-    ['un precio', { ...block, priceOverride: 1000 }],
-    ['una seña', { ...block, depositAmount: 500 }],
-    ['un método de seña', { ...block, depositMethod: 'cash' }],
+    [
+      'un turno con jugador vinculado',
+      { type: 'spontaneous' as const, playerId: '33333333-3333-4333-8333-333333333333' },
+    ],
+    ['un turno con nota interna', { ...turno, notesInternal: 'Paga el lunes' }],
+    ['un turno con nota al jugador', { ...turno, notesPlayer: 'Traé pelota' }],
+    ['un turno con precio', { ...turno, priceOverride: 1000 }],
+    [
+      'un turno con cobro',
+      { ...turno, depositAmount: 500, depositMethod: 'cash', depositStatus: 'paid' },
+    ],
+    ['un bloqueo con motivo libre', { ...block, guestName: 'Juan Pérez' }],
+    ['un bloqueo con teléfono', { ...block, guestPhone: '1122334455' }],
+    ['un bloqueo con precio', { ...block, priceOverride: 1000 }],
   ])('rechaza %s', (_label, input) => {
     expect(freePlanBookingError(input)).toBe(FREE_PLAN_BOOKING_ERROR)
   })
@@ -117,14 +113,16 @@ describe('maskGridBookingForFreePlan', () => {
     writtenOff: 0,
   }
 
-  it('lo que anotó el staff queda Ocupado, sin nombre ni plata', () => {
+  it('lo que anotó el staff conserva el nombre y pierde la plata', () => {
     const m = maskGridBookingForFreePlan(row, false)
-    expect(m.guestName).toBe('Ocupado')
-    expect(m.playerFirstName).toBeNull()
-    expect(m.playerLastName).toBeNull()
+    expect(m.guestName).toBe('Juan')
+    expect(m.playerFirstName).toBe('Ana')
+    expect(m.playerLastName).toBe('Gómez')
     expect(m.priceSnapshot).toBe(0)
     expect(m.pending).toBe(0)
     expect(m.totalPaid).toBe(0)
+    expect(m.depositAmount).toBe(0)
+    expect(m.paymentMethod).toBeNull()
     // Sin esto la celda leía el saldo en 0 como "Pagado" o "No se cobra".
     expect(gridMoneyVisual({ ...m, started: true, ended: true }).label).toBe('')
   })

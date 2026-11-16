@@ -65,6 +65,8 @@ export default async function ReservasPage(props: Props) {
   const page = parsePage(searchParams.pagina)
   const requestedCourt = searchParams.cancha ?? ''
   const instant = now()
+  // Plan gratis (freemium v2): la Agenda muestra todos los turnos con su nombre, sin plata.
+  const freePlan = isFreePlan(tenant)
 
   // Mismo tx (una conexión): secuencial, no Promise.all.
   const { rows, counts, courts, courtId } = await withTenantContext(tenant.id, async (tx) => {
@@ -84,7 +86,6 @@ export default async function ReservasPage(props: Props) {
         ...(status ? { status } : {}),
         ...(q ? { q } : {}),
         ...(courtId ? { courtId } : {}),
-        onlineOnly: isFreePlan(tenant),
       },
       tx,
       page,
@@ -97,7 +98,6 @@ export default async function ReservasPage(props: Props) {
         now: instant,
         ...(q ? { q } : {}),
         ...(courtId ? { courtId } : {}),
-        onlineOnly: isFreePlan(tenant),
       },
       tx,
     )
@@ -203,7 +203,7 @@ export default async function ReservasPage(props: Props) {
                 </div>
                 <ul className="divide-y divide-border">
                   {groupRows.map((r) => (
-                    <BookingListItem key={r.id} booking={r} />
+                    <BookingListItem key={r.id} booking={r} moneyHidden={freePlan} />
                   ))}
                 </ul>
               </section>

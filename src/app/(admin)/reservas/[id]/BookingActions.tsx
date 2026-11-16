@@ -104,6 +104,11 @@ type Props = {
    * `pending_payment`. Opcional, mismo criterio que el resto.
    */
   confirmDepositPaymentAction?: ConfirmDepositFn
+  /**
+   * Plan gratis (freemium v2): sin "Marcar completada", que abre el cobro. El
+   * turno se da por jugado solo al terminar (`autoCompleteOverdueBookings`).
+   */
+  moneyHidden?: boolean
 }
 
 /** Ventana de corrección de asistencia (doc6 §3, trigger de la migración 060). */
@@ -387,6 +392,7 @@ function ConfirmedActions({
   cancelBookingAction,
   nowMs,
   router,
+  moneyHidden,
 }: {
   bookingId: string
   depositStatus: string
@@ -412,6 +418,7 @@ function ConfirmedActions({
   cancelBookingAction: CancelBookingFn
   nowMs: number
   router: BookingActionsRouter
+  moneyHidden: boolean
 }) {
   const [cancelOpen, setCancelOpen] = useState(false)
   const [noShowOpen, setNoShowOpen] = useState(false)
@@ -487,18 +494,20 @@ function ConfirmedActions({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={!turnoEnded}
-          title={turnoEnded ? undefined : 'El turno todavía no terminó'}
-          onClick={() => setCompleteDialogOpen(true)}
-          // H078: "Marcar completada" es un estado del SISTEMA, no de la
-          // plata — el primario (sólido) de la vista es "+ Agregar cobro"
-          // (BookingCharges.tsx). Regla del dueño §8.4 + BONUS-62.
-          className="h-11 md:h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          Marcar completada
-        </button>
+        {!moneyHidden && (
+          <button
+            type="button"
+            disabled={!turnoEnded}
+            title={turnoEnded ? undefined : 'El turno todavía no terminó'}
+            onClick={() => setCompleteDialogOpen(true)}
+            // H078: "Marcar completada" es un estado del SISTEMA, no de la
+            // plata — el primario (sólido) de la vista es "+ Agregar cobro"
+            // (BookingCharges.tsx). Regla del dueño §8.4 + BONUS-62.
+            className="h-11 md:h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Marcar completada
+          </button>
+        )}
         <button
           type="button"
           disabled={!turnoEnded}
@@ -578,7 +587,7 @@ function ConfirmedActions({
         onConfirm={onConfirmNoShow}
       />
 
-      {completeDialogOpen && (
+      {!moneyHidden && completeDialogOpen && (
         <CompleteBookingDialog
           booking={{
             id: bookingId,
@@ -636,6 +645,7 @@ export default function BookingActions({
   cancelBookingAction,
   releaseBlockAction,
   confirmDepositPaymentAction,
+  moneyHidden = false,
 }: Props) {
   const router = useRouter()
   // Reloj reactivo (ver use-now.ts). Lo consumen las ramas `no_show`,
@@ -720,6 +730,7 @@ export default function BookingActions({
       cancelBookingAction={cancelBookingAction}
       nowMs={nowMs}
       router={router}
+      moneyHidden={moneyHidden}
     />
   )
 }

@@ -105,16 +105,6 @@ export type ReservaListFilters = {
   q?: string
   /** H110 — filtra por cancha (courts.id). La page valida contra las canchas reales del tenant antes de llegar acá. */
   courtId?: string
-  /**
-   * Plan gratis (freemium): solo las reservas online. Lo que anotó el staff y los
-   * fijos se ven como "Ocupado" en la grilla, pero no se listan con su detalle.
-   */
-  onlineOnly?: boolean
-}
-
-function onlineOnlyCond(onlineOnly: boolean | undefined): SQL {
-  if (!onlineOnly) return sql``
-  return sql`AND b.type = 'spontaneous' AND b.created_by_staff IS NULL`
 }
 
 function scopeCond(scope: ReservaScope, now: Date): SQL {
@@ -261,7 +251,6 @@ export async function listTenantBookings(
       ${statusCond(filters.status)}
       ${searchCond(filters.q)}
       ${courtCond(filters.courtId)}
-      ${onlineOnlyCond(filters.onlineOnly)}
     ${orderBy}
     LIMIT ${RESERVAS_PAGE_SIZE + 1} OFFSET ${safePage * RESERVAS_PAGE_SIZE}
   `)
@@ -295,7 +284,6 @@ export async function countTenantBookingsByStatus(
       ${scopeCond(filters.scope, filters.now)}
       ${searchCond(filters.q)}
       ${courtCond(filters.courtId)}
-      ${onlineOnlyCond(filters.onlineOnly)}
     GROUP BY 1
   `)
   const counts: Record<string, number> = {}
@@ -306,8 +294,6 @@ export async function countTenantBookingsByStatus(
 }
 
 export type ReservaDetail = ReservaListRow & {
-  /** Reserva online del jugador (`type='spontaneous'` sin `created_by_staff`). */
-  isOnline?: boolean
   notesPlayer: string | null
   notesInternal: string | null
   playerPhone: string | null
@@ -368,7 +354,6 @@ export async function getBookingDetail(
            COALESCE((t.settings->'cancellation_policy'->>'hours_before')::int, ${DEFAULT_CANCELLATION_HOURS_BEFORE}::int) AS "cancellationPolicyHours",
            COALESCE((t.settings->>'late_cancel_hours')::int, 0) AS "lateCancelHours",
            b.abonado_id AS "abonadoId",
-           (b.type = 'spontaneous' AND b.created_by_staff IS NULL) AS "isOnline",
            b.starts_at AS "startsAt", b.ends_at AS "endsAt", b.updated_at AS "updatedAt",
            c.name AS "courtName",
            CASE WHEN p.id IS NULL THEN NULL ELSE (p.first_name || ' ' || p.last_name) END AS "playerName",

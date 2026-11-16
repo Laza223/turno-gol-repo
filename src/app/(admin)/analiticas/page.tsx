@@ -2,8 +2,7 @@ import { requireAdminStaff } from '@/modules/staff/guards'
 import Link from 'next/link'
 import { withTenantContext } from '@/shared/db/client'
 import { artMonthOf, isFreePlan } from '@/modules/tenants/tenant.lifecycle'
-import { countOnlineThisMonth } from '@/modules/bookings/free-online-cap'
-import { FREE_ONLINE_BOOKINGS_PER_MONTH } from '@/shared/constants'
+import { countOnlineThisMonth } from '@/modules/bookings/free-online-pause'
 import { resolveSystemAdmin } from '@/modules/auth/system-admin.guards'
 import {
   getCancelReasonsForMonth,
@@ -129,17 +128,8 @@ function FreePlanMetrics({ onlineThisMonth }: { onlineThisMonth: number }) {
   return (
     <section className="mx-auto max-w-xl space-y-4 py-6">
       <h1 className="text-2xl font-bold tracking-tight text-foreground">Métricas</h1>
-      <p className="text-4xl font-bold tabular-nums text-foreground">
-        {onlineThisMonth}
-        <span className="text-base font-medium text-muted-foreground">
-          {' '}
-          de {FREE_ONLINE_BOOKINGS_PER_MONTH}
-        </span>
-      </p>
-      <p className="text-sm text-muted-foreground">
-        Reservas online que entraron este mes. En el plan gratis tus jugadores pueden reservar hasta{' '}
-        {FREE_ONLINE_BOOKINGS_PER_MONTH} turnos por mes.
-      </p>
+      <p className="text-4xl font-bold tabular-nums text-foreground">{onlineThisMonth}</p>
+      <p className="text-sm text-muted-foreground">Reservas online que entraron este mes.</p>
       <p className="text-sm text-muted-foreground">
         Con el plan ves cuánto facturaste, la ocupación por cancha y por qué se cayeron turnos.{' '}
         <Link href="/reactivar" className="font-semibold text-foreground underline">

@@ -43,7 +43,7 @@ import {
   PriceUnavailableError,
   SlotTakenError,
   TooManyActiveHoldsError,
-  FreeOnlineCapReachedError,
+  FreeOnlinePausedError,
 } from '@/modules/bookings/booking.errors'
 import { isPublicPortalOpen, publicBookingAdvanceDays } from '@/modules/tenants/tenant.lifecycle'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
@@ -537,8 +537,8 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
       replaceTo(`${backTo}&error=banned${untilParam}`)
     }
     if (err instanceof TooManyActiveHoldsError) replaceTo(`${backTo}&error=too_many_holds`)
-    // Plan gratis topeado o en pausa: la ficha ya muestra WhatsApp/Llamar.
-    if (err instanceof FreeOnlineCapReachedError) replaceTo(`/${slug}`)
+    // Plan gratis en pausa: la ficha ya muestra WhatsApp/Llamar.
+    if (err instanceof FreeOnlinePausedError) replaceTo(`/${slug}`)
     if (err instanceof CourtOfflineError || err instanceof PriceUnavailableError)
       replaceTo(`${backTo}&error=unavailable`)
     throw err

@@ -39,15 +39,11 @@ export const Gratis: Story = {
   },
 }
 
-export const GratisConTope: Story = {
-  args: { tenantStatus: 'free', periodEnd: null, freePlan: { capReached: true, paused: false } },
-}
-
 export const GratisEnPausa: Story = {
   args: {
     tenantStatus: 'free',
     periodEnd: null,
-    freePlan: { capReached: false, paused: true },
+    freePlan: { paused: true },
     resumeOnlineAction: async () => ({ success: true }),
   },
   play: async ({ canvasElement }) => {

@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import type { ActionResult } from '@/shared/types/action-result'
-import { FREE_ONLINE_BOOKINGS_PER_MONTH } from '@/shared/constants'
 import { ResumeOnlineButton } from './resume-online-button'
 import { AlertTriangle, Info, XCircle } from 'lucide-react'
 import type { StaffRole } from '@/modules/staff/roles'
@@ -22,10 +21,10 @@ import type { StaffRole } from '@/modules/staff/roles'
 export type ReadOnlyNotice = { origin: 'dunning'; until: string | null }
 
 /**
- * Plan gratis: si llegó al tope de reservas online del mes o si la reserva
- * online está en pausa por cancelaciones. Lo arma el layout de (admin).
+ * Plan gratis: si la reserva online está en pausa por cancelaciones. Lo arma el
+ * layout de (admin). Las reservas online del gratis no tienen tope (freemium v2).
  */
-export type FreePlanNotice = { capReached: boolean; paused: boolean }
+export type FreePlanNotice = { paused: boolean }
 
 interface StatusBannerProps {
   tenantStatus: string
@@ -203,9 +202,8 @@ export function StatusBanner({
       >
         <Info className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden="true" />
         <span className="flex-1">
-          {freePlan?.capReached
-            ? `Tus jugadores ya te reservaron ${FREE_ONLINE_BOOKINGS_PER_MONTH} turnos online este mes. Pasá al plan para que sigan reservando.`
-            : 'Estás en el plan gratis. Tus jugadores te reservan online. Anotar tus turnos, los fijos y la caja es con el plan.'}
+          Estás en el plan gratis. Anotás tus turnos y tus jugadores te reservan online. Los cobros,
+          la caja, los fijos que se cargan solos y tu encargado son con el plan.
         </span>
         <Link href="/reactivar" className={ctaClass('hover:text-sky-950 dark:hover:text-sky-50')}>
           Pasar al plan

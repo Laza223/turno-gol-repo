@@ -1,7 +1,6 @@
 'use client'
 
 import { useRef, useState, useTransition } from 'react'
-import Link from 'next/link'
 import { FREE_PLAN_BLOCK_REASONS } from '@/shared/constants'
 import * as Sentry from '@sentry/nextjs'
 import { toast } from '@/hooks/use-toast'
@@ -20,8 +19,9 @@ type Reason = (typeof REASONS)[number] | (typeof FREE_PLAN_BLOCK_REASONS)[number
 /**
  * Bloquear cancha — nadie puede usarla: NUNCA carga plata ni datos de contacto.
  *
- * En el plan gratis es la única alta ("Marcar ocupado"): motivos cerrados, sin
- * "Otro" libre, y el pedido de pasar al plan para anotar quién juega.
+ * En el plan gratis los motivos son cerrados, sin "Otro" libre: un motivo libre
+ * sería una nota encubierta, y las notas son del plan. Anotar quién juega es
+ * gratis y va por "Turno" (freemium v2).
  */
 export function BloqueoForm({
   slot,
@@ -130,14 +130,6 @@ export function BloqueoForm({
               />
             </div>
           )}
-          {freePlan && (
-            <p className="text-sm text-muted-foreground">
-              ¿Querés anotar quién juega y cuánto paga? Eso es con el plan.{' '}
-              <Link href="/reactivar" className="font-semibold text-foreground underline">
-                Ver el plan
-              </Link>
-            </p>
-          )}
         </section>
 
         <section className="space-y-3">
@@ -176,6 +168,7 @@ export function BloqueoForm({
         durationLabel={durationLabel}
         totalCents={null}
         collectedCents={0}
+        hideMoney={freePlan}
         primaryLabel={freePlan ? 'Marcar ocupado' : 'Bloquear cancha'}
         onCancel={onClose}
         isPending={isPending}

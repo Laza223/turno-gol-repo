@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
 import { createOnlineBooking } from '@/modules/bookings/booking.service'
-import { FreeOnlineCapReachedError } from '@/modules/bookings/booking.errors'
+import { FreeOnlinePausedError } from '@/modules/bookings/booking.errors'
 import { InvalidTransitionError } from '@/modules/billing/billing.errors'
 import {
   evaluateFreeOnlinePause,
@@ -11,18 +11,15 @@ import { transitionToActiveFromAny, transitionToFree } from '@/modules/billing/l
 import { scheduleInactiveFreeDeletion } from '@/shared/jobs/workers/data-retention-cleanup.worker'
 import { setExpiryScheduler } from '@/shared/jobs/schedule-expiry'
 import { artMonthOf } from '@/modules/tenants/tenant.lifecycle'
-import {
-  FREE_ONLINE_BOOKINGS_PER_MONTH,
-  FREE_ONLINE_CANCEL_PAUSE_THRESHOLD,
-} from '@/shared/constants'
+import { FREE_ONLINE_CANCEL_PAUSE_THRESHOLD } from '@/shared/constants'
 import { cleanupAll, createTestPlayer, createTestTenant, ensureRoles } from '../helpers/tenant'
 import { getOrCreatePlanId, insertSubscription } from '../helpers/factories'
 
 /**
  * Freemium (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md) contra
- * Postgres real: transiciones a y desde `free`, el tope mensual de reservas
- * online (también con dos reservas a la vez), la pausa por cancelaciones del
- * dueño y el barrido del gratis abandonado.
+ * Postgres real: transiciones a y desde `free`, las reservas online sin tope
+ * (corte v2, docs/decisions/2026-11-15-freemium-corte-v2.md), la pausa por
+ * cancelaciones del dueño y el barrido del gratis abandonado.
  */
 
 const PRICING = {
@@ -155,68 +152,32 @@ describe('transiciones del plan gratis', () => {
   })
 })
 
-describe(`tope de ${FREE_ONLINE_BOOKINGS_PER_MONTH} reservas online por mes`, () => {
-  it('la que completa el tope entra y marca el mes; la siguiente rebota', async () => {
+describe('reservas online del gratis: sin tope (freemium v2)', () => {
+  it('con más de 20 en el mes la siguiente entra igual y no marca el mes', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     await makeFree(tenant.id)
     const court = await insertCourt(tenant.id, 'Cancha 1')
-    await insertOnlineBookings(tenant.id, court, FREE_ONLINE_BOOKINGS_PER_MONTH - 1)
-    // Las que canceló el jugador no cuentan: si contaran, la de abajo ya rebotaría.
-    await insertOnlineBookings(
-      tenant.id,
-      court,
-      2,
-      { status: 'canceled_no_refund', canceledBy: 'player' },
-      25,
-    )
+    // El viejo tope era 20 por complejo: con 25 en el mes la de abajo rebotaba.
+    await insertOnlineBookings(tenant.id, court, 25)
     const p1 = await createTestPlayer(sql)
-    const p2 = await createTestPlayer(sql)
 
-    await book(tenant.id, p1.id, court, '2027-04-05')
+    await expect(book(tenant.id, p1.id, court, '2027-04-05')).resolves.toBeTruthy()
     const [t1] = await sql<{ online_cap_month: string | null }[]>`
       SELECT online_cap_month FROM tenants WHERE id = ${tenant.id}
     `
-    expect(t1!.online_cap_month).toBe(artMonthOf())
-
-    const err = await book(tenant.id, p2.id, court, '2027-04-06').catch((e: unknown) => e)
-    expect(err).toBeInstanceOf(FreeOnlineCapReachedError)
+    expect(t1!.online_cap_month).toBeNull()
   }, 30_000)
 
-  it('dos reservas a la vez con un lugar libre: entra una sola', async () => {
+  it('un complejo que había llegado al viejo tope este mes vuelve a tomar reservas', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     await makeFree(tenant.id)
-    const courtA = await insertCourt(tenant.id, 'Cancha A')
-    const courtB = await insertCourt(tenant.id, 'Cancha B')
-    await insertOnlineBookings(tenant.id, courtA, FREE_ONLINE_BOOKINGS_PER_MONTH - 1)
-    const p1 = await createTestPlayer(sql)
-    const p2 = await createTestPlayer(sql)
-
-    const results = await Promise.allSettled([
-      book(tenant.id, p1.id, courtA, '2027-04-07'),
-      book(tenant.id, p2.id, courtB, '2027-04-07'),
-    ])
-
-    expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1)
-    const rejected = results.find((r) => r.status === 'rejected') as PromiseRejectedResult
-    expect(rejected.reason).toBeInstanceOf(FreeOnlineCapReachedError)
-    const [count] = await sql<{ n: number }[]>`
-      SELECT COUNT(*)::int AS n FROM bookings
-      WHERE tenant_id = ${tenant.id} AND date = '2027-04-07'::date
-    `
-    expect(count!.n).toBe(1)
-  }, 30_000)
-
-  it('un complejo pago no tiene tope', async () => {
-    const sql = getSql()
-    const tenant = await createTestTenant(sql)
-    await sql`UPDATE tenants SET status = 'active'::tenant_status WHERE id = ${tenant.id}`
+    await sql`UPDATE tenants SET online_cap_month = ${artMonthOf()} WHERE id = ${tenant.id}`
     const court = await insertCourt(tenant.id, 'Cancha 1')
-    await insertOnlineBookings(tenant.id, court, FREE_ONLINE_BOOKINGS_PER_MONTH)
     const p1 = await createTestPlayer(sql)
 
-    await expect(book(tenant.id, p1.id, court, '2027-04-08')).resolves.toBeTruthy()
+    await expect(book(tenant.id, p1.id, court, '2027-04-06')).resolves.toBeTruthy()
   }, 30_000)
 })
 
@@ -243,7 +204,7 @@ describe(`pausa por ${FREE_ONLINE_CANCEL_PAUSE_THRESHOLD} cancelaciones del due�
     expect(await evaluateFreeOnlinePause(tenant.id)).toBe(true)
     const p1 = await createTestPlayer(sql)
     const err = await book(tenant.id, p1.id, court, '2027-04-09').catch((e: unknown) => e)
-    expect(err).toBeInstanceOf(FreeOnlineCapReachedError)
+    expect(err).toBeInstanceOf(FreeOnlinePausedError)
 
     await withTenantContext(tenant.id, (tx) => resumeFreeOnlineBooking(tenant.id, tx))
     // Las cancelaciones de antes de reanudar ya no cuentan.

@@ -136,6 +136,7 @@ export function DayChips({
   isClosed,
   onChange,
   alwaysWrap = false,
+  glass = false,
 }: {
   days: string[]
   today: string
@@ -144,6 +145,8 @@ export function DayChips({
   onChange: (date: string) => void
   /** Varias filas también en el celular (ver `ChipGroup`): el form de RIVAL muestra los 8 días. */
   alwaysWrap?: boolean
+  /** Piel del portal de vidrio (ver `ChipGroup`). */
+  glass?: boolean
 }) {
   const options = days.map((date) => ({
     value: date,
@@ -160,6 +163,7 @@ export function DayChips({
       onChange={onChange}
       wrap={days.length <= 8}
       alwaysWrap={alwaysWrap}
+      glass={glass}
     />
   )
 }

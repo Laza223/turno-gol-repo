@@ -582,11 +582,11 @@ html:has([data-world='portal']) .player-shell-bg {
    celular. Sin esto, tabular a un radio o un link que quedó detrás de la barra no lo trae a la vista:
    el navegador lo da por visible porque está dentro del viewport (WCAG 2.4.11, foco no oculto).
    `scroll-padding-bottom` en `html` reserva el mismo alto que el relleno de `PortalFrame`: barra
-   inferior (`--portal-tabbar-space`, área segura incluida) + 77 px de la barra fija. Desde `md` el
+   inferior (`--portal-tabbar-space`, área segura incluida) + 78 px de la barra fija. Desde `md` el
    botón está en el flujo y no hay barra inferior. Si cambia uno de los dos números, cambia el otro.
    Compuerta: story `FocoNoQuedaTapadoPorLaBarra` (CheckoutFlow). */
 html:has([data-fixed-cta]) {
-  scroll-padding-bottom: calc(var(--portal-tabbar-space) + 77px);
+  scroll-padding-bottom: calc(var(--portal-tabbar-space) + 78px);
 }
 @media (width >= 48rem) {
   html:has([data-fixed-cta]) {

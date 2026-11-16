@@ -39,7 +39,7 @@ export const errorOf = (state: { status: string; message?: string }) =>
   state.status === 'error' || state.status === 'unreached' ? (state.message ?? null) : null
 
 /** Un error de un campo o del envío: el mismo tono y tamaño en las dos pantallas. */
-export const MAIL_ERROR_CLASS = cn('text-sm font-medium', TONE_TEXT.destructive)
+const MAIL_ERROR_CLASS = cn('text-sm font-medium', TONE_TEXT.destructive)
 
 /**
  * Un minuto entre un envío y el siguiente: es el piso por defecto de Supabase entre dos mails

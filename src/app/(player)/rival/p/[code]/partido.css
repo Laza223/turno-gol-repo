@@ -1,0 +1,15 @@
+/* La vista de un partido de RIVAL en vidrio (`rival-partido.html`). Lo demás sale de `reserva.css`,
+   `portal-app.css` y `rival.css`; acá solo lo que esas hojas no traen. Tokens `--portal-*`. */
+
+@layer components {
+  /* Nota en tono de lugar: "Ya está en el tablón", "En el tablón: Faltan 3" (`.pa-note` con el verde de
+     lugar disponible, el mismo de las camisetas llenas). */
+  .pa-note.rp-place {
+    border-color: var(--portal-slot-line);
+    background: var(--portal-slot-bg);
+    color: var(--portal-slot-ink);
+  }
+  .rp-place .rv-small {
+    color: var(--portal-muted);
+  }
+}

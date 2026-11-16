@@ -31,7 +31,7 @@ export const FIELD_IDS: Record<WelcomeField, string> = {
 }
 
 export const INITIAL: RivalFormResult = { success: true }
-export const FIELD_ERROR = 'text-[13px] leading-5 text-red-700 dark:text-red-300'
+export const FIELD_ERROR = 'text-sm font-semibold leading-5 text-portal-bad'
 
 export const INTRO = {
   identity: 'Para armar tu partido necesitamos tu nombre y que aceptes las reglas.',

@@ -5,7 +5,6 @@ import { BellRing } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { SelectMenu } from '@/components/ui/select-menu'
-import { PORTAL_BUTTON_OUTLINE } from '@/components/world/portal-auth-styles'
 import {
   ALERT_FREQUENCY,
   type AlertAction,
@@ -14,17 +13,21 @@ import {
 } from './alert-opt-in-state'
 import { FormError } from './FormError'
 import { RivalCheckbox } from './RivalCheckbox'
+import { RIVAL_GHOST, RIVAL_GHOST_QUIET, RIVAL_PICK, RIVAL_PICK_MENU } from './rival-classes'
+import '@/components/booking/reserva.css'
+import '@/components/world/portal-app.css'
+import './rival.css'
 
-const FIELD_ERROR = 'text-[13px] leading-5 text-red-700 dark:text-red-300'
+const FIELD_ERROR = 'rv-err'
 const TENANT_ERROR_ID = 'rival-alerta-complejo-error'
 
 function SignedOutPrompt() {
   return (
-    <p className="text-base text-muted-foreground">
+    <p className="rv-small">
       ¿Querés que te avisemos cuando haya partido?{' '}
       <Link
         href={`/ingresar?next=${encodeURIComponent('/rival')}`}
-        className="inline-flex min-h-11 items-center font-medium text-foreground underline underline-offset-4"
+        className="rv-link inline-flex min-h-11 items-center"
       >
         Entrá para activar el aviso
       </Link>
@@ -47,10 +50,8 @@ function TenantField({
   alreadyOn: boolean
 }) {
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor="rival-alerta-complejo" className="text-base">
-        Avisame de partidos en
-      </Label>
+    <div className="grid gap-2">
+      <Label htmlFor="rival-alerta-complejo">Avisame de partidos en</Label>
       <SelectMenu
         id="rival-alerta-complejo"
         name="tenantId"
@@ -58,7 +59,8 @@ function TenantField({
         onChange={onChange}
         options={tenants.map((t) => ({ value: t.id, label: t.name }))}
         placeholder="Elegí un complejo"
-        className="rounded-lg bg-card md:text-base"
+        className={RIVAL_PICK}
+        contentClassName={RIVAL_PICK_MENU}
         aria-invalid={tenantErrorMessage ? true : undefined}
         aria-describedby={tenantErrorMessage ? TENANT_ERROR_ID : undefined}
       />
@@ -68,7 +70,7 @@ function TenantField({
         </p>
       )}
       {alreadyOn && (
-        <p role="status" className="text-[13px] leading-5 text-muted-foreground">
+        <p role="status" className="rv-small">
           Ya tenés el aviso activado en ese complejo. Podés cambiar la preferencia o desactivarlo.
         </p>
       )}
@@ -95,13 +97,14 @@ function AlertButtons({
   onUnsubscribe: () => void
 }) {
   return (
-    <div className="space-y-2">
+    <div className="flex flex-wrap items-center gap-2">
       <Button
         type="submit"
-        variant="outline"
+        variant="pill-link"
+        size="pill-sm"
         disabled={pending}
         aria-busy={pending}
-        className={`${PORTAL_BUTTON_OUTLINE} gap-2 rounded-full font-semibold`}
+        className={RIVAL_GHOST}
       >
         <BellRing className="size-4" aria-hidden />
         <SubmitLabel subPending={subPending} alreadyOn={alreadyOn} />
@@ -109,10 +112,11 @@ function AlertButtons({
       {alreadyOn && (
         <Button
           type="button"
-          variant="ghost"
+          variant="pill-link"
+          size="pill-sm"
           disabled={pending}
           onClick={onUnsubscribe}
-          className={`${PORTAL_BUTTON_OUTLINE} rounded-full`}
+          className={RIVAL_GHOST_QUIET}
         >
           {unsubPending ? 'Guardando…' : 'Dejar de avisarme'}
         </Button>
@@ -124,7 +128,7 @@ function AlertButtons({
 /**
  * "Avisame cuando haya" del tablón vacío (y del complejo filtrado sin partidos): un mail por día
  * como mucho, con baja de un toque.
- * Acción secundaria (outline): el único verde de la vista es "Me faltan jugadores". Si ya hay alerta
+ * Acción secundaria (píldora de vidrio): el único verde de la vista es "Me faltan jugadores". Si ya hay alerta
  * en el complejo, el mismo botón la actualiza (upsert) y aparece "Dejar de avisarme".
  */
 export function AlertOptIn({
@@ -153,7 +157,7 @@ export function AlertOptIn({
       onSubmit={s.handleSubmit}
       noValidate
       aria-label="Avisame cuando haya partido"
-      className="w-full space-y-4 text-left"
+      className="rv-panel glass-painted rv-rise w-full text-left"
     >
       <TenantField
         tenants={tenants}
@@ -171,7 +175,7 @@ export function AlertOptIn({
         Solo si buscan arquero
       </RivalCheckbox>
 
-      <p className="text-[13px] leading-5 text-muted-foreground">
+      <p className="rv-small">
         Te escribimos cuando publiquen en ese complejo un partido al que le falten jugadores.{' '}
         {ALERT_FREQUENCY}
       </p>
@@ -185,7 +189,7 @@ export function AlertOptIn({
       />
       {s.error && !s.tenantError && <FormError error={s.error.error} code={s.error.code} />}
       {s.okMessage && (
-        <p role="status" className="text-base text-foreground">
+        <p role="status" className="text-base font-semibold text-portal-slot-ink">
           {s.okMessage}
         </p>
       )}

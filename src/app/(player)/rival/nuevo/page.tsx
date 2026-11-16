@@ -1,6 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
 import type { Metadata } from 'next'
-import PlayerHeroBand from '@/components/site/PlayerHeroBand'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
 import { buildMetadata } from '@/lib/seo/metadata'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
@@ -20,6 +19,7 @@ import { welcomeNeeds } from '@/modules/rival/rival-join-rule'
 import { artNowParts } from '@/shared/dates/art'
 import { acceptRivalWelcomeAction, createMatchAction } from '../actions'
 import { NewMatchForm } from './NewMatchForm'
+import { RivalScreen } from '../RivalScreen'
 import { WelcomeCard } from '../WelcomeCard'
 import { loadWelcomePhoto } from '../welcome-photo'
 
@@ -58,8 +58,11 @@ export default async function NuevoPartidoPage(props: {
   const needs = welcomeNeeds(welcome, 'armar')
 
   return (
-    <div className="mx-auto max-w-lg space-y-4 px-4 py-6">
-      <PlayerHeroBand eyebrow="RIVAL powered by TurnoGol" title="Armá tu" accent="partido" />
+    <RivalScreen>
+      <header className="rv-rise grid gap-1.5">
+        <p className="pa-eyebrow">RIVAL powered by TurnoGol</p>
+        <h1 className="rv-h1">Armá tu partido</h1>
+      </header>
       {needs ? (
         <WelcomeCard
           needs={needs}
@@ -78,7 +81,7 @@ export default async function NuevoPartidoPage(props: {
           necesito={necesito}
         />
       )}
-    </div>
+    </RivalScreen>
   )
 }
 

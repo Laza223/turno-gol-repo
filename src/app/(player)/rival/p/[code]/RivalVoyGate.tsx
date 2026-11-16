@@ -1,7 +1,6 @@
 'use client'
 
 import { FixedCta } from '@/app/(public)/[slug]/reservar/components/ConfirmBookingButton'
-import { cn } from '@/lib/utils'
 import { voyLabel } from '@/modules/rival/rival-copy'
 import { RIVAL_ACTION } from '../../rival-classes'
 import { RivalEntryGate } from '../../RivalEntryGate'
@@ -36,7 +35,7 @@ export function RivalVoyGate({
         sendMagicLink={sendMagicLink}
         startGoogle={startGoogle}
         inAppBrowser={inAppBrowser}
-        className={cn(RIVAL_ACTION, 'min-h-[52px]')}
+        className={RIVAL_ACTION}
       />
     </FixedCta>
   )

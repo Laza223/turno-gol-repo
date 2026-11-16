@@ -1,5 +1,4 @@
 import { FixedCta } from '@/app/(public)/[slug]/reservar/components/ConfirmBookingButton'
-import { cn } from '@/lib/utils'
 import { matchTypeLabel } from '@/modules/rival/rival-display'
 import type { RivalReportReason } from '@/modules/rival/rival.schema'
 import type { RivalBoardItem } from '@/modules/rival/rival.types'
@@ -7,6 +6,7 @@ import type { ActionResult } from '@/shared/types/action-result'
 import type { RivalFormResult } from '../../actions'
 import { MatchHeader } from '../../MatchBits'
 import { RIVAL_ACTION } from '../../rival-classes'
+import { RivalScreen } from '../../RivalScreen'
 import { RivalEntryGate } from '../../RivalEntryGate'
 import type { SendRivalMagicLink, StartGoogleLoginFromRival } from '../../p/[code]/login-actions'
 import { ReportMatchButton } from '../../p/[code]/ReportButton'
@@ -51,8 +51,8 @@ export function PublicBoardView({
   // "Faltan 3" ya es el titular de la grilla: el tipo aparte solo suma cuando dice otra cosa.
   const showType = seeksRival || match.seekingPosition === 'goalkeeper'
   return (
-    <div className="mx-auto max-w-lg space-y-8 px-4 py-6">
-      <div className="space-y-3">
+    <RivalScreen>
+      <div className="grid gap-3.5">
         <MatchHeader
           tenantName={match.tenantName}
           startsAt={match.startsAt}
@@ -62,12 +62,8 @@ export function PublicBoardView({
           now={now}
         />
 
-        <section className="space-y-4 rounded-2xl border border-border bg-card p-5 shadow-xs">
-          {showType && (
-            <p className="font-display text-2xl font-black italic leading-tight tracking-tight text-foreground">
-              {type}
-            </p>
-          )}
+        <section className="rv-panel glass-painted rv-rise">
+          {showType && <p className="rv-h2">{type}</p>}
           {/* Buscando rival el equipo completo no significa "Se juega": el titular es solo "Busca rival". */}
           <ShirtGrid
             capacity={match.capacity}
@@ -86,7 +82,7 @@ export function PublicBoardView({
             sendMagicLink={sendMagicLink}
             startGoogle={startGoogle}
             inAppBrowser={inAppBrowser}
-            className={cn(RIVAL_ACTION, 'min-h-[52px]')}
+            className={RIVAL_ACTION}
           />
         </FixedCta>
       ) : (
@@ -102,6 +98,6 @@ export function PublicBoardView({
           <ReportMatchButton matchId={match.id} reportAction={reportMatchAction} />
         </>
       )}
-    </div>
+    </RivalScreen>
   )
 }

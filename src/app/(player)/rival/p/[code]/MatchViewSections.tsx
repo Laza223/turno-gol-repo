@@ -12,15 +12,14 @@ import { OrganizerActions } from './OrganizerActions'
 import { myStatusLine, PeopleSection, type RowActionProps } from './People'
 import { ShirtGrid } from './ShirtGrid'
 import { VoyPanel, type VoyWelcome } from './VoyPanel'
+import './partido.css'
 
 /** El aviso de "recién armado" que sube sobre el partido. */
 export function CreatedBanner({ title, line }: { title: string; line: string }) {
   return (
-    <div role="status" className="space-y-1">
-      <p className="font-display text-3xl font-black italic leading-tight tracking-tight text-foreground">
-        {title}
-      </p>
-      <p className="text-base text-muted-foreground">{line}</p>
+    <div role="status" className="pa-note rp-place gap-1">
+      <p className="text-lg font-bold leading-tight text-portal-ink">{title}</p>
+      <p className="rv-small">{line}</p>
     </div>
   )
 }
@@ -44,7 +43,7 @@ export function StatusCard({
   if (canceled) return <CanceledCard signedIn={signedIn} />
   const myLine = me && open && !match.isOrganizer ? myStatusLine(me.status) : null
   return (
-    <section className="rounded-2xl border border-border bg-card p-5 shadow-xs">
+    <section className="rv-panel glass-painted rv-rise">
       <ShirtGrid
         capacity={match.capacity}
         confirmed={match.confirmedCount}
@@ -53,7 +52,7 @@ export function StatusCard({
         headline={match.seeking === 'rival' ? 'Busca rival' : undefined}
       />
       {/* El organizador no "va": su línea sería ruido en cada visita. */}
-      {myLine && <p className="mt-4 text-base text-foreground">{myLine}</p>}
+      {myLine && <p className="rv-sub">{myLine}</p>}
     </section>
   )
 }
@@ -129,7 +128,7 @@ export function JoinBlock({
   return (
     <>
       {full && (signedIn || voyGate) && (
-        <p className="text-sm text-muted-foreground">
+        <p className="rv-small">
           El partido está completo. Si te sumás, quedás en el banco y entrás si alguien se baja.
         </p>
       )}
@@ -173,7 +172,7 @@ export function PeopleBlock({
     )
   }
   return (
-    <div className="space-y-6">
+    <div className="grid gap-3.5">
       <PeopleSection title="Pedidos" entries={requested} detail actions={rowActions} />
       <PeopleSection title="Quiénes van" entries={confirmed} detail actions={rowActions} />
       <PeopleSection title="El banco" entries={bench} detail actions={rowActions} />

@@ -15,8 +15,10 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="mx-auto max-w-lg bg-background p-4 text-foreground">
-        <Story />
+      <div data-portal-glass className="portal-ambient min-h-dvh text-portal-ink">
+        <div className="mx-auto max-w-lg p-4">
+          <Story />
+        </div>
       </div>
     ),
   ],

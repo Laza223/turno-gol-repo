@@ -13,6 +13,8 @@ afterEach(cleanup)
 
 const ok = vi.fn(async () => ({ success: true as const }))
 const NOT_EXISTS = 'El partido no existe'
+// La marca del verde (variante `pill`); con espacios, para que `aria-pressed:from-…` de los chips no cuente.
+const GREEN = /(^|\s)from-\(--portal-btn-a\)(\s|$)/
 
 describe('LeaveMatch: el efecto se dice una vez', () => {
   it('no repite en la pantalla el texto del banco: vive en el diálogo', () => {
@@ -200,14 +202,12 @@ describe('PublishToBoard: foco y jerarquía', () => {
   it('con el form abierto "Publicar" es el verde y "Avisar al grupo" baja a secundaria', () => {
     renderActions()
     const share = screen.getByRole('link', { name: /Avisar al grupo/ })
-    expect(share.className).toContain('bg-primary')
+    expect(share.className).toMatch(GREEN)
     fireEvent.click(screen.getByRole('button', { name: 'Publicar en el tablón' }))
-    expect(screen.getByRole('link', { name: /Avisar al grupo/ }).className).not.toContain(
-      'bg-primary',
-    )
-    expect(screen.getByRole('button', { name: 'Publicar' }).className).toContain('bg-primary')
+    expect(screen.getByRole('link', { name: /Avisar al grupo/ }).className).not.toMatch(GREEN)
+    expect(screen.getByRole('button', { name: 'Publicar' }).className).toMatch(GREEN)
     fireEvent.click(screen.getByRole('button', { name: 'Ahora no' }))
-    expect(screen.getByRole('link', { name: /Avisar al grupo/ }).className).toContain('bg-primary')
+    expect(screen.getByRole('link', { name: /Avisar al grupo/ }).className).toMatch(GREEN)
   })
   it('publicar con éxito (la page trae boardLabel) devuelve el verde a "Avisar al grupo"', () => {
     const props = {
@@ -222,12 +222,10 @@ describe('PublishToBoard: foco y jerarquía', () => {
     }
     const { rerender } = render(<OrganizerActions {...props} boardLabel={null} />)
     fireEvent.click(screen.getByRole('button', { name: 'Publicar en el tablón' }))
-    expect(screen.getByRole('link', { name: /Avisar al grupo/ }).className).not.toContain(
-      'bg-primary',
-    )
+    expect(screen.getByRole('link', { name: /Avisar al grupo/ }).className).not.toMatch(GREEN)
     rerender(<OrganizerActions {...props} boardLabel="Faltan 3" />)
-    expect(screen.getByRole('link', { name: /Avisar al grupo/ }).className).toContain('bg-primary')
+    expect(screen.getByRole('link', { name: /Avisar al grupo/ }).className).toMatch(GREEN)
     rerender(<OrganizerActions {...props} boardLabel={null} />)
-    expect(screen.getByRole('link', { name: /Avisar al grupo/ }).className).toContain('bg-primary')
+    expect(screen.getByRole('link', { name: /Avisar al grupo/ }).className).toMatch(GREEN)
   })
 })

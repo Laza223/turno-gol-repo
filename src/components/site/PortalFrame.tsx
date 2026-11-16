@@ -38,7 +38,7 @@ export default function PortalFrame({ header, footer, children }: Props) {
         // flujo y no hay barra inferior: vuelve a 0. `:has()` pesa más que `md:pb-0`, por eso el
         // `md:` también lleva el `has`.
         bottomNav && [
-          'has-[[data-fixed-cta]]:pb-[calc(var(--portal-tabbar-space)+77px)]',
+          'has-[[data-fixed-cta]]:pb-[calc(var(--portal-tabbar-space)+78px)]',
           'md:has-[[data-fixed-cta]]:pb-0',
         ],
       )}

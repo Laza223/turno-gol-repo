@@ -1,41 +1,49 @@
 import Link from 'next/link'
 import { CalendarPlus } from 'lucide-react'
-import { buttonVariants } from '@/components/ui/button'
-import PlayerHeroBand from '@/components/site/PlayerHeroBand'
-import { PORTAL_SECTION_TITLE } from '@/components/world/portal-auth-styles'
+import type { CSSProperties } from 'react'
 import { formatLabel } from '@/components/public/courtFacets'
 import { cn } from '@/lib/utils'
-import { TONE_BADGE, type StatusTone } from '@/lib/status-tone'
 import { matchTypeLabel, RIVAL_LEVEL_LABELS, whenLabel } from '@/modules/rival/rival-display'
 import type { RivalMyMatch } from '@/modules/rival/rival.types'
-import { RivalDeadEnd, StampBadge } from '../MatchBits'
-import { RIVAL_CTA, RIVAL_GHOST } from '../rival-classes'
+import { CupoBar, RivalDeadEnd, StampBadge } from '../MatchBits'
+import { RIVAL_ACTION, RIVAL_GHOST } from '../rival-classes'
+import { RivalScreen } from '../RivalScreen'
 import { RivalTabs } from '../RivalTabs'
+import '../board.css'
 
 /**
- * Mi estado en el partido, con el tono de `status-tone`: confirmado en success, lo demás neutral.
- * Un partido ya jugado no lleva estado: "Ya pasaron" lo dice el título de la sección.
+ * La etiqueta de estado (`.pa-tag`): los tonos de siempre. Verde solo "Estás adentro"; el resto
+ * apagado, "Se cayó" incluido (al jugador no se le grita).
+ */
+const TAG = {
+  ok: 'pa-tag',
+  off: 'pa-tag pa-tag--off',
+} as const
+
+/**
+ * Mi estado en el partido. Un partido ya jugado no lleva estado: "Ya pasaron" lo dice el título de
+ * la sección.
  */
 function myState(
   m: RivalMyMatch,
   ended: boolean,
   hideOrganizer: boolean,
-): { label: string; tone: StatusTone } | null {
-  if (m.status === 'canceled') return { label: 'Se cayó', tone: 'neutral' }
+): { label: string; tag: string } | null {
+  if (m.status === 'canceled') return { label: 'Se cayó', tag: TAG.off }
   if (ended) return null
   // Si todas son tuyas, el rol no distingue nada: no se repite en cada tarjeta.
-  if (m.isOrganizer) return hideOrganizer ? null : { label: 'Organizás vos', tone: 'neutral' }
+  if (m.isOrganizer) return hideOrganizer ? null : { label: 'Organizás vos', tag: TAG.off }
   switch (m.myStatus) {
     case 'confirmed':
-      return { label: 'Estás adentro', tone: 'success' }
+      return { label: 'Estás adentro', tag: TAG.ok }
     case 'bench':
-      return { label: 'En el banco', tone: 'neutral' }
+      return { label: 'En el banco', tag: TAG.off }
     case 'requested':
-      return { label: 'Pedido enviado', tone: 'neutral' }
+      return { label: 'Pedido enviado', tag: TAG.off }
     case 'declined':
-      return { label: 'Esta vez no hubo lugar', tone: 'neutral' }
+      return { label: 'Esta vez no hubo lugar', tag: TAG.off }
     default:
-      return { label: 'Jugás', tone: 'neutral' }
+      return { label: 'Jugás', tag: TAG.off }
   }
 }
 
@@ -47,69 +55,57 @@ function MatchRow({
   m,
   now,
   hideOrganizer,
+  index,
 }: {
   m: RivalMyMatch
   now: Date
   hideOrganizer: boolean
+  index: number
 }) {
   const ended = m.startsAt.getTime() <= now.getTime()
   const state = myState(m, ended, hideOrganizer)
   // El organizador entra por el código del link; el resto, por la vista del partido por id.
   const href = m.isOrganizer && m.inviteCode ? `/rival/p/${m.inviteCode}` : `/rival/partido/${m.id}`
   // El cupo solo cuenta si el partido sigue abierto y por jugarse.
-  const cupo =
-    !ended && m.status === 'open'
-      ? matchTypeLabel({
-          seeking: m.seeking,
-          seekingPosition: m.seekingPosition,
-          capacity: m.capacity,
-          confirmedCount: m.confirmedCount,
-        })
-      : null
+  const open = !ended && m.status === 'open'
+  const cupo = open
+    ? matchTypeLabel({
+        seeking: m.seeking,
+        seekingPosition: m.seekingPosition,
+        capacity: m.capacity,
+        confirmedCount: m.confirmedCount,
+      })
+    : null
   return (
-    <li className="relative rounded-2xl border border-border bg-card p-4 shadow-xs transition-colors hover:border-input">
-      <div>
-        <div className="min-w-0">
-          <Link
-            href={href}
-            aria-label={[m.tenantName, whenLabel(m.startsAt, now), state?.label]
-              .filter(Boolean)
-              .join(', ')}
-            className="rounded-sm after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-hidden focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-offset-2 focus-visible:after:ring-offset-background"
-          >
-            <span className="block whitespace-nowrap font-display text-2xl font-black italic leading-tight tracking-tight tabular-nums text-foreground">
-              {whenLabel(m.startsAt, now)}
-            </span>
-          </Link>
-          <p className="mt-1 break-words text-sm font-medium text-muted-foreground">
-            {m.tenantName}
-          </p>
-        </div>
+    <li
+      className={cn('ri-match glass-painted rv-rise', (ended || m.status !== 'open') && 'rb-past')}
+      style={{ '--i': Math.min(index, 10) } as CSSProperties}
+    >
+      <div className="ri-match__k">
+        {state && <span className={state.tag}>{state.label}</span>}
+        {m.hasStamp && <StampBadge />}
       </div>
-      <p className="mt-3 text-sm text-muted-foreground">
+      <p className="ri-match__t col-span-full">
+        <Link
+          href={href}
+          aria-label={[m.tenantName, whenLabel(m.startsAt, now), state?.label]
+            .filter(Boolean)
+            .join(', ')}
+          className="rb-stretch"
+        >
+          {whenLabel(m.startsAt, now)}
+        </Link>
+      </p>
+      <p className="ri-match__m">
         {cupo && (
           <>
-            <span className="font-semibold tabular-nums text-foreground">{cupo}</span>
+            <span className="font-semibold tabular-nums text-portal-ink">{cupo}</span>
             {' · '}
           </>
         )}
-        {formatLabel(m.format)} · {RIVAL_LEVEL_LABELS[m.level]}
+        {m.tenantName} · {formatLabel(m.format)} · {RIVAL_LEVEL_LABELS[m.level]}
       </p>
-      {(state || m.hasStamp) && (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          {state && (
-            <span
-              className={cn(
-                'inline-flex items-center rounded-full px-2 py-0.5 text-[13px] font-medium',
-                TONE_BADGE[state.tone],
-              )}
-            >
-              {state.label}
-            </span>
-          )}
-          {m.hasStamp && <StampBadge />}
-        </div>
-      )}
+      {open && <CupoBar filled={m.confirmedCount} capacity={m.capacity} />}
     </li>
   )
 }
@@ -127,11 +123,11 @@ function Section({
 }) {
   if (matches.length === 0) return null
   return (
-    <section aria-label={title} className="space-y-3">
-      <h2 className={PORTAL_SECTION_TITLE}>{title}</h2>
-      <ul className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
-        {matches.map((m) => (
-          <MatchRow key={m.id} m={m} now={now} hideOrganizer={hideOrganizer} />
+    <section aria-label={title}>
+      <h2 className="ri-group">{title}</h2>
+      <ul className="grid gap-3">
+        {matches.map((m, i) => (
+          <MatchRow key={m.id} m={m} now={now} hideOrganizer={hideOrganizer} index={i} />
         ))}
       </ul>
     </section>
@@ -146,8 +142,11 @@ export function MyMatchesView({ matches, now }: { matches: RivalMyMatch[]; now: 
   const past = mine.filter((m) => !isUpcoming(m))
   const hideOrganizer = mine.every((m) => m.isOrganizer)
   return (
-    <div className="mx-auto max-w-lg space-y-5 px-4 py-6 lg:max-w-3xl">
-      <PlayerHeroBand eyebrow="RIVAL powered by TurnoGol" title="Mis" accent="partidos" />
+    <RivalScreen>
+      <header className="rv-rise">
+        <p className="pa-eyebrow">RIVAL powered by TurnoGol</p>
+        <h1 className="rv-h1">Mis partidos</h1>
+      </header>
       <RivalTabs current="mis-partidos" />
 
       {mine.length === 0 ? (
@@ -156,13 +155,10 @@ export function MyMatchesView({ matches, now }: { matches: RivalMyMatch[]; now: 
           title="Todavía no tenés partidos"
           actions={
             <>
-              <Link href="/rival/nuevo" className={cn(RIVAL_CTA, 'w-full')}>
+              <Link href="/rival/nuevo" className={RIVAL_ACTION}>
                 Armar un partido
               </Link>
-              <Link
-                href="/rival"
-                className={cn(buttonVariants({ variant: 'ghost' }), RIVAL_GHOST, 'w-full')}
-              >
+              <Link href="/rival" className={cn(RIVAL_GHOST, 'w-full')}>
                 Ver el tablón
               </Link>
             </>
@@ -176,6 +172,6 @@ export function MyMatchesView({ matches, now }: { matches: RivalMyMatch[]; now: 
           <Section title="Ya pasaron" matches={past} now={now} hideOrganizer={hideOrganizer} />
         </>
       )}
-    </div>
+    </RivalScreen>
   )
 }

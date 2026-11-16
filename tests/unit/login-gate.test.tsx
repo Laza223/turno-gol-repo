@@ -168,8 +168,8 @@ describe('LoginGate — qué pasa al entrar', () => {
     const line = screen.getByText(PROMESA)
     // Es texto de apoyo: no es un botón ni un título, y va antes de los botones que lo cumplen.
     expect(line.tagName).toBe('P')
-    expect(line.className).toContain('text-muted-foreground')
-    expect(line.className).toMatch(/text-(sm|base)(\s|$)/)
+    // La línea de apoyo del vidrio (`.rv-small`: 14 px en el gris del portal), no un título.
+    expect(line.className.split(' ')).toContain('rv-small')
     const google = button('Continuar con Google')
     expect(line.compareDocumentPosition(google) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })

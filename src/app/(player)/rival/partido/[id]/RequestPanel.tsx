@@ -4,8 +4,6 @@ import { unstable_rethrow } from 'next/navigation'
 import { startTransition, useEffect, useRef, useState, useTransition, type FormEvent } from 'react'
 import { FixedCta } from '@/app/(public)/[slug]/reservar/components/ConfirmBookingButton'
 import { Button } from '@/components/ui/button'
-import { PORTAL_BUTTON } from '@/components/world/portal-auth-styles'
-import { cn } from '@/lib/utils'
 import { RIVAL_OFFLINE_MESSAGE } from '@/modules/rival/rival-copy'
 import type { RivalFormResult } from '../../actions'
 import { FormError } from '../../FormError'
@@ -87,8 +85,8 @@ export function RequestPanel({
     })
   }
 
-  // 52 px: la barra fija de `PortalFrame` reserva ese alto (ver `FixedCta`).
-  const fixedButton = cn(PORTAL_BUTTON, 'min-h-[52px]')
+  // 52 px (`size="pill"`): la barra fija de `PortalFrame` reserva ese alto (ver `FixedCta`).
+  const fixedButton = 'rv-go w-full'
 
   if (welcome) {
     return cardOpen ? (
@@ -113,6 +111,8 @@ export function RequestPanel({
         <Button
           ref={buttonRef}
           type="button"
+          variant="pill"
+          size="pill"
           onClick={() => setCardOpen(true)}
           className={fixedButton}
         >
@@ -127,7 +127,14 @@ export function RequestPanel({
       {/* En el flujo, no en la barra: el alto de la barra es fijo y un error variable la haría tapar el final. */}
       {error && <FormError error={error.error} code={error.code} />}
       <FixedCta>
-        <Button type="submit" disabled={pending} aria-busy={pending} className={fixedButton}>
+        <Button
+          type="submit"
+          variant="pill"
+          size="pill"
+          disabled={pending}
+          aria-busy={pending}
+          className={fixedButton}
+        >
           {pending ? 'Enviando pedido…' : label}
         </Button>
       </FixedCta>

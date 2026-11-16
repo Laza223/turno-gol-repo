@@ -2,11 +2,9 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { BellOff, Link2Off as LinkIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { PORTAL_BUTTON, PORTAL_COLUMN, PORTAL_TITLE } from '@/components/world/portal-auth-styles'
 import { PortalResult, PortalResultLink } from '@/components/world/PortalResult'
 import { contactWhatsappUrl } from '@/lib/contact'
 import { buildMetadata } from '@/lib/seo/metadata'
-import { cn } from '@/lib/utils'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import { peekAlertUnsub } from '@/modules/rival/rival-alerts.service'
 import { verifyAlertUnsubToken } from '@/shared/security/rival-alert-token'
@@ -39,19 +37,24 @@ export default async function BajaPage(props: {
 
   if (pending && token) {
     return (
-      <div className={cn(PORTAL_COLUMN, 'space-y-5 pb-10')}>
-        <h1 className={PORTAL_TITLE}>Dejar de recibir alertas de {pending.tenantName}</h1>
-        <p className="text-base text-muted-foreground">
+      <PortalResult
+        icon={BellOff}
+        tone="neutral"
+        title={`Dejar de recibir alertas de ${pending.tenantName}`}
+        actions={
+          <form action={unsubscribeRivalAlertAction}>
+            <input type="hidden" name="t" value={token} />
+            <Button type="submit" variant="pill-glass" size="pill" className="w-full">
+              Dejar de recibir alertas
+            </Button>
+          </form>
+        }
+      >
+        <p>
           Dejamos de mandarte mails cuando haya partido ahí. Cuando quieras, las activás de nuevo
           desde el tablón.
         </p>
-        <form action={unsubscribeRivalAlertAction}>
-          <input type="hidden" name="t" value={token} />
-          <Button type="submit" variant="outline" className={cn(PORTAL_BUTTON, 'rounded-full')}>
-            Dejar de recibir alertas
-          </Button>
-        </form>
-      </div>
+      </PortalResult>
     )
   }
 

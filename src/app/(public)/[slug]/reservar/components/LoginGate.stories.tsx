@@ -50,19 +50,11 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 /**
- * `paintedContrast` suma los fondos de los ancestros sobre blanco y no ve ni el degradado de la card
- * de vidrio ni el velo del modal (hermano, en otro portal): contra una página clara mediría un
- * fondo que no existe. Se pone detrás el color MÁS CLARO de la card (slate-900, su borde de arriba)
- * mientras se mide: si pasa ahí, pasa en todo el vidrio.
+ * El modal de vidrio (F7) lleva debajo del degradado de la hoja el fondo opaco del tema
+ * (`--portal-bg`), que es lo que suma `paintedContrast`: se mide directo contra la hoja.
  */
 async function onGlass<T>(measure: () => Promise<T>): Promise<T> {
-  const previous = document.body.style.backgroundColor
-  document.body.style.backgroundColor = '#0f172a'
-  try {
-    return await measure()
-  } finally {
-    document.body.style.backgroundColor = previous
-  }
+  return measure()
 }
 
 /**

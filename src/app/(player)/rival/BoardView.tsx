@@ -1,6 +1,5 @@
 import Link from 'next/link'
-import { buttonVariants } from '@/components/ui/button'
-import { PORTAL_SECTION_TITLE } from '@/components/world/portal-auth-styles'
+import type { CSSProperties } from 'react'
 import { formatLabel } from '@/components/public/courtFacets'
 import { cn } from '@/lib/utils'
 import {
@@ -16,15 +15,15 @@ import type { RivalBoardItem } from '@/modules/rival/rival.types'
 import { artDateOf } from '@/shared/time/art-date'
 import { AlertOptIn } from './AlertOptIn'
 import type { RivalFormResult } from './actions'
-import { MiniShirts, StampBadge } from './MatchBits'
-import { RIVAL_CTA, RIVAL_GHOST } from './rival-classes'
+import { CupoBar, StampBadge } from './MatchBits'
+import { RIVAL_ACTION, RIVAL_GHOST, RIVAL_SECONDARY } from './rival-classes'
 import type { SendRivalMagicLink, StartGoogleLoginFromRival } from './p/[code]/login-actions'
 import { RivalEntryGate } from './RivalEntryGate'
+import { RivalScreen } from './RivalScreen'
 import { RivalTabs } from './RivalTabs'
+import './board.css'
 
-// El nombre largo de un complejo se corta con "…" (el chip lo dice entero en `title`).
-const CHIP =
-  'inline-flex min-h-11 max-w-[80vw] shrink-0 items-center whitespace-nowrap rounded-full border px-4 text-sm font-medium transition-colors duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:max-w-full'
+const rise = (i: number) => ({ '--i': Math.min(i, 10) }) as CSSProperties
 
 /** Selector de complejo: "Todos" y los complejos que tienen publicaciones. Es navegación (`?complejo=`). */
 function TenantFilter({
@@ -34,23 +33,16 @@ function TenantFilter({
   tenants: { id: string; name: string }[]
   selectedId: string | null
 }) {
-  const chip = (active: boolean) =>
-    cn(
-      CHIP,
-      active
-        ? 'border-foreground bg-foreground/5 font-semibold text-foreground'
-        : 'border-border bg-card text-foreground hover:border-input',
-    )
   return (
     // En el celular es una fila que scrollea; con mouse (lg) se envuelve: la barra está oculta y el resto sería inalcanzable.
     <nav
       aria-label="Complejo"
-      className="-mx-4 flex gap-2 overflow-x-auto px-4 py-1 [scrollbar-width:none] lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0"
+      className="-mx-5 flex gap-2 overflow-x-auto px-5 py-1 [scrollbar-width:none] lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0"
     >
       <Link
         href="/rival"
         aria-current={selectedId === null ? 'page' : undefined}
-        className={chip(selectedId === null)}
+        className="ri-chip"
       >
         Todos
       </Link>
@@ -60,18 +52,13 @@ function TenantFilter({
           href={`/rival?complejo=${t.id}`}
           title={t.name}
           aria-current={selectedId === t.id ? 'page' : undefined}
-          className={chip(selectedId === t.id)}
+          className="ri-chip max-w-[80vw] lg:max-w-full"
         >
           <span className="truncate">{t.name}</span>
         </Link>
       ))}
     </nav>
   )
-}
-
-/** Nombre accesible de la tarjeta: el tipo, el complejo, cuándo, qué partido es y el cupo (la tira de camisetas es decorativa). */
-function cupoLabel(item: RivalBoardItem): string {
-  return `Ya son ${Math.min(item.confirmedCount, item.capacity)} de ${item.capacity}`
 }
 
 /**
@@ -82,48 +69,46 @@ function BoardCard({
   item,
   groupKey,
   now,
+  index,
 }: {
   item: RivalBoardItem
   groupKey: BoardGroupKey
   now: Date
+  index: number
 }) {
+  const seeksRival = item.seeking === 'rival'
   const type = matchTypeLabel({
     seeking: item.seeking,
     seekingPosition: item.seekingPosition,
     capacity: item.capacity,
     confirmedCount: item.confirmedCount,
   })
+  const filled = Math.min(item.confirmedCount, item.capacity)
+  const time = artTimeOf(item.startsAt)
   return (
     <li>
       <Link
         href={`/rival/partido/${item.id}`}
-        className="block h-full rounded-2xl border border-border bg-card p-4 shadow-xs transition-colors hover:border-input focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="ri-match glass-painted rv-rise h-full"
+        style={rise(index)}
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="font-display text-3xl font-black italic leading-none tracking-tight text-foreground tabular-nums">
-              {artTimeOf(item.startsAt)}
-            </p>
-            {groupKey === 'week' && (
-              <p className="mt-1 text-sm tabular-nums text-muted-foreground">
-                {dayLabel(artDateOf(item.startsAt))}
-              </p>
-            )}
-          </div>
-          <p className="text-right font-display text-lg font-black italic leading-tight tracking-tight text-foreground">
-            {type}
-          </p>
+        <div className="ri-match__k">
+          <span className={cn('pa-tag', seeksRival && 'ri-tag--neutral')}>{type}</span>
+          {item.hasStamp && <StampBadge />}
+          <span className="ri-match__t">
+            {formatLabel(item.format)} ·{' '}
+            {groupKey === 'week' ? `${dayLabel(artDateOf(item.startsAt))} · ${time}` : time}
+          </span>
         </div>
-        <p className="mt-3 break-words text-base font-medium text-foreground">{item.tenantName}</p>
-        <p className="text-sm text-muted-foreground">
-          {formatLabel(item.format)} · {RIVAL_LEVEL_LABELS[item.level]}
-        </p>
-        {item.hasStamp && <StampBadge className="mt-2" />}
-        <MiniShirts className="mt-3" capacity={item.capacity} confirmed={item.confirmedCount} />
-        {/* Sin aria-label (WCAG 2.5.3): el nombre del link es lo visible más el cupo y el cuándo. */}
-        <span className="sr-only">
-          {cupoLabel(item)}, {whenLabel(item.startsAt, now)}
+        <span className="ri-match__m">
+          {item.tenantName} · {RIVAL_LEVEL_LABELS[item.level]} · ya son {filled} de {item.capacity}
         </span>
+        <CupoBar filled={item.confirmedCount} capacity={item.capacity} className="ri-match__bar" />
+        <span className="ri-match__cta">
+          {seeksRival ? 'Pedir jugar con mi equipo' : 'Pedir sumarme'}
+        </span>
+        {/* Sin aria-label (WCAG 2.5.3): el nombre del link es lo visible más el cuándo. */}
+        <span className="sr-only">{whenLabel(item.startsAt, now)}</span>
       </Link>
     </li>
   )
@@ -167,19 +152,15 @@ function BoardAlert({
 
 function EmptyBoard({ alert }: { alert: BoardAlertProps }) {
   return (
-    <div className="rounded-3xl border border-border bg-card px-6 py-8 text-center shadow-xs lg:mx-auto lg:max-w-lg">
-      <h2 className="font-display text-2xl font-black italic leading-tight tracking-tight text-foreground">
-        Todavía no hay partidos publicados.
-      </h2>
-      <p className="mx-auto mt-2 max-w-xs text-base text-muted-foreground">
-        Cuando alguien publique uno, lo vas a ver acá. Mientras tanto, armá el tuyo.
-      </p>
-      {alert.alertTenants.length > 0 && (
-        <div className="mt-5 w-full border-t border-border pt-5">
-          <BoardAlert alert={alert} />
-        </div>
-      )}
-    </div>
+    <>
+      <section className="rv-empty glass-painted rv-rise lg:mx-auto lg:w-full lg:max-w-lg">
+        <h2 className="rv-h2">Todavía no hay partidos publicados.</h2>
+        <p className="rv-sub max-w-[36ch]">
+          Cuando alguien publique uno, lo vas a ver acá. Mientras tanto, armá el tuyo.
+        </p>
+      </section>
+      {alert.alertTenants.length > 0 && <BoardAlert alert={alert} />}
+    </>
   )
 }
 
@@ -204,29 +185,23 @@ export function BoardView({
   entry: BoardEntryProps
 }) {
   const groups = groupBoardByDay(items, now)
-  const primary = cn(RIVAL_CTA, 'w-full lg:w-fit')
-  const secondary = cn(
-    buttonVariants({ variant: 'outline' }),
-    RIVAL_GHOST,
-    'w-full rounded-full px-6 lg:w-fit',
-  )
+  const primary = cn(RIVAL_ACTION, 'md:w-auto')
+  const secondary = cn(RIVAL_SECONDARY, 'md:w-auto')
   // Las dos intenciones de armar. `?necesito=` lo leerá el form de `nuevo/` (PR2); hoy se ignora. Sin sesión, el ingreso vuelve ahí.
   const intents = [
     { label: 'Me faltan jugadores', next: '/rival/nuevo?necesito=jugadores', className: primary },
     { label: 'Busco rival', next: '/rival/nuevo?necesito=rival', className: secondary },
   ] as const
   return (
-    <div className="mx-auto max-w-lg space-y-5 px-4 py-6 lg:max-w-3xl">
-      <header className="space-y-1">
-        <h1 className="font-display text-3xl font-black italic leading-none tracking-tight text-foreground">
-          Partidos
-        </h1>
-        <p className="text-base text-muted-foreground">
-          Armá tu partido o sumate a uno en los complejos de TurnoGol.
-        </p>
+    <RivalScreen>
+      <header className="ri-head rv-rise">
+        <div>
+          <h1 className="rv-h1">Partidos</h1>
+          <p className="rv-sub">Armá tu partido o sumate a uno en los complejos de TurnoGol.</p>
+        </div>
       </header>
 
-      <div className="flex flex-col gap-3 lg:flex-row">
+      <div className="grid gap-3 md:flex md:flex-wrap rv-rise" style={rise(1)}>
         {intents.map((intent) =>
           alert.signedIn ? (
             <Link key={intent.label} href={intent.next} className={intent.className}>
@@ -254,10 +229,10 @@ export function BoardView({
         <>
           {tenants.length > 0 && <TenantFilter tenants={tenants} selectedId={selectedTenantId} />}
           {groups.length === 0 ? (
-            <div className="space-y-4 rounded-2xl border border-border bg-card p-4 lg:mx-auto lg:max-w-lg">
-              <p className="text-base text-foreground">
-                Este complejo no tiene partidos publicados por ahora.
-              </p>
+            <>
+              <section className="rv-empty glass-painted rv-rise lg:mx-auto lg:w-full lg:max-w-lg">
+                <h2 className="rv-h2">Este complejo no tiene partidos publicados por ahora.</h2>
+              </section>
               {selectedTenantId && alert.alertTenants.length > 0 && (
                 <BoardAlert
                   key={selectedTenantId}
@@ -265,31 +240,28 @@ export function BoardView({
                   defaultTenantId={selectedTenantId}
                 />
               )}
-            </div>
+            </>
           ) : (
             groups.map((g) => (
-              <section key={g.key} aria-labelledby={`grupo-${g.key}`} className="space-y-3">
-                <h2 id={`grupo-${g.key}`} className={PORTAL_SECTION_TITLE}>
+              <section key={g.key} aria-labelledby={`grupo-${g.key}`}>
+                <h2 id={`grupo-${g.key}`} className="ri-group">
                   {g.label}
                 </h2>
-                <ul className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
-                  {g.items.map((item) => (
-                    <BoardCard key={item.id} item={item} groupKey={g.key} now={now} />
+                <ul className="grid gap-3 lg:grid-cols-2">
+                  {g.items.map((item, i) => (
+                    <BoardCard key={item.id} item={item} groupKey={g.key} now={now} index={i} />
                   ))}
                 </ul>
               </section>
             ))
           )}
           {nextHref && (
-            <Link
-              href={nextHref}
-              className={cn(buttonVariants({ variant: 'ghost' }), RIVAL_GHOST, 'w-full')}
-            >
+            <Link href={nextHref} className={cn(RIVAL_GHOST, 'w-full')}>
               Ver más partidos
             </Link>
           )}
         </>
       )}
-    </div>
+    </RivalScreen>
   )
 }

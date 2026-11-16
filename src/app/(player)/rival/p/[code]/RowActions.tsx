@@ -3,7 +3,7 @@
 import { startTransition, useState, useTransition } from 'react'
 import { unstable_rethrow } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { GlassConfirmSheet } from '@/components/world/GlassConfirmSheet'
 import { cn } from '@/lib/utils'
 import { RIVAL_OFFLINE_MESSAGE } from '@/modules/rival/rival-copy'
 import type { ActionResult } from '@/shared/types/action-result'
@@ -45,37 +45,37 @@ export function RequestRowActions({
   }
 
   return (
-    <div className="space-y-1">
-      <div className="flex flex-wrap gap-2">
-        {canAccept && (
-          <Button
-            type="button"
-            variant="outline"
-            disabled={pending}
-            aria-busy={running === 'accept'}
-            onClick={() => decide('accept')}
-            className={cn(RIVAL_GHOST, 'px-4', running === 'accept' && 'disabled:opacity-100')}
-          >
-            {running === 'accept' ? 'Aceptando…' : 'Aceptar'}
-          </Button>
-        )}
+    <>
+      {canAccept && (
         <Button
           type="button"
-          variant="ghost"
+          variant="pill-link"
+          size="pill-sm"
           disabled={pending}
-          aria-busy={running === 'decline'}
-          onClick={() => decide('decline')}
-          className={cn(RIVAL_GHOST, 'px-3', running === 'decline' && 'disabled:opacity-100')}
+          aria-busy={running === 'accept'}
+          onClick={() => decide('accept')}
+          className={cn(RIVAL_GHOST, running === 'accept' && 'disabled:opacity-100')}
         >
-          {running === 'decline' ? 'Un momento…' : 'Esta vez no'}
+          {running === 'accept' ? 'Aceptando…' : 'Aceptar'}
         </Button>
-      </div>
+      )}
+      <Button
+        type="button"
+        variant="pill-link"
+        size="pill-sm"
+        disabled={pending}
+        aria-busy={running === 'decline'}
+        onClick={() => decide('decline')}
+        className={cn(RIVAL_GHOST, running === 'decline' && 'disabled:opacity-100')}
+      >
+        {running === 'decline' ? 'Un momento…' : 'Esta vez no'}
+      </Button>
       {error && (
-        <p role="alert" className="text-[13px] leading-5 text-red-700 dark:text-red-300">
+        <p role="alert" className="rv-err w-full">
           {error}
         </p>
       )}
-    </div>
+    </>
   )
 }
 
@@ -94,14 +94,15 @@ export function RemoveRowAction({
     <>
       <Button
         type="button"
-        variant="ghost"
+        variant="pill-link"
+        size="pill-sm"
         onClick={() => setOpen(true)}
-        className={cn(RIVAL_GHOST, 'px-3')}
+        className={RIVAL_GHOST}
         aria-label={`Sacar a ${name}`}
       >
         Sacar
       </Button>
-      <ConfirmDialog
+      <GlassConfirmSheet
         open={open}
         onOpenChange={setOpen}
         title={`¿Sacar a ${name}?`}

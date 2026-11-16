@@ -61,7 +61,7 @@ export function NewMatchForm(props: NewMatchFormProps) {
   }, [form.response])
   const { tenantId, date, validTime, format, capacity, level, intent, missing } = form
   return (
-    <form onSubmit={form.handleSubmit} noValidate className="space-y-7">
+    <form onSubmit={form.handleSubmit} noValidate className="grid gap-3.5">
       <input type="hidden" name="tenantId" value={tenantId} />
       <input type="hidden" name="date" value={date} />
       <input type="hidden" name="time" value={validTime} />

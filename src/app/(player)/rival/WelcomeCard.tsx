@@ -2,7 +2,9 @@
 
 import { useRef } from 'react'
 import { cn } from '@/lib/utils'
-import { PORTAL_SECTION_TITLE } from '@/components/world/portal-auth-styles'
+import '@/components/booking/reserva.css'
+import '@/components/world/portal-app.css'
+import './rival.css'
 import { IdentityFields, ProfileFields } from './welcome-card/WelcomeFields'
 import { RulesBlock, WelcomeFooter } from './welcome-card/WelcomeFooter'
 import {
@@ -88,7 +90,7 @@ export function WelcomeCard({
     <section
       aria-labelledby="rival-bienvenida"
       className={cn(
-        'scroll-mt-20 space-y-4 rounded-3xl border border-border bg-card p-4 shadow-xs',
+        'rv-panel glass-painted scroll-mt-20',
         // La barra fija con su línea de consentimiento es más alta que la reserva del marco.
         pinSubmit && needs.identity && 'mb-8 md:mb-0',
       )}
@@ -98,11 +100,11 @@ export function WelcomeCard({
           ref={heading}
           id="rival-bienvenida"
           tabIndex={focusOnMount ? -1 : undefined}
-          className={cn(PORTAL_SECTION_TITLE, 'scroll-mt-24', focusOnMount && 'outline-hidden')}
+          className={cn('rv-h2 scroll-mt-24', focusOnMount && 'outline-hidden')}
         >
           {needs.identity ? 'Bienvenido a RIVAL' : 'Un dato más para sumarte'}
         </h2>
-        <p className="mt-1 text-base text-muted-foreground">{intro}</p>
+        <p className="rv-sub mt-1.5">{intro}</p>
       </div>
 
       <form onSubmit={form.handleSubmit} noValidate className="space-y-4">

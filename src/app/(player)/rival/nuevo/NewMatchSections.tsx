@@ -1,23 +1,21 @@
 'use client'
 
-import type { ReactNode, RefObject } from 'react'
+import type { CSSProperties, ReactNode, RefObject } from 'react'
 import { Check, Minus, Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { SelectMenu } from '@/components/ui/select-menu'
-import { PORTAL_BUTTON, PORTAL_SECTION_TITLE } from '@/components/world/portal-auth-styles'
 import { formatLabel } from '@/components/public/courtFacets'
 import { cn } from '@/lib/utils'
 import { ChipGroup, DayChips } from '@/app/(public)/[slug]/components/ChipGroups'
 import { FixedCta } from '@/app/(public)/[slug]/reservar/components/ConfirmBookingButton'
 import { dayLabel } from '@/modules/rival/rival-display'
 import { FormError } from '../FormError'
+import { RIVAL_PICK, RIVAL_PICK_MENU } from '../rival-classes'
 import { BoardFields } from '../BoardFields'
 import { RivalCheckbox } from '../RivalCheckbox'
 import { StampBadge } from '../MatchBits'
 import {
-  CHIP_BUTTON,
-  CHIP_BUTTON_ON,
   FIELD_ERROR,
   FIELD_IDS,
   FORMAT_CHIPS,
@@ -34,10 +32,24 @@ import type { NewMatchFormState } from './use-new-match-form'
 
 type Props = { form: NewMatchFormState }
 
-function Block({ id, title, children }: { id: string; title: string; children: ReactNode }) {
+function Block({
+  id,
+  title,
+  index,
+  children,
+}: {
+  id: string
+  title: string
+  index: number
+  children: ReactNode
+}) {
   return (
-    <section aria-labelledby={id} className="space-y-5">
-      <h2 id={id} className={PORTAL_SECTION_TITLE}>
+    <section
+      aria-labelledby={id}
+      className="rv-panel glass-painted rv-rise"
+      style={{ '--i': index } as CSSProperties}
+    >
+      <h2 id={id} className="rv-h2">
         {title}
       </h2>
       {children}
@@ -74,42 +86,31 @@ function Stepper({
   describedBy?: string
 }) {
   return (
-    <div
-      className="flex shrink-0 items-center gap-3"
-      role="group"
-      aria-label={label}
-      aria-describedby={describedBy}
-    >
-      <Button
+    <div className="ri-stepper" role="group" aria-label={label} aria-describedby={describedBy}>
+      <button
         type="button"
-        variant="outline"
-        size="icon"
-        className="md:size-11 focus-visible:ring-offset-background"
         aria-label="Uno menos"
         // aria-disabled y no disabled: al llegar al tope el foco no se cae al body.
         aria-disabled={value <= min}
         onClick={() => value > min && onChange(value - 1)}
       >
-        <Minus className="size-4" aria-hidden />
-      </Button>
-      <output
-        aria-live="polite"
-        className="min-w-12 text-center font-display text-3xl font-black italic tabular-nums text-foreground"
-      >
-        {value}
+        <Minus aria-hidden />
+      </button>
+      <output aria-live="polite">
+        {/* El número se reemplaza adentro: la región live sigue siendo el mismo nodo y se anuncia. */}
+        <span key={value} className="rv-swap">
+          {value}
+        </span>
       </output>
-      <Button
+      <button
         type="button"
-        variant="outline"
-        size="icon"
         id={id}
-        className="md:size-11 focus-visible:ring-offset-background"
         aria-label="Uno más"
         aria-disabled={value >= max}
         onClick={() => value < max && onChange(value + 1)}
       >
-        <Plus className="size-4" aria-hidden />
-      </Button>
+        <Plus aria-hidden />
+      </button>
     </div>
   )
 }
@@ -118,10 +119,10 @@ function Stepper({
 function MissingControl({ form }: Props) {
   const { fe } = form
   return (
-    <div className="space-y-3 rounded-2xl bg-muted/50 p-4">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p id="rival-faltan-titulo" className="text-base font-medium text-foreground">
+    <div className="grid gap-3 rounded-[20px] border border-portal-inner-line bg-portal-inner p-4">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+        <div className="min-w-48 flex-1">
+          <p id="rival-faltan-titulo" className="ri-q">
             ¿Cuántos te faltan?
           </p>
           <p className={HELP}>Para completar los {form.effectiveCapacity}.</p>
@@ -155,8 +156,12 @@ function MissingControl({ form }: Props) {
 export function IntentBlock({ form }: Props) {
   const { fe } = form
   return (
-    <section aria-labelledby="rival-necesito-titulo" className="space-y-3">
-      <h2 id="rival-necesito-titulo" className={PORTAL_SECTION_TITLE}>
+    <section
+      aria-labelledby="rival-necesito-titulo"
+      className="rv-panel glass-painted rv-rise"
+      style={{ '--i': 0 } as CSSProperties}
+    >
+      <h2 id="rival-necesito-titulo" className="rv-h2">
         ¿Qué necesitás?
       </h2>
       <div
@@ -177,13 +182,10 @@ export function IntentBlock({ form }: Props) {
                 form.setIntent(o.value)
                 fe.clear('intent')
               }}
-              className={cn(
-                'flex min-h-14 flex-col items-start justify-center rounded-2xl border-2 px-4 py-3 text-left transition-colors duration-150 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                on ? 'border-primary bg-primary/10' : 'border-border bg-card hover:border-input',
-              )}
+              className="ri-intent"
             >
-              <span className="text-base font-semibold text-foreground">{o.title}</span>
-              <span className={HELP}>{o.help}</span>
+              <b>{o.title}</b>
+              <span>{o.help}</span>
             </button>
           )
         })}
@@ -198,7 +200,7 @@ export function IntentBlock({ form }: Props) {
 export function BoardBlock({ form }: Props) {
   const { fe } = form
   return (
-    <Block id="rival-bloque-whatsapp" title="Contacto">
+    <Block id="rival-bloque-whatsapp" title="Contacto" index={4}>
       <BoardFields
         idPrefix={BOARD_ID_PREFIX}
         compact
@@ -229,12 +231,10 @@ export function BoardBlock({ form }: Props) {
 
 function LockedSummary({ form }: Props) {
   return (
-    <div className="space-y-1 rounded-2xl bg-muted/50 p-4">
-      <p className="text-[13px] font-medium uppercase tracking-wide text-muted-foreground">
-        Viene de tu reserva
-      </p>
-      <p className="text-base font-semibold text-foreground">{form.tenant?.name ?? ''}</p>
-      <p className="text-base tabular-nums text-foreground">
+    <div className="grid gap-1 rounded-[20px] border border-portal-inner-line bg-portal-inner p-4">
+      <p className="rv-small font-semibold uppercase tracking-wide">Viene de tu reserva</p>
+      <p className="text-base font-semibold text-portal-ink">{form.tenant?.name ?? ''}</p>
+      <p className="text-base tabular-nums text-portal-ink">
         {dayLabel(form.date)} · {form.time} · {formatLabel(form.format)}
       </p>
       {form.teamOnly && <p className={HELP}>{form.teamHelp}</p>}
@@ -245,8 +245,8 @@ function LockedSummary({ form }: Props) {
 function TenantField({ form }: Props) {
   const { fe } = form
   return (
-    <div className="space-y-1.5">
-      <Label htmlFor={FIELD_IDS.tenantId} className="text-base">
+    <div className="grid gap-2">
+      <Label htmlFor={FIELD_IDS.tenantId} className="text-base font-semibold text-portal-ink">
         Complejo
       </Label>
       <SelectMenu
@@ -258,7 +258,8 @@ function TenantField({ form }: Props) {
         }}
         options={form.tenants.map((t) => ({ value: t.id, label: `${t.name} · ${t.city}` }))}
         placeholder="Elegí el complejo"
-        className="rounded-lg bg-card md:text-base"
+        className={RIVAL_PICK}
+        contentClassName={RIVAL_PICK_MENU}
       />
       <FieldError form={form} field="tenantId" />
     </div>
@@ -267,9 +268,10 @@ function TenantField({ form }: Props) {
 
 function DayField({ form }: Props) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <p className="text-base font-medium text-foreground">Día</p>
+    <div className="flex flex-col gap-2">
+      <p className="ri-q">Día</p>
       <DayChips
+        glass
         days={form.days}
         today={form.today}
         value={form.date}
@@ -302,6 +304,7 @@ function HourPicker({ form }: Props) {
               fe.clear('startsAt')
             }}
             tabular
+            glass
             className="contents"
           />
         )}
@@ -310,7 +313,14 @@ function HourPicker({ form }: Props) {
           id={hours.quick.length === 0 ? hourControl.id : undefined}
           aria-expanded={otherOpen}
           onClick={() => form.setOtherOpen((open) => !open)}
-          className={cn(CHIP_BUTTON, validTime !== '' && !isQuick && CHIP_BUTTON_ON)}
+          className={cn(
+            buttonVariants({ variant: 'pill-chip', size: 'pill-sm' }),
+            'shrink-0 tabular-nums',
+            // Elegida: el verde de `pill-chip` sin sumar `aria-pressed` (el botón abre la lista).
+            validTime !== '' &&
+              !isQuick &&
+              'border-transparent bg-linear-to-b from-(--portal-btn-a) to-(--portal-btn-b) text-portal-on-green',
+          )}
         >
           {validTime !== '' && !isQuick ? (
             <>
@@ -334,8 +344,8 @@ function HourPicker({ form }: Props) {
           }}
           options={hours.all.map((t) => ({ value: t, label: t }))}
           placeholder="Elegí otra hora"
-          className="rounded-lg bg-card md:text-base"
-          contentClassName="max-h-[min(60dvh,22rem)]"
+          className={RIVAL_PICK}
+          contentClassName={cn(RIVAL_PICK_MENU, 'max-h-[min(60dvh,22rem)]')}
         />
       )}
     </>
@@ -345,8 +355,8 @@ function HourPicker({ form }: Props) {
 function HourField({ form }: Props) {
   const { hours } = form
   return (
-    <div className="flex flex-col gap-1.5">
-      <p className="text-base font-medium text-foreground">Hora</p>
+    <div className="flex flex-col gap-2">
+      <p className="ri-q">Hora</p>
       {hours.all.length === 0 ? (
         <p className={HELP}>Hoy ya no quedan horarios. Elegí otro día.</p>
       ) : (
@@ -365,7 +375,7 @@ function HourField({ form }: Props) {
 
 export function WhereWhenBlock({ form }: Props) {
   return (
-    <Block id="rival-bloque-donde" title="Dónde y cuándo">
+    <Block id="rival-bloque-donde" title="Dónde y cuándo" index={1}>
       {form.locked ? (
         <LockedSummary form={form} />
       ) : (
@@ -384,26 +394,23 @@ function CapacityControl({ form }: Props) {
   const { fe, effectiveCapacity } = form
   if (form.intent !== 'group') return null
   return (
-    <div className="space-y-1.5">
+    <div className="grid gap-2">
       {form.capacityOpen || form.capacity !== null || form.reported.capacity ? (
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p id="rival-cuantos" className="text-base font-medium text-foreground">
+            <p id="rival-cuantos" className="ri-q">
               Cuántos juegan
             </p>
             <p className={HELP}>En total, los dos equipos. Vos incluido.</p>
           </div>
           <div
-            className="flex shrink-0 items-center gap-3"
+            className="ri-stepper"
             role="group"
             aria-labelledby="rival-cuantos"
             aria-describedby={fe.message('capacity') ? `${FIELD_IDS.capacity}-error` : undefined}
           >
-            <Button
+            <button
               type="button"
-              variant="outline"
-              size="icon"
-              className="md:size-11 focus-visible:ring-offset-background"
               aria-label="Uno menos"
               disabled={effectiveCapacity <= MIN_CAPACITY}
               onClick={() => {
@@ -411,19 +418,15 @@ function CapacityControl({ form }: Props) {
                 fe.clear('capacity')
               }}
             >
-              <Minus className="size-4" aria-hidden />
-            </Button>
-            <output
-              aria-live="polite"
-              className="min-w-12 text-center font-display text-3xl font-black italic tabular-nums text-foreground"
-            >
-              {effectiveCapacity}
+              <Minus aria-hidden />
+            </button>
+            <output aria-live="polite">
+              <span key={effectiveCapacity} className="rv-swap">
+                {effectiveCapacity}
+              </span>
             </output>
-            <Button
+            <button
               type="button"
-              variant="outline"
-              size="icon"
-              className="md:size-11 focus-visible:ring-offset-background"
               id={FIELD_IDS.capacity}
               aria-label="Uno más"
               disabled={effectiveCapacity >= MAX_CAPACITY}
@@ -432,12 +435,12 @@ function CapacityControl({ form }: Props) {
                 fe.clear('capacity')
               }}
             >
-              <Plus className="size-4" aria-hidden />
-            </Button>
+              <Plus aria-hidden />
+            </button>
           </div>
         </div>
       ) : (
-        <p className="flex min-h-11 items-center gap-2 text-base text-foreground">
+        <p className="flex min-h-11 items-center gap-2 text-base text-portal-ink">
           <span>
             Juegan{' '}
             <output aria-live="polite" className="font-semibold tabular-nums">
@@ -451,7 +454,7 @@ function CapacityControl({ form }: Props) {
             id={FIELD_IDS.capacity}
             aria-label="Cambiar cuántos juegan"
             onClick={() => form.setCapacityOpen(true)}
-            className="min-h-11 font-medium text-emerald-800 underline underline-offset-4 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary dark:text-emerald-400"
+            className="rv-link min-h-11"
           >
             Cambiar
           </button>
@@ -464,11 +467,12 @@ function CapacityControl({ form }: Props) {
 
 function FormatField({ form }: Props) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <p className="text-base font-medium text-foreground">Fútbol de</p>
+    <div className="flex flex-col gap-2">
+      <p className="ri-q">Fútbol de</p>
       <ChipGroup
         {...form.fe.controlProps('format')}
         label="Fútbol de"
+        glass
         options={FORMAT_CHIPS}
         value={String(form.format)}
         onChange={(v) => {
@@ -486,11 +490,12 @@ function FormatField({ form }: Props) {
 
 function LevelField({ form }: Props) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <p className="text-base font-medium text-foreground">Nivel</p>
+    <div className="flex flex-col gap-2">
+      <p className="ri-q">Nivel</p>
       <ChipGroup
         {...form.fe.controlProps('level')}
         label="Nivel"
+        glass
         options={LEVEL_CHIPS}
         value={form.level}
         onChange={(v) => {
@@ -508,7 +513,7 @@ function LevelField({ form }: Props) {
 
 export function MatchBlock({ form }: Props) {
   return (
-    <Block id="rival-bloque-partido" title="El partido">
+    <Block id="rival-bloque-partido" title="El partido" index={2}>
       {!form.locked && <FormatField form={form} />}
       {form.locked && <CapacityControl form={form} />}
       <LevelField form={form} />
@@ -520,7 +525,7 @@ function CourtCheckbox({ form }: Props) {
   const { fe, tenant } = form
   const court = fe.controlProps('courtDeclared')
   return (
-    <div className="space-y-1">
+    <div className="grid gap-1">
       <RivalCheckbox
         id={court.id}
         name="courtDeclared"
@@ -552,7 +557,7 @@ function CourtCheckbox({ form }: Props) {
             href={`/${tenant.slug}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="py-3 font-medium text-emerald-800 underline underline-offset-4 dark:text-emerald-400"
+            className="rv-link py-3"
           >
             Reservala en {tenant.name}
           </a>
@@ -565,11 +570,13 @@ function CourtCheckbox({ form }: Props) {
 
 export function CourtBlock({ form }: Props) {
   return (
-    <Block id="rival-bloque-cancha" title="La cancha">
+    <Block id="rival-bloque-cancha" title="La cancha" index={3}>
       {form.showStamp ? (
-        <div className="space-y-1">
+        <div className="grid justify-items-start gap-1">
           <StampBadge />
-          <p className={HELP}>Encontramos tu reserva a esa hora.</p>
+          <p className="text-sm font-semibold text-portal-slot-ink">
+            Encontramos tu reserva a esa hora.
+          </p>
         </div>
       ) : (
         <CourtCheckbox form={form} />
@@ -603,9 +610,11 @@ export function SubmitBar({
       <FixedCta>
         <Button
           type="submit"
+          variant="pill"
+          size="pill"
           disabled={pending}
           aria-busy={pending}
-          className={cn(PORTAL_BUTTON, 'min-h-[52px]')}
+          className="rv-go w-full"
         >
           {pending ? 'Armando…' : form.publishes ? 'Armar y publicar' : 'Armar el partido'}
         </Button>

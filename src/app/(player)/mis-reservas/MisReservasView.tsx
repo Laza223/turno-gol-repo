@@ -1,4 +1,4 @@
-import { Fragment, type CSSProperties } from 'react'
+import { Fragment, ViewTransition, type CSSProperties } from 'react'
 import Link from 'next/link'
 import { Compass, CreditCard, MessageCircle, Navigation, RotateCcw, Swords } from 'lucide-react'
 import { isInRivalStartWindow } from '@/modules/rival/rival-window'
@@ -300,6 +300,7 @@ function BookingCard({
             // Vínculo extendido: el `::after` cubre la tarjeta entera y las acciones de abajo
             // quedan por encima (`z-10`), así no hay nada interactivo adentro de un <a>.
             <Link
+              transitionTypes={['nav-forward']}
               href={href}
               className="rounded-sm after:absolute after:inset-0 after:rounded-[28px] focus-visible:outline-hidden focus-visible:after:outline-2 focus-visible:after:outline-solid focus-visible:after:outline-portal-green"
             >
@@ -408,6 +409,7 @@ function BookingCard({
           )}
           {showRival && (
             <Link
+              transitionTypes={['nav-forward']}
               href={`/rival/nuevo?reserva=${b.id}`}
               aria-describedby={describedBy}
               data-ghost
@@ -441,6 +443,7 @@ function BookingCard({
           )}
           {canReserveAgain && (
             <Link
+              transitionTypes={['nav-forward']}
               href={buildFichaHref(b.tenant_slug, { date: b.date, formato: b.court_format })}
               aria-describedby={describedBy}
               data-ghost
@@ -597,20 +600,31 @@ export function MisReservasView({
             </section>
           )
         ) : (
-          <ul className="pa-list">
-            {bookings.map((b, i) => (
-              <BookingCard
-                key={b.id}
-                b={b}
-                today={today}
-                featured={i === featuredIndex}
-                index={i}
-                rivalEnabled={rivalEnabled}
-                cancelAction={cancelAction}
-                payDepositAction={payDepositAction}
-              />
-            ))}
-          </ul>
+          // Al cancelar, la revalidación saca la tarjeta: se cierra y las de abajo suben a su lugar
+          // (dirección §4.5, Mis reservas). Al cambiar de pestaña o de página la lista entera es
+          // otra (`key`) y sale sin animar: así las tarjetas no se cierran todas juntas.
+          <ViewTransition key={`${tab}-${page}`} exit="none" default="none">
+            <ul className="pa-list">
+              {bookings.map((b, i) => (
+                <ViewTransition
+                  key={b.id}
+                  exit="portal-cerrar"
+                  update="portal-mover"
+                  default="none"
+                >
+                  <BookingCard
+                    b={b}
+                    today={today}
+                    featured={i === featuredIndex}
+                    index={i}
+                    rivalEnabled={rivalEnabled}
+                    cancelAction={cancelAction}
+                    payDepositAction={payDepositAction}
+                  />
+                </ViewTransition>
+              ))}
+            </ul>
+          </ViewTransition>
         )}
 
         {/* B10 — antes la query traía 200 reservas y el corte próximos/historial

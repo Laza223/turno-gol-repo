@@ -19,7 +19,7 @@ type Story = StoryObj<typeof meta>
 /** La banda ancha que usaba `SearchBand` de /explorar: líneas apenas visibles a la derecha. */
 export const Band: Story = {
   render: () => (
-    <section className="player-hero-band relative isolate overflow-hidden rounded-3xl border px-9 py-9">
+    <section className="bg-card relative isolate overflow-hidden rounded-3xl border px-9 py-9">
       <div className="pointer-events-none absolute inset-y-0 right-[-8%] -z-10 w-[72%] text-emerald-600/16 dark:text-white/5">
         <PitchLines variant="band" className="h-full w-full" />
       </div>

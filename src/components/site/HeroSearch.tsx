@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, type FormEvent } from 'react'
 import { MapPin, Search } from 'lucide-react'
+import { usePointerGlow } from '@/components/world/use-pointer-glow'
 import { useHydrated } from '@/hooks/use-client-value'
 import { useIpZona } from '@/hooks/use-ip-zona'
 import { useNearestCity } from '@/hooks/use-nearest-city'
@@ -149,15 +150,17 @@ export default function HeroSearch({ cities, onZonaChange, reflejo = false, clas
   // "Cualquier tamaño" se cortaban. Las opciones de las hojas conservan el nombre largo.
   const localidadValue = current ? current.city : pickedCity === '' ? 'Todas' : null
   const canchaValue = formatsLabel(formats) ?? 'Todas'
+  const glow = usePointerGlow<HTMLFormElement>()
 
   return (
     <>
       <form
+        ref={glow}
         onSubmit={onSubmit}
         aria-label="Buscar canchas de fútbol"
         data-shine={shine ? '' : undefined}
         className={cn(
-          'hero-search glass relative grid w-full grid-cols-2 gap-2 rounded-[32px] p-2 text-left font-display md:grid-cols-[1fr_1fr_auto] md:rounded-full',
+          'hero-search glass glow-follow relative grid w-full grid-cols-2 gap-2 rounded-[32px] p-2 text-left font-display md:grid-cols-[1fr_1fr_auto] md:rounded-full',
           className,
         )}
       >

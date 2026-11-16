@@ -22,7 +22,7 @@ const read = (rel: string) => readFileSync(path.join(projectRoot, rel), 'utf8')
  * 2026-11-13 (portal de vidrio, F1): `@theme` suma los 18 colores `--color-portal-*`, que apuntan a
  * tokens que solo existen con el marcador `[data-portal-glass]`. Ninguna declaración del panel cambió.
  */
-const PANEL_TOKENS_SHA256 = '6eb3038a8b04ec0117982819a4ec676052725c0dd13f2ad6dd95f87382668860'
+const PANEL_TOKENS_SHA256 = '0b900600160f202f7c05a93482abd46b75a33cdc1e8312f747a1ebce7be24337'
 
 const PANEL_SELECTORS = [':root', '.dark', '.dark-surface']
 

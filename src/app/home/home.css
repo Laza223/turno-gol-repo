@@ -345,7 +345,8 @@
   /* La ficha dibujada ("Reservás en una pantalla"). */
   .home-app {
     border-radius: 32px;
-    overflow: hidden;
+    /* `clip` y no `hidden`: `hidden` lo vuelve el scroller del `view()` de adentro y la animación no avanza nunca. */
+    overflow: clip;
     text-align: left;
     color: var(--portal-ink);
   }
@@ -584,7 +585,8 @@
     height: 6px;
     border-radius: 6px;
     background: var(--portal-inner-line);
-    overflow: hidden;
+    /* `clip` y no `hidden`: `hidden` lo vuelve el scroller del `view()` de adentro y la animación no avanza nunca. */
+    overflow: clip;
   }
   /* La barra crece en `scaleX` desde la izquierda: solo se anima `transform` (§4.7). */
   .home-match__bar i {
@@ -910,9 +912,13 @@
   }
 
   /* Atado al scroll: la foto va un 6 % más lenta que la página y el velo se cierra. */
+  /* Todo lo atado al scroll va en propiedades sueltas, nunca con el atajo `animation`: Lightning CSS
+     junta `animation` + `animation-timeline` en un solo atajo que Chrome descarta entero. */
   @supports (animation-timeline: scroll()) {
     .hero-bg {
-      animation: home-foto-lenta linear both;
+      animation-name: home-foto-lenta;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
       animation-timeline: scroll(root);
       animation-range: 0 100svh;
     }
@@ -927,7 +933,9 @@
       inset: 0;
       background: rgb(var(--portal-veil));
       opacity: 0;
-      animation: home-velo linear both;
+      animation-name: home-velo;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
       animation-timeline: scroll(root);
       animation-range: 0 100svh;
     }
@@ -941,7 +949,9 @@
   /* Las secciones aparecen al llegar (pieza "Aparecer al bajar"), una sola vez por scroll. */
   @supports (animation-timeline: view()) {
     .home-reveal {
-      animation: home-aparecer linear both;
+      animation-name: home-aparecer;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
       animation-timeline: view();
       animation-range: entry 0% entry 34%;
     }
@@ -953,7 +963,9 @@
     }
     /* En la ficha dibujada, las horas entran escalonadas y la elegida hace su toque al final. */
     .home-hourb {
-      animation: home-hora linear both;
+      animation-name: home-hora;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
       animation-timeline: view();
       animation-range: entry calc(10% + var(--h, 0) * 4%) entry calc(40% + var(--h, 0) * 4%);
     }
@@ -964,7 +976,9 @@
       }
     }
     .home-hourb[data-picked] {
-      animation: home-toque linear both;
+      animation-name: home-toque;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
       animation-timeline: view();
       animation-range: entry 50% entry 90%;
     }
@@ -983,7 +997,9 @@
     }
     /* En Rival, las barras de avance crecen. */
     .home-match__bar i {
-      animation: home-crecer linear both;
+      animation-name: home-crecer;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
       animation-timeline: view();
       animation-range: entry 20% cover 38%;
     }

@@ -104,6 +104,7 @@ export default function TenantCard({
       >
         <h3 className="text-base leading-5 font-semibold tracking-[-0.01em] [overflow-wrap:anywhere]">
           <Link
+            transitionTypes={['nav-forward']}
             href={fichaHref}
             className="after:absolute after:inset-0 after:z-10 focus-visible:outline-hidden"
           >
@@ -139,6 +140,7 @@ export default function TenantCard({
                   {today.pills.map((s) => (
                     <li key={s.time} className="pointer-events-auto">
                       <Link
+                        transitionTypes={['nav-forward']}
                         href={buildReservarHref(tenant.slug, {
                           courtId: s.courtId,
                           date: today.date,
@@ -154,6 +156,7 @@ export default function TenantCard({
                   {today.more > 0 && (
                     <li className="pointer-events-auto">
                       <Link
+                        transitionTypes={['nav-forward']}
                         href={fichaHref}
                         aria-label={`Ver ${today.more} horarios más de hoy`}
                         className="ex-slot flex h-11 items-center justify-center rounded-full border border-portal-inner-line text-sm font-semibold text-portal-soft tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-portal-green"

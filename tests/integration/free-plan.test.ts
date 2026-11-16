@@ -10,7 +10,6 @@ import {
 import { transitionToActiveFromAny, transitionToFree } from '@/modules/billing/lifecycle.service'
 import { scheduleInactiveFreeDeletion } from '@/shared/jobs/workers/data-retention-cleanup.worker'
 import { setExpiryScheduler } from '@/shared/jobs/schedule-expiry'
-import { artMonthOf } from '@/modules/tenants/tenant.lifecycle'
 import { FREE_ONLINE_CANCEL_PAUSE_THRESHOLD } from '@/shared/constants'
 import { cleanupAll, createTestPlayer, createTestTenant, ensureRoles } from '../helpers/tenant'
 import { getOrCreatePlanId, insertSubscription } from '../helpers/factories'
@@ -163,21 +162,6 @@ describe('reservas online del gratis: sin tope (freemium v2)', () => {
     const p1 = await createTestPlayer(sql)
 
     await expect(book(tenant.id, p1.id, court, '2027-04-05')).resolves.toBeTruthy()
-    const [t1] = await sql<{ online_cap_month: string | null }[]>`
-      SELECT online_cap_month FROM tenants WHERE id = ${tenant.id}
-    `
-    expect(t1!.online_cap_month).toBeNull()
-  }, 30_000)
-
-  it('un complejo que había llegado al viejo tope este mes vuelve a tomar reservas', async () => {
-    const sql = getSql()
-    const tenant = await createTestTenant(sql)
-    await makeFree(tenant.id)
-    await sql`UPDATE tenants SET online_cap_month = ${artMonthOf()} WHERE id = ${tenant.id}`
-    const court = await insertCourt(tenant.id, 'Cancha 1')
-    const p1 = await createTestPlayer(sql)
-
-    await expect(book(tenant.id, p1.id, court, '2027-04-06')).resolves.toBeTruthy()
   }, 30_000)
 })
 

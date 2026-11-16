@@ -303,6 +303,8 @@ export const PlanGratisSinPlata: Story = {
     await expect(dialog.queryByText(/Cobrado/)).toBeNull()
     await expect(dialog.queryByRole('button', { name: /Cobrar/ })).toBeNull()
     await expect(dialog.queryByRole('button', { name: /perdido/i })).toBeNull()
+    // La cantina es del plan: en gratis el server la rechaza, no se ofrece.
+    await expect(dialog.queryByRole('button', { name: /Cantina/ })).toBeNull()
     // Terminado en gratis: el aviso de pasar al plan para anotar el cobro.
     await expect(dialog.getByText('¿Se cobró?')).toBeVisible()
     await expect(dialog.getByRole('link', { name: 'Ver el plan' })).toHaveAttribute(

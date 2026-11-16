@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import { expect, fn, userEvent, within } from 'storybook/test'
+import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { PushNotificationManager } from './PushNotificationManager'
 
 /**
@@ -142,7 +142,8 @@ export const SinSuscribir: Story = {
   },
   play: async () => {
     const body = within(document.body)
-    await expect(await body.findByText('Activá las notificaciones')).toBeVisible()
+    // El diálogo entra con fade: visible recién al terminar la animación.
+    await waitFor(() => expect(body.getByText('Activá las notificaciones')).toBeVisible())
     const button = body.getByRole('button', { name: 'Habilitar notificaciones' })
     await expect(button).not.toBeDisabled()
     // Scope '/' (no '/admin/'): `(admin)` es un route group de Next, no aparece
@@ -170,7 +171,8 @@ export const CartelSinActivar: Story = {
     await expect(canvas.queryByRole('button', { name: 'Cerrar' })).not.toBeInTheDocument()
     await userEvent.click(canvas.getByRole('button', { name: 'Activar' }))
     const body = within(document.body)
-    await expect(await body.findByText('Activá las notificaciones')).toBeVisible()
+    // El diálogo entra con fade: visible recién al terminar la animación.
+    await waitFor(() => expect(body.getByText('Activá las notificaciones')).toBeVisible())
     await userEvent.click(body.getByRole('button', { name: 'Ahora no' }))
   },
 }
@@ -269,7 +271,8 @@ export const PermisoDenegado: Story = {
   },
   play: async () => {
     const body = within(document.body)
-    await expect(await body.findByText('Las notificaciones están bloqueadas')).toBeVisible()
+    // El diálogo entra con fade: visible recién al terminar la animación.
+    await waitFor(() => expect(body.getByText('Las notificaciones están bloqueadas')).toBeVisible())
     await expect(
       body.queryByRole('button', { name: 'Habilitar notificaciones' }),
     ).not.toBeInTheDocument()

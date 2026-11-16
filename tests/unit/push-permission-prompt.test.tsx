@@ -1,13 +1,10 @@
 // @vitest-environment happy-dom
 /**
- * Tests for PushNotificationManager's dismiss ("X") behavior.
- *
- * ENS-11: el banner "¿Habilitar notificaciones?" no tenía forma de
- * descartarlo — un elementFromPoint real en producción mostró que el div
- * fixed (bottom-4 left-4) intercepta clicks de botones reales debajo suyo.
- * El fix agrega un botón de cierre que persiste el descarte en localStorage
- * (con timestamp) y desmonta el banner por 7 días, sin dejar residuo en el
- * DOM (no `visibility:hidden` — el div deja de renderizarse por completo).
+ * Modal y cartel de permiso del panel (decisión 2026-11-16,
+ * docs/decisions/2026-11-16-push-urgente-permiso-y-recordatorio-jugador.md):
+ * - el modal se abre solo una vez por dispositivo y por situación;
+ * - el cartel no tiene "Cerrar": queda mientras el dispositivo no reciba avisos;
+ * - si el dispositivo ya recibe avisos, no se muestra nada.
  *
  * Mismo patrón de mocks que push-broadcast-dedupe.test.tsx: Notification /
  * PushManager / navigator.serviceWorker no existen en happy-dom, y
@@ -95,12 +92,12 @@ afterAll(() => {
 // ─── Import the component AFTER globals are set up ────────────────────────────
 import { PushNotificationManager } from '@/components/admin/PushNotificationManager'
 
-const DISMISS_KEY = 'turnogol:notif-banner-dismissed-at'
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
+const MODAL_SEEN_KEY = 'turnogol:notif-modal-seen:unsubscribed'
 
 beforeEach(() => {
   vi.clearAllMocks()
   localStorageMock.clear()
+  ;(Notification as unknown as { permission: string }).permission = 'default'
   ;(
     navigator.serviceWorker as unknown as { getRegistration: ReturnType<typeof vi.fn> }
   ).getRegistration = vi.fn().mockResolvedValue(undefined)
@@ -110,90 +107,100 @@ afterEach(() => {
   cleanup()
 })
 
-describe('PushNotificationManager — descarte del banner', () => {
-  it('muestra un botón de descarte accesible cuando el banner está visible', async () => {
+describe('PushNotificationManager — modal y cartel de permiso', () => {
+  it('la primera vez abre el modal propio, sin pedir el permiso del navegador', async () => {
     await act(async () => {
       render(<PushNotificationManager />)
     })
 
-    expect(await screen.findByText('¿Habilitar notificaciones?')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Cerrar' })).toBeVisible()
+    expect(await screen.findByRole('dialog')).toBeVisible()
+    expect(screen.getByText('Activá las notificaciones')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Habilitar notificaciones' })).not.toBeDisabled()
+    expect(Notification.requestPermission).not.toHaveBeenCalled()
+    expect(localStorageMock.getItem(MODAL_SEEN_KEY)).not.toBeNull()
   })
 
-  it('al descartar, desmonta el banner por completo (no deja residuo) y persiste el timestamp', async () => {
+  it('el botón del modal recién ahí pide el permiso del dispositivo', async () => {
+    ;(Notification.requestPermission as ReturnType<typeof vi.fn>).mockResolvedValue('default')
+    await act(async () => {
+      render(<PushNotificationManager />)
+    })
+    const enable = await screen.findByRole('button', { name: 'Habilitar notificaciones' })
+    await act(async () => {
+      fireEvent.click(enable)
+    })
+    expect(Notification.requestPermission).toHaveBeenCalledTimes(1)
+  })
+
+  it('después de la primera vez no vuelve a abrir el modal: queda el cartel, sin "Cerrar"', async () => {
+    localStorageMock.setItem(MODAL_SEEN_KEY, String(Date.now()))
     await act(async () => {
       render(<PushNotificationManager />)
     })
 
-    await screen.findByText('¿Habilitar notificaciones?')
-    const closeButton = screen.getByRole('button', { name: 'Cerrar' })
+    expect(
+      await screen.findByText('No tenés las notificaciones activadas en este dispositivo.'),
+    ).toBeVisible()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Cerrar' })).not.toBeInTheDocument()
+  })
 
-    const before = Date.now()
+  it('el botón del cartel vuelve a abrir el modal', async () => {
+    localStorageMock.setItem(MODAL_SEEN_KEY, String(Date.now()))
     await act(async () => {
-      fireEvent.click(closeButton)
+      render(<PushNotificationManager />)
     })
-    const after = Date.now()
+    const open = await screen.findByRole('button', { name: 'Activar' })
+    await act(async () => {
+      fireEvent.click(open)
+    })
+    expect(await screen.findByRole('dialog')).toBeVisible()
+  })
 
-    expect(screen.queryByText('¿Habilitar notificaciones?')).not.toBeInTheDocument()
-    // Unmount real: el botón "Habilitar notificaciones" tampoco debe quedar en el DOM.
+  it('con las notificaciones bloqueadas explica cómo desbloquearlas', async () => {
+    ;(Notification as unknown as { permission: string }).permission = 'denied'
+    await act(async () => {
+      render(<PushNotificationManager />)
+    })
+
+    expect(await screen.findByText('Las notificaciones están bloqueadas')).toBeVisible()
     expect(
       screen.queryByRole('button', { name: 'Habilitar notificaciones' }),
     ).not.toBeInTheDocument()
-
-    const stored = Number(localStorageMock.getItem(DISMISS_KEY))
-    expect(stored).toBeGreaterThanOrEqual(before)
-    expect(stored).toBeLessThanOrEqual(after)
   })
 
-  it('no vuelve a mostrar el banner si fue descartado hace menos de 7 días', async () => {
-    localStorageMock.setItem(DISMISS_KEY, String(Date.now() - 1 * 24 * 60 * 60 * 1000)) // hace 1 día
-
-    await act(async () => {
-      render(<PushNotificationManager />)
+  it('si el dispositivo ya recibe avisos no muestra nada', async () => {
+    ;(Notification as unknown as { permission: string }).permission = 'granted'
+    const sub = {
+      endpoint: 'https://fcm.googleapis.com/fcm/send/x',
+      toJSON: () => ({
+        endpoint: 'https://fcm.googleapis.com/fcm/send/x',
+        keys: { p256dh: 'p', auth: 'a' },
+      }),
+    }
+    ;(
+      navigator.serviceWorker as unknown as { getRegistration: ReturnType<typeof vi.fn> }
+    ).getRegistration = vi.fn().mockResolvedValue({
+      pushManager: { getSubscription: vi.fn().mockResolvedValue(sub) },
     })
-
-    // Dar tiempo al useEffect de detección (async) por si acaso.
+    await act(async () => {
+      render(
+        <PushNotificationManager
+          actions={{
+            subscribe: vi.fn().mockResolvedValue({ success: true, subscriptionId: 'sub-1' }),
+            unsubscribe: vi.fn(),
+            test: vi.fn(),
+            status: vi.fn(),
+          }}
+        />,
+      )
+    })
     await act(async () => {
       await new Promise((r) => setTimeout(r, 20))
     })
 
-    expect(screen.queryByText('¿Habilitar notificaciones?')).not.toBeInTheDocument()
-  })
-
-  it('vuelve a mostrar el banner si el descarte tiene más de 7 días', async () => {
-    localStorageMock.setItem(DISMISS_KEY, String(Date.now() - (SEVEN_DAYS_MS + 60_000))) // 7 días + 1 min
-
-    await act(async () => {
-      render(<PushNotificationManager />)
-    })
-
-    expect(await screen.findByText('¿Habilitar notificaciones?')).toBeVisible()
-  })
-
-  /**
-   * R3-3: un timestamp GUARDADO EN EL FUTURO (reloj corrido del cliente, o el
-   * valor de localStorage manipulado a mano) hacía que `Date.now() - dismissedAt`
-   * diera negativo — siempre `< DISMISS_DURATION_MS` — así que el banner quedaba
-   * descartado PARA SIEMPRE, sin ventana de 7 días que lo reactive. Un timestamp
-   * futuro no es un descarte "reciente" válido: se trata como inválido.
-   */
-  it('vuelve a mostrar el banner si el timestamp guardado está en el futuro (reloj corrido o manipulado)', async () => {
-    localStorageMock.setItem(DISMISS_KEY, String(Date.now() + 60_000)) // 1 min en el futuro
-
-    await act(async () => {
-      render(<PushNotificationManager />)
-    })
-
-    expect(await screen.findByText('¿Habilitar notificaciones?')).toBeVisible()
-  })
-
-  it('mantiene intacto el flujo de aceptar (el botón "Habilitar notificaciones" sigue funcionando)', async () => {
-    await act(async () => {
-      render(<PushNotificationManager />)
-    })
-
-    const enableButton = await screen.findByRole('button', { name: 'Habilitar notificaciones' })
-    expect(enableButton).toBeVisible()
-    expect(enableButton).not.toBeDisabled()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByText(/notificaciones/i)).not.toBeInTheDocument()
   })
 })

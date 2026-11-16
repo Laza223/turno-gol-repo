@@ -147,9 +147,9 @@ function groups({
           href: '/settings/equipo#tu-usuario',
         },
         {
-          label: 'Resumen diario',
-          effect: 'Lo que entró ayer, a las 8.',
-          value: 'También por email',
+          label: 'Resumen semanal',
+          effect: 'Lo que entró la semana pasada, los lunes.',
+          value: 'Por email',
           icon: BellRing,
           href: '/settings/equipo#tu-usuario',
         },

@@ -24,6 +24,7 @@ export const QUEUE_RETRY_PENDING_REFUNDS = 'retry-pending-refunds'
 export const QUEUE_HEALTH_PING = 'health-ping'
 export const QUEUE_RECONCILE_ACCOUNTING_DRIFT = 'reconcile-accounting-drift'
 export const QUEUE_DAILY_SUMMARY = 'daily-summary'
+export const QUEUE_PLAYER_REMINDERS = 'player-reminders'
 export const QUEUE_ONBOARDING_ABANDONMENT = 'onboarding-abandonment-sweep'
 export const QUEUE_RECONCILE_SUBSCRIPTIONS = 'reconcile-subscriptions'
 export const QUEUE_WHATSAPP_TURN = 'whatsapp-turn'
@@ -70,6 +71,7 @@ export const QUEUE_DEFINITIONS: readonly QueueDefinition[] = [
   { name: QUEUE_PUSH_SEND, options: NO_RETRY },
   { name: QUEUE_HEALTH_PING, options: NO_RETRY },
   { name: QUEUE_DAILY_SUMMARY, options: NO_RETRY },
+  { name: QUEUE_PLAYER_REMINDERS, options: NO_RETRY },
   { name: QUEUE_ONBOARDING_ABANDONMENT, options: NO_RETRY },
   { name: QUEUE_RECONCILE_SUBSCRIPTIONS, options: NO_RETRY },
   {
@@ -143,6 +145,8 @@ export const RECONCILE_SUBSCRIPTIONS_SEND_OPTIONS = {
 
 export type PushSendJobData = {
   subscription_id: string
+  /** `player`: el id es de `player_push_subscriptions` (migr. 113). Sin él, staff. */
+  audience?: 'player'
   /** Durable v2 intention and per-device delivery; absent on legacy jobs. */
   notificationId?: string
   deliveryId?: string
@@ -153,9 +157,7 @@ export type PushSendJobData = {
     dateLabel?: string
     timeLabel?: string
     url?: string
-    /** daily_summary (D8): día operativo que resume (YYYY-MM-DD) — insumo de la dedupeKey. */
-    date?: string
-    /** daily_summary (D8): copy pre-armado del resumen ("Ayer: $X · N/M · caja..."). */
+    /** whatsapp_handoff: copy pre-armado del cuerpo. */
     summaryLabel?: string
     [k: string]: unknown
   }

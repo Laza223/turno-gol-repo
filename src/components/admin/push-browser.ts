@@ -23,9 +23,15 @@ export type PushDeviceActions = {
   >
 }
 
+/** Alta y baja del dispositivo: lo único que necesita el portal del jugador. */
+export type PushSubscriptionActions = Pick<PushDeviceActions, 'subscribe' | 'unsubscribe'>
+
 export const PUSH_IDENTITY_KEY = 'turnogol:push-identity'
 
-export async function syncPushSubscription(sub: PushSubscription, actions?: PushDeviceActions) {
+export async function syncPushSubscription(
+  sub: PushSubscription,
+  actions?: PushSubscriptionActions,
+) {
   const json = sub.toJSON()
   if (!json.endpoint || !json.keys?.p256dh || !json.keys.auth) return null
   const input: DeviceSubscription = {
@@ -53,7 +59,7 @@ export async function syncPushSubscription(sub: PushSubscription, actions?: Push
 }
 
 /** Se revoca localmente aunque falle la red: el celular no conserva avisos de otra cuenta. */
-export async function disableCurrentPush(actions?: PushDeviceActions): Promise<void> {
+export async function disableCurrentPush(actions?: PushSubscriptionActions): Promise<void> {
   if (!('serviceWorker' in navigator)) return
   const registration = await navigator.serviceWorker.getRegistration('/')
   const notifications = await registration?.getNotifications?.().catch(() => [])

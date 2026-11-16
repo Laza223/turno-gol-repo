@@ -124,6 +124,8 @@ const PLAYER_SCOPED_DECLARADA = [
   'courts',
   'payments',
   'player_favorites',
+  // Push del jugador (migr. 113): sus dispositivos, por jugador.
+  'player_push_subscriptions',
   'player_tenant_relationships',
   'players',
   // RIVAL (migr. 099): por jugador, nunca por complejo.
@@ -553,6 +555,8 @@ describe('0. controles', () => {
     expect(actual['ops_alerts'] ?? 'SIN PERMISOS').toBe('SIN PERMISOS')
     // Ídem el dedupe de las alertas de RIVAL (migr. 099): solo el worker.
     expect(actual['rival_alert_sends'] ?? 'SIN PERMISOS').toBe('SIN PERMISOS')
+    // Ídem el dedupe de los recordatorios al jugador (migr. 113).
+    expect(actual['player_reminder_sends'] ?? 'SIN PERMISOS').toBe('SIN PERMISOS')
   })
 
   it('0.3 control NEGATIVO: cada fila sembrada SÍ se ve desde su propio contexto', async () => {

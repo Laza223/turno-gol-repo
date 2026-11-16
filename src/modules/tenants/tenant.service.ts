@@ -245,7 +245,6 @@ function rowToTenantRow(t: typeof tenants.$inferSelect): TenantRow {
     mpDisconnectedAt: t.mpDisconnectedAt,
     latitude: coordinateFromColumn(t.latitude),
     longitude: coordinateFromColumn(t.longitude),
-    onlineCapMonth: t.onlineCapMonth,
     onlinePausedAt: t.onlinePausedAt,
   }
 }

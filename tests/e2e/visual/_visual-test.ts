@@ -26,15 +26,26 @@ export const test = base
 export { expect }
 
 /**
- * El banner de notificaciones es `fixed bottom-left z-40` y aparece por tiempo:
- * sin esto entra en la foto de cualquier pantalla logueada, y encima de forma
- * intermitente. Mismo mecanismo que qa-happy-paths/_qa/session.ts.
+ * El modal propio del permiso de push y el cartel de "activá las notificaciones"
+ * entran en la foto de cualquier pantalla logueada (un navegador de test nunca
+ * recibe avisos). El modal se marca como visto; el cartel se esconde con CSS.
  *
  * Hay que llamarlo ANTES del primer goto.
  */
 export async function suppressPushBanner(page: Page): Promise<void> {
   await page.context().addInitScript(() => {
-    localStorage.setItem('turnogol:notif-banner-dismissed-at', String(Date.now()))
+    // El modal propio del permiso se abre una vez por situación: marcarlas
+    // todas como vistas (staff y jugador) para que no tape la pantalla.
+    for (const audience of ['', ':player'])
+      for (const status of ['unsupported', 'install_required', 'denied', 'unsubscribed'])
+        localStorage.setItem(`turnogol:notif-modal-seen${audience}:${status}`, String(Date.now()))
+    // El cartel de "activá las notificaciones" queda fijo mientras el dispositivo
+    // no reciba avisos (siempre, en un navegador de test): fuera de la foto.
+    document.addEventListener('DOMContentLoaded', () => {
+      const style = document.createElement('style')
+      style.textContent = '[data-push-banner]{display:none!important}'
+      document.head.appendChild(style)
+    })
   })
 }
 

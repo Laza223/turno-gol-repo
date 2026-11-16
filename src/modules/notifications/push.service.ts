@@ -8,8 +8,8 @@
  * - MUST be called AFTER the parent transaction commits (same pattern as
  *   dispatchEmail). pg-boss send is at-least-once — retryLimit=3 puede
  *   re-entregar un job tras un crash/error POST-envío. F3 (hallazgo D4 🔴):
- *   los pushes con evento identificable (reserva confirmada/cancelada, resumen
- *   diario, MP desconectado, plan SaaS — ver `dedupeKeyFor`) llevan una
+ *   los pushes con evento identificable (reserva confirmada/cancelada,
+ *   MP desconectado, plan SaaS — ver `dedupeKeyFor`) llevan una
  *   dedupeKey determinística que el worker reclama vía INSERT ... ON CONFLICT
  *   DO NOTHING en push_send_log ANTES de enviar (push.worker.ts) — así un retry
  *   no duplica el push visible al admin. Otros payloads (ej. el push de test de
@@ -55,9 +55,6 @@ function dedupeKeyFor(
   }
   if (payload.type === BOOKING_CANCELED_PUSH_TYPE && payload.bookingId) {
     return `push:booking-canceled:${payload.bookingId}:${subscriptionId}`
-  }
-  if (payload.type === 'daily_summary' && payload.date) {
-    return `push:daily-summary:${tenantId}:${payload.date}:${subscriptionId}`
   }
   // MercadoPago desconectado (mp-connection.service): un aviso por transición,
   // identificada por el instante de la marca.

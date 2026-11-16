@@ -48,7 +48,7 @@ export const GratisEnPausa: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: 'Ya marqué mis ocupados' })).toBeVisible()
+    await expect(canvas.getByRole('button', { name: 'Ya anoté mis turnos' })).toBeVisible()
   },
 }
 

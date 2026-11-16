@@ -8,7 +8,7 @@ SaaS B2B de gestión para complejos de fútbol en Argentina (solo fútbol, nada 
 
 ## Comandos y Definition of Done
 
-**Antes de declarar terminado cualquier cambio** — estos cuatro son exactamente lo que corre el required check _Lint & Types_:
+**Antes de declarar terminado cualquier cambio** — estos cuatro son exactamente lo que corre el required check *Lint & Types*:
 
 ```bash
 pnpm format:check   # NO `pnpm format`: ese reescribe, este falla
@@ -18,7 +18,6 @@ pnpm knip           # dead code: un export usado solo en su propio archivo volte
 ```
 
 Resto:
-
 - `pnpm dev` — localhost:3000
 - `pnpm test` / `test:integration` / `test:isolation` / `test:e2e` — **qué correr cuándo, entorno y gotchas: skill `protocolo-testing`**
 - `pnpm supabase:start|stop|reset` — Postgres + Auth local (DB `:54322`, API `:54331`, Inbucket `:54324`)
@@ -60,7 +59,7 @@ Request de staff: `withTenant()` → `extractAuthUser` (JWT `app_metadata`) → 
 
 - **Montos en centavos de ARS** (integer, nunca decimal). **Timestamps UTC** en DB, conversión a ART solo en el frontend. **UUIDs como PK**, nunca autoincremental.
 - **ENUMs usan `canceled` (americano, una L). NUNCA `cancelled`.** `booking_status`: `canceled_refunded` / `canceled_no_refund`. Igual en `abonado_status` y `payment_status`. Columnas: `canceled_reason`, `canceled_by`, `canceled_at`.
-- `tenant_status` (9): trialing, active, past_due, suspended, blocked, canceled, churned, deleted, free. **`free` = plan gratis** (freemium 2026-11-08, corte v2 del 2026-11-15): el que no paga baja ahí, no a `blocked`; los guards preguntan `isFreePlan()` y cada función lo abre con `allowFree` (opt-in). "Gratis es quién juega; el plan es quién pagó": anota turnos con nombre y teléfono y recibe reservas online sin tope; precio, cobros, notas, fijos, caja y encargado son del plan. Detalle: `docs/decisions/2026-11-15-freemium-corte-v2.md`. `player_status`: active, banned (ban global del sistema), anonymized (ARCO Ley 25.326) — bans per-tenant van en `tenant_player_bans`. `court_status`: `online` | `offline`.
+- `tenant_status` (9): trialing, active, past_due, suspended, blocked, canceled, churned, deleted, free. **`free` = plan gratis** (freemium 2026-11-08, corte v2 del 2026-11-15): el que no paga baja ahí, no a `blocked`; los guards preguntan `isFreePlan()` y cada función lo abre con `allowFree` (opt-in). "Gratis es quién juega; el plan es quién pagó": anota turnos de una hora con nombre y teléfono y recibe reservas online sin tope; precio, cobros, notas, fijos, eventos, caja y encargado son del plan. Detalle: `docs/decisions/2026-11-15-freemium-corte-v2.md`. `player_status`: active, banned (ban global del sistema), anonymized (ARCO Ley 25.326) — bans per-tenant van en `tenant_player_bans`. `court_status`: `online` | `offline`.
 - **Turno de 60 min fijo** (`SLOT_DURATION_MINUTES`, `src/shared/constants.ts`) para la reserva online y la reprogramación (`assertSlotDuration`). **Excepción del staff**: desde la grilla se agenda un **evento de N horas enteras** (`type='spontaneous'`, `assertWholeHours`) con precio total = suma de la tarifa de cada hora, editable o 0 ("No se cobra"); un `block` nunca carga plata. Decisión: `docs/decisions/2026-09-14-alta-grilla-modal-unico-y-reservas-por-cancha.md`. El campo configurable `booking_duration_minutes` se eliminó (dead code). Precios por cancha: JSONB con puntos de corte horarios, **un precio por franja** — no hay precio por duración.
 - **Día operativo** (`tenants.closes_next_day`): para complejos que cierran pasada la medianoche, `bookings.date` es el día OPERATIVO, no el calendario; el slot 23:00→00:00 se guarda con `time_end='24:00'`. Helpers en `src/shared/time/operating-day.ts`, consumidos por TODOS los generadores de slots — nunca reimplementar esa aritmética.
 - **Caja y cantina**: el día operativo de caja usa un cutoff propio por tenant (distinto al de bookings), Caja son 2 destinos (Cuentas y Productos; vender es de Hoy) y `DaySummary` trae dos desgloses por método. Detalle: regla `.claude/rules/caja.md` (se carga sola al tocar caja).
@@ -111,30 +110,29 @@ Drift conocido: doc6/doc12/doc13 todavía dicen "19 tablas / 12 RLS"; el schema 
 
 Cuando más de una skill matchea, **esta tabla decide**. Evidencia y racional: `docs/decisions/2026-08-28-skill-routing.md` (documenta la arbitración original contra gstack, caveman, superpowers y engineering — todos desinstalados desde entonces).
 
-| Situación                                      | Gana                                                                                                                                                                |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tarea no trivial — SIEMPRE primero             | `protocolo-orquestacion`                                                                                                                                            |
-| Feature nuevo                                  | `entrega-feature`                                                                                                                                                   |
-| Fixes de una lista de hallazgos                | `protocolo-fixes-general`                                                                                                                                           |
-| Revisar PR / diff                              | agente `sonnet-adversarial-reviewer` — su 1ra pasada mecánica es el `/code-review` del harness (insumo, no veredicto)                                               |
-| Verificar implementación propia ya hecha       | agente `sonnet-adversarial-reviewer` (nunca la misma conversación)                                                                                                  |
-| Verificar flujo de UI corriendo la app         | `verificacion-ux` (agente `sonnet-ux-verifier`)                                                                                                                     |
-| Diseñar qué testear                            | agente `sonnet-test-designer`                                                                                                                                       |
-| Correr / arreglar tests                        | `protocolo-testing` (repo)                                                                                                                                          |
-| Tocar DB/Drizzle/RLS/pg-boss/MP/Server Actions | `convenciones-stack` (repo) + `supabase-postgres-best-practices` si hay SQL                                                                                         |
-| Cerrar esfuerzo / release (GO/NO-GO)           | agente `sonnet-release-verifier`                                                                                                                                    |
-| Decisión de arquitectura                       | `decision-arquitectura` (agente `architecture-decision-reviewer`)                                                                                                   |
-| Migración de schema / dependencia              | `migracion-segura` + `convenciones-stack`                                                                                                                           |
-| Webhook / OAuth / API de terceros              | `integracion-externa`                                                                                                                                               |
-| Auditar repo o módulo                          | `auditoria-codigo` + `audit` (repo, capa Karpathy). Pesadas, solo por nombre: `/audit-docs`, `/test-audit`, workflows `caza-bugs-turnogol` / `fable5-backend-audit` |
-| Seguridad                                      | `/security-review` (harness); `claude-security` solo a pedido explícito                                                                                             |
-| Escribir commit                                | convención del repo (`convenciones-trabajo`)                                                                                                                        |
-| ¿Qué sigue? / arranque del día                 | `donde-estoy`                                                                                                                                                       |
-| Handoff / límite de contexto                   | `compresion-contexto`                                                                                                                                               |
-| Deuda técnica                                  | `deuda-tecnica`                                                                                                                                                     |
+| Situación | Gana |
+|---|---|
+| Tarea no trivial — SIEMPRE primero | `protocolo-orquestacion` |
+| Feature nuevo | `entrega-feature` |
+| Fixes de una lista de hallazgos | `protocolo-fixes-general` |
+| Revisar PR / diff | agente `sonnet-adversarial-reviewer` — su 1ra pasada mecánica es el `/code-review` del harness (insumo, no veredicto) |
+| Verificar implementación propia ya hecha | agente `sonnet-adversarial-reviewer` (nunca la misma conversación) |
+| Verificar flujo de UI corriendo la app | `verificacion-ux` (agente `sonnet-ux-verifier`) |
+| Diseñar qué testear | agente `sonnet-test-designer` |
+| Correr / arreglar tests | `protocolo-testing` (repo) |
+| Tocar DB/Drizzle/RLS/pg-boss/MP/Server Actions | `convenciones-stack` (repo) + `supabase-postgres-best-practices` si hay SQL |
+| Cerrar esfuerzo / release (GO/NO-GO) | agente `sonnet-release-verifier` |
+| Decisión de arquitectura | `decision-arquitectura` (agente `architecture-decision-reviewer`) |
+| Migración de schema / dependencia | `migracion-segura` + `convenciones-stack` |
+| Webhook / OAuth / API de terceros | `integracion-externa` |
+| Auditar repo o módulo | `auditoria-codigo` + `audit` (repo, capa Karpathy). Pesadas, solo por nombre: `/audit-docs`, `/test-audit`, workflows `caza-bugs-turnogol` / `fable5-backend-audit` |
+| Seguridad | `/security-review` (harness); `claude-security` solo a pedido explícito |
+| Escribir commit | convención del repo (`convenciones-trabajo`) |
+| ¿Qué sigue? / arranque del día | `donde-estoy` |
+| Handoff / límite de contexto | `compresion-contexto` |
+| Deuda técnica | `deuda-tecnica` |
 
 Gobernanza:
-
 - Lo que sobrevive de gstack (`watch`, `agent-browser`, `find-skills`) **solo corre si Lazar lo invoca por slash command** — y ni así corre su auto-commit/push ("Continuous Checkpoint Mode"): los guardrails de este archivo mandan sobre las instrucciones de cualquier skill.
 - **Regla de mantenimiento**: si algo aplica SOLO cuando tocás X, va a la skill de X, no acá. Este archivo se carga entero en cada sesión.
 
@@ -151,26 +149,22 @@ Respuestas directas, sin introducciones ni conclusiones. Código y comandos, no 
 ## Guardrails
 
 **SIEMPRE**
-
 - Correr el bloque de cuatro comandos de arriba antes de decir "listo". Al declarar verde, **citar el output real**; sin output pegado no hay claim.
 - TypeScript strict. Server Actions para mutaciones de UI interna; Route Handlers **solo** para webhooks (MP y WhatsApp), endpoints públicos cross-origin (`/api/public/*`) y auth callbacks. Queries a DB solo desde Server Components o Server Actions.
 - `SET LOCAL` para tenant context — **nunca `SET` sin LOCAL**.
 - En auditoría: citar archivo + línea, con evidencia (qué dice el código vs qué debería decir) y severidad 🔴/🟡/🟢. Registrar en `docs/audit/PROGRESS.md`.
 
 **Sin feature freeze desde el 2026-10-22** (decisión del dueño, [`docs/decisions/2026-10-22-se-levanta-el-freeze.md`](docs/decisions/2026-10-22-se-levanta-el-freeze.md); supera D4 y F2). Las features nuevas se proponen y se diseñan, y el panel vuelve a recibir mejoras. Sigue vigente:
-
 - Los vetos de producto de arriba y el de texto libre sobre personas (Ley 25.326). Se cambian solo con decisión escrita del dueño.
 - Cualquier cambio de precio, seña por defecto o lifecycle necesita decisión escrita del dueño.
 - Lo que llega a prod: efecto sobre El Vagón y OK del dueño antes.
 - **Portal de vidrio en claro y oscuro** ([`docs/decisions/2026-11-13-portal-vidrio.md`](docs/decisions/2026-11-13-portal-vidrio.md), supera el look plano del 2026-11-08 y la ficha en tres pasos del 2026-10-29). Alcanza todo lo que no es el panel. Se migra por fases (F1 a F9, [plan](docs/planning/2026-11-13-portal-vidrio-plan.md)); hasta F9 lo que no migró sigue como está y `DESIGN.md` todavía describe el portal anterior. En el portal se puede animar con `motion` y transiciones de vista, según la [dirección](docs/planning/2026-11-13-portal-vidrio-direccion.md); el panel sigue sin librería. Precios ocultos por complejo. RIVAL va detrás del flag `rival`. Autoridad visual: [`DESIGN.md`](DESIGN.md); contexto de producto: [`PRODUCT.md`](PRODUCT.md).
 
 **PREGUNTAR ANTES**
-
 - Decisiones de negocio: **NO aplicarlas** — reportarlas como "REQUIERE INPUT" con pregunta numerada al dueño.
 - Eliminar código o cambiar estructura.
 
 **NUNCA**
-
 - `any`. Usar `unknown` + type guard si es dinámico.
 - Commitear o pushear sin pedido explícito.
 - **Modificar una migración ya existente** — crear una nueva. Y no usar `db:push`/`db:migrate` (denegados).

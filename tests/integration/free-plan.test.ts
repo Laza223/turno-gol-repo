@@ -182,7 +182,7 @@ describe('reservas online del gratis: sin tope (freemium v2)', () => {
 })
 
 describe(`pausa por ${FREE_ONLINE_CANCEL_PAUSE_THRESHOLD} cancelaciones del dueño`, () => {
-  it('pausa al llegar al umbral, "Ya marqué mis ocupados" la levanta y reinicia la cuenta', async () => {
+  it('pausa al llegar al umbral, "Ya anoté mis turnos" la levanta y reinicia la cuenta', async () => {
     const sql = getSql()
     const tenant = await createTestTenant(sql)
     await makeFree(tenant.id)

@@ -35,7 +35,7 @@ interface StatusBannerProps {
   staffRole?: StaffRole
   /** Solo para `free`. */
   freePlan?: FreePlanNotice | null
-  /** "Ya marqué mis ocupados" de la pausa del plan gratis (llega por prop). */
+  /** "Ya anoté mis turnos" de la pausa del plan gratis (llega por prop). */
   resumeOnlineAction?: () => Promise<ActionResult>
   /**
    * Override para Storybook/tests: por default lee `NEXT_PUBLIC_SERVICE_DEGRADED`
@@ -173,9 +173,9 @@ export function StatusBanner({
     )
   }
 
-  // Priority 5: plan gratis (freemium, 2026-11-08). En gratis solo entra el
-  // dueño, así que el botón no depende del rol. La pausa manda sobre el tope:
-  // es lo único que el dueño puede destrabar sin pagar.
+  // Priority 5: plan gratis (freemium, 2026-11-08 y corte v2). En gratis solo
+  // entra el dueño, así que el botón no depende del rol. La pausa es lo único
+  // que corta las reservas online del gratis y el dueño la destraba solo.
   if (tenantStatus === 'free') {
     if (freePlan?.paused) {
       return (
@@ -188,8 +188,8 @@ export function StatusBanner({
             aria-hidden="true"
           />
           <span className="flex-1">
-            Pausamos tus reservas online porque cancelaste varias este mes. Marcá en la grilla los
-            horarios que ya están ocupados y avisanos.
+            Pausamos tus reservas online porque cancelaste varias este mes. Anotá en la grilla los
+            turnos que tomaste por teléfono o en persona y avisanos.
           </span>
           {resumeOnlineAction && <ResumeOnlineButton action={resumeOnlineAction} />}
         </div>

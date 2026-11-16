@@ -503,9 +503,9 @@ export type DayGridBooking = GridBooking & {
 
 export type GridBookingsOptions = {
   /**
-   * Plan gratis (freemium, decisión 4): lo que anotó el staff y los fijos se ven
-   * como "Ocupado", sin nombre ni precio; las reservas online, con el nombre del
-   * jugador. Sin cobros: la caja es del plan pago, así que no hay saldo pendiente.
+   * Plan gratis (freemium v2): todo turno se ve con su nombre y sin plata
+   * (`maskGridBookingForFreePlan`). Sin cobros: la caja es del plan pago, así que
+   * no hay saldo pendiente.
    */
   freePlan?: boolean
 }

@@ -80,7 +80,7 @@ export function BloqueoForm({
         }
         trackConfirmed()
         toast({
-          title: freePlan ? 'Horario marcado como ocupado' : 'Turno bloqueado',
+          title: 'Turno bloqueado',
           description: `${slot.courtName} · ${timeStart}–${timeEnd}`,
           variant: 'success',
         })
@@ -169,7 +169,7 @@ export function BloqueoForm({
         totalCents={null}
         collectedCents={0}
         hideMoney={freePlan}
-        primaryLabel={freePlan ? 'Marcar ocupado' : 'Bloquear cancha'}
+        primaryLabel="Bloquear cancha"
         onCancel={onClose}
         isPending={isPending}
         disabled={isPending}

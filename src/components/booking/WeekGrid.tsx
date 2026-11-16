@@ -69,7 +69,7 @@ type Props = {
   slotPanelActions?: SlotPanelActions
   renderCanteenDialog?: RenderCanteenDialog
   renderChargeModal?: RenderChargeModal
-  /** Plan gratis: misma máscara que la vista por día y alta solo de "Ocupado". */
+  /** Plan gratis: misma máscara que la vista por día y el alta del gratis (Turno y Bloquear). */
   freePlan?: boolean
 }
 

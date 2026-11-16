@@ -33,7 +33,7 @@ export function isFreePlan(tenant: { status: string }): boolean {
   return tenant.status === 'free'
 }
 
-/** Mes calendario ART ('YYYY-MM') de un instante. Es la unidad del tope de reservas online. */
+/** Mes calendario ART ('YYYY-MM') de un instante. Lo usan la pausa y las Métricas del gratis. */
 export function artMonthOf(instant: Date = new Date()): string {
   return artDateOf(instant).slice(0, 7)
 }

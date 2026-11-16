@@ -85,7 +85,7 @@ export async function evaluateFreeOnlinePause(tenantId: string): Promise<boolean
   })
 }
 
-/** "Ya marqué mis ocupados": reabre la reserva online y reinicia la cuenta. */
+/** "Ya anoté mis turnos": reabre la reserva online y reinicia la cuenta. */
 export async function resumeFreeOnlineBooking(tenantId: string, tx: DbTx): Promise<void> {
   await tx.execute(sql`
     UPDATE tenants

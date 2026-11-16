@@ -1,4 +1,5 @@
-import { FREE_PLAN_BLOCK_REASONS } from '@/shared/constants'
+import { FREE_PLAN_BLOCK_REASONS, SLOT_DURATION_MINUTES } from '@/shared/constants'
+import { hhmmToMins } from '@/shared/time/operating-day'
 
 /**
  * Plan gratis (freemium v2, docs/decisions/2026-11-15-freemium-corte-v2.md):
@@ -12,8 +13,14 @@ import { FREE_PLAN_BLOCK_REASONS } from '@/shared/constants'
 export const FREE_PLAN_BOOKING_ERROR =
   'En el plan gratis anotás quién juega. El precio, los cobros y las notas son con el plan.'
 
+/** El Evento de varias horas es del plan: en gratis el turno es de una hora, como en la grilla. */
+export const FREE_PLAN_DURATION_ERROR =
+  'En el plan gratis el turno es de una hora. Los eventos de varias horas son con el plan.'
+
 type ManualBookingInput = {
   type: 'spontaneous' | 'block'
+  timeStart?: string
+  timeEnd?: string
   playerId?: string
   guestName?: string
   guestPhone?: string
@@ -37,6 +44,13 @@ export function freePlanBookingError(input: ManualBookingInput): string | null {
     input.depositStatus !== undefined
   ) {
     return FREE_PLAN_BOOKING_ERROR
+  }
+  if (input.type === 'spontaneous' && input.timeStart && input.timeEnd) {
+    const start = hhmmToMins(input.timeStart)
+    const end = hhmmToMins(input.timeEnd)
+    // El legado `time_end='00:00'` de medianoche cuenta como 24:00.
+    const minutes = (end <= start ? end + 24 * 60 : end) - start
+    if (minutes !== SLOT_DURATION_MINUTES) return FREE_PLAN_DURATION_ERROR
   }
   if (input.type === 'block') {
     const reason = input.guestName ?? 'Ocupado'

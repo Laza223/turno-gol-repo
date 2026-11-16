@@ -95,7 +95,7 @@ describe('StatusBanner — plan gratis', () => {
     )
   })
 
-  it('en pausa: pide marcar los ocupados y muestra el botón para reanudar', () => {
+  it('en pausa: pide anotar los turnos y muestra el botón para reanudar', () => {
     render(
       <StatusBanner
         tenantStatus="free"
@@ -106,7 +106,7 @@ describe('StatusBanner — plan gratis', () => {
       />,
     )
     expect(screen.getByRole('status').textContent).toMatch(/Pausamos tus reservas online/)
-    expect(screen.getByRole('button', { name: 'Ya marqué mis ocupados' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Ya anoté mis turnos' })).toBeTruthy()
     expect(screen.queryByRole('link')).toBeNull()
   })
 })

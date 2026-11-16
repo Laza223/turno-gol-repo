@@ -13,27 +13,27 @@ La regla en una frase: **gratis es quién juega; el plan es quién pagó.**
 ## Decisiones
 
 1. **Agenda con nombre gratis.** El complejo gratis anota sus turnos con nombre y teléfono, sin tope. Sigue sin poder cargar precio, cobros ni notas.
-2. **Tope de reservas online: 20 por cancha por mes.** Reemplaza las 20 por complejo. Un complejo de 5 canchas tiene 100.
+2. **Tope de reservas online: 20 por cancha por mes.** Reemplaza las 20 por complejo. Un complejo de 5 canchas tiene 100. _Reemplazada el 2026-11-16: sin tope (ver el ajuste al final)._
 3. **Los turnos fijos son todos pagos.** En gratis el fijo se anota a mano cada semana. No hay cupo de fijos gratis.
 4. **Con el plan, el logo del complejo va primero** en la imagen de horarios libres para la historia, y el de TurnoGol queda más chico. En gratis la imagen sigue como hoy, con el logo de TurnoGol.
 
 ## Cómo quedan los planes
 
-|                                      | Gratis                | Completo ($30.000 por cancha) | Completo + WhatsApp (+ $15.000) |
-| ------------------------------------ | --------------------- | ----------------------------- | ------------------------------- |
-| Canchas                              | sin límite            | sin límite                    | sin límite                      |
-| Anotar turnos con nombre y teléfono  | sí, sin tope          | sí                            | sí                              |
-| Reservas online                      | 20 por cancha por mes | sin tope                      | sin tope                        |
-| Página, buscador y RIVAL             | sí                    | sí                            | sí                              |
-| Turnos fijos                         | a mano                | se cargan solos               | se cargan solos                 |
-| Cobros, "no cobrado", caja y cantina | no                    | sí                            | sí                              |
-| Encargado                            | no                    | sí                            | sí                              |
-| Jugadores y etiquetas                | no                    | sí                            | sí                              |
-| Métricas                             | resumen del mes       | completas                     | completas                       |
-| Seña y penalidad por cancelar tarde  | no                    | opcional                      | opcional                        |
-| Imagen para la historia              | logo de TurnoGol      | logo del complejo primero     | logo del complejo primero       |
-| Soporte                              | ayuda escrita y video | WhatsApp                      | WhatsApp                        |
-| Asistente de WhatsApp                | no                    | no                            | sí                              |
+| | Gratis | Completo ($30.000 por cancha) | Completo + WhatsApp (+ $15.000) |
+|---|---|---|---|
+| Canchas | sin límite | sin límite | sin límite |
+| Anotar turnos con nombre y teléfono | sí, sin tope | sí | sí |
+| Reservas online | sin tope (ajuste del 16/11) | sin tope | sin tope |
+| Página, buscador y RIVAL | sí | sí | sí |
+| Turnos fijos | a mano | se cargan solos | se cargan solos |
+| Cobros, "no cobrado", caja y cantina | no | sí | sí |
+| Encargado | no | sí | sí |
+| Jugadores y etiquetas | no | sí | sí |
+| Métricas | resumen del mes | completas | completas |
+| Seña y penalidad por cancelar tarde | no | opcional | opcional |
+| Imagen para la historia | logo de TurnoGol | logo del complejo primero | logo del complejo primero |
+| Soporte | ayuda escrita y video | WhatsApp | WhatsApp |
+| Asistente de WhatsApp | no | no | sí |
 
 ## Consecuencias
 
@@ -79,4 +79,4 @@ Lazar lo decidió por select al arrancar la entrega:
 
 ## Estado del código
 
-La entrega va en dos PRs desde `main`. El primero lleva el corte (agenda con nombre gratis), la baja del tope, `/precios`, los términos, `CLAUDE.md` y `.claude/rules/billing-precio.md`. El segundo lleva los avisos y la imagen. La columna `tenants.online_cap_month` queda sin uso; borrarla es una migración aparte.
+La entrega va en dos PRs desde `main`. El primero lleva el corte (agenda con nombre gratis, turnos de una hora en $0), la baja del tope, `/precios`, los términos, `CLAUDE.md`, `.claude/rules/billing-precio.md` y `docs/spec/doc4`. El segundo lleva los avisos y la imagen. La columna `tenants.online_cap_month` queda sin uso; borrarla es una migración aparte.

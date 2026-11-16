@@ -16,6 +16,7 @@ import { registerRetryRefundsWorker } from './retry-refunds.worker'
 import { registerPushSendWorker } from './push.worker'
 import { registerHealthPingWorker } from './health-ping.worker'
 import { registerDailySummaryWorker } from './daily-summary.worker'
+import { registerPlayerRemindersWorker } from './player-reminders.worker'
 import { registerOnboardingAbandonmentWorker } from './onboarding-abandonment.worker'
 import { registerWhatsappTurnWorker } from './whatsapp-turn.worker'
 import { registerRivalMailWorker } from './rival-mail.worker'
@@ -39,6 +40,7 @@ export async function registerAllWorkers(boss: PgBoss): Promise<void> {
   await registerPushSendWorker(boss)
   await registerHealthPingWorker(boss)
   await registerDailySummaryWorker(boss)
+  await registerPlayerRemindersWorker(boss)
   await registerOnboardingAbandonmentWorker(boss)
   await registerWhatsappTurnWorker(boss)
   await registerRivalMailWorker(boss)

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { Logo } from '@/components/ui/logo'
 import { ThemeButton } from '@/components/theme/ThemeButton'
 import { AccountMenu } from './AccountMenu'
+import type { PushSubscriptionActions } from '@/components/admin/push-browser'
 import { IngresarLink } from './IngresarLink'
 import { usePortalSession } from './PortalSessionProvider'
 
@@ -13,6 +14,8 @@ type Props = {
   variant?: 'overlay' | 'solid'
   /** Threaded a AccountMenu — ver el comentario de la prop homónima ahí. */
   signOutAction: () => Promise<void>
+  /** Push del jugador: "Salir" baja este dispositivo antes de cerrar la sesión. */
+  pushActions?: PushSubscriptionActions
 }
 
 /** Pasados `px` de scroll. Cambia una sola vez al cruzar el umbral: no sigue el scroll cuadro a cuadro. */
@@ -45,7 +48,7 @@ const isCurrent = (pathname: string, href: string) =>
  * La sesión llega del PortalSessionProvider (hidratación client-side): el HTML server-rendered es
  * siempre el estado anónimo (habilita ISR). `variant="overlay"` flota sobre el hero de la home.
  */
-export default function PortalHeader({ variant = 'solid', signOutAction }: Props) {
+export default function PortalHeader({ variant = 'solid', signOutAction, pushActions }: Props) {
   const { session, staffPanelPath, rivalEnabled } = usePortalSession()
   const pathname = usePathname() ?? ''
   const condensed = useScrolledPast(8)
@@ -102,6 +105,7 @@ export default function PortalHeader({ variant = 'solid', signOutAction }: Props
                 email={session.email}
                 avatarUrl={session.avatarUrl}
                 signOutAction={signOutAction}
+                pushActions={pushActions}
               />
             </div>
           ) : staffPanelPath ? (

@@ -55,6 +55,7 @@ afterAll(() => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  localStorage.clear()
   requestPermission = vi.fn()
   // No existing registration → initial status resolves to 'unsubscribed', which
   // renders the enable button.
@@ -133,14 +134,12 @@ describe('PushNotificationManager — enable() never hangs', () => {
       btn.click()
     })
 
-    // 'default' (dismissed) must not hide the button nor leave it pending — the
-    // admin can try again.
+    // 'default' (cerró el diálogo del navegador): el modal se cierra y queda el
+    // cartel con "Activar", habilitado para volver a intentar.
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /habilitar notificaciones/i })).toBeTruthy()
+      expect(screen.getByRole('button', { name: 'Activar' })).toBeTruthy()
     })
-    const recovered = screen.getByRole('button', {
-      name: /habilitar notificaciones/i,
-    }) as HTMLButtonElement
+    const recovered = screen.getByRole('button', { name: 'Activar' }) as HTMLButtonElement
     expect(recovered.disabled).toBe(false)
   })
 })

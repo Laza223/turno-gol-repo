@@ -3,6 +3,8 @@ import PortalHeader from './PortalHeader'
 import SiteFooter from './SiteFooter'
 import PortalFrame from './PortalFrame'
 import { PortalSessionProvider, type PortalSessionSeed } from './PortalSessionProvider'
+import { PlayerPushPrompt } from './PlayerPushPrompt'
+import type { PushSubscriptionActions } from '@/components/admin/push-browser'
 
 /**
  * Cascarón único del portal del jugador (público + logueado + post-reserva).
@@ -20,9 +22,15 @@ export default function PortalShell({
   children,
   signOutAction,
   initialSession,
+  pushActions,
 }: {
   children: ReactNode
   signOutAction: () => Promise<void>
+  /**
+   * Alta y baja del push del jugador (decisión 2026-11-16). Por prop, igual que
+   * `signOutAction`: los componentes no importan Server Actions.
+   */
+  pushActions?: PushSubscriptionActions
   /**
    * MEJORA-UX QA: en rutas exclusivas de jugador (`(player)/layout.tsx`), el
    * server YA sabe quién está logueado (tuvo que confirmarlo para no
@@ -35,7 +43,11 @@ export default function PortalShell({
 }) {
   return (
     <PortalSessionProvider initialValue={initialSession}>
-      <PortalFrame header={<PortalHeader signOutAction={signOutAction} />} footer={<SiteFooter />}>
+      <PortalFrame
+        header={<PortalHeader signOutAction={signOutAction} pushActions={pushActions} />}
+        footer={<SiteFooter />}
+      >
+        <PlayerPushPrompt actions={pushActions} />
         {children}
       </PortalFrame>
     </PortalSessionProvider>

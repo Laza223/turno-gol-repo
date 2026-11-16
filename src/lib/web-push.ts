@@ -29,6 +29,28 @@ export type SendPushResult =
 const MAX_PAYLOAD_BYTES = 4 * 1024 // 4KB
 
 /**
+ * Avisos que tienen que sonar al instante (decisión 2026-11-16,
+ * docs/decisions/2026-11-16-push-urgente-permiso-y-recordatorio-jugador.md).
+ * Con `Urgency: normal` (el default de RFC 8030) Android puede retener el push
+ * mientras el teléfono está en reposo (Doze) hasta que alguien lo agarra; con
+ * `high` el servicio de push intenta entregarlo ya y puede despertar el equipo
+ * (Firebase, "Set and manage message priority"). Solo para avisos que siempre
+ * muestran una notificación: un `high` que no se muestra lo degrada FCM.
+ */
+const URGENT_PUSH_TYPES: ReadonlySet<string> = new Set([
+  'booking.confirmed_online',
+  'booking.canceled_by_player',
+  'agenda.daily',
+  'agenda.first_changed',
+  'player.reminder',
+  'test',
+])
+
+function isUrgentPushType(type: string): boolean {
+  return URGENT_PUSH_TYPES.has(type)
+}
+
+/**
  * Allowlisted Web Push service hosts (security scan F6/F10). `endpoint` is
  * attacker-influenced — any staff member can call POST /api/admin/push/subscribe
  * directly with an arbitrary syntactically-valid URL, and the worker later
@@ -97,7 +119,11 @@ export async function sendPushNotification(
       error: 'endpoint host not allowlisted',
     }
   }
-  const json = JSON.stringify(payload)
+  const urgent = isUrgentPushType(payload.type)
+  // `urgent` viaja en el payload para que el service worker deje el aviso fijo
+  // hasta que lo toquen (`requireInteraction`) y vibre: la página no elige el
+  // sonido, eso lo decide el canal del sitio en el teléfono.
+  const json = JSON.stringify(urgent ? { ...payload, urgent: true } : payload)
   const byteLen = Buffer.byteLength(json, 'utf8')
   if (byteLen > MAX_PAYLOAD_BYTES) {
     return {
@@ -115,7 +141,11 @@ export async function sendPushNotification(
     if (TTL === 0) {
       return { success: false, gone: false, statusCode: 0, error: 'notification expired' }
     }
-    const result = await webpush.sendNotification(subscription, json, { timeout: 10_000, TTL })
+    const result = await webpush.sendNotification(subscription, json, {
+      timeout: 10_000,
+      TTL,
+      urgency: urgent ? 'high' : 'normal',
+    })
     const statusCode = result.statusCode ?? 200
     track.notification('notification.push.sent', {
       statusCode,

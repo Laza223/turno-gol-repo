@@ -1,11 +1,21 @@
 import type { ReactNode } from 'react'
 import PortalShell from '@/components/site/PortalShell'
 import { signOutAction } from '@/modules/auth/sign-out.action'
+import { subscribePlayerPushAction, unsubscribePlayerPushAction } from '@/app/(player)/push-actions'
+
+const PLAYER_PUSH_ACTIONS = {
+  subscribe: subscribePlayerPushAction,
+  unsubscribe: unsubscribePlayerPushAction,
+}
 
 // Las páginas de retorno de reserva (éxito / pendiente / error) viven dentro
 // del mismo portal: el jugador queda con cabecera + navegación, no en una
 // tarjeta huérfana. Cada página y cada `loading.tsx` pone su propio cascarón
 // de La Previa (`ReservaDarkShell`). El guard de sesión lo hace cada página.
 export default function ReservaLayout({ children }: { children: ReactNode }) {
-  return <PortalShell signOutAction={signOutAction}>{children}</PortalShell>
+  return (
+    <PortalShell signOutAction={signOutAction} pushActions={PLAYER_PUSH_ACTIONS}>
+      {children}
+    </PortalShell>
+  )
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { disableCurrentPush, type PushSubscriptionActions } from '@/components/admin/push-browser'
 import { Calendar, ChevronDown, LogOut, Settings } from 'lucide-react'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -19,6 +20,7 @@ type Props = {
    * Storybook.
    */
   signOutAction: () => Promise<void>
+  pushActions?: PushSubscriptionActions
 }
 
 // Touch-target 44px (WCAG 2.5.5). `group` habilita el desplazamiento del ícono/label en hover.
@@ -39,7 +41,23 @@ const iconClass =
  * un `role="menu"` (aria-required-children) — un dropdown de navegación con
  * links tampoco es semánticamente un `menu` de aplicación.
  */
-export function AccountMenu({ firstName, lastName, email, avatarUrl, signOutAction }: Props) {
+export function AccountMenu({
+  firstName,
+  lastName,
+  email,
+  avatarUrl,
+  signOutAction,
+  pushActions,
+}: Props) {
+  // Mismo orden que el panel: frenar la resincronización, bajar el dispositivo
+  // mientras la sesión todavía autoriza la baja, y recién ahí cerrar sesión. Si no,
+  // los recordatorios siguen sonando en un celular que quizás ya usa otra persona.
+  async function signOut() {
+    window.dispatchEvent(new Event('turnogol:push-signout'))
+    if (pushActions) await disableCurrentPush(pushActions).catch(() => {})
+    await signOutAction()
+  }
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -116,7 +134,7 @@ export function AccountMenu({ firstName, lastName, email, avatarUrl, signOutActi
 
         <div className="my-1.5 h-px bg-portal-inner-line" />
 
-        <form action={signOutAction}>
+        <form action={signOut}>
           <button type="submit" className={cn(itemClass, 'text-left')}>
             <LogOut className={iconClass} aria-hidden />
             <span className="transition-transform duration-(--dur-2) group-hover:translate-x-0.5">

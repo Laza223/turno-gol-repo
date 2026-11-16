@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import * as Sentry from '@sentry/nextjs'
-import { Bell, X } from 'lucide-react'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
+import {
+  PushPermissionBanner,
+  PushPermissionDialog,
+  type PushAudience,
+} from '@/components/push/PushPermissionPrompt'
 import { toast } from '@/hooks/use-toast'
 import { fetchWithTimeout, withTimeout } from '@/shared/utils/async'
 import {
@@ -12,6 +15,7 @@ import {
   PUSH_IDENTITY_KEY,
   syncPushSubscription,
   type PushDeviceActions,
+  type PushSubscriptionActions,
 } from './push-browser'
 
 type Status =
@@ -30,32 +34,10 @@ const SW_PATH = '/sw.js'
 // (el realtime de la grilla depende de fetch directo), así que no intercepta red.
 const SW_SCOPE = '/'
 const SOUND_ENABLED_KEY = 'turnogol:notif-sound'
-// ENS-11: descartar el banner lo desmonta (no lo oculta) por esta ventana,
-// para que un click real en un botón debajo no lo vuelva a interceptar.
-const DISMISS_KEY = 'turnogol:notif-banner-dismissed-at'
-const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000
+const MODAL_SEEN_KEY = 'turnogol:notif-modal-seen'
 // Safety deadline for the non-abortable service worker activation step so the
 // "Habilitando…" button can never hang forever.
 const SW_READY_TIMEOUT_MS = 10_000
-
-function isDismissedRecently(): boolean {
-  if (typeof window === 'undefined') return false
-  try {
-    const raw = localStorage.getItem(DISMISS_KEY)
-    if (!raw) return false
-    const dismissedAt = Number(raw)
-    if (!Number.isFinite(dismissedAt)) return false
-    const now = Date.now()
-    // R3-3: un timestamp en el futuro (reloj del cliente corrido, o el valor
-    // de localStorage manipulado a mano) da `now - dismissedAt` negativo, que
-    // siempre es < DISMISS_DURATION_MS — el banner quedaría descartado para
-    // SIEMPRE en vez de por la ventana de 7 días. Se trata como inválido.
-    if (dismissedAt > now) return false
-    return now - dismissedAt < DISMISS_DURATION_MS
-  } catch {
-    return false
-  }
-}
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -78,11 +60,38 @@ async function fetchVapidKey(): Promise<string | null> {
   }
 }
 
-type Props = { settings?: boolean; identityKey?: string; actions?: PushDeviceActions }
+type Props = {
+  settings?: boolean
+  /** `false`: no abre el modal solo en esta pantalla (el cartel sigue). */
+  autoOpen?: boolean
+  identityKey?: string
+  /** El panel pasa las cuatro (`/notificaciones` prueba el dispositivo); el portal solo alta y baja. */
+  actions?: PushSubscriptionActions & Partial<Pick<PushDeviceActions, 'test' | 'status'>>
+  /** `player`: el mismo flujo en el portal del jugador, con su copy y sus claves. */
+  audience?: PushAudience
+  bannerClassName?: string
+}
 
-export function PushNotificationManager({ settings = false, identityKey, actions }: Props) {
+const SUCCESS_TOAST: Record<PushAudience, string> = {
+  staff: 'Te vamos a avisar cuando te reserven o te cancelen un turno.',
+  player: 'Te vamos a recordar tus turnos un día antes y 2 horas antes.',
+}
+
+export function PushNotificationManager({
+  settings = false,
+  autoOpen = true,
+  identityKey,
+  actions,
+  audience = 'staff',
+  bannerClassName,
+}: Props) {
+  // Staff y jugador pueden convivir en un mismo dispositivo: cada uno guarda su
+  // identidad y su "ya vio el modal" por separado.
+  const identityStorageKey =
+    audience === 'staff' ? PUSH_IDENTITY_KEY : `${PUSH_IDENTITY_KEY}:player`
+  const seenPrefix = audience === 'staff' ? MODAL_SEEN_KEY : `${MODAL_SEEN_KEY}:player`
   const [status, setStatus] = useState<Status>('idle')
-  const [dismissed, setDismissed] = useState<boolean>(() => isDismissedRecently())
+  const [modalOpen, setModalOpen] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const bcRef = useRef<BroadcastChannel | null>(null)
   const [subscriptionId, setSubscriptionId] = useState<string | null>(null)
@@ -136,7 +145,7 @@ export function PushNotificationManager({ settings = false, identityKey, actions
           const sub = await reg?.pushManager.getSubscription()
           let previous: string | null = null
           try {
-            previous = localStorage.getItem(PUSH_IDENTITY_KEY)
+            previous = localStorage.getItem(identityStorageKey)
           } catch {
             /* Storage bloqueado. */
           }
@@ -150,7 +159,7 @@ export function PushNotificationManager({ settings = false, identityKey, actions
             setStatus(id ? 'subscribed' : 'unsubscribed')
             if (id && identityKey) {
               try {
-                localStorage.setItem(PUSH_IDENTITY_KEY, identityKey)
+                localStorage.setItem(identityStorageKey, identityKey)
               } catch {
                 /* Storage bloqueado. */
               }
@@ -177,7 +186,25 @@ export function PushNotificationManager({ settings = false, identityKey, actions
       document.removeEventListener('visibilitychange', visible)
       window.removeEventListener('turnogol:push-signout', signout)
     }
-  }, [identityKey, actions])
+  }, [identityKey, actions, identityStorageKey])
+
+  // El modal se abre solo UNA vez por dispositivo y por situación (activar,
+  // instalar en iPhone, desbloquear), la primera vez que se llega al panel.
+  // El panel solo existe después del onboarding, así que "primera vez en el
+  // panel" ya es "después del onboarding". Después queda el cartel.
+  useEffect(() => {
+    if (settings || !autoOpen) return
+    if (status === 'idle' || status === 'subscribed' || status === 'pending') return
+    const key = `${seenPrefix}:${status}`
+    try {
+      if (localStorage.getItem(key)) return
+      localStorage.setItem(key, String(Date.now()))
+    } catch {
+      return
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setModalOpen(true)
+  }, [settings, autoOpen, status, seenPrefix])
 
   // Multi-tab dedupe listener: when SW receives push, it broadcasts {id} on
   // the channel. The first tab to ack {id, ack:true} wins and shows the toast
@@ -198,7 +225,6 @@ export function PushNotificationManager({ settings = false, identityKey, actions
         courtName?: string
         dateLabel?: string
         timeLabel?: string
-        summaryLabel?: string
         url?: string
         type?: string
       }
@@ -209,30 +235,24 @@ export function PushNotificationManager({ settings = false, identityKey, actions
       bc.postMessage({ id: data.id, ack: true })
       // Render payload-specific toast: title=courtName, description=date+time.
       // SW broadcasts include courtName/dateLabel/timeLabel from the push payload.
-      // daily_summary (D8, Fase 2): resumen diario, no una reserva nueva.
       // Los tipos nuevos traen `title`/`body` del servidor y mandan; el resto de
       // la cadena es para payloads viejos (mismo criterio que public/sw.js).
-      const isDailySummary = data.type === 'daily_summary'
       const isMpDisconnected = data.type === 'mp_disconnected'
       const title =
         data.title ||
         (isMpDisconnected
           ? 'MercadoPago se desconectó'
-          : isDailySummary
-            ? 'Resumen de ayer'
-            : data.courtName
-              ? `Nueva reserva — ${data.courtName}`
-              : 'Nueva reserva')
+          : data.courtName
+            ? `Nueva reserva — ${data.courtName}`
+            : 'Nueva reserva')
       const description =
         typeof data.body === 'string'
           ? data.body
           : isMpDisconnected
             ? 'Las reservas online entran sin seña hasta que se reconecte.'
-            : isDailySummary
-              ? data.summaryLabel || ''
-              : [data.dateLabel, data.timeLabel].filter(Boolean).join(' · ') ||
-                'Tenés una nueva reserva confirmada en la grilla.'
-      // Verde = buena noticia (reserva nueva, resumen). Una cancelación o un aviso
+            : [data.dateLabel, data.timeLabel].filter(Boolean).join(' · ') ||
+              'Tenés una nueva reserva confirmada en la grilla.'
+      // Verde = buena noticia (reserva nueva). Una cancelación o un aviso
       // de plan no lo son: van con el estilo neutro.
       const isNeutral =
         data.type === 'booking.canceled_by_player' || data.type?.startsWith('plan.') === true
@@ -271,6 +291,9 @@ export function PushNotificationManager({ settings = false, identityKey, actions
         // 'denied' (blocked) and 'default' (dismissed/timed out) both land here;
         // only a true block should hide the button permanently.
         setStatus(permission === 'denied' ? 'denied' : 'unsubscribed')
+        // Bloqueó: el modal pasa a explicar cómo desbloquear. Si solo cerró el
+        // diálogo del navegador, queda el cartel.
+        if (permission !== 'denied') setModalOpen(false)
         return
       }
       // User gesture present: enable sound playback for future broadcasts.
@@ -345,7 +368,7 @@ export function PushNotificationManager({ settings = false, identityKey, actions
       setSubscriptionId(id)
       if (identityKey) {
         try {
-          localStorage.setItem(PUSH_IDENTITY_KEY, identityKey)
+          localStorage.setItem(identityStorageKey, identityKey)
         } catch {
           /* Storage bloqueado. */
         }
@@ -353,7 +376,7 @@ export function PushNotificationManager({ settings = false, identityKey, actions
       setStatus('subscribed')
       toast({
         title: 'Notificaciones habilitadas',
-        description: 'Vas a recibir un aviso cuando llegue una reserva.',
+        description: SUCCESS_TOAST[audience],
         variant: 'success',
       })
     } catch (e) {
@@ -366,15 +389,6 @@ export function PushNotificationManager({ settings = false, identityKey, actions
         variant: 'destructive',
       })
     }
-  }
-
-  function dismiss() {
-    try {
-      localStorage.setItem(DISMISS_KEY, String(Date.now()))
-    } catch {
-      /* noop */
-    }
-    setDismissed(true)
   }
 
   async function disable() {
@@ -391,7 +405,7 @@ export function PushNotificationManager({ settings = false, identityKey, actions
   }
 
   async function testDevice() {
-    if (!actions || !subscriptionId) return
+    if (!actions?.test || !actions.status || !subscriptionId) return
     setTesting(true)
     setMessage('Enviando la prueba a este dispositivo…')
     try {
@@ -491,72 +505,33 @@ export function PushNotificationManager({ settings = false, identityKey, actions
     )
   }
 
-  if (
-    dismissed ||
-    status === 'unsupported' ||
-    status === 'install_required' ||
-    status === 'denied' ||
-    status === 'subscribed' ||
-    status === 'idle'
-  ) {
-    // Render audio always (for autoplay-ready when subscribed). Hide button if
-    // already subscribed / not supported / denied / dismissed. Idle hides until
-    // detection. `dismissed` unmounts the whole card (not just hides it), so it
-    // can never intercept a click on whatever real button sits underneath it
-    // (ENS-11).
-    return (
-      <>
-        <audio ref={audioRef} src="/sounds/notification.mp3" preload="auto" aria-hidden="true" />
-      </>
-    )
-  }
+  // Este dispositivo ya recibe avisos (permiso + suscripción en el servidor) o
+  // todavía se está comprobando: no se muestra nada (decisión 2026-11-16).
+  const audio = (
+    <audio ref={audioRef} src="/sounds/notification.mp3" preload="auto" aria-hidden="true" />
+  )
+  if (status === 'subscribed' || status === 'idle') return audio
 
   return (
-    // EN FLUJO, no `fixed` (🔴 QA 2026-08-13). Flotando abajo-izquierda tapaba —
-    // e INTERCEPTABA el click de— los links del sidebar en desktop (la caja
-    // llegaba a 400px de ancho sobre un sidebar de 240px, y el aside no tiene
-    // z-index), los tabs de AdminBottomNav en mobile (mismo z-40, ganaba por
-    // orden de DOM) y el botón "Guardar" de /settings/avisos en viewports bajos,
-    // donde el click se perdía sin ningún feedback porque `useFormStatus` nunca
-    // llegaba a marcar `pending`. Ya se había intentado achicarlo (ENS-11: la
-    // versión completa tapaba 4 de 9 botones "Reservar turno" en la grilla
-    // mobile) y desmontarlo al descartar; un elemento en flujo cierra la clase
-    // entera: no puede tapar nada, y no depende de mantener sincronizados
-    // offsets con el alto de barras que hoy están hardcodeados en 3 lugares.
-    //
-    // F-005 (QA prod 2026-08-17, punto 2): la versión apilada (título + descripción
-    // + botón, cada uno en su fila) medía 142px en 1366×768 — casi todo lo que le
-    // quedaba de alto a la grilla en una sesión nueva. Una sola fila (ícono + texto
-    // corto + botón + cerrar) baja eso a una línea real, sin volver a `fixed`/flotar
-    // (mismo motivo del comentario de arriba) y sin sacrificar el texto que los
-    // tests de abajo esperan ("¿Habilitar notificaciones?", "Habilitar
-    // notificaciones", "Habilitando…", botón "Cerrar") — se saca la descripción
-    // larga, que ya estaba oculta en mobile y era lo único que sobraba.
-    <div className="card-premium relative mb-4 flex w-full flex-wrap items-center gap-2 p-2.5 sm:flex-nowrap sm:p-3">
-      <Bell className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-      <p className="min-w-0 flex-1 text-xs font-semibold text-foreground sm:text-sm">
-        ¿Habilitar notificaciones?
-      </p>
-      <Link href="/notificaciones" className="text-xs underline">
-        Ver estado
-      </Link>
-      <button
-        type="button"
-        onClick={enable}
-        disabled={status === 'pending'}
-        className="inline-flex h-8 shrink-0 items-center justify-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground shadow-xs transition hover:bg-primary/90 hover:shadow-md active:scale-[0.98] motion-reduce:active:scale-100 disabled:opacity-50 sm:h-9 sm:px-4 sm:text-sm"
-      >
-        {status === 'pending' ? 'Habilitando…' : 'Habilitar notificaciones'}
-      </button>
-      <button
-        type="button"
-        onClick={dismiss}
-        aria-label="Cerrar"
-        className="shrink-0 rounded-md p-1 text-muted-foreground opacity-70 transition-opacity hover:opacity-100 focus:opacity-100 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <X className="h-4 w-4" aria-hidden="true" />
-      </button>
-      <audio ref={audioRef} src="/sounds/notification.mp3" preload="auto" aria-hidden="true" />
-    </div>
+    <>
+      {/* Sin push en este navegador no hay nada que activar: el modal lo explica
+          una vez y no queda un cartel fijo para siempre. */}
+      {status !== 'unsupported' && (
+        <PushPermissionBanner
+          status={status}
+          audience={audience}
+          className={bannerClassName}
+          onOpen={() => setModalOpen(true)}
+        />
+      )}
+      <PushPermissionDialog
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        status={status}
+        audience={audience}
+        onEnable={enable}
+      />
+      {audio}
+    </>
   )
 }

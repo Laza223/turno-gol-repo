@@ -11,6 +11,23 @@ function receiptSignature(deliveryId: string, expires: string): string {
     .digest('base64url')
 }
 
+/**
+ * Campos de recibo para el payload del push, o nada si el secreto no está
+ * configurado. Nunca lanza: un push sin recibo se entrega igual.
+ */
+export function pushReceiptFields(
+  deliveryId: string,
+  expiresAt: Date,
+): { deliveryId: string; receiptToken: string; receiptUrl: string } | Record<string, never> {
+  const secret = process.env.PUSH_RECEIPT_SECRET
+  if (!secret || secret.length < 32) return {}
+  return {
+    deliveryId,
+    receiptToken: createPushReceiptToken(deliveryId, expiresAt),
+    receiptUrl: '/api/public/push/receipt',
+  }
+}
+
 export function createPushReceiptToken(deliveryId: string, expiresAt: Date): string {
   const expires = String(expiresAt.getTime())
   return `${expires}.${receiptSignature(deliveryId, expires)}`

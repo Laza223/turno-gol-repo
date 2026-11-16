@@ -75,7 +75,6 @@ function tenantRow(status: TenantRow['status']): TenantRow {
     mpDisconnectedAt: null,
     latitude: null,
     longitude: null,
-    onlineCapMonth: null,
     onlinePausedAt: null,
   }
 }

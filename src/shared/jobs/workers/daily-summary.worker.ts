@@ -2,10 +2,8 @@ import type { PgBoss } from 'pg-boss'
 import { and, eq, sql as drizzleSql } from 'drizzle-orm'
 import { getWorkerSql, withTenantContext, type DbTx } from '@/shared/db/client'
 import { notifications } from '@/shared/db/schema'
-import { getHoyData } from '@/modules/home/home.service'
-import { addDays, artNowParts } from '@/shared/dates/art'
+import { artNowParts } from '@/shared/dates/art'
 import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
-import { notifyAdminPush } from '@/modules/notifications/push.service'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { enqueueStaffAgendaChange } from '@/modules/notifications/staff-agenda.service'
 import { isStaffNotificationsEnabled } from '@/modules/notifications/staff-notification.service'
@@ -15,51 +13,29 @@ import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import { CRON_WORK_OPTIONS, QUEUE_DAILY_SUMMARY } from '../definitions'
 import { logger } from '@/shared/lib/logger'
 
-const ART_TZ = 'America/Argentina/Buenos_Aires'
 const WEEKLY_TRIGGER = 'weekly_summary.sweep'
-
-/** Sin símbolo de moneda — el caller antepone "$" (mismo criterio que
- *  `AdminLatePaymentData.amountArs` en admin-late-payment.ts). */
-const arsNumberFormatter = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 })
-function formatArsNumber(cents: number): string {
-  return arsNumberFormatter.format(Math.round(cents) / 100)
-}
 
 type SummaryTenant = {
   id: string
   openingHours: OpeningHours
   closedDates: string[] | null
   closesNextDay: boolean
-  dailySummaryEmailOptIn: boolean
   weeklySummaryEmailOptIn: boolean
 }
 
-function dateLabelMedium(date: string): string {
-  const d = new Date(`${date}T12:00:00Z`)
-  const weekday = d
-    .toLocaleDateString('es-AR', { weekday: 'short', timeZone: ART_TZ })
-    .replace('.', '')
-  const day = d.toLocaleDateString('es-AR', { day: 'numeric', timeZone: ART_TZ })
-  const month = d.toLocaleDateString('es-AR', { month: 'long', timeZone: ART_TZ })
-  return `${weekday} ${day} de ${month}`
-}
-
 /**
- * D8 (Fase 2 — docs/planning/2026-08-01-decisiones-de-fase-v2.md §3): resumen
- * diario de AYER (día ya cerrado con certeza, nunca "hoy" — a las 08:00 el día
- * en curso recién empieza). Push siempre (si hay suscripciones); email SOLO
- * opt-in (`tenants.settings.daily_summary_email_opt_in`, default false — el
- * push es gratis, el email tiene costo por tenant×día).
+ * Barrido por minuto de los avisos programados del complejo:
+ * - Agenda de hoy ("Hoy empezás a las X", y si cambia la primera reserva), en el
+ *   sistema v2 (`staff_notifications_v2`).
+ * - Resumen semanal por mail, opt-in, los lunes.
  *
- * Alcance de tenants: `trialing`/`active`/`past_due` — los mismos estados que
- * dejan operar al staff (`BLOCKED_TENANT_STATUSES`/`READ_ONLY_TENANT_STATUSES`
- * en with-tenant.ts excluyen suspended/blocked/churned/deleted/canceled). No
- * tiene sentido mandarle un resumen operativo a un complejo que no puede usar
- * el producto.
+ * El resumen diario de AYER (push y mail opt-in) se eliminó el 2026-11-16 por
+ * decisión del dueño: docs/decisions/2026-11-16-push-urgente-permiso-y-recordatorio-jugador.md.
+ * La cola conserva su nombre (`QUEUE_DAILY_SUMMARY`) para no huerfanar el cron
+ * ya agendado en pg-boss.
  *
- * Reusa getHoyData (mismo agregador que la pantalla en vivo) pasando `date` =
- * AYER — así el resumen y la pantalla "Hoy" nunca pueden divergir en cómo
- * calculan "cobrado"/"ocupación".
+ * Alcance de tenants: `trialing`/`active`/`past_due` — los estados que dejan
+ * operar al staff.
  */
 export async function runDailySummarySweep(opts?: { scheduled?: boolean }): Promise<void> {
   const sql = getWorkerSql()
@@ -69,12 +45,10 @@ export async function runDailySummarySweep(opts?: { scheduled?: boolean }): Prom
       opening_hours: OpeningHours
       closed_dates: string[] | null
       closes_next_day: boolean
-      daily_summary_email_opt_in: boolean | null
       weekly_summary_email_opt_in: boolean | null
     }>
   >`
     SELECT id, opening_hours, closed_dates, closes_next_day,
-           (settings->>'daily_summary_email_opt_in')::boolean AS daily_summary_email_opt_in,
            (settings->>'weekly_summary_email_opt_in')::boolean AS weekly_summary_email_opt_in
     FROM tenants
     WHERE status IN ('trialing', 'active', 'past_due')
@@ -85,13 +59,11 @@ export async function runDailySummarySweep(opts?: { scheduled?: boolean }): Prom
     openingHours: t.opening_hours,
     closedDates: t.closed_dates,
     closesNextDay: t.closes_next_day,
-    dailySummaryEmailOptIn: t.daily_summary_email_opt_in === true,
     weeklySummaryEmailOptIn: t.weekly_summary_email_opt_in === true,
   }))
 
-  // El tick ahora es por minuto para recuperar agenda y detectar cambios. El
-  // legado conserva su horario; el semanal recupera un tick perdido desde08.
-  const summaryDue = !opts?.scheduled || artNowParts().time === '08:00'
+  // El tick es por minuto para recuperar la agenda y detectar cambios; el
+  // semanal recupera un tick perdido desde las 08.
   const weeklyDue = !opts?.scheduled || artNowParts().time >= '08:00'
   for (const tenant of list) {
     try {
@@ -101,11 +73,9 @@ export async function runDailySummarySweep(opts?: { scheduled?: boolean }): Prom
       )
       if (v2) {
         await withTenantContext(tenant.id, (tx) => enqueueStaffAgendaChange(tenant.id, tx))
-      } else if (summaryDue) {
-        await sendTenantSummary(tenant)
       }
     } catch (err) {
-      logger.warn('daily-summary: failed for tenant', {
+      logger.warn('staff-agenda: failed for tenant', {
         module: 'daily-summary.worker',
         tenantId: tenant.id,
         error: err instanceof Error ? err.message : String(err),
@@ -113,8 +83,7 @@ export async function runDailySummarySweep(opts?: { scheduled?: boolean }): Prom
     }
 
     if (!tenant.weeklySummaryEmailOptIn || !weeklyDue) continue
-    // try propio: que falle el diario (un push caído) no se lleve puesto el
-    // semanal, que no depende de él.
+    // try propio: que falle la agenda no se lleve puesto el semanal.
     try {
       // react-doctor-disable-next-line react-doctor/async-await-in-loop
       await sendWeeklySummary(tenant)
@@ -180,57 +149,6 @@ async function sendWeeklySummary(tenant: SummaryTenant): Promise<void> {
       { onlyRole: 'admin' },
     )
   })
-}
-
-async function sendTenantSummary(tenant: SummaryTenant): Promise<void> {
-  const cutoffMins = nightCutoffMins(tenant.openingHours, tenant.closesNextDay)
-  const today = operatingDateOf(new Date(), cutoffMins)
-  const yesterday = addDays(today, -1)
-
-  const data = await withTenantContext(tenant.id, (tx) =>
-    getHoyData(tenant.id, tx, {
-      date: yesterday,
-      cutoffMins,
-      openingHours: tenant.openingHours,
-      closedDates: tenant.closedDates,
-      closesNextDay: tenant.closesNextDay,
-    }),
-  )
-
-  const collectedArs = formatArsNumber(data.numbers.collectedTodayCents)
-  const occupiedLabel = `${data.numbers.occupancy.occupied}/${data.numbers.occupancy.available}`
-  const summaryLabel = `${dateLabelMedium(yesterday)}: $${collectedArs} · ${occupiedLabel}`
-
-  await notifyAdminPush(tenant.id, {
-    type: 'daily_summary',
-    // `date` (día que resume, no "hoy") es lo que push.service.ts usa para
-    // construir la dedupeKey — sin esto un reintento de pg-boss del job
-    // push-send duplicaría el resumen visible al admin.
-    date: yesterday,
-    summaryLabel,
-    url: '/dashboard',
-  })
-
-  if (tenant.dailySummaryEmailOptIn) {
-    // Post-commit dispatch no es necesario: send-email.worker barre 'queued'
-    // cada minuto (mismo criterio que dunning-retry.worker, otro cron no
-    // latency-sensitive).
-    await withTenantContext(tenant.id, (tx) =>
-      enqueueTenantOwnerNotification(
-        {
-          tenantId: tenant.id,
-          templateName: 'daily_summary',
-          triggerEvent: 'daily_summary.sweep',
-          content: {
-            dateLabel: dateLabelMedium(yesterday),
-            collectedArs,
-            occupiedLabel,
-          },
-        },
-        tx,
-      ),
-    )
-  }
 }
 
 export async function registerDailySummaryWorker(boss: PgBoss): Promise<void> {

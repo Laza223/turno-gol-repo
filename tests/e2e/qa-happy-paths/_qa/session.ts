@@ -24,14 +24,17 @@ export async function newAuthedContext(browser: Browser, email: string): Promise
 }
 
 /**
- * Suprime el banner de push (PushNotificationManager, fixed bottom-left z-40 que
- * intercepta clicks en botones de acción — ENS-11). Setea el dismiss key antes de
- * que corran los scripts de página. Llamalo tras browser.newContext(), antes del goto.
+ * Suprime el modal propio del permiso de push (decisión 2026-11-16): lo marca como
+ * visto antes de que corran los scripts de página, para que no tape los clicks. Llamalo tras browser.newContext(), antes del goto.
  */
 export async function suppressPushPrompt(context: BrowserContext): Promise<void> {
   await context.addInitScript(() => {
     try {
-      localStorage.setItem('turnogol:notif-banner-dismissed-at', String(Date.now()))
+      // El modal propio del permiso se abre una vez por situación: marcarlas
+      // todas como vistas (staff y jugador) para que no tape la pantalla.
+      for (const audience of ['', ':player'])
+        for (const status of ['unsupported', 'install_required', 'denied', 'unsubscribed'])
+          localStorage.setItem(`turnogol:notif-modal-seen${audience}:${status}`, String(Date.now()))
     } catch {
       /* noop */
     }

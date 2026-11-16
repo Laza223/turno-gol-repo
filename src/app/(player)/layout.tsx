@@ -4,6 +4,12 @@ import { getPortalSession } from '@/modules/players/portal-session'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
 import { getRivalWelcomeState } from '@/modules/rival/rival.service'
 import PortalShell from '@/components/site/PortalShell'
+import { subscribePlayerPushAction, unsubscribePlayerPushAction } from './push-actions'
+
+const PLAYER_PUSH_ACTIONS = {
+  subscribe: subscribePlayerPushAction,
+  unsubscribe: unsubscribePlayerPushAction,
+}
 
 export default async function PlayerLayout({ children }: { children: ReactNode }) {
   // Sin guard acá: el layout no conoce el pathname del pedido (el middleware no lo expone), así que
@@ -36,6 +42,7 @@ export default async function PlayerLayout({ children }: { children: ReactNode }
   return (
     <PortalShell
       signOutAction={signOutAction}
+      pushActions={PLAYER_PUSH_ACTIONS}
       initialSession={
         session
           ? {

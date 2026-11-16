@@ -200,9 +200,10 @@ export function HoyChargeModal({
   })
   // Plan gratis (freemium v2): la máscara marca el turno con `moneyHidden`. El
   // modal dice quién juega y nada de plata: sin precio, cobro, "Cobrado ✓" ni
-  // "dar por perdido". Mover es del plan. Editar sí, pero solo nombre y
-  // teléfono de un invitado (decisión del 2026-11-16): a la reserva de un
-  // jugador no le queda nada para corregir en gratis.
+  // "dar por perdido". Mover y Cantina son del plan (el server las rechaza en
+  // gratis). Editar sí, pero solo nombre y teléfono de un invitado (decisión
+  // del 2026-11-16): a la reserva de un jugador no le queda nada para corregir
+  // en gratis.
   const moneyHidden = booking.moneyHidden === true
   const gates = {
     ...baseGates,
@@ -210,6 +211,7 @@ export function HoyChargeModal({
     canEdit: baseGates.canEdit && (!moneyHidden || !booking.playerFirstName),
     canReschedule: baseGates.canReschedule && !moneyHidden,
     canWriteOff: baseGates.canWriteOff && !moneyHidden,
+    canSellCanteen: baseGates.canSellCanteen && !moneyHidden,
   }
   // "¿Se cobró?" (freemium v2): el turno ya se jugó y en gratis no hay dónde
   // anotar el cobro. Solo turnos que se jugaron: ni bloqueos, ni torneos, ni

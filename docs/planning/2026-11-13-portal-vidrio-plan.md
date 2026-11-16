@@ -24,7 +24,7 @@ Este cuadro es el registro del esfuerzo. Quien cierra una fase lo actualiza en e
 | F5 | Confirmar el turno y vuelta de la reserva | Hecho el 2026-11-15 | #599, #600 |
 | F6 | Mis reservas, Cuenta e Ingresar | Hecho el 2026-11-15 | #601 |
 | F7 | Rival | Hecho el 2026-11-16 | #602 |
-| F8 | Páginas para complejos, blog, legales y errores | En revisión desde el 2026-11-16 | PR_F8 |
+| F8 | Páginas para complejos, blog, legales y errores | En revisión desde el 2026-11-16 | #606 |
 | F9 | Movimiento entre pantallas, pulido, documentos y limpieza | Pendiente | |
 
 **Gotchas encontrados** (se agregan acá a medida que aparecen):

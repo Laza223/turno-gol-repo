@@ -1,9 +1,12 @@
 import type { GridBooking } from './grid-cells'
 
 /**
- * Plan gratis (freemium, decisión 4): lo que anotó el staff y los fijos se ven
- * como "Ocupado", sin nombre ni precio; las reservas online, con el nombre del
- * jugador. Sin cobros: la caja es del plan pago, así que no hay saldo.
+ * Plan gratis (freemium v2, docs/decisions/2026-11-15-freemium-corte-v2.md):
+ * "gratis es quién juega; el plan es quién pagó". Todo turno se ve con su
+ * nombre, también lo que se anotó en la prueba y los fijos que ya estaban
+ * cargados; la plata no se ve nunca. El precio de una reserva online queda
+ * porque es el que vio el jugador; el de lo que anotó el staff, en 0. Sin
+ * cobros: la caja es del plan pago, así que no hay saldo.
  *
  * Una sola función para el render de servidor (`reservas/queries.ts`) y para la
  * grilla en vivo (`use-booking-realtime.ts`): si divergen, la grilla mostraría el
@@ -16,10 +19,6 @@ export function isOnlineBooking(b: { type: string; createdByStaff: string | null
 export function maskGridBookingForFreePlan<T extends GridBooking>(b: T, online: boolean): T {
   return {
     ...b,
-    // Un bloqueo conserva su motivo (Mantenimiento, Cancha cerrada): no nombra a nadie.
-    guestName: online ? b.guestName : b.type === 'block' ? b.guestName : 'Ocupado',
-    playerFirstName: online ? b.playerFirstName : null,
-    playerLastName: online ? b.playerLastName : null,
     priceSnapshot: online ? b.priceSnapshot : 0,
     paymentMethod: null,
     depositStatus: 'not_required',

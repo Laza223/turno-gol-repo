@@ -1,19 +1,30 @@
-import { FREE_PLAN_BLOCK_REASONS } from '@/shared/constants'
+import { FREE_PLAN_BLOCK_REASONS, SLOT_DURATION_MINUTES } from '@/shared/constants'
+import { hhmmToMins } from '@/shared/time/operating-day'
 
 /**
- * Plan gratis (freemium, decisión 3 de docs/decisions/2026-11-08-freemium-spec-y-estado-free.md):
- * el dueño solo puede marcar un horario como ocupado, sin nombre, teléfono,
- * notas, jugador ni plata. Anotar quién juega y cuánto paga es del plan pago.
+ * Plan gratis (freemium v2, docs/decisions/2026-11-15-freemium-corte-v2.md):
+ * "gratis es quién juega; el plan es quién pagó". El dueño anota turnos con
+ * nombre y teléfono, sin precio, cobro, seña, notas ni jugador vinculado.
  *
- * Lista cerrada a propósito: un motivo libre ("Otro") sería un nombre de
- * persona encubierto y el gratis se volvería un pago sin tope.
+ * Los bloqueos siguen con motivos cerrados: un motivo libre ("Otro") sería una
+ * nota encubierta, y las notas son del plan.
  */
 
 export const FREE_PLAN_BOOKING_ERROR =
-  'En el plan gratis solo podés marcar el horario como ocupado. Anotar quién juega y cuánto paga es con el plan.'
+  'En el plan gratis anotás quién juega. El precio, los cobros y las notas son con el plan.'
+
+/** Editar un turno en gratis: solo el nombre y el teléfono (decisión del 2026-11-16). */
+export const FREE_PLAN_EDIT_ERROR =
+  'En el plan gratis podés corregir el nombre y el teléfono. La duración y el precio son con el plan.'
+
+/** El Evento de varias horas es del plan: en gratis el turno es de una hora, como en la grilla. */
+export const FREE_PLAN_DURATION_ERROR =
+  'En el plan gratis el turno es de una hora. Los eventos de varias horas son con el plan.'
 
 type ManualBookingInput = {
   type: 'spontaneous' | 'block'
+  timeStart?: string
+  timeEnd?: string
   playerId?: string
   guestName?: string
   guestPhone?: string
@@ -27,14 +38,8 @@ type ManualBookingInput = {
 
 /** `null` si la carga entra en el plan gratis; si no, el mensaje para el dueño. */
 export function freePlanBookingError(input: ManualBookingInput): string | null {
-  if (input.type !== 'block') return FREE_PLAN_BOOKING_ERROR
-  const reason = input.guestName ?? 'Ocupado'
-  if (!(FREE_PLAN_BLOCK_REASONS as readonly string[]).includes(reason)) {
-    return FREE_PLAN_BOOKING_ERROR
-  }
   if (
     input.playerId !== undefined ||
-    input.guestPhone !== undefined ||
     input.notesInternal !== undefined ||
     input.notesPlayer !== undefined ||
     (input.priceOverride !== undefined && input.priceOverride !== 0) ||
@@ -43,6 +48,20 @@ export function freePlanBookingError(input: ManualBookingInput): string | null {
     input.depositStatus !== undefined
   ) {
     return FREE_PLAN_BOOKING_ERROR
+  }
+  if (input.type === 'spontaneous' && input.timeStart && input.timeEnd) {
+    const start = hhmmToMins(input.timeStart)
+    const end = hhmmToMins(input.timeEnd)
+    // El legado `time_end='00:00'` de medianoche cuenta como 24:00.
+    const minutes = (end <= start ? end + 24 * 60 : end) - start
+    if (minutes !== SLOT_DURATION_MINUTES) return FREE_PLAN_DURATION_ERROR
+  }
+  if (input.type === 'block') {
+    const reason = input.guestName ?? 'Ocupado'
+    if (!(FREE_PLAN_BLOCK_REASONS as readonly string[]).includes(reason)) {
+      return FREE_PLAN_BOOKING_ERROR
+    }
+    if (input.guestPhone !== undefined) return FREE_PLAN_BOOKING_ERROR
   }
   return null
 }

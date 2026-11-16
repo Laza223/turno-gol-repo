@@ -44,9 +44,12 @@ export function BookingDetailCard({
    * canceled_*) esta card sigue siendo el ÚNICO lugar que muestra esa plata.
    */
   hideMoneyRows = false,
+  /** Plan gratis (freemium v2): la ficha dice quién juega y nada de plata. */
+  moneyHidden = false,
 }: {
   booking: ReservaDetail
   hideMoneyRows?: boolean
+  moneyHidden?: boolean
 }) {
   const visual = reservaStatusVisual({ ...booking, ended: reservaHasEnded(booking, nowMs()) })
   const depositDisplayStatus = resolveDepositDisplayStatus(
@@ -68,10 +71,10 @@ export function BookingDetailCard({
       // por `dd` con hasText 'Ausente'/'Jugada' (reservas-crud, TG-HP-211/212).
       <span key="estado" className="inline-flex flex-wrap items-center gap-1.5">
         <ReservaStatusBadge visual={visual} />
-        {visual.unpaid && <ReservaStatusBadge visual={RESERVA_UNPAID_VISUAL} />}
+        {visual.unpaid && !moneyHidden && <ReservaStatusBadge visual={RESERVA_UNPAID_VISUAL} />}
       </span>,
     ],
-    ...(hideMoneyRows
+    ...(hideMoneyRows || moneyHidden
       ? []
       : ([
           ['Precio', formatArs(booking.priceSnapshot)],
@@ -82,13 +85,17 @@ export function BookingDetailCard({
               : 'Sin seña',
           ],
         ] satisfies Array<[string, ReactNode]>)),
-    [
-      'Método de pago',
-      booking.paymentMethod
-        ? ((METHOD_LABELS as Record<string, string>)[booking.paymentMethod] ??
-          booking.paymentMethod)
-        : '—',
-    ],
+    ...(moneyHidden
+      ? []
+      : ([
+          [
+            'Método de pago',
+            booking.paymentMethod
+              ? ((METHOD_LABELS as Record<string, string>)[booking.paymentMethod] ??
+                booking.paymentMethod)
+              : '—',
+          ],
+        ] satisfies Array<[string, ReactNode]>)),
   ]
 
   return (

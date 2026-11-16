@@ -6,7 +6,7 @@ paths:
 
 # Precio del SaaS
 
-**Tres planes desde el 2026-11-08** (`docs/decisions/2026-11-08-freemium.md`): Gratis ($0, estado `free`, tope `FREE_ONLINE_BOOKINGS_PER_MONTH`), Completo (el precio de abajo) y Completo + WhatsApp (Completo + Plus). Los montos no cambiaron; `/precios` los muestra lado a lado. El Gratis no se factura ni pasa por `pricing.ts`.
+**Tres planes desde el 2026-11-08** (`docs/decisions/2026-11-08-freemium.md`): Gratis ($0, estado `free`; desde el corte v2 del 2026-11-15 anota turnos con nombre y teléfono y recibe reservas online sin tope, `docs/decisions/2026-11-15-freemium-corte-v2.md`), Completo (el precio de abajo) y Completo + WhatsApp (Completo + Plus). Los montos no cambiaron; `/precios` los muestra lado a lado. El Gratis no se factura ni pasa por `pricing.ts`.
 
 **$30.000 por cancha por mes, incluida la primera**, sin techo ni bandas. Anual: 10% de descuento, $27.000 por cancha como equivalente mensual y $324.000 por cancha por cobro anual. Decisión escrita: `docs/decisions/2026-10-20-precio-uniforme-por-cancha.md`; supera P1/P5/P6 del 17/09 para esta baja.
 

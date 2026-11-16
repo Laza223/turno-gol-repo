@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import type { ActionResult } from '@/shared/types/action-result'
 
 /**
- * "Ya marqué mis ocupados": reabre la reserva online del plan gratis en pausa.
+ * "Ya anoté mis turnos": reabre la reserva online del plan gratis en pausa.
  * La action llega por prop (no se importa un módulo 'use server' desde acá).
  */
 export function ResumeOnlineButton({ action }: { action: () => Promise<ActionResult> }) {
@@ -27,7 +27,7 @@ export function ResumeOnlineButton({ action }: { action: () => Promise<ActionRes
         aria-busy={pending}
         className="inline-flex min-h-11 items-center px-1 font-semibold underline underline-offset-2 transition-colors duration-150 shrink-0 hover:text-amber-900 disabled:opacity-60 md:min-h-0 dark:hover:text-amber-300"
       >
-        Ya marqué mis ocupados
+        Ya anoté mis turnos
       </button>
       {error && (
         <span role="alert" className="text-xs">

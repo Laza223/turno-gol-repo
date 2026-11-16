@@ -1,6 +1,5 @@
 'use client'
 
-import { FREE_ONLINE_BOOKINGS_PER_MONTH } from '@/shared/constants'
 import type { ActionResult } from '@/shared/types/action-result'
 import { useState } from 'react'
 import Link from 'next/link'
@@ -84,7 +83,7 @@ export function CancelSubscriptionSection({ status, accessUntil, context = 'sett
   const intro =
     context === 'reactivar'
       ? '¿No querés seguir pagando? Podés dar de baja la suscripción. Tu complejo pasa al plan gratis y tus datos quedan guardados por si volvés.'
-      : `Seguís usando todo hasta el ${formatDate(accessUntil)}, cuando termina lo que ya pagaste. Después pasás al plan gratis: seguís apareciendo y tus jugadores te reservan online, hasta ${FREE_ONLINE_BOOKINGS_PER_MONTH} turnos por mes.`
+      : `Seguís usando todo hasta el ${formatDate(accessUntil)}, cuando termina lo que ya pagaste. Después pasás al plan gratis. Seguís anotando tus turnos y tus jugadores te siguen reservando online.`
 
   const confirmDescription =
     context === 'reactivar'
@@ -97,7 +96,7 @@ export function CancelSubscriptionSection({ status, accessUntil, context = 'sett
       : [
           'Dejamos de cobrarte la cuota.',
           `Seguís usando todo hasta el ${formatDate(accessUntil)}, y tu página sigue tomando reservas.`,
-          'Después pasás al plan gratis: anotar tus turnos, los fijos y la caja deja de estar.',
+          'Después pasás al plan gratis. Seguís anotando tus turnos, pero los cobros, la caja y los fijos dejan de estar.',
           'Tus datos quedan guardados para cuando vuelvas.',
         ]
 

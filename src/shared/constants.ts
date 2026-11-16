@@ -94,19 +94,13 @@ export const TRIAL_ENDING_WARNING_DAYS = [1, 7] as const
 export const SUBSCRIBED_TRIAL_GRACE_DAYS = 3
 
 /**
- * Plan gratis del freemium (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
+ * Plan gratis del freemium (docs/decisions/2026-11-15-freemium-corte-v2.md): las
+ * reservas online no tienen tope (ajuste del 2026-11-16) y el dueño anota sus
+ * turnos con nombre y teléfono.
  *
- * Reservas online que un complejo gratis (`tenants.status = 'free'`) recibe por
- * mes calendario ART. Al llegar, la ficha pasa a "Reservá por WhatsApp" hasta el
- * mes siguiente. Cuentan las reservas online creadas en el mes, menos las que
- * vencieron sin pagar y las que canceló el jugador: las que cancela el dueño
- * cuentan, así el tope no se esquiva cancelando. Decisión de Lazar: 20.
- */
-export const FREE_ONLINE_BOOKINGS_PER_MONTH = 20
-/**
- * Plan gratis: los únicos motivos con los que el dueño marca un horario. Lista
- * cerrada: un motivo libre sería un nombre de persona encubierto. La valida
- * `freePlanBookingError` (modules/bookings/free-plan-block.ts).
+ * Los únicos motivos con los que el dueño gratis bloquea un horario. Lista
+ * cerrada: un motivo libre sería una nota encubierta, y las notas son del plan.
+ * La valida `freePlanBookingError` (modules/bookings/free-plan-block.ts).
  */
 export const FREE_PLAN_BLOCK_REASONS = ['Ocupado', 'Mantenimiento', 'Cancha cerrada'] as const
 

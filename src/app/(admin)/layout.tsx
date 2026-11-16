@@ -11,7 +11,6 @@ import { getProfileGaps } from '@/modules/tenants/setup-gaps'
 import { NO_SETUP_ALERTS, type SetupAlerts } from '@/components/layout/setup-alerts'
 import type { FreePlanNotice, ReadOnlyNotice } from '@/components/layout/status-banner'
 import {
-  artMonthOf,
   BLOCKED_TENANT_STATUSES,
   isFreePlan,
   READ_ONLY_TENANT_STATUSES,
@@ -83,13 +82,10 @@ function readOnlyNotice(tenant: TenantRow): ReadOnlyNotice | null {
   return { origin: 'dunning', until: null }
 }
 
-/** Plan gratis: tope de reservas online del mes y pausa por cancelaciones. */
+/** Plan gratis: pausa de la reserva online por cancelaciones. */
 function freePlanNotice(tenant: TenantRow): FreePlanNotice | null {
   if (!isFreePlan(tenant)) return null
-  return {
-    capReached: tenant.onlineCapMonth === artMonthOf(),
-    paused: tenant.onlinePausedAt !== null,
-  }
+  return { paused: tenant.onlinePausedAt !== null }
 }
 
 /**

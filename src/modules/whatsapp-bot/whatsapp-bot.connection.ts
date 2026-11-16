@@ -34,9 +34,8 @@ export const BOT_FEATURE_FLAG = 'whatsapp_bot'
  * RLS, por eso se lee dentro del contexto del complejo. El período pago solo
  * cuenta cuando el estado es `canceled`.
  *
- * En el plan gratis (`free`) el bot se calla siempre: es del plan pago (Plus) y
- * reserva sin pasar por el tope de reservas online del gratis (condición C2 del
- * ADR, docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
+ * En el plan gratis (`free`) el bot se calla siempre: es del plan pago (Plus),
+ * condición C2 del ADR (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
  */
 export async function isBotTenantOpen(tenantId: string, now: Date): Promise<boolean> {
   const [row] = await withTenantContext(tenantId, (tx) =>

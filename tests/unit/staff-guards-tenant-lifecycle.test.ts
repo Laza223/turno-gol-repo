@@ -303,7 +303,7 @@ describe('requireAdminStaff — page/action guard, redirige a /suspended', () =>
 // solo el dueño. El encargado rebota siempre; la impersonación pasa.
 describe('plan gratis (free)', () => {
   const FREE_PLAN_ERROR =
-    'Esto es con el plan. Activalo para anotar tus turnos, fijos, caja y jugadores.'
+    'Esto es con el plan. Activalo para tener los cobros, la caja, los fijos y tu encargado.'
   const FREE_PLAN_MANAGER_ERROR = 'El encargado entra con el plan. Avisale al dueño del complejo.'
 
   it('sin allowFree (una función del plan pago): el dueño rebota con reason plan', async () => {

@@ -11,7 +11,7 @@ import { insertAuditLog } from '@/shared/db/audit'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { enforce } from '@/shared/rate-limit/apply'
 import { paidPeriodErrorMessage } from '@/modules/bookings/paid-period.guard'
-import { freePlanBookingError } from '@/modules/bookings/free-plan-block'
+import { FREE_PLAN_EDIT_ERROR, freePlanBookingError } from '@/modules/bookings/free-plan-block'
 import { evaluateFreeOnlinePause } from '@/modules/bookings/free-online-pause'
 import { isFreePlan } from '@/modules/tenants/tenant.lifecycle'
 import {
@@ -119,6 +119,12 @@ export async function createBookingAction(data: unknown): Promise<CreateBookingA
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
   }
 
+  // Plan gratis: el turno va con nombre y sin plata. El precio se guarda en $0
+  // ("No se cobra") en vez de tomar la tarifa: al pasar al plan no aparece como
+  // deuda vieja, y un horario sin tarifa cargada no frena el alta.
+  const input = isFreePlan(tenant)
+    ? { ...parsed.data, ...(parsed.data.type === 'spontaneous' ? { priceOverride: 0 } : {}) }
+    : parsed.data
   if (isFreePlan(tenant)) {
     const freeError = freePlanBookingError(parsed.data)
     if (freeError) return { success: false, error: freeError }
@@ -131,7 +137,7 @@ export async function createBookingAction(data: unknown): Promise<CreateBookingA
   let booking: BookingRow
   try {
     booking = await withTenantContext(tenant.id, (tx) =>
-      createManualBooking(tenant.id, { ...parsed.data, staffUserId }, tx),
+      createManualBooking(tenant.id, { ...input, staffUserId }, tx),
     )
   } catch (err) {
     if (err instanceof SlotTakenError) {
@@ -1231,9 +1237,18 @@ export async function editBookingAction(
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
   }
 
-  const auth = await requireOperatorStaff()
+  // Plan gratis (freemium v2, decisión de Lazar del 2026-11-16): corrige el
+  // nombre y el teléfono de un turno ya anotado. La duración y el precio son
+  // del plan.
+  const auth = await requireOperatorStaff({ allowFree: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
+  if (
+    isFreePlan(tenant) &&
+    (parsed.data.timeEnd !== undefined || parsed.data.priceOverride !== undefined)
+  ) {
+    return { success: false, error: FREE_PLAN_EDIT_ERROR }
+  }
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }

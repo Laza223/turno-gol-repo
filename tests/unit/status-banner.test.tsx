@@ -84,10 +84,10 @@ describe('StatusBanner — solo lectura (suspended)', () => {
   })
 })
 
-// Plan gratis (freemium, 2026-11-08): banda informativa, con el tope del mes y
-// la pausa por cancelaciones. En gratis solo entra el dueño.
+// Plan gratis (freemium, 2026-11-08 y corte v2): banda informativa y la pausa
+// por cancelaciones. Las reservas online no tienen tope. En gratis solo entra el dueño.
 describe('StatusBanner — plan gratis', () => {
-  it('sin tope ni pausa: cuenta qué es el gratis y ofrece pasar al plan', () => {
+  it('sin pausa: cuenta qué es el gratis y ofrece pasar al plan', () => {
     render(<StatusBanner tenantStatus="free" periodEnd={null} serviceDegraded={false} />)
     expect(screen.getByRole('status').textContent).toMatch(/Estás en el plan gratis/)
     expect(screen.getByRole('link', { name: 'Pasar al plan' }).getAttribute('href')).toBe(
@@ -95,30 +95,18 @@ describe('StatusBanner — plan gratis', () => {
     )
   })
 
-  it('con el tope del mes: dice que los jugadores ya reservaron 20 turnos', () => {
+  it('en pausa: pide anotar los turnos y muestra el botón para reanudar', () => {
     render(
       <StatusBanner
         tenantStatus="free"
         periodEnd={null}
         serviceDegraded={false}
-        freePlan={{ capReached: true, paused: false }}
-      />,
-    )
-    expect(screen.getByRole('status').textContent).toMatch(/ya te reservaron 20 turnos online/)
-  })
-
-  it('en pausa: pide marcar los ocupados y muestra el botón para reanudar', () => {
-    render(
-      <StatusBanner
-        tenantStatus="free"
-        periodEnd={null}
-        serviceDegraded={false}
-        freePlan={{ capReached: true, paused: true }}
+        freePlan={{ paused: true }}
         resumeOnlineAction={async () => ({ success: true })}
       />,
     )
     expect(screen.getByRole('status').textContent).toMatch(/Pausamos tus reservas online/)
-    expect(screen.getByRole('button', { name: 'Ya marqué mis ocupados' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Ya anoté mis turnos' })).toBeTruthy()
     expect(screen.queryByRole('link')).toBeNull()
   })
 })

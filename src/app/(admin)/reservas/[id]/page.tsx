@@ -45,17 +45,19 @@ export default async function ReservaDetailPage(props: Props) {
   // super-admin/tenants/[id]/page.tsx.
   if (!isUuid(params.id)) notFound()
 
+  // Plan gratis (freemium v2): el detalle de cualquier turno se ve, con quién
+  // juega y sin plata — los cobros son del plan, así que ni se piden.
+  const freePlan = isFreePlan(tenant)
   const { booking, charges } = await withTenantContext(tenant.id, async (tx) => {
     const detail = await getBookingDetail(tenant.id, params.id, tx)
     if (!detail) return { booking: null, charges: null }
-    const c = CHARGEABLE_STATUSES.has(detail.status)
-      ? await getBookingCharges(tenant.id, params.id, tx)
-      : null
+    const c =
+      !freePlan && CHARGEABLE_STATUSES.has(detail.status)
+        ? await getBookingCharges(tenant.id, params.id, tx)
+        : null
     return { booking: detail, charges: c }
   })
   if (!booking) notFound()
-  // Plan gratis: el detalle de lo que anotó el staff o de un fijo es del plan pago.
-  if (isFreePlan(tenant) && !booking.isOnline) redirect('/reactivar')
 
   return (
     // 2026-09-17 (pedido del dueño): la página usaba 672px, pegada a la
@@ -136,6 +138,7 @@ export default async function ReservaDetailPage(props: Props) {
             // columna) cuando ese bloque existe — no repetir el mismo monto con
             // dos redacciones en dos bloques.
             hideMoneyRows={Boolean(charges)}
+            moneyHidden={freePlan}
           />
 
           <BookingActions
@@ -164,6 +167,7 @@ export default async function ReservaDetailPage(props: Props) {
             cancelBookingAction={cancelBookingAction}
             releaseBlockAction={releaseBlockAction}
             confirmDepositPaymentAction={confirmDepositPaymentAction}
+            moneyHidden={freePlan}
           />
         </div>
       </div>

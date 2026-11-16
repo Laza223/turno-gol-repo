@@ -1,5 +1,5 @@
 import { and, asc, eq, ilike, inArray, sql, type SQL } from 'drizzle-orm'
-import { artMonthOf, effectiveAllowOnlineBooking } from './tenant.lifecycle'
+import { effectiveAllowOnlineBooking } from './tenant.lifecycle'
 import { getDb, getWorkerDb } from '@/shared/db/client'
 import { courts, reviews, tenants } from '@/shared/db/schema'
 import { track, withSpan } from '@/shared/observability'
@@ -166,9 +166,9 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
     conds.push(
       sql`COALESCE((${tenants.settings} ->> 'allow_online_booking')::boolean, true) = true`,
     )
-    // Plan gratis topeado o en pausa: no toma reservas online este mes.
+    // Plan gratis en pausa por cancelaciones: no toma reservas online.
     conds.push(
-      sql`NOT (${tenants.status}::text = 'free' AND (${tenants.onlinePausedAt} IS NOT NULL OR ${tenants.onlineCapMonth} IS NOT DISTINCT FROM ${artMonthOf()}))`,
+      sql`NOT (${tenants.status}::text = 'free' AND ${tenants.onlinePausedAt} IS NOT NULL)`,
     )
   }
 
@@ -260,7 +260,6 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
         coverUrl: tenants.coverUrl,
         settings: tenants.settings,
         status: tenants.status,
-        onlineCapMonth: tenants.onlineCapMonth,
         onlinePausedAt: tenants.onlinePausedAt,
         fromPriceCents: visibleFromPriceCentsSql,
         fromPricePerPlayerCents: visibleFromPricePerPlayerCentsSql,
@@ -297,7 +296,6 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
     allowOnlineBooking: effectiveAllowOnlineBooking({
       status: r.status,
       allowOnlineBookingSetting: (r.settings as TenantSettings).allow_online_booking ?? true,
-      onlineCapMonth: r.onlineCapMonth,
       onlinePausedAt: r.onlinePausedAt,
     }),
     fromPriceCents: r.fromPriceCents ?? null,

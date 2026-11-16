@@ -65,7 +65,7 @@ const STATUS_COPY: Record<string, { title: string; description: string }> = {
   free: {
     title: 'Esto es con el plan',
     description:
-      'Con el plan anotás tus turnos con nombre y precio, cargás los fijos, llevás la caja y sumás a tu encargado. Tus jugadores reservan online sin tope.',
+      'Con el plan anotás el precio y quién pagó, ves lo que falta cobrar, los fijos se cargan solos, llevás la caja y sumás a tu encargado.',
   },
   canceled: {
     title: 'Cancelaste tu suscripción',

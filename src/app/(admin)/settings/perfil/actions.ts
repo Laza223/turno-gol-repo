@@ -25,6 +25,7 @@ import {
   keyFromPublicUrl,
 } from '@/shared/storage/r2'
 import { tenantImageKindSchema } from './perfil.schema'
+import { compressUpload } from '@/shared/images/compress-image'
 
 export type TenantImageActionResult =
   { success: true; url: string } | { success: false; error: string }
@@ -69,7 +70,18 @@ export async function setTenantImageAction(
   }
 
   const previousUrl = formData.get('previousUrl')
-  const bytes = new Uint8Array(await file.arrayBuffer())
+  let bytes: Uint8Array | null
+  try {
+    bytes = await compressUpload(new Uint8Array(await file.arrayBuffer()), parsedKind.data)
+  } catch (err) {
+    captureException(err)
+    return { success: false, error: 'No pudimos subir la imagen. Probá de nuevo en un momento.' }
+  }
+  if (!bytes)
+    return {
+      success: false,
+      error: 'La imagen no se pudo leer. Probá con otra en PNG, JPG o WebP.',
+    }
   const key = `${tenant.id}/${kind}-${crypto.randomUUID()}.webp`
 
   try {

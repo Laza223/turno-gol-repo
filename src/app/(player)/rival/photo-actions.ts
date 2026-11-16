@@ -17,6 +17,7 @@ import { captureException } from '@/lib/sentry'
 import { enforce } from '@/shared/rate-limit'
 import type { ActionResult } from '@/shared/types/action-result'
 import { isR2Configured } from '@/shared/storage/r2-config'
+import { compressUpload } from '@/shared/images/compress-image'
 
 /** Resultado de subir o quitar la foto: `url` es la nueva (o `null` si se quitó). */
 export type RivalPhotoResult = ActionResult<{ url: string | null }>
@@ -53,7 +54,10 @@ export async function uploadRivalPhotoAction(formData: FormData): Promise<RivalP
     const bytes = new Uint8Array(await file.arrayBuffer())
     const check = validatePhotoUpload(bytes)
     if (!check.ok) return fail(check.error)
-    const url = await setPlayerPhoto(g.playerId, bytes)
+    // El recorte del navegador es cuadrado como el logo; el server lo vuelve a comprimir.
+    const compressed = await compressUpload(bytes, 'logo')
+    if (!compressed) return fail('La foto tiene que ser una imagen válida')
+    const url = await setPlayerPhoto(g.playerId, compressed)
     refresh()
     return { success: true, url }
   } catch (err) {

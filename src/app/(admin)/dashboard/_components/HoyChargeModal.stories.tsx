@@ -303,6 +303,21 @@ export const PlanGratisSinPlata: Story = {
     await expect(dialog.queryByText(/Cobrado/)).toBeNull()
     await expect(dialog.queryByRole('button', { name: /Cobrar/ })).toBeNull()
     await expect(dialog.queryByRole('button', { name: /perdido/i })).toBeNull()
+    // Terminado en gratis: el aviso de pasar al plan para anotar el cobro.
+    await expect(dialog.getByText('¿Se cobró?')).toBeVisible()
+    await expect(dialog.getByRole('link', { name: 'Ver el plan' })).toHaveAttribute(
+      'href',
+      '/reactivar',
+    )
+  },
+}
+
+export const PlanGratisTodaviaNoTermino: Story = {
+  args: scenario(enJuego({ priceSnapshot: 0, pending: 0, totalPaid: 0, moneyHidden: true })),
+  play: async () => {
+    const dialog = await openDialog()
+    await expect(dialog.getByText('Juan Pérez')).toBeVisible()
+    await expect(dialog.queryByText('¿Se cobró?')).toBeNull()
   },
 }
 

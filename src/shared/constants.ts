@@ -60,8 +60,12 @@ export const LATE_CANCEL_BAN_DAYS = [7, 30] as const
 /**
  * Días de prueba gratuita. Fijado en `createTenantWithTrial`; se declara acá
  * para que los avisos de abajo se lean contra el mismo número.
+ *
+ * 14 desde el 2026-11-16 (`docs/decisions/2026-11-16-se-vende-gratis-prueba-14-dias.md`):
+ * afuera se vende gratis y la prueba del Completo no se anuncia. No pongas este
+ * número en el copy de venta.
  */
-export const TRIAL_DAYS = 30
+export const TRIAL_DAYS = 14
 
 /**
  * Umbrales (en días restantes) a los que se avisa que la prueba se termina.

@@ -27,7 +27,7 @@ Hola [nombre]! Te escribimos de TurnoGol. Vimos el Insta de [complejo] —
 por historias"]. Con TurnoGol llevás la noche del complejo desde el celu:
 fijos, cobro por equipo, caja y buffet. Y tus clientes reservan solos desde
 un link, a cualquier hora. Si querés, también piden seña por MercadoPago.
-Lo probás 30 días gratis y sin tarjeta, y te lo dejamos configurado.
+Es gratis, no te pedimos ningún dato de pago y te lo dejamos configurado.
 ¿Te mostramos cómo queda con tus canchas? Son 15 minutos, pasamos por el
 complejo.
 ```
@@ -171,15 +171,15 @@ Muchachos, les paso algo que uso en [complejo] hace [N] semanas: TurnoGol.
 [Lo que más le sirvió, con sus palabras.] En el mostrador se anota cada
 turno y cada venta de la cantina, y ves qué se cobró y qué no [sin estar
 ahí]. Es un sistema de Luján, solo para complejos de fútbol: te lo dejan
-andando con tus canchas y tus precios, y lo probás 30 días gratis, sin
-tarjeta. Escribiles: [link wa.me con "Hola, vengo de parte de [complejo]"]
+andando con tus canchas y tus precios, y es gratis, sin
+ningún dato de pago. Escribiles: [link wa.me con "Hola, vengo de parte de [complejo]"]
 ```
 
 Cuando exista su link `/r/<código>`, se suma al final. Nunca pongas números suyos que él no aprobó.
 
 ## 9. Respuestas rápidas (guardarlas en WhatsApp Business)
 
-- **"¿Cuánto sale?"** → "Son $30.000 por mes por cancha, incluida la primera. Con 4 canchas son $120.000, con 5 $150.000 y con 6 $180.000; pagando el año, 10% menos. Sin comisión por reserva: es un fijo, te cuelguen el turno o no. Los primeros 30 días son gratis y sin tarjeta. ¿Cuántas canchas tenés?" _(fuente: `src/modules/billing/pricing.ts`, [`2026-10-20-precio-uniforme-por-cancha.md`](../decisions/2026-10-20-precio-uniforme-por-cancha.md). El asistente de WhatsApp (TurnoGol Plus) es aparte. Es precio final, sin IVA aparte ([decisión del 2026-10-31](../decisions/2026-10-31-iva-precio-final.md)).)_
+- **"¿Cuánto sale?"** → "Son $30.000 por mes por cancha, incluida la primera. Con 4 canchas son $120.000, con 5 $150.000 y con 6 $180.000; pagando el año, 10% menos. Sin comisión por reserva: es un fijo, te cuelguen el turno o no. Y empezás gratis, sin ningún dato de pago. ¿Cuántas canchas tenés?" _(fuente: `src/modules/billing/pricing.ts`, [`2026-10-20-precio-uniforme-por-cancha.md`](../decisions/2026-10-20-precio-uniforme-por-cancha.md). El asistente de WhatsApp (TurnoGol Plus) es aparte. Es precio final, sin IVA aparte ([decisión del 2026-10-31](../decisions/2026-10-31-iva-precio-final.md)).)_
 - **"¿Es una app que tienen que bajar?"** → "No, es un link. Lo abrís del navegador como una página. Tus clientes no bajan nada."
 - **"Mandame info"** → "Te mandamos un video de 1 minuto que lo muestra andando [link]. Pero la verdad: en 15 minutos en el complejo lo ves con TUS canchas y decidís mejor. ¿Cuándo estás?"
 
@@ -193,7 +193,7 @@ Regla: **se potencia el encuadre, nunca el número** ([`2026-09-26-referidos.md`
 | Anclaje               | "Unos $1.000 por cancha por día" ($150.000 / 5 canchas / 30 días). "Por cancha, menos de lo que cobrás un turno en el mes." "Lo que cuestan unas 16 o 17 horas de un encargado" (a $8.600-9.200 la hora con cargas). | Compararnos con ATC (R6). "Sale gratis" o "se paga solo".                                                                                                                                                                                                            |
 | Prueba social         | Un cliente con nombre y con su permiso, y "preguntale a él cómo le va".                                                                                                                                              | Cantidad de clientes o testimonios inventados.                                                                                                                                                                                                                       |
 | Reciprocidad          | "Te lo cargamos con tus canchas, precios y fijos antes de que pagues un peso."                                                                                                                                       | —                                                                                                                                                                                                                                                                    |
-| Riesgo cero           | "30 días gratis y sin tarjeta. Si no te sirve, no pagás nada y no tenés que dar de baja nada." "Antes de irte, te bajás tus reservas, tus fijos y tus clientes en Excel."                                            | "Exportás todo": se bajan reservas, turnos fijos y clientes (Ajustes → Tus datos) y la caja mes a mes desde Métricas; cantina y torneos no. "Cuando quieras": un complejo bloqueado (trial vencido sin pagar o mora) no exporta, así que se baja antes de que venza. |
+| Riesgo cero           | "Empezás gratis, sin ningún dato de pago. Si no te sirve el Completo, seguís en el Gratis y no tenés que dar de baja nada." "Antes de irte, te bajás tus reservas, tus fijos y tus clientes en Excel."                                            | "Exportás todo": se bajan reservas, turnos fijos y clientes (Ajustes → Tus datos) y la caja mes a mes desde Métricas; cantina y torneos no. "Cuando quieras": un complejo bloqueado (trial vencido sin pagar o mora) no exporta, así que se baja antes de que venza. |
 | Autoridad             | "Hecho en Luján, solo para complejos de fútbol."                                                                                                                                                                     | Premios, prensa, "expertos".                                                                                                                                                                                                                                         |
 | Urgencia              | Una fecha real: el premio del referidor vale para las altas hasta el 31/10. "[Complejo] ya lo usa."                                                                                                                  | Cupos inventados: no hay un límite real.                                                                                                                                                                                                                             |
 | Compromiso            | Un sí chiquito primero: "¿Te muestro en 10 minutos cómo queda con tus canchas?"                                                                                                                                      | —                                                                                                                                                                                                                                                                    |

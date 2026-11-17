@@ -16,7 +16,6 @@ import { buildMetadata } from '@/lib/seo/metadata'
 import { buttonVariants } from '@/components/ui/button'
 import { HeroBackdrop } from '@/components/world/HeroBackdrop'
 import { contactWhatsappUrl } from '@/lib/contact'
-import { TRIAL_DAYS } from '@/shared/constants'
 import { cn } from '@/lib/utils'
 import Reveal from '@/components/site/Reveal'
 import { Escenas } from './Escenas'
@@ -26,17 +25,17 @@ import './para-complejos.css'
 export const metadata = buildMetadata({
   title: 'TurnoGol para complejos — La grilla, el cobro y la caja de tu cancha',
   titleAbsolute: true,
-  description: `Turnos, fijos, cobro por equipo y caja con cantina, todo desde el celular. Y si querés, tus jugadores reservan online. ${TRIAL_DAYS} días gratis, sin tarjeta.`,
+  description: `Turnos, fijos, cobro por equipo y caja con cantina, todo desde el celular. Y si querés, tus jugadores reservan online. Gratis, sin cargar ningún dato de pago.`,
   path: '/para-complejos',
 })
 
-const WHATSAPP_URL = contactWhatsappUrl('Hola, quiero probar TurnoGol en mi complejo')
+const WHATSAPP_URL = contactWhatsappUrl('Hola, quiero usar TurnoGol en mi complejo')
 
 function Ctas({ className, style }: { className?: string; style?: CSSProperties }) {
   return (
     <div className={cn('bz-ctas', className)} style={style}>
       <Link href="/register" className={cn(buttonVariants({ variant: 'pill', size: 'pill' }))}>
-        Probalo {TRIAL_DAYS} días
+        Empezá gratis
         <ArrowRight aria-hidden />
       </Link>
       <a
@@ -81,12 +80,11 @@ function Hero() {
         </p>
         <Ctas className="bz-rise" style={{ '--i': 2 } as CSSProperties} />
         <p className="pc-fine bz-rise" style={{ '--i': 3 } as CSSProperties}>
-          Sin tarjeta. Te ayudamos a dejarlo andando.
+          Gratis. No te pedimos ningún dato de pago.
         </p>
-        {/* Freemium (2026-11-08): el gratis va de puerta de entrada, nunca de
-            titular sobre la noche. */}
+        {/* Se vende gratis (2026-11-16): la prueba del Completo no se anuncia. */}
         <p className="pc-fine bz-rise" style={{ '--i': 3 } as CSSProperties}>
-          Aparecé gratis donde los jugadores de tu zona buscan cancha.{' '}
+          Y aparecés donde los jugadores de tu zona buscan cancha.{' '}
           <Link href="/precios">Ver los planes</Link>
         </p>
       </section>
@@ -156,9 +154,12 @@ function Cierre() {
         <Reveal className="bz-cta glass-painted">
           <div>
             <h2 id="cierre-title" className="bz-h2">
-              Probalo {TRIAL_DAYS} días en tu complejo.
+              Empezá gratis en tu complejo.
             </h2>
-            <p className="bz-lead2">Sin tarjeta. Te ayudamos a configurarlo por WhatsApp.</p>
+            <p className="bz-lead2">
+              No te pedimos ningún dato de pago. Mandanos una foto de tu cuaderno y te lo dejamos
+              cargado.
+            </p>
             <Ctas className="justify-start" style={{ marginTop: 24 }} />
           </div>
           <Link

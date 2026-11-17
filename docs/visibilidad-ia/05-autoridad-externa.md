@@ -167,7 +167,7 @@ Si el dueño es conocido tuyo, agregá: "Ojo, poné que me conocés, así queda 
 
 ### P3 · Pedido de inclusión en una lista de terceros
 
-> Hola, ¿qué tal? Somos TurnoGol (turnogol.app), un sistema de gestión hecho solo para complejos de fútbol: reservas online 24/7, seña opcional por Mercado Pago directo a la cuenta del complejo, turnos fijos, cobro por equipo, caja y buffet. Sin comisión por reserva ni cargo al jugador. $30.000 por cancha por mes, 30 días de prueba sin tarjeta.
+> Hola, ¿qué tal? Somos TurnoGol (turnogol.app), un sistema de gestión hecho solo para complejos de fútbol: reservas online 24/7, seña opcional por Mercado Pago directo a la cuenta del complejo, turnos fijos, cobro por equipo, caja y buffet. Sin comisión por reserva ni cargo al jugador. $30.000 por cancha por mes, plan Gratis sin vencimiento y sin pedir ningún dato de pago.
 >
 > Vimos su lista de [nombre de la lista] y creemos que le sirve a quien tiene un complejo de fútbol. Si les sirve, les pasamos capturas y una cuenta de prueba para que lo vean. Si no encaja, todo bien.
 
@@ -197,7 +197,7 @@ Si el dueño es conocido tuyo, agregá: "Ojo, poné que me conocés, así queda 
 >
 > **1:45 Casos (30 s):** "¿Y si pagó uno solo? 'Pagó uno'. ¿Y si mezclan efectivo y Mercado Pago? Se puede."
 >
-> **2:15 Cierre (10 s):** "Probalo 30 días gratis en turnogol.app. Sin tarjeta."
+> **2:15 Cierre (10 s):** "Empezá gratis en turnogol.app. No te pedimos ningún dato de pago."
 >
 > **Descripción:** frase canónica corta + link a turnogol.app/funciones/cobro-por-equipo + capítulos.
 
@@ -211,4 +211,4 @@ Si el dueño es conocido tuyo, agregá: "Ojo, poné que me conocés, así queda 
 
 ### P8 · Descripción para G2, Capterra y Crunchbase
 
-> TurnoGol es el sistema de gestión hecho solo para complejos de fútbol (5, 7 y 11) en Argentina. Los jugadores reservan online las 24 horas sin bajarse una app; el complejo cobra la seña, si quiere, por Mercado Pago directo a su cuenta. Incluye turnos fijos que se repiten solos, cobro por equipo y de a partes, caja de la noche por método de pago, buffet con stock y fiado, bloqueo automático a quien falta dos veces en 90 días, usuario para el encargado y métricas. Sin comisión por reserva ni cargo al jugador. $30.000 ARS por cancha por mes; 30 días de prueba sin tarjeta. Opcional: asistente de WhatsApp con IA (TurnoGol Plus).
+> TurnoGol es el sistema de gestión hecho solo para complejos de fútbol en Argentina, de fútbol 4 a fútbol 11. Los jugadores reservan online las 24 horas sin bajarse una app; el complejo cobra la seña, si quiere, por Mercado Pago directo a su cuenta. Incluye turnos fijos que se repiten solos, cobro por equipo y de a partes, caja de la noche por método de pago, buffet con stock y fiado, bloqueo automático a quien falta dos veces en 90 días, usuario para el encargado y métricas. Sin comisión por reserva ni cargo al jugador. $30.000 ARS por cancha por mes; plan Gratis sin vencimiento y sin pedir ningún dato de pago. Opcional: asistente de WhatsApp con IA (TurnoGol Plus).

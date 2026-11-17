@@ -54,8 +54,8 @@ export function ArticleShell({
         <div className="ar-cta glass-painted">
           <h2>¿Listo para probar un sistema que sí funciona?</h2>
           <p>
-            TurnoGol está diseñado específicamente para canchas de fútbol. Sin contratos, 30 días
-            gratis.
+            TurnoGol está diseñado específicamente para canchas de fútbol. Es gratis y lo dejás
+            cuando quieras.
           </p>
           <a
             href={contactWhatsappUrl('Hola! Quiero saber más sobre TurnoGol para mi complejo.')}

@@ -26,9 +26,9 @@ test.describe('TG-HP-005 — Landing B2B /para-complejos', () => {
     await expect(whatsapp).toHaveAttribute('href', /^https:\/\/wa\.me\/\d+\?text=/)
     await expect(whatsapp).toHaveAttribute('target', '_blank')
 
-    // Step 4: CTA hero "Probalo 30 días" → /register (hero + cierre; se prueba el primero)
+    // Step 4: CTA hero "Empezá gratis" → /register (hero + cierre; se prueba el primero)
     await main
-      .getByRole('link', { name: /Probalo 30 días/ })
+      .getByRole('link', { name: /Empezá gratis/ })
       .first()
       .click()
     await page.waitForURL('/register')
@@ -52,9 +52,9 @@ test.describe('TG-HP-005 — Landing B2B /para-complejos', () => {
       finalUrl: page.url(),
       dbWrites: 'none (página 100% estática)',
       notes:
-        'Cubiertos: CTA hero "Probalo 30 días"→/register, "Escribinos por WhatsApp" con ' +
+        'Cubiertos: CTA hero "Empezá gratis"→/register, "Escribinos por WhatsApp" con ' +
         'href wa.me y target _blank (no se abre: es externo), ancla #features y "Ver precios"' +
-        '→/precios. El "Probalo 30 días" del cierre apunta al mismo /register ya probado ' +
+        '→/precios. El "Empezá gratis" del cierre apunta al mismo /register ya probado ' +
         'en el hero, no se re-testea por redundante. GAP anotado: BusinessHeader/BusinessFooter ' +
         '(fuera de #main-content) repiten CTAs sitewide y no se ejercitaron acá.',
     })

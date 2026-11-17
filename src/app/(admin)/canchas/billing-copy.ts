@@ -46,7 +46,7 @@ export function billingChangeTitle(preview: BillingChangePreview): string {
 export function billingChangeMessage(preview: BillingChangePreview): string {
   const next = formatArs(preview.nextMonthlyCents)
   if (preview.isTrialing) {
-    return `Estás en prueba gratis, así que todavía no te cobramos nada. Cuando empiece a correr tu cuota, va a ser de ${next} por mes.`
+    return `Estás en la prueba del plan Completo, así que todavía no te cobramos nada. Cuando empiece a correr tu cuota, va a ser de ${next} por mes.`
   }
   const current = formatArs(preview.currentMonthlyCents)
   return `Tu cuota pasa de ${current} a ${next} por mes, desde tu próximo cobro. Lo que queda de este mes va sin cargo.`

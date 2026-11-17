@@ -93,7 +93,7 @@ facturadas. Esta tabla es ilustrativa, no es la fuente — la fuente es
 > La decisión del 20/10 supera P6. `plans-data.ts` usa las funciones puras de billing y el test
 > `pricing-sync.test.ts` compara sus parámetros contra el catálogo aplicado.
 
-**Trial**: 30 días gratis, sin tarjeta requerida al inicio.
+**Trial**: 14 días del plan Completo con el alta, sin tarjeta requerida al inicio. No se anuncia afuera: TurnoGol se vende como gratis (`docs/decisions/2026-11-16-se-vende-gratis-prueba-14-dias.md`). Al vencer, baja al plan Gratis.
 **Sin costos de instalación, capacitación ni mantenimiento** (igual que ATC, ya es expectativa del mercado).
 
 ---
@@ -179,7 +179,7 @@ En CUALQUIER momento antes de borrar: [Paga] ──► ACTIVE (datos restaurados
 
 | Parámetro | Valor | Configurable |
 |---|---|---|
-| Duración del trial | 30 días | No (fijo v1) |
+| Duración del trial | 14 días (`TRIAL_DAYS`, desde 2026-11-16) | No (fijo v1) |
 | Acceso durante trial | Completo (todas las features del plan Full) | No |
 | Trial extendido | No existe | — |
 | Datos post-trial | 14 días en solo lectura (`suspended`), después `blocked` (decisión 2026-10-22) | No |
@@ -573,7 +573,7 @@ decisión de producto a tomar explícitamente, no algo que este doc deba dar por
 
 | Decisión de negocio | Requisito técnico concreto |
 |---|---|
-| Trial de 30 días sin tarjeta | Campo `trial_ends_at` en `tenants`. Cron job diario que evalúa expiración. |
+| Trial de `TRIAL_DAYS` (14) sin tarjeta | Campo `trial_ends_at` en `tenants`. Cron job diario que evalúa expiración. |
 | Precio lineal por cancha, sin techo | UNA fila activa en `plans` (`slug='turnogol'`, `max_courts=NULL`) con `price_first_court_cents` / `price_extra_court_cents`, y `tenant_subscriptions.billed_courts`. El monto NO es una columna: lo calcula `src/modules/billing/pricing.ts`. Sin middleware que bloquee crear canchas — solo el piso "no facturar por menos de las prendidas". |
 | Pago mensual y anual | Campo `billing_cycle` (monthly/annual) en suscripción. |
 | Descuento 10% anual | `plans.annual_discount_bps` (1000 bps). Se aplica en el cálculo, no como cupón. El preapproval anual cobra el equivalente mensual con descuento × 12. |

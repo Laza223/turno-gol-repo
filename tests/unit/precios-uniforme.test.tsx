@@ -10,7 +10,10 @@ describe('/precios: precio exacto por cancha', () => {
     render(<PlanSelector />)
     expect(screen.getByRole('radio', { name: 'Mensual', checked: true })).toBeInTheDocument()
     expect(screen.getByText(/\$\s90\.000$/)).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: /empezar 30 días gratis/i })).toHaveLength(1)
+    // Gratis y Completo arrancan igual: el alta es gratis (decisión 2026-11-16).
+    const ctas = screen.getAllByRole('link', { name: /empezar gratis/i })
+    expect(ctas).toHaveLength(2)
+    for (const cta of ctas) expect(cta).toHaveAttribute('href', '/register')
   })
 
   it.each([

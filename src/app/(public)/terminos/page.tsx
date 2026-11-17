@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { REFERRAL_REWARD_CAP } from '@/shared/constants'
+import { REFERRAL_REWARD_CAP, TRIAL_DAYS } from '@/shared/constants'
 import '@/components/site/article.css'
 
 export const metadata: Metadata = {
@@ -139,6 +139,12 @@ export default function TerminosPage() {
                 activar el plan pago. TurnoGol puede pausar la reserva online de un complejo del
                 plan gratis que cancela reiteradamente reservas de jugadores, hasta que el complejo
                 actualice los horarios ocupados.
+              </p>
+              <p>
+                <strong>Prueba del plan pago.</strong> Al darse de alta, el complejo tiene el plan
+                pago sin cargo durante {TRIAL_DAYS} días. Al terminar ese período sigue en el plan
+                gratis, salvo que active la suscripción. Para empezar no se pide ningún dato de
+                pago.
               </p>
               <p>
                 Las condiciones del plan gratis pueden cambiar. Si cambian, lo avisamos por email al

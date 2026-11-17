@@ -11,7 +11,7 @@ import { SignupFlow } from './SignupFlow'
 
 export const metadata: Metadata = {
   title: 'Creá tu complejo',
-  description: 'Cargá tu complejo en pocos toques y probalo 30 días sin costo.',
+  description: 'Cargá tu complejo en pocos toques. Es gratis.',
 }
 
 const PLAYER_ACCOUNT_ERROR =

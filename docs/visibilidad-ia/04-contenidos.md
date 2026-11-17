@@ -34,7 +34,7 @@
     - `H2`: "¿Tenés un complejo de fútbol?"
     - Párrafo de unas 40 palabras: "TurnoGol es el sistema de gestión hecho solo para complejos de fútbol: reservas online las 24 h, seña opcional por Mercado Pago directo a tu cuenta, turnos fijos, cobros por equipo, caja y buffet. Sin comisión por reserva."
     - 3 o 4 chips de rasgos.
-    - CTA primario "Probalo 30 días gratis" → `/register`.
+    - CTA primario "Empezá gratis" → `/register`.
     - Link secundario "Ver precios" → `/precios`.
     - Link "Cómo funciona" → `/para-complejos`.
   - En el pie, sumar `/precios` y `/blog` (después `/guias`).
@@ -68,7 +68,7 @@
   - `H2` Tu equipo. Cubre: encargado con su usuario, push con horario silencioso y resúmenes.
   - `H2` TurnoGol Plus: el asistente de WhatsApp con IA. Es extra ($15.000 por cancha) y "ya lo usa un complejo". No decir "incluido" ni "24/7 solo".
   - `H2` Lo que no hacemos. Va ahí para que la IA no invente: solo fútbol (sin pádel ni básquet) y no cobramos comisión ni le cobramos al jugador.
-  - `H2` Probalo 30 días. Cubre: sin tarjeta, sin permanencia y el CTA.
+  - `H2` Empezá gratis. Cubre: ningún dato de pago, lo dejás cuando quieras y el CTA.
   - FAQ visible de 6 a 8 preguntas con FAQPage, por ejemplo: "¿Le cobran algo al jugador?", "¿Sirve para fútbol 7 y 11?", "¿Puedo cargar mis fijos de una planilla?" y "¿Qué pasa si no uso seña?".
   - Extensión: 1.500 a 2.500 palabras. Las páginas de más de 2.900 palabras recibieron más citas (SE Ranking), pero acá prima no rellenar. Fuerza baja.
 - **Datos que hacen falta:**
@@ -139,7 +139,7 @@
 
 ### B-06 · `llms.txt` — VIS-020
 
-Va con la frase canónica en un blockquote abajo del H1. Incluye el precio en ARS con su vigencia, la prueba de 30 días, las funciones en estado A con una línea cada una y los enlaces markdown a `/para-complejos`, `/precios`, `/nosotros`, `/explorar` y, cuando existan, `/funciones/*` y `/comparar/*`. **No nombra competidores.**
+Va con la frase canónica en un blockquote abajo del H1. Incluye el precio en ARS con su vigencia, que se empieza gratis (sin anunciar la prueba), las funciones en estado A con una línea cada una y los enlaces markdown a `/para-complejos`, `/precios`, `/nosotros`, `/explorar` y, cuando existan, `/funciones/*` y `/comparar/*`. **No nombra competidores.**
 
 Arrancar desde la versión de la rama `chore/llms-txt-enlaces` (worktree `bing-wt`). Es higiene, no palanca: en mayo de 2026 el 97% de los `llms.txt` no recibió ni un pedido (Ahrefs, citado en el prompt).
 
@@ -212,7 +212,7 @@ Una plantilla y contenido único por página. Cada una tiene:
 - Qué pasa en los casos borde: "¿y si…?".
 - Video incrustado, cuando exista, con VideoObject.
 - FAQ de 3 a 5 preguntas.
-- CTA "Probalo 30 días".
+- CTA "Empezá gratis".
 - Enlaces a 2 funciones relacionadas y a `/precios`.
 - Largo: de 700 a 1.200 palabras.
 

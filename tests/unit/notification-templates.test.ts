@@ -229,7 +229,7 @@ describe('renderTrialWelcome', () => {
     expect(html).toContain('Marcelo')
   })
 
-  // El copy tenía "30 días" fijo. El self-signup crea el trial en 30 y a los
+  // El copy tenía "30 días" fijo. El self-signup crea el trial en TRIAL_DAYS y a los
   // pilotos se les extiende después desde soporte, cuando este mail ya salió:
   // el número quedaba contradiciendo lo pactado. Sin días explícitos no se
   // afirma ninguno.
@@ -237,8 +237,8 @@ describe('renderTrialWelcome', () => {
     const { html, text } = renderTrialWelcome(WELCOME_DATA)
     expect(html).not.toContain('30 días')
     expect(text).not.toContain('30 días')
-    expect(html).toContain('Tu prueba gratuita ya está activa')
-    expect(text).toContain('Tu prueba gratuita ya está activa')
+    expect(html).toContain('Te regalamos la prueba del plan Completo')
+    expect(text).toContain('Te regalamos la prueba del plan Completo')
   })
 
   it('con días explícitos los dice, en html y en text', () => {
@@ -268,7 +268,7 @@ describe('renderTrialWelcome', () => {
       ...WELCOME_DATA,
       trialDays: dias as number | undefined,
     })
-    expect(html).toContain('Tu prueba gratuita ya está activa')
+    expect(html).toContain('Te regalamos la prueba del plan Completo')
     expect(html).not.toContain('undefined')
     expect(text).not.toContain('undefined')
     expect(html).not.toMatch(/-?\d+ días? de prueba/)

@@ -127,7 +127,7 @@ describe('createAssistedTenant — camino feliz', () => {
     })
   })
 
-  it('crea el complejo en trial de 30 días, con el dueño como admin y la suscripción, visibles para la app', async () => {
+  it('crea el complejo en trial de TRIAL_DAYS, con el dueño como admin y la suscripción, visibles para la app', async () => {
     const res = await createAssistedTenant(input(), actor)
     if (!res.ok) throw new Error('alta rechazada')
 

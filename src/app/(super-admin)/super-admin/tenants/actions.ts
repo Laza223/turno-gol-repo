@@ -74,7 +74,7 @@ const REJECTIONS: Record<
 
 /**
  * Alta asistida de un complejo (decisión 2026-10-22): crea la cuenta del dueño
- * y el complejo, con 30 días de prueba. Guard triple + rate limit en
+ * y el complejo, con `TRIAL_DAYS` días de prueba. Guard triple + rate limit en
  * `requireSystemAdminAction`; el audit `support.tenant.created` lo escribe el
  * service en la misma transacción del alta.
  */

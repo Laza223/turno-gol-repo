@@ -3,6 +3,7 @@ import { ArrowLeft, Building2 } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { absoluteUrl } from '@/lib/seo/metadata'
 import { requireSystemAdmin } from '@/modules/auth/system-admin.guards'
+import { TRIAL_DAYS } from '@/shared/constants'
 import { createAssistedTenantAction } from '../actions'
 import { AssistedSignupForm } from './_components/assisted-signup-form'
 
@@ -17,7 +18,7 @@ export default async function SuperAdminNewTenantPage() {
       <PageHeader
         variant="plain"
         title="Dar de alta un complejo"
-        subtitle="Creás la cuenta del dueño y el complejo, con 30 días de prueba. Horarios y canchas los carga el dueño."
+        subtitle={`Creás la cuenta del dueño y el complejo, con ${TRIAL_DAYS} días de prueba del Completo. Horarios y canchas los carga el dueño.`}
         back={
           <Link
             href="/super-admin/tenants"

@@ -14,13 +14,13 @@ import './precios.css'
 // La base pública sale del mismo catálogo que la calculadora.
 export const metadata = buildMetadata({
   title: 'Precios — TurnoGol para complejos de fútbol',
-  description: `Plan Gratis para aparecer donde buscan cancha, y Completo a ${formatArs(PLANS[0]!.priceMonthly)} por cancha al mes. Sin comisión por reserva, sin permanencia. 30 días de Completo gratis, sin tarjeta.`,
+  description: `Plan Gratis para aparecer donde buscan cancha, y Completo a ${formatArs(PLANS[0]!.priceMonthly)} por cancha al mes. Sin comisión por reserva y lo dejás cuando quieras. Empezás gratis, sin cargar ningún dato de pago.`,
   path: '/precios',
 })
 
 const HERO_CHIPS = [
-  '30 días de Completo gratis, sin tarjeta',
-  'Mes a mes, sin permanencia',
+  'Empezás gratis, sin dato de pago',
+  'Mes a mes, lo dejás cuando quieras',
   'Sin comisión por reserva',
 ]
 
@@ -43,8 +43,8 @@ const INCLUDED = [
 const STEPS = [
   {
     n: '01',
-    t: 'Probalo gratis 30 días',
-    d: 'Sin tarjeta. Cargás canchas y horarios en menos de 10 minutos, y si te trabás te lo dejamos andando nosotros.',
+    t: 'Empezá gratis',
+    d: 'No te pedimos ningún dato de pago. Cargás canchas y horarios en menos de 10 minutos, y si te trabás te lo dejamos andando nosotros.',
   },
   {
     n: '02',
@@ -53,8 +53,8 @@ const STEPS = [
   },
   {
     n: '03',
-    t: 'Seguí solo si te sirve',
-    d: 'Mes a mes, sin permanencia. Si no pagás, quedás en el plan Gratis: seguís apareciendo y tus jugadores te siguen reservando online.',
+    t: 'Pasá a Completo cuando te sirva',
+    d: 'El plan Gratis no vence. Cuando quieras los fijos solos, la caja y tu encargado, pasás a Completo. Es mes a mes y lo dejás cuando quieras.',
   },
 ]
 
@@ -72,7 +72,7 @@ const FAQ = [
     a: 'Se cargan una vez y se repiten solos todas las semanas. Ves quién pagó y quién debe, y nadie pierde su horario. El cobro lo registrás vos cuando te pagan, como siempre.',
   },
   {
-    q: '¿Hay comisión por reserva o permanencia?',
+    q: '¿Hay comisión por reserva o tengo que quedarme un mínimo?',
     a: 'No y no. Pagás un precio fijo por mes según tus canchas. Lo que cobrás va directo a vos, completo. Y es mes a mes: si no te sirve, lo dejás.',
   },
   {
@@ -84,8 +84,8 @@ const FAQ = [
     a: 'Tus datos son tuyos y los exportás cuando quieras. La plata nunca pasa por nosotros: lo que cobrás va directo a vos. Si mañana desaparecemos, tu plata y tus clientes siguen siendo tuyos.',
   },
   {
-    q: '¿Qué pasa cuando se terminan los 30 días gratis?',
-    a: 'Si activás Completo, seguís igual. Si no, pasás al plan Gratis. Seguís anotando tus turnos, seguís en el buscador y tus jugadores te reservan online, sin tope. Tus fijos, tu caja y tus jugadores quedan guardados para cuando vuelvas. Como no pedimos tarjeta para empezar, no hay ningún cobro sorpresa.',
+    q: '¿Qué hago gratis y qué es de Completo?',
+    a: 'Gratis anotás tus turnos con nombre y teléfono, aparecés en el buscador y tus jugadores te reservan online. Con Completo los fijos aparecen solos en la grilla, anotás quién pagó, tenés la caja de la noche con cantina y tu encargado entra con su usuario. Si pasás a Completo y después lo dejás, lo que cargaste queda guardado. Como no te pedimos ningún dato de pago para empezar, no hay ningún cobro sorpresa.',
   },
   {
     q: '¿El plan Gratis vence?',
@@ -156,8 +156,8 @@ function Hero() {
       </h1>
       <p className="bz-lead bz-rise" style={{ '--i': 1 } as CSSProperties}>
         Eso sale Completo: un precio fijo según cuántas canchas tenés.{' '}
-        <strong>Sin comisión por reserva, sin permanencia, sin sorpresas.</strong> El primer mes es
-        gratis, y si no seguís, quedás en el plan Gratis.
+        <strong>Sin comisión por reserva y sin sorpresas.</strong> Empezás gratis, y el plan Gratis
+        no vence.
       </p>
       <ul className="bz-feats bz-rise justify-center" style={{ '--i': 2 } as CSSProperties}>
         {HERO_CHIPS.map((t) => (
@@ -276,14 +276,16 @@ function FinalCta() {
               En menos de 10 minutos tenés la grilla andando y el link de reservas listo para mandar
               por WhatsApp. Si no te sirve, lo dejás y no pasó nada.
             </p>
-            <p className="bz-fine">Sin tarjeta · Sin permanencia · Tus datos son tuyos</p>
+            <p className="bz-fine">
+              No te pedimos ningún dato de pago · Lo dejás cuando quieras · Tus datos son tuyos
+            </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Link
               href="/register"
               className={cn(buttonVariants({ variant: 'pill', size: 'pill' }), 'whitespace-nowrap')}
             >
-              Empezar 30 días gratis
+              Empezar gratis
               <ArrowRight aria-hidden />
             </Link>
             <Link

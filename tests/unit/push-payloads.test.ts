@@ -59,9 +59,17 @@ describe('bookingCanceledPayload', () => {
 
 describe('planPushPayload', () => {
   const cases: Array<[PlanPushEvent, string, string]> = [
-    [{ event: 'trial_ending', daysLeft: 3 }, 'Tu prueba termina en 3 días', 'Activá el plan'],
-    [{ event: 'trial_ending', daysLeft: 1 }, 'Tu prueba termina mañana', 'Activá el plan'],
-    [{ event: 'trial_expired' }, 'Terminó tu prueba', 'Pasaste al plan gratis'],
+    [
+      { event: 'trial_ending', daysLeft: 3 },
+      'Tu prueba del Completo termina en 3 días',
+      'Activá el plan',
+    ],
+    [
+      { event: 'trial_ending', daysLeft: 1 },
+      'Tu prueba del Completo termina mañana',
+      'Activá el plan',
+    ],
+    [{ event: 'trial_expired' }, 'Terminó tu prueba del Completo', 'Pasaste al plan gratis'],
     [
       { event: 'payment_failed', retryDate: '28/10' },
       'No pudimos cobrar tu plan',

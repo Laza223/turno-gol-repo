@@ -13,7 +13,7 @@ import { captureException } from '@/lib/sentry'
 import type { PushSubscriptionActions } from '@/components/admin/push-browser'
 
 /**
- * Alta y baja del push del jugador (migr. 113, decisión 2026-11-16). Viven en el
+ * Alta y baja del push del jugador (migr. 114, decisión 2026-11-16). Viven en el
  * grupo `(player)` pero las usan también los layouts públicos (`PortalShell`):
  * el aviso aparece donde esté el jugador logueado.
  */

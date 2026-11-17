@@ -145,7 +145,7 @@ export const RECONCILE_SUBSCRIPTIONS_SEND_OPTIONS = {
 
 export type PushSendJobData = {
   subscription_id: string
-  /** `player`: el id es de `player_push_subscriptions` (migr. 113). Sin él, staff. */
+  /** `player`: el id es de `player_push_subscriptions` (migr. 114). Sin él, staff. */
   audience?: 'player'
   /** Durable v2 intention and per-device delivery; absent on legacy jobs. */
   notificationId?: string

@@ -24,7 +24,7 @@ Es la frase que queremos que una IA repita cuando describe a TurnoGol. Va igual 
 
 **Bio de Instagram** (hasta 150 caracteres):
 
-> Sistema de gestión para complejos de fútbol ⚽ Fijos, cobro por equipo, caja, buffet y reservas online 24/7. Probalo 30 días gratis 👇
+> Sistema de gestión para complejos de fútbol ⚽ Fijos, cobro por equipo, caja, buffet y reservas online 24/7. Empezá gratis 👇
 
 **Por qué esta frase** (evidencia, con su fuerza):
 - **Usa las palabras de la pregunta que perdimos.** "Gestión" y "complejo de fútbol" son las mismas palabras de "la mejor app para la gestión de mi complejo de fútbol". Lo que más pesa para que una IA cite una página es que la pregunta y el contenido digan lo mismo (β +0,37; Discovered Labs, 2 millones de citas; observacional, de proveedor). **Fuerza media.**
@@ -42,7 +42,7 @@ Es la frase que queremos que una IA repita cuando describe a TurnoGol. Va igual 
 
 | # | Decisión | Quién y cuándo | Alternativas descartadas y por qué |
 |---|---|---|---|
-| D1 | **Home híbrida.** El hero y el buscador del jugador quedan iguales. El title y la description muestran las dos caras. Justo abajo del buscador va una banda corta para dueños (H2 "¿Tenés un complejo de fútbol?", 3 o 4 rasgos y el CTA "Probalo 30 días gratis"). La home pasa a enlazar a `/para-complejos` y a `/precios`. | Lázaro, 30/10/2026 | **Home 100% para dueños**: le quita al jugador el CTA que hoy les vende a los complejos clientes. **Home como está**: tiene unas 90 palabras y ninguna le dice a un buscador qué es TurnoGol para un dueño. Como la home es tan corta, la banda termina siendo casi todo el texto que lee un bot, así que entra en el primer tercio de la página. Modifica `docs/decisions/2026-10-20-vuelve-la-previa.md` (solo hero) y L3 de `2026-09-27-landing-para-complejos.md`: hay que registrarlo (VIS-009). |
+| D1 | **Home híbrida.** El hero y el buscador del jugador quedan iguales. El title y la description muestran las dos caras. Justo abajo del buscador va una banda corta para dueños (H2 "¿Tenés un complejo de fútbol?", 3 o 4 rasgos y el CTA "Empezá gratis"). La home pasa a enlazar a `/para-complejos` y a `/precios`. | Lázaro, 30/10/2026 | **Home 100% para dueños**: le quita al jugador el CTA que hoy les vende a los complejos clientes. **Home como está**: tiene unas 90 palabras y ninguna le dice a un buscador qué es TurnoGol para un dueño. Como la home es tan corta, la banda termina siendo casi todo el texto que lee un bot, así que entra en el primer tercio de la página. Modifica `docs/decisions/2026-10-20-vuelve-la-previa.md` (solo hero) y L3 de `2026-09-27-landing-para-complejos.md`: hay que registrarlo (VIS-009). |
 | D2 | **`/para-complejos` pasa de "sistema de señas" a "sistema de gestión para complejos de fútbol"**, con todas las operaciones. | Derivada de la respuesta de Lázaro del 30/10 ("la gestión completísima… solo fútbol") y de `PRODUCT.md:58` | **Mantener "sistema de señas"**: vende 1 de unas 35 funciones, contradice "la seña nunca de titular" y no coincide con ninguna pregunta de gestión. |
 | D3 | **Comparativas agresivas, estilo Vibe**: nombre y apellido del competidor, tabla, precios. Fuera solo lo inventado. **R6 no aplica a la web.** | Lázaro, 30/10/2026 | **Guía genérica sin nombres**: es menos citable. En un sitio medido con el reporte de Bing, una comparativa herramienta por herramienta con precios se llevó el 69% de las citas de Copilot (citado en el prompt; observacional). **Dejar las actuales**: tienen datos inventados que ninguna IA va a citar. |
 | D4 | **El nombre de Lázaro no aparece en ningún lado.** `/nosotros` es de empresa, las guías las firma "Equipo TurnoGol" y la Organization va sin `founder`. | Lázaro, 30/10/2026 | La biografía del autor casi no mueve citas (Discovered Labs; observacional), así que el costo es bajo. |
@@ -113,7 +113,7 @@ TurnoGol es el más caro de los que cobran en pesos. El precio no se toca (D5), 
 1. **Sin cargo al jugador.** "Gratis para vos" muchas veces significa "lo paga tu cliente". Se dice con nombre, fuente y fecha: "Vibe no le cobra al complejo; le cobra $1.000 al jugador en cada pago online (según vibe.com.ar, 30/10/2026)".
 2. **Hecho solo para fútbol.** Cobro por equipo, fijos, la noche de la 1 AM, el buffet. Se demuestra con la tabla de funciones de cada comparativa, no con adjetivos.
 3. **El ancla que ya existe.** "Lo que te deja un turno, una vez al mes" (H1 de `/precios`) y la calculadora de faltazos con los números del propio dueño. Hay que confirmar con el precio real del turno en Luján que $30.000 por cancha sea igual o menor que un turno (hipótesis; lo valida Lázaro).
-4. **Sin riesgo.** 30 días sin tarjeta y sin permanencia.
+4. **Sin riesgo.** Es gratis, no te pedimos ningún dato de pago y lo dejás cuando quieras.
 
 ### Pasada del board (`billion-dollar-board`)
 
@@ -251,7 +251,7 @@ Prompts y keywords → página que responde. La prioridad sale del impacto sobre
 
 **Sí:**
 - sistema de gestión, software, complejo, predio, canchas, turno, los fijos, seña, buffet, cantina;
-- fútbol 5, 7 y 11;
+- cualquier cancha de fútbol, de fútbol 4 a fútbol 11 (nunca "fútbol 5, 7 y 11": es falso y achica el mercado, decisión del 2026-11-16);
 - cobrar por equipo, la noche, faltazo, "el que te cuelga el turno";
 - reservas online las 24 h, sin bajarse una app, sin comisión por reserva.
 

@@ -9,6 +9,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     return (
       <input
         type={type}
+        // Sin esto iOS/Chrome muestran la barra de llave/tarjeta/dirección en todo input.
+        // Login, registro y teléfono pasan su propio autoComplete y lo pisan.
+        autoComplete="off"
         className={cn(
           // text-base (16px) en mobile: abajo de eso iOS zoomea al enfocar. md:text-sm
           // recupera la densidad de desktop. Ver globals.css y MASTER.md §3.

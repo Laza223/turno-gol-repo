@@ -7,6 +7,7 @@ import path from 'node:path'
 import postgres from 'postgres'
 import { bookingInstants } from './_helpers/booking-instants'
 import { SEED_ADMIN_URL, deleteFreshAdminTenants } from './_helpers/fresh-tenant-cleanup'
+import { fillAddress } from './_helpers/public-signup'
 
 // Seeding constants
 const TENANT_ID = '00000000-0000-4000-8000-000000000001'
@@ -321,14 +322,8 @@ test.describe('UX Audit Screenshot Capturer', () => {
     await freshAdminPage.getByRole('button', { name: 'Siguiente' }).click()
     await expect(freshAdminPage.getByRole('heading', { name: /¿dónde queda/i })).toBeVisible()
     await takeShot(freshAdminPage, 'auth_onboarding', 'onboarding_paso_1_direccion')
-    // A mano: no depende de Georef (un tercero) en el e2e.
-    await freshAdminPage
-      .getByRole('button', { name: /escribir ciudad y provincia a mano/i })
-      .click()
-    await freshAdminPage.getByLabel('Dirección').fill('Calle Audit 555')
-    await freshAdminPage.getByLabel('Ciudad').fill('Luján')
-    await freshAdminPage.getByRole('combobox', { name: /provincia/i }).click()
-    await freshAdminPage.getByRole('option', { name: 'Buenos Aires' }).click()
+    // Localidad + "tal cual": no depende de Georef (un tercero) en el e2e.
+    await fillAddress(freshAdminPage, 'Calle Audit 555')
     await freshAdminPage.getByRole('button', { name: 'Siguiente' }).click()
 
     // Paso 2: canchas (Fútbol 5 = 1 por defecto)

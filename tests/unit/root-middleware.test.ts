@@ -121,6 +121,13 @@ describe('middleware raíz', () => {
     expect(enforce).toHaveBeenLastCalledWith('publicAvailability', expect.any(String))
   })
 
+  it('los buscadores de ubicación usan publicGeo, no el balde genérico de 30/min', async () => {
+    await middleware(
+      req('/api/public/geo/localidades?q=lujan', { headers: { 'x-forwarded-for': '9.9.9.9' } }),
+    )
+    expect(enforce).toHaveBeenLastCalledWith('publicGeo', expect.any(String))
+  })
+
   it('la respuesta lleva el x-request-id incluso cuando el refresco rehizo la respuesta', async () => {
     // Regresión del ORDEN: `refreshSessionCookies` rehace la respuesta dentro
     // de su `setAll`, así que un header seteado antes se perdería.

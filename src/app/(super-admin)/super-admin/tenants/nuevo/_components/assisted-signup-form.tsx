@@ -4,11 +4,10 @@ import { useActionState, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Check, Copy } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
-import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
+import AddressFinder from '@/components/geo/AddressFinder'
 import { Input } from '@/components/ui/input'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { SubmitButton } from '@/components/ui/submit-button'
-import { PROVINCES } from '@/modules/tenants/tenant.geo'
 import type { AssistedSignupField, AssistedSignupState } from '../../actions'
 
 /**
@@ -20,7 +19,6 @@ export type AssistedSignupAction = (
   formData: FormData,
 ) => Promise<AssistedSignupState>
 
-const PROVINCE_OPTIONS: ComboboxOption[] = PROVINCES.map((p) => ({ value: p, label: p }))
 const INITIAL: AssistedSignupState = { status: 'idle' }
 
 type Props = {
@@ -54,22 +52,31 @@ function AssistedSignupFlow({ action, loginUrl, onAnother }: Props & { onAnother
 
   const errs = state.status === 'error' ? state.fieldErrors : {}
   const vals = state.status === 'error' ? state.values : {}
+  const locationError = errs.address ?? errs.city ?? errs.province ?? errs.latitude
+  // Repone lo elegido si el server devolvió error (el buscador no es un input nativo).
+  const startAddress =
+    vals.address && vals.city && vals.province
+      ? {
+          address: vals.address,
+          city: vals.city,
+          province: vals.province,
+          latitude: vals.latitude ? Number(vals.latitude) : null,
+          longitude: vals.longitude ? Number(vals.longitude) : null,
+        }
+      : null
 
   return (
     <form action={formAction} noValidate className="max-w-3xl space-y-3 lg:space-y-6">
       <fieldset className="space-y-3 lg:space-y-4 rounded-xl border border-border bg-card p-4 lg:p-5">
         <legend className="px-1 text-sm font-semibold text-foreground">El complejo</legend>
         <Field name="name" label="Nombre" error={errs.name} defaultValue={vals.name} />
-        <Field
-          name="address"
-          label="Dirección"
-          placeholder="Calle y número"
-          error={errs.address}
-          defaultValue={vals.address}
-        />
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field name="city" label="Ciudad" error={errs.city} defaultValue={vals.city} />
-          <ProvinceField error={errs.province} defaultValue={vals.province} />
+        <div className="space-y-1.5">
+          <AddressFinder idPrefix="assisted-location" names value={startAddress} />
+          {locationError && (
+            <p role="alert" className="text-xs text-red-700 dark:text-red-400">
+              {locationError}
+            </p>
+          )}
         </div>
         <PhoneInput
           id="assisted-phone"
@@ -130,40 +137,6 @@ function AssistedSignupFlow({ action, loginUrl, onAnother }: Props & { onAnother
 
       <SubmitButton pendingLabel="Dando de alta…">Dar de alta</SubmitButton>
     </form>
-  )
-}
-
-/**
- * Combobox no participa de FormData por sí solo: el hidden input es lo que lee
- * el server, igual que en el paso 1 del wizard.
- */
-function ProvinceField({ error, defaultValue }: { error?: string; defaultValue?: string }) {
-  const [province, setProvince] = useState(defaultValue ?? '')
-  return (
-    <div className="space-y-1.5">
-      <label htmlFor="assisted-province" className="text-sm font-medium text-foreground">
-        Provincia
-      </label>
-      <Combobox
-        id="assisted-province"
-        options={PROVINCE_OPTIONS}
-        value={province}
-        onChange={setProvince}
-        placeholder="Buscá la provincia…"
-        listboxLabel="Provincias"
-        aria-describedby={error ? 'assisted-province-hint' : undefined}
-      />
-      <input type="hidden" name="province" value={province} />
-      {error && (
-        <p
-          id="assisted-province-hint"
-          role="alert"
-          className="text-xs text-red-700 dark:text-red-400"
-        >
-          {error}
-        </p>
-      )}
-    </div>
   )
 }
 

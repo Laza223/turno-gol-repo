@@ -31,6 +31,14 @@ export const POLICIES = {
   // (s-maxage=30). Balde propio porque el de `publicAvailability` (30/60s) lee un
   // JSON barato, no rasteriza. Fail open: es lectura pública sin efectos.
   publicStory: { limit: 20, window: '60 s', keyBy: 'ip', failMode: 'open' },
+  // Buscadores de ubicación (`/api/public/geo/*`): el de localidades dispara una request por
+  // palabra tipeada y lee un dataset en memoria (barato), así que 90/60s por IP sobra para una
+  // persona y evita que el 30/60s genérico de `publicAvailability` se agote tipeando. Fail open:
+  // es lectura pública sin efectos.
+  publicGeo: { limit: 90, window: '60 s', keyBy: 'ip', failMode: 'open' },
+  // Las rutas geo que llaman a terceros (Georef, OpenStreetMap): cada request gasta cuota ajena
+  // y OSM bloquea a quien abuse. 20/60s por IP, aparte del general. Fail open.
+  publicGeoExternal: { limit: 20, window: '60 s', keyBy: 'ip', failMode: 'open' },
   // `profile.viewed` (embudo público): el cliente dispara la Server Action UNA vez por pestaña
   // al cargar las horas de la ficha. 10/60s por IP sobra para una persona (aun detrás de un
   // NAT) y frena a quien infle el denominador del embudo llamándola en bucle. Fail open:

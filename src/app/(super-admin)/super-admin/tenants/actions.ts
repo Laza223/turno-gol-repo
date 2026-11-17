@@ -15,6 +15,8 @@ const FIELDS = [
   'address',
   'city',
   'province',
+  'latitude',
+  'longitude',
   'phone',
   'firstName',
   'lastName',

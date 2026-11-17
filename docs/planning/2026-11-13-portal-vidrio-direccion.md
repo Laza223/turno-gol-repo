@@ -242,7 +242,7 @@ En Android, una vibración corta doble al llegar. Sin confeti. "Falta la seña" 
 **Páginas para complejos**
 
 - "¿Te suena?": al entrar cada fila, el tachado se traza sobre el problema y después aparece la solución. Ya existe en `globals.css` (`.tg-noche-strike`, `.tg-noche-solution`): se reutiliza.
-- "Así se ve tu noche": las celdas de la grilla se encienden por fila. La celda "Sin cobrar" late una vez en rojo y queda.
+- "Así se ve la noche de tu complejo.": es la agenda dibujada (no la grilla real ni el celular, que se borraron en F8). Las celdas de la agenda se encienden por fila. La celda "Sin cobrar" late una vez en rojo y queda.
 - Planes: la píldora de Mensual y Anual se desliza y los precios cambian por reemplazo.
 
 ### 4.6 Accesibilidad

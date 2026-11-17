@@ -209,6 +209,7 @@ export function CheckoutInvalidState({
           </h1>
           {message && <p className="rv-sub">{message}</p>}
           <Link
+            transitionTypes={['nav-back']}
             href={href}
             className={cn(buttonVariants({ variant: 'pill', size: 'pill' }), 'mt-3')}
           >

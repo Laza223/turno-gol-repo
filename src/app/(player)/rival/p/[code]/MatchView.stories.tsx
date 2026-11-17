@@ -449,7 +449,10 @@ export const OrganizadorDecidePedidos: Story = {
     await expect(canvas.getAllByRole('button', { name: 'Aceptar' })).toHaveLength(2)
     await userEvent.click(canvas.getAllByRole('button', { name: 'Esta vez no' })[0]!)
     await waitFor(() => expect(args.decideAction).toHaveBeenCalledWith('c', 'decline'))
-    await userEvent.click(canvas.getAllByRole('button', { name: 'Aceptar' })[0]!)
+    // La fila queda deshabilitada hasta que termina la transición de vista de la lista.
+    const accept = canvas.getAllByRole('button', { name: 'Aceptar' })[0]!
+    await waitFor(() => expect(accept).toBeEnabled())
+    await userEvent.click(accept)
     await waitFor(() => expect(args.decideAction).toHaveBeenCalledWith('c', 'accept'))
     // Sacar del banco pide confirmación.
     await userEvent.click(canvas.getByRole('button', { name: 'Sacar a Beto R.' }))

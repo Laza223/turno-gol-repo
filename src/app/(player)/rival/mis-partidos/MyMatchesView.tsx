@@ -87,6 +87,7 @@ function MatchRow({
       </div>
       <p className="ri-match__t col-span-full">
         <Link
+          transitionTypes={['nav-forward']}
           href={href}
           aria-label={[m.tenantName, whenLabel(m.startsAt, now), state?.label]
             .filter(Boolean)

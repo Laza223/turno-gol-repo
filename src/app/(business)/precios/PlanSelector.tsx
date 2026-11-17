@@ -121,9 +121,9 @@ export default function PlanSelector() {
           <CheckCircle2 className="h-5 w-5 shrink-0 text-portal-green" aria-hidden />
           <span>
             <span className="font-semibold text-portal-ink">
-              Todos arrancan con 30 días de Completo.
+              Empezás gratis, y el Gratis no vence.
             </span>{' '}
-            Si después no pagás, seguís en Gratis y tus datos quedan guardados.
+            Pasás a Completo cuando quieras, con todo lo que ya cargaste.
           </span>
         </p>
       </div>
@@ -301,10 +301,10 @@ function PlanCardView({
           href="/register"
           className={cn(buttonVariants({ variant: 'pill', size: 'pill' }), CTA_FULL)}
         >
-          Empezar 30 días gratis
+          Empezar gratis
           <ArrowRight aria-hidden />
         </Link>
-        <p className="pr-note">Sin tarjeta · Cancelás cuando quieras</p>
+        <p className="pr-note">No te pedimos ningún dato de pago · Lo dejás cuando quieras</p>
       </div>
     </div>
   )

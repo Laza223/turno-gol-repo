@@ -2,7 +2,7 @@ import { index, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/p
 import { bookings } from './bookings'
 import { players } from './players'
 
-/** Dispositivos del jugador con push (migr. 113). RLS por `app.current_player_id`. */
+/** Dispositivos del jugador con push (migr. 114). RLS por `app.current_player_id`. */
 export const playerPushSubscriptions = pgTable(
   'player_push_subscriptions',
   {
@@ -23,7 +23,7 @@ export const playerPushSubscriptions = pgTable(
 )
 
 /**
- * Dedupe de los recordatorios al jugador (migr. 113): una fila por turno, tipo e
+ * Dedupe de los recordatorios al jugador (migr. 114): una fila por turno, tipo e
  * inicio. Del sistema: RLS sin policies y sin permisos para la app; la escribe
  * solo el worker `player-reminders` (BYPASSRLS).
  */

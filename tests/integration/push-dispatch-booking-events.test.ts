@@ -248,7 +248,7 @@ describe('aviso de plan SaaS', () => {
     )
     expect(jobs[0]!.payload).toMatchObject({
       type: 'plan.trial_expired',
-      title: 'Terminó tu prueba',
+      title: 'Terminó tu prueba del Completo',
       url: '/settings/facturacion',
     })
   })

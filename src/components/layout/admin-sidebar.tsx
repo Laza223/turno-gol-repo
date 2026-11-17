@@ -357,13 +357,13 @@ function TrialDrawerRow({
   onNavigate: () => void
 }) {
   const urgent = daysLeft <= TRIAL_URGENT_DAYS
-  // Dos renglones: en los 240 px del cajón "Período de prueba · 73 días" más
+  // Dos renglones: en los 240 px del cajón "Prueba del Completo · 73 días" más
   // "Elegir plan" no entran en uno, y el que se cortaba era justo el número.
   const content = (
     <>
       <Clock className={cn('h-5 w-5 shrink-0', urgent && TONE_TEXT.warning)} aria-hidden />
       <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate">Período de prueba</span>
+        <span className="truncate">Prueba del Completo</span>
         <span className="text-xs">
           <span
             className={cn(

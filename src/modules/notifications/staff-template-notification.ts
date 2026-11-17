@@ -26,12 +26,12 @@ const POLICIES: Partial<Record<TemplateName, TemplatePolicy>> = {
     body: 'Revisá el estado de la devolución y de la reserva en Caja.',
   },
   trial_ending: {
-    title: 'Tu prueba está por terminar',
+    title: 'Tu prueba del Completo está por terminar',
     body: 'Activá el plan para seguir anotando tus turnos, fijos y caja.',
     plan: true,
   },
   trial_expired: {
-    title: 'Terminó tu prueba',
+    title: 'Terminó tu prueba del Completo',
     body: 'Pasaste al plan gratis. Tus jugadores te siguen reservando online.',
     plan: true,
   },

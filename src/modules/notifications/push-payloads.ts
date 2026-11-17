@@ -56,12 +56,14 @@ function planCopy(e: PlanPushEvent): { title: string; body: string } {
     case 'trial_ending':
       return {
         title:
-          e.daysLeft <= 1 ? 'Tu prueba termina mañana' : `Tu prueba termina en ${e.daysLeft} días`,
+          e.daysLeft <= 1
+            ? 'Tu prueba del Completo termina mañana'
+            : `Tu prueba del Completo termina en ${e.daysLeft} días`,
         body: 'Activá el plan para seguir anotando tus turnos, fijos y caja.',
       }
     case 'trial_expired':
       return {
-        title: 'Terminó tu prueba',
+        title: 'Terminó tu prueba del Completo',
         body: 'Pasaste al plan gratis. Tus jugadores te siguen reservando online.',
       }
     case 'payment_failed':

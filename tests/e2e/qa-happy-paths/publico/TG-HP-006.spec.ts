@@ -29,8 +29,8 @@ test.describe('TG-HP-006 — Precios', () => {
     await expect(activeCard.locator('s')).toBeVisible() // precio mensual tachado
     await expect(activeCard.getByText(/Ahorrás .* al año/)).toBeVisible()
 
-    // Step 5: "Empezar 30 días gratis" de la card activa → /register
-    await activeCard.getByRole('link', { name: 'Empezar 30 días gratis' }).click()
+    // Step 5: "Empezar gratis" de la card activa → /register
+    await activeCard.getByRole('link', { name: 'Empezar gratis' }).click()
     await page.waitForURL('/register')
     expect(new URL(page.url()).pathname).toBe('/register')
     await page.goBack()

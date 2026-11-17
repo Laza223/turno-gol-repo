@@ -137,7 +137,7 @@ export async function handlePushSendJob(job: Job<PushSendJobData>): Promise<void
 }
 
 /**
- * Push del jugador (migr. 113): recordatorios de turno. El horario silencioso lo
+ * Push del jugador (migr. 114): recordatorios de turno. El horario silencioso lo
  * resuelve quien encola (`player-reminders`); acá solo se envía. Sin dedupeKey:
  * el claim por turno y tipo ya vive en `player_reminder_sends`, y un reintento
  * tras un fallo de envío prefiere reenviar antes que perder el aviso.

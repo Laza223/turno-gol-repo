@@ -29,7 +29,7 @@ import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
  *
  * El fiado de una PERSONA ("anotar como fiado") no se ofrece acá: sigue en
  * /caja/cantina. Lo que sí puede ofrecer, si el caller pasa `createTabAction`, es
- * "Anotar al turno" (migr. 115, docs/decisions/2026-11-17-consumos-anotados-al-
+ * "Anotar al turno" (migr. 116, docs/decisions/2026-11-17-consumos-anotados-al-
  * turno.md): el consumo queda anotado en ESTE turno sin cobrarse, y el modal de
  * cobro lo suma junto con la cancha.
  *

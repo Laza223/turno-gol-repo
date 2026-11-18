@@ -84,7 +84,7 @@ export function useSlotCharges({
   const mode = booking ? chargeMode(booking, hasEnded) : null
   const pending = booking?.pending ?? 0
 
-  // ── Consumos anotados al turno (migr. 115, docs/decisions/2026-11-17-consumos-
+  // ── Consumos anotados al turno (migr. 116, docs/decisions/2026-11-17-consumos-
   // anotados-al-turno.md). Se cobran JUNTO con el turno, pero son otro circuito de
   // plata (cantina, no `category='booking'`): primero se saldan los anotados con
   // `settleTab` y después corre la acción de cobro del turno de siempre, sin

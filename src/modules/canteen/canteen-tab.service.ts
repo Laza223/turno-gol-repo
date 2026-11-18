@@ -78,7 +78,7 @@ function rowToTab(r: TabRowRaw): CanteenTabRow {
 export type CreateTabInput = {
   /** Fiado de una persona. Se ignora si viene `bookingId`: ahí el nombre lo arma el servidor. */
   debtorName?: string
-  /** Consumo anotado a este turno (migr. 115): se cobra junto con la cancha. */
+  /** Consumo anotado a este turno (migr. 116): se cobra junto con la cancha. */
   bookingId?: string
   lines: TicketLineInput[]
   note?: string | null
@@ -136,7 +136,7 @@ async function bookingTabLabel(tenantId: string, bookingId: string, tx: DbTx): P
  * Idempotencia propia (key única en canteen_tabs): un doble-tap devuelve
  * el fiado existente sin volver a descontar stock.
  *
- * Con `bookingId` es un consumo anotado a un turno (migr. 115): mismo registro, más
+ * Con `bookingId` es un consumo anotado a un turno (migr. 116): mismo registro, más
  * el vínculo, y el nombre lo arma `bookingTabLabel`.
  */
 export async function createTab(

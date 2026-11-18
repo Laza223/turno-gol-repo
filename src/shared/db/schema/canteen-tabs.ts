@@ -31,7 +31,7 @@ export const canteenTabs = pgTable(
     // (`bookingId`), lo deriva el servidor ("Consumo de turno · Cancha 3 · 21:00"): ahí no hay nombre
     // de persona, ni libre ni de otro tipo.
     debtorName: text('debtor_name').notNull(),
-    // Consumo anotado al turno (migr. 115): se cobra junto con la cancha. Null = fiado
+    // Consumo anotado al turno (migr. 116): se cobra junto con la cancha. Null = fiado
     // de una persona. SET NULL: un turno borrado no arrastra un registro de plata.
     bookingId: uuid('booking_id').references(() => bookings.id, { onDelete: 'set null' }),
     status: canteenTabStatusEnum('status').notNull().default('open'),

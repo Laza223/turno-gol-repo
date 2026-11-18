@@ -23,7 +23,7 @@ import {
 } from '@/modules/canteen/canteen.errors'
 
 /**
- * Consumos anotados al turno (migr. 115, docs/decisions/2026-11-17-consumos-anotados-
+ * Consumos anotados al turno (migr. 116, docs/decisions/2026-11-17-consumos-anotados-
  * al-turno.md): un fiado con `booking_id`. Se anota sin tocar la caja, se cobra con
  * `settleTab` junto con la cancha y nunca cuenta como pago del turno.
  */

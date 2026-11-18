@@ -17,7 +17,7 @@ export type TabAttempt = {
   debtorName: string
   lines: { productId: string; qty: number }[]
   total: number
-  /** Anotado a un turno (migr. 115) y no fiado de una persona: cambia solo el aviso de reintento. */
+  /** Anotado a un turno (migr. 116) y no fiado de una persona: cambia solo el aviso de reintento. */
   forBooking?: boolean
 }
 

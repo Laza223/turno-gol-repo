@@ -247,7 +247,7 @@ describe('createTabSchema', () => {
     expect(createTabSchema.safeParse({ ...base(), lines: [] }).success).toBe(false)
   })
 
-  // Consumo anotado a un turno (migr. 115): el nombre lo arma el servidor.
+  // Consumo anotado a un turno (migr. 116): el nombre lo arma el servidor.
   it('accepts a booking tab with no debtorName', () => {
     const { debtorName: _omit, ...rest } = base()
     const result = createTabSchema.safeParse({ ...rest, bookingId: crypto.randomUUID() })

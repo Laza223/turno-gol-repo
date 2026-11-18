@@ -142,7 +142,7 @@ export function useTicketSale({
   }
 
   /**
-   * "Anotar al turno" (migr. 115): lo mismo que el fiado, pero sin preguntar a
+   * "Anotar al turno" (migr. 116): lo mismo que el fiado, pero sin preguntar a
    * nombre de quién — el servidor lo arma con la cancha y la hora del turno, que
    * `createTabAction` ya trae atado. No toca la caja: lo cobra el modal de cobro del
    * turno, junto con la cancha. Con un anotado sin respuesta, reintenta ESE.

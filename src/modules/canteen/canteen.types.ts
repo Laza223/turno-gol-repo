@@ -52,7 +52,7 @@ export type CanteenTabRow = {
   id: string
   tenantId: string
   debtorName: string
-  /** Turno al que está anotado (migr. 115); null = fiado de una persona. */
+  /** Turno al que está anotado (migr. 116); null = fiado de una persona. */
   bookingId: string | null
   status: CanteenTabStatus
   totalAmount: number

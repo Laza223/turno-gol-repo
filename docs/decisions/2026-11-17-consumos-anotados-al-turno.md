@@ -63,7 +63,7 @@ salió al anotar (cobrar no puede fallar por stock).
 
 ## Datos
 
-Migración `115_canteen_tabs_booking_id.sql`: `canteen_tabs.booking_id uuid NULL REFERENCES bookings(id)
+Migración `116_canteen_tabs_booking_id.sql`: `canteen_tabs.booking_id uuid NULL REFERENCES bookings(id)
 ON DELETE SET NULL` + índice parcial `(tenant_id, booking_id) WHERE status = 'open' AND booking_id IS NOT
 NULL`. Aditiva: no toca filas viejas. Se aplica sola al mergear: **necesita el OK del dueño antes de
 prod** (efecto visible en El Vagón: ninguno hasta que anoten un consumo).
@@ -78,5 +78,5 @@ saldado desde el modal (hoy se cobra en Caja › Cuentas).
 
 - **Rótulo** de un consumo que nadie cobró en Caja › Cuentas › "Fiado sin cobrar": "Consumo de turno ·
   Cancha 3 · 21:00" (el servidor lo arma; es también la descripción del cobro en el libro).
-- **Migración 115**: puede aplicarse sola al mergear.
+- **Migración 116**: puede aplicarse sola al mergear.
 - **Cantina completa en el modal de Hoy**: "Cobrar ahora" convive con "Anotar al turno".

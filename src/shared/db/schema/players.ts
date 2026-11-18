@@ -44,7 +44,7 @@ export const players = pgTable(
     position: text('position', {
       enum: ['goalkeeper', 'defender', 'midfielder', 'forward', 'any'],
     }),
-    /** Zona de la lista cerrada de `rival-zones.ts` (CHECK en la base, mismo contenido). */
+    /** Localidad en texto libre ("Luján, Buenos Aires"; los valores viejos van sueltos). CHECK de largo en la base. */
     zone: text('zone'),
     /** Origen de la cuenta (ej. 'rival'), para las métricas. */
     signupSource: text('signup_source'),

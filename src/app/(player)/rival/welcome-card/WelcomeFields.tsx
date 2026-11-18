@@ -2,15 +2,16 @@ import type { ReactNode } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { SelectMenu } from '@/components/ui/select-menu'
+import LocalityPicker from '@/components/geo/LocalityPicker'
 import { PlayerPhotoField } from '@/components/rival/PlayerPhotoField'
 import { GLASS_INPUT } from '@/components/world/portal-auth-styles'
 import { cn } from '@/lib/utils'
+import type { GeoLocality } from '@/modules/geo/geo.types'
 import { RIVAL_PICK, RIVAL_PICK_MENU } from '../rival-classes'
 import { initials } from '@/lib/format'
 import {
   FIELD_ERROR,
   POSITION_OPTIONS,
-  ZONE_OPTIONS,
   type WelcomeFieldErrors,
   type WelcomeNeeds,
   type WelcomePhoto,
@@ -109,6 +110,25 @@ export function IdentityFields({
   )
 }
 
+/** Lo que se guarda: "Luján, Buenos Aires". */
+const formatZone = (l: GeoLocality) => `${l.city}, ${l.province}`
+
+/**
+ * Inversa de `formatZone`. Un valor viejo sin provincia ("Jáuregui", "Otra zona") da `null`: el
+ * campo vuelve a pedirse en vez de reenviar algo que el servidor ya no acepta.
+ */
+function parseZone(zone: string): GeoLocality | null {
+  const i = zone.lastIndexOf(', ')
+  if (i <= 0) return null
+  return {
+    city: zone.slice(0, i),
+    province: zone.slice(i + 2),
+    lat: null,
+    lng: null,
+    source: 'dataset',
+  }
+}
+
 /** Posición (si corresponde) y zona (lo de `profile`). */
 export function ProfileFields({
   needs,
@@ -152,18 +172,18 @@ export function ProfileFields({
         <Label htmlFor="rival-zona" className="text-sm font-semibold text-portal-ink">
           Tu zona
         </Label>
-        <SelectMenu
+        <input type="hidden" name="zone" value={zone} />
+        <LocalityPicker
           id="rival-zona"
-          name="zone"
-          value={zone}
-          onChange={(v) => {
-            onZoneChange(v)
+          value={parseZone(zone)}
+          onChange={(l) => {
+            onZoneChange(l ? formatZone(l) : '')
             fe.clear('zone')
           }}
-          options={ZONE_OPTIONS}
-          placeholder="Elegí tu zona"
-          className={RIVAL_PICK}
-          contentClassName={RIVAL_PICK_MENU}
+          placeholder="Escribí tu localidad"
+          locateStyle="icon"
+          inputClassName={RIVAL_PICK}
+          listClassName={RIVAL_PICK_MENU}
           aria-invalid={zoneMessage ? true : undefined}
           aria-describedby={zoneMessage ? 'rival-zona-error' : undefined}
         />

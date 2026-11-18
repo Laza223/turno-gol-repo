@@ -2001,14 +2001,15 @@ describe('16. anonimizado, complejo no visible, bans al aceptar y al promover, l
     expect((await matchRow(m.id))['confirmed_count']).toBe(2)
   })
 
-  it('16.5 zona y posición son listas cerradas en la base', async () => {
+  it('16.5 la zona tiene largo máximo y la posición es lista cerrada en la base', async () => {
     const su = adminSql()
     const p = await newPlayer()
     await su`UPDATE players SET zone = 'Luján', position = 'goalkeeper' WHERE id = ${p}`
     const bad = async (col: string, v: string): Promise<unknown> =>
       caught(su.unsafe(`UPDATE players SET ${col} = '${v}' WHERE id = '${p}'`))
-    expect(pgCode(await bad('zone', 'Marte'))).toBe('23514')
-    expect(pgCode(await bad('zone', 'x'.repeat(30)))).toBe('23514')
+    // La zona es texto libre (migr. 115): cualquier localidad entra, hasta 120 caracteres.
+    await su`UPDATE players SET zone = 'Mercedes, Buenos Aires' WHERE id = ${p}`
+    expect(pgCode(await bad('zone', 'x'.repeat(121)))).toBe('23514')
     expect(pgCode(await bad('position', 'striker'))).toBe('23514')
   })
 })

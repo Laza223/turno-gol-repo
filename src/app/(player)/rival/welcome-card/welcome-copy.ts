@@ -2,7 +2,6 @@ import type { useFieldErrors } from '../use-field-errors'
 import type { RivalFormResult } from '../actions'
 import type { PhotoRemoveAction, PhotoUploadAction } from '@/components/rival/PlayerPhotoField'
 import { RIVAL_POSITION_LABELS } from '@/modules/rival/rival-display'
-import { RIVAL_ZONES } from '@/modules/rival/rival-zones'
 import { RIVAL_POSITIONS } from '@/modules/rival/rival.schema'
 
 /** Firma de la Server Action (llega por prop: importarla como valor arrastra drizzle al bundle del browser). */
@@ -55,4 +54,3 @@ export const POSITION_OPTIONS = RIVAL_POSITIONS.map((value) => ({
   value,
   label: RIVAL_POSITION_LABELS[value],
 }))
-export const ZONE_OPTIONS = RIVAL_ZONES.map((z) => ({ value: z, label: z }))

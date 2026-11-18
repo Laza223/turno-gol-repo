@@ -214,7 +214,7 @@ La bienvenida aparece la primera vez que el jugador organiza, toca "Voy" o pide 
 
 - **Nombre:** se precarga con el actual, que hoy puede salir del email. Es obligatorio y solo se muestra el nombre corto.
 - **Posición:** Arquero · Defensor · Mediocampista · Delantero · Donde me pongan.
-- **Zona:** de una lista cerrada (`src/modules/rival/rival-zones.ts`). La lista inicial es el corredor del piloto: Luján, Jáuregui, Open Door, Torres, Pueblo Nuevo, Olivera, Carlos Keen, General Rodríguez, Mercedes, Pilar, Moreno, Exaltación de la Cruz y Otra zona. Se amplía cuando se suman complejos.
+- **Zona:** _(superado el 2026-11-16: [cualquier localidad del país](../../decisions/2026-11-16-rival-zona-libre.md))_ de una lista cerrada (`src/modules/rival/rival-zones.ts`). La lista inicial es el corredor del piloto: Luján, Jáuregui, Open Door, Torres, Pueblo Nuevo, Olivera, Carlos Keen, General Rodríguez, Mercedes, Pilar, Moreno, Exaltación de la Cruz y Otra zona. Se amplía cuando se suman complejos.
 - **Foto:** opcional, con recorte cuadrado. Si no hay foto, se muestran las iniciales.
 - **Código de conducta:**
   1. Llegá a horario.

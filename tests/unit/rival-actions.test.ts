@@ -116,7 +116,7 @@ function welcomeForm(): FormData {
   const f = new FormData()
   f.set('firstName', 'Lazaro')
   f.set('position', 'any')
-  f.set('zone', 'Luján')
+  f.set('zone', 'Luján, Buenos Aires')
   return f
 }
 
@@ -381,7 +381,7 @@ describe('Voy, Estoy adentro y Me bajo', () => {
     expect(mocks.acceptRivalWelcome).toHaveBeenCalledWith('player-1', {
       firstName: 'Lazaro',
       position: 'any',
-      zone: 'Luján',
+      zone: 'Luján, Buenos Aires',
     })
     expect(mocks.completeRivalProfile).not.toHaveBeenCalled()
     expect(mocks.acceptRivalWelcome.mock.invocationCallOrder[0]!).toBeLessThan(
@@ -399,7 +399,7 @@ describe('Voy, Estoy adentro y Me bajo', () => {
     expect(mocks.acceptRivalWelcome).not.toHaveBeenCalled()
     expect(mocks.completeRivalProfile).toHaveBeenCalledWith('player-1', {
       position: 'any',
-      zone: 'Luján',
+      zone: 'Luján, Buenos Aires',
     })
     expect(mocks.completeRivalProfile.mock.invocationCallOrder[0]!).toBeLessThan(
       mocks.joinByInvite.mock.invocationCallOrder[0]!,
@@ -433,7 +433,7 @@ describe('Voy, Estoy adentro y Me bajo', () => {
   it('"Estoy adentro" con zona inválida vuelve con el campo, no suma y no gasta el intento', async () => {
     const f = welcomeForm()
     f.set('code', CODE)
-    f.set('zone', 'Marte')
+    f.set('zone', 'x'.repeat(121)) // la zona es texto libre, con tope de 120
     expect(await acceptWelcomeAndJoinAction({ success: true }, f)).toMatchObject({
       success: false,
       field: 'zone',
@@ -649,7 +649,7 @@ describe('requestToJoinAction y acceptWelcomeAndRequestAction', () => {
     expect(mocks.acceptRivalWelcome).toHaveBeenCalledWith('player-1', {
       firstName: 'Lazaro',
       position: 'any',
-      zone: 'Luján',
+      zone: 'Luján, Buenos Aires',
     })
     expect(mocks.requestToJoin).toHaveBeenCalledWith('player-1', {
       matchId: MATCH,
@@ -661,7 +661,7 @@ describe('requestToJoinAction y acceptWelcomeAndRequestAction', () => {
   it('bienvenida inválida o sin matchId válido no toca el service', async () => {
     mocks.getBoardMatch.mockResolvedValue({ id: MATCH, tenantId: TENANT })
     const bad = welcomeForm()
-    bad.set('zone', 'Marte')
+    bad.set('zone', 'x'.repeat(121))
     bad.set('matchId', MATCH)
     expect(await acceptWelcomeAndRequestAction(PREV, bad)).toMatchObject({
       success: false,
@@ -686,7 +686,7 @@ describe('requestToJoinAction y acceptWelcomeAndRequestAction', () => {
     expect(mocks.acceptRivalWelcome).not.toHaveBeenCalled()
     expect(mocks.completeRivalProfile).toHaveBeenCalledWith('player-1', {
       position: 'any',
-      zone: 'Luján',
+      zone: 'Luján, Buenos Aires',
     })
     expect(mocks.requestToJoin).toHaveBeenCalledTimes(1)
   })
@@ -695,10 +695,12 @@ describe('requestToJoinAction y acceptWelcomeAndRequestAction', () => {
     mocks.getRivalWelcomeState.mockResolvedValue(welcomeState({ welcomed: true }))
     mocks.getBoardMatch.mockResolvedValue({ id: MATCH, tenantId: TENANT, seeking: 'rival' })
     const f = new FormData()
-    f.set('zone', 'Luján')
+    f.set('zone', 'Luján, Buenos Aires')
     f.set('matchId', MATCH)
     expect(await acceptWelcomeAndRequestAction(PREV, f)).toEqual({ success: true })
-    expect(mocks.completeRivalProfile).toHaveBeenCalledWith('player-1', { zone: 'Luján' })
+    expect(mocks.completeRivalProfile).toHaveBeenCalledWith('player-1', {
+      zone: 'Luján, Buenos Aires',
+    })
     expect(mocks.requestToJoin).toHaveBeenCalledTimes(1)
   })
 
@@ -706,7 +708,7 @@ describe('requestToJoinAction y acceptWelcomeAndRequestAction', () => {
     mocks.getRivalWelcomeState.mockResolvedValue(welcomeState({ welcomed: true }))
     mocks.getBoardMatch.mockResolvedValue({ id: MATCH, tenantId: TENANT, seeking: 'players' })
     const f = new FormData()
-    f.set('zone', 'Luján')
+    f.set('zone', 'Luján, Buenos Aires')
     f.set('matchId', MATCH)
     f.set('position', '')
     f.set('purpose', 'desafiar')

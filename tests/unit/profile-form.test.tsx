@@ -98,6 +98,24 @@ describe('ProfileForm', () => {
     expect(calls[0]![1].get('preferred_area')).toBe('Palermo')
   })
 
+  it('una zona guardada como "Ciudad, Provincia" vuelve a mostrarse en el buscador', async () => {
+    const action = vi.fn(async () => ({ success: true as const }))
+    render(
+      <ProfileForm
+        defaultValues={{ ...defaults, preferredArea: 'Luján, Buenos Aires' }}
+        action={action}
+      />,
+    )
+    expect((screen.getByLabelText('Zona preferida') as HTMLInputElement).value).toBe(
+      'Luján, Buenos Aires',
+    )
+    expect(screen.queryByText(/Tu zona actual/)).toBeNull()
+    guardar()
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+    const calls = action.mock.calls as unknown as [UpdateProfileResult, FormData][]
+    expect(calls[0]![1].get('preferred_area')).toBe('Luján, Buenos Aires')
+  })
+
   it('elegir una localidad del país reemplaza la zona: "Luján, Buenos Aires"', async () => {
     vi.stubGlobal(
       'fetch',

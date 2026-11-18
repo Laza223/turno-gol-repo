@@ -47,7 +47,7 @@ export const AlturaDelEsqueleto: Story = {
             firstName: base.firstName,
             lastName: base.lastName,
             phone: base.phone ?? '',
-            preferredArea: 'Palermo',
+            preferredArea: 'Luján, Buenos Aires',
           }}
           email={base.email}
           favorites={[

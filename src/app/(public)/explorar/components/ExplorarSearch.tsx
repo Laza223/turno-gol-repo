@@ -9,13 +9,14 @@ import {
   LocalidadSheet,
   SearchField,
   cityValue,
-  findCity,
   geoStatusMessage,
+  resolvePlace,
 } from '@/components/site/SearchSheets'
 import { useNearestCity } from '@/hooks/use-nearest-city'
 import { useSavedZona } from '@/hooks/use-saved-zona'
 import { formatsLabel } from '@/lib/formats-label'
-import { markZonaApplied, wasZonaApplied } from '@/lib/zona-storage'
+import { markZonaApplied, roundCoord, wasZonaApplied } from '@/lib/zona-storage'
+import type { GeoLocality } from '@/modules/geo/geo.types'
 import type { CityCount } from '@/modules/tenants/search.service'
 import { buildExplorarUrl } from './url'
 
@@ -23,6 +24,8 @@ type Props = {
   cities: CityCount[]
   /** Los tamaños de cada complejo de la localidad elegida (`listPublicFormatSets`). */
   formatSets: number[][]
+  /** La localidad de la URL no tiene complejos y se muestran los más cercanos: los tamaños no son de ella. */
+  nearby?: boolean
 }
 
 function formatsFrom(raw: string | null): number[] {
@@ -40,7 +43,7 @@ function formatsFrom(raw: string | null): number[] {
  * `q`): elegir una localidad navega en el acto, y la hoja de Cancha navega con "Ver N complejos".
  * Buscar un complejo por nombre vive en la hoja de Localidad (decisión de Lazar, 2026-11-14).
  */
-export default function ExplorarSearch({ cities, formatSets }: Props) {
+export default function ExplorarSearch({ cities, formatSets, nearby = false }: Props) {
   const router = useRouter()
   const params = useSearchParams()
   const paramsKey = params.toString()
@@ -56,9 +59,9 @@ export default function ExplorarSearch({ cities, formatSets }: Props) {
   const [zona] = useSavedZona()
   const { state: geo, locate, cancel } = useNearestCity()
 
-  const current = findCity(cities, urlCity ? { city: urlCity, province: urlProvince } : null)
-  const city = urlCity ? (current ? cityValue(current) : cityValue({ city: urlCity })) : ''
-  const zonaCity = findCity(cities, zona)
+  const current = resolvePlace(cities, { city: urlCity, province: urlProvince })
+  const city = current ? cityValue(current) : ''
+  const zonaCity = resolvePlace(cities, zona)
   const usingZona = zonaCity !== undefined && city === cityValue(zonaCity)
 
   // Entrar a /explorar sin ningún filtro arranca en la zona guardada del jugador (la que dejó la
@@ -68,6 +71,8 @@ export default function ExplorarSearch({ cities, formatSets }: Props) {
   // el dispositivo.
   const zonaName = zona?.city
   const zonaProvince = zona?.province
+  const zonaLat = zona?.lat
+  const zonaLng = zona?.lng
   useEffect(() => {
     if (paramsKey !== '') {
       markZonaApplied()
@@ -76,40 +81,54 @@ export default function ExplorarSearch({ cities, formatSets }: Props) {
     if (!zonaName || wasZonaApplied()) return
     markZonaApplied()
     router.replace(
-      buildExplorarUrl(new URLSearchParams(), { city: zonaName, province: zonaProvince }),
+      buildExplorarUrl(new URLSearchParams(), {
+        city: zonaName,
+        province: zonaProvince,
+        lat: zonaLat === undefined ? undefined : String(zonaLat),
+        lng: zonaLng === undefined ? undefined : String(zonaLng),
+      }),
     )
-  }, [zonaName, zonaProvince, paramsKey, router])
+  }, [zonaName, zonaProvince, zonaLat, zonaLng, paramsKey, router])
 
   function go(updates: Record<string, string | undefined>) {
     setSheet(null)
     router.push(buildExplorarUrl(params, updates))
   }
 
-  function onCityChange(value: string) {
+  function onCityChange(value: string, locality?: GeoLocality) {
     cancel()
     setWantsLocation(false)
     const [cityPart, provincePart] = value.split('||')
     // "Todas las ciudades" no borra la zona guardada: solo vale para esta búsqueda.
     if (!value) markZonaApplied()
     // Elegir una localidad suelta el nombre buscado (si no, la lista queda filtrada sin que se vea)
-    // y las coordenadas de un link viejo, que eran de otro lugar.
+    // y las coordenadas de un link viejo, que eran de otro lugar. Una localidad sin complejos trae
+    // las suyas: con ellas la página muestra los complejos más cercanos.
     go({
       city: cityPart || undefined,
       province: provincePart || undefined,
       q: undefined,
-      lat: undefined,
-      lng: undefined,
+      lat: locality?.lat != null ? String(roundCoord(locality.lat)) : undefined,
+      lng: locality?.lng != null ? String(roundCoord(locality.lng)) : undefined,
     })
   }
 
-  // "Usar mi ubicación exacta": cuando llega la localidad, la búsqueda se va para allá.
+  // "Usar mi ubicación actual": cuando llega la localidad, la búsqueda se va para allá.
   const found = wantsLocation && geo.status === 'found' ? geo : null
   useEffect(() => {
     if (!found) return
     // eslint-disable-next-line react-hooks/set-state-in-effect -- se consume una sola vez
     setWantsLocation(false)
     setSheet(null)
-    router.push(buildExplorarUrl(params, { city: found.city, province: found.province }))
+    router.push(
+      buildExplorarUrl(params, {
+        city: found.city,
+        province: found.province,
+        q: undefined,
+        lat: String(found.lat),
+        lng: String(found.lng),
+      }),
+    )
   }, [found, params, router])
 
   const message = geoStatusMessage(geo.status, usingZona)
@@ -124,7 +143,7 @@ export default function ExplorarSearch({ cities, formatSets }: Props) {
       >
         <SearchField
           label="Localidad"
-          value={current?.city ?? (urlCity || 'Todas')}
+          value={urlCity || 'Todas'}
           icon={<MapPin aria-hidden />}
           onClick={() => setSheet('localidad')}
         />
@@ -168,7 +187,7 @@ export default function ExplorarSearch({ cities, formatSets }: Props) {
         onFormatsChange={setFormats}
         onSubmit={() => go({ formats: formats.length ? formats.join(',') : undefined })}
         formatSets={formatSets}
-        place={current?.city}
+        place={nearby ? undefined : urlCity || undefined}
       />
     </>
   )

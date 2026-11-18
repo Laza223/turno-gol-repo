@@ -6,8 +6,12 @@ import { Button } from '@/components/ui/button'
 import { GlassSheetContent } from '@/components/ui/glass-sheet'
 import { Sheet } from '@/components/ui/sheet'
 import { FORMAT_OPTIONS } from '@/components/public/courtFacets'
+import { CURRENT_PLACE_MESSAGES } from '@/components/geo/use-current-place'
+import { useLocalitySearch } from '@/components/geo/use-locality-search'
 import type { SavedZona } from '@/lib/zona-storage'
+import { normalizeForSearch } from '@/lib/search'
 import { cn } from '@/lib/utils'
+import type { GeoLocality } from '@/modules/geo/geo.types'
 import type { CityCount } from '@/modules/tenants/search.service'
 import type { NearestCityState } from '@/hooks/use-nearest-city'
 
@@ -32,17 +36,22 @@ function countLabel(n: number): string {
 
 /** Aviso de la hoja de Localidad según cómo salió la ubicación (vacío = nada que decir). */
 export function geoStatusMessage(status: NearestCityState['status'], usingZona: boolean): string {
-  if (status === 'denied') {
-    return 'No pudimos acceder a tu ubicación. Elegí tu localidad manualmente.'
-  }
+  if (status === 'denied') return CURRENT_PLACE_MESSAGES.denied
   if (usingZona) return 'Tu zona guardada. Cambiala cuando quieras.'
-  if (status === 'error') return 'No pudimos ubicarte. Elegí tu localidad manualmente.'
-  if (status === 'no_results') return 'No hay canchas cerca tuyo todavía. Elegí tu localidad.'
-  return ''
+  // Sin soporte el botón ni aparece: no hay nada que explicar.
+  if (
+    status === 'idle' ||
+    status === 'locating' ||
+    status === 'found' ||
+    status === 'unsupported'
+  ) {
+    return ''
+  }
+  return CURRENT_PLACE_MESSAGES[status]
 }
 
 /** La ciudad de la lista que corresponde a la zona (primero ciudad+provincia, luego solo ciudad). */
-export function findCity(
+function findCity(
   cities: CityCount[],
   zona: Pick<SavedZona, 'city' | 'province'> | null,
 ): CityCount | undefined {
@@ -51,6 +60,18 @@ export function findCity(
     cities.find((c) => c.city === zona.city && c.province === (zona.province ?? '')) ??
     cities.find((c) => c.city === zona.city)
   )
+}
+
+/**
+ * La localidad de una zona (guardada, de la conexión o de la URL), tenga o no complejos: si está en
+ * la lista toma su provincia; si no, queda tal cual (el jugador puede buscar en cualquier localidad).
+ */
+export function resolvePlace(
+  cities: CityCount[],
+  place: Pick<SavedZona, 'city' | 'province'> | null,
+): { city: string; province: string } | undefined {
+  if (!place?.city) return undefined
+  return { city: place.city, province: findCity(cities, place)?.province ?? place.province ?? '' }
 }
 
 /** Cuántos complejos tienen al menos uno de los tamaños elegidos (sin tamaño: todos). */
@@ -83,7 +104,8 @@ export function LocalidadSheet({
   cities: CityCount[]
   /** La localidad marcada, como `cityValue` ('' = todas). */
   city: string
-  onCityChange: (value: string) => void
+  /** `locality` viene solo si se eligió una de las "otras" (sin complejos): trae lat/lng. */
+  onCityChange: (value: string, locality?: GeoLocality) => void
   message: string
   canLocate: boolean
   locating: boolean
@@ -105,6 +127,18 @@ export function LocalidadSheet({
   const visibleCities = q
     ? cities.filter((c) => cityLabel(c).toLocaleLowerCase('es').includes(q))
     : cities
+  // Cualquier localidad del país: las que ya figuran arriba (con complejos) no se repiten.
+  const { results: found, status: searchStatus } = useLocalitySearch(name)
+  const listed = new Set(cities.map((c) => normalizeForSearch(`${c.city}|${c.province}`)))
+  const others = found.filter((l) => !listed.has(normalizeForSearch(`${l.city}|${l.province}`)))
+  const emptyMessage =
+    !name || visibleCities.length > 0 || others.length > 0
+      ? null
+      : searchStatus === 'loading'
+        ? 'Buscando…'
+        : searchStatus === 'degraded' || searchStatus === 'error'
+          ? 'No pudimos buscar ahora. Probá de nuevo.'
+          : 'No encontramos esa localidad.'
 
   return (
     <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
@@ -130,7 +164,14 @@ export function LocalidadSheet({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && onNameSearch && name && visibleCities.length === 0) {
+              if (
+                e.key === 'Enter' &&
+                onNameSearch &&
+                name &&
+                visibleCities.length === 0 &&
+                others.length === 0 &&
+                searchStatus !== 'loading'
+              ) {
                 e.preventDefault()
                 onNameSearch(name)
               }
@@ -161,11 +202,11 @@ export function LocalidadSheet({
             className="mt-2 flex min-h-14 w-full items-center gap-3 border-b border-portal-inner-line px-2 text-left text-base font-semibold text-portal-slot-ink focus-visible:rounded-xl focus-visible:outline-2 focus-visible:outline-portal-green disabled:opacity-60"
           >
             <LocateFixed className="size-5" aria-hidden />
-            {locating ? 'Buscando…' : 'Usar mi ubicación exacta'}
+            {locating ? 'Buscando…' : 'Usar mi ubicación actual'}
           </button>
         )}
         <fieldset className="mt-1">
-          <legend className="sr-only">Localidades con complejos</legend>
+          <legend className="sr-only">Localidades</legend>
           <label className={optionRow}>
             <input
               type="radio"
@@ -201,8 +242,34 @@ export function LocalidadSheet({
               </label>
             )
           })}
-          {visibleCities.length === 0 && (
-            <p className="py-4 text-base text-portal-soft">No encontramos esa localidad</p>
+          {others.length > 0 && (
+            <p className="mt-3 text-sm font-semibold text-portal-soft">Otras localidades</p>
+          )}
+          {others.map((l) => {
+            const value = cityValue(l)
+            const checked = city === value
+            return (
+              <label key={`${value}|${l.department ?? ''}`} className={optionRow}>
+                <input
+                  type="radio"
+                  name={`${ids}-city`}
+                  className="sr-only"
+                  checked={checked}
+                  onChange={() => onCityChange(value, l)}
+                  onClick={() => checked && onCityChange(value, l)}
+                />
+                <span className="min-w-0 truncate">{l.city}</span>
+                <span className="ml-auto shrink-0 text-sm font-normal text-portal-soft">
+                  {l.province} · Todavía sin complejos
+                </span>
+                {checked && <Check className="size-5 shrink-0" aria-hidden />}
+              </label>
+            )
+          })}
+          {emptyMessage && (
+            <p role="status" className="py-4 text-base text-portal-soft">
+              {emptyMessage}
+            </p>
           )}
         </fieldset>
       </GlassSheetContent>

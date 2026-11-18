@@ -93,11 +93,12 @@ export const HojaDeCancha: Story = {
 
 /** Hoja de Localidad: con texto escrito, una fila busca un complejo por ese nombre, en todas las localidades. */
 export const BuscarPorNombre: Story = {
+  parameters: { fetchMock: [{ match: '/api/public/geo/localidades', json: { results: [] } }] },
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole('button', { name: /^Localidad:/ }))
     const sheet = within(await body(canvasElement).findByRole('dialog'))
     await userEvent.type(sheet.getByRole('searchbox', { name: 'Localidad' }), 'Fénix')
-    await expect(sheet.getByText('No encontramos esa localidad')).toBeInTheDocument()
+    await expect(await sheet.findByText('No encontramos esa localidad.')).toBeInTheDocument()
     await userEvent.click(sheet.getByRole('button', { name: /Buscar complejos que se llamen/ }))
     await waitFor(() =>
       expect(getRouter().push).toHaveBeenCalledWith('/explorar?formats=5&q=F%C3%A9nix'),

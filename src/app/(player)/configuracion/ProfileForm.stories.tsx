@@ -137,3 +137,32 @@ export const GuardadoSeVaAlEditar: Story = {
     await waitFor(() => expect(canvas.queryByText('Guardado')).not.toBeInTheDocument())
   },
 }
+
+/** La zona se elige entre las localidades del país; el texto viejo se muestra hasta que elija otra. */
+export const ElegirZona: Story = {
+  args: { action: fn(async () => ({ success: true as const })) },
+  parameters: {
+    fetchMock: [
+      {
+        match: '/api/public/geo/localidades',
+        json: {
+          results: [
+            { city: 'Luján', province: 'Buenos Aires', lat: -34.57, lng: -59.1, source: 'dataset' },
+          ],
+        },
+      },
+    ],
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Tu zona actual: Palermo')).toBeInTheDocument()
+    await userEvent.type(canvas.getByLabelText('Zona preferida'), 'lujan')
+    // Las opciones viven en un portal (fuera del canvas): se buscan en todo el documento.
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.click(await body.findByRole('option', { name: /Luján/ }))
+    await expect(canvas.queryByText(/Tu zona actual/)).not.toBeInTheDocument()
+    await userEvent.click(canvas.getByRole('button', { name: 'Guardar cambios' }))
+    await waitFor(() => expect(args.action).toHaveBeenCalledTimes(1))
+    await expect(formDataOf(args.action).get('preferred_area')).toBe('Luján, Buenos Aires')
+  },
+}

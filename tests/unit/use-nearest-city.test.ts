@@ -26,13 +26,9 @@ function stubPermission(state: PermissionState | null) {
   return query
 }
 
-function stubFetchNearest(
-  results: Array<{ city: string; province: string; distanceKm: number | null }>,
-) {
-  const fetchMock = vi.fn().mockResolvedValue({
-    ok: true,
-    json: async () => ({ results, total: results.length }),
-  })
+/** Lo que responde `/api/public/geo/reverse` (el servidor ya devuelve la localidad, no la dirección). */
+function stubFetchReverse(body: unknown = { result: CORDOBA }, ok = true) {
+  const fetchMock = vi.fn().mockResolvedValue({ ok, json: async () => body })
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
 }
@@ -40,7 +36,7 @@ function stubFetchNearest(
 const found = (success: GeoSuccess) =>
   success({ coords: { latitude: -31.4201, longitude: -64.1888 } })
 
-const CORDOBA = [{ city: 'Córdoba', province: 'Córdoba', distanceKm: 3.2 }]
+const CORDOBA = { city: 'Córdoba', province: 'Córdoba', lat: -31.4167, lng: -64.1833 }
 
 /** Deja correr la consulta de permisos (una promesa) sin esperar ningún estado concreto. */
 async function flush() {
@@ -64,7 +60,7 @@ describe('useNearestCity — no pide la ubicación sola', () => {
   it('sin zona y con permiso "prompt": no llama a geolocation (evita el cartel en cada visita)', async () => {
     const query = stubPermission('prompt')
     const geo = stubGeolocation(found)
-    stubFetchNearest(CORDOBA)
+    stubFetchReverse()
 
     const { result } = renderHook(() => useNearestCity())
     await waitFor(() => expect(query).toHaveBeenCalled())
@@ -76,7 +72,7 @@ describe('useNearestCity — no pide la ubicación sola', () => {
 
   it('sin Permissions API tampoco pide: queda el botón', async () => {
     const geo = stubGeolocation(found)
-    stubFetchNearest(CORDOBA)
+    stubFetchReverse()
 
     const { result } = renderHook(() => useNearestCity())
     await flush()
@@ -92,7 +88,7 @@ describe('useNearestCity — no pide la ubicación sola', () => {
     )
     const query = stubPermission('granted')
     const geo = stubGeolocation(found)
-    stubFetchNearest(CORDOBA)
+    stubFetchReverse()
 
     const { result } = renderHook(() => useNearestCity())
     await flush()
@@ -115,7 +111,7 @@ describe('useNearestCity — no pide la ubicación sola', () => {
   it('permiso ya concedido y sin zona → resuelve sola (consultar no muestra cartel) y la guarda', async () => {
     stubPermission('granted')
     stubGeolocation(found)
-    stubFetchNearest(CORDOBA)
+    stubFetchReverse()
 
     const { result } = renderHook(() => useNearestCity())
 
@@ -125,31 +121,49 @@ describe('useNearestCity — no pide la ubicación sola', () => {
 })
 
 describe('useNearestCity — locate()', () => {
-  it('con permiso y un complejo cerca → found, y guarda ciudad + coordenadas redondeadas', async () => {
+  it('ubica al jugador en SU localidad (reverse, precision=locality) y guarda coordenadas a ~1 km', async () => {
     stubPermission('prompt')
     stubGeolocation(found)
-    const fetchMock = stubFetchNearest(CORDOBA)
+    const fetchMock = stubFetchReverse()
 
     const { result } = renderHook(() => useNearestCity())
     act(() => result.current.locate())
 
     await waitFor(() => expect(result.current.state.status).toBe('found'))
-    expect(result.current.state).toEqual({ status: 'found', city: 'Córdoba', province: 'Córdoba' })
+    expect(result.current.state).toEqual({
+      status: 'found',
+      city: 'Córdoba',
+      province: 'Córdoba',
+      lat: -31.42,
+      lng: -64.18,
+    })
 
+    // Nunca sale la posición exacta ni se pide precisión de dirección.
     const url = String(fetchMock.mock.calls[0]?.[0])
-    expect(url).toContain('/api/public/search?')
-    expect(url).toContain('sort=distance')
-    expect(url).toContain('limit=1')
-    expect(url).toContain('lat=-31.420100')
-    expect(url).toContain('lng=-64.188800')
+    expect(url).toContain('/api/public/geo/reverse?')
+    expect(url).toContain('precision=locality')
+    expect(url).toContain('lat=-31.42&')
+    expect(url).not.toContain('-31.4201')
 
-    // Lo guardado va a ~1 km: ni la URL compartida ni el storage delatan la casa.
     expect(parseZona(localStorage.getItem(ZONA_STORAGE_KEY))).toEqual({
       city: 'Córdoba',
       province: 'Córdoba',
       lat: -31.42,
-      lng: -64.19,
+      lng: -64.18,
     })
+  })
+
+  it('una localidad SIN complejos también se guarda: ya no hay corte por distancia', async () => {
+    stubGeolocation(found)
+    stubFetchReverse({
+      result: { city: 'Mercedes', province: 'Buenos Aires', lat: -34.65, lng: -59.43 },
+    })
+
+    const { result } = renderHook(() => useNearestCity())
+    act(() => result.current.locate())
+
+    await waitFor(() => expect(result.current.state.status).toBe('found'))
+    expect(parseZona(localStorage.getItem(ZONA_STORAGE_KEY))?.city).toBe('Mercedes')
   })
 
   it('mientras espera la posición, el estado es locating', async () => {
@@ -163,7 +177,7 @@ describe('useNearestCity — locate()', () => {
 
   it('permiso denegado (code 1) → denied, sin llamar al endpoint ni guardar', async () => {
     stubGeolocation((_success, error) => error({ code: 1 }))
-    const fetchMock = stubFetchNearest([])
+    const fetchMock = stubFetchReverse()
 
     const { result } = renderHook(() => useNearestCity())
     act(() => result.current.locate())
@@ -179,28 +193,18 @@ describe('useNearestCity — locate()', () => {
     expect(result.current.state.status).toBe('unsupported')
   })
 
-  it('el complejo más cercano queda fuera del radio → no_results, sin guardar', async () => {
+  it('fuera de Argentina (sin resultado) → outside_argentina, sin guardar', async () => {
     stubGeolocation(found)
-    stubFetchNearest([{ city: 'Salta', province: 'Salta', distanceKm: 320 }])
-
-    const { result } = renderHook(() => useNearestCity({ maxDistanceKm: 50 }))
-    act(() => result.current.locate())
-
-    await waitFor(() => expect(result.current.state.status).toBe('no_results'))
-    expect(localStorage.getItem(ZONA_STORAGE_KEY)).toBeNull()
-  })
-
-  it('sin resultados en la búsqueda → no_results', async () => {
-    stubGeolocation(found)
-    stubFetchNearest([])
+    stubFetchReverse({ result: null })
 
     const { result } = renderHook(() => useNearestCity())
     act(() => result.current.locate())
 
-    await waitFor(() => expect(result.current.state.status).toBe('no_results'))
+    await waitFor(() => expect(result.current.state.status).toBe('outside_argentina'))
+    expect(localStorage.getItem(ZONA_STORAGE_KEY)).toBeNull()
   })
 
-  it('fallo de red al buscar → error (no bloqueante)', async () => {
+  it('fallo de red al ubicar → error (no bloqueante)', async () => {
     stubGeolocation(found)
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
 
@@ -210,12 +214,12 @@ describe('useNearestCity — locate()', () => {
     await waitFor(() => expect(result.current.state.status).toBe('error'))
   })
 
-  it('timeout u otro error de posición (code != 1) → error', async () => {
+  it('timeout de la posición (code 3) → timeout', async () => {
     stubGeolocation((_success, error) => error({ code: 3 }))
 
     const { result } = renderHook(() => useNearestCity())
     act(() => result.current.locate())
 
-    await waitFor(() => expect(result.current.state.status).toBe('error'))
+    await waitFor(() => expect(result.current.state.status).toBe('timeout'))
   })
 })

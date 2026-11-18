@@ -4,12 +4,15 @@ import '@/components/booking/reserva.css'
 import '@/components/world/portal-app.css'
 import { startTransition, useActionState, useEffect, useState, type FormEvent } from 'react'
 import type { UpdateProfileResult } from './actions'
+import LocalityPicker from '@/components/geo/LocalityPicker'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { Button } from '@/components/ui/button'
 import { GLASS_INPUT } from '@/components/world/portal-auth-styles'
 import { cn } from '@/lib/utils'
+import type { GeoLocality } from '@/modules/geo/geo.types'
+import { PROVINCES } from '@/shared/geo/argentina'
 
 type DefaultValues = {
   firstName: string
@@ -50,8 +53,26 @@ const LABEL = 'text-[14px] font-semibold text-portal-ink'
 
 type FieldName = 'first_name' | 'last_name' | 'preferred_area' | 'phone'
 
+/**
+ * "Luján, Buenos Aires" → la localidad ya elegida, para que el buscador la muestre en vez de una
+ * línea suelta. Un texto libre viejo ("Palermo") no tiene provincia: no se puede mostrar ahí.
+ */
+function parseSavedArea(area: string): GeoLocality | null {
+  const i = area.lastIndexOf(', ')
+  if (i <= 0) return null
+  const province = area.slice(i + 2)
+  if (!(PROVINCES as readonly string[]).includes(province)) return null
+  return { city: area.slice(0, i), province, lat: null, lng: null, source: 'dataset' }
+}
+
 export function ProfileForm({ defaultValues, action }: Props) {
   const [state, formAction, pending] = useActionState(action, INITIAL_STATE)
+  // La zona se elige entre las localidades del país y viaja en un hidden ("Luján, Buenos Aires").
+  // Un texto libre viejo ("Palermo, Villa Crespo") se conserva hasta que elija otra.
+  const [area, setArea] = useState(defaultValues.preferredArea)
+  const [pickedArea, setPickedArea] = useState<GeoLocality | null>(() =>
+    parseSavedArea(defaultValues.preferredArea),
+  )
   // "Guardado" vale hasta que se vuelve a tocar un campo: después ya no dice nada de lo que hay en pantalla.
   const [edited, setEdited] = useState(false)
   const [submitted, setSubmitted] = useState(false)
@@ -157,16 +178,21 @@ export function ProfileForm({ defaultValues, action }: Props) {
         <Label htmlFor="preferred_area" className={LABEL}>
           Zona preferida
         </Label>
-        <Input
+        <LocalityPicker
           id="preferred_area"
-          name="preferred_area"
-          type="text"
-          defaultValue={defaultValues.preferredArea}
-          placeholder="Ej: Palermo, Villa Crespo"
-          className={FIELD}
+          value={pickedArea}
+          onChange={(locality) => {
+            setPickedArea(locality)
+            setArea(locality ? `${locality.city}, ${locality.province}` : '')
+            setEdited(true)
+          }}
+          inputClassName={FIELD}
+          locateStyle="icon"
           aria-invalid={fieldError('preferred_area') ? true : undefined}
           aria-describedby={fieldError('preferred_area') ? 'preferred_area-error' : undefined}
         />
+        <input type="hidden" name="preferred_area" value={area} />
+        {area && !pickedArea && <p className="text-sm text-portal-soft">Tu zona actual: {area}</p>}
         {fieldError('preferred_area') && (
           <p id="preferred_area-error" role="alert" className={FIELD_ERROR}>
             {fieldError('preferred_area')}

@@ -36,7 +36,9 @@ test.describe('TG-HP-109 — Editar tus datos', () => {
       await page.locator('#first_name').fill('QA109')
       await page.locator('#last_name').fill('Jugador')
       await page.locator('#phone').fill('1122223333')
-      await page.locator('#preferred_area').fill('Palermo')
+      // La zona se elige de la lista de localidades del país (no es texto libre).
+      await page.locator('#preferred_area').fill('Luján')
+      await page.getByRole('option').filter({ hasText: 'Buenos Aires' }).first().click()
 
       const saveBtn = page.getByRole('button', { name: 'Guardar cambios' })
       await expect(saveBtn).toBeEnabled()
@@ -61,7 +63,7 @@ test.describe('TG-HP-109 — Editar tus datos', () => {
       expect(row?.first_name).toBe('QA109')
       expect(row?.last_name).toBe('Jugador')
       expect(row?.phone).toBe('+54 1122223333')
-      expect(row?.preferred_area).toBe('Palermo')
+      expect(row?.preferred_area).toBe('Luján, Buenos Aires')
       expect(row?.email).toBe(E2E_PLAYER_EMAIL) // el email NUNCA cambia
 
       // Reload: confirma que el UPDATE persistió server-side, no solo estado local.

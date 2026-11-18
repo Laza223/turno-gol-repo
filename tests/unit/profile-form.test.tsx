@@ -4,7 +4,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { ProfileForm } from '@/app/(player)/configuracion/ProfileForm'
 import type { UpdateProfileResult } from '@/app/(player)/configuracion/actions'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+})
 
 const defaults = {
   firstName: 'Tomás',
@@ -84,6 +87,39 @@ describe('ProfileForm', () => {
     const data = calls[0]![1]
     expect(data.get('first_name')).toBe('Tomás')
     expect(data.get('last_name')).toBe('')
+  })
+
+  it('un texto viejo de la zona se muestra y se conserva hasta que elija otra localidad', async () => {
+    const action = renderForm({ success: true })
+    expect(screen.getByText('Tu zona actual: Palermo')).toBeTruthy()
+    guardar()
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+    const calls = action.mock.calls as unknown as [UpdateProfileResult, FormData][]
+    expect(calls[0]![1].get('preferred_area')).toBe('Palermo')
+  })
+
+  it('elegir una localidad del país reemplaza la zona: "Luján, Buenos Aires"', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          results: [
+            { city: 'Luján', province: 'Buenos Aires', lat: -34.57, lng: -59.1, source: 'dataset' },
+          ],
+        }),
+      })),
+    )
+    const action = renderForm({ success: true })
+    fireEvent.change(screen.getByLabelText('Zona preferida'), { target: { value: 'lujan' } })
+    fireEvent.click(await screen.findByRole('option', { name: /Luján/ }))
+    expect(screen.queryByText(/Tu zona actual/)).toBeNull()
+
+    guardar()
+    await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+    const calls = action.mock.calls as unknown as [UpdateProfileResult, FormData][]
+    expect(calls[0]![1].get('preferred_area')).toBe('Luján, Buenos Aires')
+    vi.unstubAllGlobals()
   })
 
   it('al guardar el botón traza un tilde que se va a los 1,2 s; "Guardado" queda', async () => {

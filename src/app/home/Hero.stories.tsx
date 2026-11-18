@@ -118,13 +118,17 @@ export const SinComplejosEnLaZona: Story = {
   },
 }
 
-/** `loadCities()` degrada a `[]` si `listPublicCities()` tira: el buscador queda sin localidades. */
+/**
+ * `loadCities()` degrada a `[]` si `listPublicCities()` tira. Ya no deja el buscador vacío: la
+ * localidad de la conexión vale aunque no figure en la lista (cualquier localidad del país sirve).
+ */
 export const SinCiudades: Story = {
   args: { cities: [] },
   globals: { viewport: { value: 'mobile-primary', isRotated: false } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: 'Localidad: ¿Dónde?. Cambiar' })).toBeVisible()
-    await expect(canvas.queryByRole('region', { name: /^Complejos de / })).toBeNull()
+    await waitFor(() =>
+      expect(canvas.getByRole('button', { name: /^Localidad: Ciudad Autónoma/ })).toBeVisible(),
+    )
   },
 }

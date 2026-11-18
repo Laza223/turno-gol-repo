@@ -7,8 +7,9 @@ import { useHydrated } from '@/hooks/use-client-value'
 import { useIpZona } from '@/hooks/use-ip-zona'
 import { useNearestCity } from '@/hooks/use-nearest-city'
 import { useSavedZona } from '@/hooks/use-saved-zona'
-import { markZonaApplied } from '@/lib/zona-storage'
+import { markZonaApplied, roundCoord } from '@/lib/zona-storage'
 import { cn } from '@/lib/utils'
+import type { GeoLocality } from '@/modules/geo/geo.types'
 import type { CityCount } from '@/modules/tenants/search.service'
 import { formatsLabel } from '@/lib/formats-label'
 import {
@@ -17,8 +18,8 @@ import {
   LocalidadSheet,
   SearchField,
   cityValue,
-  findCity,
   geoStatusMessage,
+  resolvePlace,
 } from './SearchSheets'
 
 export type SearchZona = { city: string; province: string }
@@ -45,8 +46,9 @@ const REFLEJO_KEY = 'turnogol:home-reflejo'
  * La localidad sale, en este orden, de lo elegido en esta visita, la zona guardada en el
  * dispositivo (`useSavedZona`), la zona de la conexión (`useIpZona`, que nunca se guarda) y, si no
  * hay nada, queda vacía. La zona se guarda al elegir una localidad a mano o con "Usar mi ubicación
- * exacta" (la ciudad del complejo más cercano, datos propios, sin geocoding externo); de ahí en
- * más no se vuelve a pedir nada.
+ * actual" (la localidad real del jugador, con precisión de localidad); de ahí en más no se vuelve a
+ * pedir nada. Vale cualquier localidad del país, tenga o no complejos: /explorar muestra los más
+ * cercanos cuando no hay.
  */
 export default function HeroSearch({ cities, onZonaChange, reflejo = false, className }: Props) {
   const router = useRouter()
@@ -54,6 +56,8 @@ export default function HeroSearch({ cities, onZonaChange, reflejo = false, clas
   // "Todas las ciudades") es una elección explícita y gana siempre. Derivado en el render y no
   // sincronizado con un efecto: no hay parpadeo ni setState encadenado.
   const [pickedCity, setPickedCity] = useState<string | null>(null)
+  // Las coordenadas (a ~1 km) de la localidad elegida a mano, si la lista las trae.
+  const [pickedCoords, setPickedCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [formats, setFormats] = useState<number[]>([])
   const [sheet, setSheet] = useState<'localidad' | 'cancha' | null>(null)
   const [shine, setShine] = useState(false)
@@ -61,23 +65,19 @@ export default function HeroSearch({ cities, onZonaChange, reflejo = false, clas
   const [zona, saveZona] = useSavedZona()
   const { state: geo, locate, cancel } = useNearestCity()
   const hydrated = useHydrated()
-  const zonaCity = findCity(cities, zona)
+  const zonaCity = resolvePlace(cities, zona)
   // La zona de la conexión se pide solo sin una guardada (un pedido por carga de página).
   const ipZona = useIpZona(hydrated && !zona?.city)
-  const ipCity = zonaCity ? undefined : findCity(cities, ipZona)
+  const ipCity = zonaCity ? undefined : resolvePlace(cities, ipZona)
 
   const city = pickedCity ?? (zonaCity ? cityValue(zonaCity) : ipCity ? cityValue(ipCity) : '')
-  const current = cities.find((c) => cityValue(c) === city)
+  const [cityName = '', provinceName = ''] = city.split('||')
   const usingZona = zonaCity !== undefined && city === cityValue(zonaCity)
   const usingIp = !usingZona && ipCity !== undefined && city === cityValue(ipCity)
 
-  const zonaCityName = current?.city
-  const zonaProvince = current?.province
   useEffect(() => {
-    onZonaChange?.(
-      zonaCityName !== undefined ? { city: zonaCityName, province: zonaProvince ?? '' } : null,
-    )
-  }, [zonaCityName, zonaProvince, onZonaChange])
+    onZonaChange?.(cityName ? { city: cityName, province: provinceName } : null)
+  }, [cityName, provinceName, onZonaChange])
 
   useEffect(() => {
     if (!reflejo) return
@@ -101,18 +101,24 @@ export default function HeroSearch({ cities, onZonaChange, reflejo = false, clas
   // Tocar el botón es pedir la ubicación de nuevo: vuelve a mandar lo que se detecte.
   function onLocate() {
     setPickedCity(null)
+    setPickedCoords(null)
     locate()
   }
 
-  function onCityChange(value: string) {
+  function onCityChange(value: string, locality?: GeoLocality) {
     setPickedCity(value)
+    const coords =
+      locality?.lat != null && locality.lng != null
+        ? { lat: roundCoord(locality.lat), lng: roundCoord(locality.lng) }
+        : null
+    setPickedCoords(coords)
     // Elegir a mano gana sobre una ubicación que todavía esté en camino.
     cancel()
     // Elegir una localidad a mano también fija la zona. "Todas las ciudades" NO la borra: solo
     // vale para esta búsqueda.
     if (value) {
       const [cityPart, provincePart] = value.split('||')
-      if (cityPart) saveZona({ city: cityPart, province: provincePart })
+      if (cityPart) saveZona({ city: cityPart, province: provincePart, ...coords })
     }
     setSheet(null)
   }
@@ -125,6 +131,12 @@ export default function HeroSearch({ cities, onZonaChange, reflejo = false, clas
       const [cityPart, provincePart] = city.split('||')
       if (cityPart) params.set('city', cityPart)
       if (provincePart) params.set('province', provincePart)
+      // Sin complejos en la localidad, /explorar ordena los más cercanos desde estas coordenadas.
+      const coords = pickedCoords ?? (usingZona && zona?.lat != null ? zona : null)
+      if (coords?.lat != null && coords.lng != null) {
+        params.set('lat', String(coords.lat))
+        params.set('lng', String(coords.lng))
+      }
     }
     if (formats.length) params.set('formats', formats.join(','))
     const qs = params.toString()
@@ -138,7 +150,7 @@ export default function HeroSearch({ cities, onZonaChange, reflejo = false, clas
   }
 
   const ipMessage = usingIp
-    ? `Te mostramos ${current?.city} por la zona desde donde te conectás. La que elijas queda guardada para la próxima.`
+    ? `Te mostramos ${cityName} por la zona desde donde te conectás. La que elijas queda guardada para la próxima.`
     : ''
   const geoMessage = geoStatusMessage(geo.status, usingZona) || ipMessage
   // Con la zona ya guardada, o con la ubicación bloqueada/no soportada, el botón no tiene qué hacer.
@@ -147,7 +159,7 @@ export default function HeroSearch({ cities, onZonaChange, reflejo = false, clas
 
   // El campo cerrado tiene lugar para una palabra en el celu (~80 px): "Todas las ciudades" y
   // "Cualquier tamaño" se cortaban. Las opciones de las hojas conservan el nombre largo.
-  const localidadValue = current ? current.city : pickedCity === '' ? 'Todas' : null
+  const localidadValue = cityName || (pickedCity === '' ? 'Todas' : null)
   const canchaValue = formatsLabel(formats) ?? 'Todas'
 
   return (

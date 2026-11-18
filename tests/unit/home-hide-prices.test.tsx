@@ -33,7 +33,7 @@ afterEach(() => {
 describe('precios ocultos en la home', () => {
   it('el complejo cercano aparece por nombre, pero ningún precio llega al DOM', async () => {
     // La home solo consulta la ubicación sola cuando el permiso YA está concedido (no hay cartel);
-    // en cualquier otro caso espera al botón "Usar mi ubicación exacta".
+    // en cualquier otro caso espera al botón "Usar mi ubicación actual".
     Object.defineProperty(navigator, 'permissions', {
       configurable: true,
       value: { query: () => Promise.resolve({ state: 'granted' }) },
@@ -45,22 +45,34 @@ describe('precios ocultos en la home', () => {
           success({ coords: { latitude: -34.5703, longitude: -59.105 } }),
       },
     })
+    // "Usar mi ubicación" pregunta dónde está el punto (`/api/public/geo/reverse`) y la ventana de
+    // la home busca los complejos de esa localidad (`/api/public/search`).
     const fetchMock = vi.fn((url: string) =>
       Promise.resolve({
         ok: true,
-        json: async () => ({
-          results: [
-            publicTenantCard({
-              id: 'a',
-              slug: 'a',
-              name: 'Cancha Secreta',
-              fromPriceCents: 900000,
-              fromPricePerPlayerCents: 90000,
-            }),
-          ],
-          total: 1,
-          url,
-        }),
+        json: async () =>
+          url.includes('/api/public/geo/reverse')
+            ? {
+                result: {
+                  city: 'Luján',
+                  province: 'Buenos Aires',
+                  lat: -34.5703,
+                  lng: -59.105,
+                },
+              }
+            : {
+                results: [
+                  publicTenantCard({
+                    id: 'a',
+                    slug: 'a',
+                    name: 'Cancha Secreta',
+                    fromPriceCents: 900000,
+                    fromPricePerPlayerCents: 90000,
+                  }),
+                ],
+                total: 1,
+                url,
+              },
       }),
     )
     vi.stubGlobal('fetch', fetchMock)

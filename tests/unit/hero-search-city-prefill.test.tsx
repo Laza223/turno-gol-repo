@@ -39,10 +39,18 @@ function stubPermission(state: PermissionState | null) {
   })
 }
 
-function stubFetchNearest(results: Array<{ city: string; province: string; distanceKm: number }>) {
+/** `fetch` de la app: `/api/public/geo/reverse` y `/api/public/geo/localidades`. */
+function stubGeoFetch(
+  reverse: { city: string; province: string; lat: number; lng: number } | null,
+  localities: Array<Record<string, unknown>> = [],
+) {
   vi.stubGlobal(
     'fetch',
-    vi.fn().mockResolvedValue({ ok: true, json: async () => ({ results, total: results.length }) }),
+    vi.fn(async (url: string) => ({
+      ok: true,
+      json: async () =>
+        url.includes('/geo/localidades') ? { results: localities } : { result: reverse },
+    })),
   )
 }
 
@@ -55,13 +63,13 @@ const searchForm = () =>
   screen.getByRole('form', { name: 'Buscar canchas de fútbol', hidden: true })
 const radio = (name: string | RegExp) => screen.getByRole('radio', { name }) as HTMLInputElement
 
-const locateButton = () => screen.queryByRole('button', { name: 'Usar mi ubicación exacta' })
+const locateButton = () => screen.queryByRole('button', { name: 'Usar mi ubicación actual' })
 
 function saveZonaInStorage(zona: object) {
   localStorage.setItem(ZONA_STORAGE_KEY, JSON.stringify(zona))
 }
 
-const CORDOBA_NEARBY = [{ city: 'Córdoba', province: 'Córdoba', distanceKm: 3.2 }]
+const CORDOBA_NEARBY = { city: 'Córdoba', province: 'Córdoba', lat: -31.4167, lng: -64.1833 }
 /** `getCurrentPosition` que responde al toque desde Córdoba. */
 const atCordoba = (success: GeoSuccess) =>
   success({ coords: { latitude: -31.42, longitude: -64.18 } })
@@ -85,9 +93,9 @@ afterEach(() => {
 })
 
 describe('HeroSearch — localidad desde la ubicación', () => {
-  it('"Usar mi ubicación exacta" pre-llena la ciudad, la deja guardada y el submit navega con city+province', async () => {
+  it('"Usar mi ubicación actual" pre-llena la ciudad, la deja guardada y el submit navega con city+province+coordenadas', async () => {
     stubGeolocation(atCordoba)
-    stubFetchNearest(CORDOBA_NEARBY)
+    stubGeoFetch(CORDOBA_NEARBY)
 
     render(<HeroSearch cities={CITIES} />)
     expect(localidadLabel()).toBe('Localidad: ¿Dónde?. Cambiar')
@@ -107,11 +115,32 @@ describe('HeroSearch — localidad desde la ubicación', () => {
     expect(url).toContain('/explorar?')
     expect(url).toContain(`city=${encodeURIComponent('Córdoba')}`)
     expect(url).toContain(`province=${encodeURIComponent('Córdoba')}`)
+    expect(url).toContain('lat=-31.42')
+    expect(url).toContain('lng=-64.18')
+  })
+
+  it('una localidad SIN complejos se muestra en el campo y viaja a /explorar con sus coordenadas', async () => {
+    stubGeolocation(atCordoba)
+    stubGeoFetch({ city: 'Mercedes', province: 'Buenos Aires', lat: -34.65, lng: -59.43 })
+
+    render(<HeroSearch cities={CITIES} />)
+    openLocalidad()
+    fireEvent.click(locateButton()!)
+
+    await waitFor(() =>
+      expect(parseZona(localStorage.getItem(ZONA_STORAGE_KEY))?.city).toBe('Mercedes'),
+    )
+    fireEvent.submit(searchForm())
+    const url = new URL(String(pushMock.mock.calls[0]?.[0]), 'http://x')
+    expect(url.searchParams.get('city')).toBe('Mercedes')
+    expect(url.searchParams.get('province')).toBe('Buenos Aires')
+    expect(url.searchParams.get('lat')).toBe('-34.65')
+    expect(url.searchParams.get('lng')).toBe('-59.43')
   })
 
   it('NO pide la ubicación al cargar (era el cartel de cada visita): espera al botón', async () => {
     const geo = stubGeolocation(atCordoba)
-    stubFetchNearest(CORDOBA_NEARBY)
+    stubGeoFetch(CORDOBA_NEARBY)
 
     render(<HeroSearch cities={CITIES} />)
     await act(async () => {})
@@ -140,7 +169,7 @@ describe('HeroSearch — localidad desde la ubicación', () => {
   it('con el permiso ya concedido y sin zona, la resuelve sola (no hay cartel que mostrar)', async () => {
     stubPermission('granted')
     stubGeolocation(atCordoba)
-    stubFetchNearest(CORDOBA_NEARBY)
+    stubGeoFetch(CORDOBA_NEARBY)
 
     render(<HeroSearch cities={CITIES} />)
 
@@ -154,7 +183,7 @@ describe('HeroSearch — localidad desde la ubicación', () => {
     openLocalidad()
     fireEvent.click(locateButton()!)
 
-    await waitFor(() => expect(screen.getByText(/no pudimos acceder a tu ubicación/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/bloqueado el permiso de ubicación/i)).toBeTruthy())
     expect(locateButton()).toBeNull()
     expect(radio('Todas las ciudades').checked).toBe(true)
 
@@ -170,7 +199,7 @@ describe('HeroSearch — localidad desde la ubicación', () => {
     await act(async () => {})
     openLocalidad()
 
-    await waitFor(() => expect(screen.getByText(/no pudimos acceder a tu ubicación/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/bloqueado el permiso de ubicación/i)).toBeTruthy())
     expect(locateButton()).toBeNull()
     expect(geo).not.toHaveBeenCalled()
   })
@@ -215,7 +244,7 @@ describe('HeroSearch — elegir la localidad a mano', () => {
     stubGeolocation((success) => {
       fireGeo = success
     })
-    stubFetchNearest(CORDOBA_NEARBY)
+    stubGeoFetch(CORDOBA_NEARBY)
 
     render(<HeroSearch cities={CITIES} />)
 
@@ -237,7 +266,7 @@ describe('HeroSearch — elegir la localidad a mano', () => {
     stubGeolocation((success) => {
       fireGeo = success
     })
-    stubFetchNearest(CORDOBA_NEARBY)
+    stubGeoFetch(CORDOBA_NEARBY)
 
     render(<HeroSearch cities={CITIES} />)
     openLocalidad()
@@ -258,7 +287,7 @@ describe('HeroSearch — elegir la localidad a mano', () => {
   it('si el usuario ya eligió una ciudad, no se dispara la detección ni se la pisa', async () => {
     stubPermission('granted')
     const geo = stubGeolocation(atCordoba)
-    stubFetchNearest(CORDOBA_NEARBY)
+    stubGeoFetch(CORDOBA_NEARBY)
 
     render(<HeroSearch cities={CITIES} />)
 
@@ -272,6 +301,41 @@ describe('HeroSearch — elegir la localidad a mano', () => {
 
     expect(geo).not.toHaveBeenCalled()
     expect(localidadLabel()).toBe('Localidad: Rosario. Cambiar')
+  })
+
+  it('al escribir una localidad sin complejos aparece en "Otras localidades" y se puede elegir', async () => {
+    stubGeoFetch(null, [
+      { city: 'Mercedes', province: 'Buenos Aires', lat: -34.65, lng: -59.43, source: 'dataset' },
+      { city: 'Córdoba', province: 'Córdoba', lat: -31.41, lng: -64.18, source: 'dataset' },
+    ])
+    render(<HeroSearch cities={CITIES} />)
+    openLocalidad()
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Localidad' }), {
+      target: { value: 'mercedes' },
+    })
+
+    const mercedes = await screen.findByRole('radio', { name: /Mercedes/ })
+    expect(screen.getByText('Otras localidades')).toBeTruthy()
+    expect(screen.getByText(/Todavía sin complejos/)).toBeTruthy()
+    // Córdoba ya figura entre las que tienen complejos: no se repite.
+    expect(screen.queryByRole('radio', { name: /Córdoba/ })).toBeNull()
+
+    fireEvent.click(mercedes)
+    expect(localidadLabel()).toBe('Localidad: Mercedes. Cambiar')
+    fireEvent.submit(searchForm())
+    const url = new URL(String(pushMock.mock.calls[0]?.[0]), 'http://x')
+    expect(url.searchParams.get('city')).toBe('Mercedes')
+    expect(url.searchParams.get('lat')).toBe('-34.65')
+  })
+
+  it('sin resultados en ninguna lista dice que no la encontró (nunca un callejón mudo)', async () => {
+    stubGeoFetch(null, [])
+    render(<HeroSearch cities={CITIES} />)
+    openLocalidad()
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Localidad' }), {
+      target: { value: 'zzzz' },
+    })
+    expect(await screen.findByText('No encontramos esa localidad.')).toBeTruthy()
   })
 
   it('el buscador de la hoja filtra las localidades por lo que se escribe', () => {

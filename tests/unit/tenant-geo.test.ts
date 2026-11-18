@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { PROVINCES, resolveMapCenter } from '@/modules/tenants/tenant.geo'
+import { PROVINCES, resolveMapCenter } from '@/shared/geo/argentina'
 
 /** Recuadro continental + austral de Argentina, con margen. */
 const AR_BBOX = { minLat: -56, maxLat: -21, minLng: -74, maxLng: -53 }

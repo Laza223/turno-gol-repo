@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures'
-import { answerComplexQuestions } from './_helpers/public-signup'
+import { answerComplexQuestions, fillAddress } from './_helpers/public-signup'
 
 /**
  * E2E: alta por toques de un complejo nuevo.
@@ -11,8 +11,8 @@ import { answerComplexQuestions } from './_helpers/public-signup'
  * → /dashboard.
  *
  * El alta pública y el wizard se prueban por separado: el wizard arranca con el
- * storage state del fresh admin. La dirección se carga "a mano" para no depender
- * de Georef (un tercero) en el e2e.
+ * storage state del fresh admin. La dirección se carga con `fillAddress`, sin
+ * depender de Georef (un tercero) en el e2e.
  */
 
 test.describe('onboarding', () => {
@@ -39,11 +39,7 @@ test.describe('onboarding', () => {
       await page.goto('/register')
       await page.getByLabel(/nombre del complejo/i).fill('Complejo Borrador')
       await page.getByRole('button', { name: 'Siguiente' }).click()
-      await page.getByRole('button', { name: /escribir ciudad y provincia a mano/i }).click()
-      await page.getByLabel('Dirección').fill('Av. Test 123')
-      await page.getByLabel('Ciudad').fill('Luján')
-      await page.getByRole('combobox', { name: /provincia/i }).click()
-      await page.getByRole('option', { name: 'Buenos Aires' }).click()
+      await fillAddress(page, 'Av. Test 123')
       await page.getByRole('button', { name: 'Siguiente' }).click()
       await expect(page.getByRole('heading', { name: '¿Qué canchas tenés?' })).toBeVisible()
 
@@ -142,13 +138,9 @@ test.describe('onboarding', () => {
       await page.getByLabel(/nombre del complejo/i).fill('Complejo Wizard Borrador')
       await page.getByRole('button', { name: 'Siguiente' }).click()
 
-      // Paso 1, pantalla 2: la dirección. Sin Georef: ciudad y provincia a mano.
+      // Paso 1, pantalla 2: la dirección. Sin depender de Georef: localidad + "tal cual".
       await expect(page.getByRole('heading', { name: /¿dónde queda/i })).toBeVisible()
-      await page.getByRole('button', { name: /escribir ciudad y provincia a mano/i }).click()
-      await page.getByLabel('Dirección').fill('Av. Test 123')
-      await page.getByLabel('Ciudad').fill('Buenos Aires')
-      await page.getByRole('combobox', { name: /provincia/i }).click()
-      await page.getByRole('option', { name: 'Buenos Aires' }).click()
+      await fillAddress(page, 'Av. Test 123')
       await page.getByRole('button', { name: 'Siguiente' }).click()
 
       // Paso 2: canchas. Fútbol 5 arranca en 1, así que alcanza con seguir.

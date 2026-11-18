@@ -10,8 +10,7 @@ import { TenantLocationForm } from './TenantLocationForm'
  * las coordenadas nunca se cargaban en toda la aplicación.
  *
  * La action entra por prop: `'use server'` importado como valor arrastra
- * drizzle y postgres al bundle del navegador. Los tiles del mapa los pisa el
- * decorator global `withOfflineTiles`.
+ * drizzle y postgres al bundle del navegador. El buscador es `AddressFinder`.
  */
 const meta = {
   title: 'Settings/Perfil/TenantLocationForm',
@@ -34,8 +33,8 @@ export const SinUbicacionCargada: Story = {
   args: { action: fn(async () => ({ success: true as const })) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByLabelText(/dirección/i)).toHaveValue('Av. Pellegrini 1250')
-    await expect(canvas.getByText(/Sin ubicación marcada/i)).toBeInTheDocument()
+    await expect(canvas.getByText('Av. Pellegrini 1250')).toBeInTheDocument()
+    await expect(canvas.getByText(/Sin esto tu complejo no aparece/i)).toBeInTheDocument()
     const latitud = canvasElement.querySelector<HTMLInputElement>('input[name="latitude"]')
     await expect(latitud?.value).toBe('')
   },
@@ -49,13 +48,13 @@ export const ConPuntoCargado: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/Punto marcado en/i)).toBeInTheDocument()
+    await expect(canvas.queryByText(/Sin esto tu complejo no aparece/i)).not.toBeInTheDocument()
     const longitud = canvasElement.querySelector<HTMLInputElement>('input[name="longitude"]')
     await expect(longitud?.value).toBe('-60.6393')
   },
 }
 
-/** La provincia viaja por input oculto: el Combobox no es un control nativo. */
+/** La dirección viaja por inputs ocultos que emite `AddressFinder`. */
 export const LaProvinciaViajaPorInputOculto: Story = {
   args: { action: fn(async () => ({ success: true as const })) },
   play: async ({ canvasElement }) => {

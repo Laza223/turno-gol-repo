@@ -48,6 +48,14 @@ const EXPECTED: Array<{ file: string; cacheControl: string }> = [
     file: 'src/app/api/public/cities/route.ts',
     cacheControl: 'public, s-maxage=300, stale-while-revalidate=600',
   },
+  // Geo: el dataset no cambia entre deploys y no lleva datos de nadie (1 día); las otras dos
+  // llevan lo que escribió el usuario o sus coordenadas: nunca al CDN.
+  {
+    file: 'src/app/api/public/geo/localidades/route.ts',
+    cacheControl: 'public, s-maxage=86400, stale-while-revalidate=604800',
+  },
+  { file: 'src/app/api/public/geo/direcciones/route.ts', cacheControl: 'private, no-store' },
+  { file: 'src/app/api/public/geo/reverse/route.ts', cacheControl: 'private, no-store' },
 ]
 
 describe('public endpoints declare inline SWR Cache-Control', () => {

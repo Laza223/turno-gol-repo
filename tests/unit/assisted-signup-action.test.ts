@@ -87,6 +87,26 @@ describe('createAssistedTenantAction', () => {
     )
   })
 
+  it('pasa las coordenadas al service y rechaza una sola', async () => {
+    h.createAssistedTenant.mockResolvedValue({
+      ok: true,
+      tenantId: TENANT_ID,
+      slug: 'canchas-del-sur',
+      tempPassword: 'TG-1a2b3c4d5e',
+    })
+
+    await createAssistedTenantAction(IDLE, form({ latitude: '-34.7', longitude: '-58.4' }))
+    expect(h.createAssistedTenant).toHaveBeenCalledWith(
+      expect.objectContaining({ latitude: -34.7, longitude: -58.4 }),
+      ADMIN,
+    )
+
+    h.createAssistedTenant.mockClear()
+    const res = await createAssistedTenantAction(IDLE, form({ latitude: '-34.7' }))
+    expect(res.status).toBe('error')
+    expect(h.createAssistedTenant).not.toHaveBeenCalled()
+  })
+
   it.each([
     ['player_account', 'email'],
     ['staff_account', 'email'],

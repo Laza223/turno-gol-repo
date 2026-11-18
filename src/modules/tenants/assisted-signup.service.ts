@@ -125,6 +125,8 @@ export async function createAssistedTenant(
       address: input.address,
       city: input.city,
       province: input.province,
+      latitude: input.latitude,
+      longitude: input.longitude,
       phone: input.phone,
       email: input.email,
       referredByTenantId,

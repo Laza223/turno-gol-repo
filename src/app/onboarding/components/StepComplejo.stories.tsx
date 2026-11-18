@@ -1,15 +1,26 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
+import { withGeolocation } from '@/test/storybook/with-geolocation'
+import type { GeoAddress, GeoLocality } from '@/modules/geo/geo.types'
 import type { WizardActionResult } from '../actions'
-import type { GeocodeAddressAction } from '@/components/maps/LocationPickerField'
 import { StepComplejo } from './StepComplejo'
 
-const CANDIDATE = {
-  label: 'SAN MARTIN 850, Rosario, Santa Fe',
-  lat: -32.9473,
-  lng: -60.6368,
-  city: 'Rosario',
-  province: 'Santa Fe',
+const LUJAN: GeoLocality = {
+  city: 'Luján',
+  province: 'Buenos Aires',
+  department: 'Partido de Luján',
+  lat: -34.5703,
+  lng: -59.105,
+  source: 'dataset',
+}
+const MITRE: GeoAddress = {
+  label: 'Bartolomé Mitre 800, Luján, Buenos Aires',
+  address: 'Bartolomé Mitre 800',
+  city: 'Luján',
+  province: 'Buenos Aires',
+  lat: -34.5701,
+  lng: -59.1049,
+  source: 'georef',
 }
 
 /**
@@ -25,10 +36,6 @@ const meta = {
       success: true,
       next: '/onboarding/canchas',
     })),
-    geocodeAction: fn<GeocodeAddressAction>(async () => ({
-      success: true,
-      candidates: [CANDIDATE],
-    })),
   },
 } satisfies Meta<typeof StepComplejo>
 
@@ -39,6 +46,14 @@ async function typeName(canvasElement: HTMLElement) {
   const canvas = within(canvasElement)
   await userEvent.type(canvas.getByLabelText(/nombre del complejo/i), 'Complejo San Martín')
   await userEvent.click(canvas.getByRole('button', { name: 'Siguiente' }))
+}
+
+async function elegirLocalidad(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement)
+  await userEvent.type(await canvas.findByRole('combobox', { name: 'Localidad' }), 'lujan')
+  await userEvent.click(
+    await within(canvasElement.ownerDocument.body).findByRole('option', { name: /Luján/ }),
+  )
 }
 
 function firstFormData(action: unknown): FormData {
@@ -66,8 +81,14 @@ export const NombreVacio: Story = {
   },
 }
 
-/** Pantalla 2: se busca la dirección, se elige un candidato y se guarda con ciudad y provincia de Georef. */
+/** Pantalla 2: localidad, calle y altura; se elige un resultado y se guarda con su ciudad y provincia. */
 export const BuscarYElegirDireccion: Story = {
+  parameters: {
+    fetchMock: [
+      { match: '/api/public/geo/localidades', json: { results: [LUJAN] } },
+      { match: '/api/public/geo/direcciones', json: { results: [MITRE] } },
+    ],
+  },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)
     await typeName(canvasElement)
@@ -75,23 +96,80 @@ export const BuscarYElegirDireccion: Story = {
       await canvas.findByRole('heading', { name: '¿Dónde queda Complejo San Martín?' }),
     ).toBeVisible()
 
-    await userEvent.type(canvas.getByLabelText(/buscar dirección/i), 'San Martin 850')
-    await userEvent.click(canvas.getByRole('button', { name: /buscar/i }))
-    await userEvent.click(await canvas.findByRole('button', { name: CANDIDATE.label }))
-    await expect(canvas.getByText('Rosario, Santa Fe')).toBeInTheDocument()
+    await elegirLocalidad(canvasElement)
+    await userEvent.type(canvas.getByLabelText('Calle y altura'), 'Mitre 800{Enter}')
+    await userEvent.click(await canvas.findByRole('button', { name: MITRE.label }))
+    await expect(canvas.getByText('Luján, Buenos Aires')).toBeVisible()
 
     await userEvent.click(canvas.getByRole('button', { name: 'Siguiente' }))
     await waitFor(() => expect(args.action).toHaveBeenCalledTimes(1))
     const formData = firstFormData(args.action)
     await expect(formData.get('name')).toBe('Complejo San Martín')
-    await expect(formData.get('address')).toBe('San Martin 850')
-    await expect(formData.get('city')).toBe('Rosario')
-    await expect(formData.get('province')).toBe('Santa Fe')
-    await expect(formData.get('latitude')).toBe(String(CANDIDATE.lat))
+    await expect(formData.get('address')).toBe('Bartolomé Mitre 800')
+    await expect(formData.get('city')).toBe('Luján')
+    await expect(formData.get('province')).toBe('Buenos Aires')
+    await expect(formData.get('latitude')).toBe(String(MITRE.lat))
   },
 }
 
-/** Sin elegir un candidato no se guarda nada. */
+/** La calle no aparece: se usa "tal cual", con el centro de la localidad. */
+export const SinResultadosTalCual: Story = {
+  parameters: {
+    fetchMock: [
+      { match: '/api/public/geo/localidades', json: { results: [LUJAN] } },
+      { match: '/api/public/geo/direcciones', json: { results: [] } },
+    ],
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement)
+    await typeName(canvasElement)
+    await elegirLocalidad(canvasElement)
+    await userEvent.type(await canvas.findByLabelText('Calle y altura'), 'Calle Rara 12{Enter}')
+    await userEvent.click(
+      await canvas.findByRole('button', { name: 'Usar «Calle Rara 12» tal cual' }),
+    )
+    await userEvent.click(canvas.getByRole('button', { name: 'Siguiente' }))
+
+    await waitFor(() => expect(args.action).toHaveBeenCalledTimes(1))
+    const formData = firstFormData(args.action)
+    await expect(formData.get('address')).toBe('Calle Rara 12')
+    await expect(formData.get('city')).toBe('Luján')
+    await expect(formData.get('latitude')).toBe(String(LUJAN.lat))
+  },
+}
+
+/** "Usar mi ubicación actual": el GPS completa la dirección. */
+export const UsarMiUbicacion: Story = {
+  decorators: [withGeolocation('found')],
+  parameters: {
+    fetchMock: [
+      {
+        match: '/api/public/geo/reverse',
+        json: {
+          result: {
+            city: 'Luján',
+            province: 'Buenos Aires',
+            address: 'Bartolomé Mitre 800',
+            lat: MITRE.lat,
+            lng: MITRE.lng,
+          },
+        },
+      },
+    ],
+  },
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement)
+    await typeName(canvasElement)
+    await userEvent.click(await canvas.findByRole('button', { name: /Usar mi ubicación actual/ }))
+    await expect(await canvas.findByText('Bartolomé Mitre 800')).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Siguiente' }))
+
+    await waitFor(() => expect(args.action).toHaveBeenCalledTimes(1))
+    await expect(firstFormData(args.action).get('address')).toBe('Bartolomé Mitre 800')
+  },
+}
+
+/** Sin dirección completa no se guarda nada. */
 export const SinElegirDireccion: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)
@@ -102,47 +180,14 @@ export const SinElegirDireccion: Story = {
   },
 }
 
-/** Georef no responde: queda la salida de escribir ciudad y provincia a mano. */
-export const GeorefCaido: Story = {
-  args: {
-    geocodeAction: fn<GeocodeAddressAction>(async () => ({
-      success: false,
-      error: 'no disponible',
-    })),
-  },
-  play: async ({ args, canvasElement }) => {
-    const canvas = within(canvasElement)
-    await typeName(canvasElement)
-    await userEvent.type(await canvas.findByLabelText(/buscar dirección/i), 'Mitre 100')
-    await userEvent.click(canvas.getByRole('button', { name: /buscar/i }))
-    await expect(await canvas.findByText(/no pudimos buscar ahora/i)).toBeInTheDocument()
-
-    await userEvent.click(
-      canvas.getByRole('button', { name: /escribir ciudad y provincia a mano/i }),
-    )
-    await userEvent.type(canvas.getByLabelText('Dirección'), 'Mitre 100')
-    await userEvent.type(canvas.getByLabelText('Ciudad'), 'Rosario')
-    await userEvent.click(canvas.getByRole('combobox', { name: /provincia/i }))
-    const body = within(canvasElement.ownerDocument.body)
-    await userEvent.click(await body.findByRole('option', { name: 'Santa Fe' }))
-    await userEvent.click(canvas.getByRole('button', { name: 'Siguiente' }))
-
-    await waitFor(() => expect(args.action).toHaveBeenCalledTimes(1))
-    const formData = firstFormData(args.action)
-    await expect(formData.get('city')).toBe('Rosario')
-    await expect(formData.get('province')).toBe('Santa Fe')
-    await expect(formData.get('latitude')).toBe('')
-  },
-}
-
 /** Revisita desde el resumen: viene cargado y el link no cambia. */
 export const Revisita: Story = {
   args: {
     defaultValues: {
       name: 'Complejo Fénix',
-      address: 'Mitre 100',
-      city: 'Rosario',
-      province: 'Santa Fe',
+      address: 'Bartolomé Mitre 800',
+      city: 'Luján',
+      province: 'Buenos Aires',
       slug: 'complejo-fenix',
       latitude: null,
       longitude: null,

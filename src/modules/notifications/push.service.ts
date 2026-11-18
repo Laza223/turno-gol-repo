@@ -12,19 +12,14 @@
  *   MP desconectado, plan SaaS — ver `dedupeKeyFor`) llevan una
  *   dedupeKey determinística que el worker reclama vía INSERT ... ON CONFLICT
  *   DO NOTHING en push_send_log ANTES de enviar (push.worker.ts) — así un retry
- *   no duplica el push visible al admin. Otros payloads (ej. el push de test de
- *   /api/admin/push/test, vía notifyStaffPush) NO llevan dedupeKey y siguen
- *   siendo at-least-once sin guard.
+ *   no duplica el push visible al admin. La prueba del botón "Probar"
+ *   (notifyStaffPush) no pasa por acá: va siempre por el outbox durable.
  */
 
 import { sql as drizzleSql } from 'drizzle-orm'
 import { getWorkerSql, withTenantContext } from '@/shared/db/client'
 import { getBoss } from '@/shared/jobs/boss'
-import {
-  PUSH_SEND_SEND_OPTIONS,
-  QUEUE_PUSH_SEND,
-  type PushSendJobData,
-} from '@/shared/jobs/definitions'
+import { QUEUE_PUSH_SEND, type PushSendJobData } from '@/shared/jobs/definitions'
 import { pushSendOptions } from './push-quiet-hours'
 import {
   BOOKING_CANCELED_PUSH_TYPE,
@@ -134,7 +129,13 @@ export async function notifyAdminPush(
 }
 
 /**
- * Notify all subscribed admins of a given staff_user_id (for /api/admin/push/test).
+ * Prueba de push de un dispositivo del staff (botón "Probar").
+ *
+ * Va SIEMPRE por el outbox durable (`notifications` + `push_send_log`), con el
+ * flag `staff_notifications_v2` prendido o apagado: es el único camino que
+ * registra si el proveedor aceptó el aviso, si el dispositivo lo procesó y si
+ * lo abrieron, y la pantalla de prueba lee eso para decir dónde se cortó. Por
+ * el camino viejo la pantalla quedaba para siempre en "Prueba encolada".
  */
 export async function notifyStaffPush(
   tenantId: string,
@@ -142,8 +143,22 @@ export async function notifyStaffPush(
   payload: AdminPushPayload,
   subscriptionId?: string,
 ): Promise<{ enqueued: number; notificationId?: string }> {
-  const durable = await withTenantContext(tenantId, async (tx) => {
-    if (!(await isStaffNotificationsEnabled(tenantId, tx))) return null
+  // Sin un dispositivo activo de esa persona no hay a quién mandarle la prueba:
+  // no se crea una notificación sin destino.
+  const subs = await getWorkerSql()<{ id: string }[]>`
+    SELECT ps.id FROM push_subscriptions ps
+    WHERE ps.tenant_id = ${tenantId} AND ps.staff_user_id = ${staffUserId}
+      AND (${subscriptionId ?? null}::uuid IS NULL OR ps.id = ${subscriptionId ?? null}::uuid)
+      AND EXISTS (
+        SELECT 1 FROM tenant_staff_members active_staff
+        WHERE active_staff.tenant_id = ps.tenant_id
+          AND active_staff.staff_user_id = ps.staff_user_id
+          AND active_staff.is_active = true
+      )
+    LIMIT 1
+  `
+  if (subs.length === 0) return { enqueued: 0 }
+  return withTenantContext(tenantId, async (tx) => {
     const ids = await enqueueStaffNotification(
       {
         tenantId,
@@ -164,37 +179,8 @@ export async function notifyStaffPush(
       },
       tx,
     )
-    return { enqueued: ids.length, notificationId: ids[0] }
+    return ids[0] ? { enqueued: ids.length, notificationId: ids[0] } : { enqueued: 0 }
   })
-  if (durable) return durable
-  const sql = getWorkerSql()
-  const subs = await sql<{ id: string }[]>`
-    SELECT ps.id FROM push_subscriptions ps
-    WHERE ps.tenant_id = ${tenantId} AND ps.staff_user_id = ${staffUserId}
-      AND (${subscriptionId ?? null}::uuid IS NULL OR ps.id = ${subscriptionId ?? null}::uuid)
-      AND EXISTS (
-        SELECT 1 FROM tenant_staff_members active_staff
-        WHERE active_staff.tenant_id = ps.tenant_id
-          AND active_staff.staff_user_id = ps.staff_user_id
-          AND active_staff.is_active = true
-      )
-  `
-  if (subs.length === 0) return { enqueued: 0 }
-  const boss = await getBoss()
-  await Promise.all(
-    subs.map((sub) => {
-      const data: PushSendJobData = { subscription_id: sub.id, payload }
-      return boss.send(QUEUE_PUSH_SEND, data, PUSH_SEND_SEND_OPTIONS)
-    }),
-  )
-  logger.info('enqueued staff push notifications', {
-    module: 'push.service',
-    tenantId,
-    staffUserId,
-    count: subs.length,
-    payloadType: payload.type,
-  })
-  return { enqueued: subs.length }
 }
 
 /**

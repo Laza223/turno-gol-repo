@@ -28,6 +28,10 @@ import {
   notifyStaffPush,
 } from '@/modules/notifications/push.service'
 import { QUEUE_PUSH_SEND } from '@/shared/jobs/definitions'
+import {
+  enqueueStaffNotification,
+  isStaffNotificationsEnabled,
+} from '@/modules/notifications/staff-notification.service'
 
 const mockSql = getWorkerSql as ReturnType<typeof vi.fn>
 const mockGetBoss = getBoss as ReturnType<typeof vi.fn>
@@ -352,36 +356,35 @@ describe('notifyOwnerPlanEvent', () => {
 })
 
 describe('notifyStaffPush', () => {
-  it('returns {enqueued: 0} when no subscriptions match staff user', async () => {
-    const sql = makeSqlStub([])
-    mockSql.mockReturnValue(sql)
+  it('va siempre por el outbox durable aunque el flag v2 esté apagado', async () => {
+    const enqueue = vi.mocked(enqueueStaffNotification)
+    enqueue.mockResolvedValue(['notif-1'])
+    mockSql.mockReturnValue(makeSqlStub([{ id: 'sub-a' }]))
     const boss = makeBossStub()
     mockGetBoss.mockResolvedValue(boss)
 
-    const result = await notifyStaffPush('tenant-1', 'staff-user-1', { type: 'test' })
+    const result = await notifyStaffPush('tenant-42', 'staff-99', { type: 'test' }, 'sub-a')
 
-    expect(result).toEqual({ enqueued: 0 })
+    expect(result).toEqual({ enqueued: 1, notificationId: 'notif-1' })
+    expect(vi.mocked(isStaffNotificationsEnabled)).not.toHaveBeenCalled()
+    expect(enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'tenant-42',
+        type: 'test',
+        audience: 'staff',
+        recipientId: 'staff-99',
+        subscriptionId: 'sub-a',
+        policy: 'push_only',
+      }),
+      expect.anything(),
+    )
+    // Nada por el camino viejo: sin notificación durable la pantalla no puede seguir la prueba.
     expect(boss.send).not.toHaveBeenCalled()
   })
 
-  it('SQL query includes both tenantId AND staffUserId', async () => {
-    const subs = [{ id: 'sub-a' }]
-    const sql = makeSqlStub(subs)
-    mockSql.mockReturnValue(sql)
-    const boss = makeBossStub()
-    mockGetBoss.mockResolvedValue(boss)
-
-    await notifyStaffPush('tenant-42', 'staff-99', { type: 'test.push' })
-
-    // The tagged template is called with a string fragment array and parameters.
-    // We verify the call happened and that the boss.send was invoked with the right sub id.
-    expect(boss.send).toHaveBeenCalledTimes(1)
-    expect(boss.send).toHaveBeenCalledWith(
-      QUEUE_PUSH_SEND,
-      { subscription_id: 'sub-a', payload: { type: 'test.push' } },
-      expect.objectContaining({ retryLimit: 3 }),
-    )
-    // Verify the sql mock was called (the WHERE clause includes both ids as template args).
-    expect(sql).toHaveBeenCalledTimes(1)
+  it('sin dispositivos activos del staff no crea la notificación', async () => {
+    mockSql.mockReturnValue(makeSqlStub([]))
+    expect(await notifyStaffPush('tenant-1', 'staff-1', { type: 'test' })).toEqual({ enqueued: 0 })
+    expect(vi.mocked(enqueueStaffNotification)).not.toHaveBeenCalled()
   })
 })

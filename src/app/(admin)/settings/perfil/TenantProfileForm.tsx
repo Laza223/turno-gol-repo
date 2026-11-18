@@ -1,14 +1,10 @@
 'use client'
 
-import { useActionState, useMemo, useState } from 'react'
+import { useActionState, useState } from 'react'
 import { Building2, AlertTriangle } from 'lucide-react'
 import { SubmitButton } from '@/components/ui/submit-button'
 import { PhoneInput } from '@/components/ui/phone-input'
-import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
-import LocationPickerField, {
-  type GeocodeAddressAction,
-} from '@/components/maps/LocationPickerField'
-import { PROVINCES, resolveMapCenter } from '@/modules/tenants/tenant.geo'
+import AddressFinder from '@/components/geo/AddressFinder'
 import type { UpdateTenantProfileResult } from './actions'
 
 type UpdateTenantProfileAction = (
@@ -17,8 +13,6 @@ type UpdateTenantProfileAction = (
 ) => Promise<UpdateTenantProfileResult>
 
 const INITIAL: UpdateTenantProfileResult = { success: true }
-
-const PROVINCE_OPTIONS: ComboboxOption[] = PROVINCES.map((p) => ({ value: p, label: p }))
 
 const inputClass =
   'mt-1.5 flex h-11 md:h-10 w-full rounded-lg border border-border bg-card px-3.5 text-base md:text-sm text-foreground shadow-xs transition placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus:border-emerald-500'
@@ -44,7 +38,6 @@ export function TenantProfileForm({
   currentLatitude,
   currentLongitude,
   action,
-  geocodeAction,
 }: {
   currentPhone: string
   currentEmail: string
@@ -55,18 +48,12 @@ export function TenantProfileForm({
   currentLatitude: number | null
   currentLongitude: number | null
   action: UpdateTenantProfileAction
-  geocodeAction: GeocodeAddressAction
 }) {
   const [state, formAction] = useActionState(action, INITIAL)
   // Mismo patrón que ReservasPolicyForm: sin esto, `state.success` sigue en
   // `true` desde el estado inicial y el mensaje de éxito aparecería ANTES de
   // que el dueño toque el form.
   const [didSubmit, setDidSubmit] = useState(false)
-  // La provincia elegida recentra el mapa mientras todavía no haya punto —
-  // tiene que ser estado porque el Combobox no es un control nativo.
-  // react-doctor-disable-next-line react-doctor/no-derived-useState
-  const [province, setProvince] = useState(currentProvince)
-  const fallback = useMemo(() => resolveMapCenter(province, null, null), [province])
   const hasLocation = currentLatitude !== null && currentLongitude !== null
 
   return (
@@ -129,65 +116,7 @@ export function TenantProfileForm({
         </div>
 
         <div>
-          <label
-            htmlFor="tenant-location-address"
-            className="block text-sm font-medium text-foreground"
-          >
-            Dirección <span className="text-red-500 dark:text-red-400">*</span>
-          </label>
-          <input
-            id="tenant-location-address"
-            name="address"
-            type="text"
-            defaultValue={currentAddress}
-            placeholder="Ej: Av. Corrientes 1234"
-            required
-            className={inputClass}
-          />
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label
-              htmlFor="tenant-location-city"
-              className="block text-sm font-medium text-foreground"
-            >
-              Localidad <span className="text-red-500 dark:text-red-400">*</span>
-            </label>
-            <input
-              id="tenant-location-city"
-              name="city"
-              type="text"
-              defaultValue={currentCity}
-              placeholder="Ej: Rosario"
-              required
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="tenant-location-province"
-              className="block text-sm font-medium text-foreground"
-            >
-              Provincia <span className="text-red-500 dark:text-red-400">*</span>
-            </label>
-            <div className="mt-1.5">
-              <Combobox
-                id="tenant-location-province"
-                options={PROVINCE_OPTIONS}
-                value={province}
-                onChange={setProvince}
-                placeholder="Buscá tu provincia…"
-                listboxLabel="Provincias"
-              />
-            </div>
-            <input type="hidden" name="province" value={province} />
-          </div>
-        </div>
-
-        <div>
-          <p className="mb-1.5 text-sm font-medium text-foreground">Punto en el mapa</p>
+          <p className="mb-1.5 text-sm font-medium text-foreground">Dónde queda</p>
           {!hasLocation && (
             // H145 (heredado de TenantLocationForm): mismo tratamiento de warning
             // que el resto del panel para no perderse entre los otros campos.
@@ -199,22 +128,21 @@ export function TenantProfileForm({
               </span>
             </div>
           )}
-          {/* `collapsible`: el mapa deja de ocupar 256px fijos siempre visibles.
-              LocationPickerField desmonta el mapa de verdad al cerrar (no usa el
-              Collapsible genérico — ver el comentario en ese componente sobre
-              Leaflet en un contenedor display:none) y ya expone el resumen
-              "Punto marcado en…"/"Sin ubicación marcada" fuera del panel
-              colapsable. */}
-          <LocationPickerField
-            initialLatitude={currentLatitude}
-            initialLongitude={currentLongitude}
-            fallbackCenter={fallback.center}
-            fallbackZoom={fallback.zoom}
-            collapsible
-            defaultQuery={currentAddress}
-            city={currentCity}
-            province={province}
-            geocodeAction={geocodeAction}
+          <AddressFinder
+            idPrefix="tenant-location"
+            names
+            showMap
+            value={
+              currentAddress && currentCity && currentProvince
+                ? {
+                    address: currentAddress,
+                    city: currentCity,
+                    province: currentProvince,
+                    latitude: currentLatitude,
+                    longitude: currentLongitude,
+                  }
+                : null
+            }
           />
         </div>
 

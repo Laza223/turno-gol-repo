@@ -28,6 +28,14 @@ describe('rate-limit policies (doc15 §9)', () => {
       keyBy: 'ip',
       failMode: 'open',
     })
+    // Buscadores de ubicación: uno por palabra tipeada, y el balde de las rutas que llaman a terceros.
+    expect(POLICIES.publicGeo).toEqual({ limit: 90, window: '60 s', keyBy: 'ip', failMode: 'open' })
+    expect(POLICIES.publicGeoExternal).toEqual({
+      limit: 20,
+      window: '60 s',
+      keyBy: 'ip',
+      failMode: 'open',
+    })
     expect(POLICIES.adminCrud).toEqual({
       limit: 100,
       window: '60 s',

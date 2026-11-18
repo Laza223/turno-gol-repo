@@ -1,6 +1,6 @@
 'use client'
 
-import { ViewTransition, useEffect, type CSSProperties } from 'react'
+import { ViewTransition, useEffect, useState, type CSSProperties } from 'react'
 import { Calendar, Compass, Swords, UserRound } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -64,6 +64,27 @@ export function useBottomNavVisible(): boolean {
 let lastActiveHref: string | null = null
 
 /**
+ * La barra se compacta al bajar y vuelve al subir (dirección §5.11). Pasados 120 px, cada tramo de
+ * más de 8 px decide: bajando se compacta, subiendo vuelve. El estado solo cambia al cambiar de
+ * sentido, así que no hay un render por cuadro.
+ */
+function useCompactOnScroll(): boolean {
+  const [compact, setCompact] = useState(false)
+  useEffect(() => {
+    let last = window.scrollY
+    const onScroll = () => {
+      const y = window.scrollY
+      if (Math.abs(y - last) < 8) return
+      setCompact(y > last && y > 120)
+      last = y
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+  return compact
+}
+
+/**
  * Navegación inferior del jugador (solo en el celu): la píldora flotante del portal de vidrio
  * (decisión 2026-11-13). Vive en el shell compartido, así que aparece en la zona pública y en las
  * secciones del jugador, CON o SIN sesión: sin sesión, Reservas y Cuenta redirigen a
@@ -75,6 +96,7 @@ let lastActiveHref: string | null = null
  *   la activa va en semibold: el estado no se dice solo con color.
  * - El ícono de la pestaña nueva hace su toque (0,86 → 1).
  * - Baja y sale cuando sube una hoja o hay un campo con foco (globals.css, `.portal-tabbar`).
+ * - Se compacta al bajar (`data-compact`): se achica y esconde los nombres. Vuelve al subir.
  *
  * Ocupa 12 px de aire + 66 px + el área segura: `--portal-tabbar-space`, que reservan
  * `PortalFrame`, la home, `ConfirmBookingButton` y el scroll-padding de `globals.css`.
@@ -88,6 +110,7 @@ export function PlayerBottomNav() {
   const activeIndex = items.findIndex((item) => item.match(pathname))
   const activeHref = items[activeIndex]?.href ?? null
   const justActivated = lastActiveHref !== null && activeHref !== lastActiveHref
+  const compact = useCompactOnScroll()
 
   useEffect(() => {
     lastActiveHref = activeHref
@@ -98,6 +121,7 @@ export function PlayerBottomNav() {
     <nav
       aria-label="Navegación del jugador"
       data-bottom-nav
+      data-compact={compact ? '' : undefined}
       className="portal-tabbar md:hidden"
       style={{ '--n': items.length } as CSSProperties}
     >

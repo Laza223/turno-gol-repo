@@ -230,7 +230,7 @@ export default async function ReservarPage(props: Props) {
 
   return (
     <ReservaShell className="rv-stack">
-      <Link href={turnHref} className={cn(PORTAL_LINK, 'rv-back')}>
+      <Link transitionTypes={['nav-back']} href={turnHref} className={cn(PORTAL_LINK, 'rv-back')}>
         <ArrowLeft aria-hidden />
         Volver
       </Link>

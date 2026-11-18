@@ -3,12 +3,7 @@ import { requireAdminStaff } from '@/modules/staff/guards'
 import { getProfileGaps } from '@/modules/tenants/setup-gaps'
 import { PerfilImagesForm } from './PerfilImagesForm'
 import { TenantProfileForm } from './TenantProfileForm'
-import {
-  setTenantImageAction,
-  removeTenantImageAction,
-  updateTenantProfileAction,
-  geocodeAddressAction,
-} from './actions'
+import { setTenantImageAction, removeTenantImageAction, updateTenantProfileAction } from './actions'
 import { SettingsHeader } from '../SettingsHeader'
 
 /**
@@ -90,7 +85,6 @@ export default async function PerfilPage() {
           currentLatitude={tenant.latitude}
           currentLongitude={tenant.longitude}
           action={updateTenantProfileAction}
-          geocodeAction={geocodeAddressAction}
         />
       </div>
     </div>

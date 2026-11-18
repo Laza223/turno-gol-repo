@@ -30,9 +30,6 @@
   --font-display:
     var(--font-archivo), ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
     'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-  --font-logo:
-    var(--font-sora), ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-    'Segoe UI Symbol', 'Noto Color Emoji';
 
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));
@@ -502,11 +499,6 @@
   [contenteditable]:not([contenteditable='false']) {
     font-size: 16px;
   }
-
-  /* Escape hatch documentado, hacia ARRIBA únicamente. No existe uno hacia abajo. */
-  .field-lg {
-    font-size: 18px;
-  }
 }
 
 /* iOS infla el texto al rotar a landscape si no se fija. */
@@ -549,44 +541,6 @@ html {
     100% 100%,
     60px 60px,
     100% 100%;
-}
-
-/* Player shell — clean, modern vector soccer pitch background */
-.player-shell-bg {
-  background-color: #ecfdf5; /* emerald-50 */
-  background-image:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 800' preserveAspectRatio='xMidYMid slice'%3E%3Cg stroke='%23059669' stroke-width='2' stroke-opacity='0.15' fill='none'%3E%3Cline x1='600' y1='0' x2='600' y2='800'/%3E%3Ccircle cx='600' cy='400' r='160'/%3E%3Ccircle cx='600' cy='400' r='4' fill='%23059669' fill-opacity='0.15'/%3E%3Crect x='-10' y='150' width='220' height='500' rx='8'/%3E%3Crect x='-10' y='260' width='70' height='280' rx='4'/%3E%3Cpath d='M 210 300 A 130 130 0 0 1 210 500'/%3E%3Crect x='990' y='150' width='220' height='500' rx='8'/%3E%3Crect x='1140' y='260' width='70' height='280' rx='4'/%3E%3Cpath d='M 990 300 A 130 130 0 0 0 990 500'/%3E%3C/g%3E%3C/svg%3E"),
-    linear-gradient(to bottom right, #f0fdf4, #e6fced);
-  background-size:
-    cover,
-    100% 100%;
-  background-position: center;
-  background-attachment: fixed;
-}
-
-/* Player shell — variante dark: misma cancha recoloreada sobre #020617 + glow */
-.dark .player-shell-bg {
-  background-color: #020617;
-  background-image:
-    radial-gradient(circle at top right, rgba(16, 185, 129, 0.14), transparent 42%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 800' preserveAspectRatio='xMidYMid slice'%3E%3Cg stroke='%2334d399' stroke-width='2' stroke-opacity='0.06' fill='none'%3E%3Cline x1='600' y1='0' x2='600' y2='800'/%3E%3Ccircle cx='600' cy='400' r='160'/%3E%3Ccircle cx='600' cy='400' r='4' fill='%2334d399' fill-opacity='0.06'/%3E%3Crect x='-10' y='150' width='220' height='500' rx='8'/%3E%3Crect x='-10' y='260' width='70' height='280' rx='4'/%3E%3Cpath d='M 210 300 A 130 130 0 0 1 210 500'/%3E%3Crect x='990' y='150' width='220' height='500' rx='8'/%3E%3Crect x='1140' y='260' width='70' height='280' rx='4'/%3E%3Cpath d='M 990 300 A 130 130 0 0 0 990 500'/%3E%3C/g%3E%3C/svg%3E"),
-    linear-gradient(to bottom right, #07131d, #020617);
-  background-size:
-    cover,
-    cover,
-    100% 100%;
-  background-position: center;
-  background-attachment: fixed;
-}
-
-/* Las páginas del portal que montan `PortalWorld` (La Reserva) van sobre el fondo liso del
-   mundo, sin la cancha de La Previa; el resto del portal conserva las dos reglas de arriba.
-   El shorthand resetea imagen, tamaño, posición y `background-attachment`. Va acá y no en
-   portal-world.css: ese archivo solo admite custom properties (portal-world-tokens.test.ts).
-   Especificidad (0,2,1): le gana a `.dark .player-shell-bg` (0,2,0) sin importar el orden.
-   Compuerta: tests/unit/portal-shell-bg.test.ts. */
-html:has([data-world='portal']) .player-shell-bg {
-  background: var(--color-background);
 }
 
 /* El botón fijo de confirmar (`[data-fixed-cta]`, ConfirmBookingButton) tapa el borde de abajo en el
@@ -729,36 +683,6 @@ html:has([data-fixed-cta]) {
   box-shadow: 0 2px 12px -2px rgba(16, 185, 129, 0.3);
 }
 
-/* ─── Banda hero del jugador (theme-adaptive) ──────────────────────────────
-   Puente visual con el home. Light = gradiente crema + tinte/glow emerald +
-   elevación suave (sin translucidez). Dark = gradiente slate-950 + sombra honda.
-   Inline-style no responde a `.dark`; por eso vive en CSS. La espejan
-   PlayerHeroBand (Rival). */
-.player-hero-band {
-  background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 62%);
-  border-color: rgba(16, 185, 129, 0.18);
-  box-shadow:
-    0 1px 2px rgba(2, 6, 23, 0.04),
-    0 22px 48px -30px rgba(16, 185, 129, 0.4);
-}
-.dark .player-hero-band {
-  background: linear-gradient(135deg, #07131d 0%, #020617 58%);
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 30px 70px -42px rgba(0, 0, 0, 0.9);
-}
-
-/* Grilla decorativa de la banda: líneas oscuras tenues en light, blancas en dark. */
-.player-hero-grid {
-  background-image:
-    linear-gradient(90deg, rgba(2, 6, 23, 0.05) 1px, transparent 1px),
-    linear-gradient(rgba(2, 6, 23, 0.05) 1px, transparent 1px);
-}
-.dark .player-hero-grid {
-  background-image:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-}
-
 /* Texto con degradé esmeralda (titulares). Light = esmeraldas oscuros (contraste
    sobre crema); dark = esmeraldas claros (brillo sobre slate-950). */
 .hero-accent-text {
@@ -808,15 +732,6 @@ html.dark:has([data-portal-fields]) {
     0 40px 80px -42px rgba(0, 0, 0, 0.9);
 }
 
-/* Glow blobs esmeralda de las bandas / shell. Opacidad fija se fundía con el
-   campo emerald-50 en light → más fuerte en light, original en dark. */
-.hero-glow-blob {
-  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.42), transparent 70%);
-}
-.dark .hero-glow-blob {
-  background: radial-gradient(closest-side, rgba(16, 185, 129, 0.26), transparent 70%);
-}
-
 /* Badge del ícono de éxito (glow esmeralda). */
 .reserva-success-badge {
   background: radial-gradient(closest-side, rgba(16, 185, 129, 0.2), rgba(255, 255, 255, 0.55));
@@ -847,78 +762,6 @@ html.dark:has([data-portal-fields]) {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 18px 50px -28px rgba(0, 0, 0, 0.9);
-}
-
-/* Pill "en vivo" (status). AA §2.4: texto emerald-800 en light, #6ee7b7 dark. */
-.live-pill {
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(5, 150, 105, 0.28);
-  color: #065f46;
-}
-.dark .live-pill {
-  background: rgba(16, 185, 129, 0.1);
-  border-color: rgba(16, 185, 129, 0.3);
-  color: #6ee7b7;
-  box-shadow: inset 0 0 30px rgba(16, 185, 129, 0.14);
-}
-
-/* Tarjeta de búsqueda (hero landing + barra de /explorar).
-   Light = elevación blanca con halo emerald; dark = glass slab profundo. */
-.search-card {
-  background: linear-gradient(180deg, #ffffff, #f8fafc);
-  border: 1px solid rgba(16, 185, 129, 0.22);
-  box-shadow:
-    inset 0 1px 0 #ffffff,
-    0 1px 2px rgba(2, 6, 23, 0.05),
-    0 28px 60px -30px rgba(16, 185, 129, 0.35);
-}
-.dark .search-card {
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.88), rgba(2, 6, 23, 0.94));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 0 70px rgba(16, 185, 129, 0.22),
-    0 40px 80px -34px rgba(0, 0, 0, 0.9);
-}
-
-/* Card "producto en acción" (mockup del hero) — demuestra el tema activo. */
-.mockup-card {
-  background: linear-gradient(180deg, #ffffff, #f8fafc);
-  border: 1px solid rgba(16, 185, 129, 0.2);
-  box-shadow:
-    0 1px 2px rgba(2, 6, 23, 0.05),
-    0 40px 80px -40px rgba(16, 185, 129, 0.45);
-}
-.dark .mockup-card {
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.86), rgba(2, 6, 23, 0.92));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  box-shadow:
-    0 0 70px rgba(16, 185, 129, 0.21),
-    0 50px 90px -40px rgba(0, 0, 0, 0.95);
-}
-.mockup-cover {
-  background:
-    radial-gradient(
-      120% 140% at 80% 0%,
-      rgba(16, 185, 129, 0.35),
-      rgba(5, 150, 105, 0.08) 45%,
-      transparent 75%
-    ),
-    linear-gradient(135deg, #a7f3d0, #d1fae5);
-}
-.dark .mockup-cover {
-  background:
-    radial-gradient(
-      120% 140% at 80% 0%,
-      rgba(16, 185, 129, 0.42),
-      rgba(5, 150, 105, 0.12) 45%,
-      rgba(2, 6, 23, 0) 75%
-    ),
-    linear-gradient(135deg, #064e3b, #022c22);
 }
 
 /* ─── Slot bloqueado de la grilla (pages/grilla.md §2) ─────────────────────
@@ -965,22 +808,6 @@ html.dark:has([data-portal-fields]) {
 }
 .tg-ball-spinner-xs::after {
   display: none;
-}
-
-/* ─── Sidebar nav-item transitions ────────────────────────────────────────
-   Hover con escala sutil del icono + fondo que aparece con ease. El active
-   state tiene un pill indicator con glow. */
-.sidebar-nav-item {
-  transition:
-    background-color 200ms ease,
-    color 200ms ease,
-    transform 150ms ease;
-}
-.sidebar-nav-item:hover {
-  transform: translateX(2px);
-}
-.sidebar-nav-item:active {
-  transform: translateX(1px) scale(0.99);
 }
 
 /* Card entrance animation — usar con style={{ animationDelay: `${i * 80}ms` }} */
@@ -1183,6 +1010,10 @@ html.dark:has([data-portal-fields]) {
     --portal-btn-glow: rgb(4 119 91 / 0.45);
     --portal-veil: 243 246 243;
     --portal-glow: 16 160 118;
+    /* Grano del vidrio real (dirección §5.2): ruido gris al 3,5 %, en una capa más del fondo. Le
+       saca el aspecto de plástico. Para apagarlo si en la medición cuesta: `--glass-grain: none`. */
+    --glass-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E");
+    --glass-glow: rgb(11 18 32 / 0.32);
     --glass-a: rgb(255 255 255 / 0.82);
     --glass-b: rgb(255 255 255 / 0.58);
     --glass-line: rgb(255 255 255 / 0.95);
@@ -1316,6 +1147,7 @@ html.dark:has([data-portal-fields]) {
     --portal-btn-glow: rgb(16 185 129 / 0.55);
     --portal-veil: 2 6 23;
     --portal-glow: 16 185 129;
+    --glass-glow: rgb(255 255 255 / 0.7);
     --glass-a: rgb(255 255 255 / 0.14);
     --glass-b: rgb(255 255 255 / 0.05);
     --glass-line: rgb(255 255 255 / 0.17);
@@ -1360,8 +1192,41 @@ html.dark:has([data-portal-fields]) {
   /* Vidrio real: solo lo que tiene foto o contenido pasando por detrás (§3.3). Lo que se repite
      en una lista va pintado (`.glass-painted`), sin desenfoque: a la vista queda igual. */
   .glass {
+    background: var(--glass-grain), linear-gradient(180deg, var(--glass-a), var(--glass-b));
     -webkit-backdrop-filter: blur(26px) saturate(180%);
     backdrop-filter: blur(26px) saturate(180%);
+  }
+
+  /* Brillo que sigue al puntero (§5.3): un punto de luz tenue sobre el borde, donde está el
+     cursor (`usePointerGlow` escribe `--mx` y `--my`). Solo con mouse y sin "reducir movimiento".
+     La máscara deja ver solo el borde de 1 px. */
+  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    .glow-follow::after {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      z-index: 2;
+      padding: 1px;
+      border-radius: inherit;
+      pointer-events: none;
+      background: radial-gradient(
+        160px circle at var(--mx, 50%) var(--my, 50%),
+        var(--glass-glow),
+        transparent 70%
+      );
+      -webkit-mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask:
+        linear-gradient(#000 0 0) content-box exclude,
+        linear-gradient(#000 0 0);
+      opacity: 0;
+      transition: opacity var(--dur-2) var(--portal-ease-out);
+    }
+    .glow-follow[data-glow]::after {
+      opacity: 1;
+    }
   }
 
   /* La luz de fondo: tres resplandores fijos detrás del contenido. `isolation` deja la capa -1
@@ -1381,6 +1246,16 @@ html.dark:has([data-portal-fields]) {
       radial-gradient(46% 36% at -4% 22%, rgb(var(--portal-glow) / 0.22), transparent 70%),
       radial-gradient(44% 34% at 104% 56%, rgb(var(--portal-glow) / 0.18), transparent 70%),
       radial-gradient(54% 30% at 34% 104%, rgb(var(--portal-glow) / 0.14), transparent 70%);
+  }
+
+  /* Una pantalla dentro de un marco que ya tiene la luz (`PortalFrame`) no pone otra: la suya
+     terminaba donde termina el contenido y dejaba una costura de tono. Sola (en una story) la
+     sigue poniendo. */
+  .portal-ambient .portal-ambient {
+    background-color: transparent;
+  }
+  .portal-ambient .portal-ambient::before {
+    content: none;
   }
 
   /* ── Cabecera: solo el logo en el celu; píldora de vidrio fija en la compu. Las piezas del
@@ -1501,7 +1376,8 @@ html.dark:has([data-portal-fields]) {
     .portal-top__bg--on {
       opacity: 0;
       border: 1px solid var(--glass-line);
-      background: linear-gradient(180deg, var(--portal-win-a), var(--portal-win-b));
+      background:
+        var(--glass-grain), linear-gradient(180deg, var(--portal-win-a), var(--portal-win-b));
       box-shadow:
         inset 0 1px 0 var(--glass-hi),
         0 18px 40px -18px rgb(2 6 23 / 0.55);
@@ -1547,7 +1423,8 @@ html.dark:has([data-portal-fields]) {
     padding: 5px;
     border-radius: 999px;
     border: 1px solid var(--glass-line);
-    background: linear-gradient(180deg, var(--portal-bar-a), var(--portal-bar-b));
+    background:
+      var(--glass-grain), linear-gradient(180deg, var(--portal-bar-a), var(--portal-bar-b));
     box-shadow:
       inset 0 1px 0 var(--glass-hi),
       var(--glass-shadow);
@@ -1607,6 +1484,31 @@ html.dark:has([data-portal-fields]) {
     translate: calc(var(--i) * (100% + 2px)) 0;
     border-radius: 999px;
     background: var(--portal-bar-on);
+  }
+  /* Compacta al bajar (§5.11): se achica desde abajo y los nombres se apagan; los íconos quedan
+     y cada pestaña sigue midiendo más de 44 px. Solo transform y opacity. */
+  .portal-tabbar {
+    transform-origin: 50% 100%;
+    transition:
+      translate var(--dur-2) var(--portal-ease-out),
+      scale var(--dur-3) var(--portal-ease-out),
+      visibility 0s;
+  }
+  .portal-tabbar__item span {
+    transition: opacity var(--dur-2) var(--portal-ease-out);
+  }
+  .portal-tabbar[data-compact] {
+    scale: 0.84;
+  }
+  .portal-tabbar[data-compact] .portal-tabbar__item span {
+    opacity: 0;
+  }
+  /* Sin nombre, el ícono baja al centro de la pestaña (medio renglón y medio espacio). */
+  .portal-tabbar__item svg {
+    transition: translate var(--dur-3) var(--portal-ease-out);
+  }
+  .portal-tabbar[data-compact] .portal-tabbar__item svg {
+    translate: 0 9.5px;
   }
   /* Baja y sale cuando sube una hoja (§4.5) o hay un campo con foco en el celu (§5.7). */
   html:has([data-glass-sheet][data-state='open']) .portal-tabbar,
@@ -1677,7 +1579,8 @@ html.dark:has([data-portal-fields]) {
     padding: 10px 20px calc(20px + env(safe-area-inset-bottom));
     border-radius: 32px 32px 0 0;
     color: var(--portal-ink);
-    background: linear-gradient(180deg, var(--portal-sheet-a), var(--portal-sheet-b));
+    background:
+      var(--glass-grain), linear-gradient(180deg, var(--portal-sheet-a), var(--portal-sheet-b));
     border: 1px solid var(--glass-line);
     border-bottom: 0;
     box-shadow:
@@ -1884,16 +1787,116 @@ html:has([data-portal-glass]) [data-toast][data-variant='destructive'] [data-toa
   }
 }
 
-/* Cambio de tema: el tema nuevo se abre en círculo desde el botón (ThemeButton). Las dos capas
-   de la raíz quedan quietas y el `clip-path` del círculo lo anima el botón. La navegación usa la
-   misma raíz: hasta la fase 9 (fundido entre pantallas) cambia de golpe, como hoy. */
+/* La raíz queda quieta. En el cambio de tema, el tema nuevo se abre en círculo desde el botón
+   (ThemeButton anima el `clip-path`). Al navegar, lo que se mueve es la pantalla
+   (`PortalTransition`): la raíz es el fondo y el cromo, que no cambian. */
 html:has([data-portal-glass])::view-transition-old(root),
 html:has([data-portal-glass])::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
 }
+/* La cabecera y la barra de abajo son el ancla mientras la pantalla se mueve: van arriba de todo,
+   sin fundido (la vieja se esconde para que no se vean dos). Fuera del cambio de tema, que tiene
+   que abrirlas con el círculo junto con el resto (`data-theme-swap` lo pone ThemeButton). */
+html:not([data-theme-swap]):has([data-portal-glass]) .portal-top {
+  view-transition-name: portal-cabecera;
+}
+html:not([data-theme-swap]):has([data-portal-glass]) .portal-tabbar {
+  view-transition-name: portal-barra;
+}
+::view-transition-group(portal-cabecera),
+::view-transition-group(portal-barra) {
+  z-index: 3;
+  animation: none;
+}
+::view-transition-old(portal-cabecera),
+::view-transition-old(portal-barra) {
+  display: none;
+}
+/* Una pieza con nombre no puede desenfocar lo de atrás en la captura (sale un rectángulo): mientras
+   dura la transición, la barra y la píldora de la cabecera van con el relleno casi opaco de los
+   respaldos. En el cambio de tema no llevan nombre y siguen en vidrio. */
+html:active-view-transition:not([data-theme-swap]) .portal-tabbar,
+html:active-view-transition:not([data-theme-swap]) .portal-top__bg {
+  background: color-mix(in srgb, var(--portal-bg) 86%, var(--portal-ink));
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+::view-transition-new(portal-cabecera),
+::view-transition-new(portal-barra) {
+  animation: none;
+}
+/* La pantalla (dirección §4.5, Navegación): fundido cruzado de 200 ms. La vieja se va rápido para
+   no competir. Entrar a un detalle (`nav-forward`) entra 24 px desde la derecha y volver
+   (`nav-back`) desde la izquierda. Va arriba de la foto que viaja a la portada (abajo). */
+::view-transition-group(.portal-fundido),
+::view-transition-group(.portal-adelante),
+::view-transition-group(.portal-atras) {
+  z-index: 2;
+}
+::view-transition-old(.portal-fundido),
+::view-transition-old(.portal-adelante),
+::view-transition-old(.portal-atras) {
+  animation: portal-vt-salir var(--dur-1) var(--portal-ease-in) both;
+}
+::view-transition-new(.portal-fundido) {
+  animation: portal-vt-entrar var(--dur-2) var(--portal-ease-out) both;
+}
+::view-transition-new(.portal-adelante) {
+  --portal-vt-desde: 24px;
+  animation:
+    portal-vt-entrar var(--dur-2) var(--portal-ease-out) both,
+    portal-vt-deslizar var(--dur-3) var(--portal-ease-out) both;
+}
+::view-transition-new(.portal-atras) {
+  --portal-vt-desde: -24px;
+  animation:
+    portal-vt-entrar var(--dur-2) var(--portal-ease-out) both,
+    portal-vt-deslizar var(--dur-3) var(--portal-ease-out) both;
+}
+/* La foto de la tarjeta de /explorar se convierte en la portada de la ficha (pieza Transformación).
+   Viaja con el resorte de la hoja, debajo de la pantalla nueva: así termina detrás de la tarjeta
+   del nombre, donde queda, sin saltar al final. */
+::view-transition-group(.complejo-foto) {
+  z-index: 1;
+  animation-duration: 380ms;
+  animation-timing-function: var(--ease-hoja);
+}
+/* Una fila que sale de una lista (una reserva cancelada, un pedido aceptado): se cierra sobre su
+   alto en 260 ms y las de abajo suben a su lugar con la misma curva. */
+::view-transition-old(.portal-cerrar) {
+  transform-origin: top;
+  animation: portal-vt-cerrar 260ms var(--portal-ease-in) both;
+}
+::view-transition-group(.portal-mover) {
+  animation-duration: 260ms;
+  animation-timing-function: var(--portal-ease-out);
+}
+@keyframes portal-vt-cerrar {
+  to {
+    opacity: 0;
+    scale: 1 0.6;
+  }
+}
+@keyframes portal-vt-salir {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes portal-vt-entrar {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes portal-vt-deslizar {
+  from {
+    translate: var(--portal-vt-desde) 0;
+  }
+}
 /* La píldora de la barra de abajo viaja de una pestaña a otra con su resorte. */
 ::view-transition-group(.portal-pill) {
+  /* Arriba de la barra, que también tiene nombre: si no, la tapa mientras viaja. */
+  z-index: 4;
   animation-duration: 440ms;
   animation-timing-function: var(--ease-pildora);
 }
@@ -1989,6 +1992,28 @@ html:has([data-portal-glass])::view-transition {
   /* La píldora cambia sin deslizar. */
   ::view-transition-group(.portal-pill) {
     animation: none;
+  }
+  /* Entre pantallas, solo el fundido: nada se desliza y la foto no viaja a la portada (la vieja se
+     apaga y la nueva aparece en su lugar, 150 ms). El `!important` le gana a la regla global. */
+  ::view-transition-new(.portal-adelante),
+  ::view-transition-new(.portal-atras) {
+    animation: portal-vt-entrar 150ms var(--portal-ease-out) both !important;
+  }
+  ::view-transition-group(.complejo-foto) {
+    animation: none !important;
+  }
+  /* La fila que sale solo se apaga y las demás quedan en su lugar nuevo. */
+  ::view-transition-old(.portal-cerrar) {
+    animation: portal-vt-salir 150ms var(--portal-ease-in) both !important;
+  }
+  ::view-transition-group(.portal-mover) {
+    animation: none !important;
+  }
+  ::view-transition-old(.complejo-foto) {
+    animation: portal-vt-salir 150ms var(--portal-ease-in) both !important;
+  }
+  ::view-transition-new(.complejo-foto) {
+    animation: portal-vt-entrar 150ms var(--portal-ease-out) both !important;
   }
   .segmented-pill {
     transition: none;

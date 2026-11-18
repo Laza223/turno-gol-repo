@@ -14,7 +14,7 @@ export default function PrivacidadPage() {
         <div className="ar-col">
           <header>
             <h1 className="ar-h1">Política de Privacidad</h1>
-            <p className="ar-sub">Última actualización: 14 de noviembre de 2026.</p>
+            <p className="ar-sub">Última actualización: 17 de noviembre de 2026.</p>
           </header>
           <div className="ar-prose glass-painted">
             <section className="grid gap-4">
@@ -57,14 +57,23 @@ export default function PrivacidadPage() {
                   localidad cercana con complejos. No guardamos esa ubicación.
                 </li>
                 <li>
+                  Ubicación aproximada (opcional): si tocás «Usar mi ubicación actual», tu navegador
+                  te pide permiso y nos manda tu posición una sola vez para ver en qué localidad
+                  estás. La consultamos en los servicios de mapas del punto 4 con las coordenadas
+                  redondeadas a unos 100 metros. Las coordenadas no se guardan en nuestra base de
+                  datos: en tu dispositivo queda solo la localidad. Si preferís, la escribís a mano.
+                </li>
+                <li>
                   Declaración jurada de mayoría de edad (+18 años) y aceptación de los Términos y
                   Condiciones, requerida para crear cuenta (ADR-012).
                 </li>
               </ul>
               <p>
                 De los <strong>dueños y staff de complejos</strong> recolectamos nombre, email,
-                teléfono, datos del complejo (nombre, dirección, configuración) y datos de
-                facturación SaaS.
+                teléfono, datos del complejo (nombre, dirección, ubicación en el mapa,
+                configuración) y datos de facturación SaaS. Para cargar la dirección, lo que
+                escribís (o tu posición, si tocás «Usar mi ubicación actual») se consulta en los
+                servicios de mapas del punto 4.
               </p>
               <p>
                 Si le escribís al <strong>asistente de WhatsApp</strong> de un complejo que lo
@@ -154,6 +163,17 @@ export default function PrivacidadPage() {
                 <li>
                   <strong>Groq</strong> (Estados Unidos): pasa a texto los audios que le mandás al
                   asistente de WhatsApp. Recibe solo el audio, sin tu número ni tu nombre.
+                </li>
+                <li>
+                  <strong>Georef</strong> (Gobierno nacional, Argentina): servicio oficial de datos
+                  geográficos. Lo usamos para encontrar localidades y calles, y para saber en qué
+                  localidad está una posición.
+                </li>
+                <li>
+                  <strong>OpenStreetMap, a través de Photon</strong> (Komoot, Alemania): completa a
+                  Georef con pueblos y calles que no figuran. Recibe el texto que buscás o las
+                  coordenadas de la posición, siempre desde nuestro servidor: no recibe tu nombre,
+                  tu email, tu cuenta ni tu IP.
                 </li>
               </ul>
               <p>

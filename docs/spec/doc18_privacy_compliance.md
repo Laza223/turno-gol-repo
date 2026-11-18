@@ -380,6 +380,8 @@ Según la Disposición 11/2006 de la DNPDP, los datos se clasifican en niveles d
 | **Supabase** | Todos los datos (hosting de DB) | Almacenamiento y procesamiento | Supabase cumple SOC 2 Type II. Datos en AWS eu-central-1 o us-east-1. |
 | **Vercel** | Logs de requests (IPs, user agents) | Hosting de la aplicación | Vercel cumple SOC 2 Type II. |
 | **Sentry** | Errores con contexto (puede incluir tenant_id, user_id) | Error tracking | Sentry cumple SOC 2 Type II. No enviamos datos personales directamente. |
+| **Georef** (Gobierno nacional) | Texto de la localidad o calle que se busca; coordenadas de «Usar mi ubicación» (jugador: redondeadas a ~100 m) | Encontrar localidades y calles, saber en qué localidad está una posición | Servicio oficial. Las consultas salen desde nuestro servidor: sin IP ni datos de la cuenta. |
+| **OpenStreetMap vía Photon** (Komoot, Alemania) | Lo mismo que Georef, cuando el dataset propio o Georef no resuelven | Pueblos y calles que Georef no trae | Instancia pública sin SLA. Sin IP ni datos de la cuenta. Si cae, el alta sigue con carga manual. Decisión: `docs/decisions/2026-11-17-ubicacion-toda-argentina.md`. |
 
 > [!IMPORTANT]
 > **Ninguno de estos terceros "compra" nuestros datos.** Son sub-encargados del tratamiento,

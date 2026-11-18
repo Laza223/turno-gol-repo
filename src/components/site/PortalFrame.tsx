@@ -27,7 +27,9 @@ export default function PortalFrame({ header, footer, children }: Props) {
     <div
       data-portal-glass
       className={cn(
-        'flex min-h-dvh flex-col player-shell-bg',
+        // La luz de fondo del vidrio en todo el marco, cabecera y pie incluidos: el fondo no cambia
+        // de tono donde termina el contenido de cada pantalla.
+        'portal-ambient flex min-h-dvh flex-col',
         // Lo que ocupa la barra de abajo (`--portal-tabbar-space`: 12 px de aire + 66 px de
         // píldora + área segura). Sin esto el pie queda debajo de la barra.
         bottomNav && 'pb-(--portal-tabbar-space) md:pb-0',

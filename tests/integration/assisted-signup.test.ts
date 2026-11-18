@@ -50,6 +50,8 @@ function input(overrides: Partial<AssistedSignupInput> = {}): AssistedSignupInpu
     address: 'Av. Siempreviva 742',
     city: 'Lanús',
     province: 'Buenos Aires',
+    latitude: null,
+    longitude: null,
     phone: '+54 11 5555-1234',
     firstName: 'Marcelo',
     lastName: 'Gómez',

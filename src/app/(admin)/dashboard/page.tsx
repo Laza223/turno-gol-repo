@@ -36,6 +36,14 @@ import {
   writeOffBookingAction,
 } from '@/app/(admin)/caja/deudas/actions'
 import { trackStoryExportAction } from '@/app/(admin)/grilla/actions'
+import {
+  cancelTabAction,
+  createTabAction,
+  listBookingConsumosAction,
+  listCanteenForBookingAction,
+  sellTicketAction,
+  settleTabAction,
+} from '@/app/(admin)/caja/cantina/actions'
 import { HoyHeaderSlot } from './HoyHeaderSlot'
 import { HoyShell } from './_components/HoyShell'
 import { ShareScheduleFab } from './_components/ShareScheduleFab'
@@ -279,6 +287,17 @@ export default async function DashboardPage() {
             releaseBlockAction,
             editBookingAction,
             getBookingEditDetailAction,
+            // Consumos anotados al turno: el cobro de "Todo junto" los suma.
+            listBookingConsumosAction,
+            settleTabAction,
+            cancelTabAction,
+          }}
+          // La cantina de un turno: desde el modal se anota un consumo al turno. Las
+          // acciones toman `unknown` y validan con Zod: el `bookingId` viaja en el input.
+          canteen={{
+            listCatalogAction: listCanteenForBookingAction,
+            sellTicketAction,
+            createTabAction,
           }}
         />
       </div>

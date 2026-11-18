@@ -162,6 +162,14 @@ export function HoyChargeModal({
     submitTeamCharge,
     retryTotal,
     retryUnconfirmedCharge,
+    consumosEnabled,
+    consumosLoading,
+    consumosFailed,
+    consumos,
+    includeConsumos,
+    setIncludeConsumos,
+    removeConsumo,
+    reloadConsumos,
     confirmNoShow,
     revertNoShow,
   } = useSlotCharges({
@@ -170,6 +178,7 @@ export function HoyChargeModal({
     actions,
     notifyMutated: onMutated,
     resetLastId: () => setLastId(null),
+    withConsumos: true,
   })
 
   if (booking.id !== lastId) {
@@ -191,6 +200,19 @@ export function HoyChargeModal({
   }
 
   const locked = isPending || isRefreshing
+  // Lo anotado al turno (docs/decisions/2026-11-17-consumos-anotados-al-turno.md), tal
+  // como lo usa el cobro de "Todo junto". Sin las acciones (la Grilla, por ahora) no hay.
+  const consumosView = consumosEnabled
+    ? {
+        items: consumos,
+        include: includeConsumos,
+        onIncludeChange: setIncludeConsumos,
+        onRemove: removeConsumo,
+        loading: consumosLoading,
+        failed: consumosFailed,
+        onRetry: reloadConsumos,
+      }
+    : undefined
   const baseGates = slotGates({
     booking,
     hasEnded,
@@ -360,6 +382,7 @@ export function HoyChargeModal({
                 onTeamCharge={submitTeamCharge}
                 retryTotal={retryTotal}
                 onRetry={retryUnconfirmedCharge}
+                consumos={consumosView}
                 settled={settled}
                 lostCents={lostCents}
                 onClose={onClose}
@@ -466,6 +489,7 @@ export function HoyChargeModal({
         releaseBlockOpen={releaseBlockOpen}
         setReleaseBlockOpen={setReleaseBlockOpen}
         onMutated={onMutated}
+        onConsumoNoted={reloadConsumos}
         setLastId={setLastId}
         onConfirmNoShow={onConfirmNoShow}
         onConfirmReleaseBlock={onConfirmReleaseBlock}

@@ -11,6 +11,7 @@ import type { SaleMethod } from '../caja-lib'
 import type { SellTicketActionResult } from './actions'
 import { addProduct, ticketCount, ticketTotal, type TicketLine } from './ticket-lib'
 import type { TabAttempt } from './TabDialog'
+import type { CreateTabAction } from './TicketPanel'
 
 export type SellTicketAction = (input: {
   lines: { productId: string; qty: number }[]
@@ -76,7 +77,11 @@ export function useTicketSale({
   const message = saleRetry
     ? unconfirmedMessage(`la venta de ${formatArs(saleRetry.total)}`)
     : tabRetry
-      ? unconfirmedMessage(`el fiado a nombre de ${tabRetry.debtorName}`)
+      ? unconfirmedMessage(
+          tabRetry.forBooking
+            ? `lo anotado al turno (${formatArs(tabRetry.total)})`
+            : `el fiado a nombre de ${tabRetry.debtorName}`,
+        )
       : error
 
   function add(product: CanteenProductRow) {
@@ -136,6 +141,38 @@ export function useTicketSale({
     onSold?.()
   }
 
+  /**
+   * "Anotar al turno" (migr. 116): lo mismo que el fiado, pero sin preguntar a
+   * nombre de quién — el servidor lo arma con la cancha y la hora del turno, que
+   * `createTabAction` ya trae atado. No toca la caja: lo cobra el modal de cobro del
+   * turno, junto con la cancha. Con un anotado sin respuesta, reintenta ESE.
+   */
+  function noteToBooking(createTabAction: CreateTabAction, label: string, onNoted?: () => void) {
+    const retry = tab.retryPayload
+    if (!retry && (lines.length === 0 || locked)) return
+    const payload: TabAttempt = retry ?? {
+      debtorName: label,
+      lines: lines.map((l) => ({ productId: l.productId, qty: l.qty })),
+      total,
+      forBooking: true,
+    }
+    setError(null)
+    startTransition(async () => {
+      const res = await tab.send(payload, (p, clientIdempotencyKey) =>
+        createTabAction({ debtorName: p.debtorName, lines: p.lines, clientIdempotencyKey }),
+      )
+      if (!res) return
+      if (res.success) {
+        toast({ title: `Anotado al turno. ${formatArs(res.total)}`, variant: 'success' })
+        onTabSuccess()
+        router.refresh()
+        onNoted?.()
+      } else {
+        startTransition(() => setError(res.error))
+      }
+    })
+  }
+
   return {
     lines,
     setLines,
@@ -155,6 +192,7 @@ export function useTicketSale({
     tabDialogOpen,
     setTabDialogOpen,
     onTabSuccess,
+    noteToBooking,
     clearError: () => setError(null),
   }
 }

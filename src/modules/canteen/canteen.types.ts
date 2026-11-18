@@ -52,6 +52,8 @@ export type CanteenTabRow = {
   id: string
   tenantId: string
   debtorName: string
+  /** Turno al que está anotado (migr. 116); null = fiado de una persona. */
+  bookingId: string | null
   status: CanteenTabStatus
   totalAmount: number
   note: string | null
@@ -63,6 +65,17 @@ export type CanteenTabRow = {
   canceledAt: Date | null
   canceledBy: string | null
   canceledReason: string | null
+}
+
+/**
+ * Un consumo anotado a un turno, tal como lo muestra el modal de cobro: una tanda
+ * ("2 × Cerveza") que todavía no entró en caja. Se cobra con `settleTab`.
+ */
+export type BookingConsumo = {
+  tabId: string
+  /** Centavos ARS. */
+  totalAmount: number
+  items: Array<{ name: string; qty: number }>
 }
 
 /** Línea de un ticket de venta (cobrado o fiado). */

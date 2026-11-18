@@ -8,6 +8,7 @@ import type { MethodKey } from '@/lib/payment-method'
 import { TONE_BADGE } from '@/lib/status-tone'
 import { cn } from '@/lib/utils'
 import { HoyChargeSection } from '@/components/booking/slot-panel/HoyChargeSection'
+import type { ConsumosView } from '@/components/booking/slot-panel/ConsumosAnotados'
 import type { ChargeBooking, NextToCharge } from './HoyChargeModal'
 
 const PRIMARY_BUTTON =
@@ -35,6 +36,7 @@ export function HoyChargeModalPaymentStatus({
   onTeamCharge,
   retryTotal,
   onRetry,
+  consumos,
   settled,
   lostCents,
   onClose,
@@ -57,6 +59,8 @@ export function HoyChargeModalPaymentStatus({
   onTeamCharge: (teamLines: ChargeLine[], team?: 1 | 2) => void
   retryTotal: number | null
   onRetry: () => void
+  /** Consumos anotados al turno que el cobro de "Todo junto" suma (undefined = no se ofrecen). */
+  consumos?: ConsumosView
   /** Un ausente nunca "Cobrado ✓": ver comentario homólogo en `HoyChargeModal`. */
   settled: boolean
   /** Lo dado por perdido si el turno se cerró así (0 si no): en su lugar va "Perdido $X". */
@@ -89,6 +93,7 @@ export function HoyChargeModalPaymentStatus({
           onTeamCharge={onTeamCharge}
           retryTotal={retryTotal}
           onRetry={onRetry}
+          consumos={consumos}
         />
       ) : settled ? (
         <>

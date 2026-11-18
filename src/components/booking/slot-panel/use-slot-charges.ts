@@ -1,18 +1,36 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import * as Sentry from '@sentry/nextjs'
 import { newChargeLine, type ChargeLine } from '@/components/admin/SplitPaymentFields'
 import type { MethodKey } from '@/lib/payment-method'
 import { toast } from '@/hooks/use-toast'
 import { formatArs } from '@/lib/format'
 import type { GridBooking } from '@/lib/booking/grid-cells'
+import type { BookingConsumo } from '@/modules/canteen/canteen.types'
 import { chargeMode } from './charge-copy'
 import type { ChargeInput, SlotPanelActions } from './actions'
 import type { ActionResult } from '@/shared/types/action-result'
 
+/** Medios con los que un consumo se puede cobrar (la cantina no admite "Otro"). */
+type ConsumoMethod = 'cash' | 'transfer' | 'mercadopago'
+
+/**
+ * Un consumo anotado que se cobra junto con el turno: su clave de idempotencia va
+ * adentro para que el reintento tras un corte de red repita EXACTO el mismo envío.
+ */
+type ConsumoLeg = { tabId: string; total: number; key: string; method: ConsumoMethod }
+
 /** Un cobro que salió y cuya respuesta no llegó: no se sabe si entró. */
-type UnconfirmedCharge = { key: string; charges: ChargeInput[]; total: number }
+type UnconfirmedCharge = {
+  key: string
+  charges: ChargeInput[]
+  total: number
+  /** Los consumos que viajaban con ese cobro (vacío en la enorme mayoría). */
+  legs: ConsumoLeg[]
+}
+
+const NO_CONSUMOS: BookingConsumo[] = []
 
 /**
  * Estado y handlers de "cobrar" del panel del turno: las líneas de pago, el
@@ -31,12 +49,20 @@ export function useSlotCharges({
   actions,
   notifyMutated,
   resetLastId,
+  withConsumos = false,
 }: {
   booking: GridBooking | null
   hasEnded: boolean
   actions: SlotPanelActions | undefined
   notifyMutated: () => void
   resetLastId: () => void
+  /**
+   * Solo el modal de cobro de Hoy suma los consumos anotados al cobro de "Todo junto".
+   * Los demás (la tarjeta de "Cobrar varios", el cobro de /reservas/[id]) comparten
+   * este hook pero no los muestran: sin esta marca cada tarjeta leería los consumos
+   * del servidor para nada.
+   */
+  withConsumos?: boolean
 }) {
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -58,6 +84,79 @@ export function useSlotCharges({
   const mode = booking ? chargeMode(booking, hasEnded) : null
   const pending = booking?.pending ?? 0
 
+  // ── Consumos anotados al turno (migr. 116, docs/decisions/2026-11-17-consumos-
+  // anotados-al-turno.md). Se cobran JUNTO con el turno, pero son otro circuito de
+  // plata (cantina, no `category='booking'`): primero se saldan los anotados con
+  // `settleTab` y después corre la acción de cobro del turno de siempre, sin
+  // tocarla. Cada pata es idempotente y verdadera por sí sola, así que si la
+  // segunda falla el consumo queda cobrado y el turno sigue por cobrar.
+  const consumosEnabled =
+    withConsumos &&
+    Boolean(
+      actions?.listBookingConsumosAction && actions.settleTabAction && actions.cancelTabAction,
+    )
+  const listConsumos = consumosEnabled ? actions?.listBookingConsumosAction : undefined
+  const bookingId = booking?.id ?? null
+  const canCharge = mode !== null
+  const [consumosState, setConsumosState] = useState<{
+    bookingId: string
+    items: BookingConsumo[]
+  } | null>(null)
+  // El turno cuya primera lectura falló: sin esto un fallo (límite de pedidos, red) se
+  // veía igual que "no hay anotados" y se cobraba solo la cancha sin avisar.
+  const [consumosFailedFor, setConsumosFailedFor] = useState<string | null>(null)
+  const [consumosTick, setConsumosTick] = useState(0)
+  // El turno para el que se destildó "Cobrar con el turno": otro turno arranca tildado.
+  const [leftOutFor, setLeftOutFor] = useState<string | null>(null)
+  const includeConsumos = leftOutFor !== bookingId
+  // Una clave por anotado, estable hasta que se sepa cómo terminó el cobro.
+  const consumoKeys = useRef(new Map<string, string>())
+  const consumos =
+    consumosState && consumosState.bookingId === bookingId ? consumosState.items : NO_CONSUMOS
+
+  // Hasta que llega la primera lectura de ESTE turno no se sabe si hay anotados: el botón de
+  // cobrar espera, para no cobrar solo la cancha con las birras todavía en camino.
+  const consumosLoaded = consumosState?.bookingId === bookingId
+  const consumosAwaited = consumosEnabled && canCharge && bookingId !== null
+  const consumosFailed = consumosAwaited && !consumosLoaded && consumosFailedFor === bookingId
+  const consumosLoading = consumosAwaited && !consumosLoaded && consumosFailedFor !== bookingId
+
+  useEffect(() => {
+    if (!bookingId || !listConsumos || !canCharge) return
+    let alive = true
+    listConsumos({ bookingId })
+      .then((res) => {
+        if (!alive) return
+        if (res.success) {
+          setConsumosState({ bookingId, items: res.consumos })
+          setConsumosFailedFor(null)
+        } else {
+          setConsumosFailedFor(bookingId)
+        }
+      })
+      .catch((err: unknown) => {
+        Sentry.captureException(err)
+        if (alive) setConsumosFailedFor(bookingId)
+      })
+    return () => {
+      alive = false
+    }
+  }, [bookingId, listConsumos, canCharge, consumosTick])
+
+  function reloadConsumos() {
+    setConsumosFailedFor(null)
+    setConsumosTick((t) => t + 1)
+  }
+
+  function keyForConsumo(tabId: string): string {
+    let key = consumoKeys.current.get(tabId)
+    if (!key) {
+      key = crypto.randomUUID()
+      consumoKeys.current.set(tabId, key)
+    }
+    return key
+  }
+
   /**
    * Corre la mutación real (misma Server Action, mismo guard, mismo toast y
    * manejo de error en los tres modos) a partir de un array de cargos ya
@@ -65,12 +164,43 @@ export function useSlotCharges({
    * (con el cargo armado en el momento, sin depender de `lines` porque
    * `setState` es async y todavía no se actualizó en el mismo click).
    */
-  function runCharge(charges: ChargeInput[], total: number) {
+  function runCharge(charges: ChargeInput[], total: number, legs: ConsumoLeg[] = []) {
+    const settleConsumo = actions?.settleTabAction
     if (!booking || !actions || !mode) return
+    if (legs.length > 0 && !settleConsumo) return
     const bookingId = booking.id
     const key = idempotencyKey
+    const legsTotal = legs.reduce((sum, l) => sum + l.total, 0)
     startTransition(async () => {
       try {
+        // 1. Los consumos anotados, antes que el turno. Si uno falla, el turno todavía
+        // no se tocó: nada quedó a medias salvo los anotados que ya se saldaron.
+        let settledCents = 0
+        for (const leg of legs) {
+          const legRes = await settleConsumo!({
+            tabId: leg.tabId,
+            charges: [{ amount: leg.total, method: leg.method }],
+            clientIdempotencyKey: leg.key,
+          })
+          if (!legRes.success) {
+            startTransition(() => {
+              setUnconfirmed(null)
+              setError(
+                settledCents > 0
+                  ? `Ya se cobró parte de lo anotado (${formatArs(settledCents)}). ${legRes.error}`
+                  : legRes.error,
+              )
+              // El servidor contestó: este envío no dejó nada bajo esa clave.
+              consumoKeys.current.delete(leg.tabId)
+              reloadConsumos()
+            })
+            return
+          }
+          settledCents += leg.total
+          consumoKeys.current.delete(leg.tabId)
+        }
+
+        // 2. El turno, por la acción de siempre.
         const res =
           mode === 'settle'
             ? await actions.chargeDebtAction({
@@ -94,14 +224,22 @@ export function useSlotCharges({
           // Después del await, un set* suelto ya no es parte de la transición: se pintaba un
           // render antes de que `pending` bajara, con los controles todavía deshabilitados.
           startTransition(() => {
-            setError(('error' in res && res.error) || 'No se pudo registrar el cobro.')
+            const reason = ('error' in res && res.error) || 'No se pudo registrar el cobro.'
+            setError(
+              legsTotal > 0
+                ? `Lo anotado ya quedó cobrado (${formatArs(legsTotal)}). Falta cobrar el turno: ${reason}`
+                : reason,
+            )
             // El servidor contestó, así que este intento no dejó nada escrito bajo
             // la key: se rota para que el próximo cobro no la herede.
             setIdempotencyKey(crypto.randomUUID())
+            if (legsTotal > 0) reloadConsumos()
           })
           return
         }
-        toast({ title: `Cobro registrado — ${formatArs(total)}`, variant: 'success' })
+        toast({ title: `Cobro registrado — ${formatArs(total + legsTotal)}`, variant: 'success' })
+        // Lo anotado ya está cobrado: no puede quedar en pantalla hasta la próxima lectura.
+        if (legsTotal > 0) setConsumosState({ bookingId, items: [] })
         resetLastId()
         notifyMutated()
       } catch (err) {
@@ -109,8 +247,59 @@ export function useSlotCharges({
         // El aviso lo dibuja SlotChargeSection junto al botón de reintentar.
         startTransition(() => {
           setError(null)
-          setUnconfirmed({ key, charges, total })
+          setUnconfirmed({ key, charges, total, legs })
         })
+      }
+    })
+  }
+
+  /**
+   * Los consumos anotados que viajan con un cobro de "Todo junto", o `null` (con el
+   * error ya puesto) si no se pueden cobrar así. Un solo medio de pago para todo, y
+   * no "Otro": `settleTab` no lo admite, y partir el medio entre la cancha y la
+   * cantina sería inventar a cuál de los dos le toca cada línea. Con el pago ya
+   * dividido en varios medios los consumos no viajan (el modal lo muestra con la
+   * casilla destildada) y quedan anotados para después.
+   */
+  function consumoLegsFor(charges: ChargeInput[]): ConsumoLeg[] | null {
+    if (!consumosEnabled || !includeConsumos || consumos.length === 0) return []
+    const first = charges[0]
+    if (charges.length !== 1 || !first) return []
+    const method = first.method
+    if (method === 'other') {
+      setError(
+        'Los consumos no se cobran con "Otro". Elegí efectivo, transferencia o MercadoPago, o destildá "Cobrar con el turno".',
+      )
+      return null
+    }
+    return consumos.map((c) => ({
+      tabId: c.tabId,
+      total: c.totalAmount,
+      key: keyForConsumo(c.tabId),
+      method,
+    }))
+  }
+
+  /** Quita un consumo anotado por error: devuelve el stock (`cancelTab`). */
+  function removeConsumo(tabId: string) {
+    const cancelConsumo = actions?.cancelTabAction
+    if (!cancelConsumo || retryCharge) return
+    setError(null)
+    startTransition(async () => {
+      try {
+        const res = await cancelConsumo({ tabId, reason: 'Se quitó del turno al cobrar' })
+        startTransition(() => {
+          if (!res.success) {
+            setError(res.error)
+            return
+          }
+          toast({ title: 'Consumo quitado del turno', variant: 'success' })
+          consumoKeys.current.delete(tabId)
+          reloadConsumos()
+        })
+      } catch (err) {
+        Sentry.captureException(err)
+        startTransition(() => setError('No se pudo quitar. Revisá tu conexión y probá de nuevo.'))
       }
     })
   }
@@ -142,7 +331,11 @@ export function useSlotCharges({
       setError(`El cobro total (${formatArs(total)}) supera lo pendiente (${formatArs(pending)}).`)
       return
     }
-    runCharge(charges, total)
+    // "Todo junto" es el único cobro que trae los consumos anotados (el equipo y el
+    // jugador cobran solo cancha).
+    const legs = consumoLegsFor(charges)
+    if (legs === null) return
+    runCharge(charges, total, legs)
   }
 
   /**
@@ -208,7 +401,7 @@ export function useSlotCharges({
   function retryUnconfirmedCharge() {
     if (!retryCharge) return
     setError(null)
-    runCharge(retryCharge.charges, retryCharge.total)
+    runCharge(retryCharge.charges, retryCharge.total, retryCharge.legs)
   }
 
   async function confirmNoShow(): Promise<ActionResult> {
@@ -287,8 +480,18 @@ export function useSlotCharges({
     submitCharge,
     submitPartialCharge,
     submitTeamCharge,
-    retryTotal: retryCharge?.total ?? null,
+    retryTotal: retryCharge
+      ? retryCharge.total + retryCharge.legs.reduce((s, l) => s + l.total, 0)
+      : null,
     retryUnconfirmedCharge,
+    consumosEnabled,
+    consumosLoading,
+    consumosFailed,
+    consumos,
+    includeConsumos,
+    setIncludeConsumos: (include: boolean) => setLeftOutFor(include ? null : bookingId),
+    removeConsumo,
+    reloadConsumos,
     confirmNoShow,
     revertNoShow,
   }

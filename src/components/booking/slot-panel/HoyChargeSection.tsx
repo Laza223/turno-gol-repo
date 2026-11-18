@@ -10,6 +10,10 @@ import {
 import { choiceChipClass, SegmentedControl } from '@/components/ui/segmented-control'
 import { SelectMenu } from '@/components/ui/select-menu'
 import {
+  ConsumosAnotados,
+  type ConsumosView,
+} from '@/components/booking/slot-panel/ConsumosAnotados'
+import {
   chargeCta,
   chargeSplit,
   chargeTabs,
@@ -69,6 +73,7 @@ export function HoyChargeSection({
   onTeamCharge,
   retryTotal,
   onRetry,
+  consumos,
 }: {
   booking: GridBooking
   mode: Exclude<ChargeMode, null>
@@ -86,9 +91,16 @@ export function HoyChargeSection({
   /** Monto de un cobro que se cortó por la red y no se sabe si entró, o null. */
   retryTotal: number | null
   onRetry: () => void
+  /**
+   * Lo que pidieron durante el turno y quedó anotado (docs/decisions/2026-11-17-
+   * consumos-anotados-al-turno.md). Sin anotados no hay bloque y el cobro queda como siempre.
+   */
+  consumos?: ConsumosView
 }) {
   const pending = typeof booking.pending === 'number' ? booking.pending : 0
   const tabs = chargeTabs(booking, capacity)
+  const consumosItems = consumos?.items ?? []
+  const consumosCents = consumosItems.reduce((sum, c) => sum + c.totalAmount, 0)
   const [picked, setPicked] = useState<ChargeTab>(tabs.initial)
   // Si la pestaña elegida dejó de existir (se cobró lo suficiente para que "por
   // equipo" ya no tenga sentido), se cae a "todo junto" en vez de quedar en blanco.
@@ -103,6 +115,12 @@ export function HoyChargeSection({
   // El monto en palabras recién cuando se toca, como en la tarjeta de cada equipo:
   // precargado repite el "Falta cobrar" que está justo arriba.
   const touched = lines.length > 1 || lines[0]?.amountCents !== pending
+  // Los consumos se suman al cobro solo con UN medio de pago: partido entre varios no
+  // hay a cuál de los dos circuitos (cancha o cantina) le toca cada línea.
+  const canIncludeConsumos = lines.length === 1
+  const includeConsumos =
+    consumosItems.length > 0 && Boolean(consumos?.include) && canIncludeConsumos
+  const extraCents = includeConsumos ? consumosCents : 0
 
   return (
     <section className="flex flex-col gap-3">
@@ -133,11 +151,39 @@ export function HoyChargeSection({
 
       {tab === 'all' && (
         <>
+          {consumos && consumosItems.length > 0 && (
+            <ConsumosAnotados
+              consumos={consumos}
+              disabled={disabled}
+              canInclude={canIncludeConsumos}
+            />
+          )}
+          {consumos?.failed && (
+            // "No hay anotados" y "no pudimos ver" no son lo mismo: sin este aviso un fallo
+            // de lectura cobraba solo la cancha y las birras quedaban como fiado.
+            <div
+              role="status"
+              className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2"
+            >
+              <p className={cn('text-sm font-medium', TONE_TEXT.warning)}>
+                No pudimos ver si hay consumos anotados.
+              </p>
+              <button
+                type="button"
+                onClick={consumos.onRetry}
+                disabled={disabled}
+                className="min-h-11 shrink-0 rounded-lg px-3 text-sm font-semibold text-foreground underline underline-offset-2 hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 md:min-h-9"
+              >
+                Reintentar
+              </button>
+            </div>
+          )}
           <div onFocus={selectAllOnFocus} onMouseDown={selectAllOnMouseDown}>
             <SplitPaymentFields
               lines={lines}
               onChange={onLinesChange}
-              maxLines={MAX_LINES}
+              // Con los consumos tildados, un solo medio de pago para todo.
+              maxLines={includeConsumos ? 1 : MAX_LINES}
               disabled={disabled}
               idPrefix="hoy-cobro"
               showWords={touched}
@@ -147,13 +193,20 @@ export function HoyChargeSection({
             <button
               type="button"
               onClick={onSubmit}
-              disabled={disabled}
+              // Mientras llegan los anotados no se cobra: sin saber si hay, saldría solo la cancha.
+              disabled={disabled || Boolean(consumos?.loading)}
               className={cn(PRIMARY_BUTTON, 'h-12 text-base')}
             >
-              {isPending ? 'Procesando…' : chargeCta(mode, pending, total)}
+              {isPending ? 'Procesando…' : chargeCta(mode, pending, total, extraCents)}
             </button>
           )}
         </>
+      )}
+
+      {tab !== 'all' && consumosItems.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          También hay {formatArs(consumosCents)} de consumos anotados: se cobran en “Todo junto”.
+        </p>
       )}
 
       {tab === 'teams' && (

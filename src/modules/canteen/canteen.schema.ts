@@ -79,23 +79,34 @@ export const sellTicketSchema = z.object({
   bookingId: uuid.optional(),
 })
 
-// Fiados: nombre libre (no exige jugador registrado).
-export const createTabSchema = z.object({
-  debtorName: z
-    .string()
-    .trim()
-    .min(1, 'Poné un nombre para el fiado.')
-    .max(80, 'El nombre no puede superar 80 caracteres.'),
-  lines: z
-    .array(ticketLineSchema)
-    .min(1, 'El fiado necesita al menos un producto.')
-    .max(20, 'El fiado no puede tener más de 20 productos distintos.'),
-  // Sin `note`: era texto libre sobre una persona, que la Ley 25.326 deja
-  // expuesto al derecho de acceso del titular. Se controla en el origen, o sea
-  // acá, igual que con `abonados.notes`. La columna sigue en la base con lo ya
-  // cargado; lo que se cerró es la puerta de entrada.
-  clientIdempotencyKey: uuid,
-})
+// Fiados: nombre libre (no exige jugador registrado) — o, si viene `bookingId`,
+// un consumo anotado a ese turno, donde el servidor arma el nombre ("Cancha 3 ·
+// 21:00") y el cliente no manda ninguno.
+export const createTabSchema = z
+  .object({
+    debtorName: z
+      .string()
+      .trim()
+      .min(1, 'Poné un nombre para el fiado.')
+      .max(80, 'El nombre no puede superar 80 caracteres.')
+      .optional(),
+    bookingId: uuid.optional(),
+    lines: z
+      .array(ticketLineSchema)
+      .min(1, 'El fiado necesita al menos un producto.')
+      .max(20, 'El fiado no puede tener más de 20 productos distintos.'),
+    // Sin `note`: era texto libre sobre una persona, que la Ley 25.326 deja
+    // expuesto al derecho de acceso del titular. Se controla en el origen, o sea
+    // acá, igual que con `abonados.notes`. La columna sigue en la base con lo ya
+    // cargado; lo que se cerró es la puerta de entrada.
+    clientIdempotencyKey: uuid,
+  })
+  .refine((v) => v.bookingId !== undefined || v.debtorName !== undefined, {
+    message: 'Poné un nombre para el fiado.',
+    path: ['debtorName'],
+  })
+
+export const listBookingConsumosSchema = z.object({ bookingId: uuid })
 
 // Método mixto (D2, Fase 1): 1-5 líneas de {monto, método} que tienen que
 // sumar EXACTO el total del ticket — validado en settleTab (canteen-tab.service.ts).

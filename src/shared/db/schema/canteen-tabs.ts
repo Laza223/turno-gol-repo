@@ -12,6 +12,7 @@ import {
 import { tenants } from './tenants'
 import { staffUsers } from './staff-users'
 import { cashFlows } from './cash-flows'
+import { bookings } from './bookings'
 import { canteenTabStatusEnum } from './enums'
 
 // Fiados de cantina ("anotáselo al capitán", migración 048): la venta queda
@@ -26,8 +27,13 @@ export const canteenTabs = pgTable(
       .notNull()
       .references(() => tenants.id),
 
-    // Nombre libre: no exige jugador registrado.
+    // Nombre libre: no exige jugador registrado. Si el fiado es de un turno
+    // (`bookingId`), lo deriva el servidor ("Consumo de turno · Cancha 3 · 21:00"): ahí no hay nombre
+    // de persona, ni libre ni de otro tipo.
     debtorName: text('debtor_name').notNull(),
+    // Consumo anotado al turno (migr. 116): se cobra junto con la cancha. Null = fiado
+    // de una persona. SET NULL: un turno borrado no arrastra un registro de plata.
+    bookingId: uuid('booking_id').references(() => bookings.id, { onDelete: 'set null' }),
     status: canteenTabStatusEnum('status').notNull().default('open'),
     // Centavos ARS, snapshot al entregar.
     totalAmount: integer('total_amount').notNull(),
@@ -67,5 +73,8 @@ export const canteenTabs = pgTable(
       .on(table.tenantId, table.createdAt)
       .where(sql`${table.status} = 'open'`),
     tenantIdx: index('idx_canteen_tabs_tenant').on(table.tenantId, table.createdAt),
+    bookingOpenIdx: index('idx_canteen_tabs_booking_open')
+      .on(table.tenantId, table.bookingId)
+      .where(sql`${table.status} = 'open' AND ${table.bookingId} IS NOT NULL`),
   }),
 )

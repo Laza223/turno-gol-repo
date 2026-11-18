@@ -157,6 +157,7 @@ export const canteenTab = (overrides: Partial<CanteenTabRow> = {}): CanteenTabRo
   id: uid(901),
   tenantId: tenant().id,
   debtorName: 'Capitán equipo 22hs',
+  bookingId: null,
   status: 'open',
   totalAmount: 450000,
   note: null,

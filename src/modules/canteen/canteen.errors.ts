@@ -65,6 +65,18 @@ export class SaleBookingNotFoundError extends Error {
   }
 }
 
+/**
+ * Consumo anotado a un turno que no es de nadie a quien cobrarle (un bloqueo, una
+ * hora de torneo) o que todavía no está confirmado / ya se canceló. Mismo criterio
+ * que los estados cobrables del turno.
+ */
+export class TabBookingInvalidError extends Error {
+  constructor(bookingId: string) {
+    super(`Booking ${bookingId} does not accept canteen consumption.`)
+    this.name = 'TabBookingInvalidError'
+  }
+}
+
 export class TabNotFoundError extends Error {
   constructor(tabId: string) {
     super(`Canteen tab ${tabId} not found for this tenant.`)

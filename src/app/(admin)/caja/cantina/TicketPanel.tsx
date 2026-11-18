@@ -66,12 +66,19 @@ export function TicketPanel({
   products,
   sellTicketAction,
   createTabAction,
+  bookingTab,
   layout = 'page',
   onUnconfirmedChange,
 }: {
   products: CanteenProductRow[]
   sellTicketAction: SellTicketAction
   createTabAction?: CreateTabAction
+  /**
+   * El ticket es de un turno: el segundo botón pasa a ser "Anotar al turno" (sin
+   * preguntar a nombre de quién; `createTabAction` ya viene atada al turno) y no el
+   * fiado de una persona. `onNoted` corre cuando el servidor confirmó el anotado.
+   */
+  bookingTab?: { label: string; onNoted: () => void }
   layout?: TicketLayout
   /**
    * Avisa cuando hay una venta en vuelo, o una venta o un fiado que salió y cuya
@@ -118,6 +125,7 @@ export function TicketPanel({
     tabDialogOpen,
     setTabDialogOpen,
     onTabSuccess: handleTabSuccess,
+    noteToBooking,
   } = useTicketSale({ sellTicketAction, onUnconfirmedChange, onSold: () => setQuery('') })
   const searchRef = useRef<HTMLInputElement>(null)
 
@@ -411,7 +419,7 @@ export function TicketPanel({
                 </button>
                 {/* El fiado es de cada tanto (7 en 8 días en el Vagón): va como acción
                     secundaria, sin borde, así el único botón que se ve es Cobrar. */}
-                {createTabAction && (
+                {createTabAction && !bookingTab && (
                   <button
                     type="button"
                     onClick={() => setTabDialogOpen(true)}
@@ -420,6 +428,25 @@ export function TicketPanel({
                   >
                     {tabRetry ? 'Reintentar fiado' : 'Anotar como fiado'}
                   </button>
+                )}
+                {/* En un turno el consumo se anota y se cobra con la cancha: con borde,
+                    porque es lo que se viene a hacer acá (cobrar ahora es lo raro). */}
+                {createTabAction && bookingTab && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        noteToBooking(createTabAction, bookingTab.label, bookingTab.onNoted)
+                      }
+                      disabled={isPending || saleRetry !== null}
+                      className="h-11 w-full rounded-lg border border-border bg-card text-sm font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60 md:h-10"
+                    >
+                      {tabRetry ? 'Reintentar anotado' : `Anotar al turno · ${formatArs(total)}`}
+                    </button>
+                    <p className="text-center text-xs text-muted-foreground">
+                      Se cobra junto con la cancha. El stock sale ahora.
+                    </p>
+                  </>
                 )}
               </div>
             </>
@@ -479,7 +506,7 @@ export function TicketPanel({
         </div>
       )}
 
-      {createTabAction && (
+      {createTabAction && !bookingTab && (
         <TabDialog
           open={tabDialogOpen}
           onOpenChange={setTabDialogOpen}

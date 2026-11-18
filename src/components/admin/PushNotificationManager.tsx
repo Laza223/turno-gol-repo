@@ -6,8 +6,7 @@ import { Button } from '@/components/ui/button'
 import {
   PushPermissionBanner,
   PushPermissionDialog,
-  IPHONE_INSTALL_STEPS,
-  Steps,
+  IphoneInstallSteps,
   type PushAudience,
 } from '@/components/push/PushPermissionPrompt'
 import { toast } from '@/hooks/use-toast'
@@ -504,7 +503,7 @@ export function PushNotificationManager({
       >
         <h2 className="text-lg font-semibold">Este dispositivo</h2>
         <p className="text-sm text-muted-foreground">{instructions}</p>
-        {status === 'install_required' && <Steps items={IPHONE_INSTALL_STEPS} />}
+        {status === 'install_required' && <IphoneInstallSteps />}
         <div className="flex flex-wrap gap-3">
           {(status === 'unsubscribed' || status === 'pending') && (
             <Button onClick={enable} disabled={status === 'pending'}>

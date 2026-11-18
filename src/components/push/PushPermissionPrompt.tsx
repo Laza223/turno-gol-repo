@@ -37,13 +37,13 @@ const BANNER_TEXT: Record<PushAudience, string> = {
 }
 
 /** Pasos para instalar TurnoGol en el inicio del iPhone (modal y /notificaciones). */
-export const IPHONE_INSTALL_STEPS = [
+const IPHONE_INSTALL_STEPS = [
   'Tocá Compartir (el cuadrado con la flecha). En Safari puede estar adentro del menú ···.',
   'Elegí Agregar a inicio.',
   'Abrí TurnoGol desde el ícono nuevo y tocá Activar.',
 ]
 
-export function Steps({ items }: { items: string[] }) {
+function Steps({ items }: { items: string[] }) {
   return (
     <ol className="list-decimal space-y-2 pl-5 text-sm text-foreground">
       {items.map((item) => (
@@ -51,6 +51,11 @@ export function Steps({ items }: { items: string[] }) {
       ))}
     </ol>
   )
+}
+
+/** Pasos de instalación en iPhone como componente: el modal y /notificaciones los comparten. */
+export function IphoneInstallSteps() {
+  return <Steps items={IPHONE_INSTALL_STEPS} />
 }
 
 export function PushPermissionDialog({

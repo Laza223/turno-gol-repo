@@ -1,9 +1,9 @@
 import { z } from 'zod'
 import { REFERRAL_CODE_ALPHABET } from '@/modules/referrals/referral.schema'
 import { toWhatsappDigits } from '@/lib/whatsapp'
+import { PROVINCES } from '@/shared/geo/argentina'
 import { artDateOf } from '@/shared/time/art-date'
 import { isUuid, uuid } from '@/shared/validation/primitives'
-import { RIVAL_ZONES } from './rival-zones'
 import { isInRivalStartWindow } from './rival-window'
 
 // Mensajes en es-AR (la Server Action los muestra tal cual). Todos los valores
@@ -161,10 +161,23 @@ export const rivalIdentitySchema = z.object({
     .max(40, 'El nombre no puede superar los 40 caracteres.'),
 })
 
-/** Segundo momento (al sumarse o pedir sumarse): posición y zona de la lista cerrada. */
+const KNOWN_PROVINCES: ReadonlySet<string> = new Set(PROVINCES)
+
+/** "Luján, Buenos Aires": una ciudad y una de las 24 provincias. Es lo que arma el buscador. */
+function isCityAndProvince(zone: string): boolean {
+  const i = zone.lastIndexOf(', ')
+  return i > 0 && zone.slice(0, i).trim() !== '' && KNOWN_PROVINCES.has(zone.slice(i + 2))
+}
+
+/** Segundo momento (al sumarse o pedir sumarse): posición y zona ("Ciudad, Provincia"). */
 export const rivalProfileSchema = z.object({
   position: z.enum(RIVAL_POSITIONS, 'Elegí tu posición'),
-  zone: z.enum(RIVAL_ZONES, 'Elegí tu zona'),
+  zone: z
+    .string()
+    .trim()
+    .min(1, 'Elegí tu zona')
+    .max(120)
+    .refine(isCityAndProvince, 'Elegí tu localidad de la lista, con su provincia.'),
 })
 
 /** Capitán de un equipo rival (decisión 15): solo la zona; la posición no se le pide. */

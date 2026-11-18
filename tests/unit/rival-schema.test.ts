@@ -235,13 +235,23 @@ describe('bienvenida en dos momentos y denuncias', () => {
     expect(rivalIdentitySchema.safeParse({}).success).toBe(false)
   })
 
-  it('sumarse pide posición y zona; la zona sale de la lista cerrada, con "Otra zona"', () => {
-    const ok = { position: 'any', zone: 'Luján' }
+  it('sumarse pide posición y zona con el formato "Ciudad, Provincia"', () => {
+    const ok = { position: 'any', zone: 'Luján, Buenos Aires' }
     expect(rivalProfileSchema.safeParse(ok).success).toBe(true)
-    expect(rivalProfileSchema.safeParse({ ...ok, zone: 'Otra zona' }).success).toBe(true)
-    expect(rivalProfileSchema.safeParse({ ...ok, zone: 'Palermo' }).success).toBe(false)
+    expect(rivalProfileSchema.safeParse({ ...ok, zone: 'Mercedes, Corrientes' }).success).toBe(true)
+    expect(rivalProfileSchema.safeParse({ ...ok, zone: 'Pueblo, Chico, Salta' }).success).toBe(true)
+    expect(rivalProfileSchema.parse({ ...ok, zone: ' Jáuregui, Buenos Aires ' }).zone).toBe(
+      'Jáuregui, Buenos Aires',
+    )
+    // Los valores viejos y lo que no es "ciudad, provincia" ya no se aceptan al elegir de nuevo.
+    for (const zone of ['Luján', 'Otra zona', 'Luján, Narnia', ', Salta', ' , Salta', '   ']) {
+      const r = rivalProfileSchema.safeParse({ ...ok, zone })
+      expect(r.success, zone).toBe(false)
+    }
+    const tooLong = `${'x'.repeat(121)}, Salta`
+    expect(rivalProfileSchema.safeParse({ ...ok, zone: tooLong }).success).toBe(false)
     expect(rivalProfileSchema.safeParse({ ...ok, position: 'dt' }).success).toBe(false)
-    expect(rivalProfileSchema.safeParse({ zone: 'Luján' }).success).toBe(false)
+    expect(rivalProfileSchema.safeParse({ zone: 'Luján, Buenos Aires' }).success).toBe(false)
   })
 
   it('los motivos de denuncia son los 4 cerrados', () => {

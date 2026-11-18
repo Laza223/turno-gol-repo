@@ -7,13 +7,11 @@ import { z } from 'zod'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { captureException } from '@/lib/sentry'
-import { requireAdminStaffAction, requireAuthenticatedStaffAction } from '@/modules/staff/guards'
+import { requireAdminStaffAction } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { updateTenant } from '@/modules/tenants/tenant.service'
 import { tenantContactSchema, tenantLocationSchema } from '@/modules/tenants/tenant.schema'
-import { searchAddress, type GeocodeCandidate } from '@/modules/tenants/geocode.service'
-import type { ActionResult } from '@/shared/types/action-result'
 import { isStaffEmailTaken } from '@/modules/auth/auth.service'
 import { getImpersonationSession } from '@/modules/auth/impersonation.server'
 import { tenants } from '@/shared/db/schema'
@@ -252,56 +250,6 @@ export async function updateTenantLocationAction(
   revalidatePath(`/${tenant.slug}`)
   revalidatePublicListings()
   return { success: true }
-}
-
-export type GeocodeAddressActionResult = ActionResult<{ candidates: GeocodeCandidate[] }>
-
-const geocodeAddressSchema = z.object({
-  address: z.string().trim().min(1, 'Escribí una dirección para buscar'),
-  city: z.string().trim().optional(),
-  province: z.string().trim().optional(),
-})
-
-/**
- * Buscador de dirección para el mapa de ubicación (`LocationPickerField`):
- * pide candidatos a Georef y los deja elegir, nunca autocompleta a ciegas.
- *
- * Server-side porque la CSP (`connect-src` de next.config.ts) no deja al
- * browser pegarle a un host externo directo. Única copia: la usan tanto
- * `TenantProfileForm` (acá en Perfil) como `StepIdentity` del wizard —
- * `page.tsx` de cada uno la importa como valor (Server Component) y la pasa
- * por prop al componente cliente, que sólo conoce su tipo.
- *
- * Guard `requireAuthenticatedStaffAction` (no `requireAdminStaffAction`):
- * el wizard llama esta MISMA action en el paso 1 de un alta nueva, ANTES de
- * que el tenant exista — exigir tenant+rol cortaba con "Tenant no encontrado"
- * a cualquier dueño nuevo que probara el buscador (hallazgo 🔴 2, auditoría
- * 2026-09-16). No hay mutación de datos acá (solo lectura a un tercero), así
- * que "cualquier staff autenticado" es la protección correcta — el rol
- * admin-only de Configuración lo sigue imponiendo `settings/layout.tsx` para
- * llegar a esta pantalla.
- */
-export async function geocodeAddressAction(input: {
-  address: string
-  city?: string
-  province?: string
-}): Promise<GeocodeAddressActionResult> {
-  const auth = await requireAuthenticatedStaffAction()
-  if (!auth.ok) return { success: false, error: auth.error }
-  const { user, tenant } = auth
-
-  // Pre-tenant (alta nueva) no tiene tenant.id todavía: mismo fallback que
-  // `createTenantAction` usa para su propio rate limit en ese mismo momento.
-  const limited = await adminRateLimited(tenant?.id ?? user.staffUserId)
-  if (limited) return { success: false, error: limited }
-
-  const parsed = geocodeAddressSchema.safeParse(input)
-  if (!parsed.success) {
-    return { success: false, error: parsed.error.issues[0]?.message ?? 'Dirección inválida' }
-  }
-
-  const candidates = await searchAddress(parsed.data)
-  return { success: true, candidates }
 }
 
 export type UpdateEmailActionResult =

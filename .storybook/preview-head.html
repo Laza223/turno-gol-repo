@@ -7,21 +7,16 @@
   time — el build queda dependiente de la red y cualquier fallo del fetch cae en
   system-ui en silencio, poniendo en rojo toda la regresión visual.
 
-  Hueco de fidelidad conocido: src/app/layout.tsx pide Sora en 600/700/800, y
-  .design-sync/fonts/ solo trae Sora 400/600/700. El peso 800 renderiza como bold
-  sintético de 700. Solo <Logo> usa font-logo. Para cerrarlo: agregar 800 a
-  .design-sync/fetch-fonts.mjs y re-correrlo.
 -->
 <link rel="stylesheet" href="/sb-fonts/fonts.css" />
 
 <style>
-  /* Las tres vars que next/font inyecta en src/app/layout.tsx y que consume el
-     fontFamily de tailwind.config.ts (font-sans / font-display / font-logo).
+  /* Las dos vars que next/font inyecta en src/app/layout.tsx y que consume el
+     fontFamily de tailwind.config.ts (font-sans / font-display).
      Contenido de .design-sync/ds-font-vars.css. */
   :root {
     --font-inter: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
     --font-archivo: 'Archivo', ui-sans-serif, system-ui, sans-serif;
-    --font-sora: 'Sora', ui-sans-serif, system-ui, sans-serif;
   }
 
   /* La app aplica font-sans + antialiased en <body> (src/app/layout.tsx). */

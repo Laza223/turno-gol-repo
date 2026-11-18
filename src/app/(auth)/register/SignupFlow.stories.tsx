@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
-import type { GeocodeAddressAction } from '@/components/maps/LocationPickerField'
 import type { SignupResult } from './actions'
 import { MotionGlobalConfig } from 'motion/react'
 import { SignupFrame } from '@/app/onboarding/components/SignupFrame'
@@ -15,7 +14,27 @@ import { COMPLEX_ANSWERS } from './signup-draft.fixture'
 const meta = {
   title: 'Auth/SignupFlow',
   component: SignupFlow,
-  parameters: { layout: 'fullscreen' },
+  parameters: {
+    layout: 'fullscreen',
+    fetchMock: [
+      {
+        match: '/api/public/geo/localidades',
+        json: {
+          results: [
+            {
+              city: 'Luján',
+              province: 'Buenos Aires',
+              department: 'Partido de Luján',
+              lat: -34.5703,
+              lng: -59.105,
+              source: 'dataset',
+            },
+          ],
+        },
+      },
+      { match: '/api/public/geo/direcciones', json: { results: [] } },
+    ],
+  },
   // El alta vive siempre sobre el marco oscuro (`(auth)/register/layout.tsx`).
   decorators: [
     (Story) => (
@@ -40,18 +59,6 @@ const meta = {
       existing: true,
     })),
     googleAction: fn(async () => ({ ok: false as const, error: 'Google no respondió.' })),
-    geocodeAction: fn<GeocodeAddressAction>(async () => ({
-      success: true,
-      candidates: [
-        {
-          label: 'SAN MARTIN 850, Rosario, Santa Fe',
-          lat: -32.9473,
-          lng: -60.6368,
-          city: 'Rosario',
-          province: 'Santa Fe',
-        },
-      ],
-    })),
   },
 } satisfies Meta<typeof SignupFlow>
 
@@ -78,9 +85,12 @@ export const RecorridoCompleto: Story = {
     await userEvent.type(await canvas.findByRole('textbox'), 'Complejo San Martín')
     await userEvent.click(canvas.getByRole('button', { name: 'Siguiente' }))
 
-    await userEvent.type(await canvas.findByRole('textbox'), 'San Martin 850')
-    await userEvent.click(canvas.getByRole('button', { name: 'Buscar' }))
-    await userEvent.click(await canvas.findByRole('button', { name: /SAN MARTIN 850/ }))
+    await userEvent.type(await canvas.findByRole('combobox', { name: 'Localidad' }), 'lujan')
+    await userEvent.click(
+      await within(canvasElement.ownerDocument.body).findByRole('option', { name: /Luján/ }),
+    )
+    await userEvent.type(canvas.getByLabelText('Calle y altura'), 'Mitre 800{Enter}')
+    await userEvent.click(await canvas.findByRole('button', { name: /tal cual/ }))
     await userEvent.click(canvas.getByRole('button', { name: 'Siguiente' }))
 
     await waitFor(async () => expect(await canvas.findByText('1 de Fútbol 5')).toBeVisible())

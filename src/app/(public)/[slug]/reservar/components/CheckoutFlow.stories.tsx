@@ -255,7 +255,7 @@ export const BotonEnElFlujoEnElCelular: Story = {
     await expect(canvasElement.querySelector('[data-fixed-cta]')).toBeNull()
     const button = canvas.getByRole('button', { name: 'Reservar' })
     await expect(getComputedStyle(button).position).not.toBe('fixed')
-    const frame = button.closest('.player-shell-bg')!
+    const frame = button.closest('[data-portal-glass]')!
     await expect(getComputedStyle(frame).paddingBottom).toBe('78px')
     // A la vista sin bajar, por encima de la barra inferior.
     const nav = canvasElement.querySelector('nav[aria-label="Navegación del jugador"]')!
@@ -273,7 +273,7 @@ export const BotonEnElFlujoDesdeMd: Story = {
     const canvas = within(canvasElement)
     await expect(window.innerWidth).toBe(768)
     await expect(canvasElement.querySelector('[data-fixed-cta]')).toBeNull()
-    const frame = canvas.getByRole('button', { name: 'Reservar' }).closest('.player-shell-bg')!
+    const frame = canvas.getByRole('button', { name: 'Reservar' }).closest('[data-portal-glass]')!
     await expect(getComputedStyle(frame).paddingBottom).toBe('0px')
   },
 }

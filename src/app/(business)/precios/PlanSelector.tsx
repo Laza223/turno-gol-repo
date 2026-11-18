@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { ArrowRight, Check, CheckCircle2 } from 'lucide-react'
+import { usePointerGlow } from '@/components/world/use-pointer-glow'
 import { formatArs } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { badgeVariants } from '@/components/ui/badge'
@@ -173,8 +174,9 @@ function Price({ value }: { value: string }) {
 }
 
 function FreeCardView({ className }: { className?: string }) {
+  const glow = usePointerGlow<HTMLDivElement>()
   return (
-    <div className={cn('pr-plan glass-painted', className)}>
+    <div ref={glow} className={cn('pr-plan glass-painted glow-follow', className)}>
       <div className="pr-plan__n">
         <h2>Gratis</h2>
       </div>
@@ -207,8 +209,9 @@ function WhatsappCardView({
 }) {
   const plus = PLUS_LIST_PER_COURT_CENTS * courts
   const monthly = cycle === 'monthly'
+  const glow = usePointerGlow<HTMLDivElement>()
   return (
-    <div className={cn('pr-plan glass-painted', className)}>
+    <div ref={glow} className={cn('pr-plan glass-painted glow-follow', className)}>
       <div className="pr-plan__n">
         <h2>Completo + WhatsApp</h2>
       </div>
@@ -255,11 +258,12 @@ function PlanCardView({
 }) {
   const annual = cycle === 'annual'
   const price = annual ? plan.priceAnnual : plan.priceMonthly
+  const glow = usePointerGlow<HTMLDivElement>()
 
   // La tarjeta es un `div` y la insignia cuelga directo de ella (no de un `div` interno): TG-HP-006
   // ubica esta tarjeta con `div` + "Recomendado" y tomaría el `div` más interno.
   return (
-    <div className={cn('pr-plan pr-plan--top glass-painted', className)}>
+    <div ref={glow} className={cn('pr-plan pr-plan--top glass-painted glow-follow', className)}>
       <div className="pr-plan__n">
         <h2>Completo</h2>
       </div>

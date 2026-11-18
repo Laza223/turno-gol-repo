@@ -50,7 +50,12 @@ export function ThemeButton({ className }: { className?: string }) {
     const x = r.left + r.width / 2
     const y = r.top + r.height / 2
     const radius = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y))
+    // Mientras dura, la cabecera y la barra de abajo no llevan su nombre de transición (globals.css):
+    // se abren con el círculo junto con el resto de la pantalla.
+    const root = document.documentElement
+    root.dataset.themeSwap = ''
     const transition = document.startViewTransition(apply)
+    transition.finished.finally(() => delete root.dataset.themeSwap).catch(() => {})
     transition.ready
       .then(() => {
         document.documentElement.animate(

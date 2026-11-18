@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, m } from 'motion/react'
 import { SegmentedProgress } from '@/components/ui/progress'
-import type { GeocodeAddressAction } from '@/components/maps/LocationPickerField'
 import { readStoredReferralCode, storeReferralCode } from '@/lib/referral-storage'
 import {
   WIZARD_FORMATS,
@@ -36,7 +35,6 @@ type Props = {
   /** Las Server Actions llegan por prop desde `page.tsx` (ver `StepCuenta`). */
   signUpAction: (input: unknown) => Promise<SignupResult>
   googleAction: () => Promise<{ ok: true; url: string } | { ok: false; error: string }>
-  geocodeAction: GeocodeAddressAction
   /** `?ref=` de esta visita, ya validado. Gana sobre el código guardado por una visita previa. */
   refCode?: string | null
   inAppBrowser?: boolean
@@ -67,7 +65,6 @@ function Flow({
   draft,
   signUpAction,
   googleAction,
-  geocodeAction,
   refCode = null,
   inAppBrowser = false,
   accountError = null,
@@ -169,7 +166,6 @@ function Flow({
             {screen === 'complejo' && (
               <StepComplejo
                 action={saveComplex}
-                geocodeAction={geocodeAction}
                 backHref="/para-complejos"
                 defaultValues={draft.complex}
               />

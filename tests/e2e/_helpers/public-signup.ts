@@ -1,9 +1,21 @@
 import { expect, type Page } from '@playwright/test'
 
 /**
+ * Pantalla "¿Dónde queda?": localidad del dataset propio (Luján, Buenos Aires) y la calle "tal
+ * cual", que aparece haya o no resultados. No depende del resultado de Georef (un tercero).
+ */
+export async function fillAddress(page: Page, street: string): Promise<void> {
+  await page.getByRole('combobox', { name: 'Localidad' }).fill('Luján')
+  await page.getByRole('option').filter({ hasText: 'Buenos Aires' }).first().click()
+  await page.getByLabel('Calle y altura').fill(street)
+  await page.getByLabel('Calle y altura').press('Enter')
+  await page.getByRole('button', { name: /tal cual/i }).click()
+}
+
+/**
  * Recorre el alta pública de /register hasta la pantalla de cuenta, sin sesión.
  * Un formato (Fútbol 5 x1), horario 08 a 00 y precio $20.000: los defaults hacen el resto.
- * La dirección se carga a mano para no depender de Georef (un tercero).
+ * La dirección se carga con `fillAddress`.
  */
 export async function answerComplexQuestions(page: Page, complexName: string): Promise<void> {
   await page.goto('/register')
@@ -16,11 +28,7 @@ export async function answerComplexQuestions(page: Page, complexName: string): P
   await page.getByRole('button', { name: 'Siguiente' }).click()
 
   await expect(page.getByRole('heading', { name: /¿Dónde queda/i })).toBeVisible()
-  await page.getByRole('button', { name: /escribir ciudad y provincia a mano/i }).click()
-  await page.getByLabel('Dirección').fill('Av. Test 123')
-  await page.getByLabel('Ciudad').fill('Luján')
-  await page.getByRole('combobox', { name: /provincia/i }).click()
-  await page.getByRole('option', { name: 'Buenos Aires' }).click()
+  await fillAddress(page, 'Av. Test 123')
   await page.getByRole('button', { name: 'Siguiente' }).click()
 
   await expect(page.getByRole('heading', { name: '¿Qué canchas tenés?' })).toBeVisible()

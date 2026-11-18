@@ -1,3 +1,4 @@
+import { ViewTransition } from 'react'
 import Image from 'next/image'
 import { MapPin, MessageCircle, Phone } from 'lucide-react'
 import { formatsLabel } from '@/lib/formats-label'
@@ -65,10 +66,14 @@ export default function ComplexHero({
 
   return (
     <>
+      {/* La foto de la tarjeta de /explorar viaja hasta acá (mismo nombre que en `TenantCard`). La
+          tarjeta muestra la portada cuando hay: sin portada no hay par y la pantalla solo se funde. */}
       {tenant.coverUrl && (
-        <div className="fr-bg" aria-hidden>
-          <Image src={tenant.coverUrl} alt="" fill priority sizes="100vw" />
-        </div>
+        <ViewTransition name={`complejo-foto-${tenant.slug}`} share="complejo-foto" default="none">
+          <div className="fr-bg" aria-hidden>
+            <Image src={tenant.coverUrl} alt="" fill priority sizes="100vw" />
+          </div>
+        </ViewTransition>
       )}
 
       <header className="fr-head glass grid gap-3.5 rounded-[32px] bg-[linear-gradient(180deg,var(--portal-win-a),var(--portal-win-b))] p-5 text-portal-ink md:p-7">

@@ -7,9 +7,9 @@ related_targets: []
 
 # Mis reservas y Cuenta del jugador (src/app/(player)/)
 
-Modo: Operate. Visitante: el jugador que ya reservó. Entra por la barra inferior ("Reservas", "Cuenta"), por el menú de cuenta o por el link de un mail, casi siempre desde el celular. Trabajo, de más a menos frecuente: saber cuándo y dónde juega, avisarle al grupo, llegar, reservar de nuevo, cancelar si no van; y, cada tanto, corregir sus datos, volver a un favorito o salir.
+Modo: Operate. Visitante: el jugador que ya reservó. Entra por la barra de abajo ("Reservas", "Cuenta"), por el menú de cuenta o por el link de un mail, casi siempre desde el celular. Trabajo, de más a menos frecuente: saber cuándo y dónde juega, avisarle al grupo, llegar, reservar de nuevo, cancelar si no van; y, cada tanto, corregir sus datos, volver a un favorito o salir.
 
-Mundo: La Previa (DESIGN.md, sección del portal), re-aplicada en la R5 de [`docs/decisions/2026-10-20-vuelve-la-previa.md`](../../docs/decisions/2026-10-20-vuelve-la-previa.md) (PR #459). Vuelven la banda hero (`PlayerHeroBand`, con resplandor y grilla), los titulares en negra itálica con un tramo en `.hero-accent-text`, las píldoras, las tarjetas `rounded-2xl` con ícono y los avisos de colores. Se conserva toda la lógica y los flujos del brief de 2026-10-17 (abajo). El grupo marca `data-portal-fields` en `(player)/layout.tsx`: sube `--input` y `--ring` para que el borde de un control y el foco lleguen a 3:1, diálogos incluidos. Este brief reemplaza al de La Reserva.
+Mundo: portal de vidrio (DESIGN.md, Colors › Portal de vidrio), F6 de la decisión del 2026-11-13 ([`docs/decisions/2026-11-13-portal-vidrio.md`](../../docs/decisions/2026-11-13-portal-vidrio.md)). La Previa (R5 de 2026-10-20: `PlayerHeroBand` con resplandor y grilla, titulares en negra itálica con `.hero-accent-text`, píldoras y tarjetas `rounded-2xl`) se reemplazó por el vidrio el 2026-11-13; esas piezas ya no se usan. Se conserva toda la lógica y los flujos del brief de 2026-10-17 (abajo). El grupo marca `data-portal-fields` en `(player)/layout.tsx`: sube `--input` y `--ring` para que el borde de un control y el foco de las primitivas compartidas (diálogos) lleguen a 3:1.
 
 ## Decisiones del dueño (2026-10-17)
 
@@ -21,53 +21,50 @@ Mundo: La Previa (DESIGN.md, sección del portal), re-aplicada en la R5 de [`doc
 
 - **La próxima, primero.** En Próximos, el orden va de la más cercana a la más lejana. La primera tarjeta es la próxima y se lee sola: "Hoy", "Mañana" o el día, la hora, la cancha con su formato, el complejo y la dirección. Historial sigue de la más nueva a la más vieja.
 - **Cada tarjeta se puede abrir.** Lleva a `/reserva/{id}/exito` si está confirmada; ahí ya están "Avisarle al grupo", "Cómo llegar" y el calendario. En la tarjeta de la próxima, "Avisarle al grupo" va también a un toque. Cancelar sigue en la tarjeta, sin cambiar sus textos fijados.
-- **La seña se ve.** Con seña pagada dice que está señada. Sin seña, "Pagás en el complejo". "Esperando seña" explica que falta la seña y que, si no se paga a tiempo, el turno se libera (la reserva retenida dura minutos y `/reserva/{id}/error` habla de un pago rechazado, así que no lleva a ningún lado). Con precios ocultos no aparece ningún monto, salvo la seña propia y la devolución.
-- **Estados que dicen qué pasó.** Una reserva cancelada dice quién la canceló. Un ausente dice qué significa, sin rojo de alarma. Una vencida dice que no se pagó a tiempo. "Reservar de nuevo" vuelve a la página del complejo en ese día y formato, en las jugadas, las canceladas, las vencidas y las ausentes. Es un link liviano, sin borde.
+- **La seña se ve.** Con seña pagada dice que está señada. Sin seña, "Pagás en el complejo". "Esperando seña" explica que falta la seña y que, si no se paga a tiempo, el turno se libera. Con precios ocultos no aparece ningún monto, salvo la seña propia y la devolución.
+- **Estados que dicen qué pasó.** Una reserva cancelada dice quién la canceló. Un ausente dice qué significa, sin alarma. Una vencida dice que no se pagó a tiempo. "Reservar de nuevo" vuelve a la página del complejo en ese día y formato, en las jugadas, las canceladas, las vencidas y las ausentes. Los tonos salen de `status-visual.ts`, no del mockup: "Jugada" en verde y "Cancelada" apagada ("al jugador no se le grita"); ninguna etiqueta lleva ámbar.
 - **Un turno que ya terminó** no ofrece "Cancelar" y va al final de Próximos; uno en juego después de medianoche sigue en Próximos. "Hoy" y "Mañana" salen del día del calendario, no del operativo.
-- **El turno se lee "vie 13 mar, 18:00 a 19:00"**, igual que en `/exito` (DESIGN.md). 
-- **Pestañas Próximos e Historial** como navegación con nombre y `aria-current`. La URL no cambia (`?tab=historial&pagina=N`).
-- **Cargando y error propios.** Un `loading.tsx` con el mismo ritmo de la lista. El error dice qué pantalla no cargó: el `error.tsx` del grupo no puede decir "reservas" en Cuenta.
-- **Diálogos de cancelar y reseña:** campos de 16 px, errores de 13 px o más, borde de campo a 3:1 por `data-portal-fields`.
+- **El turno se lee "vie 13 mar, 18:00 a 19:00"**, igual que en `/exito`.
+- **Próximos e Historial son links** (`<nav aria-label="Tus reservas">` de dos links con `aria-current`, `.pa-seg`): viven en la URL (`?tab=historial&pagina=N`), no es el `SegmentedControl` de radios. La píldora se desliza con `--i`.
+- **Cargando y error propios.** Un `loading.tsx` con esqueletos de vidrio (`Skeleton variant="glass"`) del mismo ritmo que la lista. El error dice qué pantalla no cargó: el `error.tsx` del grupo no puede decir "reservas" en Cuenta.
+- **Cancelar** es una hoja (`GlassConfirmSheet`, con `CancelReasonPicker look="glass"` y los motivos reales). El diálogo de la grilla y el detalle de la reserva del panel conservan el `look="panel"`.
 
 ## Cuenta (`/configuracion`)
 
-Bloques en este orden. En el celular es una columna; en escritorio, la misma columna centrada.
+Bloques en este orden, en una columna. Cada uno es un `rv-panel glass-painted`.
 
-1. **Quién sos:** dentro de la banda `PlayerHeroBand` de "Mi cuenta": avatar con iniciales, nombre y email.
-2. **Tus datos:** nombre (obligatorio), apellido (opcional), teléfono y zona. El email no se edita (se muestra en "Quién sos"). Los errores van al lado de su campo y "Guardado" desaparece si se vuelve a editar.
-3. **Favoritos:** los complejos guardados, cada uno a un toque de su página. Si no hay, una salida a Explorar.
-4. **Tu actividad:** partidos jugados, complejos y racha. Sin puntajes ni rankings (en v1; las próximas olas de RIVAL pueden sumar la media y tablas: `docs/rival/README.md`). Con cero, una salida a reservar.
-5. **Tema** (el `ThemeToggle` en su variante del portal) y **Salir**.
-6. **Tus datos personales:** "Descargar mis datos", en palabras de jugador y sin jerga legal en el texto principal. Avisa cuando la descarga terminó.
-7. **Eliminar la cuenta:** un link sobrio a `/eliminar-cuenta`, sin tarjeta roja.
+1. **Quién sos** (`pa-me`): avatar con iniciales, nombre y email.
+2. **Tus datos:** nombre (obligatorio), apellido (opcional), teléfono y zona. El email no se edita. Los errores van al lado de su campo y "Guardado" desaparece si se vuelve a editar. "Guardar cambios" confirma con un tilde dentro del botón.
+3. **Perfil en Rival**, con el flag `rival`.
+4. **Favoritos:** los complejos guardados, cada uno a un toque de su página. Si no hay, una salida a Explorar.
+5. **Tu actividad:** partidos jugados, complejos y racha. Sin puntajes ni rankings.
+6. **Tema** (`ThemeToggle variant="glass"`, el control segmentado con "Claro" y "Oscuro") y **Salir**.
+7. **Tus datos personales:** "Descargar mis datos", en palabras de jugador y sin jerga legal. Avisa cuando la descarga terminó.
+8. **Eliminar la cuenta:** un link sobrio a `/eliminar-cuenta`, sin tarjeta roja.
 
 ## Eliminar la cuenta (`/eliminar-cuenta`)
 
 - Una sola explicación de qué se borra y qué queda, en palabras simples: reservas y pagos quedan sin tu nombre para el complejo. La ley se nombra una sola vez, al pie de esa explicación.
-- Si hay reservas confirmadas por jugar, avisa cuántas, con la concordancia bien, y ofrece verlas antes.
-- "Descargar mis datos" está ahí mismo, sin ir a Cuenta y volver.
-- El confirmar compara el email sin distinguir mayúsculas ni espacios en los bordes y con `autoCapitalize="none"`. En la página, el botón destructivo no ocupa todo el ancho apenas termina el texto; en el diálogo, debajo de `sm`, los dos botones se apilan a todo el ancho (rojo arriba).
-- Los avisos van por gravedad y con color (rojo para lo irreversible, naranja y ámbar para el resto), cada uno con borde, tinte e ícono, como estaban en La Previa. El botón destructivo es el rojo de la página. (El brief del 2026-10-17 pedía un solo color de alarma; R5 volvió a los avisos de colores.)
+- Si hay reservas confirmadas por jugar, avisa cuántas y ofrece verlas antes (aviso en `--portal-warn`).
+- "Descargar mis datos" está ahí mismo.
+- El confirmar es `GlassConfirmSheet` con `phraseMatch="email"`: compara el email sin distinguir mayúsculas ni espacios en los bordes y con `autoCapitalize="none"`. El botón destructivo es `pill-danger`.
+- Ninguna insignia o aviso lleva ámbar para algo que no sea escasez; el rojo es solo de lo irreversible.
 
 ## Contratos que se conservan o cambian a propósito
 
-- h1 "Mis reservas", cada reserva como `<li>` dentro de `main` y los textos exactos de badges, botones y diálogos que fijan los e2e y los unit . Si alguno cambia, se cambia en el mismo PR.
-- Las URLs `/mis-reservas`, `?tab=historial`, `?pagina=`, `/configuracion` y `/eliminar-cuenta`. `/perfil` pasa a redirigir: `player-profile.spec.ts`, TG-HP-109, 110 y 112 se reescribieron cuando `/perfil` pasó a redirigir.
+- h1 "Mis reservas", cada reserva como `<li>` dentro de `main` y los textos exactos de badges, botones y diálogos que fijan los e2e y los unit. Si alguno cambia, se cambia en el mismo PR.
+- Las URLs `/mis-reservas`, `?tab=historial`, `?pagina=`, `/configuracion` y `/eliminar-cuenta`. `/perfil` redirige.
 - `theme-toggle.spec.ts` sigue encontrando "Claro" y "Oscuro" en `/configuracion`.
 
 ## Fuera de alcance
 
 Foto de perfil, posición, nivel y todo el perfil de RIVAL. Cambios de schema. El export en JSON (su formato es de ARCO): solo cambia su texto. Borrar el usuario de Supabase Auth al eliminar la cuenta y que los softbans sobrevivan a la baja van como REQUIERE INPUT aparte. La lógica de cancelar, reseñas, seña y MercadoPago.
 
-## Spec visual (movida de DESIGN.md el 2026-10-29)
+## Spec visual
 
-Vivía en DESIGN.md › Components › Portal (La Previa) y se movió sin cambios de contenido. Lo que comparte todo el portal (cromo, `PORTAL_BUTTON`, The Quiet Ghost Rule) sigue en DESIGN.md.
+Lo que comparte todo el portal (vidrio, tokens, piezas, movimiento) está en DESIGN.md › Portal de vidrio.
 
-### El grupo del jugador: Mis reservas, Mi cuenta y Eliminar la cuenta
-
-`src/app/(player)/`. `(player)/layout.tsx` monta `PortalShell` y envuelve las páginas en `data-portal-fields` (bordes de campo y foco a 3:1, diálogos incluidos). Columna `max-w-lg` con `px-4 py-6` y `space-y-5`. Mis reservas y Mi cuenta abren con **`PlayerHeroBand`** (`src/components/site/PlayerHeroBand.tsx`): la banda `.player-hero-band` (esquina de 24 px, `px-6 py-7`) con el resplandor `.hero-glow-blob`, la grilla `.player-hero-grid` con máscara, un eyebrow de 12 px (`font-logo`, mayúsculas, `text-emerald-700 dark:text-emerald-400`: 5,2:1 sobre el extremo de la banda), el titular en Archivo negra itálica con un tramo en `.hero-accent-text`, un subtítulo opcional y `children` (en Mi cuenta, el avatar y el nombre).
-
-- **Mis reservas (`/mis-reservas`):** banda "Tu actividad · Mis **reservas**" con una línea de turnos por jugar. Pestañas Próximos / Historial como píldora segmentada (`<nav aria-label="Tus reservas">` de dos links con `aria-current`, `rounded-full`, 44 px; la activa, con relleno `primary`). Cada reserva es una tarjeta `rounded-2xl` con borde `border`, fondo `card` y `shadow-xs`; la próxima confirmada se destaca y es la única con "Avisarle al grupo" y "Cómo llegar". Acciones sin borde ("Cancelar", "Dejar reseña", "Reservar de nuevo") de 44 px. Los tonos del jugador salen de `status-visual.ts`: confirmada en verde; "Ausente" y "Esperando seña" en neutro. Vacío con `EmptyCard`; paginador compartido (`Pager`). `error.tsx` y `loading.tsx` en la misma columna.
-- **Mi cuenta (`/configuracion`):** banda "Tu cuenta · Mi **cuenta**" con el avatar (`.hero-avatar-fallback`, iniciales en Archivo negra itálica), el nombre y el email. Debajo, una tarjeta por tema (`SectionCard`: `rounded-2xl`, borde, `bg-card`, un cuadrado de 40 px con ícono esmeralda): Tus datos (`#tus-datos`), Favoritos, Tu actividad, Tema y sesión (`ThemeToggle variant="portal"` y "Salir"), descargar tus datos (Ley 25.326) y darte de baja. `/perfil` redirige a `/configuracion`.
-- **Eliminar la cuenta (`/eliminar-cuenta`):** sin banda: "Volver a Mi cuenta", el h1 "Eliminar mi cuenta" en Archivo negra itálica y avisos de colores por gravedad (rojo para lo irreversible, naranja y ámbar para el resto), cada uno con borde, tinte e ícono; la confirmación es un `ConfirmDialog` con `phraseMatch="email"` (escribir el email).
+- **Estructura común:** columna angosta sobre `portal-ambient` (`rv-col`, 480 px), titular `rv-h1` (Archivo 700, `font-stretch: 104%`), secciones `rv-h2`, tarjetas `glass-painted` que entran con `rv-rise` y esqueletos de vidrio. Las tarjetas y paneles son pintados, no desenfocados: se repiten en una lista.
+- **Mis reservas:** `.pa-bk` por reserva; la próxima confirmada se destaca y es la única con "Avisarle al grupo" y "Cómo llegar". Acciones secundarias en píldora de 44 px sin relleno de acción ("Cancelar", "Dejar reseña", "Reservar de nuevo": The Quiet Ghost Rule). Vacío con `.rv-empty`; paginador compartido (`Pager`). Al cancelar, la tarjeta debería cerrarse sobre su alto y bajar un aviso de vidrio; hoy la revalidación desmonta la fila antes de poder animarla (pendiente de F9).
+- **Mi cuenta:** secciones que aparecen al bajar; "Tema" y "Salir" en el mismo panel.
 - **Errores (`(player)/error.tsx`, `mis-reservas/error.tsx`):** `PortalResult` rojo con "Reintentar" y la salida del grupo; con `digest`, el código de referencia. Reportan a Sentry.

@@ -26,9 +26,6 @@ import {
   saveWizardScheduleAction,
   updateWizardTenantAction,
 } from '../actions'
-// El buscador de dirección vive con el resto de la edición del perfil del
-// complejo; el wizard consume la MISMA action para no tener dos copias.
-import { geocodeAddressAction } from '@/app/(admin)/settings/perfil/actions'
 
 /**
  * Un paso del wizard. La URL dice qué paso mostrar; la DB dice hasta dónde tiene
@@ -59,7 +56,7 @@ export default async function OnboardingStepPage(props: { params: Promise<{ paso
     // por cada GET del paso 1 pre-tenant (reload, doble tab) — sobreconteo
     // aceptable, el embudo mide intención de arrancar, no sesiones únicas.
     track.onboarding('onboarding.started', {})
-    return <StepComplejo action={createTenantAction} geocodeAction={geocodeAddressAction} />
+    return <StepComplejo action={createTenantAction} />
   }
 
   const settings = tenant.settings as TenantSettings
@@ -103,7 +100,6 @@ export default async function OnboardingStepPage(props: { params: Promise<{ paso
     return (
       <StepComplejo
         action={updateWizardTenantAction}
-        geocodeAction={geocodeAddressAction}
         defaultValues={{
           name: tenant.name,
           address: tenant.address,

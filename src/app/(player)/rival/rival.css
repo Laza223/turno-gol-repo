@@ -147,7 +147,8 @@
     height: 6px;
     border-radius: 6px;
     background: var(--portal-inner-line);
-    overflow: hidden;
+    /* `clip` y no `hidden`: `hidden` lo vuelve el scroller del `view()` de adentro y la animación no avanza nunca. */
+    overflow: clip;
   }
   .ri-bar > i {
     display: block;
@@ -159,7 +160,9 @@
   }
   @supports (animation-timeline: view()) {
     .ri-bar > i {
-      animation: ri-crecer linear both;
+      animation-name: ri-crecer;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
       animation-timeline: view();
       animation-range: entry 20% cover 38%;
     }

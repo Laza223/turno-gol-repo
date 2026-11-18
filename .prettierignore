@@ -21,3 +21,7 @@ pnpm-lock.yaml
 # inmutables — y el espejo de supabase/ se genera con un script.
 src/shared/db/migrations/
 supabase/migrations/
+
+# Dataset generado por scripts/geo/build-localities.ts: JSON compacto a propósito (~330 KB);
+# formateado en una fila por línea pesaría el triple y cada regeneración sería un diff ilegible.
+src/modules/geo/data/

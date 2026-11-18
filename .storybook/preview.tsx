@@ -115,8 +115,25 @@ const withMotion: Decorator = (Story, ctx) => {
   return <Story />
 }
 
+/**
+ * El modal propio del permiso de push (decisión 2026-11-16) se abre solo la primera
+ * vez que se llega al panel o al portal sin avisos, y el navegador de Storybook
+ * nunca está suscripto. Sin esto, la primera story con `AdminLayoutShell` de cada
+ * navegador abría el modal, que esconde el resto con `aria-hidden`, y la story ya no
+ * encontraba sus botones (rojo intermitente en Analiticas › Mes En Curso). Se marca
+ * como visto antes de cada story; las stories del propio modal lo limpian en su
+ * `beforeEach`, que corre después de este. Mismo criterio que los fixtures e2e.
+ */
+const PUSH_MODAL_STATUSES = ['unsupported', 'install_required', 'denied', 'unsubscribed']
+function markPushModalSeen() {
+  for (const audience of ['', ':player'])
+    for (const status of PUSH_MODAL_STATUSES)
+      localStorage.setItem(`turnogol:notif-modal-seen${audience}:${status}`, '1')
+}
+
 const preview: Preview = {
   decorators: [withFetch, withOfflineTiles, withMotion, withTheme],
+  beforeEach: markPushModalSeen,
 
   globalTypes: {
     theme: {

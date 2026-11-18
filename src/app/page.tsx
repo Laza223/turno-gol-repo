@@ -5,6 +5,7 @@ import { buildOrganization, buildWebSite } from '@/lib/seo/structured-data'
 import SiteNav from '@/components/site/SiteNav'
 import SiteFooter from '@/components/site/SiteFooter'
 import { PlayerBottomNav } from '@/components/site/PlayerBottomNav'
+import { PortalTransition } from '@/components/site/PortalTransition'
 import { PortalSessionProvider } from '@/components/site/PortalSessionProvider'
 import { PortalMotionProvider } from '@/components/site/PortalMotionProvider'
 import { signOutAction } from '@/modules/auth/sign-out.action'
@@ -66,12 +67,16 @@ export default async function HomePage() {
             (auth, business, admin, portal), así que el skip link del layout raíz
             apuntaba a un ancla inexistente: Tab + Enter no movía el foco ni el
             scroll (WCAG 2.4.1 Bypass Blocks). */}
-          <main id="main-content" tabIndex={-1}>
-            <Hero cities={cities} />
-            <ReservaDibujo today={todayART()} />
-            {rivalEnabled && <RivalSection />}
-            <ClosingCta />
-          </main>
+          {/* La home vive fuera de los grupos con `template.tsx`: su contenido sale y entra con la
+            misma transición del portal desde acá. */}
+          <PortalTransition>
+            <main id="main-content" tabIndex={-1}>
+              <Hero cities={cities} />
+              <ReservaDibujo today={todayART()} />
+              {rivalEnabled && <RivalSection />}
+              <ClosingCta />
+            </main>
+          </PortalTransition>
           <SiteFooter />
           <PlayerBottomNav />
         </PortalMotionProvider>

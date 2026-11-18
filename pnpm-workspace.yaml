@@ -32,3 +32,11 @@ publicHoistPattern:
 # pnpm 11+ cada script revisa el lock contra minimumReleaseAge (4-7 s), y el
 # worker en Docker (`pnpm jobs:start`) lo haría en cada arranque.
 verifyDepsBeforeRun: false
+# Avisos de seguridad ignorados en `pnpm audit` (job pnpm-audit de security.yml).
+# Cada uno con fecha y motivo; se borra apenas haya versión con el arreglo.
+auditConfig:
+  ignoreGhsas:
+    # 2026-11-18: ReDoS en picomatch <=4.0.7 (alto), sin versión con el arreglo.
+    # Llega por @sentry/nextjs > @rollup/plugin-commonjs, que solo corre en el
+    # build y matchea globs nuestros: no recibe entrada de usuarios.
+    - GHSA-fc5q-39xc-vjpf

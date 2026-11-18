@@ -13,7 +13,6 @@ import {
   ChartLine,
   Lock,
   LogOut,
-  Mail,
   Settings,
   ShoppingBag,
   Trophy,
@@ -22,8 +21,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useOptionalVender } from './vender-context'
 import { TONE_TEXT } from '@/lib/status-tone'
-import { WhatsappIcon } from '@/components/icons/WhatsappIcon'
-import { SUPPORT_EMAIL, SUPPORT_WHATSAPP_URL, TRIAL_ENDING_WARNING_DAYS } from '@/shared/constants'
+import { TRIAL_ENDING_WARNING_DAYS } from '@/shared/constants'
 import type { StaffRole } from '@/modules/staff/roles'
 import { NO_SETUP_ALERTS, type SetupAlerts } from './setup-alerts'
 import { SetupAlertDot } from './setup-alert-dot'
@@ -52,6 +50,9 @@ interface SidebarProps {
   /** Plan gratis: Caja y Clientes y Fijos llevan a /reactivar con la marca "Plan". */
   freePlan?: boolean
 }
+
+/** Ítems de la barra inferior mobile; el cajón "Más" muestra el resto. */
+export const BOTTOM_NAV_PRIMARY = 3
 
 export interface NavItem {
   href: string
@@ -240,57 +241,7 @@ function navIconClass(active: boolean) {
 }
 
 /**
- * Ayuda — el único acceso a soporte desde adentro del panel.
- *
- * Hasta ahora el WhatsApp de TurnoGol sólo aparecía en el banner de cuenta
- * suspendida (`status-banner.tsx`): un complejo que está trabajando y se traba
- * no tenía de dónde preguntar. Va arriba de Configuración, en el pie del riel,
- * porque tampoco es del flujo diario.
- *
- * Lo ve también el encargado: es un link, no un permiso, y el que está en el
- * mostrador a las 11 de la noche es justamente el que necesita preguntar.
- *
- * El ícono es el de WhatsApp a propósito: el rótulo dice "Ayuda" pero esto se
- * va de la aplicación, y el glifo lo avisa antes del toque.
- */
-function SupportLink({
-  className,
-  labelClassName,
-  onNavigate,
-  freePlan = false,
-}: {
-  /** Plan gratis: el soporte es por mail; el WhatsApp es del plan pago. */
-  freePlan?: boolean
-  className: string
-  /** El riel apila ícono y rótulo; el cajón los pone en fila. El rótulo se
-   *  estira sólo en el segundo — con `flex-1` en el riel crecería a lo alto. */
-  labelClassName: string
-  onNavigate?: () => void
-}) {
-  if (freePlan) {
-    return (
-      <a href={`mailto:${SUPPORT_EMAIL}`} onClick={onNavigate} className={cn(className, NAV_IDLE)}>
-        <Mail aria-hidden className="h-5 w-5 shrink-0" />
-        <span className={labelClassName}>Ayuda</span>
-      </a>
-    )
-  }
-  return (
-    <a
-      href={SUPPORT_WHATSAPP_URL}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={onNavigate}
-      className={cn(className, NAV_IDLE)}
-    >
-      <WhatsappIcon className="h-5 w-5 shrink-0" />
-      <span className={labelClassName}>Ayuda</span>
-    </a>
-  )
-}
-
-/**
- * El período de prueba, en el pie del riel arriba de Ayuda (2026-09-24, pedido del
+ * El período de prueba, en el pie del riel (2026-09-24, pedido del
  * dueño). Antes era una banda verde a lo ancho de TODAS las pantallas durante toda
  * la prueba: ~45 px de cada vista para un dato que cambia una vez por día. Acá se
  * ve siempre sin robarle lugar a nada. Pasa a ámbar desde el primer aviso por mail
@@ -558,12 +509,6 @@ function SidebarRail({
         <TrialRailItem daysLeft={trialDaysLeft} canChoosePlan={canConfigure} />
       )}
 
-      <SupportLink
-        className={cn(RAIL_ITEM, RAIL_ITEM_HOVERABLE)}
-        labelClassName={RAIL_LABEL}
-        freePlan={freePlan}
-      />
-
       {canConfigure ? (
         <Link
           href={CONFIG_ITEM.href}
@@ -678,7 +623,7 @@ function SidebarDrawerContent({
         aria-label="Navegación del panel"
         className="flex-1 space-y-0.5 overflow-y-auto px-3 pb-4"
       >
-        {navItems.map((item) => {
+        {navItems.slice(BOTTOM_NAV_PRIMARY).map((item) => {
           const { href, icon: Icon, label } = item
           const isActive = isNavItemActive(item, pathname)
           return (
@@ -707,13 +652,6 @@ function SidebarDrawerContent({
           />
         )}
 
-        <SupportLink
-          className={rowClass}
-          labelClassName="flex-1 truncate"
-          onNavigate={onClose}
-          freePlan={freePlan}
-        />
-
         {canConfigure ? (
           <Link
             href={CONFIG_ITEM.href}
@@ -738,22 +676,23 @@ function SidebarDrawerContent({
         )}
       </nav>
 
-      <div className="border-t border-border px-3 py-3">
-        <p className="px-3 pb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Tema
-        </p>
-        <div className="px-3 pb-3">
+      <div className="space-y-1 border-t border-border px-3 py-3">
+        {/* Sin rótulo visible: en 240 px "Tema" + las tres opciones cortaban
+            "Oscuro". El radiogroup ya se anuncia como "Tema de la aplicación". */}
+        <div className="px-3">
           <ThemeToggle variant="portal" />
         </div>
-        <p className="px-3 pb-2 text-xs font-medium text-muted-foreground break-all">{userEmail}</p>
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground"
-          onClick={onSignOut}
-        >
-          <LogOut className="h-4 w-4" aria-hidden />
-          <span>Salir</span>
-        </Button>
+        <div className="flex items-center justify-between gap-2 pl-3">
+          <p className="min-w-0 truncate text-xs font-medium text-muted-foreground">{userEmail}</p>
+          <Button
+            variant="ghost"
+            className="shrink-0 gap-2 text-muted-foreground hover:text-foreground"
+            onClick={onSignOut}
+          >
+            <LogOut className="h-4 w-4" aria-hidden />
+            <span>Salir</span>
+          </Button>
+        </div>
       </div>
     </div>
   )

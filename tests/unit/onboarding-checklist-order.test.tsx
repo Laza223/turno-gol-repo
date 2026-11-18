@@ -51,7 +51,7 @@ describe('OnboardingChecklist — orden y textos según el alta', () => {
     ['equipos fijos', { hasFixedTeams: true }],
   ])('%s: pide pasar los equipos fijos y lleva a Turnos fijos', (_n, extra) => {
     render(<OnboardingChecklist {...props} {...extra} />)
-    expect(screen.getByText('Pasá tus equipos fijos a la grilla')).toBeTruthy()
+    expect(screen.getByText('Pasá tus turnos fijos a la grilla')).toBeTruthy()
     expect(screen.queryByText('Cargá tus turnos en la grilla')).toBeNull()
     expect(screen.getByRole('link', { name: /cargar/i }).getAttribute('href')).toBe('/abonados')
   })

@@ -1,8 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Bell } from 'lucide-react'
-import { Logo } from '@/components/ui/logo'
+import { LogoMark } from '@/components/ui/logo-mark'
 import { ADMIN_HEADER_SLOT_ID } from './admin-header-slot'
 
 interface AdminHeaderProps {
@@ -30,9 +29,14 @@ export function AdminHeader({ tenantName, homeHref = '/dashboard' }: AdminHeader
           queda sin ninguna marca arriba. */}
       <Link
         href={homeHref}
+        aria-label="TurnoGol, ir a Hoy"
         className="lg:hidden rounded-sm outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <Logo variant="horizontal" textClassName="text-foreground" />
+        <LogoMark
+          className="h-7 w-auto"
+          markClassName="text-foreground"
+          accentClassName="fill-emerald-700 dark:fill-emerald-400"
+        />
       </Link>
 
       {/* Sin modificador de opacidad sobre `--muted-foreground`: está calibrado
@@ -45,13 +49,6 @@ export function AdminHeader({ tenantName, homeHref = '/dashboard' }: AdminHeader
           segmento, la semana y el chip de lo pendiente. Vacío no ocupa nada
           visible, pero el `flex-1` mantiene el resto del header a la derecha. */}
       <div id={ADMIN_HEADER_SLOT_ID} className="flex min-w-0 flex-1 items-center gap-3" />
-      <Link
-        href="/notificaciones"
-        aria-label="Notificaciones"
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        <Bell className="h-5 w-5" aria-hidden="true" />
-      </Link>
     </header>
   )
 }

@@ -70,7 +70,7 @@ function buildItems(intake: Intake | undefined, hasFixedTeams: boolean): Checkli
   const load: ChecklistItem = {
     key: 'hasStaffBookings',
     label: 'Turnos cargados en la grilla',
-    pendingLabel: fixed ? 'Pasá tus equipos fijos a la grilla' : 'Cargá tus turnos en la grilla',
+    pendingLabel: fixed ? 'Pasá tus turnos fijos a la grilla' : 'Cargá tus turnos en la grilla',
     linkLabel: 'Cargar',
     href: fixed ? '/abonados' : '/grilla',
   }

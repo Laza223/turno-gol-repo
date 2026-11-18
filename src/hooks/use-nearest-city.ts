@@ -1,28 +1,15 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useCurrentPlace, type CurrentPlaceState } from '@/components/geo/use-current-place'
 import { roundCoord } from '@/lib/zona-storage'
 import { useClientValue } from './use-client-value'
 import { useSavedZona } from './use-saved-zona'
 
+/** `found` trae la localidad real del jugador, con coordenadas a ~1 km (las mismas que se guardan). */
 export type NearestCityState =
-  | { status: 'idle' }
-  | { status: 'locating' }
-  | { status: 'found'; city: string; province: string }
-  | { status: 'denied' }
-  | { status: 'unsupported' }
-  | { status: 'no_results' }
-  | { status: 'error' }
-
-type NearestResult = { city: string; province: string; distanceKm: number | null }
-
-type LocateOutcome =
+  | Exclude<CurrentPlaceState, { status: 'found' }>
   | { status: 'found'; city: string; province: string; lat: number; lng: number }
-  | { status: 'denied' | 'no_results' | 'error' }
-
-// Si el complejo más cercano queda a más de esto, pre-llenar su ciudad sería
-// confundir al usuario (le sugeriríamos una localidad donde no está).
-const DEFAULT_MAX_DISTANCE_KM = 50
 
 /**
  * ¿El browser tiene Geolocation API? Se lee con `useClientValue` y no con un
@@ -44,103 +31,40 @@ async function readGeolocationPermission(): Promise<PermissionState | null> {
   }
 }
 
-function isPermissionDenied(err: unknown): boolean {
-  // code 1 = PERMISSION_DENIED; el resto (timeout, posición no disponible) es error genérico.
-  return typeof err === 'object' && err !== null && 'code' in err && err.code === 1
-}
-
-/** Pide la posición y busca el complejo visible más cercano (datos propios, sin geocoding externo). */
-async function locateNearest(maxDistanceKm: number): Promise<LocateOutcome> {
-  let latitude: number
-  let longitude: number
-  try {
-    const coords = await new Promise<GeolocationCoordinates>((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition((pos) => resolve(pos.coords), reject, {
-        enableHighAccuracy: false,
-        timeout: 8000,
-        maximumAge: 10 * 60 * 1000,
-      })
-    })
-    latitude = coords.latitude
-    longitude = coords.longitude
-  } catch (err) {
-    return { status: isPermissionDenied(err) ? 'denied' : 'error' }
-  }
-
-  try {
-    const params = new URLSearchParams({
-      sort: 'distance',
-      lat: latitude.toFixed(6),
-      lng: longitude.toFixed(6),
-      limit: '1',
-    })
-    const res = await fetch(`/api/public/search?${params.toString()}`)
-    if (!res.ok) return { status: 'error' }
-    const data = (await res.json()) as { results?: NearestResult[] }
-    const nearest = data.results?.[0]
-    if (nearest?.city && nearest.distanceKm != null && nearest.distanceKm <= maxDistanceKm) {
-      return {
-        status: 'found',
-        city: nearest.city,
-        province: nearest.province ?? '',
-        lat: roundCoord(latitude),
-        lng: roundCoord(longitude),
-      }
-    }
-    return { status: 'no_results' }
-  } catch {
-    return { status: 'error' }
-  }
-}
-
 /**
- * Detecta la ciudad del usuario con la Geolocation API nativa + el endpoint
- * público de búsqueda existente (sort=distance, limit=1): la ciudad sugerida es
- * la del complejo visible más cercano.
+ * Ubica al jugador DE VERDAD: pide la posición y le pregunta a `/api/public/geo/reverse` en qué
+ * localidad está (`precision=locality`: nunca se pide una dirección exacta; las coordenadas van redondeadas). La localidad se guarda en
+ * el dispositivo (`useSavedZona`, coordenadas a ~1 km) para no volver a preguntar.
  *
  * NUNCA pide la ubicación sola: eso mostraba el cartel del navegador en cada visita.
- * `locate()` la pide a pedido (botón "Usar mi ubicación") y, si encuentra una zona, la
- * guarda en el dispositivo (`useSavedZona`) para no volver a preguntar. La única excepción
- * es que el permiso YA esté concedido: ahí consultarla no muestra ningún cartel.
- * Los estados de fallo (denied/unsupported/error) son informativos, nunca bloqueantes.
+ * `locate()` la pide a pedido (botón "Usar mi ubicación actual"). La única excepción es que el
+ * permiso YA esté concedido: ahí consultarla no muestra ningún cartel.
+ * Los estados de fallo (denied/unsupported/error/…) son informativos, nunca bloqueantes.
  */
-export function useNearestCity(opts?: { maxDistanceKm?: number }): {
+export function useNearestCity(): {
   state: NearestCityState
   locate: () => void
   /** Descarta la consulta en vuelo: el resultado que llegue después no se guarda ni se muestra. */
   cancel: () => void
 } {
-  const maxDistanceKm = opts?.maxDistanceKm ?? DEFAULT_MAX_DISTANCE_KM
   const supported = useClientValue(readGeolocationSupported, true)
   const [zona, saveZona] = useSavedZona()
   const hasZona = Boolean(zona?.city)
-  const [state, setState] = useState<NearestCityState>({ status: 'idle' })
-  // Número de la última consulta válida: una respuesta con otro número llegó tarde y se ignora.
-  const latestRun = useRef(0)
-
-  const cancel = useCallback(() => {
-    latestRun.current += 1
-    setState((s) => (s.status === 'locating' ? { status: 'idle' } : s))
-  }, [])
+  const place = useCurrentPlace('locality')
+  const { locate: locatePlace, reset: cancel } = place
+  // El navegador ya tenía el permiso bloqueado (se sabe sin pedir nada).
+  const [blocked, setBlocked] = useState(false)
 
   const locate = useCallback(() => {
-    const run = ++latestRun.current
-    setState({ status: 'locating' })
-    void locateNearest(maxDistanceKm).then((outcome) => {
-      if (run !== latestRun.current) return
-      if (outcome.status === 'found') {
-        saveZona({
-          city: outcome.city,
-          province: outcome.province,
-          lat: outcome.lat,
-          lng: outcome.lng,
-        })
-        setState({ status: 'found', city: outcome.city, province: outcome.province })
-      } else {
-        setState({ status: outcome.status })
-      }
-    })
-  }, [maxDistanceKm, saveZona])
+    locatePlace((found) =>
+      saveZona({
+        city: found.city,
+        province: found.province,
+        lat: roundCoord(found.lat),
+        lng: roundCoord(found.lng),
+      }),
+    )
+  }, [locatePlace, saveZona])
 
   useEffect(() => {
     if (!supported || hasZona) return
@@ -148,18 +72,27 @@ export function useNearestCity(opts?: { maxDistanceKm?: number }): {
     let cancelled = false
     void readGeolocationPermission().then((permission) => {
       if (cancelled) return
-      if (permission === 'denied') setState({ status: 'denied' })
+      if (permission === 'denied') setBlocked(true)
       else if (permission === 'granted') locate()
     })
 
     return () => {
       cancelled = true
-      // Apareció una zona (la eligió a mano): una detección automática que siga en vuelo no
-      // tiene que pisarla.
-      latestRun.current += 1
     }
   }, [supported, hasZona, locate])
 
+  const s = place.state
+  let state: NearestCityState =
+    s.status === 'found'
+      ? {
+          status: 'found',
+          city: s.place.city,
+          province: s.place.province,
+          lat: roundCoord(s.place.lat),
+          lng: roundCoord(s.place.lng),
+        }
+      : s
+  if (state.status === 'idle' && blocked) state = { status: 'denied' }
   return { state: supported ? state : UNSUPPORTED, locate, cancel }
 }
 

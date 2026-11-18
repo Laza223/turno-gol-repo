@@ -17,6 +17,12 @@ const clearZona = () => localStorage.removeItem(ZONA_STORAGE_KEY)
  */
 const SIN_ZONA_POR_IP = { match: '/api/public/zona', json: { zona: null } }
 
+/** Búsqueda de localidades del país (`/api/public/geo/localidades`). */
+const localidades = (results: object[]) => ({
+  match: '/api/public/geo/localidades',
+  json: { results },
+})
+
 const LA_PLATA = JSON.stringify({ city: 'La Plata', province: 'Buenos Aires' })
 
 const meta = {
@@ -85,13 +91,45 @@ export const HojaLocalidad: Story = {
 /** Una búsqueda sin resultados lo dice, en vez de dejar la lista vacía. */
 export const LocalidadSinResultados: Story = {
   decorators: [withGeolocation('pending')],
+  parameters: { fetchMock: [SIN_ZONA_POR_IP, localidades([])] },
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole('button', { name: /^Localidad:/ }))
     const hoja = await body(canvasElement).findByRole('dialog', { name: 'Elegí la localidad' })
     await userEvent.type(within(hoja).getByRole('searchbox'), 'Ushuaia')
     await waitFor(() =>
-      expect(within(hoja).getByText('No encontramos esa localidad')).toBeVisible(),
+      expect(within(hoja).getByText('No encontramos esa localidad.')).toBeVisible(),
     )
+  },
+}
+
+/** Una localidad sin complejos (Mercedes) se puede elegir: sale en "Otras localidades" y queda en el campo. */
+export const LocalidadSinComplejos: Story = {
+  decorators: [withGeolocation('pending')],
+  parameters: {
+    fetchMock: [
+      SIN_ZONA_POR_IP,
+      localidades([
+        {
+          city: 'Mercedes',
+          province: 'Buenos Aires',
+          department: 'Partido de Mercedes',
+          lat: -34.65,
+          lng: -59.43,
+          source: 'dataset',
+        },
+      ]),
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await userEvent.click(canvas.getByRole('button', { name: /^Localidad:/ }))
+    const hoja = await body(canvasElement).findByRole('dialog', { name: 'Elegí la localidad' })
+    await userEvent.type(within(hoja).getByRole('searchbox'), 'Mercedes')
+    await expect(await within(hoja).findByText('Otras localidades')).toBeVisible()
+    await expect(within(hoja).getByText(/Todavía sin complejos/)).toBeVisible()
+    await userEvent.click(within(hoja).getByRole('radio', { name: /Mercedes/ }))
+    await waitFor(() => expect(body(canvasElement).queryByRole('dialog')).toBeNull())
+    await expect(canvas.getByRole('button', { name: 'Localidad: Mercedes. Cambiar' })).toBeVisible()
   },
 }
 
@@ -112,20 +150,20 @@ export const ZonaGuardada: Story = {
     )
     await expect(within(hoja).getByRole('radio', { name: /La Plata, Buenos Aires/ })).toBeChecked()
     await expect(
-      within(hoja).queryByRole('button', { name: 'Usar mi ubicación exacta' }),
+      within(hoja).queryByRole('button', { name: 'Usar mi ubicación actual' }),
     ).toBeNull()
   },
 }
 
-/** "Usar mi ubicación exacta" con permiso: elige la ciudad del complejo más cercano y la guarda. */
+/** "Usar mi ubicación exacta" con permiso: ubica al jugador en su localidad real y la guarda. */
 export const UsarMiUbicacion: Story = {
   decorators: [withGeolocation('found')],
   parameters: {
     fetchMock: [
       SIN_ZONA_POR_IP,
       {
-        match: '/api/public/search',
-        json: { results: [{ city: 'La Plata', province: 'Buenos Aires', distanceKm: 8 }] },
+        match: '/api/public/geo/reverse',
+        json: { result: { city: 'La Plata', province: 'Buenos Aires', lat: -34.92, lng: -57.95 } },
       },
     ],
   },
@@ -133,7 +171,7 @@ export const UsarMiUbicacion: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /^Localidad:/ }))
     const hoja = await body(canvasElement).findByRole('dialog', { name: 'Elegí la localidad' })
-    await userEvent.click(within(hoja).getByRole('button', { name: 'Usar mi ubicación exacta' }))
+    await userEvent.click(within(hoja).getByRole('button', { name: 'Usar mi ubicación actual' }))
     await waitFor(() =>
       expect(within(hoja).getByText('Tu zona guardada. Cambiala cuando quieras.')).toBeVisible(),
     )
@@ -147,16 +185,12 @@ export const GeolocalizacionDenegada: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole('button', { name: /^Localidad:/ }))
     const hoja = await body(canvasElement).findByRole('dialog', { name: 'Elegí la localidad' })
-    await userEvent.click(within(hoja).getByRole('button', { name: 'Usar mi ubicación exacta' }))
+    await userEvent.click(within(hoja).getByRole('button', { name: 'Usar mi ubicación actual' }))
     await waitFor(() =>
-      expect(
-        within(hoja).getByText(
-          'No pudimos acceder a tu ubicación. Elegí tu localidad manualmente.',
-        ),
-      ).toBeVisible(),
+      expect(within(hoja).getByText(/Tenés bloqueado el permiso de ubicación/)).toBeVisible(),
     )
     await expect(
-      within(hoja).queryByRole('button', { name: 'Usar mi ubicación exacta' }),
+      within(hoja).queryByRole('button', { name: 'Usar mi ubicación actual' }),
     ).toBeNull()
   },
 }

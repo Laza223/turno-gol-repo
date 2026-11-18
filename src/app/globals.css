@@ -441,6 +441,17 @@
 }
 
 @layer base {
+  /* Touch: sin barra de scroll (decisión 2026-11-17). En `base` para que un
+     `scrollbar-thin` explícito (utilities) siga ganando. */
+  @media (pointer: coarse) {
+    *,
+    html {
+      scrollbar-width: none;
+    }
+    *::-webkit-scrollbar {
+      display: none;
+    }
+  }
   * {
     @apply border-border;
   }

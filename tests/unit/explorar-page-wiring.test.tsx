@@ -131,6 +131,44 @@ describe('ExplorarPage: cableado', () => {
     )
   })
 
+  it('una localidad sin complejos muestra los más cercanos, con aviso y encabezado acorde', async () => {
+    searchPublicTenants.mockResolvedValueOnce({ results: [], total: 0 }).mockResolvedValueOnce({
+      results: [publicTenantCard({ id: 't1', slug: 'a', name: 'A', distanceKm: 18.4 })],
+      total: 1,
+    })
+    await renderPage({ city: 'Mercedes', province: 'Buenos Aires', lat: '-34.65', lng: '-59.43' })
+
+    expect(searchPublicTenants).toHaveBeenCalledTimes(2)
+    const nearby = searchPublicTenants.mock.calls[1]![0]
+    expect(nearby).toMatchObject({ sort: 'distance', lat: -34.65, lng: -59.43 })
+    expect(nearby).not.toHaveProperty('city')
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Complejos cerca de Mercedes' }),
+    ).toBeTruthy()
+    expect(
+      screen.getByText(/Todavía no hay complejos en Mercedes. Estos son los más cercanos./),
+    ).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'A' })).toBeTruthy()
+  })
+
+  it('un link viejo sin coordenadas resuelve la localidad en el servidor', async () => {
+    searchPublicTenants.mockResolvedValueOnce({ results: [], total: 0 }).mockResolvedValueOnce({
+      results: [publicTenantCard({ id: 't1', slug: 'a', name: 'A' })],
+      total: 1,
+    })
+    await renderPage({ city: 'Mercedes', province: 'Buenos Aires' })
+
+    const nearby = searchPublicTenants.mock.calls[1]![0] as { lat: number; lng: number }
+    expect(nearby.lat).toBeLessThan(-33)
+    expect(nearby.lat).toBeGreaterThan(-36)
+    expect(typeof nearby.lng).toBe('number')
+  })
+
+  it('si no hay ningún complejo cerca, queda la pantalla vacía de siempre', async () => {
+    await renderPage({ city: 'Mercedes', lat: '-34.65', lng: '-59.43' })
+    expect(screen.getByRole('heading', { level: 1, name: '0 complejos en Mercedes' })).toBeTruthy()
+  })
+
   it('el botón Mapa conserva los filtros', async () => {
     await renderPage({ city: 'Luján', formats: '5', sort: 'price' })
     expect(screen.getByRole('link', { name: 'Mapa' }).getAttribute('href')).toBe(

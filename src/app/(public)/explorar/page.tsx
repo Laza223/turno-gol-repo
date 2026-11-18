@@ -16,6 +16,7 @@ import {
   findTodayFreeSlotsByTenant,
   type TodayFreeSlots,
 } from '@/modules/tenants/availability-search.service'
+import { searchLocalities } from '@/modules/geo/localities.service'
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
 import { formatsLabel } from '@/lib/formats-label'
 import { cn } from '@/lib/utils'
@@ -112,6 +113,38 @@ async function getPlayerFavoriteIds(playerId: string): Promise<Set<string>> {
   }
 }
 
+/**
+ * Una localidad sin complejos no es un callejón: se muestran los más cercanos. El origen sale de
+ * `lat`/`lng` de la URL; un link viejo no los trae y se resuelven acá con el dataset de localidades.
+ */
+async function findNearby(args: {
+  city: string
+  province: string | undefined
+  lat: number | undefined
+  lng: number | undefined
+  formats: number[]
+  limit: number
+}) {
+  let { lat, lng } = args
+  if (lat === undefined || lng === undefined) {
+    const origin = searchLocalities(`${args.city} ${args.province ?? ''}`, { limit: 5 }).find(
+      (l) => l.lat !== null && l.lng !== null,
+    )
+    lat = origin?.lat ?? undefined
+    lng = origin?.lng ?? undefined
+  }
+  if (lat === undefined || lng === undefined) return null
+  const near = await searchPublicTenants({
+    formats: args.formats,
+    lat,
+    lng,
+    sort: 'distance',
+    limit: args.limit,
+    offset: 0,
+  })
+  return near.results.length > 0 ? near : null
+}
+
 /** "6 complejos en Luján" / "1 complejo" (encabezado de `buscador.html`). */
 function headline(total: number, city: string | undefined): string {
   const n = total === 1 ? '1 complejo' : `${total} complejos`
@@ -152,7 +185,7 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
     lat === undefined &&
     lng === undefined
 
-  const [{ results, total }, cities] = await Promise.all([
+  const [first, cities] = await Promise.all([
     isDefaultSearch
       ? getDefaultSearchCached()
       : searchPublicTenants({
@@ -171,11 +204,21 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
   ])
   const knownCity =
     !city || cities.some((c) => c.city === city && (!province || c.province === province))
-  const formatSets = knownCity
-    ? await listPublicFormatSetsCached(city ?? '', province ?? '')
-    : await listPublicFormatSets({ city, province })
+  // La localidad NO tiene complejos (y no se buscó un nombre): los más cercanos, con aviso. Si
+  // tiene y el filtro de tamaño no dejó ninguno, el aviso "todavía no hay complejos" mentiría.
+  const nearby =
+    city && !q && !knownCity && first.total === 0 && offset === 0
+      ? await findNearby({ city, province, lat, lng, formats, limit })
+      : null
+  const { results, total } = nearby ?? first
+  // En "más cercanos" los tamaños salen de los complejos que se ven: la hoja de Cancha no miente.
+  const formatSets = nearby
+    ? results.map((t) => t.courtFormats)
+    : knownCity
+      ? await listPublicFormatSetsCached(city ?? '', province ?? '')
+      : await listPublicFormatSets({ city, province })
 
-  const hasMore = view === 'list' && offset + PAGE_SIZE < total
+  const hasMore = !nearby && view === 'list' && offset + PAGE_SIZE < total
 
   // Extras de las tarjetas (solo la vista lista las renderiza), en paralelo y fail-open: sin
   // fotos la tarjeta cae a la portada. Si los horarios fallan (null), la tarjeta no dice nada de
@@ -200,6 +243,7 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
 
   const sizes = formatsLabel(formats)
   const subtitle = [
+    nearby ? `Todavía no hay complejos en ${city}. Estos son los más cercanos.` : null,
     sizes ? `Con cancha de ${sizes}.` : null,
     q ? `Que se llaman “${q}”.` : null,
     view === 'list' ? 'Los horarios son los libres de hoy.' : null,
@@ -232,13 +276,13 @@ export default async function ExplorarPage(props: { searchParams: Promise<SP> })
         <Suspense
           fallback={<div className="glass h-[76px] rounded-[32px] md:w-[560px] md:rounded-full" />}
         >
-          <ExplorarSearch cities={cities} formatSets={formatSets} />
+          <ExplorarSearch cities={cities} formatSets={formatSets} nearby={Boolean(nearby)} />
         </Suspense>
 
         <div className="mt-6 mb-4 flex items-end justify-between gap-4 md:mt-8 md:mb-5">
           <div className="min-w-0">
             <h1 className="font-display text-[clamp(26px,2.4vw+16px,40px)] leading-[1.05] font-bold tracking-[-0.035em] text-portal-ink [font-stretch:104%]">
-              {headline(total, city)}
+              {nearby ? `Complejos cerca de ${city}` : headline(total, city)}
             </h1>
             {subtitle && (
               <p className="mt-1.5 text-[15px] leading-[1.4] text-portal-soft">{subtitle}</p>

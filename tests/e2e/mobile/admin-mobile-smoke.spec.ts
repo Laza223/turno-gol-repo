@@ -143,7 +143,7 @@ test.describe('Admin mobile smoke', () => {
   // Fase 4: la navegación primaria de mobile es la barra inferior de 4 accesos
   // (visión v2 §3.3, "nada de hamburguesa como acceso primario"). La
   // hamburguesa del header ya no existe: su lugar lo ocupa "Más", que abre el
-  // mismo drawer con los 6 espacios.
+  // mismo drawer, sin los 3 accesos que ya están en la barra (2026-11-17).
   test('bottom nav: 3 accesos directos + Más abre el drawer', async ({
     browser,
     adminStorageState,
@@ -165,13 +165,13 @@ test.describe('Admin mobile smoke', () => {
     expect(box!.height).toBeGreaterThanOrEqual(44)
     expect(box!.width).toBeGreaterThanOrEqual(44)
 
-    // El drawer sigue siendo un Sheet Radix (dialog): abre con la nav completa
-    // y cierra con Esc.
+    // El drawer sigue siendo un Sheet Radix (dialog): abre con el resto de la
+    // nav (sin repetir la barra) y cierra con Esc.
     await mas.click()
     const drawer = page.getByRole('dialog')
     await expect(drawer).toBeVisible()
-    await expect(drawer.getByRole('link', { name: 'Caja' })).toBeVisible()
     await expect(drawer.getByRole('link', { name: 'Clientes y Fijos' })).toBeVisible()
+    await expect(drawer.getByRole('link', { name: 'Caja' })).toHaveCount(0)
     await page.keyboard.press('Escape')
     await expect(drawer).toBeHidden()
 

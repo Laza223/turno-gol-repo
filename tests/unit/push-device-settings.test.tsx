@@ -104,7 +104,9 @@ describe('Notificaciones de este dispositivo', () => {
       await act(async () => {
         render(<PushNotificationManager settings actions={actions} />)
       })
-      expect(await screen.findByText(/En iPhone o iPad necesitás iOS 16.4/)).toBeVisible()
+      expect(
+        await screen.findByText(/En iPhone o iPad los avisos llegan solo a TurnoGol instalado/),
+      ).toBeVisible()
       expect(Notification.requestPermission).not.toHaveBeenCalled()
       expect(actions.subscribe).not.toHaveBeenCalled()
     } finally {

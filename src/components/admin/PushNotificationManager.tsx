@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import {
   PushPermissionBanner,
   PushPermissionDialog,
+  IphoneInstallSteps,
   type PushAudience,
 } from '@/components/push/PushPermissionPrompt'
 import { toast } from '@/hooks/use-toast'
@@ -35,6 +36,8 @@ const SW_PATH = '/sw.js'
 const SW_SCOPE = '/'
 const SOUND_ENABLED_KEY = 'turnogol:notif-sound'
 const MODAL_SEEN_KEY = 'turnogol:notif-modal-seen'
+// Cerrar el cartel con la X lo oculta esta cantidad de días (decisión 2026-11-17).
+const BANNER_SNOOZE_DAYS = 7
 // Safety deadline for the non-abortable service worker activation step so the
 // "Habilitando…" button can never hang forever.
 const SW_READY_TIMEOUT_MS = 10_000
@@ -70,6 +73,8 @@ type Props = {
   /** `player`: el mismo flujo en el portal del jugador, con su copy y sus claves. */
   audience?: PushAudience
   bannerClassName?: string
+  /** `false`: no renderiza el cartel (sí el modal y el audio). Default `true`. */
+  banner?: boolean
 }
 
 const SUCCESS_TOAST: Record<PushAudience, string> = {
@@ -84,6 +89,7 @@ export function PushNotificationManager({
   actions,
   audience = 'staff',
   bannerClassName,
+  banner = true,
 }: Props) {
   // Staff y jugador pueden convivir en un mismo dispositivo: cada uno guarda su
   // identidad y su "ya vio el modal" por separado.
@@ -92,6 +98,7 @@ export function PushNotificationManager({
   const seenPrefix = audience === 'staff' ? MODAL_SEEN_KEY : `${MODAL_SEEN_KEY}:player`
   const [status, setStatus] = useState<Status>('idle')
   const [modalOpen, setModalOpen] = useState(false)
+  const [bannerHidden, setBannerHidden] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const bcRef = useRef<BroadcastChannel | null>(null)
   const [subscriptionId, setSubscriptionId] = useState<string | null>(null)
@@ -187,6 +194,27 @@ export function PushNotificationManager({
       window.removeEventListener('turnogol:push-signout', signout)
     }
   }, [identityKey, actions, identityStorageKey])
+
+  // Cartel cerrado con la X: oculto BANNER_SNOOZE_DAYS días. Storage bloqueado → se muestra.
+  // Corre al montar, antes de que `status` salga de 'idle' (ahí no hay cartel).
+  useEffect(() => {
+    try {
+      const at = Number(localStorage.getItem(`${seenPrefix}:banner-dismissed`))
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (at) setBannerHidden(Date.now() - at < BANNER_SNOOZE_DAYS * 86_400_000)
+    } catch {
+      /* Storage bloqueado: el cartel se muestra. */
+    }
+  }, [seenPrefix])
+
+  function dismissBanner() {
+    setBannerHidden(true)
+    try {
+      localStorage.setItem(`${seenPrefix}:banner-dismissed`, String(Date.now()))
+    } catch {
+      /* Storage bloqueado: se oculta hasta recargar. */
+    }
+  }
 
   // El modal se abre solo UNA vez por dispositivo y por situación (activar,
   // instalar en iPhone, desbloquear), la primera vez que se llega al panel.
@@ -458,11 +486,11 @@ export function PushNotificationManager({
   if (settings) {
     const instructions =
       status === 'install_required'
-        ? 'En iPhone o iPad necesitás iOS 16.4 o posterior. En Safari tocá Compartir → Agregar a inicio y abrí TurnoGol desde ese ícono. Después habilitá las notificaciones acá.'
+        ? 'En iPhone o iPad los avisos llegan solo a TurnoGol instalado (iOS 16.4 o posterior). Sirve desde Safari o Chrome.'
         : status === 'denied'
           ? 'Las notificaciones están bloqueadas. Permitilas en Ajustes → Notificaciones → TurnoGol (iPhone) o en los permisos del sitio y del navegador (Android), y volvé a abrir la app.'
           : status === 'unsupported'
-            ? 'Este navegador no permite notificaciones. Probá con Safari en una PWA de iPhone, o Chrome en Android.'
+            ? 'Este navegador no recibe avisos. Abrí TurnoGol en Chrome, Edge o Samsung Internet. En iPhone, instalalo en tu inicio desde Safari o Chrome.'
             : status === 'subscribed'
               ? 'Este dispositivo tiene permiso y su suscripción está guardada en TurnoGol. Probá que aparezca el aviso con la pantalla bloqueada.'
               : status === 'idle'
@@ -475,6 +503,7 @@ export function PushNotificationManager({
       >
         <h2 className="text-lg font-semibold">Este dispositivo</h2>
         <p className="text-sm text-muted-foreground">{instructions}</p>
+        {status === 'install_required' && <IphoneInstallSteps />}
         <div className="flex flex-wrap gap-3">
           {(status === 'unsubscribed' || status === 'pending') && (
             <Button onClick={enable} disabled={status === 'pending'}>
@@ -516,12 +545,13 @@ export function PushNotificationManager({
     <>
       {/* Sin push en este navegador no hay nada que activar: el modal lo explica
           una vez y no queda un cartel fijo para siempre. */}
-      {status !== 'unsupported' && (
+      {banner && !bannerHidden && status !== 'unsupported' && (
         <PushPermissionBanner
           status={status}
           audience={audience}
           className={bannerClassName}
           onOpen={() => setModalOpen(true)}
+          onDismiss={dismissBanner}
         />
       )}
       <PushPermissionDialog

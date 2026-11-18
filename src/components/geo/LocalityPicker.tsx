@@ -207,7 +207,7 @@ export default function LocalityPicker({
       : null
 
   return (
-    <div className="space-y-2">
+    <div>
       {manual ? (
         <div className="space-y-3">
           <div>
@@ -258,7 +258,7 @@ export default function LocalityPicker({
       ) : (
         <>
           {label && (
-            <label htmlFor={id} className="block text-sm font-medium text-foreground">
+            <label htmlFor={id} className="mb-2 block text-sm font-medium text-foreground">
               {label}
             </label>
           )}
@@ -373,22 +373,23 @@ export default function LocalityPicker({
             </PopoverContent>
           </Popover>
 
+          {/* El espacio va en cada mensaje (`mt-2`), no en la raíz: una región vacía no ocupa lugar. */}
           <div aria-live="polite" className="text-sm text-muted-foreground">
             <span className="sr-only">
               {showList
                 ? `${results.length} ${results.length === 1 ? 'localidad disponible' : 'localidades disponibles'}`
                 : ''}
             </span>
-            {typing && status === 'loading' && <p>Buscando…</p>}
-            {noResults && <p>No encontramos esa localidad.</p>}
-            {failed && <p>No pudimos buscar ahora. Podés escribirla a mano.</p>}
+            {typing && status === 'loading' && <p className="mt-2">Buscando…</p>}
+            {noResults && <p className="mt-2">No encontramos esa localidad.</p>}
+            {failed && <p className="mt-2">No pudimos buscar ahora. Podés escribirla a mano.</p>}
           </div>
 
           {(noResults || failed) && (
             <Button
               type="button"
               variant="outline"
-              className="min-h-11 w-full"
+              className="mt-2 min-h-11 w-full"
               onClick={startManual}
             >
               Escribirla a mano
@@ -399,7 +400,7 @@ export default function LocalityPicker({
             <Button
               type="button"
               variant="ghost"
-              className="-ml-3 min-h-11"
+              className="-ml-3 mt-2 min-h-11"
               onClick={useMyLocation}
               isLoading={place.state.status === 'locating'}
             >
@@ -408,7 +409,7 @@ export default function LocalityPicker({
             </Button>
           )}
           <div aria-live="polite" className="text-sm text-muted-foreground">
-            {placeFailure && <p>{placeFailure}</p>}
+            {placeFailure && <p className="mt-2">{placeFailure}</p>}
           </div>
         </>
       )}

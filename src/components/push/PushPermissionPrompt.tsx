@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, BellOff } from 'lucide-react'
+import { Bell, BellOff, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -13,8 +13,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
  * contexto termina en un rechazo que el sitio ya no puede revertir.
  *
  * Estados que no se pueden resolver con el botón tienen su propio contenido:
- * - `install_required`: iPhone fuera de la pantalla de inicio. Safari en una
- *   pestaña no tiene permiso de notificaciones (WebKit, iOS 16.4+).
+ * - `install_required`: iPhone fuera de la pantalla de inicio. En una pestaña
+ *   (Safari o Chrome) no hay permiso de notificaciones: WebKit solo da push a
+ *   las web apps del inicio (iOS 16.4+).
  * - `denied`: el navegador ya no deja volver a pedir el permiso; solo se puede
  *   explicar cómo desbloquearlo.
  * - `unsupported`: navegador sin Push API.
@@ -35,6 +36,13 @@ const BANNER_TEXT: Record<PushAudience, string> = {
   player: 'Activá las notificaciones para que te recordemos tus turnos.',
 }
 
+/** Pasos para instalar TurnoGol en el inicio del iPhone (modal y /notificaciones). */
+const IPHONE_INSTALL_STEPS = [
+  'Tocá Compartir (el cuadrado con la flecha). En Safari puede estar adentro del menú ···.',
+  'Elegí Agregar a inicio.',
+  'Abrí TurnoGol desde el ícono nuevo y tocá Activar.',
+]
+
 function Steps({ items }: { items: string[] }) {
   return (
     <ol className="list-decimal space-y-2 pl-5 text-sm text-foreground">
@@ -43,6 +51,11 @@ function Steps({ items }: { items: string[] }) {
       ))}
     </ol>
   )
+}
+
+/** Pasos de instalación en iPhone como componente: el modal y /notificaciones los comparten. */
+export function IphoneInstallSteps() {
+  return <Steps items={IPHONE_INSTALL_STEPS} />
 }
 
 export function PushPermissionDialog({
@@ -65,18 +78,12 @@ export function PushPermissionDialog({
         {status === 'install_required' ? (
           <>
             <DialogHeader>
-              <DialogTitle>Agregá TurnoGol a tu inicio</DialogTitle>
+              <DialogTitle>Instalá TurnoGol en tu iPhone</DialogTitle>
             </DialogHeader>
             <p className="text-sm text-muted-foreground">
-              En iPhone los avisos llegan solo si abrís TurnoGol desde la pantalla de inicio.
+              En iPhone los avisos llegan solo a TurnoGol instalado. Sirve desde Safari o Chrome.
             </p>
-            <Steps
-              items={[
-                'Tocá el botón Compartir de Safari.',
-                'Elegí Agregar a inicio.',
-                'Abrí TurnoGol desde el ícono nuevo y activá las notificaciones.',
-              ]}
-            />
+            <Steps items={IPHONE_INSTALL_STEPS} />
             <Button className="w-full" onClick={close}>
               Entendido
             </Button>
@@ -111,8 +118,8 @@ export function PushPermissionDialog({
               <DialogTitle>Este navegador no recibe avisos</DialogTitle>
             </DialogHeader>
             <p className="text-sm text-muted-foreground">
-              Abrí TurnoGol en Chrome, Edge o Samsung Internet. En iPhone, agregalo a tu inicio
-              desde Safari.
+              Abrí TurnoGol en Chrome, Edge o Samsung Internet. En iPhone, instalalo en tu inicio
+              desde Safari o Chrome.
             </p>
             <Button className="w-full" onClick={close}>
               Entendido
@@ -148,25 +155,27 @@ export function PushPermissionDialog({
 
 /**
  * Cartel en flujo (no flotante: un elemento fijo tapaba botones del panel, QA
- * 2026-08-13). Sin botón de cerrar a propósito: mientras este dispositivo no
- * reciba avisos, el cartel queda. Si ya los recibe, no se renderiza.
+ * 2026-08-13). Con `onDismiss` se puede cerrar (el manager lo oculta 7 días).
+ * Si el dispositivo ya recibe avisos, no se renderiza.
  */
 export function PushPermissionBanner({
   status,
   audience,
   onOpen,
+  onDismiss,
   className,
 }: {
   status: PushPromptStatus
   audience: PushAudience
   onOpen: () => void
+  onDismiss?: () => void
   className?: string
 }) {
   const text =
     status === 'denied'
       ? 'Las notificaciones están bloqueadas en este dispositivo.'
       : status === 'install_required'
-        ? 'Para recibir avisos en iPhone, agregá TurnoGol a tu inicio.'
+        ? 'Instalá TurnoGol en tu iPhone para recibir los avisos de reservas.'
         : status === 'unsupported'
           ? 'Este navegador no recibe avisos.'
           : BANNER_TEXT[audience]
@@ -183,6 +192,16 @@ export function PushPermissionBanner({
       <Button size="sm" className="shrink-0" onClick={onOpen}>
         {action}
       </Button>
+      {onDismiss && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Cerrar aviso"
+          className="-my-1.5 -mr-1.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+        </button>
+      )}
     </div>
   )
 }

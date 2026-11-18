@@ -6,7 +6,13 @@ import { MoreHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { StaffRole } from '@/modules/staff/roles'
 import { NO_SETUP_ALERTS, type SetupAlerts } from './setup-alerts'
-import { CONFIG_ITEM, isNavItemActive, navItemHasAlert, visibleNavItems } from './admin-sidebar'
+import {
+  BOTTOM_NAV_PRIMARY,
+  CONFIG_ITEM,
+  isNavItemActive,
+  navItemHasAlert,
+  visibleNavItems,
+} from './admin-sidebar'
 import { SetupAlertDot } from './setup-alert-dot'
 
 /**
@@ -42,9 +48,12 @@ export function AdminBottomNav({
 }) {
   const pathname = usePathname()
   const visible = visibleNavItems({ tournamentsEnabled, staffRole, freePlan })
-  const primary = visible.slice(0, 3)
+  const primary = visible.slice(0, BOTTOM_NAV_PRIMARY)
   // Configuración no está en `NAV_ITEMS`: vive en el cajón y solo la ve el dueño.
-  const moreItems = [...visible.slice(3), ...(staffRole === 'admin' ? [CONFIG_ITEM] : [])]
+  const moreItems = [
+    ...visible.slice(BOTTOM_NAV_PRIMARY),
+    ...(staffRole === 'admin' ? [CONFIG_ITEM] : []),
+  ]
   const moreAlert = moreItems.some((item) => navItemHasAlert(item, setupAlerts))
 
   const itemClass =

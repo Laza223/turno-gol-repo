@@ -22,6 +22,7 @@ import { extractAuthUser, extractRealAuthUser } from '@/modules/auth/auth.middle
 import { closeSql, getSql } from '@/shared/db/client'
 import { getBoss, stopBoss } from '@/shared/jobs/boss'
 import { POST as testPush } from '@/app/api/admin/push/test/route'
+import { processQueuedStaffNotifications } from '@/modules/notifications/staff-notification.service'
 import {
   cleanupAll,
   createTestStaffUser,
@@ -123,7 +124,12 @@ describe('POST /api/admin/push/test (F9 T4)', () => {
       }) as never,
     )
     expect(response.status).toBe(200)
-    expect(await response.json()).toMatchObject({ success: true, dispatched: 1 })
+    const body = (await response.json()) as { dispatched: number; notificationId?: string }
+    expect(body).toMatchObject({ success: true, dispatched: 1 })
+    // Va por el outbox durable (con el flag v2 apagado): el botón crea la
+    // notificación y el barrido del outbox arma los envíos por dispositivo.
+    expect(body.notificationId).toBeTruthy()
+    await processQueuedStaffNotifications()
     // El id de dispositivo pertenece al payload de infraestructura de pg-boss.
     const jobs = await sql<
       { data: { subscription_id: string } }[]
@@ -143,7 +149,7 @@ describe('POST /api/admin/push/test (F9 T4)', () => {
     expect(json.dispatched).toBe(0)
   })
 
-  it('Case 2: admin has 2 subscriptions → returns dispatched=2 + pgboss has 2 push-send rows', async () => {
+  it('Case 2: con 2 dispositivos, una notificación durable que sale a los 2', async () => {
     const sql = getSql()
 
     // Insert 2 push subscriptions for this admin.
@@ -159,6 +165,7 @@ describe('POST /api/admin/push/test (F9 T4)', () => {
 
     // Clear any existing push-send jobs for a clean count.
     await sql`DELETE FROM pgboss_v12.job WHERE name = 'push-send'`
+    await sql`DELETE FROM notifications WHERE tenant_id = ${tenantId} AND trigger_event = 'test'`
 
     asUser(makeAdminUser(tenantId, staffUserId))
 
@@ -167,7 +174,15 @@ describe('POST /api/admin/push/test (F9 T4)', () => {
     expect(res.status).toBe(200)
     const json = (await res.json()) as { success: boolean; dispatched: number }
     expect(json.success).toBe(true)
-    expect(json.dispatched).toBe(2)
+    // Una notificación por persona; los dispositivos se resuelven al barrer el outbox.
+    expect(json.dispatched).toBe(1)
+    const notifs = await sql<{ id: string }[]>`
+      SELECT id FROM notifications
+      WHERE tenant_id = ${tenantId} AND channel = 'push' AND trigger_event = 'test'
+        AND status IN ('queued', 'sending')
+    `
+    expect(notifs).toHaveLength(1)
+    await processQueuedStaffNotifications()
 
     // Assert 2 rows in pgboss_v12.job with name='push-send'.
     const jobs = await sql<{ id: string }[]>`

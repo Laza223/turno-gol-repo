@@ -246,6 +246,23 @@ describe('createTabSchema', () => {
   it('rejects an empty lines array', () => {
     expect(createTabSchema.safeParse({ ...base(), lines: [] }).success).toBe(false)
   })
+
+  // Consumo anotado a un turno (migr. 115): el nombre lo arma el servidor.
+  it('accepts a booking tab with no debtorName', () => {
+    const { debtorName: _omit, ...rest } = base()
+    const result = createTabSchema.safeParse({ ...rest, bookingId: crypto.randomUUID() })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a tab with neither a debtorName nor a bookingId', () => {
+    const { debtorName: _omit, ...rest } = base()
+    const result = createTabSchema.safeParse(rest)
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects a bookingId that is not a UUID', () => {
+    expect(createTabSchema.safeParse({ ...base(), bookingId: 'cancha-3' }).success).toBe(false)
+  })
 })
 
 describe('settleTabSchema / cancelTabSchema', () => {

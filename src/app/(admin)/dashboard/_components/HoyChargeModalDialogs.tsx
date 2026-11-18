@@ -4,6 +4,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SlotCancelDialog } from '@/components/booking/slot-panel/SlotCancelDialog'
 import type { SlotGates } from '@/components/booking/slot-panel/slot-gates'
 import type { RenderCanteenDialog, SlotPanelActions } from '@/components/booking/slot-panel/actions'
+import { chargeMode } from '@/components/booking/slot-panel/charge-copy'
 import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
 import { getRefundOutcome, type RefundOutcome } from '@/modules/bookings/refund-outcome'
 import type { ChargeBooking, HoyCourt } from './HoyChargeModal'
@@ -53,6 +54,7 @@ export function HoyChargeModalDialogs({
   releaseBlockOpen,
   setReleaseBlockOpen,
   onMutated,
+  onConsumoNoted,
   setLastId,
   onConfirmNoShow,
   onConfirmReleaseBlock,
@@ -84,6 +86,8 @@ export function HoyChargeModalDialogs({
   releaseBlockOpen: boolean
   setReleaseBlockOpen: (open: boolean) => void
   onMutated: () => void
+  /** Se anotó un consumo al turno desde el diálogo de cantina: el cobro vuelve a leer lo anotado. */
+  onConsumoNoted?: () => void
   setLastId: (id: string | null) => void
   onConfirmNoShow: () => Promise<ActionResult>
   onConfirmReleaseBlock: () => Promise<ActionResult>
@@ -97,6 +101,9 @@ export function HoyChargeModalDialogs({
           onOpenChange: setCanteenOpen,
           bookingId: booking.id,
           displayName: name,
+          onNoted: onConsumoNoted,
+          // Lo anotado se cobra desde el cobro de este turno: sin saldo no hay dónde.
+          canNoteConsumo: chargeMode(booking, hasEnded) !== null,
         })}
 
       {gates.canReschedule &&

@@ -8,12 +8,18 @@ import { listProducts } from '@/modules/canteen/canteen.service'
 import { getTopSellerIds } from '@/modules/canteen/canteen-report.service'
 import { nightCutoffMins, operatingDateOf } from '@/shared/time/operating-day'
 import { sellTicket } from '@/modules/canteen/canteen-sale.service'
-import { createTab, settleTab, cancelTab } from '@/modules/canteen/canteen-tab.service'
+import {
+  createTab,
+  settleTab,
+  cancelTab,
+  listOpenTabsForBooking,
+} from '@/modules/canteen/canteen-tab.service'
 import {
   sellTicketSchema,
   createTabSchema,
   settleTabSchema,
   cancelTabSchema,
+  listBookingConsumosSchema,
 } from '@/modules/canteen/canteen.schema'
 import {
   EmptyTicketError,
@@ -21,11 +27,12 @@ import {
   ProductInactiveError,
   ProductNotFoundError,
   SaleBookingNotFoundError,
+  TabBookingInvalidError,
   TabChargeMismatchError,
   TabNotFoundError,
   TabNotOpenError,
 } from '@/modules/canteen/canteen.errors'
-import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
+import type { BookingConsumo, CanteenProductRow } from '@/modules/canteen/canteen.types'
 import { formatArs } from '@/lib/format'
 
 export type SellTicketActionResult =
@@ -65,6 +72,9 @@ function mapCanteenError(err: unknown): string | null {
   if (err instanceof ProductInactiveError) return 'Ese producto está pausado.'
   if (err instanceof EmptyTicketError) return 'El ticket está vacío.'
   if (err instanceof SaleBookingNotFoundError) return 'Ese turno ya no existe.'
+  if (err instanceof TabBookingInvalidError) {
+    return 'Ese turno ya no admite consumos: se canceló o todavía no está confirmado.'
+  }
   if (err instanceof TabNotFoundError) return 'Ese fiado ya no existe.'
   if (err instanceof TabNotOpenError) return 'Ese fiado ya fue cobrado o anulado.'
   if (err instanceof TabChargeMismatchError) {
@@ -187,6 +197,33 @@ export async function createTabAction(input: unknown): Promise<CreateTabActionRe
 
   revalidateCaja()
   return { success: true, debtorName, total }
+}
+
+export type BookingConsumosActionResult =
+  { success: true; consumos: BookingConsumo[] } | { success: false; error: string }
+
+/**
+ * Los consumos anotados y sin cobrar de un turno, para el modal de cobro de Hoy.
+ * Se pide al abrir el modal y cuando se anota o se anula algo, no con la grilla:
+ * el 99% de los turnos no tiene ninguno.
+ */
+export async function listBookingConsumosAction(
+  input: unknown,
+): Promise<BookingConsumosActionResult> {
+  const parsed = listBookingConsumosSchema.safeParse(input)
+  if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
+
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const consumos = await withTenantContext(tenant.id, (tx) =>
+    listOpenTabsForBooking(tenant.id, parsed.data.bookingId, tx),
+  )
+  return { success: true, consumos }
 }
 
 /** Cobra el fiado: `settleTab` crea el cash_flow con `occurred_at = ahora` (la plata entra hoy). */

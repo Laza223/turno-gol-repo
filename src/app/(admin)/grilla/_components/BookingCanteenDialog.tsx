@@ -4,7 +4,11 @@ import { useEffect, useState } from 'react'
 import * as Sentry from '@sentry/nextjs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useUnconfirmedDialogGuard } from '@/hooks/use-unconfirmed-dialog-guard'
-import { TicketPanel, type SellTicketAction } from '../../caja/cantina/TicketPanel'
+import {
+  TicketPanel,
+  type CreateTabAction,
+  type SellTicketAction,
+} from '../../caja/cantina/TicketPanel'
 import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
 
 /**
@@ -23,9 +27,11 @@ import type { CanteenProductRow } from '@/modules/canteen/canteen.types'
  * ni por Esc/✕ ni tocando afuera: el caller lo desmonta al cerrar y la clave de
  * reintento se perdería — ver `useUnconfirmedDialogGuard`.
  *
- * NO se ofrece "anotar como fiado" acá: un fiado se le anota a una PERSONA
- * (`canteen_tabs.debtor_name`), no a un turno — no hay dónde guardar el
- * vínculo. Sigue disponible en /caja/cantina.
+ * El fiado de una PERSONA ("anotar como fiado") no se ofrece acá: sigue en
+ * /caja/cantina. Lo que sí puede ofrecer, si el caller pasa `createTabAction`, es
+ * "Anotar al turno" (migr. 115, docs/decisions/2026-11-17-consumos-anotados-al-
+ * turno.md): el consumo queda anotado en ESTE turno sin cobrarse, y el modal de
+ * cobro lo suma junto con la cancha.
  *
  * Vive bajo la ruta y no en `@/components` porque importa el `TicketPanel` de
  * /caja/cantina: un componente de `@/components` que importa de `@/app` está
@@ -45,6 +51,16 @@ export type SellTicketForBooking = (input: {
   bookingId: string
 }) => ReturnType<SellTicketAction>
 
+/**
+ * Anotar un consumo a un turno. Sin `debtorName` a propósito: lo arma el servidor
+ * con la cancha y la hora, así que el cliente no manda ningún nombre.
+ */
+export type CreateTabForBooking = (input: {
+  lines: { productId: string; qty: number }[]
+  clientIdempotencyKey: string
+  bookingId: string
+}) => ReturnType<CreateTabAction>
+
 type Props = {
   /**
    * El caller monta este diálogo SOLO cuando está abierto (mismo patrón que
@@ -58,6 +74,10 @@ type Props = {
   displayName: string | null
   listCatalogAction: ListCanteenCatalog
   sellTicketAction: SellTicketForBooking
+  /** Con esto el ticket ofrece "Anotar al turno". Sin esto, solo cobrar ahora (la Grilla). */
+  createTabAction?: CreateTabForBooking
+  /** Se anotó un consumo: el modal de cobro tiene que volver a leer lo anotado. */
+  onNoted?: () => void
 }
 
 export function BookingCanteenDialog({
@@ -67,6 +87,8 @@ export function BookingCanteenDialog({
   displayName,
   listCatalogAction,
   sellTicketAction,
+  createTabAction,
+  onNoted,
 }: Props) {
   const [catalog, setCatalog] = useState<{ products: CanteenProductRow[] } | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -116,6 +138,22 @@ export function BookingCanteenDialog({
             layout="dialog"
             onUnconfirmedChange={guard.onUnconfirmedChange}
             sellTicketAction={(input) => sellTicketAction({ ...input, bookingId })}
+            // El servidor ignora `debtorName` cuando viene `bookingId`: el nombre que
+            // sale en Caja es "Consumo de turno · Cancha 3 · 21:00", nunca algo que mande el cliente.
+            createTabAction={
+              createTabAction ? (input) => createTabAction({ ...input, bookingId }) : undefined
+            }
+            bookingTab={
+              createTabAction
+                ? {
+                    label: 'este turno',
+                    onNoted: () => {
+                      onOpenChange(false)
+                      onNoted?.()
+                    },
+                  }
+                : undefined
+            }
           />
         )}
       </DialogContent>

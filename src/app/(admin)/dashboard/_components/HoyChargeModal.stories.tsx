@@ -721,3 +721,53 @@ export const TurnoPerdido: Story = {
     await expect(dialog.queryByRole('button', { name: 'Dar por perdido' })).toBeNull()
   },
 }
+
+/**
+ * Lo pedido durante el partido queda anotado en el turno: el modal lo avisa, el botón
+ * suma cancha + consumo y un solo "Cobrar" salda primero lo anotado y después el turno.
+ */
+export const ConsumosAnotadosSeCobranJuntoConElTurno: Story = {
+  args: (() => {
+    const base = scenario(terminado())
+    return {
+      ...base,
+      actions: {
+        ...base.actions,
+        listBookingConsumosAction: fn(async () => ({
+          success: true as const,
+          consumos: [
+            {
+              tabId: 'tab-1',
+              totalAmount: 500_000,
+              items: [{ name: 'Cerveza', qty: 2 }],
+            },
+          ],
+        })),
+        settleTabAction: fn(async () => ({ success: true as const, total: 500_000 })),
+        cancelTabAction: fn(async () => ({ success: true as const })),
+      },
+    }
+  })(),
+  play: async ({ args }) => {
+    const dialog = await openDialog()
+    const grupo = await dialog.findByRole('group', { name: 'Consumos anotados' })
+    await expect(grupo).toHaveTextContent('2 × Cerveza')
+
+    // $60.000 de cancha + $5.000 de consumo, en un solo botón.
+    await userEvent.click(
+      dialog.getByRole('button', { name: /Cobrar \$\s65\.000 y dar por jugado/ }),
+    )
+    const settle = args.actions.settleTabAction as ReturnType<typeof fn>
+    await waitFor(() =>
+      expect(args.actions.completeAndChargeBookingAction).toHaveBeenCalledTimes(1),
+    )
+    await expect(settle).toHaveBeenCalledTimes(1)
+    await expect(settle).toHaveBeenCalledWith(
+      expect.objectContaining({ tabId: 'tab-1', charges: [{ amount: 500_000, method: 'cash' }] }),
+    )
+    // La cancha viaja con su monto, sin el consumo.
+    await expect(args.actions.completeAndChargeBookingAction).toHaveBeenCalledWith(
+      expect.objectContaining({ charges: [{ amount: 6_000_000, method: 'cash' }] }),
+    )
+  },
+}

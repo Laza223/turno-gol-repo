@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  chargeCta,
   chargeSplit,
   chargeTabs,
   counterPaidCents,
@@ -422,5 +423,44 @@ describe('chargeTabs', () => {
     const b = booking({ totalPaid: 4_200_000, pending: 1_800_000, team1Paid: 4_200_000 })
     expect(chargeTabs(b, F5).available).toContain('teams')
     expect(chargeTabs(b, F5).initial).toBe('teams')
+  })
+})
+
+describe('chargeCta con consumos anotados', () => {
+  const PENDIENTE = 2_400_000 // $24.000 de cancha
+  const CONSUMOS = 600_000 // 2 birras
+
+  it('sin consumos el rótulo es el de siempre', () => {
+    expect(chargeCta('advance', PENDIENTE, PENDIENTE)).toBe(
+      `Cobrar ${formatArs(PENDIENTE)} por adelantado`,
+    )
+    expect(chargeCta('settle', PENDIENTE, PENDIENTE, 0)).toBe(`Cobrar ${formatArs(PENDIENTE)}`)
+  })
+
+  it('suma los consumos al monto del botón en los tres modos', () => {
+    const total = formatArs(PENDIENTE + CONSUMOS)
+    expect(chargeCta('settle', PENDIENTE, PENDIENTE, CONSUMOS)).toBe(`Cobrar ${total}`)
+    expect(chargeCta('finish', PENDIENTE, PENDIENTE, CONSUMOS)).toBe(
+      `Cobrar ${total} y dar por jugado`,
+    )
+    expect(chargeCta('advance', PENDIENTE, PENDIENTE, CONSUMOS)).toBe(
+      `Cobrar ${total} por adelantado`,
+    )
+  })
+
+  it('"quedan" se calcula solo sobre la cancha: los consumos no cambian lo pendiente', () => {
+    const parcial = 1_000_000
+    expect(chargeCta('settle', PENDIENTE, parcial, CONSUMOS)).toBe(
+      `Cobrar ${formatArs(parcial + CONSUMOS)} · quedan ${formatArs(PENDIENTE - parcial)}`,
+    )
+  })
+
+  it('"supera lo pendiente" compara la cancha, no la cancha más los consumos', () => {
+    // Cobrar exactamente lo pendiente + consumos NO es pasarse.
+    expect(chargeCta('settle', PENDIENTE, PENDIENTE, CONSUMOS)).not.toMatch(/supera/)
+    // Pasarse de verdad sigue avisando, con el monto de la cancha.
+    expect(chargeCta('settle', PENDIENTE, PENDIENTE + 1, CONSUMOS)).toBe(
+      `Cobrar ${formatArs(PENDIENTE + 1)} · supera lo pendiente (${formatArs(PENDIENTE)})`,
+    )
   })
 })

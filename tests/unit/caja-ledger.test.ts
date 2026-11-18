@@ -78,6 +78,22 @@ describe('toLedgerRow', () => {
     expect(row).toMatchObject({ kind: 'fiado', text: 'Fiado cobrado · Cachi' })
   })
 
+  it('el consumo anotado a un turno se lee como cantina, no como fiado', () => {
+    const row = toLedgerRow(
+      cf({
+        category: 'product_sale',
+        description: 'Consumo de turno · Cancha 5 · 21:00',
+        bookingId: null,
+        counterpartName: null,
+      }),
+    )
+    expect(row).toMatchObject({
+      kind: 'cantina',
+      text: 'Consumo de turno · Cancha 5 · 21:00',
+      detail: null,
+    })
+  })
+
   it('un gasto sale en negativo y con su rubro al lado', () => {
     const row = toLedgerRow(
       cf({

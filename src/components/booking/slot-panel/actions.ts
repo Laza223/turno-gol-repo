@@ -3,6 +3,7 @@ import type { CancelReason } from '@/shared/cancel-reasons'
 import type { ChargeLine } from '@/components/admin/SplitPaymentFields'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { CourtRow } from '@/modules/courts/court.types'
+import type { BookingConsumo } from '@/modules/canteen/canteen.types'
 import type { ListRescheduleSlots, RescheduleBooking } from '../BookingRescheduleDialog'
 
 /**
@@ -16,6 +17,13 @@ export type RenderCanteenDialog = (args: {
   onOpenChange: (open: boolean) => void
   bookingId: string
   displayName: string | null
+  /** Se anotó un consumo al turno: el modal de cobro vuelve a leer lo anotado. */
+  onNoted?: () => void
+  /**
+   * El modal de este turno puede cobrar lo anotado (todavía queda saldo por cobrar): solo
+   * entonces se ofrece "Anotar al turno". En un turno ya saldado no hay dónde cobrarlo.
+   */
+  canNoteConsumo?: boolean
 }) => React.ReactNode
 
 /**
@@ -127,4 +135,24 @@ export type SlotPanelActions = Partial<WriteOffActions> & {
     bookingId: string,
     method: 'cash' | 'transfer' | 'other',
   ) => Promise<ActionResult>
+  /**
+   * Consumos anotados al turno (migr. 115, docs/decisions/2026-11-17-consumos-
+   * anotados-al-turno.md): lo anotado y sin cobrar de un turno, para que el cobro lo
+   * traiga sumado. Las tres van juntas o ninguna: sin ellas el modal cobra solo la
+   * cancha, como siempre (la Grilla no las cablea todavía).
+   */
+  listBookingConsumosAction?: (input: {
+    bookingId: string
+  }) => Promise<{ success: true; consumos: BookingConsumo[] } | { success: false; error: string }>
+  /** Cobra un anotado (con el medio del cobro del turno): entra en caja como cantina. */
+  settleTabAction?: (input: {
+    tabId: string
+    charges: { amount: number; method: 'cash' | 'transfer' | 'mercadopago' }[]
+    clientIdempotencyKey: string
+  }) => Promise<{ success: true; total: number } | { success: false; error: string }>
+  /** Quita un anotado (devuelve el stock). El motivo lo pone el modal: no es texto libre. */
+  cancelTabAction?: (input: {
+    tabId: string
+    reason: string
+  }) => Promise<{ success: true } | { success: false; error: string }>
 }

@@ -1,18 +1,33 @@
 'use client'
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import {
   CourtBoard,
   EarlierUnpaidBanner,
   type EarlierBooking,
 } from '@/components/dashboard/CourtBoard'
-import type { SlotPanelActions } from '@/components/booking/slot-panel/actions'
+import type { RenderCanteenDialog, SlotPanelActions } from '@/components/booking/slot-panel/actions'
+import type {
+  CreateTabForBooking,
+  ListCanteenCatalog,
+  SellTicketForBooking,
+} from '@/app/(admin)/grilla/_components/BookingCanteenDialog'
 import { useNowMsAfterHydration } from '@/hooks/use-now'
 import { rowDisplayName } from '@/lib/dashboard/day-bookings'
 import { buildCourtBoard, type BoardBooking } from '@/lib/dashboard/today-board'
 import { CobrarVariosDialog } from './CobrarVariosDialog'
 import { HoyChargeModal, type HoyCourt } from './HoyChargeModal'
+
+// Se carga recién al abrir "Cantina" desde el cobro de un turno (mismo patrón que `GrillaView`).
+const BookingCanteenDialog = dynamic(
+  () =>
+    import('@/app/(admin)/grilla/_components/BookingCanteenDialog').then(
+      (m) => m.BookingCanteenDialog,
+    ),
+  { ssr: false },
+)
 
 /** Cada cuánto se refresca Hoy solo. Sin esto "Terminó hace N min" y "ahora" quedan
  *  viejos y no aparecen las reservas online que entraron mientras la pantalla
@@ -50,6 +65,7 @@ export function HoyShell({
   cancellationPolicyHours,
   lateCancelHours = 0,
   actions,
+  canteen,
 }: {
   /** Todos los turnos del día (todas las canchas), con sus instantes físicos. */
   bookings: BoardBooking[]
@@ -67,6 +83,16 @@ export function HoyShell({
   cancellationPolicyHours: number
   lateCancelHours?: number
   actions: SlotPanelActions
+  /**
+   * La cantina de un turno: desde el modal de cobro se puede anotar un consumo al
+   * turno y se cobra junto con la cancha (docs/decisions/2026-11-17-consumos-
+   * anotados-al-turno.md). Sin esto el modal no ofrece "Cantina".
+   */
+  canteen?: {
+    listCatalogAction: ListCanteenCatalog
+    sellTicketAction: SellTicketForBooking
+    createTabAction: CreateTabForBooking
+  }
 }) {
   const router = useRouter()
   const [isRefreshing, startRefresh] = useTransition()
@@ -115,6 +141,19 @@ export function HoyShell({
         courtName: courts.find((c) => c.id === nextBooking.courtId)?.name ?? '',
         onOpen: () => setOpenId(nextBooking.id),
       }
+    : undefined
+
+  // El diálogo de cantina del turno: una Server Component no puede pasar un componente
+  // por prop, así que la fábrica se arma acá, del lado del cliente.
+  const renderCanteenDialog: RenderCanteenDialog | undefined = canteen
+    ? ({ canNoteConsumo, ...args }) => (
+        <BookingCanteenDialog
+          {...args}
+          listCatalogAction={canteen.listCatalogAction}
+          sellTicketAction={canteen.sellTicketAction}
+          createTabAction={canNoteConsumo ? canteen.createTabAction : undefined}
+        />
+      )
     : undefined
 
   // Con un modal abierto NO se refresca: revalidar por debajo de alguien que está
@@ -189,9 +228,11 @@ export function HoyShell({
           nowMs={nowMs}
           isRefreshing={isRefreshing}
           actions={actions}
-          // En Hoy el modal no ofrece cantina ni "Marcar ausente" (pedido del dueño,
-          // 2026-09-25): la venta está en la columna de al lado y el ausente se anota
-          // desde la Grilla. Sin `renderCanteenDialog` el modal no ofrece la cantina.
+          // En Hoy el modal no ofrece "Marcar ausente" (pedido del dueño, 2026-09-25): se
+          // anota desde la Grilla. La cantina volvió el 2026-11-17, pero ya no como una
+          // segunda caja: "Anotar al turno" deja el consumo en la cuenta de este turno
+          // y el cobro lo suma (docs/decisions/2026-11-17-consumos-anotados-al-turno.md).
+          renderCanteenDialog={renderCanteenDialog}
           allowNoShow={false}
           next={next}
           onClose={() => setOpenId(null)}

@@ -48,15 +48,20 @@ export function chargeMode(booking: GridBooking, hasEnded: boolean): ChargeMode 
  * al hacer click aparecía el error citando un monto que el admin nunca vio en
  * pantalla. Mostrar el monto real deja la discordancia a la vista ANTES de
  * tocar "Cobrar".
+ *
+ * `extraCents`: los consumos anotados que se cobran junto con el turno (migr. 115).
+ * Suman al monto del botón ("Cobrar $25.000": cancha + 2 birras) pero NO entran en
+ * ninguna comparación contra lo pendiente: ese saldo es solo de la cancha.
  */
 export function chargeCta(
   mode: Exclude<ChargeMode, null>,
   pendingCents: number,
   amountCents: number,
+  extraCents = 0,
 ): string {
-  const monto = formatArs(amountCents)
+  const monto = formatArs(amountCents + extraCents)
   if (amountCents > pendingCents) {
-    return `Cobrar ${monto} · supera lo pendiente (${formatArs(pendingCents)})`
+    return `Cobrar ${formatArs(amountCents)} · supera lo pendiente (${formatArs(pendingCents)})`
   }
   const isFull = amountCents > 0 && amountCents === pendingCents
   if (isFull) {

@@ -1,3 +1,4 @@
+import { ViewTransition } from 'react'
 import type { RivalPublicMatch, RivalRosterEntry } from '@/modules/rival/rival.types'
 import type { ActionResult } from '@/shared/types/action-result'
 import type { RivalReportReason } from '@/modules/rival/rival.schema'
@@ -142,8 +143,16 @@ export function PeopleSection({
     <section aria-label={title} className="rv-panel glass-painted rv-rise gap-1">
       <h2 className="rv-h2">{title}</h2>
       <ul>
+        {/* Un pedido aceptado o rechazado sale de la lista: la fila se cierra y las demás suben. */}
         {entries.map((e) => (
-          <PersonRow key={e.participantId} entry={e} detail={detail} actions={actions} />
+          <ViewTransition
+            key={e.participantId}
+            exit="portal-cerrar"
+            update="portal-mover"
+            default="none"
+          >
+            <PersonRow entry={e} detail={detail} actions={actions} />
+          </ViewTransition>
         ))}
       </ul>
     </section>

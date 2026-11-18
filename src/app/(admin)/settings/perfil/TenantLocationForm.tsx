@@ -1,11 +1,9 @@
 'use client'
 
-import { useActionState, useMemo, useState } from 'react'
+import { useActionState, useState } from 'react'
 import { MapPin, AlertTriangle } from 'lucide-react'
 import { SubmitButton } from '@/components/ui/submit-button'
-import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
-import LocationPickerField from '@/components/maps/LocationPickerField'
-import { PROVINCES, resolveMapCenter } from '@/modules/tenants/tenant.geo'
+import AddressFinder from '@/components/geo/AddressFinder'
 import type { UpdateTenantLocationResult } from './actions'
 
 type UpdateTenantLocationAction = (
@@ -15,19 +13,13 @@ type UpdateTenantLocationAction = (
 
 const INITIAL: UpdateTenantLocationResult = { success: true }
 
-const PROVINCE_OPTIONS: ComboboxOption[] = PROVINCES.map((p) => ({ value: p, label: p }))
-
-const inputClass =
-  'mt-1.5 flex h-11 md:h-10 w-full rounded-lg border border-border bg-card px-3.5 text-base md:text-sm text-foreground shadow-xs transition placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus:border-emerald-500'
-
 /**
  * Ubicación del complejo. Única pantalla que edita dirección/ciudad/provincia
  * después del wizard, y única forma de cargar el punto del mapa en toda la
  * aplicación.
  *
- * La provincia se guarda por input oculto (el Combobox no es un control
- * nativo), sin `required`: un oculto queda fuera de la validación del browser
- * y nunca bloquearía el envío. La validación real es `tenantLocationSchema`.
+ * Los campos address/city/province/latitude/longitude los emite `AddressFinder`
+ * como inputs ocultos; la validación real es `tenantLocationSchema`.
  */
 export function TenantLocationForm({
   currentAddress,
@@ -46,20 +38,6 @@ export function TenantLocationForm({
 }) {
   const [state, formAction] = useActionState(action, INITIAL)
   const [didSubmit, setDidSubmit] = useState(false)
-  // La provincia elegida recentra el mapa mientras todavía no haya punto: es
-  // lo único que evita que abra en medio del Atlántico. Tiene que ser estado
-  // porque el Combobox no es un control nativo y el usuario la cambia ANTES de
-  // guardar.
-  //
-  // El "valor viejo" que la regla teme acá es justamente lo que hay que
-  // conservar: si otro form de esta misma pantalla revalida la página, la prop
-  // vuelve con el valor de la base y pisaría una provincia que el dueño ya
-  // eligió y todavía no guardó. Los campos de dirección y localidad de al lado
-  // se comportan igual, con `defaultValue`: acá el estado es lo que los hace
-  // consistentes, no lo que los rompe. Mismo patrón que `StepIdentity`.
-  // react-doctor-disable-next-line react-doctor/no-derived-useState
-  const [province, setProvince] = useState(currentProvince)
-  const fallback = useMemo(() => resolveMapCenter(province, null, null), [province])
   const hasLocation = currentLatitude !== null && currentLongitude !== null
 
   return (
@@ -83,65 +61,7 @@ export function TenantLocationForm({
         className="mt-4 lg:mt-6 max-w-xl space-y-3 lg:space-y-4"
       >
         <div>
-          <label
-            htmlFor="tenant-location-address"
-            className="block text-sm font-medium text-foreground"
-          >
-            Dirección <span className="text-red-500 dark:text-red-400">*</span>
-          </label>
-          <input
-            id="tenant-location-address"
-            name="address"
-            type="text"
-            defaultValue={currentAddress}
-            placeholder="Ej: Av. Corrientes 1234"
-            required
-            className={inputClass}
-          />
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label
-              htmlFor="tenant-location-city"
-              className="block text-sm font-medium text-foreground"
-            >
-              Localidad <span className="text-red-500 dark:text-red-400">*</span>
-            </label>
-            <input
-              id="tenant-location-city"
-              name="city"
-              type="text"
-              defaultValue={currentCity}
-              placeholder="Ej: Rosario"
-              required
-              className={inputClass}
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="tenant-location-province"
-              className="block text-sm font-medium text-foreground"
-            >
-              Provincia <span className="text-red-500 dark:text-red-400">*</span>
-            </label>
-            <div className="mt-1.5">
-              <Combobox
-                id="tenant-location-province"
-                options={PROVINCE_OPTIONS}
-                value={province}
-                onChange={setProvince}
-                placeholder="Buscá tu provincia…"
-                listboxLabel="Provincias"
-              />
-            </div>
-            <input type="hidden" name="province" value={province} />
-          </div>
-        </div>
-
-        <div>
-          <p className="text-sm font-medium text-foreground">Punto en el mapa</p>
+          <p className="text-sm font-medium text-foreground">Dónde queda</p>
           {hasLocation ? (
             <p className="mb-2 text-xs text-muted-foreground">
               Es lo que te hace aparecer en el buscador con la distancia hasta el jugador.
@@ -160,11 +80,21 @@ export function TenantLocationForm({
               </span>
             </div>
           )}
-          <LocationPickerField
-            initialLatitude={currentLatitude}
-            initialLongitude={currentLongitude}
-            fallbackCenter={fallback.center}
-            fallbackZoom={fallback.zoom}
+          <AddressFinder
+            idPrefix="tenant-location"
+            names
+            showMap
+            value={
+              currentAddress && currentCity && currentProvince
+                ? {
+                    address: currentAddress,
+                    city: currentCity,
+                    province: currentProvince,
+                    latitude: currentLatitude,
+                    longitude: currentLongitude,
+                  }
+                : null
+            }
           />
         </div>
 

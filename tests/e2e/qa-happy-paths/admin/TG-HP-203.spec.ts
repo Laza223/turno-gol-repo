@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { test, expect } from '../../fixtures'
 import { writeEvidence, getSql } from '../_qa/evidence'
 import { deleteFreshAdminTenants } from '../../_helpers/fresh-tenant-cleanup'
+import { fillAddress } from '../../_helpers/public-signup'
 import { suppressPushPrompt } from '../_qa/session'
 
 // Mismo id que scripts/seed-e2e.ts (E2E.freshStaffUserId) — ver capture-screenshots.spec.ts.
@@ -16,7 +17,7 @@ const FRESH_STAFF_USER_ID = '00000000-0000-4000-8000-000000000005'
  * Flujo: Paso 1 Complejo (nombre y dirección) → Paso 2 Canchas (Fútbol 5 = 1) →
  *   Paso 3 Horarios (08 a 00) → Paso 4 Precios → Paso 5 Tu complejo (3 toques) →
  *   Resumen → /onboarding/listo → /dashboard.
- * La dirección se carga "a mano" para no depender de Georef (un tercero).
+ * La dirección se carga con `fillAddress` (localidad + "tal cual"), sin depender de Georef.
  * Evidence anchors: src/app/onboarding/[paso]/page.tsx, actions.ts, resumen/page.tsx,
  *   StepComplejo.tsx, StepCanchas.tsx, StepHorarios.tsx, StepPrecios.tsx, StepTuComplejo.tsx.
  */
@@ -56,11 +57,7 @@ test.describe('TG-HP-203 — Onboarding wizard 5 pasos', () => {
       await page.getByLabel(/nombre del complejo/i).fill(tenantName)
       await page.getByRole('button', { name: 'Siguiente' }).click()
       await expect(page.getByRole('heading', { name: /¿Dónde queda/i })).toBeVisible()
-      await page.getByRole('button', { name: /escribir ciudad y provincia a mano/i }).click()
-      await page.getByLabel('Dirección').fill('Av. Test QA 203')
-      await page.getByLabel('Ciudad').fill('Luján')
-      await page.getByRole('combobox', { name: /provincia/i }).click()
-      await page.getByRole('option', { name: 'Buenos Aires' }).click()
+      await fillAddress(page, 'Av. Test QA 203')
       await page.getByRole('button', { name: 'Siguiente' }).click()
 
       // ── Paso 2 — Canchas (Fútbol 5 = 1 por defecto) ──────────────────

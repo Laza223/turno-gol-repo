@@ -1,12 +1,10 @@
 /**
- * Geografía del complejo: la lista de provincias que ofrece el formulario y el
- * centro con el que abre el mapa cuando el punto todavía no está cargado.
+ * Geografía de Argentina: la lista de provincias (formularios, validación de la zona de RIVAL)
+ * y el centro con el que abre el mapa cuando el punto todavía no está cargado.
  *
- * Deliberadamente SIN geocodificador (Google Places, Mapbox, Nominatim): doc10
- * §82 ya decidió que la dirección es texto libre y el punto es opcional y
- * manual, para que el interior y las zonas rurales no queden bloqueados por un
- * proveedor que no los encuentra. Esta tabla de 24 filas es lo único que hace
- * falta para que el mapa no abra en medio del océano.
+ * La búsqueda de localidades y calles vive en `src/modules/geo` (dataset propio, Georef y
+ * OpenStreetMap), pero NUNCA bloquea: si nada aparece, la dirección se carga a mano y el punto
+ * es opcional (doc10 §82). Decisión: `docs/decisions/2026-11-17-ubicacion-toda-argentina.md`.
  */
 
 export const PROVINCES = [

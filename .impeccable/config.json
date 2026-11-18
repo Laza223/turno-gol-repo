@@ -17,15 +17,6 @@
         "reason": "Lazar (2026-09-23, user confirmed): Inter es la letra actual del panel y el refinamiento la conserva"
       },
       {
-        "rule": "gray-on-color",
-        "value": "*",
-        "files": [
-          "src/app/(business)/r/[code]/page.tsx"
-        ],
-        "createdAt": "2026-09-27T01:58:29.938Z",
-        "reason": "Agent: idéntico al CTA primario ya shipeado en (business)/para-complejos/page.tsx L178 — slate-950 es casi negro sobre emerald-500 brillante, alto contraste real, no gris lavado"
-      },
-      {
         "rule": "gradient-text",
         "value": "*",
         "files": [
@@ -42,12 +33,6 @@
         ],
         "createdAt": "2026-10-30T15:11:37.389Z",
         "reason": "DESIGN.md: .hero-accent-text es la receta del sistema para el tramo degradé del titular (La Previa)"
-      },
-      {
-        "rule": "design-system-font",
-        "value": "sora",
-        "createdAt": "2026-10-30T15:11:37.596Z",
-        "reason": "DESIGN.md línea 429: Sora es la Label Font de microrrótulos de la web comercial"
       },
       {
         "rule": "radial-spotlight-glow",

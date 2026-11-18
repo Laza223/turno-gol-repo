@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Archivo, Sora } from 'next/font/google'
+import { Inter, Archivo } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/components/ui/toaster'
 import { SITE_URL, SITE_NAME, SITE_LOCALE, DEFAULT_OG_IMAGE } from '@/lib/seo/metadata'
@@ -19,15 +19,6 @@ const archivo = Archivo({
   subsets: ['latin'],
   axes: ['wdth'],
   variable: '--font-archivo',
-  display: 'swap',
-})
-
-// Micro-label face (uppercase eyebrows, `font-logo`). NOT the wordmark: <Logo /> uses
-// Archivo 900 italic (`font-display`).
-const sora = Sora({
-  subsets: ['latin'],
-  weight: ['600', '700', '800'],
-  variable: '--font-sora',
   display: 'swap',
 })
 
@@ -64,11 +55,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="es"
-      suppressHydrationWarning
-      className={`${inter.variable} ${archivo.variable} ${sora.variable}`}
-    >
+    <html lang="es" suppressHydrationWarning className={`${inter.variable} ${archivo.variable}`}>
       <body className="font-sans antialiased">
         <ThemeProvider>
           <NextTopLoader color="#059669" showSpinner={false} />

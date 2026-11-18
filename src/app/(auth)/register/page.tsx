@@ -6,7 +6,6 @@ import { getStaffTenant } from '@/modules/tenants/tenant.service'
 import { referralCodeSchema } from '@/modules/referrals/referral.schema'
 import { isInAppBrowser } from '@/lib/in-app-browser'
 import { signUpWithMailAction, startGoogleOwnerSignupAction } from './actions'
-import { searchSignupAddressAction } from './geocode-action'
 import { SignupFlow } from './SignupFlow'
 
 export const metadata: Metadata = {
@@ -49,7 +48,6 @@ export default async function RegisterPage({
     <SignupFlow
       signUpAction={signUpWithMailAction}
       googleAction={startGoogleOwnerSignupAction}
-      geocodeAction={searchSignupAddressAction}
       refCode={refCode}
       inAppBrowser={isInAppBrowser((await headers()).get('user-agent'))}
       accountError={accountErrorFor(sp?.error)}

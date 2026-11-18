@@ -134,6 +134,7 @@ const ownerName = z.string().trim().min(2, 'Mínimo 2 caracteres').max(80, 'Máx
 export const assistedSignupSchema = createTenantSchema
   .pick({ name: true, address: true, city: true, province: true, phone: true })
   .extend({
+    ...coordinateFields,
     firstName: ownerName,
     lastName: ownerName,
     // `.trim().toLowerCase()` ANTES de validar: `z.email()` corre primero y
@@ -146,5 +147,6 @@ export const assistedSignupSchema = createTenantSchema
       .optional()
       .transform((v) => (v ? v : null)),
   })
+  .refine(bothOrNeither, COORDINATE_PAIR_MESSAGE)
 
 export type AssistedSignupInput = z.infer<typeof assistedSignupSchema>

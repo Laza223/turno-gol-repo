@@ -114,7 +114,9 @@
   /* Sin `animation-timeline` el bloque se ve entero, sin animar. */
   @supports (animation-timeline: view()) {
     .fr-reveal {
-      animation: fr-aparecer linear backwards;
+      animation-name: fr-aparecer;
+      animation-timing-function: linear;
+      animation-fill-mode: backwards;
       animation-timeline: view();
       animation-range: entry 0% entry 34%;
     }

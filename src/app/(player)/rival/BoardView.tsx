@@ -88,6 +88,7 @@ function BoardCard({
   return (
     <li>
       <Link
+        transitionTypes={['nav-forward']}
         href={`/rival/partido/${item.id}`}
         className="ri-match glass-painted rv-rise h-full"
         style={rise(index)}

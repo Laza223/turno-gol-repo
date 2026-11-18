@@ -11,6 +11,12 @@ const PushNotificationManager = dynamic(
   { ssr: false, loading: () => null },
 )
 
-export function PushNotificationManagerLoader({ identityKey }: { identityKey?: string }) {
-  return <PushNotificationManager identityKey={identityKey} />
+export function PushNotificationManagerLoader({
+  identityKey,
+  banner,
+}: {
+  identityKey?: string
+  banner?: boolean
+}) {
+  return <PushNotificationManager identityKey={identityKey} banner={banner} />
 }

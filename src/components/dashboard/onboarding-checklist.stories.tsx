@@ -74,7 +74,7 @@ export const ConCuaderno: Story = {
   args: { state: { ...PENDING_STATE, hasStaffBookings: false }, bookingIntake: 'notebook' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Pasá tus equipos fijos a la grilla')).toBeInTheDocument()
+    await expect(canvas.getByText('Pasá tus turnos fijos a la grilla')).toBeInTheDocument()
   },
 }
 

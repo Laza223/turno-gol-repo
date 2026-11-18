@@ -3,7 +3,7 @@
  * Modal y cartel de permiso del panel (decisión 2026-11-16,
  * docs/decisions/2026-11-16-push-urgente-permiso-y-recordatorio-jugador.md):
  * - el modal se abre solo una vez por dispositivo y por situación;
- * - el cartel no tiene "Cerrar": queda mientras el dispositivo no reciba avisos;
+ * - el cartel se cierra con la X y vuelve a los 7 días (decisión 2026-11-17);
  * - si el dispositivo ya recibe avisos, no se muestra nada.
  *
  * Mismo patrón de mocks que push-broadcast-dedupe.test.tsx: Notification /
@@ -93,6 +93,8 @@ afterAll(() => {
 import { PushNotificationManager } from '@/components/admin/PushNotificationManager'
 
 const MODAL_SEEN_KEY = 'turnogol:notif-modal-seen:unsubscribed'
+const DISMISSED_KEY = 'turnogol:notif-modal-seen:banner-dismissed'
+const BANNER_TEXT = 'No tenés las notificaciones activadas en este dispositivo.'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -132,7 +134,7 @@ describe('PushNotificationManager — modal y cartel de permiso', () => {
     expect(Notification.requestPermission).toHaveBeenCalledTimes(1)
   })
 
-  it('después de la primera vez no vuelve a abrir el modal: queda el cartel, sin "Cerrar"', async () => {
+  it('después de la primera vez no vuelve a abrir el modal: queda el cartel', async () => {
     localStorageMock.setItem(MODAL_SEEN_KEY, String(Date.now()))
     await act(async () => {
       render(<PushNotificationManager />)
@@ -142,7 +144,48 @@ describe('PushNotificationManager — modal y cartel de permiso', () => {
       await screen.findByText('No tenés las notificaciones activadas en este dispositivo.'),
     ).toBeVisible()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Cerrar' })).not.toBeInTheDocument()
+  })
+
+  it('la X oculta el cartel y lo recuerda por 7 días', async () => {
+    localStorageMock.setItem(MODAL_SEEN_KEY, String(Date.now()))
+    await act(async () => {
+      render(<PushNotificationManager />)
+    })
+    await screen.findByText(BANNER_TEXT)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Cerrar aviso' }))
+    })
+    expect(screen.queryByText(BANNER_TEXT)).not.toBeInTheDocument()
+    expect(localStorageMock.getItem(DISMISSED_KEY)).not.toBeNull()
+
+    cleanup()
+    await act(async () => {
+      render(<PushNotificationManager />)
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20))
+    })
+    expect(screen.queryByText(BANNER_TEXT)).not.toBeInTheDocument()
+  })
+
+  it('el cartel reaparece pasados los 7 días', async () => {
+    localStorageMock.setItem(MODAL_SEEN_KEY, String(Date.now()))
+    localStorageMock.setItem(DISMISSED_KEY, String(Date.now() - 8 * 24 * 60 * 60 * 1000))
+    await act(async () => {
+      render(<PushNotificationManager />)
+    })
+    expect(await screen.findByText(BANNER_TEXT)).toBeVisible()
+  })
+
+  it('con banner=false no renderiza el cartel', async () => {
+    localStorageMock.setItem(MODAL_SEEN_KEY, String(Date.now()))
+    await act(async () => {
+      render(<PushNotificationManager banner={false} />)
+    })
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20))
+    })
+    expect(screen.queryByText(BANNER_TEXT)).not.toBeInTheDocument()
   })
 
   it('el botón del cartel vuelve a abrir el modal', async () => {

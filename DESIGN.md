@@ -1,6 +1,6 @@
 ---
 name: TurnoGol
-description: El sistema con el que un complejo de fútbol lleva su día (grilla, cobro, cantina y caja) y el portal donde el jugador reserva.
+description: El sistema con el que un complejo de fútbol lleva su día (grilla, cobro, cantina y caja) y el portal de vidrio donde el jugador reserva.
 colors:
   primary: 'hsl(163 94% 24%)'
   primary-foreground: 'hsl(0 0% 100%)'
@@ -32,16 +32,36 @@ colors:
   brand-text-dark: '#34d399'
   brand-label-dark: '#6ee7b7'
   night-slab: '#020617'
-  portal-background: 'hsl(0 0% 100%)'
-  portal-surface: 'hsl(210 40% 96.1%)'
-  portal-muted-foreground: 'hsl(215.3 19.3% 34.5%)'
-  portal-border: 'hsl(214.3 31.8% 91.4%)'
-  portal-input: 'hsl(215.4 16.3% 46.9%)'
-  portal-input-dark: 'hsl(215.4 16.3% 50%)'
-  portal-last-fill: '#fffbeb'
-  portal-last-border: '#fcd34d'
-  portal-last-text: '#92400e'
-  portal-last-text-dark: '#fcd34d'
+  portal-bg: '#f3f6f3'
+  portal-bg-dark: '#020617'
+  portal-ink: '#0b1220'
+  portal-ink-dark: '#f8fafc'
+  portal-muted: '#2c3848'
+  portal-muted-dark: '#d5dce6'
+  portal-soft: '#4d5868'
+  portal-soft-dark: '#b6c0cf'
+  portal-green: '#04775b'
+  portal-green-dark: '#34d399'
+  portal-btn-a: '#058467'
+  portal-btn-a-dark: '#43e0a3'
+  portal-btn-b: '#046b52'
+  portal-btn-b-dark: '#10b981'
+  portal-on-green: '#ffffff'
+  portal-on-green-dark: '#022c22'
+  portal-slot-bg: '#e4f3ed'
+  portal-slot-line: '#a3d3c1'
+  portal-slot-ink: '#04674f'
+  portal-slot-ink-dark: '#6ee7b7'
+  portal-glass: 'rgb(255 255 255 / 0.82)'
+  portal-glass-dark: 'rgb(255 255 255 / 0.14)'
+  portal-glass-line: 'rgb(255 255 255 / 0.95)'
+  portal-glass-line-dark: 'rgb(255 255 255 / 0.17)'
+  portal-inner: 'rgb(255 255 255 / 0.74)'
+  portal-inner-dark: 'rgb(255 255 255 / 0.07)'
+  portal-warn: '#7c4a03'
+  portal-warn-dark: '#fcd34d'
+  portal-bad: '#a3122d'
+  portal-bad-dark: '#fda4af'
 typography:
   display:
     fontFamily: 'Archivo, ui-sans-serif, system-ui, sans-serif'
@@ -89,38 +109,33 @@ typography:
     fontWeight: 600
     lineHeight: 1
     letterSpacing: '0.06em'
+  portal-title:
+    fontFamily: 'Archivo, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '2.5rem'
+    fontWeight: 700
+    lineHeight: 1.05
+    letterSpacing: '-0.035em'
   portal-body:
-    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
+    fontFamily: 'Archivo, ui-sans-serif, system-ui, sans-serif'
     fontSize: '1rem'
     fontWeight: 400
     lineHeight: 1.5
   portal-label:
-    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
-    fontSize: '1rem'
-    fontWeight: 500
-    lineHeight: 1.5
-  portal-section:
     fontFamily: 'Archivo, ui-sans-serif, system-ui, sans-serif'
-    fontSize: '1.25rem'
-    fontWeight: 800
-    lineHeight: '28px'
-    letterSpacing: '-0.01em'
+    fontSize: '1rem'
+    fontWeight: 600
+    lineHeight: 1.5
   portal-hour:
-    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
+    fontFamily: 'Archivo, ui-sans-serif, system-ui, sans-serif'
     fontSize: '1rem'
     fontWeight: 600
     lineHeight: '20px'
     fontFeature: 'tnum'
   portal-note:
-    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
+    fontFamily: 'Archivo, ui-sans-serif, system-ui, sans-serif'
     fontSize: '13px'
     fontWeight: 400
     lineHeight: '16px'
-  portal-strong:
-    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
-    fontSize: '1rem'
-    fontWeight: 600
-    lineHeight: 1.5
 rounded:
   sm: '4px'
   md: '6px'
@@ -208,149 +223,92 @@ components:
     rounded: '{rounded.md}'
     padding: '6px 8px'
   button-portal-primary:
-    backgroundColor: '{colors.primary}'
-    textColor: '{colors.primary-foreground}'
+    backgroundColor: '{colors.portal-btn-a}'
+    textColor: '{colors.portal-on-green}'
     typography: '{typography.portal-label}'
-    rounded: '{rounded.xl}'
-    padding: '12px 16px'
-    height: '48px'
-    width: '100%'
-  button-portal-outline:
-    backgroundColor: '{colors.card}'
-    textColor: '{colors.foreground}'
-    typography: '{typography.portal-label}'
-    rounded: '{rounded.xl}'
-    padding: '12px 16px'
-    height: '48px'
-    width: '100%'
-  button-portal-outline-disabled:
-    backgroundColor: '{colors.card}'
-    textColor: '{colors.portal-muted-foreground}'
-  nav-portal-header:
-    backgroundColor: '{colors.card}'
-    textColor: '{colors.muted-foreground}'
-    height: '56px'
-  nav-portal-bottom-item:
-    textColor: '{colors.muted-foreground}'
-    height: '56px'
-  nav-portal-bottom-item-active:
-    textColor: '{colors.brand-text}'
-  input-portal:
-    backgroundColor: '{colors.card}'
-    textColor: '{colors.foreground}'
-    typography: '{typography.portal-body}'
-    rounded: '{rounded.xl}'
-    padding: '8px 14px'
-    height: '48px'
-  chip-portal:
-    backgroundColor: '{colors.card}'
-    textColor: '{colors.foreground}'
-    typography: '{typography.label}'
     rounded: '{rounded.full}'
-    padding: '0 16px'
-    height: '44px'
-  chip-portal-selected:
-    backgroundColor: '{colors.primary}'
-    textColor: '{colors.primary-foreground}'
-    rounded: '{rounded.full}'
-  hour-slot:
-    backgroundColor: '{colors.card}'
-    textColor: '{colors.foreground}'
-    typography: '{typography.portal-hour}'
-    rounded: '{rounded.xl}'
-    padding: '4px'
-    height: '50px'
-  hour-slot-selected:
-    backgroundColor: '{colors.primary}'
-    textColor: '{colors.primary-foreground}'
-  hour-slot-last:
-    backgroundColor: '{colors.portal-last-fill}'
-    textColor: '{colors.portal-last-text}'
-  hour-slot-held:
-    backgroundColor: '{colors.card}'
-    textColor: '{colors.foreground}'
-  hour-slot-full:
-    backgroundColor: '{colors.portal-surface}'
-    textColor: '{colors.portal-muted-foreground}'
-  court-row:
-    backgroundColor: '{colors.card}'
-    textColor: '{colors.foreground}'
-    rounded: '{rounded.xl}'
-    padding: '8px 16px'
-    height: '64px'
-  notice-portal:
-    backgroundColor: '{colors.portal-surface}'
-    textColor: '{colors.foreground}'
-    rounded: '{rounded.xl}'
-    padding: '16px'
-  summary-portal:
-    backgroundColor: '{colors.card}'
-    textColor: '{colors.foreground}'
-    typography: '{typography.portal-body}'
-    rounded: '{rounded.xl}'
-    padding: '16px'
-  pay-option:
-    backgroundColor: '{colors.card}'
-    textColor: '{colors.foreground}'
-    typography: '{typography.portal-body}'
-    rounded: '{rounded.xl}'
-    padding: '12px 16px'
-    height: '48px'
-  pay-option-selected:
-    backgroundColor: '{colors.portal-surface}'
-    textColor: '{colors.foreground}'
-  button-portal-fixed:
-    backgroundColor: '{colors.primary}'
-    textColor: '{colors.primary-foreground}'
-    typography: '{typography.portal-label}'
-    rounded: '{rounded.xl}'
-    padding: '12px 16px'
+    padding: '0 26px'
     height: '52px'
-    width: '100%'
-  result-portal:
-    textColor: '{colors.foreground}'
-    typography: '{typography.display}'
-    padding: '16px 16px 48px'
-    width: '560px'
-  action-row-portal:
-    backgroundColor: '{colors.card}'
-    textColor: '{colors.foreground}'
-    typography: '{typography.portal-strong}'
-    rounded: '{rounded.xl}'
-    padding: '12px 16px'
-    height: '48px'
-    width: '100%'
+  button-portal-glass:
+    backgroundColor: '{colors.portal-glass}'
+    textColor: '{colors.portal-ink}'
+    typography: '{typography.portal-label}'
+    rounded: '{rounded.full}'
+    padding: '0 26px'
+    height: '52px'
+  nav-portal-header:
+    backgroundColor: '{colors.portal-glass}'
+    textColor: '{colors.portal-ink}'
+    rounded: '{rounded.full}'
+    height: '60px'
+  nav-portal-tabbar:
+    backgroundColor: '{colors.portal-glass}'
+    textColor: '{colors.portal-ink}'
+    rounded: '{rounded.full}'
+    height: '66px'
+  input-portal:
+    backgroundColor: '{colors.portal-inner}'
+    textColor: '{colors.portal-ink}'
+    typography: '{typography.portal-body}'
+    rounded: '18px'
+    padding: '0 16px'
+    height: '52px'
+  hour-slot:
+    backgroundColor: '{colors.portal-slot-bg}'
+    textColor: '{colors.portal-ink}'
+    typography: '{typography.portal-hour}'
+    rounded: '20px'
+    height: '64px'
+  hour-slot-selected:
+    backgroundColor: '{colors.portal-btn-a}'
+    textColor: '{colors.portal-on-green}'
+  hour-slot-last:
+    textColor: '{colors.portal-warn}'
+  glass-card:
+    backgroundColor: '{colors.portal-glass}'
+    textColor: '{colors.portal-ink}'
+    typography: '{typography.portal-body}'
+    rounded: '28px'
+    padding: '16px'
+  glass-sheet:
+    backgroundColor: '{colors.portal-glass}'
+    textColor: '{colors.portal-ink}'
+    rounded: '32px'
+    padding: '10px 20px 20px'
+  reserve-bar:
+    backgroundColor: '{colors.portal-glass}'
+    textColor: '{colors.portal-ink}'
+    rounded: '28px'
+    padding: '12px'
 ---
 
 # Design System: TurnoGol
 
-> **Portal en migración a vidrio (2026-11-13).** [`docs/decisions/2026-11-13-portal-vidrio.md`](docs/decisions/2026-11-13-portal-vidrio.md) supera la nota de abajo: el portal pasa a vidrio en claro y oscuro. Para las pantallas del portal mandan, en este orden, esa decisión, la [dirección de diseño y movimiento](docs/planning/2026-11-13-portal-vidrio-direccion.md) y el mockup [`docs/planning/mockups/2026-11-13-portal-vidrio/`](docs/planning/mockups/2026-11-13-portal-vidrio/README.md). Este archivo se reescribe en la fase F9 del [plan](docs/planning/2026-11-13-portal-vidrio-plan.md). Para el panel sigue mandando sin cambios.
->
-> **Nota anterior (2026-11-08), superada.** [`docs/decisions/2026-11-08-portal-plano-dos-temas.md`](docs/decisions/2026-11-08-portal-plano-dos-temas.md) supera a La Previa: el portal pasa a plano y limpio en claro y oscuro, con una sola tipografía (Archivo), chips en píldora y la barra inferior flotante. El contrato visual por ahora es el mockup [`docs/planning/mockups/2026-11-08-portal-plano/`](docs/planning/mockups/2026-11-08-portal-plano/README.md). Este archivo se reescribe en la fase P4; hasta entonces, lo que dice del portal describe lo que todavía no migró.
+> **El portal es de vidrio (decisión del 2026-11-13).** [`docs/decisions/2026-11-13-portal-vidrio.md`](docs/decisions/2026-11-13-portal-vidrio.md) reemplazó a La Previa (decisión del 2026-10-20) y a La Reserva, y supera el look de [`docs/decisions/2026-11-08-portal-plano-dos-temas.md`](docs/decisions/2026-11-08-portal-plano-dos-temas.md). Para las pantallas del portal mandan, en este orden, esa decisión, la [dirección de diseño y movimiento](docs/planning/2026-11-13-portal-vidrio-direccion.md) y el mockup [`docs/planning/mockups/2026-11-13-portal-vidrio/`](docs/planning/mockups/2026-11-13-portal-vidrio/README.md); este archivo los resume y nombra las piezas reales del código. Para el panel (El Mostrador) manda este archivo, sin cambios.
 
 ## Overview
 
-**Creative North Star: "El Mostrador y La Previa"**
+**Creative North Star: "El Mostrador y el Vidrio"**
 
-> **El portal es La Previa** (decisión del 2026-10-20, [`docs/decisions/2026-10-20-vuelve-la-previa.md`](docs/decisions/2026-10-20-vuelve-la-previa.md)): reemplaza a "La Reserva", el portal plano de las PRs #424 a #451. **Excepción del dueño del 2026-10-21: la ficha del complejo `/[slug]` se queda en La Reserva** (Components › La ficha del complejo la describe). Cómo se ejecutó, fase por fase, está en la sección "Ejecución" de esa decisión.
+> **La Previa se reemplazó por el vidrio el 2026-11-13.** Cómo se ejecutó, fase por fase, está en el [plan](docs/planning/2026-11-13-portal-vidrio-plan.md).
 
-TurnoGol es un solo sistema con dos personalidades. Comparten el verde de marca, las tipografías, el logo y las primitivas de `src/components/ui/`; cada una tiene su mundo. **El Mostrador** es el panel del complejo: una herramienta que el encargado usa toda la noche en una notebook con mouse, mientras atiende gente y contesta el WhatsApp. Es denso pero obvio, con los datos primero, un solo verde que grita por vista y movimiento corto. **La Previa** es el portal del jugador: una vidriera oscura y premium, con vidrio, resplandores esmeralda, fotos de fondo y titulares en Archivo negra itálica, que se siente como la previa de un partido. Cero fricción, tipo ecommerce, sin perder accesibilidad (compromiso de marca de `PRODUCT.md`). La única parte del portal que no es La Previa es la ficha del complejo (`/[slug]`): ahí rige **La Reserva**, plana (fondo blanco en claro, bordes de 1 px, un solo verde para lo elegido, títulos en Archivo 800 recta, sin resplandores ni vidrio).
+TurnoGol es un solo sistema con dos personalidades. Comparten el verde de marca, el logo y las primitivas de `src/components/ui/`; cada una tiene su mundo. **El Mostrador** es el panel del complejo: una herramienta que el encargado usa toda la noche en una notebook con mouse, mientras atiende gente y contesta el WhatsApp. Es denso pero obvio, con los datos primero, un solo verde que grita por vista y movimiento corto. **El Vidrio** es el portal del jugador y la web para complejos: atrás está la cancha iluminada y adelante la app es una lámina de vidrio que responde al dedo (superficies translúcidas con desenfoque, borde claro de 1 px, brillo interior y radios grandes sobre un resplandor verde suave). Calmo, preciso, físico. Cero fricción, tipo ecommerce, sin perder accesibilidad (compromiso de marca de `PRODUCT.md`).
 
-El mundo del panel es césped de noche sobre slate. En claro, tarjetas blancas que flotan con sombras en capas sobre un fondo slate frío; en oscuro, losas slate-950 con superficies de vidrio (relleno blanco al 3 %, desenfoque y un resplandor esmeralda). Los dos temas son de primera: ninguna vista se diseña para uno y "después se verá" el otro; arranca el del sistema (`next-themes`, `defaultTheme="system"`). El estado nunca se comunica solo con color: siempre va color, ícono y texto, y lo resuelve una sola tabla de tonos.
+El mundo del panel es césped de noche sobre slate. En claro, tarjetas blancas que flotan con sombras en capas sobre un fondo slate frío; en oscuro, losas slate-950 con superficies de vidrio (relleno blanco al 3 %, desenfoque y un resplandor esmeralda). Los dos temas son de primera, en las dos superficies: ninguna vista se diseña para uno y "después se verá" el otro; arranca el del sistema (`next-themes`, `defaultTheme="system"`). El estado nunca se comunica solo con color: siempre va color, ícono y texto, y lo resuelve una sola tabla de tonos.
 
-Este documento describe el estilo tal como está en el código al 2026-10-21 y es la única autoridad de diseño del repo. El panel se **refina** sobre este estilo; no se reemplaza. Donde los documentos anteriores (hoy en `docs/archive/design-system/`) y el código no coincidían, ganó el código. Rechazo confirmado por el dueño el 2026-09-23: cambiar este mundo por uno austero de papel y tinta, sin fondos ni sombras (la dirección "Tablero de partidas"). Ese rechazo es del panel. El portal pasó por dos rediseños que el dueño rechazó el 2026-10-20 (La Reserva y las direcciones de taste, `docs/decisions/2026-10-20-portal-con-taste.md`): "prefiero mil veces el diseño que tenía antes".
+Este documento describe el estilo tal como está en el código al 2026-11-16 y es la única autoridad de diseño del repo. El panel se **refina** sobre este estilo; no se reemplaza. Donde los documentos anteriores (hoy en `docs/archive/design-system/`) y el código no coincidían, ganó el código. Rechazo confirmado por el dueño el 2026-09-23: cambiar el mundo del panel por uno austero de papel y tinta, sin fondos ni sombras (la dirección "Tablero de partidas"). Ese rechazo es del panel.
 
-**Qué es La Previa y dónde rige.** Es el look del portal de `9d155ed8` (#423), re-aplicado como re-skin sobre la lógica y los flujos de La Reserva (que se conservan). Rige en la home `/` (solo el hero, con el buscador), el cromo (barra, pie, menú de cuenta, barra inferior), `/ingresar`, `/aceptar-terminos` y los estados de jugador de `/verify` (`PortalAuthFrame`), `/explorar`, confirmar `/[slug]/reservar` con el ingreso en un modal, la vuelta de la reserva `/reserva/[bookingId]/*` (`ReservaDarkShell`) y el grupo del jugador `(player)`: Mis reservas, Mi cuenta y Eliminar la cuenta (`PlayerHeroBand`). **La excepción es la ficha del complejo** `/[slug]` y su `not-found`: `PortalWorld` (`src/components/world/PortalWorld.tsx` + `portal-world.css`) sigue montado en `(perfil)/layout.tsx` y en `not-found.tsx`; allí valen los tokens `portal-*` y la regla `html:has([data-world='portal']) .player-shell-bg` de `globals.css` apaga el fondo de cancha. Las páginas de torneos (`/[slug]/torneos/*`) quedan afuera de `PortalWorld`. **Una pantalla nueva del portal se construye en La Previa**, salvo que sea parte de la ficha.
+**Dónde rige el vidrio.** En todo lo que no es el panel del complejo: la home, `/explorar`, la ficha del complejo `/[slug]`, confirmar `/[slug]/reservar`, la vuelta de la reserva `/reserva/[bookingId]/*`, Mis reservas, Cuenta y Eliminar la cuenta (`(player)`), `/ingresar`, `/aceptar-terminos` y `/verify` (`PortalAuthFrame`), Rival, las páginas para complejos (`/para-complejos`, `/precios`, el blog y los legales, en `(business)`) y las pantallas de error. **Fuera del vidrio:** el panel (`(admin)`), el alta del complejo (`/onboarding` y `/register`, que conserva La Previa siempre oscura) y el super admin. **Una pantalla nueva del portal se construye en vidrio.**
 
 **Key Characteristics:**
 
 - Esmeralda sobre slate, con claro y oscuro como temas de primera.
-- Panel: claro = elevación (sombras en capas), oscuro = vidrio (blanco al 3 % + blur + resplandor). Portal: oscuro premium con vidrio, resplandores y fotos; en claro, el mismo lenguaje sobre crema esmeralda (`.player-shell-bg`, `.landing-hero`). Excepción: la ficha del complejo, plana en los dos temas.
-- Inter trabaja; Archivo titula, pone las cifras clave y firma el logo. En el portal el titular es Archivo negra itálica (`font-display font-black italic`) con un tramo en degradé esmeralda (`.hero-accent-text`). Toda cifra es tabular.
+- Panel: claro = elevación (sombras en capas), oscuro = vidrio (blanco al 3 % + blur + resplandor). Portal: vidrio en los dos temas sobre `.portal-ambient` y, en el hero, una foto (de noche en oscuro, de día en claro). La profundidad del portal es la receta `.glass`, no la del panel.
+- Panel: Inter trabaja; Archivo titula, pone las cifras clave y firma el logo. Portal: Archivo en todo, titulares en 700 con `font-stretch: 104%`. Toda cifra es tabular.
 - Estado = color + ícono + texto, siempre desde `src/lib/status-tone.ts`.
-- Panel denso y movimiento corto (200 ms en los controles). Lo único largo es un pulso de 600 ms, una sola vez: el turno que entra a la grilla (y, en el portal, el aro de la reserva confirmada).
+- Panel denso y movimiento corto (200 ms en los controles). Lo único largo es un pulso de 600 ms, una sola vez: el turno que entra a la grilla. El portal se mueve más (resortes, hojas, transiciones de vista) pero con reglas: Components › Portal de vidrio.
 - Un solo primario por vista.
-- El portal de La Previa usa los tokens del panel, con una sola subida de contraste: el grupo del jugador marca `data-portal-fields` y `globals.css` sube `--input` y `--ring` a 3:1. Los tokens propios `portal-*` (colgados de `html` cuando hay un `[data-world='portal']`) son solo de la ficha.
+- El portal usa tokens propios `--portal-*` / `--glass-*`, que solo existen con el marcador `data-portal-glass` en la página. El grupo del jugador conserva `data-portal-fields` para subir `--input` y `--ring` a 3:1 en lo que todavía usa los tokens del panel (diálogos y primitivas compartidas).
 
 ## Colors
 
@@ -370,35 +328,67 @@ Esmeralda de cancha sobre slate frío: un solo protagonista verde, neutros que c
 - **Slate anidado** (`secondary`: hsl(214 32% 85%), el mismo valor que `muted` y `accent` en claro · `secondary-dark`: hsl(217 33% 14%), `accent-dark`: hsl(217 33% 17%)): hover de menús, superficies anidadas, base del skeleton.
 - **Texto secundario** (`muted-foreground`: hsl(215 20% 36%) · `muted-foreground-dark`: hsl(215 20% 65%) = slate-400): subtítulos, ayudas, rótulos inactivos. Está en 36 % y no en 40 % a propósito: con 40 % no llegaba a 4,5:1 sobre `bg-muted`.
 - **Línea** (`border`: hsl(214 32% 83%), igual que `input` · `border-dark`: hsl(217 33% 17%)): todos los bordes. `globals.css` la aplica por defecto a todo elemento.
-- **Losa nocturna** (`night-slab` #020617): el fondo de las superficies siempre oscuras: la web comercial (`(business)`), las pantallas del staff en `(auth)` y, en el portal, el marco de ingreso (`PortalAuthFrame`), la vuelta de la reserva (`.reserva-shell`) y el hero de la home (`.landing-hero`) en oscuro. El fondo del resto del portal en oscuro es `.player-shell-bg` (slate-950 con resplandor y la cancha vectorial).
-- **Superficie siempre oscura** (`.dark-surface`, en `globals.css`): una página que es oscura aunque el sitio esté en claro (hoy `/para-complejos`) envuelve su contenido en esta clase. La clase `.dark` sola no alcanza: Tailwind v4 resuelve los `--color-*` una vez en `:root`, y `text-foreground`, `bg-card` y compañía seguirían saliendo en claro. `.dark-surface` los vuelve a declarar.
+- **Losa nocturna** (`night-slab` #020617): el fondo de las superficies siempre oscuras del panel y del alta: las pantallas del staff en `(auth)` y el alta del complejo. El portal ya no tiene superficies siempre oscuras: sigue el tema del visitante.
+- **Superficie siempre oscura** (`.dark-surface`, en `globals.css`): una página del panel o del alta que es oscura aunque el sitio esté en claro envuelve su contenido en esta clase. La clase `.dark` sola no alcanza: Tailwind v4 resuelve los `--color-*` una vez en `:root`, y `text-foreground`, `bg-card` y compañía seguirían saliendo en claro. `.dark-surface` los vuelve a declarar.
 
-### Portal (La Previa y La Reserva)
+### Portal de vidrio
 
-**La Previa usa los tokens del panel** (`primary`, `foreground`, `card`, `border`, `destructive` y los tonos de estado) sin redeclarar ninguno. Lo propio del portal son recetas de superficie en `src/app/globals.css`, cada una con su variante clara y su variante `.dark`:
+Decisión: [`docs/decisions/2026-11-13-portal-vidrio.md`](docs/decisions/2026-11-13-portal-vidrio.md). Dirección de diseño y movimiento: [`docs/planning/2026-11-13-portal-vidrio-direccion.md`](docs/planning/2026-11-13-portal-vidrio-direccion.md). Mockup: [`docs/planning/mockups/2026-11-13-portal-vidrio/`](docs/planning/mockups/2026-11-13-portal-vidrio/README.md). **La Previa se reemplazó por el vidrio el 2026-11-13** (los dos temas, la foto del hero y la barra flotante vienen de ahí).
 
-- **Fondo del portal (`.player-shell-bg`):** lo pone `PortalFrame` a todo el cascarón. En claro, emerald-50 con un degradé #f0fdf4 → #e6fced y las líneas de una cancha vectorial al 15 %; en oscuro, #020617 con un resplandor esmeralda arriba a la derecha y las mismas líneas al 6 %. Fijo (`background-attachment: fixed`).
-- **Hero de la home (`.landing-hero`):** crema esmeralda en claro (#f0fdf4 → blanco → #ecfdf5) y #020617 en oscuro. La foto de ambiente (`/bg-hero-desktop.png`, `/bg-hero-2.png`) es solo de oscuro, con el velo `.hero-desktop-scrim` en escritorio; en claro firman las líneas de cal (`PitchLines`).
-- **Resplandor (`.hero-glow-blob`, `.reserva-glow-top`, `.reserva-glow-bottom`):** manchas radiales esmeralda con desenfoque; más fuertes en claro que en oscuro para no fundirse con el campo.
-- **Banda del jugador (`.player-hero-band`):** degradé crema (#ecfdf5 → blanco) con borde esmeralda al 18 % y elevación suave en claro; #07131d → #020617 con borde blanco al 8 % en oscuro. Lleva la grilla decorativa `.player-hero-grid`.
-- **Vidrio de ingreso (`AUTH_CARD_STYLE`, en `PortalAuthFrame.tsx`):** degradé rgba(15,23,42,.72) → rgba(2,6,23,.85), borde blanco al 10 % y resplandor esmeralda; lo usan la card de `/ingresar` y el modal de confirmar.
-- **Tarjeta-comprobante (`.reserva-receipt-card`):** blanco → #f0fdf4 con borde esmeralda en claro; vidrio slate en oscuro. La usan el resumen de la reserva (`BookingSummary`) y la política de reservas del panel.
-- **Titular con degradé (`.hero-accent-text`):** en claro, #047857 → #059669 → #065f46 (3,6:1 o más sobre #ecfdf5, el extremo más oscuro de la banda; el texto es grande y pide 3:1; lo fija `tests/unit/hero-accent-contrast.test.ts`); en oscuro, #6ee7b7 → #34d399 → #10b981 sobre slate-950.
-- **Borde de campo y foco del jugador (`data-portal-fields`):** el grupo `(player)` envuelve sus páginas en `<div data-portal-fields className="contents">` y `globals.css` cuelga de `html` (para alcanzar a los portales de Radix en `body`) `--input` slate-500 (4,8:1 sobre blanco) y `--ring` = `primary` en claro, y `--input` #6B7C94 en oscuro (4,3:1 sobre la tarjeta, 4,7:1 sobre el fondo). Los marcos siempre oscuros (ingreso y modal de confirmar) lo resuelven con `[--input:215.4_16.3%_50%]` en su propio contenedor.
-- **Alta del complejo (`/register` y `/onboarding/*`, desde el 2026-11-11):** La Previa siempre oscura. `SignupFrame` pone `.signup-frame` (losa #020617), los resplandores `.signup-glow-top`/`.signup-glow-bottom` y `PitchLines` al 4,5 %, con `dark dark-surface` y el `[--input]` de 3:1. La tarjeta de cada pregunta es `.signup-glass` (el vidrio de ingreso, **sin** `backdrop-filter`: haría de contenedor de la barra fija de "Siguiente"). Lo elegido o cargado se enciende con `.signup-lit` (borde y degradé esmeralda con halo) y el dato nuevo de la ficha "Tu complejo" entra con `.signup-pop` (320 ms, una vez). Titular en Archivo negra itálica con una o dos palabras en `.hero-accent-text`; las clases viven en `src/app/onboarding/components/signup-style.ts`.
-- **Siempre oscuro:** `PortalAuthFrame` y el modal de ingreso llevan `dark dark-surface`, para que los tokens y los `dark:` de los hijos resuelvan en oscuro también con el tema claro.
+**La idea.** Vidrio de noche: atrás está la cancha iluminada y adelante, la app es una lámina de vidrio que responde al dedo. Calmo, preciso, físico.
 
-**La Reserva (solo la ficha del complejo).** `PortalWorld` redeclara lo que cambia, colgado de `html:has([data-world='portal'])`; `primary`, `foreground`, `card`, `destructive` y los tonos de estado se heredan. Los valores viven en `src/components/world/portal-world.css`.
+**Dos temas completos**, oscuro y claro. Por defecto se ve el del sistema (`next-themes`); el botón de tema queda arriba a la derecha. En claro la foto del hero es de día: nunca una foto de noche aclarada.
 
-- **Blanco de página** (`portal-background`, en claro): el fondo es blanco; en oscuro es el `background-dark` del panel. Se pinta con `bg-background`, nunca con `bg-white`.
-- **Slate de superficie** (`portal-surface`, slate-100 #F1F5F9, en claro): superficies anidadas, avisos (`bg-muted`) y hover (`secondary`, `muted` y `accent` valen lo mismo).
-- **Texto secundario** (`portal-muted-foreground`, slate-600 #475569, en claro): 7,6:1 sobre blanco y 6,9:1 sobre slate-100.
-- **Línea de superficie** (`portal-border`, slate-200 #E2E8F0, en claro): separa superficies. Con 1,2:1 sobre blanco no delimita un control.
-- **Borde de campo** (`portal-input`, slate-500 #64748B, en claro · `portal-input-dark` #6B7C94 en oscuro): el borde de los campos y del botón `outline`. Llega a 3:1 contra el fondo (WCAG 1.4.11): 4,8:1 sobre blanco; en oscuro, 4,7:1 sobre el fondo, 4,3:1 sobre la tarjeta y 3,2:1 en hover (`border-input/80`).
-- **Ámbar de "Queda 1"** (`portal-last-fill` #FFFBEB, `portal-last-border` #FCD34D y `portal-last-text` #92400E en claro; en oscuro, ámbar al 10 % con borde al 40 % y texto #FCD34D): escalas amber 50, 300 y 800, escritas como clases de Tailwind en `HourGrid`. Solo la hora a la que queda una cancha; ver The Scarcity Amber Rule.
-- **Oro de trofeo** (#FCD34D y su luz #FEF3C7, solo en oscuro): únicamente en RIVAL, para las estrellas de un club, la Corona y la figurita Oro. Es un premio, no un estado ni escasez: no se usa en ningún otro lado, y el ámbar de "Queda 1" sigue siendo solo de la ficha (decisión del dueño del 2026-10-30).
-- **Foco** (`ring` = `primary`): emerald-700 en claro (5,6:1 sobre blanco; el emerald-500 del panel da 2,6:1) y emerald-500 en oscuro (7,8:1 sobre el fondo).
-- **Selección de texto:** tinte `primary` al 25 % con el texto en `foreground`, puesto una vez en `PortalWorld`.
+**Tokens.** Viven en `src/app/globals.css`, bajo `html:has([data-portal-glass])` (claro) y `html.dark:has([data-portal-glass])` (oscuro). Los prefijos son `--portal-*` y `--glass-*` porque `--muted` y `--ease-out` ya existen en shadcn y Tailwind. En Tailwind son `portal-*`. Ningún token del panel cambia. Los más usados:
+
+| Token                                                        | Oscuro                                  | Claro                           | Uso                                          |
+| ------------------------------------------------------------ | --------------------------------------- | ------------------------------- | -------------------------------------------- |
+| `--portal-bg`                                                | `#020617`                               | `#f3f6f3`                       | Fondo de página                              |
+| `--portal-ink`                                               | `#f8fafc`                               | `#0b1220`                       | Texto principal                              |
+| `--portal-muted`                                             | `#d5dce6`                               | `#2c3848`                       | Texto secundario                             |
+| `--portal-soft`                                              | `#b6c0cf`                               | `#4d5868`                       | Texto terciario y borde de campo             |
+| `--portal-green`                                             | `#34d399`                               | `#04775b`                       | Marca, acento, foco                          |
+| `--portal-btn-a` → `--portal-btn-b`                          | `#43e0a3` → `#10b981`                   | `#058467` → `#046b52`           | Botón principal (degradé vertical)           |
+| `--portal-on-green`                                          | `#022c22`                               | `#ffffff`                       | Texto sobre el botón                         |
+| `--portal-slot-bg`, `-line`, `-ink`                          | verde al 14 %, verde al 46 %, `#6ee7b7` | `#e4f3ed`, `#a3d3c1`, `#04674f` | Horario libre, etiqueta positiva             |
+| `--glass-a` → `--glass-b`                                    | blanco 14 % → 5 %                       | blanco 82 % → 58 %              | Relleno del vidrio                           |
+| `--glass-line`, `--glass-hi`                                 | blanco 17 %, 26 %                       | blanco 95 %, 100 %              | Borde y brillo interior                      |
+| `--portal-inner`, `--portal-inner-line`                      | blanco 7 %, 11 %                        | blanco 74 %, tinta 9 %          | Piezas dentro de un vidrio                   |
+| `--portal-bar-a/b`, `--portal-sheet-a/b`, `--portal-win-a/b` | slate-800 a slate-950 translúcidos      | blanco 72 % a 97 %              | Barra de abajo, hojas y ventana del buscador |
+| `--portal-warn`, `--portal-bad`                              | `#fcd34d`, `#fda4af`                    | `#7c4a03`, `#a3122d`            | Aviso ("Queda 1") y error                    |
+
+El resto (velos, sombras, brillo de carga, resplandor del botón) está en el mismo bloque de `globals.css`. Los valores salen del mockup (`glass.css` y `glass-app.css`); no se inventan valores nuevos, se derivan de un token. Los de movimiento (`--dur-*`, `--spring-*`, `--ease-*`) están en Components › Portal de vidrio.
+
+**La receta** (`.glass`, `.glass-painted`; `--tw-shadow` y no `box-shadow` pelado, para que el foco y las sombras de Tailwind se sumen en vez de borrarla):
+
+```css
+background: linear-gradient(180deg, var(--glass-a), var(--glass-b));
+border: 1px solid var(--glass-line);
+box-shadow:
+  inset 0 1px 0 var(--glass-hi),
+  var(--glass-shadow);
+backdrop-filter: blur(26px) saturate(180%);
+```
+
+Radios: píldora para botones, chips y barras; 18 a 24 px para piezas internas; 28 a 36 px para tarjetas y hojas.
+
+**Dos niveles de vidrio.** El desenfoque es caro: no todo lo que parece vidrio tiene que desenfocar.
+
+- **Vidrio real** (`.glass`, con `backdrop-filter`): la barra de abajo, la cabecera en píldora, las hojas, la barra de "Reservar", las tarjetas del hero y la cabecera de la ficha. Son piezas con foto o contenido pasando por detrás.
+- **Vidrio pintado** (`.glass-painted`, la misma receta sin `backdrop-filter`): todo lo que se repite en una lista (tarjetas de complejo, reservas, partidos, planes, preguntas). Detrás tienen el fondo liso con el resplandor, así que a la vista queda igual.
+- **`.glass-pop`** no es un nivel: es la marca de un vidrio armado con utilidades (la barra fija de confirmar, el menú de la cuenta, el modal de ingreso de Rival) para que entre en las listas de respaldo de accesibilidad.
+- **Presupuesto:** en el celu, tres capas de vidrio real visibles a la vez como máximo. La barra de abajo y la de "Reservar" nunca conviven: una reemplaza a la otra. Medido a 393 × 851, DPR 3 y CPU 4× más lenta: 60 cuadros por segundo con vidrio real y con pintado ([plan](docs/planning/2026-11-13-portal-vidrio-plan.md), Gotchas).
+- **Grano (`--glass-grain`, F9):** un ruido muy fino sobre el vidrio real, que le saca el aspecto de plástico y se apaga con `--glass-grain: none` si en la medición cuesta.
+
+**Fondo y foto.** Cada página lleva la luz de fondo `.portal-ambient`: tres resplandores radiales verdes (`--portal-glow`), fijos y muy suaves, sobre `--portal-bg`. `PortalFrame` la pone en todo el marco, cabecera y pie incluidos. Una pantalla que también la pone (para verse sola en una story) no suma otra: dentro de un marco con luz, la anidada queda transparente. El hero apila cuatro capas con `HeroBackdrop` (`src/components/world/HeroBackdrop.tsx`, `hero-backdrop.css`): la foto (`hero-noche.webp` en oscuro, `hero-claro.webp` en claro, ambas CC0 de Wikimedia aprobadas por Lazar el 2026-11-14 hasta tener fotos propias; el crédito queda en el código), un desenfoque que se apaga hacia abajo con máscara en degradé, el velo del color del tema (`--portal-veil`) y los resplandores. La foto queda nítida abajo, donde están los jugadores.
+
+**Color.** El verde significa dos cosas: **acción** (la píldora principal) y **lugar disponible** (un horario libre, "Hay lugar"). No se usa verde para adornar texto ni bordes sin significado; el resplandor de fondo es la única decoración verde. El estado del panel (`success`, `warning`, `info`, `destructive`) no se usa en el portal: los avisos y errores son `--portal-warn*` y `--portal-bad*`, y al jugador no se le grita ("Jugada" va en verde, "Cancelada" apagada).
+
+**Accesibilidad.** Contraste AA medido sobre el fondo real ya renderizado, en claro y oscuro; foco visible; objetivos de 44 px. Las tres preferencias del sistema y el respaldo sin `backdrop-filter` están en Components › Portal de vidrio.
+
+**Oro de trofeo (solo RIVAL, no es vidrio).** `#FCD34D` y su luz `#FEF3C7`, solo en oscuro: únicamente en RIVAL, para las estrellas de un club, la Corona y la figurita Oro. Es un premio, no un estado ni escasez: no se usa en ningún otro lado, y el ámbar de "Queda 1" sigue siendo solo de la ficha (decisión del dueño del 2026-10-30).
+
+**Restos de La Previa y La Reserva.** F9 borró el dibujo de cancha (`.player-shell-bg`) y las clases sin uso. Quedan `.overlay-nav` y `.dark-surface` (`SiteHeaderShell` y el alta del complejo), `.card-premium` (el panel) y `PortalWorld` con `portal-world.css`, que todavía da `--input`, `--ring` y `--radius` a los campos de la ficha. Una pantalla nueva del portal no los usa. Lo que no es el portal (el panel, el alta del complejo en `/onboarding` y `/register`, el super admin) no cambia.
 
 ### Status
 
@@ -422,9 +412,9 @@ Los rótulos sobre un tinte de estado usan la escala 800 en claro y 300 en oscur
 
 **The Reserved Hues Rule.** `success`, `warning`, `info` y `destructive` son estado, no decoración. Lo que entra va en verde y lo que sale en rojo, siempre con signo y rótulo. La excepción es el libro de Caja › Cuentas, donde casi todo entra y cuarenta montos verdes por noche eran ruido: ahí el ingreso va en el color del texto con "+" y solo lo que sale va en rojo con "−" (decisión del dueño del 2026-09-25).
 
-**The Component Border Rule.** En el portal, lo que delimita un control que se toca o se tipea (campo, casilla, botón `outline`) lleva `border-input` (3:1 o más contra el fondo); `border-border` es solo para separar superficies. En La Previa lo garantizan `data-portal-fields` en el grupo del jugador y el `[--input]` de los marcos siempre oscuros; en la ficha, `portal-input`.
+**The Component Border Rule.** En el portal, lo que delimita un control que se toca o se tipea (campo, casilla) lleva `border-portal-soft/70` (`GLASS_INPUT`, 3:1 o más contra el panel: medido da 3,39:1 en claro y 5,47:1 en oscuro); `--portal-inner-line` es solo para separar piezas dentro de un vidrio (1,2:1 no delimita un control). En las primitivas del panel que el portal todavía comparte (diálogos), `data-portal-fields` en el grupo del jugador sube `--input` y `--ring` a 3:1.
 
-**The Scarcity Amber Rule.** En la reserva de la ficha, el ámbar es solo de "Queda 1": la única escasez que es un dato real. No se usa para "Señando" (es una espera y va con borde punteado), ni para avisos, ni para decorar. Va únicamente sobre la hora sin elegir: la elegida es verde.
+**The Scarcity Amber Rule.** En la reserva de la ficha, el ámbar (`--portal-warn*`) es solo de "Queda 1": la única escasez que es un dato real. No se usa para "Señando" (es una espera y va con borde punteado), ni para decorar. Va únicamente sobre la hora sin elegir: la elegida es verde.
 
 **The Measured Contrast Rule.** Las escalas emerald, red y amber están fijadas en hex (valores de Tailwind 3) dentro del `@theme` de `globals.css`, porque las de Tailwind 4 en OKLCH rompían AA. Texto esmeralda: 700 sobre tarjeta clara, 800 sobre el fondo de página, 400 en oscuro. Nunca emerald-500 (2,5:1) ni emerald-600 (3,8:1) como texto sobre claro, ni texto blanco de 14 px sobre emerald-600 o amber-600 (3,8:1 y 3,2:1).
 
@@ -432,20 +422,20 @@ Los rótulos sobre un tinte de estado usan la escala 800 en claro y 300 en oscur
 
 **Display Font:** Archivo (variable, `font-display`, con fallback `ui-sans-serif, system-ui`). La itálica es sintetizada.
 **Body Font:** Inter (variable, `font-sans`, el default del `<body>`)
-**Label/Mono Font:** Sora (`font-logo`), solo en microrrótulos de la web comercial y del login. La monoespaciada es la del sistema (`font-mono`, sin fuente propia) y solo muestra códigos que se copian o se tipean: la frase de `ConfirmDialog`, el código de referencia de `ErrorState`, el código de una reserva.
+**Mono Font:** la monoespaciada es la del sistema (`font-mono`, sin fuente propia) y solo muestra códigos que se copian o se tipean: la frase de `ConfirmDialog`, el código de referencia de `ErrorState`, el código de una reserva.
 
-**Character:** Inter hace el trabajo: tablas, formularios, rótulos, montos dentro de una fila. Archivo habla: títulos de página, cifras clave, el logo en negra itálica mayúscula, los titulares de La Previa en negra itálica y los títulos de la ficha en 800 recta. Las tres se cargan con `next/font` en `src/app/layout.tsx`.
+**Character:** en el panel, Inter hace el trabajo (tablas, formularios, rótulos, montos dentro de una fila) y Archivo habla (títulos de página, cifras clave, el logo en negra itálica mayúscula). En el portal, **Archivo en todo**: `layout.tsx` la carga con el eje de ancho (`axes: ['wdth']`) para que el 104 % de los titulares se vea, y cada pantalla del portal pone `font-family: var(--font-display)` en su contenedor. Se cargan con `next/font` en `src/app/layout.tsx`; Inter sigue cargada para el panel (`font-sans`). Sora salió en F9: no la usaba nadie.
 
 ### Hierarchy
 
-- **Display** (Archivo 900 itálica, `font-display font-black italic`, interlineado cerrado, -0.03em): el titular de cada pantalla de La Previa, con un tramo en `.hero-accent-text` ("Mis **reservas**", "Confirmá tu **reserva**"). Tamaños: `AUTH_TITLE` 30 px en el ingreso, `text-3xl` en confirmar y en la vuelta, `clamp(26px, 6vw, 36px)` en `PlayerHeroBand`, `text-2xl` en Eliminar la cuenta y `clamp(48px, 5.6vw, 88px)` en el h1 de la home. En la ficha del complejo (La Reserva) el título es Archivo 800 recta de 28 px, interlineado 36 px, -0.01em (`PORTAL_TITLE` en `src/components/world/PortalAuthFrame.tsx`; el nombre del complejo usa la misma voz).
+- **Display** (Archivo 900 itálica, `font-display font-black italic`, interlineado cerrado, -0.03em): el logo, las cifras del panel y el titular del alta del complejo y del panel. **El portal no la usa**: sus titulares son Portal title.
 - **Headline** (Archivo 700, 24 px y 30 px desde 640 px, -0.025em): el título de página del panel (`PageHeader`).
 - **Numeral** (Archivo 700, 30 px, tabular, -0.025em): la cifra de un KPI (`StatCard`) y los totales destacados.
 - **Title** (Inter 600, 18 px, interlineado 1): título de diálogo y de sheet. Los títulos de sección (`SectionHeader`) van en Inter 600 de 16 px.
-- **Body** (Inter 400, 14 px): el mínimo del panel. En el portal el cuerpo es `portal-body` (Inter 400, 16 px) y las ayudas van en 14 px; nada baja de 13 px.
-- **Portal label** (Inter 500, 16 px): botones y rótulos de campo del portal.
-- **Portal section** (Archivo 800 recta, 20 px, interlineado 28 px, -0.01em; `PORTAL_SECTION_TITLE`): el título de cada bloque de una página del portal (la pregunta de cada paso de la reserva, como "¿A qué hora?"; Canchas, Fotos, Horarios, Servicios, Reseñas). El conteo que lo acompaña ("Canchas (5)") va en Inter 400 de 13 px, tabular y `muted-foreground`.
-- **Portal hour** (Inter 600, 18 px, interlineado 24 px, tabular): la hora dentro de su botón; el estado va debajo en 14 px (interlineado 20 px). Es la medida de cada opción de la reserva. El día va así: "Hoy", con "jueves 29" debajo en 14 px. El nombre de una cancha también, con el formato debajo en 14 px `muted-foreground`; su precio va en semibold tabular con `formatArs`. Hasta el 2026-10-29 eran 16 y 13 px: "5 libres" en 13 px no le decía nada a quien no se maneja con el celular.
+- **Body** (Inter 400, 14 px): el mínimo del panel. En el portal el cuerpo es Archivo (ver Portal body); nada baja de 13 px.
+- **Portal title** (Archivo 700, `font-stretch: 104%`, -0,035 a -0,04 em, interlineado cerrado): el h1 de cada pantalla del portal. Tamaños por pantalla en los briefs; el de `/explorar` es `clamp(26px, 2.4vw + 16px, 40px)`.
+- **Portal body** (Archivo 400, 16 px mínimo, 1,5) y **portal label** (Archivo 600, 16 px): cuerpo y botones del portal. Las etiquetas chicas bajan a 13 px y nada baja de ahí.
+- **Portal hour** (Archivo 600, tabular): la hora dentro de su cuadrado de la ficha; debajo, cuántas canchas quedan (13 a 14 px). Los precios van en semibold tabular con `formatArs`.
 - **Label** (Inter 500, 14 px): botones, rótulos de formulario, ítems de menú.
 - **Caption** (Inter 500, 12 px): badges, ayudas debajo de un campo, encabezados de tabla (en mayúsculas con `tracking-wide`).
 - **Microlabel** (Inter 600, 12 px, mayúsculas, 0.06em): el nombre del complejo en la barra superior. El rótulo del riel de navegación va en 10 px semibold.
@@ -456,22 +446,20 @@ Los rótulos sobre un tinte de estado usan la escala 800 en claro y 300 en oscur
 
 **The Display Discipline Rule.** `font-display` solo en títulos, cifras clave, el logo y los títulos del portal. Nunca en párrafos, tablas ni formularios.
 
-**The Slanted Title Rule.** En La Previa el titular va en Archivo negra itálica, y un tramo (una o dos palabras) lleva el degradé esmeralda de `.hero-accent-text`. En la ficha del complejo (La Reserva) el título es recto (Archivo 800, 28 px, -0.01em) y sin degradé. Las cifras que cuentan hacia atrás ("Reenviar en 42 s") y las horas y precios del portal van tabulares (The Tabular Rule).
+**The Glass Title Rule.** En el portal el titular va en Archivo 700 con `font-stretch: 104%` y `letter-spacing` de -0,035 a -0,04 em; un tramo (una o dos palabras) puede ir en verde ("a un toque.") y nunca en degradé de texto nuevo. Las horas, los precios y los contadores del portal van tabulares (The Tabular Rule); lo que se cuenta hacia atrás ("Reenviar en 42 s") también. La clase `.hero-accent-text` y el titular en negra itálica son de La Previa y del alta del complejo (`/onboarding`, `/register`), que no cambia.
 
-**The 16px Field Rule.** Todo campo donde se tipea mide 16 px por debajo de 768 px y 14 px desde ahí (`text-base md:text-sm`); si no, iOS hace zoom al enfocar. No hay escape hacia abajo; hacia arriba existe `.field-lg` (18 px). `globals.css` tiene una red de seguridad fuera de `@layer`, que no reemplaza escribir la clase.
+**The 16px Field Rule.** Todo campo donde se tipea mide 16 px por debajo de 768 px y 14 px desde ahí (`text-base md:text-sm`); si no, iOS hace zoom al enfocar. No hay escape hacia abajo. `globals.css` tiene una red de seguridad fuera de `@layer`, que no reemplaza escribir la clase.
 
 ## Layout
 
 El panel es un marco fijo con el contenido en el medio. En `lg` (1024 px) aparece el **riel** de 72 px a la izquierda; arriba va la **barra superior** de 60 px (más el safe-area de iOS) con el nombre del complejo, el **hueco de vista** (`AdminHeaderSlot`) y el menú de tema; debajo de `lg`, el riel se va y aparece la **barra inferior** con tres accesos directos y "Más".
 
-- **Portal (La Reserva), la ficha del complejo (`ProfileLayout`):** en el DOM el orden es portada y datos, reserva y después canchas con foto, fotos, horarios, torneos y reseñas (orden de lectura y de tab: la reserva sube antes que las fotos). Contenedor `max-w-6xl`, margen de 16 px (24 px desde `sm`) y 16 px de aire arriba (32 px desde `lg`). **Desde `lg` (1024 px) son dos columnas:** el complejo a la izquierda (`minmax(0,1fr)`) y la reserva a la derecha en una columna fija de 24 rem (384 px), separadas 40 px. La reserva es pegajosa debajo de la barra (`top-14`, los 56 px de la barra), con tope de alto `100dvh − 3.5rem` y scroll interno si no entra; su relleno de 4 px, con margen negativo para no bajar la columna, deja lugar al anillo de foco que ese scroll recortaría. Debajo de `lg` es una sola columna, con 24 px entre el complejo y la reserva y 40 px entre bloques.
-  - Ahí la reserva mide al menos la pantalla menos la barra (`min-h-[calc(100dvh-5rem)]`, con `scroll-mt-20`), así que el paso que entra ocupa toda la vista.
-  - Su barra de paso queda pegada en `top-20`: los 80 px de `PortalHeader`, `py-3` más la pastilla de `h-14`. Si cambia el alto de la barra de TurnoGol, cambian las dos medidas.
-- **Portal, la home (`/`, `Hero`):** solo el hero, sin nada debajo salvo el pie. `HeroMobile` (debajo de `lg`) y `HeroDesktop` (`lg` en adelante) son dos árboles hermanos gateados por CSS (`lg:hidden` / `hidden lg:flex`); el `<h1>` real vive en `HeroDesktop` y el de `HeroMobile` es un `<p role="heading">`, para no duplicarlo en el HTML. Sobre `.landing-hero`: titular "Tu partido empieza en TurnoGol" (`font-display font-black italic`, `clamp(48px, 5.6vw, 88px)` en escritorio) con "TurnoGol" en `.hero-accent-text`, el subtítulo "Mirá los turnos libres de hoy y reservá sin llamar a nadie." y el buscador `HeroSearch` (horizontal en escritorio), con "Sin descargar ninguna app" debajo. La barra es la `overlay` de `PortalHeader` (pastilla `.overlay-nav` flotante). Es ISR (`revalidate = 300`).
-- **Portal, confirmar la reserva (`/[slug]/reservar`):** una sola columna de 560 px (`max-w-[35rem]`, `PORTAL_COLUMN`; `RESERVAR_COLUMN` es su alias) centrada, con 16 px de margen, igual en el celular y en escritorio, sobre `ReservaDarkShell`, con 48 px de aire al pie (`pb-12`). "Volver" arriba, el título 8 px debajo y el primer bloque 24 px después; 32 px entre bloques (aviso, resumen, botón).
-- **Portal, la vuelta de la reserva (`/reserva/[bookingId]/*`):** la misma columna (`PORTAL_COLUMN`) sobre `ReservaDarkShell`, con 48 px al pie y sin botón fijo. Los resultados (`PortalResult`) se centran en el alto con `min-h-[50dvh]`; el éxito arranca arriba, a 24 px (48 px desde `sm`).
-- **Botón fijo abajo (portal, debajo de `md`):** una barra de 77 px (1 px de borde + 12 + 52 + 12) en `z-30`, apoyada SIEMPRE sobre la barra inferior del jugador (`bottom: 3.5rem + 1px + safe-area`): el área segura la pone la barra inferior, no esta. Su contenedor lleva `data-fixed-cta` y `PortalFrame` suma esos 77 px a su relleno inferior con `has-[[data-fixed-cta]]:pb-[calc(3.5rem+1px+env(safe-area-inset-bottom)+77px)]`: sin JS que mida y sin depender de la sesión, así el último link del pie queda por encima al final del scroll y nada salta al hidratar. Desde `md` el botón vuelve al flujo y el marco a 0 con `md:has-[[data-fixed-cta]]:pb-0` (`:has()` pesa más que `md:pb-0`, por eso el `md:` también lleva el `has`). Con la misma cuenta, `html:has([data-fixed-cta])` lleva `scroll-padding-bottom` en `globals.css` (0 desde `md`), para que el foco tabulado no quede detrás de la barra (WCAG 2.4.11). Si cambia el relleno o el alto del botón, cambian las tres: `ConfirmBookingButton`, `PortalFrame` y `globals.css`.
-- **Columnas por contenedor (ficha):** las horas y el esqueleto de la reserva eligen sus columnas según el ancho del CONTENEDOR (`@container`), no del viewport, porque la reserva mide 384 px en escritorio y el ancho de la pantalla en el celular: 3 columnas, y 6 desde 40 rem (640 px), con botones de 64 px. La constante es `HOUR_COLUMNS` en `HourGrid.tsx` y la comparten grilla y esqueleto. En la columna lateral de escritorio son 3. Los bloques de debajo usan breakpoints de viewport: canchas con foto en 2 columnas y 3 desde `sm`; torneos en 1 y 2 desde `sm`.
+- **Portal, la ficha del complejo (`ProfileLayout`, `/[slug]`):** en el DOM el orden es cabecera (portada de fondo y tarjeta de vidrio con el nombre, `ComplexHero`), reserva y el resto (canchas en `CourtTile`, fotos, horarios, partidos abiertos con el flag `rival`, torneos y reseñas). Desde `lg` (1024 px) son dos columnas: cabecera y resto a la izquierda y la reserva fija a la derecha, en una columna de 480 px debajo de la barra. Debajo de `lg`, una sola columna. La reserva es una pantalla (ver Components › Portal de vidrio y el brief): la fila de días arriba (desde 1024 px se ven 7 y el resto se desliza), las horas en cuadrados de 4 por fila y la barra de "Reservar".
+- **Portal, la home (`/`, `Hero`, `src/app/home/`):** hero con `HeroBackdrop`, titular "Tu cancha, a un toque." (con "a un toque." en verde), subtítulo, el buscador de vidrio (`HeroSearch` / `HomeSearch`) y la ventana de complejos de la localidad (`ComplexWindow`), seguidos de "Reservás en una pantalla" (`ReservaDibujo`), Rival (`RivalSection`, solo con el flag) y el cierre para complejos (`ClosingCta`). Es ISR (`revalidate = 300`): la localidad por IP la pide el cliente.
+- **Portal, confirmar la reserva (`/[slug]/reservar`) y la vuelta (`/reserva/[bookingId]/*`):** una sola columna de 480 px (`.rv-col`) sobre `ReservaDarkShell` (`.portal-ambient` + la columna), igual en el celular y en escritorio. Sin sesión, el ingreso es `LoginPanel`, una región de la misma pantalla, no un modal.
+- **Botón fijo abajo (portal, debajo de `md`):** una barra de 78 px (1 px de borde + 12 + 52 + 12 + 1) en `z-30`, apoyada SIEMPRE sobre la barra de abajo (`bottom: var(--portal-tabbar-space)`): el área segura la pone la barra de abajo, no esta. Su contenedor lleva `data-fixed-cta` y `PortalFrame` suma esos 78 px a su relleno inferior con `has-[[data-fixed-cta]]:pb-[calc(var(--portal-tabbar-space)+78px)]`: sin JS que mida y sin depender de la sesión. Desde `md` el botón vuelve al flujo y el marco a 0 con `md:has-[[data-fixed-cta]]:pb-0` (`:has()` pesa más que `md:pb-0`, por eso el `md:` también lleva el `has`). Con la misma cuenta, `html:has([data-fixed-cta])` lleva `scroll-padding-bottom` en `globals.css` (0 desde `md`), para que el foco tabulado no quede detrás de la barra (WCAG 2.4.11). Si cambia el relleno o el alto del botón, cambian las tres: `ConfirmBookingButton`, `PortalFrame` y `globals.css`.
+- **Hojas y áreas seguras:** la barra de abajo, la de "Reservar" y las hojas respetan `env(safe-area-inset-bottom)`. En el celu, la tarjeta de complejo del buscador va de a dos por fila; tres desde 768 px y cuatro desde 1200 px (`.ex-grid` de `explorar.css`).
+- **Medidas por contenedor:** las columnas de una pieza que vive en una columna angosta se resuelven con `@container`, no con un breakpoint de viewport.
 - **Contenedor de página:** lo pone `admin-layout-shell.tsx` y la página no agrega margen propio: `mx-auto w-full px-4 sm:px-6 lg:px-8`, tope de 1600 px (`max-w-[1600px]`) y `pt-8`. `/grilla` y `/reservas` son de ancho completo, con alto de pantalla y scroll interno. Un `max-w-*` en la página solo se justifica en un formulario o una lectura angosta.
 - **Hueco de vista:** las vistas del mostrador (Hoy, Grilla, Agenda, Caja y Configuración) y Métricas cuelgan ahí sus controles (segmentos, filtros, búsqueda, las flechas de día o de mes) en vez de abrir filas de encabezado propias. Lo que va al hueco es el control, no el título: el `<h1>` queda en el contenido, `sr-only`. Lo portalizado existe recién después de hidratar: un test o una foto de regresión tiene que esperarlo. Clientes, Turnos fijos, Canchas, Torneos y el super admin todavía abren con `PageHeader`.
 - **Medidas por CSS, superficies por hook:** un cambio de disposición se resuelve con clases responsive o `@container`. Un hook de viewport (`useIsDesktop`) solo se justifica cuando el contenido se portaliza fuera del subárbol que el CSS oculta (un popover de Radix), y nunca para el estado inicial. "Escritorio" es `lg` (1024 px) en el CSS y en el hook.
@@ -487,7 +475,7 @@ El panel es un marco fijo con el contenido en el medio. En `lg` (1024 px) aparec
 
 Híbrido y adaptativo. En claro la profundidad es **elevación**: sombras suaves en capas y un borde superior esmeralda tenue; las superficies de trabajo son opacas. En oscuro es **vidrio**: relleno blanco al 3 %, `backdrop-filter: blur(12px)`, sombra honda y, al pasar el mouse por algo clickeable, un resplandor esmeralda. Los fondos del marco (`.shell-bg`, `.content-area-gradient`) llevan degradés slate con resplandores esmeralda muy bajos y, en el marco, una retícula de 60 px que evoca una cancha.
 
-El portal (La Previa) es el mundo del vidrio y el resplandor, en los dos temas. En oscuro: losas #020617 / slate-950, vidrio (`AUTH_CARD_STYLE`, `.reserva-receipt-card`), sombras hondas y resplandores esmeralda (`.hero-glow-blob`, `.reserva-glow-*`). En claro: crema esmeralda con elevación suave y un tinte esmeralda en la sombra (`.player-hero-band`, `.reserva-receipt-card`). Las tarjetas del grupo del jugador son `bg-card` con borde `border` y `shadow-xs`. La excepción es la ficha del complejo (La Reserva): no usa ninguna profundidad, los botones de acción pisan la sombra del primitivo (`shadow-none`), la portada no lleva velo ni degradé y la jerarquía sale del borde de 1 px, del relleno verde de lo elegido y del tipo.
+El portal es el mundo del vidrio, en los dos temas: la profundidad sale de la receta de `.glass` (degradé translúcido, borde de 1 px, brillo interior arriba y sombra honda en oscuro o difusa en claro) sobre la luz de fondo `.portal-ambient`. Recetas y niveles: Colors › Portal de vidrio. Las superficies del panel siguen la regla de arriba; el portal no usa `.card-premium`.
 
 ### Shadow Vocabulary
 
@@ -506,7 +494,7 @@ El portal (La Previa) es el mundo del vidrio y el resplandor, en los dos temas. 
 
 ## Shapes
 
-Los escalones chicos salen del radio base `--radius: 0.5rem`: `sm` 4 px, `md` 6 px (ítems chicos, skeleton, tooltip) y `lg` 8 px (botones, campos, chips de opción). `xl` 12 px (tarjetas destacadas, popovers, menús, estados vacíos) y `2xl` 16 px (diálogos, la banda del `PageHeader`, la esquina superior de la hoja inferior) son los de Tailwind y no se mueven si cambia `--radius`; `.card-premium` calcula sus 12 px como `--radius` + 4 px. Pastillas y avatares van en `rounded-full`. Los ítems del riel usan 10 px. En la ficha del portal, la portada va en `2xl` (16 px); los días, las horas, las tarjetas de cancha, las fotos, los avisos y las listas, en `xl` (12 px); y los chips de formato y de servicio, en `full`. En la home, las tarjetas de canchas cerca, el buscador de escritorio, los campos, los horarios, la portada y la miniatura van en 12 px, y los chips de zona en `full`. En el portal `--radius` pasa a 12 px (`0.75rem`), así que `lg` mide 12, `md` 10 y `sm` 8: botones, campos y horas van en 12 px.
+Los escalones chicos salen del radio base `--radius: 0.5rem`: `sm` 4 px, `md` 6 px (ítems chicos, skeleton, tooltip) y `lg` 8 px (botones, campos, chips de opción). `xl` 12 px (tarjetas destacadas, popovers, menús, estados vacíos) y `2xl` 16 px (diálogos, la banda del `PageHeader`, la esquina superior de la hoja inferior) son los de Tailwind y no se mueven si cambia `--radius`; `.card-premium` calcula sus 12 px como `--radius` + 4 px. Pastillas y avatares van en `rounded-full`. Los ítems del riel usan 10 px. **El portal no usa estos escalones:** píldora para botones, chips y barras; 18 a 24 px en piezas internas (campo 18, hora 20); 28 a 36 px en tarjetas y hojas (barra de "Reservar" y tarjeta de vidrio 28, hoja 32).
 
 El borde es de 1 px en `border-border` y lo aplica `globals.css` a todo. Tres firmas de forma se repiten: el **borde izquierdo de 3 px** que identifica el estado de un turno en la grilla (legible en densidad alta y para daltónicos, porque la posición no cambia), el **rayado diagonal** (135°, cada 6 px sobre `muted`) de lo bloqueado a propósito, y el **anillo inset** de 1 px de los badges.
 
@@ -521,29 +509,46 @@ Todas las primitivas viven en `src/components/ui/` y consumen solo tokens semán
 - **Hover / Focus:** el primario baja al 90 %, sube 2 px y agranda la sombra; al apretar se achica al 97 %. El foco es un anillo de 2 px en `ring` con 2 px de separación, que aparece sin transición. Los asíncronos usan `isLoading`: pelotita `TgBallSpinner` de 16 px más `disabled`, nunca un doble envío silencioso.
 - **Secondary / Ghost / Tertiary:** `outline` (borde `input`, fondo `card`, hover `accent`), `secondary`, `ghost` (solo hover `accent`), `destructive` (rojo, se separa del cancelar) y `link` (`text-emerald-700 dark:text-emerald-400`, subrayado al hover). Un botón que es solo ícono (`size="icon"`, 44/40 px) lleva `aria-label` y `Tooltip`.
 
-### Portal (La Previa)
+### Portal de vidrio: piezas y movimiento
 
-Las primitivas del panel no se tocan: el portal les pasa sus clases por `className` (`PORTAL_BUTTON`, `AUTH_INPUT`) y tailwind-merge las deja ganar. Las constantes viven en `src/components/world/PortalAuthFrame.tsx`.
+Las primitivas del panel no se tocan. El portal tiene sus propias variantes y piezas, todas con los tokens `--portal-*` / `--glass-*` (ver Colors › Portal de vidrio). Cada pantalla se arma combinando estas piezas; el detalle de cada una está en la [dirección](docs/planning/2026-11-13-portal-vidrio-direccion.md) y el de cada pantalla, en su brief.
 
-- **Marco de ingreso (`PortalAuthFrame`):** siempre oscuro (`dark dark-surface`, fondo #020617, `[--input]` a 3:1). Dos resplandores esmeralda (arriba a la derecha de 440 px, abajo a la izquierda de 420 px), el logo horizontal arriba (link a la home, 44 px de alto) y el contenido en una card de vidrio (`AUTH_CARD_STYLE`, esquina de 16 px, `p-6` / `sm:p-8`) de `max-w-md`. `/ingresar` pasa `aside` (`ImagePane`, la foto) y desde `lg` el marco es de dos columnas. Lo usan `/ingresar`, `/aceptar-terminos` y la rama de jugador de `/verify`.
-- **Titular de ingreso (`AUTH_TITLE`):** Archivo negra itálica, 30 px, siempre blanco, con un tramo en degradé esmeralda (`AUTH_ACCENT_STYLE`, #6ee7b7 → #34d399 → #10b981). `PORTAL_TITLE` y `PORTAL_SECTION_TITLE` (Archivo 800 recta) siguen existiendo para la ficha y para los títulos de sección del grupo del jugador.
-- **Campos de ingreso (`AUTH_INPUT`):** 48 px, `text-base` en mobile (menos de 16 px dispara el zoom de iOS), fondo `white/4`, texto blanco, placeholder en `muted-foreground` pleno, borde `input` (3:1). El error marca el campo con `aria-invalid` (borde `destructive`) y el mensaje va pegado debajo.
-- **Botones (`PORTAL_BUTTON`):** de 48 px de alto mínimo a todo el ancho, 16 px, sin sombra ni levante al hover ni al apretar, con el foco separado por el color del fondo (`focus-visible:ring-offset-background`). Deshabilitado o pendiente no se desvanece (`disabled:opacity-100`): "Enviando…" conserva su relleno y su etiqueta. `PORTAL_BUTTON_OUTLINE` para el `outline` deshabilitado ("Reenviar en 42 s"). Una sola acción verde por pantalla.
-- **Links (`PORTAL_LINK`):** el foco del link es el anillo del mundo (2 px en `ring`, separado 2 px con el color del fondo); el color, el subrayado y los 44 px de blanco táctil los pone cada link. Texto de link: `text-emerald-700 dark:text-emerald-400`, subrayado.
-- **Barra (`PortalHeader`):** pegada arriba (`z-50`). La `solid` (todo el portal salvo la home) es una pastilla `rounded-full` de 56 px dentro de `max-w-7xl`, con borde `border`, fondo `bg-card/80` y `backdrop-blur-md`. La `overlay` (la home) es la pastilla flotante `.overlay-nav` sobre el hero (blanco elevado en claro, vidrio oscuro en oscuro). A la izquierda el logo; a la derecha Explorar, "Mis reservas" (con sesión) o "Para complejos" (sin sesión) desde `sm`, y la acción ("Ingresar", "Ir a mi panel") en una pastilla de 44 px, o el menú de cuenta. Todos los destinos miden 44 px de alto como mínimo.
-- **Menú de cuenta (`AccountMenu`, variantes `solid` y `overlay`):** disparador de 44 px con avatar, en pastilla con `ring-1`; en `overlay`, fondo `foreground/6` en claro y `white/15` en oscuro. Adentro, `ThemeToggle variant="portal"`. El foco del disparador es `ring-primary`.
-- **"Ingresar" con `next` (`IngresarLink`):** todo "Ingresar" del cromo (barra y pie) lleva a `/ingresar?next=<página actual con su query>`, codificado entero; `sanitizeNext` lo valida en el destino. Un link nuevo a `/ingresar` desde el portal usa `IngresarLink`, no un `Link` pelado.
-- **Pie (`SiteFooter`):** `border-t border-border`, fondo `bg-card/60` (`dark:bg-slate-950`), con el logo, Explorar, Ingresar, Privacidad, Términos y los canales de contacto.
-- **Barra inferior (`PlayerBottomNav`, debajo de `md`, con y sin sesión):** fija abajo (`z-40`), `bg-card` con borde superior de 1 px y safe-area. Tres ítems a partes iguales de 56 px de alto mínimo: Explorar, Reservas y Cuenta, con ícono de 20 px y rótulo de 13 px. Sin sesión, Reservas y Cuenta redirigen a `/ingresar?next=…` por el guard de cada página. El activo no se dice solo con color: va en `text-emerald-700 dark:text-emerald-400`, semibold, con una marca `primary` de 2×40 px arriba y `aria-current`. No se muestra en `/suspended`, `/reactivar` ni con sesión de complejo (`useBottomNavVisible`). `PortalFrame` reserva exactamente su alto: 56 px + 1 px de borde + safe-area.
-- **Fondo del cascarón (`PortalFrame`):** `.player-shell-bg` en toda página del portal (ver Colors › Portal).
+**Piezas (todas existen en `src/`):**
 
-Las specs de cada pantalla del portal (la ficha, confirmar e ingresar, la vuelta de la reserva y el grupo del jugador) están en sus briefs: ver Specs por pantalla, al final de Components.
+- **Botón de píldora (`Button`, variantes `pill`, `pill-glass`, `pill-danger`, `pill-link`, `pill-chip`; tamaños `pill` 52 px, `pill-sm` 44 px, `pill-icon` 44 px, `src/components/ui/button.tsx`):** `rounded-full`, semibold. `pill` es el verde de acción (degradé `--portal-btn-a` → `--portal-btn-b`, texto `--portal-on-green`); `pill-glass` es vidrio; `pill-chip` marca lo elegido con el mismo verde (`aria-pressed` / `aria-checked`). Apretar: `scale(.985)` en `--dur-1` y, al soltar, vuelve con `--ease-toque`. Foco: contorno verde de 2 px a 3 px de separación. Un `Link` con `buttonVariants({ variant: 'pill' })` va siempre envuelto en `cn(...)`: sin `twMerge`, le ganan `rounded-lg` y `text-sm` de la base.
+- **Cabecera (`PortalHeader`, `.portal-top*`; `SiteNav` es su re-export):** en el celu, el logo y el botón de tema sin fondo; desde 768 px, una píldora de vidrio de 60 px (`max-w` 1120) con los links al centro. Pasados 8 px de scroll se condensa una sola vez a 54 px, con más opacidad y sombra (solo `transform` y `opacity`). Variante `overlay` sobre el hero de la home. Con sesión, el menú de cuenta (`AccountMenu`, `glass-pop`) va en portal de Radix. `ThemeButton` abre el tema nuevo en círculo desde el botón con `document.startViewTransition` y `clip-path` (420 ms); sin soporte, cambia directo. `ThemeToggle variant="glass"` es el control segmentado de Cuenta; `variant="portal"` sigue existiendo porque el cajón del celu del panel lo usa.
+- **Barra de abajo (`PlayerBottomNav`, `.portal-tabbar`, solo debajo de `md`, con y sin sesión):** píldora flotante de vidrio real de 66 px con Explorar, Rival (solo con el flag `rival`), Reservas y Cuenta. Una sola píldora (`[data-tabbar-pill]`) se traslada de una pestaña a otra con `--spring-pildora`; entre pantallas la lleva `<ViewTransition name="portal-tabbar-pill">`. El activo no se dice solo con color: va semibold. El ícono de la pestaña nueva hace su toque (0,86 → 1) solo cuando la pestaña cambió. Baja y sale cuando sube una hoja (`[data-glass-sheet]`), la barra de "Reservar" (`[data-reserve-bar]`) o hay un campo con foco. No aparece en `/suspended`, `/reactivar` ni con sesión de complejo (`useBottomNavVisible`). `PortalFrame` reserva su espacio con `--portal-tabbar-space` (78 px + área segura).
+- **Hoja (`GlassSheetContent`, `src/components/ui/glass-sheet.tsx`, sobre `Sheet` de Radix):** sube desde abajo con `--spring-hoja`, se arrastra desde la manija o la cabecera y se cierra si se arrastra más de un tercio de su alto o con velocidad hacia abajo; desde `md` es un panel centrado sin arrastre. Archivo aparte de `sheet.tsx` para que el panel no cargue `motion`. Con "reducir movimiento", fundido de 150 ms y sin arrastre. `GlassConfirmSheet` (`src/components/world/`) es el `ConfirmDialog` del portal, con la misma lógica (`useConfirmAction`) y la piel de hoja.
+- **Barra de "Reservar" (`ReserveBar`, `.rbar`):** sube sobre la ficha al tocar una hora, con la cancha, el precio y el botón. Vidrio real, en portal a `<body>`, con el resorte hoja y arrastre hacia abajo para cerrarla; no es un diálogo (la página sigue usable). La barra fija de confirmar (`ConfirmBookingButton`) y la de Rival miden 78 px y llevan `glass-pop`.
+- **Resultado (`PortalResult`, `src/components/world/PortalResult.tsx`):** la forma común de pendiente, error, "no encontrado", los `error.tsx` del jugador, referidos y reactivar. Insignia (verde, roja o de vidrio neutro), título, qué pasó, el turno en un ticket si lo hay y la salida en píldoras de 52 px (`RESULT_GO`, `RESULT_ALT`, `portal-result-classes.ts`). Ninguna insignia lleva ámbar. Columna de 480 px.
+- **Foto del hero (`HeroBackdrop`, `src/components/world/HeroBackdrop.tsx`):** foto + desenfoque + velo + resplandores (ver Colors). La usan la home, `/ingresar` y `/para-complejos`; con `priority` es el LCP. Las fotos viven en `src/components/world/fotos/`.
+- **Marco de ingreso (`PortalAuthFrame`):** cromo del portal, foto del hero sin reflejo y una columna centrada con la tarjeta de ingreso (`.pa-auth__card glass`). Las clases de campos, links y botones de ingreso están en `portal-auth-styles.ts` (`PORTAL_BUTTON_OUTLINE`, `PORTAL_LINK`, `GLASS_INPUT`), un módulo sin imports a propósito: importarlas desde el marco arrastraría su CSS y el cromo a la ficha, Rival y confirmar.
+- **Esqueletos (`Skeleton variant="glass"`, `.skeleton-glass`):** una pieza de vidrio con el brillo de carga, con la forma exacta de lo que reemplaza.
+- **Avisos (`[data-toast]` dentro de `[data-portal-glass]`):** bajan desde arriba con `--spring-hoja` en vidrio.
+- **Barra fija y `Reveal`:** `Reveal` (`src/components/site/Reveal.tsx`) hace aparecer una sección al bajar, una vez.
 
-**The Quiet Ghost Rule.** Las acciones de una tarjeta del portal que no son la principal (Cancelar, Dejar reseña, Reservar de nuevo) van sin borde ni relleno: 44 px de alto, 14 px medium, hover `accent`. Solo la próxima lleva verde ("Avisarle al grupo") y una `outline` ("Cómo llegar"). "Ausente" y "Esperando seña" son neutros: el rojo del panel y el ámbar de "Queda 1" no se prestan.
+**Movimiento.** Calmo (nada se mueve si nadie tocó nada), preciso y físico. Reglas completas y tiempos por pantalla: [dirección §4](docs/planning/2026-11-13-portal-vidrio-direccion.md).
+
+- **Tokens** (en `html:has([data-portal-glass])`): `--dur-1` 120 ms (toque, color), `--dur-2` 200 ms (fundidos, chips), `--dur-3` 320 ms (entradas de bloque), `--dur-4` 700 ms (entrada del hero); curvas `--portal-ease-out` `cubic-bezier(.2,.8,.2,1)` (lo que entra) y `--portal-ease-in` `cubic-bezier(.4,0,1,1)` (lo que se va); resortes en CSS `--spring-hoja` 380 ms, `--spring-pildora` 440 ms y `--spring-toque` 480 ms (curvas `--ease-hoja`, `--ease-pildora`, `--ease-toque`, con `linear()`). Un resorte se pasa de largo un 6 % como mucho.
+- **Con qué:** CSS primero (`transition`, `@keyframes`, `animation-timeline`). Para navegar entre pantallas y elementos compartidos, `<ViewTransition>` de React 19 y `transitionTypes` de `<Link>`. `motion` (`motion/react`) solo para lo que necesita física y gestos: hojas que se arrastran y piezas que entran y salen de una lista. Va con `LazyMotion strict` y `MotionConfig reducedMotion="user"` en `PortalMotionProvider` (`src/components/site/`), que montan `PortalFrame` y la home y nunca `(admin)`; el arrastre (`domMax`) se carga en diferido recién al montar una hoja. Es la segunda excepción de la regla "sin librerías de animación" (la otra es `/onboarding`).
+- **Piezas de movimiento** (se combinan, no se inventan otras sin escribirlas en la dirección): subir, aparecer al bajar, apretar, píldora que se desliza, hoja, reemplazo (un precio cambia por reemplazo, nunca contando de un valor al otro), escalonado, trazo, brillo de carga (el único bucle permitido), transformación, floración y reflejo.
+- **Decidido en F9** (plan, fase 9): fundido de 200 ms entre pantallas con `<ViewTransition>` (`PortalTransition`, `src/components/site/`, dentro de un `template.tsx` por grupo de rutas: un layout persiste y no tendría entrada ni salida) y `transitionTypes` en los `<Link>`; entrar a un detalle (`nav-forward`) entra 24 px desde la derecha y volver (`nav-back`), desde la izquierda; el resto, incluido el Atrás del navegador, es un fundido cruzado. La foto de la tarjeta de `/explorar` se transforma en la portada de la ficha con el nombre compartido `complejo-foto-<slug>` (`TenantCard`). Grano sobre el vidrio real (variable `--glass-grain`, un SVG en línea al 2 a 3 % de opacidad; `--glass-grain: none` lo apaga si en la medición cuesta). Brillo que sigue al puntero en el borde (`usePointerGlow`, `src/components/world/use-pointer-glow.ts`), solo en compu, en el buscador de la home y las tarjetas de planes. La barra de abajo se compacta al bajar y vuelve al subir. Las que todavía no estén en el código al leer esto están en el [plan](docs/planning/2026-11-13-portal-vidrio-plan.md), fase 9.
+- **Rendimiento:** solo `transform` y `opacity`; nunca el radio del desenfoque, sombras grandes ni anchos y altos. El elemento más grande de la primera pantalla nunca arranca escondido. Lo que `motion` suma al portal no pasa de unos 25 KB comprimidos y en `(admin)` suma cero.
+
+**Accesibilidad del vidrio** (bloques fuera de `@layer` en `globals.css`, para ganarle a las utilidades):
+
+- `prefers-reduced-motion`: lo que se desplazaba pasa a un fundido corto o aparece directo; nada queda escondido esperando una animación.
+- `prefers-reduced-transparency` y navegadores sin `backdrop-filter` (`@supports not`): el vidrio pasa a un relleno casi opaco del color del tema y se sigue leyendo. Un vidrio armado con utilidades se suma a esas listas con `glass-pop`.
+- `prefers-contrast: more`: vidrio opaco (`--portal-bg`) y bordes del 55 % de la tinta.
+- Foco siempre visible (anillo verde de 2 px), objetivos de 44 px y contraste AA medido sobre el fondo real ya renderizado: la foto del hero cambia el resultado.
+
+Las specs de cada pantalla del portal están en sus briefs: ver Specs por pantalla, al final de Components.
+
+**The Quiet Ghost Rule.** Las acciones de una tarjeta del portal que no son la principal (Cancelar, Dejar reseña, Reservar de nuevo) van sin relleno de acción: píldora de vidrio o de tinta (`pill-link`, `pill-glass`), 44 px. Solo la próxima lleva verde ("Avisarle al grupo"). "Ausente" y "Esperando seña" son neutros: el rojo de error y el ámbar de "Queda 1" no se prestan.
 
 ### Chips
 
-- **Alcance:** lo que sigue es del Mostrador. Los chips de la reserva de la ficha están en [`src-app-public-slug.md`](.impeccable/surfaces/src-app-public-slug.md) › La ficha del complejo y su reserva.
+- **Alcance:** lo que sigue es del Mostrador. Los días y las horas de la reserva de la ficha (`DayList`, `HourGrid`) y los chips de tamaño del buscador son piezas del portal: están en [`src-app-public-slug.md`](.impeccable/surfaces/src-app-public-slug.md) y en Components › Portal de vidrio.
 - **Style:** el badge de estado (`StatusBadge`) es una pastilla con tinte del tono al 10 % (15 % en oscuro), rótulo 800/300, anillo inset al 25 % (40 % en oscuro) e ícono de 12 px. El ícono, el rótulo y el tono de cada estado salen de una tabla única por dominio: `src/lib/booking/slot-visual.ts` para los turnos (grilla, reservas y detalle) y un `status-visual.tsx` por módulo para canchas, turnos fijos y equipo. Así el panel y el portal dicen lo mismo, y un badge nuevo no inventa su propio mapa de colores.
 - **State:** las opciones elegibles (`RadioChip`) son tarjetas de 44 px de alto con borde `border`; la elegida pasa a borde `primary` y fondo `primary` al 5 % (10 % en oscuro).
 - **Segmentos de elección:** los que eligen una opción entre pocas usan `choiceChipClass` (`src/components/ui/segmented-control.tsx`), con el look de `RadioChip` y el peso como pista que no es color (semibold la elegida, medium el resto). Hoy: "¿Cómo pagan?" del cobro, el método de pago, y en el alta "¿Cobraste algo ahora?", el tipo de reserva en el teléfono, "Repetición", "Precio", "Quién" y "Motivo"; también "Precio" en Editar turno y las horas de Mover turno. Lo elegido nunca va con relleno `primary` sólido: ese verde es del botón que cobra o confirma (The One Voice Rule). Al lado de "Cobrar", una pestaña en verde sólido hacía dos o tres losas gritando a la vez (refinamiento del 2026-10-31). La tira de días de la Grilla y su calendario usan el mismo borde y tinte para el día elegido, y borde punteado para hoy.
@@ -569,7 +574,7 @@ Las specs de cada pantalla del portal (la ficha, confirmar e ingresar, la vuelta
 
 ### Inputs / Fields
 
-- **Style:** borde de 1 px `input` (en el panel vale lo mismo que `border`; en el portal es el borde de 3:1), fondo `card`, esquina de 8 px, 44/40 px de alto, `px-3.5`, placeholder en `muted-foreground` al 60 %.
+- **Style:** borde de 1 px `input` (en el panel vale lo mismo que `border`), fondo `card`, esquina de 8 px, 44/40 px de alto, `px-3.5`, placeholder en `muted-foreground` al 60 %. En el portal el campo es `GLASS_INPUT` (`portal-auth-styles.ts`): 52 px, esquina de 18 px, 16 px también desde `md`, borde `border-portal-soft/70` (3:1) y fondo `portal-inner`.
 - **Focus:** anillo de 2 px en `ring` con separación y el borde pasa a `primary`.
 - **Error / Disabled:** el error va debajo del campo en 12 px `destructive` con `role="alert"`; deshabilitado baja al 50 %. El rótulo es siempre visible (el placeholder es un ejemplo, "Ej: …", y tiene que entrar completo).
 - **Plata:** todo campo de pesos es `MoneyInput`, que trabaja en centavos (controlado con `valueCents`/`onValueChange`, o no controlado con `defaultValueCents` + `name`, que viaja en un `<input type="hidden">`). Nunca `type="number"` ni `parseFloat` para plata; lo que no es plata (goles, stock, días, porcentajes, minutos) sigue con `type="number"`.
@@ -581,7 +586,7 @@ Las specs de cada pantalla del portal (la ficha, confirmar e ingresar, la vuelta
 - **Barra inferior (`AdminBottomNav`, debajo de `lg`):** fija, cuatro accesos de al menos 56 px de alto con ícono y rótulo de 11 px; el cuarto, "Más", abre el cajón (`Sheet` lateral) con todos los espacios.
 - **Pestañas (`ScrollTabs`):** subrayado de 2 px; la activa lleva borde `emerald-600` y texto `emerald-800`/`emerald-400`. Se deslizan en horizontal si no entran.
 - **Paginación (`Pager`):** una sola para todo el panel: "Mostrando 26–50 de 312", números con la primera y la última a mano, la actual en `foreground` sólido, "Anteriores"/"Siguientes" apagados en su lugar cuando no hay adónde ir. Nada de scroll infinito en el panel.
-- **Portal:** la barra, el pie, la barra inferior y el menú de cuenta del jugador están en Components › Portal (La Previa).
+- **Portal:** la cabecera en píldora, el pie, la barra de abajo, el menú de cuenta, las hojas y los avisos están en Components › Portal de vidrio.
 - **Candado de rol:** lo que el encargado no puede usar se ve con candado y el tooltip "Solo el dueño" en vez de desaparecer (hoy, Configuración).
 
 ### Dialogs, Sheets and Toasts
@@ -597,19 +602,22 @@ Las specs de cada pantalla del portal (la ficha, confirmar e ingresar, la vuelta
 
 Lo de arriba es lo que comparten todas las pantallas. La spec de cada pantalla vive en el brief de su ruta, en `.impeccable/surfaces/`, y `impeccable context --target <ruta>` la carga solo cuando se trabaja en esa pantalla. Una pantalla nueva no suma su sección acá: va a su brief.
 
-| Pantalla | Brief |
-|---|---|
-| La ficha del complejo y su reserva (La Reserva) | [`src-app-public-slug.md`](.impeccable/surfaces/src-app-public-slug.md) |
-| La vuelta de la reserva (`/reserva/[bookingId]`) | [`src-app-public-slug.md`](.impeccable/surfaces/src-app-public-slug.md) |
-| Confirmar la reserva y el ingreso del jugador | [`src-app-auth-ingresar.md`](.impeccable/surfaces/src-app-auth-ingresar.md) |
-| El grupo del jugador: Mis reservas, Mi cuenta y Eliminar la cuenta | [`src-app-player.md`](.impeccable/surfaces/src-app-player.md) |
-| Grilla de turnos y Placa para historias | [`src-app-admin-grilla.md`](.impeccable/surfaces/src-app-admin-grilla.md) |
-| Agenda (`/reservas`) | [`src-app-admin-reservas.md`](.impeccable/surfaces/src-app-admin-reservas.md) |
-| Tablero de Hoy | [`src-app-admin-dashboard.md`](.impeccable/surfaces/src-app-admin-dashboard.md) |
-| Canchas | [`src-app-admin-canchas.md`](.impeccable/surfaces/src-app-admin-canchas.md) |
-| Caja › Cuentas y Caja › Productos | [`src-app-admin-caja.md`](.impeccable/surfaces/src-app-admin-caja.md) |
-| Métricas | [`src-app-admin-analiticas.md`](.impeccable/surfaces/src-app-admin-analiticas.md) |
-| Superadmin (Pulso, Complejos y Jugadores) | [`src-app-super-admin-super-admin.md`](.impeccable/surfaces/src-app-super-admin-super-admin.md) |
+| Pantalla                                                           | Brief                                                                                                   |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| La ficha del complejo y su reserva en una pantalla                 | [`src-app-public-slug.md`](.impeccable/surfaces/src-app-public-slug.md)                                 |
+| La vuelta de la reserva (`/reserva/[bookingId]`)                   | [`src-app-public-slug.md`](.impeccable/surfaces/src-app-public-slug.md)                                 |
+| Confirmar la reserva y el ingreso del jugador                      | [`src-app-auth-ingresar.md`](.impeccable/surfaces/src-app-auth-ingresar.md)                             |
+| Home                                                               | [`src-app-home.md`](.impeccable/surfaces/src-app-home.md)                                               |
+| Cromo del portal (cabecera, pie y barra de abajo)                  | [`src-components-site-portalshell-tsx.md`](.impeccable/surfaces/src-components-site-portalshell-tsx.md) |
+| Páginas para complejos (`/para-complejos`, planes, blog y legales) | [`src-app-business-para-complejos.md`](.impeccable/surfaces/src-app-business-para-complejos.md)         |
+| El grupo del jugador: Mis reservas, Mi cuenta y Eliminar la cuenta | [`src-app-player.md`](.impeccable/surfaces/src-app-player.md)                                           |
+| Grilla de turnos y Placa para historias                            | [`src-app-admin-grilla.md`](.impeccable/surfaces/src-app-admin-grilla.md)                               |
+| Agenda (`/reservas`)                                               | [`src-app-admin-reservas.md`](.impeccable/surfaces/src-app-admin-reservas.md)                           |
+| Tablero de Hoy                                                     | [`src-app-admin-dashboard.md`](.impeccable/surfaces/src-app-admin-dashboard.md)                         |
+| Canchas                                                            | [`src-app-admin-canchas.md`](.impeccable/surfaces/src-app-admin-canchas.md)                             |
+| Caja › Cuentas y Caja › Productos                                  | [`src-app-admin-caja.md`](.impeccable/surfaces/src-app-admin-caja.md)                                   |
+| Métricas                                                           | [`src-app-admin-analiticas.md`](.impeccable/surfaces/src-app-admin-analiticas.md)                       |
+| Superadmin (Pulso, Complejos y Jugadores)                          | [`src-app-super-admin-super-admin.md`](.impeccable/surfaces/src-app-super-admin-super-admin.md)         |
 
 ## Do's and Don'ts
 
@@ -623,16 +631,16 @@ Lo de arriba es lo que comparten todas las pantallas. La spec de cada pantalla v
 - **Do** colgar los controles de una vista en el hueco de la barra superior (`AdminHeaderSlot`) en vez de sumar filas de encabezado.
 - **Do** reservar 44 px de blanco táctil debajo de 768 px (`h-11 md:h-10`) y dejar la fila entera clickeable cuando abre un detalle.
 - **Do** escribir en voseo, en sentence case y con el vocabulario de pantalla de `PRODUCT.md`; mayúsculas solo en microrrótulos de una o dos palabras con `tracking`.
-- **Do** construir todo lo nuevo del portal en La Previa (oscuro premium, vidrio, resplandores, fotos de fondo, titulares en Archivo negra itálica con un tramo en `.hero-accent-text`), con las recetas que ya existen en `globals.css` y `PortalAuthFrame.tsx`, y una sola acción verde por pantalla. La única excepción es la ficha del complejo, que sigue en La Reserva.
-- **Do** montar `PortalWorld` solo en la ficha (`(perfil)/layout.tsx` y `[slug]/not-found.tsx`). Sus tokens cuelgan de `html:has([data-world='portal'])` (`portal-world.css`) para alcanzar a los portales de Radix en `body`; un token del portal nunca se escribe en `:root`, `.dark`, `.dark-surface` ni `src/components/ui/*`.
-- **Do** mantener las compuertas del portal en verde: `tests/unit/portal-world-tokens.test.ts` hashea los tokens del panel (cambiarlos a propósito actualiza el hash en el mismo PR), `tests/unit/portal-shell-bg.test.ts` fija la regla que apaga el fondo de cancha en la ficha, `tests/unit/hero-accent-contrast.test.ts` fija el contraste de `.hero-accent-text` y del eyebrow de `PlayerHeroBand`, y la story de `PortalWorld` mide 9 tokens en claro y en oscuro.
+- **Do** construir todo lo nuevo del portal en vidrio (ver Colors › Portal de vidrio y Components › Portal de vidrio), con las recetas y las piezas que ya existen en `globals.css`, `src/components/world/` y `src/components/ui/glass-sheet.tsx`, y una sola acción verde por pantalla.
+- **Do** dejar `PortalWorld` y `portal-world.css` donde están: siguen montados en `(perfil)/layout.tsx` y dan los tokens de los campos de la ficha. Ninguna pantalla nueva los usa.
+- **Do** mantener las compuertas del portal en verde: `tests/unit/portal-world-tokens.test.ts` hashea los tokens del panel (cambiarlos a propósito actualiza el hash en el mismo PR; `@theme` suma los `portal-*`), `tests/unit/portal-shell-bg.test.ts`, `tests/unit/hero-accent-contrast.test.ts` y la suite a11y de Storybook en los dos temas. El contraste del vidrio se mide sobre el píxel ya renderizado, nunca sobre el token.
 - **Do** marcar el error en el campo o la casilla que falló, con el mensaje debajo.
-- **Do** decir lo elegido en la reserva con relleno verde y tilde (días, chips de formato y horas): nunca solo color. Es la excepción a The One Voice Rule que fija el brief de la ficha (2026-10-15): lo elegido es un estado, no una acción. Cada estado de una hora se dice con palabra ("N libres", "Queda 1", "Libre", "Señando", "Completo") y lo que no se puede elegir se ve y se explica en vez de desaparecer.
+- **Do** decir lo elegido en la reserva con relleno verde y tilde o estado: nunca solo color. Cada estado de una hora se dice con palabra ("N libres", "Queda 1", "Libre", "Señando", "Completo") y lo que no se puede elegir se ve y se explica en vez de desaparecer.
 - **Do** resolver las columnas de una pieza que vive en una columna angosta con `@container`, no con un breakpoint de viewport.
 - **Do** darle a cada vacío o error del portal su causa, qué hacer y una salida (reintentar, otro día, hablar con el complejo) arriba del pliegue.
-- **Do** marcar con `data-fixed-cta` todo botón fijo abajo del portal y sumar su alto real a la cuenta de `PortalFrame` en el mismo PR; nunca medirlo con JS ni colgarlo de la sesión.
+- **Do** marcar con `data-fixed-cta` todo botón fijo abajo del portal (hoy `ConfirmBookingButton` y la barra fija de Rival) y sumar su alto real (78 px) a la cuenta de `PortalFrame` y al `scroll-padding-bottom` de `globals.css` en el mismo PR; nunca medirlo con JS ni colgarlo de la sesión.
 - **Do** dejar el estado que depende del reloj del visitante (hoy, abierto o cerrado, qué horas quedan) en una isla de cliente con un esqueleto del mismo alto, y marcar la sección de reserva con `data-state`.
-- **Do** marcar con `data-portal-fields` el grupo de páginas del jugador que tiene campos, y dejar los marcos siempre oscuros (`PortalAuthFrame`, el modal de ingreso) con su `[--input:215.4_16.3%_50%]`, para que el borde de un control llegue a 3:1.
+- **Do** poner `data-portal-glass` (lo ponen `PortalFrame`, la home, `(business)/layout.tsx` y `PortalAuthFrame`) en toda pantalla del portal: sin el marcador no hay tokens `--portal-*` ni `--glass-*`. Los tokens cuelgan de `html:has([data-portal-glass])` y `html.dark:has([data-portal-glass])`, nunca de `:root` ni de `.dark`: el panel no los ve. En Tailwind son `portal-*` (`text-portal-ink`, `bg-portal-inner`).
 
 ### Don't:
 
@@ -640,16 +648,17 @@ Lo de arriba es lo que comparten todas las pantallas. La spec de cada pantalla v
 - **Don't** llamar "deuda" a un turno no cobrado, ni pintar de rojo un turno que todavía se está jugando: el rojo es de lo jugado y no cobrado (principio 3 de `PRODUCT.md`). La urgencia se dice con color y texto; el único movimiento es el punto que late en el botón "Cobrar $X" de Hoy (pedido del dueño, 2026-09-25). El anillo que respiraba alrededor de toda la celda de la Grilla (`.slot-alarm-ring`) se eliminó el 2026-09-24 y no vuelve.
 - **Don't** usar emerald-500 o emerald-600 como texto sobre claro, ni texto blanco de 14 px sobre emerald-600 o amber-600.
 - **Don't** escribir hex inline en JSX, ni sombras, degradés o vidrio inline; tampoco `dark:` sueltos para arreglar una primitiva: se arregla el token.
-- **Don't** poner `bg-white` como fondo de página, ni `text-black`/`bg-black`. En el portal el fondo sale de `.player-shell-bg` (o de `bg-background` en la ficha), no de la clase.
-- **Don't** llevar a la ficha del complejo las recetas de La Previa (vidrio, resplandores, foto de fondo, titular en negra itálica) ni a La Previa el aplanado de la ficha: cada mundo en su ruta, hasta que el dueño decida unificarlos.
+- **Don't** poner `bg-white` como fondo de página, ni `text-black`/`bg-black`. En el portal el fondo sale de `.portal-ambient` (sobre `--portal-bg`); en el panel, de `bg-background`.
+- **Don't** armar vidrio de portal con valores inline ni inventar uno: `.glass`, `.glass-painted`, `.glass-pop` y los tokens `--glass-*` / `--portal-*` de `globals.css` son la receta. Un vidrio armado con utilidades (una barra fija, un menú) lleva `glass-pop` para entrar en las listas de respaldo de accesibilidad.
+- **Don't** apilar más de tres capas de vidrio real visibles en el celu (presupuesto de la dirección §3.3), ni poner `backdrop-filter` en lo que se repite en una lista, ni alrededor de un `position: fixed`: el `backdrop-filter` hace de bloque contenedor y el `fixed` se ubica contra el vidrio. Lo fijo (la barra de "Reservar", la hoja, el menú de la cuenta, los avisos) va en portal de Radix o a `<body>`.
 - **Don't** deshabilitar un botón del portal con opacidad ni dejarlo deshabilitado sin explicación.
-- **Don't** delimitar un campo, una casilla o un `outline` del portal con `border-border`: con 1,2:1 no llega a los 3:1 de WCAG 1.4.11.
-- **Don't** poner dos acciones verdes en una pantalla del portal. La hora o el chip elegidos son estado y no cuentan; el botón verde de confirmar vive en `reservar` y, en la vuelta de la reserva, el verde es la salida principal ("Avisarle al grupo" en el éxito; las secundarias son filas planas).
+- **Don't** delimitar un campo, una casilla o un `outline` del portal con `portal-inner-line`: con 1,2:1 no llega a los 3:1 de WCAG 1.4.11. Va `border-portal-soft/70` (`GLASS_INPUT`).
+- **Don't** poner dos acciones verdes en una pantalla del portal. La hora, el día o el chip elegidos son estado y no cuentan; el verde de acción es la píldora principal (la barra de "Reservar", "Pagar seña", "Avisarle al grupo" en el éxito). Un verde que no es acción ni lugar disponible es decoración: no va.
 - **Don't** mostrar una cuenta regresiva ni prometer una confirmación a quien vuelve de pagar: los cortes de la espera dicen dónde mirar (Mis reservas) y a quién escribir (el complejo). Lo que el jugador comparte (el mensaje al grupo) nunca lleva montos.
-- **Don't** usar ámbar en la reserva de la ficha para otra cosa que "Queda 1": ni "Señando", ni "Libre", ni un aviso, ni la hora elegida.
+- **Don't** usar el ámbar del portal (`--portal-warn*`) para otra cosa que "Queda 1" y los avisos: ni para "Señando" (es una espera, va con borde punteado), ni para decorar, ni para la hora elegida.
 - **Don't** esconder las horas completas ni los días cerrados: se ven, deshabilitados y dichos ("Completo" tachado, "Cerrado").
 - **Don't** usar `CourtCard` en una página del portal: es la tarjeta del panel y del onboarding; la ficha usa `CourtTile`.
-- **Don't** elegir las columnas de las horas con `md:grid-cols-*`: la reserva mide 384 px en escritorio y seis columnas no entran.
+- **Don't** elegir las columnas de las horas con un breakpoint de viewport donde la reserva vive en una columna angosta: la fila de horas es una grilla de cuadrados (`.hgrid`, 4 por fila) y la de días se desliza.
 - **Don't** agregar librerías de animación (las excepciones son `/onboarding` y, desde el 2026-11-13, el portal: `motion` en `LazyMotion`, con los límites de [`docs/planning/2026-11-13-portal-vidrio-direccion.md`](docs/planning/2026-11-13-portal-vidrio-direccion.md); el panel sigue sin librería) ni loops infinitos fuera del skeleton, de la web comercial y del punto de "Cobrar $X" en Hoy.
 - **Don't** usar el placeholder como rótulo, emojis como íconos estructurales ni fechas ISO o anglicismos de dashboard ("Revenue", "Booking") frente al usuario.
 - **Don't** mostrar un número verificable que no salga de datos reales (prueba social, escasez, contadores): lo trucho descubierto destruye la confianza para pagar la seña y es publicidad engañosa (Ley 24.240).

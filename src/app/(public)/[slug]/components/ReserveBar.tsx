@@ -123,6 +123,7 @@ export default function ReserveBar({
   if (court && row && tenant.allowOnlineBooking) {
     cta = (
       <Link
+        transitionTypes={['nav-forward']}
         href={buildReservarHref(tenant.slug, { courtId: court.id, date, time: row.time, formato })}
         className={CTA}
       >

@@ -8,7 +8,7 @@ web
 
 ## Users
 
-TurnoGol tiene dos superficies y cada una tiene su usuario: el portal (la web pública y la cuenta del jugador) y el panel del complejo. Desde el 2026-10-14 el foco está en el portal (`docs/decisions/2026-10-14-foco-jugador-rival.md`, F3). El mantenimiento del panel (F2) cayó con el freeze el 2026-10-22 (`docs/decisions/2026-10-22-se-levanta-el-freeze.md`): el panel vuelve a recibir mejoras.
+TurnoGol tiene dos superficies y cada una tiene su usuario: el portal (la web pública y la cuenta del jugador) y el panel del complejo. Desde el 2026-10-14 el foco está en el portal (`docs/decisions/2026-10-14-foco-jugador-rival.md`, F3). El mantenimiento del panel (F2) cayó con el freeze el 2026-10-22 (`docs/decisions/2026-10-22-se-levanta-el-freeze.md`): el panel vuelve a recibir mejoras. Desde el 2026-11-13 el portal se ve en vidrio, en claro y oscuro (`docs/decisions/2026-11-13-portal-vidrio.md`): cambia el look, no a quién sirve.
 
 ### Portal: el jugador
 
@@ -65,7 +65,7 @@ La promesa general es que el complejo funciona bajo control aunque el dueño no 
 
 Hay poco uso real que medir. El 2026-10-14 en El Vagón no había entrado ninguna reserva online. El 2026-10-16 publicó su link y ese día entraron 10 jugadores nuevos y 9 reservas online (`10-aprendizajes.md`). Lo que sigue sale del código, de las decisiones y del demo del 2026-10-14.
 
-- **Llegada por el link.** `turnogol.app/<slug>` abre la página del complejo sin día, hora ni cancha. El complejo lo comparte desde el cierre del alta, con un mensaje de WhatsApp ya escrito, o lo copia del panel. La home y `/explorar` no están en el recorrido de reserva: hoy solo aparecen como salidas después de reservar.
+- **Llegada por el link.** `turnogol.app/<slug>` abre la página del complejo con hoy elegido y sin hora ni cancha. El complejo lo comparte desde el cierre del alta, con un mensaje de WhatsApp ya escrito, o lo copia del panel. La home y `/explorar` no están en el recorrido de reserva: hoy solo aparecen como salidas después de reservar.
 - **El navegador interno.** El link que se toca en Instagram, y quizá en WhatsApp, puede abrirse en el navegador de esa app, y Google no deja iniciar sesión desde navegadores embebidos (`disallowed_useragent`). Verificado el 2026-10-22 con la documentación de Google y reportes de otros sitios, todavía **sin probar en un teléfono**: Instagram y Facebook abren el link en su navegador interno y ahí Google falla; WhatsApp abre el link de un chat en el navegador del teléfono y Google anda (su navegador interno solo abre botones de plantillas de empresas grandes, y el de iPhone para todos los links está en desarrollo). Desde entonces, en un navegador interno el ingreso pone primero el email y, en lugar de Google, un aviso para abrir la página en el navegador o copiar el enlace.
 - **Cuánto cuesta reservar hoy** (contado en el código de `ece4ef34`; turno de hoy, sin seña, celular de 390 px): un jugador nuevo con Google pasa por 6 pantallas y hace 5 toques; con email, 7 pantallas, 6 toques y 3 campos; uno que vuelve con la sesión abierta, 3 pantallas y 2 toques. Si vuelve sin sesión, el código lo trata como nuevo. De 70 textos de error y de estado, 40 no dicen qué pasó o qué hacer.
 - **Entrar.** Sin contraseña: Google o un enlace por mail. Nadie pide teléfono ni completar el perfil para reservar. La primera vez, el jugador declara que es mayor de 18 y acepta los términos (ADR-012).
@@ -101,13 +101,15 @@ Todo lo que sigue sale de 8 días de producción (14 al 22 de septiembre de 2026
 
 ### Portal: lo que existe
 
-- home y `/explorar`, para buscar complejos;
-- página del complejo: datos, fotos, servicios, reseñas y disponibilidad por día y por cancha;
+- home (con la ventana de complejos de la localidad) y `/explorar` (Localidad, Cancha de Fútbol 4 a 11 y Mapa), para buscar complejos;
+- página del complejo: datos, fotos, servicios, reseñas y la reserva en una sola pantalla (los días arriba en una fila, las horas en cuadrados y, al tocar una hora, una barra de "Reservar" con la cancha y el precio), más los partidos abiertos de RIVAL si el flag está prendido y el complejo tiene alguno publicado;
 - reserva de turnos de 60 minutos, con seña por MercadoPago si el complejo la pide (`requires_deposit`, 30% por defecto) o con pago en el complejo, hasta 6 días antes por defecto (`booking_advance_days`);
 - pantallas de reserva confirmada, pago pendiente y error;
 - Mis reservas: ver y cancelar hasta que el turno termina. Las horas de la política del complejo (12 por defecto) solo deciden si se devuelve una seña pagada, y la devolución la hace el complejo: TurnoGol no reembolsa por API;
 - perfil, cuenta (`/configuracion`) y eliminar la cuenta;
-- favoritos y compartir.
+- favoritos y compartir;
+- barra de abajo en el celu (Explorar, Rival con el flag, Reservas y Cuenta) y cabecera en la compu;
+- dos temas completos, claro y oscuro: por defecto se ve el del celular y el botón para cambiarlo queda arriba a la derecha.
 
 ### RIVAL v1: construido y prendido el 2026-10-29
 
@@ -127,13 +129,13 @@ Spec: `docs/superpowers/specs/2026-10-22-rival-v1-design.md`. Decisiones: F4 y `
 
 ### Portal: restricciones
 
-- Alcance del rediseño (F3): home, `/explorar`, página del complejo, reservar, reserva confirmada, pago pendiente y error, `/ingresar`, `/verify`, `/aceptar-terminos`, `/mis-reservas`, `/perfil` y `/configuracion`. No cambian el panel, el login y el alta del staff (`/login`, `/register`, recuperación de contraseña), `/para-complejos`, `/precios` ni la lógica de reserva, seña y MercadoPago.
+- Alcance del rediseño de la reserva (F3): home, `/explorar`, página del complejo, reservar, reserva confirmada, pago pendiente y error, `/ingresar`, `/verify`, `/aceptar-terminos`, `/mis-reservas`, `/perfil` y `/configuracion`. La piel de vidrio (2026-11-13) cubre además Rival, `/para-complejos`, `/precios`, el blog, los legales y las pantallas de error. No cambian el panel, el login y el alta del staff (`/login`, `/register`, recuperación de contraseña), el alta del complejo (`/onboarding`) ni la lógica de reserva, seña y MercadoPago.
 - Todo funciona con los precios ocultos.
 - Cuentas separadas (F5): una cuenta de complejo o de super admin no puede ser jugador con el mismo mail. El mensaje lo dice así y ofrece entrar con otra cuenta de Google o con el email.
 - Sin puntajes ni reseñas entre personas y sin texto libre sobre personas (Ley 25.326). RIVAL v1 sale sin rankings y sin feed, por su spec; desde el 2026-10-29 las tablas de RIVAL se pueden diseñar con sus condiciones (decisión del 29/10), y un feed de publicaciones sigue vetado. Sin billetera ni pagos entre jugadores (veto de `CLAUDE.md`). Una app nativa entra solo con decisión escrita del dueño.
 - El jugador no recibe push: existe solo para el dueño del complejo. RIVAL puede sumar push opt-in, con horario silencioso, en su ola (decisión del 2026-10-29).
 - La reserva no lleva QR: no sirve para nada (el founder, 2026-10-15). Se sacó de la pantalla de reserva confirmada y del comprobante en #423.
-- Vocabulario de pantalla hoy: Explorar, Reservas (Mis reservas), Cuenta, Ingresar, complejo, cancha, turno, reserva, seña, "Fútbol 5". RIVAL: "Voy", "Estoy adentro", "Faltan 3" / "Falta 1", "Se busca arquero", "Busca rival", "El banco", "Se juega", "Se cayó", "Donde me pongan".
+- Vocabulario de pantalla hoy: Explorar, Reservas (Mis reservas), Cuenta, Ingresar, complejo, cancha, turno, reserva, seña, "Fútbol 5", "Hay lugar", "Queda 1", "Completo", "Partidos abiertos". RIVAL: "Voy", "Estoy adentro", "Faltan 3" / "Falta 1", "Se busca arquero", "Busca rival", "El banco", "Se juega", "Se cayó", "Donde me pongan".
 
 ### Portal: sin decidir
 
@@ -175,9 +177,7 @@ Spec: `docs/superpowers/specs/2026-10-22-rival-v1-design.md`. Decisiones: F4 y `
 ## Brand Commitments
 
 - El nombre es TurnoGol. El logo es el wordmark "TURNO" + "GOL" (verde, cursiva pesada) y el isotipo "TG", en `public/brand-assets/`. El refinamiento sobre el estilo actual del panel no toca el logo.
-- **Superado el 2026-11-13 por [`docs/decisions/2026-11-13-portal-vidrio.md`](docs/decisions/2026-11-13-portal-vidrio.md):** el portal pasa a vidrio en claro y oscuro, en todo lo que no es el panel, y la ficha del complejo reserva en una sola pantalla. Los dos párrafos de abajo se reescriben en la fase F9 del [plan](docs/planning/2026-11-13-portal-vidrio-plan.md); hasta entonces describen lo que todavía no migró.
-- **Nota anterior.** Superado el 2026-11-08 por [`docs/decisions/2026-11-08-portal-plano-dos-temas.md`](docs/decisions/2026-11-08-portal-plano-dos-temas.md):** el portal pasa a plano y limpio en claro y oscuro, con una sola tipografía (Archivo) y la barra inferior flotante. Este párrafo se reescribe en la fase P4; hasta entonces describe lo que todavía no migró.
-- El portal es La Previa: oscuro premium, con vidrio, resplandores esmeralda, fotos de fondo y titulares en Archivo negra itálica, hecho con terminación de primera y cero fricción, tipo ecommerce (el founder, 2026-10-20: "prefiero mil veces el diseño que tenía antes"; [`docs/decisions/2026-10-20-vuelve-la-previa.md`](docs/decisions/2026-10-20-vuelve-la-previa.md)). Reemplaza al compromiso del 2026-10-15 de un portal plano "estándar ATC" y sin mundo temático. **Excepción del 2026-10-21: la ficha del complejo (`/[slug]`) se queda en el estilo plano de "La Reserva"**; el resto del portal es La Previa. Es distinto del panel y conserva el nombre, el logo y el verde de marca. Claro y oscuro son de primera, con el tema del sistema por defecto (el ingreso y el modal de confirmar son siempre oscuros). La accesibilidad AA no se negocia: el look vuelve, el contraste y el foco visible se quedan. La autoridad visual es `DESIGN.md`.
+- El portal es de vidrio (decisión del 2026-11-13, [`docs/decisions/2026-11-13-portal-vidrio.md`](docs/decisions/2026-11-13-portal-vidrio.md); dirección de diseño y movimiento en [`docs/planning/2026-11-13-portal-vidrio-direccion.md`](docs/planning/2026-11-13-portal-vidrio-direccion.md)): superficies translúcidas con desenfoque, borde claro de 1 px, brillo interior arriba, radios grandes y un resplandor verde suave de fondo; el hero lleva una foto (de noche en oscuro, de día en claro); tipografía Archivo; el verde significa solo acción y lugar disponible. La referencia es el estilo de Apple con la marca de TurnoGol: terminación de primera y cero fricción, tipo ecommerce. Reemplaza a La Previa (el look del 2026-10-20) y a La Reserva de la ficha, que se reemplazaron por el vidrio el 2026-11-13, y supera el plano del 2026-11-08. Es distinto del panel y conserva el nombre, el logo y el verde de marca. Claro y oscuro son de primera, con el tema del sistema por defecto. La accesibilidad AA no se negocia: el contraste se mide sobre el fondo ya renderizado, el foco es visible y se respetan reducir movimiento, reducir transparencia y más contraste. La autoridad visual es `DESIGN.md`.
 - La página que abre el link del complejo es de TurnoGol: lleva su marca y su marco. A los complejos se les vende que tienen su propio link (`turnogol.app/<slug>`), así que, adentro de ese marco, la página es del complejo (el founder, 2026-10-15).
 - La sección de comunidad del portal se llama RIVAL: "RIVAL powered by TurnoGol" (F4).
 - La voz es español rioplatense, directo y sin tecnicismos: "tan simple que un niño lo entienda" (regla del dueño). El panel admin es "denso pero obvio"; el portal, "cero fricción, tipo ecommerce" (`CLAUDE.md`).
@@ -225,5 +225,5 @@ Spec: `docs/superpowers/specs/2026-10-22-rival-v1-design.md`. Decisiones: F4 y `
 
 - WCAG 2.1 AA en tema claro y oscuro, en las dos superficies. Es la práctica actual: el a11y de Storybook corre en los dos temas.
 - El estado nunca se comunica solo con color.
-- Portal: el caso principal es el celular. Los objetivos táctiles miden 44 px o más y nada depende del hover. El jugador no es técnico: los textos usan sus palabras, sin jerga ni códigos, y cada error dice qué pasó y qué hacer.
+- Portal: el caso principal es el celular. Los objetivos táctiles miden 44 px o más y nada depende del hover. El jugador no es técnico: los textos usan sus palabras, sin jerga ni códigos, y cada error dice qué pasó y qué hacer. El vidrio respeta las preferencias del sistema (reducir movimiento, reducir transparencia, más contraste) y se lee también sin `backdrop-filter`.
 - Panel: el caso principal es mouse en una PC. En el celular, los objetivos táctiles miden 44 px o más. Tiene que poder leerse bajo presión: montos, horas y estados se leen de un vistazo.

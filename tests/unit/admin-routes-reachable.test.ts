@@ -39,7 +39,7 @@ const NAV_SOURCES = [
  * el menú, esa página no debería existir.
  */
 const CONTEXTUAL_ROUTES: Record<string, string> = {
-  '/notificaciones': 'campana permanente de admin-header, disponible para dueño y encargado',
+  '/notificaciones': 'tarjeta Notificaciones de /settings y cartel/modal de Hoy (2026-11-17)',
   // Ajustes (2026-09-25): la portada `/settings` (SettingsIndex) reemplazó a
   // las pestañas por tarjetas con `href` dinámico por grupo, no un ítem fijo
   // que el regex de arriba pueda leer — se llega por la tarjeta, no por barra.

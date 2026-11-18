@@ -146,7 +146,9 @@ export const DrawerMobileAbierto: Story = {
     // existe si el drawer está montado y renderizado. (Misma clase de bug que ya mordió en
     // BookingActions.stories.tsx.)
     const drawer = within(await body.findByRole('dialog'))
-    await expect(await drawer.findByRole('link', { name: 'Grilla' })).toBeInTheDocument()
+    await expect(await drawer.findByRole('link', { name: 'Clientes y Fijos' })).toBeInTheDocument()
+    // Hoy, Grilla y Caja ya están en la barra inferior: el cajón no los repite (2026-11-17).
+    await expect(drawer.queryByRole('link', { name: 'Grilla' })).not.toBeInTheDocument()
   },
 }
 

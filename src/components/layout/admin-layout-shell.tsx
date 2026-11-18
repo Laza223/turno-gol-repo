@@ -170,7 +170,10 @@ export function AdminLayoutShell({
             {/* Va acá, en flujo y dentro del contenedor de la página, y no como
                 overlay fijo: ver el comentario del propio componente. */}
             {!impersonationBanner && pathname !== '/notificaciones' && (
-              <PushNotificationManagerLoader identityKey={pushIdentity} />
+              <PushNotificationManagerLoader
+                identityKey={pushIdentity}
+                banner={pathname === '/dashboard'}
+              />
             )}
             {children}
           </main>

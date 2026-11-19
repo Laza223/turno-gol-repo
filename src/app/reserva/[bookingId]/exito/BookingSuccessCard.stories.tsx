@@ -67,10 +67,10 @@ export const ConSena: Story = {
     await expect(summary.getByText('Seña pagada')).toBeInTheDocument()
     await expect(summary.getByText('$ 4.500')).toBeInTheDocument()
     await expect(summary.getByText('$ 10.500')).toBeInTheDocument()
-    // El código corto de la reserva va abajo, como terciario. Se acota a su sección: el
-    // comprobante imprimible (oculto) repite el código en el DOM.
-    const code = within(canvas.getByRole('region', { name: 'Código de la reserva' }))
-    await expect(code.getByText('00000000')).toBeInTheDocument()
+    // Sin código de reserva, sin comprobante y sin QR: el panel del complejo no los usa.
+    await expect(canvas.queryByText(/Código de reserva/i)).not.toBeInTheDocument()
+    await expect(canvas.queryByText('00000000')).not.toBeInTheDocument()
+    await expect(canvas.queryByRole('button', { name: /comprobante/i })).not.toBeInTheDocument()
     await expect(canvas.queryByRole('img', { name: /QR/i })).not.toBeInTheDocument()
   },
 }

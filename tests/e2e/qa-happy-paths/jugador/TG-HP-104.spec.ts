@@ -60,8 +60,7 @@ async function runFlow(page: Page, date: string): Promise<void> {
   await expect(page.getByRole('heading', { name: '¡Reserva confirmada!' })).toBeVisible({
     timeout: 10_000,
   })
-  // Copy con seña, en el resumen: "Seña pagada $ 50" + "Resto en el complejo $ 50". Se acota al
-  // resumen: el comprobante imprimible (oculto) repite "Seña pagada" en el DOM.
+  // Copy con seña, en el resumen: "Seña pagada $ 50" + "Resto en el complejo $ 50".
   const summary = page.getByRole('region', { name: 'Tu turno' })
   await expect(summary.getByText('Seña pagada')).toBeVisible()
   await expect(summary.getByText('Resto en el complejo')).toBeVisible()

@@ -1,16 +1,12 @@
-import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { MessageCircle, Swords } from 'lucide-react'
 import { RESULT_ALT, RESULT_GO } from '@/components/world/portal-result-classes'
 import { isInRivalStartWindow } from '@/modules/rival/rival-window'
-import { bookingCode } from '@/lib/booking-code'
 import { buildGroupShareHref, buildGroupShareText } from '@/lib/booking/group-share'
 import { SummaryHead, SummaryRows } from '@/app/(public)/[slug]/reservar/components/BookingSummary'
 import ReservaShell from '@/components/booking/ReservaDarkShell'
-import BookingReceipt from '@/components/booking/BookingReceipt'
 import BookingSuccessExtras from '@/components/booking/BookingSuccessExtras'
 import CelebrateOnce from '@/components/booking/CelebrateOnce'
-import DownloadReceiptButton from '@/components/booking/DownloadReceiptButton'
 
 export type ConfirmedBooking = {
   tenantName: string
@@ -38,13 +34,16 @@ export type ConfirmedBooking = {
 
 /**
  * La reserva confirmada, en vidrio (`reserva.html`, portal de vidrio F5): la insignia verde, el
- * título y el ticket con el turno y el código, cortado como un pase. Una sola acción principal,
- * "Avisarle al grupo" (un link a WhatsApp con el turno escrito, sin montos); debajo, las
- * secundarias en la fila de enlaces y el mini mapa. Con los precios ocultos no hay ningún monto en
- * el DOM, tampoco en el link de WhatsApp ni en el comprobante.
+ * título y el ticket con el turno. Una sola acción principal, "Avisarle al grupo" (un link a
+ * WhatsApp con el turno escrito, sin montos); debajo, las secundarias en la fila de enlaces y el
+ * mini mapa. Con los precios ocultos no hay ningún monto en el DOM, tampoco en el link de WhatsApp.
+ *
+ * No lleva código de reserva ni comprobante descargable (decisión del 2026-11-19, ver PRODUCT.md):
+ * el panel del complejo no muestra ese código en ninguna parte, así que nadie lo puede pedir ni
+ * cotejar. Lo que sirve de prueba es el turno mismo (complejo, cancha, día y hora).
  *
  * Es el momento de la app: la coreografía de la dirección §4.5 (insignia, tilde, título, ticket que
- * se imprime, código letra por letra y botones) es CSS y corre una vez por visita (`CelebrateOnce`).
+ * se imprime y botones) es CSS y corre una vez por visita (`CelebrateOnce`).
  *
  * El caso `status !== 'confirmed'` (jugador vuelto de MP antes del webhook) lo maneja
  * `PaymentStatusWatcher`. `complexUrl` lo arma la page con el origen de la app.
@@ -89,7 +88,6 @@ export function BookingSuccessCard({
     }),
   )
 
-  const code = bookingCode(bookingId)
   const summary = {
     tenantName: booking.tenantName,
     address: booking.address,
@@ -134,29 +132,6 @@ export function BookingSuccessCard({
           <section aria-label="Tu turno" className="rv-ticket glass-painted">
             <SummaryHead data={summary} />
             <SummaryRows data={summary} />
-            <div className="rv-cut" aria-hidden />
-            <section aria-label="Código de la reserva" className="grid gap-1">
-              <div className="rv-code">
-                <span>Código de reserva</span>
-                {/* Letra por letra a la vista; el lector de pantalla lee el código entero. */}
-                <b>
-                  <span className="sr-only">{code}</span>
-                  {Array.from(code).map((ch, i) => (
-                    <span key={i} aria-hidden style={{ '--n': i } as CSSProperties}>
-                      {ch}
-                    </span>
-                  ))}
-                </b>
-              </div>
-              <p className="rv-small">
-                Si el complejo te lo pide, con este código encuentra tu reserva.
-              </p>
-              <div className="mt-2">
-                <DownloadReceiptButton
-                  fileName={`comprobante-${booking.tenantSlug}-${booking.startsOn}`}
-                />
-              </div>
-            </section>
           </section>
         </div>
 
@@ -197,21 +172,6 @@ export function BookingSuccessCard({
           />
         </div>
       </CelebrateOnce>
-
-      <BookingReceipt
-        bookingId={bookingId}
-        tenantName={booking.tenantName}
-        address={booking.address}
-        city={booking.city}
-        courtName={booking.courtName}
-        date={booking.startsOn}
-        timeStart={booking.timeStart}
-        timeEnd={booking.timeEnd}
-        priceSnapshot={booking.priceSnapshot}
-        depositAmount={booking.depositAmount}
-        depositStatus={booking.depositStatus}
-        hidePrices={booking.hidePrices}
-      />
     </ReservaShell>
   )
 }

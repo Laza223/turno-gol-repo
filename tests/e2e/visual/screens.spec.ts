@@ -100,16 +100,12 @@ test.describe('visual — jugador', () => {
 
   test('reserva confirmada @visual', async ({ page }) => {
     // La reserva `…0903` del seed: confirmada, con seña pagada, en un día FIJO (`VISUAL_DATE`) —
-    // el resumen, el mensaje al grupo y el comprobante salen de la fila, no del reloj. Del jugador
-    // `…0020`, el mismo de `player.json`.
+    // el resumen y el mensaje al grupo salen de la fila, no del reloj. Del jugador `…0020`, el
+    // mismo de `player.json`.
     await page.goto(`/reserva/${VISUAL_PLAYER_BOOKING_ID}/exito`)
     await expect(page.getByRole('heading', { name: '¡Reserva confirmada!' })).toBeVisible()
     await waitForPlayerSession(page)
-    await expect(page).toHaveScreenshot('reserva-confirmada.png', {
-      // El código sale del id de la reserva: si el seed cambia de id, cambia la foto. Se enmascara
-      // solo el código (no la sección, que lleva el link de "Descargar comprobante").
-      mask: [page.getByRole('region', { name: 'Código de la reserva' }).locator('.font-mono')],
-    })
+    await expect(page).toHaveScreenshot('reserva-confirmada.png')
   })
 })
 

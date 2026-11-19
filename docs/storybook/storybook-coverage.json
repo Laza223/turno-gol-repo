@@ -4475,7 +4475,7 @@
       "usesRouter": false,
       "usesServerAction": false,
       "providers": [],
-      "isolationNotes": "extractAuthUser()+redirect; withPlayerContext(sql crudo, mismo gotcha de Date-como-string); compone BookingReceipt/BookingSuccessExtras/DownloadReceiptButton/PaymentStatusWatcher, todos fuera de esta área (@/components/booking)."
+      "isolationNotes": "extractAuthUser()+redirect; withPlayerContext(sql crudo, mismo gotcha de Date-como-string); compone BookingSuccessExtras/PaymentStatusWatcher, ambos fuera de esta área (@/components/booking)."
     },
     {
       "path": "src/app/reserva/[bookingId]/pendiente/loading.tsx",
@@ -4803,27 +4803,6 @@
       "isolationNotes": "Ninguno relevante — es el contenido puro del Popover (el portal/posicionamiento vive en ui/popover.tsx desde BookingCard); reexporta bookingDisplayName de BookingCard.tsx."
     },
     {
-      "path": "src/components/booking/BookingReceipt.tsx",
-      "name": "BookingReceipt",
-      "domain": "player-facing",
-      "rendering": "server",
-      "role": "presentational",
-      "isolationDifficulty": "trivial",
-      "classification": "DIRECT_STORY_REQUIRED",
-      "exclusionReason": "",
-      "relevantStates": [
-        "depositStatus='not_required' (solo 'El total se abona en el complejo')",
-        "depositStatus con seña (paid/captured/etc, muestra seña pagada + resto a abonar)"
-      ],
-      "proposedStoryTitle": "Player/BookingSuccess/BookingReceipt",
-      "usesNetwork": false,
-      "usesSession": false,
-      "usesRouter": false,
-      "usesServerAction": false,
-      "providers": [],
-      "isolationNotes": "Ninguno — Server Component puro, oculto por defecto y solo visible al imprimir (#booking-receipt en globals.css)."
-    },
-    {
       "path": "src/components/booking/BookingSuccessExtras.tsx",
       "name": "BookingSuccessExtras",
       "domain": "player-facing",
@@ -4844,26 +4823,6 @@
       "usesServerAction": false,
       "providers": [],
       "isolationNotes": "Blob+URL.createObjectURL+<a download> para el .ics (browser-only); next/link para Ver mis reservas. Sin mapa ni window.open desde el PR 2.3c."
-    },
-    {
-      "path": "src/components/booking/DownloadReceiptButton.tsx",
-      "name": "DownloadReceiptButton",
-      "domain": "player-facing",
-      "rendering": "client",
-      "role": "presentational",
-      "isolationDifficulty": "trivial",
-      "classification": "DIRECT_STORY_REQUIRED",
-      "exclusionReason": "",
-      "relevantStates": [
-        "botón único (sin variantes de estado visual — el efecto es window.print())"
-      ],
-      "proposedStoryTitle": "Player/BookingSuccess/DownloadReceiptButton",
-      "usesNetwork": false,
-      "usesSession": false,
-      "usesRouter": false,
-      "usesServerAction": false,
-      "providers": [],
-      "isolationNotes": "window.print() + mutación temporal de document.title; efecto secundario de navegador, fácil de mockear en un play function."
     },
     {
       "path": "src/components/booking/grid/FirstBookingHint.tsx",

@@ -277,30 +277,6 @@
     border-radius: 32px;
     text-align: left;
   }
-  .rv-cut {
-    height: 1px;
-    margin: 2px -20px;
-    border-top: 2px dashed var(--portal-inner-line);
-  }
-  .rv-code {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  .rv-code > span {
-    font-size: 14px;
-    color: var(--portal-soft);
-  }
-  .rv-code b {
-    font:
-      700 24px/1 ui-monospace,
-      'SF Mono',
-      Menlo,
-      Consolas,
-      monospace;
-    letter-spacing: 0.08em;
-  }
   .rv-acts {
     display: grid;
     gap: 10px;
@@ -446,15 +422,6 @@
     }
     100% {
       translate: 0 0;
-    }
-  }
-  .rv-celebrate .rv-code b > span {
-    animation: rv-letter var(--dur-2) var(--portal-ease-out) both;
-    animation-delay: calc(760ms + var(--n, 0) * 30ms);
-  }
-  @keyframes rv-letter {
-    from {
-      opacity: 0;
     }
   }
   .rv-celebrate .rv-at-acts {

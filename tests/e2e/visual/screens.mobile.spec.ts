@@ -63,9 +63,7 @@ test.describe('visual mobile — jugador', () => {
     // sale con el pie sin su relleno o con la barra a medio aparecer.
     await waitForPlayerSession(page)
     await expect(page.getByRole('navigation', { name: 'Navegación del jugador' })).toBeVisible()
-    await expect(page).toHaveScreenshot('reserva-confirmada-mobile.png', {
-      mask: [page.getByRole('region', { name: 'Código de la reserva' }).locator('.font-mono')],
-    })
+    await expect(page).toHaveScreenshot('reserva-confirmada-mobile.png')
   })
 })
 

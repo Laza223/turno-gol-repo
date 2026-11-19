@@ -7,9 +7,16 @@
  * cual en el buscador encuentra el turno — es un identificador real que el
  * jugador puede pasarle al complejo, no un adorno.
  *
- * Se centraliza acá porque lo usan tres superficies con públicos distintos (el
- * comprobante, la pantalla de reserva confirmada y el mensaje de WhatsApp al
- * complejo) y tienen que coincidir carácter por carácter para que sirva de algo.
+ * Se centraliza acá porque lo usan superficies con públicos distintos (los
+ * mensajes de WhatsApp del jugador al complejo, los mails de cancelación, el
+ * panel de devolución de "Mis reservas", la lista de devoluciones de Caja y el
+ * export de datos) y tienen que coincidir carácter por carácter para que sirva
+ * de algo.
+ *
+ * Ojo: el panel NO muestra este código en el detalle de la reserva; solo sirve
+ * para que el complejo lo pegue en el buscador cuando le llega escrito. Por eso
+ * la pantalla de reserva confirmada del jugador ya no lo lleva (2026-11-19): si
+ * nadie del complejo se lo va a pedir, es un dato que no sirve.
  */
 export function bookingCode(bookingId: string): string {
   return bookingId.slice(0, 8).toUpperCase()

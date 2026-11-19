@@ -28,7 +28,7 @@ La página además apunta a Métricas para los movimientos de caja, que ya se de
 ### Columnas
 
 **Reservas** (orden cronológico por `starts_at`):
-N.° de reserva (`bookingCode`: los 8 primeros caracteres del id en mayúscula, el mismo código del comprobante del jugador, que la búsqueda de `/reservas` encuentra) · Fecha (día operativo) · Desde · Hasta · Cancha · Tipo (Online / WhatsApp / Panel / Turno fijo / Torneo / Bloqueo) · Estado · Cliente · Teléfono · Precio · Seña · Cobrado.
+N.° de reserva (`bookingCode`: los 8 primeros caracteres del id en mayúscula, el mismo código que el jugador le escribe al complejo, que la búsqueda de `/reservas` encuentra) · Fecha (día operativo) · Desde · Hasta · Cancha · Tipo (Online / WhatsApp / Panel / Turno fijo / Torneo / Bloqueo) · Estado · Cliente · Teléfono · Precio · Seña · Cobrado.
 
 - Estado: el mismo badge del listado de `/reservas` (`bookingBadgeVisual`, de `slot-visual.ts`), así que distingue Señada y Abonado igual que el panel. Las dos cancelaciones salen "Cancelada"; si la seña volvió, se ve en Cobrado.
 - Cliente: nombre del jugador, o `guest_name`, o el `contact_name` del fijo.

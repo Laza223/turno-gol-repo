@@ -217,7 +217,6 @@ Los tiempos son desde que la pantalla ya tiene sus datos.
 | 200 | Sube el título |
 | 320 | Sube la bajada |
 | 420 | El ticket se imprime: se descubre de arriba hacia abajo en 520 ms y baja 8 px |
-| 760 | El código aparece letra por letra, 30 ms cada una |
 | 900 | Suben los botones |
 
 En Android, una vibración corta doble al llegar. Sin confeti. "Falta la seña" y "Pago rechazado" usan solo la insignia y el título: no celebran.

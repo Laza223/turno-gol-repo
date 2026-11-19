@@ -35,33 +35,38 @@ function renderCard(b: ConfirmedBooking) {
   )
   const href = container.querySelector('a[href^="https://wa.me/"]')!.getAttribute('href')!
   const shareText = decodeURIComponent(href.split('?text=')[1]!)
-  return {
-    container,
-    shareText,
-    receipt: container.querySelector('#booking-receipt')!.textContent!,
-  }
+  return { container, shareText }
 }
 
 // El operativo es el sáb 17/10; el turno de 00:00 se juega el dom 18/10. La card recibe el día
-// físico (`startsOn`) y es el único día que el jugador lee: resumen, WhatsApp y comprobante.
+// físico (`startsOn`) y es el único día que el jugador lee: resumen y WhatsApp.
 describe('BookingSuccessCard — día físico', () => {
-  it('turno de 00:00 de closes_next_day → domingo 18 en el resumen, el WhatsApp y el comprobante', () => {
-    const { container, shareText, receipt } = renderCard(booking({}))
+  it('turno de 00:00 de closes_next_day → domingo 18 en el resumen y el WhatsApp', () => {
+    const { container, shareText } = renderCard(booking({}))
     expect(shareText).toContain('domingo 18 de octubre')
     expect(shareText).not.toContain('17 de octubre')
-    expect(receipt).toContain('18/10/2026')
-    expect(receipt).not.toContain('17/10/2026')
     expect(container.textContent).toContain('18 de octubre')
     expect(container.textContent).not.toContain('17 de octubre')
   })
 
   it('control negativo: turno de 20:00 del sábado → sábado 17 en todos lados', () => {
-    const { container, shareText, receipt } = renderCard(
+    const { container, shareText } = renderCard(
       booking({ startsOn: '2026-10-17', timeStart: '20:00:00', timeEnd: '21:00:00' }),
     )
     expect(shareText).toContain('sábado 17 de octubre')
-    expect(receipt).toContain('17/10/2026')
+    expect(container.textContent).toContain('17 de octubre')
     expect(container.textContent).not.toContain('18 de octubre')
+  })
+})
+
+// Sin código ni comprobante (2026-11-19): el panel del complejo no muestra ese código en ningún
+// lado, así que no hay con qué cotejarlo. Que no vuelvan "de buena fe" sin decisión del dueño.
+describe('BookingSuccessCard — sin código ni comprobante', () => {
+  it('no muestra el código de reserva ni el botón de comprobante, ni deja un comprobante oculto', () => {
+    const { container } = renderCard(booking({}))
+    expect(container.textContent).not.toMatch(/código|comprobante/i)
+    expect(container.textContent).not.toContain(BOOKING_ID.slice(0, 8).toUpperCase())
+    expect(container.querySelector('#booking-receipt')).toBeNull()
   })
 })
 

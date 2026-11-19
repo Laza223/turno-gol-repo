@@ -906,41 +906,6 @@ html.dark:has([data-portal-fields]) {
   color: hsl(var(--primary-foreground));
 }
 
-/* ─── Comprobante de reserva imprimible ───────────────────────────────────
-   "Descargar comprobante" usa window.print(): el comprobante (#booking-receipt)
-   vive oculto en la página de éxito y es lo ÚNICO visible al imprimir (el
-   destino "Guardar como PDF" del navegador genera el archivo, sin servicios
-   server-side). Truco estándar de visibility: display:none rompería la
-   impresión, por eso en pantalla se oculta con display y en print se muestra
-   solo el subárbol del comprobante. */
-@media screen {
-  #booking-receipt {
-    display: none;
-  }
-}
-
-@media print {
-  @page {
-    margin: 14mm;
-  }
-
-  body * {
-    visibility: hidden;
-  }
-
-  #booking-receipt,
-  #booking-receipt * {
-    visibility: visible;
-  }
-
-  #booking-receipt {
-    display: block;
-    position: absolute;
-    inset: 0 auto auto 0;
-    width: 100%;
-  }
-}
-
 /* ─── Alta del complejo (/register y /onboarding/*): La Previa ─────────────
    Siempre oscuro, como el marco de ingreso: losa nocturna con dos resplandores
    esmeralda, tarjeta de vidrio y la ficha "tu complejo se va armando". El marco

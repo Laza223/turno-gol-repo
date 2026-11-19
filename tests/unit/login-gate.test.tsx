@@ -284,13 +284,13 @@ describe('LoginGate — orden según el navegador', () => {
   it('navegador común: primero Google, después el email', () => {
     renderGate()
     expect(order()).toEqual(['Continuar con Google', 'Continuar con mi email'])
-    expect(screen.queryByText('¿Querés entrar con Google?')).toBeNull()
+    expect(screen.queryByText('Te abrimos tu navegador para que entres con Google.')).toBeNull()
   })
 
-  it('navegador interno: primero el email y, en lugar de Google, el aviso para abrir afuera', () => {
+  it('navegador interno: primero el email y después un Google que abre el navegador', () => {
     renderGate({ inAppBrowser: true })
-    expect(order()).toEqual(['Continuar con mi email', 'Copiar enlace'])
-    expect(screen.getByText('¿Querés entrar con Google?')).toBeTruthy()
+    expect(order()).toEqual(['Continuar con mi email', 'Continuar con Google'])
+    expect(screen.getByText('Te abrimos tu navegador para que entres con Google.')).toBeTruthy()
   })
 })
 

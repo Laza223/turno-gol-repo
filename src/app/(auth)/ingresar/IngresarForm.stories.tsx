@@ -88,16 +88,18 @@ export const Idle: Story = {
 }
 
 /**
- * Instagram, Facebook o TikTok (lo decide el servidor): primero el email y, en lugar de Google, que
- * ahí termina en su error, el aviso para abrir la página en el navegador.
+ * Instagram, Facebook o TikTok (lo decide el servidor): primero el email y después un Google que,
+ * en lugar de iniciar el ingreso (ahí termina en su error), le pide al teléfono abrir la página en
+ * el navegador.
  */
 export const NavegadorInterno: Story = {
   args: { action: fn(async () => ({ status: 'idle' as const })), inAppBrowser: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(buttonNames(canvasElement)).toEqual(['Mandame el enlace', 'Copiar enlace'])
-    await expect(canvas.getByText('¿Querés entrar con Google?')).toBeVisible()
-    await expect(canvas.queryByRole('button', { name: 'Continuar con Google' })).toBeNull()
+    await expect(buttonNames(canvasElement)).toEqual(['Mandame el enlace', 'Continuar con Google'])
+    await expect(
+      canvas.getByText('Te abrimos tu navegador para que entres con Google.'),
+    ).toBeVisible()
   },
 }
 

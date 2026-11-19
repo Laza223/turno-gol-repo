@@ -167,7 +167,7 @@ describe('bookingKindLabel', () => {
 describe('bookingExportRow', () => {
   it('arma la fila en el orden del encabezado', () => {
     expect(bookingExportRow(BOOKING)).toEqual([
-      // El código del comprobante del jugador, que encuentra el buscador de /reservas.
+      // El mismo código que el jugador le escribe al complejo, que encuentra el buscador de /reservas.
       '3F2A9C1E',
       '2026-10-05',
       '20:00',

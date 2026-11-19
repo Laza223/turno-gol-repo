@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isInAppBrowser } from '@/lib/in-app-browser'
+import { externalBrowserUrl, isInAppBrowser } from '@/lib/in-app-browser'
 
 // User-Agents (recortados) con el formato de cada app, de lo que el jugador abre desde un link de
 // redes. No todos son capturas de un dispositivo: varios están armados con el formato conocido.
@@ -84,5 +84,55 @@ describe('isInAppBrowser', () => {
 
   it.each([null, undefined, ''])('sin User-Agent (%j) no lo trata como interno', (ua) => {
     expect(isInAppBrowser(ua)).toBe(false)
+  })
+})
+
+describe('externalBrowserUrl', () => {
+  const PAGE = 'https://turnogol.app/complejo-fenix/reservar?court=c1&date=2026-11-19&time=18:00'
+
+  it('Instagram en iPhone: el esquema propio de Instagram, con la página entera codificada', () => {
+    expect(externalBrowserUrl(IN_APP['Instagram en iPhone'], PAGE)).toBe(
+      `instagram://extbrowser/?url=${encodeURIComponent(PAGE)}`,
+    )
+    expect(externalBrowserUrl(IN_APP['Instagram en iPhone'], PAGE)).toContain(
+      'court%3Dc1%26date%3D2026-11-19%26time%3D18%3A00',
+    )
+  })
+
+  it('Facebook y otras apps en iPhone: x-safari, que Instagram ya no acepta', () => {
+    expect(externalBrowserUrl(IN_APP['Facebook en iPhone'], PAGE)).toBe(`x-safari-${PAGE}`)
+    expect(externalBrowserUrl(IN_APP['TikTok en iPhone'], PAGE)).toBe(`x-safari-${PAGE}`)
+  })
+
+  it.each(['Instagram en Android', 'Facebook en Android'] as const)(
+    '%s: un intent a la misma página',
+    (name) => {
+      expect(externalBrowserUrl(IN_APP[name], PAGE)).toBe(
+        'intent://turnogol.app/complejo-fenix/reservar?court=c1&date=2026-11-19&time=18:00' +
+          '#Intent;scheme=https;action=android.intent.action.VIEW;category=android.intent.category.BROWSABLE;' +
+          `S.browser_fallback_url=${encodeURIComponent(PAGE)};end`,
+      )
+    },
+  )
+
+  it('conserva el puerto y el esquema http de un entorno local', () => {
+    expect(
+      externalBrowserUrl(IN_APP['Instagram en Android'], 'http://localhost:3000/ingresar'),
+    ).toMatch(/^intent:\/\/localhost:3000\/ingresar#Intent;scheme=http;/)
+  })
+
+  it.each(['TikTok en Android', 'LinkedIn en Android', 'WebView genérico de Android'] as const)(
+    '%s: null, porque un WebView que no resuelve el intent deja una pantalla de error en lugar de la página',
+    (name) => {
+      expect(externalBrowserUrl(IN_APP[name], PAGE)).toBeNull()
+    },
+  )
+
+  it('sin plataforma reconocible, sin User-Agent o con algo que no es una URL: null', () => {
+    expect(externalBrowserUrl(BROWSER['Chrome de escritorio'], PAGE)).toBeNull()
+    expect(externalBrowserUrl(null, PAGE)).toBeNull()
+    expect(externalBrowserUrl(undefined, PAGE)).toBeNull()
+    expect(externalBrowserUrl(IN_APP['Instagram en iPhone'], 'no es una url')).toBeNull()
+    expect(externalBrowserUrl(IN_APP['Instagram en iPhone'], 'javascript:alert(1)')).toBeNull()
   })
 })

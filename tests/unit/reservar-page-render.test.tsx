@@ -242,7 +242,7 @@ describe('ReservarPage — la sesión y el navegador', () => {
     )
   })
 
-  it('en el navegador interno de Instagram: el email primero y el aviso en lugar de Google', async () => {
+  it('en el navegador interno de Instagram: el email primero y un Google que abre el navegador', async () => {
     mocks.extractAuthUser.mockResolvedValue(null)
     mocks.userAgent.current = 'Mozilla/5.0 (iPhone) AppleWebKit/605 Mobile/15E148 Instagram 300.0.0'
     await renderPage()
@@ -251,8 +251,10 @@ describe('ReservarPage — la sesión y el navegador', () => {
     const names = within(panel)
       .getAllByRole('button')
       .map((b) => b.textContent)
-    expect(names).toEqual(['Continuar con mi email', 'Copiar enlace'])
-    expect(within(panel).getByText('¿Querés entrar con Google?')).toBeTruthy()
+    expect(names).toEqual(['Continuar con mi email', 'Continuar con Google'])
+    expect(
+      within(panel).getByText('Te abrimos tu navegador para que entres con Google.'),
+    ).toBeTruthy()
   })
 })
 

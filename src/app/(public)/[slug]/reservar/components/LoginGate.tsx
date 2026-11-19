@@ -181,7 +181,8 @@ type TitleProps = {
  * lo exige igual y graba el consentimiento como siempre. El nombre sale del email en el servidor.
  *
  * `inAppBrowser` lo resuelve el servidor (page.tsx) con el User-Agent: en el navegador interno de
- * Instagram, Facebook o TikTok va primero el email y, en lugar de Google, `InAppBrowserNotice`.
+ * Instagram, Facebook o TikTok va primero el email y, en lugar del Google que inicia el ingreso,
+ * `InAppBrowserNotice` (un Google que abre la página en el navegador del teléfono).
  *
  * `withDeposit` decide qué se promete: sin seña, entrar deja la reserva confirmada (vuelve del
  * ingreso con la reserva hecha); con seña vuelve a esta pantalla y el jugador paga.

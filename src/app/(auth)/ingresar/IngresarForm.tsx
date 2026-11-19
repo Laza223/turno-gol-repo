@@ -103,8 +103,9 @@ function ComplejoLinks() {
  * se importa como valor.
  *
  * `inAppBrowser` lo resuelve el servidor (page.tsx) con el User-Agent: en el navegador
- * interno de Instagram, Facebook o TikTok va primero el email y, en lugar de Google, que ahí no
- * deja entrar, el aviso para abrir la página en el navegador (`InAppBrowserNotice`).
+ * interno de Instagram, Facebook o TikTok va primero el email y, en lugar del Google que inicia el
+ * ingreso (ahí no deja entrar), `InAppBrowserNotice`: un Google que abre la página en el
+ * navegador del teléfono.
  */
 export function IngresarForm({
   action,

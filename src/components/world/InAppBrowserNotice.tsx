@@ -1,59 +1,39 @@
 'use client'
 
-import { useState } from 'react'
-import { Copy, MoreHorizontal } from 'lucide-react'
+import { useId, useState } from 'react'
+import { GoogleIcon } from '@/components/icons/GoogleIcon'
 import { Button } from '@/components/ui/button'
 import { PORTAL_BUTTON_OUTLINE } from '@/components/world/portal-auth-styles'
+import { externalBrowserUrl } from '@/lib/in-app-browser'
 import { cn } from '@/lib/utils'
 
 /**
  * Va en lugar de "Continuar con Google" en el navegador interno de una app (Instagram,
  * Facebook…; lo decide el servidor con `isInAppBrowser`). Google no deja entrar desde un WebView
- * (`disallowed_useragent`) y el botón terminaba en su pantalla de error. Acá están las dos salidas:
- * abrir la página en el navegador con el menú de la app, o copiar el enlace y pegarlo. Se copia la
- * URL de ese momento, con el turno elegido y el `next`. El email, que sí anda, va arriba.
- * Lo usan /ingresar y el ingreso de /reservar: otra variante del ingreso tiene que reusarlo.
+ * (`disallowed_useragent`), así que el botón no inicia el ingreso: le pide al teléfono abrir esta
+ * misma página en el navegador (`externalBrowserUrl`, con el turno elegido y el `next`), y ahí, con
+ * el UA de un navegador, el jugador toca el botón de Google de verdad.
+ *
+ * Ese salto no es una API: Instagram lo acepta hoy en iPhone solo desde un toque y puede dejar de
+ * hacerlo. Si no anduvo, la única salida que se le pide al jugador es la que ya tiene a la vista, el
+ * email (va arriba de este bloque): nada de copiar enlaces ni buscar el menú de la app.
+ * Lo usan /ingresar y el ingreso de /reservar y de RIVAL: otra variante del ingreso tiene que
+ * reusarlo.
  * `glass`: la piel del portal de vidrio (tokens `portal-*`, que solo existen bajo `data-portal-glass`);
  * sin eso queda la de La Previa.
  */
 export function InAppBrowserNotice({ glass = false }: { glass?: boolean }) {
-  const [copy, setCopy] = useState<'idle' | 'copied' | 'failed'>('idle')
+  const helpId = useId()
+  const [tried, setTried] = useState(false)
 
-  async function copyLink() {
-    try {
-      await navigator.clipboard.writeText(window.location.href)
-      setCopy('copied')
-    } catch {
-      // Sin portapapeles (WebView viejo) o con la escritura rechazada: queda el menú de la app.
-      setCopy('failed')
-    }
+  function openInBrowser() {
+    setTried(true)
+    const url = externalBrowserUrl(navigator.userAgent, window.location.href)
+    if (url) window.location.href = url
   }
 
   return (
-    <div
-      className={cn(
-        'space-y-3 border p-4',
-        glass
-          ? 'rounded-[20px] border-portal-inner-line bg-portal-inner'
-          : 'rounded-xl border-border bg-muted',
-      )}
-    >
-      <div className="space-y-1">
-        <p className={cn('text-base font-semibold', glass ? 'text-portal-ink' : 'text-foreground')}>
-          ¿Querés entrar con Google?
-        </p>
-        <p
-          className={cn(
-            'text-pretty text-sm',
-            glass ? 'text-portal-muted' : 'text-muted-foreground',
-          )}
-        >
-          No funciona dentro de esta app. Tocá{' '}
-          <MoreHorizontal className="inline size-4 align-[-0.2em]" aria-hidden />
-          <span className="sr-only">los tres puntos</span> arriba a la derecha y elegí abrir en el
-          navegador. O copiá el enlace y pegalo en Chrome o Safari.
-        </p>
-      </div>
+    <div className="space-y-3">
       <Button
         type="button"
         {...(glass
@@ -63,18 +43,21 @@ export function InAppBrowserNotice({ glass = false }: { glass?: boolean }) {
               className: 'w-full backdrop-filter-none',
             } as const)
           : ({ variant: 'outline', className: PORTAL_BUTTON_OUTLINE } as const))}
-        onClick={copyLink}
+        aria-describedby={helpId}
+        onClick={openInBrowser}
       >
-        <Copy className={glass ? 'size-4' : 'mr-2 size-4'} aria-hidden />
-        Copiar enlace
+        <GoogleIcon className={glass ? 'size-5' : 'mr-2 size-5'} />
+        Continuar con Google
       </Button>
-      {copy !== 'idle' && (
-        <p role="status" className={glass ? 'rv-small' : 'text-sm text-muted-foreground'}>
-          {copy === 'copied'
-            ? 'Enlace copiado. Pegalo en Chrome o Safari.'
-            : 'No se pudo copiar. Usá los tres puntos de arriba a la derecha.'}
-        </p>
-      )}
+      <p
+        id={helpId}
+        aria-live="polite"
+        className={cn('text-pretty text-sm', glass ? 'text-portal-muted' : 'text-muted-foreground')}
+      >
+        {tried
+          ? 'Si no se abrió tu navegador, entrá con tu email.'
+          : 'Te abrimos tu navegador para que entres con Google.'}
+      </p>
     </div>
   )
 }

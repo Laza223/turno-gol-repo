@@ -1,18 +1,23 @@
 // @vitest-environment happy-dom
 //
-// El aviso que reemplaza a "Continuar con Google" en el navegador interno de una app. Quién lo
-// muestra y en qué orden lo cubren ingresar-page, login-gate y reservar-page-render.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+// El botón de Google del navegador interno de una app: no inicia el ingreso, le pide al teléfono
+// abrir la página en el navegador. Quién lo muestra y en qué orden lo cubren ingresar-page,
+// login-gate y reservar-page-render; las URLs de salto, in-app-browser.test.
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { InAppBrowserNotice } from '@/components/world/InAppBrowserNotice'
 
-const original = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
 const realLocation = Object.getOwnPropertyDescriptor(window, 'location')
+const realUserAgent = Object.getOwnPropertyDescriptor(navigator, 'userAgent')
 const PAGE = 'http://localhost/complejo-fenix/reservar?court=c1&date=2026-10-22'
 
-function setClipboard(value: unknown) {
-  Object.defineProperty(navigator, 'clipboard', { value, configurable: true })
-}
+const INSTAGRAM_IPHONE =
+  'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/21F90 Instagram 340.0.0.18.109 (iPhone14,5; iOS 17_5; es_AR)'
+const INSTAGRAM_ANDROID =
+  'Mozilla/5.0 (Linux; Android 14; SM-A546E Build/UP1A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/126.0.0.0 Mobile Safari/537.36 Instagram 340.0.0.30.109 Android (34/14; es_AR)'
+
+const setUserAgent = (value: string) =>
+  Object.defineProperty(navigator, 'userAgent', { value, configurable: true })
 
 beforeEach(() => {
   // La URL se fija a mano: otros archivos del mismo worker (singleThread comparte el window) dejan
@@ -26,59 +31,65 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
-  if (original) Object.defineProperty(navigator, 'clipboard', original)
-  else Reflect.deleteProperty(navigator, 'clipboard')
   if (realLocation) Object.defineProperty(window, 'location', realLocation)
+  if (realUserAgent) Object.defineProperty(navigator, 'userAgent', realUserAgent)
+  else Reflect.deleteProperty(navigator, 'userAgent')
 })
 
-const copy = async () => {
-  await act(async () => {
-    fireEvent.click(screen.getByRole('button', { name: 'Copiar enlace' }))
-  })
-}
+const tap = () => fireEvent.click(screen.getByRole('button', { name: 'Continuar con Google' }))
 
 describe('InAppBrowserNotice', () => {
-  it('dice por qué no hay Google y las dos salidas, sin nada anunciado todavía', () => {
+  it('en reposo: el botón de Google y por qué abre el navegador, sin nada que copiar', () => {
     render(<InAppBrowserNotice />)
-    expect(screen.getByText('¿Querés entrar con Google?')).toBeTruthy()
-    expect(screen.getByText(/No funciona dentro de esta app\./).textContent).toBe(
-      'No funciona dentro de esta app. Tocá los tres puntos arriba a la derecha y elegí abrir en el navegador. O copiá el enlace y pegalo en Chrome o Safari.',
+    const button = screen.getByRole('button', { name: 'Continuar con Google' })
+    expect(button.getAttribute('aria-describedby')).toBe(
+      screen.getByText('Te abrimos tu navegador para que entres con Google.').id,
     )
-    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.queryByText(/Copiar enlace/)).toBeNull()
+    expect(window.location.href).toBe(PAGE)
   })
 
-  it('copia la página tal cual (con el turno elegido) y avisa dónde pegarla', async () => {
-    const writeText = vi.fn(async () => {})
-    setClipboard({ writeText })
+  it('Instagram en iPhone: manda a la página, con el turno elegido, al esquema de Instagram', () => {
+    setUserAgent(INSTAGRAM_IPHONE)
     render(<InAppBrowserNotice />)
-
-    await copy()
-
-    expect(writeText).toHaveBeenCalledWith(PAGE)
-    expect(screen.getByRole('status').textContent).toBe(
-      'Enlace copiado. Pegalo en Chrome o Safari.',
-    )
+    tap()
+    expect(window.location.href).toBe(`instagram://extbrowser/?url=${encodeURIComponent(PAGE)}`)
   })
 
-  it('si el navegador de la app rechaza copiar, manda al menú de los tres puntos', async () => {
-    setClipboard({ writeText: vi.fn(async () => Promise.reject(new Error('NotAllowedError'))) })
+  it('Instagram en Android: manda a un intent a la misma página', () => {
+    setUserAgent(INSTAGRAM_ANDROID)
     render(<InAppBrowserNotice />)
-
-    await copy()
-
-    expect(screen.getByRole('status').textContent).toBe(
-      'No se pudo copiar. Usá los tres puntos de arriba a la derecha.',
+    tap()
+    expect(window.location.href).toMatch(
+      /^intent:\/\/localhost\/complejo-fenix\/reservar\?court=c1&date=2026-10-22#Intent;scheme=http;/,
     )
   })
 
-  it('sin portapapeles (WebView viejo) también manda al menú, sin romper', async () => {
-    setClipboard(undefined)
+  it('tocado, lo único que ofrece si no se abrió es el email: ni copiar enlace ni el menú de la app', () => {
+    setUserAgent(INSTAGRAM_IPHONE)
     render(<InAppBrowserNotice />)
+    tap()
+    expect(screen.getByText('Si no se abrió tu navegador, entrá con tu email.')).toBeTruthy()
+    expect(screen.queryByText('Te abrimos tu navegador para que entres con Google.')).toBeNull()
+    expect(screen.queryByRole('button', { name: /copiar/i })).toBeNull()
+    expect(screen.queryByText(/tres puntos/)).toBeNull()
+  })
 
-    await copy()
+  it('con la piel de vidrio (/ingresar) hace lo mismo: el salto sale del mismo botón', () => {
+    setUserAgent(INSTAGRAM_IPHONE)
+    render(<InAppBrowserNotice glass />)
+    tap()
+    expect(window.location.href).toBe(`instagram://extbrowser/?url=${encodeURIComponent(PAGE)}`)
+    expect(screen.getByText('Si no se abrió tu navegador, entrá con tu email.')).toBeTruthy()
+  })
 
-    expect(screen.getByRole('status').textContent).toBe(
-      'No se pudo copiar. Usá los tres puntos de arriba a la derecha.',
+  it('en una plataforma que no reconoce no navega a ningún lado y manda al email', () => {
+    setUserAgent(
+      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/126.0.0.0 Safari/537.36',
     )
+    render(<InAppBrowserNotice />)
+    tap()
+    expect(window.location.href).toBe(PAGE)
+    expect(screen.getByText('Si no se abrió tu navegador, entrá con tu email.')).toBeTruthy()
   })
 })

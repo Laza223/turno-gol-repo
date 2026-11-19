@@ -225,12 +225,13 @@ export const ConSenaOcultaNavegadorInterno: Story = {
     await expect(
       canvas.getByText('Pagás una seña online con MercadoPago; el resto, en el complejo.'),
     ).toBeVisible()
-    // En el navegador de Instagram el email va primero y el aviso reemplaza a Google.
+    // En el navegador de Instagram el email va primero y Google, que abre el navegador, después.
     const panel = within(canvas.getByRole('region', { name: 'Entrá para reservar' }))
     await expect(panel.getAllByRole('button')[0]).toHaveTextContent('Continuar con mi email')
+    await expect(panel.getByRole('button', { name: 'Continuar con Google' })).toBeVisible()
     await expect(
-      panel.queryByRole('button', { name: 'Continuar con Google' }),
-    ).not.toBeInTheDocument()
+      panel.getByText('Te abrimos tu navegador para que entres con Google.'),
+    ).toBeVisible()
   },
 }
 

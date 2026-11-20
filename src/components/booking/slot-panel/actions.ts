@@ -139,7 +139,7 @@ export type SlotPanelActions = Partial<WriteOffActions> & {
    * Consumos anotados al turno (migr. 116, docs/decisions/2026-11-17-consumos-
    * anotados-al-turno.md): lo anotado y sin cobrar de un turno, para que el cobro lo
    * traiga sumado. Las tres van juntas o ninguna: sin ellas el modal cobra solo la
-   * cancha, como siempre (la Grilla no las cablea todavía).
+   * cancha en el modal individual de Hoy y Grilla.
    */
   listBookingConsumosAction?: (input: {
     bookingId: string

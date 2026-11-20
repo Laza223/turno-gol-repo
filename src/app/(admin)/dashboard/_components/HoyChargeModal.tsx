@@ -201,7 +201,7 @@ export function HoyChargeModal({
 
   const locked = isPending || isRefreshing
   // Lo anotado al turno (docs/decisions/2026-11-17-consumos-anotados-al-turno.md), tal
-  // como lo usa el cobro de "Todo junto". Sin las acciones (la Grilla, por ahora) no hay.
+  // como lo usa el cobro de "Todo junto" en Hoy y en Grilla.
   const consumosView = consumosEnabled
     ? {
         items: consumos,

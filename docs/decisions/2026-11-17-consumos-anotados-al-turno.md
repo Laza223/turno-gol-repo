@@ -34,7 +34,7 @@ y que el cobro del turno la traiga sumada, así que siguen anotando en papel.
   `settleTab` solo admite efectivo, transferencia y MercadoPago.
 - **Solo en "Todo junto".** En "Por equipo" y "Por jugador" una línea avisa que los consumos se cobran en
   "Todo junto".
-- **La Grilla no cambia**: el modal de la Grilla sigue sin "Anotar al turno".
+- **Hoy y Grilla**: a partir del 2026-11-20, el modal individual de Grilla usa el mismo flujo de Hoy para anotar y cobrar consumos. Aplica en las vistas Día y Semana.
 - **Sin texto libre sobre personas** (Ley 25.326): el nombre del anotado lo arma el servidor
   ("Consumo de turno · Cancha 3 · 21:00"); el cliente no manda nombre. El motivo de quitar un anotado es fijo.
 - **Si el turno nunca se cobra, el consumo no se pierde**: queda como fiado sin cobrar en Caja › Cuentas.

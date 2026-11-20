@@ -38,7 +38,14 @@ import {
   undoWriteOffAction,
   writeOffBookingAction,
 } from '@/app/(admin)/caja/deudas/actions'
-import { listCanteenForBookingAction, sellTicketAction } from '@/app/(admin)/caja/cantina/actions'
+import {
+  cancelTabAction,
+  createTabAction,
+  listBookingConsumosAction,
+  listCanteenForBookingAction,
+  sellTicketAction,
+  settleTabAction,
+} from '@/app/(admin)/caja/cantina/actions'
 import { listCourtRangeGridBookings, listDayGridBookings } from '@/app/(admin)/reservas/queries'
 import { artTodayStr } from '@/shared/dates/art'
 import { DEFAULT_CANCELLATION_HOURS_BEFORE } from '@/shared/constants'
@@ -148,9 +155,15 @@ export default async function GrillaPage(props: {
           confirmDepositPaymentAction,
           markNoShowAction,
           revertNoShowAction,
-          // Plan gratis: mover un turno es del plan. Sin estas dos acciones la
-          // grilla no ofrece arrastrar ni reprogramar (el server lo rechaza igual).
-          ...(freePlan ? {} : { listRescheduleSlotsAction, rescheduleBookingAction }),
+          ...(freePlan
+            ? {}
+            : {
+                listRescheduleSlotsAction,
+                rescheduleBookingAction,
+                listBookingConsumosAction,
+                settleTabAction,
+                cancelTabAction,
+              }),
           cancelBookingAction,
           releaseBlockAction,
           editBookingAction,
@@ -166,6 +179,7 @@ export default async function GrillaPage(props: {
           // sellTicketAction toma `unknown` y valida con Zod: el bookingId
           // extra que le agrega el diálogo entra por el mismo schema.
           sellTicketAction,
+          createTabAction,
         }}
       />
     </div>

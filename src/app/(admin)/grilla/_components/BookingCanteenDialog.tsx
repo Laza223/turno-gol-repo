@@ -74,7 +74,7 @@ type Props = {
   displayName: string | null
   listCatalogAction: ListCanteenCatalog
   sellTicketAction: SellTicketForBooking
-  /** Con esto el ticket ofrece "Anotar al turno". Sin esto, solo cobrar ahora (la Grilla). */
+  /** Con esto el ticket ofrece "Anotar al turno" además de cobrar ahora. */
   createTabAction?: CreateTabForBooking
   /** Se anotó un consumo: el modal de cobro tiene que volver a leer lo anotado. */
   onNoted?: () => void

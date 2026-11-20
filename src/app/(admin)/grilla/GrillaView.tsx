@@ -9,7 +9,11 @@ import type {
   RenderChargeModal,
 } from '@/components/booking/slot-panel/actions'
 import type { CourtRow } from '@/modules/courts/court.types'
-import type { ListCanteenCatalog, SellTicketForBooking } from './_components/BookingCanteenDialog'
+import type {
+  CreateTabForBooking,
+  ListCanteenCatalog,
+  SellTicketForBooking,
+} from './_components/BookingCanteenDialog'
 import type { TrackStoryExport } from './_components/StoryShareDialog'
 
 /**
@@ -57,6 +61,7 @@ type Props = Omit<
   canteen?: {
     listCatalogAction: ListCanteenCatalog
     sellTicketAction: SellTicketForBooking
+    createTabAction: CreateTabForBooking
   }
   /** Horas de anticipación de la política de cancelación, para el aviso de seña del modal. */
   cancellationPolicyHours: number
@@ -80,11 +85,12 @@ export function GrillaView({
   ...gridProps
 }: Props) {
   const renderCanteenDialog: RenderCanteenDialog | undefined = canteen
-    ? (args) => (
+    ? ({ canNoteConsumo, ...args }) => (
         <BookingCanteenDialog
           {...args}
           listCatalogAction={canteen.listCatalogAction}
           sellTicketAction={canteen.sellTicketAction}
+          createTabAction={canNoteConsumo ? canteen.createTabAction : undefined}
         />
       )
     : undefined

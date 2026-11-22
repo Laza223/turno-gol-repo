@@ -91,7 +91,7 @@ export function PlusSection({ plus, periodEnd, disableAction, payAction }: Props
             Cuando se acredite el pago, el Asistente se prende solo.
           </p>
           {payError && (
-            <p role="alert" className="mt-3 text-sm font-medium text-red-600 dark:text-red-400">
+            <p role="alert" className="mt-3 text-sm font-medium text-red-700 dark:text-red-400">
               {payError}
             </p>
           )}

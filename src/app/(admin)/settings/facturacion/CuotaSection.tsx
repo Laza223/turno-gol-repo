@@ -472,7 +472,7 @@ export function CuotaSection({
           role="alert"
           className={`flex flex-col gap-3 rounded-lg border p-3.5 text-sm font-medium sm:flex-row sm:items-center sm:justify-between ${
             phase === 'error'
-              ? 'border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400'
+              ? 'border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-400'
               : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
           }`}
         >

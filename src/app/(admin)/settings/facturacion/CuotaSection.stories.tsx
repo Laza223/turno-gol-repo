@@ -96,7 +96,7 @@ export const ConAsistenteDeWhatsApp: Story = {
   args: { onlineCourts: 5, billedCourts: 5, plusPerCourtCents: 1_500_000 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/Asistente de WhatsApp \(Plus\) · 5 canchas/)).toBeInTheDocument()
+    await expect(canvas.getByText(/5 canchas × .*15\.000/)).toBeInTheDocument()
     await expect(canvas.getAllByText(/225\.000/).length).toBeGreaterThan(0)
   },
 }

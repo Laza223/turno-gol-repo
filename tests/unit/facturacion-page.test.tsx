@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 
 // ENS-25: la sección de baja voluntaria (CancelSubscriptionSection) se cablea
 // en /settings/facturacion, visible solo en estados cancelables.
@@ -166,12 +166,14 @@ describe('/settings/facturacion — CancelSubscriptionSection por estado', () =>
   // Desde el precio lineal por cancha (2026-09-17) la página ya no nombra un
   // plan — el "Predio · todavía no se cobra" de antes ahora es el estado de
   // `SUBSCRIPTION_STATUS_LABEL` calificado igual.
-  it('trialing: muestra "Prueba del Completo · todavía no se cobra" y NO muestra el botón de cancelar', async () => {
+  it('trialing: muestra el plan Completo en prueba, sin cobro y sin botón de cancelar', async () => {
     vi.mocked(getSubscriptionState).mockResolvedValue(sub('trialing') as never)
 
     render(await FacturacionPage())
 
-    expect(screen.getByText('Prueba del Completo · todavía no se cobra')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Plan Completo' })).toBeTruthy()
+    expect(screen.getByText('En prueba')).toBeTruthy()
+    expect(screen.getByText('Todavía no se cobra.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Dar de baja' })).toBeNull()
   })
 
@@ -198,7 +200,7 @@ describe('/settings/facturacion — CancelSubscriptionSection por estado', () =>
 
     render(await FacturacionPage())
 
-    expect(screen.getByText(/Asistente de WhatsApp \(Plus\) · 3 canchas/)).toBeTruthy()
+    expect(screen.getByText(/3 canchas × .*20\.000/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Dar de baja el Asistente' })).toBeTruthy()
   })
 
@@ -315,15 +317,33 @@ describe('/settings/facturacion — aviso de suscripción de MercadoPago ya crea
 // suscripción creada". Así no tenía cómo cargar la tarjeta antes de que
 // venciera la prueba.
 describe('/settings/facturacion — checkout creado pero nunca pagado', () => {
+  it('destaca el importe a pagar por año y aclara dónde se confirma el pago', async () => {
+    vi.mocked(getSubscriptionState).mockResolvedValue(sub('trialing') as never)
+    vi.mocked(isTrialCheckoutUnpaid).mockResolvedValueOnce(true)
+
+    render(await FacturacionPage())
+    fireEvent.click(screen.getByRole('radio', { name: /^Anual/ }))
+
+    const total = screen.getByText('por año')
+    expect(total.parentElement?.textContent).toMatch(/1\.155\.600 por año/)
+    expect(screen.getByText(/Equivale a .*96\.300 por mes/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Activar plan' })).toHaveAttribute(
+      'aria-describedby',
+      screen.getByText('Confirmás el pago en Mercado Pago.').id,
+    )
+  })
+
   it('en prueba con un checkout sin pagar: ofrece Activar y no dice que ya hay suscripción', async () => {
     vi.mocked(getSubscriptionState).mockResolvedValue(sub('trialing') as never)
     vi.mocked(isTrialCheckoutUnpaid).mockResolvedValueOnce(true)
 
     render(await FacturacionPage())
 
-    const cuotaSection = screen.getByRole('heading', { name: 'Tu cuota' }).closest('section')
+    const cuotaSection = screen
+      .getByRole('heading', { name: 'Cuota al activar' })
+      .closest('section')
     expect(
-      within(cuotaSection as HTMLElement).getByRole('button', { name: /^Activar — / }),
+      within(cuotaSection as HTMLElement).getByRole('button', { name: 'Activar plan' }),
     ).toBeTruthy()
     expect(screen.queryByText(/Ya hay una suscripción de MercadoPago creada/)).toBeNull()
     expect(screen.queryByText(/Para darte de baja antes del primer cobro/)).toBeNull()
@@ -335,7 +355,7 @@ describe('/settings/facturacion — checkout creado pero nunca pagado', () => {
 
     render(await FacturacionPage())
 
-    expect(screen.queryByRole('button', { name: /^Activar — / })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Activar plan' })).toBeNull()
     expect(screen.getByText(/Ya hay una suscripción de MercadoPago creada/)).toBeTruthy()
   })
 

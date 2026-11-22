@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, CalendarClock, Minus, Plus } from 'lucide-react'
+import { ArrowRight, CalendarClock, LockKeyhole, Minus, Plus } from 'lucide-react'
 import { formatArs, formatPct } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { EmailVerifyBanner } from '@/components/layout/email-verify-banner'
 import { SegmentedControl } from '@/components/ui/segmented-control'
@@ -12,7 +13,8 @@ import { buildPriceBreakdown, type PricingParams } from '@/modules/billing/prici
 import type { BillingCycle } from '@/modules/billing/billing.types'
 import { SUPPORT_EMAIL } from '@/shared/constants'
 import type { ActionResult } from '@/shared/types/action-result'
-import { PriceBreakdown } from './PriceBreakdown'
+import { CycleTotal, PriceBreakdown } from './PriceBreakdown'
+import styles from './subscription.module.css'
 
 /**
  * La cuota del complejo: el número, de dónde sale y cómo se cambia.
@@ -70,6 +72,8 @@ type CuotaSectionProps = {
    * vez de mostrar el monto sin Plus mientras el débito lo cobra (pasó en /reactivar).
    */
   plusPerCourtCents: number
+  /** Jerarquía de precio y controles de Ajustes → Suscripción. */
+  subscriptionLayout?: boolean
   /**
    * Mail del dueño y acciones para confirmarlo. Si el server contesta
    * `EMAIL_NOT_VERIFIED`, se ofrece reenviar acá mismo, sin ir a buscar el banner.
@@ -126,6 +130,7 @@ export function CuotaSection({
   billingCycle = 'monthly',
   plusPerCourtCents,
   verifyEmail,
+  subscriptionLayout = false,
 }: CuotaSectionProps) {
   const router = useRouter()
 
@@ -258,15 +263,81 @@ export function CuotaSection({
   const ctaLabel =
     mode === 'manage'
       ? 'Guardar'
-      : `${mode === 'activate' ? 'Activar' : 'Reactivar'} — ${chargeLabel}`
+      : subscriptionLayout
+        ? 'Activar plan'
+        : `${mode === 'activate' ? 'Activar' : 'Reactivar'} · ${chargeLabel}`
+  const price = <PriceBreakdown breakdown={breakdown} receipt={subscriptionLayout} />
+  const cycleControl =
+    mode === 'manage' ? (
+      <p className="text-xs text-muted-foreground">
+        {cycle === 'annual' ? 'Facturación anual.' : 'Facturación mensual.'} Para cambiarla,
+        escribinos a {SUPPORT_EMAIL}.
+      </p>
+    ) : (
+      <SegmentedControl<BillingCycle>
+        aria-label="Cómo querés pagar"
+        value={cycle}
+        onValueChange={setCycle}
+        disabled={phase === 'loading'}
+        className={
+          subscriptionLayout
+            ? styles.cycleControl
+            : 'inline-flex w-full items-center gap-1 rounded-full border border-border bg-muted p-1.5 sm:w-auto'
+        }
+        options={[
+          { value: 'monthly', label: 'Mensual' },
+          {
+            value: 'annual',
+            label:
+              pricing.annualDiscountBps > 0 ? (
+                <>
+                  Anual{' '}
+                  <span className={subscriptionLayout ? styles.saving : undefined}>
+                    · {formatPct(pricing.annualDiscountBps / 100)} menos
+                  </span>
+                </>
+              ) : (
+                'Anual'
+              ),
+          },
+        ]}
+        itemClassName={(active) =>
+          subscriptionLayout
+            ? styles.cycleOption
+            : cn(
+                'inline-flex min-h-11 flex-1 items-center justify-center gap-1 rounded-full px-4 py-2 text-sm font-semibold focus-visible:ring-2 focus-visible:ring-ring',
+                active
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground',
+              )
+        }
+      />
+    )
 
   return (
-    <section className="card-premium space-y-3 lg:space-y-6 rounded-xl p-4 lg:p-6">
+    <section
+      className={
+        subscriptionLayout
+          ? styles.receipt
+          : 'card-premium space-y-3 rounded-xl p-4 sm:p-6 lg:space-y-6'
+      }
+    >
       <header>
-        <h2 className="text-base font-semibold text-foreground">Tu cuota</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Pagás por cancha. Sin planes, sin sorpresas.
-        </p>
+        <h2
+          className={cn(
+            'font-semibold text-foreground',
+            subscriptionLayout ? 'font-display text-xl tracking-tight' : 'text-base',
+          )}
+        >
+          {subscriptionLayout && mode === 'activate' ? 'Cuota al activar' : 'Tu cuota'}
+        </h2>
+        {subscriptionLayout ? (
+          <CycleTotal breakdown={breakdown} />
+        ) : (
+          <p className="mt-1 text-sm text-muted-foreground">
+            Pagás por cancha. Sin planes, sin sorpresas.
+          </p>
+        )}
       </header>
 
       {pendingBilledCourts !== null && pendingBilledCourts !== billedCourts && periodEnd && (
@@ -297,15 +368,22 @@ export function CuotaSection({
         </div>
       )}
 
+      {subscriptionLayout && cycleControl}
+
       {/* Canchas */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div
+        className={cn(
+          'flex flex-wrap items-center justify-between',
+          subscriptionLayout ? styles.courtRow : 'gap-4',
+        )}
+      >
         <div className="min-w-0">
           <span id="cuota-canchas-label" className="text-sm font-medium text-foreground">
-            Canchas
+            {subscriptionLayout ? 'Canchas en la cuota' : 'Canchas'}
           </span>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {onlineCourts > 0
-              ? `Tenés ${courtsLabel(onlineCourts)} prendidas`
+              ? `${courtsLabel(onlineCourts)} en actividad`
               : 'Todavía no prendiste ninguna cancha'}
           </p>
         </div>
@@ -313,7 +391,10 @@ export function CuotaSection({
         <div
           role="group"
           aria-labelledby="cuota-canchas-label"
-          className="inline-flex items-center gap-2 rounded-full border border-border bg-muted p-1.5"
+          className={cn(
+            'inline-flex items-center rounded-full border border-border bg-muted',
+            subscriptionLayout ? styles.stepper : 'gap-2 p-1.5',
+          )}
         >
           {/* Stepper y no una fila de botones: sin techo, "1 a 7" no escala y
               obliga a inventar un "7+" que miente sobre el precio. */}
@@ -322,6 +403,7 @@ export function CuotaSection({
             variant="outline"
             size="icon"
             className="rounded-full"
+            disabled={phase === 'loading'}
             onClick={() => step(-1)}
             aria-label="Quitar una cancha"
           >
@@ -335,6 +417,7 @@ export function CuotaSection({
             variant="outline"
             size="icon"
             className="rounded-full"
+            disabled={phase === 'loading'}
             onClick={() => step(1)}
             aria-label="Agregar una cancha"
           >
@@ -361,50 +444,28 @@ export function CuotaSection({
       )}
 
       {/* El número grande y de dónde sale. */}
-      <PriceBreakdown breakdown={breakdown} />
+      {!subscriptionLayout && price}
 
-      {/* Un cambio de ciclo rehace el preapproval: con cobro ya cargado en MP
-          no se ofrece acá (el endpoint de canchas ni lo acepta). */}
-      {mode === 'manage' ? (
-        <p className="text-xs text-muted-foreground">
-          {cycle === 'annual' ? 'Pagás por año.' : 'Pagás por mes.'} Para cambiar cómo pagás,
-          escribinos a {SUPPORT_EMAIL}.
-        </p>
-      ) : (
-        <SegmentedControl<BillingCycle>
-          aria-label="Cómo querés pagar"
-          value={cycle}
-          onValueChange={setCycle}
-          className="inline-flex w-full items-center gap-1 rounded-full border border-border bg-muted p-1.5 sm:w-auto"
-          options={[
-            { value: 'monthly', label: 'Mensual' },
-            {
-              value: 'annual',
-              // El 10% sale de `annual_discount_bps`, nunca escrito a mano.
-              label: `Anual — pagás ${formatPct(pricing.annualDiscountBps / 100)} menos`,
-            },
-          ]}
-          itemClassName={(active) =>
-            // `min-h-11` y no `h-11`: en 375px "Anual — pagás 10% menos" se
-            // parte en dos líneas y una altura fija lo cortaría.
-            `inline-flex min-h-11 flex-1 items-center justify-center rounded-full px-4 py-2 text-center text-sm font-semibold leading-tight transition-colors duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring sm:flex-none ${
-              active
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:text-foreground'
-            }`
-          }
-        />
-      )}
+      {!subscriptionLayout && cycleControl}
+      {subscriptionLayout && price}
 
       {/* La promesa comercial del modelo, escrita. No es relleno: es la razón
           por la que sumar una cancha no da miedo (decisión P4). */}
-      <p className="text-xs leading-relaxed text-muted-foreground">
-        Si sumás una cancha, tu cuota pasa a{' '}
-        <span className="font-semibold tabular-nums text-foreground">
-          {formatArs(oneMore.monthlyEffectiveCents)}
-        </span>{' '}
-        desde tu próximo cobro. Nunca te cobramos de más en el medio del mes.
-      </p>
+      {!subscriptionLayout && (
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          Si sumás una cancha, tu cuota pasa a{' '}
+          <span className="font-semibold tabular-nums text-foreground">
+            {formatArs(oneMore.monthlyEffectiveCents)}
+          </span>{' '}
+          desde tu próximo cobro. Nunca te cobramos de más en el medio del mes.
+        </p>
+      )}
+
+      {subscriptionLayout && mode === 'manage' && courts !== settledTarget && (
+        <p className="text-xs text-muted-foreground">
+          El cambio de cuota no genera un cobro en este momento.
+        </p>
+      )}
 
       {message && (
         <div
@@ -445,22 +506,39 @@ export function CuotaSection({
         </div>
       )}
 
-      <Button
-        type="button"
-        size="lg"
-        className="w-full"
-        onClick={() => void submit(courts)}
-        isLoading={phase === 'loading'}
-        disabled={nothingToSave}
-      >
-        {phase === 'loading'
-          ? mode === 'manage'
-            ? 'Guardando…'
-            : mode === 'activate'
-              ? 'Activando…'
-              : 'Reactivando…'
-          : ctaLabel}
-      </Button>
+      <div className={subscriptionLayout ? 'space-y-2.5' : undefined}>
+        <Button
+          type="button"
+          size="lg"
+          className={cn('w-full', subscriptionLayout && styles.confirm)}
+          onClick={() => void submit(courts)}
+          isLoading={phase === 'loading'}
+          disabled={nothingToSave}
+          aria-describedby={
+            subscriptionLayout && mode === 'activate' ? 'cuota-checkout-help' : undefined
+          }
+        >
+          {phase === 'loading'
+            ? mode === 'manage'
+              ? 'Guardando…'
+              : mode === 'activate'
+                ? 'Activando…'
+                : 'Reactivando…'
+            : ctaLabel}
+          {subscriptionLayout && mode === 'activate' && phase !== 'loading' && (
+            <ArrowRight className="size-4" aria-hidden />
+          )}
+        </Button>
+        {subscriptionLayout && mode === 'activate' && (
+          <p
+            id="cuota-checkout-help"
+            className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground"
+          >
+            <LockKeyhole className="size-3.5 shrink-0" aria-hidden />
+            Confirmás el pago en Mercado Pago.
+          </p>
+        )}
+      </div>
 
       {/* El cambio se anuncia una sola vez y completo: el stepper por su cuenta
           no dice cuánto pasa a costar. */}

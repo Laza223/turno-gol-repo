@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 import type { ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -68,6 +68,7 @@ export function AdminLayoutShell({
   resumeOnlineAction,
 }: AdminLayoutShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null)
   const [, startTransition] = useTransition()
   const pathname = usePathname()
   // Dos modos de contenedor. Grilla y Agenda (ex-Reservas, lista) son viewport fijo
@@ -99,6 +100,8 @@ export function AdminLayoutShell({
         tenantName={tenantName}
         mobileOpen={mobileOpen}
         onClose={() => setMobileOpen(false)}
+        mobileMenuButtonRef={mobileMenuButtonRef}
+        readOnly={readOnly !== null}
         userEmail={userEmail}
         onSignOut={handleSignOut}
         tournamentsEnabled={tournamentsEnabled}
@@ -114,6 +117,7 @@ export function AdminLayoutShell({
       {/* Navegación primaria en mobile (Fase 4): reemplaza a la hamburguesa. */}
       <AdminBottomNav
         onOpenMore={() => setMobileOpen(true)}
+        moreButtonRef={mobileMenuButtonRef}
         moreOpen={mobileOpen}
         tournamentsEnabled={tournamentsEnabled}
         staffRole={staffRole}

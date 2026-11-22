@@ -1,5 +1,6 @@
 'use client'
 
+import { useRef, useState, type MouseEventHandler, type RefObject } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LogoMark } from '@/components/ui/logo-mark'
@@ -11,6 +12,7 @@ import {
   Banknote,
   LandPlot,
   ChartLine,
+  CircleHelp,
   Lock,
   LogOut,
   Settings,
@@ -31,10 +33,14 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import ThemeToggle from '@/components/theme/ThemeToggle'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
+import { AdminHelpPanel } from './admin-help-panel'
+
 interface SidebarProps {
   tenantName: string
   mobileOpen: boolean
   onClose: () => void
+  mobileMenuButtonRef?: RefObject<HTMLButtonElement | null>
+  readOnly?: boolean
   /** Email del staff logueado: rotula la cuenta en el riel y en el cajón mobile. */
   userEmail: string
   onSignOut: () => void
@@ -251,6 +257,28 @@ function navIconClass(active: boolean) {
  * link que lo rebota (Configuración es del dueño): se lo muestra y nada más.
  */
 const TRIAL_URGENT_DAYS = Math.max(...TRIAL_ENDING_WARNING_DAYS)
+function HelpButton({
+  className,
+  labelClassName,
+  onClick,
+}: {
+  className: string
+  labelClassName: string
+  onClick: MouseEventHandler<HTMLButtonElement>
+}) {
+  return (
+    <button
+      type="button"
+      aria-haspopup="dialog"
+      onClick={onClick}
+      className={cn(className, NAV_IDLE)}
+    >
+      <CircleHelp aria-hidden="true" className="h-5 w-5 shrink-0" />
+      <span className={labelClassName}>Ayuda</span>
+    </button>
+  )
+}
+
 const BILLING_HREF = '/settings/facturacion'
 
 function trialDaysLabel(days: number) {
@@ -407,6 +435,7 @@ function SidebarRail({
   pathname,
   userEmail,
   onSignOut,
+  onOpenHelp,
   tournamentsEnabled,
   staffRole,
   setupAlerts,
@@ -416,6 +445,7 @@ function SidebarRail({
   pathname: string
   userEmail: string
   onSignOut: () => void
+  onOpenHelp: MouseEventHandler<HTMLButtonElement>
   tournamentsEnabled?: boolean
   staffRole?: StaffRole
   setupAlerts: SetupAlerts
@@ -509,6 +539,12 @@ function SidebarRail({
         <TrialRailItem daysLeft={trialDaysLeft} canChoosePlan={canConfigure} />
       )}
 
+      <HelpButton
+        className={cn(RAIL_ITEM, RAIL_ITEM_HOVERABLE)}
+        labelClassName={RAIL_LABEL}
+        onClick={onOpenHelp}
+      />
+
       {canConfigure ? (
         <Link
           href={CONFIG_ITEM.href}
@@ -570,6 +606,7 @@ function SidebarDrawerContent({
   tenantName,
   pathname,
   onClose,
+  onOpenHelp,
   userEmail,
   onSignOut,
   tournamentsEnabled,
@@ -581,6 +618,7 @@ function SidebarDrawerContent({
   tenantName: string
   pathname: string
   onClose: () => void
+  onOpenHelp: () => void
   userEmail: string
   onSignOut: () => void
   tournamentsEnabled?: boolean
@@ -652,6 +690,12 @@ function SidebarDrawerContent({
           />
         )}
 
+        <HelpButton
+          className={rowClass}
+          labelClassName="flex-1 truncate text-left"
+          onClick={onOpenHelp}
+        />
+
         {canConfigure ? (
           <Link
             href={CONFIG_ITEM.href}
@@ -702,6 +746,8 @@ export function AdminSidebar({
   tenantName,
   mobileOpen,
   onClose,
+  mobileMenuButtonRef,
+  readOnly,
   userEmail,
   onSignOut,
   tournamentsEnabled,
@@ -711,6 +757,13 @@ export function AdminSidebar({
   freePlan = false,
 }: SidebarProps) {
   const pathname = usePathname()
+  const [helpOpen, setHelpOpen] = useState(false)
+  const helpTrigger = useRef<HTMLButtonElement | null>(null)
+
+  function openHelp(trigger: HTMLButtonElement | null) {
+    helpTrigger.current = trigger
+    setHelpOpen(true)
+  }
 
   return (
     <>
@@ -718,6 +771,7 @@ export function AdminSidebar({
         pathname={pathname}
         userEmail={userEmail}
         onSignOut={onSignOut}
+        onOpenHelp={(event) => openHelp(event.currentTarget)}
         tournamentsEnabled={tournamentsEnabled}
         staffRole={staffRole}
         setupAlerts={setupAlerts}
@@ -733,12 +787,20 @@ export function AdminSidebar({
           hideClose
           overlayClassName="lg:hidden"
           className="w-60 max-w-[85vw] backdrop-blur-xl shadow-xl shadow-black/10 dark:bg-card/90 dark:shadow-black/40 lg:hidden"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault()
+            if (!helpOpen) mobileMenuButtonRef?.current?.focus({ preventScroll: true })
+          }}
         >
           <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
           <SidebarDrawerContent
             tenantName={tenantName}
             pathname={pathname}
             onClose={onClose}
+            onOpenHelp={() => {
+              onClose()
+              openHelp(mobileMenuButtonRef?.current ?? null)
+            }}
             userEmail={userEmail}
             onSignOut={onSignOut}
             tournamentsEnabled={tournamentsEnabled}
@@ -749,6 +811,15 @@ export function AdminSidebar({
           />
         </SheetContent>
       </Sheet>
+      <AdminHelpPanel
+        pathname={pathname}
+        staffRole={staffRole}
+        readOnly={readOnly}
+        freePlan={freePlan}
+        open={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        restoreFocus={() => helpTrigger.current?.focus({ preventScroll: true })}
+      />
     </>
   )
 }

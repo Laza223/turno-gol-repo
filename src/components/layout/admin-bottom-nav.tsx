@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import type { Ref } from 'react'
 import { MoreHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { StaffRole } from '@/modules/staff/roles'
@@ -32,6 +33,7 @@ import { SetupAlertDot } from './setup-alert-dot'
  */
 export function AdminBottomNav({
   onOpenMore,
+  moreButtonRef,
   moreOpen,
   tournamentsEnabled,
   staffRole,
@@ -39,6 +41,7 @@ export function AdminBottomNav({
   freePlan = false,
 }: {
   onOpenMore: () => void
+  moreButtonRef?: Ref<HTMLButtonElement>
   moreOpen: boolean
   tournamentsEnabled?: boolean
   staffRole?: StaffRole
@@ -90,6 +93,7 @@ export function AdminBottomNav({
 
       <button
         type="button"
+        ref={moreButtonRef}
         onClick={onOpenMore}
         aria-expanded={moreOpen}
         aria-haspopup="dialog"

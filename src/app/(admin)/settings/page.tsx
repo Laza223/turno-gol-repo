@@ -147,7 +147,9 @@ export default async function SettingsPage() {
         {
           label: 'Cuota y pagos',
           effect: pricing
-            ? `${formatArs(pricing.priceFirstCourtCents)} la primera cancha y ${formatArs(pricing.priceExtraCourtCents)} cada una de las demás.`
+            ? pricing.priceFirstCourtCents === pricing.priceExtraCourtCents
+              ? `${formatArs(pricing.priceFirstCourtCents)} por cancha al mes.`
+              : `${formatArs(pricing.priceFirstCourtCents)} la primera cancha y ${formatArs(pricing.priceExtraCourtCents)} cada una de las demás.`
             : 'Cuánto pagás y tus pagos.',
           value: cuotaValue(sub, pricing),
           icon: Receipt,

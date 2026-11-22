@@ -77,12 +77,10 @@ export function PlusSection({ plus, periodEnd, disableAction, payAction }: Props
   }
 
   return (
-    <section className="card-premium rounded-xl p-4 lg:p-6">
-      <h2 className="text-base font-semibold text-foreground">Asistente de WhatsApp</h2>
-
+    <div className="pl-8">
       {quote ? (
         <>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Para sumarlo a tu plan anual, pagá los {quote.months}{' '}
             {quote.months === 1 ? 'mes' : 'meses'} que faltan: {formatArs(quote.amountCents)}.
           </p>
@@ -93,24 +91,24 @@ export function PlusSection({ plus, periodEnd, disableAction, payAction }: Props
             Cuando se acredite el pago, el Asistente se prende solo.
           </p>
           {payError && (
-            <p role="alert" className="mt-3 text-sm font-medium text-red-600 dark:text-red-400">
+            <p role="alert" className="mt-3 text-sm font-medium text-red-700 dark:text-red-400">
               {payError}
             </p>
           )}
         </>
       ) : ending && plus.accessUntil ? (
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Activo hasta el {formatDayMonth(plus.accessUntil)}. El próximo débito ya no lo incluye.
         </p>
       ) : (
         <>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Incluido en tu cuota: {formatArs(plus.perCourtCents)} por cancha.
+          <p className="text-sm text-muted-foreground">
+            Incluido en tu cuota: {formatArs(plus.perCourtCents)} por cancha al mes.
           </p>
           <Button
             type="button"
             variant="outline"
-            className="mt-4"
+            className="mt-3 min-h-11"
             disabled={isPending}
             onClick={() => setConfirmOpen(true)}
           >
@@ -128,6 +126,6 @@ export function PlusSection({ plus, periodEnd, disableAction, payAction }: Props
           />
         </>
       )}
-    </section>
+    </div>
   )
 }

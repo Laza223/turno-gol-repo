@@ -36,7 +36,7 @@ describe('PriceBreakdown con Plus', () => {
       ...pricing,
     })
     render(<PriceBreakdown breakdown={b} />)
-    expect(screen.getByText(/Asistente de WhatsApp \(Plus\) · 5 canchas × .*20\.000/)).toBeTruthy()
+    expect(screen.getByText(/5 canchas × .*20\.000/)).toBeTruthy()
     expect(screen.getAllByText(/250\.000/).length).toBeGreaterThan(0)
   })
 

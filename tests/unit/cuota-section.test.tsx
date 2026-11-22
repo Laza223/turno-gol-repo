@@ -98,6 +98,25 @@ describe('CuotaSection — desglose para N canchas', () => {
     expect((porMes.nextElementSibling as HTMLElement).textContent).toBe(formatArs(16_700_000))
   })
 
+  it('agrupa las cinco canchas a precio uniforme y separa el Asistente', () => {
+    render(
+      <CuotaSection
+        pricing={{ ...PRICING, priceFirstCourtCents: 3_000_000 }}
+        mode="activate"
+        billedCourts={5}
+        onlineCourts={5}
+        plusPerCourtCents={1_500_000}
+        subscriptionLayout
+      />,
+    )
+    expect(screen.getByText(/^5 canchas × .*30\.000/).nextElementSibling?.textContent).toBe(
+      formatArs(15_000_000),
+    )
+    expect(screen.queryByText('1ª cancha')).toBeNull()
+    expect(screen.getByText(/^5 canchas × .*15\.000/)).toBeTruthy()
+    expect(screen.getByText(/^\$\s*225\.000$/)).toBeTruthy()
+  })
+
   it('1 cancha: $47.000 sin fila de "canchas más"', () => {
     render(
       <CuotaSection
@@ -216,7 +235,7 @@ describe('CuotaSection — el CTA llama al endpoint correcto según el modo', ()
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /^Activar —/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Activar ·/ }))
 
     await waitFor(() => expect(assignSpy).toHaveBeenCalledWith('https://mp.test/checkout/activate'))
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit]
@@ -236,7 +255,7 @@ describe('CuotaSection — el CTA llama al endpoint correcto según el modo', ()
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /^Reactivar —/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Reactivar ·/ }))
 
     await waitFor(() =>
       expect(assignSpy).toHaveBeenCalledWith('https://mp.test/checkout/reactivate'),
@@ -295,7 +314,7 @@ describe('CuotaSection — manejo de errores', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /^Activar —/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Activar ·/ }))
 
     const alerta = await screen.findByRole('alert')
     expect(alerta.textContent).toContain('Tenés más canchas prendidas de las que estás facturando.')
@@ -318,7 +337,7 @@ describe('CuotaSection — manejo de errores', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /^Activar —/ }))
+    fireEvent.click(screen.getByRole('button', { name: /^Activar ·/ }))
 
     const alerta = await screen.findByRole('alert')
     expect(alerta.textContent).toContain('no se puede hacer solo')

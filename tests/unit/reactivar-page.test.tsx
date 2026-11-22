@@ -177,7 +177,7 @@ describe('/reactivar — rol no-admin', () => {
     render(await ReactivarPage())
 
     expect(screen.getByText(/Pedile al dueño del complejo/)).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /^Reactivar —/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Reactivar ·/ })).toBeNull()
   })
 })
 
@@ -192,7 +192,7 @@ describe('/reactivar — admin en estado elegible', () => {
     render(await ReactivarPage())
 
     expect(screen.getByText('Tu cuenta está suspendida')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /^Reactivar —/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Reactivar ·/ })).toBeTruthy()
   })
 
   // Decisión 2026-10-22: la prueba vencida queda en `suspended` sin
@@ -206,7 +206,7 @@ describe('/reactivar — admin en estado elegible', () => {
 
     expect(screen.getByText('Tu prueba terminó')).toBeTruthy()
     expect(screen.queryByText('Tu cuenta está suspendida')).toBeNull()
-    expect(screen.getByRole('button', { name: /^Reactivar —/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Reactivar ·/ })).toBeTruthy()
   })
 
   it('con Plus prendido, el monto que muestra es el que cobra reactivate() (plan + Plus)', async () => {
@@ -219,7 +219,7 @@ describe('/reactivar — admin en estado elegible', () => {
     render(await ReactivarPage())
 
     // 1 cancha: $47.000 del plan + $20.000 de Plus.
-    expect(screen.getByRole('button', { name: /^Reactivar — .*67\.000/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Reactivar · .*67\.000/ })).toBeTruthy()
   })
 
   it('con Plus apagado no suma Plus aunque haya precio especial guardado', async () => {
@@ -231,7 +231,7 @@ describe('/reactivar — admin en estado elegible', () => {
 
     render(await ReactivarPage())
 
-    expect(screen.getByRole('button', { name: /^Reactivar — .*47\.000/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Reactivar · .*47\.000/ })).toBeTruthy()
   })
 
   it('blocked: muestra el botón de reactivar', async () => {
@@ -241,7 +241,7 @@ describe('/reactivar — admin en estado elegible', () => {
     render(await ReactivarPage())
 
     expect(screen.getByText('Tu cuenta está bloqueada')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /^Reactivar —/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Reactivar ·/ })).toBeTruthy()
   })
 
   it('churned con deadline futuro: muestra la fecha límite y el botón', async () => {
@@ -252,7 +252,7 @@ describe('/reactivar — admin en estado elegible', () => {
     render(await ReactivarPage())
 
     expect(screen.getByText(/Tenés hasta el/)).toBeTruthy()
-    expect(screen.getByRole('button', { name: /^Reactivar —/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Reactivar ·/ })).toBeTruthy()
   })
 
   it('churned con deadline vencido: NO muestra el botón, muestra fallback de soporte', async () => {
@@ -263,7 +263,7 @@ describe('/reactivar — admin en estado elegible', () => {
     render(await ReactivarPage())
 
     expect(screen.getByText(/El plazo para reactivar venció/)).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /^Reactivar —/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Reactivar ·/ })).toBeNull()
     expect(screen.getByText('Contactar a soporte')).toBeTruthy()
   })
 })
@@ -276,7 +276,7 @@ describe('/reactivar — past_due (sigue con acceso completo al panel)', () => {
     render(await ReactivarPage())
 
     expect(screen.getByText('Tu último pago falló')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /^Reactivar —/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Reactivar ·/ })).toBeNull()
     expect(screen.getByText('Volver al panel')).toBeTruthy()
   })
 })
@@ -296,7 +296,7 @@ describe('/reactivar — sección de baja (Fix 2, R2-4 residual)', () => {
 
     render(await ReactivarPage())
 
-    expect(screen.getByRole('button', { name: /^Reactivar —/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Reactivar ·/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Dar de baja' })).toBeTruthy()
   })
 
@@ -308,7 +308,7 @@ describe('/reactivar — sección de baja (Fix 2, R2-4 residual)', () => {
 
     render(await ReactivarPage())
 
-    expect(screen.getByRole('button', { name: /^Reactivar —/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Reactivar ·/ })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Dar de baja' })).toBeNull()
   })
 
@@ -318,7 +318,7 @@ describe('/reactivar — sección de baja (Fix 2, R2-4 residual)', () => {
 
     render(await ReactivarPage())
 
-    expect(screen.getByRole('button', { name: /^Reactivar —/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Reactivar ·/ })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Dar de baja' })).toBeNull()
   })
 

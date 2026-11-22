@@ -1,6 +1,15 @@
 import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
-import { ChevronDown, CreditCard } from 'lucide-react'
+import Image from 'next/image'
+import {
+  CalendarDays,
+  ChevronDown,
+  CircleOff,
+  CreditCard,
+  MessageCircle,
+  ReceiptText,
+  type LucideIcon,
+} from 'lucide-react'
 import { requireAdminStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import {
@@ -18,6 +27,7 @@ import { isFreePlan, READ_ONLY_TENANT_STATUSES } from '@/modules/tenants/tenant.
 import { formatArs } from '@/lib/format'
 import { SUPPORT_EMAIL } from '@/shared/constants'
 import { CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { LogoMark } from '@/components/ui/logo-mark'
 import { HashOpenCollapsible } from './HashOpenCollapsible'
 import { SettingsHeader } from '../SettingsHeader'
 import {
@@ -26,7 +36,7 @@ import {
 } from '@/app/(admin)/actions/email-verification'
 import { getEmailVerificationState } from '@/modules/auth/email-verification.service'
 import { CuotaSection } from './CuotaSection'
-import { PriceBreakdown } from './PriceBreakdown'
+import { CycleTotal, PriceBreakdown } from './PriceBreakdown'
 import { firstCuotaPricing } from './cuota-pricing'
 import { CancelSubscriptionSection } from './CancelSubscriptionSection'
 import { InvoiceHistorySection, STATUS_LABELS } from './InvoiceHistorySection'
@@ -38,56 +48,40 @@ import {
   startPlusProratePaymentAction,
   updateMpPayerEmailAction,
 } from './actions'
+import styles from './subscription.module.css'
 
 function formatDate(d: string | Date | null): string {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
+  if (!d) return 'Sin fecha confirmada'
+  return new Date(d).toLocaleDateString('es-AR', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'America/Argentina/Buenos_Aires',
+  })
 }
 
-/**
- * Progressive disclosure de una sección de Suscripción (rediseño "en 3
- * segundos + todo lo demás plegado"). Envuelve `children` — que siguen
- * siendo las secciones reales, con su propio `card-premium` — bajo un
- * trigger compacto con resumen, mismo patrón que "Excepciones y detalles
- * avanzados" de `ScheduleFields.tsx`. Plegado por default: nada acá es
- * el "en 3 segundos" de las dos cards de arriba.
- */
 function BillingDisclosure({
   id,
-  className,
+  icon: Icon,
   title,
   summary,
   children,
 }: {
-  /**
-   * En el elemento RAÍZ (siempre visible, contiene el trigger), no en el
-   * contenido plegable — `#cuenta-mp` (link de recuperación de
-   * `ActivatePlanSection` cuando el email de MP está tomado) tiene que poder
-   * llevar a un elemento visible aunque el disclosure esté cerrado. `id` se
-   * dobla como el hash que `HashOpenCollapsible` escucha: sin esto, un click
-   * en "Cargar mi cuenta de MercadoPago" aterrizaba en un acordeón CERRADO.
-   */
   id?: string
-  className?: string
+  icon: LucideIcon
   title: string
   summary?: ReactNode
   children: ReactNode
 }) {
   return (
-    <HashOpenCollapsible hash={id ? `#${id}` : undefined} id={id} className={className}>
-      <CollapsibleTrigger className="group flex min-h-14 w-full items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3 text-left transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring">
-        <span className="min-w-0">
-          <span className="block text-sm font-semibold text-foreground">{title}</span>
-          {summary && (
-            <span className="mt-0.5 block truncate text-xs text-muted-foreground">{summary}</span>
-          )}
-        </span>
-        <ChevronDown
-          aria-hidden="true"
-          className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
-        />
+    <HashOpenCollapsible hash={id ? `#${id}` : undefined} id={id} className="scroll-mt-24">
+      <CollapsibleTrigger className={styles.setting}>
+        <Icon aria-hidden className={styles.settingIcon} />
+        <span className={styles.settingTitle}>{title}</span>
+        {summary && <span className={styles.settingSummary}>{summary}</span>}
+        <ChevronDown aria-hidden className={styles.settingChevron} />
       </CollapsibleTrigger>
-      <CollapsibleContent className="mt-3 space-y-3 lg:space-y-4">{children}</CollapsibleContent>
+      <CollapsibleContent className="space-y-3 pt-1 pb-4">{children}</CollapsibleContent>
     </HashOpenCollapsible>
   )
 }
@@ -192,180 +186,191 @@ export default async function FacturacionPage() {
     invoices = []
   }
   const lastInvoice = invoices[0] ?? null
-  // En la prueba no se puede cancelar desde la app (`CANCELABLE`): en vez de
-  // un plegable vacío, se dice qué pasa si no hacés nada. blocked/churned no
-  // llegan acá (el layout los manda a /suspended).
+  const trialing = sub?.status === 'trialing'
   const showBaja =
-    !!sub && (CANCELABLE.has(sub.status) || sub.status === 'canceled' || sub.status === 'trialing')
+    sub &&
+    (CANCELABLE.has(sub.status) || sub.status === 'canceled' || (trialing && liveMpSubscriptionId))
+  const showPlus = sub && (sub.plus.enabled || sub.plus.accessUntil || sub.plus.quote)
 
   return (
-    <div className="space-y-3 lg:space-y-6">
+    <div className={styles.page}>
       <SettingsHeader title="Suscripción" />
-
-      {/* "En 3 segundos": lo único que se ve sin plegar nada. La cuota va
-          primera y ocupa más ancho porque es la única pregunta que el dueño
-          tiene en esta pantalla — "¿cuánto pago?" y "¿cómo lo cambio?". */}
-      <div className="grid grid-cols-1 gap-3 lg:gap-6 lg:grid-cols-5">
-        <div className="lg:col-span-3">
-          {sub && pricing && cuotaMode ? (
-            <CuotaSection
-              pricing={pricing}
-              mode={cuotaMode}
-              onlineCourts={onlineCourts}
-              billedCourts={sub.billedCourts}
-              pendingBilledCourts={sub.pendingBilledCourts}
-              periodEnd={new Date(sub.currentPeriodEnd).toISOString()}
-              billingCycle={sub.billingCycle}
-              plusPerCourtCents={plusBilledPerCourt}
-              verifyEmail={verifyEmail}
+      <div className={styles.spread}>
+        {sub && (
+          <section aria-labelledby="subscription-plan" className={styles.pass}>
+            <Image
+              src="/suscripcion-cancha.webp"
+              alt=""
+              fill
+              sizes="(min-width: 1200px) 600px, (min-width: 900px) 48vw, 100vw"
+              loading="eager"
+              className={styles.photo}
             />
-          ) : (
-            <section className="card-premium rounded-xl p-4 lg:p-6">
-              <h2 className="text-base font-semibold text-foreground">Tu cuota</h2>
-              {readOnlyBreakdown && sub ? (
-                <>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Estás pagando por {sub.billedCourts}{' '}
-                    {sub.billedCourts === 1 ? 'cancha' : 'canchas'}. Para cambiarla, primero
-                    regularizá el pago.
-                  </p>
-                  <PriceBreakdown breakdown={readOnlyBreakdown} className="mt-4" />
-                </>
-              ) : (
-                // `sub` solo es null si la lectura falló: todo complejo nace con su
-                // fila de suscripción (en prueba). Activar la cuota NO pide conectar
-                // el MercadoPago del complejo — son dos apps distintas.
-                <p className="mt-4 text-sm text-muted-foreground">
-                  No pudimos leer tu suscripción. Probá de nuevo en un rato o escribinos a{' '}
-                  {SUPPORT_EMAIL}.
+            <div className={styles.passTop}>
+              <span className={styles.club}>
+                <LogoMark className="w-8 shrink-0" markClassName="text-white" />
+                {tenant.name}
+              </span>
+              <span className={styles.status} data-status={sub.status}>
+                {trialing ? 'En prueba' : SUBSCRIPTION_STATUS_LABEL[sub.status]}
+              </span>
+            </div>
+            <div className={styles.passInfo}>
+              <h2 id="subscription-plan" className={styles.planTitle}>
+                <span>Plan</span> Completo
+              </h2>
+              <dl className={styles.planFacts}>
+                <div>
+                  <dt>
+                    <CalendarDays aria-hidden className="size-4" />
+                    {trialing
+                      ? 'Fin de la prueba'
+                      : sub.status === 'canceled'
+                        ? 'Acceso hasta'
+                        : 'Próximo cobro'}
+                  </dt>
+                  <dd>{formatDate(trialing ? tenant.trialEndsAt : sub.currentPeriodEnd)}</dd>
+                </div>
+                {sub.billedCourts !== onlineCourts && (
+                  <div>
+                    <dt>Canchas facturadas</dt>
+                    <dd>
+                      {sub.billedCourts} · {onlineCourts}{' '}
+                      {onlineCourts === 1 ? 'activa' : 'activas'}
+                    </dd>
+                  </div>
+                )}
+              </dl>
+              {trialing && (
+                <p id={liveMpSubscriptionId ? undefined : 'baja'} className={styles.passNote}>
+                  {liveMpSubscriptionId
+                    ? 'Todavía no se cobra.'
+                    : 'Si no activás Completo, pasás al plan gratuito y conservás tus datos.'}
                 </p>
               )}
-            </section>
-          )}
-        </div>
-
-        <div className="space-y-3 lg:space-y-6 lg:col-span-2">
-          {sub && (
-            <section className="card-premium rounded-xl p-4 lg:p-6">
-              <h2 className="text-base font-semibold text-foreground">Tu suscripción</h2>
-              <dl className="mt-4 space-y-3 text-sm">
-                <div>
-                  <dt className="text-muted-foreground">Estado</dt>
-                  <dd className="font-medium text-foreground">
-                    {SUBSCRIPTION_STATUS_LABEL[sub.status]}
-                    {sub.status === 'trialing' && ' · todavía no se cobra'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">Canchas facturadas</dt>
-                  <dd className="font-medium text-foreground tabular-nums">
-                    {sub.billedCourts} · tenés {onlineCourts} prendidas
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-muted-foreground">
-                    {sub.status === 'trialing' ? 'Fin de la prueba' : 'Próximo cobro'}
-                  </dt>
-                  <dd className="font-medium text-foreground tabular-nums">
-                    {/* En trial la fecha real vive en tenants.trial_ends_at: es la que
-                        mueve extendTrial, la que lee el worker que expira trials y la
-                        que ve super admin. tenant_subscriptions.current_period_end
-                        quedó clavado en el valor sembrado al crear el tenant y
-                        extendTrial no lo toca (a propósito: tocarlo perpetuaría dos
-                        copias de la misma fecha) — por eso esta pantalla tiene que
-                        leer la misma columna que todos los demás lectores en vez de
-                        mostrar una segunda fecha que se desincroniza sola. */}
-                    {formatDate(
-                      sub.status === 'trialing' ? tenant.trialEndsAt : sub.currentPeriodEnd,
-                    )}
-                  </dd>
-                </div>
-              </dl>
-            </section>
-          )}
-          {sub && (
-            <PlusSection
-              plus={{
-                enabled: sub.plus.enabled,
-                perCourtCents: sub.plus.perCourtCents,
-                accessUntil: sub.plus.accessUntil
-                  ? new Date(sub.plus.accessUntil).toISOString()
-                  : null,
-                quote: sub.plus.quote,
-              }}
-              periodEnd={new Date(sub.currentPeriodEnd).toISOString()}
-              disableAction={disablePlusAction}
-              payAction={startPlusProratePaymentAction}
-            />
-          )}
-        </div>
-      </div>
-
-      {/* Todo lo demás, plegado. */}
-      <div className="space-y-3">
-        <BillingDisclosure
-          title="Pagos de tu cuota"
-          summary={
-            lastInvoice
-              ? `Último: ${formatDate(lastInvoice.date)} · ${formatArs(lastInvoice.amount)} · ${STATUS_LABELS[lastInvoice.status].toLowerCase()}`
-              : undefined
-          }
-        >
-          {liveMpSubscriptionId && (
-            <p className="flex items-start gap-2 text-sm text-muted-foreground">
-              <CreditCard className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-              <span>
-                Ya hay una suscripción de MercadoPago creada para tu cuota. Revisá el método de pago
-                conectado en tu cuenta de MercadoPago.
-              </span>
-            </p>
-          )}
-          <InvoiceHistorySection invoices={invoices} />
-        </BillingDisclosure>
-
-        <BillingDisclosure
-          id="cuenta-mp"
-          className="scroll-mt-24"
-          title="Cuenta de MercadoPago con la que pagás"
-          summary={payer.override ?? payer.ownerEmail ?? undefined}
-        >
-          <MpPayerEmailSection
-            currentEmail={payer.override}
-            ownerEmail={payer.ownerEmail}
-            action={updateMpPayerEmailAction}
-            anchorId={undefined}
+            </div>
+          </section>
+        )}
+        {sub && pricing && cuotaMode ? (
+          <CuotaSection
+            pricing={pricing}
+            mode={cuotaMode}
+            onlineCourts={onlineCourts}
+            billedCourts={sub.billedCourts}
+            pendingBilledCourts={sub.pendingBilledCourts}
+            periodEnd={new Date(sub.currentPeriodEnd).toISOString()}
+            billingCycle={sub.billingCycle}
+            plusPerCourtCents={plusBilledPerCourt}
+            verifyEmail={verifyEmail}
+            subscriptionLayout
           />
-        </BillingDisclosure>
-
-        {showBaja && sub && (
-          <BillingDisclosure
-            id="baja"
-            className="scroll-mt-24"
-            title="Dar de baja TurnoGol"
-            summary="Qué pasa y hasta cuándo seguís."
-          >
-            {sub.status === 'trialing' ? (
-              <section className="card-premium rounded-xl p-4 lg:p-6">
-                <h2 className="text-base font-semibold text-foreground">Dar de baja TurnoGol</h2>
-                {/* Sin cuota activada: `expire-trials` baja el complejo al plan
-                    gratis el día que vence la prueba, sin cobrar nada. Con la cuota ya
-                    activada hay un preapproval que MercadoPago cobra ese día, y en
-                    `trialing` no se puede cancelar desde la app (`CANCELABLE`). */}
+        ) : (
+          <section className={styles.receipt}>
+            <h2 className="text-base font-semibold text-foreground">Tu cuota</h2>
+            {readOnlyBreakdown && sub ? (
+              <>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {liveMpSubscriptionId
-                    ? `Para darte de baja antes del primer cobro, escribinos a ${SUPPORT_EMAIL}.`
-                    : `Estás en la prueba del plan Completo hasta el ${formatDate(tenant.trialEndsAt)}. Si no activás la cuota, no se te cobra nada. Ese día pasás al plan gratis y lo que cargaste queda guardado.`}
+                  Esta cuota cubre {sub.billedCourts}{' '}
+                  {sub.billedCourts === 1 ? 'cancha' : 'canchas'}.
+                  {sub.status === 'past_due' && ' Para cambiarla, primero regularizá el pago.'}
                 </p>
-              </section>
+                <CycleTotal breakdown={readOnlyBreakdown} />
+                <PriceBreakdown breakdown={readOnlyBreakdown} receipt />
+              </>
             ) : (
-              <CancelSubscriptionSection
-                status={sub.status}
-                accessUntil={new Date(sub.currentPeriodEnd).toISOString()}
-              />
+              // `sub` solo es null si la lectura falló: todo complejo nace con su
+              // fila de suscripción (en prueba). Activar la cuota NO pide conectar
+              // el MercadoPago del complejo — son dos apps distintas.
+              <p className="mt-4 text-sm text-muted-foreground">
+                No pudimos leer tu suscripción. Probá de nuevo en un rato o escribinos a{' '}
+                {SUPPORT_EMAIL}.
+              </p>
             )}
-          </BillingDisclosure>
+          </section>
         )}
       </div>
+
+      <section className={styles.settings} aria-labelledby="billing-settings">
+        <h2 id="billing-settings">Pagos y servicios</h2>
+        <div className={styles.settingList}>
+          {showPlus && sub && (
+            <BillingDisclosure
+              icon={MessageCircle}
+              title="Asistente de WhatsApp"
+              summary={
+                sub.plus.quote
+                  ? 'Pago pendiente'
+                  : sub.plus.enabled
+                    ? 'Incluido en la cuota'
+                    : 'Baja agendada'
+              }
+            >
+              <PlusSection
+                plus={{
+                  enabled: sub.plus.enabled,
+                  perCourtCents: sub.plus.perCourtCents,
+                  accessUntil: sub.plus.accessUntil
+                    ? new Date(sub.plus.accessUntil).toISOString()
+                    : null,
+                  quote: sub.plus.quote,
+                }}
+                periodEnd={new Date(sub.currentPeriodEnd).toISOString()}
+                disableAction={disablePlusAction}
+                payAction={startPlusProratePaymentAction}
+              />
+            </BillingDisclosure>
+          )}
+          <BillingDisclosure
+            icon={ReceiptText}
+            title="Historial de cobros"
+            summary={
+              lastInvoice
+                ? `Último cobro · ${formatDate(lastInvoice.date)} · ${formatArs(lastInvoice.amount)} · ${STATUS_LABELS[lastInvoice.status].toLowerCase()}`
+                : undefined
+            }
+          >
+            {liveMpSubscriptionId && (
+              <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                <CreditCard className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                <span>
+                  Ya hay una suscripción de MercadoPago creada para tu cuota. Revisá el método de
+                  pago conectado en tu cuenta de MercadoPago.
+                </span>
+              </p>
+            )}
+            <InvoiceHistorySection invoices={invoices} />
+          </BillingDisclosure>
+
+          <BillingDisclosure
+            id="cuenta-mp"
+            icon={CreditCard}
+            title="Cuenta de Mercado Pago"
+            summary={payer.override ?? payer.ownerEmail ?? undefined}
+          >
+            <MpPayerEmailSection
+              currentEmail={payer.override}
+              ownerEmail={payer.ownerEmail}
+              action={updateMpPayerEmailAction}
+              anchorId={undefined}
+            />
+          </BillingDisclosure>
+
+          {showBaja && sub && (
+            <BillingDisclosure id="baja" icon={CircleOff} title="Dar de baja TurnoGol">
+              {sub.status === 'trialing' ? (
+                <p className="py-2 text-sm text-muted-foreground">
+                  Para darte de baja antes del primer cobro, escribinos a {SUPPORT_EMAIL}.
+                </p>
+              ) : (
+                <CancelSubscriptionSection
+                  status={sub.status}
+                  accessUntil={new Date(sub.currentPeriodEnd).toISOString()}
+                />
+              )}
+            </BillingDisclosure>
+          )}
+        </div>
+      </section>
     </div>
   )
 }

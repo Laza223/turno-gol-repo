@@ -21,7 +21,13 @@ import {
 } from '@/modules/billing/billing.service'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import { listCourts } from '@/modules/courts/court.service'
-import { buildPriceBreakdown } from '@/modules/billing/pricing'
+import {
+  buildPriceBreakdown,
+  canQuoteCourtCount,
+  COURT_COUNT_QUOTE_PREFIX,
+  monthlyPlusAmount,
+  subscriptionPlusPrice,
+} from '@/modules/billing/pricing'
 import { CANCELABLE } from '@/modules/billing/cancelable-statuses'
 import { isFreePlan, READ_ONLY_TENANT_STATUSES } from '@/modules/tenants/tenant.lifecycle'
 import { formatArs } from '@/lib/format'
@@ -131,12 +137,6 @@ export default async function FacturacionPage() {
   // operar de más pagando de menos (el server lo rechaza con DOWNGRADE_BLOCKED).
   const onlineCourts = courts.filter((c) => c.status === 'online').length
 
-  // El catálogo ya no es un menú de planes: es la fila única con los tres
-  // parámetros de la cuenta (migr. 091). Se lee siempre que haya suscripción,
-  // porque hasta la vista de solo lectura necesita mostrar el desglose.
-  const activePlans = sub ? await withTenantContext(tenant.id, (tx) => listActivePlans(tx)) : []
-  const pricing = firstCuotaPricing(activePlans)
-
   // En prueba, un preapproval guardado puede ser un checkout que nunca se
   // pagó: eso no es un débito, y el dueño tiene que poder activar el plan como
   // cualquier otro (`isTrialCheckoutUnpaid`). `subscribe()` ya sabe qué hacer
@@ -146,6 +146,17 @@ export default async function FacturacionPage() {
       ? await isTrialCheckoutUnpaid(tenant.id, sub.mpSubscriptionId, getBillingGateway())
       : false
   const liveMpSubscriptionId = trialCheckoutUnpaid ? null : (sub?.mpSubscriptionId ?? null)
+  const assignedPlanId =
+    sub?.status === 'trialing' &&
+    !liveMpSubscriptionId &&
+    !sub.planSlug.startsWith(COURT_COUNT_QUOTE_PREFIX)
+      ? undefined
+      : sub?.planId
+  const pricing = sub
+    ? firstCuotaPricing(
+        await withTenantContext(tenant.id, (tx) => listActivePlans(tx, assignedPlanId)),
+      )
+    : null
 
   // `trialing` SIN débito todavía es la primera activación (checkout de
   // MP). Con débito ya cargado —o con la suscripción activa— cambiar la
@@ -164,10 +175,17 @@ export default async function FacturacionPage() {
           : null
 
   // Plus EFECTIVO que se factura (no el flag): el mismo número que va al débito.
-  const plusBilledPerCourt = sub?.plus.enabled ? sub.plus.perCourtCents : 0
+  const plusBilledPerCourt =
+    sub && pricing
+      ? subscriptionPlusPrice(
+          sub.plus.enabled,
+          sub.plus.usesListPrice ? null : sub.plus.perCourtCents,
+          pricing,
+        )
+      : 0
 
   const readOnlyBreakdown =
-    sub && pricing && !cuotaMode
+    sub && pricing && !cuotaMode && canQuoteCourtCount(sub.billedCourts, pricing)
       ? buildPriceBreakdown({
           billedCourts: sub.billedCourts,
           cycle: sub.billingCycle,
@@ -309,6 +327,10 @@ export default async function FacturacionPage() {
                 plus={{
                   enabled: sub.plus.enabled,
                   perCourtCents: sub.plus.perCourtCents,
+                  monthlyCents:
+                    pricing?.byCourtCount && canQuoteCourtCount(sub.billedCourts, pricing)
+                      ? monthlyPlusAmount(sub.billedCourts, plusBilledPerCourt)
+                      : undefined,
                   accessUntil: sub.plus.accessUntil
                     ? new Date(sub.plus.accessUntil).toISOString()
                     : null,

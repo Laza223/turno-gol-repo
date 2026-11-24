@@ -12,7 +12,8 @@ import {
 } from '@/modules/billing/lifecycle.service'
 import {
   billingReason,
-  loadActivePlan,
+  assertCatalogCourtCount,
+  loadSubscriptionPlan,
   plusPerCourtOf,
   subscriptionAmount,
 } from '@/modules/billing/billing.service'
@@ -315,19 +316,25 @@ export async function runDunningSweep(now: Date = new Date()): Promise<void> {
               pending_change_at = NULL,
               updated_at = NOW()
           WHERE tenant_id = ${item.tenant_id} AND status = 'active'
-          RETURNING mp_subscription_id, billing_cycle, billed_courts,
+            AND pending_billed_courts = ${item.pendingBilledCourts}
+            AND pending_change_at <= NOW()
+          RETURNING mp_subscription_id, plan_id, billing_cycle, billed_courts,
                     plus_enabled, plus_price_per_court_cents
         `)
         const row = (
           updated as unknown as Array<{
             mp_subscription_id: string | null
+            plan_id: string
             billing_cycle: BillingCycle
             billed_courts: number
             plus_enabled: boolean
             plus_price_per_court_cents: number | null
           }>
         )[0]
-        const appliedBilledCourts = row?.billed_courts ?? item.pendingBilledCourts
+        if (!row) return
+        const appliedBilledCourts = row.billed_courts
+        const plan = await loadSubscriptionPlan(row.plan_id, tx)
+        assertCatalogCourtCount(plan, appliedBilledCourts)
         await insertSystemAuditLog(tx, {
           tenantId: item.tenant_id,
           action: 'subscription.billed_courts_applied',
@@ -350,10 +357,9 @@ export async function runDunningSweep(now: Date = new Date()): Promise<void> {
         // reconcile-subscriptions.worker.ts). El downgrade local se aplica
         // igual.
         if (row?.mp_subscription_id && !MP_MOCK_ENABLED) {
-          const plan = await loadActivePlan(tx)
           // Plus sale de la fila que acaba de devolver el UPDATE: mover las
           // canchas no puede sacarle (ni ponerle) Plus al debito.
-          const plusPerCourt = plusPerCourtOf(row)
+          const plusPerCourt = plusPerCourtOf(row, plan)
           await getBillingGateway().updatePreapprovalAmount(
             row.mp_subscription_id,
             subscriptionAmount(plan, appliedBilledCourts, row.billing_cycle, plusPerCourt),

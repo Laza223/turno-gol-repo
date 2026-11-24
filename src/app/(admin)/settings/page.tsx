@@ -23,7 +23,11 @@ import { requireAdminStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { getSubscriptionState, listActivePlans } from '@/modules/billing/billing.service'
 import { REFERRAL_REWARD_CAP } from '@/shared/constants'
-import { buildPriceBreakdown } from '@/modules/billing/pricing'
+import {
+  buildPriceBreakdown,
+  canQuoteCourtCount,
+  subscriptionPlusPrice,
+} from '@/modules/billing/pricing'
 import { listStaffRoster } from '@/modules/staff/staff.service'
 import { getProfileGaps } from '@/modules/tenants/setup-gaps'
 import {
@@ -59,7 +63,7 @@ export default async function SettingsPage() {
     sub = null
   }
   const pricing = sub
-    ? firstCuotaPricing(await withTenantContext(tenant.id, (tx) => listActivePlans(tx)))
+    ? firstCuotaPricing(await withTenantContext(tenant.id, (tx) => listActivePlans(tx, sub.planId)))
     : null
   const activeStaff = (await listStaffRoster(tenant.id)).filter((m) => m.isActive).length
   // Extra pago: el renglón solo aparece en los complejos que lo tienen.
@@ -146,11 +150,13 @@ export default async function SettingsPage() {
       items: [
         {
           label: 'Cuota y pagos',
-          effect: pricing
-            ? pricing.priceFirstCourtCents === pricing.priceExtraCourtCents
-              ? `${formatArs(pricing.priceFirstCourtCents)} por cancha al mes.`
-              : `${formatArs(pricing.priceFirstCourtCents)} la primera cancha y ${formatArs(pricing.priceExtraCourtCents)} cada una de las demás.`
-            : 'Cuánto pagás y tus pagos.',
+          effect: pricing?.byCourtCount
+            ? 'Importe según las canchas de tu cuota.'
+            : pricing
+              ? pricing.priceFirstCourtCents === pricing.priceExtraCourtCents
+                ? `${formatArs(pricing.priceFirstCourtCents)} por cancha al mes.`
+                : `${formatArs(pricing.priceFirstCourtCents)} la primera cancha y ${formatArs(pricing.priceExtraCourtCents)} cada una de las demás.`
+              : 'Cuánto pagás y tus pagos.',
           value: cuotaValue(sub, pricing),
           icon: Receipt,
           tone: cuotaTone(sub),
@@ -260,11 +266,15 @@ function cuotaValue(
   pricing: ReturnType<typeof firstCuotaPricing>,
 ): string | undefined {
   if (!sub) return undefined
-  if (sub.status === 'active' && pricing) {
+  if (sub.status === 'active' && pricing && canQuoteCourtCount(sub.billedCourts, pricing)) {
     const { monthlyEffectiveCents } = buildPriceBreakdown({
       billedCourts: sub.billedCourts,
       cycle: sub.billingCycle,
-      plusPerCourtCents: sub.plus.enabled ? sub.plus.perCourtCents : 0,
+      plusPerCourtCents: subscriptionPlusPrice(
+        sub.plus.enabled,
+        sub.plus.usesListPrice ? null : sub.plus.perCourtCents,
+        pricing,
+      ),
       ...pricing,
     })
     return `${formatArs(monthlyEffectiveCents)} por mes`

@@ -55,7 +55,9 @@ export function PriceBreakdown({
     >
       {annual && receipt && <p className={styles.itemsLabel}>Detalle por mes</p>}
       <dl className="space-y-2.5">
-        {firstCourtCents === extraCourtUnitCents || extraCourts === 0 ? (
+        {breakdown.byCourtCount ? (
+          <BreakdownRow label={`TurnoGol · ${courts}`} value={formatArs(planMonthlyListCents)} />
+        ) : firstCourtCents === extraCourtUnitCents || extraCourts === 0 ? (
           <BreakdownRow
             label={`${courts} × ${formatArs(firstCourtCents)}`}
             value={formatArs(planMonthlyListCents)}
@@ -72,7 +74,9 @@ export function PriceBreakdown({
         {plusMonthlyListCents > 0 && (
           <BreakdownRow
             label="Asistente de WhatsApp"
-            detail={`${courts} × ${formatArs(plusPerCourtCents)}`}
+            detail={
+              breakdown.byCourtCount ? undefined : `${courts} × ${formatArs(plusPerCourtCents)}`
+            }
             value={formatArs(plusMonthlyListCents)}
           />
         )}

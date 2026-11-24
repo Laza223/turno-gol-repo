@@ -20,13 +20,17 @@ const MAX_CLAVOS = 10
  * ausentes por semana) y ve su pérdida mensual contra el precio del plan.
  * La matemática es del cliente — cero claims inventados.
  */
-export default function CalculadoraClavo() {
+export default function CalculadoraClavo({
+  monthlyCents = PLANS[0]!.priceMonthly,
+}: {
+  monthlyCents?: number
+}) {
   const [turnoArs, setTurnoArs] = useState<number | null>(30000)
   const [customInput, setCustomInput] = useState<string>('')
   const [clavos, setClavos] = useState<number>(2)
 
   const perdidaCents = turnoArs === null ? null : turnoArs * 100 * clavos * WEEKS_PER_MONTH
-  const desdeCents = PLANS[0]!.priceMonthly
+  const desdeCents = monthlyCents
 
   // Un solo evento por visita y sin montos: alcanza para saber si la usan.
   const trackedRef = useRef(false)

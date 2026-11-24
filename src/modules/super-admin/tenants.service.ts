@@ -12,7 +12,12 @@ import { pgTs } from '@/modules/super-admin/activity.service'
 import { addDays } from '@/shared/dates/art'
 import { artDateOf, artDayRangeUtc } from '@/shared/time/art-date'
 import { listStaffRoster } from '@/modules/staff/staff.service'
-import { buildPriceBreakdown, effectivePlusPerCourtCents } from '@/modules/billing/pricing'
+import {
+  buildPriceBreakdown,
+  canQuoteCourtCount,
+  catalogPricing,
+  subscriptionPlusPrice,
+} from '@/modules/billing/pricing'
 import { TENANT_STATUSES, isTenantStatus } from '@/modules/billing/billing.types'
 import type {
   BillingCycle,
@@ -176,31 +181,29 @@ function monthlyEquivalentCents(
   billedCourts: number | null,
   plus: { plusEnabled: boolean | null; plusPricePerCourtCents: number | null },
   plan: {
+    planSlug?: string | null
     priceFirstCourtCents: number | null
     priceExtraCourtCents: number | null
     annualDiscountBps: number | null
   },
 ): number {
-  // Sin fila de suscripción, o con un plan legacy sin parámetros de precio
-  // lineal, no hay monto que declarar. Inventarlo sería peor que mostrar 0.
+  const pricing = catalogPricing({ ...plan, slug: plan.planSlug ?? undefined })
   if (
     billedCourts === null ||
     billedCourts < 1 ||
-    plan.priceFirstCourtCents === null ||
-    plan.priceExtraCourtCents === null ||
-    plan.annualDiscountBps === null
+    !pricing ||
+    !canQuoteCourtCount(billedCourts, pricing)
   ) {
     return 0
   }
   return buildPriceBreakdown({
-    priceFirstCourtCents: plan.priceFirstCourtCents,
-    priceExtraCourtCents: plan.priceExtraCourtCents,
-    annualDiscountBps: plan.annualDiscountBps,
+    ...pricing,
     billedCourts,
     cycle: cycle === 'annual' ? 'annual' : 'monthly',
-    plusPerCourtCents: effectivePlusPerCourtCents(
+    plusPerCourtCents: subscriptionPlusPrice(
       plus.plusEnabled === true,
       plus.plusPricePerCourtCents,
+      pricing,
     ),
   }).monthlyEffectiveCents
 }
@@ -243,6 +246,7 @@ async function listTenantsWith(db: Db, filters: TenantListFilters): Promise<Tena
       trialEndsAt: tenants.trialEndsAt,
       createdAt: tenants.createdAt,
       billedCourts: tenantSubscriptions.billedCourts,
+      planSlug: plans.slug,
       priceFirstCourtCents: plans.priceFirstCourtCents,
       priceExtraCourtCents: plans.priceExtraCourtCents,
       annualDiscountBps: plans.annualDiscountBps,
@@ -351,6 +355,7 @@ export type TenantDetail = {
   subscription: {
     status: SubscriptionStatus
     planId: string
+    planSlug?: string | null
     /** Canchas por las que se le factura hoy (migr. 090). */
     billedCourts: number
     /** A cuántas canchas pasa el cobro en `pendingChangeAt`. `null` = sin cambio. */
@@ -448,6 +453,7 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
         .select({
           status: tenantSubscriptions.status,
           planId: tenantSubscriptions.planId,
+          planSlug: plans.slug,
           billedCourts: tenantSubscriptions.billedCourts,
           pendingBilledCourts: tenantSubscriptions.pendingBilledCourts,
           priceFirstCourtCents: plans.priceFirstCourtCents,

@@ -77,11 +77,19 @@ describe('runDunningSweep — MP_MOCK_ENABLED', () => {
       [], // suspendedRows
       [], // blockedRows
       [], // canceledRows
-      [{ tenant_id: 'tenant-1', pendingPlanChange: 'plan-complejo' }], // pendingItems
+      [{ tenant_id: 'tenant-1', pendingBilledCourts: 3 }], // pendingItems
       [{ tenantId: 'tenant-1', tenantName: 'Club Norte', ownerName: 'Marcelo' }], // loadTenantOwners
     ])
     txMock = makeTxMock([
-      [{ mp_subscription_id: 'mp-sub-1', billing_cycle: 'monthly' }], // UPDATE ... RETURNING
+      [
+        {
+          mp_subscription_id: 'mp-sub-1',
+          plan_id: 'plan-1',
+          billing_cycle: 'monthly',
+          billed_courts: 3,
+        },
+      ], // UPDATE ... RETURNING
+      [{ slug: 'turnogol-por-cantidad' }], // loadSubscriptionPlan
     ])
 
     await runDunningSweep()

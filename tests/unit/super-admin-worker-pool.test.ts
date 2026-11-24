@@ -66,26 +66,35 @@ beforeEach(() => {
 
 describe('getMrrCents (dashboard.service) — lee tenant_subscriptions vía getWorkerDb, no getDb', () => {
   it('devuelve el MRR leído del pool worker, nunca del pool restringido', async () => {
-    h.getWorkerDb.mockReturnValue(makeChain([{ mrr: '350000' }]))
+    h.getWorkerDb.mockReturnValue(
+      makeChain([
+        {
+          slug: 'turnogol-por-cantidad',
+          priceFirstCourtCents: 4_500_000,
+          priceExtraCourtCents: 0,
+          annualDiscountBps: 2000,
+          billedCourts: 5,
+          cycle: 'annual',
+          plusEnabled: true,
+          plusPricePerCourtCents: null,
+        },
+      ]),
+    )
     const { getDashboardData } = await import('@/modules/super-admin/dashboard.service')
 
     const data = await getDashboardData()
 
-    expect(data.mrrCents).toBe(350000)
+    expect(data.mrrCents).toBe(11_600_000)
     expect(h.getWorkerDb).toHaveBeenCalled()
   })
 
   // Con `prepare: false` una query con parámetros va en dos tiempos y fue la que
   // se colgó en prod el 2026-09-21 (comentario del `.where` en dashboard.service).
-  // Sumar Plus al MRR no puede volver a meterle un parámetro enlazado.
-  it('la query del MRR no lleva parámetros enlazados (ni con el precio de lista de Plus)', async () => {
+  // Las tarifas y el Plus se calculan sobre las filas del catálogo después de leerlas.
+  it('la query del MRR filtra suscripciones activas sin parámetros enlazados', async () => {
     const { PgDialect } = await import('drizzle-orm/pg-core')
-    const captured: { select?: Record<string, SQL>; where?: SQL } = {}
-    const chain = makeChain([{ mrr: '0' }])
-    chain.select = (arg: Record<string, SQL>) => {
-      captured.select ??= arg
-      return chain
-    }
+    const captured: { where?: SQL } = {}
+    const chain = makeChain([])
     chain.where = (arg: SQL) => {
       captured.where ??= arg
       return chain
@@ -96,10 +105,10 @@ describe('getMrrCents (dashboard.service) — lee tenant_subscriptions vía getW
     await getDashboardData()
 
     const dialect = new PgDialect()
-    const mrr = captured.select?.mrr
-    expect(mrr).toBeDefined()
-    expect(dialect.sqlToQuery(mrr as SQL).params).toEqual([])
-    expect(dialect.sqlToQuery(captured.where as SQL).params).toEqual([])
+    expect(captured.where).toBeDefined()
+    const filter = dialect.sqlToQuery(captured.where!)
+    expect(filter.sql).toContain("= 'active'")
+    expect(filter.params).toEqual([])
   })
 })
 

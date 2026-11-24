@@ -4,8 +4,16 @@ import { ArrowLeft, Building2 } from 'lucide-react'
 import { PageHeader } from '@/components/admin/PageHeader'
 import { ScrollTabs } from '@/components/ui/scroll-tabs'
 import { requireSystemAdmin } from '@/modules/auth/system-admin.guards'
+import { listActivePlans } from '@/modules/billing/billing.service'
+import { withTenantContext } from '@/shared/db/client'
 import { getBotFlagOn, getPlusAdminState } from '@/modules/billing/plus.service'
-import { PLUS_LIST_PER_COURT_CENTS, effectivePlusPerCourtCents } from '@/modules/billing/pricing'
+import {
+  buildPriceBreakdown,
+  canQuoteCourtCount,
+  PLUS_LIST_PER_COURT_CENTS,
+  catalogPricing,
+  subscriptionPlusPrice,
+} from '@/modules/billing/pricing'
 import {
   getTenantActivity,
   getTenantDetail,
@@ -26,6 +34,7 @@ import { ResumenTab } from './_components/resumen-tab'
 import { SuscripcionTab } from './_components/suscripcion-tab'
 import { ActividadTab } from './_components/actividad-tab'
 import {
+  applyCurrentCatalogPriceAction,
   assignReferrerAction,
   cancelSubscriptionAction,
   changeBilledCourtsAction,
@@ -34,6 +43,7 @@ import {
   generateReferralLinkAction,
   reactivateTenantAction,
   resetStaffPasswordAction,
+  saveLargeComplexQuoteAction,
   setTenantPlusAction,
   startImpersonationAction,
   updateTenantMarketplaceVisibilityAction,
@@ -110,6 +120,8 @@ export default async function SuperAdminTenantDetailPage(props: {
         kind: plusAdmin.kind,
         pricePerCourtCents: plusAdmin.pricePerCourtCents,
         effectivePerCourtCents: plusAdmin.effectivePerCourtCents,
+        listedMonthlyCents: plusAdmin.listedMonthlyCents,
+        effectiveMonthlyCents: plusAdmin.effectiveMonthlyCents,
         accessUntil: plusAdmin.accessUntil?.toISOString() ?? null,
         quote: plusAdmin.quote,
       }
@@ -177,12 +189,14 @@ const SUPPORT_ACTIONS: SupportActionsBag = {
   reactivate: reactivateTenantAction,
   extendTrial: extendTrialAction,
   changeBilledCourts: changeBilledCourtsAction,
+  applyCurrentCatalogPrice: applyCurrentCatalogPriceAction,
+  saveLargeComplexQuote: saveLargeComplexQuoteAction,
   updateSettings: updateTenantSettingsAction,
   resetPassword: resetStaffPasswordAction,
   cancelSubscription: cancelSubscriptionAction,
 }
 
-function AccionesTab({ detail }: { detail: TenantDetail }) {
+async function AccionesTab({ detail }: { detail: TenantDetail }) {
   const { tenant, subscription } = detail
   const s = tenant.settings
 
@@ -190,18 +204,34 @@ function AccionesTab({ detail }: { detail: TenantDetail }) {
   // prendidas (DOWNGRADE_BLOCKED), la UI directamente no deja intentarlo.
   const onlineCourts = detail.courts.filter((c) => c.status === 'online').length
 
-  // Los tres parámetros del precio lineal vienen JOINeados con la suscripción.
-  // Van juntos o no van: una banda legacy los tiene los tres en NULL.
-  const pricing =
+  const pricing = subscription
+    ? catalogPricing({ ...subscription, slug: subscription.planSlug ?? undefined })
+    : null
+
+  const [activePlan] = subscription
+    ? await withTenantContext(tenant.id, (tx) => listActivePlans(tx))
+    : []
+  const newPricing = activePlan ? catalogPricing(activePlan) : null
+  const canSwitch =
     subscription &&
-    subscription.priceFirstCourtCents !== null &&
-    subscription.priceExtraCourtCents !== null &&
-    subscription.annualDiscountBps !== null
-      ? {
-          priceFirstCourtCents: subscription.priceFirstCourtCents,
-          priceExtraCourtCents: subscription.priceExtraCourtCents,
-          annualDiscountBps: subscription.annualDiscountBps,
-        }
+    newPricing?.byCourtCount &&
+    (subscription.status === 'trialing' ||
+      (subscription.status === 'active' && subscription.mpSubscriptionId)) &&
+    subscription.pendingBilledCourts === null &&
+    onlineCourts <= subscription.billedCourts &&
+    canQuoteCourtCount(subscription.billedCourts, newPricing)
+  const nextCatalogPrice =
+    canSwitch && subscription && newPricing
+      ? buildPriceBreakdown({
+          ...newPricing,
+          billedCourts: subscription.billedCourts,
+          cycle: subscription.billingCycle,
+          plusPerCourtCents: subscriptionPlusPrice(
+            subscription.plusEnabled || (await getBotFlagOn(tenant.id)),
+            null,
+            newPricing,
+          ),
+        })
       : null
 
   const panelSettings: SupportPanelSettings = {
@@ -229,11 +259,19 @@ function AccionesTab({ detail }: { detail: TenantDetail }) {
       billingCycle={subscription?.billingCycle ?? null}
       onlineCourts={onlineCourts}
       pricing={pricing}
+      nextCatalogPrice={nextCatalogPrice}
+      canRecordLargeQuote={Boolean(
+        newPricing?.byCourtCount &&
+        onlineCourts >= 8 &&
+        (subscription?.status === 'trialing' || subscription?.status === 'free') &&
+        !subscription.mpSubscriptionId,
+      )}
       plusPerCourtCents={
-        subscription
-          ? effectivePlusPerCourtCents(
+        subscription && pricing
+          ? subscriptionPlusPrice(
               subscription.plusEnabled,
               subscription.plusPricePerCourtCents,
+              pricing,
             )
           : 0
       }

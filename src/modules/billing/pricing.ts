@@ -1,30 +1,30 @@
 import { differenceInMonths } from 'date-fns'
 import type { BillingCycle } from './billing.types'
 
-/**
- * Motor de precio del SaaS — precio LINEAL POR CANCHA, sin techo.
- *
- * Regla vigente desde el 2026-10-20 (`docs/decisions/2026-10-20-precio-uniforme-por-cancha.md`,
- * supera a D3 de `2026-09-02-experimento-30-dias.md`):
- *
- *   $30.000 por cancha, incluida la primera, por mes.
- *   Anual: 10% off. Sin bandas, sin techo, sin descuento por volumen.
- *
- * TurnoGol Plus (Asistente de WhatsApp, `docs/decisions/2026-10-22-cobro-turnogol-plus.md`)
- * viaja en el MISMO débito: $15.000 por cancha facturada y por mes de lista (P3, D11),
- * o un precio especial por complejo. En el anual el 10% se aplica a la SUMA
- * plan + Plus (P6).
- *
- * Reemplaza a `planAmount()` (bandas Predio/Complejo/Estadio), donde el monto
- * era una columna de `plans`. Ahora el monto es una FUNCIÓN de la cantidad de
- * canchas facturadas, y la fila de `plans` solo aporta los parámetros.
- *
- * Deliberadamente recibe primitivos y no una fila de Drizzle: así el cálculo
- * se puede testear y reusar (UI incluida) sin arrastrar el schema.
- */
-
-/** Precio de lista de TurnoGol Plus: $15.000 por cancha facturada y por mes (D11, 2026-10-31). Centavos ARS. */
+/** Precio mensual por cancha del catálogo anterior. Centavos ARS. */
 export const PLUS_LIST_PER_COURT_CENTS = 1_500_000
+
+export const COURT_COUNT_PRICE_SLUG = 'turnogol-por-cantidad'
+export const COURT_COUNT_QUOTE_PREFIX = 'turnogol-cotizacion-'
+
+const COURT_COUNT_PRICES = [
+  { base: 4_500_000, plus: 2_500_000 },
+  { base: 6_500_000, plus: 2_500_000 },
+  { base: 8_000_000, plus: 3_500_000 },
+  { base: 9_500_000, plus: 3_500_000 },
+  { base: 11_000_000, plus: 3_500_000 },
+  { base: 12_500_000, plus: 4_500_000 },
+  { base: 13_500_000, plus: 4_500_000 },
+] as const
+
+export const MAX_CATALOG_COURTS = COURT_COUNT_PRICES.length
+
+export class CourtCountQuoteRequiredError extends Error {
+  readonly code = 'COURT_COUNT_QUOTE_REQUIRED'
+  constructor() {
+    super('Para 8 canchas o más, pedinos una cotización por WhatsApp.')
+  }
+}
 
 /** Centavos ARS. Cero canchas no existe: el piso del modelo es una cancha. */
 export type PricingParams = {
@@ -32,6 +32,41 @@ export type PricingParams = {
   priceExtraCourtCents: number
   /** Descuento del ciclo anual en basis points. 1000 = 10%. */
   annualDiscountBps: number
+  byCourtCount?: true
+  quotedCourtCount?: number
+}
+
+export type PlusPrice = number | 'list'
+
+export function catalogPricing(plan: {
+  slug?: string
+  priceFirstCourtCents: number | null
+  priceExtraCourtCents: number | null
+  annualDiscountBps: number | null
+}): PricingParams | null {
+  if (plan.slug === COURT_COUNT_PRICE_SLUG) {
+    return {
+      priceFirstCourtCents: COURT_COUNT_PRICES[0].base,
+      priceExtraCourtCents: 0,
+      annualDiscountBps: 2000,
+      byCourtCount: true,
+    }
+  }
+  const quoteCount = plan.slug?.startsWith(COURT_COUNT_QUOTE_PREFIX)
+    ? Number(plan.slug.slice(COURT_COUNT_QUOTE_PREFIX.length).split('-')[0])
+    : undefined
+  if (
+    plan.priceFirstCourtCents === null ||
+    plan.priceExtraCourtCents === null ||
+    plan.annualDiscountBps === null
+  )
+    return null
+  return {
+    priceFirstCourtCents: plan.priceFirstCourtCents,
+    priceExtraCourtCents: plan.priceExtraCourtCents,
+    annualDiscountBps: plan.annualDiscountBps,
+    ...(quoteCount ? { byCourtCount: true as const, quotedCourtCount: quoteCount } : {}),
+  }
 }
 
 export type ComputeAmountInput = PricingParams & {
@@ -49,7 +84,7 @@ export type ComputeAmountInput = PricingParams & {
    * caller que se olvide de pasarlo no compila, en vez de cobrar el débito sin
    * Plus en silencio.
    */
-  plusPerCourtCents: number
+  plusPerCourtCents: PlusPrice
 }
 
 export class InvalidBilledCourtsError extends Error {
@@ -105,6 +140,43 @@ export function effectivePlusPerCourtCents(
   return specialPriceCents ?? PLUS_LIST_PER_COURT_CENTS
 }
 
+export function subscriptionPlusPrice(
+  enabled: boolean,
+  specialPerCourtCents: number | null,
+  pricing: Pick<PricingParams, 'byCourtCount' | 'quotedCourtCount'>,
+): PlusPrice {
+  if (
+    pricing.byCourtCount &&
+    !pricing.quotedCourtCount &&
+    enabled &&
+    specialPerCourtCents === null
+  ) {
+    return 'list'
+  }
+  return effectivePlusPerCourtCents(enabled, specialPerCourtCents)
+}
+
+export function canQuoteCourtCount(
+  billedCourts: number,
+  pricing: Pick<PricingParams, 'byCourtCount' | 'quotedCourtCount'>,
+): boolean {
+  if (pricing.quotedCourtCount) return billedCourts === pricing.quotedCourtCount
+  return !pricing.byCourtCount || billedCourts <= MAX_CATALOG_COURTS
+}
+
+function exactCourtPrice(billedCourts: number) {
+  assertBilledCourts(billedCourts)
+  const price = COURT_COUNT_PRICES[billedCourts - 1]
+  if (!price) throw new CourtCountQuoteRequiredError()
+  return price
+}
+
+export function monthlyPlusAmount(billedCourts: number, price: PlusPrice): number {
+  if (price === 'list') return exactCourtPrice(billedCourts).plus
+  assertPlusPerCourt(price)
+  return billedCourts * price
+}
+
 /**
  * Cuota MENSUAL a precio de lista, sin descuento de ciclo. Centavos ARS.
  *
@@ -114,8 +186,16 @@ export function effectivePlusPerCourtCents(
  */
 export function monthlyListAmount(
   billedCourts: number,
-  params: Pick<PricingParams, 'priceFirstCourtCents' | 'priceExtraCourtCents'>,
+  params: Pick<
+    PricingParams,
+    'priceFirstCourtCents' | 'priceExtraCourtCents' | 'byCourtCount' | 'quotedCourtCount'
+  >,
 ): number {
+  if (params.quotedCourtCount) {
+    if (!canQuoteCourtCount(billedCourts, params)) throw new CourtCountQuoteRequiredError()
+    return params.priceFirstCourtCents
+  }
+  if (params.byCourtCount) return exactCourtPrice(billedCourts).base
   assertBilledCourts(billedCourts)
   return params.priceFirstCourtCents + (billedCourts - 1) * params.priceExtraCourtCents
 }
@@ -140,8 +220,10 @@ export function annualMonthlyEquivalent(billedCourts: number, params: PricingPar
 
 /** Lista mensual del débito: plan + Plus, sin descuento de ciclo. */
 function monthlyListWithPlus(input: ComputeAmountInput): number {
-  assertPlusPerCourt(input.plusPerCourtCents)
-  return monthlyListAmount(input.billedCourts, input) + input.billedCourts * input.plusPerCourtCents
+  return (
+    monthlyListAmount(input.billedCourts, input) +
+    monthlyPlusAmount(input.billedCourts, input.plusPerCourtCents)
+  )
 }
 
 /**
@@ -173,6 +255,7 @@ export function computeSubscriptionAmount(input: ComputeAmountInput): number {
  * `monthlyListCents`.
  */
 export type PriceBreakdown = {
+  byCourtCount?: true
   billedCourts: number
   firstCourtCents: number
   extraCourts: number
@@ -206,14 +289,15 @@ export function buildPriceBreakdown(input: ComputeAmountInput): PriceBreakdown {
       : monthlyListCents
 
   return {
+    ...(params.byCourtCount ? { byCourtCount: true as const } : {}),
     billedCourts,
     firstCourtCents: params.priceFirstCourtCents,
     extraCourts: billedCourts - 1,
     extraCourtUnitCents: params.priceExtraCourtCents,
     extraCourtsTotalCents: (billedCourts - 1) * params.priceExtraCourtCents,
     planMonthlyListCents,
-    plusPerCourtCents,
-    plusMonthlyListCents: billedCourts * plusPerCourtCents,
+    plusPerCourtCents: plusPerCourtCents === 'list' ? 0 : plusPerCourtCents,
+    plusMonthlyListCents: monthlyPlusAmount(billedCourts, plusPerCourtCents),
     monthlyListCents,
     monthlyEffectiveCents,
     chargePerCycleCents: computeSubscriptionAmount(input),
@@ -244,20 +328,19 @@ export function plusProrateQuote(input: {
   now: Date
   periodEnd: Date
   billedCourts: number
-  plusPerCourtCents: number
+  plusPerCourtCents: PlusPrice
   annualDiscountBps: number
 }): PlusProrateQuote {
   assertBilledCourts(input.billedCourts)
-  assertPlusPerCourt(input.plusPerCourtCents)
   const months = Math.min(12, Math.max(0, differenceInMonths(input.periodEnd, input.now)))
   const monthlyCents = applyAnnualDiscount(
-    input.billedCourts * input.plusPerCourtCents,
+    monthlyPlusAmount(input.billedCourts, input.plusPerCourtCents),
     input.annualDiscountBps,
   )
   const amountCents = months * monthlyCents
   // `plus_prorate_cents` es integer: un precio absurdo tiene que volver como
   // precio inválido (lo traduce la action), no como "integer out of range".
-  if (amountCents > PG_INT_MAX) throw new InvalidPlusPriceError(input.plusPerCourtCents)
+  if (amountCents > PG_INT_MAX) throw new InvalidPlusPriceError(amountCents)
   return { months, amountCents }
 }
 

@@ -11,9 +11,22 @@ import { buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import { GLASS_INPUT } from '@/components/world/portal-auth-styles'
-import { PLUS_LIST_PER_COURT_CENTS } from '@/modules/billing/pricing'
+import {
+  annualMonthlyEquivalent,
+  MAX_CATALOG_COURTS,
+  monthlyListAmount,
+  PLUS_LIST_PER_COURT_CENTS,
+  type PricingParams,
+} from '@/modules/billing/pricing'
+import { contactWhatsappUrl } from '@/lib/contact'
 import { SUPPORT_WHATSAPP_URL } from '@/shared/constants'
-import { annualSavings, planForCourts, type BillingCycle, type PlanCard } from './plans-data'
+import {
+  annualSavings,
+  planForCourts,
+  UNIFORM_PRICING,
+  type BillingCycle,
+  type PlanCard,
+} from './plans-data'
 import './precios.css'
 
 /** Accesos rápidos; el campo permite cualquier cantidad exacta. */
@@ -43,11 +56,85 @@ const CYCLE_OPTIONS = [
  * (destacado, el que se vende) y Completo + WhatsApp (el ancla). Los montos no
  * cambian: Completo es el precio por cancha y WhatsApp suma el Plus de lista.
  */
-export default function PlanSelector() {
+export default function PlanSelector({ pricing = UNIFORM_PRICING }: { pricing?: PricingParams }) {
+  return pricing.byCourtCount ? (
+    <CourtCountOffer pricing={pricing} />
+  ) : (
+    <LegacyPlanSelector pricing={pricing} />
+  )
+}
+
+function CourtCountOffer({ pricing }: { pricing: PricingParams }) {
+  const [courts, setCourts] = useState(1)
+  const [cycle, setCycle] = useState<BillingCycle>('monthly')
+  const annual = cycle === 'annual'
+  const quote = courts > MAX_CATALOG_COURTS
+  const amount = quote
+    ? null
+    : annual
+      ? annualMonthlyEquivalent(courts, pricing) * 12
+      : monthlyListAmount(courts, pricing)
+  const offer = quote ? '8 canchas o más' : courts === 1 ? '1 cancha' : `${courts} canchas`
+  const price = amount === null ? null : `${formatArs(amount)} por ${annual ? 'año' : 'mes'}`
+  const message = price
+    ? `Hola, tengo ${offer} de fútbol y vi TurnoGol a ${price}. ¿Me mostrás cómo funciona?`
+    : 'Hola, quiero cotizar TurnoGol para un complejo de 8 canchas o más.'
+  return (
+    <div className="pr-plan glass-painted mx-auto max-w-xl">
+      <div className="pr-controls">
+        <span id="court-count-offer" className="text-center font-semibold">
+          ¿Cuántos partidos podés jugar a la vez?
+        </span>
+        <div
+          role="group"
+          aria-labelledby="court-count-offer"
+          className="flex flex-wrap justify-center gap-2"
+        >
+          {COURT_OPTIONS.map((n) => (
+            <button
+              key={n}
+              type="button"
+              aria-pressed={n === courts}
+              onClick={() => setCourts(n)}
+              className={buttonVariants({ variant: 'pill-chip', size: 'pill-icon' })}
+            >
+              {n === MAX_CATALOG_COURTS + 1 ? '8+' : n}
+            </button>
+          ))}
+        </div>
+        {!quote && (
+          <SegmentedControl
+            variant="glass"
+            aria-label="Ciclo de facturación"
+            value={cycle}
+            onValueChange={setCycle}
+            options={[
+              { value: 'monthly', label: 'Mensual' },
+              { value: 'annual', label: `Anual −${pricing.annualDiscountBps / 100}%` },
+            ]}
+          />
+        )}
+        <div aria-live="polite" className="text-center">
+          <p className="pr-small">{offer}</p>
+          <p className="font-display text-3xl font-bold">{price ?? 'Cotización por WhatsApp'}</p>
+          {!quote && annual && <p className="pr-small">Un pago por los 12 meses.</p>}
+        </div>
+        <a
+          href={contactWhatsappUrl(message)}
+          className={buttonVariants({ variant: 'pill', size: 'pill' })}
+        >
+          {quote ? 'Pedir cotización' : 'Hablar por WhatsApp'}
+        </a>
+      </div>
+    </div>
+  )
+}
+
+function LegacyPlanSelector({ pricing }: { pricing: PricingParams }) {
   const [courts, setCourts] = useState(3)
   const [courtInput, setCourtInput] = useState('3')
   const [cycle, setCycle] = useState<BillingCycle>('monthly')
-  const active = planForCourts(courts)
+  const active = planForCourts(courts, pricing)
 
   return (
     <div>

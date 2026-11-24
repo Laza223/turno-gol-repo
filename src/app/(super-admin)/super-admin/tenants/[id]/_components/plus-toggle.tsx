@@ -27,6 +27,8 @@ export type PlusToggleState = {
   pricePerCourtCents: number | null
   /** Lo que se está aplicando por cancha (especial o lista). Centavos. */
   effectivePerCourtCents: number
+  listedMonthlyCents?: number
+  effectiveMonthlyCents?: number
   /** ISO. Fin de la baja agendada. */
   accessUntil: string | null
   quote: { months: number; amountCents: number } | null
@@ -160,7 +162,11 @@ export function PlusToggle({ tenantId, state, action }: Props) {
             min={1}
             step="any"
             value={pesos}
-            placeholder={`${pesosLabel(PLUS_LIST_PER_COURT_CENTS)} (lista)`}
+            placeholder={
+              state.listedMonthlyCents === undefined
+                ? `${pesosLabel(PLUS_LIST_PER_COURT_CENTS)} (lista)`
+                : 'Vacío para usar la lista'
+            }
             onChange={(e) => setPesos(e.target.value)}
             disabled={isPending}
             className={inputCls}
@@ -182,8 +188,11 @@ export function PlusToggle({ tenantId, state, action }: Props) {
     <>
       {priceField('Prender Plus')}
       <p className="text-xs text-muted-foreground">
-        Lista: {formatArs(PLUS_LIST_PER_COURT_CENTS)} por cancha por mes. Dejalo vacío para la
-        lista; cargá un precio solo para un acuerdo especial.
+        Lista:{' '}
+        {state.listedMonthlyCents === undefined
+          ? `${formatArs(PLUS_LIST_PER_COURT_CENTS)} por cancha por mes`
+          : `${formatArs(state.listedMonthlyCents)} por mes por complejo`}
+        . Dejá vacío para usar la lista.
       </p>
     </>
   )
@@ -197,7 +206,10 @@ export function PlusToggle({ tenantId, state, action }: Props) {
         )}
         {state.kind === 'billed' && (
           <span className="text-sm font-medium text-foreground">
-            Facturado: {formatArs(state.effectivePerCourtCents)} por cancha{' '}
+            Facturado:{' '}
+            {state.effectiveMonthlyCents === undefined
+              ? `${formatArs(state.effectivePerCourtCents)} por cancha`
+              : `${formatArs(state.effectiveMonthlyCents)} por mes`}{' '}
             {state.pricePerCourtCents === null ? '(lista)' : '(precio especial)'}
           </span>
         )}

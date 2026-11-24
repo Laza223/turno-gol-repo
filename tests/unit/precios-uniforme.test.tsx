@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import PlanSelector from '@/app/(business)/precios/PlanSelector'
 import CalculadoraClavo from '@/app/(business)/precios/CalculadoraClavo'
+import { catalogPricing, COURT_COUNT_PRICE_SLUG } from '@/modules/billing/pricing'
 import { metadata } from '@/app/(business)/precios/page'
 
 describe('/precios: precio exacto por cancha', () => {
@@ -69,9 +70,30 @@ describe('/precios: precio exacto por cancha', () => {
     },
   )
 
-  it('ofrece $30.000 de base también en la calculadora y metadata', () => {
+  it('muestra la base histórica en la calculadora y deja la metadata sin un importe fijo', () => {
     render(<CalculadoraClavo />)
     expect(screen.getByText(/\$\s30\.000\/mes/)).toBeInTheDocument()
-    expect(metadata.description).toMatch(/\$\s30\.000/)
+    expect(metadata.description).toMatch(/según la cantidad de canchas/i)
   })
+})
+
+it('muestra la tabla publicada, el anual prepago y la cotización sin importe para 8+', () => {
+  const pricing = catalogPricing({
+    slug: COURT_COUNT_PRICE_SLUG,
+    priceFirstCourtCents: null,
+    priceExtraCourtCents: null,
+    annualDiscountBps: null,
+  })!
+  render(<PlanSelector pricing={pricing} />)
+  expect(screen.getByText(/45\.000 por mes/)).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: /^5$/ }))
+  expect(screen.getByText(/110\.000 por mes/)).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('radio', { name: /anual/i }))
+  expect(screen.getByText(/1\.056\.000 por año/)).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: '8+' }))
+  expect(screen.getByRole('link', { name: 'Pedir cotización' })).toHaveAttribute(
+    'href',
+    expect.stringContaining('8%20canchas'),
+  )
+  expect(screen.queryByText(/1\.056\.000/)).not.toBeInTheDocument()
 })

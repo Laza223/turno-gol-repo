@@ -1,5 +1,10 @@
 import { formatArs } from '@/lib/format'
-import { buildPriceBreakdown, effectivePlusPerCourtCents } from '@/modules/billing/pricing'
+import {
+  buildPriceBreakdown,
+  canQuoteCourtCount,
+  catalogPricing,
+  subscriptionPlusPrice,
+} from '@/modules/billing/pricing'
 import type { TenantDetail } from '@/modules/super-admin/tenants.service'
 import { TenantStatusBadge } from '../../../_components/tenant-status-visual'
 import { TONE_TEXT } from '@/lib/status-tone'
@@ -28,34 +33,25 @@ export function SuscripcionTab({ detail }: { detail: TenantDetail }) {
     )
   }
 
-  // Una banda legacy (migr. 091 debería haberlas repuntado todas) no tiene
-  // parámetros de precio lineal: sin ellos no hay desglose que mostrar, y
-  // fabricar un monto sería peor que dejar el hueco a la vista.
-  const pricing =
-    sub.priceFirstCourtCents !== null &&
-    sub.priceExtraCourtCents !== null &&
-    sub.annualDiscountBps !== null &&
-    sub.billedCourts >= 1
-      ? {
-          priceFirstCourtCents: sub.priceFirstCourtCents,
-          priceExtraCourtCents: sub.priceExtraCourtCents,
-          annualDiscountBps: sub.annualDiscountBps,
-        }
+  const pricing = catalogPricing({ ...sub, slug: sub.planSlug ?? undefined })
+  const plusPerCourtCents = pricing
+    ? subscriptionPlusPrice(sub.plusEnabled, sub.plusPricePerCourtCents, pricing)
+    : 0
+
+  const breakdown =
+    pricing && sub.billedCourts >= 1 && canQuoteCourtCount(sub.billedCourts, pricing)
+      ? buildPriceBreakdown({
+          billedCourts: sub.billedCourts,
+          cycle: sub.billingCycle,
+          plusPerCourtCents,
+          ...pricing,
+        })
       : null
-
-  // Plus EFECTIVO que se factura (no el flag): el mismo número que va al débito.
-  const plusPerCourtCents = effectivePlusPerCourtCents(sub.plusEnabled, sub.plusPricePerCourtCents)
-
-  const breakdown = pricing
-    ? buildPriceBreakdown({
-        billedCourts: sub.billedCourts,
-        cycle: sub.billingCycle,
-        plusPerCourtCents,
-        ...pricing,
-      })
-    : null
   const pending =
-    pricing && sub.pendingBilledCourts !== null && sub.pendingBilledCourts >= 1
+    pricing &&
+    sub.pendingBilledCourts !== null &&
+    sub.pendingBilledCourts >= 1 &&
+    canQuoteCourtCount(sub.pendingBilledCourts, pricing)
       ? buildPriceBreakdown({
           billedCourts: sub.pendingBilledCourts,
           cycle: sub.billingCycle,
@@ -73,7 +69,7 @@ export function SuscripcionTab({ detail }: { detail: TenantDetail }) {
           </Dt>
           <Dt label="Canchas facturadas">
             <span className="tabular-nums">{sub.billedCourts}</span>
-            {breakdown && breakdown.extraCourts > 0 && (
+            {breakdown && !breakdown.byCourtCount && breakdown.extraCourts > 0 && (
               <span className="text-muted-foreground">
                 {' '}
                 · 1ª {formatArs(breakdown.firstCourtCents)} + {breakdown.extraCourts} ×{' '}
@@ -82,8 +78,7 @@ export function SuscripcionTab({ detail }: { detail: TenantDetail }) {
             )}
             {breakdown && breakdown.plusMonthlyListCents > 0 && (
               <span className="block text-muted-foreground">
-                Plus: {breakdown.billedCourts} cancha{breakdown.billedCourts === 1 ? '' : 's'} ×{' '}
-                {formatArs(breakdown.plusPerCourtCents)}
+                Plus: {formatArs(breakdown.plusMonthlyListCents)} por mes
               </span>
             )}
           </Dt>

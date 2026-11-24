@@ -68,7 +68,7 @@ Request de staff: `withTenant()` → `extractAuthUser` (JWT `app_metadata`) → 
 - Auth staff: email+password. Jugador: passwordless (Magic Link). SuperAdmin: `seed:system-admin` + allowlist `SYSTEM_ADMIN_EMAILS` (MFA TOTP: columnas en schema, **aún NO enforced** en los guards). La identidad sale del JWT (`app_metadata`), no del método de login.
 - Seña: configurable por complejo (`settings.requires_deposit` + `settings.deposit_percentage`, default 30). Sin modo garantía. Anticipación de reserva: `settings.booking_advance_days`, default 6.
 - **Cancelación tardía (solo sin seña)**: `settings.late_cancel_hours` (0 = apagado, default). Escalera en 60 días: 1ra aviso, 2da 7 días, 3ra+ 30 días sin reservar online vía `tenant_player_bans`. Es OTRO mecanismo que las ausencias (2 faltas en 90 días = 14 días), que no cambia. Detalle: `docs/decisions/2026-10-21-cancelacion-tardia.md`.
-- **Precio del SaaS: tres planes** (decisión 2026-11-08): **Gratis** ($0, agenda con nombre y reservas online sin tope; corte v2 del 2026-11-15), **Completo** ($30.000 por cancha, incluida la primera; decisión 2026-10-20) y **Completo + WhatsApp** (suma el Plus de $15.000 por cancha). Anual 10% off, sin techo ni prorrateo. El monto lo calcula `src/modules/billing/pricing.ts`, no sale de una columna. Detalle: `.claude/rules/billing-precio.md`.
+- **Precio SaaS por cantidad exacta.** La migración 117 prepara la lista de 1–7 canchas y 20% anual prepago. Para 8+ se usa cotización. El catálogo vigente antes de la activación sigue siendo el lineal, y cada mandato conserva el catálogo que tiene asignado. Motor en `src/modules/billing/pricing.ts`. [Decisión y activación](docs/decisions/2026-11-23-precio-por-cantidad.md).
 
 ## Vetos de producto (no reproponer)
 

@@ -9,7 +9,11 @@ import { getDb, withTenantContext } from '@/shared/db/client'
 import { plans } from '@/shared/db/schema'
 import { getBillingPayerEmail, getSubscriptionState } from '@/modules/billing/billing.service'
 import { listCourts } from '@/modules/courts/court.service'
-import type { PricingParams } from '@/modules/billing/pricing'
+import {
+  COURT_COUNT_QUOTE_PREFIX,
+  subscriptionPlusPrice,
+  type PricingParams,
+} from '@/modules/billing/pricing'
 import {
   changeUnverifiedEmailAction,
   resendVerificationEmailAction,
@@ -111,16 +115,17 @@ function formatDate(d: Date | string): string {
  * Ya no se traen "los planes": desde el 2026-09-17 hay una sola fila activa y
  * lo único que aporta son los tres parámetros de la cuenta.
  */
-async function loadCuotaPricing(): Promise<PricingParams | null> {
+async function loadCuotaPricing(quotePlanId?: string): Promise<PricingParams | null> {
   const db = getDb()
   const rows = await db
     .select({
+      slug: plans.slug,
       priceFirstCourtCents: plans.priceFirstCourtCents,
       priceExtraCourtCents: plans.priceExtraCourtCents,
       annualDiscountBps: plans.annualDiscountBps,
     })
     .from(plans)
-    .where(eq(plans.isActive, true))
+    .where(quotePlanId ? eq(plans.id, quotePlanId) : eq(plans.isActive, true))
     .orderBy(asc(plans.sortOrder))
   return firstCuotaPricing(rows)
 }
@@ -196,11 +201,22 @@ export default async function ReactivarPage() {
         }
       : undefined
 
-  const pricing = canReactivate ? await loadCuotaPricing() : null
+  const pricing = canReactivate
+    ? await loadCuotaPricing(
+        sub?.planSlug.startsWith(COURT_COUNT_QUOTE_PREFIX) ? sub.planId : undefined,
+      )
+    : null
   // Plus EFECTIVO que se factura, igual que /settings/facturacion: `reactivate()`
   // vuelve a cobrar con el Plus de la suscripción, así que la pantalla tiene que
   // mostrar ese mismo monto.
-  const plusBilledPerCourt = sub?.plus.enabled ? sub.plus.perCourtCents : 0
+  const plusBilledPerCourt =
+    sub && pricing
+      ? subscriptionPlusPrice(
+          sub.plus.enabled,
+          sub.plus.usesListPrice ? null : sub.plus.perCourtCents,
+          pricing,
+        )
+      : 0
 
   // Con qué cuenta de MercadoPago paga (migr. 078). Va acá y no solo en
   // /settings/facturacion porque al dueño suspendido o bloqueado esta es la

@@ -16,7 +16,7 @@ vi.mock('@/modules/courts/court.service', async (importOriginal) => {
 })
 vi.mock('@/modules/billing/billing.service', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/modules/billing/billing.service')>()
-  return { ...actual, loadActivePlan: vi.fn(), loadSub: vi.fn(), changeBilledCourts: vi.fn() }
+  return { ...actual, loadSubscriptionPlan: vi.fn(), loadSub: vi.fn(), changeBilledCourts: vi.fn() }
 })
 
 import { createCourtAction } from '@/app/(admin)/canchas/actions'
@@ -24,7 +24,7 @@ import { requireAdminStaffAction } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { getCourtCountAndBilled } from '@/modules/courts/court.service'
-import { loadActivePlan, loadSub } from '@/modules/billing/billing.service'
+import { loadSubscriptionPlan, loadSub } from '@/modules/billing/billing.service'
 
 const WEEK = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
 const TENANT = {
@@ -56,8 +56,9 @@ beforeEach(() => {
     _id: string,
     cb: (tx: never) => Promise<unknown>,
   ) => cb({} as never)) as never)
-  vi.mocked(loadActivePlan).mockResolvedValue({
+  vi.mocked(loadSubscriptionPlan).mockResolvedValue({
     id: 'plan-1',
+    slug: 'turnogol',
     price_first_court_cents: 3_000_000,
     price_extra_court_cents: 3_000_000,
     annual_discount_bps: 1000,
@@ -72,6 +73,7 @@ beforeEach(() => {
 describe('createCourtAction — preview de la cuota al sumar una cancha', () => {
   it('con Plus facturado de $12.000: 5 -> 6 canchas muestra $210.000 -> $252.000', async () => {
     vi.mocked(loadSub).mockResolvedValue({
+      plan_id: 'plan-1',
       plus_enabled: true,
       plus_price_per_court_cents: 1_200_000,
     } as never)
@@ -89,6 +91,7 @@ describe('createCourtAction — preview de la cuota al sumar una cancha', () => 
 
   it('Plus a precio de lista ($15.000): suma la lista por cancha', async () => {
     vi.mocked(loadSub).mockResolvedValue({
+      plan_id: 'plan-1',
       plus_enabled: true,
       plus_price_per_court_cents: null,
     } as never)
@@ -105,6 +108,7 @@ describe('createCourtAction — preview de la cuota al sumar una cancha', () => 
 
   it('sin Plus: igual que antes ($150.000 -> $180.000)', async () => {
     vi.mocked(loadSub).mockResolvedValue({
+      plan_id: 'plan-1',
       plus_enabled: false,
       plus_price_per_court_cents: null,
     } as never)

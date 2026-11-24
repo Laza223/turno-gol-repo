@@ -21,7 +21,12 @@ import {
   detectPreapprovalAmountDrift,
   type LocalSubSnapshot,
 } from '@/modules/billing/subscription-reconcile.service'
-import { computeSubscriptionAmount, effectivePlusPerCourtCents } from '@/modules/billing/pricing'
+import {
+  canQuoteCourtCount,
+  catalogPricing,
+  computeSubscriptionAmount,
+  subscriptionPlusPrice,
+} from '@/modules/billing/pricing'
 import { markReferralRewardEarned } from '@/modules/referrals/referral-reward.service'
 import type { BillingCycle, SubscriptionStatus } from '@/modules/billing/billing.types'
 import {
@@ -83,6 +88,7 @@ type Candidate = SubSnapshotRow & {
   plusPricePerCourtCents: number | null
   /** Baja agendada: el complejo tuvo Plus y todavia puede tener drift por eso. */
   plusAccessUntil: Date | string | null
+  slug: string
   priceFirstCourtCents: number | null
   priceExtraCourtCents: number | null
   annualDiscountBps: number | null
@@ -124,6 +130,7 @@ async function loadCandidates(
            ts.plus_enabled       AS "plusEnabled",
            ts.plus_price_per_court_cents AS "plusPricePerCourtCents",
            ts.plus_access_until  AS "plusAccessUntil",
+           p.slug AS slug,
            p.price_first_court_cents AS "priceFirstCourtCents",
            p.price_extra_court_cents AS "priceExtraCourtCents",
            p.annual_discount_bps     AS "annualDiscountBps"
@@ -305,26 +312,17 @@ async function checkAmountDrift(
 ): Promise<boolean> {
   if (remote === null) return false
 
-  // Si el catálogo vino sin los parámetros del precio lineal, no se inventa un
-  // monto esperado: alertar un desfasaje falso es peor que no alertar. Es
-  // imposible con la fila activa de la migr. 091, pero este barrido corre
-  // cross-tenant sobre lo que haya en la base.
-  if (
-    cand.priceFirstCourtCents === null ||
-    cand.priceExtraCourtCents === null ||
-    cand.annualDiscountBps === null
-  ) {
-    return false
-  }
+  const pricing = catalogPricing(cand)
+  if (!pricing || !canQuoteCourtCount(cand.billedCourts, pricing)) return false
   const expected = computeSubscriptionAmount({
+    ...pricing,
     billedCourts: cand.billedCourts,
     cycle: cand.billingCycle,
-    // Una cotizacion anual pendiente (`plus_enabled = false`) o una baja agendada
-    // NO suman Plus: el debito vigente todavia no (o ya no) lo lleva.
-    plusPerCourtCents: effectivePlusPerCourtCents(cand.plusEnabled, cand.plusPricePerCourtCents),
-    priceFirstCourtCents: cand.priceFirstCourtCents,
-    priceExtraCourtCents: cand.priceExtraCourtCents,
-    annualDiscountBps: cand.annualDiscountBps,
+    plusPerCourtCents: subscriptionPlusPrice(
+      cand.plusEnabled,
+      cand.plusPricePerCourtCents,
+      pricing,
+    ),
   })
   const drift = detectPreapprovalAmountDrift(expected, remote)
   if (drift === null) return false

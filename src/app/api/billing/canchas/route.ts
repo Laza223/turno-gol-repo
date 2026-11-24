@@ -11,6 +11,7 @@ import {
   ReactivateNotAllowedError,
   SubscriptionNotFoundError,
 } from '@/modules/billing/billing.errors'
+import { CourtCountQuoteRequiredError } from '@/modules/billing/pricing'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
 import {
   apiError,
@@ -84,6 +85,9 @@ export const POST = withTenant(
             },
           },
         )
+      }
+      if (err instanceof CourtCountQuoteRequiredError) {
+        return conflict(err.message, { code: err.code })
       }
       if (err instanceof PlanNotFoundError) {
         return notFound(err.message, { code: 'PLAN_NOT_FOUND' })

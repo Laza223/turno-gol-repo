@@ -6,6 +6,10 @@ paths:
 
 # Precio del SaaS
 
+**Desde la activación de la migración 117:** una lista por cantidad exacta de 1 a 7 canchas, 20% anual prepago y cotización para 8+. El importe sale del catálogo asignado a cada suscripción y de las canchas facturadas. La web y los nuevos checkouts cambian al activar la fila del catálogo. Las suscripciones anteriores se actualizan individualmente desde Superadmin. Plus queda en El Vagón hasta completar Kapso. [Decisión y activación](../../docs/decisions/2026-11-23-precio-por-cantidad.md).
+
+## Catálogo anterior y mandatos que lo conservan
+
 **Tres planes desde el 2026-11-08** (`docs/decisions/2026-11-08-freemium.md`): Gratis ($0, estado `free`; desde el corte v2 del 2026-11-15 anota turnos con nombre y teléfono y recibe reservas online sin tope, `docs/decisions/2026-11-15-freemium-corte-v2.md`), Completo (el precio de abajo) y Completo + WhatsApp (Completo + Plus). Los montos no cambiaron; `/precios` los muestra lado a lado. El Gratis no se factura ni pasa por `pricing.ts`.
 
 **$30.000 por cancha por mes, incluida la primera**, sin techo ni bandas. Anual: 10% de descuento, $27.000 por cancha como equivalente mensual y $324.000 por cancha por cobro anual. Decisión escrita: `docs/decisions/2026-10-20-precio-uniforme-por-cancha.md`; supera P1/P5/P6 del 17/09 para esta baja.

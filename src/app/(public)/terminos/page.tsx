@@ -122,10 +122,9 @@ export default function TerminosPage() {
               <h2>6. Suscripciones SaaS (clientes B2B)</h2>
               <p>
                 TurnoGol tiene un plan pago y un plan gratis. En el plan pago{' '}
-                <strong>el importe de la suscripción se calcula por cantidad de canchas</strong>: un
-                importe por la primera cancha, más un importe fijo por cada cancha adicional, con
-                todas las funciones y sin límite máximo de canchas. El asistente de WhatsApp es un
-                adicional con su propio importe por cancha.
+                <strong>el importe de la suscripción depende de la cantidad de canchas</strong> y de
+                la tarifa confirmada al contratar. El asistente de WhatsApp, cuando está disponible,
+                se contrata por separado.
               </p>
               <p>
                 <strong>Plan gratis.</strong> El complejo que no tiene una suscripción paga vigente

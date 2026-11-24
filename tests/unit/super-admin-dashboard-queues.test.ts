@@ -76,7 +76,7 @@ beforeEach(() => {
     isQueueQuery(query) ? [{ name: 'send-email', depth: 3 }] : [],
   )
   h.getWorkerDb.mockReturnValue({
-    ...makeChain([{ mrr: '0' }]),
+    ...makeChain([]),
     execute: h.workerExecute,
   })
   // Por defecto el embudo (analytics_events) devuelve vacío; cada test decide qué pasa con las colas.
@@ -103,7 +103,18 @@ describe('getDashboardData — profundidad de colas', () => {
 
   it('si la query de colas falla, degrada a "no disponible" y el resto del dashboard carga', async () => {
     h.getWorkerDb.mockReturnValue({
-      ...makeChain([{ mrr: '350000' }]),
+      ...makeChain([
+        {
+          slug: 'turnogol',
+          priceFirstCourtCents: 350_000,
+          priceExtraCourtCents: 350_000,
+          annualDiscountBps: 1000,
+          billedCourts: 1,
+          cycle: 'monthly',
+          plusEnabled: false,
+          plusPricePerCourtCents: null,
+        },
+      ]),
       execute: h.workerExecute,
     })
     h.getDb.mockReturnValue({
@@ -145,7 +156,7 @@ describe('getDashboardData — profundidad de colas', () => {
 describe('getDashboardData — MRR', () => {
   it('filtra por estado con un literal, sin parámetro enlazado', async () => {
     const wheres: unknown[] = []
-    const chain = makeChain([{ mrr: '0' }])
+    const chain = makeChain([])
     chain.where = (condition: unknown) => {
       wheres.push(condition)
       return chain

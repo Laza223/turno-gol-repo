@@ -23,8 +23,13 @@ import {
 } from './billing.errors'
 import {
   PLUS_LIST_PER_COURT_CENTS,
+  catalogPricing,
+  canQuoteCourtCount,
   computeSubscriptionAmount,
-  effectivePlusPerCourtCents,
+  COURT_COUNT_QUOTE_PREFIX,
+  CourtCountQuoteRequiredError,
+  subscriptionPlusPrice,
+  type PlusPrice,
 } from './pricing'
 import { transitionToCanceled } from './lifecycle.service'
 import type {
@@ -66,6 +71,7 @@ export type PlanRow = {
 export type SubRow = {
   status: SubscriptionStatus
   plan_id: string
+  plan_slug?: string
   billing_cycle: BillingCycle
   /** Canchas sobre las que esta calculado el cobro vigente (migr. 090). */
   billed_courts: number
@@ -130,22 +136,39 @@ export async function loadActivePlan(tx: DbTx): Promise<PlanRow> {
  * fila activa SI las tiene: si llegan en NULL, el catalogo esta roto y cobrar
  * un monto inventado seria peor que fallar.
  */
-export function pricingParamsOf(plan: PlanRow): {
-  priceFirstCourtCents: number
-  priceExtraCourtCents: number
-  annualDiscountBps: number
-} {
-  if (
-    plan.price_first_court_cents === null ||
-    plan.price_extra_court_cents === null ||
-    plan.annual_discount_bps === null
-  ) {
-    throw new PlanNotFoundError(`${plan.id} (sin parametros de precio lineal)`)
-  }
-  return {
+export async function loadSubscriptionPlan(planId: string, tx: DbTx): Promise<PlanRow> {
+  const rows = await tx.execute(sql`
+    SELECT id, slug, name, max_courts, price_monthly, price_annual,
+           price_first_court_cents, price_extra_court_cents, annual_discount_bps
+    FROM plans
+    WHERE id = ${planId}
+    LIMIT 1
+  `)
+  const plan = (rows as unknown as PlanRow[])[0]
+  if (!plan) throw new PlanNotFoundError(planId)
+  return plan
+}
+
+async function loadCheckoutPlan(sub: SubRow, tx: DbTx): Promise<PlanRow> {
+  return sub.plan_slug?.startsWith(COURT_COUNT_QUOTE_PREFIX)
+    ? loadSubscriptionPlan(sub.plan_id, tx)
+    : loadActivePlan(tx)
+}
+
+export function pricingParamsOf(plan: PlanRow) {
+  const pricing = catalogPricing({
+    slug: plan.slug,
     priceFirstCourtCents: plan.price_first_court_cents,
     priceExtraCourtCents: plan.price_extra_court_cents,
     annualDiscountBps: plan.annual_discount_bps,
+  })
+  if (!pricing) throw new PlanNotFoundError(plan.id)
+  return pricing
+}
+
+export function assertCatalogCourtCount(plan: PlanRow, billedCourts: number): void {
+  if (!canQuoteCourtCount(billedCourts, pricingParamsOf(plan))) {
+    throw new CourtCountQuoteRequiredError()
   }
 }
 
@@ -158,13 +181,13 @@ export function pricingParamsOf(plan: PlanRow): {
  *
  * `plusPerCourtCents` es OBLIGATORIO (0 = sin Plus): el debito lleva el plan
  * MAS Plus, y un caller que lo omita no compila en vez de cobrar de menos.
- * Se arma con `plusPerCourtOf(sub)`.
+ * Se arma con `plusPerCourtOf(sub, plan)`.
  */
 export function subscriptionAmount(
   plan: PlanRow,
   billedCourts: number,
   cycle: BillingCycle,
-  plusPerCourtCents: number,
+  plusPerCourtCents: PlusPrice,
 ): number {
   return computeSubscriptionAmount({
     billedCourts,
@@ -194,11 +217,15 @@ export function isQuoteCurrent(sub: {
  * columnas de `tenant_subscriptions` (`plus_enabled` + precio especial), nunca
  * del override del flag `whatsapp_bot`.
  */
-export function plusPerCourtOf(sub: {
-  plus_enabled: boolean
-  plus_price_per_court_cents: number | null
-}): number {
-  return effectivePlusPerCourtCents(sub.plus_enabled, sub.plus_price_per_court_cents)
+export function plusPerCourtOf(
+  sub: Pick<SubRow, 'plus_enabled' | 'plus_price_per_court_cents'>,
+  plan: PlanRow,
+): PlusPrice {
+  return subscriptionPlusPrice(
+    sub.plus_enabled,
+    sub.plus_price_per_court_cents,
+    pricingParamsOf(plan),
+  )
 }
 
 /**
@@ -206,7 +233,7 @@ export function plusPerCourtOf(sub: {
  * patrón que `loadPlan`: SQL crudo sobre la tx del caller. `plans` es tabla
  * global sin RLS, así que no depende de que `app.current_tenant_id` esté seteado.
  */
-export async function listActivePlans(tx: DbTx): Promise<PlanSummary[]> {
+export async function listActivePlans(tx: DbTx, assignedPlanId?: string): Promise<PlanSummary[]> {
   const rows = await tx.execute(sql`
     SELECT id, slug, name, max_courts AS "maxCourts",
            price_monthly AS "priceMonthly", price_annual AS "priceAnnual",
@@ -214,7 +241,7 @@ export async function listActivePlans(tx: DbTx): Promise<PlanSummary[]> {
            price_extra_court_cents AS "priceExtraCourtCents",
            annual_discount_bps AS "annualDiscountBps"
     FROM plans
-    WHERE is_active = true
+    WHERE ${assignedPlanId ? sql`id = ${assignedPlanId}` : sql`is_active = true`}
     ORDER BY sort_order
   `)
   return rows as unknown as PlanSummary[]
@@ -222,7 +249,8 @@ export async function listActivePlans(tx: DbTx): Promise<PlanSummary[]> {
 
 export async function loadSub(tenantId: string, tx: DbTx): Promise<SubRow | null> {
   const rows = await tx.execute(sql`
-    SELECT status, plan_id, billing_cycle, billed_courts, pending_billed_courts,
+    SELECT status, plan_id, (SELECT slug FROM plans WHERE id = tenant_subscriptions.plan_id) AS plan_slug,
+           billing_cycle, billed_courts, pending_billed_courts,
            plus_enabled, plus_price_per_court_cents, plus_access_until,
            plus_prorate_cents, plus_prorate_months,
            plus_prorate_period_end, plus_prorate_quoted_at,
@@ -254,7 +282,8 @@ export async function loadSub(tenantId: string, tx: DbTx): Promise<SubRow | null
  */
 export async function loadSubForUpdate(tenantId: string, tx: DbTx): Promise<SubRow | null> {
   const rows = await tx.execute(sql`
-    SELECT status, plan_id, billing_cycle, billed_courts, pending_billed_courts,
+    SELECT status, plan_id, (SELECT slug FROM plans WHERE id = tenant_subscriptions.plan_id) AS plan_slug,
+           billing_cycle, billed_courts, pending_billed_courts,
            plus_enabled, plus_price_per_court_cents, plus_access_until,
            plus_prorate_cents, plus_prorate_months,
            plus_prorate_period_end, plus_prorate_quoted_at,
@@ -616,12 +645,12 @@ function assertBilledCourtsCoverOnline(
 export function billingReason(
   billedCourts: number,
   cycle: BillingCycle,
-  plusPerCourtCents: number,
+  plusPerCourtCents: PlusPrice,
 ): string {
   const canchas = billedCourts === 1 ? '1 cancha' : `${billedCourts} canchas`
   // Sin Plus el texto queda IDENTICO al de antes: el reuso de checkouts
   // pendientes compara el `reason` con el que ya esta grabado en MP.
-  const plus = plusPerCourtCents > 0 ? ' + Asistente de WhatsApp' : ''
+  const plus = plusPerCourtCents !== 0 ? ' + Asistente de WhatsApp' : ''
   return `TurnoGol — ${canchas}${plus} (${cycle === 'annual' ? 'anual' : 'mensual'})`
 }
 
@@ -652,7 +681,7 @@ export async function subscribe(
     throw new ReactivateNotAllowedError(tenantId, sub.status)
   }
 
-  const plan = await loadActivePlan(tx)
+  const plan = await loadCheckoutPlan(sub, tx)
   const planId = plan.id
 
   // El gate cambió de sentido con el precio por cancha (migr. 090/091): ya no
@@ -669,7 +698,7 @@ export async function subscribe(
     throw new SubscriptionNotFoundError(tenantId)
   }
 
-  const plusPerCourt = plusPerCourtOf(sub)
+  const plusPerCourt = plusPerCourtOf(sub, plan)
   const amount = subscriptionAmount(plan, billedCourts, billingCycle, plusPerCourt)
   const reason = billingReason(billedCourts, billingCycle, plusPerCourt)
   // Fix trial-first-charge: elegir plan no puede sacar plata antes de que
@@ -710,6 +739,7 @@ export async function subscribe(
             pending_change_at = NULL,
             updated_at = NOW()
         WHERE tenant_id = ${tenantId} AND mp_subscription_id = ${sub.mp_subscription_id}
+          AND plan_id = ${sub.plan_id}
           AND plus_enabled = ${sub.plus_enabled}
           AND plus_price_per_court_cents IS NOT DISTINCT FROM ${sub.plus_price_per_court_cents}::int
         RETURNING tenant_id
@@ -740,6 +770,9 @@ export async function subscribe(
   // que haya que deshacer, así que no hacía falta serializarlo.
   const lockedSub = await loadSubForUpdate(tenantId, tx)
   if (!lockedSub) throw new SubscriptionNotFoundError(tenantId)
+  if (lockedSub.plan_id !== sub.plan_id) {
+    throw new ReactivateNotAllowedError(tenantId, 'pricing_changed')
+  }
   if (lockedSub.status !== 'trialing') {
     throw new ReactivateNotAllowedError(tenantId, lockedSub.status)
   }
@@ -750,7 +783,7 @@ export async function subscribe(
   }
   // Plus tambien pudo cambiar en el medio (el interruptor de super-admin): el
   // monto que se manda a MP sale de la fila lockeada, no de la lectura de arriba.
-  const lockedPlusPerCourt = plusPerCourtOf(lockedSub)
+  const lockedPlusPerCourt = plusPerCourtOf(lockedSub, plan)
   const createAmount = subscriptionAmount(plan, billedCourts, billingCycle, lockedPlusPerCourt)
   const createReason = billingReason(billedCourts, billingCycle, lockedPlusPerCourt)
 
@@ -870,7 +903,10 @@ export async function changeBilledCourts(
   const onlineCourts = await countOnlineCourts(tenantId, tx)
   assertBilledCourtsCoverOnline(tenantId, targetBilledCourts, onlineCourts)
 
-  const plan = await loadActivePlan(tx)
+  const plan = await loadSubscriptionPlan(sub.plan_id, tx)
+  if (sub.status !== 'trialing' || sub.mp_subscription_id) {
+    assertCatalogCourtCount(plan, targetBilledCourts)
+  }
   const appliesAt = toDate(sub.current_period_end)
 
   // ── Trial: se aplica ya, no hay cobro de por medio ───────────────────────
@@ -906,7 +942,7 @@ export async function changeBilledCourts(
     // la prueba.
     if (row.mp_subscription_id) {
       // Plus sale de la fila lockeada de arriba (`loadSubForUpdate`).
-      const plusPerCourt = plusPerCourtOf(sub)
+      const plusPerCourt = plusPerCourtOf(sub, plan)
       await gateway.updatePreapprovalAmount(
         row.mp_subscription_id,
         subscriptionAmount(plan, targetBilledCourts, sub.billing_cycle, plusPerCourt),
@@ -1120,7 +1156,7 @@ export async function reactivate(
     throw new ReactivateNotAllowedError(tenantId, `${sub.status}_past_deletion`)
   }
 
-  const plan = await loadActivePlan(tx)
+  const plan = await loadCheckoutPlan(sub, tx)
   const planId = plan.id
   const onlineCourts = await countOnlineCourts(tenantId, tx)
   assertBilledCourtsCoverOnline(tenantId, billedCourts, onlineCourts)
@@ -1129,7 +1165,7 @@ export async function reactivate(
   let payerEmail = resolvePayerEmail(sub, owner)
   if (!payerEmail) throw new SubscriptionNotFoundError(tenantId)
 
-  const plusPerCourt = plusPerCourtOf(sub)
+  const plusPerCourt = plusPerCourtOf(sub, plan)
   const amount = subscriptionAmount(plan, billedCourts, billingCycle, plusPerCourt)
   // Reactivar es post-trial (canceled/churned/suspended/blocked): el cobro sale
   // ya, sin `firstChargeAt`. El reuso exige que el pendiente tampoco tenga
@@ -1162,6 +1198,7 @@ export async function reactivate(
             pending_change_at = NULL,
             updated_at = NOW()
         WHERE tenant_id = ${tenantId} AND mp_subscription_id = ${sub.mp_subscription_id}
+          AND plan_id = ${sub.plan_id}
           AND plus_enabled = ${sub.plus_enabled}
           AND plus_price_per_court_cents IS NOT DISTINCT FROM ${sub.plus_price_per_court_cents}::int
         RETURNING tenant_id
@@ -1184,6 +1221,9 @@ export async function reactivate(
   // Estado fresco: puede haber cambiado desde la lectura sin lock de arriba.
   const lockedSub = await loadSubForUpdate(tenantId, tx)
   if (!lockedSub) throw new SubscriptionNotFoundError(tenantId)
+  if (lockedSub.plan_id !== sub.plan_id) {
+    throw new ReactivateNotAllowedError(tenantId, 'pricing_changed')
+  }
   if (!allowed.includes(lockedSub.status)) {
     throw new ReactivateNotAllowedError(tenantId, lockedSub.status)
   }
@@ -1194,7 +1234,7 @@ export async function reactivate(
   payerEmail = resolvePayerEmail(lockedSub, owner)
   if (!payerEmail) throw new SubscriptionNotFoundError(tenantId)
   // Mismo criterio que `subscribe()`: Plus se relee de la fila lockeada.
-  const lockedPlusPerCourt = plusPerCourtOf(lockedSub)
+  const lockedPlusPerCourt = plusPerCourtOf(lockedSub, plan)
   const createAmount = subscriptionAmount(plan, billedCourts, billingCycle, lockedPlusPerCourt)
   const createReason = `${billingReason(billedCourts, billingCycle, lockedPlusPerCourt)} — reactivación`
 
@@ -1364,6 +1404,7 @@ export async function getSubscriptionState(tenantId: string, tx: DbTx): Promise<
       // Lo que cuesta Plus por cancha y mes para este complejo (especial o
       // lista), este prendido o no: la pantalla lo muestra en las dos.
       perCourtCents: plusPricePerCourtCents ?? PLUS_LIST_PER_COURT_CENTS,
+      usesListPrice: plusPricePerCourtCents === null,
       accessUntil: plusAccessUntil ? toDate(plusAccessUntil) : null,
       quote:
         plusProrateCents !== null &&

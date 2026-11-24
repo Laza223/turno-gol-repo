@@ -4,12 +4,19 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, CalendarClock, LockKeyhole, Minus, Plus } from 'lucide-react'
+import { contactWhatsappUrl } from '@/lib/contact'
 import { formatArs, formatPct } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { EmailVerifyBanner } from '@/components/layout/email-verify-banner'
 import { SegmentedControl } from '@/components/ui/segmented-control'
-import { buildPriceBreakdown, type PricingParams } from '@/modules/billing/pricing'
+import {
+  buildPriceBreakdown,
+  canQuoteCourtCount,
+  MAX_CATALOG_COURTS,
+  type PlusPrice,
+  type PricingParams,
+} from '@/modules/billing/pricing'
 import type { BillingCycle } from '@/modules/billing/billing.types'
 import { SUPPORT_EMAIL } from '@/shared/constants'
 import type { ActionResult } from '@/shared/types/action-result'
@@ -71,7 +78,7 @@ type CuotaSectionProps = {
    * OBLIGATORIO a propósito: una pantalla que se olvide de pasarlo no compila, en
    * vez de mostrar el monto sin Plus mientras el débito lo cobra (pasó en /reactivar).
    */
-  plusPerCourtCents: number
+  plusPerCourtCents: PlusPrice
   /** Jerarquía de precio y controles de Ajustes → Suscripción. */
   subscriptionLayout?: boolean
   /**
@@ -137,7 +144,7 @@ export function CuotaSection({
   // El piso es lo que el complejo tiene PRENDIDO: facturar por menos sería
   // operar de más pagando de menos, y el server lo rechaza igual
   // (DOWNGRADE_BLOCKED). Una cancha es el mínimo del modelo.
-  const floor = Math.max(1, onlineCourts)
+  const floor = Math.max(1, onlineCourts, pricing.quotedCourtCount ?? 0)
   // Lo que ya está decidido manda sobre el piso sólo si es mayor: si hay un
   // cambio agendado, el número que el dueño quiere ver es ese.
   const [courts, setCourts] = useState(() => Math.max(floor, pendingBilledCourts ?? billedCourts))
@@ -147,6 +154,21 @@ export function CuotaSection({
   const [errorCode, setErrorCode] = useState<string | null>(null)
   const [limitHint, setLimitHint] = useState<LimitHint | null>(null)
 
+  const maxCourts =
+    pricing.quotedCourtCount ?? (pricing.byCourtCount ? MAX_CATALOG_COURTS : MAX_BILLED_COURTS)
+  const quoteUrl = contactWhatsappUrl('Hola, quiero cotizar TurnoGol para 8 canchas o más.')
+  if (!canQuoteCourtCount(courts, pricing)) {
+    return (
+      <section className={subscriptionLayout ? styles.receipt : 'card-premium space-y-3 p-5'}>
+        <h2 className="text-base font-semibold">Tu cuota</h2>
+        <p>Para {courtsLabel(courts)}, te cotizamos por WhatsApp.</p>
+        <a href={quoteUrl} className="font-semibold text-primary underline">
+          Pedir cotización
+        </a>
+      </section>
+    )
+  }
+
   const breakdown = buildPriceBreakdown({
     billedCourts: courts,
     cycle,
@@ -154,7 +176,7 @@ export function CuotaSection({
     ...pricing,
   })
   const oneMore = buildPriceBreakdown({
-    billedCourts: Math.min(courts + 1, MAX_BILLED_COURTS),
+    billedCourts: Math.min(courts + 1, maxCourts),
     cycle,
     plusPerCourtCents,
     ...pricing,
@@ -181,7 +203,7 @@ export function CuotaSection({
       setLimitHint(floor > 1 ? 'floor' : 'min')
       return
     }
-    if (delta === 1 && courts >= MAX_BILLED_COURTS) {
+    if (delta === 1 && courts >= maxCourts) {
       setLimitHint('max')
       return
     }
@@ -439,7 +461,14 @@ export function CuotaSection({
             </>
           )}
           {limitHint === 'min' && <>Una cancha es el mínimo.</>}
-          {limitHint === 'max' && <>{MAX_BILLED_COURTS} canchas es el máximo.</>}
+          {limitHint === 'max' &&
+            (pricing.byCourtCount ? (
+              <a href={quoteUrl} className="underline">
+                Pedí una cotización para 8 canchas o más.
+              </a>
+            ) : (
+              <>{maxCourts} canchas es el máximo.</>
+            ))}
         </p>
       )}
 
@@ -451,7 +480,7 @@ export function CuotaSection({
 
       {/* La promesa comercial del modelo, escrita. No es relleno: es la razón
           por la que sumar una cancha no da miedo (decisión P4). */}
-      {!subscriptionLayout && (
+      {!subscriptionLayout && courts < maxCourts && (
         <p className="text-xs leading-relaxed text-muted-foreground">
           Si sumás una cancha, tu cuota pasa a{' '}
           <span className="font-semibold tabular-nums text-foreground">

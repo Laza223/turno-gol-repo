@@ -15,6 +15,7 @@ type PlusSectionState = {
   enabled: boolean
   /** Por cancha y por mes. Centavos. */
   perCourtCents: number
+  monthlyCents?: number
   /** ISO. Fin de la baja agendada. */
   accessUntil: string | null
   /** Alta en un anual ya pago: meses que faltan y su monto. */
@@ -103,7 +104,11 @@ export function PlusSection({ plus, periodEnd, disableAction, payAction }: Props
       ) : (
         <>
           <p className="text-sm text-muted-foreground">
-            Incluido en tu cuota: {formatArs(plus.perCourtCents)} por cancha al mes.
+            Incluido en tu cuota:{' '}
+            {plus.monthlyCents === undefined
+              ? `${formatArs(plus.perCourtCents)} por cancha al mes`
+              : `${formatArs(plus.monthlyCents)} por mes`}
+            .
           </p>
           <Button
             type="button"

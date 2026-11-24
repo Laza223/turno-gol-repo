@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { getDb, withTenantContext, type DbTx } from '@/shared/db/client'
+import { getDb, withDisposableWorkerDb, withTenantContext, type DbTx } from '@/shared/db/client'
 import { insertAuditLog } from '@/shared/db/audit'
 import {
   transitionActiveToPastDue,
@@ -12,10 +12,16 @@ import {
 import {
   billingReason,
   cancel as billingCancel,
+  assertCatalogCourtCount,
+  pricingParamsOf,
   loadActivePlan,
+  loadSubForUpdate as loadBillingSubForUpdate,
+  loadSubscriptionPlan,
   plusPerCourtOf,
   subscriptionAmount,
 } from '@/modules/billing/billing.service'
+import { getBotFlagOn } from '@/modules/billing/plus.service'
+import { COURT_COUNT_PRICE_SLUG, COURT_COUNT_QUOTE_PREFIX } from '@/modules/billing/pricing'
 import {
   DowngradeBlockedError,
   InvalidTransitionError,
@@ -364,7 +370,13 @@ export async function changeBilledCourtsForSupport(
     if (!sub) throw new SubscriptionNotFoundError(tenantId)
     if (sub.billed_courts === targetBilledCourts) throw new PlanAlreadyAssignedError(tenantId)
 
-    const plan = await loadActivePlan(tx)
+    const assigned = await loadSubscriptionPlan(sub.plan_id, tx)
+    const archived =
+      assigned.slug === 'predio' || assigned.slug === 'complejo' || assigned.slug === 'estadio'
+    const currentCatalog = archived ? await loadActivePlan(tx) : assigned
+    const plan =
+      archived && pricingParamsOf(currentCatalog).byCourtCount ? assigned : currentCatalog
+    assertCatalogCourtCount(plan, targetBilledCourts)
 
     // Mismo invariante que `billing.changeBilledCourts`: no se puede facturar
     // por menos canchas de las que el complejo tiene prendidas.
@@ -395,7 +407,7 @@ export async function changeBilledCourtsForSupport(
       // Plus sale de la fila lockeada: corregir las canchas no puede sacarle
       // (ni ponerle) Plus al debito. El `reason` es el mismo texto que ve el
       // pagador y que compara el reuso de checkout pendiente.
-      const plusPerCourt = plusPerCourtOf(sub)
+      const plusPerCourt = plusPerCourtOf(sub, plan)
       const newAmount = subscriptionAmount(
         plan,
         targetBilledCourts,
@@ -415,6 +427,165 @@ export async function changeBilledCourtsForSupport(
 
     return { fromBilledCourts: sub.billed_courts, toBilledCourts: targetBilledCourts }
   })
+}
+
+export async function applyCurrentCatalogPrice(
+  tenantId: string,
+  systemAdminId: string,
+  expectedAmountCents: number,
+  gateway: PaymentGateway,
+  now = new Date(),
+): Promise<string | null> {
+  const botOn = await getBotFlagOn(tenantId)
+  return withTenantContext(tenantId, async (tx) => {
+    const sub = await loadBillingSubForUpdate(tenantId, tx)
+    if (!sub) throw new SubscriptionNotFoundError(tenantId)
+    const target = await loadActivePlan(tx)
+    if (target.slug !== COURT_COUNT_PRICE_SLUG)
+      return 'El catálogo nuevo todavía no está publicado.'
+    if (sub.plan_id === target.id) return null
+    if (sub.status !== 'active' && sub.status !== 'trialing') {
+      return 'El complejo tiene que estar activo o en prueba.'
+    }
+    if (
+      sub.pending_billed_courts !== null ||
+      sub.plus_prorate_cents !== null ||
+      sub.plus_access_until
+    ) {
+      return 'Primero resolvé los cambios pendientes de canchas o del Asistente.'
+    }
+    const rows = await tx.execute(sql`
+      SELECT COUNT(*)::int AS n
+      FROM courts
+      WHERE tenant_id = ${tenantId} AND status = 'online'
+    `)
+    const onlineCourts = (rows as unknown as { n: number }[])[0]!.n
+    if (onlineCourts > sub.billed_courts) {
+      return 'Revisá las canchas activas y facturadas antes de cambiar el importe.'
+    }
+    const includePlus = sub.plus_enabled || botOn
+    const nextPlus = plusPerCourtOf(
+      {
+        plus_enabled: includePlus,
+        plus_price_per_court_cents: null,
+      },
+      target,
+    )
+    const nextAmount = subscriptionAmount(target, sub.billed_courts, sub.billing_cycle, nextPlus)
+    if (nextAmount !== expectedAmountCents) {
+      return 'El importe cambió. Volvé a abrir la suscripción antes de confirmar.'
+    }
+    const current = await loadSubscriptionPlan(sub.plan_id, tx)
+    const currentAmount = subscriptionAmount(
+      current,
+      sub.billed_courts,
+      sub.billing_cycle,
+      plusPerCourtOf(sub, current),
+    )
+    const mpId = sub.mp_subscription_id
+    if (sub.status === 'active' && !mpId) {
+      return 'La suscripción activa necesita un mandato de Mercado Pago para cambiar el próximo débito.'
+    }
+    const remote = mpId ? await gateway.getSubscriptionState(mpId) : null
+    if (
+      mpId &&
+      (!remote ||
+        remote.preapprovalId !== mpId ||
+        remote.externalReference !== tenantId ||
+        remote.status !== 'authorized' ||
+        remote.frequency !== (sub.billing_cycle === 'annual' ? 12 : 1) ||
+        remote.frequencyType !== 'months' ||
+        !remote.nextPaymentDate ||
+        remote.nextPaymentDate <= now ||
+        (remote.amountCents !== currentAmount && remote.amountCents !== nextAmount))
+    ) {
+      return 'Revisá en Mercado Pago el mandato, su importe y la fecha del próximo débito.'
+    }
+
+    await tx.execute(sql`
+      UPDATE tenant_subscriptions
+      SET plan_id = ${target.id}, plus_enabled = ${includePlus},
+          plus_price_per_court_cents = NULL, updated_at = NOW()
+      WHERE tenant_id = ${tenantId}
+    `)
+    await supportAudit(tx, systemAdminId, tenantId, 'support.tenant.catalog_price_applied', {
+      previousPlanId: current.id,
+      nextPlanId: target.id,
+      previousAmountCents: currentAmount,
+      nextAmountCents: nextAmount,
+      includesPlus: includePlus,
+      nextPaymentDate: remote?.nextPaymentDate?.toISOString() ?? null,
+    })
+    // El PUT reemplaza el monto recurrente. Si hubo rollback después del PUT,
+    // la relectura del mismo mandato acepta el importe nuevo y permite converger.
+    if (mpId && remote?.amountCents !== nextAmount) {
+      await gateway.updatePreapprovalAmount(mpId, nextAmount, {
+        reason: billingReason(sub.billed_courts, sub.billing_cycle, nextPlus),
+      })
+    }
+    return null
+  })
+}
+
+/** Guarda el presupuesto acordado antes de que el dueño abra el checkout. */
+export async function saveLargeComplexQuote(
+  tenantId: string,
+  monthlyCents: number,
+  systemAdminId: string,
+): Promise<string | null> {
+  // El rol web tiene catálogo de solo lectura. El alta de este precio
+  // privado se limita a la acción de superadmin y queda en el audit del tenant.
+  return withDisposableWorkerDb(10_000, (db) =>
+    db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT set_config('app.current_tenant_id', ${tenantId}, true)`)
+      const sub = await loadBillingSubForUpdate(tenantId, tx)
+      if (!sub) throw new SubscriptionNotFoundError(tenantId)
+      if (
+        (sub.status !== 'trialing' && sub.status !== 'free') ||
+        sub.mp_subscription_id ||
+        sub.plus_enabled ||
+        sub.plus_prorate_cents !== null ||
+        sub.pending_billed_courts !== null
+      ) {
+        return 'La cotización requiere un complejo en prueba o gratis, sin mandato ni cambios pendientes.'
+      }
+      const plan = await loadActivePlan(tx)
+      if (plan.slug !== COURT_COUNT_PRICE_SLUG)
+        return 'El catálogo nuevo todavía no está publicado.'
+      const counts = await tx.execute(sql`
+      SELECT COUNT(*)::int AS n FROM courts
+      WHERE tenant_id = ${tenantId} AND status = 'online'
+    `)
+      const courts = (counts as unknown as { n: number }[])[0]!.n
+      if (courts < 8) return 'Esta cotización corresponde a complejos con 8 canchas activas o más.'
+
+      const slug = `${COURT_COUNT_QUOTE_PREFIX}${courts}-${crypto.randomUUID()}`
+      const rows = await tx.execute(sql`
+      INSERT INTO plans (
+        slug, name, features, price_monthly, price_annual,
+        price_first_court_cents, price_extra_court_cents, annual_discount_bps, is_active
+      )
+      SELECT ${slug}, name, features, ${monthlyCents},
+             ROUND(${monthlyCents}::numeric * (10000 - annual_discount_bps) / 10000),
+             ${monthlyCents}, 0, annual_discount_bps, false
+      FROM plans WHERE id = ${plan.id}
+      RETURNING id
+    `)
+      const quotedPlanId = (rows as unknown as { id: string }[])[0]!.id
+      await tx.execute(sql`
+      UPDATE tenant_subscriptions
+      SET plan_id = ${quotedPlanId}, billed_courts = ${courts}, updated_at = NOW()
+      WHERE tenant_id = ${tenantId}
+    `)
+      await supportAudit(tx, systemAdminId, tenantId, 'support.tenant.catalog_quote_recorded', {
+        previousPlanId: sub.plan_id,
+        quotedPlanId,
+        courts,
+        monthlyCents,
+      })
+      return null
+    }),
+  )
 }
 
 // ─── Cancelar suscripción (reusa billing.cancel) ─────────────────────────────

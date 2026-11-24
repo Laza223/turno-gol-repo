@@ -27,14 +27,14 @@ export type PlanCard = {
 }
 
 /** Precio exacto para una cantidad positiva y entera de canchas. */
-export function planForCourts(courts: number): PlanCard {
+export function planForCourts(courts: number, pricing = UNIFORM_PRICING): PlanCard {
   return {
     slug: 'turnogol',
     name: 'TurnoGol',
     maxCourts: null,
     rangeLabel: `${courts} ${courts === 1 ? 'cancha' : 'canchas'}`,
-    priceMonthly: monthlyListAmount(courts, UNIFORM_PRICING),
-    priceAnnual: annualMonthlyEquivalent(courts, UNIFORM_PRICING),
+    priceMonthly: monthlyListAmount(courts, pricing),
+    priceAnnual: annualMonthlyEquivalent(courts, pricing),
     sizeLine: 'Todo TurnoGol. Pagás por cada cancha, sin límite de cantidad.',
   }
 }

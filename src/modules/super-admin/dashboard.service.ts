@@ -6,7 +6,12 @@ import { ALL_QUEUES } from '@/shared/jobs/dlq'
 import type { QueueDepthEntry } from '@/shared/jobs/queue-stats'
 import { logger } from '@/shared/lib/logger'
 import { withTimeout } from '@/shared/utils/async'
-import { PLUS_LIST_PER_COURT_CENTS } from '@/modules/billing/pricing'
+import {
+  buildPriceBreakdown,
+  canQuoteCourtCount,
+  catalogPricing,
+  subscriptionPlusPrice,
+} from '@/modules/billing/pricing'
 import { WIZARD_STEPS } from '@/modules/onboarding/onboarding.steps'
 
 /**
@@ -196,38 +201,37 @@ async function getOnboardingFunnel(db: Db): Promise<OnboardingFunnelData> {
  * (misma fórmula, para una suscripción) vive en `@/modules/billing/pricing`.
  */
 async function getMrrCents(db: Db): Promise<number> {
-  // Plan + Plus facturado (`plus_enabled`: precio especial o, sin él, la lista),
-  // igual que `monthlyEquivalentCents` de tenants.service: el descuento anual
-  // va sobre la SUMA. La lista entra como literal (`sql.raw` de una constante
-  // entera nuestra), no como parámetro: ver el comentario del `.where` abajo.
-  const plusList = sql.raw(String(Math.trunc(PLUS_LIST_PER_COURT_CENTS)))
-  const monthlyList = sql`(${plans.priceFirstCourtCents} + (${tenantSubscriptions.billedCourts} - 1) * ${plans.priceExtraCourtCents} + case when ${tenantSubscriptions.plusEnabled} then ${tenantSubscriptions.billedCourts} * coalesce(${tenantSubscriptions.plusPricePerCourtCents}, ${plusList}::int) else 0 end)`
   const rows = await db
     .select({
-      // El ciclo anual aporta su equivalente mensual CON descuento
-      // (`annual_discount_bps`, 1000 = 10%), nunca el cobro del año: el MRR es
-      // una tasa mensual. `round()` de Postgres redondea igual que el
-      // `Math.round` de `annualMonthlyEquivalent` para montos positivos.
-      // SUM llega como numeric/bigint (string) — coalesce + cast a number.
-      mrr: sql<string>`coalesce(sum(
-        case when ${tenantSubscriptions.billingCycle} = 'annual'
-          then round(${monthlyList}::numeric * (10000 - ${plans.annualDiscountBps}) / 10000)
-          else ${monthlyList}
-        end
-      ), 0)`,
+      slug: plans.slug,
+      priceFirstCourtCents: plans.priceFirstCourtCents,
+      priceExtraCourtCents: plans.priceExtraCourtCents,
+      annualDiscountBps: plans.annualDiscountBps,
+      billedCourts: tenantSubscriptions.billedCourts,
+      cycle: tenantSubscriptions.billingCycle,
+      plusEnabled: tenantSubscriptions.plusEnabled,
+      plusPricePerCourtCents: tenantSubscriptions.plusPricePerCourtCents,
     })
     .from(tenantSubscriptions)
     .innerJoin(plans, eq(plans.id, tenantSubscriptions.planId))
-    // Literal y NO `eq(…, 'active')` a propósito: `eq` enlaza un parámetro, y con
-    // `prepare: false` postgres.js manda toda query con parámetros en dos tiempos
-    // (Parse+Describe+Flush, espera la respuesta, recién ahí Bind/Execute/Sync).
-    // Si esa respuesta no vuelve, el backend queda `active`/`ClientRead` y la
-    // promesa no resuelve nunca. En producción (2026-09-21) esta query fue la
-    // única del dashboard que se colgó así — 5 conexiones del pool worker con
-    // hasta 3 min — y dejó `/super-admin` cargando hasta el timeout de Vercel.
-    // Las queries sin parámetros (embudo, colas) van en un solo envío y nunca.
     .where(sql`${tenantSubscriptions.status} = 'active'`)
-  return Number(rows[0]?.mrr ?? 0)
+  return rows.reduce((mrr, row) => {
+    const pricing = catalogPricing(row)
+    if (!pricing || !canQuoteCourtCount(row.billedCourts, pricing)) {
+      throw new Error('Suscripción activa sin precio de catálogo')
+    }
+    const breakdown = buildPriceBreakdown({
+      ...pricing,
+      billedCourts: row.billedCourts,
+      cycle: row.cycle,
+      plusPerCourtCents: subscriptionPlusPrice(
+        row.plusEnabled,
+        row.plusPricePerCourtCents,
+        pricing,
+      ),
+    })
+    return mrr + breakdown.monthlyEffectiveCents
+  }, 0)
 }
 
 /** Tope del MRR: un dato más del dashboard no puede dejarlo cargando. */

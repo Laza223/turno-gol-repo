@@ -853,6 +853,7 @@ describe('estado de Plus para el panel y la facturación', () => {
     expect(state!.plus).toEqual({
       enabled: true,
       perCourtCents: 1_200_000,
+      usesListPrice: false,
       accessUntil: null,
       quote: null,
     })

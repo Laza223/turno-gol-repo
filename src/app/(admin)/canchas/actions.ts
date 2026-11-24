@@ -26,14 +26,19 @@ import { captureException, captureMessage } from '@/lib/sentry'
 import type { DbTx } from '@/shared/db/client'
 import { compressUpload } from '@/shared/images/compress-image'
 import {
+  assertCatalogCourtCount,
   changeBilledCourts,
-  loadActivePlan,
+  loadSubscriptionPlan,
   loadSub,
   plusPerCourtOf,
   pricingParamsOf,
 } from '@/modules/billing/billing.service'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
-import { computeSubscriptionAmount } from '@/modules/billing/pricing'
+import {
+  canQuoteCourtCount,
+  computeSubscriptionAmount,
+  CourtCountQuoteRequiredError,
+} from '@/modules/billing/pricing'
 import { billingChangeMessage, type BillingChangePreview } from './billing-copy'
 
 export type CourtActionResult =
@@ -90,9 +95,15 @@ async function billingPreviewFor(
   // Los montos salen del motor de precio, no de una cuenta a mano acá: la
   // pantalla y el cobro no pueden divergir. Llevan el Plus facturado: el débito
   // real es plan + Plus por cancha.
-  const params = pricingParamsOf(await loadActivePlan(tx))
   const sub = await loadSub(tenantId, tx)
-  const plusPerCourtCents = sub ? plusPerCourtOf(sub) : 0
+  if (!sub) return null
+  const plan = await loadSubscriptionPlan(sub.plan_id, tx)
+  const params = pricingParamsOf(plan)
+  if (!canQuoteCourtCount(nextOnlineCourts, params)) {
+    if (sub.status === 'trialing' && !sub.mp_subscription_id) return null
+    assertCatalogCourtCount(plan, nextOnlineCourts)
+  }
+  const plusPerCourtCents = plusPerCourtOf(sub, plan)
   const monthlyFor = (billedCourts: number) =>
     computeSubscriptionAmount({ ...params, billedCourts, cycle: 'monthly', plusPerCourtCents })
   return {
@@ -124,6 +135,7 @@ async function syncBilledCourts(
 
 /** Traduce el rollback por facturación a un error legible; el resto se propaga. */
 function billingSyncResult(err: unknown): CourtActionResult {
+  if (err instanceof CourtCountQuoteRequiredError) return { success: false, error: err.message }
   if (err instanceof BilledCourtsSyncFailed) {
     captureException(err.reason)
     return { success: false, error: BILLING_SYNC_ERROR }

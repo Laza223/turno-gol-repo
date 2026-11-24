@@ -1,3 +1,4 @@
+import type { PricingParams } from '@/modules/billing/pricing'
 import type { TenantStatus } from '@/modules/billing/billing.types'
 import type { SupportActionResult } from '../../actions'
 
@@ -25,6 +26,8 @@ export type SupportActionsBag = {
   reactivate: SupportAction
   extendTrial: SupportAction
   changeBilledCourts: SupportAction
+  applyCurrentCatalogPrice?: SupportAction
+  saveLargeComplexQuote?: SupportAction
   updateSettings: SupportAction
   resetPassword: SupportAction
   cancelSubscription: SupportAction
@@ -47,11 +50,7 @@ export type SupportPanelSettings = {
  * `SupportPanelPlan`: con una sola fila activa en `plans` ya no se elige un
  * plan, se corrige una cantidad de canchas.
  */
-export type BilledCourtsPricing = {
-  priceFirstCourtCents: number
-  priceExtraCourtCents: number
-  annualDiscountBps: number
-}
+export type BilledCourtsPricing = PricingParams
 
 export const STATUS_LABELS: Record<TenantStatus, string> = {
   trialing: 'Trial',

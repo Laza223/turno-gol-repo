@@ -82,6 +82,7 @@ type PlusSubscriptionState = {
   enabled: boolean
   /** Plus por cancha y mes de este complejo: el especial si lo tiene, si no la lista. Centavos. */
   perCourtCents: number
+  usesListPrice?: boolean
   /** Baja agendada: el debito ya no lo lleva y el bot sigue hasta aca. */
   accessUntil: Date | null
   /** Alta en un anual ya pago: cotizacion congelada esperando el pago del dueño. */

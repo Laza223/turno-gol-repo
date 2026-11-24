@@ -2,7 +2,13 @@
 
 import { useState } from 'react'
 import { formatArs } from '@/lib/format'
-import { buildPriceBreakdown } from '@/modules/billing/pricing'
+import {
+  buildPriceBreakdown,
+  canQuoteCourtCount,
+  MAX_CATALOG_COURTS,
+  type PlusPrice,
+  type PriceBreakdown,
+} from '@/modules/billing/pricing'
 import type { BillingCycle } from '@/modules/billing/billing.types'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SectionCard } from './SectionCard'
@@ -33,10 +39,13 @@ type Props = {
   /** `null` si el plan de la suscripción es una banda legacy sin precio lineal. */
   pricing: BilledCourtsPricing | null
   /** Plus EFECTIVO por cancha que se factura hoy (0 si no hay). Mueve el monto al cambiar canchas. */
-  plusPerCourtCents?: number
+  plusPerCourtCents?: PlusPrice
   pending: boolean
   run: RunAction
   action: SupportAction
+  nextCatalogPrice?: PriceBreakdown | null
+  applyCatalogPrice?: SupportAction
+  saveLargeQuote?: SupportAction
 }
 
 /**
@@ -56,23 +65,31 @@ export function BilledCourtsSection({
   pending,
   run,
   action,
+  nextCatalogPrice,
+  applyCatalogPrice,
+  saveLargeQuote,
 }: Props) {
+  const maxCourts =
+    pricing?.quotedCourtCount ?? (pricing?.byCourtCount ? MAX_CATALOG_COURTS : MAX_BILLED_COURTS)
   const floor = Math.max(1, onlineCourts)
   const [target, setTarget] = useState(currentBilledCourts ?? floor)
   const [feedback, setFeedback] = useState<Feedback>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [catalogConfirm, setCatalogConfirm] = useState(false)
+  const [quotePesos, setQuotePesos] = useState('')
+  const quoteCents = Math.round(Number(quotePesos) * 100)
 
   const hasSubscription = currentBilledCourts !== null && billingCycle !== null
   const cycle: BillingCycle = billingCycle ?? 'monthly'
 
   const monthlyFor = (courts: number): number | null =>
-    pricing && Number.isInteger(courts) && courts >= 1
+    pricing && Number.isInteger(courts) && courts >= 1 && canQuoteCourtCount(courts, pricing)
       ? buildPriceBreakdown({ billedCourts: courts, cycle, plusPerCourtCents, ...pricing })
           .monthlyEffectiveCents
       : null
 
   const currentMonthly = monthlyFor(currentBilledCourts ?? 0)
-  const targetValid = Number.isInteger(target) && target >= floor && target <= MAX_BILLED_COURTS
+  const targetValid = Number.isInteger(target) && target >= floor && target <= maxCourts
   const targetMonthly = targetValid ? monthlyFor(target) : null
   const changed = targetValid && target !== currentBilledCourts
 
@@ -100,7 +117,7 @@ export function BilledCourtsSection({
               id="billed-courts"
               type="number"
               min={floor}
-              max={MAX_BILLED_COURTS}
+              max={maxCourts}
               value={target}
               // Campo vacío o a medio tipear = NaN, nunca 0: `Number('')` es 0 y
               // se leería como "por debajo de las canchas online".
@@ -136,10 +153,66 @@ export function BilledCourtsSection({
                 ? 'Ingresá una cantidad entera de canchas.'
                 : target < floor
                   ? `El complejo tiene ${onlineCourts} cancha${onlineCourts === 1 ? '' : 's'} online: no se puede facturar por menos de ${floor}.`
-                  : `Máximo ${MAX_BILLED_COURTS} canchas.`}
+                  : pricing.byCourtCount
+                    ? 'Para 8 canchas o más, cotizá por WhatsApp.'
+                    : `Máximo ${maxCourts} canchas.`}
             </p>
           )}
 
+          {nextCatalogPrice && applyCatalogPrice && (
+            <>
+              <button
+                type="button"
+                className={primaryBtn}
+                disabled={pending}
+                onClick={() => setCatalogConfirm(true)}
+              >
+                Aplicar tarifa de lista
+              </button>
+              <ConfirmDialog
+                open={catalogConfirm}
+                onOpenChange={setCatalogConfirm}
+                title="Aplicar tarifa de lista"
+                description={`Próximo débito: ${formatArs(nextCatalogPrice.chargePerCycleCents)} por ${nextCatalogPrice.cycle === 'annual' ? 'año' : 'mes'}${nextCatalogPrice.plusMonthlyListCents ? ', con asistente' : ''}.`}
+                confirmLabel="Confirmar importe"
+                cancelLabel="Volver"
+                onConfirm={async () => {
+                  run(
+                    () =>
+                      applyCatalogPrice({
+                        tenantId,
+                        amountCents: nextCatalogPrice.chargePerCycleCents,
+                      }),
+                    setFeedback,
+                  )
+                }}
+              />
+            </>
+          )}
+          {saveLargeQuote && (
+            <form
+              className="flex flex-wrap items-end gap-2"
+              onSubmit={(event) => {
+                event.preventDefault()
+                run(() => saveLargeQuote({ tenantId, monthlyCents: quoteCents }), setFeedback)
+              }}
+            >
+              <label className="grid gap-1 text-sm">
+                Cotización mensual acordada para {onlineCourts} canchas (ARS)
+                <input
+                  className={inputCls}
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={quotePesos}
+                  onChange={(event) => setQuotePesos(event.target.value)}
+                />
+              </label>
+              <button type="submit" className={primaryBtn} disabled={pending || !(quoteCents > 0)}>
+                Guardar cotización
+              </button>
+            </form>
+          )}
           <FeedbackText feedback={feedback} />
         </div>
       )}

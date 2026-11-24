@@ -2,25 +2,31 @@ import type { CSSProperties, ReactNode } from 'react'
 import Link from 'next/link'
 import { ArrowRight, Check, ChevronDown } from 'lucide-react'
 import { buildMetadata } from '@/lib/seo/metadata'
-import { formatArs } from '@/lib/format'
 import { buttonVariants } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import Reveal from '@/components/site/Reveal'
 import CalculadoraClavo from './CalculadoraClavo'
 import PlanSelector from './PlanSelector'
-import { PLANS } from './plans-data'
+import { connection } from 'next/server'
+import { asc, eq } from 'drizzle-orm'
+import { getDb } from '@/shared/db/client'
+import { plans } from '@/shared/db/schema/plans'
+import { catalogPricing, monthlyListAmount } from '@/modules/billing/pricing'
+import { contactWhatsappUrl } from '@/lib/contact'
+import { withTimeout } from '@/shared/utils/async'
 import './precios.css'
 
 // La base pública sale del mismo catálogo que la calculadora.
 export const metadata = buildMetadata({
   title: 'Precios — TurnoGol para complejos de fútbol',
-  description: `Plan Gratis para aparecer donde buscan cancha, y Completo a ${formatArs(PLANS[0]!.priceMonthly)} por cancha al mes. Sin comisión por reserva y lo dejás cuando quieras. Empezás gratis, sin cargar ningún dato de pago.`,
+  description:
+    'Precios de TurnoGol para complejos de fútbol según la cantidad de canchas. Sin comisión por reserva de TurnoGol.',
   path: '/precios',
 })
 
 const HERO_CHIPS = [
   'Empezás gratis, sin dato de pago',
-  'Mes a mes, lo dejás cuando quieras',
+  'Pago mensual o anual adelantado',
   'Sin comisión por reserva',
 ]
 
@@ -53,8 +59,8 @@ const STEPS = [
   },
   {
     n: '03',
-    t: 'Pasá a Completo cuando te sirva',
-    d: 'El plan Gratis no vence. Cuando quieras los fijos solos, la caja y tu encargado, pasás a Completo. Es mes a mes y lo dejás cuando quieras.',
+    t: 'Activá el plan pago cuando te sirva',
+    d: 'El plan Gratis no vence. Cuando quieras los turnos fijos, la caja y el acceso para tu encargado, podés activar el plan pago.',
   },
 ]
 
@@ -72,8 +78,8 @@ const FAQ = [
     a: 'Se cargan una vez y se repiten solos todas las semanas. Ves quién pagó y quién debe, y nadie pierde su horario. El cobro lo registrás vos cuando te pagan, como siempre.',
   },
   {
-    q: '¿Hay comisión por reserva o tengo que quedarme un mínimo?',
-    a: 'No y no. Pagás un precio fijo por mes según tus canchas. Lo que cobrás va directo a vos, completo. Y es mes a mes: si no te sirve, lo dejás.',
+    q: '¿Cómo se cobra el plan pago?',
+    a: 'El importe depende de cuántas canchas tenés. Podés pagar mes a mes o adelantar los 12 meses con descuento. TurnoGol no cobra comisión por reserva.',
   },
   {
     q: '¿Me hace la factura? ¿Sirve para AFIP?',
@@ -84,8 +90,8 @@ const FAQ = [
     a: 'Tus datos son tuyos y los exportás cuando quieras. La plata nunca pasa por nosotros: lo que cobrás va directo a vos. Si mañana desaparecemos, tu plata y tus clientes siguen siendo tuyos.',
   },
   {
-    q: '¿Qué hago gratis y qué es de Completo?',
-    a: 'Gratis anotás tus turnos con nombre y teléfono, aparecés en el buscador y tus jugadores te reservan online. Con Completo los fijos aparecen solos en la grilla, anotás quién pagó, tenés la caja de la noche con cantina y tu encargado entra con su usuario. Si pasás a Completo y después lo dejás, lo que cargaste queda guardado. Como no te pedimos ningún dato de pago para empezar, no hay ningún cobro sorpresa.',
+    q: '¿Qué incluye cada plan?',
+    a: 'Gratis anotás tus turnos con nombre y teléfono, aparecés en el buscador y tus jugadores te reservan online. Con el plan pago los fijos aparecen solos en la grilla, anotás quién pagó, tenés la caja de la noche con cantina y tu encargado entra con su usuario. Si activás el plan pago y después lo dejás, lo que cargaste queda guardado. Como no te pedimos ningún dato de pago para empezar, no hay ningún cobro sorpresa.',
   },
   {
     q: '¿El plan Gratis vence?',
@@ -103,7 +109,23 @@ const faqJsonLd = {
   })),
 }
 
-export default function PreciosPage() {
+export default async function PreciosPage() {
+  await connection()
+  const [plan] = await withTimeout(
+    getDb()
+      .select({
+        slug: plans.slug,
+        priceFirstCourtCents: plans.priceFirstCourtCents,
+        priceExtraCourtCents: plans.priceExtraCourtCents,
+        annualDiscountBps: plans.annualDiscountBps,
+      })
+      .from(plans)
+      .where(eq(plans.isActive, true))
+      .orderBy(asc(plans.sortOrder))
+      .limit(1),
+    3000,
+  ).catch(() => [])
+  const pricing = plan ? catalogPricing(plan) : null
   return (
     <>
       <script
@@ -111,8 +133,8 @@ export default function PreciosPage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
       <Hero />
-      <Planes />
-      <CuentaDelClavo />
+      <Planes pricing={pricing} />
+      <CuentaDelClavo pricing={pricing} />
       <TodoIncluido />
       <RiesgoCero />
       <Faq />
@@ -148,14 +170,14 @@ function Hero() {
       <p className="bz-eyebrow bz-rise">Precios claros</p>
       <h1 className="bz-title">
         <span className="bz-title__line" style={{ '--l': 0 } as CSSProperties}>
-          <span>Lo que te deja un turno,</span>
+          <span>Un precio para</span>
         </span>{' '}
         <span className="bz-title__line" style={{ '--l': 1 } as CSSProperties}>
-          <em>una vez al mes.</em>
+          <em>tu complejo.</em>
         </span>
       </h1>
       <p className="bz-lead bz-rise" style={{ '--i': 1 } as CSSProperties}>
-        Eso sale Completo: un precio fijo según cuántas canchas tenés.{' '}
+        El importe depende de cuántas canchas tenés.{' '}
         <strong>Sin comisión por reserva y sin sorpresas.</strong> Empezás gratis, y el plan Gratis
         no vence.
       </p>
@@ -171,19 +193,28 @@ function Hero() {
   )
 }
 
-function Planes() {
+function Planes({ pricing }: { pricing: ReturnType<typeof catalogPricing> }) {
   return (
     <section className="bz-sec">
       <div className="bz-wrap">
         <Reveal>
-          <PlanSelector />
+          {pricing ? (
+            <PlanSelector pricing={pricing} />
+          ) : (
+            <a
+              href={contactWhatsappUrl('Hola, quiero consultar el precio de TurnoGol.')}
+              className={buttonVariants({ variant: 'pill', size: 'pill' })}
+            >
+              Consultar por WhatsApp
+            </a>
+          )}
         </Reveal>
       </div>
     </section>
   )
 }
 
-function CuentaDelClavo() {
+function CuentaDelClavo({ pricing }: { pricing: ReturnType<typeof catalogPricing> }) {
   return (
     <Section>
       <SectionHead
@@ -192,7 +223,7 @@ function CuentaDelClavo() {
         lead="Con tus números, no con los nuestros."
       />
       <Reveal delay={80}>
-        <CalculadoraClavo />
+        {pricing && <CalculadoraClavo monthlyCents={monthlyListAmount(1, pricing)} />}
       </Reveal>
     </Section>
   )
@@ -203,7 +234,7 @@ function TodoIncluido() {
     <Section>
       <SectionHead
         eyebrow="Sin letra chica"
-        title="Todo esto viene en Completo."
+        title="Qué incluye el plan pago."
         lead="Para todas tus canchas. Pagás por la cantidad exacta de canchas."
       />
       <Reveal>

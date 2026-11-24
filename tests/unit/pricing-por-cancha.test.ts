@@ -12,6 +12,10 @@ import { describe, expect, it } from 'vitest'
 import {
   annualMonthlyEquivalent,
   buildPriceBreakdown,
+  catalogPricing,
+  COURT_COUNT_PRICE_SLUG,
+  CourtCountQuoteRequiredError,
+  subscriptionPlusPrice,
   computeSubscriptionAmount,
   InvalidBilledCourtsError,
   monthlyListAmount,
@@ -138,5 +142,41 @@ describe('buildPriceBreakdown — lo que ve el dueño en pantalla', () => {
       const b = buildPriceBreakdown({ billedCourts: courts, cycle: 'monthly', ...PARAMS })
       expect(b.firstCourtCents + b.extraCourtsTotalCents).toBe(b.chargePerCycleCents)
     }
+  })
+})
+
+describe('catálogo por cantidad exacta', () => {
+  const pricing = catalogPricing({
+    slug: COURT_COUNT_PRICE_SLUG,
+    priceFirstCourtCents: null,
+    priceExtraCourtCents: null,
+    annualDiscountBps: null,
+  })!
+  const price = (billedCourts: number, cycle: 'monthly' | 'annual', plus: boolean) =>
+    computeSubscriptionAmount({
+      ...pricing,
+      billedCourts,
+      cycle,
+      plusPerCourtCents: subscriptionPlusPrice(plus, null, pricing),
+    })
+
+  it.each([
+    [1, 4_500_000, 7_000_000, 43_200_000, 67_200_000],
+    [2, 6_500_000, 9_000_000, 62_400_000, 86_400_000],
+    [3, 8_000_000, 11_500_000, 76_800_000, 110_400_000],
+    [4, 9_500_000, 13_000_000, 91_200_000, 124_800_000],
+    [5, 11_000_000, 14_500_000, 105_600_000, 139_200_000],
+    [6, 12_500_000, 17_000_000, 120_000_000, 163_200_000],
+    [7, 13_500_000, 18_000_000, 129_600_000, 172_800_000],
+  ])('cobra la lista para %i canchas', (courts, base, full, annual, fullAnnual) => {
+    expect(price(courts, 'monthly', false)).toBe(base)
+    expect(price(courts, 'monthly', true)).toBe(full)
+    expect(price(courts, 'annual', false)).toBe(annual)
+    expect(price(courts, 'annual', true)).toBe(fullAnnual)
+  })
+
+  it('requiere cotización desde ocho canchas', () => {
+    expect(() => price(8, 'monthly', false)).toThrow(CourtCountQuoteRequiredError)
+    expect(() => price(12, 'annual', true)).toThrow(CourtCountQuoteRequiredError)
   })
 })

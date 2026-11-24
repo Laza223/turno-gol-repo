@@ -20,7 +20,7 @@ import {
   computeNotificationUrl,
   computeReturnUrl,
   isQuoteCurrent,
-  loadActivePlan,
+  loadSubscriptionPlan,
   loadSub,
   loadSubForUpdate,
   pricingParamsOf,
@@ -31,7 +31,11 @@ import type { BillingCycle, SubscriptionStatus } from './billing.types'
 import {
   PLUS_LIST_PER_COURT_CENTS,
   assertPlusSpecialPrice,
-  effectivePlusPerCourtCents,
+  subscriptionPlusPrice,
+  monthlyPlusAmount,
+  MAX_CATALOG_COURTS,
+  COURT_COUNT_PRICE_SLUG,
+  type PlusPrice,
   plusProrateQuote,
 } from './pricing'
 
@@ -168,9 +172,9 @@ function samePrice(a: number | null, b: number | null): boolean {
  * que ve el pagador. Un solo lugar para el alta y la baja.
  */
 function debitFor(
-  plan: Awaited<ReturnType<typeof loadActivePlan>>,
+  plan: Awaited<ReturnType<typeof loadSubscriptionPlan>>,
   sub: Pick<SubRow, 'billed_courts' | 'billing_cycle'>,
-  plusPerCourt: number,
+  plusPerCourt: PlusPrice,
 ): { amount: number; reason: string } {
   return {
     amount: subscriptionAmount(plan, sub.billed_courts, sub.billing_cycle, plusPerCourt),
@@ -208,8 +212,10 @@ export async function enablePlus(
     if (sub.status !== 'trialing' && sub.status !== 'active') {
       throw new PlusNotAllowedError(tenantId, sub.status)
     }
-    const plan = await loadActivePlan(tx)
-    const plusPerCourt = effectivePlusPerCourtCents(true, price)
+    const plan = await loadSubscriptionPlan(sub.plan_id, tx)
+    const pricing = pricingParamsOf(plan)
+    if (pricing.quotedCourtCount) throw new PlusNotAllowedError(tenantId, sub.status)
+    const plusPerCourt = subscriptionPlusPrice(true, price, pricing)
 
     // ── Anual ya pago: se cotizan los meses que faltan (P7) ──────────────────
     // La baja agendada vigente significa que el año en curso ya incluye Plus
@@ -342,7 +348,7 @@ export async function disablePlus(
   const result = await withTenantContext(tenantId, async (tx): Promise<DisablePlusResult> => {
     const sub = await loadSubForUpdate(tenantId, tx)
     if (!sub) throw new SubscriptionNotFoundError(tenantId)
-    const plan = await loadActivePlan(tx)
+    const plan = await loadSubscriptionPlan(sub.plan_id, tx)
 
     if (input.mode === 'end_of_period') {
       if (sub.plus_enabled) {
@@ -678,11 +684,11 @@ export async function applyPlusProratePayment(
   // MP último: si falla, rollbackea todo (también el reclamo del pago) y el
   // reintento acredita. El débito anual pasa a (plan + Plus) × 0,9 × 12 (P6).
   if (gateway && sub.mp_subscription_id) {
-    const plan = await loadActivePlan(tx)
+    const plan = await loadSubscriptionPlan(sub.plan_id, tx)
     const { amount, reason } = debitFor(
       plan,
       sub,
-      effectivePlusPerCourtCents(true, sub.plus_price_per_court_cents),
+      subscriptionPlusPrice(true, sub.plus_price_per_court_cents, pricingParamsOf(plan)),
     )
     await gateway.updatePreapprovalAmount(sub.mp_subscription_id, amount, { reason })
   }
@@ -697,6 +703,8 @@ export type PlusAdminState = {
   pricePerCourtCents: number | null
   /** El que se aplica: el especial si existe, si no la lista. */
   effectivePerCourtCents: number
+  listedMonthlyCents?: number
+  effectiveMonthlyCents?: number
   accessUntil: Date | null
   quote: { months: number; amountCents: number } | null
   /** El bot está prendido para el complejo (override por complejo, si no el global). */
@@ -738,6 +746,8 @@ export async function getPlusAdminState(tenantId: string): Promise<PlusAdminStat
     const sub = await loadSub(tenantId, tx)
     if (!sub) throw new SubscriptionNotFoundError(tenantId)
     const flagOn = await readBotFlagOn(tenantId, tx)
+    const usesExactList =
+      sub.plan_slug === COURT_COUNT_PRICE_SLUG && sub.billed_courts <= MAX_CATALOG_COURTS
 
     // Una cotización de un período que ya renovó está vencida: no es `quote_pending`.
     const quote =
@@ -760,6 +770,10 @@ export async function getPlusAdminState(tenantId: string): Promise<PlusAdminStat
       kind,
       pricePerCourtCents: sub.plus_price_per_court_cents,
       effectivePerCourtCents: sub.plus_price_per_court_cents ?? PLUS_LIST_PER_COURT_CENTS,
+      listedMonthlyCents: usesExactList ? monthlyPlusAmount(sub.billed_courts, 'list') : undefined,
+      effectiveMonthlyCents: usesExactList
+        ? monthlyPlusAmount(sub.billed_courts, sub.plus_price_per_court_cents ?? 'list')
+        : undefined,
       accessUntil,
       quote,
       flagOn,

@@ -32,7 +32,7 @@ import {
   PlusQuoteNotPendingError,
   SubscriptionNotFoundError,
 } from '@/modules/billing/billing.errors'
-import { InvalidPlusPriceError, PLUS_LIST_PER_COURT_CENTS } from '@/modules/billing/pricing'
+import { CourtCountQuoteRequiredError, InvalidPlusPriceError } from '@/modules/billing/pricing'
 import { disablePlus, enablePlus } from '@/modules/billing/plus.service'
 import {
   cancelSubscriptionInputSchema,
@@ -45,12 +45,14 @@ import {
   updateSettingsInputSchema,
 } from '@/modules/super-admin/support.schema'
 import {
+  applyCurrentCatalogPrice,
   cancelSubscriptionForSupport,
   changeBilledCourtsForSupport,
   extendTrial,
   forceTenantStatus,
   PlanAlreadyAssignedError,
   reactivateTenant,
+  saveLargeComplexQuote,
   TenantNotFoundError,
   TrialNotActiveError,
   updateTenantMarketplaceVisibility,
@@ -84,6 +86,7 @@ function revalidateTenantPaths(tenantId: string): void {
 }
 
 function mapKnownError(err: unknown): SupportActionResult {
+  if (err instanceof CourtCountQuoteRequiredError) return { success: false, error: err.message }
   if (err instanceof InvalidTransitionError) {
     return {
       success: false,
@@ -227,6 +230,56 @@ export async function changeBilledCourtsAction(input: unknown): Promise<SupportA
     )
     revalidateTenantPaths(parsed.data.tenantId)
     return { success: true, message: 'Canchas facturadas corregidas, sin cobro.' }
+  } catch (err) {
+    return mapKnownError(err)
+  }
+}
+
+export async function applyCurrentCatalogPriceAction(input: unknown): Promise<SupportActionResult> {
+  const auth = await requireSystemAdminAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const parsed = z
+    .object({ tenantId: uuid, amountCents: z.number().int().positive() })
+    .safeParse(input)
+  if (!parsed.success) return { success: false, error: 'Datos de cuota inválidos.' }
+
+  try {
+    const { tenantId, amountCents } = parsed.data
+    const error = await applyCurrentCatalogPrice(
+      tenantId,
+      auth.admin.id,
+      amountCents,
+      getBillingGateway(),
+    )
+    if (error) return { success: false, error }
+    revalidateTenantPaths(tenantId)
+    return { success: true, message: 'Tarifa de lista aplicada a los próximos cobros.' }
+  } catch (err) {
+    return mapKnownError(err)
+  }
+}
+
+export async function saveLargeComplexQuoteAction(input: unknown): Promise<SupportActionResult> {
+  const auth = await requireSystemAdminAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const parsed = z
+    .object({
+      tenantId: uuid,
+      monthlyCents: z
+        .number()
+        .int()
+        .positive()
+        .max(Math.floor(2_147_483_647 / 12)),
+    })
+    .safeParse(input)
+  if (!parsed.success) return { success: false, error: 'Ingresá un importe mensual válido.' }
+
+  try {
+    const { tenantId, monthlyCents } = parsed.data
+    const error = await saveLargeComplexQuote(tenantId, monthlyCents, auth.admin.id)
+    if (error) return { success: false, error }
+    revalidateTenantPaths(tenantId)
+    return { success: true, message: 'Cotización guardada para el checkout del dueño.' }
   } catch (err) {
     return mapKnownError(err)
   }
@@ -489,7 +542,7 @@ export async function setTenantPlusAction(
       } else {
         message =
           price === null
-            ? `Plus prendido: el próximo débito suma ${formatArs(PLUS_LIST_PER_COURT_CENTS)} por cancha (lista).`
+            ? 'Asistente activado a precio de lista. Revisá el próximo importe en Suscripción.'
             : `Plus prendido: el próximo débito suma ${formatArs(price)} por cancha.`
       }
     } else {

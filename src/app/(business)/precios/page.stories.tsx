@@ -1,17 +1,25 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
+import { catalogPricing, COURT_COUNT_PRICE_SLUG } from '@/modules/billing/pricing'
 import BusinessLayout from '../layout'
-import PreciosPage from './page'
+import { PreciosView } from './PreciosView'
+import { UNIFORM_PRICING } from './plans-data'
 
 /**
- * Página estática (sin fetch/auth) — compone PlanSelector y CalculadoraClavo
- * ('use client', ya storyadas por separado), un FAQ con `<details>` nativo y
- * JSON-LD estático. Sigue el tema del visitante (portal de vidrio). Montamos el
- * `BusinessLayout` real, no una copia.
+ * La vista recibe el catálogo resuelto por la página. Monta el layout real
+ * sin abrir una conexión a Postgres en el navegador de Storybook.
  */
 const meta = {
   title: 'Public/Precios',
-  component: PreciosPage,
+  component: PreciosView,
+  args: {
+    pricing: catalogPricing({
+      slug: COURT_COUNT_PRICE_SLUG,
+      priceFirstCourtCents: null,
+      priceExtraCourtCents: null,
+      annualDiscountBps: null,
+    }),
+  },
   parameters: { layout: 'fullscreen', backgrounds: { disable: true } },
   decorators: [
     (Story) => (
@@ -20,7 +28,7 @@ const meta = {
       </BusinessLayout>
     ),
   ],
-} satisfies Meta<typeof PreciosPage>
+} satisfies Meta<typeof PreciosView>
 
 export default meta
 type Story = StoryObj<typeof meta>
@@ -29,9 +37,23 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent(
-      /lo que te deja un turno/i,
+      /un precio para tu complejo/i,
     )
-    // Los tres planes por nombre de función (freemium 2026-11-08).
+    const courts = canvas.getByRole('group', { name: /cuántos partidos/i })
+    courts.scrollIntoView()
+    await userEvent.click(within(courts).getByRole('button', { name: /^5$/ }))
+    await expect(canvas.getByText(/110\.000 por mes/)).toBeInTheDocument()
+    await userEvent.click(canvas.getByText(/Anual.*20%/))
+    await expect(canvas.getByText(/1\.056\.000 por año/)).toBeInTheDocument()
+    await userEvent.click(within(courts).getByRole('button', { name: /^8\+$/ }))
+    await expect(canvas.getByRole('link', { name: 'Pedir cotización' })).toBeInTheDocument()
+  },
+}
+
+export const AntesDeActivarElCatalogo: Story = {
+  args: { pricing: UNIFORM_PRICING },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
     await expect(canvas.getByRole('heading', { name: 'Completo' })).toBeInTheDocument()
     await expect(canvas.getByRole('heading', { name: 'Gratis' })).toBeInTheDocument()
     await expect(canvas.getByRole('heading', { name: 'Completo + WhatsApp' })).toBeInTheDocument()

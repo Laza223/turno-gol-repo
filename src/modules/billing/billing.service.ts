@@ -770,7 +770,9 @@ export async function subscribe(
   // que haya que deshacer, así que no hacía falta serializarlo.
   const lockedSub = await loadSubForUpdate(tenantId, tx)
   if (!lockedSub) throw new SubscriptionNotFoundError(tenantId)
-  if (lockedSub.plan_id !== sub.plan_id) {
+  // Otra activación puede haber guardado el mismo catálogo mientras esperábamos
+  // el lock. Una cotización distinta sí invalida el cálculo de este pedido.
+  if (lockedSub.plan_id !== sub.plan_id && lockedSub.plan_id !== planId) {
     throw new ReactivateNotAllowedError(tenantId, 'pricing_changed')
   }
   if (lockedSub.status !== 'trialing') {
@@ -1221,7 +1223,7 @@ export async function reactivate(
   // Estado fresco: puede haber cambiado desde la lectura sin lock de arriba.
   const lockedSub = await loadSubForUpdate(tenantId, tx)
   if (!lockedSub) throw new SubscriptionNotFoundError(tenantId)
-  if (lockedSub.plan_id !== sub.plan_id) {
+  if (lockedSub.plan_id !== sub.plan_id && lockedSub.plan_id !== planId) {
     throw new ReactivateNotAllowedError(tenantId, 'pricing_changed')
   }
   if (!allowed.includes(lockedSub.status)) {

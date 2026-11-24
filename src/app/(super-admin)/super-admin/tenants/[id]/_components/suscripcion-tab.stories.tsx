@@ -51,7 +51,7 @@ export const ConPlusFacturado: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/Plus: 2 canchas × .*15\.000/)).toBeInTheDocument()
+    await expect(canvas.getByText(/Plus: .*30\.000 por mes/)).toBeInTheDocument()
     await expect(canvas.getByText(/90\.000/)).toBeInTheDocument()
   },
 }

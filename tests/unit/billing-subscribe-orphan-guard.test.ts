@@ -26,6 +26,7 @@ function makeSubRow(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     status: 'trialing',
     plan_id: 'plan-old',
+    plan_slug: 'turnogol',
     billing_cycle: 'monthly',
     plus_enabled: false,
     plus_price_per_court_cents: null,
@@ -77,14 +78,14 @@ const ownerRow = { tenantName: 'Club Norte', ownerName: 'Marcelo', ownerEmail: '
  * UPDATE final. `insertSystemAuditLog` está mockeado a nivel de módulo
  * (arriba) y no pasa por `tx.execute`.
  */
-function makeTx(subRow: ReturnType<typeof makeSubRow>) {
+function makeTx(subRow: ReturnType<typeof makeSubRow>, lockedRow = subRow, selectedPlan = planRow) {
   const execute = vi
     .fn()
     .mockResolvedValueOnce([subRow]) // loadSub (sin lock)
-    .mockResolvedValueOnce([planRow]) // loadActivePlan
+    .mockResolvedValueOnce([selectedPlan]) // loadCheckoutPlan
     .mockResolvedValueOnce([{ n: 0 }]) // countOnlineCourts
     .mockResolvedValueOnce([ownerRow]) // loadTenantOwner
-    .mockResolvedValueOnce([subRow]) // loadSubForUpdate
+    .mockResolvedValueOnce([lockedRow]) // loadSubForUpdate
     .mockResolvedValueOnce([]) // UPDATE tenant_subscriptions
   return { execute } as unknown as DbTx
 }
@@ -128,6 +129,27 @@ describe('subscribe — cancela el preapproval viejo antes de crear el nuevo (Fi
 
     expect(gateway.cancelPreapprovalCalls).toHaveLength(0)
     expect(gateway.preapprovalCalls).toHaveLength(1)
+  })
+
+  it('si se reemplazó la cotización antes de tomar el lock, descarta el importe anterior', async () => {
+    const original = makeSubRow({
+      plan_id: 'quote-old',
+      plan_slug: 'turnogol-cotizacion-8-old',
+    })
+    const revised = makeSubRow({
+      plan_id: 'quote-new',
+      plan_slug: 'turnogol-cotizacion-8-new',
+    })
+    const tx = makeTx(original, revised, {
+      ...planRow,
+      id: original.plan_id,
+      slug: original.plan_slug,
+    })
+    const gateway = new MockGateway()
+
+    await expect(subscribe(TENANT_ID, 8, 'monthly', gateway, tx)).rejects.toThrow('pricing_changed')
+    expect(gateway.cancelPreapprovalCalls).toHaveLength(0)
+    expect(gateway.preapprovalCalls).toHaveLength(0)
   })
 
   it('si cancelar el viejo devuelve "ya estaba cancelado en MP", tolera y sigue creando el nuevo', async () => {

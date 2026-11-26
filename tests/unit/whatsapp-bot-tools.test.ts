@@ -285,6 +285,7 @@ describe('reservar — confirmación estricta y contexto cerrado', () => {
     )
     expect(JSON.parse(out)).toMatchObject({
       estado: 'confirmada',
+      link_para_reservar: 'https://app.test/el-complejo',
     })
     expect(JSON.parse(out)).not.toHaveProperty('pago')
   })
@@ -650,7 +651,8 @@ describe('reservar — aviso push al admin', () => {
       initPoint: 'https://mp.test/checkout/abc',
       expiresAt: new Date(Date.now() + 270_000),
     })
-    await runContinue(toolNamed(makeContext(), 'reservar'), validBooking)
+    const out = JSON.parse(await runContinue(toolNamed(makeContext(), 'reservar'), validBooking))
+    expect(out).not.toHaveProperty('link_para_reservar')
     expect(mocks.notifyAdminBookingConfirmed).not.toHaveBeenCalled()
   })
 
@@ -1249,27 +1251,31 @@ describe('ver_disponibilidad', () => {
   })
 
   describe('resultado', () => {
-    it('lista solo los turnos libres, con su precio formateado', async () => {
+    it('lista solo los horarios libres en formato compacto (sin repetir precios)', async () => {
       const out = JSON.parse(
         await runContinue(toolNamed(makeContext(), 'ver_disponibilidad'), { fecha: '2026-10-25' }),
       )
-      expect(out.canchas).toHaveLength(1)
-      expect(out.canchas[0]).toEqual({
-        nombre: 'Cancha 1',
-        formato: 'fútbol 5',
-        turnos_libres: expect.any(Array),
-      })
-      expect(out.canchas[0].turnos_libres).toEqual([
-        { hora: '20:00', precio: expect.stringMatching(/12\.000/) },
+      expect(out.canchas).toEqual([
+        {
+          nombre: 'Cancha 1',
+          formato: 'fútbol 5',
+          horas_libres: ['20:00'],
+        },
       ])
     })
 
-    it('con hidePrices los turnos no llevan precio', async () => {
+    it('con hidePrices devuelve la misma forma compacta sin precios', async () => {
       const ctx = makeContext({ tenant: makeTenant({ hidePrices: true }) })
       const out = JSON.parse(
         await runContinue(toolNamed(ctx, 'ver_disponibilidad'), { fecha: '2026-10-25' }),
       )
-      expect(out.canchas[0].turnos_libres).toEqual([{ hora: '20:00' }])
+      expect(out.canchas).toEqual([
+        {
+          nombre: 'Cancha 1',
+          formato: 'fútbol 5',
+          horas_libres: ['20:00'],
+        },
+      ])
     })
 
     it('día en la lista de cerrados → cerrado: true sin consultar disponibilidad', async () => {
@@ -1330,11 +1336,12 @@ describe('ver_disponibilidad', () => {
       const out = JSON.parse(
         await runContinue(toolNamed(ctx, 'ver_disponibilidad'), { fecha: '2026-10-25' }),
       )
-      expect(out.canchas[0].turnos_libres).toEqual([
-        { hora: '23:00', precio: expect.any(String) },
-        { hora: '00:00', precio: expect.any(String), madrugada_del_dia_siguiente: true },
-        { hora: '01:00', precio: expect.any(String), madrugada_del_dia_siguiente: true },
-      ])
+      expect(out.canchas[0]).toEqual({
+        nombre: 'Cancha 1',
+        formato: 'fútbol 5',
+        horas_libres: ['23:00'],
+        madrugada_del_dia_siguiente: ['00:00', '01:00'],
+      })
     })
 
     it('sin closesNextDay nunca marca madrugada', async () => {

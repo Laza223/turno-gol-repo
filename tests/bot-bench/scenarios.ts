@@ -874,7 +874,7 @@ export const SCENARIOS: Scenario[] = [
   {
     id: 'chat-equivocado-personal',
     tags: ['limites', 'lenguaje'],
-    opening: [{ text: 'Che Zurdo, cómo andás? Te sumas el sábado al mediodía en Lo de Tito?' }],
+    opening: [{ text: 'Che Carlos, cómo andás? Te sumas el sábado al mediodía en otro club?' }],
     persona: {
       nombre: 'Fede',
       estilo: RELAXED,

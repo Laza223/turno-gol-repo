@@ -323,3 +323,24 @@ export class FreeOnlinePausedError extends Error {
     this.name = 'FreeOnlinePausedError'
   }
 }
+
+export type WhatsappRescheduleBlockReason =
+  | 'not_found'
+  | 'deposit_pending'
+  | 'deposit_paid'
+  | 'not_supported'
+  | 'already_started'
+  | 'too_close'
+  | 'reschedule_limit'
+  | 'same_slot'
+
+export class WhatsappRescheduleBlockedError extends Error {
+  constructor(
+    public readonly bookingId: string | null,
+    public readonly reason: WhatsappRescheduleBlockReason,
+    public readonly hoursRequired?: number,
+  ) {
+    super(`WhatsApp booking ${bookingId ?? '(none)'} cannot be rescheduled: ${reason}`)
+    this.name = 'WhatsappRescheduleBlockedError'
+  }
+}

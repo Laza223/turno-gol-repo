@@ -14,7 +14,7 @@ export default function PrivacidadPage() {
         <div className="ar-col">
           <header>
             <h1 className="ar-h1">Política de Privacidad</h1>
-            <p className="ar-sub">Última actualización: 17 de noviembre de 2026.</p>
+            <p className="ar-sub">Última actualización: 26 de noviembre de 2026.</p>
           </header>
           <div className="ar-prose glass-painted">
             <section className="grid gap-4">
@@ -79,7 +79,7 @@ export default function PrivacidadPage() {
                 Si le escribís al <strong>asistente de WhatsApp</strong> de un complejo que lo
                 tiene, guardamos tu número, el nombre de tu perfil de WhatsApp y los mensajes de esa
                 conversación (los audios, como texto transcripto) para contestarte y gestionar tu
-                reserva. El asistente se presenta como tal: es un programa, no una persona.
+                reserva.
               </p>
               <p>
                 <strong>Nunca recolectamos</strong> números de tarjeta de crédito, CVV ni
@@ -152,9 +152,10 @@ export default function PrivacidadPage() {
                   endpoints.
                 </li>
                 <li>
-                  <strong>Anthropic</strong> (Estados Unidos): el modelo de IA que redacta las
-                  respuestas del asistente de WhatsApp. Recibe los mensajes de la conversación y los
-                  datos públicos del complejo.
+                  <strong>OpenAI</strong> (Estados Unidos): el modelo de IA que redacta las
+                  respuestas del asistente de WhatsApp. Recibe los mensajes de la conversación, los
+                  datos públicos del complejo y los turnos vigentes asociados al número dentro de
+                  ese complejo.
                 </li>
                 <li>
                   <strong>Kapso</strong> (Estados Unidos): conexión con la API de WhatsApp de Meta

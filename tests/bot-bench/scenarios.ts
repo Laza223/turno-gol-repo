@@ -135,6 +135,15 @@ function replyAvoids(st: FinalState, label: string, re: RegExp): Check {
   return { name: `la respuesta no ${label}`, ok: m === null, detail: m?.[0] }
 }
 
+function endedSilent(st: FinalState): Check {
+  const hasSilentTurn = st.turns.some((t) => t.outcome === 'silent' && t.reply === null)
+  return {
+    name: 'cerró en silencio (sin mandar mensaje)',
+    ok: hasSilentTurn,
+    detail: st.turns.map((t) => `${t.outcome}:${t.reply ?? 'null'}`).join(' | '),
+  }
+}
+
 /** Precios del complejo de prueba (en pesos) y sus señas del 30 %. */
 const PRICES = [25_000, 28_000, 32_000, 35_000, 40_000, 50_000]
 const DEPOSITS = PRICES.map((p) => p * 0.3)
@@ -181,6 +190,8 @@ export function commonChecks(st: FinalState): Check[] {
 const d1 = day(1)
 const d2 = day(2)
 const d3 = day(3)
+// El domingo cierra a las 22:00 (sin turno a las 22); evitamos que `cambia-de-opinion` caiga en domingo.
+const d3Open22 = d3.weekday === 'domingo' ? day(4) : d3
 const d4 = day(4)
 const d10 = day(10)
 const thu = nextThursday()
@@ -224,7 +235,7 @@ export const SCENARIOS: Scenario[] = [
       objetivo: `Reservar la cancha de fútbol 7 el ${d2.weekday} ${d2.ddmm} a las 20, a nombre de Lucas Pérez (lo das cuando te lo piden). Confirmás cuando te pregunten. Cuando te manden el link de pago, decí "listo, pago ahora" y terminá.`,
     },
     esperado:
-      'Reserva la Cancha 3 ($50.000) el día pedido a las 20 tras confirmar, manda el link de pago de la seña ($15.000, el 30 %) en su propia línea y avisa que tiene 6 minutos para pagarla o el turno se libera.',
+      'Reserva la Cancha 3 ($50.000) el día pedido a las 20 tras confirmar, manda el link de pago de la seña ($15.000, el 30 %) en su propia línea y avisa cuántos minutos tiene para pagarla o el turno se libera.',
     checks: (st) => [
       booked(
         st,
@@ -238,7 +249,7 @@ export const SCENARIOS: Scenario[] = [
       ),
       replyMatches(st, 'trae el link de pago', /mock-mp\/checkout/),
       replyMatches(st, 'dice el monto de la seña', /15\.000/),
-      replyMatches(st, 'avisa los minutos para pagar', /\b6\s*min/i),
+      replyMatches(st, 'avisa los minutos para pagar', /\b[4-6]\s*min/i),
     ],
   },
   {
@@ -296,19 +307,19 @@ export const SCENARIOS: Scenario[] = [
   {
     id: 'cambia-de-opinion',
     tags: ['reservas'],
-    opening: [{ text: `tenes de 5 el ${d3.weekday} a las 21?` }],
+    opening: [{ text: `tenes de 5 el ${d3Open22.weekday} a las 21?` }],
     persona: {
       nombre: 'Ezequiel',
       estilo: RELAXED,
-      objetivo: `Primero pedís fútbol 5 el ${d3.weekday} a las 21. Apenas te ofrezcan o te pidan confirmar, cambiás de idea: "uh no, mejor a las 22". Reservás a las 22 a nombre de Ezequiel. Nunca a las 21.`,
+      objetivo: `Primero pedís fútbol 5 el ${d3Open22.weekday} a las 21. Apenas te ofrezcan o te pidan confirmar, cambiás de idea: "uh no, mejor a las 22". Reservás a las 22 a nombre de Ezequiel. Nunca a las 21.`,
     },
     esperado:
       'Se adapta al cambio: vuelve a mirar las 22, confirma esa hora y reserva solo a las 22, sin dejar ninguna reserva a las 21.',
     checks: (st) => [
       booked(
         st,
-        `de 5 el ${d3.date} a las 22 (y no a las 21)`,
-        (b) => b.date === d3.date && b.timeStart === '22:00' && b.format === 5,
+        `de 5 el ${d3Open22.date} a las 22 (y no a las 21)`,
+        (b) => b.date === d3Open22.date && b.timeStart === '22:00' && b.format === 5,
       ),
     ],
   },
@@ -459,9 +470,13 @@ export const SCENARIOS: Scenario[] = [
         'Saludaste. Cuando te contesten, preguntás a qué hora abren y cierran el domingo. Con la respuesta, agradecés y terminás.',
     },
     esperado:
-      'Se presenta en una línea como el asistente virtual del complejo y ofrece ayuda. Después dice que el domingo abre de 10 a 22.',
+      'Saluda con calidez en una línea presentándose en nombre del complejo (sin decir asistente virtual, bot ni IA) y pregunta qué busca. Después informa que el domingo abre de 10 a 22.',
     checks: (st) => [
-      replyMatches(st, 'se presenta como asistente', /asistente/i),
+      replyAvoids(
+        st,
+        'revela que es bot/asistente',
+        /asistente virtual|soy un bot|inteligencia artificial/i,
+      ),
       replyMatches(st, 'dice el horario del domingo', /10[^\n]{0,40}22/),
       noBooking(st),
     ],
@@ -594,9 +609,10 @@ export const SCENARIOS: Scenario[] = [
       objetivo: 'Solo querés esas tres respuestas. Con eso agradecés y terminás.',
     },
     esperado:
-      'Confirma estacionamiento y duchas. Sobre la tarjeta, dice que en el complejo se paga en efectivo o transferencia (no afirma que aceptan tarjeta) u ofrece consultarlo.',
+      'Confirma estacionamiento y duchas. Sobre la tarjeta, dice que en el complejo se paga en efectivo o transferencia, aclara que tarjeta no lo puede confirmar y ofrece consultarlo con el encargado (sin inventar ni pausar el chat antes de que el jugador acepte).',
     checks: (st) => [
       replyMatches(st, 'habla de efectivo o transferencia', /efectivo|transferencia/i),
+      notHandedOff(st),
     ],
   },
 
@@ -674,7 +690,7 @@ export const SCENARIOS: Scenario[] = [
         'Querés saber si se suspende por lluvia. Cuando te digan que te contesta alguien, agradecés y terminás.',
     },
     esperado:
-      'Pasa la conversación a una persona del complejo (motivo lluvia) y le avisa que en un rato le contesta alguien. No decide él si se juega.',
+      'Pasa la conversación a una persona del complejo (motivo lluvia) y avisa el pase sin prometer un plazo. No decide él si se juega.',
     checks: (st) => [handedOff(st, 'handoff_weather'), noBooking(st)],
   },
   {
@@ -691,7 +707,7 @@ export const SCENARIOS: Scenario[] = [
       objetivo: 'Querés que te atienda una persona. Cuando te lo aseguren, terminás.',
     },
     esperado:
-      'Se disculpa con empatía, pasa la conversación a una persona (motivo reclamo) y avisa que lo contactan en un rato.',
+      'Se disculpa con empatía, pasa la conversación a una persona (motivo reclamo) y avisa el pase sin prometer un plazo.',
     checks: (st) => [handedOff(st, 'handoff_complaint')],
   },
   {
@@ -709,7 +725,7 @@ export const SCENARIOS: Scenario[] = [
         'Querés organizar un cumpleaños. Cuando te digan que te contacta alguien, agradecés y terminás.',
     },
     esperado:
-      'Pasa la conversación a una persona del complejo (motivo evento) porque los cumpleaños los organiza el complejo, y avisa que le contestan en un rato.',
+      'Pasa la conversación a una persona del complejo (motivo evento) porque los cumpleaños los organiza el complejo, y avisa el pase sin prometer un plazo.',
     checks: (st) => [handedOff(st, 'handoff_event'), noBooking(st)],
   },
   {
@@ -738,8 +754,157 @@ export const SCENARIOS: Scenario[] = [
       objetivo: 'Querés hablar con una persona. Cuando te lo aseguren, terminás.',
     },
     esperado:
-      'Sin discutir, pasa la conversación a una persona y avisa que en un rato le contesta alguien del complejo.',
+      'Sin discutir ni admitir ser un bot, pasa la conversación a una persona y avisa en una línea natural que ya lo ve el encargado.',
     checks: (st) => [handedOff(st, 'handoff_other')],
+  },
+
+  // ── Reglas críticas y casos reales de producción ──────────────────────────
+  {
+    id: 'cambio-cancha',
+    tags: ['reglas', 'reservas'],
+    setup: async (s, chatId) => {
+      await occupySlot(s, { courtName: 'Cancha 2', date: d2.date, timeStart: '21:00', chatId })
+    },
+    opening: [
+      {
+        text: `hola, tengo la Cancha 2 el ${d2.weekday} a las 21, me la cambiás a la Cancha 1 (techada)?`,
+      },
+    ],
+    persona: {
+      nombre: 'Marcos',
+      estilo: RELAXED,
+      objetivo:
+        'Querés cambiar tu turno existente de Cancha 2 a Cancha 1 el mismo día y hora. Cuando te confirmen si está libre y el precio y te pidan el ok, decís "dale, cambiala" y después agradecés. No saques un turno nuevo aparte.',
+    },
+    esperado:
+      'Consulta disponibilidad con ver_disponibilidad, avisa si cambia el precio, espera confirmación y mueve la reserva con reprogramar sin cancelar+reservar ni derivar.',
+    checks: (st) => [
+      called(st, 'ver_disponibilidad'),
+      called(st, 'reprogramar'),
+      notCalled(st, 'cancelar'),
+      notCalled(st, 'reservar'),
+      notHandedOff(st),
+      {
+        name: 'reprogramó la reserva original a Cancha 1 sin duplicar',
+        ok:
+          st.bookings.length === 1 &&
+          st.bookings[0]?.court === 'Cancha 1' &&
+          st.bookings[0]?.date === d2.date &&
+          st.bookings[0]?.timeStart === '21:00' &&
+          st.bookings[0]?.status === 'confirmed',
+      },
+    ],
+  },
+  {
+    id: 'cierre-silencio',
+    tags: ['silencio'],
+    opening: [{ text: `tenes cancha de 5 para el ${d3.weekday} a las 20?` }],
+    persona: {
+      nombre: 'Esteban',
+      estilo: RELAXED,
+      objetivo:
+        'Solo preguntabas si había lugar. Apenas te contesten con opciones, respondés "dale gracias, nos vemos!" y seguís esperando sin terminar hasta ver si contestan.',
+    },
+    maxUserTurns: 3,
+    esperado:
+      'Informa los turnos libres del día y, cuando el jugador responde solo "dale gracias, nos vemos!", llama a no_responder y guarda silencio sin mandar otro mensaje.',
+    checks: (st) => [called(st, 'no_responder'), endedSilent(st), noBooking(st)],
+  },
+  {
+    id: 'cancelar-chat-2-pasos',
+    tags: ['cancelacion'],
+    setup: async (s, chatId) => {
+      await occupySlot(s, { courtName: 'Cancha 1', date: d3.date, timeStart: '21:00', chatId })
+    },
+    opening: [
+      {
+        text: `hola, necesito cancelar la Cancha 1 que saqué para el ${d3.weekday} a las 21`,
+      },
+    ],
+    persona: {
+      nombre: 'Lucas',
+      estilo: RELAXED,
+      objetivo: `Querés cancelar tu reserva de Cancha 1 del ${d3.weekday} a las 21. Cuando te digan la consecuencia y te pidan confirmar, decís "sí, cancelala" y después agradecés.`,
+    },
+    esperado:
+      'Primero llama a cancelar con confirmar: false para informar si tiene costo/penalidad, espera el sí del jugador y recién llama con confirmar: true.',
+    checks: (st) => [
+      called(st, 'cancelar'),
+      {
+        name: 'la reserva quedó cancelada en la base',
+        ok: st.bookings.every((b) => b.status.startsWith('canceled')),
+      },
+      notHandedOff(st),
+    ],
+  },
+  {
+    id: 'cancelar-otro-telefono',
+    tags: ['reglas', 'humano'],
+    setup: async (s) => {
+      // Reserva cargada por mostrador con el mismo teléfono del jugador (sin chatId).
+      await occupySlot(s, { courtName: 'Cancha 3', date: d2.date, timeStart: '20:00' })
+    },
+    opening: [
+      { text: `che tengo reservada la de 7 el ${d2.weekday} a las 20, la quiero dar de baja` },
+    ],
+    persona: {
+      nombre: 'Gastón',
+      estilo: RELAXED,
+      objetivo:
+        'Querés cancelar tu turno de Cancha 3 que sacaste en el complejo. Si te dicen que lo ve el encargado y te responden por acá, agradecés y terminás.',
+    },
+    esperado:
+      'Reconoce que el turno figura en "Otros turnos de este teléfono" y pasa la conversación a una persona sin inventar que no existe.',
+    checks: (st) => [handedOff(st, 'handoff_other')],
+  },
+  {
+    id: 'jerga-ambigua',
+    tags: ['lenguaje'],
+    opening: [{ text: 'hola, tenés la grande el domingo a la tarde?' }],
+    persona: {
+      nombre: 'Iván',
+      estilo: RELAXED,
+      objetivo:
+        'Escribiste algo ambiguo sin hora ni formato exacto. Si te preguntan qué día, horario y formato buscás, recién ahí aclarás que querés fútbol 7 el próximo domingo a las 19 y terminás sin reservar.',
+    },
+    esperado:
+      'No adivina la hora ni cuál domingo: repregunta en 1 línea concreta qué domingo, hora y si busca fútbol 5 o 7.',
+    checks: (st) => [noBooking(st), notCalled(st, 'reservar')],
+  },
+  {
+    id: 'chat-equivocado-personal',
+    tags: ['limites', 'lenguaje'],
+    opening: [{ text: 'Che Zurdo, cómo andás? Te sumas el sábado al mediodía en Lo de Tito?' }],
+    persona: {
+      nombre: 'Fede',
+      estilo: RELAXED,
+      objetivo:
+        'Le escribiste a un amigo pensando que era su chat personal para jugar en otro complejo. Si el complejo te pregunta amablemente si buscabas turno acá o le erraste de chat, decís "ah perdón, le erré de chat!" y terminás sin reservar.',
+    },
+    esperado:
+      'No se pone a la defensiva ni corta en seco: pregunta amable mencionando el nombre del complejo si buscaba turno o info ahí o si se confundió de chat, y al confirmar que se equivocó se despide cordial sin derivar ni reservar.',
+    checks: (st) => [noBooking(st), notCalled(st, 'reservar'), notHandedOff(st)],
+  },
+  {
+    id: 'finde-resolutivo',
+    tags: ['lenguaje', 'agenda'],
+    opening: [{ text: 'buenas, tenés algo libre para el finde a la noche? somos 10' }],
+    persona: {
+      nombre: 'Mateo',
+      estilo: RELAXED,
+      objetivo:
+        'Buscás fútbol 5 viernes, sábado o domingo a la noche. Cuando te pasen opciones reales, elegís la primera techada que te ofrezcan a nombre de Mateo y confirmás.',
+    },
+    esperado:
+      'Entiende que "somos 10" es fútbol 5 y "el finde" abarca los días del fin de semana disponibles, consulta con ver_disponibilidad en paralelo, ofrece opciones nocturnas concretas y reserva la elegida.',
+    checks: (st) => [
+      called(st, 'ver_disponibilidad'),
+      booked(
+        st,
+        'un turno de F5 a la noche del finde',
+        (b) => b.format === 5 && b.timeStart >= '18:00',
+      ),
+    ],
   },
 ]
 

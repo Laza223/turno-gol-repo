@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   withTenantContext: vi.fn(),
   getDb: vi.fn(),
   createWhatsappBooking: vi.fn(),
+  rescheduleWhatsappBooking: vi.fn(),
   cancelByGuest: vi.fn(),
   findChatBookingForCancel: vi.fn(),
   guestLateCancelStatus: vi.fn(),
@@ -15,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   notifyAdminPush: vi.fn(),
   notifyAdminBookingConfirmed: vi.fn(),
   notifyAdminBookingCanceled: vi.fn(),
+  sendWhatsappTemplate: vi.fn(),
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
@@ -23,8 +25,13 @@ vi.mock('@/shared/db/client', () => ({
   withTenantContext: mocks.withTenantContext,
 }))
 vi.mock('@/shared/lib/logger', () => ({ logger: mocks.logger }))
+vi.mock('@/lib/kapso/client', () => ({
+  sendWhatsappText: vi.fn(),
+  sendWhatsappTemplate: mocks.sendWhatsappTemplate,
+}))
 vi.mock('@/modules/bookings/booking.whatsapp', () => ({
   createWhatsappBooking: mocks.createWhatsappBooking,
+  rescheduleWhatsappBooking: mocks.rescheduleWhatsappBooking,
 }))
 vi.mock('@/modules/bookings/booking.cancellation', () => ({
   cancelByGuest: mocks.cancelByGuest,
@@ -68,6 +75,7 @@ import {
   SlotTakenError,
   TenantInactiveError,
   TooManyWhatsappBookingsError,
+  WhatsappRescheduleBlockedError,
 } from '@/modules/bookings/booking.errors'
 import type { PublicTenant } from '@/modules/tenants/public.service'
 
@@ -130,6 +138,9 @@ function makeContext(overrides: Partial<ToolContext> = {}): ToolContext {
     tenant: makeTenant(),
     chatId: CHAT_ID,
     waPhone: WA_PHONE,
+    contactDisplayName: null,
+    phoneNumberId: 'pn-complex-1',
+    ownerAlertPhone: null,
     now: NOW,
     phoneBookings: [],
     ...overrides,
@@ -142,6 +153,12 @@ function toolNamed(ctx: ToolContext, name: string): BotTool {
   return tool
 }
 
+async function runContinue(tool: BotTool, input: unknown): Promise<string> {
+  const res = await tool.run(input)
+  expect(res.kind).toBe('continue')
+  return res.output
+}
+
 /** Corre la tool y devuelve lo que pasó (resultado o error) sin tirar. */
 async function outcomeOf(tool: BotTool, input: unknown): Promise<unknown> {
   return tool.run(input).then(
@@ -150,8 +167,8 @@ async function outcomeOf(tool: BotTool, input: unknown): Promise<unknown> {
   )
 }
 
-// El tx es un centinela: lo único que se verifica es que llegue tal cual a createWhatsappBooking.
-const TX = { sentinel: 'tx' }
+const lockChat = vi.fn()
+const TX = { select: () => ({ from: () => ({ where: () => ({ for: lockChat }) }) }) }
 const setSpy = vi.fn()
 const updateSpy = vi.fn()
 const whereSpy = vi.fn()
@@ -161,6 +178,8 @@ let mpTokenRows: { mpAccessToken: string | null }[] = []
 
 beforeEach(() => {
   vi.resetAllMocks()
+  vi.unstubAllEnvs()
+  lockChat.mockResolvedValue([{ pausedUntil: null }])
   vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://app.test')
   mpTokenRows = [{ mpAccessToken: 'encrypted-token' }]
 
@@ -172,6 +191,7 @@ beforeEach(() => {
   }))
   mocks.notifyAdminPush.mockResolvedValue({ enqueued: 1 })
   mocks.resolveTenantGateway.mockReturnValue({ gateway: 'mock' })
+  mocks.sendWhatsappTemplate.mockResolvedValue({ waMessageId: 'wamid-template' })
 
   whereSpy.mockResolvedValue(undefined)
   setSpy.mockReturnValue({ where: whereSpy })
@@ -183,6 +203,7 @@ const validBooking = {
   fecha: '2026-10-25',
   hora: '21:00',
   nombre: 'Juan Pérez',
+  confirmado_por_jugador: true,
 }
 
 function bookingResult(overrides: Record<string, unknown> = {}) {
@@ -199,23 +220,25 @@ function bookingResult(overrides: Record<string, unknown> = {}) {
 }
 
 describe('buildBotTools', () => {
-  it('expone exactamente las cuatro herramientas, todas strict y sin propiedades extra', () => {
+  it('expone exactamente las seis herramientas, todas strict y sin propiedades extra', () => {
     const tools = buildBotTools(makeContext(), COURTS)
     expect(tools.map((t) => t.definition.name)).toEqual([
       'ver_disponibilidad',
       'reservar',
       'cancelar',
+      'reprogramar',
+      'no_responder',
       'pasar_a_humano',
     ])
     for (const { definition } of tools) {
       expect(definition.strict).toBe(true)
-      expect(definition.input_schema).toMatchObject({ additionalProperties: false })
+      expect(definition.parameters).toMatchObject({ additionalProperties: false })
     }
   })
 
   it('ninguna herramienta le deja al modelo elegir tenant, chat ni teléfono', () => {
     for (const { definition } of buildBotTools(makeContext(), COURTS)) {
-      const props = Object.keys((definition.input_schema as { properties: object }).properties)
+      const props = Object.keys((definition.parameters as { properties: object }).properties)
       for (const forbidden of ['tenant_id', 'chat_id', 'telefono', 'phone', 'wa_phone']) {
         expect(props).not.toContain(forbidden)
       }
@@ -223,10 +246,28 @@ describe('buildBotTools', () => {
   })
 })
 
-describe('reservar — tenant, chat y teléfono salen SIEMPRE del contexto', () => {
+describe('reservar — confirmación estricta y contexto cerrado', () => {
+  it('rechaza con falta_confirmacion_del_jugador cuando confirmado_por_jugador es false', async () => {
+    const reply = await runContinue(toolNamed(makeContext(), 'reservar'), {
+      ...validBooking,
+      confirmado_por_jugador: false,
+    })
+    expect(JSON.parse(reply)).toMatchObject({ error: 'falta_confirmacion_del_jugador' })
+    expect(mocks.createWhatsappBooking).not.toHaveBeenCalled()
+    expect(mocks.withTenantContext).not.toHaveBeenCalled()
+  })
+
+  it('con el chat pausado, ni crea la reserva ni inicia el cobro', async () => {
+    lockChat.mockResolvedValue([{ pausedUntil: new Date(Date.now() + 60_000) }])
+    const reply = await runContinue(toolNamed(makeContext(), 'reservar'), validBooking)
+    expect(JSON.parse(reply)).toEqual({ error: 'chat_pausado' })
+    expect(mocks.createWhatsappBooking).not.toHaveBeenCalled()
+    expect(mocks.createDepositPayment).not.toHaveBeenCalled()
+  })
+
   it('con input válido, llama a createWhatsappBooking con los datos del contexto', async () => {
     mocks.createWhatsappBooking.mockResolvedValue(bookingResult())
-    const out = await toolNamed(makeContext(), 'reservar').run(validBooking)
+    const out = await runContinue(toolNamed(makeContext(), 'reservar'), validBooking)
 
     expect(mocks.withTenantContext).toHaveBeenCalledWith(TENANT_ID, expect.any(Function))
     expect(mocks.createWhatsappBooking).toHaveBeenCalledTimes(1)
@@ -242,15 +283,18 @@ describe('reservar — tenant, chat y teléfono salen SIEMPRE del contexto', () 
       },
       TX,
     )
-    expect(JSON.parse(out as string)).toMatchObject({
+    expect(JSON.parse(out)).toMatchObject({
       estado: 'confirmada',
     })
-    expect(JSON.parse(out as string)).not.toHaveProperty('pago')
+    expect(JSON.parse(out)).not.toHaveProperty('pago')
   })
 
   it('el nombre se recorta (trim) antes de llegar a la reserva', async () => {
     mocks.createWhatsappBooking.mockResolvedValue(bookingResult())
-    await toolNamed(makeContext(), 'reservar').run({ ...validBooking, nombre: '   Juan   ' })
+    await runContinue(toolNamed(makeContext(), 'reservar'), {
+      ...validBooking,
+      nombre: '   Juan   ',
+    })
     expect(mocks.createWhatsappBooking.mock.calls[0]?.[1]).toMatchObject({ guestName: 'Juan' })
   })
 
@@ -283,8 +327,6 @@ describe('reservar — tenant, chat y teléfono salen SIEMPRE del contexto', () 
       chat_id: OTHER_CHAT_ID,
       telefono: '5490000000000',
     })
-    // Si alguna vez se relaja el `.strict()` del schema, esto sigue protegiendo:
-    // nada de lo que mandó el modelo puede aparecer en la llamada a la reserva.
     for (const call of mocks.createWhatsappBooking.mock.calls) {
       const serialized = JSON.stringify(call)
       expect(serialized).not.toContain(OTHER_TENANT_ID)
@@ -298,10 +340,10 @@ describe('reservar — tenant, chat y teléfono salen SIEMPRE del contexto', () 
 
   it('usa el teléfono y el chat del contexto de CADA turno (no cachea entre contextos)', async () => {
     mocks.createWhatsappBooking.mockResolvedValue(bookingResult())
-    await toolNamed(
-      makeContext({ chatId: OTHER_CHAT_ID, waPhone: '5491100000001' }),
-      'reservar',
-    ).run(validBooking)
+    await runContinue(
+      toolNamed(makeContext({ chatId: OTHER_CHAT_ID, waPhone: '5491100000001' }), 'reservar'),
+      validBooking,
+    )
     expect(mocks.createWhatsappBooking.mock.calls[0]?.[1]).toMatchObject({
       chatId: OTHER_CHAT_ID,
       guestPhone: '5491100000001',
@@ -327,8 +369,18 @@ describe('reservar — input inválido → ToolInputError (vuelve al modelo, no 
     ['nombre de una letra', { ...validBooking, nombre: 'J' }],
     ['nombre solo espacios', { ...validBooking, nombre: '     ' }],
     ['nombre de 81 caracteres', { ...validBooking, nombre: 'a'.repeat(81) }],
-    ['sin nombre', { cancha: 'Cancha 1', fecha: '2026-10-25', hora: '21:00' }],
-    ['sin cancha', { fecha: '2026-10-25', hora: '21:00', nombre: 'Juan' }],
+    [
+      'sin nombre',
+      { cancha: 'Cancha 1', fecha: '2026-10-25', hora: '21:00', confirmado_por_jugador: true },
+    ],
+    [
+      'sin cancha',
+      { fecha: '2026-10-25', hora: '21:00', nombre: 'Juan', confirmado_por_jugador: true },
+    ],
+    [
+      'sin confirmado_por_jugador',
+      { cancha: 'Cancha 1', fecha: '2026-10-25', hora: '21:00', nombre: 'Juan' },
+    ],
     ['input null', null],
     ['input string', 'reservar cancha 1'],
     ['input array', []],
@@ -355,7 +407,7 @@ describe('reservar — la cancha va por nombre y la resuelve el servidor', () =>
     ['con espacios de más', '  Cancha   1 '],
   ])('%s → reserva la cancha del complejo con su id', async (_name, cancha) => {
     mocks.createWhatsappBooking.mockResolvedValue(bookingResult())
-    await toolNamed(makeContext(), 'reservar').run({ ...validBooking, cancha })
+    await runContinue(toolNamed(makeContext(), 'reservar'), { ...validBooking, cancha })
     expect(mocks.createWhatsappBooking).toHaveBeenCalledWith(
       TENANT_ID,
       expect.objectContaining({ courtId: COURT_ID }),
@@ -367,7 +419,7 @@ describe('reservar — la cancha va por nombre y la resuelve el servidor', () =>
     mocks.createWhatsappBooking.mockResolvedValue(bookingResult())
     const courts = [{ id: COURT_ID, name: 'Cancha Ñandú' }]
     const tool = buildBotTools(makeContext(), courts).find((t) => t.definition.name === 'reservar')!
-    await tool.run({ ...validBooking, cancha: 'cancha ñandu' })
+    await runContinue(tool, { ...validBooking, cancha: 'cancha ñandu' })
     expect(mocks.createWhatsappBooking).toHaveBeenCalledWith(
       TENANT_ID,
       expect.objectContaining({ courtId: COURT_ID }),
@@ -381,7 +433,7 @@ describe('reservar — la cancha va por nombre y la resuelve el servidor', () =>
     ['inyección SQL', `Cancha 1'; DROP TABLE bookings;--`],
   ])('%s → cancha_inexistente con la lista, sin reservar', async (_name, cancha) => {
     const out = JSON.parse(
-      await toolNamed(makeContext(), 'reservar').run({ ...validBooking, cancha }),
+      await runContinue(toolNamed(makeContext(), 'reservar'), { ...validBooking, cancha }),
     )
     expect(out).toEqual({ error: 'cancha_inexistente', canchas: ['Cancha 1'] })
     expect(mocks.createWhatsappBooking).not.toHaveBeenCalled()
@@ -393,7 +445,7 @@ describe('reservar — la cancha va por nombre y la resuelve el servidor', () =>
       { id: '55555555-5555-4555-8555-555555555555', name: 'cancha 1' },
     ]
     const tool = buildBotTools(makeContext(), courts).find((t) => t.definition.name === 'reservar')!
-    const out = JSON.parse(await tool.run(validBooking))
+    const out = JSON.parse(await runContinue(tool, validBooking))
     expect(out.error).toBe('cancha_inexistente')
     expect(mocks.createWhatsappBooking).not.toHaveBeenCalled()
   })
@@ -402,7 +454,7 @@ describe('reservar — la cancha va por nombre y la resuelve el servidor', () =>
 describe('reservar — reglas del complejo y traducción de errores de dominio', () => {
   it('reservas online apagadas → error de dominio en JSON, sin tocar la reserva', async () => {
     const ctx = makeContext({ tenant: makeTenant({ allowOnlineBooking: false }) })
-    const out = await toolNamed(ctx, 'reservar').run(validBooking)
+    const out = await runContinue(toolNamed(ctx, 'reservar'), validBooking)
     expect(JSON.parse(out)).toEqual({ error: 'reservas_online_cerradas' })
     expect(mocks.createWhatsappBooking).not.toHaveBeenCalled()
   })
@@ -411,14 +463,14 @@ describe('reservar — reglas del complejo y traducción de errores de dominio',
     'complejo en estado %s → reservas cerradas',
     async (status) => {
       const ctx = makeContext({ tenant: makeTenant({ status }) })
-      const out = await toolNamed(ctx, 'reservar').run(validBooking)
+      const out = await runContinue(toolNamed(ctx, 'reservar'), validBooking)
       expect(JSON.parse(out)).toEqual({ error: 'reservas_online_cerradas' })
     },
   )
 
   it('baja voluntaria (canceled) sin período pago comprobable → cerrado', async () => {
     const ctx = makeContext({ tenant: makeTenant({ status: 'canceled', canceledPeriodEnd: null }) })
-    expect(JSON.parse(await toolNamed(ctx, 'reservar').run(validBooking))).toEqual({
+    expect(JSON.parse(await runContinue(toolNamed(ctx, 'reservar'), validBooking))).toEqual({
       error: 'reservas_online_cerradas',
     })
   })
@@ -431,12 +483,12 @@ describe('reservar — reglas del complejo y traducción de errores de dominio',
         canceledPeriodEnd: new Date('2026-11-30T00:00:00Z'),
       }),
     })
-    const out = JSON.parse(await toolNamed(ctx, 'reservar').run(validBooking))
+    const out = JSON.parse(await runContinue(toolNamed(ctx, 'reservar'), validBooking))
     expect(out.estado).toBe('confirmada')
   })
 
   it('fecha fuera de la ventana de reserva → fecha_fuera_de_rango sin tocar la reserva', async () => {
-    const out = await toolNamed(makeContext(), 'reservar').run({
+    const out = await runContinue(toolNamed(makeContext(), 'reservar'), {
       ...validBooking,
       fecha: '2026-11-30',
     })
@@ -471,17 +523,15 @@ describe('reservar — reglas del complejo y traducción de errores de dominio',
     ['PriceUnavailableError', 'turno_no_disponible', () => new PriceUnavailableError()],
   ])('%s → { error: "%s" }', async (_name, reason, makeError) => {
     mocks.createWhatsappBooking.mockRejectedValue(makeError())
-    const out = await toolNamed(makeContext(), 'reservar').run(validBooking)
+    const out = await runContinue(toolNamed(makeContext(), 'reservar'), validBooking)
     expect(JSON.parse(out)).toEqual({ error: reason })
   })
 
-  // Decisión del dueño (2026-10-20): la tercera reserva sin seña se hace en la
-  // página del complejo, así que el bot recibe el link para mandárselo.
   it('tope de reservas sin seña → error + link a la página del complejo', async () => {
     mocks.createWhatsappBooking.mockRejectedValue(
       new TooManyWhatsappBookingsError(CHAT_ID, TENANT_ID, 'unpaid_confirmed', 2),
     )
-    const out = await toolNamed(makeContext(), 'reservar').run(validBooking)
+    const out = await runContinue(toolNamed(makeContext(), 'reservar'), validBooking)
     expect(JSON.parse(out)).toEqual({
       error: 'demasiadas_reservas_sin_sena',
       link_para_reservar: 'https://app.test/el-complejo',
@@ -492,17 +542,16 @@ describe('reservar — reglas del complejo y traducción de errores de dominio',
     mocks.createWhatsappBooking.mockRejectedValue(
       new PlayerBannedError('p1', TENANT_ID, false, 'motivo-interno-del-ban'),
     )
-    const out = await toolNamed(makeContext(), 'reservar').run(validBooking)
+    const out = await runContinue(toolNamed(makeContext(), 'reservar'), validBooking)
     expect(JSON.parse(out)).toEqual({ error: 'no_se_puede_reservar_por_aca' })
     expect(out).not.toContain('motivo-interno-del-ban')
   })
 
   it('bloqueo por cancelaciones tardías del invitado → bloqueado con dd/mm HH:MM en hora ART', async () => {
-    // 2026-11-01 02:00Z = 31/10 23:00 ART: el día se cuenta en Argentina, no en UTC.
     mocks.createWhatsappBooking.mockRejectedValue(
       new GuestLateCancelBlockedError(new Date('2026-11-01T02:00:00Z')),
     )
-    const out = await toolNamed(makeContext(), 'reservar').run(validBooking)
+    const out = await runContinue(toolNamed(makeContext(), 'reservar'), validBooking)
     expect(JSON.parse(out)).toEqual({ error: 'bloqueado', hasta: '31/10 23:00' })
   })
 
@@ -525,7 +574,7 @@ describe('reservar — con seña', () => {
   })
 
   it('crea la preferencia FUERA de la tx y devuelve el link con los minutos para pagar', async () => {
-    const out = JSON.parse(await toolNamed(makeContext(), 'reservar').run(validBooking))
+    const out = JSON.parse(await runContinue(toolNamed(makeContext(), 'reservar'), validBooking))
     expect(out).toMatchObject({
       estado: 'falta_pagar_la_sena',
       fecha: '2026-10-25',
@@ -542,7 +591,6 @@ describe('reservar — con seña', () => {
       'https://app.test',
       { success: back, failure: back, pending: back },
     )
-    // La única `withTenantContext` es la de la reserva: la preferencia no corre adentro.
     expect(mocks.withTenantContext).toHaveBeenCalledTimes(1)
   })
 
@@ -551,7 +599,7 @@ describe('reservar — con seña', () => {
       initPoint: 'https://mp.test/checkout/abc',
       expiresAt: new Date(Date.now() + 40_000),
     })
-    const out = JSON.parse(await toolNamed(makeContext(), 'reservar').run(validBooking))
+    const out = JSON.parse(await runContinue(toolNamed(makeContext(), 'reservar'), validBooking))
     expect(out.minutos_para_pagar).toBe(1)
   })
 
@@ -559,14 +607,14 @@ describe('reservar — con seña', () => {
     mocks.createWhatsappBooking.mockResolvedValue(
       bookingResult({ requiresPayment: true, alreadyExisted: true }),
     )
-    const out = JSON.parse(await toolNamed(makeContext(), 'reservar').run(validBooking))
+    const out = JSON.parse(await runContinue(toolNamed(makeContext(), 'reservar'), validBooking))
     expect(out.link_pago).toBe('https://mp.test/checkout/abc')
     expect(mocks.createDepositPayment).toHaveBeenCalledTimes(1)
   })
 
   it('complejo sin MercadoPago conectado → turno_no_disponible, sin crear preferencia', async () => {
     mpTokenRows = [{ mpAccessToken: null }]
-    const out = JSON.parse(await toolNamed(makeContext(), 'reservar').run(validBooking))
+    const out = JSON.parse(await runContinue(toolNamed(makeContext(), 'reservar'), validBooking))
     expect(out).toEqual({ error: 'turno_no_disponible' })
     expect(mocks.createDepositPayment).not.toHaveBeenCalled()
     expect(mocks.logger.warn).toHaveBeenCalled()
@@ -580,7 +628,7 @@ describe('reservar — con seña', () => {
 
   it('con hidePrices no muestra el precio total del turno', async () => {
     const ctx = makeContext({ tenant: makeTenant({ hidePrices: true }) })
-    const out = JSON.parse(await toolNamed(ctx, 'reservar').run(validBooking))
+    const out = JSON.parse(await runContinue(toolNamed(ctx, 'reservar'), validBooking))
     expect(out).not.toHaveProperty('precio')
   })
 })
@@ -590,7 +638,7 @@ describe('reservar — aviso push al admin', () => {
 
   it('sin seña: la reserva queda confirmada y se avisa al admin con el tenant del contexto', async () => {
     mocks.createWhatsappBooking.mockResolvedValue(bookingResult())
-    const out = JSON.parse(await toolNamed(makeContext(), 'reservar').run(validBooking))
+    const out = JSON.parse(await runContinue(toolNamed(makeContext(), 'reservar'), validBooking))
     expect(out).toMatchObject({ estado: 'confirmada' })
     expect(mocks.notifyAdminBookingConfirmed).toHaveBeenCalledTimes(1)
     expect(mocks.notifyAdminBookingConfirmed).toHaveBeenCalledWith(TENANT_ID, BOOKING_ID)
@@ -602,7 +650,7 @@ describe('reservar — aviso push al admin', () => {
       initPoint: 'https://mp.test/checkout/abc',
       expiresAt: new Date(Date.now() + 270_000),
     })
-    await toolNamed(makeContext(), 'reservar').run(validBooking)
+    await runContinue(toolNamed(makeContext(), 'reservar'), validBooking)
     expect(mocks.notifyAdminBookingConfirmed).not.toHaveBeenCalled()
   })
 
@@ -616,7 +664,6 @@ describe('reservar — aviso push al admin', () => {
 describe('cancelar — dos pasos, solo reservas de este chat', () => {
   const BOOKING_ID = '44444444-4444-4444-8444-444444444444'
   const cancelInputOk = { cancha: 'Cancha 1', fecha: '2026-10-25', hora: '21:00' }
-  // El turno es el dom 25/10 21:00 ART; NOW es el sáb 24/10 12:00 ART (33 h antes).
   const found = (overrides: Record<string, unknown> = {}) => ({
     id: BOOKING_ID,
     status: 'confirmed',
@@ -634,8 +681,18 @@ describe('cancelar — dos pasos, solo reservas de este chat', () => {
     mocks.guestLateCancelStatus.mockResolvedValue({ count: 0, bannedUntil: null })
   })
 
+  it('una confirmación pendiente pierde autoridad si el dueño tomó el chat', async () => {
+    lockChat.mockResolvedValue([{ pausedUntil: new Date(Date.now() + 60_000) }])
+    const reply = await runContinue(toolNamed(makeContext(), 'cancelar'), {
+      ...cancelInputOk,
+      confirmar: true,
+    })
+    expect(JSON.parse(reply)).toEqual({ error: 'chat_pausado' })
+    expect(mocks.cancelByGuest).not.toHaveBeenCalled()
+  })
+
   it('confirmar:false NO escribe y busca solo con el chat y el tenant de la clausura', async () => {
-    const out = await toolNamed(makeContext({ tenant: lateTenant() }), 'cancelar').run({
+    const out = await runContinue(toolNamed(makeContext({ tenant: lateTenant() }), 'cancelar'), {
       ...cancelInputOk,
       confirmar: false,
     })
@@ -652,7 +709,7 @@ describe('cancelar — dos pasos, solo reservas de este chat', () => {
 
   it('el count+1 del invitado decide: con una tardía previa, la próxima es bloqueo de 7 días', async () => {
     mocks.guestLateCancelStatus.mockResolvedValue({ count: 1, bannedUntil: null })
-    const out = await toolNamed(makeContext({ tenant: lateTenant() }), 'cancelar').run({
+    const out = await runContinue(toolNamed(makeContext({ tenant: lateTenant() }), 'cancelar'), {
       ...cancelInputOk,
       confirmar: false,
     })
@@ -661,7 +718,7 @@ describe('cancelar — dos pasos, solo reservas de este chat', () => {
 
   it('antes del umbral y sin seña → sin_consecuencia', async () => {
     const tenant = makeTenant({ requiresDeposit: false, lateCancelHours: 12 })
-    const out = await toolNamed(makeContext({ tenant }), 'cancelar').run({
+    const out = await runContinue(toolNamed(makeContext({ tenant }), 'cancelar'), {
       ...cancelInputOk,
       confirmar: false,
     })
@@ -676,7 +733,7 @@ describe('cancelar — dos pasos, solo reservas de este chat', () => {
       found({ depositStatus: 'paid', depositAmount: 360_000 }),
     )
     const tenant = makeTenant({ cancellationHoursBefore: policyHours })
-    const out = await toolNamed(makeContext({ tenant }), 'cancelar').run({
+    const out = await runContinue(toolNamed(makeContext({ tenant }), 'cancelar'), {
       ...cancelInputOk,
       confirmar: false,
     })
@@ -691,7 +748,7 @@ describe('cancelar — dos pasos, solo reservas de este chat', () => {
       inPolicy: false,
       depositStatus: 'not_required',
     })
-    const out = await toolNamed(makeContext({ tenant: lateTenant() }), 'cancelar').run({
+    const out = await runContinue(toolNamed(makeContext({ tenant: lateTenant() }), 'cancelar'), {
       ...cancelInputOk,
       confirmar: true,
     })
@@ -721,12 +778,11 @@ describe('cancelar — dos pasos, solo reservas de este chat', () => {
         inPolicy: false,
         depositStatus: 'not_required',
       })
-      const out = await toolNamed(makeContext({ tenant: lateTenant() }), 'cancelar').run({
+      const out = await runContinue(toolNamed(makeContext({ tenant: lateTenant() }), 'cancelar'), {
         ...cancelInputOk,
         confirmar,
       })
       expect(JSON.parse(out)).toMatchObject({ estado: 'cancelada', consecuencia: 'aviso' })
-      // Ni siquiera la preview consulta la escalera: lo dice la fila.
       expect(mocks.guestLateCancelStatus).not.toHaveBeenCalled()
     },
   )
@@ -743,7 +799,7 @@ describe('cancelar — dos pasos, solo reservas de este chat', () => {
 
     it('cancelación hecha: avisa después del commit, con el tenant del contexto y late: false', async () => {
       mocks.cancelByGuest.mockResolvedValue(outcome())
-      await toolNamed(makeContext(), 'cancelar').run({ ...cancelInputOk, confirmar: true })
+      await runContinue(toolNamed(makeContext(), 'cancelar'), { ...cancelInputOk, confirmar: true })
       expect(mocks.notifyAdminBookingCanceled).toHaveBeenCalledTimes(1)
       expect(mocks.notifyAdminBookingCanceled).toHaveBeenCalledWith(TENANT_ID, BOOKING_ID, {
         late: false,
@@ -754,7 +810,7 @@ describe('cancelar — dos pasos, solo reservas de este chat', () => {
       mocks.cancelByGuest.mockResolvedValue(
         outcome({ lateCancel: true, guestPenalty: { count: 1, bannedUntil: null } }),
       )
-      await toolNamed(makeContext({ tenant: lateTenant() }), 'cancelar').run({
+      await runContinue(toolNamed(makeContext({ tenant: lateTenant() }), 'cancelar'), {
         ...cancelInputOk,
         confirmar: true,
       })
@@ -765,19 +821,22 @@ describe('cancelar — dos pasos, solo reservas de este chat', () => {
 
     it('replay de una cancelación ya hecha: no vuelve a avisar', async () => {
       mocks.cancelByGuest.mockResolvedValue(outcome({ replayed: true }))
-      await toolNamed(makeContext(), 'cancelar').run({ ...cancelInputOk, confirmar: true })
+      await runContinue(toolNamed(makeContext(), 'cancelar'), { ...cancelInputOk, confirmar: true })
       expect(mocks.notifyAdminBookingCanceled).not.toHaveBeenCalled()
     })
 
     it('la preview (confirmar:false) no cancela ni avisa', async () => {
-      await toolNamed(makeContext(), 'cancelar').run({ ...cancelInputOk, confirmar: false })
+      await runContinue(toolNamed(makeContext(), 'cancelar'), {
+        ...cancelInputOk,
+        confirmar: false,
+      })
       expect(mocks.cancelByGuest).not.toHaveBeenCalled()
       expect(mocks.notifyAdminBookingCanceled).not.toHaveBeenCalled()
     })
 
     it('si cancelByGuest falla, no avisa', async () => {
       mocks.cancelByGuest.mockRejectedValue(new BookingAlreadyEndedError('x'))
-      await toolNamed(makeContext(), 'cancelar').run({ ...cancelInputOk, confirmar: true })
+      await runContinue(toolNamed(makeContext(), 'cancelar'), { ...cancelInputOk, confirmar: true })
       expect(mocks.notifyAdminBookingCanceled).not.toHaveBeenCalled()
     })
   })
@@ -791,14 +850,17 @@ describe('cancelar — dos pasos, solo reservas de este chat', () => {
       depositStatus: 'refunded',
     })
     const out = JSON.parse(
-      await toolNamed(makeContext(), 'cancelar').run({ ...cancelInputOk, confirmar: true }),
+      await runContinue(toolNamed(makeContext(), 'cancelar'), {
+        ...cancelInputOk,
+        confirmar: true,
+      }),
     )
     expect(out).toMatchObject({ estado: 'cancelada', consecuencia: 'se_devuelve_la_sena' })
   })
 
   it('una reserva de otro chat (o inexistente) no se encuentra y no se cancela nada', async () => {
     mocks.findChatBookingForCancel.mockResolvedValue(null)
-    const out = await toolNamed(makeContext(), 'cancelar').run({
+    const out = await runContinue(toolNamed(makeContext(), 'cancelar'), {
       ...cancelInputOk,
       confirmar: true,
     })
@@ -813,12 +875,14 @@ describe('cancelar — dos pasos, solo reservas de este chat', () => {
         { date: '2026-10-25', timeStart: '21:00:00', courtName: 'cancha 1', fixed: true },
       ],
     })
-    const out = await toolNamed(ctx, 'cancelar').run({ ...cancelInputOk, confirmar: true })
+    const out = await runContinue(toolNamed(ctx, 'cancelar'), {
+      ...cancelInputOk,
+      confirmar: true,
+    })
     expect(JSON.parse(out)).toEqual({ error: 'reservada_por_otro_lado' })
     expect(mocks.cancelByGuest).not.toHaveBeenCalled()
 
-    // Otro horario del mismo teléfono no alcanza: sigue siendo no_encontrada.
-    const other = await toolNamed(ctx, 'cancelar').run({
+    const other = await runContinue(toolNamed(ctx, 'cancelar'), {
       ...cancelInputOk,
       hora: '22:00',
       confirmar: true,
@@ -828,7 +892,7 @@ describe('cancelar — dos pasos, solo reservas de este chat', () => {
 
   it('pendiente de pago → pendiente_de_pago sin cancelar (el hold se libera solo)', async () => {
     mocks.findChatBookingForCancel.mockResolvedValue(found({ status: 'pending_payment' }))
-    const out = await toolNamed(makeContext(), 'cancelar').run({
+    const out = await runContinue(toolNamed(makeContext(), 'cancelar'), {
       ...cancelInputOk,
       confirmar: true,
     })
@@ -840,7 +904,7 @@ describe('cancelar — dos pasos, solo reservas de este chat', () => {
     mocks.findChatBookingForCancel.mockResolvedValue(
       found({ endsAt: new Date('2026-10-24T14:00:00Z') }),
     )
-    const out = await toolNamed(makeContext(), 'cancelar').run({
+    const out = await runContinue(toolNamed(makeContext(), 'cancelar'), {
       ...cancelInputOk,
       confirmar: false,
     })
@@ -862,7 +926,7 @@ describe('cancelar — dos pasos, solo reservas de este chat', () => {
     ],
   ])('%s → { error: "%s" }', async (_n, reason, makeError) => {
     mocks.cancelByGuest.mockRejectedValue(makeError())
-    const out = await toolNamed(makeContext(), 'cancelar').run({
+    const out = await runContinue(toolNamed(makeContext(), 'cancelar'), {
       ...cancelInputOk,
       confirmar: true,
     })
@@ -878,7 +942,7 @@ describe('cancelar — dos pasos, solo reservas de este chat', () => {
   })
 
   it('cancha inexistente → lista de canchas, sin buscar', async () => {
-    const out = await toolNamed(makeContext(), 'cancelar').run({
+    const out = await runContinue(toolNamed(makeContext(), 'cancelar'), {
       ...cancelInputOk,
       cancha: 'Cancha 9',
       confirmar: true,
@@ -902,89 +966,161 @@ describe('cancelar — dos pasos, solo reservas de este chat', () => {
   })
 })
 
-describe('pasar_a_humano — solo el enum cerrado de motivos', () => {
-  it('la definición lista exactamente los motivos permitidos', () => {
-    const { definition } = toolNamed(makeContext(), 'pasar_a_humano')
-    const props = (definition.input_schema as { properties: { motivo: { enum: string[] } } })
-      .properties
-    expect(props.motivo.enum).toEqual(['lluvia', 'reclamo', 'evento', 'otro'])
+describe('no_responder', () => {
+  it('devuelve kind silent con el motivo', async () => {
+    const out = await toolNamed(makeContext(), 'no_responder').run({
+      motivo: 'cierre_conversacion',
+    })
+    expect(out).toEqual({
+      kind: 'silent',
+      motivo: 'cierre_conversacion',
+      output: '{"ok":true}',
+    })
   })
 
   it.each([
-    ['lluvia', 'handoff_weather', 'Consulta por lluvia o suspensión'],
-    ['reclamo', 'handoff_complaint', 'Un reclamo'],
-    ['evento', 'handoff_event', 'Consulta por un evento o cumpleaños'],
-    ['otro', 'handoff_other', 'Una consulta que el bot no pudo resolver'],
-  ])(
-    'motivo "%s": pausa el chat 12 h con "%s" y avisa al admin',
-    async (motivo, pauseReason, label) => {
-      mocks.withTenantContext.mockImplementation(
-        async (_t: string, fn: (tx: unknown) => Promise<unknown>) => fn(fakeUpdateTx),
-      )
-      const out = await toolNamed(makeContext(), 'pasar_a_humano').run({ motivo })
+    ['motivo vacío', { motivo: '' }],
+    ['sin motivo', {}],
+    ['propiedad extra', { motivo: 'cierre', extra: 1 }],
+  ])('input inválido (%s) → ToolInputError', async (_n, input) => {
+    expect(await outcomeOf(toolNamed(makeContext(), 'no_responder'), input)).toBeInstanceOf(
+      ToolInputError,
+    )
+  })
+})
 
-      expect(JSON.parse(out)).toEqual({ ok: true })
-      expect(mocks.withTenantContext).toHaveBeenCalledWith(TENANT_ID, expect.any(Function))
-      // Son SQL (GREATEST contra la pausa vigente, para no acortar una más
-      // larga): se compilan y se miran los parámetros. Que no acorte una pausa
-      // vigente lo prueba la integración (whatsapp-bot-turn.test.ts).
-      const arg = setSpy.mock.calls[0]![0] as { pausedUntil: SQL; pauseReason: SQL }
-      const until = new Date(NOW.getTime() + HANDOFF_PAUSE_MS).toISOString()
-      expect(new PgDialect().sqlToQuery(arg.pausedUntil).params).toContain(until)
-      expect(new PgDialect().sqlToQuery(arg.pauseReason).params).toContain(pauseReason)
-      expect(HANDOFF_PAUSE_MS).toBe(12 * 60 * 60 * 1000)
-      expect(mocks.notifyAdminPush).toHaveBeenCalledWith(TENANT_ID, {
-        type: 'whatsapp_handoff',
-        title: 'WhatsApp: te necesitan en un chat',
-        body: label,
-        summaryLabel: label,
-        url: '/settings/whatsapp',
-      })
-    },
-  )
+describe('pasar_a_humano — pausa 6h, alerta Utility y corte', () => {
+  const validHandoff = {
+    tipo: 'otro' as const,
+    motivo_corto: 'Pide cambiar de Cancha 2 a Cancha 3',
+    nombre_jugador: 'Lucas',
+    mensaje_al_jugador:
+      'Dale, ya lo chequeo con el encargado de la grilla y te confirmamos por acá.',
+  }
+
+  it('el esquema exige tipo (enum cerrado), motivo_corto, nombre_jugador anulable y mensaje_al_jugador', () => {
+    const { definition } = toolNamed(makeContext(), 'pasar_a_humano')
+    const params = definition.parameters as {
+      required: string[]
+      properties: {
+        tipo: { enum: string[] }
+        nombre_jugador: { type: unknown }
+      }
+    }
+    expect(params.required).toEqual([
+      'tipo',
+      'motivo_corto',
+      'nombre_jugador',
+      'mensaje_al_jugador',
+    ])
+    expect(params.properties.tipo.enum).toEqual(['clima', 'reclamo', 'evento', 'otro'])
+    expect(params.properties.nombre_jugador.type).toEqual(['string', 'null'])
+  })
 
   it.each([
-    ['motivo fuera del enum', { motivo: 'cancelacion' }],
-    ['motivo con otra capitalización', { motivo: 'LLUVIA' }],
-    ['motivo con espacios', { motivo: ' lluvia ' }],
-    ['motivo de prototipo (constructor)', { motivo: 'constructor' }],
-    ['motivo vacío', { motivo: '' }],
-    ['motivo de texto libre', { motivo: 'el jugador está enojado porque le cobraron mal' }],
-    ['motivo no string', { motivo: 1 }],
-    ['sin motivo', {}],
-    [
-      'texto libre extra junto a un motivo válido (Ley 25.326)',
-      { motivo: 'otro', detalle: 'DNI 30.123.456' },
-    ],
+    ['clima', 'handoff_weather'],
+    ['reclamo', 'handoff_complaint'],
+    ['evento', 'handoff_event'],
+    ['otro', 'handoff_other'],
+  ] as const)('tipo "%s" mapea a pause_reason "%s"', async (tipo, expectedReason) => {
+    mocks.withTenantContext.mockImplementation(
+      async (_t: string, fn: (tx: unknown) => Promise<unknown>) => fn(fakeUpdateTx),
+    )
+    await toolNamed(makeContext(), 'pasar_a_humano').run({ ...validHandoff, tipo })
+    const arg = setSpy.mock.calls[0]![0] as { pauseReason: SQL }
+    expect(new PgDialect().sqlToQuery(arg.pauseReason).params).toContain(expectedReason)
+  })
+
+  it('pausa el chat 6 h con el motivo mapeado, avisa por push y devuelve kind handoff', async () => {
+    mocks.withTenantContext.mockImplementation(
+      async (_t: string, fn: (tx: unknown) => Promise<unknown>) => fn(fakeUpdateTx),
+    )
+    const out = await toolNamed(makeContext(), 'pasar_a_humano').run(validHandoff)
+
+    expect(HANDOFF_PAUSE_MS).toBe(6 * 60 * 60 * 1000)
+    expect(out).toEqual({
+      kind: 'handoff',
+      mensajeAlJugador: validHandoff.mensaje_al_jugador,
+      output: '{"ok":true}',
+    })
+    const arg = setSpy.mock.calls[0]![0] as { pausedUntil: SQL; pauseReason: SQL }
+    const until = new Date(NOW.getTime() + HANDOFF_PAUSE_MS).toISOString()
+    expect(new PgDialect().sqlToQuery(arg.pausedUntil).params).toContain(until)
+    expect(new PgDialect().sqlToQuery(arg.pauseReason).params).toContain('handoff_other')
+    expect(mocks.notifyAdminPush).toHaveBeenCalledWith(TENANT_ID, {
+      type: 'whatsapp_handoff',
+      title: 'WhatsApp: te necesitan en un chat',
+      body: 'Derivación desde WhatsApp',
+      summaryLabel: 'Derivación desde WhatsApp',
+      url: '/settings/whatsapp',
+    })
+    expect(mocks.sendWhatsappTemplate).not.toHaveBeenCalled()
+    expect(mocks.logger.warn).toHaveBeenCalled()
+  })
+
+  it('con ownerAlertPhone configurado envía plantilla Utility al dueño (usa nombre_jugador o fallback contactDisplayName)', async () => {
+    mocks.withTenantContext.mockImplementation(
+      async (_t: string, fn: (tx: unknown) => Promise<unknown>) => fn(fakeUpdateTx),
+    )
+    vi.stubEnv('KAPSO_ALERTS_PHONE_NUMBER_ID', 'pn-alerts-global')
+
+    await toolNamed(
+      makeContext({ ownerAlertPhone: '+54 9 11 5555-4444', contactDisplayName: 'Lucas Perfil' }),
+      'pasar_a_humano',
+    ).run({ ...validHandoff, nombre_jugador: null })
+
+    expect(mocks.sendWhatsappTemplate).toHaveBeenCalledWith({
+      phoneNumberId: 'pn-alerts-global',
+      to: '5491155554444',
+      templateName: 'turnogol_alerta_derivacion',
+      languageCode: 'es_AR',
+      bodyParameters: [
+        `Lucas Perfil (+${WA_PHONE})`,
+        validHandoff.motivo_corto,
+        `https://wa.me/${WA_PHONE}`,
+      ],
+    })
+  })
+
+  it('si sendWhatsappTemplate o notifyAdminPush fallan, no rompe la derivación', async () => {
+    mocks.withTenantContext.mockImplementation(
+      async (_t: string, fn: (tx: unknown) => Promise<unknown>) => fn(fakeUpdateTx),
+    )
+    mocks.notifyAdminPush.mockRejectedValue(new Error('push down'))
+    mocks.sendWhatsappTemplate.mockRejectedValue(new Error('kapso 500'))
+
+    const out = await toolNamed(
+      makeContext({ ownerAlertPhone: '+5491155554444' }),
+      'pasar_a_humano',
+    ).run(validHandoff)
+
+    expect(out).toEqual({
+      kind: 'handoff',
+      mensajeAlJugador: validHandoff.mensaje_al_jugador,
+      output: '{"ok":true}',
+    })
+    expect(mocks.logger.warn).toHaveBeenCalledTimes(2)
+  })
+
+  it.each([
+    ['tipo inválido', { ...validHandoff, tipo: 'libre' }],
+    ['motivo_corto vacío', { ...validHandoff, motivo_corto: '' }],
+    ['mensaje_al_jugador corto', { ...validHandoff, mensaje_al_jugador: 'ok' }],
+    ['propiedad extra', { ...validHandoff, extra: 'x' }],
     ['input null', null],
-    ['input string', 'lluvia'],
-  ])('%s → ToolInputError y no pausa nada', async (_name, input) => {
+  ])('input inválido (%s) → ToolInputError y no pausa nada', async (_n, input) => {
     const out = await outcomeOf(toolNamed(makeContext(), 'pasar_a_humano'), input)
     expect(out).toBeInstanceOf(ToolInputError)
     expect(mocks.withTenantContext).not.toHaveBeenCalled()
     expect(mocks.notifyAdminPush).not.toHaveBeenCalled()
   })
 
-  it('si el push al admin falla, el chat queda pausado y la tool igual responde ok', async () => {
-    mocks.withTenantContext.mockImplementation(
-      async (_t: string, fn: (tx: unknown) => Promise<unknown>) => fn(fakeUpdateTx),
-    )
-    mocks.notifyAdminPush.mockRejectedValue(new Error('push down'))
-    const out = await toolNamed(makeContext(), 'pasar_a_humano').run({ motivo: 'reclamo' })
-    expect(JSON.parse(out)).toEqual({ ok: true })
-    expect(setSpy).toHaveBeenCalledTimes(1)
-    expect(mocks.logger.warn).toHaveBeenCalled()
-  })
-
   it('el chat que se pausa es el del contexto (filtro por id de chat y tenant)', async () => {
     mocks.withTenantContext.mockImplementation(
       async (_t: string, fn: (tx: unknown) => Promise<unknown>) => fn(fakeUpdateTx),
     )
-    await toolNamed(makeContext({ chatId: OTHER_CHAT_ID }), 'pasar_a_humano').run({
-      motivo: 'otro',
-    })
+    await toolNamed(makeContext({ chatId: OTHER_CHAT_ID }), 'pasar_a_humano').run(validHandoff)
     expect(whereSpy).toHaveBeenCalledTimes(1)
-    // El `where` es una expresión de drizzle: se renderiza a SQL para ver los parámetros ligados.
     const { params } = new PgDialect().sqlToQuery(whereSpy.mock.calls[0]?.[0])
     expect(params).toEqual([OTHER_CHAT_ID, TENANT_ID])
   })
@@ -1015,11 +1151,12 @@ describe('ver_disponibilidad', () => {
   })
 
   describe('rango [hoy, hoy + bookingAdvanceDays]', () => {
-    // Hoy = sáb 2026-10-24, anticipación 3 → 24, 25, 26 y 27.
     it.each(['2026-10-24', '2026-10-25', '2026-10-27'])(
       'acepta %s (dentro del rango)',
       async (fecha) => {
-        const out = JSON.parse(await toolNamed(makeContext(), 'ver_disponibilidad').run({ fecha }))
+        const out = JSON.parse(
+          await runContinue(toolNamed(makeContext(), 'ver_disponibilidad'), { fecha }),
+        )
         expect(out.fecha).toBe(fecha)
         expect(mocks.getPublicAvailability).toHaveBeenCalledWith(
           expect.objectContaining({ id: TENANT_ID }),
@@ -1036,7 +1173,7 @@ describe('ver_disponibilidad', () => {
     ])(
       'rechaza %s (%s) con fecha_fuera_de_rango y sin consultar la disponibilidad',
       async (_n, fecha) => {
-        const out = await toolNamed(makeContext(), 'ver_disponibilidad').run({ fecha })
+        const out = await runContinue(toolNamed(makeContext(), 'ver_disponibilidad'), { fecha })
         expect(JSON.parse(out)).toEqual({ error: 'fecha_fuera_de_rango' })
         expect(mocks.getPublicAvailability).not.toHaveBeenCalled()
       },
@@ -1045,15 +1182,15 @@ describe('ver_disponibilidad', () => {
     it('anticipación 0: solo hoy', async () => {
       const ctx = makeContext({ tenant: makeTenant({ bookingAdvanceDays: 0 }) })
       const tool = toolNamed(ctx, 'ver_disponibilidad')
-      expect(JSON.parse(await tool.run({ fecha: '2026-10-24' })).fecha).toBe('2026-10-24')
-      expect(JSON.parse(await tool.run({ fecha: '2026-10-25' }))).toEqual({
+      expect(JSON.parse(await runContinue(tool, { fecha: '2026-10-24' })).fecha).toBe('2026-10-24')
+      expect(JSON.parse(await runContinue(tool, { fecha: '2026-10-25' }))).toEqual({
         error: 'fecha_fuera_de_rango',
       })
     })
 
     it('el rango parte del día OPERATIVO: a las 00:30 del sábado con cierre 02:00, hoy es el viernes', async () => {
       const ctx = makeContext({
-        now: new Date('2026-10-24T03:30:00Z'), // sáb 00:30 ART
+        now: new Date('2026-10-24T03:30:00Z'),
         tenant: makeTenant({
           closesNextDay: true,
           openingHours: {
@@ -1064,20 +1201,16 @@ describe('ver_disponibilidad', () => {
         }),
       })
       const tool = toolNamed(ctx, 'ver_disponibilidad')
-      expect(JSON.parse(await tool.run({ fecha: '2026-10-23' })).fecha).toBe('2026-10-23')
-      expect(JSON.parse(await tool.run({ fecha: '2026-10-26' })).fecha).toBe('2026-10-26')
-      expect(JSON.parse(await tool.run({ fecha: '2026-10-27' }))).toEqual({
+      expect(JSON.parse(await runContinue(tool, { fecha: '2026-10-23' })).fecha).toBe('2026-10-23')
+      expect(JSON.parse(await runContinue(tool, { fecha: '2026-10-26' })).fecha).toBe('2026-10-26')
+      expect(JSON.parse(await runContinue(tool, { fecha: '2026-10-27' }))).toEqual({
         error: 'fecha_fuera_de_rango',
       })
-      expect(JSON.parse(await tool.run({ fecha: '2026-10-22' }))).toEqual({
+      expect(JSON.parse(await runContinue(tool, { fecha: '2026-10-22' }))).toEqual({
         error: 'fecha_fuera_de_rango',
       })
     })
 
-    // `dateOutOfRange` compara strings: una fecha imposible que cae
-    // lexicográficamente dentro del rango ("2026-10-32" entre "2026-10-30" y
-    // "2026-11-05") pasaba todos los filtros y tiraba un TypeError, que pasaba
-    // la charla a una persona. `dateSchema` valida con `isValidCalendarDate`.
     it('una fecha imposible dentro del rango no tumba el turno con un TypeError', async () => {
       const ctx = makeContext({
         now: new Date('2026-10-30T15:00:00Z'),
@@ -1088,8 +1221,6 @@ describe('ver_disponibilidad', () => {
       expect(crashed).toBe(false)
     })
 
-    // Misma causa: "2026-11-31" no existe y `new Date` lo rodaba a 1/12; la
-    // fecha inválida llegaba tal cual a `getPublicAvailability` y al `::date`.
     it('una fecha que no existe en el calendario no llega a getPublicAvailability', async () => {
       const ctx = makeContext({
         now: new Date('2026-11-28T15:00:00Z'),
@@ -1120,7 +1251,7 @@ describe('ver_disponibilidad', () => {
   describe('resultado', () => {
     it('lista solo los turnos libres, con su precio formateado', async () => {
       const out = JSON.parse(
-        await toolNamed(makeContext(), 'ver_disponibilidad').run({ fecha: '2026-10-25' }),
+        await runContinue(toolNamed(makeContext(), 'ver_disponibilidad'), { fecha: '2026-10-25' }),
       )
       expect(out.canchas).toHaveLength(1)
       expect(out.canchas[0]).toEqual({
@@ -1136,7 +1267,7 @@ describe('ver_disponibilidad', () => {
     it('con hidePrices los turnos no llevan precio', async () => {
       const ctx = makeContext({ tenant: makeTenant({ hidePrices: true }) })
       const out = JSON.parse(
-        await toolNamed(ctx, 'ver_disponibilidad').run({ fecha: '2026-10-25' }),
+        await runContinue(toolNamed(ctx, 'ver_disponibilidad'), { fecha: '2026-10-25' }),
       )
       expect(out.canchas[0].turnos_libres).toEqual([{ hora: '20:00' }])
     })
@@ -1144,7 +1275,7 @@ describe('ver_disponibilidad', () => {
     it('día en la lista de cerrados → cerrado: true sin consultar disponibilidad', async () => {
       const ctx = makeContext({ tenant: makeTenant({ closedDates: ['2026-10-25'] }) })
       const out = JSON.parse(
-        await toolNamed(ctx, 'ver_disponibilidad').run({ fecha: '2026-10-25' }),
+        await runContinue(toolNamed(ctx, 'ver_disponibilidad'), { fecha: '2026-10-25' }),
       )
       expect(out).toEqual({ fecha: '2026-10-25', cerrado: true, canchas: [] })
       expect(mocks.getPublicAvailability).not.toHaveBeenCalled()
@@ -1158,7 +1289,7 @@ describe('ver_disponibilidad', () => {
         }),
       })
       const out = JSON.parse(
-        await toolNamed(ctx, 'ver_disponibilidad').run({ fecha: '2026-10-25' }),
+        await runContinue(toolNamed(ctx, 'ver_disponibilidad'), { fecha: '2026-10-25' }),
       )
       expect(out).toEqual({ fecha: '2026-10-25', cerrado: true, canchas: [] })
       expect(mocks.getPublicAvailability).not.toHaveBeenCalled()
@@ -1166,7 +1297,7 @@ describe('ver_disponibilidad', () => {
 
     it('reservas online apagadas → reservas_online_cerradas', async () => {
       const ctx = makeContext({ tenant: makeTenant({ allowOnlineBooking: false }) })
-      const out = await toolNamed(ctx, 'ver_disponibilidad').run({ fecha: '2026-10-25' })
+      const out = await runContinue(toolNamed(ctx, 'ver_disponibilidad'), { fecha: '2026-10-25' })
       expect(JSON.parse(out)).toEqual({ error: 'reservas_online_cerradas' })
       expect(mocks.getPublicAvailability).not.toHaveBeenCalled()
     })
@@ -1197,7 +1328,7 @@ describe('ver_disponibilidad', () => {
         ],
       })
       const out = JSON.parse(
-        await toolNamed(ctx, 'ver_disponibilidad').run({ fecha: '2026-10-25' }),
+        await runContinue(toolNamed(ctx, 'ver_disponibilidad'), { fecha: '2026-10-25' }),
       )
       expect(out.canchas[0].turnos_libres).toEqual([
         { hora: '23:00', precio: expect.any(String) },
@@ -1208,9 +1339,137 @@ describe('ver_disponibilidad', () => {
 
     it('sin closesNextDay nunca marca madrugada', async () => {
       const out = JSON.parse(
-        await toolNamed(makeContext(), 'ver_disponibilidad').run({ fecha: '2026-10-25' }),
+        await runContinue(toolNamed(makeContext(), 'ver_disponibilidad'), { fecha: '2026-10-25' }),
       )
       expect(JSON.stringify(out)).not.toContain('madrugada')
     })
+  })
+})
+
+describe('reprogramar — confirmación, límites y errores', () => {
+  const validReschedule = {
+    cancha_actual: 'Cancha 1',
+    fecha_actual: '2026-10-25',
+    hora_actual: '20:00',
+    nueva_cancha: 'Cancha 1',
+    nueva_fecha: '2026-10-25',
+    nueva_hora: '21:00',
+    confirmado_por_jugador: true,
+  }
+
+  it('rechaza con falta_confirmacion_del_jugador cuando confirmado_por_jugador es false', async () => {
+    const out = JSON.parse(
+      await runContinue(toolNamed(makeContext(), 'reprogramar'), {
+        ...validReschedule,
+        confirmado_por_jugador: false,
+      }),
+    )
+    expect(out).toMatchObject({ error: 'falta_confirmacion_del_jugador' })
+    expect(mocks.rescheduleWhatsappBooking).not.toHaveBeenCalled()
+  })
+
+  it('rechaza mismo_horario sin abrir transacción', async () => {
+    const out = JSON.parse(
+      await runContinue(toolNamed(makeContext(), 'reprogramar'), {
+        ...validReschedule,
+        nueva_hora: '20:00',
+      }),
+    )
+    expect(out).toEqual({ error: 'mismo_horario' })
+    expect(mocks.withTenantContext).not.toHaveBeenCalled()
+  })
+
+  it('con chat pausado devuelve chat_pausado y no reprograma', async () => {
+    lockChat.mockResolvedValue([{ pausedUntil: new Date(Date.now() + 60_000) }])
+    const out = JSON.parse(
+      await runContinue(toolNamed(makeContext(), 'reprogramar'), validReschedule),
+    )
+    expect(out).toEqual({ error: 'chat_pausado' })
+    expect(mocks.rescheduleWhatsappBooking).not.toHaveBeenCalled()
+  })
+
+  it('reprograma con éxito, notifica push al admin y oculta precio si hidePrices=true', async () => {
+    mocks.rescheduleWhatsappBooking.mockResolvedValue({
+      booking: { id: 'bk-1', priceSnapshot: 1_500_000 },
+      from: { courtId: COURT_ID, date: '2026-10-25', timeStart: '20:00' },
+      priceChanged: true,
+    })
+
+    const out = JSON.parse(
+      await runContinue(toolNamed(makeContext(), 'reprogramar'), validReschedule),
+    )
+    expect(out).toEqual({
+      estado: 'reprogramada',
+      cancha: 'Cancha 1',
+      fecha: '2026-10-25',
+      hora: '21:00',
+      precio: expect.stringMatching(/15\.000/),
+      precio_cambio: true,
+    })
+    expect(mocks.notifyAdminPush).toHaveBeenCalledWith(
+      TENANT_ID,
+      expect.objectContaining({ type: 'booking.rescheduled', bookingId: 'bk-1' }),
+    )
+
+    const hiddenOut = JSON.parse(
+      await runContinue(
+        toolNamed(makeContext({ tenant: makeTenant({ hidePrices: true }) }), 'reprogramar'),
+        validReschedule,
+      ),
+    )
+    expect(hiddenOut).not.toHaveProperty('precio')
+  })
+
+  it.each([
+    [
+      'too_close',
+      new WhatsappRescheduleBlockedError('bk-1', 'too_close', 6),
+      { error: 'muy_encima', horas_requeridas: 6 },
+    ],
+    [
+      'reschedule_limit',
+      new WhatsappRescheduleBlockedError('bk-1', 'reschedule_limit'),
+      { error: 'limite_reprogramaciones' },
+    ],
+    [
+      'deposit_paid',
+      new WhatsappRescheduleBlockedError('bk-1', 'deposit_paid'),
+      { error: 'tiene_sena_mp' },
+    ],
+    [
+      'deposit_pending',
+      new WhatsappRescheduleBlockedError('bk-1', 'deposit_pending'),
+      { error: 'pendiente_de_pago' },
+    ],
+    [
+      'already_started',
+      new WhatsappRescheduleBlockedError('bk-1', 'already_started'),
+      { error: 'ya_empezo' },
+    ],
+    ['slot_taken', new SlotTakenError(), { error: 'turno_ocupado' }],
+    [
+      'guest_banned',
+      new GuestLateCancelBlockedError(new Date('2026-10-28T15:00:00Z')),
+      { error: 'bloqueado', hasta: '28/10 12:00' },
+    ],
+  ])('mapea %s al error JSON esperado', async (_label, thrown, expected) => {
+    mocks.rescheduleWhatsappBooking.mockRejectedValue(thrown)
+    const out = JSON.parse(
+      await runContinue(toolNamed(makeContext(), 'reprogramar'), validReschedule),
+    )
+    expect(out).toEqual(expected)
+  })
+
+  it('distingue reservada_por_otro_lado cuando not_found coincide con phoneBookings', async () => {
+    mocks.rescheduleWhatsappBooking.mockRejectedValue(
+      new WhatsappRescheduleBlockedError(null, 'not_found'),
+    )
+    const ctx = makeContext({
+      phoneBookings: [
+        { courtName: 'Cancha 1', date: '2026-10-25', timeStart: '20:00', fixed: false },
+      ],
+    })
+    const out = JSON.parse(await runContinue(toolNamed(ctx, 'reprogramar'), validReschedule))
+    expect(out).toEqual({ error: 'reservada_por_otro_lado' })
   })
 })

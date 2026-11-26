@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { getWorkerDb, withTenantContext } from '@/shared/db/client'
 import { whatsappChats, whatsappConnections, whatsappMessages } from '@/shared/db/schema'
 import type { NormalizedWhatsappEvent } from '@/lib/kapso/events.schema'
@@ -118,8 +118,9 @@ export async function ingestWhatsappEvents(
             displayName: sql`COALESCE(${event.contactName}, ${whatsappChats.displayName})`,
           },
         })
-        .returning({ id: whatsappChats.id })
+        .returning({ id: whatsappChats.id, pausedUntil: whatsappChats.pausedUntil })
       if (!chat) return
+      const paused = !!chat.pausedUntil && chat.pausedUntil > now
 
       const inserted = await tx
         .insert(whatsappMessages)
@@ -130,11 +131,12 @@ export async function ingestWhatsappEvents(
           waMessageId: event.waMessageId,
           kind: event.messageKind,
           body: event.text,
+          processedAt: paused ? now : null,
         })
         .onConflictDoNothing({ target: whatsappMessages.waMessageId })
         .returning({ id: whatsappMessages.id })
       // Reintento del webhook: el mensaje ya estaba, no se reprocesa nada.
-      if (inserted.length === 0) return
+      if (inserted.length === 0 || paused) return
 
       toProcess.set(chat.id, { tenantId, chatId: chat.id })
     })
@@ -175,6 +177,8 @@ async function recordOwnerReply(
   event: Extract<NormalizedWhatsappEvent, { kind: 'owner' }>,
   now: Date,
 ): Promise<void> {
+  const pauseEnd = new Date((event.sentAtMs ?? now.getTime()) + OWNER_REPLY_PAUSE_MS)
+  if (pauseEnd <= now) return
   await withTenantContext(tenantId, async (tx) => {
     const [existing] = await tx
       .select({ id: whatsappChats.id })
@@ -229,14 +233,26 @@ async function recordOwnerReply(
     }
 
     // GREATEST: si el chat ya estaba pausado más tiempo (pase a humano, pausa
-    // manual), contestar a mano no le acorta la pausa.
-    const until = sql`${new Date(now.getTime() + OWNER_REPLY_PAUSE_MS).toISOString()}::timestamptz`
+    // manual), contestar a mano no le acorta la pausa, pero deja trazabilidad de `'owner_replied'`.
+    const until = sql`${pauseEnd.toISOString()}::timestamptz`
     await tx
       .update(whatsappChats)
       .set({
         pausedUntil: sql`GREATEST(COALESCE(${whatsappChats.pausedUntil}, ${until}), ${until})`,
-        pauseReason: sql`CASE WHEN ${whatsappChats.pausedUntil} > ${until} THEN ${whatsappChats.pauseReason} ELSE 'owner_replied' END`,
+        pauseReason: 'owner_replied',
       })
       .where(and(eq(whatsappChats.id, chat.id), eq(whatsappChats.tenantId, tenantId)))
+    // Un worker demorado tampoco debe contestar mañana lo que el dueño ya tomó hoy.
+    await tx
+      .update(whatsappMessages)
+      .set({ processedAt: now })
+      .where(
+        and(
+          eq(whatsappMessages.tenantId, tenantId),
+          eq(whatsappMessages.chatId, chat.id),
+          eq(whatsappMessages.direction, 'inbound'),
+          isNull(whatsappMessages.processedAt),
+        ),
+      )
   })
 }

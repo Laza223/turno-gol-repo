@@ -34,6 +34,7 @@ describe('transcribeAudio (Groq)', () => {
     const form = init?.body as FormData
     expect(form.get('model')).toBe('whisper-large-v3-turbo')
     expect(form.get('language')).toBe('es')
+    expect(String(form.get('prompt'))).toContain('fútbol 5')
     expect(form.get('response_format')).toBe('verbose_json')
     expect((form.get('file') as File).name).toBe('audio.ogg')
   })

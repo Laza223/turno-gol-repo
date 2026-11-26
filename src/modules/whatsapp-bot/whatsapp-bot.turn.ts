@@ -1,4 +1,4 @@
-import type Anthropic from '@anthropic-ai/sdk'
+import type { ResponseInputItem } from 'openai/resources/responses/responses'
 import { and, asc, count, desc, eq, gt, gte, inArray, isNull, ne, or, sql } from 'drizzle-orm'
 import { getDb, withTenantContext } from '@/shared/db/client'
 import {
@@ -19,160 +19,136 @@ import type { CourtPricingData } from '@/modules/courts/court.types'
 import { PHONE_HINT_DIGITS } from '@/modules/bookings/guest-late-cancel'
 import { suggestionPhoneSql } from '@/modules/relationships/contact-identity'
 import { getPublicCourtCards, getPublicTenant } from '@/modules/tenants/public.service'
-import { runAgent } from './whatsapp-bot.agent'
+import { runAgent, type AgentUsage, type OpenAiTracePayload } from './whatsapp-bot.agent'
 import {
-  buildChatBookings,
-  buildComplexContext,
-  buildPhoneBookings,
+  buildDynamicTurnContext,
+  buildStaticComplexContext,
   type ChatBooking,
 } from './whatsapp-bot.prompt'
 import { buildBotTools, pauseChatForHuman } from './whatsapp-bot.tools'
 import { BOT_FEATURE_FLAG, isBotTenantOpen } from './whatsapp-bot.connection'
 import { transcribeUnheardAudios } from './whatsapp-bot.audio'
 
-/**
- * Un turno del bot: toma los mensajes pendientes de un chat, corre el agente y
- * contesta. Lo ejecuta el worker de la cola `whatsapp-turn` (Railway), nunca
- * el route handler.
- *
- * Orden de efectos, a propósito:
- * 1. Se leen los pendientes y se marcan como procesados POR ID: lo que llega
- *    mientras corre el modelo queda pendiente para el próximo job (la cola
- *    singleton deja uno esperando), nunca se marca sin haberse leído.
- * 2. Se manda por WhatsApp y RECIÉN DESPUÉS se marcan los mensajes. Si el
- *    proceso muere en el medio, el rescate puede repetir una respuesta (raro y
- *    molesto) en vez de dejar al jugador sin respuesta (peor). `reservar` es
- *    idempotente por chat y turno, así que repetir el turno no duplica reservas.
- * 3. Si el envío falla, NO se reintenta: cada reintento volvería a correr el
- *    modelo (y `reservar` podría generar otro link de pago). Se marca procesado
- *    y el chat pasa a una persona.
- */
-
-/** Historial que ve el modelo: las últimas 24 h, que es también la ventana de WhatsApp. */
 const HISTORY_WINDOW_MS = 24 * 60 * 60 * 1000
 const HISTORY_MAX_MESSAGES = 30
-
-/**
- * Tope de respuestas del bot por chat y por hora. Una conversación real de
- * reserva son 5-10 idas y vueltas; esto solo frena a quien le escribe en loop
- * para quemar tokens. Se cuenta en la base y no con el rate limiter de
- * Upstash: el worker de Railway no depende de él y la cuenta es exacta.
- */
 const MAX_REPLIES_PER_HOUR = 30
 const ONE_HOUR_MS = 60 * 60 * 1000
-
-/**
- * Cuánto se calla el bot cuando él mismo falló (modelo caído, Kapso sin
- * entregar). Corto a propósito: un error pasajero no puede dejar mudo el chat
- * todo el día como un pase a humano de verdad (12 h).
- */
 const BOT_ERROR_PAUSE_MS = 30 * 60 * 1000
 
 const FALLBACK_REPLY =
-  'Perdón, en este momento no puedo responderte. En un rato te contesta alguien del complejo.'
+  'Perdón, justo no puedo responderte ahora. En un toque te contesto bien por acá.'
 
-/**
- * Audio que ni Kapso ni el respaldo de Groq pudieron transcribir
- * (`whatsapp-bot.audio.ts`): el modelo no tiene nada que contestar, así que la
- * respuesta es fija y no gasta un turno ni depende de que el prompt lo recuerde.
- */
 const UNHEARD_AUDIO_REPLY =
-  'Por acá no puedo escuchar audios 🙏 ¿Me lo podés escribir? Con el mensaje te ayudo enseguida.'
+  'Justo ahora no puedo escuchar audios, me lo escribís en un renglón? Así te lo veo al toque.'
 
 export type TurnOutcome =
-  'replied' | 'nothing_pending' | 'paused' | 'disabled' | 'handed_off_on_error' | 'rate_limited'
+  | 'replied'
+  | 'handoff'
+  | 'silent'
+  | 'nothing_pending'
+  | 'paused'
+  | 'disabled'
+  | 'handed_off_on_error'
+  | 'rate_limited'
 
 type HistoryRow = {
   direction: 'inbound' | 'outbound' | 'owner'
   kind: 'text' | 'audio' | 'image' | 'interactive' | 'other'
   body: string | null
-  /** Salientes del bot: los mensajes de la API de ese turno (`AgentResult.trace`). */
+  createdAt: Date
   toolTrace?: unknown
-  /** Entrante que todavía no contestó ningún turno. */
   pending?: boolean
 }
 
-function isTraceMessage(value: unknown, role: 'user' | 'assistant'): boolean {
-  if (typeof value !== 'object' || value === null) return false
-  const m = value as { role?: unknown; content?: unknown }
-  return m.role === role && Array.isArray(m.content) && m.content.length > 0
-}
-
 /**
- * Lo que vuelve de la columna jsonb: tiene que alternar roles, arrancar en
- * `assistant` y terminar en `assistant` (el texto final). Si no, el mensaje
- * se usa como texto plano: un tool_use sin su tool_result es un 400 de la API.
+ * Valida trazas del nuevo formato OpenAI Responses API.
+ * Las trazas viejas de Anthropic quedan ignoradas y caen limpiamente a `row.body` (cero 400).
  */
-type TraceMessage = { role: 'user' | 'assistant'; content: Anthropic.ContentBlockParam[] }
-
-function parseTrace(value: unknown): TraceMessage[] | null {
-  if (!Array.isArray(value) || value.length % 2 === 0) return null
-  const ok = value.every((m: unknown, i) => isTraceMessage(m, i % 2 === 0 ? 'assistant' : 'user'))
-  return ok ? (value as TraceMessage[]) : null
+function parseOpenAiTrace(value: unknown): ResponseInputItem[] | null {
+  if (typeof value !== 'object' || value === null) return null
+  const v = value as Partial<OpenAiTracePayload>
+  if (
+    v.v !== 1 ||
+    v.provider !== 'openai_responses' ||
+    !Array.isArray(v.items) ||
+    v.items.length === 0
+  ) {
+    return null
+  }
+  return v.items
 }
 
-/** Texto que ve el modelo por cada mensaje guardado. */
-function renderMessage(row: HistoryRow): string {
+/** Etiqueta temporal ART para evitar que el modelo mezcle adjuntos o temas de ayer con hoy. */
+function artShortStamp(d: Date, now: Date): string {
+  const toArtIso = (x: Date) => new Date(x.getTime() - 3 * 60 * 60 * 1000).toISOString()
+  const iso = toArtIso(d)
+  const nowDay = toArtIso(now).slice(0, 10)
+  const msgDay = iso.slice(0, 10)
+  const hhmm = iso.slice(11, 16)
+  return msgDay === nowDay ? `hoy ${hhmm}` : `${msgDay.slice(8, 10)}/${msgDay.slice(5, 7)} ${hhmm}`
+}
+
+function renderMessage(row: HistoryRow, now: Date): string {
+  const stamp = artShortStamp(row.createdAt, now)
   if (row.direction === 'owner') {
-    return `[Respondió una persona del complejo]: ${row.body ?? '(sin texto)'}`
+    return `[${stamp} | Respondió alguien del complejo]: ${row.body ?? '(sin texto)'}`
   }
   if (row.direction === 'outbound') return row.body ?? ''
   if (row.kind === 'audio') {
     return row.body
-      ? `[Audio, transcripto]: ${row.body}`
-      : '[Mandó un audio que no se pudo transcribir]'
+      ? `[${stamp} | Audio transcripto]: ${row.body}`
+      : `[${stamp} | Mandó un audio que no se pudo transcribir]`
   }
-  if (row.kind === 'image') return row.body ? `[Imagen] ${row.body}` : '[Mandó una imagen]'
-  return row.body ?? '[Mensaje sin texto]'
+  if (row.kind === 'image') {
+    return row.body ? `[${stamp} | Imagen] ${row.body}` : `[${stamp} | Mandó una imagen]`
+  }
+  return `[${stamp}] ${row.body ?? '[Mensaje sin texto]'}`
 }
 
 /**
- * Historial como mensajes de la API: entrantes = `user`, salientes y echoes
- * del dueño = `assistant`. Se fusionan los consecutivos del mismo rol y se
- * descarta lo que haya antes del primer mensaje del jugador (la API exige
- * arrancar con `user`).
- *
- * Una respuesta del bot con `toolTrace` entra con sus llamadas a herramientas
- * y lo que devolvieron: así el modelo sabe qué consultó y qué reservó en los
- * turnos anteriores, en vez de ver texto que no sabe de dónde salió.
- *
- * Los PENDIENTES van al final, aunque sean más viejos que la última respuesta:
- * un mensaje que llegó mientras el turno anterior corría, o antes de un aviso
- * de seña, no lo vio esa respuesta. Ordenarlo por fecha dejaba el historial
- * terminando en `assistant` (la API lo toma como prefill o lo rechaza) y el
- * bot no contestaba lo último que preguntó el jugador.
+ * Convierte filas del historial en items de OpenAI Responses API separados en:
+ * - `historyBeforePending`: mensajes ya procesados (con su `toolTrace` si es OpenAI v1).
+ * - `pendingUserItems`: los mensajes entrantes pendientes agrupados al final.
  */
-export function toAnthropicHistory(rows: HistoryRow[]): Anthropic.MessageParam[] {
-  const ordered = [...rows.filter((r) => !r.pending), ...rows.filter((r) => r.pending)]
-  type Part = string | Anthropic.ContentBlockParam
-  const out: { role: 'user' | 'assistant'; parts: Part[] }[] = []
-  const append = (role: 'user' | 'assistant', parts: Part[]) => {
-    const last = out.at(-1)
-    if (last && last.role === role) last.parts.push(...parts)
-    else out.push({ role, parts: [...parts] })
-  }
-  for (const row of ordered) {
-    const role = row.direction === 'inbound' ? 'user' : 'assistant'
-    if (out.length === 0 && role === 'assistant') continue
-    const trace = row.direction === 'outbound' ? parseTrace(row.toolTrace) : null
-    if (trace) {
-      for (const m of trace) append(m.role, m.content)
+export function toOpenAiHistory(
+  rows: HistoryRow[],
+  now: Date,
+): { historyBeforePending: ResponseInputItem[]; pendingUserItems: ResponseInputItem[] } {
+  const prior = rows.filter((r) => !r.pending)
+  const pending = rows.filter((r) => r.pending)
+
+  const historyBeforePending: ResponseInputItem[] = []
+  for (const row of prior) {
+    if (row.direction === 'outbound') {
+      const trace = parseOpenAiTrace(row.toolTrace)
+      if (trace) {
+        historyBeforePending.push(...trace)
+        continue
+      }
+      if (row.body?.trim()) {
+        historyBeforePending.push({ role: 'assistant', content: row.body.trim() })
+      }
       continue
     }
-    const text = renderMessage(row)
-    if (text) append(role, [text])
+    const text = renderMessage(row, now)
+    if (!text) continue
+    historyBeforePending.push({
+      role: row.direction === 'inbound' ? 'user' : 'assistant',
+      content: text,
+    })
   }
-  return out.map(({ role, parts }) => ({
-    role,
-    content: parts.every((p): p is string => typeof p === 'string')
-      ? parts.join('\n')
-      : parts.map((p): Anthropic.ContentBlockParam =>
-          typeof p === 'string' ? { type: 'text', text: p } : p,
-        ),
-  }))
+
+  const pendingLines = pending
+    .filter((r) => r.direction === 'inbound')
+    .map((r) => renderMessage(r, now))
+    .filter(Boolean)
+
+  const pendingUserItems: ResponseInputItem[] =
+    pendingLines.length > 0 ? [{ role: 'user', content: pendingLines.join('\n') }] : []
+
+  return { historyBeforePending, pendingUserItems }
 }
 
-/** Marca SOLO los mensajes que este turno leyó: nunca uno que no vio. */
 async function markProcessed(tenantId: string, ids: string[], now: Date) {
   if (ids.length === 0) return
   await withTenantContext(tenantId, (tx) =>
@@ -189,18 +165,50 @@ async function markProcessed(tenantId: string, ids: string[], now: Date) {
   )
 }
 
-/** El dueño contestó desde su celular y el chat sigue en sus manos. */
-async function ownerTookOver(tenantId: string, chatId: string): Promise<boolean> {
-  const [chat] = await withTenantContext(tenantId, (tx) =>
-    tx
+/**
+ * Verifica si el dueño intervino manualmente desde su celular mientras corría el modelo.
+ * Chequea tanto `pause_reason = 'owner_replied'` como mensajes `direction = 'owner'` nuevos.
+ */
+async function ownerTookOver(
+  tenantId: string,
+  chatId: string,
+  turnStartedAt: Date,
+): Promise<boolean> {
+  return withTenantContext(tenantId, async (tx) => {
+    const [chat] = await tx
       .select({ pausedUntil: whatsappChats.pausedUntil, pauseReason: whatsappChats.pauseReason })
       .from(whatsappChats)
       .where(and(eq(whatsappChats.tenantId, tenantId), eq(whatsappChats.id, chatId)))
-      .limit(1),
-  )
-  return (
-    chat?.pauseReason === 'owner_replied' && !!chat.pausedUntil && chat.pausedUntil > new Date()
-  )
+      .limit(1)
+    if (
+      chat?.pauseReason === 'owner_replied' &&
+      !!chat.pausedUntil &&
+      chat.pausedUntil > new Date()
+    ) {
+      return true
+    }
+    const [recentOwnerMsg] = await tx
+      .select({ id: whatsappMessages.id })
+      .from(whatsappMessages)
+      .where(
+        and(
+          eq(whatsappMessages.tenantId, tenantId),
+          eq(whatsappMessages.chatId, chatId),
+          eq(whatsappMessages.direction, 'owner'),
+          gte(whatsappMessages.createdAt, turnStartedAt),
+        ),
+      )
+      .limit(1)
+    return !!recentOwnerMsg
+  })
+}
+
+/**
+ * Resuelve el WhatsApp personal del dueño para alertas Utility.
+ * TODO: cuando agregues `whatsapp_connections.owner_alert_phone`, leelo en el SELECT de `connection`.
+ */
+function resolveOwnerAlertPhone(): string | null {
+  return process.env.WHATSAPP_OWNER_ALERT_PHONE?.trim() || null
 }
 
 async function recordOutbound(params: {
@@ -208,8 +216,8 @@ async function recordOutbound(params: {
   chatId: string
   waMessageId: string
   body: string
-  usage?: { inputTokens: number; cachedTokens: number; outputTokens: number }
-  toolTrace?: Anthropic.MessageParam[]
+  usage?: AgentUsage
+  toolTrace?: OpenAiTracePayload | null
 }) {
   await withTenantContext(params.tenantId, (tx) =>
     tx.insert(whatsappMessages).values({
@@ -222,7 +230,7 @@ async function recordOutbound(params: {
       inputTokens: params.usage?.inputTokens ?? null,
       cachedTokens: params.usage?.cachedTokens ?? null,
       outputTokens: params.usage?.outputTokens ?? null,
-      toolTrace: params.toolTrace?.length ? params.toolTrace : null,
+      toolTrace: params.toolTrace ?? null,
     }),
   )
 }
@@ -232,6 +240,7 @@ export async function processWhatsappTurn(
   now: Date = new Date(),
 ): Promise<TurnOutcome> {
   const { tenantId, chatId } = job
+  const turnStartedAt = new Date()
 
   const state = await withTenantContext(tenantId, async (tx) => {
     const [connection] = await tx
@@ -247,6 +256,7 @@ export async function processWhatsappTurn(
       .select({
         id: whatsappChats.id,
         waPhone: whatsappChats.waPhone,
+        displayName: whatsappChats.displayName,
         pausedUntil: whatsappChats.pausedUntil,
       })
       .from(whatsappChats)
@@ -272,6 +282,7 @@ export async function processWhatsappTurn(
         kind: whatsappMessages.kind,
         body: whatsappMessages.body,
         toolTrace: whatsappMessages.toolTrace,
+        createdAt: whatsappMessages.createdAt,
       })
       .from(whatsappMessages)
       .where(
@@ -314,9 +325,7 @@ export async function processWhatsappTurn(
       )
       .orderBy(asc(bookings.startsAt))
       .limit(5)
-    // Los turnos de este teléfono que no salieron del chat: cargados por el
-    // staff, sesiones de un turno fijo o reservas de la página. Mismo cruce por
-    // los últimos 8 dígitos que la sugerencia de /jugadores.
+
     const hint =
       chat && chat.waPhone.length >= PHONE_HINT_DIGITS
         ? chat.waPhone.slice(-PHONE_HINT_DIGITS)
@@ -350,10 +359,12 @@ export async function processWhatsappTurn(
           .orderBy(asc(bookings.startsAt))
           .limit(5)
       : []
+
     const courtPricing = await tx
       .select({ id: courts.id, pricing: courts.pricing })
       .from(courts)
       .where(and(eq(courts.tenantId, tenantId), eq(courts.status, 'online')))
+
     return {
       connection,
       chat,
@@ -380,8 +391,6 @@ export async function processWhatsappTurn(
     (await isFeatureEnabled(BOT_FEATURE_FLAG, tenantId)) &&
     (await isBotTenantOpen(tenantId, now))
   if (!live || !state.connection) {
-    // Apagado: el mensaje queda para el dueño en su celular. Se marca
-    // procesado para que el rescate no lo vuelva a levantar cada minuto.
     await markProcessed(tenantId, pendingIds, now)
     return 'disabled'
   }
@@ -409,8 +418,6 @@ export async function processWhatsappTurn(
     return 'disabled'
   }
 
-  // Audios que Kapso no transcribió (cuota del plan agotada, o falló): se
-  // intentan acá antes de que el modelo los vea.
   const unheard = state.history.filter((r) => r.pending && r.kind === 'audio' && !r.body)
   const heard =
     unheard.length > 0
@@ -422,53 +429,85 @@ export async function processWhatsappTurn(
       : new Map<string, string>()
   const historyRows = state.history.map((r) => ({ ...r, body: heard.get(r.id) ?? r.body }))
 
-  const history = toAnthropicHistory(historyRows)
-  if (history.at(-1)?.role !== 'user') {
-    // Los pendientes quedaron fuera de la ventana del historial: no hay nada
-    // que el modelo pueda contestar con sentido.
+  const { historyBeforePending, pendingUserItems } = toOpenAiHistory(historyRows, now)
+  if (pendingUserItems.length === 0) {
     await markProcessed(tenantId, pendingIds, now)
     return 'nothing_pending'
   }
 
   const phoneNumberId = state.connection.phoneNumberId
   const to = state.chat.waPhone
-  const ctx = { tenant, chatId, waPhone: to, now, phoneBookings: state.phoneBookings }
+  const ctx = {
+    tenant,
+    chatId,
+    waPhone: to,
+    contactDisplayName: state.chat.displayName,
+    phoneNumberId,
+    ownerAlertPhone: resolveOwnerAlertPhone(),
+    now,
+    phoneBookings: state.phoneBookings,
+  }
 
   let reply = FALLBACK_REPLY
-  let usage: { inputTokens: number; cachedTokens: number; outputTokens: number } | undefined
-  let toolTrace: Anthropic.MessageParam[] = []
-  let triedToBook = false
+  let usage: AgentUsage | undefined
+  let toolTrace: OpenAiTracePayload | null = null
+  let agentOutcome: 'replied' | 'handoff' | 'silent' = 'replied'
   let failed = false
-  // Solo si TODO lo pendiente son audios sin transcribir: si vino con texto, el
-  // modelo contesta el texto y el prompt le pide que el audio lo escriban.
+
   const onlyUnheardAudio = historyRows
     .filter((r) => r.pending)
     .every((r) => r.kind === 'audio' && !r.body)
+
   if (onlyUnheardAudio) {
     reply = UNHEARD_AUDIO_REPLY
   } else {
     try {
-      const courts = (await getPublicCourtCards(tenant)).map((c) => ({
+      const courtsData = (await getPublicCourtCards(tenant)).map((c) => ({
         ...c,
         priceRules: tenant.hidePrices ? [] : (state.priceRules.get(c.id) ?? []),
       }))
       const result = await runAgent({
-        complexContext: [
-          buildComplexContext(tenant, courts, now),
-          buildChatBookings(tenant, state.chatBookings),
-          buildPhoneBookings(tenant, state.phoneBookings),
-        ].join('\n\n'),
-        history,
-        tools: buildBotTools(ctx, courts),
+        tenantId,
+        staticComplexContext: buildStaticComplexContext(tenant, courtsData),
+        dynamicTurnContext: buildDynamicTurnContext({
+          tenant,
+          now,
+          contactDisplayName: state.chat.displayName,
+          chatBookings: state.chatBookings,
+          phoneBookings: state.phoneBookings,
+        }),
+        historyBeforePending,
+        pendingUserItems,
+        tools: buildBotTools(ctx, courtsData),
       })
-      if (!result.text) throw new Error('El modelo no devolvió texto')
-      reply = result.text
+
+      agentOutcome = result.outcome
       usage = result.usage
       toolTrace = result.trace
-      triedToBook = result.toolsCalled.includes('reservar')
+
+      if (result.outcome === 'silent') {
+        // Silencio intencional: no se manda nada a Kapso ni se infla `whatsapp_messages`.
+        logger.info('whatsapp-bot: turno en silencio (no_responder)', {
+          module: 'whatsapp-bot',
+          tenantId,
+          usage,
+          cacheWriteTokens: result.cacheWriteTokens,
+        })
+        await markProcessed(tenantId, pendingIds, now)
+        return 'silent'
+      }
+
+      if (result.cacheWriteTokens > 0) {
+        logger.info('whatsapp-bot: cache write del turno', {
+          module: 'whatsapp-bot',
+          tenantId,
+          cacheWriteTokens: result.cacheWriteTokens,
+        })
+      }
+
+      if (!result.text) throw new Error('El modelo no devolvió texto')
+      reply = result.text
     } catch (err) {
-      // El modelo o una tool fallaron de verdad: se le avisa al jugador y la
-      // charla pasa a una persona en vez de dejarlo hablándole a la nada.
       failed = true
       captureException(err)
       logger.error('whatsapp-bot: el turno falló, se pasa a una persona', {
@@ -479,10 +518,8 @@ export async function processWhatsappTurn(
     }
   }
 
-  // El dueño pudo contestar desde su celular mientras corría el modelo: la del
-  // bot sería una segunda respuesta. Sale igual si el turno intentó reservar,
-  // porque el jugador tiene que enterarse de lo que quedó hecho.
-  if (!triedToBook && (await ownerTookOver(tenantId, chatId))) {
+  // Una reserva ya creada queda visible en la grilla aunque el dueño tome el chat.
+  if (await ownerTookOver(tenantId, chatId, turnStartedAt)) {
     await markProcessed(tenantId, pendingIds, now)
     return 'paused'
   }
@@ -491,8 +528,6 @@ export async function processWhatsappTurn(
   try {
     sent = await sendWhatsappText({ phoneNumberId, to, body: reply })
   } catch (err) {
-    // Kapso no entregó. Sin reintento (ver arriba): el dueño ve el mensaje en
-    // su celular y el push le avisa que lo conteste él.
     failed = true
     captureException(err)
     logger.error('whatsapp-bot: no se pudo mandar la respuesta, se pasa a una persona', {
@@ -501,6 +536,7 @@ export async function processWhatsappTurn(
       error: err instanceof Error ? err.message : String(err),
     })
   }
+
   if (sent) {
     try {
       await recordOutbound({
@@ -512,8 +548,6 @@ export async function processWhatsappTurn(
         toolTrace,
       })
     } catch (err) {
-      // El jugador SÍ recibió la respuesta: no es una falla de atención, solo
-      // falta la fila (contexto del próximo turno y métrica de tokens).
       captureException(err)
       logger.error('whatsapp-bot: la respuesta salió pero no se pudo guardar', {
         module: 'whatsapp-bot',
@@ -533,5 +567,5 @@ export async function processWhatsappTurn(
     )
     return 'handed_off_on_error'
   }
-  return 'replied'
+  return agentOutcome === 'handoff' ? 'handoff' : 'replied'
 }

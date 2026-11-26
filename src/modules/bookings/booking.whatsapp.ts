@@ -1,6 +1,14 @@
-import { and, eq, inArray, sql } from 'drizzle-orm'
-import { bookings, tenants, tenantSubscriptions, whatsappChats } from '@/shared/db/schema'
+import { and, eq, gt, inArray, lt, ne, sql } from 'drizzle-orm'
+import {
+  auditLogs,
+  bookings,
+  tenants,
+  tenantSubscriptions,
+  whatsappChats,
+} from '@/shared/db/schema'
 import type { DbTx } from '@/shared/db/client'
+import { insertSystemAuditLog } from '@/shared/db/audit'
+import { invalidateAvailSearch } from '@/shared/cache/slots-cache'
 import { findActiveBanByPhoneHint } from '@/modules/bans/ban.service'
 import { generateSlots } from '@/modules/tenants/public.service'
 import { isPublicPortalOpen, publicBookingAdvanceDays } from '@/modules/tenants/tenant.lifecycle'
@@ -12,6 +20,7 @@ import { isStaffNotificationsEnabled } from '@/modules/notifications/staff-notif
 import { dayKeyOf } from '@/lib/booking/pricing'
 import { captureMessage } from '@/lib/sentry'
 import {
+  DEFAULT_CANCELLATION_HOURS_BEFORE,
   MAX_WHATSAPP_ACTIVE_HOLDS_PER_CHAT,
   MAX_WHATSAPP_UNPAID_CONFIRMED_PER_CHAT,
   SLOT_DURATION_MINUTES,
@@ -25,6 +34,7 @@ import { hhmm, isUuid } from '@/shared/validation/primitives'
 import {
   afterOnlineInsert,
   assertOnlineSlotWindow,
+  assertSlotDuration,
   checkOverlapOrThrow,
   isExclusionViolation,
   lockPricedSlot,
@@ -39,6 +49,7 @@ import {
   PlayerBannedError,
   SlotTakenError,
   TooManyWhatsappBookingsError,
+  WhatsappRescheduleBlockedError,
 } from './booking.errors'
 import { calcDepositCents } from './deposit'
 import { guestLateCancelStatus, PHONE_HINT_DIGITS } from './guest-late-cancel'
@@ -150,96 +161,20 @@ async function createWhatsappBookingImpl(
   }
 
   // ── Complejo: portal abierto y con reservas online. `tenants` es global (sin RLS).
-  const tenantRows = await tx
-    .select({
-      status: tenants.status,
-      settings: tenants.settings,
-      openingHours: tenants.openingHours,
-      closedDates: tenants.closedDates,
-      closesNextDay: tenants.closesNextDay,
-      mpAccessToken: tenants.mpAccessToken,
-      mpDisconnectedAt: tenants.mpDisconnectedAt,
-    })
-    .from(tenants)
-    .where(eq(tenants.id, tenantId))
-    .limit(1)
-  const tenant = tenantRows[0]
-  if (!tenant) throw new BookingNotOfferedError('portal_closed')
-  const settings = tenant.settings as TenantSettings
+  const { tenant, settings, canceledPeriodEnd } = await loadActivePortalTenant(tenantId, tx)
 
-  // Mismo cálculo que `getPublicTenant`: el período pago solo se lee en la baja voluntaria.
-  const canceledPeriodEnd =
-    tenant.status === 'canceled'
-      ? await tx
-          .select({ currentPeriodEnd: tenantSubscriptions.currentPeriodEnd })
-          .from(tenantSubscriptions)
-          .where(eq(tenantSubscriptions.tenantId, tenantId))
-          .limit(1)
-          .then((r) => r[0]?.currentPeriodEnd ?? null)
-      : null
-  if (!isPublicPortalOpen(tenant.status, canceledPeriodEnd)) {
-    throw new BookingNotOfferedError('portal_closed')
-  }
-  if (settings.allow_online_booking === false) throw new BookingNotOfferedError('online_disabled')
-
-  // ── Las reglas del portal: 60 min, no vencido, anticipación máxima y período pago.
-  await assertOnlineSlotWindow(
+  // ── Las reglas del portal + horario del complejo (día cerrado, `closed_dates`, apertura).
+  await assertSlotWindowOffered(
     tenantId,
-    {
-      date: input.date,
-      timeStart: input.timeStart,
-      timeEnd,
-      maxAdvanceDays: publicBookingAdvanceDays(
-        settings.booking_advance_days ?? 6,
-        tenant.status,
-        canceledPeriodEnd,
-      ),
-    },
+    tenant,
+    settings,
+    canceledPeriodEnd,
+    { courtId: input.courtId, date: input.date, timeStart: input.timeStart, timeEnd },
     tx,
   )
 
-  // ── Horario del complejo: lo que el portal ya filtra al dibujar la grilla y
-  // `createOnlineBooking` NO revalida (día cerrado, `closed_dates`, fuera de horario).
-  // Se pregunta a `generateSlots`, el mismo generador de la disponibilidad pública, si
-  // la hora existe en la grilla de ese día: toda la aritmética del día operativo
-  // (cierre post-medianoche, madrugada) queda de su lado.
-  const openingHours = tenant.openingHours as OpeningHours
-  const dayKey = dayKeyOf(input.date)
-  const dayHours = openingHours[dayKey as keyof OpeningHours]
-  // Igual que `getPublicAvailabilityImpl` (public.service.ts): día cerrado de la
-  // semana o fecha puntual cerrada.
-  const closedDay = dayHours?.closed === true || (tenant.closedDates ?? []).includes(input.date)
-  if (closedDay) throw new BookingNotOfferedError('closed_day')
-  const now = artNowParts()
-  const offered = generateSlots({
-    courtId: input.courtId,
-    // Solo importa QUÉ horas hay, no su precio ni su estado: sin reglas y sin reservas.
-    pricing: { rules: [] },
-    dayKey,
-    openHhmm: dayHours?.open ?? '08:00',
-    closeHhmm: dayHours?.close ?? '23:00',
-    closedDay,
-    closesNextDay: tenant.closesNextDay,
-    courtBookings: [],
-    durationMins: SLOT_DURATION_MINUTES,
-    date: input.date,
-    nowDateStr: now.date,
-    nowMins: hhmmToMins(now.time),
-  }).some((slot) => slot.time === input.timeStart)
-  if (!offered) throw new BookingNotOfferedError('outside_hours')
-
-  // ── Ban: el mismo mecanismo que el portal (`tenant_player_bans`: manuales y softban de
-  // ausencias), cruzado por teléfono porque el invitado no tiene `player_id`.
-  const ban = await findActiveBanByPhoneHint(
-    tenantId,
-    input.guestPhone.slice(-PHONE_HINT_DIGITS),
-    tx,
-  )
-  if (ban) throw new PlayerBannedError(ban.playerId, tenantId, false, ban.reason, ban.until)
-
-  // Cancelaciones tardías del invitado: se derivan de sus reservas (no hay fila de ban).
-  const late = await guestLateCancelStatus(tenantId, input.guestPhone.slice(-PHONE_HINT_DIGITS), tx)
-  if (late.bannedUntil) throw new GuestLateCancelBlockedError(late.bannedUntil)
+  // ── Ban y cancelaciones tardías por teléfono.
+  await assertGuestNotBanned(tenantId, input.guestPhone, tx)
 
   // ── Topes por CHAT (no por teléfono: el staff puede editarlo en la reserva).
   const capRows = (await tx.execute(sql`
@@ -363,5 +298,338 @@ async function createWhatsappBookingImpl(
       throw new SlotTakenError()
     }
     throw err
+  }
+}
+
+async function loadActivePortalTenant(tenantId: string, tx: DbTx) {
+  const tenantRows = await tx
+    .select({
+      status: tenants.status,
+      settings: tenants.settings,
+      openingHours: tenants.openingHours,
+      closedDates: tenants.closedDates,
+      closesNextDay: tenants.closesNextDay,
+      mpAccessToken: tenants.mpAccessToken,
+      mpDisconnectedAt: tenants.mpDisconnectedAt,
+    })
+    .from(tenants)
+    .where(eq(tenants.id, tenantId))
+    .limit(1)
+  const tenant = tenantRows[0]
+  if (!tenant) throw new BookingNotOfferedError('portal_closed')
+  const settings = tenant.settings as TenantSettings
+
+  const canceledPeriodEnd =
+    tenant.status === 'canceled'
+      ? await tx
+          .select({ currentPeriodEnd: tenantSubscriptions.currentPeriodEnd })
+          .from(tenantSubscriptions)
+          .where(eq(tenantSubscriptions.tenantId, tenantId))
+          .limit(1)
+          .then((r) => r[0]?.currentPeriodEnd ?? null)
+      : null
+  if (!isPublicPortalOpen(tenant.status, canceledPeriodEnd)) {
+    throw new BookingNotOfferedError('portal_closed')
+  }
+  if (settings.allow_online_booking === false) throw new BookingNotOfferedError('online_disabled')
+
+  return { tenant, settings, canceledPeriodEnd }
+}
+
+type ActivePortalTenant = Awaited<ReturnType<typeof loadActivePortalTenant>>
+
+async function assertSlotWindowOffered(
+  tenantId: string,
+  tenant: ActivePortalTenant['tenant'],
+  settings: TenantSettings,
+  canceledPeriodEnd: Date | null,
+  params: { courtId: string; date: string; timeStart: string; timeEnd: string },
+  tx: DbTx,
+) {
+  await assertOnlineSlotWindow(
+    tenantId,
+    {
+      date: params.date,
+      timeStart: params.timeStart,
+      timeEnd: params.timeEnd,
+      maxAdvanceDays: publicBookingAdvanceDays(
+        settings.booking_advance_days ?? 6,
+        tenant.status,
+        canceledPeriodEnd,
+      ),
+    },
+    tx,
+  )
+
+  const openingHours = tenant.openingHours as OpeningHours
+  const dayKey = dayKeyOf(params.date)
+  const dayHours = openingHours[dayKey as keyof OpeningHours]
+  const closedDay = dayHours?.closed === true || (tenant.closedDates ?? []).includes(params.date)
+  if (closedDay) throw new BookingNotOfferedError('closed_day')
+  const now = artNowParts()
+  const offered = generateSlots({
+    courtId: params.courtId,
+    pricing: { rules: [] },
+    dayKey,
+    openHhmm: dayHours?.open ?? '08:00',
+    closeHhmm: dayHours?.close ?? '23:00',
+    closedDay,
+    closesNextDay: tenant.closesNextDay,
+    courtBookings: [],
+    durationMins: SLOT_DURATION_MINUTES,
+    date: params.date,
+    nowDateStr: now.date,
+    nowMins: hhmmToMins(now.time),
+  }).some((slot) => slot.time === params.timeStart)
+  if (!offered) throw new BookingNotOfferedError('outside_hours')
+}
+
+async function assertGuestNotBanned(tenantId: string, guestPhone: string, tx: DbTx) {
+  const hint = guestPhone.slice(-PHONE_HINT_DIGITS)
+  const ban = await findActiveBanByPhoneHint(tenantId, hint, tx)
+  if (ban) throw new PlayerBannedError(ban.playerId, tenantId, false, ban.reason, ban.until)
+
+  const late = await guestLateCancelStatus(tenantId, hint, tx)
+  if (late.bannedUntil) throw new GuestLateCancelBlockedError(late.bannedUntil)
+}
+
+export type RescheduleWhatsappBookingInput = {
+  chatId: string
+  fromCourtId: string
+  fromDate: string
+  fromTimeStart: string
+  toCourtId: string
+  toDate: string
+  toTimeStart: string
+  now?: Date
+}
+
+export type RescheduleWhatsappBookingResult = {
+  booking: BookingRow
+  from: { courtId: string; date: string; timeStart: string }
+  priceChanged: boolean
+}
+
+/**
+ * Reprograma un turno confirmado y sin seña de este chat conservando el mismo `booking.id`.
+ * Respeta las horas de anticipación configuradas por el complejo para cancelación y limita a
+ * 1 reprogramación por reserva desde WhatsApp para prevenir abusos.
+ */
+export async function rescheduleWhatsappBooking(
+  tenantId: string,
+  input: RescheduleWhatsappBookingInput,
+  tx: DbTx,
+): Promise<RescheduleWhatsappBookingResult> {
+  return withSpan('booking.reschedule.whatsapp', 'booking.reschedule', () =>
+    rescheduleWhatsappBookingImpl(tenantId, input, tx),
+  )
+}
+
+async function rescheduleWhatsappBookingImpl(
+  tenantId: string,
+  input: RescheduleWhatsappBookingInput,
+  tx: DbTx,
+): Promise<RescheduleWhatsappBookingResult> {
+  if (!isUuid(input.chatId)) throw new BookingValidationError('Chat inválido.')
+  if (!isUuid(input.fromCourtId)) throw new CourtOfflineError(input.fromCourtId)
+  if (!isUuid(input.toCourtId)) throw new CourtOfflineError(input.toCourtId)
+  if (!isValidCalendarDate(input.fromDate) || !isValidCalendarDate(input.toDate)) {
+    throw new BookingDateOutOfRangeError('past_date')
+  }
+  if (!hhmm.safeParse(input.fromTimeStart).success || !hhmm.safeParse(input.toTimeStart).success) {
+    throw new BookingValidationError('Hora inválida.')
+  }
+  if (
+    input.fromCourtId === input.toCourtId &&
+    input.fromDate === input.toDate &&
+    input.fromTimeStart === input.toTimeStart
+  ) {
+    throw new WhatsappRescheduleBlockedError(null, 'same_slot')
+  }
+
+  const toTimeEnd = endLabelFromMins(hhmmToMins(input.toTimeStart) + SLOT_DURATION_MINUTES)
+
+  const chatLockKey = `wa_chat:${tenantId}:${input.chatId}`
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${chatLockKey}))`)
+
+  const chatRows = await tx
+    .select({ id: whatsappChats.id })
+    .from(whatsappChats)
+    .where(and(eq(whatsappChats.id, input.chatId), eq(whatsappChats.tenantId, tenantId)))
+    .limit(1)
+  if (chatRows.length === 0) throw new BookingValidationError('Chat inválido.')
+
+  const { tenant, settings, canceledPeriodEnd } = await loadActivePortalTenant(tenantId, tx)
+
+  await assertSlotWindowOffered(
+    tenantId,
+    tenant,
+    settings,
+    canceledPeriodEnd,
+    {
+      courtId: input.toCourtId,
+      date: input.toDate,
+      timeStart: input.toTimeStart,
+      timeEnd: toTimeEnd,
+    },
+    tx,
+  )
+
+  // Orden de locks consistente con `rescheduleBooking`: cancha destino antes del booking.
+  const slot = await lockPricedSlot(
+    tenantId,
+    {
+      courtId: input.toCourtId,
+      date: input.toDate,
+      timeStart: input.toTimeStart,
+      timeEnd: toTimeEnd,
+      minLeadMinutes: bookingMinAdvanceHours(settings) * 60,
+    },
+    tx,
+  )
+
+  const foundRows = await tx
+    .select()
+    .from(bookings)
+    .where(
+      and(
+        eq(bookings.tenantId, tenantId),
+        eq(bookings.whatsappChatId, input.chatId),
+        eq(bookings.courtId, input.fromCourtId),
+        sql`${bookings.date} = ${input.fromDate}::date`,
+        sql`to_char(${bookings.timeStart}, 'HH24:MI') = ${input.fromTimeStart}`,
+        inArray(bookings.status, ['confirmed', 'pending_payment']),
+      ),
+    )
+    .for('update')
+    .limit(1)
+  const booking = foundRows[0]
+  if (!booking) throw new WhatsappRescheduleBlockedError(null, 'not_found')
+
+  if (booking.status === 'pending_payment' || booking.depositStatus === 'pending') {
+    throw new WhatsappRescheduleBlockedError(booking.id, 'deposit_pending')
+  }
+  if (booking.status !== 'confirmed') {
+    throw new WhatsappRescheduleBlockedError(booking.id, 'not_found')
+  }
+  if (booking.depositStatus !== 'not_required') {
+    throw new WhatsappRescheduleBlockedError(booking.id, 'deposit_paid')
+  }
+  if (booking.type === 'fixed' || booking.type === 'tournament' || booking.type === 'block') {
+    throw new WhatsappRescheduleBlockedError(booking.id, 'not_supported')
+  }
+  try {
+    assertSlotDuration(booking.timeStart.slice(0, 5), booking.timeEnd.slice(0, 5))
+  } catch {
+    throw new WhatsappRescheduleBlockedError(booking.id, 'not_supported')
+  }
+
+  const nowMs = (input.now ?? new Date()).getTime()
+  if (booking.startsAt.getTime() <= nowMs) {
+    throw new WhatsappRescheduleBlockedError(booking.id, 'already_started')
+  }
+
+  const minHoursBefore = settings.requires_deposit
+    ? (settings.cancellation_policy?.hours_before ?? DEFAULT_CANCELLATION_HOURS_BEFORE)
+    : (settings.late_cancel_hours ?? 0)
+  if (minHoursBefore > 0 && booking.startsAt.getTime() - nowMs < minHoursBefore * 3_600_000) {
+    throw new WhatsappRescheduleBlockedError(booking.id, 'too_close', minHoursBefore)
+  }
+
+  const priorReschedules = await tx
+    .select({ id: auditLogs.id })
+    .from(auditLogs)
+    .where(
+      and(
+        eq(auditLogs.tenantId, tenantId),
+        eq(auditLogs.resourceType, 'booking'),
+        eq(auditLogs.resourceId, booking.id),
+        eq(auditLogs.action, 'booking.rescheduled'),
+      ),
+    )
+    .limit(1)
+  if (priorReschedules.length > 0) {
+    throw new WhatsappRescheduleBlockedError(booking.id, 'reschedule_limit')
+  }
+
+  if (booking.guestPhone) {
+    await assertGuestNotBanned(tenantId, booking.guestPhone, tx)
+  }
+
+  const conflictRows = await tx
+    .select({ id: bookings.id })
+    .from(bookings)
+    .where(
+      and(
+        eq(bookings.courtId, input.toCourtId),
+        ne(bookings.id, booking.id),
+        inArray(bookings.status, ['pending_payment', 'confirmed']),
+        lt(bookings.startsAt, slot.endsAt),
+        gt(bookings.endsAt, slot.startsAt),
+      ),
+    )
+    .limit(1)
+  if (conflictRows.length > 0) throw new SlotTakenError()
+
+  let updatedRow
+  try {
+    const rows = await tx
+      .update(bookings)
+      .set({
+        courtId: input.toCourtId,
+        date: new Date(`${input.toDate}T00:00:00Z`),
+        timeStart: input.toTimeStart,
+        timeEnd: toTimeEnd,
+        startsAt: slot.startsAt,
+        endsAt: slot.endsAt,
+        priceSnapshot: slot.priceSnapshot,
+        updatedAt: new Date(),
+      })
+      .where(eq(bookings.id, booking.id))
+      .returning()
+    updatedRow = rows[0]!
+  } catch (err) {
+    if (isExclusionViolation(err)) {
+      track.booking('booking.online.create.slot_taken', {
+        tenantId,
+        courtId: input.toCourtId,
+      })
+      throw new SlotTakenError()
+    }
+    throw err
+  }
+
+  await invalidateAvailSearch(input.fromDate)
+  if (input.toDate !== input.fromDate) {
+    await invalidateAvailSearch(input.toDate)
+  }
+
+  await insertSystemAuditLog(tx, {
+    tenantId,
+    action: 'booking.rescheduled',
+    resourceType: 'booking',
+    resourceId: booking.id,
+    metadata: {
+      source: 'whatsapp_bot',
+      chatId: input.chatId,
+      fromCourtId: booking.courtId,
+      fromDate: input.fromDate,
+      fromTimeStart: input.fromTimeStart,
+      toCourtId: input.toCourtId,
+      toDate: input.toDate,
+      toTimeStart: input.toTimeStart,
+      oldPrice: booking.priceSnapshot,
+      newPrice: slot.priceSnapshot,
+    },
+  })
+
+  return {
+    booking: rowToBookingRow(updatedRow),
+    from: {
+      courtId: booking.courtId,
+      date: input.fromDate,
+      timeStart: input.fromTimeStart,
+    },
+    priceChanged: slot.priceSnapshot !== booking.priceSnapshot,
   }
 }

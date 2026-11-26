@@ -18,23 +18,22 @@ import { isInboundSilent, type OpeningHoursMap } from './whatsapp-silence'
 export const KAPSO_PLAN_MONTHLY_MESSAGES = 2000
 
 /**
- * Precio de Claude Haiku 5.5 en USD por millón de tokens (fuente: la página de
- * precios de Anthropic, consultada el 2026-10-21). La lectura de caché cuesta el
- * 10% de la entrada.
+ * Precio de OpenAI gpt-6.2-sol en USD por millón de tokens (hasta 272K input):
+ * input $2.00, cached input $0.10, output $10.00.
  */
-const HAIKU_USD_PER_MTOK = { input: 0.1, cached: 0.01, output: 0.5 } as const
+const GPT_6_2_SOL_USD_PER_MTOK = { input: 2.0, cached: 0.1, output: 10.0 } as const
 
 const DAY_MS = 24 * 3600_000
 const MONTHLY_READ_TIMEOUT_MS = 10_000
 
 type TokenCounts = { input: number; cached: number; output: number }
 
-/** Gasto estimado de Anthropic a partir de los tokens guardados. Anthropic no expone el saldo. */
+/** Gasto estimado del modelo a partir de los tokens guardados. */
 export function tokensToUsd(t: TokenCounts): number {
   return (
-    (t.input * HAIKU_USD_PER_MTOK.input +
-      t.cached * HAIKU_USD_PER_MTOK.cached +
-      t.output * HAIKU_USD_PER_MTOK.output) /
+    (t.input * GPT_6_2_SOL_USD_PER_MTOK.input +
+      t.cached * GPT_6_2_SOL_USD_PER_MTOK.cached +
+      t.output * GPT_6_2_SOL_USD_PER_MTOK.output) /
     1_000_000
   )
 }
@@ -114,7 +113,7 @@ export type WhatsappMonitor = {
     crossingDay: number | null
     daysInMonth: number
   }
-  anthropic: { tokens: TokenCounts; costUsd: number; projectedUsd: number }
+  ai: { tokens: TokenCounts; costUsd: number; projectedUsd: number }
   tenants: WhatsappTenantHealth[]
 }
 
@@ -342,7 +341,7 @@ async function readMonitor(db: Db, now: Date): Promise<WhatsappMonitor> {
       crossingDay,
       daysInMonth: w.daysInMonth,
     },
-    anthropic: { tokens, costUsd, projectedUsd: (costUsd / elapsedDays) * w.daysInMonth },
+    ai: { tokens, costUsd, projectedUsd: (costUsd / elapsedDays) * w.daysInMonth },
     tenants: (
       conns as unknown as Rows<{
         tenantId: string

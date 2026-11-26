@@ -61,7 +61,7 @@ describe('renderNotice — textos', () => {
 
   it('deposit_confirmed: confirma la seña con cancha, día y hora', () => {
     expect(renderNotice('deposit_confirmed', turn)).toBe(
-      'Listo, recibimos la seña ✅ Tu turno quedó confirmado: *Cancha Techada*, viernes 23 de octubre a las 21:00. ¡Te esperamos!',
+      'Listo, recibimos la seña ✅ Tu turno quedó confirmado: *Cancha Techada*, viernes 23 de octubre a las 21:00. Te esperamos!',
     )
   })
 

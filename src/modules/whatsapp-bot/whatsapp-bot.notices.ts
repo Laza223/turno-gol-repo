@@ -43,7 +43,7 @@ export function renderNotice(notice: WhatsappNotice, target: NoticeTarget): stri
   const day = formatDayHeader(artDateOf(target.startsAt))
   const hour = target.timeStart.slice(0, 5)
   if (notice === 'deposit_confirmed') {
-    return `Listo, recibimos la seña ✅ Tu turno quedó confirmado: *${target.courtName}*, ${day} a las ${hour}. ¡Te esperamos!`
+    return `Listo, recibimos la seña ✅ Tu turno quedó confirmado: *${target.courtName}*, ${day} a las ${hour}. Te esperamos!`
   }
   if (notice === 'late_payment_refunded') {
     // Igual que el mail `player_late_payment_refunded`: la devolución la hace

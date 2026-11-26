@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { normalizeKapsoPayload } from '@/lib/kapso/events.schema'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { normalizeKapsoDelivery, normalizeKapsoPayload } from '@/lib/kapso/events.schema'
 
 /**
  * Payload v2 de Kapso (`kind: "kapso"`), reducido a lo que lee el schema de
@@ -8,6 +8,41 @@ import { normalizeKapsoPayload } from '@/lib/kapso/events.schema'
  */
 const PHONE_NUMBER_ID = '1098765432100'
 const PLAYER_PHONE = '5491155551234'
+
+describe('entrega incompleta de Kapso', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
+  })
+  const message = { id: 'wamid.example', type: 'text', to: PLAYER_PHONE }
+  const payload = { phone_number_id: PHONE_NUMBER_ID, message }
+  function mockSource(origin: string, numberId = PHONE_NUMBER_ID) {
+    vi.stubEnv('KAPSO_API_KEY', 'test-key')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json({
+          data: {
+            ...message,
+            kapso: { phone_number_id: numberId, direction: 'outbound', origin },
+          },
+        }),
+      ),
+    )
+  }
+  it.each([
+    ['business_app', 'owner'],
+    ['cloud_api', 'ignored'],
+    ['history_sync', 'ignored'],
+  ])('identifica la salida %s y la procesa como %s', async (origin, kind) => {
+    mockSource(origin)
+    expect(await normalizeKapsoDelivery(payload, 'whatsapp.message.sent')).toMatchObject([{ kind }])
+  })
+  it('rechaza una atribución que pertenece a otro número', async () => {
+    mockSource('business_app', 'otro')
+    await expect(normalizeKapsoDelivery(payload, 'whatsapp.message.sent')).rejects.toThrow()
+  })
+})
 
 type Overrides = {
   message?: Record<string, unknown>

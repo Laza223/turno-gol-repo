@@ -4,6 +4,15 @@ import path from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { faker } from '@faker-js/faker'
 import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
+import {
+  Responses,
+  type Response as OpenAiResponse,
+  type ResponseCreateParamsNonStreaming,
+  type ResponseFunctionToolCall,
+  type ResponseInputItem,
+  type ResponseOutputItem,
+} from 'openai/resources/responses/responses'
 import { parse as parseEnv } from 'dotenv'
 import { closeSql } from '@/shared/db/client'
 import { setExpiryScheduler } from '@/shared/jobs/schedule-expiry'
@@ -11,7 +20,11 @@ import type { NormalizedWhatsappEvent } from '@/lib/kapso/events.schema'
 import { sendWhatsappText } from '@/lib/kapso/client'
 import { captureException } from '@/lib/sentry'
 import { notifyAdminPush } from '@/modules/notifications/push.service'
-import { BOT_MODEL } from '@/modules/whatsapp-bot/whatsapp-bot.agent'
+import {
+  BOT_MODEL,
+  resolveReasoningEffort,
+  type ReasoningEffort,
+} from '@/modules/whatsapp-bot/whatsapp-bot.agent'
 import { ingestWhatsappEvents } from '@/modules/whatsapp-bot/whatsapp-bot.ingest'
 import { SYSTEM_RULES } from '@/modules/whatsapp-bot/whatsapp-bot.prompt'
 import { processWhatsappTurn } from '@/modules/whatsapp-bot/whatsapp-bot.turn'
@@ -34,7 +47,6 @@ import {
   JUDGE_METRICS,
   JUDGE_MODEL,
   SIM_MODEL,
-  addUsage,
   emptyUsage,
   judgeBatch,
   judgeConversation,
@@ -45,7 +57,8 @@ import {
 } from './sonnet'
 
 /**
- * Banco de pruebas del bot de WhatsApp contra Claude DE VERDAD (Haiku 5.5).
+ * Banco de pruebas del bot de WhatsApp contra OpenAI DE VERDAD (`gpt-6.2-sol` por defecto),
+ * con jugador simulado (Haiku 5.5) y juez (Sonnet 5.5).
  *
  * Corre el camino real de producción — `ingestWhatsappEvents` →
  * `processWhatsappTurn` → `runAgent` → tools → Postgres — y mockea solo los
@@ -59,8 +72,10 @@ import {
  * BOT_BENCH_CONCURRENCY (4), BOT_BENCH_VARIANT (baseline), BOT_BENCH_RESUME (1
  * para saltear los casos ya corridos), BOT_BENCH_MAX_USD (tope de gasto: no
  * lanza un caso que lo pueda pasar), BOT_BENCH_JUDGE (`batch` por defecto,
- * `inline` para tener cada veredicto al toque y a precio completo). Salida en
- * `.claude/hillclimb/whatsapp-bot/`.
+ * `inline` para tener cada veredicto al toque y a precio completo),
+ * BOT_BENCH_MODEL (override opcional del modelo del bot),
+ * BOT_BENCH_EFFORT (`low` | `medium`, override opcional de `reasoning.effort`).
+ * Salida en `.claude/hillclimb/whatsapp-bot/`.
  *
  * Una conversación que no pasa los chequeos deterministas ya está reprobada:
  * no se le paga el juez.
@@ -71,22 +86,26 @@ vi.hoisted(() => {
   process.env.NEXT_PUBLIC_APP_URL ??= 'https://turnogol.app'
 })
 vi.mock('@/lib/kapso/client', () => ({ sendWhatsappText: vi.fn() }))
-vi.mock('@/modules/notifications/push.service', () => ({ notifyAdminPush: vi.fn() }))
+vi.mock('@/modules/notifications/push.service', () => ({
+  notifyAdminPush: vi.fn(),
+  notifyAdminBookingConfirmed: vi.fn(async () => ({ enqueued: 1 })),
+}))
 vi.mock('@/lib/sentry', () => ({ captureException: vi.fn(), captureMessage: vi.fn() }))
 
 // ─── Configuración ──────────────────────────────────────────────────────────
 
-/** La key va exportada o en el `.env.local` de este directorio (se lee solo esa variable). */
-function loadApiKey(): string | undefined {
-  if (process.env.ANTHROPIC_API_KEY) return process.env.ANTHROPIC_API_KEY
+/** Carga OPENAI_API_KEY y ANTHROPIC_API_KEY desde env o `.env.local`. */
+function loadApiKeys(): { openai?: string; anthropic?: string } {
   const file = path.resolve(process.cwd(), '.env.local')
-  if (!existsSync(file)) return undefined
-  const key = parseEnv(readFileSync(file)).ANTHROPIC_API_KEY
-  if (key) process.env.ANTHROPIC_API_KEY = key
-  return key
+  const parsed = existsSync(file) ? parseEnv(readFileSync(file)) : {}
+  for (const name of ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY'] as const) {
+    if (!process.env[name] && parsed[name]) process.env[name] = parsed[name]
+  }
+  return { openai: process.env.OPENAI_API_KEY, anthropic: process.env.ANTHROPIC_API_KEY }
 }
 
-const API_KEY = loadApiKey()
+const API_KEYS = loadApiKeys()
+const HAS_KEYS = Boolean(API_KEYS.openai && API_KEYS.anthropic)
 // Sin DATABASE_URL los helpers caen a :54322, la base local de Lazar. Las otras
 // dos, si están, tienen que apuntar a la misma base descartable.
 const SAFE_DB =
@@ -104,12 +123,17 @@ const ONLY = (process.env.BOT_BENCH_ONLY ?? '').split(',').filter(Boolean)
 const RESUME = process.env.BOT_BENCH_RESUME === '1'
 const MAX_USD = Number(process.env.BOT_BENCH_MAX_USD ?? 'Infinity')
 const JUDGE_INLINE = process.env.BOT_BENCH_JUDGE === 'inline'
+const BENCH_MODEL = process.env.BOT_BENCH_MODEL?.trim() || BOT_MODEL
+const BENCH_EFFORT: ReasoningEffort | undefined =
+  process.env.BOT_BENCH_EFFORT === 'low' || process.env.BOT_BENCH_EFFORT === 'medium'
+    ? process.env.BOT_BENCH_EFFORT
+    : undefined
 const CASE_TIMEOUT_MS = 5 * 60 * 1000
 /**
- * Lo que se reserva del tope antes de lanzar un caso: bot, jugador y juez por
- * lote medidos (≈ USD 0,007), con margen.
+ * Lo que se reserva del tope antes de lanzar un caso: bot (`gpt-6.2-sol`) +
+ * jugador + juez por lote estimados con margen.
  */
-const EST_CASE_USD = 0.012
+const EST_CASE_USD = 0.035
 /** Lo que se cuenta por una conversación que espera al juez por lote. */
 const EST_JUDGE_USD = 0.008
 
@@ -118,6 +142,8 @@ const OUT_DIR = path.join(FLOW_DIR, VARIANT)
 
 /** USD por millón de tokens: entrada, salida, lectura y escritura de caché. */
 const PRICES: Record<string, { in: number; out: number; read: number; write: number }> = {
+  'gpt-6.2-sol': { in: 2, out: 10, read: 0.1, write: 2.5 },
+  'gpt-6-luna': { in: 0.1, out: 0.5, read: 0.01, write: 0.125 },
   'claude-haiku-5-5': { in: 0.1, out: 0.5, read: 0.01, write: 0.125 },
   'claude-sonnet-5-5': { in: 2, out: 10, read: 0.2, write: 2.5 },
 }
@@ -138,12 +164,13 @@ function costUsd(model: string, u: Usage): number {
 
 type BotCall = {
   model: string
-  stopReason: string | null
-  usage: Anthropic.Usage
-  content: Anthropic.ContentBlock[]
-  /** Copia del último mensaje del request: trae los tool_result de la vuelta anterior. */
-  lastMessage: Anthropic.MessageParam | undefined
-  system: string
+  status: string | undefined
+  incompleteReason: string | null
+  usage: Usage
+  output: ResponseOutputItem[]
+  input: ResponseInputItem[]
+  staticContext: string
+  dynamicContext: string
   latencyMs: number
 }
 
@@ -153,39 +180,72 @@ const als = new AsyncLocalStorage<ConvStore>()
 
 type CreateFn = (
   this: unknown,
-  body: Anthropic.MessageCreateParamsNonStreaming,
+  body: ResponseCreateParamsNonStreaming,
   options?: unknown,
-) => Promise<Anthropic.Message>
+) => Promise<OpenAiResponse>
 
-const messagesProto = Anthropic.Messages.prototype as unknown as { create: CreateFn }
-const originalCreate = messagesProto.create
+const responsesProto = Responses.prototype as unknown as { create: CreateFn }
+const originalCreate = responsesProto.create
+
+function itemText(item: ResponseInputItem | undefined): string {
+  if (!item || !('content' in item)) return ''
+  if (typeof item.content === 'string') return item.content
+  if (!Array.isArray(item.content)) return ''
+  return item.content
+    .map((p) => ('text' in p && typeof p.text === 'string' ? p.text : ''))
+    .filter(Boolean)
+    .join('\n\n')
+}
+
+function openAiUsageToBenchUsage(u: OpenAiResponse['usage']): Usage {
+  if (!u) return emptyUsage()
+  const cached = u.input_tokens_details?.cached_tokens ?? 0
+  const cacheWrite = u.input_tokens_details?.cache_write_tokens ?? 0
+  const uncached = Math.max(0, u.input_tokens - cached - cacheWrite)
+  return {
+    input_tokens: uncached,
+    output_tokens: u.output_tokens,
+    cache_read_input_tokens: cached,
+    cache_creation_input_tokens: cacheWrite,
+  }
+}
 
 /**
- * Envuelve `messages.create` para guardar cada llamada DEL BOT de la
- * conversación en curso. El jugador simulado también corre en Haiku: al bot se
- * lo reconoce por su system prompt, no por el modelo.
+ * Envuelve `Responses.prototype.create` para guardar cada llamada DEL BOT de la
+ * conversación en curso y permitir override de modelo/effort por variable de entorno.
  */
 function installRecorder(): void {
-  messagesProto.create = function (body, options) {
+  responsesProto.create = function (body, options) {
     const store = als.getStore()
-    const isBot = Array.isArray(body.system) && body.system[0]?.text === SYSTEM_RULES
+    const inputItems = Array.isArray(body.input) ? body.input : []
+    const firstDevText = itemText(inputItems[0])
+    const isBot = firstDevText.includes(SYSTEM_RULES)
     if (!store || !isBot) return originalCreate.call(this, body, options)
-    const lastMessage = body.messages.at(-1)
-    const snapshot = lastMessage
-      ? (JSON.parse(JSON.stringify(lastMessage)) as Anthropic.MessageParam)
-      : undefined
-    const system = Array.isArray(body.system)
-      ? body.system.map((b) => b.text).join('\n\n')
-      : (body.system ?? '')
+
+    const effectiveBody: ResponseCreateParamsNonStreaming = {
+      ...body,
+      model: BENCH_MODEL,
+      ...(BENCH_EFFORT ? { reasoning: { ...body.reasoning, effort: BENCH_EFFORT } } : {}),
+    }
+    const staticContext = firstDevText.replace(SYSTEM_RULES, '').trim()
+    const dynamicItem = [...inputItems]
+      .slice(1)
+      .reverse()
+      .find((item) => 'role' in item && item.role === 'developer')
+    const dynamicContext = itemText(dynamicItem)
+    const snapshotInput = structuredClone(inputItems)
     const started = Date.now()
-    return originalCreate.call(this, body, options).then((res) => {
+
+    return originalCreate.call(this, effectiveBody, options).then((res) => {
       store.calls.push({
         model: res.model,
-        stopReason: res.stop_reason,
-        usage: res.usage,
-        content: res.content,
-        lastMessage: snapshot,
-        system,
+        status: res.status,
+        incompleteReason: res.incomplete_details?.reason ?? null,
+        usage: openAiUsageToBenchUsage(res.usage),
+        output: res.output,
+        input: snapshotInput,
+        staticContext,
+        dynamicContext,
         latencyMs: Date.now() - started,
       })
       return res
@@ -193,29 +253,38 @@ function installRecorder(): void {
   }
 }
 
-/** Empareja cada tool_use con su resultado (viene en el request de la vuelta siguiente). */
+/** Empareja cada function_call con su resultado (viene en el input de la vuelta siguiente). */
 function toolLogs(calls: BotCall[]): ToolCallLog[] {
   const results = new Map<string, string>()
   for (const call of calls) {
-    const content = call.lastMessage?.content
-    if (!Array.isArray(content)) continue
-    for (const block of content) {
-      if (block.type !== 'tool_result') continue
-      const text =
-        typeof block.content === 'string'
-          ? block.content
-          : (block.content ?? []).map((c) => (c.type === 'text' ? c.text : '')).join('')
-      results.set(block.tool_use_id, text)
+    for (const item of call.input) {
+      if (item.type === 'function_call_output' && item.call_id) {
+        const outputText =
+          typeof item.output === 'string' ? item.output : (JSON.stringify(item.output) ?? '')
+        results.set(item.call_id, outputText)
+      }
     }
   }
   return calls.flatMap((call) =>
-    call.content
-      .filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
-      .map((b) => ({
-        name: b.name,
-        input: b.input,
-        result: results.get(b.id) ?? '(sin resultado)',
-      })),
+    call.output
+      .filter((item): item is ResponseFunctionToolCall => item.type === 'function_call')
+      .map((fn) => {
+        let parsedInput: unknown = fn.arguments
+        try {
+          parsedInput = JSON.parse(fn.arguments)
+        } catch {
+          // Mantiene el raw si el modelo devolvió JSON inválido.
+        }
+        const terminalFallback =
+          fn.name === 'pasar_a_humano' || fn.name === 'no_responder'
+            ? '{"ok":true,"corte_turno":true}'
+            : '(sin resultado)'
+        return {
+          name: fn.name,
+          input: parsedInput,
+          result: results.get(fn.call_id) ?? terminalFallback,
+        }
+      }),
   )
 }
 
@@ -228,9 +297,7 @@ type TraceTurn = {
 }
 
 /**
- * Las herramientas del turno y, al final, lo que salió por WhatsApp: el texto
- * de todas las vueltas va junto en esa respuesta, así que el juez ve
- * exactamente lo que leyó el jugador.
+ * Las herramientas del turno y la respuesta final que leyó el jugador.
  */
 function traceForTurn(calls: BotCall[], reply: string | null): TraceTurn[] {
   const out: TraceTurn[] = toolLogs(calls).flatMap((log): TraceTurn[] => [
@@ -377,8 +444,12 @@ async function runConversation(sc: Scenario): Promise<ConvResult> {
       closing = next.terminar
     }
 
-    const firstSystem = store.calls[0]?.system ?? ''
-    trace.unshift({ role: 'system', content: firstSystem })
+    const firstStatic = store.calls[0]?.staticContext ?? ''
+    const lastDynamic = store.calls.at(-1)?.dynamicContext ?? ''
+    trace.unshift({
+      role: 'system',
+      content: [firstStatic, lastDynamic].filter(Boolean).join('\n\n'),
+    })
     return {
       seed,
       state: await finalState(seed, seed.phone, turns, store.pushes),
@@ -419,14 +490,21 @@ async function pool<T>(items: T[], size: number, fn: (item: T) => Promise<void>)
   )
 }
 
+function addBenchUsage(into: Usage, u: Usage): void {
+  into.input_tokens += u.input_tokens
+  into.output_tokens += u.output_tokens
+  into.cache_read_input_tokens += u.cache_read_input_tokens
+  into.cache_creation_input_tokens += u.cache_creation_input_tokens
+}
+
 function sumUsage(calls: BotCall[]): Usage {
   const u = emptyUsage()
-  for (const c of calls) addUsage(u, c.usage)
+  for (const c of calls) addBenchUsage(u, c.usage)
   return u
 }
 
 function failureClass(err: unknown): string {
-  if (err instanceof Anthropic.APIError) return 'api_error'
+  if (err instanceof OpenAI.APIError || err instanceof Anthropic.APIError) return 'api_error'
   if (err instanceof Error && err.message.startsWith('timeout')) return 'timeout'
   if (err instanceof Error && err.message.startsWith('modelo servido')) return 'model_mismatch'
   return 'harness_error'
@@ -468,7 +546,7 @@ function recordError(
       rep,
       failure_class: failure,
       error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
-      model: BOT_MODEL,
+      model: BENCH_MODEL,
       usage,
     })}\n`,
   )
@@ -481,15 +559,20 @@ async function playCase(sc: Scenario, rep: number): Promise<Played | CaseOutcome
   try {
     conv = await withTimeout(runConversation(sc), CASE_TIMEOUT_MS)
     const botUsage = sumUsage(conv.calls)
-    const served = conv.calls.find((c) => !c.model.startsWith(BOT_MODEL))
-    if (served) throw new Error(`modelo servido ${served.model} distinto del pedido ${BOT_MODEL}`)
-    const cost = costUsd(BOT_MODEL, botUsage) + costUsd(SIM_MODEL, conv.simUsage)
+    const served = conv.calls.find((c) => !c.model.startsWith(BENCH_MODEL))
+    if (served) {
+      throw new Error(`modelo servido ${served.model} distinto del pedido ${BENCH_MODEL}`)
+    }
+    const cost = costUsd(BENCH_MODEL, botUsage) + costUsd(SIM_MODEL, conv.simUsage)
     // Un turno caído por la API o por una excepción de tool no es una respuesta
     // del modelo: va a errors.jsonl, no se califica.
     if (conv.errors.length > 0) {
       const err = conv.errors[0]
       writeTrace(sc.id, rep, conv.trace)
-      const failure = err instanceof Anthropic.APIError ? 'api_error' : 'tool_exception'
+      const failure =
+        err instanceof OpenAI.APIError || err instanceof Anthropic.APIError
+          ? 'api_error'
+          : 'tool_exception'
       return recordError(sc.id, rep, failure, err, botUsage, cost)
     }
     const checks = [...commonChecks(conv.state), ...sc.checks(conv.state, conv.seed)]
@@ -504,16 +587,25 @@ async function playCase(sc: Scenario, rep: number): Promise<Played | CaseOutcome
     }
   } catch (err) {
     const usage = conv ? sumUsage(conv.calls) : emptyUsage()
-    return recordError(sc.id, rep, failureClass(err), err, usage, costUsd(BOT_MODEL, usage))
+    return recordError(sc.id, rep, failureClass(err), err, usage, costUsd(BENCH_MODEL, usage))
   }
 }
 
 function judgeInput(p: Played): JudgeInput {
+  const staticCtx = p.conv.calls[0]?.staticContext ?? ''
+  const dynamicCtx = p.conv.calls.at(-1)?.dynamicContext ?? ''
   return {
-    complexContext: p.conv.calls[0]?.system.replace(SYSTEM_RULES, '').trim() ?? '',
+    complexContext: [staticCtx, dynamicCtx].filter(Boolean).join('\n\n'),
     esperado: p.sc.esperado,
     transcript: transcriptForJudge(p.conv.trace),
   }
+}
+
+function percentile(values: number[], p: number): number {
+  if (values.length === 0) return 0
+  const sorted = [...values].sort((a, b) => a - b)
+  const idx = Math.min(sorted.length - 1, Math.floor((sorted.length - 1) * p))
+  return sorted[idx]!
 }
 
 /** Escribe la fila del caso. Sin veredicto = no se juzgó porque fallaron los chequeos. */
@@ -525,7 +617,9 @@ function recordCase(p: Played, judged: Judged | null): CaseOutcome {
     verdict !== undefined &&
     verdict.resolvio.ok &&
     verdict.no_invento.ok &&
-    verdict.amable.ok
+    verdict.amable.ok &&
+    verdict.intencion.ok &&
+    verdict.formato.ok
 
   const grade: Record<string, number> = { aprobado: aprobado ? 1 : 0, chequeos: checksOk ? 1 : 0 }
   const explanation: Record<string, string> = {
@@ -544,21 +638,32 @@ function recordCase(p: Played, judged: Judged | null): CaseOutcome {
     explanation[m] = verdict[m].razon
   }
   const last = conv.calls.at(-1)
-  const truncated = conv.calls.some((c) => c.stopReason === 'max_tokens')
+  const truncated = conv.calls.some(
+    (c) => c.status === 'incomplete' && c.incompleteReason === 'max_output_tokens',
+  )
+  const botUsage = sumUsage(conv.calls)
+  const totalIn =
+    botUsage.input_tokens + botUsage.cache_read_input_tokens + botUsage.cache_creation_input_tokens
+  const cacheHitPct = totalIn > 0 ? (botUsage.cache_read_input_tokens / totalIn) * 100 : 0
+  const latencies = conv.calls.map((c) => c.latencyMs)
   const cost = p.costUsd + (judged?.costUsd ?? 0)
   const row = {
     prompt_id: sc.id,
     rep,
     prompt: sc.opening.map((m) => m.text ?? '[audio sin transcripción]').join(' / '),
     tags: sc.tags,
-    model: conv.calls[0]?.model ?? BOT_MODEL,
+    model: conv.calls[0]?.model ?? BENCH_MODEL,
+    effort: resolveReasoningEffort(BENCH_EFFORT),
     status: truncated ? 'truncated' : 'ok',
-    stop_reason: last?.stopReason ?? null,
+    stop_reason: last?.incompleteReason ?? last?.status ?? null,
     grade,
     explanation,
     latency_s: p.latencyS,
+    p50_call_ms: percentile(latencies, 0.5),
+    p95_call_ms: percentile(latencies, 0.95),
+    cache_hit_pct: Number(cacheHitPct.toFixed(1)),
     tool_calls: conv.state.turns.reduce((n, t) => n + t.tools.length, 0),
-    usage: sumUsage(conv.calls),
+    usage: botUsage,
     judge_model: judged ? JUDGE_MODEL : null,
     judge_usage: judged?.usage ?? null,
     meta: {
@@ -669,124 +774,129 @@ function writeSummary(outcomes: CaseOutcome[], skipped: number): string {
 
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
-if (!API_KEY) console.warn('[bot-bench] sin ANTHROPIC_API_KEY: se saltea')
+if (!API_KEYS.openai) console.warn('[bot-bench] sin OPENAI_API_KEY: se saltea')
+if (!API_KEYS.anthropic) console.warn('[bot-bench] sin ANTHROPIC_API_KEY: se saltea')
 if (!SAFE_DB) console.warn('[bot-bench] DATABASE_URL vacía o apuntando a :54322: se saltea')
 
-describe.skipIf(!API_KEY || !SAFE_DB)('banco de pruebas del bot de WhatsApp (Haiku real)', () => {
-  beforeAll(async () => {
-    await ensureRoles(adminSql())
-    setExpiryScheduler(async () => {})
-    installRecorder()
-    vi.mocked(sendWhatsappText).mockImplementation(async ({ body }) => {
-      als.getStore()?.replies.push(body)
-      return { waMessageId: `wamid.out.${faker.string.uuid()}` }
-    })
-    vi.mocked(notifyAdminPush).mockImplementation(async () => {
-      const store = als.getStore()
-      if (store) store.pushes++
-      return { enqueued: 1 }
-    })
-    vi.mocked(captureException).mockImplementation((err: unknown) => {
-      als.getStore()?.errors.push(err)
-      return ''
-    })
-    mkdirSync(path.join(OUT_DIR, 'traces'), { recursive: true })
-    writeState()
-  }, 60_000)
-
-  afterAll(async () => {
-    messagesProto.create = originalCreate
-    setExpiryScheduler(null)
-    await closeSql()
-  })
-
-  it('el juez distingue una charla buena de una mala', async () => {
-    const context = `# Complejo\nNombre: Complejo La Redonda\nDirección: Av. de Mayo 1234, Ramos Mejía\n# Canchas\n- Cancha 1 (fútbol 5, techada) — desde $28.000 el turno\n# Pagos y cancelación\n- No se pide seña: se paga en el complejo.\n# Hoy\n- mañana, viernes 23/10 → 2026-10-23`
-    const tool = `{"fecha":"2026-10-23","canchas":[{"id":"c1","nombre":"Cancha 1","formato":"fútbol 5","turnos_libres":[{"hora":"20:00","precio":"$35.000"},{"hora":"22:00","precio":"$35.000"}]}]}`
-    const good = `JUGADOR: hay de 5 mañana a las 21?\n\n  [el asistente llama ver_disponibilidad con {"fecha":"2026-10-23"}]\n\n  [ver_disponibilidad devuelve: ${tool}]\n\nASISTENTE: ¡Hola! Soy el asistente virtual de La Redonda. Mañana a las 21 no hay, pero tengo la *Cancha 1* (techada) a las 20 o a las 22. ¿Te sirve alguna?\n\nJUGADOR: dale a las 22, soy Leo\n\nASISTENTE: Te confirmo: *Cancha 1*, viernes 23/10 a las 22, a nombre de Leo. ¿La reservo?\n\nJUGADOR: si\n\n  [el asistente llama reservar con {"cancha_id":"c1","fecha":"2026-10-23","hora":"22:00","nombre":"Leo"}]\n\n  [reservar devuelve: {"estado":"confirmada","fecha":"2026-10-23","hora":"22:00","precio":"$35.000"}]\n\nASISTENTE: ¡Listo, Leo! Quedó reservada la Cancha 1 el viernes 23/10 a las 22.`
-    const bad = `JUGADOR: hay de 5 mañana a las 21?\n\nASISTENTE: ## Disponibilidad\n¡Claro que sí! Tenemos libre a las 21 en la Cancha 1 por **$20.000**. ¿Quieres que te la reserve? Puedes ver más en [nuestra web](https://ejemplo.com).`
-    const esperado =
-      'Consulta la disponibilidad, ofrece alternativas reales, pide el nombre, confirma y reserva.'
-    const usage = emptyUsage()
-    const [vGood, vBad] = await Promise.all([
-      judgeConversation({ complexContext: context, esperado, transcript: good, usage }),
-      judgeConversation({ complexContext: context, esperado, transcript: bad, usage }),
-    ])
-    writeFileSync(
-      path.join(FLOW_DIR, 'judge-calibration.json'),
-      JSON.stringify({ good: vGood, bad: vBad, cost_usd: costUsd(JUDGE_MODEL, usage) }, null, 2),
-    )
-    for (const m of JUDGE_METRICS) expect(vGood[m].ok, `buena: ${m} — ${vGood[m].razon}`).toBe(true)
-    expect(vBad.no_invento.ok, vBad.no_invento.razon).toBe(false)
-    expect(vBad.formato.ok, vBad.formato.razon).toBe(false)
-  }, 300_000)
-
-  it(
-    'corre la batería y deja el reporte',
-    async () => {
-      const done = doneKeys()
-      if (!RESUME) {
-        for (const f of ['results.jsonl', 'errors.jsonl', 'summary.md'])
-          rmSync(path.join(OUT_DIR, f), { force: true })
-      }
-      const scenarios = ONLY.length > 0 ? SCENARIOS.filter((s) => ONLY.includes(s.id)) : SCENARIOS
-      const jobs = scenarios.flatMap((sc) =>
-        Array.from({ length: REPS }, (_, rep) => ({ sc, rep })).filter(
-          ({ sc: s, rep }) => !done.has(`${s.id}#${rep}`),
-        ),
-      )
-      const outcomes: CaseOutcome[] = []
-      const awaitingJudge: Played[] = []
-      const log = (o: CaseOutcome) =>
-        console.log(
-          `[bot-bench] ${o.failed ? '⚠' : o.aprobado ? '✓' : '✗'} ${o.id} #${o.rep}${o.failed ? ` (${o.failed})` : ''}`,
-        )
-      const spent = () =>
-        outcomes.reduce((n, o) => n + o.costUsd, 0) +
-        awaitingJudge.reduce((n, p) => n + p.costUsd + EST_JUDGE_USD, 0)
-      let inFlight = 0
-      let skipped = 0
-      await pool(jobs, CONCURRENCY, async ({ sc, rep }) => {
-        if (spent() + EST_CASE_USD * (inFlight + 1) > MAX_USD) {
-          skipped++
-          return
-        }
-        inFlight++
-        try {
-          const played = await playCase(sc, rep)
-          if (!('conv' in played)) {
-            outcomes.push(played)
-            log(played)
-          } else if (!played.checksOk) {
-            const o = recordCase(played, null)
-            outcomes.push(o)
-            log(o)
-          } else if (JUDGE_INLINE) {
-            const o = await judgeInlineCase(played)
-            outcomes.push(o)
-            log(o)
-          } else {
-            awaitingJudge.push(played)
-            console.log(`[bot-bench] … ${sc.id} #${rep} (chequeos ok, espera al juez)`)
-          }
-        } finally {
-          inFlight--
-        }
+describe.skipIf(!HAS_KEYS || !SAFE_DB)(
+  `banco de pruebas del bot de WhatsApp (${BENCH_MODEL}, effort ${resolveReasoningEffort(BENCH_EFFORT)})`,
+  () => {
+    beforeAll(async () => {
+      await ensureRoles(adminSql())
+      setExpiryScheduler(async () => {})
+      installRecorder()
+      vi.mocked(sendWhatsappText).mockImplementation(async ({ body }) => {
+        als.getStore()?.replies.push(body)
+        return { waMessageId: `wamid.out.${faker.string.uuid()}` }
       })
-      if (awaitingJudge.length > 0) {
-        for (const o of await judgeBatchCases(awaitingJudge)) {
-          outcomes.push(o)
-          log(o)
-        }
-      }
-      console.log(`\n${writeSummary(outcomes, skipped)}`)
-      // La corrida en sí "pasa" aunque el bot falle casos: el veredicto es el
-      // reporte. Lo que no puede pasar es que la mitad sean errores de plumbing.
-      const errors = outcomes.filter((o) => o.failed).length
-      expect(errors, 'demasiados errores de infraestructura').toBeLessThan(
-        Math.max(1, jobs.length / 2),
+      vi.mocked(notifyAdminPush).mockImplementation(async () => {
+        const store = als.getStore()
+        if (store) store.pushes++
+        return { enqueued: 1 }
+      })
+      vi.mocked(captureException).mockImplementation((err: unknown) => {
+        als.getStore()?.errors.push(err)
+        return ''
+      })
+      mkdirSync(path.join(OUT_DIR, 'traces'), { recursive: true })
+      writeState()
+    }, 60_000)
+
+    afterAll(async () => {
+      responsesProto.create = originalCreate
+      setExpiryScheduler(null)
+      await closeSql()
+    })
+
+    it('el juez distingue una charla buena de una mala', async () => {
+      const context = `# Complejo\nNombre: Complejo La Redonda\nDirección: Av. de Mayo 1234, Ramos Mejía\n# Canchas\n- Cancha 1 (fútbol 5, techada) — desde $28.000 el turno\n# Pagos y cancelación\n- No se pide seña: se paga en el complejo.\n# Hoy\n- mañana, viernes 23/10 → 2026-10-23`
+      const tool = `{"fecha":"2026-10-23","canchas":[{"nombre":"Cancha 1","formato":"fútbol 5","turnos_libres":[{"hora":"20:00","precio":"$35.000"},{"hora":"22:00","precio":"$35.000"}]}]}`
+      const good = `JUGADOR: hay de 5 mañana a las 21?\n\n  [el asistente llama ver_disponibilidad con {"fecha":"2026-10-23"}]\n\n  [ver_disponibilidad devuelve: ${tool}]\n\nASISTENTE: ¡Hola! De La Redonda por acá. Mañana a las 21 está tomada, pero tengo la *Cancha 1* (techada) libre a las 20 o a las 22. ¿Te sirve alguna?\n\nJUGADOR: dale a las 22, soy Leo\n\nASISTENTE: Te confirmo: *Cancha 1*, viernes 23/10 a las 22, a nombre de Leo. ¿La reservo?\n\nJUGADOR: si\n\n  [el asistente llama reservar con {"cancha":"Cancha 1","fecha":"2026-10-23","hora":"22:00","nombre":"Leo","confirmado_por_jugador":true}]\n\n  [reservar devuelve: {"estado":"confirmada","cancha":"Cancha 1","fecha":"2026-10-23","hora":"22:00","precio":"$35.000"}]\n\nASISTENTE: ¡Listo, Leo! Quedó reservada la *Cancha 1* el viernes 23/10 a las 22. Se paga en el complejo.`
+      const bad = `JUGADOR: hay de 5 mañana a las 21?\n\nASISTENTE: ## Disponibilidad\n¡Claro que sí! Tenemos libre a las 21 en la Cancha 1 por **$20.000**. ¿Quieres que te la reserve? Puedes ver más en [nuestra web](https://ejemplo.com).`
+      const esperado =
+        'Consulta la disponibilidad, ofrece alternativas reales, pide el nombre, confirma y reserva.'
+      const usage = emptyUsage()
+      const [vGood, vBad] = await Promise.all([
+        judgeConversation({ complexContext: context, esperado, transcript: good, usage }),
+        judgeConversation({ complexContext: context, esperado, transcript: bad, usage }),
+      ])
+      writeFileSync(
+        path.join(FLOW_DIR, 'judge-calibration.json'),
+        JSON.stringify({ good: vGood, bad: vBad, cost_usd: costUsd(JUDGE_MODEL, usage) }, null, 2),
       )
-    },
-    3 * 60 * 60 * 1000,
-  )
-})
+      for (const m of JUDGE_METRICS)
+        expect(vGood[m].ok, `buena: ${m} — ${vGood[m].razon}`).toBe(true)
+      expect(vBad.no_invento.ok, vBad.no_invento.razon).toBe(false)
+      expect(vBad.formato.ok, vBad.formato.razon).toBe(false)
+    }, 300_000)
+
+    it(
+      'corre la batería y deja el reporte',
+      async () => {
+        const done = doneKeys()
+        if (!RESUME) {
+          for (const f of ['results.jsonl', 'errors.jsonl', 'summary.md'])
+            rmSync(path.join(OUT_DIR, f), { force: true })
+        }
+        const scenarios = ONLY.length > 0 ? SCENARIOS.filter((s) => ONLY.includes(s.id)) : SCENARIOS
+        const jobs = scenarios.flatMap((sc) =>
+          Array.from({ length: REPS }, (_, rep) => ({ sc, rep })).filter(
+            ({ sc: s, rep }) => !done.has(`${s.id}#${rep}`),
+          ),
+        )
+        const outcomes: CaseOutcome[] = []
+        const awaitingJudge: Played[] = []
+        const log = (o: CaseOutcome) =>
+          console.log(
+            `[bot-bench] ${o.failed ? '⚠' : o.aprobado ? '✓' : '✗'} ${o.id} #${o.rep}${o.failed ? ` (${o.failed})` : ''}`,
+          )
+        const spent = () =>
+          outcomes.reduce((n, o) => n + o.costUsd, 0) +
+          awaitingJudge.reduce((n, p) => n + p.costUsd + EST_JUDGE_USD, 0)
+        let inFlight = 0
+        let skipped = 0
+        await pool(jobs, CONCURRENCY, async ({ sc, rep }) => {
+          if (spent() + EST_CASE_USD * (inFlight + 1) > MAX_USD) {
+            skipped++
+            return
+          }
+          inFlight++
+          try {
+            const played = await playCase(sc, rep)
+            if (!('conv' in played)) {
+              outcomes.push(played)
+              log(played)
+            } else if (!played.checksOk) {
+              const o = recordCase(played, null)
+              outcomes.push(o)
+              log(o)
+            } else if (JUDGE_INLINE) {
+              const o = await judgeInlineCase(played)
+              outcomes.push(o)
+              log(o)
+            } else {
+              awaitingJudge.push(played)
+              console.log(`[bot-bench] … ${sc.id} #${rep} (chequeos ok, espera al juez)`)
+            }
+          } finally {
+            inFlight--
+          }
+        })
+        if (awaitingJudge.length > 0) {
+          for (const o of await judgeBatchCases(awaitingJudge)) {
+            outcomes.push(o)
+            log(o)
+          }
+        }
+        console.log(`\n${writeSummary(outcomes, skipped)}`)
+        // La corrida en sí "pasa" aunque el bot falle casos: el veredicto es el
+        // reporte. Lo que no puede pasar es que la mitad sean errores de plumbing.
+        const errors = outcomes.filter((o) => o.failed).length
+        expect(errors, 'demasiados errores de infraestructura').toBeLessThan(
+          Math.max(1, jobs.length / 2),
+        )
+      },
+      3 * 60 * 60 * 1000,
+    )
+  },
+)

@@ -42,10 +42,10 @@ function monitor(overrides: Partial<WhatsappMonitor> = {}): WhatsappMonitor {
       crossingDay: null,
       daysInMonth: 31,
     },
-    anthropic: {
+    ai: {
       tokens: { input: 1_200_000, cached: 3_400_000, output: 180_000 },
-      costUsd: 0.244,
-      projectedUsd: 0.35,
+      costUsd: 4.54,
+      projectedUsd: 6.5,
     },
     tenants: [
       tenant(),
@@ -145,7 +145,7 @@ export const SinComplejos: Story = {
         crossingDay: null,
         daysInMonth: 31,
       },
-      anthropic: { tokens: { input: 0, cached: 0, output: 0 }, costUsd: 0, projectedUsd: 0 },
+      ai: { tokens: { input: 0, cached: 0, output: 0 }, costUsd: 0, projectedUsd: 0 },
       tenants: [],
     }),
   },

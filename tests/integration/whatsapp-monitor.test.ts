@@ -178,9 +178,9 @@ describe('getWhatsappMonitor', () => {
 
   it('los tokens de otros meses no entran al gasto', async () => {
     const m = await getWhatsappMonitor(NOW)
-    expect(m.anthropic.tokens).toEqual({ input: 1_000_000, cached: 2_000_000, output: 100_000 })
-    // 1M × 0,10 + 2M × 0,01 + 0,1M × 0,50
-    expect(m.anthropic.costUsd).toBeCloseTo(0.1 + 0.02 + 0.05, 10)
+    expect(m.ai.tokens).toEqual({ input: 1_000_000, cached: 2_000_000, output: 100_000 })
+    // gpt-6.2-sol: 1M × 2,00 + 2M × 0,10 + 0,1M × 10,00
+    expect(m.ai.costUsd).toBeCloseTo(2.0 + 0.2 + 1.0, 10)
   })
 
   it('agrega por complejo con nombre, estado y gasto', async () => {
@@ -196,7 +196,7 @@ describe('getWhatsappMonitor', () => {
       enabled: true,
       monthMessages: 6,
     })
-    expect(a.monthUsd).toBeCloseTo(0.17, 10)
+    expect(a.monthUsd).toBeCloseTo(3.2, 10)
     expect(b).toMatchObject({ name: 'Complejo B', enabled: false, monthMessages: 1, monthUsd: 0 })
     expect(a.lastOutboundAt).toBeInstanceOf(Date)
     expect(b.lastOutboundAt).toBeNull()

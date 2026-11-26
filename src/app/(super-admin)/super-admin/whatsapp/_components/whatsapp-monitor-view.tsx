@@ -20,7 +20,7 @@ const PAUSE_LABEL: Record<string, string> = {
 }
 
 const KAPSO_URL = 'https://app.kapso.ai'
-const ANTHROPIC_BILLING_URL = 'https://platform.claude.com/settings/billing'
+const OPENAI_BILLING_URL = 'https://platform.openai.com/settings/organization/billing/overview'
 
 const numberFmt = new Intl.NumberFormat('es-AR')
 const usdFmt = new Intl.NumberFormat('es-AR', {
@@ -115,27 +115,26 @@ function KapsoCard({ kapso, month }: { kapso: WhatsappMonitor['kapso']; month: s
   )
 }
 
-function AnthropicCard({ anthropic }: { anthropic: WhatsappMonitor['anthropic'] }) {
-  const { tokens } = anthropic
+function AiCard({ ai }: { ai: WhatsappMonitor['ai'] }) {
+  const { tokens } = ai
   return (
     <PulsoSection
-      title="Anthropic este mes"
-      action={<ExternalLinkItem href={ANTHROPIC_BILLING_URL}>Ver saldo</ExternalLinkItem>}
+      title="OpenAI este mes"
+      action={<ExternalLinkItem href={OPENAI_BILLING_URL}>Ver saldo</ExternalLinkItem>}
     >
-      <p className="text-3xl font-semibold tabular-nums text-foreground">
-        {usd(anthropic.costUsd)}
-      </p>
+      <p className="text-3xl font-semibold tabular-nums text-foreground">{usd(ai.costUsd)}</p>
       <p className="mt-3 text-sm text-foreground">
         Al ritmo actual, el mes cierra en unos{' '}
-        <strong className="tabular-nums">{usd(anthropic.projectedUsd)}</strong>.
+        <strong className="tabular-nums">{usd(ai.projectedUsd)}</strong>.
       </p>
       <p className="mt-1 text-xs text-muted-foreground tabular-nums">
         Entrada {numberFmt.format(tokens.input)} · caché {numberFmt.format(tokens.cached)} · salida{' '}
         {numberFmt.format(tokens.output)} tokens
       </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Estimado con los tokens guardados y el precio de Claude Haiku 5.5. Anthropic no informa el
-        saldo: se mira en su consola.
+        Estimado con los tokens guardados y la tarifa estándar de OpenAI gpt-6.2-sol (2,00 / 0,10 /
+        10,00 USD por millón; las escrituras de caché de 30 min cuestan 2,50 USD por millón y el
+        saldo real se mira en su consola).
       </p>
     </PulsoSection>
   )
@@ -279,13 +278,13 @@ function TenantCards({ tenants }: { tenants: WhatsappTenantHealth[] }) {
   )
 }
 
-/** Cuerpo de `/super-admin/whatsapp`: consumo de Kapso y Anthropic, y salud por complejo. */
+/** Cuerpo de `/super-admin/whatsapp`: consumo de Kapso y OpenAI, y salud por complejo. */
 export function WhatsappMonitorView({ data }: { data: WhatsappMonitor }) {
   return (
     <div className="space-y-3 lg:space-y-6">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <KapsoCard kapso={data.kapso} month={data.month} />
-        <AnthropicCard anthropic={data.anthropic} />
+        <AiCard ai={data.ai} />
       </div>
       <TenantsTable tenants={data.tenants} />
     </div>

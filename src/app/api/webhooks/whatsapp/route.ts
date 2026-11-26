@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { verifyKapsoSignature } from '@/lib/kapso/signature'
-import { normalizeKapsoPayload } from '@/lib/kapso/events.schema'
+import { normalizeKapsoDelivery } from '@/lib/kapso/events.schema'
 import { captureException, captureMessage } from '@/lib/sentry'
 import { ingestWhatsappEvents } from '@/modules/whatsapp-bot/whatsapp-bot.ingest'
 import { enqueueWhatsappTurns } from '@/modules/whatsapp-bot/whatsapp-bot.queue'
@@ -76,7 +76,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return rechazar('invalid json', 400)
   }
 
-  const events = normalizeKapsoPayload(body)
+  let events: Awaited<ReturnType<typeof normalizeKapsoDelivery>>
+  try {
+    events = await normalizeKapsoDelivery(body, eventName)
+  } catch {
+    // Una atribución incierta requiere reentrega. El log no incluye mensajes ni teléfonos.
+    return rechazar('message origin unavailable', 503)
+  }
   const unknownShape = events.filter((e) => e.kind === 'ignored' && e.reason === 'shape').length
   if (unknownShape > 0) {
     // Se descartan con 200: si Kapso cambia el payload, el bot queda mudo y

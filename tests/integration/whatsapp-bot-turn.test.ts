@@ -36,7 +36,7 @@ import {
  * flags, el RLS de las tablas y el armado del historial corren de verdad.
  */
 
-vi.mock('@/lib/kapso/client', () => ({ sendWhatsappText: vi.fn() }))
+vi.mock('@/lib/kapso/client', () => ({ sendWhatsappText: vi.fn(), sendWhatsappTemplate: vi.fn() }))
 vi.mock('@/lib/kapso/media', () => ({ fetchInboundAudio: vi.fn() }))
 vi.mock('@/lib/groq/transcribe', () => ({
   MAX_AUDIO_BYTES: 25 * 1024 * 1024,
@@ -95,10 +95,12 @@ const randomPhone = () => `54911${faker.string.numeric(8)}`
 const waId = (prefix: string) => `wamid.${prefix}.${faker.string.uuid()}`
 const ago = (now: Date, ms: number) => new Date(now.getTime() - ms)
 
-function agentResult(text: string, trace: AgentResult['trace'] = []): AgentResult {
+function agentResult(text: string, trace: AgentResult['trace'] = null): AgentResult {
   return {
+    outcome: 'replied',
     text,
     usage: { inputTokens: 120, cachedTokens: 80, outputTokens: 30 },
+    cacheWriteTokens: 0,
     toolsCalled: [],
     trace,
   }
@@ -382,6 +384,16 @@ describe('ingestWhatsappEvents — entrantes', () => {
 })
 
 describe('ingestWhatsappEvents — eco del dueño', () => {
+  it('una reentrega tardía respeta las seis horas desde el envío original', async () => {
+    const s = await seed()
+    const now = new Date()
+    const sentAtMs = now.getTime() - 2 * 60 * MINUTE_MS
+    const echo = ownerEvent(s, { sentAtMs })
+    await ingestWhatsappEvents([echo], now)
+    await ingestWhatsappEvents([echo], new Date(now.getTime() + MINUTE_MS))
+    const [chat] = await readChats(s.tenantId)
+    expect(chat?.paused_until).toEqual(new Date(sentAtMs + OWNER_PAUSE_MS))
+  })
   // El 29/10 el bot le contestó encima al dueño en charlas que había abierto él.
   it('a un número SIN chat (el dueño abre la charla): crea el chat pausado, sin nombre ni texto', async () => {
     const s = await seed()
@@ -406,9 +418,10 @@ describe('ingestWhatsappEvents — eco del dueño', () => {
 
     const res = await ingestWhatsappEvents([inboundEvent(s, { text: 'sí, ahí voy' })], now)
     const [chat] = await readChats(s.tenantId)
-    expect(res.chatsToProcess).toEqual([{ tenantId: s.tenantId, chatId: chat!.id }])
-    expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId: chat!.id }, now)).toBe(
-      'paused',
+    expect(res.chatsToProcess).toEqual([])
+    const afterPause = new Date(now.getTime() + OWNER_PAUSE_MS + 1)
+    expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId: chat!.id }, afterPause)).toBe(
+      'nothing_pending',
     )
     expect(runAgent).not.toHaveBeenCalled()
 
@@ -488,7 +501,7 @@ describe('ingestWhatsappEvents — eco del dueño', () => {
 
     const chat = await readChat(s.tenantId, chatId)
     expect(chat.paused_until).toEqual(handoffUntil)
-    expect(chat.pause_reason).toBe('handoff_other')
+    expect(chat.pause_reason).toBe('owner_replied')
     const messages = await readMessages(s.tenantId, chatId)
     expect(messages.filter((m) => m.direction === 'owner')).toHaveLength(1)
   })
@@ -539,13 +552,14 @@ describe('processWhatsappTurn — respuesta', () => {
 
     expect(outcome).toBe('replied')
     expect(runAgent).toHaveBeenCalledTimes(1)
-    const { history } = vi.mocked(runAgent).mock.calls[0]![0]
-    expect(history).toEqual([
-      { role: 'user', content: 'hola' },
+    const { historyBeforePending, pendingUserItems } = vi.mocked(runAgent).mock.calls[0]![0]
+    expect(historyBeforePending).toEqual([
+      { role: 'user', content: expect.stringContaining('hola') },
       { role: 'assistant', content: '¡Hola! ¿En qué te ayudo?' },
-      { role: 'user', content: '¿cuánto sale el turno?' },
     ])
-    expect(history.at(-1)?.role).toBe('user')
+    expect(pendingUserItems).toEqual([
+      { role: 'user', content: expect.stringContaining('¿cuánto sale el turno?') },
+    ])
 
     expect(sendWhatsappText).toHaveBeenCalledTimes(1)
     expect(sendWhatsappText).toHaveBeenCalledWith({
@@ -609,13 +623,15 @@ describe('processWhatsappTurn — respuesta', () => {
 
     expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId }, now)).toBe('replied')
 
-    const { complexContext } = vi.mocked(runAgent).mock.calls[0]![0]
+    const { staticComplexContext, dynamicTurnContext } = vi.mocked(runAgent).mock.calls[0]![0]
     // Con solo el "desde", el bot no sabía cuánto sale la noche y lo inventaba.
-    expect(complexContext).toMatch(/- Cancha Uno \(.*\)\. Precio del turno:/)
-    expect(complexContext).toMatch(/de 00:00 a 18:00: \$\s*28\.000/)
-    expect(complexContext).toMatch(/de 18:00 a 00:00: \$\s*35\.000/)
-    expect(complexContext).toContain('a las 21:00, Cancha Uno: confirmada, se paga en el complejo')
-    expect(complexContext).not.toContain('a las 19:00')
+    expect(staticComplexContext).toMatch(/- Cancha Uno \(.*\)\. Precio del turno:/)
+    expect(staticComplexContext).toMatch(/de 00:00 a 18:00: \$\s*28\.000/)
+    expect(staticComplexContext).toMatch(/de 18:00 a 00:00: \$\s*35\.000/)
+    expect(dynamicTurnContext).toContain(
+      'a las 21:00, Cancha Uno: confirmada, se paga en el complejo',
+    )
+    expect(dynamicTurnContext).not.toContain('a las 19:00')
   })
 
   // El 29/10 el bot le dijo "no figura ninguna reserva a tu nombre" a un jugador
@@ -696,8 +712,8 @@ describe('processWhatsappTurn — respuesta', () => {
 
     expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId }, now)).toBe('replied')
 
-    const { complexContext } = vi.mocked(runAgent).mock.calls[0]![0]
-    const [chatPart, phonePart] = complexContext.split('# Otros turnos de este teléfono\n')
+    const { dynamicTurnContext } = vi.mocked(runAgent).mock.calls[0]![0]
+    const [chatPart, phonePart] = dynamicTurnContext.split('# Otros turnos de este teléfono\n')
     expect(phonePart).toBeDefined()
     expect(phonePart).toContain('a las 10:00, Cancha Tel\n')
     expect(phonePart).toContain('a las 11:00, Cancha Tel\n')
@@ -740,21 +756,25 @@ describe('processWhatsappTurn — respuesta', () => {
     vi.mocked(runAgent).mockClear()
     const next = await processWhatsappTurn({ tenantId: s.tenantId, chatId }, new Date())
     expect(next).toBe('replied')
-    const { history } = vi.mocked(runAgent).mock.calls[0]![0]
-    expect(history.at(-1)).toEqual({ role: 'user', content: 'una cosa más' })
+    const { pendingUserItems } = vi.mocked(runAgent).mock.calls[0]![0]
+    expect(pendingUserItems.at(-1)).toEqual({
+      role: 'user',
+      content: expect.stringContaining('una cosa más'),
+    })
   })
 
   it('si el dueño contesta mientras corre el modelo, la respuesta del bot no sale', async () => {
     const s = await seed()
     const chatId = await addChat(s)
     const now = new Date()
+    const ownerAt = new Date(now.getTime() + 1)
     const pending = await seedMessage(s, chatId, {
       direction: 'inbound',
       body: 'hola',
       createdAt: ago(now, MINUTE_MS),
     })
     vi.mocked(runAgent).mockImplementationOnce(async () => {
-      await ingestWhatsappEvents([ownerEvent(s)], new Date())
+      await ingestWhatsappEvents([ownerEvent(s)], ownerAt)
       return agentResult('Respuesta del bot')
     })
 
@@ -763,11 +783,11 @@ describe('processWhatsappTurn — respuesta', () => {
     expect(outcome).toBe('paused')
     expect(sendWhatsappText).not.toHaveBeenCalled()
     const messages = await readMessages(s.tenantId, chatId)
-    expect(byId(messages, pending).processed_at).toEqual(now)
+    expect(byId(messages, pending).processed_at).toEqual(ownerAt)
     expect(messages.filter((m) => m.direction === 'outbound')).toEqual([])
   })
 
-  it('si el dueño contesta mientras corre el modelo pero el turno intentó reservar, sale igual', async () => {
+  it('si el dueño contesta mientras corre el modelo durante una derivación, un intento de reserva tampoco envía respuesta', async () => {
     const s = await seed()
     const chatId = await addChat(s)
     const now = new Date()
@@ -777,16 +797,34 @@ describe('processWhatsappTurn — respuesta', () => {
       createdAt: ago(now, MINUTE_MS),
     })
     vi.mocked(runAgent).mockImplementationOnce(async () => {
+      // Simula el commit que hizo la herramienta antes de la intervención.
+      const sql = adminSql()
+      const courtId = await insertCourt(sql, s.tenantId)
+      const bookingId = await insertBooking(sql, {
+        tenantId: s.tenantId,
+        courtId,
+        status: 'confirmed',
+      })
+      await sql`UPDATE bookings SET whatsapp_chat_id = ${chatId} WHERE id = ${bookingId}`
+      await pauseChat(chatId, new Date(now.getTime() + 12 * 60 * MINUTE_MS), 'handoff_other')
       await ingestWhatsappEvents([ownerEvent(s)], new Date())
       return { ...agentResult('Listo, quedó reservado'), toolsCalled: ['reservar'] }
     })
 
     const outcome = await processWhatsappTurn({ tenantId: s.tenantId, chatId }, now)
 
-    expect(outcome).toBe('replied')
-    expect(sendWhatsappText).toHaveBeenCalledWith(
-      expect.objectContaining({ body: 'Listo, quedó reservado' }),
+    expect(outcome).toBe('paused')
+    expect(sendWhatsappText).not.toHaveBeenCalled()
+    const grid = await asApp(
+      s.tenantId,
+      (tx) => tx`
+      SELECT status FROM bookings WHERE whatsapp_chat_id = ${chatId} AND tenant_id = ${s.tenantId}
+    `,
     )
+    expect(grid).toEqual([{ status: 'confirmed' }])
+    expect(
+      (await readMessages(s.tenantId, chatId)).filter((m) => m.direction === 'outbound'),
+    ).toEqual([])
   })
 
   it('las herramientas de un turno se guardan y el turno siguiente las vuelve a ver', async () => {
@@ -798,24 +836,24 @@ describe('processWhatsappTurn — respuesta', () => {
       body: '¿hay a las 21?',
       createdAt: ago(now, 5 * MINUTE_MS),
     })
-    const trace: AgentResult['trace'] = [
-      {
-        role: 'assistant',
-        content: [
-          {
-            type: 'tool_use',
-            id: 'toolu_1',
-            name: 'ver_disponibilidad',
-            input: { fecha: '2026-10-23' },
-          },
-        ],
-      },
-      {
-        role: 'user',
-        content: [{ type: 'tool_result', tool_use_id: 'toolu_1', content: '{"canchas":[]}' }],
-      },
-      { role: 'assistant', content: [{ type: 'text', text: 'A las 21 no hay' }] },
-    ]
+    const trace: AgentResult['trace'] = {
+      v: 1,
+      provider: 'openai_responses',
+      items: [
+        {
+          type: 'function_call',
+          call_id: 'call_1',
+          name: 'ver_disponibilidad',
+          arguments: JSON.stringify({ fecha: '2026-10-23' }),
+        },
+        {
+          type: 'function_call_output',
+          call_id: 'call_1',
+          output: '{"canchas":[]}',
+        },
+        { role: 'assistant', content: 'A las 21 no hay' },
+      ],
+    }
     vi.mocked(runAgent).mockResolvedValueOnce(agentResult('A las 21 no hay', trace))
     expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId }, now)).toBe('replied')
 
@@ -826,20 +864,22 @@ describe('processWhatsappTurn — respuesta', () => {
           WHERE chat_id = ${chatId} AND direction = 'outbound' ORDER BY created_at
         `
       ).map((r) => r.tool_trace)
-    // Vuelve como arreglo, no como string con el JSON adentro (doble stringify).
+    // Vuelve como objeto, no como string con el JSON adentro (doble stringify).
     expect(await storedTrace()).toEqual([trace])
 
     await ingestWhatsappEvents([inboundEvent(s, { text: '¿y a las 22?' })], new Date())
     vi.mocked(runAgent).mockClear()
     expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId }, new Date())).toBe('replied')
 
-    const { history } = vi.mocked(runAgent).mock.calls[0]![0]
-    expect(history).toEqual([
-      { role: 'user', content: '¿hay a las 21?' },
-      ...trace,
-      { role: 'user', content: '¿y a las 22?' },
+    const { historyBeforePending, pendingUserItems } = vi.mocked(runAgent).mock.calls[0]![0]
+    expect(historyBeforePending).toEqual([
+      { role: 'user', content: expect.stringContaining('¿hay a las 21?') },
+      ...trace.items,
     ])
-    // La segunda respuesta no usó herramientas: no guarda trace.
+    expect(pendingUserItems).toEqual([
+      { role: 'user', content: expect.stringContaining('¿y a las 22?') },
+    ])
+    // La segunda respuesta no usó herramientas (trace null en el mock): no guarda trace.
     expect(await storedTrace()).toEqual([trace, null])
   })
 })
@@ -924,10 +964,10 @@ describe('processWhatsappTurn — fallas', () => {
     expect(notifyAdminPush).toHaveBeenCalledTimes(1)
   })
 
-  // Si el modelo ya pasó el chat a humano (12 h, tool `pasar_a_humano`) y después el envío falla,
+  // Si el modelo ya pasó el chat a humano (6 h, tool `pasar_a_humano`) y después el envío falla,
   // la pausa de 30 min de `bot_error` no puede acortarla: a la media hora el bot volvería a
   // contestar un chat que debía atender una persona. `pauseChatForHuman` usa GREATEST, como el eco.
-  it('un pase a humano de 12 h no se acorta si el envío falla después', async () => {
+  it('un pase a humano de 6 h no se acorta si el envío falla después', async () => {
     const s = await seed()
     const chatId = await addChat(s)
     const now = new Date()
@@ -936,10 +976,16 @@ describe('processWhatsappTurn — fallas', () => {
       body: 'está lloviendo, ¿se juega?',
       createdAt: ago(now, MINUTE_MS),
     })
-    // El modelo llama a la tool REAL `pasar_a_humano` (pausa 12 h) y después Kapso no entrega.
+    // El modelo llama a la tool REAL `pasar_a_humano` (pausa 6 h) y después Kapso no entrega.
     vi.mocked(runAgent).mockImplementationOnce(async ({ tools }) => {
-      await tools.find((t) => t.definition.name === 'pasar_a_humano')!.run({ motivo: 'lluvia' })
-      return agentResult('Le aviso a alguien del complejo')
+      await tools
+        .find((t) => t.definition.name === 'pasar_a_humano')!
+        .run({
+          motivo_corto: 'Consulta por lluvia',
+          nombre_jugador: null,
+          mensaje_al_jugador: 'Le aviso a alguien del complejo.',
+        })
+      return { ...agentResult('Le aviso a alguien del complejo.'), outcome: 'handoff' }
     })
     vi.mocked(sendWhatsappText).mockRejectedValue(new Error('Kapso respondió 500'))
 
@@ -948,7 +994,7 @@ describe('processWhatsappTurn — fallas', () => {
     )
 
     const chat = await readChat(s.tenantId, chatId)
-    expect(chat.paused_until!.getTime()).toBeGreaterThanOrEqual(now.getTime() + 12 * HOUR_MS)
+    expect(chat.paused_until!.getTime()).toBeGreaterThanOrEqual(now.getTime() + 6 * HOUR_MS)
   })
 })
 
@@ -1053,9 +1099,9 @@ describe('processWhatsappTurn — cortes sin llamar al modelo', () => {
       phoneNumberId: s.phoneNumberId,
     })
     expect(runAgent).toHaveBeenCalledTimes(1)
-    const { history } = vi.mocked(runAgent).mock.calls[0]![0]
-    expect(JSON.stringify(history.at(-1))).toContain(
-      '[Audio, transcripto]: tenés turno hoy a las 21?',
+    const { pendingUserItems } = vi.mocked(runAgent).mock.calls[0]![0]
+    expect(JSON.stringify(pendingUserItems.at(-1))).toContain(
+      'Audio transcripto]: tenés turno hoy a las 21?',
     )
     const saved = byId(await readMessages(s.tenantId, chatId), pending)
     expect(saved.body).toBe('tenés turno hoy a las 21?')
@@ -1078,8 +1124,8 @@ describe('processWhatsappTurn — cortes sin llamar al modelo', () => {
     expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId }, now)).toBe('replied')
 
     expect(transcribeAudio).not.toHaveBeenCalled()
-    const { history } = vi.mocked(runAgent).mock.calls[0]![0]
-    expect(JSON.stringify(history.at(-1))).toContain('quiero reservar')
+    const { pendingUserItems } = vi.mocked(runAgent).mock.calls[0]![0]
+    expect(JSON.stringify(pendingUserItems.at(-1))).toContain('quiero reservar')
   })
 
   it('si la transcripción de respaldo falla, contesta que no escucha audios como antes', async () => {

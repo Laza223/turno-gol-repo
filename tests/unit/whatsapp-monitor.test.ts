@@ -11,15 +11,15 @@ import {
 } from '@/modules/super-admin/whatsapp-ops-alerts.service'
 import type { KapsoNumberHealth } from '@/lib/kapso/platform'
 
-describe('tokensToUsd (Claude Haiku 5.5: 0,10 / 0,01 / 0,50 USD por millón)', () => {
-  it('un millón de cada tipo suma 0,61', () => {
-    expect(tokensToUsd({ input: 1e6, cached: 1e6, output: 1e6 })).toBeCloseTo(0.61, 10)
+describe('tokensToUsd (OpenAI gpt-6.2-sol: 2,00 / 0,10 / 10,00 USD por millón)', () => {
+  it('un millón de cada tipo suma 12,10', () => {
+    expect(tokensToUsd({ input: 1e6, cached: 1e6, output: 1e6 })).toBeCloseTo(12.1, 10)
   })
 
   it('cada tipo se cobra a su precio', () => {
-    expect(tokensToUsd({ input: 1e6, cached: 0, output: 0 })).toBeCloseTo(0.1, 10)
-    expect(tokensToUsd({ input: 0, cached: 1e6, output: 0 })).toBeCloseTo(0.01, 10)
-    expect(tokensToUsd({ input: 0, cached: 0, output: 1e6 })).toBeCloseTo(0.5, 10)
+    expect(tokensToUsd({ input: 1e6, cached: 0, output: 0 })).toBeCloseTo(2.0, 10)
+    expect(tokensToUsd({ input: 0, cached: 1e6, output: 0 })).toBeCloseTo(0.1, 10)
+    expect(tokensToUsd({ input: 0, cached: 0, output: 1e6 })).toBeCloseTo(10.0, 10)
   })
 
   it('cero tokens son cero dólares', () => {
@@ -37,7 +37,6 @@ describe('monthWindowArt', () => {
   })
 
   it('01:00 ART del 1° ya es el mes nuevo; 23:30 ART del 31 sigue en el anterior', () => {
-    // 01:00 ART del 1/11 = 04:00 UTC. 23:30 ART del 31/10 = 02:30 UTC del 1/11.
     expect(monthWindowArt(new Date('2026-11-01T04:00:00Z')).ym).toBe('2026-11')
     expect(monthWindowArt(new Date('2026-11-01T02:30:00Z')).ym).toBe('2026-10')
   })
@@ -55,7 +54,6 @@ describe('monthWindowArt', () => {
 
 describe('projectMonth', () => {
   it('proyección lineal: 500 en 10 días de un mes de 31 días', () => {
-    // 11/10 03:00 UTC = 10 días justos transcurridos desde 01/10 03:00 UTC.
     const now = new Date('2026-10-11T03:00:00Z')
     const r = projectMonth({ total: 500, limit: 2000, window: monthWindowArt(now), now })
     expect(r.projected).toBeCloseTo(1550, 5)
@@ -93,7 +91,6 @@ describe('projectMonth', () => {
 
   it('el día de cruce nunca pasa del último día del mes', () => {
     const now = new Date('2026-11-29T03:00:00Z')
-    // 28 días transcurridos, 1990 mensajes: ritmo 71/día → cruza el 29, dentro de noviembre.
     const r = projectMonth({ total: 1990, limit: 2000, window: monthWindowArt(now), now })
     expect(r.crossingDay).not.toBeNull()
     expect(r.crossingDay).toBeLessThanOrEqual(30)
@@ -101,7 +98,7 @@ describe('projectMonth', () => {
 })
 
 describe('pickOpsAlerts', () => {
-  const NOW = new Date('2026-10-21T15:07:00Z') // 12:07 ART
+  const NOW = new Date('2026-10-21T15:07:00Z')
   const base = { now: NOW, monthTotal: 0, backlog: 0, botErrorPaused: 0 }
   const limit = KAPSO_PLAN_MONTHLY_MESSAGES
 
@@ -183,7 +180,6 @@ describe('classifyNumberHealth', () => {
     [{ status: 'unhealthy', accessOk: false, messaging: null }, 'sin_acceso'],
     [{ status: 'unhealthy', messaging: 'BLOCKED' }, 'bloqueado'],
     [{ status: 'unhealthy' }, 'otro'],
-    // Los checks se miran solos: no se confía en que Kapso los refleje en el `status`.
     [{ status: 'degraded', connection: 'DISCONNECTED' }, 'desconectado'],
     [{ status: 'healthy', messaging: 'BLOCKED' }, 'bloqueado'],
   ] as const)('%o es caído por %s', (patch, cause) => {

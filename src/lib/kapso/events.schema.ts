@@ -80,6 +80,7 @@ export type NormalizedWhatsappEvent =
       waMessageId: string
       /** Teléfono del jugador al que le escribió, solo dígitos. */
       to: string
+      sentAtMs?: number
       text: string | null
     }
   | { kind: 'ignored'; reason: string }
@@ -147,7 +148,10 @@ function normalizeOne(raw: unknown, now: number): NormalizedWhatsappEvent {
     if (message.type === 'reaction') return { kind: 'ignored', reason: 'owner_reaction' }
     const to = onlyDigits(message.to ?? conversation?.phone_number ?? '')
     if (!validPhone(to)) return { kind: 'ignored', reason: 'no_to' }
-    return { kind: 'owner', phoneNumberId, waMessageId: message.id, to, text }
+    const timestampMs = Number(message.timestamp) * 1000
+    const sentAtMs =
+      Number.isFinite(timestampMs) && timestampMs > 0 ? Math.min(timestampMs, now) : undefined
+    return { kind: 'owner', phoneNumberId, waMessageId: message.id, to, text, sentAtMs }
   }
 
   return { kind: 'ignored', reason: `${direction ?? 'sin_direccion'}:${origin ?? 'sin_origen'}` }
@@ -161,4 +165,39 @@ export function normalizeKapsoPayload(
   const batch = batchSchema.safeParse(body)
   if (batch.success) return batch.data.data.map((raw) => normalizeOne(raw, now))
   return [normalizeOne(body, now)]
+}
+
+/** En coexistencia un eco incompleto no alcanza para atribuir la salida al dueño. */
+export async function normalizeKapsoDelivery(body: unknown, eventName: string | null) {
+  if (eventName !== 'whatsapp.message.sent' && eventName !== 'whatsapp.message.received') {
+    return normalizeKapsoPayload(body)
+  }
+  const batch = batchSchema.safeParse(body)
+  const items = batch.success ? batch.data.data : [body]
+  return Promise.all(
+    items.map(async (item) => {
+      const parsed = eventSchema.safeParse(item)
+      if (!parsed.success) return normalizeOne(item, Date.now())
+      const { message, phone_number_id: numberId } = parsed.data
+      if (message.kapso?.origin && message.kapso.direction) return normalizeOne(item, Date.now())
+      const apiKey = process.env.KAPSO_API_KEY
+      if (!apiKey) throw new Error('Falta la clave de Kapso')
+      const response = await fetch(
+        `https://api.kapso.ai/platform/v1/whatsapp/messages/${encodeURIComponent(message.id)}`,
+        { headers: { 'X-API-Key': apiKey }, signal: AbortSignal.timeout(2500) },
+      )
+      if (!response.ok) throw new Error('Kapso no pudo identificar el origen')
+      const result = z.object({ data: messageSchema }).parse(await response.json()).data
+      const expectedDirection = eventName === 'whatsapp.message.sent' ? 'outbound' : 'inbound'
+      if (
+        result.id !== message.id ||
+        result.kapso?.phone_number_id !== numberId ||
+        !result.kapso.origin ||
+        result.kapso.direction !== expectedDirection
+      ) {
+        throw new Error('Kapso no confirmó el mensaje y su número')
+      }
+      return normalizeOne({ ...parsed.data, message: { ...message, ...result } }, Date.now())
+    }),
+  )
 }

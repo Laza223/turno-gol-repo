@@ -98,4 +98,26 @@ describe('validateServerEnv', () => {
       /NEXT_PUBLIC_APP_URL/,
     )
   })
+
+  it('acepta variables opcionales del bot de WhatsApp con OpenAI y valida OPENAI_BOT_REASONING_EFFORT', () => {
+    expect(() =>
+      validateServerEnv({
+        ...baseValid,
+        NODE_ENV: 'production',
+        OPENAI_API_KEY: 'sk-test',
+        OPENAI_BOT_REASONING_EFFORT: 'medium',
+        KAPSO_ALERTS_PHONE_NUMBER_ID: 'pn-alerts',
+        WHATSAPP_OWNER_ALERT_PHONE: '+5491155554444',
+        WHATSAPP_HANDOFF_TEMPLATE_NAME: 'turnogol_alerta_derivacion',
+        WHATSAPP_HANDOFF_TEMPLATE_LANG: 'es_AR',
+      }),
+    ).not.toThrow()
+
+    expect(() =>
+      validateServerEnv({
+        ...baseValid,
+        OPENAI_BOT_REASONING_EFFORT: 'high',
+      }),
+    ).toThrow(/OPENAI_BOT_REASONING_EFFORT/)
+  })
 })

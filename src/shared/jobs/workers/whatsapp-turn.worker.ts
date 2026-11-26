@@ -46,7 +46,7 @@ async function findStalledWhatsappChats(): Promise<WhatsappTurnJobData[]> {
 }
 
 /** Sin el modelo o sin Kapso el turno podría reservar y no poder avisarlo. */
-const REQUIRED_KEYS = ['ANTHROPIC_API_KEY', 'KAPSO_API_KEY'] as const
+const REQUIRED_KEYS = ['OPENAI_API_KEY', 'KAPSO_API_KEY'] as const
 
 export async function registerWhatsappTurnWorker(boss: PgBoss): Promise<void> {
   const missingKeys = REQUIRED_KEYS.filter((key) => !process.env[key])

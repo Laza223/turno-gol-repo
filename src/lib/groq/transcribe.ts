@@ -11,6 +11,9 @@ import { z } from 'zod'
 
 const GROQ_TRANSCRIPTIONS_URL = 'https://api.groq.com/openai/v1/audio/transcriptions'
 const MODEL = 'whisper-large-v3-turbo'
+/** Sesgo de vocabulario argentino de complejos de fútbol para mejorar el reconocimiento sin costo extra. */
+const TRANSCRIBE_PROMPT =
+  'Turno de fútbol 5, fútbol 7, fútbol 8. Cancha techada, descubierta, sintético, seña, MercadoPago, transferencia, efectivo, turno fijo, horario, cancelar, reservar.'
 /** Tope del plan gratis de Groq para subir un archivo. Una nota de voz pesa KB. */
 export const MAX_AUDIO_BYTES = 25 * 1024 * 1024
 
@@ -76,6 +79,7 @@ export async function transcribeAudio(
   form.append('file', audio, opts.filename)
   form.append('model', MODEL)
   form.append('language', 'es')
+  form.append('prompt', TRANSCRIBE_PROMPT)
   // `verbose_json` trae los tramos con su probabilidad de silencio.
   form.append('response_format', 'verbose_json')
   form.append('temperature', '0')

@@ -518,6 +518,63 @@ describe('ingestWhatsappEvents — eco del dueño', () => {
     expect(chat.paused_until).toEqual(new Date(now.getTime() + OWNER_PAUSE_MS))
     expect(chat.pause_reason).toBe('owner_replied')
   })
+
+  it('auto-respuesta de bienvenida de WhatsApp Business: NO pausa el chat ni silencia el audio entrante', async () => {
+    const s = await seed()
+    const now = new Date()
+    const greeting =
+      'Hola! Gracias por escribirnos. ⚽ estamos probando nueva plataforma para mejorar nuestro servicio, cualquier duda a disposición!!!\n\nhttps://turnogol.app/el-vagon-deportivo'
+
+    const res = await ingestWhatsappEvents(
+      [inboundEvent(s, { messageKind: 'audio', text: null }), ownerEvent(s, { text: greeting })],
+      now,
+    )
+
+    expect(res.chatsToProcess).toHaveLength(1)
+    const chatId = res.chatsToProcess[0]!.chatId
+    const chat = await readChat(s.tenantId, chatId)
+    expect(chat.paused_until).toBeNull()
+    expect(chat.pause_reason).toBeNull()
+    const messages = await readMessages(s.tenantId, chatId)
+    expect(messages.filter((m) => m.direction === 'owner')).toHaveLength(0)
+    expect(messages.find((m) => m.direction === 'inbound')?.processed_at).toBeNull()
+  })
+
+  it('auto-respuesta genérica repetida en >= 2 chats distintos del complejo: no pausa al 3er cliente', async () => {
+    const s = await seed()
+    const now = new Date()
+    const autoText =
+      'Bienvenido a Complejo Test. En instantes te respondemos por este medio con los turnos libres.'
+
+    for (const phone of ['5491155550001', '5491155550002']) {
+      const cId = await insertWhatsappChat(adminSql(), { tenantId: s.tenantId, waPhone: phone })
+      await seedMessage(s, cId, {
+        direction: 'inbound',
+        body: 'hola',
+        createdAt: ago(now, 10 * MINUTE_MS),
+      })
+      await seedMessage(s, cId, {
+        direction: 'owner',
+        body: autoText,
+        createdAt: ago(now, 9 * MINUTE_MS),
+      })
+    }
+
+    const res = await ingestWhatsappEvents(
+      [
+        inboundEvent(s, { from: '5491155550003', messageKind: 'audio', text: null }),
+        ownerEvent(s, { to: '5491155550003', text: autoText }),
+      ],
+      now,
+    )
+
+    expect(res.chatsToProcess).toHaveLength(1)
+    const chatId = res.chatsToProcess[0]!.chatId
+    const chat = await readChat(s.tenantId, chatId)
+    expect(chat.paused_until).toBeNull()
+    const messages = await readMessages(s.tenantId, chatId)
+    expect(messages.find((m) => m.direction === 'inbound')?.processed_at).toBeNull()
+  })
 })
 
 // ─── processWhatsappTurn ─────────────────────────────────────────────────────

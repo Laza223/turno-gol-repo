@@ -116,7 +116,7 @@ function availabilityTool(ctx: ToolContext): BotTool {
       description:
         'Consulta los turnos libres reales de todas las canchas para un día (AAAA-MM-DD). ' +
         'Usala siempre en la misma respuesta en que ofrecés o confirmás horarios libres; podés llamarla en paralelo para 2 o 3 días si piden "el finde" o un rango. ' +
-        'Un horario con madrugada_del_dia_siguiente se juega pasada la medianoche del día operativo.',
+        'Devuelve `horas_libres` y `madrugada_del_dia_siguiente` (horarios pasadas la medianoche del día operativo); los precios están en # Canchas.',
       strict: true,
       parameters: {
         type: 'object',
@@ -153,19 +153,24 @@ function availabilityTool(ctx: ToolContext): BotTool {
         kind: 'continue',
         output: json({
           fecha,
-          canchas: availability.courts.map((court) => ({
-            nombre: court.name,
-            formato: `fútbol ${court.format}`,
-            turnos_libres: court.slots
-              .filter((s) => s.status === 'free')
-              .map((s) => ({
-                hora: s.time,
-                ...(s.price !== null && !tenant.hidePrices ? { precio: formatArs(s.price) } : {}),
-                ...(tenant.closesNextDay && hhmmToMins(s.time) < openMins
-                  ? { madrugada_del_dia_siguiente: true }
-                  : {}),
-              })),
-          })),
+          canchas: availability.courts.map((court) => {
+            const horas_libres: string[] = []
+            const madrugada_del_dia_siguiente: string[] = []
+            for (const s of court.slots) {
+              if (s.status !== 'free') continue
+              if (tenant.closesNextDay && hhmmToMins(s.time) < openMins) {
+                madrugada_del_dia_siguiente.push(s.time)
+              } else {
+                horas_libres.push(s.time)
+              }
+            }
+            return {
+              nombre: court.name,
+              formato: `fútbol ${court.format}`,
+              horas_libres,
+              ...(madrugada_del_dia_siguiente.length > 0 ? { madrugada_del_dia_siguiente } : {}),
+            }
+          }),
         }),
       }
     },
@@ -341,7 +346,15 @@ function bookTool(ctx: ToolContext, courts: BotCourt[]): BotTool {
       }
       if (!result.requiresPayment) {
         await notifyAdminBookingConfirmed(tenant.id, booking.id)
-        return { kind: 'continue', output: json({ estado: 'confirmada', ...resumen }) }
+        const pageUrl = complexPageUrl(tenant)
+        return {
+          kind: 'continue',
+          output: json({
+            estado: 'confirmada',
+            ...resumen,
+            ...(pageUrl ? { link_para_reservar: pageUrl } : {}),
+          }),
+        }
       }
 
       const token = await tenantMpToken(tenant.id)

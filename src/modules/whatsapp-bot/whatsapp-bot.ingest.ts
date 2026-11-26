@@ -1,8 +1,9 @@
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { and, eq, gte, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { getWorkerDb, withTenantContext } from '@/shared/db/client'
 import { whatsappChats, whatsappConnections, whatsappMessages } from '@/shared/db/schema'
 import type { NormalizedWhatsappEvent } from '@/lib/kapso/events.schema'
 import { isFeatureEnabled } from '@/shared/feature-flags'
+import { logger } from '@/shared/lib/logger'
 import { BOT_FEATURE_FLAG, isBotTenantOpen } from './whatsapp-bot.connection'
 
 /**
@@ -18,6 +19,22 @@ import { BOT_FEATURE_FLAG, isBotTenantOpen } from './whatsapp-bot.connection'
 
 /** Cuánto se calla el bot en un chat después de que el dueño contestó a mano. */
 const OWNER_REPLY_PAUSE_MS = 6 * 60 * 60 * 1000
+const AUTO_REPLY_MIN_LEN = 40
+const AUTO_REPLY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000
+const AUTO_REPLY_REPEAT_CHATS = 2
+
+function normalizeReplyText(text: string | null): string {
+  return (text ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+function isKnownBusinessAutoReply(text: string | null): boolean {
+  const norm = normalizeReplyText(text)
+  if (!norm) return false
+  return (
+    norm.includes('gracias por escribirnos') &&
+    (norm.includes('estamos probando nueva plataforma') || norm.includes('turnogol.app/'))
+  )
+}
 
 export type IngestResult = {
   /** Chats con mensajes nuevos del jugador: hay que encolar un turno del bot. */
@@ -177,8 +194,16 @@ async function recordOwnerReply(
   event: Extract<NormalizedWhatsappEvent, { kind: 'owner' }>,
   now: Date,
 ): Promise<void> {
+  if (isKnownBusinessAutoReply(event.text)) {
+    logger.info('whatsapp-bot: auto-respuesta de WhatsApp Business ignorada', {
+      module: 'whatsapp-bot',
+      tenantId,
+    })
+    return
+  }
   const pauseEnd = new Date((event.sentAtMs ?? now.getTime()) + OWNER_REPLY_PAUSE_MS)
   if (pauseEnd <= now) return
+  const normText = normalizeReplyText(event.text)
   await withTenantContext(tenantId, async (tx) => {
     const [existing] = await tx
       .select({ id: whatsappChats.id })
@@ -190,6 +215,30 @@ async function recordOwnerReply(
         ),
       )
       .limit(1)
+
+    if (normText.length >= AUTO_REPLY_MIN_LEN) {
+      const windowStart = new Date(now.getTime() - AUTO_REPLY_WINDOW_MS)
+      const [repeatRow] = (await tx
+        .select({ n: sql<number>`COUNT(DISTINCT ${whatsappMessages.chatId})::int` })
+        .from(whatsappMessages)
+        .where(
+          and(
+            eq(whatsappMessages.tenantId, tenantId),
+            eq(whatsappMessages.direction, 'owner'),
+            gte(whatsappMessages.createdAt, windowStart),
+            ...(existing ? [ne(whatsappMessages.chatId, existing.id)] : []),
+            sql`regexp_replace(lower(trim(${whatsappMessages.body})), '[[:space:]]+', ' ', 'g') = ${normText}`,
+          ),
+        )) as Array<{ n: number }>
+      if ((repeatRow?.n ?? 0) >= AUTO_REPLY_REPEAT_CHATS) {
+        logger.info('whatsapp-bot: auto-respuesta repetida de WhatsApp Business ignorada', {
+          module: 'whatsapp-bot',
+          tenantId,
+        })
+        return
+      }
+    }
+
     const [chat] = existing
       ? [existing]
       : await tx

@@ -52,7 +52,7 @@ export const PrimeraVisita: Story = {
   decorators: [withGeolocation('pending')],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const localidad = canvas.getByRole('button', { name: 'Localidad: ¿Dónde?. Cambiar' })
+    const localidad = canvas.getByRole('button', { name: 'Zona: ¿Dónde?. Cambiar' })
     const cancha = canvas.getByRole('button', { name: 'Cancha: Todas. Cambiar' })
     for (const campo of [localidad, cancha]) {
       await expect(campo.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
@@ -71,16 +71,16 @@ export const HojaLocalidad: Story = {
   decorators: [withGeolocation('pending')],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: /^Localidad:/ }))
-    const hoja = await body(canvasElement).findByRole('dialog', { name: 'Elegí la localidad' })
-    const buscar = within(hoja).getByRole('searchbox', { name: 'Localidad' })
+    await userEvent.click(canvas.getByRole('button', { name: /^Zona:/ }))
+    const hoja = await body(canvasElement).findByRole('dialog', { name: 'Elegí tu zona' })
+    const buscar = within(hoja).getByRole('searchbox', { name: 'Zona o ciudad' })
     // 16 px o más: iOS no hace zoom al enfocar.
     await expect(parseFloat(getComputedStyle(buscar).fontSize)).toBeGreaterThanOrEqual(16)
     await userEvent.type(buscar, 'cór')
     await expect(within(hoja).getAllByRole('radio')).toHaveLength(2) // "Todas" + Córdoba
     await userEvent.click(within(hoja).getByRole('radio', { name: /Córdoba, Córdoba/ }))
     await waitFor(() => expect(body(canvasElement).queryByRole('dialog')).toBeNull())
-    await expect(canvas.getByRole('button', { name: 'Localidad: Córdoba. Cambiar' })).toBeVisible()
+    await expect(canvas.getByRole('button', { name: 'Zona: Córdoba. Cambiar' })).toBeVisible()
     await expect(JSON.parse(localStorage.getItem(ZONA_STORAGE_KEY) ?? '{}')).toMatchObject({
       city: 'Córdoba',
       province: 'Córdoba',
@@ -93,16 +93,14 @@ export const LocalidadSinResultados: Story = {
   decorators: [withGeolocation('pending')],
   parameters: { fetchMock: [SIN_ZONA_POR_IP, localidades([])] },
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole('button', { name: /^Localidad:/ }))
-    const hoja = await body(canvasElement).findByRole('dialog', { name: 'Elegí la localidad' })
+    await userEvent.click(within(canvasElement).getByRole('button', { name: /^Zona:/ }))
+    const hoja = await body(canvasElement).findByRole('dialog', { name: 'Elegí tu zona' })
     await userEvent.type(within(hoja).getByRole('searchbox'), 'Ushuaia')
-    await waitFor(() =>
-      expect(within(hoja).getByText('No encontramos esa localidad.')).toBeVisible(),
-    )
+    await waitFor(() => expect(within(hoja).getByText('No encontramos esa zona.')).toBeVisible())
   },
 }
 
-/** Una localidad sin complejos (Mercedes) se puede elegir: sale en "Otras localidades" y queda en el campo. */
+/** Una localidad sin complejos (Mercedes) se puede elegir: sale en "Otras zonas" y queda en el campo. */
 export const LocalidadSinComplejos: Story = {
   decorators: [withGeolocation('pending')],
   parameters: {
@@ -122,14 +120,14 @@ export const LocalidadSinComplejos: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: /^Localidad:/ }))
-    const hoja = await body(canvasElement).findByRole('dialog', { name: 'Elegí la localidad' })
+    await userEvent.click(canvas.getByRole('button', { name: /^Zona:/ }))
+    const hoja = await body(canvasElement).findByRole('dialog', { name: 'Elegí tu zona' })
     await userEvent.type(within(hoja).getByRole('searchbox'), 'Mercedes')
-    await expect(await within(hoja).findByText('Otras localidades')).toBeVisible()
+    await expect(await within(hoja).findByText('Otras zonas')).toBeVisible()
     await expect(within(hoja).getByText(/Todavía sin complejos/)).toBeVisible()
     await userEvent.click(within(hoja).getByRole('radio', { name: /Mercedes/ }))
     await waitFor(() => expect(body(canvasElement).queryByRole('dialog')).toBeNull())
-    await expect(canvas.getByRole('button', { name: 'Localidad: Mercedes. Cambiar' })).toBeVisible()
+    await expect(canvas.getByRole('button', { name: 'Zona: Mercedes. Cambiar' })).toBeVisible()
   },
 }
 
@@ -141,9 +139,9 @@ export const ZonaGuardada: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const campo = await canvas.findByRole('button', { name: 'Localidad: La Plata. Cambiar' })
+    const campo = await canvas.findByRole('button', { name: 'Zona: La Plata. Cambiar' })
     await userEvent.click(campo)
-    const hoja = await body(canvasElement).findByRole('dialog', { name: 'Elegí la localidad' })
+    const hoja = await body(canvasElement).findByRole('dialog', { name: 'Elegí tu zona' })
     // `waitFor`: la hoja recién abierta puede estar todavía entrando.
     await waitFor(() =>
       expect(within(hoja).getByText('Tu zona guardada. Cambiala cuando quieras.')).toBeVisible(),
@@ -169,8 +167,8 @@ export const UsarMiUbicacion: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: /^Localidad:/ }))
-    const hoja = await body(canvasElement).findByRole('dialog', { name: 'Elegí la localidad' })
+    await userEvent.click(canvas.getByRole('button', { name: /^Zona:/ }))
+    const hoja = await body(canvasElement).findByRole('dialog', { name: 'Elegí tu zona' })
     await userEvent.click(within(hoja).getByRole('button', { name: 'Usar mi ubicación actual' }))
     await waitFor(() =>
       expect(within(hoja).getByText('Tu zona guardada. Cambiala cuando quieras.')).toBeVisible(),
@@ -183,8 +181,8 @@ export const UsarMiUbicacion: Story = {
 export const GeolocalizacionDenegada: Story = {
   decorators: [withGeolocation('denied')],
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole('button', { name: /^Localidad:/ }))
-    const hoja = await body(canvasElement).findByRole('dialog', { name: 'Elegí la localidad' })
+    await userEvent.click(within(canvasElement).getByRole('button', { name: /^Zona:/ }))
+    const hoja = await body(canvasElement).findByRole('dialog', { name: 'Elegí tu zona' })
     await userEvent.click(within(hoja).getByRole('button', { name: 'Usar mi ubicación actual' }))
     await waitFor(() =>
       expect(within(hoja).getByText(/Tenés bloqueado el permiso de ubicación/)).toBeVisible(),
@@ -229,7 +227,7 @@ export const Buscar: Story = {
   decorators: [withGeolocation('pending')],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Buscar canchas' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Ver horarios libres' }))
     await expect(getRouter().push).toHaveBeenCalledWith('/explorar')
   },
 }

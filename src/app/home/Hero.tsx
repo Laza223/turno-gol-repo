@@ -22,15 +22,15 @@ export function Hero({ cities }: { cities: CityCount[] }) {
       <section className="home-hero" aria-labelledby="hero-title">
         <h1 id="hero-title" className="home-title">
           <span className="home-title__line" style={{ '--l': 0 } as CSSProperties}>
-            <span>Tu cancha,</span>
+            <span>Encontrá cancha</span>
           </span>{' '}
           <span className="home-title__line" style={{ '--l': 1 } as CSSProperties}>
-            <em>a un toque.</em>
+            <em>libre hoy</em>
           </span>
         </h1>
         <p className="home-lead home-rise" style={{ '--i': 1 } as CSSProperties}>
-          Elegí localidad y cancha. Ves los horarios libres y reservás desde el celu, sin llamar a
-          nadie.
+          Elegí zona y formato de cancha. Mirás qué horarios están libres y reservás desde el
+          celular, sin mandar un solo WhatsApp.
         </p>
 
         <HomeSearch cities={cities} />

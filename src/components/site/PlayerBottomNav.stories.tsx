@@ -67,7 +67,7 @@ async function expectActivo(canvasElement: HTMLElement, activo: string) {
 export const RutaExplorar: Story = {
   parameters: { nextjs: { appDirectory: true, navigation: { pathname: '/explorar' } } },
   play: async ({ canvasElement }) => {
-    await expectActivo(canvasElement, 'Explorar')
+    await expectActivo(canvasElement, 'Canchas')
   },
 }
 
@@ -115,7 +115,7 @@ export const ConRivalEnRutaRival: Story = {
   play: async ({ canvasElement }) => {
     const links = within(canvasElement).getAllByRole('link')
     await expect(links.map((l) => l.textContent)).toEqual([
-      'Explorar',
+      'Canchas',
       'Rival',
       'Reservas',
       'Cuenta',

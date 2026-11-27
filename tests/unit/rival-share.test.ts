@@ -10,7 +10,7 @@ const base = { startsAt: THURSDAY_21, tenantName: 'El Vagón', capacity: 10 }
 describe('buildShareMessage (Avisar al grupo)', () => {
   it('faltan varios: convoca con el link', () => {
     expect(buildShareMessage({ ...base, confirmedCount: 7 }, URL)).toBe(
-      `Jueves 21:00 en El Vagón. Nos faltan 3. ¿Venís? Confirmá en un toque: ${URL}`,
+      `Jueves 21:00 en El Vagón. Nos faltan 3. ¿Venís? Confirmá con este link: ${URL}`,
     )
   })
 

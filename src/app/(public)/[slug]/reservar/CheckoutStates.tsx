@@ -168,7 +168,7 @@ const INVALID: Record<CheckoutInvalidKind, { title: string; message?: string; ct
   // Sin mensaje: el título lo dice todo; la salida es el mismo día, sin la hora que ya no está.
   'taken-on-return': {
     title: 'Ese turno se ocupó mientras entrabas',
-    cta: 'Ver otras horas',
+    cta: 'Ver otros horarios',
   },
 }
 

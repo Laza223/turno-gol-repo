@@ -93,7 +93,7 @@ export default function CheckoutFlow({
   const notes = (
     <div className="rv-small grid gap-1 text-center">
       {withDeposit && hidePrices && (
-        <p>Pagás una seña online con MercadoPago; el resto, en el complejo.</p>
+        <p>Pagás una seña online por Mercado Pago y el resto lo abonás en el complejo.</p>
       )}
       <p>{cancellationNote(cancellationHours, withDeposit, lateCancelHours)}</p>
     </div>

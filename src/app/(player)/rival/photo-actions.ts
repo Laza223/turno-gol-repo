@@ -22,7 +22,7 @@ import { compressUpload } from '@/shared/images/compress-image'
 /** Resultado de subir o quitar la foto: `url` es la nueva (o `null` si se quitó). */
 export type RivalPhotoResult = ActionResult<{ url: string | null }>
 
-const GENERIC = 'No pudimos subir la foto. Probá de nuevo en un momento.'
+const GENERIC = 'No pudimos subir la foto. Probá de nuevo en unos segundos.'
 
 const fail = (error: string): RivalPhotoResult => ({ success: false, error })
 
@@ -46,7 +46,7 @@ export async function uploadRivalPhotoAction(formData: FormData): Promise<RivalP
   const g = await guard()
   if ('error' in g) return fail(g.error)
   if (!isR2Configured())
-    return fail('No pudimos subir la foto ahora. Probá de nuevo en un momento.')
+    return fail('No pudimos subir la foto ahora. Probá de nuevo en unos segundos.')
 
   const file = formData.get('file')
   if (!(file instanceof Blob) || file.size === 0) return fail('Elegí una foto.')
@@ -76,6 +76,6 @@ export async function removeRivalPhotoAction(): Promise<RivalPhotoResult> {
     return { success: true, url: null }
   } catch (err) {
     captureException(err)
-    return fail('No pudimos quitar la foto. Probá de nuevo en un momento.')
+    return fail('No pudimos quitar la foto. Probá de nuevo en unos segundos.')
   }
 }

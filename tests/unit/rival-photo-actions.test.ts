@@ -71,7 +71,7 @@ describe('uploadRivalPhotoAction', () => {
     expect(mocks.enforce).toHaveBeenCalledWith('rivalPhoto', 'player-1')
     expect(res).toEqual({
       success: false,
-      error: 'Hiciste muchos cambios seguidos. Esperá un momento y probá de nuevo.',
+      error: 'Hiciste muchos cambios seguidos. Esperá unos segundos y probá de nuevo.',
     })
     expect(mocks.setPlayerPhoto).not.toHaveBeenCalled()
   })
@@ -81,7 +81,7 @@ describe('uploadRivalPhotoAction', () => {
     const res = await uploadRivalPhotoAction(formWith(photo()))
     expect(res).toEqual({
       success: false,
-      error: 'No pudimos subir la foto ahora. Probá de nuevo en un momento.',
+      error: 'No pudimos subir la foto ahora. Probá de nuevo en unos segundos.',
     })
     expect(mocks.setPlayerPhoto).not.toHaveBeenCalled()
   })
@@ -120,7 +120,7 @@ describe('uploadRivalPhotoAction', () => {
     const res = await uploadRivalPhotoAction(formWith(photo()))
     expect(res).toEqual({
       success: false,
-      error: 'No pudimos subir la foto. Probá de nuevo en un momento.',
+      error: 'No pudimos subir la foto. Probá de nuevo en unos segundos.',
     })
     expect(mocks.captureException).toHaveBeenCalledTimes(1)
   })

@@ -37,7 +37,7 @@ export default function ExplorarError({
         </>
       }
     >
-      <p>Fue un error de nuestro lado, ya lo tenemos en la mira.</p>
+      <p>Hubo un problema al buscar complejos. Probá de nuevo en unos segundos.</p>
       {error.digest && (
         <p className="text-sm">
           Código de referencia: <span className="font-mono tabular-nums">{error.digest}</span>

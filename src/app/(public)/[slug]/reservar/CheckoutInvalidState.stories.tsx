@@ -80,7 +80,7 @@ export const SeOcupoMientrasEntrabas: Story = {
       canvas.getByRole('heading', { level: 1, name: 'Ese turno se ocupó mientras entrabas' }),
     ).toBeVisible()
     await expect(
-      canvas.getByRole('link', { name: 'Ver otras horas del sábado 14 de marzo' }),
+      canvas.getByRole('link', { name: 'Ver otros horarios del sábado 14 de marzo' }),
     ).toHaveAttribute('href', '/complejo-fenix?date=2026-03-14&formato=5')
   },
 }

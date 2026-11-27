@@ -60,16 +60,16 @@ export const ConPartidos: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('heading', { level: 2, name: 'Partidos abiertos' })).toBeVisible()
-    await expect(canvas.getByRole('link', { name: 'Ver el tablón' })).toHaveAttribute(
+    await expect(canvas.getByRole('link', { name: 'Ver partidos abiertos' })).toHaveAttribute(
       'href',
       `/rival?complejo=${TENANT_ID}`,
     )
     await expect(canvas.getByText('Falta 1')).toBeVisible()
     await expect(canvas.getByText('Busca rival')).toBeVisible()
     await expect(canvas.getByText('Ya son 9 de 10')).toBeVisible()
-    const first = canvas.getByRole('link', { name: /Pedir sumarme/ })
+    const first = canvas.getByRole('link', { name: /Quiero sumarme/ })
     await expect(first).toHaveAttribute('href', '/rival/partido/a')
-    await expect(canvas.getByRole('link', { name: /Pedir jugar con mi equipo/ })).toHaveAttribute(
+    await expect(canvas.getByRole('link', { name: /Anotar a mi equipo/ })).toHaveAttribute(
       'href',
       '/rival/partido/b',
     )

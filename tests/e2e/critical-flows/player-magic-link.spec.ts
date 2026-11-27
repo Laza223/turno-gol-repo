@@ -22,9 +22,9 @@ test.describe('player magic link (acceso directo en /ingresar)', () => {
       await page.goto('/ingresar')
 
       await page.getByLabel(/email/i).fill(E2E_PLAYER_EMAIL)
-      await page.getByRole('button', { name: /mandame el enlace/i }).click()
+      await page.getByRole('button', { name: /mandame el link/i }).click()
 
-      await expect(page.getByText(/tiene cuenta, te enviamos un enlace para entrar/i)).toBeVisible({
+      await expect(page.getByText(/tiene cuenta, te mandamos un link para entrar/i)).toBeVisible({
         timeout: 10_000,
       })
       await expect(page).not.toHaveURL(/\/mis-reservas/)
@@ -39,10 +39,10 @@ test.describe('player magic link (acceso directo en /ingresar)', () => {
       const page = await ctx.newPage()
       await page.goto('/ingresar')
 
-      await page.getByRole('button', { name: /mandame el enlace/i }).click()
+      await page.getByRole('button', { name: /mandame el link/i }).click()
 
       await expect(
-        page.getByText(/tiene cuenta, te enviamos un enlace para entrar/i),
+        page.getByText(/tiene cuenta, te mandamos un link para entrar/i),
       ).not.toBeVisible({
         timeout: 2_000,
       })

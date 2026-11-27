@@ -108,7 +108,7 @@ export const Vacio: Story = {
       '/rival/nuevo',
     )
     // Quien llega para sumarse no queda sin salida: el tablón es la otra pestaña, pero también un link.
-    await expect(canvas.getByRole('link', { name: 'Ver el tablón' })).toHaveAttribute(
+    await expect(canvas.getByRole('link', { name: 'Ver partidos abiertos' })).toHaveAttribute(
       'href',
       '/rival',
     )

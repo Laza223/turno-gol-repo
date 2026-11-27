@@ -15,7 +15,7 @@ export default function ForgotPasswordPage() {
         className="absolute left-4 top-24 inline-flex min-h-11 items-center gap-1.5 rounded-md px-2 py-1 text-xs md:min-h-0 font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
       >
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
-        Volver al login
+        Volver a iniciar sesión
       </Link>
 
       <div className="w-full max-w-md">

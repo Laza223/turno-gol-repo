@@ -66,7 +66,7 @@ export const Celu: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(
-      canvas.getByRole('heading', { level: 1, name: 'Tu cancha, a un toque.' }),
+      canvas.getByRole('heading', { level: 1, name: 'Encontrá cancha libre hoy' }),
     ).toBeVisible()
     const ventana = await canvas.findByRole('region', {
       name: `Complejos de ${CABA.city} con sus horarios libres de hoy`,
@@ -111,7 +111,7 @@ export const SinComplejosEnLaZona: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await waitFor(() =>
-      expect(canvas.getByRole('button', { name: /^Localidad: Ciudad Autónoma/ })).toBeVisible(),
+      expect(canvas.getByRole('button', { name: /^Zona: Ciudad Autónoma/ })).toBeVisible(),
     )
     await new Promise((r) => setTimeout(r, 200))
     await expect(canvas.queryByRole('region', { name: /^Complejos de / })).toBeNull()
@@ -128,7 +128,7 @@ export const SinCiudades: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await waitFor(() =>
-      expect(canvas.getByRole('button', { name: /^Localidad: Ciudad Autónoma/ })).toBeVisible(),
+      expect(canvas.getByRole('button', { name: /^Zona: Ciudad Autónoma/ })).toBeVisible(),
     )
   },
 }

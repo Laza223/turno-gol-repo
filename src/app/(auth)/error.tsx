@@ -21,7 +21,7 @@ export default function AuthError({
     <ErrorState
       variant="contained"
       title="No pudimos cargar esta página"
-      description="Tuvimos un problema. El equipo ya fue notificado. Probá recargar."
+      description="Hubo un problema al cargar esta pantalla. Probá recargar la página."
       digest={error.digest}
       onRetry={reset}
       secondaryHref="/login"

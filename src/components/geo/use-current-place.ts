@@ -20,11 +20,11 @@ type FailureStatus = 'denied' | 'unsupported' | 'timeout' | 'outside_argentina' 
 /** Qué decirle a la persona en cada caso que no salió. */
 export const CURRENT_PLACE_MESSAGES: Record<FailureStatus, string> = {
   denied:
-    'Tenés bloqueado el permiso de ubicación. Activalo desde el candado de la barra del navegador, o buscá tu localidad.',
-  unsupported: 'Tu navegador no permite compartir la ubicación. Buscá tu localidad.',
-  timeout: 'No pudimos ubicarte a tiempo. Probá de nuevo o buscá tu localidad.',
-  outside_argentina: 'Parece que estás fuera de Argentina. Buscá tu localidad.',
-  error: 'No pudimos saber dónde estás ahora. Probá de nuevo o buscá tu localidad.',
+    'Tenés bloqueado el permiso de ubicación. Activalo desde el candado de la barra del navegador, o buscá tu zona.',
+  unsupported: 'Tu navegador no permite compartir la ubicación. Buscá tu zona.',
+  timeout: 'No pudimos ubicarte a tiempo. Probá de nuevo o buscá tu zona.',
+  outside_argentina: 'Parece que estás fuera de Argentina. Buscá tu zona.',
+  error: 'No pudimos saber dónde estás ahora. Probá de nuevo o buscá tu zona.',
 }
 
 // `locality` es para jugadores: su posición se redondea (~100 m) antes de salir del dispositivo.

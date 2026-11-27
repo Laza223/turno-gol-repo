@@ -63,7 +63,7 @@ const RIVAL_COPY: Record<
   armar: {
     accent: 'armar',
     after: ' tu partido',
-    lead: 'Entrás con Google o con tu email. Si no tenés cuenta, se crea al toque. Después de entrar, armás tu partido.',
+    lead: 'Entrás con Google o con tu email. Si no tenés cuenta, se crea en unos segundos. Después de entrar, armás tu partido.',
     sent: 'Cuando lo toques, entrás con tu cuenta y armás tu partido.',
   },
   pedir: {
@@ -319,7 +319,7 @@ function GateBody({
         )}
         {rival && (
           <p id="gate-email-help" className={skin.help}>
-            Te mandamos un enlace para entrar. Sin contraseña.
+            Te mandamos un link para entrar. Sin contraseña.
           </p>
         )}
       </div>
@@ -561,11 +561,11 @@ function SentPanel({
       </Title>
       <div className="grid gap-2">
         <p className="break-words text-base text-portal-ink">
-          Te mandamos un enlace a <strong className="font-semibold">{email}</strong>.
+          Te mandamos un link a <strong className="font-semibold">{email}</strong>.
         </p>
         <p className="rv-sub mt-0">{sentMessage}</p>
         <p className="rv-small">
-          ¿No llegó? Revisá la carpeta de correo no deseado o que el email esté bien escrito.
+          ¿No llegó? Revisá la carpeta de Spam o que el email esté bien escrito.
         </p>
       </div>
       <div className="flex flex-wrap items-start gap-2">
@@ -574,7 +574,7 @@ function SentPanel({
           fields={{ email, firstName, next, terms: 'on' }}
           sentAt={sentAt}
           scope={scope}
-          resentNotice="Listo: te mandamos otro enlace. Usá el del último correo."
+          resentNotice="Listo: te mandamos otro link. Usá el del último correo."
           button={skin.ghost}
         />
         <Button type="button" {...skin.ghost} onClick={onChangeEmail}>

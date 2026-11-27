@@ -187,7 +187,7 @@ export default function CalculadoraClavo({
                 TurnoGol sale desde{' '}
                 <span className="font-semibold text-portal-ink">{formatArs(desdeCents)}/mes</span>
                 {perdidaCents > desdeCents ? (
-                  <> — menos que lo que te llevan los turnos colgados.</>
+                  <>, menos que lo que te llevan los turnos colgados.</>
                 ) : (
                   <>.</>
                 )}

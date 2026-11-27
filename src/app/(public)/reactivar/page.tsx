@@ -52,7 +52,7 @@ const STATUS_COPY: Record<string, { title: string; description: string }> = {
   past_due: {
     title: 'Tu último pago falló',
     description:
-      'Todavía tenés acceso completo al panel (gracia de 7 días). MercadoPago va a reintentar el cobro automáticamente — si el problema persiste, contactá a soporte.',
+      'Todavía tenés acceso completo al panel (gracia de 7 días). Mercado Pago va a reintentar el cobro automáticamente. Si el problema persiste, contactá a soporte.',
   },
   suspended: {
     title: 'Tu cuenta está suspendida',

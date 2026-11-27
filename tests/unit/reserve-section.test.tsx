@@ -147,7 +147,9 @@ describe('ReserveSection: el estado sale de la URL', () => {
     await findHour('18:00')
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Reservá tu turno')
     expect(
-      screen.getByText('Elegí el día y tocá una hora. Podés reservar hasta 6 días adelante.'),
+      screen.getByText(
+        'Elegí el día y tocá un horario libre. Podés reservar con hasta 6 días de anticipación.',
+      ),
     ).toBeTruthy()
     expect(dayRows()).toHaveLength(7)
     expect(dayRows()[0]!.textContent).toContain('Hoy')
@@ -966,9 +968,7 @@ describe('ReserveSection: días sin lugar', () => {
 
     render(<ReserveSection tenant={tenantWith()} formats={[]} trackViewed={trackMock} />)
 
-    expect(
-      await screen.findByText('Este complejo todavía no tiene canchas para reservar'),
-    ).toBeTruthy()
+    expect(await screen.findByText('Todavía no hay canchas cargadas')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Consultar por WhatsApp' })).toBeTruthy()
   })
 })
@@ -1333,7 +1333,7 @@ describe('ReserveSection: por qué no cargó', () => {
 
   it('429: pide esperar unos segundos, no revisar la conexión, y deja reintentar', async () => {
     const text = await alertFor(() => 429)
-    expect(text).toContain('demasiadas consultas')
+    expect(text).toContain('Muchas consultas seguidas')
     expect(text).toContain('Esperá unos segundos')
     expect(text).not.toContain('conexión')
     expect(screen.getByRole('button', { name: 'Reintentar' })).toBeTruthy()
@@ -1341,8 +1341,8 @@ describe('ReserveSection: por qué no cargó', () => {
 
   it('404: dice que el complejo no está disponible y ofrece salir, sin reintentar', async () => {
     const text = await alertFor(() => 404)
-    expect(text).toContain('Este complejo no está disponible')
-    expect(text).toContain('No se puede reservar acá por ahora.')
+    expect(text).toContain('Este complejo no está tomando reservas')
+    expect(text).toContain('Por ahora no se puede reservar online acá.')
     expect(screen.getByRole('link', { name: 'Buscar otro complejo' }).getAttribute('href')).toBe(
       '/explorar',
     )
@@ -1351,7 +1351,7 @@ describe('ReserveSection: por qué no cargó', () => {
 
   it('error del servidor: lo dice de nuestro lado, no de la conexión del visitante', async () => {
     const text = await alertFor(() => 'fail')
-    expect(text).toContain('de nuestro lado')
+    expect(text).toContain('Hubo un problema al consultar')
     expect(text).not.toContain('conexión')
   })
 
@@ -1360,7 +1360,7 @@ describe('ReserveSection: por qué no cargó', () => {
       throw new TypeError('Failed to fetch')
     }) as unknown as typeof global.fetch
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
-    expect((await screen.findByRole('alert')).textContent).toContain('Revisá tu conexión')
+    expect((await screen.findByRole('alert')).textContent).toContain('Fijate si tenés señal o WiFi')
   })
 
   it('volver a un día que había fallado no muestra el error mientras reintenta', async () => {
@@ -1407,7 +1407,7 @@ describe('ReserveSection: la búsqueda de otro día', () => {
     const fetchMock = mockApi(fullDay)
     render(<ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />)
 
-    expect(await screen.findByText('Es el último día para reservar.')).toBeTruthy()
+    expect(await screen.findByText('Es el último día habilitado para reservar.')).toBeTruthy()
     expect(screen.queryByText(/próximos/)).toBeNull()
     // Solo la semana de la fila; ninguna búsqueda después del último día.
     expect(
@@ -1554,7 +1554,7 @@ describe('ReserveSection: una sola cancha, estado de la reserva y avisos', () =>
         trackViewed={trackMock}
       />,
     )
-    expect(await screen.findByText('Tocá una hora. Reservás solo para hoy.')).toBeTruthy()
+    expect(await screen.findByText('Tocá un horario. Reservás solo para hoy.')).toBeTruthy()
     expect(screen.queryByText(/0 días/)).toBeNull()
     expect(dayRows()).toHaveLength(1)
   })
@@ -1640,12 +1640,12 @@ describe('ReserveSection: frescura, día fuera de ventana y hora ocupada', () =>
     expired()
 
     fireEvent.click(hour('21:00'))
-    expect(await screen.findByText('Ya se ocupó el horario 21:00.')).toBeTruthy()
+    expect(await screen.findByText('No quedaron canchas libres para las 21:00.')).toBeTruthy()
 
     // La barra no se cierra sola: sacude (`data-taken`) y ya no ofrece canchas ni el botón.
     expect(bar().hasAttribute('data-taken')).toBe(true)
     expect(screen.getByRole('status').textContent).toBe(
-      'Ya se ocupó el horario 21:00. Elegí otra hora.',
+      'No quedaron canchas libres para las 21:00. Elegí otra hora.',
     )
     expect(within(bar()).queryAllByRole('radio')).toHaveLength(0)
     expect(within(bar()).queryByRole('link')).toBeNull()
@@ -1663,7 +1663,7 @@ describe('ReserveSection: frescura, día fuera de ventana y hora ocupada', () =>
         <ReserveSection tenant={tenantWith()} formats={[5]} trackViewed={trackMock} />,
       )
       await findHour('18:00')
-      expect(screen.queryByText(/Ya se ocupó el horario/)).toBeNull()
+      expect(screen.queryByText(/No quedaron canchas libres/)).toBeNull()
       view.unmount()
     }
   })
@@ -1682,7 +1682,7 @@ describe('ReserveSection: frescura, día fuera de ventana y hora ocupada', () =>
     fireEvent.click(screen.getByRole('radio', { name: 'Fútbol 7' }))
     await waitFor(() => expect(hourButtons()).toHaveLength(1))
 
-    expect(screen.queryByText(/Ya se ocupó el horario/)).toBeNull()
+    expect(screen.queryByText(/No quedaron canchas libres/)).toBeNull()
     expect(queryBar()).toBeNull()
     expect(replaceState).toHaveBeenLastCalledWith(null, '', expect.not.stringContaining('hora='))
   })
@@ -1694,8 +1694,8 @@ describe('ReserveSection: frescura, día fuera de ventana y hora ocupada', () =>
     switchTo(1)
 
     const text = (await screen.findByRole('alert')).textContent ?? ''
-    expect(text).toContain('Ese día ya no se puede reservar')
-    expect(text).not.toContain('de nuestro lado')
+    expect(text).toContain('Esa fecha no está habilitada para reservar')
+    expect(text).not.toContain('Hubo un problema al consultar')
     expect(screen.queryByRole('button', { name: 'Reintentar' })).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Ver hoy' }))
@@ -1713,7 +1713,9 @@ describe('ReserveSection: frescura, día fuera de ventana y hora ocupada', () =>
     await waitFor(() => expect(dayCalls(calls)).toHaveLength(1))
     await act(async () => dayCalls(calls)[0]!.resolve({ error: 'invalid_params' }, 400))
 
-    expect((await screen.findByRole('alert')).textContent).toContain('de nuestro lado')
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      'Hubo un problema al consultar',
+    )
     expect(screen.getByRole('button', { name: 'Reintentar' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Ver hoy' })).toBeNull()
   })

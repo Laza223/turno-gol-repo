@@ -62,7 +62,8 @@ export default function HourGrid({
       </div>
       {rows.some((r) => r.state === 'held') && (
         <p id={HELD_HELP_ID} className="mt-2 text-[13px] leading-5 text-portal-soft">
-          Señando: alguien está pagando la seña. Si no la completa, el horario se libera.
+          Señando: alguien está pagando la seña. Si no confirma en unos minutos, el horario se
+          vuelve a liberar.
         </p>
       )}
     </div>

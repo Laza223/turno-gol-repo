@@ -130,7 +130,7 @@ export function ParticipantMatchView({
 
           {(out || ended) && (
             <Link href="/rival" className={RIVAL_ACTION}>
-              Ver el tablón
+              Ver partidos abiertos
             </Link>
           )}
         </>

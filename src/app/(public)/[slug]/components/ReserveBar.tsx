@@ -208,7 +208,7 @@ export default function ReserveBar({
         {taken ? (
           <div className="rbar__note grid gap-3">
             <p className="text-base font-semibold text-portal-ink">
-              Ya se ocupó el horario {taken}.
+              No quedaron canchas libres para las {taken}.
             </p>
             <button
               type="button"

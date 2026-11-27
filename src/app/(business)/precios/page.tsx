@@ -9,7 +9,7 @@ import { PreciosView } from './PreciosView'
 
 // La base pública sale del mismo catálogo que la calculadora.
 export const metadata = buildMetadata({
-  title: 'Precios — TurnoGol para complejos de fútbol',
+  title: 'Precios para complejos de fútbol',
   description:
     'Precios de TurnoGol para complejos de fútbol según la cantidad de canchas. Sin comisión por reserva de TurnoGol.',
   path: '/precios',

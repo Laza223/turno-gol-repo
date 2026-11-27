@@ -3,7 +3,7 @@ import Link from 'next/link'
 import '@/components/site/article.css'
 
 export const metadata = {
-  title: 'Blog para Dueños de Complejos | TurnoGol',
+  title: 'Blog para dueños de complejos',
   description: 'Estrategias, consejos y guías para gestionar mejor tu complejo de fútbol.',
 }
 

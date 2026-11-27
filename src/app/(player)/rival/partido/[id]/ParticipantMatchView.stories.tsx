@@ -109,7 +109,7 @@ export const NoHuboLugar: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Esta vez no hubo lugar.')).toBeInTheDocument()
     await expect(canvas.queryByRole('button', { name: 'Me bajo' })).toBeNull()
-    await expect(canvas.getByRole('link', { name: 'Ver el tablón' })).toHaveAttribute(
+    await expect(canvas.getByRole('link', { name: 'Ver partidos abiertos' })).toHaveAttribute(
       'href',
       '/rival',
     )

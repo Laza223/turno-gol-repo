@@ -162,7 +162,7 @@ export const VinculoQueNoValio: Story = {
   render: (args) => <Screen {...args} summary={{ ...summary, hidePrices: true }} />,
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const line = canvas.getByText('Tocá "Reservar" para terminar tu reserva.')
+    const line = canvas.getByText('Tocá “Reservar” para confirmar tu turno.')
     await expect(line).toBeVisible()
     await expect(getComputedStyle(line).fontSize).toBe('16px')
     await expect(canvas.queryByRole('status')).not.toBeInTheDocument()
@@ -223,7 +223,9 @@ export const ConSenaOcultaNavegadorInterno: Story = {
     await expect(canvasElement.textContent).not.toContain('$')
     // El resumen no dice cómo se paga; lo dice la nota debajo del ingreso.
     await expect(
-      canvas.getByText('Pagás una seña online con MercadoPago; el resto, en el complejo.'),
+      canvas.getByText(
+        'Pagás una seña online por Mercado Pago y el resto lo abonás en el complejo.',
+      ),
     ).toBeVisible()
     // En el navegador de Instagram el email va primero y Google, que abre el navegador, después.
     const panel = within(canvas.getByRole('region', { name: 'Entrá para reservar' }))

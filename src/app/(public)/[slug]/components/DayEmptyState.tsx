@@ -27,23 +27,23 @@ const SHORT_BUTTON = cn(
 const FAILURE_COPY: Record<DayFailure, { title: (day: string) => string; hint: string }> = {
   network: {
     title: (day) => `No pudimos cargar los horarios del ${day}`,
-    hint: 'Revisá tu conexión y probá de nuevo. Tu elección sigue guardada.',
+    hint: 'Fijate si tenés señal o WiFi y probá de nuevo. Tu elección sigue guardada.',
   },
   server: {
     title: (day) => `No pudimos cargar los horarios del ${day}`,
-    hint: 'Falló algo de nuestro lado. Probá de nuevo en un momento. Tu elección sigue guardada.',
+    hint: 'Hubo un problema al consultar. Probá de nuevo en unos segundos.',
   },
   rate: {
-    title: () => 'Hubo demasiadas consultas seguidas',
-    hint: 'Esperá unos segundos y probá de nuevo. Tu elección sigue guardada.',
+    title: () => 'Muchas consultas seguidas',
+    hint: 'Esperá unos segundos y volvé a probar.',
   },
   gone: {
-    title: () => 'Este complejo no está disponible',
-    hint: 'No se puede reservar acá por ahora.',
+    title: () => 'Este complejo no está tomando reservas',
+    hint: 'Por ahora no se puede reservar online acá.',
   },
   range: {
-    title: () => 'Ese día ya no se puede reservar',
-    hint: 'El complejo cambió cuántos días se pueden reservar. Elegí otro día.',
+    title: () => 'Esa fecha no está habilitada para reservar',
+    hint: 'Elegí otro día disponible.',
   },
 }
 
@@ -54,7 +54,7 @@ function nextDayHint(kind: DayEmptyKind, nextDay: NextDay | null): string | null
   if (nextDay.reviewed > 0) return `No hay lugar en los próximos ${nextDay.reviewed} días.`
   return kind === 'closed'
     ? 'No hay otros días abiertos para reservar.'
-    : 'Es el último día para reservar.'
+    : 'Es el último día habilitado para reservar.'
 }
 
 /**
@@ -87,13 +87,13 @@ export default function DayEmptyState({
       : kind === 'closed'
         ? `Cerrado el ${dayLabel}`
         : kind === 'noCourts'
-          ? 'Este complejo todavía no tiene canchas para reservar'
+          ? 'Todavía no hay canchas cargadas'
           : `No quedan horarios el ${dayLabel}`
   const hint =
     kind === 'error'
       ? copy.hint
       : kind === 'noCourts'
-        ? 'Escribile al complejo para consultar.'
+        ? 'Escribile directo al complejo para consultar horarios.'
         : nextDayHint(kind, nextDay)
   const gone = kind === 'error' && failure === 'gone'
   // El día fuera de ventana no mejora reintentando: su salida es el botón "Ver hoy" (`nextDay`).

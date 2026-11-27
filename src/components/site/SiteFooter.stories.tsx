@@ -13,7 +13,7 @@ import {
 
 /**
  * Pie del portal de vidrio: la palabra gigante, la marca y tres columnas, sobre la luz del portal.
- * "Tablón de Rival" aparece solo con el flag. Es de servidor; el link de Rival lee el flag del
+ * "Rival, partidos abiertos" aparece solo con el flag. Es de servidor; el link de Rival lee el flag del
  * `PortalSessionProvider`.
  */
 const meta = {
@@ -54,7 +54,7 @@ export const Default: Story = {
       await expect(canvas.getByRole('link', { name })).toHaveAttribute('href', href)
     }
     // Sin el flag no hay Rival, y el "Ingresar" del pie anterior ya no está.
-    await expect(canvas.queryByRole('link', { name: 'Tablón de Rival' })).toBeNull()
+    await expect(canvas.queryByRole('link', { name: 'Rival, partidos abiertos' })).toBeNull()
     await expect(canvas.queryByRole('link', { name: 'Ingresar' })).toBeNull()
     // Navegación real, no texto corrido: 44 px de alto en todos los links y canales.
     for (const link of canvas.getAllByRole('link')) {
@@ -73,7 +73,7 @@ export const Default: Story = {
   },
 }
 
-/** Con el flag de RIVAL prendido aparece "Tablón de Rival" en Jugadores. */
+/** Con el flag de RIVAL prendido aparece "Rival, partidos abiertos" en Jugadores. */
 export const ConRival: Story = {
   decorators: [
     (Story) => (
@@ -91,7 +91,7 @@ export const ConRival: Story = {
   ],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('link', { name: 'Tablón de Rival' })).toHaveAttribute(
+    await expect(canvas.getByRole('link', { name: 'Rival, partidos abiertos' })).toHaveAttribute(
       'href',
       '/rival',
     )

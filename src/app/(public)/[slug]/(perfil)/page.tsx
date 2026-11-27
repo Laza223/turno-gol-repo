@@ -48,7 +48,7 @@ export default async function PublicComplexPage(props: Props) {
   if (!isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd)) {
     return (
       <PortalResult icon={PauseCircle} tone="neutral" title={tenant.name}>
-        <p>Este complejo no está disponible temporalmente.</p>
+        <p>Este complejo no está tomando reservas en este momento.</p>
       </PortalResult>
     )
   }
@@ -130,14 +130,16 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   if (!isPublicPortalIndexable(tenant.status)) {
     return buildMetadata({
       title: tenant.name,
-      description: `Reservá una cancha en ${tenant.name}, ${tenant.city}.`,
+      description: `Reservá cancha de fútbol en ${tenant.name} (${tenant.city}). Mirá los horarios libres y confirmá online.`,
       path: `/${tenant.slug}`,
       noIndex: true,
     })
   }
   return buildMetadata({
     title: tenant.name,
-    description: tenant.description ?? `Reservá una cancha en ${tenant.name}, ${tenant.city}.`,
+    description:
+      tenant.description ??
+      `Reservá cancha de fútbol en ${tenant.name} (${tenant.city}). Mirá los horarios libres y confirmá online.`,
     path: `/${tenant.slug}`,
     image: tenant.coverUrl ?? undefined,
   })

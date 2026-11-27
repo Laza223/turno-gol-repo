@@ -29,7 +29,7 @@ export default function SiteFooter() {
           <div className="col-span-2 grid gap-3 sm:col-span-3 md:col-span-1">
             <Link
               href="/"
-              aria-label="TurnoGol — inicio"
+              aria-label="TurnoGol, inicio"
               className={`${linkCls} justify-self-start hover:no-underline`}
             >
               <Logo variant="horizontal" />

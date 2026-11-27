@@ -180,7 +180,7 @@ export function ProfileFields({
             onZoneChange(l ? formatZone(l) : '')
             fe.clear('zone')
           }}
-          placeholder="Escribí tu localidad"
+          placeholder="Escribí tu zona"
           locateStyle="icon"
           inputClassName={RIVAL_PICK}
           listClassName={RIVAL_PICK_MENU}

@@ -43,7 +43,7 @@ import './explorar.css'
 export const metadata = buildMetadata({
   title: 'Complejos de fútbol con reserva online',
   description:
-    'Descubrí complejos de fútbol en tu ciudad con los horarios libres de hoy a la vista. Elegí la localidad y el tamaño de cancha, y reservá al instante.',
+    'Encontrá canchas de fútbol libres hoy en tu zona. Elegí tu zona y el tamaño de cancha, y reservá online sin mandar WhatsApp.',
   path: '/explorar',
 })
 

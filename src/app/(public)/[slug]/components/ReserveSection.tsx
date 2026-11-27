@@ -343,7 +343,7 @@ export default function ReserveSection({
 
   const contact = resolveTenantContact(
     tenant,
-    `Hola, quiero consultar disponibilidad en ${tenant.name}.`,
+    `Hola! Quería consultar horarios disponibles en ${tenant.name}.`,
   )
   const contactLink = contact.whatsappUrl
     ? { href: contact.whatsappUrl, label: 'Consultar por WhatsApp' }
@@ -376,10 +376,10 @@ export default function ReserveSection({
   const withRoom = rows.filter((r) => r.freeCount > 0).length
   const help =
     advanceDays === 0
-      ? 'Tocá una hora. Reservás solo para hoy.'
-      : `Elegí el día y tocá una hora. Podés reservar hasta ${plural(advanceDays, 'día', 'días')} adelante.`
+      ? 'Tocá un horario. Reservás solo para hoy.'
+      : `Elegí el día y tocá un horario libre. Podés reservar con hasta ${plural(advanceDays, 'día', 'días')} de anticipación.`
   const announcement = taken
-    ? `Ya se ocupó el horario ${picked.hora}. Elegí otra hora.`
+    ? `No quedaron canchas libres para las ${picked.hora}. Elegí otra hora.`
     : selected
       ? `${selected.time}: ${plural(selected.freeCount, 'cancha libre', 'canchas libres')}.`
       : day.data && rows.length > 0

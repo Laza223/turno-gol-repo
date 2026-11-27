@@ -53,7 +53,7 @@ export const LEVEL_HELP: Record<string, string> = {
 }
 /** Paso 1: lo que el usuario necesita. Las dos primeras salen al tablón al crear. */
 export const INTENT_OPTIONS: { value: NewMatchIntent; title: string; help: string }[] = [
-  { value: 'players', title: 'Me faltan jugadores', help: 'Sale al tablón y se suman.' },
+  { value: 'players', title: 'Me faltan jugadores', help: 'Sale en partidos abiertos y se suman.' },
   { value: 'rival', title: 'Busco rival', help: 'Tu equipo está completo.' },
   { value: 'group', title: 'Solo para mi grupo', help: 'Le pasás el link por WhatsApp.' },
 ]

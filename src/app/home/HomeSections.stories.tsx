@@ -50,10 +50,12 @@ export const Rival: Story = {
   render: () => <RivalSection />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const link = canvas.getByRole('link', { name: 'Ver el tablón' })
+    const link = canvas.getByRole('link', { name: 'Ver partidos abiertos' })
     await expect(link).toHaveAttribute('href', '/rival')
     await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
-    await expect(canvas.getByRole('img', { name: /^Ejemplo del tablón de Rival/ })).toBeVisible()
+    await expect(
+      canvas.getByRole('img', { name: /^Ejemplo de partidos publicados en Rival/ }),
+    ).toBeVisible()
   },
 }
 

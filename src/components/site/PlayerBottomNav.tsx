@@ -16,7 +16,7 @@ const RIVAL_ITEM = {
 const NAV_ITEMS = [
   {
     href: '/explorar',
-    label: 'Explorar',
+    label: 'Canchas',
     Icon: Compass,
     match: (p: string) => p === '/' || p.startsWith('/explorar'),
   },

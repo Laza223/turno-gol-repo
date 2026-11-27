@@ -38,7 +38,7 @@ export function SiteHeaderShell({
         <div className="overlay-nav flex items-center justify-between gap-2 rounded-full py-2 pl-4 pr-2 sm:gap-6 sm:py-3 sm:pl-6 sm:pr-3.5">
           <Link
             href={homeHref}
-            aria-label="TurnoGol — inicio"
+            aria-label="TurnoGol, inicio"
             className="inline-flex min-h-11 shrink-0 items-center rounded-full transition-opacity hover:opacity-90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Logo variant="horizontal" />

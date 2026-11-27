@@ -52,7 +52,7 @@ export default async function BajaPage(props: {
       >
         <p>
           Dejamos de mandarte mails cuando haya partido ahí. Cuando quieras, las activás de nuevo
-          desde el tablón.
+          desde partidos abiertos.
         </p>
       </PortalResult>
     )
@@ -84,9 +84,9 @@ export default async function BajaPage(props: {
       icon={BellOff}
       tone="neutral"
       title="Listo, no te vamos a avisar más."
-      actions={<PortalResultLink href="/rival">Ir al tablón</PortalResultLink>}
+      actions={<PortalResultLink href="/rival">Ir a partidos abiertos</PortalResultLink>}
     >
-      <p>Cuando quieras, los activás de nuevo desde el tablón.</p>
+      <p>Cuando quieras, los activás de nuevo desde partidos abiertos.</p>
     </PortalResult>
   )
 }

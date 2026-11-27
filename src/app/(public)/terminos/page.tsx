@@ -30,7 +30,7 @@ export default function TerminosPage() {
               </p>
               <p>
                 TurnoGol tampoco procesa dinero. Los pagos (señas de reservas y suscripciones SaaS)
-                se ejecutan a través de <strong>MercadoPago</strong>, que es el procesador de pagos
+                se ejecutan a través de <strong>Mercado Pago</strong>, que es el procesador de pagos
                 autorizado y regulado por las normas argentinas correspondientes.
               </p>
               <p>
@@ -56,7 +56,7 @@ export default function TerminosPage() {
                 </li>
                 <li>
                   Cumplir con la normativa fiscal argentina aplicable: emisión de comprobantes y
-                  facturación AFIP. Conforme al ADR-011,{' '}
+                  facturación ante ARCA (ex AFIP). Conforme al ADR-011,{' '}
                   <strong>la facturación está fuera del alcance de TurnoGol</strong> en la versión
                   v1; cada complejo factura por sus propios medios.
                 </li>
@@ -85,20 +85,20 @@ export default function TerminosPage() {
             <section className="grid gap-4">
               <h2>4. Pagos</h2>
               <p>
-                Cuando reservás online, la <strong>seña</strong> se procesa a través de MercadoPago
-                y va directamente a la cuenta de MercadoPago del complejo (conectada vía OAuth).
+                Cuando reservás online, la <strong>seña</strong> se procesa a través de Mercado Pago
+                y va directamente a la cuenta de Mercado Pago del complejo (conectada vía OAuth).
                 TurnoGol <strong>no intermedia ese dinero</strong>: no recibe, no retiene y no
                 remite los fondos.
               </p>
               <p>
                 La <strong>suscripción SaaS</strong> que paga el complejo a TurnoGol (mensual o
-                anual, ver punto 6) también se procesa por MercadoPago, mediante el sistema de
+                anual, ver punto 6) también se procesa por Mercado Pago, mediante el sistema de
                 suscripciones recurrentes.
               </p>
               <p>
                 Cualquier disputa sobre un cobro debe iniciarse en primer lugar con el complejo
                 correspondiente. Si la operación involucra una controversia sobre el procesamiento
-                del pago, podés presentar la disputa en MercadoPago o, eventualmente, ante la
+                del pago, podés presentar la disputa en Mercado Pago o, eventualmente, ante la
                 Dirección Nacional de Defensa al Consumidor.
               </p>
             </section>
@@ -167,7 +167,7 @@ export default function TerminosPage() {
                 desactivarlas primero.
               </p>
               <p>
-                El cobro se debita por MercadoPago. Los complejos pueden cancelar su suscripción en
+                El cobro se debita por Mercado Pago. Los complejos pueden cancelar su suscripción en
                 cualquier momento; tras la cancelación, la cuenta sigue activa hasta el final del
                 período facturado y después pasa al plan gratis. Si hay un cobro fallido, la cuenta
                 pasa por los estados <em>past_due</em> y <em>suspended</em> y después al plan
@@ -210,7 +210,7 @@ export default function TerminosPage() {
                 </li>
                 <li>
                   <strong>Beneficio.</strong> Por cada complejo referido que{' '}
-                  <strong>pague su primera mensualidad</strong> a través de MercadoPago, el
+                  <strong>pague su primera mensualidad</strong> a través de Mercado Pago, el
                   referidor obtiene <strong>un mes de su suscripción bonificado</strong>, con un
                   máximo de {REFERRAL_REWARD_CAP} meses por referidor. Los referidos que se sumen
                   después de alcanzado ese máximo se dan de alta normalmente, pero ya no generan
@@ -291,7 +291,7 @@ export default function TerminosPage() {
                   lugar).
                 </li>
                 <li>
-                  Inconvenientes con la API o el sistema de MercadoPago que estén fuera de nuestro
+                  Inconvenientes con la API o el sistema de Mercado Pago que estén fuera de nuestro
                   control (intermitencias, demoras de acreditación, contracargos).
                 </li>
                 <li>

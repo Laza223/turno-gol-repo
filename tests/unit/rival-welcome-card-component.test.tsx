@@ -231,7 +231,7 @@ describe('WelcomeCard: salida, foco y red', () => {
     fireEvent.change(screen.getByLabelText('Tu nombre'), { target: { value: 'Tomás' } })
     fireEvent.click(screen.getByRole('button', { name: 'Seguir' }))
     expect((await screen.findByRole('alert')).textContent).toBe(
-      'No pudimos conectar. Revisá tu conexión y probá de nuevo.',
+      'Sin conexión. Fijate si tenés señal o WiFi y probá de nuevo.',
     )
     expect((screen.getByLabelText('Tu nombre') as HTMLInputElement).value).toBe('Tomás')
   })

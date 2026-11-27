@@ -13,11 +13,11 @@ test.describe('TG-HP-001 — Home + buscador', () => {
     // Step 1-2: home + h1 ("Tu cancha, a un toque.")
     await page.goto('/')
     await expect(
-      page.getByRole('heading', { level: 1, name: /Tu cancha, a un toque\./i }),
+      page.getByRole('heading', { level: 1, name: /Encontrá cancha libre hoy/i }),
     ).toBeVisible()
 
-    // Step 3: barra overlay — Explorar link + Ingresar CTA (deslogueado)
-    await expect(page.getByRole('link', { name: 'Explorar' }).first()).toBeVisible()
+    // Step 3: barra overlay — Buscar canchas link + Ingresar CTA (deslogueado)
+    await expect(page.getByRole('link', { name: 'Buscar canchas' }).first()).toBeVisible()
     await expect(page.getByRole('link', { name: 'Ingresar' }).first()).toBeVisible()
 
     // Step 4: buscador del hero (Localidad / Cancha) — abrir la hoja de Cancha y elegir Fútbol 5

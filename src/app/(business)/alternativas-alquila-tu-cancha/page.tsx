@@ -9,7 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
   if (!post) return {}
 
   return {
-    title: `${post.frontmatter.title} | TurnoGol`,
+    title: post.frontmatter.title,
     description: post.frontmatter.description,
   }
 }

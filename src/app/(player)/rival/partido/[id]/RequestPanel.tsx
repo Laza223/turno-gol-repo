@@ -27,10 +27,10 @@ export type RequestWelcome = {
 /** Cómo arranca la tarjeta según lo que falta: sin nombre ni reglas pendientes, el intro por defecto es el del perfil. */
 function introFor(needs: WelcomeNeeds, seeksRival: boolean): string | undefined {
   if (!needs.identity) return undefined
-  const what = seeksRival ? 'jugar con tu equipo' : 'tu lugar'
+  const what = seeksRival ? 'anotar a tu equipo' : 'sumarte'
   return needs.profile
-    ? `Para pedir ${what}, contanos quién sos.`
-    : `Para pedir ${what}, confirmá tu nombre y aceptá las reglas.`
+    ? `Para ${what}, contanos quién sos.`
+    : `Para ${what}, confirmá tu nombre y aceptá las reglas.`
 }
 
 /**

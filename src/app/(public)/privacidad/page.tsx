@@ -53,15 +53,16 @@ export default function PrivacidadPage() {
                 </li>
                 <li>
                   Dirección IP y datos del dispositivo (para seguridad, rate limiting y prevención
-                  de fraude). En la página de inicio, la IP también se usa para sugerirte una
-                  localidad cercana con complejos. No guardamos esa ubicación.
+                  de fraude). En la página de inicio, la IP también se usa para sugerirte una zona
+                  cercana con complejos. No guardamos esa ubicación.
                 </li>
                 <li>
-                  Ubicación aproximada (opcional): si tocás «Usar mi ubicación actual», tu navegador
-                  te pide permiso y nos manda tu posición una sola vez para ver en qué localidad
-                  estás. La consultamos en los servicios de mapas del punto 4 con las coordenadas
-                  redondeadas a unos 100 metros. Las coordenadas no se guardan en nuestra base de
-                  datos: en tu dispositivo queda solo la localidad. Si preferís, la escribís a mano.
+                  Ubicación aproximada (opcional): si tocás &quot;Usar mi ubicación actual&quot;, tu
+                  navegador te pide permiso y nos manda tu posición una sola vez para ver en qué
+                  zona estás. La consultamos en los servicios de mapas del punto 4 con las
+                  coordenadas redondeadas a unos 100 metros. Las coordenadas no se guardan en
+                  nuestra base de datos: en tu dispositivo queda solo la zona. Si preferís, la
+                  escribís a mano.
                 </li>
                 <li>
                   Declaración jurada de mayoría de edad (+18 años) y aceptación de los Términos y
@@ -72,8 +73,8 @@ export default function PrivacidadPage() {
                 De los <strong>dueños y staff de complejos</strong> recolectamos nombre, email,
                 teléfono, datos del complejo (nombre, dirección, ubicación en el mapa,
                 configuración) y datos de facturación SaaS. Para cargar la dirección, lo que
-                escribís (o tu posición, si tocás «Usar mi ubicación actual») se consulta en los
-                servicios de mapas del punto 4.
+                escribís (o tu posición, si tocás &quot;Usar mi ubicación actual&quot;) se consulta
+                en los servicios de mapas del punto 4.
               </p>
               <p>
                 Si le escribís al <strong>asistente de WhatsApp</strong> de un complejo que lo
@@ -83,7 +84,7 @@ export default function PrivacidadPage() {
               </p>
               <p>
                 <strong>Nunca recolectamos</strong> números de tarjeta de crédito, CVV ni
-                contraseñas. El procesamiento de pagos lo realiza íntegramente MercadoPago bajo
+                contraseñas. El procesamiento de pagos lo realiza íntegramente Mercado Pago bajo
                 estándares PCI DSS. Tampoco procesamos datos sensibles (salud, religión,
                 orientación, biometría) según el artículo 2 de la Ley 25.326.
               </p>
@@ -134,7 +135,7 @@ export default function PrivacidadPage() {
                   links.
                 </li>
                 <li>
-                  <strong>MercadoPago</strong> (Argentina): procesamiento de pagos de señas y
+                  <strong>Mercado Pago</strong> (Argentina): procesamiento de pagos de señas y
                   suscripciones SaaS. TurnoGol nunca ve ni almacena números de tarjeta.
                 </li>
                 <li>
@@ -204,7 +205,7 @@ export default function PrivacidadPage() {
                 </li>
                 <li>
                   <strong>Datos financieros</strong> (pagos, facturas): 5 años. Es una obligación
-                  contable del Código de Comercio argentino y normativa AFIP.
+                  contable del Código de Comercio argentino y normativa ARCA (ex AFIP).
                 </li>
                 <li>
                   <strong>Audit logs</strong>: 12 meses, luego se purgan automáticamente.
@@ -225,7 +226,7 @@ export default function PrivacidadPage() {
             </section>
 
             <section className="grid gap-4">
-              <h2>6. Tus derechos (ARCO — Ley 25.326)</h2>
+              <h2>6. Tus derechos (ARCO, Ley 25.326)</h2>
               <p>
                 La Ley 25.326 te garantiza los derechos de <strong>Acceso</strong>,{' '}
                 <strong>Rectificación</strong>, <strong>Cancelación</strong> y{' '}
@@ -294,7 +295,7 @@ export default function PrivacidadPage() {
               <p>
                 En cuanto a seguridad, aplicamos las medidas correspondientes al{' '}
                 <strong>nivel medio</strong> de la Disposición 11/2006 de la DNPDP: HTTPS
-                obligatorio, cifrado en reposo de los tokens de MercadoPago de cada complejo, Row
+                obligatorio, cifrado en reposo de los tokens de Mercado Pago de cada complejo, Row
                 Level Security para aislamiento multi-tenant, audit logs INSERT-only, y backups
                 diarios con retención.
               </p>

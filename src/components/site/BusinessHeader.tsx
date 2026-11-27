@@ -72,7 +72,7 @@ export default function BusinessHeader() {
         <span aria-hidden className="portal-top__bg portal-top__bg--on" />
         <Link
           href="/"
-          aria-label="TurnoGol — inicio"
+          aria-label="TurnoGol, inicio"
           className="portal-top__logo inline-flex min-h-11 shrink-0 items-center rounded-full"
         >
           <Logo variant="horizontal" />
@@ -103,7 +103,8 @@ export default function BusinessHeader() {
               'whitespace-nowrap',
             )}
           >
-            Empezar gratis
+            <span className="sm:hidden">30 días gratis</span>
+            <span className="hidden sm:inline">Probar 30 días gratis</span>
           </Link>
 
           <Popover open={menuOpen} onOpenChange={setMenuOpen}>

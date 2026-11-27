@@ -9,7 +9,7 @@ import type { RefundContactInfo } from './actions'
 
 /** Cómo se nombra el medio en una frase, en criollo. */
 const METHOD_LABEL: Record<string, string> = {
-  mercadopago: 'por MercadoPago',
+  mercadopago: 'por Mercado Pago',
   cash: 'en efectivo',
   transfer: 'por transferencia',
   other: 'por otro medio',
@@ -81,7 +81,7 @@ export function RefundContactPanel({ refund }: { refund: RefundContactInfo }) {
         {settled ? (
           refund.settledMethod === 'mercadopago' ? (
             <>
-              MercadoPago ya procesó la devolución de{' '}
+              Mercado Pago ya procesó la devolución de{' '}
               <strong className="text-portal-ink">{formatArs(refund.amountCents)}</strong>. Puede
               tardar unos días hábiles en aparecer en tu cuenta.
             </>

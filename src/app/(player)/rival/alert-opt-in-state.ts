@@ -38,7 +38,7 @@ export const ALERT_FREQUENCY = 'Un mail por día como máximo.'
 
 function successMessage(last: LastAction): string {
   return last === 'sub'
-    ? `Listo, te avisamos por mail. ${ALERT_FREQUENCY} Podés darte de baja con un toque.`
+    ? 'Listo, te avisamos por mail cuando se publique un partido (máximo uno por día). Te podés dar de baja cuando quieras.'
     : 'Listo, no te vamos a avisar más de ese complejo.'
 }
 

@@ -60,7 +60,7 @@ export const ComplejoLogueado: Story = {
     await expect(links[0]).toHaveAttribute('href', '/dashboard')
     // El CTA comercial no se toca: sacarlo por tener sesión sería un cambio de
     // producto, no un arreglo.
-    await expect(canvas.getByRole('link', { name: /empezar gratis/i })).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: /probar 30 días gratis/i })).toBeInTheDocument()
   },
 }
 

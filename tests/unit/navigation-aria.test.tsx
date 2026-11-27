@@ -27,7 +27,7 @@ describe('PlayerBottomNav a11y', () => {
     render(<PlayerBottomNav />)
     const active = screen.getByRole('link', { name: /reservas/i })
     expect(active.getAttribute('aria-current')).toBe('page')
-    const inactive = screen.getByRole('link', { name: /explorar/i })
+    const inactive = screen.getByRole('link', { name: /canchas/i })
     expect(inactive.getAttribute('aria-current')).toBeNull()
   })
 
@@ -35,7 +35,7 @@ describe('PlayerBottomNav a11y', () => {
   // de la barra parada en su posición. La píldora es decorativa (aria-hidden): el lector ya tiene
   // aria-current. Es una sola para toda la barra, así que se desliza de una pestaña a otra.
   it.each([
-    ['/explorar', 'Explorar', 0],
+    ['/explorar', 'Canchas', 0],
     ['/mis-reservas', 'Reservas', 1],
     ['/configuracion', 'Cuenta', 2],
     ['/perfil', 'Cuenta', 2],

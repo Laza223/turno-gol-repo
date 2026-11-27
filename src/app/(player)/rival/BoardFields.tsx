@@ -22,8 +22,8 @@ const POSITION_OPTIONS = [
 ]
 
 const SEEKING_HELP: Record<BoardSeeking, string> = {
-  players: 'Aparece en el tablón y cualquiera puede pedir sumarse.',
-  rival: 'Aparece en el tablón como "Busca rival".',
+  players: 'Aparece en partidos abiertos de RIVAL y cualquiera puede sumarse.',
+  rival: 'Aparece en partidos abiertos de RIVAL como "Busca rival".',
 }
 
 /**

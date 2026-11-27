@@ -11,20 +11,20 @@ import { contactWhatsappUrl } from '@/lib/contact'
 import './precios.css'
 
 const HERO_CHIPS = [
-  'Empezás gratis, sin dato de pago',
-  'Pago mensual o anual adelantado',
+  '30 días de prueba gratis, sin tarjeta',
+  'Pago mensual o anual con descuento',
   'Sin comisión por reserva',
 ]
 
 /** Solo features que existen en el producto (regla GTM: nada que no esté construido). */
 const INCLUDED = [
-  'Reservas online 24/7 con tu link propio — el jugador no baja ninguna app',
+  'Reservas online 24/7 con tu link propio, sin que el jugador baje ninguna app',
   'Grilla en vivo desde el celular',
   'Aviso al instante con cada reserva (de madrugada espera a las 8)',
   'Caja completa: turnos, cantina con stock, gastos y cierre diario',
   'Abonados y fijos que se repiten solos, con control de pagos',
   'Ficha de cada jugador: historial, stats y ausencias',
-  'Métricas de ocupación y facturación',
+  'Estadísticas de ocupación y facturación',
   'Usuarios para tu equipo, sin límite',
   'Tus datos exportables cuando quieras',
   'Soporte directo por WhatsApp, no un 0800',
@@ -35,18 +35,18 @@ const INCLUDED = [
 const STEPS = [
   {
     n: '01',
-    t: 'Empezá gratis',
+    t: 'Probalo 30 días gratis',
     d: 'No te pedimos ningún dato de pago. Cargás canchas y horarios en menos de 10 minutos, y si te trabás te lo dejamos andando nosotros.',
   },
   {
     n: '02',
     t: 'Compartí tu link',
-    d: 'Tus clientes reservan solos a cualquier hora y el turno aparece en tu grilla. Sin que tengas que atender el teléfono.',
+    d: 'Tus clientes reservan solos a cualquier hora y el turno aparece en tu grilla, sin esperar que les contesten por WhatsApp.',
   },
   {
     n: '03',
-    t: 'Activá el plan pago cuando te sirva',
-    d: 'El plan Gratis no vence. Cuando quieras los turnos fijos, la caja y el acceso para tu encargado, podés activar el plan pago.',
+    t: 'Elegís tu plan al terminar la prueba',
+    d: 'Pasados los 30 días elegís pago mensual o anual según la cantidad de canchas de tu complejo. Si no te sirve, lo dejás sin compromiso.',
   },
 ]
 
@@ -64,24 +64,24 @@ const FAQ = [
     a: 'Se cargan una vez y se repiten solos todas las semanas. Ves quién pagó y quién debe, y nadie pierde su horario. El cobro lo registrás vos cuando te pagan, como siempre.',
   },
   {
-    q: '¿Cómo se cobra el plan pago?',
+    q: '¿Cómo se cobra el abono?',
     a: 'El importe depende de cuántas canchas tenés. Podés pagar mes a mes o adelantar los 12 meses con descuento. TurnoGol no cobra comisión por reserva.',
   },
   {
-    q: '¿Me hace la factura? ¿Sirve para AFIP?',
-    a: 'No, facturación fiscal no hace — eso sigue con tu contador, como hoy. Lo que te da es el control interno: cuánto entró, cuánto salió y por dónde.',
+    q: '¿Me hace la factura? ¿Sirve para ARCA (ex AFIP)?',
+    a: 'No, facturación fiscal no hace. Eso sigue con tu contador, como hoy. Lo que te da es el control interno: cuánto entró, cuánto salió y por dónde.',
   },
   {
-    q: '¿Y si TurnoGol cierra? ¿Qué pasa con mis datos?',
-    a: 'Tus datos son tuyos y los exportás cuando quieras. La plata nunca pasa por nosotros: lo que cobrás va directo a vos. Si mañana desaparecemos, tu plata y tus clientes siguen siendo tuyos.',
+    q: '¿Qué pasa con mis datos si dejo de usarlo?',
+    a: 'Tus datos son tuyos y los exportás cuando quieras. La plata nunca pasa por nosotros: lo que cobrás va directo a vos. Si algún día dejás de usar TurnoGol, tu plata y tus clientes siguen siendo tuyos.',
   },
   {
-    q: '¿Qué incluye cada plan?',
-    a: 'Gratis anotás tus turnos con nombre y teléfono, aparecés en el buscador y tus jugadores te reservan online. Con el plan pago los fijos aparecen solos en la grilla, anotás quién pagó, tenés la caja de la noche con cantina y tu encargado entra con su usuario. Si activás el plan pago y después lo dejás, lo que cargaste queda guardado. Como no te pedimos ningún dato de pago para empezar, no hay ningún cobro sorpresa.',
+    q: '¿Qué incluye la prueba de 30 días?',
+    a: 'Incluye todo desde el primer día: reservas online con tu link, turnos fijos que se repiten solos, caja con cantina y usuarios para tu equipo. Como no te pedimos tarjeta para empezar, no hay ningún cobro sorpresa.',
   },
   {
-    q: '¿El plan Gratis vence?',
-    a: 'No. Mientras lo uses, sigue. Si pasan 6 meses sin que entres al panel ni te lleguen reservas, te avisamos por mail y, si no volvés, borramos la cuenta a los 90 días. Las condiciones del Gratis pueden cambiar, siempre con 30 días de aviso.',
+    q: '¿Qué pasa cuando terminan los 30 días gratis?',
+    a: 'Elegís si seguís con el abono mensual o anual según cuántas canchas tenés. Si decidís no seguir, lo dejás sin cargo y podés exportar lo que cargaste.',
   },
 ]
 
@@ -148,8 +148,8 @@ function Hero() {
       </h1>
       <p className="bz-lead bz-rise" style={{ '--i': 1 } as CSSProperties}>
         El importe depende de cuántas canchas tenés.{' '}
-        <strong>Sin comisión por reserva y sin sorpresas.</strong> Empezás gratis, y el plan Gratis
-        no vence.
+        <strong>Sin comisión por reserva y sin sorpresas.</strong> Probalo 30 días gratis, sin
+        tarjeta.
       </p>
       <ul className="bz-feats bz-rise justify-center" style={{ '--i': 2 } as CSSProperties}>
         {HERO_CHIPS.map((t) => (
@@ -204,8 +204,8 @@ function TodoIncluido() {
     <Section>
       <SectionHead
         eyebrow="Sin letra chica"
-        title="Qué incluye el plan pago."
-        lead="Para todas tus canchas. Pagás por la cantidad exacta de canchas."
+        title="Qué incluye TurnoGol."
+        lead="Para todas tus canchas. Pagás según la cantidad de canchas de tu complejo."
       />
       <Reveal>
         <div className="glass-painted rounded-[32px] p-6 sm:p-8">
@@ -226,7 +226,7 @@ function TodoIncluido() {
 function RiesgoCero() {
   return (
     <Section>
-      <SectionHead eyebrow="Riesgo cero" title="Empezar no te cuesta nada." />
+      <SectionHead eyebrow="Riesgo cero" title="Probalo 30 días sin compromiso." />
       <Reveal>
         <ol className="pr-trio">
           {STEPS.map((step) => (
@@ -246,7 +246,7 @@ function Faq() {
   return (
     <Section wide={false}>
       <SectionHead
-        eyebrow="Preguntas de vestuario"
+        eyebrow="Preguntas frecuentes"
         title="Lo que preguntan todos antes de arrancar."
       />
       <div className="pr-faq">
@@ -272,13 +272,13 @@ function FinalCta() {
       <Reveal>
         <div className="bz-cta glass-painted">
           <div>
-            <h2 className="bz-h2">Empezá hoy. Gratis.</h2>
+            <h2 className="bz-h2">Probalo 30 días gratis</h2>
             <p className="bz-lead2">
               En menos de 10 minutos tenés la grilla andando y el link de reservas listo para mandar
               por WhatsApp. Si no te sirve, lo dejás y no pasó nada.
             </p>
             <p className="bz-fine">
-              No te pedimos ningún dato de pago · Lo dejás cuando quieras · Tus datos son tuyos
+              No te pedimos tarjeta · Lo dejás cuando quieras · Tus datos son tuyos
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -286,7 +286,7 @@ function FinalCta() {
               href="/register"
               className={cn(buttonVariants({ variant: 'pill', size: 'pill' }), 'whitespace-nowrap')}
             >
-              Empezar gratis
+              Probar 30 días gratis
               <ArrowRight aria-hidden />
             </Link>
             <Link

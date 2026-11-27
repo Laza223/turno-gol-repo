@@ -242,7 +242,7 @@ function FormCard({
           </p>
         )}
         <p id="email-help" className="rv-small">
-          Sin contraseña: te mandamos un enlace para entrar.
+          Sin contraseña: te mandamos un link para entrar.
         </p>
       </div>
       <SubmitButton
@@ -251,7 +251,7 @@ function FormCard({
         className="rv-go w-full disabled:opacity-100"
         pendingLabel="Enviando…"
       >
-        Mandame el enlace
+        Mandame el link
       </SubmitButton>
     </form>
   )
@@ -265,7 +265,7 @@ function FormCard({
   return (
     <>
       <div className="rv-rise">
-        <h1 className="pa-auth__title">{rival ? RIVAL_TITLE[rival].h1 : 'Accedé a tu cuenta'}</h1>
+        <h1 className="pa-auth__title">{rival ? RIVAL_TITLE[rival].h1 : 'Entrá a tu cuenta'}</h1>
         <p className="pa-auth__lead">
           {rival
             ? RIVAL_TITLE[rival].sub
@@ -304,7 +304,7 @@ function FormCard({
             <>
               ¿Primera vez en TurnoGol?{' '}
               <Link href="/explorar" className={exploreLinkClass}>
-                Descubrí complejos y reservá tu cancha
+                Buscá complejos y reservá tu cancha
               </Link>
             </>
           )}
@@ -353,12 +353,12 @@ function SentPanel({
             texto no afirma que el mail salió. */}
         <p className="pa-auth__lead break-words">
           Si <strong className="font-semibold text-portal-ink">{email}</strong> tiene cuenta, te
-          enviamos un enlace para entrar.
+          mandamos un link para entrar.
         </p>
       </div>
       <section aria-label="Si no llegó" className="pa-auth__card glass">
         <p className="rv-small">
-          ¿No llegó? Revisá la carpeta de correo no deseado o que el email esté bien escrito.
+          ¿No te llegó? Revisá Spam o fijate que el email esté bien escrito.
         </p>
         <div className="flex flex-wrap items-start gap-2">
           <ResendLinkForm
@@ -367,7 +367,7 @@ function SentPanel({
             sentAt={sentAt}
             scope="ingresar"
             button={GHOST_BUTTON}
-            resentNotice="Listo: si ese email tiene cuenta, te llega otro enlace. Usá el del último correo."
+            resentNotice="Listo: si ese email tiene cuenta, te mandamos otro link. Usá el del último mail."
           />
           <Button type="button" {...GHOST_BUTTON} onClick={onChangeEmail}>
             Usar otro email

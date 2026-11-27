@@ -2,4 +2,4 @@
 export { default } from './opengraph-image'
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
-export const alt = 'RIVAL powered by TurnoGol — Cada partido cuenta.'
+export const alt = 'RIVAL powered by TurnoGol | Cada partido cuenta.'

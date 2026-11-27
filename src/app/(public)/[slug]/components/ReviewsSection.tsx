@@ -120,8 +120,8 @@ export default function ReviewsSection({ tenantId, initial, total, average }: Pr
       )}
 
       <p className="px-1 text-[13px] leading-5 text-portal-soft">
-        Solo reseñan quienes ya jugaron acá. Un rato después de tu turno aparece «Dejar reseña» en
-        tu historial de reservas.
+        Solo pueden opinar quienes reservaron y jugaron acá. Después de tu partido vas a poder
+        calificar desde Mis reservas.
       </p>
     </section>
   )

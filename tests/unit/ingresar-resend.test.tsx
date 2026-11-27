@@ -33,7 +33,7 @@ afterEach(() => {
 // El reloj y el setInterval de la cuenta regresiva: con setTimeout falso los findBy de Testing Library se cuelgan.
 const fakeCountdown = () => vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] })
 
-const OFFLINE = 'No pudimos enviar el enlace. Revisá tu conexión e intentá de nuevo.'
+const OFFLINE = 'No pudimos mandar el link. Fijate tu conexión y probá de nuevo.'
 const STALE = 'La página quedó desactualizada. Recargala y probá de nuevo.'
 const RATE_LIMITED = 'Demasiados intentos. Esperá un minuto.'
 
@@ -68,7 +68,7 @@ describe('IngresarForm — un solo envío por toque', () => {
     let release: (s: ReturnType<typeof sent>) => void = () => {}
     const action = vi.fn<PlayerLoginAction>(() => new Promise((resolve) => (release = resolve)))
     renderForm(action)
-    const submit = button('Mandame el enlace')
+    const submit = button('Mandame el link')
 
     try {
       await act(async () => {
@@ -93,13 +93,13 @@ describe('IngresarForm — un solo envío por toque', () => {
 describe('IngresarForm — enviado', () => {
   it('no afirma que el mail salió: la action contesta "sent" aunque ese email no tenga cuenta', async () => {
     renderForm(vi.fn<PlayerLoginAction>(async () => sent()))
-    await click('Mandame el enlace')
+    await click('Mandame el link')
 
     expect(screen.getByRole('heading', { level: 1, name: 'Revisá tu email' })).toBeTruthy()
     expect(screen.getByText('tomas@example.com').closest('p')?.textContent).toBe(
-      'Si tomas@example.com tiene cuenta, te enviamos un enlace para entrar.',
+      'Si tomas@example.com tiene cuenta, te mandamos un link para entrar.',
     )
-    expect(screen.getByText(/¿No llegó\?/)).toBeTruthy()
+    expect(screen.getByText(/¿No te llegó\?/)).toBeTruthy()
     expect(button('Usar otro email')).toBeTruthy()
     // El "¿Primera vez en TurnoGol?" del formulario no se repite: lo reemplaza el bloque de abajo.
     expect(screen.queryByText(/¿Primera vez en TurnoGol\?/)).toBeNull()
@@ -112,7 +112,7 @@ describe('IngresarForm — enviado', () => {
       vi.fn<PlayerLoginAction>(async () => sent()),
       { googleAction },
     )
-    await click('Mandame el enlace')
+    await click('Mandame el link')
 
     // "reservá tu primer turno" es un link a Explorar, con el mismo estilo que el del formulario.
     const link = screen.getByRole('link', { name: 'reservá tu primer turno' })
@@ -131,7 +131,7 @@ describe('IngresarForm — enviado', () => {
       vi.fn<PlayerLoginAction>(async () => sent()),
       { inAppBrowser: true },
     )
-    await click('Mandame el enlace')
+    await click('Mandame el link')
 
     const link = screen.getByRole('link', { name: 'Reservá tu primer turno' })
     expect(link.getAttribute('href')).toBe('/explorar')
@@ -146,7 +146,7 @@ describe('IngresarForm — Reenviar', () => {
   it('queda bloqueado un minuto con la cuenta a la vista', async () => {
     fakeCountdown()
     renderForm(vi.fn<PlayerLoginAction>(async () => sent()))
-    await click('Mandame el enlace')
+    await click('Mandame el link')
     const resend = () => screen.getByRole('button', { name: /^Reenviar/ }) as HTMLButtonElement
 
     expect(resend().textContent).toBe('Reenviar en 60 s')
@@ -155,14 +155,14 @@ describe('IngresarForm — Reenviar', () => {
     expect(resend().textContent).toBe('Reenviar en 1 s')
     expect(resend().disabled).toBe(true)
     await tick(1_000)
-    expect(resend().textContent).toBe('Reenviar enlace')
+    expect(resend().textContent).toBe('Reenviar link')
     expect(resend().disabled).toBe(false)
   })
 
   it('cuenta contra el reloj y no ticks: si los timers se frenaron en segundo plano, al volver ya se puede reenviar', async () => {
     fakeCountdown()
     renderForm(vi.fn<PlayerLoginAction>(async () => sent()))
-    await click('Mandame el enlace')
+    await click('Mandame el link')
     const resend = () => screen.getByRole('button', { name: /^Reenviar/ }) as HTMLButtonElement
     expect(resend().textContent).toBe('Reenviar en 60 s')
 
@@ -171,7 +171,7 @@ describe('IngresarForm — Reenviar', () => {
     vi.setSystemTime(Date.now() + 90_000)
     await tick(1_000)
 
-    expect(resend().textContent).toBe('Reenviar enlace')
+    expect(resend().textContent).toBe('Reenviar link')
     expect(resend().disabled).toBe(false)
   })
 
@@ -179,17 +179,17 @@ describe('IngresarForm — Reenviar', () => {
     fakeCountdown()
     const action = vi.fn<PlayerLoginAction>(async () => sent())
     renderForm(action)
-    await click('Mandame el enlace')
+    await click('Mandame el link')
     await tick(60_000)
 
-    await click('Reenviar enlace')
+    await click('Reenviar link')
     await screen.findByRole('status')
     // Sincrónico, sin waitFor: el aviso y la espera salen juntos.
     expect(action).toHaveBeenCalledTimes(2)
     expect(action.mock.calls[1]![1].get('email')).toBe('tomas@example.com')
     // Cada reenvío genera un token nuevo: el del último correo es el que sirve.
     expect(screen.getByRole('status').textContent).toBe(
-      'Listo: si ese email tiene cuenta, te llega otro enlace. Usá el del último correo.',
+      'Listo: si ese email tiene cuenta, te mandamos otro link. Usá el del último mail.',
     )
     expect(button('Reenviar en 60 s').disabled).toBe(true)
   })
@@ -201,10 +201,10 @@ describe('IngresarForm — Reenviar', () => {
       .mockResolvedValueOnce(sent())
       .mockResolvedValueOnce(rateLimited())
     renderForm(action)
-    await click('Mandame el enlace')
+    await click('Mandame el link')
     await tick(60_000)
 
-    await click('Reenviar enlace')
+    await click('Reenviar link')
     await screen.findByRole('alert')
     expect(screen.getByRole('alert').textContent).toBe(RATE_LIMITED)
     expect(screen.queryByRole('status')).toBeNull()
@@ -226,9 +226,9 @@ describe('IngresarForm — Reenviar', () => {
         />
       </Profiler>,
     )
-    await click('Mandame el enlace')
+    await click('Mandame el link')
     await tick(60_000)
-    await click('Reenviar enlace')
+    await click('Reenviar link')
     await screen.findByRole('status')
 
     expect(frames.some((f) => f.notice)).toBe(true)
@@ -242,7 +242,7 @@ describe('IngresarForm — la request no vuelve o falla', () => {
     renderForm(vi.fn<PlayerLoginAction>().mockRejectedValue(cut))
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'tomas@example.com' } })
 
-    await click('Mandame el enlace')
+    await click('Mandame el link')
     await screen.findByRole('alert')
 
     expect(screen.getByRole('alert').textContent).toBe(OFFLINE)
@@ -250,7 +250,7 @@ describe('IngresarForm — la request no vuelve o falla', () => {
     expect(email.value).toBe('tomas@example.com')
     // El email no tiene nada de malo: no se marca inválido.
     expect(email.getAttribute('aria-invalid')).toBeNull()
-    expect(button('Mandame el enlace').disabled).toBe(false)
+    expect(button('Mandame el link').disabled).toBe(false)
     // Un 4G inestable es normal: deja rastro en el breadcrumb de otro error, no llena Sentry.
     expect(Sentry.addBreadcrumb).toHaveBeenCalledTimes(1)
     expect(Sentry.captureException).not.toHaveBeenCalled()
@@ -261,13 +261,13 @@ describe('IngresarForm — la request no vuelve o falla', () => {
     const cut = new TypeError('Failed to fetch')
     const action = vi.fn<PlayerLoginAction>().mockResolvedValueOnce(sent()).mockRejectedValue(cut)
     renderForm(action)
-    await click('Mandame el enlace')
+    await click('Mandame el link')
     await tick(60_000)
 
-    await click('Reenviar enlace')
+    await click('Reenviar link')
     await screen.findByRole('alert')
     expect(screen.getByRole('alert').textContent).toBe(OFFLINE)
-    expect(button('Reenviar enlace').disabled).toBe(false)
+    expect(button('Reenviar link').disabled).toBe(false)
     expect(Sentry.addBreadcrumb).toHaveBeenCalledTimes(1)
     expect(Sentry.captureException).not.toHaveBeenCalled()
   })
@@ -276,7 +276,7 @@ describe('IngresarForm — la request no vuelve o falla', () => {
     const boom = new Error('boom')
     renderForm(vi.fn<PlayerLoginAction>().mockRejectedValue(boom))
 
-    await click('Mandame el enlace')
+    await click('Mandame el link')
     await screen.findByRole('alert')
 
     expect(screen.getByRole('alert').textContent).toBe(OFFLINE)
@@ -289,7 +289,7 @@ describe('IngresarForm — la request no vuelve o falla', () => {
     renderForm(vi.fn<PlayerLoginAction>().mockRejectedValue(stale))
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'tomas@example.com' } })
 
-    await click('Mandame el enlace')
+    await click('Mandame el link')
     await screen.findByRole('alert')
 
     expect(screen.getByRole('alert').textContent).toBe(STALE)
@@ -331,7 +331,7 @@ describe('IngresarForm — la request no vuelve o falla', () => {
           />
         </Boundary>,
       )
-      await click('Mandame el enlace')
+      await click('Mandame el link')
     } finally {
       quiet.mockRestore()
     }
@@ -361,13 +361,13 @@ describe('IngresarForm — Reenviar con el reloj compartido quieto', () => {
         />
       </Profiler>,
     )
-    await click('Mandame el enlace')
+    await click('Mandame el link')
     await tick(10_000)
     await click('Usar otro email')
     // Sin el panel de "enviado" no hay suscriptores: el reloj compartido queda en t + 10 s.
     vi.setSystemTime(Date.now() + 90_000)
     labels.length = 0
-    await click('Mandame el enlace')
+    await click('Mandame el link')
 
     expect(labels.length).toBeGreaterThan(0)
     for (const label of labels) {

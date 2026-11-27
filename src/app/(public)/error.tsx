@@ -39,10 +39,7 @@ export default function PublicError({
         </>
       }
     >
-      <p>
-        Se nos escapó un error de nuestro lado, ya lo tenemos en la mira. Probá de nuevo o explorá
-        otros complejos mientras tanto.
-      </p>
+      <p>Hubo un problema al cargar esta página. Probá de nuevo o buscá otros complejos.</p>
       {error.digest && (
         <p className="text-sm text-portal-soft">
           Código de referencia: <span className="font-mono tabular-nums">{error.digest}</span>

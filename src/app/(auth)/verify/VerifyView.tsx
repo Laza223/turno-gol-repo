@@ -56,19 +56,19 @@ const GOOGLE_FAILED: ErrorCopy = {
  */
 const ERROR_COPY: Record<string, ErrorCopy> = {
   expired: {
-    title: 'Este enlace venció',
-    message: 'Los enlaces de acceso sirven una sola vez y por un rato. Pedí uno nuevo para entrar.',
-    cta: 'Pedir un enlace nuevo',
+    title: 'Este link venció',
+    message: 'Los links de acceso sirven una sola vez y por un rato. Pedí uno nuevo para entrar.',
+    cta: 'Pedir un link nuevo',
     expired: true,
   },
   invalid: {
-    title: 'No pudimos leer el enlace',
+    title: 'No pudimos leer el link',
     message: 'Puede que se haya cortado al copiarlo. Pedí uno nuevo y abrilo desde tu email.',
-    cta: 'Pedir un enlace nuevo',
+    cta: 'Pedir un link nuevo',
   },
   exchange_failed: {
     title: 'No pudimos iniciar tu sesión',
-    message: 'El enlace ya no sirve o hubo un problema de nuestro lado. Probá de nuevo.',
+    message: 'El link ya no sirve o hubo un problema de nuestro lado. Probá de nuevo.',
     cta: 'Volver a intentar',
   },
   exchange_failed_google: GOOGLE_FAILED,
@@ -136,7 +136,7 @@ const SUCCESS_COPY: Record<SuccessIntent, { title: string; subtitle: string; cta
 /** Quien volvía a RIVAL (p. ej. abrió el enlace en otro dispositivo) no vino por sus reservas. */
 const RIVAL_SUCCESS_COPY = {
   title: '¡Listo!',
-  subtitle: 'Ya estás adentro.',
+  subtitle: 'Ya iniciaste sesión.',
   cta: 'Volver a RIVAL',
 }
 
@@ -281,7 +281,7 @@ function SuccessState({ next, intent }: { next: string | undefined; intent: Succ
           abajo del 4.5 de AA. Es el mismo bug que tenía SuccessRedirect, tres líneas más
           abajo — y el subtítulo de arriba ya usaba el valor correcto. */}
       <p className="mt-4 text-xs text-slate-400">
-        ¿Abriste el enlace en otro dispositivo? Volvé a la pantalla donde empezaste para seguir.
+        ¿Abriste el link en otro dispositivo? Volvé a la pantalla donde empezaste para seguir.
       </p>
       <SuccessRedirect next={safeNext} />
     </>
@@ -293,7 +293,7 @@ function LoadingState() {
     <>
       <TgBallSpinner size="lg" className="mb-5" />
       <h1 className="font-display text-2xl font-black italic tracking-tight text-white">
-        Verificando tu enlace…
+        Verificando tu link…
       </h1>
       <p className="mt-3 text-sm text-slate-400">
         Esto tarda un instante. No cierres esta pestaña.
@@ -358,7 +358,7 @@ function PlayerSuccess({ next, intent }: { next: string | undefined; intent: Suc
       </Link>
       <div className="pa-auth__alt glass rv-rise" style={{ '--i': 2 } as CSSProperties}>
         <p>
-          ¿Abriste el enlace en otro dispositivo? Volvé a la pantalla donde empezaste para seguir.
+          ¿Abriste el link en otro dispositivo? Volvé a la pantalla donde empezaste para seguir.
         </p>
         <SuccessRedirect next={safeNext} className="text-sm tabular-nums text-portal-muted" />
       </div>

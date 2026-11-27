@@ -54,7 +54,7 @@ export const SinReserva: Story = {
     // "Solo para mi grupo": el cupo arranca en formato x 2 y no hay nada del tablón.
     await expect(canvas.getByRole('radio', { name: /Solo para mi grupo/ })).toBeChecked()
     await expect(canvas.getByRole('status')).toHaveTextContent('10')
-    await expect(canvas.queryByText('Tablón')).toBeNull()
+    await expect(canvas.queryByText('Publicar en RIVAL')).toBeNull()
     await expect(canvas.queryByLabelText('Tu WhatsApp')).toBeNull()
     // Los tres bloques, con título.
     await expect(canvas.getByRole('heading', { name: 'Dónde y cuándo' })).toBeInTheDocument()

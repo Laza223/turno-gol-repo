@@ -49,10 +49,10 @@ const renderPage = async () => render(await IngresarPage())
 const buttonNames = () => screen.getAllByRole('button').map((b) => b.textContent)
 
 describe('IngresarPage — acceso jugador', () => {
-  it('renderiza el form de email con el submit "Mandame el enlace"', async () => {
+  it('renderiza el form de email con el submit "Mandame el link"', async () => {
     await renderPage()
     expect(screen.getByLabelText(/email/i)).toBeTruthy()
-    expect(screen.getByRole('button', { name: /mandame el enlace/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /mandame el link/i })).toBeTruthy()
   })
 
   it('monta el portal de vidrio: marcador, tema propio, foto del hero y tarjeta de vidrio', async () => {
@@ -67,7 +67,7 @@ describe('IngresarPage — acceso jugador', () => {
     expect(container.querySelector('[style*="unsplash"]')).toBeNull()
     expect(screen.queryByText(/te está esperando/)).toBeNull()
     expect(container.querySelector('.pa-auth__card.glass')).not.toBeNull()
-    const title = screen.getByRole('heading', { level: 1, name: 'Accedé a tu cuenta' })
+    const title = screen.getByRole('heading', { level: 1, name: 'Entrá a tu cuenta' })
     expect(title.className).toMatch(/\bpa-auth__title\b/)
     // 52 px (`h-13`) y 16 px en el celular: GLASS_INPUT, con borde de campo (3:1).
     const email = screen.getByLabelText(/email/i)
@@ -85,7 +85,7 @@ describe('IngresarPage — acceso jugador', () => {
 
   it('ofrece reservar en Explorar para primera vez', async () => {
     await renderPage()
-    const link = screen.getByRole('link', { name: /Descubrí complejos/i })
+    const link = screen.getByRole('link', { name: /Buscá complejos/i })
     expect(link.getAttribute('href')).toBe('/explorar')
   })
 
@@ -93,13 +93,13 @@ describe('IngresarPage — acceso jugador', () => {
     mocks.userAgent =
       'Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 Chrome/126.0.0.0 Safari/537.36'
     await renderPage()
-    expect(buttonNames()).toEqual(['Continuar con Google', 'Mandame el enlace'])
+    expect(buttonNames()).toEqual(['Continuar con Google', 'Mandame el link'])
     expect(screen.queryByText('Te abrimos tu navegador para que entres con Google.')).toBeNull()
     cleanup()
 
     mocks.userAgent = INSTAGRAM_UA
     await renderPage()
-    expect(buttonNames()).toEqual(['Mandame el enlace', 'Continuar con Google'])
+    expect(buttonNames()).toEqual(['Mandame el link', 'Continuar con Google'])
     expect(screen.getByText('Te abrimos tu navegador para que entres con Google.')).toBeTruthy()
   })
 })
@@ -116,7 +116,7 @@ describe('IngresarPage — copy según el destino (next)', () => {
     expect(screen.getByRole('link', { name: 'armá tu primer partido' }).getAttribute('href')).toBe(
       '/rival/nuevo',
     )
-    expect(screen.queryByRole('link', { name: /Descubrí complejos/i })).toBeNull()
+    expect(screen.queryByRole('link', { name: /Buscá complejos/i })).toBeNull()
   })
 
   it('next=/rival/tablon: "Entrá a RIVAL"', async () => {
@@ -131,13 +131,13 @@ describe('IngresarPage — copy según el destino (next)', () => {
     '//evil.com',
     'https://evil.com',
     '/\\evil.com',
-  ])('next=%s no activa RIVAL: sigue "Accedé a tu cuenta"', async (next) => {
+  ])('next=%s no activa RIVAL: sigue "Entrá a tu cuenta"', async (next) => {
     render(await IngresarPage({ searchParams: Promise.resolve({ next }) }))
-    expect(h1()).toBe('Accedé a tu cuenta')
+    expect(h1()).toBe('Entrá a tu cuenta')
   })
 
   it('un next repetido (array) tampoco activa RIVAL', async () => {
     render(await IngresarPage({ searchParams: Promise.resolve({ next: ['/rival/tablon', '/x'] }) }))
-    expect(h1()).toBe('Accedé a tu cuenta')
+    expect(h1()).toBe('Entrá a tu cuenta')
   })
 })

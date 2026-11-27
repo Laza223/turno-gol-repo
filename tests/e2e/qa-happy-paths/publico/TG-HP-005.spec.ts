@@ -26,9 +26,9 @@ test.describe('TG-HP-005 — Landing B2B /para-complejos', () => {
     await expect(whatsapp).toHaveAttribute('href', /^https:\/\/wa\.me\/\d+\?text=/)
     await expect(whatsapp).toHaveAttribute('target', '_blank')
 
-    // Step 4: CTA hero "Empezá gratis" → /register (hero + cierre; se prueba el primero)
+    // Step 4: CTA hero "Probar 30 días gratis" → /register (hero + cierre; se prueba el primero)
     await main
-      .getByRole('link', { name: /Empezá gratis/ })
+      .getByRole('link', { name: /Probar 30 días gratis/ })
       .first()
       .click()
     await page.waitForURL('/register')

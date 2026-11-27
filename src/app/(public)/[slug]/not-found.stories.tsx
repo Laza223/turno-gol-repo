@@ -23,11 +23,11 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(
-      canvas.getByRole('heading', { name: 'Complejo no encontrado' }),
+      canvas.getByRole('heading', { name: 'No encontramos este complejo' }),
     ).toBeInTheDocument()
-    await expect(canvas.getByRole('link', { name: /volver al inicio/i })).toHaveAttribute(
+    await expect(canvas.getByRole('link', { name: 'Buscar otros complejos' })).toHaveAttribute(
       'href',
-      '/',
+      '/explorar',
     )
   },
 }

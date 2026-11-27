@@ -165,7 +165,7 @@ export const ReaceptarReglas: Story = {
 export const SoloPerfil: Story = {
   args: {
     needs: { identity: false, profile: true, position: true },
-    submitLabel: 'Pedir sumarme',
+    submitLabel: 'Quiero sumarme',
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -180,7 +180,7 @@ export const SoloPerfil: Story = {
     await expect(
       canvas.getByText(/El organizador ve además tu posición y tu zona/),
     ).toBeInTheDocument()
-    await expect(canvas.getByRole('button', { name: 'Pedir sumarme' })).toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: 'Quiero sumarme' })).toBeInTheDocument()
   },
 }
 
@@ -270,7 +270,7 @@ export const SinRed: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Aceptar y armar mi partido' }))
     await expect(await canvas.findByRole('alert')).toHaveTextContent(
-      'No pudimos conectar. Revisá tu conexión y probá de nuevo.',
+      'Sin conexión. Fijate si tenés señal o WiFi y probá de nuevo.',
     )
     await expect(canvas.getByLabelText('Tu nombre')).toHaveValue('Lazaro')
     await waitFor(() =>

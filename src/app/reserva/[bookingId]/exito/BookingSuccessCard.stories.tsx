@@ -123,7 +123,9 @@ export const PreciosOcultosConSena: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const summary = within(canvas.getByRole('region', { name: 'Tu turno' }))
-    await expect(summary.getByText('Seña pagada, el resto en el complejo')).toBeInTheDocument()
+    await expect(
+      summary.getByText('Seña pagada. El resto lo abonás en el complejo.'),
+    ).toBeInTheDocument()
     await expect(canvasElement.innerHTML).not.toMatch(/\$|4\.500|10\.500|15\.000|450000|1500000/)
     await expect(sharedText(canvas)).not.toContain('$')
   },

@@ -120,8 +120,8 @@ export function BookingErrorCard({
           </>
         }
       >
-        <p>MercadoPago todavía está revisando un pago de esta reserva.</p>
-        <p>Si se aprueba, el turno queda confirmado. Lo ves en Mis reservas.</p>
+        <p>Mercado Pago todavía está procesando tu pago.</p>
+        <p>Apenas se acredite, el turno queda confirmado. Lo ves en Mis reservas.</p>
       </PortalResult>
     )
   }
@@ -131,7 +131,7 @@ export function BookingErrorCard({
       <PortalResult
         icon={AlertTriangle}
         tone="destructive"
-        title="El pago no se procesó"
+        title="No se pudo completar el pago"
         turn={turnLines}
         actions={
           <>
@@ -140,8 +140,8 @@ export function BookingErrorCard({
           </>
         }
       >
-        <p>El pago fue rechazado o cancelado.</p>
-        <p>Por ahora no se puede reintentar el pago desde acá. Escribile al complejo.</p>
+        <p>El pago no se aprobó y por ahora no se puede reintentar desde acá.</p>
+        <p>Escribile directo al complejo para confirmar tu turno.</p>
       </PortalResult>
     )
   }
@@ -151,7 +151,7 @@ export function BookingErrorCard({
       <PortalResult
         icon={AlertTriangle}
         tone="destructive"
-        title="El pago no se procesó"
+        title="Se venció el tiempo para pagar la seña"
         actions={
           <>
             <PortalResultLink href={reserveAgainHref}>Reservar de nuevo</PortalResultLink>
@@ -159,8 +159,8 @@ export function BookingErrorCard({
           </>
         }
       >
-        <p>El pago no se completó a tiempo y el turno ya no está guardado.</p>
-        <p>Elegí un horario de nuevo. Si llegaste a pagar, escribile al complejo.</p>
+        <p>El turno se liberó porque el pago no entró a tiempo.</p>
+        <p>Podés volver a reservar otro horario. Si te debitaron el pago, escribile al complejo.</p>
       </PortalResult>
     )
   }
@@ -169,7 +169,7 @@ export function BookingErrorCard({
     <PortalResult
       icon={AlertTriangle}
       tone="destructive"
-      title="El pago no se procesó"
+      title="El pago no se aprobó"
       turn={turnLines}
       actions={
         <>
@@ -191,11 +191,10 @@ export function BookingErrorCard({
         </>
       }
     >
-      <p>El pago fue rechazado o cancelado.</p>
       <p>
         {payUntil
-          ? `Tu turno sigue guardado. Podés pagar hasta las ${payUntil}, con otro medio de pago.`
-          : 'Tu turno sigue guardado. Podés intentar de nuevo con otro medio de pago.'}
+          ? `Tu turno sigue reservado hasta las ${payUntil}. Probá de nuevo con otro medio de pago.`
+          : 'Tu turno sigue reservado. Probá de nuevo con otro medio de pago.'}
       </p>
     </PortalResult>
   )

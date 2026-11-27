@@ -49,7 +49,7 @@ export const Enviando: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.type(canvas.getByLabelText(/email/i), 'vos@complejo.com')
-    await userEvent.click(canvas.getByRole('button', { name: 'Enviar enlace' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Mandarme el link' }))
     await expect(await canvas.findByText('Enviando…')).toBeInTheDocument()
     await expect(canvas.getByRole('button')).toBeDisabled()
     await enviando.release(canvas.getByRole('button'))
@@ -65,7 +65,7 @@ export const Error: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Enviar enlace' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Mandarme el link' }))
     await expect(await canvas.findByRole('alert')).toHaveTextContent('Ingresá un email válido.')
   },
 }
@@ -75,7 +75,7 @@ export const Enviado: Story = {
   args: { action: fn(async () => ({ status: 'sent' as const })) },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Enviar enlace' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Mandarme el link' }))
     await expect(await canvas.findByText('Revisá tu email')).toBeInTheDocument()
   },
 }

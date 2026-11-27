@@ -34,10 +34,10 @@ test.describe('landing page', () => {
     await expect(page).toHaveURL(/\/ingresar/)
   })
 
-  test('/para-complejos tiene CTA "Empezar gratis" → /register', async ({ page }) => {
+  test('/para-complejos tiene CTA "Probar 30 días gratis" → /register', async ({ page }) => {
     // El CTA de alta de complejo fue movido de la home a la landing B2B.
     await page.goto('/para-complejos')
-    const cta = page.getByRole('link', { name: /empezar gratis/i }).first()
+    const cta = page.getByRole('link', { name: /probar 30 días gratis/i }).first()
     await expect(cta).toBeVisible()
     await expect(cta).toHaveAttribute('href', /\/register/)
   })

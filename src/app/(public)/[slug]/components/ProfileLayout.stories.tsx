@@ -234,7 +234,9 @@ export const ConPartidosAbiertos: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const section = canvas.getByRole('region', { name: 'Partidos abiertos' })
-    await expect(within(section).getAllByRole('link', { name: /Pedir/ })).toHaveLength(2)
-    await expect(within(section).getByRole('link', { name: 'Ver el tablón' })).toBeVisible()
+    await expect(
+      within(section).getAllByRole('link', { name: /Quiero sumarme|Anotar a mi equipo/ }),
+    ).toHaveLength(2)
+    await expect(within(section).getByRole('link', { name: 'Ver partidos abiertos' })).toBeVisible()
   },
 }

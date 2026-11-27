@@ -71,13 +71,13 @@ describe('ReservaErrorPage (#44)', () => {
     execute.mockResolvedValue([])
     await renderPage()
     expect(screen.getByText('No encontramos tu reserva')).toBeTruthy()
-    expect(screen.queryByText('El pago no se procesó')).toBeNull()
+    expect(screen.queryByText('El pago no se aprobó')).toBeNull()
   })
 
-  it('con reserva existente sí muestra "El pago no se procesó"', async () => {
+  it('con reserva existente sí muestra el error de pago (y no "No encontramos tu reserva")', async () => {
     execute.mockResolvedValue(row('pending_payment', new Date('2020-01-01T00:00:00Z')))
     await renderPage()
-    expect(screen.getByText('El pago no se procesó')).toBeTruthy()
+    expect(screen.getByText('Se venció el tiempo para pagar la seña')).toBeTruthy()
     expect(screen.queryByText('No encontramos tu reserva')).toBeNull()
   })
 
@@ -118,11 +118,9 @@ describe('ReservaErrorPage — qué pasó con el turno', () => {
   it('pending_payment dentro de la ventana: el turno sigue guardado y se ofrece reintentar, sin cuenta regresiva', async () => {
     execute.mockResolvedValue(row('pending_payment', new Date()))
     const { container } = await renderPage()
-    expect(screen.getByText('El pago no se procesó')).toBeTruthy()
+    expect(screen.getByText('El pago no se aprobó')).toBeTruthy()
     // El plazo es la hora del reloj (ART), nunca "poco tiempo" ni una cuenta regresiva.
-    expect(
-      screen.getByText(/Tu turno sigue guardado. Podés pagar hasta las \d\d:\d\d/),
-    ).toBeTruthy()
+    expect(screen.getByText(/Tu turno sigue reservado hasta las \d\d:\d\d/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Reintentar pago' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Elegir otro turno' }).getAttribute('href')).toBe(
       '/cancha-x?date=2030-06-17',
@@ -151,7 +149,7 @@ describe('ReservaErrorPage — qué pasó con el turno', () => {
     async (status) => {
       execute.mockResolvedValue(row(status, new Date('2020-01-01T00:00:00Z')))
       const { container } = await renderPage()
-      expect(screen.getByText(/el turno ya no está guardado/)).toBeTruthy()
+      expect(screen.getByText(/El turno se liberó porque el pago no entró a tiempo/)).toBeTruthy()
       expect(container.querySelector('.rv-badge')?.className).toContain('rv-badge--bad')
       expect(screen.queryByRole('button', { name: 'Reintentar pago' })).toBeNull()
       expect(screen.getByRole('link', { name: 'Reservar de nuevo' }).getAttribute('href')).toBe(
@@ -167,17 +165,17 @@ describe('ReservaErrorPage — qué pasó con el turno', () => {
     )
     await renderPage()
     expect(screen.queryByRole('button', { name: 'Reintentar pago' })).toBeNull()
-    expect(screen.queryByText(/Tu turno sigue guardado/)).toBeNull()
-    expect(screen.getByText(/el turno ya no está guardado/)).toBeTruthy()
+    expect(screen.queryByText(/Tu turno sigue reservado/)).toBeNull()
+    expect(screen.getByText(/El turno se liberó porque el pago no entró a tiempo/)).toBeTruthy()
   })
 
   it('pending_payment con MercadoPago del complejo desconectado: ni "Reintentar pago" ni hora (la acción mandaría a /pendiente sin nada que pagar)', async () => {
     execute.mockResolvedValue(row('pending_payment', new Date(), { mpReady: false }))
     await renderPage()
-    expect(screen.getByText('El pago no se procesó')).toBeTruthy()
+    expect(screen.getByText('No se pudo completar el pago')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Reintentar pago' })).toBeNull()
-    expect(screen.queryByText(/podés pagar hasta las/)).toBeNull()
-    expect(screen.getByText(/Por ahora no se puede reintentar el pago desde acá/)).toBeTruthy()
+    expect(screen.queryByText(/reservado hasta las/)).toBeNull()
+    expect(screen.getByText(/por ahora no se puede reintentar desde acá/)).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Elegir otro turno' }).getAttribute('href')).toBe(
       '/cancha-x?date=2030-06-17',
     )
@@ -196,9 +194,9 @@ describe('ReservaErrorPage — qué pasó con el turno', () => {
   it('expired con el created_at DENTRO de la ventana: el estado manda, no el reloj (sin reintento)', async () => {
     execute.mockResolvedValue(row('expired', new Date()))
     await renderPage()
-    expect(screen.getByText(/el turno ya no está guardado/)).toBeTruthy()
+    expect(screen.getByText(/El turno se liberó porque el pago no entró a tiempo/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Reintentar pago' })).toBeNull()
-    expect(screen.queryByText(/Tu turno sigue guardado/)).toBeNull()
+    expect(screen.queryByText(/Tu turno sigue reservado/)).toBeNull()
     expect(screen.getByRole('link', { name: 'Reservar de nuevo' }).getAttribute('href')).toBe(
       '/cancha-x?date=2030-06-17',
     )
@@ -223,7 +221,7 @@ describe('ReservaErrorPage — qué pasó con el turno', () => {
       execute.mockResolvedValue(row(status, new Date()))
       await renderPage()
       expect(screen.getByRole('heading', { name: 'Esta reserva ya pasó' })).toBeTruthy()
-      expect(screen.queryByText('El pago no se procesó')).toBeNull()
+      expect(screen.queryByText('El pago no se aprobó')).toBeNull()
     },
   )
 })

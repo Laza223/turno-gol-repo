@@ -311,7 +311,7 @@ describe('modal de cobro: consumos anotados al turno', () => {
 
     // Con los anotados tildados el cobro es de un solo medio: para dividir hay que destildar.
     fireEvent.click(await screen.findByRole('checkbox', { name: 'Cobrar con el turno' }))
-    fireEvent.click(await screen.findByRole('button', { name: /Agregar pago dividido/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /Agregar otro medio de pago/ }))
 
     const casilla = await screen.findByRole('checkbox', { name: 'Cobrar con el turno' })
     expect(casilla).toBeDisabled()
@@ -328,7 +328,7 @@ describe('modal de cobro: consumos anotados al turno', () => {
     const addBookingChargeAction = vi.fn(async () => ({ success: true as const }))
     renderModal(makeActions({ settleTabAction, addBookingChargeAction }))
 
-    const metodo = await screen.findByRole('button', { name: /^Método de pago/ })
+    const metodo = await screen.findByRole('button', { name: /^Medio de pago/ })
     fireEvent.pointerDown(metodo, { button: 0, ctrlKey: false })
     fireEvent.click(await screen.findByRole('menuitemradio', { name: 'Otro' }))
 
@@ -346,7 +346,7 @@ describe('modal de cobro: consumos anotados al turno', () => {
         open ? <p>[diálogo de cantina]</p> : null,
       )
       renderModal(makeActions(), { ...b, renderCanteenDialog })
-      fireEvent.click(await screen.findByRole('button', { name: /Cantina/ }))
+      fireEvent.click(await screen.findByRole('button', { name: /Sumar cantina/ }))
       await screen.findByText('[diálogo de cantina]')
       return renderCanteenDialog.mock.calls.at(-1)![0]
     }

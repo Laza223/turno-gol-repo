@@ -87,7 +87,7 @@ export function ShareActions({ appUrl, slug, tenantName, action }: Props) {
         // fallthrough al prompt (Safari privado, contexto HTTP, etc.)
       }
     }
-    window.prompt('Copiá el enlace público:', publicUrl)
+    window.prompt('Copiá el link de tu página pública:', publicUrl)
     persistShared('copy')
   }
 

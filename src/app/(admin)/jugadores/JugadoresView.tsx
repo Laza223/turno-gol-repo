@@ -225,9 +225,7 @@ export function JugadoresView({
 
       {clients.length === 0 ? (
         q ? (
-          <p className="text-sm text-muted-foreground">
-            No se encontraron personas que coincidan con la búsqueda.
-          </p>
+          <p className="text-sm text-muted-foreground">No encontramos personas con esa búsqueda.</p>
         ) : page > 0 ? (
           // Página fuera de rango (`?pagina=999`, o un link viejo después de que
           // bajó el total): el array de ESTA página está vacío, pero el complejo
@@ -260,7 +258,7 @@ export function JugadoresView({
                 href="/dashboard"
                 className="inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:h-10"
               >
-                Compartí tu link desde el panel
+                Ir a Hoy para compartir tu link
               </Link>
             }
           />
@@ -382,7 +380,7 @@ export function JugadoresView({
                     </Td>
                     {dormant ? (
                       <Td className="text-foreground">
-                        {c.lastActiveAt ? lastSeenLabel(c.lastActiveAt, nowMs) : '—'}
+                        {c.lastActiveAt ? lastSeenLabel(c.lastActiveAt, nowMs) : '-'}
                       </Td>
                     ) : (
                       <>
@@ -390,7 +388,7 @@ export function JugadoresView({
                           {c.fixedCount > 0 ? (
                             c.fixedCount
                           ) : (
-                            <span className="text-muted-foreground">—</span>
+                            <span className="text-muted-foreground">-</span>
                           )}
                         </Td>
                         <Td align="right">
@@ -399,7 +397,7 @@ export function JugadoresView({
                               {c.noshowCount}
                             </span>
                           ) : (
-                            <span className="text-muted-foreground">—</span>
+                            <span className="text-muted-foreground">-</span>
                           )}
                         </Td>
                       </>

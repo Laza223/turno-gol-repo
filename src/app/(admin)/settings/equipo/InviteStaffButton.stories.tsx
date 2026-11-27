@@ -34,16 +34,16 @@ export const Default: Story = {}
 
 /** Empty state (staff/page.tsx): label override para no repetir el texto del botón del PageHeader. */
 export const LabelDeEmptyState: Story = {
-  args: { label: 'Invitar al primer miembro' },
+  args: { label: 'Invitar a alguien' },
 }
 
 export const AbreElDialogo: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: /agregar miembro del equipo/i }))
+    await userEvent.click(canvas.getByRole('button', { name: /invitar al equipo/i }))
     // InviteStaffDialog es un dynamic(ssr:false): findByRole espera el chunk async.
     await expect(
-      await within(document.body).findByRole('heading', { name: /invitar miembro del equipo/i }),
+      await within(document.body).findByRole('heading', { name: /invitar al equipo/i }),
     ).toBeInTheDocument()
   },
 }

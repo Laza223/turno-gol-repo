@@ -91,7 +91,8 @@ export function StatusBanner({
           aria-hidden="true"
         />
         <span>
-          Estamos experimentando problemas técnicos. Algunas funciones pueden no estar disponibles.
+          Estamos teniendo un problema técnico. Algunas funciones pueden fallar mientras lo
+          arreglamos.
         </span>
       </div>
     )
@@ -103,11 +104,18 @@ export function StatusBanner({
       <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border-b border-red-200 text-sm text-red-800 dark:bg-red-500/10 dark:border-red-500/25 dark:text-red-200">
         <XCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" aria-hidden="true" />
         <span className="flex-1">
-          Tu pago falló. Regularizá antes del <strong>{formatDate(periodEnd)}</strong>.
+          No pudimos cobrar tu último pago. Actualizá el medio de pago antes del{' '}
+          <strong>{formatDate(periodEnd)}</strong> para no perder acceso.
+          {staffRole !== 'admin' && ' Avisale al dueño del complejo.'}
         </span>
-        <Link href="/reactivar" className={ctaClass('hover:text-red-900 dark:hover:text-red-300')}>
-          Actualizar pago
-        </Link>
+        {staffRole === 'admin' && (
+          <Link
+            href="/reactivar"
+            className={ctaClass('hover:text-red-900 dark:hover:text-red-300')}
+          >
+            Actualizar pago
+          </Link>
+        )}
       </div>
     )
   }
@@ -127,12 +135,14 @@ export function StatusBanner({
           Cancelaste tu suscripción. Tenés acceso hasta el <strong>{formatDate(periodEnd)}</strong>.
           Podés reactivarla cuando quieras.
         </span>
-        <Link
-          href="/reactivar"
-          className={ctaClass('hover:text-amber-900 dark:hover:text-amber-300')}
-        >
-          Reactivar
-        </Link>
+        {staffRole === 'admin' && (
+          <Link
+            href="/reactivar"
+            className={ctaClass('hover:text-amber-900 dark:hover:text-amber-300')}
+          >
+            Reactivar
+          </Link>
+        )}
       </div>
     )
   }
@@ -150,8 +160,8 @@ export function StatusBanner({
       >
         <XCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" aria-hidden="true" />
         <span className="flex-1">
-          Tu cuenta está suspendida por falta de pago. El panel quedó en solo lectura: podés ver
-          todo, pero no cargar ni cambiar nada.
+          Tu cuenta está pausada por falta de pago. Podés ver tus datos, pero no cargar ni modificar
+          nada.
           {readOnly?.until && (
             <>
               {' '}
@@ -166,7 +176,7 @@ export function StatusBanner({
             href="/reactivar"
             className={ctaClass('hover:text-red-900 dark:hover:text-red-300')}
           >
-            Regularizar pago
+            Actualizar pago
           </Link>
         )}
       </div>

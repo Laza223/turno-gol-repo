@@ -173,9 +173,9 @@ describe('StoryShareDialog — elegir horarios', () => {
 describe('StoryShareDialog', () => {
   it('pide la placa de hoy y muestra la vista previa', async () => {
     renderDialog()
-    expect(screen.getByText('Armando la placa…')).toBeTruthy()
+    expect(screen.getByText('Armando la imagen...')).toBeTruthy()
 
-    const img = await screen.findByRole('img', { name: /placa de turnos libres/i })
+    const img = await screen.findByRole('img', { name: /imagen de turnos libres/i })
     expect(img.getAttribute('src')).toBe('blob:placa')
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock.mock.calls[0][0]).toBe('/api/public/story?slug=m10&date=2026-09-29')
@@ -212,7 +212,7 @@ describe('StoryShareDialog', () => {
       await new Promise((resolve) => setTimeout(resolve, 10))
     })
     expect(screen.queryByRole('img')).toBeNull()
-    expect(screen.getByText('Armando la placa…')).toBeTruthy()
+    expect(screen.getByText('Armando la imagen...')).toBeTruthy()
     expect(URL.createObjectURL).not.toHaveBeenCalled()
 
     await act(async () => {
@@ -256,7 +256,7 @@ describe('StoryShareDialog', () => {
   it('un 429 explica que hay que esperar', async () => {
     fetchMock.mockImplementation(async () => new Response('', { status: 429 }))
     renderDialog()
-    expect(await screen.findByText(/Pediste muchas placas seguidas/)).toBeTruthy()
+    expect(await screen.findByText(/Pediste muchas imágenes seguidas/)).toBeTruthy()
   })
 
   it('sin conexión ofrece reintentar', async () => {
@@ -358,7 +358,7 @@ describe('StoryShareDialog', () => {
 
       await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1))
       expect(writeText.mock.calls[0][0]).toMatch(/^https?:\/\/.+\/m10$/)
-      expect(await screen.findByText('¡Copiado!')).toBeTruthy()
+      expect(await screen.findByText('Link copiado')).toBeTruthy()
       expect(trackAction).toHaveBeenCalledWith({ method: 'link', daysAhead: 0 })
     })
 

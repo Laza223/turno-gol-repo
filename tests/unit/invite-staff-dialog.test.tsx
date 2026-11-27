@@ -40,15 +40,15 @@ function renderDialog() {
 describe('InviteStaffDialog — selección de rol', () => {
   it('ofrece los 2 roles fijos como radios', () => {
     renderDialog()
-    expect(screen.getByRole('radio', { name: /Administrador/ })).toBeTruthy()
+    expect(screen.getByRole('radio', { name: /Dueño/ })).toBeTruthy()
     expect(screen.getByRole('radio', { name: /Encargado/ })).toBeTruthy()
     expect(screen.queryByRole('radio', { name: /Solo lectura/ })).toBeNull()
   })
 
-  it('arranca con Encargado seleccionado (default), no Administrador', () => {
+  it('arranca con Encargado seleccionado (default), no Dueño', () => {
     renderDialog()
     const encargado = screen.getByRole('radio', { name: /Encargado/ }) as HTMLInputElement
-    const admin = screen.getByRole('radio', { name: /Administrador/ }) as HTMLInputElement
+    const admin = screen.getByRole('radio', { name: /Dueño/ }) as HTMLInputElement
     expect(encargado.checked).toBe(true)
     expect(admin.checked).toBe(false)
   })
@@ -58,7 +58,7 @@ describe('InviteStaffDialog — selección de rol', () => {
     const encargado = screen.getByRole('radio', { name: /Encargado/ }) as HTMLInputElement
     expect(encargado.name).toBe('role')
     expect(encargado.value).toBe('manager')
-    const admin = screen.getByRole('radio', { name: /Administrador/ }) as HTMLInputElement
+    const admin = screen.getByRole('radio', { name: /Dueño/ }) as HTMLInputElement
     expect(admin.value).toBe('admin')
   })
 })

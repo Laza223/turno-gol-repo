@@ -249,7 +249,7 @@ describe('/settings/facturacion — historial de pagos (doc15 §5.8)', () => {
 
     expect(screen.getByText('Historial de pagos')).toBeTruthy()
     expect(screen.getByText('Aprobado')).toBeTruthy()
-    expect(screen.queryByText('Todavía no hay cobros registrados.')).toBeNull()
+    expect(screen.queryByText('Todavía no hay pagos registrados')).toBeNull()
   })
 
   it('sin cobros (o si MP falla), muestra el estado vacío en vez de romper', async () => {
@@ -259,7 +259,7 @@ describe('/settings/facturacion — historial de pagos (doc15 §5.8)', () => {
     render(await FacturacionPage())
 
     expect(screen.getByText('Historial de pagos')).toBeTruthy()
-    expect(screen.getByText('Todavía no hay cobros registrados.')).toBeTruthy()
+    expect(screen.getByText('Todavía no hay pagos registrados')).toBeTruthy()
   })
 })
 
@@ -293,7 +293,7 @@ describe('/settings/facturacion — aviso de suscripción de MercadoPago ya crea
     render(await FacturacionPage())
 
     expect(
-      screen.getByText(/Ya hay una suscripción de MercadoPago creada para tu cuota/),
+      screen.getByText(/Ya hay una suscripción de Mercado Pago creada para tu cuota/),
     ).toBeTruthy()
   })
 
@@ -356,7 +356,7 @@ describe('/settings/facturacion — checkout creado pero nunca pagado', () => {
     render(await FacturacionPage())
 
     expect(screen.queryByRole('button', { name: 'Activar plan' })).toBeNull()
-    expect(screen.getByText(/Ya hay una suscripción de MercadoPago creada/)).toBeTruthy()
+    expect(screen.getByText(/Ya hay una suscripción de Mercado Pago creada/)).toBeTruthy()
   })
 
   it('con la suscripción activa no le pregunta nada a MP', async () => {

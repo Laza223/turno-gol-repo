@@ -18,8 +18,8 @@ export default function Error({
   return (
     <ErrorState
       variant="contained"
-      title="No pudimos cargar las reservas"
-      description="Ocurrió un error al obtener las reservas. El equipo ya fue notificado. Probá recargar."
+      title="No pudimos cargar la agenda"
+      description="Hubo un problema al cargar los turnos. Probá recargar la pantalla."
       digest={error.digest}
       onRetry={reset}
     />

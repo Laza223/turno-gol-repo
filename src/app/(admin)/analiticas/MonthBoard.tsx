@@ -220,7 +220,7 @@ export function MonthEmpty({ month, isCurrent }: { month: string; isCurrent: boo
     <EmptyState
       icon={ChartLine}
       title={`Todavía no hay cobros en ${name}`}
-      description="Métricas se arma con lo que cobrás en Hoy, la Grilla y Caja. El primer cobro ya aparece acá."
+      description="Reportes se arma con lo que cobrás en Hoy, la Grilla y Caja. Apenas registres tu primer cobro, aparece acá."
       action={
         <Link href="/grilla" className={buttonVariants({ variant: 'outline' })}>
           Ir a la Grilla

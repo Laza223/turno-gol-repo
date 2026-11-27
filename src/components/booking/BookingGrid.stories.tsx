@@ -106,14 +106,15 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {}
 
 export const SinCanchas: Story = {
-  name: 'courts=[] — EmptyState "Sin canchas configuradas" con CTA a /canchas',
+  name: 'courts=[] — EmptyState "Todavía no cargaste canchas" con CTA a /canchas',
   args: { courts: [], initialBookings: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Sin canchas configuradas')).toBeInTheDocument()
-    await expect(
-      canvas.getByRole('link', { name: 'Configurar la primera cancha' }),
-    ).toHaveAttribute('href', '/canchas')
+    await expect(canvas.getByText('Todavía no cargaste canchas')).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: 'Agregar cancha' })).toHaveAttribute(
+      'href',
+      '/canchas',
+    )
   },
 }
 
@@ -122,8 +123,8 @@ export const ComplejoCerrado: Story = {
   args: { closedDates: ['2026-03-14'] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Complejo cerrado este día')).toBeInTheDocument()
-    await expect(canvas.getByRole('link', { name: 'Revisar horarios' })).toHaveAttribute(
+    await expect(canvas.getByText('Cerrado este día')).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: 'Cambiar horarios' })).toHaveAttribute(
       'href',
       '/settings/horarios',
     )
@@ -145,7 +146,7 @@ export const ConexionInestable: Story = {
     // auto-recuperables no deben alarmar) — findByText espera ese delay.
     await expect(
       await canvas.findByText(
-        'Sin conexión. Los datos pueden no estar actualizados.',
+        'Sin internet. Los turnos que ves pueden estar desactualizados.',
         {},
         { timeout: 3000 },
       ),

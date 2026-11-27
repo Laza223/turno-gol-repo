@@ -75,7 +75,7 @@ export function PricingGridToolbar({
             onClick={onClearSelection}
             disabled={selectedCount === 0}
           >
-            Vaciar
+            Borrar precio
           </Button>
         </div>
       )}
@@ -83,7 +83,7 @@ export function PricingGridToolbar({
       <p className="ml-auto text-xs text-muted-foreground">
         {selectMode
           ? 'Tocá celdas para sumarlas a la selección.'
-          : 'Click para editar · arrastrá o Shift+click para un bloque.'}
+          : 'Tocá una celda para editar · arrastrá o Shift+clic para varias.'}
       </p>
     </div>
   )

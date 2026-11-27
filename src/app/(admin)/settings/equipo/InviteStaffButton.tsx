@@ -17,7 +17,7 @@ const InviteStaffDialog = dynamic(
 
 export function InviteStaffButton({
   inviteAction,
-  label = 'Agregar miembro del equipo',
+  label = 'Invitar al equipo',
 }: {
   inviteAction: InviteAction
   /** Override para el empty state ("Invitar al primer miembro"), evita 2 botones con el mismo nombre accesible. */

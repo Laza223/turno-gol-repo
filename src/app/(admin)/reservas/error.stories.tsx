@@ -18,7 +18,7 @@ type Story = StoryObj<typeof meta>
 export const SinDigest: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('No pudimos cargar las reservas')).toBeVisible()
+    await expect(canvas.getByText('No pudimos cargar la agenda')).toBeVisible()
     await expect(canvas.queryByText(/código de referencia/i)).not.toBeInTheDocument()
   },
 }

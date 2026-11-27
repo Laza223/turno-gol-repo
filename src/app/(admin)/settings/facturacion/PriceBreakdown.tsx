@@ -64,7 +64,7 @@ export function PriceBreakdown({
           />
         ) : (
           <>
-            <BreakdownRow label="1ª cancha" value={formatArs(firstCourtCents)} />
+            <BreakdownRow label="1ra cancha" value={formatArs(firstCourtCents)} />
             <BreakdownRow
               label={`${extraCourts} ${extraCourts === 1 ? 'cancha más' : 'canchas más'} × ${formatArs(extraCourtUnitCents)}`}
               value={formatArs(extraCourtsTotalCents)}

@@ -37,7 +37,7 @@ export function AccountEmailForm({
       }
     } catch {
       setStatus('error')
-      setMessage('No se pudo actualizar el email. Intentá de nuevo.')
+      setMessage('Revisá tu internet y probá de nuevo.')
     }
   }
 

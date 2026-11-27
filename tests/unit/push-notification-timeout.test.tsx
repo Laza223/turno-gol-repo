@@ -90,7 +90,7 @@ async function renderAndGetEnableButton(): Promise<HTMLButtonElement> {
     render(<PushNotificationManager />)
   })
   return (await screen.findByRole('button', {
-    name: /habilitar notificaciones/i,
+    name: /^activar/i,
   })) as HTMLButtonElement
 }
 
@@ -109,7 +109,7 @@ describe('PushNotificationManager — enable() never hangs', () => {
     })
     // Mid-flight the button shows the pending label. (name-scoped: ENS-11 added
     // a second "Cerrar" button to the banner, so a bare getByRole is ambiguous.)
-    expect(screen.getByRole('button', { name: /habilitando/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /activando/i })).toBeTruthy()
 
     // Advance past the safety deadline: the SW-ready wait times out, enable()
     // catches it and clears the pending state.
@@ -120,7 +120,7 @@ describe('PushNotificationManager — enable() never hangs', () => {
 
     // Assert synchronously (no waitFor) since state already settled.
     const recovered = screen.getByRole('button', {
-      name: /habilitar notificaciones/i,
+      name: /^activar/i,
     }) as HTMLButtonElement
     expect(recovered.disabled).toBe(false)
   })

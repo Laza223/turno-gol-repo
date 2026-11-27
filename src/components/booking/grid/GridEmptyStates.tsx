@@ -18,7 +18,7 @@ export function GridOfflineBanner() {
       aria-live="polite"
       className="rounded-md border border-warning/30 bg-warning/10 px-4 py-2 text-sm text-amber-800 dark:text-amber-200"
     >
-      Sin conexión. Los datos pueden no estar actualizados.
+      Sin internet. Los turnos que ves pueden estar desactualizados.
     </div>
   )
 }
@@ -36,14 +36,14 @@ export function NoCourtsEmptyState() {
   return (
     <EmptyState
       icon={LayoutGrid}
-      title="Sin canchas configuradas"
-      description="Todavía no agregaste ninguna cancha. Configurá al menos una para empezar a tomar turnos."
+      title="Todavía no cargaste canchas"
+      description="Agregá al menos una cancha para empezar a tomar turnos."
       action={
         <Link
           href="/canchas"
           className="inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:h-10"
         >
-          Configurar la primera cancha
+          Agregar cancha
         </Link>
       }
     />
@@ -62,14 +62,14 @@ export function ClosedDayEmptyState() {
   return (
     <EmptyState
       icon={MoonStar}
-      title="Complejo cerrado este día"
-      description="Este día está marcado como cerrado en la configuración de horarios."
+      title="Cerrado este día"
+      description="Según tus horarios, el complejo no abre este día."
       action={
         <Link
           href="/settings/horarios"
           className="inline-flex h-11 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 md:h-10"
         >
-          Revisar horarios
+          Cambiar horarios
         </Link>
       }
     />

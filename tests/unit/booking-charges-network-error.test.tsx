@@ -84,8 +84,8 @@ describe('BookingCharges: un corte de red no convierte el reintento en otro cobr
     // No se puede cambiar el monto, el método ni sumar líneas: lo único que sale
     // es ESE cobro.
     expect(screen.getByLabelText('Monto')).toBeDisabled()
-    expect(screen.getByRole('button', { name: /^Método de pago/ })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /Agregar pago dividido/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /^Medio de pago/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /Agregar otro medio de pago/ })).toBeDisabled()
     expect(screen.queryByRole('button', { name: /^Cobrar/ })).toBeNull()
 
     // Mismo contrato que el caso de abajo: un toque sobre un botón todavía
@@ -109,7 +109,7 @@ describe('BookingCharges: un corte de red no convierte el reintento en otro cobr
     fireEvent.click(screen.getByRole('button', { name: /^Cobrar/ }))
     await screen.findByRole('button', { name: /^Reintentar cobro de/ })
 
-    const cancel = screen.getByRole('button', { name: 'Cancelar' })
+    const cancel = screen.getByRole('button', { name: 'Cerrar' })
     expect(cancel).toBeEnabled()
     fireEvent.click(cancel)
     fireEvent.click(screen.getByRole('button', { name: '+ Agregar cobro' }))

@@ -52,7 +52,7 @@ export const FormularioPrecargado: Story = {
     await userEvent.click(canvas.getAllByRole('button', { name: /cobrar/i })[1]!)
     // $25.000 pendientes → "25.000" en el input (SplitPaymentFields, sin label asociado: placeholder "Monto").
     await expect(await canvas.findByPlaceholderText('Monto')).toHaveValue('25.000')
-    await expect(canvas.getByRole('button', { name: /^Método de pago/ })).toHaveTextContent(
+    await expect(canvas.getByRole('button', { name: /^Medio de pago/ })).toHaveTextContent(
       'Efectivo',
     )
   },
@@ -81,7 +81,7 @@ export const SinArancel: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getAllByText('Sin arancel')).toHaveLength(3)
+    await expect(canvas.getAllByText('Sin costo')).toHaveLength(3)
     for (const b of canvas.getAllByRole('button', { name: /cobrar/i })) {
       await expect(b).toBeDisabled()
     }
@@ -92,6 +92,6 @@ export const Vacio: Story = {
   args: { rows: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Todavía no hay equipos anotados.')).toBeVisible()
+    await expect(canvas.getByText('Todavía no hay equipos anotados')).toBeVisible()
   },
 }

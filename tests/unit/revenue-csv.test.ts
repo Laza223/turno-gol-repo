@@ -58,7 +58,7 @@ describe('revenueExportRow', () => {
 
   it('el método sale en castellano', () => {
     expect(row({ method: 'transfer' })[4]).toBe('Transferencia')
-    expect(row({ method: 'mercadopago' })[4]).toBe('MercadoPago')
+    expect(row({ method: 'mercadopago' })[4]).toBe('Mercado Pago')
     expect(row({ method: 'other' })[4]).toBe('Otro')
   })
 

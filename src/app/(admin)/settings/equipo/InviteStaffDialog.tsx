@@ -61,9 +61,9 @@ export function InviteStaffDialog({
       toast(
         state.existingAccount
           ? {
-              title: 'Miembro agregado',
+              title: 'Agregado al equipo',
               description:
-                'Ya tenía cuenta, así que no le mandamos email. Que entre con su contraseña; si no la recuerda, con «Olvidé mi contraseña».',
+                'Ya tenía cuenta en TurnoGol, así que entra directo con su contraseña (si no la recuerda, puede usar "Olvidé mi contraseña").',
             }
           : {
               title: 'Invitación enviada',
@@ -85,7 +85,7 @@ export function InviteStaffDialog({
     >
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Invitar miembro del equipo</DialogTitle>
+          <DialogTitle>Invitar al equipo</DialogTitle>
         </DialogHeader>
         <form action={formAction} className="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -78,19 +78,18 @@ export function BanPlayerDialog({
       onOpenChange={onOpenChange}
       title="Bloquear jugador"
       description={
-        <>
-          El jugador no va a poder reservar online en tu complejo mientras dure el bloqueo.
-          {playerName ? (
-            <>
-              {' '}
-              Se aplica a <strong className="text-foreground">{playerName}</strong>.
-            </>
-          ) : null}
-        </>
+        playerName ? (
+          <>
+            <strong className="text-foreground">{playerName}</strong> no va a poder reservar online
+            en tu complejo mientras dure el bloqueo.
+          </>
+        ) : (
+          'Este jugador no va a poder reservar online en tu complejo mientras dure el bloqueo.'
+        )
       }
       variant="destructive"
       confirmLabel="Bloquear jugador"
-      cancelLabel="Cancelar"
+      cancelLabel="Volver"
       onConfirm={handleConfirm}
     >
       <div className="space-y-3">
@@ -116,6 +115,7 @@ export function BanPlayerDialog({
             id="ban-reason"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
+            placeholder="Ej: Reservó dos veces y no vino"
             rows={2}
             className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           />

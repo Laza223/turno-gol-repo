@@ -82,7 +82,7 @@ export function TabDialog({
     if (lines.length === 0) return
     const trimmedName = debtorName.trim()
     if (trimmedName === '') {
-      setTabError('Poné un nombre para el fiado.')
+      setTabError('Escribí a nombre de quién queda el fiado.')
       return
     }
     runTab({
@@ -133,7 +133,7 @@ export function TabDialog({
               id="tab-debtor-name"
               value={debtorName}
               onChange={(e) => setDebtorName(e.target.value)}
-              placeholder="ej: Capitán equipo 22hs"
+              placeholder="Ej: Juan (cancha 2, 22:00)"
               maxLength={80}
               disabled={tabPending}
               autoFocus

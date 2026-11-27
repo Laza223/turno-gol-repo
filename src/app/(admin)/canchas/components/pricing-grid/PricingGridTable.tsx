@@ -149,7 +149,7 @@ export function PricingGridTable({
                         }`}
                       >
                         {isSelected && <Check className="h-3 w-3 shrink-0" aria-hidden="true" />}
-                        {price != null ? formatArs(price) : '—'}
+                        {price != null ? formatArs(price) : '-'}
                       </button>
                     )}
                   </td>

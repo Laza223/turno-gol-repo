@@ -52,7 +52,7 @@ export const SalidaPorMerma: Story = {
     await waitFor(() =>
       expect(dialogEl.textContent).toContain('Esto no toca la caja: solo descuenta stock.'),
     )
-    await userEvent.type(dialog.getByLabelText('Nota'), 'latas vencidas')
+    await userEvent.type(dialog.getByLabelText('Detalle (obligatorio)'), 'latas vencidas')
     await userEvent.click(dialog.getByRole('button', { name: /registrar salida/i }))
 
     await waitFor(() =>
@@ -75,7 +75,7 @@ export const ErrorSinNota: Story = {
     const body = within(canvasElement.ownerDocument.body)
     const dialog = within(await findCurrentDialog(body))
     await userEvent.click(dialog.getByRole('button', { name: /registrar salida/i }))
-    await expect(await dialog.findByRole('alert')).toHaveTextContent(/contá el motivo/i)
+    await expect(await dialog.findByRole('alert')).toHaveTextContent(/escribí el motivo/i)
     await expect(args.registerStockExitAction).not.toHaveBeenCalled()
   },
 }

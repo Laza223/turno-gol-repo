@@ -78,13 +78,13 @@ export function CobrarSenaButton({
         open={open}
         onOpenChange={setOpen}
         title="Cobrar seña"
-        description="Indicá cómo se cobró la seña."
+        description="La reserva queda confirmada y la seña entra en la caja de hoy."
         confirmLabel={`Cobrar ${formatArs(depositAmount)}`}
         cancelLabel="Volver"
         onConfirm={onConfirm}
       >
         <fieldset className="space-y-1.5">
-          <legend className="text-xs font-medium text-foreground">¿Cómo se cobró la seña?</legend>
+          <legend className="text-xs font-medium text-foreground">¿Cómo te pagaron la seña?</legend>
           <RadioChipGroup value={method} onValueChange={(v) => setMethod(v as DepositMethod)}>
             {(['cash', 'transfer', 'other'] as const).map((m) => (
               <RadioChip key={m} value={m}>

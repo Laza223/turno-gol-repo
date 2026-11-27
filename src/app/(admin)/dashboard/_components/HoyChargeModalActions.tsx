@@ -1,4 +1,4 @@
-import { CupSoda, Trash2, UserX, XCircle } from 'lucide-react'
+import { CalendarCheck2, CheckCheck, CupSoda, Trash2, Undo2, UserX, XCircle } from 'lucide-react'
 import type { SlotGates } from '@/components/booking/slot-panel/slot-gates'
 import { cn } from '@/lib/utils'
 
@@ -37,6 +37,12 @@ export function HoyChargeModalActions({
   onOpenCancel,
   onOpenReleaseBlock,
   onRevertNoShow,
+  canMarkAlreadySettled = false,
+  canUndoSettlement = false,
+  canManageAbonado = false,
+  onOpenAlreadySettled,
+  onOpenUndoSettlement,
+  onOpenManageAbonado,
 }: {
   gates: Pick<
     SlotGates,
@@ -51,9 +57,21 @@ export function HoyChargeModalActions({
   onOpenCancel: () => void
   onOpenReleaseBlock: () => void
   onRevertNoShow: () => void
+  canMarkAlreadySettled?: boolean
+  canUndoSettlement?: boolean
+  canManageAbonado?: boolean
+  onOpenAlreadySettled?: () => void
+  onOpenUndoSettlement?: () => void
+  onOpenManageAbonado?: () => void
 }) {
   const hasActions = gates.canSellCanteen || gates.canMarkNoShow
-  const hasAny = hasActions || gates.canCancel || gates.canReleaseBlock || gates.canRevertNoShow
+  const hasSettlementActions = canMarkAlreadySettled || canUndoSettlement || canManageAbonado
+  const hasAny =
+    hasActions ||
+    hasSettlementActions ||
+    gates.canCancel ||
+    gates.canReleaseBlock ||
+    gates.canRevertNoShow
   if (!hasAny) return null
 
   return (
@@ -70,7 +88,7 @@ export function HoyChargeModalActions({
               className={cn(ACTION_BUTTON, QUIET)}
             >
               <CupSoda aria-hidden className="h-4 w-4" />
-              Cantina
+              Sumar cantina
             </button>
           )}
           {gates.canMarkNoShow && (
@@ -82,6 +100,44 @@ export function HoyChargeModalActions({
             >
               <UserX aria-hidden className="h-4 w-4" />
               Marcar ausente
+            </button>
+          )}
+        </div>
+      )}
+
+      {hasSettlementActions && (
+        <div className="flex flex-wrap gap-2">
+          {canManageAbonado && onOpenManageAbonado && (
+            <button
+              type="button"
+              onClick={onOpenManageAbonado}
+              disabled={locked}
+              className={cn(ACTION_BUTTON, NEUTRAL)}
+            >
+              <CalendarCheck2 aria-hidden className="h-4 w-4" />
+              Gestionar mes / pack
+            </button>
+          )}
+          {canMarkAlreadySettled && onOpenAlreadySettled && (
+            <button
+              type="button"
+              onClick={onOpenAlreadySettled}
+              disabled={locked}
+              className={cn(ACTION_BUTTON, NEUTRAL)}
+            >
+              <CheckCheck aria-hidden className="h-4 w-4" />
+              Marcar como saldado
+            </button>
+          )}
+          {canUndoSettlement && onOpenUndoSettlement && (
+            <button
+              type="button"
+              onClick={onOpenUndoSettlement}
+              disabled={locked}
+              className={cn(ACTION_BUTTON, NEUTRAL)}
+            >
+              <Undo2 aria-hidden className="h-4 w-4" />
+              Deshacer saldado
             </button>
           )}
         </div>
@@ -110,7 +166,7 @@ export function HoyChargeModalActions({
           className={cn(ACTION_BUTTON, DESTRUCTIVE, 'w-full')}
         >
           <Trash2 aria-hidden className="h-4 w-4" />
-          Liberar el bloqueo
+          Liberar bloqueo
         </button>
       )}
 
@@ -122,7 +178,7 @@ export function HoyChargeModalActions({
             disabled={locked}
             className={cn(ACTION_BUTTON, NEUTRAL)}
           >
-            Deshacer la ausencia
+            Deshacer ausencia
           </button>
           {error && (
             <p role="alert" className="mt-1 text-xs text-red-700 dark:text-red-300">

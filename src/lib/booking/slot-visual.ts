@@ -83,6 +83,10 @@ export type SlotFacts = {
    * (`mis-reservas/status-visual.ts`) no lo pasa y no tiene por qué cambiar.
    */
   ended?: boolean
+  /** Migr. 108: turno cubierto por mes/pack/saldado (even if price_snapshot=0). */
+  settlementId?: string | null
+  /** Migr. 108: modo del abonado para distinguir "Por mes" de "Sin cargo". */
+  abonadoBillingMode?: 'per_session' | 'monthly' | 'pack' | null
 }
 
 type SlotStateMeta = {
@@ -152,7 +156,7 @@ const SLOT_STATES: Record<SlotStateKey, SlotStateMeta> = {
     inLegend: true,
   },
   fixed: {
-    label: 'Abonado',
+    label: 'Turno fijo',
     icon: Repeat,
     tone: 'info',
     inLegend: true,
@@ -533,6 +537,28 @@ export function gridMoneyVisual(facts: GridMoneyFacts): GridMoneyVisual {
       partial: false,
     }
   }
+  if (facts.settlementId) {
+    return {
+      key: 'paid',
+      label: 'Saldado',
+      icon: CheckCheck,
+      tone: 'success',
+      striped: false,
+      amountCents: null,
+      partial: false,
+    }
+  }
+  if (facts.abonadoBillingMode === 'monthly' && facts.priceSnapshot === 0) {
+    return {
+      key: 'fixed',
+      label: facts.ended ? 'Mes sin saldar' : 'Por mes',
+      icon: Repeat,
+      tone: facts.ended ? 'warning' : 'neutral',
+      striped: false,
+      amountCents: null,
+      partial: false,
+    }
+  }
   if (facts.priceSnapshot === 0) {
     return {
       key: 'free_event',
@@ -620,7 +646,7 @@ const GRID_MONEY_LEGEND: readonly {
   striped?: boolean
 }[] = [
   { key: 'pending_charge', label: 'No cobrado', icon: CircleDollarSign, tone: 'destructive' },
-  { key: 'paid', label: 'Pagado', icon: CheckCheck, tone: 'success' },
+  { key: 'paid', label: 'Pagado / Saldado', icon: CheckCheck, tone: 'success' },
   { key: 'pending_payment', label: 'Esperando seña', icon: Clock, tone: 'warning' },
   { key: 'upcoming', label: 'Por jugar', icon: null, tone: 'neutral' },
   { key: 'block', label: 'Bloqueado', icon: Ban, tone: 'neutral', striped: true },

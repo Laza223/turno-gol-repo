@@ -96,7 +96,7 @@ export const Bajando: Story = {
       const canvas = within(canvasElement)
       await userEvent.click(canvas.getByRole('button', { name: 'Descargar reservas' }))
       await expect(
-        await canvas.findByRole('button', { name: /Bajando… 2\.000 reservas/ }),
+        await canvas.findByRole('button', { name: /Descargando... 2\.000 reservas/ }),
       ).toBeDisabled()
       await expect(canvas.getByRole('button', { name: 'Descargar turnos fijos' })).toBeDisabled()
       await expect(canvas.getByRole('button', { name: 'Descargar clientes' })).toBeDisabled()

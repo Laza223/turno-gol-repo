@@ -8,7 +8,7 @@ export const STAFF_ROLES = ['admin', 'manager'] as const
 export type StaffRole = (typeof STAFF_ROLES)[number]
 
 export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
-  admin: 'Administrador',
+  admin: 'Dueño',
   manager: 'Encargado',
 }
 
@@ -21,7 +21,7 @@ export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
 export const STAFF_ROLE_DESCRIPTIONS: Record<StaffRole, string> = {
   admin: 'Entra a todo, también a Ajustes.',
   manager:
-    'Hoy, Grilla, Agenda, Caja, Clientes y Fijos, y Torneos. No entra a Ajustes, Canchas ni Métricas.',
+    'Hoy, Grilla, Agenda, Caja, Clientes y Fijos, y Torneos. No entra a Ajustes, Canchas ni Reportes.',
 }
 
 // Al invitar, el rol arranca en Encargado: sumar un admin con acceso total
@@ -61,7 +61,7 @@ export const STAFF_ROLE_SPACES: StaffRoleSpace[] = [
   { label: 'Clientes y Fijos', adminOnly: false },
   { label: 'Canchas', adminOnly: true },
   { label: 'Torneos', adminOnly: false, requiresTournaments: true },
-  { label: 'Métricas', adminOnly: true },
+  { label: 'Reportes', adminOnly: true },
   { label: 'Ajustes', adminOnly: true },
 ]
 
@@ -71,5 +71,5 @@ export const STAFF_ROLE_TAGLINES: Record<StaffRole, string> = {
   admin: 'Entra a todo, también a Ajustes.',
   // "No toca precios" era falso: el encargado le pone precio a un evento desde
   // la Grilla. Lo cierto es a qué espacios no entra (`requiresAdmin` del riel).
-  manager: 'Opera el día a día. No entra a Ajustes, Canchas ni Métricas.',
+  manager: 'Opera el día a día. No entra a Ajustes, Canchas ni Reportes.',
 }

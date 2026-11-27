@@ -86,7 +86,7 @@ describe('CuotaSection — desglose para N canchas', () => {
       />,
     )
 
-    const primera = screen.getByText('1ª cancha')
+    const primera = screen.getByText('1ra cancha')
     expect((primera.nextElementSibling as HTMLElement).textContent).toBe(formatArs(4_700_000))
 
     // 4 canchas más (5 - 1) × $30.000 = $120.000
@@ -201,7 +201,7 @@ describe('CuotaSection — el stepper no baja de las canchas online', () => {
     // El valor no bajó.
     expect(within(group).getByText('5')).toBeTruthy()
     // Y hay una explicación de qué hacer para poder bajarlo.
-    expect(screen.getByText(/Para pagar por menos, apagá las que no estés usando/)).toBeTruthy()
+    expect(screen.getByText(/Para pagar por menos, pausá las que no uses/)).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Canchas' })).toHaveAttribute('href', '/canchas')
   })
 

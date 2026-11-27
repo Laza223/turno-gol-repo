@@ -183,9 +183,9 @@ describe('ReservasPage — render', () => {
 })
 
 describe('ReservasPage — vacío', () => {
-  it('sin resultados y SIN búsqueda: ofrece "Cargar una reserva"', async () => {
+  it('sin resultados y SIN búsqueda: ofrece "Ir a la Grilla"', async () => {
     render(await ReservasPage({ searchParams: Promise.resolve({}) }))
-    const link = screen.getByRole('link', { name: /Cargar una reserva/ })
+    const link = screen.getByRole('link', { name: /Ir a la Grilla/ })
     expect(link.getAttribute('href')).toBe('/grilla')
   })
 

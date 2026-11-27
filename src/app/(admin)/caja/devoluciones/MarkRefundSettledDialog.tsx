@@ -67,7 +67,7 @@ export function MarkRefundSettledDialog({
       const result = await action(row.refundPaymentId, method)
       if (!result.success) return result
       if (result.alreadySettled) {
-        toast({ title: 'Esta devolución ya estaba marcada.' })
+        toast({ title: 'Esta devolución ya figuraba como devuelta' })
       } else {
         toast({ title: 'Devolución registrada' })
       }
@@ -78,7 +78,7 @@ export function MarkRefundSettledDialog({
       Sentry.captureException(err)
       return {
         success: false,
-        error: 'No pudimos registrar la devolución. Revisá tu conexión e intentá de nuevo.',
+        error: 'No pudimos registrar la devolución. Revisá tu internet y probá de nuevo.',
       }
     }
   }
@@ -103,8 +103,8 @@ export function MarkRefundSettledDialog({
       title="¿Ya devolviste esta seña?"
       description={
         <>
-          Esto <strong className="text-foreground">no mueve plata en MercadoPago</strong>: la
-          devolución la hacés vos por fuera y acá solo queda el registro.
+          Esto <strong className="text-foreground">no mueve plata en Mercado Pago</strong>: la
+          devolución la hacés vos por tu cuenta y acá solo queda anotado.
         </>
       }
       consequences={consequences}

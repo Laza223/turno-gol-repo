@@ -39,16 +39,16 @@ export function DisconnectMpSection({ nickname, requiresDeposit, disconnectActio
   const consequences = [
     'Las reservas por internet dejan de cobrar seña.',
     ...(requiresDeposit
-      ? ['La seña se apaga. Si después reconectás, la tenés que volver a prender acá.']
+      ? ['La seña se desactiva. Si después volvés a conectar, tenés que activarla de nuevo acá.']
       : []),
-    'Las reservas ya cobradas y la plata que MercadoPago te tiene que liquidar no se tocan.',
+    'Las reservas ya cobradas y la plata que Mercado Pago te tiene que acreditar no se tocan.',
   ]
 
   async function onConfirm(): Promise<ActionResult> {
     const res = await disconnectAction()
     if (!res.success) return { success: false, error: res.error }
     toast({
-      title: 'MercadoPago desconectado',
+      title: 'Mercado Pago desconectado',
       description: 'Podés conectar la cuenta que quieras cuando quieras.',
       variant: 'success',
     })
@@ -59,7 +59,7 @@ export function DisconnectMpSection({ nickname, requiresDeposit, disconnectActio
   return (
     <Collapsible className="mt-4 border-t border-border pt-3">
       <CollapsibleTrigger className="group inline-flex min-h-11 items-center gap-1.5 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring md:min-h-9">
-        Desconectar MercadoPago
+        Desconectar Mercado Pago
         <ChevronDown
           aria-hidden="true"
           className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180"
@@ -83,7 +83,7 @@ export function DisconnectMpSection({ nickname, requiresDeposit, disconnectActio
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}
-        title="¿Desconectar MercadoPago?"
+        title="¿Desconectar Mercado Pago?"
         description={`Vas a dejar de cobrar con ${nickname ?? 'la cuenta vinculada'}.`}
         consequences={consequences}
         variant="destructive"

@@ -75,7 +75,7 @@ export function FiadosList({
   return (
     <div className="rounded-lg border border-border bg-card shadow-xs">
       <div className="flex items-baseline justify-between gap-3 border-b border-border px-4 py-3">
-        <h2 className="font-medium text-foreground">Fiados abiertos</h2>
+        <h2 className="font-medium text-foreground">Fiados sin cobrar</h2>
         {tabs.length > 0 && (
           <span className="text-sm font-semibold tabular-nums text-amber-800 dark:text-amber-300">
             {tabs.length} · {formatArs(pendingTotal)}
@@ -85,7 +85,7 @@ export function FiadosList({
 
       {tabs.length === 0 ? (
         <p className="px-4 py-4 lg:py-6 text-center text-sm text-muted-foreground">
-          Nadie tiene fiado abierto.
+          No hay fiados sin cobrar.
         </p>
       ) : (
         <ul className="divide-y divide-border">
@@ -202,7 +202,7 @@ function SettleTabDialog({
       )
       if (!res) return
       if (res.success) {
-        toast({ title: `Fiado cobrado — ${payload.debtorName}`, variant: 'success' })
+        toast({ title: `Fiado cobrado: ${payload.debtorName}`, variant: 'success' })
         setLastTabId(null)
         onSettled()
       } else {
@@ -220,12 +220,12 @@ function SettleTabDialog({
     const charges: { amount: number; method: 'cash' | 'transfer' | 'mercadopago' }[] = []
     for (const l of lines) {
       if (l.amountCents == null || l.amountCents <= 0) {
-        setError('Todos los cobros deben tener un monto mayor a $0.')
+        setError('Todos los montos tienen que ser mayores a $ 0.')
         return
       }
       // Fiados no admiten 'other' (mismo criterio que la venta actual, canteen.types.ts).
       if (l.method === 'other') {
-        setError('Elegí efectivo, transferencia o MercadoPago.')
+        setError('Elegí efectivo, transferencia o Mercado Pago.')
         return
       }
       charges.push({ amount: l.amountCents, method: l.method })
@@ -252,7 +252,7 @@ function SettleTabDialog({
     <Dialog open={tab !== null} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Cobrar fiado — {retry ? retry.debtorName : tab?.debtorName}</DialogTitle>
+          <DialogTitle>Cobrar fiado: {retry ? retry.debtorName : tab?.debtorName}</DialogTitle>
         </DialogHeader>
         {retry && (
           <UnconfirmedRetry
@@ -325,7 +325,7 @@ function CancelTabDialog({
     if (!tab) return
     const trimmed = reason.trim()
     if (trimmed === '') {
-      setError('Contá por qué se anula el fiado.')
+      setError('Escribí por qué anulás el fiado.')
       return
     }
     setError(null)
@@ -342,7 +342,7 @@ function CancelTabDialog({
       } catch (err) {
         Sentry.captureException(err)
         startTransition(() =>
-          setError('No pudimos anular el fiado. Revisá tu conexión e intentá de nuevo.'),
+          setError('No pudimos anular el fiado. Revisá tu internet y probá de nuevo.'),
         )
       }
     })
@@ -352,7 +352,7 @@ function CancelTabDialog({
     <Dialog open={tab !== null} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Anular fiado — {tab?.debtorName}</DialogTitle>
+          <DialogTitle>Anular fiado: {tab?.debtorName}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 lg:space-y-4">
           <p className="text-xs text-muted-foreground">
@@ -366,7 +366,7 @@ function CancelTabDialog({
               onChange={(e) => setReason(e.target.value)}
               rows={2}
               disabled={isPending}
-              placeholder="ej: se pagó en el momento, error de carga…"
+              placeholder="Ej: Lo pagó en el momento, error de carga"
               className="min-h-11 w-full rounded-md border border-border px-3 py-2 text-sm"
             />
           </div>
@@ -381,7 +381,7 @@ function CancelTabDialog({
             disabled={isPending}
             className="h-12 w-full rounded-md border border-red-600 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:opacity-60 dark:border-red-500 dark:text-red-400 dark:hover:bg-red-500/10"
           >
-            {isPending ? 'Anulando…' : 'Confirmar anulación'}
+            {isPending ? 'Anulando…' : 'Anular fiado'}
           </button>
         </div>
       </DialogContent>

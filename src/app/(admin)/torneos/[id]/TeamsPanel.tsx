@@ -649,7 +649,7 @@ function TeamDataForm({
             htmlFor={`equipo-${team.id}-arancel`}
             className="text-xs font-medium text-muted-foreground"
           >
-            Arancel de inscripción
+            Inscripción
           </label>
           <MoneyInput
             id={`equipo-${team.id}-arancel`}
@@ -675,7 +675,7 @@ function TeamDataForm({
             onChange={(e) => setNotes(e.target.value)}
             maxLength={500}
             rows={2}
-            placeholder="No se publican en el portal."
+            placeholder="No se publican en la página pública."
             className={INPUT_CLASS}
           />
         </div>

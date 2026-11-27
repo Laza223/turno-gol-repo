@@ -64,13 +64,13 @@ describe('modal de cobro: deshacer la ausencia', () => {
       />,
     )
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Deshacer la ausencia' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Deshacer ausencia' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('X')
     expect(revertNoShowAction).toHaveBeenCalledWith(b.id)
   })
 
-  it('un ausente no muestra "Cobrado ✓" (no es deuda, pero tampoco está "cobrado")', async () => {
+  it('un ausente no muestra "Cobrado" (no es deuda, pero tampoco está "cobrado")', async () => {
     const b = toGridBooking(bookingNoShow(), player())
     render(
       <HoyChargeModal
@@ -94,7 +94,7 @@ describe('modal de cobro: deshacer la ausencia', () => {
     )
 
     await screen.findByText('Cancha 1', { exact: false })
-    expect(screen.queryByText('Cobrado ✓')).toBeNull()
+    expect(screen.getAllByText('Cobrado')).toHaveLength(1)
   })
 
   it('el "Deshacer" del aviso de ausencia también avisa si falla', async () => {

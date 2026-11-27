@@ -80,7 +80,7 @@ export default async function TorneosPage() {
               >
                 <Lock className="h-4 w-4" aria-hidden="true" />
                 Crear el primero
-                <span className="sr-only">— solo el dueño puede hacerlo</span>
+                <span className="sr-only">, solo el dueño puede hacerlo</span>
               </span>
             )
           }

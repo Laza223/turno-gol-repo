@@ -115,7 +115,7 @@ function LockedAction({ label, className }: { label: string; className?: string 
     >
       <Lock className="h-3.5 w-3.5" aria-hidden="true" />
       {label}
-      <span className="sr-only">— solo el dueño puede hacerlo</span>
+      <span className="sr-only">, solo el dueño puede hacerlo</span>
     </span>
   )
 }
@@ -211,7 +211,7 @@ export function CourtList({
           description={
             isAdmin
               ? 'Creá la primera para aparecer en búsquedas públicas.'
-              : 'Todavía no hay canchas cargadas. Pedile al administrador que cree la primera.'
+              : 'Todavía no hay canchas cargadas. Pedile al dueño que cree la primera.'
           }
           action={newCourt}
         />
@@ -349,7 +349,11 @@ function CourtItem({
           setBillingPreview(res.requiresBillingConfirmation)
           return
         }
-        toast({ title: 'No se pudo reactivar', description: res.error, variant: 'destructive' })
+        toast({
+          title: 'No pudimos reactivar la cancha',
+          description: res.error,
+          variant: 'destructive',
+        })
         return
       }
       toast({
@@ -380,7 +384,11 @@ function CourtItem({
       const res = await toggleStatusAction(court.id, 'offline')
       if (!res.success) {
         startTransition(() => setCurrentStatus('online'))
-        toast({ title: 'No se pudo pausar', description: res.error, variant: 'destructive' })
+        toast({
+          title: 'No pudimos pausar la cancha',
+          description: res.error,
+          variant: 'destructive',
+        })
         return
       }
       toast({
@@ -399,7 +407,7 @@ function CourtItem({
       // Fix #58: no abrir el dialog con datos falsos (0/0) — el admin podría
       // pausar creyendo que no hay impacto cuando en realidad no se pudo verificar.
       toast({
-        title: 'No se pudo verificar el impacto',
+        title: 'No pudimos revisar si tiene turnos',
         description: res.error ?? 'Reintentá en unos segundos.',
         variant: 'destructive',
       })
@@ -521,8 +529,8 @@ function CourtItem({
           }}
           title={billingChangeTitle(billingPreview)}
           description={<p>{billingChangeMessage(billingPreview)}</p>}
-          confirmLabel="Confirmar"
-          cancelLabel="Cancelar"
+          confirmLabel="Activar cancha"
+          cancelLabel="Volver"
           onConfirm={confirmActivateWithBilling}
         />
       )}

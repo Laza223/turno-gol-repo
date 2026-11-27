@@ -62,7 +62,7 @@ export const SinFiados: Story = {
   args: { tabs: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Nadie tiene fiado abierto.')).toBeVisible()
+    await expect(canvas.getByText('No hay fiados sin cobrar.')).toBeVisible()
   },
 }
 
@@ -77,12 +77,12 @@ export const CobrarFiado: Story = {
     // waitFor: recién montado, el fade-in-0 de Radix puede dejar opacity:0 en
     // el primer tick y toBeVisible() lo agarra en falso negativo (mismo idiom
     // que dialog.stories.tsx).
-    await waitFor(() => expect(dialog.getByText(`Cobrar fiado — ${tab.debtorName}`)).toBeVisible())
+    await waitFor(() => expect(dialog.getByText(`Cobrar fiado: ${tab.debtorName}`)).toBeVisible())
 
     // SplitPaymentFields (Fase 1, D2): el método es el `SelectMenu` del design
     // system — un DropdownMenu de Radix, no un <select> nativo (2026-09-17).
     // El panel va portaled a document.body, fuera del diálogo.
-    await userEvent.click(dialog.getByRole('button', { name: /^Método de pago/ }))
+    await userEvent.click(dialog.getByRole('button', { name: /^Medio de pago/ }))
     await userEvent.click(await body.findByRole('menuitemradio', { name: 'Transferencia' }))
     await userEvent.click(dialog.getByRole('button', CONFIRMAR_COBRO))
 
@@ -111,15 +111,15 @@ export const AnularFiado: Story = {
     await userEvent.click(canvas.getAllByRole('button', { name: 'Anular' })[0]!)
     const dialog = within(await body.findByRole('dialog'))
     // waitFor: mismo fade-in-0 que en CobrarFiado.
-    await waitFor(() => expect(dialog.getByText(`Anular fiado — ${tab.debtorName}`)).toBeVisible())
+    await waitFor(() => expect(dialog.getByText(`Anular fiado: ${tab.debtorName}`)).toBeVisible())
 
     // Motivo obligatorio: sin cargar nota, el submit no llama a la action.
-    await userEvent.click(dialog.getByRole('button', { name: 'Confirmar anulación' }))
-    await expect(await dialog.findByRole('alert')).toHaveTextContent(/por qué se anula/i)
+    await userEvent.click(dialog.getByRole('button', { name: 'Anular fiado' }))
+    await expect(await dialog.findByRole('alert')).toHaveTextContent(/por qué anulás/i)
     await expect(args.cancelTabAction).not.toHaveBeenCalled()
 
     await userEvent.type(dialog.getByLabelText('Motivo'), 'Se pagó en el momento')
-    await userEvent.click(dialog.getByRole('button', { name: 'Confirmar anulación' }))
+    await userEvent.click(dialog.getByRole('button', { name: 'Anular fiado' }))
 
     await waitFor(() =>
       expect(args.cancelTabAction).toHaveBeenCalledWith(

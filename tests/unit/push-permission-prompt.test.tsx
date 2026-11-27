@@ -117,7 +117,7 @@ describe('PushNotificationManager — modal y cartel de permiso', () => {
 
     expect(await screen.findByRole('dialog')).toBeVisible()
     expect(screen.getByText('Activá las notificaciones')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Habilitar notificaciones' })).not.toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Activar notificaciones' })).not.toBeDisabled()
     expect(Notification.requestPermission).not.toHaveBeenCalled()
     expect(localStorageMock.getItem(MODAL_SEEN_KEY)).not.toBeNull()
   })
@@ -127,7 +127,7 @@ describe('PushNotificationManager — modal y cartel de permiso', () => {
     await act(async () => {
       render(<PushNotificationManager />)
     })
-    const enable = await screen.findByRole('button', { name: 'Habilitar notificaciones' })
+    const enable = await screen.findByRole('button', { name: 'Activar notificaciones' })
     await act(async () => {
       fireEvent.click(enable)
     })
@@ -207,9 +207,7 @@ describe('PushNotificationManager — modal y cartel de permiso', () => {
     })
 
     expect(await screen.findByText('Las notificaciones están bloqueadas')).toBeVisible()
-    expect(
-      screen.queryByRole('button', { name: 'Habilitar notificaciones' }),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Activar notificaciones' })).not.toBeInTheDocument()
   })
 
   it('si el dispositivo ya recibe avisos no muestra nada', async () => {

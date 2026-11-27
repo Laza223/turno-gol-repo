@@ -12,7 +12,7 @@ describe('formatDate', () => {
 
 describe('formatDateRange', () => {
   it('muestra el rango cuando hay fecha de cierre', () => {
-    expect(formatDateRange('2026-08-01', '2026-10-15')).toBe('01/08/2026 — 15/10/2026')
+    expect(formatDateRange('2026-08-01', '2026-10-15')).toBe('01/08/2026 - 15/10/2026')
   })
 
   it('muestra una sola fecha cuando arranca y termina el mismo día (relámpago)', () => {

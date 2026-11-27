@@ -190,7 +190,7 @@ export function ProductsTable({
     >
       <Lock className="h-4 w-4" aria-hidden="true" />
       Agregar producto
-      <span className="sr-only">— solo el dueño puede hacerlo</span>
+      <span className="sr-only">, solo el dueño puede hacerlo</span>
     </span>
   )
 
@@ -210,7 +210,7 @@ export function ProductsTable({
         >
           <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border px-4 py-3 sm:px-5">
             <h2 id="catalogo-titulo" className="text-base font-semibold text-foreground">
-              Catálogo
+              Tus productos
               {products.length > 0 && (
                 <>
                   {' '}
@@ -228,7 +228,7 @@ export function ProductsTable({
             <EmptyState
               icon={Package}
               title="Todavía no cargaste productos"
-              description="Cargá tus productos (agua, gatorade, cerveza…) para venderlos con un toque desde Hoy."
+              description="Cargá los productos de tu cantina (agua, gaseosas, cerveza) para venderlos rápido desde Vender."
               className="border-0 py-5 lg:py-10"
               action={
                 canEditCatalog ? (
@@ -248,7 +248,7 @@ export function ProductsTable({
                   >
                     <Lock className="h-4 w-4" aria-hidden="true" />
                     Cargar el primero
-                    <span className="sr-only">— solo el dueño puede hacerlo</span>
+                    <span className="sr-only">, solo el dueño puede hacerlo</span>
                   </span>
                 )
               }

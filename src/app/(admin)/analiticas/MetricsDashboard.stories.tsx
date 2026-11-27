@@ -102,7 +102,7 @@ export const ErrorSinDatosPrevios: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(
-      await canvas.findByText('No pudimos cargar las métricas. Probá de nuevo en unos segundos.'),
+      await canvas.findByText('No pudimos cargar los datos. Probá de nuevo en unos segundos.'),
     ).toBeVisible()
   },
 }
@@ -131,7 +131,7 @@ export const ComplejoBloqueado: Story = {
     const canvas = within(canvasElement)
     await expect(await canvas.findByText('El complejo está bloqueado.')).toBeVisible()
     await expect(
-      canvas.queryByText('No pudimos cargar las métricas. Probá de nuevo en unos segundos.'),
+      canvas.queryByText('No pudimos cargar los datos. Probá de nuevo en unos segundos.'),
     ).not.toBeInTheDocument()
   },
 }
@@ -148,9 +148,7 @@ export const SinDatos: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await waitFor(() =>
-      expect(canvas.queryByRole('status', { name: 'Cargando métricas' })).toBeNull(),
-    )
+    await waitFor(() => expect(canvas.queryByRole('status', { name: 'Cargando datos' })).toBeNull())
     await expect(canvas.queryByText('Últimos 30 días')).not.toBeInTheDocument()
     await expect(canvas.queryByText('3,2%')).not.toBeInTheDocument()
   },
@@ -174,8 +172,8 @@ export const TendenciaAusenciasEnAlza: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText(/pts vs los 30 días anteriores/)).toHaveTextContent(
-      '+8 pts vs los 30 días anteriores',
+    await expect(await canvas.findByText(/puntos vs. los 30 días anteriores/)).toHaveTextContent(
+      '+8 puntos vs. los 30 días anteriores',
     )
   },
 }
@@ -205,7 +203,7 @@ export const TendenciaMuestraChica: Story = {
     await expect(
       await canvas.findByText('Todavía no hay datos suficientes para comparar.'),
     ).toBeVisible()
-    await expect(canvas.queryByText(/pts vs los 30 días anteriores/)).not.toBeInTheDocument()
+    await expect(canvas.queryByText(/puntos vs. los 30 días anteriores/)).not.toBeInTheDocument()
   },
 }
 

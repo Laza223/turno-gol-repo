@@ -9,7 +9,7 @@ describe('ImpersonationBanner', () => {
   it('muestra el nombre del tenant impersonado y el botón de salida', () => {
     render(<ImpersonationBanner tenantName="Complejo El Potrero" action={vi.fn()} />)
 
-    expect(screen.getByText(/Impersonando Complejo El Potrero/i)).toBeDefined()
+    expect(screen.getByText(/Impersonando a Complejo El Potrero/i)).toBeDefined()
     expect(screen.getByRole('button', { name: /salir de impersonación/i })).toBeDefined()
   })
 

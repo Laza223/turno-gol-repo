@@ -30,7 +30,7 @@ export const ConGolesSinAutor: Story = {
   args: { scorers: { rows: scorerRows(), unattributedGoals: 4 } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/Faltan 4 gol\(es\) sin autor/)).toBeVisible()
+    await expect(canvas.getByText(/Faltan 4 goles sin autor/)).toBeVisible()
   },
 }
 

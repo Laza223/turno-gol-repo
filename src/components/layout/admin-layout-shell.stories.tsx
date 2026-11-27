@@ -46,7 +46,7 @@ export const Trialing: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(
-      canvas.getByRole('link', { name: /Prueba \d+ días\W+Elegir plan/ }),
+      canvas.getByRole('link', { name: /Prueba \d+ días\W+Activar plan/ }),
     ).toHaveAttribute('href', '/settings/facturacion')
     await expect(canvas.queryByText(/días restantes/)).toBeNull()
   },

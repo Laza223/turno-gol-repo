@@ -15,7 +15,7 @@ export const STATUS_LABELS: Record<InvoiceEntry['status'], string> = {
   in_process: 'En proceso',
   approved: 'Aprobado',
   rejected: 'Rechazado',
-  refunded: 'Reembolsado',
+  refunded: 'Devuelto',
   cancelled: 'Cancelado',
   charged_back: 'Contracargo',
 }
@@ -40,7 +40,7 @@ const STATUS_VISUALS: Record<InvoiceEntry['status'], StatusBadgeVisual> = {
 }
 
 function formatDate(d: Date | null): string {
-  if (!d) return '—'
+  if (!d) return '-'
   return d.toLocaleDateString('es-AR', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
@@ -65,11 +65,11 @@ export function InvoiceHistorySection({ invoices }: Props) {
           leer como un error del sistema en vez de una omisión a propósito. */}
       <p className="mt-1 text-xs text-muted-foreground">
         Los cobros de tu cuota. Sumar o sacar canchas nunca genera un cobro aparte. Sumar el
-        Asistente a un plan anual sí: se paga una vez por los meses que faltan.
+        Asistente a un pago anual sí: se paga una vez por los meses que faltan.
       </p>
 
       {invoices.length === 0 ? (
-        <EmptyState className="mt-4" icon={Receipt} title="Todavía no hay cobros registrados." />
+        <EmptyState className="mt-4" icon={Receipt} title="Todavía no hay pagos registrados" />
       ) : (
         <div className="mt-4 overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -93,7 +93,7 @@ export function InvoiceHistorySection({ invoices }: Props) {
                     {formatDate(invoice.date)}
                     {invoice.kind === 'plus_prorate' && (
                       <span className="block text-xs text-muted-foreground">
-                        Asistente de WhatsApp · meses restantes del plan anual
+                        Asistente de WhatsApp · meses restantes del pago anual
                       </span>
                     )}
                   </td>

@@ -317,7 +317,7 @@ describe('BookingFormModal — Evento', () => {
     fireEvent.change(await body().findByLabelText('Nombre del evento o responsable'), {
       target: { value: 'Escuelita' },
     })
-    fireEvent.click(body().getByRole('radio', { name: 'No se cobra' }))
+    fireEvent.click(body().getByRole('radio', { name: 'Sin costo' }))
     expect(body().queryByText('¿Cobraste algo ahora?')).toBeNull()
 
     fireEvent.click(submitButton('Agendar evento'))
@@ -374,7 +374,7 @@ describe('BookingFormModal — Evento', () => {
       target: { value: 'Escuelita' },
     })
     fireEvent.click(body().getByRole('radio', { name: 'Cada semana' }))
-    fireEvent.click(body().getByRole('radio', { name: 'No se cobra' }))
+    fireEvent.click(body().getByRole('radio', { name: 'Sin costo' }))
     fireEvent.click(submitButton('Crear evento semanal'))
 
     await waitFor(() => expect(createAbonadoAction).toHaveBeenCalled())

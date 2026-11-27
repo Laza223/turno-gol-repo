@@ -154,7 +154,7 @@ describe('Cobro parcial en modo "advance" (turno confirmado, todavía no jugado)
 
     fireEvent.click(
       screen.getByRole('button', {
-        name: /^Cobrar \$.?6\.000 por adelantado · quedan \$.?18\.000$/,
+        name: /^Cobrar \$.?6\.000 de adelanto · quedan \$.?18\.000$/,
       }),
     )
 
@@ -210,7 +210,7 @@ describe('Cobro parcial en modo "advance" (turno confirmado, todavía no jugado)
 
     fireEvent.click(
       screen.getByRole('button', {
-        name: /^Cobrar \$.?50 por adelantado · quedan \$.?23\.950$/,
+        name: /^Cobrar \$.?50 de adelanto · quedan \$.?23\.950$/,
       }),
     )
 

@@ -115,7 +115,7 @@ export function SplitPaymentFields({
           // fondo tintado es lo que lo tira abajo del umbral.
           className="w-full h-10 rounded-lg border border-dashed border-emerald-500/40 text-xs font-semibold text-emerald-800 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors disabled:opacity-60"
         >
-          Cobrar todo en efectivo — {formatArs(quickAllCashCents)}
+          Cobrar todo en efectivo: {formatArs(quickAllCashCents)}
         </button>
       )}
 
@@ -151,7 +151,7 @@ export function SplitPaymentFields({
             onChange={(v) => update(line.id, { method: v as MethodKey })}
             options={methodOptions}
             disabled={disabled}
-            aria-label={fieldLabel('Método de pago', i)}
+            aria-label={fieldLabel('Medio de pago', i)}
             // 9.75rem: "Transferencia" a 14px más el chevron no entra en menos
             // y quedaba cortado ("Transferen…"). `bg-card` para que el campo sea
             // la MISMA superficie que el MoneyInput de al lado — el default del
@@ -183,13 +183,13 @@ export function SplitPaymentFields({
           disabled={disabled}
           // Con los dos equipos en pantalla hay DOS botones con este mismo
           // texto: sin el sufijo, el nombre accesible no los distingue.
-          {...(groupLabel ? { 'aria-label': `Agregar pago dividido ${groupLabel}` } : {})}
+          {...(groupLabel ? { 'aria-label': `Agregar otro medio de pago ${groupLabel}` } : {})}
           // `text-primary` en claro ES emerald-700 (--primary), así que a 12px
           // sobre el fondo atenuado daba 4.47:1. Mismo criterio que el atajo de
           // arriba: un tono más oscuro en claro, emerald-400 en oscuro.
           className="flex min-h-11 items-center gap-1.5 text-xs font-medium text-emerald-800 dark:text-emerald-400 hover:underline pt-1 md:min-h-0 disabled:opacity-60"
         >
-          <Plus className="h-3.5 w-3.5" /> Agregar pago dividido
+          <Plus className="h-3.5 w-3.5" /> Agregar otro medio de pago
         </button>
       )}
     </div>

@@ -62,10 +62,10 @@ export function MpPayerEmailSection({
         </div>
         <div>
           <h2 className="text-base font-semibold text-foreground">
-            Cuenta de MercadoPago con la que pagás
+            Cuenta de Mercado Pago con la que pagás
           </h2>
           <p className="text-sm text-muted-foreground">
-            El email con el que entrás a MercadoPago. Puede ser distinto al que usás para entrar a
+            El email con el que entrás a Mercado Pago. Puede ser distinto al que usás para entrar a
             TurnoGol.
           </p>
         </div>
@@ -84,7 +84,7 @@ export function MpPayerEmailSection({
       <form action={formAction} className="mt-4 max-w-md space-y-3 lg:space-y-4">
         <div>
           <label htmlFor="mp-payer-email" className="block text-sm font-medium text-foreground">
-            Email de tu cuenta de MercadoPago
+            Email de tu cuenta de Mercado Pago
           </label>
           <input
             id="mp-payer-email"

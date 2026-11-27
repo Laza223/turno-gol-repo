@@ -57,7 +57,7 @@ describe('HoyChargeModal — bloqueo', () => {
       />,
     )
 
-    expect(await screen.findByRole('button', { name: 'Liberar el bloqueo' })).toBeVisible()
+    expect(await screen.findByRole('button', { name: 'Liberar bloqueo' })).toBeVisible()
     expect(screen.queryByText('Falta cobrar')).toBeNull()
     expect(screen.queryByText('Cobrado ✓')).toBeNull()
   })
@@ -82,9 +82,9 @@ describe('HoyChargeModal — bloqueo', () => {
       />,
     )
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Liberar el bloqueo' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Liberar el bloqueo' })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Liberar' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Liberar bloqueo' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Liberar bloqueo' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Liberar cancha' }))
 
     await waitFor(() => expect(releaseBlockAction).toHaveBeenCalledWith(b.id))
     await waitFor(() =>

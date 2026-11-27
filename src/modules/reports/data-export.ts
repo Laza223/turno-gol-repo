@@ -110,6 +110,8 @@ export type BookingExportSource = {
   depositAmount: number
   /** Centavos: seña que quedó en el complejo + cobros de mostrador (`summarizeBookingCharges`). */
   totalPaid: number
+  /** Migr. 108: si el turno está cubierto por acuerdo/pack/saldado. */
+  settlementId?: string | null
 }
 
 /**
@@ -146,7 +148,7 @@ export function bookingExportRow(b: BookingExportSource): Cell[] {
     hhmmCell(b.timeEnd),
     b.courtName,
     bookingKindLabel(b),
-    bookingBadgeVisual(b).label,
+    b.settlementId ? 'Saldado' : bookingBadgeVisual(b).label,
     isBlock ? '' : (b.clientName ?? ''),
     isBlock ? '' : (b.phone ?? ''),
     isBlock ? '' : pesosCell(b.priceSnapshot),

@@ -13,9 +13,9 @@ beforeEach(() => {
 })
 
 describe('ExportCsvButton', () => {
-  it('renders button with Exportar CSV text', () => {
+  it('renders button with Descargar CSV text', () => {
     render(<ExportCsvButton from="2026-08-01" to="2026-08-31" />)
-    expect(screen.getByRole('button', { name: /Exportar CSV/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Descargar CSV/i })).toBeInTheDocument()
   })
 
   it('triggers error toast when server returns error (e.g. 403 on impersonation)', async () => {
@@ -25,11 +25,11 @@ describe('ExportCsvButton', () => {
     }) as never
 
     render(<ExportCsvButton from="2026-08-01" to="2026-08-31" />)
-    fireEvent.click(screen.getByRole('button', { name: /Exportar CSV/i }))
+    fireEvent.click(screen.getByRole('button', { name: /Descargar CSV/i }))
 
     await waitFor(() => {
       expect(toastMock).toHaveBeenCalledWith({
-        title: 'Error al exportar',
+        title: 'No pudimos descargar el archivo',
         description: 'El complejo está bloqueado.',
         variant: 'destructive',
       })

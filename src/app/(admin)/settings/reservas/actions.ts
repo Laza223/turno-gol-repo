@@ -82,7 +82,7 @@ export async function updateReservasPolicyAction(
     return {
       success: false,
       error:
-        'Para cobrar seña primero conectá MercadoPago, abajo en esta misma pantalla. Hasta entonces, dejá "Sin seña".',
+        'Para cobrar seña primero conectá Mercado Pago, abajo en esta misma pantalla. Hasta entonces, dejá "Sin seña".',
     }
   }
 

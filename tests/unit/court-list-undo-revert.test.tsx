@@ -74,7 +74,7 @@ describe('CourtList — Deshacer fallido deja la tarjeta en el estado real', () 
 
     await waitFor(() =>
       expect(toastMock).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'No se pudo pausar' }),
+        expect.objectContaining({ title: 'No pudimos pausar la cancha' }),
       ),
     )
     expect(toggleStatusAction).toHaveBeenLastCalledWith(courtOffline().id, 'offline')
@@ -98,7 +98,7 @@ describe('CourtList — Deshacer fallido deja la tarjeta en el estado real', () 
 
     await waitFor(() =>
       expect(toastMock).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'No se pudo reactivar' }),
+        expect.objectContaining({ title: 'No pudimos reactivar la cancha' }),
       ),
     )
     expect(toggleStatusAction).toHaveBeenLastCalledWith(courtFutbol5().id, 'online')

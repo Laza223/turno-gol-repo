@@ -28,7 +28,7 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('alert')).toHaveTextContent(/Impersonando Complejo Fénix/)
+    await expect(canvas.getByRole('alert')).toHaveTextContent(/Impersonando a Complejo Fénix/)
     await expect(
       canvas.getByRole('button', { name: /salir de impersonación/i }),
     ).toBeInTheDocument()

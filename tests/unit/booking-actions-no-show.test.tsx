@@ -56,7 +56,7 @@ describe('BookingActions (detalle) — Marcar ausente', () => {
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('La seña pagada queda para el complejo.')).toBeTruthy()
     expect(within(dialog).getByText(/queda bloqueado 14 días/)).toBeTruthy()
-    expect(within(dialog).getByText('No se puede deshacer pasadas 24hs.')).toBeTruthy()
+    expect(within(dialog).getByText('No se puede deshacer pasadas 24 h.')).toBeTruthy()
   })
 
   it('al confirmar, ejecuta la action y el toast ofrece Deshacer', async () => {
@@ -70,7 +70,7 @@ describe('BookingActions (detalle) — Marcar ausente', () => {
     await waitFor(() =>
       expect(toastMock).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: 'Marcada como ausente',
+          title: 'Turno marcado como ausente',
           action: expect.objectContaining({ label: 'Deshacer' }),
         }),
       ),
@@ -86,7 +86,7 @@ describe('BookingActions (detalle) — Marcar ausente', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Marcar ausente' }))
 
     await waitFor(() => expect(toastMock).toHaveBeenCalled())
-    const call = toastMock.mock.calls.find((c) => c[0]?.title === 'Marcada como ausente')
+    const call = toastMock.mock.calls.find((c) => c[0]?.title === 'Turno marcado como ausente')
     await act(async () => {
       call?.[0]?.action?.onClick()
     })

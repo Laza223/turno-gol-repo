@@ -159,14 +159,15 @@ export function VenderDialog({
       <div className="px-6 py-10 text-center">
         <DialogTitle className="mb-2">Vender</DialogTitle>
         <p className="text-sm text-muted-foreground">
-          Cargá tus productos (agua, gatorade, cerveza…) y registrá cada venta con un toque.
+          Cargá los productos de tu cantina (agua, gaseosas, cerveza) para cobrarlos rápido desde
+          acá.
         </p>
         <button
           type="button"
           onClick={() => router.push('/caja/productos?configureCanteen=true')}
           className="mt-4 h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
-          Configurar productos
+          Cargar productos
         </button>
       </div>
     )
@@ -226,7 +227,7 @@ export function VenderDialog({
                 setActive(0)
               }}
               onKeyDown={handleSearchKeyDown}
-              placeholder="Buscar en todo el catálogo"
+              placeholder="Buscar producto..."
               aria-label="Buscar producto o servicio. Flechas para elegir, Enter suma"
               aria-controls={`${searchId}-list`}
               className="pl-9"
@@ -271,7 +272,7 @@ export function VenderDialog({
           </h3>
           {list.length === 0 ? (
             <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-              Ningún producto coincide con “{query}”.
+              No encontramos &quot;{query}&quot;.
             </p>
           ) : (
             list.map((p, i) => {
@@ -362,7 +363,7 @@ export function VenderDialog({
           <h3 className="text-sm font-semibold">
             Venta{' '}
             <span className="font-normal tabular-nums text-muted-foreground">
-              · {sale.count} {sale.count === 1 ? 'ítem' : 'ítems'}
+              · {sale.count} {sale.count === 1 ? 'producto' : 'productos'}
             </span>
           </h3>
           {lines.length > 0 && (
@@ -443,7 +444,7 @@ export function VenderDialog({
             </span>
           </div>
           <PaymentMethodChips
-            aria-label="Método de pago"
+            aria-label="Medio de pago"
             value={sale.method}
             onValueChange={sale.setMethod}
             options={METHOD_OPTIONS}

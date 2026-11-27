@@ -144,7 +144,7 @@ export const SinSuscribir: Story = {
     const body = within(document.body)
     // El diálogo entra con fade: visible recién al terminar la animación.
     await waitFor(() => expect(body.getByText('Activá las notificaciones')).toBeVisible())
-    const button = body.getByRole('button', { name: 'Habilitar notificaciones' })
+    const button = body.getByRole('button', { name: 'Activar notificaciones' })
     await expect(button).not.toBeDisabled()
     // Scope '/' (no '/admin/'): `(admin)` es un route group de Next, no aparece
     // en la URL — ver el comment de SW_SCOPE en PushNotificationManager.tsx.
@@ -178,7 +178,7 @@ export const CartelSinActivar: Story = {
 }
 
 /**
- * Click en "Habilitar": el botón pasa a "Habilitando…" de inmediato y
+ * Click en "Activar notificaciones": el botón pasa a "Activando..." de inmediato y
  * `requestPermission` resuelve `'default'` (cerró el diálogo del navegador) a
  * los 80ms. Ese camino no dispara toast (un toast vivo contamina el scan de a11y
  * de la story siguiente): el modal se cierra y queda el cartel con "Activar".
@@ -200,9 +200,9 @@ export const Pendiente: Story = {
   },
   play: async ({ canvasElement }) => {
     const body = within(document.body)
-    const button = await body.findByRole('button', { name: 'Habilitar notificaciones' })
+    const button = await body.findByRole('button', { name: 'Activar notificaciones' })
     await userEvent.click(button)
-    await expect(await body.findByRole('button', { name: 'Habilitando…' })).toBeDisabled()
+    await expect(await body.findByRole('button', { name: 'Activando...' })).toBeDisabled()
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole('button', { name: 'Activar' })).not.toBeDisabled()
   },
@@ -246,7 +246,7 @@ export const YaSuscripto: Story = {
     // use-toast.ts) con su propio botón "Cerrar" — no es parte de este
     // componente.
     await expect(
-      canvas.queryByRole('button', { name: 'Habilitar notificaciones' }),
+      canvas.queryByRole('button', { name: 'Activar notificaciones' }),
     ).not.toBeInTheDocument()
   },
 }
@@ -274,7 +274,7 @@ export const PermisoDenegado: Story = {
     // El diálogo entra con fade: visible recién al terminar la animación.
     await waitFor(() => expect(body.getByText('Las notificaciones están bloqueadas')).toBeVisible())
     await expect(
-      body.queryByRole('button', { name: 'Habilitar notificaciones' }),
+      body.queryByRole('button', { name: 'Activar notificaciones' }),
     ).not.toBeInTheDocument()
     await expect(getRegistrationSpy).toHaveBeenCalledWith('/')
     await userEvent.click(body.getByRole('button', { name: 'Ahora no' }))

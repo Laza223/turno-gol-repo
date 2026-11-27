@@ -99,7 +99,7 @@ export const CopiarLinkSinClipboard: Story = {
 
     await waitFor(() =>
       expect(prompt).toHaveBeenCalledWith(
-        'Copiá el enlace público:',
+        'Copiá el link de tu página pública:',
         'https://turnogol.app/complejo-fenix',
       ),
     )

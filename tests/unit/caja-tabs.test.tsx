@@ -60,7 +60,7 @@ describe('CajaTabs', () => {
   it('con productos para reponer, "Productos" lo dice en su nombre accesible', () => {
     render(<CajaTabs active="/caja/cuentas" lowStock={2} />)
     expect(
-      screen.getByRole('link', { name: 'Productos — 2 productos para reponer' }),
+      screen.getByRole('link', { name: /Productos.*2 productos para reponer/ }),
     ).toHaveAttribute('href', '/caja/productos')
     // El aviso cuelga SOLO de Productos: Cuentas no cambia.
     expect(screen.getByRole('link', { name: 'Cuentas' })).toBeInTheDocument()
@@ -69,7 +69,7 @@ describe('CajaTabs', () => {
   it('en singular con un solo producto, y sin aviso con cero', () => {
     const { unmount } = render(<CajaTabs active="/caja/cuentas" lowStock={1} />)
     expect(
-      screen.getByRole('link', { name: 'Productos — 1 producto para reponer' }),
+      screen.getByRole('link', { name: /Productos.*1 producto para reponer/ }),
     ).toBeInTheDocument()
     unmount()
 

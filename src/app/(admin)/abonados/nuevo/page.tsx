@@ -21,7 +21,7 @@ export default async function NuevoAbonadoPage() {
       <PageHeader
         variant="plain"
         title="Nuevo turno fijo"
-        subtitle="Configurá la reserva fija semanal y los datos del cliente regular."
+        subtitle="Elegí cancha, día, horario y los datos del cliente."
         back={<BackLink href="/abonados">Volver a Turnos fijos</BackLink>}
       />
       <AbonadoForm

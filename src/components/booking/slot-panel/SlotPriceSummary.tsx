@@ -54,7 +54,7 @@ export function SlotPriceSummary({ booking, capacity, late = false }: Props) {
         // tuvo precio, no un pago de cero pesos.
         <p>
           <span className="block text-xs font-medium text-muted-foreground">Precio</span>
-          <span className="block text-2xl font-bold tabular-nums text-foreground">No se cobra</span>
+          <span className="block text-2xl font-bold tabular-nums text-foreground">Sin costo</span>
         </p>
       ) : pending !== null && pending > 0 ? (
         <p>

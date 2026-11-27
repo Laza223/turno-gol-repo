@@ -27,7 +27,7 @@ describe('formatMethodLabel', () => {
   it('translates every payment method to es-AR (§8.1 — no anglicisms in UI)', () => {
     expect(formatMethodLabel('cash')).toBe('Efectivo')
     expect(formatMethodLabel('transfer')).toBe('Transferencia')
-    expect(formatMethodLabel('mercadopago')).toBe('MercadoPago')
+    expect(formatMethodLabel('mercadopago')).toBe('Mercado Pago')
     expect(formatMethodLabel('other')).toBe('Otro')
   })
 })

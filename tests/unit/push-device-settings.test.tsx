@@ -67,9 +67,9 @@ describe('Notificaciones de este dispositivo', () => {
     await act(async () => {
       render(<PushNotificationManager settings actions={actions} />)
     })
-    expect(await screen.findByRole('button', { name: 'Habilitar notificaciones' })).toBeVisible()
+    expect(await screen.findByRole('button', { name: 'Activar notificaciones' })).toBeVisible()
     expect(
-      screen.queryByRole('button', { name: 'Probar en este teléfono' }),
+      screen.queryByRole('button', { name: 'Probar en este dispositivo' }),
     ).not.toBeInTheDocument()
     expect(registration.update).toHaveBeenCalledOnce()
   })
@@ -79,7 +79,7 @@ describe('Notificaciones de este dispositivo', () => {
     await act(async () => {
       render(<PushNotificationManager settings actions={actions} />)
     })
-    await screen.findByRole('button', { name: 'Probar en este teléfono' })
+    await screen.findByRole('button', { name: 'Probar en este dispositivo' })
     Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' })
     await act(async () => {
       document.dispatchEvent(new Event('visibilitychange'))
@@ -144,7 +144,7 @@ describe('Notificaciones de este dispositivo', () => {
     await act(async () => {
       render(<PushNotificationManager settings actions={actions} />)
     })
-    const button = await screen.findByRole('button', { name: 'Probar en este teléfono' })
+    const button = await screen.findByRole('button', { name: 'Probar en este dispositivo' })
     vi.useFakeTimers()
     try {
       await act(async () => {

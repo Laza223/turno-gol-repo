@@ -59,7 +59,7 @@ export const ConSugerencia: Story = {
     // Estas dos frases llevan un <strong> adentro: quedan partidas en varios
     // nodos y `getByText` con string exacto no las encuentra nunca.
     await expect(dialog).toHaveTextContent('Coincide el teléfono con Diego Rossi')
-    await expect(dialog).toHaveTextContent('Se vinculará con Diego Rossi.')
+    await expect(dialog).toHaveTextContent('Se va a vincular con Diego Rossi.')
   },
 }
 

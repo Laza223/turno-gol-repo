@@ -35,7 +35,7 @@ export function formatDate(isoDate: string): string {
 export function formatDateRange(startsOn: string, endsOn: string | null): string {
   if (!endsOn) return `Desde el ${formatDate(startsOn)}`
   if (endsOn === startsOn) return formatDate(startsOn)
-  return `${formatDate(startsOn)} — ${formatDate(endsOn)}`
+  return `${formatDate(startsOn)} - ${formatDate(endsOn)}`
 }
 
 /** 'Fecha 3' en liga, 'Semifinal' en llaves. */
@@ -77,9 +77,9 @@ export function formatMatchWhen(startsAt: Date | null): string {
   return `${d}/${m} · ${formatArtTime(startsAt)}`
 }
 
-/** Marcador '3 - 1', o '—' si todavía no se jugó. */
+/** Marcador '3 - 1', o '-' si todavía no se jugó. */
 export function formatScore(home: number | null, away: number | null): string {
-  if (home === null || away === null) return '—'
+  if (home === null || away === null) return '-'
   return `${home} - ${away}`
 }
 

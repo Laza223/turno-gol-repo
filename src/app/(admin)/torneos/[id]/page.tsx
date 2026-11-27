@@ -168,7 +168,7 @@ export default async function TorneoDetailPage(props: { params: Promise<{ id: st
             >
               <Lock className="h-3.5 w-3.5" aria-hidden="true" />
               Borrar este torneo
-              <span className="sr-only">— solo el dueño puede hacerlo</span>
+              <span className="sr-only">, solo el dueño puede hacerlo</span>
             </span>
           )}
         </div>

@@ -116,7 +116,7 @@ export function BookingRescheduleDialog({
         Sentry.captureException(err)
         if (!alive) return
         setSlots([])
-        setError('No pudimos cargar los horarios. Revisá tu conexión.')
+        setError('No pudimos cargar los horarios. Revisá tu internet y probá de nuevo.')
       }
     })()
     return () => {
@@ -191,7 +191,7 @@ export function BookingRescheduleDialog({
       } catch (err) {
         Sentry.captureException(err)
         startTransition(() =>
-          setError('No se pudo mover el turno. Revisá tu conexión e intentá de nuevo.'),
+          setError('No pudimos mover el turno. Revisá tu internet y probá de nuevo.'),
         )
       }
     })
@@ -274,7 +274,7 @@ export function BookingRescheduleDialog({
           {loading && <p className="text-sm text-muted-foreground">Buscando horarios…</p>}
           {!loading && slots?.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              No hay horarios disponibles en esa cancha ese día.
+              No quedan horarios libres en esta cancha para ese día.
             </p>
           )}
           {!loading && slots && slots.length > 0 && (
@@ -325,7 +325,7 @@ export function BookingRescheduleDialog({
           <p className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
             El precio pasa de {formatArs(booking.priceSnapshot)} a{' '}
             {formatArs(selected.price ?? booking.priceSnapshot)} ({priceDelta > 0 ? '+' : ''}
-            {formatArs(priceDelta)}): esa franja tiene otra tarifa.
+            {formatArs(priceDelta)}): ese horario tiene otro precio.
           </p>
         )}
 

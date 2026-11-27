@@ -130,7 +130,7 @@ export function FixtureListado({
                     <td className="p-2.5 tabular-nums text-muted-foreground">
                       {formatMatchWhen(m.startsAt)}
                     </td>
-                    <td className="p-2.5 text-muted-foreground">{m.courtName ?? '—'}</td>
+                    <td className="p-2.5 text-muted-foreground">{m.courtName ?? '-'}</td>
                     <td className="p-2.5 pr-4 text-right">
                       <StatusBadge visual={MATCH_STATUS_VISUAL[m.status]} />
                       <Link

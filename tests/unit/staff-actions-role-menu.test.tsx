@@ -54,7 +54,7 @@ describe('StaffActions — cambio de rol', () => {
   it('ofrece cambiar al otro rol, nunca al rol actual', async () => {
     renderActions({ role: 'manager' })
     await openMenu()
-    expect(screen.getByRole('menuitem', { name: /Cambiar a Administrador/ })).toBeTruthy()
+    expect(screen.getByRole('menuitem', { name: /Cambiar a Dueño/ })).toBeTruthy()
     expect(screen.queryByRole('menuitem', { name: /Cambiar a Encargado/ })).toBeNull()
   })
 

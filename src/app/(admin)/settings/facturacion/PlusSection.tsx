@@ -89,7 +89,7 @@ export function PlusSection({ plus, periodEnd, disableAction, payAction }: Props
             {isPending ? 'Abriendo el pago…' : `Pagar ${formatArs(quote.amountCents)}`}
           </Button>
           <p className="mt-2 text-xs text-muted-foreground">
-            Cuando se acredite el pago, el Asistente se prende solo.
+            Cuando se acredite el pago, el Asistente se activa solo.
           </p>
           {payError && (
             <p role="alert" className="mt-3 text-sm font-medium text-red-700 dark:text-red-400">

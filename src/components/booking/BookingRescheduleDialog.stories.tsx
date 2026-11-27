@@ -85,7 +85,7 @@ export const SinHorarios: Story = {
   },
   play: async ({ canvasElement }) => {
     const d = within(canvasElement.ownerDocument.body)
-    await expect(await d.findByText(/No hay horarios disponibles/)).toBeTruthy()
+    await expect(await d.findByText(/No quedan horarios libres/)).toBeTruthy()
   },
 }
 

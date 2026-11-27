@@ -15,9 +15,9 @@ export default function AdminNotFound() {
         <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-muted ring-1 ring-inset ring-border">
           <Compass className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
         </div>
-        <h1 className="text-2xl font-semibold text-foreground">No encontramos esto</h1>
+        <h1 className="text-2xl font-semibold text-foreground">No encontramos esta página</h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          La página que buscás no existe o fue movida. Verificá el link o volvé al dashboard.
+          Esta página no existe o cambió de dirección. Revisá el link o volvé a Hoy.
         </p>
         <div className="mt-6">
           <Link
@@ -25,7 +25,7 @@ export default function AdminNotFound() {
             className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors duration-150 hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
-            Ir al dashboard
+            Volver a Hoy
           </Link>
         </div>
       </div>

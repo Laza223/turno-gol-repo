@@ -183,7 +183,7 @@ export const EnPeriodoDePrueba: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(
-      canvas.getByRole('link', { name: /Prueba 73 días\W+Elegir plan/ }),
+      canvas.getByRole('link', { name: /Prueba 73 días\W+Activar plan/ }),
     ).toHaveAttribute('href', '/settings/facturacion')
   },
 }
@@ -195,6 +195,6 @@ export const PruebaPorVencerEncargado: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('3 días')).toBeVisible()
-    await expect(canvas.queryByRole('link', { name: /Elegir plan/ })).toBeNull()
+    await expect(canvas.queryByRole('link', { name: /Activar plan/ })).toBeNull()
   },
 }

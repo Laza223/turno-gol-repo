@@ -194,7 +194,7 @@ export default async function CajaCuentasPage(props: {
               // Página fuera de rango (`?mov=9` de un link viejo): no es "sin
               // movimientos", es "esa página no existe".
               emptyTitle: 'Esa página no existe',
-              emptyDescription: 'El día tiene menos movimientos que los que pide el link.',
+              emptyDescription: 'No hay tantos movimientos en este día.',
             }
           : isToday
             ? {
@@ -203,8 +203,8 @@ export default async function CajaCuentasPage(props: {
                   'Los cobros de turnos y las ventas de cantina aparecen acá a medida que se registran.',
               }
             : {
-                emptyTitle: 'Ese día no se registró plata',
-                emptyDescription: 'No hay cobros, ventas ni gastos en ese día.',
+                emptyTitle: 'Ese día no hubo movimientos',
+                emptyDescription: 'No se registraron cobros, ventas ni gastos.',
               })}
         footer={
           movTotal > MOVEMENTS_PAGE_SIZE && (

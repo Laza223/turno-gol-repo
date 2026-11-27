@@ -8,7 +8,7 @@ import { SelectTenantList } from './SelectTenantList'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Elegí tu complejo — TurnoGol',
+  title: 'Elegí tu complejo · TurnoGol',
   robots: { index: false, follow: false },
 }
 

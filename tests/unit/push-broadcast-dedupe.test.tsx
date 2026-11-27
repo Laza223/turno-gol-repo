@@ -339,7 +339,7 @@ describe('PushNotificationManager — BroadcastChannel dedupe', () => {
       })
 
       expect(toast).toHaveBeenCalledWith({
-        title: 'Nueva reserva — Cancha 2',
+        title: 'Nueva reserva: Cancha 2',
         description: '25 de octubre · 21:00–22:00',
         variant: 'success',
       })

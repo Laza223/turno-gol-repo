@@ -103,7 +103,9 @@ export const ConJugadorSuspendido: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/arrastran fechas de suspensión/)).toBeVisible()
+    await expect(
+      canvas.getByText(/Hay 1 jugador en el acta que arrastra fechas de suspensión/),
+    ).toBeVisible()
     // Sigue habilitado: es un aviso.
     await expect(canvas.getByRole('button', { name: /guardar resultado/i })).toBeEnabled()
   },

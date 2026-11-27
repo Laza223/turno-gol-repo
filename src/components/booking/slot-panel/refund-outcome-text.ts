@@ -8,7 +8,7 @@ function lateCancelLadderText(conditional: boolean): string {
   const lead = conditional
     ? 'Si lo pide el jugador, cuenta como cancelación tardía'
     : 'Cuenta como cancelación tardía'
-  return `${lead}: la 1ra solo se le avisa; la 2da lo deja ${first} días sin reservar online y desde la 3ra, ${max} días.`
+  return `${lead}: en la 1ra solo se le avisa; en la 2da queda ${first} días sin poder reservar online y desde la 3ra, ${max} días.`
 }
 
 /**
@@ -29,12 +29,12 @@ export function refundOutcomeText(outcome: RefundOutcome): string {
       return base
     }
     case 'turno_ended':
-      return `El turno ya se jugó: la seña de ${formatArs(outcome.amountCents)} queda para el complejo (sin reembolso).`
+      return `El turno ya se jugó: la seña de ${formatArs(outcome.amountCents)} queda para el complejo (no se devuelve).`
     case 'undecided': {
       const amount = formatArs(outcome.amountCents)
       const playerClause = outcome.ifPlayer.shouldRefund
-        ? `la seña de ${amount} queda para devolver (dentro del plazo de ${outcome.policyHours}h)`
-        : `la seña de ${amount} queda para el complejo (fuera del plazo de ${outcome.policyHours}h)`
+        ? `la seña de ${amount} queda para devolver (dentro del plazo de ${outcome.policyHours} h)`
+        : `la seña de ${amount} queda para el complejo (fuera del plazo de ${outcome.policyHours} h)`
       const complexClause = outcome.ifComplex.shouldRefund
         ? `la seña de ${amount} queda para devolver`
         : `la seña de ${amount} queda para el complejo`
@@ -42,9 +42,9 @@ export function refundOutcomeText(outcome: RefundOutcome): string {
     }
     case 'refund':
       return outcome.channel === 'mercadopago'
-        ? `La seña de ${formatArs(outcome.amountCents)} queda para devolver: hacelo vos desde tu MercadoPago (no es automático) — si la devolvés ahí, el sistema la marca sola.`
-        : `La seña de ${formatArs(outcome.amountCents)} queda para devolver: la devolvés vos (efectivo o transferencia) y la marcás en Caja → Cuentas.`
+        ? `La seña de ${formatArs(outcome.amountCents)} queda para devolver. Tenés que devolverla vos desde tu cuenta de Mercado Pago (no es automático); apenas lo hagas, acá se marca sola como devuelta.`
+        : `La seña de ${formatArs(outcome.amountCents)} queda para devolver. Se la devolvés por tu cuenta (efectivo o transferencia) y la marcás como devuelta en Caja → Cuentas.`
     case 'no_refund_policy':
-      return `Fuera del plazo de cancelación (${outcome.policyHours}h): la seña de ${formatArs(outcome.amountCents)} queda para el complejo (sin reembolso).`
+      return `Fuera de plazo (menos de ${outcome.policyHours} h antes): la seña de ${formatArs(outcome.amountCents)} queda para el complejo (no se devuelve).`
   }
 }

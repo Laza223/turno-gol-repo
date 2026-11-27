@@ -57,7 +57,7 @@ export const NuevoProducto: Story = {
     await userEvent.type(dialog.getByLabelText('Nombre del producto'), 'Gaseosa 500ml')
     await userEvent.type(dialog.getByLabelText('Precio (pesos)'), '3000')
     await userEvent.type(dialog.getByLabelText('Stock inicial'), '24')
-    await userEvent.type(dialog.getByLabelText('Stock mínimo (alerta)'), '6')
+    await userEvent.type(dialog.getByLabelText('Stock mínimo (opcional)'), '6')
 
     await userEvent.click(dialog.getByRole('button', { name: 'Guardar' }))
     await waitFor(() =>
@@ -159,7 +159,7 @@ export const GananciaYAyudas: Story = {
       expect(dialog.getByRole('heading', { name: 'Nuevo producto' })).toBeVisible(),
     )
 
-    await expect(dialog.getByLabelText('Stock mínimo (alerta)')).toHaveAccessibleDescription(
+    await expect(dialog.getByLabelText('Stock mínimo (opcional)')).toHaveAccessibleDescription(
       /te avisamos que hay que reponer/,
     )
     await expect(dialog.getByLabelText('Costo (opcional)')).toHaveAccessibleDescription(

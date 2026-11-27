@@ -162,7 +162,7 @@ export default async function ReservasPage(props: Props) {
           title="Sin turnos"
           description={
             q
-              ? `Sin resultados para “${q}” en ${scope === 'proximos' ? 'Próximos' : 'Pasados'}.`
+              ? `No encontramos resultados para "${q}" en ${scope === 'proximos' ? 'Próximos' : 'Pasados'}.`
               : `No hay turnos ${scope === 'proximos' ? 'próximos' : 'pasados'} con estos filtros.`
           }
           action={
@@ -179,7 +179,7 @@ export default async function ReservasPage(props: Props) {
                 className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               >
                 <CalendarDays className="h-4 w-4" aria-hidden="true" />
-                Cargar una reserva
+                Ir a la Grilla
               </Link>
             )
           }

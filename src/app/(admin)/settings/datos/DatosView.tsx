@@ -46,7 +46,7 @@ const ROWS: Array<{
   {
     dataset: 'clients',
     label: 'Clientes',
-    effect: 'Las personas de Jugadores, con teléfono, email y etiquetas.',
+    effect: 'Todas las personas de Clientes y Fijos, con teléfono, email y etiquetas.',
     unit: 'clientes',
     file: 'clientes',
     icon: Users,
@@ -102,7 +102,7 @@ export function DatosView({
     } catch {
       toast({
         title: 'No se pudo descargar',
-        description: 'Se cortó la conexión. Probá de nuevo.',
+        description: 'Se cortó internet. Probá de nuevo.',
         variant: 'destructive',
       })
     } finally {
@@ -146,8 +146,8 @@ export function DatosView({
                   {!running && <Download className="h-4 w-4" aria-hidden="true" />}
                   {running
                     ? progress > 0
-                      ? `Bajando… ${progress.toLocaleString('es-AR')} ${row.unit}`
-                      : 'Bajando…'
+                      ? `Descargando... ${progress.toLocaleString('es-AR')} ${row.unit}`
+                      : 'Descargando...'
                     : `Descargar ${row.label.toLowerCase()}`}
                 </Button>
               </li>
@@ -160,7 +160,7 @@ export function DatosView({
         <p>
           Los movimientos de caja se bajan desde{' '}
           <Link href="/analiticas" className="font-medium text-foreground underline">
-            Métricas
+            Reportes
           </Link>
           , mes por mes.
         </p>

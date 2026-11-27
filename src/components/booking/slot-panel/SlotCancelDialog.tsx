@@ -132,8 +132,8 @@ export function SlotCancelDialog({
               value="complejo"
               description={
                 hasPaidDeposit
-                  ? 'Rotura, mantenimiento o error. La seña queda para que se la devuelvas vos.'
-                  : 'Rotura, mantenimiento o error.'
+                  ? 'Lluvia, mantenimiento o error. La seña queda para que se la devuelvas vos.'
+                  : 'Lluvia, mantenimiento o error.'
               }
             >
               El complejo necesita cancelar

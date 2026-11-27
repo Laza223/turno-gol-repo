@@ -55,7 +55,7 @@ function whatsappUrl(row: StreetMoneyRow): string | null {
     `Hola${row.debtorName ? ` ${row.debtorName}` : ''}, te contactamos por el turno del ` +
     `${mediumDateLabel(row.date)} (${row.timeStart.slice(0, 5)} - ${row.timeEnd.slice(0, 5)}) ` +
     `en ${row.courtName}. Quedó un saldo pendiente de ${formatArs(row.pendingCents)}. ` +
-    `¿Cuándo podrías pasar a saldarlo?`
+    `¿Cuándo podés pagarlo o transferirlo?`
   return `https://wa.me/${row.contactPhone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`
 }
 

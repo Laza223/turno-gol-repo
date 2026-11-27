@@ -78,7 +78,7 @@ export function StockLedgerList({
       <>
         <EmptyState
           icon={History}
-          title="Todavía no hay movimientos de stock."
+          title="Todavía no hay movimientos de stock"
           className="border-0 py-5 lg:py-8"
         />
         {footer}

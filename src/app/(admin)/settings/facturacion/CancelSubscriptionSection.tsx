@@ -123,10 +123,10 @@ export function CancelSubscriptionSection({ status, accessUntil, context = 'sett
       }
       return {
         success: false,
-        error: parsed.error?.message ?? 'No se pudo cancelar la suscripción. Intentá de nuevo.',
+        error: parsed.error?.message ?? 'No pudimos cancelar la suscripción. Probá de nuevo.',
       }
     } catch {
-      return { success: false, error: 'No se pudo cancelar la suscripción. Intentá de nuevo.' }
+      return { success: false, error: 'No pudimos cancelar la suscripción. Probá de nuevo.' }
     }
   }
 
@@ -167,6 +167,7 @@ export function CancelSubscriptionSection({ status, accessUntil, context = 'sett
             onChange={(e) => setReason(e.target.value)}
             rows={2}
             maxLength={500}
+            placeholder="Ej: Cerramos por temporada o usamos otro sistema"
             className="w-full rounded-md border border-border px-3 py-2 text-sm focus:border-emerald-600 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
           />
         </div>

@@ -130,11 +130,9 @@ export function StaffRosterView({
       {members.length === 0 ? (
         <EmptyState
           icon={UserCog}
-          title="Sin miembros de equipo"
-          description="Invitá a tu primer encargado o administrador para gestionar el complejo con vos."
-          action={
-            <InviteStaffButton inviteAction={inviteAction} label="Invitar al primer miembro" />
-          }
+          title="Todavía no invitaste a nadie"
+          description="Sumá un encargado o a otro dueño para manejar el complejo juntos."
+          action={<InviteStaffButton inviteAction={inviteAction} label="Invitar a alguien" />}
         />
       ) : (
         <ResponsiveList

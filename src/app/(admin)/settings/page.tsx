@@ -134,7 +134,7 @@ export default async function SettingsPage() {
           href: '/settings/reservas#sena',
         },
         {
-          label: 'MercadoPago para cobrar la seña',
+          label: 'Mercado Pago para cobrar la seña',
           effect: 'Donde te entra esa plata.',
           value: mpDisconnected ? 'Desconectado' : mpConnected ? 'Conectado' : 'Sin conectar',
           icon: Wallet,
@@ -163,7 +163,7 @@ export default async function SettingsPage() {
           href: '/settings/facturacion',
         },
         {
-          label: 'Cuenta de MercadoPago con la que pagás',
+          label: 'Cuenta de Mercado Pago con la que pagás',
           effect: 'A qué cuenta te cobramos.',
           icon: CreditCard,
           href: '/settings/facturacion#cuenta-mp',

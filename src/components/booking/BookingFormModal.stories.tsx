@@ -150,7 +150,7 @@ export const EventoConPrecio: Story = {
 }
 
 export const EventoSinCobro: Story = {
-  name: 'Evento — "No se cobra" manda priceOverride: 0 y esconde el cobro',
+  name: 'Evento — "Sin costo" manda priceOverride: 0 y esconde el cobro',
   args: {
     createBookingAction: fn(async () => ({ success: true as const, booking: booking() })),
   },
@@ -158,7 +158,7 @@ export const EventoSinCobro: Story = {
     const body = within(canvasElement.ownerDocument.body)
     await userEvent.click(body.getByRole('radio', { name: 'Evento' }))
     await userEvent.type(await body.findByLabelText('Nombre del evento o responsable'), 'Escuelita')
-    await userEvent.click(body.getByRole('radio', { name: 'No se cobra' }))
+    await userEvent.click(body.getByRole('radio', { name: 'Sin costo' }))
     await expect(body.queryByText('¿Cobraste algo ahora?')).not.toBeInTheDocument()
     await userEvent.click(body.getByRole('button', { name: 'Agendar evento' }))
     await waitFor(() => expect(args.createBookingAction).toHaveBeenCalled())

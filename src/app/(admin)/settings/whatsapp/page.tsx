@@ -60,7 +60,7 @@ export default async function WhatsappSettingsPage({
 
         {conectado === '1' && connection?.connected && (
           <p role="status" className="text-sm text-emerald-700 dark:text-emerald-400">
-            ¡Listo! Tu WhatsApp quedó conectado. Prendé el asistente cuando quieras.
+            ¡Listo! Tu WhatsApp quedó conectado. Activá el asistente cuando quieras.
           </p>
         )}
         {errorText && (
@@ -87,12 +87,12 @@ export default async function WhatsappSettingsPage({
                 <li>Usá la app WhatsApp Business actualizada, no el WhatsApp común.</li>
                 <li>Entrá con la cuenta de Facebook que maneja tu negocio.</li>
                 <li>
-                  Si en WhatsApp Business tenés prendidas las etiquetas automáticas o el agente de
-                  IA de Meta, apagalos.
+                  Si en WhatsApp Business tenés activadas las etiquetas automáticas o el agente de
+                  IA de Meta, desactivalos.
                 </li>
                 <li>
-                  Cuando Meta te pregunte, elegí tu número. No elijas «usar un nombre visible con
-                  número virtual».
+                  Cuando Meta te pregunte, elegí tu número. No elijas &quot;usar un nombre visible
+                  con número virtual&quot;.
                 </li>
               </ol>
             </div>

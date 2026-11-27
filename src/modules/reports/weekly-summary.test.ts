@@ -41,7 +41,7 @@ describe('buildWeeklySummary', () => {
     })
     expect(data.methods.map((m) => ({ ...m, amountArs: plain(m.amountArs) }))).toEqual([
       { label: 'Efectivo', amountArs: '$ 700.000' },
-      { label: 'MercadoPago', amountArs: '$ 0' },
+      { label: 'Mercado Pago', amountArs: '$ 0' },
       { label: 'Transferencia', amountArs: '$ 0' },
     ])
   })

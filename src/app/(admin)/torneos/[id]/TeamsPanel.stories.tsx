@@ -141,7 +141,7 @@ export const EditarDatos: Story = {
     await userEvent.click(canvas.getByRole('button', { name: /^Los Pibes/ }))
     await userEvent.click(await canvas.findByRole('button', { name: /Editar datos/ }))
 
-    await expect(await canvas.findByLabelText(/arancel de inscripción/i)).toBeVisible()
+    await expect(await canvas.findByLabelText(/^Inscripción/i)).toBeVisible()
     await expect(canvas.getByLabelText(/notas internas/i)).toBeVisible()
     await expect(canvas.getByRole('button', { name: 'Guardar cambios' })).toBeVisible()
   },

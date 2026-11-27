@@ -54,23 +54,23 @@ function renderActions(overrides: Partial<Parameters<typeof BookingActions>[0]> 
 describe('BookingActions — preview de seña visible antes de elegir "quién cancela" (ENS-2)', () => {
   it('sin elegir quién cancela, dentro de la ventana: muestra los dos resultados, ambos "queda para devolver"', () => {
     renderActions({ bookingDate: '2026-03-16' }) // +2 días → dentro del plazo de 12h
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar reserva' }))
     expect(screen.getByRole('dialog')).toHaveTextContent(
-      'Si cancela el jugador: la seña de $ 4.500 queda para devolver (dentro del plazo de 12h). Si cancela el complejo: la seña de $ 4.500 queda para devolver.',
+      'Si cancela el jugador: la seña de $ 4.500 queda para devolver (dentro del plazo de 12 h). Si cancela el complejo: la seña de $ 4.500 queda para devolver.',
     )
   })
 
   it('sin elegir quién cancela, fuera de la ventana: el resultado difiere según quién cancele', () => {
     renderActions() // hoy 20:00, ventana de 12h ya cerrada a las 15:30
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar reserva' }))
     expect(screen.getByRole('dialog')).toHaveTextContent(
-      'Si cancela el jugador: la seña de $ 4.500 queda para el complejo (fuera del plazo de 12h). Si cancela el complejo: la seña de $ 4.500 queda para devolver.',
+      'Si cancela el jugador: la seña de $ 4.500 queda para el complejo (fuera del plazo de 12 h). Si cancela el complejo: la seña de $ 4.500 queda para devolver.',
     )
   })
 
   it('sin seña pagada: avisa que no hay nada que devolver, sin elegir nada', () => {
     renderActions({ depositStatus: 'not_required', depositAmount: 0 })
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar reserva' }))
     expect(screen.getByRole('dialog')).toHaveTextContent(
       'Esta reserva no tiene seña pagada. Solo se libera el turno.',
     )
@@ -78,10 +78,10 @@ describe('BookingActions — preview de seña visible antes de elegir "quién ca
 
   it('elegir "El complejo necesita cancelar" sigue reembolsando siempre (no regresiona)', () => {
     renderActions() // fuera de plazo normal, pero "complejo" reembolsa igual
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar reserva' }))
     fireEvent.click(screen.getByRole('radio', { name: /El complejo necesita cancelar/i }))
     expect(screen.getByRole('dialog')).toHaveTextContent(
-      'La seña de $ 4.500 queda para devolver: hacelo vos desde tu MercadoPago (no es automático) — si la devolvés ahí, el sistema la marca sola.',
+      'La seña de $ 4.500 queda para devolver. Tenés que devolverla vos desde tu cuenta de Mercado Pago (no es automático); apenas lo hagas, acá se marca sola como devuelta.',
     )
   })
 })
@@ -109,9 +109,9 @@ describe('BookingActions — preview de plazo usa starts_at físico cuando está
       cancellationPolicyHours: 6,
       startsAt: '2026-03-15T04:00:00.000Z',
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar reserva' }))
     expect(screen.getByRole('dialog')).toHaveTextContent(
-      'Si cancela el jugador: la seña de $ 4.500 queda para devolver (dentro del plazo de 6h). Si cancela el complejo: la seña de $ 4.500 queda para devolver.',
+      'Si cancela el jugador: la seña de $ 4.500 queda para devolver (dentro del plazo de 6 h). Si cancela el complejo: la seña de $ 4.500 queda para devolver.',
     )
   })
 
@@ -122,9 +122,9 @@ describe('BookingActions — preview de plazo usa starts_at físico cuando está
       cancellationPolicyHours: 6,
       startsAt: null,
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar reserva' }))
     expect(screen.getByRole('dialog')).toHaveTextContent(
-      'El turno ya se jugó: la seña de $ 4.500 queda para el complejo (sin reembolso).',
+      'El turno ya se jugó: la seña de $ 4.500 queda para el complejo (no se devuelve).',
     )
   })
 })
@@ -147,10 +147,10 @@ describe('BookingActions — turno ya terminado nunca promete reembolso (clase B
       depositAmount: 450_000,
       paymentMethod: 'mercadopago',
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar reserva' }))
     fireEvent.click(screen.getByRole('radio', { name: /El complejo necesita cancelar/i }))
     expect(screen.getByRole('dialog')).toHaveTextContent(
-      'El turno ya se jugó: la seña de $ 4.500 queda para el complejo (sin reembolso).',
+      'El turno ya se jugó: la seña de $ 4.500 queda para el complejo (no se devuelve).',
     )
     expect(screen.getByRole('dialog')).not.toHaveTextContent('queda para devolver')
   })

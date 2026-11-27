@@ -189,8 +189,8 @@ export const DosTarjetas: Story = {
       card(dialog, 'Marcos').getByRole('button', { name: /^Cobrar \$\s60\.000/ }),
     ).toBeEnabled()
 
-    // Cobrar todo de la segunda con MercadoPago.
-    await userEvent.click(card(dialog, 'Marcos').getByRole('radio', { name: 'MercadoPago' }))
+    // Cobrar todo de la segunda con Mercado Pago.
+    await userEvent.click(card(dialog, 'Marcos').getByRole('radio', { name: 'Mercado Pago' }))
     await userEvent.click(
       card(dialog, 'Marcos').getByRole('button', { name: /^Cobrar \$\s60\.000/ }),
     )

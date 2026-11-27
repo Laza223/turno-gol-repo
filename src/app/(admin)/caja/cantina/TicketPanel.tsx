@@ -164,14 +164,15 @@ export function TicketPanel({
     return (
       <div className="rounded-xl border border-border px-4 py-6 text-center">
         <p className="text-sm text-muted-foreground">
-          Cargá tus productos (agua, gatorade, cerveza…) y registrá cada venta con un toque.
+          Cargá los productos de tu cantina (agua, gaseosas, cerveza) para cobrarlos rápido desde
+          acá.
         </p>
         <button
           type="button"
           onClick={() => router.push('/caja/productos?configureCanteen=true')}
           className="mt-3 h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
         >
-          Configurar productos
+          Cargar productos
         </button>
       </div>
     )
@@ -181,7 +182,7 @@ export function TicketPanel({
   // el mismo que el alta de un turno y los movimientos de caja.
   const methodChips = (
     <PaymentMethodChips
-      aria-label="Método de pago"
+      aria-label="Medio de pago"
       value={method}
       onValueChange={setMethod}
       options={METHOD_OPTIONS}
@@ -217,7 +218,7 @@ export function TicketPanel({
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={handleSearchKeyDown}
-                placeholder="Buscar producto o servicio…"
+                placeholder="Buscar producto..."
                 aria-label="Buscar producto o servicio. Enter agrega el primer resultado"
                 className="pl-9"
               />
@@ -229,7 +230,7 @@ export function TicketPanel({
                 className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:h-10"
               >
                 <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                Configurar
+                Editar productos
               </button>
             )}
           </div>
@@ -268,7 +269,7 @@ export function TicketPanel({
           >
             {visible.length === 0 ? (
               <p className="px-2 py-6 text-center text-sm text-muted-foreground">
-                Ningún producto coincide con “{query}”.
+                No encontramos &quot;{query}&quot;.
               </p>
             ) : (
               visible.map((p) => {
@@ -333,9 +334,9 @@ export function TicketPanel({
             <>
               <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border py-1.5 pl-4 pr-2">
                 <TicketHeading className="text-sm font-semibold text-foreground">
-                  Ticket{' '}
+                  Venta{' '}
                   <span className="font-normal tabular-nums text-muted-foreground">
-                    · {count} {count === 1 ? 'ítem' : 'ítems'}
+                    · {count} {count === 1 ? 'producto' : 'productos'}
                   </span>
                 </TicketHeading>
                 {/* En el teléfono (`page`) "Vaciar" ya vive en la barra pegada abajo. */}
@@ -394,7 +395,7 @@ export function TicketPanel({
                         type="button"
                         onClick={() => setLines((prev) => removeLine(prev, l.productId))}
                         disabled={locked}
-                        aria-label={`Quitar ${l.name} del ticket`}
+                        aria-label={`Quitar ${l.name} de la venta`}
                         className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-red-600 disabled:opacity-40 dark:hover:text-red-400"
                       >
                         <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
@@ -462,7 +463,7 @@ export function TicketPanel({
         <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-10 -mx-4 mt-3 space-y-2 border-t border-border bg-card px-4 pb-3 pt-2.5 shadow-[0_-8px_24px_-12px_rgba(2,6,23,.25)] md:hidden">
           <div className="flex items-center justify-between gap-2">
             <p className="min-w-0 truncate text-sm text-muted-foreground">
-              {count} {count === 1 ? 'ítem' : 'ítems'} ·{' '}
+              {count} {count === 1 ? 'producto' : 'productos'} ·{' '}
               {lines.map((l) => `${l.name} ×${l.qty}`).join(', ')}
             </p>
             <button
@@ -475,7 +476,7 @@ export function TicketPanel({
             </button>
           </div>
           <fieldset>
-            <legend className="sr-only">Método de pago</legend>
+            <legend className="sr-only">Medio de pago</legend>
             {methodChips}
           </fieldset>
           {message && (

@@ -77,7 +77,7 @@ export const CotizacionPendiente: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByText(/pagá los 5 meses que faltan: .*180\.000/)).toBeInTheDocument()
     await expect(
-      canvas.getByText('Cuando se acredite el pago, el Asistente se prende solo.'),
+      canvas.getByText('Cuando se acredite el pago, el Asistente se activa solo.'),
     ).toBeInTheDocument()
     await userEvent.click(canvas.getByRole('button', { name: /Pagar .*180\.000/ }))
     await waitFor(() => expect(args.payAction).toHaveBeenCalledTimes(1))

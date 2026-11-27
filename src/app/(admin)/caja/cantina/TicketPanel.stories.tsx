@@ -44,8 +44,8 @@ export const SinProductos: Story = {
   args: { products: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/cargá tus productos/i)).toBeVisible()
-    await userEvent.click(canvas.getByRole('button', { name: 'Configurar productos' }))
+    await expect(canvas.getByText(/Cargá los productos de tu cantina/i)).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Cargar productos' }))
     await waitFor(() =>
       expect(getRouter().push).toHaveBeenCalledWith('/caja/productos?configureCanteen=true'),
     )
@@ -90,7 +90,7 @@ export const VentaMultiItem: Story = {
     const [productA, productB] = PRODUCTS
 
     // Anclado a ^: con una línea ya en el ticket, "Restar/Sumar uno a {nombre}"
-    // y "Quitar {nombre} del ticket" también matchean el nombre suelto y
+    // y "Quitar {nombre} de la venta" también matchean el nombre suelto y
     // getByRole se vuelve ambiguo. Además, con ≤6 productos cada uno aparece
     // una sola vez desde que se eliminó "Recientes".
     await userEvent.click(
@@ -133,7 +133,9 @@ export const QuitarLinea: Story = {
     await userEvent.click(canvas.getAllByRole('button', { name: new RegExp(product.name) })[0]!)
     await expect(canvas.getAllByText('×1')[0]).toBeVisible()
 
-    await userEvent.click(canvas.getByRole('button', { name: `Quitar ${product.name} del ticket` }))
+    await userEvent.click(
+      canvas.getByRole('button', { name: `Quitar ${product.name} de la venta` }),
+    )
     await expect(canvas.getByText('Buscá o tocá un producto para empezar')).toBeVisible()
   },
 }

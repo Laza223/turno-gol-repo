@@ -71,7 +71,7 @@ class BilledCourtsSyncFailed extends Error {
 }
 
 const BILLING_SYNC_ERROR =
-  'No pudimos actualizar tu facturación, así que no guardamos el cambio. Probá de nuevo en un momento.'
+  'No pudimos actualizar tu facturación, así que no guardamos el cambio. Probá de nuevo en unos segundos.'
 
 /**
  * ¿Esta operación deja más canchas prendidas de las que se facturan?
@@ -462,7 +462,7 @@ export async function uploadCourtPhotoAction(
     await putImage(key, bytes, 'image/webp')
   } catch (err) {
     captureException(err)
-    return { success: false, error: 'No pudimos subir la imagen. Probá de nuevo en un momento.' }
+    return { success: false, error: 'No pudimos subir la imagen. Probá de nuevo en unos segundos.' }
   }
 
   const url = publicUrl(key)
@@ -481,7 +481,7 @@ export async function uploadCourtPhotoAction(
       return { success: false, error: e.message }
     }
     captureException(e)
-    return { success: false, error: 'No pudimos guardar la foto. Probá de nuevo en un momento.' }
+    return { success: false, error: 'No pudimos guardar la foto. Probá de nuevo en unos segundos.' }
   }
 }
 
@@ -555,7 +555,7 @@ export async function reorderCourtPhotosAction(
     captureException(e)
     return {
       success: false,
-      error: 'No pudimos reordenar las fotos. Probá de nuevo en un momento.',
+      error: 'No pudimos reordenar las fotos. Probá de nuevo en unos segundos.',
     }
   }
 }
@@ -578,7 +578,10 @@ export async function setPublicPricesVisibilityAction(visible: boolean): Promise
     await updateTenantSettings(tenant.id, { hide_public_prices: !visible })
   } catch (e) {
     captureException(e)
-    return { success: false, error: 'No pudimos guardar el cambio. Probá de nuevo en un momento.' }
+    return {
+      success: false,
+      error: 'No pudimos guardar el cambio. Probá de nuevo en unos segundos.',
+    }
   }
   // El perfil es ISR y explorar/home salen de una caché: sin esto el cambio
   // tardaría hasta 5 minutos en verse.

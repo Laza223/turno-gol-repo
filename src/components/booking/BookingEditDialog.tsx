@@ -92,7 +92,7 @@ export function BookingEditDialog({
       } catch (err) {
         Sentry.captureException(err)
         if (!alive) return
-        setDetailError('No pudimos cargar los datos de la reserva.')
+        setDetailError('No pudimos cargar los datos del turno. Cerrá y probá de nuevo.')
       }
     })()
     return () => {
@@ -173,7 +173,7 @@ export function BookingEditDialog({
     if (isGuest) {
       const trimmedName = name.trim()
       if (!trimmedName) {
-        setError('Poné un nombre.')
+        setError('Ingresá un nombre.')
         return
       }
       input.guestName = trimmedName
@@ -215,7 +215,7 @@ export function BookingEditDialog({
       } catch (err) {
         Sentry.captureException(err)
         startTransition(() =>
-          setError('No pudimos guardar los cambios. Revisá tu conexión e intentá de nuevo.'),
+          setError('No pudimos guardar los cambios. Revisá tu internet y probá de nuevo.'),
         )
       }
     })
@@ -306,7 +306,7 @@ export function BookingEditDialog({
                   itemClassName={choiceChipClass}
                   options={[
                     { value: 'priced', label: 'Tiene precio' },
-                    { value: 'free', label: 'No se cobra' },
+                    { value: 'free', label: 'Sin costo' },
                   ]}
                 />
                 {priceMode === 'priced' && (

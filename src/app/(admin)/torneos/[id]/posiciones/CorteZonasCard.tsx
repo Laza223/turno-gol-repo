@@ -107,7 +107,7 @@ export function CorteZonasCard({
             >
               <Lock className="h-4 w-4" aria-hidden="true" />
               Cerrar zonas y sortear
-              <span className="sr-only">— solo el dueño puede hacerlo</span>
+              <span className="sr-only">, solo el dueño puede hacerlo</span>
             </span>
           ))}
       </div>

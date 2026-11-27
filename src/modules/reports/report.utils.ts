@@ -28,7 +28,7 @@ export function computeDelta(
 const METHOD_LABELS: Record<MethodReport['method'], string> = {
   cash: 'Efectivo',
   transfer: 'Transferencia',
-  mercadopago: 'MercadoPago',
+  mercadopago: 'Mercado Pago',
   other: 'Otro',
 }
 

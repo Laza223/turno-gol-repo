@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils'
 import type { BookingKind } from './types'
 
 const TYPES: Array<{ value: BookingKind; title: string; hint: string; icon: LucideIcon }> = [
-  { value: 'turno', title: 'Turno', hint: 'Una hora de cancha para alguien', icon: Clock },
+  { value: 'turno', title: 'Turno', hint: 'Una reserva suelta de 1 hora', icon: Clock },
   {
     value: 'fijo',
     title: 'Turno fijo',
@@ -24,7 +24,7 @@ const TYPES: Array<{ value: BookingKind; title: string; hint: string; icon: Luci
   {
     value: 'bloqueo',
     title: 'Bloquear cancha',
-    hint: 'Nadie puede usarla: mantenimiento, cierre',
+    hint: 'Dejar sin uso: lluvia, mantenimiento o cierre',
     icon: Ban,
   },
 ]

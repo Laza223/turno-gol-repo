@@ -90,7 +90,7 @@ function groups({
           href: '/settings/reservas#sena',
         },
         {
-          label: 'MercadoPago para cobrar la seña',
+          label: 'Mercado Pago para cobrar la seña',
           effect: 'Donde te entra esa plata.',
           value: problems ? 'Sin conectar' : 'Conectado',
           icon: Wallet,
@@ -113,7 +113,7 @@ function groups({
           href: '/settings/facturacion',
         },
         {
-          label: 'Cuenta de MercadoPago con la que pagás',
+          label: 'Cuenta de Mercado Pago con la que pagás',
           effect: 'A qué cuenta te cobramos.',
           icon: CreditCard,
           href: '/settings/facturacion#cuenta-mp',
@@ -201,7 +201,7 @@ export const Problemas: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(
-      canvas.getByRole('link', { name: /MercadoPago para cobrar.*Sin conectar/ }),
+      canvas.getByRole('link', { name: /Mercado Pago para cobrar.*Sin conectar/ }),
     ).toBeVisible()
     await expect(
       canvas.getByRole('link', { name: /Cuota y pagos.*Te diste de baja/ }),

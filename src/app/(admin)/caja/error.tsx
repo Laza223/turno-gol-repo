@@ -19,7 +19,7 @@ export default function CajaError({
     <ErrorState
       variant="contained"
       title="No pudimos cargar la caja"
-      description="Ocurrió un error al obtener los datos de la caja. El equipo ya fue notificado. Probá recargar."
+      description="Hubo un problema al cargar la caja. Probá recargar la pantalla."
       digest={error.digest}
       onRetry={reset}
     />

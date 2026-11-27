@@ -19,7 +19,7 @@ export default function CanchasError({
     <ErrorState
       variant="contained"
       title="No pudimos cargar las canchas"
-      description="Falló la lectura de la lista y ya nos llegó el aviso. Tus canchas y tus precios no se tocaron: tocá «Reintentar»."
+      description='Hubo un problema al cargar tus canchas. Tus datos y precios siguen intactos: tocá "Reintentar".'
       digest={error.digest}
       onRetry={reset}
     />

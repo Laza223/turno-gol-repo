@@ -79,7 +79,7 @@ describe('SlotCancelDialog — aviso de seña (getRefundOutcome inyectado)', () 
   it('sin elegir quién cancela, dentro de plazo: muestra los dos resultados con monto', () => {
     renderDialog({})
     expect(screen.getByRole('dialog')).toHaveTextContent(
-      'Si cancela el jugador: la seña de $ 4.500 queda para devolver (dentro del plazo de 12h). Si cancela el complejo: la seña de $ 4.500 queda para devolver.',
+      'Si cancela el jugador: la seña de $ 4.500 queda para devolver (dentro del plazo de 12 h). Si cancela el complejo: la seña de $ 4.500 queda para devolver.',
     )
   })
 
@@ -91,7 +91,7 @@ describe('SlotCancelDialog — aviso de seña (getRefundOutcome inyectado)', () 
     })
     renderDialog({ gridBooking })
     expect(screen.getByRole('dialog')).toHaveTextContent(
-      'Si cancela el jugador: la seña de $ 4.500 queda para el complejo (fuera del plazo de 12h). Si cancela el complejo: la seña de $ 4.500 queda para devolver.',
+      'Si cancela el jugador: la seña de $ 4.500 queda para el complejo (fuera del plazo de 12 h). Si cancela el complejo: la seña de $ 4.500 queda para devolver.',
     )
   })
 
@@ -103,15 +103,15 @@ describe('SlotCancelDialog — aviso de seña (getRefundOutcome inyectado)', () 
     renderDialog({ gridBooking })
     fireEvent.click(screen.getByRole('radio', { name: /El jugador pidió cancelar/i }))
     expect(screen.getByRole('dialog')).toHaveTextContent(
-      'Fuera del plazo de cancelación (12h): la seña de $ 4.500 queda para el complejo (sin reembolso).',
+      'Fuera de plazo (menos de 12 h antes): la seña de $ 4.500 queda para el complejo (no se devuelve).',
     )
   })
 
-  it('complejo, canal mercadopago: pide devolver desde MercadoPago', () => {
+  it('complejo, canal mercadopago: pide devolver desde Mercado Pago', () => {
     renderDialog({})
     fireEvent.click(screen.getByRole('radio', { name: /El complejo necesita cancelar/i }))
     expect(screen.getByRole('dialog')).toHaveTextContent(
-      'La seña de $ 4.500 queda para devolver: hacelo vos desde tu MercadoPago (no es automático) — si la devolvés ahí, el sistema la marca sola.',
+      'La seña de $ 4.500 queda para devolver. Tenés que devolverla vos desde tu cuenta de Mercado Pago (no es automático); apenas lo hagas, acá se marca sola como devuelta.',
     )
   })
 
@@ -123,7 +123,7 @@ describe('SlotCancelDialog — aviso de seña (getRefundOutcome inyectado)', () 
     renderDialog({ gridBooking, hasEnded: true })
     fireEvent.click(screen.getByRole('radio', { name: /El complejo necesita cancelar/i }))
     expect(screen.getByRole('dialog')).toHaveTextContent(
-      'El turno ya se jugó: la seña de $ 4.500 queda para el complejo (sin reembolso).',
+      'El turno ya se jugó: la seña de $ 4.500 queda para el complejo (no se devuelve).',
     )
     expect(screen.getByRole('dialog')).not.toHaveTextContent('queda para devolver')
   })

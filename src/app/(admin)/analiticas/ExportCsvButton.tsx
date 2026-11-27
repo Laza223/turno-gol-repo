@@ -21,7 +21,7 @@ export function ExportCsvButton({ from, to, className }: ExportCsvButtonProps) {
     try {
       const res = await fetch(`/api/reports/revenue?from=${from}&to=${to}&format=csv`)
       if (!res.ok) {
-        let message = 'No se pudo descargar el reporte.'
+        let message = 'No pudimos descargar el reporte. Probá de nuevo.'
         try {
           const data = (await res.json()) as { error?: { message?: string } }
           if (data.error?.message) {
@@ -31,7 +31,7 @@ export function ExportCsvButton({ from, to, className }: ExportCsvButtonProps) {
           // Si no vino JSON, usar mensaje genérico
         }
         toast({
-          title: 'Error al exportar',
+          title: 'No pudimos descargar el archivo',
           description: message,
           variant: 'destructive',
         })
@@ -50,8 +50,8 @@ export function ExportCsvButton({ from, to, className }: ExportCsvButtonProps) {
       document.body.removeChild(a)
     } catch {
       toast({
-        title: 'Error al exportar',
-        description: 'Hubo un error de conexión al descargar el archivo.',
+        title: 'No pudimos descargar el archivo',
+        description: 'Revisá tu internet y probá de nuevo.',
         variant: 'destructive',
       })
     } finally {
@@ -68,7 +68,7 @@ export function ExportCsvButton({ from, to, className }: ExportCsvButtonProps) {
       className={cn('gap-1.5', className)}
     >
       {!downloading && <Download className="h-4 w-4" aria-hidden="true" />}
-      Exportar CSV
+      Descargar CSV
     </Button>
   )
 }

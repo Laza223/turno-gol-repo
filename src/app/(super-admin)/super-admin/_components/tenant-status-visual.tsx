@@ -44,7 +44,9 @@ const TENANT_STATUS_VISUALS: Record<TenantStatus, StatusBadgeVisual> = {
   canceled: { icon: XCircle, label: 'Cancelado', tone: 'neutral' },
   churned: { icon: TrendingDown, label: 'Perdido', tone: 'destructive' },
   deleted: { icon: Trash2, label: 'Eliminado', tone: 'neutral' },
-  free: { icon: Gift, label: 'Gratis', tone: 'info' },
+  // Prueba vencida, mora terminada o baja al final del período. `free` es el alias viejo.
+  trial_expired: { icon: Clock, label: 'Plan no activo', tone: 'warning' },
+  free: { icon: Gift, label: 'Gratis (viejo)', tone: 'info' },
 }
 
 /**

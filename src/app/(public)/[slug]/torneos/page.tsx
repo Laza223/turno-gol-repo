@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import { ChevronLeft, ChevronRight, Sparkles, Trophy } from 'lucide-react'
 import { getPublicTenant } from '@/modules/tenants/public.service'
-import { isPublicPortalIndexable, isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
+import { isPublicPortalIndexable, canTakeOnlineBookings } from '@/modules/tenants/tenant.lifecycle'
 import { listPublicTournaments } from '@/modules/tournaments/tournament-public.service'
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
 import { buildBreadcrumbList } from '@/lib/seo/structured-data'
@@ -22,7 +22,7 @@ type Props = { params: Promise<{ slug: string }> }
 export default async function TorneosPublicosPage(props: Props) {
   const { slug } = await props.params
   const tenant = await getPublicTenant(slug)
-  if (!tenant || !isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd)) notFound()
+  if (!tenant || !canTakeOnlineBookings(tenant.status, tenant.canceledPeriodEnd)) notFound()
 
   // El flag ya lo chequeó el layout (404 si está apagado), así que un [] acá
   // significa "tiene el módulo y todavía no publicó nada".

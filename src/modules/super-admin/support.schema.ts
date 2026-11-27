@@ -45,6 +45,7 @@ export const forceStatusInputSchema = z.object({
     'churned',
     'deleted',
     'free',
+    'trial_expired',
   ]),
   confirmName: boundedText(120).optional(),
 })

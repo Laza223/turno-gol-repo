@@ -69,7 +69,7 @@ beforeEach(() => {
 })
 
 describe('onPaymentApproved — recovery desde estados de dunning (ENS-20)', () => {
-  it.each(['suspended', 'blocked', 'churned', 'canceled'])(
+  it.each(['suspended', 'blocked', 'churned', 'canceled', 'trial_expired', 'free'])(
     '%s → active vía transitionToActiveFromAny (nunca no-op), con el preapproval del pago matcheando el vigente',
     async (status) => {
       const tx = makeTx(status, 'mp-1')

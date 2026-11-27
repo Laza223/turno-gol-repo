@@ -115,17 +115,6 @@ describe('GET /api/public/story', () => {
     expect(captureException).toHaveBeenCalledTimes(1)
   })
 
-  it('en gratis no baja el logo del complejo aunque tenga uno', async () => {
-    vi.mocked(getPublicTenant).mockResolvedValue({
-      ...TENANT,
-      status: 'free',
-      logoUrl: 'https://img.turnogol.app/t1/logo-1.webp',
-    } as never)
-    await GET(req(`?slug=m10&date=${TODAY}`))
-    expect(loadTenantLogo).not.toHaveBeenCalled()
-    expect(vi.mocked(renderStoryPng).mock.calls[0][1]).toBeNull()
-  })
-
   it('sin logo cargado la placa sale con el de TurnoGol solo', async () => {
     vi.mocked(getPublicTenant).mockResolvedValue({ ...TENANT, logoUrl: null } as never)
     await GET(req(`?slug=m10&date=${TODAY}`))

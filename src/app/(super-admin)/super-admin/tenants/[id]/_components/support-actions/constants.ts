@@ -61,7 +61,8 @@ export const STATUS_LABELS: Record<TenantStatus, string> = {
   canceled: 'Cancelado',
   churned: 'Churned',
   deleted: 'Eliminado',
-  free: 'Gratis',
+  trial_expired: 'Plan no activo',
+  free: 'Gratis (viejo)',
 }
 
 export const inputCls =

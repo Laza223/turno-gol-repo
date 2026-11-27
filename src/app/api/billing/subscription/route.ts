@@ -24,5 +24,5 @@ export const GET = withTenant(
       throw err
     }
   },
-  { roles: ['admin'], allowFree: true },
+  { roles: ['admin'] },
 )

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 
@@ -32,7 +32,7 @@ function gitFiles(...patterns: string[]): string[] {
     encoding: 'utf8',
   })
     .split('\n')
-    .filter(Boolean)
+    .filter((f) => f && existsSync(path.join(repoRoot, f)))
 }
 
 function isClientModule(file: string): boolean {

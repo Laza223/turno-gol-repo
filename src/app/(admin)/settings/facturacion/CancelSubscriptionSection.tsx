@@ -48,8 +48,8 @@ function formatDate(iso: string): string {
  * (fetch directo al route handler) + `ConfirmDialog` con motivo obligatorio
  * (mismo patrón que `BanPlayerControls`/`BookingActions`).
  *
- * Freemium (2026-11-08): al vencer lo pagado, la cuenta baja al plan gratis
- * (`transitionToFree`, origen `cancel_period_ended`) y no se borra. Borrar del
+ * Al vencer lo pagado, la cuenta pasa a `trial_expired` (plan no activo,
+ * `transitionToExpired`, origen `cancel_period_ended`) y no se borra. Borrar del
  * todo es un pedido por mail a privacidad@, a mano.
  */
 export function CancelSubscriptionSection({ status, accessUntil, context = 'settings' }: Props) {
@@ -77,17 +77,17 @@ export function CancelSubscriptionSection({ status, accessUntil, context = 'sett
   if (!CANCELABLE.has(status)) return null
 
   // Hasta el fin del período el panel y la página siguen como siempre
-  // (`(admin)/layout.tsx` saca a `canceled` del bloqueo y `isPublicPortalOpen`
-  // deja la página abierta); el barrido diario lo pasa al plan gratis cuando
+  // (`(admin)/layout.tsx` saca a `canceled` del bloqueo y `isPublicProfileVisible`
+  // deja la página abierta); el barrido diario lo pasa a plan no activo cuando
   // vence (`dunning-retry.worker.ts`).
   const intro =
     context === 'reactivar'
-      ? '¿No querés seguir pagando? Podés dar de baja la suscripción. Tu complejo pasa al plan gratis y tus datos quedan guardados por si volvés.'
-      : `Seguís usando todo hasta el ${formatDate(accessUntil)}, cuando termina lo que ya pagaste. Después pasás al plan gratis. Seguís anotando tus turnos y tus jugadores te siguen reservando online.`
+      ? '¿No querés seguir pagando? Podés dar de baja la suscripción. Tu complejo queda con el plan no activo y tus datos quedan guardados por si volvés.'
+      : `Seguís usando todo hasta el ${formatDate(accessUntil)}, cuando termina lo que ya pagaste. Después el plan queda no activo: la ficha se ve sin horarios y las reservas online se pausan.`
 
   const confirmDescription =
     context === 'reactivar'
-      ? 'Tu complejo pasa al plan gratis. Tus fijos, tu caja y tus jugadores quedan guardados para cuando vuelvas.'
+      ? 'Tu complejo queda con el plan no activo. Tus fijos, tu caja y tus jugadores quedan guardados para cuando vuelvas.'
       : undefined
 
   const consequences =
@@ -96,7 +96,7 @@ export function CancelSubscriptionSection({ status, accessUntil, context = 'sett
       : [
           'Dejamos de cobrarte la cuota.',
           `Seguís usando todo hasta el ${formatDate(accessUntil)}, y tu página sigue tomando reservas.`,
-          'Después pasás al plan gratis. Seguís anotando tus turnos, pero los cobros, la caja y los fijos dejan de estar.',
+          'Después el plan queda no activo: el panel pasa a solo lectura y las reservas online se pausan.',
           'Tus datos quedan guardados para cuando vuelvas.',
         ]
 

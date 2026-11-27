@@ -1,5 +1,4 @@
 import { and, eq, sql, type SQL } from 'drizzle-orm'
-import { isOnlineBooking, maskGridBookingForFreePlan } from '@/lib/booking/free-plan-mask'
 import type { DbTx } from '@/shared/db/client'
 import { bookings, players } from '@/shared/db/schema'
 import {
@@ -501,15 +500,6 @@ export type DayGridBooking = GridBooking & {
   endsAt: Date
 }
 
-export type GridBookingsOptions = {
-  /**
-   * Plan gratis (freemium v2): todo turno se ve con su nombre y sin plata
-   * (`maskGridBookingForFreePlan`). Sin cobros: la caja es del plan pago, así que
-   * no hay saldo pendiente.
-   */
-  freePlan?: boolean
-}
-
 /**
  * Núcleo compartido de `listDayGridBookings`/`listUnpaidGridBookingsBefore`:
  * el SELECT de turnos + el saldo (misma `sumBookingChargesByBooking` +
@@ -520,7 +510,6 @@ async function selectGridBookingsWithBalance(
   tenantId: string,
   extraWhere: SQL,
   tx: DbTx,
-  opts: GridBookingsOptions = {},
 ): Promise<DayGridBooking[]> {
   const rows = await tx
     .select({
@@ -557,51 +546,41 @@ async function selectGridBookingsWithBalance(
     tx,
   )
 
-  return rows
-    .map((r) => {
-      const sum = charges.get(r.id)
-      const { totalPaid, pending, writtenOff } = summarizeBookingCharges({
-        priceSnapshot: r.priceSnapshot,
-        depositAmount: r.depositAmount,
-        depositStatus: r.depositStatus,
-        chargesTotal: sum?.total ?? 0,
-        writtenOff: sum?.writtenOff ?? 0,
-      })
-      return {
-        id: r.id,
-        courtId: r.courtId,
-        date: (r.date as Date).toISOString().slice(0, 10),
-        timeStart: r.timeStart.slice(0, 5),
-        timeEnd: r.timeEnd.slice(0, 5),
-        startsAt: r.startsAt,
-        endsAt: r.endsAt,
-        status: r.status as BookingStatus,
-        type: r.type as BookingType,
-        tournamentId: r.tournamentId ?? null,
-        guestName: r.guestName ?? null,
-        playerFirstName: r.playerFirstName ?? null,
-        playerLastName: r.playerLastName ?? null,
-        priceSnapshot: r.priceSnapshot,
-        paymentMethod: r.paymentMethod as PaymentMethodValue | null,
-        depositStatus: r.depositStatus as DepositStatus,
-        depositAmount: r.depositAmount,
-        createdAt: r.createdAt,
-        totalPaid,
-        pending,
-        writtenOff,
-        team1Paid: sum?.team1 ?? 0,
-        team2Paid: sum?.team2 ?? 0,
-      }
+  return rows.map((r) => {
+    const sum = charges.get(r.id)
+    const { totalPaid, pending, writtenOff } = summarizeBookingCharges({
+      priceSnapshot: r.priceSnapshot,
+      depositAmount: r.depositAmount,
+      depositStatus: r.depositStatus,
+      chargesTotal: sum?.total ?? 0,
+      writtenOff: sum?.writtenOff ?? 0,
     })
-    .map((row, i) =>
-      opts.freePlan
-        ? {
-            ...maskGridBookingForFreePlan(row, isOnlineBooking(rows[i]!)),
-            team1Paid: 0,
-            team2Paid: 0,
-          }
-        : row,
-    )
+    return {
+      id: r.id,
+      courtId: r.courtId,
+      date: (r.date as Date).toISOString().slice(0, 10),
+      timeStart: r.timeStart.slice(0, 5),
+      timeEnd: r.timeEnd.slice(0, 5),
+      startsAt: r.startsAt,
+      endsAt: r.endsAt,
+      status: r.status as BookingStatus,
+      type: r.type as BookingType,
+      tournamentId: r.tournamentId ?? null,
+      guestName: r.guestName ?? null,
+      playerFirstName: r.playerFirstName ?? null,
+      playerLastName: r.playerLastName ?? null,
+      priceSnapshot: r.priceSnapshot,
+      paymentMethod: r.paymentMethod as PaymentMethodValue | null,
+      depositStatus: r.depositStatus as DepositStatus,
+      depositAmount: r.depositAmount,
+      createdAt: r.createdAt,
+      totalPaid,
+      pending,
+      writtenOff,
+      team1Paid: sum?.team1 ?? 0,
+      team2Paid: sum?.team2 ?? 0,
+    }
+  })
 }
 
 /**
@@ -618,13 +597,11 @@ export async function listDayGridBookings(
   tenantId: string,
   date: string,
   tx: DbTx,
-  opts: GridBookingsOptions = {},
 ): Promise<DayGridBooking[]> {
   return selectGridBookingsWithBalance(
     tenantId,
     sql`${bookings.date} = ${date}::date AND ${bookings.status} IN ('confirmed', 'pending_payment', 'completed', 'no_show')`,
     tx,
-    opts,
   )
 }
 
@@ -639,13 +616,11 @@ export async function listCourtRangeGridBookings(
   from: string,
   to: string,
   tx: DbTx,
-  opts: GridBookingsOptions = {},
 ): Promise<DayGridBooking[]> {
   return selectGridBookingsWithBalance(
     tenantId,
     sql`${bookings.courtId} = ${courtId}::uuid AND ${bookings.date} BETWEEN ${from}::date AND ${to}::date AND ${bookings.status} IN ('confirmed', 'pending_payment', 'completed', 'no_show')`,
     tx,
-    opts,
   )
 }
 

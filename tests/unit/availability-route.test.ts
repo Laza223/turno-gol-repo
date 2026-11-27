@@ -44,7 +44,7 @@ describe('GET /api/public/availability — tenant status gating', () => {
 
   /**
    * Baja voluntaria (doc4 §2): el complejo sigue operando hasta el fin del
-   * período que pagó. El perfil público ya lo respetaba vía `isPublicPortalOpen`,
+   * período que pagó. El perfil público ya lo respetaba vía `isPublicProfileVisible`,
    * pero esta ruta seguía con el gate viejo por status pelado — así que el
    * perfil se veía con precios y la grilla de disponibilidad adentro devolvía
    * 404, que la UI mostraba como "revisá tu conexión". Encontrado en producción.

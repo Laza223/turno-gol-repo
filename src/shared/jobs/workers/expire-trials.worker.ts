@@ -4,7 +4,7 @@ import { getWorkerDb, getWorkerSql } from '@/shared/db/client'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
 import { notifyOwnerPlanEvent } from '@/modules/notifications/push.service'
 import { SUBSCRIBED_TRIAL_GRACE_DAYS, TRIAL_ENDING_WARNING_DAYS } from '@/shared/constants'
-import { transitionToFree, type FreeDowngradeOrigin } from '@/modules/billing/lifecycle.service'
+import { transitionToExpired } from '@/modules/billing/lifecycle.service'
 import { CRON_WORK_OPTIONS, QUEUE_EXPIRE_TRIALS } from '../definitions'
 import { logger } from '@/shared/lib/logger'
 
@@ -140,55 +140,10 @@ async function warnEndingTrials(): Promise<void> {
 }
 
 /**
- * Backfill del freemium (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md,
- * condición C4 del ADR: lo hace el worker, no la migración). Los complejos que el
- * lifecycle anterior dejó sin pagar pasan al plan gratis, SIN mail:
- *
- * - `suspended` sin `dunning_started_at`: la prueba vencida en solo lectura.
- * - `blocked` sin `scheduled_deletion_at`: prueba vencida o mora que terminó
- *   bloqueada. Los `blocked` con borrado agendado (baja voluntaria vieja) se
- *   quedan como están: eligieron irse con las reglas de entonces.
- *
- * Cuando ya no quede ninguno, la query no devuelve filas y esto es un no-op.
- */
-async function moveLegacyUnpaidToFree(): Promise<void> {
-  const readSql = getWorkerSql()
-  const candidates = await readSql<{ id: string; status: 'suspended' | 'blocked' }[]>`
-    SELECT t.id, t.status::text AS status
-    FROM tenants t
-    JOIN tenant_subscriptions ts ON ts.tenant_id = t.id
-    WHERE (t.status = 'suspended' AND ts.status = 'suspended' AND ts.dunning_started_at IS NULL)
-       OR (t.status = 'blocked' AND ts.status = 'blocked' AND ts.scheduled_deletion_at IS NULL)
-  `
-  if (candidates.length === 0) return
-
-  const db = getWorkerDb()
-  for (const t of candidates) {
-    const origin: FreeDowngradeOrigin =
-      t.status === 'suspended' ? 'legacy_trial_read_only' : 'legacy_blocked'
-    try {
-      await db.transaction((tx) => transitionToFree(t.id, origin, tx))
-      logger.info('legacy unpaid tenant moved to free', {
-        module: 'expire-trials',
-        tenantId: t.id,
-        origin,
-      })
-    } catch (err) {
-      logger.error('failed legacy move to free', {
-        module: 'expire-trials',
-        tenantId: t.id,
-        error: err instanceof Error ? err.message : String(err),
-      })
-    }
-  }
-}
-
-/**
- * Pasa al plan gratis (`free`) los tenants trialing con trial_ends_at vencido y
- * sincroniza su tenant_subscriptions + audit log (`transitionToFree`). Hasta
- * 2026-10-22 los pasaba a `blocked`, después a solo lectura; desde el freemium
- * siguen en el mapa con el plan gratis
- * (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
+ * Pasa a `trial_expired` los tenants trialing con trial_ends_at vencido y
+ * sincroniza su tenant_subscriptions + audit log (`transitionToExpired`): ficha
+ * pública sin reservas y panel en solo lectura
+ * (docs/decisions/2026-11-27-prueba-30-dias-y-precios.md).
  *
  * La lectura de candidatos corre en el pool worker (BYPASSRLS, cross-tenant —
  * Fable 5 P0, no scopeable a un solo app.current_tenant_id). Cada tenant abre
@@ -202,12 +157,9 @@ async function moveLegacyUnpaidToFree(): Promise<void> {
  * - Avisa primero a los que están por vencer (`warnEndingTrials`): si expirara
  *   primero, un complejo que cruzó la línea entre dos corridas quedaría en
  *   solo lectura sin haber recibido nunca el aviso.
- * - El backfill del lifecycle anterior (`moveLegacyUnpaidToFree`) no depende
- *   de las otras dos fases.
  */
 export async function runExpireTrials(): Promise<void> {
   await warnEndingTrials()
-  await moveLegacyUnpaidToFree()
 
   const readSql = getWorkerSql()
   // `owner_name` por LATERAL, igual que en `warnEndingTrials`: evita un SELECT
@@ -256,10 +208,10 @@ export async function runExpireTrials(): Promise<void> {
         `)
         if ((fresh as unknown as Array<{ status: string }>)[0]?.status !== 'trialing') return false
 
-        await transitionToFree(t.id, 'trial_expired', tx)
+        await transitionToExpired(t.id, 'trial_expired', tx)
 
-        // doc7 Flujo 7: día 31, el complejo se entera de que la prueba terminó
-        // y de que sigue en TurnoGol con el plan gratis.
+        // doc7 Flujo 7: el complejo se entera de que la prueba terminó y de que
+        // sus datos y su ficha siguen en TurnoGol.
         await enqueueTenantOwnerNotification(
           {
             tenantId: t.id,
@@ -276,7 +228,7 @@ export async function runExpireTrials(): Promise<void> {
       })
       // La prueba vence una sola vez por complejo: `dedupeId` fijo.
       if (expired) await notifyOwnerPlanEvent(t.id, { event: 'trial_expired' }, 'expired')
-      logger.info('tenant trial expired, now on free plan', {
+      logger.info('tenant trial expired', {
         module: 'expire-trials',
         tenantId: t.id,
         tenantName: t.name,

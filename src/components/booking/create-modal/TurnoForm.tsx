@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import * as Sentry from '@sentry/nextjs'
-import { useRouter } from 'next/navigation'
 import { toast } from '@/hooks/use-toast'
 import { formatArs, formatDateLong } from '@/lib/format'
 import { Label } from '@/components/ui/label'
@@ -20,10 +19,6 @@ import type { ChargeChoice, DepositMethod, TypeFormProps } from './types'
 
 /**
  * Turno — una hora de cancha para alguien: `spontaneous`, 60 min fijo.
- *
- * En el plan gratis (freemium v2, docs/decisions/2026-11-15-freemium-corte-v2.md)
- * se anota quién juega y nada más: sin precio, cobro ni nota. El server lo
- * valida igual (`freePlanBookingError`) y guarda el turno en $0.
  */
 export function TurnoForm({
   slot,
@@ -37,9 +32,7 @@ export function TurnoForm({
   onClose,
   onSuccess,
   trackConfirmed,
-  freePlan = false,
-}: TypeFormProps & { freePlan?: boolean }) {
-  const router = useRouter()
+}: TypeFormProps) {
   const [timeStart, setTimeStart] = useState(slot.timeStart)
   const timeEnd = endLabelFromMins(hhmmToMins(timeStart) + 60)
 
@@ -65,7 +58,7 @@ export function TurnoForm({
   const [manualPriceCents, setManualPriceCents] = useState<number | null>(null)
   const [priceEditing, setPriceEditing] = useState(gridPrice == null)
   const effectivePrice = manualPriceCents ?? gridPrice
-  const priceMissing = !freePlan && effectivePrice == null
+  const priceMissing = effectivePrice == null
 
   const [chargeChoice, setChargeChoice] = useState<ChargeChoice>('none')
   const [chargeMethod, setChargeMethod] = useState<DepositMethod | null>(null)
@@ -119,11 +112,7 @@ export function TurnoForm({
       type: 'spontaneous' as const,
       ...(playerId ? { playerId } : { guestName: trimmedName }),
       ...(!playerId && trimmedPhone ? { guestPhone: trimmedPhone } : {}),
-      ...(freePlan
-        ? { priceOverride: 0 }
-        : manualPriceCents != null
-          ? { priceOverride: manualPriceCents }
-          : {}),
+      ...(manualPriceCents != null ? { priceOverride: manualPriceCents } : {}),
       ...(chargeChoice !== 'none' && chargeMethod && chargeAmount
         ? {
             depositMethod: chargeMethod,
@@ -145,25 +134,11 @@ export function TurnoForm({
           return
         }
         trackConfirmed({ withPlayer: !!playerId, withDeposit: chargeChoice !== 'none' })
-        toast(
-          result.looksLikeFijo
-            ? {
-                // "¿Es un fijo?" (freemium v2): tercera semana seguida del mismo
-                // nombre a la misma hora. Con el plan, el fijo se carga solo.
-                title: 'Turno agendado',
-                description: `Es la tercera semana seguida de ${trimmedName} a las ${timeStart}. ¿Es un fijo? Con el plan se carga solo.`,
-                variant: 'success',
-                action: {
-                  label: 'Ver el plan',
-                  onClick: () => router.push('/reactivar'),
-                },
-              }
-            : {
-                title: 'Turno agendado',
-                description: `${slot.courtName} · ${timeStart}–${timeEnd}`,
-                variant: 'success',
-              },
-        )
+        toast({
+          title: 'Turno agendado',
+          description: `${slot.courtName} · ${timeStart}–${timeEnd}`,
+          variant: 'success',
+        })
         onSuccess(result.booking)
       } catch (err) {
         Sentry.captureException(err)
@@ -185,8 +160,6 @@ export function TurnoForm({
             ref={nameInputRef}
             idBase="turno-contacto"
             nameLabel="¿A nombre de quién?"
-            // Gratis: no se busca jugador (la ficha de jugadores es del plan).
-            {...(freePlan ? { namePlaceholder: 'Ej: Juan Pérez' } : {})}
             name={name}
             playerId={playerId}
             results={results}
@@ -230,83 +203,81 @@ export function TurnoForm({
           )}
         </section>
 
-        {!freePlan && (
-          <section className="space-y-3">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Precio y cobro
-            </h4>
-            {gridPrice == null ? (
-              <div className="space-y-1.5">
-                <Label htmlFor="turno-precio">Precio del turno</Label>
-                <p className="text-xs text-muted-foreground">
-                  Este horario no tiene precio cargado. Ingresalo para seguir.
-                </p>
-                <MoneyInput
-                  id="turno-precio"
-                  valueCents={manualPriceCents}
-                  onValueChange={setManualPriceCents}
-                  minCents={1}
-                  required
-                />
-              </div>
-            ) : priceEditing ? (
-              <div className="space-y-1.5">
-                <Label htmlFor="turno-precio">Precio del turno</Label>
-                <MoneyInput
-                  id="turno-precio"
-                  valueCents={manualPriceCents ?? gridPrice}
-                  onValueChange={setManualPriceCents}
-                  minCents={0}
-                />
-              </div>
-            ) : (
-              <p className="flex items-center gap-2 text-sm">
-                <span className="font-semibold tabular-nums text-foreground">
-                  {formatArs(gridPrice)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setPriceEditing(true)}
-                  className="cursor-pointer text-xs font-medium text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                >
-                  Cambiar
-                </button>
+        <section className="space-y-3">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Precio y cobro
+          </h4>
+          {gridPrice == null ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="turno-precio">Precio del turno</Label>
+              <p className="text-xs text-muted-foreground">
+                Este horario no tiene precio cargado. Ingresalo para seguir.
               </p>
-            )}
-
-            <ChargeSection
-              totalCents={effectivePrice ?? 0}
-              choice={chargeChoice}
-              method={chargeMethod}
-              amountCents={chargeAmount}
-              onChoiceChange={setChargeChoice}
-              onMethodChange={setChargeMethod}
-              onAmountChange={setChargeAmount}
-            />
-
-            {notesOpen ? (
-              <div className="space-y-1.5">
-                <Label htmlFor="turno-notas">Nota</Label>
-                <textarea
-                  id="turno-notas"
-                  rows={2}
-                  maxLength={1000}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full resize-none rounded-lg border border-border bg-card px-3.5 py-2 text-base text-foreground md:text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-                />
-              </div>
-            ) : (
+              <MoneyInput
+                id="turno-precio"
+                valueCents={manualPriceCents}
+                onValueChange={setManualPriceCents}
+                minCents={1}
+                required
+              />
+            </div>
+          ) : priceEditing ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="turno-precio">Precio del turno</Label>
+              <MoneyInput
+                id="turno-precio"
+                valueCents={manualPriceCents ?? gridPrice}
+                onValueChange={setManualPriceCents}
+                minCents={0}
+              />
+            </div>
+          ) : (
+            <p className="flex items-center gap-2 text-sm">
+              <span className="font-semibold tabular-nums text-foreground">
+                {formatArs(gridPrice)}
+              </span>
               <button
                 type="button"
-                onClick={() => setNotesOpen(true)}
+                onClick={() => setPriceEditing(true)}
                 className="cursor-pointer text-xs font-medium text-muted-foreground underline underline-offset-2 hover:text-foreground"
               >
-                Agregar nota
+                Cambiar
               </button>
-            )}
-          </section>
-        )}
+            </p>
+          )}
+
+          <ChargeSection
+            totalCents={effectivePrice ?? 0}
+            choice={chargeChoice}
+            method={chargeMethod}
+            amountCents={chargeAmount}
+            onChoiceChange={setChargeChoice}
+            onMethodChange={setChargeMethod}
+            onAmountChange={setChargeAmount}
+          />
+
+          {notesOpen ? (
+            <div className="space-y-1.5">
+              <Label htmlFor="turno-notas">Nota</Label>
+              <textarea
+                id="turno-notas"
+                rows={2}
+                maxLength={1000}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="w-full resize-none rounded-lg border border-border bg-card px-3.5 py-2 text-base text-foreground md:text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setNotesOpen(true)}
+              className="cursor-pointer text-xs font-medium text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            >
+              Agregar nota
+            </button>
+          )}
+        </section>
       </div>
 
       <Summary
@@ -316,7 +287,6 @@ export function TurnoForm({
         timeEnd={timeEnd}
         durationLabel="1 h"
         totalCents={effectivePrice}
-        hideMoney={freePlan}
         collectedCents={chargeChoice !== 'none' ? (chargeAmount ?? 0) : 0}
         primaryLabel="Agendar turno"
         onCancel={onClose}

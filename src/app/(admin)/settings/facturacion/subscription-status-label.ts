@@ -13,5 +13,6 @@ export const SUBSCRIPTION_STATUS_LABEL: Record<SubscriptionStatus, string> = {
   blocked: 'Bloqueada',
   canceled: 'Cancelada',
   churned: 'Dada de baja',
-  free: 'Plan gratis',
+  free: 'Plan no activo',
+  trial_expired: 'Plan no activo',
 }

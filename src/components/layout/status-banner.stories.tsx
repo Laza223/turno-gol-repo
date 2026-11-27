@@ -30,25 +30,40 @@ export const Suspended: Story = {
   args: { tenantStatus: 'suspended', periodEnd: null },
 }
 
-/** Plan gratis (freemium): banda informativa con el botón para pasar al plan. */
-export const Gratis: Story = {
-  args: { tenantStatus: 'free', periodEnd: null },
+/** `trial_expired` sin haber pagado nunca: terminó la prueba. */
+export const PruebaVencida: Story = {
+  args: { tenantStatus: 'trial_expired', periodEnd: null, staffRole: 'admin' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('link', { name: 'Pasar al plan' })).toBeVisible()
+    await expect(canvas.getByText(/Terminó tu prueba/)).toBeVisible()
+    await expect(canvas.getByRole('link', { name: 'Activar plan' })).toHaveAttribute(
+      'href',
+      '/reactivar',
+    )
   },
 }
 
-export const GratisEnPausa: Story = {
+/** `trial_expired` de quien pagó alguna vez: el plan no está activo. */
+export const PlanNoActivo: Story = {
   args: {
-    tenantStatus: 'free',
+    tenantStatus: 'trial_expired',
     periodEnd: null,
-    freePlan: { paused: true },
-    resumeOnlineAction: async () => ({ success: true }),
+    staffRole: 'admin',
+    expired: { everPaid: true },
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: 'Ya anoté mis turnos' })).toBeVisible()
+    await expect(canvas.getByText('Tu plan no está activo.')).toBeVisible()
+  },
+}
+
+/** El encargado no puede activar el plan: lee a quién avisarle, sin botón. */
+export const PruebaVencidaEncargado: Story = {
+  args: { tenantStatus: 'trial_expired', periodEnd: null, staffRole: 'manager' },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText(/Avisale al dueño del complejo/)).toBeVisible()
+    await expect(canvas.queryByRole('link', { name: 'Activar plan' })).toBeNull()
   },
 }
 

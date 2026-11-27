@@ -2,7 +2,7 @@
 
 import { headers } from 'next/headers'
 import { getPublicTenant } from '@/modules/tenants/public.service'
-import { isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
+import { isExpiredStatus, isPublicProfileVisible } from '@/modules/tenants/tenant.lifecycle'
 import { track } from '@/shared/observability'
 import { enforce, parseClientIp } from '@/shared/rate-limit'
 import { slug as slugSchema } from '@/shared/validation/primitives'
@@ -29,10 +29,37 @@ export async function trackProfileViewedAction(slug: string, withDate: boolean):
     if (!limit.ok) return
 
     const tenant = await getPublicTenant(parsed.data)
-    if (!tenant || !isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd)) return
+    if (!tenant || !isPublicProfileVisible(tenant.status, tenant.canceledPeriodEnd)) return
 
     track.funnel('profile.viewed', { tenantId: tenant.id, withDate: withDate === true })
   } catch {
     // Silenciosa a propósito: una medición caída no puede afectar a quien quiere reservar.
+  }
+}
+
+/**
+ * Clic de contacto (WhatsApp o teléfono) en la ficha de un complejo en `trial_expired`
+ * (docs/decisions/2026-11-27-prueba-30-dias-y-precios.md §4.6). Va a `analytics_events` y
+ * soporte lo mira en la ficha del complejo para recuperarlo. Sin PII: solo el complejo y el canal.
+ *
+ * Mismo molde que `trackProfileViewedAction`: es medición, así que nunca tira ni devuelve error.
+ * Solo emite si el complejo está hoy en `trial_expired` (o su alias `free`): el clic en la ficha
+ * de un complejo que paga no es una señal de recuperación y no se guarda.
+ */
+export async function trackExpiredContactAction(slug: string, channel: string): Promise<void> {
+  try {
+    const parsed = slugSchema.safeParse(slug)
+    if (!parsed.success) return
+    if (channel !== 'whatsapp' && channel !== 'phone') return
+
+    const limit = await enforce('expiredContactClick', parseClientIp(await headers()))
+    if (!limit.ok) return
+
+    const tenant = await getPublicTenant(parsed.data)
+    if (!tenant || !isExpiredStatus(tenant.status)) return
+
+    track.funnel('expired.contact_clicked', { tenantId: tenant.id, channel })
+  } catch {
+    // Silenciosa a propósito: una medición caída no puede afectar a quien quiere contactar.
   }
 }

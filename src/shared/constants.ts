@@ -98,32 +98,6 @@ export const TRIAL_ENDING_WARNING_DAYS = [1, 7] as const
 export const SUBSCRIBED_TRIAL_GRACE_DAYS = 3
 
 /**
- * Plan gratis del freemium (docs/decisions/2026-11-15-freemium-corte-v2.md): las
- * reservas online no tienen tope (ajuste del 2026-11-16) y el dueño anota sus
- * turnos con nombre y teléfono.
- *
- * Los únicos motivos con los que el dueño gratis bloquea un horario. Lista
- * cerrada: un motivo libre sería una nota encubierta, y las notas son del plan.
- * La valida `freePlanBookingError` (modules/bookings/free-plan-block.ts).
- */
-export const FREE_PLAN_BLOCK_REASONS = ['Ocupado', 'Mantenimiento', 'Cancha cerrada'] as const
-
-/**
- * Reservas online canceladas por el dueño en el mes que pausan las reservas
- * online de un complejo gratis, hasta que confirme que marcó sus "ocupado".
- * Cancelar online seguido es la señal de que toma reservas por teléfono sin
- * marcarlas, y el que paga la doble reserva es el jugador. Decisión de Lazar: 5.
- */
-export const FREE_ONLINE_CANCEL_PAUSE_THRESHOLD = 5
-
-/**
- * Días sin uso (sin visitas al panel y sin reservas nuevas) tras los que un
- * complejo gratis recibe el aviso de borrado. El borrado es `CHURNED_DELETION_DAYS`
- * después, el mismo plazo de la baja en los términos. Decisión de Lazar: 6 meses.
- */
-export const FREE_INACTIVE_DAYS = 180
-
-/**
  * Canales oficiales de soporte de TurnoGol (B9).
  */
 export const SUPPORT_EMAIL = 'turnogol@gmail.com'

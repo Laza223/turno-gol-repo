@@ -6,6 +6,7 @@ import FavoriteButton from '@/components/public/FavoriteButton'
 import RatingStars from '@/components/public/RatingStars'
 import ShareButton from '@/components/public/ShareButton'
 import { buttonVariants } from '@/components/ui/button'
+import ContactLink from './ContactLink'
 import { resolveTenantContact } from '@/lib/tenant-contact'
 import { cn } from '@/lib/utils'
 import type { PublicTenant } from '@/modules/tenants/public.service'
@@ -41,12 +42,15 @@ export default function ComplexHero({
   formats,
   avgRating,
   reviewCount,
+  trackContact,
 }: {
   tenant: PublicTenant
   courtCount: number
   formats: number[]
   avgRating: number
   reviewCount: number
+  /** Solo en `trial_expired`: avisa el clic de contacto (la Server Action ya viene con el slug). */
+  trackContact?: (channel: 'whatsapp' | 'phone') => Promise<void>
 }) {
   const { whatsappUrl, telHref } = resolveTenantContact(
     { whatsapp: tenant.whatsapp, phone: tenant.phone },
@@ -125,16 +129,21 @@ export default function ComplexHero({
             Cómo llegar
           </a>
           {whatsappUrl ? (
-            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className={LINK}>
+            <ContactLink
+              href={whatsappUrl}
+              channel="whatsapp"
+              onTrack={trackContact}
+              className={LINK}
+            >
               <MessageCircle aria-hidden />
               WhatsApp
-            </a>
+            </ContactLink>
           ) : (
             telHref && (
-              <a href={telHref} className={LINK}>
+              <ContactLink href={telHref} channel="phone" onTrack={trackContact} className={LINK}>
                 <Phone aria-hidden />
                 Llamar
-              </a>
+              </ContactLink>
             )
           )}
           <div className="ml-auto flex gap-2">

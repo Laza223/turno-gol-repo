@@ -11,10 +11,6 @@ import { insertAuditLog } from '@/shared/db/audit'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { enforce } from '@/shared/rate-limit/apply'
 import { paidPeriodErrorMessage } from '@/modules/bookings/paid-period.guard'
-import { FREE_PLAN_EDIT_ERROR, freePlanBookingError } from '@/modules/bookings/free-plan-block'
-import { evaluateFreeOnlinePause } from '@/modules/bookings/free-online-pause'
-import { isThirdWeekInARow } from '@/modules/bookings/free-plan-fijo'
-import { isFreePlan } from '@/modules/tenants/tenant.lifecycle'
 import {
   createManualBooking,
   completeBooking,
@@ -92,20 +88,14 @@ export type BookingActionResult =
   { success: true; booking: BookingRow } | { success: false; error: string }
 
 export type CreateBookingActionResult =
-  | {
-      success: true
-      booking: BookingRow
-      /** Gratis: tercera semana seguida del mismo nombre a la misma hora ("¿Es un fijo?"). */
-      looksLikeFijo?: boolean
-    }
-  | { success: false; error: string }
+  { success: true; booking: BookingRow } | { success: false; error: string }
 
 export type BookingChargeActionResult =
   { success: true; cashFlow: CashFlowRow } | { success: false; error: string }
 
 export async function createBookingAction(data: unknown): Promise<CreateBookingActionResult> {
   // Cruce #1: rol leído de DB — solo admin/manager operan reservas.
-  const auth = await requireOperatorStaff({ allowFree: true })
+  const auth = await requireOperatorStaff()
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
 
@@ -127,17 +117,6 @@ export async function createBookingAction(data: unknown): Promise<CreateBookingA
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
   }
 
-  // Plan gratis: el turno va con nombre y sin plata. El precio se guarda en $0
-  // ("No se cobra") en vez de tomar la tarifa: al pasar al plan no aparece como
-  // deuda vieja, y un horario sin tarifa cargada no frena el alta.
-  const input = isFreePlan(tenant)
-    ? { ...parsed.data, ...(parsed.data.type === 'spontaneous' ? { priceOverride: 0 } : {}) }
-    : parsed.data
-  if (isFreePlan(tenant)) {
-    const freeError = freePlanBookingError(parsed.data)
-    if (freeError) return { success: false, error: freeError }
-  }
-
   // Regla de la clase (rediseño Caja/Cantina): el catch va FUERA del contexto
   // transaccional — atrapar adentro y devolver un objeto commitea lo escrito
   // antes del throw. Acá los services tiran antes de escribir, pero el patrón
@@ -145,7 +124,7 @@ export async function createBookingAction(data: unknown): Promise<CreateBookingA
   let booking: BookingRow
   try {
     booking = await withTenantContext(tenant.id, (tx) =>
-      createManualBooking(tenant.id, { ...input, staffUserId }, tx),
+      createManualBooking(tenant.id, { ...parsed.data, staffUserId }, tx),
     )
   } catch (err) {
     if (err instanceof SlotTakenError) {
@@ -186,28 +165,7 @@ export async function createBookingAction(data: unknown): Promise<CreateBookingA
   // would otherwise still show the slot as free even after success.
   revalidatePath('/reservas')
   revalidatePath('/grilla')
-  const looksLikeFijo = isFreePlan(tenant) ? await freePlanLooksLikeFijo(tenant.id, input) : false
-  return { success: true, booking, ...(looksLikeFijo ? { looksLikeFijo } : {}) }
-}
-
-/**
- * "¿Es un fijo?" va aparte del alta y nunca la hace fallar: el turno ya quedó
- * anotado, el aviso es un extra.
- */
-async function freePlanLooksLikeFijo(
-  tenantId: string,
-  input: { type: string; date: string; timeStart: string; guestName?: string },
-): Promise<boolean> {
-  if (input.type !== 'spontaneous' || !input.guestName) return false
-  const guestName = input.guestName
-  try {
-    return await withTenantContext(tenantId, (tx) =>
-      isThirdWeekInARow(tenantId, { date: input.date, timeStart: input.timeStart, guestName }, tx),
-    )
-  } catch (err) {
-    captureException(err)
-    return false
-  }
+  return { success: true, booking }
 }
 
 const checkSlotAvailabilitySchema = z.object({
@@ -233,7 +191,7 @@ export type CheckSlotAvailabilityResult = { available: boolean }
 export async function checkSlotAvailabilityAction(
   input: CheckSlotAvailabilityInput,
 ): Promise<CheckSlotAvailabilityResult> {
-  const auth = await requireOperatorStaff({ allowFree: true })
+  const auth = await requireOperatorStaff()
   if (!auth.ok) return { available: true }
   const { tenant } = auth
 
@@ -381,7 +339,7 @@ export async function confirmDepositPaymentAction(
     return { success: false, error: 'Indicá cómo se cobró la seña.' }
   }
 
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowExpired: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
 
@@ -422,7 +380,7 @@ export async function confirmDepositPaymentAction(
 }
 
 export async function completeBookingAction(bookingId: string): Promise<BookingActionResult> {
-  const auth = await requireOperatorStaff({ allowFree: true })
+  const auth = await requireOperatorStaff({ allowExpired: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
 
@@ -467,7 +425,7 @@ export async function completeBookingAction(bookingId: string): Promise<BookingA
 }
 
 export async function markNoShowAction(bookingId: string): Promise<BookingActionResult> {
-  const auth = await requireOperatorStaff({ allowFree: true })
+  const auth = await requireOperatorStaff({ allowExpired: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
 
@@ -514,7 +472,7 @@ export async function markNoShowAction(bookingId: string): Promise<BookingAction
  * confirmar y queda en el audit_log.
  */
 export async function revertNoShowAction(bookingId: string): Promise<BookingActionResult> {
-  const auth = await requireOperatorStaff({ allowFree: true })
+  const auth = await requireOperatorStaff({ allowExpired: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
 
@@ -562,7 +520,7 @@ export async function cancelBookingAction(
     return { success: false, error: 'Indicá quién cancela la reserva.' }
   }
 
-  const auth = await requireOperatorStaff({ allowFree: true })
+  const auth = await requireOperatorStaff({ allowExpired: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
 
@@ -598,17 +556,6 @@ export async function cancelBookingAction(
     { bookingId, tenantId: tenant.id },
   )
 
-  // Plan gratis: 5 online canceladas por el dueño en el mes pausan la reserva
-  // online. Transacción aparte, con la cancelación ya commiteada [C5]; si falla,
-  // la cancelación igual quedó hecha.
-  if (isFreePlan(tenant)) {
-    try {
-      await evaluateFreeOnlinePause(tenant.id)
-    } catch (err) {
-      captureException(err)
-    }
-  }
-
   return { success: true, booking: outcome.booking }
 }
 
@@ -622,7 +569,7 @@ export async function releaseBlockAction(bookingId: string): Promise<ActionResul
   const parsed = uuid.safeParse(bookingId)
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
 
-  const auth = await requireOperatorStaff({ allowFree: true })
+  const auth = await requireOperatorStaff({ allowExpired: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
 
@@ -884,7 +831,7 @@ export async function addBookingChargeAction(
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
   }
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowExpired: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
 
@@ -1078,7 +1025,7 @@ export async function completeAndChargeBookingAction(
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
   }
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowExpired: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
 
@@ -1266,18 +1213,9 @@ export async function editBookingAction(
     return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' }
   }
 
-  // Plan gratis (freemium v2, decisión de Lazar del 2026-11-16): corrige el
-  // nombre y el teléfono de un turno ya anotado. La duración y el precio son
-  // del plan.
-  const auth = await requireOperatorStaff({ allowFree: true })
+  const auth = await requireOperatorStaff()
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
-  if (
-    isFreePlan(tenant) &&
-    (parsed.data.timeEnd !== undefined || parsed.data.priceOverride !== undefined)
-  ) {
-    return { success: false, error: FREE_PLAN_EDIT_ERROR }
-  }
 
   const limited = await adminRateLimited(tenant.id)
   if (limited) return { success: false, error: limited }

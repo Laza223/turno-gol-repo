@@ -300,7 +300,7 @@ describe('lifecycle FSM', () => {
     await runDunningSweep()
 
     // Freemium (2026-11-08): la baja voluntaria termina en el plan gratis, no en blocked.
-    expect(await fetchTenantStatus(sql, tenantId)).toBe('free')
+    expect(await fetchTenantStatus(sql, tenantId)).toBe('trial_expired')
     const rows = await asApp(
       tenantId,
       (tx) =>
@@ -346,7 +346,7 @@ describe('Test A — la mora termina en el plan gratis, no en blocked/churned', 
       WHERE tenant_id = ${tenantId}
     `
     await runDunningSweep()
-    expect(await fetchTenantStatus(sql, tenantId)).toBe('free')
+    expect(await fetchTenantStatus(sql, tenantId)).toBe('trial_expired')
 
     // 90d + sweep: el gratis no churnea ni se agenda para borrar por falta de pago.
     await sql`
@@ -354,7 +354,7 @@ describe('Test A — la mora termina en el plan gratis, no en blocked/churned', 
       WHERE tenant_id = ${tenantId}
     `
     await runDunningSweep()
-    expect(await fetchTenantStatus(sql, tenantId)).toBe('free')
+    expect(await fetchTenantStatus(sql, tenantId)).toBe('trial_expired')
     // tenants es tabla GLOBAL sin RLS: se queda en el pool de siempre.
     const rows = await sql<{ scheduled_deletion_at: Date | string | null }[]>`
       SELECT scheduled_deletion_at FROM tenants WHERE id = ${tenantId}
@@ -552,8 +552,8 @@ describe('Test C — voluntary cancel', () => {
     `
     await runDunningSweep()
 
-    expect(await fetchTenantStatus(sql, tenantId)).toBe('free')
-    expect(await fetchSubStatus(tenantId)).toBe('free')
+    expect(await fetchTenantStatus(sql, tenantId)).toBe('trial_expired')
+    expect(await fetchSubStatus(tenantId)).toBe('trial_expired')
     // tenants es tabla GLOBAL sin RLS: se queda en el pool de siempre.
     const finalRows = await sql<{ scheduled_deletion_at: Date | string | null }[]>`
       SELECT scheduled_deletion_at FROM tenants WHERE id = ${tenantId}

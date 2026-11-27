@@ -17,5 +17,5 @@ export const GET = withTenant(
     const invoices = await listInvoices(user.tenantId!, getBillingGateway())
     return NextResponse.json({ data: invoices }, { status: 200 })
   },
-  { roles: ['admin'], allowFree: true },
+  { roles: ['admin'] },
 )

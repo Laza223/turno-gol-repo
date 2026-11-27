@@ -454,8 +454,6 @@ export type GridMoneyFacts = SlotFacts & {
   priceSnapshot: number
   /** ¿Ya empezó este turno (`isSlotPast` de su propio horario)? Decide "Se juega" vs vacío en lo que no terminó. */
   started: boolean
-  /** Plan gratis (`maskGridBookingForFreePlan`): sin caja, la celda no habla de plata. */
-  moneyHidden?: boolean
 }
 
 export type GridMoneyVisual = {
@@ -520,17 +518,6 @@ export function gridMoneyVisual(facts: GridMoneyFacts): GridMoneyVisual {
       key: 'no_show',
       label: 'Ausente',
       icon: UserX,
-      tone: 'neutral',
-      striped: false,
-      amountCents: null,
-      partial: false,
-    }
-  }
-  if (facts.moneyHidden) {
-    return {
-      key: 'no_data',
-      label: '',
-      icon: null,
       tone: 'neutral',
       striped: false,
       amountCents: null,

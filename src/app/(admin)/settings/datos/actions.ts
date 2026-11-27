@@ -47,7 +47,7 @@ async function runExport(
   header: string,
   auditExtra: Record<string, unknown> = {},
 ): Promise<DataExportResult> {
-  const auth = await requireAdminStaffAction({ allowReadOnly: true, allowFree: true })
+  const auth = await requireAdminStaffAction({ allowReadOnly: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant, user } = auth
 

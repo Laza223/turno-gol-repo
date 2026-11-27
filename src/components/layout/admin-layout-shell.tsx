@@ -9,8 +9,7 @@ import { NO_SETUP_ALERTS, type SetupAlerts } from './setup-alerts'
 import { AdminSidebar } from './admin-sidebar'
 import { AdminBottomNav } from './admin-bottom-nav'
 import { AdminHeader } from './admin-header'
-import { StatusBanner, type FreePlanNotice, type ReadOnlyNotice } from './status-banner'
-import type { ActionResult } from '@/shared/types/action-result'
+import { StatusBanner, type ExpiredNotice, type ReadOnlyNotice } from './status-banner'
 import { PushNotificationManagerLoader } from '@/components/admin/PushNotificationManagerLoader'
 import { disableCurrentPush } from '@/components/admin/push-browser'
 
@@ -43,10 +42,8 @@ interface AdminLayoutShellProps {
   setupAlerts?: SetupAlerts
   /** Por qué está en solo lectura (`suspended`) y hasta cuándo; lo arma el layout. */
   readOnly?: ReadOnlyNotice | null
-  /** Plan gratis: tope del mes y pausa; lo arma el layout. */
-  freePlan?: FreePlanNotice | null
-  /** "Ya anoté mis turnos" (plan gratis en pausa). */
-  resumeOnlineAction?: () => Promise<ActionResult>
+  /** `trial_expired`: si pagó alguna vez; lo arma el layout. */
+  expired?: ExpiredNotice | null
 }
 
 export function AdminLayoutShell({
@@ -64,8 +61,7 @@ export function AdminLayoutShell({
   staffRole,
   setupAlerts = NO_SETUP_ALERTS,
   readOnly = null,
-  freePlan = null,
-  resumeOnlineAction,
+  expired = null,
 }: AdminLayoutShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null)
@@ -108,7 +104,6 @@ export function AdminLayoutShell({
         staffRole={staffRole}
         setupAlerts={setupAlerts}
         trialDaysLeft={trialDaysLeft(tenantStatus, trialEndsAt)}
-        freePlan={tenantStatus === 'free'}
       />
 
       {/* Header */}
@@ -122,7 +117,6 @@ export function AdminLayoutShell({
         tournamentsEnabled={tournamentsEnabled}
         staffRole={staffRole}
         setupAlerts={setupAlerts}
-        freePlan={tenantStatus === 'free'}
       />
 
       {/* Main content */}
@@ -148,8 +142,7 @@ export function AdminLayoutShell({
             periodEnd={periodEnd}
             readOnly={readOnly}
             staffRole={staffRole}
-            freePlan={freePlan}
-            resumeOnlineAction={resumeOnlineAction}
+            expired={expired}
           />
 
           {emailBanner}

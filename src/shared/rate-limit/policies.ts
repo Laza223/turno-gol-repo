@@ -44,6 +44,11 @@ export const POLICIES = {
   // NAT) y frena a quien infle el denominador del embudo llamándola en bucle. Fail open:
   // perder una medición durante un outage de Upstash no justifica bloquear nada.
   profileViewed: { limit: 10, window: '60 s', keyBy: 'ip', failMode: 'open' },
+  // Clic de contacto en la ficha de un complejo en `trial_expired` (WhatsApp o teléfono): el
+  // cliente dispara la Server Action al tocar el enlace. 10/60s por IP sobra para una persona y
+  // frena a quien infle el conteo que usa soporte para recuperar al complejo. Fail open: perder
+  // una medición no justifica bloquear nada.
+  expiredContactClick: { limit: 10, window: '60 s', keyBy: 'ip', failMode: 'open' },
   adminCrud: { limit: 100, window: '60 s', keyBy: 'tenant', failMode: 'open' },
   playerBooking: { limit: 20, window: '60 s', keyBy: 'player', failMode: 'open' },
   // Alta y baja del push del jugador (migr. 114): la resincronización corre al

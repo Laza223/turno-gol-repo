@@ -121,33 +121,23 @@ export default function TerminosPage() {
             <section className="grid gap-4">
               <h2>6. Suscripciones SaaS (clientes B2B)</h2>
               <p>
-                TurnoGol tiene un plan pago y un plan gratis. En el plan pago{' '}
-                <strong>el importe de la suscripción depende de la cantidad de canchas</strong> y de
-                la tarifa confirmada al contratar. El asistente de WhatsApp, cuando está disponible,
-                se contrata por separado.
+                TurnoGol se contrata con una suscripción paga.{' '}
+                <strong>El importe depende de la cantidad de canchas</strong> y de la tarifa
+                confirmada al contratar. El asistente de WhatsApp, cuando está disponible, se
+                contrata por separado.
               </p>
               <p>
-                <strong>Plan gratis.</strong> El complejo que no tiene una suscripción paga vigente
-                (al terminar la prueba, al vencer lo pagado tras una baja o al terminar el período
-                de cobro fallido) pasa al plan gratis, sin cargo. Incluye la página pública del
-                complejo, su aparición en el buscador de TurnoGol, la reserva online de los
-                jugadores sin tope mensual y la carga de turnos con el nombre y el teléfono de quien
-                juega. No incluye los precios ni los cobros de los turnos, las notas, los turnos
-                fijos, la caja, la ficha de jugadores, los usuarios para el equipo ni la seña
-                online. Los datos de esas funciones se conservan y vuelven a estar disponibles al
-                activar el plan pago. TurnoGol puede pausar la reserva online de un complejo del
-                plan gratis que cancela reiteradamente reservas de jugadores, hasta que el complejo
-                actualice los horarios ocupados.
+                <strong>Prueba.</strong> Al darse de alta, el complejo usa TurnoGol sin cargo
+                durante {TRIAL_DAYS} días. Para empezar no se pide ningún dato de pago.
               </p>
               <p>
-                <strong>Prueba del plan pago.</strong> Al darse de alta, el complejo tiene el plan
-                pago sin cargo durante {TRIAL_DAYS} días. Al terminar ese período sigue en el plan
-                gratis, salvo que active la suscripción. Para empezar no se pide ningún dato de
-                pago.
-              </p>
-              <p>
-                Las condiciones del plan gratis pueden cambiar. Si cambian, lo avisamos por email al
-                menos 30 días antes.
+                <strong>Plan no activo.</strong> El complejo que no tiene una suscripción paga
+                vigente (al terminar la prueba, al vencer lo pagado tras una baja o al terminar el
+                período de cobro fallido) queda con el plan no activo. Su página pública sigue
+                visible, sin horarios y sin reserva online, con los datos de contacto del complejo.
+                El panel queda en modo lectura, salvo operar los turnos ya confirmados. El asistente
+                de WhatsApp deja de responder. Los datos del complejo se conservan y todo vuelve a
+                estar disponible al activar la suscripción.
               </p>
               <p>
                 El complejo elige el ciclo de facturación, <strong>mensual o anual</strong>; el
@@ -169,19 +159,16 @@ export default function TerminosPage() {
               <p>
                 El cobro se debita por Mercado Pago. Los complejos pueden cancelar su suscripción en
                 cualquier momento; tras la cancelación, la cuenta sigue activa hasta el final del
-                período facturado y después pasa al plan gratis. Si hay un cobro fallido, la cuenta
-                pasa por los estados <em>past_due</em> y <em>suspended</em> y después al plan
-                gratis. Para eliminar la cuenta y sus datos, el complejo lo pide por email a
-                privacidad@turnogol.app.
+                período facturado y después queda con el plan no activo. Si hay un cobro fallido, la
+                cuenta pasa por los estados <em>past_due</em> y <em>suspended</em> y después queda
+                con el plan no activo. Para eliminar la cuenta y sus datos, el complejo lo pide por
+                email a privacidad@turnogol.app.
               </p>
-              {/* retention-matches-legal-promise.test.ts busca la frase de abajo en el fuente, en una sola línea. */}
-              {/* prettier-ignore */}
+              {/* retention-matches-legal-promise.test.ts busca la frase de abajo en el fuente. */}
               <p>
-                Si un complejo del plan gratis pasa 6 meses sin que nadie entre a su panel y sin
-                recibir reservas nuevas, le avisamos por email y,
-                si no vuelve a entrar, sus datos se eliminan 90 días después del aviso. Las cuentas dadas de baja antes de la
-                existencia del plan gratis conservan sus datos 90 días tras la baja (estado{' '}
-                <em>churned</em>) para permitir reactivación, y luego se anonimizan o eliminan.
+                Las cuentas dadas de baja definitivamente (estado <em>churned</em>) conservan sus
+                datos 90 días tras la baja para permitir reactivación, y luego se anonimizan o
+                eliminan.
               </p>
             </section>
 

@@ -6,11 +6,7 @@ import { DEFAULT_CANCELLATION_HOURS_BEFORE, SLOT_DURATION_MINUTES } from '@/shar
 import { track, withSpan } from '@/shared/observability'
 import { effectiveCloseMins, normalizeRangeToOpenDay } from '@/shared/time/operating-day'
 import { holdExpiresAtIso } from '@/lib/booking/hold'
-import {
-  effectiveAllowOnlineBooking,
-  isFreePlan,
-  publicBookingAdvanceDays,
-} from './tenant.lifecycle'
+import { effectiveAllowOnlineBooking, publicBookingAdvanceDays } from './tenant.lifecycle'
 import { VISIBLE_TENANT_STATUSES } from './search.service'
 import { arePublicPricesHidden, bookingMinAdvanceHours } from './tenant.utils'
 import type { OpeningHours, TenantSettings } from './tenant.types'
@@ -37,7 +33,7 @@ export type PublicTenant = {
    * `tenant_subscriptions.current_period_end` — hasta cuándo llega el período
    * ya pagado. Se lee SOLO cuando `status === 'canceled'`; en cualquier otro
    * estado es `null` porque no cambia ninguna decisión y no vale la query.
-   * Lo consume `isPublicPortalOpen` (tenant.lifecycle.ts).
+   * Lo consume `isPublicProfileVisible` (tenant.lifecycle.ts).
    */
   canceledPeriodEnd: Date | null
   timezone: string
@@ -404,8 +400,6 @@ async function _getPublicTenant(slug: string): Promise<PublicTenant | null> {
       longitude: true,
       // Instante, no credencial: dice si la seña online se puede cobrar.
       mpDisconnectedAt: true,
-      // Plan gratis: pausa de la reserva online por cancelaciones (freemium).
-      onlinePausedAt: true,
       // NEVER: email, mpAccessToken, mpRefreshToken, mpUserId, mpPublicKey
     },
   })
@@ -413,7 +407,7 @@ async function _getPublicTenant(slug: string): Promise<PublicTenant | null> {
   if (!row) return null
 
   const s = row.settings as TenantSettings
-  // Segunda query SOLO en la baja voluntaria: `isPublicPortalOpen` y
+  // Segunda query SOLO en la baja voluntaria: `isPublicProfileVisible` y
   // `publicBookingAdvanceDays` necesitan el fin del período pago únicamente
   // cuando el estado es `canceled`. Así el resto de las visitas públicas (o
   // sea, casi todas) no paga una transacción extra. `tenant_subscriptions`
@@ -448,16 +442,15 @@ async function _getPublicTenant(slug: string): Promise<PublicTenant | null> {
     status: row.status,
     canceledPeriodEnd,
     timezone: row.timezone,
-    // Plan gratis en pausa → la ficha pasa a WhatsApp/Llamar.
+    // Plan no activo (`trial_expired`) → la ficha no ofrece reservar: muestra el contacto.
     allowOnlineBooking: effectiveAllowOnlineBooking({
       status: row.status,
       allowOnlineBookingSetting: s.allow_online_booking ?? true,
-      onlinePausedAt: row.onlinePausedAt,
     }),
     // Con MP marcado como desconectado la reserva online entra sin seña
     // (decisión 2026-10-22, `depositUnpayable` en reservar/actions.ts): el
-    // checkout y el bot no la pueden anunciar. El plan gratis no cobra seña.
-    requiresDeposit: (s.requires_deposit ?? false) && !row.mpDisconnectedAt && !isFreePlan(row),
+    // checkout y el bot no la pueden anunciar.
+    requiresDeposit: (s.requires_deposit ?? false) && !row.mpDisconnectedAt,
     depositPercentage: s.deposit_percentage ?? 30,
     hidePrices: arePublicPricesHidden(s),
     acceptsCash: s.accepts_cash ?? true,

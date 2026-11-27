@@ -5,9 +5,12 @@
  * - READ_ONLY → 403 en métodos que escriben; el admin conserva lectura y el
  *               jugador sigue viendo sus reservas.
  * - canceled  → acceso completo hasta `current_period_end` (el sweep lo pasa a
- *               `free` en ese momento).
- * - free      → plan gratis: panel abierto, pero cada función paga la corta su
- *               guard (`isFreePlan`, opt-in `allowFree` en `staff/guards.ts`).
+ *               `trial_expired` en ese momento).
+ * - trial_expired → el complejo que no paga (prueba vencida, mora terminada o baja al
+ *               final del período): ficha pública visible sin reserva online y
+ *               panel en solo lectura, salvo operar las reservas ya existentes
+ *               (opt-in `allowExpired` en `staff/guards.ts`). Ver
+ *               docs/decisions/2026-11-27-prueba-30-dias-y-precios.md.
  * - active / trialing / past_due → acceso completo.
  *
  * Vive acá y no en el middleware que las estrenó (`@/server/middleware/with-tenant`)
@@ -25,38 +28,32 @@ export const BLOCKED_TENANT_STATUSES = new Set(['blocked', 'churned', 'deleted']
 export const READ_ONLY_TENANT_STATUSES = new Set(['suspended'])
 
 /**
- * ¿El complejo está en el plan gratis? Es LA pregunta que hacen los guards y las
- * pantallas: "gratis" se pregunta acá y en ningún otro lado, así un plan futuro
- * no reabre cada guard (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
+ * ¿El complejo está en `trial_expired` (no paga)? Es LA pregunta que hacen los
+ * guards, las pantallas y las superficies públicas.
+ *
+ * `free` es el plan gratis que se termina (docs/decisions/2026-11-27-prueba-30-dias-y-precios.md):
+ * mientras las filas viejas no se migren (PR posterior) se trata EXACTAMENTE
+ * igual que `trial_expired`. Ningún código nuevo escribe `free`; el alias se
+ * borra en el PR que migra las filas.
  */
-export function isFreePlan(tenant: { status: string }): boolean {
-  return tenant.status === 'free'
-}
-
-/** Mes calendario ART ('YYYY-MM') de un instante. Lo usan la pausa y las Métricas del gratis. */
-export function artMonthOf(instant: Date = new Date()): string {
-  return artDateOf(instant).slice(0, 7)
+export function isExpiredStatus(status: string): boolean {
+  return status === 'trial_expired' || status === 'free'
 }
 
 /**
- * ¿La reserva online del portal está abierta para este complejo? El setting del
- * dueño, y en el plan gratis además: que no esté pausado por cancelar reservas
- * online. Las reservas online del gratis no tienen tope (ajuste del 2026-11-16,
- * docs/decisions/2026-11-15-freemium-corte-v2.md). Las superficies públicas
- * (ficha, `/explorar`, imagen de horarios) pasan solas al estado "sin reserva
- * online" con WhatsApp/Llamar.
+ * ¿La reserva online del portal está abierta según el setting del dueño y el
+ * estado? Un complejo vencido nunca toma reservas online. Las superficies
+ * públicas (ficha, `/explorar`, imagen de horarios) pasan solas al estado "sin
+ * reserva online" con WhatsApp/Llamar.
  *
- * La autoridad es `assertFreeOnlineNotPaused` en el alta online: esto es el
+ * La autoridad es `assertOnlineBookingStatusOpen` en el alta online: esto es el
  * cache para no listar un CTA que el alta va a rechazar.
  */
 export function effectiveAllowOnlineBooking(tenant: {
   status: string
   allowOnlineBookingSetting: boolean
-  onlinePausedAt: Date | null
 }): boolean {
-  if (!tenant.allowOnlineBookingSetting) return false
-  if (!isFreePlan(tenant)) return true
-  return tenant.onlinePausedAt === null
+  return tenant.allowOnlineBookingSetting && !isExpiredStatus(tenant.status)
 }
 
 // ─── Superficie pública (portal del jugador) ────────────────────────────────
@@ -77,7 +74,7 @@ export function effectiveAllowOnlineBooking(tenant: {
  * reservas existentes por otras vías (doc4 §2 nota).
  *
  * NO se exporta (a diferencia de sus dos hermanas de arriba, que sí las lee
- * `guards.ts`): la pregunta pública se contesta con `isPublicPortalOpen`, que
+ * `guards.ts`): la pregunta pública se contesta con `isPublicProfileVisible`, que
  * además necesita el período pago. Exportar el `Set` pelado invita justo al
  * `Set.has(status)` suelto que este cambio vino a borrar — y `knip` lo marca
  * como export muerto, que es cómo se descubrió.
@@ -90,7 +87,9 @@ const PUBLIC_UNAVAILABLE_TENANT_STATUSES: ReadonlySet<string> = new Set([
 ])
 
 /**
- * ¿El portal público del complejo está abierto?
+ * ¿La ficha pública del complejo se muestra? (perfil, contacto, fotos). Un
+ * complejo `trial_expired` SÍ se muestra, pero sin horarios ni reserva: eso lo
+ * responde `canTakeOnlineBookings`.
  *
  * `canceledPeriodEnd` es `tenant_subscriptions.current_period_end` y SOLO se
  * mira cuando el estado es `canceled` (en cualquier otro estado el dato no
@@ -98,7 +97,7 @@ const PUBLIC_UNAVAILABLE_TENANT_STATUSES: ReadonlySet<string> = new Set([
  * `null` con estado `canceled` = cerrado: sin período pago comprobable no se
  * abre nada.
  */
-export function isPublicPortalOpen(
+export function isPublicProfileVisible(
   status: string,
   canceledPeriodEnd: Date | null,
   now: Date = new Date(),
@@ -106,6 +105,20 @@ export function isPublicPortalOpen(
   if (PUBLIC_UNAVAILABLE_TENANT_STATUSES.has(status)) return false
   if (status !== 'canceled') return true
   return canceledPeriodEnd !== null && canceledPeriodEnd.getTime() > now.getTime()
+}
+
+/**
+ * ¿El portal público toma reservas online? Todo lo que muestra horarios o
+ * permite reservar (disponibilidad, checkout, torneos, bot de WhatsApp) tiene
+ * que preguntar esto y no `isPublicProfileVisible`: la ficha de un complejo
+ * vencido se ve, pero sin horarios.
+ */
+export function canTakeOnlineBookings(
+  status: string,
+  canceledPeriodEnd: Date | null,
+  now: Date = new Date(),
+): boolean {
+  return !isExpiredStatus(status) && isPublicProfileVisible(status, canceledPeriodEnd, now)
 }
 
 /**
@@ -122,7 +135,7 @@ export function isPublicPortalOpen(
  * la ventana de anticipación del sistema se compara como string 'YYYY-MM-DD',
  * así que el último día reservable es el día ART de `current_period_end`.
  * Devuelve 0 (solo hoy) antes que un negativo — un período ya vencido cierra
- * el portal entero por `isPublicPortalOpen`, no por esta función.
+ * el portal entero por `isPublicProfileVisible`, no por esta función.
  */
 export function publicBookingAdvanceDays(
   configuredDays: number,
@@ -142,7 +155,7 @@ export function publicBookingAdvanceDays(
 /**
  * ¿La página pública del complejo se ofrece a los buscadores?
  *
- * Deliberadamente MÁS estricta que `isPublicPortalOpen`: un complejo
+ * Deliberadamente MÁS estricta que `isPublicProfileVisible` en `canceled`: un complejo
  * `canceled` se sirve normal —pagó el período— pero no se indexa. El índice de
  * un buscador sobrevive semanas o meses a la baja, así que indexarlo mandaría
  * gente a una página que para entonces está muerta. Mismo criterio por el que

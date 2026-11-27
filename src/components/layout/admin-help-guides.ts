@@ -29,14 +29,12 @@ interface HelpGuide {
   aliases: string[]
   suggestedOn: HelpSection[]
   adminOnly?: boolean
-  paidOnly?: boolean
   availableInReadOnly?: boolean
 }
 
 const GUIDES: HelpGuide[] = [
   {
     id: 'list-fixed-bookings',
-    paidOnly: true,
     title: '¿Dónde están los turnos fijos?',
     answer:
       'Entrá a Clientes y Fijos → Turnos fijos para ver las reservas que se repiten todas las semanas.',
@@ -48,7 +46,6 @@ const GUIDES: HelpGuide[] = [
   },
   {
     id: 'create-fixed-booking',
-    paidOnly: true,
     title: '¿Cómo creo un turno fijo?',
     answer:
       'Abrí Nuevo turno fijo y completá el cliente, la cancha y el horario. Tocá Continuar para revisar la disponibilidad y confirmá. Si ya estás en Grilla, tocá un horario libre y elegí Turno fijo.',
@@ -59,7 +56,6 @@ const GUIDES: HelpGuide[] = [
   },
   {
     id: 'cancel-fixed-occurrence',
-    paidOnly: true,
     title: '¿Cómo cancelo una sola fecha de un turno fijo?',
     answer:
       'Buscá esa fecha en Grilla, abrí el turno y elegí Cancelar reserva. El fijo sigue activo las demás semanas.',
@@ -89,7 +85,6 @@ const GUIDES: HelpGuide[] = [
   },
   {
     id: 'charge-booking',
-    paidOnly: true,
     title: '¿Cómo cobro un turno?',
     answer: 'En Hoy, buscá el turno en Cobrar ahora. Abrilo y registrá el pago.',
     href: '/dashboard',
@@ -99,7 +94,6 @@ const GUIDES: HelpGuide[] = [
   },
   {
     id: 'sell-canteen',
-    paidOnly: true,
     title: '¿Cómo cargo una venta de cantina?',
     answer: 'Tocá Vender, agregá los productos y registrá cómo te pagaron.',
     href: '/dashboard',
@@ -109,7 +103,6 @@ const GUIDES: HelpGuide[] = [
   },
   {
     id: 'list-pending-charges',
-    paidOnly: true,
     title: '¿Dónde veo lo que quedó por cobrar?',
     answer: 'Entrá a Caja → Cuentas para ver los turnos y consumos que quedaron pendientes.',
     href: '/caja/cuentas',
@@ -156,7 +149,6 @@ const GUIDES: HelpGuide[] = [
   },
   {
     id: 'configure-deposit',
-    paidOnly: true,
     title: '¿Cómo configuro la seña de las reservas online?',
     answer:
       'Entrá a Ajustes → Seña. Si todavía te falta, conectá MercadoPago. Elegí Cobrar seña, indicá el porcentaje y tocá Guardar cambios.',
@@ -207,20 +199,16 @@ export function getHelpGuides({
   pathname,
   staffRole,
   readOnly,
-  freePlan,
   query,
 }: {
   pathname: string
   staffRole?: StaffRole
   readOnly?: boolean
-  freePlan?: boolean
   query: string
 }): HelpGuide[] {
   const guides = GUIDES.filter(
     (guide) =>
-      (!guide.adminOnly || staffRole === 'admin') &&
-      (!guide.paidOnly || !freePlan) &&
-      (!readOnly || guide.availableInReadOnly),
+      (!guide.adminOnly || staffRole === 'admin') && (!readOnly || guide.availableInReadOnly),
   )
   const terms = searchTerms(query)
 

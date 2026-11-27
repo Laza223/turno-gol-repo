@@ -133,6 +133,9 @@ type FunnelEvent =
   // y no alcanzó (el jugador cae en la pantalla normal con el botón). Sin PII: ni email ni token.
   | 'checkout.intent_confirmed'
   | 'checkout.intent_degraded'
+  // Clic en WhatsApp o teléfono de la ficha de un complejo en `trial_expired`. Sin PII: solo
+  // `tenantId` y el canal. Soporte lo cuenta para recuperar al cliente.
+  | 'expired.contact_clicked'
 
 type FunnelCtx = {
   tenantId?: string
@@ -142,6 +145,8 @@ type FunnelCtx = {
   withDeposit?: boolean
   /** checkout.intent_degraded: por qué el vínculo no confirmó solo. */
   reason?: 'deposit' | 'invalid' | 'expired' | 'email_mismatch' | 'fields_mismatch' | 'taken'
+  /** expired.contact_clicked: el canal tocado. */
+  channel?: 'whatsapp' | 'phone'
 }
 
 type AvailabilityEvent = 'availability.public.query'

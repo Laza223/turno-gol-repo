@@ -22,7 +22,6 @@ vi.mock('@/modules/tenants/tenant.service', () => ({
   touchStaffSeen: vi.fn(async () => undefined),
 }))
 vi.mock('next/server', () => ({ after: vi.fn() }))
-vi.mock('@/app/(admin)/dashboard/actions', () => ({ resumeOnlineBookingAction: vi.fn() }))
 vi.mock('@/modules/staff/staff.service', () => ({ getStaffRole: vi.fn(async () => 'admin') }))
 vi.mock('@/shared/db/client', () => ({
   withTenantContext: vi.fn(async () => ({
@@ -37,19 +36,19 @@ vi.mock('@/components/layout/admin-layout-shell', () => ({
   AdminLayoutShell: ({
     tenantStatus,
     readOnly,
-    freePlan,
+    expired,
     children,
   }: {
     tenantStatus: string
     readOnly?: unknown
-    freePlan?: unknown
+    expired?: unknown
     children: React.ReactNode
   }) => (
     <div
       data-testid="admin-shell"
       data-tenant-status={tenantStatus}
       data-read-only={JSON.stringify(readOnly ?? null)}
-      data-free-plan={JSON.stringify(freePlan ?? null)}
+      data-expired={JSON.stringify(expired ?? null)}
     >
       {children}
     </div>
@@ -116,23 +115,24 @@ describe('AdminLayout — hard lock por tenant_status', () => {
     await expect(AdminLayout({ children: <p>contenido</p> })).rejects.toThrow('REDIRECT:/suspended')
   })
 
-  it('free: entra al panel con la banda del plan gratis (tope del mes y pausa)', async () => {
+  it.each(['trial_expired', 'free'])(
+    '%s: entra al panel (solo lectura) con el aviso de plan no activo',
+    async (status) => {
+      vi.mocked(getStaffTenant).mockResolvedValue(tenant(status) as never)
+
+      render(await AdminLayout({ children: <p>contenido</p> }))
+
+      const shell = screen.getByTestId('admin-shell')
+      expect(shell.getAttribute('data-tenant-status')).toBe(status)
+      // Sin `last_payment_at` en la suscripción: nunca pagó.
+      expect(JSON.parse(shell.getAttribute('data-expired') ?? 'null')).toEqual({ everPaid: false })
+      expect(screen.getByText('contenido')).toBeTruthy()
+    },
+  )
+
+  it('trial_expired con el onboarding sin terminar: va a /reactivar, no al wizard', async () => {
     vi.mocked(getStaffTenant).mockResolvedValue({
-      ...tenant('free'),
-      onlinePausedAt: new Date('2026-11-05T12:00:00.000Z'),
-    } as never)
-
-    render(await AdminLayout({ children: <p>contenido</p> }))
-
-    const shell = screen.getByTestId('admin-shell')
-    expect(shell.getAttribute('data-tenant-status')).toBe('free')
-    expect(JSON.parse(shell.getAttribute('data-free-plan') ?? 'null')).toEqual({ paused: true })
-    expect(screen.getByText('contenido')).toBeTruthy()
-  })
-
-  it('free con el onboarding sin terminar: va a /reactivar, no al wizard', async () => {
-    vi.mocked(getStaffTenant).mockResolvedValue({
-      ...tenant('free'),
+      ...tenant('trial_expired'),
       settings: { onboarding_completed: false },
     } as never)
 

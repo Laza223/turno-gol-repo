@@ -26,8 +26,6 @@ type Props = {
   disabled?: boolean
   error?: string | null
   warning?: string | null
-  /** Plan gratis: el panel no lleva plata, así que el resumen no habla de total ni de cobro. */
-  hideMoney?: boolean
 }
 
 export function Summary({
@@ -44,7 +42,6 @@ export function Summary({
   disabled = false,
   error,
   warning,
-  hideMoney = false,
 }: Props) {
   const pendingCents = totalCents == null ? null : Math.max(0, totalCents - collectedCents)
 
@@ -92,34 +89,32 @@ export function Summary({
             </dd>
           </div>
         </dl>
-        {!hideMoney && (
-          <dl className="space-y-1.5 border-t border-border pt-3 text-sm">
-            <div className="flex justify-between gap-2">
-              <dt className="text-muted-foreground">Total</dt>
-              <dd className="font-semibold tabular-nums text-foreground">
-                {totalCents != null ? formatArs(totalCents) : 'Sin costo'}
-              </dd>
-            </div>
-            {totalCents != null && (
-              <>
-                <div className="flex justify-between gap-2">
-                  <dt className="text-muted-foreground">Cobrado ahora</dt>
-                  <dd className="tabular-nums text-foreground">{formatArs(collectedCents)}</dd>
-                </div>
-                {/* Sin ámbar: un turno que todavía no se jugó y debe se cobra a tiempo
+        <dl className="space-y-1.5 border-t border-border pt-3 text-sm">
+          <div className="flex justify-between gap-2">
+            <dt className="text-muted-foreground">Total</dt>
+            <dd className="font-semibold tabular-nums text-foreground">
+              {totalCents != null ? formatArs(totalCents) : 'Sin costo'}
+            </dd>
+          </div>
+          {totalCents != null && (
+            <>
+              <div className="flex justify-between gap-2">
+                <dt className="text-muted-foreground">Cobrado ahora</dt>
+                <dd className="tabular-nums text-foreground">{formatArs(collectedCents)}</dd>
+              </div>
+              {/* Sin ámbar: un turno que todavía no se jugó y debe se cobra a tiempo
                   y va sin color (principio 3 de PRODUCT.md). Casi todos se cobran
                   después del partido, así que con "No cobré" el ámbar estaba
                   prendido siempre y no avisaba nada. */}
-                <div className="flex justify-between gap-2">
-                  <dt className="text-muted-foreground">Queda por cobrar</dt>
-                  <dd className="font-semibold tabular-nums text-foreground">
-                    {formatArs(pendingCents ?? 0)}
-                  </dd>
-                </div>
-              </>
-            )}
-          </dl>
-        )}
+              <div className="flex justify-between gap-2">
+                <dt className="text-muted-foreground">Queda por cobrar</dt>
+                <dd className="font-semibold tabular-nums text-foreground">
+                  {formatArs(pendingCents ?? 0)}
+                </dd>
+              </div>
+            </>
+          )}
+        </dl>
         <div className="mt-auto space-y-2">
           {notices}
           <Button type="submit" isLoading={isPending} disabled={disabled} className="w-full">
@@ -137,18 +132,12 @@ export function Summary({
       <div className="sticky bottom-0 space-y-2 border-t border-border bg-card p-3 lg:hidden">
         {notices}
         <div className="flex items-center gap-3">
-          {hideMoney ? (
-            <p className="min-w-0 flex-1 truncate text-sm font-medium tabular-nums text-foreground">
-              {timeStart}–{timeEnd}
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] text-muted-foreground">Total</p>
+            <p className="truncate text-base font-semibold tabular-nums text-foreground">
+              {totalCents != null ? formatArs(totalCents) : 'Sin costo'}
             </p>
-          ) : (
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] text-muted-foreground">Total</p>
-              <p className="truncate text-base font-semibold tabular-nums text-foreground">
-                {totalCents != null ? formatArs(totalCents) : 'Sin costo'}
-              </p>
-            </div>
-          )}
+          </div>
           <Button type="submit" isLoading={isPending} disabled={disabled} className="shrink-0">
             {primaryLabel}
           </Button>

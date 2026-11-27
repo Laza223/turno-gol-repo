@@ -38,7 +38,7 @@ import {
   renderSubscriptionSuspended,
   type SubscriptionSuspendedData,
 } from './subscription-suspended'
-import { renderPlanDowngradedFree, type PlanDowngradedFreeData } from './plan-downgraded-free'
+import { renderPlanNotActive, type PlanNotActiveData } from './plan-not-active'
 import {
   renderTenantDeletionWarning,
   type TenantDeletionWarningData,
@@ -95,7 +95,7 @@ type TemplateDataMap = {
   subscription_renewed: SubscriptionRenewedData
   subscription_canceled: SubscriptionCanceledData
   subscription_suspended: SubscriptionSuspendedData
-  plan_downgraded_free: PlanDowngradedFreeData
+  plan_not_active: PlanNotActiveData
   tenant_deletion_warning: TenantDeletionWarningData
   daily_summary: DailySummaryData
   onboarding_abandoned: OnboardingAbandonedData
@@ -128,7 +128,7 @@ const RENDERERS: { [K in TemplateName]: (data: TemplateDataMap[K]) => EmailConte
   subscription_renewed: renderSubscriptionRenewed,
   subscription_canceled: renderSubscriptionCanceled,
   subscription_suspended: renderSubscriptionSuspended,
-  plan_downgraded_free: renderPlanDowngradedFree,
+  plan_not_active: renderPlanNotActive,
   tenant_deletion_warning: renderTenantDeletionWarning,
   daily_summary: renderDailySummary,
   onboarding_abandoned: renderOnboardingAbandoned,

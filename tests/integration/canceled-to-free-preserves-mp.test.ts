@@ -1,12 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql, withTenantContext } from '@/shared/db/client'
-import { transitionToFree } from '@/modules/billing/lifecycle.service'
+import { transitionToExpired } from '@/modules/billing/lifecycle.service'
 import { cleanupAll, createTestTenant, ensureRoles } from '../helpers/tenant'
 import { getOrCreatePlanId } from '../helpers/factories'
 
 /**
  * Freemium (2026-11-08): la baja voluntaria vencida pasa a `free` vía
- * `transitionToFree` (antes, `transitionCanceledToBlocked`). La garantía de B5
+ * `transitionToExpired` (antes, `transitionCanceledToBlocked`). La garantía de B5
  * se mantiene: no se toca `mp_subscription_id`.
  *
  * B5 (Fase 3, huérfano MP↔DB): `transitionCanceledToBlocked` corría con un
@@ -18,7 +18,7 @@ import { getOrCreatePlanId } from '../helpers/factories'
  * matchearlo (pago huérfano). Este test falla con el código viejo: el id
  * queda NULL después de la transición.
  */
-describe('transitionToFree desde canceled preserva mp_subscription_id (B5)', () => {
+describe('transitionToExpired desde canceled preserva mp_subscription_id (B5)', () => {
   beforeAll(async () => {
     const s = getSql()
     await ensureRoles(s)
@@ -52,7 +52,7 @@ describe('transitionToFree desde canceled preserva mp_subscription_id (B5)', () 
     await s`UPDATE tenants SET status = 'canceled'::tenant_status WHERE id = ${tenant.id}`
 
     await withTenantContext(tenant.id, async (tx) => {
-      await transitionToFree(tenant.id, 'cancel_period_ended', tx)
+      await transitionToExpired(tenant.id, 'cancel_period_ended', tx)
     })
 
     const [sub] = await s<
@@ -65,13 +65,13 @@ describe('transitionToFree desde canceled preserva mp_subscription_id (B5)', () 
       SELECT status, mp_subscription_id, scheduled_deletion_at
       FROM tenant_subscriptions WHERE tenant_id = ${tenant.id}
     `
-    expect(sub.status).toBe('free')
+    expect(sub.status).toBe('trial_expired')
     expect(sub.mp_subscription_id).toBe('mp-reactivated-1')
     expect(sub.scheduled_deletion_at).toBeNull()
 
     const [tenantRow] = await s<{ status: string }[]>`
       SELECT status FROM tenants WHERE id = ${tenant.id}
     `
-    expect(tenantRow.status).toBe('free')
+    expect(tenantRow.status).toBe('trial_expired')
   }, 30_000)
 })

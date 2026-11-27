@@ -51,9 +51,9 @@ const CYCLE_OPTIONS = [
 ] as const
 
 /**
- * Selector de cantidad exacta de canchas y ciclo de facturación, con los tres
- * planes lado a lado (decisión 2026-11-08, "tres planes"): Gratis, Completo
- * (destacado, el que se vende) y Completo + WhatsApp (el ancla). Los montos no
+ * Selector de cantidad exacta de canchas y ciclo de facturación, con los dos
+ * planes lado a lado: Completo (destacado, el que se vende) y Completo + WhatsApp
+ * (el ancla). Los montos no
  * cambian: Completo es el precio por cancha y WhatsApp suma el Plus de lista.
  */
 export default function PlanSelector({ pricing = UNIFORM_PRICING }: { pricing?: PricingParams }) {
@@ -196,11 +196,10 @@ function LegacyPlanSelector({ pricing }: { pricing: PricingParams }) {
         </p>
       </div>
 
-      {/* Cards: en el celular, Completo primero (es el que se vende). */}
+      {/* Cards: Completo primero (es el que se vende). */}
       <div className="pr-plans">
-        <FreeCardView className="order-2 lg:order-1" />
-        <PlanCardView plan={active} cycle={cycle} className="order-1 lg:order-2" />
-        <WhatsappCardView plan={active} courts={courts} cycle={cycle} className="order-3" />
+        <PlanCardView plan={active} cycle={cycle} />
+        <WhatsappCardView plan={active} courts={courts} cycle={cycle} />
       </div>
 
       <div className="mt-8 flex justify-center">
@@ -231,13 +230,6 @@ function FeatureList({ items }: { items: readonly string[] }) {
   )
 }
 
-const FREE_FEATURES = [
-  'Anotás tus turnos en la grilla con nombre y teléfono',
-  'Tus jugadores te reservan online, sin tope',
-  'Aparecés en el buscador de TurnoGol y en RIVAL',
-  'Sin vencimiento',
-] as const
-
 const FULL_FEATURES = [
   'Anotás quién pagó y ves lo que falta cobrar',
   'Cargás el fijo una vez y aparece solo en tu grilla todas las semanas',
@@ -256,29 +248,6 @@ function Price({ value }: { value: string }) {
         {value}
       </span>
       <small>/mes</small>
-    </div>
-  )
-}
-
-function FreeCardView({ className }: { className?: string }) {
-  const glow = usePointerGlow<HTMLDivElement>()
-  return (
-    <div ref={glow} className={cn('pr-plan glass-painted glow-follow', className)}>
-      <div className="pr-plan__n">
-        <h2>Gratis</h2>
-      </div>
-      <Price value={formatArs(0)} />
-      <div className="pr-small">Para aparecer donde buscan cancha</div>
-      <FeatureList items={FREE_FEATURES} />
-      <div className="grid gap-3">
-        <Link
-          href="/register"
-          className={cn(buttonVariants({ variant: 'pill-glass', size: 'pill' }), CTA_FULL)}
-        >
-          Probar 30 días gratis
-        </Link>
-        <p className="pr-note">30 días de prueba gratis, sin tarjeta</p>
-      </div>
     </div>
   )
 }

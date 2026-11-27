@@ -71,7 +71,7 @@ export async function runRefreshMpTokens(): Promise<void> {
     SELECT id, mp_disconnected_at IS NOT NULL AS "alreadyMarked"
     FROM tenants
     WHERE mp_refresh_token IS NOT NULL
-      AND status IN ('active', 'trialing', 'past_due', 'suspended', 'free')
+      AND status IN ('active', 'trialing', 'past_due', 'suspended', 'trial_expired', 'free')
   `
 
   const db = getWorkerDb()

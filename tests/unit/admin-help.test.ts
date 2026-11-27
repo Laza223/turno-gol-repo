@@ -28,17 +28,6 @@ describe('Ayuda del panel', () => {
     )
   })
 
-  it('sugiere las operaciones disponibles en el plan gratis', () => {
-    expect(getHelpGuides({ ...manager, freePlan: true, query: '' }).map(({ id }) => id)).toEqual([
-      'create-booking',
-      'block-court',
-    ])
-    expect(getHelpGuides({ ...manager, freePlan: true, query: 'turno semanal' })).toEqual([])
-    expect(
-      getHelpGuides({ ...manager, freePlan: true, staffRole: 'admin', query: 'seña' }),
-    ).toEqual([])
-  })
-
   it('mantiene las guías de consulta en modo solo lectura', () => {
     const results = getHelpGuides({ ...manager, query: '', readOnly: true, staffRole: 'admin' })
 

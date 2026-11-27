@@ -1,5 +1,5 @@
 import { and, eq, sql } from 'drizzle-orm'
-import { assertFreeOnlineNotPaused } from './free-online-pause'
+import { assertOnlineBookingOpen } from './online-booking-gate'
 import { bookings, courts, tenants } from '@/shared/db/schema'
 import { checkPlayerBanned } from '@/modules/bans/ban.service'
 import type { DbTx } from '@/shared/db/client'
@@ -642,8 +642,8 @@ async function createOnlineBookingImpl(
     )
   }
 
-  // Freemium: un complejo gratis con la reserva online en pausa no recibe altas.
-  await assertFreeOnlineNotPaused(tenantId, tx)
+  // Plan no activo (`trial_expired`): no recibe altas online.
+  await assertOnlineBookingOpen(tenantId, tx)
 
   // INV-ABUSE-001: tope duro de holds activos (pending_payment) sin pagar
   // por jugador+tenant. Advisory lock (mismo patrón que

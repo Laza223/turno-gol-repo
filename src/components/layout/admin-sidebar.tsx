@@ -53,8 +53,6 @@ interface SidebarProps {
   setupAlerts?: SetupAlerts
   /** Días de prueba gratis que le quedan al complejo, o null si no está en prueba. */
   trialDaysLeft?: number | null
-  /** Plan gratis: Caja y Clientes y Fijos llevan a /reactivar con la marca "Plan". */
-  freePlan?: boolean
 }
 
 /** Ítems de la barra inferior mobile; el cajón "Más" muestra el resto. */
@@ -78,10 +76,6 @@ export interface NavItem {
    * Clientes incluye `/abonados`), así que el prefijo del href no alcanza.
    */
   match?: (pathname: string) => boolean
-  /** Es del plan pago: en el plan gratis lleva a /reactivar con la marca "Plan". */
-  requiresPlan?: boolean
-  /** Resuelto por `visibleNavItems` en el plan gratis: el ítem está bloqueado. */
-  planLocked?: boolean
 }
 
 /**
@@ -109,14 +103,12 @@ const NAV_ITEMS: NavItem[] = [
     href: '/caja/cuentas',
     icon: Banknote,
     label: 'Caja',
-    requiresPlan: true,
     match: (p) => p === '/caja' || p.startsWith('/caja/'),
   },
   {
     href: '/jugadores',
     icon: Contact,
     label: 'Clientes y Fijos',
-    requiresPlan: true,
     match: (p) => p.startsWith('/jugadores') || p.startsWith('/abonados'),
   },
   // Canchas salió de Configuración el 2026-09-10, a pedido del dueño: define el
@@ -128,7 +120,6 @@ const NAV_ITEMS: NavItem[] = [
     icon: Trophy,
     label: 'Torneos',
     requiresTournaments: true,
-    requiresPlan: true,
   },
   // Solo del dueño (2026-09-19): las métricas del negocio son sensibles y el
   // Encargado opera el día a día, no lo mira.
@@ -165,37 +156,14 @@ export function navItemHasAlert(item: NavItem, alerts: SetupAlerts): boolean {
   return item.alertKey != null && alerts[item.alertKey] > 0
 }
 
-/** Qué incluye el plan y cómo pagarlo. Vive fuera de (admin): no es un espacio del menú. */
-const PLAN_HREF = '/reactivar'
-
-/** Texto que un lector de pantalla oye en lugar de la marca "Plan". */
-const PLAN_LOCKED_LABEL = '— es con el plan'
-
 export function visibleNavItems(opts: {
   tournamentsEnabled?: boolean
   staffRole?: StaffRole
-  freePlan?: boolean
 }): NavItem[] {
-  const visible = NAV_ITEMS.filter(
+  return NAV_ITEMS.filter(
     (item) =>
       (!item.requiresTournaments || opts.tournamentsEnabled) &&
       (!item.requiresAdmin || opts.staffRole === 'admin'),
-  )
-  if (!opts.freePlan) return visible
-  // Plan gratis (freemium): lo del plan pago queda a la vista pero lleva a
-  // /reactivar, y va al final para que la barra inferior muestre lo que se usa.
-  const open = visible.filter((item) => !item.requiresPlan)
-  const locked = visible
-    .filter((item) => item.requiresPlan)
-    .map((item) => ({ ...item, href: PLAN_HREF, planLocked: true, match: () => false }))
-  return [...open, ...locked]
-}
-
-function PlanChip() {
-  return (
-    <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-      Plan
-    </span>
   )
 }
 
@@ -440,7 +408,6 @@ function SidebarRail({
   staffRole,
   setupAlerts,
   trialDaysLeft,
-  freePlan,
 }: {
   pathname: string
   userEmail: string
@@ -450,9 +417,8 @@ function SidebarRail({
   staffRole?: StaffRole
   setupAlerts: SetupAlerts
   trialDaysLeft: number | null
-  freePlan?: boolean
 }) {
-  const navItems = visibleNavItems({ tournamentsEnabled, staffRole, freePlan })
+  const navItems = visibleNavItems({ tournamentsEnabled, staffRole })
   const canConfigure = staffRole === 'admin'
   const ConfigIcon = CONFIG_ITEM.icon
   const configActive = isNavItemActive(CONFIG_ITEM, pathname)
@@ -521,12 +487,8 @@ function SidebarRail({
               <span className="relative flex shrink-0">
                 <Icon className={navIconClass(isActive)} />
                 {navItemHasAlert(item, setupAlerts) && <SetupAlertDot className={RAIL_DOT} />}
-                {item.planLocked && (
-                  <Lock aria-hidden className="absolute -right-1.5 -top-1 h-3 w-3" />
-                )}
               </span>
               <span className={RAIL_LABEL}>{label}</span>
-              {item.planLocked && <span className="sr-only">{PLAN_LOCKED_LABEL}</span>}
               {navItemHasAlert(item, setupAlerts) && <span className="sr-only">{ALERT_LABEL}</span>}
             </Link>
           )
@@ -613,7 +575,6 @@ function SidebarDrawerContent({
   staffRole,
   setupAlerts,
   trialDaysLeft,
-  freePlan,
 }: {
   tenantName: string
   pathname: string
@@ -625,9 +586,8 @@ function SidebarDrawerContent({
   staffRole?: StaffRole
   setupAlerts: SetupAlerts
   trialDaysLeft: number | null
-  freePlan?: boolean
 }) {
-  const navItems = visibleNavItems({ tournamentsEnabled, staffRole, freePlan })
+  const navItems = visibleNavItems({ tournamentsEnabled, staffRole })
   const canConfigure = staffRole === 'admin'
   const ConfigIcon = CONFIG_ITEM.icon
   const configActive = isNavItemActive(CONFIG_ITEM, pathname)
@@ -674,8 +634,6 @@ function SidebarDrawerContent({
             >
               <Icon className={navIconClass(isActive)} />
               <span className="flex-1 truncate">{label}</span>
-              {item.planLocked && <PlanChip />}
-              {item.planLocked && <span className="sr-only">{PLAN_LOCKED_LABEL}</span>}
               {navItemHasAlert(item, setupAlerts) && <SetupAlertDot label={ALERT_LABEL} />}
             </Link>
           )
@@ -754,7 +712,6 @@ export function AdminSidebar({
   staffRole,
   setupAlerts = NO_SETUP_ALERTS,
   trialDaysLeft = null,
-  freePlan = false,
 }: SidebarProps) {
   const pathname = usePathname()
   const [helpOpen, setHelpOpen] = useState(false)
@@ -776,7 +733,6 @@ export function AdminSidebar({
         staffRole={staffRole}
         setupAlerts={setupAlerts}
         trialDaysLeft={trialDaysLeft}
-        freePlan={freePlan}
       />
 
       {/* Cajón mobile — Sheet Radix (focus-trap + scroll-lock + Esc; MASTER §6.8).
@@ -807,7 +763,6 @@ export function AdminSidebar({
             staffRole={staffRole}
             setupAlerts={setupAlerts}
             trialDaysLeft={trialDaysLeft}
-            freePlan={freePlan}
           />
         </SheetContent>
       </Sheet>
@@ -815,7 +770,6 @@ export function AdminSidebar({
         pathname={pathname}
         staffRole={staffRole}
         readOnly={readOnly}
-        freePlan={freePlan}
         open={helpOpen}
         onClose={() => setHelpOpen(false)}
         restoreFocus={() => helpTrigger.current?.focus({ preventScroll: true })}

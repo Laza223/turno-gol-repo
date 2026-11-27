@@ -15,7 +15,7 @@ import { getStaffRole } from '@/modules/staff/staff.service'
 import type { StaffRole } from '@/modules/staff/roles'
 import {
   BLOCKED_TENANT_STATUSES,
-  isFreePlan,
+  isExpiredStatus,
   READ_ONLY_TENANT_STATUSES,
 } from '@/modules/tenants/tenant.lifecycle'
 import { runRequestObservability } from '@/shared/middleware/observability'
@@ -72,12 +72,13 @@ export type WithTenantOptions = {
    */
   rateLimit?: PolicyName
   /**
-   * Un complejo en el plan gratis (`free`) pasa. Opt-in, igual que `allowFree`
-   * de `@/modules/staff/guards`: sin pedirlo, la ruta es del plan pago. En gratis
-   * solo entra el dueño (`admin`). Freemium:
-   * docs/decisions/2026-11-08-freemium-spec-y-estado-free.md.
+   * Un complejo con el plan no activo (`trial_expired`) pasa también los métodos
+   * que escriben. Opt-in, igual que `allowExpired` de `@/modules/staff/guards`:
+   * sin pedirlo, la ruta es de solo lectura (GET) para el complejo vencido. Lo
+   * piden solo las rutas de operar lo que ya existe (push del admin).
+   * docs/decisions/2026-11-27-prueba-30-dias-y-precios.md.
    */
-  allowFree?: boolean
+  allowExpired?: boolean
 }
 
 /**
@@ -97,21 +98,6 @@ async function checkStaffRole(
   const role = await getStaffRole(user.tenantId, user.staffUserId)
   if (!role || !roles.includes(role)) {
     return forbidden('Tu rol no permite realizar esta acción.', { code: 'ROLE_NOT_ALLOWED' })
-  }
-  return null
-}
-
-/** Plan gratis: la ruta tiene que pedir `allowFree` y el que llama tiene que ser el dueño. */
-async function checkFreePlan(user: StaffUser, allowFree: boolean): Promise<NextResponse | null> {
-  if (!allowFree) {
-    return forbidden('Esto es con el plan. Activalo para usarlo.', { code: 'PLAN_REQUIRED' })
-  }
-  const role =
-    user.tenantId && user.staffUserId ? await getStaffRole(user.tenantId, user.staffUserId) : null
-  if (role !== 'admin') {
-    return forbidden('El encargado entra con el plan. Avisale al dueño del complejo.', {
-      code: 'PLAN_REQUIRED',
-    })
   }
   return null
 }
@@ -154,9 +140,15 @@ export function withTenant(
         details: { status },
       })
     }
-    if (isFreePlan({ status })) {
-      const freeRejection = await checkFreePlan(user, options?.allowFree === true)
-      if (freeRejection) return freeRejection
+    if (
+      isExpiredStatus(status) &&
+      !READ_METHODS.has(req.method) &&
+      options?.allowExpired !== true
+    ) {
+      return forbidden('Tu plan no está activo. Activalo para usar esto.', {
+        code: 'PLAN_REQUIRED',
+        details: { status },
+      })
     }
     if (options?.rateLimit) {
       const throttled = await guard(options.rateLimit, user.tenantId)
@@ -210,10 +202,10 @@ export function withBillingTenant(
     if (status === 'deleted') {
       return forbidden('El complejo fue eliminado.', { code: 'TENANT_DELETED' })
     }
-    // Allow canceled, churned, blocked, suspended, past_due, active, trialing, free.
+    // Allow canceled, churned, blocked, suspended, past_due, active, trialing, trial_expired (y su alias free).
     if (
       !BILLING_REACTIVATE_ALLOWED.has(status) &&
-      !['active', 'trialing', 'past_due', 'suspended', 'free'].includes(status)
+      !['active', 'trialing', 'past_due', 'suspended', 'trial_expired', 'free'].includes(status)
     ) {
       return forbidden('El complejo está en un estado que no permite esta acción.', {
         code: 'TENANT_INVALID_STATE',

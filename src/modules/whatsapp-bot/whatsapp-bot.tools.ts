@@ -10,7 +10,7 @@ import { logger } from '@/shared/lib/logger'
 import { buildWhatsappUrl, toWhatsappDigits } from '@/lib/whatsapp'
 import { sendWhatsappTemplate } from '@/lib/kapso/client'
 import { getPublicAvailability, type PublicTenant } from '@/modules/tenants/public.service'
-import { isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
+import { canTakeOnlineBookings } from '@/modules/tenants/tenant.lifecycle'
 import {
   createWhatsappBooking,
   rescheduleWhatsappBooking,
@@ -100,7 +100,8 @@ function dateOutOfRange(tenant: PublicTenant, date: string, now: Date): boolean 
 
 function onlineBookingClosed(tenant: PublicTenant, now: Date): boolean {
   return (
-    !tenant.allowOnlineBooking || !isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd, now)
+    !tenant.allowOnlineBooking ||
+    !canTakeOnlineBookings(tenant.status, tenant.canceledPeriodEnd, now)
   )
 }
 

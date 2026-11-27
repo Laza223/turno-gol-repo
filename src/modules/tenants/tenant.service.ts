@@ -245,7 +245,6 @@ function rowToTenantRow(t: typeof tenants.$inferSelect): TenantRow {
     mpDisconnectedAt: t.mpDisconnectedAt,
     latitude: coordinateFromColumn(t.latitude),
     longitude: coordinateFromColumn(t.longitude),
-    onlinePausedAt: t.onlinePausedAt,
   }
 }
 
@@ -477,11 +476,9 @@ export async function disconnectMercadoPago(
 }
 
 /**
- * El staff entró al panel. Mide el "sin uso" del plan gratis (freemium, decisión
- * 7 de docs/decisions/2026-11-08-freemium-spec-y-estado-free.md): escribe
- * `last_staff_seen_at` como mucho una vez por día y, si el complejo gratis tenía
- * el borrado agendado por inactividad, lo cancela (volvió). El WHERE hace que la
- * visita de todos los días sea un UPDATE de 0 filas por PK.
+ * El staff entró al panel. Escribe `last_staff_seen_at` como mucho una vez por
+ * día (dato operativo para soporte; ya no dispara ningún borrado). El WHERE hace
+ * que la visita de todos los días sea un UPDATE de 0 filas por PK.
  *
  * Lo llama el layout de `(admin)` fuera del render (`after()`) y nunca tira: una
  * falla acá no puede tirar abajo el panel.
@@ -490,14 +487,9 @@ export async function touchStaffSeen(tenantId: string): Promise<void> {
   try {
     await getDb().execute(sql`
       UPDATE tenants
-      SET last_staff_seen_at = NOW(),
-          scheduled_deletion_at = CASE WHEN status = 'free' THEN NULL ELSE scheduled_deletion_at END
+      SET last_staff_seen_at = NOW()
       WHERE id = ${tenantId}
-        AND (
-          last_staff_seen_at IS NULL
-          OR last_staff_seen_at < NOW() - INTERVAL '1 day'
-          OR (status = 'free' AND scheduled_deletion_at IS NOT NULL)
-        )
+        AND (last_staff_seen_at IS NULL OR last_staff_seen_at < NOW() - INTERVAL '1 day')
     `)
   } catch (err) {
     captureMessage('touchStaffSeen failed', {

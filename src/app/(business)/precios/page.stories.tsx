@@ -55,7 +55,6 @@ export const AntesDeActivarElCatalogo: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('heading', { name: 'Completo' })).toBeInTheDocument()
-    await expect(canvas.getByRole('heading', { name: 'Gratis' })).toBeInTheDocument()
     await expect(canvas.getByRole('heading', { name: 'Completo + WhatsApp' })).toBeInTheDocument()
   },
 }

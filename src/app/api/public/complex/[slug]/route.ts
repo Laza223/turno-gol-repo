@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { getPublicTenant } from '@/modules/tenants/public.service'
-import { isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
+import { isPublicProfileVisible } from '@/modules/tenants/tenant.lifecycle'
 import { slug as slugSchema } from '@/shared/validation/primitives'
 import { captureException } from '@/lib/sentry'
 import { internal } from '@/shared/api-error'
@@ -21,7 +21,7 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ slug: st
     captureException(err)
     return internal('No se pudo procesar la solicitud.')
   }
-  if (!tenant || !isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd)) {
+  if (!tenant || !isPublicProfileVisible(tenant.status, tenant.canceledPeriodEnd)) {
     // Un complejo suspendido/bloqueado/dado de baja no debe exponer su perfil
     // público vía esta API (security scan F14 — mismo gate que availability).
     return NextResponse.json({ error: 'not_found' }, { status: 404 })

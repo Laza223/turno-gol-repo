@@ -1,6 +1,7 @@
-import { and, count, desc, eq, ilike, or, sql, type SQL } from 'drizzle-orm'
+import { and, count, desc, eq, gte, ilike, or, sql, type SQL } from 'drizzle-orm'
 import { getDb, withDisposableWorkerDb, withTenantContext, type Db } from '@/shared/db/client'
 import {
+  analyticsEvents,
   auditLogs,
   bookings,
   courts,
@@ -352,6 +353,8 @@ export type TenantDetail = {
     referralRewardStatus: string | null
   }
   pulse: TenantPulse
+  /** Clics en WhatsApp o teléfono de su ficha en los últimos 15 días (`expired.contact_clicked`). */
+  contactClicks15d: number
   subscription: {
     status: SubscriptionStatus
     planId: string
@@ -403,6 +406,29 @@ export type TenantDetail = {
   }>
 }
 
+/** Ventana del conteo de clics de contacto (`expired.contact_clicked`) de un complejo vencido. */
+const CONTACT_CLICKS_WINDOW_DAYS = 15
+
+/**
+ * Clics en WhatsApp o teléfono de la ficha de un complejo en `trial_expired`, para que soporte
+ * lo recupere. Lee `analytics_events` (sin PII) con el pool de servicio: la tabla es de sistema.
+ */
+async function countContactClicks(workerDb: Db, tenantId: string): Promise<number> {
+  const since = new Date(Date.now() - CONTACT_CLICKS_WINDOW_DAYS * 86_400_000)
+  const rows = await workerDb
+    .select({ n: count() })
+    .from(analyticsEvents)
+    .where(
+      and(
+        eq(analyticsEvents.tenantId, tenantId),
+        eq(analyticsEvents.category, 'funnel'),
+        eq(analyticsEvents.event, 'expired.contact_clicked'),
+        gte(analyticsEvents.occurredAt, since),
+      ),
+    )
+  return rows[0]?.n ?? 0
+}
+
 export async function getTenantDetail(tenantId: string): Promise<TenantDetail | null> {
   const db = getDb()
 
@@ -447,38 +473,41 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
 
   // tenant_subscriptions tiene RLS+FORCE (caza-bugs #10) — pool de servicio,
   // no el `db` de arriba (restringido, sin contexto de tenant seteado acá).
-  const [subRows, pulse] = await withDisposableWorkerDb(WORKER_READ_TIMEOUT_MS, (workerDb) =>
-    Promise.all([
-      workerDb
-        .select({
-          status: tenantSubscriptions.status,
-          planId: tenantSubscriptions.planId,
-          planSlug: plans.slug,
-          billedCourts: tenantSubscriptions.billedCourts,
-          pendingBilledCourts: tenantSubscriptions.pendingBilledCourts,
-          priceFirstCourtCents: plans.priceFirstCourtCents,
-          priceExtraCourtCents: plans.priceExtraCourtCents,
-          annualDiscountBps: plans.annualDiscountBps,
-          plusEnabled: tenantSubscriptions.plusEnabled,
-          plusPricePerCourtCents: tenantSubscriptions.plusPricePerCourtCents,
-          billingCycle: tenantSubscriptions.billingCycle,
-          currentPeriodStart: tenantSubscriptions.currentPeriodStart,
-          currentPeriodEnd: tenantSubscriptions.currentPeriodEnd,
-          mpSubscriptionId: tenantSubscriptions.mpSubscriptionId,
-          pendingChangeAt: tenantSubscriptions.pendingChangeAt,
-          canceledAt: tenantSubscriptions.canceledAt,
-          cancellationReason: tenantSubscriptions.cancellationReason,
-          scheduledDeletionAt: tenantSubscriptions.scheduledDeletionAt,
-          dunningStartedAt: tenantSubscriptions.dunningStartedAt,
-          lastPaymentAt: tenantSubscriptions.lastPaymentAt,
-          lastPaymentFailedAt: tenantSubscriptions.lastPaymentFailedAt,
-        })
-        .from(tenantSubscriptions)
-        .leftJoin(plans, eq(plans.id, tenantSubscriptions.planId))
-        .where(eq(tenantSubscriptions.tenantId, tenantId))
-        .limit(1),
-      pulseByTenant(workerDb, [tenantId]),
-    ]),
+  const [subRows, pulse, contactClicks15d] = await withDisposableWorkerDb(
+    WORKER_READ_TIMEOUT_MS,
+    (workerDb) =>
+      Promise.all([
+        workerDb
+          .select({
+            status: tenantSubscriptions.status,
+            planId: tenantSubscriptions.planId,
+            planSlug: plans.slug,
+            billedCourts: tenantSubscriptions.billedCourts,
+            pendingBilledCourts: tenantSubscriptions.pendingBilledCourts,
+            priceFirstCourtCents: plans.priceFirstCourtCents,
+            priceExtraCourtCents: plans.priceExtraCourtCents,
+            annualDiscountBps: plans.annualDiscountBps,
+            plusEnabled: tenantSubscriptions.plusEnabled,
+            plusPricePerCourtCents: tenantSubscriptions.plusPricePerCourtCents,
+            billingCycle: tenantSubscriptions.billingCycle,
+            currentPeriodStart: tenantSubscriptions.currentPeriodStart,
+            currentPeriodEnd: tenantSubscriptions.currentPeriodEnd,
+            mpSubscriptionId: tenantSubscriptions.mpSubscriptionId,
+            pendingChangeAt: tenantSubscriptions.pendingChangeAt,
+            canceledAt: tenantSubscriptions.canceledAt,
+            cancellationReason: tenantSubscriptions.cancellationReason,
+            scheduledDeletionAt: tenantSubscriptions.scheduledDeletionAt,
+            dunningStartedAt: tenantSubscriptions.dunningStartedAt,
+            lastPaymentAt: tenantSubscriptions.lastPaymentAt,
+            lastPaymentFailedAt: tenantSubscriptions.lastPaymentFailedAt,
+          })
+          .from(tenantSubscriptions)
+          .leftJoin(plans, eq(plans.id, tenantSubscriptions.planId))
+          .where(eq(tenantSubscriptions.tenantId, tenantId))
+          .limit(1),
+        pulseByTenant(workerDb, [tenantId]),
+        countContactClicks(workerDb, tenantId),
+      ]),
   )
 
   // courts es tabla RLS → lectura dentro del contexto del tenant (spec §4).
@@ -518,6 +547,7 @@ export async function getTenantDetail(tenantId: string): Promise<TenantDetail | 
   return {
     tenant: { ...tenantRest, settings: tenantRest.settings as TenantSettings, referrerName },
     pulse: pulse.get(tenantId) ?? EMPTY_PULSE,
+    contactClicks15d,
     subscription: subRows[0] ?? null,
     courts: courtRows,
     staff: staffRows,

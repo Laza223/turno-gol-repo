@@ -16,10 +16,9 @@ import { SETTINGS_ADMIN_ONLY_NOTICE } from '@/modules/staff/roles'
  * un bug). grilla/page.tsx traduce el código a un toast.
  */
 export default async function SettingsLayout({ children }: { children: ReactNode }) {
-  // El gratis entra a Ajustes; Equipo y WhatsApp cortan en su propia página.
+  // Con el plan no activo se ve Ajustes en solo lectura (las acciones lo rechazan).
   await requireAdminStaff({
     allowReadOnly: true,
-    allowFree: true,
     onRoleRejected: `/grilla?notice=${SETTINGS_ADMIN_ONLY_NOTICE}`,
   })
   return <>{children}</>

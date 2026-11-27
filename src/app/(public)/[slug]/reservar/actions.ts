@@ -1,6 +1,5 @@
 'use server'
 
-import { isFreePlan } from '@/modules/tenants/tenant.lifecycle'
 import { z } from 'zod'
 import { headers, cookies } from 'next/headers'
 import { redirect, RedirectType } from 'next/navigation'
@@ -43,9 +42,9 @@ import {
   PriceUnavailableError,
   SlotTakenError,
   TooManyActiveHoldsError,
-  FreeOnlinePausedError,
+  OnlineBookingNotAvailableError,
 } from '@/modules/bookings/booking.errors'
-import { isPublicPortalOpen, publicBookingAdvanceDays } from '@/modules/tenants/tenant.lifecycle'
+import { canTakeOnlineBookings, publicBookingAdvanceDays } from '@/modules/tenants/tenant.lifecycle'
 import type { TenantSettings } from '@/modules/tenants/tenant.types'
 import { bookingMinAdvanceHours } from '@/modules/tenants/tenant.utils'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
@@ -375,7 +374,7 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
             .then((r) => r[0]?.currentPeriodEnd ?? null),
         )
       : null
-  if (!isPublicPortalOpen(tenant!.status, canceledPeriodEnd)) replaceTo(`/${slug}`)
+  if (!canTakeOnlineBookings(tenant!.status, canceledPeriodEnd)) replaceTo(`/${slug}`)
 
   const settings = tenant!.settings as TenantSettings
   const timeEnd = addMins(time, dur)
@@ -400,12 +399,9 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
   // 100, decisión 2026-10-22): hay token, pero MP ya no lo acepta y pedir la
   // seña es mandar al jugador a una página de error. Ese caso no se reporta: el
   // dueño ya tiene el aviso en Hoy.
-  // Plan gratis: sin seña (freemium). La reserva entra confirmada y se cobra
-  // en el complejo.
   const depositUnpayable =
-    settings.requires_deposit &&
-    (!tenant!.mpAccessToken || !!tenant!.mpDisconnectedAt || isFreePlan(tenant!))
-  if (settings.requires_deposit && !tenant!.mpAccessToken && !isFreePlan(tenant!)) {
+    settings.requires_deposit && (!tenant!.mpAccessToken || !!tenant!.mpDisconnectedAt)
+  if (settings.requires_deposit && !tenant!.mpAccessToken) {
     captureMessage('checkout: requires_deposit sin MercadoPago conectado', 'warning')
   }
   const withDeposit =
@@ -537,8 +533,8 @@ export async function createBookingAndCheckout(formData: FormData): Promise<void
       replaceTo(`${backTo}&error=banned${untilParam}`)
     }
     if (err instanceof TooManyActiveHoldsError) replaceTo(`${backTo}&error=too_many_holds`)
-    // Plan gratis en pausa: la ficha ya muestra WhatsApp/Llamar.
-    if (err instanceof FreeOnlinePausedError) replaceTo(`/${slug}`)
+    // Plan no activo (trial_expired): la ficha ya muestra WhatsApp/Llamar.
+    if (err instanceof OnlineBookingNotAvailableError) replaceTo(`/${slug}`)
     if (err instanceof CourtOfflineError || err instanceof PriceUnavailableError)
       replaceTo(`${backTo}&error=unavailable`)
     throw err

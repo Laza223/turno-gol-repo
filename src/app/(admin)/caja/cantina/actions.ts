@@ -213,7 +213,7 @@ export async function listBookingConsumosAction(
   const parsed = listBookingConsumosSchema.safeParse(input)
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
 
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowExpired: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { tenant } = auth
 
@@ -231,7 +231,7 @@ export async function settleTabAction(input: unknown): Promise<SettleTabActionRe
   const parsed = settleTabSchema.safeParse(input)
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
 
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowExpired: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
 
@@ -259,7 +259,7 @@ export async function cancelTabAction(input: unknown): Promise<CancelTabActionRe
   const parsed = cancelTabSchema.safeParse(input)
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
 
-  const auth = await requireOperatorStaff()
+  const auth = await requireOperatorStaff({ allowExpired: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
 

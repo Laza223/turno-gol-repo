@@ -1,7 +1,6 @@
 'use client'
 
 import { useRef, useState, useTransition } from 'react'
-import { FREE_PLAN_BLOCK_REASONS } from '@/shared/constants'
 import * as Sentry from '@sentry/nextjs'
 import { toast } from '@/hooks/use-toast'
 import { formatDateLong } from '@/lib/format'
@@ -14,14 +13,10 @@ import { readOnlyFieldClass, selectClass } from './styles'
 import type { TypeFormProps } from './types'
 
 const REASONS = ['Mantenimiento', 'Cancha cerrada', 'Otro'] as const
-type Reason = (typeof REASONS)[number] | (typeof FREE_PLAN_BLOCK_REASONS)[number]
+type Reason = (typeof REASONS)[number]
 
 /**
  * Bloquear cancha — nadie puede usarla: NUNCA carga plata ni datos de contacto.
- *
- * En el plan gratis los motivos son cerrados, sin "Otro" libre: un motivo libre
- * sería una nota encubierta, y las notas son del plan. Anotar quién juega es
- * gratis y va por "Turno" (freemium v2).
  */
 export function BloqueoForm({
   slot,
@@ -31,14 +26,13 @@ export function BloqueoForm({
   onClose,
   onSuccess,
   trackConfirmed,
-  freePlan = false,
-}: TypeFormProps & { freePlan?: boolean }) {
-  const reasons: readonly Reason[] = freePlan ? FREE_PLAN_BLOCK_REASONS : REASONS
+}: TypeFormProps) {
+  const reasons: readonly Reason[] = REASONS
   const timeStart = slot.timeStart
   const endOptions = endTimeOptions({ slots: daySlots, startTime: timeStart, courtBookings })
   const [timeEnd, setTimeEnd] = useState(endOptions[0]!)
 
-  const [reason, setReason] = useState<Reason>(freePlan ? 'Ocupado' : 'Mantenimiento')
+  const [reason, setReason] = useState<Reason>('Mantenimiento')
   const [customReason, setCustomReason] = useState('')
   const customInputRef = useRef<HTMLInputElement>(null)
 
@@ -168,7 +162,6 @@ export function BloqueoForm({
         durationLabel={durationLabel}
         totalCents={null}
         collectedCents={0}
-        hideMoney={freePlan}
         primaryLabel="Bloquear cancha"
         onCancel={onClose}
         isPending={isPending}

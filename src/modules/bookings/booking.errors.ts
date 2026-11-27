@@ -315,12 +315,12 @@ export class TooManyActiveHoldsError extends Error {
   }
 }
 
-// Freemium: el complejo del plan gratis tiene la reserva online en pausa por
-// cancelar reservas online seguido (`FREE_ONLINE_CANCEL_PAUSE_THRESHOLD`).
-export class FreeOnlinePausedError extends Error {
+// El complejo está en `trial_expired`: no recibe reservas online nuevas
+// (docs/decisions/2026-11-27-prueba-30-dias-y-precios.md).
+export class OnlineBookingNotAvailableError extends Error {
   constructor(public readonly tenantId: string) {
-    super(`Tenant ${tenantId} has free plan online booking paused`)
-    this.name = 'FreeOnlinePausedError'
+    super(`Tenant ${tenantId} does not take online bookings (plan not active)`)
+    this.name = 'OnlineBookingNotAvailableError'
   }
 }
 

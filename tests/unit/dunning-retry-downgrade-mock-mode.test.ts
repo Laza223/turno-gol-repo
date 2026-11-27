@@ -19,7 +19,7 @@ vi.mock('@/modules/billing/lifecycle.service', async (importOriginal) => {
     ...actual,
     transitionPastDueToSuspended: vi.fn(),
     transitionBlockedToChurned: vi.fn(),
-    transitionToFree: vi.fn(),
+    transitionToExpired: vi.fn(),
   }
 })
 vi.mock('@/modules/payments/mock-mp', () => ({

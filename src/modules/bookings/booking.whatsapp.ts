@@ -11,7 +11,7 @@ import { insertSystemAuditLog } from '@/shared/db/audit'
 import { invalidateAvailSearch } from '@/shared/cache/slots-cache'
 import { findActiveBanByPhoneHint } from '@/modules/bans/ban.service'
 import { generateSlots } from '@/modules/tenants/public.service'
-import { isPublicPortalOpen, publicBookingAdvanceDays } from '@/modules/tenants/tenant.lifecycle'
+import { canTakeOnlineBookings, publicBookingAdvanceDays } from '@/modules/tenants/tenant.lifecycle'
 import { bookingMinAdvanceHours } from '@/modules/tenants/tenant.utils'
 import type { OpeningHours, TenantSettings } from '@/modules/tenants/tenant.types'
 import { enqueueTenantOwnerNotification } from '@/modules/notifications/notification.service'
@@ -328,7 +328,7 @@ async function loadActivePortalTenant(tenantId: string, tx: DbTx) {
           .limit(1)
           .then((r) => r[0]?.currentPeriodEnd ?? null)
       : null
-  if (!isPublicPortalOpen(tenant.status, canceledPeriodEnd)) {
+  if (!canTakeOnlineBookings(tenant.status, canceledPeriodEnd)) {
     throw new BookingNotOfferedError('portal_closed')
   }
   if (settings.allow_online_booking === false) throw new BookingNotOfferedError('online_disabled')

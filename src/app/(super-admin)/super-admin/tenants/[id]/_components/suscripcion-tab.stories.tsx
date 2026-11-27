@@ -33,7 +33,7 @@ export const SuscripcionActiva: Story = {
 
 /**
  * F7a: con Plus facturado la pestaña muestra la parte de Plus, así las líneas
- * cierran con la cuota: 2 canchas = 1ª $30.000 + 1 × $30.000 + Plus 2 × $15.000 = $90.000.
+ * cierran con la cuota: 2 canchas = 1ª $30.000 + 1 × $30.000 + Plus especial $40.000 = $100.000.
  */
 export const ConPlusFacturado: Story = {
   args: {
@@ -44,15 +44,15 @@ export const ConPlusFacturado: Story = {
           ...base.subscription!,
           billedCourts: 2,
           plusEnabled: true,
-          plusPricePerCourtCents: 1_500_000,
+          plusPricePerCourtCents: 4_000_000,
         },
       })
     })(),
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/Plus: .*30\.000 por mes/)).toBeInTheDocument()
-    await expect(canvas.getByText(/90\.000/)).toBeInTheDocument()
+    await expect(canvas.getByText(/Plus: .*40\.000 por mes/)).toBeInTheDocument()
+    await expect(canvas.getByText(/100\.000/)).toBeInTheDocument()
   },
 }
 

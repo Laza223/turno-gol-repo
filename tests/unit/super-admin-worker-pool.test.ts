@@ -84,7 +84,7 @@ describe('getMrrCents (dashboard.service) — lee tenant_subscriptions vía getW
 
     const data = await getDashboardData()
 
-    expect(data.mrrCents).toBe(11_600_000)
+    expect(data.mrrCents).toBe(12_800_000)
     expect(h.getWorkerDb).toHaveBeenCalled()
   })
 

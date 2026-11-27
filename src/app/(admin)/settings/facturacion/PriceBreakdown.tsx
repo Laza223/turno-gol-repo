@@ -34,7 +34,6 @@ export function PriceBreakdown({
     extraCourtsTotalCents,
     billedCourts,
     planMonthlyListCents,
-    plusPerCourtCents,
     plusMonthlyListCents,
     monthlyListCents,
     monthlyEffectiveCents,
@@ -72,13 +71,7 @@ export function PriceBreakdown({
           </>
         )}
         {plusMonthlyListCents > 0 && (
-          <BreakdownRow
-            label="Asistente de WhatsApp"
-            detail={
-              breakdown.byCourtCount ? undefined : `${courts} × ${formatArs(plusPerCourtCents)}`
-            }
-            value={formatArs(plusMonthlyListCents)}
-          />
+          <BreakdownRow label="Asistente de WhatsApp" value={formatArs(plusMonthlyListCents)} />
         )}
         {annual && (
           // El porcentaje NUNCA se escribe a mano: sale de `annual_discount_bps`

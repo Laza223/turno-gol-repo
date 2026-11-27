@@ -16,7 +16,7 @@ import {
   buildPriceBreakdown,
   canQuoteCourtCount,
   catalogPricing,
-  subscriptionPlusPrice,
+  effectivePlusCents,
 } from '@/modules/billing/pricing'
 import { TENANT_STATUSES, isTenantStatus } from '@/modules/billing/billing.types'
 import type {
@@ -200,11 +200,7 @@ function monthlyEquivalentCents(
     ...pricing,
     billedCourts,
     cycle: cycle === 'annual' ? 'annual' : 'monthly',
-    plusPerCourtCents: subscriptionPlusPrice(
-      plus.plusEnabled === true,
-      plus.plusPricePerCourtCents,
-      pricing,
-    ),
+    plusMonthlyCents: effectivePlusCents(plus.plusEnabled === true, plus.plusPricePerCourtCents),
   }).monthlyEffectiveCents
 }
 

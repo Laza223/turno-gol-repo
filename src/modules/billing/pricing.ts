@@ -1,20 +1,19 @@
 import { differenceInMonths } from 'date-fns'
 import type { BillingCycle } from './billing.types'
 
-/** Precio mensual por cancha del catálogo anterior. Centavos ARS. */
-export const PLUS_LIST_PER_COURT_CENTS = 1_500_000
+/**
+ * Precio de lista del bot de WhatsApp: fijo por mes y por complejo, tenga las
+ * canchas que tenga. Vale para cualquier catálogo. Centavos ARS. Es provisorio
+ * (docs/decisions/2026-11-27-prueba-30-dias-y-precios.md).
+ */
+export const PLUS_LIST_MONTHLY_CENTS = 5_000_000
 
 export const COURT_COUNT_PRICE_SLUG = 'turnogol-por-cantidad'
 export const COURT_COUNT_QUOTE_PREFIX = 'turnogol-cotizacion-'
 
+/** Plan solo, por cantidad exacta de canchas (1 a 7). Centavos ARS por mes. */
 const COURT_COUNT_PRICES = [
-  { base: 4_500_000, plus: 2_500_000 },
-  { base: 6_500_000, plus: 2_500_000 },
-  { base: 8_000_000, plus: 3_500_000 },
-  { base: 9_500_000, plus: 3_500_000 },
-  { base: 11_000_000, plus: 3_500_000 },
-  { base: 12_500_000, plus: 4_500_000 },
-  { base: 13_500_000, plus: 4_500_000 },
+  4_500_000, 6_500_000, 8_000_000, 9_500_000, 11_000_000, 12_500_000, 13_500_000,
 ] as const
 
 export const MAX_CATALOG_COURTS = COURT_COUNT_PRICES.length
@@ -36,8 +35,6 @@ export type PricingParams = {
   quotedCourtCount?: number
 }
 
-export type PlusPrice = number | 'list'
-
 export function catalogPricing(plan: {
   slug?: string
   priceFirstCourtCents: number | null
@@ -46,7 +43,7 @@ export function catalogPricing(plan: {
 }): PricingParams | null {
   if (plan.slug === COURT_COUNT_PRICE_SLUG) {
     return {
-      priceFirstCourtCents: COURT_COUNT_PRICES[0].base,
+      priceFirstCourtCents: COURT_COUNT_PRICES[0],
       priceExtraCourtCents: 0,
       annualDiscountBps: 2000,
       byCourtCount: true,
@@ -79,12 +76,12 @@ export type ComputeAmountInput = PricingParams & {
   billedCourts: number
   cycle: BillingCycle
   /**
-   * Plus por cancha y por mes que lleva el débito, ya resuelto con
-   * `effectivePlusPerCourtCents`. 0 = sin Plus. OBLIGATORIO a propósito: un
-   * caller que se olvide de pasarlo no compila, en vez de cobrar el débito sin
-   * Plus en silencio.
+   * Plus por mes y por complejo que lleva el débito, ya resuelto con
+   * `effectivePlusCents`. 0 = sin Plus. OBLIGATORIO a propósito: un caller que
+   * se olvide de pasarlo no compila, en vez de cobrar el débito sin Plus en
+   * silencio.
    */
-  plusPerCourtCents: PlusPrice
+  plusMonthlyCents: number
 }
 
 export class InvalidBilledCourtsError extends Error {
@@ -116,44 +113,30 @@ export function assertPlusSpecialPrice(priceCents: number | null): void {
   if (!Number.isInteger(priceCents) || priceCents <= 0) throw new InvalidPlusPriceError(priceCents)
 }
 
-/** Plus por cancha ya resuelto: entero >= 0 (0 = sin Plus). */
-function assertPlusPerCourt(plusPerCourtCents: number): void {
-  if (!Number.isInteger(plusPerCourtCents) || plusPerCourtCents < 0) {
-    throw new InvalidPlusPriceError(plusPerCourtCents)
+/** Plus ya resuelto: entero >= 0 (0 = sin Plus). */
+function assertPlusAmount(plusMonthlyCents: number): void {
+  if (!Number.isInteger(plusMonthlyCents) || plusMonthlyCents < 0) {
+    throw new InvalidPlusPriceError(plusMonthlyCents)
   }
 }
 
 /**
- * Plus por cancha y por mes que entra al débito: 0 si el complejo no lo tiene
- * prendido en su suscripción, si no el precio especial o, sin él, el de lista.
+ * Plus por mes que entra al débito: 0 si el complejo no lo tiene prendido en su
+ * suscripción, si no el precio especial o, sin él, el de lista. No depende de
+ * las canchas.
  *
  * Depende SOLO de `plus_enabled` (la columna de la suscripción), nunca del
  * override del flag `whatsapp_bot`: un complejo con el bot prendido a mano por
  * SQL no paga Plus hasta que pasa por el interruptor.
+ *
+ * `specialPriceCents` sale de `tenant_subscriptions.plus_price_per_court_cents`:
+ * el nombre de la columna quedó del precio por cancha, hoy guarda el monto
+ * mensual del complejo.
  */
-export function effectivePlusPerCourtCents(
-  plusEnabled: boolean,
-  specialPriceCents: number | null,
-): number {
+export function effectivePlusCents(plusEnabled: boolean, specialPriceCents: number | null): number {
   assertPlusSpecialPrice(specialPriceCents)
   if (!plusEnabled) return 0
-  return specialPriceCents ?? PLUS_LIST_PER_COURT_CENTS
-}
-
-export function subscriptionPlusPrice(
-  enabled: boolean,
-  specialPerCourtCents: number | null,
-  pricing: Pick<PricingParams, 'byCourtCount' | 'quotedCourtCount'>,
-): PlusPrice {
-  if (
-    pricing.byCourtCount &&
-    !pricing.quotedCourtCount &&
-    enabled &&
-    specialPerCourtCents === null
-  ) {
-    return 'list'
-  }
-  return effectivePlusPerCourtCents(enabled, specialPerCourtCents)
+  return specialPriceCents ?? PLUS_LIST_MONTHLY_CENTS
 }
 
 export function canQuoteCourtCount(
@@ -164,17 +147,11 @@ export function canQuoteCourtCount(
   return !pricing.byCourtCount || billedCourts <= MAX_CATALOG_COURTS
 }
 
-function exactCourtPrice(billedCourts: number) {
+function exactCourtPrice(billedCourts: number): number {
   assertBilledCourts(billedCourts)
   const price = COURT_COUNT_PRICES[billedCourts - 1]
   if (!price) throw new CourtCountQuoteRequiredError()
   return price
-}
-
-export function monthlyPlusAmount(billedCourts: number, price: PlusPrice): number {
-  if (price === 'list') return exactCourtPrice(billedCourts).plus
-  assertPlusPerCourt(price)
-  return billedCourts * price
 }
 
 /**
@@ -195,7 +172,7 @@ export function monthlyListAmount(
     if (!canQuoteCourtCount(billedCourts, params)) throw new CourtCountQuoteRequiredError()
     return params.priceFirstCourtCents
   }
-  if (params.byCourtCount) return exactCourtPrice(billedCourts).base
+  if (params.byCourtCount) return exactCourtPrice(billedCourts)
   assertBilledCourts(billedCourts)
   return params.priceFirstCourtCents + (billedCourts - 1) * params.priceExtraCourtCents
 }
@@ -220,10 +197,8 @@ export function annualMonthlyEquivalent(billedCourts: number, params: PricingPar
 
 /** Lista mensual del débito: plan + Plus, sin descuento de ciclo. */
 function monthlyListWithPlus(input: ComputeAmountInput): number {
-  return (
-    monthlyListAmount(input.billedCourts, input) +
-    monthlyPlusAmount(input.billedCourts, input.plusPerCourtCents)
-  )
+  assertPlusAmount(input.plusMonthlyCents)
+  return monthlyListAmount(input.billedCourts, input) + input.plusMonthlyCents
 }
 
 /**
@@ -235,7 +210,7 @@ function monthlyListWithPlus(input: ComputeAmountInput): number {
  * equivalente mensual a pelo le manda a MP 12 veces menos de lo que va.
  *
  * El descuento anual se aplica a la SUMA plan + Plus (P6). Con
- * `plusPerCourtCents = 0` da exactamente lo mismo que antes de Plus.
+ * `plusMonthlyCents = 0` da exactamente lo mismo que antes de Plus.
  */
 export function computeSubscriptionAmount(input: ComputeAmountInput): number {
   const monthlyList = monthlyListWithPlus(input)
@@ -263,9 +238,7 @@ export type PriceBreakdown = {
   extraCourtsTotalCents: number
   /** Cuota mensual de lista del SOLO plan (1ª cancha + extras). */
   planMonthlyListCents: number
-  /** Plus por cancha y por mes (0 = sin Plus). */
-  plusPerCourtCents: number
-  /** Plus mensual de lista: canchas facturadas × Plus por cancha. */
+  /** Plus mensual de lista del complejo (0 = sin Plus). */
   plusMonthlyListCents: number
   /** Cuota mensual de lista del TOTAL (plan + Plus), sin descuento de ciclo. */
   monthlyListCents: number
@@ -280,7 +253,7 @@ export type PriceBreakdown = {
 }
 
 export function buildPriceBreakdown(input: ComputeAmountInput): PriceBreakdown {
-  const { billedCourts, cycle, plusPerCourtCents, ...params } = input
+  const { billedCourts, cycle, plusMonthlyCents, ...params } = input
   const planMonthlyListCents = monthlyListAmount(billedCourts, params)
   const monthlyListCents = monthlyListWithPlus(input)
   const monthlyEffectiveCents =
@@ -296,8 +269,7 @@ export function buildPriceBreakdown(input: ComputeAmountInput): PriceBreakdown {
     extraCourtUnitCents: params.priceExtraCourtCents,
     extraCourtsTotalCents: (billedCourts - 1) * params.priceExtraCourtCents,
     planMonthlyListCents,
-    plusPerCourtCents: plusPerCourtCents === 'list' ? 0 : plusPerCourtCents,
-    plusMonthlyListCents: monthlyPlusAmount(billedCourts, plusPerCourtCents),
+    plusMonthlyListCents: plusMonthlyCents,
     monthlyListCents,
     monthlyEffectiveCents,
     chargePerCycleCents: computeSubscriptionAmount(input),
@@ -327,16 +299,12 @@ export type PlusProrateQuote = {
 export function plusProrateQuote(input: {
   now: Date
   periodEnd: Date
-  billedCourts: number
-  plusPerCourtCents: PlusPrice
+  plusMonthlyCents: number
   annualDiscountBps: number
 }): PlusProrateQuote {
-  assertBilledCourts(input.billedCourts)
+  assertPlusAmount(input.plusMonthlyCents)
   const months = Math.min(12, Math.max(0, differenceInMonths(input.periodEnd, input.now)))
-  const monthlyCents = applyAnnualDiscount(
-    monthlyPlusAmount(input.billedCourts, input.plusPerCourtCents),
-    input.annualDiscountBps,
-  )
+  const monthlyCents = applyAnnualDiscount(input.plusMonthlyCents, input.annualDiscountBps)
   const amountCents = months * monthlyCents
   // `plus_prorate_cents` es integer: un precio absurdo tiene que volver como
   // precio inválido (lo traduce la action), no como "integer out of range".

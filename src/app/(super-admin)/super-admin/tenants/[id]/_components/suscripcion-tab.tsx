@@ -3,7 +3,7 @@ import {
   buildPriceBreakdown,
   canQuoteCourtCount,
   catalogPricing,
-  subscriptionPlusPrice,
+  effectivePlusCents,
 } from '@/modules/billing/pricing'
 import type { TenantDetail } from '@/modules/super-admin/tenants.service'
 import { TenantStatusBadge } from '../../../_components/tenant-status-visual'
@@ -34,8 +34,8 @@ export function SuscripcionTab({ detail }: { detail: TenantDetail }) {
   }
 
   const pricing = catalogPricing({ ...sub, slug: sub.planSlug ?? undefined })
-  const plusPerCourtCents = pricing
-    ? subscriptionPlusPrice(sub.plusEnabled, sub.plusPricePerCourtCents, pricing)
+  const plusMonthlyCents = pricing
+    ? effectivePlusCents(sub.plusEnabled, sub.plusPricePerCourtCents)
     : 0
 
   const breakdown =
@@ -43,7 +43,7 @@ export function SuscripcionTab({ detail }: { detail: TenantDetail }) {
       ? buildPriceBreakdown({
           billedCourts: sub.billedCourts,
           cycle: sub.billingCycle,
-          plusPerCourtCents,
+          plusMonthlyCents,
           ...pricing,
         })
       : null
@@ -55,7 +55,7 @@ export function SuscripcionTab({ detail }: { detail: TenantDetail }) {
       ? buildPriceBreakdown({
           billedCourts: sub.pendingBilledCourts,
           cycle: sub.billingCycle,
-          plusPerCourtCents,
+          plusMonthlyCents,
           ...pricing,
         })
       : null

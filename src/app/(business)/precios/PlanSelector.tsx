@@ -15,7 +15,7 @@ import {
   annualMonthlyEquivalent,
   MAX_CATALOG_COURTS,
   monthlyListAmount,
-  PLUS_LIST_PER_COURT_CENTS,
+  PLUS_LIST_MONTHLY_CENTS,
   type PricingParams,
 } from '@/modules/billing/pricing'
 import { contactWhatsappUrl } from '@/lib/contact'
@@ -200,7 +200,7 @@ function LegacyPlanSelector({ pricing }: { pricing: PricingParams }) {
       <div className="pr-plans">
         <FreeCardView className="order-2 lg:order-1" />
         <PlanCardView plan={active} cycle={cycle} className="order-1 lg:order-2" />
-        <WhatsappCardView plan={active} courts={courts} cycle={cycle} className="order-3" />
+        <WhatsappCardView plan={active} cycle={cycle} className="order-3" />
       </div>
 
       <div className="mt-8 flex justify-center">
@@ -285,16 +285,13 @@ function FreeCardView({ className }: { className?: string }) {
 
 function WhatsappCardView({
   plan,
-  courts,
   cycle,
   className,
 }: {
   plan: PlanCard
-  courts: number
   cycle: BillingCycle
   className?: string
 }) {
-  const plus = PLUS_LIST_PER_COURT_CENTS * courts
   const monthly = cycle === 'monthly'
   const glow = usePointerGlow<HTMLDivElement>()
   return (
@@ -304,13 +301,15 @@ function WhatsappCardView({
       </div>
       <div className="grid gap-2">
         {monthly ? (
-          <Price value={formatArs(plan.priceMonthly + plus)} />
+          <Price value={formatArs(plan.priceMonthly + PLUS_LIST_MONTHLY_CENTS)} />
         ) : (
-          <div key={plus} className="pr-swap text-xl font-bold">
-            Completo + {formatArs(plus)}/mes
+          <div className="pr-swap text-xl font-bold">
+            Completo + {formatArs(PLUS_LIST_MONTHLY_CENTS)}/mes
           </div>
         )}
-        <div className="pr-small">{formatArs(PLUS_LIST_PER_COURT_CENTS)} más por cancha</div>
+        <div className="pr-small">
+          {formatArs(PLUS_LIST_MONTHLY_CENTS)} más por mes, tengas las canchas que tengas
+        </div>
       </div>
       <FeatureList
         items={[

@@ -9,11 +9,7 @@ import { getDb, withTenantContext } from '@/shared/db/client'
 import { plans } from '@/shared/db/schema'
 import { getBillingPayerEmail, getSubscriptionState } from '@/modules/billing/billing.service'
 import { listCourts } from '@/modules/courts/court.service'
-import {
-  COURT_COUNT_QUOTE_PREFIX,
-  subscriptionPlusPrice,
-  type PricingParams,
-} from '@/modules/billing/pricing'
+import { COURT_COUNT_QUOTE_PREFIX, type PricingParams } from '@/modules/billing/pricing'
 import {
   changeUnverifiedEmailAction,
   resendVerificationEmailAction,
@@ -209,14 +205,7 @@ export default async function ReactivarPage() {
   // Plus EFECTIVO que se factura, igual que /settings/facturacion: `reactivate()`
   // vuelve a cobrar con el Plus de la suscripción, así que la pantalla tiene que
   // mostrar ese mismo monto.
-  const plusBilledPerCourt =
-    sub && pricing
-      ? subscriptionPlusPrice(
-          sub.plus.enabled,
-          sub.plus.usesListPrice ? null : sub.plus.perCourtCents,
-          pricing,
-        )
-      : 0
+  const plusBilledCents = sub && pricing && sub.plus.enabled ? sub.plus.monthlyCents : 0
 
   // Con qué cuenta de MercadoPago paga (migr. 078). Va acá y no solo en
   // /settings/facturacion porque al dueño suspendido o bloqueado esta es la
@@ -249,7 +238,7 @@ export default async function ReactivarPage() {
               onlineCourts={onlineCourts}
               billedCourts={sub?.billedCourts ?? 1}
               billingCycle={sub?.billingCycle ?? 'monthly'}
-              plusPerCourtCents={plusBilledPerCourt}
+              plusMonthlyCents={plusBilledCents}
               verifyEmail={verifyEmail}
             />
           </div>

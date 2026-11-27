@@ -3,18 +3,18 @@ import { addDays, addMonths } from 'date-fns'
 
 // TurnoGol Plus en el monto del débito (decisión 2026-10-22, P3/P6/P7/P10).
 // Los montos esperados están escritos a mano a propósito, no derivados de la
-// fórmula: plan $30.000 por cancha, Plus de lista $15.000 por cancha.
+// fórmula: plan $30.000 por cancha, Plus de lista $50.000 por complejo
+// (docs/decisions/2026-11-27-prueba-30-dias-y-precios.md).
 
 import {
   annualMonthlyEquivalent,
   assertPlusSpecialPrice,
   buildPriceBreakdown,
   computeSubscriptionAmount,
-  effectivePlusPerCourtCents,
-  InvalidBilledCourtsError,
+  effectivePlusCents,
   InvalidPlusPriceError,
   monthlyListAmount,
-  PLUS_LIST_PER_COURT_CENTS,
+  PLUS_LIST_MONTHLY_CENTS,
   plusProrateQuote,
 } from '@/modules/billing/pricing'
 
@@ -25,24 +25,25 @@ const PLAN = {
 }
 
 describe('PR1 — Plus en el monto del débito', () => {
-  it('5 canchas mensual: lista $225.000, especial $12.000 => $210.000', () => {
-    expect(PLUS_LIST_PER_COURT_CENTS).toBe(1_500_000)
-    expect(
-      computeSubscriptionAmount({
-        billedCourts: 5,
+  it('el bot de lista suma $50.000 tenga las canchas que tenga', () => {
+    expect(PLUS_LIST_MONTHLY_CENTS).toBe(5_000_000)
+    for (const billedCourts of [1, 5, 12]) {
+      const sinBot = computeSubscriptionAmount({
+        billedCourts,
         cycle: 'monthly',
-        plusPerCourtCents: 1_500_000,
+        plusMonthlyCents: 0,
         ...PLAN,
-      }),
-    ).toBe(22_500_000)
-    expect(
-      computeSubscriptionAmount({
-        billedCourts: 5,
-        cycle: 'monthly',
-        plusPerCourtCents: 1_200_000,
-        ...PLAN,
-      }),
-    ).toBe(21_000_000)
+      })
+      expect(
+        computeSubscriptionAmount({
+          billedCourts,
+          cycle: 'monthly',
+          plusMonthlyCents: effectivePlusCents(true, null),
+          ...PLAN,
+        }),
+        `${billedCourts} canchas`,
+      ).toBe(sinBot + 5_000_000)
+    }
   })
 
   it('sin Plus el monto es idéntico al del plan solo, para 1..20 canchas x ciclo', () => {
@@ -51,7 +52,7 @@ describe('PR1 — Plus en el monto del débito', () => {
         computeSubscriptionAmount({
           billedCourts: courts,
           cycle: 'monthly',
-          plusPerCourtCents: 0,
+          plusMonthlyCents: 0,
           ...PLAN,
         }),
         `${courts} mensual`,
@@ -60,7 +61,7 @@ describe('PR1 — Plus en el monto del débito', () => {
         computeSubscriptionAmount({
           billedCourts: courts,
           cycle: 'annual',
-          plusPerCourtCents: 0,
+          plusMonthlyCents: 0,
           ...PLAN,
         }),
         `${courts} anual`,
@@ -71,7 +72,7 @@ describe('PR1 — Plus en el monto del débito', () => {
       computeSubscriptionAmount({
         billedCourts: 5,
         cycle: 'monthly',
-        plusPerCourtCents: 0,
+        plusMonthlyCents: 0,
         ...PLAN,
       }),
     ).toBe(15_000_000)
@@ -79,12 +80,12 @@ describe('PR1 — Plus en el monto del débito', () => {
 })
 
 describe('PR2 — el descuento anual va sobre la SUMA plan + Plus', () => {
-  it('Plus especial $12.000, 5 canchas, anual: ($150.000 + $60.000) x 0,9 x 12 = $2.268.000', () => {
+  it('Plus especial $60.000, 5 canchas, anual: ($150.000 + $60.000) x 0,9 x 12 = $2.268.000', () => {
     expect(
       computeSubscriptionAmount({
         billedCourts: 5,
         cycle: 'annual',
-        plusPerCourtCents: 1_200_000,
+        plusMonthlyCents: 6_000_000,
         ...PLAN,
       }),
     ).toBe(226_800_000)
@@ -93,7 +94,7 @@ describe('PR2 — el descuento anual va sobre la SUMA plan + Plus', () => {
       buildPriceBreakdown({
         billedCourts: 5,
         cycle: 'annual',
-        plusPerCourtCents: 1_200_000,
+        plusMonthlyCents: 6_000_000,
         ...PLAN,
       }).chargePerCycleCents,
     ).toBe(226_800_000)
@@ -101,29 +102,28 @@ describe('PR2 — el descuento anual va sobre la SUMA plan + Plus', () => {
 })
 
 describe('PR3 — precio impar: enteros y sin divergencia con la cotización', () => {
-  it('123.455 c/cancha, 3 canchas, anual: entero, y 12 meses de cotización == el Plus del débito anual', () => {
-    const plusPerCourtCents = 123_455
+  it('Plus $1.234,55, 3 canchas, anual: entero, y 12 meses de cotización == el Plus del débito anual', () => {
+    const plusMonthlyCents = 123_455
     const withPlus = computeSubscriptionAmount({
       billedCourts: 3,
       cycle: 'annual',
-      plusPerCourtCents,
+      plusMonthlyCents,
       ...PLAN,
     })
     const withoutPlus = computeSubscriptionAmount({
       billedCourts: 3,
       cycle: 'annual',
-      plusPerCourtCents: 0,
+      plusMonthlyCents: 0,
       ...PLAN,
     })
     expect(Number.isInteger(withPlus)).toBe(true)
-    // (9.000.000 + 370.365) = 9.370.365 x 0,9 = 8.433.328,5 -> 8.433.329 (x12)
-    expect(withPlus).toBe(8_433_329 * 12)
+    // (9.000.000 + 123.455) = 9.123.455 x 0,9 = 8.211.109,5 -> 8.211.110 (x12)
+    expect(withPlus).toBe(8_211_110 * 12)
     const periodEnd = addMonths(new Date('2026-03-10T12:00:00Z'), 12)
     const quote = plusProrateQuote({
       now: new Date('2026-03-10T12:00:00Z'),
       periodEnd,
-      billedCourts: 3,
-      plusPerCourtCents,
+      plusMonthlyCents,
       annualDiscountBps: 1_000,
     })
     expect(quote.months).toBe(12)
@@ -133,31 +133,31 @@ describe('PR3 — precio impar: enteros y sin divergencia con la cotización', (
 
 describe('PR4 — precio especial (P10)', () => {
   it('NULL => lista; prendido con especial => el especial', () => {
-    expect(effectivePlusPerCourtCents(true, null)).toBe(1_500_000)
-    expect(effectivePlusPerCourtCents(true, 1_200_000)).toBe(1_200_000)
+    expect(effectivePlusCents(true, null)).toBe(5_000_000)
+    expect(effectivePlusCents(true, 1_200_000)).toBe(1_200_000)
   })
 
   it('Plus apagado => 0, aunque haya un especial guardado', () => {
-    expect(effectivePlusPerCourtCents(false, null)).toBe(0)
-    expect(effectivePlusPerCourtCents(false, 1_500_000)).toBe(0)
+    expect(effectivePlusCents(false, null)).toBe(0)
+    expect(effectivePlusCents(false, 1_500_000)).toBe(0)
   })
 
   it.each([0, -1, -2_000_000, 1.5, NaN, Infinity])(
     'especial %s => InvalidPlusPriceError, no cae a la lista',
     (bad) => {
       expect(() => assertPlusSpecialPrice(bad)).toThrow(InvalidPlusPriceError)
-      expect(() => effectivePlusPerCourtCents(true, bad)).toThrow(InvalidPlusPriceError)
-      expect(() => effectivePlusPerCourtCents(false, bad)).toThrow(InvalidPlusPriceError)
+      expect(() => effectivePlusCents(true, bad)).toThrow(InvalidPlusPriceError)
+      expect(() => effectivePlusCents(false, bad)).toThrow(InvalidPlusPriceError)
     },
   )
 
-  it('computeSubscriptionAmount rechaza un Plus por cancha negativo o fraccionario', () => {
-    for (const plusPerCourtCents of [-1, 0.5]) {
+  it('computeSubscriptionAmount rechaza un Plus negativo o fraccionario', () => {
+    for (const plusMonthlyCents of [-1, 0.5]) {
       expect(() =>
         computeSubscriptionAmount({
           billedCourts: 2,
           cycle: 'monthly',
-          plusPerCourtCents,
+          plusMonthlyCents,
           ...PLAN,
         }),
       ).toThrow(InvalidPlusPriceError)
@@ -167,11 +167,11 @@ describe('PR4 — precio especial (P10)', () => {
 
 describe('PR5 — cotización del alta de Plus en un anual (P7)', () => {
   const now = new Date('2026-03-10T12:00:00Z')
-  const quote = (periodEnd: Date, billedCourts = 5, plusPerCourtCents = 1_500_000) =>
-    plusProrateQuote({ now, periodEnd, billedCourts, plusPerCourtCents, annualDiscountBps: 1_000 })
+  const quote = (periodEnd: Date, plusMonthlyCents = 5_000_000) =>
+    plusProrateQuote({ now, periodEnd, plusMonthlyCents, annualDiscountBps: 1_000 })
 
-  it('5 meses y 12 días, 5 canchas, Plus $15.000 => 5 meses y $337.500', () => {
-    expect(quote(addDays(addMonths(now, 5), 12))).toEqual({ months: 5, amountCents: 33_750_000 })
+  it('5 meses y 12 días, Plus $50.000 => 5 meses y $225.000', () => {
+    expect(quote(addDays(addMonths(now, 5), 12))).toEqual({ months: 5, amountCents: 22_500_000 })
   })
 
   it('bordes: 29 días => 0 meses; 1 mes exacto => 1; 11 meses y 25 días => 11; más de un año => 12', () => {
@@ -182,13 +182,10 @@ describe('PR5 — cotización del alta de Plus en un anual (P7)', () => {
   })
 
   it('una cotización que no entra en la columna integer tira InvalidPlusPriceError (no un error de DB)', () => {
-    // 12 meses × 10 canchas × $200.000 con 10% off = 2.160.000.000 > 2^31 − 1.
-    expect(() => quote(addMonths(now, 13), 10, 20_000_000)).toThrow(InvalidPlusPriceError)
+    // 12 meses × $2.000.000 con 10% off = 2.160.000.000 > 2^31 − 1.
+    expect(() => quote(addMonths(now, 13), 200_000_000)).toThrow(InvalidPlusPriceError)
     // El borde de abajo sigue cotizando.
-    expect(quote(addMonths(now, 13), 10, 1_500_000)).toEqual({
-      months: 12,
-      amountCents: 162_000_000,
-    })
+    expect(quote(addMonths(now, 13))).toEqual({ months: 12, amountCents: 54_000_000 })
   })
 
   it('un período ya vencido no cotiza (0 meses, 0 centavos)', () => {
@@ -202,20 +199,10 @@ describe('PR5 — cotización del alta de Plus en un anual (P7)', () => {
       plusProrateQuote({
         now: jan31,
         periodEnd: feb28,
-        billedCourts: 5,
-        plusPerCourtCents: 1_500_000,
+        plusMonthlyCents: 5_000_000,
         annualDiscountBps: 1_000,
       }).months,
     ).toBe(1)
-  })
-
-  it('manda billed_courts: más canchas facturadas, más caro', () => {
-    expect(quote(addMonths(now, 2), 2).amountCents).toBe(2 * 2 * 1_350_000)
-    expect(quote(addMonths(now, 2), 8).amountCents).toBe(2 * 8 * 1_350_000)
-  })
-
-  it('canchas inválidas explotan', () => {
-    expect(() => quote(addMonths(now, 2), 0)).toThrow(InvalidBilledCourtsError)
   })
 })
 
@@ -224,11 +211,10 @@ describe('PR6 — el desglose y el cobro no divergen', () => {
     const b = buildPriceBreakdown({
       billedCourts: 5,
       cycle: 'monthly',
-      plusPerCourtCents: 2_000_000,
+      plusMonthlyCents: 10_000_000,
       ...PLAN,
     })
     expect(b.planMonthlyListCents).toBe(15_000_000)
-    expect(b.plusPerCourtCents).toBe(2_000_000)
     expect(b.plusMonthlyListCents).toBe(10_000_000)
     expect(b.firstCourtCents + b.extraCourtsTotalCents + b.plusMonthlyListCents).toBe(
       b.monthlyListCents,
@@ -243,7 +229,7 @@ describe('PR6 — el desglose y el cobro no divergen', () => {
     const b = buildPriceBreakdown({
       billedCourts: 5,
       cycle: 'annual',
-      plusPerCourtCents: 2_000_000,
+      plusMonthlyCents: 10_000_000,
       ...PLAN,
     })
     expect(b.monthlyListCents).toBe(25_000_000)
@@ -256,7 +242,7 @@ describe('PR6 — el desglose y el cobro no divergen', () => {
     const b = buildPriceBreakdown({
       billedCourts: 5,
       cycle: 'monthly',
-      plusPerCourtCents: 0,
+      plusMonthlyCents: 0,
       ...PLAN,
     })
     expect(b.plusMonthlyListCents).toBe(0)

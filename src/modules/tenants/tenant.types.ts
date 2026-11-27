@@ -97,7 +97,7 @@ export type CreateTenantInput = {
    *  falta una). */
   latitude?: number | null
   longitude?: number | null
-  /** Días de prueba gratuita. Omitido = `TRIAL_DAYS` (14), el default del
+  /** Días de prueba gratuita. Omitido = `TRIAL_DAYS`, el default del
    *  self-signup — el wizard de onboarding NO lo pasa y no debe pasarlo.
    *  El alta asistida tampoco: usa los mismos 14 (decisión 2026-11-16). Hoy
    *  nadie lo pasa; otro largo es una decisión del dueño. */

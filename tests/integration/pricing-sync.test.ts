@@ -108,7 +108,7 @@ describe('la fórmula del código sobre los parámetros de la base da los montos
         computeSubscriptionAmount({
           billedCourts,
           cycle: 'monthly',
-          plusPerCourtCents: 0,
+          plusMonthlyCents: 0,
           ...params,
         }),
       ).toBe(monthlyCents)
@@ -145,7 +145,7 @@ describe('la fórmula del código sobre los parámetros de la base da los montos
         computeSubscriptionAmount({
           billedCourts,
           cycle: 'annual',
-          plusPerCourtCents: 0,
+          plusMonthlyCents: 0,
           ...params,
         }),
         `${billedCourts} canchas, ciclo anual`,
@@ -157,7 +157,7 @@ describe('la fórmula del código sobre los parámetros de la base da los montos
       computeSubscriptionAmount({
         billedCourts: 1,
         cycle: 'annual',
-        plusPerCourtCents: 0,
+        plusMonthlyCents: 0,
         ...params,
       }),
     ).toBe(32_400_000)
@@ -185,7 +185,7 @@ describe('/precios publica la lista uniforme del catálogo', () => {
         computeSubscriptionAmount({
           billedCourts: courts,
           cycle: 'annual',
-          plusPerCourtCents: 0,
+          plusMonthlyCents: 0,
           ...(await pricingParamsFromDb()),
         }),
       ).toBe(annual * 12)

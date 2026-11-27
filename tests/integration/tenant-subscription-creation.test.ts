@@ -120,9 +120,9 @@ describe('createTenantWithTrial — siembra tenant_subscriptions', () => {
   })
 
   // Guardrail del lifecycle: el self-signup NO pasa `trialDays`, así que da los
-  // 14 de la decisión 2026-11-16. Si alguien mueve TRIAL_DAYS sin decisión
+  // 30 de la decisión 2026-11-27, los mismos que anuncia el sitio. Si alguien mueve TRIAL_DAYS sin decisión
   // escrita, este test se pone rojo.
-  it('sin trialDays usa el default de 14 días y el mail no afirma plazo', async () => {
+  it('sin trialDays usa el default de 30 días y el mail no afirma plazo', async () => {
     const sql = getSql()
     const staff = await createTestStaffUser(sql)
 
@@ -140,8 +140,8 @@ describe('createTenantWithTrial — siembra tenant_subscriptions', () => {
       SELECT trial_ends_at FROM tenants WHERE id = ${tenant.id}
     `
     const days = daysFromNow(rows[0]!.trial_ends_at)
-    expect(days).toBeGreaterThan(13.9)
-    expect(days).toBeLessThan(14.1)
+    expect(days).toBeGreaterThan(29.9)
+    expect(days).toBeLessThan(30.1)
 
     // Y el mail NO lleva el número: a los pilotos se les extiende el trial desde
     // soporte cuando este mail ya salió, así que afirmar "30 días" acá terminaba

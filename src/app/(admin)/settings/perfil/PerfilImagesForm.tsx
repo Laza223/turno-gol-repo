@@ -149,8 +149,7 @@ export function PerfilImagesForm({
     else setCoverUrl(result.url)
     setFeedback({
       type: 'success',
-      text:
-        kind === 'logo' ? 'Logo actualizado correctamente' : 'Portada actualizada correctamente',
+      text: kind === 'logo' ? 'Logo actualizado' : 'Portada actualizada',
     })
   }
 

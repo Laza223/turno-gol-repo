@@ -22,7 +22,7 @@ type ExpenseMethod = 'cash' | 'transfer' | 'mercadopago'
 const EXPENSE_METHODS: { value: ExpenseMethod; label: string }[] = [
   { value: 'cash', label: 'Efectivo' },
   { value: 'transfer', label: 'Transferencia' },
-  { value: 'mercadopago', label: 'MercadoPago' },
+  { value: 'mercadopago', label: 'Mercado Pago' },
 ]
 
 /** registerPurchaseAction llega por PROP: '../actions' es `'use server'`. */
@@ -152,8 +152,8 @@ export function StockEntryDialog({
         // cuando el dato que el usuario vino a mover no se movió).
         toast({
           title: payload.untracked
-            ? 'Reposición registrada — no mueve stock (producto sin control)'
-            : `Reposición registrada — ${units} unidad${units === 1 ? '' : 'es'}`,
+            ? 'Reposición registrada (no suma stock porque este producto no lleva control)'
+            : `Reposición registrada: +${units} unidad${units === 1 ? '' : 'es'}`,
           variant: 'success',
         })
         setLastProductId(null)
@@ -171,7 +171,7 @@ export function StockEntryDialog({
     <Dialog open={product !== null} onOpenChange={handleClose}>
       <DialogContent className="w-[95vw] max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Reponer — {retry ? retry.productName : product?.name}</DialogTitle>
+          <DialogTitle>Reponer: {retry ? retry.productName : product?.name}</DialogTitle>
         </DialogHeader>
         {retry && (
           <UnconfirmedRetry
@@ -226,8 +226,8 @@ export function StockEntryDialog({
 
               {product?.stock == null && (
                 <div className="rounded-md bg-amber-50 dark:bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300 ring-1 ring-inset ring-amber-600/20 dark:ring-amber-500/30">
-                  Este producto no tiene control de stock (Servicio / Alquiler): la reposición queda
-                  registrada en el historial, pero el número de stock no cambia.
+                  Este producto no lleva control de stock: la reposición queda anotada en el
+                  historial, pero no suma unidades.
                 </div>
               )}
 
@@ -239,7 +239,7 @@ export function StockEntryDialog({
                   onChange={(e) => setNote(e.target.value)}
                   rows={2}
                   disabled={isPending}
-                  placeholder="ej: Distribuidora Central, Factura B N° 123..."
+                  placeholder="Ej: Distribuidora Central, factura 123"
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-ring resize-none"
                 />
               </div>
@@ -284,7 +284,7 @@ export function StockEntryDialog({
                       disabled={isPending}
                       className="h-4 w-4 rounded border-border text-emerald-600 focus:ring-emerald-500"
                     />
-                    Pagalo de la caja (gasto de mercadería)
+                    Anotar como gasto en la caja de hoy
                   </label>
 
                   {payFromCash && (
@@ -304,7 +304,8 @@ export function StockEntryDialog({
                         ))}
                       </div>
                       <p className="text-[11px] text-muted-foreground">
-                        Registra gasto de {formatArs(totalUnits * (unitCostCents ?? 0))} en la caja.
+                        Se anota un gasto de {formatArs(totalUnits * (unitCostCents ?? 0))} en la
+                        caja de hoy.
                       </p>
                     </div>
                   )}

@@ -140,7 +140,7 @@ export function PushPermissionDialog({
                 onClick={onEnable}
                 disabled={status === 'pending'}
               >
-                {status === 'pending' ? 'Habilitando…' : 'Habilitar notificaciones'}
+                {status === 'pending' ? 'Activando...' : 'Activar notificaciones'}
               </Button>
               <Button variant="outline" className="w-full sm:w-auto" onClick={close}>
                 Ahora no

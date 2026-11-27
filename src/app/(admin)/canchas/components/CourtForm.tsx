@@ -206,13 +206,13 @@ export function CourtForm({
       if (result?.success) uploaded = result.photos
       else {
         failed += 1
-        lastError = result?.error ?? 'No pudimos subir la imagen. Probá de nuevo en un momento.'
+        lastError = result?.error ?? 'No pudimos subir la imagen. Probá de nuevo en unos segundos.'
       }
     }
     if (failed > 0) {
       toast({
         title: `La cancha se creó, pero ${failed === 1 ? 'una foto no se subió' : `${failed} fotos no se subieron`}`,
-        description: `${lastError} Cargala${failed === 1 ? '' : 's'} desde «Editar».`,
+        description: `${lastError} Cargala${failed === 1 ? '' : 's'} desde "Editar".`,
         variant: 'destructive',
       })
     }
@@ -247,7 +247,7 @@ export function CourtForm({
           ? 'No se puede guardar: falta el precio del turno.'
           : `No se puede guardar: ${
               emptyCount === 1 ? 'falta 1 hora' : `faltan ${emptyCount} horas`
-            } sin precio. Están en ámbar en «Así queda la semana».`,
+            } sin precio. Están en ámbar en "Así queda la semana".`,
       )
       return
     }
@@ -474,8 +474,8 @@ export function CourtForm({
             }}
             title={billingChangeTitle(billingPreview)}
             description={<p>{billingChangeMessage(billingPreview)}</p>}
-            confirmLabel="Confirmar"
-            cancelLabel="Cancelar"
+            confirmLabel="Crear cancha"
+            cancelLabel="Volver"
             onConfirm={confirmBillingChange}
           />
         )}

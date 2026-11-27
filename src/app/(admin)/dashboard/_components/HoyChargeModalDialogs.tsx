@@ -195,10 +195,10 @@ export function HoyChargeModalDialogs({
         <ConfirmDialog
           open={releaseBlockOpen}
           onOpenChange={setReleaseBlockOpen}
-          title="Liberar el bloqueo"
+          title="Liberar bloqueo"
           description={`${name}, ${booking.timeStart}–${booking.timeEnd}. La cancha queda libre para reservar.`}
           variant="destructive"
-          confirmLabel="Liberar"
+          confirmLabel="Liberar cancha"
           cancelLabel="Volver"
           consequences={[
             'El bloqueo se elimina: no queda como reserva cancelada.',

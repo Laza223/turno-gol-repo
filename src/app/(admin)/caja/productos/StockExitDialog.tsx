@@ -83,7 +83,7 @@ export function StockExitDialog({
       return
     }
     if (note.trim() === '') {
-      setError('Contá el motivo de la salida.')
+      setError('Escribí el motivo de la salida.')
       return
     }
 
@@ -117,7 +117,7 @@ export function StockExitDialog({
     <Dialog open={product !== null} onOpenChange={handleClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Salida — {retry ? retry.productName : product?.name}</DialogTitle>
+          <DialogTitle>Salida de stock: {retry ? retry.productName : product?.name}</DialogTitle>
         </DialogHeader>
         {retry && (
           <UnconfirmedRetry
@@ -162,14 +162,14 @@ export function StockExitDialog({
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="sx-note">Nota</Label>
+            <Label htmlFor="sx-note">Detalle (obligatorio)</Label>
             <textarea
               id="sx-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={2}
               disabled={isPending}
-              placeholder="ej: latas vencidas, agua para el árbitro…"
+              placeholder="Ej: Latas vencidas, agua para el árbitro"
               className="min-h-11 w-full rounded-md border border-border px-3 py-2 text-sm"
             />
           </div>

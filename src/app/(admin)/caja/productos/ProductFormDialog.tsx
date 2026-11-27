@@ -162,7 +162,7 @@ export function ProductFormDialog({
       if (trackStock) {
         const stockNum = Number(stock)
         if (stock.trim() === '' || !Number.isInteger(stockNum) || stockNum < 0) {
-          setError('Ingresá el stock inicial (entero, 0 o más).')
+          setError('Ingresá el stock inicial (un número entero, 0 o más).')
           return
         }
         stockValue = stockNum
@@ -173,7 +173,7 @@ export function ProductFormDialog({
       // Estaba sin control y se activa ahora: manda el stock inicial.
       const stockNum = Number(stock)
       if (stock.trim() === '' || !Number.isInteger(stockNum) || stockNum < 0) {
-        setError('Ingresá el stock inicial (entero, 0 o más).')
+        setError('Ingresá el stock inicial (un número entero, 0 o más).')
         return
       }
       stockValue = stockNum
@@ -220,7 +220,7 @@ export function ProductFormDialog({
       } catch (err) {
         Sentry.captureException(err)
         startTransition(() =>
-          setError('No pudimos guardar el producto. Revisá tu conexión e intentá de nuevo.'),
+          setError('No pudimos guardar el producto. Revisá tu internet y probá de nuevo.'),
         )
       }
     })
@@ -277,7 +277,7 @@ export function ProductFormDialog({
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 maxLength={40}
-                placeholder="Ej.: Bebidas"
+                placeholder="Ej: Bebidas"
                 disabled={isPending}
                 aria-describedby="pf-category-help"
               />
@@ -393,7 +393,7 @@ export function ProductFormDialog({
                 </Field>
                 <Field
                   id="pf-minstock"
-                  label="Stock mínimo (alerta)"
+                  label="Stock mínimo (opcional)"
                   help="Cuando queden esta cantidad o menos, te avisamos que hay que reponer. Opcional."
                 >
                   <Input

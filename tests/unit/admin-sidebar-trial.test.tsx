@@ -32,19 +32,19 @@ describe('AdminSidebar — período de prueba en el riel', () => {
     renderSidebar(73)
     // El cálculo del nombre mete un espacio entre los renglones y antes del texto
     // oculto ("73 días . Elegir plan"): el regex no depende de eso.
-    const link = screen.getByRole('link', { name: /Prueba 73 días\W+Elegir plan/ })
+    const link = screen.getByRole('link', { name: /Prueba 73 días\W+Activar plan/ })
     expect(link).toHaveAttribute('href', '/settings/facturacion')
   })
 
   it('singular: "1 día"', () => {
     renderSidebar(1)
-    expect(screen.getByRole('link', { name: /Prueba 1 día\W+Elegir plan/ })).toBeVisible()
+    expect(screen.getByRole('link', { name: /Prueba 1 día\W+Activar plan/ })).toBeVisible()
   })
 
   it('al encargado se lo muestra sin link (Facturación es del dueño)', () => {
     renderSidebar(73, 'manager')
     expect(screen.getByText('73 días')).toBeVisible()
-    expect(screen.queryByRole('link', { name: /Elegir plan/ })).toBeNull()
+    expect(screen.queryByRole('link', { name: /Activar plan/ })).toBeNull()
   })
 
   it('fuera de la prueba no hay nada', () => {

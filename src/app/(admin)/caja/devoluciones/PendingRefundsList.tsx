@@ -16,7 +16,7 @@ import { MarkRefundSettledDialog, type MarkRefundSettledAction } from './MarkRef
 
 /** Por dónde entró la seña. Dice si MercadoPago todavía puede resolverla solo. */
 const ORIGIN_TAG: Record<string, string> = {
-  mercadopago: 'MercadoPago',
+  mercadopago: 'Mercado Pago',
   cash: 'Efectivo',
   transfer: 'Transferencia',
   other: 'Otro medio',

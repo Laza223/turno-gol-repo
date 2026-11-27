@@ -278,7 +278,7 @@ export async function inviteStaffAction(formData: FormData): Promise<StaffAction
     captureException(err)
     return {
       success: false,
-      error: 'No pudimos crear el usuario. Volvé a intentar en un momento.',
+      error: 'No pudimos crear el usuario. Probá de nuevo en unos segundos.',
     }
   }
 

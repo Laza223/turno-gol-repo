@@ -23,12 +23,12 @@ export default function AdminError({
   return (
     <ErrorState
       variant="contained"
-      title="Error en el panel de administración"
-      description="No pudimos cargar esta sección. El equipo ya fue notificado. Probá recargar; si el problema persiste, volvé al dashboard."
+      title="No pudimos cargar esta pantalla"
+      description="Probá recargar la pantalla. Si sigue fallando, volvé a Hoy."
       digest={error.digest}
       onRetry={reset}
       secondaryHref="/dashboard"
-      secondaryLabel="Ir al dashboard"
+      secondaryLabel="Volver a Hoy"
       secondaryIcon={LayoutDashboard}
     />
   )

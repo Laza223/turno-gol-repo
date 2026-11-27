@@ -11,12 +11,12 @@ const MP_UNAVAILABLE = new Set(['mp_not_configured', 'mp_config_missing'])
 function mpErrorMessage(code: string, conflictTenant?: string | null): string {
   if (code === 'mp_already_connected') {
     const cual = conflictTenant ? `"${conflictTenant}"` : 'otro complejo'
-    return `Esa cuenta de MercadoPago ya está cobrando para ${cual}. Cada complejo necesita su propia cuenta: entrá a MercadoPago con la cuenta de este complejo y volvé a intentar.`
+    return `Esa cuenta de Mercado Pago ya está cobrando para ${cual}. Cada complejo necesita su propia cuenta: entrá a Mercado Pago con la cuenta de este complejo y volvé a intentar.`
   }
   if (MP_UNAVAILABLE.has(code)) {
-    return 'La conexión con MercadoPago no está disponible en este momento. Probá de nuevo más tarde.'
+    return 'La conexión con Mercado Pago no está disponible ahora. Probá de nuevo más tarde.'
   }
-  return 'No pudimos conectar MercadoPago. Probá de nuevo en un momento.'
+  return 'No pudimos conectar Mercado Pago. Probá de nuevo en unos segundos.'
 }
 
 /**
@@ -64,7 +64,7 @@ export function MercadoPagoSenaSection({
             className="flex items-center gap-2 text-base font-semibold text-foreground"
           >
             <CreditCard className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden />
-            MercadoPago para cobrar la seña
+            Mercado Pago para cobrar la seña
           </h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
             Donde te entra la plata de las señas. No es la cuenta con la que le pagás a TurnoGol.
@@ -86,7 +86,7 @@ export function MercadoPagoSenaSection({
         <div className="mt-4 max-w-2xl space-y-2">
           {disconnected && (
             <p className="text-sm font-medium text-foreground">
-              MercadoPago dejó de aceptar la conexión de TurnoGol. Mientras tanto, las reservas
+              Mercado Pago dejó de aceptar la conexión de TurnoGol. Mientras tanto, las reservas
               online entran sin seña.
             </p>
           )}
@@ -117,7 +117,7 @@ export function MercadoPagoSenaSection({
             <p className="flex items-start gap-2 text-sm text-muted-foreground">
               <Info className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
               <span>
-                Por defecto, MercadoPago tarda 18 días en acreditarte cada seña.{' '}
+                Por defecto, Mercado Pago tarda 18 días en acreditarte cada seña.{' '}
                 <a
                   href="https://youtu.be/pwUFOdZMxYs"
                   target="_blank"
@@ -133,8 +133,7 @@ export function MercadoPagoSenaSection({
         </div>
       ) : (
         <p className="mt-4 max-w-2xl text-sm text-muted-foreground">
-          Conectá la cuenta de MercadoPago del complejo para cobrar la seña de las reservas por
-          internet.
+          Conectá la cuenta de Mercado Pago del complejo para cobrar la seña de las reservas online.
         </p>
       )}
 
@@ -153,7 +152,7 @@ export function MercadoPagoSenaSection({
           href="/api/mp/oauth-start"
           className="mt-4 inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 md:h-10"
         >
-          Reconectar MercadoPago <ExternalLink className="h-4 w-4" aria-hidden />
+          Reconectar Mercado Pago <ExternalLink className="h-4 w-4" aria-hidden />
         </a>
       )}
 
@@ -168,7 +167,7 @@ export function MercadoPagoSenaSection({
           href="/api/mp/oauth-start"
           className="mt-4 inline-flex h-11 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 md:h-10"
         >
-          Conectar MercadoPago <ExternalLink className="h-4 w-4" aria-hidden />
+          Conectar Mercado Pago <ExternalLink className="h-4 w-4" aria-hidden />
         </a>
       )}
     </section>

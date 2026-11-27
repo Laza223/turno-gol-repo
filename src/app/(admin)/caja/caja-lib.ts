@@ -21,7 +21,7 @@ const METHOD_ORDER: MethodKey[] = ['cash', 'transfer', 'mercadopago', 'other']
 export const METHOD_OPTIONS = [
   { value: 'cash', label: 'Efectivo' },
   { value: 'transfer', label: 'Transferencia' },
-  { value: 'mercadopago', label: 'MercadoPago' },
+  { value: 'mercadopago', label: 'Mercado Pago' },
 ] as const
 
 export type SaleMethod = (typeof METHOD_OPTIONS)[number]['value']
@@ -120,7 +120,7 @@ export function nightsOfStockLeft(stock: number | null, unitsLast7Days: number):
  */
 export function categoryLabel(type: string, category: string): string {
   if (category === 'booking') return 'Reserva'
-  if (category === 'product_sale') return 'Cantina/Bar'
+  if (category === 'product_sale') return 'Cantina'
   if (category === 'operating_expense') return 'Gasto operativo' // legacy pre-050
   if (category === 'merchandise') return 'Mercadería'
   if (category === 'salaries') return 'Sueldos'

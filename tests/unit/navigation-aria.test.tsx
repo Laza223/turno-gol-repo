@@ -127,14 +127,14 @@ describe('AdminSidebar — los 6 espacios', () => {
     expect(screen.queryByRole('link', { name: 'Turnos fijos' })).toBeNull()
   })
 
-  it('el encargado ve Hoy y no ve Métricas; el dueño ve las dos', () => {
+  it('el encargado ve Hoy y no ve Reportes; el dueño ve las dos', () => {
     renderSidebar('/grilla', 'manager')
     expect(screen.getAllByRole('link', { name: 'Hoy' }).length).toBeGreaterThan(0)
-    expect(screen.queryByRole('link', { name: 'Métricas' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Reportes' })).toBeNull()
     cleanup()
     renderSidebar('/grilla', 'admin')
     expect(screen.getAllByRole('link', { name: 'Hoy' }).length).toBeGreaterThan(0)
-    expect(screen.getAllByRole('link', { name: 'Métricas' }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('link', { name: 'Reportes' }).length).toBeGreaterThan(0)
   })
 
   it('sin el proveedor de Vender el riel no dibuja el botón', () => {

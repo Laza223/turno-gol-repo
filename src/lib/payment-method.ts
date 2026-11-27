@@ -9,7 +9,7 @@ export type MethodKey = 'cash' | 'transfer' | 'mercadopago' | 'other'
 export const METHOD_LABELS: Record<MethodKey, string> = {
   cash: 'Efectivo',
   transfer: 'Transferencia',
-  mercadopago: 'MercadoPago',
+  mercadopago: 'Mercado Pago',
   other: 'Otro',
 }
 

@@ -114,7 +114,7 @@ describe('ActaPanel — walkover (Clase B: ConfirmDialog)', () => {
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByText('Ganó Los Pibes por no presentación.')).toBeTruthy()
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cargar walkover' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Confirmar' }))
     await waitFor(() =>
       expect(walkoverAction).toHaveBeenCalledWith({ matchId: 'match-1', winnerTeamId: 'team-1' }),
     )

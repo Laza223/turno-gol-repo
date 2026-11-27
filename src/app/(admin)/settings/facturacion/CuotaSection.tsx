@@ -238,7 +238,7 @@ export function CuotaSection({
         setMessage(
           res.status === 501
             ? `Por ahora el cambio de canchas no se puede hacer solo. Escribinos a ${SUPPORT_EMAIL} y lo ajustamos nosotros en el día.`
-            : (body?.error?.message ?? 'No se pudo guardar el cambio. Intentá de nuevo.'),
+            : (body?.error?.message ?? 'No pudimos guardar el cambio. Probá de nuevo.'),
         )
         return
       }
@@ -452,8 +452,8 @@ export function CuotaSection({
         <p className="text-xs leading-relaxed text-amber-700 dark:text-amber-400">
           {limitHint === 'floor' && (
             <>
-              Tu cuota tiene que cubrir las canchas que tenés prendidas. Para pagar por menos, apagá
-              las que no estés usando en{' '}
+              Tu cuota tiene que cubrir las canchas que tenés activas. Para pagar por menos, pausá
+              las que no uses en{' '}
               <Link href="/canchas" className="font-semibold underline underline-offset-2">
                 Canchas
               </Link>{' '}
@@ -523,7 +523,7 @@ export function CuotaSection({
               href="#cuenta-mp"
               className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-red-700"
             >
-              Cargar mi cuenta de MercadoPago <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              Cargar mi cuenta de Mercado Pago <ArrowRight className="h-3.5 w-3.5" aria-hidden />
             </a>
           )}
         </div>

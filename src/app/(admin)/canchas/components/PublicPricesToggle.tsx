@@ -36,7 +36,11 @@ export function PublicPricesToggle({
       const res = await action(next)
       if (!res.success) {
         setVisible(!next)
-        toast({ title: 'No se pudo guardar', description: res.error, variant: 'destructive' })
+        toast({
+          title: 'No pudimos guardar el cambio',
+          description: res.error,
+          variant: 'destructive',
+        })
         return
       }
       toast({
@@ -57,7 +61,7 @@ export function PublicPricesToggle({
         </h2>
         <p className="mt-0.5 max-w-xl text-sm text-muted-foreground">
           Si elegís No, los jugadores ven tus canchas y horarios libres, pero ningún precio: ni en
-          tu página, ni en el buscador, ni al reservar. La seña se cobra igual.
+          tu página, ni en el buscador, ni al reservar. Si tenés la seña activada, se cobra igual.
         </p>
       </div>
       <SegmentedControl

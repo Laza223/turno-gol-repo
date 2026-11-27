@@ -89,7 +89,7 @@ export function ActaPanel({
   // que el staff pase por un diálogo de confirmación que termina en error.
   const walkoverBlocked = match.status !== 'scheduled' || events.length > 0
   const walkoverBlockedReason =
-    'Este partido ya tiene resultado y/o eventos cargados. Borrá el resultado y las jugadas del acta antes de cargar un walkover.'
+    'Este partido ya tiene resultado o jugadas cargadas. Borrá el resultado y las jugadas del acta antes de cargar una no presentación.'
 
   const run = (fn: () => Promise<TournamentActionResult>, successTitle?: string) => {
     setError(null)
@@ -111,7 +111,7 @@ export function ActaPanel({
     const res = await walkoverAction({ matchId: match.id, winnerTeamId: walkoverConfirm.teamId })
     if (res.success) {
       toast({
-        title: 'Walkover cargado',
+        title: 'No presentación cargada',
         description: `Ganó ${walkoverConfirm.teamName}`,
         variant: 'success',
       })
@@ -185,7 +185,9 @@ export function ActaPanel({
         <p className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning/10 px-4 py-2.5 text-sm text-amber-800 dark:text-amber-300 lg:col-span-2">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
           <span>
-            Hay {suspendedInActa.length} jugador(es) en el acta que arrastran fechas de suspensión.
+            {suspendedInActa.length === 1
+              ? 'Hay 1 jugador en el acta que arrastra fechas de suspensión.'
+              : `Hay ${suspendedInActa.length} jugadores en el acta que arrastran fechas de suspensión.`}{' '}
             Es un aviso: si el árbitro los dejó jugar, el resultado vale.
           </span>
         </p>
@@ -435,7 +437,7 @@ export function ActaPanel({
         onOpenChange={(open) => {
           if (!open) setWalkoverConfirm(null)
         }}
-        title="Cargar walkover"
+        title="Cargar no presentación"
         description={
           walkoverConfirm ? `Ganó ${walkoverConfirm.teamName} por no presentación.` : undefined
         }
@@ -444,7 +446,7 @@ export function ActaPanel({
           'Se puede corregir después borrando el resultado.',
         ]}
         variant="destructive"
-        confirmLabel="Cargar walkover"
+        confirmLabel="Confirmar"
         cancelLabel="Volver"
         onConfirm={confirmWalkover}
       />

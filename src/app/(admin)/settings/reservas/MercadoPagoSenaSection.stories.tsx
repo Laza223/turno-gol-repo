@@ -41,11 +41,11 @@ export const Desconectado: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Desconectado')).toBeVisible()
     await expect(canvas.getByText(/dejó de aceptar la conexión de TurnoGol/)).toBeVisible()
-    await expect(canvas.getByRole('link', { name: /Reconectar MercadoPago/ })).toHaveAttribute(
+    await expect(canvas.getByRole('link', { name: /Reconectar Mercado Pago/ })).toHaveAttribute(
       'href',
       '/api/mp/oauth-start',
     )
-    await expect(canvas.getByRole('button', { name: /Desconectar MercadoPago/ })).toBeVisible()
+    await expect(canvas.getByRole('button', { name: /Desconectar Mercado Pago/ })).toBeVisible()
   },
 }
 
@@ -56,7 +56,7 @@ export const Desconectado: Story = {
 export const DesconectarAbierto: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: /Desconectar MercadoPago/ }))
+    await userEvent.click(canvas.getByRole('button', { name: /Desconectar Mercado Pago/ }))
     await expect(canvas.getByText(/La seña se apaga\. Si después reconectás/)).toBeVisible()
 
     await userEvent.click(canvas.getByRole('button', { name: 'Desconectar' }))
@@ -64,7 +64,9 @@ export const DesconectarAbierto: Story = {
     // waitFor: recién montado, el fade-in-0 de Radix puede dejar opacity:0 en
     // el primer tick (reduced-motion acorta la animación, no saltea ese frame) y
     // toBeVisible() lo agarra en falso negativo. Mismo idiom que FiadosList.
-    await waitFor(() => expect(within(dialog).getByText('¿Desconectar MercadoPago?')).toBeVisible())
+    await waitFor(() =>
+      expect(within(dialog).getByText('¿Desconectar Mercado Pago?')).toBeVisible(),
+    )
     await expect(within(dialog).getByText(/ELVAGON\.FUTBOL/)).toBeVisible()
     // Abrir el diálogo no desconecta nada: hace falta el tercer toque.
     await expect(args.disconnectAction).not.toHaveBeenCalled()
@@ -77,7 +79,7 @@ export const DesconectarSinSena: Story = {
   args: { requiresDeposit: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: /Desconectar MercadoPago/ }))
+    await userEvent.click(canvas.getByRole('button', { name: /Desconectar Mercado Pago/ }))
     await expect(canvas.getByText(/dejan de cobrar seña/)).toBeVisible()
     await expect(canvas.queryByText(/La seña se apaga/)).not.toBeInTheDocument()
   },

@@ -32,7 +32,7 @@ function LowStockDot({ count }: { count: number }) {
         className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500 dark:bg-amber-400"
       />
       <span className="sr-only">
-        — {count} {count === 1 ? 'producto para reponer' : 'productos para reponer'}
+        , {count} {count === 1 ? 'producto para reponer' : 'productos para reponer'}
       </span>
     </>
   )

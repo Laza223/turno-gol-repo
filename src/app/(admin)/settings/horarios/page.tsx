@@ -74,7 +74,7 @@ export default async function HorariosPage() {
             <EmptyState
               icon={CalendarOff}
               title="No hay días cerrados"
-              description="Agregá una fecha abajo para bloquear un día completo."
+              description="Agregá una fecha abajo para cerrar el complejo un día completo."
               className="py-4 lg:py-6"
             />
           )}

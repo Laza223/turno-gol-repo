@@ -271,7 +271,7 @@ export function PushNotificationManager({
         (isMpDisconnected
           ? 'MercadoPago se desconectó'
           : data.courtName
-            ? `Nueva reserva — ${data.courtName}`
+            ? `Nueva reserva: ${data.courtName}`
             : 'Nueva reserva')
       const description =
         typeof data.body === 'string'
@@ -371,8 +371,8 @@ export function PushNotificationManager({
       if (!vapidKey) {
         setStatus('unsubscribed')
         toast({
-          title: 'No pudimos habilitar notificaciones',
-          description: 'Falta la clave del servidor.',
+          title: 'No pudimos activar las notificaciones',
+          description: 'Hubo un problema técnico de nuestro lado. Probá de nuevo en unos minutos.',
           variant: 'destructive',
         })
         return
@@ -411,9 +411,8 @@ export function PushNotificationManager({
       setStatus('unsubscribed')
       Sentry.captureException(e)
       toast({
-        title: 'No pudimos habilitar notificaciones',
-        description:
-          'No pudimos activar las notificaciones en este dispositivo. Probá de nuevo o revisá los permisos del navegador.',
+        title: 'No pudimos activar las notificaciones',
+        description: 'Probá de nuevo o revisá los permisos del navegador.',
         variant: 'destructive',
       })
     }
@@ -507,13 +506,13 @@ export function PushNotificationManager({
         <div className="flex flex-wrap gap-3">
           {(status === 'unsubscribed' || status === 'pending') && (
             <Button onClick={enable} disabled={status === 'pending'}>
-              {status === 'pending' ? 'Habilitando…' : 'Habilitar notificaciones'}
+              {status === 'pending' ? 'Activando...' : 'Activar notificaciones'}
             </Button>
           )}
           {status === 'subscribed' && (
             <>
               <Button onClick={testDevice} disabled={testing}>
-                {testing ? 'Comprobando prueba…' : 'Probar en este teléfono'}
+                {testing ? 'Enviando prueba...' : 'Probar en este dispositivo'}
               </Button>
               <Button variant="outline" onClick={disable}>
                 Desactivar en este dispositivo

@@ -26,7 +26,7 @@ export function ImpersonationBanner({
     >
       <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
       <span className="flex-1 font-semibold">
-        Impersonando {tenantName} · todas las acciones se auditan como super admin.
+        Impersonando a {tenantName}: todas las acciones se auditan como super admin.
       </span>
       <form action={action}>
         <button

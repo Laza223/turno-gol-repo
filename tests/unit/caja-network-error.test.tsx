@@ -171,7 +171,7 @@ describe('diálogo compartido por varias filas', () => {
     rerender(<StockEntryDialog product={gaseosa} {...props} />)
 
     // Título y cuerpo nombran lo mismo: lo que quedó sin confirmar.
-    expect(screen.getByRole('heading', { name: `Reponer — ${agua.name}` })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: `Reponer: ${agua.name}` })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Reintentar reposición' }))
     await waitFor(() => expect(registerPurchaseAction).toHaveBeenCalledTimes(2))
     const [first, second] = calls(registerPurchaseAction)
@@ -185,7 +185,9 @@ describe('StockExitDialog', () => {
   const props = () => ({ onClose: vi.fn(), onSaved: vi.fn() })
 
   function fillAndSubmit() {
-    fireEvent.change(screen.getByLabelText('Nota'), { target: { value: 'latas vencidas' } })
+    fireEvent.change(screen.getByLabelText('Detalle (obligatorio)'), {
+      target: { value: 'latas vencidas' },
+    })
     fireEvent.click(screen.getByRole('button', { name: 'Registrar salida' }))
   }
 

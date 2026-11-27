@@ -355,8 +355,8 @@ export default async function FacturacionPage() {
               <p className="flex items-start gap-2 text-sm text-muted-foreground">
                 <CreditCard className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
                 <span>
-                  Ya hay una suscripción de MercadoPago creada para tu cuota. Revisá el método de
-                  pago conectado en tu cuenta de MercadoPago.
+                  Ya hay una suscripción de Mercado Pago creada para tu cuota. Revisá el medio de
+                  pago conectado en tu cuenta de Mercado Pago.
                 </span>
               </p>
             )}

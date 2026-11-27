@@ -14,5 +14,5 @@ export const CONNECT_ERROR_MESSAGE: Record<WhatsappConnectError, string> = {
   meta_fallo: 'Meta no terminó la conexión. Esperá unos minutos y volvé a intentarlo.',
   link_vencido: 'El link venció. Volvé a intentarlo y te armamos uno nuevo.',
   link_usado:
-    'Ese link ya se usó. Si terminaste de conectar, tocá «Ya lo conecté». Si no, volvé a intentarlo.',
+    'Ese link ya se usó. Si terminaste de conectar, tocá "Ya lo conecté". Si no, volvé a intentarlo.',
 }

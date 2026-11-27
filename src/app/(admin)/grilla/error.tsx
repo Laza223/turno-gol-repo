@@ -19,7 +19,7 @@ export default function GrillaError({
     <ErrorState
       variant="contained"
       title="No pudimos cargar la grilla"
-      description="Ocurrió un error al obtener los turnos. El equipo ya fue notificado. Probá recargar."
+      description="Hubo un problema al cargar los turnos. Probá recargar la pantalla."
       digest={error.digest}
       onRetry={reset}
     />

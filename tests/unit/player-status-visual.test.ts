@@ -121,14 +121,14 @@ describe('`ended` es aditivo: el portal no lo pasa y no cambia', () => {
 })
 
 describe('un turno fijo no dice dos veces que es fijo', () => {
-  it('el badge de estado no se convierte en "Abonado"', () => {
+  it('el badge de estado se muestra como "Turno fijo"', () => {
     // La tarjeta ya tiene su chip "Turno fijo" al lado. En la grilla `fixed`
     // pisa al estado porque una celda muestra una cosa sola.
     expect(sinSena('confirmed').label).toBe('Confirmada')
     expect(
       bookingBadgeVisual({ status: 'confirmed', type: 'fixed', pending: null, totalPaid: null })
         .label,
-    ).toBe('Abonado')
+    ).toBe('Turno fijo')
   })
 })
 

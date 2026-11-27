@@ -111,7 +111,7 @@ export function RegisterMovementModal({
     e.preventDefault()
     setError(null)
     if (amountCents == null || amountCents <= 0) {
-      setError('Ingresá un monto válido mayor a 0.')
+      setError('Ingresá un monto mayor a $ 0.')
       return
     }
     if (description.trim().length < 1) {
@@ -281,7 +281,13 @@ export function RegisterMovementModal({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={2}
-                  placeholder="ej: Pago de luz, alquiler, sueldo del cadete..."
+                  placeholder={
+                    type === 'income'
+                      ? 'Ej: Alquiler de pecheras, ingreso extra'
+                      : type === 'expense'
+                        ? 'Ej: Pago de luz, compra de hielo, sueldo del encargado'
+                        : 'Ej: Diferencia de caja, corrección'
+                  }
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-ring resize-none"
                 />
               </div>

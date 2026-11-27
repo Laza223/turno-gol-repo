@@ -56,7 +56,7 @@ export const ConDevoluciones: Story = {
     await expect(canvas.getByText(/8\.000/)).toBeInTheDocument()
     // El origen se muestra porque decide si MercadoPago todavía puede
     // resolverla solo: la de efectivo depende enteramente del complejo.
-    await expect(canvas.getByText('MercadoPago')).toBeInTheDocument()
+    await expect(canvas.getByText('Mercado Pago')).toBeInTheDocument()
     await expect(canvas.getByText('Efectivo')).toBeInTheDocument()
     // H105: el nombre accesible ahora lleva monto y jugador (no solo "Ya
     // devolví"), así que el match es por substring.

@@ -251,7 +251,7 @@ export function HoyChargeSection({
             disabled={locked}
             className={cn(PRIMARY_BUTTON, 'h-12 text-base')}
           >
-            {isPending ? 'Procesando…' : `Reintentar cobro de ${formatArs(retryTotal)}`}
+            {isPending ? 'Cobrando...' : `Reintentar cobro de ${formatArs(retryTotal)}`}
           </button>
         </>
       )}
@@ -478,7 +478,9 @@ function PlayersTab({
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm tabular-nums text-muted-foreground">
-        {status ? `${status} · ` : ''}cada uno {formatArs(share)}
+        {status
+          ? `${status} · Cada uno paga ${formatArs(share)}`
+          : `Cada uno paga ${formatArs(share)}`}
       </p>
       <div className="flex items-stretch gap-2">
         <SelectMenu

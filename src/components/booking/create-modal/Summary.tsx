@@ -97,7 +97,7 @@ export function Summary({
             <div className="flex justify-between gap-2">
               <dt className="text-muted-foreground">Total</dt>
               <dd className="font-semibold tabular-nums text-foreground">
-                {totalCents != null ? formatArs(totalCents) : 'No se cobra'}
+                {totalCents != null ? formatArs(totalCents) : 'Sin costo'}
               </dd>
             </div>
             {totalCents != null && (
@@ -145,7 +145,7 @@ export function Summary({
             <div className="min-w-0 flex-1">
               <p className="text-[11px] text-muted-foreground">Total</p>
               <p className="truncate text-base font-semibold tabular-nums text-foreground">
-                {totalCents != null ? formatArs(totalCents) : 'No se cobra'}
+                {totalCents != null ? formatArs(totalCents) : 'Sin costo'}
               </p>
             </div>
           )}

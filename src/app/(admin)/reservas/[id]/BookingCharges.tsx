@@ -235,7 +235,7 @@ export default function BookingCharges({
             onClick={() => setOpen(false)}
             className="h-11 md:h-9 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60 cursor-pointer"
           >
-            Cancelar
+            Cerrar
           </button>
         </div>
       ) : (

@@ -70,7 +70,7 @@ export const MercadoPagoDesconectadoDueno: Story = {
   args: { items: [mpDisconnected], nowMs: NOW_MS, isAdmin: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('MercadoPago se desconectó')).toBeVisible()
+    await expect(canvas.getByText('Mercado Pago se desconectó')).toBeVisible()
     await expect(canvas.getByText('Las reservas online entran sin seña · hace 3 h')).toBeVisible()
     await expect(canvas.getByRole('link', { name: 'Reconectar' })).toHaveAttribute(
       'href',
@@ -84,7 +84,7 @@ export const MercadoPagoDesconectadoEncargado: Story = {
   args: { items: [mpDisconnected], nowMs: NOW_MS, isAdmin: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('MercadoPago se desconectó')).toBeVisible()
+    await expect(canvas.getByText('Mercado Pago se desconectó')).toBeVisible()
     await expect(
       canvas.getByText('Avisale al dueño para que lo reconecte · hace 3 h'),
     ).toBeVisible()

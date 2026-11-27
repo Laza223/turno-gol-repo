@@ -132,7 +132,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   // Solo del dueño (2026-09-19): las métricas del negocio son sensibles y el
   // Encargado opera el día a día, no lo mira.
-  { href: '/analiticas', icon: ChartLine, label: 'Métricas', requiresAdmin: true },
+  { href: '/analiticas', icon: ChartLine, label: 'Reportes', requiresAdmin: true },
 ]
 
 /**
@@ -235,7 +235,7 @@ const RAIL_LABEL = cn(
   'motion-reduce:transition-none motion-reduce:delay-0',
 )
 /** Texto que un lector de pantalla oye en lugar del color del punto. */
-const ALERT_LABEL = '— hay algo por completar'
+const ALERT_LABEL = '(hay algo por completar)'
 const NAV_ACTIVE = 'bg-primary/10 text-emerald-800 dark:text-emerald-300'
 const NAV_IDLE = 'text-muted-foreground hover:bg-accent hover:text-foreground'
 
@@ -316,10 +316,10 @@ function TrialRailItem({ daysLeft, canChoosePlan }: { daysLeft: number; canChoos
       <TooltipTrigger asChild>
         <Link href={BILLING_HREF} className={className}>
           {content}
-          <span className="sr-only">. Elegir plan</span>
+          <span className="sr-only">. Activar plan</span>
         </Link>
       </TooltipTrigger>
-      <TooltipContent side="right">Elegir plan</TooltipContent>
+      <TooltipContent side="right">Activar plan</TooltipContent>
     </Tooltip>
   )
 }
@@ -356,7 +356,7 @@ function TrialDrawerRow({
             <>
               {' · '}
               <span className="font-semibold text-emerald-700 dark:text-emerald-400">
-                Elegir plan
+                Activar plan
               </span>
             </>
           )}
@@ -418,7 +418,7 @@ function AccountMenu({
           onClick={onSignOut}
         >
           <LogOut className="h-4 w-4" aria-hidden />
-          <span>Salir</span>
+          <span>Cerrar sesión</span>
         </Button>
       </PopoverContent>
     </Popover>

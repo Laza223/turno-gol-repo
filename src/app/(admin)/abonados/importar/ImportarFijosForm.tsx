@@ -25,12 +25,12 @@ const MAX_FILE_BYTES = 1_000_000
 
 const DAY_LABELS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
-const NETWORK_ERROR = 'No pudimos revisar la planilla. Revisá la conexión y probá de nuevo.'
+const NETWORK_ERROR = 'No pudimos revisar la planilla. Revisá tu internet y probá de nuevo.'
 // Cada fila se confirma sola, así que un corte a mitad de la carga deja adentro
 // lo anterior. Reintentar es seguro: al revisar de nuevo, eso sale como fijo
 // existente y no se duplica.
 const IMPORT_NETWORK_ERROR =
-  'No pudimos terminar la carga y puede que una parte haya entrado. Revisá de nuevo: lo que ya se cargó sale como «Ya hay un turno fijo activo» y no se duplica.'
+  'No pudimos terminar la carga y puede que una parte haya entrado. Revisá de nuevo: lo que ya se cargó sale como "Ya hay un turno fijo activo" y no se duplica.'
 
 function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
@@ -153,7 +153,7 @@ export function ImportarFijosForm({
     if (!file) return
     if (/\.xlsx?$/i.test(file.name)) {
       setError(
-        'Ese es un archivo de Excel. Abrilo, seleccioná la tabla con el encabezado, copiala y pegala acá. O guardalo como CSV.',
+        'No podemos leer archivos de Excel directo. Abrilo, copiá la tabla con los encabezados y pegala acá, o guardalo como .csv.',
       )
       return
     }
@@ -359,7 +359,7 @@ function PreviewPanel({
         {ignoredColumns.length > 0 && (
           <p className={cn('text-sm', TONE_TEXT.warning)}>
             {ignoredColumns.length === 1 ? 'No se carga la columna' : 'No se cargan las columnas'}{' '}
-            {ignoredColumns.map((c) => `«${c}»`).join(', ')}.
+            {ignoredColumns.map((c) => `"${c}"`).join(', ')}.
           </p>
         )}
       </div>
@@ -488,7 +488,7 @@ function ResultPanel({ result }: { result: ImportResult }) {
         {created.length > 0 && (
           <p className="text-sm text-muted-foreground">
             Con {plural(slots, 'turno', 'turnos')} en la grilla. Las personas ya aparecen en
-            Jugadores.
+            Personas.
           </p>
         )}
       </div>

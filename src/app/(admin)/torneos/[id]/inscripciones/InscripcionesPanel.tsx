@@ -150,7 +150,7 @@ export function InscripcionesPanel({
       )}
 
       {rows.length === 0 ? (
-        <EmptyState icon={Users} title="Todavía no hay equipos anotados." />
+        <EmptyState icon={Users} title="Todavía no hay equipos anotados" />
       ) : (
         <>
           <ul className="divide-y divide-border">
@@ -166,7 +166,7 @@ export function InscripcionesPanel({
                       </p>
                       <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">
                         {row.fee === 0
-                          ? 'Sin arancel'
+                          ? 'Sin costo'
                           : `Pagó ${formatArs(row.paid)} de ${formatArs(row.fee)}`}
                         {row.payments > 0 &&
                           ` · ${row.payments} ${row.payments === 1 ? 'cobro' : 'cobros'}`}
@@ -181,7 +181,7 @@ export function InscripcionesPanel({
                           Pagado
                         </span>
                       ) : row.fee === 0 ? (
-                        <span className="text-sm text-muted-foreground">—</span>
+                        <span className="text-sm text-muted-foreground">-</span>
                       ) : (
                         <span className="text-sm font-semibold tabular-nums text-amber-800 dark:text-amber-300">
                           Debe {formatArs(row.pending)}

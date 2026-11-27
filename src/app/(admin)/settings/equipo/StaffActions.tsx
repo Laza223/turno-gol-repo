@@ -49,7 +49,7 @@ export function ResendInviteButton({
   async function handleResendInvite() {
     const res = await resendInviteAction(email)
     if (res.success) {
-      toast({ title: 'Invitación reenviada correctamente.', variant: 'success' })
+      toast({ title: 'Invitación reenviada', variant: 'success' })
     } else {
       toast({ title: res.error ?? 'No se pudo reenviar la invitación.', variant: 'destructive' })
     }
@@ -125,7 +125,7 @@ export function StaffActions({
       return { success: false, error: res.error }
     }
     toast({
-      title: `${member.firstName} ${member.lastName} fue desactivado/a.`,
+      title: `Le sacaste el acceso a ${member.firstName} ${member.lastName}.`,
       variant: 'success',
     })
     return { success: true }
@@ -135,20 +135,20 @@ export function StaffActions({
     const res = await reactivateAction(member.memberId)
     if (res.success) {
       toast({
-        title: `${member.firstName} ${member.lastName} fue reactivado/a.`,
+        title: `Reactivaste el acceso de ${member.firstName} ${member.lastName}.`,
         variant: 'success',
       })
     } else {
-      toast({ title: res.error ?? 'No se pudo reactivar al miembro.', variant: 'destructive' })
+      toast({ title: res.error ?? 'No pudimos reactivarle el acceso.', variant: 'destructive' })
     }
   }
 
   async function handleResendInvite() {
     const res = await resendInviteAction(member.email)
     if (res.success) {
-      toast({ title: 'Invitación reenviada correctamente.', variant: 'success' })
+      toast({ title: 'Invitación reenviada.', variant: 'success' })
     } else {
-      toast({ title: res.error ?? 'No se pudo reenviar la invitación.', variant: 'destructive' })
+      toast({ title: res.error ?? 'No pudimos reenviar la invitación.', variant: 'destructive' })
     }
   }
 
@@ -231,20 +231,20 @@ export function StaffActions({
         <ConfirmDialog
           open={deactivateOpen}
           onOpenChange={setDeactivateOpen}
-          title={`Desactivar ${member.firstName} ${member.lastName}`}
+          title={`Sacar acceso a ${member.firstName} ${member.lastName}`}
           description={
             <div className="space-y-2">
-              <p>Al desactivar este miembro:</p>
+              <p>Si le sacás el acceso:</p>
               <ul className="list-disc pl-4 space-y-1">
-                <li>Pierde acceso al panel inmediatamente.</li>
-                <li>Sus sesiones activas se invalidan.</li>
-                <li>El historial de actividad no se borra.</li>
+                <li>Deja de poder entrar al panel en el acto.</li>
+                <li>Si tenía el panel abierto, se le cierra la sesión.</li>
+                <li>Los turnos y cobros que cargó no se borran.</li>
               </ul>
             </div>
           }
           variant="destructive"
           confirmLabel="Desactivar"
-          cancelLabel="Cancelar"
+          cancelLabel="Volver"
           confirmationPhrase={member.email}
           onConfirm={onConfirmDeactivate}
         />

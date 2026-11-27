@@ -22,7 +22,7 @@ export function GoleadoresTable({ scorers }: { scorers: TopScorersResult }) {
         title="Todavía no hay goleadores"
         description={
           scorers.unattributedGoals > 0
-            ? `Hay ${scorers.unattributedGoals} gol(es) en el marcador sin autor cargado. Anotá quién los hizo desde el acta de cada partido y la tabla se arma sola.`
+            ? `${scorers.unattributedGoals === 1 ? 'Hay 1 gol' : `Hay ${scorers.unattributedGoals} goles`} en el marcador sin autor cargado. Anotá quién los hizo desde el acta de cada partido y la tabla se arma sola.`
             : 'Cargá los goles desde el acta de cada partido y la tabla se arma sola.'
         }
       />
@@ -82,8 +82,10 @@ export function GoleadoresTable({ scorers }: { scorers: TopScorersResult }) {
       </div>
       {scorers.unattributedGoals > 0 ? (
         <p className="border-t border-border px-4 py-2.5 text-xs text-muted-foreground">
-          Faltan {scorers.unattributedGoals} gol(es) sin autor: están en el marcador pero todavía no
-          se cargó quién los hizo.
+          {scorers.unattributedGoals === 1
+            ? 'Falta 1 gol'
+            : `Faltan ${scorers.unattributedGoals} goles`}{' '}
+          sin autor: están en el marcador pero todavía no se cargó quién los hizo.
         </p>
       ) : null}
     </div>

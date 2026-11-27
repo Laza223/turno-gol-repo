@@ -91,7 +91,7 @@ export default function CompleteBookingDialog({
       })
       if (res.success) {
         toast({
-          title: hasDebt ? 'Completada con deuda pendiente' : 'Turno completado',
+          title: hasDebt ? 'Turno dado por jugado (queda saldo)' : 'Turno dado por jugado',
           description: label,
           variant: 'success',
         })
@@ -110,7 +110,7 @@ export default function CompleteBookingDialog({
     <Dialog open={booking !== null} onOpenChange={handleClose}>
       <DialogContent className="w-[95vw] max-w-md">
         <DialogHeader>
-          <DialogTitle>Completar turno</DialogTitle>
+          <DialogTitle>Dar por jugado</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">{label}</p>
 
@@ -142,10 +142,14 @@ export default function CompleteBookingDialog({
               onClick={() => handleClose(false)}
               className="h-10 px-4 rounded-lg border border-border bg-card text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-60"
             >
-              Cancelar
+              Volver
             </button>
             <Button type="button" isLoading={isPending} onClick={submit} className="px-5">
-              {isPending ? 'Procesando…' : hasDebt ? 'Completar con deuda' : 'Completar'}
+              {isPending
+                ? 'Guardando...'
+                : hasDebt
+                  ? 'Dar por jugado (queda saldo)'
+                  : 'Dar por jugado'}
             </Button>
           </div>
         </div>
@@ -231,7 +235,7 @@ function DebtNotice({
   const contactPhone = booking.playerPhone || booking.guestPhone
   const whatsappUrl = contactPhone
     ? `https://wa.me/${contactPhone.replace(/\D/g, '')}?text=${encodeURIComponent(
-        `Hola${contactName ? ` ${contactName}` : ''}, te contactamos por el turno del ${label}. Quedó un saldo pendiente de ${formatArs(pendingCents)}. ¿Cuándo podés pasar a saldar?`,
+        `Hola${contactName ? ` ${contactName}` : ''}, te contactamos por el turno del ${label}. Quedó un saldo pendiente de ${formatArs(pendingCents)}. ¿Cuándo podés pagarlo o transferirlo?`,
       )}`
     : null
 
@@ -239,13 +243,13 @@ function DebtNotice({
     <div className="space-y-2 rounded-lg border border-amber-200 dark:border-amber-500/30 bg-amber-50/50 dark:bg-amber-500/5 p-3">
       <p className="flex items-center gap-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
         <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        Queda una deuda de {formatArs(pendingCents)}
+        Falta cobrar {formatArs(pendingCents)}
       </p>
       <textarea
-        aria-label="Nota de deuda (opcional)"
+        aria-label="Nota interna (opcional)"
         value={debtNote}
         onChange={(e) => onDebtNoteChange(e.target.value)}
-        placeholder="Nota de deuda (opcional) — ej: le faltó a Juan"
+        placeholder="Nota interna (opcional): ej. faltó pagar Juan"
         rows={2}
         className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm shadow-xs focus-visible:outline-hidden focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring"
       />
@@ -253,7 +257,7 @@ function DebtNotice({
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <Phone className="h-3.5 w-3.5" aria-hidden />
-            {contactName} — {contactPhone}
+            {contactName} · {contactPhone}
           </span>
           {whatsappUrl && (
             <a

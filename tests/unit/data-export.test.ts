@@ -199,7 +199,7 @@ describe('bookingExportRow', () => {
     [{ status: 'pending_payment', depositStatus: 'pending' }, 'Esperando seña'],
     [{ status: 'confirmed', depositStatus: 'not_required' }, 'Confirmada'],
     [{ status: 'confirmed', depositStatus: 'paid' }, 'Señada'],
-    [{ status: 'confirmed', depositStatus: 'not_required', type: 'fixed' }, 'Abonado'],
+    [{ status: 'confirmed', depositStatus: 'not_required', type: 'fixed' }, 'Turno fijo'],
     [{ status: 'no_show', depositStatus: 'captured' }, 'Ausente'],
     [{ status: 'canceled_refunded', depositStatus: 'refunded' }, 'Cancelada'],
     [{ status: 'canceled_no_refund', depositStatus: 'captured' }, 'Cancelada'],

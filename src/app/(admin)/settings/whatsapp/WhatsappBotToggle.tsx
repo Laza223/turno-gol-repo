@@ -37,15 +37,15 @@ export function WhatsappBotToggle({
             TONE_BADGE[enabled ? 'success' : 'neutral'],
           )}
         >
-          {enabled ? 'Contesta solo' : 'Apagado'}
+          {enabled ? 'Contesta solo' : 'Pausado'}
         </span>
       </p>
       <input type="hidden" name="enabled" value={enabled ? 'false' : 'true'} />
       <SubmitButton
         variant={enabled ? 'outline' : 'plus'}
-        pendingLabel={enabled ? 'Apagando…' : 'Prendiendo…'}
+        pendingLabel={enabled ? 'Pausando…' : 'Activando…'}
       >
-        {enabled ? 'Apagar el asistente' : 'Prender el asistente'}
+        {enabled ? 'Pausar el asistente' : 'Activar el asistente'}
       </SubmitButton>
       {!state.success && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">

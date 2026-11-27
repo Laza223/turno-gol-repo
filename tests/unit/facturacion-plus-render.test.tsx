@@ -100,7 +100,7 @@ describe('PlusSection', () => {
     expect(screen.getByText(/pagá los 5 meses que faltan/)).toBeTruthy()
     expect(screen.getByRole('button', { name: /Pagar .*180\.000/ })).toBeTruthy()
     expect(
-      screen.getByText('Cuando se acredite el pago, el Asistente se prende solo.'),
+      screen.getByText('Cuando se acredite el pago, el Asistente se activa solo.'),
     ).toBeTruthy()
   })
 })
@@ -128,7 +128,7 @@ describe('InvoiceHistorySection', () => {
       />,
     )
     expect(
-      screen.getAllByText('Asistente de WhatsApp · meses restantes del plan anual'),
+      screen.getAllByText('Asistente de WhatsApp · meses restantes del pago anual'),
     ).toHaveLength(1)
   })
 })

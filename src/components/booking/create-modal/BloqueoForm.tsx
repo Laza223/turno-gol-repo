@@ -55,7 +55,7 @@ export function BloqueoForm({
     if (isPending) return
     const guestName = reason === 'Otro' ? customReason.trim() : reason
     if (!guestName) {
-      setError('Contá el motivo del bloqueo.')
+      setError('Escribí el motivo del bloqueo.')
       return
     }
 
@@ -80,7 +80,7 @@ export function BloqueoForm({
         }
         trackConfirmed()
         toast({
-          title: 'Turno bloqueado',
+          title: 'Cancha bloqueada',
           description: `${slot.courtName} · ${timeStart}–${timeEnd}`,
           variant: 'success',
         })
@@ -88,7 +88,7 @@ export function BloqueoForm({
       } catch (err) {
         Sentry.captureException(err)
         startTransition(() =>
-          setError('No pudimos bloquear la cancha. Revisá tu conexión e intentá de nuevo.'),
+          setError('No pudimos bloquear la cancha. Revisá tu internet y probá de nuevo.'),
         )
       }
     })
@@ -119,14 +119,14 @@ export function BloqueoForm({
           </div>
           {reason === 'Otro' && (
             <div className="space-y-1.5">
-              <Label htmlFor="bloqueo-motivo">Contá el motivo</Label>
+              <Label htmlFor="bloqueo-motivo">Motivo del bloqueo</Label>
               <Input
                 ref={customInputRef}
                 id="bloqueo-motivo"
                 value={customReason}
                 onChange={(e) => setCustomReason(e.target.value)}
                 maxLength={200}
-                placeholder="Ej: Alquiler para evento privado"
+                placeholder="Ej: Lluvia, arreglo de luces"
               />
             </div>
           )}

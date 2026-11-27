@@ -102,7 +102,10 @@ export function TurnoForm({
       setError('Ingresá el precio del turno.')
       return
     }
-    if (chargeChoice !== 'none' && (!chargeMethod || !chargeAmount || chargeAmount <= 0)) {
+    if (
+      (chargeChoice === 'partial' || chargeChoice === 'full') &&
+      (!chargeMethod || !chargeAmount || chargeAmount <= 0)
+    ) {
       setError('Ingresá cuánto cobraste.')
       return
     }
@@ -165,7 +168,7 @@ export function TurnoForm({
       } catch (err) {
         Sentry.captureException(err)
         startTransition(() =>
-          setError('No pudimos crear la reserva. Revisá tu conexión e intentá de nuevo.'),
+          setError('No pudimos crear la reserva. Revisá tu internet y probá de nuevo.'),
         )
       }
     })

@@ -446,7 +446,7 @@ export function ReservasPolicyForm({
                   href="#mercado-pago"
                   className="font-medium text-emerald-700 underline underline-offset-2 dark:text-emerald-400"
                 >
-                  conectá MercadoPago acá abajo
+                  conectá Mercado Pago acá abajo
                 </a>
                 .
               </p>

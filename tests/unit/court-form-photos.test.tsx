@@ -4,7 +4,7 @@
 // al EDITAR: en "Nueva cancha" no había dónde cargar una foto. Ahora se eligen en
 // el alta y se suben a la cancha recién creada, cuando `createAction` devuelve el id.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import '@testing-library/jest-dom/vitest'
 import { CourtForm } from '@/app/(admin)/canchas/components/CourtForm'
 import { court as courtFixture, openingHours } from '@/test/fixtures'
@@ -205,7 +205,8 @@ describe('CourtForm — fotos en el alta', () => {
     await pickPhoto()
 
     fireEvent.click(screen.getByRole('button', { name: 'Crear cancha' }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Confirmar' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Crear cancha' }))
 
     await waitFor(() => expect(onSaved).toHaveBeenCalledTimes(1))
     expect(createAction).toHaveBeenCalledTimes(2)

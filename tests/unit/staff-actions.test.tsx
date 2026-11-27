@@ -141,7 +141,7 @@ describe('StaffActions — deactivate dialog', () => {
       () => {
         expect(
           screen.getByRole('heading', {
-            name: `Desactivar ${ACTIVE_MEMBER.firstName} ${ACTIVE_MEMBER.lastName}`,
+            name: `Sacar acceso a ${ACTIVE_MEMBER.firstName} ${ACTIVE_MEMBER.lastName}`,
           }),
         ).toBeTruthy()
       },
@@ -154,7 +154,7 @@ describe('StaffActions — deactivate dialog', () => {
     fireEvent.click(body.getByRole('menuitem', { name: 'Desactivar' }))
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Desactivar/ })).toBeTruthy()
+      expect(screen.getByRole('heading', { name: /Sacar acceso/ })).toBeTruthy()
     })
 
     const phraseInput = screen.getByLabelText(/Escribí/i) as HTMLInputElement
@@ -172,7 +172,7 @@ describe('StaffActions — deactivate dialog', () => {
     fireEvent.click(body.getByRole('menuitem', { name: 'Desactivar' }))
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Desactivar/ })).toBeTruthy()
+      expect(screen.getByRole('heading', { name: /Sacar acceso/ })).toBeTruthy()
     })
 
     const phraseInput = screen.getByLabelText(/Escribí/i) as HTMLInputElement
@@ -195,7 +195,7 @@ describe('StaffActions — deactivate dialog', () => {
     fireEvent.click(body.getByRole('menuitem', { name: 'Desactivar' }))
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Desactivar/ })).toBeTruthy()
+      expect(screen.getByRole('heading', { name: /Sacar acceso/ })).toBeTruthy()
     })
 
     const phraseInput = screen.getByLabelText(/Escribí/i) as HTMLInputElement
@@ -217,7 +217,7 @@ describe('StaffActions — deactivate dialog', () => {
     })
 
     // Dialog stays open
-    expect(screen.getByRole('heading', { name: /Desactivar/ })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: /Sacar acceso/ })).toBeTruthy()
   })
 
   it('successful deactivate calls deactivateAction and closes dialog', async () => {
@@ -227,7 +227,7 @@ describe('StaffActions — deactivate dialog', () => {
     fireEvent.click(body.getByRole('menuitem', { name: 'Desactivar' }))
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /Desactivar/ })).toBeTruthy()
+      expect(screen.getByRole('heading', { name: /Sacar acceso/ })).toBeTruthy()
     })
 
     const phraseInput = screen.getByLabelText(/Escribí/i) as HTMLInputElement
@@ -247,7 +247,7 @@ describe('StaffActions — deactivate dialog', () => {
 
     // Dialog should be closed (heading gone)
     await waitFor(() => {
-      expect(screen.queryByRole('heading', { name: /Desactivar/ })).toBeNull()
+      expect(screen.queryByRole('heading', { name: /Sacar acceso/ })).toBeNull()
     })
   })
 })

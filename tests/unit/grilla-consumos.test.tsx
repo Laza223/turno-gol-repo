@@ -81,7 +81,7 @@ describe('Grilla — consumos del turno', () => {
 
       const grilla = within(screen.getByTestId(view === 'Semana' ? 'week-grid' : 'booking-grid'))
       fireEvent.click(grilla.getByText('Equipo prueba'))
-      fireEvent.click(await screen.findByRole('button', { name: 'Cantina' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Sumar cantina' }))
       fireEvent.click(await screen.findByRole('button', { name: /Agua mineral/ }))
       fireEvent.click(screen.getByRole('button', { name: /^Anotar al turno/ }))
 

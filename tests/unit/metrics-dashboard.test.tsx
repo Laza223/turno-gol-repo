@@ -98,6 +98,6 @@ describe('MetricsDashboard', () => {
     expect(await screen.findByText(/Operativa/)).toBeDefined()
     expect(screen.getByText('hace 3 min')).toBeDefined()
     // Una cola con depth null → total desconocido.
-    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('-').length).toBeGreaterThan(0)
   })
 })

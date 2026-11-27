@@ -638,11 +638,11 @@ export const Bloqueo: Story = {
     const dialog = await openDialog()
     await expect(dialog.queryByRole('radio')).toBeNull()
     await expect(dialog.queryByRole('button', { name: /Cobrar/ })).toBeNull()
-    await expect(dialog.getByRole('button', { name: 'Liberar el bloqueo' })).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Liberar bloqueo' })).toBeVisible()
 
-    await userEvent.click(dialog.getByRole('button', { name: 'Liberar el bloqueo' }))
+    await userEvent.click(dialog.getByRole('button', { name: 'Liberar bloqueo' }))
     const body = within(document.body)
-    const confirm = await body.findByRole('dialog', { name: 'Liberar el bloqueo' })
+    const confirm = await body.findByRole('dialog', { name: 'Liberar bloqueo' })
     await userEvent.click(within(confirm).getByRole('button', { name: 'Liberar' }))
 
     await waitFor(() => expect(args.actions.releaseBlockAction).toHaveBeenCalledWith('b1'))
@@ -655,7 +655,7 @@ export const Ausente: Story = {
   play: async () => {
     const dialog = await openDialog()
     await expect(dialog.queryByText('Cobrado ✓')).toBeNull()
-    await expect(dialog.getByRole('button', { name: 'Deshacer la ausencia' })).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Deshacer ausencia' })).toBeVisible()
   },
 }
 

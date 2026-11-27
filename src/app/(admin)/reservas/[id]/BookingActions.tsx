@@ -165,16 +165,16 @@ function BlockActions({
         onClick={() => setReleaseBlockOpen(true)}
         className="h-11 md:h-9 rounded-lg border border-red-200 dark:border-red-500/30 bg-card px-4 text-sm font-semibold text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-60"
       >
-        Liberar el bloqueo
+        Liberar bloqueo
       </button>
 
       <ConfirmDialog
         open={releaseBlockOpen}
         onOpenChange={setReleaseBlockOpen}
-        title="Liberar el bloqueo"
+        title="Liberar bloqueo"
         description="La cancha queda libre para reservar."
         variant="destructive"
-        confirmLabel="Liberar"
+        confirmLabel="Liberar cancha"
         cancelLabel="Volver"
         onConfirm={onConfirmReleaseBlock}
         consequences={[
@@ -331,7 +331,7 @@ function CompletedActions({
     const res = await markNoShowAction(bookingId)
     if (res.success) {
       toast({
-        title: 'Marcada como ausente',
+        title: 'Turno marcado como ausente',
         variant: 'success',
         action: { label: 'Deshacer', onClick: () => void onConfirmRevertNoShow() },
       })
@@ -467,7 +467,7 @@ function ConfirmedActions({
     const res = await markNoShowAction(bookingId)
     if (res.success) {
       toast({
-        title: 'Marcada como ausente',
+        title: 'Turno marcado como ausente',
         variant: 'success',
         action: { label: 'Deshacer', onClick: () => void onConfirmRevertNoShow() },
       })
@@ -526,7 +526,7 @@ function ConfirmedActions({
           }}
           className="h-11 md:h-9 rounded-lg border border-red-200 dark:border-red-500/30 bg-card px-4 text-sm font-semibold text-red-600 dark:text-red-400 transition-colors hover:bg-red-50 dark:hover:bg-red-500/10 disabled:opacity-60"
         >
-          Cancelar
+          Cancelar reserva
         </button>
       </div>
 

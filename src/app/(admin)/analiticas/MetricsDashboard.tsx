@@ -11,7 +11,7 @@ import { noShowTrend } from './dashboard-helpers'
 
 const REFRESH_INTERVAL_MS = 60_000
 
-const GENERIC_LOAD_ERROR = 'No pudimos cargar las métricas. Probá de nuevo en unos segundos.'
+const GENERIC_LOAD_ERROR = 'No pudimos cargar los datos. Probá de nuevo en unos segundos.'
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -40,7 +40,7 @@ function NoShow({ metrics }: { metrics: TenantMetrics }) {
         <span className="font-display text-xl font-bold tabular-nums text-foreground">
           {formatPct(Math.round(metrics.noShow.rate * 1000) / 10)}
         </span>{' '}
-        · {metrics.noShow.noShow} de {metrics.noShow.finished} turnos terminados
+        · faltaron a {metrics.noShow.noShow} de {metrics.noShow.finished} turnos
       </p>
       <p className="mt-0.5 text-xs text-muted-foreground">
         {trend.kind === 'no_prev' && 'Sin datos de los 30 días anteriores.'}
@@ -51,14 +51,14 @@ function NoShow({ metrics }: { metrics: TenantMetrics }) {
         {trend.kind === 'flat' && 'Igual que los 30 días anteriores.'}
         {trend.kind === 'up' && (
           <span className="inline-flex items-center gap-0.5 font-medium text-red-700 dark:text-red-300">
-            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />+{pts(trend.deltaPts)} pts vs
-            los 30 días anteriores
+            <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />+{pts(trend.deltaPts)} puntos
+            vs. los 30 días anteriores
           </span>
         )}
         {trend.kind === 'down' && (
           <span className="inline-flex items-center gap-0.5 font-medium text-emerald-700 dark:text-emerald-400">
-            <ArrowDownRight className="h-3.5 w-3.5" aria-hidden="true" />−{pts(trend.deltaPts)} pts
-            vs los 30 días anteriores
+            <ArrowDownRight className="h-3.5 w-3.5" aria-hidden="true" />−{pts(trend.deltaPts)}{' '}
+            puntos vs. los 30 días anteriores
           </span>
         )}
       </p>
@@ -130,7 +130,7 @@ function RecentSkeleton() {
     <div
       className="card-premium space-y-3 lg:space-y-4 p-4 sm:p-5"
       role="status"
-      aria-label="Cargando métricas"
+      aria-label="Cargando datos"
     >
       <Skeleton className="h-4 w-28" />
       {Array.from({ length: 5 }).map((_, i) => (
@@ -174,13 +174,13 @@ function SystemPanel({ status, nowMs }: { status: SystemStatus | null; nowMs: nu
             <div className="flex items-center justify-between">
               <dt className="text-muted-foreground">Trabajos en cola</dt>
               <dd className="font-medium tabular-nums text-foreground">
-                {totalDepth === null ? '—' : totalDepth}
+                {totalDepth === null ? '-' : totalDepth}
               </dd>
             </div>
             <div className="flex items-center justify-between">
-              <dt className="text-muted-foreground">Último chequeo de salud</dt>
+              <dt className="text-muted-foreground">Último chequeo</dt>
               <dd className="font-medium text-foreground">
-                {status.lastHealthPing ? relativeTimeEs(status.lastHealthPing, nowMs) : '—'}
+                {status.lastHealthPing ? relativeTimeEs(status.lastHealthPing, nowMs) : '-'}
               </dd>
             </div>
           </dl>
@@ -194,7 +194,7 @@ function SystemPanel({ status, nowMs }: { status: SystemStatus | null; nowMs: nu
                 <li key={q.queue} className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">{q.queue}</span>
                   <span className="tabular-nums text-foreground">
-                    {q.depth === null ? '—' : q.depth}
+                    {q.depth === null ? '-' : q.depth}
                   </span>
                 </li>
               ))}

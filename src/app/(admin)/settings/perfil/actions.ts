@@ -268,7 +268,7 @@ export type UpdateEmailActionResult =
  * declara aparte, sin tocar el de login. Por eso el mensaje lleva ahí.
  */
 const EMAIL_TAKEN_MESSAGE =
-  'Ese email ya está en uso por otra cuenta (puede ser tu propia cuenta de jugador). Si lo querés para pagar la suscripción, no hace falta cambiar este: cargalo en Ajustes → Suscripción, en "Cuenta de MercadoPago con la que pagás".'
+  'Ese email ya está en uso por otra cuenta (puede ser tu propia cuenta de jugador). Si lo querés para pagar la suscripción, no hace falta cambiar este: cargalo en Ajustes → Suscripción, en "Cuenta de Mercado Pago con la que pagás".'
 
 /** Rechazo de Supabase Auth cuando el email ya existe en `auth.users`. */
 function isEmailTakenAuthError(error: { code?: string; message: string }): boolean {
@@ -355,7 +355,7 @@ export async function updateUserEmailAction(newEmail: string): Promise<UpdateEma
   revalidatePath('/settings/perfil')
   return {
     success: true,
-    message: `Te enviamos un correo de confirmación a ${parsed.data}. Hacé click en el enlace para completar la actualización.`,
+    message: `Te enviamos un correo de confirmación a ${parsed.data}. Hacé click en el link para completar la actualización.`,
   }
 }
 

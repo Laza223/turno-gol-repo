@@ -29,7 +29,7 @@ const ICON_BY_KIND = {
 function headlineFor(item: AttentionItem): string {
   switch (item.kind) {
     case 'mp_disconnected':
-      return 'MercadoPago se desconectó'
+      return 'Mercado Pago se desconectó'
     case 'failed_deposit':
       return `${item.contactName} · ${item.courtName}`
     case 'pending_refunds':

@@ -348,7 +348,7 @@ export function EventoForm({
             itemClassName={choiceChipClass}
             options={[
               { value: 'priced', label: 'Tiene precio' },
-              { value: 'free', label: 'No se cobra' },
+              { value: 'free', label: 'Sin costo' },
             ]}
           />
 

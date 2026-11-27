@@ -19,7 +19,7 @@ export default function Error({
     <ErrorState
       variant="contained"
       title="No pudimos cargar el equipo"
-      description="Ocurrió un error al obtener los miembros del equipo. El equipo ya fue notificado. Probá recargar."
+      description="Hubo un problema al cargar tu equipo. Probá recargar la pantalla."
       digest={error.digest}
       onRetry={reset}
     />

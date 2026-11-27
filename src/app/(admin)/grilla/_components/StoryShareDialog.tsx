@@ -128,7 +128,7 @@ export function StoryShareDialog({ slug, bookingAdvanceDays, trackAction, onClos
           if (!res.ok) {
             const message =
               res.status === 429
-                ? 'Pediste muchas placas seguidas. Probá de nuevo en un minuto.'
+                ? 'Pediste muchas imágenes seguidas. Probá de nuevo en un minuto.'
                 : await rejectionMessage(res, 'No se pudo generar la imagen. Probá de nuevo.')
             if (controller.signal.aborted) return
             // Un 4xx (sin turnos libres, día cerrado…) no se arregla reintentando: se cambia de día.
@@ -261,7 +261,7 @@ export function StoryShareDialog({ slug, bookingAdvanceDays, trackAction, onClos
 
         {days.length > 1 && (
           <SegmentedControl
-            aria-label="Día de la placa"
+            aria-label="Día de la imagen"
             className="flex gap-2 overflow-x-auto py-1 scrollbar-none [&::-webkit-scrollbar]:hidden"
             value={String(daysAhead)}
             onValueChange={(v) => {
@@ -325,7 +325,7 @@ export function StoryShareDialog({ slug, bookingAdvanceDays, trackAction, onClos
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={image.url}
-              alt={`Placa de turnos libres: ${dayChipLabel(daysAhead, date).toLowerCase()}`}
+              alt={`Imagen de turnos libres: ${dayChipLabel(daysAhead, date).toLowerCase()}`}
               className="h-full w-full object-contain"
             />
           ) : failure ? (
@@ -340,7 +340,7 @@ export function StoryShareDialog({ slug, bookingAdvanceDays, trackAction, onClos
           ) : (
             <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
               <TgBallSpinner size="sm" aria-hidden="true" />
-              Armando la placa…
+              Armando la imagen...
             </div>
           )}
         </div>
@@ -370,7 +370,7 @@ export function StoryShareDialog({ slug, bookingAdvanceDays, trackAction, onClos
               ) : (
                 <Copy className="mr-2 h-4 w-4" aria-hidden="true" />
               )}
-              {copied ? '¡Copiado!' : 'Copiar link'}
+              {copied ? 'Link copiado' : 'Copiar link'}
             </Button>
           </div>
           {shareError && (

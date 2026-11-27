@@ -13,5 +13,5 @@
 export const NO_SHOW_CONSEQUENCES = [
   'La seña pagada queda para el complejo.',
   'Si es su segunda ausencia en 90 días, queda bloqueado 14 días para reservar online.',
-  'No se puede deshacer pasadas 24hs.',
+  'No se puede deshacer pasadas 24 h.',
 ]

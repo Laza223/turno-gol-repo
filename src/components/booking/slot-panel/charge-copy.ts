@@ -71,7 +71,7 @@ export function chargeCta(
   }
   const resto = formatArs(pendingCents - amountCents)
   if (mode === 'finish') return `Cobrar ${monto} y dar por jugado · quedan ${resto} por cobrar`
-  if (mode === 'advance') return `Cobrar ${monto} por adelantado · quedan ${resto}`
+  if (mode === 'advance') return `Cobrar ${monto} de adelanto · quedan ${resto}`
   return `Cobrar ${monto} · quedan ${resto}`
 }
 

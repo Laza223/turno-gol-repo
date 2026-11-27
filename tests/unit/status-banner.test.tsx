@@ -10,7 +10,14 @@ const PERIOD_END = '2026-09-13T12:00:00.000Z'
 
 describe('StatusBanner — canceled (ENS-26)', () => {
   it('avisa que el acceso sigue hasta el fin del período y linkea a /reactivar', () => {
-    render(<StatusBanner tenantStatus="canceled" periodEnd={PERIOD_END} serviceDegraded={false} />)
+    render(
+      <StatusBanner
+        tenantStatus="canceled"
+        periodEnd={PERIOD_END}
+        serviceDegraded={false}
+        staffRole="admin"
+      />,
+    )
     // El helper `formatDate` del archivo (compartido con la rama past_due) no
     // incluye el año — consistencia con el resto del banner, no un typo.
     expect(screen.getByText(/Cancelaste tu suscripción/)).toBeTruthy()
@@ -20,27 +27,48 @@ describe('StatusBanner — canceled (ENS-26)', () => {
   })
 
   it('sin periodEnd no rompe: no renderiza el banner de canceled', () => {
-    render(<StatusBanner tenantStatus="canceled" periodEnd={null} serviceDegraded={false} />)
+    render(
+      <StatusBanner
+        tenantStatus="canceled"
+        periodEnd={null}
+        serviceDegraded={false}
+        staffRole="admin"
+      />,
+    )
     expect(screen.queryByText(/Cancelaste tu suscripción/)).toBeNull()
   })
 })
 
 describe('StatusBanner — ramas existentes (regresión)', () => {
   it('serviceDegraded gana con prioridad sobre cualquier estado', () => {
-    render(<StatusBanner tenantStatus="canceled" periodEnd={PERIOD_END} serviceDegraded={true} />)
-    expect(screen.getByText(/problemas técnicos/)).toBeTruthy()
+    render(
+      <StatusBanner
+        tenantStatus="canceled"
+        periodEnd={PERIOD_END}
+        serviceDegraded={true}
+        staffRole="admin"
+      />,
+    )
+    expect(screen.getByText(/problema técnico/)).toBeTruthy()
     expect(screen.queryByText(/Cancelaste tu suscripción/)).toBeNull()
   })
 
   it('past_due: avisa que el pago falló y linkea a /reactivar', () => {
-    render(<StatusBanner tenantStatus="past_due" periodEnd={PERIOD_END} serviceDegraded={false} />)
+    render(
+      <StatusBanner
+        tenantStatus="past_due"
+        periodEnd={PERIOD_END}
+        serviceDegraded={false}
+        staffRole="admin"
+      />,
+    )
     const link = screen.getByRole('link', { name: 'Actualizar pago' })
     expect(link.getAttribute('href')).toBe('/reactivar')
   })
 
   it('suspended: avisa la suspensión sin fecha', () => {
     render(<StatusBanner tenantStatus="suspended" periodEnd={null} serviceDegraded={false} />)
-    expect(screen.getByText(/cuenta está suspendida/)).toBeTruthy()
+    expect(screen.getByText(/cuenta está pausada/)).toBeTruthy()
   })
 
   it('active: no renderiza ningún banner', () => {
@@ -64,9 +92,9 @@ describe('StatusBanner — solo lectura (suspended)', () => {
         staffRole="admin"
       />,
     )
-    expect(screen.getByRole('status').textContent).toMatch(/suspendida por falta de pago/)
+    expect(screen.getByRole('status').textContent).toMatch(/pausada por falta de pago/)
     expect(screen.getByRole('status').textContent).not.toMatch(/Tenés hasta/)
-    expect(screen.getByRole('link', { name: 'Regularizar pago' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Actualizar pago' })).toBeTruthy()
   })
 
   it('la fecha de corte sale en hora argentina aunque en UTC ya sea el día siguiente', () => {

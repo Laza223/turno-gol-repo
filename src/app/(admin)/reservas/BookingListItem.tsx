@@ -64,7 +64,7 @@ function buildAriaLabel({
   live: boolean
   money: { text: string }
 }): string {
-  return [`Turno ${timeRange}`, courtName, name, live ? 'se juega' : null, money.text]
+  return [`Turno ${timeRange}`, courtName, name, live ? 'en juego' : null, money.text]
     .filter(Boolean)
     .join(', ')
 }
@@ -73,7 +73,7 @@ function LiveDot() {
   return (
     <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
       <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-success" />
-      Se juega
+      En juego
     </span>
   )
 }

@@ -59,7 +59,7 @@ export function CancelarTorneo({
       >
         <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         Cancelar torneo
-        <span className="sr-only">— solo el dueño puede hacerlo</span>
+        <span className="sr-only">, solo el dueño puede hacerlo</span>
       </span>
     )
   }
@@ -81,7 +81,7 @@ export function CancelarTorneo({
         title={`Cancelar ${tournamentName}`}
         description="El torneo ya arrancó: no se borra. Queda marcado como cancelado, con el historial que tiene hasta ahora."
         consequences={[
-          'Deja de listarse en el portal público.',
+          'Deja de verse en la página pública.',
           'Las horas que tiene tomadas en la grilla no se liberan solas: liberalas desde Horarios si hace falta.',
           'No se puede deshacer.',
         ]}

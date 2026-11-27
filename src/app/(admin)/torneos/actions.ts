@@ -208,13 +208,13 @@ function mapTournamentError(err: unknown): string | null {
     return 'Los penales solo se cargan si el partido terminó empatado.'
   }
   if (err instanceof WalkoverWinnerNotInMatchError) {
-    return 'El ganador del walkover tiene que ser uno de los dos equipos del partido.'
+    return 'El ganador por no presentación tiene que ser uno de los dos equipos del partido.'
   }
   if (err instanceof WalkoverNeedsWinnerError) {
-    return 'En una llave el walkover necesita un ganador: alguien tiene que pasar de ronda.'
+    return 'En una llave, la no presentación necesita un ganador: alguien tiene que pasar de ronda.'
   }
   if (err instanceof WalkoverWithEventsError) {
-    return `Este partido tiene ${err.eventCount} gol(es) o tarjeta(s) cargados. Borralos del acta antes de marcarlo como no presentado.`
+    return `Este partido tiene ${err.eventCount} ${err.eventCount === 1 ? 'jugada cargada' : 'jugadas cargadas'}. Borralas del acta antes de marcarlo como no presentado.`
   }
   if (err instanceof DownstreamMatchAlreadyPlayedError) {
     return 'El partido siguiente del cuadro ya tiene resultado cargado. Borralo antes de corregir éste.'
@@ -233,17 +233,17 @@ function mapTournamentError(err: unknown): string | null {
     return `Ya hay más goles cargados para ${err.teamName} que los ${err.score} del marcador. Borrá alguno o corregí el resultado.`
   }
   if (err instanceof TeamHasFixtureError) {
-    return `Ese equipo ya tiene ${err.matchCount} partido(s) en el fixture. Borrá el fixture o marcalo como "se bajó".`
+    return `Ese equipo ya tiene ${err.matchCount} ${err.matchCount === 1 ? 'partido' : 'partidos'} en el fixture. Borrá el fixture o marcalo como "se bajó".`
   }
   if (err instanceof TeamHasEventsError) {
-    return `Ese equipo tiene ${err.count} gol(es) o tarjeta(s) cargados. Borralos del acta antes de sacarlo del torneo.`
+    return `Ese equipo tiene ${err.count} ${err.count === 1 ? 'jugada cargada' : 'jugadas cargadas'}. Borralas del acta antes de sacarlo del torneo.`
   }
   // ── Inscripciones (migr. 066) ──
   if (err instanceof TeamHasPaymentsError) {
-    return `Ese equipo ya tiene ${err.count} cobro(s) registrados en Caja. No se puede borrar: marcalo como "se bajó".`
+    return `Ese equipo ya tiene ${err.count} ${err.count === 1 ? 'cobro registrado' : 'cobros registrados'} en Caja. No se puede borrar: marcalo como "se bajó".`
   }
   if (err instanceof TeamHasNoFeeError) {
-    return `${err.teamName} no tiene arancel cargado: no hay nada que cobrar.`
+    return `${err.teamName} no tiene inscripción cargada: no hay nada que cobrar.`
   }
   if (err instanceof InscriptionChargeConflictError) {
     return `Ese cobro ya se había registrado por ${formatArs(err.registeredCents)}. Refrescá la pantalla: lo que ${err.teamName} debe ya lo tiene en cuenta.`
@@ -254,7 +254,7 @@ function mapTournamentError(err: unknown): string | null {
       : `El cobro supera lo que ${err.teamName} debe (${formatArs(err.pending)}).`
   }
   if (err instanceof TeamPlayerHasEventsError) {
-    return `Ese jugador tiene ${err.count} gol(es) o tarjeta(s) cargados. Borralos del acta antes de sacarlo del plantel.`
+    return `Ese jugador tiene ${err.count} ${err.count === 1 ? 'jugada cargada' : 'jugadas cargadas'}. Borralas del acta antes de sacarlo del plantel.`
   }
   if (err instanceof TournamentHasFixtureError) {
     return `El torneo ya tiene un fixture de ${err.matchCount} partidos. Borralo antes de eliminar el torneo.`

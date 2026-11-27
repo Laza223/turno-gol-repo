@@ -150,7 +150,7 @@ export function LinkContactDialog({
           {isSearching && <p className="text-xs text-muted-foreground">Buscando…</p>}
           {!isSearching && !searchError && query.trim().length >= 2 && results.length === 0 && (
             <p className="text-xs text-muted-foreground">
-              Ningún jugador de tu complejo coincide con “{query.trim()}”.
+              No encontramos ningún jugador con &quot;{query.trim()}&quot;.
             </p>
           )}
 
@@ -183,7 +183,7 @@ export function LinkContactDialog({
 
           {selectedName && (
             <p className="text-xs text-muted-foreground">
-              Se vinculará con <strong className="text-foreground">{selectedName}</strong>.
+              Se va a vincular con <strong className="text-foreground">{selectedName}</strong>.
             </p>
           )}
         </div>

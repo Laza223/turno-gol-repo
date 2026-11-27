@@ -38,7 +38,7 @@ function parseAbonadosPage(raw: string | undefined): number {
 const FILTER_TABS: AbonadoStatus[] = ['active', 'canceled']
 
 const STATUS_LABELS: Record<AbonadoStatus, string> = {
-  active: 'Fijos activos',
+  active: 'Activos',
   paused: 'Pausados',
   canceled: 'Cancelados',
 }
@@ -158,7 +158,7 @@ export default async function AbonadosPage(props: {
           <EmptyState
             icon={Users}
             title="Esa página no existe"
-            description="Este filtro tiene menos turnos fijos que los que pide el link."
+            description="No hay tantos turnos fijos en este filtro."
             action={
               <Link
                 href={abonadosHref(0)}

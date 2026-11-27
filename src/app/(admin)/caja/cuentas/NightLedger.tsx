@@ -162,7 +162,7 @@ export function NightLedger({
               <tr>
                 <th scope="col">Hora</th>
                 <th scope="col">Movimiento</th>
-                <th scope="col">Método</th>
+                <th scope="col">Medio</th>
                 <th scope="col">Monto</th>
               </tr>
             </thead>
@@ -226,7 +226,7 @@ export function NightLedger({
 
           {visible.length === 0 && (
             <p className="px-5 py-5 lg:py-8 text-center text-sm text-muted-foreground">
-              Nada de esto en el día.
+              No hay movimientos de este tipo en el día.
             </p>
           )}
         </ScrollRegion>

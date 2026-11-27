@@ -51,7 +51,7 @@ export function StreetMoneyCancelTabDialog({
     if (!row) return
     const trimmed = reason.trim()
     if (trimmed === '') {
-      setError('Contá por qué se anula el fiado.')
+      setError('Escribí por qué anulás el fiado.')
       return
     }
     setError(null)
@@ -71,7 +71,7 @@ export function StreetMoneyCancelTabDialog({
       } catch (err) {
         Sentry.captureException(err)
         startTransition(() =>
-          setError('No pudimos anular el fiado. Revisá tu conexión e intentá de nuevo.'),
+          setError('No pudimos anular el fiado. Revisá tu internet y probá de nuevo.'),
         )
       }
     })
@@ -81,11 +81,11 @@ export function StreetMoneyCancelTabDialog({
     <Dialog open={row !== null} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md" onCloseAutoFocus={refocusOpenDialog}>
         <DialogHeader>
-          <DialogTitle>Anular fiado — {row?.debtorName}</DialogTitle>
+          <DialogTitle>Anular fiado: {row?.debtorName}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-xs text-muted-foreground">
-            Devuelve el stock entregado. La plata nunca entró a la caja.
+            El stock vuelve a sumarse. No mueve la caja porque este fiado nunca se cobró.
           </p>
           <div className="space-y-1">
             <Label htmlFor="street-money-cancel-reason">Motivo</Label>
@@ -95,7 +95,7 @@ export function StreetMoneyCancelTabDialog({
               onChange={(e) => setReason(e.target.value)}
               rows={2}
               disabled={isPending}
-              placeholder="ej: se pagó en el momento, error de carga…"
+              placeholder="Ej: Lo pagó en el momento, error de carga"
               className="min-h-11 w-full rounded-md border border-border px-3 py-2 text-sm"
             />
           </div>
@@ -110,7 +110,7 @@ export function StreetMoneyCancelTabDialog({
             disabled={isPending}
             className="h-12 w-full rounded-md border border-red-600 text-sm font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:opacity-60 dark:border-red-500 dark:text-red-400 dark:hover:bg-red-500/10"
           >
-            {isPending ? 'Anulando…' : 'Confirmar anulación'}
+            {isPending ? 'Anulando…' : 'Anular fiado'}
           </button>
         </div>
       </DialogContent>

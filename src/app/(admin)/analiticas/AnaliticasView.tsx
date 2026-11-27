@@ -42,7 +42,7 @@ export function AnaliticasView({
   return (
     <div className="space-y-3 lg:space-y-5">
       {/* La barra es navegación: el título lo tiene que encontrar igual el lector de pantalla. */}
-      <h1 className="sr-only">Métricas</h1>
+      <h1 className="sr-only">Reportes</h1>
       <AdminHeaderSlot>
         <MonthStepper {...stepper} className="hidden lg:flex" />
         {/* Sin movimientos no hay nada que exportar. */}

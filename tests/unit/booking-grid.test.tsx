@@ -469,7 +469,7 @@ describe('BookingGrid — panel de acciones del turno', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))
     const panel = await screen.findByRole('dialog')
-    expect(within(panel).getByRole('button', { name: /Liberar el bloqueo/ })).toBeTruthy()
+    expect(within(panel).getByRole('button', { name: /Liberar bloqueo/ })).toBeTruthy()
   })
 
   it('una hora de torneo que ya terminó tampoco: no hay a quién dar por ausente', async () => {
@@ -491,7 +491,7 @@ describe('BookingGrid — panel de acciones del turno', () => {
     const panel = await screen.findByRole('dialog')
     expect(panel.textContent).toContain('Torneo')
     expect(within(panel).queryByRole('button', { name: /Marcar ausente/ })).toBeNull()
-    expect(within(panel).queryByRole('button', { name: /Cantina/ })).toBeNull()
+    expect(within(panel).queryByRole('button', { name: /Sumar cantina/ })).toBeNull()
     expect(within(panel).queryByRole('button', { name: /Reprogramar/ })).toBeNull()
   })
 
@@ -541,7 +541,7 @@ describe('BookingGrid — panel de acciones del turno', () => {
     renderGrid({ bookings: [booking({ pending: 2000000, totalPaid: 0 })] })
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))
     const panel = await screen.findByRole('dialog')
-    expect(within(panel).getByRole('button', { name: /Cantina/ })).toBeTruthy()
+    expect(within(panel).getByRole('button', { name: /Sumar cantina/ })).toBeTruthy()
     expect(screen.queryByRole('menuitem', { name: 'Reprogramar' })).toBeNull()
     const trigger = within(panel).getByRole('button', { name: 'Más acciones del turno' })
     fireEvent.pointerDown(trigger)
@@ -562,7 +562,7 @@ describe('BookingGrid — panel de acciones del turno', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–19:00/ }))
     const panel = await screen.findByRole('dialog')
-    expect(within(panel).getByRole('button', { name: /Cantina/ })).toBeTruthy()
+    expect(within(panel).getByRole('button', { name: /Sumar cantina/ })).toBeTruthy()
     expect(within(panel).queryByRole('button', { name: /Reprogramar/ })).toBeNull()
   })
 
@@ -579,7 +579,7 @@ describe('BookingGrid — panel de acciones del turno', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 08:00–09:00/ }))
     const panel = await screen.findByRole('dialog')
-    expect(within(panel).getByRole('button', { name: /Cantina/ })).toBeTruthy()
+    expect(within(panel).getByRole('button', { name: /Sumar cantina/ })).toBeTruthy()
     expect(within(panel).queryByRole('button', { name: /Reprogramar/ })).toBeNull()
   })
 
@@ -595,7 +595,7 @@ describe('BookingGrid — panel de acciones del turno', () => {
     renderGrid({ bookings: [booking({ type: 'fixed', pending: 2000000, totalPaid: 0 })] })
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))
     const panel = await screen.findByRole('dialog')
-    expect(within(panel).getByRole('button', { name: /Cantina/ })).toBeTruthy()
+    expect(within(panel).getByRole('button', { name: /Sumar cantina/ })).toBeTruthy()
     const trigger = within(panel).getByRole('button', { name: 'Más acciones del turno' })
     fireEvent.pointerDown(trigger)
     fireEvent.click(trigger)
@@ -616,7 +616,7 @@ describe('BookingGrid — panel de acciones del turno', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: /Cancha 1 16:00–17:00/ }))
     const panel = await screen.findByRole('dialog')
-    expect(within(panel).queryByRole('button', { name: /Cantina/ })).toBeNull()
+    expect(within(panel).queryByRole('button', { name: /Sumar cantina/ })).toBeNull()
     expect(within(panel).queryByRole('button', { name: /Reprogramar/ })).toBeNull()
   })
 
@@ -626,7 +626,7 @@ describe('BookingGrid — panel de acciones del turno', () => {
     const panel = await screen.findByRole('dialog')
     expect(screen.queryByTestId('canteen-dialog')).toBeNull()
 
-    fireEvent.click(within(panel).getByRole('button', { name: /Cantina/ }))
+    fireEvent.click(within(panel).getByRole('button', { name: /Sumar cantina/ }))
     expect(await screen.findByTestId('canteen-dialog')).toBeTruthy()
   })
 })

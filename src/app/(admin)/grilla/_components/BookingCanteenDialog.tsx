@@ -107,7 +107,7 @@ export function BookingCanteenDialog({
         setCatalog({ products: res.products })
       } catch (err) {
         Sentry.captureException(err)
-        if (alive) setError('No pudimos cargar la cantina. Revisá tu conexión.')
+        if (alive) setError('No pudimos cargar los productos. Revisá tu internet y probá de nuevo.')
       }
     })()
     return () => {
@@ -119,7 +119,7 @@ export function BookingCanteenDialog({
     <Dialog open={open} onOpenChange={guard.onOpenChange}>
       <DialogContent className="max-w-4xl" onInteractOutside={guard.onInteractOutside}>
         <DialogHeader>
-          <DialogTitle>Cantina{displayName ? ` — ${displayName}` : ''}</DialogTitle>
+          <DialogTitle>Sumar cantina{displayName ? `: ${displayName}` : ''}</DialogTitle>
         </DialogHeader>
 
         {/* red-700/red-300 (idiom de `status-tone.ts`), no `text-destructive`: el
@@ -130,7 +130,9 @@ export function BookingCanteenDialog({
           </p>
         )}
 
-        {!error && !catalog && <p className="text-sm text-muted-foreground">Cargando cantina…</p>}
+        {!error && !catalog && (
+          <p className="text-sm text-muted-foreground">Cargando productos...</p>
+        )}
 
         {catalog && (
           <TicketPanel

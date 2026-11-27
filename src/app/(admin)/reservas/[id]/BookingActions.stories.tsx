@@ -253,7 +253,7 @@ export const CancelarComplejoReembolsoAutomatico: Story = {
     await waitFor(() =>
       expect(
         dialog.getByText(
-          'La seña de $ 4.500 queda para devolver: hacelo vos desde tu MercadoPago (no es automático) — si la devolvés ahí, el sistema la marca sola.',
+          'La seña de $ 4.500 queda para devolver. Tenés que devolverla vos desde tu cuenta de Mercado Pago (no es automático); apenas lo hagas, acá se marca sola como devuelta.',
         ),
       ).toBeVisible(),
     )
@@ -395,7 +395,7 @@ export const Bloqueo: Story = {
   args: { type: 'block' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('button', { name: 'Liberar el bloqueo' })).toBeVisible()
+    await expect(canvas.getByRole('button', { name: 'Liberar bloqueo' })).toBeVisible()
     await expect(canvas.queryByRole('button', { name: 'Marcar completada' })).toBeNull()
     await expect(canvas.queryByRole('button', { name: 'Marcar ausente' })).toBeNull()
     await expect(canvas.queryByRole('button', { name: 'Cancelar' })).toBeNull()
@@ -408,7 +408,7 @@ export const BloqueoLiberadoConfirmado: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)
     const body = within(canvasElement.ownerDocument.body)
-    await userEvent.click(canvas.getByRole('button', { name: 'Liberar el bloqueo' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Liberar bloqueo' }))
 
     const dialog = within(await body.findByRole('dialog'))
     await waitFor(() => expect(dialog.getByText(/cancha queda libre/i)).toBeVisible())

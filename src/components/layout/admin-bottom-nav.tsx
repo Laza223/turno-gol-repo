@@ -104,7 +104,7 @@ export function AdminBottomNav({
           {moreAlert && <SetupAlertDot className="absolute -right-1 -top-0.5 ring-2 ring-card" />}
         </span>
         <span className="truncate">Más</span>
-        {moreAlert && <span className="sr-only">— hay algo por completar</span>}
+        {moreAlert && <span className="sr-only">, hay algo por completar</span>}
       </button>
     </nav>
   )

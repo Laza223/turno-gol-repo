@@ -30,7 +30,7 @@ export const SinDeclarar: Story = {
     // Los paréntesis distinguen la aclaración del email vigente del texto de
     // ayuda del campo, que dice casi lo mismo.
     await expect(canvas.getByText(/\(el email de tu cuenta de TurnoGol\)/i)).toBeInTheDocument()
-    await expect(canvas.getByLabelText(/email de tu cuenta de MercadoPago/i)).toHaveValue('')
+    await expect(canvas.getByLabelText(/email de tu cuenta de Mercado Pago/i)).toHaveValue('')
   },
 }
 
@@ -42,7 +42,7 @@ export const ConEmailDeclarado: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByLabelText(/email de tu cuenta de MercadoPago/i)).toHaveValue(
+    await expect(canvas.getByLabelText(/email de tu cuenta de Mercado Pago/i)).toHaveValue(
       'lajugadora@gmail.com',
     )
     await expect(

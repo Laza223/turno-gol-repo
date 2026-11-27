@@ -75,7 +75,7 @@ Hay poco uso real que medir. El 2026-10-14 en El Vagón no había entrado ningun
 
 ### Panel
 
-Todo lo que sigue sale de 8 días de producción (14 al 22 de septiembre de 2026). El detalle y las fuentes están en `docs/rediseno-panel/insumos.md`.
+Todo lo que sigue sale de 8 días de producción (14 al 22 de septiembre de 2026). El detalle y las fuentes están en `docs/rediseno-panel/insumos.md` (en el historial de git).
 
 - **Horario.** Se opera de 17 a 01. La hora pico es a las 19 y a las 20: ahí empezaron 51 de los 75 turnos jugados. De mañana no opera nadie.
 - **El momento crítico, de 20:00 a 22:00.** Son unos 29 movimientos en dos horas (alrededor de 13 pagos de turnos y 15 ventas), amontonados en la media hora que sigue al final de cada turno. Mientras tanto, el encargado atiende a los que llegan y contesta el WhatsApp.
@@ -115,7 +115,7 @@ Todo lo que sigue sale de 8 días de producción (14 al 22 de septiembre de 2026
 
 > La visión completa de RIVAL (clubes, tablas, la media, la figura, el relato y los complejos) está en `docs/rival/README.md`, habilitada por `docs/decisions/2026-10-29-rival-cultura-de-turnogol.md`. Lo de abajo es lo que v1 tiene hoy.
 
-Spec: `docs/superpowers/specs/2026-10-22-rival-v1-design.md`. Decisiones: F4 y `docs/decisions/2026-10-22-rival-v1.md`. Lo esencial:
+Decisiones: F4 y `docs/decisions/2026-10-22-rival-v1.md`. Lo esencial:
 
 - **El partido del grupo:** el organizador arma el partido en un complejo de TurnoGol y pasa el link al grupo de WhatsApp. Cada uno toca "Voy", con cuenta de jugador, y todos ven cuántos faltan. Hay cupo duro y un banco con promoción automática; "Me bajo" no tiene penalidad.
 - **El tablón:** el mismo partido, publicado como "Faltan N", "Se busca arquero" o "Busca rival". El organizador acepta a cada uno, y el aceptado ve el WhatsApp del organizador (`wa.me`). Sin chat propio.
@@ -199,7 +199,7 @@ Spec: `docs/superpowers/specs/2026-10-22-rival-v1-design.md`. Decisiones: F4 y `
 
 **Panel**
 
-- `docs/rediseno-panel/insumos.md`: 8 días de producción (conteos, solo lectura) y las respuestas del founder del 2026-09-23.
+- `docs/rediseno-panel/insumos.md` (en el historial de git): 8 días de producción (conteos, solo lectura) y las respuestas del founder del 2026-09-23.
 - `docs/gtm/ejecucion/10-aprendizajes.md`: roces observados, con fecha y tipo.
 - Decisiones vigentes del mostrador: `docs/decisions/2026-09-14-alta-grilla-modal-unico-y-reservas-por-cancha.md`, `2026-09-15-cobro-por-equipo.md`, `2026-09-15-evento-repetible-edicion-y-cobro-parcial.md`, `2026-09-19-hoy-cobrar-y-vender.md` y `2026-09-25-hoy-cobrar-ahora.md`.
 - Lo que no hay y no se inventa: testimonios, frases textuales del complejo, métricas de satisfacción, un segundo complejo en uso, y cuánto se mira la grilla.

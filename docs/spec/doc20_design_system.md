@@ -5,7 +5,7 @@
 > **Superado el 2026-09-23.** La única autoridad de diseño es [`DESIGN.md`](../../DESIGN.md), en la
 > raíz del repo, escrito a partir del código. `MASTER.md`, la gramática de interacción y las specs
 > por página que describe este documento se archivaron en
-> [`docs/archive/design-system/`](../archive/design-system/). Lo que sigue queda como registro de
+> `docs/archive/design-system/` (sacado del árbol el 2026-11-27; está en el historial de git). Lo que sigue queda como registro de
 > cómo se trabajaba antes: no es regla. No se vuelve a crear `design-system/MASTER.md` ni specs por
 > página: si falta una regla, va a `DESIGN.md`.
 

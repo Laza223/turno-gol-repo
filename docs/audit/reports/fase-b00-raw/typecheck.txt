@@ -1,5 +1,0 @@
-
-> turnogol@0.1.0 typecheck C:\Users\Lazar\Documents\github\TurnoGol-audit-b00
-> tsc --noEmit
-
-EXIT_CODE=0

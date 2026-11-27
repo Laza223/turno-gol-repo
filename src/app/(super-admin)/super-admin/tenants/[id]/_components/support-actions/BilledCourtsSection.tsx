@@ -6,7 +6,6 @@ import {
   buildPriceBreakdown,
   canQuoteCourtCount,
   MAX_CATALOG_COURTS,
-  type PlusPrice,
   type PriceBreakdown,
 } from '@/modules/billing/pricing'
 import type { BillingCycle } from '@/modules/billing/billing.types'
@@ -38,8 +37,8 @@ type Props = {
   onlineCourts: number
   /** `null` si el plan de la suscripción es una banda legacy sin precio lineal. */
   pricing: BilledCourtsPricing | null
-  /** Plus EFECTIVO por cancha que se factura hoy (0 si no hay). Mueve el monto al cambiar canchas. */
-  plusPerCourtCents?: PlusPrice
+  /** Plus EFECTIVO por mes que se factura hoy (0 si no hay). No depende de las canchas. */
+  plusMonthlyCents?: number
   pending: boolean
   run: RunAction
   action: SupportAction
@@ -61,7 +60,7 @@ export function BilledCourtsSection({
   billingCycle,
   onlineCourts,
   pricing,
-  plusPerCourtCents = 0,
+  plusMonthlyCents = 0,
   pending,
   run,
   action,
@@ -84,7 +83,7 @@ export function BilledCourtsSection({
 
   const monthlyFor = (courts: number): number | null =>
     pricing && Number.isInteger(courts) && courts >= 1 && canQuoteCourtCount(courts, pricing)
-      ? buildPriceBreakdown({ billedCourts: courts, cycle, plusPerCourtCents, ...pricing })
+      ? buildPriceBreakdown({ billedCourts: courts, cycle, plusMonthlyCents, ...pricing })
           .monthlyEffectiveCents
       : null
 

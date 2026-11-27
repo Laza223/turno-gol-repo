@@ -483,7 +483,7 @@ export async function updateTenantMarketplaceVisibilityAction(
 
 /**
  * Interruptor de TurnoGol Plus. Los montos NO vienen del cliente salvo el
- * precio especial por cancha, que se valida acá (entero > 0, P10; `null` = la
+ * precio especial por mes, que se valida acá (entero > 0, P10; `null` = la
  * lista, que sigue a la lista cuando cambia); el resto lo recalcula el service.
  * El `max` es el techo de un `integer` de Postgres: sin él un número grande
  * reventaba como error de DB.
@@ -491,7 +491,7 @@ export async function updateTenantMarketplaceVisibilityAction(
 const setPlusInputSchema = z.discriminatedUnion('op', [
   z.object({
     op: z.literal('enable'),
-    pricePerCourtCents: z.number().int().positive().max(2_147_483_647).nullable(),
+    priceCents: z.number().int().positive().max(2_147_483_647).nullable(),
   }),
   z.object({ op: z.literal('disable'), mode: z.enum(['end_of_period', 'immediate']) }),
 ])
@@ -515,7 +515,7 @@ export async function setTenantPlusAction(
   if (!data.success) {
     return {
       success: false,
-      error: 'El precio por cancha tiene que ser un número mayor a cero, o vacío para la lista.',
+      error: 'El precio por mes tiene que ser un número mayor a cero, o vacío para la lista.',
     }
   }
 
@@ -525,10 +525,10 @@ export async function setTenantPlusAction(
   try {
     const now = new Date()
     if (data.data.op === 'enable') {
-      const price = data.data.pricePerCourtCents
+      const price = data.data.priceCents
       const result = await enablePlus(
         parsed.data,
-        { pricePerCourtCents: price },
+        { priceCents: price },
         actor,
         getBillingGateway(),
         now,
@@ -543,7 +543,7 @@ export async function setTenantPlusAction(
         message =
           price === null
             ? 'Asistente activado a precio de lista. Revisá el próximo importe en Suscripción.'
-            : `Plus prendido: el próximo débito suma ${formatArs(price)} por cancha.`
+            : `Plus prendido: el próximo débito suma ${formatArs(price)} por mes.`
       }
     } else {
       const result = await disablePlus(

@@ -15,7 +15,7 @@ import {
   catalogPricing,
   COURT_COUNT_PRICE_SLUG,
   CourtCountQuoteRequiredError,
-  subscriptionPlusPrice,
+  effectivePlusCents,
   computeSubscriptionAmount,
   InvalidBilledCourtsError,
   monthlyListAmount,
@@ -25,7 +25,7 @@ const PARAMS = {
   priceFirstCourtCents: 4_700_000, // $47.000
   priceExtraCourtCents: 3_000_000, // $30.000
   annualDiscountBps: 1_000, // 10%
-  plusPerCourtCents: 0, // sin Plus: este archivo prueba el plan solo (Plus: pricing-plus.test.ts)
+  plusMonthlyCents: 0, // sin Plus: este archivo prueba el plan solo (Plus: pricing-plus.test.ts)
 }
 
 describe('monthlyListAmount — la cuota mensual de lista', () => {
@@ -109,7 +109,6 @@ describe('buildPriceBreakdown — lo que ve el dueño en pantalla', () => {
       extraCourtUnitCents: 3_000_000,
       extraCourtsTotalCents: 12_000_000,
       planMonthlyListCents: 16_700_000,
-      plusPerCourtCents: 0,
       plusMonthlyListCents: 0,
       monthlyListCents: 16_700_000,
       monthlyEffectiveCents: 16_700_000,
@@ -157,17 +156,17 @@ describe('catálogo por cantidad exacta', () => {
       ...pricing,
       billedCourts,
       cycle,
-      plusPerCourtCents: subscriptionPlusPrice(plus, null, pricing),
+      plusMonthlyCents: effectivePlusCents(plus, null),
     })
 
   it.each([
-    [1, 4_500_000, 7_000_000, 43_200_000, 67_200_000],
-    [2, 6_500_000, 9_000_000, 62_400_000, 86_400_000],
-    [3, 8_000_000, 11_500_000, 76_800_000, 110_400_000],
-    [4, 9_500_000, 13_000_000, 91_200_000, 124_800_000],
-    [5, 11_000_000, 14_500_000, 105_600_000, 139_200_000],
-    [6, 12_500_000, 17_000_000, 120_000_000, 163_200_000],
-    [7, 13_500_000, 18_000_000, 129_600_000, 172_800_000],
+    [1, 4_500_000, 9_500_000, 43_200_000, 91_200_000],
+    [2, 6_500_000, 11_500_000, 62_400_000, 110_400_000],
+    [3, 8_000_000, 13_000_000, 76_800_000, 124_800_000],
+    [4, 9_500_000, 14_500_000, 91_200_000, 139_200_000],
+    [5, 11_000_000, 16_000_000, 105_600_000, 153_600_000],
+    [6, 12_500_000, 17_500_000, 120_000_000, 168_000_000],
+    [7, 13_500_000, 18_500_000, 129_600_000, 177_600_000],
   ])('cobra la lista para %i canchas', (courts, base, full, annual, fullAnnual) => {
     expect(price(courts, 'monthly', false)).toBe(base)
     expect(price(courts, 'monthly', true)).toBe(full)

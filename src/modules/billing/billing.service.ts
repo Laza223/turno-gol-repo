@@ -22,14 +22,13 @@ import {
   SubscriptionNotFoundError,
 } from './billing.errors'
 import {
-  PLUS_LIST_PER_COURT_CENTS,
+  PLUS_LIST_MONTHLY_CENTS,
   catalogPricing,
   canQuoteCourtCount,
   computeSubscriptionAmount,
   COURT_COUNT_QUOTE_PREFIX,
   CourtCountQuoteRequiredError,
-  subscriptionPlusPrice,
-  type PlusPrice,
+  effectivePlusCents,
 } from './pricing'
 import { transitionToCanceled } from './lifecycle.service'
 import type {
@@ -77,7 +76,7 @@ export type SubRow = {
   billed_courts: number
   /** Migr. 102 — Plus va en el debito. Es lo unico que lo mete en el monto. */
   plus_enabled: boolean
-  /** Precio especial de Plus por cancha y mes. NULL = lista. */
+  /** Precio especial de Plus por mes y complejo (la columna conserva el nombre viejo). NULL = lista. */
   plus_price_per_court_cents: number | null
   /** Baja agendada: el bot sigue hasta aca. */
   plus_access_until: Date | string | null
@@ -179,20 +178,20 @@ export function assertCatalogCourtCount(plan: PlanRow, billedCourts: number): vo
  * Ahora el monto es funcion de `billed_courts`: la regla vive en
  * `./pricing.ts` y esta funcion solo le pasa los parametros del catalogo.
  *
- * `plusPerCourtCents` es OBLIGATORIO (0 = sin Plus): el debito lleva el plan
+ * `plusMonthlyCents` es OBLIGATORIO (0 = sin Plus): el debito lleva el plan
  * MAS Plus, y un caller que lo omita no compila en vez de cobrar de menos.
- * Se arma con `plusPerCourtOf(sub, plan)`.
+ * Se arma con `plusCentsOf(sub)`.
  */
 export function subscriptionAmount(
   plan: PlanRow,
   billedCourts: number,
   cycle: BillingCycle,
-  plusPerCourtCents: PlusPrice,
+  plusMonthlyCents: number,
 ): number {
   return computeSubscriptionAmount({
     billedCourts,
     cycle,
-    plusPerCourtCents,
+    plusMonthlyCents,
     ...pricingParamsOf(plan),
   })
 }
@@ -213,19 +212,14 @@ export function isQuoteCurrent(sub: {
 }
 
 /**
- * Plus por cancha que lleva el debito de esta suscripcion. Sale SOLO de las
+ * Plus por mes que lleva el debito de esta suscripcion. Sale SOLO de las
  * columnas de `tenant_subscriptions` (`plus_enabled` + precio especial), nunca
  * del override del flag `whatsapp_bot`.
  */
-export function plusPerCourtOf(
+export function plusCentsOf(
   sub: Pick<SubRow, 'plus_enabled' | 'plus_price_per_court_cents'>,
-  plan: PlanRow,
-): PlusPrice {
-  return subscriptionPlusPrice(
-    sub.plus_enabled,
-    sub.plus_price_per_court_cents,
-    pricingParamsOf(plan),
-  )
+): number {
+  return effectivePlusCents(sub.plus_enabled, sub.plus_price_per_court_cents)
 }
 
 /**
@@ -645,12 +639,12 @@ function assertBilledCourtsCoverOnline(
 export function billingReason(
   billedCourts: number,
   cycle: BillingCycle,
-  plusPerCourtCents: PlusPrice,
+  plusMonthlyCents: number,
 ): string {
   const canchas = billedCourts === 1 ? '1 cancha' : `${billedCourts} canchas`
   // Sin Plus el texto queda IDENTICO al de antes: el reuso de checkouts
   // pendientes compara el `reason` con el que ya esta grabado en MP.
-  const plus = plusPerCourtCents !== 0 ? ' + Asistente de WhatsApp' : ''
+  const plus = plusMonthlyCents !== 0 ? ' + Asistente de WhatsApp' : ''
   return `TurnoGol — ${canchas}${plus} (${cycle === 'annual' ? 'anual' : 'mensual'})`
 }
 
@@ -698,9 +692,9 @@ export async function subscribe(
     throw new SubscriptionNotFoundError(tenantId)
   }
 
-  const plusPerCourt = plusPerCourtOf(sub, plan)
-  const amount = subscriptionAmount(plan, billedCourts, billingCycle, plusPerCourt)
-  const reason = billingReason(billedCourts, billingCycle, plusPerCourt)
+  const plusCents = plusCentsOf(sub)
+  const amount = subscriptionAmount(plan, billedCourts, billingCycle, plusCents)
+  const reason = billingReason(billedCourts, billingCycle, plusCents)
   // Fix trial-first-charge: elegir plan no puede sacar plata antes de que
   // termine la prueba. Se calcula ACÁ para que el reuso compare contra la
   // misma fecha que mandaría un preapproval nuevo.
@@ -785,9 +779,9 @@ export async function subscribe(
   }
   // Plus tambien pudo cambiar en el medio (el interruptor de super-admin): el
   // monto que se manda a MP sale de la fila lockeada, no de la lectura de arriba.
-  const lockedPlusPerCourt = plusPerCourtOf(lockedSub, plan)
-  const createAmount = subscriptionAmount(plan, billedCourts, billingCycle, lockedPlusPerCourt)
-  const createReason = billingReason(billedCourts, billingCycle, lockedPlusPerCourt)
+  const lockedPlusCents = plusCentsOf(lockedSub)
+  const createAmount = subscriptionAmount(plan, billedCourts, billingCycle, lockedPlusCents)
+  const createReason = billingReason(billedCourts, billingCycle, lockedPlusCents)
 
   // Fix "no cancelar un checkout que nunca se pagó": si el preapproval que hay
   // que reemplazar es EXACTAMENTE el que se leyó sin lock (nadie ganó una
@@ -944,11 +938,11 @@ export async function changeBilledCourts(
     // la prueba.
     if (row.mp_subscription_id) {
       // Plus sale de la fila lockeada de arriba (`loadSubForUpdate`).
-      const plusPerCourt = plusPerCourtOf(sub, plan)
+      const plusCents = plusCentsOf(sub)
       await gateway.updatePreapprovalAmount(
         row.mp_subscription_id,
-        subscriptionAmount(plan, targetBilledCourts, sub.billing_cycle, plusPerCourt),
-        { reason: billingReason(targetBilledCourts, sub.billing_cycle, plusPerCourt) },
+        subscriptionAmount(plan, targetBilledCourts, sub.billing_cycle, plusCents),
+        { reason: billingReason(targetBilledCourts, sub.billing_cycle, plusCents) },
       )
     }
 
@@ -1175,12 +1169,12 @@ export async function reactivate(
   let payerEmail = resolvePayerEmail(sub, owner)
   if (!payerEmail) throw new SubscriptionNotFoundError(tenantId)
 
-  const plusPerCourt = plusPerCourtOf(sub, plan)
-  const amount = subscriptionAmount(plan, billedCourts, billingCycle, plusPerCourt)
+  const plusCents = plusCentsOf(sub)
+  const amount = subscriptionAmount(plan, billedCourts, billingCycle, plusCents)
   // Reactivar es post-trial (canceled/churned/suspended/blocked): el cobro sale
   // ya, sin `firstChargeAt`. El reuso exige que el pendiente tampoco tenga
   // fecha futura grabada.
-  const reason = `${billingReason(billedCourts, billingCycle, plusPerCourt)} — reactivación`
+  const reason = `${billingReason(billedCourts, billingCycle, plusCents)} — reactivación`
 
   // Fix "no cancelar un checkout que nunca se pagó" — mismo criterio que
   // `subscribe()` (ver ese comentario): un solo GET, guardado para el chequeo
@@ -1244,9 +1238,9 @@ export async function reactivate(
   payerEmail = resolvePayerEmail(lockedSub, owner)
   if (!payerEmail) throw new SubscriptionNotFoundError(tenantId)
   // Mismo criterio que `subscribe()`: Plus se relee de la fila lockeada.
-  const lockedPlusPerCourt = plusPerCourtOf(lockedSub, plan)
-  const createAmount = subscriptionAmount(plan, billedCourts, billingCycle, lockedPlusPerCourt)
-  const createReason = `${billingReason(billedCourts, billingCycle, lockedPlusPerCourt)} — reactivación`
+  const lockedPlusCents = plusCentsOf(lockedSub)
+  const createAmount = subscriptionAmount(plan, billedCourts, billingCycle, lockedPlusCents)
+  const createReason = `${billingReason(billedCourts, billingCycle, lockedPlusCents)} — reactivación`
 
   // Fix 1 (R2 🔴): el preapproval VIEJO puede seguir vivo en MP reintentando
   // — el sweep de dunning (dunning-retry.worker.ts) solo escala estado
@@ -1411,9 +1405,9 @@ export async function getSubscriptionState(tenantId: string, tx: DbTx): Promise<
     ...state,
     plus: {
       enabled: plusEnabled,
-      // Lo que cuesta Plus por cancha y mes para este complejo (especial o
+      // Lo que cuesta Plus por mes para este complejo (especial o
       // lista), este prendido o no: la pantalla lo muestra en las dos.
-      perCourtCents: plusPricePerCourtCents ?? PLUS_LIST_PER_COURT_CENTS,
+      monthlyCents: plusPricePerCourtCents ?? PLUS_LIST_MONTHLY_CENTS,
       usesListPrice: plusPricePerCourtCents === null,
       accessUntil: plusAccessUntil ? toDate(plusAccessUntil) : null,
       quote:

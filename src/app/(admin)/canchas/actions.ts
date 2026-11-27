@@ -30,7 +30,7 @@ import {
   changeBilledCourts,
   loadSubscriptionPlan,
   loadSub,
-  plusPerCourtOf,
+  plusCentsOf,
   pricingParamsOf,
 } from '@/modules/billing/billing.service'
 import { getBillingGateway } from '@/modules/billing/billing.gateway'
@@ -103,9 +103,9 @@ async function billingPreviewFor(
     if (sub.status === 'trialing' && !sub.mp_subscription_id) return null
     assertCatalogCourtCount(plan, nextOnlineCourts)
   }
-  const plusPerCourtCents = plusPerCourtOf(sub, plan)
+  const plusMonthlyCents = plusCentsOf(sub)
   const monthlyFor = (billedCourts: number) =>
-    computeSubscriptionAmount({ ...params, billedCourts, cycle: 'monthly', plusPerCourtCents })
+    computeSubscriptionAmount({ ...params, billedCourts, cycle: 'monthly', plusMonthlyCents })
   return {
     currentBilledCourts: billed.billedCourts,
     nextBilledCourts: nextOnlineCourts,

@@ -17,7 +17,7 @@ import {
   loadActivePlan,
   loadSubForUpdate as loadBillingSubForUpdate,
   loadSubscriptionPlan,
-  plusPerCourtOf,
+  plusCentsOf,
   subscriptionAmount,
 } from '@/modules/billing/billing.service'
 import { getBotFlagOn } from '@/modules/billing/plus.service'
@@ -440,15 +440,10 @@ export async function changeBilledCourtsForSupport(
       // Plus sale de la fila lockeada: corregir las canchas no puede sacarle
       // (ni ponerle) Plus al debito. El `reason` es el mismo texto que ve el
       // pagador y que compara el reuso de checkout pendiente.
-      const plusPerCourt = plusPerCourtOf(sub, plan)
-      const newAmount = subscriptionAmount(
-        plan,
-        targetBilledCourts,
-        sub.billing_cycle,
-        plusPerCourt,
-      )
+      const plusCents = plusCentsOf(sub)
+      const newAmount = subscriptionAmount(plan, targetBilledCourts, sub.billing_cycle, plusCents)
       await gateway.updatePreapprovalAmount(sub.mp_subscription_id, newAmount, {
-        reason: billingReason(targetBilledCourts, sub.billing_cycle, plusPerCourt),
+        reason: billingReason(targetBilledCourts, sub.billing_cycle, plusCents),
       })
     }
 
@@ -476,7 +471,10 @@ export async function applyCurrentCatalogPrice(
     const target = await loadActivePlan(tx)
     if (target.slug !== COURT_COUNT_PRICE_SLUG)
       return 'El catálogo nuevo todavía no está publicado.'
-    if (sub.plan_id === target.id) return null
+    // Estar ya en el catálogo no garantiza que Mercado Pago cobre la lista de
+    // hoy: si cambió un precio del catálogo (el bot, el 2026-11-27), el mandato
+    // sigue con el monto anterior hasta que se corrija desde acá.
+    const onTargetPlan = sub.plan_id === target.id
     if (sub.status !== 'active' && sub.status !== 'trialing') {
       return 'El complejo tiene que estar activo o en prueba.'
     }
@@ -497,13 +495,10 @@ export async function applyCurrentCatalogPrice(
       return 'Revisá las canchas activas y facturadas antes de cambiar el importe.'
     }
     const includePlus = sub.plus_enabled || botOn
-    const nextPlus = plusPerCourtOf(
-      {
-        plus_enabled: includePlus,
-        plus_price_per_court_cents: null,
-      },
-      target,
-    )
+    const nextPlus = plusCentsOf({
+      plus_enabled: includePlus,
+      plus_price_per_court_cents: null,
+    })
     const nextAmount = subscriptionAmount(target, sub.billed_courts, sub.billing_cycle, nextPlus)
     if (nextAmount !== expectedAmountCents) {
       return 'El importe cambió. Volvé a abrir la suscripción antes de confirmar.'
@@ -513,7 +508,7 @@ export async function applyCurrentCatalogPrice(
       current,
       sub.billed_courts,
       sub.billing_cycle,
-      plusPerCourtOf(sub, current),
+      plusCentsOf(sub),
     )
     const mpId = sub.mp_subscription_id
     if (sub.status === 'active' && !mpId) {
@@ -530,10 +525,21 @@ export async function applyCurrentCatalogPrice(
         remote.frequencyType !== 'months' ||
         !remote.nextPaymentDate ||
         remote.nextPaymentDate <= now ||
-        (remote.amountCents !== currentAmount && remote.amountCents !== nextAmount))
+        // Con el catálogo ya asignado, el monto viejo del mandato no se puede
+        // recalcular desde acá: el que confirma ve el importe nuevo.
+        (!onTargetPlan &&
+          remote.amountCents !== currentAmount &&
+          remote.amountCents !== nextAmount))
     ) {
       return 'Revisá en Mercado Pago el mandato, su importe y la fecha del próximo débito.'
     }
+
+    const alreadyApplied =
+      onTargetPlan &&
+      sub.plus_enabled === includePlus &&
+      sub.plus_price_per_court_cents === null &&
+      (!mpId || remote?.amountCents === nextAmount)
+    if (alreadyApplied) return null
 
     await tx.execute(sql`
       UPDATE tenant_subscriptions
@@ -546,6 +552,7 @@ export async function applyCurrentCatalogPrice(
       nextPlanId: target.id,
       previousAmountCents: currentAmount,
       nextAmountCents: nextAmount,
+      previousRemoteAmountCents: remote?.amountCents ?? null,
       includesPlus: includePlus,
       nextPaymentDate: remote?.nextPaymentDate?.toISOString() ?? null,
     })

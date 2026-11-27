@@ -125,7 +125,7 @@ describe('catálogo por cantidad en checkout y contratos existentes', () => {
       chargedQuantity: 1,
       lastChargedAmountCents: 15_000_000,
     }
-    const apply = (amount = 14_500_000) =>
+    const apply = (amount = 16_000_000) =>
       applyCurrentCatalogPrice(
         tenantId,
         admin.id,
@@ -148,8 +148,15 @@ describe('catálogo por cantidad en checkout y contratos existentes', () => {
       slug: COURT_COUNT_PRICE_SLUG,
       plus_enabled: true,
     })
-    expect(gateway.updatePreapprovalCalls.at(-1)).toMatchObject({ amount: 14_500_000 })
+    expect(gateway.updatePreapprovalCalls.at(-1)).toMatchObject({ amount: 16_000_000 })
+    gateway.subscriptionState = { ...gateway.subscriptionState!, amountCents: 16_000_000 }
     expect(await apply()).toBeNull()
     expect(gateway.updatePreapprovalCalls).toHaveLength(2)
+
+    // Ya en el catálogo nuevo pero con el débito del bot viejo: se corrige.
+    gateway.subscriptionState = { ...gateway.subscriptionState, amountCents: 14_500_000 }
+    expect(await apply()).toBeNull()
+    expect(gateway.updatePreapprovalCalls).toHaveLength(3)
+    expect(gateway.updatePreapprovalCalls.at(-1)).toMatchObject({ amount: 16_000_000 })
   })
 })

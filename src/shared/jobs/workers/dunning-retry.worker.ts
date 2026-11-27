@@ -14,7 +14,7 @@ import {
   billingReason,
   assertCatalogCourtCount,
   loadSubscriptionPlan,
-  plusPerCourtOf,
+  plusCentsOf,
   subscriptionAmount,
 } from '@/modules/billing/billing.service'
 import type { BillingCycle } from '@/modules/billing/billing.types'
@@ -359,11 +359,11 @@ export async function runDunningSweep(now: Date = new Date()): Promise<void> {
         if (row?.mp_subscription_id && !MP_MOCK_ENABLED) {
           // Plus sale de la fila que acaba de devolver el UPDATE: mover las
           // canchas no puede sacarle (ni ponerle) Plus al debito.
-          const plusPerCourt = plusPerCourtOf(row, plan)
+          const plusCents = plusCentsOf(row)
           await getBillingGateway().updatePreapprovalAmount(
             row.mp_subscription_id,
-            subscriptionAmount(plan, appliedBilledCourts, row.billing_cycle, plusPerCourt),
-            { reason: billingReason(appliedBilledCourts, row.billing_cycle, plusPerCourt) },
+            subscriptionAmount(plan, appliedBilledCourts, row.billing_cycle, plusCents),
+            { reason: billingReason(appliedBilledCourts, row.billing_cycle, plusCents) },
           )
         }
       })

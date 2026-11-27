@@ -139,7 +139,7 @@ function sub(status: string) {
     // indefinido no es un entero >= 1).
     billedCourts: 3,
     pendingBilledCourts: null as number | null,
-    plus: { enabled: false, perCourtCents: 2_000_000, accessUntil: null, quote: null },
+    plus: { enabled: false, monthlyCents: 2_000_000, accessUntil: null, quote: null },
     currentPeriodStart: new Date('2026-08-13T12:00:00.000Z'),
     currentPeriodEnd: new Date('2026-09-13T12:00:00.000Z'),
     mpSubscriptionId: 'mp-1',
@@ -195,12 +195,12 @@ describe('/settings/facturacion — CancelSubscriptionSection por estado', () =>
   it('active con Plus facturado: la cuota suma la fila del Asistente y aparece su sección', async () => {
     vi.mocked(getSubscriptionState).mockResolvedValue({
       ...sub('active'),
-      plus: { enabled: true, perCourtCents: 2_000_000, accessUntil: null, quote: null },
+      plus: { enabled: true, monthlyCents: 2_000_000, accessUntil: null, quote: null },
     } as never)
 
     render(await FacturacionPage())
 
-    expect(screen.getByText(/3 canchas × .*20\.000/)).toBeTruthy()
+    expect(screen.getByText(/Incluido en tu cuota: .*20\.000 por mes/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Dar de baja el Asistente' })).toBeTruthy()
   })
 

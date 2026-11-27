@@ -25,12 +25,12 @@ import { setTenantPlusAction } from '@/app/(super-admin)/super-admin/tenants/[id
 
 beforeEach(() => {
   vi.clearAllMocks()
-  getPlusAdminState.mockResolvedValue({ pricePerCourtCents: 1_500_000 })
+  getPlusAdminState.mockResolvedValue({ priceCents: 1_500_000 })
   enablePlus.mockResolvedValue({ kind: 'enabled' })
   disablePlus.mockResolvedValue({ kind: 'turned_off' })
 })
 
-const ENABLE = { op: 'enable', pricePerCourtCents: 1_500_000 } as const
+const ENABLE = { op: 'enable', priceCents: 1_500_000 } as const
 const DISABLE_NOW = { op: 'disable', mode: 'immediate' } as const
 
 describe('setTenantPlusAction — autorización', () => {
@@ -67,7 +67,7 @@ describe('setTenantPlusAction — autorización', () => {
     expect(enablePlus).toHaveBeenCalledTimes(1)
     const [tenantId, input, actor] = enablePlus.mock.calls[0]!
     expect(tenantId).toBe(TENANT)
-    expect(input).toEqual({ pricePerCourtCents: 1_500_000 })
+    expect(input).toEqual({ priceCents: 1_500_000 })
     expect(actor).toEqual({ type: 'system', id: 'sa-1' })
     expect(disablePlus).not.toHaveBeenCalled()
   })
@@ -75,14 +75,14 @@ describe('setTenantPlusAction — autorización', () => {
   it('F5: precio null = lista: la action lo acepta y se lo pasa tal cual al service (no fija el número de hoy)', async () => {
     requireSystemAdminAction.mockResolvedValue({ ok: true, admin: { id: 'sa-1' } })
 
-    const res = await setTenantPlusAction(TENANT, { op: 'enable', pricePerCourtCents: null })
+    const res = await setTenantPlusAction(TENANT, { op: 'enable', priceCents: null })
 
     expect(res).toMatchObject({
       success: true,
       message: expect.stringContaining('precio de lista'),
     })
     expect(enablePlus).toHaveBeenCalledTimes(1)
-    expect(enablePlus.mock.calls[0]![1]).toEqual({ pricePerCourtCents: null })
+    expect(enablePlus.mock.calls[0]![1]).toEqual({ priceCents: null })
   })
 
   it('positivo: la baja pasa el modo pedido (inmediata y a fin de período)', async () => {
@@ -119,14 +119,11 @@ describe('setTenantPlusAction — autorización', () => {
 
 describe('setTenantPlusAction — validación Zod', () => {
   it.each([
-    ['precio 0', { op: 'enable', pricePerCourtCents: 0 }],
-    ['precio negativo', { op: 'enable', pricePerCourtCents: -100 }],
-    ['precio decimal', { op: 'enable', pricePerCourtCents: 1500.5 }],
-    [
-      'H7: precio que no entra en un integer de la DB',
-      { op: 'enable', pricePerCourtCents: 2_147_483_648 },
-    ],
-    ['precio texto', { op: 'enable', pricePerCourtCents: '1500' }],
+    ['precio 0', { op: 'enable', priceCents: 0 }],
+    ['precio negativo', { op: 'enable', priceCents: -100 }],
+    ['precio decimal', { op: 'enable', priceCents: 1500.5 }],
+    ['H7: precio que no entra en un integer de la DB', { op: 'enable', priceCents: 2_147_483_648 }],
+    ['precio texto', { op: 'enable', priceCents: '1500' }],
     ['sin precio', { op: 'enable' }],
     ['op desconocido', { op: 'toggle' }],
     ['modo desconocido', { op: 'disable', mode: 'whenever' }],

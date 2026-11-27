@@ -1,5 +1,5 @@
 // F1 (revisión Plus): la confirmación de "sumar cancha" tiene que mostrar la
-// cuota que realmente se debita, o sea plan + Plus por cancha facturada.
+// cuota que realmente se debita, o sea plan + Plus del complejo.
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn(), updateTag: vi.fn() }))
@@ -71,11 +71,11 @@ beforeEach(() => {
 })
 
 describe('createCourtAction — preview de la cuota al sumar una cancha', () => {
-  it('con Plus facturado de $12.000: 5 -> 6 canchas muestra $210.000 -> $252.000', async () => {
+  it('con Plus especial de $40.000: 5 -> 6 canchas muestra $190.000 -> $220.000', async () => {
     vi.mocked(loadSub).mockResolvedValue({
       plan_id: 'plan-1',
       plus_enabled: true,
-      plus_price_per_court_cents: 1_200_000,
+      plus_price_per_court_cents: 4_000_000,
     } as never)
 
     const res = await createCourtAction(courtFormData())
@@ -83,13 +83,13 @@ describe('createCourtAction — preview de la cuota al sumar una cancha', () => 
     expect(res).toMatchObject({
       success: false,
       requiresBillingConfirmation: {
-        currentMonthlyCents: 21_000_000,
-        nextMonthlyCents: 25_200_000,
+        currentMonthlyCents: 19_000_000,
+        nextMonthlyCents: 22_000_000,
       },
     })
   })
 
-  it('Plus a precio de lista ($15.000): suma la lista por cancha', async () => {
+  it('Plus a precio de lista: suma $50.000 fijos, no se mueve con la cancha nueva', async () => {
     vi.mocked(loadSub).mockResolvedValue({
       plan_id: 'plan-1',
       plus_enabled: true,
@@ -100,8 +100,8 @@ describe('createCourtAction — preview de la cuota al sumar una cancha', () => 
 
     expect(res).toMatchObject({
       requiresBillingConfirmation: {
-        currentMonthlyCents: 22_500_000,
-        nextMonthlyCents: 27_000_000,
+        currentMonthlyCents: 20_000_000,
+        nextMonthlyCents: 23_000_000,
       },
     })
   })

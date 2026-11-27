@@ -10,9 +10,9 @@ import { getBotFlagOn, getPlusAdminState } from '@/modules/billing/plus.service'
 import {
   buildPriceBreakdown,
   canQuoteCourtCount,
-  PLUS_LIST_PER_COURT_CENTS,
+  PLUS_LIST_MONTHLY_CENTS,
   catalogPricing,
-  subscriptionPlusPrice,
+  effectivePlusCents,
 } from '@/modules/billing/pricing'
 import {
   getTenantActivity,
@@ -68,8 +68,8 @@ const ACTIVITY_PAGE_SIZE = 25
 
 const PLUS_STATE_NO_SUBSCRIPTION = {
   kind: 'no_subscription',
-  pricePerCourtCents: null,
-  effectivePerCourtCents: PLUS_LIST_PER_COURT_CENTS,
+  specialPriceCents: null,
+  effectiveCents: PLUS_LIST_MONTHLY_CENTS,
   accessUntil: null,
   quote: null,
 } as const
@@ -118,10 +118,8 @@ export default async function SuperAdminTenantDetailPage(props: {
   const plusState = plusAdmin
     ? {
         kind: plusAdmin.kind,
-        pricePerCourtCents: plusAdmin.pricePerCourtCents,
-        effectivePerCourtCents: plusAdmin.effectivePerCourtCents,
-        listedMonthlyCents: plusAdmin.listedMonthlyCents,
-        effectiveMonthlyCents: plusAdmin.effectiveMonthlyCents,
+        specialPriceCents: plusAdmin.specialPriceCents,
+        effectiveCents: plusAdmin.effectiveCents,
         accessUntil: plusAdmin.accessUntil?.toISOString() ?? null,
         quote: plusAdmin.quote,
       }
@@ -226,10 +224,9 @@ async function AccionesTab({ detail }: { detail: TenantDetail }) {
           ...newPricing,
           billedCourts: subscription.billedCourts,
           cycle: subscription.billingCycle,
-          plusPerCourtCents: subscriptionPlusPrice(
+          plusMonthlyCents: effectivePlusCents(
             subscription.plusEnabled || (await getBotFlagOn(tenant.id)),
             null,
-            newPricing,
           ),
         })
       : null
@@ -268,13 +265,9 @@ async function AccionesTab({ detail }: { detail: TenantDetail }) {
           subscription?.status === 'trial_expired') &&
         !subscription.mpSubscriptionId,
       )}
-      plusPerCourtCents={
+      plusMonthlyCents={
         subscription && pricing
-          ? subscriptionPlusPrice(
-              subscription.plusEnabled,
-              subscription.plusPricePerCourtCents,
-              pricing,
-            )
+          ? effectivePlusCents(subscription.plusEnabled, subscription.plusPricePerCourtCents)
           : 0
       }
       settings={panelSettings}

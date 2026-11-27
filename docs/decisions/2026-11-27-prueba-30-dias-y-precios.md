@@ -1,6 +1,6 @@
 # Prueba de 30 días sin freemium, precios y recordatorio al jugador
 
-Fecha: 2026-11-27. Decisor: Lazar, en el chat. **El código todavía no refleja estas decisiones**: aplicarlas es una tarea aparte.
+Fecha: 2026-11-27. Decisor: Lazar, en el chat. **Estado del código:** la prueba de 30 días y el precio del bot ya están aplicados; el punto 1.1 y 1.2 (sin plan gratis y `trial_expired`) faltan.
 
 ## 1. Sin freemium, prueba de 30 días
 
@@ -10,14 +10,16 @@ Fecha: 2026-11-27. Decisor: Lazar, en el chat. **El código todavía no refleja 
 
 Supera a [`2026-11-08-freemium.md`](2026-11-08-freemium.md), [`2026-11-08-freemium-spec-y-estado-free.md`](2026-11-08-freemium-spec-y-estado-free.md), [`2026-11-15-freemium-corte-v2.md`](2026-11-15-freemium-corte-v2.md) y [`2026-11-16-se-vende-gratis-prueba-14-dias.md`](2026-11-16-se-vende-gratis-prueba-14-dias.md).
 
-Hoy en el código: `TRIAL_DAYS = 14`, estado `free`, `isFreePlan()` / `allowFree`, `transitionToFree`.
+Hoy en el código: estado `free`, `isFreePlan()` / `allowFree`, `transitionToFree`.
 
 ## 2. Precios
 
 - **Plan:** rige la fórmula por cantidad exacta de canchas de [`2026-11-23-precio-por-cantidad.md`](2026-11-23-precio-por-cantidad.md). Sin cambios.
-- **Bot de WhatsApp:** $50.000 por mes fijo por complejo, tenga las canchas que tenga. Es provisorio: se están evaluando los costos. Reemplaza la columna "Asistente" de la tabla del 23/11. Hoy `pricing.ts` todavía cobra esa escala.
+- **Bot de WhatsApp:** $50.000 por mes fijo por complejo, tenga las canchas que tenga. Es provisorio: se están evaluando los costos. Reemplaza la columna "Asistente" de la tabla del 23/11. Aplicado en `pricing.ts` (`PLUS_LIST_MONTHLY_CENTS`).
 
-Esta decisión no cambia el monto de ninguna suscripción ya autorizada.
+Esta decisión no cambia por sí sola el monto de ninguna suscripción ya autorizada: el código no toca preapprovals. El mismo 2026-11-27 Lazar confirmó por el chat que el único mandato con bot tiene que pasar al precio nuevo; se aplica a mano desde Superadmin (**Aplicar tarifa de lista**).
+
+El precio especial del bot por complejo, cuando exista, es un monto mensual (no por cancha).
 
 ## 3. Recordatorio de turno al jugador
 

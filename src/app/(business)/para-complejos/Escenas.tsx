@@ -6,7 +6,7 @@ type Escena = { hora?: string; dolor: string; solucion: string }
 const ESCENAS: Escena[] = [
   {
     hora: '23:40',
-    dolor: '«¿Tenés cancha mañana a las 9?»',
+    dolor: '"¿Tenés cancha mañana a las 9?"',
     solucion: 'Reservan solos desde tu link. Vos dormís.',
   },
   {
@@ -18,7 +18,7 @@ const ESCENAS: Escena[] = [
     solucion: 'Cobrás por equipo o de a partes, como venga.',
   },
   {
-    dolor: '«¿Cuánto entró hoy?» Y le escribís al encargado.',
+    dolor: '"¿Cuánto entró hoy?" Y le escribís al encargado.',
     solucion: 'Turnos, cantina y gastos en una caja, en tu celular.',
   },
   {

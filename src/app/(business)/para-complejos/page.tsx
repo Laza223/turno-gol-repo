@@ -23,9 +23,9 @@ import { AgendaFragment } from './fragments'
 import './para-complejos.css'
 
 export const metadata = buildMetadata({
-  title: 'TurnoGol para complejos — La grilla, el cobro y la caja de tu cancha',
+  title: 'TurnoGol para complejos | La grilla, el cobro y la caja de tu cancha',
   titleAbsolute: true,
-  description: `Turnos, fijos, cobro por equipo y caja con cantina, todo desde el celular. Y si querés, tus jugadores reservan online. Gratis, sin cargar ningún dato de pago.`,
+  description: `Turnos, fijos, cobro por equipo y caja con cantina, todo desde el celular. Y si querés, tus jugadores reservan online. Probalo 30 días gratis, sin cargar tarjeta.`,
   path: '/para-complejos',
 })
 
@@ -35,7 +35,7 @@ function Ctas({ className, style }: { className?: string; style?: CSSProperties 
   return (
     <div className={cn('bz-ctas', className)} style={style}>
       <Link href="/register" className={cn(buttonVariants({ variant: 'pill', size: 'pill' }))}>
-        Empezá gratis
+        Probar 30 días gratis
         <ArrowRight aria-hidden />
       </Link>
       <a
@@ -80,7 +80,7 @@ function Hero() {
         </p>
         <Ctas className="bz-rise" style={{ '--i': 2 } as CSSProperties} />
         <p className="pc-fine bz-rise" style={{ '--i': 3 } as CSSProperties}>
-          Gratis. No te pedimos ningún dato de pago.
+          30 días de prueba gratis. No te pedimos tarjeta.
         </p>
         {/* Se vende gratis (2026-11-16): la prueba del Completo no se anuncia. */}
         <p className="pc-fine bz-rise" style={{ '--i': 3 } as CSSProperties}>
@@ -97,7 +97,7 @@ const CHIPS = [
   { icon: Store, label: 'Cantina con stock' },
   { icon: Lock, label: 'Cierre de caja' },
   { icon: UserCog, label: 'Usuario para tu encargado' },
-  { icon: BarChart3, label: 'Métricas del mes' },
+  { icon: BarChart3, label: 'Estadísticas del mes' },
   { icon: ShieldAlert, label: 'Freno al que reserva y no viene' },
   { icon: Globe, label: 'Seña online, si querés' },
 ]
@@ -154,11 +154,10 @@ function Cierre() {
         <Reveal className="bz-cta glass-painted">
           <div>
             <h2 id="cierre-title" className="bz-h2">
-              Empezá gratis en tu complejo.
+              Probalo 30 días gratis en tu complejo.
             </h2>
             <p className="bz-lead2">
-              No te pedimos ningún dato de pago. Mandanos una foto de tu cuaderno y te lo dejamos
-              cargado.
+              No te pedimos tarjeta. Mandanos una foto de tu cuaderno y te lo dejamos cargado.
             </p>
             <Ctas className="justify-start" style={{ marginTop: 24 }} />
           </div>

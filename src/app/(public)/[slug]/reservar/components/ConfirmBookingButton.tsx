@@ -73,11 +73,13 @@ export default function ConfirmBookingButton(props: {
         </>
       )}
       {props.intentDegraded && (
-        <p className="rv-sub mb-3 mt-0">Tocá &quot;{props.label}&quot; para terminar tu reserva.</p>
+        <p className="rv-sub mb-3 mt-0">
+          Tocá &ldquo;{props.label}&rdquo; para confirmar tu turno.
+        </p>
       )}
 
       {/* En el flujo, debajo del resumen (`reservar.html`): no va fijo abajo. */}
-      <SubmitButton variant="pill" size="pill" className="rv-go w-full" pendingLabel="Procesando…">
+      <SubmitButton variant="pill" size="pill" className="rv-go w-full" pendingLabel="Confirmando…">
         {props.label}
       </SubmitButton>
     </form>

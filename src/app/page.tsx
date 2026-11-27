@@ -19,9 +19,9 @@ import { ClosingCta } from './home/ClosingCta'
 import './home/home.css'
 
 export const metadata = buildMetadata({
-  title: 'TurnoGol — Reservá cancha de fútbol para hoy, sin llamar',
+  title: 'TurnoGol | Reservá cancha de fútbol online en tu zona',
   description:
-    'Elegí complejo, día y horario. Reservás en un minuto, sin app y sin llamar a nadie.',
+    'Mirá horarios libres en complejos de fútbol de tu zona y reservá desde el celular en 30 segundos, sin esperar que te contesten por WhatsApp.',
   path: '/',
   titleAbsolute: true,
 })

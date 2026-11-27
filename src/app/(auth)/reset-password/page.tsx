@@ -42,16 +42,16 @@ export default async function ResetPasswordPage() {
           ) : (
             <div className="text-center">
               <h1 className="text-2xl font-extrabold tracking-tight text-foreground">
-                Enlace expirado
+                Link expirado
               </h1>
               <p className="mt-3 text-sm text-muted-foreground">
-                El enlace para cambiar la contraseña no es válido o ya venció.
+                El link para cambiar la contraseña no es válido o ya venció.
               </p>
               <Link
                 href="/forgot-password"
                 className="mt-6 inline-flex h-11 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg shadow-emerald-600/25 transition-colors hover:bg-primary/90"
               >
-                Pedir un nuevo enlace
+                Pedir un nuevo link
               </Link>
             </div>
           )}

@@ -101,7 +101,7 @@ const emailToken = (over: Partial<BookingIntentFields> = {}, email = EMAIL, now 
 const hiddenIntent = (root: HTMLElement) =>
   root.querySelector<HTMLInputElement>('form input[type="hidden"][name="booking_intent"]')?.value
 const confirmando = () => screen.queryByText('Confirmando tu reserva…')
-const HINT = 'Tocá "Reservar" para terminar tu reserva.'
+const HINT = 'Tocá “Reservar” para confirmar tu turno.'
 const hint = () => screen.queryByText(HINT)
 /** Todo lo que la page le pasa al cliente (props de los elementos), sin las claves internas de React. */
 const clientProps = (ui: unknown) => {
@@ -142,7 +142,7 @@ describe('ReservarPage — confirmación sola', () => {
 
     expect(hiddenIntent(container)).toBe(token)
     await waitFor(() => expect(confirmando()?.getAttribute('role')).toBe('status'))
-    expect(screen.getByRole('button', { name: /Reservar|Procesando/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Reservar|Confirmando/ })).toBeTruthy()
     await waitFor(() => expect(createBookingAndCheckout).toHaveBeenCalledTimes(1))
     expect(degraded()).toEqual([])
     expect(hint()).toBeNull()
@@ -358,7 +358,7 @@ describe('ReservarPage — el turno ocupado', () => {
     await renderPage({ ...taken, formato: '5', booking_intent: tokenOfTaken() })
 
     expect(h1()).toBe('Ese turno se ocupó mientras entrabas')
-    const salida = screen.getByRole('link', { name: 'Ver otras horas del sábado 14 de marzo' })
+    const salida = screen.getByRole('link', { name: 'Ver otros horarios del sábado 14 de marzo' })
     // La ficha del día y el formato, SIN la hora que ya no está.
     expect(salida.getAttribute('href')).toBe(`/${SLUG}?date=${DATE}&formato=5`)
     expect(degraded()).toEqual(reason('taken'))
@@ -370,7 +370,7 @@ describe('ReservarPage — el turno ocupado', () => {
     expect(h1()).toBe('Ese turno se ocupó mientras entrabas')
     expect(
       screen
-        .getByRole('link', { name: 'Ver otras horas del sábado 14 de marzo' })
+        .getByRole('link', { name: 'Ver otros horarios del sábado 14 de marzo' })
         .getAttribute('href'),
     ).toBe(`/${SLUG}?date=${DATE}`)
   })

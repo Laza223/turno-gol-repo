@@ -47,7 +47,7 @@ export function RivalSection() {
       <div className="home-wrap home-split">
         <div className="home-reveal">
           <h2 id="rival-title" className="home-h2">
-            Rival, el tablón de partidos de tu zona
+            Rival, los partidos abiertos de tu zona
           </h2>
           <p className="home-lead2">
             Si te faltan jugadores, publicás cuántos. Si tenés equipo, buscás rival. Los que juegan
@@ -57,7 +57,7 @@ export function RivalSection() {
             href="/rival"
             className={cn(buttonVariants({ variant: 'pill-glass', size: 'pill' }), 'mt-6')}
           >
-            Ver el tablón
+            Ver partidos abiertos
           </Link>
         </div>
         <div className="home-reveal">
@@ -67,7 +67,7 @@ export function RivalSection() {
           <div
             className="home-board"
             role="img"
-            aria-label="Ejemplo del tablón de Rival, con sus dos botones para armar un partido y los partidos publicados"
+            aria-label="Ejemplo de partidos publicados en Rival, con opciones para armar un partido o sumarse"
           >
             <div className="home-board__head" aria-hidden>
               <span>Me faltan jugadores</span>
@@ -85,7 +85,7 @@ export function RivalSection() {
                 <span className="home-match__bar">
                   <i style={{ '--fill': p.fill } as CSSProperties} />
                 </span>
-                <span className="home-match__cta">Pedir sumarme</span>
+                <span className="home-match__cta">Quiero sumarme</span>
               </div>
             ))}
           </div>

@@ -16,7 +16,7 @@ export function RivalTabs({ current }: { current: 'tablon' | 'mis-partidos' }) {
         style={{ '--i': current === 'tablon' ? 0 : 1, '--n': 2 } as CSSProperties}
       />
       <Link href="/rival" aria-current={current === 'tablon' ? 'page' : undefined}>
-        Tablón
+        Partidos
       </Link>
       <Link
         href="/rival/mis-partidos"

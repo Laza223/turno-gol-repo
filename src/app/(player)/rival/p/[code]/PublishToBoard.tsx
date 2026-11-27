@@ -121,8 +121,8 @@ function Published({
       <div className="flex items-start gap-3">
         <Megaphone className="mt-0.5 size-5 shrink-0 text-portal-slot-ink" aria-hidden />
         <div className="grid min-w-0 gap-1">
-          <p className="font-semibold text-portal-ink">En el tablón: {boardLabel}</p>
-          <p className="rv-small">Te avisamos por mail cuando alguien pida sumarse.</p>
+          <p className="font-semibold text-portal-ink">Publicado en RIVAL: {boardLabel}</p>
+          <p className="rv-small">Te avisamos por mail cuando alguien quiera sumarse.</p>
         </div>
       </div>
       <Button
@@ -134,7 +134,7 @@ function Published({
         onClick={unpublish}
         className={cn(RIVAL_GHOST, 'justify-self-start', pending && 'disabled:opacity-100')}
       >
-        {pending ? 'Sacando…' : 'Sacar del tablón'}
+        {pending ? 'Quitando…' : 'Dejar de publicar'}
       </Button>
       {error && (
         <p role="alert" className="rv-err">
@@ -212,7 +212,7 @@ function Publish({
         onClick={() => toggle(true)}
         className={RIVAL_SECONDARY}
       >
-        Publicar en el tablón
+        Publicar en RIVAL
       </Button>
     )
   }
@@ -239,7 +239,7 @@ function Publish({
         tabIndex={-1}
         className="rv-h2 focus-visible:outline-hidden"
       >
-        Publicar en el tablón
+        Publicar en RIVAL
       </h2>
       <input type="hidden" name="matchId" value={matchId} />
       <BoardFields

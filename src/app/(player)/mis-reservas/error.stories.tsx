@@ -35,7 +35,7 @@ export const ConDigest: Story = {
       canvas.getByRole('heading', { level: 1, name: 'No pudimos cargar tus reservas' }),
     ).toBeInTheDocument()
     await expect(canvas.getByText('3f9a21bc')).toBeInTheDocument()
-    await expect(canvas.getByRole('link', { name: 'Explorar complejos' })).toHaveAttribute(
+    await expect(canvas.getByRole('link', { name: 'Buscar canchas' })).toHaveAttribute(
       'href',
       '/explorar',
     )

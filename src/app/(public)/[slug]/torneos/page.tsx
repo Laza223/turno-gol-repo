@@ -56,7 +56,7 @@ export default async function TorneosPublicosPage(props: Props) {
             <Sparkles className="h-3.5 w-3.5 animate-pulse" />
             Próximamente
           </div>
-          <h2 className="text-lg font-bold text-foreground">Módulo de Torneos</h2>
+          <h2 className="text-lg font-bold text-foreground">Torneos</h2>
           <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground leading-relaxed">
             {tenant.name} estará publicando los próximos torneos, tablas de posiciones y fixtures
             muy pronto.
@@ -102,7 +102,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const tenant = await getPublicTenant(slug)
   if (!tenant) return {}
   return buildMetadata({
-    title: `Torneos — ${tenant.name}`,
+    title: `Torneos | ${tenant.name}`,
     description: `Tabla de posiciones, fixture y goleadores de los torneos de ${tenant.name}, ${tenant.city}.`,
     path: `/${tenant.slug}/torneos`,
     noIndex: !isPublicPortalIndexable(tenant.status),

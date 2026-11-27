@@ -68,7 +68,7 @@ export default async function ReferralLandingPage({
         className="bz-fine bz-rise font-semibold text-portal-slot-ink"
         style={{ '--i': 2 } as CSSProperties}
       >
-        Gratis. No te pedimos ningún dato de pago.
+        30 días de prueba gratis. No te pedimos tarjeta.
       </p>
 
       <div className="bz-ctas bz-rise" style={{ '--i': 3 } as CSSProperties}>

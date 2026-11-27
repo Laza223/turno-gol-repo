@@ -138,11 +138,11 @@ export function LocalidadSheet({
         ? 'Buscando…'
         : searchStatus === 'degraded' || searchStatus === 'error'
           ? 'No pudimos buscar ahora. Probá de nuevo.'
-          : 'No encontramos esa localidad.'
+          : 'No encontramos esa zona.'
 
   return (
     <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
-      <GlassSheetContent title="Elegí la localidad">
+      <GlassSheetContent title="Elegí tu zona">
         <p
           id={`${ids}-status`}
           aria-live="polite"
@@ -151,7 +151,7 @@ export function LocalidadSheet({
           {message}
         </p>
         <label htmlFor={`${ids}-q`} className="mb-1.5 block text-sm font-semibold text-portal-ink">
-          Localidad
+          Zona o ciudad
         </label>
         <div className="relative">
           <Search
@@ -176,7 +176,7 @@ export function LocalidadSheet({
                 onNameSearch(name)
               }
             }}
-            placeholder="Escribí tu localidad"
+            placeholder="Escribí tu zona"
             autoComplete="off"
             aria-describedby={`${ids}-status`}
             className="h-13 w-full rounded-[18px] border border-portal-inner-line bg-portal-inner pr-4 pl-12 text-base text-portal-ink placeholder:text-portal-soft focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-portal-green"
@@ -206,7 +206,7 @@ export function LocalidadSheet({
           </button>
         )}
         <fieldset className="mt-1">
-          <legend className="sr-only">Localidades</legend>
+          <legend className="sr-only">Zonas</legend>
           <label className={optionRow}>
             <input
               type="radio"
@@ -216,7 +216,7 @@ export function LocalidadSheet({
               onChange={() => onCityChange('')}
               onClick={() => city === '' && onCityChange('')}
             />
-            Todas las ciudades
+            Todas las zonas
             {city === '' && <Check className="ml-auto size-5" aria-hidden />}
           </label>
           {visibleCities.map((c) => {
@@ -243,7 +243,7 @@ export function LocalidadSheet({
             )
           })}
           {others.length > 0 && (
-            <p className="mt-3 text-sm font-semibold text-portal-soft">Otras localidades</p>
+            <p className="mt-3 text-sm font-semibold text-portal-soft">Otras zonas</p>
           )}
           {others.map((l) => {
             const value = cityValue(l)

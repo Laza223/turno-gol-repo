@@ -61,7 +61,9 @@ export function LoginCard({
     <div className="rounded-2xl border border-border/60 bg-card/90 p-8 shadow-xl shadow-slate-900/5 dark:bg-white/4 dark:border-white/8 dark:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.85)] backdrop-blur-md">
       <header className="mb-6 space-y-1">
         <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Iniciá sesión</h1>
-        <p className="text-sm text-muted-foreground">Ingresá con tu email y contraseña.</p>
+        <p className="text-sm text-muted-foreground">
+          Acceso al panel de complejos. Ingresá con tu email y contraseña.
+        </p>
       </header>
 
       <form action={formAction} className="space-y-4" noValidate>
@@ -150,12 +152,12 @@ export function LoginCard({
       )}
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        ¿Sos nuevo?{' '}
+        ¿Todavía no sumaste tu complejo?{' '}
         <Link
           href="/register"
           className="font-semibold text-emerald-700 dark:text-emerald-400 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 hover:underline"
         >
-          Empezar gratis
+          Probalo 30 días gratis
         </Link>
       </p>
     </div>

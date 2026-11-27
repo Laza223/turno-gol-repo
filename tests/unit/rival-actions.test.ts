@@ -81,7 +81,7 @@ const MATCH = '22222222-2222-4222-8222-222222222222'
 const CODE = 'ABCDEFGHJK'
 
 const NOT_FOUND = 'No encontramos ese partido. Revisá el link con quien te lo pasó.'
-const RATE_LIMITED = 'Hiciste muchos cambios seguidos. Esperá un momento y probá de nuevo.'
+const RATE_LIMITED = 'Hiciste muchos cambios seguidos. Esperá unos segundos y probá de nuevo.'
 const GENERIC = 'Algo falló de nuestro lado. Probá de nuevo en unos segundos.'
 
 /** Lo que el servidor lee de la bienvenida: por defecto, nada aceptado y sin perfil. */

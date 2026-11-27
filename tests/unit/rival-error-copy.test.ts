@@ -60,7 +60,7 @@ describe('textos compartidos: sin jerga ni código interno, y dicen cómo seguir
 
   it('el tope de velocidad no promete una ventana de tiempo que no verificamos', () => {
     expect(RIVAL_RATE_LIMITED_MESSAGE).toBe(
-      'Hiciste muchos cambios seguidos. Esperá un momento y probá de nuevo.',
+      'Hiciste muchos cambios seguidos. Esperá unos segundos y probá de nuevo.',
     )
   })
 })

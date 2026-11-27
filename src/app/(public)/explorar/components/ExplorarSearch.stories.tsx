@@ -47,7 +47,7 @@ export const Barra: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(
-      canvas.getByRole('button', { name: 'Localidad: La Plata. Cambiar' }),
+      canvas.getByRole('button', { name: 'Zona: La Plata. Cambiar' }),
     ).toBeInTheDocument()
     await expect(
       canvas.getByRole('button', { name: 'Cancha: Fútbol 5. Cambiar' }),
@@ -95,10 +95,10 @@ export const HojaDeCancha: Story = {
 export const BuscarPorNombre: Story = {
   parameters: { fetchMock: [{ match: '/api/public/geo/localidades', json: { results: [] } }] },
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole('button', { name: /^Localidad:/ }))
+    await userEvent.click(within(canvasElement).getByRole('button', { name: /^Zona:/ }))
     const sheet = within(await body(canvasElement).findByRole('dialog'))
-    await userEvent.type(sheet.getByRole('searchbox', { name: 'Localidad' }), 'Fénix')
-    await expect(await sheet.findByText('No encontramos esa localidad.')).toBeInTheDocument()
+    await userEvent.type(sheet.getByRole('searchbox', { name: 'Zona o ciudad' }), 'Fénix')
+    await expect(await sheet.findByText('No encontramos esa zona.')).toBeInTheDocument()
     await userEvent.click(sheet.getByRole('button', { name: /Buscar complejos que se llamen/ }))
     await waitFor(() =>
       expect(getRouter().push).toHaveBeenCalledWith('/explorar?formats=5&q=F%C3%A9nix'),
@@ -109,7 +109,7 @@ export const BuscarPorNombre: Story = {
 /** Elegir otra localidad navega en el acto y conserva el tamaño. */
 export const ElegirLocalidad: Story = {
   play: async ({ canvasElement }) => {
-    await userEvent.click(within(canvasElement).getByRole('button', { name: /^Localidad:/ }))
+    await userEvent.click(within(canvasElement).getByRole('button', { name: /^Zona:/ }))
     const sheet = within(await body(canvasElement).findByRole('dialog'))
     await userEvent.click(sheet.getByText('Córdoba, Córdoba'))
     await waitFor(() =>

@@ -4,7 +4,7 @@ import { ImageResponse } from 'next/og'
 
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
-export const alt = 'TurnoGol — La plataforma de reservas para el fútbol argentino'
+export const alt = 'TurnoGol, plataforma de reservas para complejos de fútbol'
 
 // Excepción documentada a DESIGN.md ("nada de hex inline"): satori no lee variables CSS ni tokens
 // de Tailwind. Marca: logotipo en Archivo 900 itálica (la misma fuente de `<Logo />`) e isotipo

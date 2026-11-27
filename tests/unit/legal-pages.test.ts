@@ -79,7 +79,7 @@ describe('privacy page', () => {
     const text = collectText(PrivacidadPage())
     expect(text).toMatch(/ARCO/)
     expect(text).toMatch(/AAIP/)
-    expect(text).toMatch(/MercadoPago/)
+    expect(text).toMatch(/Mercado Pago/)
     expect(text).toMatch(/Supabase/)
     expect(text).toMatch(/privacidad@turnogol\.app/)
   })
@@ -104,10 +104,10 @@ describe('terms page', () => {
   it('mentions the core legal concepts in the rendered text', () => {
     const text = collectText(TerminosPage())
     expect(text).toMatch(/intermediario/i)
-    expect(text).toMatch(/MercadoPago/)
+    expect(text).toMatch(/Mercado Pago/)
     expect(text).toMatch(/mayor(es)? de 18/i)
     expect(text).toMatch(/Ciudad Autónoma de Buenos Aires/)
-    expect(text).toMatch(/AFIP/)
+    expect(text).toMatch(/ARCA/)
   })
 })
 

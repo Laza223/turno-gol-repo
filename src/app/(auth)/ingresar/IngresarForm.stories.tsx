@@ -74,8 +74,8 @@ const expectComplejoLinks = async (root: HTMLElement) => {
 export const Idle: Story = {
   args: { action: fn(async () => ({ status: 'idle' as const })) },
   play: async ({ canvasElement }) => {
-    await expect(buttonNames(canvasElement)).toEqual(['Continuar con Google', 'Mandame el enlace'])
-    const explore = within(canvasElement).getByRole('link', { name: /Descubrí complejos/ })
+    await expect(buttonNames(canvasElement)).toEqual(['Continuar con Google', 'Mandame el link'])
+    const explore = within(canvasElement).getByRole('link', { name: /Buscá complejos/ })
     await expect(explore).toHaveAttribute('href', '/explorar')
     await expectTouchTarget(explore, canvasElement)
     // La puerta del complejo: sin ella, desde el celu el dueño no llegaba a /login ni a /register.
@@ -96,7 +96,7 @@ export const NavegadorInterno: Story = {
   args: { action: fn(async () => ({ status: 'idle' as const })), inAppBrowser: true },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(buttonNames(canvasElement)).toEqual(['Mandame el enlace', 'Continuar con Google'])
+    await expect(buttonNames(canvasElement)).toEqual(['Mandame el link', 'Continuar con Google'])
     await expect(
       canvas.getByText('Te abrimos tu navegador para que entres con Google.'),
     ).toBeVisible()
@@ -124,7 +124,7 @@ export const Error: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Mandame el enlace' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Mandame el link' }))
     await expect(await canvas.findByRole('alert')).toHaveTextContent('Ingresá un email válido.')
     await expect(canvas.getByLabelText('Email')).toHaveAttribute('aria-invalid', 'true')
   },
@@ -141,7 +141,7 @@ export const Enviando: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.type(canvas.getByLabelText(/email/i), 'tomas@example.com')
-    await userEvent.click(canvas.getByRole('button', { name: 'Mandame el enlace' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Mandame el link' }))
     try {
       await expect(await canvas.findByText('Enviando…')).toBeInTheDocument()
       const pending = canvas.getByRole('button', { name: /envia/i })
@@ -170,12 +170,12 @@ export const Enviado: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Mandame el enlace' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Mandame el link' }))
     const title = await canvas.findByRole('heading', { level: 1, name: 'Revisá tu email' })
     // El foco se pone en un efecto posterior al pintado del título: se espera, no se asume.
     await waitFor(() => expect(title).toHaveFocus())
     await expect(canvas.getByText('tomas.ibanez@example.com').closest('p')).toHaveTextContent(
-      'Si tomas.ibanez@example.com tiene cuenta, te enviamos un enlace para entrar.',
+      'Si tomas.ibanez@example.com tiene cuenta, te mandamos un link para entrar.',
     )
     const resend = canvas.getByRole('button', { name: /^Reenviar en \d+ s$/ })
     await expect(resend).toBeDisabled()
@@ -202,7 +202,7 @@ export const EnviadoNavegadorInterno: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Mandame el enlace' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Mandame el link' }))
     await canvas.findByRole('heading', { level: 1, name: 'Revisá tu email' })
     const firstTime = canvas.getByRole('link', { name: 'Reservá tu primer turno' })
     await expect(firstTime).toHaveAttribute('href', '/explorar')
@@ -224,14 +224,14 @@ export const SinConexion: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.type(canvas.getByLabelText('Email'), 'tomas@example.com')
-    await userEvent.click(canvas.getByRole('button', { name: 'Mandame el enlace' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Mandame el link' }))
     await expect(await canvas.findByRole('alert')).toHaveTextContent(
-      'No pudimos enviar el enlace. Revisá tu conexión e intentá de nuevo.',
+      'No pudimos mandar el link. Fijate tu conexión y probá de nuevo.',
     )
     const email = canvas.getByLabelText('Email')
     await expect(email).toHaveValue('tomas@example.com')
     await expect(email).not.toHaveAttribute('aria-invalid')
-    await expect(canvas.getByRole('button', { name: 'Mandame el enlace' })).toBeEnabled()
+    await expect(canvas.getByRole('button', { name: 'Mandame el link' })).toBeEnabled()
   },
 }
 
@@ -246,7 +246,7 @@ export const EnviadoEmailLargo: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Mandame el enlace' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Mandame el link' }))
     await canvas.findByRole('heading', { level: 1, name: 'Revisá tu email' })
     const root = canvasElement.ownerDocument.documentElement
     await expect(root.scrollWidth).toBeLessThanOrEqual(root.clientWidth)
@@ -260,7 +260,7 @@ export const UsarOtroEmail: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Mandame el enlace' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Mandame el link' }))
     await userEvent.click(await canvas.findByRole('button', { name: 'Usar otro email' }))
     const email = canvas.getByLabelText('Email')
     await waitFor(() => expect(email).toHaveFocus())

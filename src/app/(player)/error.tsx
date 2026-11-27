@@ -38,7 +38,7 @@ export default function PlayerError({
         </>
       }
     >
-      <p>Fue un error de nuestro lado, ya lo tenemos en la mira. Probá de nuevo en un toque.</p>
+      <p>Hubo un problema de nuestro lado. Probá de nuevo en unos segundos.</p>
       {error.digest && (
         <p className="text-sm">
           Código de referencia: <span className="font-mono tabular-nums">{error.digest}</span>

@@ -27,10 +27,10 @@ test.describe('TG-HP-002 — Explorar + filtros', () => {
     await page.waitForURL((url) => url.searchParams.get('formats') === '5')
     await expect(page.getByRole('button', { name: 'Cancha: Fútbol 5. Cambiar' })).toBeVisible()
 
-    // Step 5: hoja de Localidad → buscar un complejo por nombre (en todas las localidades)
-    await page.getByRole('button', { name: /^Localidad:/ }).click()
+    // Step 5: hoja de Zona → buscar un complejo por nombre (en todas las zonas)
+    await page.getByRole('button', { name: /^Zona:/ }).click()
     const localidad = page.getByRole('dialog')
-    await localidad.getByRole('searchbox', { name: 'Localidad' }).fill('demo')
+    await localidad.getByRole('searchbox', { name: 'Zona o ciudad' }).fill('demo')
     await localidad.getByRole('button', { name: /Buscar complejos que se llamen/ }).click()
     await page.waitForURL((url) => url.searchParams.get('q') === 'demo')
     await expect(page.getByText('E2E Complejo Demo')).toBeVisible()

@@ -17,7 +17,7 @@ vi.mock('@sentry/nextjs', () => ({ captureException: vi.fn(), addBreadcrumb: vi.
 vi.mock('next/navigation', async (importOriginal) => importOriginal())
 
 const NEXT = '/club-x/reservar?court=c1&date=2026-03-14&time=21:00&dur=60'
-const OFFLINE = 'No pudimos enviar el enlace. Revisá tu conexión e intentá de nuevo.'
+const OFFLINE = 'No pudimos mandar el link. Fijate tu conexión y probá de nuevo.'
 const GOOGLE_OFFLINE = 'No pudimos abrir Google. Revisá tu conexión y probá de nuevo.'
 
 type Action = (prev: GateState, formData: FormData) => Promise<GateState>
@@ -362,7 +362,7 @@ describe('LoginGate — enviado', () => {
     const title = await screen.findByRole('heading', { name: 'Revisá tu email' })
     await waitFor(() => expect(title).toHaveFocus())
     expect(screen.getByText('tomas@example.com').closest('p')?.textContent).toBe(
-      'Te mandamos un enlace a tomas@example.com.',
+      'Te mandamos un link a tomas@example.com.',
     )
     expect(screen.getByText('Cuando lo toques, tu reserva queda confirmada.')).toBeTruthy()
     expect(screen.queryByText(/volvés a esta pantalla/)).toBeNull()
@@ -391,7 +391,7 @@ describe('LoginGate — enviado', () => {
     await act(async () => {
       vi.advanceTimersByTime(60_000)
     })
-    await click('Reenviar enlace')
+    await click('Reenviar link')
 
     expect(action).toHaveBeenCalledTimes(2)
     const resend = action.mock.calls[1]![1]
@@ -402,7 +402,7 @@ describe('LoginGate — enviado', () => {
       terms: 'on',
     })
     expect((await screen.findByRole('status')).textContent).toBe(
-      'Listo: te mandamos otro enlace. Usá el del último correo.',
+      'Listo: te mandamos otro link. Usá el del último correo.',
     )
   })
 

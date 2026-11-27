@@ -73,10 +73,10 @@ const withNeeds = (needs: {
 describe('PublicBoardView: qué verde sale y para quién', () => {
   it('sin sesión es un botón en la barra fija que abre el ingreso RIVAL de "pedir"', async () => {
     renderPublic({}, ANON)
-    const pedir = screen.getByRole('button', { name: 'Pedir sumarme' })
+    const pedir = screen.getByRole('button', { name: 'Quiero sumarme' })
     expect(pedir.closest('[data-fixed-cta]')).not.toBeNull()
     expect(pedir.getAttribute('aria-haspopup')).toBe('dialog')
-    expect(screen.queryByRole('link', { name: 'Pedir sumarme' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Quiero sumarme' })).toBeNull()
     fireEvent.click(pedir)
     const dialog = await screen.findByRole('dialog')
     expect(dialog.textContent).toContain('Entrá para pedir tu lugar')
@@ -89,8 +89,8 @@ describe('PublicBoardView: qué verde sale y para quién', () => {
 
   it('"Busca rival": el botón dice que pide el capitán del otro equipo y no hay "Se juega"', () => {
     renderPublic({ seeking: 'rival', seekingPosition: null, capacity: 5, confirmedCount: 5 }, ANON)
-    expect(screen.getByRole('button', { name: 'Pedir jugar con mi equipo' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: 'Pedir sumarme' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Anotar a mi equipo' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Quiero sumarme' })).toBeNull()
     // Un solo titular: "Busca rival" (el equipo completo todavía no tiene rival).
     expect(screen.getAllByText('Busca rival')).toHaveLength(1)
     expect(screen.queryByText(/Se juega/)).toBeNull()
@@ -99,7 +99,7 @@ describe('PublicBoardView: qué verde sale y para quién', () => {
 
   it('"Busca rival": el ingreso y la tarjeta nombran lo mismo que el botón, no "tu lugar"', async () => {
     renderPublic({ seeking: 'rival', seekingPosition: null, capacity: 5, confirmedCount: 5 }, ANON)
-    fireEvent.click(screen.getByRole('button', { name: 'Pedir jugar con mi equipo' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Anotar a mi equipo' }))
     const dialog = await screen.findByRole('dialog')
     expect(dialog.textContent).toContain('Entrá para pedir jugar con tu equipo')
     expect(dialog.textContent).not.toContain('tu lugar')
@@ -108,8 +108,8 @@ describe('PublicBoardView: qué verde sale y para quién', () => {
       { seeking: 'rival', seekingPosition: null, capacity: 5, confirmedCount: 5 },
       withNeeds({ identity: true, profile: true, position: true }),
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Pedir jugar con mi equipo' }))
-    expect(screen.getByText('Para pedir jugar con tu equipo, contanos quién sos.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Anotar a mi equipo' }))
+    expect(screen.getByText('Para anotar a tu equipo, contanos quién sos.')).toBeTruthy()
   })
 
   it('un partido de jugadores completo sigue diciendo "Se juega"', () => {
@@ -122,7 +122,7 @@ describe('PublicBoardView: qué verde sale y para quién', () => {
     expect(screen.queryByRole('button', { name: 'Denunciar el partido' })).toBeNull()
     cleanup()
     renderPublic({}, READY)
-    expect(screen.getByRole('button', { name: 'Pedir sumarme' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Quiero sumarme' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Denunciar el partido' })).toBeTruthy()
   })
 
@@ -136,24 +136,24 @@ describe('PublicBoardView: qué verde sale y para quién', () => {
   })
 })
 
-describe('PublicBoardView: "Pedir sumarme" con sesión pide solo lo que falta', () => {
+describe('PublicBoardView: "Quiero sumarme" con sesión pide solo lo que falta', () => {
   it('perfil incompleto: la tarjeta pide posición y zona, no el nombre, y "Ahora no" la cierra', async () => {
     const action = vi.fn<(p: RivalFormResult, fd: FormData) => Promise<RivalFormResult>>(
       async () => ({ success: true }),
     )
     renderPublic({}, withNeeds({ identity: false, profile: true, position: true }), action)
-    fireEvent.click(screen.getByRole('button', { name: 'Pedir sumarme' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Quiero sumarme' }))
     expect(screen.getByRole('heading', { name: 'Un dato más para sumarte' })).toBeTruthy()
     expect(screen.queryByLabelText('Tu nombre')).toBeNull()
     expect(screen.getByLabelText('Tu posición')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Ahora no' }))
     // El botón se monta de nuevo: el foco vuelve a él, no al body.
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Pedir sumarme' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Quiero sumarme' }))
     expect(action).not.toHaveBeenCalled()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Pedir sumarme' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Pedir sumarme' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Quiero sumarme' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Quiero sumarme' }))
     await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
     const sent = action.mock.calls[0]![1]
     expect([...sent.keys()].sort()).toEqual(['matchId', 'position', 'zone'])
@@ -161,14 +161,14 @@ describe('PublicBoardView: "Pedir sumarme" con sesión pide solo lo que falta', 
   })
 
   it.each([
-    [{ identity: true, profile: true, position: true }, 'Para pedir tu lugar, contanos quién sos.'],
+    [{ identity: true, profile: true, position: true }, 'Para sumarte, contanos quién sos.'],
     [
       { identity: true, profile: false, position: false },
-      'Para pedir tu lugar, confirmá tu nombre y aceptá las reglas.',
+      'Para sumarte, confirmá tu nombre y aceptá las reglas.',
     ],
   ])('%j: el intro de la tarjeta', (needs, intro) => {
     renderPublic({}, withNeeds(needs))
-    fireEvent.click(screen.getByRole('button', { name: 'Pedir sumarme' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Quiero sumarme' }))
     expect(screen.getByText(intro)).toBeTruthy()
     expect(screen.getByLabelText('Tu nombre')).toBeTruthy()
   })

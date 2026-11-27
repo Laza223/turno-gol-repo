@@ -21,7 +21,7 @@ export function buildShareMessage(m: ShareMatch, url: string): string {
   if (missing === 1) {
     return `¡Falta 1! ${capitalizeFirst(when)} en ${m.tenantName}: ${url}`
   }
-  return `${capitalizeFirst(when)} en ${m.tenantName}. Nos faltan ${missing}. ¿Venís? Confirmá en un toque: ${url}`
+  return `${capitalizeFirst(when)} en ${m.tenantName}. Nos faltan ${missing}. ¿Venís? Confirmá con este link: ${url}`
 }
 
 /** `wa.me/?text=…` sin número: WhatsApp pide a qué grupo mandarlo. */

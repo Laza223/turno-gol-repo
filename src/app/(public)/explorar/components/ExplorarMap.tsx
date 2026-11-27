@@ -164,7 +164,7 @@ export default function ExplorarMap({
                       className="text-muted-foreground"
                     />
                   ) : (
-                    <span className="text-xs text-muted-foreground">Sin reseñas</span>
+                    <span />
                   )}
                   {t.fromPriceCents != null && (
                     <span className="text-right">
@@ -187,7 +187,7 @@ export default function ExplorarMap({
                   href={`/${t.slug}`}
                   className="mt-3 inline-flex h-9 w-full items-center justify-center rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
                 >
-                  Ver complejo
+                  Ver horarios
                 </Link>
               </div>
             </Popup>

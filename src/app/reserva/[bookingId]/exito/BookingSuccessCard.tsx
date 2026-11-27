@@ -72,7 +72,7 @@ export function BookingSuccessCard({
   const payNote = !withDeposit
     ? 'Pagás en el complejo'
     : booking.hidePrices
-      ? 'Seña pagada, el resto en el complejo'
+      ? 'Seña pagada. El resto lo abonás en el complejo.'
       : undefined
   const shareHref = buildGroupShareHref(
     buildGroupShareText({

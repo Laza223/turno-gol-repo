@@ -13,7 +13,7 @@ export function renderRivalAlert(data: RivalAlertData): EmailContent {
   return renderRivalMail({
     subject: `Hay un partido en ${data.tenantName} que busca gente`,
     title: `Hay un partido nuevo en ${data.tenantName}`,
-    lines: ['Pediste que te avisemos de este complejo y apareció uno nuevo en el tablón.'],
+    lines: ['Pediste que te avisemos de este complejo y apareció un partido nuevo en RIVAL.'],
     tenantName: data.tenantName,
     dateLabel: data.dateLabel,
     cta: 'Ver el partido',

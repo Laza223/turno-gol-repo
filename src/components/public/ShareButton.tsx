@@ -43,10 +43,10 @@ export default function ShareButton({
     try {
       await navigator.clipboard.writeText(resolveUrl())
       setCopied(true)
-      toast({ title: 'Enlace copiado', variant: 'success' })
+      toast({ title: 'Link copiado', variant: 'success' })
       setTimeout(() => setCopied(false), 2000)
     } catch {
-      toast({ title: 'No se pudo copiar el enlace.', variant: 'destructive' })
+      toast({ title: 'No pudimos copiar el link.', variant: 'destructive' })
     }
   }
 
@@ -82,7 +82,7 @@ export default function ShareButton({
           ) : (
             <Copy className="h-4 w-4 text-muted-foreground" aria-hidden />
           )}
-          {copied ? 'Copiado' : 'Copiar enlace'}
+          {copied ? 'Copiado' : 'Copiar link'}
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="cursor-pointer gap-2">
           <a href={waHref} target="_blank" rel="noopener noreferrer">

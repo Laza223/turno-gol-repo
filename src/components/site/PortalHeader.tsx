@@ -60,7 +60,7 @@ export default function PortalHeader({ variant = 'solid', signOutAction, pushAct
   const onAuthPage = AUTH_PATHS.some((p) => isCurrent(pathname, p))
 
   const links = [
-    { href: '/explorar', label: 'Explorar', show: true },
+    { href: '/explorar', label: 'Buscar canchas', show: true },
     { href: '/rival', label: 'Rival', show: rivalEnabled },
     { href: '/mis-reservas', label: 'Mis reservas', show: session !== null && variant === 'solid' },
     { href: '/para-complejos', label: 'Para complejos', show: variant === 'overlay' || !session },
@@ -77,7 +77,7 @@ export default function PortalHeader({ variant = 'solid', signOutAction, pushAct
         <span aria-hidden className="portal-top__bg portal-top__bg--on" />
         <Link
           href="/"
-          aria-label="TurnoGol — inicio"
+          aria-label="TurnoGol, inicio"
           className="portal-top__logo inline-flex min-h-11 shrink-0 items-center rounded-full"
         >
           <Logo variant="horizontal" />

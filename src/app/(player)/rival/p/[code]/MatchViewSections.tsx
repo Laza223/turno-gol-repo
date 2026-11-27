@@ -205,7 +205,7 @@ export function EndedLinks({
       )}
       {!isOrganizer && (
         <Link href="/rival" className={RIVAL_ACTION}>
-          Ver el tablón
+          Ver partidos abiertos
         </Link>
       )}
     </>

@@ -38,7 +38,7 @@ export default function OpenMatches({
           href={`/rival?complejo=${tenantId}`}
           className={cn(buttonVariants({ variant: 'pill-link', size: 'pill-sm' }))}
         >
-          Ver el tablón
+          Ver partidos abiertos
         </Link>
       </div>
 
@@ -68,7 +68,7 @@ export default function OpenMatches({
                   </span>
                 </span>
                 <span className="inline-flex min-h-10 max-w-40 items-center justify-center rounded-full bg-linear-to-b from-(--portal-btn-a) to-(--portal-btn-b) px-4 py-1 text-center text-sm leading-4 font-semibold text-portal-on-green shadow-[inset_0_1px_0_rgb(255_255_255/.45)]">
-                  {seeksRival ? 'Pedir jugar con mi equipo' : 'Pedir sumarme'}
+                  {seeksRival ? 'Anotar a mi equipo' : 'Quiero sumarme'}
                 </span>
                 <span className="col-span-full text-sm text-portal-soft">
                   Ya son {filled} de {item.capacity}

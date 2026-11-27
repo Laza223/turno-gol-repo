@@ -208,9 +208,9 @@ function LegacyPlanSelector({ pricing }: { pricing: PricingParams }) {
           <CheckCircle2 className="h-5 w-5 shrink-0 text-portal-green" aria-hidden />
           <span>
             <span className="font-semibold text-portal-ink">
-              Empezás gratis, y el Gratis no vence.
+              Probalo 30 días gratis, sin tarjeta.
             </span>{' '}
-            Pasás a Completo cuando quieras, con todo lo que ya cargaste.
+            Después elegís Completo según tus canchas, con todo lo que ya cargaste.
           </span>
         </p>
       </div>
@@ -243,7 +243,7 @@ const FULL_FEATURES = [
   'Cargás el fijo una vez y aparece solo en tu grilla todas las semanas',
   'Caja de la noche, cantina y jugadores',
   'Tu encargado entra con su usuario',
-  'Métricas y soporte por WhatsApp',
+  'Estadísticas y soporte por WhatsApp',
 ] as const
 
 const CTA_FULL = 'w-full whitespace-nowrap'
@@ -275,9 +275,9 @@ function FreeCardView({ className }: { className?: string }) {
           href="/register"
           className={cn(buttonVariants({ variant: 'pill-glass', size: 'pill' }), CTA_FULL)}
         >
-          Empezar gratis
+          Probar 30 días gratis
         </Link>
-        <p className="pr-note">Las condiciones del gratis pueden cambiar con 30 días de aviso</p>
+        <p className="pr-note">30 días de prueba gratis, sin tarjeta</p>
       </div>
     </div>
   )
@@ -388,10 +388,10 @@ function PlanCardView({
           href="/register"
           className={cn(buttonVariants({ variant: 'pill', size: 'pill' }), CTA_FULL)}
         >
-          Empezar gratis
+          Probar 30 días gratis
           <ArrowRight aria-hidden />
         </Link>
-        <p className="pr-note">No te pedimos ningún dato de pago · Lo dejás cuando quieras</p>
+        <p className="pr-note">No te pedimos tarjeta · Lo dejás cuando quieras</p>
       </div>
     </div>
   )

@@ -34,7 +34,7 @@ export function ForgotPasswordCard({ action }: { action: ForgotPasswordAction })
           Recuperar contraseña
         </h1>
         <p className="text-sm text-muted-foreground">
-          Ingresá tu email y te mandamos un enlace para fijar una nueva.
+          Ingresá tu email y te mandamos un link para elegir una nueva.
         </p>
       </header>
 
@@ -74,10 +74,10 @@ function SentState() {
       </div>
       <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Revisá tu email</h1>
       <p className="mt-3 text-sm text-muted-foreground">
-        Si existe una cuenta con ese email, te enviamos un enlace para cambiar la contraseña.
+        Si hay una cuenta con ese email, te mandamos un link para cambiar la contraseña.
       </p>
       <p className="mt-6 text-xs text-muted-foreground">
-        ¿No llegó? Revisá spam o{' '}
+        ¿No llegó? Revisá Spam o{' '}
         <Link
           href="/forgot-password"
           className="font-semibold text-emerald-700 dark:text-emerald-400 hover:underline"
@@ -104,7 +104,7 @@ function SubmitButton() {
           Enviando…
         </>
       ) : (
-        'Enviar enlace'
+        'Mandarme el link'
       )}
     </button>
   )

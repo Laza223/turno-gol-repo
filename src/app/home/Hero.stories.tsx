@@ -111,7 +111,7 @@ export const SinComplejosEnLaZona: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await waitFor(() =>
-      expect(canvas.getByRole('button', { name: /^Localidad: Ciudad Autónoma/ })).toBeVisible(),
+      expect(canvas.getByRole('button', { name: /^Zona: Ciudad Autónoma/ })).toBeVisible(),
     )
     await new Promise((r) => setTimeout(r, 200))
     await expect(canvas.queryByRole('region', { name: /^Complejos de / })).toBeNull()
@@ -128,7 +128,7 @@ export const SinCiudades: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await waitFor(() =>
-      expect(canvas.getByRole('button', { name: /^Localidad: Ciudad Autónoma/ })).toBeVisible(),
+      expect(canvas.getByRole('button', { name: /^Zona: Ciudad Autónoma/ })).toBeVisible(),
     )
   },
 }

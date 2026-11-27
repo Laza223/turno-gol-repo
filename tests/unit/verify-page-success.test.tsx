@@ -42,7 +42,7 @@ describe('VerifyPage — estado de éxito', () => {
 
   it('login que volvía a RIVAL: el botón nombra RIVAL y vuelve a donde iba', async () => {
     await renderPage({ status: 'success', next: '/rival/nuevo', intent: 'login' })
-    expect(screen.getByText('Ya estás adentro.')).toBeTruthy()
+    expect(screen.getByText('Ya iniciaste sesión.')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Volver a RIVAL' }).getAttribute('href')).toBe(
       '/rival/nuevo',
     )
@@ -99,6 +99,6 @@ describe('VerifyPage — estado de éxito', () => {
 
   it('con ?error sigue mostrando el estado de error', async () => {
     await renderPage({ error: 'expired' })
-    expect(screen.getByRole('heading', { level: 1, name: 'Este enlace venció' })).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 1, name: 'Este link venció' })).toBeTruthy()
   })
 })

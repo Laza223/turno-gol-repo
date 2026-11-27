@@ -4,7 +4,7 @@ import { ImageResponse } from 'next/og'
 
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
-export const alt = 'RIVAL powered by TurnoGol — Cada partido cuenta.'
+export const alt = 'RIVAL powered by TurnoGol | Cada partido cuenta.'
 
 // Excepción documentada a DESIGN.md ("nada de hex inline"): satori no lee variables CSS ni tokens
 // de Tailwind. Es la pizarra oscura de RIVAL.

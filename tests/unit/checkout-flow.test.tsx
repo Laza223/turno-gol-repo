@@ -74,13 +74,15 @@ describe('pantalla de confirmar con precios ocultos', () => {
   it('con seña y precios ocultos, la nota dice que el resto es en el complejo', () => {
     render(<CheckoutFlow {...flowProps({ withDeposit: true, hidePrices: true })} />)
     expect(
-      screen.getByText('Pagás una seña online con MercadoPago; el resto, en el complejo.'),
+      screen.getByText(
+        'Pagás una seña online por Mercado Pago y el resto lo abonás en el complejo.',
+      ),
     ).toBeTruthy()
   })
 
   it('con seña y precios visibles el resumen ya dice el resto: la nota no lo repite', () => {
     render(<CheckoutFlow {...flowProps({ withDeposit: true, depositAmount: 600_000 })} />)
-    expect(screen.queryByText(/el resto, en el complejo/)).toBeNull()
+    expect(screen.queryByText(/el resto lo abonás en el complejo/)).toBeNull()
   })
 
   it('control: con los precios visibles el detector sí ve el "$" (el test puede dar rojo)', () => {
@@ -216,7 +218,7 @@ describe('confirmación sola (el vínculo ya lo verificó la page)', () => {
     expect(hidden(container)?.value).toBe(TOKEN)
     expect(screen.getByRole('status').textContent).toBe('Confirmando tu reserva…')
     // Visible siempre; mientras envía dice "Procesando…" (el estado de envío que ya tiene).
-    expect(screen.getByRole('button', { name: /Reservar|Procesando/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Reservar|Confirmando/ })).toBeTruthy()
     expect(props.createAction).toHaveBeenCalledTimes(1)
   })
 
@@ -224,7 +226,7 @@ describe('confirmación sola (el vínculo ya lo verificó la page)', () => {
     const props = flowProps({ intentDegraded: true })
     const { container } = render(<CheckoutFlow {...props} />)
 
-    expect(screen.getByText('Tocá "Reservar" para terminar tu reserva.')).toBeTruthy()
+    expect(screen.getByText('Tocá “Reservar” para confirmar tu turno.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Reservar' })).toBeTruthy()
     expect(hidden(container)).toBeNull()
     expect(screen.queryByRole('status')).toBeNull()
@@ -233,7 +235,7 @@ describe('confirmación sola (el vínculo ya lo verificó la page)', () => {
 
   it('sin vínculo fallido no hay línea de ayuda', () => {
     render(<CheckoutFlow {...flowProps()} />)
-    expect(screen.queryByText('Tocá "Reservar" para terminar tu reserva.')).toBeNull()
+    expect(screen.queryByText('Tocá “Reservar” para confirmar tu turno.')).toBeNull()
   })
 
   it('sin token: el form es el de siempre, no se envía nada solo', () => {

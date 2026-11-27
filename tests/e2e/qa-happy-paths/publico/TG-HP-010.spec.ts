@@ -17,10 +17,10 @@ test.describe('TG-HP-010 — Verify estados', () => {
     // `expired` también lo emiten los links de staff (alta, invitación, recovery), que no
     // traen `via`: sin la marca no sabemos quién es y va primero el panel.
     await page.goto('/verify?error=expired')
-    await expect(page.getByRole('heading', { level: 1, name: 'Este enlace venció' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Este link venció' })).toBeVisible()
     await expect(
       page.getByText(
-        'Los enlaces de acceso sirven una sola vez y por un rato. Pedí uno nuevo para entrar.',
+        'Los links de acceso sirven una sola vez y por un rato. Pedí uno nuevo para entrar.',
       ),
     ).toBeVisible()
     await page.getByRole('link', { name: 'Iniciar sesión' }).click()
@@ -29,8 +29,8 @@ test.describe('TG-HP-010 — Verify estados', () => {
 
     // ---- Caso A' — el mismo error CON `via=email` (lo pidió un jugador) ----
     await page.goto('/verify?error=expired&via=email')
-    await expect(page.getByRole('heading', { level: 1, name: 'Este enlace venció' })).toBeVisible()
-    await page.getByRole('link', { name: 'Pedir un enlace nuevo' }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Este link venció' })).toBeVisible()
+    await page.getByRole('link', { name: 'Pedir un link nuevo' }).click()
     await page.waitForURL('/ingresar')
     expect(new URL(page.url()).pathname).toBe('/ingresar')
 

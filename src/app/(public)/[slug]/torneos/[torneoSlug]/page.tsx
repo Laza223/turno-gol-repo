@@ -85,14 +85,14 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   // Sin ficha no hay qué indexar: la página va a devolver 404 igual.
   if (!view)
     return buildMetadata({
-      title: `Torneo — ${tenant.name}`,
+      title: `Torneo | ${tenant.name}`,
       description: `Torneos de ${tenant.name}.`,
       path: `/${tenant.slug}/torneos/${torneoSlug}`,
       noIndex: true,
     })
 
   return buildMetadata({
-    title: `${view.card.name} — ${tenant.name}`,
+    title: `${view.card.name} | ${tenant.name}`,
     description: `Tabla de posiciones, fixture y goleadores de ${view.card.name} en ${tenant.name}, ${tenant.city}.`,
     path: `/${tenant.slug}/torneos/${view.card.slug}`,
     noIndex: !isPublicPortalIndexable(tenant.status),

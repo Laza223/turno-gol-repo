@@ -78,7 +78,7 @@ export const ErrorExpirado: Story = {
   args: { searchParams: { error: 'expired' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('heading', { name: 'Este enlace venció' })).toBeInTheDocument()
+    await expect(canvas.getByRole('heading', { name: 'Este link venció' })).toBeInTheDocument()
     await expect(canvas.getByRole('link', { name: 'Iniciar sesión' })).toHaveAttribute(
       'href',
       '/login',
@@ -96,7 +96,7 @@ export const ErrorExpiradoJugador: Story = {
   args: { searchParams: { error: 'expired', via: 'email' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('link', { name: 'Pedir un enlace nuevo' })).toHaveAttribute(
+    await expect(canvas.getByRole('link', { name: 'Pedir un link nuevo' })).toHaveAttribute(
       'href',
       '/ingresar',
     )
@@ -133,7 +133,7 @@ export const ErrorInvalido: Story = {
     const canvas = within(canvasElement)
     // Código sin entrada en ERROR_COPY: cae al copy de 'invalid' (fallback).
     await expect(
-      canvas.getByRole('heading', { name: 'No pudimos leer el enlace' }),
+      canvas.getByRole('heading', { name: 'No pudimos leer el link' }),
     ).toBeInTheDocument()
   },
 }

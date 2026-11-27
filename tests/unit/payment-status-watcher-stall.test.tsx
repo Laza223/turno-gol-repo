@@ -56,7 +56,7 @@ describe('PaymentStatusWatcher — no quedar colgado (#45/#46/#48)', () => {
     // confirmación (sale el de la devolución de la seña, que no es una confirmación):
     // la pantalla manda a mirar Mis reservas y al complejo, sin prometer nada.
     expect(container.textContent).toContain(
-      'No recibimos la confirmación de MercadoPago a tiempo. En Mis reservas ves si el turno quedó confirmado. Si pagaste y no aparece, escribile al complejo.',
+      'No recibimos la confirmación de Mercado Pago a tiempo. En Mis reservas ves si el turno quedó confirmado. Si pagaste y no aparece, escribile al complejo.',
     )
     expect(container.textContent).not.toMatch(/email|te avisamos|te confirmamos|acredite/i)
     expect(screen.getByRole('link', { name: 'Ver mis reservas' }).getAttribute('href')).toBe(

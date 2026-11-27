@@ -55,7 +55,7 @@ function stubGeoFetch(
 }
 
 /** Los campos del form (cerrado). Con una hoja abierta quedan aria-hidden: leerlos antes de abrir. */
-const localidadField = () => screen.getByRole('button', { name: /^Localidad:/ })
+const localidadField = () => screen.getByRole('button', { name: /^Zona:/ })
 const canchaField = () => screen.getByRole('button', { name: /^Cancha:/ })
 const localidadLabel = () => localidadField().getAttribute('aria-label')
 const openLocalidad = () => fireEvent.click(localidadField())
@@ -98,7 +98,7 @@ describe('HeroSearch — localidad desde la ubicación', () => {
     stubGeoFetch(CORDOBA_NEARBY)
 
     render(<HeroSearch cities={CITIES} />)
-    expect(localidadLabel()).toBe('Localidad: ¿Dónde?. Cambiar')
+    expect(localidadLabel()).toBe('Zona: ¿Dónde?. Cambiar')
     openLocalidad()
     fireEvent.click(locateButton()!)
 
@@ -146,7 +146,7 @@ describe('HeroSearch — localidad desde la ubicación', () => {
     await act(async () => {})
 
     expect(geo).not.toHaveBeenCalled()
-    expect(localidadLabel()).toBe('Localidad: ¿Dónde?. Cambiar')
+    expect(localidadLabel()).toBe('Zona: ¿Dónde?. Cambiar')
     openLocalidad()
     expect(locateButton()).toBeTruthy()
   })
@@ -158,7 +158,7 @@ describe('HeroSearch — localidad desde la ubicación', () => {
 
     render(<HeroSearch cities={CITIES} />)
 
-    await waitFor(() => expect(localidadLabel()).toBe('Localidad: Rosario. Cambiar'))
+    await waitFor(() => expect(localidadLabel()).toBe('Zona: Rosario. Cambiar'))
     await act(async () => {})
     openLocalidad()
     expect(screen.getByText('Tu zona guardada. Cambiala cuando quieras.')).toBeTruthy()
@@ -173,7 +173,7 @@ describe('HeroSearch — localidad desde la ubicación', () => {
 
     render(<HeroSearch cities={CITIES} />)
 
-    await waitFor(() => expect(localidadLabel()).toBe('Localidad: Córdoba. Cambiar'))
+    await waitFor(() => expect(localidadLabel()).toBe('Zona: Córdoba. Cambiar'))
   })
 
   it('permiso denegado al tocar el botón → mensaje sutil, campo vacío y el form sigue funcionando', async () => {
@@ -185,7 +185,7 @@ describe('HeroSearch — localidad desde la ubicación', () => {
 
     await waitFor(() => expect(screen.getByText(/bloqueado el permiso de ubicación/i)).toBeTruthy())
     expect(locateButton()).toBeNull()
-    expect(radio('Todas las ciudades').checked).toBe(true)
+    expect(radio('Todas las zonas').checked).toBe(true)
 
     fireEvent.submit(searchForm())
     expect(String(pushMock.mock.calls[0]?.[0])).toBe('/explorar')
@@ -212,7 +212,7 @@ describe('HeroSearch — elegir la localidad a mano', () => {
 
     openLocalidad()
     fireEvent.click(radio(/Rosario/))
-    expect(localidadLabel()).toBe('Localidad: Rosario. Cambiar')
+    expect(localidadLabel()).toBe('Zona: Rosario. Cambiar')
     expect(parseZona(localStorage.getItem(ZONA_STORAGE_KEY))).toEqual({
       city: 'Rosario',
       province: 'Santa Fe',
@@ -220,17 +220,17 @@ describe('HeroSearch — elegir la localidad a mano', () => {
 
     unmount()
     render(<HeroSearch cities={CITIES} />)
-    await waitFor(() => expect(localidadLabel()).toBe('Localidad: Rosario. Cambiar'))
+    await waitFor(() => expect(localidadLabel()).toBe('Zona: Rosario. Cambiar'))
   })
 
-  it('"Todas las ciudades" vale para esta búsqueda: no borra la zona y /explorar no se la impone', async () => {
+  it('"Todas las zonas" vale para esta búsqueda: no borra la zona y /explorar no se la impone', async () => {
     saveZonaInStorage({ city: 'Rosario', province: 'Santa Fe' })
     render(<HeroSearch cities={CITIES} />)
-    await waitFor(() => expect(localidadLabel()).toBe('Localidad: Rosario. Cambiar'))
+    await waitFor(() => expect(localidadLabel()).toBe('Zona: Rosario. Cambiar'))
 
     openLocalidad()
-    fireEvent.click(radio('Todas las ciudades'))
-    expect(localidadLabel()).toBe('Localidad: Todas. Cambiar')
+    fireEvent.click(radio('Todas las zonas'))
+    expect(localidadLabel()).toBe('Zona: Todas. Cambiar')
     expect(parseZona(localStorage.getItem(ZONA_STORAGE_KEY))?.city).toBe('Rosario')
 
     fireEvent.submit(searchForm())
@@ -257,7 +257,7 @@ describe('HeroSearch — elegir la localidad a mano', () => {
     })
     await act(async () => {})
 
-    expect(radio('Todas las ciudades').checked).toBe(true)
+    expect(radio('Todas las zonas').checked).toBe(true)
     expect(radio(/Córdoba/).checked).toBe(false)
   })
 
@@ -280,7 +280,7 @@ describe('HeroSearch — elegir la localidad a mano', () => {
     })
     await act(async () => {})
 
-    expect(localidadLabel()).toBe('Localidad: Rosario. Cambiar')
+    expect(localidadLabel()).toBe('Zona: Rosario. Cambiar')
     expect(parseZona(localStorage.getItem(ZONA_STORAGE_KEY))?.city).toBe('Rosario')
   })
 
@@ -294,34 +294,34 @@ describe('HeroSearch — elegir la localidad a mano', () => {
     // Elige a mano antes de que termine la consulta de permisos: queda guardada como zona.
     openLocalidad()
     fireEvent.click(radio(/Rosario/))
-    expect(localidadLabel()).toBe('Localidad: Rosario. Cambiar')
+    expect(localidadLabel()).toBe('Zona: Rosario. Cambiar')
 
     await act(async () => {})
     await act(async () => {})
 
     expect(geo).not.toHaveBeenCalled()
-    expect(localidadLabel()).toBe('Localidad: Rosario. Cambiar')
+    expect(localidadLabel()).toBe('Zona: Rosario. Cambiar')
   })
 
-  it('al escribir una localidad sin complejos aparece en "Otras localidades" y se puede elegir', async () => {
+  it('al escribir una localidad sin complejos aparece en "Otras zonas" y se puede elegir', async () => {
     stubGeoFetch(null, [
       { city: 'Mercedes', province: 'Buenos Aires', lat: -34.65, lng: -59.43, source: 'dataset' },
       { city: 'Córdoba', province: 'Córdoba', lat: -31.41, lng: -64.18, source: 'dataset' },
     ])
     render(<HeroSearch cities={CITIES} />)
     openLocalidad()
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Localidad' }), {
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Zona o ciudad' }), {
       target: { value: 'mercedes' },
     })
 
     const mercedes = await screen.findByRole('radio', { name: /Mercedes/ })
-    expect(screen.getByText('Otras localidades')).toBeTruthy()
+    expect(screen.getByText('Otras zonas')).toBeTruthy()
     expect(screen.getByText(/Todavía sin complejos/)).toBeTruthy()
     // Córdoba ya figura entre las que tienen complejos: no se repite.
     expect(screen.queryByRole('radio', { name: /Córdoba/ })).toBeNull()
 
     fireEvent.click(mercedes)
-    expect(localidadLabel()).toBe('Localidad: Mercedes. Cambiar')
+    expect(localidadLabel()).toBe('Zona: Mercedes. Cambiar')
     fireEvent.submit(searchForm())
     const url = new URL(String(pushMock.mock.calls[0]?.[0]), 'http://x')
     expect(url.searchParams.get('city')).toBe('Mercedes')
@@ -332,16 +332,16 @@ describe('HeroSearch — elegir la localidad a mano', () => {
     stubGeoFetch(null, [])
     render(<HeroSearch cities={CITIES} />)
     openLocalidad()
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Localidad' }), {
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Zona o ciudad' }), {
       target: { value: 'zzzz' },
     })
-    expect(await screen.findByText('No encontramos esa localidad.')).toBeTruthy()
+    expect(await screen.findByText('No encontramos esa zona.')).toBeTruthy()
   })
 
   it('el buscador de la hoja filtra las localidades por lo que se escribe', () => {
     render(<HeroSearch cities={CITIES} />)
     openLocalidad()
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Localidad' }), {
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Zona o ciudad' }), {
       target: { value: 'rosa' },
     })
     expect(screen.queryByRole('radio', { name: /Córdoba/ })).toBeNull()
@@ -354,7 +354,7 @@ describe('HeroSearch — zona por la conexión (IP)', () => {
     ipZona = { city: 'Rosario', province: 'Santa Fe' }
     render(<HeroSearch cities={CITIES} />)
 
-    await waitFor(() => expect(localidadLabel()).toBe('Localidad: Rosario. Cambiar'))
+    await waitFor(() => expect(localidadLabel()).toBe('Zona: Rosario. Cambiar'))
     openLocalidad()
     expect(
       screen.getByText(/Te mostramos Rosario por la zona desde donde te conectás/),
@@ -364,7 +364,7 @@ describe('HeroSearch — zona por la conexión (IP)', () => {
   it('la zona por IP NO se guarda en el dispositivo', async () => {
     ipZona = { city: 'Rosario', province: 'Santa Fe' }
     render(<HeroSearch cities={CITIES} />)
-    await waitFor(() => expect(localidadLabel()).toBe('Localidad: Rosario. Cambiar'))
+    await waitFor(() => expect(localidadLabel()).toBe('Zona: Rosario. Cambiar'))
     openLocalidad()
     await act(async () => {})
 
@@ -374,7 +374,7 @@ describe('HeroSearch — zona por la conexión (IP)', () => {
   it('tocar la zona por IP, que ya viene marcada, la confirma: queda guardada y cierra la hoja', async () => {
     ipZona = { city: 'Rosario', province: 'Santa Fe' }
     render(<HeroSearch cities={CITIES} />)
-    await waitFor(() => expect(localidadLabel()).toBe('Localidad: Rosario. Cambiar'))
+    await waitFor(() => expect(localidadLabel()).toBe('Zona: Rosario. Cambiar'))
     openLocalidad()
     expect(radio(/^Rosario/).checked).toBe(true)
 
@@ -392,7 +392,7 @@ describe('HeroSearch — zona por la conexión (IP)', () => {
     ipZona = { city: 'Rosario', province: 'Santa Fe' }
     render(<HeroSearch cities={CITIES} />)
 
-    await waitFor(() => expect(localidadLabel()).toBe('Localidad: Córdoba. Cambiar'))
+    await waitFor(() => expect(localidadLabel()).toBe('Zona: Córdoba. Cambiar'))
     await act(async () => {})
     expect(ipZonaMock.mock.calls.some(([enabled]) => enabled)).toBe(false)
   })
@@ -409,7 +409,7 @@ describe('HeroSearch — resto del formulario', () => {
   it('el campo de búsqueda de la hoja no baja de 16 px (iOS zoomea al enfocar)', () => {
     render(<HeroSearch cities={CITIES} />)
     openLocalidad()
-    const input = screen.getByRole('searchbox', { name: 'Localidad' })
+    const input = screen.getByRole('searchbox', { name: 'Zona o ciudad' })
     expect(input.className).toContain('text-base')
     expect(input.className).not.toMatch(/(^|\s)text-sm(\s|$)/)
   })

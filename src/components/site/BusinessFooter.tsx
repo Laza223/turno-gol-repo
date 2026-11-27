@@ -25,7 +25,7 @@ export default function BusinessFooter() {
         <div className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <Link
             href="/"
-            aria-label="TurnoGol — inicio"
+            aria-label="TurnoGol, inicio"
             className={`${linkCls} self-start hover:no-underline sm:self-auto`}
           >
             <Logo variant="horizontal" />
@@ -38,7 +38,7 @@ export default function BusinessFooter() {
               Ingresar
             </Link>
             <Link href="/register" className={linkCls}>
-              Empezar gratis
+              Probar 30 días gratis
             </Link>
             <Link href="/privacidad" className={linkCls}>
               Privacidad

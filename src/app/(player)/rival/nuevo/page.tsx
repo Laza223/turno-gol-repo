@@ -26,7 +26,7 @@ import { loadWelcomePhoto } from '../welcome-photo'
 export function generateMetadata(): Metadata {
   return buildMetadata({
     title: 'Armar un partido · RIVAL',
-    description: 'Armá tu partido: decí qué necesitás y salí al tablón.',
+    description: 'Armá tu partido: decí qué necesitás y publicalo en RIVAL.',
     path: '/rival/nuevo',
     noIndex: true,
   })

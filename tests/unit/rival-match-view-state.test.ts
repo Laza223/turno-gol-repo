@@ -32,15 +32,15 @@ const created = (seeking: RivalPublicMatch['seeking']) =>
   }).created
 
 describe('deriveMatchView: aviso de recién armado', () => {
-  it('busca jugadores: ya está en el tablón y el grupo confirma con un toque', () => {
+  it('busca jugadores: publicado en RIVAL y el grupo confirma con un toque', () => {
     expect(created('players')).toEqual({
-      title: 'Ya está en el tablón',
+      title: 'Publicado en RIVAL',
       line: 'Pasale el link al grupo: los que vengan con vos confirman con un toque.',
     })
   })
-  it('busca rival: ya está en el tablón y el pedido llega por mail', () => {
+  it('busca rival: publicado en RIVAL y el pedido llega por mail', () => {
     expect(created('rival')).toEqual({
-      title: 'Ya está en el tablón',
+      title: 'Publicado en RIVAL',
       line: 'Mientras tanto, pasale el link a tu equipo.',
     })
   })

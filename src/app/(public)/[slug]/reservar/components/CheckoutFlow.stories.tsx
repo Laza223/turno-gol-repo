@@ -223,7 +223,9 @@ export const ConSenaOcultaNavegadorInterno: Story = {
     await expect(canvasElement.textContent).not.toContain('$')
     // El resumen no dice cómo se paga; lo dice la nota debajo del ingreso.
     await expect(
-      canvas.getByText('Pagás una seña online con MercadoPago; el resto, en el complejo.'),
+      canvas.getByText(
+        'Pagás una seña online por Mercado Pago y el resto lo abonás en el complejo.',
+      ),
     ).toBeVisible()
     // En el navegador de Instagram el email va primero y Google, que abre el navegador, después.
     const panel = within(canvas.getByRole('region', { name: 'Entrá para reservar' }))

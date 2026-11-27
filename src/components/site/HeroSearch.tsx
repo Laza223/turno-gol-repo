@@ -178,7 +178,7 @@ export default function HeroSearch({ cities, onZonaChange, reflejo = false, clas
       >
         <span aria-hidden className="hero-search__shine" />
         <SearchField
-          label="Localidad"
+          label="Zona"
           value={localidadValue}
           placeholder="¿Dónde?"
           icon={<MapPin aria-hidden />}
@@ -195,7 +195,7 @@ export default function HeroSearch({ cities, onZonaChange, reflejo = false, clas
           type="submit"
           className="relative col-span-2 inline-flex h-14 items-center justify-center rounded-full bg-linear-to-b from-(--portal-btn-a) to-(--portal-btn-b) px-14 text-[17px] font-semibold whitespace-nowrap text-portal-on-green shadow-[inset_0_1px_0_rgb(255_255_255/.45),0_14px_30px_-12px_var(--portal-btn-glow)] transition-[scale,filter] duration-480 ease-(--ease-toque) hover:brightness-106 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-portal-green active:scale-[.985] active:duration-(--dur-1) motion-reduce:active:scale-100 md:col-span-1 md:h-15 md:pr-[62px] md:pl-7"
         >
-          Buscar canchas
+          Ver horarios libres
           <span
             aria-hidden
             className="absolute top-2 right-2 grid size-10 place-items-center rounded-full bg-[rgb(2_44_34/.18)] shadow-[inset_0_1px_0_rgb(255_255_255/.28)] md:top-2.5 md:right-2.5"

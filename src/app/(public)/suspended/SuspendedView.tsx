@@ -25,7 +25,7 @@ export function SuspendedView({ mostrarCambioDeComplejo }: Props) {
       title="Tu cuenta está temporalmente suspendida"
       actions={
         <>
-          <PortalResultLink href="/reactivar">Soy el dueño — regularizar el pago</PortalResultLink>
+          <PortalResultLink href="/reactivar">Soy el dueño: regularizar el pago</PortalResultLink>
           <PortalResultLink href={`mailto:${SUPPORT_EMAIL}`} variant="outline" external>
             Contactar a soporte
           </PortalResultLink>

@@ -32,7 +32,7 @@ export type MailState<S extends MailActionState, E extends object = object> = (
   S | ({ status: 'unreached'; message: string } & E)
 ) & { at: number }
 
-const OFFLINE_MESSAGE = 'No pudimos enviar el enlace. Revisá tu conexión e intentá de nuevo.'
+const OFFLINE_MESSAGE = 'No pudimos mandar el link. Fijate tu conexión y probá de nuevo.'
 const STALE_MESSAGE = 'La página quedó desactualizada. Recargala y probá de nuevo.'
 
 export const errorOf = (state: { status: string; message?: string }) =>
@@ -166,7 +166,7 @@ export function ResendLinkForm({
         pendingLabel="Reenviando…"
         disabled={waiting}
       >
-        {waiting ? `Reenviar en ${left} s` : 'Reenviar enlace'}
+        {waiting ? `Reenviar en ${left} s` : 'Reenviar link'}
       </SubmitButton>
       {error && (
         <p role="alert" className={MAIL_ERROR_CLASS}>

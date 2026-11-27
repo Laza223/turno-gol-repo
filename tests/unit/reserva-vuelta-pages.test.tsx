@@ -125,7 +125,7 @@ describe('exito', () => {
     const { container } = render(await ReservaExitoPage(params))
 
     expect(screen.getByRole('heading', { name: '¡Reserva confirmada!' })).toBeTruthy()
-    expect(screen.getByText('Seña pagada, el resto en el complejo')).toBeTruthy()
+    expect(screen.getByText('Seña pagada. El resto lo abonás en el complejo.')).toBeTruthy()
     const hrefs = [...container.querySelectorAll('a[href]')].map((a) =>
       decodeURIComponent(a.getAttribute('href')!),
     )

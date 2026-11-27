@@ -130,7 +130,7 @@ describe('AlertOptIn: mensajes del último envío', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Avisarme por mail' }))
     await waitFor(() =>
       expect(screen.getByRole('alert').textContent).toBe(
-        'No pudimos conectar. Revisá tu conexión y probá de nuevo.',
+        'Sin conexión. Fijate si tenés señal o WiFi y probá de nuevo.',
       ),
     )
     expect(screen.getByRole('button', { name: 'Avisame de partidos en' }).textContent).toContain(

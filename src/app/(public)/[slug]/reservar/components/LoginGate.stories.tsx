@@ -186,7 +186,7 @@ export const Enviado: Story = {
     // El foco se pone en un efecto posterior al pintado del título: se espera, no se asume.
     await waitFor(() => expect(title).toHaveFocus())
     await expect(modal.getByText('tomas.ibanez@example.com').closest('p')).toHaveTextContent(
-      'Te mandamos un enlace a tomas.ibanez@example.com.',
+      'Te mandamos un link a tomas.ibanez@example.com.',
     )
     await expect(modal.getByText('Cuando lo toques, tu reserva queda confirmada.')).toBeVisible()
     const resend = modal.getByRole('button', { name: /^Reenviar en \d+ s$/ })
@@ -256,7 +256,7 @@ export const RedCaida: Story = {
     await userEvent.click(modal.getByRole('button', { name: 'Continuar con mi email' }))
 
     await expect(await modal.findByRole('alert')).toHaveTextContent(
-      'No pudimos enviar el enlace. Revisá tu conexión e intentá de nuevo.',
+      'No pudimos mandar el link. Fijate tu conexión y probá de nuevo.',
     )
     await expect(modal.getByLabelText('Email')).toHaveValue('tomas@example.com')
     await expect(modal.getByLabelText('Email')).not.toHaveAttribute('aria-invalid')
@@ -304,7 +304,7 @@ export const RivalArmar: Story = {
     await expect(modal.getByRole('heading', { name: 'Entrá para armar tu partido' })).toBeVisible()
     await expect(
       modal.getByText(
-        'Entrás con Google o con tu email. Si no tenés cuenta, se crea al toque. Después de entrar, armás tu partido.',
+        'Entrás con Google o con tu email. Si no tenés cuenta, se crea en unos segundos. Después de entrar, armás tu partido.',
       ),
     ).toBeVisible()
     await expect(root).not.toHaveTextContent(/reserv|turno/i)

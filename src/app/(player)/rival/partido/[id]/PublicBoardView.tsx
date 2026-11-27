@@ -47,7 +47,7 @@ export function PublicBoardView({
 }) {
   const type = matchTypeLabel(match)
   const seeksRival = match.seeking === 'rival'
-  const label = seeksRival ? 'Pedir jugar con mi equipo' : 'Pedir sumarme'
+  const label = seeksRival ? 'Anotar a mi equipo' : 'Quiero sumarme'
   // "Faltan 3" ya es el titular de la grilla: el tipo aparte solo suma cuando dice otra cosa.
   const showType = seeksRival || match.seekingPosition === 'goalkeeper'
   return (

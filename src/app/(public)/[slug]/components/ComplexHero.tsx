@@ -50,7 +50,7 @@ export default function ComplexHero({
 }) {
   const { whatsappUrl, telHref } = resolveTenantContact(
     { whatsapp: tenant.whatsapp, phone: tenant.phone },
-    `Hola, quiero consultar disponibilidad en ${tenant.name}.`,
+    `Hola! Quería consultar disponibilidad de canchas en ${tenant.name}.`,
   )
   const mapsQuery =
     tenant.latitude != null && tenant.longitude != null

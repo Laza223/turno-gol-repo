@@ -37,11 +37,11 @@ function renderView(searchParams: Record<string, string>) {
 
 describe('VerifyView — códigos compartidos con el staff', () => {
   const SHARED = [
-    ['expired', 'Este enlace venció', 'Pedir un enlace nuevo'],
-    ['invalid', 'No pudimos leer el enlace', 'Pedir un enlace nuevo'],
+    ['expired', 'Este link venció', 'Pedir un link nuevo'],
+    ['invalid', 'No pudimos leer el link', 'Pedir un link nuevo'],
     ['exchange_failed', 'No pudimos iniciar tu sesión', 'Volver a intentar'],
     // Un código que no existe (incluso uno heredado de Object.prototype) cae en `invalid`.
-    ['constructor', 'No pudimos leer el enlace', 'Pedir un enlace nuevo'],
+    ['constructor', 'No pudimos leer el link', 'Pedir un link nuevo'],
   ] as const
 
   it.each(SHARED)(
@@ -54,7 +54,7 @@ describe('VerifyView — códigos compartidos con el staff', () => {
       expect(screen.getByRole('link', { name: 'Entrá al panel' }).getAttribute('href')).toBe(
         '/login',
       )
-      expect(screen.queryByText(/no pudimos verificar tu enlace/i)).toBeNull()
+      expect(screen.queryByText(/no pudimos verificar tu link/i)).toBeNull()
     },
   )
 
@@ -82,7 +82,7 @@ describe('VerifyView — códigos compartidos con el staff', () => {
         screen.getByRole('heading', { level: 1, name: 'No pudimos iniciar tu sesión' }),
       ).toBeTruthy()
       expect(screen.getByRole('alert').textContent).toContain('Google')
-      expect(screen.queryByText(/enlace/i)).toBeNull()
+      expect(screen.queryByText(/link/i)).toBeNull()
       expect(screen.getByRole('link', { name: 'Volver a intentar' }).getAttribute('href')).toBe(
         '/ingresar',
       )

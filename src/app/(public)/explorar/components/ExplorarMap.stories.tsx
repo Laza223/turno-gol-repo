@@ -122,7 +122,7 @@ export const PopupAbierto: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(await canvas.findByText('$ 900/jug'))
-    const link = await canvas.findByRole('link', { name: 'Ver complejo' })
+    const link = await canvas.findByRole('link', { name: 'Ver horarios' })
     await expect(link).toHaveAttribute('href', '/complejo-fenix')
     await expect(await paintedContrast(link)).toBeGreaterThanOrEqual(4.5)
   },

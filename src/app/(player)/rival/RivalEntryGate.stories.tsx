@@ -45,7 +45,7 @@ export const Armar: Story = {
     await expect(modal.getByRole('heading', { name: 'Entrá para armar tu partido' })).toBeVisible()
     await expect(
       modal.getByText(
-        'Entrás con Google o con tu email. Si no tenés cuenta, se crea al toque. Después de entrar, armás tu partido.',
+        'Entrás con Google o con tu email. Si no tenés cuenta, se crea en unos segundos. Después de entrar, armás tu partido.',
       ),
     ).toBeVisible()
     await expect(dialog.querySelector('input[name="next"]')).toHaveValue('/rival/nuevo')
@@ -58,11 +58,11 @@ export const Armar: Story = {
 export const Pedir: Story = {
   args: {
     next: '/rival/partido/3f2b8c1e-5d4a-4e6f-9a7b-0c1d2e3f4a5b',
-    label: 'Pedir sumarme',
+    label: 'Quiero sumarme',
     purpose: 'pedir',
   },
   play: async ({ canvasElement }) => {
-    const dialog = await openGate(canvasElement, 'Pedir sumarme')
+    const dialog = await openGate(canvasElement, 'Quiero sumarme')
     const modal = within(dialog)
     await expect(modal.getByRole('heading', { name: 'Entrá para pedir tu lugar' })).toBeVisible()
     await expect(modal.getByText('Entrás y volvés a este partido.')).toBeVisible()

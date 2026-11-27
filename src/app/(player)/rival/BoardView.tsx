@@ -106,7 +106,7 @@ function BoardCard({
         </span>
         <CupoBar filled={item.confirmedCount} capacity={item.capacity} className="ri-match__bar" />
         <span className="ri-match__cta">
-          {seeksRival ? 'Pedir jugar con mi equipo' : 'Pedir sumarme'}
+          {seeksRival ? 'Anotar a mi equipo' : 'Quiero sumarme'}
         </span>
         {/* Sin aria-label (WCAG 2.5.3): el nombre del link es lo visible más el cuándo. */}
         <span className="sr-only">{whenLabel(item.startsAt, now)}</span>

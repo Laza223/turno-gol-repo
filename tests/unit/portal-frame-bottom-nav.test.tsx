@@ -61,7 +61,7 @@ describe('PortalFrame — barra inferior', () => {
     expect(nav).toBeTruthy()
     const hrefs = [...nav.querySelectorAll('a')].map((a) => a.getAttribute('href'))
     expect(hrefs).toEqual(['/explorar', '/mis-reservas', '/configuracion'])
-    expect(screen.getByRole('link', { name: 'Explorar' }).getAttribute('aria-current')).toBe('page')
+    expect(screen.getByRole('link', { name: 'Canchas' }).getAttribute('aria-current')).toBe('page')
   })
 
   it('con RIVAL prendido la barra es Explorar · Rival · Reservas · Cuenta', () => {

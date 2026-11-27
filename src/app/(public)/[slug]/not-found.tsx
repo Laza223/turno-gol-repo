@@ -6,10 +6,10 @@ export default function NotFound() {
     <PortalResult
       icon={SearchX}
       tone="neutral"
-      title="Complejo no encontrado"
-      actions={<PortalResultLink href="/">Volver al inicio</PortalResultLink>}
+      title="No encontramos este complejo"
+      actions={<PortalResultLink href="/explorar">Buscar otros complejos</PortalResultLink>}
     >
-      <p>No encontramos este complejo. ¿Buscás otro?</p>
+      <p>Puede que el link esté mal escrito o que ya no esté en TurnoGol.</p>
     </PortalResult>
   )
 }

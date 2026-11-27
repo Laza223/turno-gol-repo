@@ -146,7 +146,7 @@ export const CeluDeslogueado: Story = {
   decorators: withSession(null),
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('link', { name: 'TurnoGol — inicio' })).toBeVisible()
+    await expect(canvas.getByRole('link', { name: 'TurnoGol, inicio' })).toBeVisible()
     const theme = canvas.getByRole('button', { name: /cambiar a tema/i })
     await expect(theme).toBeVisible()
     await expect(theme.getBoundingClientRect().width).toBeGreaterThanOrEqual(44)
@@ -163,7 +163,7 @@ export const CeluComplejoLogueado: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const panel = canvas.getByRole('link', { name: 'Ir a mi panel' })
-    const logo = canvas.getByRole('link', { name: 'TurnoGol — inicio' })
+    const logo = canvas.getByRole('link', { name: 'TurnoGol, inicio' })
     await expect(panel).toBeVisible()
     await expect(logo.getBoundingClientRect().right).toBeLessThanOrEqual(
       panel.getBoundingClientRect().left,

@@ -64,7 +64,7 @@ describe('reserva confirmada con los precios ocultos', () => {
       expect(
         screen.getByText(
           data.depositStatus === 'paid'
-            ? 'Seña pagada, el resto en el complejo'
+            ? 'Seña pagada. El resto lo abonás en el complejo.'
             : 'Pagás en el complejo',
         ),
       ).toBeTruthy()

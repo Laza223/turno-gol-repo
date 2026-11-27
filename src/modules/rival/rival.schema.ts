@@ -177,7 +177,7 @@ export const rivalProfileSchema = z.object({
     .trim()
     .min(1, 'Elegí tu zona')
     .max(120)
-    .refine(isCityAndProvince, 'Elegí tu localidad de la lista, con su provincia.'),
+    .refine(isCityAndProvince, 'Elegí tu zona de la lista, con su provincia.'),
 })
 
 /** Capitán de un equipo rival (decisión 15): solo la zona; la posición no se le pide. */

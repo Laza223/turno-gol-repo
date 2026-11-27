@@ -86,7 +86,7 @@ describe('BusinessHeader — acceso al panel', () => {
 
   it('el CTA comercial se conserva siempre', () => {
     render(withSession(<BusinessHeader />, { session: null, staffPanelPath: '/dashboard' }))
-    expect(screen.getByRole('link', { name: /empezar gratis/i }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: /probar 30 días gratis/i }).getAttribute('href')).toBe(
       '/register',
     )
   })

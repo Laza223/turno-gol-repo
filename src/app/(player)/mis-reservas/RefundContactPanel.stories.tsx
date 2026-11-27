@@ -72,7 +72,7 @@ export const Saldada: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/mercadopago ya procesó/i)).toBeInTheDocument()
+    await expect(canvas.getByText(/mercado pago ya procesó/i)).toBeInTheDocument()
     await expect(canvas.queryByText(/te tiene que devolver/i)).not.toBeInTheDocument()
     // Con WhatsApp propio cargado, gana sobre el teléfono: el 11 del celular
     // en vez del 2323 del fijo.

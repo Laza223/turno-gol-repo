@@ -19,7 +19,7 @@ describe('BusinessHeader', () => {
   it('linkea Ingresar -> /login y Empezar gratis -> /register', () => {
     render(<BusinessHeader />)
     expect(screen.getByRole('link', { name: 'Ingresar' }).getAttribute('href')).toBe('/login')
-    expect(screen.getByRole('link', { name: /empezar gratis/i }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: /probar 30 días gratis/i }).getAttribute('href')).toBe(
       '/register',
     )
   })

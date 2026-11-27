@@ -323,7 +323,7 @@ export function PaymentStatusView({
         <p>
           {failed
             ? 'No pudimos consultar el estado de tu pago. En Mis reservas ves si el turno quedó confirmado. Si pagaste y no aparece, escribile al complejo.'
-            : 'No recibimos la confirmación de MercadoPago a tiempo. En Mis reservas ves si el turno quedó confirmado. Si pagaste y no aparece, escribile al complejo.'}
+            : 'No recibimos la confirmación de Mercado Pago a tiempo. En Mis reservas ves si el turno quedó confirmado. Si pagaste y no aparece, escribile al complejo.'}
         </p>
       </PortalResult>
     )
@@ -347,7 +347,7 @@ export function PaymentStatusView({
               variant="pill"
               size="pill"
               className="rv-go w-full"
-              pendingLabel="Abriendo MercadoPago…"
+              pendingLabel="Abriendo Mercado Pago…"
             >
               Pagar la seña
             </SubmitButton>

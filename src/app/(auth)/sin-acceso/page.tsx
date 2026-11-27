@@ -4,7 +4,7 @@ import { AuthBackdrop } from '@/app/(auth)/AuthBackdrop'
 import { signOutAction } from '@/app/(admin)/actions/auth'
 
 export const metadata: Metadata = {
-  title: 'Sin acceso — TurnoGol',
+  title: 'Sin acceso',
   robots: { index: false, follow: false },
 }
 

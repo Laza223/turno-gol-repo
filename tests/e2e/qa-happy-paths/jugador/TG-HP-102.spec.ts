@@ -30,19 +30,19 @@ test.describe('TG-HP-102 — Login jugador existente /ingresar', () => {
 
     try {
       await page.goto('/ingresar')
-      await expect(page.getByRole('heading', { name: 'Accedé a tu cuenta' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Entrá a tu cuenta' })).toBeVisible()
 
       await page.locator('#email').fill(E2E_PLAYER_EMAIL)
 
       const sinceMs = Date.now()
-      await page.getByRole('button', { name: 'Mandame el enlace' }).click()
+      await page.getByRole('button', { name: 'Mandame el link' }).click()
       // Anti-doble-submit: disabled={pending} vía useFormStatus (submit-button.tsx:28-37; botón en IngresarForm.tsx:266-268).
 
       await expect(page.getByRole('heading', { name: 'Revisá tu email', level: 1 })).toBeVisible({
         timeout: 10_000,
       })
       await expect(
-        page.getByText(`Si ${E2E_PLAYER_EMAIL} tiene cuenta, te enviamos un enlace para entrar.`),
+        page.getByText(`Si ${E2E_PLAYER_EMAIL} tiene cuenta, te mandamos un link para entrar.`),
       ).toBeVisible()
 
       const link = await fetchMagicLinkFromInbucket(E2E_PLAYER_EMAIL, sinceMs)

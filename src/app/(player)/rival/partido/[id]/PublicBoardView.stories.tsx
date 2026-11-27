@@ -68,17 +68,17 @@ export const SinSesion: Story = {
     await expect(canvas.getByText('Faltan 3')).toBeInTheDocument()
     await expect(canvas.getByText('Reservada en TurnoGol')).toBeInTheDocument()
     // Un solo verde, en la barra fija de abajo; sin personas ni denuncia.
-    const pedir = canvas.getByRole('button', { name: 'Pedir sumarme' })
+    const pedir = canvas.getByRole('button', { name: 'Quiero sumarme' })
     await expect(pedir.closest('[data-fixed-cta]')).not.toBeNull()
     await expect(canvas.getAllByRole('button')).toHaveLength(1)
     await expect(canvas.queryByText('Quiénes van')).toBeNull()
   },
 }
 
-/** Sin sesión, "Pedir sumarme" abre el ingreso RIVAL (crea la cuenta) y vuelve a este partido. */
+/** Sin sesión, "Quiero sumarme" abre el ingreso RIVAL (crea la cuenta) y vuelve a este partido. */
 export const SinSesionAbreElIngreso: Story = {
   play: async ({ canvasElement, args }) => {
-    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Pedir sumarme' }))
+    await userEvent.click(within(canvasElement).getByRole('button', { name: 'Quiero sumarme' }))
     const dialog = await screen.findByRole('dialog')
     // Radix lo monta con un fade-in: un `toBeVisible` durante la animación lee opacidad 0.
     await Promise.all(dialog.getAnimations({ subtree: true }).map((a) => a.finished))
@@ -110,10 +110,8 @@ export const BuscaRival: Story = {
     await expect(canvas.queryByText(/Se juega/)).toBeNull()
     await expect(canvas.getByText('Ya son 5 de 5')).toBeInTheDocument()
     // Quien pide es el capitán de otro equipo.
-    await expect(
-      canvas.getByRole('button', { name: 'Pedir jugar con mi equipo' }),
-    ).toBeInTheDocument()
-    await expect(canvas.queryByRole('button', { name: 'Pedir sumarme' })).toBeNull()
+    await expect(canvas.getByRole('button', { name: 'Anotar a mi equipo' })).toBeInTheDocument()
+    await expect(canvas.queryByRole('button', { name: 'Quiero sumarme' })).toBeNull()
   },
 }
 
@@ -121,7 +119,7 @@ export const ConSesionPide: Story = {
   args: { viewer: { kind: 'player', welcome: null } },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Pedir sumarme' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Quiero sumarme' }))
     await waitFor(() => expect(args.requestAction).toHaveBeenCalledWith('m1'))
   },
 }
@@ -141,10 +139,10 @@ export const ConSesionSinBienvenida: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     // El verde abre la bienvenida con el mismo label; su botón acepta y pide en un toque.
-    await userEvent.click(canvas.getByRole('button', { name: 'Pedir sumarme' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Quiero sumarme' }))
     await expect(canvas.getByLabelText('Tu nombre')).toHaveValue('Lazaro')
-    await expect(canvas.getByText('Para pedir tu lugar, contanos quién sos.')).toBeInTheDocument()
-    await userEvent.click(canvas.getByRole('button', { name: 'Pedir sumarme' }))
+    await expect(canvas.getByText('Para sumarte, contanos quién sos.')).toBeInTheDocument()
+    await userEvent.click(canvas.getByRole('button', { name: 'Quiero sumarme' }))
     await waitFor(() => expect(args.acceptAndRequestAction).toHaveBeenCalled())
     await expect(args.requestAction).not.toHaveBeenCalled()
     const fd = args.acceptAndRequestAction.mock.calls[0]![1]
@@ -167,7 +165,7 @@ export const ConSesionFaltaElPerfil: Story = {
   },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Pedir sumarme' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Quiero sumarme' }))
     await expect(
       canvas.getByRole('heading', { name: 'Un dato más para sumarte' }),
     ).toBeInTheDocument()
@@ -175,7 +173,7 @@ export const ConSesionFaltaElPerfil: Story = {
     await expect(canvas.getByLabelText('Tu posición')).toBeInTheDocument()
     // "Ahora no" vuelve al botón, sin pedir nada.
     await userEvent.click(canvas.getByRole('button', { name: 'Ahora no' }))
-    await expect(canvas.getByRole('button', { name: 'Pedir sumarme' })).toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: 'Quiero sumarme' })).toBeInTheDocument()
     await expect(args.acceptAndRequestAction).not.toHaveBeenCalled()
     await expect(args.requestAction).not.toHaveBeenCalled()
   },
@@ -191,7 +189,7 @@ export const PedidoConError: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Pedir sumarme' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Quiero sumarme' }))
     await expect(await canvas.findByRole('alert')).toHaveTextContent('5 pedidos pendientes')
   },
 }

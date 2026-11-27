@@ -62,7 +62,7 @@ test.describe('TG-HP-101 — Alta jugador nuevo al reservar', () => {
       await expect(sentTitle).toBeVisible({ timeout: 10_000 })
       // El foco pasa al título (el formulario desapareció).
       await expect(sentTitle).toBeFocused()
-      await expect(page.getByText(`Te mandamos un enlace a ${newEmail}.`)).toBeVisible()
+      await expect(page.getByText(`Te mandamos un link a ${newEmail}.`)).toBeVisible()
       // Sin seña: al tocar el enlace la reserva queda confirmada (no hay que volver a tocar nada).
       await expect(page.getByText('Cuando lo toques, tu reserva queda confirmada.')).toBeVisible()
 

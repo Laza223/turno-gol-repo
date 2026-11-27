@@ -116,7 +116,9 @@ describe('ReservarPage — precios ocultos del complejo', () => {
     )
     await renderPage()
     expect(
-      screen.getByText('Pagás una seña online con MercadoPago; el resto, en el complejo.'),
+      screen.getByText(
+        'Pagás una seña online por Mercado Pago y el resto lo abonás en el complejo.',
+      ),
     ).toBeTruthy()
   })
 })

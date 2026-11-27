@@ -8,7 +8,7 @@ import { artDateOf } from '@/shared/time/art-date'
 
 export const size = { width: 1200, height: 630 }
 export const contentType = 'image/png'
-export const alt = 'RIVAL — Armá el partido'
+export const alt = 'RIVAL | Armá el partido'
 
 // Excepción documentada a DESIGN.md ("nada de hex inline"): satori no lee variables CSS ni tokens
 // de Tailwind. Mismos verdes que `src/app/opengraph-image.tsx`.

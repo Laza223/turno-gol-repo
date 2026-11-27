@@ -127,7 +127,7 @@ export function CanceledCard({ signedIn }: { signedIn: boolean }) {
           </Link>
         ) : (
           <Link href="/rival" className={RIVAL_ACTION}>
-            Ver el tablón
+            Ver partidos abiertos
           </Link>
         )
       }

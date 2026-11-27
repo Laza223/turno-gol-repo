@@ -52,10 +52,10 @@ export function ArticleShell({
         </header>
         <div className="ar-prose glass-painted">{children}</div>
         <div className="ar-cta glass-painted">
-          <h2>¿Listo para probar un sistema que sí funciona?</h2>
+          <h2>Ordená las reservas y la caja de tu complejo</h2>
           <p>
-            TurnoGol está diseñado específicamente para canchas de fútbol. Es gratis y lo dejás
-            cuando quieras.
+            TurnoGol está hecho 100% para complejos de fútbol. Probalo 30 días gratis, sin tarjeta y
+            sin permanencia.
           </p>
           <a
             href={contactWhatsappUrl('Hola! Quiero saber más sobre TurnoGol para mi complejo.')}
@@ -64,7 +64,7 @@ export function ArticleShell({
             className={cn(buttonVariants({ variant: 'pill', size: 'pill' }), 'mt-1')}
           >
             <MessageCircle className="size-4.5" aria-hidden />
-            Contactanos por WhatsApp
+            Escribinos por WhatsApp
           </a>
         </div>
       </div>

@@ -31,8 +31,8 @@ export const Default: Story = {
     await expect(canvas.getByRole('heading', { level: 1 })).toHaveTextContent(
       /chau cuaderno,\s*chau whatsapp\./i,
     )
-    // "Empezá gratis" está en el hero y en el cierre: los dos van a /register.
-    const trials = canvas.getAllByRole('link', { name: /empezá gratis/i })
+    // "Probar 30 días gratis" está en el hero y en el cierre: los dos van a /register.
+    const trials = canvas.getAllByRole('link', { name: /probar 30 días gratis/i })
     await expect(trials).toHaveLength(2)
     for (const cta of trials) await expect(cta).toHaveAttribute('href', '/register')
     // El CTA de WhatsApp abre el chat comercial en otra pestaña, con el mensaje cargado.

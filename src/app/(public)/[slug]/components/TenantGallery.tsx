@@ -75,7 +75,7 @@ export default function TenantGallery({ photos, name }: Props) {
           <Image
             key={photos[index]}
             src={photos[index]!}
-            alt={`${name} — foto ${index + 1}`}
+            alt={`${name}, foto ${index + 1}`}
             fill
             sizes="100vw"
             className="object-contain"
@@ -118,7 +118,7 @@ export default function TenantGallery({ photos, name }: Props) {
             >
               <Image
                 src={p}
-                alt={`${name} — foto ${i + 1}`}
+                alt={`${name}, foto ${i + 1}`}
                 fill
                 sizes="(min-width: 1024px) 33vw, (min-width: 640px) 46vw, 78vw"
                 className="object-cover"

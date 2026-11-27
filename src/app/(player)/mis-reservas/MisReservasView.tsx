@@ -360,7 +360,7 @@ function BookingCard({
                   size="pill-sm"
                   aria-describedby={describedBy}
                   className="min-h-11"
-                  pendingLabel="Abriendo MercadoPago…"
+                  pendingLabel="Abriendo Mercado Pago…"
                 >
                   <CreditCard className="size-4.5 shrink-0" aria-hidden />
                   Pagar la seña

@@ -61,7 +61,7 @@ export async function resetPasswordAction(
     return {
       status: 'error',
       message:
-        'El enlace expiró o la sesión no es válida. Pedí uno nuevo desde "Olvidé mi contraseña".',
+        'El link expiró o la sesión no es válida. Pedí uno nuevo desde "Olvidé mi contraseña".',
     }
   }
   const user = data.user

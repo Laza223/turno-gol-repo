@@ -142,7 +142,7 @@ export default function ExplorarSearch({ cities, formatSets, nearby = false }: P
         className="glass grid w-full grid-cols-2 gap-2 rounded-[32px] p-2 font-display md:w-[min(100%,560px)] md:rounded-full"
       >
         <SearchField
-          label="Localidad"
+          label="Zona"
           value={urlCity || 'Todas'}
           icon={<MapPin aria-hidden />}
           onClick={() => setSheet('localidad')}

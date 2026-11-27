@@ -4,13 +4,13 @@ import type { RivalPublicMatch, RivalRosterEntry } from '@/modules/rival/rival.t
 function createdCopy(seeking: RivalPublicMatch['seeking']): { title: string; line: string } {
   if (seeking === 'players') {
     return {
-      title: 'Ya está en el tablón',
+      title: 'Publicado en RIVAL',
       line: 'Pasale el link al grupo: los que vengan con vos confirman con un toque.',
     }
   }
   if (seeking === 'rival') {
     return {
-      title: 'Ya está en el tablón',
+      title: 'Publicado en RIVAL',
       line: 'Mientras tanto, pasale el link a tu equipo.',
     }
   }

@@ -73,8 +73,8 @@ describe('ExplorarMap — precios ocultos', () => {
 })
 
 describe('ExplorarMap — popup', () => {
-  it('el link "Ver complejo" apunta a la ficha', () => {
+  it('el link "Ver horarios" apunta a la ficha', () => {
     const { getByRole } = render(<ExplorarMap results={[located]} />)
-    expect(getByRole('link', { name: 'Ver complejo' }).getAttribute('href')).toBe('/la-catedral')
+    expect(getByRole('link', { name: 'Ver horarios' }).getAttribute('href')).toBe('/la-catedral')
   })
 })

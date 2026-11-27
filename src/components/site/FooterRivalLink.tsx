@@ -13,7 +13,7 @@ export function FooterRivalLink({ className }: { className: string }) {
   return (
     <li>
       <Link href="/rival" className={className}>
-        Tablón de Rival
+        Rival, partidos abiertos
       </Link>
     </li>
   )

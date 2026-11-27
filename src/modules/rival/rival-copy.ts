@@ -21,16 +21,16 @@ const COPY: Record<RivalErrorCode, string> = {
     'Eso ya no se puede hacer: el partido cambió. Actualizá la página y mirá cómo quedó.',
   rival_immutable: 'Un partido no se edita: cancelalo y armá otro.',
   rival_not_on_board:
-    'Este partido ya no está en el tablón. Volvé al tablón para ver los que siguen abiertos.',
+    'Este partido ya no está publicado. Volvé a RIVAL para ver los partidos abiertos.',
   rival_hidden: 'Este partido no está disponible.',
   rival_booking_mismatch:
     'La reserva no coincide con el complejo o el horario. Revisá los datos o confirmá que ya tenés la cancha.',
   rival_court_required: COURT_REQUIRED_MESSAGE,
-  rival_contact_required: 'Ingresá tu WhatsApp para publicar en el tablón.',
+  rival_contact_required: 'Ingresá tu WhatsApp para publicar el partido en RIVAL.',
   rival_invalid_report: 'No pudimos registrar esa denuncia. Probá de nuevo.',
   rival_captain_taken: 'Ya hay un equipo rival confirmado para este partido.',
   rival_forbidden: 'No podés hacer eso en este partido.',
-  rival_try_again: 'Había mucho movimiento. Probá de nuevo.',
+  rival_try_again: 'Justo hubo varios cambios al mismo tiempo. Probá de nuevo.',
   rival_already_participant: 'Ya estás en este partido.',
   rival_already_reported: 'Ya enviaste esta denuncia.',
   rival_tenant_unavailable: 'Ese complejo no está disponible para armar partidos. Elegí otro.',
@@ -43,9 +43,9 @@ const COPY: Record<RivalErrorCode, string> = {
 export const RIVAL_NO_SESSION_MESSAGE = COPY.rival_no_session
 export const RIVAL_DISABLED_MESSAGE = 'RIVAL todavía no está disponible.'
 export const RIVAL_RATE_LIMITED_MESSAGE =
-  'Hiciste muchos cambios seguidos. Esperá un momento y probá de nuevo.'
+  'Hiciste muchos cambios seguidos. Esperá unos segundos y probá de nuevo.'
 /** Cuando la action ni siquiera responde (sin conexión): lo muestran las vistas del cliente. */
-export const RIVAL_OFFLINE_MESSAGE = 'No pudimos conectar. Revisá tu conexión y probá de nuevo.'
+export const RIVAL_OFFLINE_MESSAGE = 'Sin conexión. Fijate si tenés señal o WiFi y probá de nuevo.'
 
 /** Con el partido lleno entra al banco: la etiqueta no promete un lugar. */
 export const voyLabel = (full: boolean) => (full ? 'Voy al banco' : 'Voy')

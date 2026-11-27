@@ -165,7 +165,7 @@ export const ReaceptarReglas: Story = {
 export const SoloPerfil: Story = {
   args: {
     needs: { identity: false, profile: true, position: true },
-    submitLabel: 'Pedir sumarme',
+    submitLabel: 'Quiero sumarme',
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
@@ -180,7 +180,7 @@ export const SoloPerfil: Story = {
     await expect(
       canvas.getByText(/El organizador ve además tu posición y tu zona/),
     ).toBeInTheDocument()
-    await expect(canvas.getByRole('button', { name: 'Pedir sumarme' })).toBeInTheDocument()
+    await expect(canvas.getByRole('button', { name: 'Quiero sumarme' })).toBeInTheDocument()
   },
 }
 

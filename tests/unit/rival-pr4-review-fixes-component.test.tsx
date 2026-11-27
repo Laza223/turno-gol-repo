@@ -50,7 +50,7 @@ describe('PublishToBoard: "Buscamos rival" solo si se puede', () => {
         unpublishAction={ok}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Publicar en el tablón' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Publicar en RIVAL' }))
   }
   it('con cupo = formato y sin capitán rival aparece junto a "Buscamos jugadores"', () => {
     open(true)
@@ -61,7 +61,9 @@ describe('PublishToBoard: "Buscamos rival" solo si se puede', () => {
     open(false)
     expect(screen.queryByText('Buscamos jugadores')).toBeNull()
     expect(screen.queryByText('Buscamos rival')).toBeNull()
-    expect(screen.getByText('Aparece en el tablón y cualquiera puede pedir sumarse.')).toBeTruthy()
+    expect(
+      screen.getByText('Aparece en partidos abiertos de RIVAL y cualquiera puede sumarse.'),
+    ).toBeTruthy()
     expect(screen.getByText('Cualquier posición')).toBeTruthy()
     expect(screen.getByText('Un arquero')).toBeTruthy()
   })
@@ -75,7 +77,7 @@ describe('PublishToBoard: "Buscamos rival" solo si se puede', () => {
 })
 
 describe('PublishToBoard: un corte de red no rompe la vista', () => {
-  const OFFLINE = 'No pudimos conectar. Revisá tu conexión y probá de nuevo.'
+  const OFFLINE = 'Sin conexión. Fijate si tenés señal o WiFi y probá de nuevo.'
   const down = vi.fn(async () => {
     throw new TypeError('Failed to fetch')
   })
@@ -91,7 +93,7 @@ describe('PublishToBoard: un corte de red no rompe la vista', () => {
         unpublishAction={ok}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Publicar en el tablón' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Publicar en RIVAL' }))
     fireEvent.change(screen.getByLabelText('Tu WhatsApp'), { target: { value: '11 5555 1234' } })
     fireEvent.click(screen.getByRole('button', { name: 'Publicar' }))
     expect((await screen.findByRole('alert')).textContent).toBe(OFFLINE)
@@ -109,7 +111,7 @@ describe('PublishToBoard: un corte de red no rompe la vista', () => {
         unpublishAction={down}
       />,
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Sacar del tablón' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Dejar de publicar' }))
     expect((await screen.findByRole('alert')).textContent).toBe(OFFLINE)
   })
 })
@@ -190,20 +192,16 @@ describe('PublishToBoard: foco y jerarquía', () => {
   }
   it('al abrir lleva el foco al título; al cerrar con "Ahora no" lo devuelve al botón', () => {
     renderActions()
-    fireEvent.click(screen.getByRole('button', { name: 'Publicar en el tablón' }))
-    expect(document.activeElement).toBe(
-      screen.getByRole('heading', { name: 'Publicar en el tablón' }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: 'Publicar en RIVAL' }))
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Publicar en RIVAL' }))
     fireEvent.click(screen.getByRole('button', { name: 'Ahora no' }))
-    expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: 'Publicar en el tablón' }),
-    )
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Publicar en RIVAL' }))
   })
   it('con el form abierto "Publicar" es el verde y "Avisar al grupo" baja a secundaria', () => {
     renderActions()
     const share = screen.getByRole('link', { name: /Avisar al grupo/ })
     expect(share.className).toMatch(GREEN)
-    fireEvent.click(screen.getByRole('button', { name: 'Publicar en el tablón' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Publicar en RIVAL' }))
     expect(screen.getByRole('link', { name: /Avisar al grupo/ }).className).not.toMatch(GREEN)
     expect(screen.getByRole('button', { name: 'Publicar' }).className).toMatch(GREEN)
     fireEvent.click(screen.getByRole('button', { name: 'Ahora no' }))
@@ -221,7 +219,7 @@ describe('PublishToBoard: foco y jerarquía', () => {
       unpublishAction: ok,
     }
     const { rerender } = render(<OrganizerActions {...props} boardLabel={null} />)
-    fireEvent.click(screen.getByRole('button', { name: 'Publicar en el tablón' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Publicar en RIVAL' }))
     expect(screen.getByRole('link', { name: /Avisar al grupo/ }).className).not.toMatch(GREEN)
     rerender(<OrganizerActions {...props} boardLabel="Faltan 3" />)
     expect(screen.getByRole('link', { name: /Avisar al grupo/ }).className).toMatch(GREEN)

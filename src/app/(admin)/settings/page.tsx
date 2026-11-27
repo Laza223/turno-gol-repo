@@ -23,11 +23,7 @@ import { requireAdminStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { getSubscriptionState, listActivePlans } from '@/modules/billing/billing.service'
 import { REFERRAL_REWARD_CAP } from '@/shared/constants'
-import {
-  buildPriceBreakdown,
-  canQuoteCourtCount,
-  subscriptionPlusPrice,
-} from '@/modules/billing/pricing'
+import { buildPriceBreakdown, canQuoteCourtCount } from '@/modules/billing/pricing'
 import { listStaffRoster } from '@/modules/staff/staff.service'
 import { getProfileGaps } from '@/modules/tenants/setup-gaps'
 import {
@@ -270,11 +266,7 @@ function cuotaValue(
     const { monthlyEffectiveCents } = buildPriceBreakdown({
       billedCourts: sub.billedCourts,
       cycle: sub.billingCycle,
-      plusPerCourtCents: subscriptionPlusPrice(
-        sub.plus.enabled,
-        sub.plus.usesListPrice ? null : sub.plus.perCourtCents,
-        pricing,
-      ),
+      plusMonthlyCents: sub.plus.enabled ? sub.plus.monthlyCents : 0,
       ...pricing,
     })
     return `${formatArs(monthlyEffectiveCents)} por mes`

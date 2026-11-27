@@ -25,8 +25,6 @@ import {
   buildPriceBreakdown,
   canQuoteCourtCount,
   COURT_COUNT_QUOTE_PREFIX,
-  monthlyPlusAmount,
-  subscriptionPlusPrice,
 } from '@/modules/billing/pricing'
 import { CANCELABLE } from '@/modules/billing/cancelable-statuses'
 import { isFreePlan, READ_ONLY_TENANT_STATUSES } from '@/modules/tenants/tenant.lifecycle'
@@ -175,21 +173,14 @@ export default async function FacturacionPage() {
           : null
 
   // Plus EFECTIVO que se factura (no el flag): el mismo número que va al débito.
-  const plusBilledPerCourt =
-    sub && pricing
-      ? subscriptionPlusPrice(
-          sub.plus.enabled,
-          sub.plus.usesListPrice ? null : sub.plus.perCourtCents,
-          pricing,
-        )
-      : 0
+  const plusBilledCents = sub && pricing && sub.plus.enabled ? sub.plus.monthlyCents : 0
 
   const readOnlyBreakdown =
     sub && pricing && !cuotaMode && canQuoteCourtCount(sub.billedCourts, pricing)
       ? buildPriceBreakdown({
           billedCourts: sub.billedCourts,
           cycle: sub.billingCycle,
-          plusPerCourtCents: plusBilledPerCourt,
+          plusMonthlyCents: plusBilledCents,
           ...pricing,
         })
       : null
@@ -278,7 +269,7 @@ export default async function FacturacionPage() {
             pendingBilledCourts={sub.pendingBilledCourts}
             periodEnd={new Date(sub.currentPeriodEnd).toISOString()}
             billingCycle={sub.billingCycle}
-            plusPerCourtCents={plusBilledPerCourt}
+            plusMonthlyCents={plusBilledCents}
             verifyEmail={verifyEmail}
             subscriptionLayout
           />
@@ -326,11 +317,7 @@ export default async function FacturacionPage() {
               <PlusSection
                 plus={{
                   enabled: sub.plus.enabled,
-                  perCourtCents: sub.plus.perCourtCents,
-                  monthlyCents:
-                    pricing?.byCourtCount && canQuoteCourtCount(sub.billedCourts, pricing)
-                      ? monthlyPlusAmount(sub.billedCourts, plusBilledPerCourt)
-                      : undefined,
+                  monthlyCents: sub.plus.monthlyCents,
                   accessUntil: sub.plus.accessUntil
                     ? new Date(sub.plus.accessUntil).toISOString()
                     : null,

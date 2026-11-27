@@ -80,8 +80,8 @@ export type SubscriptionState = {
 type PlusSubscriptionState = {
   /** Plus va en el debito. */
   enabled: boolean
-  /** Plus por cancha y mes de este complejo: el especial si lo tiene, si no la lista. Centavos. */
-  perCourtCents: number
+  /** Plus por mes de este complejo: el especial si lo tiene, si no la lista. Centavos. */
+  monthlyCents: number
   usesListPrice?: boolean
   /** Baja agendada: el debito ya no lo lleva y el bot sigue hasta aca. */
   accessUntil: Date | null

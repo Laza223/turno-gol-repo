@@ -14,7 +14,6 @@ import {
   buildPriceBreakdown,
   canQuoteCourtCount,
   MAX_CATALOG_COURTS,
-  type PlusPrice,
   type PricingParams,
 } from '@/modules/billing/pricing'
 import type { BillingCycle } from '@/modules/billing/billing.types'
@@ -73,12 +72,12 @@ type CuotaSectionProps = {
   /** Ciclo vigente. En `manage` se muestra, no se elige. */
   billingCycle?: BillingCycle
   /**
-   * Plus por cancha que se está FACTURANDO hoy (`plus.enabled ? perCourtCents : 0`),
-   * nunca el flag: el Plus es por cancha, así que cambiar las canchas mueve su monto.
+   * Plus por mes que se está FACTURANDO hoy (`plus.enabled ? monthlyCents : 0`),
+   * nunca el flag. Es fijo por complejo: cambiar las canchas no mueve su monto.
    * OBLIGATORIO a propósito: una pantalla que se olvide de pasarlo no compila, en
    * vez de mostrar el monto sin Plus mientras el débito lo cobra (pasó en /reactivar).
    */
-  plusPerCourtCents: PlusPrice
+  plusMonthlyCents: number
   /** Jerarquía de precio y controles de Ajustes → Suscripción. */
   subscriptionLayout?: boolean
   /**
@@ -135,7 +134,7 @@ export function CuotaSection({
   pendingBilledCourts = null,
   periodEnd = null,
   billingCycle = 'monthly',
-  plusPerCourtCents,
+  plusMonthlyCents,
   verifyEmail,
   subscriptionLayout = false,
 }: CuotaSectionProps) {
@@ -172,18 +171,18 @@ export function CuotaSection({
   const breakdown = buildPriceBreakdown({
     billedCourts: courts,
     cycle,
-    plusPerCourtCents,
+    plusMonthlyCents,
     ...pricing,
   })
   const oneMore = buildPriceBreakdown({
     billedCourts: Math.min(courts + 1, maxCourts),
     cycle,
-    plusPerCourtCents,
+    plusMonthlyCents,
     ...pricing,
   })
 
   const monthlyFor = (n: number): number =>
-    buildPriceBreakdown({ billedCourts: n, cycle, plusPerCourtCents, ...pricing })
+    buildPriceBreakdown({ billedCourts: n, cycle, plusMonthlyCents, ...pricing })
       .monthlyEffectiveCents
 
   const chargeLabel =

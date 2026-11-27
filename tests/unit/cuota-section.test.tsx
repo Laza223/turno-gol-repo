@@ -82,7 +82,7 @@ describe('CuotaSection — desglose para N canchas', () => {
         mode="manage"
         onlineCourts={5}
         billedCourts={5}
-        plusPerCourtCents={0}
+        plusMonthlyCents={0}
       />,
     )
 
@@ -105,7 +105,7 @@ describe('CuotaSection — desglose para N canchas', () => {
         mode="activate"
         billedCourts={5}
         onlineCourts={5}
-        plusPerCourtCents={1_500_000}
+        plusMonthlyCents={5_000_000}
         subscriptionLayout
       />,
     )
@@ -113,8 +113,10 @@ describe('CuotaSection — desglose para N canchas', () => {
       formatArs(15_000_000),
     )
     expect(screen.queryByText('1ª cancha')).toBeNull()
-    expect(screen.getByText(/^5 canchas × .*15\.000/)).toBeTruthy()
-    expect(screen.getByText(/^\$\s*225\.000$/)).toBeTruthy()
+    expect(screen.getByText('Asistente de WhatsApp').nextElementSibling?.textContent).toBe(
+      formatArs(5_000_000),
+    )
+    expect(screen.getByText(/^\$\s*200\.000$/)).toBeTruthy()
   })
 
   it('1 cancha: $47.000 sin fila de "canchas más"', () => {
@@ -124,7 +126,7 @@ describe('CuotaSection — desglose para N canchas', () => {
         mode="manage"
         onlineCourts={1}
         billedCourts={1}
-        plusPerCourtCents={0}
+        plusMonthlyCents={0}
       />,
     )
 
@@ -141,7 +143,7 @@ describe('CuotaSection — desglose para N canchas', () => {
         mode="manage"
         onlineCourts={8}
         billedCourts={8}
-        plusPerCourtCents={0}
+        plusMonthlyCents={0}
       />,
     )
 
@@ -160,7 +162,7 @@ describe('CuotaSection — el descuento anual sale de los datos, no está hardco
         mode="activate"
         onlineCourts={3}
         billedCourts={3}
-        plusPerCourtCents={0}
+        plusMonthlyCents={0}
       />,
     )
 
@@ -189,7 +191,7 @@ describe('CuotaSection — el stepper no baja de las canchas online', () => {
         mode="manage"
         onlineCourts={5}
         billedCourts={5}
-        plusPerCourtCents={0}
+        plusMonthlyCents={0}
       />,
     )
 
@@ -212,7 +214,7 @@ describe('CuotaSection — el stepper no baja de las canchas online', () => {
         mode="manage"
         onlineCourts={2}
         billedCourts={5}
-        plusPerCourtCents={0}
+        plusMonthlyCents={0}
       />,
     )
     const group = screen.getByRole('group', { name: 'Canchas' })
@@ -231,7 +233,7 @@ describe('CuotaSection — el CTA llama al endpoint correcto según el modo', ()
         mode="activate"
         onlineCourts={3}
         billedCourts={3}
-        plusPerCourtCents={0}
+        plusMonthlyCents={0}
       />,
     )
 
@@ -251,7 +253,7 @@ describe('CuotaSection — el CTA llama al endpoint correcto según el modo', ()
         mode="reactivate"
         onlineCourts={2}
         billedCourts={2}
-        plusPerCourtCents={0}
+        plusMonthlyCents={0}
       />,
     )
 
@@ -273,7 +275,7 @@ describe('CuotaSection — el CTA llama al endpoint correcto según el modo', ()
         mode="manage"
         onlineCourts={3}
         billedCourts={3}
-        plusPerCourtCents={0}
+        plusMonthlyCents={0}
       />,
     )
 
@@ -310,7 +312,7 @@ describe('CuotaSection — manejo de errores', () => {
         mode="activate"
         onlineCourts={3}
         billedCourts={3}
-        plusPerCourtCents={0}
+        plusMonthlyCents={0}
       />,
     )
 
@@ -333,7 +335,7 @@ describe('CuotaSection — manejo de errores', () => {
         mode="activate"
         onlineCourts={3}
         billedCourts={3}
-        plusPerCourtCents={0}
+        plusMonthlyCents={0}
       />,
     )
 
@@ -355,7 +357,7 @@ describe('CuotaSection — cambio ya agendado', () => {
         onlineCourts={3}
         billedCourts={4}
         pendingBilledCourts={6}
-        plusPerCourtCents={0}
+        plusMonthlyCents={0}
         periodEnd="2027-03-15T15:00:00.000Z"
       />,
     )
@@ -374,7 +376,7 @@ describe('CuotaSection — sin régimen fiscal definido (D9)', () => {
         mode="activate"
         onlineCourts={3}
         billedCourts={3}
-        plusPerCourtCents={0}
+        plusMonthlyCents={0}
       />,
     )
 

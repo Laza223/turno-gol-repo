@@ -6,7 +6,7 @@ import { formatArs } from '@/lib/format'
 import { formatArtDate } from '@/shared/time/art-date'
 import { PlusBadge } from '@/components/ui/plus-badge'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { PLUS_LIST_PER_COURT_CENTS } from '@/modules/billing/pricing'
+import { PLUS_LIST_MONTHLY_CENTS } from '@/modules/billing/pricing'
 import type { SetPlusInput, SupportActionResult } from '../actions'
 
 export type SetTenantPlusAction = (
@@ -24,11 +24,9 @@ export type PlusToggleState = {
   /** Solo con `no_subscription`: el flag real del bot (puede estar prendido por un override). */
   botOn?: boolean
   /** Precio especial cargado, o null (= sigue a la lista). Centavos. */
-  pricePerCourtCents: number | null
-  /** Lo que se está aplicando por cancha (especial o lista). Centavos. */
-  effectivePerCourtCents: number
-  listedMonthlyCents?: number
-  effectiveMonthlyCents?: number
+  specialPriceCents: number | null
+  /** Lo que se está aplicando por mes (especial o lista). Centavos. */
+  effectiveCents: number
   /** ISO. Fin de la baja agendada. */
   accessUntil: string | null
   quote: { months: number; amountCents: number } | null
@@ -65,8 +63,8 @@ function pesosLabel(cents: number): string {
  * volver a la lista).
  */
 function initialPesos(state: PlusToggleState): string {
-  return state.kind === 'billed' && state.pricePerCourtCents !== null
-    ? String(state.pricePerCourtCents / 100)
+  return state.kind === 'billed' && state.specialPriceCents !== null
+    ? String(state.specialPriceCents / 100)
     : ''
 }
 
@@ -115,8 +113,8 @@ export function PlusToggle({ tenantId, state, action }: Props) {
     })
   }
 
-  function enable(pricePerCourtCents: number | null) {
-    run({ op: 'enable', pricePerCourtCents })
+  function enable(priceCents: number | null) {
+    run({ op: 'enable', priceCents })
   }
 
   function enableWithTypedPrice() {
@@ -129,7 +127,7 @@ export function PlusToggle({ tenantId, state, action }: Props) {
     const cents = Math.round(value * 100)
     if (!Number.isFinite(value) || !Number.isInteger(cents) || cents <= 0) {
       setDone(null)
-      setError('Ingresá un precio por cancha mayor a cero, o dejalo vacío para la lista.')
+      setError('Ingresá un precio por mes mayor a cero, o dejalo vacío para la lista.')
       return
     }
     enable(cents)
@@ -149,7 +147,7 @@ export function PlusToggle({ tenantId, state, action }: Props) {
     <div className="flex flex-wrap items-end gap-2">
       <div className="flex flex-col gap-1">
         <label htmlFor={priceId} className="text-xs font-medium text-foreground">
-          Precio por cancha
+          Precio por mes
         </label>
         <div className="flex items-center gap-1.5">
           <span aria-hidden="true" className="text-sm text-muted-foreground">
@@ -162,11 +160,7 @@ export function PlusToggle({ tenantId, state, action }: Props) {
             min={1}
             step="any"
             value={pesos}
-            placeholder={
-              state.listedMonthlyCents === undefined
-                ? `${pesosLabel(PLUS_LIST_PER_COURT_CENTS)} (lista)`
-                : 'Vacío para usar la lista'
-            }
+            placeholder={`${pesosLabel(PLUS_LIST_MONTHLY_CENTS)} (lista)`}
             onChange={(e) => setPesos(e.target.value)}
             disabled={isPending}
             className={inputCls}
@@ -188,11 +182,8 @@ export function PlusToggle({ tenantId, state, action }: Props) {
     <>
       {priceField('Prender Plus')}
       <p className="text-xs text-muted-foreground">
-        Lista:{' '}
-        {state.listedMonthlyCents === undefined
-          ? `${formatArs(PLUS_LIST_PER_COURT_CENTS)} por cancha por mes`
-          : `${formatArs(state.listedMonthlyCents)} por mes por complejo`}
-        . Dejá vacío para usar la lista.
+        Lista: {formatArs(PLUS_LIST_MONTHLY_CENTS)} por mes por complejo. Dejá vacío para usar la
+        lista.
       </p>
     </>
   )
@@ -206,11 +197,8 @@ export function PlusToggle({ tenantId, state, action }: Props) {
         )}
         {state.kind === 'billed' && (
           <span className="text-sm font-medium text-foreground">
-            Facturado:{' '}
-            {state.effectiveMonthlyCents === undefined
-              ? `${formatArs(state.effectivePerCourtCents)} por cancha`
-              : `${formatArs(state.effectiveMonthlyCents)} por mes`}{' '}
-            {state.pricePerCourtCents === null ? '(lista)' : '(precio especial)'}
+            Facturado: {formatArs(state.effectiveCents)} por mes{' '}
+            {state.specialPriceCents === null ? '(lista)' : '(precio especial)'}
           </span>
         )}
         {state.kind === 'ending' && state.accessUntil && (
@@ -290,7 +278,7 @@ export function PlusToggle({ tenantId, state, action }: Props) {
           <button
             type="button"
             disabled={isPending}
-            onClick={() => enable(state.pricePerCourtCents)}
+            onClick={() => enable(state.specialPriceCents)}
             className={primaryBtn}
           >
             Volver a prender

@@ -12,7 +12,7 @@ const meta = {
   parameters: { layout: 'padded' },
   args: {
     periodEnd: '2027-03-15T12:00:00.000Z',
-    plus: { enabled: true, perCourtCents: 1_500_000, accessUntil: null, quote: null },
+    plus: { enabled: true, monthlyCents: 5_000_000, accessUntil: null, quote: null },
     disableAction: fn(async () => ({
       success: true as const,
       accessUntil: '2027-03-15T12:00:00.000Z',
@@ -27,11 +27,11 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Facturado: precio por cancha y baja con confirmación en el mismo lugar. */
+/** Facturado: precio por mes y baja con confirmación en el mismo lugar. */
 export const Facturado: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/Incluido en tu cuota: .*15\.000 por cancha/)).toBeInTheDocument()
+    await expect(canvas.getByText(/Incluido en tu cuota: .*50\.000 por mes/)).toBeInTheDocument()
     await userEvent.click(canvas.getByRole('button', { name: 'Dar de baja el Asistente' }))
     const dialog = await screen.findByRole('dialog')
     await expect(
@@ -49,7 +49,7 @@ export const BajaAgendada: Story = {
   args: {
     plus: {
       enabled: false,
-      perCourtCents: 1_500_000,
+      monthlyCents: 5_000_000,
       accessUntil: '2027-03-15T12:00:00.000Z',
       quote: null,
     },
@@ -68,7 +68,7 @@ export const CotizacionPendiente: Story = {
   args: {
     plus: {
       enabled: false,
-      perCourtCents: 1_500_000,
+      monthlyCents: 5_000_000,
       accessUntil: null,
       quote: { months: 5, amountCents: 18_000_000 },
     },

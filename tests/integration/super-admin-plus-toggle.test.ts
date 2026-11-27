@@ -64,7 +64,7 @@ async function seedTenant(sql: Sql): Promise<string> {
 const actor = () => ({ type: 'system', id: systemAdminId }) as const
 
 const turnOn = (tenantId: string) =>
-  enablePlus(tenantId, { pricePerCourtCents: null }, actor(), gateway, NOW)
+  enablePlus(tenantId, { priceCents: null }, actor(), gateway, NOW)
 const turnOff = (tenantId: string) =>
   disablePlus(tenantId, { mode: 'immediate' }, actor(), gateway, NOW)
 

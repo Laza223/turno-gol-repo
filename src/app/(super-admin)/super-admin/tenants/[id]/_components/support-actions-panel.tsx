@@ -1,6 +1,6 @@
 'use client'
 
-import type { PlusPrice, PriceBreakdown } from '@/modules/billing/pricing'
+import type { PriceBreakdown } from '@/modules/billing/pricing'
 
 import { useTransition } from 'react'
 import { useRouter } from 'next/navigation'
@@ -40,8 +40,8 @@ type Props = {
   pricing: BilledCourtsPricing | null
   nextCatalogPrice?: PriceBreakdown | null
   canRecordLargeQuote?: boolean
-  /** Plus EFECTIVO por cancha que se factura hoy (0 si no hay). */
-  plusPerCourtCents?: PlusPrice
+  /** Plus EFECTIVO por mes que se factura hoy (0 si no hay). */
+  plusMonthlyCents?: number
   settings: SupportPanelSettings
   actions: SupportActionsBag
 }
@@ -68,7 +68,7 @@ export function SupportActionsPanel({
   pricing,
   nextCatalogPrice,
   canRecordLargeQuote,
-  plusPerCourtCents = 0,
+  plusMonthlyCents = 0,
   settings,
   actions,
 }: Props) {
@@ -125,7 +125,7 @@ export function SupportActionsPanel({
         billingCycle={billingCycle}
         onlineCourts={onlineCourts}
         pricing={pricing}
-        plusPerCourtCents={plusPerCourtCents}
+        plusMonthlyCents={plusMonthlyCents}
         pending={pending}
         run={run}
         action={actions.changeBilledCourts}

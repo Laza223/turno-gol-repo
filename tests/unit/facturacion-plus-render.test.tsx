@@ -20,7 +20,7 @@ describe('PriceBreakdown con Plus', () => {
     const b = buildPriceBreakdown({
       billedCourts: 5,
       cycle: 'monthly',
-      plusPerCourtCents: 0,
+      plusMonthlyCents: 0,
       ...pricing,
     })
     render(<PriceBreakdown breakdown={b} />)
@@ -28,23 +28,23 @@ describe('PriceBreakdown con Plus', () => {
     expect(screen.getAllByText(/150\.000/).length).toBeGreaterThan(0)
   })
 
-  it('con Plus suma la fila "N canchas × $X" y el total sube', () => {
+  it('con Plus suma una sola fila del Asistente, sin multiplicar por canchas', () => {
     const b = buildPriceBreakdown({
       billedCourts: 5,
       cycle: 'monthly',
-      plusPerCourtCents: 2_000_000,
+      plusMonthlyCents: 5_000_000,
       ...pricing,
     })
     render(<PriceBreakdown breakdown={b} />)
-    expect(screen.getByText(/5 canchas × .*20\.000/)).toBeTruthy()
-    expect(screen.getAllByText(/250\.000/).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/5 canchas × .*50\.000/)).toBeNull()
+    expect(screen.getAllByText(/200\.000/).length).toBeGreaterThan(0)
   })
 
   it('anual: el descuento va sobre la suma plan + Plus', () => {
     const b = buildPriceBreakdown({
       billedCourts: 5,
       cycle: 'annual',
-      plusPerCourtCents: 2_000_000,
+      plusMonthlyCents: 10_000_000,
       ...pricing,
     })
     render(<PriceBreakdown breakdown={b} />)
@@ -54,7 +54,7 @@ describe('PriceBreakdown con Plus', () => {
 
 describe('PlusSection', () => {
   const actions = { disableAction: vi.fn(), payAction: vi.fn() }
-  const base = { enabled: false, perCourtCents: 2_000_000, accessUntil: null, quote: null }
+  const base = { enabled: false, monthlyCents: 5_000_000, accessUntil: null, quote: null }
 
   it('sin Plus, sin baja agendada y sin cotización no renderiza nada', () => {
     const { container } = render(
@@ -63,7 +63,7 @@ describe('PlusSection', () => {
     expect(container.innerHTML).toBe('')
   })
 
-  it('facturado: precio por cancha y botón de baja', () => {
+  it('facturado: precio por mes y botón de baja', () => {
     render(
       <PlusSection
         plus={{ ...base, enabled: true }}
@@ -71,7 +71,7 @@ describe('PlusSection', () => {
         {...actions}
       />,
     )
-    expect(screen.getByText(/Incluido en tu cuota: .*20\.000 por cancha/)).toBeTruthy()
+    expect(screen.getByText(/Incluido en tu cuota: .*50\.000 por mes/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Dar de baja el Asistente' })).toBeTruthy()
   })
 

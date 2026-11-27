@@ -127,7 +127,7 @@ function sub(status: string, scheduledDeletionAt: Date | null = null) {
     dunningStartedAt: null,
     lastPaymentFailedAt: null,
     lastPaymentAt: null,
-    plus: { enabled: false, perCourtCents: 2_000_000, accessUntil: null, quote: null },
+    plus: { enabled: false, monthlyCents: 2_000_000, accessUntil: null, quote: null },
   }
 }
 
@@ -213,7 +213,7 @@ describe('/reactivar — admin en estado elegible', () => {
     vi.mocked(getStaffTenant).mockResolvedValue(tenant('suspended') as never)
     vi.mocked(getSubscriptionState).mockResolvedValue({
       ...sub('suspended'),
-      plus: { enabled: true, perCourtCents: 2_000_000, accessUntil: null, quote: null },
+      plus: { enabled: true, monthlyCents: 2_000_000, accessUntil: null, quote: null },
     } as never)
 
     render(await ReactivarPage())
@@ -226,7 +226,7 @@ describe('/reactivar — admin en estado elegible', () => {
     vi.mocked(getStaffTenant).mockResolvedValue(tenant('suspended') as never)
     vi.mocked(getSubscriptionState).mockResolvedValue({
       ...sub('suspended'),
-      plus: { enabled: false, perCourtCents: 1_500_000, accessUntil: null, quote: null },
+      plus: { enabled: false, monthlyCents: 1_500_000, accessUntil: null, quote: null },
     } as never)
 
     render(await ReactivarPage())

@@ -10,7 +10,7 @@ import {
   buildPriceBreakdown,
   canQuoteCourtCount,
   catalogPricing,
-  subscriptionPlusPrice,
+  effectivePlusCents,
 } from '@/modules/billing/pricing'
 import { WIZARD_STEPS } from '@/modules/onboarding/onboarding.steps'
 
@@ -224,11 +224,7 @@ async function getMrrCents(db: Db): Promise<number> {
       ...pricing,
       billedCourts: row.billedCourts,
       cycle: row.cycle,
-      plusPerCourtCents: subscriptionPlusPrice(
-        row.plusEnabled,
-        row.plusPricePerCourtCents,
-        pricing,
-      ),
+      plusMonthlyCents: effectivePlusCents(row.plusEnabled, row.plusPricePerCourtCents),
     })
     return mrr + breakdown.monthlyEffectiveCents
   }, 0)

@@ -6,8 +6,8 @@ const TENANT = '00000000-0000-4000-8000-000000000001'
 
 const billed: PlusToggleState = {
   kind: 'billed',
-  pricePerCourtCents: null,
-  effectivePerCourtCents: 1_500_000,
+  specialPriceCents: null,
+  effectiveCents: 5_000_000,
   accessUntil: null,
   quote: null,
 }
@@ -20,14 +20,14 @@ const meta = {
     tenantId: TENANT,
     state: {
       kind: 'off',
-      pricePerCourtCents: null,
-      effectivePerCourtCents: 1_500_000,
+      specialPriceCents: null,
+      effectiveCents: 5_000_000,
       accessUntil: null,
       quote: null,
     },
     action: fn<SetTenantPlusAction>(async () => ({
       success: true as const,
-      message: 'Plus prendido: el próximo débito suma $ 15.000 por cancha.',
+      message: 'Plus prendido: el próximo débito suma $ 50.000 por mes.',
     })),
   },
   decorators: [
@@ -52,14 +52,14 @@ type Story = StoryObj<typeof meta>
 export const Apagado: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const input = canvas.getByLabelText('Precio por cancha')
+    const input = canvas.getByLabelText('Precio por mes')
     await expect(input).toHaveValue(null)
-    await expect(input).toHaveAttribute('placeholder', '15.000 (lista)')
+    await expect(input).toHaveAttribute('placeholder', '50.000 (lista)')
     await userEvent.click(canvas.getByRole('button', { name: 'Prender Plus' }))
     await waitFor(() =>
       expect(args.action).toHaveBeenCalledWith(TENANT, {
         op: 'enable',
-        pricePerCourtCents: null,
+        priceCents: null,
       }),
     )
     await expect(await canvas.findByRole('status')).toHaveTextContent('Plus prendido')
@@ -70,13 +70,13 @@ export const Apagado: Story = {
 export const ApagadoPrecioEspecial: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const input = canvas.getByLabelText('Precio por cancha')
+    const input = canvas.getByLabelText('Precio por mes')
     await userEvent.type(input, '15000')
     await userEvent.click(canvas.getByRole('button', { name: 'Prender Plus' }))
     await waitFor(() =>
       expect(args.action).toHaveBeenCalledWith(TENANT, {
         op: 'enable',
-        pricePerCourtCents: 1_500_000,
+        priceCents: 5_000_000,
       }),
     )
     await expect(await canvas.findByRole('status')).toHaveTextContent('Plus prendido')
@@ -89,7 +89,7 @@ export const ApagadoPrecioEspecial: Story = {
 export const PrecioInvalido: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    await userEvent.type(canvas.getByLabelText('Precio por cancha'), '0')
+    await userEvent.type(canvas.getByLabelText('Precio por mes'), '0')
     await userEvent.click(canvas.getByRole('button', { name: 'Prender Plus' }))
     await expect(await canvas.findByRole('alert')).toHaveTextContent('mayor a cero')
     await expect(args.action).not.toHaveBeenCalled()
@@ -98,13 +98,13 @@ export const PrecioInvalido: Story = {
 
 /** Facturado: se actualiza el precio con el campo. */
 export const Facturado: Story = {
-  args: { state: { ...billed, pricePerCourtCents: 1_500_000, effectivePerCourtCents: 1_500_000 } },
+  args: { state: { ...billed, specialPriceCents: 5_000_000, effectiveCents: 5_000_000 } },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     await expect(
-      canvas.getByText(/Facturado: .*15\.000 por cancha \(precio especial\)/),
+      canvas.getByText(/Facturado: .*50\.000 por mes \(precio especial\)/),
     ).toBeInTheDocument()
-    const input = canvas.getByLabelText('Precio por cancha')
+    const input = canvas.getByLabelText('Precio por mes')
     await expect(input).toHaveValue(15000)
     await userEvent.clear(input)
     await userEvent.type(input, '18000')
@@ -112,7 +112,7 @@ export const Facturado: Story = {
     await waitFor(() =>
       expect(args.action).toHaveBeenCalledWith(TENANT, {
         op: 'enable',
-        pricePerCourtCents: 1_800_000,
+        priceCents: 6_000_000,
       }),
     )
   },
@@ -123,11 +123,11 @@ export const FacturadoALista: Story = {
   args: { state: billed },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/Facturado: .*15\.000 por cancha \(lista\)/)).toBeInTheDocument()
-    await expect(canvas.getByLabelText('Precio por cancha')).toHaveValue(null)
+    await expect(canvas.getByText(/Facturado: .*50\.000 por mes \(lista\)/)).toBeInTheDocument()
+    await expect(canvas.getByLabelText('Precio por mes')).toHaveValue(null)
     await userEvent.click(canvas.getByRole('button', { name: 'Actualizar precio' }))
     await waitFor(() =>
-      expect(args.action).toHaveBeenCalledWith(TENANT, { op: 'enable', pricePerCourtCents: null }),
+      expect(args.action).toHaveBeenCalledWith(TENANT, { op: 'enable', priceCents: null }),
     )
   },
 }
@@ -166,15 +166,15 @@ export const ApagarYaLimpiaElCampo: Story = {
   args: {
     state: {
       kind: 'manual_override',
-      pricePerCourtCents: null,
-      effectivePerCourtCents: 1_500_000,
+      specialPriceCents: null,
+      effectiveCents: 5_000_000,
       accessUntil: null,
       quote: null,
     },
   },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const input = canvas.getByLabelText('Precio por cancha')
+    const input = canvas.getByLabelText('Precio por mes')
     await userEvent.type(input, '18000')
     await userEvent.click(canvas.getByRole('button', { name: 'Apagar ya' }))
     const dialog = await screen.findByRole('dialog')
@@ -191,8 +191,8 @@ export const BajaAgendada: Story = {
   args: {
     state: {
       kind: 'ending',
-      pricePerCourtCents: 1_500_000,
-      effectivePerCourtCents: 1_500_000,
+      specialPriceCents: 5_000_000,
+      effectiveCents: 5_000_000,
       accessUntil: '2027-03-15T12:00:00.000Z',
       quote: null,
     },
@@ -204,7 +204,7 @@ export const BajaAgendada: Story = {
     await waitFor(() =>
       expect(args.action).toHaveBeenCalledWith(TENANT, {
         op: 'enable',
-        pricePerCourtCents: 1_500_000,
+        priceCents: 5_000_000,
       }),
     )
   },
@@ -215,8 +215,8 @@ export const CotizacionPendiente: Story = {
   args: {
     state: {
       kind: 'quote_pending',
-      pricePerCourtCents: null,
-      effectivePerCourtCents: 1_500_000,
+      specialPriceCents: null,
+      effectiveCents: 5_000_000,
       accessUntil: null,
       quote: { months: 5, amountCents: 18_000_000 },
     },
@@ -233,8 +233,8 @@ export const PrendidoAMano: Story = {
   args: {
     state: {
       kind: 'manual_override',
-      pricePerCourtCents: null,
-      effectivePerCourtCents: 1_500_000,
+      specialPriceCents: null,
+      effectiveCents: 5_000_000,
       accessUntil: null,
       quote: null,
     },
@@ -271,8 +271,8 @@ export const SinSuscripcionConBotPrendido: Story = {
     state: {
       kind: 'no_subscription',
       botOn: true,
-      pricePerCourtCents: null,
-      effectivePerCourtCents: 1_500_000,
+      specialPriceCents: null,
+      effectiveCents: 5_000_000,
       accessUntil: null,
       quote: null,
     },
@@ -292,8 +292,8 @@ export const SinSuscripcionConBotApagado: Story = {
     state: {
       kind: 'no_subscription',
       botOn: false,
-      pricePerCourtCents: null,
-      effectivePerCourtCents: 1_500_000,
+      specialPriceCents: null,
+      effectiveCents: 5_000_000,
       accessUntil: null,
       quote: null,
     },

@@ -3,7 +3,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { z } from 'zod'
-import { computeSubscriptionAmount, effectivePlusPerCourtCents } from '@/modules/billing/pricing'
+import { computeSubscriptionAmount, effectivePlusCents } from '@/modules/billing/pricing'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import type { GatewaySubscriptionState } from '@/modules/payments/payment.types'
 
@@ -75,7 +75,7 @@ function target(local: Local): number {
     cycle: local.billingCycle,
     // El script solo BAJA precios: un complejo con Plus cuyo debito todavia no
     // lo lleva queda en "Caso requiere revision" (subir Plus es del interruptor).
-    plusPerCourtCents: effectivePlusPerCourtCents(local.plusEnabled, local.plusPricePerCourtCents),
+    plusMonthlyCents: effectivePlusCents(local.plusEnabled, local.plusPricePerCourtCents),
     priceFirstCourtCents: 3_000_000,
     priceExtraCourtCents: 3_000_000,
     annualDiscountBps: 1000,

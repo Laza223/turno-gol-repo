@@ -24,8 +24,8 @@ const meta = {
     updateMarketplaceVisibilityAction: fn(async () => ({ success: true as const })),
     plusState: {
       kind: 'off' as const,
-      pricePerCourtCents: null,
-      effectivePerCourtCents: 2_000_000,
+      specialPriceCents: null,
+      effectiveCents: 5_000_000,
       accessUntil: null,
       quote: null,
     },
@@ -61,8 +61,8 @@ export const PlusFacturado: Story = {
   args: {
     plusState: {
       kind: 'billed',
-      pricePerCourtCents: 1_500_000,
-      effectivePerCourtCents: 1_500_000,
+      specialPriceCents: 4_000_000,
+      effectiveCents: 4_000_000,
       accessUntil: null,
       quote: null,
     },

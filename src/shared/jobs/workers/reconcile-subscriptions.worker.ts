@@ -25,7 +25,7 @@ import {
   canQuoteCourtCount,
   catalogPricing,
   computeSubscriptionAmount,
-  subscriptionPlusPrice,
+  effectivePlusCents,
 } from '@/modules/billing/pricing'
 import { markReferralRewardEarned } from '@/modules/referrals/referral-reward.service'
 import type { BillingCycle, SubscriptionStatus } from '@/modules/billing/billing.types'
@@ -318,11 +318,7 @@ async function checkAmountDrift(
     ...pricing,
     billedCourts: cand.billedCourts,
     cycle: cand.billingCycle,
-    plusPerCourtCents: subscriptionPlusPrice(
-      cand.plusEnabled,
-      cand.plusPricePerCourtCents,
-      pricing,
-    ),
+    plusMonthlyCents: effectivePlusCents(cand.plusEnabled, cand.plusPricePerCourtCents),
   })
   const drift = detectPreapprovalAmountDrift(expected, remote)
   if (drift === null) return false

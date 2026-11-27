@@ -223,6 +223,7 @@ export async function extendTrial(
     // Orden A de locks: tenant_subscriptions ANTES que tenants. Un complejo vencido
     // vuelve a `trialing` con la fecha nueva (soporte le da otra prueba).
     const sub = await loadSubForUpdate(tx, tenantId)
+    // react-doctor-disable-next-line react-doctor/server-sequential-independent-await
     const current = await loadTenantForUpdate(tx, tenantId)
     const rearmed = isExpiredStatus(current.status)
     if (rearmed) await rearmExpiredTrial(tx, tenantId, sub !== null)

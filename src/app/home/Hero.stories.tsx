@@ -66,7 +66,7 @@ export const Celu: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(
-      canvas.getByRole('heading', { level: 1, name: 'Tu cancha, a un toque.' }),
+      canvas.getByRole('heading', { level: 1, name: 'Encontrá cancha libre hoy' }),
     ).toBeVisible()
     const ventana = await canvas.findByRole('region', {
       name: `Complejos de ${CABA.city} con sus horarios libres de hoy`,

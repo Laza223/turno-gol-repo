@@ -51,7 +51,7 @@ export const Default: Story = {
       }),
     ).toBeVisible()
     await expect(canvas.getByText('2026-07-12')).toBeVisible()
-    await expect(canvas.getByRole('link', { name: 'Contactanos por WhatsApp' })).toHaveAttribute(
+    await expect(canvas.getByRole('link', { name: 'Escribinos por WhatsApp' })).toHaveAttribute(
       'href',
       contactWhatsappUrl('Hola! Quiero saber más sobre TurnoGol para mi complejo.'),
     )

@@ -85,7 +85,7 @@ export const Pendiente: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /^Pagar seña/ }))
-    const pending = await canvas.findByRole('button', { name: /procesando/i })
+    const pending = await canvas.findByRole('button', { name: /confirmando/i })
     await expect(pending).toBeDisabled()
     // Última story que usa `procesando`: se libera para no dejar viva la transición.
     await procesando.release(pending)

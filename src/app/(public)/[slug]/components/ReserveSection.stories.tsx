@@ -160,7 +160,7 @@ export const ErrorPorDemasiadasConsultas: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const alert = await canvas.findByRole('alert')
-    await expect(alert).toHaveTextContent('Hubo demasiadas consultas seguidas')
+    await expect(alert).toHaveTextContent('Muchas consultas seguidas')
     await expect(alert).toHaveTextContent('Esperá unos segundos')
     await expect(alert).not.toHaveTextContent('conexión')
     await expect(canvas.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument()
@@ -173,8 +173,8 @@ export const ComplejoNoDisponible: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const alert = await canvas.findByRole('alert')
-    await expect(alert).toHaveTextContent('Este complejo no está disponible')
-    await expect(alert).toHaveTextContent('No se puede reservar acá por ahora.')
+    await expect(alert).toHaveTextContent('Este complejo no está tomando reservas')
+    await expect(alert).toHaveTextContent('Por ahora no se puede reservar online acá.')
     await expect(canvas.getByRole('link', { name: 'Buscar otro complejo' })).toHaveAttribute(
       'href',
       '/explorar',
@@ -191,7 +191,7 @@ export const DiaFueraDeVentana: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     const alert = await canvas.findByRole('alert')
-    await expect(alert).toHaveTextContent('Ese día ya no se puede reservar')
+    await expect(alert).toHaveTextContent('Esa fecha no está habilitada para reservar')
     await expect(alert).not.toHaveTextContent('de nuestro lado')
     await expect(canvas.getByRole('button', { name: 'Ver hoy' })).toBeInTheDocument()
     await expect(canvas.queryByRole('button', { name: 'Reintentar' })).not.toBeInTheDocument()
@@ -304,9 +304,7 @@ export const SinCanchas: Story = {
   parameters: { fetchMock: [WEEK, { match: DAY_ROUTE, json: availabilityResponseNoCourts() }] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(
-      await canvas.findByText('Este complejo todavía no tiene canchas para reservar'),
-    ).toBeVisible()
+    await expect(await canvas.findByText('Todavía no hay canchas cargadas')).toBeVisible()
     await expect(canvas.getByRole('link', { name: 'Consultar por WhatsApp' })).toBeInTheDocument()
   },
 }

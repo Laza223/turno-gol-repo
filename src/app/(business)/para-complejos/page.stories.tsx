@@ -32,7 +32,8 @@ export const Default: Story = {
       /chau cuaderno,\s*chau whatsapp\./i,
     )
     // "Probar 30 días gratis" está en el hero y en el cierre: los dos van a /register.
-    const trials = canvas.getAllByRole('link', { name: /probar 30 días gratis/i })
+    const main = within(canvas.getByRole('main'))
+    const trials = main.getAllByRole('link', { name: /probar 30 días gratis/i })
     await expect(trials).toHaveLength(2)
     for (const cta of trials) await expect(cta).toHaveAttribute('href', '/register')
     // El CTA de WhatsApp abre el chat comercial en otra pestaña, con el mensaje cargado.

@@ -44,7 +44,7 @@ export const GuardaYConfirma: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Avisarme por mail' }))
     await expect(await canvas.findByRole('status')).toHaveTextContent(
-      'Listo, te avisamos por mail. Un mail por día como máximo. Podés darte de baja con un toque.',
+      'Listo, te avisamos por mail cuando se publique un partido (máximo uno por día). Te podés dar de baja cuando quieras.',
     )
     await expect(args.action).toHaveBeenCalledTimes(1)
   },

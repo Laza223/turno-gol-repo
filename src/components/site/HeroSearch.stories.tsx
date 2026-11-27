@@ -227,7 +227,7 @@ export const Buscar: Story = {
   decorators: [withGeolocation('pending')],
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await userEvent.click(canvas.getByRole('button', { name: 'Buscar canchas' }))
+    await userEvent.click(canvas.getByRole('button', { name: 'Ver horarios libres' }))
     await expect(getRouter().push).toHaveBeenCalledWith('/explorar')
   },
 }

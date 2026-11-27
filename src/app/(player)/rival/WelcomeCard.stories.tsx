@@ -270,7 +270,7 @@ export const SinRed: Story = {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Aceptar y armar mi partido' }))
     await expect(await canvas.findByRole('alert')).toHaveTextContent(
-      'No pudimos conectar. Revisá tu conexión y probá de nuevo.',
+      'Sin conexión. Fijate si tenés señal o WiFi y probá de nuevo.',
     )
     await expect(canvas.getByLabelText('Tu nombre')).toHaveValue('Lazaro')
     await waitFor(() =>

@@ -55,7 +55,7 @@ export const ExitoLoginRival: Story = {
   args: { searchParams: { status: 'success', intent: 'login', next: '/rival/nuevo' } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Ya estás adentro.')).toBeInTheDocument()
+    await expect(canvas.getByText('Ya iniciaste sesión.')).toBeInTheDocument()
     await expect(canvas.getByRole('link', { name: 'Volver a RIVAL' })).toHaveAttribute(
       'href',
       '/rival/nuevo',

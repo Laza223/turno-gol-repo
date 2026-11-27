@@ -45,10 +45,8 @@ export const DentroDeVentana: Story = {
   args: { view: 'retry' },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('heading', { name: 'El pago no se procesó' })).toBeInTheDocument()
-    await expect(
-      canvas.getByText(/Tu turno sigue guardado. Podés pagar hasta las 20:14/),
-    ).toBeInTheDocument()
+    await expect(canvas.getByRole('heading', { name: 'El pago no se aprobó' })).toBeInTheDocument()
+    await expect(canvas.getByText(/Tu turno sigue reservado hasta las 20:14/)).toBeInTheDocument()
     await expect(canvas.getByText(/^Sábado, 14 de marzo ·/).closest('p')).toHaveTextContent(
       'Sábado, 14 de marzo · 21:00 a 22:00 Cancha 2',
     )
@@ -74,8 +72,10 @@ export const FueraDeVentana: Story = {
   args: { view: 'released' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('heading', { name: 'El pago no se procesó' })).toBeInTheDocument()
-    await expect(canvas.getByText(/el turno ya no está guardado/)).toBeInTheDocument()
+    await expect(
+      canvas.getByRole('heading', { name: 'Se venció el tiempo para pagar la seña' }),
+    ).toBeInTheDocument()
+    await expect(canvas.getByText(/El turno se liberó/)).toBeInTheDocument()
     await expect(canvas.queryByRole('button', { name: 'Reintentar pago' })).not.toBeInTheDocument()
     await expect(canvas.getByRole('link', { name: 'Reservar de nuevo' })).toHaveAttribute(
       'href',
@@ -103,7 +103,7 @@ export const ReintentoSinContacto: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.queryByRole('link', { name: /al complejo/ })).toBeNull()
-    await expect(canvas.getByText(/Tu turno sigue guardado\. Podés intentar/)).toBeInTheDocument()
+    await expect(canvas.getByText(/Tu turno sigue reservado\. Probá de nuevo/)).toBeInTheDocument()
   },
 }
 
@@ -113,7 +113,7 @@ export const ReintentoNoDisponible: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.queryByRole('button', { name: 'Reintentar pago' })).toBeNull()
-    await expect(canvas.getByText(/no se puede reintentar el pago desde acá/)).toBeInTheDocument()
+    await expect(canvas.getByText(/no se puede reintentar desde acá/)).toBeInTheDocument()
     await expect(canvas.getByRole('link', { name: 'Elegir otro turno' })).toBeInTheDocument()
     await expect(canvas.getByRole('link', { name: 'Escribirle al complejo' })).toBeInTheDocument()
   },

@@ -53,7 +53,9 @@ export const Rival: Story = {
     const link = canvas.getByRole('link', { name: 'Ver partidos abiertos' })
     await expect(link).toHaveAttribute('href', '/rival')
     await expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44)
-    await expect(canvas.getByRole('img', { name: /^Ejemplo de RIVAL/ })).toBeVisible()
+    await expect(
+      canvas.getByRole('img', { name: /^Ejemplo de partidos publicados en Rival/ }),
+    ).toBeVisible()
   },
 }
 

@@ -37,15 +37,12 @@ const TYPES: Array<{ value: BookingKind; title: string; hint: string; icon: Luci
 export function TypePicker({
   value,
   onChange,
-  kinds,
 }: {
   value: BookingKind
   onChange: (v: BookingKind) => void
-  /** Los tipos que se ofrecen (el plan gratis no tiene Turno fijo ni Evento). Default: los 4. */
-  kinds?: readonly BookingKind[]
 }) {
   const hintId = useId()
-  const types = kinds ? TYPES.filter((t) => kinds.includes(t.value)) : TYPES
+  const types = TYPES
   return (
     <>
       {/* El mismo margen de 16 px que el formulario de abajo (12 + el `p-1` del

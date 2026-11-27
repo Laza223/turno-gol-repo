@@ -69,8 +69,6 @@ type Props = {
   slotPanelActions?: SlotPanelActions
   renderCanteenDialog?: RenderCanteenDialog
   renderChargeModal?: RenderChargeModal
-  /** Plan gratis: misma máscara que la vista por día y el alta del gratis (Turno y Bloquear). */
-  freePlan?: boolean
 }
 
 /**
@@ -98,7 +96,6 @@ export function WeekGrid({
   slotPanelActions,
   renderCanteenDialog,
   renderChargeModal,
-  freePlan = false,
 }: Props) {
   const router = useRouter()
   const artNow = useArtNow()
@@ -118,7 +115,6 @@ export function WeekGrid({
     dateTo: to,
     courtId: court.id,
     initialBookings,
-    freePlan,
   })
   const showOfflineBanner = useOfflineBannerDelay(status)
 
@@ -429,7 +425,6 @@ export function WeekGrid({
         slotPanelActions={slotPanelActions}
         nowMs={nowMs}
         renderChargeModal={renderChargeModal}
-        freePlan={freePlan}
       />
 
       {drag && (

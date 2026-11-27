@@ -142,6 +142,8 @@ async function loadAvailableTenantIds({
     .where(
       and(
         inArray(tenants.status, SEARCHABLE_TENANT_STATUSES as never),
+        // Plan no activo (`trial_expired`): sin horarios, no entra al filtro por fecha y hora.
+        sql`${tenants.status}::text NOT IN ('trial_expired', 'free')`,
         eq(tenants.marketplaceVisible, true),
       ),
     )

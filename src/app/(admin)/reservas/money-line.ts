@@ -20,8 +20,6 @@ export function agendaMoneyCell(
     'pending' | 'totalPaid' | 'writtenOff' | 'status' | 'priceSnapshot' | 'type' | 'depositAmount'
   >,
   ended: boolean,
-  /** Plan gratis: el panel no lleva plata. Se dice el estado, nunca un monto ni "No cobrado". */
-  moneyHidden = false,
 ): { text: string; tone: StatusTone } {
   if (b.status === 'canceled_refunded' || b.status === 'canceled_no_refund') {
     return { text: 'Cancelada', tone: 'neutral' }
@@ -34,7 +32,7 @@ export function agendaMoneyCell(
   // Un bloqueo no es un turno de nadie: no se dice nada de plata (el ícono y
   // "Bloqueo" ya lo explican). Un evento a $0 (escuelita, cortesía) sí es un
   // turno, y ahí "Sin cargo" responde "¿cuánto se cobra?".
-  if (b.type === 'block' || moneyHidden) return { text: '', tone: 'neutral' }
+  if (b.type === 'block') return { text: '', tone: 'neutral' }
   if (b.priceSnapshot === 0) return { text: 'No se cobra', tone: 'neutral' }
   if (typeof b.pending !== 'number') return { text: formatArs(b.priceSnapshot), tone: 'neutral' }
   // Dado por perdido: nunca el verde de "Pagado" — lo que falta no entró.

@@ -11,7 +11,7 @@ import { withTenantContext, type DbTx } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import {
   BLOCKED_TENANT_STATUSES,
-  isFreePlan,
+  isExpiredStatus,
   READ_ONLY_TENANT_STATUSES,
 } from '@/modules/tenants/tenant.lifecycle'
 import { staffUsers, tenantStaffMembers } from '@/shared/db/schema'
@@ -152,12 +152,12 @@ async function guardStaffMutation(tenant: {
   if (STAFF_WRITE_BLOCKED_STATUSES.has(tenant.status)) {
     return { success: false, error: 'El complejo no está activo.' }
   }
-  // Freemium: el encargado (segundo usuario) es del plan pago. Todo el equipo
-  // queda cerrado en gratis, igual que el default de `guards.ts` sin `allowFree`.
-  if (isFreePlan(tenant)) {
+  // Con el plan no activo el equipo queda cerrado, igual que el default de
+  // `guards.ts` sin `allowExpired`.
+  if (isExpiredStatus(tenant.status)) {
     return {
       success: false,
-      error: 'El encargado entra con el plan. Activalo para sumar a tu equipo.',
+      error: 'Tu plan no está activo. Activalo para sumar a tu equipo.',
     }
   }
   return null

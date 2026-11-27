@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { dateStr, slug } from '@/shared/validation/primitives'
 import { getPublicAvailability, getPublicTenant } from '@/modules/tenants/public.service'
-import { isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
+import { canTakeOnlineBookings } from '@/modules/tenants/tenant.lifecycle'
 import { captureException } from '@/lib/sentry'
 import { internal } from '@/shared/api-error'
 
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
   let availability
   try {
     tenant = await getPublicTenant(tenantSlug)
-    if (!tenant || !isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd)) {
+    if (!tenant || !canTakeOnlineBookings(tenant.status, tenant.canceledPeriodEnd)) {
       // Un complejo suspendido/bloqueado/dado de baja no debe exponer turnos
       // via la API publica (mismo not_found que aplica la page del perfil).
       return NextResponse.json({ error: 'not_found' }, { status: 404 })

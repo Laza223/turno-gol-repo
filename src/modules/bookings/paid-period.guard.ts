@@ -32,7 +32,7 @@ import { BookingDateOutOfRangeError } from './booking.errors'
  * en el pool BYPASSRLS del worker), así que el LEFT JOIN se resuelve igual.
  *
  * `canceled` SIN período legible (fila ausente o `current_period_end` NULL) cae
- * en el lado restrictivo —hoy— por el mismo criterio que `isPublicPortalOpen`,
+ * en el lado restrictivo —hoy— por el mismo criterio que `isPublicProfileVisible`,
  * que con `null` da el portal por cerrado: sin período comprobable no se
  * conceden fechas futuras.
  */

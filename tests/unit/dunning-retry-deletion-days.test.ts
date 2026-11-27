@@ -23,7 +23,7 @@ vi.mock('@/modules/billing/lifecycle.service', async (importOriginal) => {
     ...actual,
     transitionPastDueToSuspended: vi.fn(),
     transitionBlockedToChurned: vi.fn(),
-    transitionToFree: vi.fn(),
+    transitionToExpired: vi.fn(),
   }
 })
 
@@ -73,8 +73,8 @@ describe('runDunningSweep — el mail de baja usa las constantes reales de reten
     expect(payload.content.daysRemaining).toBe(CHURNED_DELETION_DAYS)
   })
 
-  // Freemium (2026-11-08): la baja vencida pasa al plan gratis, no se agenda borrado.
-  it('canceled→free: avisa el pase al plan gratis, sin fecha de borrado', async () => {
+  // Freemium (2026-11-08): la baja vencida pasa a plan no activo, no se agenda borrado.
+  it('canceled→trial_expired: avisa el pase a plan no activo, sin fecha de borrado', async () => {
     sqlMock = makeSqlMock([
       [], // pastDueRows
       [], // suspendedRows
@@ -89,7 +89,7 @@ describe('runDunningSweep — el mail de baja usa las constantes reales de reten
     expect(enqueueTenantOwnerNotification).toHaveBeenCalledTimes(1)
     const [payload] = (enqueueTenantOwnerNotification as ReturnType<typeof vi.fn>).mock
       .calls[0] as [{ templateName: string; content: { reason: string; daysRemaining?: number } }]
-    expect(payload.templateName).toBe('plan_downgraded_free')
+    expect(payload.templateName).toBe('plan_not_active')
     expect(payload.content.reason).toBe('canceled')
     expect(payload.content.daysRemaining).toBeUndefined()
   })

@@ -37,7 +37,7 @@ describe('la retención del código coincide con lo que promete el texto legal',
   it('/terminos — "se conservan N días tras la baja"', () => {
     const days = retentionDaysPromisedIn(
       read('src/app/(public)/terminos/page.tsx'),
-      'conservan sus datos',
+      'conservan sus',
     )
     expect(
       CHURNED_DELETION_DAYS,
@@ -54,17 +54,5 @@ describe('la retención del código coincide con lo que promete el texto legal',
       CHURNED_DELETION_DAYS,
       `/privacidad promete ${days} días y el código borra a los ${CHURNED_DELETION_DAYS}`,
     ).toBe(days)
-  })
-
-  // Freemium (2026-11-08): el gratis abandonado se borra a los
-  // CHURNED_DELETION_DAYS del aviso (`scheduleInactiveFreeDeletion`); los
-  // términos lo dicen con número. La baja voluntaria ya no agenda borrado: pasa
-  // al plan gratis.
-  it('/terminos — el gratis inactivo se elimina N días después del aviso', () => {
-    const days = retentionDaysPromisedIn(
-      read('src/app/(public)/terminos/page.tsx'),
-      'si no vuelve a entrar, sus datos se eliminan',
-    )
-    expect(CHURNED_DELETION_DAYS).toBe(days)
   })
 })

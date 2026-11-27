@@ -72,39 +72,6 @@ export const Turno: Story = {
   },
 }
 
-/**
- * Plan gratis (freemium v2): se anota quién juega, sin precio, cobro ni nota, y
- * solo hay Turno y Bloquear cancha. El turno sale en $0 explícito.
- */
-export const TurnoPlanGratis: Story = {
-  name: 'Plan gratis — turno con nombre y teléfono, sin plata',
-  args: {
-    freePlan: true,
-    createBookingAction: fn(async () => ({ success: true as const, booking: booking() })),
-  },
-  play: async ({ canvasElement, args }) => {
-    const body = within(canvasElement.ownerDocument.body)
-    await expect(body.queryByRole('radio', { name: 'Turno fijo' })).toBeNull()
-    await expect(body.queryByRole('radio', { name: 'Evento' })).toBeNull()
-    await expect(body.queryByText('Precio y cobro')).toBeNull()
-    await expect(body.queryByRole('button', { name: 'Agregar nota' })).toBeNull()
-    await userEvent.type(body.getByLabelText('¿A nombre de quién?'), 'Juan Pérez')
-    await userEvent.click(body.getByRole('button', { name: /Agendar turno/ }))
-    await waitFor(() => expect(args.createBookingAction).toHaveBeenCalled())
-    const payload = (args.createBookingAction as ReturnType<typeof fn>).mock.calls[0]![0] as Record<
-      string,
-      unknown
-    >
-    await expect(payload).toMatchObject({
-      type: 'spontaneous',
-      guestName: 'Juan Pérez',
-      priceOverride: 0,
-    })
-    await expect(payload).not.toHaveProperty('depositAmount')
-    await expect(payload).not.toHaveProperty('notesInternal')
-  },
-}
-
 export const TurnoFijo: Story = {
   name: 'Turno fijo — reusa createAbonadoAction con el día/hora del casillero',
   args: {

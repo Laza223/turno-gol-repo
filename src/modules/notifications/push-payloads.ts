@@ -48,7 +48,7 @@ export type PlanPushEvent =
   | { event: 'trial_expired' }
   | { event: 'payment_failed'; retryDate: string }
   | { event: 'suspended' }
-  | { event: 'downgraded_free' }
+  | { event: 'plan_not_active' }
   | { event: 'deletion_warning'; deletionDate: string; daysRemaining: number }
 
 function planCopy(e: PlanPushEvent): { title: string; body: string } {
@@ -63,8 +63,8 @@ function planCopy(e: PlanPushEvent): { title: string; body: string } {
       }
     case 'trial_expired':
       return {
-        title: 'Terminó tu prueba del Completo',
-        body: 'Pasaste al plan gratis. Tus jugadores te siguen reservando online.',
+        title: 'Terminó tu prueba',
+        body: 'Tus datos y tus turnos confirmados siguen. Activá el plan para volver a reservar online.',
       }
     case 'payment_failed':
       return {
@@ -76,10 +76,10 @@ function planCopy(e: PlanPushEvent): { title: string; body: string } {
         title: 'Tu cuenta quedó en solo lectura',
         body: 'No pudimos cobrar el plan. Regularizá el pago para volver a operar.',
       }
-    case 'downgraded_free':
+    case 'plan_not_active':
       return {
-        title: 'Tu complejo pasó al plan gratis',
-        body: 'Tus jugadores te siguen reservando online. Para anotar la noche, activá el plan.',
+        title: 'Tu plan no está activo',
+        body: 'Tus datos y tus turnos confirmados siguen. Activá el plan para volver a reservar online.',
       }
     case 'deletion_warning':
       return {

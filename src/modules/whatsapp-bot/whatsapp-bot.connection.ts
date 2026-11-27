@@ -3,7 +3,7 @@ import { tenants, tenantSubscriptions, whatsappConnections } from '@/shared/db/s
 import { insertAuditLog, insertSystemAuditLog } from '@/shared/db/audit'
 import { withTenantContext, type Db, type DbTx } from '@/shared/db/client'
 import { isFeatureEnabled } from '@/shared/feature-flags'
-import { isFreePlan, isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
+import { canTakeOnlineBookings } from '@/modules/tenants/tenant.lifecycle'
 import { isUniqueViolation } from '@/shared/db/pg-errors'
 import { logger } from '@/shared/lib/logger'
 import {
@@ -23,7 +23,7 @@ export const BOT_FEATURE_FLAG = 'whatsapp_bot'
 /**
  * ¿El complejo está al día como para que el bot le conteste a sus clientes?
  * (P8). Mismo criterio que el portal público y las herramientas de reserva
- * (`isPublicPortalOpen`): en `suspended` / `blocked` / `churned` / `deleted` y en
+ * (`canTakeOnlineBookings`): en `suspended` / `blocked` / `churned` / `deleted` y en
  * `canceled` con el período vencido el bot se calla y el mensaje queda para el
  * dueño en su celular, como cuando está apagado; en `past_due` y en `canceled`
  * con período vigente sigue contestando.
@@ -34,8 +34,8 @@ export const BOT_FEATURE_FLAG = 'whatsapp_bot'
  * RLS, por eso se lee dentro del contexto del complejo. El período pago solo
  * cuenta cuando el estado es `canceled`.
  *
- * En el plan gratis (`free`) el bot se calla siempre: es del plan pago (Plus),
- * condición C2 del ADR (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
+ * En `trial_expired` el bot se calla siempre: `canTakeOnlineBookings` ya lo cierra
+ * (docs/decisions/2026-11-27-prueba-30-dias-y-precios.md).
  */
 export async function isBotTenantOpen(tenantId: string, now: Date): Promise<boolean> {
   const [row] = await withTenantContext(tenantId, (tx) =>
@@ -47,8 +47,7 @@ export async function isBotTenantOpen(tenantId: string, now: Date): Promise<bool
       .limit(1),
   )
   if (!row) return false
-  if (isFreePlan(row)) return false
-  return isPublicPortalOpen(row.status, row.status === 'canceled' ? row.periodEnd : null, now)
+  return canTakeOnlineBookings(row.status, row.status === 'canceled' ? row.periodEnd : null, now)
 }
 
 export type WhatsappConnectionView = {

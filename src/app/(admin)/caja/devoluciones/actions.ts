@@ -41,7 +41,7 @@ export async function markRefundSettledAction(
   const parsed = settleSchema.safeParse({ refundPaymentId, method })
   if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
 
-  const auth = await requireOperatorStaff({ allowReadOnly: true })
+  const auth = await requireOperatorStaff({ allowReadOnly: true, allowExpired: true })
   if (!auth.ok) return { success: false, error: auth.error }
   const { user, tenant } = auth
 

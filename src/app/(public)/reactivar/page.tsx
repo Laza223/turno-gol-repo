@@ -1,3 +1,4 @@
+import { isExpiredStatus } from '@/modules/tenants/tenant.lifecycle'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
@@ -42,7 +43,21 @@ export const metadata: Metadata = {
 }
 
 /** Estados desde los que billing.service.reactivate() permite pedir un preapproval nuevo. */
-const REACTIVATE_ELIGIBLE = new Set(['canceled', 'churned', 'suspended', 'blocked', 'free'])
+const REACTIVATE_ELIGIBLE = new Set([
+  'canceled',
+  'churned',
+  'suspended',
+  'blocked',
+  'trial_expired',
+  // Alias viejo de `trial_expired`: se borra con el PR que migra las filas.
+  'free',
+])
+
+const EXPIRED_COPY = {
+  title: 'Tu plan no está activo',
+  description:
+    'Tus datos y los turnos confirmados siguen. Las reservas online y la carga de turnos nuevos están pausadas. Activá el plan para volver a usar TurnoGol.',
+}
 
 const STATUS_COPY: Record<string, { title: string; description: string }> = {
   past_due: {
@@ -65,12 +80,10 @@ const STATUS_COPY: Record<string, { title: string; description: string }> = {
     description:
       'Por falta de pago prolongada, tu cuenta fue dada de baja. Todavía podés reactivarla y recuperar tus datos antes de que se eliminen.',
   },
-  // Plan gratis (freemium): llega acá al tocar algo del plan pago o "Pasar al plan".
-  free: {
-    title: 'Esto es con el plan',
-    description:
-      'Con el plan anotás el precio y quién pagó, ves lo que falta cobrar, los fijos se cargan solos, llevás la caja y sumás a tu encargado.',
-  },
+  // `trial_expired` (la prueba terminó o el plan dejó de pagarse). `free` es el
+  // alias viejo hasta migrar las filas.
+  trial_expired: EXPIRED_COPY,
+  free: EXPIRED_COPY,
   canceled: {
     title: 'Cancelaste tu suscripción',
     description: 'Podés reactivarla cuando quieras y seguir operando con tus datos intactos.',
@@ -147,11 +160,11 @@ export default async function ReactivarPage() {
       <div className="portal-ambient">
         <section className="pa-col text-center">
           <h1 className="rv-h1">
-            {tenant.status === 'free' ? 'El encargado entra con el plan' : 'Cuenta pausada'}
+            {isExpiredStatus(tenant.status) ? 'Tu plan no está activo' : 'Cuenta pausada'}
           </h1>
           <p className="rv-sub">
-            {tenant.status === 'free'
-              ? 'Avisale al dueño del complejo. Cuando active el plan, vas a poder entrar al panel.'
+            {isExpiredStatus(tenant.status)
+              ? 'Avisale al dueño del complejo para que lo active. Mientras tanto podés ver el panel y operar los turnos que ya estaban confirmados.'
               : 'Pedile al dueño del complejo que regularice el pago para volver a operar.'}
           </p>
           {variosComplejos && (
@@ -282,7 +295,7 @@ export default async function ReactivarPage() {
         2026-10-22 la prueba vencida iba directo a `blocked`, que tampoco la
         mostraba.
       */}
-        {tenant.status === 'free' && (
+        {isExpiredStatus(tenant.status) && (
           <div className="flex flex-col items-center">
             <Link href="/dashboard" className={PILL_GLASS}>
               Volver al panel

@@ -54,8 +54,8 @@ export function ArticleShell({
         <div className="ar-cta glass-painted">
           <h2>Ordená las reservas y la caja de tu complejo</h2>
           <p>
-            TurnoGol está hecho 100% para complejos de fútbol. Probalo 30 días gratis, sin tarjeta y
-            sin permanencia.
+            TurnoGol está hecho 100% para complejos de fútbol. Probalo 30 días gratis, sin tarjeta,
+            y cancelás cuando querés.
           </p>
           <a
             href={contactWhatsappUrl('Hola! Quiero saber más sobre TurnoGol para mi complejo.')}

@@ -5,7 +5,6 @@ import { bookings, courts, players } from '@/shared/db/schema'
 import { sumBookingChargesByBooking } from '@/app/(admin)/reservas/queries'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { artTodayStr } from '@/shared/dates/art'
-import { isOnlineBooking } from '@/lib/booking/free-plan-mask'
 import type { NextRequest } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -101,35 +100,7 @@ export const GET = withTenant(
       tx,
     )
 
-    // Plan gratis (freemium v2): el enmascarado de la grilla se aplica también
-    // acá, en el servidor. Si solo lo hiciera el cliente, un fetch a este
-    // endpoint devolvería la plata y las notas que el panel gratis no muestra.
-    // Los nombres y teléfonos sí van: anotar quién juega es gratis. Mismo
-    // criterio que `maskGridBookingForFreePlan`.
-    const tenantRows = (await tx.execute(
-      sql`SELECT status::text AS status FROM tenants WHERE id = ${tenantId} LIMIT 1`,
-    )) as unknown as Array<{ status: string }>
-    const freePlan = tenantRows[0]?.status === 'free'
-
-    const data = pageRows.map((r) => {
-      const row = toApiRow(r)
-      if (!freePlan) return row
-      const online = isOnlineBooking({
-        type: r.booking.type,
-        createdByStaff: r.booking.createdByStaff,
-      })
-      return {
-        ...row,
-        total_paid: 0,
-        pending: 0,
-        written_off: 0,
-        price_snapshot: online ? row.price_snapshot : 0,
-        deposit_amount: 0,
-        deposit_status: 'not_required' as const,
-        payment_method: null,
-        notes_internal: null,
-      }
-    })
+    const data = pageRows.map((r) => toApiRow(r))
 
     function toApiRow(r: (typeof pageRows)[number]) {
       const { totalPaid, pending, writtenOff } = summarizeBookingCharges({
@@ -192,5 +163,5 @@ export const GET = withTenant(
   // endpoints: la grilla lo llama cada 30 segundos por pestaña abierta, así que
   // era un viaje a Upstash con una conexión del pool tomada, en loop y por cada
   // tablet del mostrador.
-  { rateLimit: 'adminCrud', allowFree: true },
+  { rateLimit: 'adminCrud' },
 )

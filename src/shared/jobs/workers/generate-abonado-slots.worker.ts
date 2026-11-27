@@ -58,10 +58,17 @@ export async function runRollingSlotGeneration(): Promise<void> {
   // generando — recortados en el corte por `paidPeriodCutoffFrom` más abajo.
   // Antes se lo saltaba entero y los clientes con turno fijo se quedaban sin
   // sesiones desde el día uno de una baja con dos meses pagos por delante.
-  // `free` (freemium, decisión 4 de docs/decisions/2026-11-08-freemium-spec-y-estado-free.md):
-  // los fijos son del plan pago y dejan de generar fechas. Las ya cargadas
-  // quedan en la grilla como "ocupado"; al pagar se vuelven a generar.
-  const SKIP_STATUSES = new Set(['suspended', 'blocked', 'churned', 'deleted', 'free'])
+  // `trial_expired` (y su alias `free`): el panel está en solo lectura y no se
+  // cargan turnos nuevos, así que los fijos dejan de generar fechas. Las ya
+  // cargadas quedan en la grilla; al pagar se vuelven a generar.
+  const SKIP_STATUSES = new Set([
+    'suspended',
+    'blocked',
+    'churned',
+    'deleted',
+    'trial_expired',
+    'free',
+  ])
 
   const candidates = abonadoRows.filter((a) => !SKIP_STATUSES.has(a.tenant_status))
 

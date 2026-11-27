@@ -16,7 +16,7 @@ import {
 import { isInAppBrowser } from '@/lib/in-app-browser'
 import { cn } from '@/lib/utils'
 import { getPublicAvailability, getPublicTenant } from '@/modules/tenants/public.service'
-import { isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
+import { canTakeOnlineBookings } from '@/modules/tenants/tenant.lifecycle'
 import { SLOT_DURATION_MINUTES } from '@/shared/constants'
 import { endLabelFromMins } from '@/shared/time/operating-day'
 import { extractAuthUser } from '@/modules/auth/auth.middleware'
@@ -73,7 +73,10 @@ export default async function ReservarPage(props: Props) {
   const params = await props.params
   const tenant = await getPublicTenant(params.slug)
   if (!tenant) notFound()
-  if (!isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd) || !tenant.allowOnlineBooking) {
+  if (
+    !canTakeOnlineBookings(tenant.status, tenant.canceledPeriodEnd) ||
+    !tenant.allowOnlineBooking
+  ) {
     return <CheckoutInvalidState slug={params.slug} kind="no-online" />
   }
 

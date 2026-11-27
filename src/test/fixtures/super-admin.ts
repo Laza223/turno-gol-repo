@@ -23,8 +23,9 @@ export type SaTenantStatus =
   | 'churned'
   | 'deleted'
   | 'free'
+  | 'trial_expired'
 
-/** Los 9 estados de `tenant_status`, en el orden del FSM (doc4 §2). */
+/** Los 10 estados de `tenant_status`, en el orden del FSM (doc4 §2). */
 export const SA_TENANT_STATUSES: readonly SaTenantStatus[] = [
   'trialing',
   'active',
@@ -35,6 +36,7 @@ export const SA_TENANT_STATUSES: readonly SaTenantStatus[] = [
   'churned',
   'deleted',
   'free',
+  'trial_expired',
 ]
 
 export type SaBillingCycle = 'monthly' | 'annual'
@@ -110,6 +112,7 @@ const ZERO_BY_STATUS: Record<SaTenantStatus, number> = {
   churned: 0,
   deleted: 0,
   free: 0,
+  trial_expired: 0,
 }
 
 /** Embudo con caída típica: 1→2→3→4 decreciente, algo de activación. */
@@ -390,6 +393,7 @@ export type SaTenantDetail = {
     referralRewardStatus: string | null
   }
   pulse: SaTenantPulse
+  contactClicks15d: number
   subscription: {
     status: SaSubscriptionStatus
     planId: string
@@ -489,6 +493,7 @@ export const tenantDetail = (overrides: Partial<SaTenantDetail> = {}): SaTenantD
     onlineBookings7d: 9,
     playersCount: 118,
   },
+  contactClicks15d: 0,
   subscription: subscriptionDefault(),
   courts: [court(), courtFutbol7()].map((c) => ({
     id: c.id,
@@ -517,6 +522,7 @@ export const tenantDetailTrialing = (): SaTenantDetail =>
       settings: tenantSettings({ onboarding_completed: false, onboarding_step: 2 }),
     },
     pulse: { lastBookingAt: null, bookings7d: 0, onlineBookings7d: 0, playersCount: 0 },
+    contactClicks15d: 0,
     subscription: null,
     courts: [],
     staff: [staffMember({ id: uid(7031), staffUserId: uid(7031) })],

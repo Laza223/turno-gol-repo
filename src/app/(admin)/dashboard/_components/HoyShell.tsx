@@ -60,7 +60,6 @@ export function HoyShell({
   daySlots,
   dayIsClosed,
   canManageCourts,
-  freePlan = false,
   serverNowMs,
   cancellationPolicyHours,
   lateCancelHours = 0,
@@ -75,8 +74,6 @@ export function HoyShell({
   daySlots: string[]
   dayIsClosed: boolean
   canManageCourts: boolean
-  /** Plan gratis: el tablero no muestra cobros (no hay caja). */
-  freePlan?: boolean
   /** La hora con la que el servidor armó esta respuesta: el reloj nunca va por detrás. */
   serverNowMs: number
   /** Horas de anticipación de la política de cancelación, para el aviso de seña del modal. */
@@ -193,7 +190,6 @@ export function HoyShell({
         canManageCourts={canManageCourts}
         onOpenBooking={openUnlessRefreshing}
         onChargeMany={() => !isRefreshing && setManyOpen(true)}
-        freePlan={freePlan}
       />
 
       {earlier.count > 0 && (

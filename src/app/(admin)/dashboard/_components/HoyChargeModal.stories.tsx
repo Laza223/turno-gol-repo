@@ -282,47 +282,6 @@ export const TodoJuntoQuedaAbiertoYSeCierraConListo: Story = {
  * sigue esperando; como el turno ya quedó jugado, el segundo cobro va por la
  * acción de saldo (`settle`), no por la de terminar.
  */
-/**
- * Plan gratis (freemium v2): la máscara marca el turno con `moneyHidden`. El
- * modal dice quién juega y no habla de plata: ni precio, ni "Falta cobrar", ni
- * el botón de cobro, ni "Dar por perdido".
- */
-export const PlanGratisSinPlata: Story = {
-  args: scenario({
-    ...terminado(),
-    priceSnapshot: 0,
-    pending: 0,
-    totalPaid: 0,
-    moneyHidden: true,
-  }),
-  play: async () => {
-    const dialog = await openDialog()
-    await expect(dialog.getByText('Juan Pérez')).toBeVisible()
-    await expect(dialog.queryByText('Falta cobrar')).toBeNull()
-    await expect(dialog.queryByText(/No se cobra/)).toBeNull()
-    await expect(dialog.queryByText(/Cobrado/)).toBeNull()
-    await expect(dialog.queryByRole('button', { name: /Cobrar/ })).toBeNull()
-    await expect(dialog.queryByRole('button', { name: /perdido/i })).toBeNull()
-    // La cantina es del plan: en gratis el server la rechaza, no se ofrece.
-    await expect(dialog.queryByRole('button', { name: /cantina/i })).toBeNull()
-    // Terminado en gratis: el aviso de pasar al plan para anotar el cobro.
-    await expect(dialog.getByText('¿Se cobró?')).toBeVisible()
-    await expect(dialog.getByRole('link', { name: 'Ver el plan' })).toHaveAttribute(
-      'href',
-      '/reactivar',
-    )
-  },
-}
-
-export const PlanGratisTodaviaNoTermino: Story = {
-  args: scenario(enJuego({ priceSnapshot: 0, pending: 0, totalPaid: 0, moneyHidden: true })),
-  play: async () => {
-    const dialog = await openDialog()
-    await expect(dialog.getByText('Juan Pérez')).toBeVisible()
-    await expect(dialog.queryByText('¿Se cobró?')).toBeNull()
-  },
-}
-
 export const PorEquipo: Story = {
   args: scenario(terminado()),
   play: async ({ args }) => {

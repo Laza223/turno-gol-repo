@@ -60,5 +60,5 @@ export const POST = withTenant(
 
     return NextResponse.json({ success: true, deleted: rows.length > 0 })
   },
-  { allowFree: true },
+  { allowExpired: true },
 )

@@ -71,11 +71,11 @@ describe('CancelSubscriptionSection — visibilidad por estado', () => {
 })
 
 describe('CancelSubscriptionSection — modal de confirmación', () => {
-  it('explica la fecha de acceso y que después pasa al plan gratis', async () => {
+  it('explica la fecha de acceso y que después el plan queda no activo', async () => {
     render(<CancelSubscriptionSection status="active" accessUntil={ACCESS_UNTIL} />)
     const dialog = await openDialog()
     expect(within(dialog).getByText(/13 de septiembre de 2026/)).toBeTruthy()
-    expect(within(dialog).getByText(/pasás al plan gratis/)).toBeTruthy()
+    expect(within(dialog).getByText(/el plan queda no activo/)).toBeTruthy()
   })
 
   it('motivo vacío → error inline, no llama al endpoint', async () => {

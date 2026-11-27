@@ -38,5 +38,5 @@ export const POST = withTenant(
       return forbidden('La suscripción pertenece a otra sesión. Desactivala y volvé a habilitarla.')
     return NextResponse.json({ success: true, subscriptionId })
   },
-  { allowFree: true },
+  { allowExpired: true },
 )

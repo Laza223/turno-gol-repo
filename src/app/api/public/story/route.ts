@@ -2,12 +2,8 @@ import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { dateStr, hhmm, slug } from '@/shared/validation/primitives'
 import { getPublicAvailability, getPublicTenant } from '@/modules/tenants/public.service'
-import { isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
-import {
-  buildStoryModel,
-  STORY_FAILURE_MESSAGES,
-  storyTenantLogoUrl,
-} from '@/modules/tenants/story-summary'
+import { canTakeOnlineBookings } from '@/modules/tenants/tenant.lifecycle'
+import { buildStoryModel, STORY_FAILURE_MESSAGES } from '@/modules/tenants/story-summary'
 import { MAX_HOURS } from '@/lib/story-image/model'
 import { renderStoryPng } from '@/lib/story-image/render'
 import { loadTenantLogo } from '@/lib/story-image/tenant-logo'
@@ -64,7 +60,7 @@ export async function GET(req: NextRequest) {
     const tenant = await getPublicTenant(tenantSlug)
     // Mismo gate que el portal: un complejo suspendido, bloqueado o dado de baja
     // no muestra turnos ni por acá.
-    if (!tenant || !isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd)) {
+    if (!tenant || !canTakeOnlineBookings(tenant.status, tenant.canceledPeriodEnd)) {
       return notFound('No encontramos ese complejo.')
     }
 
@@ -97,7 +93,7 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    const logoUrl = storyTenantLogoUrl(tenant)
+    const logoUrl = tenant.logoUrl
     const tenantLogo = logoUrl ? await loadTenantLogo(logoUrl) : null
     let png: ArrayBuffer
     try {

@@ -111,7 +111,7 @@ function mapKnownError(err: unknown): SupportActionResult {
   if (err instanceof TrialNotActiveError) {
     return {
       success: false,
-      error: `Solo se puede extender el trial de un complejo en estado 'trialing' (actual: '${err.status}').`,
+      error: `Solo se puede extender la prueba de un complejo en 'trialing' o 'trial_expired' (actual: '${err.status}').`,
     }
   }
   if (err instanceof PlanAlreadyAssignedError) {

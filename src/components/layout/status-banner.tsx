@@ -1,8 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import type { ActionResult } from '@/shared/types/action-result'
-import { ResumeOnlineButton } from './resume-online-button'
+import { TRIAL_DAYS } from '@/shared/constants'
 import { AlertTriangle, Info, XCircle } from 'lucide-react'
 import type { StaffRole } from '@/modules/staff/roles'
 
@@ -21,10 +20,10 @@ import type { StaffRole } from '@/modules/staff/roles'
 export type ReadOnlyNotice = { origin: 'dunning'; until: string | null }
 
 /**
- * Plan gratis: si la reserva online está en pausa por cancelaciones. Lo arma el
- * layout de (admin). Las reservas online del gratis no tienen tope (freemium v2).
+ * `trial_expired`: si el complejo pagó alguna vez. Cambia el título del banner
+ * ("terminó tu prueba" o "tu plan no está activo"). Lo arma el layout de (admin).
  */
-export type FreePlanNotice = { paused: boolean }
+export type ExpiredNotice = { everPaid: boolean }
 
 interface StatusBannerProps {
   tenantStatus: string
@@ -33,10 +32,8 @@ interface StatusBannerProps {
   readOnly?: ReadOnlyNotice | null
   /** Rol del staff logueado: solo el dueño ve el botón de pagar. */
   staffRole?: StaffRole
-  /** Solo para `free`. */
-  freePlan?: FreePlanNotice | null
-  /** "Ya anoté mis turnos" de la pausa del plan gratis (llega por prop). */
-  resumeOnlineAction?: () => Promise<ActionResult>
+  /** Solo para `trial_expired`. Sin valor se trata como "nunca pagó". */
+  expired?: ExpiredNotice | null
   /**
    * Override para Storybook/tests: por default lee `NEXT_PUBLIC_SERVICE_DEGRADED`
    * (deploy-playbook.md — toggle sin redeploy de código). Nadie en la app real
@@ -78,8 +75,7 @@ export function StatusBanner({
   periodEnd,
   readOnly,
   staffRole,
-  freePlan,
-  resumeOnlineAction,
+  expired,
   serviceDegraded = process.env.NEXT_PUBLIC_SERVICE_DEGRADED === 'true',
 }: StatusBannerProps) {
   // Priority 1: Service degraded
@@ -183,28 +179,11 @@ export function StatusBanner({
     )
   }
 
-  // Priority 5: plan gratis (freemium, 2026-11-08 y corte v2). En gratis solo
-  // entra el dueño, así que el botón no depende del rol. La pausa es lo único
-  // que corta las reservas online del gratis y el dueño la destraba solo.
-  if (tenantStatus === 'free') {
-    if (freePlan?.paused) {
-      return (
-        <div
-          role="status"
-          className="flex flex-wrap items-center gap-3 px-4 py-3 bg-amber-50 border-b border-amber-200 text-sm text-amber-800 dark:bg-amber-500/10 dark:border-amber-500/25 dark:text-amber-200"
-        >
-          <AlertTriangle
-            className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400"
-            aria-hidden="true"
-          />
-          <span className="flex-1">
-            Pausamos tus reservas online porque cancelaste varias este mes. Anotá en la grilla los
-            turnos que tomaste por teléfono o en persona y avisanos.
-          </span>
-          {resumeOnlineAction && <ResumeOnlineButton action={resumeOnlineAction} />}
-        </div>
-      )
-    }
+  // Priority 5: `trial_expired` (docs/decisions/2026-11-27-prueba-30-dias-y-precios.md).
+  // Banda fija y sobria, sin tono punitivo: dice el estado, tranquiliza sobre los
+  // datos y los turnos confirmados, y deja un solo botón. `free` es el alias viejo.
+  if (tenantStatus === 'trial_expired' || tenantStatus === 'free') {
+    const everPaid = expired?.everPaid === true
     return (
       <div
         role="status"
@@ -212,12 +191,18 @@ export function StatusBanner({
       >
         <Info className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden="true" />
         <span className="flex-1">
-          Estás en el plan gratis. Anotás tus turnos y tus jugadores te reservan online. Los cobros,
-          la caja, los fijos que se cargan solos y tu encargado son con el plan.
+          <strong>
+            {everPaid ? 'Tu plan no está activo.' : `Terminó tu prueba de ${TRIAL_DAYS} días.`}
+          </strong>{' '}
+          Tus datos y los turnos confirmados siguen. Las reservas online y la carga de turnos nuevos
+          están pausadas hasta que actives el plan.
+          {staffRole !== 'admin' && ' Avisale al dueño del complejo.'}
         </span>
-        <Link href="/reactivar" className={ctaClass('hover:text-sky-950 dark:hover:text-sky-50')}>
-          Pasar al plan
-        </Link>
+        {staffRole === 'admin' && (
+          <Link href="/reactivar" className={ctaClass('hover:text-sky-950 dark:hover:text-sky-50')}>
+            Activar plan
+          </Link>
+        )}
       </div>
     )
   }

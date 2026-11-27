@@ -15,7 +15,6 @@ interface AdminHelpPanelProps {
   pathname: string
   staffRole?: StaffRole
   readOnly?: boolean
-  freePlan?: boolean
   open: boolean
   onClose: () => void
   restoreFocus: () => void
@@ -25,7 +24,6 @@ export function AdminHelpPanel({
   pathname,
   staffRole,
   readOnly,
-  freePlan,
   open,
   onClose,
   restoreFocus,
@@ -33,7 +31,7 @@ export function AdminHelpPanel({
   const titleRef = useRef<HTMLHeadingElement>(null)
   const [query, setQuery] = useState('')
   const searchId = useId()
-  const guides = getHelpGuides({ pathname, staffRole, readOnly, freePlan, query })
+  const guides = getHelpGuides({ pathname, staffRole, readOnly, query })
 
   function close() {
     setQuery('')
@@ -84,11 +82,7 @@ export function AdminHelpPanel({
           {guides.length === 0 ? (
             <div className="space-y-1 py-3 text-sm">
               <p className="font-medium text-foreground">No encontramos esa tarea.</p>
-              <p className="text-muted-foreground">
-                {freePlan
-                  ? 'Probá con «turno suelto» o «bloquear cancha».'
-                  : 'Probá con «turnos fijos» o «por cobrar».'}
-              </p>
+              <p className="text-muted-foreground">Probá con «turnos fijos» o «por cobrar».</p>
             </div>
           ) : (
             <ul className="divide-y divide-border">

@@ -9,10 +9,10 @@ import type { TenantRow } from '@/modules/tenants/tenant.types'
 import { isCanteenEnabled } from '@/modules/tenants/tenant.utils'
 import { getProfileGaps } from '@/modules/tenants/setup-gaps'
 import { NO_SETUP_ALERTS, type SetupAlerts } from '@/components/layout/setup-alerts'
-import type { FreePlanNotice, ReadOnlyNotice } from '@/components/layout/status-banner'
+import type { ExpiredNotice, ReadOnlyNotice } from '@/components/layout/status-banner'
 import {
   BLOCKED_TENANT_STATUSES,
-  isFreePlan,
+  isExpiredStatus,
   READ_ONLY_TENANT_STATUSES,
 } from '@/modules/tenants/tenant.lifecycle'
 import { countCourtsWithoutPhotos } from '@/modules/courts/court.service'
@@ -38,7 +38,6 @@ import {
 } from '@/app/(admin)/caja/cantina/actions'
 import { VenderProvider } from '@/app/(admin)/dashboard/_components/VenderProvider'
 import { stopImpersonationAction } from '@/app/(super-admin)/super-admin/tenants/[id]/actions'
-import { resumeOnlineBookingAction } from '@/app/(admin)/dashboard/actions'
 
 /**
  * Lo que el dueño todavía no completó y el jugador sí nota (canchas sin foto,
@@ -56,6 +55,7 @@ type SubscriptionSummary = {
   currentPeriodEnd: Date | null
   mpSubscriptionId: string | null
   dunningStartedAt: Date | null
+  lastPaymentAt: Date | null
 }
 
 function loadSubscriptionSummary(tenantId: string): Promise<SubscriptionSummary | null> {
@@ -65,6 +65,7 @@ function loadSubscriptionSummary(tenantId: string): Promise<SubscriptionSummary 
         currentPeriodEnd: tenantSubscriptions.currentPeriodEnd,
         mpSubscriptionId: tenantSubscriptions.mpSubscriptionId,
         dunningStartedAt: tenantSubscriptions.dunningStartedAt,
+        lastPaymentAt: tenantSubscriptions.lastPaymentAt,
       })
       .from(tenantSubscriptions)
       .where(eq(tenantSubscriptions.tenantId, tenantId))
@@ -74,27 +75,30 @@ function loadSubscriptionSummary(tenantId: string): Promise<SubscriptionSummary 
 }
 
 /**
- * Solo lectura (`suspended`): desde el freemium es solo la mora, entre el día 7 y
- * el 14 (la prueba vencida baja directo al plan gratis).
+ * Solo lectura (`suspended`): es solo la mora, entre el día 7 y el 14 (la prueba
+ * vencida y el final de la mora pasan a `trial_expired`).
  */
 function readOnlyNotice(tenant: TenantRow): ReadOnlyNotice | null {
   if (!READ_ONLY_TENANT_STATUSES.has(tenant.status)) return null
   return { origin: 'dunning', until: null }
 }
 
-/** Plan gratis: pausa de la reserva online por cancelaciones. */
-function freePlanNotice(tenant: TenantRow): FreePlanNotice | null {
-  if (!isFreePlan(tenant)) return null
-  return { paused: tenant.onlinePausedAt !== null }
+/**
+ * `trial_expired`: ¿pagó alguna vez? `last_payment_at` solo lo escribe un pago o
+ * una activación; el fin de período no sirve (el alta ya lo trae cargado).
+ */
+function expiredNotice(tenant: TenantRow, sub: SubscriptionSummary | null): ExpiredNotice | null {
+  if (!isExpiredStatus(tenant.status)) return null
+  return { everPaid: sub?.lastPaymentAt != null }
 }
 
 /**
  * El modal de Vender vive acá y no en Hoy: se abre desde cualquier vista del panel
  * (botón del riel o tecla V), así que no hace falta volver a Hoy para vender.
- * En el plan gratis no hay cantina: sin proveedor no hay botón ni tecla V.
+ * Con el plan no activo no se vende: sin proveedor no hay botón ni tecla V.
  */
 function WithVender({ enabled, children }: { enabled: boolean; children: ReactNode }) {
-  // Sin buffet (`canteen_enabled === false`) o en el plan gratis el proveedor no se monta:
+  // Sin buffet (`canteen_enabled === false`) o con el plan no activo el proveedor no se monta:
   // sin él el riel y Hoy no pintan "Vender" (`useOptionalVender`) y la tecla V no existe.
   if (!enabled) return children
   return (
@@ -120,7 +124,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       loadSetupAlerts(imp.tenant),
     ])
     return (
-      <WithVender enabled={isCanteenEnabled(imp.tenant.settings) && !isFreePlan(imp.tenant)}>
+      <WithVender
+        enabled={isCanteenEnabled(imp.tenant.settings) && !isExpiredStatus(imp.tenant.status)}
+      >
         <AdminLayoutShell
           tenantName={imp.tenant.name}
           tenantStatus={imp.tenant.status}
@@ -153,8 +159,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const tenant = await getStaffTenant(user.staffUserId, user.tenantId)
   if (!tenant) redirect('/login')
 
-  // Uso del panel: mide el gratis abandonado y cancela su borrado si vuelve
-  // (freemium, decisión 7). Fuera del render y sin tirar nunca.
+  // Última visita al panel, para soporte. Fuera del render y sin tirar nunca.
   after(() => touchStaffSeen(tenant.id))
 
   // Billing-driven hard lock: tenants in these terminal/restricted states cannot
@@ -185,9 +190,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   // En solo lectura el wizard no puede guardar nada: un complejo cuya prueba
   // venció sin terminar el onboarding va directo a la salida.
   if (tenant.settings.onboarding_completed !== true) {
-    // El gratis tampoco: sus guards no abren el wizard (freemium).
+    // El plan no activo tampoco: sus guards no abren el wizard.
     redirect(
-      READ_ONLY_TENANT_STATUSES.has(tenant.status) || isFreePlan(tenant)
+      READ_ONLY_TENANT_STATUSES.has(tenant.status) || isExpiredStatus(tenant.status)
         ? '/reactivar'
         : '/onboarding',
     )
@@ -209,7 +214,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const setupAlerts = staffRole === 'admin' ? alerts : NO_SETUP_ALERTS
 
   return (
-    <WithVender enabled={isCanteenEnabled(tenant.settings) && !isFreePlan(tenant)}>
+    <WithVender enabled={isCanteenEnabled(tenant.settings) && !isExpiredStatus(tenant.status)}>
       <AdminLayoutShell
         tenantName={tenant.name}
         tenantStatus={tenant.status}
@@ -222,8 +227,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         staffRole={staffRole ?? 'manager'}
         setupAlerts={setupAlerts}
         readOnly={readOnlyNotice(tenant)}
-        freePlan={freePlanNotice(tenant)}
-        resumeOnlineAction={resumeOnlineBookingAction}
+        expired={expiredNotice(tenant, sub)}
         emailBanner={
           staffRole === 'admin' && emailState && !emailState.verified ? (
             <EmailVerifyBanner

@@ -119,7 +119,7 @@ export default function ProfileRest({
           href="/para-complejos"
           className="inline-flex min-h-11 items-center font-semibold text-portal-green underline-offset-4 hover:underline focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-portal-green"
         >
-          ¿Tenés un complejo? Es gratis
+          ¿Tenés un complejo? Probalo 30 días gratis
         </Link>
       </p>
     </>

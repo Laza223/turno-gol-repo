@@ -19,7 +19,7 @@ import { InvalidTransitionError } from './billing.errors'
  */
 
 const PAST_DUE_TO_SUSPENDED_DAYS = 7
-const SUSPENDED_TO_FREE_DAYS = 14
+const SUSPENDED_TO_EXPIRED_DAYS = 14
 const BLOCKED_TO_CHURNED_DAYS = 90
 
 /**
@@ -181,62 +181,49 @@ export async function transitionPastDueToSuspended(tenantId: string, tx: DbTx): 
   })
 }
 
-// ─── * → free (el que no paga baja al plan gratis) ──────────────────────────
-// Freemium (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md): la prueba
-// vencida, el final de la mora y la baja voluntaria al vencer lo pagado terminan
-// en `free` en vez de `blocked`. Cada origen repite en el WHERE el gate que lo
-// habilita, así un caller que se equivoque de origen no mueve la fila.
-// `scheduled_deletion_at` se limpia SIEMPRE: un `free` no se borra por falta de
-// pago (solo por inactividad, `data-retention-cleanup.worker.ts`), y el wipe
-// borraría a cualquier `free` que llegara con el borrado agendado.
+// ─── * → trial_expired (el que no paga queda con la ficha sin reservas) ─────
+// Fin del freemium (docs/decisions/2026-11-27-prueba-30-dias-y-precios.md): la
+// prueba vencida, el final de la mora y la baja voluntaria al vencer lo pagado
+// terminan en `trial_expired` en vez de `blocked`. Cada origen repite en el
+// WHERE el gate que lo habilita, así un caller que se equivoque de origen no
+// mueve la fila. `scheduled_deletion_at` se limpia SIEMPRE: un `trial_expired`
+// nunca se borra (ni por falta de pago ni por inactividad), y el wipe borraría
+// a cualquiera que llegara con el borrado agendado.
 
-export type FreeDowngradeOrigin =
+export type ExpiredOrigin =
   /** `trialing` con la prueba vencida (el worker ya aplicó el margen de "Activar"). */
   | 'trial_expired'
   /** `suspended` por mora, ≥ 14 días desde el primer cobro fallido. */
   | 'dunning_ended'
   /** `canceled` con el período pagado vencido. */
   | 'cancel_period_ended'
-  /** `suspended` sin mora: la prueba vencida en solo lectura del lifecycle anterior. */
-  | 'legacy_trial_read_only'
-  /** `blocked` sin borrado agendado: prueba vencida o mora del lifecycle anterior. */
-  | 'legacy_blocked'
 
-const FREE_DOWNGRADE_SOURCE: Record<
-  FreeDowngradeOrigin,
-  'trialing' | 'suspended' | 'canceled' | 'blocked'
-> = {
+const EXPIRED_SOURCE: Record<ExpiredOrigin, 'trialing' | 'suspended' | 'canceled'> = {
   trial_expired: 'trialing',
   dunning_ended: 'suspended',
   cancel_period_ended: 'canceled',
-  legacy_trial_read_only: 'suspended',
-  legacy_blocked: 'blocked',
 }
 
-function freeDowngradeGate(origin: FreeDowngradeOrigin) {
+function expiredGate(origin: ExpiredOrigin) {
   switch (origin) {
     case 'trial_expired':
       return sql`TRUE`
     case 'dunning_ended':
-      return sql`dunning_started_at <= NOW() - (${SUSPENDED_TO_FREE_DAYS} || ' days')::interval`
+      return sql`dunning_started_at <= NOW() - (${SUSPENDED_TO_EXPIRED_DAYS} || ' days')::interval`
     case 'cancel_period_ended':
       return sql`current_period_end < NOW()`
-    case 'legacy_trial_read_only':
-      return sql`dunning_started_at IS NULL`
-    case 'legacy_blocked':
-      return sql`scheduled_deletion_at IS NULL`
   }
 }
 
-export async function transitionToFree(
+export async function transitionToExpired(
   tenantId: string,
-  origin: FreeDowngradeOrigin,
+  origin: ExpiredOrigin,
   tx: DbTx,
 ): Promise<void> {
-  const from = FREE_DOWNGRADE_SOURCE[origin]
+  const from = EXPIRED_SOURCE[origin]
   const subResult = await tx.execute(sql`
     UPDATE tenant_subscriptions
-    SET status = 'free'::subscription_status,
+    SET status = 'trial_expired'::subscription_status,
         dunning_started_at = NULL,
         scheduled_deletion_at = NULL,
         pending_billed_courts = NULL,
@@ -244,22 +231,22 @@ export async function transitionToFree(
         updated_at = NOW()
     WHERE tenant_id = ${tenantId}
       AND status = ${from}
-      AND ${freeDowngradeGate(origin)}
+      AND ${expiredGate(origin)}
     RETURNING id
   `)
   if (rowsAffected(subResult) === 0) {
-    throw new InvalidTransitionError(tenantId, from, 'free')
+    throw new InvalidTransitionError(tenantId, from, 'trial_expired')
   }
   await tx.execute(sql`
     UPDATE tenants
-    SET status = 'free'::tenant_status,
+    SET status = 'trial_expired'::tenant_status,
         scheduled_deletion_at = NULL,
         updated_at = NOW()
     WHERE id = ${tenantId} AND status = ${from}
   `)
   await insertSystemAuditLog(tx, {
     tenantId,
-    action: 'tenant.downgraded_to_free',
+    action: 'tenant.expired',
     resourceType: 'tenant',
     resourceId: tenantId,
     metadata: { from, reason: origin },
@@ -346,7 +333,7 @@ export async function transitionToCanceled(
   })
 }
 
-// ─── {canceled,churned,blocked,past_due,suspended,free} → active ───────────
+// ─── {canceled,churned,blocked,past_due,suspended,trial_expired,free} → active ───────────
 // Reactivate before deletion. Caller (billing.reactivate) has already updated
 // plan_id, billing_cycle, mp_subscription_id at preapproval-creation time.
 
@@ -369,13 +356,13 @@ export async function transitionToActiveFromAny(
         cancellation_reason = NULL,
         updated_at = NOW()
     WHERE tenant_id = ${tenantId}
-      AND status IN ('canceled', 'churned', 'blocked', 'past_due', 'suspended', 'free')
+      AND status IN ('canceled', 'churned', 'blocked', 'past_due', 'suspended', 'free', 'trial_expired')
     RETURNING id
   `)
   if (rowsAffected(subResult) === 0) {
     throw new InvalidTransitionError(
       tenantId,
-      'canceled|churned|blocked|past_due|suspended|free',
+      'canceled|churned|blocked|past_due|suspended|free|trial_expired',
       'active',
     )
   }
@@ -385,7 +372,7 @@ export async function transitionToActiveFromAny(
         scheduled_deletion_at = NULL,
         updated_at = NOW()
     WHERE id = ${tenantId}
-      AND status IN ('canceled', 'churned', 'blocked', 'past_due', 'suspended', 'free')
+      AND status IN ('canceled', 'churned', 'blocked', 'past_due', 'suspended', 'free', 'trial_expired')
   `)
   await insertSystemAuditLog(tx, {
     tenantId,

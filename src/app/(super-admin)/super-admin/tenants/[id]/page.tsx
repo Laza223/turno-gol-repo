@@ -260,7 +260,9 @@ async function AccionesTab({ detail }: { detail: TenantDetail }) {
       canRecordLargeQuote={Boolean(
         newPricing?.byCourtCount &&
         onlineCourts >= 8 &&
-        (subscription?.status === 'trialing' || subscription?.status === 'free') &&
+        (subscription?.status === 'trialing' ||
+          subscription?.status === 'free' ||
+          subscription?.status === 'trial_expired') &&
         !subscription.mpSubscriptionId,
       )}
       plusMonthlyCents={

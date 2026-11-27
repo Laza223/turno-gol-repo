@@ -27,7 +27,7 @@ import {
   COURT_COUNT_QUOTE_PREFIX,
 } from '@/modules/billing/pricing'
 import { CANCELABLE } from '@/modules/billing/cancelable-statuses'
-import { isFreePlan, READ_ONLY_TENANT_STATUSES } from '@/modules/tenants/tenant.lifecycle'
+import { isExpiredStatus, READ_ONLY_TENANT_STATUSES } from '@/modules/tenants/tenant.lifecycle'
 import { formatArs } from '@/lib/format'
 import { SUPPORT_EMAIL } from '@/shared/constants'
 import { CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -97,15 +97,14 @@ function BillingDisclosure({
  * `/settings/facturacion` porque la usan los mails de cobro ya mandados.
  */
 export default async function FacturacionPage() {
-  const { tenant, user } = await requireAdminStaff({ allowReadOnly: true, allowFree: true })
+  const { tenant, user } = await requireAdminStaff({ allowReadOnly: true })
   // En solo lectura esta pantalla no tiene nada que ofrecer (la cuota no se
   // activa ni se cambia desde acá en `suspended`): la salida es /reactivar. Es
-  // también a donde llega el botón del mail "Tu prueba gratuita terminó",
+  // también a donde llega el botón del mail "Terminó tu prueba",
   // que apunta a esta URL.
   if (READ_ONLY_TENANT_STATUSES.has(tenant.status)) redirect('/reactivar')
-  // Plan gratis: no hay cuota que mostrar ni cambiar; pasar al plan es /reactivar.
-  // `allowFree` en el guard es para llegar acá y redirigir, no para mostrar la cuota.
-  if (isFreePlan(tenant)) redirect('/reactivar')
+  // Plan no activo: no hay cuota que mostrar ni cambiar; activar el plan es /reactivar.
+  if (isExpiredStatus(tenant.status)) redirect('/reactivar')
 
   let sub: Awaited<ReturnType<typeof getSubscriptionState>> | null = null
 
@@ -254,7 +253,7 @@ export default async function FacturacionPage() {
                 <p id={liveMpSubscriptionId ? undefined : 'baja'} className={styles.passNote}>
                   {liveMpSubscriptionId
                     ? 'Todavía no se cobra.'
-                    : 'Si no activás Completo, pasás al plan gratuito y conservás tus datos.'}
+                    : 'Si no activás Completo, el plan queda no activo y conservás tus datos.'}
                 </p>
               )}
             </div>

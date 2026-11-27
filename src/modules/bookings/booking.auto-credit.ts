@@ -30,7 +30,14 @@ export const AUTO_CREDIT_DESCRIPTION = 'Acreditado solo: sin cobro registrado a 
  * suspendido o dado de baja no se toca (en prod hay uno cancelado con turnos
  * sin cobrar).
  */
-const AUTO_CREDIT_TENANT_STATUSES = ['trialing', 'active', 'past_due'] as const
+const AUTO_CREDIT_TENANT_STATUSES = [
+  'trialing',
+  'active',
+  'past_due',
+  // Los turnos que ya tenían se siguen acreditando aunque el plan no esté activo.
+  'trial_expired',
+  'free',
+] as const
 
 /** Una sola acreditación automática por turno, pase lo que pase con los reintentos del cron. */
 export function autoCreditIdempotencyKey(bookingId: string): string {

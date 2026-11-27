@@ -11,9 +11,9 @@ describe('/precios: precio exacto por cancha', () => {
     render(<PlanSelector />)
     expect(screen.getByRole('radio', { name: 'Mensual', checked: true })).toBeInTheDocument()
     expect(screen.getByText(/\$\s90\.000$/)).toBeInTheDocument()
-    // Gratis y Completo arrancan igual: el alta es gratis (decisión 2026-11-16).
+    // La prueba de 30 días arranca desde Completo (decisión 2026-11-27).
     const ctas = screen.getAllByRole('link', { name: /probar 30 días gratis/i })
-    expect(ctas).toHaveLength(2)
+    expect(ctas).toHaveLength(1)
     for (const cta of ctas) expect(cta).toHaveAttribute('href', '/register')
   })
 

@@ -14,8 +14,8 @@ export function ClosingCta() {
               Tus jugadores reservan solos. Tu noche se ordena sola.
             </h2>
             <p className="home-lead2">
-              Agenda, cobros y caja del complejo en el mismo lugar donde te encuentran. Empezás
-              gratis.
+              Agenda, cobros y caja del complejo en el mismo lugar donde te encuentran. Probalo 30
+              días gratis.
             </p>
           </div>
           <Link

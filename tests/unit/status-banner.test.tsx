@@ -112,29 +112,51 @@ describe('StatusBanner — solo lectura (suspended)', () => {
   })
 })
 
-// Plan gratis (freemium, 2026-11-08 y corte v2): banda informativa y la pausa
-// por cancelaciones. Las reservas online no tienen tope. En gratis solo entra el dueño.
-describe('StatusBanner — plan gratis', () => {
-  it('sin pausa: cuenta qué es el gratis y ofrece pasar al plan', () => {
-    render(<StatusBanner tenantStatus="free" periodEnd={null} serviceDegraded={false} />)
-    expect(screen.getByRole('status').textContent).toMatch(/Estás en el plan gratis/)
-    expect(screen.getByRole('link', { name: 'Pasar al plan' }).getAttribute('href')).toBe(
-      '/reactivar',
-    )
-  })
+// Fin del freemium (2026-11-27): banda fija de `trial_expired` (y su alias `free`).
+describe('StatusBanner — trial_expired', () => {
+  it.each(['trial_expired', 'free'])(
+    '%s sin haber pagado nunca: dice que terminó la prueba y ofrece activar el plan al dueño',
+    (status) => {
+      render(
+        <StatusBanner
+          tenantStatus={status}
+          periodEnd={null}
+          serviceDegraded={false}
+          staffRole="admin"
+        />,
+      )
+      expect(screen.getByRole('status').textContent).toMatch(/Terminó tu prueba de \d+ días/)
+      expect(screen.getByRole('status').textContent).toMatch(/turnos confirmados siguen/)
+      expect(screen.getByRole('link', { name: 'Activar plan' }).getAttribute('href')).toBe(
+        '/reactivar',
+      )
+    },
+  )
 
-  it('en pausa: pide anotar los turnos y muestra el botón para reanudar', () => {
+  it('si pagó alguna vez: dice que el plan no está activo', () => {
     render(
       <StatusBanner
-        tenantStatus="free"
+        tenantStatus="trial_expired"
         periodEnd={null}
         serviceDegraded={false}
-        freePlan={{ paused: true }}
-        resumeOnlineAction={async () => ({ success: true })}
+        staffRole="admin"
+        expired={{ everPaid: true }}
       />,
     )
-    expect(screen.getByRole('status').textContent).toMatch(/Pausamos tus reservas online/)
-    expect(screen.getByRole('button', { name: 'Ya anoté mis turnos' })).toBeTruthy()
+    expect(screen.getByRole('status').textContent).toMatch(/Tu plan no está activo/)
+    expect(screen.getByRole('status').textContent).not.toMatch(/Terminó tu prueba/)
+  })
+
+  it('el encargado no ve el botón: lee a quién avisarle', () => {
+    render(
+      <StatusBanner
+        tenantStatus="trial_expired"
+        periodEnd={null}
+        serviceDegraded={false}
+        staffRole="manager"
+      />,
+    )
+    expect(screen.getByRole('status').textContent).toMatch(/Avisale al dueño del complejo/)
     expect(screen.queryByRole('link')).toBeNull()
   })
 })

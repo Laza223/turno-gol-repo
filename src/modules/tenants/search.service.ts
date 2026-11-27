@@ -86,13 +86,14 @@ export type SearchResult = { results: PublicTenantCard[]; total: number }
 export type CityCount = { city: string; province: string; count: number }
 
 // Estados de tenant visibles en superficies públicas (search + availability).
-// `free` (plan gratis del freemium) aparece igual que la prueba: es justamente lo
-// que el gratis regala (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
-// Sin verificación previa por decisión de Lazar (decisión 6). Lo heredan
+// `trial_expired` (el complejo que no paga) sigue visible, pero sin horarios y
+// siempre al final del buscador (docs/decisions/2026-11-27-prueba-30-dias-y-precios.md);
+// `free` es su alias viejo hasta migrar las filas. Despublicarlo es
+// `marketplace_visible = false` (superadmin). Sin verificación previa. Lo heredan
 // SEARCHABLE, `publicTenantVisibilityConds`, el sitemap, `listPublicCities`, la
 // disponibilidad cruzada y `listTopPublicTenantSlugs`. Las funciones RIVAL del
 // tablón (migr. 111) repiten la lista en SQL: se mueven juntas.
-export const VISIBLE_TENANT_STATUSES = ['active', 'trialing', 'free'] as const
+export const VISIBLE_TENANT_STATUSES = ['active', 'trialing', 'trial_expired', 'free'] as const
 
 /**
  * Estados LISTABLES en descubrimiento (búsqueda, selector de ciudad,
@@ -103,7 +104,7 @@ export const VISIBLE_TENANT_STATUSES = ['active', 'trialing', 'free'] as const
  * Es un filtro GRUESO a propósito: el corte fino es `current_period_end`, que
  * vive en `tenant_subscriptions` (aislada por RLS) y por lo tanto no se puede
  * leer cross-tenant desde el pool público. La precisión la pone el perfil, que
- * sí resuelve con `isPublicPortalOpen`. Consecuencia acotada y aceptada: entre
+ * sí resuelve con `isPublicProfileVisible`. Consecuencia acotada y aceptada: entre
  * el vencimiento del período y el sweep diario de las 13:00 ART que lo pasa a
  * `blocked`, la tarjeta puede sobrevivir unas horas y llevar a un perfil que
  * responde "no disponible" — la misma clase de staleness que el ISR de 300s
@@ -140,6 +141,9 @@ export function publicTenantVisibilityConds(): SQL[] {
   ]
 }
 
+/** 1 para los complejos vencidos, 0 para el resto: va delante de cualquier otro orden. */
+export const expiredLastSql = sql`CASE WHEN ${tenants.status}::text IN ('trial_expired', 'free') THEN 1 ELSE 0 END ASC`
+
 export async function searchPublicTenants(params: SearchParams): Promise<SearchResult> {
   return withSpan('search.public', 'db.query.search', () => searchPublicTenantsImpl(params))
 }
@@ -166,10 +170,8 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
     conds.push(
       sql`COALESCE((${tenants.settings} ->> 'allow_online_booking')::boolean, true) = true`,
     )
-    // Plan gratis en pausa por cancelaciones: no toma reservas online.
-    conds.push(
-      sql`NOT (${tenants.status}::text = 'free' AND ${tenants.onlinePausedAt} IS NOT NULL)`,
-    )
+    // Plan no activo (`trial_expired`): no toma reservas online.
+    conds.push(sql`${tenants.status}::text NOT IN ('trial_expired', 'free')`)
   }
 
   // Filtro por superficie/formato vía facets denormalizados en tenants (overlap &&).
@@ -246,6 +248,9 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
     default:
       orderBy = asc(tenants.name) as SQL
   }
+  // Los complejos con el plan no activo van SIEMPRE al final, ordenen como ordenen
+  // los demás (también con `sort=price|rating|distance`).
+  orderBy = sql`${expiredLastSql}, ${orderBy}`
 
   const [rows, countRows] = await Promise.all([
     db
@@ -260,7 +265,6 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
         coverUrl: tenants.coverUrl,
         settings: tenants.settings,
         status: tenants.status,
-        onlinePausedAt: tenants.onlinePausedAt,
         fromPriceCents: visibleFromPriceCentsSql,
         fromPricePerPlayerCents: visibleFromPricePerPlayerCentsSql,
         amenities: tenants.amenities,
@@ -296,7 +300,6 @@ async function searchPublicTenantsImpl(params: SearchParams): Promise<SearchResu
     allowOnlineBooking: effectiveAllowOnlineBooking({
       status: r.status,
       allowOnlineBookingSetting: (r.settings as TenantSettings).allow_online_booking ?? true,
-      onlinePausedAt: r.onlinePausedAt,
     }),
     fromPriceCents: r.fromPriceCents ?? null,
     fromPricePerPlayerCents: r.fromPricePerPlayerCents ?? null,

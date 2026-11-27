@@ -69,14 +69,18 @@ describe('planPushPayload', () => {
       'Tu prueba del Completo termina mañana',
       'Activá el plan',
     ],
-    [{ event: 'trial_expired' }, 'Terminó tu prueba del Completo', 'Pasaste al plan gratis'],
+    [{ event: 'trial_expired' }, 'Terminó tu prueba', 'Tus datos y tus turnos confirmados siguen'],
     [
       { event: 'payment_failed', retryDate: '28/10' },
       'No pudimos cobrar tu plan',
       'Vamos a reintentar el 28/10',
     ],
     [{ event: 'suspended' }, 'Tu cuenta quedó en solo lectura', 'Regularizá el pago'],
-    [{ event: 'downgraded_free' }, 'Tu complejo pasó al plan gratis', 'Tus jugadores te siguen'],
+    [
+      { event: 'plan_not_active' },
+      'Tu plan no está activo',
+      'Tus datos y tus turnos confirmados siguen',
+    ],
     [
       { event: 'deletion_warning', deletionDate: '30/11', daysRemaining: 7 },
       'Tus datos se eliminan en 7 días',

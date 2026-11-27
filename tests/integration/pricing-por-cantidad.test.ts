@@ -99,8 +99,8 @@ describe('catálogo por cantidad en checkout y contratos existentes', () => {
     const tenantId = await seed(8)
     const admin = await createTestSystemAdmin(sql)
     const gateway = new MockGateway()
-    await sql`UPDATE tenants SET status = 'free' WHERE id = ${tenantId}`
-    await sql`UPDATE tenant_subscriptions SET status = 'free' WHERE tenant_id = ${tenantId}`
+    await sql`UPDATE tenants SET status = 'trial_expired' WHERE id = ${tenantId}`
+    await sql`UPDATE tenant_subscriptions SET status = 'trial_expired' WHERE tenant_id = ${tenantId}`
 
     await expect(saveLargeComplexQuote(tenantId, 16_500_000, admin.id)).resolves.toBeNull()
     await withTenantContext(tenantId, (tx) => reactivate(tenantId, 8, 'monthly', gateway, tx))

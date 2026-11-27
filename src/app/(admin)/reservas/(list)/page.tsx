@@ -1,5 +1,4 @@
 import { Suspense } from 'react'
-import { isFreePlan } from '@/modules/tenants/tenant.lifecycle'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { CalendarX, CalendarDays } from 'lucide-react'
@@ -51,7 +50,7 @@ function now(): Date {
 
 export default async function ReservasPage(props: Props) {
   const searchParams = await props.searchParams
-  const auth = await requireOperatorStaff({ allowReadOnly: true, allowFree: true })
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect(auth.reason === 'plan' ? '/reactivar' : '/login')
   const { tenant } = auth
 
@@ -65,8 +64,6 @@ export default async function ReservasPage(props: Props) {
   const page = parsePage(searchParams.pagina)
   const requestedCourt = searchParams.cancha ?? ''
   const instant = now()
-  // Plan gratis (freemium v2): la Agenda muestra todos los turnos con su nombre, sin plata.
-  const freePlan = isFreePlan(tenant)
 
   // Mismo tx (una conexión): secuencial, no Promise.all.
   const { rows, counts, courts, courtId } = await withTenantContext(tenant.id, async (tx) => {
@@ -203,7 +200,7 @@ export default async function ReservasPage(props: Props) {
                 </div>
                 <ul className="divide-y divide-border">
                   {groupRows.map((r) => (
-                    <BookingListItem key={r.id} booking={r} moneyHidden={freePlan} />
+                    <BookingListItem key={r.id} booking={r} />
                   ))}
                 </ul>
               </section>

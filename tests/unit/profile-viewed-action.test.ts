@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // `profile.viewed` sale de esta Server Action (la ficha es ISR y no puede emitirlo al renderizar).
 // Es medición: ninguna falla puede salir de la action. Se mockean el límite, la lectura del
-// complejo y el emisor; el gate de estado (`isPublicPortalOpen`) y la IP son los reales.
+// complejo y el emisor; el gate de estado (`isPublicProfileVisible`) y la IP son los reales.
 
 const mocks = vi.hoisted(() => ({
   enforce: vi.fn(),
@@ -20,7 +20,10 @@ vi.mock('@/shared/rate-limit', async (importOriginal) => ({
 vi.mock('@/modules/tenants/public.service', () => ({ getPublicTenant: mocks.getPublicTenant }))
 vi.mock('@/shared/observability', () => ({ track: { funnel: mocks.funnel } }))
 
-import { trackProfileViewedAction } from '@/app/(public)/[slug]/(perfil)/actions'
+import {
+  trackExpiredContactAction,
+  trackProfileViewedAction,
+} from '@/app/(public)/[slug]/(perfil)/actions'
 
 const tenant = (overrides: Record<string, unknown> = {}) => ({
   id: 'tenant-1',
@@ -118,5 +121,67 @@ describe('trackProfileViewedAction', () => {
       throw new Error('sink roto')
     })
     await expect(trackProfileViewedAction('complejo-fenix', false)).resolves.toBeUndefined()
+  })
+})
+
+// Clic de contacto de la ficha de un complejo en `trial_expired` (docs/decisions/2026-11-27-prueba-30-dias-y-precios.md §4.6).
+// Mismo molde que `profile.viewed`: medición silenciosa, sin PII, con límite por IP.
+describe('trackExpiredContactAction', () => {
+  it.each(['trial_expired', 'free'])(
+    'complejo en %s: emite expired.contact_clicked con el tenant y el canal, sin más datos',
+    async (status) => {
+      mocks.getPublicTenant.mockResolvedValue(tenant({ status }))
+      await trackExpiredContactAction('complejo-fenix', 'whatsapp')
+      await trackExpiredContactAction('complejo-fenix', 'phone')
+      expect(mocks.funnel).toHaveBeenNthCalledWith(1, 'expired.contact_clicked', {
+        tenantId: 'tenant-1',
+        channel: 'whatsapp',
+      })
+      expect(mocks.funnel).toHaveBeenNthCalledWith(2, 'expired.contact_clicked', {
+        tenantId: 'tenant-1',
+        channel: 'phone',
+      })
+    },
+  )
+
+  it('el límite es por IP, con la política expiredContactClick', async () => {
+    mocks.getPublicTenant.mockResolvedValue(tenant({ status: 'trial_expired' }))
+    await trackExpiredContactAction('complejo-fenix', 'phone')
+    expect(mocks.enforce).toHaveBeenCalledWith('expiredContactClick', '203.0.113.7')
+  })
+
+  it('un complejo que paga no emite: el clic no es una señal de recuperación', async () => {
+    for (const status of ['active', 'trialing', 'canceled', 'suspended']) {
+      mocks.getPublicTenant.mockResolvedValue(tenant({ status }))
+      await trackExpiredContactAction('complejo-fenix', 'whatsapp')
+    }
+    expect(mocks.funnel).not.toHaveBeenCalled()
+  })
+
+  it('canal inventado, slug inválido o complejo inexistente: no emite ni lee la base', async () => {
+    mocks.getPublicTenant.mockResolvedValue(tenant({ status: 'trial_expired' }))
+    await trackExpiredContactAction('complejo-fenix', 'email')
+    await trackExpiredContactAction('Not A Slug!', 'phone')
+    expect(mocks.getPublicTenant).not.toHaveBeenCalled()
+    mocks.getPublicTenant.mockResolvedValue(null)
+    await trackExpiredContactAction('no-existe', 'phone')
+    expect(mocks.funnel).not.toHaveBeenCalled()
+  })
+
+  it('límite superado: no lee la base y no emite', async () => {
+    mocks.enforce.mockResolvedValue({ ok: false })
+    await trackExpiredContactAction('complejo-fenix', 'phone')
+    expect(mocks.getPublicTenant).not.toHaveBeenCalled()
+    expect(mocks.funnel).not.toHaveBeenCalled()
+  })
+
+  it('es silenciosa: si falla el límite, la lectura o el emisor, no tira', async () => {
+    mocks.getPublicTenant.mockResolvedValue(tenant({ status: 'trial_expired' }))
+    mocks.enforce.mockRejectedValueOnce(new Error('upstash caído'))
+    await expect(trackExpiredContactAction('complejo-fenix', 'phone')).resolves.toBeUndefined()
+    mocks.funnel.mockImplementationOnce(() => {
+      throw new Error('sink roto')
+    })
+    await expect(trackExpiredContactAction('complejo-fenix', 'phone')).resolves.toBeUndefined()
   })
 })

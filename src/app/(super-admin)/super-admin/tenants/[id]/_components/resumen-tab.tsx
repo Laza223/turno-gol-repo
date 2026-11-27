@@ -5,6 +5,7 @@ import { relativeTimeEs } from '@/lib/format'
 import { absoluteUrl } from '@/lib/seo/metadata'
 import { TONE_TEXT } from '@/lib/status-tone'
 import { STAFF_ROLE_LABELS } from '@/modules/staff/roles'
+import { isExpiredStatus } from '@/modules/tenants/tenant.lifecycle'
 import type { TenantDetail } from '@/modules/super-admin/tenants.service'
 import { CourtStatusBadge } from '@/app/(admin)/canchas/components/status-visual'
 import { formatDateWithYear, formatShortDateTime } from '../../../_components/sa-format'
@@ -61,7 +62,7 @@ export function ResumenTab({
   assignReferrerAction: AssignReferrerAction
   nowMs: number
 }) {
-  const { tenant, courts, staff, pulse } = detail
+  const { tenant, courts, staff, pulse, contactClicks15d } = detail
   const s = tenant.settings
   return (
     <div className="space-y-3 lg:space-y-4">
@@ -82,6 +83,9 @@ export function ResumenTab({
           </Dt>
           <Dt label="Alta">{formatShortDateTime(tenant.createdAt)}</Dt>
           <Dt label="Fin de la prueba">{formatDateWithYear(tenant.trialEndsAt)}</Dt>
+          {isExpiredStatus(tenant.status) && (
+            <Dt label="Clics de contacto (últimos 15 días)">{contactClicks15d}</Dt>
+          )}
           <Dt label="MercadoPago (señas)">
             {tenant.mpConnectedAt
               ? `Conectado el ${formatDateWithYear(tenant.mpConnectedAt)}`

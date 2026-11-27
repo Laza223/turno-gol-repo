@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { dateStr, slug } from '@/shared/validation/primitives'
 import { getPublicTenant, getPublicWeeklyAvailability } from '@/modules/tenants/public.service'
-import { isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
+import { canTakeOnlineBookings } from '@/modules/tenants/tenant.lifecycle'
 import { captureException } from '@/lib/sentry'
 import { internal } from '@/shared/api-error'
 
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
   let week
   try {
     tenant = await getPublicTenant(tenantSlug)
-    if (!tenant || !isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd)) {
+    if (!tenant || !canTakeOnlineBookings(tenant.status, tenant.canceledPeriodEnd)) {
       // Mismo gate que la API de disponibilidad diaria (security scan F15): un
       // complejo suspendido/bloqueado/dado de baja no debe seguir exponiendo
       // una semana entera de horarios/precios vía esta API.

@@ -31,8 +31,8 @@ const POLICIES: Partial<Record<TemplateName, TemplatePolicy>> = {
     plan: true,
   },
   trial_expired: {
-    title: 'Terminó tu prueba del Completo',
-    body: 'Pasaste al plan gratis. Tus jugadores te siguen reservando online.',
+    title: 'Terminó tu prueba',
+    body: 'Tus datos y tus turnos confirmados siguen. Activá el plan para volver a reservar online.',
     plan: true,
   },
   dunning_payment_failed: {
@@ -45,9 +45,9 @@ const POLICIES: Partial<Record<TemplateName, TemplatePolicy>> = {
     body: 'Regularizá el pago para volver a operar.',
     plan: true,
   },
-  plan_downgraded_free: {
-    title: 'Tu complejo pasó al plan gratis',
-    body: 'Tus jugadores te siguen reservando online. Para anotar la noche, activá el plan.',
+  plan_not_active: {
+    title: 'Tu plan no está activo',
+    body: 'Tus datos y tus turnos confirmados siguen. Activá el plan para volver a reservar online.',
     plan: true,
   },
   tenant_deletion_warning: {

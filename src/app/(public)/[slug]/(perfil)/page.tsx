@@ -6,7 +6,11 @@ import {
   getPublicCourtCards,
   listTopPublicTenantSlugs,
 } from '@/modules/tenants/public.service'
-import { isPublicPortalIndexable, isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
+import {
+  isExpiredStatus,
+  isPublicPortalIndexable,
+  isPublicProfileVisible,
+} from '@/modules/tenants/tenant.lifecycle'
 import { getAverageRating, getReviewsByTenant } from '@/modules/reviews/review.service'
 import { listPublicTournaments } from '@/modules/tournaments/tournament-public.service'
 import { isRivalEnabled } from '@/modules/rival/rival.flags'
@@ -14,8 +18,9 @@ import { listBoard } from '@/modules/rival/rival.service'
 import { buildMetadata, absoluteUrl } from '@/lib/seo/metadata'
 import { PauseCircle } from 'lucide-react'
 import { PortalResult } from '@/components/world/PortalResult'
-import { trackProfileViewedAction } from './actions'
+import { trackExpiredContactAction, trackProfileViewedAction } from './actions'
 import ComplexHero from '../components/ComplexHero'
+import ExpiredReserveNotice from '../components/ExpiredReserveNotice'
 import ProfileLayout from '../components/ProfileLayout'
 import ProfileRest from '../components/ProfileRest'
 import ReserveSection, { ReserveSkeleton } from '../components/ReserveSection'
@@ -45,7 +50,7 @@ export default async function PublicComplexPage(props: Props) {
 
   // Gate server-side: un complejo suspendido/dado de baja no expone su perfil.
   // Con ISR puede servirse stale hasta 300s tras el cambio de estado (aceptable).
-  if (!isPublicPortalOpen(tenant.status, tenant.canceledPeriodEnd)) {
+  if (!isPublicProfileVisible(tenant.status, tenant.canceledPeriodEnd)) {
     return (
       <PortalResult icon={PauseCircle} tone="neutral" title={tenant.name}>
         <p>Este complejo no está tomando reservas en este momento.</p>
@@ -71,6 +76,10 @@ export default async function PublicComplexPage(props: Props) {
   ])
 
   const formats = [...new Set(courtCards.map((c) => c.format))].sort((a, b) => a - b)
+  // Complejo en `trial_expired`: la ficha se ve completa, pero sin horarios ni reserva, y los
+  // enlaces de contacto avisan el clic (soporte lo usa para recuperarlo).
+  const expired = isExpiredStatus(tenant.status)
+  const trackContact = expired ? trackExpiredContactAction.bind(null, tenant.slug) : undefined
 
   return (
     <>
@@ -92,18 +101,23 @@ export default async function PublicComplexPage(props: Props) {
             formats={formats}
             avgRating={summary.average}
             reviewCount={summary.count}
+            trackContact={trackContact}
           />
         }
         reserve={
-          // Es 100% client-side (fetch a /api/public/availability): el Suspense es obligatorio
-          // porque ReserveSection usa useSearchParams() dentro de una ruta prerenderada.
-          <Suspense fallback={<ReserveSkeleton />}>
-            <ReserveSection
-              tenant={tenant}
-              formats={formats}
-              trackViewed={trackProfileViewedAction}
-            />
-          </Suspense>
+          trackContact ? (
+            <ExpiredReserveNotice tenant={tenant} trackContact={trackContact} />
+          ) : (
+            // Es 100% client-side (fetch a /api/public/availability): el Suspense es obligatorio
+            // porque ReserveSection usa useSearchParams() dentro de una ruta prerenderada.
+            <Suspense fallback={<ReserveSkeleton />}>
+              <ReserveSection
+                tenant={tenant}
+                formats={formats}
+                trackViewed={trackProfileViewedAction}
+              />
+            </Suspense>
+          )
         }
         rest={
           <ProfileRest
@@ -139,7 +153,9 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     title: tenant.name,
     description:
       tenant.description ??
-      `Reservá cancha de fútbol en ${tenant.name} (${tenant.city}). Mirá los horarios libres y confirmá online.`,
+      (isExpiredStatus(tenant.status)
+        ? `Cancha de fútbol en ${tenant.name} (${tenant.city}). Mirá fotos, ubicación y datos de contacto.`
+        : `Reservá cancha de fútbol en ${tenant.name} (${tenant.city}). Mirá los horarios libres y confirmá online.`),
     path: `/${tenant.slug}`,
     image: tenant.coverUrl ?? undefined,
   })

@@ -14,7 +14,7 @@ const CASES: Array<[TemplateName, Record<string, unknown>, string]> = [
   ['trial_expired', owner, '/reactivar'],
   ['dunning_payment_failed', { ...owner, retryDate: '15/10/2026' }, '/settings/facturacion'],
   ['subscription_suspended', owner, '/settings/facturacion'],
-  ['plan_downgraded_free', { ...owner, reason: 'dunning' }, '/reactivar'],
+  ['plan_not_active', { ...owner, reason: 'dunning' }, '/reactivar'],
   [
     'tenant_deletion_warning',
     { ...owner, deletionDate: '15/12/2026', daysRemaining: 7 },

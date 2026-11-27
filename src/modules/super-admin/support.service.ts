@@ -5,7 +5,7 @@ import {
   transitionActiveToPastDue,
   transitionBlockedToChurned,
   transitionPastDueToSuspended,
-  transitionToFree,
+  transitionToExpired,
   transitionToActiveFromAny,
   transitionTrialingToActive,
 } from '@/modules/billing/lifecycle.service'
@@ -29,6 +29,7 @@ import {
 } from '@/modules/billing/billing.errors'
 import type { PaymentGateway } from '@/modules/payments/mp-gateway'
 import { updateTenantSettings } from '@/modules/tenants/tenant.service'
+import { isExpiredStatus } from '@/modules/tenants/tenant.lifecycle'
 import type { TenantSettings, UpdateTenantSettingsInput } from '@/modules/tenants/tenant.types'
 import type { BillingCycle, TenantStatus } from '@/modules/billing/billing.types'
 
@@ -58,7 +59,7 @@ export class TrialNotActiveError extends Error {
     public readonly tenantId: string,
     public readonly status: string,
   ) {
-    super(`Tenant ${tenantId} is '${status}', not trialing — cannot extend trial`)
+    super(`Tenant ${tenantId} is '${status}', not trialing or trial_expired — cannot extend trial`)
     this.name = 'TrialNotActiveError'
   }
 }
@@ -83,12 +84,12 @@ export class PlanAlreadyAssignedError extends Error {
  *   past_due → active     transitionToActiveFromAny
  *   past_due → suspended  transitionPastDueToSuspended (gate: dunning ≥ 7d)
  *   suspended→ active     transitionToActiveFromAny
- *   suspended→ free       transitionToFree 'dunning_ended' (gate: dunning ≥ 14d)
+ *   suspended→ trial_expired transitionToExpired 'dunning_ended' (gate: dunning ≥ 14d)
  *   blocked  → active     transitionToActiveFromAny
  *   blocked  → churned    transitionBlockedToChurned (gate: dunning ≥ 90d)
  *   canceled → active     transitionToActiveFromAny
- *   canceled → free       transitionToFree 'cancel_period_ended' (gate: period_end vencido)
- *   free     → active     transitionToActiveFromAny
+ *   canceled → trial_expired transitionToExpired 'cancel_period_ended' (gate: period_end vencido)
+ *   trial_expired → active   transitionToActiveFromAny (`free`, el alias viejo, igual)
  *   churned  → active     transitionToActiveFromAny
  *
  * `canceled` como DESTINO se maneja con `cancelSubscriptionForSupport` (además
@@ -108,11 +109,13 @@ export const FORCEABLE_TRANSITIONS: Record<TenantStatus, readonly TenantStatus[]
   trialing: ['active'],
   active: ['past_due'],
   past_due: ['active', 'suspended'],
-  suspended: ['active', 'free'],
+  suspended: ['active', 'trial_expired'],
   blocked: ['active', 'churned'],
-  canceled: ['active', 'free'],
+  canceled: ['active', 'trial_expired'],
   churned: ['active'],
   deleted: [],
+  trial_expired: ['active'],
+  // Alias viejo de `trial_expired`: se borra con el PR que migra las filas.
   free: ['active'],
 }
 
@@ -123,6 +126,7 @@ export const REACTIVATABLE_STATUSES: readonly TenantStatus[] = [
   'blocked',
   'past_due',
   'suspended',
+  'trial_expired',
   'free',
 ]
 
@@ -203,8 +207,8 @@ function forcedPeriodWindow(cycle: BillingCycle, now: Date): { start: Date; end:
 // ─── Extender trial (único servicio nuevo de F1, spec §5) ────────────────────
 
 /**
- * Mueve `tenants.trial_ends_at` a max(now, fin actual) + days. Solo aplica a
- * tenants `trialing` (el sweep expire-trials usa trial_ends_at como ancla).
+ * Mueve `tenants.trial_ends_at` a max(now, fin actual) + days. Aplica a
+ * tenants `trialing` y, desde soporte, a `trial_expired` (vuelve a `trialing`).
  * Update + audit corren en la MISMA transacción (atómico): `tenants` es tabla
  * global (sin RLS) así que el UPDATE funciona igual dentro del contexto de
  * tenant, y `audit_logs` (RLS) necesita ese contexto para el INSERT.
@@ -216,16 +220,46 @@ export async function extendTrial(
   now: Date = new Date(),
 ): Promise<{ trialEndsAt: Date }> {
   return withTenantContext(tenantId, async (tx) => {
+    // Orden A de locks: tenant_subscriptions ANTES que tenants. Un complejo vencido
+    // vuelve a `trialing` con la fecha nueva (soporte le da otra prueba).
+    const sub = await loadSubForUpdate(tx, tenantId)
+    // react-doctor-disable-next-line react-doctor/server-sequential-independent-await
+    const current = await loadTenantForUpdate(tx, tenantId)
+    const rearmed = isExpiredStatus(current.status)
+    if (rearmed) await rearmExpiredTrial(tx, tenantId, sub !== null)
     const { before, after } = await extendTrialInTx(tx, tenantId, days, now)
 
     await supportAudit(tx, systemAdminId, tenantId, 'support.tenant.trial_extended', {
       days,
+      rearmedFromExpired: rearmed,
       before: { trialEndsAt: before?.toISOString() ?? null },
       after: { trialEndsAt: after.toISOString() },
     })
 
     return { trialEndsAt: after }
   })
+}
+
+/**
+ * `trial_expired` (o su alias `free`) → `trialing`: soporte le da otra prueba al
+ * complejo vencido. Resetea los avisos de fin de prueba para que se vuelvan a
+ * mandar. La fecha nueva la pone `extendTrialInTx` en la misma transacción.
+ */
+async function rearmExpiredTrial(tx: DbTx, tenantId: string, hasSub: boolean): Promise<void> {
+  if (hasSub) {
+    await tx.execute(sql`
+      UPDATE tenant_subscriptions
+      SET status = 'trialing'::subscription_status, updated_at = NOW()
+      WHERE tenant_id = ${tenantId} AND status IN ('trial_expired', 'free')
+    `)
+  }
+  await tx.execute(sql`
+    UPDATE tenants
+    SET status = 'trialing'::tenant_status,
+        trial_warning_days_sent = NULL,
+        updated_at = NOW()
+    WHERE id = ${tenantId} AND status IN ('trial_expired', 'free')
+  `)
 }
 
 /**
@@ -294,8 +328,8 @@ export async function forceTenantStatus(
       case 'suspended':
         await transitionPastDueToSuspended(tenantId, tx)
         break
-      case 'free':
-        await transitionToFree(
+      case 'trial_expired':
+        await transitionToExpired(
           tenantId,
           from === 'canceled' ? 'cancel_period_ended' : 'dunning_ended',
           tx,
@@ -548,13 +582,13 @@ export async function saveLargeComplexQuote(
       const sub = await loadBillingSubForUpdate(tenantId, tx)
       if (!sub) throw new SubscriptionNotFoundError(tenantId)
       if (
-        (sub.status !== 'trialing' && sub.status !== 'free') ||
+        (sub.status !== 'trialing' && sub.status !== 'free' && sub.status !== 'trial_expired') ||
         sub.mp_subscription_id ||
         sub.plus_enabled ||
         sub.plus_prorate_cents !== null ||
         sub.pending_billed_courts !== null
       ) {
-        return 'La cotización requiere un complejo en prueba o gratis, sin mandato ni cambios pendientes.'
+        return 'La cotización requiere un complejo en prueba o con el plan no activo, sin mandato ni cambios pendientes.'
       }
       const plan = await loadActivePlan(tx)
       if (plan.slug !== COURT_COUNT_PRICE_SLUG)

@@ -1,5 +1,4 @@
 import { notFound, redirect } from 'next/navigation'
-import { isFreePlan } from '@/modules/tenants/tenant.lifecycle'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { isUuid } from '@/shared/validation/primitives'
@@ -35,7 +34,7 @@ type Props = { params: Promise<{ id: string }> }
 
 export default async function ReservaDetailPage(props: Props) {
   const params = await props.params
-  const auth = await requireOperatorStaff({ allowReadOnly: true, allowFree: true })
+  const auth = await requireOperatorStaff({ allowReadOnly: true })
   if (!auth.ok) redirect(auth.reason === 'plan' ? '/reactivar' : '/login')
   const { tenant } = auth
 
@@ -45,16 +44,12 @@ export default async function ReservaDetailPage(props: Props) {
   // super-admin/tenants/[id]/page.tsx.
   if (!isUuid(params.id)) notFound()
 
-  // Plan gratis (freemium v2): el detalle de cualquier turno se ve, con quién
-  // juega y sin plata — los cobros son del plan, así que ni se piden.
-  const freePlan = isFreePlan(tenant)
   const { booking, charges } = await withTenantContext(tenant.id, async (tx) => {
     const detail = await getBookingDetail(tenant.id, params.id, tx)
     if (!detail) return { booking: null, charges: null }
-    const c =
-      !freePlan && CHARGEABLE_STATUSES.has(detail.status)
-        ? await getBookingCharges(tenant.id, params.id, tx)
-        : null
+    const c = CHARGEABLE_STATUSES.has(detail.status)
+      ? await getBookingCharges(tenant.id, params.id, tx)
+      : null
     return { booking: detail, charges: c }
   })
   if (!booking) notFound()
@@ -138,7 +133,6 @@ export default async function ReservaDetailPage(props: Props) {
             // columna) cuando ese bloque existe — no repetir el mismo monto con
             // dos redacciones en dos bloques.
             hideMoneyRows={Boolean(charges)}
-            moneyHidden={freePlan}
           />
 
           <BookingActions
@@ -167,7 +161,6 @@ export default async function ReservaDetailPage(props: Props) {
             cancelBookingAction={cancelBookingAction}
             releaseBlockAction={releaseBlockAction}
             confirmDepositPaymentAction={confirmDepositPaymentAction}
-            moneyHidden={freePlan}
           />
         </div>
       </div>

@@ -29,7 +29,7 @@ export function HoyHeaderSlot({
   shortDateLabel: string
 }) {
   // Sin proveedor no hay botón: el complejo no vende en buffet (`canteen_enabled === false`)
-  // o está en el plan gratis, que no tiene cantina. La fecha ocupa el hueco.
+  // o el plan no está activo. La fecha ocupa el hueco.
   const vender = useOptionalVender()
   return (
     <AdminHeaderSlot>

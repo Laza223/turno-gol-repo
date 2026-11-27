@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql } from '@/shared/db/client'
 import { getPublicTenant } from '@/modules/tenants/public.service'
-import { isPublicPortalOpen } from '@/modules/tenants/tenant.lifecycle'
+import { isPublicProfileVisible } from '@/modules/tenants/tenant.lifecycle'
 import { cleanupAll, createTestTenant, ensureRoles } from '../helpers/tenant'
 import { getOrCreatePlanId } from '../helpers/factories'
 
@@ -80,7 +80,7 @@ describe('portal público de un complejo dado de baja', () => {
     expect(tenant!.status).toBe('canceled')
     // El caso de producción: dos meses pagos por delante.
     expect(tenant!.canceledPeriodEnd).not.toBeNull()
-    expect(isPublicPortalOpen(tenant!.status, tenant!.canceledPeriodEnd)).toBe(true)
+    expect(isPublicProfileVisible(tenant!.status, tenant!.canceledPeriodEnd)).toBe(true)
     // 59 días de período > 6 de anticipación: la ventana configurada no se toca.
     expect(tenant!.bookingAdvanceDays).toBe(6)
   }, 30_000)
@@ -93,7 +93,7 @@ describe('portal público de un complejo dado de baja', () => {
     })
 
     const tenant = await getPublicTenant(t.slug)
-    expect(isPublicPortalOpen(tenant!.status, tenant!.canceledPeriodEnd)).toBe(true)
+    expect(isPublicProfileVisible(tenant!.status, tenant!.canceledPeriodEnd)).toBe(true)
     // Sin el recorte serían 6: se podrían vender 4 turnos posteriores al corte,
     // con la seña ya cobrada y el complejo `blocked` sin poder atenderlos.
     expect(tenant!.bookingAdvanceDays).toBe(2)
@@ -111,7 +111,7 @@ describe('portal público de un complejo dado de baja', () => {
     // El sweep `canceled → blocked` corre una vez por día (13:00 ART): entre el
     // vencimiento y el barrido el status sigue siendo `canceled`, y el gate NO
     // puede depender de que ya haya pasado.
-    expect(isPublicPortalOpen(tenant!.status, tenant!.canceledPeriodEnd)).toBe(false)
+    expect(isPublicProfileVisible(tenant!.status, tenant!.canceledPeriodEnd)).toBe(false)
   }, 30_000)
 
   it('blocked: cerrado (control negativo — la baja voluntaria no aflojó el bloqueo por mora)', async () => {
@@ -122,7 +122,7 @@ describe('portal público de un complejo dado de baja', () => {
     })
 
     const tenant = await getPublicTenant(t.slug)
-    expect(isPublicPortalOpen(tenant!.status, tenant!.canceledPeriodEnd)).toBe(false)
+    expect(isPublicProfileVisible(tenant!.status, tenant!.canceledPeriodEnd)).toBe(false)
   }, 30_000)
 
   it('active: abierto, ventana intacta y SIN pagar la query del período', async () => {
@@ -133,7 +133,7 @@ describe('portal público de un complejo dado de baja', () => {
     })
 
     const tenant = await getPublicTenant(t.slug)
-    expect(isPublicPortalOpen(tenant!.status, tenant!.canceledPeriodEnd)).toBe(true)
+    expect(isPublicProfileVisible(tenant!.status, tenant!.canceledPeriodEnd)).toBe(true)
     expect(tenant!.bookingAdvanceDays).toBe(6)
     // Contrato de `getPublicTenant`: el período solo se lee cuando el estado lo
     // pide. `null` acá es la prueba de que la visita pública normal no paga una

@@ -29,7 +29,6 @@ export const Default: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('radio', { name: '3', checked: true })).toBeInTheDocument()
     await expect(canvas.getByText('Recomendado')).toBeInTheDocument()
-    await expect(canvas.getByRole('heading', { name: 'Gratis' })).toBeInTheDocument()
     await expect(canvas.getByRole('heading', { name: 'Completo + WhatsApp' })).toBeInTheDocument()
     await expect(canvas.getByRole('radio', { name: 'Mensual', checked: true })).toBeInTheDocument()
     await expect(canvas.getByText(/\$\s90\.000$/)).toBeInTheDocument()

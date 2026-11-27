@@ -8,7 +8,7 @@ import {
   CHURNED_DELETION_DAYS,
   transitionBlockedToChurned,
   transitionPastDueToSuspended,
-  transitionToFree,
+  transitionToExpired,
 } from '@/modules/billing/lifecycle.service'
 import {
   billingReason,
@@ -93,9 +93,9 @@ export async function runDunningSweep(now: Date = new Date()): Promise<void> {
   `
   const pastDueIds = pastDueRows.map((r) => r.tenant_id)
 
-  // ─── 2. suspended → free (≥ 14d) ───────────────────────────────────────
-  // Freemium: el final de la mora ya no bloquea, baja al plan gratis
-  // (docs/decisions/2026-11-08-freemium-spec-y-estado-free.md).
+  // ─── 2. suspended → trial_expired (≥ 14d) ──────────────────────────────
+  // El final de la mora no bloquea: pasa a `trial_expired`
+  // (docs/decisions/2026-11-27-prueba-30-dias-y-precios.md).
   const suspendedRows = await sql<{ tenant_id: string }[]>`
     SELECT tenant_id FROM tenant_subscriptions
     WHERE status = 'suspended'
@@ -105,8 +105,7 @@ export async function runDunningSweep(now: Date = new Date()): Promise<void> {
   const suspendedIds = suspendedRows.map((r) => r.tenant_id)
 
   // ─── 3. blocked → churned (≥ 90d) ──────────────────────────────────────
-  // Solo quedan los `blocked` del lifecycle anterior al freemium con borrado
-  // agendado; los demás los pasa a `free` `runExpireTrials`.
+  // Solo quedan los `blocked` del lifecycle anterior con borrado agendado.
   const blockedRows = await sql<{ tenant_id: string }[]>`
     SELECT tenant_id FROM tenant_subscriptions
     WHERE status = 'blocked'
@@ -115,8 +114,9 @@ export async function runDunningSweep(now: Date = new Date()): Promise<void> {
   `
   const blockedIds = blockedRows.map((r) => r.tenant_id)
 
-  // ─── 4. canceled & period_end < NOW → free ─────────────────────────────
-  // La baja voluntaria termina en el plan gratis al vencer lo pagado (decisión 5).
+  // ─── 4. canceled & period_end < NOW → trial_expired ───────────────────
+  // La baja voluntaria termina en `trial_expired` al vencer lo pagado
+  // (docs/decisions/2026-11-27-prueba-30-dias-y-precios.md §4.1).
   const canceledRows = await sql<{ tenant_id: string }[]>`
     SELECT tenant_id FROM tenant_subscriptions
     WHERE status = 'canceled' AND current_period_end < NOW()
@@ -185,12 +185,12 @@ export async function runDunningSweep(now: Date = new Date()): Promise<void> {
   for (const id of suspendedIds) {
     try {
       await withTenantContext(id, async (tx) => {
-        await transitionToFree(id, 'dunning_ended', tx)
+        await transitionToExpired(id, 'dunning_ended', tx)
         await enqueueTenantOwnerNotification(
           {
             tenantId: id,
-            templateName: 'plan_downgraded_free',
-            triggerEvent: 'sweep.suspended_to_free',
+            templateName: 'plan_not_active',
+            triggerEvent: 'sweep.suspended_to_expired',
             content: {
               notificationEventKey: artTodayStr(),
               ownerName: ownerName(ownerMap, id),
@@ -201,13 +201,13 @@ export async function runDunningSweep(now: Date = new Date()): Promise<void> {
           tx,
         )
       })
-      await notifyOwnerPlanEvent(id, { event: 'downgraded_free' }, artTodayStr())
-      logger.info('tenant transitioned suspended → free', {
+      await notifyOwnerPlanEvent(id, { event: 'plan_not_active' }, artTodayStr())
+      logger.info('tenant transitioned suspended → trial_expired', {
         module: 'dunning-retry',
         tenantId: id,
       })
     } catch (err) {
-      logger.warn('failed suspended→free', {
+      logger.warn('failed suspended→trial_expired', {
         module: 'dunning-retry',
         tenantId: id,
         error: String(err),
@@ -262,12 +262,12 @@ export async function runDunningSweep(now: Date = new Date()): Promise<void> {
     try {
       // react-doctor-disable-next-line react-doctor/async-await-in-loop
       await withTenantContext(id, async (tx) => {
-        await transitionToFree(id, 'cancel_period_ended', tx)
+        await transitionToExpired(id, 'cancel_period_ended', tx)
         await enqueueTenantOwnerNotification(
           {
             tenantId: id,
-            templateName: 'plan_downgraded_free',
-            triggerEvent: 'sweep.canceled_to_free',
+            templateName: 'plan_not_active',
+            triggerEvent: 'sweep.canceled_to_expired',
             content: {
               notificationEventKey: artTodayStr(),
               ownerName: ownerName(ownerMap, id),
@@ -278,13 +278,13 @@ export async function runDunningSweep(now: Date = new Date()): Promise<void> {
           tx,
         )
       })
-      await notifyOwnerPlanEvent(id, { event: 'downgraded_free' }, artTodayStr())
-      logger.info('tenant transitioned canceled → free (period ended)', {
+      await notifyOwnerPlanEvent(id, { event: 'plan_not_active' }, artTodayStr())
+      logger.info('tenant transitioned canceled → trial_expired (period ended)', {
         module: 'dunning-retry',
         tenantId: id,
       })
     } catch (err) {
-      logger.warn('failed canceled→free', {
+      logger.warn('failed canceled→trial_expired', {
         module: 'dunning-retry',
         tenantId: id,
         error: String(err),

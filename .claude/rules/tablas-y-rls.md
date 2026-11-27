@@ -21,4 +21,4 @@ paths:
 
 - **`booking_write_offs`** (migr. 108, "Dar por perdido"): aislada por tenant, una fila por turno (`booking_id` UNIQUE, FK sin CASCADE: el wipe de retención la borra antes que `bookings`). ENABLE+FORCE RLS con policy de tenant; `turnogol_app` solo SELECT, INSERT y DELETE (sin UPDATE: se crea o se borra). Sin columna de motivo (Ley 25.326). Es tabla propia y no columna de `bookings` porque el trigger `enforce_booking_invariants_fn` bloquea todo UPDATE de un turno `completed`.
 
-Cómo setear contexto, defensa en profundidad y checklist de tabla nueva: skill `convenciones-stack`.
+Cómo setear contexto, defensa en profundidad y checklist de tabla nueva: `.claude/rules/rls-multi-tenant.md`.

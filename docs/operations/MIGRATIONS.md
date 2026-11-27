@@ -74,7 +74,7 @@ Si falla a mitad, deja un índice `INVALID` que hay que dropear a mano antes de 
 SELECT indexrelid::regclass FROM pg_index WHERE NOT indisvalid;
 ```
 
-**Hoy las tablas de prod están vacías**, así que un `CREATE INDEX` común es instantáneo — por eso las migraciones 053 y 061 no lo usan. La regla arranca a aplicar **desde el primer complejo con datos reales**.
+**Prod tiene complejos reales con datos**, así que la regla aplica: un índice nuevo sobre una tabla con datos va con `CONCURRENTLY`. Las migraciones 053 y 061 son anteriores, de cuando las tablas estaban vacías: no las tomes como patrón.
 
 ## Cambios de columna en caliente: expand & contract
 

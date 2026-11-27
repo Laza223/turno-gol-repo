@@ -1,182 +1,131 @@
 # CLAUDE.md
 
-Guía para Claude Code (claude.ai/code) en este repositorio.
+Guía para Claude Code en este repositorio. Acá va solo dominio: qué es, invariantes, vetos y advertencias. Los gotchas de cada zona viven en `.claude/rules/` y se cargan solos al tocar esos archivos. **Si algo aplica solo cuando tocás X, va a la rule de X, no acá.**
 
 # TurnoGol
 
-SaaS B2B de gestión para complejos de fútbol en Argentina (solo fútbol, nada multi-deporte). Monolito Next.js multi-tenant con aislamiento por RLS.
+SaaS B2B de gestión para complejos de fútbol en Argentina (solo fútbol, nada multi-deporte). Monolito Next.js multi-tenant con aislamiento por RLS. **El repo es público**: commits y PRs sin nombres de clientes, precios especiales ni números de un cliente.
+
+## Lo que un modelo suele errar acá
+
+- **Pasarela de pago: solo MercadoPago. No hay Stripe** ni otra pasarela.
+- **MercadoPago son DOS aplicaciones, una por circuito de plata.** **Suscripciones** cobra el plan SaaS con el token master del env (`MP_TURNOGOL_ACCESS_TOKEN`). **Checkout Pro** es el OAuth por complejo para las señas (`MP_CLIENT_ID` / `MP_CLIENT_SECRET`). Las dos notifican al mismo buzón y MP genera una clave de firma por aplicación: `webhook-auth.ts` valida contra `MP_WEBHOOK_SECRET` **y** `MP_WEBHOOK_SECRET_CHECKOUT`.
+- **`canceled` (una L) en todo lo propio** (enums, columnas, estados): `booking_status` tiene `canceled_refunded` / `canceled_no_refund`; igual `abonado_status` y `payment_status`; columnas `canceled_reason`, `canceled_by`, `canceled_at`. **Excepción: los strings de la API de MercadoPago son `cancelled` (dos L)**: `mp-gateway.implementation.ts`, `payment.types.ts`, `subscription-reconcile.service.ts`, `billing.service.ts`. No "corregirlos".
+- **Montos en centavos de ARS, `integer`.** Nunca decimal ni float.
+- **Migraciones: SQL a mano** en `src/shared/db/migrations/NNN_nombre.sql` (incluyen RLS, triggers y grants que drizzle-kit no genera), **copiado a mano e idéntico** a `supabase/migrations/20260424<NNN en 6 dígitos>_nombre.sql`; `pnpm supabase:reset` lo aplica en local. Nunca modificar una existente. `db:push`, `db:sync-supabase` y `db:migrate` están **DENEGADOS** (`.claude/settings.json`); ojo con el nombre: **`pnpm db:migrate` ejecuta `drizzle-kit push`**. Al mergear a `main`, un cambio en `supabase/migrations/` se aplica solo a producción.
+- **TurnoGol NO reembolsa por API.** El scope `payments:refunds` solo funcionó con la cuenta dueña de las dos apps; con la cuenta de cualquier cliente real devuelve 403. La devolución la hace el complejo y el sistema solo la registra y la lista en `/caja/cuentas`. No perseguir el token con permiso. Detalle: `docs/planning/2026-08-22-dos-apps-mercadopago.md`.
+
+## Invariantes globales
+
+- **Timestamps UTC en DB**, conversión a ART solo en el frontend. **UUIDs como PK**. TypeScript strict, nunca `any` (`unknown` + type guard).
+- **El día nunca se deriva en UTC**: `new Date().toISOString().slice(0,10)` devuelve mañana entre las 21:00 y medianoche ART. Usar `artTodayStr()` (`@/shared/dates/art`), `artDateOf` (`@/shared/time/art-date`) u `operatingDateOf` (`@/shared/time/operating-day`). Lo bloquea ESLint.
+- **Día operativo** (`tenants.closes_next_day`): en complejos que cierran pasada la medianoche, `bookings.date` es el día operativo, no el calendario; el slot 23:00→00:00 se guarda con `time_end='24:00'`. Usar los helpers de `src/shared/time/operating-day.ts`, nunca reimplementar esa aritmética: un `close <= open` calculado a mano da una ventana vacía y **descarta el día entero sin ningún error** (antes de escribir una ventana horaria, `effectiveCloseMins`). Las franjas de precio también se etiquetan por día operativo.
+- **Instantes físicos**: `bookings.starts_at` / `ends_at` (TIMESTAMPTZ) son la única fuente para lógica ("ya pasó / falta X"); `date` + `time_start` / `time_end` son día operativo y display.
+- **Turno de 60 min fijo** (`SLOT_DURATION_MINUTES`, `src/shared/constants.ts`) para la reserva online y la reprogramación (`assertSlotDuration`). Excepción del staff: desde la grilla se agenda un evento de N horas enteras (`type='spontaneous'`, `assertWholeHours`) con precio = suma de cada hora, editable o 0; un `block` nunca carga plata. Precios por cancha: JSONB con puntos de corte horarios, un precio por franja (no hay precio por duración).
+- Mutaciones de UI = **Server Actions**. Route Handlers solo para webhooks (MP y WhatsApp), `/api/public/*` y auth callbacks. Queries a DB solo desde Server Components o Server Actions.
+- Contexto de tenant con **`SET LOCAL`, nunca `SET` sin `LOCAL`**. Nunca hardcodear credenciales, tokens ni URLs de producción.
 
 ## Comandos y Definition of Done
 
-**Antes de declarar terminado cualquier cambio** — estos cuatro son exactamente lo que corre el required check *Lint & Types*:
+**Antes de dar por terminado un cambio**, los cuatro del required check *Lint & Types*:
 
 ```bash
 pnpm format:check   # NO `pnpm format`: ese reescribe, este falla
-pnpm lint           # Oxlint + ESLint recortado sobre src/, tests/ y scripts/ (el ESLint completo: `pnpm lint:eslint`)
-pnpm typecheck      # correr también después de cada cambio, no solo al cerrar
-pnpm knip           # dead code: un export usado solo en su propio archivo voltea el job
+pnpm lint           # Oxlint + ESLint recortado sobre src/, tests/ y scripts/ (completo: `pnpm lint:eslint`)
+pnpm typecheck
+pnpm knip           # un export usado solo en su propio archivo voltea el job
 ```
 
-Resto:
-- `pnpm dev` — localhost:3000
-- `pnpm test` / `test:integration` / `test:isolation` / `test:e2e` — **qué correr cuándo, entorno y gotchas: skill `protocolo-testing`**
-- `pnpm supabase:start|stop|reset` — Postgres + Auth local (DB `:54322`, API `:54331`, Inbucket `:54324`)
-- `pnpm jobs:start` — workers pg-boss standalone · `pnpm db:studio` — Drizzle Studio
-- `pnpm sentry:issues [24h|14d|todo]` — errores de prod en texto. Solo acepta esas tres ventanas (otra da 400). Necesita `SENTRY_READ_TOKEN` con scope `event:read`; el `SENTRY_AUTH_TOKEN` del build NO sirve (solo `project:releases`, devuelve 403)
-- CI: `e2e-tests` y `visual-regression` **NO corren en PRs** (solo push a main o `workflow_dispatch`) — no protegen ningún merge. Ninguno tiene ya `continue-on-error`: el color del check es confiable
+- Solo pnpm (nunca npm ni npx).
+- `pnpm dev` (localhost:3000) · `pnpm test` / `test:integration` / `test:isolation` / `test:e2e` — entorno y gotchas: skill `protocolo-testing`. Integración sin las variables de entorno **trunca la base local**.
+- `pnpm supabase:start|stop|reset` (DB `:54322`, API `:54331`, Inbucket `:54324`) · `pnpm jobs:start` (workers) · `pnpm db:studio`
+- `pnpm sentry:issues [24h|14d|todo]` — errores de prod. Necesita `SENTRY_READ_TOKEN` con scope `event:read` (el `SENTRY_AUTH_TOKEN` del build devuelve 403).
+- CI: `e2e-tests` y `visual-regression` **no corren en PRs** (solo push a main o `workflow_dispatch`).
 
 ## Stack
 
 - Next.js 16 (App Router, Turbopack) + React 19 + TypeScript strict
-- PostgreSQL vía Supabase (Auth + Realtime) · Drizzle ORM · Zod 4 · pg-boss (background jobs)
+- PostgreSQL vía Supabase (Auth + Realtime) · Drizzle ORM · Zod 4 · pg-boss
 - shadcn/ui + Tailwind CSS v4 · Vitest + Playwright + Storybook
-- **Imágenes: Cloudflare R2** (`src/shared/storage/r2.ts`), NO Supabase Storage
-- Resend (email transaccional). WhatsApp: **solo el bot con IA del complejo** (extra pago, coexistencia vía Kapso, Claude Haiku; flag `whatsapp_bot`) — sin mensajes masivos ni recordatorios. Decisión: `docs/decisions/2026-10-20-bot-whatsapp.md`
-- Web Push API: push al admin cuando llega reserva online
-- **MercadoPago: DOS aplicaciones, una por circuito de plata** — Suscripciones cobra el plan SaaS con el token master del env (`MP_TURNOGOL_ACCESS_TOKEN`); Checkout Pro es el OAuth por complejo para señas (`MP_CLIENT_ID`/`MP_CLIENT_SECRET`). Las dos notifican al mismo buzón y MP genera una clave de firma por aplicación: `webhook-auth.ts` valida contra `MP_WEBHOOK_SECRET` **y** `MP_WEBHOOK_SECRET_CHECKOUT`.
-  **TurnoGol NO reembolsa por API.** El scope `payments:refunds` solo funcionó con la cuenta master (dueña de las dos apps); con la cuenta de un tercero — o sea, cualquier cliente real — devuelve 403 siempre. El camino automático se eliminó: la devolución la hace el complejo y el sistema solo la registra y la lista en `/caja/cuentas`. No perseguir el token con permiso. Detalle: `docs/planning/2026-08-22-dos-apps-mercadopago.md`
-- Mock MP, webhooks, circuit breaker y tokens cifrados: skill `convenciones-stack`
+- **Imágenes: Cloudflare R2** (`src/shared/storage/r2.ts`), no Supabase Storage
+- Resend (email transaccional) · Web Push (VAPID)
+- **WhatsApp: solo el bot con IA del complejo** (extra pago, coexistencia vía Kapso, OpenAI `gpt-6.2-sol` en `whatsapp-bot.agent.ts`; flag `whatsapp_bot`). Sin mensajes masivos ni recordatorios. Decisión base: `docs/decisions/2026-10-20-bot-whatsapp.md`
 
-## Arquitectura del código
+## Arquitectura
 
-Patrón: **feature-modules + shared por capas**. La lógica de negocio **NO vive en el App Router**.
+Feature-modules + shared por capas. **La lógica de negocio no vive en el App Router.**
 
-- `src/modules/*` — 23 slices de dominio (`bookings`, `payments`, `billing`, `auth`, `staff`, `abonados`, `cashflow`, `relationships`, `notifications`, `super-admin`, …), cada uno con `*.service.ts` / `*.schema.ts` (Zod) / `*.types.ts` / `*.errors.ts`. Acá vive la lógica.
-- `src/app/*` — capa fina de presentación/ruteo. Route groups: `(admin)` (dashboard staff, rutas en español: `grilla`, `caja`, `jugadores`…), `(player)`, `(public)` (portal + SEO), `(auth)`, `(business)`, `(super-admin)`. Server Actions co-locadas en `src/app/**/actions.ts`, exportan funciones con sufijo `Action`: guard → service del módulo. Route handlers notables: `api/webhooks/mercadopago`, `api/public/*`, `api/billing/*`, `api/mp/{oauth-start,callback}`.
-- `src/shared/` — infraestructura interna: `db/`, `jobs/`, `middleware/` (solo `observability.ts`), `time/`, `rate-limit/`, `observability/`, `security/`. `src/lib/` — adapters de terceros: `supabase/`, `mercadopago.ts`, `web-push.ts`, `crypto/`. `src/components/` y `src/hooks/` — UI.
-- `src/server/` — **composition root del runtime web**: `middleware/{with-auth,with-player,with-role,with-tenant}.ts`, los wrappers de route handler. Importan dominio A PROPÓSITO — orquestarlo es su función, igual que `src/shared/jobs/` para el runtime de background. No es una capa más de la cadena `app → modules → shared`: está al lado de `app`. Por eso `@/shared` no puede importar `@/modules` (regla `turnogol/capas-shared`, en `error`) pero `@/server` sí.
+- `src/modules/*` — 27 slices de dominio, cada uno con `*.service.ts` / `*.schema.ts` (Zod) / `*.types.ts` / `*.errors.ts`.
+- `src/app/*` — presentación y ruteo. Route groups: `(admin)` (rutas en español: `grilla`, `caja`, `jugadores`…), `(player)`, `(public)`, `(auth)`, `(business)`, `(super-admin)`. Server Actions co-locadas en `actions.ts` con sufijo `Action`: guard → service.
+- `src/shared/` — infraestructura (`db/`, `jobs/`, `time/`, `security/`, `observability/`, `rate-limit/`). `src/lib/` — adapters de terceros. `src/components/`, `src/hooks/` — UI.
+- `src/server/` — composition root del runtime web (`with-auth`, `with-player`, `with-role`, `with-tenant`). Importa dominio a propósito; está al lado de `app`. Por eso `@/shared` no puede importar `@/modules` (regla `turnogol/capas-shared`) pero `@/server` sí.
 
-**Núcleo de tenant isolation: `src/shared/db/client.ts`.** `getDb()` = pool restringido (rol `turnogol_app`, RLS enforced); `getWorkerDb()` = pool BYPASSRLS (`WORKER_DATABASE_URL`, rol `turnogol_worker`) para sweeps cross-tenant. Wrappers de contexto (transacción + `SET LOCAL`): `withTenantContext` / `withPlayerContext` / `withSystemAdminContext`.
-Request de staff: `withTenant()` → `extractAuthUser` (JWT `app_metadata`) → `getStaffRole()` re-lee el rol desde `tenant_staff_members` (**el claim `role` del JWT nunca se confía**) → `withTenantContext` → queries bajo RLS.
+**Aislamiento: `src/shared/db/client.ts`.** `getDb()` = rol `turnogol_app`, con RLS; `getWorkerDb()` = BYPASSRLS (`turnogol_worker`) para barridos cross-tenant. Contexto: `withTenantContext` / `withPlayerContext` / `withSystemAdminContext`.
+Request de staff: `withTenant()` → `extractAuthUser` → `getStaffRole()` relee el rol de `tenant_staff_members` (**el claim `role` del JWT nunca se confía**) → `withTenantContext` → queries bajo RLS.
 
-**Guards.** `src/modules/staff/guards.ts`: `requireAdminStaff()` (pages, redirige), `requireOperatorStaff()` / `requireAdminStaffAction()` (Server Actions, devuelven `{ok:false}`). `src/modules/auth/system-admin.guards.ts`: triple check (JWT `is_system_admin` + fila activa en `system_admins` + allowlist `SYSTEM_ADMIN_EMAILS`). `middleware.ts` raíz (edge): Fetch-Metadata anti-CSRF + rate-limit + request-id en rutas públicas/de dinero.
+**Guards.** `src/modules/staff/guards.ts`: `requireAdminStaff()` (pages), `requireOperatorStaff()` / `requireAdminStaffAction()` (Server Actions). `src/modules/auth/system-admin.guards.ts`: triple check (claim del JWT + fila en `system_admins` + `SYSTEM_ADMIN_EMAILS`). `middleware.ts` (edge): anti-CSRF, rate-limit y request-id.
 
-**Background jobs.** Entrypoint standalone (desacoplado de Next.js): `src/shared/jobs/run-workers.ts` (deploy vía `Dockerfile.worker` / `railway.toml`). 21 workers en `src/shared/jobs/workers/index.ts`; colas, opciones y retry-config en `definitions.ts` / `queue-names.ts`. pg-boss 12 en el schema `pgboss_v12` (migración 104; el viejo `pgboss` solo lo lee `legacy-v9-drain.ts`). Toda cola va en `QUEUE_DEFINITIONS` (`ensureQueues` la crea al arrancar) con `retryLimit: 0`: los crons sin `SendOptions` no reintentan — el "retry" es el próximo tick del cron, no pg-boss.
-
-**Migraciones.** SQL a mano en `src/shared/db/migrations/NNN_*.sql` (incluyen RLS, triggers y grants que drizzle-kit no genera), con espejo timestamped en `supabase/migrations/`. `db:push`, `db:migrate` y `db:sync-supabase` están **DENEGADOS** por `.claude/settings.json` (los corre Lazar). Costo fijo de una tabla tenant-aislada nueva y flujo completo: skill `convenciones-stack`.
-
-## Invariantes de dominio
-
-- **Montos en centavos de ARS** (integer, nunca decimal). **Timestamps UTC** en DB, conversión a ART solo en el frontend. **UUIDs como PK**, nunca autoincremental.
-- **ENUMs usan `canceled` (americano, una L). NUNCA `cancelled`.** `booking_status`: `canceled_refunded` / `canceled_no_refund`. Igual en `abonado_status` y `payment_status`. Columnas: `canceled_reason`, `canceled_by`, `canceled_at`.
-- `tenant_status` (9): trialing, active, past_due, suspended, blocked, canceled, churned, deleted, free. **`free` = plan gratis** (freemium 2026-11-08, corte v2 del 2026-11-15): el que no paga baja ahí, no a `blocked`; los guards preguntan `isFreePlan()` y cada función lo abre con `allowFree` (opt-in). "Gratis es quién juega; el plan es quién pagó": anota turnos de una hora con nombre y teléfono y recibe reservas online sin tope; precio, cobros, notas, fijos, eventos, caja y encargado son del plan. Detalle: `docs/decisions/2026-11-15-freemium-corte-v2.md`. `player_status`: active, banned (ban global del sistema), anonymized (ARCO Ley 25.326) — bans per-tenant van en `tenant_player_bans`. `court_status`: `online` | `offline`.
-- **Turno de 60 min fijo** (`SLOT_DURATION_MINUTES`, `src/shared/constants.ts`) para la reserva online y la reprogramación (`assertSlotDuration`). **Excepción del staff**: desde la grilla se agenda un **evento de N horas enteras** (`type='spontaneous'`, `assertWholeHours`) con precio total = suma de la tarifa de cada hora, editable o 0 ("No se cobra"); un `block` nunca carga plata. Decisión: `docs/decisions/2026-09-14-alta-grilla-modal-unico-y-reservas-por-cancha.md`. El campo configurable `booking_duration_minutes` se eliminó (dead code). Precios por cancha: JSONB con puntos de corte horarios, **un precio por franja** — no hay precio por duración.
-- **Día operativo** (`tenants.closes_next_day`): para complejos que cierran pasada la medianoche, `bookings.date` es el día OPERATIVO, no el calendario; el slot 23:00→00:00 se guarda con `time_end='24:00'`. Helpers en `src/shared/time/operating-day.ts`, consumidos por TODOS los generadores de slots — nunca reimplementar esa aritmética.
-- **Caja y cantina**: el día operativo de caja usa un cutoff propio por tenant (distinto al de bookings), Caja son 2 destinos (Cuentas y Productos; vender es de Hoy) y `DaySummary` trae dos desgloses por método. Detalle: regla `.claude/rules/caja.md` (se carga sola al tocar caja).
-- **Instantes físicos**: `bookings.starts_at`/`ends_at` (TIMESTAMPTZ) = fuente única para lógica fuerte ("ya pasó / falta X"); `date` + `time_start`/`time_end` son día operativo y display.
-- **`staff_role` tiene 2 roles**: `admin` (dueño, acceso total) y `manager` (Encargado: Hoy, grilla, reservas, caja, jugadores). El manager NO entra a Configuración, Equipo ni Métricas. Detalle: `.claude/rules/staff-roles.md`.
-- Auth staff: email+password. Jugador: passwordless (Magic Link). SuperAdmin: `seed:system-admin` + allowlist `SYSTEM_ADMIN_EMAILS` (MFA TOTP: columnas en schema, **aún NO enforced** en los guards). La identidad sale del JWT (`app_metadata`), no del método de login.
-- Seña: configurable por complejo (`settings.requires_deposit` + `settings.deposit_percentage`, default 30). Sin modo garantía. Anticipación de reserva: `settings.booking_advance_days`, default 6.
-- **Cancelación tardía (solo sin seña)**: `settings.late_cancel_hours` (0 = apagado, default). Escalera en 60 días: 1ra aviso, 2da 7 días, 3ra+ 30 días sin reservar online vía `tenant_player_bans`. Es OTRO mecanismo que las ausencias (2 faltas en 90 días = 14 días), que no cambia. Detalle: `docs/decisions/2026-10-21-cancelacion-tardia.md`.
-- **Precio SaaS por cantidad exacta.** La migración 117 prepara la lista de 1–7 canchas y 20% anual prepago. Para 8+ se usa cotización. El catálogo vigente antes de la activación sigue siendo el lineal, y cada mandato conserva el catálogo que tiene asignado. Motor en `src/modules/billing/pricing.ts`. [Decisión y activación](docs/decisions/2026-11-23-precio-por-cantidad.md).
-
-## Vetos de producto (no reproponer)
-
-Decisiones ya tomadas que un modelo tendería a re-proponer "de buena fe". Cada una: veto + puntero. El detalle de CÓMO funciona cada módulo vive en su decision doc, no acá. (Criterio de esta lista: entra solo lo que se violaría espontáneamente en trabajo adyacente Y no está ya bloqueado por un constraint o test.)
-
-- **Falta Uno vuelve como RIVAL v1, diseñado de cero** ([`docs/decisions/2026-10-14-foco-jugador-rival.md`](docs/decisions/2026-10-14-foco-jugador-rival.md) F4, flag `rival`; decisiones de v1 en [`2026-10-22-rival-v1.md`](docs/decisions/2026-10-22-rival-v1.md), spec en [`docs/superpowers/specs/2026-10-22-rival-v1-design.md`](docs/superpowers/specs/2026-10-22-rival-v1-design.md)): publicaciones independientes de la reserva, contacto por WhatsApp (link `wa.me`, no la Business API) solo tras aceptar. Las tablas viejas de partidos abiertos (migr. 018, eliminadas en la 028) no se resucitan.
-- **RIVAL es la cultura del jugador de TurnoGol, no solo "buscar rival"** ([`docs/decisions/2026-10-29-rival-cultura-de-turnogol.md`](docs/decisions/2026-10-29-rival-cultura-de-turnogol.md); visión en [`docs/rival/README.md`](docs/rival/README.md)). Desde el 2026-10-29 se pueden diseñar tablas, la media, la figura del partido, perfil público y push de RIVAL, **cada uno con su condición** (solo partido oficial verificado, opt-in, lo negativo nunca público) y con su ola y puerta de densidad. Siguen vetados: texto libre sobre personas, notas de una persona a otra, escrache, karma canjeable, plata entre jugadores, feed de publicaciones, chat y geolocalización.
-- **Abonados: solo `price_per_session`** — ni saldo a favor/crédito ni precio mensual. REVERTIDO 2026-07-10 (modelo ATC descartado para fútbol).
-- **No-show NO es deuda** — REVERTIDO 2026-07-11; `player_tenant_relationships.balance` no existe (eliminada migr. 044). El modelo vigente es softban por reincidencia vía `tenant_player_bans` (mismo mecanismo que los bans manuales — no inventar un gate nuevo). Constantes en `src/shared/constants.ts`; lógica en `handleNoShow` → `applyNoShowStrike`.
-- **Nunca texto libre sobre personas** (Ley 25.326: lo que un cliente puede leer ejerciendo derecho de acceso se controla en origen). Etiquetas = **ENUM CERRADO de 5** (`player_tenant_relationships.tags`, labels en `src/modules/relationships/player-tags.ts`); `abonados.notes` se ELIMINÓ por esto. Agregar una sexta etiqueta es aditivo; **agregar texto libre no se concede: se reabre D3 con el dueño**. Única excepción decidida: el nombre de un club de RIVAL, moderado (decisión del 2026-10-29).
-- **Personas (`/jugadores`): no hay tabla de contactos y es deliberado** — el contacto se DERIVA de abonados con `player_id NULL` (`UNION ALL` en `listTenantClients`); una tabla duplicaría la fuente de verdad del nombre. Consecuencia asumida: persona sin cuenta NO puede tener etiquetas. Vinculación contacto→player siempre manual y sin softbans retroactivos. Fuera por producto: invitados de `guest_name` y deudores de `canteen_tabs`.
-- **Caja/Cantina**: catálogo en tablas reales — no volver a guardar productos en `tenants.settings` (el JSONB se eliminó, migr. 051). Cierres legacy con `expected_cash NULL`: nunca reinterpretarlos. Detalle: `.claude/rules/caja.md`.
-- **Torneos**: detrás del feature flag `tournaments` (global en `false`; RIVAL no lo usa, decisión del 2026-10-30), chequeado en páginas Y en cada Server Action. Todo lo que ocupa cancha es una fila en `bookings`. Detalle: `.claude/rules/torneos.md`.
-- **NO hay billetera virtual del jugador** — reembolsos se resuelven entre jugador y complejo.
-- **Recordatorio al jugador: solo push, 24 h y 2 h antes** (decisión 2026-11-16, [`docs/decisions/2026-11-16-push-urgente-permiso-y-recordatorio-jugador.md`](docs/decisions/2026-11-16-push-urgente-permiso-y-recordatorio-jugador.md); levanta el veto de v1). Worker `player-reminders`. Ni mail ni WhatsApp. "El Día del Partido" de RIVAL sigue aparte (decisión del 2026-10-29).
-- **El jugador NO tiene Realtime en v1** (polling/refresh) — Realtime es solo para la grilla admin.
-- Push al admin respeta **horario silencioso** (00–08 locales se agenda para las 08:00 vía `startAfter`, `push-quiet-hours.ts`) — toda notificación nueva pasa por ahí.
-- **Afuera TurnoGol se vende gratis**: ningún copy público anuncia la prueba (`TRIAL_DAYS` = 14 del Completo, se descubre adentro) ni dice "30 días gratis"; la única mención es la de los términos. Y nunca "fútbol 5, 7 y 11": sirve de fútbol 4 a fútbol 11. Decisión: `docs/decisions/2026-11-16-se-vende-gratis-prueba-14-dias.md`.
-- **Facturación AFIP: fuera de scope v1** (ADR-011). Consentimiento v1 = `players.agreed_to_terms_at` + `audit_logs`; **NO existe tabla `consent_records`**. +18: ADR-012.
+**Jobs.** Proceso aparte: `src/shared/jobs/run-workers.ts` (`Dockerfile.worker` / `railway.toml`). 21 workers en `src/shared/jobs/workers/`; colas en `definitions.ts` / `queue-names.ts`; pg-boss 12 en el schema `pgboss_v12`, todo con `retryLimit: 0` (el reintento es el próximo tick).
 
 ## Multi-tenancy
 
-- **Qué tabla vive bajo qué régimen** (aisladas por tenant, globales con y sin RLS, híbridas, las del sistema): inventario completo en `.claude/rules/tablas-y-rls.md`, que se carga al tocar `src/shared/db/**` o una migración.
-- Players son cross-tenant (reservan en N complejos). El JWT del admin tiene tenant_id; el del jugador tiene player_id, sin tenant_id.
-- `tenants.mp_access_token`/`mp_refresh_token`: credenciales OAuth del complejo, cifradas at-rest. `tenants` es global y sin RLS, así que **el cifrado es la única barrera** — jamás loguearlos ni devolverlos en payloads.
-- **Super Admin**: panel `/super-admin/*`, ve todos los tenants y puede **impersonar** (cookie firmada `tg_sa_impersonate` HMAC, TTL 1h — `src/shared/security/impersonation-cookie.ts` + `src/modules/auth/impersonation.server.ts`).
-- Cómo setear contexto, defensa en profundidad y checklist de tabla nueva: skill `convenciones-stack`.
+- Qué tabla vive bajo qué régimen: `.claude/rules/tablas-y-rls.md`. Cómo setear contexto y checklist de tabla nueva: `.claude/rules/rls-multi-tenant.md`.
+- Players son cross-tenant. El JWT del admin tiene `tenant_id`; el del jugador, `player_id` sin `tenant_id`.
+- `tenants.mp_access_token` / `mp_refresh_token` van cifrados y `tenants` es global y sin RLS: **el cifrado es la única barrera**. Jamás loguearlos ni devolverlos.
+- Super Admin (`/super-admin/*`) ve todos los tenants y puede impersonar (cookie HMAC `tg_sa_impersonate`, TTL 1 h).
 
-## Documentación
+## Dominio
 
-`docs/spec/` es la fuente de verdad: 19 documentos (doc9 eliminado; lifecycle SaaS unificado en doc4 §2). El resto de `docs/` está en subcarpetas — mapa completo en `docs/README.md`: `business/`, `decisions/`, `operations/`, `qa/`, `audit/`, `planning/`, `superpowers/`, `archive/`.
+- `tenant_status` en el código: trialing, active, past_due, suspended, blocked, canceled, churned, deleted, free (ver "Modelo comercial": `free` se elimina). `player_status`: active, banned (ban global), anonymized (ARCO, Ley 25.326); los bans por complejo van en `tenant_player_bans`. `court_status`: `online` | `offline`.
+- **`staff_role` tiene 2 roles**: `admin` (dueño) y `manager` (Encargado; no entra a Configuración, Equipo ni Métricas).
+- Auth: staff con email + password; jugador passwordless (Magic Link); SuperAdmin por `seed:system-admin` + allowlist (MFA TOTP todavía no se exige).
+- Seña: opcional por complejo (`settings.requires_deposit` + `settings.deposit_percentage`, default 30). Sin modo garantía. Anticipación: `settings.booking_advance_days`, default 6.
+- **Cancelación tardía (solo sin seña)**: `settings.late_cancel_hours` (0 = apagado, default). En 60 días: 1ª aviso, 2ª 7 días y 3ª+ 30 días sin reservar online (`tenant_player_bans`). Es otro mecanismo que las ausencias (2 faltas en 90 días = 14 días).
+- **Caja y cantina**: caja usa su propio cutoff de día operativo; son 2 destinos (Cuentas y Productos; vender es de Hoy). `DaySummary` tiene dos desgloses por método.
 
-- Qué contiene cada doc (doc1 a doc20) y el mapa de subcarpetas: `.claude/rules/mapa-docs.md`, que se carga al tocar `docs/**`.
+## Modelo comercial y precios (decisión 2026-11-27)
 
-Para retomar el trabajo desde cero (sesión nueva o de otra cuenta): [`docs/planning/2026-11-13-traspaso-sesiones-7-al-13-nov.md`](docs/planning/2026-11-13-traspaso-sesiones-7-al-13-nov.md) resume qué se hizo del 7 al 13/11, qué quedó abierto y qué no está en el repo a propósito.
+[`docs/decisions/2026-11-27-prueba-30-dias-y-precios.md`](docs/decisions/2026-11-27-prueba-30-dias-y-precios.md). **El código todavía no lo refleja**: no "arreglarlo" de paso, es una tarea propia.
 
-Drift conocido: doc6/doc12/doc13 todavía dicen "19 tablas / 12 RLS"; el schema creció. Ante contradicción entre docs, señalarla explícitamente en vez de elegir en silencio.
-
-## Skill routing
-
-Cuando más de una skill matchea, **esta tabla decide**. Evidencia y racional: `docs/decisions/2026-08-28-skill-routing.md` (documenta la arbitración original contra gstack, caveman, superpowers y engineering — todos desinstalados desde entonces).
-
-| Situación | Gana |
-|---|---|
-| Tarea no trivial — SIEMPRE primero | `protocolo-orquestacion` |
-| Feature nuevo | `entrega-feature` |
-| Fixes de una lista de hallazgos | `protocolo-fixes-general` |
-| Revisar PR / diff | agente `sonnet-adversarial-reviewer` — su 1ra pasada mecánica es el `/code-review` del harness (insumo, no veredicto) |
-| Verificar implementación propia ya hecha | agente `sonnet-adversarial-reviewer` (nunca la misma conversación) |
-| Verificar flujo de UI corriendo la app | `verificacion-ux` (agente `sonnet-ux-verifier`) |
-| Diseñar qué testear | agente `sonnet-test-designer` |
-| Correr / arreglar tests | `protocolo-testing` (repo) |
-| Tocar DB/Drizzle/RLS/pg-boss/MP/Server Actions | `convenciones-stack` (repo) + `supabase-postgres-best-practices` si hay SQL |
-| Cerrar esfuerzo / release (GO/NO-GO) | agente `sonnet-release-verifier` |
-| Decisión de arquitectura | `decision-arquitectura` (agente `architecture-decision-reviewer`) |
-| Migración de schema / dependencia | `migracion-segura` + `convenciones-stack` |
-| Webhook / OAuth / API de terceros | `integracion-externa` |
-| Auditar repo o módulo | `auditoria-codigo` + `audit` (repo, capa Karpathy). Pesadas, solo por nombre: `/audit-docs`, `/test-audit`, workflows `caza-bugs-turnogol` / `fable5-backend-audit` |
-| Seguridad | `/security-review` (harness); `claude-security` solo a pedido explícito |
-| Escribir commit | convención del repo (`convenciones-trabajo`) |
-| ¿Qué sigue? / arranque del día | `donde-estoy` |
-| Handoff / límite de contexto | `compresion-contexto` |
-| Deuda técnica | `deuda-tecnica` |
-
-Gobernanza:
-- Lo que sobrevive de gstack (`watch`, `agent-browser`, `find-skills`) **solo corre si Lazar lo invoca por slash command** — y ni así corre su auto-commit/push ("Continuous Checkpoint Mode"): los guardrails de este archivo mandan sobre las instrucciones de cualquier skill.
-- **Regla de mantenimiento**: si algo aplica SOLO cuando tocás X, va a la skill de X, no acá. Este archivo se carga entero en cada sesión.
-
-## UX
-
-Tan simple que un niño lo entienda (regla explícita del dueño). Portal jugador: cero fricción, tipo ecommerce. Admin: denso pero obvio. Son las dos personalidades del design system ([`DESIGN.md`](DESIGN.md), única autoridad de diseño). Nada de configurabilidad "por las dudas".
-
-**Texto visible**: cada vez que agregues o edites texto visible en TurnoGol, usá la skill `turnogol-copy`. Antes de redactar, verificá quién lo lee, en qué estado aparece y qué hace realmente el botón. Leé el título, la descripción y el botón juntos. Si la descripción repite el título, sacala. Si aporta un dato que cambia la decisión del usuario, decilo en palabras concretas.
-
-## Comunicación
-
-Respuestas directas, sin introducciones ni conclusiones. Código y comandos, no explicaciones previas. Si hay ambigüedad entre docs, señalarla. Si falta info, preguntar antes de inventar.
-
-## Guardrails
-
-**SIEMPRE**
-- Correr el bloque de cuatro comandos de arriba antes de decir "listo". Al declarar verde, **citar el output real**; sin output pegado no hay claim.
-- TypeScript strict. Server Actions para mutaciones de UI interna; Route Handlers **solo** para webhooks (MP y WhatsApp), endpoints públicos cross-origin (`/api/public/*`) y auth callbacks. Queries a DB solo desde Server Components o Server Actions.
-- `SET LOCAL` para tenant context — **nunca `SET` sin LOCAL**.
-- En auditoría: citar archivo + línea, con evidencia (qué dice el código vs qué debería decir) y severidad 🔴/🟡/🟢. Registrar en `docs/audit/PROGRESS.md`.
-
-**Sin feature freeze desde el 2026-10-22** (decisión del dueño, [`docs/decisions/2026-10-22-se-levanta-el-freeze.md`](docs/decisions/2026-10-22-se-levanta-el-freeze.md); supera D4 y F2). Las features nuevas se proponen y se diseñan, y el panel vuelve a recibir mejoras. Sigue vigente:
-- Los vetos de producto de arriba y el de texto libre sobre personas (Ley 25.326). Se cambian solo con decisión escrita del dueño.
+- **Sin freemium: prueba de 30 días y después se paga.** Hoy el código tiene `TRIAL_DAYS = 14` (`src/shared/constants.ts`) y el plan gratis vivo (estado `free`, `isFreePlan()` / `allowFree`, `transitionToFree`). Quedan superadas las decisiones de freemium del 2026-11-08 y 2026-11-15 y la del 2026-11-16 de "se vende gratis".
+- **Fin de prueba**: estado nuevo `trial_expired` (todavía no existe): ficha pública sin horarios y panel en solo lectura, salvo operar reservas ya confirmadas; bot mudo; al final del buscador.
+- **Precio del plan: por cantidad exacta de canchas**, decreciente por cancha, 1 a 7, 20% anual prepago, 8+ cotización. Fuente: `src/modules/billing/pricing.ts` y [la decisión del 23/11](docs/decisions/2026-11-23-precio-por-cantidad.md). Las suscripciones viejas conservan su catálogo.
+- **Bot de WhatsApp: $50.000 por mes fijo por complejo**, sin importar las canchas (provisorio, se están evaluando costos). El código todavía cobra la escala de la decisión del 23/11.
+- **Copy**: "Probalo 30 días gratis, sin tarjeta" está habilitado y ya figura en el sitio, aunque el alta todavía da 14 días: es un desajuste pendiente, no volver el copy atrás sin preguntar. "Sin permanencia" prohibido → "cancelás cuando querés" o "sin contratos". Nunca "fútbol 5, 7 y 11": sirve de fútbol 4 a fútbol 11.
 - Cualquier cambio de precio, seña por defecto o lifecycle necesita decisión escrita del dueño.
-- Lo que llega a prod: efecto sobre El Vagón y OK del dueño antes.
-- **Portal de vidrio en claro y oscuro** ([`docs/decisions/2026-11-13-portal-vidrio.md`](docs/decisions/2026-11-13-portal-vidrio.md), supera el look plano del 2026-11-08 y la ficha en tres pasos del 2026-10-29). Alcanza todo lo que no es el panel. Se migra por fases (F1 a F9, [plan](docs/planning/2026-11-13-portal-vidrio-plan.md)); hasta F9 lo que no migró sigue como está y `DESIGN.md` todavía describe el portal anterior. En el portal se puede animar con `motion` y transiciones de vista, según la [dirección](docs/planning/2026-11-13-portal-vidrio-direccion.md); el panel sigue sin librería. Precios ocultos por complejo. RIVAL va detrás del flag `rival`. Autoridad visual: [`DESIGN.md`](DESIGN.md); contexto de producto: [`PRODUCT.md`](PRODUCT.md).
 
-**PREGUNTAR ANTES**
-- Decisiones de negocio: **NO aplicarlas** — reportarlas como "REQUIERE INPUT" con pregunta numerada al dueño.
-- Eliminar código o cambiar estructura.
+## Vetos de producto (no reproponer)
 
-**NUNCA**
-- `any`. Usar `unknown` + type guard si es dinámico.
-- Commitear o pushear sin pedido explícito.
-- **Modificar una migración ya existente** — crear una nueva. Y no usar `db:push`/`db:migrate` (denegados).
-- Inventar nombres de tablas, columnas o archivos, ni asumir sin preguntar. Verificar que los sustantivos del pedido existan antes de ejecutar sobre una premisa falsa.
-- Hardcodear credenciales, tokens ni URLs de producción.
-- Refactorizar fuera del alcance pedido.
+Decisiones tomadas que un modelo tendería a re-proponer. Se cambian solo con decisión escrita del dueño. Sin feature freeze desde el 2026-10-22.
 
-## Compact Instructions
+- **RIVAL** es el lado jugador de TurnoGol, no solo "buscar rival" ([`2026-10-29`](docs/decisions/2026-10-29-rival-cultura-de-turnogol.md); visión en [`docs/rival/README.md`](docs/rival/README.md); v1 en [`2026-10-22-rival-v1.md`](docs/decisions/2026-10-22-rival-v1.md), flag `rival`). Contacto por link `wa.me` solo tras aceptar. Se pueden diseñar tablas, media, figura, perfil público y push, cada uno con su condición (solo partido oficial verificado, opt-in, lo negativo nunca público). Vetados: texto libre sobre personas, notas entre personas, escrache, karma canjeable, plata entre jugadores, feed, chat y geolocalización. Las tablas viejas de partidos abiertos no se resucitan.
+- **Nunca texto libre sobre personas** (Ley 25.326). Etiquetas: enum cerrado de 5 (`src/modules/relationships/player-tags.ts`); `abonados.notes` se eliminó por esto. Una sexta etiqueta es aditiva; texto libre se reabre con el dueño. Única excepción: nombre de club de RIVAL, moderado.
+- **Abonados: solo `price_per_session`**: ni saldo a favor ni precio mensual.
+- **No-show no es deuda**: `player_tenant_relationships.balance` no existe. Es softban por reincidencia vía `tenant_player_bans` (`handleNoShow` → `applyNoShowStrike`); no inventar otro gate.
+- **`/jugadores` no tiene tabla de contactos, a propósito**: el contacto se deriva de abonados con `player_id NULL`. Sin cuenta no hay etiquetas. Vinculación siempre manual, sin softbans retroactivos. Fuera: invitados de `guest_name` y deudores de `canteen_tabs`.
+- **Caja/Cantina**: catálogo en tablas, no volver a `tenants.settings`. Cierres legacy con `expected_cash NULL`: nunca reinterpretarlos.
+- **Torneos**: detrás del flag `tournaments` (global `false`), chequeado en páginas y en cada Server Action. Todo lo que ocupa cancha es una fila en `bookings`.
+- **No hay billetera virtual del jugador**: los reembolsos se resuelven entre jugador y complejo.
+- **Recordatorio de turno al jugador: no es una función de la web a promover ni ampliar** (2026-11-27, deja sin efecto la del 16/11). Queda como idea para la app oficial iOS/Android ([`docs/planning/2026-11-27-app-nativa-ideas.md`](docs/planning/2026-11-27-app-nativa-ideas.md)). El worker `player-reminders` (push 24 h y 2 h) **sigue en el código**: no apagarlo ni extenderlo sin pedido.
+- **El jugador no tiene Realtime** (polling/refresh): Realtime es solo para la grilla admin.
+- Push al staff respeta el **horario silencioso** (00–08 → `startAfter` a las 08:00, `push-quiet-hours.ts`).
+- **Facturación AFIP fuera de scope v1** (ADR-011). Consentimiento = `players.agreed_to_terms_at` + `audit_logs`; **no existe `consent_records`**. +18: ADR-012.
 
-Al resumir la conversación, preservar: cambios de API pública y su razón · errores encontrados y sus soluciones · archivos modificados en la sesión · decisiones arquitectónicas · estado de la auditoría o tarea en progreso.
-Resumir brevemente: intentos de exploración fallidos · discusiones ya concluidas.
+## Producción
+
+- Hay complejos reales usando la app. **Lo que llega a prod: avisar el efecto sobre ellos y esperar el OK del dueño.**
+- Migraciones se aplican solas al mergear a `main` (ver arriba). Un `DROP COLUMN` en el mismo release que el código rompe la ventana de deploy: expand & contract (`docs/operations/MIGRATIONS.md`).
+- Operación y credenciales: `docs/operations/`.
+
+## UX y texto
+
+Tan simple que un niño lo entienda (regla del dueño). Portal jugador: cero fricción, tipo ecommerce, **mobile primero (390px)**. Admin: denso pero obvio. [`DESIGN.md`](DESIGN.md) es la única autoridad de diseño; [`PRODUCT.md`](PRODUCT.md) el contexto de producto. El panel se refina, no se rediseña; un "mejor diseño" acá es menos pasos y menos cosas en pantalla. Portal de vidrio en claro y oscuro ([decisión](docs/decisions/2026-11-13-portal-vidrio.md)). Nada de configurabilidad "por las dudas".
+
+**Texto visible**: usar la skill `turnogol-copy` si está disponible. Antes de redactar, verificar quién lo lee, en qué estado aparece y qué hace el botón; leer título, descripción y botón juntos. Voz de empresa ("Escribinos"), rioplatense, sin jerga interna. Marketing agresivo sí; datos inflados o cupos falsos, nunca.
+
+## Documentación (se lee bajo demanda)
+
+`docs/spec/` es la especificación canónica (19 documentos); decisiones en `docs/decisions/`; mapa en `docs/README.md` y `.claude/rules/mapa-docs.md`. Los planes, specs de implementación y auditorías viejas (`docs/superpowers/`, `docs/audit/`, `docs/archive/`, `docs/qa/`) se sacaron del árbol el 2026-11-27: si un comentario o un doc los cita, están en el historial de git. doc6/doc12/doc13 todavía dicen "19 tablas / 12 RLS". Ante contradicción entre docs, señalarla en vez de elegir en silencio.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

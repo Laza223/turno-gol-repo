@@ -7,7 +7,7 @@ paths:
 
 # RIVAL
 
-RIVAL es el lado jugador de TurnoGol (misma cuenta, misma web), no solo "buscar rival". Visión: `docs/rival/README.md`; catálogo: `docs/rival/ideas.md`; vetos levantados y condiciones: `docs/decisions/2026-10-29-rival-cultura-de-turnogol.md`. Lo construido es v1 (spec `docs/superpowers/specs/2026-10-22-rival-v1-design.md`), detrás del flag global `rival` (`rival.flags.ts`, sin override por complejo).
+RIVAL es el lado jugador de TurnoGol (misma cuenta, misma web), no solo "buscar rival". Visión: `docs/rival/README.md`; catálogo: `docs/rival/ideas.md`; vetos levantados y condiciones: `docs/decisions/2026-10-29-rival-cultura-de-turnogol.md`. Lo construido es v1 (decisiones: `docs/decisions/2026-10-22-rival-v1.md`), detrás del flag global `rival` (`rival.flags.ts`, sin override por complejo).
 
 - **Qué cuenta:** solo el partido oficial: turno en la grilla de un complejo TurnoGol y resultado confirmado por los dos capitanes o por el encargado. Nunca tablas ni media sobre datos auto-reportados.
 - **Privado por defecto:** aparecer en una tabla, hacer pública la media o la figurita y entrar a Versus es opt-in, con consentimiento por finalidad (Ley 25.326).

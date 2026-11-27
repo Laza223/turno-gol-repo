@@ -1,6 +1,6 @@
 # Documentación de TurnoGol
 
-Mapa de toda la documentación del proyecto. La **fuente de verdad** son los 19 documentos canónicos en [`spec/`](#spec--especificación-canónica-fuente-de-verdad); el resto es contexto histórico, de proceso y operativo.
+Mapa de toda la documentación del proyecto. La **fuente de verdad** son los 19 documentos canónicos en [`spec/`](#spec--especificación-canónica-fuente-de-verdad); el resto es contexto operativo, de decisiones y de planificación. Las auditorías, planes de implementación y archivos históricos se sacaron del árbol el 2026-11-27 (siguen en el historial de git).
 
 > Convención: los `docXX` se citan por su nombre lógico (ej. `doc12`) en CLAUDE.md y a lo largo de la doc; su ruta real es `docs/spec/docXX_*.md`.
 
@@ -11,18 +11,13 @@ Mapa de toda la documentación del proyecto. La **fuente de verdad** son los 19 
 | [`spec/`](./spec) | Los 19 documentos canónicos (doc1–doc20, doc9 deprecado) | **Vigente — fuente de verdad** |
 | [`launch/`](./launch) | Backlog de lanzamiento, runbook, risk register, guía launch-first | **Vigente — foco actual** |
 | [`gtm/`](./gtm) | Sistema comercial: ICP, posicionamiento, oferta piloto, funnel, scripts, plan 7-30-90 | **Vigente — foco actual** |
-| [`marketing/`](./marketing) | Estrategia de contenido SEO/web + research (keywords, competidores, foros) | **Vigente** (SEO activado 2026-07-12) |
 | [`operations/`](./operations) | **Manual del dueño** + **checklist de infraestructura (qué pagar y dónde)**, lanzamiento, migraciones, soporte de navegadores | Vigente |
 | [`planning/`](./planning) | Deploy playbook, pricing, cambios de reglas de negocio, icebox de features | Vigente |
 | [`rival/`](./rival) | RIVAL, la cultura del jugador: visión, catálogo de ideas por mundo y etapa, Crack del Día (decisión del 2026-10-29) | Vigente — visión, sin construir más allá de v1 |
 | [`decisions/`](./decisions) | Decisiones de sistema y de seguridad transversales | Vigente |
-| [`qa/`](./qa) | Triage de fixes, decisiones pendientes, inventario de vistas | Vigente |
 | [`storybook/`](./storybook) | Storybook: arquitectura y decisiones, guía para escribir stories, inventario de cobertura (300/300 archivos), reporte de QA con los bugs de a11y encontrados | Vigente |
-| [`audit/`](./audit) | Auditorías: plan maestro, planes por fase, reports (código y docs), PROGRESS | Histórico (completadas) |
 | [`business/`](./business) | Planes originales de negocio, sistema e historias de usuario (precursores de los doc) | Referencia histórica |
-| [`superpowers/`](./superpowers) | Planes y specs de implementación (workflow superpowers) | Histórico |
 | [`testing/`](./testing) | Prompts de testeo de vistas | Proceso |
-| [`archive/`](./archive) | Planes de ataque, prompts one-shot, TODOs viejos, blueprints ejecutados, walkthroughs y el design system anterior ([`archive/design-system/`](./archive/design-system): MASTER, gramática de interacción y specs por página, archivado el 2026-09-23) | Archivado |
 
 Archivo suelto vigente: [`infraestructura.md`](./infraestructura.md) (plan de infra prod — lo cita `planning/deploy-playbook.md`).
 
@@ -46,7 +41,7 @@ Archivo suelto vigente: [`infraestructura.md`](./infraestructura.md) (plan de in
 - `doc11` — 13 ADRs
 - `doc12` — Tenant isolation (RLS, SET LOCAL, JWT, RLS dual)
 - `doc13` — SQL completo (19 tablas + system_admins, ENUMs, índices, RLS)
-- `doc14` — Tech stack
+- `doc14` — Tech stack (**superado**: vale el `CLAUDE.md`)
 - `doc15` — API contracts
 
 ### Capa de Calidad & Operaciones

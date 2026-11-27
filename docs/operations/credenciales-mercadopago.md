@@ -12,7 +12,7 @@ MercadoPago **deriva los permisos del producto de la aplicación**, y dice expl�
 
 | | Qué cobra | Con qué credencial |
 |---|---|---|
-| **App A · Suscripciones** | El plan mensual de TurnoGol ($63.000), que va a **tu** cuenta | Un token master fijo, del env |
+| **App A · Suscripciones** | El plan de TurnoGol (precio por cantidad de canchas, [decisión del 23/11](../decisions/2026-11-23-precio-por-cantidad.md)), que va a **tu** cuenta | Un token master fijo, del env |
 | **App B · Checkout Pro** | La seña del jugador, que va a la cuenta **del complejo** | OAuth: cada complejo autoriza y TurnoGol guarda su token |
 
 **La consecuencia que más se olvida**: MercadoPago genera **una clave de firma de webhook por aplicación**, y las dos notifican al mismo buzón (`/api/webhooks/mercadopago`). Por eso `webhook-auth.ts` valida contra las dos claves y le alcanza con que **una** dé match. Si falta la de App B, los avisos de las señas se rechazan con 401 — y eso es silencioso desde adentro de TurnoGol: se ve en el panel de MercadoPago, no en la app.

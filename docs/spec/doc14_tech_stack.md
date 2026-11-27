@@ -1,6 +1,10 @@
 # DOC 14 — Tech Stack & Arquitectura
 ## TurnoGol: El Mapa Técnico Completo
 
+> [!CAUTION]
+> **Superado (marcado el 2026-11-27).** El stack vigente es el del [`CLAUDE.md`](../../CLAUDE.md) y el
+> `package.json`. Lo que sigue queda como registro histórico.
+
 > **Propósito**: Consolidar todas las decisiones técnicas (ADRs 001-010) en un documento
 > de referencia operativa. De acá salen las decisiones de setup de repositorio,
 > dependencias, estructura de proyecto, pipeline de CI/CD y ambientes.

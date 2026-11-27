@@ -11,6 +11,7 @@ import {
   insertAuditLog,
   insertBan,
   insertBooking,
+  insertBookingSettlement,
   insertCashFlow,
   insertCourt,
   insertDailyCashClose,
@@ -37,6 +38,7 @@ export type IsolationSeed = {
   courtId: string
   abonadoId: string
   bookingId: string
+  bookingSettlementId: string
   paymentId: string
   cashFlowId: string
   dailyCashCloseId: string
@@ -70,6 +72,12 @@ export async function seedIsolationData(sql: Sql, tenantId: string): Promise<Iso
   const courtId = await insertCourt(sql, tenantId)
   const abonadoId = await insertAbonado(sql, tenantId, courtId)
   const bookingId = await insertBooking(sql, { tenantId, courtId, playerId: player.id })
+  const bookingSettlementId = await insertBookingSettlement(sql, {
+    tenantId,
+    createdByStaff: staff.id,
+    abonadoId,
+    courtId,
+  })
   const paymentId = await insertPayment(sql, { tenantId, bookingId, playerId: player.id })
   const cashFlowId = await insertCashFlow(sql, { tenantId, registeredBy: staff.id, bookingId })
   const dailyCashCloseId = await insertDailyCashClose(sql, { tenantId, closedBy: staff.id })
@@ -126,6 +134,7 @@ export async function seedIsolationData(sql: Sql, tenantId: string): Promise<Iso
     courtId,
     abonadoId,
     bookingId,
+    bookingSettlementId,
     paymentId,
     cashFlowId,
     dailyCashCloseId,

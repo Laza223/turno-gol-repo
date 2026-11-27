@@ -24,6 +24,7 @@ import {
   BookingNotYetEndedError,
   BookingValidationError,
   CourtOfflineError,
+  MultiDateSlotConflictError,
   NoShowCorrectionWindowExpiredError,
   NoShowNotYetEndedError,
   NoShowRevertWindowExpiredError,
@@ -44,6 +45,9 @@ import { physicalRange } from '@/shared/time/physical-range'
 import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 import { rawRowToBookingRow, rowToBookingRow, type BookingRawRow } from './booking.mappers'
 import { depositCashFlowDescription } from './booking.charges'
+import { findAbonadoBookingOverlaps } from './booking.overlap'
+import { settleBookingsBatch } from '@/modules/settlements/settlement.service'
+import type { SettlementChargeLine } from '@/modules/settlements/settlement.types'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { captureMessage } from '@/lib/sentry'
 import { calcDepositCents } from './deposit'
@@ -282,8 +286,12 @@ export async function createManualBooking(
 
   await checkOverlapOrThrow(input.courtId, startsAt, endsAt, tx)
 
-  const depositAmount = input.depositAmount ?? 0
-  const depositStatus = input.depositStatus ?? 'not_required'
+  // "Ya estaba saldado": el turno nace cubierto y sin seña ni movimiento en Caja.
+  const markAlreadySettled = input.markAlreadySettled === true && input.type !== 'block'
+  const depositAmount = markAlreadySettled ? 0 : (input.depositAmount ?? 0)
+  const depositStatus = markAlreadySettled
+    ? 'not_required'
+    : (input.depositStatus ?? 'not_required')
   // La seña que el staff ya cobró en el mostrador tiene que entrar a Caja.
   // `depositIsCounted` es EL MISMO predicado que `summarizeBookingCharges`
   // usa para `depositCounted` (booking.charges.ts): la invariante es
@@ -304,7 +312,9 @@ export async function createManualBooking(
   //   * cash/transfer/other + payment_id NULL
   //   * NULL method + deposit_status='not_required'
   const paymentMethod =
-    input.depositMethod && input.depositMethod !== 'mercadopago' ? input.depositMethod : null
+    !markAlreadySettled && input.depositMethod && input.depositMethod !== 'mercadopago'
+      ? input.depositMethod
+      : null
 
   try {
     const inserted = await tx
@@ -332,12 +342,20 @@ export async function createManualBooking(
       })
       .returning()
 
-    const created = rowToBookingRow(inserted[0]!)
+    let created = rowToBookingRow(inserted[0]!)
 
-    // `depositIsCounted` ya se calculó arriba, junto al guard "lo cobrado no
-    // puede superar el precio" — mismo predicado, reusado acá para la fila de
-    // Caja.
-    if (depositIsCounted && depositAmount > 0 && input.depositMethod) {
+    if (markAlreadySettled) {
+      const outcome = await settleBookingsBatch(
+        tenantId,
+        input.staffUserId,
+        { bookingIds: [created.id], paymentOrigin: 'already_settled', amount: 0 },
+        tx,
+      )
+      created = { ...created, settlementId: outcome.settlement.id }
+    } else if (depositIsCounted && depositAmount > 0 && input.depositMethod) {
+      // `depositIsCounted` ya se calculó arriba, junto al guard "lo cobrado no
+      // puede superar el precio" — mismo predicado, reusado acá para la fila de
+      // Caja.
       await recordManualBookingDepositCashFlow(
         created,
         // `input.depositMethod`, NUNCA `created.paymentMethod`: para
@@ -363,6 +381,158 @@ export async function createManualBooking(
     if (isExclusionViolation(err)) throw new SlotTakenError()
     throw err
   }
+}
+
+export type CreateMultiDateEventInput = {
+  courtId: string
+  dates: string[]
+  timeStart: string
+  timeEnd: string
+  staffUserId: string
+  playerId?: string
+  guestName?: string
+  guestPhone?: string
+  /** Monto total acordado en centavos (undefined = usa suma de tarifa de cancha por fecha). */
+  totalAmount?: number
+  paymentMode: 'unpaid' | 'caja' | 'already_settled'
+  charges?: SettlementChargeLine[]
+  notesInternal?: string
+  clientIdempotencyKey?: string
+}
+
+/**
+ * Crea un evento / torneo de varias fechas concretas (sin recurrencia semanal) en una sola
+ * transacción, permitiendo cobrar todo junto en Caja, marcarlo ya saldado o dejarlo por cobrar.
+ */
+export async function createMultiDateEventBookings(
+  tenantId: string,
+  input: CreateMultiDateEventInput,
+  tx: DbTx,
+): Promise<{ bookings: BookingRow[]; settlementId: string | null }> {
+  assertWholeHours(input.timeStart, input.timeEnd)
+
+  const uniqueDates = [...new Set(input.dates)].sort()
+  if (uniqueDates.length === 0 || uniqueDates.length > 15) {
+    throw new BookingValidationError('Elegí entre 1 y 15 fechas para el evento.')
+  }
+  for (const d of uniqueDates) {
+    if (!isValidCalendarDate(d)) {
+      throw new BookingValidationError(`La fecha ${d} no es válida.`)
+    }
+  }
+
+  if (input.playerId && !(await playerBelongsToTenant(tenantId, input.playerId, tx))) {
+    throw new BookingValidationError('El jugador no es cliente de este complejo.')
+  }
+
+  await assertWithinPaidPeriod(tenantId, uniqueDates, tx)
+  const court = await lockCourtOrThrow(input.courtId, tx)
+  if (court.tenantId !== tenantId) {
+    throw new CourtOfflineError(input.courtId)
+  }
+
+  const perDatePrices: number[] = []
+  if (input.totalAmount !== undefined) {
+    const base = Math.floor(input.totalAmount / uniqueDates.length)
+    const remainder = input.totalAmount - base * uniqueDates.length
+    uniqueDates.forEach((_, i) => perDatePrices.push(i === 0 ? base + remainder : base))
+  } else {
+    for (const d of uniqueDates) {
+      const calc = priceForRange(court.pricing, d, input.timeStart, input.timeEnd)
+      if (calc === null) throw new PriceUnavailableError()
+      perDatePrices.push(calc)
+    }
+  }
+
+  const candidates = await Promise.all(
+    uniqueDates.map(async (dateStr, i) => {
+      const physicallyNextDay = await slotIsPhysicallyNextDay(
+        tenantId,
+        dateStr,
+        input.timeStart,
+        tx,
+      )
+      const { startsAt, endsAt } = physicalRange({
+        date: dateStr,
+        timeStart: input.timeStart,
+        timeEnd: input.timeEnd,
+        physicallyNextDay,
+      })
+      return {
+        dateStr,
+        courtId: input.courtId,
+        startsAt,
+        endsAt,
+        priceSnapshot: perDatePrices[i]!,
+      }
+    }),
+  )
+
+  const overlapping = await findAbonadoBookingOverlaps(candidates, tx)
+  if (overlapping.size > 0) {
+    const conflictDates = [...overlapping].map((idx) => candidates[idx]!.dateStr)
+    throw new MultiDateSlotConflictError(conflictDates)
+  }
+
+  let insertedRows: Array<typeof bookings.$inferSelect>
+  try {
+    insertedRows = await tx
+      .insert(bookings)
+      .values(
+        candidates.map((c) => ({
+          tenantId,
+          courtId: input.courtId,
+          playerId: input.playerId ?? null,
+          createdByStaff: input.staffUserId,
+          date: new Date(`${c.dateStr}T00:00:00Z`),
+          timeStart: input.timeStart,
+          timeEnd: input.timeEnd,
+          startsAt: c.startsAt,
+          endsAt: c.endsAt,
+          type: 'spontaneous' as const,
+          status: 'confirmed' as const,
+          priceSnapshot: c.priceSnapshot,
+          depositAmount: 0,
+          depositStatus: 'not_required' as const,
+          paymentMethod: null,
+          guestName: input.playerId ? null : (input.guestName ?? null),
+          guestPhone: input.playerId ? null : (input.guestPhone ?? null),
+          notesInternal: input.notesInternal ?? null,
+        })),
+      )
+      .returning()
+  } catch (err) {
+    if (isExclusionViolation(err)) throw new SlotTakenError()
+    throw err
+  }
+
+  let created = insertedRows.map(rowToBookingRow)
+  let settlementId: string | null = null
+
+  if (input.paymentMode !== 'unpaid') {
+    const totalFromSlots = perDatePrices.reduce((acc, v) => acc + v, 0)
+    const amount = input.totalAmount ?? totalFromSlots
+    const outcome = await settleBookingsBatch(
+      tenantId,
+      input.staffUserId,
+      {
+        bookingIds: created.map((b) => b.id),
+        paymentOrigin: input.paymentMode === 'caja' ? 'caja' : 'already_settled',
+        amount,
+        charges: input.charges,
+        clientIdempotencyKey: input.clientIdempotencyKey,
+      },
+      tx,
+    )
+    settlementId = outcome.settlement.id
+    created = created.map((b) => ({ ...b, settlementId }))
+  }
+
+  for (const d of uniqueDates) {
+    await invalidateAvailSearch(d)
+  }
+
+  return { bookings: created, settlementId }
 }
 
 /**

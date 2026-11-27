@@ -20,6 +20,8 @@ const ABONADO: AbonadoRow = {
   timeStart: '21:00:00',
   timeEnd: '22:00:00',
   pricePerSession: 2_000_000,
+  billingMode: 'per_session',
+  agreedAmount: 0,
   startsOn: new Date('2030-01-01'),
   endsOn: null,
   status: 'active',

@@ -44,22 +44,31 @@ const schema = z
     // valida server-side dentro de createAbonado.
     playerId: z.guid().optional(),
     contactName: z.string().trim().min(1, 'Nombre requerido'),
-    contactPhone: z.string().trim().min(1, 'Teléfono requerido'),
+    contactPhone: z.string().trim().optional(),
     dayOfWeek: z.coerce.number().int().min(0).max(6),
     // Accept HH:MM (form input) AND HH:MM:SS (DB value passed back by the
     // reactivate dialog, which renders the abonado row's stored time directly).
     timeStart: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
     timeEnd: z.string().regex(/^\d{2}:\d{2}(?::\d{2})?$/, 'Horario inválido'),
+    billingMode: z.enum(['per_session', 'monthly', 'pack']).default('per_session'),
     // El cliente (AbonadoForm/MoneyInput) ya manda CENTAVOS en este campo, no
-    // pesos — z.coerce.number() porque FormData siempre entrega strings. El
-    // parser dual pesos-string + Math.round(*100) que había acá antes era el
-    // bug de auditoría §4.4 ("$25" en vez de "$25.000" via Number("25.000") === 25).
-    pricePerSessionCents: z.coerce.number().int().positive('El precio por sesión es requerido'),
+    // pesos — z.coerce.number() porque FormData siempre entrega strings.
+    pricePerSessionCents: z.coerce.number().int().min(0).default(0),
+    agreedAmountCents: z.coerce.number().int().min(0).default(0),
+    initialSettlementJson: z.string().optional(),
     startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida'),
     paymentMethod: z.enum(['cash', 'transfer']).default('cash'),
   })
   .refine(endAfterStart, { message: TIME_RANGE_MSG, path: ['timeEnd'] })
   .refine(startsOnNotPast, { message: PAST_START_MSG, path: ['startsOn'] })
+  .refine((d) => d.billingMode === 'monthly' || Boolean(d.contactPhone?.trim()), {
+    message: 'Teléfono requerido',
+    path: ['contactPhone'],
+  })
+  .refine((d) => d.billingMode === 'monthly' || d.pricePerSessionCents > 0, {
+    message: 'El precio por turno es requerido',
+    path: ['pricePerSessionCents'],
+  })
 
 const previewSchema = z
   .object({
@@ -167,17 +176,30 @@ export async function submitNewAbonado(
     return { status: 'error', message: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
   }
   const d = parsed.data
+  let initialSettlement: CreateAbonadoInput['initialSettlement']
+  if (d.initialSettlementJson) {
+    try {
+      initialSettlement = JSON.parse(
+        d.initialSettlementJson,
+      ) as CreateAbonadoInput['initialSettlement']
+    } catch {
+      return { status: 'error', message: 'No pudimos leer el detalle del cobro inicial.' }
+    }
+  }
   const input: CreateAbonadoInput = {
     courtId: d.courtId,
     playerId: d.playerId,
     contactName: d.contactName,
-    contactPhone: d.contactPhone,
+    ...(d.contactPhone?.trim() ? { contactPhone: d.contactPhone.trim() } : {}),
     dayOfWeek: d.dayOfWeek,
     timeStart: d.timeStart,
     timeEnd: d.timeEnd,
+    billingMode: d.billingMode,
     // Ya viene en centavos (ver el comentario del schema) — CreateAbonadoInput
     // usa `pricePerSession` como nombre de campo, pero su unidad es centavos.
-    pricePerSession: d.pricePerSessionCents,
+    pricePerSession: d.billingMode === 'monthly' ? 0 : d.pricePerSessionCents,
+    agreedAmount: d.billingMode === 'per_session' ? 0 : d.agreedAmountCents,
+    ...(initialSettlement ? { initialSettlement } : {}),
     startsOn: d.startsOn,
     paymentMethod: d.paymentMethod,
   }

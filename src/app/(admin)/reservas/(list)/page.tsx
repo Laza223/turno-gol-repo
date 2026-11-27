@@ -113,6 +113,7 @@ export default async function ReservasPage(props: Props) {
         depositStatus: r.depositStatus,
         chargesTotal: charges.get(r.id)?.total ?? 0,
         writtenOff: charges.get(r.id)?.writtenOff ?? 0,
+        settlementId: r.settlementId,
       }),
     }))
     return {

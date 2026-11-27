@@ -9,6 +9,7 @@ import {
 } from './tenant'
 import {
   insertBooking,
+  insertBookingSettlement,
   insertCashFlow,
   insertCourt,
   insertNotification,
@@ -134,7 +135,30 @@ export async function setupTenant(
     INSERT INTO booking_write_offs (tenant_id, booking_id, amount, written_off_by)
     VALUES (${tenant.id}, ${bookingId}, 1000, ${staff.id})
   `
-  await insertAbonado(sql, tenant.id, courtId)
+  const abonadoId = await insertAbonado(sql, tenant.id, courtId)
+  // Turno saldado (migr. 121): un acuerdo mensual y una reserva terminal enlazada a él.
+  // El settlement_id se enlaza en el MISMO UPDATE que la vuelve terminal (el trigger solo
+  // deja tocarlo en un `completed` bajo el GUC del servicio). El turno con "dar por perdido"
+  // es OTRO: un turno saldado no se da por perdido.
+  const settlementId = await insertBookingSettlement(sql, {
+    tenantId: tenant.id,
+    createdByStaff: staff.id,
+    abonadoId,
+    courtId,
+  })
+  const settledBookingId = await insertBooking(sql, {
+    tenantId: tenant.id,
+    courtId,
+    timeStart: '16:00',
+    timeEnd: '17:00',
+  })
+  await sql`
+    UPDATE bookings
+    SET abonado_id = ${abonadoId},
+        settlement_id = ${settlementId},
+        status = 'completed'::booking_status
+    WHERE id = ${settledBookingId}
+  `
   await insertBan(sql, { tenantId: tenant.id, playerId: player.id, bannedBy: staff.id })
   await insertDailyCashClose(sql, { tenantId: tenant.id, closedBy: staff.id })
   const planId = await getOrCreatePlanId(sql)
@@ -281,6 +305,7 @@ export type ChildCounts = {
   bookings: number
   payments: number
   cashFlows: number
+  bookingSettlements: number
   bookingWriteOffs: number
   notifications: number
   auditLogs: number
@@ -323,6 +348,7 @@ export async function countChildren(sql: Sql, tenantId: string): Promise<ChildCo
       (SELECT COUNT(*) FROM bookings WHERE tenant_id = ${tenantId})::text AS bookings,
       (SELECT COUNT(*) FROM payments WHERE tenant_id = ${tenantId})::text AS payments,
       (SELECT COUNT(*) FROM cash_flows WHERE tenant_id = ${tenantId})::text AS "cashFlows",
+      (SELECT COUNT(*) FROM booking_settlements WHERE tenant_id = ${tenantId})::text AS "bookingSettlements",
       (SELECT COUNT(*) FROM booking_write_offs WHERE tenant_id = ${tenantId})::text AS "bookingWriteOffs",
       (SELECT COUNT(*) FROM notifications WHERE tenant_id = ${tenantId})::text AS notifications,
       (SELECT COUNT(*) FROM audit_logs WHERE tenant_id = ${tenantId})::text AS "auditLogs",
@@ -357,6 +383,7 @@ export async function countChildren(sql: Sql, tenantId: string): Promise<ChildCo
     bookings: Number(r.bookings),
     payments: Number(r.payments),
     cashFlows: Number(r.cashFlows),
+    bookingSettlements: Number(r.bookingSettlements),
     bookingWriteOffs: Number(r.bookingWriteOffs),
     notifications: Number(r.notifications),
     auditLogs: Number(r.auditLogs),
@@ -393,6 +420,7 @@ export const ZERO: ChildCounts = {
   bookings: 0,
   payments: 0,
   cashFlows: 0,
+  bookingSettlements: 0,
   bookingWriteOffs: 0,
   notifications: 0,
   auditLogs: 0,
@@ -425,10 +453,11 @@ export const ZERO: ChildCounts = {
 }
 
 export const FULL: ChildCounts = {
-  bookings: 1,
+  bookings: 2,
   payments: 1,
   // Dos: el cobro del turno y el de la inscripción del torneo (migr. 066).
   cashFlows: 2,
+  bookingSettlements: 1,
   bookingWriteOffs: 1,
   notifications: 1,
   auditLogs: 1,

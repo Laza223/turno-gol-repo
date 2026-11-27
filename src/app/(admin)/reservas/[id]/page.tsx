@@ -14,7 +14,14 @@ import {
   markNoShowAction,
   releaseBlockAction,
   revertNoShowAction,
+  settleBookingsBatchAction,
+  voidSettlementAction,
 } from '../actions'
+import {
+  getAbonadoBillingOverviewAction,
+  settleAbonadoPeriodAction,
+} from '@/app/(admin)/abonados/actions'
+import { artTodayStr } from '@/shared/dates/art'
 import { chargeDebtAction } from '@/app/(admin)/caja/deudas/actions'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { BookingDetailCard } from './BookingDetailCard'
@@ -96,7 +103,12 @@ export default async function ReservaDetailPage(props: Props) {
                 completeAndChargeBookingAction,
                 chargeDebtAction,
                 markNoShowAction,
+                settleBookingsBatchAction,
+                voidSettlementAction,
+                settleAbonadoPeriodAction,
+                getAbonadoBillingOverviewAction,
               }}
+              defaultYearMonth={artTodayStr().slice(0, 7)}
             />
           </div>
         )}
@@ -127,6 +139,7 @@ export default async function ReservaDetailPage(props: Props) {
                 depositStatus: booking.depositStatus,
                 chargesTotal: charges?.chargesTotal ?? 0,
                 writtenOff: charges?.writtenOff ?? 0,
+                settlementId: booking.settlementId,
               }),
             }}
             // H063: Precio/Seña ya se muestran en "Cobros de turno" (la otra

@@ -13,11 +13,23 @@ import { enforce } from '@/shared/rate-limit/apply'
 import { paidPeriodErrorMessage } from '@/modules/bookings/paid-period.guard'
 import {
   createManualBooking,
+  createMultiDateEventBookings,
   completeBooking,
   findCompletionReplay,
   getAvailableSlots,
   releaseBlockBooking,
 } from '@/modules/bookings/booking.service'
+import { settleBookingsBatch, voidSettlement } from '@/modules/settlements/settlement.service'
+import {
+  settleBookingsBatchSchema,
+  voidSettlementSchema,
+} from '@/modules/settlements/settlement.schema'
+import {
+  SettlementConflictError,
+  SettlementNotFoundError,
+  SettlementValidationError,
+} from '@/modules/settlements/settlement.errors'
+import type { SettlementActionResult } from '@/modules/settlements/settlement.types'
 import {
   cancelByAdmin,
   findNoShowReplay,
@@ -47,6 +59,7 @@ import { notifyWhatsappGuest } from '@/modules/whatsapp-bot/whatsapp-bot.notices
 import { captureMessage, captureException } from '@/lib/sentry'
 import {
   createManualBookingSchema,
+  createMultiDateEventSchema,
   rescheduleBookingSchema,
   editBookingSchema,
   bookingResponseSchema,
@@ -67,6 +80,7 @@ import { withTimeout } from '@/shared/utils/async'
 import { getBookingCharges } from './queries'
 import {
   SlotTakenError,
+  MultiDateSlotConflictError,
   CourtOfflineError,
   PriceUnavailableError,
   BookingValidationError,
@@ -924,7 +938,7 @@ export async function addBookingChargeAction(
       // completeAndChargeBookingAction (RETURNING posterior al lock).
       const lockedRows = await tx.execute(sql`
         SELECT price_snapshot AS "priceSnapshot", deposit_amount AS "depositAmount",
-               deposit_status AS "depositStatus"
+               deposit_status AS "depositStatus", settlement_id AS "settlementId"
         FROM bookings WHERE id = ${bookingId} FOR UPDATE
       `)
       const locked = (
@@ -932,10 +946,15 @@ export async function addBookingChargeAction(
           priceSnapshot: number
           depositAmount: number
           depositStatus: string
+          settlementId: string | null
         }>
       )[0]
       if (!locked) {
         return { success: false as const, error: 'La reserva no existe.' }
+      }
+      // Un pack, un mes o un "ya estaba saldado" cubre el turno: no se le cobra encima.
+      if (locked.settlementId) {
+        return { success: false as const, error: 'Este turno ya está saldado.' }
       }
 
       const { chargesTotal, writtenOff } = await getBookingCharges(tenant.id, bookingId, tx)
@@ -945,6 +964,7 @@ export async function addBookingChargeAction(
         depositStatus: locked.depositStatus,
         chargesTotal,
         writtenOff,
+        settlementId: locked.settlementId,
       })
       if (pending <= 0) {
         if (writtenOff > 0) {
@@ -1111,6 +1131,7 @@ export async function completeAndChargeBookingAction(
           chargesTotal,
           // Recién completado en esta tx: no puede tener un perdido todavía.
           writtenOff: 0,
+          settlementId: completed.settlementId,
         })
 
         // Revisión del PR #326: esta función había quedado afuera de
@@ -1263,4 +1284,155 @@ export async function editBookingAction(
   validateApiOutput(bookingResponseSchema, { data: booking }, 'editBookingAction')
   revalidateBooking(parsed.data.bookingId)
   return { success: true, booking }
+}
+
+export type CreateMultiDateEventResult =
+  | { success: true; bookings: BookingRow[]; settlementId: string | null }
+  | { success: false; error: string }
+
+export async function createMultiDateEventAction(
+  data: unknown,
+): Promise<CreateMultiDateEventResult> {
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const parsed = createMultiDateEventSchema.safeParse(data)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+
+  try {
+    const outcome = await withTenantContext(tenant.id, (tx) =>
+      createMultiDateEventBookings(
+        tenant.id,
+        { ...parsed.data, staffUserId: user.staffUserId },
+        tx,
+      ),
+    )
+    revalidatePath('/reservas')
+    revalidatePath('/grilla')
+    revalidatePath('/dashboard')
+    revalidatePath('/caja')
+    revalidatePath('/caja/cuentas')
+    revalidatePath('/analiticas')
+    return {
+      success: true,
+      bookings: outcome.bookings,
+      settlementId: outcome.settlementId,
+    }
+  } catch (err) {
+    if (err instanceof MultiDateSlotConflictError) {
+      return {
+        success: false,
+        error: `Estas fechas ya tienen un turno ocupado: ${err.conflictDates.join(', ')}.`,
+      }
+    }
+    if (err instanceof SlotTakenError) {
+      return { success: false, error: 'Una de las fechas elegidas acaba de ocuparse.' }
+    }
+    if (err instanceof CourtOfflineError) {
+      return { success: false, error: 'La cancha no está disponible.' }
+    }
+    if (err instanceof PriceUnavailableError) {
+      return { success: false, error: 'No hay precio configurado para este horario.' }
+    }
+    if (
+      err instanceof BookingValidationError ||
+      err instanceof SettlementValidationError ||
+      err instanceof SettlementConflictError ||
+      err instanceof CashFlowIdempotencyConflictError
+    ) {
+      return { success: false, error: err.message }
+    }
+    if (err instanceof BookingDateOutOfRangeError) {
+      return {
+        success: false,
+        error:
+          err.reason === 'after_period_end'
+            ? paidPeriodErrorMessage(err.cutoff)
+            : 'Alguna de las fechas elegidas no se puede reservar.',
+      }
+    }
+    throw err
+  }
+}
+
+export async function settleBookingsBatchAction(input: unknown): Promise<SettlementActionResult> {
+  const parsed = settleBookingsBatchSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  try {
+    const outcome = await withTenantContext(tenant.id, (tx) =>
+      settleBookingsBatch(tenant.id, user.staffUserId, parsed.data, tx),
+    )
+    revalidatePath('/grilla')
+    revalidatePath('/dashboard')
+    revalidatePath('/reservas')
+    if (parsed.data.bookingIds.length === 1) {
+      revalidatePath(`/reservas/${parsed.data.bookingIds[0]}`)
+    }
+    revalidatePath('/caja')
+    revalidatePath('/caja/cuentas')
+    revalidatePath('/analiticas')
+    return {
+      success: true,
+      settlement: outcome.settlement,
+      coveredBookingIds: outcome.coveredBookingIds,
+    }
+  } catch (err) {
+    if (
+      err instanceof SettlementValidationError ||
+      err instanceof SettlementConflictError ||
+      err instanceof CashFlowIdempotencyConflictError
+    ) {
+      return { success: false, error: err.message }
+    }
+    throw err
+  }
+}
+
+export async function voidSettlementAction(input: unknown): Promise<ActionResult> {
+  const parsed = voidSettlementSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: 'Datos inválidos.' }
+  }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  try {
+    await withTenantContext(tenant.id, (tx) =>
+      voidSettlement(tenant.id, parsed.data.settlementId, user.staffUserId, tx),
+    )
+    revalidatePath('/grilla')
+    revalidatePath('/dashboard')
+    revalidatePath('/reservas')
+    revalidatePath('/abonados')
+    revalidatePath('/caja/cuentas')
+    return { success: true }
+  } catch (err) {
+    if (
+      err instanceof SettlementNotFoundError ||
+      err instanceof SettlementValidationError ||
+      err instanceof SettlementConflictError
+    ) {
+      return { success: false, error: err.message }
+    }
+    throw err
+  }
 }

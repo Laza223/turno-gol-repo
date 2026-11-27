@@ -92,6 +92,7 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM rival_matches WHERE tenant_id = ${E2E.tenantId}`
   await sql`UPDATE payments SET booking_id = NULL WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM bookings WHERE tenant_id = ${E2E.tenantId}`
+  await sql`DELETE FROM booking_settlements WHERE tenant_id = ${E2E.tenantId}`
   await sql`DELETE FROM payments WHERE tenant_id = ${E2E.tenantId}`
   // Torneos (migrs. 062/064/065/066): hijos antes que padres, y TODO el bloque
   // antes de `courts` — tournament_matches.court_id es NO ACTION, así que un
@@ -145,6 +146,7 @@ async function cleanup(sql: SqlClient): Promise<void> {
   await sql`DELETE FROM rival_matches WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`UPDATE payments SET booking_id = NULL WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM bookings WHERE tenant_id = ${E2E.depositTenantId}`
+  await sql`DELETE FROM booking_settlements WHERE tenant_id = ${E2E.depositTenantId}`
   await sql`DELETE FROM payments WHERE tenant_id = ${E2E.depositTenantId}`
   // Ver la nota del bloque equivalente del tenant principal.
   await sql`DELETE FROM tournament_match_events WHERE tenant_id = ${E2E.depositTenantId}`

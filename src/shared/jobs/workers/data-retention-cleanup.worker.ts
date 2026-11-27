@@ -591,6 +591,7 @@ export async function wipeTenant(
     await tx.execute(drizzleSql`DELETE FROM whatsapp_chats WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM whatsapp_connections WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM tournaments WHERE tenant_id = ${tenantId}`)
+    await tx.execute(drizzleSql`DELETE FROM booking_settlements WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM abonados WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM courts WHERE tenant_id = ${tenantId}`)
     await tx.execute(drizzleSql`DELETE FROM tenant_subscriptions WHERE tenant_id = ${tenantId}`)

@@ -9,6 +9,11 @@ import type {
   DepositStatus,
   PaymentMethodValue,
 } from '@/modules/bookings/booking.types'
+import type {
+  AbonadoBillingMode,
+  SettlementKind,
+  SettlementPaymentOrigin,
+} from '@/modules/settlements/settlement.types'
 
 export type RealtimeStatus = 'CONNECTING' | 'SUBSCRIBED' | 'OFFLINE'
 
@@ -37,6 +42,12 @@ type ApiResponse = {
     created_at: string
     starts_at: string
     ends_at: string
+    abonado_id: string | null
+    abonado_billing_mode: AbonadoBillingMode | null
+    settlement_id: string | null
+    settlement_kind: SettlementKind | null
+    settlement_origin: SettlementPaymentOrigin | null
+    settlement_amount: number | null
   }>
 }
 
@@ -83,6 +94,10 @@ function normalizeRealtimeRow(row: RawRow): GridBooking {
     // quedan en null y el modal cae a su fallback (sin el renglón "cuándo").
     startsAtMs: toMsOrNull(row['starts_at']),
     endsAtMs: toMsOrNull(row['ends_at']),
+    // Columnas de `bookings`: viajan en el payload. El detalle del acuerdo
+    // (tipo, origen, monto) vive en `booking_settlements` y lo completa el reconcile.
+    abonadoId: (row['abonado_id'] as string | null) ?? null,
+    settlementId: (row['settlement_id'] as string | null) ?? null,
   }
 }
 
@@ -101,10 +116,12 @@ function normalizeRealtimeRow(row: RawRow): GridBooking {
  */
 function carryMoney(next: GridBooking, prev: GridBooking | undefined): GridBooking {
   if (!prev) return next
+  const sameSettlement = (next.settlementId ?? null) === (prev.settlementId ?? null)
   return {
     ...next,
     totalPaid: prev.totalPaid ?? null,
-    pending: prev.pending ?? null,
+    // Un turno recién saldado no debe nada, sin esperar al reconcile.
+    pending: next.settlementId ? 0 : (prev.pending ?? null),
     writtenOff: prev.writtenOff ?? null,
     // B15: un UPDATE de Realtime SÍ trae created_at (replica la fila completa),
     // pero por las dudas de que algún payload venga incompleto, no dejamos que
@@ -113,6 +130,11 @@ function carryMoney(next: GridBooking, prev: GridBooking | undefined): GridBooki
     createdAt: next.createdAt ?? prev.createdAt ?? null,
     startsAtMs: next.startsAtMs ?? prev.startsAtMs ?? null,
     endsAtMs: next.endsAtMs ?? prev.endsAtMs ?? null,
+    abonadoId: next.abonadoId ?? prev.abonadoId ?? null,
+    abonadoBillingMode: prev.abonadoBillingMode ?? null,
+    settlementKind: sameSettlement ? (prev.settlementKind ?? null) : null,
+    settlementOrigin: sameSettlement ? (prev.settlementOrigin ?? null) : null,
+    settlementAmount: sameSettlement ? (prev.settlementAmount ?? null) : null,
   }
 }
 
@@ -146,6 +168,12 @@ function normalizeApiRow(row: ApiResponse['data'][number]): GridBooking {
     writtenOff: row.written_off ?? null,
     startsAtMs: toMsOrNull(row.starts_at),
     endsAtMs: toMsOrNull(row.ends_at),
+    abonadoId: row.abonado_id ?? null,
+    abonadoBillingMode: row.abonado_billing_mode ?? null,
+    settlementId: row.settlement_id ?? null,
+    settlementKind: row.settlement_kind ?? null,
+    settlementOrigin: row.settlement_origin ?? null,
+    settlementAmount: row.settlement_amount ?? null,
   }
 }
 

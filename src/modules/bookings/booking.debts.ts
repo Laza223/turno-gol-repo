@@ -91,6 +91,7 @@ export async function getDebts(
     LEFT JOIN cash_flows cf ON cf.booking_id = b.id AND cf.tenant_id = b.tenant_id
     WHERE b.tenant_id = ${tenantId}
       AND b.status = 'completed'
+      AND b.settlement_id IS NULL
       ${dateBound}
     GROUP BY b.id, c.name, b.player_id, p.id, p.first_name, p.last_name, p.phone, su.id, su.first_name, su.last_name
     HAVING (

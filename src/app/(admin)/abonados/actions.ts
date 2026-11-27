@@ -2,14 +2,40 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
+import { and, eq } from 'drizzle-orm'
 import { uuid, dateStr } from '@/shared/validation/primitives'
 import { requireOperatorStaff } from '@/modules/staff/guards'
 import { withTenantContext } from '@/shared/db/client'
 import { adminRateLimited } from '@/shared/rate-limit/server-action'
 import { enforce } from '@/shared/rate-limit/apply'
-import { createAbonado, reactivateAbonado, cancelAbonado } from '@/modules/abonados/abonado.service'
+import {
+  createAbonado,
+  reactivateAbonado,
+  cancelAbonado,
+  updateAbonadoAgreement,
+} from '@/modules/abonados/abonado.service'
 import { previewUpdateAbonado, updateAbonado } from '@/modules/abonados/abonado.update'
-import { createAbonadoSchema, updateAbonadoSchema } from '@/modules/abonados/abonado.schema'
+import {
+  createAbonadoSchema,
+  updateAbonadoAgreementSchema,
+  updateAbonadoSchema,
+} from '@/modules/abonados/abonado.schema'
+import { abonados } from '@/shared/db/schema'
+import {
+  settleAbonadoPeriod,
+  listAbonadoCoverageByIds,
+} from '@/modules/settlements/settlement.service'
+import { settleAbonadoPeriodSchema } from '@/modules/settlements/settlement.schema'
+import {
+  SettlementConflictError,
+  SettlementValidationError,
+} from '@/modules/settlements/settlement.errors'
+import { CashFlowIdempotencyConflictError } from '@/modules/cashflow/cashflow.errors'
+import type {
+  AbonadoBillingOverviewResult,
+  SettlementActionResult,
+  UpdateAbonadoAgreementResult,
+} from '@/modules/settlements/settlement.types'
 import {
   AbonadoConflictError,
   AbonadoMoveConflictError,
@@ -71,6 +97,14 @@ export async function createAbonadoAction(input: CreateAbonadoInput): Promise<Ab
       return { success: false, error: 'No encontramos esa cancha.' }
     }
     if (err instanceof PlayerNotClientError) {
+      return { success: false, error: err.message }
+    }
+    // Primer mes o pack cobrado al dar de alta: el alta entera se deshace.
+    if (
+      err instanceof SettlementValidationError ||
+      err instanceof SettlementConflictError ||
+      err instanceof CashFlowIdempotencyConflictError
+    ) {
       return { success: false, error: err.message }
     }
     throw err
@@ -297,4 +331,121 @@ export async function searchAbonadoPlayersAction(
     searchTenantPlayers(tenant.id, parsed.data.query, tx),
   )
   return { success: true, players }
+}
+
+export async function settleAbonadoPeriodAction(input: unknown): Promise<SettlementActionResult> {
+  const parsed = settleAbonadoPeriodSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  try {
+    const outcome = await withTenantContext(tenant.id, (tx) =>
+      settleAbonadoPeriod(tenant.id, user.staffUserId!, parsed.data, tx),
+    )
+    revalidatePath('/abonados')
+    revalidatePath('/grilla')
+    revalidatePath('/dashboard')
+    revalidatePath('/reservas')
+    revalidatePath('/caja')
+    revalidatePath('/caja/cuentas')
+    revalidatePath('/analiticas')
+    return {
+      success: true,
+      settlement: outcome.settlement,
+      coveredBookingIds: outcome.coveredBookingIds,
+    }
+  } catch (err) {
+    if (
+      err instanceof SettlementValidationError ||
+      err instanceof SettlementConflictError ||
+      err instanceof CashFlowIdempotencyConflictError
+    ) {
+      return { success: false, error: err.message }
+    }
+    throw err
+  }
+}
+
+export async function updateAbonadoAgreementAction(
+  input: unknown,
+): Promise<UpdateAbonadoAgreementResult> {
+  const parsed = updateAbonadoAgreementSchema.safeParse(input)
+  if (!parsed.success) {
+    return { success: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos.' }
+  }
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { user, tenant } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  try {
+    const res = await withTenantContext(tenant.id, (tx) =>
+      updateAbonadoAgreement(tenant.id, user.staffUserId!, parsed.data, tx),
+    )
+    revalidatePath('/abonados')
+    revalidatePath('/grilla')
+    revalidatePath('/dashboard')
+    revalidatePath('/reservas')
+    return { success: true, updatedBookings: res.updatedBookings }
+  } catch (err) {
+    if (err instanceof AbonadoNotFoundError || err instanceof AbonadoAlreadyCanceledError) {
+      return { success: false, error: (err as Error).message }
+    }
+    throw err
+  }
+}
+
+export async function getAbonadoBillingOverviewAction(
+  abonadoId: string,
+): Promise<AbonadoBillingOverviewResult> {
+  const parsedId = uuid.safeParse(abonadoId)
+  if (!parsedId.success) return { success: false, error: 'Datos inválidos.' }
+
+  const auth = await requireOperatorStaff()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant } = auth
+
+  const result = await withTenantContext(tenant.id, async (tx) => {
+    const rows = await tx
+      .select({
+        id: abonados.id,
+        contactName: abonados.contactName,
+        contactPhone: abonados.contactPhone,
+        pricePerSession: abonados.pricePerSession,
+        billingMode: abonados.billingMode,
+        agreedAmount: abonados.agreedAmount,
+      })
+      .from(abonados)
+      .where(and(eq(abonados.id, parsedId.data), eq(abonados.tenantId, tenant.id)))
+      .limit(1)
+    const row = rows[0]
+    if (!row) return null
+    const map = await listAbonadoCoverageByIds(tenant.id, [row.id], tx)
+    const coverage = map.get(row.id)
+    if (!coverage) return null
+    return { row, coverage }
+  })
+
+  if (!result) return { success: false, error: 'No se encontró el turno fijo.' }
+  return {
+    success: true,
+    overview: {
+      abonadoId: result.row.id,
+      contactName: result.row.contactName,
+      contactPhone: result.row.contactPhone ?? null,
+      pricePerSession: result.row.pricePerSession,
+      billingMode: result.row.billingMode as 'per_session' | 'monthly' | 'pack',
+      agreedAmount: result.row.agreedAmount,
+      coverage: result.coverage,
+    },
+  }
 }

@@ -17,12 +17,16 @@ export function summarizeBookingCharges(opts: {
   chargesTotal: number
   /** Lo que el staff resignó con "Dar por perdido" (`booking_write_offs`); 0 si no hay. */
   writtenOff: number
+  /** Si el turno pertenece a un acuerdo o saldado (`booking_settlements`), el saldo del turno es $ 0. */
+  settlementId?: string | null
 }): { depositCounted: number; totalPaid: number; pending: number; writtenOff: number } {
   const depositCounted =
     opts.depositStatus === 'paid' || opts.depositStatus === 'captured' ? opts.depositAmount : 0
   const totalPaid = depositCounted + opts.chargesTotal
   // Lo perdido NO es plata cobrada: totalPaid no lo incluye, solo baja lo que falta.
-  const pending = Math.max(0, opts.priceSnapshot - totalPaid - opts.writtenOff)
+  const pending = opts.settlementId
+    ? 0
+    : Math.max(0, opts.priceSnapshot - totalPaid - opts.writtenOff)
   return { depositCounted, totalPaid, pending, writtenOff: opts.writtenOff }
 }
 

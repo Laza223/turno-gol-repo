@@ -24,6 +24,7 @@ export type BookingRow = {
   courtId: string
   playerId: string | null
   abonadoId: string | null
+  settlementId: string | null
   tournamentId: string | null
   createdByStaff: string | null
   date: Date
@@ -87,6 +88,8 @@ export type CreateManualBookingInput = {
   depositAmount?: number
   depositMethod?: PaymentMethodValue
   depositStatus?: DepositStatus
+  /** Migr. 108: marca el turno recién creado como saldado sin mover Caja. */
+  markAlreadySettled?: boolean
   notesInternal?: string
   notesPlayer?: string
 }

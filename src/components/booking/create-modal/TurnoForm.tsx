@@ -113,13 +113,15 @@ export function TurnoForm({
       ...(playerId ? { playerId } : { guestName: trimmedName }),
       ...(!playerId && trimmedPhone ? { guestPhone: trimmedPhone } : {}),
       ...(manualPriceCents != null ? { priceOverride: manualPriceCents } : {}),
-      ...(chargeChoice !== 'none' && chargeMethod && chargeAmount
-        ? {
-            depositMethod: chargeMethod,
-            depositAmount: chargeAmount,
-            depositStatus: 'paid' as const,
-          }
-        : {}),
+      ...(chargeChoice === 'already_settled'
+        ? { markAlreadySettled: true }
+        : (chargeChoice === 'partial' || chargeChoice === 'full') && chargeMethod && chargeAmount
+          ? {
+              depositMethod: chargeMethod,
+              depositAmount: chargeAmount,
+              depositStatus: 'paid' as const,
+            }
+          : {}),
       ...(notes.trim() ? { notesInternal: notes.trim() } : {}),
     }
 
@@ -133,7 +135,10 @@ export function TurnoForm({
           startTransition(() => setError(result.error))
           return
         }
-        trackConfirmed({ withPlayer: !!playerId, withDeposit: chargeChoice !== 'none' })
+        trackConfirmed({
+          withPlayer: !!playerId,
+          withDeposit: chargeChoice === 'partial' || chargeChoice === 'full',
+        })
         toast({
           title: 'Turno agendado',
           description: `${slot.courtName} · ${timeStart}–${timeEnd}`,
@@ -287,7 +292,13 @@ export function TurnoForm({
         timeEnd={timeEnd}
         durationLabel="1 h"
         totalCents={effectivePrice}
-        collectedCents={chargeChoice !== 'none' ? (chargeAmount ?? 0) : 0}
+        collectedCents={
+          chargeChoice === 'already_settled'
+            ? (effectivePrice ?? 0)
+            : chargeChoice === 'partial' || chargeChoice === 'full'
+              ? (chargeAmount ?? 0)
+              : 0
+        }
         primaryLabel="Agendar turno"
         onCancel={onClose}
         isPending={isPending}

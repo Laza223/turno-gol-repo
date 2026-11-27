@@ -44,6 +44,9 @@ type Props = {
   onSlotClick: (courtId: string, slotTime: string) => void
   onGridKeyDown: (e: KeyboardEvent<HTMLDivElement>) => void
   onExpandMorning: () => void
+  batchSelecting?: boolean
+  selectedBatchIds?: ReadonlySet<string>
+  onToggleBatchSelect?: (bookingId: string) => void
   /** Arrastre para mover (useGridDrag). Sin `onDragPointerDown` la grilla no arrastra. */
   canDrag?: (booking: GridBooking, slotTime: string) => boolean
   draggingId?: string | null
@@ -97,6 +100,9 @@ export function GridScroller({
   onSlotClick,
   onGridKeyDown,
   onExpandMorning,
+  batchSelecting = false,
+  selectedBatchIds,
+  onToggleBatchSelect,
   canDrag,
   draggingId = null,
   dropTarget = null,
@@ -277,6 +283,9 @@ export function GridScroller({
                     courtName={court.name}
                     detailOpen={detailBookingId === cell.booking.id}
                     onDetailChange={onDetailChange}
+                    batchSelecting={batchSelecting}
+                    batchSelected={selectedBatchIds?.has(cell.booking.id) ?? false}
+                    onToggleBatchSelect={onToggleBatchSelect}
                     canDrag={canDrag?.(cell.booking, slotTime) ?? false}
                     dragging={draggingId === cell.booking.id}
                     onDragPointerDown={onDragPointerDown}

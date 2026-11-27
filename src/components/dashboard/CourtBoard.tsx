@@ -221,14 +221,28 @@ function CourtRow({
   // rojo de lo que hay que cobrar. Un torneo no se cobra por turno: sin color.
   // Dado por perdido (2026-11-07): sin saldo pero NO pagado — tono neutro, nunca el verde.
   const lost = !due && pending === 0 && (booking.writtenOff ?? 0) > 0
-  const paid = !due && !lost && pending === 0 && booking.type !== 'tournament'
+  // Saldado (pack, mes o "ya estaba saldado") es verde; un mes sin saldar todavía no es "Pagado"
+  // aunque su precio sea $ 0.
+  const settled = !due && !lost && Boolean(booking.settlementId)
+  const monthlyPending =
+    !settled && booking.abonadoBillingMode === 'monthly' && booking.priceSnapshot === 0
+  const paid =
+    settled || (!due && !lost && !monthlyPending && pending === 0 && booking.type !== 'tournament')
   if (lost)
     pay = (
       <span className={cn('text-sm font-semibold', TONE_TEXT.neutral)}>
         Perdido {formatArs(booking.writtenOff ?? 0)}
       </span>
     )
-  if (paid) pay = <span className={cn('text-sm font-semibold', TONE_TEXT.success)}>Pagado</span>
+  if (paid) {
+    pay = (
+      <span className={cn('text-sm font-semibold', TONE_TEXT.success)}>
+        {settled ? 'Saldado' : 'Pagado'}
+      </span>
+    )
+  } else if (monthlyPending && kind === 'live') {
+    pay = <span className={cn('text-xs font-medium', TONE_TEXT.warning)}>Por mes</span>
+  }
 
   const name =
     booking.type === 'tournament' && !booking.guestName ? 'Torneo' : rowDisplayName(booking)

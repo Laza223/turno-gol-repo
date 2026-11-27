@@ -1,6 +1,6 @@
-import { and, eq, inArray, isNotNull, lt, gte, sql } from 'drizzle-orm'
+import { and, eq, inArray, lt, gte, sql } from 'drizzle-orm'
 import { withTenantContext, type DbTx } from '@/shared/db/client'
-import { cashFlows, bookings, courts } from '@/shared/db/schema'
+import { cashFlows, bookings, bookingSettlements, courts } from '@/shared/db/schema'
 import type { OpeningHours } from '@/modules/tenants/tenant.types'
 import type { CancelReason } from '@/shared/cancel-reasons'
 import type {
@@ -88,14 +88,27 @@ async function fetchPeriodAgg(
             bookingCount: sql<string>`CAST(COUNT(DISTINCT ${cashFlows.bookingId}) AS BIGINT)`,
           })
           .from(cashFlows)
-          .innerJoin(bookings, eq(cashFlows.bookingId, bookings.id))
-          .innerJoin(courts, eq(bookings.courtId, courts.id))
+          .leftJoin(
+            bookings,
+            and(eq(cashFlows.bookingId, bookings.id), eq(cashFlows.tenantId, bookings.tenantId)),
+          )
+          .leftJoin(
+            bookingSettlements,
+            and(
+              eq(cashFlows.settlementId, bookingSettlements.id),
+              eq(cashFlows.tenantId, bookingSettlements.tenantId),
+            ),
+          )
+          .innerJoin(
+            courts,
+            sql`${courts.id} = COALESCE(${bookings.courtId}, ${bookingSettlements.courtId})`,
+          )
           .where(
             and(
               eq(cashFlows.tenantId, tenantId),
               gte(cashFlows.occurredAt, from),
               lt(cashFlows.occurredAt, to),
-              isNotNull(cashFlows.bookingId),
+              sql`(${cashFlows.bookingId} IS NOT NULL OR ${cashFlows.settlementId} IS NOT NULL)`,
               eq(cashFlows.category, 'booking'),
             ),
           )
@@ -342,8 +355,21 @@ export async function getCashFlowsForExport(
       courtName: courts.name,
     })
     .from(cashFlows)
-    .leftJoin(bookings, eq(cashFlows.bookingId, bookings.id))
-    .leftJoin(courts, eq(bookings.courtId, courts.id))
+    .leftJoin(
+      bookings,
+      and(eq(cashFlows.bookingId, bookings.id), eq(cashFlows.tenantId, bookings.tenantId)),
+    )
+    .leftJoin(
+      bookingSettlements,
+      and(
+        eq(cashFlows.settlementId, bookingSettlements.id),
+        eq(cashFlows.tenantId, bookingSettlements.tenantId),
+      ),
+    )
+    .leftJoin(
+      courts,
+      sql`${courts.id} = COALESCE(${bookings.courtId}, ${bookingSettlements.courtId})`,
+    )
     .where(
       and(
         eq(cashFlows.tenantId, tenantId),

@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import * as Sentry from '@sentry/nextjs'
 import { toast } from '@/hooks/use-toast'
-import { formatArs, formatDateLong } from '@/lib/format'
+import { formatDateLong } from '@/lib/format'
 import { Label } from '@/components/ui/label'
-import { MoneyInput } from '@/components/ui/money-input'
+import type { ChargeLine } from '@/components/admin/SplitPaymentFields'
 import { priceForRange } from '@/lib/booking/pricing'
+import type { AbonadoBillingMode } from '@/modules/settlements/settlement.types'
+import { AbonadoBillingFields, type InitialSettlementMode } from './AbonadoBillingFields'
 import { ContactField } from './ContactField'
 import { DateRangeFields } from './DateRangeFields'
 import { Summary } from './Summary'
@@ -54,6 +56,18 @@ export function TurnoFijoForm({
   const [startsOn, setStartsOn] = useState(slot.date)
   const [endsOn, setEndsOn] = useState('')
 
+  const [billingMode, setBillingMode] = useState<AbonadoBillingMode>('per_session')
+  const [agreedAmountCents, setAgreedAmountCents] = useState<number | null>(null)
+  const [initialSettlement, setInitialSettlement] = useState<InitialSettlementMode>('later')
+  const [packCredits, setPackCredits] = useState(4)
+  const [settlementMonth, setSettlementMonth] = useState(() => slot.date.slice(0, 7))
+  const [chargeLines, setChargeLines] = useState<ChargeLine[]>([])
+  const [settlementKey] = useState(() => crypto.randomUUID())
+  const settledSummaryTotal =
+    initialSettlement === 'caja'
+      ? chargeLines.reduce((sum, l) => sum + (l.amountCents ?? 0), 0)
+      : (agreedAmountCents ?? 0)
+
   const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
 
@@ -76,24 +90,58 @@ export function TurnoFijoForm({
       setError('Ingresá el nombre de contacto.')
       return
     }
-    if (!trimmedPhone) {
+    if (billingMode !== 'monthly' && !trimmedPhone) {
       setError('Ingresá un teléfono de contacto.')
       return
     }
-    if (priceMissing) {
+    if (billingMode !== 'monthly' && priceMissing) {
       setError('Ingresá el precio por turno.')
       return
     }
+
+    const linesTotal = chargeLines.reduce((sum, l) => sum + (l.amountCents ?? 0), 0)
+    if (billingMode !== 'per_session' && initialSettlement === 'caja') {
+      const hasInvalid = chargeLines.some((l) => !l.amountCents || l.amountCents <= 0)
+      if (chargeLines.length === 0 || hasInvalid || linesTotal <= 0) {
+        setError('Ingresá el monto cobrado y su medio de pago.')
+        return
+      }
+    }
+
+    const settledAmount = initialSettlement === 'caja' ? linesTotal : (agreedAmountCents ?? 0)
 
     const data = {
       courtId: slot.courtId,
       ...(playerId ? { playerId } : {}),
       contactName: trimmedName,
-      contactPhone: trimmedPhone,
+      ...(trimmedPhone ? { contactPhone: trimmedPhone } : {}),
       dayOfWeek,
       timeStart,
       timeEnd,
-      pricePerSession: effectivePrice!,
+      pricePerSession: billingMode === 'monthly' ? 0 : (effectivePrice ?? 0),
+      billingMode,
+      agreedAmount: billingMode === 'per_session' ? 0 : settledAmount,
+      ...(billingMode !== 'per_session' && initialSettlement !== 'later'
+        ? {
+            initialSettlement: {
+              kind: (billingMode === 'monthly' ? 'monthly' : 'pack') as 'monthly' | 'pack',
+              paymentOrigin: initialSettlement as 'caja' | 'already_settled',
+              amount: settledAmount,
+              ...(billingMode === 'pack'
+                ? { creditsTotal: packCredits }
+                : { month: settlementMonth }),
+              ...(initialSettlement === 'caja'
+                ? {
+                    charges: chargeLines.map((l) => ({
+                      amount: l.amountCents!,
+                      method: l.method,
+                    })),
+                    clientIdempotencyKey: settlementKey,
+                  }
+                : {}),
+            },
+          }
+        : {}),
       startsOn,
       ...(endsOn ? { endsOn } : {}),
     }
@@ -108,7 +156,10 @@ export function TurnoFijoForm({
           startTransition(() => setError(result.error))
           return
         }
-        trackConfirmed({ withPlayer: !!playerId })
+        trackConfirmed({
+          withPlayer: !!playerId,
+          withDeposit: billingMode !== 'per_session' && initialSettlement === 'caja',
+        })
         const conflicts = result.conflictDates ?? []
         toast({
           title: 'Turno fijo creado',
@@ -148,7 +199,7 @@ export function TurnoFijoForm({
             onClearPlayer={clearPlayer}
             phone={phone}
             onPhoneChange={setPhone}
-            phoneRequired
+            phoneRequired={billingMode !== 'monthly'}
           />
         </section>
 
@@ -182,49 +233,37 @@ export function TurnoFijoForm({
 
         <section className="space-y-3">
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Precio
+            Precio y cobro
           </h4>
-          {suggestedPrice == null ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="fijo-precio">Precio por turno</Label>
-              <p className="text-xs text-muted-foreground">Sin tarifa configurada en la grilla.</p>
-              <MoneyInput
-                id="fijo-precio"
-                valueCents={manualPriceCents}
-                onValueChange={setManualPriceCents}
-                minCents={1}
-                required
-              />
-            </div>
-          ) : priceEditing ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="fijo-precio">Precio por turno</Label>
-              <MoneyInput
-                id="fijo-precio"
-                valueCents={manualPriceCents ?? suggestedPrice}
-                onValueChange={setManualPriceCents}
-                minCents={1}
-              />
-            </div>
-          ) : (
-            <p className="flex items-center gap-2 text-sm">
-              <span className="font-semibold tabular-nums text-foreground">
-                {formatArs(suggestedPrice)}
-              </span>
-              <button
-                type="button"
-                onClick={() => setPriceEditing(true)}
-                className="cursor-pointer text-xs font-medium text-muted-foreground underline underline-offset-2 hover:text-foreground"
-              >
-                Cambiar
-              </button>
-            </p>
-          )}
+          <AbonadoBillingFields
+            idPrefix="fijo"
+            billingMode={billingMode}
+            onBillingModeChange={setBillingMode}
+            pricePerSessionCents={manualPriceCents}
+            suggestedPriceCents={suggestedPrice}
+            priceEditing={priceEditing}
+            onPriceEditingChange={setPriceEditing}
+            onPricePerSessionChange={setManualPriceCents}
+            agreedAmountCents={agreedAmountCents}
+            onAgreedAmountChange={setAgreedAmountCents}
+            initialSettlement={initialSettlement}
+            onInitialSettlementChange={setInitialSettlement}
+            packCredits={packCredits}
+            onPackCreditsChange={setPackCredits}
+            month={settlementMonth}
+            onMonthChange={setSettlementMonth}
+            baseYearMonth={startsOn.slice(0, 7)}
+            chargeLines={chargeLines}
+            onChargeLinesChange={setChargeLines}
+          />
 
           <DateRangeFields
             idPrefix="fijo"
             startsOn={startsOn}
-            onStartsOnChange={setStartsOn}
+            onStartsOnChange={(next) => {
+              setStartsOn(next)
+              if (next.length >= 7) setSettlementMonth(next.slice(0, 7))
+            }}
             endsOn={endsOn}
             onEndsOnChange={setEndsOn}
             min={slot.date}
@@ -238,13 +277,21 @@ export function TurnoFijoForm({
         dateLabel={formatDateLong(slot.date)}
         timeStart={timeStart}
         timeEnd={timeEnd}
-        durationLabel="por semana"
-        totalCents={effectivePrice}
-        collectedCents={0}
+        durationLabel={
+          billingMode === 'monthly'
+            ? 'por mes'
+            : billingMode === 'pack'
+              ? `pack de ${packCredits} turnos`
+              : 'por semana'
+        }
+        totalCents={billingMode === 'per_session' ? effectivePrice : settledSummaryTotal}
+        collectedCents={
+          billingMode === 'per_session' || initialSettlement === 'later' ? 0 : settledSummaryTotal
+        }
         primaryLabel="Crear turno fijo"
         onCancel={onClose}
         isPending={isPending}
-        disabled={isPending || priceMissing}
+        disabled={isPending || (billingMode !== 'monthly' && priceMissing)}
         error={error}
       />
     </form>

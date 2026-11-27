@@ -20,6 +20,7 @@ import {
   type GuestLateCancelStatus,
 } from './guest-late-cancel'
 import { markNoShow, revertNoShow } from './booking.service'
+import { rebalanceAbonadoPackCoverage } from '@/modules/settlements/settlement.service'
 import { invalidateAvailSearch } from '@/shared/cache/slots-cache'
 import { rowToBookingRow } from './booking.mappers'
 import { enqueueNotification } from '@/modules/notifications/notification.service'
@@ -51,6 +52,7 @@ type LockedBooking = {
   court_id: string
   player_id: string | null
   abonado_id: string | null
+  settlement_id: string | null
   status: BookingStatus
   canceled_by: CancellationActor | null
   deposit_status: string
@@ -74,6 +76,7 @@ async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking |
       court_id,
       player_id,
       abonado_id,
+      settlement_id,
       status,
       canceled_by,
       deposit_status,
@@ -92,6 +95,20 @@ async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking |
     FOR UPDATE
   `)
   return (result as unknown as LockedBooking[])[0]
+}
+
+async function isPackSettlement(
+  tenantId: string,
+  settlementId: string | null,
+  tx: DbTx,
+): Promise<boolean> {
+  if (!settlementId) return false
+  const rows = (await tx.execute(sql`
+    SELECT kind FROM booking_settlements
+    WHERE id = ${settlementId} AND tenant_id = ${tenantId} AND voided_at IS NULL
+    LIMIT 1
+  `)) as unknown as Array<{ kind: string }>
+  return rows[0]?.kind === 'pack'
 }
 
 /**
@@ -370,6 +387,8 @@ async function settlePlayerSideCancellation(
     }
   }
 
+  const releasePackCredit = await isPackSettlement(b.tenant_id, b.settlement_id, tx)
+
   const updated = await tx
     .update(bookings)
     .set({
@@ -380,10 +399,15 @@ async function settlePlayerSideCancellation(
       canceledReasonCode: reasonCode ?? null,
       canceledLate: lateCancel,
       depositStatus: newDepositStatus,
+      ...(releasePackCredit ? { settlementId: null } : {}),
       updatedAt: new Date(),
     })
     .where(eq(bookings.id, bookingId))
     .returning()
+
+  if (releasePackCredit && b.abonado_id) {
+    await rebalanceAbonadoPackCoverage(b.tenant_id, b.abonado_id, tx)
+  }
 
   return { row: updated[0]!, inPolicy, depositStatus: newDepositStatus, lateCancel }
 }
@@ -740,6 +764,7 @@ export async function cancelByAdmin(
 
   const reasonLabel = CANCEL_REASON_LABELS[reasonCode]
   const storedReason = `${CANCELLATION_TYPE_LABEL[cancellationType]}: ${reasonLabel}`
+  const releasePackCredit = await isPackSettlement(b.tenant_id, b.settlement_id, tx)
 
   const updated = await tx
     .update(bookings)
@@ -751,10 +776,15 @@ export async function cancelByAdmin(
       canceledReasonCode: reasonCode,
       canceledLate: lateCancel,
       depositStatus: newDepositStatus,
+      ...(releasePackCredit ? { settlementId: null } : {}),
       updatedAt: new Date(),
     })
     .where(eq(bookings.id, bookingId))
     .returning()
+
+  if (releasePackCredit && b.abonado_id) {
+    await rebalanceAbonadoPackCoverage(b.tenant_id, b.abonado_id, tx)
+  }
 
   const strike =
     lateCancel && b.player_id ? await applyLateCancelStrike(b.tenant_id, b.player_id, tx) : null

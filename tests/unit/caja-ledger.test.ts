@@ -21,6 +21,7 @@ function cf(over: Partial<CashFlowListRow>): CashFlowListRow {
     bookingId: 'b-1',
     tournamentTeamId: null,
     bookingTeam: null,
+    settlementId: null,
     registeredBy: 's-1',
     occurredAt: AT,
     createdAt: AT,

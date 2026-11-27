@@ -18,6 +18,7 @@ export function rowToBookingRow(row: BookingDbRow): BookingRow {
     courtId: row.courtId,
     playerId: row.playerId ?? null,
     abonadoId: row.abonadoId ?? null,
+    settlementId: row.settlementId ?? null,
     tournamentId: row.tournamentId ?? null,
     createdByStaff: row.createdByStaff ?? null,
     date: row.date as Date,
@@ -56,6 +57,7 @@ export type BookingRawRow = {
   court_id: string
   player_id: string | null
   abonado_id: string | null
+  settlement_id: string | null
   tournament_id: string | null
   created_by_staff: string | null
   date: string
@@ -88,6 +90,7 @@ export function rawRowToBookingRow(row: BookingRawRow): BookingRow {
     courtId: row.court_id,
     playerId: row.player_id,
     abonadoId: row.abonado_id,
+    settlementId: row.settlement_id ?? null,
     tournamentId: row.tournament_id,
     createdByStaff: row.created_by_staff,
     date: new Date(row.date),

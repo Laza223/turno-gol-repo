@@ -112,7 +112,15 @@ export function HoyChargeModalPaymentStatus({
             ) : (
               <>
                 <CheckCircle2 aria-hidden className="h-4 w-4" />
-                Cobrado ✓
+                {booking.settlementId
+                  ? booking.settlementOrigin === 'already_settled'
+                    ? 'Saldado (sin movimiento en Caja)'
+                    : booking.settlementKind === 'monthly'
+                      ? 'Saldado · Por mes'
+                      : booking.settlementKind === 'pack'
+                        ? 'Saldado · Pack de turnos'
+                        : 'Saldado'
+                  : 'Cobrado ✓'}
               </>
             )}
           </p>
@@ -161,6 +169,14 @@ export function HoyChargeModalPaymentStatus({
           disabled={locked}
           className="w-full"
         />
+      ) : booking.abonadoBillingMode === 'monthly' &&
+        !booking.settlementId &&
+        (booking.status === 'confirmed' || booking.status === 'completed') ? (
+        <p className="rounded-lg border border-border bg-muted/40 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+          Este turno fijo tiene acuerdo mensual: no se cobra por semana. Podés cobrar o saldar el
+          mes desde <span className="font-semibold text-foreground">Gestionar mes / pack</span> o
+          marcar este turno como saldado.
+        </p>
       ) : null}
 
       {isTournament && (

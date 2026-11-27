@@ -57,6 +57,7 @@ function rowToCashFlowRow(r: typeof cashFlows.$inferSelect): CashFlowRow {
     method: r.method,
     description: r.description,
     bookingId: r.bookingId ?? null,
+    settlementId: r.settlementId ?? null,
     tournamentTeamId: r.tournamentTeamId ?? null,
     bookingTeam: (r.bookingTeam as 1 | 2 | null) ?? null,
     registeredBy: r.registeredBy,
@@ -81,6 +82,7 @@ type CashFlowRawRow = {
   method: CashFlowRow['method']
   description: string
   booking_id: string | null
+  settlement_id: string | null
   tournament_team_id: string | null
   booking_team: 1 | 2 | null
   registered_by: string
@@ -98,6 +100,7 @@ function rawRowToCashFlowRow(r: CashFlowRawRow): CashFlowRow {
     method: r.method,
     description: r.description,
     bookingId: r.booking_id,
+    settlementId: r.settlement_id ?? null,
     tournamentTeamId: r.tournament_team_id,
     bookingTeam: r.booking_team ?? null,
     registeredBy: r.registered_by,
@@ -129,11 +132,11 @@ export async function createCashFlow(
     const result = await tx.execute<CashFlowRawRow>(sql`
       INSERT INTO cash_flows (
         tenant_id, type, category, amount, method, description,
-        booking_id, tournament_team_id, booking_team, registered_by, occurred_at, client_idempotency_key
+        booking_id, settlement_id, tournament_team_id, booking_team, registered_by, occurred_at, client_idempotency_key
       ) VALUES (
         ${tenantId}, ${input.type}::cashflow_type, ${input.category}::cashflow_category,
         ${input.amount}, ${input.method}::payment_method, ${input.description},
-        ${input.bookingId ?? null}, ${input.tournamentTeamId ?? null}, ${input.bookingTeam ?? null},
+        ${input.bookingId ?? null}, ${input.settlementId ?? null}, ${input.tournamentTeamId ?? null}, ${input.bookingTeam ?? null},
         ${staffUserId}, ${occurredAt.toISOString()},
         ${input.clientIdempotencyKey}
       )
@@ -164,6 +167,7 @@ export async function createCashFlow(
       existing.type !== input.type ||
       existing.category !== input.category ||
       existing.bookingId !== (input.bookingId ?? null) ||
+      existing.settlementId !== (input.settlementId ?? null) ||
       existing.tournamentTeamId !== (input.tournamentTeamId ?? null) ||
       (existing.bookingTeam ?? null) !== (input.bookingTeam ?? null)
     ) {
@@ -182,6 +186,7 @@ export async function createCashFlow(
       method: input.method,
       description: input.description,
       bookingId: input.bookingId ?? null,
+      settlementId: input.settlementId ?? null,
       tournamentTeamId: input.tournamentTeamId ?? null,
       bookingTeam: input.bookingTeam ?? null,
       registeredBy: staffUserId,
@@ -383,10 +388,16 @@ export async function getCashFlows(
   // bookings/players. Mismo patrón que getDebts (booking.debts.ts).
   const rows = await tx.execute<CashFlowListRawRow>(
     sql`SELECT cf.*,
-          COALESCE(NULLIF(TRIM(p.first_name || ' ' || p.last_name), ''), b.guest_name) AS "counterpartName"
+          COALESCE(
+            NULLIF(TRIM(p.first_name || ' ' || p.last_name), ''),
+            b.guest_name,
+            sa.contact_name
+          ) AS "counterpartName"
         FROM cash_flows cf
         LEFT JOIN bookings b ON b.id = cf.booking_id AND b.tenant_id = cf.tenant_id
         LEFT JOIN players p ON p.id = b.player_id
+        LEFT JOIN booking_settlements bs ON bs.id = cf.settlement_id AND bs.tenant_id = cf.tenant_id
+        LEFT JOIN abonados sa ON sa.id = bs.abonado_id AND sa.tenant_id = bs.tenant_id
         WHERE cf.tenant_id = ${tenantId}
           AND cf.occurred_at >= ${day.fromUtc.toISOString()}
           AND cf.occurred_at < ${day.toUtc.toISOString()}

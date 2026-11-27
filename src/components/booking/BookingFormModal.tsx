@@ -19,6 +19,7 @@ import type {
   CheckSlotAvailabilityAction,
   CreateAbonadoAction,
   CreateBookingAction,
+  CreateMultiDateEventAction,
   ModalSlot,
   SearchBookingPlayersAction,
 } from './create-modal/types'
@@ -27,6 +28,7 @@ export type {
   CheckSlotAvailabilityAction,
   CreateAbonadoAction,
   CreateBookingAction,
+  CreateMultiDateEventAction,
   SearchBookingPlayersAction,
   SearchBookingPlayersResult,
 } from './create-modal/types'
@@ -43,8 +45,16 @@ type Props = {
   onSuccess: (booking?: BookingRow) => void
   createBookingAction: CreateBookingAction
   createAbonadoAction: CreateAbonadoAction
+  createMultiDateEventAction?: CreateMultiDateEventAction
   checkAvailabilityAction?: CheckSlotAvailabilityAction
   searchPlayersAction?: SearchBookingPlayersAction
+}
+
+const MODAL_TITLES: Record<BookingKind, string> = {
+  turno: 'Nueva reserva',
+  fijo: 'Nuevo turno fijo',
+  evento: 'Nuevo evento',
+  bloqueo: 'Bloquear cancha',
 }
 
 /**
@@ -68,6 +78,7 @@ export function BookingFormModal({
   onSuccess,
   createBookingAction,
   createAbonadoAction,
+  createMultiDateEventAction,
   checkAvailabilityAction,
   searchPlayersAction,
 }: Props) {
@@ -132,6 +143,7 @@ export function BookingFormModal({
     searchPlayersAction,
     createBookingAction,
     createAbonadoAction,
+    createMultiDateEventAction,
     onClose,
     onSuccess: handleSuccess,
     trackConfirmed,
@@ -151,7 +163,7 @@ export function BookingFormModal({
           <div className="flex items-center justify-between gap-3 border-b border-border p-4 lg:px-6">
             <div className="min-w-0">
               <Dialog.Title className="text-lg font-semibold tracking-tight text-foreground">
-                Nuevo turno
+                {MODAL_TITLES[kind]}
               </Dialog.Title>
               <Dialog.Description className="truncate text-sm text-muted-foreground">
                 {slot.courtName} · {formatDateLong(slot.date)} · {slot.timeStart}

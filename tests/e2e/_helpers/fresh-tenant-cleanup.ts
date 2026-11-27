@@ -62,6 +62,7 @@ export async function deleteFreshAdminTenants(
     // bookings viola payments_booking_id_fkey.
     await sql`UPDATE payments SET booking_id = NULL WHERE tenant_id = ${tid}`
     await sql`DELETE FROM bookings WHERE tenant_id = ${tid}`
+    await sql`DELETE FROM booking_settlements WHERE tenant_id = ${tid}`
     await sql`DELETE FROM payments WHERE tenant_id = ${tid}`
     // Torneos (migrs. 062/064/065/066): hijos antes que padres, y todo el bloque
     // antes de `courts` — tournament_matches.court_id es NO ACTION y un partido

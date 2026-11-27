@@ -30,6 +30,8 @@ function makeAbonado(overrides: Partial<AbonadoRow>): AbonadoRow {
     timeStart: '10:00',
     timeEnd: '11:00',
     pricePerSession: 500000, // ARS 5000 in centavos
+    billingMode: 'per_session',
+    agreedAmount: 0,
     startsOn: new Date('2026-01-01'),
     endsOn: null,
     status: 'active',

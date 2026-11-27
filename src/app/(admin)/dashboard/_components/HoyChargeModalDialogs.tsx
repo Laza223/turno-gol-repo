@@ -8,6 +8,7 @@ import { chargeMode } from '@/components/booking/slot-panel/charge-copy'
 import { NO_SHOW_CONSEQUENCES } from '@/lib/booking/no-show-consequences'
 import { getRefundOutcome, type RefundOutcome } from '@/modules/bookings/refund-outcome'
 import type { ChargeBooking, HoyCourt } from './HoyChargeModal'
+import type { AbonadoSettlementTarget } from '@/app/(admin)/abonados/AbonadoSettlementDialog'
 
 // Se cargan recién al abrirlos: cobrar es de todos los días, mover o corregir
 // un turno es de una vez por semana.
@@ -18,6 +19,11 @@ const BookingRescheduleDialog = dynamic(
 )
 const BookingEditDialog = dynamic(
   () => import('@/components/booking/BookingEditDialog').then((m) => m.BookingEditDialog),
+  { ssr: false },
+)
+const AbonadoSettlementDialog = dynamic(
+  () =>
+    import('@/app/(admin)/abonados/AbonadoSettlementDialog').then((m) => m.AbonadoSettlementDialog),
   { ssr: false },
 )
 
@@ -53,11 +59,19 @@ export function HoyChargeModalDialogs({
   setCancelOpen,
   releaseBlockOpen,
   setReleaseBlockOpen,
+  alreadySettledOpen = false,
+  setAlreadySettledOpen,
+  undoSettlementOpen = false,
+  setUndoSettlementOpen,
+  abonadoTarget = null,
+  setAbonadoTarget,
   onMutated,
   onConsumoNoted,
   setLastId,
   onConfirmNoShow,
   onConfirmReleaseBlock,
+  onConfirmAlreadySettled,
+  onConfirmUndoSettlement,
 }: {
   booking: ChargeBooking
   name: string
@@ -85,12 +99,20 @@ export function HoyChargeModalDialogs({
   setCancelOpen: (open: boolean) => void
   releaseBlockOpen: boolean
   setReleaseBlockOpen: (open: boolean) => void
+  alreadySettledOpen?: boolean
+  setAlreadySettledOpen?: (open: boolean) => void
+  undoSettlementOpen?: boolean
+  setUndoSettlementOpen?: (open: boolean) => void
+  abonadoTarget?: AbonadoSettlementTarget | null
+  setAbonadoTarget?: (target: AbonadoSettlementTarget | null) => void
   onMutated: () => void
   /** Se anotó un consumo al turno desde el diálogo de cantina: el cobro vuelve a leer lo anotado. */
   onConsumoNoted?: () => void
   setLastId: (id: string | null) => void
   onConfirmNoShow: () => Promise<ActionResult>
   onConfirmReleaseBlock: () => Promise<ActionResult>
+  onConfirmAlreadySettled?: () => Promise<ActionResult>
+  onConfirmUndoSettlement?: () => Promise<ActionResult>
 }) {
   return (
     <>
@@ -150,7 +172,7 @@ export function HoyChargeModalDialogs({
         open={noShowOpen}
         onOpenChange={setNoShowOpen}
         title="Marcar como ausente"
-        description={`${name} no se presentó a su turno de ${booking.timeStart}.`}
+        description={`${name} no vino al turno de las ${booking.timeStart}.`}
         consequences={NO_SHOW_CONSEQUENCES}
         confirmLabel="Marcar ausente"
         cancelLabel="Volver"
@@ -205,6 +227,49 @@ export function HoyChargeModalDialogs({
             'Si te equivocaste de horario, volvé a bloquear con el horario correcto.',
           ]}
           onConfirm={onConfirmReleaseBlock}
+        />
+      )}
+
+      {onConfirmAlreadySettled && setAlreadySettledOpen && (
+        <ConfirmDialog
+          open={alreadySettledOpen}
+          onOpenChange={setAlreadySettledOpen}
+          title="Marcar turno como saldado"
+          description={`${name} · ${booking.timeStart}–${booking.timeEnd}.`}
+          confirmLabel="Sí, marcar saldado"
+          cancelLabel="Volver"
+          consequences={[
+            'El turno queda en $ 0 por cobrar.',
+            'No suma plata a Caja: usalo solo si ya estaba pago.',
+            'Podés deshacerlo después.',
+          ]}
+          onConfirm={onConfirmAlreadySettled}
+        />
+      )}
+
+      {onConfirmUndoSettlement && setUndoSettlementOpen && (
+        <ConfirmDialog
+          open={undoSettlementOpen}
+          onOpenChange={setUndoSettlementOpen}
+          title="Deshacer saldado"
+          description="El turno vuelve a quedar con su saldo por cobrar."
+          confirmLabel="Deshacer saldado"
+          cancelLabel="Volver"
+          onConfirm={onConfirmUndoSettlement}
+        />
+      )}
+
+      {abonadoTarget && setAbonadoTarget && actions.settleAbonadoPeriodAction && (
+        <AbonadoSettlementDialog
+          target={abonadoTarget}
+          defaultYearMonth={booking.date.slice(0, 7)}
+          settleAction={actions.settleAbonadoPeriodAction}
+          onClose={() => setAbonadoTarget(null)}
+          onSuccess={() => {
+            setAbonadoTarget(null)
+            setLastId(null)
+            onMutated()
+          }}
         />
       )}
     </>

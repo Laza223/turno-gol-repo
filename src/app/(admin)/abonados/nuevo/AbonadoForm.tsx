@@ -12,7 +12,12 @@ import { Badge } from '@/components/ui/badge'
 import { PhoneInput } from '@/components/ui/phone-input'
 import Combobox, { type ComboboxOption } from '@/components/ui/combobox'
 import DatePicker from '@/components/ui/date-picker'
-import { MoneyInput } from '@/components/ui/money-input'
+import { newChargeLine, type ChargeLine } from '@/components/admin/SplitPaymentFields'
+import {
+  AbonadoBillingFields,
+  type InitialSettlementMode,
+} from '@/components/booking/create-modal/AbonadoBillingFields'
+import type { AbonadoBillingMode } from '@/modules/settlements/settlement.types'
 import { formatArs, formatDayHeader } from '@/lib/format'
 import { todayART } from '@/shared/time/art-date'
 import {
@@ -116,7 +121,10 @@ type FormValues = {
   timeEnd: string
   contactName: string
   contactPhone: string
-  pricePerSessionCents: number | null
+  billingMode: AbonadoBillingMode
+  pricePerSessionCents: number
+  agreedAmountCents: number
+  initialSettlementJson?: string
   startsOn: string
 }
 
@@ -269,6 +277,13 @@ export default function AbonadoForm({
   // segundo error no relacionado ('Teléfono requerido') — 🟡 QA 2026-08-13.
   const [contactPhone, setContactPhone] = useState('')
   const [pricePerSessionCents, setPricePerSessionCents] = useState<number | null>(null)
+  const [billingMode, setBillingMode] = useState<AbonadoBillingMode>('per_session')
+  const [agreedAmountCents, setAgreedAmountCents] = useState<number | null>(null)
+  const [initialSettlement, setInitialSettlement] = useState<InitialSettlementMode>('later')
+  const [packCredits, setPackCredits] = useState(4)
+  const [settlementMonth, setSettlementMonth] = useState(() => todayART().slice(0, 7))
+  const [chargeLines, setChargeLines] = useState<ChargeLine[]>(() => [newChargeLine(null, 'cash')])
+  const [settlementKey] = useState(() => crypto.randomUUID())
 
   // H124: autocomplete de jugador registrado sobre el campo Cliente — mismo
   // patrón que BookingFormModal (searchPlayersAction debounced). Elegir un
@@ -349,9 +364,26 @@ export default function AbonadoForm({
   }, [startsOn])
 
   const formattedPrice = useMemo(() => {
+    if (billingMode === 'monthly') {
+      return agreedAmountCents && agreedAmountCents > 0
+        ? `${formatArs(agreedAmountCents)} por mes`
+        : 'Por mes'
+    }
     if (!pricePerSessionCents || pricePerSessionCents <= 0) return '$ 0'
     return formatArs(pricePerSessionCents)
-  }, [pricePerSessionCents])
+  }, [billingMode, agreedAmountCents, pricePerSessionCents])
+
+  const formattedTotal = useMemo(() => {
+    if (billingMode === 'monthly') {
+      return agreedAmountCents && agreedAmountCents > 0 ? formatArs(agreedAmountCents) : '$ 0'
+    }
+    if (billingMode === 'pack') {
+      const total = agreedAmountCents ?? (pricePerSessionCents ?? 0) * packCredits
+      return total > 0 ? formatArs(total) : '$ 0'
+    }
+    if (!pricePerSessionCents || pricePerSessionCents <= 0) return '$ 0'
+    return formatArs(pricePerSessionCents * 4)
+  }, [billingMode, agreedAmountCents, pricePerSessionCents, packCredits])
 
   function handlePreviewSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -361,33 +393,79 @@ export default function AbonadoForm({
     const phoneFromForm = (fd.get('contactPhone') as string) ?? ''
     setContactPhone(phoneFromForm)
 
+    const trimmedPhone = phoneFromForm.trim()
+    const startDate = startsOn
+    const tStart = (fd.get('timeStart') as string) || timeStart
+    const tEnd = (fd.get('timeEnd') as string) || timeEnd
+
+    if (!courtId) {
+      setPreviewError('Elegí una cancha.')
+      return
+    }
+    if (!startDate) {
+      setPreviewError('Elegí la fecha de inicio.')
+      return
+    }
+    if (!tStart || !tEnd) {
+      setPreviewError('Elegí los horarios de inicio y fin.')
+      return
+    }
+    if (billingMode !== 'monthly' && !trimmedPhone) {
+      setPreviewError('Ingresá un teléfono de contacto.')
+      return
+    }
+    if (billingMode !== 'monthly' && (pricePerSessionCents == null || pricePerSessionCents <= 0)) {
+      setPreviewError('Ingresá el precio por turno.')
+      return
+    }
+
+    const linesTotal = chargeLines.reduce((sum, l) => sum + (l.amountCents ?? 0), 0)
+    if (billingMode !== 'per_session' && initialSettlement === 'caja') {
+      const hasInvalid = chargeLines.some((l) => !l.amountCents || l.amountCents <= 0)
+      if (chargeLines.length === 0 || hasInvalid || linesTotal <= 0) {
+        setPreviewError('Ingresá el monto cobrado y su medio de pago.')
+        return
+      }
+    }
+
+    const settledAmount = initialSettlement === 'caja' ? linesTotal : (agreedAmountCents ?? 0)
+
+    const initialSettlementPayload =
+      billingMode === 'per_session' || initialSettlement === 'later'
+        ? undefined
+        : {
+            kind: billingMode,
+            paymentOrigin: initialSettlement,
+            amount: settledAmount,
+            ...(billingMode === 'pack'
+              ? { creditsTotal: packCredits }
+              : { month: settlementMonth }),
+            ...(initialSettlement === 'caja'
+              ? {
+                  charges: chargeLines.map((l) => ({
+                    amount: l.amountCents!,
+                    method: l.method,
+                  })),
+                }
+              : {}),
+            clientIdempotencyKey: settlementKey,
+          }
+
     const values: FormValues = {
       courtId,
       playerId,
       dayOfWeek,
-      timeStart: (fd.get('timeStart') as string) || timeStart,
-      timeEnd: (fd.get('timeEnd') as string) || timeEnd,
+      timeStart: tStart,
+      timeEnd: tEnd,
       contactName,
-      contactPhone: phoneFromForm,
-      pricePerSessionCents,
-      startsOn,
-    }
-
-    if (!values.courtId) {
-      setPreviewError('Elegí una cancha.')
-      return
-    }
-    if (!values.startsOn) {
-      setPreviewError('Elegí la fecha de inicio.')
-      return
-    }
-    if (!values.timeStart || !values.timeEnd) {
-      setPreviewError('Elegí los horarios de inicio y fin.')
-      return
-    }
-    if (values.pricePerSessionCents == null || values.pricePerSessionCents <= 0) {
-      setPreviewError('Ingresá el precio por turno.')
-      return
+      contactPhone: trimmedPhone,
+      billingMode,
+      pricePerSessionCents: billingMode === 'monthly' ? 0 : (pricePerSessionCents ?? 0),
+      agreedAmountCents: billingMode === 'per_session' ? 0 : settledAmount,
+      ...(initialSettlementPayload
+        ? { initialSettlementJson: JSON.stringify(initialSettlementPayload) }
+        : {}),
+      startsOn: startDate,
     }
 
     const input: PreviewAbonadoSlotsInput = {
@@ -683,30 +761,36 @@ export default function AbonadoForm({
                 <PhoneInput
                   id="contactPhone"
                   name="contactPhone"
-                  label="Teléfono"
+                  label={billingMode === 'monthly' ? 'Teléfono (opcional)' : 'Teléfono'}
                   defaultValue={contactPhone}
-                  required
+                  required={billingMode !== 'monthly'}
                 />
               </div>
 
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5 sm:col-span-2">
-                  <label
-                    htmlFor="pricePerSessionCents"
-                    className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"
-                  >
-                    <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />{' '}
-                    Precio por turno (pesos)
-                  </label>
-                  <MoneyInput
-                    id="pricePerSessionCents"
-                    valueCents={pricePerSessionCents}
-                    onValueChange={setPricePerSessionCents}
-                    placeholder="Ej: 25.000"
-                    required
-                  />
-                </div>
-              </div>
+              <AbonadoBillingFields
+                idPrefix="nuevo-abonado"
+                billingMode={billingMode}
+                onBillingModeChange={setBillingMode}
+                pricePerSessionCents={pricePerSessionCents}
+                suggestedPriceCents={null}
+                priceEditing={true}
+                onPriceEditingChange={() => {}}
+                onPricePerSessionChange={setPricePerSessionCents}
+                agreedAmountCents={agreedAmountCents}
+                onAgreedAmountChange={setAgreedAmountCents}
+                initialSettlement={initialSettlement}
+                onInitialSettlementChange={setInitialSettlement}
+                packCredits={packCredits}
+                onPackCreditsChange={setPackCredits}
+                month={settlementMonth}
+                onMonthChange={setSettlementMonth}
+                baseYearMonth={startsOn ? startsOn.slice(0, 7) : todayART().slice(0, 7)}
+                chargeLines={chargeLines}
+                onChargeLinesChange={setChargeLines}
+                allowFreeMonthly={true}
+                emptyPriceHint={null}
+                perSessionLabel="Precio por turno (pesos)"
+              />
             </div>
           </div>
 
@@ -781,10 +865,19 @@ export default function AbonadoForm({
               <div className="flex items-center justify-between py-1 border-b border-border/40">
                 <span className="text-muted-foreground flex items-center gap-1.5">
                   <DollarSign className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />{' '}
-                  Precio por semana
+                  {billingMode === 'monthly' ? 'Acuerdo' : 'Precio por semana'}
                 </span>
                 <span className="font-bold text-foreground text-sm">{formattedPrice}</span>
               </div>
+
+              {billingMode !== 'per_session' && (
+                <div className="flex items-center justify-between py-1 border-b border-border/40">
+                  <span className="text-muted-foreground">
+                    {billingMode === 'pack' ? `Pack de ${packCredits} turnos` : 'Total del mes'}
+                  </span>
+                  <span className="font-bold text-foreground text-sm">{formattedTotal}</span>
+                </div>
+              )}
 
               <div className="rounded-xl bg-accent/40 p-3 space-y-1">
                 <p className="text-[10px] text-muted-foreground leading-relaxed">

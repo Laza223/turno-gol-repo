@@ -17,6 +17,7 @@ export const cashFlow = (overrides: Partial<CashFlowRow> = {}): CashFlowRow => (
   bookingId: uid(1001),
   tournamentTeamId: null,
   bookingTeam: null,
+  settlementId: null,
   registeredBy: staffMember().id,
   occurredAt: hoursFromNow(-26),
   createdAt: hoursFromNow(-26),

@@ -1,10 +1,15 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import dynamic from 'next/dynamic'
+import { CalendarCheck2, CheckCheck, CheckCircle2, Undo2 } from 'lucide-react'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { formatArs } from '@/lib/format'
 import { METHOD_LABELS } from '@/lib/payment-method'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { toast } from '@/hooks/use-toast'
+import type { AbonadoSettlementTarget } from '@/app/(admin)/abonados/AbonadoSettlementDialog'
 import { newChargeLine } from '@/components/admin/SplitPaymentFields'
 import { useSlotCharges } from '@/components/booking/slot-panel/use-slot-charges'
 import { HoyChargeSection } from '@/components/booking/slot-panel/HoyChargeSection'
@@ -14,6 +19,12 @@ import { useNowMs } from '@/hooks/use-now'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import { resolveDepositDisplayStatus, type RefundState } from '../deposit-display'
 import type { BookingChargeRow } from '../queries'
+
+const AbonadoSettlementDialog = dynamic(
+  () =>
+    import('@/app/(admin)/abonados/AbonadoSettlementDialog').then((m) => m.AbonadoSettlementDialog),
+  { ssr: false },
+)
 
 /**
  * Las cuatro acciones de plata que puede disparar el control de cobro
@@ -29,7 +40,16 @@ type ChargeActions = Pick<
   | 'completeAndChargeBookingAction'
   | 'addBookingChargeAction'
   | 'markNoShowAction'
->
+> &
+  Partial<
+    Pick<
+      SlotPanelActions,
+      | 'settleBookingsBatchAction'
+      | 'voidSettlementAction'
+      | 'settleAbonadoPeriodAction'
+      | 'getAbonadoBillingOverviewAction'
+    >
+  >
 
 type Props = {
   booking: GridBooking
@@ -38,6 +58,8 @@ type Props = {
   charges: BookingChargeRow[]
   chargesTotal: number
   actions: ChargeActions
+  /** Mes (AAAA-MM) desde el que ofrece "Saldar mes"; sin esto, el mes del turno. */
+  defaultYearMonth?: string
 }
 
 const DEPOSIT_STATUS_LABELS: Record<string, string> = {
@@ -62,10 +84,16 @@ export default function BookingCharges({
   charges,
   chargesTotal,
   actions,
+  defaultYearMonth,
 }: Props) {
   const router = useRouter()
   const nowMs = useNowMs()
   const [open, setOpen] = useState(false)
+  const [alreadySettledOpen, setAlreadySettledOpen] = useState(false)
+  const [undoSettlementOpen, setUndoSettlementOpen] = useState(false)
+  const [abonadoTarget, setAbonadoTarget] = useState<AbonadoSettlementTarget | null>(null)
+  const [settlementKey, setSettlementKey] = useState(() => crypto.randomUUID())
+  const [loadingAbonado, startLoadingAbonado] = useTransition()
   // `resetLastId` corre DENTRO de la transición del hook (después de un cobro
   // resuelto), así que no puede tocar el `setIdempotencyKey` de ESTE render
   // directamente. Se marca acá y se resuelve en el cuerpo del render (mismo
@@ -120,17 +148,66 @@ export default function BookingCharges({
         depositStatus: booking.depositStatus ?? 'not_required',
         chargesTotal,
         writtenOff: booking.writtenOff ?? 0,
+        settlementId: booking.settlementId,
       }),
     [
       booking.priceSnapshot,
       booking.depositAmount,
       booking.depositStatus,
       booking.writtenOff,
+      booking.settlementId,
       chargesTotal,
     ],
   )
+  const isSettled = Boolean(booking.settlementId)
+  const isUnsettledMonthly = booking.abonadoBillingMode === 'monthly' && !booking.settlementId
+  const canManageAbonado = Boolean(
+    booking.abonadoId &&
+    actions.settleAbonadoPeriodAction &&
+    actions.getAbonadoBillingOverviewAction,
+  )
+  const canMarkAlreadySettled = Boolean(
+    !booking.settlementId &&
+    (booking.status === 'confirmed' || booking.status === 'completed') &&
+    booking.type !== 'block' &&
+    booking.type !== 'tournament' &&
+    (booking.writtenOff ?? 0) === 0 &&
+    (mode !== null || isUnsettledMonthly || pendingAmount > 0) &&
+    actions.settleBookingsBatchAction,
+  )
+  const canUndoSettlement = Boolean(
+    booking.settlementId &&
+    booking.settlementOrigin === 'already_settled' &&
+    actions.voidSettlementAction,
+  )
+
+  function openAbonadoManager() {
+    if (!booking.abonadoId || !actions.getAbonadoBillingOverviewAction) return
+    setError(null)
+    startLoadingAbonado(async () => {
+      const res = await actions.getAbonadoBillingOverviewAction!(booking.abonadoId!)
+      if (!res.success) {
+        startLoadingAbonado(() => setError(res.error))
+        return
+      }
+      setAbonadoTarget({
+        abonadoId: res.overview.abonadoId,
+        contactName: res.overview.contactName,
+        pricePerSession: res.overview.pricePerSession,
+        billingMode: res.overview.billingMode,
+        agreedAmount: res.overview.agreedAmount,
+        coveredMonths: res.overview.coverage.coveredMonths,
+        remainingPackSessions: res.overview.coverage.remainingPackSessions,
+      })
+    })
+  }
   // Dado por perdido (2026-11-07): saldo 0 pero no se pagó entero.
-  const balance = balanceLabel(pendingAmount, booking.writtenOff ?? 0)
+  const balance = balanceLabel(
+    pendingAmount,
+    booking.writtenOff ?? 0,
+    isSettled,
+    isUnsettledMonthly,
+  )
   // Solo la ETIQUETA. `summarizeBookingCharges` de arriba sigue recibiendo el
   // `depositStatus` crudo: los totales son plata, no texto.
   const depositDisplayStatus = resolveDepositDisplayStatus(
@@ -203,6 +280,28 @@ export default function BookingCharges({
         </div>
       </dl>
 
+      {isSettled && (
+        <p
+          role="status"
+          className="mt-3 flex items-center gap-2 rounded-lg bg-emerald-500/15 px-3 py-2 text-xs font-semibold text-emerald-800 dark:text-emerald-300"
+        >
+          <CheckCircle2 aria-hidden className="h-4 w-4 shrink-0" />
+          {booking.settlementOrigin === 'already_settled'
+            ? 'Ya estaba saldado (no suma a Caja)'
+            : booking.settlementKind === 'monthly'
+              ? 'Saldado con el mes'
+              : booking.settlementKind === 'pack'
+                ? 'Saldado con el pack de turnos'
+                : 'Cobrado junto con otros turnos'}
+        </p>
+      )}
+
+      {isUnsettledMonthly && (
+        <p className="mt-3 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+          Este turno fijo se cobra por mes, no por turno.
+        </p>
+      )}
+
       {open && mode ? (
         // 2026-09-24: el mismo control de cobro que Hoy, la Grilla y Caja
         // (pestañas Todo junto / Por equipo / Por jugador). Antes este era el
@@ -239,28 +338,157 @@ export default function BookingCharges({
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={openForm}
-          disabled={!mode}
-          title={!mode ? 'Este turno ya está pagado por completo.' : undefined}
-          // H078: este es el CTA que cobra la plata que se debe — es el
-          // primario (sólido) de la vista, no "Marcar completada" (estado del
-          // sistema). BONUS-62 / regla del dueño §8.4.
-          className="mt-4 h-11 md:h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          + Agregar cobro
-        </button>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={openForm}
+            disabled={!mode}
+            title={
+              !mode
+                ? isUnsettledMonthly
+                  ? 'Este turno fijo se salda por mes.'
+                  : 'Este turno ya está pagado por completo.'
+                : undefined
+            }
+            // H078: este es el CTA que cobra la plata que se debe — es el
+            // primario (sólido) de la vista, no "Marcar completada" (estado del
+            // sistema). BONUS-62 / regla del dueño §8.4.
+            className="h-11 md:h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            + Agregar cobro
+          </button>
+
+          {canManageAbonado && (
+            <button
+              type="button"
+              disabled={isPending || loadingAbonado}
+              onClick={openAbonadoManager}
+              className={SECONDARY_ACTION}
+            >
+              <CalendarCheck2 aria-hidden className="h-4 w-4" />
+              Gestionar mes / pack
+            </button>
+          )}
+
+          {canMarkAlreadySettled && (
+            <button
+              type="button"
+              disabled={isPending || loadingAbonado}
+              onClick={() => setAlreadySettledOpen(true)}
+              className={SECONDARY_ACTION}
+            >
+              <CheckCheck aria-hidden className="h-4 w-4" />
+              Marcar como saldado
+            </button>
+          )}
+
+          {canUndoSettlement && (
+            <button
+              type="button"
+              disabled={isPending || loadingAbonado}
+              onClick={() => setUndoSettlementOpen(true)}
+              className={SECONDARY_ACTION}
+            >
+              <Undo2 aria-hidden className="h-4 w-4" />
+              Deshacer saldado
+            </button>
+          )}
+        </div>
+      )}
+
+      {!open && error && (
+        <p role="alert" className="mt-2 text-xs text-red-700 dark:text-red-300">
+          {error}
+        </p>
+      )}
+
+      {actions.settleBookingsBatchAction && (
+        <ConfirmDialog
+          open={alreadySettledOpen}
+          onOpenChange={setAlreadySettledOpen}
+          title="Marcar turno como saldado"
+          description="El turno queda en $ 0 por cobrar."
+          confirmLabel="Sí, marcar saldado"
+          cancelLabel="Volver"
+          consequences={[
+            'No suma plata a Caja: usalo solo si ya estaba pago.',
+            'Podés deshacerlo después.',
+          ]}
+          onConfirm={async () => {
+            const res = await actions.settleBookingsBatchAction!({
+              bookingIds: [booking.id],
+              paymentOrigin: 'already_settled',
+              amount: 0,
+              clientIdempotencyKey: settlementKey,
+            })
+            if (res.success) {
+              setSettlementKey(crypto.randomUUID())
+              toast({ title: 'Turno marcado como saldado', variant: 'success' })
+              router.refresh()
+              return { success: true }
+            }
+            return { success: false, error: res.error }
+          }}
+        />
+      )}
+
+      {actions.voidSettlementAction && booking.settlementId && (
+        <ConfirmDialog
+          open={undoSettlementOpen}
+          onOpenChange={setUndoSettlementOpen}
+          title="Deshacer saldado"
+          description="El turno vuelve a quedar con su saldo por cobrar."
+          confirmLabel="Deshacer saldado"
+          cancelLabel="Volver"
+          onConfirm={async () => {
+            const res = await actions.voidSettlementAction!({
+              settlementId: booking.settlementId!,
+            })
+            if (res.success) {
+              toast({ title: 'Saldado deshecho', variant: 'success' })
+              router.refresh()
+            }
+            return res
+          }}
+        />
+      )}
+
+      {abonadoTarget && actions.settleAbonadoPeriodAction && (
+        <AbonadoSettlementDialog
+          target={abonadoTarget}
+          defaultYearMonth={defaultYearMonth ?? booking.date.slice(0, 7)}
+          settleAction={actions.settleAbonadoPeriodAction}
+          onClose={() => setAbonadoTarget(null)}
+          onSuccess={() => router.refresh()}
+        />
       )}
     </section>
   )
 }
 
-/** El renglón "Saldo pendiente": pagado entero, dado por perdido (2026-11-07) o lo que falta. */
+const SECONDARY_ACTION =
+  'inline-flex h-11 md:h-9 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:opacity-60'
+
+/**
+ * El renglón "Saldo pendiente": saldado por un acuerdo, pagado entero, dado por perdido
+ * (2026-11-07) o lo que falta.
+ */
 function balanceLabel(
   pendingCents: number,
   writtenOffCents: number,
+  settled: boolean,
+  unsettledMonthly: boolean,
 ): { text: string; className: string; paidInFull: boolean } {
+  if (settled) {
+    return {
+      text: 'Saldado',
+      className: 'text-emerald-800 dark:text-emerald-400',
+      paidInFull: true,
+    }
+  }
+  if (unsettledMonthly) {
+    return { text: 'Por mes', className: 'text-muted-foreground', paidInFull: false }
+  }
   if (pendingCents === 0 && writtenOffCents === 0) {
     return {
       text: 'Pagado completo',

@@ -241,6 +241,7 @@ export async function cleanupAll(sql?: Sql): Promise<void> {
       cash_flows,
       payments,
       bookings,
+      booking_settlements,
       abonados,
       tenant_subscriptions,
       tenant_player_bans,

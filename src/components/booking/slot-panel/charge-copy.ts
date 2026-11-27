@@ -14,6 +14,8 @@ import type { GridBooking } from '@/lib/booking/grid-cells'
 export type ChargeMode = 'settle' | 'finish' | 'advance' | null
 
 export function chargeMode(booking: GridBooking, hasEnded: boolean): ChargeMode {
+  if (booking.settlementId) return null
+  if (booking.settlementId) return null
   const pending = booking.pending
   if (typeof pending !== 'number' || pending <= 0) return null
   if (booking.type === 'block' || booking.type === 'tournament') return null

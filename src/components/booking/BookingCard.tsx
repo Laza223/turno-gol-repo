@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Plus } from 'lucide-react'
+import { Check, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { gridMoneyVisual } from '@/lib/booking/slot-visual'
 import { TONE_BORDER, TONE_TEXT, TONE_TINT } from '@/lib/status-tone'
@@ -56,6 +56,10 @@ type BookingCardProps = {
   /** Es el turno que se está arrastrando ahora: queda atenuado en su lugar. */
   dragging?: boolean
   onDragPointerDown?: (e: React.PointerEvent<HTMLElement>, booking: GridBooking) => void
+  /** Modo "Saldar varios": el clic marca el turno en vez de abrir el panel. */
+  batchSelecting?: boolean
+  batchSelected?: boolean
+  onToggleBatchSelect?: (bookingId: string) => void
 }
 
 /** Posición explícita en la grilla CSS: rowOffset deja lugar a la columna de horas, la fila de headers y la banda de colapso. */
@@ -155,6 +159,9 @@ function BookingCardComponent({
   canDrag = false,
   dragging = false,
   onDragPointerDown,
+  batchSelecting = false,
+  batchSelected = false,
+  onToggleBatchSelect,
 }: BookingCardProps) {
   if (!booking) {
     const interactive = !isPast && !!onSlotClick && !!courtId
@@ -230,6 +237,12 @@ function BookingCardComponent({
   // Tinte + borde de color solo en rojo/verde/ámbar; lo neutral usa la receta
   // fija de la hoja (DESIGN.md §Grilla de turnos).
   const colored = visual.tone !== 'neutral'
+  const canBatchPick =
+    batchSelecting &&
+    booking.type !== 'block' &&
+    booking.type !== 'tournament' &&
+    !booking.settlementId &&
+    (booking.status === 'confirmed' || booking.status === 'completed')
 
   // Click/tap/Enter abre el panel lateral (Fase 3) con el detalle Y las
   // acciones. Antes esto abría un popover de sólo-lectura por hover: se sacó
@@ -245,12 +258,21 @@ function BookingCardComponent({
       style={placement(col, row, span, rowOffset)}
       data-col={col}
       data-row={row}
-      onClick={() => onDetailChange?.(booking.id)}
+      onClick={() => {
+        if (batchSelecting) {
+          if (canBatchPick) onToggleBatchSelect?.(booking.id)
+          return
+        }
+        onDetailChange?.(booking.id)
+      }}
       onPointerDown={
-        canDrag && onDragPointerDown ? (e) => onDragPointerDown(e, booking) : undefined
+        canDrag && !batchSelecting && onDragPointerDown
+          ? (e) => onDragPointerDown(e, booking)
+          : undefined
       }
-      aria-haspopup="dialog"
-      aria-expanded={detailOpen}
+      aria-haspopup={batchSelecting ? undefined : 'dialog'}
+      aria-expanded={batchSelecting ? undefined : detailOpen}
+      aria-pressed={canBatchPick ? batchSelected : undefined}
       className={cn(
         // Arrastrable: sin selección de texto ni menú de "mantener apretado" de
         // iOS/Android, que se comerían el long-press del arrastre táctil.
@@ -263,13 +285,26 @@ function BookingCardComponent({
         'transition-shadow hover:shadow-md',
         colored ? TONE_BORDER[visual.tone] : 'border-l-slate-400 dark:border-l-slate-500',
         isNew && 'animate-slot-pulse',
-        // Anillo rojo sólido, el tono de "No cobrado": el chip que lo enciende
-        // es rojo y lo que marca es plata pendiente. Sin `/N`: el token está
-        // calibrado para el contraste de 3:1 de un borde.
-        spotlighted && 'ring-2 ring-inset ring-destructive',
+        batchSelecting && !canBatchPick && 'opacity-45 cursor-not-allowed',
+        batchSelected
+          ? 'ring-2 ring-inset ring-primary'
+          : spotlighted && 'ring-2 ring-inset ring-destructive',
         'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring',
       )}
     >
+      {canBatchPick && (
+        <span
+          aria-hidden
+          className={cn(
+            'absolute top-1 right-1 z-10 flex h-4 w-4 items-center justify-center rounded-sm border',
+            batchSelected
+              ? 'border-primary bg-primary text-primary-foreground'
+              : 'border-border bg-background/90 text-transparent',
+          )}
+        >
+          <Check className="h-3 w-3" />
+        </span>
+      )}
       {/* El contenedor de la consulta por ancho es este `<span>` y no el
           `<button>`: sobre un botón Chrome no aplica `container-type`. */}
       <span

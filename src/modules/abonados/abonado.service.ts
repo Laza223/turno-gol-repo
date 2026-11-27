@@ -17,11 +17,17 @@ import {
   CourtNotFoundError,
   PlayerNotClientError,
 } from './abonado.errors'
+import {
+  assignSettlementCoverageForAbonado,
+  settleAbonadoPeriod,
+} from '@/modules/settlements/settlement.service'
 import type {
+  AbonadoBillingMode,
   AbonadoRow,
   AbonadoStatus,
   AbonadoPaymentMethod,
   CreateAbonadoInput,
+  UpdateAbonadoAgreementInput,
 } from './abonado.types'
 
 export function rowToAbonadoRow(r: typeof abonados.$inferSelect): AbonadoRow {
@@ -40,6 +46,8 @@ export function rowToAbonadoRow(r: typeof abonados.$inferSelect): AbonadoRow {
     endsOn: r.endsOn ?? null,
     status: r.status,
     paymentMethod: r.paymentMethod,
+    billingMode: r.billingMode as AbonadoBillingMode,
+    agreedAmount: r.agreedAmount,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
   }
@@ -160,7 +168,7 @@ async function insertBookingsForSlots(
     // Mismo criterio que el nombre: sin cuenta, el teléfono del fijo viaja a cada
     // fecha (deudas y WhatsApp leen `guest_phone`, no el del fijo).
     guestPhone: abonado.playerId ? null : abonado.contactPhone,
-    priceSnapshot: abonado.pricePerSession,
+    priceSnapshot: abonado.billingMode === 'monthly' ? 0 : abonado.pricePerSession,
     depositAmount: 0,
     depositStatus: 'not_required' as const,
     paymentMethod: null,
@@ -236,6 +244,10 @@ export async function createAbonado(
   )
   if (hasConflict) throw new AbonadoConflictError()
 
+  const billingMode: AbonadoBillingMode = input.billingMode ?? 'per_session'
+  const effectivePricePerSession = billingMode === 'monthly' ? 0 : input.pricePerSession
+  const agreedAmount = input.agreedAmount ?? 0
+
   const rows = await tx
     .insert(abonados)
     .values({
@@ -247,7 +259,9 @@ export async function createAbonado(
       dayOfWeek: input.dayOfWeek,
       timeStart: input.timeStart,
       timeEnd: input.timeEnd,
-      pricePerSession: input.pricePerSession,
+      pricePerSession: effectivePricePerSession,
+      billingMode,
+      agreedAmount,
       startsOn: new Date(`${input.startsOn}T00:00:00Z`),
       endsOn: input.endsOn ? new Date(`${input.endsOn}T00:00:00Z`) : null,
       status: 'active' as const,
@@ -282,6 +296,25 @@ export async function createAbonado(
     tx,
   )
 
+  if (input.initialSettlement) {
+    await settleAbonadoPeriod(
+      tenantId,
+      staffUserId,
+      {
+        abonadoId: abonado.id,
+        kind: input.initialSettlement.kind,
+        paymentOrigin: input.initialSettlement.paymentOrigin,
+        amount: input.initialSettlement.amount,
+        creditsTotal: input.initialSettlement.creditsTotal,
+        month: input.initialSettlement.month,
+        startsFromDate: input.startsOn,
+        charges: input.initialSettlement.charges,
+        clientIdempotencyKey: input.initialSettlement.clientIdempotencyKey,
+      },
+      tx,
+    )
+  }
+
   if (input.playerId) {
     await ensurePTR(input.playerId, tenantId, tx)
   }
@@ -293,7 +326,7 @@ export async function createAbonado(
     action: 'abonado.created',
     resourceType: 'abonado',
     resourceId: abonado.id,
-    metadata: { slotsGenerated, conflictDates },
+    metadata: { slotsGenerated, conflictDates, billingMode, agreedAmount },
   })
 
   return { abonado, slotsGenerated, conflictDates }
@@ -360,6 +393,9 @@ export async function reactivateAbonado(
   const bookableDates = cutoff === null ? slotDates : slotDates.filter((d) => d <= cutoff)
 
   const { slotsGenerated } = await insertBookingsForSlots(bookableDates, abonado, tenantId, tx)
+  if (slotsGenerated > 0) {
+    await assignSettlementCoverageForAbonado(tenantId, abonadoId, tx)
+  }
 
   await insertAuditLog(tx, {
     tenantId,
@@ -403,12 +439,15 @@ export async function cancelAbonado(
   // y `payments` apuntan a `bookings` sin ON DELETE, así que el DELETE entero
   // reventaba con una violación de FK y el fijo no se cancelaba. Esas fechas
   // quedan en la grilla y se devuelven en `keptDates` para avisarlo.
+  // Un turno cubierto por un pack, un mes o un "ya estaba saldado" (`settlement_id`) también
+  // tiene plata cargada, aunque el cobro cuelgue del acuerdo y no del turno: se queda.
   await tx.execute(sql`
     DELETE FROM bookings b
     WHERE b.abonado_id = ${abonadoId}
       AND b.date >= ${fromDate}::date
       AND b.starts_at >= ${nowIso}::timestamptz
       AND b.status IN ('confirmed','pending_payment')
+      AND b.settlement_id IS NULL
       AND NOT EXISTS (SELECT 1 FROM cash_flows cf WHERE cf.booking_id = b.id)
       AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.booking_id = b.id)
   `)
@@ -534,11 +573,14 @@ export async function getAbonados(
     ends_on: string | null
     status: AbonadoStatus
     payment_method: AbonadoPaymentMethod
+    billing_mode: AbonadoBillingMode
+    agreed_amount: number
     created_at: string
     updated_at: string
   }>(sql`
     SELECT id, tenant_id, court_id, player_id, contact_name, contact_phone,
            day_of_week, time_start, time_end, price_per_session,
+           billing_mode, agreed_amount,
            starts_on, ends_on, status, payment_method, created_at, updated_at
     FROM abonados
     WHERE tenant_id = ${tenantId}
@@ -558,6 +600,8 @@ export async function getAbonados(
     timeStart: r.time_start,
     timeEnd: r.time_end,
     pricePerSession: r.price_per_session,
+    billingMode: r.billing_mode,
+    agreedAmount: r.agreed_amount,
     startsOn: new Date(r.starts_on),
     endsOn: r.ends_on ? new Date(r.ends_on) : null,
     status: r.status,
@@ -565,6 +609,95 @@ export async function getAbonados(
     createdAt: new Date(r.created_at),
     updatedAt: new Date(r.updated_at),
   }))
+}
+
+/**
+ * Actualiza el acuerdo (por turno / por mes / pack), tarifa y contacto de un abonado,
+ * propagando el nuevo precio por sesión a los turnos futuros aún sin cobrar ni saldar.
+ */
+export async function updateAbonadoAgreement(
+  tenantId: string,
+  staffUserId: string,
+  input: UpdateAbonadoAgreementInput,
+  tx: DbTx,
+): Promise<{ abonado: AbonadoRow; updatedBookings: number }> {
+  const existing = await tx.execute(sql`
+    SELECT id, status, billing_mode, price_per_session, agreed_amount
+    FROM abonados
+    WHERE id = ${input.abonadoId} AND tenant_id = ${tenantId}
+    FOR UPDATE
+  `)
+  const current = (
+    existing as unknown as Array<{
+      id: string
+      status: AbonadoStatus
+      billing_mode: AbonadoBillingMode
+      price_per_session: number
+      agreed_amount: number
+    }>
+  )[0]
+  if (!current) throw new AbonadoNotFoundError(input.abonadoId)
+  if (current.status === 'canceled') throw new AbonadoAlreadyCanceledError()
+
+  const nextPricePerSession = input.billingMode === 'monthly' ? 0 : input.pricePerSession
+
+  const updated = await tx
+    .update(abonados)
+    .set({
+      billingMode: input.billingMode,
+      pricePerSession: nextPricePerSession,
+      agreedAmount: input.agreedAmount,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(abonados.id, input.abonadoId), eq(abonados.tenantId, tenantId)))
+    .returning()
+
+  let updatedBookings = 0
+  if (
+    current.price_per_session !== nextPricePerSession ||
+    current.billing_mode !== input.billingMode
+  ) {
+    // app.booking_edit permite actualizar `price_snapshot` en turnos `confirmed` futuros sin cobros.
+    await tx.execute(sql`SET LOCAL app.booking_edit = 'on'`)
+    const nowIso = new Date().toISOString()
+    const touched = (await tx.execute(sql`
+      UPDATE bookings b
+      SET price_snapshot = ${nextPricePerSession}, updated_at = NOW()
+      WHERE b.tenant_id = ${tenantId}
+        AND b.abonado_id = ${input.abonadoId}
+        AND b.status = 'confirmed'
+        AND b.settlement_id IS NULL
+        AND b.starts_at >= ${nowIso}::timestamptz
+        AND b.deposit_status NOT IN ('paid', 'captured')
+        AND NOT EXISTS (
+          SELECT 1 FROM cash_flows cf
+          WHERE cf.booking_id = b.id
+            AND cf.tenant_id = b.tenant_id
+            AND cf.type = 'income'
+            AND cf.category = 'booking'
+        )
+      RETURNING b.id
+    `)) as unknown as Array<{ id: string }>
+    updatedBookings = touched.length
+  }
+
+  await insertAuditLog(tx, {
+    tenantId,
+    actorId: staffUserId,
+    actorType: 'staff',
+    action: 'abonado.agreement_updated',
+    resourceType: 'abonado',
+    resourceId: input.abonadoId,
+    metadata: {
+      previousBillingMode: current.billing_mode,
+      billingMode: input.billingMode,
+      pricePerSession: nextPricePerSession,
+      agreedAmount: input.agreedAmount,
+      updatedBookings,
+    },
+  })
+
+  return { abonado: rowToAbonadoRow(updated[0]!), updatedBookings }
 }
 
 /**

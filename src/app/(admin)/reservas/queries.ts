@@ -1,6 +1,11 @@
 import { and, eq, sql, type SQL } from 'drizzle-orm'
 import type { DbTx } from '@/shared/db/client'
-import { bookings, players } from '@/shared/db/schema'
+import { abonados, bookings, bookingSettlements, players } from '@/shared/db/schema'
+import type {
+  AbonadoBillingMode,
+  SettlementKind,
+  SettlementPaymentOrigin,
+} from '@/modules/settlements/settlement.types'
 import {
   DEPOSIT_CASHFLOW_DESCRIPTION_PREFIX,
   depositCashFlowDescription,
@@ -82,6 +87,12 @@ export type ReservaListRow = {
    * teléfono. Solo para MOSTRAR en la fila de la Agenda.
    */
   phone?: string | null
+  abonadoId?: string | null
+  abonadoBillingMode?: AbonadoBillingMode | null
+  settlementId?: string | null
+  settlementKind?: SettlementKind | null
+  settlementOrigin?: SettlementPaymentOrigin | null
+  settlementAmount?: number | null
 }
 
 /**
@@ -188,7 +199,13 @@ function bookingSelectColumns(): SQL {
            b.guest_name AS "guestName",
            -- Teléfono para la fila de la Agenda (mismas dos columnas que ya
            -- usa searchCond para buscar por teléfono).
-           COALESCE(b.guest_phone, p.phone) AS phone`
+           COALESCE(b.guest_phone, p.phone) AS phone,
+           b.abonado_id AS "abonadoId",
+           a.billing_mode AS "abonadoBillingMode",
+           b.settlement_id AS "settlementId",
+           bs.kind AS "settlementKind",
+           bs.payment_origin AS "settlementOrigin",
+           bs.amount AS "settlementAmount"`
 }
 
 /** Cuántas reservas entran en una página de la lista. */
@@ -245,6 +262,8 @@ export async function listTenantBookings(
     FROM bookings b
     JOIN courts c ON c.id = b.court_id
     LEFT JOIN players p ON p.id = b.player_id
+    LEFT JOIN abonados a ON a.id = b.abonado_id AND a.tenant_id = b.tenant_id
+    LEFT JOIN booking_settlements bs ON bs.id = b.settlement_id AND bs.tenant_id = b.tenant_id
     WHERE b.tenant_id = ${tenantId}
       ${scopeCond(filters.scope, filters.now)}
       ${statusCond(filters.status)}
@@ -353,6 +372,11 @@ export async function getBookingDetail(
            COALESCE((t.settings->'cancellation_policy'->>'hours_before')::int, ${DEFAULT_CANCELLATION_HOURS_BEFORE}::int) AS "cancellationPolicyHours",
            COALESCE((t.settings->>'late_cancel_hours')::int, 0) AS "lateCancelHours",
            b.abonado_id AS "abonadoId",
+           a.billing_mode AS "abonadoBillingMode",
+           b.settlement_id AS "settlementId",
+           bs.kind AS "settlementKind",
+           bs.payment_origin AS "settlementOrigin",
+           bs.amount AS "settlementAmount",
            b.starts_at AS "startsAt", b.ends_at AS "endsAt", b.updated_at AS "updatedAt",
            c.name AS "courtName",
            CASE WHEN p.id IS NULL THEN NULL ELSE (p.first_name || ' ' || p.last_name) END AS "playerName",
@@ -361,6 +385,8 @@ export async function getBookingDetail(
     JOIN courts c ON c.id = b.court_id
     JOIN tenants t ON t.id = b.tenant_id
     LEFT JOIN players p ON p.id = b.player_id
+    LEFT JOIN abonados a ON a.id = b.abonado_id AND a.tenant_id = b.tenant_id
+    LEFT JOIN booking_settlements bs ON bs.id = b.settlement_id AND bs.tenant_id = b.tenant_id
     WHERE b.tenant_id = ${tenantId} AND b.id = ${bookingId}
     LIMIT 1
   `)
@@ -528,6 +554,12 @@ async function selectGridBookingsWithBalance(
       paymentMethod: bookings.paymentMethod,
       depositStatus: bookings.depositStatus,
       depositAmount: bookings.depositAmount,
+      abonadoId: bookings.abonadoId,
+      abonadoBillingMode: abonados.billingMode,
+      settlementId: bookings.settlementId,
+      settlementKind: bookingSettlements.kind,
+      settlementOrigin: bookingSettlements.paymentOrigin,
+      settlementAmount: bookingSettlements.amount,
       // B15: sin created_at la grilla no puede decir cuánto le queda al hold.
       createdAt: bookings.createdAt,
       playerFirstName: players.firstName,
@@ -536,6 +568,17 @@ async function selectGridBookingsWithBalance(
     })
     .from(bookings)
     .leftJoin(players, eq(bookings.playerId, players.id))
+    .leftJoin(
+      abonados,
+      and(eq(bookings.abonadoId, abonados.id), eq(bookings.tenantId, abonados.tenantId)),
+    )
+    .leftJoin(
+      bookingSettlements,
+      and(
+        eq(bookings.settlementId, bookingSettlements.id),
+        eq(bookings.tenantId, bookingSettlements.tenantId),
+      ),
+    )
     .where(and(eq(bookings.tenantId, tenantId), extraWhere))
 
   // Los cobros de mostrador se piden DESPUÉS de saber qué turnos hay: es una
@@ -554,6 +597,7 @@ async function selectGridBookingsWithBalance(
       depositStatus: r.depositStatus,
       chargesTotal: sum?.total ?? 0,
       writtenOff: sum?.writtenOff ?? 0,
+      settlementId: r.settlementId,
     })
     return {
       id: r.id,
@@ -579,6 +623,12 @@ async function selectGridBookingsWithBalance(
       writtenOff,
       team1Paid: sum?.team1 ?? 0,
       team2Paid: sum?.team2 ?? 0,
+      abonadoId: r.abonadoId ?? null,
+      abonadoBillingMode: (r.abonadoBillingMode as AbonadoBillingMode | null) ?? null,
+      settlementId: r.settlementId ?? null,
+      settlementKind: (r.settlementKind as SettlementKind | null) ?? null,
+      settlementOrigin: (r.settlementOrigin as SettlementPaymentOrigin | null) ?? null,
+      settlementAmount: r.settlementAmount ?? null,
     }
   })
 }
@@ -679,6 +729,7 @@ export async function listUnpaidGridBookingsBefore(
       LEFT JOIN cash_flows cf ON cf.booking_id = b.id AND cf.tenant_id = b.tenant_id
       WHERE b.tenant_id = ${tenantId}
         AND b.status = 'completed'
+        AND b.settlement_id IS NULL
         AND b.date < ${date}::date
         ${dateBound}
       GROUP BY b.id

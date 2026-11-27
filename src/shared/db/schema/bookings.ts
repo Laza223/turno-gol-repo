@@ -15,6 +15,7 @@ import { tenants } from './tenants'
 import { courts } from './courts'
 import { players } from './players'
 import { abonados } from './abonados'
+import { bookingSettlements } from './booking-settlements'
 import { tournaments } from './tournaments'
 import { staffUsers } from './staff-users'
 import {
@@ -41,6 +42,9 @@ export const bookings = pgTable(
       .references(() => courts.id),
     playerId: uuid('player_id').references(() => players.id),
     abonadoId: uuid('abonado_id').references(() => abonados.id),
+    settlementId: uuid('settlement_id').references(() => bookingSettlements.id, {
+      onDelete: 'set null',
+    }),
     // Migr. 062: espejo exacto de abonado_id. La reserva sabe de qué torneo es,
     // y por eso el torneo se libera con DELETE ... WHERE tournament_id = X AND
     // date >= fecha (mismo camino que cancelAbonado). FK sin ON DELETE a
@@ -113,6 +117,9 @@ export const bookings = pgTable(
     abonadoIdx: index('idx_bookings_abonado')
       .on(table.abonadoId)
       .where(sql`abonado_id IS NOT NULL`),
+    settlementIdx: index('idx_bookings_settlement')
+      .on(table.settlementId)
+      .where(sql`settlement_id IS NOT NULL`),
     tournamentIdx: index('idx_bookings_tournament')
       .on(table.tournamentId)
       .where(sql`tournament_id IS NOT NULL`),

@@ -13,11 +13,17 @@ import type {
   CheckSlotAvailabilityAction,
   CreateAbonadoAction,
   CreateBookingAction,
+  CreateMultiDateEventAction,
   SearchBookingPlayersAction,
 } from '../create-modal/types'
 
 const BookingFormModal = dynamic(
   () => import('../BookingFormModal').then((m) => m.BookingFormModal),
+  { ssr: false },
+)
+
+const BatchSettlementDialog = dynamic(
+  () => import('./BatchSettlementDialog').then((m) => m.BatchSettlementDialog),
   { ssr: false },
 )
 
@@ -38,6 +44,7 @@ export function GridOverlays({
   isSlotPast,
   createBookingAction,
   createAbonadoAction,
+  createMultiDateEventAction,
   checkAvailabilityAction,
   searchPlayersAction,
   detailBooking,
@@ -50,6 +57,10 @@ export function GridOverlays({
   slotPanelActions,
   nowMs,
   renderChargeModal,
+  batchSettlementOpen = false,
+  batchSettlementBookings,
+  onCloseBatchSettlement,
+  onBatchSettlementSuccess,
 }: {
   selectedSlot: SelectedSlot | null
   onCloseModal: () => void
@@ -59,6 +70,7 @@ export function GridOverlays({
   isSlotPast: (slotTime: string) => boolean
   createBookingAction: CreateBookingAction
   createAbonadoAction: CreateAbonadoAction
+  createMultiDateEventAction?: CreateMultiDateEventAction
   checkAvailabilityAction?: CheckSlotAvailabilityAction
   searchPlayersAction?: SearchBookingPlayersAction
   detailBooking: GridBooking | null
@@ -72,6 +84,10 @@ export function GridOverlays({
   nowMs: number
   /** El modal de cobro de Hoy (paso 3): sin esto no se ofrece detalle del turno. */
   renderChargeModal?: RenderChargeModal
+  batchSettlementOpen?: boolean
+  batchSettlementBookings?: GridBooking[]
+  onCloseBatchSettlement?: () => void
+  onBatchSettlementSuccess?: () => void
 }) {
   const selectedCourt = selectedSlot ? courts.find((c) => c.id === selectedSlot.courtId) : undefined
 
@@ -89,6 +105,7 @@ export function GridOverlays({
           onSuccess={onBookingSuccess}
           createBookingAction={createBookingAction}
           createAbonadoAction={createAbonadoAction}
+          createMultiDateEventAction={createMultiDateEventAction}
           checkAvailabilityAction={checkAvailabilityAction}
           searchPlayersAction={searchPlayersAction}
         />
@@ -117,6 +134,21 @@ export function GridOverlays({
           onClose: onCloseDetail,
           onMutated,
         })}
+
+      {batchSettlementOpen &&
+        batchSettlementBookings &&
+        batchSettlementBookings.length > 0 &&
+        slotPanelActions?.settleBookingsBatchAction &&
+        onCloseBatchSettlement &&
+        onBatchSettlementSuccess && (
+          <BatchSettlementDialog
+            bookings={batchSettlementBookings}
+            courts={courts}
+            settleAction={slotPanelActions.settleBookingsBatchAction}
+            onClose={onCloseBatchSettlement}
+            onSuccess={onBatchSettlementSuccess}
+          />
+        )}
     </>
   )
 }

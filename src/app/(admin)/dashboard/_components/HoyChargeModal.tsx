@@ -21,6 +21,7 @@ import { HoyChargeModalMenu } from './HoyChargeModalMenu'
 import { HoyChargeModalPaymentStatus } from './HoyChargeModalPaymentStatus'
 import { HoyChargeModalActions } from './HoyChargeModalActions'
 import { HoyChargeModalDialogs } from './HoyChargeModalDialogs'
+import type { AbonadoSettlementTarget } from '@/app/(admin)/abonados/AbonadoSettlementDialog'
 
 /**
  * El turno que recibe el modal desde la Grilla no siempre trae los instantes
@@ -136,6 +137,11 @@ export function HoyChargeModal({
   const [editOpen, setEditOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [releaseBlockOpen, setReleaseBlockOpen] = useState(false)
+  const [alreadySettledOpen, setAlreadySettledOpen] = useState(false)
+  const [undoSettlementOpen, setUndoSettlementOpen] = useState(false)
+  const [abonadoTarget, setAbonadoTarget] = useState<AbonadoSettlementTarget | null>(null)
+  const [loadingAbonado, setLoadingAbonado] = useState(false)
+  const [settleIdempotencyKey, setSettleIdempotencyKey] = useState(() => crypto.randomUUID())
 
   // Estado limpio tras cada mutación exitosa: mismo patrón "derived state on
   // prop change" que el panel de la Grilla (sin useEffect). `resetLastId` lo
@@ -184,6 +190,8 @@ export function HoyChargeModal({
     setLastId(booking.id)
     setError(null)
     setIdempotencyKey(crypto.randomUUID())
+    setSettleIdempotencyKey(crypto.randomUUID())
+    setAbonadoTarget(null)
     setLines([newChargeLine(booking.pending ?? null, 'cash')])
     setLastSyncedPending(booking.pending ?? 0)
   } else if (
@@ -198,7 +206,7 @@ export function HoyChargeModal({
     setLines([{ ...lines[0]!, amountCents: pending }, ...lines.slice(1)])
   }
 
-  const locked = isPending || isRefreshing
+  const locked = isPending || isRefreshing || loadingAbonado
   // Lo anotado al turno (docs/decisions/2026-11-17-consumos-anotados-al-turno.md), tal
   // como lo usa el cobro de "Todo junto" en Hoy y en Grilla.
   const consumosView = consumosEnabled
@@ -227,7 +235,9 @@ export function HoyChargeModal({
   const name = rowDisplayName(booking)
   // Un ausente nunca "Cobrado ✓": la seña capturada no es "se cobró todo", es
   // el único costo real de un no-show (veto de producto, CLAUDE.md).
-  const settled = pending === 0 && booking.priceSnapshot > 0 && booking.status !== 'no_show'
+  const settled =
+    (Boolean(booking.settlementId) || (pending === 0 && booking.priceSnapshot > 0)) &&
+    booking.status !== 'no_show'
   const isTournament = booking.type === 'tournament'
   // Dado por perdido: el turno se cerró sin cobrar todo. Nunca "Cobrado ✓".
   const lostCents = pending === 0 ? (booking.writtenOff ?? 0) : 0
@@ -247,6 +257,24 @@ export function HoyChargeModal({
     booking.status === 'pending_payment' &&
     (booking.depositAmount ?? 0) > 0 &&
     Boolean(actions.confirmDepositPaymentAction)
+  const canManageAbonado = Boolean(
+    booking.abonadoId &&
+    actions.settleAbonadoPeriodAction &&
+    actions.getAbonadoBillingOverviewAction,
+  )
+  const canMarkAlreadySettled = Boolean(
+    !booking.settlementId &&
+    (booking.status === 'confirmed' || booking.status === 'completed') &&
+    booking.type !== 'block' &&
+    booking.type !== 'tournament' &&
+    (mode !== null || booking.abonadoBillingMode === 'monthly' || pending > 0) &&
+    actions.settleBookingsBatchAction,
+  )
+  const canUndoSettlement = Boolean(
+    booking.settlementId &&
+    booking.settlementOrigin === 'already_settled' &&
+    actions.voidSettlementAction,
+  )
 
   // Cerrar con un cobro que se cortó por la red y no se sabe si entró: el aviso de
   // reintento vive en el estado de este modal y se pierde al desmontarlo. Si entró,
@@ -272,8 +300,64 @@ export function HoyChargeModal({
     return res
   }
 
+  async function openManageAbonado() {
+    if (!booking.abonadoId || !actions.getAbonadoBillingOverviewAction || loadingAbonado) return
+    setError(null)
+    setLoadingAbonado(true)
+    const res = await actions.getAbonadoBillingOverviewAction(booking.abonadoId)
+    setLoadingAbonado(false)
+    if (!res.success) {
+      setError(res.error)
+      return
+    }
+    setAbonadoTarget({
+      abonadoId: res.overview.abonadoId,
+      contactName: res.overview.contactName,
+      pricePerSession: res.overview.pricePerSession,
+      billingMode: res.overview.billingMode,
+      agreedAmount: res.overview.agreedAmount,
+      coveredMonths: res.overview.coverage.coveredMonths,
+      remainingPackSessions: res.overview.coverage.remainingPackSessions,
+    })
+  }
+
+  async function onConfirmAlreadySettled(): Promise<ActionResult> {
+    if (!actions.settleBookingsBatchAction) {
+      return { success: false, error: 'Acción no disponible.' }
+    }
+    const res = await actions.settleBookingsBatchAction({
+      bookingIds: [booking.id],
+      paymentOrigin: 'already_settled',
+      amount: 0,
+      clientIdempotencyKey: settleIdempotencyKey,
+    })
+    if (!res.success) return { success: false, error: res.error }
+    setLastId(null)
+    toast({ title: 'Turno marcado como saldado', variant: 'success' })
+    onMutated()
+    return { success: true }
+  }
+
+  async function onConfirmUndoSettlement(): Promise<ActionResult> {
+    if (!actions.voidSettlementAction || !booking.settlementId) {
+      return { success: false, error: 'Acción no disponible.' }
+    }
+    const res = await actions.voidSettlementAction({ settlementId: booking.settlementId })
+    if (res.success) {
+      setLastId(null)
+      toast({ title: 'Saldado deshecho', variant: 'success' })
+      onMutated()
+    }
+    return res
+  }
+
   async function onConfirmReleaseBlock(): Promise<ActionResult> {
-    if (!actions.releaseBlockAction) return { success: false, error: 'Sin acciones disponibles.' }
+    if (!actions.releaseBlockAction) {
+      return {
+        success: false,
+        error: 'No pudimos liberar el bloqueo. Recargá la pantalla y probá de nuevo.',
+      }
+    }
     const res = await actions.releaseBlockAction(booking.id)
     if (res.success) {
       // Mismo toast que BookingActions.tsx / BookingSlotPanel.tsx tras la MISMA acción.
@@ -392,6 +476,12 @@ export function HoyChargeModal({
               onOpenCancel={() => setCancelOpen(true)}
               onOpenReleaseBlock={() => setReleaseBlockOpen(true)}
               onRevertNoShow={revertNoShow}
+              canMarkAlreadySettled={canMarkAlreadySettled}
+              canUndoSettlement={canUndoSettlement}
+              canManageAbonado={canManageAbonado}
+              onOpenAlreadySettled={() => setAlreadySettledOpen(true)}
+              onOpenUndoSettlement={() => setUndoSettlementOpen(true)}
+              onOpenManageAbonado={() => void openManageAbonado()}
             />
           </div>
 
@@ -453,6 +543,14 @@ export function HoyChargeModal({
         setLastId={setLastId}
         onConfirmNoShow={onConfirmNoShow}
         onConfirmReleaseBlock={onConfirmReleaseBlock}
+        alreadySettledOpen={alreadySettledOpen}
+        setAlreadySettledOpen={setAlreadySettledOpen}
+        undoSettlementOpen={undoSettlementOpen}
+        setUndoSettlementOpen={setUndoSettlementOpen}
+        abonadoTarget={abonadoTarget}
+        setAbonadoTarget={setAbonadoTarget}
+        onConfirmAlreadySettled={onConfirmAlreadySettled}
+        onConfirmUndoSettlement={onConfirmUndoSettlement}
       />
     </>
   )

@@ -24,9 +24,12 @@ export function SlotPriceSummary({ booking, capacity, late = false }: Props) {
   const pending = typeof booking.pending === 'number' ? booking.pending : null
   const paid = typeof booking.totalPaid === 'number' ? booking.totalPaid : null
   const split = chargeSplit(booking, capacity)
+  const isSettled = Boolean(booking.settlementId)
+  const isMonthlyUnsettled =
+    !isSettled && booking.abonadoBillingMode === 'monthly' && booking.priceSnapshot === 0
 
   const detail: string[] = []
-  if (booking.type !== 'tournament' && booking.priceSnapshot !== 0) {
+  if (booking.type !== 'tournament' && booking.priceSnapshot !== 0 && !isSettled) {
     detail.push(`Precio ${formatArs(booking.priceSnapshot)}`)
   }
   // La seña se nombra aparte: mezclada en "Cobrado" el encargado no sabe si falta la seña o el resto.
@@ -35,7 +38,9 @@ export function SlotPriceSummary({ booking, capacity, late = false }: Props) {
     (booking.depositAmount ?? 0) > 0
       ? (booking.depositAmount ?? 0)
       : 0
-  if (depositPaid > 0 && booking.priceSnapshot !== 0) {
+  if (isSettled) {
+    // Cubierto por pack, mes o saldado: lo que se cobró de este turno suelto no se desglosa.
+  } else if (depositPaid > 0 && booking.priceSnapshot !== 0) {
     const how = booking.paymentMethod ? ` (${METHOD_LABELS[booking.paymentMethod]})` : ''
     detail.push(`Seña pagada ${formatArs(depositPaid)}${how}`)
     detail.push(`Cobrado en el complejo ${formatArs(counterPaidCents(booking))}`)
@@ -48,7 +53,38 @@ export function SlotPriceSummary({ booking, capacity, late = false }: Props) {
     // Sin recuadro: es el primer bloque del panel y lo que tiene que gritar es
     // el numero, no una caja alrededor del numero.
     <section>
-      {booking.priceSnapshot === 0 ? (
+      {isSettled ? (
+        <p>
+          <span className="block text-xs font-medium text-muted-foreground">Cobro</span>
+          <span className={cn('block text-2xl font-bold tabular-nums', TONE_TEXT.success)}>
+            Saldado
+          </span>
+          <span className="mt-1 block text-xs text-muted-foreground">
+            {booking.settlementKind === 'monthly'
+              ? 'Cubierto por el mes'
+              : booking.settlementKind === 'pack'
+                ? 'Cubierto por el pack de turnos'
+                : booking.settlementOrigin === 'already_settled'
+                  ? 'Ya estaba saldado, no suma a Caja'
+                  : 'Cobrado junto con otros turnos'}
+          </span>
+        </p>
+      ) : isMonthlyUnsettled ? (
+        <p>
+          <span className="block text-xs font-medium text-muted-foreground">Cobro</span>
+          <span
+            className={cn(
+              'block text-2xl font-bold tabular-nums',
+              late ? TONE_TEXT.warning : 'text-foreground',
+            )}
+          >
+            {late ? 'Mes sin saldar' : 'Por mes'}
+          </span>
+          <span className="mt-1 block text-xs text-muted-foreground">
+            Este turno fijo se cobra por mes, no por turno.
+          </span>
+        </p>
+      ) : booking.priceSnapshot === 0 ? (
         // Rediseño 2026-09-14: "No se cobra" (priceOverride 0). "Cobrado $0"
         // sonaba a que sí se cobró un monto nulo — esto es un turno que nunca
         // tuvo precio, no un pago de cero pesos.

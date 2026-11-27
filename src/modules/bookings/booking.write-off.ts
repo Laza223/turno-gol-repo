@@ -20,6 +20,7 @@ import { completeBooking } from './booking.service'
 export const WRITTEN_OFF_CHARGE_ERROR = 'Este turno está dado por perdido.'
 
 type LockedBooking = {
+  settlementId: string | null
   status: string
   type: string
   priceSnapshot: number
@@ -36,7 +37,7 @@ export async function writeOffBooking(
   tx: DbTx,
 ): Promise<{ amount: number }> {
   const locked = await tx.execute(sql`
-    SELECT status, type, price_snapshot AS "priceSnapshot", deposit_amount AS "depositAmount",
+    SELECT settlement_id AS "settlementId", status, type, price_snapshot AS "priceSnapshot", deposit_amount AS "depositAmount",
            deposit_status AS "depositStatus", ends_at <= NOW() AS "endedAlready"
     FROM bookings
     WHERE id = ${bookingId} AND tenant_id = ${tenantId}
@@ -46,6 +47,11 @@ export async function writeOffBooking(
   if (!booking) throw new BookingValidationError('No se encontró la reserva.')
   if (booking.type === 'block' || booking.type === 'tournament') {
     throw new BookingValidationError('Un bloqueo o una hora de torneo no se da por perdida.')
+  }
+
+  // Un turno saldado (pack, mes o "ya estaba saldado") ya no debe nada: no hay qué resignar.
+  if (booking.settlementId) {
+    throw new BookingValidationError('Este turno ya está saldado.')
   }
 
   if (booking.status === 'confirmed') {

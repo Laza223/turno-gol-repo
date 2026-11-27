@@ -17,7 +17,15 @@ import type { ReservaListRow } from './queries'
 export function agendaMoneyCell(
   b: Pick<
     ReservaListRow,
-    'pending' | 'totalPaid' | 'writtenOff' | 'status' | 'priceSnapshot' | 'type' | 'depositAmount'
+    | 'pending'
+    | 'totalPaid'
+    | 'writtenOff'
+    | 'status'
+    | 'priceSnapshot'
+    | 'type'
+    | 'depositAmount'
+    | 'settlementId'
+    | 'abonadoBillingMode'
   >,
   ended: boolean,
 ): { text: string; tone: StatusTone } {
@@ -33,6 +41,11 @@ export function agendaMoneyCell(
   // "Bloqueo" ya lo explican). Un evento a $0 (escuelita, cortesía) sí es un
   // turno, y ahí "Sin cargo" responde "¿cuánto se cobra?".
   if (b.type === 'block') return { text: '', tone: 'neutral' }
+  // Cubierto por un pack, un mes o un saldado: no debe nada aunque el precio no sea 0.
+  if (b.settlementId) return { text: 'Saldado', tone: 'success' }
+  if (b.abonadoBillingMode === 'monthly' && b.priceSnapshot === 0) {
+    return { text: ended ? 'Mes sin saldar' : 'Por mes', tone: ended ? 'warning' : 'neutral' }
+  }
   if (b.priceSnapshot === 0) return { text: 'No se cobra', tone: 'neutral' }
   if (typeof b.pending !== 'number') return { text: formatArs(b.priceSnapshot), tone: 'neutral' }
   // Dado por perdido: nunca el verde de "Pagado" — lo que falta no entró.

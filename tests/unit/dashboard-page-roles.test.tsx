@@ -98,6 +98,12 @@ vi.mock('@/app/(admin)/reservas/actions', () => ({
   releaseBlockAction: vi.fn(),
   rescheduleBookingAction: vi.fn(),
   revertNoShowAction: vi.fn(),
+  settleBookingsBatchAction: vi.fn(),
+  voidSettlementAction: vi.fn(),
+}))
+vi.mock('@/app/(admin)/abonados/actions', () => ({
+  settleAbonadoPeriodAction: vi.fn(),
+  getAbonadoBillingOverviewAction: vi.fn(),
 }))
 vi.mock('@/app/(admin)/reservas/edit-detail-actions', () => ({
   getBookingEditDetailAction: vi.fn(),

@@ -10,11 +10,13 @@ const CHOICES: Array<{ value: ChargeChoice; label: string }> = [
   { value: 'none', label: 'No cobré todavía' },
   { value: 'partial', label: 'Cobré una parte' },
   { value: 'full', label: 'Cobré todo' },
+  { value: 'already_settled', label: 'Ya saldado' },
 ]
 
 /**
- * "¿Cobraste algo ahora?" — No cobré (default) / Una parte / Todo, con método
- * y monto sólo cuando corresponde. "Todo" precarga el total; "Una parte" arranca
+ * "¿Cobraste algo ahora?" — No cobré (default) / Una parte / Todo / Ya saldado, con
+ * medio y monto sólo cuando corresponde. "Ya saldado" marca el turno como cubierto sin
+ * mover Caja (se pagó antes, fuera del sistema). "Todo" precarga el total; "Una parte" arranca
  * vacío (nunca se inventa un monto). Turno y Evento la comparten tal cual.
  */
 type Props = {
@@ -68,7 +70,7 @@ export function ChargeSection({
     <fieldset className="space-y-2">
       <legend className="text-sm font-medium text-foreground">¿Cobraste algo ahora?</legend>
       <SegmentedControl
-        className="grid grid-cols-3 gap-1.5"
+        className="grid grid-cols-2 gap-1.5 sm:grid-cols-4"
         aria-label="¿Cobraste algo ahora?"
         value={choice}
         onValueChange={handleChoice}
@@ -80,7 +82,7 @@ export function ChargeSection({
       {choice === 'partial' && (
         <p className="text-xs text-muted-foreground">Se anota como seña de este turno.</p>
       )}
-      {choice !== 'none' && (
+      {(choice === 'partial' || choice === 'full') && (
         // Sin caja propia: el método y el monto quedan pegados a la elección por
         // cercanía. Una caja más adentro de la columna era ruido, y su padding
         // dejaba el monto debajo del pliegue en la notebook del mostrador.
@@ -100,6 +102,11 @@ export function ChargeSection({
             placeholder="Monto"
           />
         </div>
+      )}
+      {choice === 'already_settled' && (
+        <p className="text-xs text-muted-foreground">
+          Queda saldado y no suma plata a Caja hoy. Podés deshacerlo después.
+        </p>
       )}
     </fieldset>
   )

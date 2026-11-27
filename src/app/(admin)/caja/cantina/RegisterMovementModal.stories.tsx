@@ -60,6 +60,7 @@ const meta = {
         method: 'cash',
         description: 'Reserva 20:00',
         bookingId: null,
+        settlementId: null,
         tournamentTeamId: null,
         bookingTeam: null,
         registeredBy: 's-1',

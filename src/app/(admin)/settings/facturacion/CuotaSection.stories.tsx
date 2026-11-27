@@ -91,31 +91,31 @@ export const GestionarConCambioAgendado: Story = {
   },
 }
 
-/** Con Plus facturado: 5 canchas = $150.000 + 5 × $15.000 = $225.000 por mes, con su propia fila. */
+/** Con Plus facturado: 5 canchas = $150.000 + $50.000 fijos = $200.000 por mes, con su propia fila. */
 export const ConAsistenteDeWhatsApp: Story = {
-  args: { onlineCourts: 5, billedCourts: 5, plusMonthlyCents: 1_500_000 },
+  args: { onlineCourts: 5, billedCourts: 5, plusMonthlyCents: 5_000_000 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText(/5 canchas × .*15\.000/)).toBeInTheDocument()
-    await expect(canvas.getAllByText(/225\.000/).length).toBeGreaterThan(0)
+    await expect(canvas.getByText('Asistente de WhatsApp')).toBeInTheDocument()
+    await expect(canvas.getAllByText(/200\.000/).length).toBeGreaterThan(0)
   },
 }
 
-/** El descuento anual se aplica a la suma: ($150.000 + $75.000) − 10% = $202.500 por mes. */
+/** El descuento anual se aplica a la suma: ($150.000 + $50.000) − 10% = $180.000 por mes. */
 export const ConAsistenteDeWhatsAppAnual: Story = {
-  args: { onlineCourts: 5, billedCourts: 5, billingCycle: 'annual', plusMonthlyCents: 1_500_000 },
+  args: { onlineCourts: 5, billedCourts: 5, billingCycle: 'annual', plusMonthlyCents: 5_000_000 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getAllByText(/202\.500/).length).toBeGreaterThan(0)
+    await expect(canvas.getAllByText(/180\.000/).length).toBeGreaterThan(0)
   },
 }
 
-/** Sumar una cancha con Plus suma también su Plus: $270.000 con 6 canchas. */
-export const SumarCanchaConPlusMueveElMonto: Story = {
-  args: { onlineCourts: 5, billedCourts: 5, plusMonthlyCents: 1_500_000 },
+/** Sumar una cancha no mueve el Plus: $180.000 de plan + $50.000 = $230.000 con 6 canchas. */
+export const SumarCanchaNoMueveElPlus: Story = {
+  args: { onlineCourts: 5, billedCourts: 5, plusMonthlyCents: 5_000_000 },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Agregar una cancha' }))
-    await expect(canvas.getAllByText(/270\.000/).length).toBeGreaterThan(0)
+    await expect(canvas.getAllByText(/230\.000/).length).toBeGreaterThan(0)
   },
 }

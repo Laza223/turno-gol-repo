@@ -71,7 +71,7 @@ export const ApagadoPrecioEspecial: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     const input = canvas.getByLabelText('Precio por mes')
-    await userEvent.type(input, '15000')
+    await userEvent.type(input, '50000')
     await userEvent.click(canvas.getByRole('button', { name: 'Prender Plus' }))
     await waitFor(() =>
       expect(args.action).toHaveBeenCalledWith(TENANT, {
@@ -105,9 +105,9 @@ export const Facturado: Story = {
       canvas.getByText(/Facturado: .*50\.000 por mes \(precio especial\)/),
     ).toBeInTheDocument()
     const input = canvas.getByLabelText('Precio por mes')
-    await expect(input).toHaveValue(15000)
+    await expect(input).toHaveValue(50000)
     await userEvent.clear(input)
-    await userEvent.type(input, '18000')
+    await userEvent.type(input, '60000')
     await userEvent.click(canvas.getByRole('button', { name: 'Actualizar precio' }))
     await waitFor(() =>
       expect(args.action).toHaveBeenCalledWith(TENANT, {
@@ -175,7 +175,7 @@ export const ApagarYaLimpiaElCampo: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     const input = canvas.getByLabelText('Precio por mes')
-    await userEvent.type(input, '18000')
+    await userEvent.type(input, '60000')
     await userEvent.click(canvas.getByRole('button', { name: 'Apagar ya' }))
     const dialog = await screen.findByRole('dialog')
     await userEvent.click(within(dialog).getByRole('button', { name: 'Apagar ya' }))

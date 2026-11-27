@@ -85,13 +85,13 @@ Request de staff: `withTenant()` → `extractAuthUser` → `getStaffRole()` rele
 
 ## Modelo comercial y precios (decisión 2026-11-27)
 
-[`docs/decisions/2026-11-27-prueba-30-dias-y-precios.md`](docs/decisions/2026-11-27-prueba-30-dias-y-precios.md). **El código todavía no lo refleja**: no "arreglarlo" de paso, es una tarea propia.
+[`docs/decisions/2026-11-27-prueba-30-dias-y-precios.md`](docs/decisions/2026-11-27-prueba-30-dias-y-precios.md). **El código lo refleja en parte**: la prueba de 30 días y el precio del bot ya están; sacar el plan gratis y `trial_expired` faltan. No "arreglarlo" de paso: es una tarea propia.
 
-- **Sin freemium: prueba de 30 días y después se paga.** Hoy el código tiene `TRIAL_DAYS = 14` (`src/shared/constants.ts`) y el plan gratis vivo (estado `free`, `isFreePlan()` / `allowFree`, `transitionToFree`). Quedan superadas las decisiones de freemium del 2026-11-08 y 2026-11-15 y la del 2026-11-16 de "se vende gratis".
+- **Sin freemium: prueba de 30 días y después se paga.** `TRIAL_DAYS = 30` (`src/shared/constants.ts`), pero el código tiene el plan gratis vivo (estado `free`, `isFreePlan()` / `allowFree`, `transitionToFree`). Quedan superadas las decisiones de freemium del 2026-11-08 y 2026-11-15 y la del 2026-11-16 de "se vende gratis".
 - **Fin de prueba**: estado nuevo `trial_expired` (todavía no existe): ficha pública sin horarios y panel en solo lectura, salvo operar reservas ya confirmadas; bot mudo; al final del buscador.
 - **Precio del plan: por cantidad exacta de canchas**, decreciente por cancha, 1 a 7, 20% anual prepago, 8+ cotización. Fuente: `src/modules/billing/pricing.ts` y [la decisión del 23/11](docs/decisions/2026-11-23-precio-por-cantidad.md). Las suscripciones viejas conservan su catálogo.
-- **Bot de WhatsApp: $50.000 por mes fijo por complejo**, sin importar las canchas (provisorio, se están evaluando costos). El código todavía cobra la escala de la decisión del 23/11.
-- **Copy**: "Probalo 30 días gratis, sin tarjeta" está habilitado y ya figura en el sitio, aunque el alta todavía da 14 días: es un desajuste pendiente, no volver el copy atrás sin preguntar. "Sin permanencia" prohibido → "cancelás cuando querés" o "sin contratos". Nunca "fútbol 5, 7 y 11": sirve de fútbol 4 a fútbol 11.
+- **Bot de WhatsApp: $50.000 por mes fijo por complejo**, sin importar las canchas (provisorio, se están evaluando costos). `PLUS_LIST_MONTHLY_CENTS` en `pricing.ts`. Un precio especial por complejo pisa la lista (`plus_price_per_court_cents`: el nombre de la columna quedó viejo, guarda el monto mensual).
+- **Copy**: "Probalo 30 días gratis, sin tarjeta" está habilitado y es lo que da el alta. "Sin permanencia" prohibido → "cancelás cuando querés" o "sin contratos". Nunca "fútbol 5, 7 y 11": sirve de fútbol 4 a fútbol 11.
 - Cualquier cambio de precio, seña por defecto o lifecycle necesita decisión escrita del dueño.
 
 ## Vetos de producto (no reproponer)

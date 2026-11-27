@@ -38,11 +38,11 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** Catálogo completo como admin: ve el botón "Agregar producto" y todas las acciones. */
+/** Tus productos completo como admin: ve el botón "Agregar producto" y todas las acciones. */
 export const ComoAdmin: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const catalog = within(canvas.getByRole('region', { name: /Catálogo/ }))
+    const catalog = within(canvas.getByRole('region', { name: /Tus productos/ }))
     for (const p of PRODUCTS) {
       await expect(catalog.getByText(p.name)).toBeVisible()
     }
@@ -187,7 +187,7 @@ export const CatalogoLargo: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     // La primera lista de la tarjeta son los productos; el paginador trae la suya.
-    const catalog = within(canvas.getByRole('region', { name: /Catálogo/ }))
+    const catalog = within(canvas.getByRole('region', { name: /Tus productos/ }))
     const list = within(catalog.getAllByRole('list')[0]!)
     const pager = within(canvas.getByRole('navigation', { name: 'Paginación del catálogo' }))
     await expect(pager.getByRole('status')).toHaveTextContent('1–40 de 45')
@@ -233,6 +233,6 @@ export const ConLoQueMasSalio: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('region', { name: /Lo que más salió/ })).toBeVisible()
-    await expect(canvas.getByRole('region', { name: /Catálogo/ })).toBeVisible()
+    await expect(canvas.getByRole('region', { name: /Tus productos/ })).toBeVisible()
   },
 }

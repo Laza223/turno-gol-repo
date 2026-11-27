@@ -5,7 +5,7 @@ import AdminError from './error'
 /**
  * Error boundary de TODO el panel admin (root de (admin), fuera de cualquier
  * sub-ruta con su propio error.tsx). Única variante del paquete con un link
- * secundario ("Ir al dashboard") — ErrorState lo dibuja si secondaryHref
+ * secundario ("Volver a Hoy") — ErrorState lo dibuja si secondaryHref
  * está seteado.
  */
 const meta = {
@@ -26,7 +26,7 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('link', { name: /ir al dashboard/i })).toHaveAttribute(
+    await expect(canvas.getByRole('link', { name: /volver a hoy/i })).toHaveAttribute(
       'href',
       '/dashboard',
     )

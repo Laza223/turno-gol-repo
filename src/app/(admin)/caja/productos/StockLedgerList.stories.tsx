@@ -29,6 +29,6 @@ export const SinMovimientos: Story = {
   args: { entries: [] },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Todavía no hay movimientos de stock.')).toBeVisible()
+    await expect(canvas.getByText('Todavía no hay movimientos de stock')).toBeVisible()
   },
 }

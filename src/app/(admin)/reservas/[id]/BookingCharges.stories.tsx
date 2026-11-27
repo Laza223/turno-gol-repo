@@ -184,9 +184,9 @@ export const Anticipo: Story = {
     await expect(amountInput).toHaveValue('10.500')
     await userEvent.clear(amountInput)
     await userEvent.type(amountInput, '6000')
-    await userEvent.click(canvas.getByRole('button', { name: /^Método de pago/ }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Medio de pago/ }))
     await userEvent.click(await body.findByRole('menuitemradio', { name: 'Transferencia' }))
-    await userEvent.click(canvas.getByRole('button', { name: /^Cobrar .* por adelantado/ }))
+    await userEvent.click(canvas.getByRole('button', { name: /^Cobrar .* de adelanto/ }))
 
     await waitFor(() =>
       expect(args.actions.addBookingChargeAction).toHaveBeenCalledWith(
@@ -273,7 +273,7 @@ export const ErrorDelServidor: Story = {
 
     await expect(await canvas.findByRole('alert')).toHaveTextContent(/ya fue cerrada/i)
     await expect(args.actions.addBookingChargeAction).toHaveBeenCalled()
-    // El form sigue abierto: "Cancelar" sigue en pantalla, no volvió "+ Agregar cobro".
-    await expect(canvas.getByRole('button', { name: 'Cancelar' })).toBeVisible()
+    // El form sigue abierto: "Cerrar" sigue en pantalla, no volvió "+ Agregar cobro".
+    await expect(canvas.getByRole('button', { name: 'Cerrar' })).toBeVisible()
   },
 }

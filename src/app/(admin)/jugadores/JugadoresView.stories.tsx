@@ -169,7 +169,7 @@ export const Vacio: Story = {
     const canvas = within(canvasElement)
     await expect(canvas.getByText('Todavía no tenés clientes')).toBeInTheDocument()
     await expect(
-      canvas.getByRole('link', { name: 'Compartí tu link desde el panel' }),
+      canvas.getByRole('link', { name: 'Ir a Hoy para compartir tu link' }),
     ).toHaveAttribute('href', '/dashboard')
     // Sin ningún cliente, las pastillas de filtro no aportan nada.
     await expect(
@@ -183,9 +183,7 @@ export const BusquedaSinResultados: Story = {
   args: { clients: [], q: 'nombre-inexistente' },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(
-      canvas.getByText('No se encontraron personas que coincidan con la búsqueda.'),
-    ).toBeInTheDocument()
+    await expect(canvas.getByText('No encontramos personas con esa búsqueda.')).toBeInTheDocument()
   },
 }
 

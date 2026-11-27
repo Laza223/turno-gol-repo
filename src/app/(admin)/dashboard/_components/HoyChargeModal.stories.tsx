@@ -304,7 +304,7 @@ export const PlanGratisSinPlata: Story = {
     await expect(dialog.queryByRole('button', { name: /Cobrar/ })).toBeNull()
     await expect(dialog.queryByRole('button', { name: /perdido/i })).toBeNull()
     // La cantina es del plan: en gratis el server la rechaza, no se ofrece.
-    await expect(dialog.queryByRole('button', { name: /Cantina/ })).toBeNull()
+    await expect(dialog.queryByRole('button', { name: /cantina/i })).toBeNull()
     // Terminado en gratis: el aviso de pasar al plan para anotar el cobro.
     await expect(dialog.getByText('¿Se cobró?')).toBeVisible()
     await expect(dialog.getByRole('link', { name: 'Ver el plan' })).toHaveAttribute(
@@ -407,7 +407,9 @@ export const UnEquipoPagaConDosMedios: Story = {
     await userEvent.click(dialog.getByRole('radio', { name: 'Por equipo' }))
     const team1 = within(dialog.getByRole('group', { name: 'Equipo 1' }))
 
-    await userEvent.click(team1.getByRole('button', { name: 'Agregar pago dividido del Equipo 1' }))
+    await userEvent.click(
+      team1.getByRole('button', { name: 'Agregar otro medio de pago del Equipo 1' }),
+    )
     const first = team1.getByRole('textbox', { name: 'Monto del Equipo 1 · cobro 1' })
     await userEvent.clear(first)
     await userEvent.type(first, '20000')
@@ -443,7 +445,7 @@ export const PorJugadorCobraUnoPorUnoConClavesDistintas: Story = {
     await userEvent.click(dialog.getByRole('radio', { name: 'Por jugador' }))
     // El diálogo entra con una animación de opacidad: se espera a que termine.
     await waitFor(() =>
-      expect(dialog.getByText(/Todavía no pagó nadie · cada uno \$\s6\.000/)).toBeVisible(),
+      expect(dialog.getByText(/Todavía no pagó nadie · Cada uno paga \$\s6\.000/)).toBeVisible(),
     )
 
     await userEvent.click(dialog.getByRole('button', { name: /Pagó uno/ }))
@@ -593,7 +595,7 @@ export const RefrescandoBloqueaElCobro: Story = {
     await expect(
       dialog.getByRole('button', { name: /Cobrar \$\s60\.000 y dar por jugado/ }),
     ).toBeDisabled()
-    await expect(dialog.getByRole('button', { name: /Cantina/ })).toBeDisabled()
+    await expect(dialog.getByRole('button', { name: /cantina/i })).toBeDisabled()
   },
 }
 
@@ -643,7 +645,7 @@ export const Bloqueo: Story = {
     await userEvent.click(dialog.getByRole('button', { name: 'Liberar bloqueo' }))
     const body = within(document.body)
     const confirm = await body.findByRole('dialog', { name: 'Liberar bloqueo' })
-    await userEvent.click(within(confirm).getByRole('button', { name: 'Liberar' }))
+    await userEvent.click(within(confirm).getByRole('button', { name: 'Liberar cancha' }))
 
     await waitFor(() => expect(args.actions.releaseBlockAction).toHaveBeenCalledWith('b1'))
   },

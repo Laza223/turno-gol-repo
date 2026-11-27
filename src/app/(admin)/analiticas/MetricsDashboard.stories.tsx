@@ -172,8 +172,8 @@ export const TendenciaAusenciasEnAlza: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(await canvas.findByText(/pts vs los 30 días anteriores/)).toHaveTextContent(
-      '+8 pts vs los 30 días anteriores',
+    await expect(await canvas.findByText(/puntos vs. los 30 días anteriores/)).toHaveTextContent(
+      '+8 puntos vs. los 30 días anteriores',
     )
   },
 }
@@ -203,7 +203,7 @@ export const TendenciaMuestraChica: Story = {
     await expect(
       await canvas.findByText('Todavía no hay datos suficientes para comparar.'),
     ).toBeVisible()
-    await expect(canvas.queryByText(/pts vs los 30 días anteriores/)).not.toBeInTheDocument()
+    await expect(canvas.queryByText(/puntos vs. los 30 días anteriores/)).not.toBeInTheDocument()
   },
 }
 

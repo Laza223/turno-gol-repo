@@ -57,7 +57,9 @@ export const DesconectarAbierto: Story = {
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /Desconectar Mercado Pago/ }))
-    await expect(canvas.getByText(/La seña se apaga\. Si después reconectás/)).toBeVisible()
+    await expect(
+      canvas.getByText(/La seña se desactiva. Si después volvés a conectar/),
+    ).toBeVisible()
 
     await userEvent.click(canvas.getByRole('button', { name: 'Desconectar' }))
     const dialog = await screen.findByRole('dialog')
@@ -74,14 +76,14 @@ export const DesconectarAbierto: Story = {
   },
 }
 
-/** Sin seña prendida no se promete apagarla. */
+/** Sin seña prendida no se promete desactivarla. */
 export const DesconectarSinSena: Story = {
   args: { requiresDeposit: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: /Desconectar Mercado Pago/ }))
     await expect(canvas.getByText(/dejan de cobrar seña/)).toBeVisible()
-    await expect(canvas.queryByText(/La seña se apaga/)).not.toBeInTheDocument()
+    await expect(canvas.queryByText(/La seña se desactiva/)).not.toBeInTheDocument()
   },
 }
 
@@ -89,7 +91,7 @@ export const SinConectar: Story = {
   args: { connected: false, nickname: null },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByRole('link', { name: /Conectar MercadoPago/ })).toHaveAttribute(
+    await expect(canvas.getByRole('link', { name: /Conectar Mercado Pago/ })).toHaveAttribute(
       'href',
       '/api/mp/oauth-start',
     )

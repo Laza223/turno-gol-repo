@@ -67,7 +67,7 @@ export const SelectModeOnSinSeleccion: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByRole('button', { name: 'Asignar precio' })).toBeDisabled()
-    await expect(canvas.getByRole('button', { name: 'Vaciar' })).toBeDisabled()
+    await expect(canvas.getByRole('button', { name: 'Borrar precio' })).toBeDisabled()
   },
 }
 

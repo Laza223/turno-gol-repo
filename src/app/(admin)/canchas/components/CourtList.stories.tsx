@@ -214,7 +214,7 @@ export const ErrorAlVerificarImpacto: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Pausar' }))
 
     // El Toaster no usa Portal (renderiza inline junto a la story).
-    const toastText = await canvas.findByText('No se pudo verificar el impacto')
+    const toastText = await canvas.findByText('No pudimos revisar si tiene turnos')
     await expect(toastText).toBeVisible()
     await expect(body.queryByRole('dialog')).not.toBeInTheDocument()
     // variant "destructive" persiste ~indefinidamente (design-system §6):
@@ -235,7 +235,7 @@ export const ErrorAlVerificarImpacto: Story = {
     // tiene el problema: "ya no está" satisface la condición sin importar
     // cuándo se fue.
     await waitFor(() =>
-      expect(canvas.queryByText('No se pudo verificar el impacto')).not.toBeInTheDocument(),
+      expect(canvas.queryByText('No pudimos revisar si tiene turnos')).not.toBeInTheDocument(),
     )
   },
 }

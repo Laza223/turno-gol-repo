@@ -95,7 +95,7 @@ export const MiembroActivo: Story = {
     await userEvent.click(canvas.getByRole('button', { name: 'Opciones' }))
     const menu = within(document.body)
     await expect(
-      menu.findByRole('menuitem', { name: 'Cambiar a Administrador' }),
+      menu.findByRole('menuitem', { name: 'Cambiar a Dueño' }),
     ).resolves.toBeInTheDocument()
     await expect(menu.getByRole('menuitem', { name: 'Desactivar' })).not.toHaveAttribute(
       'aria-disabled',
@@ -144,9 +144,7 @@ export const InvitacionPendiente: Story = {
     await expect(
       menu.findByRole('menuitem', { name: 'Reenviar invitación' }),
     ).resolves.toBeInTheDocument()
-    await expect(
-      menu.getByRole('menuitem', { name: 'Cambiar a Administrador' }),
-    ).toBeInTheDocument()
+    await expect(menu.getByRole('menuitem', { name: 'Cambiar a Dueño' })).toBeInTheDocument()
     await expect(menu.getByRole('menuitem', { name: 'Desactivar' })).toBeInTheDocument()
   },
 }
@@ -163,7 +161,7 @@ export const DesactivarRequiereEmailExacto: Story = {
     // ConfirmDialog es un dynamic(ssr:false): findByRole espera el chunk async.
     await expect(
       await body.findByRole('heading', {
-        name: `Desactivar ${ACTIVE_MANAGER.firstName} ${ACTIVE_MANAGER.lastName}`,
+        name: `Sacar acceso a ${ACTIVE_MANAGER.firstName} ${ACTIVE_MANAGER.lastName}`,
       }),
     ).toBeInTheDocument()
 

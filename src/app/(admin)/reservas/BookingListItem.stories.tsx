@@ -63,7 +63,7 @@ const ROW_POR_JUGAR_CON_SENA = row({
   pending: 1_050_000,
   totalPaid: 450_000,
 })
-// Se está jugando ahora mismo: punto verde "Se juega".
+// Se está jugando ahora mismo: punto verde "En juego".
 const ROW_EN_JUEGO = row({
   id: uid(1013),
   startsAt: new Date(Date.now() - 15 * 60_000).toISOString(),
@@ -231,7 +231,7 @@ export const EnJuego: Story = {
   args: { booking: ROW_EN_JUEGO },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getAllByText('Se juega').at(-1)!).toBeVisible()
+    await expect(canvas.getAllByText('En juego').at(-1)!).toBeVisible()
   },
 }
 

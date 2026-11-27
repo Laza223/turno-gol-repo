@@ -178,7 +178,7 @@ export const CartelSinActivar: Story = {
 }
 
 /**
- * Click en "Habilitar": el botón pasa a "Habilitando…" de inmediato y
+ * Click en "Activar notificaciones": el botón pasa a "Activando..." de inmediato y
  * `requestPermission` resuelve `'default'` (cerró el diálogo del navegador) a
  * los 80ms. Ese camino no dispara toast (un toast vivo contamina el scan de a11y
  * de la story siguiente): el modal se cierra y queda el cartel con "Activar".
@@ -202,7 +202,7 @@ export const Pendiente: Story = {
     const body = within(document.body)
     const button = await body.findByRole('button', { name: 'Activar notificaciones' })
     await userEvent.click(button)
-    await expect(await body.findByRole('button', { name: 'Habilitando…' })).toBeDisabled()
+    await expect(await body.findByRole('button', { name: 'Activando...' })).toBeDisabled()
     const canvas = within(canvasElement)
     await expect(await canvas.findByRole('button', { name: 'Activar' })).not.toBeDisabled()
   },

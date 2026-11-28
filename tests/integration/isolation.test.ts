@@ -101,11 +101,6 @@ const tablesAll: TableDef[] = [
   { name: 'audit_logs', ownId: () => A.auditLogId, otherId: () => B.auditLogId },
   { name: 'tenant_player_bans', ownId: () => A.banId, otherId: () => B.banId },
   { name: 'bookings', ownId: () => A.bookingId, otherId: () => B.bookingId },
-  {
-    name: 'booking_settlements',
-    ownId: () => A.bookingSettlementId,
-    otherId: () => B.bookingSettlementId,
-  },
   { name: 'player_tenant_relationships', ownId: () => A.ptrId, otherId: () => B.ptrId },
   // Torneos (migr. 062): CRUD completo, aislamiento clásico por tenant_id.
   { name: 'tournaments', ownId: () => A.tournamentId, otherId: () => B.tournamentId },
@@ -253,12 +248,6 @@ const insertOps: Record<string, InsertFn> = {
         100000, 0, 'not_required', NULL
       )`
   },
-  booking_settlements: async (tx, tid) =>
-    tx`INSERT INTO booking_settlements (
-        tenant_id, abonado_id, court_id, kind, payment_origin, amount, created_by_staff
-      ) VALUES (
-        ${tid}, ${B.abonadoId}, ${B.courtId}, 'monthly', 'already_settled', 0, ${B.staffUserId}
-      )`,
   // Usar un player EXISTENTE (el de A). La versión anterior insertaba un player
   // fresco primero, que falla RLS en `players` (sin policy INSERT para
   // authenticated) → el error era sobre la tabla "players", NO

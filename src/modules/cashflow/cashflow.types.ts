@@ -26,6 +26,7 @@ export type CashFlowRow = {
   method: CashPaymentMethod
   description: string
   bookingId: string | null
+  settlementId: string | null
   /** Migr. 066. Equipo del cobro de inscripción; null en todo lo demás. */
   tournamentTeamId: string | null
   /**
@@ -92,6 +93,7 @@ export type CreateCashFlowInput = {
   method: CashPaymentMethod
   description: string
   bookingId?: string
+  settlementId?: string
   /**
    * Migr. 066. Obligatorio con category 'tournament' y prohibido sin ella.
    * NO lo expone la Server Action genérica de Caja: el único camino es

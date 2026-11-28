@@ -60,14 +60,19 @@ export function BookingDetailCard({
       `${formatDateLong(booking.date)} · ${formatTime(booking.timeStart)}–${formatTime(booking.timeEnd)}`,
     ],
     ['Cancha', booking.courtName],
-    ['Cliente', booking.playerName ?? booking.guestName ?? '—'],
-    ['Teléfono', booking.playerPhone ?? booking.guestPhone ?? '—'],
+    ['Cliente', booking.playerName ?? booking.guestName ?? 'Sin dato'],
+    ['Teléfono', booking.playerPhone ?? booking.guestPhone ?? 'Sin dato'],
     [
       'Estado',
       // Los dos badges van dentro del MISMO <dd>: los e2e del detalle filtran
       // por `dd` con hasText 'Ausente'/'Jugada' (reservas-crud, TG-HP-211/212).
       <span key="estado" className="inline-flex flex-wrap items-center gap-1.5">
         <ReservaStatusBadge visual={visual} />
+        {booking.settlementId && !visual.unpaid && (
+          <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+            Saldado
+          </span>
+        )}
         {visual.unpaid && <ReservaStatusBadge visual={RESERVA_UNPAID_VISUAL} />}
       </span>,
     ],
@@ -83,11 +88,11 @@ export function BookingDetailCard({
           ],
         ] satisfies Array<[string, ReactNode]>)),
     [
-      'Método de pago',
+      'Medio de pago',
       booking.paymentMethod
         ? ((METHOD_LABELS as Record<string, string>)[booking.paymentMethod] ??
           booking.paymentMethod)
-        : '—',
+        : 'Sin dato',
     ],
   ]
 

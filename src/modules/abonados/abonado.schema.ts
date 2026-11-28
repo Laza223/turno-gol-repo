@@ -7,46 +7,75 @@ import {
   moneyCents,
   boundedText,
 } from '@/shared/validation/primitives'
+import { isValidYearMonth } from '@/lib/month-bounds'
+import { settlementChargeLineSchema } from '@/modules/settlements/settlement.schema'
 
-// timeEnd usa hhmmEnd (no hhmm): un abonado puede terminar exactamente a
-// medianoche ('24:00', ENS-13 — misma clase que ENS-12 en reservas comunes).
-//
-// Vive acá (módulo, no en `abonados/actions.ts`) porque ese archivo es
-// `'use server'`: Next.js exige que TODO export de un archivo `'use server'`
-// sea una función async (ver "A 'use server' file can only export async
-// functions" — descubierto en build real, `tsc`/`vitest` no lo detectan).
-// `nuevo/actions.ts` ya valida timeEnd/timeStart antes de llegar acá (su
-// propio schema local acepta HH:MM/HH:MM:SS sin restringir el rango de hora),
-// pero ESTE es el gate que de verdad corre dentro de createAbonadoAction.
+const initialSettlementSchema = z
+  .object({
+    kind: z.enum(['pack', 'monthly']),
+    paymentOrigin: z.enum(['caja', 'already_settled']),
+    amount: moneyCents,
+    creditsTotal: z.number().int().min(1).max(52).optional(),
+    month: z.string().refine(isValidYearMonth, 'Elegí un mes válido.').optional(),
+    charges: z.array(settlementChargeLineSchema).max(10).optional(),
+    clientIdempotencyKey: uuid.optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.kind === 'pack' && data.creditsTotal == null) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['creditsTotal'],
+        message: 'Indicá los turnos del pack.',
+      })
+    }
+    if (data.kind === 'monthly' && !data.month) {
+      ctx.addIssue({ code: 'custom', path: ['month'], message: 'Elegí el mes a cubrir.' })
+    }
+    if (data.paymentOrigin === 'caja' && (data.amount <= 0 || !data.charges?.length)) {
+      ctx.addIssue({ code: 'custom', path: ['amount'], message: 'Indicá el monto y el método.' })
+    }
+    // Cobrar en Caja sin clave deja reintentar un doble cobro: la clave es obligatoria.
+    if (data.paymentOrigin === 'caja' && !data.clientIdempotencyKey) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['clientIdempotencyKey'],
+        message: 'Falta la clave de idempotencia del cobro.',
+      })
+    }
+  })
+
 export const createAbonadoSchema = z
   .object({
     courtId: uuid,
     playerId: uuid.optional(),
     contactName: boundedText(120).min(1, 'Ingresá el nombre de contacto'),
-    // Opcional desde la migr. 088 (D1): el evento semanal de la grilla puede no
-    // tener teléfono. Turno fijo y /abonados/nuevo lo siguen exigiendo — acá el
-    // gate server-side vivía SOLO en el schema propio de /abonados/nuevo
-    // (nuevo/actions.ts), pero Turno fijo llama a ESTA MISMA action
-    // (createAbonadoAction) directo, sin pasar por ahí, así que quedaba
-    // enforced nada más que en la UI (revisión amarilla). El `refine` de abajo
-    // lo exige acá también, salvo que venga marcado `viaWeeklyEvent`.
     contactPhone: boundedText(40).min(1, 'Ingresá un teléfono de contacto').optional(),
-    // Único camino con teléfono realmente opcional: el evento semanal de la
-    // grilla (EventoForm). Turno fijo y /abonados/nuevo nunca lo mandan, así
-    // que por default el teléfono sigue siendo obligatorio server-side.
     viaWeeklyEvent: z.boolean().optional(),
     dayOfWeek: z.number().int().min(0, 'Elegí un día válido').max(6, 'Elegí un día válido'),
     timeStart: hhmm,
     timeEnd: hhmmEnd,
     pricePerSession: moneyCents,
+    billingMode: z.enum(['per_session', 'monthly', 'pack']).optional(),
+    agreedAmount: moneyCents.optional(),
+    initialSettlement: initialSettlementSchema.optional(),
     startsOn: dateStr,
     endsOn: dateStr.optional(),
     paymentMethod: z.enum(['cash', 'transfer']).optional(),
   })
-  .refine((data) => data.viaWeeklyEvent === true || !!data.contactPhone, {
-    message: 'Ingresá un teléfono de contacto',
-    path: ['contactPhone'],
-  })
+  .refine(
+    (data) => data.viaWeeklyEvent === true || data.billingMode === 'monthly' || !!data.contactPhone,
+    {
+      message: 'Ingresá un teléfono de contacto',
+      path: ['contactPhone'],
+    },
+  )
+
+export const updateAbonadoAgreementSchema = z.object({
+  abonadoId: uuid,
+  billingMode: z.enum(['per_session', 'monthly', 'pack']),
+  pricePerSession: moneyCents,
+  agreedAmount: moneyCents,
+})
 
 /**
  * Editar un turno fijo en TODAS sus fechas futuras. Todo opcional, pero al menos

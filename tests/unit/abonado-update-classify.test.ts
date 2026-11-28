@@ -7,6 +7,7 @@ import { classifyAbonadoUpdate } from '@/modules/abonados/abonado.update'
 // cobrado nunca queda por encima del precio nuevo.
 
 const abonado = {
+  billingMode: 'per_session' as 'per_session' | 'monthly' | 'pack',
   pricePerSession: 2_000_000,
   playerId: null as string | null,
   contactName: 'Cachi',

@@ -44,6 +44,8 @@ export const abonados = pgTable(
 
     status: abonadoStatusEnum('status').notNull().default('active'),
     paymentMethod: abonadoPaymentMethodEnum('payment_method').notNull().default('cash'),
+    billingMode: text('billing_mode').notNull().default('per_session'),
+    agreedAmount: integer('agreed_amount').notNull().default(0),
 
     createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
@@ -52,6 +54,14 @@ export const abonados = pgTable(
     timeValid: check('chk_abonado_time_valid', sql`${table.timeEnd} > ${table.timeStart}`),
     dayValid: check('chk_abonado_day_valid', sql`${table.dayOfWeek} BETWEEN 0 AND 6`),
     pricePositive: check('chk_abonado_price_non_negative', sql`${table.pricePerSession} >= 0`),
+    billingModeValid: check(
+      'chk_abonados_billing_mode',
+      sql`${table.billingMode} IN ('per_session', 'monthly', 'pack')`,
+    ),
+    agreedAmountValid: check(
+      'chk_abonados_agreed_amount_non_negative',
+      sql`${table.agreedAmount} >= 0`,
+    ),
     tenantStatusIdx: index('idx_abonados_tenant_status').on(table.tenantId, table.status),
     courtIdx: index('idx_abonados_court').on(table.tenantId, table.courtId),
     playerIdx: index('idx_abonados_player')

@@ -21,6 +21,8 @@ export const abonado = (overrides: Partial<AbonadoRow> = {}): AbonadoRow => ({
   timeStart: '20:00',
   timeEnd: '21:00',
   pricePerSession: 1300000,
+  billingMode: 'per_session',
+  agreedAmount: 0,
   startsOn: daysFromNow(-90),
   endsOn: null,
   status: 'active',

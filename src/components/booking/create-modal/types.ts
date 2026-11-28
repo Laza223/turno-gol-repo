@@ -6,7 +6,8 @@ import type { CourtPricingData } from '@/modules/courts/court.types'
 import type { PlayerSearchResult } from '@/modules/players/player-search.service'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 
-/** Los 4 tipos del modal único (decisión 2026-09-14, pages/grilla.md §3bis). */
+import type { SettlementChargeLine } from '@/modules/settlements/settlement.types'
+
 export type BookingKind = 'turno' | 'fijo' | 'evento' | 'bloqueo'
 
 export type ModalSlot = {
@@ -16,8 +17,30 @@ export type ModalSlot = {
   timeStart: string
 }
 
+type MultiDateEventActionResult =
+  | { success: true; bookings: BookingRow[]; settlementId: string | null }
+  | { success: false; error: string }
+
+type CreateMultiDateEventPayload = {
+  courtId: string
+  dates: string[]
+  timeStart: string
+  timeEnd: string
+  playerId?: string
+  guestName?: string
+  guestPhone?: string
+  totalAmount?: number
+  paymentMode: 'unpaid' | 'caja' | 'already_settled'
+  charges?: SettlementChargeLine[]
+  notesInternal?: string
+  clientIdempotencyKey?: string
+}
+
 export type CreateBookingAction = (data: unknown) => Promise<CreateBookingActionResult>
 export type CreateAbonadoAction = (input: CreateAbonadoInput) => Promise<AbonadoActionResult>
+export type CreateMultiDateEventAction = (
+  input: CreateMultiDateEventPayload,
+) => Promise<MultiDateEventActionResult>
 
 export type CheckSlotAvailabilityAction = (input: {
   courtId: string
@@ -41,6 +64,7 @@ export type TypeFormProps = {
   searchPlayersAction?: SearchBookingPlayersAction
   createBookingAction: CreateBookingAction
   createAbonadoAction: CreateAbonadoAction
+  createMultiDateEventAction?: CreateMultiDateEventAction
   onClose: () => void
   onSuccess: (booking?: BookingRow) => void
   /**
@@ -55,4 +79,4 @@ export type TypeFormProps = {
 export type DepositMethod = 'cash' | 'transfer' | 'mercadopago' | 'other'
 
 /** Lo que el operador afirmó sobre la plata al crear a mano. */
-export type ChargeChoice = 'none' | 'partial' | 'full'
+export type ChargeChoice = 'none' | 'partial' | 'full' | 'already_settled'

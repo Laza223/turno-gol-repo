@@ -442,3 +442,26 @@ export async function insertWhatsappMessage(
   `
   return rows[0].id
 }
+
+export async function insertBookingSettlement(
+  sql: Sql,
+  opts: {
+    tenantId: string
+    createdByStaff: string
+    abonadoId?: string | null
+    courtId?: string | null
+  },
+): Promise<string> {
+  const rows = await sql<{ id: string }[]>`
+    INSERT INTO booking_settlements (
+      tenant_id, abonado_id, court_id, kind, payment_origin, amount,
+      period_start, period_end, created_by_staff
+    )
+    VALUES (
+      ${opts.tenantId}, ${opts.abonadoId ?? null}, ${opts.courtId ?? null},
+      'monthly', 'already_settled', 0, '2026-11-01', '2026-11-30', ${opts.createdByStaff}
+    )
+    RETURNING id
+  `
+  return rows[0].id
+}

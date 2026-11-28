@@ -31,6 +31,7 @@ export function toGridBooking(
     depositStatus,
     chargesTotal,
     writtenOff,
+    settlementId: detail.settlementId,
   })
 
   return {
@@ -53,5 +54,11 @@ export function toGridBooking(
     writtenOff,
     startsAtMs: detail.startsAt ? new Date(detail.startsAt).getTime() : null,
     endsAtMs: detail.endsAt ? new Date(detail.endsAt).getTime() : null,
+    abonadoId: detail.abonadoId ?? null,
+    abonadoBillingMode: detail.abonadoBillingMode ?? null,
+    settlementId: detail.settlementId ?? null,
+    settlementKind: detail.settlementKind ?? null,
+    settlementOrigin: detail.settlementOrigin ?? null,
+    settlementAmount: detail.settlementAmount ?? null,
   }
 }

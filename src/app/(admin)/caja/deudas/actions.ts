@@ -64,7 +64,7 @@ export async function chargeDebtAction(input: ChargeDebtInput): Promise<ChargeDe
   const result: ChargeDebtResult = await withTenantContext(tenant.id, async (tx) => {
     // 1. Fetch booking & current charges
     const bookingRes = await tx.execute(
-      sql`SELECT price_snapshot AS "priceSnapshot", deposit_amount AS "depositAmount", deposit_status AS "depositStatus", status FROM bookings WHERE id = ${bookingId} AND tenant_id = ${tenant.id}`,
+      sql`SELECT price_snapshot AS "priceSnapshot", deposit_amount AS "depositAmount", deposit_status AS "depositStatus", status, settlement_id AS "settlementId" FROM bookings WHERE id = ${bookingId} AND tenant_id = ${tenant.id}`,
     )
     const booking = (
       bookingRes as unknown as Array<{
@@ -72,6 +72,7 @@ export async function chargeDebtAction(input: ChargeDebtInput): Promise<ChargeDe
         depositAmount: number
         depositStatus: string
         status: string
+        settlementId: string | null
       }>
     )[0]
 
@@ -121,6 +122,7 @@ export async function chargeDebtAction(input: ChargeDebtInput): Promise<ChargeDe
         depositStatus: booking.depositStatus,
         chargesTotal,
         writtenOff,
+        settlementId: booking.settlementId,
       })
 
       if (pending <= 0) {

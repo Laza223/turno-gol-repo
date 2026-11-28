@@ -17,6 +17,9 @@ import { trackStoryExportAction } from './actions'
 import { SettingsAccessNotice } from '@/app/(admin)/settings/SettingsAccessNotice'
 import {
   createBookingAction,
+  createMultiDateEventAction,
+  settleBookingsBatchAction,
+  voidSettlementAction,
   checkSlotAvailabilityAction,
   searchBookingPlayersAction,
   addBookingChargeAction,
@@ -31,7 +34,11 @@ import {
   editBookingAction,
 } from '@/app/(admin)/reservas/actions'
 import { getBookingEditDetailAction } from '@/app/(admin)/reservas/edit-detail-actions'
-import { createAbonadoAction } from '@/app/(admin)/abonados/actions'
+import {
+  createAbonadoAction,
+  settleAbonadoPeriodAction,
+  getAbonadoBillingOverviewAction,
+} from '@/app/(admin)/abonados/actions'
 import {
   chargeDebtAction,
   undoWriteOffAction,
@@ -140,6 +147,7 @@ export default async function GrillaPage(props: {
         lateCancelHours={tenant.settings.late_cancel_hours ?? 0}
         action={createBookingAction}
         createAbonadoAction={createAbonadoAction}
+        createMultiDateEventAction={createMultiDateEventAction}
         checkAvailabilityAction={checkSlotAvailabilityAction}
         searchPlayersAction={searchBookingPlayersAction}
         slotPanelActions={{
@@ -160,6 +168,10 @@ export default async function GrillaPage(props: {
           releaseBlockAction,
           editBookingAction,
           getBookingEditDetailAction,
+          settleBookingsBatchAction,
+          voidSettlementAction,
+          settleAbonadoPeriodAction,
+          getAbonadoBillingOverviewAction,
         }}
         storyShare={{
           slug: tenant.slug,

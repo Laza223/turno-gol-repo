@@ -12,6 +12,7 @@ import {
 } from 'drizzle-orm/pg-core'
 import { tenants } from './tenants'
 import { bookings } from './bookings'
+import { bookingSettlements } from './booking-settlements'
 import { staffUsers } from './staff-users'
 import { tournamentTeams } from './tournament-teams'
 import { cashflowCategoryEnum, cashflowTypeEnum, paymentMethodEnum } from './enums'
@@ -33,6 +34,7 @@ export const cashFlows = pgTable(
     description: text('description').notNull(),
 
     bookingId: uuid('booking_id').references(() => bookings.id),
+    settlementId: uuid('settlement_id').references(() => bookingSettlements.id),
 
     /**
      * Migr. 066. Equipo al que corresponde el cobro de inscripción. Sin
@@ -94,6 +96,9 @@ export const cashFlows = pgTable(
     tournamentTeamIdx: index('idx_cash_flows_tournament_team')
       .on(table.tournamentTeamId)
       .where(sql`tournament_team_id IS NOT NULL`),
+    settlementIdx: index('idx_cash_flows_settlement')
+      .on(table.settlementId)
+      .where(sql`settlement_id IS NOT NULL`),
     // Fix #55: índice UNIQUE parcial que respalda el ON CONFLICT (client_idempotency_key)
     // en createCashFlow(). Debe coincidir con la migración 023_cashflow_idempotency_key.sql.
     idempotencyKeyIdx: uniqueIndex('idx_cash_flows_idempotency_key')

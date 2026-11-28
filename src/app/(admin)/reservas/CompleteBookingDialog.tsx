@@ -23,6 +23,8 @@ type CompleteBookingDialogBooking = {
   playerName?: string | null
   /** Charges already registered */
   chargesTotal: number
+  /** Si es de un pack, un mes o un saldado, el turno no tiene saldo. */
+  settlementId?: string | null
 }
 
 type Props = {
@@ -66,6 +68,7 @@ export default function CompleteBookingDialog({
     chargesTotal: booking.chargesTotal,
     // El diálogo solo completa turnos `confirmed`: no puede haber perdido.
     writtenOff: 0,
+    settlementId: booking.settlementId,
   })
 
   const hasDebt = summary.pending > 0

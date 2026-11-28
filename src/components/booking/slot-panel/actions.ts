@@ -4,6 +4,12 @@ import type { ChargeLine } from '@/components/admin/SplitPaymentFields'
 import type { GridBooking } from '@/lib/booking/grid-cells'
 import type { CourtRow } from '@/modules/courts/court.types'
 import type { BookingConsumo } from '@/modules/canteen/canteen.types'
+import type {
+  AbonadoBillingOverviewResult,
+  SettleAbonadoPeriodInput,
+  SettleBookingsBatchInput,
+  SettlementActionResult,
+} from '@/modules/settlements/settlement.types'
 import type { ListRescheduleSlots, RescheduleBooking } from '../BookingRescheduleDialog'
 
 /**
@@ -155,4 +161,12 @@ export type SlotPanelActions = Partial<WriteOffActions> & {
     tabId: string
     reason: string
   }) => Promise<{ success: true } | { success: false; error: string }>
+  /** Marcar un turno o un lote como saldado, o cobrarlo junto en Caja. */
+  settleBookingsBatchAction?: (input: SettleBookingsBatchInput) => Promise<SettlementActionResult>
+  /** Deshacer un "ya estaba saldado" (solo el que no movió Caja). */
+  voidSettlementAction?: (input: { settlementId: string }) => Promise<ActionResult>
+  /** Cobrar o saldar el mes o el pack de un turno fijo desde la Grilla o Hoy. */
+  settleAbonadoPeriodAction?: (input: SettleAbonadoPeriodInput) => Promise<SettlementActionResult>
+  /** Precarga el acuerdo y la cobertura actual del turno fijo. */
+  getAbonadoBillingOverviewAction?: (abonadoId: string) => Promise<AbonadoBillingOverviewResult>
 }

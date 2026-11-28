@@ -563,6 +563,7 @@ export async function getPlayerBookingHistory(
              WHERE pr.booking_id = b.id AND pr.type = 'refund'
                AND pr.status IN ('approved', 'pending')
            ) AS "refundState",
+           b.settlement_id AS "settlementId",
            c.name AS "courtName"
     FROM bookings b
     JOIN courts c ON c.id = b.court_id
@@ -574,7 +575,9 @@ export async function getPlayerBookingHistory(
     LIMIT ${limit} OFFSET ${offset}
   `)
   const list = rows as unknown as Array<
-    Omit<PlayerBookingRow, 'pending' | 'totalPaid' | 'writtenOff'>
+    Omit<PlayerBookingRow, 'pending' | 'totalPaid' | 'writtenOff'> & {
+      settlementId: string | null
+    }
   >
   const charges = await sumBookingChargesByBooking(
     tenantId,
@@ -588,9 +591,11 @@ export async function getPlayerBookingHistory(
       depositStatus: r.depositStatus,
       chargesTotal: charges.get(r.id)?.total ?? 0,
       writtenOff: charges.get(r.id)?.writtenOff ?? 0,
+      settlementId: r.settlementId,
     })
+    const { settlementId: _settlementId, ...row } = r
     return {
-      ...r,
+      ...row,
       pending: money.pending,
       totalPaid: money.totalPaid,
       writtenOff: money.writtenOff,

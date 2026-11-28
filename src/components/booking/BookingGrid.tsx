@@ -30,6 +30,7 @@ import type {
   CheckSlotAvailabilityAction,
   CreateAbonadoAction,
   CreateBookingAction,
+  CreateMultiDateEventAction,
   SearchBookingPlayersAction,
 } from './create-modal/types'
 
@@ -70,6 +71,8 @@ type Props = {
   action: CreateBookingAction
   /** Reenviada al BookingFormModal (Turno fijo → `createAbonadoAction`). */
   createAbonadoAction: CreateAbonadoAction
+  /** Reenviada al BookingFormModal (Evento en varias fechas). */
+  createMultiDateEventAction?: CreateMultiDateEventAction
   /** Reenviada al BookingFormModal — opcional, ver el comentario ahí. */
   checkAvailabilityAction?: CheckSlotAvailabilityAction
   /** Reenviada al BookingFormModal — opcional, ver el comentario ahí. */
@@ -117,6 +120,7 @@ export function BookingGrid({
   closesNextDay,
   action,
   createAbonadoAction,
+  createMultiDateEventAction,
   checkAvailabilityAction,
   searchPlayersAction,
   slotPanelActions,
@@ -163,6 +167,41 @@ export function BookingGrid({
   // la grilla: la celda "No cobrado" no lo lleva sola.
   const [highlightPending, setHighlightPending] = useState(false)
   const [storyOpen, setStoryOpen] = useState(false)
+  const [batchSelecting, setBatchSelecting] = useState(false)
+  const [selectedBatchIds, setSelectedBatchIds] = useState<Set<string>>(() => new Set())
+  const [batchDialogOpen, setBatchDialogOpen] = useState(false)
+
+  const canBatchSettle = Boolean(slotPanelActions?.settleBookingsBatchAction)
+
+  const toggleBatchMode = useCallback(() => {
+    if (batchSelecting) {
+      setSelectedBatchIds(new Set())
+      setBatchDialogOpen(false)
+    }
+    setBatchSelecting(!batchSelecting)
+  }, [batchSelecting])
+
+  const toggleBatchBooking = useCallback((bookingId: string) => {
+    setSelectedBatchIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(bookingId)) next.delete(bookingId)
+      else next.add(bookingId)
+      return next
+    })
+  }, [])
+
+  const selectedBatchBookings = useMemo(
+    () =>
+      bookings.filter(
+        (b) =>
+          selectedBatchIds.has(b.id) &&
+          !b.status.startsWith('canceled') &&
+          b.type !== 'block' &&
+          b.type !== 'tournament' &&
+          b.status !== 'no_show',
+      ),
+    [bookings, selectedBatchIds],
+  )
   const [manyOpen, setManyOpen] = useState(false)
   // "Esta noche": el día operativo vigente. En un complejo que cierra pasada la
   // medianoche, a la 01:00 el día que se juega sigue siendo el de ayer.
@@ -315,6 +354,8 @@ export function BookingGrid({
         highlightPending={highlightPending}
         onToggleHighlight={() => setHighlightPending((v) => !v)}
         onOpenStory={renderStoryDialog ? () => setStoryOpen(true) : undefined}
+        batchSelecting={batchSelecting}
+        onToggleBatchSelect={canBatchSettle ? toggleBatchMode : undefined}
         onOpenChargeMany={renderChargeMany && viewingTonight ? () => setManyOpen(true) : undefined}
         viewToggle={viewToggle}
       />
@@ -357,7 +398,52 @@ export function BookingGrid({
             draggingId={drag?.booking.id ?? null}
             dropTarget={drag?.target ?? null}
             onDragPointerDown={onCardPointerDown}
+            batchSelecting={batchSelecting}
+            selectedBatchIds={selectedBatchIds}
+            onToggleBatchSelect={toggleBatchBooking}
           />
+        </div>
+      )}
+
+      {batchSelecting && (
+        <div
+          role="region"
+          aria-label="Selección múltiple para saldar"
+          className="sticky bottom-3 z-30 mx-auto flex w-full max-w-2xl flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-lg"
+        >
+          <p className="text-sm font-medium text-foreground tabular-nums">
+            {selectedBatchBookings.length === 0
+              ? 'Tocá en la grilla los turnos que querés saldar juntos.'
+              : selectedBatchBookings.length === 1
+                ? '1 turno seleccionado'
+                : `${selectedBatchBookings.length} turnos seleccionados`}
+          </p>
+          <div className="flex items-center gap-2">
+            {selectedBatchBookings.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSelectedBatchIds(new Set())}
+                className="h-9 rounded-lg border border-border bg-background px-3 text-xs font-semibold text-foreground hover:bg-accent"
+              >
+                Limpiar
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={toggleBatchMode}
+              className="h-9 rounded-lg border border-border bg-background px-3 text-xs font-semibold text-foreground hover:bg-accent"
+            >
+              Salir
+            </button>
+            <button
+              type="button"
+              disabled={selectedBatchBookings.length === 0}
+              onClick={() => setBatchDialogOpen(true)}
+              className="h-9 rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              Saldar seleccionados
+            </button>
+          </div>
         </div>
       )}
 
@@ -370,6 +456,7 @@ export function BookingGrid({
         isSlotPast={isSlotPast}
         createBookingAction={action}
         createAbonadoAction={createAbonadoAction}
+        createMultiDateEventAction={createMultiDateEventAction}
         checkAvailabilityAction={checkAvailabilityAction}
         searchPlayersAction={searchPlayersAction}
         detailBooking={detailBooking}
@@ -383,6 +470,15 @@ export function BookingGrid({
         renderCanteenDialog={renderCanteenDialog}
         slotPanelActions={slotPanelActions}
         nowMs={nowMs}
+        batchSettlementOpen={batchDialogOpen}
+        batchSettlementBookings={selectedBatchBookings}
+        onCloseBatchSettlement={() => setBatchDialogOpen(false)}
+        onBatchSettlementSuccess={() => {
+          setBatchDialogOpen(false)
+          setBatchSelecting(false)
+          setSelectedBatchIds(new Set())
+          void refetch()
+        }}
         renderChargeModal={renderChargeModal}
       />
 

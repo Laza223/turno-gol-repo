@@ -14,6 +14,14 @@ export class SlotTakenError extends Error {
   }
 }
 
+/** Alta de un evento de varias fechas: alguna de las fechas ya está ocupada. */
+export class MultiDateSlotConflictError extends SlotTakenError {
+  constructor(public readonly conflictDates: string[]) {
+    super()
+    this.name = 'MultiDateSlotConflictError'
+  }
+}
+
 export class InvalidTransitionError extends Error {
   constructor(from: string, to: string, reason?: string) {
     super(`Invalid transition: ${from} -> ${to}${reason ? ` (${reason})` : ''}`)

@@ -27,8 +27,14 @@ import {
   releaseBlockAction,
   rescheduleBookingAction,
   revertNoShowAction,
+  settleBookingsBatchAction,
+  voidSettlementAction,
 } from '@/app/(admin)/reservas/actions'
 import { getBookingEditDetailAction } from '@/app/(admin)/reservas/edit-detail-actions'
+import {
+  settleAbonadoPeriodAction,
+  getAbonadoBillingOverviewAction,
+} from '@/app/(admin)/abonados/actions'
 import {
   chargeDebtAction,
   undoWriteOffAction,
@@ -270,6 +276,10 @@ export default async function DashboardPage() {
             releaseBlockAction,
             editBookingAction,
             getBookingEditDetailAction,
+            settleBookingsBatchAction,
+            voidSettlementAction,
+            settleAbonadoPeriodAction,
+            getAbonadoBillingOverviewAction,
             // Consumos anotados al turno: el cobro de "Todo junto" los suma.
             listBookingConsumosAction,
             settleTabAction,

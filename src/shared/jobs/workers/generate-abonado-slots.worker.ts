@@ -4,6 +4,7 @@ import { getWorkerSql, withTenantContext } from '@/shared/db/client'
 import { generateSlotDates } from '@/modules/abonados/slot-generator'
 import { getAbonadoSlotConflicts } from '@/modules/abonados/abonado.service'
 import { slotIsPhysicallyNextDay } from '@/modules/bookings/booking.service'
+import { assignSettlementCoverageForAbonado } from '@/modules/settlements/settlement.service'
 import { paidPeriodCutoffFrom } from '@/modules/bookings/paid-period.guard'
 import { physicalRange } from '@/shared/time/physical-range'
 import { logger } from '@/shared/lib/logger'
@@ -34,6 +35,7 @@ export async function runRollingSlotGeneration(): Promise<void> {
       time_start: string
       time_end: string
       price_per_session: number
+      billing_mode: 'per_session' | 'monthly' | 'pack'
       starts_on: string
       ends_on: string | null
       tenant_status: string
@@ -43,7 +45,7 @@ export async function runRollingSlotGeneration(): Promise<void> {
   >`
     SELECT a.id, a.tenant_id, a.court_id, a.player_id, a.contact_name, a.contact_phone,
            a.day_of_week, a.time_start, a.time_end,
-           a.price_per_session, a.starts_on::text, a.ends_on::text,
+           a.price_per_session, a.billing_mode, a.starts_on::text, a.ends_on::text,
            t.status AS tenant_status,
            s.current_period_end,
            ARRAY(SELECT (d::date)::text FROM unnest(t.closed_dates) AS d) AS closed_dates
@@ -163,12 +165,13 @@ export async function runRollingSlotGeneration(): Promise<void> {
           // (abonado.service.ts): BookingCard.bookingDisplayName mira guestName
           // antes que playerFirstName.
           const guestName = abonado.player_id ? null : abonado.contact_name
+          const sessionPrice = abonado.billing_mode === 'monthly' ? 0 : abonado.price_per_session
           const guestPhone = abonado.player_id ? null : abonado.contact_phone
           return drizzleSql`(
             ${abonado.tenant_id}, ${abonado.court_id}, ${abonado.player_id ?? null}, ${abonado.id},
             ${dateStr}::date, ${abonado.time_start}::time, ${abonado.time_end}::time,
             ${startsAt.toISOString()}::timestamptz, ${endsAt.toISOString()}::timestamptz,
-            'fixed', 'confirmed', ${abonado.price_per_session}, 0, 'not_required', ${guestName}, ${guestPhone}
+            'fixed', 'confirmed', ${sessionPrice}, 0, 'not_required', ${guestName}, ${guestPhone}
           )`
         }),
         drizzleSql`, `,
@@ -187,7 +190,11 @@ export async function runRollingSlotGeneration(): Promise<void> {
         ON CONFLICT DO NOTHING
         RETURNING id
       `)
-      return (inserted as unknown as unknown[]).length
+      const count = (inserted as unknown as unknown[]).length
+      if (count > 0) {
+        await assignSettlementCoverageForAbonado(abonado.tenant_id, abonado.id, tx)
+      }
+      return count
     })
 
     if (generated > 0) {

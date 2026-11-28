@@ -3,6 +3,8 @@ type PaymentMethod = 'cash' | 'transfer' | 'mercadopago' | 'other'
 export type CourtReport = {
   courtId: string
   courtName: string
+  /** Fila "Varias canchas": cobros de un saldado que cubre más de una cancha. Sin ocupación propia. */
+  multiCourt?: boolean
   income: number
   bookingCount: number
   occupancyPct: number

@@ -4,6 +4,11 @@ import type {
   DepositStatus,
   PaymentMethodValue,
 } from '@/modules/bookings/booking.types'
+import type {
+  AbonadoBillingMode,
+  SettlementKind,
+  SettlementPaymentOrigin,
+} from '@/modules/settlements/settlement.types'
 import type { CourtRow } from '@/modules/courts/court.types'
 import { effectiveCloseMins } from '@/shared/time/operating-day'
 
@@ -63,6 +68,13 @@ export type GridBooking = {
   // `hasEnded` que ya calcula la grilla y no muestra el renglón "cuándo".
   startsAtMs?: number | null
   endsAtMs?: number | null
+  /** Migr. 108: acuerdo del abonado y saldado/pack vinculado al turno. */
+  abonadoId?: string | null
+  abonadoBillingMode?: AbonadoBillingMode | null
+  settlementId?: string | null
+  settlementKind?: SettlementKind | null
+  settlementOrigin?: SettlementPaymentOrigin | null
+  settlementAmount?: number | null
 }
 
 export type CellState =

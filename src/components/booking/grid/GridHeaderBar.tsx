@@ -28,6 +28,9 @@ type Props = {
   onToggleHighlight: () => void
   /** Abre la placa de turnos libres para historias. Sin esto el botón no se dibuja (stories, tests). */
   onOpenStory?: () => void
+  /** "Saldar varios": prende la selección de turnos para saldarlos juntos. */
+  batchSelecting?: boolean
+  onToggleBatchSelect?: () => void
   /** "Cobrar los N": abre las tarjetas de los turnos en rojo. El padre solo lo pasa mirando la noche vigente (día operativo). */
   onOpenChargeMany?: () => void
   /** "Día | Semana" (lo arma la página): va a la derecha de la barra de escritorio. */
@@ -162,6 +165,8 @@ export function GridHeaderBar({
   highlightPending,
   onToggleHighlight,
   onOpenStory,
+  batchSelecting = false,
+  onToggleBatchSelect,
   onOpenChargeMany,
   viewToggle,
 }: Props) {
@@ -239,6 +244,21 @@ export function GridHeaderBar({
   // Teléfono: no entra en la fila de la fecha (a 375 px el rótulo del día ya
   // quedaba justo), así que va en la de abajo. Con el chip al lado alcanza el
   // ícono; solo, lleva el rótulo para que se entienda qué es.
+  const batchButton = onToggleBatchSelect ? (
+    <button
+      type="button"
+      onClick={onToggleBatchSelect}
+      className={cn(
+        'flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
+        batchSelecting
+          ? 'border-primary bg-primary text-primary-foreground'
+          : 'border-border bg-card text-foreground hover:bg-accent',
+      )}
+    >
+      {batchSelecting ? 'Cancelar selección' : 'Saldar varios'}
+    </button>
+  ) : null
+
   const storyButtonPhone = onOpenStory ? (
     <button
       type="button"
@@ -247,7 +267,7 @@ export function GridHeaderBar({
       className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-border bg-card px-3 text-sm font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
     >
       <Share2 aria-hidden className="h-4 w-4" />
-      {!hasPending && <span>Compartir turnos</span>}
+      {!hasPending && <span>Compartir horarios</span>}
     </button>
   ) : null
 
@@ -259,13 +279,24 @@ export function GridHeaderBar({
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label="Más opciones de la grilla"
+          aria-label="Ver significado de los colores"
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring lg:h-9 lg:w-9"
         >
           <Ellipsis aria-hidden className="h-5 w-5" />
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-auto p-3">
+        {onToggleBatchSelect && (
+          <div className="mb-3 border-b border-border pb-3">
+            <button
+              type="button"
+              onClick={onToggleBatchSelect}
+              className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2 text-left text-xs font-semibold text-foreground transition-colors hover:bg-accent focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <span>{batchSelecting ? 'Salir de selección múltiple' : 'Saldar varios turnos'}</span>
+            </button>
+          </div>
+        )}
         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           ¿Qué significa cada color?
         </p>
@@ -386,11 +417,12 @@ export function GridHeaderBar({
           {!isToday && todayButton}
         </div>
 
-        {(hasPending || onOpenStory) && (
+        {(hasPending || onOpenStory || onToggleBatchSelect) && (
           <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
             {pendingChip}
             {chargeManyButton}
             {storyButtonPhone}
+            {batchButton}
           </div>
         )}
       </div>

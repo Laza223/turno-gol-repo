@@ -67,6 +67,7 @@ export async function listBookingsForExport(
            b.price_snapshot AS "priceSnapshot",
            b.deposit_amount AS "depositAmount",
            b.deposit_status AS "depositStatus",
+           b.settlement_id AS "settlementId",
            to_char(b.starts_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS "startsAtKey"
     FROM bookings b
     JOIN courts c ON c.id = b.court_id AND c.tenant_id = b.tenant_id
@@ -96,6 +97,7 @@ export async function listBookingsForExport(
         depositStatus: r.depositStatus,
         chargesTotal: charges.get(r.id)?.total ?? 0,
         writtenOff: charges.get(r.id)?.writtenOff ?? 0,
+        settlementId: r.settlementId,
       }).totalPaid,
     })),
     nextCursor:

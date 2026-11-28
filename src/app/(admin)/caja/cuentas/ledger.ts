@@ -59,6 +59,15 @@ export function toLedgerRow(cf: CashFlowListRow): LedgerRow {
   }
 
   if (cf.category === 'booking') {
+    if (cf.settlementId) {
+      const title = movementTitle(cf.description)
+      return {
+        ...base,
+        kind: 'turno',
+        text: cf.counterpartName ?? title,
+        detail: cf.counterpartName ? title : null,
+      }
+    }
     const isDeposit = movementTitle(cf.description) === 'Seña del turno'
     return {
       ...base,

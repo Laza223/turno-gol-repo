@@ -65,6 +65,7 @@ export async function findAutoCreditCandidates(tx: DbTx): Promise<AutoCreditCand
     JOIN tenants t ON t.id = b.tenant_id
     LEFT JOIN cash_flows cf ON cf.booking_id = b.id AND cf.tenant_id = b.tenant_id
     WHERE b.status = 'completed'
+      AND b.settlement_id IS NULL
       AND t.status::text IN (${tenantStatusList})
       AND b.ends_at < NOW() - make_interval(hours => ${AUTO_CREDIT_AFTER_HOURS})
       AND b.updated_at < NOW() - make_interval(hours => ${AUTO_CREDIT_AFTER_HOURS})
@@ -105,10 +106,11 @@ export async function autoCreditBooking(
 ): Promise<number> {
   const locked = await tx.execute(sql`
     SELECT price_snapshot AS "priceSnapshot", deposit_amount AS "depositAmount",
-           deposit_status AS "depositStatus"
+           deposit_status AS "depositStatus", settlement_id AS "settlementId"
     FROM bookings
     WHERE id = ${bookingId} AND tenant_id = ${tenantId}
       AND status = 'completed'
+      AND settlement_id IS NULL
       AND ends_at < NOW() - make_interval(hours => ${AUTO_CREDIT_AFTER_HOURS})
       AND updated_at < NOW() - make_interval(hours => ${AUTO_CREDIT_AFTER_HOURS})
     FOR UPDATE
@@ -118,6 +120,7 @@ export async function autoCreditBooking(
       priceSnapshot: number
       depositAmount: number
       depositStatus: string
+      settlementId: string | null
     }>
   )[0]
   if (!booking) return 0

@@ -1,5 +1,12 @@
+import type {
+  AbonadoBillingMode,
+  SettlementChargeLine,
+  SettlementPaymentOrigin,
+} from '@/modules/settlements/settlement.types'
+
 export type AbonadoStatus = 'active' | 'paused' | 'canceled'
 export type AbonadoPaymentMethod = 'cash' | 'transfer'
+export type { AbonadoBillingMode }
 
 export type AbonadoRow = {
   id: string
@@ -14,12 +21,24 @@ export type AbonadoRow = {
   timeStart: string
   timeEnd: string
   pricePerSession: number
+  billingMode: AbonadoBillingMode
+  agreedAmount: number
   startsOn: Date
   endsOn: Date | null
   status: AbonadoStatus
   paymentMethod: AbonadoPaymentMethod
   createdAt: Date
   updatedAt: Date
+}
+
+type InitialAbonadoSettlementInput = {
+  kind: 'pack' | 'monthly'
+  paymentOrigin: SettlementPaymentOrigin
+  amount: number
+  creditsTotal?: number
+  month?: string
+  charges?: SettlementChargeLine[]
+  clientIdempotencyKey?: string
 }
 
 export type CreateAbonadoInput = {
@@ -35,6 +54,9 @@ export type CreateAbonadoInput = {
   timeStart: string
   timeEnd: string
   pricePerSession: number
+  billingMode?: AbonadoBillingMode
+  agreedAmount?: number
+  initialSettlement?: InitialAbonadoSettlementInput
   startsOn: string
   endsOn?: string
   paymentMethod?: AbonadoPaymentMethod
@@ -81,3 +103,10 @@ export type UpdateAbonadoPreview = UpdateAbonadoCounts &
 export type UpdateAbonadoOutcome = {
   abonado: AbonadoRow
 } & UpdateAbonadoCounts
+
+export type UpdateAbonadoAgreementInput = {
+  abonadoId: string
+  billingMode: AbonadoBillingMode
+  pricePerSession: number
+  agreedAmount: number
+}

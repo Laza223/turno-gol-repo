@@ -9,6 +9,9 @@ import { withTenantContext } from '@/shared/db/client'
 import { getAbonados, countAbonados } from '@/modules/abonados/abonado.service'
 import { listCourts } from '@/modules/courts/court.service'
 import type { AbonadoStatus } from '@/modules/abonados/abonado.types'
+import { listAbonadoCoverageByIds } from '@/modules/settlements/settlement.service'
+import type { AbonadoCoverageSummary } from '@/modules/settlements/settlement.types'
+import { artTodayStr } from '@/shared/dates/art'
 import { AbonadosList } from './AbonadosList'
 import { ClientesTabs } from '@/app/(admin)/jugadores/ClientesTabs'
 import {
@@ -16,6 +19,8 @@ import {
   cancelAbonadoAction,
   previewUpdateAbonadoAction,
   updateAbonadoAction,
+  settleAbonadoPeriodAction,
+  updateAbonadoAgreementAction,
 } from './actions'
 import { previewAbonadoSlotsAction } from './nuevo/actions'
 
@@ -60,24 +65,35 @@ export default async function AbonadosPage(props: {
   const justCreated = searchParams.created === '1'
   const page = parseAbonadosPage(searchParams.pagina)
 
-  const { abonados, total, courts } = await withTenantContext(tenant.id, async (tx) => {
-    const [rows, count, courtRows] = await Promise.all([
-      getAbonados(tenant.id, { status: statusFilter }, tx, {
-        limit: PAGE_SIZE,
-        offset: page * PAGE_SIZE,
-      }),
-      // El total del paginador (y del subtítulo del encabezado): mismo WHERE
-      // que getAbonados, aparte, para que "N turnos fijos" nunca hable solo
-      // del largo de esta página.
-      countAbonados(tenant.id, { status: statusFilter }, tx),
-      listCourts(tenant.id, tx),
-    ])
-    return {
-      abonados: rows,
-      total: count,
-      courts: courtRows.map((c) => ({ id: c.id, name: c.name })),
-    }
-  })
+  const { abonados, total, courts, coverageById } = await withTenantContext(
+    tenant.id,
+    async (tx) => {
+      const [rows, count, courtRows] = await Promise.all([
+        getAbonados(tenant.id, { status: statusFilter }, tx, {
+          limit: PAGE_SIZE,
+          offset: page * PAGE_SIZE,
+        }),
+        // El total del paginador (y del subtítulo del encabezado): mismo WHERE
+        // que getAbonados, aparte, para que "N turnos fijos" nunca hable solo
+        // del largo de esta página.
+        countAbonados(tenant.id, { status: statusFilter }, tx),
+        listCourts(tenant.id, tx),
+      ])
+      // Meses saldados y packs vigentes de las filas de esta página.
+      const coverageMap = await listAbonadoCoverageByIds(
+        tenant.id,
+        rows.map((r) => r.id),
+        tx,
+      )
+      const coverageById: Record<string, AbonadoCoverageSummary> = Object.fromEntries(coverageMap)
+      return {
+        abonados: rows,
+        total: count,
+        courts: courtRows.map((c) => ({ id: c.id, name: c.name })),
+        coverageById,
+      }
+    },
+  )
 
   const totalWord = total === 1 ? '1 turno fijo' : `${total} turnos fijos`
   const headerSubtitle = statusFilter
@@ -172,6 +188,8 @@ export default async function AbonadosPage(props: {
           <>
             <AbonadosList
               abonados={abonados}
+              coverageById={coverageById}
+              defaultYearMonth={artTodayStr().slice(0, 7)}
               filterLabel={statusFilter ? STATUS_LABELS[statusFilter].toLowerCase() : undefined}
               justCreated={justCreated}
               reactivateAction={reactivateAbonadoAction}
@@ -180,6 +198,8 @@ export default async function AbonadosPage(props: {
               courts={courts}
               previewUpdateAction={previewUpdateAbonadoAction}
               updateAction={updateAbonadoAction}
+              settleAction={settleAbonadoPeriodAction}
+              updateAgreementAction={updateAbonadoAgreementAction}
             />
             <Pager
               label="Paginación de turnos fijos"

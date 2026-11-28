@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { boundedText } from '@/shared/validation/primitives'
+import { settlementChargeLineSchema } from '@/modules/settlements/settlement.schema'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -28,6 +29,7 @@ export const createManualBookingSchema = z
     depositAmount: z.number().int().nonnegative().optional(),
     depositMethod: z.enum(['cash', 'transfer', 'mercadopago', 'other']).optional(),
     depositStatus: z.enum(['not_required', 'pending', 'paid', 'refunded', 'captured']).optional(),
+    markAlreadySettled: z.boolean().optional(),
     notesInternal: boundedText(1000).optional(),
     notesPlayer: boundedText(1000).optional(),
   })
@@ -113,6 +115,7 @@ const bookingRowResponseSchema = z.strictObject({
   courtId: uuid,
   playerId: uuid.nullable(),
   abonadoId: uuid.nullable(),
+  settlementId: uuid.nullable(),
   createdByStaff: z.string().nullable(),
   date: z.string(),
   timeStart: z.string(),
@@ -145,3 +148,35 @@ const bookingRowResponseSchema = z.strictObject({
 })
 
 export const bookingResponseSchema = z.strictObject({ data: bookingRowResponseSchema })
+
+export const createMultiDateEventSchema = z
+  .object({
+    courtId: uuid,
+    dates: z.array(dateStr).min(1, 'Elegí al menos una fecha.').max(15),
+    timeStart: hhmm,
+    timeEnd: hhmmEnd,
+    playerId: uuid.optional(),
+    guestName: boundedText(200).min(1, 'El nombre no puede estar vacío.').optional(),
+    guestPhone: boundedText(50).min(1, 'El teléfono no puede estar vacío.').optional(),
+    totalAmount: z.number().int().nonnegative().optional(),
+    paymentMode: z.enum(['unpaid', 'caja', 'already_settled']),
+    charges: z.array(settlementChargeLineSchema).max(10).optional(),
+    notesInternal: boundedText(1000).optional(),
+    clientIdempotencyKey: uuid.optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.paymentMode === 'caja' && (!data.charges || data.charges.length === 0)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['charges'],
+        message: 'Elegí al menos un método de pago.',
+      })
+    }
+    if (data.paymentMode === 'caja' && !data.clientIdempotencyKey) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['clientIdempotencyKey'],
+        message: 'Falta la clave de idempotencia del cobro.',
+      })
+    }
+  })

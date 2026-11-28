@@ -73,7 +73,7 @@ type SessionVerdict = {
 
 type AbonadoSnapshot = Pick<
   AbonadoRow,
-  'pricePerSession' | 'playerId' | 'contactName' | 'contactPhone'
+  'pricePerSession' | 'playerId' | 'contactName' | 'contactPhone' | 'billingMode'
 >
 
 /**
@@ -89,7 +89,12 @@ export function classifyAbonadoUpdate(
   input: UpdateAbonadoInput,
 ): { verdicts: SessionVerdict[]; counts: Omit<UpdateAbonadoCounts, 'moved'> } {
   const newPrice = input.pricePerSession
-  const priceChanges = newPrice !== undefined && newPrice !== abonado.pricePerSession
+  // Un acuerdo por mes guarda $ 0 en cada fecha (el mes se cobra aparte, ver
+  // `booking_settlements`): su "precio por turno" no se edita desde acá.
+  const priceChanges =
+    newPrice !== undefined &&
+    newPrice !== abonado.pricePerSession &&
+    abonado.billingMode !== 'monthly'
   const noAccount = abonado.playerId === null
 
   const counts = { futureSessions: sessions.length, priceUpdated: 0, keptOwnPrice: 0, keptPaid: 0 }
@@ -487,7 +492,8 @@ export async function updateAbonado(
       ...(input.dayOfWeek !== undefined && { dayOfWeek: input.dayOfWeek }),
       ...(input.timeStart !== undefined && { timeStart: input.timeStart }),
       ...(input.timeEnd !== undefined && { timeEnd: input.timeEnd }),
-      ...(input.pricePerSession !== undefined && { pricePerSession: input.pricePerSession }),
+      ...(input.pricePerSession !== undefined &&
+        abonado.billingMode !== 'monthly' && { pricePerSession: input.pricePerSession }),
       updatedAt: new Date(),
     })
     .where(eq(abonados.id, abonadoId))

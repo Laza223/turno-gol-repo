@@ -60,6 +60,7 @@ function wonBookingRow(): BookingRow {
     courtId: 'court-1',
     playerId: null, // sin jugador vinculado: evita la rama de notificación/ctxRows
     abonadoId: null,
+    settlementId: null,
     tournamentId: null,
     createdByStaff: null,
     completedByStaff: null,

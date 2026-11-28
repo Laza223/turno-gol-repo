@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { and, count, eq, lt, or, sql } from 'drizzle-orm'
 import { withTenant } from '@/server/middleware/with-tenant'
-import { bookings, courts, players } from '@/shared/db/schema'
+import { abonados, bookings, bookingSettlements, courts, players } from '@/shared/db/schema'
 import { sumBookingChargesByBooking } from '@/app/(admin)/reservas/queries'
 import { summarizeBookingCharges } from '@/modules/bookings/booking.charges'
 import { artTodayStr } from '@/shared/dates/art'
@@ -69,10 +69,25 @@ export const GET = withTenant(
         playerFirstName: players.firstName,
         playerLastName: players.lastName,
         playerPhone: players.phone,
+        abonadoBillingMode: abonados.billingMode,
+        settlementKind: bookingSettlements.kind,
+        settlementOrigin: bookingSettlements.paymentOrigin,
+        settlementAmount: bookingSettlements.amount,
       })
       .from(bookings)
       .leftJoin(courts, eq(bookings.courtId, courts.id))
       .leftJoin(players, eq(bookings.playerId, players.id))
+      .leftJoin(
+        abonados,
+        and(eq(bookings.abonadoId, abonados.id), eq(bookings.tenantId, abonados.tenantId)),
+      )
+      .leftJoin(
+        bookingSettlements,
+        and(
+          eq(bookings.settlementId, bookingSettlements.id),
+          eq(bookings.tenantId, bookingSettlements.tenantId),
+        ),
+      )
       .where(whereClause)
       .orderBy(sql`${bookings.createdAt} DESC, ${bookings.id} DESC`)
       .limit(limit + 1)
@@ -109,6 +124,7 @@ export const GET = withTenant(
         depositStatus: r.booking.depositStatus,
         chargesTotal: chargesByBooking.get(r.booking.id)?.total ?? 0,
         writtenOff: chargesByBooking.get(r.booking.id)?.writtenOff ?? 0,
+        settlementId: r.booking.settlementId,
       })
       return {
         total_paid: totalPaid,
@@ -147,6 +163,12 @@ export const GET = withTenant(
         // la respuesta.
         starts_at: r.booking.startsAt,
         ends_at: r.booking.endsAt,
+        abonado_id: r.booking.abonadoId ?? null,
+        abonado_billing_mode: r.abonadoBillingMode ?? null,
+        settlement_id: r.booking.settlementId ?? null,
+        settlement_kind: r.settlementKind ?? null,
+        settlement_origin: r.settlementOrigin ?? null,
+        settlement_amount: r.settlementAmount ?? null,
       }
     }
 

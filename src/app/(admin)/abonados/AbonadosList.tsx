@@ -8,6 +8,14 @@ import { usePathname, useRouter } from 'next/navigation'
 import { FileSpreadsheet, UserPlus, Users, Info } from 'lucide-react'
 import Link from 'next/link'
 import type { AbonadoRow } from '@/modules/abonados/abonado.types'
+import { formatYearMonthEs } from '@/lib/month-bounds'
+import type {
+  AbonadoBillingMode,
+  AbonadoCoverageSummary,
+  SettleAbonadoPeriodInput,
+  SettlementActionResult,
+  UpdateAbonadoAgreementResult,
+} from '@/modules/settlements/settlement.types'
 import type { AbonadoActionResult } from './actions'
 import type { PreviewAbonadoSlotsInput, PreviewAbonadoSlotsResult } from './nuevo/actions'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -35,6 +43,16 @@ const AbonadoEditDialog = dynamic(
   { ssr: false },
 )
 
+// Cobrar o saldar un mes o un pack, y cambiar cómo paga: también se bajan al abrirlos.
+const AbonadoSettlementDialog = dynamic(
+  () => import('./AbonadoSettlementDialog').then((m) => m.AbonadoSettlementDialog),
+  { ssr: false },
+)
+const AbonadoAgreementDialog = dynamic(
+  () => import('./AbonadoAgreementDialog').then((m) => m.AbonadoAgreementDialog),
+  { ssr: false },
+)
+
 const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const DAY_LABELS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
 
@@ -50,7 +68,7 @@ function defaultCancelDate(): string {
   return d.toISOString().slice(0, 10)
 }
 
-type DialogKind = 'reactivate' | 'cancel' | 'cancel-single' | 'edit' | null
+type DialogKind = 'reactivate' | 'cancel' | 'cancel-single' | 'edit' | 'settle' | 'agreement' | null
 
 type RowState = {
   dialog: DialogKind
@@ -86,8 +104,20 @@ type PreviewAbonadoSlotsAction = (
   input: PreviewAbonadoSlotsInput,
 ) => Promise<PreviewAbonadoSlotsResult>
 
+type SettleAbonadoAction = (input: SettleAbonadoPeriodInput) => Promise<SettlementActionResult>
+type UpdateAbonadoAgreementAction = (input: {
+  abonadoId: string
+  billingMode: AbonadoBillingMode
+  pricePerSession: number
+  agreedAmount: number
+}) => Promise<UpdateAbonadoAgreementResult>
+
 type Props = {
   abonados: AbonadoRow[]
+  /** Meses saldados y packs vigentes por turno fijo. */
+  coverageById?: Record<string, AbonadoCoverageSummary>
+  /** Mes (AAAA-MM) desde el que ofrece "Saldar mes". */
+  defaultYearMonth?: string
   /** Etiqueta del filtro activo (ej. "activos"), para un empty state que explique el vacío. */
   filterLabel?: string
   /** H054: viene de `?created=1` — page.tsx lo levanta del redirect de /abonados/nuevo. */
@@ -99,10 +129,61 @@ type Props = {
   courts: EditableCourt[]
   previewUpdateAction: PreviewUpdateAbonado
   updateAction: UpdateAbonadoFromDialog
+  settleAction?: SettleAbonadoAction
+  updateAgreementAction?: UpdateAbonadoAgreementAction
+}
+
+const PILL =
+  'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold bg-emerald-500/15 text-emerald-800 dark:text-emerald-300'
+
+/** Cómo paga el turno fijo y qué parte ya está saldada. */
+function AbonadoAgreementInfo({
+  abonado: a,
+  coverage,
+}: {
+  abonado: AbonadoRow
+  coverage?: AbonadoCoverageSummary
+}) {
+  const coveredMonths = coverage?.coveredMonths ?? []
+  const remainingPack = coverage?.remainingPackSessions ?? 0
+  const packTotal = coverage?.activePackTotalCredits ?? 0
+
+  const mainLabel =
+    a.billingMode === 'monthly'
+      ? a.agreedAmount > 0
+        ? `${formatArs(a.agreedAmount)} por mes`
+        : 'Por mes'
+      : a.billingMode === 'pack'
+        ? a.pricePerSession > 0
+          ? `${formatArs(a.pricePerSession)} por turno`
+          : 'Pack de turnos'
+        : formatArs(a.pricePerSession)
+
+  return (
+    <div className="space-y-1">
+      <div className="font-medium tabular-nums text-foreground">{mainLabel}</div>
+      {coveredMonths.length > 0 && (
+        <span className={PILL}>Saldado: {coveredMonths.map(formatYearMonthEs).join(', ')}</span>
+      )}
+      {remainingPack > 0 && (
+        <span className={PILL}>
+          Pack: quedan {remainingPack}
+          {packTotal > 0 ? ` de ${packTotal}` : ''}
+        </span>
+      )}
+      {a.billingMode === 'monthly' && coveredMonths.length === 0 && remainingPack === 0 && (
+        <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+          Mes sin saldar
+        </span>
+      )}
+    </div>
+  )
 }
 
 export function AbonadosList({
   abonados,
+  coverageById,
+  defaultYearMonth,
   filterLabel,
   justCreated,
   reactivateAction,
@@ -111,6 +192,8 @@ export function AbonadosList({
   courts,
   previewUpdateAction,
   updateAction,
+  settleAction,
+  updateAgreementAction,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
@@ -199,6 +282,10 @@ export function AbonadosList({
                 <AbonadoTableRow
                   key={a.id}
                   abonado={a}
+                  coverage={coverageById?.[a.id]}
+                  settleAction={settleAction}
+                  updateAgreementAction={updateAgreementAction}
+                  defaultYearMonth={defaultYearMonth}
                   reactivateAction={reactivateAction}
                   cancelAction={cancelAction}
                   previewSlotsAction={previewSlotsAction}
@@ -216,6 +303,10 @@ export function AbonadosList({
               <AbonadoCard
                 key={a.id}
                 abonado={a}
+                coverage={coverageById?.[a.id]}
+                settleAction={settleAction}
+                updateAgreementAction={updateAgreementAction}
+                defaultYearMonth={defaultYearMonth}
                 reactivateAction={reactivateAction}
                 cancelAction={cancelAction}
                 previewSlotsAction={previewSlotsAction}
@@ -238,6 +329,9 @@ type AbonadoServerActions = {
   courts: EditableCourt[]
   previewUpdateAction: PreviewUpdateAbonado
   updateAction: UpdateAbonadoFromDialog
+  settleAction?: SettleAbonadoAction
+  updateAgreementAction?: UpdateAbonadoAgreementAction
+  defaultYearMonth?: string
 }
 
 /**
@@ -342,12 +436,48 @@ function AbonadoActionDialogs({
   abonado: a,
   actions,
   server,
+  coverage,
 }: {
   abonado: AbonadoRow
   actions: ReturnType<typeof useAbonadoActions>
   server: AbonadoServerActions
+  coverage?: AbonadoCoverageSummary
 }) {
+  const router = useRouter()
   if (actions.state.dialog === null) return null
+  if (actions.state.dialog === 'settle') {
+    if (!server.settleAction) return null
+    return createPortal(
+      <AbonadoSettlementDialog
+        target={{
+          abonadoId: a.id,
+          contactName: a.contactName,
+          pricePerSession: a.pricePerSession,
+          billingMode: a.billingMode,
+          agreedAmount: a.agreedAmount,
+          coveredMonths: coverage?.coveredMonths,
+          remainingPackSessions: coverage?.remainingPackSessions,
+        }}
+        defaultYearMonth={server.defaultYearMonth ?? todayART().slice(0, 7)}
+        settleAction={server.settleAction}
+        onClose={actions.closeDialog}
+        onSuccess={() => router.refresh()}
+      />,
+      document.body,
+    )
+  }
+  if (actions.state.dialog === 'agreement') {
+    if (!server.updateAgreementAction) return null
+    return createPortal(
+      <AbonadoAgreementDialog
+        abonado={a}
+        updateAction={server.updateAgreementAction}
+        onClose={actions.closeDialog}
+        onSuccess={() => router.refresh()}
+      />,
+      document.body,
+    )
+  }
   if (actions.state.dialog === 'edit') {
     return createPortal(
       <AbonadoEditDialog
@@ -384,8 +514,9 @@ function AbonadoActionDialogs({
 
 function AbonadoTableRow({
   abonado: a,
+  coverage,
   ...serverActions
-}: { abonado: AbonadoRow } & AbonadoServerActions) {
+}: { abonado: AbonadoRow; coverage?: AbonadoCoverageSummary } & AbonadoServerActions) {
   const actions = useAbonadoActions(a, serverActions)
   const isActive = a.status === 'active'
   const isPaused = a.status === 'paused'
@@ -400,13 +531,25 @@ function AbonadoTableRow({
           <div>{a.contactName}</div>
           <div className="text-muted-foreground text-xs">{a.contactPhone}</div>
         </Td>
-        <Td numeric>{formatArs(a.pricePerSession)}</Td>
+        <Td numeric>
+          <AbonadoAgreementInfo abonado={a} coverage={coverage} />
+        </Td>
         <Td>
           <AbonadoStatusBadge status={a.status} />
         </Td>
         <Td className="space-x-3">
           {isActive && (
             <>
+              {serverActions.settleAction && (
+                <button
+                  type="button"
+                  disabled={actions.isPending}
+                  onClick={() => actions.openDialog('settle')}
+                  className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cobrar o saldar
+                </button>
+              )}
               <button
                 type="button"
                 disabled={actions.isPending}
@@ -415,6 +558,16 @@ function AbonadoTableRow({
               >
                 Editar turno fijo
               </button>
+              {serverActions.updateAgreementAction && (
+                <button
+                  type="button"
+                  disabled={actions.isPending}
+                  onClick={() => actions.openDialog('agreement')}
+                  className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cómo paga
+                </button>
+              )}
               <button
                 type="button"
                 disabled={actions.isPending}
@@ -456,7 +609,12 @@ function AbonadoTableRow({
         </Td>
       </Tr>
 
-      <AbonadoActionDialogs abonado={a} actions={actions} server={serverActions} />
+      <AbonadoActionDialogs
+        abonado={a}
+        actions={actions}
+        server={serverActions}
+        coverage={coverage}
+      />
     </>
   )
 }
@@ -464,8 +622,9 @@ function AbonadoTableRow({
 /** Card mobile (<640px): mismos datos y acciones que la fila, con touch targets de 44px. */
 function AbonadoCard({
   abonado: a,
+  coverage,
   ...serverActions
-}: { abonado: AbonadoRow } & AbonadoServerActions) {
+}: { abonado: AbonadoRow; coverage?: AbonadoCoverageSummary } & AbonadoServerActions) {
   const actions = useAbonadoActions(a, serverActions)
   const isActive = a.status === 'active'
   const isPaused = a.status === 'paused'
@@ -485,11 +644,23 @@ function AbonadoCard({
         </div>
         <AbonadoStatusBadge status={a.status} />
       </div>
-      <p className="text-sm text-muted-foreground">Turno {formatArs(a.pricePerSession)}</p>
+      <div className="text-sm text-muted-foreground">
+        <AbonadoAgreementInfo abonado={a} coverage={coverage} />
+      </div>
       {(isActive || isPaused) && (
         <div className="flex flex-wrap gap-2">
           {isActive && (
             <>
+              {serverActions.settleAction && (
+                <button
+                  type="button"
+                  disabled={actions.isPending}
+                  onClick={() => actions.openDialog('settle')}
+                  className={`${actionButtonClass} font-semibold text-emerald-700 dark:text-emerald-400`}
+                >
+                  Cobrar o saldar
+                </button>
+              )}
               <button
                 type="button"
                 disabled={actions.isPending}
@@ -498,6 +669,16 @@ function AbonadoCard({
               >
                 Editar turno fijo
               </button>
+              {serverActions.updateAgreementAction && (
+                <button
+                  type="button"
+                  disabled={actions.isPending}
+                  onClick={() => actions.openDialog('agreement')}
+                  className={`${actionButtonClass} text-blue-600 dark:text-blue-400`}
+                >
+                  Cómo paga
+                </button>
+              )}
               <button
                 type="button"
                 disabled={actions.isPending}
@@ -528,7 +709,12 @@ function AbonadoCard({
           </button>
         </div>
       )}
-      <AbonadoActionDialogs abonado={a} actions={actions} server={serverActions} />
+      <AbonadoActionDialogs
+        abonado={a}
+        actions={actions}
+        server={serverActions}
+        coverage={coverage}
+      />
     </li>
   )
 }

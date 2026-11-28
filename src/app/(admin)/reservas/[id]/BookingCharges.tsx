@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { CalendarCheck2, CheckCheck, CheckCircle2, Undo2 } from 'lucide-react'
@@ -92,7 +92,7 @@ export default function BookingCharges({
   const [alreadySettledOpen, setAlreadySettledOpen] = useState(false)
   const [undoSettlementOpen, setUndoSettlementOpen] = useState(false)
   const [abonadoTarget, setAbonadoTarget] = useState<AbonadoSettlementTarget | null>(null)
-  const [settlementKey, setSettlementKey] = useState(() => crypto.randomUUID())
+  const settlementKeyRef = useRef<string | null>(null)
   const [loadingAbonado, startLoadingAbonado] = useTransition()
   // `resetLastId` corre DENTRO de la transición del hook (después de un cobro
   // resuelto), así que no puede tocar el `setIdempotencyKey` de ESTE render
@@ -419,10 +419,10 @@ export default function BookingCharges({
               bookingIds: [booking.id],
               paymentOrigin: 'already_settled',
               amount: 0,
-              clientIdempotencyKey: settlementKey,
+              clientIdempotencyKey: (settlementKeyRef.current ??= crypto.randomUUID()),
             })
             if (res.success) {
-              setSettlementKey(crypto.randomUUID())
+              settlementKeyRef.current = null
               toast({ title: 'Turno marcado como saldado', variant: 'success' })
               router.refresh()
               return { success: true }

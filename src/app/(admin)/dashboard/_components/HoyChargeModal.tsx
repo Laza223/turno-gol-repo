@@ -304,8 +304,15 @@ export function HoyChargeModal({
     if (!booking.abonadoId || !actions.getAbonadoBillingOverviewAction || loadingAbonado) return
     setError(null)
     setLoadingAbonado(true)
-    const res = await actions.getAbonadoBillingOverviewAction(booking.abonadoId)
-    setLoadingAbonado(false)
+    let res: Awaited<ReturnType<NonNullable<typeof actions.getAbonadoBillingOverviewAction>>>
+    try {
+      res = await actions.getAbonadoBillingOverviewAction(booking.abonadoId)
+    } catch {
+      setError('No pudimos abrir el abonado. Probá de nuevo.')
+      return
+    } finally {
+      setLoadingAbonado(false)
+    }
     if (!res.success) {
       setError(res.error)
       return

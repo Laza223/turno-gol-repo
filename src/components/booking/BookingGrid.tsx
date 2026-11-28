@@ -174,14 +174,12 @@ export function BookingGrid({
   const canBatchSettle = Boolean(slotPanelActions?.settleBookingsBatchAction)
 
   const toggleBatchMode = useCallback(() => {
-    setBatchSelecting((prev) => {
-      if (prev) {
-        setSelectedBatchIds(new Set())
-        setBatchDialogOpen(false)
-      }
-      return !prev
-    })
-  }, [])
+    if (batchSelecting) {
+      setSelectedBatchIds(new Set())
+      setBatchDialogOpen(false)
+    }
+    setBatchSelecting(!batchSelecting)
+  }, [batchSelecting])
 
   const toggleBatchBooking = useCallback((bookingId: string) => {
     setSelectedBatchIds((prev) => {

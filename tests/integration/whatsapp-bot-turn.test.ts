@@ -1,11 +1,11 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { faker } from '@faker-js/faker'
 import { closeSql } from '@/shared/db/client'
 import { clearFeatureFlagCache } from '@/shared/feature-flags'
 import { DAY_KEYS } from '@/shared/time/week-days'
 import { addDays, artTodayStr } from '@/shared/dates/art'
 import type { NormalizedWhatsappEvent } from '@/lib/kapso/events.schema'
-import { sendWhatsappText } from '@/lib/kapso/client'
+import { sendWhatsappTemplate, sendWhatsappText } from '@/lib/kapso/client'
 import { fetchInboundAudio } from '@/lib/kapso/media'
 import { isGroqConfigured, transcribeAudio } from '@/lib/groq/transcribe'
 import { captureException } from '@/lib/sentry'
@@ -265,6 +265,7 @@ beforeEach(() => {
   // El caché de flags es por proceso (60 s): cada test arranca sin valores viejos.
   clearFeatureFlagCache()
   vi.mocked(sendWhatsappText).mockReset()
+  vi.mocked(sendWhatsappTemplate).mockReset()
   vi.mocked(runAgent).mockReset()
   vi.mocked(notifyAdminPush).mockReset()
   vi.mocked(captureException).mockReset()
@@ -1468,5 +1469,79 @@ describe('el bot según el estado del complejo (TurnoGol Plus, P8)', () => {
     await setTenantStatus(canceled.tenantId, 'canceled', new Date(now.getTime() + 5 * 86_400_000))
     expect(await processWhatsappTurn({ tenantId: canceled.tenantId, chatId }, now)).toBe('replied')
     expect(runAgent).toHaveBeenCalledTimes(1)
+  })
+})
+
+// ─── Alerta de derivación: cada complejo, a su teléfono ──────────────────────
+
+describe('pasar_a_humano — la alerta por WhatsApp nunca cruza de complejo', () => {
+  // La variable global que existía antes. Queda cargada a propósito: si el turno
+  // volviera a leerla, estos tests se ponen rojos.
+  const GLOBAL_PHONE = '+5491100000000'
+
+  beforeEach(() => {
+    vi.stubEnv('WHATSAPP_OWNER_ALERT_PHONE', GLOBAL_PHONE)
+    vi.mocked(sendWhatsappTemplate).mockResolvedValue({ waMessageId: waId('alert') })
+    // El modelo es lo único falso: corre la herramienta REAL que arma el turno.
+    vi.mocked(runAgent).mockImplementation(async ({ tools }) => {
+      await tools
+        .find((t) => t.definition.name === 'pasar_a_humano')!
+        .run({
+          tipo: 'reclamo',
+          motivo_corto: 'Quiere hablar con el encargado',
+          nombre_jugador: 'Juan',
+          mensaje_al_jugador: 'Lo chequeo con el encargado y te respondo por acá.',
+        })
+      return { ...agentResult('Lo chequeo y te respondo por acá.'), outcome: 'handoff' }
+    })
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  async function handoffTurn(s: Seed): Promise<void> {
+    const chatId = await addChat(s)
+    const now = new Date()
+    await seedMessage(s, chatId, {
+      direction: 'inbound',
+      body: 'quiero hablar con alguien',
+      createdAt: ago(now, MINUTE_MS),
+    })
+    expect(await processWhatsappTurn({ tenantId: s.tenantId, chatId }, now)).toBe('handoff')
+  }
+
+  const setAlertPhone = (tenantId: string, phone: string) => adminSql()`
+    UPDATE whatsapp_connections SET owner_alert_phone = ${phone} WHERE tenant_id = ${tenantId}
+  `
+
+  const alerts = () => vi.mocked(sendWhatsappTemplate).mock.calls.map(([params]) => params)
+
+  it('dos complejos con teléfono: cada alerta sale solo al del propio complejo', async () => {
+    const a = await seed()
+    const b = await seed()
+    await setAlertPhone(a.tenantId, '+5491111111111')
+    await setAlertPhone(b.tenantId, '+5491122222222')
+
+    await handoffTurn(a)
+    await handoffTurn(b)
+
+    expect(alerts().map((p) => [p.to, p.bodyParameters[0]])).toEqual([
+      ['5491111111111', `Juan (+${a.phone})`],
+      ['5491122222222', `Juan (+${b.phone})`],
+    ])
+  })
+
+  it('el complejo sin teléfono no manda ningún WhatsApp: queda el push, solo el suyo', async () => {
+    const withPhone = await seed()
+    const without = await seed()
+    await setAlertPhone(withPhone.tenantId, '+5491111111111')
+
+    await handoffTurn(without)
+
+    expect(sendWhatsappTemplate).not.toHaveBeenCalled()
+    expect(vi.mocked(notifyAdminPush).mock.calls.map(([tenantId]) => tenantId)).toEqual([
+      without.tenantId,
+    ])
   })
 })

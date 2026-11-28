@@ -29,6 +29,12 @@ export const whatsappConnections = pgTable('whatsapp_connections', {
     .default('connected'),
   /** Corte del día a día por complejo. El flag `whatsapp_bot` es el gate de la feature. */
   enabled: boolean('enabled').notNull().default(false),
+  /**
+   * WhatsApp personal que carga el dueño para las derivaciones (migr. 122).
+   * `+<dígitos>`; NULL = solo push. Es el ÚNICO destino de esa alerta: nunca un
+   * número global, porque lleva datos de jugadores de este complejo.
+   */
+  ownerAlertPhone: text('owner_alert_phone'),
   createdAt: timestamp('created_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true, mode: 'date' }).notNull().defaultNow(),
 })

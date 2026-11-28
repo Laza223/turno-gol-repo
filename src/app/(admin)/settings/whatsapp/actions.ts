@@ -11,7 +11,9 @@ import {
   findAndRegisterWhatsappConnection,
   getWhatsappPlusState,
   setWhatsappBotEnabled,
+  setWhatsappOwnerAlertPhone,
   startWhatsappConnect,
+  type OwnerAlertPhoneError,
 } from '@/modules/whatsapp-bot/whatsapp-bot.connection'
 import { CONNECT_ERROR_MESSAGE } from './connect-messages'
 
@@ -41,6 +43,36 @@ export async function setWhatsappBotEnabledAction(
 
   revalidatePath('/settings/whatsapp')
   return { success: true }
+}
+
+const ALERT_PHONE_ERROR_MESSAGE: Record<OwnerAlertPhoneError, string> = {
+  sin_conexion: 'Primero conectá el WhatsApp del complejo.',
+  telefono_invalido:
+    'No pudimos leer ese número. Escribilo con la característica, por ejemplo 11 2345 6789.',
+  numero_del_asistente:
+    'Ese es el número del asistente y no puede avisarse a sí mismo. Cargá otro.',
+}
+
+export async function setWhatsappAlertPhoneAction(
+  _prevState: ActionResult<{ phone: string | null }> | null,
+  formData: FormData,
+): Promise<ActionResult<{ phone: string | null }>> {
+  const auth = await requireAdminStaffAction()
+  if (!auth.ok) return { success: false, error: auth.error }
+  const { tenant, user } = auth
+
+  const limited = await adminRateLimited(tenant.id)
+  if (limited) return { success: false, error: limited }
+
+  const parsed = z.string().max(40).safeParse(formData.get('ownerAlertPhone'))
+  if (!parsed.success) return { success: false, error: 'Datos inválidos.' }
+  if ((await getWhatsappPlusState(tenant.id)) === null) return { success: false, error: NO_PLUS }
+
+  const result = await setWhatsappOwnerAlertPhone(tenant.id, parsed.data, user.staffUserId)
+  if (!result.ok) return { success: false, error: ALERT_PHONE_ERROR_MESSAGE[result.error] }
+
+  revalidatePath('/settings/whatsapp')
+  return { success: true, phone: result.phone }
 }
 
 /** "Conectar mi WhatsApp": manda al dueño al link de Kapso. */

@@ -81,7 +81,6 @@ function makeSchema(isProd: boolean) {
     OPENAI_API_KEY: z.string().min(1).optional(),
     OPENAI_BOT_REASONING_EFFORT: z.enum(['low', 'medium']).optional(),
     KAPSO_ALERTS_PHONE_NUMBER_ID: z.string().min(1).optional(),
-    WHATSAPP_OWNER_ALERT_PHONE: z.string().min(1).optional(),
     WHATSAPP_HANDOFF_TEMPLATE_NAME: z.string().min(1).optional(),
     WHATSAPP_HANDOFF_TEMPLATE_LANG: z.string().min(1).optional(),
     // Respaldo de la transcripción de audios del bot (Whisper en Groq, plan

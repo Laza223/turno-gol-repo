@@ -79,12 +79,7 @@ const DB_ONLY_TABLES_ALLOWLIST = new Set<string>([])
 // futuro se agregan acá con el prefijo pedido por el contrato, citando el
 // hallazgo — hoy vacío salvo la entrada de audit_logs (que técnicamente no
 // dispara falla, ver comentario arriba).
-const KNOWN_DB_ONLY_COLUMNS = new Set<string>([
-  ...KNOWN_DEAD_BUT_NOT_DRIFTED_COLUMNS,
-  // TEMPORAL: la migración 122 llega a prod antes que el código. El PR del
-  // código declara la columna en schema/whatsapp.ts y BORRA esta entrada.
-  'whatsapp_connections.owner_alert_phone',
-])
+const KNOWN_DB_ONLY_COLUMNS = new Set<string>([...KNOWN_DEAD_BUT_NOT_DRIFTED_COLUMNS])
 
 // ─── Mapeo de tipo base (elemento de array) → udt_name de Postgres ─────
 // Solo los tipos base que el schema usa hoy dentro de `.array()`

@@ -5,9 +5,11 @@ import { clearFeatureFlagCache } from '@/shared/feature-flags'
 import {
   BOT_FEATURE_FLAG,
   getWhatsappPlusState,
+  setWhatsappOwnerAlertPhone,
   registerWhatsappConnection,
   setWhatsappBotEnabled,
 } from '@/modules/whatsapp-bot/whatsapp-bot.connection'
+import { toWhatsappDigits } from '@/lib/whatsapp'
 import { withTenantContext } from '@/shared/db/client'
 import { adminSql } from '../helpers/admin-db'
 import { createTestTenant, ensureRoles, type TestTenant } from '../helpers/tenant'
@@ -153,6 +155,65 @@ describe('registerWhatsappConnection (Postgres real)', () => {
   })
 })
 
+describe('setWhatsappOwnerAlertPhone (Postgres real)', () => {
+  const phoneOf = async (tenantId: string) => {
+    const [row] = await adminSql()<{ owner_alert_phone: string | null }[]>`
+      SELECT owner_alert_phone FROM whatsapp_connections WHERE tenant_id = ${tenantId}
+    `
+    return row?.owner_alert_phone
+  }
+
+  async function connectedTenant() {
+    const tenant = await createTestTenant(adminSql())
+    await registerWhatsappConnection(tenant, kapsoNumber(tenant), ACTOR)
+    return tenant
+  }
+
+  it('guarda con + solo en el complejo que lo carga, y el texto vacío lo borra', async () => {
+    const a = await connectedTenant()
+    const b = await connectedTenant()
+
+    expect(await setWhatsappOwnerAlertPhone(a.id, '011 15 5555-4444', ACTOR)).toEqual({
+      ok: true,
+      phone: '+5491155554444',
+    })
+    expect(await phoneOf(a.id)).toBe('+5491155554444')
+    expect(await phoneOf(b.id)).toBeNull()
+
+    expect(await setWhatsappOwnerAlertPhone(a.id, '   ', ACTOR)).toEqual({ ok: true, phone: null })
+    expect(await phoneOf(a.id)).toBeNull()
+  })
+
+  it('un número de otro país no se relee como argentino al volver a normalizarlo', async () => {
+    const tenant = await connectedTenant()
+    await setWhatsappOwnerAlertPhone(tenant.id, '+598 99 123 456', ACTOR)
+    const stored = await phoneOf(tenant.id)
+    expect(stored).toBe('+59899123456')
+    expect(toWhatsappDigits(stored)).toBe('59899123456')
+  })
+
+  it.each([
+    ['demasiado corto', '5555', 'telefono_invalido'],
+    ['más de 15 dígitos', '+1 2345 6789 0123 4567', 'telefono_invalido'],
+    ['texto', 'mi celu', 'telefono_invalido'],
+    ['el número del asistente', '11 1111-1111', 'numero_del_asistente'],
+  ])('rechaza %s sin pisar el que estaba', async (_label, raw, error) => {
+    const tenant = await connectedTenant()
+    await setWhatsappOwnerAlertPhone(tenant.id, '11 5555-4444', ACTOR)
+
+    expect(await setWhatsappOwnerAlertPhone(tenant.id, raw, ACTOR)).toEqual({ ok: false, error })
+    expect(await phoneOf(tenant.id)).toBe('+5491155554444')
+  })
+
+  it('sin conexión devuelve sin_conexion', async () => {
+    const tenant = await createTestTenant(adminSql())
+    expect(await setWhatsappOwnerAlertPhone(tenant.id, '11 5555-4444', ACTOR)).toEqual({
+      ok: false,
+      error: 'sin_conexion',
+    })
+  })
+})
+
 describe('getWhatsappPlusState (Postgres real)', () => {
   it('distingue flag apagado, flag prendido sin conexión y con conexión', async () => {
     const tenant = await createTestTenant(adminSql())
@@ -168,7 +229,12 @@ describe('getWhatsappPlusState (Postgres real)', () => {
 
     await registerWhatsappConnection(tenant, kapsoNumber(tenant), ACTOR)
     expect(await getWhatsappPlusState(tenant.id)).toEqual({
-      connection: { displayPhoneNumber: '+54 9 11 1111-1111', connected: true, enabled: false },
+      connection: {
+        displayPhoneNumber: '+54 9 11 1111-1111',
+        connected: true,
+        enabled: false,
+        ownerAlertPhone: null,
+      },
     })
   })
 })

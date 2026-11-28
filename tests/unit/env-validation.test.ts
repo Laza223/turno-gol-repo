@@ -107,7 +107,6 @@ describe('validateServerEnv', () => {
         OPENAI_API_KEY: 'sk-test',
         OPENAI_BOT_REASONING_EFFORT: 'medium',
         KAPSO_ALERTS_PHONE_NUMBER_ID: 'pn-alerts',
-        WHATSAPP_OWNER_ALERT_PHONE: '+5491155554444',
         WHATSAPP_HANDOFF_TEMPLATE_NAME: 'turnogol_alerta_derivacion',
         WHATSAPP_HANDOFF_TEMPLATE_LANG: 'es_AR',
       }),

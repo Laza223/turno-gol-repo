@@ -6,6 +6,7 @@ import { isFeatureEnabled } from '@/shared/feature-flags'
 import { canTakeOnlineBookings } from '@/modules/tenants/tenant.lifecycle'
 import { isUniqueViolation } from '@/shared/db/pg-errors'
 import { logger } from '@/shared/lib/logger'
+import { toWhatsappDigits } from '@/lib/whatsapp'
 import {
   KapsoPlatformError,
   createKapsoSetupLink,
@@ -54,6 +55,7 @@ export type WhatsappConnectionView = {
   displayPhoneNumber: string | null
   connected: boolean
   enabled: boolean
+  ownerAlertPhone: string | null
 }
 
 /**
@@ -75,6 +77,7 @@ export async function getWhatsappPlusState(
         displayPhoneNumber: whatsappConnections.displayPhoneNumber,
         status: whatsappConnections.status,
         enabled: whatsappConnections.enabled,
+        ownerAlertPhone: whatsappConnections.ownerAlertPhone,
       })
       .from(whatsappConnections)
       .where(eq(whatsappConnections.tenantId, tenantId))
@@ -86,6 +89,7 @@ export async function getWhatsappPlusState(
       displayPhoneNumber: row.displayPhoneNumber,
       connected: row.status === 'connected',
       enabled: row.enabled,
+      ownerAlertPhone: row.ownerAlertPhone,
     },
   }
 }
@@ -102,6 +106,57 @@ export async function setWhatsappBotEnabled(
     .where(eq(whatsappConnections.tenantId, tenantId))
     .returning({ id: whatsappConnections.id })
   return updated.length > 0
+}
+
+export type OwnerAlertPhoneError = 'sin_conexion' | 'telefono_invalido' | 'numero_del_asistente'
+
+/** Tope de E.164, el mismo del CHECK de la migración 122. */
+const MAX_PHONE_DIGITS = 15
+
+/**
+ * Guarda (o borra, con el texto vacío) el WhatsApp donde el dueño recibe las
+ * derivaciones. Se guarda `+<dígitos>`: sin el `+`, al mandar la alerta un número
+ * de otro país se releería como argentino y los datos del jugador irían a un
+ * tercero. El audit no lleva el número.
+ */
+export async function setWhatsappOwnerAlertPhone(
+  tenantId: string,
+  raw: string,
+  actorId: string,
+): Promise<{ ok: true; phone: string | null } | { ok: false; error: OwnerAlertPhoneError }> {
+  const typed = raw.trim()
+  const digits = toWhatsappDigits(typed)
+  if (typed && (!digits || digits.length > MAX_PHONE_DIGITS)) {
+    return { ok: false, error: 'telefono_invalido' }
+  }
+  const phone = digits ? `+${digits}` : null
+
+  return withTenantContext(tenantId, async (tx) => {
+    const [connection] = await tx
+      .select({ displayPhoneNumber: whatsappConnections.displayPhoneNumber })
+      .from(whatsappConnections)
+      .where(eq(whatsappConnections.tenantId, tenantId))
+      .limit(1)
+    if (!connection) return { ok: false as const, error: 'sin_conexion' as const }
+    // Un número no puede mandarse un WhatsApp a sí mismo: la alerta no llegaría.
+    if (digits && toWhatsappDigits(connection.displayPhoneNumber) === digits) {
+      return { ok: false as const, error: 'numero_del_asistente' as const }
+    }
+    await tx
+      .update(whatsappConnections)
+      .set({ ownerAlertPhone: phone, updatedAt: new Date() })
+      .where(eq(whatsappConnections.tenantId, tenantId))
+    await insertAuditLog(tx, {
+      tenantId,
+      actorId,
+      actorType: 'staff',
+      action: 'whatsapp.alert_phone_updated',
+      resourceType: 'tenant',
+      resourceId: tenantId,
+      metadata: { removed: phone === null },
+    })
+    return { ok: true as const, phone }
+  })
 }
 
 export type WhatsappConnectError =

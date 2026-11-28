@@ -107,10 +107,17 @@ describe('uploadRivalPhotoAction', () => {
     expect(mocks.setPlayerPhoto).not.toHaveBeenCalled()
   })
 
-  it('caso feliz: pasa los bytes al servicio, devuelve la URL y revalida', async () => {
-    const res = await uploadRivalPhotoAction(formWith(photo()))
+  it('caso feliz: al servicio le llega lo recomprimido, devuelve la URL y revalida', async () => {
+    // Un JPEG de Safari entra y lo que se guarda es lo que salió de la recompresión.
+    const compressed = new Uint8Array([9, 9])
+    vi.mocked(compressUpload).mockResolvedValueOnce(compressed)
+    const jpeg = new Blob([new Uint8Array([1, 2, 3])], { type: 'image/jpeg' })
+
+    const res = await uploadRivalPhotoAction(formWith(jpeg))
+
     expect(res).toEqual({ success: true, url: 'https://media.example.test/rival/avatars/new.webp' })
-    expect(mocks.setPlayerPhoto).toHaveBeenCalledWith('player-1', new Uint8Array([1, 2, 3]))
+    expect(vi.mocked(compressUpload)).toHaveBeenCalledWith(new Uint8Array([1, 2, 3]), 'logo')
+    expect(mocks.setPlayerPhoto).toHaveBeenCalledWith('player-1', compressed)
     expect(mocks.revalidatePath).toHaveBeenCalledWith('/configuracion')
     expect(mocks.revalidatePath).toHaveBeenCalledWith('/rival', 'layout')
   })

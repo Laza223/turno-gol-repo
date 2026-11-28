@@ -167,8 +167,14 @@ export function MonthBoard({
                   />
                 </div>
                 <p className="mt-1 text-xs tabular-nums text-muted-foreground">
-                  {c.bookingCount} {c.bookingCount === 1 ? 'turno' : 'turnos'} ·{' '}
-                  {formatPct(c.occupancyPct)} ocupada
+                  {c.multiCourt ? (
+                    'Saldados que cubren más de una cancha'
+                  ) : (
+                    <>
+                      {c.bookingCount} {c.bookingCount === 1 ? 'turno' : 'turnos'} ·{' '}
+                      {formatPct(c.occupancyPct)} ocupada
+                    </>
+                  )}
                 </p>
               </li>
             ))}

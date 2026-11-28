@@ -253,6 +253,35 @@ export const MesCerrado: Story = {
   },
 }
 
+/** Un saldado que cubre dos canchas no tiene cancha propia: entra como "Varias canchas". */
+export const VariasCanchas: Story = {
+  render: () => (
+    <Page
+      report={{
+        ...CLOSED,
+        byCourt: [
+          ...CLOSED.byCourt,
+          courtReport({
+            courtId: 'varias-canchas',
+            courtName: 'Varias canchas',
+            multiCourt: true,
+            income: 200_000 * K,
+            bookingCount: 0,
+            occupancyPct: 0,
+          }),
+        ],
+      }}
+      month="2026-02"
+      isCurrent={false}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Varias canchas')).toBeVisible()
+    await expect(canvas.getByText('Saldados que cubren más de una cancha')).toBeVisible()
+  },
+}
+
 /** Primer mes con datos: sin mes anterior no hay comparación que mostrar. */
 export const PrimerMes: Story = {
   render: () => <Page report={revenueReportFirstMonth()} month="2026-03" isCurrent />,

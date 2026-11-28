@@ -51,6 +51,13 @@ export const settleAbonadoPeriodSchema = z
           message: 'Elegí al menos un método de pago.',
         })
       }
+      if (!data.clientIdempotencyKey) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['clientIdempotencyKey'],
+          message: 'Falta la clave de idempotencia del cobro.',
+        })
+      }
     }
   })
 
@@ -76,6 +83,13 @@ export const settleBookingsBatchSchema = z
           code: 'custom',
           path: ['charges'],
           message: 'Elegí al menos un método de pago.',
+        })
+      }
+      if (!data.clientIdempotencyKey) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['clientIdempotencyKey'],
+          message: 'Falta la clave de idempotencia del cobro.',
         })
       }
     }

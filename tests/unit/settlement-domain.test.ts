@@ -215,8 +215,28 @@ describe('validación Zod de settlements, abonos y eventos multi-fecha', () => {
       amount: 100_000_00,
       creditsTotal: 4,
       charges: [{ amount: 100_000_00, method: 'transfer' }],
+      clientIdempotencyKey: VALID_UUID_2,
     })
     expect(validPack.success).toBe(true)
+
+    // Cobrar en Caja sin clave de idempotencia no se acepta (riesgo de doble cobro).
+    const withoutKey = settleAbonadoPeriodSchema.safeParse({
+      abonadoId: VALID_UUID_1,
+      kind: 'pack',
+      paymentOrigin: 'caja',
+      amount: 100_000_00,
+      creditsTotal: 4,
+      charges: [{ amount: 100_000_00, method: 'transfer' }],
+    })
+    expect(withoutKey.success).toBe(false)
+    expect(
+      settleBookingsBatchSchema.safeParse({
+        bookingIds: [VALID_UUID_1],
+        paymentOrigin: 'caja',
+        amount: 100_000_00,
+        charges: [{ amount: 100_000_00, method: 'cash' }],
+      }).success,
+    ).toBe(false)
   })
 
   it('permite already_settled en lote con amount 0 y rechaza caja con amount 0', () => {

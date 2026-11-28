@@ -172,4 +172,11 @@ export const createMultiDateEventSchema = z
         message: 'Elegí al menos un método de pago.',
       })
     }
+    if (data.paymentMode === 'caja' && !data.clientIdempotencyKey) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['clientIdempotencyKey'],
+        message: 'Falta la clave de idempotencia del cobro.',
+      })
+    }
   })

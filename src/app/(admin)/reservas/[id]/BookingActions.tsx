@@ -51,6 +51,8 @@ type Props = {
   paymentMethod: string | null
   priceSnapshot: number
   chargesTotal: number
+  /** Turno de un pack, un mes o un "ya estaba saldado": no tiene saldo. */
+  settlementId?: string | null
   guestName: string | null
   guestPhone: string | null
   playerName?: string | null
@@ -377,6 +379,7 @@ function ConfirmedActions({
   lateCancelHours = 0,
   priceSnapshot,
   chargesTotal,
+  settlementId,
   guestName,
   guestPhone,
   playerName,
@@ -400,6 +403,8 @@ function ConfirmedActions({
   lateCancelHours?: number
   priceSnapshot: number
   chargesTotal: number
+  /** Turno de un pack, un mes o un "ya estaba saldado": no tiene saldo. */
+  settlementId?: string | null
   guestName: string | null
   guestPhone: string | null
   playerName: string | null | undefined
@@ -591,6 +596,7 @@ function ConfirmedActions({
             playerName,
             playerPhone,
             chargesTotal,
+            settlementId,
           }}
           label={`Reserva`}
           onClose={() => setCompleteDialogOpen(false)}
@@ -626,6 +632,7 @@ export default function BookingActions({
   lateCancelHours = 0,
   priceSnapshot,
   chargesTotal,
+  settlementId,
   guestName,
   guestPhone,
   playerName,
@@ -710,6 +717,7 @@ export default function BookingActions({
       lateCancelHours={lateCancelHours}
       priceSnapshot={priceSnapshot}
       chargesTotal={chargesTotal}
+      settlementId={settlementId}
       guestName={guestName}
       guestPhone={guestPhone}
       playerName={playerName}

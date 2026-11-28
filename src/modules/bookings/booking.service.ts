@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { assertOnlineBookingOpen } from './online-booking-gate'
 import { bookings, courts, tenants } from '@/shared/db/schema'
 import { checkPlayerBanned } from '@/modules/bans/ban.service'
@@ -46,7 +46,7 @@ import { isValidCalendarDate } from '@/shared/validation/calendar-date'
 import { rawRowToBookingRow, rowToBookingRow, type BookingRawRow } from './booking.mappers'
 import { depositCashFlowDescription } from './booking.charges'
 import { findAbonadoBookingOverlaps } from './booking.overlap'
-import { settleBookingsBatch } from '@/modules/settlements/settlement.service'
+import { findReplayOutcome, settleBookingsBatch } from '@/modules/settlements/settlement.service'
 import type { SettlementChargeLine } from '@/modules/settlements/settlement.types'
 import { createCashFlow } from '@/modules/cashflow/cashflow.service'
 import { captureMessage } from '@/lib/sentry'
@@ -410,6 +410,27 @@ export async function createMultiDateEventBookings(
   tx: DbTx,
 ): Promise<{ bookings: BookingRow[]; settlementId: string | null }> {
   assertWholeHours(input.timeStart, input.timeEnd)
+
+  // Reintento después de una respuesta perdida: el primer intento ya commiteó los
+  // turnos y el cobro en Caja con esta misma clave. Sin esto, el reintento chocaba
+  // con sus propios turnos (`MultiDateSlotConflictError`). Se devuelve lo ya creado.
+  // Solo se puede reconocer cuando hubo cobro en Caja (la clave vive en `cash_flows`):
+  // un evento "por cobrar" o "ya saldado" no deja la clave en ningún lado sin
+  // agregar una columna.
+  if (input.paymentMode === 'caja' && input.clientIdempotencyKey) {
+    const replay = await findReplayOutcome(tenantId, input.clientIdempotencyKey, tx)
+    if (replay) {
+      const replayed = await tx
+        .select()
+        .from(bookings)
+        .where(and(eq(bookings.tenantId, tenantId), inArray(bookings.id, replay.coveredBookingIds)))
+        .orderBy(bookings.startsAt, bookings.id)
+      return {
+        bookings: replayed.map(rowToBookingRow),
+        settlementId: replay.settlement.id,
+      }
+    }
+  }
 
   const uniqueDates = [...new Set(input.dates)].sort()
   if (uniqueDates.length === 0 || uniqueDates.length > 15) {

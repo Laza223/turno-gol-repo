@@ -101,7 +101,40 @@ function assertChargesMatchTotal(
   return [...list]
 }
 
-async function findReplayOutcome(
+type LockedAbonado = {
+  id: string
+  court_id: string
+  contact_name: string
+  status: string
+  billing_mode: string
+}
+
+/**
+ * ORDEN DE LOCKS de la cobertura de un abonado (único para todo el módulo y
+ * para cancelaciones): PRIMERO la fila del abonado, DESPUÉS sus turnos,
+ * siempre `ORDER BY starts_at, id`. Con un orden único no hay ciclo entre
+ * saldar, rebalancear, el worker de fijos y cancelar un turno cubierto.
+ */
+export async function lockAbonadoForCoverage(
+  tenantId: string,
+  abonadoId: string,
+  tx: DbTx,
+): Promise<LockedAbonado | null> {
+  const rows = (await tx.execute(sql`
+    SELECT id, court_id, contact_name, status, billing_mode
+    FROM abonados
+    WHERE id = ${abonadoId} AND tenant_id = ${tenantId}
+    FOR UPDATE
+  `)) as unknown as LockedAbonado[]
+  return rows[0] ?? null
+}
+
+/**
+ * Si ya existe un saldado cobrado en Caja con esta clave de idempotencia (la
+ * clave de la línea 0 del cobro), devuelve su resultado. Sirve para reconocer
+ * un reintento después de una respuesta perdida.
+ */
+export async function findReplayOutcome(
   tenantId: string,
   clientIdempotencyKey: string,
   tx: DbTx,
@@ -177,13 +210,8 @@ export async function assignSettlementCoverageForAbonado(
   abonadoId: string,
   tx: DbTx,
 ): Promise<string[]> {
-  const abonadoRows = (await tx.execute(sql`
-    SELECT id, status
-    FROM abonados
-    WHERE id = ${abonadoId} AND tenant_id = ${tenantId}
-    LIMIT 1
-  `)) as unknown as Array<{ id: string; status: string }>
-  const abonado = abonadoRows[0]
+  // Primero el abonado (ver `lockAbonadoForCoverage`), después los turnos.
+  const abonado = await lockAbonadoForCoverage(tenantId, abonadoId, tx)
   if (!abonado || abonado.status !== 'active') return []
 
   // Turnos futuros/vigentes elegibles sin cobertura ni cobro directo previo.
@@ -309,19 +337,7 @@ export async function settleAbonadoPeriod(
   }
 
   // Lock sobre abonados primero para serializar compras/modificaciones concurrentes.
-  const abonadoRows = (await tx.execute(sql`
-    SELECT id, court_id, contact_name, status, billing_mode
-    FROM abonados
-    WHERE id = ${input.abonadoId} AND tenant_id = ${tenantId}
-    FOR UPDATE
-  `)) as unknown as Array<{
-    id: string
-    court_id: string
-    contact_name: string
-    status: string
-    billing_mode: string
-  }>
-  const abonado = abonadoRows[0]
+  const abonado = await lockAbonadoForCoverage(tenantId, input.abonadoId, tx)
   if (!abonado) {
     throw new SettlementValidationError('No se encontró el turno fijo.')
   }
@@ -496,7 +512,22 @@ export async function settleBookingsBatch(
     sql`, `,
   )
 
-  // Lock en orden fijo `id` para evitar deadlocks en selecciones múltiples.
+  // Si los turnos son de un abonado, primero se lockean esos abonados (en orden
+  // de id) y recién después los turnos: el mismo orden que `settleAbonadoPeriod`,
+  // el rebalanceo y la cancelación.
+  const abonadoIdRows = (await tx.execute(sql`
+    SELECT DISTINCT abonado_id AS "abonadoId"
+    FROM bookings
+    WHERE tenant_id = ${tenantId}
+      AND id IN (${idList})
+      AND abonado_id IS NOT NULL
+    ORDER BY abonado_id
+  `)) as unknown as Array<{ abonadoId: string }>
+  for (const { abonadoId } of abonadoIdRows) {
+    await lockAbonadoForCoverage(tenantId, abonadoId, tx)
+  }
+
+  // Mismo ORDER BY (`starts_at, id`) que el resto de los locks de turnos.
   const rows = (await tx.execute(sql`
     SELECT b.id, b.court_id, b.abonado_id, b.type, b.status,
            b.price_snapshot, b.deposit_amount, b.deposit_status, b.settlement_id,
@@ -516,7 +547,7 @@ export async function settleBookingsBatch(
     FROM bookings b
     WHERE b.tenant_id = ${tenantId}
       AND b.id IN (${idList})
-    ORDER BY b.id ASC
+    ORDER BY b.starts_at ASC, b.id ASC
     FOR UPDATE OF b
   `)) as unknown as Array<{
     id: string

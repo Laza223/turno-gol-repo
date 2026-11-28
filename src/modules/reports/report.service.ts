@@ -28,6 +28,10 @@ const ACTIVE_STATUSES = ['confirmed', 'completed', 'no_show'] as Array<
   'confirmed' | 'completed' | 'no_show'
 >
 
+/** Fila sintética de "Por cancha" para los cobros que no son de una cancha sola. */
+const MULTI_COURT_ID = 'varias-canchas'
+const MULTI_COURT_NAME = 'Varias canchas'
+
 type PeriodAgg = {
   income: number
   adjustment: number
@@ -35,6 +39,8 @@ type PeriodAgg = {
   byCourt: {
     courtId: string
     courtName: string
+    /** Cobros de un saldado de varias canchas (`booking_settlements.court_id` NULL). */
+    multiCourt?: boolean
     income: number
     bookingCount: number
     bookedMinutes: number
@@ -99,7 +105,10 @@ async function fetchPeriodAgg(
               eq(cashFlows.tenantId, bookingSettlements.tenantId),
             ),
           )
-          .innerJoin(
+          // leftJoin a propósito: un saldado de varias canchas no tiene cancha
+          // (`court_id` NULL) y con innerJoin su plata entraba al total pero
+          // desaparecía de "Por cancha". Esas filas caen en un solo grupo (courts.id NULL).
+          .leftJoin(
             courts,
             sql`${courts.id} = COALESCE(${bookings.courtId}, ${bookingSettlements.courtId})`,
           )
@@ -173,13 +182,24 @@ async function fetchPeriodAgg(
       income,
       adjustment,
       byMethod,
-      byCourt: courtIncomeRows.map((r) => ({
-        courtId: r.courtId,
-        courtName: r.courtName,
-        income: Number(r.income),
-        bookingCount: Number(r.bookingCount),
-        bookedMinutes: minutesByCourtId.get(r.courtId) ?? 0,
-      })),
+      byCourt: courtIncomeRows.map((r) =>
+        r.courtId === null
+          ? {
+              courtId: MULTI_COURT_ID,
+              courtName: MULTI_COURT_NAME,
+              multiCourt: true,
+              income: Number(r.income),
+              bookingCount: Number(r.bookingCount),
+              bookedMinutes: 0,
+            }
+          : {
+              courtId: r.courtId,
+              courtName: r.courtName ?? '',
+              income: Number(r.income),
+              bookingCount: Number(r.bookingCount),
+              bookedMinutes: minutesByCourtId.get(r.courtId) ?? 0,
+            },
+      ),
       bookingCount: Number(bookingCountRows[0]?.count ?? 0),
       courtCount: Number(courtCountRows[0]?.count ?? 0),
     }
@@ -227,6 +247,7 @@ export async function getRevenueReport(
   const byCourt: CourtReport[] = current.byCourt.map((c) => ({
     courtId: c.courtId,
     courtName: c.courtName,
+    ...(c.multiCourt ? { multiCourt: true } : {}),
     income: c.income,
     bookingCount: c.bookingCount,
     occupancyPct: calcOccupancyPct(c.bookedMinutes, perCourtAvailable),

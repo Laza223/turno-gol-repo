@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { closeSql, getSql, getWorkerDb, withTenantContext } from '@/shared/db/client'
 import { createAbonado, updateAbonadoAgreement } from '@/modules/abonados/abonado.service'
@@ -15,6 +16,7 @@ import {
   voidSettlement,
 } from '@/modules/settlements/settlement.service'
 import { SettlementValidationError } from '@/modules/settlements/settlement.errors'
+import { runRollingSlotGeneration } from '@/shared/jobs/workers/generate-abonado-slots.worker'
 import { addDays, artTodayStr } from '@/shared/dates/art'
 import {
   cleanupAll,
@@ -487,5 +489,194 @@ describe('booking_settlements + acuerdos mensuales/packs (migr. 121)', () => {
       SELECT settlement_id FROM bookings WHERE id = ${lostId}
     `
     expect(row?.settlement_id).toBeNull()
+  })
+
+  it('idempotencia: el mismo clientIdempotencyKey dos veces deja UN solo cash_flow y voidSettlement rechaza origen caja', async () => {
+    const sql = getSql()
+    const date = addDays(artTodayStr(), 40)
+    const [b] = await sql<{ id: string }[]>`
+      INSERT INTO bookings (
+        tenant_id, court_id, date, time_start, time_end, starts_at, ends_at,
+        price_snapshot, deposit_amount, deposit_status, payment_method, status
+      )
+      VALUES (
+        ${tenantId}, ${courtId}, ${date}, '07:00', '08:00',
+        (${date}::date + TIME '07:00') AT TIME ZONE 'UTC',
+        (${date}::date + TIME '08:00') AT TIME ZONE 'UTC',
+        100000, 0, 'not_required', NULL, 'confirmed'::booking_status
+      )
+      RETURNING id
+    `
+    const key = randomUUID()
+    const input = {
+      bookingIds: [b!.id],
+      paymentOrigin: 'caja' as const,
+      amount: 100000,
+      charges: [{ amount: 100000, method: 'cash' as const }],
+      clientIdempotencyKey: key,
+    }
+
+    const first = await withTenantContext(tenantId, (tx) =>
+      settleBookingsBatch(tenantId, staffId, input, tx),
+    )
+    const second = await withTenantContext(tenantId, (tx) =>
+      settleBookingsBatch(tenantId, staffId, input, tx),
+    )
+
+    expect(second.settlement.id).toBe(first.settlement.id)
+    expect(second.coveredBookingIds).toEqual(first.coveredBookingIds)
+
+    const flows = await sql<{ n: number }[]>`
+      SELECT COUNT(*)::int AS n FROM cash_flows
+      WHERE tenant_id = ${tenantId} AND settlement_id = ${first.settlement.id}
+    `
+    expect(flows[0]?.n).toBe(1)
+
+    await expect(
+      withTenantContext(tenantId, (tx) =>
+        voidSettlement(tenantId, first.settlement.id, staffId, tx),
+      ),
+    ).rejects.toBeInstanceOf(SettlementValidationError)
+  })
+
+  it('reintento del evento de varias fechas con la misma clave devuelve lo ya creado, sin MultiDateSlotConflictError', async () => {
+    const sql = getSql()
+    const d1 = addDays(artTodayStr(), 50)
+    const d2 = addDays(artTodayStr(), 51)
+    const input = {
+      courtId,
+      dates: [d1, d2],
+      timeStart: '07:00',
+      timeEnd: '09:00',
+      staffUserId: staffId,
+      guestName: 'Torneo Reintento',
+      totalAmount: 200000,
+      paymentMode: 'caja' as const,
+      charges: [{ amount: 200000, method: 'cash' as const }],
+      clientIdempotencyKey: randomUUID(),
+    }
+
+    const first = await withTenantContext(tenantId, (tx) =>
+      createMultiDateEventBookings(tenantId, input, tx),
+    )
+    const retry = await withTenantContext(tenantId, (tx) =>
+      createMultiDateEventBookings(tenantId, input, tx),
+    )
+
+    expect(retry.settlementId).toBe(first.settlementId)
+    expect(retry.bookings.map((x) => x.id).sort()).toEqual(first.bookings.map((x) => x.id).sort())
+
+    const rows = await sql<{ n: number }[]>`
+      SELECT COUNT(*)::int AS n FROM bookings
+      WHERE tenant_id = ${tenantId} AND guest_name = 'Torneo Reintento'
+    `
+    expect(rows[0]?.n).toBe(2)
+  })
+
+  it('reporte por cancha: un saldado de dos canchas aparece como "Varias canchas" y la suma de byCourt cierra con el total', async () => {
+    const sql = getSql()
+    const courtB = await insertCourt(sql, tenantId)
+    const date = addDays(artTodayStr(), 60)
+    const insertBooking = async (court: string): Promise<string> => {
+      const [b] = await sql<{ id: string }[]>`
+        INSERT INTO bookings (
+          tenant_id, court_id, date, time_start, time_end, starts_at, ends_at,
+          price_snapshot, deposit_amount, deposit_status, payment_method, status
+        )
+        VALUES (
+          ${tenantId}, ${court}, ${date}, '07:00', '08:00',
+          (${date}::date + TIME '07:00') AT TIME ZONE 'UTC',
+          (${date}::date + TIME '08:00') AT TIME ZONE 'UTC',
+          1000000, 0, 'not_required', NULL, 'confirmed'::booking_status
+        )
+        RETURNING id
+      `
+      return b!.id
+    }
+    const idA = await insertBooking(courtId)
+    const idB = await insertBooking(courtB)
+
+    const openingHours = {
+      mon: { open: '08:00', close: '23:00' },
+      tue: { open: '08:00', close: '23:00' },
+      wed: { open: '08:00', close: '23:00' },
+      thu: { open: '08:00', close: '23:00' },
+      fri: { open: '08:00', close: '23:00' },
+      sat: { open: '08:00', close: '23:00' },
+      sun: { open: '08:00', close: '23:00' },
+    }
+    const month = artTodayStr().slice(0, 7)
+    const before = await getRevenueReport(tenantId, month, openingHours)
+
+    await withTenantContext(tenantId, (tx) =>
+      settleBookingsBatch(
+        tenantId,
+        staffId,
+        {
+          bookingIds: [idA, idB],
+          paymentOrigin: 'caja',
+          amount: 2_000_000,
+          charges: [{ amount: 2_000_000, method: 'cash' }],
+          clientIdempotencyKey: randomUUID(),
+        },
+        tx,
+      ),
+    )
+
+    const after = await getRevenueReport(tenantId, month, openingHours)
+    const sumCourts = (r: typeof after) => r.byCourt.reduce((acc, c) => acc + c.income, 0)
+    const multi = (r: typeof after) => r.byCourt.find((c) => c.multiCourt)?.income ?? 0
+
+    expect(after.income - before.income).toBe(2_000_000)
+    expect(sumCourts(after) - sumCourts(before)).toBe(2_000_000)
+    expect(multi(after) - multi(before)).toBe(2_000_000)
+    expect(after.byCourt.find((c) => c.multiCourt)?.courtName).toBe('Varias canchas')
+  })
+
+  it('el worker de fijos asigna cobertura a un turno nuevo dentro de un mes saldado', async () => {
+    const sql = getSql()
+    const startsOn = addDays(artTodayStr(), 2)
+    const firstYm = startsOn.slice(0, 7)
+
+    const { abonado } = await withTenantContext(tenantId, (tx) =>
+      createAbonado(
+        tenantId,
+        staffId,
+        {
+          courtId,
+          contactName: 'Escuelita Worker',
+          dayOfWeek: dayOfWeekOf(startsOn),
+          timeStart: '13:00',
+          timeEnd: '14:00',
+          pricePerSession: 0,
+          billingMode: 'monthly',
+          agreedAmount: 100_000_00,
+          startsOn,
+          initialSettlement: {
+            kind: 'monthly',
+            paymentOrigin: 'already_settled',
+            amount: 100_000_00,
+            month: firstYm,
+          },
+        },
+        tx,
+      ),
+    )
+
+    // Se borra el primer turno (ya cubierto) para que el worker lo regenere como turno nuevo.
+    await sql`DELETE FROM bookings WHERE abonado_id = ${abonado.id} AND date = ${startsOn}`
+    const gone = await sql<{ n: number }[]>`
+      SELECT COUNT(*)::int AS n FROM bookings WHERE abonado_id = ${abonado.id} AND date = ${startsOn}
+    `
+    expect(gone[0]?.n).toBe(0)
+
+    await runRollingSlotGeneration()
+
+    const regenerated = await sql<{ settlement_id: string | null }[]>`
+      SELECT settlement_id FROM bookings
+      WHERE abonado_id = ${abonado.id} AND date = ${startsOn} AND status = 'confirmed'
+    `
+    expect(regenerated).toHaveLength(1)
+    expect(regenerated[0]?.settlement_id).not.toBeNull()
   })
 })

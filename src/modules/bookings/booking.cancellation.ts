@@ -20,7 +20,10 @@ import {
   type GuestLateCancelStatus,
 } from './guest-late-cancel'
 import { markNoShow, revertNoShow } from './booking.service'
-import { rebalanceAbonadoPackCoverage } from '@/modules/settlements/settlement.service'
+import {
+  lockAbonadoForCoverage,
+  rebalanceAbonadoPackCoverage,
+} from '@/modules/settlements/settlement.service'
 import { invalidateAvailSearch } from '@/shared/cache/slots-cache'
 import { rowToBookingRow } from './booking.mappers'
 import { enqueueNotification } from '@/modules/notifications/notification.service'
@@ -69,6 +72,18 @@ type LockedBooking = {
 }
 
 async function lockBooking(bookingId: string, tx: DbTx): Promise<LockedBooking | undefined> {
+  // Orden de locks de la cobertura (ver `lockAbonadoForCoverage`): si el turno es
+  // de un abonado, primero el abonado y después el turno. Al revés, cancelar un
+  // turno cubierto (lockea el turno y rebalancear pide el abonado) se cruzaba con
+  // saldar el período (lockea el abonado y después sus turnos) y se trababan.
+  // `abonado_id` no cambia nunca, así que leerlo sin lock es seguro.
+  const pre = (await tx.execute(sql`
+    SELECT tenant_id, abonado_id FROM bookings WHERE id = ${bookingId}
+  `)) as unknown as Array<{ tenant_id: string; abonado_id: string | null }>
+  if (pre[0]?.abonado_id) {
+    await lockAbonadoForCoverage(pre[0].tenant_id, pre[0].abonado_id, tx)
+  }
+
   const result = await tx.execute(sql`
     SELECT
       id,

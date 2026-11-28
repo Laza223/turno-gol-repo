@@ -34,6 +34,14 @@ const initialSettlementSchema = z
     if (data.paymentOrigin === 'caja' && (data.amount <= 0 || !data.charges?.length)) {
       ctx.addIssue({ code: 'custom', path: ['amount'], message: 'Indicá el monto y el método.' })
     }
+    // Cobrar en Caja sin clave deja reintentar un doble cobro: la clave es obligatoria.
+    if (data.paymentOrigin === 'caja' && !data.clientIdempotencyKey) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['clientIdempotencyKey'],
+        message: 'Falta la clave de idempotencia del cobro.',
+      })
+    }
   })
 
 export const createAbonadoSchema = z

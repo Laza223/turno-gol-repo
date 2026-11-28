@@ -168,6 +168,7 @@ export default async function ReservaDetailPage(props: Props) {
             playerPhone={booking.playerPhone}
             priceSnapshot={booking.priceSnapshot}
             chargesTotal={charges?.chargesTotal ?? 0}
+            settlementId={booking.settlementId}
             completeAndChargeBookingAction={completeAndChargeBookingAction}
             markNoShowAction={markNoShowAction}
             revertNoShowAction={revertNoShowAction}

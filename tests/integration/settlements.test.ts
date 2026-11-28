@@ -663,10 +663,11 @@ describe('booking_settlements + acuerdos mensuales/packs (migr. 121)', () => {
       ),
     )
 
-    // Se borra el primer turno (ya cubierto) para que el worker lo regenere como turno nuevo.
-    await sql`DELETE FROM bookings WHERE abonado_id = ${abonado.id} AND date = ${startsOn}`
+    // El worker solo genera hacia adelante desde el último turno: sin turnos futuros arranca
+    // desde el inicio y el primero (dentro del mes ya saldado) vuelve como turno nuevo.
+    await sql`DELETE FROM bookings WHERE abonado_id = ${abonado.id}`
     const gone = await sql<{ n: number }[]>`
-      SELECT COUNT(*)::int AS n FROM bookings WHERE abonado_id = ${abonado.id} AND date = ${startsOn}
+      SELECT COUNT(*)::int AS n FROM bookings WHERE abonado_id = ${abonado.id}
     `
     expect(gone[0]?.n).toBe(0)
 

@@ -221,12 +221,18 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
       // supone que cortó antes de pagar y le ofrece "Pagar la seña".
       await page.goto(`/reserva/${bookingId}/pendiente?payment_id=MOCK-APPROVED-${bookingId}`)
 
-      // Watcher spinner must be visible
-      await expect(page.getByText('Confirmando tu pago…')).toBeVisible({ timeout: 10_000 })
+      // Watcher spinner must be visible. Mientras la página entra, el DOM puede tener
+      // por un instante una segunda copia oculta: se aserta sobre lo visible (por rol,
+      // o filtrando), así que dos copias a la vista siguen siendo un error.
+      await expect(page.getByRole('heading', { name: 'Confirmando tu pago…' })).toBeVisible({
+        timeout: 10_000,
+      })
       // Con un pago ya hecho no se ofrece pagar otra vez (TurnoGol no reembolsa por API).
       await expect(page.getByRole('button', { name: 'Pagar la seña' })).toHaveCount(0)
       // A quien ya pagó no se le muestra cuenta regresiva.
-      await expect(page.getByText('Esto puede tardar unos segundos.')).toBeVisible()
+      await expect(
+        page.getByText('Esto puede tardar unos segundos.').filter({ visible: true }),
+      ).toBeVisible()
       await expect(page.getByText(/te queda/i)).toHaveCount(0)
 
       // DB: booking is still pending_payment

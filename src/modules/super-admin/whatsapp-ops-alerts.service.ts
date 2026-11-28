@@ -4,6 +4,7 @@ import { opsAlerts, tenants, whatsappConnections } from '@/shared/db/schema'
 import { isFeatureEnabled } from '@/shared/feature-flags'
 import { logger } from '@/shared/lib/logger'
 import { artDateOf } from '@/shared/time/art-date'
+import { formatDayHeader } from '@/lib/format'
 import {
   getKapsoPhoneNumber,
   getKapsoPhoneNumberHealth,
@@ -16,13 +17,13 @@ import {
   restoreWhatsappConnection,
   type WhatsappDisconnectCause,
 } from '@/modules/whatsapp-bot/whatsapp-bot.connection'
+import { KAPSO_PLAN, kapsoCycleWindow } from './kapso-plan'
 import { artHourKey, sendOpsAlerts, type OpsAlert } from './ops-alerts.service'
 import {
   countBotErrorPaused,
   countInboundBacklog,
   countSignatureRejectionMinutes,
-  getMonthMessageTotal,
-  KAPSO_PLAN_MONTHLY_MESSAGES,
+  getCycleMessageTotal,
   listSilentNumbers,
   type SilentNumber,
 } from './whatsapp-monitor.service'
@@ -42,30 +43,32 @@ const KAPSO_WARN_RATIO = 0.8
 /** Un entrante sin procesar de hace más que esto ya es una cola trabada, no un turno lento. */
 const BACKLOG_ALERT_MINUTES = 5
 
-type OpsSnapshot = { now: Date; monthTotal: number; backlog: number; botErrorPaused: number }
+type OpsSnapshot = { now: Date; cycleTotal: number; backlog: number; botErrorPaused: number }
 
 /** Qué alertas corresponden a esta foto. Pura: el dedupe y el envío van aparte. */
 export function pickOpsAlerts(s: OpsSnapshot): OpsAlert[] {
   const alerts: OpsAlert[] = []
-  const month = artDateOf(s.now).slice(0, 7)
-  const limit = KAPSO_PLAN_MONTHLY_MESSAGES
+  // Clave por ciclo de Kapso: un aviso de cada nivel hasta que el cupo se reinicia.
+  const cycle = kapsoCycleWindow(s.now)
+  const limit = KAPSO_PLAN.messagesPerCycle
+  const resetDay = formatDayHeader(artDateOf(cycle.toUtc))
 
-  if (s.monthTotal >= limit) {
+  if (s.cycleTotal >= limit) {
     alerts.push({
-      key: `kapso-100:${month}`,
-      subject: 'Bot de WhatsApp: se alcanzó el límite de mensajes del mes',
+      key: `kapso-100:${cycle.startDay}`,
+      subject: 'Bot de WhatsApp: se alcanzó el cupo de mensajes de Kapso',
       lines: [
-        `Este mes ya van ${s.monthTotal} mensajes y el plan de Kapso incluye ${limit}.`,
-        'A partir de acá el bot puede dejar de enviar o recibir mensajes. Conviene pasar al plan Pro.',
+        `En este ciclo ya van ${s.cycleTotal} mensajes y el plan de Kapso incluye ${limit}. El cupo se reinicia el ${resetDay}.`,
+        'Hasta entonces el bot puede dejar de enviar o recibir mensajes. Conviene pasar a un plan con más cupo.',
       ],
     })
-  } else if (s.monthTotal >= limit * KAPSO_WARN_RATIO) {
+  } else if (s.cycleTotal >= limit * KAPSO_WARN_RATIO) {
     alerts.push({
-      key: `kapso-80:${month}`,
-      subject: 'Bot de WhatsApp: llegó al 80% de los mensajes del mes',
+      key: `kapso-80:${cycle.startDay}`,
+      subject: 'Bot de WhatsApp: llegó al 80% del cupo de mensajes de Kapso',
       lines: [
-        `Este mes ya van ${s.monthTotal} de ${limit} mensajes del plan de Kapso.`,
-        'El conteo es aproximado (sale de nuestros registros, Kapso no lo informa).',
+        `En este ciclo ya van ${s.cycleTotal} de ${limit} mensajes del plan. El cupo se reinicia el ${resetDay}.`,
+        'El conteo sale de nuestros registros y suele quedar por debajo del de Kapso: el número real puede ser mayor.',
       ],
     })
   }
@@ -425,13 +428,13 @@ async function syncConnectionStatus(
 /** Un tick del cron. `db` es el pool worker: tablas cross-tenant y `ops_alerts` deny-all. */
 export async function runWhatsappOpsAlerts(db: Db, now: Date = new Date()): Promise<void> {
   const link = { path: '/super-admin/whatsapp', label: 'Abrir el monitor del bot' }
-  const [monthTotal, backlog, botErrorPaused] = await Promise.all([
-    getMonthMessageTotal(db, now),
+  const [cycleTotal, backlog, botErrorPaused] = await Promise.all([
+    getCycleMessageTotal(db, now),
     countInboundBacklog(db, BACKLOG_ALERT_MINUTES),
     countBotErrorPaused(db),
   ])
   // 100% y 80% en el mismo tick ya se resolvieron en `pickOpsAlerts`: un solo mail.
-  await sendOpsAlerts(db, pickOpsAlerts({ now, monthTotal, backlog, botErrorPaused }), link)
+  await sendOpsAlerts(db, pickOpsAlerts({ now, cycleTotal, backlog, botErrorPaused }), link)
   // Lo que deja de llegar: no hay mensaje guardado que lo cuente.
   const [silent, rejections] = await Promise.all([
     silentWithFlag(db, now),

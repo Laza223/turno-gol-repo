@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import {
-  KAPSO_PLAN_MONTHLY_MESSAGES,
-  monthWindowArt,
-  projectMonth,
-  tokensToUsd,
-} from '@/modules/super-admin/whatsapp-monitor.service'
+import { KAPSO_PLAN, kapsoCycleWindow, projectCycle } from '@/modules/super-admin/kapso-plan'
+import { monthWindowArt, tokensToUsd } from '@/modules/super-admin/whatsapp-monitor.service'
 import {
   classifyNumberHealth,
   pickOpsAlerts,
@@ -52,82 +48,143 @@ describe('monthWindowArt', () => {
   })
 })
 
-describe('projectMonth', () => {
-  it('proyección lineal: 500 en 10 días de un mes de 31 días', () => {
-    const now = new Date('2026-10-11T03:00:00Z')
-    const r = projectMonth({ total: 500, limit: 2000, window: monthWindowArt(now), now })
+describe('kapsoCycleWindow', () => {
+  const at = (iso: string, anchor?: Date) => {
+    const w = kapsoCycleWindow(new Date(iso), anchor)
+    return [w.fromUtc.toISOString(), w.toUtc.toISOString()]
+  }
+
+  it('el ciclo vigente: del 21/11 al 21/12 a las 02:04:39 ART', () => {
+    expect(at('2026-11-28T12:00:00Z')).toEqual([
+      '2026-11-21T05:04:39.000Z',
+      '2026-12-21T05:04:39.000Z',
+    ])
+    expect(kapsoCycleWindow(new Date('2026-11-28T12:00:00Z')).startDay).toBe('2026-11-21')
+  })
+
+  it('el 1 del mes no reinicia nada: sigue el mismo ciclo', () => {
+    expect(at('2026-12-01T12:00:00Z')).toEqual(at('2026-11-30T12:00:00Z'))
+  })
+
+  it('el corte es un instante: un segundo antes sigue el ciclo anterior', () => {
+    expect(kapsoCycleWindow(new Date('2026-12-21T05:04:38Z')).startDay).toBe('2026-11-21')
+    expect(kapsoCycleWindow(new Date('2026-12-21T05:04:39Z')).startDay).toBe('2026-12-21')
+  })
+
+  it('cruza el año', () => {
+    expect(at('2027-01-05T12:00:00Z')).toEqual([
+      '2026-12-21T05:04:39.000Z',
+      '2027-01-21T05:04:39.000Z',
+    ])
+  })
+
+  describe('día de corte que no existe en el mes', () => {
+    const anchor = new Date('2026-12-31T15:00:00Z')
+
+    it('en febrero corta el último día', () => {
+      expect(at('2027-02-10T12:00:00Z', anchor)).toEqual([
+        '2027-01-31T15:00:00.000Z',
+        '2027-02-28T15:00:00.000Z',
+      ])
+    })
+
+    it('después de febrero vuelve al 31, y en abril corta el 30', () => {
+      expect(at('2027-03-15T12:00:00Z', anchor)).toEqual([
+        '2027-02-28T15:00:00.000Z',
+        '2027-03-31T15:00:00.000Z',
+      ])
+      expect(at('2027-04-15T12:00:00Z', anchor)).toEqual([
+        '2027-03-31T15:00:00.000Z',
+        '2027-04-30T15:00:00.000Z',
+      ])
+    })
+
+    it('en año bisiesto febrero corta el 29', () => {
+      expect(at('2028-02-29T16:00:00Z', anchor)).toEqual([
+        '2028-02-29T15:00:00.000Z',
+        '2028-03-31T15:00:00.000Z',
+      ])
+    })
+
+    it('el último día corto, antes de la hora del corte, es del ciclo anterior', () => {
+      expect(kapsoCycleWindow(new Date('2027-02-28T14:59:59Z'), anchor).startDay).toBe('2027-01-31')
+    })
+  })
+})
+
+describe('projectCycle', () => {
+  // Ciclo de 30 días (21/11 → 21/12).
+  const window = kapsoCycleWindow(new Date('2026-11-28T12:00:00Z'))
+  const afterDays = (days: number) => new Date(window.fromUtc.getTime() + days * 86_400_000)
+
+  it('proyección lineal sobre el largo del ciclo', () => {
+    const r = projectCycle({ total: 500, limit: 2000, window, now: afterDays(10) })
+    expect(r.projected).toBeCloseTo(1500, 5)
+    expect(r.crossingDate).toBeNull()
+  })
+
+  it('un ciclo de 31 días proyecta distinto que uno de 30', () => {
+    const now = new Date('2026-12-31T05:04:39Z')
+    const long = kapsoCycleWindow(now)
+    const r = projectCycle({ total: 500, limit: 99999, window: long, now })
     expect(r.projected).toBeCloseTo(1550, 5)
-    expect(r.crossingDay).toBeNull()
   })
 
-  it('mes de 30 vs 31 días: mismo ritmo, distinta proyección', () => {
-    const oct = new Date('2026-10-11T03:00:00Z')
-    const nov = new Date('2026-11-11T03:00:00Z')
-    const a = projectMonth({ total: 600, limit: 99999, window: monthWindowArt(oct), now: oct })
-    const b = projectMonth({ total: 600, limit: 99999, window: monthWindowArt(nov), now: nov })
-    expect(a.projected).toBeCloseTo(1860, 5)
-    expect(b.projected).toBeCloseTo(1800, 5)
+  it('el día de cruce puede caer en el mes siguiente al del arranque', () => {
+    // 100 por día contra 2000: 20 días después del 21/11.
+    const r = projectCycle({ total: 1000, limit: 2000, window, now: afterDays(10) })
+    expect(r.projected).toBeCloseTo(3000, 5)
+    expect(r.crossingDate).toBe('2026-12-11')
   })
 
-  it('día de cruce: 100 por día contra un límite de 2000 cruza el día 20', () => {
-    const now = new Date('2026-10-11T03:00:00Z')
-    const r = projectMonth({ total: 1000, limit: 2000, window: monthWindowArt(now), now })
-    expect(r.projected).toBeCloseTo(3100, 5)
-    expect(r.crossingDay).toBe(20)
-  })
-
-  it('el primer día no explota: el piso de días transcurridos es 1', () => {
-    const now = new Date('2026-10-01T03:05:00Z')
-    const r = projectMonth({ total: 10, limit: 2000, window: monthWindowArt(now), now })
-    expect(r.projected).toBeCloseTo(310, 5)
-    expect(r.crossingDay).toBeNull()
+  it('recién arrancado no explota: el piso de días transcurridos es 1', () => {
+    const r = projectCycle({ total: 10, limit: 2000, window, now: afterDays(0.01) })
+    expect(r.projected).toBeCloseTo(300, 5)
+    expect(r.crossingDate).toBeNull()
   })
 
   it('sin mensajes: proyección 0 y sin día de cruce', () => {
-    const now = new Date('2026-10-15T12:00:00Z')
-    const r = projectMonth({ total: 0, limit: 2000, window: monthWindowArt(now), now })
-    expect(r).toEqual({ projected: 0, crossingDay: null })
+    const r = projectCycle({ total: 0, limit: 2000, window, now: afterDays(10) })
+    expect(r).toEqual({ projected: 0, crossingDate: null })
   })
 
-  it('el día de cruce nunca pasa del último día del mes', () => {
-    const now = new Date('2026-11-29T03:00:00Z')
-    const r = projectMonth({ total: 1990, limit: 2000, window: monthWindowArt(now), now })
-    expect(r.crossingDay).not.toBeNull()
-    expect(r.crossingDay).toBeLessThanOrEqual(30)
+  it('pasarse por poco da el último día del ciclo, no uno posterior', () => {
+    const r = projectCycle({ total: 1999, limit: 2000, window, now: afterDays(29.9) })
+    // 00:02 ART del 21/12, dos horas antes del corte.
+    expect(r.crossingDate).toBe('2026-12-21')
   })
 })
 
 describe('pickOpsAlerts', () => {
-  const NOW = new Date('2026-10-21T15:07:00Z')
-  const base = { now: NOW, monthTotal: 0, backlog: 0, botErrorPaused: 0 }
-  const limit = KAPSO_PLAN_MONTHLY_MESSAGES
+  const NOW = new Date('2026-11-28T15:07:00Z')
+  const base = { now: NOW, cycleTotal: 0, backlog: 0, botErrorPaused: 0 }
+  const limit = KAPSO_PLAN.messagesPerCycle
 
   it('sin nada para avisar, no hay alertas', () => {
-    expect(pickOpsAlerts({ ...base, monthTotal: limit * 0.79 })).toEqual([])
+    expect(pickOpsAlerts({ ...base, cycleTotal: limit * 0.79 })).toEqual([])
   })
 
-  it('80%: kapso-80 con el mes ART', () => {
-    const alerts = pickOpsAlerts({ ...base, monthTotal: limit * 0.8 })
-    expect(alerts.map((a) => a.key)).toEqual(['kapso-80:2026-10'])
+  it('80%: kapso-80 con el día en que arrancó el ciclo', () => {
+    const alerts = pickOpsAlerts({ ...base, cycleTotal: limit * 0.8 })
+    expect(alerts.map((a) => a.key)).toEqual(['kapso-80:2026-11-21'])
+    expect(alerts[0]?.lines[0]).toContain('21 de diciembre')
   })
 
   it('80% y 100% en el mismo tick: un solo mail, el de 100', () => {
-    const alerts = pickOpsAlerts({ ...base, monthTotal: limit })
-    expect(alerts.map((a) => a.key)).toEqual(['kapso-100:2026-10'])
+    const alerts = pickOpsAlerts({ ...base, cycleTotal: limit })
+    expect(alerts.map((a) => a.key)).toEqual(['kapso-100:2026-11-21'])
   })
 
-  it('el mes de la clave es el ART: 23:30 ART del 31 sigue siendo octubre', () => {
-    const alerts = pickOpsAlerts({
-      ...base,
-      now: new Date('2026-11-01T02:30:00Z'),
-      monthTotal: limit,
-    })
-    expect(alerts[0]?.key).toBe('kapso-100:2026-10')
+  it('cambiar de mes no repite el aviso; un ciclo nuevo sí puede avisar', () => {
+    const keyAt = (iso: string) =>
+      pickOpsAlerts({ ...base, now: new Date(iso), cycleTotal: limit })[0]?.key
+    expect(keyAt('2026-12-01T15:00:00Z')).toBe('kapso-100:2026-11-21')
+    expect(keyAt('2026-12-22T15:00:00Z')).toBe('kapso-100:2026-12-21')
   })
 
   it('backlog: clave por hora ART', () => {
     const alerts = pickOpsAlerts({ ...base, backlog: 3 })
-    expect(alerts.map((a) => a.key)).toEqual(['backlog:2026-10-21T12'])
+    expect(alerts.map((a) => a.key)).toEqual(['backlog:2026-11-28T12'])
   })
 
   it('bot_error: clave por hora ART, y la hora cruza el día (00:30 ART = 03:30 UTC)', () => {
@@ -149,11 +206,11 @@ describe('pickOpsAlerts', () => {
   })
 
   it('todas juntas, y los mails no llevan datos personales', () => {
-    const alerts = pickOpsAlerts({ monthTotal: limit, backlog: 4, botErrorPaused: 1, now: NOW })
+    const alerts = pickOpsAlerts({ cycleTotal: limit, backlog: 4, botErrorPaused: 1, now: NOW })
     expect(alerts.map((a) => a.key)).toEqual([
-      'kapso-100:2026-10',
-      'backlog:2026-10-21T12',
-      'bot-error:2026-10-21T12',
+      'kapso-100:2026-11-21',
+      'backlog:2026-11-28T12',
+      'bot-error:2026-11-28T12',
     ])
     for (const a of alerts) {
       expect(a.subject.length).toBeGreaterThan(0)

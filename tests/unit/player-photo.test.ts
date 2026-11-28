@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import sharp from 'sharp'
 
 const h = vi.hoisted(() => ({
   deleteImage: vi.fn(),
@@ -14,6 +15,7 @@ import {
   PHOTO_MAX_BYTES,
   validatePhotoUpload,
 } from '@/modules/players/player-photo.service'
+import { compressUpload } from '@/shared/images/compress-image'
 
 const BASE = 'https://media.turnogol.test'
 
@@ -37,6 +39,11 @@ describe('validatePhotoUpload', () => {
     expect(validatePhotoUpload(webpBytes())).toEqual({ ok: true })
   })
 
+  it('acepta un JPEG real (lo que manda Safari)', () => {
+    const jfif = [0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 0]
+    expect(validatePhotoUpload(Uint8Array.from(jfif))).toEqual({ ok: true })
+  })
+
   it('rechaza un archivo vacío', () => {
     const r = validatePhotoUpload(new Uint8Array(0))
     expect(r.ok).toBe(false)
@@ -55,7 +62,7 @@ describe('validatePhotoUpload', () => {
 
   it.each([
     ['PNG', [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0, 0, 0]],
-    ['JPEG', [0xff, 0xd8, 0xff, 0xe0, 0, 0x10, 0x4a, 0x46, 0x49, 0x46, 0, 1, 1, 0]],
+    ['firma JPEG a medias', [0xff, 0xd8]],
     ['GIF', Array.from('GIF89a......', (c) => c.charCodeAt(0))],
     ['HTML', Array.from('<html><script>', (c) => c.charCodeAt(0))],
     // RIFF pero WAVE: la firma son DOS tramos (0-3 y 8-11).
@@ -66,6 +73,23 @@ describe('validatePhotoUpload', () => {
       ok: false,
       error: 'La foto tiene que ser una imagen válida',
     })
+  })
+})
+
+describe('foto subida desde Safari (JPEG)', () => {
+  it('pasa la validación y la recompresión del server la deja en WebP', async () => {
+    const jpeg = new Uint8Array(
+      await sharp({
+        create: { width: 512, height: 512, channels: 3, background: { r: 20, g: 120, b: 80 } },
+      })
+        .jpeg()
+        .toBuffer(),
+    )
+    expect(validatePhotoUpload(jpeg)).toEqual({ ok: true })
+
+    const stored = await compressUpload(jpeg, 'logo')
+    // Por eso `setPlayerPhoto` guarda siempre `.webp` + `image/webp`.
+    expect((await sharp(stored!).metadata()).format).toBe('webp')
   })
 })
 

@@ -22,10 +22,18 @@ function asciiAt(bytes: Uint8Array, from: number, text: string): boolean {
   return [...text].every((c, i) => bytes[from + i] === c.charCodeAt(0))
 }
 
+function isWebp(bytes: Uint8Array): boolean {
+  return asciiAt(bytes, 0, 'RIFF') && asciiAt(bytes, 8, 'WEBP')
+}
+
+function isJpeg(bytes: Uint8Array): boolean {
+  return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff
+}
+
 /**
- * Validación pura del archivo subido. Mira la firma real (`RIFF`....`WEBP`), no el
- * `type` que declara el cliente: el navegador ya recortó y re-encodeó a WebP, así que
- * cualquier otra cosa es un request armado a mano.
+ * Validación pura del archivo subido. Mira la firma real, no el `type` que declara el
+ * cliente: el navegador ya recortó y re-encodeó a WebP (o a JPEG en Safari, que no
+ * genera WebP), así que cualquier otra cosa es un request armado a mano.
  */
 export function validatePhotoUpload(
   bytes: Uint8Array,
@@ -34,7 +42,7 @@ export function validatePhotoUpload(
   if (bytes.byteLength > PHOTO_MAX_BYTES) {
     return { ok: false, error: 'La imagen no puede superar 2MB' }
   }
-  if (!asciiAt(bytes, 0, 'RIFF') || !asciiAt(bytes, 8, 'WEBP')) {
+  if (!isWebp(bytes) && !isJpeg(bytes)) {
     return { ok: false, error: 'La foto tiene que ser una imagen válida' }
   }
   return { ok: true }
@@ -75,7 +83,8 @@ export async function deletePlayerPhotoObject(
  * Reemplaza la foto del jugador. Saga (el efecto externo nunca va dentro de la tx):
  * PUT de la nueva → tx que bloquea la fila y cambia el puntero → recién después del
  * commit se borra la vieja. Si la tx falla se compensa borrando la nueva.
- * Quien llama ya validó los bytes (`validatePhotoUpload`) y la sesión del jugador.
+ * Quien llama ya validó la sesión del jugador y los bytes (`validatePhotoUpload`), y los
+ * recomprimió a WebP (`compressUpload`): por eso acá la clave y el tipo son siempre WebP.
  * Devuelve la URL pública nueva.
  */
 export async function setPlayerPhoto(playerId: string, bytes: Uint8Array): Promise<string> {

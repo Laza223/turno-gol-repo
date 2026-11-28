@@ -4,7 +4,7 @@ import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { TgBallSpinner } from '@/components/ui/tg-ball-spinner'
-import { resizeToPreset } from '@/shared/images/resize-image'
+import { ImageResizeError, resizeToPreset } from '@/shared/images/resize-image'
 import type { RivalPhotoResult } from '@/app/(player)/rival/photo-actions'
 
 /** Firmas de las Server Actions (llegan por prop: importarlas como valor arrastra drizzle al bundle del browser). */
@@ -12,6 +12,7 @@ export type PhotoUploadAction = (formData: FormData) => Promise<RivalPhotoResult
 export type PhotoRemoveAction = () => Promise<RivalPhotoResult>
 
 const OFFLINE = 'No pudimos conectar. Revisá tu conexión y probá de nuevo.'
+const UNREADABLE = 'No pudimos leer esa foto. Probá con otra.'
 const BUTTON = 'h-auto min-h-11 md:h-auto'
 
 /**
@@ -37,7 +38,7 @@ export function PlayerPhotoField({
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  /** Corre una action y pinta su resultado; una excepción (sin red) cae en el mismo aviso. */
+  /** Corre una action y pinta su resultado; una excepción (foto ilegible o sin red) cae en el mismo lugar. */
   async function run(call: () => Promise<RivalPhotoResult>) {
     setError(null)
     setBusy(true)
@@ -46,7 +47,7 @@ export function PlayerPhotoField({
       if (res.success) setUrl(res.url)
       else setError(res.error)
     } catch (err) {
-      setError(err instanceof Error && err.message.startsWith('El archivo') ? err.message : OFFLINE)
+      setError(err instanceof ImageResizeError ? UNREADABLE : OFFLINE)
     } finally {
       setBusy(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -55,9 +56,10 @@ export function PlayerPhotoField({
 
   function handleFile(file: File) {
     void run(async () => {
-      const blob = await resizeToPreset(file, 'logo')
+      // El server solo acepta WebP o JPEG: en Safari el recorte tiene que salir en JPEG.
+      const blob = await resizeToPreset(file, 'logo', { jpegFallback: true })
       const fd = new FormData()
-      fd.set('file', blob, 'foto.webp')
+      fd.set('file', blob, blob.type === 'image/jpeg' ? 'foto.jpg' : 'foto.webp')
       return uploadAction(fd)
     })
   }

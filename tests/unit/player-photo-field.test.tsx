@@ -3,9 +3,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 
 const resize = vi.hoisted(() => vi.fn())
-vi.mock('@/shared/images/resize-image', () => ({ resizeToPreset: resize }))
+// La clase de error es la real: el componente la reconoce con `instanceof`.
+vi.mock('@/shared/images/resize-image', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  resizeToPreset: resize,
+}))
 
 import { PlayerPhotoField } from '@/components/rival/PlayerPhotoField'
+import { ImageResizeError } from '@/shared/images/resize-image'
 import type { RivalPhotoResult } from '@/app/(player)/rival/photo-actions'
 
 afterEach(() => {
@@ -53,13 +58,29 @@ describe('PlayerPhotoField', () => {
 
   it('elegir un archivo lo recorta y llama a la action con un Blob', async () => {
     resize.mockResolvedValue(new Blob(['x'], { type: 'image/webp' }))
+    // happy-dom pierde el nombre al guardar un Blob: se mira lo que le pasa el componente.
+    const set = vi.spyOn(FormData.prototype, 'set')
     const { uploadAction } = setup()
     const file = new File(['raw'], 'yo.png', { type: 'image/png' })
     fireEvent.change(fileInput(), { target: { files: [file] } })
     await waitFor(() => expect(uploadAction).toHaveBeenCalledTimes(1))
-    expect(resize).toHaveBeenCalledWith(file, 'logo')
+    expect(resize).toHaveBeenCalledWith(file, 'logo', { jpegFallback: true })
     expect(uploadAction.mock.calls[0]![0].get('file')).toBeInstanceOf(Blob)
+    expect(set).toHaveBeenCalledWith('file', expect.any(Blob), 'foto.webp')
+    set.mockRestore()
     await waitFor(() => expect(document.querySelector(`img[src="${URL_OK}"]`)).not.toBeNull())
+  })
+
+  it('si el recorte sale en JPEG (Safari), el archivo se llama foto.jpg', async () => {
+    resize.mockResolvedValue(new Blob(['x'], { type: 'image/jpeg' }))
+    const set = vi.spyOn(FormData.prototype, 'set')
+    const { uploadAction } = setup()
+    fireEvent.change(fileInput(), {
+      target: { files: [new File(['raw'], 'IMG_0001.jpeg', { type: 'image/jpeg' })] },
+    })
+    await waitFor(() => expect(uploadAction).toHaveBeenCalledTimes(1))
+    expect(set).toHaveBeenCalledWith('file', expect.any(Blob), 'foto.jpg')
+    set.mockRestore()
   })
 
   it('si la action falla, el error se ve en un alert y la foto no cambia', async () => {
@@ -73,13 +94,15 @@ describe('PlayerPhotoField', () => {
     expect(document.querySelector('img')).toBeNull()
   })
 
-  it('si el archivo no se puede procesar, lo dice y no llama a la action', async () => {
-    resize.mockRejectedValue(new Error('El archivo debe ser una imagen'))
+  it('si la foto no se puede leer, lo dice (no culpa a la conexión) y no llama a la action', async () => {
+    resize.mockRejectedValue(new ImageResizeError('No se pudo leer la imagen'))
     const { uploadAction } = setup()
     fireEvent.change(fileInput(), {
-      target: { files: [new File(['raw'], 'yo.txt', { type: 'text/plain' })] },
+      target: { files: [new File(['raw'], 'yo.heic', { type: 'image/heic' })] },
     })
-    expect((await screen.findByRole('alert')).textContent).toContain('imagen')
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'No pudimos leer esa foto. Probá con otra.',
+    )
     expect(uploadAction).not.toHaveBeenCalled()
   })
 
@@ -95,7 +118,9 @@ describe('PlayerPhotoField', () => {
     const { removeAction } = setup({ url: URL_OK })
     removeAction.mockRejectedValue(new Error('network'))
     fireEvent.click(screen.getByRole('button', { name: 'Quitar' }))
-    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'No pudimos conectar. Revisá tu conexión y probá de nuevo.',
+    )
     expect(document.querySelector(`img[src="${URL_OK}"]`)).not.toBeNull()
   })
 })

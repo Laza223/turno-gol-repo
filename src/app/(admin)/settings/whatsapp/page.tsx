@@ -4,10 +4,12 @@ import { requireAdminStaff } from '@/modules/staff/guards'
 import { getWhatsappPlusState } from '@/modules/whatsapp-bot/whatsapp-bot.connection'
 import { SettingsHeader } from '../SettingsHeader'
 import { ConnectWhatsappButtons } from './ConnectWhatsappButton'
+import { WhatsappAlertPhoneForm } from './WhatsappAlertPhoneForm'
 import { WhatsappBotToggle } from './WhatsappBotToggle'
 import { CONNECT_ERROR_MESSAGE } from './connect-messages'
 import {
   checkWhatsappConnectionAction,
+  setWhatsappAlertPhoneAction,
   setWhatsappBotEnabledAction,
   startWhatsappConnectAction,
 } from './actions'
@@ -102,6 +104,13 @@ export default async function WhatsappSettingsPage({
               checkAction={checkWhatsappConnectionAction}
             />
           </div>
+        )}
+
+        {connection && (
+          <WhatsappAlertPhoneForm
+            phone={connection.ownerAlertPhone}
+            action={setWhatsappAlertPhoneAction}
+          />
         )}
       </div>
     </div>

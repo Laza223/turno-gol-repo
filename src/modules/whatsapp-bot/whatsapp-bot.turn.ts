@@ -203,14 +203,6 @@ async function ownerTookOver(
   })
 }
 
-/**
- * Resuelve el WhatsApp personal del dueño para alertas Utility.
- * TODO: cuando agregues `whatsapp_connections.owner_alert_phone`, leelo en el SELECT de `connection`.
- */
-function resolveOwnerAlertPhone(): string | null {
-  return process.env.WHATSAPP_OWNER_ALERT_PHONE?.trim() || null
-}
-
 async function recordOutbound(params: {
   tenantId: string
   chatId: string
@@ -248,6 +240,7 @@ export async function processWhatsappTurn(
         phoneNumberId: whatsappConnections.phoneNumberId,
         enabled: whatsappConnections.enabled,
         status: whatsappConnections.status,
+        ownerAlertPhone: whatsappConnections.ownerAlertPhone,
       })
       .from(whatsappConnections)
       .where(eq(whatsappConnections.tenantId, tenantId))
@@ -443,7 +436,7 @@ export async function processWhatsappTurn(
     waPhone: to,
     contactDisplayName: state.chat.displayName,
     phoneNumberId,
-    ownerAlertPhone: resolveOwnerAlertPhone(),
+    ownerAlertPhone: state.connection.ownerAlertPhone,
     now,
     phoneBookings: state.phoneBookings,
   }

@@ -6,7 +6,7 @@ import type {
   WhatsappMonitor,
   WhatsappTenantHealth,
 } from '@/modules/super-admin/whatsapp-monitor.service'
-import { formatDayStr, formatShortDateTime } from '../../_components/sa-format'
+import { formatDayStr, formatShortDate, formatShortDateTime } from '../../_components/sa-format'
 import { EmptyHint, PulsoSection } from '../../_components/pulso/pulso-section'
 
 const PAUSE_LABEL: Record<string, string> = {
@@ -58,13 +58,13 @@ function ExternalLinkItem({ href, children }: { href: string; children: string }
   )
 }
 
-function KapsoCard({ kapso, month }: { kapso: WhatsappMonitor['kapso']; month: string }) {
+function KapsoCard({ kapso }: { kapso: WhatsappMonitor['kapso'] }) {
   const tone = kapsoTone(kapso)
   const barPct = Math.min(100, kapso.pct)
   const { byDirection } = kapso
   return (
     <PulsoSection
-      title="Kapso este mes"
+      title="Kapso en este ciclo"
       action={<ExternalLinkItem href={KAPSO_URL}>Ver en Kapso</ExternalLinkItem>}
     >
       <p className={cn('text-3xl font-semibold tabular-nums', TONE_TEXT[tone])}>
@@ -75,7 +75,7 @@ function KapsoCard({ kapso, month }: { kapso: WhatsappMonitor['kapso']; month: s
       </p>
       <div
         role="progressbar"
-        aria-label="Mensajes del mes sobre el límite del plan"
+        aria-label="Mensajes del ciclo sobre el cupo del plan"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(barPct)}
@@ -87,17 +87,16 @@ function KapsoCard({ kapso, month }: { kapso: WhatsappMonitor['kapso']; month: s
         />
       </div>
       <p className="mt-3 text-sm text-foreground">
-        Al ritmo actual, el mes cierra en unos{' '}
+        Al ritmo actual, el ciclo cierra en unos{' '}
         <strong className="tabular-nums">{numberFmt.format(Math.round(kapso.projected))}</strong>.
         {kapso.pct >= 100 ? (
           <span className={cn('ml-1 font-medium', TONE_TEXT[tone])}>
-            Ya se pasó del límite del plan.
+            Ya se llegó al cupo del plan.
           </span>
         ) : (
-          kapso.crossingDay !== null && (
+          kapso.crossingDate !== null && (
             <span className={cn('ml-1 font-medium', TONE_TEXT[tone])}>
-              Se pasaría del límite alrededor del{' '}
-              {formatDayStr(`${month}-${String(kapso.crossingDay).padStart(2, '0')}`)}.
+              Se pasaría del cupo alrededor del {formatDayStr(kapso.crossingDate)}.
             </span>
           )
         )}
@@ -107,9 +106,15 @@ function KapsoCard({ kapso, month }: { kapso: WhatsappMonitor['kapso']; month: s
         {numberFmt.format(byDirection.outbound)} · escritos por el dueño{' '}
         {numberFmt.format(byDirection.owner)}
       </p>
+      <p className="mt-1 text-xs text-muted-foreground tabular-nums">
+        Plan {kapso.planName}. El ciclo arrancó el {formatShortDate(kapso.cycleStartsAt)} y el cupo
+        se reinicia el {formatShortDate(kapso.cycleResetsAt)}.
+      </p>
       <p className="mt-2 text-xs text-muted-foreground">
-        Aproximado: Kapso no informa su contador, se cuenta con nuestros registros. Plan Free: 2.000
-        por mes (Pro: 100.000).
+        Es una aproximación con nuestros registros y suele quedar por debajo del contador de Kapso.
+        No suma lo que llega con el asistente apagado o el número desconectado, lo que el complejo
+        escribe desde el celular a quien no le escribió antes, las respuestas automáticas de
+        WhatsApp Business ni los avisos de derivación. El número que vale es el de Kapso.
       </p>
     </PulsoSection>
   )
@@ -186,8 +191,8 @@ function TenantsTable({ tenants }: { tenants: WhatsappTenantHealth[] }) {
                   <th className="py-2 pr-4 font-medium">Último enviado</th>
                   <th className="py-2 pr-4 text-right font-medium">Sin contestar</th>
                   <th className="py-2 pr-4 font-medium">Pausados</th>
-                  <th className="py-2 pr-4 text-right font-medium">Mensajes</th>
-                  <th className="py-2 pr-4 text-right font-medium">Gasto</th>
+                  <th className="py-2 pr-4 text-right font-medium">Mensajes del mes</th>
+                  <th className="py-2 pr-4 text-right font-medium">Gasto del mes</th>
                   <th className="py-2 pr-4 text-right font-medium sm:pr-6">Reservas del bot</th>
                 </tr>
               </thead>
@@ -258,9 +263,9 @@ function TenantCards({ tenants }: { tenants: WhatsappTenantHealth[] }) {
             <dl className="grid grid-cols-2 gap-x-4 gap-y-1 tabular-nums">
               <dt className="text-muted-foreground">Sin contestar</dt>
               <dd className="text-right">{t.backlog}</dd>
-              <dt className="text-muted-foreground">Mensajes</dt>
+              <dt className="text-muted-foreground">Mensajes del mes</dt>
               <dd className="text-right">{numberFmt.format(t.monthMessages)}</dd>
-              <dt className="text-muted-foreground">Gasto</dt>
+              <dt className="text-muted-foreground">Gasto del mes</dt>
               <dd className="text-right">{usd(t.monthUsd)}</dd>
               <dt className="text-muted-foreground">Reservas del bot</dt>
               <dd className="text-right">
@@ -283,7 +288,7 @@ export function WhatsappMonitorView({ data }: { data: WhatsappMonitor }) {
   return (
     <div className="space-y-3 lg:space-y-6">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <KapsoCard kapso={data.kapso} month={data.month} />
+        <KapsoCard kapso={data.kapso} />
         <AiCard ai={data.ai} />
       </div>
       <TenantsTable tenants={data.tenants} />

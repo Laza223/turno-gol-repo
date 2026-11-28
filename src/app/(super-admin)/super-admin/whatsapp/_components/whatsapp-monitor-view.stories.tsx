@@ -8,6 +8,11 @@ import { WhatsappMonitorView } from './whatsapp-monitor-view'
 
 const NOW = new Date('2026-10-21T15:00:00Z')
 const minutesAgo = (m: number) => new Date(NOW.getTime() - m * 60_000)
+const CYCLE = {
+  planName: 'Free',
+  cycleStartsAt: new Date('2026-10-21T05:04:39Z'),
+  cycleResetsAt: new Date('2026-11-21T05:04:39Z'),
+}
 
 function tenant(overrides: Partial<WhatsappTenantHealth> = {}): WhatsappTenantHealth {
   return {
@@ -32,15 +37,14 @@ function tenant(overrides: Partial<WhatsappTenantHealth> = {}): WhatsappTenantHe
 
 function monitor(overrides: Partial<WhatsappMonitor> = {}): WhatsappMonitor {
   return {
-    month: '2026-10',
     kapso: {
+      ...CYCLE,
       total: 700,
       byDirection: { inbound: 300, outbound: 350, owner: 50 },
       limit: 2000,
       pct: 35,
       projected: 1000,
-      crossingDay: null,
-      daysInMonth: 31,
+      crossingDate: null,
     },
     ai: {
       tokens: { input: 1_200_000, cached: 3_400_000, output: 180_000 },
@@ -78,12 +82,12 @@ type Story = StoryObj<typeof meta>
 export const Normal: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    await expect(canvas.getByText('Kapso este mes')).toBeInTheDocument()
+    await expect(canvas.getByText('Kapso en este ciclo')).toBeInTheDocument()
     await expect(canvas.getByText(/35%/)).toBeInTheDocument()
     await expect(
       within(canvas.getByRole('table')).getByText('Complejo La Quinta'),
     ).toBeInTheDocument()
-    await expect(canvas.queryByText(/Se pasaría del límite/)).not.toBeInTheDocument()
+    await expect(canvas.queryByText(/Se pasaría del cupo/)).not.toBeInTheDocument()
   },
 }
 
@@ -92,13 +96,13 @@ export const Alerta: Story = {
   args: {
     data: monitor({
       kapso: {
+        ...CYCLE,
         total: 1700,
         byDirection: { inbound: 700, outbound: 900, owner: 100 },
         limit: 2000,
         pct: 85,
         projected: 2600,
-        crossingDay: 26,
-        daysInMonth: 31,
+        crossingDate: '2026-11-12',
       },
       tenants: [
         tenant({
@@ -112,7 +116,7 @@ export const Alerta: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await expect(canvas.getByText(/85%/)).toBeInTheDocument()
-    await expect(canvas.getByText(/Se pasaría del límite/)).toBeInTheDocument()
+    await expect(canvas.getByText(/Se pasaría del cupo/)).toBeInTheDocument()
     const table = within(canvas.getByRole('table'))
     await expect(table.getByText('Mensajes sin contestar')).toBeInTheDocument()
     await expect(table.getByText(/1 error del bot/)).toBeInTheDocument()
@@ -137,13 +141,13 @@ export const SinComplejos: Story = {
   args: {
     data: monitor({
       kapso: {
+        ...CYCLE,
         total: 0,
         byDirection: { inbound: 0, outbound: 0, owner: 0 },
         limit: 2000,
         pct: 0,
         projected: 0,
-        crossingDay: null,
-        daysInMonth: 31,
+        crossingDate: null,
       },
       ai: { tokens: { input: 0, cached: 0, output: 0 }, costUsd: 0, projectedUsd: 0 },
       tenants: [],

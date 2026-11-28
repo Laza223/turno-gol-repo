@@ -9,7 +9,7 @@ import {
   setEmailProvider,
   type EmailProvider,
 } from '@/modules/notifications/email.provider'
-import { monthWindowArt } from '@/modules/super-admin/whatsapp-monitor.service'
+import { kapsoCycleWindow } from '@/modules/super-admin/kapso-plan'
 import { runWhatsappOpsAlerts } from '@/modules/super-admin/whatsapp-ops-alerts.service'
 import {
   markWhatsappDisconnected,
@@ -27,7 +27,7 @@ import { insertWhatsappChat, insertWhatsappConnection } from '../helpers/factori
 /**
  * Cron `whatsapp-ops-alerts`: un mail por clave (dedupe en `ops_alerts`), la
  * clave se libera si el envío falla, y los destinatarios son los super admins
- * activos. Los umbrales de mensajes usan el mes ART real (`new Date()`).
+ * activos. Los umbrales de mensajes usan el ciclo de Kapso real (`new Date()`).
  *
  * El health de los números va con `fetch` mockeado: nunca contra la API real
  * de Kapso.
@@ -43,7 +43,7 @@ let activeEmail: string
 
 type Sql = ReturnType<typeof getSql>
 
-async function seedMonthMessages(sql: Sql, count: number) {
+async function seedCycleMessages(sql: Sql, count: number) {
   await sql`
     INSERT INTO whatsapp_messages (tenant_id, chat_id, direction, body, created_at, processed_at)
     SELECT ${tenant.id}, ${chatId}, 'outbound', 'x', now(), now()
@@ -98,37 +98,59 @@ afterAll(async () => {
 
 describe('runWhatsappOpsAlerts', () => {
   it('sin nada para avisar no manda ni reclama nada', async () => {
-    await seedMonthMessages(getSql(), 100)
+    await seedCycleMessages(getSql(), 100)
     await runWhatsappOpsAlerts(getWorkerDb())
     expect(sent).toEqual([])
     expect(await alertKeys(getSql())).toEqual([])
   })
 
-  it('80% del plan: manda una sola vez por mes, el segundo tick no manda', async () => {
-    await seedMonthMessages(getSql(), 1600)
+  it('80% del plan: manda una sola vez por ciclo, el segundo tick no manda', async () => {
+    await seedCycleMessages(getSql(), 1600)
     await runWhatsappOpsAlerts(getWorkerDb())
     expect(sent).toHaveLength(1)
     expect(sent[0]?.text).toContain('/super-admin/whatsapp')
     expect(sent[0]?.html).toContain('/super-admin/whatsapp')
-    expect(await alertKeys(getSql())).toEqual([`kapso-80:${monthWindowArt(new Date()).ym}`])
+    expect(await alertKeys(getSql())).toEqual([`kapso-80:${kapsoCycleWindow(new Date()).startDay}`])
 
     await runWhatsappOpsAlerts(getWorkerDb())
     expect(sent).toHaveLength(1)
   })
 
+  it('cuenta el ciclo de Kapso y no el mes: el 1 no vuelve a cero', async () => {
+    const sql = getSql()
+    // Ciclo 21/11 → 21/12. La mitad es de noviembre y la otra de diciembre; lo de
+    // antes del corte no suma.
+    for (const [count, at] of [
+      [900, '2026-11-25T12:00:00Z'],
+      [700, '2026-12-02T12:00:00Z'],
+      [500, '2026-11-21T05:00:00Z'],
+    ] as const) {
+      await sql`
+        INSERT INTO whatsapp_messages (tenant_id, chat_id, direction, body, created_at, processed_at)
+        SELECT ${tenant.id}, ${chatId}, 'outbound', 'x', ${at}::timestamptz, ${at}::timestamptz
+        FROM generate_series(1, ${count}::int)
+      `
+    }
+    await runWhatsappOpsAlerts(getWorkerDb(), new Date('2026-12-02T15:00:00Z'))
+    expect(await alertKeys(sql)).toEqual(['kapso-80:2026-11-21'])
+    expect(sent[0]?.text).toContain('1600 de 2000')
+  })
+
   it('80% y 100% en el mismo tick: un solo mail, el de 100', async () => {
-    await seedMonthMessages(getSql(), 2000)
+    await seedCycleMessages(getSql(), 2000)
     await runWhatsappOpsAlerts(getWorkerDb())
     expect(sent).toHaveLength(1)
-    expect(sent[0]?.subject).toContain('límite')
-    expect(await alertKeys(getSql())).toEqual([`kapso-100:${monthWindowArt(new Date()).ym}`])
+    expect(sent[0]?.subject).toContain('se alcanzó el cupo')
+    expect(await alertKeys(getSql())).toEqual([
+      `kapso-100:${kapsoCycleWindow(new Date()).startDay}`,
+    ])
   })
 
   it('después del 80%, cruzar el 100% manda un segundo mail', async () => {
     const sql = getSql()
-    await seedMonthMessages(sql, 1600)
+    await seedCycleMessages(sql, 1600)
     await runWhatsappOpsAlerts(getWorkerDb())
-    await seedMonthMessages(sql, 400)
+    await seedCycleMessages(sql, 400)
     await runWhatsappOpsAlerts(getWorkerDb())
     expect(sent).toHaveLength(2)
     expect(await alertKeys(sql)).toHaveLength(2)
@@ -136,7 +158,7 @@ describe('runWhatsappOpsAlerts', () => {
 
   it('si el envío falla, libera la clave y el próximo tick reintenta', async () => {
     const sql = getSql()
-    await seedMonthMessages(sql, 1600)
+    await seedCycleMessages(sql, 1600)
     failSends = true
     await runWhatsappOpsAlerts(getWorkerDb())
     expect(sent).toEqual([])
@@ -150,7 +172,7 @@ describe('runWhatsappOpsAlerts', () => {
 
   it('si el proveedor tira síncrono (Resend sin API key), también libera la clave', async () => {
     const sql = getSql()
-    await seedMonthMessages(sql, 1600)
+    await seedCycleMessages(sql, 1600)
     setEmailProvider({
       send: () => {
         throw new Error('Missing API key')
@@ -161,7 +183,7 @@ describe('runWhatsappOpsAlerts', () => {
   })
 
   it('manda solo a los super admins activos', async () => {
-    await seedMonthMessages(getSql(), 1600)
+    await seedCycleMessages(getSql(), 1600)
     await runWhatsappOpsAlerts(getWorkerDb())
     expect(sent.map((s) => s.to)).toEqual([activeEmail])
   })
@@ -169,7 +191,7 @@ describe('runWhatsappOpsAlerts', () => {
   it('sin super admins activos no manda ni reclama la clave', async () => {
     const sql = getSql()
     await sql`UPDATE system_admins SET status = 'inactive'`
-    await seedMonthMessages(sql, 1600)
+    await seedCycleMessages(sql, 1600)
     await runWhatsappOpsAlerts(getWorkerDb())
     expect(sent).toEqual([])
     expect(await alertKeys(sql)).toEqual([])
@@ -558,11 +580,11 @@ describe('runWhatsappOpsAlerts: salud de los números (Kapso mockeado)', () => {
   })
 
   it('si Kapso falla, las alertas de conteo salen igual', async () => {
-    await seedMonthMessages(getSql(), 1600)
+    await seedCycleMessages(getSql(), 1600)
     kapso({ health: () => json({ error: 'boom' }, 500) })
     await runWhatsappOpsAlerts(getWorkerDb())
     expect(sent.map((s) => s.subject)).toEqual([
-      'Bot de WhatsApp: llegó al 80% de los mensajes del mes',
+      'Bot de WhatsApp: llegó al 80% del cupo de mensajes de Kapso',
     ])
   })
 

@@ -1,6 +1,7 @@
 import { sql, type SQL } from 'drizzle-orm'
 import { withDisposableWorkerDb, type Db } from '@/shared/db/client'
 import { artDateOf, artDayRangeUtc } from '@/shared/time/art-date'
+import { KAPSO_PLAN, kapsoCycleWindow, projectCycle } from './kapso-plan'
 import { isInboundSilent, type OpeningHoursMap } from './whatsapp-silence'
 
 /**
@@ -13,9 +14,6 @@ import { isInboundSilent, type OpeningHoursMap } from './whatsapp-silence'
  * parámetro por el mismo motivo que `getMrrCents` (dashboard.service.ts): con
  * `prepare: false` una query con parámetros puede quedar colgada en el pooler.
  */
-
-/** Mensajes por mes del plan de Kapso (plan Free; Pro = 100.000). Entrantes y salientes. */
-export const KAPSO_PLAN_MONTHLY_MESSAGES = 2000
 
 /**
  * Precio de OpenAI gpt-6.2-sol en USD por millón de tokens (hasta 272K input):
@@ -52,25 +50,6 @@ export function monthWindowArt(now: Date): MonthWindow {
   return { ym, fromUtc, toUtc, daysInMonth }
 }
 
-/**
- * Proyección lineal a fin de mes y día del mes en que se pasaría `limit`
- * (`null` si la proyección no lo alcanza). Los días transcurridos tienen piso
- * de 1: el día 1 a la madrugada no extrapola dos mensajes a todo el mes.
- */
-export function projectMonth(args: {
-  total: number
-  limit: number
-  window: MonthWindow
-  now: Date
-}): { projected: number; crossingDay: number | null } {
-  const { total, limit, window, now } = args
-  const elapsedDays = Math.max(1, (now.getTime() - window.fromUtc.getTime()) / DAY_MS)
-  const perDay = total / elapsedDays
-  const projected = perDay * window.daysInMonth
-  if (projected <= limit) return { projected, crossingDay: null }
-  return { projected, crossingDay: Math.min(window.daysInMonth, Math.ceil(limit / perDay)) }
-}
-
 /** Literal de instante: ver el comentario de arriba sobre los parámetros. */
 function tsLiteral(d: Date): SQL {
   return sql.raw(`'${d.toISOString()}'::timestamptz`)
@@ -102,16 +81,19 @@ export type WhatsappTenantHealth = {
 }
 
 export type WhatsappMonitor = {
-  month: string
+  /** Consumo del ciclo de facturación de Kapso en curso. El resto va por mes calendario. */
   kapso: {
     total: number
     byDirection: Record<Direction, number>
+    planName: string
     limit: number
     /** Sin redondear: 0–100+. */
     pct: number
     projected: number
-    crossingDay: number | null
-    daysInMonth: number
+    /** Día ART en que se pasaría del cupo. */
+    crossingDate: string | null
+    cycleStartsAt: Date
+    cycleResetsAt: Date
   }
   ai: { tokens: TokenCounts; costUsd: number; projectedUsd: number }
   tenants: WhatsappTenantHealth[]
@@ -124,9 +106,16 @@ function asDate(v: unknown): Date | null {
   return v instanceof Date ? v : new Date(String(v))
 }
 
-/** Mensajes del mes (todas las direcciones) — la aproximación del contador de Kapso. */
-export async function getMonthMessageTotal(db: Db, now: Date): Promise<number> {
-  const w = monthWindowArt(now)
+/**
+ * Mensajes del ciclo de Kapso en curso (todas las direcciones): la aproximación
+ * de su contador, casi siempre por debajo. No están los que llegan con el
+ * asistente apagado o el número desconectado, lo que el complejo escribe en un
+ * chat donde el jugador no escribió, las respuestas automáticas de WhatsApp
+ * Business ni el template de derivación. Además, la purga semanal borra lo de
+ * más de 30 días: en un ciclo de 31 puede comerse el primero sobre el final.
+ */
+export async function getCycleMessageTotal(db: Db, now: Date): Promise<number> {
+  const w = kapsoCycleWindow(now)
   const rows = (await db.execute(sql`
     SELECT COUNT(*)::int AS total
     FROM whatsapp_messages
@@ -226,8 +215,9 @@ async function readMonitor(db: Db, now: Date): Promise<WhatsappMonitor> {
   const w = monthWindowArt(now)
   const from = tsLiteral(w.fromUtc)
   const to = tsLiteral(w.toUtc)
+  const cycle = kapsoCycleWindow(now)
 
-  const [conns, usage, health, paused, bookings] = await Promise.all([
+  const [conns, usage, cycleUsage, health, paused, bookings] = await Promise.all([
     db.execute(sql`
       SELECT c.tenant_id AS "tenantId", t.name, t.slug,
              c.display_phone_number AS "displayPhoneNumber", c.status, c.enabled,
@@ -246,6 +236,12 @@ async function readMonitor(db: Db, now: Date): Promise<WhatsappMonitor> {
       FROM whatsapp_messages
       WHERE created_at >= ${from} AND created_at < ${to}
       GROUP BY tenant_id, direction
+    `),
+    db.execute(sql`
+      SELECT direction, COUNT(*)::int AS messages
+      FROM whatsapp_messages
+      WHERE created_at >= ${tsLiteral(cycle.fromUtc)} AND created_at < ${tsLiteral(cycle.toUtc)}
+      GROUP BY direction
     `),
     db.execute(sql`
       SELECT tenant_id AS "tenantId",
@@ -275,6 +271,9 @@ async function readMonitor(db: Db, now: Date): Promise<WhatsappMonitor> {
   ])
 
   const byDirection: Record<Direction, number> = { inbound: 0, outbound: 0, owner: 0 }
+  for (const r of cycleUsage as unknown as Rows<{ direction: Direction; messages: number }>) {
+    byDirection[r.direction] = r.messages
+  }
   const tokens: TokenCounts = { input: 0, cached: 0, output: 0 }
   const perTenant = new Map<string, { messages: number; tokens: TokenCounts }>()
   for (const r of usage as unknown as Rows<{
@@ -285,7 +284,6 @@ async function readMonitor(db: Db, now: Date): Promise<WhatsappMonitor> {
     cached: number
     output: number
   }>) {
-    byDirection[r.direction] += r.messages
     tokens.input += r.input
     tokens.cached += r.cached
     tokens.output += r.output
@@ -321,25 +319,22 @@ async function readMonitor(db: Db, now: Date): Promise<WhatsappMonitor> {
   )
 
   const total = byDirection.inbound + byDirection.outbound + byDirection.owner
-  const { projected, crossingDay } = projectMonth({
-    total,
-    limit: KAPSO_PLAN_MONTHLY_MESSAGES,
-    window: w,
-    now,
-  })
+  const limit = KAPSO_PLAN.messagesPerCycle
+  const { projected, crossingDate } = projectCycle({ total, limit, window: cycle, now })
   const costUsd = tokensToUsd(tokens)
   const elapsedDays = Math.max(1, (now.getTime() - w.fromUtc.getTime()) / DAY_MS)
 
   return {
-    month: w.ym,
     kapso: {
       total,
       byDirection,
-      limit: KAPSO_PLAN_MONTHLY_MESSAGES,
-      pct: (total / KAPSO_PLAN_MONTHLY_MESSAGES) * 100,
+      planName: KAPSO_PLAN.name,
+      limit,
+      pct: (total / limit) * 100,
       projected,
-      crossingDay,
-      daysInMonth: w.daysInMonth,
+      crossingDate,
+      cycleStartsAt: cycle.fromUtc,
+      cycleResetsAt: cycle.toUtc,
     },
     ai: { tokens, costUsd, projectedUsd: (costUsd / elapsedDays) * w.daysInMonth },
     tenants: (

@@ -5,14 +5,17 @@ import { cleanupAll, createTestTenant, ensureRoles, type TestTenant } from '../h
 import { insertCourt, insertWhatsappChat, insertWhatsappConnection } from '../helpers/factories'
 
 /**
- * Monitor del bot (`getWhatsappMonitor`): agregados del mes calendario ART por
- * dirección y por complejo, bordes de mes en ART, backlog, chats pausados y
+ * Monitor del bot (`getWhatsappMonitor`): el consumo de Kapso por ciclo de
+ * facturación (en marzo de 2025: del 21/2 al 21/3 02:04:39 ART) y el resto por
+ * mes calendario ART y por complejo, con sus bordes, backlog, chats pausados y
  * reservas nacidas en el bot. `now` fijo = 21/03/2025 12:00 ART (un mes pasado: lo sembrado con now() de la base no cae adentro). El backlog y
  * las pausas se miden contra el reloj de la base, así que se siembran relativos
  * a `now()`.
  */
 
 const NOW = new Date('2025-03-21T15:00:00Z')
+// Mismo mes calendario, todavía en el ciclo que arrancó el 21/2.
+const NOW_PREVIOUS_CYCLE = new Date('2025-03-20T15:00:00Z')
 
 type Sql = ReturnType<typeof getSql>
 
@@ -165,15 +168,22 @@ afterAll(async () => {
 })
 
 describe('getWhatsappMonitor', () => {
-  it('cuenta el mes en ART por dirección, con los bordes de mes', async () => {
-    const m = await getWhatsappMonitor(NOW)
-    expect(m.month).toBe('2025-03')
-    // Entrantes de A: 5/3, 6/3 y 1/3 01:00 ART (el de 23:30 ART del 28/2 queda afuera) + 1 de B.
-    // Salientes: 6/3 y 23:30 ART del 31/3 (el de 01:00 ART del 1/4 queda afuera). Echo: 7/3.
-    expect(m.kapso.byDirection).toEqual({ inbound: 4, outbound: 2, owner: 1 })
+  it('Kapso cuenta su ciclo por dirección, aunque cruce dos meses', async () => {
+    const m = await getWhatsappMonitor(NOW_PREVIOUS_CYCLE)
+    // Ciclo 21/2 → 21/3. A: 28/2 23:30 ART, 1/3 01:00, 5/3 y 6/3 entrantes, un
+    // saliente el 6/3 y el echo del 7/3. B: el entrante del 10/3.
+    expect(m.kapso.byDirection).toEqual({ inbound: 5, outbound: 1, owner: 1 })
     expect(m.kapso.total).toBe(7)
     expect(m.kapso.limit).toBe(2000)
     expect(m.kapso.pct).toBeCloseTo((7 / 2000) * 100, 10)
+    expect(m.kapso.cycleResetsAt.toISOString()).toBe('2025-03-21T05:04:39.000Z')
+  })
+
+  it('pasado el corte el contador arranca de nuevo, sin cambiar de mes', async () => {
+    const m = await getWhatsappMonitor(NOW)
+    // Ciclo 21/3 → 21/4: los dos salientes de la noche del 31/3.
+    expect(m.kapso.byDirection).toEqual({ inbound: 0, outbound: 2, owner: 0 })
+    expect(m.kapso.cycleStartsAt.toISOString()).toBe('2025-03-21T05:04:39.000Z')
   })
 
   it('los tokens de otros meses no entran al gasto', async () => {

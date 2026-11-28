@@ -152,7 +152,7 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
       await expect(page).toHaveURL(new RegExp(`/reserva/${bookingId}/error`), {
         timeout: 15_000,
       })
-      await expect(page.getByRole('heading', { name: /el pago no se procesó/i })).toBeVisible()
+      await expect(page.getByRole('heading', { name: /el pago no se aprobó/i })).toBeVisible()
 
       // DB: booking still pending_payment
       const supabase = makeSupabase()
@@ -216,13 +216,23 @@ test.describe('booking flow — MercadoPago deposit + no-deposit', () => {
       collectedIds.push(bookingId)
 
       // Navigate to the /pendiente watcher WITHOUT clicking any pay button.
-      // This simulates the player returning before the webhook lands.
-      await page.goto(`/reserva/${bookingId}/pendiente`)
+      // This simulates the player returning before the webhook lands. MercadoPago
+      // agrega `payment_id` a la back_url de quien pagó; sin ese dato la página
+      // supone que cortó antes de pagar y le ofrece "Pagar la seña".
+      await page.goto(`/reserva/${bookingId}/pendiente?payment_id=MOCK-APPROVED-${bookingId}`)
 
-      // Watcher spinner must be visible
-      await expect(page.getByText('Confirmando tu pago…')).toBeVisible({ timeout: 10_000 })
-      // Todo el que llega a /pendiente ya pasó por MercadoPago: sin cuenta regresiva.
-      await expect(page.getByText('Esto puede tardar unos segundos.')).toBeVisible()
+      // Watcher spinner must be visible. Mientras la página entra, el DOM puede tener
+      // por un instante una segunda copia oculta: se aserta sobre lo visible (por rol,
+      // o filtrando), así que dos copias a la vista siguen siendo un error.
+      await expect(page.getByRole('heading', { name: 'Confirmando tu pago…' })).toBeVisible({
+        timeout: 10_000,
+      })
+      // Con un pago ya hecho no se ofrece pagar otra vez (TurnoGol no reembolsa por API).
+      await expect(page.getByRole('button', { name: 'Pagar la seña' })).toHaveCount(0)
+      // A quien ya pagó no se le muestra cuenta regresiva.
+      await expect(
+        page.getByText('Esto puede tardar unos segundos.').filter({ visible: true }),
+      ).toBeVisible()
       await expect(page.getByText(/te queda/i)).toHaveCount(0)
 
       // DB: booking is still pending_payment

@@ -1,6 +1,7 @@
 import { test as base, type Browser } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
+import { markPushPromptSeen } from './_helpers/push-prompt'
 
 const AUTH_DIR = path.resolve('./tests/e2e/.auth')
 
@@ -52,6 +53,10 @@ export const test = base.extend<NonNullable<unknown>, WorkerFixtures>({
    * en los e2e el rail queda fijo en 72 px — ningún spec prueba el despliegue, que
    * vive en las stories de `admin-sidebar`. Aplica también a los contextos que arma
    * cada spec con `browser.newContext()`.
+   *
+   * En los mismos contextos se marca como visto el modal del permiso de push (ver
+   * `_helpers/push-prompt`): su comportamiento lo cubren las stories de
+   * `PushNotificationManager`.
    */
   browser: [
     async ({ browser }, use) => {
@@ -62,6 +67,7 @@ export const test = base.extend<NonNullable<unknown>, WorkerFixtures>({
             return async (...args: Parameters<Browser['newContext']>) => {
               const context = await newContext(...args)
               await context.addInitScript(pinRailCollapsed)
+              await context.addInitScript(markPushPromptSeen)
               return context
             }
           }

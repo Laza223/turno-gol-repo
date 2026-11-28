@@ -57,6 +57,7 @@ test.describe('visual mobile — jugador', () => {
 
   test('reserva confirmada mobile @visual', async ({ page }) => {
     // Misma reserva `…0903` que el spec de escritorio (ver ahí): día fijo, jugador `…0020`.
+    await suppressPushBanner(page)
     await page.goto(`/reserva/${VISUAL_PLAYER_BOOKING_ID}/exito`)
     await expect(page.getByRole('heading', { name: '¡Reserva confirmada!' })).toBeVisible()
     // En el celular la barra inferior del jugador llega con la sesión: sin esperarla, la foto

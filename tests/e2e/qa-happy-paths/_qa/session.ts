@@ -1,5 +1,6 @@
 import type { Browser, BrowserContext } from '@playwright/test'
 import { buildStorageState } from '../../_helpers/auth-state'
+import { markPushPromptSeen } from '../../_helpers/push-prompt'
 
 /**
  * Session minting for QA specs. Reuses the exact cookie-mint the E2E harness uses
@@ -28,17 +29,7 @@ export async function newAuthedContext(browser: Browser, email: string): Promise
  * visto antes de que corran los scripts de página, para que no tape los clicks. Llamalo tras browser.newContext(), antes del goto.
  */
 export async function suppressPushPrompt(context: BrowserContext): Promise<void> {
-  await context.addInitScript(() => {
-    try {
-      // El modal propio del permiso se abre una vez por situación: marcarlas
-      // todas como vistas (staff y jugador) para que no tape la pantalla.
-      for (const audience of ['', ':player'])
-        for (const status of ['unsupported', 'install_required', 'denied', 'unsubscribed'])
-          localStorage.setItem(`turnogol:notif-modal-seen${audience}:${status}`, String(Date.now()))
-    } catch {
-      /* noop */
-    }
-  })
+  await context.addInitScript(markPushPromptSeen)
 }
 
 export const QA_EMAILS = {

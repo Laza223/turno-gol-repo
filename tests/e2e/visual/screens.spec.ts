@@ -102,6 +102,7 @@ test.describe('visual — jugador', () => {
     // La reserva `…0903` del seed: confirmada, con seña pagada, en un día FIJO (`VISUAL_DATE`) —
     // el resumen y el mensaje al grupo salen de la fila, no del reloj. Del jugador `…0020`, el
     // mismo de `player.json`.
+    await suppressPushBanner(page)
     await page.goto(`/reserva/${VISUAL_PLAYER_BOOKING_ID}/exito`)
     await expect(page.getByRole('heading', { name: '¡Reserva confirmada!' })).toBeVisible()
     await waitForPlayerSession(page)

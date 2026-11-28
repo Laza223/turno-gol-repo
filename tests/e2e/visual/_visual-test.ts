@@ -12,6 +12,7 @@
  */
 
 import { test as base, expect, type Page } from '@playwright/test'
+import { markPushPromptSeen } from '../_helpers/push-prompt'
 
 export const ADMIN_STORAGE_STATE = 'tests/e2e/.auth/admin.json'
 
@@ -33,12 +34,8 @@ export { expect }
  * Hay que llamarlo ANTES del primer goto.
  */
 export async function suppressPushBanner(page: Page): Promise<void> {
+  await page.context().addInitScript(markPushPromptSeen)
   await page.context().addInitScript(() => {
-    // El modal propio del permiso se abre una vez por situación: marcarlas
-    // todas como vistas (staff y jugador) para que no tape la pantalla.
-    for (const audience of ['', ':player'])
-      for (const status of ['unsupported', 'install_required', 'denied', 'unsubscribed'])
-        localStorage.setItem(`turnogol:notif-modal-seen${audience}:${status}`, String(Date.now()))
     // El cartel de "activá las notificaciones" queda fijo mientras el dispositivo
     // no reciba avisos (siempre, en un navegador de test): fuera de la foto.
     document.addEventListener('DOMContentLoaded', () => {

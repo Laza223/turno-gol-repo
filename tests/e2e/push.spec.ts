@@ -78,7 +78,7 @@ test.describe('Push notifications — in-page BroadcastChannel toast (@push @chr
       // Web Push, and survives the hydration race (see note above): the manager
       // dedupes by id, so re-posting the same id after delivery is a no-op.
       // PushNotificationManager.onmessage acks first, then calls
-      // toast({ title: 'Nueva reserva — Cancha 1', ... }). exact:true because
+      // toast({ title: 'Nueva reserva: Cancha 1', ... }). exact:true because
       // the aria-live announcement also contains the title.
       await expect(async () => {
         await page.evaluate(() => {
@@ -91,7 +91,7 @@ test.describe('Push notifications — in-page BroadcastChannel toast (@push @chr
           })
           bc.close()
         })
-        await expect(page.getByText('Nueva reserva — Cancha 1', { exact: true })).toBeVisible({
+        await expect(page.getByText('Nueva reserva: Cancha 1', { exact: true })).toBeVisible({
           timeout: 1_000,
         })
       }).toPass({ timeout: 15_000 })
